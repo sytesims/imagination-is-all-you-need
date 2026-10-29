@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { mockupForShot } from '../../web/src/ui/three/feed3d';
+import { defaultPlanShot, normalizePlanShot, shotForJob } from '../src/shared/previzTemplates';
+const shot = normalizePlanShot({ ...defaultPlanShot('product-hero'), seconds: 3, models: [{ id: 'm1', src: '/files/a.glb', name: 'Prop', x: 0.2, z: 0.1, h: 0.5 }] });
+const job = { id: 'original', toolId: 'plan-a-shot', status: 'done', input: { previz: { shot: shotForJob(shot), scene: 'preset' } } };
+const find = (s: typeof shot) => mockupForShot([job], { template: s.template, move: s.move, takeId: null, imported: false, shot: s });
+assert.equal(find(shot), job);
+for (const changed of [{ ...shot, seconds: 5 }, { ...shot, models: undefined }, { ...shot, lens: 85 as const }, { ...shot, colour: 'blue' }, { ...shot, aspect: '16:9' as const }, { ...shot, models: shot.models!.map((m) => ({ ...m, x: 1 })) }]) assert.equal(find(changed), null, 'stage edits must not silently offer an older mockup as current');
+assert.equal(mockupForShot([job], { template: shot.template, move: shot.move, takeId: null, imported: false }), job, 'legacy callers retain their fallback behavior');
+console.log('ok Render source: exact captured scene matches; prop/position/lens/range/colour/aspect edits require a new mockup; history remains usable explicitly');

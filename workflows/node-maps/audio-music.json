@@ -1,0 +1,31 @@
+{
+  "workflowFile": "audio-music-api.json",
+  "template": "audio_ace_step_1_5_split",
+  "inputs": {
+    "prompt": {
+      "node": "94",
+      "field": "tags"
+    },
+    "lyrics": {
+      "node": "94",
+      "field": "lyrics"
+    }
+  },
+  "duration": [
+    {
+      "node": "94",
+      "field": "duration"
+    },
+    {
+      "node": "98",
+      "field": "seconds"
+    }
+  ],
+  "seed": {
+    "node": "3",
+    "field": "seed"
+  },
+  "output": {
+    "node": "107"
+  }
+}

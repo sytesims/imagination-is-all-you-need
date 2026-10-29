@@ -1,0 +1,21 @@
+{
+  "workflowFile": "ltx25-iclora-v2v-api.json",
+  "template": "cloned from ltx25-layout-to-render-api.json (video_ltx2_5_t2v / video_ltx2_5_i2v two-stage distilled ladder + video_ltx2_3_ic_lora IC-LoRA guide pattern); IC-LoRA conventions from the Lightricks LTX-2.5 IC-LoRA model cards",
+  "license": "LTX-2.x Community License (weights); graph: MIT (ours, from Comfy-Org/workflow_templates)",
+  "inputs": {
+    "prompt": { "node": "10", "field": "text" },
+    "negative": { "node": "11", "field": "text" },
+    "source": { "node": "20", "field": "file" },
+    "firstFrame": { "node": "22", "field": "image" },
+    "firstFrameStage1": { "node": "23" },
+    "firstFrameInPlace": { "nodes": ["24", "25"], "field": "strength" },
+    "guide": { "nodes": ["32", "52"], "field": "strength" },
+    "latent": { "node": "30" },
+    "audioLatent": { "node": "33" },
+    "lora": { "node": "2" }
+  },
+  "refs": [],
+  "seed": { "nodes": ["35", "54"], "field": "noise_seed" },
+  "output": { "node": "63" },
+  "changes": "Shared video-to-video base for every LTX-2.5 IC-LoRA (server/src/comfy/ltx25IcLora.ts; first variant: Footage Effects). The source clip (conformed on the server: 24 fps, 8k+1 frames, cover-crop to the draft size, sound kept) guides both stages through LTXVAddGuide with GetICLoRAParameters; guides cropped before the x2 latent upscale and before decode. Optional first frame via LTXVImgToVideoInplace on both stages (nodes 22-25, removed when unused). The effect IC-LoRA (node 2) and its strength are swapped per job. Stage 1: 8 distilled sigmas; stage 2: 0.909375, 0.725, 0.421875, 0. CFG 1, euler_ancestral, seed 42 (stage 2 seed + 1). Audio: the source clip's sound is muxed back onto the result."
+}

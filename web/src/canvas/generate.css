@@ -1,0 +1,163 @@
+/* Canvas step 2: generating from the board. Each generate card carries its own controls (no bar); results get a quick-action icon bar.
+   Dark, quiet surfaces from the brand tokens; orange only for the selection, the current take, a running dot and the Generate button. */
+
+/* ---- top left: (AI button when the dock is closed) board switcher, this board's spend chip, Follow agent. The dock is agentPanel.css ---- */
+.cv-topl{position:absolute;top:12px;left:12px;z-index:20;display:flex;align-items:center;gap:8px}
+.cv-topl .cv-switch{position:relative;top:auto;left:auto}
+.cv-root{--cv-agent-w:0px}
+.cv-spend{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 14px 0 12px;border-radius:12px;text-decoration:none;color:var(--text-2,#898A8B);background:rgba(19,21,23,.92);border:1px solid rgba(255,255,255,.08);box-shadow:0 4px 20px rgba(0,0,0,.28);backdrop-filter:blur(12px);font:500 12px/1 var(--font-ui,Inter,sans-serif);transition:background var(--t-state,150ms) ease}
+.cv-spend:hover{background:rgba(28,30,32,.96);color:var(--text-1,#F7F7F8)}
+.cv-spend:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}
+.cv-spend-k{color:var(--text-3,rgba(255,255,255,.5))}
+.cv-spend-v{display:inline-flex;align-items:center;gap:6px;color:var(--text-1,#F7F7F8)}
+.cv-spend-v b{font:600 12px/1 var(--font-mono,ui-monospace,monospace);font-variant-numeric:tabular-nums}
+.cv-spend-v i{font-style:normal;color:var(--text-3,rgba(255,255,255,.5))}
+.cv-spend-v small{padding:2px 6px;border-radius:999px;background:rgba(255,255,255,.07);color:var(--text-2,#898A8B);font:600 10px/12px var(--font-ui,Inter,sans-serif)}
+.cv-spend-live{width:6px;height:6px;border-radius:50%;background:#FF7A1A;animation:cv-pulse 1.4s ease-in-out infinite}
+@keyframes cv-pulse{50%{opacity:.35}}
+
+/* ---- + New (top of the rail) ---- */
+.cv-new{color:var(--text-1,#F7F7F8);background:rgba(255,255,255,.06)}
+.cv-new-list{display:flex;flex-direction:column;gap:2px}
+.cv-qa-foot{margin:6px 4px 2px;font:500 11px/15px var(--font-ui,Inter,sans-serif);color:var(--text-3,rgba(255,255,255,.5))}
+.cv-empty kbd{display:inline-block;min-width:16px;padding:0 5px;border-radius:5px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);font:600 11px/18px var(--font-ui,Inter,sans-serif);color:var(--text-1,#F7F7F8)}
+.cv-wf-how{margin:4px 0 8px 36px;font:500 11.5px/16px var(--font-ui,Inter,sans-serif);color:var(--text-3,rgba(255,255,255,.5))}
+
+/* ---- quick actions: a small icon bar at the bottom of a result, on hover / selection ---- */
+.cv-qa{position:absolute;left:50%;bottom:10px;z-index:5;display:flex;gap:2px;padding:3px;border-radius:12px;background:rgba(22,24,26,.86);border:1px solid rgba(255,255,255,.1);box-shadow:0 8px 24px rgba(0,0,0,.4);backdrop-filter:blur(10px);
+  opacity:0;transform:translate(-50%,4px);pointer-events:none;transition:opacity var(--t-state,150ms) ease,transform var(--t-state,150ms) ease}
+.cv-qa.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.cv-qa-b{all:unset;box-sizing:border-box;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;cursor:pointer;color:var(--text-2,#B4B5B8)}
+.cv-qa-b:hover{background:rgba(255,255,255,.09);color:var(--text-1,#F7F7F8)}
+.cv-qa-b:active{transform:scale(.96)}
+.cv-qa-b:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}
+.cv-rc{position:relative;width:100%;height:100%}
+.cv-rc .rc-play{bottom:52px}
+.cv-rc .cv-qa{bottom:46px} /* above the result card's caption */
+
+/* ---- the generate card ---- */
+.gc{position:relative;box-sizing:border-box;width:100%;height:100%;border-radius:16px;background:linear-gradient(180deg,#1A1C1F,#151719);border:1px solid rgba(255,255,255,.08);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 16px 40px rgba(0,0,0,.42);color:var(--text-1,#F7F7F8);font-family:var(--font-ui,Inter,system-ui,sans-serif);transition:box-shadow var(--dur-med,200ms) ease,border-color var(--dur-med,200ms) ease}
+.gc-inner{display:flex;flex-direction:column;padding-bottom:10px}
+.gc.gc-is-done .gc-inner{padding-bottom:0}
+.gc-head{flex:none;height:44px;display:flex;align-items:center;gap:6px;padding:0 8px 0 6px}
+.gc-flow{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:8px;min-width:0;max-width:62%;height:32px;padding:0 8px 0 4px;border-radius:9px;cursor:pointer;color:var(--text-1,#F7F7F8)}
+.gc-flow:not(:disabled):hover,.gc-flow.on{background:rgba(255,255,255,.06)}
+.gc-flow:disabled{cursor:default}
+.gc-flow:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}
+.gc-flow>svg:last-child{flex:none;color:var(--text-3,rgba(255,255,255,.5))}
+.gc-ic{flex:none;width:24px;height:24px;border-radius:7px;display:grid;place-items:center;background:rgba(255,255,255,.07);color:var(--text-1,#F7F7F8)}
+.gc-ic svg{width:14px;height:14px}
+.gc-name{min-width:0;font:600 13px/16px var(--font-ui,Inter,sans-serif);letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gc-head-r{margin-left:auto;display:inline-flex;align-items:center;gap:4px}
+.gc-pill{flex:none;display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 8px;border-radius:999px;background:rgba(255,255,255,.06);color:var(--text-2,#898A8B);font:600 11px/22px var(--font-ui,Inter,sans-serif)}
+.gc-pill-running{color:var(--text-1,#F7F7F8)}
+.gc-pill-done{color:#3DDC97;background:rgba(61,220,151,.1)}
+.gc-dot{width:6px;height:6px;border-radius:50%;background:#FF7A1A;animation:cv-pulse 1.4s ease-in-out infinite}
+.gc-acts{display:inline-flex;gap:2px;opacity:0;transition:opacity var(--t-state,150ms) ease}
+.gc:hover .gc-acts,.gc-sel .gc-acts{opacity:1}
+.gc-act{all:unset;box-sizing:border-box;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;cursor:pointer;color:var(--text-2,#898A8B)}
+.gc-act:hover{background:rgba(255,255,255,.08);color:var(--text-1,#F7F7F8)}
+.gc-act:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}
+
+/* draft body: prompt field, inputs, chips, Generate */
+.gc-body{display:flex;flex-direction:column;gap:8px;padding:0 10px}
+.gc-text{all:unset;box-sizing:border-box;display:block;width:100%;min-height:40px;max-height:140px;padding:9px 11px;border-radius:11px;overflow-y:auto;resize:none;cursor:text;white-space:pre-wrap;overflow-wrap:anywhere;
+  background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06);font:400 13px/19px var(--font-ui,Inter,sans-serif);color:var(--text-1,#F7F7F8);transition:border-color var(--t-state,150ms) ease,background var(--t-state,150ms) ease;scrollbar-width:thin}
+.gc-text::placeholder{color:var(--text-3,rgba(255,255,255,.42))}
+.gc-text:hover{background:rgba(255,255,255,.05)}
+.gc-text:focus{border-color:rgba(255,255,255,.22);background:rgba(255,255,255,.05)}
+.gc-noprompt{margin:0;padding:9px 11px;border-radius:11px;background:rgba(255,255,255,.03);font:500 12px/17px var(--font-ui,Inter,sans-serif);color:var(--text-3,rgba(255,255,255,.5))}
+.gc-ins-row{display:flex;flex-wrap:wrap;gap:6px}
+.gc-slot{display:inline-flex;gap:6px}
+.gc-in{all:unset;box-sizing:border-box;position:relative;width:60px;height:56px;border-radius:10px;overflow:visible;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:#232528;color:var(--text-2,#898A8B)}
+.gc-in>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:10px}
+.gc-in>small{position:absolute;left:0;right:0;bottom:0;padding:8px 3px 3px;border-radius:0 0 10px 10px;text-align:center;font:600 9.5px/11px var(--font-ui,Inter,sans-serif);color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.72));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gc-in-add{cursor:pointer;border:1.5px dashed rgba(255,255,255,.22);background:transparent}
+.gc-in-add.req{border-color:rgba(255,122,26,.6);color:#FFB27A}
+.gc-in-add>small{position:static;padding:0;background:none;color:inherit}
+.gc-in-add:hover{background:rgba(255,255,255,.05)}
+.gc-in-add:focus-visible,.gc-in-x:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}
+.gc-in-x{all:unset;position:absolute;top:-5px;right:-5px;z-index:2;width:17px;height:17px;border-radius:50%;display:grid;place-items:center;cursor:pointer;background:#141517;border:1px solid rgba(255,255,255,.2);color:#fff;opacity:0;transition:opacity var(--t-state,150ms) ease}
+.gc-in:hover .gc-in-x,.gc-open .gc-in-x{opacity:1}
+.gc-note{margin:0;font:500 11px/15px var(--font-ui,Inter,sans-serif);color:var(--warning,#E8B44A)}
+.gc-chips{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+.gc-chips .wf-strip.wf-ctl{display:contents}
+.gc-chip,.gc .ic-chip{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;max-width:100%;height:28px;padding:0 9px;border-radius:8px;cursor:pointer;
+  background:rgba(255,255,255,.055);color:var(--text-1,#F7F7F8);font:500 12px/1 var(--font-ui,Inter,sans-serif);white-space:nowrap;transition:background var(--t-state,150ms) ease}
+.gc-chip:hover,.gc .ic-chip:hover{background:rgba(255,255,255,.1)}
+.gc-chip.on,.gc .ic-chip.on{background:rgba(255,255,255,.12);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+.gc-chip:disabled{cursor:default;background:transparent;padding-left:2px}
+.gc-chip:focus-visible,.gc .ic-chip:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}
+.gc-chip>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.gc-model-chip{max-width:122px}
+.gc .gc-chips .ic-chip{padding:0 8px!important;gap:5px}
+.gc-chip>svg{flex:none;color:var(--text-3,rgba(255,255,255,.5))}
+/* the shared group chips carry the dock's !important sizes (styles.css .ic-chip): sized down for the card */
+.gc .gc-chips .ic-chip{height:28px!important;min-height:28px!important;padding:0 9px!important;border-radius:8px!important;background:rgba(255,255,255,.055)!important;border:0!important;color:var(--text-1,#F7F7F8)!important;font-size:12px!important;font-weight:500!important;box-shadow:none!important}
+.gc .gc-chips .ic-chip:hover{background:rgba(255,255,255,.1)!important}
+.gc .gc-chips .ic-chip.on{background:rgba(255,255,255,.13)!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)!important}
+.gc .gc-chips .ic-chip svg{width:14px;height:14px}
+.gc .ic-chip .wf-grp-l{display:none}
+.gc .ic-chip b{font-weight:500;overflow:hidden;text-overflow:ellipsis}
+.gc .ic-chip>svg{flex:none;color:var(--text-2,#898A8B)}
+.gc .ic-chip.ic-static{cursor:default;color:var(--text-2,#898A8B)}
+.gc-chips-min .gc-model-chip{background:transparent;padding-left:2px;color:var(--text-2,#898A8B)}
+.gc-mk{--mk-s:18px;flex:none}
+/* Generate: the shared dock button, one line on the card ("Generate · ≈ $0.07" / "Generate · Write a prompt") */
+.gc .gc-gen{all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:40px;padding:0 14px;border-radius:11px;cursor:pointer;
+  background:#FF7A1A;color:var(--on-accent);box-shadow:inset 0 -2px 0 #9E4B10,0 6px 16px rgba(255,122,26,.18);font:700 13px/1 var(--font-ui,Inter,sans-serif);transition:background var(--t-state,150ms) ease,transform var(--t-state,150ms) ease}
+.gc .gc-gen:hover{background:#E66E17}
+.gc .gc-gen:active{transform:scale(.98)}
+.gc .gc-gen:focus-visible{box-shadow:inset 0 -2px 0 #9E4B10,0 0 0 2px rgba(255,255,255,.9)}
+.gc .gc-gen .gen-l{display:inline-flex;align-items:center;gap:6px;color:inherit}
+.gc .gc-gen .as-spin{width:12px;height:12px}
+.gc .gc-gen .gen-price{display:inline-flex;align-items:center;min-width:0;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 12px/1 var(--font-ui,Inter,sans-serif);color:var(--on-accent);background:none;padding:0}
+.gc .gc-gen .gen-price:not(.gp-empty)::before{content:'·';margin-right:8px;opacity:.6}
+.gc .gc-gen .gen-price .gp-sub{display:none}
+.gc .gc-gen.gen-wait,.gc .gc-gen[aria-disabled=true]{background:#2A2C2F;color:var(--text-1,#F7F7F8);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.gc .gc-gen.gen-wait .gen-price,.gc .gc-gen[aria-disabled=true] .gen-price{color:var(--text-2,#B4B5B8)}
+.gc .gc-gen:disabled{cursor:default;opacity:.7}
+/* compact draft (not selected / hovered): only the prompt, the model and Generate */
+.gc:not(.gc-open) .gc-text{max-height:60px}
+
+/* running / done / failed */
+.gc-media{position:relative;flex:none;margin:0 8px;border-radius:12px;overflow:hidden;background:#1C1E20}
+.gc.gc-is-done .gc-media{margin:0 6px}
+.gc-media>.gt{border-radius:12px}
+.gc-media .rc{border:0;box-shadow:none;border-radius:12px}
+.gc-media .rc-cap,.gc-media .rc-tools{display:none}
+.gc-media .rc-play{bottom:52px}
+.gc-fail{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:16px;text-align:center;background:repeating-linear-gradient(135deg,rgba(255,255,255,.025) 0 10px,transparent 10px 20px),#1A1C1E}
+.gc-fail-t{font:600 13px/18px var(--font-ui,Inter,sans-serif)}
+.gc-fail-l{margin:0;max-width:250px;font:500 11.5px/16px var(--font-ui,Inter,sans-serif);color:var(--text-2,#898A8B);display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.gc-retry{display:inline-flex!important;align-items:center;gap:6px}
+.gc-prompt{flex:none;margin:8px 12px 0;max-height:51px;font:400 12.5px/17px var(--font-ui,Inter,sans-serif);color:var(--text-2,#898A8B);overflow:hidden;-webkit-mask-image:linear-gradient(#000 55%,transparent);mask-image:linear-gradient(#000 55%,transparent);overflow-wrap:anywhere}
+.gc-takes{flex:none;height:38px;margin:6px 6px 0;display:flex;align-items:center;gap:4px;padding:0 4px 0 2px;border-radius:10px;background:rgba(255,255,255,.04)}
+.gc-tk-nav{all:unset;box-sizing:border-box;width:24px;height:24px;border-radius:7px;display:grid;place-items:center;cursor:pointer;color:var(--text-2,#898A8B)}
+.gc-tk-nav:hover{background:rgba(255,255,255,.08);color:var(--text-1,#F7F7F8)}
+.gc-tk-n{min-width:30px;text-align:center;font:600 11px/1 var(--font-mono,ui-monospace,monospace);font-variant-numeric:tabular-nums;color:var(--text-1,#F7F7F8)}
+.gc-tk-thumbs{display:flex;gap:3px;margin-left:2px}
+.gc-tk{all:unset;box-sizing:border-box;width:26px;height:26px;border-radius:6px;overflow:hidden;cursor:pointer;background:#232528;opacity:.55;display:grid;place-items:center;font:600 10px/1 var(--font-ui,Inter,sans-serif)}
+.gc-tk img{width:100%;height:100%;object-fit:cover}
+.gc-tk:hover{opacity:.9}
+.gc-tk.on{opacity:1;box-shadow:0 0 0 1.5px #FF7A1A}
+.gc-pull{all:unset;box-sizing:border-box;margin-left:auto;display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 9px;border-radius:8px;cursor:pointer;background:rgba(255,255,255,.07);color:var(--text-1,#F7F7F8);font:600 11px/1 var(--font-ui,Inter,sans-serif)}
+.gc-pull:hover{background:rgba(255,255,255,.12)}
+.gc-pull:focus-visible,.gc-tk:focus-visible,.gc-tk-nav:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}
+.gc-foot{flex:none;height:40px;display:flex;align-items:center;gap:8px;padding:0 10px;min-width:0}
+.gc-ins-mini{flex:none;display:inline-flex}
+.gc-mini{width:20px;height:20px;border-radius:6px;overflow:hidden;display:grid;place-items:center;background:#232528;color:var(--text-2,#898A8B);box-shadow:0 0 0 2px #16181A}
+.gc-mini+.gc-mini{margin-left:-6px}
+.gc-mini img{width:100%;height:100%;object-fit:cover}
+.gc-model{flex:1;min-width:0;display:inline-flex;align-items:center;gap:6px;font:500 12px/16px var(--font-ui,Inter,sans-serif);color:var(--text-2,#898A8B)}
+.gc-model>span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gc-price{flex:none;max-width:48%}
+.gc-price .gen-price{display:inline-block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:3px 7px;border-radius:7px;background:rgba(255,255,255,.06);color:var(--text-1,#F7F7F8)!important;font:600 11px/14px var(--font-mono,ui-monospace,monospace);font-variant-numeric:tabular-nums}
+.gc-price .gen-price.gp-empty{display:none}
+
+/* lineage: hovering a linked card softly lights its ancestors and descendants (a white glow; orange stays the selection's) */
+.gc[data-role],.cv-rc[data-role] .rc{transition:box-shadow var(--dur-med,200ms) ease}
+.gc[data-role=self],.cv-rc[data-role=self] .rc{box-shadow:0 0 0 1.5px rgba(255,255,255,.42),0 16px 40px rgba(0,0,0,.42)}
+.gc[data-role=anc],.gc[data-role=desc],.cv-rc[data-role=anc] .rc,.cv-rc[data-role=desc] .rc{box-shadow:0 0 0 1.5px rgba(255,255,255,.26),0 0 30px rgba(255,255,255,.09),0 16px 40px rgba(0,0,0,.42)}
+@media (prefers-reduced-motion:reduce){.gc,.gc-acts,.cv-spend,.cv-qa,.gc-in-x{transition:none}.gc-dot,.cv-spend-live{animation:none}}

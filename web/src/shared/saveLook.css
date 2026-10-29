@@ -1,0 +1,19 @@
+/* Save as look dialog (SaveLookDialog.tsx). Builds on the app's .dlg; tokens only. */
+.dlg.slk{width:min(460px,100%)}
+.dlg.slk-pick{width:min(620px,100%)}
+.slk-row{display:grid;grid-template-columns:112px minmax(0,1fr);gap:14px;margin:4px 0 14px}
+.slk-thumb{display:block;width:112px;height:112px;border-radius:var(--r-md);overflow:hidden;background:var(--surface-3)}
+.slk-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.slk-facts{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;margin:0;font-size:12.5px;align-content:start}
+.slk-facts dt{color:var(--text-3)}
+.slk-facts dd{margin:0;color:var(--text);min-width:0}
+.slk-prompt{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;color:var(--text-2)!important}
+.slk-note{margin:10px 0 0;font-size:12px;color:var(--text-3);line-height:1.45}
+.slk-err{margin:8px 0 0;font-size:12.5px;color:var(--error)}
+.slk-back{margin-right:auto}
+.slk-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:12px 0 4px;max-height:min(52vh,420px);overflow:auto;padding:2px}
+.slk-cell{display:block;aspect-ratio:1;padding:0;border:1px solid var(--hairline);border-radius:var(--r-md);overflow:hidden;background:var(--surface-3);cursor:pointer;margin:0;height:auto}
+.slk-cell img{width:100%;height:100%;object-fit:cover;display:block}
+.slk-cell:hover{border-color:var(--accent)}
+.slk-cell:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.slk-empty{margin:14px 0 4px;font-size:13px;color:var(--text-2)}

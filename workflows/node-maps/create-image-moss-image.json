@@ -1,0 +1,20 @@
+{
+  "workflowFile": "create-image-moss-image-api.json",
+  "template": "image_moss_image_t2i",
+  "model": "MOSS-Image SFT (Apache-2.0)",
+  "minComfyVersion": "0.41.3",
+  "inputs": {
+    "prompt": {
+      "node": "4",
+      "field": "text"
+    }
+  },
+  "refs": [],
+  "seed": {
+    "node": "7",
+    "field": "seed"
+  },
+  "output": {
+    "node": "9"
+  }
+}

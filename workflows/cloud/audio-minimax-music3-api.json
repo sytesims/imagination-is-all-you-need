@@ -1,0 +1,126 @@
+{
+  "1": {
+    "inputs": {
+      "unet_name": "minimax_music3_dit_fp16.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader"
+  },
+  "2": {
+    "inputs": {
+      "clip_name": "minimax_music3_text_encoder_pruned_int8_convrot.safetensors",
+      "type": "minimax",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader"
+  },
+  "3": {
+    "inputs": {
+      "vae_name": "minimax_music3_dav.safetensors"
+    },
+    "class_type": "VAELoader"
+  },
+  "4": {
+    "inputs": {
+      "seed": 0
+    },
+    "class_type": "SeedNode",
+    "_meta": {
+      "title": "Seed"
+    }
+  },
+  "5": {
+    "inputs": {
+      "clip": [
+        "2",
+        0
+      ],
+      "caption": "English, warm female vocal, upbeat indie pop, 110 BPM, bright electric guitars, punchy drums, melodic bass",
+      "lyrics": "[Verse]\nMorning light across the window\nCity waking down below\n\n[Chorus]\nRun with me into the sunlight\nLeave the shadows far behind",
+      "seed": [
+        "4",
+        0
+      ],
+      "max_duration": 60,
+      "cfg_scale": 1.7,
+      "top_k": 50
+    },
+    "class_type": "MiniMaxMusic3TextEncode",
+    "_meta": {
+      "title": "MiniMax Music 3 Text Encode"
+    }
+  },
+  "6": {
+    "inputs": {
+      "conditioning": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "ConditioningZeroOut"
+  },
+  "7": {
+    "inputs": {
+      "seconds": [
+        "5",
+        1
+      ],
+      "batch_size": 1
+    },
+    "class_type": "EmptyMiniMaxMusic3LatentAudio"
+  },
+  "8": {
+    "inputs": {
+      "seed": [
+        "4",
+        0
+      ],
+      "steps": 30,
+      "cfg": 1.7,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "1",
+        0
+      ],
+      "positive": [
+        "5",
+        0
+      ],
+      "negative": [
+        "6",
+        0
+      ],
+      "latent_image": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "KSampler"
+  },
+  "9": {
+    "inputs": {
+      "samples": [
+        "8",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    },
+    "class_type": "VAEDecodeAudio"
+  },
+  "10": {
+    "inputs": {
+      "filename_prefix": "openhiggsfield/audio-minimax-music3",
+      "format": "flac",
+      "audio": [
+        "9",
+        0
+      ]
+    },
+    "class_type": "SaveAudioAdvanced"
+  }
+}

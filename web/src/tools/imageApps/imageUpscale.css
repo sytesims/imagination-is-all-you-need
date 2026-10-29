@@ -1,0 +1,61 @@
+/* Upscale bits still used after the Upscale page moved into Create Image's bar (2026-10-22): the Examples popup (UpscaleExamples.tsx).
+   The upscale model rows are the shared model menu now (shared/ModelMenu.tsx, 2026-10-26). */
+
+.iux-scrim{position:fixed;inset:0;z-index:200;display:grid;place-items:center;padding:24px;background:rgba(0,0,0,.62);animation:iux-fade var(--t-state,160ms) ease-out}
+@keyframes iux-fade{from{opacity:0}to{opacity:1}}
+.iux{width:min(760px,100%);max-height:calc(100dvh - 48px);overflow-x:hidden;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:18px 20px 16px;border-radius:18px;background:var(--surface);border:1px solid var(--hairline-strong);box-shadow:0 30px 80px rgba(0,0,0,.55);color:var(--text)}
+.iux > *{flex-shrink:0;min-width:0}
+.iux-panel > *{min-width:0}
+.iux-head{display:flex;align-items:center;justify-content:space-between}
+.iux-head h2{margin:0;font-size:var(--fs-lg);font-weight:700}
+.iux-x{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--hairline);background:none;color:var(--text-2);cursor:pointer}
+.iux-x:hover{color:var(--text);background:var(--state-hover)}
+.iux-head h2 span{font-weight:500;color:var(--text-2);white-space:nowrap}
+.iux-nw{white-space:nowrap}
+/* QA #18: the picked model has no example: say so, in the brand accent, before the guide */
+.iux-nomodel{margin:0;padding:8px 12px;border-radius:10px;border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);background:color-mix(in srgb,var(--accent) 8%,transparent);color:var(--text);font-size:var(--fs-sm);line-height:1.45}
+.iux-nomodel b{font-weight:600}
+.iux-guide{margin:0;color:var(--text-2);font-size:var(--fs-sm);line-height:1.5}
+.iux-guide b{color:var(--text);font-weight:600}
+.iux-tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.iux-tabs::-webkit-scrollbar{display:none}
+.iux-tab{flex:1 0 auto;display:flex;align-items:center;gap:8px;padding:4px 10px 4px 4px;border-radius:12px;border:1px solid var(--hairline);background:none;color:var(--text-2);font-size:var(--fs-xs);font-weight:600;white-space:nowrap;cursor:pointer;transition:border-color var(--t-state),color var(--t-state)}
+.iux-tab img{width:36px;height:36px;border-radius:8px;object-fit:cover}
+.iux-tab:hover{color:var(--text);border-color:var(--hairline-strong)}
+.iux-tab.on{color:var(--text);border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.iux-tab:focus-visible,.iux-seg button:focus-visible,.iux-try:focus-visible,.iux-x:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap)}
+.iux-panel{display:flex;flex-direction:column;gap:10px}
+.iux-meta{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.iux-meta b{font-size:var(--fs-base)}
+.iux-dim{color:var(--text-3);font-size:var(--fs-xs);font-variant-numeric:tabular-nums}
+.iux-ctrls{display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between}
+.iux-seg{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:var(--surface-2);border:1px solid var(--hairline)}
+.iux-seg button{height:28px;padding:0 10px;border:0;border-radius:7px;background:none;color:var(--text-2);font-size:var(--fs-xs);font-weight:600;white-space:nowrap;cursor:pointer}
+.iux-seg button:hover:not(.on){color:var(--text);background:var(--state-hover)}
+.iux-seg button.on{background:var(--text);color:var(--bg)}
+.iux-stage{display:flex;justify-content:center;border-radius:12px;overflow:hidden;border:1px solid var(--hairline);background:var(--surface-2)}
+.iux-split.splitp{aspect-ratio:1}
+.iux-split .splitp-img{object-fit:cover;object-position:50% 50%}
+.iux-split .splitp-label{font-size:11px}
+.iux-cap{margin:-2px 0 0;color:var(--text-3);font-size:var(--fs-xs)}
+.iux-stats{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.iux-stats li{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px;border-radius:10px;background:var(--surface-2);font-size:var(--fs-xs);font-variant-numeric:tabular-nums;color:var(--text-2)}
+.iux-stats b{color:var(--text);font-weight:600;margin-right:auto}
+.iux-stats span{display:inline-flex;align-items:center;gap:4px}
+.iux-note{margin:0;color:var(--text-3);font-size:11px}
+.iux-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:12px;border-top:1px solid var(--hairline)}
+.iux-try{flex:none;height:40px;padding:0 18px;border:0;border-radius:10px;background:var(--accent);color:var(--on-accent);font-weight:700;font-size:var(--fs-sm);cursor:pointer;transition:filter var(--t-state)}
+.iux-try:hover:not(:disabled){filter:brightness(1.07)}
+.iux-try:disabled{opacity:var(--disabled-opacity);cursor:wait}
+@media (min-width:901px){.iux-split.splitp{width:min(100%,46vh,520px)}}
+@media (max-width:900px){
+  .iux-scrim{place-items:end stretch;padding:0}
+  .iux{width:100%;max-height:92dvh;border-radius:18px 18px 0 0;border-bottom:0;padding:14px 16px calc(14px + env(safe-area-inset-bottom));animation:iux-up 220ms var(--ease-state,ease-out)}
+  @keyframes iux-up{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
+  .iux-tab span{display:none}.iux-tab{flex:0 0 auto;padding:3px}
+  .iux-ctrls{flex-direction:column;align-items:stretch}
+  .iux-seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr}.iux-seg button{height:auto;min-height:32px;padding:4px 6px;white-space:normal;line-height:1.25}
+  .iux-stats{grid-template-columns:1fr}
+  .iux-foot .iux-dim{display:none}.iux-try{flex:1}
+}
+@media (prefers-reduced-motion:reduce){.iux-scrim,.iux{animation:none!important}}

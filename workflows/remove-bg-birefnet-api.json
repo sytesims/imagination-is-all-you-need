@@ -1,0 +1,137 @@
+{
+  "1": {
+    "class_type": "LoadVideo",
+    "inputs": {
+      "file": "oj_source.mp4"
+    },
+    "_meta": {
+      "title": "Source video"
+    }
+  },
+  "2": {
+    "class_type": "GetVideoComponents",
+    "inputs": {
+      "video": [
+        "1",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Frames + audio + fps"
+    }
+  },
+  "3": {
+    "class_type": "LoadRembgByBiRefNetModel",
+    "inputs": {
+      "model": "BiRefNet-general.safetensors",
+      "device": "AUTO",
+      "use_weight": false,
+      "dtype": "float16"
+    },
+    "_meta": {
+      "title": "BiRefNet (MIT)"
+    }
+  },
+  "4": {
+    "class_type": "RembgByBiRefNetAdvanced",
+    "inputs": {
+      "model": [
+        "3",
+        0
+      ],
+      "images": [
+        "2",
+        0
+      ],
+      "width": 1024,
+      "height": 1024,
+      "upscale_method": "bilinear",
+      "blur_size": 90,
+      "blur_size_two": 6,
+      "fill_color": true,
+      "color": 65280,
+      "mask_threshold": 0.0
+    },
+    "_meta": {
+      "title": "Remove background"
+    }
+  },
+  "6": {
+    "inputs": {
+      "images": [
+        "11",
+        0
+      ],
+      "filename_prefix": "openhiggsfield/remove-bg",
+      "codec": "vp9",
+      "fps": [
+        "2",
+        2
+      ],
+      "crf": 24
+    },
+    "class_type": "SaveWEBM",
+    "_meta": {
+      "title": "OpenHiggsfield \u00b7 transparent WebM (VP9 yuva420p)"
+    }
+  },
+  "7": {
+    "inputs": {
+      "mask": [
+        "4",
+        1
+      ]
+    },
+    "class_type": "MaskToImage",
+    "_meta": {
+      "title": "Alpha matte"
+    }
+  },
+  "9": {
+    "inputs": {
+      "images": [
+        "7",
+        0
+      ],
+      "filename_prefix": "openhiggsfield/remove-bg-matte",
+      "codec": "vp9",
+      "fps": [
+        "2",
+        2
+      ],
+      "crf": 24
+    },
+    "class_type": "SaveWEBM",
+    "_meta": {
+      "title": "OpenHiggsfield \u00b7 matte WebM (white = subject)"
+    }
+  },
+  "10": {
+    "inputs": {
+      "mask": [
+        "4",
+        1
+      ]
+    },
+    "class_type": "InvertMask",
+    "_meta": {
+      "title": "OpenHiggsfield \u00b7 BiRefNet mask \u2192 alpha (JoinImageWithAlpha inverts)"
+    }
+  },
+  "11": {
+    "inputs": {
+      "image": [
+        "2",
+        0
+      ],
+      "alpha": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "JoinImageWithAlpha",
+    "_meta": {
+      "title": "OpenHiggsfield \u00b7 source frames + alpha (RGBA)"
+    }
+  }
+}

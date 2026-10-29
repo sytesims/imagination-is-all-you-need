@@ -1,0 +1,11 @@
+/* Cost receipt chip (ReceiptChip.tsx): share sheet + result viewer. */
+.rcpt{display:inline-flex;flex-wrap:wrap;align-items:center;gap:0 2px;max-width:100%;margin:0;padding:5px 11px 5px 9px;border-radius:999px;
+  background:color-mix(in srgb,var(--accent,#FF7A1A) 9%,transparent);border:1px solid color-mix(in srgb,var(--accent,#FF7A1A) 26%,transparent);
+  font:500 12px/18px var(--font-ui,Inter,system-ui,sans-serif);color:var(--text-1,#F7F7F8);transition:opacity var(--fast,.15s) var(--ease,ease)}
+.rcpt.is-off{opacity:.45}
+.rcpt-ic{flex:none;margin-right:5px;color:var(--accent,#FF7A1A)}
+.rcpt-cost{font-weight:700;color:var(--accent,#FF7A1A);font-variant-numeric:tabular-nums}
+.rcpt-part{color:var(--text-1,#F7F7F8);font-variant-numeric:tabular-nums}
+.rcpt-cost+.rcpt-part::before,.rcpt-part+.rcpt-part::before{content:'·';margin:0 6px;color:var(--accent,#FF7A1A);font-weight:600}
+.rcpt-row{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-top:10px}
+.rcpt-h{font:600 11px/14px var(--font-ui,Inter,system-ui,sans-serif);letter-spacing:.04em;text-transform:uppercase;color:var(--text-3,#6B6C6D)}

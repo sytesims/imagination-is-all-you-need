@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Imagination Is All You Need Brand Assets</title><link rel="icon" type="image/svg+xml" href="favicon.svg">
+<style>
+:root{--bg:#0F1113;--s1:#131517;--line:rgba(255,255,255,.08);--t1:#F7F7F8;--t2:#898A8B;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t1);font:14px/1.5 Inter,system-ui,sans-serif;padding:32px 16px}
+.wrap{max-width:1120px;margin:0 auto}h1{font:600 22px 'Space Grotesk',Inter,sans-serif;margin:16px 0 4px}h2{font:700 11px Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--t2);margin:36px 0 12px}
+p{color:var(--t2);margin:0}a{color:var(--t1)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.it{background:var(--s1);border:1px solid var(--line);border-radius:12px;overflow:hidden;min-width:0}
+.th{height:170px;display:grid;place-items:center;padding:16px;background:#0F1113}
+.th.lt{background:#F4F4F5}.th.ck{background:repeating-conic-gradient(#202326 0 25%,#16181b 0 50%) 0 0/16px 16px}
+.th img{max-width:100%;max-height:138px;object-fit:contain}
+.meta{padding:10px 12px;font:500 12px 'JetBrains Mono',ui-monospace,monospace;color:var(--t2);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.meta a{color:var(--t1);text-decoration:none}
+</style></head><body><div class="wrap">
+<img src="wordmark.svg" alt="Imagination Is All You Need" height="36">
+<h1>Brand assets</h1><p>Every file in <code>brand/</code>. Usage rules: <a href="../docs/brand/brand-guide.html">brand guide</a> (<a href="../docs/brand/BRAND-GUIDE.md">markdown</a>).</p>
+<div id="o"></div></div>
+<script>
+const S=[
+ ['Logo',[['logo-mark.svg','48 × 48 · on dark'],['logo-mark-light.svg','48 × 48 · on light','lt'],['logo-mark-mono.svg','currentColor','lt'],['logo-mark-small.svg','16 × 16 · ≤ 24 px'],['wordmark.svg','inline lockup · on dark'],['wordmark-light.svg','inline lockup · on light','lt'],['wordmark-stacked.svg','stacked lockup · on dark'],['wordmark-stacked-light.svg','stacked lockup · on light','lt'],['preview.png','1600 × 900']]],
+ ['App icons',[['app-icon.svg','512 · PWA'],['app-icon-512.png','512 × 512'],['apple-touch-icon.svg','180 · full bleed'],['apple-touch-icon.png','180 × 180'],['favicon.svg','16 grid · tab'],['favicon-32.png','32 × 32']]],
+ ['Social',[['social/github-social-preview.svg','1280 × 640'],['social/github-social-preview.png','1280 × 640'],['social/readme-hero.svg','1600 × 500'],['social/readme-hero.png','1600 × 500'],['social/post-square-1080.svg','1080 × 1080 template'],['social/post-vertical-1080x1920.svg','1080 × 1920 template'],['social/POST-COPY.md','post drafts']]],
+ ['Demo video',[['video/title-card.svg','1920 × 1080'],['video/title-card.png','1920 × 1080'],['video/end-card.svg','1920 × 1080'],['video/end-card.png','1920 × 1080'],['video/lower-third.svg','1920 × 1080 · transparent','ck'],['video/lower-third.png','transparent','ck']]],
+];
+for(const [h,items] of S){o.insertAdjacentHTML('beforeend',`<h2>${h}</h2><div class="grid">${items.map(([f,m,c])=>`<div class="it"><div class="th ${c||''}">${f.endsWith('.md')?'<p>Markdown</p>':`<img src="${f}" alt="${f}" ${f.includes('mono')?'style="width:96px;filter:invert(0)"':''}>`}</div><div class="meta"><a href="${f}">${f}</a><span>${m}</span></div></div>`).join('')}</div>`)}
+</script></body></html>

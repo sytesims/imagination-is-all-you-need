@@ -1,0 +1,19 @@
+{
+  "workflowFile": "create-image-klein4b-t2i-api.json",
+  "template": "image_flux2_klein_text_to_image",
+  "model": "FLUX.2 [klein] 4B (Apache-2.0)",
+  "inputs": {
+    "prompt": {
+      "node": "76",
+      "field": "value"
+    }
+  },
+  "refs": [],
+  "seed": {
+    "node": "75:73",
+    "field": "noise_seed"
+  },
+  "output": {
+    "node": "9"
+  }
+}

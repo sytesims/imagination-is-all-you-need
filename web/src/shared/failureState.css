@@ -1,0 +1,61 @@
+/* The failed-run look (shared/FailureState.tsx). No red anywhere: the bean, a soft orange glow, greys, and the quiet diagonal stripes. */
+.fs{--fs-glow:color-mix(in srgb,var(--accent) 11%,transparent);font-family:var(--font-ui);color:var(--text);text-align:center}
+.fs-title{display:block;font:600 14px/20px var(--font-ui);color:var(--text);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fs-charge{color:var(--text)}
+.fs-mood{margin:0 auto}
+
+/* tile: inside a feed tile's button; the tile is the size container (.fs-host) so small tiles drop the extras instead of overflowing */
+.fs-host{container:fs-tile / size}
+.fs-tile{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px 10px 46px;
+  background:radial-gradient(circle at 50% 40%,var(--fs-glow),transparent 62%)}
+.fs-tile .fs-title{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:220px}
+.fs-tile .fs-charge{display:block;max-width:100%;font:400 11px/15px var(--font-ui);color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fs-tile-act{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:2;max-width:calc(100% - 20px)}
+.fs-tile-act .fs-acts{margin:0}
+@container fs-tile (max-height:200px){.fs-tile{padding-bottom:10px}.fs-tile .fs-charge{display:none}.fs-tile-act{display:none}}
+@container fs-tile (max-height:130px){.fs-tile{gap:2px}.fs-tile .fs-mood{width:38px;height:38px}.fs-tile .fs-title{font-size:12px;line-height:16px}}
+@container fs-tile (max-width:150px){.fs-tile .fs-charge{display:none}.fs-tile .fs-title{font-size:12px;line-height:16px}}
+
+/* full: viewer stage, job page, tool stages */
+.fs-full{display:flex;flex-direction:column;align-items:center;gap:6px;width:min(420px,100%);margin:0 auto;padding:22px 20px 18px;border-radius:16px;
+  background:radial-gradient(circle at 50% 18%,var(--fs-glow),transparent 55%),repeating-linear-gradient(135deg,rgba(255,255,255,.025) 0 10px,transparent 10px 20px),var(--fs-bg,rgba(20,21,23,.78));
+  border:1px solid var(--hairline-strong,rgba(255,255,255,.12));-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);box-sizing:border-box}
+.fs-full .fs-title{font-size:16px;line-height:24px;margin-top:2px;white-space:normal}
+.fs-line{margin:0;font:400 13px/20px var(--font-ui);color:var(--text-2);max-width:340px;overflow-wrap:anywhere}
+.fs-acts{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:8px}
+.fs-btn{display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 12px;border-radius:9px;border:1px solid var(--hairline-strong,rgba(255,255,255,.12));
+  background:rgba(255,255,255,.05);color:var(--text);font:500 13px/1 var(--font-ui);text-decoration:none;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s}
+.fs-btn:hover{background:rgba(255,255,255,.09)}
+.fs-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.fs-btn[disabled]{opacity:.6;cursor:default}
+.fs-btn-main{background:color-mix(in srgb,var(--accent) 16%,transparent);border-color:color-mix(in srgb,var(--accent) 45%,transparent);color:#FFC48F}
+.fs-btn-main:hover{background:color-mix(in srgb,var(--accent) 24%,transparent)}
+.fs-ext{font-size:11px;opacity:.8}
+.fs-acts-compact .fs-btn{min-height:28px;padding:0 10px;font-size:12px;border-radius:8px;max-width:100%;overflow:hidden;text-overflow:ellipsis;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.fs-more{margin-top:2px;padding:2px 6px;border:0;background:none;color:var(--text-3,#5f5f5f);font:500 12px/18px var(--font-ui);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.fs-more:hover{color:var(--text-2)}
+.fs-tech{align-self:stretch;margin:4px 0 0;padding:8px 10px;max-height:160px;overflow:auto;border-radius:8px;background:rgba(255,255,255,.04);color:var(--text-2);
+  font:400 11px/16px ui-monospace,SFMono-Regular,Menlo,monospace;text-align:left;white-space:pre-wrap;word-break:break-word}
+@media (max-width:480px){.fs-full{padding:18px 14px 14px}.fs-line{font-size:12.5px}}
+
+/* tool pages (FailureCard): the full state plus quiet text links */
+.fs-card{display:flex;flex-direction:column;align-items:center;gap:8px;margin:0 0 12px;background:none;border:0;padding:0}
+.fs-card .fs-full{width:min(460px,100%)}
+.fs-note{margin:2px 0 0;font:400 12px/18px var(--font-ui);color:var(--text-2)}
+.fs-tips{margin:4px 0 0;padding:0;list-style:none;font:400 12px/18px var(--font-ui);color:var(--text-2)}.fs-tips li{margin:1px 0}
+.fs-sub{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 14px}
+.fs-link{padding:2px 0;border:0;background:none;color:var(--text-2);font:500 12px/18px var(--font-ui);cursor:pointer;text-decoration:underline;text-decoration-color:var(--hairline-strong,rgba(255,255,255,.2));text-underline-offset:3px}
+.fs-link:hover{color:var(--text)}
+/* the result viewer's stage (ResultViewer FailedViewer) */
+html body .rvx-fail-stage{display:flex;align-items:center;justify-content:center;width:min(460px,100%);padding:16px;box-sizing:border-box}
+/* other failed badges and tiles: soft orange, never red */
+.status-failed,.status-blocked,.pp-assets.assets-shell .pp-assets-badges .status-failed,.pp-assets.assets-shell .pp-assets-badges .status-blocked{color:#FFC48F}
+.asset-failed .asset-sub,.asset-blocked .asset-sub{color:var(--text-2)}
+
+.fs-mini{display:inline-flex;align-items:center;justify-content:center}
+.fs-btn-sm{min-height:28px;padding:0 10px;font-size:12px;border-radius:8px}
+.vs-hwait.fs-host{position:relative;display:block;width:100%;height:100%}
+.iu-failed .fs-full{margin:0}
+html body .iu-fail{position:absolute;right:2px;bottom:2px;width:auto;height:auto;background:none;border-radius:0}
+
+@media (max-width:700px){html body .rvx-fail-stage{padding:8px;max-height:100%;overflow:auto}html body .rvx-fail-stage .fs-full{padding:12px 14px;gap:4px}html body .rvx-fail-stage .fs-mood{width:56px;height:56px}html body .rvx-fail-stage .fs-acts{margin-top:4px}}

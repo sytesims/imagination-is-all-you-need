@@ -1,0 +1,147 @@
+{
+  "1": {
+    "inputs": {
+      "ckpt_name": "yue2_3b_int8_convrot.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load YuE2"
+    }
+  },
+  "2": {
+    "inputs": {
+      "seed": 0
+    },
+    "class_type": "SeedNode",
+    "_meta": {
+      "title": "Seed"
+    }
+  },
+  "3": {
+    "inputs": {
+      "clip": [
+        "1",
+        1
+      ],
+      "style": "English, warm female vocal, upbeat indie pop, 110 BPM, bright electric guitars, punchy drums, melodic bass",
+      "lyrics": "[Verse]\nMorning light across the window\nCity waking down below\n\n[Chorus]\nRun with me into the sunlight\nLeave the shadows far behind",
+      "seed": [
+        "2",
+        0
+      ],
+      "mode": "full",
+      "max_abc_tokens": 8192,
+      "temperature": 0.7,
+      "top_p": 0.9,
+      "top_k": 30,
+      "repetition_penalty": 1.005,
+      "penalty_window": 100
+    },
+    "class_type": "YuE2GenerateABC",
+    "_meta": {
+      "title": "YuE2 Generate ABC"
+    }
+  },
+  "4": {
+    "inputs": {
+      "clip": [
+        "1",
+        1
+      ],
+      "style": "English, warm female vocal, upbeat indie pop, 110 BPM, bright electric guitars, punchy drums, melodic bass",
+      "lyrics": "[Verse]\nMorning light across the window\nCity waking down below\n\n[Chorus]\nRun with me into the sunlight\nLeave the shadows far behind",
+      "abc": [
+        "3",
+        0
+      ],
+      "seed": [
+        "2",
+        0
+      ],
+      "mode": "full",
+      "max_duration": 120,
+      "temperature": 1,
+      "top_p": 0.95,
+      "top_k": 100,
+      "repetition_penalty": 1.2,
+      "cfg_scale": 1
+    },
+    "class_type": "YuE2GenerateMusic",
+    "_meta": {
+      "title": "YuE2 Generate Music"
+    }
+  },
+  "5": {
+    "inputs": {
+      "conditioning": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "ConditioningZeroOut"
+  },
+  "6": {
+    "inputs": {
+      "seconds": [
+        "4",
+        1
+      ],
+      "batch_size": 1
+    },
+    "class_type": "EmptyYuE2LatentAudio"
+  },
+  "7": {
+    "inputs": {
+      "seed": [
+        "2",
+        0
+      ],
+      "steps": 32,
+      "cfg": 1,
+      "sampler_name": "dpm_2",
+      "scheduler": "sgm_uniform",
+      "denoise": 1,
+      "model": [
+        "1",
+        0
+      ],
+      "positive": [
+        "4",
+        0
+      ],
+      "negative": [
+        "5",
+        0
+      ],
+      "latent_image": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "KSampler"
+  },
+  "8": {
+    "inputs": {
+      "samples": [
+        "7",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    },
+    "class_type": "VAEDecodeAudio"
+  },
+  "9": {
+    "inputs": {
+      "filename_prefix": "openhiggsfield/audio-yue2",
+      "format": "flac",
+      "audio": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "SaveAudioAdvanced"
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "workflowFile": "reshoot-api.json",
+  "template": "video_ltx2_pose_to_video + LTX-2 camera-control LoRA (node 300)",
+  "inputs": {
+    "video": {
+      "node": "185",
+      "field": "file",
+      "role": "the angle's time range, converted to 24 fps"
+    },
+    "image": {
+      "node": "160",
+      "field": "image",
+      "role": "first frame of the range (start image)"
+    },
+    "prompt": {
+      "node": "143:124",
+      "field": "text"
+    }
+  },
+  "output": {
+    "node": "175"
+  },
+  "extra": {
+    "cameraLora": {
+      "node": "300",
+      "field": "lora_name",
+      "options": {
+        "dolly-in": "ltx-2-19b-lora-camera-control-dolly-in.safetensors",
+        "dolly-out": "ltx-2-19b-lora-camera-control-dolly-out.safetensors",
+        "dolly-left": "ltx-2-19b-lora-camera-control-dolly-left.safetensors",
+        "dolly-right": "ltx-2-19b-lora-camera-control-dolly-right.safetensors",
+        "jib-up": "ltx-2-19b-lora-camera-control-jib-up.safetensors",
+        "jib-down": "ltx-2-19b-lora-camera-control-jib-down.safetensors",
+        "static": "ltx-2-19b-lora-camera-control-static.safetensors"
+      }
+    },
+    "cameraStrength": {
+      "node": "300",
+      "field": "strength_model",
+      "default": 1.0
+    },
+    "width": {
+      "node": "166",
+      "field": "value",
+      "default": 1280,
+      "note": "multiple of 32"
+    },
+    "height": {
+      "node": "167",
+      "field": "value",
+      "default": 720
+    },
+    "frames": {
+      "node": "168",
+      "field": "value",
+      "default": 121,
+      "note": "8n+1 at 24 fps"
+    },
+    "fps": {
+      "nodes": [
+        "143:145",
+        "143:148"
+      ],
+      "default": 24
+    },
+    "seed": {
+      "nodes": [
+        "143:126",
+        "143:187"
+      ],
+      "field": "noise_seed"
+    }
+  },
+  "fallback": "reshoot-funcamera-api.json (Wan 2.2 Fun Camera, Apache-2.0)",
+  "notes": "Run once per angle range; server concatenates segments and remuxes the original audio (LTX also generates audio; discarded)."
+}

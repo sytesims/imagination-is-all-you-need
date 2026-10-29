@@ -1,0 +1,355 @@
+/* Full-screen result viewer (shared/ResultViewer.tsx; Create Image, Assets / jobs/:id, Community). A blurred copy of the result fills the screen, the image
+ * sits uncropped with 16 px margins, scaled to fit, left of a 320-400 px panel inset 12 px (rounded 16). Actions are pinned to the panel bottom.
+ * Phones (≤700 px): the image on top, the panel as a bottom sheet whose body scrolls. Scoped under `html body .rvx` so the
+ * shared result-card rules (.rv-ic, .rv-dl, .rv-more…) don't leak in. */
+html body .rvx{position:fixed;inset:0;z-index:58;display:grid;grid-template-columns:minmax(0,1fr) auto;background:#0b0c0d;color:var(--text-1);overflow:hidden;overflow:clip;font-family:var(--font-ui)}
+html body .rvx-bg{position:absolute;inset:-80px;background:#0b0c0d center/cover no-repeat;filter:blur(60px) brightness(.38) saturate(1.15);transform:scale(1.1);pointer-events:none}
+html body .rvx-bg::after{content:"";position:absolute;inset:0;background:rgba(0,0,0,.25)}
+html body .rvx-nopanel{grid-template-columns:minmax(0,1fr)}
+
+/* ---- stage ---- */
+html body .rvx-stage{position:relative;min-width:0;min-height:0;height:100dvh;box-sizing:border-box;padding:16px;display:flex;align-items:center;justify-content:center;container-type:size;overflow:clip}
+html body .rvx-img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;border-radius:10px;box-shadow:0 24px 64px rgba(0,0,0,.45);user-select:none}
+html body .rvx-img:fullscreen{border-radius:0;box-shadow:none;background:#000}
+html body .rvx-media{max-width:100%;max-height:100%}
+/* PB-18 / PB-13: media with a known shape scales up or down to the largest box the stage allows (cq units = the stage's content box), so small
+   items fill the stage and, with the panel hidden, the result is centred at full height. */
+html body .rvx-fit{width:min(100cqw,calc(100cqh * var(--ar)));height:auto;aspect-ratio:var(--ar);max-width:100%;max-height:100%}
+html body .rvx-outs{position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:2}
+html body .rvx-outs .rv-tabs{margin:0}
+html body .rvx-tools{position:absolute;right:16px;bottom:16px;display:flex;align-items:center;gap:6px;z-index:2}
+html body .rvx-pos{font:500 12px/16px var(--font-ui);font-variant-numeric:tabular-nums;color:rgba(255,255,255,.8);padding:0 8px;height:32px;display:inline-flex;align-items:center;border-radius:8px;background:rgba(15,16,18,.55);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+html body .rvx-tool,html body .rvx-step{all:unset;box-sizing:border-box;cursor:pointer;display:grid;place-items:center;width:32px;height:32px;border-radius:8px;color:#fff;background:rgba(15,16,18,.55);border:1px solid rgba(255,255,255,.1);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);transition:background var(--fast) var(--ease)}
+html body .rvx-tool:hover,html body .rvx-step:hover{background:rgba(40,41,44,.8)}
+html body .rvx-tool[aria-pressed="false"]{color:var(--accent)}
+html body .rvx-step{position:absolute;top:50%;margin-top:-20px;width:40px;height:40px;border-radius:50%;font-size:22px;line-height:1;opacity:0;z-index:2}
+html body .rvx-prev{left:16px}html body .rvx-next{right:16px}
+html body .rvx-stage:hover .rvx-step:not(:disabled),html body .rvx-step:focus-visible{opacity:1}
+html body .rvx-step:disabled{display:none}
+html body .rvx :is(button,a,summary):focus-visible{outline:none;box-shadow:var(--focus-ring)}
+
+/* failed result on the stage */
+html body .rvx-fail{display:flex;flex-direction:column;align-items:center;gap:8px;max-width:420px;padding:28px 24px;text-align:center;border-radius:16px;background:rgba(20,21,23,.72);border:1px solid rgba(255,255,255,.08);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+html body .rvx-fail svg{color:#ff8a5c}
+html body .rvx-fail b{font:600 16px/24px var(--font-ui)}
+html body .rvx-fail p{margin:0;font:400 13px/20px var(--font-ui);color:#d4d4d6;word-break:break-word}
+html body .rvx-fail small{font:400 12px/18px var(--font-ui);color:var(--text-2)}
+
+/* video (PB-16): the clip uncropped like an image, with our own control bar over its bottom edge */
+html body .rvx-vid{position:relative;box-sizing:border-box;max-width:100%;max-height:100%;border-radius:10px;overflow:hidden;background:#000;box-shadow:0 24px 64px rgba(0,0,0,.45)}
+html body .rvx-vid:not(.rvx-fit){width:min(100cqw,calc(100cqh * 16 / 9));aspect-ratio:16/9}
+html body .rvx-vid:fullscreen{width:100%;height:100%;max-width:none;max-height:none;border-radius:0;box-shadow:none;aspect-ratio:auto}
+html body .rvx-video{display:block;width:100%;height:100%;object-fit:contain;background:#000;outline:none;cursor:pointer}
+html body .rvx-video.alpha-bg{background:repeating-conic-gradient(#2a2b2e 0 25%,#1d1e20 0 50%) 0 0/20px 20px}
+html body .rvx-vbar{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;gap:2px;padding:18px 10px 6px;background:linear-gradient(transparent,rgba(0,0,0,.72));transition:opacity var(--fast) var(--ease)}
+@media (hover:hover){html body .rvx-vid.playing:not(:hover):not(:focus-within) .rvx-vbar{opacity:0}} /* touch screens keep the bar */
+html body .rvx-vrow{display:flex;align-items:center;gap:2px;min-width:0}
+html body .rvx-vbtn{all:unset;box-sizing:border-box;cursor:pointer;height:32px;min-width:32px;padding:0 6px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;gap:4px;color:#fff;font:500 12px/1 var(--font-ui);font-variant-numeric:tabular-nums;white-space:nowrap}
+html body .rvx-vbtn:hover{background:rgba(255,255,255,.12)}
+html body .rvx-speed{min-width:40px}
+html body .rvx-time{color:rgba(255,255,255,.88)}
+html body .rvx-vfull{margin-left:auto}
+html body .rvx :is(.rvx-seek,.rvx-vol){-webkit-appearance:none;appearance:none;margin:0;height:16px;background:transparent;cursor:pointer;--p:0%}
+html body .rvx .rvx-seek{width:100%}
+/* Extend seam (shared/continuation.ts): a tick where the new part starts, and the "New from 0:10" jump chip */
+html body .rvx-seekwrap{position:relative;display:flex}
+html body .rvx-seam{position:absolute;top:50%;width:2px;height:10px;margin:-5px 0 0 -1px;border-radius:1px;background:#fff;box-shadow:0 0 0 1.5px var(--accent);pointer-events:none}
+html body .rvx-seam-btn{margin-left:6px;padding:0 8px 0 9px;height:26px;border-radius:13px;background:rgba(255,255,255,.1);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+html body .rvx-seam-btn:hover{background:rgba(255,255,255,.18)}
+html body .rvx-seam-btn:focus-visible{box-shadow:var(--focus-ring)}
+html body .rvx-seam-btn svg{width:13px;height:13px;opacity:.8}
+html body .rvx-seam-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex:none}
+html body .rvx .rvx-vol{width:72px;flex:none}
+html body .rvx :is(.rvx-seek,.rvx-vol)::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(90deg,var(--accent) var(--p),rgba(255,255,255,.28) var(--p))}
+html body .rvx :is(.rvx-seek,.rvx-vol)::-moz-range-track{height:4px;border-radius:2px;background:linear-gradient(90deg,var(--accent) var(--p),rgba(255,255,255,.28) var(--p))}
+html body .rvx :is(.rvx-seek,.rvx-vol)::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;margin-top:-4px;border-radius:50%;background:#fff;border:0}
+html body .rvx :is(.rvx-seek,.rvx-vol)::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:#fff;border:0}
+html body .rvx :is(.rvx-seek,.rvx-vol):focus-visible{outline:none;box-shadow:var(--focus-ring);border-radius:4px}
+/* audio: cover, waveform (click to seek), player */
+html body .rvx-audio{width:min(640px,100%);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:18px;padding:28px 24px 22px;border-radius:20px;background:rgba(20,21,23,.66);border:1px solid rgba(255,255,255,.08);box-shadow:0 24px 64px rgba(0,0,0,.4);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+html body .rvx-cover{width:156px;height:156px;flex:none;border-radius:16px;overflow:hidden;display:grid;place-items:center;color:var(--on-accent);background:linear-gradient(135deg,var(--accent),#ffb36b 60%,#ff6a3d)}
+html body .rvx-cover img{width:100%;height:100%;object-fit:cover;display:block}
+html body .rvx-wave{width:100%;height:84px;display:flex;align-items:center;gap:2px;cursor:pointer}
+html body .rvx-wave i{flex:1 1 0;min-width:1px;border-radius:2px;background:rgba(255,255,255,.28);transition:background var(--fast) var(--ease)}
+html body .rvx-wave i.on{background:var(--accent)}
+html body .rvx-player{width:100%;height:40px;color-scheme:dark}
+/* not-a-result states (loading, missing, running, canceled) on the stage */
+html body .rvx-state{width:min(560px,100%);max-height:100%;overflow:auto;box-sizing:border-box;display:flex;flex-direction:column;gap:10px;padding:24px;border-radius:16px;background:rgba(20,21,23,.78);border:1px solid rgba(255,255,255,.08);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+html body .rvx-state>b,html body .rvx-state-msg b{font:600 16px/24px var(--font-ui);color:#fff}
+html body .rvx-state p{margin:0;font:400 13px/20px var(--font-ui);color:#d4d4d6}
+html body .rvx-state-msg{display:flex;flex-direction:column;gap:6px;text-align:center}
+html body .rvx-state-eyebrow{font:600 11px/16px var(--font-ui);letter-spacing:.06em;text-transform:uppercase;color:var(--text-2)}
+html body .rvx-state-load{width:100%;aspect-ratio:16/9;border-radius:10px}
+html body .rvx-state:has(.rvx-state-load){background:transparent;border:0;padding:0}
+/* Trash */
+html body .rvx-trash-chip{font:600 11px/18px var(--font-ui);font-style:normal;padding:1px 8px;border-radius:999px;background:rgba(255,255,255,.1);color:#ffd2bf}
+html body .rvx-second.rvx-danger{color:#ff8a80;border-color:rgba(255,138,128,.35)}
+html body .rvx-second.rvx-danger:hover{background:rgba(255,138,128,.1)}
+html body .rvx-second:disabled{opacity:.6;cursor:default}
+
+/* ---- panel ---- */
+html body .rvx-panel{position:relative;z-index:1;width:clamp(320px,21vw,400px);margin:12px 12px 12px 0;box-sizing:border-box;display:flex;flex-direction:column;min-height:0;border-radius:16px;background:rgba(26,27,29,.94);border:1px solid rgba(255,255,255,.08);box-shadow:0 16px 48px rgba(0,0,0,.4);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px)}
+html body .rvx-nopanel .rvx-panel{display:none}
+html body .rvx-head{display:flex;align-items:center;gap:10px;padding:14px 14px 12px}
+html body .rvx-av{width:32px;height:32px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--accent);color:var(--on-accent);font:700 14px/1 var(--font-ui)}
+html body .rvx-av.rvx-av-me{background:transparent}
+html body .rvx-who{flex:1;min-width:0;display:flex;flex-direction:column}
+html body .rvx-who b{font:600 14px/18px var(--font-ui);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html body .rvx-who small{font:400 12px/16px var(--font-ui);color:var(--text-2)}
+html body .rvx-badges{display:inline-flex;gap:4px;flex:none}
+html body .rvx-badges .ai-badge,html body .rvx-badges .demo-badge{margin:0;font-size:11px}
+html body .rvx-x{all:unset;box-sizing:border-box;cursor:pointer;width:32px;height:32px;flex:none;border-radius:50%;display:grid;place-items:center;color:#d9d9db;background:rgba(255,255,255,.08)}
+html body .rvx-x:hover{background:rgba(255,255,255,.14);color:#fff}
+html body .rvx-tabs{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:2px;margin:0 14px 10px;padding:3px;border-radius:10px;background:rgba(255,255,255,.05)}
+html body .rvx-tabs button{all:unset;box-sizing:border-box;cursor:pointer;height:30px;border-radius:8px;text-align:center;font:500 13px/30px var(--font-ui);color:var(--text-2)}
+html body .rvx-tabs button:hover{color:#fff}
+html body .rvx-tabs button.on{background:rgba(255,255,255,.12);color:#fff}
+html body .rvx-body{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:4px 14px 14px;display:flex;flex-direction:column;gap:18px;scrollbar-width:thin}
+html body .rvx-body:focus{outline:none}
+html body .rvx-sec{display:flex;flex-direction:column;gap:8px}
+html body .rvx-sec-h{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:26px}
+html body .rvx-sec-btn{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;justify-content:space-between;width:100%;min-height:26px;color:var(--text-2);border-radius:6px}
+html body .rvx-lbl{display:inline-flex;align-items:center;gap:6px;font:600 11px/16px var(--font-ui);letter-spacing:.06em;text-transform:uppercase;color:var(--text-2)}
+html body .rvx-copy{all:unset;box-sizing:border-box;cursor:pointer;height:26px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,.08);font:500 12px/26px var(--font-ui);color:#fff}
+html body .rvx-copy:hover{background:rgba(255,255,255,.14)}
+/* 2026-10-25: the eye beside Copy on a workflow job (your words ↔ the full prompt it sent) */
+.rvx-sec-acts{display:inline-flex;gap:6px;align-items:center}
+html body .rvx-peek{display:inline-grid;place-items:center;width:30px;padding:0}
+html body .rvx-peek.on{color:var(--accent);background:rgba(255,122,26,.14)}
+html body .rvx-prompt{border-radius:10px;background:rgba(255,255,255,.05);padding:10px 12px}
+html body .rvx-prompt p{margin:0;font:400 13px/20px var(--font-ui);color:#e6e6e8;white-space:pre-wrap;word-break:break-word;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+html body .rvx-prompt.fade p{-webkit-mask-image:linear-gradient(#000 55%,transparent);mask-image:linear-gradient(#000 55%,transparent)}
+html body .rvx-prompt.open p{display:block;-webkit-line-clamp:unset;overflow:visible}
+html body .rvx-none{color:var(--text-2)}
+html body .rvx-seeall{all:unset;cursor:pointer;align-self:flex-start;display:inline-flex;align-items:center;gap:4px;font:500 12px/18px var(--font-ui);color:var(--text-2);border-radius:6px}
+html body .rvx-seeall:hover{color:#fff}
+html body .rvx-refs{display:flex;flex-wrap:wrap;gap:6px}
+html body .rvx-refs img{width:44px;height:44px;object-fit:cover;border-radius:8px}
+html body .rvx-dl{margin:0;display:flex;flex-direction:column}
+html body .rvx-dl>div{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;padding:5px 0;font:400 13px/18px var(--font-ui)}
+html body .rvx-dl dt{color:var(--text-2);font-size:12px}
+html body .rvx-dl dd{margin:0;color:#ececee;word-break:break-word}
+html body .rvx-model{display:inline-flex;align-items:center;gap:8px;--mk-s:20px}
+html body .rvx-hint{margin:0;font:400 12px/18px var(--font-ui);color:var(--text-2)}
+html body .rvx-edit{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);color:#fff;text-decoration:none}
+html body a.rvx-edit:hover{background:rgba(255,255,255,.08)}
+html body .rvx-edit>svg{flex:none;color:var(--accent)}
+html body .rvx-edit>span{display:flex;flex-direction:column;min-width:0}
+html body .rvx-edit b{font:500 14px/20px var(--font-ui)}
+html body .rvx-edit small{font:400 12px/16px var(--font-ui);color:var(--text-2)}
+html body .rvx-edit .rvx-chev{margin-left:auto;color:var(--text-2);font-size:18px}
+html body .rvx-edit.dis{opacity:.55}
+html body .rvx-others>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:12px;font:500 13px/18px var(--font-ui);color:var(--text-2);background:rgba(255,255,255,.03)}
+html body .rvx-others>summary::-webkit-details-marker{display:none}
+html body .rvx-others[open]>summary span{transform:rotate(90deg)}
+html body .rvx-others-list{display:flex;flex-direction:column;gap:2px;padding:6px 0 0}
+
+/* ---- pinned actions (layout B): row 1 = primary next step + Recreate; row 2 = up to five equal icon-over-label tiles ---- */
+html body .rvx-foot{flex:none;container-type:inline-size;display:flex;flex-direction:column;gap:8px;padding:12px 14px 14px;box-shadow:0 -14px 18px -14px rgba(0,0,0,.55)}
+html body .rvx-primary{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;height:44px;border-radius:12px;background:var(--accent);color:var(--on-accent);font:600 14px/1 var(--font-ui);box-shadow:inset 0 -2px 0 var(--accent-lip),inset 0 1px 0 rgba(255,255,255,.25)}
+html body .rvx-primary:hover{background:var(--accent-hover)}
+html body .rvx-primary:disabled{opacity:.6;cursor:default}
+html body .rvx-row2{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px}
+html body .rvx-second{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 10px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:#fff;font:500 13px/1 var(--font-ui);white-space:nowrap}
+html body .rvx-second:hover{background:rgba(255,255,255,.09)}
+html body .rvx-second .rv-cost{font-size:11px;color:var(--text-2);margin-left:2px}
+html body .rvx-row1{display:flex;gap:8px;min-width:0}
+html body .rvx-row1>.rvx-primary{flex:1 1 0;min-width:0}
+html body .rvx-row1>.rvx-second{flex:0 1 auto;min-width:0;height:44px;padding:0 14px}
+html body .rvx-row1>.rvx-second:only-child{flex:1 1 auto}
+html body .rvx-tiles{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:4px}
+html body .rvx .rvx-tile,html body .rvx .rvx-tiles .rv-more>summary{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:100%;height:54px;padding:0 2px;border-radius:12px;background:rgba(255,255,255,.05);color:#fff;font:500 10.5px/14px var(--font-ui);letter-spacing:-.01em;text-decoration:none;text-align:center}
+html body .rvx .rvx-tile>span,html body .rvx .rvx-tiles .rv-more>summary>span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#d9d9db}
+html body .rvx .rvx-tile:hover,html body .rvx .rvx-tiles .rv-more>summary:hover,html body .rvx .rvx-tiles .rv-more[open]>summary{background:rgba(255,255,255,.11)}
+html body .rvx .rvx-tile svg{flex:none}
+html body .rvx .rvx-tile-glyph{font-size:17px;line-height:18px;color:#fff}
+html body .rvx .rvx-tiles .rv-more{position:relative;min-width:0}
+html body .rvx .rvx-tiles .rv-more>summary::-webkit-details-marker{display:none}
+html body .rvx .rv-more-menu{bottom:calc(100% + 8px);top:auto;right:0;z-index:5}
+/* header: Favourite (or Like on someone else's shot) as a round icon button next to ✕ */
+html body .rvx .rvx-head :is(.rv-fav,.like-btn){all:unset;box-sizing:border-box;cursor:pointer;flex:none;height:32px;min-width:32px;padding:0 8px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;gap:4px;color:#d9d9db;background:rgba(255,255,255,.08);font:500 12px/1 var(--font-ui)}
+html body .rvx .rvx-head :is(.rv-fav,.like-btn):hover{background:rgba(255,255,255,.14);color:#fff}
+html body .rvx .rvx-head :is(.rv-fav,.like-btn).on{color:var(--accent)}
+html body .rvx .rvx-head :is(.rv-fav,.like-btn).on svg{fill:currentColor}
+html body .rvx .rvx-head :is(.rv-fav,.like-btn):focus-visible{box-shadow:var(--focus-ring)}
+html body .rvx .rvx-foot .group-status:empty{display:none}
+
+/* ---- phones: image on top, the panel as a bottom sheet ---- */
+@media (max-width:700px){
+  html body .rvx{display:flex;flex-direction:column}
+  html body .rvx-stage{flex:1 1 auto;height:auto;min-height:30dvh;padding:12px 12px 8px}
+  html body .rvx-img,html body .rvx-vid{border-radius:8px}
+  html body .rvx .rvx-vol{display:none}
+  html body .rvx-audio{padding:14px 14px 12px;gap:10px;border-radius:16px}
+  html body .rvx-cover{width:min(96px,18dvh);height:min(96px,18dvh);border-radius:12px}
+  html body .rvx-wave{height:48px}
+  html body .rvx-state{padding:16px}
+  html body .rvx-tools{right:12px;bottom:12px}
+  /* ‹ › sit in the bottom bar (left), clear of the image; swipe also steps */
+  html body .rvx-step{opacity:1;top:auto;bottom:12px;margin:0;width:32px;height:32px;border-radius:8px;font-size:20px}
+  html body .rvx-prev{left:12px}html body .rvx-next{left:50px;right:auto}
+  html body .rvx-stage{padding-bottom:52px}
+  html body .rvx-panel{width:auto;margin:0;flex:0 1 auto;max-height:64dvh;border-radius:16px 16px 0 0;border-bottom:0;padding-bottom:env(safe-area-inset-bottom)}
+  html body .rvx-nopanel .rvx-panel{display:flex}
+  html body .rvx-nopanel :is(.rvx-tabs,.rvx-body){display:none}
+  html body .rvx-head{padding:12px 14px 10px}
+  html body .rvx-x{width:40px;height:40px}
+  html body .rvx .rvx-head :is(.rv-fav,.like-btn){height:40px;min-width:40px}
+  html body .rvx-tabs button{height:36px;line-height:36px}
+  html body .rvx-dl>div{grid-template-columns:88px minmax(0,1fr)}
+  html body .rvx .rv-more-menu{position:fixed!important;left:0!important;right:0!important;top:auto!important;bottom:0!important;width:100%!important;max-height:70dvh;overflow-y:auto;border-radius:16px 16px 0 0;padding:16px 8px calc(8px + env(safe-area-inset-bottom))}
+}
+@media (prefers-reduced-motion:reduce){html body .rvx-bg{filter:blur(60px) brightness(.3)}html body .rvx-tool,html body .rvx-step{transition:none}}
+/* Details cells (ResultViewer RunOnCell / CostCell / WorkflowBadge / TookCell): icon + text on one 18px row; the free pill fits the same line height */
+html body .rvx-line{display:inline-flex;align-items:center;gap:6px;min-width:0;vertical-align:top}
+html body .rvx-line>span{min-width:0}
+html body .rvx-line-ic{flex:none;color:var(--text-2)}
+html body .rvx-dim{color:var(--text-2)}
+html body .rvx-wfb{display:inline-flex;align-items:center;gap:3px;height:18px;padding:0 6px;border-radius:999px;font:600 10.5px/18px var(--font-ui);white-space:nowrap;background:rgba(255,255,255,.07);color:var(--text-2)}
+html body .rvx-wfb-official{color:#ffb27a;background:rgba(255,122,26,.12)}
+/* Details (ResultViewer ResultDetails, layout B 2026-10-22): line-by-line rows under small muted group headings. No divider lines: spacing only. */
+html body .rvx-det{display:flex;flex-direction:column;gap:14px;padding:0 2px}
+html body .rvx-grp{display:flex;flex-direction:column;gap:2px;min-width:0}
+html body .rvx-grp-h{font:500 11px/16px var(--font-ui);color:var(--text-2);opacity:.85;margin-bottom:2px}
+html body .rvx-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;min-width:0;padding:3px 0;font:400 13px/18px var(--font-ui)}
+html body .rvx-row-l{min-width:0;color:#ececee;overflow-wrap:anywhere}
+html body .rvx-row-r{flex:none;max-width:62%;text-align:right;color:#ececee;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+html body .rvx-row .rvx-k{flex:none;color:var(--text-2)}
+html body .rvx-row .rvx-k+.rvx-row-r{flex:0 1 auto}
+html body .rvx-model-name{font-weight:600;color:#f2f2f3}
+html body .rvx-row-r.rvx-dim,html body .rvx-row-r .rvx-dim{color:var(--text-2)}
+html body .rvx-place{display:inline-flex;align-items:center;gap:6px;align-self:center}
+html body .rvx-place-t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html body .rvx-saved{color:var(--text-2)}
+html body .rvx-seed{display:inline-flex;align-items:center;gap:4px;min-width:0;max-width:100%;vertical-align:bottom}
+html body .rvx-mono{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html body .rvx-seed-copy{all:unset;box-sizing:border-box;cursor:pointer;flex:none;display:grid;place-items:center;width:22px;height:22px;margin:-2px 0;border-radius:6px;color:var(--text-2)}
+html body .rvx-seed-copy:hover{background:rgba(255,255,255,.08);color:#fff}
+html body .rvx-seed-copy .copied-mark{font-size:0}
+html body .rvx-how-wf{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden}
+html body .rvx-how-wf>a,html body .rvx-how-wf>span:not(.rvx-wfb){min-width:0;overflow:hidden;text-overflow:ellipsis}
+html body .rvx-how-wf .rvx-wfb{flex:none}
+html body .rvx-how-wf a{color:#ececee;text-decoration:none;border-radius:4px}
+html body .rvx-how-wf a:hover{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+html body .rvx-row .rv-parent{color:#dcdcde;font-variant-numeric:tabular-nums}
+html body .rvx-recovered{margin:0;font:400 12px/16px var(--font-ui);color:var(--text-2)}
+html body .rvx-row[data-row=wf]{gap:8px}
+html body .rvx-row[data-row=wf]>.rvx-row-r{font-size:12px}
+@container (max-width:340px){html body .rvx-row1>.rvx-second .rv-cost{display:none}}
+
+/* Zoom / pan and Compare on an image result (ViewerImage, 2026-10-22) */
+html body .rvx-zoom{position:relative;flex:1 1 auto;align-self:stretch;min-width:0;min-height:0;display:flex;align-items:center;justify-content:center;pointer-events:none;touch-action:none}
+html body .rvx-zoom-in{width:100%;height:100%;display:flex;align-items:center;justify-content:center;transform-origin:50% 50%;will-change:transform}
+html body .rvx-zoom .rvx-img{pointer-events:auto;-webkit-user-drag:none}
+html body .rvx-zoom.is-zoomed .rvx-img{cursor:grab}html body .rvx-zoom.is-zoomed .rvx-img:active{cursor:grabbing}
+html body .rvx-cmp{overflow:hidden}
+html body .rvx-split.splitp{aspect-ratio:auto;width:100%;height:100%;background:transparent}
+html body .rvx-split .splitp-img{object-fit:fill}
+html body .rvx-ztools{position:absolute;left:16px;bottom:16px;display:flex;gap:6px;z-index:2;pointer-events:auto}
+html body .rvx-tool.rvx-ztool{width:auto;min-width:32px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;font:600 12px/1 Inter,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+html body .rvx-tool.rvx-ztool.on{color:var(--accent);background:rgba(255,122,26,.18);border-color:rgba(255,122,26,.45)}
+@media (max-width:700px){html body .rvx-zoom{position:static}html body .rvx-ztools{left:90px;bottom:12px}html body .rvx-ztool span{font-size:11px}html body .rvx-stage:not(:has(.rvx-step:not(:disabled))) .rvx-ztools{left:12px}} /* phones: in the stage's bottom row, after ‹ › (12 + 32 + 6 + 32 + 8); flush left when there is nothing to step to */
+html body .rvx-tool.rvx-ztool[aria-pressed="false"]{color:#fff}
+html body .rvx-split .splitp-label{bottom:auto;top:10px}
+/* Input → Output strip (IoStrip): one line, Output pinned at the end; --t = the tile size IoStrip picks (72 px, 64 on phones, down to 56 before a tile goes behind "+N") */
+html body .rvx-inputs{--t:72px;position:relative;display:grid;gap:6px;margin-top:10px;min-width:0}
+html body .rvx-in-h{color:var(--text-3,#8a8b90);font:600 11px/14px Inter,system-ui,sans-serif;text-transform:uppercase;letter-spacing:.04em}
+html body .rvx-io{display:flex;align-items:flex-start;gap:6px;min-width:0;max-width:100%}
+html body .rvx-in-row{display:flex;gap:6px;min-width:0;flex:0 1 auto;overflow:hidden;padding:2px;margin:-2px}
+html body .rvx-in{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr);gap:4px;width:var(--t);flex:none;text-align:center}
+html body .rvx-io-th{position:relative;display:block;width:var(--t);height:var(--t);border-radius:10px;overflow:hidden;background:#222;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);transition:box-shadow var(--fast) var(--ease)}
+html body .rvx-io-th img{display:block;width:100%;height:100%;object-fit:cover} /* 21:9 or 9:21 inputs are cover-cropped; the stage shows them whole */
+html body .rvx-io-th::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);pointer-events:none}
+html body .rvx-io-ph{display:grid;place-items:center;width:100%;height:100%;color:var(--text-2,#b4b5b8)}
+html body .rvx-io-ph svg,html body .rvx-io-gone svg{width:22px;height:22px}
+html body .rvx-io-gone{display:grid;place-items:center;color:var(--text-3,#8a8b90);background:repeating-linear-gradient(135deg,rgba(255,255,255,.04) 0 6px,transparent 6px 12px),#1c1d1f}
+html body .rvx-in.is-gone{cursor:default}html body .rvx-in.is-gone .rvx-io-cap b{color:var(--text-3,#8a8b90)}
+html body .rvx-io-mask{position:absolute;inset:0;background:rgba(255,122,26,.55);mask-image:var(--mask);mask-mode:luminance;mask-size:cover;mask-position:center;mask-repeat:no-repeat}
+html body .rvx-io-badge{position:absolute;left:4px;bottom:4px;padding:1px 5px;border-radius:5px;font:600 9px/13px Inter,system-ui,sans-serif;font-style:normal;letter-spacing:.02em;color:#fff;background:rgba(15,16,18,.72)}
+html body .rvx-io-badge.rvx-io-prep{left:auto;right:4px;background:rgba(255,122,26,.85);color:var(--on-accent)}
+html body .rvx-io-play{position:absolute;left:50%;top:50%;width:24px;height:24px;margin:-12px 0 0 -12px;display:grid;place-items:center;border-radius:50%;color:#fff;background:rgba(15,16,18,.62)}
+html body .rvx-io-play svg{margin-left:2px}
+html body .rvx-io-cap{display:grid;min-width:0}
+html body .rvx-io-cap b{color:var(--text-2,#b4b5b8);font:500 11px/14px Inter,system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html body .rvx-io-cap small{color:var(--text-3,#8a8b90);font:400 10px/13px Inter,system-ui,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html body .rvx-in:not(.is-gone):hover .rvx-io-th{box-shadow:0 0 0 1.5px rgba(255,255,255,.4)}
+html body .rvx-in.on .rvx-io-th{box-shadow:0 0 0 2px var(--accent)}html body .rvx-in.on .rvx-io-cap b{color:#fff}
+html body .rvx-in:focus-visible .rvx-io-th{box-shadow:var(--focus)}
+/* "+N": the next input dimmed under the count; opens a grid of every input under the strip */
+html body .rvx-io-more{flex:none}
+html body .rvx-io-more>summary{list-style:none}html body .rvx-io-more>summary::-webkit-details-marker{display:none}
+html body .rvx-plus .rvx-io-th img{filter:blur(2px) brightness(.45);transform:scale(1.1)}
+html body .rvx-plus .rvx-io-th b{position:absolute;inset:0;display:grid;place-items:center;color:#fff;font:600 16px/1 Inter,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+html body .rvx-io-pop{position:absolute;z-index:4;left:-6px;right:-6px;top:calc(100% + 6px);max-height:min(300px,50dvh);overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box;padding:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:10px 8px;border-radius:12px;background:rgba(32,33,36,.98);border:1px solid rgba(255,255,255,.1);box-shadow:0 16px 40px rgba(0,0,0,.5);scrollbar-width:thin}
+html body .rvx-io-pop .rvx-in{--t:100%;width:auto}html body .rvx-io-pop .rvx-io-th{width:100%;height:auto;aspect-ratio:1}
+html body .rvx-io-arrow{all:unset;box-sizing:border-box;flex:none;display:grid;place-items:center;width:28px;height:28px;margin-top:calc(var(--t) / 2 - 14px);border-radius:999px;color:var(--text-2,#b4b5b8)}
+html body button.rvx-io-arrow{cursor:pointer;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);transition:background var(--fast) var(--ease),color var(--fast) var(--ease)}
+html body button.rvx-io-arrow:hover{color:#fff;background:rgba(255,255,255,.1)}
+html body button.rvx-io-arrow:focus-visible{box-shadow:var(--focus)}
+html body button.rvx-io-arrow.on,html body button.rvx-io-arrow.on:hover{color:var(--accent);background:rgba(255,122,26,.18);border-color:rgba(255,122,26,.45)}
+html body .rvx-io-arrow.is-static{color:var(--text-3,#8a8b90)}
+html body button.rvx-io-arrow.is-off,html body button.rvx-io-arrow.is-off:hover{cursor:not-allowed;color:var(--text-3,#8a8b90);background:transparent;border-style:dashed}
+html body .rvx-tool.rvx-ztool.is-off{cursor:not-allowed;opacity:.55}
+html body .rvx-inbar{position:absolute;top:16px;left:16px;right:16px;z-index:3;display:flex;align-items:center;gap:8px;flex-wrap:wrap;pointer-events:none}
+html body .rvx-inbar>*{pointer-events:auto}
+html body .rvx-inbar b{color:#fff;font:600 13px/18px Inter,system-ui,sans-serif;padding:6px 10px;border-radius:8px;background:rgba(15,16,18,.6);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+html body .rvx-inbar small{color:var(--text-2,#b4b5b8);font:500 11px/14px Inter,system-ui,sans-serif;margin-right:auto}
+html body .rvx-inbtn{all:unset;pointer-events:auto;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:8px;color:#fff;font:600 12px/1 Inter,system-ui,sans-serif;background:rgba(15,16,18,.6);border:1px solid rgba(255,255,255,.12);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+html body .rvx-inbtn:hover{background:rgba(40,41,44,.85)}html body .rvx-inbtn:focus-visible{box-shadow:var(--focus)}
+@media (max-width:700px){html body .rvx-inbar{top:12px;left:12px;right:12px}html body .rvx-inputs{--t:64px}html body .rvx-io-pop{max-height:184px;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));padding:8px;gap:8px 6px}} /* phones: the bottom sheet is short, so the grid keeps the strip in view and scrolls inside */
+/* Audio stage: the generated cover (AudioViz) with its glow, notes and dancing bean; the waveform reacts while it plays. */
+html body .rvx-cover{position:relative;isolation:isolate;width:200px;height:200px;background:#121315;box-shadow:0 18px 48px -16px rgba(0,0,0,.6);transition:box-shadow .4s var(--ease-state,ease)}
+html body .rvx-audio.is-playing .rvx-cover{box-shadow:0 18px 48px -16px rgba(0,0,0,.6),0 0 0 1px rgba(255,122,26,.35),0 0 42px -6px rgba(255,122,26,.45)}
+html body .rvx-audio.is-playing .av-glow{opacity:.35}
+/* The dancer is the star here: big, centred on the cover's floor; it breathes softly while paused (the one item on stage). */
+html body .rvx-cover .av-dancer{height:86%;right:auto;left:50%;bottom:3%;transform:translateX(-50%)}
+html body .rvx-audio:not([data-live]) .av-dancer .bd-breathe{animation:av-breathe 3.6s ease-in-out infinite}
+@keyframes av-breathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.008,1.018)}}
+html body .rvx-wave i{transform-origin:50% 50%}
+html body .rvx-audio[data-live] .rvx-wave i.on{box-shadow:0 0 7px rgba(255,122,26,.6)}
+@media (max-width:700px){html body .rvx-cover{width:min(112px,20dvh);height:min(112px,20dvh);border-radius:12px}html body .rvx-cover .av-bean{width:28px;height:28px;right:8px;bottom:6px}}
+/* 2026-10-25: labelled Compare button between Input and Output (split-view icon + word), with a first-views pulse */
+html body button.rvx-io-arrow.rvx-io-cmp{width:auto;height:auto;padding:6px 10px 6px 8px;gap:6px;display:inline-flex;align-items:center;margin-top:calc(var(--t) / 2 - 15px);font:600 11.5px/1 var(--font-ui);letter-spacing:.01em;color:var(--text,#fff)}
+html body .rvx-io-cmp-i{display:grid;place-items:center;color:var(--accent)}
+html body button.rvx-io-arrow.rvx-io-cmp.on .rvx-io-cmp-l{color:var(--accent)}
+html body button.rvx-io-arrow.rvx-io-cmp.hint:not(.on){animation:rvx-cmp-pulse 1.8s ease-out 0.6s 3}
+@keyframes rvx-cmp-pulse{0%{box-shadow:0 0 0 0 rgba(255,122,26,.55)}70%{box-shadow:0 0 0 10px rgba(255,122,26,0)}100%{box-shadow:0 0 0 0 rgba(255,122,26,0)}}
+@media (prefers-reduced-motion:reduce){html body button.rvx-io-arrow.rvx-io-cmp.hint{animation:none}}
+@media (max-width:700px){html body .rvx-cover{width:min(112px,20dvh);height:min(112px,20dvh);border-radius:12px}html body .rvx-cover .av-dancer{height:88%}}
+/* the card's Extend chip under the plain player (shared/continuation.ts) */
+html body .rv-seam-jump{display:inline-flex;align-items:center;gap:6px;margin-top:8px}
+/* the audio player row under the waveform (2026-10-27, UX audit #16): the Audio card's play button and "0:12 / 0:40", not the browser's controls */
+html body .rvx-arow{width:100%;display:flex;align-items:center;gap:12px}
+html body .rvx-arow .rvx-aplay{position:static;transform:none;flex:none}
+html body .rvx-atime{font:500 13px/18px var(--font-ui,Inter,system-ui,sans-serif);font-variant-numeric:tabular-nums;color:var(--text-2,#b4b5b9)}
+html body .rvx-audio .rvx-wave[data-seek="on"]:focus-visible{outline:var(--focus-ring-w,2px) solid var(--focus-ring-color,var(--accent));outline-offset:4px;border-radius:6px}
+/* Captions (shared/Captions.tsx): the CC tile's menu, the caption on the video (<track>) and the audio's caption line */
+html body .rvx .rvx-tiles .rv-cc>summary.rv-cc-on{color:var(--accent)}
+html body .rvx .rvx-tiles .rv-cc>summary.rv-cc-on>span{color:#fff}
+@media (min-width:701px){html body .rvx .rv-cc-menu{width:300px}}
+html body .rv-cc-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:6px 10px 8px;border-bottom:1px solid rgba(255,255,255,.07);margin-bottom:4px}
+html body .rv-cc-h b{font:600 13px/18px var(--font-ui);color:#fff}
+html body .rv-cc-h small{font-size:11.5px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html body .rv-cc-menu .am-item[disabled]{opacity:.55;cursor:default}
+html body .rv-cc-menu .rv-cc-switch{justify-content:space-between;gap:12px}
+html body .rv-cc-sw{flex:none;position:relative;width:30px;height:18px;border-radius:999px;background:#3a3a3f;transition:background .15s}
+html body .rv-cc-sw::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .15s}
+html body .rv-cc-sw.on{background:var(--accent)}html body .rv-cc-sw.on::after{transform:translateX(12px)}
+html body .rv-cc-redo{color:var(--text-2)!important}
+html body .rv-cc-look{display:grid;grid-template-columns:1fr 1fr;gap:2px;margin:4px 6px;padding:2px;border-radius:9px;background:rgba(255,255,255,.05)}
+html body .rv-cc-look>button{height:26px;border:0;border-radius:7px;background:none;color:var(--text-2);font:600 12px/26px var(--font-ui);cursor:pointer}
+html body .rv-cc-look>button:hover{color:#fff}
+html body .rv-cc-look>button.on{background:rgba(255,255,255,.12);color:#fff}
+html body .rv-cc-look>button:focus-visible{outline:var(--focus-ring-w,2px) solid var(--focus-ring-color,#fff);outline-offset:1px}
+html body .rv-cc-note{margin:0;padding:8px 10px;font-size:12.5px;line-height:18px;color:#d9d9db}
+html body .rv-cc-busy{display:flex;align-items:center;gap:8px}
+html body .rv-cc-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:rvCcPulse 1.1s ease-in-out infinite}
+@keyframes rvCcPulse{50%{opacity:.3}}
+html body .rv-cc-setup{margin:2px 4px 4px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);font-size:12.5px;line-height:18px;color:#d9d9db}
+html body .rv-cc-setup b{display:block;color:#fff;font-weight:600;margin-bottom:4px}
+html body .rv-cc-setup p{margin:0 0 6px}
+html body .rv-cc-setup ol{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;overflow-wrap:anywhere}
+html body .rvx-video::cue{font-family:var(--font-ui);font-weight:600;color:#fff;background:rgba(15,17,19,.78);line-height:1.3}
+html body .rvx-cc-line{margin:0;min-height:2.6em;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font:600 15px/1.3 var(--font-ui);color:#fff;overflow-wrap:anywhere}
+html body .rvx-cc-line span{padding:0 6px;background:rgba(15,17,19,.6);border-radius:4px}
+@media (prefers-reduced-motion:reduce){html body .rv-cc-dot,html body .rv-cc-sw,html body .rv-cc-sw::after{animation:none;transition:none}}

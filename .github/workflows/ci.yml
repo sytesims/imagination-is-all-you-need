@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-start:
+    name: Build and start (${{ matrix.os }}, Node 20)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          check-latest: true
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            mcp/package-lock.json
+      - name: Install app dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Build production app
+        run: npm run build
+      - name: Test smoke lifecycle (fixtures only)
+        run: node --test --test-concurrency=1 scripts/ci-smoke.test.mjs
+      # API + web only: no models, GPU, provider calls or MCP verification.
+      - name: Start production API and web (mock, 60-second readiness)
+        run: node scripts/ci-smoke.mjs

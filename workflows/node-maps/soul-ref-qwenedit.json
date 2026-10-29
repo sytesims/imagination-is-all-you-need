@@ -1,0 +1,46 @@
+{
+ "workflowFile": "soul-ref-qwenedit-api.json",
+ "model": "Qwen-Image-Edit-2511 (1\u20133 reference photos)",
+ "inputs": {
+  "prompt": {
+   "node": "20",
+   "field": "prompt"
+  },
+  "colourRef": {
+   "node": "40",
+   "field": "image"
+  }
+ },
+ "loras": {
+  "realism": "10",
+  "styleA": "11",
+  "styleB": "12"
+ },
+ "refs": [
+  {
+   "node": "60",
+   "field": "image"
+  },
+  {
+   "node": "61",
+   "field": "image"
+  },
+  {
+   "node": "62",
+   "field": "image"
+  }
+ ],
+ "latent": "30",
+ "colour": "41",
+ "upscale": {
+  "loader": "50",
+  "apply": "51"
+ },
+ "seed": {
+  "node": "31",
+  "field": "seed"
+ },
+ "output": {
+  "node": "9"
+ }
+}

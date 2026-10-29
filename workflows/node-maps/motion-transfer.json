@@ -1,0 +1,55 @@
+{
+  "workflowFile": "motion-transfer-api.json",
+  "template": "video_wan2_2_14B_animate (Move mode: background_video + character_mask disconnected)",
+  "inputs": {
+    "image": {
+      "node": "10",
+      "field": "image",
+      "role": "new character / look reference"
+    },
+    "video": {
+      "node": "145",
+      "field": "file",
+      "role": "driving video, pre-converted to 16 fps"
+    },
+    "prompt": {
+      "node": "21",
+      "field": "text"
+    }
+  },
+  "output": {
+    "node": "277"
+  },
+  "extra": {
+    "width": {
+      "node": "159",
+      "field": "value",
+      "default": 832
+    },
+    "height": {
+      "node": "160",
+      "field": "value",
+      "default": 480
+    },
+    "seed": {
+      "nodes": [
+        "232:63",
+        "extN:91"
+      ],
+      "field": "seed"
+    },
+    "fps": {
+      "value": 16
+    },
+    "lengthVariants": {
+      "ext-0": 4.8,
+      "ext-1": 9.3,
+      "ext-2": 13.8,
+      "ext-3": 18.3,
+      "ext-4": 22.8,
+      "ext-5": 27.3,
+      "ext-6": 31.8,
+      "dir": "motion-transfer/"
+    }
+  }
+}

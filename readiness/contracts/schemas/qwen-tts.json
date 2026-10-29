@@ -1,0 +1,6 @@
+{"_source":"https://www.alibabacloud.com/help/en/model-studio/qwen-tts (non-streaming example, transcribed by hand Oct 16 2026)",
+ "method":"POST","url_pattern":"^https://[^.]+\\.ap-southeast-1\\.maas\\.aliyuncs\\.com/api/v1/services/audio/tts/SpeechSynthesizer$","auth_header":"Authorization","auth_prefix":"Bearer ",
+ "schema":{"type":"object","required":["model","input"],"properties":{
+  "model":{"enum":["qwen-audio-3.1-tts-flash","qwen-audio-3.0-tts-plus","qwen-audio-3.0-tts-flash","qwen3-tts-flash"]},
+  "input":{"type":"object","required":["text","voice"],"properties":{"text":{"type":"string"},"voice":{"type":"string"},"format":{"type":"string"},"sample_rate":{"type":"integer"},"instruction":{"type":"string"}},"additionalProperties":false}},
+  "additionalProperties":false}}

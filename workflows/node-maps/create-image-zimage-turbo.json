@@ -1,0 +1,19 @@
+{
+  "workflowFile": "create-image-zimage-turbo-api.json",
+  "template": "image_z_image_turbo",
+  "model": "Z-Image-Turbo (Apache-2.0)",
+  "inputs": {
+    "prompt": {
+      "node": "57:27",
+      "field": "text"
+    }
+  },
+  "refs": [],
+  "seed": {
+    "node": "57:3",
+    "field": "seed"
+  },
+  "output": {
+    "node": "9"
+  }
+}

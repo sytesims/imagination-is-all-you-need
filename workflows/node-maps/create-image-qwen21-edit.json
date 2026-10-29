@@ -1,0 +1,33 @@
+{
+  "workflowFile": "create-image-qwen21-edit-api.json",
+  "template": "image_qwen_image_2_1_image_edit",
+  "model": "Qwen Image 2.1 edit (Qwen Research License)",
+  "inputs": {
+    "prompt": {
+      "node": "459:474",
+      "field": "prompt",
+      "note": "user prompt goes straight to TextEncodeQwenImage21; the PrimitiveStringMultiline is the prompt-enhancer SYSTEM prompt (do not overwrite). enhance=1 \u2192 TextGenerate prompt + switch on"
+    },
+    "image": {
+      "node": "470",
+      "field": "image"
+    }
+  },
+  "refs": [
+    {
+      "node": "470",
+      "field": "image"
+    },
+    {
+      "node": "475",
+      "field": "image"
+    }
+  ],
+  "seed": {
+    "node": "459:458",
+    "field": "seed"
+  },
+  "output": {
+    "node": "461"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "imagination",
+  "owner": { "name": "sytesims" },
+  "metadata": { "description": "Imagination Is All You Need: the studio's MCP server and creative skills for Claude Code." },
+  "plugins": [
+    {
+      "name": "imagination",
+      "source": "./",
+      "description": "Drive the local studio (image, video, audio, 3D) from Claude Code: the MCP server (HTTP, started by npm run dev) plus skills such as ugc-ad, product-photo-pack, viral-format, ad-multiplier, footage-fx-pass, drama-series, release-kit, faceless-explainer, direct-a-shot and cost-check.",
+      "version": "0.1.0"
+    }
+  ]
+}

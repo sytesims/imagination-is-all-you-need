@@ -1,0 +1,92 @@
+# Imagination Is All You Need local stack. Pick exactly one profile:
+#   docker compose --profile mock   up --build    # app only, mock backend, runs anywhere (incl. Mac)
+#   docker compose --profile nvidia up --build    # app + ComfyUI on an NVIDIA GPU (Linux/WSL2 + NVIDIA Container Toolkit)
+#   docker compose --profile cpu    up --build    # app + ComfyUI on CPU (slow; small image/audio graphs only)
+# Fill the models volume (one-off):  OHF_TOOLS=image-upscale,cutout docker compose --profile models run --rm models
+# UI: http://localhost:${OHF_PORT:-8080}
+name: openhiggsfield
+
+x-app: &app
+  build: { context: ., dockerfile: Dockerfile }
+  image: openhiggsfield:local
+  restart: unless-stopped
+  ports: ["${OHF_PORT:-8080}:8080"]
+  # ohf-data holds the library AND saved keys (/data/.env.local, OPENHIGGSFIELD_ENV_FILE in the Dockerfile), so `docker compose down/up`
+  # or rebuilding the image keeps both. Keys set under `environment:` below win over the saved file.
+  volumes: [ohf-data:/data]
+
+x-comfy: &comfy
+  image: openhiggsfield-comfy:${OHF_TORCH:-cu128}
+  restart: unless-stopped
+  volumes:
+    - comfy-models:/opt/ComfyUI/models
+    - comfy-output:/opt/ComfyUI/output
+  healthcheck:
+    test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8188/system_stats"]
+    interval: 20s
+    timeout: 5s
+    start_period: 120s
+
+services:
+  app:
+    <<: *app
+    profiles: [mock]
+    environment:
+      OPENHIGGSFIELD_BACKEND: mock
+      # Mock demo: local routes on, so every tool returns its sample result without asking for keys (same as install.sh --mock)
+      OPENHIGGSFIELD_USE_LOCAL: "1"
+
+  app-nvidia:
+    <<: *app
+    profiles: [nvidia]
+    environment:
+      OPENHIGGSFIELD_BACKEND: comfy
+      COMFY_BASE_URL: http://comfy-nvidia:8188
+      OPENHIGGSFIELD_OPEN_WEIGHTS_ONLY: ${OPENHIGGSFIELD_OPEN_WEIGHTS_ONLY:-}
+    depends_on: { comfy-nvidia: { condition: service_healthy } }
+
+  comfy-nvidia:
+    <<: *comfy
+    profiles: [nvidia]
+    build: { context: ., dockerfile: Dockerfile.comfy, args: { TORCH: cu128 } }
+    image: openhiggsfield-comfy:cu128
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: ${OHF_GPU_COUNT:-1}
+              capabilities: [gpu]
+
+  app-cpu:
+    <<: *app
+    profiles: [cpu]
+    environment:
+      OPENHIGGSFIELD_BACKEND: comfy
+      COMFY_BASE_URL: http://comfy-cpu:8188
+    depends_on: { comfy-cpu: { condition: service_healthy } }
+
+  comfy-cpu:
+    <<: *comfy
+    profiles: [cpu]
+    build: { context: ., dockerfile: Dockerfile.comfy, args: { TORCH: cpu } }
+    image: openhiggsfield-comfy:cpu
+    command: ["python", "main.py", "--listen", "0.0.0.0", "--port", "8188", "--cpu"]
+
+  # One-off model downloader into the shared models volume (sha256-verified, skips existing files).
+  models:
+    profiles: [models]
+    image: python:3.12-slim-bookworm
+    working_dir: /src
+    volumes:
+      - ./scripts/install.sh:/src/scripts/install.sh:ro
+      - ./readiness/manifest:/src/readiness/manifest:ro
+      - comfy-models:/comfy/models
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+    command: ["bash", "scripts/install.sh", "--models-only", "--yes", "--comfy-dir", "/comfy", "--tools", "${OHF_TOOLS:-starter}"]
+
+volumes:
+  ohf-data:
+  comfy-models:
+  comfy-output:

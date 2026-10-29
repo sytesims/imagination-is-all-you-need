@@ -1,0 +1,19 @@
+{
+  "workflowFile": "ltx25-layout-to-render-api.json",
+  "template": "video_ltx2_5_t2v + video_ltx2_5_i2v (two-stage distilled ladder) and video_ltx2_3_ic_lora (IC-LoRA guide pattern); recipe from Lightricks/LTX-2.5-22b-IC-LoRA-Layout-To-Render and docs.ltx.io Layout to Render",
+  "license": "LTX-2.x Community License (weights); graph: MIT (ours, from Comfy-Org/workflow_templates)",
+  "inputs": {
+    "prompt": { "node": "10", "field": "text" },
+    "negative": { "node": "11", "field": "text" },
+    "layout": { "node": "20", "field": "file" },
+    "firstFrame": { "node": "22", "field": "image" },
+    "firstFrameStage1": { "node": "23" },
+    "latent": { "node": "30" },
+    "audioLatent": { "node": "33" },
+    "lora": { "node": "2" }
+  },
+  "refs": [],
+  "seed": { "nodes": ["35", "54"], "field": "noise_seed" },
+  "output": { "node": "63" },
+  "changes": "Built for Apple Silicon: UnetLoaderGGUF with the Unsloth Q4_K_M distilled transformer and the bf16 Gemma 4 12B text encoder instead of the int8 ConvRot files (CUDA kernels), the conv bf16 video VAE, small drafts (stage 1 at half size). The layout clip (conformed on the server: 24 fps, 8k+1 frames, cover-crop to the draft size) guides both stages through LTXVAddGuide with the IC-LoRA parameters; the art-directed first frame is VAE-encoded and added with LTXVAddLatentGuide at latent_idx -1 (before the clip) on both stages; guides are cropped before the x2 latent upscale and before decode. Stage 1: 8 distilled sigmas; stage 2: 0.909375, 0.725, 0.421875, 0. CFG 1, euler_ancestral, seed 42 (stage 2 seed + 1). Audio: LTX-2.5's own generated sound is kept (no source audio)."
+}

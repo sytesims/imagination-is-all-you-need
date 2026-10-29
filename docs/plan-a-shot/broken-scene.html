@@ -1,0 +1,9 @@
+<!doctype html>
+<!-- Direct a Shot: a deliberately broken scene, for testing the error state. It mentions window.previz but never sets seek or setPass,
+     and throws while loading. AGPL-3.0-or-later, part of this repo. -->
+<html><head><meta charset="utf-8"><title>Broken scene</title></head>
+<body><canvas></canvas>
+<script>
+  window.previz = { duration: 'six' };
+  undefinedFunctionThatDoesNotExist();
+</script></body></html>

@@ -1,0 +1,111 @@
+/* LightPanel (shared/LightPanel.tsx): Relight's light panel. Lives in a BarPopover (barPop.css gives the glass and the segmented controls).
+ * Two numbered steps, top to bottom, in one frame whose size never changes: the looks grid is fixed, the preview keeps one height and the
+ * tab box beside it is exactly that tall (its content scrolls inside when it needs to). The app's UI fonts only, orange for picked states. */
+.lp{display:flex;flex-direction:column;align-items:stretch;gap:8px;min-width:0;padding:2px 2px 4px;--lp-line:var(--border-strong,rgba(255,255,255,.1));--lp-h:236px}
+
+/* step headers: "1 Pick a look" / "2 Adjust the light" */
+.lp-step{display:flex;align-items:center;gap:8px;min-height:28px;min-width:0}
+.lp-step2{margin-top:4px;padding-top:10px;border-top:1px solid var(--lp-line)}
+.lp-n{flex:none;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;font:700 11px/1 var(--font-sans,Inter,system-ui,sans-serif);color:var(--on-accent);background:var(--accent,#FF7A1A)}
+.lp-step-t{margin:0;flex:none;font:600 14px/18px var(--font-display,'Space Grotesk',Inter,sans-serif);color:var(--text-1,#F7F7F8)}
+.lp-look{flex:1;min-width:0;display:inline-flex;align-items:center;justify-content:flex-end;gap:6px;font:600 12.5px/16px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-2,#B4B5B8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lp-dim{color:var(--text-3,rgba(255,255,255,.5))}
+.lp-edited{font:600 10.5px/16px var(--font-sans,Inter,system-ui,sans-serif);font-style:normal;padding:0 7px;border-radius:999px;color:var(--accent,#FF7A1A);background:var(--accent-faint,rgba(255,122,26,.12))}
+.lp-reset{all:unset;box-sizing:border-box;flex:none;display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:999px;cursor:pointer;
+  font:600 12px/1 var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-1,#F7F7F8);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);transition:background .15s ease,opacity .15s ease}
+.lp-reset:hover:not(:disabled){background:var(--fill,rgba(255,255,255,.06))}
+.lp-reset:disabled{opacity:.35;cursor:default}
+.lp-reset:focus-visible{outline:1.5px solid rgba(255,122,26,.7);outline-offset:2px}
+
+/* step 1: all ten looks, 5 × 2, no sideways scrolling */
+.lp-looks{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.lp .pt.lp-tile{width:auto;height:64px;min-width:0}
+.lp .pt.lp-tile .pt-c{left:7px;right:6px;bottom:6px}
+.lp .pt.lp-tile .pt-c b{font:600 11.5px/14px var(--font-sans,Inter,system-ui,sans-serif);text-transform:none}
+
+/* step 2 tabs: the shared .lk-tabs, sized for a step header */
+.lp-tabs{margin-left:auto}
+.lp .lk-tabs>button{height:28px;font:600 12.5px/16px var(--font-sans,Inter,system-ui,sans-serif)}
+.lp .lk-tabs>button.on{background:var(--fill,rgba(255,255,255,.06))}
+.lp .lk-tabs>button.on::after{bottom:-1px}
+
+/* the approximate sketch: the photo, then CSS light layers masked to the photo's own shape (a transparent PNG stays clean) */
+.lsk{position:absolute;inset:0;display:block;overflow:hidden;isolation:isolate;border-radius:inherit;
+  background:repeating-conic-gradient(#232427 0 25%,#1b1c1f 0 50%) 0 0/14px 14px}
+.lsk>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;user-select:none;-webkit-user-drag:none;transition:filter .25s ease}
+.lsk-l{position:absolute;inset:0;pointer-events:none;-webkit-mask-size:cover;mask-size:cover;-webkit-mask-position:center;mask-position:center;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;transition:opacity .25s ease}
+
+/* step 2: the photo you drag on, and beside it the tab box at exactly the preview's height */
+.lp-adj{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:start}
+.lp-prev-w{display:flex;flex-direction:column;gap:6px}
+.lp-prev{position:relative;width:var(--lp-w,190px);height:var(--lp-h);border-radius:12px;overflow:hidden;cursor:crosshair;touch-action:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.lp-hint{margin:0;font:500 11.5px/15px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-2,#B4B5B8);text-align:center}
+.lp-tag{position:absolute;left:6px;bottom:6px;z-index:3;padding:2px 7px;border-radius:999px;font:500 10.5px/16px var(--font-sans,Inter,system-ui,sans-serif);color:rgba(255,255,255,.82);
+  background:rgba(15,17,19,.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);pointer-events:none}
+.lp-handle,.lp-dot{position:absolute;z-index:2;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;
+  background:radial-gradient(circle,#fff 0 22%,var(--lp-c,#fff) 34%,transparent 72%);box-shadow:0 0 18px 6px color-mix(in srgb,var(--lp-c,#fff) 55%,transparent)}
+.lp-handle{cursor:grab;outline:none;transition:left .18s ease,top .18s ease}
+.lp-handle::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--accent,#FF7A1A)}
+.lp-handle.lp-drag{transition:none;cursor:grabbing}
+.lp-handle:focus-visible::after{border-color:#fff;box-shadow:0 0 0 3px rgba(255,122,26,.6)}
+.lp-handle.lp-behind::after{border-style:dashed}
+.lp-handle.lp-behind{opacity:.85}
+.lp-dot{width:14px;height:14px;margin:-7px 0 0 -7px;opacity:.6;pointer-events:none}
+.lp-dot.lp-behind{opacity:.4}
+/* with a rim light: which light the drag moves, on the photo's top edge */
+.lp-which{position:absolute;top:6px;left:6px;z-index:3;display:flex;gap:2px;padding:2px;border-radius:999px;background:rgba(15,17,19,.62);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.lp-which>button{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;cursor:pointer;font:600 11px/1 var(--font-sans,Inter,system-ui,sans-serif);color:rgba(255,255,255,.75)}
+.lp-which>button.on{color:var(--on-accent);background:var(--accent,#FF7A1A)}
+.lp-which>button:focus-visible{outline:1.5px solid #fff;outline-offset:1px}
+.lp-which i{width:7px;height:7px;border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
+
+.lp-pane{height:calc(var(--lp-h) + 21px);overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:9px;padding:0 4px 0 0;scrollbar-width:thin}
+.lp-row{display:flex;flex-direction:column;align-items:stretch;gap:6px;min-width:0}
+.lp-row>*{width:100%;box-sizing:border-box;margin-left:0;margin-right:0}
+.lp-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;min-width:0}
+.lp-h>span{flex:none;font:600 11px/16px var(--font-sans,Inter,system-ui,sans-serif);letter-spacing:.04em;text-transform:uppercase;color:var(--text-3,rgba(255,255,255,.55))}
+.lp-h>em{min-width:0;font:500 12px/16px var(--font-sans,Inter,system-ui,sans-serif);font-style:normal;color:var(--text-1,#F7F7F8);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html body .apop.bp.bp .lp-seg-sm .bp-opt{min-height:30px;padding:4px 2px}
+html body .apop.bp.bp .lp-seg-sm .bp-opt-l{font:600 12px/16px var(--font-sans,Inter,system-ui,sans-serif)}
+
+/* More options */
+.lp-lights{display:flex;gap:6px;flex-wrap:wrap}
+.lp-lchip,.lp-lchip>button{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:7px;height:30px;cursor:pointer;font:600 12.5px/1 var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-2,#B4B5B8)}
+.lp-lchip{padding:0 12px 0 10px;border-radius:999px;background:var(--fill,rgba(255,255,255,.05));box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);transition:background .15s,color .15s}
+.lp-lchip.lp-lchip-x{padding:0 4px 0 10px}
+.lp-lchip i{width:8px;height:8px;border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
+.lp-lchip:hover{color:var(--text-1,#F7F7F8)}
+.lp-lchip.on{color:var(--text-1,#F7F7F8);background:var(--accent-faint,rgba(255,122,26,.12));box-shadow:inset 0 0 0 1px rgba(255,122,26,.55)}
+.lp-lchip.lp-add{padding:0 12px;color:var(--text-1,#F7F7F8);box-shadow:inset 0 0 0 1px rgba(255,255,255,.16);background:transparent}
+.lp-lchip.lp-add:hover{background:var(--fill,rgba(255,255,255,.06))}
+.lp-x{all:unset;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;cursor:pointer;color:var(--text-3,rgba(255,255,255,.5));font:500 15px/1 var(--font-sans,Inter,sans-serif)}
+.lp-x:hover{color:var(--text-1,#F7F7F8);background:rgba(255,255,255,.08)}
+.lp :is(.lp-lchip,.lp-lchip>button,.lp-x):focus-visible{outline:1.5px solid rgba(255,122,26,.7);outline-offset:2px}
+/* the shared slider (LightSphere's Range) in the app's UI font */
+.lp .ls-h>span{font:600 11px/16px var(--font-sans,Inter,system-ui,sans-serif);letter-spacing:.04em;text-transform:uppercase;color:var(--text-3,rgba(255,255,255,.55))}
+.lp .ls-h>em{font:500 12px/16px var(--font-sans,Inter,system-ui,sans-serif);font-style:normal;color:var(--text-1,#F7F7F8)}
+.lp .ls-ends{font:400 10.5px/14px var(--font-sans,Inter,system-ui,sans-serif)}
+.lp .ls-range-w.dim .ls-range{opacity:.35}
+.lp-sw{display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding:2px 3px}
+.lp-sw>button,.lp-sw-any{all:unset;box-sizing:border-box;position:relative;width:22px;height:22px;border-radius:50%;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(0,0,0,.3);transition:transform .15s ease}
+.lp-sw>button:hover,.lp-sw-any:hover{transform:scale(1.08)}
+.lp-sw .on{box-shadow:0 0 0 2px var(--popover-bg,#232427),0 0 0 3.5px var(--accent,#FF7A1A)}
+.lp-sw-n::after{content:"";position:absolute;inset:6px;border-radius:50%;background:radial-gradient(circle,rgba(0,0,0,.25),transparent 70%)}
+.lp-sw-any{background:conic-gradient(#ff5a5a,#ffd25a,#7cff6b,#33d6ff,#8a5cff,#e05ad8,#ff5a5a)}
+.lp-sw-any input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;border:0;padding:0}
+.lp-sw :focus-visible,.lp-sw-any:has(input:focus-visible){outline:1.5px solid rgba(255,122,26,.75);outline-offset:3px}
+.lp-note{margin:0;font:400 11.5px/15px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-2,#B4B5B8)}
+
+/* phone (the popover is a bottom sheet): looks still 5 across, the photo on top at full width, the tab box below at a fixed height */
+@media (max-width:640px){
+  .lp{--lp-h:200px}
+  .lp .pt.lp-tile{height:56px}
+  .lp .pt.lp-tile .pt-c b{font-size:10.5px;line-height:13px}
+  .lp-step2{flex-wrap:wrap}
+  .lp-adj{grid-template-columns:1fr}
+  .lp-prev{width:100%}
+  .lp-pane{height:236px}
+}
+@media (prefers-reduced-motion:reduce){
+  .lsk>img,.lsk-l,.lp-handle,.lp-sw>button,.lp-sw-any,.lp-reset{transition:none}
+}

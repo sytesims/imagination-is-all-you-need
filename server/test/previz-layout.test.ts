@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { defaultPlanShot, normalizePlanShot, PREVIZ_SIZES } from '../src/shared/previzTemplates';
+const player = fs.readFileSync(new URL('../../web/src/shared/PrevizPlayer.tsx', import.meta.url), 'utf8');
+const css = fs.readFileSync(new URL('../../web/src/shared/previzPlayer.css', import.meta.url), 'utf8');
+assert.equal(defaultPlanShot('product-hero').aspect, '9:16');
+assert.deepEqual(PREVIZ_SIZES[normalizePlanShot(defaultPlanShot('product-hero')).aspect], { w: 720, h: 1280 });
+assert.ok(player.indexOf('data-testid="pv-stage-controls"') < player.indexOf('<div ref={stage}'), 'editing controls are outside the aspect-constrained canvas');
+assert.match(player, /ro\?\.observe\(controls\)/, 'toolbar wrapping participates in available preview height');
+assert.match(player, /selectionTools=\{<BuildToolbar/, 'selected-prop actions belong to the inspector, not the portrait stage');
+assert.doesNotMatch(player, /pos=\{tbPos\}/, 'no projected floating toolbar inside the clipped export frame');
+assert.match(css, /100dvh - var\(--pv-top,92px\) - var\(--ic-dock-h,124px\) - var\(--pv-controls-h,54px\) - var\(--tabbar-show,0px\)/);
+console.log('ok Product Hero preserves portrait export; toolbar independent of canvas; measured controls, dock and phone navigation bound preview height');

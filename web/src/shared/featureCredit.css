@@ -1,0 +1,14 @@
+/* Feature · Model label, workflow credit and the "what this supports" card (images, transparency). Brand tokens only. */
+.feat-line{margin:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;font-size:13px;line-height:1.5;color:var(--text-2, #a9abb0)}
+.feat-line b{color:var(--text, #f2f2f3);font-weight:600}
+.wf-credit{font-size:12px;color:var(--text-3, #8a8c91)}
+.wf-credit a{color:inherit;text-decoration:underline;text-decoration-color:color-mix(in srgb, currentColor 40%, transparent);text-underline-offset:2px}
+.wf-credit a:hover,.wf-credit a:focus-visible{color:var(--accent, #ff6a1a)}
+.wf-credit .wf-recipe{color:var(--text-3, #8a8c91)}
+.sup-card{margin:8px 12px 4px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.04);font-size:12px;line-height:1.5;color:var(--text-2, #a9abb0)}
+.sup-card .sup-h{display:block;font-weight:600;color:var(--text, #f2f2f3);margin-bottom:2px}
+.sup-card ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:2px 12px}
+.ic-feat{position:relative;z-index:1;margin:0 auto 10px;max-width:1000px;padding:0 16px}
+.asset-feat{position:absolute;left:8px;bottom:8px;max-width:calc(100% - 16px);padding:2px 8px;border-radius:999px;background:rgba(0,0,0,.62);color:#fff;font-size:11px;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;opacity:0;transition:opacity .15s}
+.asset:hover .asset-feat,.asset:focus-within .asset-feat,.asset-card:hover .asset-feat,.asset-card:focus-within .asset-feat{opacity:1}
+@media (hover:none){.asset-feat{opacity:1}}

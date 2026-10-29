@@ -1,0 +1,9 @@
+# Server-side voice runner (CPU). Licences: faster-whisper MIT, CTranslate2 MIT, sentencepiece Apache-2.0, transformers Apache-2.0.
+# Weights: Whisper (MIT, Systran/faster-whisper-*), NLLB-200 distilled 600M (CC BY-NC 4.0: https://huggingface.co/facebook/nllb-200-distilled-600M).
+faster-whisper==1.2.1
+ctranslate2==4.8.3
+sentencepiece==0.2.2
+transformers==4.57.3  # ctranslate2 4.8 NLLB conversion is broken with transformers 5.x (garbage output)
+# conversion only (python voice_runner.py setup): torch CPU wheel from https://download.pytorch.org/whl/cpu
+torch==2.14.1
+av==16.1.0  # faster-whisper 1.2.1 + PyAV 19 breaks (open() metadata_errors)

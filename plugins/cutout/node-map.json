@@ -1,0 +1,18 @@
+{
+  "inputs": { "video": { "node": "1", "field": "file" } },
+  "fields": {
+    "detail": [
+      { "node": "4", "field": "width", "map": { "fast": 768, "balanced": 1024, "fine": 2048 } },
+      { "node": "4", "field": "height", "map": { "fast": 768, "balanced": 1024, "fine": 2048 } }
+    ],
+    "edgeSoftness": { "node": "4", "field": "blur_size_two" }
+  },
+  "presets": {
+    "green": [{ "node": "4", "field": "fill_color", "value": true }, { "node": "4", "field": "color", "value": 65280 }],
+    "blue": [{ "node": "4", "field": "fill_color", "value": true }, { "node": "4", "field": "color", "value": 255 }],
+    "white": [{ "node": "4", "field": "fill_color", "value": true }, { "node": "4", "field": "color", "value": 16777215 }],
+    "black": [{ "node": "4", "field": "fill_color", "value": true }, { "node": "4", "field": "color", "value": 0 }]
+  },
+  "output": { "node": "6" },
+  "extraOutputs": [{ "node": "9", "label": "Matte" }]
+}

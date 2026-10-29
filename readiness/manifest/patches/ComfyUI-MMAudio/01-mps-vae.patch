@@ -1,0 +1,23 @@
+ComfyUI-MMAudio (kijai, MIT, https://github.com/kijai/ComfyUI-MMAudio) @ 8eaeb72: run on Apple Silicon (MPS).
+The VAE put its mean/std buffers on CUDA; they now follow the module's .to(device). Applied by install-custom-nodes.sh.
+
+diff --git a/mmaudio/ext/autoencoder/vae.py b/mmaudio/ext/autoencoder/vae.py
+index efa3731..9fb69cb 100644
+--- a/mmaudio/ext/autoencoder/vae.py
++++ b/mmaudio/ext/autoencoder/vae.py
+@@ -75,11 +75,11 @@ class VAE(nn.Module):
+         super().__init__()
+ 
+         if data_dim == 80:
+-            self.data_mean = nn.Buffer(torch.tensor(DATA_MEAN_80D, dtype=torch.float32).cuda())
+-            self.data_std = nn.Buffer(torch.tensor(DATA_STD_80D, dtype=torch.float32).cuda())
++            self.data_mean = nn.Buffer(torch.tensor(DATA_MEAN_80D, dtype=torch.float32))
++            self.data_std = nn.Buffer(torch.tensor(DATA_STD_80D, dtype=torch.float32))
+         elif data_dim == 128:
+-            self.data_mean = nn.Buffer(torch.tensor(DATA_MEAN_128D, dtype=torch.float32).cuda())
+-            self.data_std = nn.Buffer(torch.tensor(DATA_STD_128D, dtype=torch.float32).cuda())
++            self.data_mean = nn.Buffer(torch.tensor(DATA_MEAN_128D, dtype=torch.float32))
++            self.data_std = nn.Buffer(torch.tensor(DATA_STD_128D, dtype=torch.float32))
+ 
+         self.data_mean = self.data_mean.view(1, -1, 1)
+         self.data_std = self.data_std.view(1, -1, 1)

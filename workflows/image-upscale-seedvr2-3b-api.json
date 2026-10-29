@@ -1,0 +1,156 @@
+{
+ "1": {
+  "class_type": "LoadImage",
+  "inputs": {
+   "image": "input.png"
+  }
+ },
+ "10": {
+  "class_type": "JoinImageWithAlpha",
+  "inputs": {
+   "image": [
+    "1",
+    0
+   ],
+   "alpha": [
+    "1",
+    1
+   ]
+  }
+ },
+ "11": {
+  "class_type": "ResizeImageMaskNode",
+  "inputs": {
+   "input": [
+    "10",
+    0
+   ],
+   "resize_type": "scale by multiplier",
+   "resize_type.multiplier": 4,
+   "scale_method": "lanczos"
+  },
+  "_meta": {
+   "title": "Scale factor"
+  }
+ },
+ "12": {
+  "class_type": "SeedVR2Preprocess",
+  "inputs": {
+   "resized_images": [
+    "11",
+    0
+   ]
+  }
+ },
+ "13": {
+  "class_type": "VAELoader",
+  "inputs": {
+   "vae_name": "seedvr2_ema_vae_fp16.safetensors"
+  }
+ },
+ "14": {
+  "class_type": "UNETLoader",
+  "inputs": {
+   "unet_name": "seedvr2_3b_fp16.safetensors",
+   "weight_dtype": "default"
+  }
+ },
+ "15": {
+  "class_type": "VAEEncodeTiled",
+  "inputs": {
+   "pixels": [
+    "12",
+    0
+   ],
+   "vae": [
+    "13",
+    0
+   ],
+   "tile_size": 512,
+   "overlap": 128,
+   "temporal_size": 4096,
+   "temporal_overlap": 8
+  }
+ },
+ "16": {
+  "class_type": "SeedVR2Conditioning",
+  "inputs": {
+   "model": [
+    "14",
+    0
+   ],
+   "vae_conditioning": [
+    "15",
+    0
+   ]
+  }
+ },
+ "17": {
+  "class_type": "KSampler",
+  "inputs": {
+   "model": [
+    "14",
+    0
+   ],
+   "positive": [
+    "16",
+    0
+   ],
+   "negative": [
+    "16",
+    1
+   ],
+   "latent_image": [
+    "15",
+    0
+   ],
+   "seed": 959948902156062,
+   "steps": 1,
+   "cfg": 1,
+   "sampler_name": "euler",
+   "scheduler": "simple",
+   "denoise": 1
+  }
+ },
+ "18": {
+  "class_type": "VAEDecodeTiled",
+  "inputs": {
+   "samples": [
+    "17",
+    0
+   ],
+   "vae": [
+    "13",
+    0
+   ],
+   "tile_size": 512,
+   "overlap": 128,
+   "temporal_size": 4096,
+   "temporal_overlap": 8
+  }
+ },
+ "19": {
+  "class_type": "SeedVR2PostProcessing",
+  "inputs": {
+   "images": [
+    "18",
+    0
+   ],
+   "original_resized_images": [
+    "11",
+    0
+   ],
+   "color_correction_method": "lab"
+  }
+ },
+ "8": {
+  "class_type": "SaveImage",
+  "inputs": {
+   "images": [
+    "19",
+    0
+   ],
+   "filename_prefix": "openhiggsfield/image-upscale"
+  }
+ }
+}

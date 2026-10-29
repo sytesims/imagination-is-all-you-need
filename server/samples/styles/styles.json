@@ -1,0 +1,166 @@
+{
+  "generator": "procedural (numpy+Pillow), not a generative model",
+  "styles": [
+    {
+      "id": "anime-cel",
+      "label": "Anime cel",
+      "swatch": "/samples/styles/anime-cel.png",
+      "prompt": "{subject}, redrawn in anime cel style: flat cel shading, clean ink outlines, anime. Keep the original motion, timing and composition.",
+      "negative": "photorealistic, blurry, low quality, watermark"
+    },
+    {
+      "id": "watercolor",
+      "label": "Watercolor",
+      "swatch": "/samples/styles/watercolor.png",
+      "prompt": "{subject}, redrawn in watercolor style: soft watercolor washes, paper texture, bleeding edges. Keep the original motion, timing and composition.",
+      "negative": "photorealistic, blurry, low quality, watermark"
+    },
+    {
+      "id": "claymation",
+      "label": "Claymation",
+      "swatch": "/samples/styles/claymation.png",
+      "prompt": "{subject}, redrawn in claymation style: clay figures, fingerprint texture, stop-motion lighting. Keep the original motion, timing and composition.",
+      "negative": "photorealistic, blurry, low quality, watermark"
+    },
+    {
+      "id": "pixel-art",
+      "label": "Pixel art",
+      "swatch": "/samples/styles/pixel-art.png",
+      "prompt": "{subject}, redrawn in pixel art style: 16-bit pixel art, limited palette, crisp pixels. Keep the original motion, timing and composition.",
+      "negative": "photorealistic, blurry, low quality, watermark"
+    },
+    {
+      "id": "comic-ink",
+      "label": "Comic ink",
+      "swatch": "/samples/styles/comic-ink.png",
+      "prompt": "{subject}, redrawn in comic ink style: bold comic ink, heavy black lines, high contrast. Keep the original motion, timing and composition.",
+      "negative": "photorealistic, blurry, low quality, watermark"
+    },
+    {
+      "id": "oil-painting",
+      "label": "Oil painting",
+      "swatch": "/samples/styles/oil-painting.png",
+      "prompt": "{subject}, redrawn in oil painting style: thick oil paint strokes, canvas texture, rich colour. Keep the original motion, timing and composition.",
+      "negative": "photorealistic, blurry, low quality, watermark"
+    },
+    {
+      "id": "paper-cutout",
+      "label": "Paper cutout",
+      "swatch": "/samples/styles/paper-cutout.png",
+      "prompt": "{subject}, redrawn in paper cutout style: layered paper cutout, drop shadows, craft texture. Keep the original motion, timing and composition.",
+      "negative": "photorealistic, blurry, low quality, watermark"
+    },
+    {
+      "id": "pencil-sketch",
+      "label": "Pencil sketch",
+      "swatch": "/samples/styles/pencil-sketch.png",
+      "prompt": "{subject}, redrawn in pencil sketch style: graphite pencil sketch, hatching, white paper. Keep the original motion, timing and composition.",
+      "negative": "photorealistic, blurry, low quality, watermark"
+    },
+    {
+      "id": "3d-toon",
+      "label": "3D toon",
+      "swatch": "/samples/styles/3d-toon.png",
+      "prompt": "{subject}, redrawn in 3d toon style: stylised 3D toon render, soft global illumination. Keep the original motion, timing and composition.",
+      "negative": "photorealistic, blurry, low quality, watermark"
+    },
+    {
+      "id": "low-poly",
+      "label": "Low poly",
+      "swatch": "/samples/styles/low-poly.png",
+      "prompt": "{subject}, redrawn in low poly style: low-poly faceted geometry, flat shaded triangles. Keep the original motion, timing and composition.",
+      "negative": "photorealistic, blurry, low quality, watermark"
+    },
+    {
+      "id": "neon-noir",
+      "label": "Neon noir",
+      "swatch": "/samples/styles/neon-noir.png",
+      "prompt": "{subject}, redrawn in neon noir style: neon noir, glowing magenta and cyan light, rain, deep shadows. Keep the original motion, timing and composition.",
+      "negative": "photorealistic, blurry, low quality, watermark"
+    },
+    {
+      "id": "ukiyo-e-print",
+      "label": "Ukiyo-e print",
+      "swatch": "/samples/styles/ukiyo-e-print.png",
+      "prompt": "{subject}, redrawn in ukiyo-e print style: ukiyo-e woodblock print, flat colour, fine outlines. Keep the original motion, timing and composition.",
+      "negative": "photorealistic, blurry, low quality, watermark"
+    },
+    {
+      "id": "stained-glass",
+      "label": "Stained glass",
+      "swatch": "/samples/styles/stained-glass.png",
+      "prompt": "{subject}, redrawn in stained glass style: stained glass, leaded black lines, luminous colour. Keep the original motion, timing and composition.",
+      "negative": "photorealistic, blurry, low quality, watermark"
+    },
+    {
+      "id": "charcoal",
+      "label": "Charcoal",
+      "swatch": "/samples/styles/charcoal.png",
+      "prompt": "{subject}, redrawn in charcoal style: smudged charcoal drawing, grainy paper. Keep the original motion, timing and composition.",
+      "negative": "photorealistic, blurry, low quality, watermark"
+    },
+    {
+      "id": "retro-80s-cartoon",
+      "label": "Retro 80s cartoon",
+      "swatch": "/samples/styles/retro-80s-cartoon.png",
+      "prompt": "{subject}, redrawn in retro 80s cartoon style: 1980s saturday-morning cartoon, thick outlines, flat colour. Keep the original motion, timing and composition.",
+      "negative": "photorealistic, blurry, low quality, watermark"
+    },
+    {
+      "id": "stop-motion-felt",
+      "label": "Stop-motion felt",
+      "swatch": "/samples/styles/stop-motion-felt.png",
+      "prompt": "{subject}, redrawn in stop-motion felt style: felt puppets, fuzzy fabric texture, stop-motion. Keep the original motion, timing and composition.",
+      "negative": "photorealistic, blurry, low quality, watermark"
+    },
+    {
+      "id": "vaporwave",
+      "label": "Vaporwave",
+      "swatch": "/samples/styles/vaporwave.png",
+      "prompt": "{subject}, redrawn in vaporwave style: vaporwave, pastel neon gradient, grid horizon. Keep the original motion, timing and composition.",
+      "negative": "photorealistic, blurry, low quality, watermark"
+    },
+    {
+      "id": "blueprint",
+      "label": "Blueprint",
+      "swatch": "/samples/styles/blueprint.png",
+      "prompt": "{subject}, redrawn in blueprint style: technical blueprint, white line drawing on blue. Keep the original motion, timing and composition.",
+      "negative": "photorealistic, blurry, low quality, watermark"
+    },
+    {
+      "id": "pop-art",
+      "label": "Pop art",
+      "swatch": "/samples/styles/pop-art.png",
+      "prompt": "{subject}, redrawn in pop art style: pop art, halftone dots, bold primary colours. Keep the original motion, timing and composition.",
+      "negative": "photorealistic, blurry, low quality, watermark"
+    },
+    {
+      "id": "graffiti",
+      "label": "Graffiti",
+      "swatch": "/samples/styles/graffiti.png",
+      "prompt": "{subject}, redrawn in graffiti style: spray-paint graffiti, drips, bold outlines. Keep the original motion, timing and composition.",
+      "negative": "photorealistic, blurry, low quality, watermark"
+    },
+    {
+      "id": "gouache-storybook",
+      "label": "Gouache storybook",
+      "swatch": "/samples/styles/gouache-storybook.png",
+      "prompt": "{subject}, redrawn in gouache storybook style: gouache storybook illustration, matte colour. Keep the original motion, timing and composition.",
+      "negative": "photorealistic, blurry, low quality, watermark"
+    },
+    {
+      "id": "woodcut",
+      "label": "Woodcut",
+      "swatch": "/samples/styles/woodcut.png",
+      "prompt": "{subject}, redrawn in woodcut style: black and white woodcut, carved lines. Keep the original motion, timing and composition.",
+      "negative": "photorealistic, blurry, low quality, watermark"
+    },
+    {
+      "id": "live-action",
+      "label": "Live-action",
+      "swatch": "/samples/styles/live-action.png",
+      "prompt": "{subject}, redrawn in live-action style: photorealistic live-action, natural lighting. Keep the original motion, timing and composition.",
+      "negative": "cartoon, illustration, blurry, low quality"
+    }
+  ]
+}

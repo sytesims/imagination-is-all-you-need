@@ -1,0 +1,56 @@
+{
+  "name": "goodbye",
+  "title": "Goodbye",
+  "note": "A short Korean drama made in this app on 2026-10-27 (MiniMax H3 drafts at 480p). It opens only where its clips and stills exist; prompts are read from the clips' own jobs.",
+  "requiresJobs": ["384b4014", "18df97ac", "774157ed", "0437c498", "8a6fc089", "d716fe0e", "b44721c8", "78fa6f63", "1f2f8b9d", "0e5ad870", "41336ba9"],
+  "film": {
+    "title": "Goodbye",
+    "aspect": "16:9",
+    "fps": 24,
+    "script": { "markdown": "A daughter is embarrassed by her mum at a dawn bus stop. She boards without looking back, finds a note in the lunchbox, sees her mum waving in the snow and breaks. The bus pulls away; mum is left alone." },
+    "cast": [
+      { "id": "s1", "name": "Daughter (S1)", "lookLine": "early twenties, long straight black hair, navy wool coat, cream turtleneck, deep red knitted scarf, black backpack" },
+      { "id": "s2", "name": "Mother (S2)", "lookLine": "late fifties, lavender knitted beanie, faded purple padded coat, thin grey scarf" }
+    ],
+    "beats": [
+      { "id": "b1", "summary": "The argument at the bus stop" },
+      { "id": "b2", "summary": "She leaves without looking back" },
+      { "id": "b3", "summary": "The note in the lunchbox" },
+      { "id": "b4", "summary": "Mum at the window" },
+      { "id": "b5", "summary": "The bus pulls away" }
+    ],
+    "shots": [
+      { "id": "c1", "beatId": "b1", "modelKey": "minimax-h3", "runOn": "comfy-cloud", "types": ["i2v"], "durationSec": 15, "resolution": "480p", "characterIds": ["s1", "s2"],
+        "startFrom": { "kind": "still", "url": "/files/b44721c8-out0.png", "jobId": "b44721c8" }, "stillUrl": "/files/b44721c8-out0.png", "stillJobId": "b44721c8",
+        "takes": [{ "jobId": "384b4014" }], "transitionOut": { "type": "crossfade", "sec": 0.6 },
+        "notes": "The argument. Starts from the bus-stop two-shot." },
+      { "id": "c2", "beatId": "b2", "modelKey": "minimax-h3", "runOn": "comfy-cloud", "types": ["i2v"], "durationSec": 15, "resolution": "480p", "characterIds": ["s1", "s2"],
+        "startFrom": { "kind": "still", "url": "/files/b44721c8-out0.png", "jobId": "b44721c8" }, "stillUrl": "/files/b44721c8-out0.png", "stillJobId": "b44721c8",
+        "takes": [{ "jobId": "18df97ac" }],
+        "notes": "She leaves. Starts from the same two-shot as Clip 1, so mum offers the lunchbox again." },
+      { "id": "c3", "beatId": "b3", "modelKey": "minimax-h3", "runOn": "comfy-cloud", "types": ["i2v"], "durationSec": 15, "resolution": "480p", "characterIds": ["s1"],
+        "startFrom": { "kind": "still", "url": "/files/78fa6f63-out0.png", "jobId": "78fa6f63" }, "stillUrl": "/files/78fa6f63-out0.png", "stillJobId": "78fa6f63",
+        "takes": [{ "jobId": "774157ed" }],
+        "notes": "The lunchbox. The slower-tear redo: still, eyes fill, one tear, only then the break." },
+      { "id": "br34", "kind": "bridge", "beatId": "b4", "modelKey": "ltx-2.5-22b", "runOn": "comfy-cloud", "types": ["flf"], "durationSec": 4, "resolution": "720p", "hidden": true,
+        "startFrom": { "kind": "last_frame", "url": "/files/774157ed-out0-flast.png", "jobId": "774157ed" }, "endFrame": { "url": "/files/1f2f8b9d-out0.png", "jobId": "1f2f8b9d" },
+        "takes": [{ "jobId": "0437c498" }],
+        "notes": "LTX-2.5 first-and-last-frame bridge into the window shot. Hidden: it morphed, so the cut goes straight to the window." },
+      { "id": "c4a", "beatId": "b4", "modelKey": "minimax-h3", "runOn": "comfy-cloud", "types": ["i2v"], "durationSec": 5, "resolution": "480p", "characterIds": ["s1"],
+        "startFrom": { "kind": "still", "url": "/files/0e5ad870-out0.png", "jobId": "0e5ad870" }, "stillUrl": "/files/0e5ad870-out0.png", "stillJobId": "0e5ad870",
+        "notes": "Clip 4 split into its own shots: the turn to the window (still made, not rendered yet)." },
+      { "id": "c4", "beatId": "b4", "modelKey": "minimax-h3", "runOn": "comfy-cloud", "types": ["i2v"], "durationSec": 15, "resolution": "480p", "characterIds": ["s1", "s2"],
+        "startFrom": { "kind": "still", "url": "/files/1f2f8b9d-out0.png", "jobId": "1f2f8b9d" }, "stillUrl": "/files/1f2f8b9d-out0.png", "stillJobId": "1f2f8b9d",
+        "takes": [{ "jobId": "8a6fc089" }],
+        "notes": "The window, over her shoulder. H3 held this one shot for all 15 s, so the apology gets its own card." },
+      { "id": "c4c", "beatId": "b4", "modelKey": "minimax-h3", "runOn": "comfy-cloud", "types": ["i2v"], "durationSec": 6, "resolution": "480p", "characterIds": ["s1"],
+        "startFrom": { "kind": "still", "url": "/files/41336ba9-out0.png", "jobId": "41336ba9" }, "stillUrl": "/files/41336ba9-out0.png", "stillJobId": "41336ba9",
+        "notes": "The apology close-up through the glass (still made, not rendered yet)." },
+      { "id": "c5", "beatId": "b5", "modelKey": "minimax-h3", "runOn": "comfy-cloud", "types": ["i2v"], "durationSec": 15, "resolution": "480p", "characterIds": ["s2"],
+        "startFrom": { "kind": "last_frame", "url": "/files/18df97ac-out0-flast.png", "jobId": "18df97ac" }, "continueFromPrev": false,
+        "takes": [{ "jobId": "d716fe0e" }], "transitionOut": null,
+        "notes": "It pulls away. Starts from Clip 2's last frame: mum alone at the stop." }
+    ],
+    "post": { "keepClipAudio": true, "duck": true, "normalize": true, "videoFade": true, "fadeOutSec": 1.5, "endCard": { "text": null, "style": "quiet", "mode": "black", "sec": 2.5 } }
+  }
+}

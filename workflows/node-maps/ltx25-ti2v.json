@@ -1,0 +1,37 @@
+{
+  "workflowFile": "ltx25-ti2v-api.json",
+  "template": "video_ltx2_5_i2v",
+  "license": "LTX-2.x Community License (weights); graph: MIT (from Comfy-Org/workflow_templates)",
+  "inputs": {
+    "prompt": {
+      "node": "364",
+      "field": "text"
+    },
+    "negative": {
+      "node": "373",
+      "field": "text"
+    },
+    "image": {
+      "node": "395",
+      "field": "image"
+    },
+    "imageSize": {
+      "node": "351"
+    },
+    "latent": {
+      "node": "356"
+    },
+    "audioLatent": {
+      "node": "366"
+    }
+  },
+  "refs": [],
+  "seed": {
+    "node": "339",
+    "field": "noise_seed"
+  },
+  "output": {
+    "node": "75"
+  },
+  "changes": "From the official template video_ltx2_5_i2v (node ids kept): UnetLoaderGGUF with the Unsloth Q4_K_M distilled transformer, the bf16 Gemma 4 12B text encoder and the conv bf16 video VAE instead of the int8 ConvRot files (CUDA kernels); ImageScale (lanczos, centre crop) to the output size instead of the long-side resize; no prompt enhancer. Text to video = the template's Switch to Text to Video: nodes 395, 351, 350, 357, 349 are dropped and the latents wired straight in. Stage 1 at half size, stage 2 after the x2 latent upscale; size, length (seconds x 24 + 1), seed (stage 1; stage 2 stays 42) per job. LTX's own sound is kept."
+}

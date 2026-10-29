@@ -1,0 +1,28 @@
+{
+  "workflowFile": "soundtrack-sfx-api.json",
+  "template": "audio_stable_audio_example",
+  "inputs": {
+    "prompt": {
+      "node": "6",
+      "field": "text"
+    },
+    "video": {
+      "node": "500",
+      "field": "file"
+    }
+  },
+  "duration": [
+    {
+      "node": "11",
+      "field": "seconds"
+    }
+  ],
+  "seed": {
+    "node": "3",
+    "field": "seed"
+  },
+  "output": {
+    "node": "503"
+  },
+  "note": "duration should be set to the clip length (server: probe)"
+}

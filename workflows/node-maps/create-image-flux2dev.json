@@ -1,0 +1,28 @@
+{
+  "workflowFile": "create-image-flux2dev-api.json",
+  "template": "image_flux2",
+  "model": "FLUX.2 [dev] (FLUX Non-Commercial License)",
+  "inputs": {
+    "prompt": {
+      "node": "68:6",
+      "field": "text"
+    },
+    "image": {
+      "node": "46",
+      "field": "image"
+    }
+  },
+  "refs": [
+    {
+      "node": "46",
+      "field": "image"
+    }
+  ],
+  "seed": {
+    "node": "68:25",
+    "field": "noise_seed"
+  },
+  "output": {
+    "node": "9"
+  }
+}

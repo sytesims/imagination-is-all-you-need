@@ -1,0 +1,131 @@
+/* TRANSPARENCY-PLAN 4i: the premium generating tile (.gt), the compact job row (.jr) and the queue activity pill + popover (.qp, .qa). */
+
+/* ---------------------------------------------------------------- tile */
+.gt{position:absolute;inset:0;overflow:hidden;isolation:isolate;container-type:size;border-radius:inherit;color:#fff;font-family:var(--font-ui);text-align:left;background:#121215;--gt-a:#FF7A1A;--gt-b:#7A5CFF}
+/* The drifting colour: a 140% layer moved with transform (runs on the compositor), the same picture as moving a 140% background from
+ * 0% 0% to 100% 100% (-40% of the tile = -28.5714% of the layer), which repainted every running tile on every frame (2026-10-25 lag fix). */
+.gt-bg{position:absolute;inset:0;overflow:hidden}
+.gt-bg::before{content:'';position:absolute;left:0;top:0;width:140%;height:140%;background:
+  radial-gradient(120% 95% at 12% 8%,color-mix(in srgb,var(--gt-a) 58%,transparent),transparent 64%),
+  radial-gradient(110% 95% at 92% 100%,color-mix(in srgb,var(--gt-b) 52%,transparent),transparent 66%),
+  linear-gradient(160deg,#1b1b20,#111114);animation:gt-drift 9s ease-in-out infinite alternate}
+/* a live preview covers the colour: no need to keep moving it underneath */
+.gt-has-prev .gt-bg::before{animation-play-state:paused}
+.gt-shim{position:absolute;inset:-40% -60%;background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.16) 50%,transparent 62%);transform:translateX(-45%);animation:gt-shim 2.6s ease-in-out infinite}
+@keyframes gt-shim{to{transform:translateX(45%)}}
+@keyframes gt-drift{from{transform:translate(0,0)}to{transform:translate(-28.5714%,-28.5714%)}}
+.gt-mascot{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);opacity:.32;color:#fff;pointer-events:none;display:grid}
+.gt-prev{position:absolute;inset:0}
+.gt-prev img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:blur(var(--gt-blur,18px)) saturate(1.05);transform:scale(1.12);opacity:0;transition:opacity 600ms var(--ease),filter 900ms var(--ease)}
+.gt-prev img.on{opacity:1}
+.gt-has-prev .gt-shim{display:none}
+.gt-fade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(to bottom,rgba(8,8,10,.45),transparent 26%),linear-gradient(to top,rgba(8,8,10,.86),rgba(8,8,10,.42) 38%,transparent 66%)}
+.gt-top{position:absolute;top:8px;left:8px;right:8px;display:flex;align-items:flex-start;gap:6px;z-index:2}
+.gt-chip{display:inline-flex;align-items:center;gap:5px;min-width:0;max-width:calc(100% - 34px);height:22px;padding:0 9px 0 7px;border-radius:var(--r-pill,999px);background:rgba(10,10,12,.55);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);font:600 11px/16px var(--font-ui);letter-spacing:.01em;color:#fff;white-space:nowrap;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.gt-chip>span{overflow:hidden;text-overflow:ellipsis}
+.gt-chip svg{flex:none;opacity:.9}
+.gt-chip-gpu svg{color:var(--accent);opacity:1}
+.gt-x{all:unset;box-sizing:border-box;flex:none;margin-left:auto;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:rgba(10,10,12,.45);color:rgba(255,255,255,.72);cursor:pointer;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);transition:background var(--fast,120ms) var(--ease),color var(--fast,120ms) var(--ease)}
+.gt-x:hover{background:rgba(10,10,12,.75);color:#fff}
+.gt-x:focus-visible{outline:none;box-shadow:var(--focus),inset 0 0 0 1px rgba(255,255,255,.2)}
+.gt-bot{position:absolute;left:10px;right:10px;bottom:10px;display:grid;gap:6px;z-index:2;min-width:0}
+.gt-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.gt-steps i{position:relative;height:3px;border-radius:2px;background:rgba(255,255,255,.18);overflow:hidden}
+.gt-steps i b{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:inherit;background:var(--accent);transition:width 700ms var(--ease)}
+.gt-steps i.done b{width:100%}
+.gt-steps i.cur.ind b{width:38%;animation:gt-sweep 1.7s ease-in-out infinite}
+@keyframes gt-sweep{from{transform:translateX(-100%)}to{transform:translateX(265%)}}
+.gt-line{display:flex;align-items:baseline;gap:8px;min-width:0}
+.gt-label{font:600 13px/18px var(--font-ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 8px rgba(0,0,0,.4)}
+.gt-eta{flex:none;margin-left:auto;font:600 12px/16px var(--font-ui);color:rgba(255,255,255,.82);font-variant-numeric:tabular-nums}
+.gt-sub{margin:0;font:500 11px/15px var(--font-ui);color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gt-model{color:rgba(255,255,255,.72)}
+/* queued: calmer (greyscale, no shimmer); canceled: grey, quiet */
+.gt-queued .gt-bg,.gt-canceled .gt-bg{filter:grayscale(1) brightness(.7) blur(6px);transform:scale(1.1)}
+.gt-queued .gt-bg::before,.gt-canceled .gt-bg::before{animation:none}
+.gt-queued .gt-shim,.gt-canceled .gt-shim{display:none}
+.gt-queued .gt-mascot{opacity:.18}
+/* a page's own art in place of the mascot (Audio: SyteSim warming up) and its friendly line */
+.gt-art{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);height:52%;aspect-ratio:100/120;display:grid;pointer-events:none}
+.gt-art>.av-dancer{position:static;height:100%;width:auto}
+.gt-queued .gt-art{opacity:.7}
+.gt-note{margin:0;font:500 12px/16px var(--font-ui);color:rgba(255,255,255,.62)}
+.gt-queued .gt-label{color:rgba(255,255,255,.86)}
+.gt-canceled .gt-bg{filter:grayscale(1) brightness(.45) blur(6px)}
+.gt-canceled .gt-label{color:rgba(255,255,255,.66)}
+/* small tiles (phones, dense grids) */
+@container (max-height:140px){.gt-sub{display:none}.gt-mascot{display:none}.gt-art{display:none}.gt-note{display:none}}
+@container (max-width:170px){.gt-chip>span{display:none}.gt-chip{padding:0 5px}.gt-eta{font-size:11px}}
+@container (max-height:120px){.gt-top{top:5px;left:5px;right:5px}.gt-bot{left:6px;right:6px;bottom:6px;gap:4px}.gt-label{font-size:11px;line-height:14px}.gt-x{width:22px;height:22px}.gt-chip{height:20px}.gt-steps i{height:2px}}
+
+/* ---------------------------------------------------------------- compact row (popover, audio list) */
+.jr{display:flex;align-items:center;gap:4px;min-width:0;border-radius:10px}
+.jr-main{all:unset;box-sizing:border-box;flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:6px;border-radius:10px}
+button.jr-main{cursor:pointer}
+button.jr-main:hover{background:var(--state-hover,rgba(255,255,255,.06))}
+button.jr-main:focus-visible{box-shadow:var(--focus)}
+.jr-thumb{position:relative;flex:none;width:44px;height:44px;border-radius:8px;overflow:hidden;background:radial-gradient(120% 95% at 12% 8%,color-mix(in srgb,var(--gt-a,#FF7A1A) 48%,transparent),transparent 62%),radial-gradient(110% 95% at 92% 100%,color-mix(in srgb,var(--gt-b,#7A5CFF) 44%,transparent),transparent 64%),#18181c}
+.jr-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.jr-thumb.q{filter:grayscale(1) brightness(.75)}
+.jr-thumb.q .gt-shim{display:none}
+.jr-place{position:absolute;right:2px;bottom:2px;width:16px;height:16px;border-radius:50%;display:grid;place-items:center;background:rgba(8,8,10,.66);color:#fff}
+.jr-txt{flex:1;min-width:0;display:grid;gap:1px}
+.jr-title{font:600 13px/18px var(--font-ui);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jr-meta{font:500 11px/15px var(--font-ui);color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jr-step{display:flex;gap:8px;min-width:0;font:500 11px/15px var(--font-ui);color:var(--text-2)}
+.jr-step>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jr-eta{flex:none;margin-left:auto;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
+.jr-bar{position:relative;height:2px;margin-top:4px;border-radius:2px;background:color-mix(in srgb,var(--text) 12%,transparent);overflow:hidden}
+.jr-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:inherit;background:var(--accent);transition:width 700ms var(--ease)}
+.jr-bar.ind i{width:30%;animation:gt-sweep 1.7s ease-in-out infinite}
+.jr .gt-x{background:var(--state-fill,rgba(255,255,255,.06));color:var(--text-2);box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+.jr .gt-x:hover{background:var(--state-hover,rgba(255,255,255,.1));color:var(--text)}
+
+/* ---------------------------------------------------------------- activity pill */
+.qp{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:8px;height:28px;padding:0 11px 0 10px;border-radius:var(--r-pill,999px);background:var(--state-fill,rgba(255,255,255,.06));box-shadow:inset 0 0 0 1px var(--hairline,rgba(255,255,255,.08));font:600 12px/16px var(--font-ui);color:var(--text);white-space:nowrap;cursor:pointer;transition:background var(--fast,120ms) var(--ease)}
+.qp:hover,.qp[aria-expanded=true]{background:var(--state-hover,rgba(255,255,255,.1))}
+.qp:focus-visible{box-shadow:var(--focus)}
+.qp-dot{flex:none;width:7px;height:7px;border-radius:50%;background:var(--accent);animation:qp-breathe 2.2s ease-in-out infinite}
+@keyframes qp-breathe{0%,100%{box-shadow:0 0 0 0 rgba(255,122,26,.5);opacity:1}55%{box-shadow:0 0 0 5px rgba(255,122,26,0);opacity:.65}}
+.qp-idle .qp-dot{background:var(--text-3,#777);animation:none}
+.qp-wait{font-weight:500;color:var(--text-2)}
+.qp-ring{flex:none;display:block;transform:rotate(-90deg)}
+.qp-ring circle{fill:none;stroke-width:2.4}
+.qp-ring .bg{stroke:color-mix(in srgb,var(--text) 18%,transparent)}
+.qp-ring .fg{stroke:var(--accent);stroke-linecap:round;transition:stroke-dashoffset 700ms var(--ease)}
+.qp-eta{font-weight:500;color:var(--text-2);font-variant-numeric:tabular-nums}
+.qp-full{background:color-mix(in srgb,var(--warning) 14%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--warning) 42%,transparent);color:var(--warning)}
+.qp-full:hover,.qp-full[aria-expanded=true]{background:color-mix(in srgb,var(--warning) 22%,transparent)}
+.qp-full .qp-dot{background:var(--warning);animation:none}
+
+/* popover */
+.qa{width:min(360px,100%);display:grid;gap:14px;padding:6px 4px 4px}
+.qa-sec{display:grid;gap:4px}
+.qa-h{display:flex;align-items:baseline;gap:6px;padding:0 6px;margin:0;font:600 11px/16px var(--font-ui);letter-spacing:.06em;text-transform:uppercase;color:var(--text-3,var(--text-2))}
+.qa-h small{margin-left:auto;font-weight:500;letter-spacing:0;text-transform:none;color:var(--text-3,var(--text-2));text-align:right}
+.qa-foot{margin:-6px 0 0;padding:8px 6px 0;border-top:1px solid var(--hairline,rgba(255,255,255,.08));font:500 11.5px/16px var(--font-ui);color:var(--text-3,var(--text-2))}
+.qa-full{margin:0 6px;padding:8px 10px;border-radius:10px;font:500 12px/16px var(--font-ui);color:var(--warning);background:color-mix(in srgb,var(--warning) 12%,transparent)}
+.qa-empty{margin:0;padding:4px 6px;font:500 12px/16px var(--font-ui);color:var(--text-2)}
+.qa-list{display:grid;gap:2px;max-height:min(46vh,360px);overflow:auto}
+
+/* ---------------------------------------------------------------- hosts */
+/* Assets: the tile replaces the dimmed thumbnail; the host's own img rules must not touch the live preview */
+html body .asset-stile.asset-gen{background:#121215}
+html body .asset-stile.asset-gen .gt-prev img{filter:blur(var(--gt-blur,18px)) saturate(1.05);transform:scale(1.12)}
+/* leave room for the Assets select box (top-left) and the hover tools column (top-right) */
+html body .asset-stile.asset-gen .gt-top{transition:left var(--fast,120ms) var(--ease),right var(--fast,120ms) var(--ease)}
+html body .asset-media:is(:hover,:focus-within) .asset-stile.asset-gen .gt-top{left:36px;right:42px}
+/* Audio history: the row fills the list button */
+.as-hrow>.jr{flex:1;min-width:0}
+.as-hrow>.jr>.jr-main{padding:0}
+
+@media (prefers-reduced-motion:reduce){
+  .gt-bg::before{animation:none}.gt-shim{animation:none;display:none}
+  .gt-prev img{transition:none}.gt-steps i b,.jr-bar i,.qp-ring .fg{transition:none}
+  .gt-steps i.cur.ind b,.jr-bar.ind i{animation:none;width:100%;opacity:.4}
+  .qp-dot{animation:none}
+}
+
+/* the image feature's tag (Edit, Relight…) in the running tile's top row, so it never sits on the place chip */
+.gt-tag{flex:none;display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:6px;background:rgba(10,10,12,.55);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#fff;font:600 11px/22px Inter,system-ui,sans-serif;white-space:nowrap}
+.gt-top .gt-tag+.gt-chip{max-width:calc(100% - 34px - 70px)}

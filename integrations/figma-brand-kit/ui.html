@@ -1,0 +1,33 @@
+<style>
+  :root { color-scheme: light dark; }
+  body { margin: 0; padding: 14px; font: 12px/1.45 Inter, system-ui, sans-serif; color: var(--figma-color-text, #111); background: var(--figma-color-bg, #fff); }
+  h1 { margin: 0 0 4px; font-size: 13px; font-weight: 600; }
+  p { margin: 0 0 10px; color: var(--figma-color-text-secondary, #666); }
+  textarea { box-sizing: border-box; width: 100%; height: 200px; padding: 8px; border: 1px solid var(--figma-color-border, #ddd); border-radius: 6px; background: var(--figma-color-bg-secondary, #f7f7f7); color: inherit; font: 11px/1.4 ui-monospace, monospace; resize: vertical; }
+  .row { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+  button, label.file { appearance: none; border: 0; border-radius: 6px; padding: 8px 12px; font: 600 12px/1 Inter, system-ui, sans-serif; cursor: pointer; }
+  #go { background: #FF7A1A; color: #14151A; }
+  #go:disabled { opacity: .5; cursor: default; }
+  label.file { background: var(--figma-color-bg-secondary, #eee); color: inherit; }
+  label.file input { display: none; }
+  #out { margin-top: 12px; white-space: pre-wrap; }
+  .err { color: var(--figma-color-text-danger, #c00); }
+</style>
+<h1>Brand Kit</h1>
+<p>Pick or paste a <b>.tokens.json</b> from Imagination’s Assets › Brand. It makes colour variables, paint styles and text styles; running it again updates them.</p>
+<textarea id="text" spellcheck="false" placeholder='{ "color": { "$type": "color", "primary": { "$value": "#FF7A1A" } } }'></textarea>
+<div class="row">
+  <label class="file">Choose file…<input id="file" type="file" accept=".json,application/json"></label>
+  <button id="go" disabled>Import</button>
+</div>
+<div id="out" role="status"></div>
+<script>
+  const text = document.getElementById('text'), go = document.getElementById('go'), out = document.getElementById('out'), file = document.getElementById('file');
+  const ready = () => { go.disabled = !text.value.trim(); };
+  text.addEventListener('input', ready);
+  file.addEventListener('change', async () => { const f = file.files && file.files[0]; if (!f) return; text.value = await f.text(); ready(); out.textContent = f.name; out.className = ''; });
+  go.addEventListener('click', () => { out.textContent = 'Importing…'; out.className = ''; go.disabled = true; parent.postMessage({ pluginMessage: { type: 'import', text: text.value } }, '*'); });
+  onmessage = (e) => { const m = e.data && e.data.pluginMessage; if (!m) return; ready();
+    if (m.type === 'error') { out.textContent = m.message; out.className = 'err'; return; }
+    if (m.type === 'done') { out.className = ''; out.textContent = m.line + '\n' + m.plan.colors + ' colours, ' + m.plan.numbers + ' sizes, ' + m.plan.fonts + ' fonts.' + (m.notes.length ? '\n\n' + m.notes.join('\n') : ''); } };
+</script>

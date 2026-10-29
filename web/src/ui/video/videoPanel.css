@@ -1,0 +1,45 @@
+/* A11 · Generate Video left panel (PARITY-A C-5, C-6, C-14, C-15). Loaded by VideoStudio.tsx. Older single-class rules in styles.css and
+   ui-states.css use !important, so these are scoped `html body` and repeat a class where they must win. */
+
+/* C-14: the preset card's Change button, 80×24 with radius 8 (phones keep the 44 px touch height from ui-states.css) */
+@media (min-width:761px){
+  html body .vs-preset .vs-change.vs-change{height:24px!important;min-height:24px;padding:0 8px!important;gap:4px;border-radius:8px!important;font:500 12px/16px var(--font-sans,Inter,system-ui,sans-serif)!important}
+  html body .vs-preset .vs-change.vs-change svg{width:14px;height:14px}
+}
+
+/* C-15: the prompt box is at least 160 px with its label; on tall screens it can grow to 100vh − 680 px, then scrolls (VideoStudio measures) */
+html body .vs .vs-prompt textarea.vs-pt{min-height:128px!important;max-height:max(128px,calc(100vh - 712px));box-sizing:border-box;scrollbar-width:thin}
+
+/* C-6: video popovers: radius 12 (aspect, resolution, quality, bitrate), 16 for the duration slider; phone sheets keep their own shape */
+html body .apop.vs-apop.vs-apop:not(.apop-sheet){border-radius:12px}
+html body .apop.vs-apop.vs-apop-dur:not(.apop-sheet){border-radius:16px}
+html body .apop.vs-apop .ic-pop-sm.ic-pop-ar.ic-pop-list{width:182px!important;padding:6px!important;gap:0}
+html body .apop.vs-apop .ic-pop-sm.ic-pop-ar.ic-pop-list .ic-opt{min-height:32px;height:32px;padding:0 8px!important;border-radius:4px;font:500 13px/18px var(--font-sans,Inter,system-ui,sans-serif)}
+html body .apop.vs-apop .ic-pop-sm.ic-pop-ar.ic-pop-list .ic-opt.on{background:rgba(255,255,255,.08)}
+html body .apop.vs-apop .ic-pop-sm.ic-pop-ar.ic-pop-list .ic-opt>.mp-check{color:rgba(255,255,255,.6)}
+html body .apop.apop-sheet.vs-apop .ic-pop-sm.ic-pop-ar.ic-pop-list{width:auto!important}
+html body .apop.apop-sheet.vs-apop .ic-pop-sm.ic-pop-ar.ic-pop-list .ic-opt{min-height:44px;height:44px}
+
+/* C-5: duration as a slider, 334×98: a title row, then a 36 px track with the value inside and a 4 px white bar for the thumb */
+html body .apop.vs-apop-dur .apop-body{scrollbar-gutter:auto;overflow:visible}
+html body .apop .vs-dsl{box-sizing:border-box;width:334px;max-width:calc(100vw - 18px);padding:16px 12px;display:flex;flex-direction:column;gap:10px}
+html body .apop.apop-sheet .vs-dsl{width:auto;padding:4px 16px 20px}
+html body .apop.apop-sheet .vs-dsl-h>span{display:none} /* the sheet already has its own "Duration" title */
+.vs-dsl-h{display:flex;align-items:baseline;justify-content:space-between;font:500 14px/20px var(--font-sans,Inter,system-ui,sans-serif);color:#fff}
+.vs-dsl-h small{font-size:12px;color:rgba(255,255,255,.5)}
+.vs-dsl-track{--p:0;position:relative;height:36px;border-radius:10px;background:rgba(255,255,255,.06);overflow:hidden}
+.vs-dsl-fill{position:absolute;inset:0 auto 0 0;width:calc(8px + (100% - 16px) * var(--p));background:rgba(255,255,255,.1);pointer-events:none}
+.vs-dsl-thumb{position:absolute;top:8px;bottom:8px;left:calc(6px + (100% - 16px) * var(--p));width:4px;border-radius:2px;background:#fff;box-shadow:0 0 0 3px rgba(0,0,0,.25);pointer-events:none}
+.vs-dsl-v{position:absolute;left:calc(18px + (100% - 16px) * var(--p));top:0;line-height:36px;white-space:nowrap;font:600 13px/36px var(--font-sans,Inter,system-ui,sans-serif);color:#fff;pointer-events:none;mix-blend-mode:normal}
+.vs-dsl-v.flip{left:auto;right:calc(18px + (100% - 16px) * (1 - var(--p)))}
+.vs-dsl-track input[type=range]{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;-webkit-appearance:none;appearance:none}
+.vs-dsl-track:has(input:focus-visible){outline:var(--focus-ring-w,2px) solid var(--focus-ring-color,#fff);outline-offset:2px}
+.vs-dsl-track:hover{background:rgba(255,255,255,.08)}
+/* prices (2026-10-25): the rate under the title, the price beside the value, faint prices at the first / middle / last length */
+.vs-dsl-rate{margin-top:-6px;font:500 12px/16px var(--font-sans,Inter,system-ui,sans-serif);color:rgba(255,255,255,.62)}
+.vs-dsl-vp{font-weight:500;color:rgba(255,255,255,.72);font-variant-numeric:tabular-nums}
+.vs-dsl-ticks{position:relative;height:14px;margin-top:-4px;font:500 10.5px/14px var(--font-sans,Inter,system-ui,sans-serif);color:rgba(255,255,255,.38);font-variant-numeric:tabular-nums}
+.vs-dsl-ticks>span{position:absolute;top:0;white-space:nowrap}
+.vs-dsl-ticks>.l{left:0}.vs-dsl-ticks>.r{right:0}.vs-dsl-ticks>.m{left:calc(8px + (100% - 16px) * var(--p));transform:translateX(-50%)}
+.vs-dsl-ticks .opt-loading{width:26px;height:7px}
+@media (max-width:760px){.vs-dsl-track{height:44px}.vs-dsl-v{line-height:44px}.vs-dsl-thumb{top:10px;bottom:10px}}

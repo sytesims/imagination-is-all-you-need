@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "id": "cutout",
+  "name": "Cutout",
+  "version": "0.1.0",
+  "category": "Video",
+  "status": "new",
+  "description": "Remove the background from a clip: subject on a clean colour plate, plus a black-and-white alpha matte for compositing.",
+  "input": "video",
+  "inputs": {
+    "resolutions": ["480p", "720p", "1080p"],
+    "fields": [
+      { "name": "detail", "label": "Edge detail", "kind": "select", "default": "balanced", "help": "Processing size: finer edges take longer",
+        "options": [{ "value": "fast", "label": "Fast" }, { "value": "balanced", "label": "Balanced" }, { "value": "fine", "label": "Fine (hair, fur)" }] },
+      { "name": "edgeSoftness", "label": "Edge softness", "kind": "number", "default": 6, "min": 1, "max": 30 }
+    ]
+  },
+  "presets": [
+    { "id": "green", "label": "Green screen", "prompt": "subject on a green plate", "group": "Background" },
+    { "id": "blue", "label": "Blue screen", "prompt": "subject on a blue plate", "group": "Background" },
+    { "id": "white", "label": "White", "prompt": "subject on white", "group": "Background" },
+    { "id": "black", "label": "Black", "prompt": "subject on black", "group": "Background" }
+  ],
+  "providers": ["comfy-open"],
+  "license": { "id": "mit" },
+  "components": [
+    { "kind": "model", "name": "BiRefNet (ZhengPeng7/BiRefNet)", "license": "mit", "url": "https://huggingface.co/ZhengPeng7/BiRefNet" },
+    { "kind": "node-pack", "name": "ComfyUI_BiRefNet_ll (lldacing)", "license": "mit", "url": "https://github.com/lldacing/ComfyUI_BiRefNet_ll" },
+    { "kind": "code", "name": "timm (dependency of the node pack)", "license": "apache-2.0", "url": "https://github.com/huggingface/pytorch-image-models" }
+  ],
+  "pricing": {
+    "gpuSecPerSec": { "480p": 2, "720p": 4, "1080p": 8 },
+    "optionFactors": {}
+  },
+  "workflow": "workflow.json",
+  "nodeMap": "node-map.json",
+  "handler": "handler.ts",
+  "model": "BiRefNet (MIT) via ComfyUI_BiRefNet_ll",
+  "modelInfo": { "name": "BiRefNet general", "speed": "fast", "quality": "good", "hint": "High-res dichotomous segmentation, per frame", "badges": ["new"] },
+  "stages": [["uploading", "Uploading"], ["segmenting", "Segmenting frames"], ["matting", "Refining edges"], ["muxing", "Muxing audio"]],
+  "mock": { "results": ["mock-cutout.mp4", "mock-matte.mp4"], "ms": 5000 }
+}

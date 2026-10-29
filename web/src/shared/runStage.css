@@ -1,0 +1,140 @@
+/* The shared in-progress screen (RunStage.tsx): stage, step tracker, time, cost + cancel, SyteSim, inputs strip, panel rows. Dark, orange. */
+.rs{--rs-ink:#f2f2f3;--rs-dim:#a1a1a6;--rs-faint:#6b6b70;--rs-line:rgba(255,255,255,.08);--rs-card:rgba(22,23,26,.82);
+  width:min(1120px,100%);max-height:100%;box-sizing:border-box;display:flex;flex-direction:column;gap:14px;color:var(--rs-ink);font-family:var(--font-ui);min-height:0}
+.rs-main{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:center;min-height:0}
+.rs-pic{min-width:0;display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;min-height:0}
+
+/* picture area: in the result's shape, never taller than the stage allows */
+.rs-frame{position:relative;width:100%;max-width:calc((100cqh - 190px) * var(--rs-ar,1.7778));aspect-ratio:var(--rs-ar,16/9);border-radius:16px;overflow:hidden;isolation:isolate;
+  background:#121215;border:1px solid var(--rs-line);box-shadow:0 24px 64px rgba(0,0,0,.45)}
+.rs-frame-audio{aspect-ratio:auto;height:180px;max-width:none;display:flex;align-items:center;padding:0 24px;box-sizing:border-box}
+.rs-placeholder{position:absolute;inset:0;overflow:hidden}
+.rs-glow{position:absolute;left:0;top:0;width:150%;height:150%;background:
+  radial-gradient(60% 55% at 22% 18%,rgba(255,122,26,.34),transparent 70%),radial-gradient(55% 55% at 85% 90%,rgba(255,159,69,.18),transparent 70%),linear-gradient(160deg,#1a1a1f,#101013);
+  animation:rs-drift 12s ease-in-out infinite alternate}
+.rs-sheen{position:absolute;inset:-40% -60%;background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.07) 50%,transparent 60%);transform:translateX(-45%);animation:rs-sheen 3.4s ease-in-out infinite}
+@keyframes rs-drift{to{transform:translate(-33%,-33%)}}
+@keyframes rs-sheen{to{transform:translateX(45%)}}
+.rs-frame-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:blur(var(--rs-blur,0px));transform:scale(1.04);transition:filter 600ms var(--ease)}
+.rs-live,.rs-pct{position:absolute;top:12px;padding:4px 9px;border-radius:999px;font:600 11px/16px var(--font-ui);background:rgba(10,10,12,.62);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#fff}
+.rs-live{left:12px;display:flex;align-items:center;gap:6px}
+.rs-live::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent);animation:rs-pulse 1.6s ease-in-out infinite}
+.rs-pct{right:12px;font-variant-numeric:tabular-nums}
+
+/* audio: a waveform building left to right */
+.rs-wave{display:flex;align-items:center;gap:3px;width:100%;height:110px}
+.rs-wave i{flex:1;border-radius:2px;background:rgba(255,255,255,.12);transition:background 400ms var(--ease)}
+.rs-wave i.on{background:linear-gradient(180deg,#FFB067,var(--accent))}
+.rs-wave.ind i{animation:rs-bar 1.4s ease-in-out infinite alternate}
+@keyframes rs-bar{from{opacity:.35}to{opacity:1}}
+
+/* multi-output (Camera Angles 2/9 done) */
+.rs-pic:has(.rs-multi) .rs-frame{max-width:calc((100cqh - 300px) * var(--rs-ar,1.7778))}
+.rs-multi{width:100%;display:flex;flex-direction:column;gap:6px}
+.rs-multi-n{font:600 12px/16px var(--font-ui);color:var(--rs-dim)}
+.rs-multi ul{list-style:none;margin:0;padding:0;display:flex;gap:6px;overflow-x:auto;scrollbar-width:thin}
+.rs-multi li{position:relative;flex:0 0 64px;height:64px;border-radius:10px;overflow:hidden;background:#17171b;border:1px solid var(--rs-line)}
+.rs-multi li img{width:100%;height:100%;object-fit:cover;display:block}
+.rs-multi li small{position:absolute;left:0;right:0;bottom:0;padding:2px 4px;font:500 10px/14px var(--font-ui);background:linear-gradient(transparent,rgba(0,0,0,.75));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rs-multi-wait{position:absolute;inset:0;background:linear-gradient(105deg,transparent 30%,rgba(255,122,26,.18) 50%,transparent 70%);background-size:220% 100%;animation:rs-wait 1.8s linear infinite}
+.rs-multi li.failed{opacity:.45}
+@keyframes rs-wait{from{background-position:120% 0}to{background-position:-120% 0}}
+
+/* side: SyteSim + words, steps, money */
+.rs-side{display:flex;flex-direction:column;gap:14px;padding:18px;border-radius:16px;background:var(--rs-card);border:1px solid var(--rs-line);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);min-width:0}
+.rs-who{display:flex;gap:12px;align-items:center}
+.rs-bean{flex:0 0 auto;width:56px;height:68px;display:grid}
+.rs-bean svg{width:100%;height:100%;overflow:visible}
+.rs-bean [data-face-l]{display:none}
+.rs-bean[data-face=happy] [data-face-l=happy],.rs-bean[data-face=smile] [data-face-l=smile],.rs-bean[data-face=sleepy] [data-face-l=sleepy],.rs-bean[data-face=dreamy] [data-face-l=dreamy],.rs-bean[data-face=wink] [data-face-l=wink]{display:inline}
+.rs-bean [data-acc]{display:none}
+.rs-who-txt{display:flex;flex-direction:column;gap:2px;min-width:0}
+.rs-eyebrow{font:600 11px/16px var(--font-ui);letter-spacing:.06em;text-transform:uppercase;color:var(--rs-faint)}
+.rs-head{font:600 17px/24px var(--font-ui);color:#fff}
+.rs-why{font:500 12px/18px var(--font-ui);color:var(--rs-dim)}
+.rs-time{margin:0;font:500 13px/18px var(--font-ui);color:var(--rs-dim)}
+
+.rs-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0;position:relative}
+.rs-step{position:relative;display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:10px;align-items:start;padding:6px 0;font:500 13px/20px var(--font-ui);color:var(--rs-faint)}
+.rs-step:not(:last-child)::after{content:'';position:absolute;left:9.5px;top:28px;bottom:-6px;width:1px;background:var(--rs-line)}
+.rs-step.rs-done:not(:last-child)::after{background:color-mix(in srgb,var(--accent) 55%,transparent)}
+.rs-dot{width:20px;height:20px;border-radius:50%;box-sizing:border-box;border:1.5px solid rgba(255,255,255,.18);display:grid;place-items:center;background:#141417;position:relative;z-index:1}
+.rs-done{color:var(--rs-dim)}
+.rs-done .rs-dot{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.rs-cur{color:#fff}
+.rs-cur .rs-dot{border-color:var(--accent)}
+.rs-cur .rs-dot::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--accent);animation:rs-pulse 1.6s ease-in-out infinite}
+.rs-cur .rs-dot::after{content:'';position:absolute;inset:-5px;border-radius:50%;border:1.5px solid color-mix(in srgb,var(--accent) 40%,transparent);animation:rs-ring 1.6s ease-out infinite}
+@keyframes rs-pulse{50%{opacity:.45;transform:scale(.8)}}
+@keyframes rs-ring{from{opacity:.9;transform:scale(.7)}to{opacity:0;transform:scale(1.25)}}
+.rs-step-txt{display:flex;flex-direction:column;gap:5px;min-width:0}
+.rs-step-bar{display:block;height:3px;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden}
+.rs-step-bar i{display:block;height:100%;background:var(--accent);border-radius:inherit;transition:width 600ms var(--ease)}
+.rs-step-t{font:500 12px/20px var(--font-ui);color:var(--rs-faint);font-variant-numeric:tabular-nums}
+.rs-cur .rs-step-t{color:var(--rs-dim)}
+.rs-steps-compact .rs-step{padding:3px 0}
+
+.rs-money{display:flex;flex-direction:column;gap:6px;padding-top:12px;border-top:1px solid var(--rs-line)}
+.rs-money-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.rs-price{font:600 13px/20px var(--font-ui);color:#fff}
+.rs-price.free{color:var(--success)}
+.rs-price.sample{color:var(--rs-dim)}
+.rs-cancel{height:32px;padding:0 14px;border-radius:999px;border:1px solid var(--state-border-hover);background:var(--state-fill);color:#fff;font:600 13px/1 var(--font-ui);cursor:pointer;transition:background var(--t-state) var(--ease-state),border-color var(--t-state) var(--ease-state)}
+.rs-cancel:hover{background:var(--state-hover);border-color:var(--state-border-on)}
+.rs-cancel:active{transform:scale(var(--press-scale))}
+.rs-cancel:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap)}
+.rs-cancel:disabled{opacity:var(--disabled-opacity);cursor:default}
+.rs-money-note{margin:0;font:400 12px/18px var(--font-ui);color:var(--rs-dim)}
+.rs-leave{margin:0;font:400 12px/18px var(--font-ui);color:var(--rs-faint)}
+
+/* bottom strip: inputs + model / place / settings chips */
+.rs-strip{display:flex;align-items:center;gap:14px;flex-wrap:wrap;min-width:0}
+.rs-inputs{list-style:none;margin:0;padding:0;display:flex;gap:6px;overflow-x:auto;scrollbar-width:thin;max-width:100%}
+.rs-inputs li{position:relative;flex:0 0 auto;width:48px;height:48px;border-radius:10px;overflow:hidden;background:#17171b;border:1px solid var(--rs-line)}
+.rs-inputs.big li{width:72px;height:72px}
+.rs-inputs img{width:100%;height:100%;object-fit:cover;display:block}
+.rs-inputs small{position:absolute;left:0;right:0;bottom:0;padding:1px 4px;font:600 9px/13px var(--font-ui);text-align:center;background:linear-gradient(transparent,rgba(0,0,0,.8));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rs-inputs.big small{font-size:10px;line-height:14px}
+.rs-in-play{position:absolute;top:4px;right:4px;font-size:8px;line-height:1;color:#fff;opacity:.85}
+.rs-in-audio{display:grid;place-items:center;width:100%;height:100%;color:var(--accent);font-size:18px}
+.rs-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-width:0}
+.rs-chip,.rs-model{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;background:var(--state-fill);border:1px solid var(--state-border);font:500 12px/1 var(--font-ui);color:#e4e4e6;white-space:nowrap}
+.rs-model{padding-left:4px}
+.rs-maker{width:18px;height:18px;border-radius:6px;flex:0 0 auto}
+.rs-maker svg{width:12px;height:12px}
+
+/* panel rows */
+.rs-panel{display:flex;flex-direction:column;gap:14px}
+.rs-rows{margin:0;display:flex;flex-direction:column;gap:10px}
+.rs-row{display:grid;grid-template-columns:72px minmax(0,1fr);gap:10px;align-items:center}
+.rs-row dt{font:500 12px/18px var(--font-ui);color:var(--rs-faint,#6b6b70)}
+.rs-row dd{margin:0;font:500 13px/20px var(--font-ui);color:#e8e8ea;min-width:0}
+.rs-row .rs-model{background:transparent;border:0;padding:0;height:auto}
+.rs-dim{color:#8f8f94}
+.rs-panel-in{display:flex;flex-direction:column;gap:8px}
+.rs-lbl{font:600 11px/16px var(--font-ui);letter-spacing:.06em;text-transform:uppercase;color:#8f8f94}
+
+/* finished: a short beat before the result replaces the stage */
+.rs-finished .rs-frame{box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 60%,transparent),0 24px 64px rgba(0,0,0,.45);transition:box-shadow 300ms var(--ease)}
+
+/* the viewer hosts the stage directly (no state card around it) */
+html body .rvx-run{width:100%;height:100%;display:flex;align-items:center;justify-content:center;min-height:0}
+
+@media (max-width:900px){.rs-main{grid-template-columns:minmax(0,1fr)}.rs-frame{max-width:calc((100cqh - 360px) * var(--rs-ar,1.7778))}.rs-side{padding:14px}}
+@media (max-width:700px){
+  html body .rvx-run{align-items:flex-start;overflow-y:auto;overscroll-behavior:contain}
+  .rs{gap:10px;max-height:none;flex:none}
+  .rs-main{gap:10px;align-items:start}
+  .rs-frame{width:auto;max-width:100%;height:min(26dvh,calc((100vw - 24px) / var(--rs-ar,1.7778)));border-radius:12px}
+  .rs-pic:has(.rs-multi) .rs-frame{max-width:100%}
+  .rs-side{gap:10px;padding:12px}
+  .rs-step{padding:3px 0}
+  .rs-leave{display:none}
+  .rs-frame-audio{height:120px}
+  .rs-bean{width:44px;height:54px}
+  .rs-head{font-size:15px;line-height:22px}
+  .rs-strip{gap:8px}
+}
+@media (prefers-reduced-motion:reduce){.rs-glow,.rs-sheen,.rs-live::before,.rs-cur .rs-dot::before,.rs-cur .rs-dot::after,.rs-wave.ind i,.rs-multi-wait{animation:none}.rs-frame-img,.rs-step-bar i{transition:none}}
+/* the panel already lists model, place and settings: the stage keeps only the inputs while it is open */
+html body .rvx:not(.rvx-nopanel) .rs-strip .rs-chips{display:none}

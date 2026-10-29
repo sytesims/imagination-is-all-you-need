@@ -1,0 +1,1541 @@
+{
+ "note": "SAMPLE DATA: invented entries with placeholder creator handles and plausible metadata, shaped like the Civitai public API. Not real Civitai models.",
+ "items": [
+  {
+   "id": "sample-civitai-lora-001",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "lora",
+   "name": "Studio Packshot Lighting",
+   "description": "Sample entry (not a real Civitai model). LoRA for product shots, ads.",
+   "creator": {
+    "username": "sample_creator_01"
+   },
+   "tags": [
+    "product",
+    "studio",
+    "lighting"
+   ],
+   "useCases": [
+    "product-shots",
+    "ads"
+   ],
+   "baseModel": "SDXL 1.0",
+   "triggerWords": [
+    "pkshot lighting"
+   ],
+   "stats": {
+    "downloadCount": 42705,
+    "favoriteCount": 4270,
+    "rating": 4.32,
+    "ratingCount": 162,
+    "commentCount": 28
+   },
+   "trendingScore": 70.9,
+   "publishedAt": "2026-04-01T23:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image",
+     "Sell"
+    ],
+    "allowNoCredit": true,
+    "allowDerivatives": true,
+    "allowDifferentLicense": false
+   },
+   "files": [
+    {
+     "name": "studio-packshot-lighting.safetensors",
+     "sizeKB": 128604
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-lora-002",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "lora",
+   "name": "Clean White Cyclorama",
+   "description": "Sample entry (not a real Civitai model). LoRA for product shots.",
+   "creator": {
+    "username": "sample_creator_02"
+   },
+   "tags": [
+    "product",
+    "white background",
+    "ecommerce"
+   ],
+   "useCases": [
+    "product-shots"
+   ],
+   "baseModel": "FLUX.1 D",
+   "triggerWords": [
+    "white cyclo"
+   ],
+   "stats": {
+    "downloadCount": 2882,
+    "favoriteCount": 320,
+    "rating": 4.55,
+    "ratingCount": 47,
+    "commentCount": 145
+   },
+   "trendingScore": 27.9,
+   "publishedAt": "2026-03-03T06:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image"
+    ],
+    "allowNoCredit": true,
+    "allowDerivatives": true,
+    "allowDifferentLicense": true
+   },
+   "files": [
+    {
+     "name": "clean-white-cyclorama.safetensors",
+     "sizeKB": 75787
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-lora-003",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "lora",
+   "name": "Cosmetics Macro Glow",
+   "description": "Sample entry (not a real Civitai model). LoRA for product shots, ads.",
+   "creator": {
+    "username": "sample_creator_03"
+   },
+   "tags": [
+    "cosmetics",
+    "macro",
+    "beauty"
+   ],
+   "useCases": [
+    "product-shots",
+    "ads"
+   ],
+   "baseModel": "SDXL 1.0",
+   "triggerWords": [
+    "cosmacro"
+   ],
+   "stats": {
+    "downloadCount": 30239,
+    "favoriteCount": 3779,
+    "rating": 4.73,
+    "ratingCount": 368,
+    "commentCount": 73
+   },
+   "trendingScore": 24.0,
+   "publishedAt": "2026-07-26T00:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image",
+     "Sell",
+     "Rent"
+    ],
+    "allowNoCredit": true,
+    "allowDerivatives": true,
+    "allowDifferentLicense": false
+   },
+   "files": [
+    {
+     "name": "cosmetics-macro-glow.safetensors",
+     "sizeKB": 42312
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-lora-004",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "lora",
+   "name": "Floating Product Levitation",
+   "description": "Sample entry (not a real Civitai model). LoRA for product shots, ads.",
+   "creator": {
+    "username": "sample_creator_04"
+   },
+   "tags": [
+    "levitation",
+    "product",
+    "creative"
+   ],
+   "useCases": [
+    "product-shots",
+    "ads"
+   ],
+   "baseModel": "FLUX.1 D",
+   "triggerWords": [
+    "floatprod"
+   ],
+   "stats": {
+    "downloadCount": 25698,
+    "favoriteCount": 1713,
+    "rating": 4.34,
+    "ratingCount": 64,
+    "commentCount": 119
+   },
+   "trendingScore": 58.3,
+   "publishedAt": "2026-04-12T11:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [],
+    "allowNoCredit": true,
+    "allowDerivatives": true,
+    "allowDifferentLicense": false
+   },
+   "files": [
+    {
+     "name": "floating-product-levitation.safetensors",
+     "sizeKB": 162714
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-lora-005",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "lora",
+   "name": "Food Hero Shot",
+   "description": "Sample entry (not a real Civitai model). LoRA for product shots, ads.",
+   "creator": {
+    "username": "sample_creator_05"
+   },
+   "tags": [
+    "food",
+    "menu",
+    "restaurant"
+   ],
+   "useCases": [
+    "product-shots",
+    "ads"
+   ],
+   "baseModel": "SDXL 1.0",
+   "triggerWords": [
+    "foodhero"
+   ],
+   "stats": {
+    "downloadCount": 20013,
+    "favoriteCount": 2859,
+    "rating": 4.14,
+    "ratingCount": 253,
+    "commentCount": 76
+   },
+   "trendingScore": 98.7,
+   "publishedAt": "2026-08-19T06:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image",
+     "RentCivit"
+    ],
+    "allowNoCredit": true,
+    "allowDerivatives": true,
+    "allowDifferentLicense": true
+   },
+   "files": [
+    {
+     "name": "food-hero-shot.safetensors",
+     "sizeKB": 117647
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-lora-006",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "lora",
+   "name": "Billboard Bold Typography",
+   "description": "Sample entry (not a real Civitai model). LoRA for ads.",
+   "creator": {
+    "username": "sample_creator_06"
+   },
+   "tags": [
+    "typography",
+    "billboard",
+    "poster"
+   ],
+   "useCases": [
+    "ads"
+   ],
+   "baseModel": "FLUX.1 D",
+   "triggerWords": [
+    "bbtype"
+   ],
+   "stats": {
+    "downloadCount": 19017,
+    "favoriteCount": 2377,
+    "rating": 4.43,
+    "ratingCount": 234,
+    "commentCount": 70
+   },
+   "trendingScore": 73.2,
+   "publishedAt": "2026-10-12T09:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image"
+    ],
+    "allowNoCredit": true,
+    "allowDerivatives": true,
+    "allowDifferentLicense": false
+   },
+   "files": [
+    {
+     "name": "billboard-bold-typography.safetensors",
+     "sizeKB": 184455
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-lora-007",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "lora",
+   "name": "Retro Print Ad 1960s",
+   "description": "Sample entry (not a real Civitai model). LoRA for ads.",
+   "creator": {
+    "username": "sample_creator_07"
+   },
+   "tags": [
+    "retro",
+    "print",
+    "vintage"
+   ],
+   "useCases": [
+    "ads"
+   ],
+   "baseModel": "SD 1.5",
+   "triggerWords": [
+    "retroad"
+   ],
+   "stats": {
+    "downloadCount": 12015,
+    "favoriteCount": 1001,
+    "rating": 4.34,
+    "ratingCount": 675,
+    "commentCount": 144
+   },
+   "trendingScore": 29.8,
+   "publishedAt": "2026-06-06T14:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image",
+     "Sell"
+    ],
+    "allowNoCredit": false,
+    "allowDerivatives": true,
+    "allowDifferentLicense": true
+   },
+   "files": [
+    {
+     "name": "retro-print-ad-1960s.safetensors",
+     "sizeKB": 32663
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-lora-008",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "lora",
+   "name": "Social Ad Lifestyle",
+   "description": "Sample entry (not a real Civitai model). LoRA for ads, fashion.",
+   "creator": {
+    "username": "sample_creator_08"
+   },
+   "tags": [
+    "lifestyle",
+    "social",
+    "ugc"
+   ],
+   "useCases": [
+    "ads",
+    "fashion"
+   ],
+   "baseModel": "SDXL 1.0",
+   "triggerWords": [
+    "lifead"
+   ],
+   "stats": {
+    "downloadCount": 15810,
+    "favoriteCount": 1317,
+    "rating": 4.34,
+    "ratingCount": 236,
+    "commentCount": 147
+   },
+   "trendingScore": 88.9,
+   "publishedAt": "2026-03-26T10:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image",
+     "Sell",
+     "Rent",
+     "RentCivit"
+    ],
+    "allowNoCredit": false,
+    "allowDerivatives": true,
+    "allowDifferentLicense": true
+   },
+   "files": [
+    {
+     "name": "social-ad-lifestyle.safetensors",
+     "sizeKB": 121712
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-lora-009",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "lora",
+   "name": "Editorial Runway",
+   "description": "Sample entry (not a real Civitai model). LoRA for fashion.",
+   "creator": {
+    "username": "sample_creator_09"
+   },
+   "tags": [
+    "runway",
+    "editorial",
+    "catwalk"
+   ],
+   "useCases": [
+    "fashion"
+   ],
+   "baseModel": "FLUX.1 D",
+   "triggerWords": [
+    "runwayed"
+   ],
+   "stats": {
+    "downloadCount": 58778,
+    "favoriteCount": 7347,
+    "rating": 4.32,
+    "ratingCount": 594,
+    "commentCount": 139
+   },
+   "trendingScore": 33.6,
+   "publishedAt": "2026-10-05T08:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image"
+    ],
+    "allowNoCredit": true,
+    "allowDerivatives": true,
+    "allowDifferentLicense": true
+   },
+   "files": [
+    {
+     "name": "editorial-runway.safetensors",
+     "sizeKB": 122700
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-lora-010",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "lora",
+   "name": "Streetwear Lookbook",
+   "description": "Sample entry (not a real Civitai model). LoRA for fashion, ads.",
+   "creator": {
+    "username": "sample_creator_01"
+   },
+   "tags": [
+    "streetwear",
+    "lookbook",
+    "urban"
+   ],
+   "useCases": [
+    "fashion",
+    "ads"
+   ],
+   "baseModel": "SDXL 1.0",
+   "triggerWords": [
+    "swlook"
+   ],
+   "stats": {
+    "downloadCount": 24523,
+    "favoriteCount": 1886,
+    "rating": 4.18,
+    "ratingCount": 68,
+    "commentCount": 30
+   },
+   "trendingScore": 23.8,
+   "publishedAt": "2026-06-05T16:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image",
+     "Sell"
+    ],
+    "allowNoCredit": false,
+    "allowDerivatives": true,
+    "allowDifferentLicense": true
+   },
+   "files": [
+    {
+     "name": "streetwear-lookbook.safetensors",
+     "sizeKB": 174345
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-lora-011",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "lora",
+   "name": "Fabric Texture Detail",
+   "description": "Sample entry (not a real Civitai model). LoRA for fashion, product shots.",
+   "creator": {
+    "username": "sample_creator_02"
+   },
+   "tags": [
+    "fabric",
+    "texture",
+    "textile"
+   ],
+   "useCases": [
+    "fashion",
+    "product-shots"
+   ],
+   "baseModel": "SDXL 1.0",
+   "triggerWords": [
+    "fabtex"
+   ],
+   "stats": {
+    "downloadCount": 4963,
+    "favoriteCount": 381,
+    "rating": 4.58,
+    "ratingCount": 586,
+    "commentCount": 4
+   },
+   "trendingScore": 71.2,
+   "publishedAt": "2026-09-13T19:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [],
+    "allowNoCredit": false,
+    "allowDerivatives": true,
+    "allowDifferentLicense": true
+   },
+   "files": [
+    {
+     "name": "fabric-texture-detail.safetensors",
+     "sizeKB": 214838
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-lora-012",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "lora",
+   "name": "Flat Lay Apparel",
+   "description": "Sample entry (not a real Civitai model). LoRA for fashion, product shots.",
+   "creator": {
+    "username": "sample_creator_03"
+   },
+   "tags": [
+    "flat lay",
+    "apparel",
+    "ecommerce"
+   ],
+   "useCases": [
+    "fashion",
+    "product-shots"
+   ],
+   "baseModel": "FLUX.1 D",
+   "triggerWords": [
+    "flatlay"
+   ],
+   "stats": {
+    "downloadCount": 18286,
+    "favoriteCount": 1523,
+    "rating": 4.24,
+    "ratingCount": 23,
+    "commentCount": 69
+   },
+   "trendingScore": 97.5,
+   "publishedAt": "2026-08-04T09:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image",
+     "Sell"
+    ],
+    "allowNoCredit": true,
+    "allowDerivatives": true,
+    "allowDifferentLicense": true
+   },
+   "files": [
+    {
+     "name": "flat-lay-apparel.safetensors",
+     "sizeKB": 45894
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-lora-013",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "lora",
+   "name": "Jewelry Sparkle",
+   "description": "Sample entry (not a real Civitai model). LoRA for fashion, product shots.",
+   "creator": {
+    "username": "sample_creator_04"
+   },
+   "tags": [
+    "jewelry",
+    "sparkle",
+    "luxury"
+   ],
+   "useCases": [
+    "fashion",
+    "product-shots"
+   ],
+   "baseModel": "SDXL 1.0",
+   "triggerWords": [
+    "jwlspark"
+   ],
+   "stats": {
+    "downloadCount": 57850,
+    "favoriteCount": 4132,
+    "rating": 4.65,
+    "ratingCount": 176,
+    "commentCount": 97
+   },
+   "trendingScore": 78.6,
+   "publishedAt": "2026-07-27T20:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image"
+    ],
+    "allowNoCredit": true,
+    "allowDerivatives": true,
+    "allowDifferentLicense": true
+   },
+   "files": [
+    {
+     "name": "jewelry-sparkle.safetensors",
+     "sizeKB": 157029
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-lora-014",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "lora",
+   "name": "Twilight Exterior",
+   "description": "Sample entry (not a real Civitai model). LoRA for real estate.",
+   "creator": {
+    "username": "sample_creator_05"
+   },
+   "tags": [
+    "architecture",
+    "twilight",
+    "exterior"
+   ],
+   "useCases": [
+    "real-estate"
+   ],
+   "baseModel": "SDXL 1.0",
+   "triggerWords": [
+    "twiext"
+   ],
+   "stats": {
+    "downloadCount": 837,
+    "favoriteCount": 119,
+    "rating": 4.94,
+    "ratingCount": 871,
+    "commentCount": 80
+   },
+   "trendingScore": 31.6,
+   "publishedAt": "2026-08-16T00:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image",
+     "Sell"
+    ],
+    "allowNoCredit": false,
+    "allowDerivatives": true,
+    "allowDifferentLicense": true
+   },
+   "files": [
+    {
+     "name": "twilight-exterior.safetensors",
+     "sizeKB": 38645
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-lora-015",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "lora",
+   "name": "Bright Interior Staging",
+   "description": "Sample entry (not a real Civitai model). LoRA for real estate.",
+   "creator": {
+    "username": "sample_creator_06"
+   },
+   "tags": [
+    "interior",
+    "staging",
+    "home"
+   ],
+   "useCases": [
+    "real-estate"
+   ],
+   "baseModel": "FLUX.1 D",
+   "triggerWords": [
+    "brightint"
+   ],
+   "stats": {
+    "downloadCount": 6413,
+    "favoriteCount": 458,
+    "rating": 4.79,
+    "ratingCount": 151,
+    "commentCount": 123
+   },
+   "trendingScore": 95.2,
+   "publishedAt": "2026-10-12T09:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image",
+     "Sell",
+     "Rent"
+    ],
+    "allowNoCredit": false,
+    "allowDerivatives": true,
+    "allowDifferentLicense": true
+   },
+   "files": [
+    {
+     "name": "bright-interior-staging.safetensors",
+     "sizeKB": 177014
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-lora-016",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "lora",
+   "name": "Aerial Property View",
+   "description": "Sample entry (not a real Civitai model). LoRA for real estate.",
+   "creator": {
+    "username": "sample_creator_07"
+   },
+   "tags": [
+    "aerial",
+    "drone",
+    "property"
+   ],
+   "useCases": [
+    "real-estate"
+   ],
+   "baseModel": "SDXL 1.0",
+   "triggerWords": [
+    "aerialprop"
+   ],
+   "stats": {
+    "downloadCount": 28530,
+    "favoriteCount": 3170,
+    "rating": 4.74,
+    "ratingCount": 428,
+    "commentCount": 97
+   },
+   "trendingScore": 49.4,
+   "publishedAt": "2026-06-18T23:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image"
+    ],
+    "allowNoCredit": true,
+    "allowDerivatives": true,
+    "allowDifferentLicense": false
+   },
+   "files": [
+    {
+     "name": "aerial-property-view.safetensors",
+     "sizeKB": 76903
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-lora-017",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "lora",
+   "name": "Scandinavian Living Room",
+   "description": "Sample entry (not a real Civitai model). LoRA for real estate, ads.",
+   "creator": {
+    "username": "sample_creator_08"
+   },
+   "tags": [
+    "scandinavian",
+    "interior",
+    "minimal"
+   ],
+   "useCases": [
+    "real-estate",
+    "ads"
+   ],
+   "baseModel": "SD 1.5",
+   "triggerWords": [
+    "scandi"
+   ],
+   "stats": {
+    "downloadCount": 4996,
+    "favoriteCount": 356,
+    "rating": 4.31,
+    "ratingCount": 245,
+    "commentCount": 3
+   },
+   "trendingScore": 16.4,
+   "publishedAt": "2026-08-01T18:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [],
+    "allowNoCredit": true,
+    "allowDerivatives": true,
+    "allowDifferentLicense": false
+   },
+   "files": [
+    {
+     "name": "scandinavian-living-room.safetensors",
+     "sizeKB": 26234
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-lora-018",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "lora",
+   "name": "YouTube Shock Face",
+   "description": "Sample entry (not a real Civitai model). LoRA for thumbnails.",
+   "creator": {
+    "username": "sample_creator_09"
+   },
+   "tags": [
+    "thumbnail",
+    "expression",
+    "youtube"
+   ],
+   "useCases": [
+    "thumbnails"
+   ],
+   "baseModel": "SDXL 1.0",
+   "triggerWords": [
+    "shockface"
+   ],
+   "stats": {
+    "downloadCount": 57137,
+    "favoriteCount": 6348,
+    "rating": 4.35,
+    "ratingCount": 517,
+    "commentCount": 56
+   },
+   "trendingScore": 58.5,
+   "publishedAt": "2026-08-03T16:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image"
+    ],
+    "allowNoCredit": true,
+    "allowDerivatives": true,
+    "allowDifferentLicense": true
+   },
+   "files": [
+    {
+     "name": "youtube-shock-face.safetensors",
+     "sizeKB": 169050
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-lora-019",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "lora",
+   "name": "Thumbnail Pop Outline",
+   "description": "Sample entry (not a real Civitai model). LoRA for thumbnails.",
+   "creator": {
+    "username": "sample_creator_01"
+   },
+   "tags": [
+    "outline",
+    "sticker",
+    "thumbnail"
+   ],
+   "useCases": [
+    "thumbnails"
+   ],
+   "baseModel": "FLUX.1 D",
+   "triggerWords": [
+    "popoutline"
+   ],
+   "stats": {
+    "downloadCount": 31776,
+    "favoriteCount": 2648,
+    "rating": 4.27,
+    "ratingCount": 119,
+    "commentCount": 112
+   },
+   "trendingScore": 41.9,
+   "publishedAt": "2026-06-26T15:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image",
+     "Sell"
+    ],
+    "allowNoCredit": true,
+    "allowDerivatives": true,
+    "allowDifferentLicense": true
+   },
+   "files": [
+    {
+     "name": "thumbnail-pop-outline.safetensors",
+     "sizeKB": 32200
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-lora-020",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "lora",
+   "name": "Neon Gaming Thumbnail",
+   "description": "Sample entry (not a real Civitai model). LoRA for thumbnails, ads.",
+   "creator": {
+    "username": "sample_creator_02"
+   },
+   "tags": [
+    "gaming",
+    "neon",
+    "thumbnail"
+   ],
+   "useCases": [
+    "thumbnails",
+    "ads"
+   ],
+   "baseModel": "SDXL 1.0",
+   "triggerWords": [
+    "neongame"
+   ],
+   "stats": {
+    "downloadCount": 44929,
+    "favoriteCount": 4084,
+    "rating": 4.82,
+    "ratingCount": 131,
+    "commentCount": 65
+   },
+   "trendingScore": 27.2,
+   "publishedAt": "2026-04-02T12:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image",
+     "RentCivit"
+    ],
+    "allowNoCredit": true,
+    "allowDerivatives": true,
+    "allowDifferentLicense": false
+   },
+   "files": [
+    {
+     "name": "neon-gaming-thumbnail.safetensors",
+     "sizeKB": 66100
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-workflow-021",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "workflow",
+   "name": "Product Background Replace",
+   "description": "Sample entry (not a real Civitai model). ComfyUI workflow for product shots, ads.",
+   "creator": {
+    "username": "sample_creator_03"
+   },
+   "tags": [
+    "background",
+    "inpaint",
+    "product"
+   ],
+   "useCases": [
+    "product-shots",
+    "ads"
+   ],
+   "baseModel": "SDXL 1.0",
+   "triggerWords": [],
+   "stats": {
+    "downloadCount": 19054,
+    "favoriteCount": 1465,
+    "rating": 4.83,
+    "ratingCount": 896,
+    "commentCount": 142
+   },
+   "trendingScore": 18.8,
+   "publishedAt": "2026-10-08T02:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image",
+     "Sell"
+    ],
+    "allowNoCredit": true,
+    "allowDerivatives": true,
+    "allowDifferentLicense": true
+   },
+   "files": [
+    {
+     "name": "product-background-replace.json",
+     "sizeKB": 8
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-workflow-022",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "workflow",
+   "name": "Packshot Relight",
+   "description": "Sample entry (not a real Civitai model). ComfyUI workflow for product shots.",
+   "creator": {
+    "username": "sample_creator_04"
+   },
+   "tags": [
+    "relight",
+    "product"
+   ],
+   "useCases": [
+    "product-shots"
+   ],
+   "baseModel": "FLUX.1 D",
+   "triggerWords": [],
+   "stats": {
+    "downloadCount": 6912,
+    "favoriteCount": 531,
+    "rating": 4.53,
+    "ratingCount": 430,
+    "commentCount": 17
+   },
+   "trendingScore": 24.8,
+   "publishedAt": "2026-06-06T13:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image"
+    ],
+    "allowNoCredit": false,
+    "allowDerivatives": true,
+    "allowDifferentLicense": false
+   },
+   "files": [
+    {
+     "name": "packshot-relight.json",
+     "sizeKB": 58
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-workflow-023",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "workflow",
+   "name": "Ad Banner Variations",
+   "description": "Sample entry (not a real Civitai model). ComfyUI workflow for ads.",
+   "creator": {
+    "username": "sample_creator_05"
+   },
+   "tags": [
+    "banner",
+    "variations",
+    "batch"
+   ],
+   "useCases": [
+    "ads"
+   ],
+   "baseModel": "SDXL 1.0",
+   "triggerWords": [],
+   "stats": {
+    "downloadCount": 52254,
+    "favoriteCount": 3732,
+    "rating": 4.7,
+    "ratingCount": 518,
+    "commentCount": 41
+   },
+   "trendingScore": 27.1,
+   "publishedAt": "2026-10-10T13:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image",
+     "Sell"
+    ],
+    "allowNoCredit": false,
+    "allowDerivatives": true,
+    "allowDifferentLicense": false
+   },
+   "files": [
+    {
+     "name": "ad-banner-variations.json",
+     "sizeKB": 55
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-workflow-024",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "workflow",
+   "name": "Virtual Try-On Lite",
+   "description": "Sample entry (not a real Civitai model). ComfyUI workflow for fashion.",
+   "creator": {
+    "username": "sample_creator_06"
+   },
+   "tags": [
+    "try-on",
+    "apparel"
+   ],
+   "useCases": [
+    "fashion"
+   ],
+   "baseModel": "SDXL 1.0",
+   "triggerWords": [],
+   "stats": {
+    "downloadCount": 36333,
+    "favoriteCount": 6055,
+    "rating": 4.15,
+    "ratingCount": 508,
+    "commentCount": 130
+   },
+   "trendingScore": 92.7,
+   "publishedAt": "2026-03-24T10:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [],
+    "allowNoCredit": true,
+    "allowDerivatives": true,
+    "allowDifferentLicense": false
+   },
+   "files": [
+    {
+     "name": "virtual-try-on-lite.json",
+     "sizeKB": 40
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-workflow-025",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "workflow",
+   "name": "Lookbook Batch Restyle",
+   "description": "Sample entry (not a real Civitai model). ComfyUI workflow for fashion, ads.",
+   "creator": {
+    "username": "sample_creator_07"
+   },
+   "tags": [
+    "restyle",
+    "batch",
+    "lookbook"
+   ],
+   "useCases": [
+    "fashion",
+    "ads"
+   ],
+   "baseModel": "FLUX.1 D",
+   "triggerWords": [],
+   "stats": {
+    "downloadCount": 6050,
+    "favoriteCount": 864,
+    "rating": 4.71,
+    "ratingCount": 260,
+    "commentCount": 105
+   },
+   "trendingScore": 20.8,
+   "publishedAt": "2026-05-03T19:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image"
+    ],
+    "allowNoCredit": true,
+    "allowDerivatives": true,
+    "allowDifferentLicense": false
+   },
+   "files": [
+    {
+     "name": "lookbook-batch-restyle.json",
+     "sizeKB": 46
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-workflow-026",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "workflow",
+   "name": "Virtual Staging Empty Room",
+   "description": "Sample entry (not a real Civitai model). ComfyUI workflow for real estate.",
+   "creator": {
+    "username": "sample_creator_08"
+   },
+   "tags": [
+    "staging",
+    "interior",
+    "inpaint"
+   ],
+   "useCases": [
+    "real-estate"
+   ],
+   "baseModel": "SDXL 1.0",
+   "triggerWords": [],
+   "stats": {
+    "downloadCount": 3404,
+    "favoriteCount": 226,
+    "rating": 4.61,
+    "ratingCount": 343,
+    "commentCount": 68
+   },
+   "trendingScore": 28.4,
+   "publishedAt": "2026-04-14T21:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image",
+     "Sell"
+    ],
+    "allowNoCredit": true,
+    "allowDerivatives": true,
+    "allowDifferentLicense": false
+   },
+   "files": [
+    {
+     "name": "virtual-staging-empty-room.json",
+     "sizeKB": 33
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-workflow-027",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "workflow",
+   "name": "Day to Dusk Conversion",
+   "description": "Sample entry (not a real Civitai model). ComfyUI workflow for real estate.",
+   "creator": {
+    "username": "sample_creator_09"
+   },
+   "tags": [
+    "twilight",
+    "exterior",
+    "relight"
+   ],
+   "useCases": [
+    "real-estate"
+   ],
+   "baseModel": "SDXL 1.0",
+   "triggerWords": [],
+   "stats": {
+    "downloadCount": 9377,
+    "favoriteCount": 1339,
+    "rating": 4.11,
+    "ratingCount": 656,
+    "commentCount": 146
+   },
+   "trendingScore": 99.6,
+   "publishedAt": "2026-07-15T10:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image",
+     "Sell",
+     "Rent"
+    ],
+    "allowNoCredit": false,
+    "allowDerivatives": true,
+    "allowDifferentLicense": false
+   },
+   "files": [
+    {
+     "name": "day-to-dusk-conversion.json",
+     "sizeKB": 24
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-workflow-028",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "workflow",
+   "name": "Thumbnail Composer",
+   "description": "Sample entry (not a real Civitai model). ComfyUI workflow for thumbnails.",
+   "creator": {
+    "username": "sample_creator_01"
+   },
+   "tags": [
+    "compose",
+    "text",
+    "thumbnail"
+   ],
+   "useCases": [
+    "thumbnails"
+   ],
+   "baseModel": "FLUX.1 D",
+   "triggerWords": [],
+   "stats": {
+    "downloadCount": 9480,
+    "favoriteCount": 861,
+    "rating": 4.36,
+    "ratingCount": 468,
+    "commentCount": 141
+   },
+   "trendingScore": 73.3,
+   "publishedAt": "2026-08-03T07:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image"
+    ],
+    "allowNoCredit": true,
+    "allowDerivatives": true,
+    "allowDifferentLicense": true
+   },
+   "files": [
+    {
+     "name": "thumbnail-composer.json",
+     "sizeKB": 49
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-workflow-029",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "workflow",
+   "name": "Face Close-up Upscale for Thumbnails",
+   "description": "Sample entry (not a real Civitai model). ComfyUI workflow for thumbnails.",
+   "creator": {
+    "username": "sample_creator_02"
+   },
+   "tags": [
+    "upscale",
+    "face",
+    "thumbnail"
+   ],
+   "useCases": [
+    "thumbnails"
+   ],
+   "baseModel": "SD 1.5",
+   "triggerWords": [],
+   "stats": {
+    "downloadCount": 35464,
+    "favoriteCount": 3546,
+    "rating": 4.94,
+    "ratingCount": 126,
+    "commentCount": 36
+   },
+   "trendingScore": 33.8,
+   "publishedAt": "2026-03-22T17:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image",
+     "Sell"
+    ],
+    "allowNoCredit": true,
+    "allowDerivatives": true,
+    "allowDifferentLicense": true
+   },
+   "files": [
+    {
+     "name": "face-close-up-upscale-for-thumbnails.json",
+     "sizeKB": 17
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  },
+  {
+   "id": "sample-civitai-workflow-030",
+   "source": "civitai",
+   "sourceId": null,
+   "sample": true,
+   "type": "workflow",
+   "name": "Seasonal Campaign Restyle",
+   "description": "Sample entry (not a real Civitai model). ComfyUI workflow for ads, product shots.",
+   "creator": {
+    "username": "sample_creator_03"
+   },
+   "tags": [
+    "seasonal",
+    "campaign",
+    "restyle"
+   ],
+   "useCases": [
+    "ads",
+    "product-shots"
+   ],
+   "baseModel": "SDXL 1.0",
+   "triggerWords": [],
+   "stats": {
+    "downloadCount": 18648,
+    "favoriteCount": 1695,
+    "rating": 4.28,
+    "ratingCount": 669,
+    "commentCount": 69
+   },
+   "trendingScore": 55.5,
+   "publishedAt": "2026-07-20T06:00:00Z",
+   "nsfw": false,
+   "license": {
+    "allowCommercialUse": [
+     "Image",
+     "RentCivit"
+    ],
+    "allowNoCredit": false,
+    "allowDerivatives": true,
+    "allowDifferentLicense": true
+   },
+   "files": [
+    {
+     "name": "seasonal-campaign-restyle.json",
+     "sizeKB": 11
+    }
+   ],
+   "url": null,
+   "downloadUrl": null,
+   "posterUrl": null
+  }
+ ]
+}

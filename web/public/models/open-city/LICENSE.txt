@@ -1,0 +1,8 @@
+open-city.glb: pieces from five CC0 kits, scaled to metres, deduped, textures resized to 1024 px (WebP), quantized and meshopt-compressed
+by scripts/assets/build-open-city.mjs. Licence of every kit: CC0 1.0 Universal (public domain dedication), https://creativecommons.org/publicdomain/zero/1.0/
+- KayKit City Builder Bits, Kay Lousberg: https://kaylousberg.itch.io/city-builder-bits
+- City Kit (Commercial), Kenney: https://kenney.nl/assets/city-kit-commercial
+- City Kit (Suburban), Kenney: https://kenney.nl/assets/city-kit-suburban
+- Car Kit, Kenney: https://kenney.nl/assets/car-kit
+- Nature Kit, Kenney: https://kenney.nl/assets/nature-kit
+thumb-*.jpg: frames drawn by the app from this map.

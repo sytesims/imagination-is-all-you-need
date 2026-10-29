@@ -1,0 +1,373 @@
+/* Create Image canvas, 2026-10-21 pass (scoped to .ic.ic2; loads after styles.css, so equal-weight rules win).
+ * One place per job: a justified history grid (newest first) under a floating composer. The grid's bottom padding follows the dock's
+ * measured height (--ic-dock-h, set by ImageCanvas), so nothing is ever hidden behind the composer at any width. Results open large in a viewer.
+ * Tokens: tokens.css (surfaces, hairlines, accent, motion). */
+
+/* ---- page + grid ---- */
+html body .ic.ic2{padding-bottom:0}
+html body .ic.ic2 .ic-stage{padding-bottom:calc(var(--ic-dock-h, 140px) + 40px)}
+html body .ic.ic2 .ic-stage:has(.ic-work){max-width:none;padding:12px 16px calc(var(--ic-dock-h, 140px) + 40px)}
+html body .ic.ic2 .ic-work.ic-work2{display:block}
+html body .ic.ic2 .ic-gal-h{display:flex;align-items:center;gap:8px;margin:0 2px 12px}
+html body .ic.ic2 .ic-gal-live{margin-left:auto} /* the queue activity pill (Edge QueueLine) */
+
+/* justified rows: each tile grows in proportion to its aspect ratio (--ar), rows stay one height; the filler keeps the last row from stretching */
+html body .ic.ic2 .ic-feed.ic-jfeed{display:flex;flex-wrap:wrap;gap:4px;margin:0}
+html body .ic.ic2 .ic-jfeed .ic-tile{--h:240px;position:relative;flex:calc(var(--ar,1) * 100) 1 calc(var(--ar,1) * var(--h));aspect-ratio:var(--ar,1);min-width:0;max-height:calc(var(--h) * 1.5);border-radius:10px;overflow:hidden;background:var(--surface-2);border:0;outline:0}
+html body .ic.ic2 .ic-jfeed .ic-jfill{flex:100000 1 0;height:0}
+@media (min-width:1600px){html body .ic.ic2 .ic-jfeed .ic-tile{--h:300px}}
+@media (max-width:700px){html body .ic.ic2 .ic-stage:has(.ic-work){padding:8px 8px calc(var(--ic-dock-h, 180px) + 24px)}html body .ic.ic2 .ic-jfeed{gap:3px}html body .ic.ic2 .ic-jfeed .ic-tile{--h:100px;border-radius:8px}html body .ic.ic2 .ic-jfeed .ic-fail small{display:none}}
+html body .ic.ic2 .ic-jfeed .ic-tile.on{box-shadow:inset 0 0 0 2px var(--accent)}
+html body .ic.ic2 .ic-tile-hit{position:absolute;inset:0}
+html body .ic.ic2 .ic-tile-hit img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+
+/* failed tile: marked, calm, readable */
+html body .ic.ic2 .ic-tile.st-failed,html body .ic.ic2 .ic-tile.st-blocked{background:repeating-linear-gradient(135deg,var(--surface-2) 0 10px,var(--surface) 10px 20px);border:1px solid var(--hairline)}
+html body .ic.ic2 .ic-fail{display:grid;justify-items:center;align-content:center;gap:6px;padding:14px;text-align:center;font:500 12px/16px var(--font-ui);color:var(--text)}
+html body .ic.ic2 .ic-fail b{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:rgba(255,92,92,.14);color:#ff8a8a;font:700 13px/1 var(--font-ui)}
+html body .ic.ic2 .ic-fail small{color:var(--text-2);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;max-width:220px}
+
+/* ---- running / queued / canceled tile: the shared generating tile (shared/GenTile.tsx, TRANSPARENCY-PLAN 4i) ---- */
+
+
+/* ---- composer (items 1, 3, 7) ---- */
+/* every chip reachable: the row wraps instead of scrolling chips out of sight */
+/* one row, scrolling sideways like the reference; a › button and an edge fade show more chips are hidden */
+html body .ic.ic2 .ic-dock .ic-main{position:relative}
+html body .ic.ic2 .ic-dock .ic-chips{flex-wrap:nowrap!important;overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:none;padding-right:36px;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 56px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 56px),transparent)}
+html body .ic.ic2 .ic-dock .ic-chips::-webkit-scrollbar{display:none}
+html body .ic.ic2 .ic-dock .ic-chips>*{flex:0 0 auto}
+html body .ic.ic2 .ic-dock .ic-chip.ro-chip{max-width:200px}
+html body .ic.ic2 .ic-dock .ic-set{display:none}
+html body .ic.ic2 .ic-set-n{font:600 10px/1 var(--font-ui);margin-left:2px;color:var(--text-2)}
+/* phone: aspect, quality, resolution, batch and enhance fold behind one Settings button (the reference does the same) */
+@media (max-width:700px){
+  html body .ic.ic2 .ic-dock .ic-fold{display:none!important}
+  html body .ic.ic2 .ic-dock .ic-set{display:inline-flex!important;width:auto!important;padding:0 10px!important;gap:4px}
+}
+html body .ic-pop-set{display:grid;gap:8px;min-width:260px;max-width:calc(100vw - 32px);padding:12px}
+html body .ic-pop-set .ic-set-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+html body .ic-pop-set .ic-set-row{display:flex;flex-wrap:wrap;gap:4px}
+html body .ic-pop-set .ic-set-row .ic-opt,html body .ic-pop-set .ic-set-grid .ic-opt{justify-content:center;min-height:36px}
+html body .ic-pop-cnt .ic-cnt-row{display:flex;gap:4px}
+html body .ic-pop-cnt .ic-cnt-row .ic-opt.on{background:var(--state-fill,rgba(255,255,255,.1));color:var(--accent,#FF7A1A)}
+html body .ic-pop-cnt .ic-cnt-row .ic-opt{justify-content:center;min-width:40px;min-height:36px;padding:0 10px}
+html body .ic-pop-set .ic-set-count{display:inline-flex;align-items:center;justify-self:start;gap:8px;height:36px;padding:0 6px;border-radius:var(--r-md);background:var(--state-fill)}
+html body .ic-pop-set .ic-set-count button{all:unset;cursor:pointer;width:28px;height:28px;display:grid;place-items:center;border-radius:6px}
+html body .ic-pop-set .ic-set-count button:disabled{opacity:.35;cursor:default}
+html body .ic-pop-set .ic-set-enh{justify-self:start}
+
+/* item 7: the local-fit summary and the default-model note share one slim footer line inside the composer (no boxed strip) */
+@media (min-width:701px){
+  html body .ic.ic2 .ic-dock.ic-dock>.ic-local .loc-c{flex:0 1 auto!important;order:98}
+  /* alone (no default-model note beside it) the footer still takes its own line, so the prompt keeps the row's width */
+  html body .ic.ic2 .ic-dock.ic-dock:not(:has(>.ic-default-fb))>.ic-local .loc-c{flex:1 1 100%!important}
+  html body .ic.ic2 .ic-dock.ic-dock>.ic-main{min-width:320px}
+  html body .ic.ic2 .ic-dock .ic-local .loc-sum{height:24px!important;padding:0!important;background:none!important;border:0!important;gap:8px!important;color:var(--text-2)}
+  html body .ic.ic2 .ic-dock .ic-local .loc-sum .btn{height:24px!important;min-height:24px!important;padding:0 8px!important;background:var(--state-fill)!important;border:0!important;border-radius:6px!important}
+  html body .ic.ic2 .ic-dock.ic-dock>.ic-default-fb{flex:1 1 0!important;order:99;min-width:200px;align-self:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-3)!important}
+}
+@media (max-width:700px){
+  html body .ic.ic2 .ic-dock .ic-local .loc-sum{background:none!important;border:0!important;padding:0!important}
+  html body .ic.ic2 .ic-dock.ic-dock>.ic-default-fb{display:none}
+  html body .ic.ic2 .ic-dock .ic-local .loc-sum .loc-intent,html body .ic.ic2 .ic-dock .ic-local .loc-sum .fit-cloud{display:none!important}
+  html body .ic.ic2 .ic-dock .ic-local .loc-sum{height:32px!important}
+  html body .ic.ic2 .ic-dock .ic-local .loc-sum .btn{height:32px!important;min-height:32px!important}
+}
+html body .ic.ic2 .ic-jfeed .ic-tile{text-transform:none}
+@media (max-width:700px){html body .ic.ic2 .ic-jfeed .ic-tile.st-running,html body .ic.ic2 .ic-jfeed .ic-tile.st-queued{flex:1 1 100%;aspect-ratio:auto;height:128px;max-height:none}}
+/* Composer behaviour pass: the prompt grows line by line up to 20dvh, at least 40px (the logged-in
+ * reference: 216px at 1080 tall, 160px at 800; 120px on phones), then scrolls inside with the slim .prompt-field scrollbar; scrolling it never scrolls the page behind. */
+html body .ic.ic2 .ic-dock .ic-prompt.prompt-field{max-height:max(40px,20vh);max-height:max(40px,20dvh);overscroll-behavior:contain}
+/* no boxed field: the text sits straight on the dock, left-aligned with the chip row, large and airy */
+html body .ic.ic2 .ic-dock .ic-prompt.prompt-field,html body .ic.ic2 .ic-dock .ic-prompt.prompt-field:hover,html body .ic.ic2 .ic-dock .ic-prompt.prompt-field:focus,html body .ic.ic2 .ic-dock .ic-prompt.prompt-field:focus-visible{background:none!important;border:0!important;border-radius:0!important;box-shadow:none!important;outline:none}
+html body .ic.ic2 .ic-dock .ic-prompt.prompt-field{min-height:52px!important;padding:0 2px!important;font:400 16px/1.6 var(--font-sans)!important;color:var(--text-1)!important;caret-color:var(--accent)}
+@media (max-width:640px){html body .ic.ic2 .ic-dock .ic-prompt.prompt-field{max-height:120px}}
+/* the count reads "1/4" (value / most per run), and the prompt-enhance chip reads On / Off */
+html body .ic.ic2 .ic-count .ic-count-max{color:var(--text-3);font-weight:400;font-size:inherit}
+html body .ic.ic2 .ic-dock .ic-enh-tog{gap:6px}
+html body .ic.ic2 .ic-dock .ic-enh-tog svg{color:var(--text-3)}
+html body .ic.ic2 .ic-dock .ic-enh-tog.on svg{color:var(--accent)}
+/* References (the image picker): a panel above the dock at its full width (not a modal), so the prompt stays visible */
+@media (min-width:701px){
+  html body .ic.ic2 .ic-dock .ic-ref-scrim{position:absolute;inset:auto 0 calc(100% + 8px) 0;padding:0;background:none;display:block;pointer-events:none;z-index:5}
+  html body .ic.ic2 .ic-dock .ic-ref{pointer-events:auto;box-sizing:border-box;width:100%;height:min(440px,calc(100vh - var(--ic-dock-h, 140px) - 96px))}
+}
+/* phones: the tabs scroll sideways so the close button always stays in reach */
+@media (max-width:700px){
+  html body .ic.ic2 .ic-dock .ic-ref-top{display:flex;align-items:center;gap:8px}
+  html body .ic.ic2 .ic-dock .ic-ref-tabs{flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none}
+  html body .ic.ic2 .ic-dock .ic-ref-tabs::-webkit-scrollbar{display:none}
+  html body .ic.ic2 .ic-dock .ic-ref-x{flex:0 0 auto}
+}
+/* the missing-files pill: brand orange (green means ready / working only) */
+html body .ic-dock .loc-sum .loc-intent.loc-need{flex:0 0 auto;display:inline-flex;align-items:center;padding:1px 8px;border-radius:999px;border:1px solid rgba(255,122,26,.4);color:var(--accent,#FF7A1A);font-weight:600;font-size:11px;line-height:16px;opacity:1}
+/* phones hide the long intent text, but the short "Download needed · 20 GB" pill stays: it's the reason for the Download button */
+@media (max-width:700px){html body .ic.ic2 .ic-dock .ic-local .loc-sum .loc-intent.loc-need{display:inline-flex!important;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+/* ---- Dock: the measured reference shape ----
+ * Desktop (≥701px; phones keep their column layout, where .ic-frame / .ic-panel / .ic-pair are display:contents).
+ * Wrapper: fixed, centred, 16px off the bottom, 880px at most at every window width; transparent, it only stacks the slim notes line
+ *   above the dock itself.
+ * Frame: 4px padding, radius 20, rgb(28,30,33). Panel: 12px padding, radius 16, rgb(39,41,44), a bottom-aligned row with 12px gaps:
+ *   left column (prompt row, 12px, 32px chip row), then a 120×80 Generate.
+ *   Empty prompt: 4 + 12 + (48 + 12 + 32) + 12 + 4 = 124px.
+ * Wins over the older scattered .ic-dock rules in styles.css by specificity (html body .ic.ic2 … .ic-dock.ic-dock). */
+@media (min-width:701px){
+  html body .ic.ic2 .ic-dock.ic-dock.ic-dock{box-sizing:border-box;width:calc(100vw - 32px)!important;max-width:880px!important;min-height:0!important;height:auto;bottom:calc(var(--tabbar-show,0px) + 16px + env(safe-area-inset-bottom))!important;padding:0!important;background:none!important;border:0!important;border-radius:0!important;box-shadow:none!important;display:flex!important;flex-direction:row!important;flex-wrap:wrap!important;align-items:center!important;justify-content:flex-start;column-gap:6px!important;row-gap:8px!important}
+  html body .ic.ic2 .ic-dock.ic-dock.ic-dock>.ic-frame{order:1000!important;flex:0 0 100%;box-sizing:border-box;min-width:0;padding:4px;border-radius:20px;background:rgb(28,30,33);box-shadow:0 32px 24px rgba(0,0,0,.15)}
+  html body .ic.ic2 .ic-dock .ic-panel{box-sizing:border-box;display:flex;flex-direction:row;align-items:flex-end;gap:12px;padding:12px;border-radius:16px;background:rgb(39,41,44)}
+  /* left column: the prompt row (4px padding) and the chip row, 12px apart */
+  html body .ic.ic2 .ic-dock .ic-panel>.ic-main{position:relative;flex:1 1 0;min-width:0;align-self:flex-end;display:flex;flex-direction:column;justify-content:flex-end;gap:12px}
+  html body .ic.ic2 .ic-dock .ic-panel>.ic-main>.ic-prompt.prompt-field{box-sizing:border-box;display:block;width:calc(100% - 8px)!important;margin:4px!important;padding:0!important;min-height:40px!important;max-height:max(40px,20vh);max-height:max(40px,20dvh);font:400 14px/20px var(--font-ui)!important;color:#fff!important}
+  html body .ic.ic2 .ic-dock .ic-panel>.ic-main>.ic-prompt.prompt-field::placeholder{color:rgba(255,255,255,.4)}
+
+  /* chip row: 32px, 4px apart, scrolls sideways; the ‹ › buttons (28×28) only show while it overflows */
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips{box-sizing:border-box;height:32px;min-height:32px;gap:4px!important;align-items:center!important;padding-top:0;padding-bottom:0}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips.ic-chips{padding-left:0;scroll-padding-left:calc(var(--ic-fix-w,0px) + 32px);scroll-padding-right:32px}
+  /* [+ | @] and the model never scroll: a sticky group on the panel colour, the settings track scrolls under it */
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-fixed{position:sticky;left:0;z-index:2;flex:0 0 auto;display:inline-flex;align-items:center;gap:4px;height:32px;background:rgb(39,41,44);box-shadow:4px 0 0 rgb(39,41,44)}
+  /* ‹ just after the fixed group, over the start of the track (only once scrolled); › pinned at the column's right end, before Generate */
+
+  /* every chip: 32px, radius 8, the state fill, no border; option chips 6px 12px, 16/24 regular, 16px icon, 4px gap */
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip{box-sizing:border-box;flex:0 0 auto;height:32px!important;min-height:32px!important;min-width:0;width:auto;padding:6px 12px!important;gap:4px!important;border-radius:8px!important;background:var(--state-fill)!important;border:0!important;box-shadow:none!important;color:#fff!important;font:400 16px/24px var(--font-ui)!important;letter-spacing:0;white-space:nowrap}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip:hover,html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.on{background:var(--state-hover)!important}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip:focus-visible,html body .ic.ic2 .ic-dock .ic-panel .ic-count button:focus-visible,html body .ic.ic2 .ic-dock .ic-panel .ic-enh-btn .enhance-btn:focus-visible{outline:2px solid var(--accent)!important;outline-offset:-2px;box-shadow:none!important}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip svg{flex:0 0 16px;width:16px;height:16px}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip>span[aria-hidden]:not(.ic-shape):not(.ic-st-thumb){display:inline-grid;place-items:center;flex:0 0 16px;width:16px;height:16px;font-size:14px;line-height:16px;opacity:.8}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip>.ic-shape{margin:0 1px}
+  /* a value the model can't change (one aspect / one resolution / follows the photo) reads as plain text, not a button */
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-static,html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-static:hover{color:var(--text-2,#b4b5b8)!important;cursor:default;background:transparent!important;padding-left:6px!important;padding-right:6px!important}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ro-chip{max-width:200px}
+
+  /* [+ | @]: one 65px pill, two 32×32 icon buttons and a 1×16 divider */
+  html body .ic.ic2 .ic-dock .ic-panel .ic-pair{flex:0 0 auto;display:inline-flex;align-items:center;height:32px;border-radius:8px;background:var(--state-fill)}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-pair>.ic-chip.ic-sq{position:relative;width:32px!important;min-width:32px!important;padding:0!important;justify-content:center;background:transparent!important}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-pair>.ic-chip.ic-sq:hover,html body .ic.ic2 .ic-dock .ic-panel .ic-pair>.ic-chip.ic-sq[aria-expanded=true]{background:var(--state-hover)!important}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-pair-div{flex:0 0 1px;width:1px;height:16px;background:rgba(255,255,255,.12)}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-pair .ic-ref-n{position:absolute;top:1px;right:1px;margin:0;min-width:12px;padding:0 3px;border-radius:6px;background:var(--accent);color:var(--on-accent);font:700 9px/12px var(--font-ui);text-align:center}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-pair .ic-ref-n[data-n="0"]{display:none}
+
+  /* model: 12px side padding, 16/24 medium at 60% white, a 16px maker logo and a › caret */
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-model{max-width:240px;padding:4px 12px!important;gap:6px!important;font:500 16px/24px var(--font-ui)!important;color:rgba(255,255,255,.6)!important}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-model .ic-dot{box-sizing:border-box;flex:0 0 16px;width:16px!important;height:16px!important;min-height:0!important;border-radius:4px}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-model .ic-dot svg{width:12px;height:12px}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-model .ic-caret{opacity:1}
+
+  /* the one-shot Enhance rewrite (our extra) and the style chip, as 32px chips too */
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-enh-btn{flex:0 0 auto;display:inline-flex}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-enh-btn .enhance-btn{box-sizing:border-box;width:32px!important;height:32px!important;min-height:32px!important;padding:0!important;border-radius:8px!important;justify-content:center;background:var(--state-fill)!important;border:0!important;font-size:0!important}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-enh-btn .enhance-btn:hover{background:var(--state-hover)!important}
+    html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-enh-tog svg{color:rgba(255,255,255,.6)}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-enh-tog.on svg{color:var(--accent)}
+  html body .ic.ic2 .ic-dock:not(.ic-cards) .ic-panel .ic-chips .ic-more-m{display:inline-flex!important}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-more{width:auto!important;min-width:32px!important;justify-content:center}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-more:not(:has(.ic-st-thumb)){width:32px!important;padding:0!important}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-more .ic-st-thumb{flex:0 0 16px;width:16px;height:16px;border-radius:4px;background-size:cover;background-position:center}
+
+  /* count stepper: a 98×32 box (10px 12px padding), − 1/4 + with 16px grey icons */
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-cnt{flex:0 0 auto;width:auto!important;min-width:32px!important;padding:0 8px!important;gap:3px!important;justify-content:center;color:#fff}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-cnt b{font:500 14px/20px var(--font-ui)}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-cnt svg{opacity:.7}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-count{box-sizing:border-box;flex:0 0 98px;width:98px;height:32px;padding:10px 12px;display:inline-flex;align-items:center;justify-content:space-between;gap:0;border-radius:8px;background:var(--state-fill);font:500 14px/12px var(--font-ui);color:#fff}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-count button{box-sizing:border-box;width:16px;height:16px;min-width:16px;padding:0;margin:0;display:grid;place-items:center;border:0;border-radius:4px;background:none;color:rgb(137,138,139);cursor:pointer;transition:color var(--fast,.15s)}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-count button:hover:not(:disabled){color:#fff}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-count button:disabled{opacity:.4;cursor:default}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-count button svg{width:16px;height:16px}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-count b{min-width:0;font:500 14px/12px var(--font-ui);text-align:center}
+
+  /* Generate: 120×80 in its own bottom-aligned slot (not the full height), radius 12, label 12/18 bold in the display font, price under it */
+  html body .ic.ic2 .ic-dock .ic-panel>.ic-gen.gen-btn,html body .ic.ic2 .ic-dock .ic-panel>.ic-nokey{box-sizing:border-box;flex:0 0 120px!important;align-self:flex-end!important;width:120px!important;min-width:120px!important;max-width:120px;height:80px!important;min-height:80px!important;padding:14px 12px 16px!important;border-radius:12px!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:2px!important;margin:0}
+  html body .ic.ic2 .ic-dock .ic-panel>.ic-gen .gen-l{font:700 12px/18px var(--font-display)!important;letter-spacing:.02em;text-transform:none}
+  html body .ic.ic2 .ic-dock .ic-panel>.ic-gen small,html body .ic.ic2 .ic-dock .ic-panel>.ic-nokey small{font:500 12px/16px var(--font-ui)!important;opacity:.85!important}
+  html body .ic.ic2 .ic-dock .ic-panel>.ic-gen:focus-visible,html body .ic.ic2 .ic-dock .ic-panel>.ic-nokey:focus-visible{outline:2px solid var(--accent)!important;outline-offset:2px}
+  html body .ic.ic2 .ic-dock .ic-panel>.ic-nokey{font:700 12px/18px var(--font-display)!important}
+
+  /* cards (none in use since the Character card left with Elements, 2026-10-23): 80px tall, between the left column and Generate */
+  html body .ic.ic2 .ic-dock .ic-panel>.ic-card{display:flex;flex:0 0 80px;width:80px;height:80px;align-self:flex-end;border-radius:12px}
+
+  /* the notes (local fit / download pill, Download, Use cloud, ETA, key and price notes): ONE slim quiet line just above the dock,
+   * so the dock itself keeps its 124px shape. Each piece is a small 28px tag and truncates rather than wrapping. */
+  html body .ic.ic2 .ic-dock.ic-dock.ic-dock>:not(.ic-frame):not(.ic-local):not(.ic-ref-scrim):not(.sr-only-vis):not(.ic-attach):not(.ic-minver-dock){order:10!important;flex:0 1 auto!important;min-width:0!important;max-width:100%!important;align-self:center!important;margin:0!important;box-sizing:border-box;height:28px;padding:0 10px!important;border-radius:8px;background:rgba(28,30,33,.92)!important;border:0!important;font:400 12px/28px var(--font-ui)!important;color:var(--text-3,#8b8b92)!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left!important}
+  html body .ic.ic2 .ic-dock.ic-dock.ic-dock>.demo-note{display:inline-flex!important;align-items:center!important;gap:6px!important;padding-right:4px!important}
+  html body .ic.ic2 .ic-dock.ic-dock.ic-dock>.demo-note .cn-t{min-width:0;overflow:hidden;text-overflow:ellipsis}
+  html body .ic.ic2 .ic-dock.ic-dock.ic-dock>.demo-note .cn-i{flex:0 0 20px;width:20px;height:20px;padding:0;margin:0;display:grid;place-items:center;border-radius:6px}
+  html body .ic.ic2 .ic-dock.ic-dock.ic-dock>.ic-local .loc-c,html body .ic.ic2 .ic-dock.ic-dock.ic-dock:not(:has(>.ic-default-fb))>.ic-local .loc-c{order:5!important;flex:0 1 auto!important;min-width:0;max-width:100%;margin:0!important}
+  html body .ic.ic2 .ic-dock.ic-dock.ic-dock>.ic-local.ic-local-wait{order:5;flex:0 0 0!important;min-height:28px!important;margin:0!important}
+  html body .ic.ic2 .ic-dock .ic-local .loc-sum{box-sizing:border-box;height:28px!important;padding:0 4px 0 10px!important;gap:8px!important;border-radius:8px!important;background:rgba(28,30,33,.92)!important;border:0!important;font:400 12px/16px var(--font-ui)!important;color:var(--text-2)}
+  html body .ic.ic2 .ic-dock .ic-local .loc-sum .fit-tag{margin-left:0}
+  html body .ic.ic2 .ic-dock .ic-local .loc-sum .btn{height:22px!important;min-height:22px!important;padding:0 8px!important;border-radius:6px!important;background:var(--state-fill)!important;border:0!important;font:500 12px/16px var(--font-ui)!important}
+  html body .ic.ic2 .ic-dock .ic-local .loc-sum .btn:hover{background:var(--state-hover)!important}
+  html body .ic.ic2 .ic-dock .ic-local .loc-sum .loc-tgl{margin-left:0}
+}
+/* phones: the frame, panel and [+ | @] pair add no boxes, so the phone composer lays out exactly as before */
+@media (max-width:700px){
+  html body .ic.ic2 .ic-dock .ic-frame,html body .ic.ic2 .ic-dock .ic-panel,html body .ic.ic2 .ic-dock .ic-pair,html body .ic.ic2 .ic-dock .ic-fixed{display:contents}
+  /* the same chip order as before on phones: +, @, model, run-on, Settings, style */
+  html body .ic.ic2 .ic-dock .ic-chips .ic-pair>.ic-chip,html body .ic.ic2 .ic-dock .ic-chips .ic-chip.ic-model{order:-3}
+  html body .ic.ic2 .ic-dock .ic-chips>.ro-chip{order:-2}
+  html body .ic.ic2 .ic-dock .ic-chips>.ic-set{order:-1}
+  html body .ic.ic2 .ic-dock .ic-pair-div{display:none}
+  html body .ic.ic2 .ic-dock .ic-pair .ic-chip svg.ic-pi{width:16px;height:16px;flex:0 0 16px}
+}
+
+/* ---- PARITY-A wave 2 (A5, A7, prompt height) ---- */
+@media (min-width:701px){
+  /* A7: the model chip has no fill (16px logo, 14/20 label, chevron); hover / open still light it */
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-model{background:transparent!important;font:500 14px/20px var(--font-ui)!important}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-model:hover,html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-model.on{background:var(--state-hover)!important}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip>svg:not(.ic-caret):not(.ic-pi){opacity:.8}
+  /* A7: the Generate label reads GENERATE (uppercase 12/18 bold), as on the reference's docked bar */
+  html body .ic.ic2 .ic-dock .ic-panel>.ic-gen .gen-l{text-transform:uppercase}
+  /* the one-shot Enhance chip: our sparkle icon instead of a text glyph */
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-enh-btn .enhance-btn::before{content:none}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-enh-btn .enhance-btn svg{flex:0 0 16px;width:16px;height:16px}
+}
+/* A5: the aspect popover is one column (shape icon, label, trailing check), 200px wide, with a grey sentence-case title */
+html body .apop .ic-pop-sm.ic-pop-ar.ic-pop-list{display:flex!important;flex-direction:column;gap:2px;width:198px!important;padding:6px!important}
+html body .apop .ic-pop-sm.ic-pop-ar.ic-pop-list .ic-opt{min-height:36px;padding:8px 10px!important;gap:10px;color:#fff}
+html body .apop .ic-pop-sm.ic-pop-ar.ic-pop-list .ic-opt.on,html body .apop .ic-pop-sm.ic-pop-ar.ic-pop-list .ic-opt.on>b{color:#fff!important;background:var(--state-fill,rgba(255,255,255,.06))}
+html body .apop .ic-pop-sm.ic-pop-ar.ic-pop-list .ic-opt.on>b{background:none}
+html body .apop .ic-pop-sm.ic-pop-ar.ic-pop-list .ic-opt>.mp-check{display:inline-grid;margin-left:auto;color:var(--accent,#FF7A1A)}
+html body .apop .ic-pop-sm.ic-pop-ar.ic-pop-list .ic-ar-ic{flex:0 0 16px;width:16px;height:16px;display:inline-grid;place-items:center;opacity:.8}
+html body .apop .ic-pop-sm.ic-pop-list>.ic-pop-h,html body .apop .ic-pop-sm.ic-pop-300>.ic-pop-h{text-transform:none!important;letter-spacing:0!important;font:500 12px/18px var(--font-ui)!important;color:rgb(137,138,139)!important;opacity:1}
+/* A5: quality and resolution are 300px wide: each row a title over a grey line, the check at the end */
+html body .apop .ic-pop-sm.ic-pop-300{width:298px!important} /* 300 with the 1px border */
+html body .apop .ic-pop-sm.ic-pop-300 .ic-opt{display:grid!important;grid-template-columns:minmax(0,1fr) auto;column-gap:8px;row-gap:2px;align-items:center;min-height:54px;padding:8px 12px!important}
+html body .apop .ic-pop-sm.ic-pop-300 .ic-opt>b{grid-column:1;grid-row:1;font:500 14px/20px var(--font-ui)}
+html body .apop .ic-pop-sm.ic-pop-300 .ic-opt>small{grid-column:1;grid-row:2;font:400 12px/16px var(--font-ui);color:rgb(137,138,139);opacity:1}
+html body .apop .ic-pop-sm.ic-pop-300 .ic-opt>.mp-check{grid-column:2;grid-row:1/3;margin:0}
+html body .apop .ic-pop-sm.ic-pop-300 .ic-opt.on,html body .apop .ic-pop-sm.ic-pop-300 .ic-opt.on>b{color:#fff!important}
+html body .apop.apop-sheet .ic-pop-sm.ic-pop-ar.ic-pop-list,html body .apop.apop-sheet .ic-pop-sm.ic-pop-300{width:auto!important}
+/* A10 asset panel (PARITY-A C-13, C-18, C-19): round tab pills with a white selected tab; Recent / All and Sort by under the tabs;
+   grey skeleton tiles while each tile's image loads */
+html body .ic-ref .ic-ref-tabs{gap:4px}
+html body .ic-ref .ic-ref-tabs button{height:32px;padding:0 12px;border-radius:999px;background:transparent;color:rgba(255,255,255,.62);opacity:1;font:600 12px/32px var(--font-ui);white-space:nowrap;transition:background-color var(--t-state,.15s) ease,color var(--t-state,.15s) ease}
+html body .ic-ref .ic-ref-tabs button:hover:not(.on){color:#fff;background:rgba(255,255,255,.06)}
+html body .ic-ref .ic-ref-tabs button.on{background:#fff;color:#111214}
+html body .ic-ref .ic-ref-tabs button:focus-visible,html body .ic-ref .ic-ref-x:focus-visible{outline:var(--focus-ring-w,2px) solid var(--focus-ring-color,#fff);outline-offset:2px}
+html body .ic-ref .ic-ref-x{border-radius:999px;display:grid;place-items:center;line-height:1}
+html body .ic-ref .ic-ref-sub{flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;border-bottom:1px solid #2e2f33}
+html body .ic-ref .ic-ref-scope{display:flex;gap:2px}
+html body .ic-ref .ic-ref-scope button{height:28px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:rgba(255,255,255,.6);font:500 12px/28px var(--font-ui);cursor:pointer}
+html body .ic-ref .ic-ref-scope button:hover:not(.on){color:#fff}
+html body .ic-ref .ic-ref-scope button.on{background:rgba(255,255,255,.08);color:#fff}
+html body .ic-ref .ic-ref-sortw{position:relative}
+html body .ic-ref .ic-ref-sort{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 8px;border:0;border-radius:8px;background:transparent;color:rgba(255,255,255,.6);font:500 12px/28px var(--font-ui);cursor:pointer}
+html body .ic-ref .ic-ref-sort:hover,html body .ic-ref .ic-ref-sort[aria-expanded=true]{color:#fff;background:rgba(255,255,255,.06)}
+html body .ic-ref .ic-ref-sort-v{color:#fff}
+html body .ic-ref .ic-ref-sortm{position:absolute;right:0;top:calc(100% + 4px);z-index:3;min-width:160px;padding:4px;border-radius:12px;background:#1c1d20;border:1px solid #2e2f33;box-shadow:0 12px 32px rgba(0,0,0,.5);display:flex;flex-direction:column}
+html body .ic-ref .ic-ref-sortm button{display:flex;align-items:center;justify-content:space-between;height:32px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:#fff;font:500 13px/32px var(--font-ui);text-align:left;cursor:pointer}
+html body .ic-ref .ic-ref-sortm button:hover{background:rgba(255,255,255,.06)}
+html body .ic-ref .ic-ref-sortm button>span{color:rgba(255,255,255,.6)}
+html body .ic-ref .ic-ref-tile.ic-ref-skel,html body .ic-ref .ic-ref-grid>.ic-ref-tile:has(>img):not(.ld){background:linear-gradient(90deg,rgba(255,255,255,.04) 0%,rgba(255,255,255,.09) 40%,rgba(255,255,255,.04) 80%) #2b2c30;background-size:300% 100%;animation:skel-sh 1.4s ease-in-out infinite;cursor:default}
+html body .ic-ref .ic-ref-grid>.ic-ref-tile.ic-ref-skel{aspect-ratio:1;height:auto}
+html body .ic-ref .ic-ref-grid>.ic-ref-tile:has(>img):not(.ld)>img{opacity:0}
+html body .ic-ref .ic-ref-grid>.ic-ref-tile>img{transition:opacity .2s ease}
+@media (prefers-reduced-motion:reduce){html body .ic-ref .ic-ref-tile.ic-ref-skel,html body .ic-ref .ic-ref-grid>.ic-ref-tile:has(>img):not(.ld){animation:none}}
+/* Create Image is the home of every image result: a small tag names the feature on tiles that aren't plain Create Image ("Edit", "Relight", "Face Swap") */
+html body .ic.ic2 .ic-jfeed .ic-tile .ic-tile-feat{position:absolute;top:8px;left:8px;z-index:2;max-width:calc(100% - 52px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:2px 7px;border-radius:6px;background:rgba(0,0,0,.6);color:#fff;font:600 11px/16px Inter,system-ui,sans-serif;pointer-events:none;backdrop-filter:blur(4px)}
+html body .ic-ref .ic-ref-grid>.ic-ref-tile>.ic-ref-feat{position:absolute;top:6px;left:6px;right:auto;bottom:auto;max-width:calc(100% - 12px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:1px 6px;border-radius:5px;background:rgba(0,0,0,.6);color:#fff;font:600 10px/15px Inter,system-ui,sans-serif;pointer-events:none}
+/* the mode reads "Edit" next to the attached photo (editing lives inside Create Image) */
+html body .ic .ic-attach .ic-mode-tag{align-self:flex-end;padding:2px 8px;border-radius:6px;background:var(--accent,#ff6a1a);color:var(--on-accent);font:600 11px/18px Inter,system-ui,sans-serif;white-space:nowrap}
+/* phones: the dock is transformed, so the position:fixed picker was boxed inside the dock (tiles squashed to strips). It opens above the dock instead, like desktop. */
+@media (max-width:700px){
+  html body .ic.ic2 .ic-dock .ic-ref-scrim{position:absolute;inset:auto 0 calc(100% + 8px) 0;padding:0;background:none;display:block;z-index:5}
+  html body .ic.ic2 .ic-dock .ic-ref{box-sizing:border-box;width:100%;height:min(440px,calc(100dvh - var(--ic-dock-h, 200px) - 140px));border-radius:14px}
+}
+
+/* Edit Image: attached images are numbered (Image 1, Image 2) and a one-line hint says how to refer to them */
+html body .ic .ic-attach .ic-att-t,html body .ic .ic-attach .ic-ref-extra{position:relative}
+html body .ic .ic-attach .ic-att-n{position:absolute;left:4px;top:4px;padding:0 5px;border-radius:5px;background:rgba(0,0,0,.66);color:#fff;font:600 10px/16px Inter,system-ui,sans-serif;white-space:nowrap;pointer-events:none}
+html body .ic .ic-attach .ic-att-hint{align-self:flex-end;padding:2px 8px;border-radius:6px;background:var(--state-fill,rgba(255,255,255,.08));color:var(--text-2,#b4b5b8);font:500 11px/18px Inter,system-ui,sans-serif;white-space:nowrap}
+@media (max-width:700px){html body .ic .ic-attach .ic-att-hint{white-space:normal;max-width:180px}}
+html body .ic .ic-eta-note{margin:4px 0 0;font-size:12px;color:var(--text-2,#b4b5b8)}
+
+/* ---- QA #8: the chip row never hides a chip: it wraps onto a second line instead of scrolling, and Run on sits at the row's end ---- */
+html body .ic.ic2 .ic-dock .ic-chips.ic-chips.ic-chips{flex-wrap:wrap!important;overflow:visible!important;height:auto!important;min-height:32px;row-gap:6px!important;padding-left:0!important;padding-right:0!important;-webkit-mask-image:none!important;mask-image:none!important}
+html body .ic.ic2 .ic-dock .ic-chips>.ro-chip{margin-left:auto}
+@media (min-width:701px){
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-fixed{position:static;box-shadow:none;background:none}
+}
+@media (max-width:700px){
+  /* phones: the order is + @ model · Run on · Settings, then style and the rest; the row wraps rather than scrolls */
+  html body .ic.ic2 .ic-dock .ic-chips>.ro-chip{margin-left:0;max-width:min(200px,calc(100vw - 120px))}
+  html body .ic.ic2 .ic-dock .ic-chips{gap:6px!important}
+}
+
+/* ---- QA #10: the @ picker above the prompt ---- */
+html body .ic.ic2 .ic-dock .ic-main>.ic-prow{position:relative}
+html body .ic .ic-at{position:absolute;z-index:30;left:0;bottom:calc(100% + 8px);display:grid;gap:2px;min-width:220px;max-width:min(320px,calc(100vw - 48px));max-height:min(260px,40vh);overflow-y:auto;padding:6px;border-radius:12px;background:rgb(28,30,33);box-shadow:0 12px 32px rgba(0,0,0,.45),inset 0 0 0 1px rgba(255,255,255,.08)}
+html body .ic .ic-at .ic-at-h{padding:4px 8px 6px;color:var(--text-3,#8a8b90);font:600 11px/14px Inter,system-ui,sans-serif}
+html body .ic .ic-at .ic-at-o{all:unset;box-sizing:border-box;display:grid;grid-template-columns:32px minmax(0,1fr) auto;align-items:center;gap:10px;min-height:40px;padding:4px 8px;border-radius:8px;cursor:pointer;color:#fff;font:500 13px/18px Inter,system-ui,sans-serif}
+html body .ic .ic-at .ic-at-o img{width:32px;height:32px;border-radius:6px;object-fit:cover}
+html body .ic .ic-at .ic-at-o small{color:var(--text-3,#8a8b90);font-size:12px}
+html body .ic .ic-at .ic-at-o.on{background:rgba(255,122,26,.14);box-shadow:inset 0 0 0 1px rgba(255,122,26,.5)}
+html body .ic .ic-at .ic-at-k{padding:4px 8px 2px;color:var(--text-3,#8a8b90);font-size:11px}
+@media (pointer:coarse){html body .ic .ic-at .ic-at-k{display:none}}
+
+/* ---- Compact one-row composer (2026-10-23): one 32px chip row that never wraps; chips 6px 12px, gap 4, radius 8, 14/20 w500, 16px icons.
+ * When the chips don't fit, ImageCanvas folds the low-priority ones (.ic-folded) into the Settings button ([data-folded]); phones scroll. ---- */
+html body .ic.ic2 .ic-dock .ic-chips.ic-chips.ic-chips{flex-wrap:nowrap!important;row-gap:0!important;height:32px!important;min-height:32px;align-items:center!important}
+html body .ic.ic2 .ic-dock .ic-chips.ic-chips.ic-chips>*,html body .ic.ic2 .ic-dock .ic-chips .ic-fixed>*{flex:0 0 auto}
+html body .ic.ic2 .ic-dock .ic-chips .ic-folded{display:none!important}
+html body .ic.ic2 .ic-dock .ic-chips[data-folded] .ic-set{display:inline-flex!important}
+/* a model with its own options (negative prompt, prompt rewrite: Qwen Image 3.0, Wan 2.5) keeps Settings on the bar, where those options live */
+html body .ic.ic2 .ic-dock .ic-chips[data-extras] .ic-set{display:inline-flex!important}
+html body .apop .ic-neg{display:grid;gap:4px;margin:2px 4px 6px}
+html body .apop .ic-neg-l{font:500 12px/16px var(--font-ui,Inter,system-ui,sans-serif);color:var(--text-2,#b4b5b8)}
+html body .apop .ic-neg textarea{box-sizing:border-box;width:100%;min-height:52px;resize:vertical;padding:6px 8px;border-radius:8px;border:1px solid var(--border,rgba(255,255,255,.12));background:var(--surface-2,rgba(255,255,255,.04));color:var(--text,#f2f2f3);font:400 13px/18px var(--font-ui,Inter,system-ui,sans-serif)}
+html body .apop .ic-neg textarea:focus{outline:none;border-color:var(--accent)}
+/* still too wide with everything folded: Run on and the model name truncate instead of wrapping */
+html body .ic.ic2 .ic-dock .ic-chips[data-folded=all]>.ro-chip,html body .ic.ic2 .ic-dock .ic-chips[data-folded=all] .ic-model{flex:0 1 auto!important;min-width:64px}
+html body .ic.ic2 .ic-dock .ic-chips .ic-chip.ro-chip .ro-chip-t{min-width:0;overflow:hidden;text-overflow:ellipsis}
+@media (min-width:701px){
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip,html body .ic.ic2 .ic-dock .ic-panel .ic-chips .wf-chip{height:32px!important;min-height:32px!important;padding:6px 12px!important;gap:4px!important;border-radius:8px!important;font:500 14px/20px var(--font-ui)!important}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-static{padding:6px!important}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-model{padding:6px 8px!important}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-sq:not(.ic-more):not(.ic-set){width:32px!important;min-width:32px!important;padding:0!important;justify-content:center}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-set{gap:2px!important}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-set:has(.ic-set-n){width:auto!important;padding:0 8px!important}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-count{flex-basis:88px;width:88px;padding:8px 10px}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ro-chip{max-width:180px}
+}
+/* Enhance: one 32×32 sparkle toggle, accent when on, muted when off */
+html body .ic.ic2 .ic-dock .ic-chips .ic-chip.ic-enh-one{width:32px!important;min-width:32px!important;height:32px!important;padding:0!important;justify-content:center}
+html body .ic.ic2 .ic-dock .ic-chips .ic-chip.ic-enh-one svg{width:16px;height:16px;color:rgba(255,255,255,.55);opacity:1!important}
+html body .ic.ic2 .ic-dock .ic-chips .ic-chip.ic-enh-one.on{background:rgba(255,122,26,.16)!important}
+html body .ic.ic2 .ic-dock .ic-chips .ic-chip.ic-enh-one.on svg{color:var(--accent)}
+html body .ic.ic2 .ic-dock .ic-chips .ic-chip.ic-enh-one.on:hover{background:rgba(255,122,26,.24)!important}
+html body .ic-pop-set .ic-set-enh-sw{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
+/* phones: one row that scrolls sideways (no second row) */
+@media (max-width:700px){
+  html body .ic.ic2 .ic-dock .ic-chips.ic-chips.ic-chips{overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:none;gap:6px!important}
+  html body .ic.ic2 .ic-dock .ic-chips.ic-chips.ic-chips::-webkit-scrollbar{display:none}
+  html body .ic.ic2 .ic-dock .ic-chips.ic-chips.ic-chips{gap:4px!important}
+  html body .ic.ic2 .ic-dock .ic-chips .ic-chip{height:32px!important;min-height:32px!important;padding:0 10px!important;font:500 14px/20px var(--font-ui)!important}
+  /* phones: workflow, +, model and Run on fit the first screen; the rest scrolls in */
+  html body .ic.ic2 .ic-dock .ic-chips .wf-chip,html body .ic.ic2 .ic-dock .ic-chips .wf-chip-on{order:-4}
+  html body .ic.ic2 .ic-dock .ic-chips .wf-chip:not(.wf-chip-picked){width:32px;min-width:32px;padding:0!important;justify-content:center}
+  html body .ic.ic2 .ic-dock .ic-chips .wf-chip:not(.wf-chip-picked)>span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  html body .ic.ic2 .ic-dock .ic-chips .wf-chip:not(.wf-chip-picked)>.wf-caret{display:none}
+  html body .ic.ic2 .ic-dock .ic-chips .ic-chip.ic-model.ic-model{max-width:124px!important;min-width:0!important}
+  html body .ic.ic2 .ic-dock .ic-chips .ic-chip.ic-sq.ic-sq{width:36px!important;min-width:36px!important;padding:0!important;justify-content:center}
+  html body .ic.ic2 .ic-dock .ic-chips .ic-chip.ic-model .ic-mname{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  html body .ic.ic2 .ic-dock .ic-chips>.ro-chip{max-width:120px}
+  html body .ic.ic2 .ic-dock .ic-chips .ic-enh-one{order:-1}
+}
+html body .gen-btn .gen-price .gp-dot{white-space:pre}
+/* Generate (2026-10-29, Audio/Image/Video the same): the bright accent only when it can run. "Needs a prompt / a photo" (gen-wait, aria-disabled)
+ * keeps its semantics (a click or focus shows why, GenWhy) and is dimmed with that reason as its second line (ui-states.css), so it never looks
+ * ready when it isn't; a can't-run-as-set button (a key, ComfyUI, no price) is the flat grey below. */
+html body .ic.ic2 .ic-dock .ic-gen.gen-btn.gen-btn.gen-btn:is([aria-disabled=true],.gen-wait):not(:disabled):not(.gen-off):not([aria-busy=true]){cursor:pointer!important}
+html body .ic.ic2 .ic-dock .ic-gen.gen-btn.gen-btn.gen-btn:is([aria-disabled=true],.gen-wait):not(:disabled):not(.gen-off):hover{filter:brightness(1.08)!important}
+/* can't run as set (needs a key, or a local model needs ComfyUI): flat grey with its one step, never the ready orange */
+html body .ic.ic2 .ic-dock .ic-gen.gen-btn.gen-btn.gen-btn.gen-off[aria-disabled=true]:not(:disabled){background:#33353a!important;color:var(--text-1,#f7f7f8)!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)!important;filter:none!important;cursor:pointer!important}
+html body .ic.ic2 .ic-dock .ic-gen.gen-btn.gen-off .gen-l{color:var(--text-1,#f7f7f8)!important;opacity:1}
+html body .ic.ic2 .ic-dock .ic-gen.gen-btn.gen-off .gen-price{color:#c9cacd!important;opacity:1!important}
+/* the price in the 120px dock button: the main token on line 2, the rest ('this computer') smaller on line 3 */
+html body .ic-dock .gen-btn.gen-dock .gen-price,html body .ic-dock .ic-gen .gen-price{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
+@media (min-width:701px){
+  html body .ic-dock .gen-btn.gen-dock .gen-price .gp-sub{display:block;font-size:10px;line-height:13px;opacity:.8;overflow:hidden;text-overflow:ellipsis}
+  html body .ic-dock .gen-btn.gen-dock .gen-price .gp-dot{display:none}
+  html body .ic-dock .gen-btn.gen-dock .gen-price:has(.gp-sub){display:flex!important;flex-direction:column;align-items:center;white-space:nowrap}
+}

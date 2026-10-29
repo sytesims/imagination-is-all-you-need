@@ -1,0 +1,11 @@
+{
+  "1": { "class_type": "LoadVideo", "inputs": { "file": "oj_source.mp4" }, "_meta": { "title": "Source video" } },
+  "2": { "class_type": "GetVideoComponents", "inputs": { "video": ["1", 0] }, "_meta": { "title": "Frames + audio + fps" } },
+  "3": { "class_type": "LoadRembgByBiRefNetModel", "inputs": { "model": "BiRefNet-general.safetensors", "device": "AUTO", "use_weight": false, "dtype": "float16" }, "_meta": { "title": "BiRefNet (MIT)" } },
+  "4": { "class_type": "RembgByBiRefNetAdvanced", "inputs": { "model": ["3", 0], "images": ["2", 0], "width": 1024, "height": 1024, "upscale_method": "bilinear", "blur_size": 90, "blur_size_two": 6, "fill_color": true, "color": 65280, "mask_threshold": 0.0 }, "_meta": { "title": "Remove background" } },
+  "5": { "class_type": "CreateVideo", "inputs": { "images": ["4", 0], "fps": ["2", 2], "audio": ["2", 1] }, "_meta": { "title": "Cutout video" } },
+  "6": { "class_type": "SaveVideo", "inputs": { "video": ["5", 0], "filename_prefix": "openhiggsfield/cutout", "format": "auto", "format.codec": "auto" }, "_meta": { "title": "Save cutout" } },
+  "7": { "class_type": "MaskToImage", "inputs": { "mask": ["4", 1] }, "_meta": { "title": "Alpha matte" } },
+  "8": { "class_type": "CreateVideo", "inputs": { "images": ["7", 0], "fps": ["2", 2] }, "_meta": { "title": "Matte video" } },
+  "9": { "class_type": "SaveVideo", "inputs": { "video": ["8", 0], "filename_prefix": "openhiggsfield/cutout-matte", "format": "auto", "format.codec": "auto" }, "_meta": { "title": "Save matte" } }
+}

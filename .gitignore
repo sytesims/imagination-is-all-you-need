@@ -1,0 +1,59 @@
+node_modules
+dist
+server/data
+# filming mode state + scratch data dirs (npm run filming)
+.filming/
+web/dist
+server/dist
+data/
+
+# local voice runner (faster-whisper + NLLB-200 via CTranslate2)
+server/py/.venv/
+server/py/models/
+
+# python bytecode
+__pycache__/
+*.pyc
+
+# clean room: third-party reference material never enters the repo
+screens/compare/
+audit/compare/
+compare/
+screens/compare-*.png
+screens/header-compare.png
+**/*-vs-reference*
+**/*hf-*.json
+**/*-computed.json
+*.har
+
+# secrets / local accounts
+accounts/
+.env
+.env.*
+*.env
+!.env.example
+*.pem
+*.key
+
+# launch copy kept local, not in the repo
+docs/LAUNCH-POSTS.md
+
+# QA screenshots and notes dropped into the repo root by other lanes (live copies are in ../audit); never tracked
+/audit/
+.cache/
+
+# Submission drafts: kept local, not published (C7)
+docs/DEMO-SCRIPT.md
+docs/SUBMISSION-FORM.md
+docs/H3-LICENSE-NOTE.draft.md
+
+# Claude Code agent worktrees (local only)
+.claude/worktrees/
+
+# test runner logs (npm test)
+.test-logs/
+
+# Private development evidence is not part of release source.
+screens/
+readiness/graph/captured/
+web/tsconfig.tsbuildinfo

@@ -1,0 +1,1 @@
+{"_fixture": "HAND-WRITTEN from public docs, not a recorded live response", "_source": "https://docs.bfl.ai/flux_tools/flux_video_upscale (poll polling_url until status Ready, download result.sample)", "id": "hand-written-id", "status": "Ready", "result": {"sample": "https://example.invalid/bfl/upscaled.mp4"}}

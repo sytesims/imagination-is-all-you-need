@@ -1,0 +1,34 @@
+{
+  "workflowFile": "wan22-ti2v-5b-api.json",
+  "template": "video_wan2_2_5B_ti2v",
+  "license": "Apache-2.0",
+  "inputs": {
+    "prompt": {
+      "node": "6",
+      "field": "text"
+    },
+    "negative": {
+      "node": "7",
+      "field": "text"
+    },
+    "image": {
+      "node": "56",
+      "field": "image"
+    },
+    "latent": {
+      "node": "55"
+    },
+    "sampler": {
+      "node": "3"
+    }
+  },
+  "refs": [],
+  "seed": {
+    "node": "3",
+    "field": "seed"
+  },
+  "output": {
+    "node": "58"
+  },
+  "changes": "From the official template video_wan2_2_5B_ti2v: umt5_xxl_fp16 text encoder instead of the fp8 one (Apple MPS has no float8), euler sampler instead of uni_pc (uni_pc failed on Mac for Wan 2.1), the Load Image node wired to start_image (dropped for text to video); size, length, seed and steps are set per job."
+}

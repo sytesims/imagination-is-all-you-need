@@ -1,0 +1,59 @@
+{
+ "1": {
+  "class_type": "LoadVideo",
+  "inputs": {
+   "file": "oj_source.mp4"
+  },
+  "_meta": {
+   "title": "Load Video"
+  }
+ },
+ "2": {
+  "class_type": "GetVideoComponents",
+  "inputs": {
+   "video": [
+    "1",
+    0
+   ]
+  }
+ },
+ "3": {
+  "class_type": "DepthAnythingV2Preprocessor",
+  "inputs": {
+   "ckpt_name": "depth_anything_v2_vits.pth",
+   "resolution": 512,
+   "image": [
+    "2",
+    0
+   ]
+  },
+  "_meta": {
+   "title": "OpenHiggsfield \u00b7 Depth Map (Depth Anything V2 Small, Apache-2.0)"
+  }
+ },
+ "4": {
+  "class_type": "CreateVideo",
+  "inputs": {
+   "fps": [
+    "2",
+    2
+   ],
+   "images": [
+    "3",
+    0
+   ]
+  }
+ },
+ "5": {
+  "class_type": "SaveVideo",
+  "inputs": {
+   "filename_prefix": "openhiggsfield/depth-map",
+   "format": "auto",
+   "format.codec": "auto",
+   "video": [
+    "4",
+    0
+   ]
+  }
+ }
+}

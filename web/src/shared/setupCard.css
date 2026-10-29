@@ -1,0 +1,35 @@
+/* Setup on the Generate button (shared/SetupCard.tsx): the button says the next step, a click opens this popover. Calm surface; the
+ * row buttons are the only accent (nothing is pre-chosen). */
+.setup-card{box-sizing:border-box;display:flex;flex-direction:column;gap:8px;width:100%;padding:12px 14px;color:var(--text,#f4f4f5);font:13px/1.35 var(--font-ui,inherit)}
+.setup-h{display:flex;align-items:center;gap:8px;margin:0;color:var(--text-2,#c4c4c8)}
+.setup-h b{color:var(--text,#f4f4f5);font-weight:600}
+.setup-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.setup-row{display:flex;align-items:center;gap:10px;min-height:44px;padding:4px 0;border-top:1px solid var(--hairline,#2e2f33)}
+.setup-row:first-child{border-top:0}
+.setup-ic{flex:0 0 auto;color:var(--text-3,#8b8b92)}
+.setup-t{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.setup-t b{font-weight:600;font-size:13px}
+.setup-t small{color:var(--text-3,#8b8b92);font-size:12px}
+.setup-card .setup-go{flex:0 0 auto;height:30px;min-height:30px;padding:0 12px;border-radius:8px;border:1px solid var(--accent,#FF7A1A);background:transparent;color:var(--accent,#FF7A1A);font-weight:600;white-space:nowrap;cursor:pointer}
+.setup-card .setup-go:hover:not(:disabled),.setup-card .setup-go:focus-visible{background:var(--accent,#FF7A1A);color:var(--on-accent);outline:none}
+.setup-card .setup-go:disabled{opacity:.5;cursor:default}
+.setup-err{margin:0}
+.setup-more{display:inline-flex;align-items:center;gap:4px;align-self:flex-start;margin:2px 0 0;padding:4px 0;border:0;background:none;color:var(--text-2,#c4c4c8);font:500 12px/16px var(--font-ui,inherit);cursor:pointer}
+.setup-more:hover,.setup-more:focus-visible{color:var(--text,#f4f4f5);outline:none;text-decoration:underline}
+html body .apop.setup-pop{max-width:min(400px,calc(100vw - 16px))}
+html body .apop.setup-pop.apop-sheet{max-width:none}
+/* the setup Generate: same size and place as Generate, the step as its label and the place as its small line */
+.gen-btn.gen-setup .gen-l{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.gen-btn.gen-setup .gen-setup-chev{flex:none;transform:rotate(-90deg);opacity:.8}
+.gen-btn.gen-setup[aria-expanded="true"] .gen-setup-chev{transform:rotate(90deg)}
+.gen-btn .gen-setup-sub,html body .ic-dock .ic-gen .gen-setup-sub{display:block;max-width:100%;font-size:11px!important;font-weight:500;line-height:1.2!important;opacity:.85;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis;text-align:center}
+/* the quiet one-line states under the bar (downloading / download chosen) */
+.setup-status{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;margin:0;color:var(--text-2,#c4c4c8);font:12px/1.35 var(--font-ui,inherit)}
+.setup-status .setup-undo{font-size:12px}
+html body .ic.ic2 .ic-dock.ic-dock.ic-dock>.ic-local>.setup-status,html body .ic-dock.ic-dock>.ic-local>.setup-status{order:999!important;flex:0 0 100%!important;max-width:none!important;margin:0!important}
+/* older callers: Generate disabled with a short reason */
+.gen-btn .gen-setup-why,html body .ic-dock .ic-gen .gen-setup-why{display:block;max-width:100%;font-size:11px!important;font-weight:500;line-height:1.2!important;opacity:.85;white-space:normal!important;text-align:center;overflow:visible!important}
+.ic-dock .gen-btn.gen-setup .gen-setup-chev{display:none}
+
+/* cloud first (2026-10-27): the free-on-your-computer way out, under the key step */
+.setup-free{margin:8px 2px 0;font:400 12.5px/17px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-2,#898A8B)}

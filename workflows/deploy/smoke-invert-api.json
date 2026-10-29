@@ -1,0 +1,5 @@
+{
+  "1": { "class_type": "LoadImage", "inputs": { "image": "smoke.png" }, "_meta": { "title": "Test image (uploaded)" } },
+  "2": { "class_type": "ImageInvert", "inputs": { "image": ["1", 0] }, "_meta": { "title": "Invert" } },
+  "3": { "class_type": "SaveImage", "inputs": { "images": ["2", 0], "filename_prefix": "ohf_deploy_smoke" }, "_meta": { "title": "Save" } }
+}

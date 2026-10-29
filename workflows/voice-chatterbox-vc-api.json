@@ -1,0 +1,48 @@
+{
+ "1": {
+  "class_type": "LoadAudio",
+  "inputs": {
+   "audio": "source.mp4"
+  }
+ },
+ "2": {
+  "class_type": "LoadAudio",
+  "inputs": {
+   "audio": "voice_sample.wav"
+  }
+ },
+ "3": {
+  "class_type": "ChatterboxVC",
+  "inputs": {
+   "model_pack_name": "resembleai_default_voice",
+   "source_audio": [
+    "1",
+    0
+   ],
+   "target_voice_audio": [
+    "2",
+    0
+   ],
+   "n_timesteps": 10,
+   "temperature": 1.0,
+   "flow_cfg_scale": 0.7,
+   "use_watermark": false,
+   "device": "default",
+   "dtype": "auto",
+   "attention_mode": "sdpa",
+   "refinement_passes": 1,
+   "max_chunk_duration": 30.0,
+   "chunk_method": "smart"
+  }
+ },
+ "5": {
+  "class_type": "SaveAudio",
+  "inputs": {
+   "audio": [
+    "3",
+    0
+   ],
+   "filename_prefix": "openhiggsfield/changed-voice"
+  }
+ }
+}

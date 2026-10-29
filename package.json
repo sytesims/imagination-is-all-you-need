@@ -1,0 +1,52 @@
+{
+  "name": "openhiggsfield",
+  "private": true,
+  "license": "AGPL-3.0-or-later",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "web",
+    "server"
+  ],
+  "scripts": {
+    "postinstall": "node scripts/install-mcp.mjs",
+    "dev": "concurrently -n api,web,mcp -c magenta,cyan,yellow \"npm:dev -w server\" \"npm:dev -w web\" \"npm:mcp:dev\"",
+    "build": "node scripts/build-plugins.mjs && npm run build -w server && npm run build -w web",
+    "plugins:build": "node scripts/build-plugins.mjs",
+    "demo:reset": "npm run demo:reset -w server",
+    "workflows:build": "curl -s http://127.0.0.1:8190/object_info > /tmp/oj_object_info.json && python3 scripts/build-object-swap.py /tmp/oj_object_info.json && python3 scripts/build-workflows.py /tmp/oj_object_info.json && python3 scripts/build-inpaint.py && python3 scripts/build-image-upscale.py",
+    "workflows:validate": "cd workflows && python3 ../scripts/validate-workflows.py *-api.json object-swap/*.json motion-transfer/*.json ../plugins/*/workflow.json",
+    "plugins:check": "cd server && npx tsx scripts/plugin-dryrun.ts && cd .. && python3 scripts/validate-workflows.py /tmp/ohf-plugin-*.json",
+    "openapi": "npm run openapi -w server",
+    "mcp:install": "npm install --prefix mcp",
+    "mcp:build": "npm run build --prefix mcp",
+    "mcp": "node mcp/dist/index.js",
+    "mcp:http": "node mcp/dist/index.js --http",
+    "mcp:dev": "npm run dev --prefix mcp -- --http",
+    "mcp:test": "npm run test:e2e --prefix mcp",
+    "models:manifest": "python3 readiness/manifest/build-manifest.py",
+    "models:download": "python3 readiness/manifest/build-manifest.py --offline --download",
+    "nodes:pins": "python3 readiness/manifest/build-custom-nodes.py",
+    "nodes:install": "bash readiness/manifest/install-custom-nodes.sh",
+    "contracts:test": "cd server && npx tsx ../readiness/contracts/run.ts",
+    "contracts:routing": "cd server && npx tsx ../readiness/contracts/routing.mts",
+    "qa:routing": "node scripts/qa/routing.mjs",
+    "check:proxy": "node scripts/check-dev-proxy.mjs",
+    "check": "npm run check:proxy",
+    "doctor": "node scripts/doctor.mjs",
+    "setup": "node scripts/setup.mjs",
+    "docs:api": "node scripts/gen-api-docs.mjs",
+    "start:demo": "concurrently -n api,web,mcp -c magenta,cyan,yellow \"npm run start:tsx -w server\" \"npm run build:demo -w web && npm run preview -w web\" \"npm:mcp:dev\"",
+    "test": "node scripts/test-all.mjs",
+    "test:changed": "node scripts/test-all.mjs --changed"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  },
+  "allowScripts": {
+    "better-sqlite3": true,
+    "esbuild": true,
+    "fsevents": true
+  }
+}

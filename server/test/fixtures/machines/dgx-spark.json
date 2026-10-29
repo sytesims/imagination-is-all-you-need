@@ -1,0 +1,45 @@
+{
+ "simulated": true,
+ "note": "SIMULATED profile: a /system_stats answer in ComfyUI's shape and an nvidia-smi line, reconstructed from public specs. Not recorded on this hardware. GB10: nvidia-smi reports no memory figure ([N/A]); torch sees the unified system memory.",
+ "label": "NVIDIA DGX Spark (GB10, 128 GB unified, ARM64 Linux)",
+ "host": {
+  "platform": "linux",
+  "arch": "arm64",
+  "ramBytes": 128526266368,
+  "cpuModel": "Cortex-X925"
+ },
+ "system_stats": {
+  "system": {
+   "os": "posix",
+   "ram_total": 128526266368,
+   "ram_free": 77115759820,
+   "comfyui_version": "0.42.5",
+   "python_version": "3.12.9",
+   "pytorch_version": "2.10.0",
+   "embedded_python": false,
+   "argv": [
+    "main.py"
+   ]
+  },
+  "devices": [
+   {
+    "name": "cuda:0 NVIDIA GB10 : cudaMallocAsync",
+    "type": "cuda",
+    "index": 0,
+    "vram_total": 128526266368,
+    "vram_free": 110000000000
+   }
+  ]
+ },
+ "nvidia_smi": "NVIDIA GB10, [N/A], [N/A], 12.1",
+ "expect": {
+  "id": "dgx-spark",
+  "backend": "cuda",
+  "vramClass": "32+",
+  "fp8": "native",
+  "nvfp4": "native",
+  "tier": "all",
+  "unified": true,
+  "comfyKind": "manual"
+ }
+}

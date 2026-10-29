@@ -1,0 +1,153 @@
+/* PP (Page Polisher) · Presets page (/presets). Every selector is scoped to .pp-presets.
+   Spec: HF's preset picker layout (measured locally, not shipped)
+   with the lime swapped for our orange. Uses only DP's HF tokens (styles.css :root "HF tokens", web/src/TOKENS.md): no hex, rgb() or px radii. */
+.pp-presets{
+  --pp-white-04:color-mix(in srgb,var(--text-1) 4%,transparent);
+  --pp-white-10:color-mix(in srgb,var(--text-1) 10%,transparent);
+  --pp-white-16:color-mix(in srgb,var(--text-1) 16%,transparent);
+  --pp-shade:linear-gradient(transparent 0%,var(--scrim) 80%);          /* HF card: transparent → black .7 at 80% */
+  color:var(--text-1);font-family:var(--font-sans)}
+/* full-bleed like HF (beats the legacy .presets-page 1280px frame) */
+.page.presets-page.pp-presets{max-width:none;margin:0;padding:var(--space-1) 0 var(--space-8)}
+
+/* page title: HF brand heading, Space Grotesk 700 caps 56/64 */
+.pp-presets .pp-presets-head{margin:var(--space-2) var(--space-2) var(--space-5)}
+.pp-presets .pp-presets-h{margin:0;font-family:var(--font-display);font-size:var(--fs-56);line-height:var(--lh-56);font-weight:var(--fw-bold);letter-spacing:-.02em;text-transform:uppercase;color:var(--text-1)}
+.pp-presets .pp-presets-lede{margin:var(--space-1) 0 0;max-width:620px;color:var(--text-2);font-size:var(--fs-16);line-height:var(--lh-16);font-weight:var(--fw-regular)}
+
+/* picker panel: HF bg-page-primary, r16, padding 8 24 24 */
+.pp-presets .pp-presets-panel{background:var(--surface-1);border:1px solid var(--border-popover);border-radius:var(--radius-xl);padding:var(--space-2) var(--space-6) var(--space-6)}
+.pp-presets .pp-presets-top{display:flex;align-items:center;gap:var(--space-4);min-height:56px}
+.pp-presets .pp-presets-tabs-wrap{flex:1;min-width:0}
+.pp-presets .pp-presets-tabs{display:flex;gap:var(--space-6);overflow-x:auto;scrollbar-width:none}
+.pp-presets .pp-presets-tabs::-webkit-scrollbar{display:none}
+/* tabs: HF model row, 16/24 500, 60% white, icon gap 10 */
+.pp-presets .pp-presets-tab{flex:none;position:relative;display:inline-flex;align-items:center;gap:10px;height:45px;padding:10px 0;border:0;background:none;color:var(--text-3);font:var(--fw-medium) var(--fs-16)/var(--lh-16) var(--font-sans);white-space:nowrap;cursor:pointer;transition:color var(--dur-med) var(--ease)}
+.pp-presets .pp-presets-tab::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;border-radius:var(--radius-pill);background:var(--text-1);transform:scaleX(0);transition:transform var(--dur-med) var(--ease)}
+.pp-presets .pp-presets-tab:hover,.pp-presets .pp-presets-tab.on{color:var(--text-1)}
+.pp-presets .pp-presets-tab.on::after{transform:none}
+.pp-presets .pp-presets-tab:focus-visible{outline:none;color:var(--text-1);box-shadow:var(--focus-ring);border-radius:var(--radius-xs)}
+/* count badge: HF "New" badge, 16h r4, Space Grotesk 10/16 700 */
+.pp-presets .pp-presets-count{padding:0 var(--space-1-5);border-radius:var(--radius-xs);background:var(--fill);color:var(--text-2);font:var(--fw-bold) var(--fs-10)/16px var(--font-display)}
+.pp-presets .pp-presets-tab.on .pp-presets-count{background:var(--accent);color:var(--on-accent)}
+/* search: HF picker input 268×40, r12, surface-2 */
+.pp-presets .pp-presets-search{flex:0 0 268px;display:flex;align-items:center;gap:var(--space-2);height:40px;padding:0 var(--space-4);border-radius:var(--radius-lg);border:1px solid transparent;background:var(--surface-2);color:var(--text-3);transition:border-color var(--dur-med) var(--ease)}
+.pp-presets .pp-presets-search:focus-within{border-color:var(--border-strong);color:var(--text-2)}
+.pp-presets .pp-presets-search input{flex:1;min-width:0;height:100%;border:0;outline:0;background:transparent;color:var(--text-1);font:var(--fw-medium) var(--fs-14)/var(--lh-14) var(--font-sans)}
+.pp-presets .pp-presets-search input::placeholder{color:var(--text-3)}
+
+/* one filter row: chips left, source switch right (HF chip: fill → surface-hover, r8) */
+.pp-presets .pp-presets-bar{display:flex;align-items:center;justify-content:space-between;gap:var(--space-4);margin:var(--space-3) 0 var(--space-4)}
+.pp-presets .pp-presets-chips-wrap{min-width:0;flex:1}
+.pp-presets .pp-presets-chips{display:flex;gap:var(--space-1);overflow-x:auto;scrollbar-width:none}
+.pp-presets .pp-presets-chips::-webkit-scrollbar{display:none}
+.pp-presets .pp-presets-chip,.pp-presets .pp-presets-seg{flex:none;height:32px;padding:0 var(--space-3);border:0;border-radius:var(--radius-md);background:transparent;color:var(--text-2);font:var(--fw-semibold) var(--fs-14)/var(--lh-14) var(--font-sans);white-space:nowrap;cursor:pointer;transition:background var(--dur-med) var(--ease),color var(--dur-med) var(--ease)}
+.pp-presets .pp-presets-chip:hover,.pp-presets .pp-presets-seg:hover{color:var(--text-1);background:var(--fill)}
+.pp-presets .pp-presets-chip.on,.pp-presets .pp-presets-seg.on{background:var(--surface-hover);color:var(--text-1)}
+.pp-presets .pp-presets-chip:focus-visible,.pp-presets .pp-presets-seg:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.pp-presets .pp-presets-src{flex:none;display:inline-flex;gap:var(--space-0-5);padding:var(--space-0-5);border-radius:var(--radius-lg);background:var(--surface-2)}
+.pp-presets .pp-presets-note{margin:0 0 var(--space-3);color:var(--text-2);font-size:var(--fs-14);line-height:var(--lh-14)}
+
+/* grid: HF picker = 3:4 posters, 8px gutters, r16 */
+.pp-presets .pp-presets-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--space-2)}
+.pp-presets .pp-presets-shim{aspect-ratio:3/4;border-radius:var(--radius-xl);background:linear-gradient(100deg,var(--surface-2) 30%,var(--surface-3) 50%,var(--surface-2) 70%) 0 0/300% 100%;animation:pp-presets-shim 1.4s linear infinite}
+@keyframes pp-presets-shim{to{background-position:-150% 0}}
+.pp-presets .pp-presets-card{position:relative;min-width:0}
+.pp-presets .pp-presets-media{position:relative;aspect-ratio:3/4;border-radius:var(--radius-xl);overflow:hidden;isolation:isolate;background:var(--surface-2);transition:box-shadow var(--dur-med) var(--ease)}
+.pp-presets .pp-presets-media>img,.pp-presets .pp-presets-media>video,.pp-presets .pp-presets-tile{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-1;transition:transform 500ms var(--ease-out),filter 500ms var(--ease-out),opacity var(--dur-med) var(--ease)}
+.pp-presets .pp-presets-media>video{opacity:0}
+.pp-presets .pp-presets-card:hover .pp-presets-media>video{opacity:1}
+.pp-presets .pp-presets-card:hover .pp-presets-media{box-shadow:0 0 0 2px var(--accent)}
+.pp-presets .pp-presets-card:hover .pp-presets-media>img,.pp-presets .pp-presets-card:hover .pp-presets-tile{transform:scale(1.04)}
+.pp-presets .pp-presets-shade{position:absolute;inset:0;pointer-events:none;background:var(--pp-shade)}
+
+/* overlays */
+.pp-presets .pp-presets-tag{position:absolute;left:var(--space-3);top:var(--space-3);right:72px;display:flex;align-items:center;gap:var(--space-1-5);color:var(--text-1);font:var(--fw-medium) var(--fs-12)/var(--lh-12) var(--font-sans);text-shadow:0 1px 4px var(--scrim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+.pp-presets .pp-presets-tag svg{flex:none}
+/* uses: HF like-chip, pill, hairline, blurred */
+.pp-presets .pp-presets-uses{position:absolute;right:var(--space-2);top:var(--space-2);display:inline-flex;align-items:center;gap:var(--space-1);height:28px;padding:0 var(--space-2);border-radius:var(--radius-pill);border:1px solid var(--pp-white-16);background:color-mix(in srgb,var(--hf-bg) 30%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);color:var(--text-1);font:var(--fw-medium) var(--fs-12)/var(--lh-12) var(--font-sans);pointer-events:none}
+.pp-presets .pp-presets-refs{position:absolute;left:var(--space-2);bottom:44px;display:flex;gap:var(--space-1-5);pointer-events:none}
+.pp-presets .pp-presets-refs img{width:28px;height:28px;border-radius:var(--radius-pill);object-fit:cover;border:1px solid var(--pp-white-16)}
+/* label: HF h4, Space Grotesk 20/28 700 caps, padding 0 8 8, one line */
+.pp-presets .pp-presets-cap{position:absolute;left:var(--space-2);right:var(--space-2);bottom:var(--space-2);pointer-events:none}
+.pp-presets .pp-presets-label{display:block;font:var(--fw-bold) var(--fs-20)/var(--lh-20) var(--font-display);text-transform:uppercase;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Recreate: the whole poster is the link (::before is clipped by .pp-presets-media); the accent button shows on hover */
+.pp-presets .pp-presets-recreate{position:absolute;right:var(--space-2);bottom:var(--space-2);display:inline-flex;align-items:center;gap:var(--space-1-5);height:36px;padding:0 var(--space-3);border-radius:var(--radius-lg);background:var(--accent);color:var(--on-accent);font:var(--fw-semibold) var(--fs-14)/var(--lh-14) var(--font-sans);text-decoration:none;opacity:0;transform:translateY(var(--space-1));transition:opacity var(--dur-med) var(--ease),transform var(--dur-med) var(--ease),filter var(--dur-fast) var(--ease)}
+.pp-presets .pp-presets-recreate::before{content:"";position:absolute;inset:-2000px}
+.pp-presets .pp-presets-card:hover .pp-presets-recreate,.pp-presets .pp-presets-recreate:focus-visible{opacity:1;transform:none}
+.pp-presets .pp-presets-card:hover .pp-presets-cap,.pp-presets .pp-presets-card:has(.pp-presets-recreate:focus-visible) .pp-presets-cap{right:110px}
+.pp-presets .pp-presets-recreate:hover{filter:brightness(.9)}
+.pp-presets .pp-presets-recreate:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+
+/* ---- branded stand-in tiles (no text, no people): HF's neutral surface ramp, our orange light, grain, one quiet motif ---- */
+.pp-presets .pp-presets-tile{--x:30%;--y:70%;--x2:85%;--y2:12%;display:block;overflow:hidden;
+  background:
+    radial-gradient(38% 26% at var(--x) var(--y),color-mix(in srgb,var(--text-1) 22%,var(--accent)) 0%,transparent 100%),
+    radial-gradient(95% 60% at var(--x) var(--y),color-mix(in srgb,var(--accent) 85%,transparent) 0%,color-mix(in srgb,var(--accent) 28%,transparent) 42%,transparent 75%),
+    radial-gradient(75% 50% at var(--x2) var(--y2),color-mix(in srgb,var(--text-2) 32%,transparent) 0%,transparent 70%),
+    linear-gradient(165deg,var(--surface-2) 0%,var(--surface-1) 50%,var(--hf-bg) 100%)}
+.pp-presets .pp-presets-tile::before{content:"";position:absolute;inset:0;opacity:.2;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.pp-presets .pp-presets-tile::after{content:"";position:absolute;pointer-events:none}
+/* palette per category: small hue/saturation steps around our orange */
+.pp-presets .pp-presets-tile.v1{filter:hue-rotate(-10deg) saturate(1.1)}
+.pp-presets .pp-presets-tile.v2{filter:hue-rotate(10deg) brightness(1.05)}
+.pp-presets .pp-presets-tile.v3{filter:hue-rotate(-18deg) saturate(.9)}
+.pp-presets .pp-presets-tile.v4{filter:saturate(.75) brightness(.95)}
+.pp-presets .pp-presets-tile.v5{filter:hue-rotate(16deg) saturate(1.05)}
+.pp-presets .pp-presets-card:hover .pp-presets-tile{filter:brightness(1.15)}
+/* light position per preset so neighbours in one category differ */
+.pp-presets .pp-presets-tile.s1{--x:74%;--y:64%;--x2:12%;--y2:16%}
+.pp-presets .pp-presets-tile.s2{--x:50%;--y:90%;--x2:82%;--y2:6%}
+.pp-presets .pp-presets-tile.s3{--x:20%;--y:44%;--x2:92%;--y2:84%}
+.pp-presets .pp-presets-tile.s4{--x:68%;--y:30%;--x2:14%;--y2:92%}
+/* motif per tool: ring, horizon, beams, frame */
+.pp-presets .pp-presets-tile.m0::after{left:50%;top:42%;width:62%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:var(--radius-pill);border:1px solid var(--pp-white-10);box-shadow:0 0 0 22px var(--pp-white-04)}
+.pp-presets .pp-presets-tile.m1::after{left:-10%;right:-10%;top:58%;height:42%;background:repeating-linear-gradient(0deg,var(--pp-white-10) 0 1px,transparent 1px 18px);-webkit-mask:linear-gradient(180deg,var(--text-1),transparent);mask:linear-gradient(180deg,var(--text-1),transparent);border-top:1px solid var(--accent-soft)}
+.pp-presets .pp-presets-tile.m2::after{inset:-20%;background:repeating-linear-gradient(115deg,var(--fill) 0 2px,transparent 2px 34px);-webkit-mask:radial-gradient(60% 50% at 50% 50%,var(--text-1),transparent);mask:radial-gradient(60% 50% at 50% 50%,var(--text-1),transparent)}
+.pp-presets .pp-presets-tile.m3::after{left:18%;right:18%;top:20%;bottom:36%;border-radius:var(--radius-lg);border:1px solid var(--pp-white-16);background:linear-gradient(160deg,var(--pp-white-04),transparent 60%)}
+.pp-presets .pp-presets-glyph{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);display:grid;place-items:center;width:48px;height:48px;border-radius:var(--radius-pill);background:color-mix(in srgb,var(--hf-bg) 28%,transparent);border:1px solid var(--pp-white-16);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:var(--text-1);opacity:.75;z-index:1}
+
+.pp-presets .pp-presets-empty{display:grid;justify-items:center;gap:var(--space-2);padding:var(--space-8) var(--space-6);border-radius:var(--radius-xl);background:var(--surface-2);text-align:center}
+.pp-presets .pp-presets-empty b{font:var(--fw-semibold) var(--fs-16)/var(--lh-16) var(--font-sans)}
+.pp-presets .pp-presets-empty p{margin:0;color:var(--text-2);font-size:var(--fs-14);line-height:var(--lh-14)}
+.pp-presets .pp-presets-empty .btn,.pp-presets .pp-presets-morebtn{height:40px;min-height:40px;padding:0 var(--space-4);border:1px solid var(--border-strong);border-radius:var(--radius-lg);background:var(--fill);color:var(--text-1);font:var(--fw-semibold) var(--fs-14)/var(--lh-14) var(--font-sans)}
+.pp-presets .pp-presets-empty .btn:hover,.pp-presets .pp-presets-morebtn:hover:not(:disabled){background:var(--surface-hover)}
+.pp-presets .pp-presets-more{display:flex;justify-content:center;margin:var(--space-6) 0 0}
+
+@media (hover:none){
+  .pp-presets .pp-presets-recreate{opacity:1;transform:none}
+  .pp-presets .pp-presets-cap{right:110px}
+}
+@media (max-width:1100px){.pp-presets .pp-presets-bar{flex-wrap:wrap}.pp-presets .pp-presets-chips-wrap{flex-basis:100%}}
+@media (max-width:720px){
+  .page.presets-page.pp-presets{padding:0 0 var(--space-8)}
+  .pp-presets .pp-presets-head{margin:var(--space-1) var(--space-1) var(--space-4)}
+  .pp-presets .pp-presets-h{font-size:var(--fs-36);line-height:var(--lh-36)}
+  .pp-presets .pp-presets-lede{font-size:var(--fs-14);line-height:var(--lh-14)}
+  .pp-presets .pp-presets-panel{padding:var(--space-1) var(--space-3) var(--space-3)}
+  .pp-presets .pp-presets-top{flex-direction:column;align-items:stretch;gap:var(--space-2)}
+  .pp-presets .pp-presets-tabs{gap:var(--space-5)}
+  .pp-presets .pp-presets-tab{height:44px;font-size:var(--fs-14);line-height:var(--lh-14);gap:var(--space-2)}
+  .pp-presets .pp-presets-tab svg{width:18px;height:18px}
+  .pp-presets .pp-presets-search{flex:none;height:44px}
+  .pp-presets .pp-presets-bar{gap:var(--space-2);margin:var(--space-2) 0 var(--space-3)}
+  .pp-presets .pp-presets-chip{height:36px}
+  .pp-presets .pp-presets-src{width:100%}
+  .pp-presets .pp-presets-seg{flex:1;height:40px;padding:0 var(--space-1-5);font-size:var(--fs-12);line-height:var(--lh-12)}
+  .pp-presets .pp-presets-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pp-presets .pp-presets-label{font-size:var(--fs-14);line-height:var(--lh-12);white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .pp-presets .pp-presets-tag{left:var(--space-2);top:var(--space-2);right:56px;font-size:var(--fs-10);line-height:var(--lh-10)}
+  .pp-presets .pp-presets-uses{top:var(--space-1-5);right:var(--space-1-5);height:24px;padding:0 var(--space-1-5);font-size:var(--fs-10);line-height:var(--lh-10)}
+  .pp-presets .pp-presets-cap{right:var(--space-2)!important}
+  .pp-presets .pp-presets-glyph{width:40px;height:40px}
+}
+/* phones: Recreate becomes a compact accent button; the whole poster still opens it */
+@media (hover:none) and (max-width:720px){
+  .pp-presets .pp-presets-recreate{left:auto;right:var(--space-1-5);bottom:var(--space-1-5);width:32px;height:32px;padding:0;justify-content:center;border-radius:var(--radius-md)}
+  .pp-presets .pp-presets-recreate svg{width:15px;height:15px}
+  .pp-presets .pp-presets-rc-t{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .pp-presets .pp-presets-cap{right:44px!important;bottom:var(--space-2)}
+}
+@media (prefers-reduced-motion:reduce){.pp-presets *{transition:none!important;animation:none!important}}

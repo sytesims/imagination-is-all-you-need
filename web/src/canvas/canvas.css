@@ -1,0 +1,180 @@
+/* Canvas page (/canvas). The board fills everything under the app header; tldraw is restyled through its own CSS variables and theme
+   (theme.ts), and its menus are replaced by our chrome: switcher top left, slim tool rail on the left, zoom bottom left, Assets on the right.
+   Orange only marks the selection, the active tool and focus. */
+main:has(.cv-root) > .footer{display:none}
+html:has(.cv-root), html:has(.cv-root) body{overscroll-behavior:none}
+.cv-root{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--hf-bg,#0F1113);overflow:hidden;font-family:var(--font-ui,Inter,system-ui,sans-serif);color:var(--text-1,#F7F7F8)}
+.cv-board{position:absolute;inset:0}
+.cv-msg{position:absolute;inset:0;display:grid;place-content:center;gap:12px;justify-items:center;color:var(--text-2,#898A8B);padding:24px}
+
+/* ---- tldraw, in our colours ---- */
+.cv-root .tl-container{font-family:var(--font-ui,Inter,system-ui,sans-serif)}
+.cv-root .tl-theme__dark{
+  --tl-color-background:#0F1113;--tl-color-selection-stroke:#FF7A1A;--tl-color-selection-fill:rgba(255,122,26,.10);--tl-color-selected:#FF7A1A;--tl-color-selected-contrast:#14151A;
+  --tl-color-focus:rgba(255,255,255,.9);--tl-color-primary:#FF7A1A;--tl-color-text:#F7F7F8;--tl-color-text-0:#F7F7F8;--tl-color-text-1:rgba(247,247,248,.85);--tl-color-text-3:#898A8B;
+  --tl-color-panel:rgba(35,36,39,.97);--tl-color-low:#131517;--tl-color-low-border:rgba(255,255,255,.05);--tl-color-divider:rgba(255,255,255,.08);--tl-color-panel-contrast:rgba(255,255,255,.1);
+  --tl-color-muted-1:rgba(255,255,255,.1);--tl-color-muted-2:rgba(255,255,255,.05);--tl-color-hint:rgba(255,255,255,.07);--tl-color-grid:rgba(255,255,255,.12);
+  --tl-shadow-2:0 4px 20px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.08);--tl-shadow-3:0 8px 28px rgba(0,0,0,.45),inset 0 0 0 1px rgba(255,255,255,.1);
+}
+.cv-root .tl-background{background:#0F1113}
+
+/* ---- board background (BoardBackground.tsx): three looks, endless as you pan; layers move by transform only ---- */
+.cv-bg{position:absolute;inset:0;overflow:hidden;pointer-events:none;contain:strict;background:#0F1113}
+.cv-bg>i{position:absolute;display:block;pointer-events:none}
+.cv-bg-layer{inset:0;background-repeat:repeat;will-change:transform}
+.cv-bg-grid{background-image:radial-gradient(circle,rgba(255,255,255,.075) 1px,transparent 1.3px)}
+.cv-bg-grid.faint{opacity:.45}
+/* (a) space: deep blue-black, stars in three depths, a soft orange glow breathing at the edges */
+.cv-bg.look-space{background:radial-gradient(120% 90% at 50% 40%,#11131a 0%,#0c0d12 55%,#08090c 100%)}
+.cv-bg-glow{inset:-12%;background:
+  radial-gradient(46% 42% at 2% 100%,rgba(255,122,26,.24),transparent 70%),
+  radial-gradient(38% 34% at 100% 0%,rgba(255,150,80,.12),transparent 70%),
+  radial-gradient(34% 34% at 98% 94%,rgba(120,90,255,.10),transparent 70%),
+  radial-gradient(30% 28% at 0% 4%,rgba(80,140,255,.07),transparent 70%),
+  radial-gradient(60% 40% at 55% 115%,rgba(255,110,40,.08),transparent 72%);
+  animation:cv-glow 38s ease-in-out infinite alternate;will-change:transform,opacity}
+@keyframes cv-glow{0%{transform:translate3d(0,0,0) scale(1);opacity:.85}50%{opacity:1}100%{transform:translate3d(-2%,1.5%,0) scale(1.06);opacity:.9}}
+.cv-bg-near{animation:cv-twinkle 7s ease-in-out infinite alternate}
+@keyframes cv-twinkle{from{opacity:.8}to{opacity:1}}
+/* (b) haze: slow colour clouds over a faint dot grid */
+.cv-bg.look-haze{background:#0E0F13}
+.cv-bg-blob{width:70vmax;height:70vmax;border-radius:50%;will-change:transform;opacity:.9}
+.cv-bg-blob.b1{left:-18vmax;top:-22vmax;background:radial-gradient(circle,rgba(255,122,26,.17),transparent 62%);animation:cv-drift1 64s ease-in-out infinite alternate}
+.cv-bg-blob.b2{right:-24vmax;top:6vmax;background:radial-gradient(circle,rgba(140,100,255,.13),transparent 62%);animation:cv-drift2 82s ease-in-out infinite alternate}
+.cv-bg-blob.b3{left:18vmax;bottom:-34vmax;background:radial-gradient(circle,rgba(60,190,200,.08),transparent 62%);animation:cv-drift3 96s ease-in-out infinite alternate}
+@keyframes cv-drift1{to{transform:translate3d(14vmax,10vmax,0) scale(1.12)}}
+@keyframes cv-drift2{to{transform:translate3d(-16vmax,12vmax,0) scale(.92)}}
+@keyframes cv-drift3{to{transform:translate3d(10vmax,-14vmax,0) scale(1.1)}}
+/* (c) night: the dot grid and a gentle vignette */
+.cv-bg.look-night{background:#0F1113}
+.cv-bg-vignette{inset:0;background:radial-gradient(120% 100% at 50% 45%,transparent 55%,rgba(0,0,0,.5) 100%)}
+@media (prefers-reduced-motion:reduce){.cv-bg-glow,.cv-bg-blob,.cv-bg-near{animation:none}}
+/* the swatches in the board menu */
+.cv-looks{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.cv-look{all:unset;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:6px;padding:6px 6px 8px;border-radius:10px;cursor:pointer;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)}
+.cv-look:hover{background:rgba(255,255,255,.07)}
+.cv-look:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}
+.cv-look.on{border-color:rgba(255,122,26,.6);background:rgba(255,122,26,.08)}
+.cv-look b{font:600 11.5px/14px var(--font-ui,Inter,sans-serif);color:var(--text-1,#F7F7F8)}
+.cv-look-sw{display:block;width:100%;height:38px;border-radius:7px}
+.cv-look-sw.look-space{background:radial-gradient(60% 70% at 0% 100%,rgba(255,122,26,.45),transparent 70%),radial-gradient(1px 1px at 20% 30%,#fff,transparent),radial-gradient(1px 1px at 60% 20%,#fff,transparent),radial-gradient(1.5px 1.5px at 80% 60%,#ffd9b8,transparent),radial-gradient(1px 1px at 40% 70%,#fff,transparent),#0b0c11}
+.cv-look-sw.look-haze{background:radial-gradient(60% 80% at 20% 20%,rgba(255,122,26,.5),transparent 70%),radial-gradient(60% 80% at 90% 60%,rgba(140,100,255,.45),transparent 70%),#111217}
+.cv-look-sw.look-night{background:radial-gradient(circle,rgba(255,255,255,.22) 1px,transparent 1.4px) 0 0/8px 8px,radial-gradient(120% 100% at 50% 45%,#16181b 40%,#08090a 100%)}
+
+/* ---- the agent you can watch (agentHand.ts): its cursor and name tag, and the short fx rules it writes per shape ---- */
+.cv-root .tl-collaborator__cursor{transition:none}
+.cv-root .tl-nametag,.cv-root .tl-nametag-chat{font:600 12px/16px var(--font-ui,Inter,sans-serif);padding:4px 9px;border-radius:999px;color:#14151A;box-shadow:0 6px 18px rgba(255,122,26,.28),0 2px 6px rgba(0,0,0,.35);max-width:260px}
+.cv-root .tl-nametag-title{font:700 11px/14px var(--font-ui,Inter,sans-serif);letter-spacing:.02em;color:#FF7A1A;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+@keyframes ohf-enter{from{opacity:0;scale:.9;translate:0 18px}to{opacity:1;scale:1;translate:0 0}}
+@keyframes ohf-shimmer{from{background-position:160% 0}to{background-position:-60% 0}}
+@keyframes ohf-touch{0%{box-shadow:0 0 0 0 rgba(255,122,26,0)}16%{box-shadow:0 0 0 3px rgba(255,122,26,.9),0 0 52px rgba(255,122,26,.38)}100%{box-shadow:0 0 0 1px rgba(255,122,26,0),0 0 0 rgba(255,122,26,0)}}
+@keyframes ohf-draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes ohf-pulse{0%,100%{box-shadow:0 0 0 2px rgba(255,122,26,.35),0 0 18px rgba(255,122,26,.12)}50%{box-shadow:0 0 0 3px rgba(255,122,26,.95),0 0 46px rgba(255,122,26,.36)}}
+
+/* ---- tldraw frames and notes, on brand: readable names at the zooms Follow uses ---- */
+.cv-root .tl-frame-heading{font:600 15px/1 var(--font-display,'Space Grotesk',Inter,sans-serif);letter-spacing:-.005em;padding-bottom:6px}
+.cv-root .tl-frame-heading-hit-area{height:28px}
+.cv-root .tl-frame-label{color:var(--text-1,#F7F7F8);background:rgba(15,17,19,.55);padding:3px 9px;border-radius:7px}
+.cv-root [data-shape-type="frame"] .tl-frame__body{fill:rgba(255,255,255,.018);stroke:rgba(255,255,255,.14)}
+.cv-root .tl-note__container{border-radius:14px;box-shadow:0 14px 34px rgba(0,0,0,.4)}
+
+/* ---- one Assets button on this page (the board's own opens the drawer), and no notification sheet over the board ---- */
+html:has(.cv-root) .tn-assets{display:none!important}
+html:has(.cv-root) .notify-opt{display:none!important}
+
+/* ---- shared bits ---- */
+.cv-tool,.cv-zbtn,.cv-zpct,.cv-icon-btn,.cv-switch-btn,.cv-assets-btn,.cv-chip,.cv-empty-btn,.cv-sw,.cv-size{all:unset;box-sizing:border-box;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.cv-tool:focus-visible,.cv-zbtn:focus-visible,.cv-zpct:focus-visible,.cv-icon-btn:focus-visible,.cv-switch-btn:focus-visible,.cv-assets-btn:focus-visible,.cv-chip:focus-visible,.cv-empty-btn:focus-visible,.cv-sw:focus-visible,.cv-size:focus-visible,.cv-dr-tile:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}
+.cv-panel,.cv-toolbar,.cv-zoom,.cv-switch-btn,.cv-assets-btn{background:rgba(19,21,23,.92);border:1px solid rgba(255,255,255,.08);box-shadow:0 4px 20px rgba(0,0,0,.28);backdrop-filter:blur(12px)}
+
+/* ---- board switcher (top left) ---- */
+.cv-switch{position:absolute;top:12px;left:12px;z-index:20}
+.cv-switch-btn{display:flex;align-items:center;gap:10px;height:44px;max-width:300px;padding:0 12px 0 12px;border-radius:12px;color:var(--text-2,#898A8B);transition:background var(--t-state,150ms) ease}
+.cv-switch-btn:hover{background:rgba(28,30,32,.96)}
+.cv-switch-t{display:flex;flex-direction:column;min-width:0;line-height:1.15}
+.cv-switch-t b{font:600 14px/18px var(--font-display,'Space Grotesk',sans-serif);color:var(--text-1,#F7F7F8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cv-switch-t small{font:500 11px/14px var(--font-ui,Inter,sans-serif);color:var(--text-3,rgba(255,255,255,.5))}
+.cv-switch-t small[data-state=error],.cv-switch-t small[data-state=conflict]{color:var(--warning,#E8B44A)}
+.cv-board-list{display:flex;flex-direction:column;gap:2px;max-height:280px;overflow:auto}
+.cv-board-actions{display:flex;flex-direction:column;gap:2px}
+.cv-danger:hover b{color:var(--error,#F06464)}
+
+/* ---- tool rail (left) ---- */
+.cv-toolbar{position:absolute;left:12px;top:68px;z-index:20;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px;border-radius:14px;pointer-events:auto;max-height:calc(100% - 80px);overflow:auto;scrollbar-width:none}
+/* short windows (1024×768 laptops): slightly smaller tools so Zoom in and Fit stay on screen instead of scrolling out of the rail */
+@media (max-height:820px){.cv-toolbar{padding:5px;gap:1px}.cv-toolbar .cv-tool{width:32px;height:32px;border-radius:9px}.cv-toolbar .cv-sep{margin:3px 0}}
+.cv-tool{width:36px;height:36px;flex:none;border-radius:10px;display:grid;place-items:center;color:var(--text-2,#898A8B);transition:background var(--t-state,150ms) ease,color var(--t-state,150ms) ease}
+.cv-tool:hover{background:rgba(255,255,255,.07);color:var(--text-1,#F7F7F8)}
+.cv-tool:active{transform:scale(.96)}
+.cv-tool.on{background:rgba(255,122,26,.14);color:#FF7A1A;box-shadow:inset 0 0 0 1px rgba(255,122,26,.32)}
+.cv-sep{width:20px;height:1px;margin:4px 0;border:0;background:rgba(255,255,255,.08);flex:none}
+.cv-swatch span{width:16px;height:16px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.35),0 0 0 2px rgba(255,255,255,.12)}
+.cv-swatches{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.cv-sw{height:32px;border-radius:9px;display:grid;place-items:center;background:rgba(255,255,255,.04)}
+.cv-sw:hover{background:rgba(255,255,255,.09)}
+.cv-sw span{width:18px;height:18px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.3)}
+.cv-sw.on{box-shadow:inset 0 0 0 1px rgba(255,122,26,.6);background:rgba(255,122,26,.1)}
+.cv-sizes{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.cv-size{height:32px;border-radius:9px;display:grid;place-items:center;background:rgba(255,255,255,.04)}
+.cv-size:hover{background:rgba(255,255,255,.09)}
+.cv-size i{display:block;border-radius:50%;background:var(--text-1,#F7F7F8)}
+.cv-size.on{box-shadow:inset 0 0 0 1px rgba(255,122,26,.6);background:rgba(255,122,26,.1)}
+
+/* ---- zoom (bottom left) ---- */
+.cv-zoom{position:absolute;left:12px;bottom:12px;z-index:20;display:flex;align-items:center;gap:2px;height:40px;padding:0 4px;border-radius:12px;pointer-events:auto}
+.cv-zbtn{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;color:var(--text-2,#898A8B)}
+.cv-zbtn:hover,.cv-zpct:hover{background:rgba(255,255,255,.07);color:var(--text-1,#F7F7F8)}
+.cv-zpct{min-width:52px;height:32px;padding:0 6px;border-radius:9px;text-align:center;line-height:32px;font:500 12px/32px var(--font-mono,ui-monospace,monospace);font-variant-numeric:tabular-nums;color:var(--text-1,#F7F7F8)}
+.cv-zsep{width:1px;height:18px;background:rgba(255,255,255,.08);margin:0 2px}
+
+/* ---- Assets button + drawer (right) ---- */
+.cv-assets-btn{position:absolute;top:12px;right:12px;z-index:21;display:flex;align-items:center;gap:8px;height:44px;padding:0 14px;border-radius:12px;color:var(--text-1,#F7F7F8);font:600 13px/1 var(--font-ui,Inter,sans-serif);transition:right var(--dur-slow,300ms) var(--ease,cubic-bezier(.4,0,.2,1)),background var(--t-state,150ms) ease}
+.cv-assets-btn:hover{background:rgba(28,30,32,.96)}
+.cv-assets-btn.on{right:356px;box-shadow:inset 0 0 0 1px rgba(255,122,26,.32),0 4px 20px rgba(0,0,0,.28)}
+.cv-assets-btn.on svg{color:#FF7A1A}
+.cv-drawer{position:absolute;top:0;right:0;bottom:0;z-index:22;width:344px;display:flex;flex-direction:column;background:rgba(19,21,23,.97);border-left:1px solid rgba(255,255,255,.08);box-shadow:-12px 0 32px rgba(0,0,0,.35);transform:translateX(100%);transition:transform var(--dur-slow,300ms) var(--ease,cubic-bezier(.4,0,.2,1));pointer-events:auto}
+.cv-drawer.open{transform:none}
+.cv-dr-head{display:flex;align-items:center;justify-content:space-between;padding:14px 12px 8px 16px}
+.cv-dr-head h2{margin:0;font:700 15px/20px var(--font-display,'Space Grotesk',sans-serif);text-transform:uppercase;letter-spacing:.02em}
+.cv-icon-btn{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--text-2,#898A8B)}
+.cv-icon-btn:hover{background:rgba(255,255,255,.07);color:var(--text-1,#F7F7F8)}
+.cv-dr-filters{display:flex;gap:4px;padding:0 12px 0 14px;flex-wrap:wrap}
+.cv-chip{height:28px;padding:0 10px;border-radius:999px;font:500 12px/28px var(--font-ui,Inter,sans-serif);color:var(--text-2,#898A8B);background:rgba(255,255,255,.04)}
+.cv-chip:hover{background:rgba(255,255,255,.08);color:var(--text-1,#F7F7F8)}
+.cv-chip.on{background:rgba(255,255,255,.12);color:var(--text-1,#F7F7F8)}
+.cv-dr-search{display:block;width:calc(100% - 28px);margin:10px 14px 0;height:32px;padding:0 12px;border:1px solid var(--border,rgba(255,255,255,.12));border-radius:999px;background:var(--surface-2,rgba(255,255,255,.04));color:var(--text);font:500 12.5px/18px var(--font-ui,Inter,sans-serif);outline:none}
+.cv-dr-search:focus{border-color:color-mix(in srgb,var(--accent) 70%,transparent)}
+.cv-dr-hint{margin:8px 16px 6px;font:500 11px/16px var(--font-ui,Inter,sans-serif);color:var(--text-3,rgba(255,255,255,.5))}
+.cv-dr-grid{flex:1;overflow:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:150px;gap:6px;padding:4px 12px 16px 14px;align-content:start}
+.cv-dr-tile{all:unset;position:relative;box-sizing:border-box;border-radius:10px;overflow:hidden;background:var(--surface-2,#1C1E20);cursor:grab;touch-action:none;border:1px solid rgba(255,255,255,.04)}
+.cv-dr-tile:hover{border-color:rgba(255,255,255,.16)}
+.cv-dr-tile:active{cursor:grabbing}
+.cv-dr-tile img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.cv-dr-tile.sk{background:linear-gradient(90deg,rgba(255,255,255,.03),rgba(255,255,255,.07),rgba(255,255,255,.03));background-size:200% 100%;animation:cv-sk 1.2s linear infinite}
+@keyframes cv-sk{to{background-position:-200% 0}}
+.cv-dr-ph{position:absolute;inset:0;display:grid;place-items:center;color:var(--text-3,rgba(255,255,255,.5));background:var(--surface-2,#1C1E20)}
+.cv-dr-kind{position:absolute;top:6px;left:6px;z-index:2;padding:1px 6px;border-radius:999px;background:rgba(15,17,19,.72);font:600 10px/14px var(--font-ui,Inter,sans-serif);color:var(--text-1,#F7F7F8)}
+.cv-dr-empty{grid-column:1/-1;margin:24px 4px;color:var(--text-3,rgba(255,255,255,.5));font-size:13px;text-align:center}
+.cv-ghost{position:fixed;z-index:1000;width:96px;height:96px;border-radius:10px;overflow:hidden;pointer-events:none;transform:translate(-50%,-50%) rotate(-2deg);box-shadow:0 10px 30px rgba(0,0,0,.5),0 0 0 1px rgba(255,122,26,.5);opacity:.92;background:var(--surface-2,#1C1E20)}
+.cv-ghost img{width:100%;height:100%;object-fit:cover}
+
+/* ---- empty board ---- */
+.cv-empty{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:10;display:flex;flex-direction:column;align-items:center;gap:10px;pointer-events:none;text-align:center;transition:opacity var(--dur-med,200ms) ease}
+.cv-empty.quiet{opacity:.35}
+.cv-empty-mark{color:rgba(255,255,255,.12)}
+.cv-empty p{margin:0;max-width:340px;font:500 14px/20px var(--font-ui,Inter,sans-serif);color:var(--text-3,rgba(255,255,255,.5))}
+.cv-empty-btn{pointer-events:auto;height:32px;padding:0 14px;border-radius:10px;font:600 12px/32px var(--font-ui,Inter,sans-serif);color:var(--text-1,#F7F7F8);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08)}
+.cv-empty-btn:hover{background:rgba(255,255,255,.1)}
+
+@media (prefers-reduced-motion:reduce){.cv-drawer,.cv-assets-btn{transition:none}}
+
+/* the shared project picker's button (shared/ProjectPicker.tsx) in the drawer: Create Image's .fd-btn look, scoped here */
+.cv-dr-proj{padding:0 12px 8px 14px}
+.cv-dr-proj .fd-btn{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;max-width:100%;height:32px;padding:0 10px;border-radius:8px;cursor:pointer;background:rgba(255,255,255,.05);color:var(--text-1,#F7F7F8);font:500 12px/16px var(--font-ui,Inter,sans-serif)}
+.cv-dr-proj .fd-btn:hover{background:rgba(255,255,255,.09)}
+.cv-dr-proj .fd-btn:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}
+.cv-dr-proj .fd-btn.on{box-shadow:inset 0 0 0 1px rgba(255,122,26,.45)}
+.cv-dr-proj .fd-btn svg{flex:none}
+.cv-dr-proj .fd-proj-k{color:var(--text-2,#898A8B)}
+.cv-dr-proj .fd-proj-n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.cv-dr-proj .fd-pp-cv-btn{flex:none;width:18px;height:18px;border-radius:5px;font-size:10px;line-height:18px}

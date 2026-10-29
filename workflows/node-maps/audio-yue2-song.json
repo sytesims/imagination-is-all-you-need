@@ -1,0 +1,39 @@
+{
+  "workflowFile": "audio-yue2-song-api.json",
+  "template": "audio_yue2_text2music",
+  "inputs": {
+    "prompt": [
+      {
+        "node": "3",
+        "field": "style"
+      },
+      {
+        "node": "4",
+        "field": "style"
+      }
+    ],
+    "lyrics": [
+      {
+        "node": "3",
+        "field": "lyrics"
+      },
+      {
+        "node": "4",
+        "field": "lyrics"
+      }
+    ]
+  },
+  "duration": [
+    {
+      "node": "4",
+      "field": "max_duration"
+    }
+  ],
+  "seed": {
+    "node": "2",
+    "field": "seed"
+  },
+  "output": {
+    "node": "9"
+  }
+}

@@ -1,0 +1,167 @@
+{
+ "1": {
+  "class_type": "LoadImage",
+  "inputs": {
+   "image": "input.png"
+  }
+ },
+ "20": {
+  "class_type": "ImageScaleToTotalPixels",
+  "inputs": {
+   "image": [
+    "1",
+    0
+   ],
+   "upscale_method": "lanczos",
+   "megapixels": 1,
+   "resolution_steps": 1
+  },
+  "_meta": {
+   "title": "Working size (output = 4x these MP)"
+  }
+ },
+ "21": {
+  "class_type": "UpscaleModelLoader",
+  "inputs": {
+   "model_name": "RealESRGAN_x4plus.pth"
+  }
+ },
+ "22": {
+  "class_type": "ImageUpscaleWithModel",
+  "inputs": {
+   "upscale_model": [
+    "21",
+    0
+   ],
+   "image": [
+    "20",
+    0
+   ]
+  }
+ },
+ "23": {
+  "class_type": "ImageScaleBy",
+  "inputs": {
+   "image": [
+    "22",
+    0
+   ],
+   "upscale_method": "lanczos",
+   "scale_by": 0.5
+  }
+ },
+ "24": {
+  "class_type": "UNETLoader",
+  "inputs": {
+   "unet_name": "z_image_turbo_bf16.safetensors",
+   "weight_dtype": "default"
+  }
+ },
+ "25": {
+  "class_type": "ModelSamplingAuraFlow",
+  "inputs": {
+   "model": [
+    "24",
+    0
+   ],
+   "shift": 3
+  }
+ },
+ "26": {
+  "class_type": "CLIPLoader",
+  "inputs": {
+   "clip_name": "qwen_3_4b.safetensors",
+   "type": "lumina2",
+   "device": "default"
+  }
+ },
+ "27": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "clip": [
+    "26",
+    0
+   ],
+   "text": "masterpiece, 8k"
+  }
+ },
+ "28": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "clip": [
+    "26",
+    0
+   ],
+   "text": ""
+  }
+ },
+ "29": {
+  "class_type": "VAELoader",
+  "inputs": {
+   "vae_name": "ae.safetensors"
+  }
+ },
+ "30": {
+  "class_type": "VAEEncode",
+  "inputs": {
+   "pixels": [
+    "23",
+    0
+   ],
+   "vae": [
+    "29",
+    0
+   ]
+  }
+ },
+ "31": {
+  "class_type": "KSampler",
+  "inputs": {
+   "model": [
+    "25",
+    0
+   ],
+   "positive": [
+    "27",
+    0
+   ],
+   "negative": [
+    "28",
+    0
+   ],
+   "latent_image": [
+    "30",
+    0
+   ],
+   "seed": 824287194145573,
+   "steps": 5,
+   "cfg": 1,
+   "sampler_name": "dpmpp_2m_sde",
+   "scheduler": "beta",
+   "denoise": 0.33
+  }
+ },
+ "32": {
+  "class_type": "VAEDecode",
+  "inputs": {
+   "samples": [
+    "31",
+    0
+   ],
+   "vae": [
+    "29",
+    0
+   ]
+  }
+ },
+ "8": {
+  "class_type": "SaveImage",
+  "inputs": {
+   "images": [
+    "32",
+    0
+   ],
+   "filename_prefix": "openhiggsfield/image-upscale"
+  }
+ }
+}

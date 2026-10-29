@@ -1,0 +1,9 @@
+/* A compact bridge from character sheets to a speaking character. Source framing stays square. */
+.xps.xpa{grid-template-columns:minmax(0,400px) minmax(0,460px);gap:clamp(32px,4vw,56px)}
+.xpa .xps-text{position:static}
+.xpa-result{min-width:0;margin:0}.xpa .sfilm.xpa-film{width:100%;aspect-ratio:1;max-height:none;margin:0;border-radius:var(--radius-lg)}
+.xpa .xpa-film .sfilm-stage{aspect-ratio:1}.xpa .xpa-film .sfilm-media{object-fit:contain}
+.xpa-result figcaption{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 16px;margin-top:12px;color:var(--text-2);font:400 11px/1.5 var(--font-ui)}
+.xpa-input{display:flex;align-items:center;gap:12px;margin-top:20px;color:var(--text-2);font:400 11px/1.5 var(--font-ui)}
+.xpa-input img{display:block;width:56px;height:56px;object-fit:contain;border-radius:var(--radius-sm);border:1px solid var(--border-strong)}
+@media(max-width:980px){.xps.xpa{grid-template-columns:minmax(0,1fr);gap:24px}.xpa-result{width:100%;max-width:460px;justify-self:start}}

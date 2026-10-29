@@ -1,0 +1,6 @@
+/* Video bars: Settings holds Sound (SoundSetting.tsx). While sound is on, a small speaker badge sits in the button's top-right corner (inside it: the chip row clips anything outside). */
+html body .ic-chip.snd-set{position:relative;overflow:visible}
+html body .ic-chip.snd-set .snd-badge{position:absolute;top:2px;right:2px;display:grid;place-items:center;width:13px;height:13px;border-radius:50%;background:var(--accent);color:var(--on-accent);box-shadow:0 0 0 1.5px var(--surface-1,#1a1a1d);pointer-events:none;animation:snd-badge-in .18s var(--ease-state,ease-out)}
+html body .ic-chip.snd-set .snd-badge svg{width:9px!important;height:9px!important;flex:none}
+@keyframes snd-badge-in{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){html body .ic-chip.snd-set .snd-badge{animation:none}}

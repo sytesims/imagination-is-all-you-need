@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 576" width="1024" height="576">
+  <!-- Explore card poster for the e-commerce pop-up book: our own drawing (Imagination Is All You Need, AGPL-3.0-or-later). -->
+  <defs>
+    <radialGradient id="desk" cx="50%" cy="48%" r="75%"><stop offset="0" stop-color="#3a2f26"/><stop offset=".55" stop-color="#1c1814"/><stop offset="1" stop-color="#0c0b0a"/></radialGradient>
+    <linearGradient id="gutL" x1="1" x2="0"><stop offset="0" stop-color="#5b4630" stop-opacity=".35"/><stop offset=".3" stop-color="#5b4630" stop-opacity=".06"/><stop offset="1" stop-color="#5b4630" stop-opacity="0"/></linearGradient>
+    <linearGradient id="gutR" x1="0" x2="1"><stop offset="0" stop-color="#5b4630" stop-opacity=".35"/><stop offset=".3" stop-color="#5b4630" stop-opacity=".06"/><stop offset="1" stop-color="#5b4630" stop-opacity="0"/></linearGradient>
+    <pattern id="h1" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="#26221E" stroke-width="1.6"/></pattern>
+    <pattern id="h2" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#26221E" stroke-width="1.4"/></pattern>
+    <pattern id="hO" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="#8A3A05" stroke-width="1.6"/></pattern>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="160%"><feGaussianBlur stdDeviation="18"/></filter>
+    <style>
+      .flow{fill:none;stroke:#FF7A1A;stroke-width:5;stroke-linecap:round;stroke-dasharray:14 11;animation:run 1.6s linear infinite}
+      .halo{fill:none;stroke:#FF7A1A;stroke-width:14;stroke-linecap:round;opacity:.16}
+      .dot{fill:#FF7A1A;stroke:#FFF6EA;stroke-width:3}
+      .ring{fill:none;stroke:#FF7A1A;stroke-width:3;transform-box:fill-box;transform-origin:center;animation:pulse 2.2s ease-out infinite}
+      @keyframes run{to{stroke-dashoffset:-50}}
+      @keyframes pulse{0%{transform:scale(.7);opacity:.9}100%{transform:scale(1.7);opacity:0}}
+      @media (prefers-reduced-motion:reduce){.flow,.ring{animation:none}}
+    </style>
+  </defs>
+  <rect width="1024" height="576" fill="url(#desk)"/>
+  <ellipse cx="512" cy="430" rx="420" ry="70" fill="#000" opacity=".55" filter="url(#soft)"/>
+  <path d="M96 438 L512 470 L928 438 L872 128 L512 150 L152 128 Z" fill="#232428"/>
+  <path d="M96 438 L512 470 L928 438 L930 448 L512 482 L94 448 Z" fill="#111214"/>
+  <path d="M110 428 L512 458 L914 428 L914 438 L512 468 L110 438 Z" fill="#E6DCC9"/>
+  <g stroke="#8E8170" stroke-width="1" opacity=".7" fill="none"><path d="M112 431 L512 461 L912 431"/><path d="M112 434 L512 464 L912 434"/></g>
+  <path d="M112 426 L506 452 Q512 300 506 146 L168 124 Z" fill="#F5EEE1"/>
+  <path d="M112 426 L506 452 Q512 300 506 146 L168 124 Z" fill="url(#gutL)"/>
+  <path d="M518 452 L912 426 L856 124 L518 146 Q512 300 518 452 Z" fill="#F5EEE1"/>
+  <path d="M518 452 L912 426 L856 124 L518 146 Q512 300 518 452 Z" fill="url(#gutR)"/>
+  <text x="190" y="168" font-family="Caveat, 'Bradley Hand', cursive" font-weight="700" font-size="24" fill="#B4500B" transform="rotate(3.2 190 168)">Chapter 1 · Start here</text>
+  <text x="188" y="206" font-family="'Source Serif 4', Georgia, serif" font-weight="700" font-size="28" fill="#26221E" transform="rotate(3.2 188 206)">One good</text>
+  <text x="186" y="240" font-family="'Source Serif 4', Georgia, serif" font-weight="700" font-size="28" fill="#26221E" transform="rotate(3.2 186 240)">product photo</text>
+  <path d="M186 254 q60 -5 118 6" stroke="#FF7A1A" stroke-width="4" fill="none" stroke-linecap="round" transform="rotate(3.2 186 254)"/>
+  <g stroke="#6b6157" stroke-width="5" stroke-linecap="round" opacity=".55" transform="rotate(3.2 180 280)">
+    <path d="M180 280 H440"/><path d="M178 298 H452"/><path d="M176 316 H430"/><path d="M174 340 H448"/><path d="M172 358 H420"/>
+  </g>
+  <g transform="rotate(3.2 170 380)">
+    <rect x="168" y="372" width="282" height="34" rx="9" fill="#FFE9D6" stroke="#FF7A1A" stroke-width="2.5"/>
+    <circle cx="186" cy="389" r="9" fill="#FF7A1A"/><path d="M204 389 H420" stroke="#6b6157" stroke-width="4" stroke-linecap="round" opacity=".6"/>
+  </g>
+  <g transform="translate(40 -14) rotate(7 402 198) scale(.9)" transform-origin="402 198"><rect x="352" y="146" width="104" height="118" fill="#FFFDF8"/><rect x="359" y="153" width="90" height="90" fill="#EFE6D6"/><rect x="359" y="153" width="90" height="90" fill="url(#h1)" opacity=".18"/>
+    <rect x="394" y="178" width="20" height="52" rx="5" fill="none" stroke="#26221E" stroke-width="2.5"/><rect x="398" y="166" width="12" height="12" fill="#26221E"/><rect x="380" y="138" width="46" height="14" fill="#FFBE78" opacity=".7"/></g>
+  <ellipse cx="700" cy="392" rx="70" ry="14" fill="url(#h1)" opacity=".35"/>
+  <ellipse cx="610" cy="402" rx="38" ry="9" fill="url(#h1)" opacity=".3"/>
+  <ellipse cx="800" cy="410" rx="40" ry="9" fill="url(#hO)" opacity=".4"/>
+  <path d="M600 386 L600 230 Q600 205 625 202 L790 200 Q810 200 810 224 L810 380" fill="#FFF9EE" stroke="#26221E" stroke-width="3.2" stroke-linejoin="round"/>
+  <path d="M600 386 L810 380 L838 404 L626 412 Z" fill="#FFF9EE" stroke="#26221E" stroke-width="3.2" stroke-linejoin="round"/>
+  <path d="M600 300 L600 386 L626 412 L626 320 Z" fill="url(#h1)" opacity=".5"/>
+  <path d="M676 392 L676 296 Q676 276 694 270 L694 254 L716 254 L716 270 Q734 276 734 296 L734 392 Z" fill="#E6EDEC" stroke="#26221E" stroke-width="3.4" stroke-linejoin="round"/>
+  <path d="M716 296 Q734 296 734 310 L734 392 L714 392 Z" fill="url(#h1)" opacity=".55"/>
+  <path d="M724 330 L734 330 L734 392 L724 392 Z" fill="url(#h2)" opacity=".5"/>
+  <rect x="676" y="318" width="58" height="36" fill="#FBF6EC" stroke="#26221E" stroke-width="2.6"/>
+  <text x="705" y="341" text-anchor="middle" font-family="'Source Serif 4', Georgia, serif" font-weight="700" font-size="11" fill="#26221E" letter-spacing="1">SERUM</text>
+  <rect x="694" y="226" width="22" height="30" rx="3" fill="#4A4540" stroke="#14110F" stroke-width="3"/>
+  <ellipse cx="705" cy="220" rx="10" ry="12" fill="#4A4540" stroke="#14110F" stroke-width="3"/>
+  <path d="M568 400 L572 250" stroke="#26221E" stroke-width="4"/><path d="M540 214 L604 222 L600 268 L536 260 Z" fill="#FFF7E6" stroke="#26221E" stroke-width="3.2" stroke-linejoin="round"/>
+  <path d="M572 218 L604 222 L600 268 L568 264 Z" fill="url(#h1)" opacity=".35"/>
+  <g transform="rotate(-14 800 380)"><path d="M770 360 L820 360 L840 380 L820 400 L770 400 Z" fill="#FFB27A" stroke="#8A3A05" stroke-width="3" stroke-linejoin="round"/><circle cx="820" cy="380" r="5" fill="#F5EEE1" stroke="#8A3A05" stroke-width="2"/>
+    <text x="792" y="386" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-weight="800" font-size="15" fill="#5a2603">$24</text></g>
+  <path class="halo" d="M590 236 Q640 196 680 286"/><path class="flow" d="M590 236 Q640 196 680 286"/>
+  <path class="halo" d="M740 300 Q800 270 812 362"/><path class="flow" d="M740 300 Q800 270 812 362"/>
+  <g><circle class="ring" cx="566" cy="238" r="13"/><circle class="dot" cx="566" cy="238" r="11"/></g>
+  <g><circle class="ring" cx="742" cy="248" r="13"/><circle class="dot" cx="742" cy="248" r="11"/></g>
+  <g><circle class="ring" cx="842" cy="352" r="13"/><circle class="dot" cx="842" cy="352" r="11"/></g>
+  <g transform="translate(28 28)"><rect width="176" height="38" rx="19" fill="#F5EEE1"/><circle cx="22" cy="19" r="7" fill="#FF7A1A"/><text x="38" y="25" font-family="Inter, system-ui, sans-serif" font-weight="700" font-size="15" fill="#26221E">Pop-up book · 3D</text></g>
+</svg>

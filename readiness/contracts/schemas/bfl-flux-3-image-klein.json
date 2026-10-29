@@ -1,0 +1,8 @@
+{"_source":"https://docs.bfl.ml/api-reference/utility/generate-an-image-with-flux-3-klein (transcribed by hand Oct 17 2026; HAND-WRITTEN, not recorded live)",
+ "method":"POST","url":"https://api.bfl.ai/v1/flux-3-image-klein","auth_header":"x-key","auth_prefix":"",
+ "schema":{"type":"object","required":["prompt"],"properties":{
+  "prompt":{"type":"string"},"images":{"type":"array","maxItems":10,"minItems":1,"items":{"type":"string"}},
+  "aspect_ratio":{"enum":["auto","21:9","2:1","16:9","3:2","7:5","4:3","5:4","1:1","4:5","3:4","5:7","2:3","9:16","1:2","9:21"]},
+  "resolution":{"enum":["768sq","1k","1.5k","2k","4k"]},"width":{"type":"integer"},"height":{"type":"integer"},"seed":{"type":"integer","minimum":0},
+  "output_format":{"enum":["jpeg","png"]},"steps":{"type":"integer"},"safety_tolerance":{"type":"integer","minimum":0,"maximum":4},"webhook_url":{"type":"string"},"webhook_secret":{"type":"string"}},
+  "additionalProperties":false}}

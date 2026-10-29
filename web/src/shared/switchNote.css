@@ -1,0 +1,6 @@
+/* SwitchNote: one quiet line over the bar's chip row after a model switch moved a setting (shared by Image, Video and Audio). */
+.sw-note{min-height:0;font-size:12px;line-height:1.4;color:var(--text-2,#B4B4BB);padding:0 2px;overflow-wrap:anywhere}
+.sw-note:not([data-shown]){display:none}
+.sw-note span{display:inline-block;animation:sw-note-in .18s ease-out}
+@keyframes sw-note-in{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.sw-note span{animation:none}}

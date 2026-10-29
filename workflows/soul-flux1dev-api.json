@@ -1,0 +1,200 @@
+{
+ "1": {
+  "class_type": "UNETLoader",
+  "inputs": {
+   "unet_name": "flux1-dev-fp8.safetensors",
+   "weight_dtype": "default"
+  }
+ },
+ "2": {
+  "class_type": "DualCLIPLoader",
+  "inputs": {
+   "clip_name1": "clip_l.safetensors",
+   "clip_name2": "t5xxl_fp8_e4m3fn.safetensors",
+   "type": "flux",
+   "device": "default"
+  }
+ },
+ "3": {
+  "class_type": "VAELoader",
+  "inputs": {
+   "vae_name": "ae.safetensors"
+  }
+ },
+ "10": {
+  "class_type": "LoraLoaderModelOnly",
+  "inputs": {
+   "model": [
+    "1",
+    0
+   ],
+   "lora_name": "fluxRealSkin-V2.safetensors",
+   "strength_model": 0.5
+  },
+  "_meta": {
+   "title": "Realism LoRA"
+  }
+ },
+ "11": {
+  "class_type": "LoraLoaderModelOnly",
+  "inputs": {
+   "model": [
+    "10",
+    0
+   ],
+   "lora_name": "fluxRealSkin-V2.safetensors",
+   "strength_model": 0.0
+  },
+  "_meta": {
+   "title": "Style LoRA A"
+  }
+ },
+ "12": {
+  "class_type": "LoraLoaderModelOnly",
+  "inputs": {
+   "model": [
+    "11",
+    0
+   ],
+   "lora_name": "fluxRealSkin-V2.safetensors",
+   "strength_model": 0.0
+  },
+  "_meta": {
+   "title": "Style LoRA B"
+  }
+ },
+ "20": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "text": "",
+   "clip": [
+    "2",
+    0
+   ]
+  }
+ },
+ "22": {
+  "class_type": "FluxGuidance",
+  "inputs": {
+   "conditioning": [
+    "20",
+    0
+   ],
+   "guidance": 3.5
+  }
+ },
+ "21": {
+  "class_type": "ConditioningZeroOut",
+  "inputs": {
+   "conditioning": [
+    "20",
+    0
+   ]
+  }
+ },
+ "30": {
+  "class_type": "EmptySD3LatentImage",
+  "inputs": {
+   "width": 1024,
+   "height": 1024,
+   "batch_size": 1
+  }
+ },
+ "31": {
+  "class_type": "KSampler",
+  "inputs": {
+   "seed": 0,
+   "steps": 20,
+   "cfg": 1,
+   "sampler_name": "euler",
+   "scheduler": "simple",
+   "denoise": 1,
+   "model": [
+    "12",
+    0
+   ],
+   "positive": [
+    "22",
+    0
+   ],
+   "negative": [
+    "21",
+    0
+   ],
+   "latent_image": [
+    "30",
+    0
+   ]
+  }
+ },
+ "32": {
+  "class_type": "VAEDecode",
+  "inputs": {
+   "samples": [
+    "31",
+    0
+   ],
+   "vae": [
+    "3",
+    0
+   ]
+  }
+ },
+ "40": {
+  "class_type": "LoadImage",
+  "inputs": {
+   "image": "colour-ref.png"
+  },
+  "_meta": {
+   "title": "Colour reference / HEX swatch"
+  }
+ },
+ "41": {
+  "class_type": "ColorTransfer",
+  "inputs": {
+   "image_target": [
+    "32",
+    0
+   ],
+   "image_ref": [
+    "40",
+    0
+   ],
+   "method": "reinhard_lab",
+   "source_stats": "per_frame",
+   "strength": 0.5
+  },
+  "_meta": {
+   "title": "Colour match"
+  }
+ },
+ "50": {
+  "class_type": "UpscaleModelLoader",
+  "inputs": {
+   "model_name": "RealESRGAN_x2plus.pth"
+  }
+ },
+ "51": {
+  "class_type": "ImageUpscaleWithModel",
+  "inputs": {
+   "upscale_model": [
+    "50",
+    0
+   ],
+   "image": [
+    "41",
+    0
+   ]
+  }
+ },
+ "9": {
+  "class_type": "SaveImage",
+  "inputs": {
+   "images": [
+    "51",
+    0
+   ],
+   "filename_prefix": "openhiggsfield/soul"
+  }
+ }
+}

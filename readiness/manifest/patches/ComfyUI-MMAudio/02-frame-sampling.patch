@@ -1,0 +1,80 @@
+ComfyUI-MMAudio (kijai, MIT, https://github.com/kijai/ComfyUI-MMAudio) @ 8eaeb72: sample frames over the whole clip.
+CLIP frames at 8 fps and sync frames at 25 fps across the full duration, as MMAudio's own load_video
+(hkchengrex/MMAudio, mmaudio/eval_utils.py); the sampler gains an optional video_fps input (default 25). Applied by install-custom-nodes.sh.
+
+diff --git a/nodes.py b/nodes.py
+index 5e92dfe..0b89dc6 100644
+--- a/nodes.py
++++ b/nodes.py
+@@ -28,7 +28,7 @@ import logging
+ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+ log = logging.getLogger(__name__)
+ 
+-def process_video_tensor(video_tensor: torch.Tensor, duration_sec: float) -> tuple[torch.Tensor, torch.Tensor, float]:
++def process_video_tensor(video_tensor: torch.Tensor, duration_sec: float, video_fps: float = 25.0) -> tuple[torch.Tensor, torch.Tensor, float]:
+     _CLIP_SIZE = 384
+     _CLIP_FPS = 8.0
+ 
+@@ -51,24 +51,23 @@ def process_video_tensor(video_tensor: torch.Tensor, duration_sec: float) -> tup
+         v2.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+     ])
+ 
+-    # Assuming video_tensor is in the shape (frames, height, width, channels)
++    # Assuming video_tensor is in the shape (frames, height, width, channels), at video_fps.
++    # Sample each stream at its own rate over the whole clip, as MMAudio's load_video does
++    # (clip 8 fps, sync 25 fps; frame k = the source frame shown at k / fps).
+     total_frames = video_tensor.shape[0]
++    available_sec = total_frames / video_fps
++    if available_sec < duration_sec:
++        log.warning(f'Video is too short: {available_sec:.2f} < {duration_sec:.2f}, truncating')
++        duration_sec = available_sec
+     clip_frames_count = int(_CLIP_FPS * duration_sec)
+     sync_frames_count = int(_SYNC_FPS * duration_sec)
+ 
+-    # Adjust duration if there are not enough frames
+-    if total_frames < clip_frames_count:
+-        log.warning(f'Clip video is too short: {total_frames / _CLIP_FPS:.2f} < {duration_sec:.2f}')
+-        clip_frames_count = total_frames
+-        duration_sec = total_frames / _CLIP_FPS
++    def pick(fps, count):
++        idx = [min(total_frames - 1, int(k * video_fps / fps + 1e-6)) for k in range(count)]
++        return video_tensor[idx]
+ 
+-    if total_frames < sync_frames_count:
+-        log.warning(f'Sync video is too short: {total_frames / _SYNC_FPS:.2f} < {duration_sec:.2f}, truncating to {total_frames / _SYNC_FPS:.2f} sec')
+-        sync_frames_count = total_frames
+-        duration_sec = total_frames / _SYNC_FPS
+-
+-    clip_frames = video_tensor[:clip_frames_count]
+-    sync_frames = video_tensor[:sync_frames_count]
++    clip_frames = pick(_CLIP_FPS, clip_frames_count)
++    sync_frames = pick(_SYNC_FPS, sync_frames_count)
+ 
+     clip_frames = clip_frames.permute(0, 3, 1, 2)
+     sync_frames = sync_frames.permute(0, 3, 1, 2)
+@@ -309,6 +308,7 @@ class MMAudioSampler:
+             },
+             "optional": {
+                 "images": ("IMAGE",),
++                "video_fps": ("FLOAT", {"default": 25.0, "min": 1.0, "max": 120.0, "step": 0.001, "tooltip": "Frame rate of the images (frames are resampled to 8 fps for CLIP and 25 fps for sync)"}),
+             },
+         }
+ 
+@@ -317,7 +317,7 @@ class MMAudioSampler:
+     FUNCTION = "sample"
+     CATEGORY = "MMAudio"
+ 
+-    def sample(self, mmaudio_model, seed, feature_utils, duration, steps, cfg, prompt, negative_prompt, mask_away_clip, force_offload, images=None):
++    def sample(self, mmaudio_model, seed, feature_utils, duration, steps, cfg, prompt, negative_prompt, mask_away_clip, force_offload, images=None, video_fps=25.0):
+         device = mm.get_torch_device()
+         offload_device = mm.unet_offload_device()
+         rng = torch.Generator(device=device)
+@@ -327,7 +327,7 @@ class MMAudioSampler:
+        
+         if images is not None:
+             images = images.to(device=device)
+-            clip_frames, sync_frames, duration = process_video_tensor(images, duration)
++            clip_frames, sync_frames, duration = process_video_tensor(images, duration, video_fps)
+             print("clip_frames", clip_frames.shape, "sync_frames", sync_frames.shape, "duration", duration)
+             if mask_away_clip:
+                 clip_frames = None

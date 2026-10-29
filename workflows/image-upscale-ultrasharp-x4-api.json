@@ -1,0 +1,66 @@
+{
+ "1": {
+  "class_type": "LoadImage",
+  "inputs": {
+   "image": "input.png"
+  }
+ },
+ "2": {
+  "class_type": "ImageBlur",
+  "inputs": {
+   "image": [
+    "1",
+    0
+   ],
+   "blur_radius": 1,
+   "sigma": 0.5
+  },
+  "_meta": {
+   "title": "Denoise (pre-blur; radius 0 = off)"
+  }
+ },
+ "3": {
+  "class_type": "UpscaleModelLoader",
+  "inputs": {
+   "model_name": "4x-UltraSharp.pth"
+  }
+ },
+ "4": {
+  "class_type": "ImageUpscaleWithModel",
+  "inputs": {
+   "upscale_model": [
+    "3",
+    0
+   ],
+   "image": [
+    "2",
+    0
+   ]
+  }
+ },
+ "7": {
+  "class_type": "ImageSharpen",
+  "inputs": {
+   "image": [
+    "4",
+    0
+   ],
+   "sharpen_radius": 1,
+   "sigma": 1.0,
+   "alpha": 0.5
+  },
+  "_meta": {
+   "title": "Sharpen (alpha 0 = off)"
+  }
+ },
+ "8": {
+  "class_type": "SaveImage",
+  "inputs": {
+   "images": [
+    "7",
+    0
+   ],
+   "filename_prefix": "openhiggsfield/image-upscale"
+  }
+ }
+}

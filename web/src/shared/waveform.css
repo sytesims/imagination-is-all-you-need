@@ -1,0 +1,5 @@
+/* Shared waveform bars (Waveform.tsx). Callers size it (height) and may restyle the bars; the viewer's .rvx-wave rules win over these. */
+.wf{width:100%;height:48px;display:flex;align-items:center;gap:2px;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
+.wf i{flex:1 1 0;min-width:1px;border-radius:2px;background:rgba(255,255,255,.28);transition:background var(--fast) var(--ease)}
+.wf i.on{background:var(--accent)}
+.wf:focus-visible{outline:none;box-shadow:var(--focus-ring);border-radius:4px}

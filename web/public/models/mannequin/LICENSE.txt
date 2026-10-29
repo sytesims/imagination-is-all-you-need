@@ -1,0 +1,6 @@
+mannequin.glb: the mannequin and ten animation clips from the Universal Animation Library (Standard) by Quaternius.
+https://quaternius.com · licence: CC0 1.0 Universal (public domain dedication), https://creativecommons.org/publicdomain/zero/1.0/
+Changed for this app: only the clips the actor uses (idle, walk, jog, sprint, dance, sit enter / idle / exit, jump start / land),
+UVs, finger and scale channels removed, resampled, quantized and meshopt-compressed (scripts/assets/optimize-mannequin.mjs).
+
+parkour.glb: our own hand-keyed parkour clips on the same skeleton (no mesh), made with scripts/assets/parkour (CC0 1.0, like the mannequin).

@@ -1,0 +1,25 @@
+// Combined source contract, not a native-browser autoplay-policy test.
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { pickSound, readSoundChoice } from '../../web/src/shared/soundPick.ts';
+const source = (file: string) => readFileSync(new URL(`../../web/src/${file}`, import.meta.url), 'utf8');
+const player = source('shared/ShowcaseFilm.tsx');
+const boardSource = source('ui/explore/ExploreShowcase.tsx');
+const board = boardSource.slice(boardSource.indexOf('export function XpBoard'), boardSource.indexOf('Audio: SyteSim dances'));
+const trends = source('ui/explore/ExploreTrending.tsx');
+assert.match(player, /hoverSound = false/, 'existing callers retain non-hover behavior');
+assert.match(player, /hoverSound\?: boolean/, 'hover is an optional additive prop');
+assert.match(player, /wanted = useRef\(!manual\)/, 'autoplay intent remains on by default');
+assert.match(player, /wanted\.current = false; el\.pause\(\)/, 'explicit Pause clears playback intent');
+assert.match(player, /hoverSound \? wanted\.current : !manual \|\| wanted\.current/, 'hover scroll return respects explicit Pause');
+assert.match(player, /soundRefused\(\); start\(\)/, 'policy-induced pause can recover with sound permission reset');
+assert.match(board, /<ShowcaseFilm[\s\S]*sound: true/, 'Canvas introductory narration uses the shared player');
+assert.doesNotMatch(board, /\bhoverSound\b/, 'Canvas retains normal scroll-follow sound rather than trend hover');
+assert.doesNotMatch(board, /media: \(\) => null|<SoundToggle/, 'Canvas does not add a duplicate page-sound candidate or toggle');
+assert.match(board, /controls restartOnSound/);
+assert.match(trends, /controls hoverSound/);
+assert.equal((trends.match(/flow: 'Object \/ Person Swap'/g) ?? []).length, 3, 'all three final trend labels');
+assert.deepEqual(readSoundChoice(() => null), { on: true, migrated: false });
+const silent = { id: 'canvas', sound: false, share: 1, off: 0, explicit: true, playing: true, order: 1 };
+assert.equal(pickSound([silent], 'canvas', 'canvas'), null, 'even preferred/hovered silent Canvas cannot carry sound');
+console.log('ok additive hover props, default intent, explicit Pause contract, Canvas narration shared sound, all three swap labels');

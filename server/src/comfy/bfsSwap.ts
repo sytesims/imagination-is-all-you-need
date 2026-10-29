@@ -1,0 +1,24 @@
+/**
+ * Face Swap and Person Swap on Qwen Image 2.1 (local): the community BFS swap LoRAs by Alissonerdx
+ * (https://huggingface.co/Alissonerdx/BFS-Best-Face-Swap), wired as the creator's Qwen Image 2.1 guides say:
+ * image 1 / <image1> = the target photo, image 2 / <image2> = the head / person to put in; LoRA strength 1.0; the guide's prompt
+ * verbatim (the user's touch-ups follow it); Person Swap scales the scene to ~2 MP and the reference to ~0.59 MP (encoder resolution 0).
+ * Graphs: workflows/create-image-qwen21-{faceswap,personswap}-api.json (scripts/build-qwen21-bfs-swap.py). Plain Edit Image on
+ * Qwen 2.1 keeps the official edit template without any LoRA.
+ */
+export interface BfsSwap { toolId: string; provider: string; /** node-map name (workflows/node-maps/<graph>.json) */ graph: string; workflowFile: string; lora: string; strength: number; prompt: string }
+export const BFS_SOURCE = 'https://huggingface.co/Alissonerdx/BFS-Best-Face-Swap';
+/** The head-swap guide's prompt (docs/qwen-image-2.1.md), verbatim. */
+export const BFS_HEAD_PROMPT = 'head_swap: start with <image1> as the base image, keeping its lighting, environment, and background. remove the head from <image1> completely and replace it with the head from <image2>, strictly preserving the hair, eye color, nose structure from <image2>. copy the direction of the eye, head rotation, micro expressions from <image1>, high quality, sharp details, 4k';
+/** The body-swap guide's prompt (docs/qwen-image-2.1-body.md), verbatim. */
+export const BFS_BODY_PROMPT = 'body_swap: start with <image1> as the base image, keeping its lighting, environment, and background. replace the body from <image1> with the body from <image2>, strictly preserving the clothing, body shape and proportions from <image2>. copy the pose, direction of the eye, head rotation, micro expressions from <image1>';
+export const BFS_SWAPS: BfsSwap[] = [
+  { toolId: 'app-face-swap', provider: 'comfy-qwen21', graph: 'create-image-qwen21-faceswap', workflowFile: 'create-image-qwen21-faceswap-api.json', lora: 'bfs_head_v1.1_qwen_2.1.safetensors', strength: 1, prompt: BFS_HEAD_PROMPT },
+  { toolId: 'app-person-swap', provider: 'comfy-qwen21', graph: 'create-image-qwen21-personswap', workflowFile: 'create-image-qwen21-personswap-api.json', lora: 'bfs_body_swap_v1.0_qwen_2.1.safetensors', strength: 1, prompt: BFS_BODY_PROMPT },
+];
+export const bfsSwapFor = (toolId: string, provider: string) => BFS_SWAPS.find((s) => s.toolId === toolId && s.provider === provider) ?? null;
+/** The guide's prompt, then the user's touch-ups ("image 2" → <image2>, the encoder's tags). */
+export const bfsSwapPrompt = (s: BfsSwap, touchUps?: string | null) => {
+  const t = String(touchUps ?? '').trim().replace(/(?<![<\w])\bimage\s*([1-9])\b(?!>)/gi, '<image$1>'); // a tag the shared rewrite already wrote stays one tag
+  return t ? `${s.prompt}. ${t}` : s.prompt;
+};

@@ -1,0 +1,200 @@
+/* ==== Settings + Connections (PAGES-ROUND2 C1–C10, ST1–ST8; 2026-10-22) ====
+   Imported by platform/Settings.tsx. This file loads before styles.css / runon.css (App is imported first in main.tsx), so every rule is
+   scoped `html body .settings-page.st` to win over the older single-class rules without !important. Colours and sizes come from tokens.css
+   (state tokens, --hit-desktop / --hit-phone, --focus-ring-*). */
+
+/* ---------- Page frame: rail + one section (ST1 / C3) ---------- */
+html body .settings-page.st{max-width:1180px;padding:32px 24px 64px;gap:16px}  /* same frame as Spend and Profile, so moving between them doesn't shift the page */
+html body .settings-page.st>h1{margin:0}
+.st-grid{display:grid;grid-template-columns:208px minmax(0,1fr);gap:32px;align-items:start}
+.st-rail{position:sticky;top:calc(var(--nav-h) + 16px);display:flex;flex-direction:column;gap:2px}
+.st-tab{display:flex;align-items:center;gap:10px;min-height:36px;padding:0 12px;border-radius:var(--r-md);color:var(--text-2);font:500 13px/18px var(--font-ui);text-decoration:none;white-space:nowrap;
+  transition:background-color var(--t-state) var(--ease-state),color var(--t-state) var(--ease-state)}
+.st-tab svg{flex:none;opacity:.85}
+.st-tab:hover{background:var(--state-hover);color:var(--text)}
+.st-tab:active{background:var(--state-pressed)}
+.st-tab:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:-2px}
+.st-tab[aria-current=page]{background:var(--state-hover);color:var(--text);font-weight:600;box-shadow:inset 0 0 0 1px var(--state-border)}
+.st-tab[aria-current=page] svg{color:var(--accent);opacity:1}  /* the open section reads apart from a hovered one */
+.st-tab-out i{margin-left:auto;font-style:normal;color:var(--text-3)}
+.st-rail-sep{display:block;height:1px;margin:8px 12px;background:var(--hairline)}
+.st-main{min-width:0;max-width:760px}
+html body .settings-page.st .set-sec{gap:12px;margin-top:0}  /* every section's title starts at the same height */
+html body .settings-page.st .conn-anchor{position:absolute}
+html body .settings-page.st .set-sec>h2,html body .settings-page.st .conn-sec-h>h2{font:700 20px/28px var(--font-display);letter-spacing:-.01em;margin:0;color:var(--text)}
+html body .settings-page.st .st-sub{margin:12px 0 0;font:600 14px/20px var(--font-ui);color:var(--text)}
+html body .settings-page.st .set-learned{margin-top:12px}
+html body .settings-page.st .set-backup{margin:0;padding:0;border:0}
+html body .settings-page.st .st-note{margin:0;padding:10px 14px;border-radius:10px;background:#16161a;border:1px solid #5a4318;color:#ffd9a0;font-size:13px}
+html body .settings-page.st .st-learned-row{align-items:center;gap:12px;flex-wrap:wrap}
+html body .settings-page.st [data-testid=backup-export-note]:empty{display:none}
+
+/* ---------- One button scale (ST4): 36 desktop, 44 phone ---------- */
+html body .settings-page.st .btn,html body .settings-page.st .btn-sm{min-height:36px}
+html body .settings-page.st .btn-sm{padding:0 12px;font-size:var(--fs-sm)}
+html body .settings-page.st .conn-input{height:36px}
+
+/* ---------- Switches (ST8 + C5): 3:1 off track, hover, focus ring, bigger hit area ---------- */
+html body .settings-page.st .settings-row{transition:border-color var(--t-state) var(--ease-state),background-color var(--t-state) var(--ease-state)}
+html body .settings-page.st .settings-row:hover{background:#18181c}
+html body .settings-page.st .settings-row>.set-sw-txt{flex:1}
+/* Connections: setup words for programmers (env names) and the queue note sit behind a small "Details" link (shared TechDetails) */
+html body .settings-page.st .conn-details{margin:0;font-size:12.5px;line-height:18px}
+html body .settings-page.st .conn-details>summary{display:inline-flex;align-items:center;min-height:24px;color:var(--accent);font-weight:600}
+html body .settings-page.st .conn-details>summary:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap);border-radius:var(--r-xs)}
+html body .settings-page.st .conn-details>p{margin:4px 0 0}
+html body .settings-page.st .conn-details code{padding:1px 6px;border-radius:var(--r-xs);background:rgba(255,255,255,.07);color:var(--text);font:500 12px/18px var(--font-mono);white-space:nowrap;word-break:normal}  /* text first, switch on the right, as in Connections and Routing */
+html body .settings-page.st .settings-row input[type=checkbox]{background:#2b2c30;box-shadow:inset 0 0 0 1.5px #8a8b8f;transition:background-color var(--t-state-slow) var(--ease-state),box-shadow var(--t-state) var(--ease-state)}
+html body .settings-page.st .settings-row input[type=checkbox]::after{background:#d6d7da}
+html body .settings-page.st .settings-row:hover input[type=checkbox]:not(:checked){box-shadow:inset 0 0 0 1.5px #b0b1b5}
+html body .settings-page.st .settings-row input[type=checkbox]:checked{background:var(--accent);box-shadow:none}
+html body .settings-page.st .settings-row input[type=checkbox]:checked::after{background:#fff}
+html body .settings-page.st .settings-row input:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap)}
+html body .settings-page.st .prov-sw{position:relative;box-sizing:border-box;width:36px;height:20px;background:#2b2c30;box-shadow:inset 0 0 0 1.5px #8a8b8f;transition:background-color var(--t-state-slow) var(--ease-state),box-shadow var(--t-state) var(--ease-state)}
+html body .settings-page.st .prov-sw::before{content:"";position:absolute;inset:-6px -4px}  /* 32 px hit area, same look */
+html body .settings-page.st .prov-sw i{top:3px;left:3px;background:#d6d7da}
+html body .settings-page.st .prov-sw:hover:not(:disabled):not(.on){box-shadow:inset 0 0 0 1.5px #b0b1b5}
+html body .settings-page.st .prov-sw.on{background:var(--accent);box-shadow:none}
+html body .settings-page.st .prov-sw.on i{background:#fff;transform:translateX(16px)}
+html body .settings-page.st .prov-sw:disabled{opacity:var(--disabled-opacity);cursor:not-allowed}
+html body .settings-page.st .prov-sw:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap)}
+
+/* ---------- Connections cards ---------- */
+html body .settings-page.st .conn{scroll-margin-top:72px}
+html body .settings-page.st .conn-sec{margin-top:24px}
+html body .settings-page.st .conn-card{padding:14px 16px;gap:10px 12px}
+html body .settings-page.st .conn-t{gap:10px}
+html body .settings-page.st .conn-mark{--mk-s:24px;border-radius:var(--r-sm)}
+html body .settings-page.st .conn-mark b{font-size:10px}
+html body .settings-page.st .conn-mark svg{display:block}
+html body .settings-page.st .conn-acts{gap:8px}
+html body .settings-page.st .conn-sw{display:inline-flex;align-items:center;padding:0 4px}
+html body .settings-page.st .conn-help{grid-column:1/-1;margin:0;font-size:12.5px;line-height:18px;color:var(--text-2)}
+html body .settings-page.st .conn-facts{align-items:center}
+html body .settings-page.st .conn-note{flex-basis:auto}
+/* C1: a key button that can't act here: solid grey, readable, still focusable; the reason sits right under it */
+html body .settings-page.st .conn-btn-off,html body .settings-page.st .conn-btn-off:hover{background:var(--disabled-fill)!important;color:var(--disabled-ink)!important;border-color:#3a3a3e!important;box-shadow:none!important;filter:none;cursor:not-allowed}
+html body .settings-page.st .conn-why{grid-column:1/-1;margin:-2px 0 0;font:500 12.5px/18px var(--font-ui);color:var(--text-2)}
+html body .settings-page.st :is(.conn-why,.conn-banner) code{padding:1px 6px;border-radius:var(--r-xs);background:rgba(255,255,255,.07);color:var(--text);font:500 12px/18px var(--font-mono);white-space:nowrap}
+html body .settings-page.st .conn-banner{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;margin-top:24px;padding:14px 16px;border-radius:12px;border:1px solid rgba(232,180,74,.3);background:rgba(232,180,74,.06);scroll-margin-top:84px}
+html body .settings-page.st .conn-banner:focus{outline:none}
+html body .settings-page.st .conn-banner:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color)}
+html body .settings-page.st .conn-banner-ic{display:grid;place-items:center;width:32px;height:32px;border-radius:var(--r-md);background:rgba(232,180,74,.14);color:var(--warning);font-style:normal}
+html body .settings-page.st .conn-banner b{display:block;font:600 14px/20px var(--font-ui);color:var(--text)}
+html body .settings-page.st .conn-banner p,html body .settings-page.st .conn-banner ol{margin:4px 0 0;font:500 13px/20px var(--font-ui);color:#c9cacd}
+html body .settings-page.st .conn-banner ol{padding-left:18px;display:grid;gap:4px}
+/* C6: balance on two rows */
+html body .settings-page.st .conn-bal{grid-column:1/-1;display:flex;flex-direction:column;gap:2px;font:500 13px/20px var(--font-ui);color:var(--text)}
+html body .settings-page.st .conn-bal-v{display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px}
+html body .settings-page.st .conn-bal-v b{font-weight:600}
+html body .settings-page.st .conn-bal-v small{color:var(--text-2);font-size:12px}
+html body .settings-page.st .conn-bal-l,html body .settings-page.st .conn-muted{color:var(--text-2)}
+html body .settings-page.st .conn-bal-meta{font-size:12px;line-height:16px;color:var(--text-2)}
+html body .settings-page.st .conn-skel{display:inline-block;width:60px;height:14px;border-radius:7px;vertical-align:middle}
+/* C7: failed-run chip + links on one row */
+html body .settings-page.st .conn-foot{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding-top:8px;border-top:1px solid var(--hairline)}
+html body .settings-page.st .conn-foot .conn-pill{cursor:help}
+html body .settings-page.st .conn-links{display:inline-flex;flex-wrap:wrap;gap:0 14px}
+/* C5: text links and link buttons get a 32 px hit area (44 on phones) without changing how they read */
+html body .settings-page.st .conn-link,html body .settings-page.st .conn-links a{display:inline-flex;align-items:center;min-height:var(--hit-desktop);padding:0 4px;margin:-6px -4px;border-radius:var(--r-sm);color:var(--accent);font:600 12.5px/18px var(--font-ui);text-decoration:none;background:none;border:0;cursor:pointer}
+html body .settings-page.st .conn-link:hover,html body .settings-page.st .conn-links a:hover{text-decoration:underline}
+html body .settings-page.st .conn-link:disabled{color:var(--text-2);cursor:progress}
+html body .settings-page.st .conn-more{display:inline-flex;align-items:center;min-height:36px;margin-top:8px;padding:0 4px;font-size:13px;text-decoration:none}
+html body .settings-page.st .conn-more:hover{text-decoration:underline}
+/* C9: one focus ring on every Connections link and button */
+html body .settings-page.st .conn :is(a,button):focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap);box-shadow:none}
+/* C4: "See which" list */
+.conn-unl-pop .apop-body{padding:6px 0}
+.conn-unl-list{list-style:none;margin:0;padding:0;max-height:min(360px,60vh);overflow:auto}
+.conn-unl-list li{padding:6px 14px;font:500 13px/18px var(--font-ui);color:var(--text)}
+/* Routing (C8) */
+html body .settings-page.st .conn-route>.conn-pref:first-child{border-top:0;padding-top:0;margin-top:0}
+html body .settings-page.st .conn-choices-empty{grid-column:1/-1;margin:4px 0 0;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);font-size:12.5px}
+html body .settings-page.st .conn-choices-empty b{color:var(--text);font-weight:600}
+html body .settings-page.st .om-card{margin:0 0 8px}
+html body .settings-page.st .prov-billing .subtabs button{min-height:36px;padding:0 14px}
+
+/* ---------- Footer links (ST7): a real hit area ---------- */
+html body .footer a.footer-lic{display:inline-flex;align-items:center;min-height:32px;padding:0 4px}
+
+/* ---------- Phones: the rail becomes a chip row; 44 px targets ---------- */
+@media (max-width:760px){
+  html body .settings-page.st{padding:20px 16px 48px}
+  .st-grid{grid-template-columns:minmax(0,1fr);gap:16px}
+  .st-rail{position:static;flex-direction:row;gap:6px;overflow-x:auto;margin:0 -16px;padding:0 16px 2px;scrollbar-width:none;-webkit-mask:linear-gradient(90deg,#000 calc(100% - 24px),transparent);mask:linear-gradient(90deg,#000 calc(100% - 24px),transparent)}
+  .st-rail::-webkit-scrollbar{display:none}
+  .st-tab{flex:none;min-height:var(--hit-phone);padding:0 14px;border-radius:var(--r-pill);background:var(--state-fill);box-shadow:inset 0 0 0 1px var(--state-border)}
+  html body .settings-page.st .st-tab[aria-current=page]{background:var(--text);color:var(--bg);box-shadow:none}
+  .st-tab-out i,.st-rail-sep{display:none}
+  .st-rail::after{content:"";flex:none;width:16px}
+  html body .settings-page.st .btn,html body .settings-page.st .btn-sm{min-height:var(--hit-phone)}
+  html body .settings-page.st .conn-input{height:var(--hit-phone)}
+  html body .settings-page.st .prov-sw::before{inset:-12px -6px}
+  html body .settings-page.st .conn-link,html body .settings-page.st .conn-links a{min-height:var(--hit-phone);margin:-12px -4px}
+  html body .settings-page.st .conn-more{min-height:var(--hit-phone)}
+  html body .settings-page.st .prov-billing .subtabs button{min-height:var(--hit-phone)}
+  html body .settings-page.st .conn-card{grid-template-columns:minmax(0,1fr) auto;padding:14px}  /* actions stay in the header row */
+  html body .settings-page.st .conn-acts{justify-content:flex-end;align-self:start}
+  html body .settings-page.st .conn-banner{grid-template-columns:minmax(0,1fr)}
+  html body .settings-page.st .conn-banner-ic{display:none}
+  html body .footer a.footer-lic{min-height:var(--hit-phone)}
+}
+
+/* ---------- Profile + Help (PB-30) and the queue line (PB-01) ---------- */
+html body .settings-page.st .st-pcard{display:flex;border-radius:12px;background:#16161a;border:1px solid var(--hairline)}
+html body .settings-page.st .st-prof-card{align-items:center;gap:14px;padding:14px 16px}
+html body .settings-page.st .st-prof-av{flex:none;width:48px;height:48px;border-radius:50%;object-fit:cover;display:grid;place-items:center;background:#2b2c30;color:var(--text);font:700 18px/1 var(--font-ui)}
+html body .settings-page.st .st-prof-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+html body .settings-page.st .st-prof-t b{font:600 15px/22px var(--font-ui);color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html body .settings-page.st .st-help{flex-direction:column;padding:4px}
+/* a plain card with stacked content (Backup, Learned timings) */
+html body .settings-page.st .st-card-col{flex-direction:column;gap:12px;padding:16px}
+html body .settings-page.st .st-card-col>.helper,html body .settings-page.st .st-card-col>.row,html body .settings-page.st .st-card-col>.set-backup-res{margin:0}
+html body .settings-page.st .st-help-row{display:flex;align-items:center;gap:12px;width:100%;min-height:52px;padding:6px 12px;border:0;border-radius:10px;background:transparent;color:var(--text);font:inherit;text-align:left;text-decoration:none;cursor:pointer;
+  transition:background-color var(--t-state) var(--ease-state)}
+html body .settings-page.st .st-help-row:hover{background:var(--state-hover)}
+html body .settings-page.st .st-help-row:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:-2px}
+html body .settings-page.st .st-help-ic{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:8px;background:#2b2c30;color:var(--text-2)}
+html body .settings-page.st .st-help-t{flex:1;min-width:0;display:flex;flex-direction:column}
+html body .settings-page.st .st-help-t b{font:500 14px/20px var(--font-ui)}
+html body .settings-page.st .st-help-row>i{font-style:normal;color:var(--text-3)}
+html body .settings-page.st .st-support-fallback textarea{width:100%;box-sizing:border-box;font:12px/18px var(--font-mono,ui-monospace,monospace);border-radius:10px;padding:10px}
+html body .settings-page.st .conn-limits{margin:0}
+@media (max-width:760px){
+  html body .settings-page.st .st-prof-card{flex-wrap:wrap}
+  html body .settings-page.st .st-prof-card .btn{min-height:var(--hit-phone);width:100%}
+  html body .settings-page.st .st-help-row{min-height:var(--hit-phone)}
+}
+
+/* ---------- Local models (#gpu; was the Self-host page's Local setup, 2026-10-23) ---------- */
+html body .settings-page.st .st-gpu .st-pcard{flex-direction:column;gap:12px;padding:16px;min-width:0}
+html body .settings-page.st .st-gpu .ls-card{border-radius:12px;background:#16161a;border-color:var(--hairline)}
+html body .settings-page.st .st-gpu>.helper{margin:-4px 0 0}
+.st-mc-top{display:flex;align-items:center;gap:12px}
+.st-mc-dot{flex:none;width:10px;height:10px;border-radius:50%;background:var(--text-3)}
+.st-mc-dot.ok{background:var(--success);box-shadow:0 0 0 4px color-mix(in srgb,var(--success) 18%,transparent)}
+.st-mc-dot.bad{background:var(--error);box-shadow:0 0 0 4px color-mix(in srgb,var(--error) 18%,transparent)}
+.st-mc-t{flex:1;min-width:0;display:flex;flex-direction:column}
+.st-mc-t b{font:600 15px/22px var(--font-ui);color:var(--text)}
+.st-mc-t small{margin:0}
+html body .settings-page.st .st-mc-facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;margin:0;border-radius:10px;overflow:hidden;background:var(--hairline);border:1px solid var(--hairline)}
+.st-mc-facts>div{min-width:0;padding:10px 12px;background:#121215}
+.st-mc-facts dt{font:500 11px/16px var(--font-ui);letter-spacing:.04em;text-transform:uppercase;color:var(--text-3)}
+.st-mc-facts dd{margin:2px 0 0;font:500 13.5px/20px var(--font-ui);color:var(--text);overflow-wrap:anywhere}
+html body .settings-page.st .st-mc-hint{margin:0}
+html body .settings-page.st .st-gpu .ls-manual-form{margin:0}
+html body .settings-page.st .st-gpu a:not(.btn){color:var(--accent);text-decoration:none}
+html body .settings-page.st .st-gpu a:not(.btn):hover{text-decoration:underline}
+html body .settings-page.st .st-gpu a:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap);border-radius:var(--r-xs)}
+.ls-comfy-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+html body .settings-page.st .ls-comfy-row input,html body .settings-page.st .st-gpu .ls-manual-form input{box-sizing:border-box;height:36px;padding:0 12px;border-radius:var(--r-md);border:1px solid var(--hairline-strong);background:#0f0f12;color:var(--text);font:400 13.5px/20px var(--font-ui)}
+html body .settings-page.st .ls-comfy-row input{flex:1 1 260px;max-width:420px;min-width:0}
+html body .settings-page.st .ls-comfy-row input:focus-visible,html body .settings-page.st .st-gpu .ls-manual-form input:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap)}
+html body .settings-page.st .ls-comfy-row input[readonly]{opacity:.65;cursor:default}
+html body .settings-page.st .st-gpu .ls-test{margin:0}
+html body .settings-page.st .st-gpu .ls-mlist{margin:0}
+html body .settings-page.st .st-gpu .ls-mlist li:first-child{border-top:0;padding-top:0}
+html body .settings-page.st .st-gpu .ls-models>.link-btn,html body .settings-page.st .st-gpu .ls-comfy>.link-btn{align-self:flex-start}
+html body .settings-page.st .st-gpu .ls-models>.helper{margin:0}
+html body .settings-page.st .st-gpu-docs{margin:4px 0 0}
+@media (max-width:760px){.st-mc-facts{grid-template-columns:repeat(2,minmax(0,1fr))}}

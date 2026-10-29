@@ -1,0 +1,60 @@
+{
+  "workflowFile": "restyle-api.json",
+  "template": "video_wan_vace_14B_v2v",
+  "inputs": {
+    "video": {
+      "node": "145",
+      "field": "file",
+      "role": "source clip (16 fps, ≤81 frames ≈ 5 s per pass)"
+    },
+    "image": {
+      "node": "134",
+      "field": "image",
+      "role": "style reference (first custom style ref, or a rendered style swatch for a preset)"
+    },
+    "prompt": {
+      "node": "6",
+      "field": "text",
+      "role": "style preset prompt + user prompt"
+    }
+  },
+  "output": {
+    "node": "114"
+  },
+  "extra": {
+    "width": {
+      "node": "49",
+      "field": "width",
+      "default": 832
+    },
+    "height": {
+      "node": "49",
+      "field": "height",
+      "default": 480
+    },
+    "length": {
+      "node": "49",
+      "field": "length",
+      "default": 81,
+      "note": "frames at 16 fps; 4n+1"
+    },
+    "seed": {
+      "node": "3",
+      "field": "seed"
+    },
+    "structure": {
+      "node": "200",
+      "fields": [
+        "low_threshold",
+        "high_threshold"
+      ]
+    },
+    "chunking": {
+      "chunkFrames": 81,
+      "overlapFrames": 16,
+      "fps": 16,
+      "note": "server splits long clips (comfy/restyle.ts) and crossfades seams with ffmpeg xfade"
+    },
+    "styleSwatches": "server/samples/styles/styles.json (id -> swatch png + prompt template); no swatch and no custom ref = prompt-only (node 134 disconnected)"
+  }
+}

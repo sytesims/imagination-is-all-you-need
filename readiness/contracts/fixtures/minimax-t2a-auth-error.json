@@ -1,0 +1,1 @@
+{"_fixture": "HAND-WRITTEN from public docs, not a recorded live response", "_source": "same page, base_resp.status_code 1004 = authentication failed", "base_resp": {"status_code": 1004, "status_msg": "authentication failed"}}

@@ -1,0 +1,2 @@
+{"_fixture": "HAND-WRITTEN from public docs, not a recorded live response", "_source": "router-openapi.yaml RouterQueueStatusResponse (error_type only on COMPLETED that failed)",
+ "status": "COMPLETED", "error_type": "content_policy_violation", "status_url": "https://api.comfy.org/x/status", "response_url": "https://api.comfy.org/x", "cancel_url": "https://api.comfy.org/x/cancel"}

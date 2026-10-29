@@ -1,0 +1,20 @@
+/* Profile picture (shared/profile.tsx): the bean or your photo, always a circle. */
+.bean-av{display:inline-block;line-height:0;border-radius:50%;overflow:hidden;flex:none}
+.bean-av svg,.user-av svg{display:block;width:100%!important;height:100%!important}
+.user-av{display:inline-grid;place-items:center;border-radius:50%;overflow:hidden;flex:none;line-height:0}
+.user-av>.bean-av{width:100%!important;height:100%!important}
+.user-av-photo{background:var(--surface-3,#27292C)}
+.user-av-photo img{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%}
+.av-photo:has(.user-av){width:82%;height:82%;background:transparent}
+/* inside the header ring (Shell AvatarRing) the picture fills its circle: no shrunken glyph, no dark disc around it */
+.av-photo .user-av svg{width:100%!important;height:100%!important}
+.hm-av .user-av{width:100%;height:100%}
+.md-acct .hm-av:has(.user-av){background:transparent}
+/* share page byline (Backlog.tsx SharePage) */
+.bl-share-by{display:flex;align-items:center;gap:10px;margin:0 0 12px;min-width:0}
+.bl-share-by b{font-size:14px;overflow-wrap:anywhere}
+/* Profile covers: brand gradients (the /profile banner, its cover picker and the account menu's cover strip) */
+.pf2-cover-sunrise{background:radial-gradient(90% 140% at 100% 0%,rgba(255,122,26,.55),transparent 60%),radial-gradient(70% 120% at 0% 100%,rgba(255,179,87,.22),transparent 60%),linear-gradient(120deg,#1a120d,#2b170b 55%,#3b1d0b)}
+.pf2-cover-ember{background:radial-gradient(80% 140% at 80% 10%,rgba(242,84,45,.5),transparent 60%),radial-gradient(60% 120% at 10% 90%,rgba(255,122,26,.25),transparent 65%),linear-gradient(135deg,#160e0c,#2e1410)}
+.pf2-cover-dusk{background:radial-gradient(80% 160% at 95% 100%,rgba(255,122,26,.45),transparent 60%),radial-gradient(70% 140% at 20% 0%,rgba(169,139,245,.28),transparent 60%),linear-gradient(120deg,#13111d,#24162a)}
+.pf2-cover-night{background:radial-gradient(60% 120% at 85% 15%,rgba(255,122,26,.22),transparent 60%),linear-gradient(135deg,#0d0e10,#17191d 60%,#1d1712)}

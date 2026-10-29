@@ -1,0 +1,15 @@
+{
+  "default": "allow",
+  "spend": "ask",
+  "toolsets": ["core", "library"],
+  "tools": {
+    "run": "ask",
+    "retry": "ask",
+    "generate_video": "ask",
+    "object_swap": "ask",
+    "motion_transfer": "ask",
+    "restyle": "ask",
+    "create_story": "ask",
+    "retry_story": "ask"
+  }
+}

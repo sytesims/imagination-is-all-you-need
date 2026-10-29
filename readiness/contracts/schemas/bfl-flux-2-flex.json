@@ -1,0 +1,8 @@
+{"_source":"https://docs.bfl.ai/api-reference/models/generate-or-edit-an-image-with-flux2-[flex] (transcribed by hand Oct 16 2026)",
+ "method":"POST","url":"https://api.bfl.ai/v1/flux-2-flex","auth_header":"x-key","auth_prefix":"",
+ "schema":{"type":"object","required":["prompt"],"properties":{
+  "prompt":{"type":"string"},"prompt_upsampling":{"type":"boolean"},"seed":{"type":"integer"},"width":{"type":"integer","minimum":64},"height":{"type":"integer","minimum":64},
+  "guidance":{"type":"number","minimum":1.5,"maximum":10},"steps":{"type":"integer","minimum":1,"maximum":50},"safety_tolerance":{"type":"integer","minimum":0,"maximum":7},
+  "output_format":{"enum":["jpeg","png","webp"]},"webhook_url":{"type":"string"},"webhook_secret":{"type":"string"},
+  "input_image":{"type":"string"},"input_image_2":{"type":"string"},"input_image_3":{"type":"string"},"input_image_4":{"type":"string"},"input_image_5":{"type":"string"},"input_image_6":{"type":"string"},"input_image_7":{"type":"string"},"input_image_8":{"type":"string"}},
+  "additionalProperties":false}}

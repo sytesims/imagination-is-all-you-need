@@ -1,0 +1,3160 @@
+{
+ "generated_by": "npm run nodes:pins",
+ "packs": {
+  "ComfyUI (core)": {
+   "repo": "https://github.com/comfyanonymous/ComfyUI",
+   "pin": "bdc63e72f5ab29fde448c161db3057827148c0ef",
+   "dir": null,
+   "license": "GPL-3.0",
+   "classes": [
+    "BasicGuider",
+    "BasicScheduler",
+    "BatchImagesNode",
+    "CFGGuider",
+    "CFGNorm",
+    "CLIPLoader",
+    "CLIPTextEncode",
+    "CLIPVisionEncode",
+    "CLIPVisionLoader",
+    "Canny",
+    "CheckpointLoaderSimple",
+    "ColorTransfer",
+    "ComfyCloudMiniMaxH3ImageToVideoNode",
+    "ComfyCloudMiniMaxH3TextToVideoNode",
+    "ComfyMathExpression",
+    "ComfySwitchNode",
+    "ConditioningZeroOut",
+    "CreateVideo",
+    "DifferentialDiffusion",
+    "DualCLIPLoader",
+    "EmptyAceStep1.5LatentAudio",
+    "EmptyFlux2LatentImage",
+    "EmptyImage",
+    "EmptyLTXVLatentVideo",
+    "EmptyLatentAudio",
+    "EmptyLatentImage",
+    "EmptySD3LatentImage",
+    "Flux2Scheduler",
+    "FluxGuidance",
+    "FluxKontextImageScale",
+    "GetImageSize",
+    "GetVideoComponents",
+    "GrowMask",
+    "ImageBatch",
+    "ImageBlur",
+    "ImageCrop",
+    "ImageFromBatch",
+    "ImageScale",
+    "ImageScaleBy",
+    "ImageScaleToTotalPixels",
+    "ImageSharpen",
+    "ImageStitch",
+    "ImageToMask",
+    "ImageUpscaleWithModel",
+    "InpaintModelConditioning",
+    "KSampler",
+    "KSamplerAdvanced",
+    "KSamplerSelect",
+    "LTXAVTextEncoderLoader",
+    "LTXVAddGuide",
+    "LTXVAudioVAEDecode",
+    "LTXVAudioVAELoader",
+    "LTXVConcatAVLatent",
+    "LTXVConditioning",
+    "LTXVCropGuides",
+    "LTXVEmptyLatentAudio",
+    "LTXVImgToVideoInplace",
+    "LTXVLatentUpsampler",
+    "LTXVPreprocess",
+    "LTXVScheduler",
+    "LTXVSeparateAVLatent",
+    "LatentUpscaleModelLoader",
+    "LoadAudio",
+    "LoadImage",
+    "LoadVideo",
+    "LoraLoader",
+    "LoraLoaderModelOnly",
+    "ManualSigmas",
+    "MaskComposite",
+    "MaskToImage",
+    "MiniMaxH3ImageToVideo",
+    "MiniMaxH3ReferenceToVideo",
+    "ModelSamplingAuraFlow",
+    "ModelSamplingSD3",
+    "PreviewAny",
+    "PrimitiveBoolean",
+    "PrimitiveFloat",
+    "PrimitiveInt",
+    "PrimitiveStringMultiline",
+    "QwenImage21Cache",
+    "RandomNoise",
+    "ReferenceLatent",
+    "ReferenceMultiLatent",
+    "ResizeImageMaskNode",
+    "ResolutionSelector",
+    "SamplerCustomAdvanced",
+    "SaveAudio",
+    "SaveAudioAdvanced",
+    "SaveAudioMP3",
+    "SaveImage",
+    "SaveImageAdvanced",
+    "SaveVideo",
+    "SetLatentNoiseMask",
+    "SolidMask",
+    "TextEncodeAceStepAudio1.5",
+    "TextEncodeQwenImage21",
+    "TextEncodeQwenImageEditPlus",
+    "TextGenerate",
+    "TrimVideoLatent",
+    "UNETLoader",
+    "UpscaleModelLoader",
+    "VAEDecode",
+    "VAEDecodeAudio",
+    "VAEDecodeTiled",
+    "VAEEncode",
+    "VAELoader",
+    "WanAnimateToVideo",
+    "WanCameraEmbedding",
+    "WanCameraImageToVideo",
+    "WanImageToVideo",
+    "WanVaceToVideo"
+   ]
+  },
+  "ComfyUI-KJNodes": {
+   "repo": "https://github.com/kijai/ComfyUI-KJNodes",
+   "pin": "17195fcfa8a05f601b766a0f09c9733284f47416",
+   "dir": "ComfyUI-KJNodes",
+   "license": "GPL-3.0",
+   "classes": [
+    "BlockifyMask",
+    "DrawMaskOnImage",
+    "PointsEditor"
+   ]
+  },
+  "comfyui_controlnet_aux": {
+   "repo": "https://github.com/Fannovel16/comfyui_controlnet_aux",
+   "pin": "a587a4c1594524c1d2de5cd1a86cd868ff448e1c",
+   "dir": "comfyui_controlnet_aux",
+   "license": "Apache-2.0",
+   "classes": [
+    "DWPreprocessor",
+    "PixelPerfectResolution"
+   ]
+  },
+  "ComfyUI-segment-anything-2": {
+   "repo": "https://github.com/kijai/ComfyUI-segment-anything-2",
+   "pin": "0c35fff5f382803e2310103357b5e985f5437f32",
+   "dir": "ComfyUI-segment-anything-2",
+   "license": "Apache-2.0",
+   "classes": [
+    "DownloadAndLoadSAM2Model",
+    "Sam2Segmentation"
+   ]
+  },
+  "ComfyUI-Frame-Interpolation": {
+   "repo": "https://github.com/Fannovel16/ComfyUI-Frame-Interpolation",
+   "pin": "26545cc2dd95bc3d27f056016300673bdeee78f5",
+   "dir": "ComfyUI-Frame-Interpolation",
+   "license": "MIT",
+   "classes": [
+    "RIFE VFI"
+   ]
+  },
+  "ComfyUI-SeedVR2_VideoUpscaler": {
+   "repo": "https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler",
+   "pin": "4490bd1f482e026674543386bb2a4d176da245b9",
+   "dir": "ComfyUI-SeedVR2_VideoUpscaler",
+   "license": "Apache-2.0",
+   "classes": [
+    "SeedVR2LoadDiTModel",
+    "SeedVR2LoadVAEModel",
+    "SeedVR2VideoUpscaler"
+   ]
+  },
+  "ComfyUI-Drama3": {
+   "repo": "https://github.com/PedroMarinhoDev/ComfyUI-Drama3",
+   "pin": "66c4fb9cd3c0151e1e2ccd207847cb8335e87ab4",
+   "dir": "ComfyUI-Drama3",
+   "license": "GPL-3.0 (Fish-derived parts: Fish Audio Community License; ASR parts: Apache-2.0)",
+   "classes": [
+    "Drama3CodecLoader",
+    "Drama3Decode",
+    "Drama3EncodeVoice",
+    "Drama3Generate",
+    "Drama3Loader",
+    "Qwen3ASRLoader",
+    "Qwen3ASRTranscribe"
+   ]
+  },
+  "ComfyUI_BiRefNet_ll": {
+   "repo": "https://github.com/lldacing/ComfyUI_BiRefNet_ll",
+   "pin": "5443a2aa16cfbd98bb2f7dcc8bdcb70439e08529",
+   "dir": "ComfyUI_BiRefNet_ll",
+   "license": "MIT",
+   "classes": [
+    "LoadRembgByBiRefNetModel",
+    "RembgByBiRefNetAdvanced"
+   ]
+  },
+  "ComfyUI-Chatterbox": {
+   "repo": "https://github.com/wildminder/ComfyUI-Chatterbox",
+   "pin": "4597af8f59d4460d441e13533eae24b092e40952",
+   "dir": "ComfyUI-Chatterbox",
+   "license": "Apache-2.0 (pack); Chatterbox weights MIT",
+   "classes": [
+    "ChatterboxMTLTTS",
+    "ChatterboxTTS",
+    "ChatterboxVC"
+   ]
+  },
+  "ComfyUI-MMAudio": {
+   "repo": "https://github.com/kijai/ComfyUI-MMAudio",
+   "pin": "8eaeb72edc3aaf2059b57f2d96a1f6f689f19ae2",
+   "dir": "ComfyUI-MMAudio",
+   "license": "MIT (code); MMAudio weights CC BY-NC 4.0",
+   "patches": [
+    "patches/ComfyUI-MMAudio/01-mps-vae.patch",
+    "patches/ComfyUI-MMAudio/02-frame-sampling.patch"
+   ],
+   "classes": [
+    "MMAudioFeatureUtilsLoader",
+    "MMAudioModelLoader",
+    "MMAudioSampler"
+   ]
+  },
+  "ComfyUI-PuLID-Flux": {
+   "repo": "https://github.com/balazik/ComfyUI-PuLID-Flux",
+   "pin": "a80912fc3435c358607bf4b43a58dbcbebdb09ff",
+   "dir": "ComfyUI-PuLID-Flux",
+   "license": "Apache-2.0 (pack); PuLID weights Apache-2.0; insightface antelopev2 non-commercial research; runs on FLUX.1-dev (non-commercial)",
+   "classes": [
+    "ApplyPulidFlux",
+    "PulidFluxEvaClipLoader",
+    "PulidFluxInsightFaceLoader",
+    "PulidFluxModelLoader"
+   ]
+  },
+  "ComfyUI_InfiniteYou": {
+   "repo": "https://github.com/bytedance/ComfyUI_InfiniteYou",
+   "pin": "1c979397c5c80f5ac83a2473a2f7d4503104110f",
+   "dir": "ComfyUI_InfiniteYou",
+   "license": "Apache-2.0 (pack); InfiniteYou weights CC BY-NC 4.0; insightface non-commercial; FLUX.1-dev (non-commercial)",
+   "classes": [
+    "ExtractFacePoseImage",
+    "ExtractIDEmbedding",
+    "IDEmbeddingModelLoader",
+    "InfuseNetApply",
+    "InfuseNetLoader"
+   ]
+  },
+  "ComfyUI-F5-TTS": {
+   "repo": "https://github.com/niknah/ComfyUI-F5-TTS",
+   "pin": "a28b6d5ff9185a3383f6e8e9036f786015fc6651",
+   "dir": "ComfyUI-F5-TTS",
+   "license": "MIT (pack; submodule SWivid/F5-TTS @2f866649 MIT code, weights CC BY-NC 4.0)",
+   "classes": [
+    "F5TTSAudioInputs"
+   ]
+  },
+  "ComfyUI-Qwen-TTS": {
+   "repo": "https://github.com/flybirdxx/ComfyUI-Qwen-TTS",
+   "pin": "374c2e05dc705231258237a16258d2f8fae8e32a",
+   "dir": "ComfyUI-Qwen-TTS",
+   "license": "Apache-2.0 (pack); Qwen3-TTS weights Apache-2.0",
+   "pip": [
+    "sox",
+    "tiktoken"
+   ],
+   "note": "Install only sox and tiktoken: its requirements.txt pins transformers<5 and onnxruntime-openvino (no macOS wheel). Model folder: models/qwen-tts/Qwen3-TTS-12Hz-1.7B-CustomVoice (docs/LOCAL-MODELS-AND-HARDWARE.md).",
+   "classes": [
+    "FB_Qwen3TTSCustomVoice"
+   ]
+  },
+  "ComfyUI-GGUF": {
+   "repo": "https://github.com/city96/ComfyUI-GGUF",
+   "pin": null,
+   "dir": "ComfyUI-GGUF",
+   "license": "Apache-2.0",
+   "optional": true,
+   "classes": [
+    "UnetLoaderGGUF"
+   ],
+   "note": "Optional. Enables the lighter GGUF variants of large local models (the app checks for UnetLoaderGGUF). Not installed by nodes:install; add it in ComfyUI Manager."
+  }
+ },
+ "classes": [
+  {
+   "class": "ApplyPulidFlux",
+   "pack": "ComfyUI-PuLID-Flux",
+   "python_module": "custom_nodes.ComfyUI-PuLID-Flux",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "pulidflux.py"
+   ],
+   "workflows": [
+    "workflows/soul-ref-pulid-api.json"
+   ]
+  },
+  {
+   "class": "BasicGuider",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_custom_sampler",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_custom_sampler.py"
+   ],
+   "workflows": [
+    "workflows/create-image-flux2dev-api.json",
+    "workflows/h3-i2v-api.json",
+    "workflows/h3-r2v-api.json",
+    "workflows/h3-t2v-api.json"
+   ]
+  },
+  {
+   "class": "BasicScheduler",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_custom_sampler",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_custom_sampler.py"
+   ],
+   "workflows": [
+    "workflows/h3-i2v-api.json",
+    "workflows/h3-r2v-api.json",
+    "workflows/h3-t2v-api.json"
+   ]
+  },
+  {
+   "class": "BatchImagesNode",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_post_processing",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "tests/execution/test_disabled_nodes.py",
+    "comfy_extras/nodes_replacements.py",
+    "comfy_extras/nodes_post_processing.py"
+   ],
+   "workflows": [
+    "workflows/create-image-flux3klein-edit-api.json",
+    "workflows/create-image-flux3klein-inpaint-api.json",
+    "workflows/create-image-qwen21-edit-api.json"
+   ]
+  },
+  {
+   "class": "BlockifyMask",
+   "pack": "ComfyUI-KJNodes",
+   "python_module": "custom_nodes.ComfyUI-KJNodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "__init__.py",
+    "nodes/mask_nodes.py"
+   ],
+   "workflows": [
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json"
+   ]
+  },
+  {
+   "class": "CFGGuider",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_custom_sampler",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy/samplers.py",
+    "comfy_extras/nodes_custom_sampler.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/create-image-klein4b-edit-api.json",
+    "workflows/create-image-klein4b-t2i-api.json",
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "CFGNorm",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_cfg",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_cfg.py"
+   ],
+   "workflows": [
+    "workflows/create-image-qwen-edit2509-api.json",
+    "workflows/create-image-qwen-edit2509-inpaint-api.json",
+    "workflows/soul-ref-qwenedit-api.json"
+   ]
+  },
+  {
+   "class": "CLIPLoader",
+   "pack": "ComfyUI (core)",
+   "python_module": "nodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/audio-sfx-api.json",
+    "workflows/camera-moves-api.json",
+    "workflows/create-image-flux2dev-api.json",
+    "workflows/create-image-flux3klein-edit-api.json",
+    "workflows/create-image-flux3klein-inpaint-api.json",
+    "workflows/create-image-flux3klein-t2i-api.json",
+    "workflows/create-image-klein4b-edit-api.json",
+    "workflows/create-image-klein4b-t2i-api.json",
+    "workflows/create-image-qwen-edit2509-api.json",
+    "workflows/create-image-qwen-edit2509-inpaint-api.json",
+    "workflows/create-image-qwen-t2i-api.json",
+    "workflows/create-image-qwen21-edit-api.json",
+    "workflows/create-image-qwen21-t2i-api.json",
+    "workflows/create-image-zimage-api.json",
+    "workflows/create-image-zimage-turbo-api.json",
+    "workflows/h3-i2v-api.json",
+    "workflows/h3-r2v-api.json",
+    "workflows/h3-t2v-api.json",
+    "workflows/motion-transfer-api.json",
+    "workflows/motion-transfer/ext-0.json",
+    "workflows/motion-transfer/ext-1.json",
+    "workflows/motion-transfer/ext-2.json",
+    "workflows/motion-transfer/ext-3.json",
+    "workflows/motion-transfer/ext-4.json",
+    "workflows/motion-transfer/ext-5.json",
+    "workflows/motion-transfer/ext-6.json",
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json",
+    "workflows/photo-fx-api.json",
+    "workflows/reshoot-funcamera-api.json",
+    "workflows/restyle-api.json",
+    "workflows/soul-qwen-api.json",
+    "workflows/soul-ref-qwenedit-api.json",
+    "workflows/soul-zit-api.json",
+    "workflows/soundtrack-sfx-api.json"
+   ]
+  },
+  {
+   "class": "CLIPTextEncode",
+   "pack": "ComfyUI (core)",
+   "python_module": "nodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "tests/execution/testing_nodes/testing-pack/specific_tests.py",
+    "nodes.py",
+    "script_examples/websockets_api_example_ws_images.py"
+   ],
+   "workflows": [
+    "workflows/audio-sfx-api.json",
+    "workflows/camera-ltx-api.json",
+    "workflows/camera-moves-api.json",
+    "workflows/create-image-flux2dev-api.json",
+    "workflows/create-image-flux3klein-edit-api.json",
+    "workflows/create-image-flux3klein-inpaint-api.json",
+    "workflows/create-image-flux3klein-t2i-api.json",
+    "workflows/create-image-klein4b-edit-api.json",
+    "workflows/create-image-klein4b-t2i-api.json",
+    "workflows/create-image-qwen-t2i-api.json",
+    "workflows/create-image-zimage-api.json",
+    "workflows/create-image-zimage-turbo-api.json",
+    "workflows/motion-transfer-api.json",
+    "workflows/motion-transfer/ext-0.json",
+    "workflows/motion-transfer/ext-1.json",
+    "workflows/motion-transfer/ext-2.json",
+    "workflows/motion-transfer/ext-3.json",
+    "workflows/motion-transfer/ext-4.json",
+    "workflows/motion-transfer/ext-5.json",
+    "workflows/motion-transfer/ext-6.json",
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json",
+    "workflows/photo-fx-api.json",
+    "workflows/reshoot-api.json",
+    "workflows/reshoot-funcamera-api.json",
+    "workflows/restyle-api.json",
+    "workflows/soul-flux1dev-api.json",
+    "workflows/soul-qwen-api.json",
+    "workflows/soul-ref-aceplus-api.json",
+    "workflows/soul-ref-infiniteyou-api.json",
+    "workflows/soul-ref-pulid-api.json",
+    "workflows/soul-zit-api.json",
+    "workflows/soundtrack-sfx-api.json"
+   ]
+  },
+  {
+   "class": "CLIPVisionEncode",
+   "pack": "ComfyUI (core)",
+   "python_module": "nodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/motion-transfer-api.json",
+    "workflows/motion-transfer/ext-0.json",
+    "workflows/motion-transfer/ext-1.json",
+    "workflows/motion-transfer/ext-2.json",
+    "workflows/motion-transfer/ext-3.json",
+    "workflows/motion-transfer/ext-4.json",
+    "workflows/motion-transfer/ext-5.json",
+    "workflows/motion-transfer/ext-6.json",
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json"
+   ]
+  },
+  {
+   "class": "CLIPVisionLoader",
+   "pack": "ComfyUI (core)",
+   "python_module": "nodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/motion-transfer-api.json",
+    "workflows/motion-transfer/ext-0.json",
+    "workflows/motion-transfer/ext-1.json",
+    "workflows/motion-transfer/ext-2.json",
+    "workflows/motion-transfer/ext-3.json",
+    "workflows/motion-transfer/ext-4.json",
+    "workflows/motion-transfer/ext-5.json",
+    "workflows/motion-transfer/ext-6.json",
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json"
+   ]
+  },
+  {
+   "class": "Canny",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_canny",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_canny.py"
+   ],
+   "workflows": [
+    "workflows/restyle-api.json"
+   ]
+  },
+  {
+   "class": "ChatterboxMTLTTS",
+   "pack": "ComfyUI-Chatterbox",
+   "python_module": "custom_nodes.ComfyUI-Chatterbox",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "tests/test_mtl_node.py",
+    "tests/test_core_registration.py",
+    "tests/test_extension.py"
+   ],
+   "workflows": [
+    "workflows/voice-chatterbox-ml-api.json"
+   ]
+  },
+  {
+   "class": "ChatterboxTTS",
+   "pack": "ComfyUI-Chatterbox",
+   "python_module": "custom_nodes.ComfyUI-Chatterbox",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "tests/test_workflow_compat.py",
+    "tests/test_watermark.py",
+    "tests/test_vendor_loader.py"
+   ],
+   "workflows": [
+    "workflows/voice-chatterbox-tts-api.json"
+   ]
+  },
+  {
+   "class": "ChatterboxVC",
+   "pack": "ComfyUI-Chatterbox",
+   "python_module": "custom_nodes.ComfyUI-Chatterbox",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "tests/test_workflow_compat.py",
+    "tests/test_vendor_loader.py",
+    "tests/test_vendor_import.py"
+   ],
+   "workflows": [
+    "workflows/voice-chatterbox-vc-api.json"
+   ]
+  },
+  {
+   "class": "CheckpointLoaderSimple",
+   "pack": "ComfyUI (core)",
+   "python_module": "nodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py",
+    "script_examples/websockets_api_example_ws_images.py",
+    "script_examples/websockets_api_example.py"
+   ],
+   "workflows": [
+    "workflows/audio-sfx-api.json",
+    "workflows/camera-ltx-api.json",
+    "workflows/reshoot-api.json",
+    "workflows/soundtrack-sfx-api.json"
+   ]
+  },
+  {
+   "class": "ColorTransfer",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_post_processing",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_post_processing.py"
+   ],
+   "workflows": [
+    "workflows/soul-flux1dev-api.json",
+    "workflows/soul-qwen-api.json",
+    "workflows/soul-ref-aceplus-api.json",
+    "workflows/soul-ref-infiniteyou-api.json",
+    "workflows/soul-ref-pulid-api.json",
+    "workflows/soul-ref-qwenedit-api.json",
+    "workflows/soul-zit-api.json"
+   ]
+  },
+  {
+   "class": "ComfyCloudMiniMaxH3ImageToVideoNode",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_api_nodes.nodes_comfy_cloud",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_api_nodes/nodes_comfy_cloud.py"
+   ],
+   "workflows": [
+    "workflows/h3-cloud-i2v-api.json"
+   ]
+  },
+  {
+   "class": "ComfyCloudMiniMaxH3TextToVideoNode",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_api_nodes.nodes_comfy_cloud",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_api_nodes/nodes_comfy_cloud.py"
+   ],
+   "workflows": [
+    "workflows/h3-cloud-t2v-api.json"
+   ]
+  },
+  {
+   "class": "ComfyMathExpression",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_math",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_math.py"
+   ],
+   "workflows": [
+    "workflows/h3-i2v-api.json",
+    "workflows/h3-r2v-api.json",
+    "workflows/h3-t2v-api.json",
+    "workflows/photo-fx-api.json"
+   ]
+  },
+  {
+   "class": "ComfySwitchNode",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_logic",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_logic.py"
+   ],
+   "workflows": [
+    "workflows/create-image-flux2dev-api.json",
+    "workflows/create-image-flux3klein-edit-api.json",
+    "workflows/create-image-flux3klein-inpaint-api.json",
+    "workflows/create-image-flux3klein-t2i-api.json",
+    "workflows/create-image-qwen-edit2509-api.json",
+    "workflows/create-image-qwen-edit2509-inpaint-api.json",
+    "workflows/create-image-qwen-t2i-api.json",
+    "workflows/create-image-qwen21-edit-api.json",
+    "workflows/create-image-qwen21-t2i-api.json",
+    "workflows/h3-i2v-api.json",
+    "workflows/h3-r2v-api.json",
+    "workflows/h3-t2v-api.json",
+    "workflows/photo-fx-api.json"
+   ]
+  },
+  {
+   "class": "ConditioningZeroOut",
+   "pack": "ComfyUI (core)",
+   "python_module": "nodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/audio-music-api.json",
+    "workflows/create-image-flux3klein-edit-api.json",
+    "workflows/create-image-flux3klein-inpaint-api.json",
+    "workflows/create-image-klein4b-edit-api.json",
+    "workflows/create-image-zimage-turbo-api.json",
+    "workflows/soul-flux1dev-api.json",
+    "workflows/soul-ref-aceplus-api.json",
+    "workflows/soul-ref-infiniteyou-api.json",
+    "workflows/soul-ref-pulid-api.json",
+    "workflows/soul-zit-api.json",
+    "workflows/soundtrack-music-api.json"
+   ]
+  },
+  {
+   "class": "CreateVideo",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_video",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_video.py"
+   ],
+   "workflows": [
+    "plugins/cutout/workflow.json",
+    "workflows/camera-ltx-api.json",
+    "workflows/camera-moves-api.json",
+    "workflows/h3-i2v-api.json",
+    "workflows/h3-r2v-api.json",
+    "workflows/h3-t2v-api.json",
+    "workflows/motion-transfer-api.json",
+    "workflows/motion-transfer/ext-0.json",
+    "workflows/motion-transfer/ext-1.json",
+    "workflows/motion-transfer/ext-2.json",
+    "workflows/motion-transfer/ext-3.json",
+    "workflows/motion-transfer/ext-4.json",
+    "workflows/motion-transfer/ext-5.json",
+    "workflows/motion-transfer/ext-6.json",
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json",
+    "workflows/photo-fx-api.json",
+    "workflows/reshoot-api.json",
+    "workflows/reshoot-funcamera-api.json",
+    "workflows/restyle-api.json",
+    "workflows/soundtrack-music-api.json",
+    "workflows/soundtrack-sfx-api.json",
+    "workflows/upscale-60fps-api.json",
+    "workflows/upscale-api.json",
+    "workflows/upscale-creative-api.json"
+   ]
+  },
+  {
+   "class": "DWPreprocessor",
+   "pack": "comfyui_controlnet_aux",
+   "python_module": "custom_nodes.comfyui_controlnet_aux",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "node_wrappers/dwpose.py"
+   ],
+   "workflows": [
+    "workflows/motion-transfer-api.json",
+    "workflows/motion-transfer/ext-0.json",
+    "workflows/motion-transfer/ext-1.json",
+    "workflows/motion-transfer/ext-2.json",
+    "workflows/motion-transfer/ext-3.json",
+    "workflows/motion-transfer/ext-4.json",
+    "workflows/motion-transfer/ext-5.json",
+    "workflows/motion-transfer/ext-6.json",
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json",
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "DifferentialDiffusion",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_differential_diffusion",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_differential_diffusion.py"
+   ],
+   "workflows": [
+    "workflows/soul-ref-aceplus-api.json"
+   ]
+  },
+  {
+   "class": "DownloadAndLoadSAM2Model",
+   "pack": "ComfyUI-segment-anything-2",
+   "python_module": "custom_nodes.ComfyUI-segment-anything-2",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json"
+   ]
+  },
+  {
+   "class": "Drama3CodecLoader",
+   "pack": "ComfyUI-Drama3",
+   "python_module": "custom_nodes.ComfyUI-Drama3",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/voice-drama3-clone-api.json",
+    "workflows/voice-drama3-tts-api.json"
+   ]
+  },
+  {
+   "class": "Drama3Decode",
+   "pack": "ComfyUI-Drama3",
+   "python_module": "custom_nodes.ComfyUI-Drama3",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/voice-drama3-clone-api.json",
+    "workflows/voice-drama3-tts-api.json"
+   ]
+  },
+  {
+   "class": "Drama3EncodeVoice",
+   "pack": "ComfyUI-Drama3",
+   "python_module": "custom_nodes.ComfyUI-Drama3",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/voice-drama3-clone-api.json"
+   ]
+  },
+  {
+   "class": "Drama3Generate",
+   "pack": "ComfyUI-Drama3",
+   "python_module": "custom_nodes.ComfyUI-Drama3",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/voice-drama3-clone-api.json",
+    "workflows/voice-drama3-tts-api.json"
+   ]
+  },
+  {
+   "class": "Drama3Loader",
+   "pack": "ComfyUI-Drama3",
+   "python_module": "custom_nodes.ComfyUI-Drama3",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/voice-drama3-clone-api.json",
+    "workflows/voice-drama3-tts-api.json"
+   ]
+  },
+  {
+   "class": "DrawMaskOnImage",
+   "pack": "ComfyUI-KJNodes",
+   "python_module": "custom_nodes.ComfyUI-KJNodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "__init__.py",
+    "nodes/mask_nodes.py"
+   ],
+   "workflows": [
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json"
+   ]
+  },
+  {
+   "class": "DualCLIPLoader",
+   "pack": "ComfyUI (core)",
+   "python_module": "nodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/audio-music-api.json",
+    "workflows/soul-flux1dev-api.json",
+    "workflows/soul-ref-aceplus-api.json",
+    "workflows/soul-ref-infiniteyou-api.json",
+    "workflows/soul-ref-pulid-api.json",
+    "workflows/soundtrack-music-api.json"
+   ]
+  },
+  {
+   "class": "EmptyAceStep1.5LatentAudio",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_ace",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_ace.py"
+   ],
+   "workflows": [
+    "workflows/audio-music-api.json",
+    "workflows/soundtrack-music-api.json"
+   ]
+  },
+  {
+   "class": "EmptyFlux2LatentImage",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_flux",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_flux.py"
+   ],
+   "workflows": [
+    "workflows/create-image-flux2dev-api.json",
+    "workflows/create-image-flux3klein-t2i-api.json",
+    "workflows/create-image-klein4b-edit-api.json",
+    "workflows/create-image-klein4b-t2i-api.json"
+   ]
+  },
+  {
+   "class": "EmptyImage",
+   "pack": "ComfyUI (core)",
+   "python_module": "nodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py",
+    "tests/execution/test_disabled_nodes.py",
+    "tests-unit/app_test/test_assets_default_on_processes.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/soul-ref-aceplus-api.json"
+   ]
+  },
+  {
+   "class": "EmptyLTXVLatentVideo",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_lt",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_lt.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "EmptyLatentAudio",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_audio",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_audio.py"
+   ],
+   "workflows": [
+    "workflows/audio-sfx-api.json",
+    "workflows/soundtrack-sfx-api.json"
+   ]
+  },
+  {
+   "class": "EmptyLatentImage",
+   "pack": "ComfyUI (core)",
+   "python_module": "nodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "tests/execution/testing_nodes/testing-pack/specific_tests.py",
+    "nodes.py",
+    "script_examples/websockets_api_example_ws_images.py"
+   ],
+   "workflows": [
+    "workflows/create-image-qwen21-edit-api.json",
+    "workflows/create-image-qwen21-t2i-api.json"
+   ]
+  },
+  {
+   "class": "EmptySD3LatentImage",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_sd3",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_sd3.py"
+   ],
+   "workflows": [
+    "workflows/create-image-qwen-t2i-api.json",
+    "workflows/create-image-zimage-api.json",
+    "workflows/create-image-zimage-turbo-api.json",
+    "workflows/soul-flux1dev-api.json",
+    "workflows/soul-qwen-api.json",
+    "workflows/soul-ref-infiniteyou-api.json",
+    "workflows/soul-ref-pulid-api.json",
+    "workflows/soul-ref-qwenedit-api.json",
+    "workflows/soul-zit-api.json"
+   ]
+  },
+  {
+   "class": "ExtractFacePoseImage",
+   "pack": "ComfyUI_InfiniteYou",
+   "python_module": "custom_nodes.ComfyUI_InfiniteYou",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/soul-ref-infiniteyou-api.json"
+   ]
+  },
+  {
+   "class": "ExtractIDEmbedding",
+   "pack": "ComfyUI_InfiniteYou",
+   "python_module": "custom_nodes.ComfyUI_InfiniteYou",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/soul-ref-infiniteyou-api.json"
+   ]
+  },
+  {
+   "class": "F5TTSAudioInputs",
+   "pack": "ComfyUI-F5-TTS",
+   "python_module": "custom_nodes.ComfyUI-F5-TTS",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "__init__.py",
+    "F5TTS.py"
+   ],
+   "workflows": [
+    "workflows/voice-f5tts-api.json"
+   ]
+  },
+  {
+   "class": "FB_Qwen3TTSCustomVoice",
+   "pack": "ComfyUI-Qwen-TTS",
+   "python_module": "custom_nodes.ComfyUI-Qwen-TTS",
+   "in_validator_object_info": false,
+   "found_in_pin": true,
+   "files": [
+    "__init__.py"
+   ],
+   "workflows": [
+    "workflows/voice-qwen3tts-api.json"
+   ]
+  },
+  {
+   "class": "Flux2Scheduler",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_flux",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_flux.py"
+   ],
+   "workflows": [
+    "workflows/create-image-flux2dev-api.json",
+    "workflows/create-image-klein4b-edit-api.json",
+    "workflows/create-image-klein4b-t2i-api.json"
+   ]
+  },
+  {
+   "class": "FluxGuidance",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_flux",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_flux.py"
+   ],
+   "workflows": [
+    "workflows/create-image-flux2dev-api.json",
+    "workflows/soul-flux1dev-api.json",
+    "workflows/soul-ref-aceplus-api.json",
+    "workflows/soul-ref-infiniteyou-api.json",
+    "workflows/soul-ref-pulid-api.json"
+   ]
+  },
+  {
+   "class": "FluxKontextImageScale",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_flux",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_flux.py"
+   ],
+   "workflows": [
+    "workflows/create-image-qwen-edit2509-api.json",
+    "workflows/create-image-qwen-edit2509-inpaint-api.json"
+   ]
+  },
+  {
+   "class": "GetImageSize",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_images",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py",
+    "comfy_extras/nodes_images.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/create-image-flux2dev-api.json",
+    "workflows/create-image-klein4b-edit-api.json",
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "GetVideoComponents",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_video",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_video.py"
+   ],
+   "workflows": [
+    "plugins/cutout/workflow.json",
+    "workflows/motion-transfer-api.json",
+    "workflows/motion-transfer/ext-0.json",
+    "workflows/motion-transfer/ext-1.json",
+    "workflows/motion-transfer/ext-2.json",
+    "workflows/motion-transfer/ext-3.json",
+    "workflows/motion-transfer/ext-4.json",
+    "workflows/motion-transfer/ext-5.json",
+    "workflows/motion-transfer/ext-6.json",
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json",
+    "workflows/reshoot-api.json",
+    "workflows/restyle-api.json",
+    "workflows/soundtrack-mmaudio-api.json",
+    "workflows/soundtrack-music-api.json",
+    "workflows/soundtrack-sfx-api.json",
+    "workflows/upscale-60fps-api.json",
+    "workflows/upscale-api.json",
+    "workflows/upscale-creative-api.json"
+   ]
+  },
+  {
+   "class": "GrowMask",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_mask",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_mask.py"
+   ],
+   "workflows": [
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json"
+   ]
+  },
+  {
+   "class": "IDEmbeddingModelLoader",
+   "pack": "ComfyUI_InfiniteYou",
+   "python_module": "custom_nodes.ComfyUI_InfiniteYou",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/soul-ref-infiniteyou-api.json"
+   ]
+  },
+  {
+   "class": "ImageBatch",
+   "pack": "ComfyUI (core)",
+   "python_module": "nodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py",
+    "tests/execution/test_disabled_nodes.py",
+    "comfy_extras/nodes_replacements.py"
+   ],
+   "workflows": [
+    "workflows/motion-transfer-api.json",
+    "workflows/motion-transfer/ext-1.json",
+    "workflows/motion-transfer/ext-2.json",
+    "workflows/motion-transfer/ext-3.json",
+    "workflows/motion-transfer/ext-4.json",
+    "workflows/motion-transfer/ext-5.json",
+    "workflows/motion-transfer/ext-6.json",
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json"
+   ]
+  },
+  {
+   "class": "ImageBlur",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_post_processing",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_post_processing.py",
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/image-upscale-ultrasharp-x4-api.json",
+    "workflows/image-upscale-x2-api.json",
+    "workflows/image-upscale-x4-api.json",
+    "workflows/image-upscale-x8-api.json"
+   ]
+  },
+  {
+   "class": "ImageCrop",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_images",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_images.py",
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/soul-ref-aceplus-api.json"
+   ]
+  },
+  {
+   "class": "ImageFromBatch",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_images",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_images.py"
+   ],
+   "workflows": [
+    "workflows/motion-transfer-api.json",
+    "workflows/motion-transfer/ext-0.json",
+    "workflows/motion-transfer/ext-1.json",
+    "workflows/motion-transfer/ext-2.json",
+    "workflows/motion-transfer/ext-3.json",
+    "workflows/motion-transfer/ext-4.json",
+    "workflows/motion-transfer/ext-5.json",
+    "workflows/motion-transfer/ext-6.json",
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json",
+    "workflows/reshoot-api.json",
+    "workflows/upscale-60fps-api.json",
+    "workflows/upscale-api.json",
+    "workflows/upscale-creative-api.json"
+   ]
+  },
+  {
+   "class": "ImageScale",
+   "pack": "ComfyUI (core)",
+   "python_module": "nodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/motion-transfer-api.json",
+    "workflows/motion-transfer/ext-0.json",
+    "workflows/motion-transfer/ext-1.json",
+    "workflows/motion-transfer/ext-2.json",
+    "workflows/motion-transfer/ext-3.json",
+    "workflows/motion-transfer/ext-4.json",
+    "workflows/motion-transfer/ext-5.json",
+    "workflows/motion-transfer/ext-6.json",
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json",
+    "workflows/soul-ref-aceplus-api.json"
+   ]
+  },
+  {
+   "class": "ImageScaleBy",
+   "pack": "ComfyUI (core)",
+   "python_module": "nodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py",
+    "comfy_extras/nodes_replacements.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "ImageScaleToTotalPixels",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_post_processing",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_post_processing.py",
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/create-image-flux2dev-api.json",
+    "workflows/create-image-flux3klein-inpaint-api.json",
+    "workflows/create-image-klein4b-edit-api.json"
+   ]
+  },
+  {
+   "class": "ImageSharpen",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_post_processing",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py",
+    "comfy_extras/nodes_post_processing.py"
+   ],
+   "workflows": [
+    "workflows/image-upscale-ultrasharp-x4-api.json",
+    "workflows/image-upscale-x2-api.json",
+    "workflows/image-upscale-x4-api.json",
+    "workflows/image-upscale-x8-api.json"
+   ]
+  },
+  {
+   "class": "ImageStitch",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_images",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_images.py",
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/soul-ref-aceplus-api.json"
+   ]
+  },
+  {
+   "class": "ImageToMask",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_mask",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_mask.py"
+   ],
+   "workflows": [
+    "workflows/create-image-flux3klein-inpaint-api.json",
+    "workflows/create-image-qwen-edit2509-inpaint-api.json"
+   ]
+  },
+  {
+   "class": "ImageUpscaleWithModel",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_upscale_model",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_upscale_model.py"
+   ],
+   "workflows": [
+    "workflows/image-upscale-ultrasharp-x4-api.json",
+    "workflows/image-upscale-x2-api.json",
+    "workflows/image-upscale-x4-api.json",
+    "workflows/image-upscale-x8-api.json",
+    "workflows/soul-flux1dev-api.json",
+    "workflows/soul-qwen-api.json",
+    "workflows/soul-ref-aceplus-api.json",
+    "workflows/soul-ref-infiniteyou-api.json",
+    "workflows/soul-ref-pulid-api.json",
+    "workflows/soul-ref-qwenedit-api.json",
+    "workflows/soul-zit-api.json"
+   ]
+  },
+  {
+   "class": "InfuseNetApply",
+   "pack": "ComfyUI_InfiniteYou",
+   "python_module": "custom_nodes.ComfyUI_InfiniteYou",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/soul-ref-infiniteyou-api.json"
+   ]
+  },
+  {
+   "class": "InfuseNetLoader",
+   "pack": "ComfyUI_InfiniteYou",
+   "python_module": "custom_nodes.ComfyUI_InfiniteYou",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/soul-ref-infiniteyou-api.json"
+   ]
+  },
+  {
+   "class": "InpaintModelConditioning",
+   "pack": "ComfyUI (core)",
+   "python_module": "nodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/soul-ref-aceplus-api.json"
+   ]
+  },
+  {
+   "class": "KSampler",
+   "pack": "ComfyUI (core)",
+   "python_module": "nodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "tests/execution/testing_nodes/testing-pack/specific_tests.py",
+    "tests/execution/test_jobs.py",
+    "tests-unit/execution_test/test_cache_provider.py"
+   ],
+   "workflows": [
+    "workflows/audio-music-api.json",
+    "workflows/audio-sfx-api.json",
+    "workflows/create-image-flux3klein-edit-api.json",
+    "workflows/create-image-flux3klein-inpaint-api.json",
+    "workflows/create-image-flux3klein-t2i-api.json",
+    "workflows/create-image-qwen-edit2509-api.json",
+    "workflows/create-image-qwen-edit2509-inpaint-api.json",
+    "workflows/create-image-qwen-t2i-api.json",
+    "workflows/create-image-qwen21-edit-api.json",
+    "workflows/create-image-qwen21-t2i-api.json",
+    "workflows/create-image-zimage-api.json",
+    "workflows/create-image-zimage-turbo-api.json",
+    "workflows/motion-transfer-api.json",
+    "workflows/motion-transfer/ext-0.json",
+    "workflows/motion-transfer/ext-1.json",
+    "workflows/motion-transfer/ext-2.json",
+    "workflows/motion-transfer/ext-3.json",
+    "workflows/motion-transfer/ext-4.json",
+    "workflows/motion-transfer/ext-5.json",
+    "workflows/motion-transfer/ext-6.json",
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json",
+    "workflows/restyle-api.json",
+    "workflows/soul-flux1dev-api.json",
+    "workflows/soul-qwen-api.json",
+    "workflows/soul-ref-aceplus-api.json",
+    "workflows/soul-ref-infiniteyou-api.json",
+    "workflows/soul-ref-pulid-api.json",
+    "workflows/soul-ref-qwenedit-api.json",
+    "workflows/soul-zit-api.json",
+    "workflows/soundtrack-music-api.json",
+    "workflows/soundtrack-sfx-api.json"
+   ]
+  },
+  {
+   "class": "KSamplerAdvanced",
+   "pack": "ComfyUI (core)",
+   "python_module": "nodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/camera-moves-api.json",
+    "workflows/photo-fx-api.json",
+    "workflows/reshoot-funcamera-api.json"
+   ]
+  },
+  {
+   "class": "KSamplerSelect",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_custom_sampler",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_custom_sampler.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/create-image-flux2dev-api.json",
+    "workflows/create-image-klein4b-edit-api.json",
+    "workflows/create-image-klein4b-t2i-api.json",
+    "workflows/h3-i2v-api.json",
+    "workflows/h3-r2v-api.json",
+    "workflows/h3-t2v-api.json",
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "LTXAVTextEncoderLoader",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_lt_audio",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_lt_audio.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "LTXVAddGuide",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_lt",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_lt.py"
+   ],
+   "workflows": [
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "LTXVAudioVAEDecode",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_lt_audio",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_lt_audio.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "LTXVAudioVAELoader",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_lt_audio",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_lt_audio.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "LTXVConcatAVLatent",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_lt",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_lt.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "LTXVConditioning",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_lt",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_lt.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "LTXVCropGuides",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_lt",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_lt.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "LTXVEmptyLatentAudio",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_lt_audio",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_lt_audio.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "LTXVImgToVideoInplace",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_lt",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_lt.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "LTXVLatentUpsampler",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_lt_upsampler",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_lt_upsampler.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "LTXVPreprocess",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_lt",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_lt.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json"
+   ]
+  },
+  {
+   "class": "LTXVScheduler",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_lt",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_lt.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "LTXVSeparateAVLatent",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_lt",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_lt.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "LatentUpscaleModelLoader",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_hunyuan",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_hunyuan.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "LoadAudio",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_audio",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_audio.py"
+   ],
+   "workflows": [
+    "workflows/voice-chatterbox-ml-api.json",
+    "workflows/voice-chatterbox-tts-api.json",
+    "workflows/voice-chatterbox-vc-api.json",
+    "workflows/voice-drama3-clone-api.json",
+    "workflows/voice-f5tts-api.json"
+   ]
+  },
+  {
+   "class": "LoadImage",
+   "pack": "ComfyUI (core)",
+   "python_module": "nodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/camera-moves-api.json",
+    "workflows/create-image-flux2dev-api.json",
+    "workflows/create-image-flux3klein-edit-api.json",
+    "workflows/create-image-flux3klein-inpaint-api.json",
+    "workflows/create-image-klein4b-edit-api.json",
+    "workflows/create-image-qwen-edit2509-api.json",
+    "workflows/create-image-qwen-edit2509-inpaint-api.json",
+    "workflows/create-image-qwen21-edit-api.json",
+    "workflows/h3-cloud-i2v-api.json",
+    "workflows/h3-i2v-api.json",
+    "workflows/h3-r2v-api.json",
+    "workflows/image-upscale-ultrasharp-x4-api.json",
+    "workflows/image-upscale-x2-api.json",
+    "workflows/image-upscale-x4-api.json",
+    "workflows/image-upscale-x8-api.json",
+    "workflows/motion-transfer-api.json",
+    "workflows/motion-transfer/ext-0.json",
+    "workflows/motion-transfer/ext-1.json",
+    "workflows/motion-transfer/ext-2.json",
+    "workflows/motion-transfer/ext-3.json",
+    "workflows/motion-transfer/ext-4.json",
+    "workflows/motion-transfer/ext-5.json",
+    "workflows/motion-transfer/ext-6.json",
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json",
+    "workflows/photo-fx-api.json",
+    "workflows/reshoot-api.json",
+    "workflows/reshoot-funcamera-api.json",
+    "workflows/restyle-api.json",
+    "workflows/soul-flux1dev-api.json",
+    "workflows/soul-qwen-api.json",
+    "workflows/soul-ref-aceplus-api.json",
+    "workflows/soul-ref-infiniteyou-api.json",
+    "workflows/soul-ref-pulid-api.json",
+    "workflows/soul-ref-qwenedit-api.json",
+    "workflows/soul-zit-api.json"
+   ]
+  },
+  {
+   "class": "LoadRembgByBiRefNetModel",
+   "pack": "ComfyUI_BiRefNet_ll",
+   "python_module": "custom_nodes.ComfyUI_BiRefNet_ll",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "birefnetNode.py"
+   ],
+   "workflows": [
+    "plugins/cutout/workflow.json"
+   ]
+  },
+  {
+   "class": "LoadVideo",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_video",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_video.py"
+   ],
+   "workflows": [
+    "plugins/cutout/workflow.json",
+    "workflows/motion-transfer-api.json",
+    "workflows/motion-transfer/ext-0.json",
+    "workflows/motion-transfer/ext-1.json",
+    "workflows/motion-transfer/ext-2.json",
+    "workflows/motion-transfer/ext-3.json",
+    "workflows/motion-transfer/ext-4.json",
+    "workflows/motion-transfer/ext-5.json",
+    "workflows/motion-transfer/ext-6.json",
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json",
+    "workflows/reshoot-api.json",
+    "workflows/restyle-api.json",
+    "workflows/soundtrack-mmaudio-api.json",
+    "workflows/soundtrack-music-api.json",
+    "workflows/soundtrack-sfx-api.json",
+    "workflows/upscale-60fps-api.json",
+    "workflows/upscale-api.json",
+    "workflows/upscale-creative-api.json"
+   ]
+  },
+  {
+   "class": "LoraLoader",
+   "pack": "ComfyUI (core)",
+   "python_module": "nodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/restyle-api.json"
+   ]
+  },
+  {
+   "class": "LoraLoaderModelOnly",
+   "pack": "ComfyUI (core)",
+   "python_module": "nodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/create-image-flux2dev-api.json",
+    "workflows/create-image-qwen-edit2509-api.json",
+    "workflows/create-image-qwen-edit2509-inpaint-api.json",
+    "workflows/create-image-qwen-t2i-api.json",
+    "workflows/h3-i2v-api.json",
+    "workflows/h3-r2v-api.json",
+    "workflows/h3-t2v-api.json",
+    "workflows/motion-transfer-api.json",
+    "workflows/motion-transfer/ext-0.json",
+    "workflows/motion-transfer/ext-1.json",
+    "workflows/motion-transfer/ext-2.json",
+    "workflows/motion-transfer/ext-3.json",
+    "workflows/motion-transfer/ext-4.json",
+    "workflows/motion-transfer/ext-5.json",
+    "workflows/motion-transfer/ext-6.json",
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json",
+    "workflows/photo-fx-api.json",
+    "workflows/reshoot-api.json",
+    "workflows/soul-flux1dev-api.json",
+    "workflows/soul-qwen-api.json",
+    "workflows/soul-ref-aceplus-api.json",
+    "workflows/soul-ref-infiniteyou-api.json",
+    "workflows/soul-ref-pulid-api.json",
+    "workflows/soul-ref-qwenedit-api.json",
+    "workflows/soul-zit-api.json"
+   ]
+  },
+  {
+   "class": "MMAudioFeatureUtilsLoader",
+   "pack": "ComfyUI-MMAudio",
+   "python_module": "custom_nodes.ComfyUI-MMAudio",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/soundtrack-mmaudio-api.json"
+   ]
+  },
+  {
+   "class": "MMAudioModelLoader",
+   "pack": "ComfyUI-MMAudio",
+   "python_module": "custom_nodes.ComfyUI-MMAudio",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/soundtrack-mmaudio-api.json"
+   ]
+  },
+  {
+   "class": "MMAudioSampler",
+   "pack": "ComfyUI-MMAudio",
+   "python_module": "custom_nodes.ComfyUI-MMAudio",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/soundtrack-mmaudio-api.json"
+   ]
+  },
+  {
+   "class": "ManualSigmas",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_custom_sampler",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_custom_sampler.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "MaskComposite",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_mask",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_mask.py"
+   ],
+   "workflows": [
+    "workflows/soul-ref-aceplus-api.json"
+   ]
+  },
+  {
+   "class": "MaskToImage",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_mask",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_mask.py"
+   ],
+   "workflows": [
+    "plugins/cutout/workflow.json"
+   ]
+  },
+  {
+   "class": "MiniMaxH3ImageToVideo",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_minimax_h3",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_minimax_h3.py"
+   ],
+   "workflows": [
+    "workflows/h3-i2v-api.json",
+    "workflows/h3-t2v-api.json"
+   ]
+  },
+  {
+   "class": "MiniMaxH3ReferenceToVideo",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_minimax_h3",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_minimax_h3.py"
+   ],
+   "workflows": [
+    "workflows/h3-r2v-api.json"
+   ]
+  },
+  {
+   "class": "ModelSamplingAuraFlow",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_model_advanced",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_model_advanced.py"
+   ],
+   "workflows": [
+    "workflows/audio-music-api.json",
+    "workflows/create-image-qwen-edit2509-api.json",
+    "workflows/create-image-qwen-edit2509-inpaint-api.json",
+    "workflows/create-image-qwen-t2i-api.json",
+    "workflows/create-image-zimage-api.json",
+    "workflows/create-image-zimage-turbo-api.json",
+    "workflows/soul-qwen-api.json",
+    "workflows/soul-ref-qwenedit-api.json",
+    "workflows/soul-zit-api.json",
+    "workflows/soundtrack-music-api.json"
+   ]
+  },
+  {
+   "class": "ModelSamplingSD3",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_model_advanced",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_model_advanced.py"
+   ],
+   "workflows": [
+    "workflows/camera-moves-api.json",
+    "workflows/motion-transfer-api.json",
+    "workflows/motion-transfer/ext-0.json",
+    "workflows/motion-transfer/ext-1.json",
+    "workflows/motion-transfer/ext-2.json",
+    "workflows/motion-transfer/ext-3.json",
+    "workflows/motion-transfer/ext-4.json",
+    "workflows/motion-transfer/ext-5.json",
+    "workflows/motion-transfer/ext-6.json",
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json",
+    "workflows/photo-fx-api.json",
+    "workflows/reshoot-funcamera-api.json",
+    "workflows/restyle-api.json"
+   ]
+  },
+  {
+   "class": "PixelPerfectResolution",
+   "pack": "comfyui_controlnet_aux",
+   "python_module": "custom_nodes.comfyui_controlnet_aux",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "hint_image_enchance.py"
+   ],
+   "workflows": [
+    "workflows/motion-transfer-api.json",
+    "workflows/motion-transfer/ext-0.json",
+    "workflows/motion-transfer/ext-1.json",
+    "workflows/motion-transfer/ext-2.json",
+    "workflows/motion-transfer/ext-3.json",
+    "workflows/motion-transfer/ext-4.json",
+    "workflows/motion-transfer/ext-5.json",
+    "workflows/motion-transfer/ext-6.json",
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json"
+   ]
+  },
+  {
+   "class": "PointsEditor",
+   "pack": "ComfyUI-KJNodes",
+   "python_module": "custom_nodes.ComfyUI-KJNodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "__init__.py",
+    "nodes/curve_nodes.py"
+   ],
+   "workflows": [
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json"
+   ]
+  },
+  {
+   "class": "PreviewAny",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_preview_any",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_preview_any.py"
+   ],
+   "workflows": [
+    "workflows/create-image-flux3klein-edit-api.json",
+    "workflows/create-image-flux3klein-inpaint-api.json",
+    "workflows/create-image-flux3klein-t2i-api.json",
+    "workflows/create-image-qwen21-edit-api.json",
+    "workflows/create-image-qwen21-t2i-api.json"
+   ]
+  },
+  {
+   "class": "PrimitiveBoolean",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_primitive",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_primitive.py"
+   ],
+   "workflows": [
+    "workflows/create-image-flux2dev-api.json",
+    "workflows/create-image-qwen-edit2509-api.json",
+    "workflows/create-image-qwen-edit2509-inpaint-api.json",
+    "workflows/create-image-qwen-t2i-api.json",
+    "workflows/h3-i2v-api.json",
+    "workflows/h3-r2v-api.json",
+    "workflows/h3-t2v-api.json",
+    "workflows/photo-fx-api.json",
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "PrimitiveFloat",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_primitive",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_primitive.py"
+   ],
+   "workflows": [
+    "workflows/create-image-qwen-edit2509-api.json",
+    "workflows/create-image-qwen-edit2509-inpaint-api.json",
+    "workflows/create-image-qwen-t2i-api.json",
+    "workflows/h3-i2v-api.json",
+    "workflows/h3-r2v-api.json",
+    "workflows/h3-t2v-api.json",
+    "workflows/photo-fx-api.json",
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "PrimitiveInt",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_primitive",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_primitive.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/create-image-flux2dev-api.json",
+    "workflows/create-image-klein4b-t2i-api.json",
+    "workflows/create-image-qwen-edit2509-api.json",
+    "workflows/create-image-qwen-edit2509-inpaint-api.json",
+    "workflows/create-image-qwen-t2i-api.json",
+    "workflows/h3-i2v-api.json",
+    "workflows/h3-r2v-api.json",
+    "workflows/h3-t2v-api.json",
+    "workflows/motion-transfer-api.json",
+    "workflows/motion-transfer/ext-0.json",
+    "workflows/motion-transfer/ext-1.json",
+    "workflows/motion-transfer/ext-2.json",
+    "workflows/motion-transfer/ext-3.json",
+    "workflows/motion-transfer/ext-4.json",
+    "workflows/motion-transfer/ext-5.json",
+    "workflows/motion-transfer/ext-6.json",
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json",
+    "workflows/photo-fx-api.json",
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "PrimitiveStringMultiline",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_primitive",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_primitive.py"
+   ],
+   "workflows": [
+    "workflows/create-image-flux3klein-edit-api.json",
+    "workflows/create-image-flux3klein-inpaint-api.json",
+    "workflows/create-image-flux3klein-t2i-api.json",
+    "workflows/create-image-klein4b-t2i-api.json",
+    "workflows/create-image-qwen21-edit-api.json",
+    "workflows/create-image-qwen21-t2i-api.json",
+    "workflows/h3-r2v-api.json"
+   ]
+  },
+  {
+   "class": "PulidFluxEvaClipLoader",
+   "pack": "ComfyUI-PuLID-Flux",
+   "python_module": "custom_nodes.ComfyUI-PuLID-Flux",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "pulidflux.py"
+   ],
+   "workflows": [
+    "workflows/soul-ref-pulid-api.json"
+   ]
+  },
+  {
+   "class": "PulidFluxInsightFaceLoader",
+   "pack": "ComfyUI-PuLID-Flux",
+   "python_module": "custom_nodes.ComfyUI-PuLID-Flux",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "pulidflux.py"
+   ],
+   "workflows": [
+    "workflows/soul-ref-pulid-api.json"
+   ]
+  },
+  {
+   "class": "PulidFluxModelLoader",
+   "pack": "ComfyUI-PuLID-Flux",
+   "python_module": "custom_nodes.ComfyUI-PuLID-Flux",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "pulidflux.py"
+   ],
+   "workflows": [
+    "workflows/soul-ref-pulid-api.json"
+   ]
+  },
+  {
+   "class": "Qwen3ASRLoader",
+   "pack": "ComfyUI-Drama3",
+   "python_module": "custom_nodes.ComfyUI-Drama3",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/voice-drama3-clone-api.json"
+   ]
+  },
+  {
+   "class": "Qwen3ASRTranscribe",
+   "pack": "ComfyUI-Drama3",
+   "python_module": "custom_nodes.ComfyUI-Drama3",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/voice-drama3-clone-api.json"
+   ]
+  },
+  {
+   "class": "QwenImage21Cache",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_qwen",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_qwen.py"
+   ],
+   "workflows": [
+    "workflows/create-image-qwen21-edit-api.json",
+    "workflows/create-image-qwen21-t2i-api.json"
+   ]
+  },
+  {
+   "class": "RIFE VFI",
+   "pack": "ComfyUI-Frame-Interpolation",
+   "python_module": "custom_nodes.ComfyUI-Frame-Interpolation",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "__init__.py"
+   ],
+   "workflows": [
+    "workflows/upscale-60fps-api.json"
+   ]
+  },
+  {
+   "class": "RandomNoise",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_custom_sampler",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_custom_sampler.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/create-image-flux2dev-api.json",
+    "workflows/create-image-klein4b-edit-api.json",
+    "workflows/create-image-klein4b-t2i-api.json",
+    "workflows/h3-i2v-api.json",
+    "workflows/h3-r2v-api.json",
+    "workflows/h3-t2v-api.json",
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "ReferenceLatent",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_edit_model",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_edit_model.py"
+   ],
+   "workflows": [
+    "workflows/create-image-flux2dev-api.json",
+    "workflows/create-image-klein4b-edit-api.json"
+   ]
+  },
+  {
+   "class": "ReferenceMultiLatent",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_edit_model",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_edit_model.py"
+   ],
+   "workflows": [
+    "workflows/create-image-flux3klein-edit-api.json",
+    "workflows/create-image-flux3klein-inpaint-api.json"
+   ]
+  },
+  {
+   "class": "RembgByBiRefNetAdvanced",
+   "pack": "ComfyUI_BiRefNet_ll",
+   "python_module": "custom_nodes.ComfyUI_BiRefNet_ll",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "birefnetNode.py"
+   ],
+   "workflows": [
+    "plugins/cutout/workflow.json"
+   ]
+  },
+  {
+   "class": "ResizeImageMaskNode",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_post_processing",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_replacements.py",
+    "comfy_extras/nodes_post_processing.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "ResolutionSelector",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_resolution",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_resolution.py"
+   ],
+   "workflows": [
+    "workflows/create-image-flux3klein-t2i-api.json",
+    "workflows/create-image-qwen21-t2i-api.json",
+    "workflows/create-image-zimage-api.json",
+    "workflows/h3-i2v-api.json",
+    "workflows/h3-r2v-api.json",
+    "workflows/h3-t2v-api.json"
+   ]
+  },
+  {
+   "class": "Sam2Segmentation",
+   "pack": "ComfyUI-segment-anything-2",
+   "python_module": "custom_nodes.ComfyUI-segment-anything-2",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json"
+   ]
+  },
+  {
+   "class": "SamplerCustomAdvanced",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_custom_sampler",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_custom_sampler.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/create-image-flux2dev-api.json",
+    "workflows/create-image-klein4b-edit-api.json",
+    "workflows/create-image-klein4b-t2i-api.json",
+    "workflows/h3-i2v-api.json",
+    "workflows/h3-r2v-api.json",
+    "workflows/h3-t2v-api.json",
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "SaveAudio",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_audio",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_audio.py"
+   ],
+   "workflows": [
+    "workflows/soundtrack-mmaudio-api.json",
+    "workflows/voice-chatterbox-ml-api.json",
+    "workflows/voice-chatterbox-tts-api.json",
+    "workflows/voice-chatterbox-vc-api.json",
+    "workflows/voice-drama3-clone-api.json",
+    "workflows/voice-drama3-tts-api.json",
+    "workflows/voice-f5tts-api.json"
+   ]
+  },
+  {
+   "class": "SaveAudioAdvanced",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_audio",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_audio.py"
+   ],
+   "workflows": [
+    "workflows/audio-sfx-api.json"
+   ]
+  },
+  {
+   "class": "SaveAudioMP3",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_audio",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_audio.py"
+   ],
+   "workflows": [
+    "workflows/audio-music-api.json"
+   ]
+  },
+  {
+   "class": "SaveImage",
+   "pack": "ComfyUI (core)",
+   "python_module": "nodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "tests/inference/test_inference.py",
+    "tests/execution/test_public_api.py",
+    "tests/execution/test_execution.py"
+   ],
+   "workflows": [
+    "workflows/create-image-flux2dev-api.json",
+    "workflows/create-image-flux3klein-edit-api.json",
+    "workflows/create-image-flux3klein-inpaint-api.json",
+    "workflows/create-image-flux3klein-t2i-api.json",
+    "workflows/create-image-klein4b-edit-api.json",
+    "workflows/create-image-klein4b-t2i-api.json",
+    "workflows/create-image-qwen-t2i-api.json",
+    "workflows/create-image-zimage-turbo-api.json",
+    "workflows/image-upscale-ultrasharp-x4-api.json",
+    "workflows/image-upscale-x2-api.json",
+    "workflows/image-upscale-x4-api.json",
+    "workflows/image-upscale-x8-api.json",
+    "workflows/soul-flux1dev-api.json",
+    "workflows/soul-qwen-api.json",
+    "workflows/soul-ref-aceplus-api.json",
+    "workflows/soul-ref-infiniteyou-api.json",
+    "workflows/soul-ref-pulid-api.json",
+    "workflows/soul-ref-qwenedit-api.json",
+    "workflows/soul-zit-api.json"
+   ]
+  },
+  {
+   "class": "SaveImageAdvanced",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_images",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "tests/execution/test_exr_previews.py",
+    "comfy_extras/nodes_images.py"
+   ],
+   "workflows": [
+    "workflows/create-image-qwen-edit2509-api.json",
+    "workflows/create-image-qwen-edit2509-inpaint-api.json",
+    "workflows/create-image-qwen21-edit-api.json",
+    "workflows/create-image-qwen21-t2i-api.json",
+    "workflows/create-image-zimage-api.json"
+   ]
+  },
+  {
+   "class": "SaveVideo",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_video",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_video.py"
+   ],
+   "workflows": [
+    "plugins/cutout/workflow.json",
+    "workflows/camera-ltx-api.json",
+    "workflows/camera-moves-api.json",
+    "workflows/h3-cloud-i2v-api.json",
+    "workflows/h3-cloud-t2v-api.json",
+    "workflows/h3-i2v-api.json",
+    "workflows/h3-r2v-api.json",
+    "workflows/h3-t2v-api.json",
+    "workflows/motion-transfer-api.json",
+    "workflows/motion-transfer/ext-0.json",
+    "workflows/motion-transfer/ext-1.json",
+    "workflows/motion-transfer/ext-2.json",
+    "workflows/motion-transfer/ext-3.json",
+    "workflows/motion-transfer/ext-4.json",
+    "workflows/motion-transfer/ext-5.json",
+    "workflows/motion-transfer/ext-6.json",
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json",
+    "workflows/photo-fx-api.json",
+    "workflows/reshoot-api.json",
+    "workflows/reshoot-funcamera-api.json",
+    "workflows/restyle-api.json",
+    "workflows/soundtrack-music-api.json",
+    "workflows/soundtrack-sfx-api.json",
+    "workflows/upscale-60fps-api.json",
+    "workflows/upscale-api.json",
+    "workflows/upscale-creative-api.json"
+   ]
+  },
+  {
+   "class": "SeedVR2LoadDiTModel",
+   "pack": "ComfyUI-SeedVR2_VideoUpscaler",
+   "python_module": "custom_nodes.ComfyUI-SeedVR2_VideoUpscaler",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "src/interfaces/dit_model_loader.py",
+    "src/interfaces/__init__.py"
+   ],
+   "workflows": [
+    "workflows/upscale-60fps-api.json",
+    "workflows/upscale-api.json",
+    "workflows/upscale-creative-api.json"
+   ]
+  },
+  {
+   "class": "SeedVR2LoadVAEModel",
+   "pack": "ComfyUI-SeedVR2_VideoUpscaler",
+   "python_module": "custom_nodes.ComfyUI-SeedVR2_VideoUpscaler",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "src/interfaces/vae_model_loader.py",
+    "src/interfaces/__init__.py"
+   ],
+   "workflows": [
+    "workflows/upscale-60fps-api.json",
+    "workflows/upscale-api.json",
+    "workflows/upscale-creative-api.json"
+   ]
+  },
+  {
+   "class": "SeedVR2VideoUpscaler",
+   "pack": "ComfyUI-SeedVR2_VideoUpscaler",
+   "python_module": "custom_nodes.ComfyUI-SeedVR2_VideoUpscaler",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "src/interfaces/video_upscaler.py",
+    "src/interfaces/__init__.py"
+   ],
+   "workflows": [
+    "workflows/upscale-60fps-api.json",
+    "workflows/upscale-api.json",
+    "workflows/upscale-creative-api.json"
+   ]
+  },
+  {
+   "class": "SetLatentNoiseMask",
+   "pack": "ComfyUI (core)",
+   "python_module": "nodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/create-image-flux3klein-inpaint-api.json",
+    "workflows/create-image-qwen-edit2509-inpaint-api.json"
+   ]
+  },
+  {
+   "class": "SolidMask",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_mask",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_mask.py"
+   ],
+   "workflows": [
+    "workflows/soul-ref-aceplus-api.json"
+   ]
+  },
+  {
+   "class": "TextEncodeAceStepAudio1.5",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_ace",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_ace.py"
+   ],
+   "workflows": [
+    "workflows/audio-music-api.json",
+    "workflows/soundtrack-music-api.json"
+   ]
+  },
+  {
+   "class": "TextEncodeQwenImage21",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_qwen",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_qwen.py"
+   ],
+   "workflows": [
+    "workflows/create-image-qwen21-edit-api.json",
+    "workflows/create-image-qwen21-t2i-api.json"
+   ]
+  },
+  {
+   "class": "TextEncodeQwenImageEditPlus",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_qwen",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_qwen.py"
+   ],
+   "workflows": [
+    "workflows/create-image-qwen-edit2509-api.json",
+    "workflows/create-image-qwen-edit2509-inpaint-api.json",
+    "workflows/soul-ref-qwenedit-api.json"
+   ]
+  },
+  {
+   "class": "TextGenerate",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_textgen",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_textgen.py"
+   ],
+   "workflows": [
+    "workflows/create-image-flux3klein-edit-api.json",
+    "workflows/create-image-flux3klein-inpaint-api.json",
+    "workflows/create-image-flux3klein-t2i-api.json",
+    "workflows/create-image-qwen21-edit-api.json",
+    "workflows/create-image-qwen21-t2i-api.json"
+   ]
+  },
+  {
+   "class": "TrimVideoLatent",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_wan",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_wan.py"
+   ],
+   "workflows": [
+    "workflows/motion-transfer-api.json",
+    "workflows/motion-transfer/ext-0.json",
+    "workflows/motion-transfer/ext-1.json",
+    "workflows/motion-transfer/ext-2.json",
+    "workflows/motion-transfer/ext-3.json",
+    "workflows/motion-transfer/ext-4.json",
+    "workflows/motion-transfer/ext-5.json",
+    "workflows/motion-transfer/ext-6.json",
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json",
+    "workflows/restyle-api.json"
+   ]
+  },
+  {
+   "class": "UNETLoader",
+   "pack": "ComfyUI (core)",
+   "python_module": "nodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/audio-music-api.json",
+    "workflows/camera-moves-api.json",
+    "workflows/create-image-flux2dev-api.json",
+    "workflows/create-image-flux3klein-edit-api.json",
+    "workflows/create-image-flux3klein-inpaint-api.json",
+    "workflows/create-image-flux3klein-t2i-api.json",
+    "workflows/create-image-klein4b-edit-api.json",
+    "workflows/create-image-klein4b-t2i-api.json",
+    "workflows/create-image-qwen-edit2509-api.json",
+    "workflows/create-image-qwen-edit2509-inpaint-api.json",
+    "workflows/create-image-qwen-t2i-api.json",
+    "workflows/create-image-qwen21-edit-api.json",
+    "workflows/create-image-qwen21-t2i-api.json",
+    "workflows/create-image-zimage-api.json",
+    "workflows/create-image-zimage-turbo-api.json",
+    "workflows/h3-i2v-api.json",
+    "workflows/h3-r2v-api.json",
+    "workflows/h3-t2v-api.json",
+    "workflows/motion-transfer-api.json",
+    "workflows/motion-transfer/ext-0.json",
+    "workflows/motion-transfer/ext-1.json",
+    "workflows/motion-transfer/ext-2.json",
+    "workflows/motion-transfer/ext-3.json",
+    "workflows/motion-transfer/ext-4.json",
+    "workflows/motion-transfer/ext-5.json",
+    "workflows/motion-transfer/ext-6.json",
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json",
+    "workflows/photo-fx-api.json",
+    "workflows/reshoot-funcamera-api.json",
+    "workflows/restyle-api.json",
+    "workflows/soul-flux1dev-api.json",
+    "workflows/soul-qwen-api.json",
+    "workflows/soul-ref-aceplus-api.json",
+    "workflows/soul-ref-infiniteyou-api.json",
+    "workflows/soul-ref-pulid-api.json",
+    "workflows/soul-ref-qwenedit-api.json",
+    "workflows/soul-zit-api.json",
+    "workflows/soundtrack-music-api.json"
+   ]
+  },
+  {
+   "class": "UpscaleModelLoader",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_upscale_model",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_upscale_model.py"
+   ],
+   "workflows": [
+    "workflows/image-upscale-ultrasharp-x4-api.json",
+    "workflows/image-upscale-x2-api.json",
+    "workflows/image-upscale-x4-api.json",
+    "workflows/image-upscale-x8-api.json",
+    "workflows/soul-flux1dev-api.json",
+    "workflows/soul-qwen-api.json",
+    "workflows/soul-ref-aceplus-api.json",
+    "workflows/soul-ref-infiniteyou-api.json",
+    "workflows/soul-ref-pulid-api.json",
+    "workflows/soul-ref-qwenedit-api.json",
+    "workflows/soul-zit-api.json"
+   ]
+  },
+  {
+   "class": "VAEDecode",
+   "pack": "ComfyUI (core)",
+   "python_module": "nodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "tests/execution/testing_nodes/testing-pack/specific_tests.py",
+    "script_examples/websockets_api_example_ws_images.py",
+    "script_examples/websockets_api_example.py"
+   ],
+   "workflows": [
+    "workflows/camera-ltx-api.json",
+    "workflows/camera-moves-api.json",
+    "workflows/create-image-flux2dev-api.json",
+    "workflows/create-image-flux3klein-edit-api.json",
+    "workflows/create-image-flux3klein-inpaint-api.json",
+    "workflows/create-image-flux3klein-t2i-api.json",
+    "workflows/create-image-klein4b-edit-api.json",
+    "workflows/create-image-klein4b-t2i-api.json",
+    "workflows/create-image-qwen-edit2509-api.json",
+    "workflows/create-image-qwen-edit2509-inpaint-api.json",
+    "workflows/create-image-qwen-t2i-api.json",
+    "workflows/create-image-qwen21-edit-api.json",
+    "workflows/create-image-qwen21-t2i-api.json",
+    "workflows/create-image-zimage-api.json",
+    "workflows/create-image-zimage-turbo-api.json",
+    "workflows/h3-i2v-api.json",
+    "workflows/h3-r2v-api.json",
+    "workflows/h3-t2v-api.json",
+    "workflows/motion-transfer-api.json",
+    "workflows/motion-transfer/ext-0.json",
+    "workflows/motion-transfer/ext-1.json",
+    "workflows/motion-transfer/ext-2.json",
+    "workflows/motion-transfer/ext-3.json",
+    "workflows/motion-transfer/ext-4.json",
+    "workflows/motion-transfer/ext-5.json",
+    "workflows/motion-transfer/ext-6.json",
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json",
+    "workflows/photo-fx-api.json",
+    "workflows/reshoot-funcamera-api.json",
+    "workflows/restyle-api.json",
+    "workflows/soul-flux1dev-api.json",
+    "workflows/soul-qwen-api.json",
+    "workflows/soul-ref-aceplus-api.json",
+    "workflows/soul-ref-infiniteyou-api.json",
+    "workflows/soul-ref-pulid-api.json",
+    "workflows/soul-ref-qwenedit-api.json",
+    "workflows/soul-zit-api.json"
+   ]
+  },
+  {
+   "class": "VAEDecodeAudio",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_audio",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_audio.py"
+   ],
+   "workflows": [
+    "workflows/audio-music-api.json",
+    "workflows/audio-sfx-api.json",
+    "workflows/h3-i2v-api.json",
+    "workflows/h3-r2v-api.json",
+    "workflows/h3-t2v-api.json",
+    "workflows/soundtrack-music-api.json",
+    "workflows/soundtrack-sfx-api.json"
+   ]
+  },
+  {
+   "class": "VAEDecodeTiled",
+   "pack": "ComfyUI (core)",
+   "python_module": "nodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "class": "VAEEncode",
+   "pack": "ComfyUI (core)",
+   "python_module": "nodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/create-image-flux2dev-api.json",
+    "workflows/create-image-flux3klein-inpaint-api.json",
+    "workflows/create-image-klein4b-edit-api.json",
+    "workflows/create-image-qwen-edit2509-api.json",
+    "workflows/create-image-qwen-edit2509-inpaint-api.json"
+   ]
+  },
+  {
+   "class": "VAELoader",
+   "pack": "ComfyUI (core)",
+   "python_module": "nodes",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/audio-music-api.json",
+    "workflows/camera-moves-api.json",
+    "workflows/create-image-flux2dev-api.json",
+    "workflows/create-image-flux3klein-edit-api.json",
+    "workflows/create-image-flux3klein-inpaint-api.json",
+    "workflows/create-image-flux3klein-t2i-api.json",
+    "workflows/create-image-klein4b-edit-api.json",
+    "workflows/create-image-klein4b-t2i-api.json",
+    "workflows/create-image-qwen-edit2509-api.json",
+    "workflows/create-image-qwen-edit2509-inpaint-api.json",
+    "workflows/create-image-qwen-t2i-api.json",
+    "workflows/create-image-qwen21-edit-api.json",
+    "workflows/create-image-qwen21-t2i-api.json",
+    "workflows/create-image-zimage-api.json",
+    "workflows/create-image-zimage-turbo-api.json",
+    "workflows/h3-i2v-api.json",
+    "workflows/h3-r2v-api.json",
+    "workflows/h3-t2v-api.json",
+    "workflows/motion-transfer-api.json",
+    "workflows/motion-transfer/ext-0.json",
+    "workflows/motion-transfer/ext-1.json",
+    "workflows/motion-transfer/ext-2.json",
+    "workflows/motion-transfer/ext-3.json",
+    "workflows/motion-transfer/ext-4.json",
+    "workflows/motion-transfer/ext-5.json",
+    "workflows/motion-transfer/ext-6.json",
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json",
+    "workflows/photo-fx-api.json",
+    "workflows/reshoot-funcamera-api.json",
+    "workflows/restyle-api.json",
+    "workflows/soul-flux1dev-api.json",
+    "workflows/soul-qwen-api.json",
+    "workflows/soul-ref-aceplus-api.json",
+    "workflows/soul-ref-infiniteyou-api.json",
+    "workflows/soul-ref-pulid-api.json",
+    "workflows/soul-ref-qwenedit-api.json",
+    "workflows/soul-zit-api.json",
+    "workflows/soundtrack-music-api.json"
+   ]
+  },
+  {
+   "class": "WanAnimateToVideo",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_wan",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_wan.py"
+   ],
+   "workflows": [
+    "workflows/motion-transfer-api.json",
+    "workflows/motion-transfer/ext-0.json",
+    "workflows/motion-transfer/ext-1.json",
+    "workflows/motion-transfer/ext-2.json",
+    "workflows/motion-transfer/ext-3.json",
+    "workflows/motion-transfer/ext-4.json",
+    "workflows/motion-transfer/ext-5.json",
+    "workflows/motion-transfer/ext-6.json",
+    "workflows/object-swap-api.json",
+    "workflows/object-swap/ext-0.json",
+    "workflows/object-swap/ext-1.json",
+    "workflows/object-swap/ext-2.json",
+    "workflows/object-swap/ext-3.json",
+    "workflows/object-swap/ext-4.json",
+    "workflows/object-swap/ext-5.json",
+    "workflows/object-swap/ext-6.json"
+   ]
+  },
+  {
+   "class": "WanCameraEmbedding",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_camera_trajectory",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_camera_trajectory.py",
+    "comfy_api/latest/_io.py"
+   ],
+   "workflows": [
+    "workflows/camera-moves-api.json",
+    "workflows/reshoot-funcamera-api.json"
+   ]
+  },
+  {
+   "class": "WanCameraImageToVideo",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_wan",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_wan.py"
+   ],
+   "workflows": [
+    "workflows/camera-moves-api.json",
+    "workflows/reshoot-funcamera-api.json"
+   ]
+  },
+  {
+   "class": "WanImageToVideo",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_wan",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_wan.py"
+   ],
+   "workflows": [
+    "workflows/photo-fx-api.json"
+   ]
+  },
+  {
+   "class": "WanVaceToVideo",
+   "pack": "ComfyUI (core)",
+   "python_module": "comfy_extras.nodes_wan",
+   "in_validator_object_info": true,
+   "found_in_pin": true,
+   "files": [
+    "comfy_extras/nodes_wan.py"
+   ],
+   "workflows": [
+    "workflows/restyle-api.json"
+   ]
+  }
+ ]
+}

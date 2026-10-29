@@ -1,0 +1,31 @@
+/* Upload slots (shared/SlotPreview.tsx): the preview popover, the "1 of 9 pictures" count, a thumbnail that won't be sent, drag to reorder */
+.slot-pv{display:grid;gap:10px;padding:10px}
+.slot-pv-media{display:grid;place-items:center;max-height:240px;min-height:64px;border-radius:10px;overflow:hidden;background:rgba(255,255,255,.04)}
+.slot-pv-media img,.slot-pv-media video{display:block;max-width:100%;max-height:240px;object-fit:contain}
+.slot-pv-media audio{width:100%;margin:12px 8px}
+.slot-pv-head{display:grid;gap:2px;min-width:0}
+.slot-pv-head b{font:600 13px/18px var(--font-ui,Inter,system-ui,sans-serif);color:#fff}
+.slot-pv-head small{font:400 12px/16px var(--font-ui,Inter,system-ui,sans-serif);color:var(--text-3,#8a8b90);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slot-pv-note{margin:0;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.04);color:var(--text-2,#b4b5b8);font:400 12px/16px var(--font-ui,Inter,system-ui,sans-serif)}
+.slot-pv-note.warn{background:rgba(255,122,26,.1);box-shadow:inset 0 0 0 1px rgba(255,122,26,.35);color:#ffc89e}
+.slot-pv-acts{display:flex;flex-wrap:wrap;gap:6px}
+.slot-pv-btn{all:unset;box-sizing:border-box;height:32px;padding:0 12px;border-radius:8px;background:var(--state-fill,rgba(255,255,255,.06));color:#fff;font:500 13px/32px var(--font-ui,Inter,system-ui,sans-serif);cursor:pointer;white-space:nowrap}
+.slot-pv-btn:hover{background:var(--state-hover,rgba(255,255,255,.1))}
+.slot-pv-btn:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.slot-pv-btn.primary{background:var(--accent,#ff7a1a);color:#111}
+.slot-pv-btn.danger{color:#ff9b8a}
+.slot-pv-btn.danger:hover{background:rgba(255,90,70,.12)}
+/* the count in the prompt line, after the thumbnails */
+html body .ic.ic2 .ic-dock .ic-lead .slot-count{flex:none;align-self:center;position:sticky;right:0;z-index:3;padding:4px 6px;border-radius:6px;background:rgb(39,41,44);box-shadow:-8px 0 8px rgb(39,41,44);color:var(--text-3,#8a8b90);font:500 12px/16px var(--font-ui,Inter,system-ui,sans-serif);white-space:nowrap}
+html body .ic.ic2 .ic-dock .ic-lead .slot-count.full{color:var(--text-2,#b4b5b8)}
+html body .ic.ic2 .ic-dock .ic-lead .slot-count.over{color:#ffb27a}
+/* a thumbnail over the model's limit: dimmed, dashed orange ring, a small badge */
+html body .ic.ic2 .ic-dock .ic-lead .ic-th.slot-over .ic-th-hit{box-shadow:inset 0 0 0 1.5px rgba(255,122,26,.8)}
+html body .ic.ic2 .ic-dock .ic-lead .ic-th.slot-over .ic-th-hit img{opacity:.4}
+html body .ic.ic2 .ic-dock .ic-lead .ic-th .slot-badge{position:absolute;left:2px;right:2px;bottom:2px;padding:0 2px;border-radius:5px;background:rgba(0,0,0,.72);color:#ffc89e;white-space:nowrap;overflow:hidden;text-overflow:clip;text-align:center;font:600 8px/13px var(--font-ui,Inter,system-ui,sans-serif);pointer-events:none}
+html body .ic.ic2 .ic-dock .ic-lead .ic-th .slot-badge.from{color:#fff}
+html body .ic.ic2 .ic-dock .ic-lead .ic-th[data-drop-over] .ic-th-hit{box-shadow:inset 0 0 0 2px var(--accent)}
+html body .ic.ic2 .ic-dock .ic-lead .ic-th[draggable=true] .ic-th-hit{cursor:grab}
+/* a whole bar under a dragged file */
+html body .ic.ic2 .ic-dock.slot-drop-on .ic-panel{box-shadow:inset 0 0 0 2px var(--accent)}
+@media (max-width:700px){.slot-pv-head b{display:none}} /* the phone sheet already shows the title */

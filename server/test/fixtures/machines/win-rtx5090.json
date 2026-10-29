@@ -1,0 +1,45 @@
+{
+ "simulated": true,
+ "note": "SIMULATED profile: a /system_stats answer in ComfyUI's shape and an nvidia-smi line, reconstructed from public specs. Not recorded on this hardware.",
+ "label": "Windows 11 + RTX 5090 (32 GB, Blackwell)",
+ "host": {
+  "platform": "win32",
+  "arch": "x64",
+  "ramBytes": 103079215104,
+  "cpuModel": "AMD Ryzen 9 9950X3D 16-Core Processor"
+ },
+ "system_stats": {
+  "system": {
+   "os": "nt",
+   "ram_total": 103079215104,
+   "ram_free": 61847529062,
+   "comfyui_version": "0.42.5",
+   "python_version": "3.12.9",
+   "pytorch_version": "2.10.0",
+   "embedded_python": false,
+   "argv": [
+    "main.py"
+   ],
+   "deploy_environment": "local-desktop2-standalone"
+  },
+  "devices": [
+   {
+    "name": "cuda:0 NVIDIA GeForce RTX 5090 : cudaMallocAsync",
+    "type": "cuda",
+    "index": 0,
+    "vram_total": 34190917632,
+    "vram_free": 33000000000
+   }
+  ]
+ },
+ "nvidia_smi": "NVIDIA GeForce RTX 5090, 32607, 31000, 12.0",
+ "expect": {
+  "id": "nvidia-blackwell",
+  "backend": "cuda",
+  "vramClass": "32+",
+  "fp8": "native",
+  "nvfp4": "native",
+  "tier": "all",
+  "comfyKind": "desktop"
+ }
+}

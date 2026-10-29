@@ -1,0 +1,17 @@
+{
+  "workflowFile": "h3-cloud-t2v-api.json",
+  "note": "Comfy Cloud node (needs a Comfy account at run time). OpenHiggsfield only mocks it.",
+  "inputs": {
+    "prompt": {
+      "node": "23",
+      "field": "prompt"
+    }
+  },
+  "seed": {
+    "node": "23",
+    "field": "seed"
+  },
+  "output": {
+    "node": "8"
+  }
+}

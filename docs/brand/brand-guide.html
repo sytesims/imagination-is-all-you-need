@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Imagination Is All You Need Brand Guide</title>
+<link rel="icon" type="image/svg+xml" href="../../brand/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500&family=Sora:wght@600;700&family=Unbounded:wght@600;700&family=Archivo:wdth,wght@125,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0F1113;--s1:#131517;--s2:#1C1E20;--s3:#27292C;--t1:#F7F7F8;--t2:#898A8B;--t3:rgba(255,255,255,.5);
+  --line:rgba(255,255,255,.07);--line2:rgba(255,255,255,.12);--o:#FF7A1A;--ink:#14151A;
+  --ease:cubic-bezier(.4,0,.2,1);--ease-out:cubic-bezier(0,0,.2,1);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--t1);font:400 15px/1.6 Inter,system-ui,sans-serif}
+a{color:var(--t1);text-decoration-color:rgba(255,122,26,.6);text-underline-offset:3px}
+code{font:500 12.5px/1.4 'JetBrains Mono',ui-monospace,monospace;background:var(--s2);border:1px solid var(--line);padding:1px 6px;border-radius:5px}
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+header.top{position:sticky;top:0;z-index:5;background:rgba(15,17,19,.88);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;align-items:center;gap:24px;height:56px;overflow-x:auto}
+header.top img{height:22px;flex:none}
+header.top nav{display:flex;gap:4px;font-size:13px;font-weight:500;white-space:nowrap}
+header.top nav a{color:var(--t2);text-decoration:none;padding:6px 10px;border-radius:999px}
+header.top nav a:hover{color:var(--t1);background:rgba(255,255,255,.06)}
+.hero{padding:88px 0 56px;border-bottom:1px solid var(--line);background:radial-gradient(600px 300px at 20% 30%,rgba(255,122,26,.12),transparent 70%)}
+.eyebrow{font:700 11px/1 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--t3)}
+h1,h2,h3{font-family:'Space Grotesk',Inter,sans-serif;margin:0;letter-spacing:-.02em}
+.hero h1{font-size:56px;line-height:1.05;margin:14px 0 16px}
+.hero p{color:var(--t2);font-size:18px;max-width:640px;margin:0}
+section{padding:64px 0;border-bottom:1px solid var(--line)}
+section>.wrap>h2{font-size:28px;text-transform:uppercase;margin:8px 0 10px}
+section>.wrap>p.lead{color:var(--t2);max-width:720px;margin:0 0 28px}
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:820px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:40px}}
+.card{background:var(--s1);border:1px solid var(--line);border-radius:16px;padding:20px;min-width:0}
+.card h3{font-size:16px;margin:0 0 6px}
+.card p,.card li{color:var(--t2);font-size:14px}
+.card ul{margin:8px 0 0;padding-left:18px}
+.tile{border-radius:12px;display:grid;place-items:center;min-height:180px;padding:24px}
+.dark{background:var(--bg);border:1px solid var(--line)}.light{background:#F4F4F5}
+.cap{font-size:12px;color:var(--t3);margin-top:10px}
+.cap code{font-size:11px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:700 11px/1.2 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--t3)}
+td{color:var(--t2)}td b{color:var(--t1);font-weight:600}
+.tablewrap{overflow-x:auto}
+.sw{display:flex;flex-direction:column;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--s1)}
+.sw i{display:block;height:72px}
+.sw div{padding:10px 12px;font-size:13px}.sw div b{display:block;font-weight:600}.sw div span{font:500 12px 'JetBrains Mono',monospace;color:var(--t2)}
+.sizes{display:flex;align-items:end;gap:20px;flex-wrap:wrap}
+.sizes figure{margin:0;text-align:center}.sizes figcaption{font:500 11px 'JetBrains Mono',monospace;color:var(--t3);margin-top:8px}
+.light .sizes figcaption{color:#666}
+.dont{position:relative}
+.dont::after{content:'Don\2019t';position:absolute;top:10px;left:10px;font:700 10px Inter;letter-spacing:.12em;text-transform:uppercase;background:#F06464;color:#fff;padding:3px 8px;border-radius:999px}
+.spec{display:flex;flex-direction:column;gap:18px}
+.spec .row{display:grid;grid-template-columns:140px 1fr;gap:16px;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:14px}
+.spec .meta{font:500 11.5px/1.5 'JetBrains Mono',monospace;color:var(--t3)}
+.fontcard{background:var(--s1);border:1px solid var(--line);border-radius:16px;padding:22px;min-width:0;overflow:hidden}
+.fontcard .h{font-size:34px;line-height:1.05;text-transform:uppercase;margin:14px 0 10px;letter-spacing:-.01em}
+.fontcard .s{font-size:24px;line-height:1.2;margin:0 0 14px}
+.fontcard .wm{font-size:26px;line-height:1}.fontcard .wm b{color:var(--o)}
+.fontcard .lic{font-size:12.5px;color:var(--t2);margin-top:14px}
+.fontcard.rec{border-color:rgba(255,122,26,.55);box-shadow:inset 0 0 0 1px rgba(255,122,26,.25)}
+.badge{display:inline-block;font:700 10px Inter;letter-spacing:.12em;text-transform:uppercase;padding:4px 9px;border-radius:999px;background:var(--o);color:var(--ink)}
+.badge.n{background:var(--s3);color:var(--t2)}
+.voice td:first-child{color:#bfe9d6}.voice td:last-child{color:#f3b3b3}
+.icons{display:flex;gap:18px;flex-wrap:wrap;color:var(--t1)}
+.icons svg{width:24px;height:24px}
+.box{background:var(--s2);border:1px solid var(--line2);height:64px;border-radius:var(--r);display:grid;place-items:center;font:500 11px 'JetBrains Mono',monospace;color:var(--t2)}
+/* logo animation */
+.stage{background:var(--bg);border:1px solid var(--line);border-radius:16px;min-height:300px;display:grid;place-items:center;position:relative;overflow:hidden}
+.anim{display:flex;align-items:center;gap:18px}
+.anim svg.m{width:120px;height:120px;overflow:visible}
+.anim .arc{stroke-dasharray:1;stroke-dashoffset:1;transform-origin:24px 24px;transform:rotate(-40deg);opacity:0}
+.anim .core{transform-origin:24px 24px;transform:scale(0);fill:var(--o)}
+.anim img.word{height:44px;clip-path:inset(0 0 0 0);opacity:0;transform:translateX(-8px)}
+.play .arc{animation:arcIn 600ms var(--ease-out) forwards}
+.play .arc2{animation-delay:90ms}.play .arc3{animation-delay:180ms}
+.play .core{animation:coreIn 380ms cubic-bezier(.3,1.6,.5,1) 450ms forwards,coreLit 300ms var(--ease) 650ms forwards}
+.play img.word{animation:wordIn 300ms var(--ease-out) 800ms forwards}
+@keyframes arcIn{to{stroke-dashoffset:0;transform:rotate(0);opacity:1}}
+@keyframes coreIn{to{transform:scale(1)}}
+@keyframes coreLit{to{fill:#F7F7F8}}
+@keyframes wordIn{to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.play .arc,.play .core,.play img.word{animation:fadeOnly 300ms linear forwards}.anim .arc{stroke-dashoffset:0;transform:none}.anim .core{transform:none;fill:#F7F7F8}@keyframes fadeOnly{to{opacity:1}}}
+.btn{font:600 13px Inter;background:var(--s3);color:var(--t1);border:1px solid var(--line2);border-radius:8px;padding:8px 14px;cursor:pointer}
+.btn:hover{background:#303236}
+.stage .btn{position:absolute;right:14px;bottom:14px}
+.assets img{width:100%;display:block;border-radius:10px;border:1px solid var(--line)}
+footer{padding:40px 0 64px;color:var(--t3);font-size:13px}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <img src="../../brand/wordmark.svg" alt="Imagination Is All You Need">
+  <nav><a href="#logo">Logo</a><a href="#colour">Colour</a><a href="#type">Type</a><a href="#display-fonts">Display fonts</a><a href="#layout">Layout</a><a href="#icons">Icons</a><a href="#motion">Motion</a><a href="#sound">Sound</a><a href="#voice">Voice</a><a href="#glossary">Glossary</a><a href="#imagery">Imagery</a><a href="#assets">Assets</a></nav>
+</div></header>
+
+<div class="hero"><div class="wrap">
+  <span class="eyebrow">Brand guide · v1 · October 2026</span>
+  <h1>If you can imagine it,<br>you can make it here.</h1>
+  <p>How Imagination Is All You Need looks, moves, sounds and speaks. An open studio for images, video, audio and 3D, built on ComfyUI. The source of this page is <code>docs/brand/BRAND-GUIDE.md</code>.</p>
+</div></div>
+
+<!-- ============ LOGO ============ -->
+<section id="logo"><div class="wrap">
+  <span class="eyebrow">01</span><h2>Logo: Orbit</h2>
+  <p class="lead">Three arcs (video, image, audio) orbit one core: the engine that runs them all. The gaps keep the ring open, so it never reads as a closed box or a play button.</p>
+  <div class="grid g2">
+    <div><div class="tile dark"><img src="../../brand/logo-mark.svg" width="160" height="160" alt="Mark on dark"></div><div class="cap"><code>logo-mark.svg</code> · default, on dark</div></div>
+    <div><div class="tile light"><img src="../../brand/logo-mark-light.svg" width="160" height="160" alt="Mark on light"></div><div class="cap"><code>logo-mark-light.svg</code> · on light</div></div>
+    <div><div class="tile dark"><img src="../../brand/wordmark-stacked.svg" style="width:min(100%,260px)" alt="Stacked lockup on dark"></div><div class="cap"><code>wordmark-stacked.svg</code> · "Imagination" Space Grotesk 700 #F7F7F8 · "is all you need" Inter 500 #FF7A1A · text as paths</div></div>
+    <div><div class="tile light"><img src="../../brand/wordmark-stacked-light.svg" style="width:min(100%,260px)" alt="Stacked lockup on light"></div><div class="cap"><code>wordmark-stacked-light.svg</code> · "Imagination" #14151A · "is all you need" #E0640A</div></div>
+    <div><div class="tile dark"><img src="../../brand/wordmark.svg" style="width:min(100%,360px)" alt="Inline lockup on dark"></div><div class="cap"><code>wordmark.svg</code> · inline, one line</div></div>
+    <div><div class="tile light"><img src="../../brand/wordmark-light.svg" style="width:min(100%,360px)" alt="Inline lockup on light"></div><div class="cap"><code>wordmark-light.svg</code> · inline, on light</div></div>
+    <div><div class="tile dark" style="color:#F7F7F8;gap:28px;grid-auto-flow:column"><span id="mono1" style="width:72px;height:72px;color:#F7F7F8"></span><span id="mono2" style="width:72px;height:72px;color:#FF7A1A"></span><span id="mono3" style="width:72px;height:72px;color:#898A8B"></span></div><div class="cap"><code>logo-mark-mono.svg</code> · one colour, <code>currentColor</code></div></div>
+    <div><div class="tile dark" style="gap:28px;grid-auto-flow:column"><img src="../../brand/app-icon.svg" width="120" height="120" alt="App icon"><img src="../../brand/favicon.svg" width="48" height="48" alt="Favicon"><img src="../../brand/logo-mark-small.svg" width="24" height="24" alt="Small mark"></div><div class="cap"><code>app-icon.svg</code> · <code>favicon.svg</code> · <code>logo-mark-small.svg</code></div></div>
+  </div>
+
+  <h3 style="margin:36px 0 12px">Sizes, tested on dark and light</h3>
+  <div class="grid g2">
+    <div class="tile dark" style="place-items:end start"><div class="sizes">
+      <figure><img src="../../brand/logo-mark-small.svg" width="16" height="16" alt=""><figcaption>16 small</figcaption></figure>
+      <figure><img src="../../brand/logo-mark-small.svg" width="24" height="24" alt=""><figcaption>24 small</figcaption></figure>
+      <figure><img src="../../brand/logo-mark.svg" width="48" height="48" alt=""><figcaption>48</figcaption></figure>
+      <figure><img src="../../brand/favicon.svg" width="16" height="16" alt=""><figcaption>favicon 16</figcaption></figure>
+      <figure><img src="../../brand/favicon.svg" width="32" height="32" alt=""><figcaption>favicon 32</figcaption></figure>
+      <figure><img src="../../brand/app-icon.svg" width="128" height="128" alt=""><figcaption>icon (512 file)</figcaption></figure>
+    </div></div>
+    <div class="tile light" style="place-items:end start"><div class="sizes">
+      <figure><img src="../../brand/logo-mark-light.svg" width="16" height="16" alt=""><figcaption>16</figcaption></figure>
+      <figure><img src="../../brand/logo-mark-light.svg" width="24" height="24" alt=""><figcaption>24</figcaption></figure>
+      <figure><img src="../../brand/logo-mark-light.svg" width="48" height="48" alt=""><figcaption>48</figcaption></figure>
+      <figure><img src="../../brand/favicon.svg" width="16" height="16" alt=""><figcaption>favicon 16</figcaption></figure>
+      <figure><img src="../../brand/favicon.svg" width="32" height="32" alt=""><figcaption>favicon 32</figcaption></figure>
+      <figure><img src="../../brand/app-icon.svg" width="128" height="128" alt=""><figcaption>icon (512 file)</figcaption></figure>
+    </div></div>
+  </div>
+
+  <div class="grid g3" style="margin-top:24px">
+    <div class="card"><h3>Construction</h3><ul><li>48-unit grid, ring radius 15.5</li><li>Arc stroke 5.5, round caps</li><li>3 arcs × 80°, centred at −15°, 105°, 225°</li><li>40° gaps (≈ 4 units clear between caps)</li><li>Core radius 6</li><li>Small variant (16 grid): stroke 2.3, 48° gaps, core 2.3</li></ul></div>
+    <div class="card"><h3>Clear space and minimums</h3><ul><li>Clear space: one core diameter (⅓ of the ring) on every side</li><li>Mark: 16 px minimum; use the small variant at 24 px and below</li><li>Lockup: 96 px wide minimum</li><li>Mark-to-text gap: about one core width</li></ul></div>
+    <div class="card"><h3>Don'ts</h3><ul><li>No stretching, skewing or rotating</li><li>No recolouring, gradients or second hue on the arcs</li><li>No shadows, glows, outlines or 3D</li><li>No busy or mid-tone backgrounds</li><li>Don't retype the wordmark in a live font</li></ul></div>
+  </div>
+  <div class="grid g4" style="margin-top:12px">
+    <div class="tile dark dont" style="min-height:140px"><img src="../../brand/logo-mark.svg" style="width:110px;height:64px" alt="stretched"></div>
+    <div class="tile dark dont" style="min-height:140px"><img src="../../brand/logo-mark.svg" width="72" height="72" style="filter:hue-rotate(160deg)" alt="recoloured"></div>
+    <div class="tile dark dont" style="min-height:140px"><img src="../../brand/logo-mark.svg" width="72" height="72" style="filter:drop-shadow(0 0 14px #FF7A1A) drop-shadow(4px 6px 0 #000)" alt="effects"></div>
+    <div class="tile dont" style="min-height:140px;background:repeating-linear-gradient(45deg,#8a6a4a 0 14px,#3c6b78 14px 28px,#d9c27a 28px 42px)"><img src="../../brand/logo-mark.svg" width="72" height="72" alt="busy background"></div>
+  </div>
+</div></section>
+
+<!-- ============ COLOUR ============ -->
+<section id="colour"><div class="wrap">
+  <span class="eyebrow">02</span><h2>Colour</h2>
+  <p class="lead">Near-black, neutral surfaces with one accent. Orange is about 5% of any screen: the logo, the Generate button and small active markers. Never for body text, errors or large backgrounds. Values are what the app renders (<code>styles.css</code> over <code>tokens.css</code>).</p>
+  <div class="grid g4">
+    <div class="sw"><i style="background:#FF7A1A"></i><div><b>Orbit Orange</b><span>#FF7A1A · --accent</span></div></div>
+    <div class="sw"><i style="background:#E66E17"></i><div><b>Orange Hover</b><span>#E66E17 · --accent-hover</span></div></div>
+    <div class="sw"><i style="background:#9E4B10"></i><div><b>Orange Lip</b><span>#9E4B10 · --accent-lip</span></div></div>
+    <div class="sw"><i style="background:#E0640A"></i><div><b>Orange Deep</b><span>#E0640A · brand, on light</span></div></div>
+    <div class="sw"><i style="background:#0F1113;border-bottom:1px solid var(--line)"></i><div><b>Background</b><span>#0F1113 · --hf-bg</span></div></div>
+    <div class="sw"><i style="background:#131517;border-bottom:1px solid var(--line)"></i><div><b>Surface 1</b><span>#131517 · --surface-1</span></div></div>
+    <div class="sw"><i style="background:#1C1E20"></i><div><b>Surface 2</b><span>#1C1E20 · --surface-2</span></div></div>
+    <div class="sw"><i style="background:#27292C"></i><div><b>Surface 3</b><span>#27292C · --surface-3</span></div></div>
+    <div class="sw"><i style="background:#F7F7F8"></i><div><b>Text 1</b><span>#F7F7F8 · --text-1</span></div></div>
+    <div class="sw"><i style="background:#898A8B"></i><div><b>Text 2</b><span>#898A8B · --text-2</span></div></div>
+    <div class="sw"><i style="background:rgba(255,255,255,.5)"></i><div><b>Text 3</b><span>white 50% · --text-3</span></div></div>
+    <div class="sw"><i style="background:#14151A;border-bottom:1px solid var(--line)"></i><div><b>Ink</b><span>#14151A · --accent-ink</span></div></div>
+    <div class="sw"><i style="background:#3DDC97"></i><div><b>Success</b><span>#3DDC97 · --success</span></div></div>
+    <div class="sw"><i style="background:#2FBF8F"></i><div><b>Free</b><span>#2FBF8F · --badge-free</span></div></div>
+    <div class="sw"><i style="background:#E8B44A"></i><div><b>Warning</b><span>#E8B44A · --warning</span></div></div>
+    <div class="sw"><i style="background:#F06464"></i><div><b>Error</b><span>#F06464 · --error</span></div></div>
+  </div>
+  <p class="cap" style="margin-top:14px">Borders: white 5% (<code>--border</code>) and 10% (<code>--border-strong</code>). Fills: white 5% / 10%. Popover: <code>rgba(35,36,39,.95)</code>. Orange tints: 20% / 10%.</p>
+</div></section>
+
+<!-- ============ TYPE ============ -->
+<section id="type"><div class="wrap">
+  <span class="eyebrow">03</span><h2>Typography</h2>
+  <p class="lead">Inter for the interface, Space Grotesk for display and the wordmark. <code>--font-mono</code> names JetBrains Mono, which the app doesn't load yet, so numbers fall back to the system monospace. Manrope is still loaded as a legacy fallback.</p>
+  <div class="spec">
+    <div class="row"><div class="meta">Display<br>Space Grotesk 700<br>56 / 1.05 · −0.03em</div><div style="font:700 56px/1.05 'Space Grotesk';letter-spacing:-.03em;text-transform:uppercase">Make a video</div></div>
+    <div class="row"><div class="meta">H1<br>Space Grotesk 700<br>40 / 48 · −0.02em</div><div style="font:700 40px/48px 'Space Grotesk';letter-spacing:-.02em;text-transform:uppercase">Camera Moves</div></div>
+    <div class="row"><div class="meta">H2<br>Space Grotesk 600<br>24 / 32</div><div style="font:600 24px/32px 'Space Grotesk';letter-spacing:-.02em;text-transform:uppercase">Made in the community</div></div>
+    <div class="row"><div class="meta">H3<br>Inter 600<br>16 / 24</div><div style="font:600 16px/24px Inter">Run on: Auto · Comfy Cloud</div></div>
+    <div class="row"><div class="meta">Body<br>Inter 400–500<br>14 / 24</div><div style="font:500 14px/24px Inter;color:#F7F7F8">Pick a tool, add your files and a prompt, and see the price before you press Generate.</div></div>
+    <div class="row"><div class="meta">Small<br>Inter 500<br>12 / 18</div><div style="font:500 12px/18px Inter;color:#898A8B">Estimate, billed to your fal account.</div></div>
+    <div class="row"><div class="meta">Label<br>Inter 700 · +0.12em<br>11 / 14</div><div style="font:700 11px/14px Inter;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.5)">Billed to · Estimate · Actual</div></div>
+    <div class="row"><div class="meta">Mono<br>JetBrains Mono 500<br>12 / 18 · tabular</div><div style="font:500 12px/18px 'JetBrains Mono',monospace;font-variant-numeric:tabular-nums">✦40 · $0.42 · 1920×1080 · 00:05.20 · 14.2 GB</div></div>
+  </div>
+</div></section>
+
+<!-- ============ DISPLAY FONTS ============ -->
+<section id="display-fonts"><div class="wrap">
+  <span class="eyebrow">03b · proposal</span><h2>Display fonts to pair with Inter</h2>
+  <p class="lead">All four are SIL Open Font License 1.1: free to use, embed and self-host. This is a proposal only; nothing is added to <code>web/</code>.</p>
+  <div class="grid g2">
+    <div class="fontcard rec" style="font-family:'Space Grotesk'"><span class="badge">Recommended · in use</span>
+      <div class="h" style="font-weight:700">Make a video in three steps</div><div class="s" style="font-weight:600">If you can imagine it, you can make it here.</div><div class="wm" style="font-weight:700">Imagination <b style="font:500 .6em Inter;letter-spacing:.06em">is all you need</b></div>
+      <div class="lic" style="font-family:Inter"><b style="color:#F7F7F8">Space Grotesk</b> · OFL 1.1 · <a href="https://github.com/floriankarsten/space-grotesk">github.com/floriankarsten/space-grotesk</a> · <a href="https://fonts.google.com/specimen/Space+Grotesk">Google Fonts</a><br>Technical but warm; the wordmark is built from it and the app already loads it.</div></div>
+    <div class="fontcard" style="font-family:Sora"><span class="badge n">Runner-up</span>
+      <div class="h" style="font-weight:700">Make a video in three steps</div><div class="s" style="font-weight:600">If you can imagine it, you can make it here.</div><div class="wm" style="font-weight:600">Imagination <b style="font:500 .6em Inter;letter-spacing:.06em">is all you need</b></div>
+      <div class="lic" style="font-family:Inter"><b style="color:#F7F7F8">Sora</b> · OFL 1.1 · <a href="https://github.com/sora-xor/sora-font">github.com/sora-xor/sora-font</a> · <a href="https://fonts.google.com/specimen/Sora">Google Fonts</a><br>Wide, soft geometric. Friendlier, more "consumer app".</div></div>
+    <div class="fontcard" style="font-family:Unbounded"><span class="badge n">Posters only</span>
+      <div class="h" style="font-weight:700;font-size:28px">Make a video in three steps</div><div class="s" style="font-weight:600;font-size:21px">If you can imagine it, you can make it here.</div><div class="wm" style="font-weight:600;font-size:22px">Imagination <b style="font:500 .6em Inter;letter-spacing:.06em">is all you need</b></div>
+      <div class="lic" style="font-family:Inter"><b style="color:#F7F7F8">Unbounded</b> · OFL 1.1 · <a href="https://github.com/googlefonts/unbounded">github.com/googlefonts/unbounded</a> · <a href="https://fonts.google.com/specimen/Unbounded">Google Fonts</a><br>Loud and rounded. Fun for social posts; too heavy for UI headings.</div></div>
+    <div class="fontcard" style="font-family:Archivo;font-stretch:125%"><span class="badge n">Cinematic</span>
+      <div class="h" style="font-weight:700;font-size:29px">Make a video in three steps</div><div class="s" style="font-weight:700;font-size:22px">If you can imagine it, you can make it here.</div><div class="wm" style="font-weight:700;font-size:23px">Imagination <b style="font:500 .6em Inter;letter-spacing:.06em">is all you need</b></div>
+      <div class="lic" style="font-family:Inter;font-stretch:100%"><b style="color:#F7F7F8">Archivo (Expanded, wdth 125)</b> · OFL 1.1 · <a href="https://github.com/Omnibus-Type/Archivo">github.com/Omnibus-Type/Archivo</a> · <a href="https://fonts.google.com/specimen/Archivo">Google Fonts</a><br>Film-title feel. Good for video cards; colder in the UI.</div></div>
+  </div>
+</div></section>
+
+<!-- ============ LAYOUT ============ -->
+<section id="layout"><div class="wrap">
+  <span class="eyebrow">04</span><h2>Layout</h2>
+  <p class="lead">From <code>styles.css</code>, <code>tokens.css</code> and <code>ui-states.css</code>. Depth comes from surface steps first and shadows second.</p>
+  <div class="grid g2">
+    <div class="card"><h3>Spacing scale</h3>
+      <div style="display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin-top:12px">
+        <script>[2,4,6,8,12,16,20,24,32,48].forEach(n=>document.write(`<div style="text-align:center"><div style="width:${n}px;height:${n}px;background:#FF7A1A;border-radius:2px;margin:0 auto"></div><div class="cap" style="margin-top:6px">${n}</div></div>`))</script>
+      </div><p style="margin-top:12px"><code>--space-0-5</code> … <code>--space-8</code>. Media gutter 6 px.</p></div>
+    <div class="card"><h3>Radii</h3>
+      <div class="grid g4" style="margin-top:12px;gap:8px">
+        <script>[['xs',4],['sm',6],['md',8],['lg',12],['xl',16],['2xl',20],['pill',999]].forEach(([k,n])=>document.write(`<div class="box" style="--r:${n}px">${k} ${n<999?n:''}</div>`))</script>
+      </div><p style="margin-top:12px">Generate button 12 · panels 16 · chips pill.</p></div>
+    <div class="card"><h3>Shadows</h3>
+      <div class="grid g2" style="gap:14px;margin-top:12px">
+        <div class="box" style="--r:12px;box-shadow:0 2px 2px rgba(0,0,0,.12),inset 0 2px 3px rgba(255,255,255,.05)">--shadow-1</div>
+        <div class="box" style="--r:12px;box-shadow:0 6px 4px rgba(0,0,0,.25),0 32px 24px rgba(0,0,0,.15)">--shadow-2</div>
+        <div class="box" style="--r:12px;box-shadow:0 4px 20px rgba(0,0,0,.2)">--shadow-popover</div>
+        <div class="box" style="--r:12px;background:#FF7A1A;color:#14151A;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.49),1px 3px 4px rgba(0,0,0,.43),3px 7px 5px rgba(0,0,0,.25),10px 34px 24px rgba(0,0,0,.15),inset 0 -3px 0 #9E4B10,inset 0 1px 0 rgba(255,255,255,.25)">Generate · ✦40</div>
+      </div></div>
+    <div class="card"><h3>Borders, states, targets</h3><ul>
+      <li>Hairlines: white 5% / 10%; interactive 8% rest, 16% hover, 32% selected</li>
+      <li>Fills: white 5% rest, 9% hover, 12% pressed; press scale 0.98</li>
+      <li>Focus: 2 px white ring at 90%, 2 px offset</li>
+      <li>Disabled: <code>#2A2B2E</code> fill, 55% ink</li>
+      <li>Hit targets: 32 px desktop, 44 px phone</li>
+      <li>Frame: nav 56, sidebar 232, panel 380, phone tab bar 52</li></ul></div>
+  </div>
+</div></section>
+
+<!-- ============ ICONS ============ -->
+<section id="icons"><div class="wrap">
+  <span class="eyebrow">05</span><h2>Icon style</h2>
+  <p class="lead">Matches <code>web/src/ui/Icons.tsx</code>: 24 × 24 viewBox, 1.5 stroke, round caps and joins, no fill, <code>currentColor</code>, rendered at 18 px by default. The logo is not an icon.</p>
+  <div class="card"><div class="icons">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="2"/><circle cx="17" cy="17" r="4"/><path d="M14 5.5h3.5a2 2 0 0 1 2 2V10"/><path d="m17.5 8.5 2 2 2-2"/><path d="M10 18.5H6.5a2 2 0 0 1-2-2V14"/><path d="m6.5 15.5-2-2-2 2"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="10" height="8" rx="2"/><path d="M10 15v3l-2 3M14 15v3l2 3M12 18v3"/><path d="M3 9v4M21 9v4"/><path d="m4.5 7.5-1.5 1.5 1.5 1.5M19.5 7.5 21 9l-1.5 1.5"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="15" height="15" rx="2.5"/><path d="m3 16 4-4 4 4 2-2 5 5"/><path d="M19 2v4M17 4h4"/><circle cx="13.5" cy="9.5" r="1.25"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="13" width="8" height="8" rx="2"/><path d="M3 9V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M14 10l4-4M14 6h4v4"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="7.5" r="4"/><path d="M16.5 3.5 20.5 11h-8z"/><rect x="3.5" y="14" width="7" height="7" rx="1.5"/><path d="M17.5 14v7M14 17.5h7"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="#FF7A1A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="12" height="10" rx="2"/><path d="m15 10.5 5-2.5v8l-5-2.5"/><path d="M6 4.5a8 8 0 0 1 9.5-.5"/><path d="m14 2.5 1.6 1.5-1.6 1.6"/></svg>
+  </div><p class="cap">Object Swap · Camera Moves · Photo FX · Upscale · Elements · Re-shoot (active state in orange). Draw new icons on the 24 grid; keep 2 px corner radii; one metaphor per icon.</p></div>
+</div></section>
+
+<!-- ============ MOTION ============ -->
+<section id="motion"><div class="wrap">
+  <span class="eyebrow">06</span><h2>Motion</h2>
+  <p class="lead">150 ms for hover and press, 200 ms for menus and toasts, 300 ms for panels. Easing <code>cubic-bezier(.4,0,.2,1)</code>; <code>cubic-bezier(0,0,.2,1)</code> for entrances. With reduced motion: fades only.</p>
+  <div class="grid g2">
+    <div class="stage" id="stage"><div class="anim" id="anim">
+      <svg class="m" viewBox="0 0 48 48" aria-label="Imagination Is All You Need">
+        <g fill="none" stroke="#FF7A1A" stroke-width="5.5" stroke-linecap="round">
+          <path class="arc arc1" pathLength="1" d="M32.89 11.3A15.5 15.5 0 0 1 38.05 30.55"/>
+          <path class="arc arc2" pathLength="1" d="M30.55 38.05A15.5 15.5 0 0 1 11.3 32.89"/>
+          <path class="arc arc3" pathLength="1" d="M8.56 22.65A15.5 15.5 0 0 1 22.65 8.56"/>
+        </g><circle class="core" cx="24" cy="24" r="6"/></svg>
+      <img class="word" id="word" alt="">
+    </div><button class="btn" id="replay" type="button">Replay</button></div>
+    <div class="card"><h3>Logo intro (≈ 1.4 s)</h3><ul>
+      <li><b style="color:#F7F7F8">0–600 ms</b>: the arcs draw in from their leading caps (video, image, audio, 90 ms apart) while rotating 40° into place. Ease-out.</li>
+      <li><b style="color:#F7F7F8">450–800 ms</b>: the core pops in with a small overshoot, orange first, then lights up to near-white: the engine starting.</li>
+      <li><b style="color:#F7F7F8">800–1100 ms</b>: the wordmark fades in, sliding 8 px.</li>
+      <li><b style="color:#F7F7F8">End card</b>: arcs drift one slow turn (8 s) behind the URL; no second intro.</li>
+      <li>Timed so the sting's chord lands on the core.</li></ul></div>
+  </div>
+</div></section>
+
+<!-- ============ SOUND ============ -->
+<section id="sound"><div class="wrap">
+  <span class="eyebrow">07</span><h2>Sonic branding</h2>
+  <p class="lead">Described only. To be generated later with our own audio tools, keeping the prompts and seeds next to the video.</p>
+  <div class="grid g2">
+    <div class="card"><h3>Logo sting · 2–3 s</h3><ul><li>Three short tones, one per arc, 90 ms apart: a soft mallet, a glassy pluck, a low warm pulse</li><li>They resolve on one bright, open chord as the core lights up, then a short airy tail</li><li>Around D major / B minor add9; no hook, no drums</li><li>Peak −1 dBTP, about −14 LUFS for social</li><li>Made with Stable Audio in the app; check the model's output licence before publishing</li></ul></div>
+    <div class="card"><h3>Demo-video music</h3><ul><li>100–110 BPM, minimal modern electronic with an organic layer (felt piano or plucks, soft sub, light percussion)</li><li>No vocals; ducked 8–10 dB under the voice-over</li><li>One lift at "every tool is a workflow", ends on the sting</li><li>Made with ACE-Step in the app; prompt and seed saved in the repo</li></ul></div>
+  </div>
+</div></section>
+
+<!-- ============ VOICE ============ -->
+<section id="voice"><div class="wrap">
+  <span class="eyebrow">08</span><h2>Voice and tone</h2>
+  <p class="lead">Plain, honest, short. Say what it does, where it runs and who pays. Claim only what is true and measured. Never attack anyone, including the product that inspired us.</p>
+  <div class="tablewrap"><table class="voice"><thead><tr><th>Do (real copy from the app)</th><th>Don't</th></tr></thead><tbody>
+    <tr><td>Free · Local</td><td>Unlimited free generations!</td></tr>
+    <tr><td>Sample output, nothing billed.</td><td>Demo mode active (mock backend, no API key detected)</td></tr>
+    <tr><td>Estimate, billed to your fal account.</td><td>Credits deducted.</td></tr>
+    <tr><td>MiniMax H3 needs Comfy Cloud or a fal key. Add one in Connections, or run it locally.</td><td>Error: no_provider · Oops! Something went wrong</td></tr>
+    <tr><td>Picks the best place you've set up. Never charges more than the price shown.</td><td>Cheaper than other studios (unmeasured, and an attack)</td></tr>
+    <tr><td>Tried fal (failed, not charged), then ran on Comfy Cloud.</td><td>Your credits have been refunded (we hold no money)</td></tr>
+  </tbody></table></div>
+  <p class="cap">Sentence case in UI copy; uppercase only for display heads and labels. Numerals for numbers. Label demo outputs "AI-generated".</p>
+</div></section>
+
+<!-- ============ GLOSSARY ============ -->
+<section id="glossary"><div class="wrap">
+  <span class="eyebrow">09</span><h2>Words we use</h2>
+  <p class="lead">Keep model identity, run location and billing account distinct. Avoid ambiguous credits, balance or subscription wording; identify the service that bills the user.</p>
+  <div class="tablewrap"><table><tbody>
+    <tr><td><b>Tool</b></td><td>One thing you can do (Object Swap, Camera Moves, Upscale…). Every open tool is a ComfyUI workflow.</td></tr>
+    <tr><td><b>App</b></td><td>A one-click preset built on a tool (Product Shot, Transitions…).</td></tr>
+    <tr><td><b>Model</b></td><td>What you get, listed once with a clean name ("MiniMax H3"). Never includes a route, an account or "API".</td></tr>
+    <tr><td><b>Run on</b></td><td>Where it runs and who bills it: Auto, Local, Comfy Cloud or a direct provider.</td></tr>
+    <tr><td><b>Auto</b></td><td>We pick where it runs from what you've set up ("Auto · Comfy Cloud"). Never charges more than the price shown.</td></tr>
+    <tr><td><b>Local</b></td><td>Your own graphics card through ComfyUI. Free. Replaces "Local", "Local ComfyUI", "Local GPU", "This computer".</td></tr>
+    <tr><td><b>Comfy Cloud</b></td><td>Comfy's servers with one Comfy key, billed to your Comfy account. Always one choice.</td></tr>
+    <tr><td><b>Direct providers</b></td><td>fal, Replicate, Black Forest Labs, MiniMax, Alibaba Cloud, Luma. Optional keys; each bills you directly.</td></tr>
+    <tr><td><b>Connections</b></td><td>The accounts and GPU you've set up (Settings → Connections).</td></tr>
+    <tr><td><b>✦ price</b></td><td>Estimated cost, 1 ✦ = $0.01, shown before every run. "Free" locally.</td></tr>
+    <tr><td><b>Estimate / Actual</b></td><td>What we expected / what the provider reported, where its API tells us.</td></tr>
+    <tr><td><b>Spend</b></td><td>The log of runs: where each ran, who billed it, estimate, actual, failure rule. Not a balance.</td></tr>
+    <tr><td><b>Estimate</b></td><td>“About $X (estimate)”: the price shown before Generate when a model has no published price; the real cost is recorded after the run.</td></tr>
+    <tr><td><b>Sample</b></td><td>Placeholder output when no key is set: "Sample output, nothing billed." Never passed off as a real render.</td></tr>
+    <tr><td><b>Open</b> badge</td><td>The model's weights are open. A model fact, shown in the model menu only.</td></tr>
+    <tr><td><b>Generate</b></td><td>The one orange button. It always shows the price.</td></tr>
+    <tr><td><b>Assets</b></td><td>Everything you've made: results, uploads, history.</td></tr>
+    <tr><td><b>Projects</b></td><td>Folders that group assets.</td></tr>
+    <tr><td><b>Elements</b></td><td>Saved references (a character, product or place) you reuse across tools and prompts.</td></tr>
+    <tr><td><b>Recreate</b></td><td>Open a result's prompt, references, model and Run on, ready to run again or tweak.</td></tr>
+    <tr><td><b>Send to</b></td><td>Pass a result to another tool as its input or as a reference.</td></tr>
+    <tr><td><b>Workflow</b></td><td>The ComfyUI graph behind a tool, in <code>workflows/</code>: "Get workflow", "Open in ComfyUI".</td></tr>
+  </tbody></table></div>
+</div></section>
+
+<!-- ============ IMAGERY ============ -->
+<section id="imagery"><div class="wrap">
+  <span class="eyebrow">10</span><h2>Imagery direction</h2>
+  <p class="lead">The example gallery is the first thing judges see. Curated, varied and honest about being AI-generated.</p>
+  <div class="grid g3">
+    <div class="card"><h3>Light and colour</h3><ul><li>Motivated, cinematic light: golden hour, window light, night neon, soft product light</li><li>Natural colour with a warm bias that sits next to our orange</li><li>No flat midday light, no plastic "AI sheen", no purple-gradient defaults</li></ul></div>
+    <div class="card"><h3>Subjects and variety</h3><ul><li>Products, places, food, animals, textures, invented characters and creatures</li><li>Wide, medium and close-up; 16:9, 9:16 and 1:1</li><li>Before/after pairs, one subject across camera moves, one character across clips</li></ul></div>
+    <div class="card"><h3>Rules</h3><ul><li>SFW only</li><li>No real people's likenesses: invented faces, or ours with consent</li><li>No unlicensed IP: no brands, logos, film or game characters, named artists' styles</li><li>Label AI-generated; keep prompt, seed, model and Run on so anyone can Recreate</li></ul></div>
+  </div>
+</div></section>
+
+<!-- ============ ASSETS ============ -->
+<section id="assets"><div class="wrap">
+  <span class="eyebrow">11</span><h2>Ready-made assets</h2>
+  <p class="lead">All text is converted to paths, so these render the same everywhere. Full list in <a href="../../brand/index.html">brand/index.html</a>.</p>
+  <div class="grid g2 assets">
+    <div><img src="../../brand/social/github-social-preview.png" alt="GitHub social preview"><div class="cap">GitHub social preview · 1280 × 640</div></div>
+    <div><img src="../../brand/social/readme-hero.png" alt="README hero"><div class="cap">README hero · 1600 × 500</div></div>
+    <div><img src="../../brand/video/title-card.png" alt="Title card"><div class="cap">Demo title card · 1920 × 1080</div></div>
+    <div><img src="../../brand/video/end-card.png" alt="End card"><div class="cap">Demo end card · 1920 × 1080</div></div>
+  </div>
+</div></section>
+
+<footer><div class="wrap">Imagination Is All You Need is an independent open-source project (AGPL-3.0). Fonts: Space Grotesk, Inter, JetBrains Mono, Sora, Unbounded, Archivo, all SIL OFL 1.1.</div></footer>
+
+<script>
+fetch('../../brand/logo-mark-mono.svg').then(r=>r.text()).then(s=>{['mono1','mono2','mono3'].forEach(id=>{const el=document.getElementById(id);el.innerHTML=s;const v=el.querySelector('svg');v.setAttribute('width','100%');v.setAttribute('height','100%')})}).catch(()=>{});
+// wordmark text only (lockup without the mark) for the animation: reuse the lockup and crop the mark away
+const word=document.getElementById('word');word.src='../../brand/wordmark.svg';word.style.clipPath='inset(0 0 0 13.5%)';word.style.marginLeft='-46px';
+function play(){const a=document.getElementById('anim');a.classList.remove('play');void a.offsetWidth;a.classList.add('play')}
+document.getElementById('replay').onclick=play;
+new IntersectionObserver(e=>{if(e[0].isIntersecting)play()},{threshold:.5}).observe(document.getElementById('stage'));
+</script>
+</body>
+</html>

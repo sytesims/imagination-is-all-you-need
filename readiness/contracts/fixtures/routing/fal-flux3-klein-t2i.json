@@ -1,0 +1,56 @@
+{
+  "source": "https://fal.ai/models/blackforestlabs/flux-3/klein/text-to-image/api",
+  "checkedAt": "2026-10-17",
+  "note": "hand-written from the page's Input schema + example",
+  "endpoint": "blackforestlabs/flux-3/klein/text-to-image",
+  "allowedKeys": [
+    "prompt",
+    "enable_prompt_expansion",
+    "seed",
+    "num_images",
+    "enable_safety_checker",
+    "output_format",
+    "sync_mode",
+    "image_size",
+    "bounding_boxes"
+  ],
+  "imageSizeEnum": [
+    "square_hd",
+    "square",
+    "portrait_4_3",
+    "portrait_16_9",
+    "landscape_4_3",
+    "landscape_16_9"
+  ],
+  "imageSizeMin": 256,
+  "imageSizeMax": 4096,
+  "outputFormats": [
+    "jpeg",
+    "png",
+    "webp"
+  ],
+  "exampleRequest": {
+    "prompt": "A red fox standing in fresh snow at sunrise",
+    "enable_prompt_expansion": true,
+    "num_images": 1,
+    "enable_safety_checker": true,
+    "output_format": "png",
+    "image_size": "square_hd"
+  },
+  "exampleResponse": {
+    "images": [
+      {
+        "url": "https://fal.media/files/x/z9RV14K95DvU.png",
+        "content_type": "image/png",
+        "file_name": "z9RV14K95DvU.png",
+        "file_size": 4404019
+      }
+    ],
+    "timings": {},
+    "seed": 7,
+    "has_nsfw_concepts": [
+      false
+    ],
+    "prompt": "A red fox"
+  }
+}

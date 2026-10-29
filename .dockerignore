@@ -1,0 +1,11 @@
+**/node_modules
+**/dist
+server/data
+data
+.git
+screens
+readiness/**/out
+*.log
+.env
+.env.*
+comfy-models

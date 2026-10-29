@@ -1,0 +1,37 @@
+{
+  "workflowFile": "audio-yue2-cover-api.json",
+  "template": "audio_yue2_music_cover",
+  "inputs": {
+    "audio": [
+      {
+        "node": "45",
+        "field": "audio"
+      }
+    ],
+    "prompt": [
+      {
+        "node": "33:25",
+        "field": "style"
+      }
+    ],
+    "lyrics": [
+      {
+        "node": "33:25",
+        "field": "lyrics"
+      }
+    ]
+  },
+  "duration": [
+    {
+      "node": "33:25",
+      "field": "max_duration"
+    }
+  ],
+  "seed": {
+    "node": "33:34",
+    "field": "seed"
+  },
+  "output": {
+    "node": "10"
+  }
+}

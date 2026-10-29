@@ -1,0 +1,7 @@
+/* Live option prices in the bar popups (shared/optionPrice.tsx, 2026-10-25): quiet mono figures, a soft placeholder while loading. */
+.opt-price{font:500 11.5px/16px var(--bp-mono,ui-monospace,SFMono-Regular,Menlo,monospace);font-variant-numeric:tabular-nums;white-space:nowrap;color:inherit}
+.opt-loading{display:inline-block;width:38px;height:9px;border-radius:5px;vertical-align:middle;background:linear-gradient(90deg,rgba(255,255,255,.06),rgba(255,255,255,.14),rgba(255,255,255,.06));background-size:200% 100%;animation:opt-shim 1.1s linear infinite}
+@keyframes opt-shim{from{background-position:100% 0}to{background-position:-100% 0}}
+@media (prefers-reduced-motion:reduce){.opt-loading{animation:none}}
+/* a difference on a chip ('+$0.20' on Sound on, on the reference clips) */
+.opt-delta{margin-left:6px;font:500 11px/1 var(--bp-mono,ui-monospace,SFMono-Regular,Menlo,monospace);font-variant-numeric:tabular-nums;color:var(--accent,#FF7A1A)}

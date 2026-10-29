@@ -1,0 +1,59 @@
+{
+  "workflowFile": "camera-moves-api.json",
+  "template": "video_wan2_2_14B_fun_camera",
+  "inputs": {
+    "image": {
+      "node": "97",
+      "field": "image",
+      "role": "keyframe"
+    },
+    "prompt": {
+      "node": "107",
+      "field": "text"
+    }
+  },
+  "output": {
+    "node": "106"
+  },
+  "extra": {
+    "cameraPose": {
+      "node": "108",
+      "field": "camera_pose",
+      "options": [
+        "Static",
+        "Pan Up",
+        "Pan Down",
+        "Pan Left",
+        "Pan Right",
+        "Zoom In",
+        "Zoom Out",
+        "Anti Clockwise (ACW)",
+        "ClockWise (CW)"
+      ]
+    },
+    "speed": {
+      "node": "108",
+      "field": "speed"
+    },
+    "width": {
+      "node": "108",
+      "field": "width",
+      "default": 832
+    },
+    "height": {
+      "node": "108",
+      "field": "height",
+      "default": 480
+    },
+    "length": {
+      "node": "108",
+      "field": "length",
+      "default": 81,
+      "note": "frames at 16 fps; 4n+1"
+    },
+    "seed": {
+      "node": "102",
+      "field": "noise_seed"
+    }
+  }
+}

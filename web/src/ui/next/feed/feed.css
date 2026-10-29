@@ -1,0 +1,245 @@
+/* Create Image feed toolbar (FeedToolbar / SelectBar), Compare models (CompareModels), select checkboxes and compare captions on tiles.
+ * One slim line above the feed (32px, the height of the old info line); phones fold to project ▾ · Filter · Compare. */
+html body .ic.ic2 .ic-gal{position:relative}
+html body .ic.ic2 .fd-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:32px;margin:0 2px 12px;min-width:0}
+html body .ic.ic2 .fd-l,html body .ic.ic2 .fd-r{display:flex;align-items:center;gap:6px;min-width:0}
+html body .ic.ic2 .fd-l{flex:1 1 auto}
+html body .ic.ic2 .fd-r{flex:0 1 auto;justify-content:flex-end}
+html body .ic.ic2 .fd-r .ic-gal-live{margin:0;flex:0 1 auto;min-width:0}
+html body .ic.ic2 .fd-btn{display:inline-flex;align-items:center;gap:6px;height:32px;min-height:32px;padding:0 10px;border:0;border-radius:8px;background:var(--state-fill);color:var(--text-1,var(--text));font:500 13px/20px var(--font-ui);cursor:pointer;white-space:nowrap;min-width:0;max-width:100%;transition:background var(--fast,.12s)}
+html body .ic.ic2 .fd-btn:hover{background:var(--state-hover)}
+html body .ic.ic2 .fd-btn.on{box-shadow:inset 0 0 0 1px var(--accent);color:var(--accent)}
+html body .ic.ic2 .fd-btn[aria-disabled="true"],html body .ic.ic2 .fd-btn:disabled{opacity:.45;cursor:not-allowed}
+html body .ic.ic2 .fd-btn.fd-sq{width:32px;padding:0;justify-content:center}
+html body .ic.ic2 .fd-btn svg{flex:0 0 auto}
+html body .ic.ic2 .fd-proj{max-width:260px}
+html body .ic.ic2 .fd-proj-k{color:var(--text-2)}
+html body .ic.ic2 .fd-proj-n{overflow:hidden;text-overflow:ellipsis;min-width:0}
+html body .ic.ic2 .fd-filter-l{overflow:hidden;text-overflow:ellipsis;max-width:200px}
+/* Filter chip: always "Filter"; a small orange count when anything differs from the default (no outline, no label swap) */
+html body .ic.ic2 .fd-btn.fd-filter.on{box-shadow:none;color:var(--text-1,var(--text))}
+html body .ic.ic2 .fd-filter-n{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--accent);color:var(--on-accent);font:700 11px/1 var(--font-ui);font-variant-numeric:tabular-nums}
+html body .ic.ic2 .fd-btn:focus-visible,html body .ic.ic2 .fd-failed:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap)}
+/* the filters that are on: small orange pills with × beside Filter, then Clear (layout A, 2026-10-27) */
+html body .ic.ic2 .fd-btn.fd-filter.open{background:var(--state-hover)}
+html body .ic.ic2 .fd-pills{display:flex;align-items:center;gap:6px;min-width:0;flex:0 1 auto;overflow:hidden}
+html body .ic.ic2 .fd-pill{display:inline-flex;align-items:center;gap:2px;height:26px;padding:0 3px 0 10px;border-radius:999px;background:rgba(255,122,26,.12);box-shadow:inset 0 0 0 1px rgba(255,122,26,.45);color:var(--text-1,var(--text));font:500 12px/16px var(--font-ui);white-space:nowrap;flex:none;max-width:220px}
+html body .ic.ic2 .fd-pill-l{overflow:hidden;text-overflow:ellipsis;min-width:0}
+html body .ic.ic2 .fd-pill-x{display:inline-grid;place-items:center;width:20px;height:20px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--text-2);cursor:pointer;flex:none;transition:background var(--fast,.12s),color var(--fast,.12s)}
+html body .ic.ic2 .fd-pill-x:hover{background:rgba(255,122,26,.22);color:var(--text-1,var(--text))}
+html body .ic.ic2 .fd-pill-clear{border:0;background:none;padding:4px 4px;border-radius:6px;color:var(--text-2);font:500 12px/16px var(--font-ui);cursor:pointer;white-space:nowrap;flex:none}
+html body .ic.ic2 .fd-pill-clear:hover{color:var(--accent)}
+html body .ic.ic2 .fd-pill-x:focus-visible,html body .ic.ic2 .fd-pill-clear:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:1px}
+html body .ic.ic2 .fd-sep{width:1px;height:18px;background:var(--hairline,rgba(255,255,255,.12));margin:0 4px;flex:none}
+/* "2 failed": a quiet link after the count that opens Show: Failed */
+html body .ic.ic2 .fd-failed{border:0;background:none;padding:4px 6px;border-radius:6px;color:var(--text-2);font:500 12px/16px var(--font-ui);white-space:nowrap;cursor:pointer;text-decoration:underline;text-decoration-color:rgba(255,255,255,.25);text-underline-offset:3px}
+html body .ic.ic2 .fd-failed:hover{color:var(--accent);text-decoration-color:currentColor}
+html body .ic.ic2 .fd-count{font:500 13px/20px var(--font-ui);color:var(--text-2);white-space:nowrap;padding:0 4px}
+html body .ic.ic2 .fd-count b{color:var(--text-1,var(--text));font-weight:600}
+html body .ic.ic2 .fd-count .fd-count-l{color:var(--text-2)}
+html body .ic.ic2 .fd-spend,html body .fd-spend{font:500 12px/16px var(--font-ui);color:var(--text-2);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;padding:4px 6px;border-radius:6px}
+html body .ic.ic2 .fd-spend:hover{color:var(--text-1,var(--text));background:var(--state-fill)}
+html body .fd-spend-sheet{display:none}
+html body .ic.ic2 .fd-cmp-btn{background:transparent;box-shadow:inset 0 0 0 1px var(--hairline,rgba(255,255,255,.12))}
+html body .ic.ic2 .fd-cmp-btn:not([aria-disabled="true"]):hover{box-shadow:inset 0 0 0 1px var(--accent);color:var(--accent);background:transparent}
+html body .ic.ic2 .fd-link,html body .fd-link{border:0;background:none;padding:2px 4px;color:var(--accent);font:500 13px/20px var(--font-ui);cursor:pointer;white-space:nowrap}
+html body .ic.ic2 .fd-link:disabled{color:var(--text-3);cursor:default}
+html body .ic.ic2 .fd-danger:hover{color:#ff6b5b}
+html body .ic.ic2 .fd-undo{font:500 13px/20px var(--font-ui);color:var(--text-2);white-space:nowrap;margin-left:6px}
+html body .ic.ic2 .fd-selbar{position:sticky;top:0;z-index:5;background:var(--surface,#111);border-radius:10px;padding:0 4px}
+html body .ic.ic2 .fd-acts{flex-wrap:nowrap}
+/* the feed's one quiet line (ResultFeed FeedHint, 2026-10-27): under the toolbar, inside the feed; never a separate empty page */
+html body .fd-empty{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;margin:0 0 12px;padding:2px 0;color:var(--text-2);text-align:left;font:400 13px/20px var(--font-ui)}
+html body .fd-empty p{margin:0;max-width:none}
+html body .ic.ic2 .fd-more{display:flex;justify-content:center;padding:16px 0 4px}
+/* grid size (Filter → Grid) */
+html body .ic.ic2 .ic-jfeed[data-size="small"] .ic-tile{--h:150px}
+html body .ic.ic2 .ic-jfeed[data-size="large"] .ic-tile{--h:340px}
+@media (min-width:1600px){html body .ic.ic2 .ic-jfeed[data-size="small"] .ic-tile{--h:180px}html body .ic.ic2 .ic-jfeed[data-size="large"] .ic-tile{--h:420px}}
+@media (max-width:700px){html body .ic.ic2 .ic-jfeed[data-size="small"] .ic-tile{--h:72px}html body .ic.ic2 .ic-jfeed[data-size="large"] .ic-tile{--h:160px}}
+/* select mode */
+html body .ic.ic2 .ic-jfeed .ic-tile.selecting .ic-tile-open{display:none}
+html body .ic.ic2 .ic-jfeed .ic-tile.picked{box-shadow:inset 0 0 0 3px var(--accent)}
+html body .ic.ic2 .ic-jfeed .ic-tile.picked img{opacity:.82}
+html body .ic.ic2 .fd-check{position:absolute;top:8px;right:8px;z-index:4;width:24px;height:24px;display:grid;place-items:center;cursor:pointer}
+html body .ic.ic2 .fd-check input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
+html body .ic.ic2 .fd-check i{width:20px;height:20px;border-radius:6px;background:rgba(0,0,0,.45);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.85);pointer-events:none}
+html body .ic.ic2 .fd-check input:checked+i{background:var(--accent);box-shadow:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 10.3l3 3 6-6.3' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
+html body .ic.ic2 .fd-check input:focus-visible+i{outline:var(--focus-ring-w,2px) solid var(--focus-ring-color,var(--accent));outline-offset:2px}
+html body .ic.ic2 .fd-check.off{cursor:not-allowed}
+html body .ic.ic2 .fd-check.off i{opacity:.35}
+/* a tile never stretches past its own grow cap (max-height is 1.5 × --h): a row the tiles can't fill (before a compare group, or a
+   narrow portrait next to a wide panorama) stays short instead of turning one tile into a full-width, cropped banner (feedLayout.ts) */
+@media (min-width:701px){html body .ic.ic2 .ic-jfeed .ic-tile{max-width:calc(var(--ar,1) * var(--h) * 1.5)}}
+/* compare groups in the feed */
+html body .ic.ic2 .ic-jfeed .cmp-g{flex:1 1 100%;display:flex;flex-direction:column;gap:6px;padding:8px;margin:2px 0;border-radius:12px;box-shadow:inset 0 0 0 1px var(--hairline,rgba(255,255,255,.1));min-width:0}
+html body .ic.ic2 .ic-jfeed .cmp-g-row{display:flex;flex-wrap:wrap;gap:4px;min-width:0}
+html body .ic.ic2 .cmp-gh{display:flex;align-items:center;gap:8px;min-width:0;font:500 13px/20px var(--font-ui);color:var(--text-2)}
+html body .ic.ic2 .cmp-gh>b{color:var(--text-1,var(--text));white-space:nowrap}
+html body .cmp-gh-p{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1 1 auto;color:var(--text-3)}
+html body .ic.ic2 .cmp-gh-t{white-space:nowrap}
+html body .ic.ic2 .cmp-gh-b{margin-left:auto}
+/* the tile caption is the shared FeedCaption (shared/feedCaption.css) */
+/* popovers (portaled, outside .ic) */
+html body .fd-pop{display:flex;flex-direction:column;gap:6px;padding:12px;min-width:0;font:400 13px/18px var(--font-ui)}
+html body .fd-pop-filter{gap:14px;padding:14px}
+html body .fd-sec{display:flex;flex-direction:column;gap:6px;min-width:0}
+html body .fd-pop-h{font:600 11px/16px var(--font-ui);letter-spacing:.04em;text-transform:uppercase;color:var(--text-3);margin-top:4px}
+html body .fd-pop-filter .fd-pop-h{margin:0}
+html body .fd-pop-note{margin:0;color:var(--text-2);font-size:13px}
+html body .fd-opt-list{display:flex;flex-direction:column;gap:2px;max-height:240px;overflow:auto}
+html body .fd-opt{display:grid;grid-template-columns:1fr auto;grid-template-areas:"b c" "s c";align-items:center;column-gap:8px;text-align:left;width:100%;padding:7px 10px;border:0;border-radius:8px;background:transparent;color:var(--text-1,var(--text));cursor:pointer;font:inherit;min-width:0}
+html body .fd-opt:hover{background:var(--state-hover)}
+html body .fd-opt.on{background:var(--state-fill)}
+html body .fd-opt b{grid-area:b;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+html body .fd-opt small{grid-area:s;color:var(--text-3)}
+html body .fd-opt .mp-check{grid-area:c;color:var(--accent)}
+html body .fd-opt.fd-add{display:flex;gap:8px;color:var(--accent)}
+html body .fd-new{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+html body .fd-new input{flex:1 1 140px;min-width:0;height:32px;padding:0 10px;border-radius:8px;border:1px solid var(--hairline,rgba(255,255,255,.15));background:var(--surface-2);color:inherit;font:inherit}
+html body .fd-err{flex:1 1 100%;color:#ff6b5b}
+html body .fd-pop-link{font-size:12px;color:var(--text-2);text-decoration:underline;margin-top:4px}
+html body .fd-search{display:flex;align-items:center;gap:8px;height:36px;padding:0 10px;border-radius:10px;background:var(--state-fill);color:var(--text-2);transition:box-shadow var(--fast,.12s)}
+/* one focus ring: on the rounded box, never a second square one on the input (the global input:focus glow is switched off here) */
+html body .fd-search:focus-within{box-shadow:inset 0 0 0 1px var(--accent);color:var(--text-1,var(--text))}
+html body .fd-search input,html body .fd-search input:focus,html body .fd-search input:focus-visible{flex:1;min-width:0;height:100%;padding:0;border:0;border-radius:0;background:transparent;color:var(--text-1,var(--text));font:inherit;outline:none;box-shadow:none;-webkit-appearance:none;appearance:none}
+html body .fd-search input::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none;display:none}
+html body .fd-chips{display:flex;flex-wrap:wrap;gap:6px}
+html body .fd-chip{height:28px;padding:0 10px;border-radius:14px;border:0;background:var(--state-fill);color:var(--text-1,var(--text));font:500 12px/16px var(--font-ui);cursor:pointer}
+html body .fd-chip:hover{background:var(--state-hover)}
+html body .fd-chip.on{background:rgba(255,122,26,.14);color:var(--text-1,var(--text));box-shadow:inset 0 0 0 1px rgba(255,122,26,.55)}
+html body .fd-row2{display:grid;grid-template-columns:1.3fr 1fr;gap:12px}
+html body .fd-row2>div{display:flex;flex-direction:column;gap:6px;min-width:0}
+/* Type and Show under Uploads / Featured: greyed out (they apply to your own results only) */
+html body .fd-sec.fd-off .fd-chips,html body .fd-sec.fd-off .fd-seg{opacity:.4}
+html body .fd-sec.fd-off button{cursor:not-allowed}
+html body .fd-sec.fd-off button:hover{background:transparent;color:var(--text-2)}
+html body .fd-sec.fd-off .fd-chip:hover{background:var(--state-fill)}
+html body .fd-sec.fd-off .fd-chip.on:hover{background:rgba(255,122,26,.14)}
+/* segmented controls (Show, Sort, Grid): one quiet track, the picked option lifted with the brand orange text */
+html body .fd-seg{display:inline-flex;align-self:flex-start;gap:2px;padding:3px;border-radius:10px;background:var(--state-fill)}
+html body .fd-seg.fd-seg-wide{display:flex;align-self:stretch}
+html body .fd-seg.fd-seg-wide button{flex:1 1 0}
+html body .fd-seg button{display:inline-flex;align-items:center;justify-content:center;gap:5px;height:28px;min-width:36px;padding:0 12px;border:0;border-radius:7px;background:transparent;color:var(--text-2);font:500 12px/16px var(--font-ui);cursor:pointer;white-space:nowrap;transition:background var(--fast,.12s),color var(--fast,.12s)}
+html body .fd-seg button:hover{color:var(--text-1,var(--text));background:var(--state-hover)}
+html body .fd-seg button.on{background:var(--surface-3,#1a1a1a);color:var(--accent);box-shadow:0 1px 2px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.06)}
+html body .fd-seg button:focus-visible,html body .fd-chip:focus-visible,html body .fd-clear:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:1px}
+html body .fd-pop-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
+html body .fd-pop-filter .fd-pop-foot{margin:0;padding-top:10px;border-top:1px solid var(--hairline,rgba(255,255,255,.08));justify-content:space-between;align-items:center}
+html body .fd-showing{font:500 12px/16px var(--font-ui);color:var(--text-2)}
+html body .fd-showing b{color:var(--accent);font-weight:600}
+html body .fd-seg button .ff-star{width:12px;height:12px}
+html body .fd-clear{border:0;background:none;padding:4px 2px;color:var(--accent);font:500 13px/18px var(--font-ui);cursor:pointer}
+html body .fd-clear:hover{text-decoration:underline;text-underline-offset:3px}
+html body .fd-clear:disabled{color:var(--text-3);cursor:default;text-decoration:none}
+html body .fd-pop-foot .btn{display:inline-flex;align-items:center;gap:6px}
+/* Compare models dialog */
+html body .cmp{display:flex;flex-direction:column;gap:10px;padding:14px;max-height:min(78vh,720px);min-width:0;font:400 13px/18px var(--font-ui)}
+html body .cmp-h{margin:0;color:var(--text-3);font-size:12px;line-height:16px}
+html body .cmp-prompt{margin:0;padding:8px 10px;border-radius:8px;background:var(--state-fill);color:var(--text-2);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+html body .cmp-muted{color:var(--text-3)}
+html body .cmp-list{display:flex;flex-direction:column;gap:2px;overflow:auto;min-height:120px;max-height:280px;margin:0 -4px;padding:0 4px}
+html body .cmp-row{display:grid;grid-template-columns:auto auto 1fr auto;align-items:center;gap:10px;padding:6px 8px;border-radius:8px;cursor:pointer;min-width:0}
+html body .cmp-row:hover{background:var(--state-hover)}
+html body .cmp-row.on{background:var(--state-fill)}
+html body .cmp-row.off{opacity:.5;cursor:not-allowed}
+html body .cmp-row input{accent-color:var(--accent);width:16px;height:16px;margin:0}
+html body .cmp-name{display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+html body .cmp-ord{display:inline-grid;place-items:center;min-width:18px;height:18px;border-radius:9px;background:var(--accent);color:var(--on-accent);font:600 11px/1 var(--font-ui)}
+html body .cmp-row-p{font-size:12px;line-height:16px;color:var(--text-1,var(--text));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px;text-align:right}
+html body .cmp-row-p.off{color:var(--text-3);white-space:normal}
+html body .cmp-sel{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--hairline,rgba(255,255,255,.1));padding-top:10px}
+html body .cmp-s{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:4px 8px;min-width:0}
+html body .cmp-s-n{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html body .cmp-s-p{color:var(--text-2);white-space:nowrap;font-size:12px}
+html body .cmp-s-x{width:22px;height:22px;display:grid;place-items:center;border:0;border-radius:6px;background:transparent;color:var(--text-3);cursor:pointer}
+html body .cmp-s-x:hover{background:var(--state-hover);color:var(--text-1,var(--text))}
+html body .cmp-s-why,html body .cmp-s-adj{grid-column:1/-1;color:var(--text-3);font-size:12px;line-height:16px}
+html body .cmp-s.ex .cmp-s-n,html body .cmp-s.ex .cmp-s-p{color:var(--text-3)}
+html body .cmp-s.bad .cmp-s-p,html body .cmp-s.bad .cmp-s-why{color:#ff8a6b}
+html body .cmp-note{margin:0;color:var(--text-3);font-size:12px}
+html body .cmp-foot{display:flex;align-items:center;gap:10px;justify-content:space-between;border-top:1px solid var(--hairline,rgba(255,255,255,.1));padding-top:10px;flex-wrap:wrap}
+html body .cmp-why{margin:0;flex:1 1 180px;color:var(--text-2);font-size:12px;line-height:16px}
+html body .cmp-why.cmp-ok{color:var(--text-3)}
+html body .cmp-go{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:0;min-height:44px;padding:4px 16px;line-height:18px}
+html body .cmp .cmp-go:not(:disabled){background:var(--accent)!important;color:var(--on-accent)!important;border-color:transparent!important}
+html body .cmp-go small{font-size:11px;line-height:14px;opacity:.9}
+/* side by side */
+html body .cmp-view{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:24px}
+html body .cmp-view-in{width:min(1600px,100%);max-height:100%;display:flex;flex-direction:column;gap:12px;background:var(--surface,#111);border-radius:16px;padding:16px;min-width:0;overflow:auto}
+html body .cmp-view-h{display:flex;align-items:center;gap:10px;min-width:0;font:500 14px/20px var(--font-ui)}
+html body .cmp-view-h .fd-btn{margin-left:auto;display:inline-grid;place-items:center;width:32px;height:32px;border:0;border-radius:8px;background:var(--state-fill);color:inherit;cursor:pointer}
+html body .cmp-view-grid{display:grid;grid-template-columns:repeat(var(--n,2),minmax(0,1fr));gap:10px}
+html body .cmp-cell{margin:0;display:flex;flex-direction:column;gap:6px;min-width:0}
+html body .cmp-img{display:block;border:0;padding:0;border-radius:10px;overflow:hidden;background:var(--surface-2);cursor:zoom-in;width:100%}
+html body .cmp-img img{display:block;width:100%;height:auto;max-height:68vh;object-fit:contain}
+html body .cmp-img-off{display:grid;place-items:center;aspect-ratio:1;color:var(--text-3);cursor:default}
+html body .cmp-cell figcaption{display:flex;flex-direction:column;font:400 12px/16px var(--font-ui);color:var(--text-2);min-width:0}
+html body .cmp-cell figcaption b{color:var(--text-1,var(--text));font-weight:600;font-size:13px}
+/* phones: one compact row (project ▾, Filter, Select, Compare icon); spend moves into the Filter sheet; no sideways scroll */
+@media (max-width:700px){
+  html body .ic.ic2 .fd-bar{gap:6px;margin:0 0 8px;flex-wrap:wrap}
+  /* the queue pill (Edge QueueLine) gets its own line under the row while something runs; it is gone again when nothing does */
+  html body .ic.ic2 .fd-r,html body .ic.ic2 [data-testid=feed-toolbar]>.fd-l{display:contents}
+  html body .ic.ic2 .fd-r .ic-gal-live{order:10;flex:1 0 100%;justify-content:center}
+  html body .ic.ic2 .fd-proj{max-width:42vw}
+  html body .ic.ic2 .fd-proj-k,html body .ic.ic2 .fd-sep,html body .ic.ic2 [data-testid=feed-toolbar] .fd-count-l,html body .ic.ic2 .fd-cmp-l,html body .ic.ic2 .fd-spend-bar,html body .ic.ic2 .fd-act-l{display:none}
+  html body .ic.ic2 .fd-count{padding:0 2px}
+  /* the pills get their own line under the row and scroll sideways in it (never a second wrapped line, never a page scroll) */
+  html body .ic.ic2 .fd-pills{order:9;flex:1 0 100%;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:1px 0}
+  html body .ic.ic2 .fd-pills::-webkit-scrollbar{display:none}
+  html body .ic.ic2 .fd-filter-l{max-width:none;overflow:visible} /* the chip always reads "Filter" (the count sits beside it) */
+  html body .ic.ic2 .fd-btn.fd-filter{flex:none;padding:0 8px;gap:5px}
+  html body .ic.ic2 .fd-l .fd-proj{max-width:34vw;flex:0 1 auto}
+  html body .ic.ic2 [data-testid=feed-toolbar] .fd-cmp-btn,html body .ic.ic2 [data-testid=feed-toolbar] .fd-sel{margin-left:auto}
+  html body .ic.ic2 [data-testid=feed-toolbar] .fd-cmp-btn+.fd-sel{margin-left:0}
+  html body .ic.ic2 .fd-failed{padding:4px 2px;flex:none}
+  html body .ic.ic2 .fd-cmp-btn,html body .ic.ic2 .fd-acts .fd-btn{width:32px;padding:0;justify-content:center}
+  html body .fd-spend-sheet{display:block;padding:8px 0 0;white-space:normal}
+  html body .ic.ic2 .fd-selbar .fd-link{padding:2px}
+  html body .ic.ic2 .fd-undo{position:absolute;left:0;right:0;top:36px;background:var(--surface,#111);padding:4px 8px;border-radius:8px;z-index:6}
+  html body .cmp-row{grid-template-columns:auto auto 1fr;row-gap:0}
+  html body .cmp-row-p{grid-column:3;text-align:left;max-width:none}
+  html body .cmp-view{padding:8px}
+  html body .cmp-view-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  html body .ic.ic2 .cmp-gh-p{display:none}
+  html body .ic.ic2 .cmp-gh{flex-wrap:wrap;row-gap:0}
+  html body .ic.ic2 .cmp-gh-t{white-space:normal;min-width:0}
+  html body .ic.ic2 .ic-jfeed .cmp-g{padding:6px}
+}
+html body .ic.ic2 .fd-proj .fd-pp-cv-btn{flex:none;width:18px;height:18px;border-radius:5px;font-size:10px;line-height:18px}
+
+/* ---- a clip on a feed card (FeedCard.tsx FeedVideo, 2026-10-24: Generate Video): first frame, muted play on hover, length top right ---- */
+html body .ic.ic2 .ic-tile .fv-media{position:absolute;inset:0;display:block;background:#000}
+html body .ic.ic2 .ic-tile .fv-media img,html body .ic.ic2 .ic-tile .fv-media video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+html body .ic.ic2 .ic-tile .fv-media video{opacity:0;transition:opacity .18s}
+html body .ic.ic2 .ic-tile .fv-media.is-playing video{opacity:1}
+html body .ic.ic2 .ic-tile .fv-dur{position:absolute;top:8px;right:8px;z-index:2;padding:2px 7px;border-radius:6px;background:rgba(0,0,0,.6);color:#fff;font:600 11px/16px var(--font-ui,Inter,system-ui,sans-serif);font-variant-numeric:tabular-nums;pointer-events:none;backdrop-filter:blur(4px);transition:opacity .15s}
+html body .ic.ic2 .ic-tile:hover .fv-dur,html body .ic.ic2 .ic-tile:focus-within .fv-dur{opacity:0} /* the ↗ "Open details" takes the corner on hover */
+@media (prefers-reduced-motion:reduce){html body .ic.ic2 .ic-tile .fv-media video{transition:none}}
+
+/* ---- Featured (2026-10-26): the Example tag + Recreate (the Examples project), the star, the toolbar chip ---- */
+.ff-star{color:var(--accent);flex:none}
+html body .ic.ic2 .ic-jfeed .ic-tile .ic-tile-feat.fd-ex-tag{background:rgba(0,0,0,.66);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+html body .ic.ic2 .ic-jfeed .ic-tile .fd-ex-tag i{font-style:normal;color:var(--accent);font-weight:600}
+html body .ic.ic2 .ic-tile .fd-recreate{position:absolute;right:8px;bottom:8px;z-index:3;display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 11px;border-radius:9px;
+  background:var(--accent);color:var(--on-accent);font:700 12px/1 var(--font-ui);text-decoration:none;opacity:0;transform:translateY(4px);transition:opacity var(--t-state) var(--ease-state),transform var(--t-state) var(--ease-state),background var(--t-state)}
+html body .ic.ic2 .ic-tile:hover .fd-recreate,html body .ic.ic2 .ic-tile:focus-within .fd-recreate{opacity:1;transform:none}
+html body .ic.ic2 .ic-tile .fd-recreate:hover{background:#E66E17}
+html body .ic.ic2 .ic-tile .fd-recreate:focus-visible{opacity:1;transform:none;outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap)}
+@media (hover:none){html body .ic.ic2 .ic-tile .fd-recreate{opacity:1;transform:none}}
+html body .ic.ic2 .ic-tile .fd-star{position:absolute;top:8px;right:8px;z-index:2;display:grid;place-items:center;width:22px;height:22px;border-radius:7px;background:rgba(0,0,0,.6);color:var(--accent)}
+html body .ic.ic2 .ic-tile:has(.fv-dur) .fd-star{right:52px}
+.am-feat{display:inline-flex;align-items:center;gap:6px}
+.am-item[aria-pressed="true"] .am-feat svg{color:var(--accent)}
+.exs-bar{display:flex;align-items:center;justify-content:flex-end;gap:10px;min-height:32px;margin:0 0 8px}
+html body .ic.ic2 .ic-tile:has(.fd-recreate) .ic-tile-meta{padding-right:112px}
+
+/* ---- Tab feeds (2026-10-26, Image and Video: ui/next/feed/FeedScope): one feed always, Filter › Type / From (Uploads) ---- */
+/* stale-while-revalidate (useFeed): the previous list stays while a new scope loads; it dims only if the answer takes more than a moment */
+html body .ic.ic2 .ic-jfeed.is-stale{opacity:.6;transition:opacity .18s ease .15s}
+@media (prefers-reduced-motion:reduce){html body .ic.ic2 .ic-jfeed.is-stale{transition:none}}
+html body .ic.ic2 .up-tile .up-tag{background:rgba(20,20,22,.72);color:var(--text);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+html body .ic.ic2 .up-tile .up-meta{opacity:0;transition:opacity var(--fast,.12s)}
+html body .ic.ic2 .up-tile:hover .up-meta,html body .ic.ic2 .up-tile:focus-within .up-meta{opacity:1}
+html body .rvx .up-use-h{margin:0 0 8px;font:600 12px/16px var(--font-ui);color:var(--text-2);letter-spacing:.02em}

@@ -1,0 +1,37 @@
+{
+  "workflowFile": "object-swap-h3-charswap-api.json",
+  "template": null,
+  "license": "MiniMax H3 Community License",
+  "recipe": "H3 Ref2VA INT8 + h3_character_swap_v1.5 @1.0 + fl2v turbo 8-step @1.0; 8 steps, CFG 1, er_sde, normal, 24 fps",
+  "inputs": {
+    "prompt": {
+      "node": "13",
+      "field": "value"
+    },
+    "image": {
+      "node": "12",
+      "field": "image"
+    },
+    "video": {
+      "node": "10",
+      "field": "file"
+    },
+    "seconds": {
+      "node": "15",
+      "field": "value"
+    }
+  },
+  "refs": [
+    {
+      "node": "12",
+      "field": "image"
+    }
+  ],
+  "seed": {
+    "node": "21",
+    "field": "noise_seed"
+  },
+  "output": {
+    "node": "30"
+  }
+}

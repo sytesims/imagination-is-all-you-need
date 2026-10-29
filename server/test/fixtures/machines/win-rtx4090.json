@@ -1,0 +1,45 @@
+{
+ "simulated": true,
+ "note": "SIMULATED profile: a /system_stats answer in ComfyUI's shape and an nvidia-smi line, reconstructed from public specs. Not recorded on this hardware.",
+ "label": "Windows 11 + RTX 4090 (24 GB)",
+ "host": {
+  "platform": "win32",
+  "arch": "x64",
+  "ramBytes": 68719476736,
+  "cpuModel": "AMD Ryzen 9 7950X 16-Core Processor"
+ },
+ "system_stats": {
+  "system": {
+   "os": "nt",
+   "ram_total": 68719476736,
+   "ram_free": 41231686041,
+   "comfyui_version": "0.42.5",
+   "python_version": "3.12.9",
+   "pytorch_version": "2.10.0",
+   "embedded_python": true,
+   "argv": [
+    "ComfyUI\\main.py",
+    "--windows-standalone-build"
+   ]
+  },
+  "devices": [
+   {
+    "name": "cuda:0 NVIDIA GeForce RTX 4090 : cudaMallocAsync",
+    "type": "cuda",
+    "index": 0,
+    "vram_total": 25756696576,
+    "vram_free": 24000000000
+   }
+  ]
+ },
+ "nvidia_smi": "NVIDIA GeForce RTX 4090, 24564, 23000, 8.9",
+ "expect": {
+  "id": "nvidia",
+  "backend": "cuda",
+  "vramClass": "24",
+  "fp8": "native",
+  "nvfp4": "emulated",
+  "tier": "all",
+  "comfyKind": "portable"
+ }
+}

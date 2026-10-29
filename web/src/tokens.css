@@ -1,0 +1,70 @@
+/* ==== Imagination Is All You Need design tokens — the ONLY place colors/type/radii/spacing live. ====
+   Premium pass: near-black neutral surfaces, hairline borders, tight small type, image-first,
+   ONE accent (orange) reserved for Generate + badges. Focus is a neutral white ring. */
+:root{
+  /* surfaces: tiny neutral steps, no blue */
+  --bg:#0a0a0a;--surface:#111111;--surface-2:#151515;--surface-3:#1a1a1a;--surface-hover:#1e1e1e;
+  --hairline:rgba(255,255,255,.07);--hairline-strong:rgba(255,255,255,.12);
+  --border:var(--hairline);--border-strong:var(--hairline-strong);
+  --text:#ededed;--text-2:#8f8f8f;--text-3:#5f5f5f;
+  --accent:#FF7A1A;
+  /* text + icons on a solid accent fill: ONE ink everywhere (measured from the Generate button; 6.99:1 on #FF7A1A, 5.74:1 on hover #E66E17).
+     --on-accent-2 is the quieter line (captions, column heads) on the same fill: 4.9:1. Never white on orange (2.4:1). */
+  --on-accent:#14151A;--on-accent-2:color-mix(in srgb,var(--on-accent) 78%,var(--accent));
+  --accent-2:#a3a3a3;           /* status: neutral (no second hue) */
+  --badge:var(--accent);
+  --badge-free:#2fbf8f;--badge-top:#e8e8e8;--on-badge-top:#0a0a0a;
+  --accent-gradient:var(--accent);
+  --success:#3DDC97;--warning:#E8B44A;--error:#F06464;
+  --focus:0 0 0 2px rgba(255,255,255,.85);
+  --font-ui:'Manrope',Inter,system-ui,sans-serif;
+  --font-display:'Space Grotesk','Manrope',system-ui,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,monospace;
+  /* tight type scale */
+  --fs-2xs:11px;--fs-xs:12px;--fs-sm:13px;--fs-base:14px;--fs-lg:17px;--fs-xl:22px;--fs-display:40px;--fs-hero:44px;
+  --fw-ui:500;--fw-strong:600;--lh-ui:1.4;--tracking-display:-.02em;
+  /* small radii, tight gaps */
+  --r-xs:4px;--r-sm:6px;--r-md:8px;--r-lg:10px;--r-pill:999px;
+  --gutter-media:6px;--gap-media:6px;--pad-1:6px;--pad-2:10px;--pad-3:14px;--pad-4:18px;
+  /* header */
+  --announce-h:36px;--nav-h:56px;--nav-fs:13px;--nav-gap:2px;--nav-bg:#0d0d0d;
+  --sidebar-w:232px;--panel-w:380px;--tabbar-h:52px;--tabbar-show:0px;
+  --glow:var(--focus);--card:none;
+  --vignette:linear-gradient(180deg,rgba(0,0,0,0) 35%,rgba(0,0,0,.78) 100%);
+  --vignette-side:linear-gradient(90deg,rgba(0,0,0,.82) 0%,rgba(0,0,0,.35) 55%,rgba(0,0,0,0) 100%);
+  --fast:120ms;--base:200ms;--slow:400ms;--ease:cubic-bezier(.2,.8,.2,1);
+  /* ---- interaction states (UI quality standard, 2026-10-21): every control uses these, nothing hand-rolled ---- */
+  --t-state:150ms;--t-state-slow:200ms;--ease-state:ease;      /* hover / press / focus transitions */
+  --state-fill:rgba(255,255,255,.05);                          /* resting fill of a chip, row, card button */
+  --state-hover:rgba(255,255,255,.09);                         /* hover fill */
+  --state-pressed:rgba(255,255,255,.12);                       /* pressed fill */
+  --state-border:rgba(255,255,255,.08);                        /* resting hairline */
+  --state-border-hover:rgba(255,255,255,.16);
+  --state-border-on:rgba(255,255,255,.32);                     /* selected / open */
+  --press-scale:.98;                                           /* pressed transform */
+  --focus-ring-color:rgba(255,255,255,.9);
+  --focus-ring-w:2px;--focus-ring-gap:2px;                     /* outline + offset */
+  --disabled-opacity:.45;
+  --disabled-fill:#2a2b2e;--disabled-ink:rgba(255,255,255,.55);/* a control that can't act: muted, solid (no opacity on text) */
+  --price-ink:var(--on-accent);                                /* text on the accent: solid, never translucent (Safari) */
+  --scrim-title:linear-gradient(180deg,rgba(0,0,0,0) 15%,rgba(0,0,0,.55) 55%,rgba(0,0,0,.85) 100%);
+  --hit-desktop:32px;--hit-phone:44px;
+  /* ---- editorial (2026-10-26): Explore's magazine look, shared by HeroReel / MediaRail / HoverClip (shared/editorial.css) ---- */
+  --fs-mega:clamp(44px,5.4vw,104px);                           /* hero headline, uppercase display */
+  --fs-section:clamp(28px,2.3vw,40px);                         /* section headline, uppercase display */
+  --tracking-mega:-.035em;--lh-mega:.9;
+  --r-tile:14px;--gap-tile:10px;                               /* media tiles: one radius, tight gaps */
+  --ease-out:cubic-bezier(.16,1,.3,1);--t-media:700ms;          /* slow, soft media motion (zoom, reveal) */
+  --tile-scrim:linear-gradient(180deg,rgba(0,0,0,0) 40%,rgba(0,0,0,.35) 62%,rgba(0,0,0,.86) 100%);
+}
+
+/* Maker tile tints (2026-10-22): one fixed low-saturation colour per model maker (MakerTile mixes it into near-black). Makers not listed (bfl, fish-audio, openai, elevenlabs, meta, google, runway) stay neutral. */
+:root{--mk-alibaba-qwen:#8a7cf0;--mk-alibaba-wan:#5fb4ee;--mk-tongyi:#4cc9b0;--mk-bytedance:#5a8cf0;--mk-kling:#4fd18b;--mk-minimax:#ee6a5c;--mk-lightricks:#b57cf0;--mk-ideogram:#ee86ad;--mk-recraft:#f08a5a;--mk-luma:#a08cf5;--mk-krea:#d98cf0;--mk-xai:#aeb4bd;--mk-tencent-hunyuan:#5aa6f0;--mk-openmoss:#d6a05a;--mk-openhiggsfield:#FF7A1A;--mk-bria:#8fd05a;--mk-real-esrgan:#62b0e8;--mk-ultrasharp:#e0a070;--mk-rife:#7ad0d8;--mk-depth-anything:#8cc7a0;--mk-birefnet:#9aa8f0;--mk-ffmpeg:#7fb069;--mk-sonilo:#e88aa8;--mk-ace-step:#f09a5a;--mk-stability:#9a7cf0;--mk-mmaudio:#6ac0c8;--mk-heygen:#6a7cf5;--mk-resemble:#e07a8a;--mk-swivid:#c0b060;--mk-m-a-p:#d0a0e8;--mk-tripo:#6ad0b0;--mk-pixal3d:#a0b8e0;--mk-meshy:#c8d06a;--mk-rodin:#e0906a}
+
+/* Board cards (canvas, 2026-10-27): one hue per medium for ports, connection lines and the zoomed-out pills (low saturation, the orange accent
+   stays the image hue), and the card's own radii, gaps and shadows, so every node on the board shares one shape language. */
+:root{--media-image:#FF8A3D;--media-video:#A98BFF;--media-audio:#4FC9B8;--media-text:#D9D9DE;--media-3d:#E3B35C;
+  --card-r:18px;--card-r-in:12px;--card-pad:12px;--card-gap:10px;
+  --card-shadow:inset 0 1px 0 rgba(255,255,255,.045),0 1px 2px rgba(0,0,0,.3),0 14px 36px rgba(0,0,0,.36);
+  --card-shadow-hover:inset 0 1px 0 rgba(255,255,255,.06),0 2px 4px rgba(0,0,0,.3),0 20px 48px rgba(0,0,0,.44);
+  --card-t:180ms}

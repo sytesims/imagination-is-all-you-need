@@ -1,0 +1,756 @@
+{
+ "1": {
+  "inputs": {
+   "unet_name": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+   "weight_dtype": "default"
+  },
+  "class_type": "UNETLoader",
+  "_meta": {
+   "title": "H3 Ref2VA base (INT8)"
+  }
+ },
+ "7": {
+  "inputs": {
+   "model": [
+    "1",
+    0
+   ],
+   "shift_video": 12.0,
+   "shift_audio": 3.0
+  },
+  "class_type": "MiniMaxH3SigmaShift",
+  "_meta": {
+   "title": "H3 sampling shift 12 / 3"
+  }
+ },
+ "8": {
+  "inputs": {
+   "model": [
+    "7",
+    0
+   ],
+   "attention": "comfy kitchen attention"
+  },
+  "class_type": "ModelAttentionBackend",
+  "_meta": {
+   "title": "Attention: comfy kitchen (Openjutsu)"
+  }
+ },
+ "3": {
+  "inputs": {
+   "lora_name": "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
+   "strength_model": 1.0,
+   "model": [
+    "8",
+    0
+   ]
+  },
+  "class_type": "LoraLoaderModelOnly",
+  "_meta": {
+   "title": "Turbo 8-step LoRA (768p build when imported)"
+  }
+ },
+ "2": {
+  "inputs": {
+   "lora_name": "akatz-ai__MiniMax-H3-Character-Swap-LoRA__h3_character_swap_v1.5.safetensors",
+   "strength_model": 1.0,
+   "model": [
+    "3",
+    0
+   ]
+  },
+  "class_type": "LoraLoaderModelOnly",
+  "_meta": {
+   "title": "Character Swap LoRA v1.5 (imported)"
+  }
+ },
+ "4": {
+  "inputs": {
+   "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+   "type": "minimax",
+   "device": "default"
+  },
+  "class_type": "CLIPLoader",
+  "_meta": {
+   "title": "Text encoder (NVFP4, as Openjutsu)"
+  }
+ },
+ "5": {
+  "inputs": {
+   "vae_name": "minimax_h3_video_vae_fp16.safetensors"
+  },
+  "class_type": "VAELoader",
+  "_meta": {
+   "title": "Video VAE"
+  }
+ },
+ "6": {
+  "inputs": {
+   "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+  },
+  "class_type": "VAELoader",
+  "_meta": {
+   "title": "Audio VAE"
+  }
+ },
+ "10": {
+  "inputs": {
+   "file": "source.mp4"
+  },
+  "class_type": "LoadVideo",
+  "_meta": {
+   "title": "Source performance (24 fps)"
+  }
+ },
+ "11": {
+  "inputs": {
+   "video": [
+    "10",
+    0
+   ]
+  },
+  "class_type": "GetVideoComponents",
+  "_meta": {
+   "title": "Source frames + audio"
+  }
+ },
+ "12": {
+  "inputs": {
+   "image": "character.png"
+  },
+  "class_type": "LoadImage",
+  "_meta": {
+   "title": "Character reference (Picture 1)"
+  }
+ },
+ "13": {
+  "inputs": {
+   "value": "Replace the main person in <Video 1> with the character in <Picture 1>. Keep the character's face, hair, clothing and style from <Picture 1>. Follow the source pose, gaze, expression, movement and timing. Keep the camera, scene and everyone else unchanged."
+  },
+  "class_type": "PrimitiveStringMultiline",
+  "_meta": {
+   "title": "Prompt"
+  }
+ },
+ "20": {
+  "inputs": {
+   "prompt": [
+    "13",
+    0
+   ],
+   "width": 1344,
+   "height": 736,
+   "length": 124,
+   "ref_image_size": "match",
+   "clip": [
+    "4",
+    0
+   ],
+   "vae": [
+    "5",
+    0
+   ],
+   "audio_vae": [
+    "6",
+    0
+   ],
+   "ref_images.ref_image_0": [
+    "12",
+    0
+   ],
+   "ref_videos.ref_video_0": [
+    "11",
+    0
+   ],
+   "ref_audios.ref_audio_0": [
+    "11",
+    1
+   ]
+  },
+  "class_type": "MiniMaxH3ReferenceToVideo",
+  "_meta": {
+   "title": "H3 Ref2VA conditioning"
+  }
+ },
+ "19": {
+  "inputs": {
+   "positive": [
+    "20",
+    0
+   ],
+   "latent": [
+    "66",
+    0
+   ],
+   "frame_idx": 0,
+   "audio_vae": [
+    "6",
+    0
+   ],
+   "audio": [
+    "11",
+    1
+   ]
+  },
+  "class_type": "MiniMaxH3AddGuide",
+  "_meta": {
+   "title": "Source audio guide"
+  }
+ },
+ "21": {
+  "inputs": {
+   "noise_seed": 42
+  },
+  "class_type": "RandomNoise",
+  "_meta": {
+   "title": "Seed"
+  }
+ },
+ "22": {
+  "inputs": {
+   "sampler_name": "er_sde"
+  },
+  "class_type": "KSamplerSelect",
+  "_meta": {
+   "title": "Sampler"
+  }
+ },
+ "23": {
+  "inputs": {
+   "scheduler": "normal",
+   "steps": 8,
+   "denoise": 1,
+   "model": [
+    "2",
+    0
+   ]
+  },
+  "class_type": "BasicScheduler",
+  "_meta": {
+   "title": "8 steps"
+  }
+ },
+ "24": {
+  "inputs": {
+   "model": [
+    "2",
+    0
+   ],
+   "conditioning": [
+    "19",
+    0
+   ]
+  },
+  "class_type": "BasicGuider",
+  "_meta": {
+   "title": "Guider (CFG 1)"
+  }
+ },
+ "25": {
+  "inputs": {
+   "noise": [
+    "21",
+    0
+   ],
+   "guider": [
+    "24",
+    0
+   ],
+   "sampler": [
+    "22",
+    0
+   ],
+   "sigmas": [
+    "23",
+    0
+   ],
+   "latent_image": [
+    "66",
+    0
+   ]
+  },
+  "class_type": "SamplerCustomAdvanced",
+  "_meta": {
+   "title": "Sample"
+  }
+ },
+ "26": {
+  "inputs": {
+   "samples": [
+    "25",
+    0
+   ],
+   "vae": [
+    "5",
+    0
+   ]
+  },
+  "class_type": "VAEDecode",
+  "_meta": {
+   "title": "Decode video"
+  }
+ },
+ "27": {
+  "inputs": {
+   "samples": [
+    "25",
+    0
+   ],
+   "vae": [
+    "6",
+    0
+   ]
+  },
+  "class_type": "VAEDecodeAudio",
+  "_meta": {
+   "title": "Decode audio"
+  }
+ },
+ "28": {
+  "inputs": {
+   "fps": 24,
+   "bit_depth": 8,
+   "images": [
+    "26",
+    0
+   ],
+   "audio": [
+    "27",
+    0
+   ]
+  },
+  "class_type": "CreateVideo",
+  "_meta": {
+   "title": "24 fps"
+  }
+ },
+ "30": {
+  "inputs": {
+   "filename_prefix": "openhiggsfield/charswap-cloud",
+   "format": "auto",
+   "format.codec": "auto",
+   "video": [
+    "28",
+    0
+   ]
+  },
+  "class_type": "SaveVideo",
+  "_meta": {
+   "title": "Save"
+  }
+ },
+ "40": {
+  "inputs": {
+   "ckpt_name": "sam3.1_multiplex_fp16.safetensors"
+  },
+  "class_type": "CheckpointLoaderSimple",
+  "_meta": {
+   "title": "SAM 3.1"
+  }
+ },
+ "41": {
+  "inputs": {
+   "clip": [
+    "40",
+    1
+   ],
+   "text": "person"
+  },
+  "class_type": "CLIPTextEncode",
+  "_meta": {
+   "title": "Who to swap (SAM text)"
+  }
+ },
+ "42": {
+  "inputs": {
+   "image": [
+    "11",
+    0
+   ],
+   "batch_index": 0,
+   "length": 1
+  },
+  "class_type": "ImageFromBatch",
+  "_meta": {
+   "title": "First frame"
+  }
+ },
+ "43": {
+  "inputs": {
+   "model": [
+    "40",
+    0
+   ],
+   "image": [
+    "42",
+    0
+   ],
+   "conditioning": [
+    "41",
+    0
+   ],
+   "threshold": 0.35,
+   "refine_iterations": 2,
+   "individual_masks": false
+  },
+  "class_type": "SAM3_Detect",
+  "_meta": {
+   "title": "Find the person (frame 0)"
+  }
+ },
+ "44": {
+  "inputs": {
+   "value": "[{\"x\": 672, \"y\": 368}]"
+  },
+  "class_type": "PrimitiveString",
+  "_meta": {
+   "title": "Click point (pixels)"
+  }
+ },
+ "45": {
+  "inputs": {
+   "value": 0.0,
+   "width": 672,
+   "height": 736
+  },
+  "class_type": "SolidMask",
+  "_meta": {
+   "title": "Other half of the frame"
+  }
+ },
+ "46": {
+  "inputs": {
+   "destination": [
+    "43",
+    0
+   ],
+   "source": [
+    "45",
+    0
+   ],
+   "x": 0,
+   "y": 0,
+   "operation": "multiply"
+  },
+  "class_type": "MaskComposite",
+  "_meta": {
+   "title": "Keep the named side only"
+  }
+ },
+ "47": {
+  "inputs": {
+   "images": [
+    "11",
+    0
+   ],
+   "model": [
+    "40",
+    0
+   ],
+   "initial_mask": [
+    "46",
+    0
+   ],
+   "conditioning": [
+    "41",
+    0
+   ],
+   "detection_threshold": 0.5,
+   "max_objects": 1,
+   "detect_interval": 1
+  },
+  "class_type": "SAM3_VideoTrack",
+  "_meta": {
+   "title": "Track through the clip"
+  }
+ },
+ "48": {
+  "inputs": {
+   "track_data": [
+    "47",
+    0
+   ],
+   "object_indices": ""
+  },
+  "class_type": "SAM3_TrackToMask",
+  "_meta": {
+   "title": "Person mask per frame"
+  }
+ },
+ "36": {
+  "inputs": {
+   "file": "matte.mp4"
+  },
+  "class_type": "LoadVideo",
+  "_meta": {
+   "title": "Uploaded mask video (white = swap)"
+  }
+ },
+ "37": {
+  "inputs": {
+   "video": [
+    "36",
+    0
+   ]
+  },
+  "class_type": "GetVideoComponents",
+  "_meta": {
+   "title": "Mask frames"
+  }
+ },
+ "38": {
+  "inputs": {
+   "image": [
+    "37",
+    0
+   ],
+   "channel": "red"
+  },
+  "class_type": "ImageToMask",
+  "_meta": {
+   "title": "Uploaded mask"
+  }
+ },
+ "49": {
+  "inputs": {
+   "mask": [
+    "48",
+    0
+   ]
+  },
+  "class_type": "MaskToImage",
+  "_meta": {
+   "title": "Mask as image"
+  }
+ },
+ "50": {
+  "inputs": {
+   "image": [
+    "49",
+    0
+   ],
+   "upscale_method": "area",
+   "width": 84,
+   "height": 46,
+   "crop": "disabled"
+  },
+  "class_type": "ImageScale",
+  "_meta": {
+   "title": "To the latent grid (area = coverage)"
+  }
+ },
+ "51": {
+  "inputs": {
+   "image": [
+    "50",
+    0
+   ],
+   "channel": "red"
+  },
+  "class_type": "ImageToMask",
+  "_meta": {
+   "title": "Coverage per cell"
+  }
+ },
+ "52": {
+  "inputs": {
+   "mask": [
+    "51",
+    0
+   ],
+   "value": 0.01
+  },
+  "class_type": "ThresholdMask",
+  "_meta": {
+   "title": "Any coverage → cell in"
+  }
+ },
+ "53": {
+  "inputs": {
+   "mask": [
+    "52",
+    0
+   ],
+   "expand": 4,
+   "tapered_corners": false
+  },
+  "class_type": "GrowMask",
+  "_meta": {
+   "title": "Grow (64 px at 768p)"
+  }
+ },
+ "55": {
+  "inputs": {
+   "image": [
+    "50",
+    0
+   ],
+   "upscale_method": "area",
+   "width": 1,
+   "height": 1,
+   "crop": "disabled"
+  },
+  "class_type": "ImageScale",
+  "_meta": {
+   "title": "Coverage per frame"
+  }
+ },
+ "56": {
+  "inputs": {
+   "image": [
+    "55",
+    0
+   ],
+   "channel": "red"
+  },
+  "class_type": "ImageToMask",
+  "_meta": {
+   "title": "Coverage"
+  }
+ },
+ "57": {
+  "inputs": {
+   "mask": [
+    "56",
+    0
+   ],
+   "value": 0.002
+  },
+  "class_type": "ThresholdMask",
+  "_meta": {
+   "title": "Someone found?"
+  }
+ },
+ "58": {
+  "inputs": {
+   "mask": [
+    "57",
+    0
+   ]
+  },
+  "class_type": "InvertMask",
+  "_meta": {
+   "title": "Nobody found"
+  }
+ },
+ "59": {
+  "inputs": {
+   "mask": [
+    "58",
+    0
+   ]
+  },
+  "class_type": "MaskToImage",
+  "_meta": {
+   "title": "Nobody found (image)"
+  }
+ },
+ "60": {
+  "inputs": {
+   "image": [
+    "59",
+    0
+   ],
+   "upscale_method": "nearest-exact",
+   "width": 84,
+   "height": 46,
+   "crop": "disabled"
+  },
+  "class_type": "ImageScale",
+  "_meta": {
+   "title": "Nobody found → whole frame"
+  }
+ },
+ "61": {
+  "inputs": {
+   "image": [
+    "60",
+    0
+   ],
+   "channel": "red"
+  },
+  "class_type": "ImageToMask",
+  "_meta": {
+   "title": "Whole-frame fallback"
+  }
+ },
+ "62": {
+  "inputs": {
+   "destination": [
+    "53",
+    0
+   ],
+   "source": [
+    "61",
+    0
+   ],
+   "x": 0,
+   "y": 0,
+   "operation": "add"
+  },
+  "class_type": "MaskComposite",
+  "_meta": {
+   "title": "Edit mask"
+  }
+ },
+ "63": {
+  "inputs": {
+   "pixels": [
+    "11",
+    0
+   ],
+   "vae": [
+    "5",
+    0
+   ]
+  },
+  "class_type": "VAEEncode",
+  "_meta": {
+   "title": "Source frames → latent"
+  }
+ },
+ "64": {
+  "inputs": {
+   "samples": [
+    "63",
+    0
+   ],
+   "mask": [
+    "62",
+    0
+   ]
+  },
+  "class_type": "SetLatentNoiseMask",
+  "_meta": {
+   "title": "Edit mask on the video latent"
+  }
+ },
+ "65": {
+  "inputs": {
+   "av_latent": [
+    "20",
+    1
+   ]
+  },
+  "class_type": "LTXVSeparateAVLatent",
+  "_meta": {
+   "title": "Split H3 audio + video"
+  }
+ },
+ "66": {
+  "inputs": {
+   "video_latent": [
+    "64",
+    0
+   ],
+   "audio_latent": [
+    "65",
+    1
+   ]
+  },
+  "class_type": "LTXVConcatAVLatent",
+  "_meta": {
+   "title": "Masked video + fresh audio"
+  }
+ }
+}

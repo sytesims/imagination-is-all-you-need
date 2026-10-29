@@ -1,0 +1,4 @@
+/* The orange bean (ui/Mascot.tsx): never shrinks in a flex row; optional one-time pop (250 ms), off with reduced motion. */
+.ohf-mascot{flex:none;display:inline-block;vertical-align:middle;overflow:visible}
+@media (prefers-reduced-motion:no-preference){.ohf-mascot-pop{animation:ohf-mascot-pop .25s cubic-bezier(.34,1.56,.64,1) both;transform-origin:50% 60%}}
+@keyframes ohf-mascot-pop{from{transform:scale(.9)}to{transform:scale(1)}}

@@ -1,0 +1,24 @@
+/* Models page (Models.tsx, 2026-10-23): medium tabs, then one section per picker section (Featured, API models, Local). Tokens only. */
+.mdp .pills.mdp-tabs{justify-content:flex-start;margin:0 0 var(--pad-3,16px)}
+.mdp .mdp-tabs .pill{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.mdp-n{margin-left:6px;font-size:var(--fs-2xs,11px);font-weight:600;opacity:.6}
+.mdp-sec{margin:0 0 24px}
+.mdp-h{display:flex;align-items:baseline;margin:0 0 10px;font-size:var(--fs-14,14px);font-weight:var(--fw-semibold);color:var(--text)}
+.mdp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+.mdp-row{display:flex;align-items:center;gap:12px;min-width:0;padding:12px;border:1px solid var(--border-strong);border-radius:var(--r-lg);background:var(--surface-1);color:var(--text);text-decoration:none;transition:border-color var(--fast) var(--ease),background var(--fast) var(--ease)}
+.mdp-row.shimmer{height:64px;margin:0}
+.mdp-row:hover,.mdp-row.hov{border-color:var(--accent-soft);background:var(--surface-2)}
+.mdp-row:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.mdp-row .mk-tile{--mk-s:40px;border-radius:8px}
+.mdp-txt{display:flex;flex-direction:column;gap:3px;min-width:0}
+.mdp-txt b{display:flex;align-items:center;gap:6px;min-width:0;font-size:var(--fs-14,14px);font-weight:var(--fw-semibold);white-space:nowrap}
+.mdp-nm{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.mdp-txt small{font-size:var(--fs-12,12px);line-height:1.4;color:var(--text-2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mdp-foot{margin-top:8px}
+/* 2026-10-25: coming-soon rows greyed (the card says why); a Local model's one-time download; the same tile for every maker */
+.mdp-row.off{cursor:default}
+.mdp-row.off .mk-tile,.mdp-row.off .mdp-txt b{opacity:.55}
+.mdp-row.off:hover,.mdp-row.off.hov{border-color:var(--border-strong);background:var(--surface-2)}
+.mdp-st{align-self:flex-start;margin-top:3px;padding:1px 7px;border-radius:999px;font-size:var(--fs-2xs,11px);font-weight:600;line-height:16px;border:1px solid var(--border-strong);color:var(--text-2)}
+.mdp-st-download{color:var(--text-1)}
+@media (max-width:600px){.mdp-grid{grid-template-columns:1fr}.mdp .pills.mdp-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.mdp .mdp-tabs .pill{flex:none;padding-left:12px;padding-right:12px}}

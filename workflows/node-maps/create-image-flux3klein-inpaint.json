@@ -1,0 +1,42 @@
+{
+  "workflowFile": "create-image-flux3klein-inpaint-api.json",
+  "template": "image_flux3_klein_distilled_image_edit (+mask)",
+  "model": "FLUX 3 Image Klein (FLUX Kommunity License v1.0)",
+  "inputs": {
+    "prompt": {
+      "node": "60",
+      "field": "value"
+    },
+    "image": {
+      "node": "11",
+      "field": "image"
+    },
+    "mask": {
+      "node": "900",
+      "field": "image"
+    },
+    "raw_prompt": {
+      "node": "51",
+      "field": "switch"
+    }
+  },
+  "boxes": {
+    "node": "33",
+    "field": "bboxes",
+    "layout": "49",
+    "prompt": "60"
+  },
+  "refs": [
+    {
+      "node": "11",
+      "field": "image"
+    }
+  ],
+  "seed": {
+    "node": "7",
+    "field": "seed"
+  },
+  "output": {
+    "node": "9"
+  }
+}

@@ -1,0 +1,261 @@
+/* Workflows, the Finder (2026-10-27). Tokens only (tokens.css). The tile language follows Explore (explore.css .xp-tile / .xp-head): edge-to-edge
+   media, the caption on a dark fade, uppercase display titles, numbered section heads, the accent for the one action, the orange glow on hover.
+   A workflow with no example of ours gets a "blueprint" tile: our drawing of the flow on a dotted plate with a soft accent light. */
+.wn-page{max-width:1480px;margin:0 auto;padding:0 32px 112px;overflow-x:clip;color:var(--text)}
+.wn h1,.wn h2,.wn h3{margin:0}
+.wn-brand{display:inline-block;font:700 11px/1 var(--font-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.wn-shim{display:block;border-radius:12px;background:linear-gradient(90deg,var(--surface-2),var(--surface-3),var(--surface-2));background-size:200% 100%;animation:oj-shim 1.4s linear infinite}
+.wn-shim-search{height:44px}.wn-shim-cat{height:30px;opacity:.6}.wn-shim-h{height:56px;width:60%;margin-bottom:40px}.wn-shim-card{border-radius:var(--r-tile)}
+
+/* ---------- layout: the finder rail and the results */
+.wn-b{display:grid;grid-template-columns:264px minmax(0,1fr);gap:40px;padding-top:40px;align-items:start}
+.wn-side{position:sticky;top:calc(var(--nav-h) + 24px);display:flex;flex-direction:column;gap:16px;max-height:calc(100vh - var(--nav-h) - 48px);overflow-y:auto;padding:0 4px 16px 0;scrollbar-width:thin}
+.wn-side h1{margin-top:-6px;font:700 34px/1 var(--font-display);text-transform:uppercase;letter-spacing:-.02em}
+.wn-main{min-width:0}
+.wn-mhead h2{font:700 clamp(36px,3.4vw,56px)/.95 var(--font-display);text-transform:uppercase;letter-spacing:-.03em;text-wrap:balance}
+.wn-mhead p{margin:12px 0 0;max-width:62ch;color:var(--text-2);font:500 15px/1.55 var(--font-ui)}
+
+/* ---------- search, goals, categories */
+.wn-search{position:relative;display:flex;align-items:center;gap:10px;height:44px;padding:0 12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--hairline-strong);color:var(--text-2);
+  transition:border-color var(--t-state) var(--ease-state),box-shadow var(--t-state) var(--ease-state)}
+.wn-search:focus-within{border-color:color-mix(in srgb,var(--accent) 70%,transparent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 16%,transparent)}
+.wn-search input{flex:1;min-width:0;height:100%;border:0;background:none;color:var(--text);font:500 14px var(--font-ui);outline:none}
+.wn-search input:focus,.wn-search input:focus-visible{outline:none!important;box-shadow:none!important;border:0!important;background:none!important}
+.wn-search input::-webkit-search-cancel-button{display:none}
+.wn-clear{display:grid;place-items:center;width:26px;height:26px;min-height:0;padding:0;border-radius:8px;border:0;background:var(--state-fill);color:var(--text-2);cursor:pointer}
+.wn-goals{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.wn-goal{cursor:pointer}
+.wn-goal.on{color:var(--text);background:var(--surface-3);border-color:color-mix(in srgb,var(--accent) 55%,transparent)}
+.bp-host .wn-cats{gap:2px;background:none;padding:0;margin:0}
+.bp-host .wn-cats .bp-opt{flex-direction:row;justify-content:space-between;min-height:38px;padding:0 12px;border-radius:9px;color:var(--text-2)}
+.bp-host .wn-cats .bp-opt-l{flex:1;max-width:none;text-align:left;font:600 13.5px var(--font-ui)}
+.bp-host .wn-cats .bp-opt.on{color:var(--text);background:var(--surface-3);box-shadow:inset 3px 0 0 var(--accent)}
+.bp-host .wn-cats .bp-opt.on::after{display:none}
+.bp-host .wn-cats .bp-opt-a{font:600 11px var(--font-mono)}
+.wn-note{display:block;margin:4px 0 0;font-size:12.5px;line-height:1.5;color:var(--text-2)}
+.wn-note a{color:var(--text);text-decoration:underline;text-decoration-color:var(--hairline-strong)}
+.wn-dot{display:inline-block;width:7px;height:7px;margin-right:8px;border-radius:50%;background:var(--warning);vertical-align:1px}
+
+/* ---------- yours */
+.wn-yours{margin:28px 0 0;padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--hairline)}
+.wn-yours h2{font:700 11px var(--font-ui);letter-spacing:.1em;text-transform:uppercase;color:var(--text-2);margin-bottom:10px}
+.wn-yours-row{display:flex;flex-wrap:wrap;gap:6px}
+.wn-pin{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 12px;border-radius:10px;border:1px solid var(--hairline-strong);background:var(--surface-2);color:var(--text);font:600 13px var(--font-ui);cursor:pointer;transition:background var(--t-state),border-color var(--t-state)}
+.wn-pin:hover{background:var(--state-hover);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+.wn-pin small{color:var(--text-3);font-size:11px}
+.wn-first{margin:0;display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:13px;color:var(--text-2)}
+.wn-first-big{margin-top:40px;font-size:14px}
+
+/* ---------- sections (Explore's head) */
+.wn-sec{margin-top:64px;scroll-margin-top:calc(var(--nav-h) + 24px)}
+.wn-head{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:end;gap:18px;margin:0 0 20px}
+.wn-num{align-self:start;padding-top:6px;font:700 13px/1 var(--font-display);letter-spacing:.08em;color:var(--accent)}
+.wn-head h2{font:700 var(--fs-section)/1 var(--font-display);letter-spacing:-.02em;text-transform:uppercase}
+.wn-head p{margin:8px 0 0;max-width:72ch;color:var(--text-2);font:500 14px/1.5 var(--font-ui)}
+/* the count sits beside the title as a small pill, as in the rail (2026-10-28) */
+.wn-head h2{display:flex;align-items:center;gap:12px}
+.wn-count{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:999px;border:1px solid var(--hairline-strong);background:var(--surface-2);font:600 12px/1 var(--font-mono);letter-spacing:0;color:var(--text-2);transform:translateY(-2px)}
+
+/* ---------- a card: Explore's tile (explore.css .xp-tile / .xp-cap / .xp-badge / .xp-go); only the grid size, the click and the run line are ours */
+.wn-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:clamp(272px,20vw,340px);gap:var(--gap-tile)}
+.wn-card{cursor:pointer}
+.wn-card:hover{transform:translateY(-3px);box-shadow:0 22px 48px -26px rgba(0,0,0,.9)}
+.wn-card:focus-within::after{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 55%,transparent)}
+.wn-media .hclip img{transition:transform var(--t-media) var(--ease-out)}
+.wn-media .wn-split{position:absolute;inset:0;width:100%;height:100%}
+.wn-ba{position:absolute;inset:0;display:block}
+.wn-ba img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+/* before → after on hover (Try-On): a soft-edged wipe of the result over the before picture; at rest the result shows */
+.wn-ba-after{-webkit-mask-image:linear-gradient(90deg,#000 40%,transparent 60%);mask-image:linear-gradient(90deg,#000 40%,transparent 60%);-webkit-mask-size:300% 100%;mask-size:300% 100%;-webkit-mask-position:0 0;mask-position:0 0}
+.wn-card:hover .wn-ba-after{animation:wn-ba 2.6s var(--ease-out) both}
+@keyframes wn-ba{0%,22%{-webkit-mask-position:100% 0;mask-position:100% 0}100%{-webkit-mask-position:0 0;mask-position:0 0}}
+@media (prefers-reduced-motion:reduce){.wn-card:hover .wn-ba-after{animation:none}}
+.wn-card:not(.is-real) .wn-cap{background:linear-gradient(180deg,rgba(9,9,9,0),rgba(9,9,9,.72) 40%)}
+.wn-cap{gap:5px;padding:40px 18px 16px}
+.wn-title{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;margin:0;padding:0;border:0;background:none;text-align:left;cursor:pointer;
+  font:700 clamp(19px,1.45vw,25px)/1.02 var(--font-display)}
+.wn-title:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+.wn-meta{margin-top:4px;gap:6px 10px;flex-wrap:wrap}
+.wn-model{flex:1 0 auto;max-width:100%}
+.wn-model small{flex:none;font:600 11px var(--font-ui);color:rgba(255,255,255,.5)}
+.wn-meta .runl{flex:0 1 auto;max-width:100%}
+.wn-top{position:absolute;top:14px;left:14px;right:56px;z-index:4;display:flex;gap:6px;pointer-events:none}
+.wn-top>*{pointer-events:auto}
+.wn-made{background:var(--accent);color:var(--on-accent)}
+.wn-save{position:absolute;top:10px;right:10px;z-index:5;display:grid;place-items:center;width:32px;height:32px;min-height:0;padding:0;border-radius:10px;border:0;background:rgba(10,10,10,.55);color:#fff;cursor:pointer;opacity:0;
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);transition:opacity var(--t-state),background var(--t-state)}
+.wn-card:hover .wn-save,.wn-card:focus-within .wn-save,.wn-chain:hover .wn-save,.wn-chain:focus-within .wn-save,.wn-save.on,.wn-save:focus-visible{opacity:1}
+.wn-save:hover{background:rgba(10,10,10,.8)}
+.wn-save.on{background:var(--accent);color:var(--on-accent)}
+@media (hover:none){.wn-save{opacity:1}}
+/* a gentle rise when a category is picked (reduced motion: none) */
+.wn-results.is-rising .wn-card,.wn-results.is-rising .wn-chain{animation:wn-in .42s var(--ease-out) backwards;animation-delay:calc(var(--i,0) * 28ms)}
+@keyframes wn-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ---------- the blueprint tile (no example of ours yet) */
+.wn-art{position:absolute;inset:0;overflow:hidden}
+.wn-art .xp-art{padding-bottom:30%;background:radial-gradient(60% 50% at 50% 34%,rgba(255,122,26,.16),rgba(255,122,26,0) 70%),linear-gradient(180deg,#141414 0%,#0d0d0d 62%,#090909 100%)}
+.wn-art .xp-art::before{background-image:radial-gradient(rgba(255,255,255,.11) 1px,transparent 1.2px);background-size:18px 18px}
+.wn-art::before{content:"";position:absolute;inset:12px;z-index:1;border-radius:10px;border:1px dashed rgba(255,255,255,.08);pointer-events:none;transition:border-color var(--base)}
+.wn-art .xp-diagram{width:min(78%,340px)}
+.wn-art .xp-art>svg:not(.xp-diagram){padding:16px;width:76px;height:76px;box-sizing:border-box;border-radius:22px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);color:#fff;
+  box-shadow:0 0 40px -6px rgba(255,122,26,.35)}
+.wn-art .xp-art svg{transition:transform var(--slow) var(--ease-out)}
+.wn-card:hover .wn-art .xp-art svg{transform:translateY(-4px) scale(1.04)}
+.wn-card:hover .wn-art::before{border-color:color-mix(in srgb,var(--accent) 28%,transparent)}
+.wn-card:hover .wn-art .xp-art::before{opacity:.7}
+.wn-art-t{position:absolute;top:14px;left:14px;z-index:2;font:600 11px var(--font-ui);color:var(--text-3)}
+
+/* ---------- a chain */
+.wn-chains-b{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--gap-tile)}
+.wn-chain{position:relative;display:grid;grid-template-rows:168px auto;min-width:0;border-radius:var(--r-tile);overflow:hidden;background:var(--surface);border:1px solid var(--hairline);
+  transition:border-color var(--base),box-shadow var(--slow) var(--ease-out),transform var(--slow) var(--ease-out)}
+.wn-chain:hover{transform:translateY(-3px);border-color:var(--hairline-strong);box-shadow:0 22px 48px -26px rgba(0,0,0,.9)}
+.wn-chain-media{position:relative;overflow:hidden;background:#0b0b0b}
+.wn-chain-media .xp-art{padding-bottom:0}
+.wn-chain-top{position:absolute;top:12px;left:12px;right:52px;z-index:3;display:flex;gap:6px}
+.wn-chain-body{display:flex;flex-direction:column;gap:8px;padding:16px 16px 14px;min-width:0}
+.wn-chain-body>b{font:700 20px/1.05 var(--font-display);text-transform:uppercase;letter-spacing:-.01em}
+.wn-chain-body>p{margin:0;font-size:12.5px;line-height:1.45;color:var(--text-2)}
+.wn-steps{list-style:none;margin:2px 0 0;padding:0;display:flex;flex-direction:column;gap:2px}
+.wn-steps button{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;width:100%;padding:6px 8px;border-radius:9px;cursor:pointer;transition:background var(--t-state)}
+.wn-steps button:hover{background:var(--state-hover)}.wn-steps button:focus-visible{outline:2px solid var(--accent)}
+.wn-steps i{flex:none;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;font:700 11px var(--font-mono);font-style:normal;background:var(--surface-3);color:var(--accent)}
+.wn-steps span{display:flex;flex-direction:column;min-width:0}
+.wn-steps b{font:600 13px var(--font-ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wn-steps small{font-size:11.5px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wn-chain-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;padding-top:6px}
+.wn-go{display:inline-flex;align-items:center;gap:4px;font:700 12.5px var(--font-ui);color:var(--accent);text-decoration:none}
+.wn-go:hover{text-decoration:underline}
+.wn-skill{height:24px;padding:0 9px;border-radius:999px;display:inline-flex;align-items:center;font:600 11px var(--font-ui);color:var(--text-2);border:1px solid var(--hairline-strong);text-decoration:none;white-space:nowrap;flex:none}
+.wn-allchains{margin-top:14px;gap:4px;cursor:pointer}
+
+/* ---------- no results */
+.wn-empty{margin:56px auto;max-width:620px;text-align:center;padding:40px 28px;border-radius:18px;border:1px dashed var(--hairline-strong);
+  background:radial-gradient(60% 80% at 50% 0%,color-mix(in srgb,var(--accent) 10%,transparent),transparent 70%)}
+.wn-empty b{display:block;font:700 26px/1.1 var(--font-display);text-transform:uppercase;overflow-wrap:anywhere}
+.wn-empty p{margin:10px auto 18px;max-width:46ch;color:var(--text-2);font-size:14px;line-height:1.5}
+.wn-empty-acts{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+.wn-empty .wn-goals{justify-content:center}
+
+/* ---------- the sheet (an opened workflow): the modal panel (moved here from the v2 page's workflowsV2.css) */
+.wv-scrim{padding:28px;z-index:1300}
+.wv-panel{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 400px;width:min(1180px,100%);height:min(820px,calc(100vh - 56px));border-radius:18px;overflow:hidden;background:var(--surface-2);border:1px solid var(--hairline-strong);box-shadow:0 30px 80px rgba(0,0,0,.6);animation:dlg-pop .22s cubic-bezier(.2,.7,.3,1) both}
+.wv-x{position:absolute;top:12px;right:12px;z-index:5;display:grid;place-items:center;width:34px;height:34px;min-height:0;padding:0;border-radius:10px;border:1px solid var(--hairline);background:var(--surface-3);color:var(--text);cursor:pointer}
+.wv-x:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wv-pmedia{position:relative;display:grid;place-items:center;min-height:0;background:#050505;padding:18px}
+.wv-pimg{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;display:block}
+.wv-pmedia .wfh-ph{width:100%;height:100%;border-radius:8px}
+.wv-pmedia .splitp-img{object-position:50% 50%}
+.wv-pbody{min-height:0;overflow-y:auto;padding:26px 24px 22px;display:flex;flex-direction:column}
+.wv-kicker{margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.wv-ptitle{font-size:28px;margin:0 40px 14px 0;overflow-wrap:anywhere}
+.wv-pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.wv-pill{padding:4px 10px;border-radius:8px;background:var(--surface-3);border:1px solid var(--hairline);font-size:12px;font-weight:600}
+.wv-pill-free{color:var(--success)}
+.wv-h{display:flex;align-items:center;justify-content:space-between;font-family:var(--font-ui);font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-2);margin:18px 0 8px}
+.wv-copy{color:var(--accent);font-size:12px;text-transform:none;letter-spacing:0}
+.wv-wf{display:flex;flex-direction:column;gap:4px;font-size:12.5px;padding:10px 12px;border-radius:10px;border:1px solid var(--hairline);background:var(--surface)}
+.wv-wf-n a{color:var(--text);text-decoration:underline;text-decoration-color:var(--hairline-strong)}
+.wv-dl{color:var(--accent);text-decoration:none;font-weight:600;overflow-wrap:anywhere}
+.wv-dl:hover{text-decoration:underline}
+.wv-muted{color:var(--text-3);font-size:12.5px;margin:0}
+.wv-pacts{display:flex;gap:10px;flex-wrap:nowrap;align-items:center;margin-top:auto;padding-top:22px}
+.wv-pacts .btn{white-space:nowrap}
+/* Save stays on the button row (2026-10-28): a compact icon button beside Open and Make this example again */
+.wn-psave{display:inline-flex;align-items:center;gap:7px;flex:none;padding:0 14px}
+.wv-pacts:has(>:nth-child(3)) .wn-psave{width:40px;padding:0;justify-content:center}.wv-pacts:has(>:nth-child(3)) .wn-psave span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.wn-psave.on{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+.wv-pacts .btn{min-height:40px;border-radius:10px;text-decoration:none}
+.wv-panel .btn.wv-pri{background:var(--accent);border-color:var(--accent);color:var(--on-accent);padding:0 20px}
+@media (max-width:1320px){.wv-panel{grid-template-columns:minmax(0,1fr) 360px}}
+@media (max-width:1000px){.wv-panel{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){.wv-panel{animation:none}}
+.wn-pmedia{padding:0}
+.wn-pframe{position:absolute;inset:0}
+.wn-pframe .hclip img,.wn-pframe .hclip video{object-fit:contain}
+.wn-pframe .wn-split{position:absolute;inset:0;width:100%;height:100%}
+.wn-pmedia .snd{position:absolute;right:16px;bottom:16px;z-index:5}
+.wn-pcap{position:absolute;left:16px;bottom:16px;z-index:4;padding:5px 9px;border-radius:8px;font:600 11.5px var(--font-ui);color:#fff;background:rgba(10,10,10,.6)}
+.wn-pline{margin:-6px 0 14px;color:var(--text-2);font-size:14px;line-height:1.5}
+.wn-how{margin:0;padding:0;list-style:none;counter-reset:h;display:flex;flex-direction:column;gap:8px}
+.wn-how li{counter-increment:h;display:grid;grid-template-columns:22px 1fr;column-gap:8px;font-size:13px;line-height:1.45}
+.wn-how li::before{content:counter(h);grid-row:span 2;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--surface-3);color:var(--accent);font:700 11px var(--font-mono)}
+.wn-how b{font-weight:700}.wn-how span{color:var(--text-2)}
+.wn-n{font:600 11px var(--font-mono);color:var(--text-3)}
+.wn-models{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.wn-models li{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:10px;background:var(--surface);border:1px solid var(--hairline)}
+.wn-models li:first-child{border-color:var(--hairline-strong)}
+.wn-models b{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wn-models small{font-size:11.5px;color:var(--text-3)}.wn-models small a{color:var(--text-3);text-decoration-color:var(--hairline-strong)}
+.wn-models .wn-more-m{background:none;border:0;padding:2px 0}
+.wn-src{margin-bottom:2px}
+.wn-partof{display:flex;flex-direction:column;gap:6px;font-size:13px}.wn-partof b{font-weight:700}
+
+
+/* ---------- 1024 and smaller */
+@media (max-width:1180px){
+  .wn-page{padding:0 24px 88px}
+  .wn-b{grid-template-columns:220px minmax(0,1fr);gap:24px}
+  /* 3 columns down to 1000 px, a slightly shorter tile (2026-10-28: a 15-card section took 8 scrolls in 2) */
+  .wn-grid{grid-auto-rows:clamp(232px,24vw,280px)}
+  .wn-grid .xp-line{-webkit-line-clamp:2}
+}
+@media (max-width:760px){
+  .wn-page{padding:0 16px 64px}
+  .wn-b{grid-template-columns:1fr;padding-top:24px}.wn-side{position:static;max-height:none}
+  .wn-grid,.wn-chains-b{grid-template-columns:1fr}.wn-grid{grid-auto-rows:280px}
+}
+@media (prefers-reduced-motion:reduce){
+  .wn-card,.wn-card::after,.wn-chain,.wn-media .hclip img,.wn-save,.wn-art .xp-art svg,.wn-art::before,.wn-surprise svg{transition:none}
+  .wn-card:hover,.wn-card:focus-within,.wn-chain:hover{transform:none}.wn-card:hover .hclip img,.wn-card:hover .wn-art .xp-art svg{transform:none}
+  .wn-shim{animation:none}.wn-results .wn-card,.wn-results .wn-chain{animation:none}
+}
+
+/* ---------- truth (2026-10-27): "Made here" on a chain step that really ran; "No example yet" on a chain nobody ran */
+.wn-steps em.wn-ran{flex:none;margin-left:auto;font:600 10px/1 var(--font-ui);font-style:normal;letter-spacing:.02em;color:var(--text-2);padding:4px 7px;border-radius:999px;border:1px solid var(--hairline-strong)}
+
+/* ---------- the rail's extras: "/" hint, Surprise me, what isn't shown here */
+.wn-kbd{display:grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:6px;border:1px solid var(--hairline-strong);font:600 11px var(--font-mono);color:var(--text-3)}
+.wn-surprise{flex:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;border-radius:12px;border:1px solid var(--hairline-strong);background:var(--surface-2);color:var(--text);font:600 13px var(--font-ui);cursor:pointer;
+  transition:background var(--t-state),border-color var(--t-state)}
+.wn-surprise:hover{background:var(--state-hover);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+.wn-surprise svg{color:var(--accent);transition:transform var(--slow) var(--ease-out)}
+.wn-surprise:hover svg{transform:rotate(72deg) scale(1.1)}
+.wn-left{font-size:12px;color:var(--text-3)}
+.wn-left summary{cursor:pointer;list-style:none;color:var(--text-2)}.wn-left summary::-webkit-details-marker{display:none}
+.wn-left summary::before{content:"+ ";color:var(--text-3)}.wn-left[open] summary::before{content:"– "}
+.wn-left ul{margin:8px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px;line-height:1.45}.wn-left b{color:var(--text-2);font-weight:600}
+.wn-near{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;margin:0 0 18px}
+.wn-empty p{margin-bottom:12px}
+.wn-mocknote{margin:6px 0 0}
+.wv-pills .runl{height:auto;min-height:26px;border-radius:8px}
+
+/* Ideas, not built yet (2026-10-27, the library database): plain cards, no media, never a button that runs */
+.wn-ideas{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.wn-idea{position:relative;display:flex;flex-direction:column;gap:6px;padding:16px 16px 14px;border:1px dashed var(--border-strong,var(--border));border-radius:14px;background:var(--surface-1,var(--surface));min-width:0}
+.wn-idea b{font-size:15px;line-height:1.25;color:var(--text)}
+.wn-idea p{margin:0;font-size:13px;line-height:1.45;color:var(--text-2)}
+.wn-idea-b{align-self:flex-start;background:var(--surface-3);color:var(--text-2)}
+.wn-idea-meta{font-size:12px;color:var(--text-3,var(--text-2));overflow-wrap:anywhere}
+.wn-idea-src{margin-top:auto;font-size:12px;color:var(--text-2);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+a.wn-idea-src:hover{color:var(--accent)}
+
+/* ---------- the user's picks (2026-10-28) */
+@media (max-width:1000px) and (min-width:761px){.wn-grid,.wn-chains-b{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* the featured row: the same tiles on a quietly lit plate, so it reads first without shouting */
+.wn-featured{position:relative;padding:22px 22px 24px;margin-left:-22px;margin-right:-22px;border-radius:calc(var(--r-tile) + 8px);border:1px solid color-mix(in srgb,var(--accent) 22%,var(--hairline));
+  background:radial-gradient(70% 60% at 12% 0%,color-mix(in srgb,var(--accent) 10%,transparent),transparent 70%),color-mix(in srgb,var(--surface) 70%,transparent)}
+.wn-featured .wn-head{margin-bottom:18px}
+@media (max-width:1180px){.wn-featured{padding:16px;margin-left:-16px;margin-right:-16px}}
+@media (max-width:760px){.wn-featured{padding:12px;margin-left:-8px;margin-right:-8px}}
+/* a chain's card: the same tile as a workflow's; its sheet lists the steps */
+.wn-chaintile .wn-model span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wv-pbody .wn-steps{margin:4px 0 6px}.wv-pbody .wn-steps button{padding:8px}.wv-pbody .wn-steps small+small{color:var(--text-2)}
+.wv-pbody .wn-chain-foot{justify-content:flex-start;margin-top:12px}
+/* a search that matches workflows not on this page */
+.wn-elsewhere{margin-top:20px}.wn-else-h{margin:0 0 12px;font:600 12px var(--font-ui);letter-spacing:.08em;text-transform:uppercase;color:var(--text-3)}
+.wn-elsewhere .wn-near{justify-content:flex-start}
+/* the sample-mode note is never cut off: it stays pinned at the foot of the rail when the rail scrolls */
+.wn-side .wn-note{position:sticky;bottom:-16px;z-index:1;margin-top:0;padding:10px 0 16px;background:linear-gradient(180deg,transparent,var(--bg) 14px)}
+@media (max-width:760px){.wn-side .wn-note{position:static;padding:0;background:none}}

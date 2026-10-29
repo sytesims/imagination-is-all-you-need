@@ -1,0 +1,32 @@
+{
+  "workflowFile": "h3-r2v-api.json",
+  "template": "video_minimax_h3_r2v",
+  "license": "MiniMax H3 Community License",
+  "inputs": {
+    "prompt": {
+      "node": "138",
+      "field": "value"
+    },
+    "image": {
+      "node": "137",
+      "field": "image"
+    }
+  },
+  "refs": [
+    {
+      "node": "137",
+      "field": "image"
+    },
+    {
+      "node": "139",
+      "field": "image"
+    }
+  ],
+  "seed": {
+    "node": "129",
+    "field": "noise_seed"
+  },
+  "output": {
+    "node": "92"
+  }
+}

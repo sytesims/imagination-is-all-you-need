@@ -1,0 +1,39 @@
+/* The shared project picker popover (shared/ProjectPicker.tsx): Create Image feed toolbar and the Canvas assets drawer. Moved from feed.css. */
+/* Project picker (shared/ProjectPicker): the model menu's sort-list look (popover surface, orange bar + check on the chosen row),
+   with a cover per project, a quiet count tag, an inline name field and a quiet Manage row */
+html body .apop.fd-pp-pop .apop-body{overflow:hidden;display:flex;flex-direction:column}
+html body .fd-pp{display:flex;flex-direction:column;min-height:0;padding:4px;font:500 12px/16px var(--font-ui)}
+html body .fd-pp-h{padding:8px 8px 6px 12px;color:var(--text-3);font:600 10px/14px var(--font-ui);letter-spacing:.06em;text-transform:uppercase}
+html body .fd-pp-list{position:relative;display:flex;flex-direction:column;gap:2px;min-height:0;max-height:min(360px,calc(var(--apop-max,480px) - 140px));overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+html body .fd-pp-row,html body .fd-pp-act{all:unset;position:relative;box-sizing:border-box;flex:none;display:flex;align-items:center;gap:10px;height:40px;padding:0 8px 0 12px;border-radius:8px;cursor:pointer;
+  color:var(--text-2);font:500 12px/16px var(--font-ui);white-space:nowrap;min-width:0}
+html body .fd-pp-row:hover,html body .fd-pp-row:focus-visible,html body .fd-pp-act:hover,html body .fd-pp-act:focus-visible{background:rgba(255,255,255,.06);color:var(--text-1)}
+html body .fd-pp-row:focus-visible,html body .fd-pp-act:focus-visible{outline:none!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+html body .fd-pp-row[aria-selected="true"]{color:var(--text-1)}
+html body .fd-pp-row[aria-selected="true"]::before{content:"";position:absolute;left:3px;top:12px;bottom:12px;width:2px;border-radius:2px;background:var(--accent)}
+html body .fd-pp-row[data-depth]{padding-left:calc(12px + var(--pp-depth,1) * 18px)}
+html body .fd-pp-indent{position:absolute;left:calc(var(--pp-depth,1) * 18px - 2px);top:8px;bottom:8px;width:1px;background:rgba(255,255,255,.1)}
+html body .fd-pp-name{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+html body .fd-pp-n{flex:none;min-width:20px;height:18px;padding:0 6px;box-sizing:border-box;border-radius:6px;background:rgba(255,255,255,.06);color:var(--text-2);font:500 11px/18px var(--font-ui);font-variant-numeric:tabular-nums;text-align:center}
+html body .fd-pp-ck{flex:none;display:grid;place-items:center;width:16px;color:var(--accent);font-style:normal}
+/* covers: 28 px rounded squares; no image → the orange initial tile */
+html body .fd-pp-cv{flex:none;box-sizing:border-box;display:grid;place-items:center;object-fit:cover;background:var(--surface-3)}
+html body .fd-pp-cv-row{width:28px;height:28px;border-radius:7px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+html body .fd-pp-init{background:var(--accent-faint,rgba(255,122,26,.1));color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent-soft,rgba(255,122,26,.2));font:600 12px/1 var(--font-ui)}
+html body .fd-pp-all{background:rgba(255,255,255,.06);color:var(--text-1)}
+html body .fd-pp-plus{background:transparent;color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent-soft,rgba(255,122,26,.2))}
+html body .fd-pp-note{margin:0;padding:8px 12px;color:var(--text-2)}
+html body .fd-pp-sep{flex:none;height:1px;margin:4px 8px;background:var(--border-strong,rgba(255,255,255,.1))}
+html body .fd-pp-add{color:var(--text-1)}
+html body .fd-pp-manage{color:var(--text-2);text-decoration:none}
+html body .fd-pp-ic{flex:none;display:grid;place-items:center;width:28px;color:var(--text-2)}
+html body .fd-pp-go{margin-left:auto;color:var(--text-3)}
+/* inline new project field */
+html body .fd-pp-new{flex:none;display:flex;flex-wrap:wrap;align-items:center;column-gap:10px;padding:6px 8px 6px 12px;margin:0;border-radius:8px;background:rgba(255,255,255,.04)}
+html body .fd-pp-new input{flex:1 1 0;min-width:0;height:28px;padding:0;border:0;outline:none;background:transparent;color:var(--text-1);font:500 12px/16px var(--font-ui)}
+html body .fd-pp-new input::placeholder{color:var(--text-3)}
+html body .fd-pp-new:focus-within{box-shadow:inset 0 0 0 1px var(--accent-soft,rgba(255,122,26,.2))}
+html body .fd-pp-new.bad{box-shadow:inset 0 0 0 1px rgba(255,107,91,.5)}
+html body .fd-pp-kbd{flex:none;height:18px;padding:0 5px;border-radius:5px;background:rgba(255,255,255,.06);color:var(--text-3);font:500 10px/18px var(--font-ui)}
+html body .fd-pp-err{flex:1 1 100%;padding:4px 0 2px 38px;color:#ff6b5b;font:500 11px/14px var(--font-ui)}
+html body .fd-pp-new input:focus,html body .fd-pp-new input:focus-visible{outline:none!important;box-shadow:none!important}

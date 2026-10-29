@@ -1,0 +1,38 @@
+{
+ "workflowFile": "soul-ref-pulid-api.json",
+ "model": "FLUX.1-dev + PuLID-FLUX v0.9.1 (one face photo)",
+ "inputs": {
+  "prompt": {
+   "node": "20",
+   "field": "text"
+  },
+  "colourRef": {
+   "node": "40",
+   "field": "image"
+  }
+ },
+ "loras": {
+  "realism": "10",
+  "styleA": "11",
+  "styleB": "12"
+ },
+ "refs": [
+  {
+   "node": "60",
+   "field": "image"
+  }
+ ],
+ "latent": "30",
+ "colour": "41",
+ "upscale": {
+  "loader": "50",
+  "apply": "51"
+ },
+ "seed": {
+  "node": "31",
+  "field": "seed"
+ },
+ "output": {
+  "node": "9"
+ }
+}

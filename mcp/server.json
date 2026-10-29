@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+  "name": "io.github.sytesims/imagination-is-all-you-need",
+  "title": "Imagination Is All You Need",
+  "description": "Drive a local creative studio (image, video, audio, 3D): discover tools and models, quote, run with a quote handshake and budgets, follow jobs, fetch results.",
+  "version": "0.1.0",
+  "repository": { "url": "https://github.com/sytesims/imagination-is-all-you-need", "source": "github", "subfolder": "mcp" },
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "openhiggsfield-mcp",
+      "version": "0.1.0",
+      "transport": { "type": "stdio" },
+      "environmentVariables": [
+        { "name": "OPENHIGGSFIELD_API", "description": "The studio API (default http://localhost:8787)", "isRequired": false, "format": "string" },
+        { "name": "OPENHIGGSFIELD_MCP_TOOLSETS", "description": "core (default), library, admin, canvas, legacy or all", "isRequired": false, "format": "string" },
+        { "name": "OPENHIGGSFIELD_MCP_SPEND", "description": "allow | ask | block for paid runs", "isRequired": false, "format": "string" }
+      ]
+    }
+  ]
+}

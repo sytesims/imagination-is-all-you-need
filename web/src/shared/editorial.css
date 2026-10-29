@@ -1,0 +1,110 @@
+/* Editorial media pieces (2026-10-26, shared): HoverClip, MediaRail, HeroReel. Tokens only (tokens.css "editorial"). */
+
+/* ---------- HoverClip: poster, then the clip fades in over it */
+.hclip{position:absolute;inset:0;display:block;overflow:hidden;background:#050505}
+.hclip img,.hclip video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:var(--hclip-pos,50% 50%);display:block}
+.hclip img{transition:transform var(--t-media) var(--ease-out),filter var(--t-media) var(--ease-out)}
+.hclip video{opacity:0;transition:opacity 260ms ease}
+.hclip.is-playing video{opacity:1}
+
+/* ---------- MediaRail */
+.mrail{position:relative;min-width:0}
+.mrail-track{display:flex;gap:var(--gap-tile);overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;padding:2px 0;outline:none;
+  -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 64px),transparent);mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 64px),transparent)}
+.mrail-track::-webkit-scrollbar{display:none}
+.mrail-track>*{flex:none;scroll-snap-align:start}
+.mrail:not(.at-start) .mrail-track{-webkit-mask-image:linear-gradient(90deg,transparent,#000 64px,#000 calc(100% - 64px),transparent);mask-image:linear-gradient(90deg,transparent,#000 64px,#000 calc(100% - 64px),transparent)}
+.mrail.at-end:not(.at-start) .mrail-track{-webkit-mask-image:linear-gradient(90deg,transparent,#000 64px);mask-image:linear-gradient(90deg,transparent,#000 64px)}
+.mrail.at-start.at-end .mrail-track{-webkit-mask-image:none;mask-image:none}
+.mrail-track:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:4px;border-radius:var(--r-tile)}
+.mrail-btn{all:unset;position:absolute;top:50%;z-index:4;width:44px;height:44px;margin-top:-22px;display:grid;place-items:center;border-radius:999px;cursor:pointer;color:#fff;
+  background:rgba(14,14,14,.72);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.14);box-shadow:0 10px 30px rgba(0,0,0,.45);
+  transition:opacity var(--t-state) var(--ease-state),transform var(--t-state) var(--ease-state),background var(--t-state) var(--ease-state)}
+.mrail-btn:hover{background:rgba(30,30,30,.9);transform:scale(1.06)}
+.mrail-btn:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap)}
+.mrail-prev{left:-14px}.mrail-prev svg{transform:scaleX(-1)}
+.mrail-next{right:-14px}
+.mrail.at-start .mrail-prev,.mrail.at-end .mrail-next{opacity:0;pointer-events:none}
+@media (hover:hover){.mrail .mrail-btn{opacity:0}.mrail:hover .mrail-btn,.mrail:focus-within .mrail-btn{opacity:1}.mrail.at-start .mrail-prev,.mrail.at-end .mrail-next{opacity:0}}
+
+/* ---------- HeroReel: full-bleed before → after */
+.hreel{position:relative;isolation:isolate;overflow:hidden;background:#050505;height:clamp(540px,calc(100vh - var(--nav-h) - 96px),860px);min-height:0}
+.hreel-stage{position:absolute;inset:0;cursor:ew-resize;--x:92%}
+.hreel-media{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:var(--hreel-pos,50% 46%);display:block}
+.hreel-before{position:absolute;inset:0;clip-path:inset(0 calc(100% - var(--x)) 0 0);will-change:clip-path}
+.hreel-before .hreel-media{filter:saturate(.92)}
+.hreel-line{position:absolute;top:0;bottom:0;left:var(--x);width:0;z-index:2;pointer-events:none}
+.hreel-line::before{content:"";position:absolute;top:0;bottom:0;left:-1px;width:2px;background:linear-gradient(180deg,rgba(255,255,255,0),rgba(255,255,255,.9) 22%,rgba(255,255,255,.9) 78%,rgba(255,255,255,0));box-shadow:0 0 24px rgba(255,255,255,.35)}
+.hreel-tag{position:absolute;top:calc(var(--nav-h) * 0 + 28px);font:700 11px/24px var(--font-display);font-style:normal;letter-spacing:.14em;text-transform:uppercase;padding:0 10px;border-radius:999px;white-space:nowrap;
+  background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#fff}
+.hreel-tag:not(.hreel-tag-on){right:12px}
+.hreel-tag-on{left:12px;background:var(--accent);color:var(--on-accent)}
+/* film grain + the shade the copy sits on */
+.hreel-grain{position:absolute;inset:-50%;z-index:1;pointer-events:none;opacity:.10;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation:hreel-grain 1.2s steps(4) infinite}
+@keyframes hreel-grain{0%{transform:translate(0,0)}25%{transform:translate(-3%,2%)}50%{transform:translate(2%,-3%)}75%{transform:translate(-2%,-1%)}100%{transform:translate(0,0)}}
+.hreel-shade{position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(0deg,var(--bg) 0%,rgba(10,10,10,.82) 16%,rgba(10,10,10,.18) 48%,rgba(10,10,10,0) 70%),
+    linear-gradient(90deg,rgba(5,5,5,.72) 0%,rgba(5,5,5,.25) 38%,rgba(5,5,5,0) 60%),
+    linear-gradient(180deg,rgba(5,5,5,.55) 0%,rgba(5,5,5,0) 18%)}
+.hreel-copy{position:absolute;left:0;bottom:0;z-index:3;width:min(1040px,100%);padding:0 clamp(20px,3.4vw,56px) clamp(28px,4.4vh,56px);pointer-events:none}
+.hreel-copy>*{pointer-events:auto}
+.hreel-aside{position:absolute;right:clamp(20px,3.4vw,56px);bottom:clamp(28px,4.4vh,56px);z-index:3;max-width:min(520px,40vw)}
+.hreel-media{transition:opacity .6s ease}
+/* reveal (still → clip): the line is dragged, hidden at either edge; reduced motion: the still with a play button (.hreel-play, styled with .sfilm-play) */
+.hreel.is-reveal .hreel-stage{touch-action:pan-y;cursor:grab}
+.hreel.is-reveal .hreel-stage:active{cursor:grabbing}
+.hreel.is-reveal .hreel-line{opacity:var(--lo,1);transition:opacity .3s ease}
+.hreel.is-reveal .hreel-before .hreel-media{filter:none}
+.hreel.is-reveal.is-still .hreel-stage,.hreel.is-failed .hreel-stage{cursor:default}
+/* the line as a keyboard slider: a round knob on the line, shown on keyboard focus (a page's variant may show it always); clicks pass through to the stage */
+.hreel-knob{position:absolute;top:50%;left:100%;z-index:3;width:34px;height:34px;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;opacity:0;transition:opacity .2s ease;
+  background:var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231a0d02' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 7-5 5 5 5M15 7l5 5-5 5'/%3E%3C/svg%3E") center/20px no-repeat;box-shadow:0 6px 18px rgba(0,0,0,.4)}
+.hreel-knob:focus-visible{opacity:1;outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap)}
+@media (max-width:900px){.hreel{height:auto;min-height:560px}.hreel-aside{position:relative;right:auto;bottom:auto;max-width:none;padding:0 20px 24px}.hreel-copy{position:relative;padding-top:300px}}
+@media (max-width:700px){.hreel-tag{top:72px}}
+@media (prefers-reduced-motion:reduce){.hreel-grain{animation:none}.hclip img,.mrail-btn{transition:none}}
+
+/* ---------- ShowcaseFilm: one clip, big */
+.sfilm{position:relative;isolation:isolate;overflow:hidden;border-radius:calc(var(--r-tile) + 6px);background:#050505;aspect-ratio:16/9;max-height:min(84vh,960px);width:100%;
+  box-shadow:0 40px 120px -40px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.06)}
+.sfilm-stage{position:absolute;inset:0}
+.sfilm-media{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;display:block}
+.sfilm-video{opacity:0;transition:opacity .5s ease}
+.sfilm.is-playing .sfilm-video{opacity:1}
+.sfilm-shade{position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(0deg,rgba(6,6,6,.9) 0%,rgba(6,6,6,.5) 24%,rgba(6,6,6,0) 54%),linear-gradient(90deg,rgba(6,6,6,.5) 0%,rgba(6,6,6,0) 44%)}
+.sfilm-progress{position:absolute;left:0;right:0;bottom:0;height:3px;z-index:2;background:rgba(255,255,255,.12)}
+.sfilm-progress span{position:absolute;inset:0;background:var(--accent);transform-origin:0 50%;transform:scaleX(0)}
+.sfilm-copy{position:absolute;left:0;bottom:0;z-index:3;width:min(860px,64%);padding:0 clamp(22px,3vw,52px) clamp(26px,3vw,48px)}
+.sfilm-aside{position:absolute;right:clamp(22px,3vw,52px);bottom:clamp(26px,3vw,48px);z-index:3;display:flex;flex-direction:column;align-items:flex-end;gap:14px;max-width:32%}
+.sfilm-takes{display:flex;flex-direction:column;gap:8px}
+.sfilm-takes button{all:unset;display:grid;grid-template-columns:76px auto;align-items:center;gap:12px;padding:5px 16px 5px 5px;border-radius:14px;cursor:pointer;
+  font:600 13px/1.25 var(--font-ui);color:rgba(255,255,255,.78);background:rgba(10,10,10,.5);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.12);
+  transition:background var(--t-state) var(--ease-state),border-color var(--t-state) var(--ease-state),color var(--t-state)}
+.sfilm-takes button img{width:76px;height:43px;object-fit:cover;border-radius:9px;display:block}
+.sfilm-takes button small{display:block;font:700 10px/1 var(--font-display);letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:4px}
+.sfilm-takes button:hover{background:rgba(20,20,20,.72);color:#fff}
+.sfilm-takes button.on{border-color:var(--accent);color:#fff}.sfilm-takes button.on small{color:var(--accent)}
+.sfilm-takes button:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap)}
+/* reduced motion: the poster with a play button (the clip starts only when asked) */
+.sfilm-play,.hreel-play{all:unset;position:absolute;left:50%;top:50%;z-index:3;transform:translate(-50%,-50%);width:76px;height:76px;border-radius:50%;display:grid;place-items:center;cursor:pointer;
+  color:#fff;background:rgba(0,0,0,.45);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.22)}
+.sfilm-play svg,.hreel-play svg{margin-left:4px}
+.sfilm-play:hover,.hreel-play:hover{background:var(--accent);color:var(--on-accent);border-color:transparent}
+.sfilm-play:focus-visible,.hreel-play:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap)}
+@media (max-width:900px){.sfilm{aspect-ratio:auto;max-height:none;display:flex;flex-direction:column}.sfilm-stage{position:relative;aspect-ratio:16/9}
+  .sfilm-copy,.sfilm-aside{position:relative;left:auto;right:auto;bottom:auto;width:auto;max-width:none;padding:20px}.sfilm-aside{align-items:stretch;padding-top:0}.sfilm-takes{flex-direction:row;flex-wrap:wrap}}
+
+/* Opt-in ShowcaseFilm transport; the ordinary autoplay showcases are unchanged. */
+.sfilm-controls{position:absolute;left:20px;right:20px;bottom:12px;z-index:4;color:#fff;font:500 12px/1 var(--font-ui)}
+.sfilm-seek{display:block;width:100%;height:16px;margin:0;padding:0;accent-color:var(--accent);cursor:pointer}
+.sfilm-transport{display:flex;align-items:center;gap:14px;min-height:36px}
+.sfilm-transport>button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:32px;padding:4px 2px;border:0;border-radius:4px;background:none;color:rgba(255,255,255,.85);font:600 12px/1 var(--font-ui);cursor:pointer}
+.sfilm-transport>button:hover{color:#fff;background:rgba(255,255,255,.07)}
+.sfilm-transport>button:focus-visible,.sfilm-seek:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap)}
+.sfilm-time{font-variant-numeric:tabular-nums;white-space:nowrap}.sfilm-time>span{color:rgba(255,255,255,.45)}.sfilm-control-space{flex:1}
+.sfilm-transport .snd{position:static;display:inline-flex}.sfilm-transport .snd-toggle{width:32px;height:32px}
+.sfilm-control-error{display:block;margin-top:4px;font-size:12px;line-height:1.4}
+@media(pointer:coarse){.sfilm-transport>button,.sfilm-transport .snd-toggle{min-height:44px;min-width:44px}.sfilm-seek{height:24px}}

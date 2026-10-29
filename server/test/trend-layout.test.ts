@@ -1,0 +1,35 @@
+// Compact-overlay layout source contract. Native playback/selection evidence lives in private browser QA.
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+const source = readFileSync(new URL('../../web/src/ui/explore/ExploreTrending.tsx', import.meta.url), 'utf8');
+const css = readFileSync(new URL('../../web/src/ui/explore/exploreTrending.css', import.meta.url), 'utf8');
+const home = readFileSync(new URL('../../web/src/ui/Home.tsx', import.meta.url), 'utf8');
+assert.doesNotMatch(home, /import \{ XpTrending \}|<XpTrending\b/, 'the Trends section stays hidden from Explore');
+
+assert.doesNotMatch(source, /trendMockup|TrendMediaMockups|CurrentTrending/, 'one production implementation; no runtime prototype selector');
+assert.equal((source.match(/<Link\b/g) ?? []).length, 1, 'one contextual primary action, not one large CTA per film');
+assert.match(source, /to=\{current\.f\.href\}/, 'the action uses the selected example’s actual workflow');
+assert.match(source, /data-selected-remix=\{current\.item\.key\}/, 'selection is inspectable, not a stale default action');
+assert.match(source, /onPointerEnter=[\s\S]*?select\(\);/, 'pointer selection follows the hovered example');
+assert.match(source, /onFocusCapture=\{select\}/, 'keyboard controls select their example too');
+assert.match(source, /aria-pressed=\{selected\} onClick=\{select\}/, 'caption/reference selection works on touch without hover');
+assert.deepEqual([...source.matchAll(/\{ key: '([^']+)', number:/g)].map(match => match[1]), ['trend-mic', 'trend-dance'], 'only the two retained examples remain in the hidden section');
+assert.equal((source.match(/flow: 'Object \/ Person Swap'/g) ?? []).length, 2);
+assert.match(source, /One person recast\. Two real clips\./);
+assert.match(source, /aria-label="Two remix films; scroll horizontally on a phone"/);
+assert.match(source, /refIndex: 1/, 'dance keeps the matching right-person reference');
+assert.match(source, /workflow=object-swap&swap=person&model=/, 'single-person showcase retains the single-person workflow');
+assert.match(source, /onTick=\{frac => \{ played\.current = frac \* \(media\.sec \?\? 0\); \}\}/);
+assert.match(source, /Math\.min\(played\.current, duration - \.1\)/, 'Original/Result preserves and clamps elapsed position');
+assert.match(source, /controls hoverSound/, 'shared player still owns controls, hover audio and policy recovery');
+assert.match(css, /\.xpt \.sfilm-media\{object-fit:contain\}/, 'important action is contained, not stretched/cropped');
+assert.match(css, /grid-template-columns:394fr 540fr 405fr/, 'natural output ratios replace equal letterbox tiles');
+assert.match(css, /max-width:1680px;padding:0 clamp\(16px,2\.2vw,32px\)/, 'shared Explore gutter, not a viewport-height-derived narrow island');
+assert.match(css, /\.xpt-picture\{[^}]*aspect-ratio:var\(--ratio\)/, 'desktop stage follows its native media ratio as the section grows');
+assert.doesNotMatch(css, /height:var\(--film-h\)/, 'do not force a short stage that letterboxes the wider rail');
+assert.match(css, /\.xpt\+\.xp-in>#xp-still\{padding-top:64px\}/, 'only the next chapter gets the reduced transition gap');
+assert.match(css, /\.xpt-compare button\{min-height:44px;min-width:54px/, 'comparison targets remain accessible');
+assert.match(css, /\.xpt-caption\{[^}]*min-height:52px/, 'reference/caption is a usable touch target');
+assert.match(css, /\.xpt a\.btn\.xpt-try\{min-height:44px/, 'one primary action keeps a 44px target');
+assert.doesNotMatch(css, /xtm-|xpt-caption-copy|xpt-reference-row/, 'unused prototype/old card layout styles are removed');
+console.log('ok compact overlays, one selected action, truthful data, natural pictures, accessible controls, no prototype switch');

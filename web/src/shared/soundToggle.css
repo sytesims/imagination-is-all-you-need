@@ -1,0 +1,23 @@
+/* SoundToggle (shared): one sound button for every clip with sound. Bottom right inside the media, 40 px circle;
+   dark glass when off, the brand orange when on. Pages move it only through --snd-inset / --snd-bottom / --snd-right. */
+.snd{position:absolute;right:var(--snd-right,var(--snd-inset,15px));bottom:var(--snd-bottom,var(--snd-inset,15px));z-index:4;display:inline-flex;align-items:center;gap:8px;pointer-events:none}
+.snd>*{pointer-events:auto}
+/* pointer-events:auto must come AFTER all:unset: `all:unset` resets the inherited pointer-events to the wrapper's `none`, which made the
+   button unclickable everywhere (2026-10-27 bug). */
+.snd-toggle{all:unset;pointer-events:auto;box-sizing:border-box;width:40px;height:40px;flex:none;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:#fff;
+  background:rgba(12,12,14,.46);border:1px solid rgba(255,255,255,.18);-webkit-backdrop-filter:blur(12px) saturate(1.2);backdrop-filter:blur(12px) saturate(1.2);
+  box-shadow:0 4px 18px rgba(0,0,0,.22);transition:background var(--t-state,.18s) var(--ease-state,ease),border-color var(--t-state,.18s) var(--ease-state,ease),color var(--t-state,.18s) var(--ease-state,ease),transform .18s ease}
+.snd-toggle svg{display:block}
+.snd-toggle:hover{background:rgba(12,12,14,.64);border-color:rgba(255,255,255,.32)}
+.snd-toggle:active{transform:scale(.95)}
+.snd-toggle.is-on{background:var(--accent);border-color:transparent;color:var(--on-accent)}
+.snd-toggle.is-on:hover{background:color-mix(in srgb,var(--accent) 88%,#fff)}
+.snd-toggle.is-waiting{border-color:color-mix(in srgb,var(--accent) 65%,transparent)}
+.snd-toggle.is-waiting svg{color:var(--accent)}
+.snd-toggle:focus-visible{outline:var(--focus-ring-w,2px) solid var(--focus-ring-color,var(--accent));outline-offset:var(--focus-ring-gap,2px)}
+/* the hint ("Click for sound"): a small pill beside the circle of the clip that would sound, until the page's first gesture */
+.snd-label{display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:999px;font:600 12.5px/1 var(--font-ui);color:#fff;white-space:nowrap;pointer-events:none;
+  background:rgba(12,12,14,.46);border:1px solid rgba(255,255,255,.14);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);animation:snd-label .45s ease .6s both}
+.snd-label::before{content:"";width:6px;height:6px;margin-right:8px;border-radius:50%;background:var(--accent)}
+@keyframes snd-label{from{opacity:0;transform:translateX(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.snd-toggle{transition:none}.snd-label{animation:none}}

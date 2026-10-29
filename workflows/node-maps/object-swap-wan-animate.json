@@ -1,0 +1,85 @@
+{
+ "workflowFile": "object-swap-wan-animate-api.json",
+ "variants": "object-swap-wan-animate/ext-{0..6}.json (N extends), mask-ext-{0..6}.json (mask override)",
+ "notes": "workflows/object-swap-wan-animate.NOTES.md",
+ "builder": "scripts/build-object-swap-wan-animate.py",
+ "inputs": {
+  "image": {
+   "node": "10",
+   "field": "image",
+   "class_type": "LoadImage"
+  },
+  "video": {
+   "node": "145",
+   "field": "file",
+   "class_type": "LoadVideo",
+   "note": "pre-converted to 16 fps, width x height, no audio"
+  },
+  "prompt": {
+   "node": "21",
+   "field": "text",
+   "class_type": "CLIPTextEncode"
+  }
+ },
+ "output": {
+  "node": "277",
+  "class_type": "SaveVideo"
+ },
+ "extra": {
+  "width": {
+   "node": "159",
+   "field": "value",
+   "default": 832,
+   "also": "229.width"
+  },
+  "height": {
+   "node": "160",
+   "field": "value",
+   "default": 480,
+   "also": "229.height"
+  },
+  "point": {
+   "node": "229",
+   "fields": [
+    "coordinates",
+    "points_store"
+   ],
+   "format": "pixels in width x height, JSON [{x,y}]"
+  },
+  "negativePoint": {
+   "node": "229",
+   "field": "neg_coordinates"
+  },
+  "seed": {
+   "nodes": [
+    "232:63",
+    "extN:91"
+   ],
+   "field": "seed",
+   "rule": "extN = seed + N"
+  },
+  "length": {
+   "how": "pick the variant file",
+   "secondsPerVariant": [
+    4.8,
+    9.3,
+    13.8,
+    18.3,
+    22.8,
+    27.3,
+    31.8
+   ],
+   "fps": 16
+  },
+  "mask": {
+   "files": "object-swap-wan-animate/mask-ext-{0..6}.json",
+   "node": "oj_mask_video",
+   "field": "file",
+   "format": "video, white = replace, same fps/size as the 16 fps source (red channel read)"
+  },
+  "negativePrompt": {
+   "node": "1",
+   "field": "text"
+  }
+ }
+}

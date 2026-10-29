@@ -1,0 +1,23 @@
+/**
+ * The caption under a result in a feed grid: the model on top, "place · price · time" (or the page's own parts) below, over a dark fade at the
+ * card's bottom. One component and one style (shared/feedCaption.css) for Image (a Compare models group) and 3D (every card); jobCaption gives
+ * the parts from a job, the same words everywhere (Compare's side-by-side view uses it too).
+ */
+import type { JobState } from '../api';
+import { runPrice } from './billing';
+import './feedCaption.css';
+
+export type JobCaption = { model: string; place: string; price: string; time: string };
+/** model · place · price · time for a job: Sample for a sample run, Free, locally, Not charged for a refunded failure, else the run's price. */
+export function jobCaption(j: JobState, own: boolean | null): JobCaption {
+  const a = j as any; const model = String(a.modelName ?? a.model ?? j.provider ?? ''); const place = String(a.place?.label ?? a.runOnLabel ?? '');
+  const price = a.demo || a.isSample ? 'Sample' : a.runOn === 'local' ? 'Free' : j.status === 'failed' || j.status === 'blocked' ? (a.refunded > 0 || a.refund?.refunded ? 'Not charged' : runPrice({ own, credits: a.cost, runOn: a.runOn }) ?? '') : runPrice({ own, credits: a.cost, runOn: a.runOn }) ?? '';
+  const s0 = Number(a.startedAt ?? a.createdAt ?? 0), s1 = Number(a.finishedAt ?? 0); const sec = s0 && s1 > s0 ? Math.round((s1 - s0) / 1000) : null;
+  return { model, place, price, time: sec == null ? '' : sec < 60 ? `${sec}s` : `${Math.floor(sec / 60)}m ${sec % 60}s` };
+}
+
+/** The caption itself. `parts` are joined with " · " (empty ones dropped); a long model name ends in "…" (full name in the title). */
+export function FeedCaption({ title, parts, testId, className = '' }: { title: string; parts: (string | null | undefined | false)[]; testId?: string; className?: string }) {
+  const line = parts.filter(Boolean).join(' · ');
+  return <span className={`feed-cap${className ? ` ${className}` : ''}`} data-testid={testId}><b title={title}>{title}</b>{line && <span>{line}</span>}</span>;
+}

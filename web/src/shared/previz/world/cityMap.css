@@ -1,0 +1,35 @@
+/* Open city minimap (world/CityMap.tsx): bottom left of the stage, in the path map's place */
+.cm { position: absolute; left: 12px; bottom: 12px; z-index: 3; /* above the key hints card: teleport stays clickable while flying */ width: 176px; padding: 6px 4px 4px; border-radius: 10px; background: color-mix(in srgb, #0b0c0e 70%, transparent);
+  backdrop-filter: blur(8px); border: 1px solid var(--border-strong); color: rgba(255,255,255,.86); font: 500 10px/1.2 var(--font-ui, Inter, system-ui, sans-serif); }
+.cm-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 0 2px 5px; }
+.cm-head b { font-weight: 600; letter-spacing: .04em; text-transform: uppercase; font-size: 9px; color: rgba(255,255,255,.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cm-q { height: 17px; padding: 0 7px; border-radius: 5px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.08); color: rgba(255,255,255,.85); font: inherit; font-size: 9px; cursor: pointer; }
+.cm-q.on { border-color: var(--accent); color: var(--accent); }
+.cm-svg { display: block; margin: 0 auto; border-radius: 6px; overflow: hidden; }
+.cm-land { fill: #46603f; }
+.cm-dist { opacity: .42; }
+.cm-sea { fill: #2f6f93; }
+.cm-pier { fill: #c8a27a; }
+.cm-road { fill: rgba(235,235,240,.55); }
+.cm-tall { fill: rgba(255,255,255,.9); }
+.cm-mark { fill: #fff; stroke: #0b0c0e; stroke-width: .8; }
+.cm-path { fill: none; stroke: var(--accent); stroke-width: 1.4; stroke-linecap: round; opacity: .85; }
+.cm-cam { fill: var(--accent); stroke: #0b0c0e; stroke-width: 1.4; }
+.cm-cone { fill: color-mix(in srgb, var(--accent) 45%, transparent); }
+.cm-actor { fill: #fff; stroke: #0b0c0e; stroke-width: 1.2; }
+.cm-crowd { display: flex; align-items: center; gap: 3px; margin-top: 5px; padding: 0 1px; }
+.cm-crowd span { flex: 1; font-size: 9px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: rgba(255,255,255,.6); }
+.cm-crowd button { height: 17px; padding: 0 6px; border-radius: 5px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06); color: rgba(255,255,255,.8); font: inherit; font-size: 9px; cursor: pointer; }
+.cm-crowd button:hover { background: rgba(255,255,255,.14); color: #fff; }
+.cm-crowd button.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.cm-go { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin-top: 5px; }
+.cm-go button { display: flex; align-items: center; gap: 4px; min-width: 0; height: 19px; padding: 0 5px; border-radius: 5px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.85); font: inherit; font-size: 9.5px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cm-go button:hover { background: rgba(255,255,255,.14); color: #fff; }
+.cm-go button.on { border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+.cm-go button i { flex: none; width: 7px; height: 7px; border-radius: 2px; }
+@container pvstage (max-width: 380px) { .cm { transform: scale(.8); transform-origin: 0 100%; } .pv-flying .cm { display: none; } }
+/* Add props: what you placed (small orange dots), the selected one, the ghost you are placing (green, or red where it can't go) */
+.cm-mark-prop { fill: var(--accent); stroke: #0b0c0e; stroke-width: .8; } .cm-mark-prop.on { fill: #fff; stroke: var(--accent); stroke-width: 1.4; }
+.cm-mark-prop.ghost { fill: color-mix(in srgb, var(--success, #3ddc97) 55%, transparent); stroke: var(--success, #3ddc97); stroke-width: 1.2; }
+.cm-mark-prop.ghost.bad { fill: color-mix(in srgb, var(--error, #f06464) 55%, transparent); stroke: var(--error, #f06464); }

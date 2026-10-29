@@ -1,0 +1,26 @@
+/* The model menu's phone details (shared/ModelHoverCard.tsx InfoCardBody): inline under the row in the phone sheet (desktop: ModelPreviewCard).
+ * Calm surface like the menu; the only colour is the orange "Ready" mark. */
+.mhc{box-sizing:border-box;width:280px;padding:12px;border-radius:12px;background:#232427;border:1px solid #2e2f33;color:var(--text-1,#f2f2f3);font:400 12px/16px var(--font-sans,Inter,system-ui,sans-serif)}
+.mhc-h{display:flex;align-items:center;gap:10px}
+html body .mhc .mk-tile.mhc-ic{--mk-s:32px;width:32px!important;height:32px!important;flex:none;border-radius:8px!important;border:0!important;background:rgba(255,255,255,.05)!important;color:#9a9b9d!important}
+html body .mhc .mk-tile.mhc-ic .mk-svg,html body .mhc .mk-tile.mhc-ic .mk-svg svg{width:14px;height:14px}
+.mhc-n{display:flex;flex-direction:column;min-width:0}
+.mhc-n b{font:600 13px/18px var(--font-sans,Inter,sans-serif);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mhc-n small{font-size:11px;color:var(--text-2,#898a8b)}
+.mhc-d{margin:8px 0 0;color:var(--text-2,#a4a5a8)}
+.mhc-places{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column}
+.mhc-places li{display:flex;flex-wrap:wrap;align-items:center;gap:0 8px;min-height:30px;border-top:1px solid #2e2f33}
+.mhc-pic{flex:none;color:var(--text-3,#8b8b92)}
+.mhc-pl{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mhc-pr{display:flex;flex-direction:column;align-items:flex-end;text-align:right;padding:3px 0}
+.mhc-pr b{font-weight:600;white-space:nowrap}
+.mhc-ok,.mhc-need{font-size:11px;line-height:14px;white-space:nowrap}
+.mhc-ok{color:var(--accent,#FF7A1A)}
+.mhc-need{color:var(--text-2,#898a8b)}
+/* the price's detail line (prices in dollars, 2026-10-26): the place's own units, plan and price date, small under the row */
+.mhc-dt{flex:1 0 100%;margin:-2px 0 5px 22px;font-size:11px;line-height:14px;color:var(--text-3,#8b8b92)}
+/* phones: no hover. A small "i" on the row opens the card inline (hidden where a pointer can hover) */
+.orb .orb-i{display:none;flex:none;align-items:center;justify-content:center;width:32px;height:32px;margin:-4px -4px -4px 0;padding:0;border:0;border-radius:8px;background:none;color:var(--text-3,#8b8b92);cursor:pointer}
+.orb .orb-i.on,.orb .orb-i:focus-visible{color:var(--text-1,#f2f2f3);background:rgba(255,255,255,.06);outline:none}
+@media (max-width:640px),(hover:none){.orb .orb-i{display:inline-flex}}
+.orb .mhc-inline{width:auto;margin:2px 4px 6px 52px;background:rgba(255,255,255,.03)}

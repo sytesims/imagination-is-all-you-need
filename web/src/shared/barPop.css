@@ -1,0 +1,137 @@
+/* The small bar popovers (shared/BarPop.tsx): count, Settings, aspect, size, Run on, Enhance on Image, Video, Audio and 3D.
+ * The model menu's "Orbit" look (modelMenu.css): popover surface + blur, strong hairline, radius 16, uppercase Inter labels at +0.12em,
+ * Space Grotesk values, mono numbers. Orange only as a thin marker on a faint orange fill. Brand tokens only.
+ * Scoped under .apop.bp (doubled for weight) so the older .ic-pop-sm / .vs-apop rules never reach in. The section, segmented, row and switch
+ * rules also apply inside `.bp-host` (the Share sheet uses the same controls in a dialog); :is() keeps their weight unchanged. */
+html body .apop.bp.bp{--bp-mono:var(--font-mono,'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace);--bp-disp:var(--font-display,'Space Grotesk',Inter,system-ui,sans-serif);
+  background:var(--popover-bg,rgba(35,36,39,.95));-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border:1px solid var(--border-strong,rgba(255,255,255,.1));
+  border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.6);color:var(--text-1,#F7F7F8);font:500 13.5px/1.4 var(--font-sans,Inter,system-ui,sans-serif);min-width:0}
+html body .apop.bp.bp .apop-body{display:flex;flex-direction:column;gap:0;padding:6px;scrollbar-gutter:auto;overflow-y:auto}
+html body .apop.bp.bp.apop-sheet{border-radius:20px 20px 0 0}
+
+/* section: label row, then content; later sections get a hairline */
+:is(.apop.bp,.bp-host) .bp-sec{display:flex;flex-direction:column;gap:6px;min-width:0;padding:2px 0 6px}
+:is(.apop.bp,.bp-host) .bp-sec+.bp-sec{border-top:1px solid var(--border-strong,rgba(255,255,255,.1));padding-top:6px;margin-top:2px}
+:is(.apop.bp,.bp-host) .bp-sec:last-child{padding-bottom:2px}
+:is(.apop.bp,.bp-host) .bp-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;min-height:20px;padding:6px 8px 0}
+:is(.apop.bp,.bp-host) .bp-lbl{font:700 10.5px/14px var(--font-sans,Inter,system-ui,sans-serif);letter-spacing:.12em;text-transform:uppercase;color:var(--text-3,rgba(255,255,255,.5))}
+:is(.apop.bp,.bp-host) .bp-aside{font:600 12.5px/16px var(--bp-disp);color:var(--text-1,#F7F7F8);font-variant-numeric:tabular-nums;white-space:nowrap}
+:is(.apop.bp,.bp-host) .bp-aside .bp-mono,:is(.apop.bp,.bp-host) .bp-mono{font-family:var(--bp-mono);font-weight:500;font-variant-numeric:tabular-nums}
+:is(.apop.bp,.bp-host) .bp-note{margin:0;padding:0 8px;font:400 11.5px/16px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-2,#898A8B);overflow-wrap:anywhere}
+:is(.apop.bp,.bp-host) .bp-note-warn{color:var(--warning,#E8B44A)}
+
+/* segmented control: a quiet track, the picked option on a faint orange fill with a short orange bar under it */
+:is(.apop.bp,.bp-host) .bp-seg{display:grid;gap:2px;padding:3px;margin:0 2px;border-radius:12px;background:var(--fill,rgba(255,255,255,.05))}
+:is(.apop.bp,.bp-host) .bp-opt{all:unset;box-sizing:border-box;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:0;min-height:34px;padding:6px 6px;
+  border-radius:9px;cursor:pointer;color:var(--text-2,#898A8B);text-align:center;transition:background .12s ease,color .12s ease}
+:is(.apop.bp,.bp-host) .bp-opt-l{font:600 14px/18px var(--bp-disp);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+:is(.apop.bp,.bp-host) .bp-opt-h{font:400 11px/14px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-3,rgba(255,255,255,.5));white-space:normal}
+:is(.apop.bp,.bp-host) .bp-opt-a{font:500 11px/14px var(--bp-mono);font-style:normal;font-variant-numeric:tabular-nums;color:var(--text-3,rgba(255,255,255,.5));white-space:nowrap}
+:is(.apop.bp,.bp-host) .bp-opt-ic{display:grid;place-items:center;height:18px;color:currentColor;opacity:.85}
+:is(.apop.bp,.bp-host) .bp-seg-rich .bp-opt{padding:8px 6px 9px;justify-content:flex-start}
+:is(.apop.bp,.bp-host) .bp-opt:hover:not(:disabled){color:var(--text-1,#F7F7F8);background:rgba(255,255,255,.04)}
+:is(.apop.bp,.bp-host) .bp-opt.on{color:var(--text-1,#F7F7F8);background:var(--accent-faint,rgba(255,122,26,.1))}
+:is(.apop.bp,.bp-host) .bp-opt.on .bp-opt-h,:is(.apop.bp,.bp-host) .bp-opt.on .bp-opt-a{color:var(--text-2,#B4B5B8)}
+:is(.apop.bp,.bp-host) .bp-opt.on::after{content:"";position:absolute;left:50%;bottom:3px;width:14px;height:2px;margin-left:-7px;border-radius:2px;background:var(--accent,#FF7A1A)}
+:is(.apop.bp,.bp-host) .bp-opt:disabled{cursor:not-allowed;opacity:.35}
+:is(.apop.bp,.bp-host) .bp-opt:focus-visible,:is(.apop.bp,.bp-host) .bp-row:focus-visible,:is(.apop.bp,.bp-host) .bp-switch:has(input:focus-visible){outline:1.5px solid rgba(255,122,26,.6);outline-offset:-1.5px}
+
+/* list rows: the picked row = faint orange fill + a 3px orange bar on the left (as the model menu's picked row) */
+:is(.apop.bp,.bp-host) .bp-list{display:flex;flex-direction:column;gap:2px;min-width:0}
+:is(.apop.bp,.bp-host) .bp-list.bp-list-grid{display:grid;gap:2px}
+:is(.apop.bp,.bp-host) .bp-row{all:unset;box-sizing:border-box;position:relative;display:flex;align-items:center;gap:10px;min-width:0;min-height:36px;padding:7px 10px 7px 12px;border-radius:10px;cursor:pointer;color:var(--text-1,#F7F7F8);transition:background .12s ease}
+:is(.apop.bp,.bp-host) .bp-row:hover:not(:disabled){background:var(--fill,rgba(255,255,255,.05))}
+:is(.apop.bp,.bp-host) .bp-row.on{background:var(--accent-faint,rgba(255,122,26,.1))}
+:is(.apop.bp,.bp-host) .bp-row.on:hover{background:color-mix(in srgb,var(--accent,#FF7A1A) 14%,transparent)}
+:is(.apop.bp,.bp-host) .bp-row.on::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:3px;border-radius:3px;background:var(--accent,#FF7A1A)}
+:is(.apop.bp,.bp-host) .bp-row:disabled{cursor:not-allowed;opacity:.4}
+:is(.apop.bp,.bp-host) .bp-row-ic{flex:none;display:grid;place-items:center;width:18px;height:18px;color:var(--text-2,#898A8B)}
+:is(.apop.bp,.bp-host) .bp-row.on .bp-row-ic{color:var(--text-1,#F7F7F8)}
+:is(.apop.bp,.bp-host) .bp-row-t{flex:1 1 auto;display:flex;flex-direction:column;gap:1px;min-width:0;text-align:left}
+:is(.apop.bp,.bp-host) .bp-row-t>b{font:600 13.5px/18px var(--bp-disp);font-variant-numeric:tabular-nums;color:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+:is(.apop.bp,.bp-host) .bp-row-t>small{font:400 11.5px/15px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-3,rgba(255,255,255,.5));white-space:normal}
+:is(.apop.bp,.bp-host) .bp-row-a{flex:none;font:500 11.5px/16px var(--bp-mono);font-style:normal;font-variant-numeric:tabular-nums;color:var(--text-2,#898A8B);white-space:nowrap}
+
+/* switch row and action row */
+:is(.apop.bp,.bp-host) .bp-switch,:is(.apop.bp,.bp-host) .bp-action{position:relative;display:flex;align-items:center;gap:12px;min-width:0;padding:6px 8px;border-radius:10px}
+:is(.apop.bp,.bp-host) .bp-switch{cursor:pointer}
+:is(.apop.bp,.bp-host) .bp-switch:hover{background:var(--fill,rgba(255,255,255,.05))}
+:is(.apop.bp,.bp-host) .bp-switch input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+:is(.apop.bp,.bp-host) .bp-sw{flex:none;position:relative;width:32px;height:18px;border-radius:9px;background:rgba(255,255,255,.16);transition:background .15s ease}
+:is(.apop.bp,.bp-host) .bp-sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .15s ease}
+:is(.apop.bp,.bp-host) .bp-switch input:checked+.bp-sw{background:var(--accent,#FF7A1A)}
+:is(.apop.bp,.bp-host) .bp-switch input:checked+.bp-sw::after{transform:translateX(14px)}
+:is(.apop.bp,.bp-host) .bp-action .enhance-btn{flex:none}
+
+/* content the popover keeps from its page (3D seed field, Audio voice controls, legacy rows): the same label and row look */
+.apop.bp .ic-pop-h{display:block;padding:6px 8px 2px;font:700 10.5px/14px var(--font-sans,Inter,system-ui,sans-serif)!important;letter-spacing:.12em!important;text-transform:uppercase!important;color:var(--text-3,rgba(255,255,255,.5))!important;opacity:1}
+:is(.apop.bp,.bp-host) .bp-field{display:grid;gap:4px;padding:0 8px}
+:is(.apop.bp,.bp-host) .bp-field input{box-sizing:border-box;height:34px;padding:0 10px;border-radius:10px;border:0;background:var(--fill,rgba(255,255,255,.05));color:var(--text-1,#F7F7F8);font:500 13px/18px var(--bp-mono);font-variant-numeric:tabular-nums;outline:none}
+:is(.apop.bp,.bp-host) .bp-field input:focus-visible{box-shadow:inset 0 0 0 1px var(--border-strong,rgba(255,255,255,.1)),0 0 0 2px rgba(255,122,26,.5)}
+:is(.apop.bp,.bp-host) .bp-field small{font:400 11.5px/15px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-3,rgba(255,255,255,.5))}
+:is(.apop.bp,.bp-host) .bp-fact{margin:0;padding:0 8px;font:500 12.5px/17px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-2,#898A8B)}
+:is(.apop.bp,.bp-host) .bp-fact b{font:600 13px/17px var(--bp-disp);color:var(--text-1,#F7F7F8)}
+
+/* Run on (routing/RunOn.tsx) in the same surface: Orbit labels and the picked place marked with the thin bar */
+html body .apop.bp.bp.apop-runon .apop-body{padding:4px 2px}
+.apop.bp.apop-runon .ro-h{padding:10px 12px 6px;font:600 13.5px/18px var(--bp-disp)}
+.apop.bp.apop-runon .ro-h small{font:400 11.5px/16px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-2,#898A8B);margin-top:2px}
+.apop.bp.apop-runon .ro-g+.ro-g{border-top:1px solid var(--border-strong,rgba(255,255,255,.1));margin-top:4px;padding-top:2px}
+.apop.bp.apop-runon .ro-grp{padding:10px 14px 4px;font:700 10.5px/14px var(--font-sans,Inter,system-ui,sans-serif);letter-spacing:.12em;color:var(--text-3,rgba(255,255,255,.5))}
+.apop.bp.apop-runon .ro-opt{position:relative;margin:0 4px}
+.apop.bp.apop-runon .ro-opt:hover{background:var(--fill,rgba(255,255,255,.05))}
+.apop.bp.apop-runon .ro-opt.on{background:var(--accent-faint,rgba(255,122,26,.1));box-shadow:none}
+.apop.bp.apop-runon .ro-opt.on::before{content:"";position:absolute;left:0;top:11px;bottom:11px;width:3px;border-radius:3px;background:var(--accent,#FF7A1A)}
+.apop.bp.apop-runon .ro-opt:focus-visible{box-shadow:none;outline:2px solid rgba(255,122,26,.7);outline-offset:-2px}
+.apop.bp.apop-runon .ro-ol{font:600 13.5px/18px var(--bp-disp)}
+.apop.bp.apop-runon .ro-op{font-family:var(--bp-mono);font-variant-numeric:tabular-nums}
+.apop.bp.apop-runon .ro-os{font-size:11.5px;line-height:15px;color:var(--text-3,rgba(255,255,255,.5))}
+
+/* phones: 44px targets */
+@media (max-width:639px){:is(.apop.bp,.bp-host) .bp-opt{min-height:44px}:is(.apop.bp,.bp-host) .bp-row{min-height:44px}}
+.apop.bp.apop-runon .ro-opt.on .ro-rad{border-color:var(--text-1,#F7F7F8);background:var(--text-1,#F7F7F8);box-shadow:inset 0 0 0 3px #2a2b2e}
+:is(.apop.bp,.bp-host) .bp-wrap{display:flex;flex-direction:column;min-width:0}
+:is(.apop.bp,.bp-host) .bp-total{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:2px 0 0;padding:4px 8px 0;font:600 13.5px/18px var(--bp-disp);color:var(--text-1,#F7F7F8);font-variant-numeric:tabular-nums}
+:is(.apop.bp,.bp-host) .bp-total b{font:500 13px/18px var(--bp-mono);color:var(--text-1,#F7F7F8);white-space:nowrap}
+html body .apop.bp.bp.vs-apop-dur .apop-body{padding:0;overflow:visible}
+:is(.apop.bp,.bp-host) .bp-row-ic:has(img){width:28px;height:28px}
+:is(.apop.bp,.bp-host) .bp-row-ic img{width:28px;height:28px;object-fit:cover;border-radius:6px}
+/* a slider section (Audio speed / pitch / volume) */
+.apop.bp .as-tile-pop2{padding:2px 8px 6px}
+.apop.bp .as-tile-pop2 .bp-head{padding:6px 0 0}
+.apop.bp .as-tile-pop2 input[type=range]{width:100%;accent-color:var(--accent,#FF7A1A)}
+.apop.bp .as-tile-pop2 .as-tp-k{display:flex;justify-content:space-between;align-items:center;font:500 11.5px/16px var(--bp-mono);color:var(--text-3,rgba(255,255,255,.5))}
+.apop.bp .as-tile-pop2 .as-tp-k button{all:unset;cursor:pointer;font:600 11.5px/16px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-2,#898A8B);padding:2px 6px;border-radius:6px}
+.apop.bp .as-tile-pop2 .as-tp-k button:hover{color:var(--text-1,#F7F7F8);background:var(--fill,rgba(255,255,255,.05))}
+:is(.apop.bp,.bp-host) .bp-total b.bp-word{font:600 13px/18px var(--bp-disp);color:var(--text-2,#898A8B)}
+
+/* long aspect lists (BarPop groupAspects): a Wide | Tall label row over the two columns; an empty cell where a shape has no twin */
+:is(.apop.bp,.bp-host) .bp-ar-cols{display:grid;grid-template-columns:1fr 1fr;gap:2px;padding:4px 12px 0}
+:is(.apop.bp,.bp-host) .bp-ar-cols span{font:700 10px/14px var(--font-sans,Inter,system-ui,sans-serif);letter-spacing:.12em;text-transform:uppercase;color:var(--text-3,rgba(255,255,255,.5))}
+:is(.apop.bp,.bp-host) .bp-ar-gap{display:block;min-height:36px}
+
+/* model options (ModelOptions.tsx): a small labelled control per option; colours as round swatches over the native picker */
+:is(.apop.bp,.bp-host) .mo-same{font:500 11px/14px var(--bp-mono);color:var(--text-3,rgba(255,255,255,.5));letter-spacing:0;text-transform:none}
+:is(.apop.bp,.bp-host) .mo-opt{display:grid;gap:4px;padding:2px 0 4px}
+:is(.apop.bp,.bp-host) .mo-l{padding:0 8px;font:600 13px/18px var(--bp-disp);color:var(--text-1,#F7F7F8)}
+:is(.apop.bp,.bp-host) .mo-h{padding:0 8px;font:400 11.5px/15px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-3,rgba(255,255,255,.5))}
+:is(.apop.bp,.bp-host) .mo-row{display:flex;align-items:center;gap:10px;min-width:0;padding:6px 8px;border-radius:10px}
+:is(.apop.bp,.bp-host) .mo-sws{display:flex;align-items:center;gap:6px;flex:none}
+:is(.apop.bp,.bp-host) .mo-sw-wrap{position:relative;display:inline-flex}
+:is(.apop.bp,.bp-host) .mo-sw{position:relative;flex:none;width:24px;height:24px;border-radius:50%;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);transition:transform .12s ease}
+:is(.apop.bp,.bp-host) .mo-sw:hover{transform:scale(1.08)}
+:is(.apop.bp,.bp-host) .mo-sw:has(input:focus-visible){outline:1.5px solid rgba(255,122,26,.7);outline-offset:2px}
+:is(.apop.bp,.bp-host) .mo-sw input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0}
+:is(.apop.bp,.bp-host) .mo-sw-none{background:var(--fill,rgba(255,255,255,.05));box-shadow:inset 0 0 0 1px var(--border,rgba(255,255,255,.16))}
+:is(.apop.bp,.bp-host) .mo-sw-none::after{content:"+";position:absolute;inset:0;display:grid;place-items:center;font:500 15px/1 var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-2,#898A8B);pointer-events:none}
+:is(.apop.bp,.bp-host) .mo-x{all:unset;position:absolute;top:-5px;right:-5px;width:14px;height:14px;border-radius:50%;display:none;place-items:center;cursor:pointer;
+  font:600 10px/1 var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-1,#F7F7F8);background:var(--surface-3,#2a2b2e);box-shadow:0 0 0 1px var(--border,rgba(255,255,255,.16))}
+:is(.apop.bp,.bp-host) .mo-sw-wrap:hover .mo-x,:is(.apop.bp,.bp-host) .mo-x:focus-visible{display:grid}
+:is(.apop.bp,.bp-host) .mo-clear{all:unset;flex:none;padding:3px 8px;border-radius:8px;cursor:pointer;font:500 12px/16px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-2,#898A8B)}
+:is(.apop.bp,.bp-host) .mo-clear:hover{color:var(--text-1,#F7F7F8);background:var(--fill,rgba(255,255,255,.05))}
+:is(.apop.bp,.bp-host) .mo-clear:focus-visible{outline:1.5px solid rgba(255,122,26,.6)}
+:is(.apop.bp,.bp-host) .mo-in{all:unset;box-sizing:border-box;margin:0 8px;padding:7px 10px;border-radius:10px;min-width:0;font:400 13px/18px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-1,#F7F7F8);background:var(--fill,rgba(255,255,255,.05));box-shadow:inset 0 0 0 1px var(--border,rgba(255,255,255,.12))}
+:is(.apop.bp,.bp-host) .mo-in::placeholder{color:var(--text-3,rgba(255,255,255,.4))}
+:is(.apop.bp,.bp-host) .mo-in:focus-visible{box-shadow:inset 0 0 0 1.5px rgba(255,122,26,.7)}
+:is(.apop.bp,.bp-host) .mo-tight .bp-opt{padding:6px 2px}
+:is(.apop.bp,.bp-host) .mo-tight .bp-opt-l{font-size:13px;overflow:visible}

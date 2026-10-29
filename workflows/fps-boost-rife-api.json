@@ -1,0 +1,68 @@
+{
+ "1": {
+  "class_type": "LoadVideo",
+  "inputs": {
+   "file": "oj_source.mp4"
+  },
+  "_meta": {
+   "title": "Load Video"
+  }
+ },
+ "2": {
+  "class_type": "GetVideoComponents",
+  "inputs": {
+   "video": [
+    "1",
+    0
+   ]
+  }
+ },
+ "3": {
+  "class_type": "RIFE VFI",
+  "inputs": {
+   "ckpt_name": "rife49.pth",
+   "clear_cache_after_n_frames": 10,
+   "multiplier": 2,
+   "fast_mode": true,
+   "ensemble": true,
+   "scale_factor": 1.0,
+   "dtype": "float32",
+   "torch_compile": false,
+   "batch_size": 1,
+   "frames": [
+    "2",
+    0
+   ]
+  },
+  "_meta": {
+   "title": "OpenHiggsfield \u00b7 FPS Boost (RIFE, multiplier = target fps / source fps)"
+  }
+ },
+ "4": {
+  "class_type": "CreateVideo",
+  "inputs": {
+   "fps": 60.0,
+   "bit_depth": 8,
+   "images": [
+    "3",
+    0
+   ],
+   "audio": [
+    "2",
+    1
+   ]
+  }
+ },
+ "5": {
+  "class_type": "SaveVideo",
+  "inputs": {
+   "filename_prefix": "openhiggsfield/fps-boost",
+   "format": "auto",
+   "format.codec": "auto",
+   "video": [
+    "4",
+    0
+   ]
+  }
+ }
+}

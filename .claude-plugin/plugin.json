@@ -1,0 +1,15 @@
+{
+  "name": "imagination",
+  "version": "0.1.0",
+  "description": "Imagination Is All You Need for Claude Code: the studio MCP server (prices first, paid runs need a quote) and creative skills.",
+  "author": {
+    "name": "sytesims"
+  },
+  "license": "AGPL-3.0-or-later",
+  "mcpServers": {
+    "imagination": {
+      "type": "http",
+      "url": "http://127.0.0.1:8788/mcp"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+# Preserve bundled media/model bytes on every platform.
+*.bin binary
+*.glb binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.mp4 binary
+*.webm binary
+*.mp3 binary
+*.wav binary
+*.m4a binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+
+# Shell scripts and patch files need stable LF line endings on Windows too.
+*.sh text eol=lf
+*.ps1 text eol=lf
+*.patch text eol=lf

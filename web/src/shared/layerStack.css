@@ -1,0 +1,39 @@
+/* Image to layers (shared/LayerStack.tsx): the feed card's count, the viewer's stacked canvas and layer list. */
+/* feed card: the composite (every layer in order, the server's poster) and the "N layers" chip; on hover the picture lifts off two sheets (a cheap "peel") */
+.ly-count{position:absolute;left:8px;bottom:8px;z-index:2;display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:999px;background:rgba(10,10,12,.72);backdrop-filter:blur(6px);color:#fff;font:600 12px/24px var(--font-ui);pointer-events:auto}
+html body .ly-tile .ic-tile-hit img{transition:transform .18s ease,box-shadow .18s ease}
+html body .ly-tile:hover .ic-tile-hit img{transform:scale(.9) translate(-8px,-8px);border-radius:6px;box-shadow:7px 7px 0 rgba(255,255,255,.28),14px 14px 0 rgba(255,255,255,.12)}
+@media (prefers-reduced-motion:reduce){html body .ly-tile .ic-tile-hit img{transition:none}}
+/* viewer stage: every visible layer stacked in order; the selected layer's box outlined */
+html body .ly-canvas{position:relative;border-radius:10px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.45)}
+html body .ly-canvas>img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;user-select:none;transition:opacity .15s}
+html body .ly-canvas>img.ly-off{opacity:0}
+html body .ly-box{position:absolute;box-sizing:border-box;border:2px solid var(--accent,#FF7A1A);border-radius:2px;box-shadow:0 0 0 9999px rgba(0,0,0,.28);pointer-events:none;transition:all .15s}
+html body .ly-box b{position:absolute;left:-2px;bottom:100%;max-width:min(320px,90vw);padding:2px 7px;border-radius:4px 4px 0 0;background:var(--accent,#FF7A1A);color:var(--on-accent);font:600 11px/16px var(--font-ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html body .ly-none{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.7);font:500 13px/1 var(--font-ui)}
+/* viewer panel: the layer list */
+html body .ly-n{font-weight:500;letter-spacing:0;color:var(--text-3,#8a8a8a);margin-left:2px}
+html body .ly-rows{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;max-height:min(46vh,420px);overflow:auto}
+html body .ly-row{display:flex;align-items:center;gap:6px;min-height:52px;padding:4px 6px;border-radius:10px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px transparent}
+html body .ly-row.on{background:var(--accent-faint,rgba(255,122,26,.1));box-shadow:inset 0 0 0 1px var(--accent,#FF7A1A)}
+html body .ly-pick{all:unset;box-sizing:border-box;cursor:pointer;flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:10px;padding:2px 4px;border-radius:8px}
+html body .ly-pick:hover{background:rgba(255,255,255,.06)}
+html body .ly-pick:focus-visible{outline:2px solid #fff;outline-offset:1px}
+html body .ly-bulk{display:inline-flex;gap:6px}
+html body .ly-row.off .ly-thumb,html body .ly-row.off .ly-name{opacity:.45}
+html body .ly-eye,html body .ly-dl{all:unset;box-sizing:border-box;cursor:pointer;flex:0 0 auto;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px;color:#fff}
+html body .ly-eye:hover,html body .ly-dl:hover{background:rgba(255,255,255,.1)}
+html body .ly-eye:focus-visible,html body .ly-dl:focus-visible,html body .ly-all:focus-visible{outline:2px solid #fff;outline-offset:1px}
+html body .ly-row.off .ly-eye{color:rgba(255,255,255,.55)}
+html body .ly-thumb{flex:0 0 auto;width:44px;height:44px;border-radius:6px;--ly-check:6px}
+html body .ly-name{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
+html body .ly-name b{font:500 13px/16px var(--font-ui);color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html body .ly-name small{font:400 11px/14px var(--font-ui);color:var(--text-2,#a3a3a3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html body .ly-alls{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+html body .ly-all{all:unset;box-sizing:border-box;cursor:pointer;display:flex;min-width:0;white-space:nowrap;align-items:center;justify-content:center;gap:8px;height:38px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:#fff;font:500 13px/1 var(--font-ui)}
+html body .ly-all:hover{background:rgba(255,255,255,.09)}
+html body .ly-all[disabled]{cursor:progress;opacity:.7}
+/* LayerTile (shared): one layer cropped to its content, contained, on a light transparency checkerboard (dark text and logos read on it) */
+.alpha-bg-light{background-color:#f6f6f8;background-image:linear-gradient(45deg,#e9e9ec 25%,transparent 25%),linear-gradient(-45deg,#e9e9ec 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e9e9ec 75%),linear-gradient(-45deg,transparent 75%,#e9e9ec 75%);background-size:calc(var(--ly-check,10px) * 2) calc(var(--ly-check,10px) * 2);background-position:0 0,0 var(--ly-check,10px),var(--ly-check,10px) calc(var(--ly-check,10px) * -1),calc(var(--ly-check,10px) * -1) 0}
+.ly-tile-pic{position:relative;display:block;overflow:hidden;box-sizing:border-box}
+.ly-tile-pic>svg,.ly-tile-pic>img{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:contain;pointer-events:none;user-select:none}

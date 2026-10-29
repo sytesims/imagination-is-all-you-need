@@ -1,0 +1,2 @@
+{"_fixture": "HAND-WRITTEN from public docs, not a recorded live response", "_source": "https://www.alibabacloud.com/help/en/model-studio/qwen-tts (response.json()['output']['audio']['url'])",
+ "output": {"audio": {"url": "https://example.invalid/dashscope/output.wav"}}, "request_id": "hand-written"}

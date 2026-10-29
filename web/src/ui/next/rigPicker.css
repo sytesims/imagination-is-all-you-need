@@ -1,0 +1,50 @@
+/* Camera & Lens picker (RigPicker.tsx): a compact popover, one section at a time. Rail of sections on the left (each with its pick),
+ * chips on the right; the pane scrolls on its own so the panel never grows past the window. */
+@media (min-width:640px){.apop.rg-pop{width:min(600px,calc(100vw - 16px))}.apop.rg-pop .apop-body{overflow:hidden;display:flex}}
+.rg{display:flex;flex-direction:column;width:100%;height:min(440px,calc(var(--apop-max,440px) - 2px));min-height:0;font:400 13px/18px var(--font-ui,Inter,system-ui,sans-serif);color:#f3f3f5}
+.rg-top{display:flex;gap:8px;align-items:center;padding:10px 10px 8px;border-bottom:1px solid rgba(255,255,255,.06)}
+.rg-q{flex:1;min-width:0;height:32px;box-sizing:border-box;border-radius:9px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#fff;padding:0 10px;font:inherit;outline:none}
+.rg-q::placeholder{color:#9a9ca3}
+.rg-q:focus-visible{border-color:var(--accent,#FF7A1A)}
+.rg-reset{height:32px;padding:0 12px;border-radius:9px;border:1px solid rgba(255,255,255,.1);background:transparent;color:#e7e8ea;font:500 12px/1 var(--font-ui,Inter,system-ui,sans-serif);cursor:pointer}
+.rg-reset:hover:not(:disabled){background:rgba(255,255,255,.06)}
+.rg-reset:disabled{opacity:.4;cursor:default}
+.rg-main{flex:1;min-height:0;display:grid;grid-template-columns:150px 1fr}
+.rg-rail{display:flex;flex-direction:column;gap:1px;padding:6px;border-right:1px solid rgba(255,255,255,.06);overflow:auto;scrollbar-width:thin}
+.rg-tab{display:flex;flex-direction:column;align-items:flex-start;gap:0;padding:5px 10px;flex:none;border:0;border-radius:9px;background:transparent;color:#b7b9bf;text-align:left;cursor:pointer;min-width:0}
+.rg-tab span{font:500 12px/15px var(--font-ui,Inter,system-ui,sans-serif)}
+.rg-tab b{font:500 12px/15px var(--font-ui,Inter,system-ui,sans-serif);color:#8e9097;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rg-tab.set b{color:var(--accent,#FF7A1A)}
+.rg-tab:hover{background:rgba(255,255,255,.05);color:#fff}
+.rg-tab.on{background:rgba(255,255,255,.08);color:#fff}
+.rg-tab:focus-visible,.rg-chip:focus-visible,.rg-reset:focus-visible{outline:2px solid var(--accent,#FF7A1A);outline-offset:1px}
+.rg-pane{min-width:0;overflow:auto;padding:10px 12px 12px;scrollbar-width:thin;scrollbar-gutter:stable}
+.rg-grp+.rg-grp{margin-top:10px}
+.rg-gh,.rg-sh{display:block;margin:0 0 6px;font:500 11px/14px var(--font-ui,Inter,system-ui,sans-serif);color:#9a9ca3;letter-spacing:.02em}
+.rg-sh{color:#e7e8ea;font-size:12px}
+.rg-hit+.rg-hit{margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06)}
+.rg-chips{display:flex;flex-wrap:wrap;gap:6px}
+.rg-chip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 11px;border-radius:999px;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.04);color:#e9eaec;font:500 12.5px/1 var(--font-ui,Inter,system-ui,sans-serif);cursor:pointer;white-space:nowrap}
+.rg-chip.has-ic{padding-left:6px}
+.rg-chip:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.14)}
+.rg-chip.on{background:var(--accent-soft,rgba(255,122,26,.2));border-color:var(--accent,#FF7A1A);color:#fff}
+.rg-chip.on .rg-ic{color:var(--accent,#FF7A1A)}
+.rg-ic{flex:none;display:block;color:#cfd1d6}
+.rg-era{width:18px;height:18px;border-radius:5px;background-size:40px 40px,cover;background-blend-mode:overlay,normal;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+.rg-empty{margin:8px 2px;color:#b7b9bf}
+.rg-foot{margin:0;padding:8px 12px 2px;border-top:1px solid rgba(255,255,255,.06);color:#d5d6da;font-size:12px;line-height:16px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rg-foot span{color:#9a9ca3;margin-right:2px}
+.rg-note{margin:0;padding:2px 12px 10px;color:#9a9ca3;font-size:11.5px;line-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rg-note a{color:#d5d6da;text-decoration:underline;text-underline-offset:2px}
+/* phones: the popover is a bottom sheet; the rail becomes a sideways strip above the chips */
+@media (max-width:639px){
+  .rg{height:auto;max-height:calc(80vh - 56px)}
+  .rg-main{display:flex;flex-direction:column}
+  .rg-rail{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid rgba(255,255,255,.06);flex:none}
+  .rg-tab{flex:none}
+  .rg-pane{flex:1;min-height:160px}
+  .rg-note{white-space:normal}
+}
+/* the bar's ⋯: a dot while a folded chip holds a setting (Camera & Lens set away from the default) */
+.ic-chips:has(.ic-folded[data-set]) .ic-over{position:relative}
+.ic-chips:has(.ic-folded[data-set]) .ic-over::after{content:'';position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:var(--accent,#FF7A1A);box-shadow:0 0 0 2px #232427}

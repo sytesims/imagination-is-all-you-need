@@ -1,0 +1,36 @@
+{
+  "workflowFile": "create-image-flux3klein-t2i-api.json",
+  "template": "image_flux3_klein_distilled_t2i",
+  "model": "FLUX 3 Image Klein (FLUX Kommunity License v1.0)",
+  "inputs": {
+    "prompt": {
+      "node": "18:17",
+      "field": "value"
+    },
+    "upsample": {
+      "node": "18:16",
+      "field": "switch"
+    }
+  },
+  "boxes": {
+    "node": "23",
+    "field": "bboxes",
+    "layout": "25",
+    "prompt": "18:17"
+  },
+  "size": {
+    "node": "18:6",
+    "fields": [
+      "width",
+      "height"
+    ],
+    "note": "plain ints override the ResolutionSelector link; multiple of 16, up to native 4K"
+  },
+  "seed": {
+    "node": "18:7",
+    "field": "seed"
+  },
+  "output": {
+    "node": "9"
+  }
+}

@@ -1,0 +1,681 @@
+{
+  "1": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
+      "weight_dtype": "default"
+    },
+    "_meta": {
+      "title": "Load LTX-2.5 22B distilled (int8 ConvRot, Comfy Cloud)"
+    }
+  },
+  "2": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "lora_name": "Lightricks__LTX-2.5-22b-IC-LoRA-Layout-To-Render__ltx-2.5-22b-ic-lora-layout-to-render-1.0.safetensors",
+      "strength_model": 1.0
+    },
+    "_meta": {
+      "title": "Layout to Render IC-LoRA (your Comfy Cloud import)"
+    }
+  },
+  "3": {
+    "class_type": "GetICLoRAParameters",
+    "inputs": {
+      "iclora_model": [
+        "2",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "IC-LoRA parameters"
+    }
+  },
+  "4": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors",
+      "type": "ltxv",
+      "device": "default"
+    },
+    "_meta": {
+      "title": "Load Gemma 4 12B text encoder (bf16)"
+    }
+  },
+  "5": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "ltx-2.5-video-vae-bf16.safetensors"
+    },
+    "_meta": {
+      "title": "Load LTX-2.5 video VAE"
+    }
+  },
+  "6": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "ltx-2.5-audio-vae-bf16.safetensors"
+    },
+    "_meta": {
+      "title": "Load LTX-2.5 audio VAE"
+    }
+  },
+  "7": {
+    "class_type": "LatentUpscaleModelLoader",
+    "inputs": {
+      "model_name": "ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors"
+    },
+    "_meta": {
+      "title": "Load x2 latent upscaler"
+    }
+  },
+  "10": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "",
+      "clip": [
+        "4",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Prompt"
+    }
+  },
+  "11": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "pc game, console game, video game, cartoon, childish, ugly",
+      "clip": [
+        "4",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Negative prompt"
+    }
+  },
+  "12": {
+    "class_type": "LTXVConditioning",
+    "inputs": {
+      "positive": [
+        "10",
+        0
+      ],
+      "negative": [
+        "11",
+        0
+      ],
+      "frame_rate": 24
+    },
+    "_meta": {
+      "title": "Frame rate"
+    }
+  },
+  "20": {
+    "class_type": "LoadVideo",
+    "inputs": {
+      "file": "layout.mp4"
+    },
+    "_meta": {
+      "title": "Load layout video (clay)"
+    }
+  },
+  "21": {
+    "class_type": "GetVideoComponents",
+    "inputs": {
+      "video": [
+        "20",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Layout frames"
+    }
+  },
+  "22": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "first-frame.png"
+    },
+    "_meta": {
+      "title": "First frame (art-directed look still)"
+    }
+  },
+  "23": {
+    "class_type": "ImageScale",
+    "inputs": {
+      "image": [
+        "22",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "width": 384,
+      "height": 224,
+      "crop": "center"
+    },
+    "_meta": {
+      "title": "First frame at stage 1 size"
+    }
+  },
+  "24": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": [
+        "23",
+        0
+      ],
+      "vae": [
+        "5",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Encode first frame (stage 1)"
+    }
+  },
+  "25": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": [
+        "22",
+        0
+      ],
+      "vae": [
+        "5",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Encode first frame (stage 2)"
+    }
+  },
+  "30": {
+    "class_type": "EmptyLTXVLatentVideo",
+    "inputs": {
+      "width": 384,
+      "height": 224,
+      "length": 65,
+      "batch_size": 1
+    },
+    "_meta": {
+      "title": "Stage 1 latent (half size)"
+    }
+  },
+  "31": {
+    "class_type": "LTXVAddLatentGuide",
+    "inputs": {
+      "positive": [
+        "12",
+        0
+      ],
+      "negative": [
+        "12",
+        1
+      ],
+      "vae": [
+        "5",
+        0
+      ],
+      "latent": [
+        "30",
+        0
+      ],
+      "guiding_latent": [
+        "24",
+        0
+      ],
+      "latent_idx": -1,
+      "strength": 1.0
+    },
+    "_meta": {
+      "title": "Stage 1 first frame (before the clip)"
+    }
+  },
+  "32": {
+    "class_type": "LTXVAddGuide",
+    "inputs": {
+      "positive": [
+        "31",
+        0
+      ],
+      "negative": [
+        "31",
+        1
+      ],
+      "vae": [
+        "5",
+        0
+      ],
+      "latent": [
+        "31",
+        2
+      ],
+      "image": [
+        "21",
+        0
+      ],
+      "frame_idx": 0,
+      "strength": 1.0,
+      "iclora_parameters": [
+        "3",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Stage 1 layout guide"
+    }
+  },
+  "33": {
+    "class_type": "LTXVEmptyLatentAudio",
+    "inputs": {
+      "frames_number": 65,
+      "frame_rate": 24,
+      "batch_size": 1,
+      "audio_vae": [
+        "6",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Audio latent"
+    }
+  },
+  "34": {
+    "class_type": "LTXVConcatAVLatent",
+    "inputs": {
+      "video_latent": [
+        "32",
+        2
+      ],
+      "audio_latent": [
+        "33",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Stage 1 video + audio"
+    }
+  },
+  "35": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 42
+    },
+    "_meta": {
+      "title": "Seed (stage 1)"
+    }
+  },
+  "36": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler_ancestral"
+    },
+    "_meta": {
+      "title": "Sampler"
+    }
+  },
+  "37": {
+    "class_type": "ManualSigmas",
+    "inputs": {
+      "sigmas": "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0"
+    },
+    "_meta": {
+      "title": "Stage 1 sigmas (8 steps)"
+    }
+  },
+  "38": {
+    "class_type": "LTXVDualCFGGuider",
+    "inputs": {
+      "model": [
+        "2",
+        0
+      ],
+      "positive": [
+        "32",
+        0
+      ],
+      "negative": [
+        "32",
+        1
+      ],
+      "video_cfg": 1,
+      "audio_cfg": 1
+    },
+    "_meta": {
+      "title": "Stage 1 guider (CFG 1)"
+    }
+  },
+  "39": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "35",
+        0
+      ],
+      "guider": [
+        "38",
+        0
+      ],
+      "sampler": [
+        "36",
+        0
+      ],
+      "sigmas": [
+        "37",
+        0
+      ],
+      "latent_image": [
+        "34",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Stage 1 sample"
+    }
+  },
+  "40": {
+    "class_type": "LTXVSeparateAVLatent",
+    "inputs": {
+      "av_latent": [
+        "39",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Stage 1 split"
+    }
+  },
+  "41": {
+    "class_type": "LTXVCropGuides",
+    "inputs": {
+      "positive": [
+        "32",
+        0
+      ],
+      "negative": [
+        "32",
+        1
+      ],
+      "latent": [
+        "40",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Stage 1 drop guides"
+    }
+  },
+  "50": {
+    "class_type": "LTXVLatentUpsampler",
+    "inputs": {
+      "samples": [
+        "41",
+        2
+      ],
+      "upscale_model": [
+        "7",
+        0
+      ],
+      "vae": [
+        "5",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "x2 latent upscale"
+    }
+  },
+  "51": {
+    "class_type": "LTXVAddLatentGuide",
+    "inputs": {
+      "positive": [
+        "41",
+        0
+      ],
+      "negative": [
+        "41",
+        1
+      ],
+      "vae": [
+        "5",
+        0
+      ],
+      "latent": [
+        "50",
+        0
+      ],
+      "guiding_latent": [
+        "25",
+        0
+      ],
+      "latent_idx": -1,
+      "strength": 1.0
+    },
+    "_meta": {
+      "title": "Stage 2 first frame (before the clip)"
+    }
+  },
+  "52": {
+    "class_type": "LTXVAddGuide",
+    "inputs": {
+      "positive": [
+        "51",
+        0
+      ],
+      "negative": [
+        "51",
+        1
+      ],
+      "vae": [
+        "5",
+        0
+      ],
+      "latent": [
+        "51",
+        2
+      ],
+      "image": [
+        "21",
+        0
+      ],
+      "frame_idx": 0,
+      "strength": 1.0,
+      "iclora_parameters": [
+        "3",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Stage 2 layout guide"
+    }
+  },
+  "53": {
+    "class_type": "LTXVConcatAVLatent",
+    "inputs": {
+      "video_latent": [
+        "52",
+        2
+      ],
+      "audio_latent": [
+        "40",
+        1
+      ]
+    },
+    "_meta": {
+      "title": "Stage 2 video + audio"
+    }
+  },
+  "54": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 43
+    },
+    "_meta": {
+      "title": "Seed (stage 2)"
+    }
+  },
+  "55": {
+    "class_type": "ManualSigmas",
+    "inputs": {
+      "sigmas": "0.909375, 0.725, 0.421875, 0.0"
+    },
+    "_meta": {
+      "title": "Stage 2 sigmas (3 steps)"
+    }
+  },
+  "56": {
+    "class_type": "LTXVDualCFGGuider",
+    "inputs": {
+      "model": [
+        "2",
+        0
+      ],
+      "positive": [
+        "52",
+        0
+      ],
+      "negative": [
+        "52",
+        1
+      ],
+      "video_cfg": 1,
+      "audio_cfg": 1
+    },
+    "_meta": {
+      "title": "Stage 2 guider (CFG 1)"
+    }
+  },
+  "57": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "54",
+        0
+      ],
+      "guider": [
+        "56",
+        0
+      ],
+      "sampler": [
+        "36",
+        0
+      ],
+      "sigmas": [
+        "55",
+        0
+      ],
+      "latent_image": [
+        "53",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Stage 2 sample"
+    }
+  },
+  "58": {
+    "class_type": "LTXVSeparateAVLatent",
+    "inputs": {
+      "av_latent": [
+        "57",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Stage 2 split"
+    }
+  },
+  "59": {
+    "class_type": "LTXVCropGuides",
+    "inputs": {
+      "positive": [
+        "52",
+        0
+      ],
+      "negative": [
+        "52",
+        1
+      ],
+      "latent": [
+        "58",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Stage 2 drop guides"
+    }
+  },
+  "60": {
+    "class_type": "VAEDecodeTiled",
+    "inputs": {
+      "samples": [
+        "59",
+        2
+      ],
+      "vae": [
+        "5",
+        0
+      ],
+      "tile_size": 512,
+      "overlap": 64,
+      "temporal_size": 64,
+      "temporal_overlap": 16
+    },
+    "_meta": {
+      "title": "Decode video (tiled)"
+    }
+  },
+  "61": {
+    "class_type": "LTXVAudioVAEDecode",
+    "inputs": {
+      "samples": [
+        "58",
+        1
+      ],
+      "audio_vae": [
+        "6",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Decode audio"
+    }
+  },
+  "62": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "images": [
+        "60",
+        0
+      ],
+      "audio": [
+        "61",
+        0
+      ],
+      "fps": 24
+    },
+    "_meta": {
+      "title": "Video"
+    }
+  },
+  "63": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": [
+        "62",
+        0
+      ],
+      "filename_prefix": "openhiggsfield/make-it-real-cloud",
+      "format": "auto",
+      "format.codec": "auto"
+    },
+    "_meta": {
+      "title": "Save video"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+/* Talking Video (Lip Sync on InfiniteTalk): the Speech popover (TalkingExtra.tsx). Brand tokens only. */
+:is(.apop.bp,.bp-host) .tv-script{box-sizing:border-box;width:100%;min-height:84px;max-height:200px;resize:vertical;margin:2px 0 4px;padding:8px 10px;border-radius:10px;border:1px solid var(--border-1,rgba(255,255,255,.12));background:var(--surface-2,rgba(255,255,255,.04));color:var(--text-1,#E6E6E6);font:400 13px/19px var(--font-sans,Inter,system-ui,sans-serif)}
+:is(.apop.bp,.bp-host) .tv-script:focus{outline:none;border-color:var(--accent,#F08A3C);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent,#F08A3C) 22%,transparent)}
+:is(.apop.bp,.bp-host) .tv-line{display:flex;justify-content:space-between;gap:12px;margin:0;padding:2px 8px;font:400 12.5px/17px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-2,#B5B6B7)}
+:is(.apop.bp,.bp-host) .tv-line b{font-weight:600;color:var(--text-1,#E6E6E6)}
+:is(.apop.bp,.bp-host) .tv-line em{font-style:normal;font-family:var(--font-mono,ui-monospace,monospace);color:var(--text-1,#E6E6E6);white-space:nowrap}
+:is(.apop.bp,.bp-host) .tv-soft{color:var(--text-3,#8A8B8C)}
+:is(.apop.bp,.bp-host) .tv-over{color:var(--warning,#E8B44A)}
+:is(.apop.bp,.bp-host) .tv-parts{margin:2px 0 4px;padding:0 8px;list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px}
+:is(.apop.bp,.bp-host) .tv-parts li{display:flex;justify-content:space-between;gap:8px;padding:5px 8px;border-radius:8px;background:var(--surface-2,rgba(255,255,255,.04));font:400 12px/16px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-2,#B5B6B7)}
+:is(.apop.bp,.bp-host) .tv-parts li em{font-style:normal;font-family:var(--font-mono,ui-monospace,monospace);color:var(--accent,#F08A3C)}
+:is(.apop.bp,.bp-host) .tv-add{display:block;width:100%;margin:4px 0 2px;padding:7px 8px;border:1px dashed var(--border-1,rgba(255,255,255,.16));border-radius:10px;background:none;color:var(--accent,#F08A3C);font:500 12.5px/17px var(--font-sans,Inter,system-ui,sans-serif);text-align:left;cursor:pointer}
+:is(.apop.bp,.bp-host) .tv-add:hover{background:color-mix(in srgb,var(--accent,#F08A3C) 10%,transparent)}
+:is(.apop.bp,.bp-host) .tv-sample{display:flex;align-items:center;gap:8px;margin:2px 0;padding:7px 8px;border-radius:10px;background:var(--surface-2,rgba(255,255,255,.04));color:var(--text-1,#E6E6E6);font:500 12.5px/17px var(--font-sans,Inter,system-ui,sans-serif)}
+:is(.apop.bp,.bp-host) .tv-sample span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+:is(.apop.bp,.bp-host) .tv-sample small{color:var(--text-3,#8A8B8C);font-weight:400}
+:is(.apop.bp,.bp-host) .tv-x{display:grid;place-items:center;width:22px;height:22px;border:0;border-radius:6px;background:none;color:var(--text-2,#B5B6B7);cursor:pointer}
+:is(.apop.bp,.bp-host) .tv-x:hover{background:var(--surface-3,rgba(255,255,255,.08));color:var(--text-1,#E6E6E6)}
+[data-testid="vbar-pop-talk"]{max-height:min(640px,calc(100vh - 150px));overflow-y:auto;overscroll-behavior:contain}

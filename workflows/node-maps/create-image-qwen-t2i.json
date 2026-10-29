@@ -1,0 +1,19 @@
+{
+  "workflowFile": "create-image-qwen-t2i-api.json",
+  "template": "image_qwen_image",
+  "model": "Qwen-Image (Apache-2.0)",
+  "inputs": {
+    "prompt": {
+      "node": "76:6",
+      "field": "text"
+    }
+  },
+  "refs": [],
+  "seed": {
+    "node": "76:3",
+    "field": "seed"
+  },
+  "output": {
+    "node": "60"
+  }
+}

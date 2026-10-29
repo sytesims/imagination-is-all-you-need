@@ -1,0 +1,43 @@
+{
+  "23": {
+    "class_type": "ComfyCloudMiniMaxH3ImageToVideoNode",
+    "inputs": {
+      "prompt": "A paper boat drifting down a rain-soaked street, cinematic.",
+      "seed": 42,
+      "aspect_ratio": "16:9",
+      "resolution": "720p",
+      "duration_seconds": 5,
+      "first_frame": [
+        "10",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "ComfyCloudMiniMaxH3ImageToVideoNode"
+    }
+  },
+  "8": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "filename_prefix": "openhiggsfield/h3-cloud",
+      "format": "auto",
+      "format.codec": "auto",
+      "video": [
+        "23",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "SaveVideo"
+    }
+  },
+  "10": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "first_frame.png"
+    },
+    "_meta": {
+      "title": "LoadImage"
+    }
+  }
+}

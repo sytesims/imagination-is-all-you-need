@@ -1,0 +1,49 @@
+{
+  "workflowFile": "create-image-qwen21-personswap-api.json",
+  "template": "image_qwen_image_2_1_image_edit",
+  "model": "Qwen Image 2.1 edit + bfs_body_swap_v1.0_qwen_2.1.safetensors (BFS by Alissonerdx)",
+  "inputs": {
+    "prompt": {
+      "node": "459:474",
+      "field": "prompt"
+    },
+    "image": {
+      "node": "470",
+      "field": "image"
+    }
+  },
+  "refs": [
+    {
+      "node": "470",
+      "field": "image"
+    },
+    {
+      "node": "475",
+      "field": "image"
+    }
+  ],
+  "seed": {
+    "node": "459:458",
+    "field": "seed"
+  },
+  "output": {
+    "node": "461"
+  },
+  "lora": {
+    "node": "490",
+    "file": "bfs_body_swap_v1.0_qwen_2.1.safetensors",
+    "strength": 1.0,
+    "source": "https://huggingface.co/Alissonerdx/BFS-Best-Face-Swap"
+  },
+  "promptTemplate": "body_swap: start with <image1> as the base image, keeping its lighting, environment, and background. replace the body from <image1> with the body from <image2>, strictly preserving the clothing, body shape and proportions from <image2>. copy the pose, direction of the eye, head rotation, micro expressions from <image1>",
+  "scale": {
+    "scene": {
+      "node": "491",
+      "megapixels": 2.0
+    },
+    "reference": {
+      "node": "492",
+      "megapixels": 0.59
+    }
+  }
+}

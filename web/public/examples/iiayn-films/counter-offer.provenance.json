@@ -1,0 +1,49 @@
+{
+  "title": "The Counter-Offer",
+  "version": "Approved TO BE CONTINUED cut, 2026-10-29",
+  "jobId": "415c2ab2",
+  "toolId": "h3-video",
+  "model": "MiniMax H3",
+  "route": "comfy-cloud:cloud-h3-wf",
+  "workflow": "cloud/h3-t2v-api.json",
+  "seed": 744799,
+  "prompt": "Korean drama scene, 15 seconds, live-action, cinematic, soft contrast, warm skin tones, teal shadows. A hushed upscale hotel lounge in Seoul in the afternoon, tall windows with soft daylight, a white marble table with two white teacups.\r\n\r\nCharacters (keep identical throughout): on the left, an elegant woman in her late fifties with a silver-streaked low bun, cream tweed jacket and pearl necklace; on the right, a woman in her late twenties with long straight black hair tucked behind her ears, olive-green knit cardigan over a white T-shirt, small gold hoop earrings.\r\n\r\n0–4s: Medium two-shot at table height, slow push-in. The older woman slides a thin white envelope across the marble with two fingers and says in Korean, slow and cold, in a deep voice: \"이거 받고 내 아들한테서 떨어져.\" Soft lounge ambience, the envelope scrapes on marble.\r\n4–7s: Close-up of the young woman, static. She looks down at the envelope, then up, and slowly smiles. She lifts a much thicker brown envelope from her lap and places it on the table with a heavy thud. A low cello drone stops into silence.\r\n7–11s: Over-the-shoulder shot from behind the older woman. The young woman slides the brown envelope across, leans in, and says in Korean, calm and sweet, in a clear younger voice: \"이걸로 아드님 저 주세요.\"\r\n11–15s: Close-up of the older woman, slow push-in. Her teacup stops halfway to her lips, her eyes widen, she glances down at the brown envelope and back up, and says quietly in Korean: \"얼마 들었니?\" The teacup rattles on its saucer, a single bright plucked note and a light comic piano sting.\r\n\r\nNatural Korean voices, clear lip sync, two clearly different voices. No subtitles, no text, no watermark.",
+  "requested": {
+    "durationSeconds": 15,
+    "resolution": "480p",
+    "aspect": "16:9",
+    "audio": true
+  },
+  "source": {
+    "durationSeconds": 15.083333,
+    "width": 864,
+    "height": 480,
+    "fps": 24,
+    "sha256": "a87814f0cb277930dd9da2e2e23b18985d32fe44fe16dcd0d0b954ab58adefe9"
+  },
+  "estimatedUsd": 1.2,
+  "estimatedComfyCredits": 254,
+  "actualUsd": null,
+  "costBasis": "Saved job spend estimate; GPU-time billing, actual provider charge unavailable. No new generation for finishing or integration.",
+  "delivery": {
+    "pictureSeconds": 20.083333,
+    "containerSeconds": 20.096,
+    "width": 1280,
+    "height": 720,
+    "fps": 24,
+    "identSeconds": 1.25,
+    "reactionHoldSeconds": 0.75,
+    "endingSeconds": 3,
+    "ending": "TO BE CONTINUED with credits",
+    "resize": "Delivery resize only, not native HD",
+    "audio": "Original finished AAC copied; original scene soundtrack with +9 dB gain and edge fades; no new voice or music.",
+    "subtitles": "Script-based English translation, checked with cached Whisper small, audio envelope and mouth movements; burned in and supplied as SRT.",
+    "credits": {
+      "direction": "SyteSim × AI",
+      "editAndSound": "AI",
+      "pictureAndVoices": "MiniMax H3 · Comfy Cloud"
+    },
+    "sha256": "a5a1e41a5dc81feaa25f0e6f889c764a7263f13669ee934c4da8da30fe05a8d1",
+    "approvedStreamsPreserved": true
+  }
+}

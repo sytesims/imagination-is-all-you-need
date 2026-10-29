@@ -1,0 +1,7 @@
+human.glb: the human skeleton and ten animation clips from Mesh2Motion (https://mesh2motion.org, https://github.com/Mesh2Motion/mesh2motion-app),
+static/rigs/rig-human.glb and static/animations/human-base-animations.glb. Licence: CC0 1.0 Universal (public domain dedication),
+https://creativecommons.org/publicdomain/zero/1.0/ ("All 3d models, blend files, rigs, animations" in the app's LICENSE-CC0.MD).
+Some of Mesh2Motion's human animations come from Quaternius' Universal Animation Library (also CC0, https://quaternius.com).
+Changed for this app: no mesh, the fingers folded into one hand bone with a tip, only the clips "Rig as a character" offers (idle, walk, jog,
+sprint, jump start / land, dance, sit enter / idle / exit), rotation channels plus the pelvis position, resampled and meshopt-compressed
+(scripts/assets/build-rig-human.mjs).

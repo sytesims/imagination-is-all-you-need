@@ -1,0 +1,8 @@
+{"_source":"https://platform.minimax.io/docs/api-reference/speech-t2a-http (T2aV2Req, transcribed by hand Oct 16 2026)",
+ "method":"POST","url":"https://api.minimax.io/v1/t2a_v2","auth_header":"Authorization","auth_prefix":"Bearer ",
+ "schema":{"type":"object","required":["model","text"],"properties":{
+  "model":{"enum":["speech-2.8-hd","speech-2.8-turbo","speech-2.6-hd","speech-2.6-turbo","speech-02-hd","speech-02-turbo","speech-01-hd","speech-01-turbo"]},
+  "text":{"type":"string","maxLength":9999},"stream":{"type":"boolean"},"output_format":{"enum":["url","hex"]},"language_boost":{"type":"string"},
+  "voice_setting":{"type":"object","required":["voice_id"],"properties":{"voice_id":{"type":"string"},"speed":{"type":"number","minimum":0.5,"maximum":2},"vol":{"type":"number","exclusiveMinimum":0,"maximum":10},"pitch":{"type":"integer","minimum":-12,"maximum":12}}},
+  "audio_setting":{"type":"object","properties":{"sample_rate":{"enum":[8000,16000,22050,24000,32000,44100]},"bitrate":{"enum":[32000,64000,128000,256000]},"format":{"enum":["mp3","pcm","flac","wav","pcmu_raw","pcmu_wav","opus"]},"channel":{"enum":[1,2]}}}},
+  "additionalProperties":false}}

@@ -1,0 +1,120 @@
+/* One Audio page (2026-10-23): the feed above, Image's dock below (ic ic2 > ic-dock classes from imageCanvas.css + createBar.css, as Video).
+   This file only has the Audio page (feed grid, empty state) and the few audio-only parts of the bar (sound thumbnails, lyrics box, voice rows,
+   the per-unit line on Generate). Loaded after videoDock.css. */
+
+/* the page: the bottom padding is the dock's measured height (--ic-dock-h, set by AudioPage), like Image's stage */
+html body .ap[data-testid="audio-page"]{display:block;padding:0 16px;box-sizing:border-box}
+/* the Canvas agent panel also uses .ap / .ap-feed (canvas/agentPanel.css: an off-screen side panel). Once Canvas has loaded that sheet, a
+   client-side visit to Audio picked it up and the whole page slid off screen (blank Audio tab). Undo those rules on the Audio page. */
+html body .ap[data-testid="audio-page"]{position:static;width:auto;max-width:none;transform:none;transition:none;overflow:visible;background:none;border-left:0;box-shadow:none;
+  -webkit-backdrop-filter:none;backdrop-filter:none;color:inherit;font:inherit;pointer-events:auto}
+html body .ap[data-testid="audio-page"] .ap-main .es{padding-bottom:24px}
+html body .ap[data-testid="audio-page"] .ap-feed{flex:none;min-height:0;overflow:visible;display:block;gap:0}
+html body .ap .ap-main{padding:12px 0 calc(var(--ic-dock-h,124px) + 40px)}
+
+/* row 1: sound thumbnails (♪ for audio, a mic for each voice sample with n/max on the first) */
+html body .ic.ic2 .ic-dock .ic-lead .ap-th .ic-th-hit{display:grid;place-items:center;color:rgba(255,255,255,.8);font-size:18px}
+html body .ic.ic2 .ic-dock .ic-lead .ap-aud .ic-th-hit{background:linear-gradient(135deg,rgba(255,122,26,.22),rgba(255,255,255,.06))}
+/* the prompt area is shared/PromptTabs (Style | Lyrics, Script): its look is in shared/promptTabs.css; the field is Image's prompt */
+
+/* the model chip: the same chip as the others (white name on the chip fill) with the shared maker tile (MakerTile) in a small tile */
+html body .ic.ic2 .ic-dock.ap-dock .ic-panel .ic-chips .ic-chip.ic-model{background:var(--fill,rgba(255,255,255,.05))!important;color:var(--text-1,#f7f7f8)!important}
+html body .ic.ic2 .ic-dock.ap-dock .ic-panel .ic-chips .ic-chip.ic-model:hover,html body .ic.ic2 .ic-dock.ap-dock .ic-panel .ic-chips .ic-chip.ic-model.on{background:var(--surface-hover,rgba(255,255,255,.1))!important}
+html body .ic.ic2 .ic-dock.ap-dock .ic-panel .ic-chips .ic-chip.ic-model .ic-dot{box-sizing:border-box;flex:0 0 22px;width:22px!important;height:22px!important;border-radius:7px;display:grid;place-items:center;background:var(--surface-2,#1c1e20);box-shadow:inset 0 0 0 1px var(--border-strong,rgba(255,255,255,.1));color:var(--text-1,#f7f7f8)}
+html body .ic.ic2 .ic-dock.ap-dock .ic-panel .ic-chips .ic-chip.ic-model .ic-dot svg{width:13px;height:13px}
+html body .ic.ic2 .ic-dock.ap-dock .ic-panel .ic-chips .ic-chip.ic-model .ic-caret{opacity:.6}
+/* the length chip: "1:00 AUTO"; amber dot when a picked length is short for the lyrics */
+html body .ic.ic2 .ic-dock .ic-chips .ap-len .ap-auto{font:600 10px/14px var(--font-ui,Inter,system-ui,sans-serif);font-style:normal;letter-spacing:.06em;text-transform:uppercase;color:var(--text-2,#a3a4a9);background:var(--fill,rgba(255,255,255,.06));padding:1px 5px;border-radius:5px}
+html body .ic.ic2 .ic-dock .ic-chips .ap-len.ap-len-warn{box-shadow:inset 0 0 0 1px rgba(232,180,74,.45)}
+
+/* row 2: Voice and Language are Image's group chips ("Voice · Narrator") */
+@media (min-width:701px){html body .ic.ic2 .ic-dock .ic-chips[data-short] .ap-voice .wf-grp-l,html body .ic.ic2 .ic-dock .ic-chips[data-short] .ap-lang .wf-grp-l{display:none}}
+html body .ic.ic2 .ic-dock .ic-chips .ap-voice b,html body .ic.ic2 .ic-dock .ic-chips .ap-lang b{max-width:104px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ap-vrow{display:flex;align-items:center;gap:4px;min-width:0}
+.ap-voice-pop .ap-vrow .ic-opt,html body .apop .ap-vrow .bp-row{flex:1 1 auto;min-width:0}
+.ap-vplay{all:unset;box-sizing:border-box;flex:none;width:28px;height:28px;display:grid;place-items:center;border-radius:8px;color:rgba(255,255,255,.75);font-size:11px;cursor:pointer}
+.ap-vplay:hover{background:rgba(255,255,255,.08);color:#fff}
+.ap-vplay:focus-visible{box-shadow:var(--focus)}
+.ap-vplay.on{color:var(--accent);background:rgba(255,255,255,.06)}
+.ap-vplay-none{cursor:default}
+.ap-lang-pop{max-height:min(420px,60vh);overflow-y:auto}
+.ap-set-pop .ap-set-list{max-height:200px;overflow-y:auto}
+html body .apop.vs-apop.vs-apop-set.ap-set .vs-set-pop{width:380px;max-width:calc(100vw - 32px);max-height:min(560px,70vh);overflow-y:auto}
+.ap-set-pop .ap-vc{display:grid;gap:8px;padding:4px 4px 8px}
+.ap-set-pop .ap-save{margin-top:4px}
+
+/* Generate's second line: the price, then the per-unit rate and the time ("≈ $0.08 · $0.08/1k chars · ~20 s") */
+html body .ic.ic2 .ic-dock .ic-gen.ap-gen .ap-gp{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;max-width:100%;overflow:hidden;white-space:normal;text-align:center;font:500 11px/14px var(--font-sans,Inter,system-ui,sans-serif)}
+html body .ic.ic2 .ic-dock .ic-gen.ap-gen .ap-gp .gen-price{display:inline;font:inherit;white-space:normal}
+html body .ic.ic2 .ic-dock .ic-gen.ap-gen .ap-rate{opacity:.85}
+/* a local run: the time on this computer on its own smaller line ("≈ 6 min on your Mac") */
+html body .ic.ic2 .ic-dock .ic-gen.ap-gen .ap-eta{display:block;font:500 11px/14px var(--font-sans,Inter,system-ui,sans-serif);opacity:.75;margin-top:2px}
+.ic-pop-sm.ap-voice-pop{width:280px;max-width:calc(100vw - 32px)}
+/* the voice controls (VoiceControls, Voice Studio's look) inside the Settings fold */
+.ap-set-pop .ap-vc-b{--as-c:rgba(255,255,255,.05);--as-g:rgb(137,138,139);padding:0;font-family:Inter,system-ui,sans-serif}
+html body .apop .ap-set-pop .ap-vc-b .as-row{all:unset;box-sizing:border-box;cursor:pointer;width:100%;height:44px;border-radius:12px;background:var(--as-c);padding:0 12px;display:flex;align-items:center;gap:8px;font:500 14px/20px Inter,system-ui,sans-serif;color:#fff}
+html body .apop .ap-set-pop .ap-vc-b .as-row b{margin-left:auto}
+html body .apop .ap-set-pop .ap-vc-b .as-tile{all:unset;box-sizing:border-box;cursor:pointer;width:100%;height:54px;border-radius:12px;background:var(--as-c);padding:7px 10px;display:grid;grid-template-columns:1fr auto;align-content:center}
+html body .apop .ap-set-pop .ap-vc-b .as-tile:disabled,html body .apop .ap-set-pop .ap-vc-b .as-row:disabled{opacity:.4;cursor:not-allowed}
+.ap-set-pop .ap-save{display:flex;align-items:center;gap:8px}
+.ap-set-pop .ap-save>span{flex:1;display:grid}
+
+
+/* ---- the feed (2026-10-27, UX audit batch A): the shared result feed (ui/next/feed, ui/audio/AudioFeed.tsx) in an even grid of audio cards ----
+   The shared toolbar and the FeedCard tile; the justified rows of imageCanvas.css become even columns here (a sound has no picture shape).
+   Grid › S / M / L picks the column width. Every tile is one card height, so running and failed tiles line up with finished ones.
+   2026-10-29 polish: compact tiles (no cover art), 4 across at 1440 and ~6 rows: about 24 sounds per screen instead of 8. */
+html body .ap .ic.ic2.apf{display:block;min-height:0;padding:0;max-width:1240px;margin:0 auto;--ap-card-h:142px}
+html body .ic.ic2.apf .ap-gal .ic-feed.ic-jfeed{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--ap-col,280px),1fr));gap:12px;margin-top:4px}
+html body .ic.ic2.apf .ap-gal .ic-feed.ic-jfeed[data-size="small"]{--ap-col:232px;gap:10px}
+html body .ic.ic2.apf .ap-gal .ic-feed.ic-jfeed[data-size="large"]{--ap-col:380px;gap:16px}
+html body .ic.ic2.apf .ic-jfeed .ic-jfill{display:none}
+html body .ic.ic2.apf .ic-jfeed .ic-tile.ap-tile{--h:auto;flex:none;aspect-ratio:auto;max-height:none;min-height:var(--ap-card-h);min-width:0;border-radius:var(--radius-lg,12px);overflow:hidden;container-type:normal}
+html body .ic.ic2.apf .ic-jfeed .ic-tile.ap-tile.has-body.st-done{background:none;overflow:visible}
+html body .ic.ic2.apf .ic-jfeed .ic-tile.ap-tile.has-body.st-done{display:block}
+html body .ic.ic2.apf .ic-jfeed .ic-tile.ap-tile.has-body>.ac{width:100%;height:100%}
+html body .ic.ic2.apf .ic-jfeed .ic-tile.ap-tile.on>.ac{box-shadow:inset 0 0 0 2px var(--accent)}
+/* "Example" sits small in the tile's top-right corner (the title leaves room for it); on hover / focus Recreate takes its place; both step aside
+   for the dancing SyteSim while the sound plays */
+html body .ic.ic2.apf .ic-jfeed .ic-tile.ap-tile.has-body .ic-tile-feat{top:12px;right:12px;left:auto;max-width:96px;padding:1px 6px;font-size:10.5px;background:rgba(255,255,255,.06)!important;-webkit-backdrop-filter:none;backdrop-filter:none;color:var(--text-2,#a3a4a9);transition:opacity var(--t-state,150ms) var(--ease-state,ease)}
+html body .ic.ic2.apf .ic-jfeed .ic-tile.ap-tile.has-body .ic-tile-feat i{display:none} /* "· Music": the kind chip already says it */
+html body .ic.ic2.apf .ic-jfeed .ic-tile.ap-tile.has-body:has(.ic-tile-feat) .ac-head{padding-right:64px}
+html body .ic.ic2.apf .ic-jfeed .ic-tile.ap-tile.has-body:has(.ac-bean) .ac-head{padding-right:0}
+html body .ic.ic2.apf .ic-jfeed .ic-tile.ap-tile:has(.ac-bean) .ic-tile-feat,html body .ic.ic2.apf .ic-jfeed .ic-tile.ap-tile:has(.ac-bean) .fd-recreate{opacity:0;pointer-events:none}
+html body .ic.ic2.apf .ic-tile.ap-tile.has-body .fd-recreate{top:8px;right:8px;bottom:auto;height:26px;padding:0 10px;font-size:12px}
+html body .ic.ic2.apf .ic-tile.ap-tile.has-body:is(:hover,:focus-within) .ic-tile-feat{opacity:0}
+/* the "open details" link stays on failed tiles only (the viewer has the details) */
+html body .ic.ic2.apf .ic-jfeed .ic-tile.ap-tile.has-body .ic-tile-open{display:none}
+/* Select mode: one hit layer over the card picks it (the card's own play and seek wait) */
+html body .ic.ic2.apf .ic-tile.ap-tile .fd-pick-hit{z-index:3;border-radius:inherit;cursor:pointer}
+html body .ic.ic2.apf .ic-tile.ap-tile.picked>.ac{box-shadow:inset 0 0 0 2px var(--accent)}
+/* running: GenTile fills the tile with SyteSim warming up and a soft orange breath */
+html body .ic.ic2.apf .ic-jfeed .ic-tile.ap-tile.st-running,html body .ic.ic2.apf .ic-jfeed .ic-tile.ap-tile.st-queued{height:auto;flex:none}
+html body .ic.ic2.apf .ic-tile.ap-tile>.gt,html body .ic.ic2.apf .ic-tile.ap-tile>[data-testid^="ap-run-"]{position:absolute;inset:0}
+html body .ic.ic2.apf .ic-tile.ap-tile.st-running::after,html body .ic.ic2.apf .ic-tile.ap-tile.st-queued::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:inset 0 0 0 1px rgba(255,122,26,.35);background:radial-gradient(80% 60% at 50% 110%,rgba(255,122,26,.16),transparent 70%);animation:ap-breathe 2.4s var(--ease-state,ease) infinite alternate}
+@keyframes ap-breathe{from{opacity:.35}to{opacity:1}}
+/* failed (UX audit #8): the shared failure tile stacks bean, title, what happened to the money and the one fix, with room for each line */
+html body .ic.ic2.apf .ic-tile.ap-tile.st-failed .ic-tile-hit,html body .ic.ic2.apf .ic-tile.ap-tile.st-blocked .ic-tile-hit{display:flex;flex-direction:column;align-items:stretch;justify-content:center;padding:16px 16px 56px;box-sizing:border-box}
+html body .ic.ic2.apf .ic-tile.ap-tile .fs-tile-act{bottom:14px}
+
+/* loading: cells shaped like the grid's tiles (play + two lines, the waveform), faded in after a beat so a fast answer shows nothing */
+.ap-skel{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:4px;animation:ap-skel-in .3s ease .25s both}
+.ap-skel-i{box-sizing:border-box;height:var(--ap-card-h,142px);padding:14px;border-radius:var(--radius-lg,12px);background:var(--surface-2,#1C1E20);display:grid;grid-template-columns:44px 1fr;grid-template-rows:44px 1fr;gap:12px}
+.ap-skel-i i,.ap-skel-i b,.ap-skel-i em{display:block;border-radius:8px;background:rgba(255,255,255,.05)}
+.ap-skel-i i{border-radius:50%}
+.ap-skel-i b{height:14px;width:70%;margin-top:6px}
+.ap-skel-i em{grid-column:1/-1;height:36px}
+@keyframes ap-skel-in{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){html body .ic.ic2.apf .ic-tile.ap-tile.st-running::after,html body .ic.ic2.apf .ic-tile.ap-tile.st-queued::after{animation:none;opacity:.7}.ap-skel{animation:none}}
+@media (max-width:600px){html body .ic.ic2.apf .ap-gal .ic-feed.ic-jfeed,.ap-skel{grid-template-columns:1fr;gap:10px}}
+/* Select mode: the tick takes the tile's top-right corner ("Example" steps aside) */
+html body .ic.ic2.apf .ic-tile.ap-tile.has-body .fd-check{top:10px;right:10px}
+html body .ic.ic2.apf .ic-tile.ap-tile.selecting .ic-tile-feat{opacity:0}
+/* Length menu (2026-10-27): each model's own lengths; a cap model's note under the list */
+.ap-len-list{display:flex;flex-direction:column;gap:2px;min-width:0;max-height:min(320px,46vh);overflow-y:auto}
+.ap-len-note{margin:6px 10px 2px;font:400 11px/15px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-3,rgba(255,255,255,.55))}
+/* "Auto · 3:00": a calm setting, never the accent (orange reads as a warning here); the amber ring above is the only warning */
+html body .ic.ic2 .ic-dock .ic-chips .ap-len .ap-auto-w{color:var(--text-2,#a3a4a9);font-weight:500}
+/* the drop target (2026-10-27): the slot tile in the lead (workflowBar.css .wf-slot) */
+html body .ic.ic2 .ic-dock .ap-need .wf-slot{width:60px;height:48px} /* the lead is 48 px tall (its thumbnails) */
+html body .ic.ic2 .ic-dock .ap-need .wf-slot-hit b{font-size:10px;line-height:12px;text-align:center;padding:0 4px}

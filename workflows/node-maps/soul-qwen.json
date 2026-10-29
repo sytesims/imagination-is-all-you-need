@@ -1,0 +1,33 @@
+{
+ "workflowFile": "soul-qwen-api.json",
+ "model": "Qwen-Image-2512 + style LoRA(s)",
+ "inputs": {
+  "prompt": {
+   "node": "20",
+   "field": "text"
+  },
+  "colourRef": {
+   "node": "40",
+   "field": "image"
+  }
+ },
+ "loras": {
+  "realism": "10",
+  "styleA": "11",
+  "styleB": "12"
+ },
+ "refs": [],
+ "latent": "30",
+ "colour": "41",
+ "upscale": {
+  "loader": "50",
+  "apply": "51"
+ },
+ "seed": {
+  "node": "31",
+  "field": "seed"
+ },
+ "output": {
+  "node": "9"
+ }
+}

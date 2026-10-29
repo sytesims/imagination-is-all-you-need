@@ -1,0 +1,177 @@
+/* The 3D page (ui/three/ThreeDStudio.tsx). Layout, dock and feed grid are Video's (vs, vs-hgrid, vs-htile) and Image's (ic-dock); this file only
+ * adds what a 3D card and the showcase need: a square still, the caption (the feed caption look), the two quick actions, the example row. */
+.t3 .t3-grid { grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)); gap: 10px; }
+.t3 .t3-card { aspect-ratio: 5 / 4; background: var(--surface-1); cursor: default; border-radius: 14px; overflow: hidden; border: 1px solid var(--hairline); transition: border-color var(--t-state, 150ms); }
+.t3 .t3-card:hover { border-color: var(--hairline-strong); }
+.t3 .t3-hit { position: absolute; inset: 0; display: grid; place-items: center; padding: 0; border: 0; background: radial-gradient(circle at 50% 40%, var(--surface-2), var(--surface-1)); color: var(--text-3); cursor: pointer; }
+.t3 .t3-hit img { width: 100%; height: 100%; object-fit: contain; }
+.t3 .t3-hit img.t3-in { object-fit: cover; opacity: .55; filter: saturate(.8); }
+.t3 .t3-hit video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.t3 .t3-hit video.t3-tt { opacity: 0; transition: opacity .2s; }
+.t3 .t3-hit:hover video.t3-tt, .t3 .t3-hit:focus-visible video.t3-tt { opacity: 1; }
+.t3 .t3-hit:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 12px; }
+.t3 .t3-kind { position: absolute; top: 8px; left: 8px; z-index: 2; display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 999px; font: 600 11px/16px var(--font-ui, Inter, system-ui, sans-serif); font-style: normal;
+  color: var(--text); background: color-mix(in srgb, var(--bg) 70%, transparent); }
+.t3 .t3-kind.t3-sample { left: auto; right: 8px; }
+.t3 .t3-acts { position: absolute; top: 8px; right: 8px; z-index: 3; display: flex; gap: 4px; opacity: 0; transition: opacity .15s; }
+.t3 .t3-card:hover .t3-acts, .t3 .t3-card:focus-within .t3-acts { opacity: 1; }
+.t3 .t3-card:hover .t3-kind.t3-sample, .t3 .t3-card:focus-within .t3-kind.t3-sample { opacity: 0; }
+.t3 .t3-act { display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 8px; color: var(--text); background: color-mix(in srgb, var(--bg) 75%, transparent); cursor: pointer; }
+.t3 .t3-act:hover { background: var(--surface-3); }
+.t3 .t3-empty { display: grid; gap: 28px; width: min(100%, 1180px); margin: 0 auto; padding: 32px 24px 24px; }
+.t3 .t3-hero { display: grid; gap: 8px; max-width: 640px; }
+.t3 .t3-hero h1 { margin: 0; font: 600 32px/38px var(--font-display); letter-spacing: var(--tracking-display, -.02em); color: var(--text); }
+.t3 .t3-hero p { margin: 0; font: 500 14px/21px var(--font-ui); color: var(--text-2); }
+.t3 .t3-show { display: grid; gap: 12px; }
+.t3 .t3-show-h { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.t3 .t3-show-h h2 { margin: 0; font: 600 15px/22px var(--font-ui, Inter, system-ui, sans-serif); color: var(--text); }
+.t3 .t3-credit { margin: 0; font-size: 12px; color: var(--text-2); }
+.t3 .t3-credit a { color: inherit; text-decoration: underline; }
+.t3 .t3-show-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.t3 .t3-ex { display: grid; gap: 6px; padding: 0; border: 0; background: transparent; text-align: left; color: var(--text); cursor: pointer; }
+.t3 .t3-ex[hidden] { display: none; }
+.t3 .t3-ex-media { position: relative; aspect-ratio: 3 / 2; border-radius: 12px; overflow: hidden; background: var(--surface-1); border: 1px solid var(--hairline); }
+.t3 .t3-ex-media > img { width: 100%; height: 100%; object-fit: cover; transition: transform .25s; }
+.t3 .t3-ex:hover .t3-ex-media > img { transform: scale(1.03); }
+.t3 .t3-ex:focus-visible .t3-ex-media { outline: 2px solid var(--accent); outline-offset: 2px; }
+.t3 .t3-ex-in { position: absolute; left: 6px; bottom: 6px; width: 34%; aspect-ratio: 1; border-radius: 8px; overflow: hidden; border: 2px solid var(--bg); background: var(--surface-2); }
+.t3 .t3-ex-in img { width: 100%; height: 100%; object-fit: cover; }
+.t3 .t3-ex-in::after { content: '→'; position: absolute; right: -2px; top: 50%; transform: translate(100%, -50%); color: #fff; font-size: 14px; text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+.t3 .t3-ex-t { display: grid; gap: 2px; font-size: 12px; line-height: 16px; }
+.t3 .t3-ex-t b { font-weight: 600; }
+.t3 .t3-ex-t span { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); }
+.t3 .t3-ex-dot { width: 14px; height: 14px; }
+.t3 .t3-show-links { margin: 0; padding-left: 18px; color: var(--text-2); font-size: 13px; }
+.t3 .t3-rmbg { height: 28px; font-size: 12px; }
+.t3 .t3-pt { display: inline-flex; align-items: baseline; gap: 6px; }
+.t3 .t3-time { font-size: 11px; opacity: .85; }
+.t3-set .t3-seed { display: grid; gap: 4px; }
+.t3-set .t3-seed input { height: 30px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text); font: inherit; }
+.t3-set .t3-seed small { color: var(--text-3); font-size: 11px; }
+.t3-tt-list .ic-opt { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 8px; }
+.t3-tt-th { width: 28px; height: 28px; object-fit: cover; border-radius: 6px; }
+.t3 .t3-postermaker { position: fixed; right: 0; bottom: 0; width: 320px; height: 320px; opacity: 0.01; pointer-events: none; z-index: -1; }
+@media (max-width: 1100px) { .t3 .t3-show-row { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.t3 .t3-ex-in { opacity: 0; transition: opacity .2s; }
+.t3 .t3-ex-in.ok { opacity: 1; }
+/* Direct a Shot (shared/PrevizPlayer.tsx is the player; these are the bar's preset slot, the note, the chip panels and the recorded-shot card) */
+.t3 .ps-lead { display: inline-flex; align-items: center; gap: 4px; }
+.t3 .ic-chip.ps-slot { height: 44px; padding: 0 10px 0 6px; gap: 9px; border-radius: 12px; }
+.t3 .ps-slot-ic { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; color: #fff; background: var(--surface-3); box-shadow: inset 0 0 0 1px rgba(255,255,255,.16); }
+.t3 .ps-slot-t { display: grid; text-align: left; line-height: 15px; }
+.t3 .ps-slot-t small { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
+.t3 .ps-slot-t b { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; font-size: 13px; }
+.t3 .ps-slot-x { width: 22px; height: 22px; border: 0; border-radius: 999px; background: var(--surface-3); color: var(--text-2); cursor: pointer; font-size: 14px; line-height: 1; }
+.t3 .ps-slot-x:hover { color: var(--text); }
+html body .ic.ic2 .ic-dock .ic-main > .ic-prow > textarea.ps-note { flex: 1 1 0; min-width: 0; resize: none; }
+.ps-pop { width: 320px; max-width: 100%; display: grid; gap: 12px; padding: 12px; }
+.ps-row-ic { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.16); }
+.ps-swatches { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.ps-swatches button { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border-radius: 9px; border: 1px solid var(--border-strong); background: var(--fill); color: var(--text-2); font: 500 12px/1 var(--font-ui, Inter, system-ui, sans-serif); cursor: pointer; }
+.ps-swatches button i { width: 14px; height: 14px; border-radius: 999px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.2); }
+.ps-swatches button:hover { background: var(--surface-hover); color: var(--text); }
+.ps-swatches button.on { color: var(--text); border-color: rgba(255,255,255,.32); background: var(--surface-3); }
+.ps-range { width: 100%; accent-color: var(--accent); }
+.ps-range-l { display: flex; justify-content: space-between; color: var(--text-3); font-size: 11px; }
+.t3 .ps-feed-h { margin: 8px 16px 10px; font: 600 15px/22px var(--font-ui, Inter, system-ui, sans-serif); color: var(--text); }
+.t3 .ps-card .t3-hit { background: #08090a; }
+.t3 .ps-card .t3-hit video { position: static; width: 100%; height: auto; max-height: 100%; object-fit: contain; }
+.t3 .ps-act-soon { opacity: .55; cursor: default; }
+.t3 .ps-real-chip { position: absolute; left: 8px; bottom: 44px; z-index: 2; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font: 500 11px/16px var(--font-ui, Inter, system-ui, sans-serif); color: var(--text-2); background: color-mix(in srgb, var(--bg) 72%, transparent); opacity: 0; transition: opacity .15s; }
+.t3 .ps-card:hover .ps-real-chip, .t3 .ps-card:focus-within .ps-real-chip { opacity: 1; }
+/* Direct a Shot: while a recording runs the bar is locked (the recorder draws the shot it started with; nothing else can change it) */
+.t3 .t3-dock.ps-locked .ic-chips, .t3 .t3-dock.ps-locked .ps-note { pointer-events: none; opacity: .5; transition: opacity .18s; }
+.t3 .ps-shuffle { margin-top: 8px; }
+.t3 .ps-feed-h { font-family: var(--font-display, 'Space Grotesk', Inter, system-ui, sans-serif); }
+/* Render (Direct a Shot step 3): the chip on a recording is a real action; a real clip's card shows its plan as a small inset */
+.t3 button.ps-real-chip { all: unset; position: absolute; left: 8px; bottom: 44px; z-index: 2; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font: 500 11px/16px var(--font-ui, Inter, system-ui, sans-serif); color: var(--text-2); background: color-mix(in srgb, var(--bg) 72%, transparent); opacity: 0; transition: opacity .15s; cursor: pointer; }
+.t3 .ps-real-chip.on, .t3 button.ps-real-chip:hover { color: var(--accent); }
+.t3 a.ps-real-chip.on { opacity: 1; text-decoration: none; }
+.t3 .ps-card:hover button.ps-real-chip, .t3 .ps-card:focus-within button.ps-real-chip { opacity: 1; }
+.t3 .ps-act-real { color: var(--accent); }
+/* (the hit area stays absolute: it holds the plan inset) */
+.t3 .mir-card .mir-card-plan { position: absolute !important; right: 8px; bottom: 8px; width: 28% !important; height: auto !important; border-radius: 6px; border: 1px solid rgba(255,255,255,.25); box-shadow: 0 4px 14px rgba(0,0,0,.5); pointer-events: none; }
+.t3 .mir-kind { color: var(--accent); }
+
+/* 2026-10-25 redesign: the feed's own bar (title + count, the kind filter, queue + Examples), the scene picker, the dock's scene slot picture */
+.t3 .t3-hist { padding-top: 4px; }
+.t3 .t3-feedbar { display: flex; align-items: center; gap: 14px; min-height: 40px; margin: 0 0 10px; flex-wrap: wrap; }
+.t3 .t3-feed-h { margin: 0; display: inline-flex; align-items: baseline; gap: 8px; font: 600 17px/24px var(--font-display); letter-spacing: var(--tracking-display, -.02em); color: var(--text); }
+.t3 .t3-feed-h small { font: 500 12px/1 var(--font-mono); color: var(--text-3); letter-spacing: 0; }
+.t3 .t3-kinds { display: inline-flex; gap: 2px; padding: 3px; border-radius: 11px; background: var(--surface-1); border: 1px solid var(--hairline); }
+.t3 .t3-kinds button { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--text-2); font: 600 12px/1 var(--font-ui); cursor: pointer; transition: background var(--t-state, 150ms), color var(--t-state, 150ms); }
+.t3 .t3-kinds button small { font: 500 10.5px/1 var(--font-mono); color: var(--text-3); }
+.t3 .t3-kinds button:hover { color: var(--text); background: var(--state-hover); }
+.t3 .t3-kinds button.on { color: var(--text); background: var(--surface-3); box-shadow: inset 0 0 0 1px var(--hairline-strong); }
+.t3 .t3-kinds button:focus-visible, .t3 .t3-act:focus-visible, .t3 .ps-slot:focus-visible { outline: var(--focus-ring-w) solid var(--focus-ring-color); outline-offset: var(--focus-ring-gap); }
+.t3 .t3-feedbar-r { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; }
+.t3 .t3-feedbar-r .vs-hist-q { margin: 0; }
+.t3 .t3-more { margin: 14px 0 0; font: 500 12.5px/18px var(--font-ui); color: var(--text-3); text-align: center; }
+.t3 .t3-more a { color: var(--text-2); }
+.t3 .ps-card .t3-hit video { position: absolute; inset: 0; width: 100%; height: 100%; max-height: none; object-fit: contain; }
+.t3 .ps-card .t3-hit { background: radial-gradient(120% 100% at 50% 0%, #15171a, #08090a); }
+.t3 .t3-card .fsx, .t3 .t3-card .vs-hwait { border-radius: 0; }
+.t3 .ps-slot-ic.img { overflow: hidden; padding: 0; background: var(--surface-3); }
+.t3 .ps-slot-ic.img img { width: 100%; height: 100%; object-fit: cover; }
+.t3 .ic-chip.ps-slot .ps-slot-ic { width: 44px; height: 32px; border-radius: 8px; }
+.t3-scenes { padding: 14px 14px 12px; max-height: min(70vh, 640px); overflow: auto; }
+.t3 .t3-empty .sg-lg .sg-media { aspect-ratio: 16 / 8; }
+.t3-mir-at { position: fixed; top: calc(var(--nav-h, 56px) + 8px); left: 50%; width: 1px; height: 1px; pointer-events: none; }
+.t3 .mir-card .t3-hit video.mir-card-plan { inset: auto 8px 8px auto; width: 28%; height: auto; aspect-ratio: auto; object-fit: cover; bottom: 52px !important; }
+/* keyboard focus on a card: a clear ring around the whole card (the hit area fills it) */
+.t3 .t3-card:has(.t3-hit:focus-visible) { border-color: transparent; box-shadow: 0 0 0 var(--focus-ring-w, 2px) var(--focus-ring-color); }
+.t3 .t3-hit:focus-visible { outline: none; }
+.t3 .t3-card:focus-within .t3-acts { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .t3 .t3-card, .t3 .t3-acts, .t3 .ps-real-chip, .t3 .t3-kinds button { transition: none; } }
+/* a wide clip fills its card; a tall one (9:16) shows whole on the dark card */
+.t3 .ps-card .t3-hit video:not(.mir-card-plan) { object-fit: cover; }
+.t3 .ps-card .t3-hit video[data-tall] { object-fit: contain; }
+
+/* ---- Direct a Shot: the single floating bar (2026-10-26). The dock's two rows change with the step: Stage (the note; Camera, Colour,
+   Fly it, Play the actor; Next), Mockup (the takes; the timeline and Edit take; Record mockup), Render (the mockup; the model and price; Render). ---- */
+.t3 .ps-main { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 12px; min-height: 48px; }
+.t3 .ps-slot-chips { display: contents; }
+.t3 .ps-line { margin: 0; font: 500 13px/18px var(--font-ui); color: var(--text-2); }
+.t3 .ps-render .ps-line { flex: 1 1 0; min-width: 0; color: var(--text-3); font-size: 12px; }
+.t3 .ps-mock { flex: none; width: 78px; height: 44px; padding: 0; border: 0; border-radius: 8px; overflow: hidden; background: #08090a; cursor: pointer; box-shadow: 0 0 0 2px var(--accent); }
+.t3 .ps-mock video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.t3 .ps-mock-t { display: grid; gap: 3px; min-width: 0; }
+.t3 .ps-mock-t b { font: 600 13px/16px var(--font-ui); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.t3 .ps-mock-t small { font: 500 11.5px/14px var(--font-ui); color: var(--text-3); white-space: nowrap; }
+html body .ic.ic2 .ic-dock .ic-chips .ic-chip.ps-chip b { font-weight: 600; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html body .ic.ic2 .ic-dock .ic-chips .ic-chip .ps-chip-k { color: var(--text-3); font-weight: 500; }
+html body .ic.ic2 .ic-dock .ic-chips .ic-chip .ps-sw { flex: none; width: 14px; height: 14px; border-radius: 999px; box-shadow: 0 0 0 2px var(--surface-1, #111), 0 0 0 3px rgba(255,255,255,.4); }
+html body .ic.ic2 .ic-dock .ic-chips .ic-chip.ps-fact { color: var(--text-2) !important; gap: 6px !important; }
+.t3 .ps-free { color: var(--badge-free, #2fbf8f); font-weight: 600; }
+.t3 .ic-gen.ps-running { background: color-mix(in srgb, var(--accent) 80%, #000); }
+/* UX audit batch A (2026-10-27): a video card shows its first-frame poster at once; until the video's data arrives a quiet shimmer sits behind it (never black) */
+.t3 .t3-hit video:not([data-ready]) { background: linear-gradient(100deg, var(--surface-1) 30%, var(--surface-2) 50%, var(--surface-1) 70%) 0 0 / 300% 100%; animation: t3-shimmer 1.4s linear infinite; }
+@keyframes t3-shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .t3 .t3-hit video:not([data-ready]) { animation: none; } }
+/* an example made with a model this app doesn't have */
+.t3 .t3-notin { position: absolute; top: 6px; right: 6px; padding: 2px 7px; border-radius: 999px; font: 600 10.5px/15px var(--font-ui, Inter, system-ui, sans-serif); font-style: normal; color: var(--text-2); background: color-mix(in srgb, var(--bg) 78%, transparent); border: 1px solid var(--hairline); backdrop-filter: blur(6px); }
+.t3 .t3-ex-in:not(.ok) { visibility: hidden; }
+html body .rvx .t3-notin-row { font-style: normal; color: var(--text-2); }
+/* Direct a Shot's steps keep their words on a mid-size stage (2026-10-27): at 1024 the stage is ~900 px and the head has room for
+   "Stage · Mockup · Render"; only a really narrow stage (phone-ish) drops to numbers. The player's own rules stay as they are. */
+@container pvstage (min-width: 560px) {
+  /* not on the Stage step, where the top-left also holds Add props: there the words would run into it, so it keeps numbers + "Stage" */
+  .t3 .pv-stage:not(:has(.pv-tl > :nth-child(2))) .pv-steps li span, .t3 .pv-stage:not(:has(.pv-tl > :nth-child(2))) .pv-steps li:not(.on):not([aria-current]) span { display: inline; } }
+@container pvstage (max-width: 860px) { .t3 .pv .pv-steps .pv-free { display: none; } }
+/* a coming-soon workflow's line in the bar: the name says it plainly, the way to go today follows */
+html body .ic.ic2 .ic-dock .ic-main>.ic-prow>.ic-noprompt.t3-soon { display: block; align-self: center; min-height: 0; margin: 6px 8px; font-size: 13.5px; line-height: 20px; }
+.t3 .t3-soon b { color: var(--text); font-weight: 600; }
+.t3 .t3-soon .fd-link { white-space: nowrap; }
+.ps-save-error{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding:10px 16px;color:var(--text,#eee);font-size:12px;line-height:1.5;border-top:1px solid #b86445}
+.ps-save-error .fd-link{white-space:nowrap;font-size:inherit}
+/* Direct a Shot is an editing toolbar, not an icon-only generation-chip row. Keep every action reachable. */
+.t3 .ic.ic2 .ic-dock.t3-direct .ic-chiprow{height:auto!important;flex:0 0 auto!important}
+html body .t3 .ic.ic2 .ic-dock.t3-direct .ic-chiprow>.ic-chips.ic-chips.ic-chips{flex-wrap:wrap!important;overflow:visible!important;gap:6px!important;row-gap:6px!important;height:auto!important;min-height:36px!important;mask-image:none!important;-webkit-mask-image:none!important;padding-right:0!important}
+html body .t3 .ic.ic2 .ic-dock.t3-direct .ic-chips .ic-chip{flex-shrink:0!important;min-height:36px!important;height:auto!important}
+html body .ic.ic2 .ic-dock.t3-direct .ic-chips .wf-chip .wf-name{display:inline!important;max-width:none!important;overflow:visible!important}
+.t3-direct .pv-tr{flex:1 1 280px;min-width:min(100%,220px);max-width:100%}
+.t3-direct .pv-tr .pv-scrub{min-width:40px}
+html body .ic.ic2 .ic-dock.t3-direct .ic-chips .ic-fixed,html body .ic.ic2 .ic-dock.t3-direct .ic-chips .wf-chip-on{flex:none!important;min-width:max-content!important;max-width:none!important;overflow:visible!important}
+.ps-finish-note{margin:0;color:var(--text-2);font:500 12px/18px var(--font-ui)}
+.ps-finish-note b{color:var(--text)}
+html body .ic.ic2 .ic-dock.t3-direct .ic-gen.ps-use-take{gap:8px!important}

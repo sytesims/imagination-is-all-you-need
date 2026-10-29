@@ -1,0 +1,32 @@
+{
+  "manifest_version": "0.2",
+  "name": "imagination",
+  "display_name": "Imagination Is All You Need",
+  "version": "0.1.0",
+  "description": "Drive your local Imagination Is All You Need studio (image, video, audio, 3D): find tools and models, quote, run with a server-enforced quote and budget, follow jobs, fetch results.",
+  "author": { "name": "sytesims" },
+  "license": "AGPL-3.0-or-later",
+  "server": {
+    "type": "node",
+    "entry_point": "dist/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/dist/index.js"],
+      "env": {
+        "OPENHIGGSFIELD_API": "${user_config.api_url}",
+        "OPENHIGGSFIELD_MCP_TOOLSETS": "${user_config.toolsets}",
+        "OPENHIGGSFIELD_AGENT_BUDGET_USD": "${user_config.budget_usd}",
+        "OPENHIGGSFIELD_MCP_SPEND": "${user_config.spend}"
+      }
+    }
+  },
+  "user_config": {
+    "api_url": { "type": "string", "title": "Studio API", "description": "Where the app's API runs (npm run dev)", "default": "http://localhost:8787", "required": true },
+    "toolsets": { "type": "string", "title": "Toolsets", "description": "core (default), library, admin, canvas, legacy or all, comma-separated", "default": "core", "required": false },
+    "budget_usd": { "type": "string", "title": "Budget cap (USD)", "description": "Optional: a budget for the whole session; runs over it are refused before anything is sent. Empty = none", "default": "", "required": false },
+    "spend": { "type": "string", "title": "Paid runs", "description": "ask (approve each paid run, with its price), allow or block", "default": "ask", "required": false }
+  },
+  "tools_generated": true,
+  "prompts_generated": true,
+  "keywords": ["image", "video", "audio", "3d", "comfyui", "creative"]
+}

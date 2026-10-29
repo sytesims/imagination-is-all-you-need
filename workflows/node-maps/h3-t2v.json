@@ -1,0 +1,16 @@
+{
+  "workflowFile": "h3-t2v-api.json",
+  "template": "video_minimax_h3_t2v",
+  "license": "MiniMax H3 Community License",
+  "inputs": {
+    "prompt": null
+  },
+  "refs": [],
+  "seed": {
+    "node": "140:129",
+    "field": "noise_seed"
+  },
+  "output": {
+    "node": "92"
+  }
+}

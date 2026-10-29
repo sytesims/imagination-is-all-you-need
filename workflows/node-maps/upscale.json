@@ -1,0 +1,40 @@
+{
+  "workflowFile": "upscale-api.json",
+  "template": "utility_seedvr2_video_upscale",
+  "inputs": {
+    "video": {
+      "node": "18",
+      "field": "file"
+    }
+  },
+  "output": {
+    "node": "17"
+  },
+  "extra": {
+    "resolution": {
+      "node": "15:4",
+      "field": "resolution",
+      "default": 1080,
+      "note": "short side in px"
+    },
+    "dit": {
+      "node": "15:5",
+      "field": "model",
+      "options": "3b fp8 default; 7b fp16 / 7b_sharp for Creative"
+    },
+    "seed": {
+      "node": "15:4",
+      "field": "seed"
+    },
+    "batchSize": {
+      "node": "15:4",
+      "field": "batch_size",
+      "note": "4n+1 frames"
+    }
+  },
+  "variants": {
+    "precise": "upscale-api.json (SeedVR2 3B)",
+    "creative": "upscale-creative-api.json (SeedVR2 7B)",
+    "smooth60": "upscale-60fps-api.json (SeedVR2 3B + RIFE x2)"
+  }
+}

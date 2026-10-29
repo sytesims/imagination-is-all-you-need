@@ -1,0 +1,79 @@
+Imagination Is All You Need
+Copyright (C) 2026 sytesims
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published
+by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program, in the file LICENSE.  If not, see
+<https://www.gnu.org/licenses/>.
+
+SPDX-License-Identifier: AGPL-3.0-or-later
+
+
+Additional permission under GNU AGPL version 3 section 7
+
+If you modify this Program, or any covered work, by linking or combining
+it with tldraw (the tldraw SDK, including the "tldraw" package and the
+"@tldraw/*" packages), or a modified version of that library, containing
+parts covered by the terms of the tldraw license, the licensors of this
+Program grant you additional permission to convey the resulting work.
+
+This permission does not change the license of tldraw. tldraw stays under
+its own license (a copy is in licenses/tldraw-LICENSE.md), and its terms,
+including its license key and watermark rules, still apply to it.
+
+
+Source code
+
+If you run a modified version of this program for other people over a
+network, AGPL section 13 asks you to offer them its source code. The app's
+footer links to the source repository for this reason. Keep that link, and
+point it at your own source if you change the program.
+
+
+----------------------------------------------------------------------------
+Third-party notices
+
+These parts keep their own licenses and notices. The AGPL on our code does
+not relicense them. Full lists: LICENSES.md, workflows/LICENSES.md,
+docs/ATTRIBUTION.md, ASSETS-CREDITS.md, and the Models & licences page
+(/licenses) in the app.
+
+tldraw (tldraw, @tldraw/*)
+  Copyright tldraw, Inc. Licensed under the tldraw license, not an open-source
+  license: licenses/tldraw-LICENSE.md. Used under the additional permission
+  above. Production use needs a tldraw license key.
+
+ComfyUI
+  GPL-3.0. Not included in this repository. The app talks to a separate
+  ComfyUI process (on your computer or on Comfy Cloud) over HTTP. ComfyUI and
+  its custom node packs keep their own licenses.
+
+Comfy-Org/workflow_templates
+  MIT. Copies in workflows/templates/ keep their license file
+  (workflows/templates/LICENSE-workflow_templates).
+
+Mesh2Motion (Scott Petrovic)
+  MIT. The skin-weight code vendored in web/src/shared/rig/m2m keeps its MIT
+  notice in each file and in licenses/mesh2motion-LICENSE-MIT.md. The human
+  skeleton and moves are CC0 (licenses/mesh2motion-LICENSE-CC0.md).
+
+3D kits, YAMNet and other bundled assets (web/public/models/)
+  Each folder keeps its own LICENSE file (CC0, Apache-2.0 and others; YAMNet
+  also keeps its NOTICE). See ASSETS-CREDITS.md.
+
+npm and Python dependencies
+  Each package keeps its own license (MIT, Apache-2.0, BSD and others).
+
+Model weights
+  Every model keeps its own license (open, community, non-commercial or a
+  provider's terms). No weights are included in this repository. Each model's
+  license is listed in LICENSES.md and shown next to the model in the app.

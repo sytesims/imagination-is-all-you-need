@@ -1,0 +1,44 @@
+{
+ "simulated": true,
+ "note": "SIMULATED profile: a /system_stats answer in ComfyUI's shape and an nvidia-smi line, reconstructed from public specs. Not recorded on this hardware.",
+ "label": "Linux, no graphics card",
+ "host": {
+  "platform": "linux",
+  "arch": "x64",
+  "ramBytes": 34359738368,
+  "cpuModel": "Intel(R) Xeon(R) CPU"
+ },
+ "system_stats": {
+  "system": {
+   "os": "posix",
+   "ram_total": 34359738368,
+   "ram_free": 20615843020,
+   "comfyui_version": "0.42.5",
+   "python_version": "3.12.9",
+   "pytorch_version": "2.10.0",
+   "embedded_python": false,
+   "argv": [
+    "main.py"
+   ]
+  },
+  "devices": [
+   {
+    "name": "cpu",
+    "type": "cpu",
+    "index": null,
+    "vram_total": 34359738368,
+    "vram_free": 17179869184
+   }
+  ]
+ },
+ "nvidia_smi": null,
+ "expect": {
+  "id": "cpu-only",
+  "backend": "cpu",
+  "vramClass": null,
+  "fp8": "upcast",
+  "nvfp4": "no",
+  "tier": "none",
+  "comfyKind": "manual"
+ }
+}

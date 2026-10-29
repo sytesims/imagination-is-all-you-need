@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "imagination": {
+      "command": "npx",
+      "args": ["-y", "openhiggsfield-mcp"],
+      "env": { "OPENHIGGSFIELD_API": "http://localhost:8787" }
+    }
+  }
+}

@@ -1,0 +1,63 @@
+/* Account menu (Shell AvatarMenu): one family with the model menu's sort list and the Project picker (FeedToolbar ProjectPicker):
+   the popover surface, 40px rows, an orange bar on the active row. A cover strip on top with the avatar over its edge, a stat card for
+   spend, then two row groups. Orange stays a thin detail (the card's hairline, the row bar and icon); no orange buttons. 4/8px grid. */
+.tn-menu.hn-menu.am{width:288px!important;padding:4px!important;gap:0;border-radius:14px!important;background:#232427!important;border:1px solid #2e2f33!important;
+  box-shadow:0 18px 48px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.35)!important;color:var(--text-1);
+  animation:am-in .14s cubic-bezier(.2,.8,.2,1) both;transform-origin:top right}
+@keyframes am-in{from{opacity:0;transform:translateY(-4px) scale(.97)}to{opacity:1;transform:none}}
+.tn-menu.am a{text-decoration:none}
+
+/* header: cover strip, avatar over its bottom edge, name in the display face, @name in grey, a quiet "View profile ›" */
+.tn-menu.am .am-head{position:relative;padding:0 0 8px}
+.tn-menu.am .am-cover{position:relative;display:block;height:64px;border-radius:10px;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}
+.tn-menu.am .am-cover-img{position:absolute;inset:0}
+.tn-menu.am .am-cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.tn-menu.am .am-cover::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(0,0,0,.35));pointer-events:none}
+.tn-menu.am .am-id{position:relative;display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin-top:-28px;padding:0 8px 0 12px}
+.tn-menu.am .am-av{flex:none;box-sizing:border-box;width:56px;height:56px;padding:2px;border-radius:50%;background:#232427;display:grid;place-items:center}
+.tn-menu.am .am-name{display:block;padding:8px 12px 0;font:700 16px/24px var(--font-display);letter-spacing:-.01em;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tn-menu.am .am-sub{display:block;padding:0 12px;font:500 12px/16px var(--font-ui);color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* quiet text links ("View profile ›", "See costs ›", "Check your balance ↗") */
+.tn-menu.am .am-q{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;margin:0 -8px 0 0;border-radius:8px;color:var(--text-1);font:600 12px/16px var(--font-ui);white-space:nowrap;outline:none}
+.tn-menu.am .am-q:hover,.tn-menu.am .am-q:focus-visible{background:rgba(255,255,255,.06)}
+.tn-menu.am .am-q:focus-visible{box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+.tn-menu.am .am-view{color:var(--text-2);font-weight:500;margin:0 0 4px}
+.tn-menu.am .am-view:hover,.tn-menu.am .am-view:focus-visible{color:var(--text-1)}
+
+/* stat card */
+.tn-menu.am .am-card{position:relative;margin:0 4px;border-radius:12px;background:var(--surface-2,#1C1E20);box-shadow:inset 0 0 0 1px var(--border-strong,rgba(255,255,255,.1));overflow:hidden}
+.tn-menu.am .am-card::before{content:"";position:absolute;left:16px;right:16px;top:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.55;pointer-events:none}
+.tn-menu.am .am-card-main{display:block;padding:12px 12px 8px;color:inherit;outline:none}
+.tn-menu.am .am-card-main:hover{background:rgba(255,255,255,.03)}
+.tn-menu.am .am-card-main:focus-visible{background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);border-radius:12px 12px 0 0}
+.tn-menu.am .am-card-k{display:flex;align-items:center;justify-content:space-between;color:var(--text-3);font:600 10px/16px var(--font-ui);letter-spacing:.06em;text-transform:uppercase}
+.tn-menu.am .am-chev{font:500 16px/16px var(--font-ui);letter-spacing:0;color:var(--text-2)}
+.tn-menu.am .am-card-main:hover .am-chev,.tn-menu.am .am-card-main:focus-visible .am-chev{color:var(--text-1)}
+.tn-menu.am .am-card-v{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin-top:4px}
+.tn-menu.am .am-num{font:600 28px/32px var(--font-display);letter-spacing:-.02em;color:var(--text-1);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tn-menu.am .am-num small{margin-right:2px;font:500 16px/16px var(--font-display);color:var(--text-2);vertical-align:8px}
+.tn-menu.am .am-kv{display:flex;flex-direction:column;align-items:flex-end;padding-bottom:2px}
+.tn-menu.am .am-kv small{font:500 10px/16px var(--font-ui);letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)}
+.tn-menu.am .am-kv b{font:600 13px/16px var(--font-ui);color:var(--text-1);font-variant-numeric:tabular-nums}
+.tn-menu.am .am-segs{display:flex;gap:2px;margin-top:8px}
+.tn-menu.am .am-segs i{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.08)}
+.tn-menu.am .am-segs i.on{background:var(--accent)}
+.tn-menu.am .am-bal{list-style:none;margin:0 12px;padding:8px 0;border-top:1px solid var(--border-strong,rgba(255,255,255,.1));display:flex;flex-direction:column;gap:4px}
+.tn-menu.am .am-bal li{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:24px;font:500 12px/16px var(--font-ui);color:var(--text-2)}
+.tn-menu.am .am-bal li b{font-weight:600;color:var(--text-1);font-variant-numeric:tabular-nums}
+.tn-menu.am .am-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 12px;padding:4px 0;border-top:1px solid var(--border,rgba(255,255,255,.05));font:500 12px/16px var(--font-ui);color:var(--text-2)}
+
+/* rows: 40px, grey icon, the sort list's orange bar and an orange icon on hover / focus; a divider before the help group */
+.tn-menu.am .am-list{display:flex;flex-direction:column;padding-top:4px}
+.tn-menu.am .am-grp{display:flex;flex-direction:column;gap:2px}
+.tn-menu.am .am-sep{flex:none;height:1px;margin:4px 8px;border:0;background:var(--border-strong,rgba(255,255,255,.1))}
+.tn-menu.am .am-row{position:relative;box-sizing:border-box;display:flex;align-items:center;gap:8px;height:40px;padding:0 12px 0 8px;border-radius:8px;color:var(--text-2);font:500 13px/16px var(--font-ui);outline:none}
+.tn-menu.am .am-row::before{content:"";position:absolute;left:3px;top:12px;bottom:12px;width:2px;border-radius:2px;background:var(--accent);opacity:0;transition:opacity .12s ease}
+.tn-menu.am .am-row:hover,.tn-menu.am .am-row:focus-visible{background:rgba(255,255,255,.06);color:var(--text-1)}
+.tn-menu.am .am-row:hover::before,.tn-menu.am .am-row:focus-visible::before{opacity:1}
+.tn-menu.am .am-row:focus-visible{box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+.tn-menu.am .am-ic{flex:none;width:24px;height:24px;display:grid;place-items:center;color:var(--text-2);transition:color .12s ease}
+.tn-menu.am .am-row:hover .am-ic,.tn-menu.am .am-row:focus-visible .am-ic{color:var(--accent)}
+
+@media (prefers-reduced-motion:reduce){.tn-menu.hn-menu.am{animation:none}.tn-menu.am .am-row::before,.tn-menu.am .am-ic{transition:none}}

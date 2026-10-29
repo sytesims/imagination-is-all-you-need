@@ -1,0 +1,2 @@
+{"_fixture": "HAND-WRITTEN from public docs, not a recorded live response", "_source": "router-openapi.yaml RouterQueueStatusResponse", "_headers": {"Retry-After": "5"},
+ "status": "IN_PROGRESS", "status_url": "https://api.comfy.org/v2/models/kling/kling-v3/requests/6f1a/status", "response_url": "https://api.comfy.org/v2/models/kling/kling-v3/requests/6f1a", "cancel_url": "https://api.comfy.org/v2/models/kling/kling-v3/requests/6f1a/cancel"}

@@ -1,0 +1,44 @@
+{
+  "workflowFile": "ltx25-flf-api.json",
+  "template": "video_ltx2_5_flf2v",
+  "license": "LTX-2.x Community License (weights); graph: MIT (from Comfy-Org/workflow_templates)",
+  "inputs": {
+    "prompt": {
+      "node": "222",
+      "field": "text"
+    },
+    "negative": {
+      "node": "217",
+      "field": "text"
+    },
+    "firstFrame": {
+      "node": "31",
+      "field": "image"
+    },
+    "lastFrame": {
+      "node": "39",
+      "field": "image"
+    },
+    "frameSize": {
+      "nodes": [
+        "213",
+        "214"
+      ]
+    },
+    "latent": {
+      "node": "201"
+    },
+    "audioLatent": {
+      "node": "197"
+    }
+  },
+  "refs": [],
+  "seed": {
+    "node": "196",
+    "field": "noise_seed"
+  },
+  "output": {
+    "node": "68"
+  },
+  "changes": "From the official template video_ltx2_5_flf2v (its node ids kept): the same Mac files as ltx25-ti2v (GGUF Q4_K_M, bf16 Gemma, conv bf16 VAE), ImageScale to the output size, no prompt enhancer. The template is one stage at full size; ours runs the two-stage ladder of the text / image template: stage 1 at half size with the first (frame 0) and last (frame -1) guides at 0.7, guides cropped, x2 latent upscale (nodes 300-301), the guides added again at 1.0 for stage 2 (302-303; sigmas 0.85, 0.725, 0.4219, 0; seed 42), cropped before decode. LTX's own sound is kept. Loop (comfy/ltx25Video.ts loopTail): nodes 39/214/195 dropped, both end guides read the start frame (199), node 900 ImageFromBatch keeps frames 0 … N-2 and node 901 TrimAudioDuration cuts the sound to (N-1)/24 s before CreateVideo."
+}

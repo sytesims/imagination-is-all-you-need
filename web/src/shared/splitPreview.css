@@ -1,0 +1,21 @@
+/* Before / after split preview (SplitPreview.tsx). --split = the divider's position from the left. Tokens only, so it follows the theme. */
+.splitp{position:relative;display:block;width:100%;aspect-ratio:4/3;overflow:hidden;background:var(--fill);cursor:ew-resize;touch-action:pan-y;user-select:none;-webkit-user-select:none;isolation:isolate}
+.splitp:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--accent)}
+.splitp-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 10%;pointer-events:none}
+.splitp-before{clip-path:inset(0 calc(100% - var(--split,50%)) 0 0)}
+.splitp-line{position:absolute;top:0;bottom:0;left:var(--split,50%);width:2px;margin-left:-1px;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.25);pointer-events:none}
+.splitp-knob{position:absolute;top:50%;left:50%;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+.splitp-knob::before,.splitp-knob::after{content:"";position:absolute;top:50%;width:0;height:0;margin-top:-4px;border:4px solid transparent}
+.splitp-knob::before{left:2px;border-right-color:var(--accent)}
+.splitp-knob::after{right:2px;border-left-color:var(--accent)}
+.splitp-label{position:absolute;bottom:8px;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:2px 7px;border-radius:var(--r-pill,999px);background:rgba(0,0,0,.55);color:#fff;font-size:10.5px;font-weight:600;line-height:16px;pointer-events:none}
+.splitp-l{left:8px}
+.splitp-r{right:8px}
+/* The snap back to the middle animates; following the pointer does not. */
+.splitp:not(.is-live) .splitp-before{transition:clip-path var(--slow,240ms) var(--ease,ease)}
+.splitp:not(.is-live) .splitp-line{transition:left var(--slow,240ms) var(--ease,ease)}
+@media (prefers-reduced-motion:reduce){.splitp .splitp-before,.splitp .splitp-line{transition:none!important}}
+/* auto (a self-moving demo): follows its own sweep frame by frame, so no transition; sticky: drag only, grab cursor. */
+.splitp.is-auto .splitp-before,.splitp.is-auto .splitp-line{transition:none}
+.splitp.is-sticky{cursor:grab}
+.splitp.is-sticky.is-live{cursor:grabbing}

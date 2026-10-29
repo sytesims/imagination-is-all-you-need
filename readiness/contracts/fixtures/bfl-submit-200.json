@@ -1,0 +1,1 @@
+{"_fixture": "HAND-WRITTEN from public docs, not a recorded live response", "_source": "https://docs.bfl.ai/quick_start/generating_images (id + polling_url)", "id": "hand-written-id", "polling_url": "https://api.bfl.ai/v1/get_result?id=hand-written-id"}

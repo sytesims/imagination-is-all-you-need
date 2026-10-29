@@ -1,0 +1,60 @@
+/* Create Video: the composer IS Create Image's dock. VideoStudio renders it with Image's own classes (ic ic2 > ic-dock > ic-frame > ic-panel >
+   ic-main > ic-prow / ic-chiprow, ic-chip, ic-gen), so imageCanvas.css + createBar.css give the identical width cap (880), height (124px),
+   radius, chips and the 132px Generate; nothing is copied. ImageCanvas.tsx and those stylesheets are not changed.
+   Like Image the dock is fixed to the bottom; the page keeps the same bottom padding (--ic-dock-h, measured in VideoStudio), so nothing hides behind it.
+   This file only has the Video page (tabs, history) and the few Video-only chip states. Loaded after videoPanel.css. */
+
+/* the page: tabs, history / how it works; the bottom padding is the dock's measured height, like Image's stage */
+html body .vs.vs-dk{display:block;height:auto;min-height:0;padding:0 16px;box-sizing:border-box}
+html body .vs.vs-dk .vs-main{min-height:0;border:0;border-radius:0;background:transparent;overflow:visible;padding-bottom:calc(var(--ic-dock-h,124px) + 40px)}
+html body .vs.vs-dk .vs-mbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:0 4px}
+html body .vs.vs-dk .vs-mbar-r{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
+html body .vs.vs-dk .vs-pchip{box-sizing:border-box;display:inline-flex;align-items:center;gap:8px;height:32px;max-width:360px;padding:0 10px;border:0;border-radius:8px;background:var(--state-fill);color:#fff;font:500 13px/16px var(--font-sans,Inter,system-ui,sans-serif);cursor:pointer}
+html body .vs.vs-dk .vs-pchip:hover{background:var(--state-hover)}
+html body .vs.vs-dk .vs-pchip:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+html body .vs.vs-dk .vs-pchip svg{flex:none;opacity:.6}
+html body .vs.vs-dk .vs-pchip-l{font-weight:600;white-space:nowrap}
+html body .vs.vs-dk .vs-pchip-s{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-3,#8a8b90)}
+
+html body .vs-icd{display:contents}
+/* One Video feed (ui/video/VideoPage): the bar inside the page shell adds no box of its own */
+html body .vs-bar{display:contents}
+/* the thumbnails are Image's (.ic-th); a clip shows its first frame and its length where Image shows the number */
+html body .ic.ic2 .ic-dock .ic-lead .ic-th-hit video{display:block;width:100%;height:100%;object-fit:cover;border:0}
+html body .ic.ic2 .ic-dock .ic-lead .ic-th.bad .ic-th-hit{box-shadow:inset 0 0 0 1px #ff8a8a}
+html body .ic.ic2 .ic-dock .ic-lead .ic-th .ic-att-n{font-style:normal}
+/* a chip that holds a problem gets Settings' dot idiom, in red (the sentence is its tooltip and a row in "Before you generate") */
+html body .ic.ic2 .ic-dock .ic-chips .ic-chip.vs-bad{position:relative}
+html body .ic.ic2 .ic-dock .ic-chips .ic-chip.vs-bad::after{content:'';position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:#ff8a8a}
+/* Settings: the sliders icon on its own, a 32px square like Image's */
+html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.vs-sq{width:32px!important;min-width:32px!important;padding:0!important;justify-content:center}
+/* the "Before you generate" list: one row per note, no fix buttons */
+html body .apop.vs-notes-pop .pf-row{grid-template-columns:minmax(0,1fr)}
+html body .apop.vs-notes-pop .pf-t>span>p,html body .apop.vs-notes-pop .pf-t>span .helper{margin:0}
+/* the Settings popover: quality and bitrate, one after the other */
+html body .apop.vs-apop.vs-apop-set .vs-set-pop{width:240px;padding:6px}
+html body .apop.vs-apop.vs-apop-set .vs-set-pop .ic-pop-h{display:block;margin:6px 8px 2px}
+
+@media (max-width:900px){
+  html body .vs.vs-dk{padding:0 8px}
+}
+/* chip row too full: the Sound and Loop chips keep their icons (their tooltips say the rest); the model name's own step is Image's data-trunc */
+@media (min-width:701px){html body .ic.ic2 .ic-dock .ic-chips[data-short] :is(.vs-audio-t,.vs-loop-t) .vs-t{display:none}
+  html body .ic.ic2 .ic-dock .ic-chips[data-short] :is(.vs-audio-t,.vs-loop-t){width:32px!important;min-width:32px!important;padding:0!important;justify-content:center}
+  /* a sound that changes the price keeps its difference beside the icon ('+$0.20'): the one figure worth the room (2026-10-25) */
+  html body .ic.ic2 .ic-dock .ic-chips[data-short] .vs-audio-t.has-d{width:auto!important;padding:0 9px 0 8px!important}}
+/* Look chip (VideoStudio): a picked camera move shows its own move glyph in orange; the ✕ next to it clears the move and the style */
+.vs-look-glyph{display:inline-grid;place-items:center;color:var(--accent,#FF7A1A)}
+.vs-look-glyph .pt-glyph-i{display:block}
+/* picked: the Look chip and its ✕ read as one split chip (no gap, a hairline between) so the bar keeps its room. Strong selectors: the
+ * bar's chip rules (imageCanvas.css) set every .ic-sq to 32-36 px with !important. */
+html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.vs-look.has-x.has-x{border-top-right-radius:0!important;border-bottom-right-radius:0!important;padding-left:8px!important;padding-right:4px!important;gap:3px!important}
+html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-sq.vs-look-x.vs-look-x.vs-look-x{width:20px!important;min-width:20px!important;margin-left:-4px;padding:0!important;border-top-left-radius:0!important;border-bottom-left-radius:0!important;
+  background:rgba(255,255,255,.05)!important;box-shadow:inset 1px 0 0 rgba(255,255,255,.08);color:var(--text-2,#B4B5B8)}
+html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-sq.vs-look-x.vs-look-x.vs-look-x:hover{color:var(--text-1,#F7F7F8);background:rgba(255,255,255,.1)!important}
+/* Generate Video's results: the shared feed (VideoFeed.tsx → ui/next/feed) inside the page; .ic.ic2 brings Image's feed styles, without
+   Image's own page frame (its min-height and padding). The bottom padding for the dock stays on .vs-main. */
+html body .vs.vs-dk .ic.ic2.vf{display:block;min-height:0;padding:12px 0 0}
+html body .ic.ic2 .ic-dock .ic-chips[data-trunc] .vs-look.has-x b{max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} /* a long move name truncates before the whole row goes icon-only; the tooltip has it in full */
+/* Loop on (LTX-2.5 22B): the loop glyph turns brand orange, so the on state reads even when the chip is icon-only */
+html body .ic.ic2 .ic-dock .vs-loop-t.on .sc-ic{color:var(--accent)}

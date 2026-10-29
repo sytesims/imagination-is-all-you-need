@@ -1,0 +1,8 @@
+props.glb and bottle.glb: pieces from CC0 kits, scaled to metres, deduped, textures resized to 1024 px (WebP), quantized and meshopt-compressed
+by scripts/assets/build-scene-kits.mjs (the diorama cabins are assembled from the Holiday Kit's walls and roofs; the bottle's label is made blank).
+Licence of every source: CC0 1.0 Universal (public domain dedication), https://creativecommons.org/publicdomain/zero/1.0/
+- KayKit Furniture Bits, Kay Lousberg: https://kaylousberg.itch.io/furniture-bits
+- KayKit Restaurant Bits, Kay Lousberg: https://kaylousberg.itch.io/restaurant-bits
+- KayKit Forest Nature Pack, Kay Lousberg: https://kaylousberg.itch.io/kaykit-forest
+- Holiday Kit, Kenney: https://kenney.nl/assets/holiday-kit
+- WaterBottle (glTF Sample Assets), Microsoft: https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/WaterBottle

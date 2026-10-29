@@ -1,0 +1,34 @@
+/* AudioViz.tsx: generated cover, glow, the dancing bean and its style chip. The host (.ac-cover, .rvx-cover, .asset-audio) is position:relative + overflow:hidden. */
+.av-cover{position:absolute;inset:0;width:100%;height:100%;display:block}
+.av-glow{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(70% 80% at 50% 105%,rgba(255,122,26,.5),rgba(255,122,26,0) 70%);transition:opacity .45s var(--ease-state,ease)}
+.av-dancer{position:absolute;right:7%;bottom:2%;height:74%;aspect-ratio:100/120;line-height:0;pointer-events:none;filter:drop-shadow(0 4px 8px rgba(0,0,0,.4));transition:opacity .3s var(--ease-state,ease)}
+.av-dancer svg{display:block;width:100%;height:100%;overflow:visible}
+.av-dancer [data-face-l]{display:none}
+.av-dancer[data-face=happy] [data-face-l=happy],.av-dancer[data-face=smile] [data-face-l=smile],.av-dancer[data-face=surprised] [data-face-l=surprised],.av-dancer[data-face=sleepy] [data-face-l=sleepy],.av-dancer[data-face=wink] [data-face-l=wink],.av-dancer[data-face=dreamy] [data-face-l=dreamy],.av-dancer[data-face=calm] [data-face-l=calm],.av-dancer[data-face=shout] [data-face-l=shout],.av-dancer[data-face=cool] [data-face-l=cool]{display:inline}
+/* style packs (beanStyle.ts): one look at a time, from the host's data-pack */
+.av-dancer [data-acc]{display:none}
+.av-dancer[data-pack=rap] [data-acc=rap],.av-dancer[data-pack=love] [data-acc=love],.av-dancer[data-pack=rock] [data-acc=rock],.av-dancer[data-pack=edm] [data-acc=edm],.av-dancer[data-pack=lofi] [data-acc=lofi],.av-dancer[data-pack=classical] [data-acc=classical],.av-dancer[data-pack=peaceful] [data-acc=peaceful],.av-dancer[data-pack=voice] [data-acc=voice],.av-dancer[data-pack=sfx] [data-acc=sfx]{display:inline}
+.av-dancer[data-face=sleepy]{opacity:.9}
+[data-live] .av-dancer{transition:none}
+.av-dancer .bd-breathe{transform-box:fill-box;transform-origin:50% 100%}
+/* the glow takes the pack's colour */
+.av-glow[data-pack=love]{background:radial-gradient(70% 80% at 50% 105%,rgba(255,110,160,.5),rgba(255,110,160,0) 70%)}
+.av-glow[data-pack=edm]{background:radial-gradient(70% 80% at 50% 105%,rgba(160,110,255,.5),rgba(127,231,255,0) 70%)}
+.av-glow[data-pack=peaceful]{background:radial-gradient(70% 80% at 50% 105%,rgba(120,220,190,.38),rgba(120,220,190,0) 70%)}
+.av-glow[data-pack=lofi]{background:radial-gradient(70% 80% at 50% 105%,rgba(130,160,255,.42),rgba(130,160,255,0) 70%)}
+.av-glow[data-pack=rock]{background:radial-gradient(70% 80% at 50% 105%,rgba(255,70,30,.55),rgba(255,70,30,0) 70%)}
+/* the style chip: top right of the cover, a button that opens the style menu; quiet until the track plays or it's hovered */
+.av-mode{position:absolute;right:10px;top:10px;z-index:3;display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 6px 0 8px;border:0;border-radius:999px;background:rgba(11,11,13,.62);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:rgba(255,255,255,.82);font:600 11px/16px var(--font-ui);letter-spacing:.01em;white-space:nowrap;cursor:pointer;opacity:.88;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);transition:opacity .3s var(--ease-state,ease),color .3s var(--ease-state,ease),background .2s var(--ease-state,ease)}
+.av-mode:hover,.av-mode[aria-expanded=true]{opacity:1;color:#fff;background:rgba(11,11,13,.8)}
+.av-mode:focus-visible{opacity:1;outline:2px solid var(--accent,#FF7A1A);outline-offset:2px}
+.av-mode-quiet{opacity:0}
+.av-mode-quiet:focus-visible,.ac:hover .av-mode-quiet,.rvx-audio:hover .av-mode-quiet,.is-playing .av-mode-quiet{opacity:.88}
+.av-mode-h{font:500 11px/16px var(--font-ui);color:rgba(255,255,255,.55)}
+.av-mode[data-source=heard] .av-mode-h{color:var(--accent,#FF7A1A)}
+.av-mode-caret{width:12px;height:12px;flex:none;opacity:.7}
+.av-mode-dot{display:inline-block;width:7px;height:7px;flex:none;border-radius:50%;background:var(--accent,#FF7A1A)}
+[data-pack=love]>.av-mode-dot,.av-mode-dot[data-pack=love]{background:#FF7AA8}[data-pack=edm]>.av-mode-dot,.av-mode-dot[data-pack=edm]{background:#7FE7FF}[data-pack=peaceful]>.av-mode-dot,.av-mode-dot[data-pack=peaceful]{background:#9FE3C8}
+[data-pack=lofi]>.av-mode-dot,.av-mode-dot[data-pack=lofi]{background:#CFC4FF}[data-pack=rap]>.av-mode-dot,.av-mode-dot[data-pack=rap]{background:#FFD36B}[data-pack=rock]>.av-mode-dot,.av-mode-dot[data-pack=rock]{background:#FF6A1A}
+[data-pack=classical]>.av-mode-dot,.av-mode-dot[data-pack=classical]{background:#FFD9BC}[data-pack=voice]>.av-mode-dot,.av-mode-dot[data-pack=voice]{background:#FFFFFF}[data-pack=sfx]>.av-mode-dot,.av-mode-dot[data-pack=sfx]{background:#FFE48A}[data-pack=groove]>.av-mode-dot,.av-mode-dot[data-pack=groove]{background:#9A9AA2}
+.is-playing .av-mode{opacity:1;color:#fff}
+@media (prefers-reduced-motion:reduce){.av-glow{transition:none}.av-mode{transition:none}.av-dancer .bd-breathe{animation:none!important}}

@@ -1,0 +1,75 @@
+{
+  "workflowFile": "create-image-flux3klein-multiref-api.json",
+  "template": "image_flux3_klein_distilled_image_edit",
+  "model": "FLUX 3 Image Klein (FLUX Kommunity License v1.0)",
+  "inputs": {
+    "prompt": {
+      "node": "60",
+      "field": "value"
+    },
+    "image": {
+      "node": "11",
+      "field": "image"
+    },
+    "raw_prompt": {
+      "node": "51",
+      "field": "switch"
+    }
+  },
+  "boxes": {
+    "node": "33",
+    "field": "bboxes",
+    "layout": "49",
+    "prompt": "60"
+  },
+  "refs": [
+    {
+      "node": "11",
+      "field": "image"
+    },
+    {
+      "node": "111",
+      "field": "image"
+    },
+    {
+      "node": "112",
+      "field": "image"
+    },
+    {
+      "node": "113",
+      "field": "image"
+    },
+    {
+      "node": "114",
+      "field": "image"
+    },
+    {
+      "node": "115",
+      "field": "image"
+    },
+    {
+      "node": "116",
+      "field": "image"
+    },
+    {
+      "node": "117",
+      "field": "image"
+    },
+    {
+      "node": "118",
+      "field": "image"
+    },
+    {
+      "node": "119",
+      "field": "image"
+    }
+  ],
+  "seed": {
+    "node": "7",
+    "field": "seed"
+  },
+  "output": {
+    "node": "9"
+  },
+  "maxRefs": 10
+}

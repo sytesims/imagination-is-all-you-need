@@ -1,0 +1,87 @@
+/* PresetTile (shared/PresetTile.tsx): one tile for every preset grid. Grids set the size (className); this file owns the look. */
+.pt{all:unset;box-sizing:border-box;position:relative;display:block;cursor:pointer;overflow:hidden;border-radius:16px;isolation:isolate;
+  background:linear-gradient(160deg,var(--surface-2,#1c1e20),var(--hf-bg,#0f1113))}
+.pt::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(transparent 55%,rgba(0,0,0,.78))}
+/* the ring sits above the media (an outline would be painted under it) */
+.pt::before{content:"";position:absolute;inset:0;z-index:3;border-radius:inherit;pointer-events:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);transition:box-shadow .15s}
+.pt.on::before{box-shadow:inset 0 0 0 2px var(--accent,#ff7a1a)}
+.pt:hover::before{box-shadow:inset 0 0 0 1px rgba(255,255,255,.22)}.pt.on:hover::before{box-shadow:inset 0 0 0 2px var(--accent,#ff7a1a)}
+.pt:focus-visible{outline:none}.pt:focus-visible::before{box-shadow:inset 0 0 0 2px var(--text-1,#f7f7f8)}
+.pt-media{position:absolute;inset:0;overflow:hidden;border-radius:inherit}
+.pt-media>video,.pt-media>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.pt-blank{position:absolute;inset:0}
+.pt-c{position:absolute;left:12px;right:12px;bottom:10px;z-index:2;display:grid;gap:1px;min-width:0}
+.pt-c b{font:700 20px/26px var(--font-display);text-transform:uppercase;letter-spacing:-.01em;color:var(--text-1,#f7f7f8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pt-c small{font:500 12px/16px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-3,rgba(255,255,255,.5));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pt-glyph{position:absolute;top:10px;right:10px;z-index:2;width:26px;height:26px;border-radius:999px;display:grid;place-items:center;
+  color:var(--text-1,#f7f7f8);background:rgba(15,17,19,.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+.pt.on .pt-glyph{color:var(--accent,#ff7a1a)}
+
+/* compact (size="compact", shared/LookPicker): a small picker tile, same look at a smaller scale */
+.pt.pt-sm{border-radius:12px}
+.pt.pt-sm::after{background:linear-gradient(transparent 45%,rgba(0,0,0,.82))}
+.pt-sm .pt-c{left:8px;right:8px;bottom:7px;gap:0}
+.pt-sm .pt-c b{font:700 13px/16px var(--font-display);letter-spacing:0;white-space:normal;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2}
+.pt-sm .pt-c small{font:500 10.5px/14px var(--font-sans,Inter,system-ui,sans-serif)}
+.pt-sm .pt-glyph{top:6px;right:6px;width:20px;height:20px}
+.pt-sm.on::before,.pt-sm.on:hover::before{box-shadow:inset 0 0 0 2px var(--accent,#ff7a1a),inset 0 0 0 3px rgba(15,17,19,.6)}
+/* the picked compact tile: orange ring plus a check (2026-10-27); a move's glyph steps aside for it */
+.pt-check{position:absolute;top:6px;right:6px;z-index:4;width:20px;height:20px;border-radius:999px;display:grid;place-items:center;background:var(--accent,#ff7a1a);color:var(--on-accent,#0f1113);box-shadow:0 1px 4px rgba(0,0,0,.4);animation:pt-pop .18s var(--ease-out,ease-out)}
+.pt-sm.on .pt-glyph{right:30px}
+@keyframes pt-pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+
+/* MotionPreview: one still moved with CSS. Not live → no animation (rests on the plain still). */
+.pt-mo{position:absolute;inset:0;overflow:hidden;--pt-d:4s}
+.pt-mo-l{position:absolute;inset:0;will-change:transform}
+.pt-mo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;user-select:none}
+.pt-mo-in{position:absolute;inset:0;-webkit-mask-image:radial-gradient(ellipse 34% 30% at 54% 34%,#000 62%,transparent 100%);mask-image:radial-gradient(ellipse 34% 30% at 54% 34%,#000 62%,transparent 100%);will-change:transform;transform-origin:54% 34%}
+.pt-mo[data-live] .pt-mo-l{animation:var(--pt-kf) var(--pt-d) var(--pt-ease,ease-in-out) infinite}
+/* one-way moves fade at the loop seam so the restart reads as a cut, not a jump back */
+.pt-mo[data-live]:is(.pt-mv-push,.pt-mv-pull,.pt-mv-push-fast,.pt-mv-pull-fast,.pt-mv-crash,.pt-mv-pan-l,.pt-mv-pan-r,.pt-mv-track-l,.pt-mv-track-r,.pt-mv-tilt-u,.pt-mv-tilt-d,.pt-mv-whip,.pt-mv-orbit-l,.pt-mv-orbit-r,.pt-mv-crane-u,.pt-mv-crane-d,.pt-mv-crane-over,.pt-mv-fpv,.pt-mv-flyover,.pt-mv-vertigo-in,.pt-mv-vertigo-out,.pt-mv-focus){animation:pt-fade var(--pt-d) linear infinite}
+@keyframes pt-fade{0%{opacity:0}9%{opacity:1}90%{opacity:1}100%{opacity:0}}
+
+.pt-mv-push{--pt-kf:pt-push}@keyframes pt-push{from{transform:scale(1.04)}to{transform:scale(1.3)}}
+.pt-mv-pull{--pt-kf:pt-pull}@keyframes pt-pull{from{transform:scale(1.3)}to{transform:scale(1.04)}}
+.pt-mv-push-fast{--pt-kf:pt-push-fast;--pt-d:2.8s}@keyframes pt-push-fast{0%,15%{transform:scale(1.04)}70%,100%{transform:scale(1.45)}}
+.pt-mv-pull-fast{--pt-kf:pt-pull-fast;--pt-d:2.8s}@keyframes pt-pull-fast{0%,15%{transform:scale(1.45)}70%,100%{transform:scale(1.04)}}
+.pt-mv-crash{--pt-kf:pt-crash;--pt-d:2.6s;--pt-ease:linear}@keyframes pt-crash{0%,50%{transform:scale(1.04)}62%,100%{transform:scale(1.65)}}
+.pt-mv-yoyo{--pt-kf:pt-yoyo;--pt-d:3s}@keyframes pt-yoyo{0%,100%{transform:scale(1.04)}50%{transform:scale(1.38)}}
+.pt-mv-pulse{--pt-kf:pt-pulse;--pt-d:2.4s;--pt-ease:ease-out}@keyframes pt-pulse{0%,100%{transform:scale(1.05)}18%{transform:scale(1.24)}36%{transform:scale(1.08)}58%{transform:scale(1.26)}78%{transform:scale(1.08)}}
+.pt-mv-pan-l{--pt-kf:pt-pan-l}@keyframes pt-pan-l{from{transform:perspective(700px) rotateY(-5deg) translateX(-9%) scale(1.32)}to{transform:perspective(700px) rotateY(5deg) translateX(9%) scale(1.32)}}
+.pt-mv-pan-r{--pt-kf:pt-pan-r}@keyframes pt-pan-r{from{transform:perspective(700px) rotateY(5deg) translateX(9%) scale(1.32)}to{transform:perspective(700px) rotateY(-5deg) translateX(-9%) scale(1.32)}}
+.pt-mv-track-l{--pt-kf:pt-track-l}@keyframes pt-track-l{from{transform:translateX(-8%) scale(1.25)}to{transform:translateX(8%) scale(1.25)}}
+.pt-mv-track-r{--pt-kf:pt-track-r}@keyframes pt-track-r{from{transform:translateX(8%) scale(1.25)}to{transform:translateX(-8%) scale(1.25)}}
+.pt-mv-tilt-u{--pt-kf:pt-tilt-u}@keyframes pt-tilt-u{from{transform:translateY(-9%) scale(1.3)}to{transform:translateY(9%) scale(1.3)}}
+.pt-mv-tilt-d{--pt-kf:pt-tilt-d}@keyframes pt-tilt-d{from{transform:translateY(9%) scale(1.3)}to{transform:translateY(-9%) scale(1.3)}}
+.pt-mv-whip{--pt-kf:pt-whip;--pt-d:2.6s;--pt-ease:linear}@keyframes pt-whip{0%,55%{transform:translateX(9%) scale(1.3);filter:none}68%{filter:blur(6px)}78%,100%{transform:translateX(-9%) scale(1.3);filter:none}}
+.pt-mv-orbit-l{--pt-kf:pt-orbit-l;--pt-d:4.5s}@keyframes pt-orbit-l{from{transform:perspective(520px) rotateY(-14deg) translateX(9%) scale(1.34)}to{transform:perspective(520px) rotateY(14deg) translateX(-9%) scale(1.34)}}
+.pt-mv-orbit-r{--pt-kf:pt-orbit-r;--pt-d:4.5s}@keyframes pt-orbit-r{from{transform:perspective(520px) rotateY(14deg) translateX(-9%) scale(1.34)}to{transform:perspective(520px) rotateY(-14deg) translateX(9%) scale(1.34)}}
+.pt-mv-orbit-360{--pt-kf:pt-orbit-360;--pt-d:5s}@keyframes pt-orbit-360{0%,100%{transform:perspective(520px) rotateY(-20deg) translateX(10%) scale(1.38)}50%{transform:perspective(520px) rotateY(20deg) translateX(-10%) scale(1.38)}}
+.pt-mv-crane-u{--pt-kf:pt-crane-u}@keyframes pt-crane-u{from{transform:translateY(-8%) scale(1.34)}to{transform:translateY(7%) scale(1.14)}}
+.pt-mv-crane-d{--pt-kf:pt-crane-d}@keyframes pt-crane-d{from{transform:translateY(7%) scale(1.14)}to{transform:translateY(-8%) scale(1.34)}}
+.pt-mv-crane-over{--pt-kf:pt-crane-over}@keyframes pt-crane-over{from{transform:perspective(600px) rotateX(-8deg) translateY(-8%) scale(1.36)}to{transform:perspective(600px) rotateX(10deg) translateY(7%) scale(1.22)}}
+.pt-mv-fpv{--pt-kf:pt-fpv;--pt-d:3s;--pt-ease:ease-in}@keyframes pt-fpv{from{transform:translateY(-6%) scale(1.1)}to{transform:translateY(9%) scale(1.6)}}
+.pt-mv-flyover{--pt-kf:pt-flyover}@keyframes pt-flyover{from{transform:perspective(520px) rotateX(14deg) translateY(-7%) scale(1.42)}to{transform:perspective(520px) rotateX(14deg) translateY(8%) scale(1.55)}}
+/* dolly zoom: the frame scales one way, the subject (inner masked layer) the inverse, so it holds its size while the background stretches */
+.pt-mv-vertigo-in{--pt-kf:pt-vz-out}.pt-mv-vertigo-in[data-live] .pt-mo-in{animation:pt-vz-out-inv var(--pt-d) ease-in-out infinite}
+.pt-mv-vertigo-out{--pt-kf:pt-vz-in}.pt-mv-vertigo-out[data-live] .pt-mo-in{animation:pt-vz-in-inv var(--pt-d) ease-in-out infinite}
+@keyframes pt-vz-out{from{transform:scale(1.04)}to{transform:scale(1.4)}}@keyframes pt-vz-out-inv{from{transform:scale(1)}to{transform:scale(.743)}}
+@keyframes pt-vz-in{from{transform:scale(1.4)}to{transform:scale(1.04)}}@keyframes pt-vz-in-inv{from{transform:scale(.743)}to{transform:scale(1)}}
+.pt-mv-handheld{--pt-kf:pt-handheld;--pt-d:2.6s}@keyframes pt-handheld{0%,100%{transform:translate(0,0) rotate(0) scale(1.12)}18%{transform:translate(-1%,.6%) rotate(-.5deg) scale(1.12)}37%{transform:translate(.8%,-.5%) rotate(.4deg) scale(1.13)}55%{transform:translate(-.4%,-.9%) rotate(-.2deg) scale(1.12)}76%{transform:translate(1%,.4%) rotate(.5deg) scale(1.13)}}
+.pt-mv-shake{--pt-kf:pt-shake;--pt-d:.7s;--pt-ease:linear}@keyframes pt-shake{0%,100%{transform:translate(0,0) rotate(0) scale(1.16)}15%{transform:translate(-2.2%,1.4%) rotate(-1deg) scale(1.16)}30%{transform:translate(1.8%,-1.6%) rotate(.8deg) scale(1.16)}48%{transform:translate(-1.4%,-.8%) rotate(-.6deg) scale(1.16)}66%{transform:translate(2%,1.2%) rotate(1deg) scale(1.16)}84%{transform:translate(-.8%,1.8%) rotate(-.4deg) scale(1.16)}}
+.pt-mv-roll{--pt-kf:pt-roll;--pt-d:6s;--pt-ease:linear}@keyframes pt-roll{from{transform:rotate(0) scale(1.8)}to{transform:rotate(360deg) scale(1.8)}}
+.pt-mv-dutch{--pt-kf:pt-dutch;--pt-d:4s}@keyframes pt-dutch{0%,100%{transform:rotate(0) scale(1.3)}50%{transform:rotate(-9deg) scale(1.3)}}
+.pt-mv-focus{--pt-kf:pt-focus;--pt-d:3.4s}@keyframes pt-focus{0%,15%{filter:blur(6px);transform:scale(1.12)}65%,100%{filter:blur(0);transform:scale(1.16)}}
+.pt-mv-blur{--pt-kf:pt-blur;--pt-d:3s}@keyframes pt-blur{0%,100%{filter:blur(0);transform:translateX(-3%) scale(1.15)}50%{filter:blur(3px);transform:translateX(3%) scale(1.15)}}
+.pt-mv-timelapse{--pt-kf:pt-timelapse;--pt-d:2s;--pt-ease:steps(1)}@keyframes pt-timelapse{0%{filter:brightness(1)}20%{filter:brightness(.82) saturate(1.1)}40%{filter:brightness(1.08)}60%{filter:brightness(.88) hue-rotate(-8deg)}80%{filter:brightness(1.04)}}
+.pt-mv-still .pt-mo-l{transform:scale(1.04)}
+/* locked camera: only a soft breathing grain */
+.pt-grain{position:absolute;inset:-10%;opacity:.07;pointer-events:none;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.pt-mo[data-live] .pt-grain{animation:pt-grain 1.2s steps(4) infinite,pt-breathe 3.6s ease-in-out infinite}
+@keyframes pt-grain{0%{transform:translate(0,0)}25%{transform:translate(-3%,2%)}50%{transform:translate(2%,-3%)}75%{transform:translate(-2%,-1%)}100%{transform:translate(0,0)}}
+@keyframes pt-breathe{0%,100%{opacity:.05}50%{opacity:.14}}
+
+@media (prefers-reduced-motion:reduce){
+  .pt-mo,.pt-mo *,.pt-mo[data-live],.pt-mo[data-live] *,.pt-check{animation:none!important}
+}

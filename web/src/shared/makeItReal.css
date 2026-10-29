@@ -1,0 +1,212 @@
+/* Render (shared/MakeItReal.tsx): the sheet (inside the shared bar popover, barPop.css) and the Preview vs Render player. Brand tokens only. */
+.mir { gap: 0; }
+.mir-head { position: relative; display: flex; align-items: flex-start; gap: 10px; padding: 8px 8px 10px; }
+.mir-close { position: absolute; top: 6px; right: 4px; }
+.mir-ic { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; background: rgba(255, 122, 26, .12); color: var(--accent); }
+.mir-ht { display: grid; gap: 2px; min-width: 0; padding-right: 26px; }
+.mir-ht b { font: 600 15px/20px var(--font-display); color: var(--text-1, var(--text)); }
+.mir-ht small { font: 400 11.5px/15px var(--font-ui); color: var(--text-2); }
+.mir-load { height: 220px; margin: 4px 8px 8px; border-radius: 12px; }
+.mir-plan { display: flex; align-items: center; gap: 10px; margin: 0 8px 8px; padding: 6px; border-radius: 12px; background: var(--state-fill); }
+.mir-plan video { flex: none; width: 72px; max-height: 72px; object-fit: cover; border-radius: 8px; background: #000; }
+.mir-plan span { display: grid; gap: 2px; min-width: 0; }
+.mir-plan b { font: 600 13px/17px var(--font-display); color: var(--text-1, var(--text)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mir-plan small { font: 500 11px/15px var(--font-mono); color: var(--text-3, rgba(255,255,255,.5)); }
+.mir-field { display: grid; gap: 4px; padding: 0 8px; }
+.mir-field textarea { box-sizing: border-box; width: 100%; min-height: 70px; resize: vertical; padding: 8px 10px; border-radius: 10px; border: 0; background: var(--fill, rgba(255,255,255,.05)); color: var(--text-1, var(--text)); font: 500 13px/18px var(--font-ui); outline: none; }
+.mir-field textarea:focus-visible { box-shadow: inset 0 0 0 1px var(--border-strong), 0 0 0 2px rgba(255, 122, 26, .5); }
+.mir-field small { font: 400 11.5px/15px var(--font-ui); color: var(--text-3, rgba(255,255,255,.5)); }
+.mir-link { all: unset; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; font: 500 11.5px/15px var(--font-ui); color: var(--accent); text-transform: none; letter-spacing: 0; }
+.mir-link:hover { text-decoration: underline; }
+.mir-link:focus-visible { outline: var(--focus-ring-w) solid var(--focus-ring-color); outline-offset: 2px; border-radius: 4px; }
+.mir-opt { font: 500 11px/14px var(--font-ui); color: var(--text-3, rgba(255,255,255,.5)); }
+.mir-btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--border-strong); background: var(--state-fill); color: var(--text); font: 500 12px/1 var(--font-ui); cursor: pointer; transition: background var(--t-state); }
+.mir-btn:hover { background: var(--state-hover); }
+.mir-first-add { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 0 8px; }
+.mir-first { display: flex; align-items: center; gap: 10px; margin: 0 8px; padding: 6px; border-radius: 12px; background: var(--state-fill); }
+.mir-first img { flex: none; width: 64px; height: 40px; object-fit: cover; border-radius: 6px; }
+.mir-first span { display: grid; gap: 1px; min-width: 0; flex: 1; }
+.mir-first b { font: 600 12.5px/16px var(--font-ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mir-first small { font: 400 11px/14px var(--font-ui); color: var(--text-2); }
+.mir-x { all: unset; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; cursor: pointer; color: var(--text-2); }
+.mir-x:hover { background: var(--state-hover); color: var(--text); }
+.mir .bp-seg + .bp-seg { margin-top: 4px; }
+.mir-files { list-style: none; margin: 0; padding: 0 4px; display: grid; gap: 2px; }
+.mir-f { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; column-gap: 8px; padding: 5px 4px; border-radius: 8px; }
+.mir-f span { display: grid; min-width: 0; }
+.mir-f b { font: 600 12px/16px var(--font-ui); color: var(--text-1, var(--text)); }
+.mir-f small { font: 400 10.5px/14px var(--font-mono); color: var(--text-3, rgba(255,255,255,.5)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mir-f em { font: 500 11px/14px var(--font-mono); font-style: normal; color: var(--text-2); white-space: nowrap; }
+.mir-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); }
+.mir-f-ready .mir-dot { background: var(--success); }
+.mir-f-ready em { color: var(--success); }
+.mir-f-downloading .mir-dot { background: var(--accent); animation: mir-pulse 1.4s ease-in-out infinite; }
+.mir-f-downloading em { color: var(--accent); }
+.mir-f-missing .mir-dot { background: transparent; box-shadow: inset 0 0 0 1.5px var(--warning); }
+.mir-f-missing em { color: var(--warning); }
+.mir-bar { grid-column: 2 / 4; height: 3px; border-radius: 3px; background: var(--state-fill); overflow: hidden; margin-top: 3px; }
+.mir-bar i { display: block; height: 100%; background: var(--accent); border-radius: inherit; }
+@keyframes mir-pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .mir-f-downloading .mir-dot { animation: none; } }
+.mir-foot { position: sticky; bottom: -6px; z-index: 2; display: flex; align-items: center; gap: 10px; margin: 4px -6px -6px; padding: 10px 14px 12px; border-top: 1px solid var(--border-strong); background: var(--popover-bg, rgba(35,36,39,.98)); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); border-radius: 0 0 16px 16px; }
+.mir-foot { flex-wrap: wrap; row-gap: 6px; }
+.mir-cost { flex: 1; min-width: 0; font: 500 12.5px/17px var(--font-ui); color: var(--text-2); }
+.mir-eta-note { flex-basis: 100%; font: 400 10.5px/14px var(--font-ui); color: var(--text-3, rgba(255,255,255,.5)); }
+.mir-cost b { color: var(--badge-free); font-weight: 700; }
+.mir-cost small { font: 400 10.5px/14px var(--font-ui); color: var(--text-3, rgba(255,255,255,.5)); }
+.mir-gen { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 16px; border-radius: 10px; white-space: nowrap; }
+.mir-gen[disabled] { background: var(--disabled-fill); color: var(--disabled-ink); cursor: not-allowed; }
+
+/* Mockup vs Render */
+.pvr { --pvr-ar: 16 / 9; display: flex; flex-direction: column; gap: 10px; width: 100%; height: 100%; min-height: 0; justify-content: center; }
+.pvr-stage { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1fr); gap: 10px; min-height: 0; flex: 1; }
+.pvr-real .pvr-stage { grid-template-columns: 1fr; }
+.pvr-cell { margin: 0; min-width: 0; min-height: 0; display: grid; place-items: center; container-type: size; }
+/* the picture's own box: as big as the cell allows at the clip's shape (container query units), so the label sits on the picture */
+.pvr-box { position: relative; display: block; width: min(100cqw, calc(100cqh * var(--pvr-arn, 1.7778))); aspect-ratio: var(--pvr-ar); }
+.pvr-box video { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 12px; background: #000; cursor: pointer; }
+.pvr-cell figcaption { position: absolute; top: 10px; left: 10px; display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; background: rgba(0, 0, 0, .62); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  font: 700 10.5px/14px var(--font-ui); letter-spacing: .1em; text-transform: uppercase; color: #fff; pointer-events: none; }
+.pvr-cell + .pvr-cell figcaption { color: var(--accent); }
+.pvr-cell figcaption em { font-style: normal; letter-spacing: .04em; text-transform: none; font-weight: 600; padding: 0 6px; border-radius: 999px; background: rgba(232, 180, 74, .18); color: var(--warning); }
+.pvr-bar { flex: none; display: flex; align-items: center; gap: 10px; padding: 0 2px; }
+.pvr-play { all: unset; flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--on-accent); font: 700 12px/1 var(--font-ui); cursor: pointer; }
+.pvr-play:focus-visible, .pvr-snd:focus-visible, .pvr-views button:focus-visible { outline: var(--focus-ring-w) solid var(--focus-ring-color); outline-offset: var(--focus-ring-gap); }
+.pvr-scrub { flex: 1; min-width: 60px; accent-color: var(--accent); }
+.pvr-snd { all: unset; flex: none; height: 30px; padding: 0 10px; border-radius: 8px; background: var(--state-fill); color: var(--text-2); font: 500 12px/30px var(--font-ui); cursor: pointer; }
+.pvr-snd.on { color: var(--text); background: var(--state-hover); }
+.pvr-views { flex: none; display: inline-flex; padding: 3px; gap: 2px; border-radius: 10px; background: var(--state-fill); }
+.pvr-views button { all: unset; height: 26px; padding: 0 10px; border-radius: 7px; font: 600 12px/26px var(--font-ui); color: var(--text-2); cursor: pointer; white-space: nowrap; }
+.pvr-views button.on { background: rgba(255, 122, 26, .14); color: var(--text); box-shadow: inset 0 -2px 0 var(--accent); }
+@media (max-width: 720px) {
+  .pvr-stage { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
+  .pvr-bar { flex-wrap: wrap; }
+  .pvr-scrub { order: 5; flex-basis: 100%; }
+}
+/* in the result viewer's panel (shared/MakeItRealViewer.tsx) */
+.mir-vpanel { display: grid; gap: 8px; margin: 0 0 12px; padding: 12px; border-radius: 12px; background: var(--state-fill); border: 1px solid var(--state-border); }
+.mir-vpanel p { margin: 0; font: 500 12.5px/18px var(--font-ui); color: var(--text-2); }
+.mir-vpanel p b { color: var(--text); }
+.mir-vnote { font-size: 11.5px !important; color: var(--text-3) !important; }
+.mir-vbtn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.mir-vlist { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.mir-vlist li { display: flex; justify-content: space-between; gap: 8px; font: 500 12px/16px var(--font-ui); }
+.mir-vlist a { color: var(--accent); text-decoration: none; }
+.mir-vlist small { color: var(--text-3); }
+.rvx-stage-own { width: 100%; height: 100%; padding: 12px 12px 56px; box-sizing: border-box; }
+.mir-btn-main { color: var(--on-accent); background: var(--accent); border-color: transparent; font-weight: 600; }
+.mir-btn-main:hover { background: var(--accent); filter: brightness(1.08); }
+.mir-btn:focus-visible { outline: var(--focus-ring-w) solid var(--focus-ring-color); outline-offset: var(--focus-ring-gap); }
+.mir-first-ph { flex: none; width: 64px; height: 40px; border-radius: 6px; }
+.mir-sample { margin-left: 6px; font: 600 10px/14px var(--font-ui); font-style: normal; padding: 0 6px; border-radius: 999px; background: rgba(232, 180, 74, .18); color: var(--warning); }
+.mir-first img { width: 112px; height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
+.mir-first .mir-link { flex: none; }
+.mir-first small .mir-sample { margin: 0 6px 0 0; }
+.mir-first-set .mir-x { margin-left: -4px; }
+.mir-vrow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mir-vrow > * { justify-content: center; text-align: center; }
+.mir-draft { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 6px; padding: 0 2px; }
+.mir .mir-draft .bp-seg { margin: 0; }
+.mir .mir-draft .bp-seg + .bp-seg { margin-top: 0; }
+.mir .mir-draft .bp-opt { min-height: 30px; padding: 4px 4px; }
+.mir .mir-draft .bp-opt-l { font-size: 13px; }
+/* Render's place (2026-10-27): "Runs on" spans the row; the Comfy Cloud LoRA import steps */
+.mir .mir-draft .mir-wide { grid-column: 1 / -1; }
+.mir .mir-steps { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 3px; }
+.mir .mir-steps li { line-height: 1.4; }
+.mir .mir-steps a { color: inherit; text-decoration: underline; text-underline-offset: 2px; word-break: break-all; }
+.mir .mir-steps code { font-size: 11px; word-break: break-all; }
+.mir-field textarea { min-height: 56px; }
+.mir-plan { padding: 4px; }
+.mir-plan video { width: 56px; max-height: 56px; }
+/* phones: the shared popover becomes a bottom sheet with its own title and close button */
+.apop-sheet .mir-close, .apop-sheet .mir-ht b { display: none; }
+/* 2026-10-25 polish: the model is named under the title; the model files fold into one line */
+.mir-model { justify-self: start; margin-top: 4px; padding: 0 7px; border-radius: 6px; font: 500 10.5px/18px var(--font-mono); color: var(--text-2); background: var(--fill, rgba(255,255,255,.05)); }
+.mir-ht small { font-size: 12px; line-height: 16px; }
+.mir-fold { margin: 0 4px; border-radius: 12px; background: var(--state-fill); }
+.mir-fold > summary { list-style: none; display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 12px; cursor: pointer; }
+.mir-fold > summary::-webkit-details-marker { display: none; }
+.mir-fold > summary:hover { background: var(--state-hover); }
+.mir-fold > summary:focus-visible { outline: var(--focus-ring-w) solid var(--focus-ring-color); outline-offset: var(--focus-ring-gap); }
+.mir-fold > summary span { display: grid; min-width: 0; }
+.mir-fold > summary b { font: 600 12.5px/17px var(--font-ui); color: var(--text); }
+.mir-fold > summary small { font: 500 11px/15px var(--font-mono); color: var(--text-3); }
+.mir-chev { color: var(--text-3); transition: transform var(--t-state, 150ms); }
+.mir-fold[open] .mir-chev { transform: rotate(180deg); }
+.mir-fold[open] > summary { border-radius: 12px 12px 0 0; }
+.mir-fold .mir-files { padding: 0 8px 4px; }
+.mir-fold .bp-note, .mir-fold .pop-note { margin: 0 8px 8px; }
+.mir-dot-downloading { background: var(--accent); animation: mir-pulse 1.4s ease-in-out infinite; }
+.mir-dot-missing { background: transparent; box-shadow: inset 0 0 0 1.5px var(--warning); }
+.mir-dot-unknown { background: var(--text-3); }
+.mir-cost small { font-size: 11px; }
+@media (prefers-reduced-motion: reduce) { .mir-dot-downloading { animation: none; } .mir-chev { transition: none; } }
+/* Generate here is the same action as the dock's Generate: the brand orange, like it */
+.mir-gen:not([disabled]) { background: var(--accent); color: var(--on-accent); border-color: transparent; font-weight: 700; }
+.mir-gen:not([disabled]):hover { background: var(--accent-hover, #E66E17); }
+.mir-gen:focus-visible { outline: var(--focus-ring-w) solid var(--focus-ring-color); outline-offset: var(--focus-ring-gap); }
+/* "Who is it?" (a mockup with a person you played): an optional picture of them; painting the first frame gives the person that look */
+.mir-who { display: flex; align-items: center; gap: 10px; margin: 8px 8px 0; padding: 6px 6px 6px 8px; border-radius: 12px; border: 1px dashed var(--border-strong); }
+.mir-who img, .mir-who-ph { flex: none; width: 36px; height: 36px; border-radius: 999px; object-fit: cover; }
+.mir-who-ph { display: grid; place-items: center; background: var(--state-fill); color: var(--text-3); }
+.mir-who > span:not(.mir-who-ph) { flex: 1 1 auto; min-width: 0; display: grid; gap: 2px; }
+.mir-who b { font: 600 12.5px/16px var(--font-ui); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mir-who small { font: 500 11.5px/15px var(--font-ui); color: var(--text-3); }
+.mir-who .mir-btn { flex: none; white-space: nowrap; }
+
+/* ---- Render model picker (2026-10-26): the model chip in the header opens the shared ModelMenu ---- */
+.mir-model-btn { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; height: 22px; border: 1px solid var(--border, rgba(255,255,255,.1)); cursor: pointer; font: 500 11px/20px var(--font-ui); color: var(--text-1, var(--text)); transition: background-color var(--t-state, .15s), border-color var(--t-state, .15s); }
+.mir-model-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mir-model-btn svg { flex: none; opacity: .7; }
+.mir-model-btn:hover, .mir-model-btn.on { border-color: var(--border-strong, rgba(255,255,255,.2)); background: var(--state-hover, rgba(255,255,255,.08)); }
+.mir-model-btn:focus-visible { outline: var(--focus-ring-w, 2px) solid var(--focus-ring-color, var(--accent)); outline-offset: 2px; }
+.mir-plan small.mir-style { font: 500 11px/15px var(--font-ui); color: var(--text-2); }
+.mir-plan small.mir-style-off { color: var(--warn, #E8A33A); }
+.mir-qnote { align-self: center; font: 400 11.5px/16px var(--font-ui); color: var(--text-2); }
+.mir-foot-cloud .mir-cost-cloud { flex: 1 1 100%; }
+.mir-foot-cloud .mir-cost-cloud b { color: var(--text-1, var(--text)); }
+html body .mir-foot-cloud .gen-btn.gen-btn.gen-btn { height: 40px !important; min-height: 40px !important; font-size: 14px !important; }
+
+/* ---- One clear path (2026-10-26): 1 Describe → 2 Look (optional) → 3 Length; Render paints the first frame itself ---- */
+.mir .mir-step { display: inline-grid; place-items: center; width: 16px; height: 16px; margin-right: 7px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font: 700 10px/1 var(--font-ui); letter-spacing: 0; font-style: normal; vertical-align: 1px; }
+.mir .mir-opt-in { margin-left: 6px; font: 500 10px/14px var(--font-ui); letter-spacing: 0; text-transform: none; color: var(--text-3, rgba(255,255,255,.5)); }
+.mir-model-k { font: 500 10px/20px var(--font-ui); color: var(--text-3, rgba(255,255,255,.5)); }
+.mir-model-btn[disabled] { opacity: .6; cursor: default; }
+.mir-who { margin: 0 8px 8px; }
+button.mir-who-ph { all: unset; flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; background: var(--state-fill); color: var(--text-3); cursor: pointer; }
+button.mir-who-ph:hover { color: var(--text); background: var(--state-hover); }
+/* the first-frame row keeps one height in every state: no jump when painting starts or ends */
+.mir-first { min-height: 64px; box-sizing: border-box; }
+.mir-first > img, .mir-first > .mir-first-ph, .mir-first > button.mir-first-ph { flex: none; width: 88px; height: 50px; aspect-ratio: auto; object-fit: cover; border-radius: 7px; }
+.mir-first > .mir-first-ph, button.mir-first-ph { display: grid; place-items: center; background: var(--state-hover, rgba(255,255,255,.06)); color: var(--text-3); }
+button.mir-first-ph { all: unset; flex: none; width: 88px; height: 50px; border-radius: 7px; display: grid; place-items: center; background: var(--state-hover, rgba(255,255,255,.06)); color: var(--text-3); cursor: pointer; }
+.mir-first > span:not(.mir-first-act):not(.mir-first-ph) { flex: 1 1 auto; }
+.mir-first b, .mir-first small { white-space: normal; }
+.mir-first b { white-space: nowrap; }
+.mir-first .mir-first-act { flex: none; display: flex; align-items: center; gap: 4px; }
+.mir-first .mir-first-act .mir-btn { height: 28px; padding: 0 10px; }
+.mir-btn[disabled], .mir-x[disabled] { opacity: .5; cursor: default; pointer-events: none; }
+.mir-foot-one { flex-direction: column; align-items: stretch; gap: 8px; }
+.mir-foot-one .mir-cost { flex: none; }
+.mir-foot-one .mir-cost b.mir-cost-m { color: var(--text-1, var(--text)); }
+html body .mir-foot-one .gen-btn.gen-btn.gen-btn { height: 42px !important; min-height: 42px !important; font-size: 14.5px !important; }
+html body .mir-foot-one .gen-btn.gen-btn.gen-btn[disabled] { background: var(--disabled-fill) !important; color: var(--disabled-ink) !important; box-shadow: none !important; cursor: not-allowed; }
+.mir-pipe { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 12px; border-radius: 12px; background: var(--state-fill); }
+.mir-pipe ol { flex: 1; display: flex; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.mir-pipe li { display: flex; align-items: center; gap: 6px; font: 500 12.5px/16px var(--font-ui); color: var(--text-3, rgba(255,255,255,.5)); }
+.mir-pipe li i { width: 8px; height: 8px; border-radius: 999px; background: currentColor; opacity: .5; }
+.mir-pipe li.on { color: var(--text-1, var(--text)); }
+.mir-pipe li.on i { background: var(--accent); opacity: 1; animation: mirPulse 1.2s ease-in-out infinite; }
+.mir-pipe li.done { color: var(--text-2); }
+.mir-pipe li.done i { background: var(--badge-free, #3BB273); opacity: 1; }
+@keyframes mirPulse { 50% { transform: scale(.6); } }
+@media (prefers-reduced-motion: reduce) { .mir-pipe li.on i { animation: none; } }
+/* first-frame / picture rows: picture | words, the actions under the words (no squeezed text) */
+.mir .mir-first { display: grid; grid-template-columns: 88px minmax(0, 1fr); column-gap: 10px; row-gap: 6px; align-items: center; }
+.mir .mir-first > img, .mir .mir-first > .mir-first-ph, .mir .mir-first > button.mir-first-ph { grid-row: span 2; align-self: start; }
+.mir .mir-first .mir-first-act { grid-column: 2; justify-content: flex-start; }
+.mir .mir-first b { white-space: normal; }
+/* copy wave 1: the Comfy Cloud setup steps sit behind "How to set up" */
+.mir .mir-howto { margin-top: 4px; }
+.mir .mir-howto > summary { cursor: pointer; color: inherit; text-decoration: underline; text-underline-offset: 2px; width: fit-content; }

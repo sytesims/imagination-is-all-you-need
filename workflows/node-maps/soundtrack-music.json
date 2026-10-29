@@ -1,0 +1,36 @@
+{
+  "workflowFile": "soundtrack-music-api.json",
+  "template": "audio_ace_step_1_5_split",
+  "inputs": {
+    "prompt": {
+      "node": "94",
+      "field": "tags"
+    },
+    "lyrics": {
+      "node": "94",
+      "field": "lyrics"
+    },
+    "video": {
+      "node": "500",
+      "field": "file"
+    }
+  },
+  "duration": [
+    {
+      "node": "94",
+      "field": "duration"
+    },
+    {
+      "node": "98",
+      "field": "seconds"
+    }
+  ],
+  "seed": {
+    "node": "3",
+    "field": "seed"
+  },
+  "output": {
+    "node": "503"
+  },
+  "note": "duration should be set to the clip length (server: probe)"
+}

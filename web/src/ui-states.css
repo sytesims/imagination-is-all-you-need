@@ -1,0 +1,231 @@
+/* ==== Shared UI components and their states (UI quality standard, 2026-10-21) ====
+   Loaded after styles.css. One rule set per component, built on the state tokens in tokens.css (--t-state, --state-*, --press-scale,
+   --focus-ring-*, --disabled-*, --price-ink). It replaces the older stacked Generate / chip / price rules that were removed from styles.css.
+   Selectors use `html body` + a repeated class only where older layout rules with !important still compete. */
+
+/* ---------- Generate button (GenerateButton, StudioGen, VideoStudio, ImageCanvas, Soul, Audio, GenerateBar) ---------- */
+html body .gen-btn.gen-btn.gen-btn{
+  box-sizing:border-box;display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:center!important;gap:0!important;
+  width:100%!important;max-width:100%!important;min-width:0!important;height:48px!important;min-height:48px!important;flex:none!important;align-self:stretch;
+  padding:0 16px!important;border-radius:12px!important;font:600 16px/24px var(--font-sans,Inter,system-ui,sans-serif)!important;letter-spacing:0!important;text-transform:none!important;white-space:nowrap;overflow:hidden;
+  background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,0) 55%),var(--accent)!important;color:var(--on-accent)!important;-webkit-text-fill-color:currentColor;
+  border:0!important;box-shadow:var(--shadow-generate)!important;opacity:1!important;filter:none!important;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:filter .2s var(--ease-state),transform var(--t-state) var(--ease-state),box-shadow var(--t-state) var(--ease-state),background-color var(--t-state-slow) var(--ease-state),color var(--t-state-slow) var(--ease-state)!important}
+/* label shrinks, the price never does */
+html body .gen-btn .gen-l{display:inline-flex;align-items:center;gap:8px;flex:0 1 auto;min-width:0;overflow:hidden;font:inherit;color:inherit}
+html body .gen-btn .gen-l .as-spin{width:14px;height:14px;flex:none}
+/* the price token: solid ink, no opacity, no animation (Safari composited the old translucent fading layer as a muddy orange) */
+html body .gen-btn .gen-price,html body .gen-btn .gen-price *{color:inherit!important;-webkit-text-fill-color:currentColor!important;opacity:1!important;animation:none!important;background:none!important}
+html body .gen-btn .gen-price{display:inline-flex;align-items:center;flex:none;white-space:nowrap;font:500 14px/20px var(--font-sans,Inter,system-ui,sans-serif)}
+html body .gen-btn .gen-price::before{content:'·';margin:0 8px}
+html body .gen-btn .gen-price.gp-empty{display:none}
+html body .gen-btn .gen-price .gp-g{font-style:normal;font-size:.9em}
+html body .gen-btn .gen-price small{font-size:12px;margin-left:2px}
+html body .gen-btn svg{opacity:1}
+/* hover / pressed / focus: only when it can run */
+html body .gen-btn.gen-btn.gen-btn:not(:disabled):not([aria-disabled=true]):not([aria-busy=true]):hover{filter:brightness(.9)!important}
+html body .gen-btn.gen-btn.gen-btn:not(:disabled):not([aria-disabled=true]):not([aria-busy=true]):active{filter:brightness(.8)!important}
+html body .gen-btn.gen-btn.gen-btn:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color)!important;outline-offset:var(--focus-ring-gap)!important}
+/* busy: spinner + 'Generating…', still accent, clicks ignored, width unchanged */
+html body .gen-btn.gen-btn.gen-btn[aria-busy=true]{cursor:progress;filter:saturate(.85)!important}
+/* needs input (aria-disabled / gen-wait): visibly off, still focusable; a click or focus shows why (GenWhy) */
+html body .gen-btn.gen-btn.gen-btn:is([aria-disabled=true],.gen-wait):not([aria-busy=true]),
+html body .gen-btn.gen-btn.gen-btn:has(.gen-price[data-limit]){
+  background:color-mix(in srgb,var(--accent) 30%,#1c1e20)!important;color:#d6cbc3!important;box-shadow:none!important;filter:none!important;transform:none!important;cursor:not-allowed!important}
+/* can't run as set (key, no price, blocked route): flat grey, readable, still focusable so it can say why */
+html body .gen-btn.gen-btn.gen-btn.gen-off[aria-disabled=true]{background:var(--disabled-fill)!important;color:#a3a4a9!important;box-shadow:inset 0 0 0 1px #3a3a3e!important;filter:none!important;transform:none!important;cursor:not-allowed!important}
+/* disabled (key, no price, blocked route): flat grey, readable */
+html body .gen-btn.gen-btn.gen-btn:disabled:not([aria-busy=true]){background:var(--disabled-fill)!important;color:#9a9ba0!important;box-shadow:inset 0 0 0 1px #3a3a3e!important;filter:none!important;transform:none!important;cursor:not-allowed!important}
+html body .gen-btn.gen-btn.gen-btn:disabled svg{opacity:.6}
+/* composer dock (Create Image, Soul): 120×80, label over price */
+@media (min-width:701px){
+  html body .gen-btn.gen-btn.gen-btn.gen-dock{flex-direction:column!important;width:120px!important;min-width:120px!important;height:80px!important;min-height:80px!important;padding:12px 8px 14px!important;border-radius:14px!important;align-self:flex-end!important;gap:2px!important}
+  html body .gen-dock .gen-price{font-size:12px;line-height:16px}
+  html body .gen-dock .gen-price::before{content:none}
+  html body .gen-dock .gen-price.gp-empty{display:block;height:16px} /* line 2 held: no jump when the price lands */
+}
+
+html body .gen-row>.cost-note{order:4}
+
+/* ---------- Why Generate is off (GenWhy, the shared Popover) ---------- */
+.gen-why .apop-body{padding:10px 12px}
+.gen-why-t{display:flex;align-items:flex-start;gap:8px;margin:0;max-width:280px;font:500 13px/18px var(--font-ui);color:var(--text)}
+.gen-why-t svg{flex:none;margin-top:1px;color:var(--warning)}
+
+/* ---------- CostNote: one calm line under Generate, details behind the info button ---------- */
+html body .cost-note{display:flex;align-items:flex-start;gap:4px;margin:8px 0 0;padding:0 0 0 2px;border:0;border-radius:0;background:none;font:500 12px/16px var(--font-ui);color:rgba(255,255,255,.62);text-align:left}
+html body .cost-note .cn-t{flex:1 1 auto;min-width:0}
+html body .cost-note .cn-i{all:unset;box-sizing:border-box;flex:none;width:32px;height:32px;margin:-8px -4px -8px 0;display:grid;place-items:center;border-radius:8px;color:rgba(255,255,255,.55);cursor:pointer;transition:background-color var(--t-state) var(--ease-state),color var(--t-state) var(--ease-state)}
+html body .cost-note .cn-i:hover{background:var(--state-hover);color:#fff}
+html body .cost-note .cn-i:active{background:var(--state-pressed);transform:scale(var(--press-scale))}
+html body .cost-note .cn-i:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:-2px}
+html body .cost-note .cn-i[aria-expanded=true]{color:#fff;background:var(--state-hover)}
+.cn-pop .apop-body{padding:12px 14px;max-width:320px}
+.cn-dl{display:grid;gap:10px;margin:0}
+.cn-dl div{display:grid;gap:2px}
+.cn-dl dt{font:600 11px/16px var(--font-ui);color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.04em}
+.cn-dl dd{margin:0;font:500 13px/18px var(--font-ui);color:var(--text)}
+/* a real blocker (no price, route can't run): one short line, warm, never a list */
+html body .gen-block{margin:8px 0 0;padding:0 2px;font:500 12px/16px var(--font-ui);color:var(--warning);text-align:left}
+
+/* ---------- SettingChip (.sc on .vs-sq / .vs-qrow), SwitchRow, Stepper ---------- */
+html body .sc.sc{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:8px;min-width:0;height:40px;padding:0 10px;border-radius:10px;
+  background:var(--state-fill);border:1px solid var(--state-border);color:#fff;font:500 14px/20px var(--font-sans,Inter,system-ui,sans-serif);cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:background-color var(--t-state) var(--ease-state),border-color var(--t-state) var(--ease-state),transform var(--t-state) var(--ease-state),color var(--t-state) var(--ease-state)}
+html body .vs-sq.sc{justify-content:center;padding:0 8px}
+html body .sc .sc-ic{display:inline-grid;place-items:center;flex:none;width:16px;height:16px;color:rgba(255,255,255,.6)}
+html body .sc .sc-ic svg{width:16px;height:16px}
+html body .sc .sc-l{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html body .sc-row .sc-l{flex:0 1 auto}
+html body .sc-row .sc-v{margin-left:auto;flex:none;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.06);font:500 12px/18px var(--font-sans,Inter,system-ui,sans-serif);color:rgba(255,255,255,.85);white-space:nowrap}
+html body .sc-row .sc-chev{flex:none;display:inline-grid;place-items:center;width:16px;height:16px;margin-right:-2px;color:rgba(255,255,255,.45)}
+html body .vs-qb.vs-qb{grid-template-columns:minmax(0,1fr)} /* one row each: label, value and chevron never cut */
+html body .vs-qb .sc-row{padding:0 8px;gap:6px}
+html body button.sc:hover{background:var(--state-hover);border-color:var(--state-border-hover)}
+html body button.sc:active{background:var(--state-pressed);transform:scale(var(--press-scale))}
+html body .sc:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:1px}
+html body .sc.on,html body button.sc[aria-expanded=true]{border-color:var(--state-border-on);background:var(--state-hover)}
+html body button.sc:disabled{opacity:var(--disabled-opacity);cursor:not-allowed}
+/* static: a fact the model fixes. Same shape and border, no fill, no hover, no pointer */
+html body .sc.sc-static{cursor:default;background:transparent;color:rgba(255,255,255,.78)}
+html body .sc.sc-static .sc-ic{color:rgba(255,255,255,.5)}
+/* switch row */
+html body .sc-switch{position:relative;flex:none;margin-left:auto;width:36px;height:20px;border-radius:999px;background:rgba(255,255,255,.18);transition:background-color var(--t-state-slow) var(--ease-state)}
+html body .sc-switch::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.4);transition:transform var(--t-state-slow) var(--ease-state)}
+html body .sc-switch-row.is-on .sc-switch{background:var(--accent)}
+html body .sc-switch-row.is-on .sc-switch::after{transform:translateX(16px)}
+/* stepper */
+html body .stepper .stp{margin-left:auto;display:inline-flex;align-items:center;gap:2px}
+html body .stepper .stp-b{all:unset;box-sizing:border-box;width:32px;height:32px;display:grid;place-items:center;border-radius:8px;color:#fff;background:rgba(255,255,255,.06);cursor:pointer;
+  transition:background-color var(--t-state) var(--ease-state),transform var(--t-state) var(--ease-state)}
+html body .stepper .stp-b:hover:not(:disabled){background:rgba(255,255,255,.12)}
+html body .stepper .stp-b:active:not(:disabled){background:rgba(255,255,255,.16);transform:scale(.94)}
+html body .stepper .stp-b:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:1px}
+html body .stepper .stp-b:disabled{opacity:.35;cursor:not-allowed}
+html body .stepper .stp-v{min-width:24px;text-align:center;font:600 14px/20px var(--font-sans,Inter,system-ui,sans-serif);color:#fff}
+html body .stepper.sc{padding-right:4px}
+@media (max-width:760px){
+  html body .sc.sc{min-height:44px;height:44px}
+  html body .stepper.sc{height:52px;min-height:52px}
+  html body .stepper .stp-b{width:44px;height:44px}
+  html body .cost-note .cn-i{width:44px;height:44px;margin:-14px -8px -14px 0}
+}
+
+/* the chip row sizes to its labels ('6 s', 'Match clip', '720p'), so no label is cut */
+html body .vs-row3:has(>.sc){display:flex!important;flex-wrap:wrap;gap:6px}
+html body .vs-row3>.sc.sc{flex:1 1 auto;gap:5px;padding:0 6px;font-size:13px}
+html body .vs-composer,html body .vs-form{grid-template-columns:minmax(0,1fr)}
+html body .vs-composer>*,html body .vs-pop-wrap{min-width:0}
+
+/* ---------- ModelCard (.vs-model.mc-card) ---------- */
+html body .vs-model.mc-card{all:unset;box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto;align-items:center;min-height:64px;height:auto;padding:8px 6px 8px 12px;
+  border-radius:12px;background:var(--state-fill);border:1px solid var(--state-border);cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:background-color var(--t-state) var(--ease-state),border-color var(--t-state) var(--ease-state),transform var(--t-state) var(--ease-state)}
+html body .mc-card .vs-cap{grid-column:1;font:500 11px/16px var(--font-sans,Inter,system-ui,sans-serif);color:rgba(255,255,255,.55)}
+html body .mc-card b{grid-column:1;display:flex;align-items:center;gap:6px;min-width:0;font:600 14px/20px var(--font-sans,Inter,system-ui,sans-serif);color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html body .mc-card .vs-via{grid-column:1;display:block;min-width:0;font:500 12px/16px var(--font-sans,Inter,system-ui,sans-serif);color:rgba(255,255,255,.62);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html body .mc-card .mc-chev{grid-column:2;grid-row:1/4;display:grid;place-items:center;width:32px;height:32px;font-style:normal;color:rgba(255,255,255,.5);transition:color var(--t-state) var(--ease-state),transform var(--t-state) var(--ease-state)}
+html body .vs-model.mc-card:hover{background:var(--state-hover);border-color:var(--state-border-hover)}
+html body .vs-model.mc-card:hover .mc-chev{color:#fff}
+html body .vs-model.mc-card:active{background:var(--state-pressed);transform:scale(.99)}
+html body .vs-model.mc-card:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:1px}
+html body .vs-model.mc-card.on{border-color:var(--state-border-on);background:var(--state-hover)}
+html body .vs-model.mc-card.on .mc-chev{color:#fff;transform:translateX(2px)}
+
+/* ---------- Tabs (.wst, the Video page tabs) ---------- */
+html body .wst,html body .vs-tabs a{transition:color var(--t-state) var(--ease-state),border-color var(--t-state) var(--ease-state)}
+html body .wst:not(.on):hover,html body .vs-tabs a:not(.on):hover{color:rgba(255,255,255,.82)!important}
+html body .wst:not(.on):active,html body .vs-tabs a:not(.on):active{color:#fff!important}
+html body .wst:focus-visible,html body .vs-tabs a:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color)!important;outline-offset:-2px;border-radius:6px;box-shadow:none}
+
+/* ---------- Hero / header card (.os-hero on the swap tools and Motion Control, .vs-preset on Create Video) ---------- */
+html body .os-hero::after,html body .vs-preset::after{background:var(--scrim-title)!important}
+html body .os-hero .vs-preset-c,html body .vs-preset .vs-preset-c{z-index:2}
+html body .os-hero .vs-preset-c b,html body .vs-preset .vs-preset-c b{color:#fff!important;-webkit-text-fill-color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.6);font-weight:700!important;letter-spacing:.01em}
+html body .os-hero .vs-preset-c span,html body .vs-preset .vs-preset-c span{color:rgba(255,255,255,.86)!important;text-shadow:0 1px 6px rgba(0,0,0,.6)}
+html body .vs-change.vs-change{display:inline-flex;align-items:center;gap:6px;height:32px!important;min-height:32px;padding:0 10px!important;border-radius:8px!important;border:1px solid rgba(255,255,255,.14)!important;
+  background:rgba(0,0,0,.55)!important;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#fff!important;font:500 12px/16px var(--font-sans,Inter,system-ui,sans-serif)!important;cursor:pointer;
+  transition:background-color var(--t-state) var(--ease-state),transform var(--t-state) var(--ease-state)}
+html body .vs-change.vs-change:hover{background:rgba(0,0,0,.72)!important}
+html body .vs-change.vs-change:active{transform:scale(var(--press-scale))}
+html body .vs-change.vs-change:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:1px}
+html body .vs-change svg{flex:none}
+@media (max-width:760px){html body .vs-change.vs-change{height:44px!important;min-height:44px}}
+
+/* ---------- UploadZone (.uz): one empty-state upload box for every tool ---------- */
+html body .uz{position:relative;box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-height:72px;width:100%;margin:0;padding:8px;
+  border:1px dashed rgba(255,255,255,.14);border-radius:12px;background:rgba(255,255,255,.03);transition:border-color var(--t-state) var(--ease-state),background-color var(--t-state) var(--ease-state)}
+html body .uz-hit{all:unset;box-sizing:border-box;flex:1 1 0;min-width:0;align-self:stretch;display:flex;align-items:center;gap:12px;padding:4px;border-radius:8px;cursor:pointer;text-align:left;
+  transition:transform var(--t-state) var(--ease-state)}
+html body .uz-ic{flex:none;width:40px;height:40px;display:grid;place-items:center;border-radius:10px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.75);margin:0;transition:color var(--t-state) var(--ease-state),background-color var(--t-state) var(--ease-state)}
+html body .uz-txt{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
+html body .uz-h{display:flex;align-items:baseline;gap:6px;min-width:0}
+html body .uz-t{display:block;min-width:0;margin:0;padding:0;font:600 14px/20px var(--font-sans,Inter,system-ui,sans-serif);color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html body .uz-t::before{content:none}
+html body .uz-n{flex:none;font:500 11px/16px var(--font-sans,Inter,system-ui,sans-serif);color:rgba(255,255,255,.5);white-space:nowrap}
+html body .uz-help{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:0;font:400 12px/16px var(--font-sans,Inter,system-ui,sans-serif);color:rgba(255,255,255,.55)}
+html body .uz-acts{flex:none;display:flex;gap:4px;align-self:flex-start}
+html body .uz-act,html body .uz-more .uz-act{all:unset;box-sizing:border-box;width:32px;height:32px;display:grid;place-items:center;border-radius:8px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.8);cursor:pointer;
+  transition:background-color var(--t-state) var(--ease-state),color var(--t-state) var(--ease-state),transform var(--t-state) var(--ease-state)}
+html body .uz-act:hover{background:rgba(255,255,255,.12);color:#fff}
+html body .uz-act:active{background:rgba(255,255,255,.16);transform:scale(.94)}
+html body .uz-act:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:1px}
+html body .uz-act[aria-expanded=true]{background:rgba(255,255,255,.14);color:#fff}
+html body .uz-more{display:flex;gap:4px;margin-top:8px}
+/* states */
+html body .uz:has(.uz-hit:hover):not(.is-off){border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.05)}
+html body .uz:has(.uz-hit:hover) .uz-ic{background:rgba(255,255,255,.1);color:#fff}
+html body .uz-hit:active{transform:scale(.995)}
+html body .uz-hit:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:2px}
+html body .uz.over{border-style:solid;border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
+html body .uz.over .uz-ic{color:var(--accent)}
+html body .uz.is-err{border-color:color-mix(in srgb,var(--error) 70%,transparent)}
+html body .uz-err{flex:1 1 100%;display:flex;align-items:flex-start;gap:6px;margin:0;padding:0 4px 2px;font:500 12px/16px var(--font-sans,Inter,system-ui,sans-serif);color:var(--error)}
+html body .uz-err svg{flex:none}
+html body .uz.is-busy .uz-hit{cursor:progress}
+html body .uz-bar{position:absolute;left:12px;right:12px;bottom:5px;height:3px;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden}
+html body .uz-bar i{display:block;height:100%;width:40%;border-radius:inherit;background:var(--accent);animation:uz-bar 1.1s ease-in-out infinite;transition:width var(--t-state-slow) var(--ease-state)}
+@keyframes uz-bar{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
+html body .uz.is-off{opacity:.5}
+html body .uz.is-off .uz-hit{cursor:not-allowed}
+html body .card.locked .uz{opacity:.6}
+@media (max-width:760px){html body .uz-act,html body .uz-more .uz-act{width:44px;height:44px}}
+/* the filled upload (FilledMedia): 32px actions (44 on phones), visible on hover / focus */
+html body .fm-acts button{width:32px;height:32px;display:inline-grid;place-items:center;border-radius:8px;transition:background-color var(--t-state) var(--ease-state)}
+html body .fm-acts .fm-replace{width:auto;padding:0 10px}
+html body .fm-acts button:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:1px}
+@media (max-width:760px){html body .fm-acts button{width:44px;height:44px}}
+html body .fm-tile figcaption{white-space:nowrap;max-width:calc(100% - 12px);overflow:hidden;text-overflow:ellipsis}
+html body .vs-upload .vs-x{display:grid;place-items:center;width:32px;height:32px;border-radius:8px}
+
+/* ---------- Shared states for the other tools' chips and rows (Create Image, Audio, prompt buttons) ---------- */
+html body :is(.ic-chip,.as-row,.vs-el-btn,.vs-audio-t,.model-btn,.pv-model-btn){transition:background-color var(--t-state) var(--ease-state),border-color var(--t-state) var(--ease-state),transform var(--t-state) var(--ease-state),color var(--t-state) var(--ease-state)}
+html body button:is(.ic-chip,.as-row,.vs-el-btn,.vs-audio-t,.model-btn,.pv-model-btn):not(:disabled):active{transform:scale(var(--press-scale))}
+html body :is(.ic-chip,.as-row,.vs-el-btn,.vs-audio-t,.model-btn,.pv-model-btn):focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color)!important;outline-offset:1px}
+/* the audio pickers (.vs-drop: lip-sync speech, voice sample, Change Voice) share the UploadZone look: icon tile, one-line title, helper */
+html body .vs-drop{position:relative;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:2px;min-height:72px;padding:12px 12px 12px 64px;border:1px dashed rgba(255,255,255,.14);border-radius:12px;
+  background:rgba(255,255,255,.03);cursor:pointer;transition:border-color var(--t-state) var(--ease-state),background-color var(--t-state) var(--ease-state)}
+html body .vs-drop::before{content:"";position:absolute;left:12px;top:50%;width:40px;height:40px;margin-top:-20px;border-radius:10px;background:rgba(255,255,255,.06)}
+html body .vs-drop::after{content:"";position:absolute;left:22px;top:50%;width:20px;height:20px;margin-top:-10px;background:rgba(255,255,255,.75);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 15V3M7 8l5-5 5 5'/%3E%3Cpath d='M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 15V3M7 8l5-5 5 5'/%3E%3Cpath d='M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2'/%3E%3C/svg%3E") center/contain no-repeat}
+html body .vs-drop>span{font:600 14px/20px var(--font-sans,Inter,system-ui,sans-serif);color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html body .vs-drop>small{font:400 12px/16px var(--font-sans,Inter,system-ui,sans-serif);color:rgba(255,255,255,.55)}
+html body .vs-drop:hover{border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.05)}
+html body .vs-drop:active{transform:scale(.995)}
+html body .vs-drop:focus-within{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:2px}
+/* phones: the fixed Generate bar keeps the 16px page gutter */
+@media (max-width:900px){html body .vs-gen-wrap.vs-gen-wrap{padding-left:16px!important;padding-right:16px!important}}
+
+/* ---------- Tooltip (shared/Tooltip.tsx, PARITY-A A6): a small dark label just above the control ---------- */
+.app-tip{position:fixed;z-index:9999;box-sizing:border-box;max-width:240px;padding:4px 8px;border-radius:6px;background:rgb(15,17,19);border:1px solid rgba(255,255,255,.08);box-shadow:0 4px 12px rgba(0,0,0,.35);color:#fff;font:500 12px/16px var(--font-ui,Inter,system-ui,sans-serif);letter-spacing:0;text-transform:none;width:max-content;white-space:normal;overflow-wrap:anywhere;pointer-events:none;visibility:hidden}
+.app-tip.app-tip-in{visibility:visible;animation:app-tip-in .12s cubic-bezier(.4,0,.2,1) both}
+.app-tip.app-tip-in.app-tip-below{animation-name:app-tip-in-b}
+@keyframes app-tip-in{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:none}}
+@keyframes app-tip-in-b{from{opacity:0;transform:translateY(-2px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.app-tip.app-tip-in,.app-tip.app-tip-in.app-tip-below{animation:none}}
+
+/* ---------- Text and icons on a solid accent fill (2026-10-25) ----------
+   One ink on every orange surface: var(--on-accent) from tokens.css (6.99:1); quieter lines use var(--on-accent-2) (4.9:1). Never white.
+   Links need the extra weight below: styles.css `a:not(.btn):not(.top-link){color:inherit}` (0,2,1) beats a plain component rule,
+   so an orange <a>/<Link> inherited the page's white text (2.4:1). Add the class here when a new link gets an orange fill. */

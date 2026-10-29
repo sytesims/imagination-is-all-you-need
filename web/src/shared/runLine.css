@@ -1,0 +1,17 @@
+/* RunLine (shared/RunLine.tsx): one line, one icon. Tokens only. On media (a card) add .on-media for the glass look. */
+.runl{display:inline-flex;align-items:center;gap:6px;min-width:0;height:24px;padding:0 10px 0 8px;border-radius:999px;font:600 11.5px/1 var(--font-ui);white-space:nowrap;
+  color:var(--text);background:var(--state-fill);border:1px solid var(--state-border)}
+.runl>span{overflow:hidden;text-overflow:ellipsis}
+.runl svg{flex:none;opacity:.85}
+.runl.is-free{color:var(--badge-free);border-color:color-mix(in srgb,var(--badge-free) 30%,transparent);background:color-mix(in srgb,var(--badge-free) 10%,transparent)}
+.runl.is-download,.runl.is-key,.runl.is-setup,.runl.is-none{color:var(--text-2);background:transparent;border-style:dashed}
+.runl.on-media{color:#fff;background:rgba(10,10,10,.5);border-color:rgba(255,255,255,.14);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.runl.on-media.is-free{color:var(--badge-free);border-color:color-mix(in srgb,var(--badge-free) 34%,transparent)}
+.runl.on-media.is-download,.runl.on-media.is-key,.runl.on-media.is-setup{color:rgba(255,255,255,.78);background:rgba(10,10,10,.42);border-style:dashed}
+.runl-list{display:flex;flex-direction:column;gap:3px}
+.runl-place{display:grid;grid-template-columns:14px minmax(0,1fr) auto;align-items:center;gap:7px;font:500 12px/1.3 var(--font-ui);color:var(--text-2)}
+.runl-place svg{opacity:.8}
+.runl-short{font-weight:700;color:var(--text)}
+.runl-place.is-free .runl-short{color:var(--badge-free)}
+.runl-place.is-download .runl-short,.runl-place.is-key .runl-short,.runl-place.is-setup .runl-short{color:var(--text-2);font-weight:600}
+.runl-place.is-none{opacity:.55}

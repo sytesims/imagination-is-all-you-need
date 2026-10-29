@@ -1,0 +1,28 @@
+{
+  "workflowFile": "create-image-klein4b-edit-api.json",
+  "template": "image_flux2_klein_image_edit_4b_distilled",
+  "model": "FLUX.2 [klein] 4B edit (Apache-2.0)",
+  "inputs": {
+    "prompt": {
+      "node": "75:74",
+      "field": "text"
+    },
+    "image": {
+      "node": "76",
+      "field": "image"
+    }
+  },
+  "refs": [
+    {
+      "node": "76",
+      "field": "image"
+    }
+  ],
+  "seed": {
+    "node": "75:73",
+    "field": "noise_seed"
+  },
+  "output": {
+    "node": "9"
+  }
+}

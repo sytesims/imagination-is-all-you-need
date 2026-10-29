@@ -1,0 +1,1992 @@
+{
+  "generated": "2026-10-22",
+  "sources": {
+    "templatesCommit": "447747bf37b7e2f6d5fab3f15288e03bf889b82f (main, 2026-10-21)"
+  },
+  "models": [
+    {
+      "id": "nano-banana-2",
+      "name": "Nano Banana 2",
+      "maker": "Google",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/GeminiNanoBanana2"
+    },
+    {
+      "id": "gpt-image",
+      "name": "GPT Image 2",
+      "maker": "OpenAI",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/OpenAIGPTImageNodeV2"
+    },
+    {
+      "id": "seedream-5.0-pro",
+      "name": "Seedream 5.0 Pro",
+      "maker": "ByteDance",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/ByteDanceSeedreamNodeV3"
+    },
+    {
+      "id": "flux-2-pro",
+      "name": "FLUX.2 [pro]",
+      "maker": "Black Forest Labs",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/Flux2ImageNode"
+    },
+    {
+      "id": "ideogram-v4",
+      "name": "Ideogram V4",
+      "maker": "Ideogram",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/IdeogramV4"
+    },
+    {
+      "id": "recraft-v4",
+      "name": "Recraft V4",
+      "maker": "Recraft",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/RecraftV4TextToImageNode"
+    },
+    {
+      "id": "luma-image",
+      "name": "Luma UNI-1",
+      "maker": "Luma AI",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/LumaImageNode2"
+    },
+    {
+      "id": "kling-image-o1",
+      "name": "Kling Image O1",
+      "maker": "Kling",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/KlingOmniProImageNode"
+    },
+    {
+      "id": "krea",
+      "name": "Krea 3",
+      "maker": "Krea",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/Krea3ImageNode"
+    },
+    {
+      "id": "runway-gen4-image",
+      "name": "Runway Gen-4 Image",
+      "maker": "Runway",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/RunwayTextToImageNode"
+    },
+    {
+      "id": "grok-imagine-image",
+      "name": "Grok Imagine Image 2.0",
+      "maker": "xAI",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/GrokImageNode"
+    },
+    {
+      "id": "qwen-image-3",
+      "name": "Qwen Image 3.0",
+      "maker": "Alibaba Qwen",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/QwenImageTextToImageApi"
+    },
+    {
+      "id": "wan-image-2.5",
+      "name": "Wan 2.5 Image",
+      "maker": "Alibaba Wan",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/WanTextToImageApi"
+    },
+    {
+      "id": "flux-2-flex",
+      "name": "FLUX.2 [flex]",
+      "maker": "Black Forest Labs",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://bfl.ai/legal/terms-of-service"
+    },
+    {
+      "id": "flux-2-klein-9b",
+      "name": "FLUX.2 [klein] 9B",
+      "maker": "Black Forest Labs",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://bfl.ai/legal/terms-of-service"
+    },
+    {
+      "id": "minimax-image-01",
+      "name": "MiniMax image-01",
+      "maker": "MiniMax",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://www.minimax.io/platform/protocol/terms-of-service"
+    },
+    {
+      "id": "hunyuan-image-3.5",
+      "name": "HY Image 3.5 Preview",
+      "maker": "Tencent Hunyuan",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/HunyuanImageTextToImageApi"
+    },
+    {
+      "id": "meta-muse-image",
+      "name": "Muse Image 1.0",
+      "maker": "Meta",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/MetaMuseImageTextToImageApi"
+    },
+    {
+      "id": "flux-3-klein",
+      "name": "FLUX 3 Image Klein",
+      "maker": "Black Forest Labs",
+      "openWeights": true,
+      "licence": "FLUX Kommunity (non-commercial; outputs commercial only for qualifying users)",
+      "licenseUrl": "https://huggingface.co/black-forest-labs/flux-3-image-klein/blob/main/LICENSE.md"
+    },
+    {
+      "id": "qwen-image-2.1",
+      "name": "Qwen Image 2.1",
+      "maker": "Alibaba Qwen",
+      "openWeights": true,
+      "licence": "Qwen Research License (non-commercial)",
+      "licenseUrl": "https://huggingface.co/Qwen/Qwen-Image-2.1/blob/main/LICENSE"
+    },
+    {
+      "id": "qwen-image-2.1-turbo",
+      "name": "Qwen Image 2.1 Turbo",
+      "maker": "Alibaba Qwen",
+      "openWeights": true,
+      "licence": "Qwen Research License (non-commercial)",
+      "licenseUrl": "https://huggingface.co/Qwen/Qwen-Image-2.1/blob/main/LICENSE"
+    },
+    {
+      "id": "qwen-image",
+      "name": "Qwen-Image",
+      "maker": "Alibaba Qwen",
+      "openWeights": true,
+      "licence": "Apache-2.0",
+      "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
+    },
+    {
+      "id": "qwen-image-edit-2509",
+      "name": "Qwen-Image-Edit-2509",
+      "maker": "Alibaba Qwen",
+      "openWeights": true,
+      "licence": "Apache-2.0",
+      "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
+    },
+    {
+      "id": "qwen-image-edit-2509-angles",
+      "name": "Qwen-Image-Edit-2509 + Multiple-angles LoRA",
+      "maker": "Alibaba Qwen + dx8152",
+      "openWeights": true,
+      "licence": "Apache-2.0 (base and LoRA)",
+      "licenseUrl": "https://huggingface.co/dx8152/Qwen-Edit-2509-Multiple-angles"
+    },
+    {
+      "id": "z-image-turbo",
+      "name": "Z-Image-Turbo",
+      "maker": "Tongyi (Alibaba)",
+      "openWeights": true,
+      "licence": "Apache-2.0",
+      "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
+    },
+    {
+      "id": "z-image",
+      "name": "Z-Image (base)",
+      "maker": "Tongyi (Alibaba)",
+      "openWeights": true,
+      "licence": "Apache-2.0",
+      "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
+    },
+    {
+      "id": "flux-2-klein-4b",
+      "name": "FLUX.2 [klein] 4B",
+      "maker": "Black Forest Labs",
+      "openWeights": true,
+      "licence": "Apache-2.0",
+      "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
+    },
+    {
+      "id": "flux-2-dev",
+      "name": "FLUX.2 [dev]",
+      "maker": "Black Forest Labs",
+      "openWeights": true,
+      "licence": "FLUX [dev] Non-Commercial",
+      "licenseUrl": "https://raw.githubusercontent.com/black-forest-labs/flux2/main/model_licenses/LICENSE-FLUX-DEV"
+    },
+    {
+      "id": "moss-image",
+      "name": "MOSS-Image",
+      "maker": "OpenMOSS",
+      "openWeights": true,
+      "licence": "Apache-2.0",
+      "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
+    },
+    {
+      "id": "moss-image-base",
+      "name": "MOSS-Image Base",
+      "maker": "OpenMOSS",
+      "openWeights": true,
+      "licence": "Apache-2.0",
+      "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
+    },
+    {
+      "id": "opensoul",
+      "name": "OpenSoul recipe (Z-Image-Turbo + look LoRAs; refs via PuLID / InfiniteYou / ACE++ / Qwen-Image-Edit-2511)",
+      "maker": "Imagination Is All You Need (recipe)",
+      "openWeights": true,
+      "licence": "mixed: ZIT Apache-2.0; PuLID Apache-2.0 (+ InsightFace antelopev2 non-commercial); InfiniteYou weights CC BY-NC 4.0; ACE++ licence not stated; FLUX.1-dev non-commercial",
+      "licenseUrl": null
+    },
+    {
+      "id": "real-esrgan",
+      "name": "Real-ESRGAN x2plus / x4plus",
+      "maker": "Xintao Wang et al.",
+      "openWeights": true,
+      "licence": "BSD-3-Clause",
+      "licenseUrl": "https://opensource.org/license/bsd-3-clause"
+    },
+    {
+      "id": "4x-ultrasharp",
+      "name": "4x-UltraSharp",
+      "maker": "Kim2091",
+      "openWeights": true,
+      "licence": "CC BY-NC-SA 4.0 (non-commercial)",
+      "licenseUrl": "https://huggingface.co/Kim2091/UltraSharp"
+    },
+    {
+      "id": "gpt-image-2.5-flare",
+      "name": "GPT Image 2.5 Flare",
+      "maker": "OpenAI",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/OpenAIGPTImageNodeV2"
+    },
+    {
+      "id": "gpt-image-2.5-sunburst",
+      "name": "GPT Image 2.5 Sunburst",
+      "maker": "OpenAI",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/OpenAIGPTImageNodeV2"
+    },
+    {
+      "id": "nano-banana-2.1",
+      "name": "Nano Banana 2.1",
+      "maker": "Google",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/GeminiNanoBanana2V2"
+    },
+    {
+      "id": "nano-banana-pro",
+      "name": "Nano Banana Pro",
+      "maker": "Google",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/GeminiImage2Node"
+    },
+    {
+      "id": "flux-3-image",
+      "name": "FLUX 3 Image",
+      "maker": "Black Forest Labs",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/Flux3ImageNode"
+    },
+    {
+      "id": "flux-2-max",
+      "name": "FLUX.2 [max]",
+      "maker": "Black Forest Labs",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/Flux2ImageNode"
+    },
+    {
+      "id": "seedream-5.0-flash",
+      "name": "Seedream 5.0 Flash",
+      "maker": "ByteDance",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/ByteDanceSeedreamNodeV3"
+    },
+    {
+      "id": "ideogram-4.5",
+      "name": "Ideogram 4.5",
+      "maker": "Ideogram",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/IdeogramTextToImageApi"
+    },
+    {
+      "id": "qwen-image-3-pro",
+      "name": "Qwen Image 3.0 Pro",
+      "maker": "Alibaba Qwen",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/QwenImageTextToImageApi"
+    },
+    {
+      "id": "recraft-v4.1",
+      "name": "Recraft V4.1",
+      "maker": "Recraft",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/RecraftV4TextToImageNode"
+    },
+    {
+      "id": "recraft-v4.1-pro",
+      "name": "Recraft V4.1 Pro",
+      "maker": "Recraft",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/RecraftV4TextToImageNode"
+    },
+    {
+      "id": "luma-uni-1-max",
+      "name": "Luma UNI-1 Max",
+      "maker": "Luma AI",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/LumaImageNode2"
+    },
+    {
+      "id": "gpt-image-1.5",
+      "name": "GPT Image 1.5",
+      "maker": "OpenAI",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/OpenAIGPTImage1"
+    },
+    {
+      "id": "seedream-4.5",
+      "name": "Seedream 4.5",
+      "maker": "ByteDance",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/ByteDanceSeedreamNode"
+    },
+    {
+      "id": "grok-imagine-image-pro",
+      "name": "Grok Imagine Image Pro",
+      "maker": "xAI",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/GrokImageNode"
+    },
+    {
+      "id": "fibo-2.0",
+      "name": "FIBO 2.0",
+      "maker": "Bria",
+      "openWeights": true,
+      "licence": "CC BY-NC 4.0 (open weights); Bria API terms on Comfy Router",
+      "licenseUrl": "https://huggingface.co/briaai/Fibo-2.0-dev"
+    },
+    {
+      "id": "nano-banana-2-lite",
+      "name": "Nano Banana 2 Lite",
+      "maker": "Google",
+      "openWeights": false,
+      "licence": "proprietary",
+      "licenseUrl": "https://docs.comfy.org/built-in-nodes/GeminiNanoBanana2"
+    }
+  ],
+  "cells": [
+    {
+      "featureId": "create-image",
+      "modelId": "nano-banana-2",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Nano Banana 2: Text to Image (api_google_nano_banana2_text_to_image)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_google_nano_banana2_text_to_image.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "gpt-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "GPT Image 2: Text to Image (api_openai_gpt_image_2_t2i)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_openai_gpt_image_2_t2i.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "seedream-5.0-pro",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Seedream 5.0 Pro: Text to Image (api_bytedance_seedream_5_0_pro_t2i)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_bytedance_seedream_5_0_pro_t2i.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "flux-2-pro",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "FLUX.2 Pro (api_flux2)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_flux2.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "ideogram-v4",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Ideogram v4: Text to Image (API) (api_ideogram_v4_t2i)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_ideogram_v4_t2i.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "recraft-v4",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Recraft v4: Text to Image (api_recraft_v4_t2i)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_recraft_v4_t2i.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "luma-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Luma UNI-1: Image Creation (api_luma_uni_1_image_create)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_luma_uni_1_image_create.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "kling-image-o1",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Kling O1: Image (api_kling_omni_image)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_kling_omni_image.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "krea",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Krea 3: Text to Image (api_krea3_t2i)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_krea3_t2i.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "runway-gen4-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Runway: Text to Image (api_runway_text_to_image)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_runway_text_to_image.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "grok-imagine-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Grok Imagine Image 2.0: Text to Image (api_grok_imagine_image_2_t2i)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_grok_imagine_image_2_t2i.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "qwen-image-3",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Qwen Image 3.0 Pro: Text to Image (api_qwen3_t2i)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_qwen3_t2i.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "wan-image-2.5",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Wan2.5: Text to Image (api_wan_text_to_image)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_wan_text_to_image.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "flux-2-flex",
+      "support": "native",
+      "workflow": {
+        "source": "ours",
+        "name": "our request to the BFL API (server/src/hostedRequests.ts bflFlexRequest)",
+        "url": "https://docs.bfl.ml/api-reference/models/generate-or-edit-an-image-with-flux2-[flex]",
+        "author": "Imagination Is All You Need",
+        "license": "AGPL-3.0 (this repo)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "hunyuan-image-3.5",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "HY Image 3.5 Preview: Text to Image (api_tencent_hy_image_3_5_preview_t2i)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_tencent_hy_image_3_5_preview_t2i.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "meta-muse-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Muse Image 1.0: Text to Image (api_meta_muse_image_t2i)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_meta_muse_image_t2i.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "flux-3-klein",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "FLUX 3 Image Klein Distilled: Text to Image (image_flux3_klein_distilled_t2i)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_flux3_klein_distilled_t2i.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)",
+        "note": "ours: workflows/create-image-flux3klein-t2i-api.json"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "qwen-image-2.1",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Qwen Image 2.1: Text to Image (image_qwen_image_2_1_t2i)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_qwen_image_2_1_t2i.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)",
+        "note": "ours: workflows/create-image-qwen21-t2i-api.json"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "qwen-image-2.1-turbo",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Qwen Image 2.1 Turbo: Text to Image (image_qwen_image_2_1_turbo_t2i)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_qwen_image_2_1_turbo_t2i.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)",
+        "note": "ours: workflows/create-image-qwen21-turbo-t2i-api.json"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "qwen-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Qwen-Image: Text to Image (image_qwen_image)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_qwen_image.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)",
+        "note": "ours: workflows/create-image-qwen-t2i-api.json"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "z-image-turbo",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Z-Image-Turbo: Text to Image (image_z_image_turbo)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_z_image_turbo.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)",
+        "note": "ours: workflows/create-image-zimage-turbo-api.json"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "z-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Z-Image: Text to Image (image_z_image)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_z_image.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)",
+        "note": "ours: workflows/create-image-zimage-api.json"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "flux-2-klein-4b",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "FLUX.2 [Klein] 4B: Text to Image (image_flux2_klein_text_to_image)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_flux2_klein_text_to_image.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)",
+        "note": "ours: workflows/create-image-klein4b-t2i-api.json"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "flux-2-dev",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "FLUX.2 Dev Text to Image (image_flux2_text_to_image)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_flux2_text_to_image.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "moss-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "MOSS-Image: Text to Image (image_moss_image_t2i)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_moss_image_t2i.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)",
+        "note": "ours: workflows/create-image-moss-image-api.json"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "moss-image-base",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "MOSS-Image Base: Text to Image (image_moss_image_base_t2i)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_moss_image_base_t2i.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)",
+        "note": "ours: workflows/create-image-moss-image-base-api.json"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "opensoul",
+      "support": "native",
+      "workflow": {
+        "source": "ours",
+        "name": "soul-zit-api.json",
+        "url": "workflows/soul-zit-api.json",
+        "author": "Imagination Is All You Need",
+        "license": "AGPL-3.0 (this repo)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "gpt-image-2.5-flare",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "GPT Image 2.5 Flare: Text to Image (api_openai_gpt_image_25_flare_t2i)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_openai_gpt_image_25_flare_t2i.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "gpt-image-2.5-sunburst",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "GPT Image 2.5 Sunburst: Text to Image (api_openai_gpt_image_25_sunburst_t2i)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_openai_gpt_image_25_sunburst_t2i.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "nano-banana-2.1",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Nano Banana 2.1: Text to Image (api_nano_banana_2_1_t2i)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_nano_banana_2_1_t2i.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "nano-banana-pro",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Nano Banana Pro (api_nano_banana_pro)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_nano_banana_pro.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "flux-3-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "FLUX 3 Image: Text to Image (api_bfl_flux3_t2i)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_bfl_flux3_t2i.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "flux-2-max",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "FLUX.2 [max]: Object Swap (api_bfl_flux2_max_sofa_swap)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_bfl_flux2_max_sofa_swap.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "seedream-5.0-flash",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Seedream 5.0 Flash: Text to Image (api_bytedance_seedream_5_0_flash_t2i)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_bytedance_seedream_5_0_flash_t2i.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "ideogram-4.5",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Ideogram 4.5: Text to Image (api_ideogram_v4_5_t2i)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_ideogram_v4_5_t2i.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "qwen-image-3-pro",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Qwen Image 3.0 Pro: Text to Image (api_qwen3_t2i)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_qwen3_t2i.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "recraft-v4.1",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Recraft 4.1: Text to Image (api_recraft_v4_1_t2i)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_recraft_v4_1_t2i.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "recraft-v4.1-pro",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Recraft 4.1: Text to Image (api_recraft_v4_1_t2i)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_recraft_v4_1_t2i.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "luma-uni-1-max",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Luma UNI-1: Image Creation (api_luma_uni_1_image_create)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_luma_uni_1_image_create.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "flux-2-klein-9b",
+      "support": "native",
+      "workflow": {
+        "source": "ours",
+        "name": "our request to the BFL API (server/src/hostedRequests.ts bflKlein2Request)",
+        "url": "https://docs.bfl.ml/api-reference/models/generate-or-edit-an-image-with-flux2-[klein]-9b",
+        "author": "Imagination Is All You Need",
+        "license": "AGPL-3.0 (this repo)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "minimax-image-01",
+      "support": "native",
+      "workflow": {
+        "source": "ours",
+        "name": "our request to the MiniMax API (server/src/hostedRequests.ts minimaxImageRequest)",
+        "url": "https://platform.minimax.io/docs/api-reference/image-generation-t2i",
+        "author": "Imagination Is All You Need",
+        "license": "AGPL-3.0 (this repo)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "gpt-image-1.5",
+      "support": "native",
+      "workflow": {
+        "source": "ours",
+        "name": "our request to Comfy Router openai/gpt-image-1.5 (server/src/routing/routerModels.ts gpt15Body)",
+        "url": "https://docs.comfy.org/development/comfy-router/models/openai/gpt-image-1-5/code",
+        "author": "Imagination Is All You Need",
+        "license": "AGPL-3.0 (this repo)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "seedream-4.5",
+      "support": "native",
+      "workflow": {
+        "source": "ours",
+        "name": "our request to Comfy Router byteplus/seedream-4-5-251128 (server/src/routing/routerModels.ts seedream45Body)",
+        "url": "https://docs.comfy.org/development/comfy-router/models/byteplus/seedream-4-5-251128/code",
+        "author": "Imagination Is All You Need",
+        "license": "AGPL-3.0 (this repo)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "grok-imagine-image-pro",
+      "support": "native",
+      "workflow": {
+        "source": "ours",
+        "name": "our request to Comfy Router xai/grok-imagine-image-pro (server/src/routing/routerModels.ts api-grok-image-pro body)",
+        "url": "https://docs.comfy.org/development/comfy-router/models/xai/grok-imagine-image-pro/code",
+        "author": "Imagination Is All You Need",
+        "license": "AGPL-3.0 (this repo)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "fibo-2.0",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Bria: FIBO 2.0 Text to Image (api_bria_fibo2_t2i)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_bria_fibo2_t2i.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "create-image",
+      "modelId": "nano-banana-2-lite",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Nano Banana 2 Lite: Text to Image (api_nano_banana_2_lite_t2i)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_nano_banana_2_lite_t2i.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "nano-banana-2",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Nano Banana 2: Image Edit (api_google_nano_banana2_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_google_nano_banana2_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "gpt-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "GPT Image 2: Image Edit (api_openai_gpt_image_2_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_openai_gpt_image_2_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "seedream-5.0-pro",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Seedream 5.0 Pro: Image Edit (api_bytedance_seedream_5_0_pro_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_bytedance_seedream_5_0_pro_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "flux-2-pro",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "FLUX.2 Pro (api_flux2)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_flux2.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "luma-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Luma UNI-1: Image Edit (api_luma_uni_1_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_luma_uni_1_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "kling-image-o1",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Kling O1: Image (api_kling_omni_image)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_kling_omni_image.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "krea",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Krea 3: Image Edit (api_krea3_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_krea3_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "runway-gen4-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Runway: Reference to Image (api_runway_reference_to_image)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_runway_reference_to_image.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "grok-imagine-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Grok Imagine Image 2.0: Image Edit (api_grok_imagine_image_2_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_grok_imagine_image_2_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "qwen-image-3",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Qwen Image 3.0 Pro: Image Edit (api_qwen3_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_qwen3_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "flux-2-flex",
+      "support": "native",
+      "workflow": {
+        "source": "ours",
+        "name": "our request to the BFL API (server/src/hostedRequests.ts bflFlexRequest)",
+        "url": "https://docs.bfl.ml/api-reference/models/generate-or-edit-an-image-with-flux2-[flex]",
+        "author": "Imagination Is All You Need",
+        "license": "AGPL-3.0 (this repo)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "hunyuan-image-3.5",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "HY Image 3.5 Preview: Image Edit (api_tencent_hy_image_3_5_preview_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_tencent_hy_image_3_5_preview_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "meta-muse-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Muse Image 1.0: Image Edit (api_meta_muse_image_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_meta_muse_image_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "flux-3-klein",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "FLUX 3 Image Klein Distilled: Image Edit (image_flux3_klein_distilled_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_flux3_klein_distilled_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)",
+        "note": "ours: workflows/create-image-flux3klein-edit-api.json"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "qwen-image-2.1",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Qwen Image 2.1: Image Edit (image_qwen_image_2_1_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_qwen_image_2_1_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)",
+        "note": "ours: workflows/create-image-qwen21-edit-api.json"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "qwen-image-2.1-turbo",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Qwen Image 2.1 Turbo: Image Edit (image_qwen_image_2_1_turbo_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_qwen_image_2_1_turbo_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)",
+        "note": "ours: workflows/create-image-qwen21-turbo-edit-api.json"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "qwen-image-edit-2509",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Qwen Image Edit 2509 (image_qwen_image_edit_2509)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_qwen_image_edit_2509.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)",
+        "note": "ours: workflows/create-image-qwen-edit2509-api.json"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "flux-2-klein-4b",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "FLUX.2 [Klein] 4B Distilled: Image Edit (image_flux2_klein_image_edit_4b_distilled)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_flux2_klein_image_edit_4b_distilled.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)",
+        "note": "ours: workflows/create-image-klein4b-edit-api.json"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "flux-2-dev",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "FLUX.2 Dev (image_flux2)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_flux2.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)",
+        "note": "ours: workflows/create-image-flux2dev-api.json"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "gpt-image-2.5-flare",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "GPT Image 2.5 Flare: Image Edit (api_openai_gpt_image_25_flare_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_openai_gpt_image_25_flare_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "gpt-image-2.5-sunburst",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "GPT Image 2.5 Sunburst: Image Edit (api_openai_gpt_image_25_sunburst_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_openai_gpt_image_25_sunburst_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "nano-banana-2.1",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Nano Banana 2.1: Image Edit (api_nano_banana_2_1_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_nano_banana_2_1_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "nano-banana-pro",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Nano Banana Pro (api_nano_banana_pro)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_nano_banana_pro.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "flux-3-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "FLUX 3 Image: Image Edit (api_bfl_flux3_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_bfl_flux3_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "flux-2-max",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "FLUX.2 [max]: Object Swap (api_bfl_flux2_max_sofa_swap)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_bfl_flux2_max_sofa_swap.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "seedream-5.0-flash",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Seedream 5.0 Flash: Image Edit (api_bytedance_seedream_5_0_flash_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_bytedance_seedream_5_0_flash_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "ideogram-4.5",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Ideogram 4.5: Image Edit (api_ideogram_v4_5_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_ideogram_v4_5_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "qwen-image-3-pro",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Qwen Image 3.0 Pro: Image Edit (api_qwen3_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_qwen3_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "luma-uni-1-max",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Luma UNI-1: Image Creation (api_luma_uni_1_image_create)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_luma_uni_1_image_create.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "flux-2-klein-9b",
+      "support": "native",
+      "workflow": {
+        "source": "ours",
+        "name": "our request to the BFL API (server/src/hostedRequests.ts bflKlein2Request)",
+        "url": "https://docs.bfl.ml/api-reference/models/generate-or-edit-an-image-with-flux2-[klein]-9b",
+        "author": "Imagination Is All You Need",
+        "license": "AGPL-3.0 (this repo)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "gpt-image-1.5",
+      "support": "native",
+      "workflow": {
+        "source": "ours",
+        "name": "our request to Comfy Router openai/gpt-image-1.5 (server/src/routing/routerModels.ts gpt15Body)",
+        "url": "https://docs.comfy.org/development/comfy-router/models/openai/gpt-image-1-5/code",
+        "author": "Imagination Is All You Need",
+        "license": "AGPL-3.0 (this repo)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "seedream-4.5",
+      "support": "native",
+      "workflow": {
+        "source": "ours",
+        "name": "our request to Comfy Router byteplus/seedream-4-5-251128 (server/src/routing/routerModels.ts seedream45Body)",
+        "url": "https://docs.comfy.org/development/comfy-router/models/byteplus/seedream-4-5-251128/code",
+        "author": "Imagination Is All You Need",
+        "license": "AGPL-3.0 (this repo)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "fibo-2.0",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Bria: FIBO 2.0 Image Edit (api_bria_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_bria_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "edit-image",
+      "modelId": "nano-banana-2-lite",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Nano Banana 2 Lite: Image Edit (api_nano_banana_2_lite_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_nano_banana_2_lite_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "inpaint",
+      "modelId": "gpt-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "OpenAI: GPT-Image-1 Inpaint (api_openai_image_1_inpaint)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_openai_image_1_inpaint.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "inpaint",
+      "modelId": "flux-3-klein",
+      "support": "native",
+      "workflow": {
+        "source": "ours",
+        "name": "create-image-flux3klein-inpaint-api.json",
+        "url": "workflows/create-image-flux3klein-inpaint-api.json",
+        "author": "Imagination Is All You Need",
+        "license": "AGPL-3.0 (this repo)"
+      }
+    },
+    {
+      "featureId": "inpaint",
+      "modelId": "qwen-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Qwen-Image InstantX Inpainting ControlNet (image_qwen_image_instantx_inpainting_controlnet)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_qwen_image_instantx_inpainting_controlnet.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "inpaint",
+      "modelId": "qwen-image-edit-2509",
+      "support": "native",
+      "workflow": {
+        "source": "ours",
+        "name": "create-image-qwen-edit2509-inpaint-api.json",
+        "url": "workflows/create-image-qwen-edit2509-inpaint-api.json",
+        "author": "Imagination Is All You Need",
+        "license": "AGPL-3.0 (this repo)"
+      }
+    },
+    {
+      "featureId": "inpaint",
+      "modelId": "gpt-image-1.5",
+      "support": "native",
+      "workflow": {
+        "source": "ours",
+        "name": "our request to Comfy Router openai/gpt-image-1.5 (server/src/routing/routerModels.ts gpt15Body)",
+        "url": "https://docs.comfy.org/development/comfy-router/models/openai/gpt-image-1-5/code",
+        "author": "Imagination Is All You Need",
+        "license": "AGPL-3.0 (this repo)"
+      }
+    },
+    {
+      "featureId": "inpaint",
+      "modelId": "fibo-2.0",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Bria: FIBO 2.0 Image Edit (api_bria_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_bria_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "upscale",
+      "modelId": "nano-banana-2",
+      "support": "chained",
+      "workflow": {
+        "source": "official",
+        "name": "Image Upscale: Nano Banana Pro (utility_nanobanana_pro_ai_image_fix)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/utility_nanobanana_pro_ai_image_fix.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "upscale",
+      "modelId": "recraft-v4",
+      "support": "chained",
+      "workflow": {
+        "source": "official",
+        "name": "Image Upscale: Recraft Crisp (utility_recraft_crisp_image_upscale)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/utility_recraft_crisp_image_upscale.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "upscale",
+      "modelId": "z-image-turbo",
+      "support": "chained",
+      "workflow": {
+        "source": "official",
+        "name": "Image Upscale: Z-Image-Turbo 2K (utility_z_image_turbo_2k_upscaler.app)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/utility_z_image_turbo_2k_upscaler.app.json",
+        "author": "@hellorob",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "upscale",
+      "modelId": "real-esrgan",
+      "support": "native",
+      "workflow": {
+        "source": "ours",
+        "name": "image-upscale-x4-api.json",
+        "url": "workflows/image-upscale-x4-api.json",
+        "author": "Imagination Is All You Need",
+        "license": "AGPL-3.0 (this repo)"
+      }
+    },
+    {
+      "featureId": "upscale",
+      "modelId": "4x-ultrasharp",
+      "support": "native",
+      "workflow": {
+        "source": "ours",
+        "name": "image-upscale-ultrasharp-x4-api.json",
+        "url": "workflows/image-upscale-ultrasharp-x4-api.json",
+        "author": "Imagination Is All You Need",
+        "license": "AGPL-3.0 (this repo)"
+      }
+    },
+    {
+      "featureId": "face-swap",
+      "modelId": "nano-banana-2",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Nano Banana 2: Image Edit (api_google_nano_banana2_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_google_nano_banana2_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "face-swap",
+      "modelId": "gpt-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "GPT Image 2: Image Edit (api_openai_gpt_image_2_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_openai_gpt_image_2_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "face-swap",
+      "modelId": "seedream-5.0-pro",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Seedream 5.0 Pro: Image Edit (api_bytedance_seedream_5_0_pro_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_bytedance_seedream_5_0_pro_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "face-swap",
+      "modelId": "flux-2-pro",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "FLUX.2 Pro (api_flux2)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_flux2.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "face-swap",
+      "modelId": "luma-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Luma UNI-1: Image Edit (api_luma_uni_1_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_luma_uni_1_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "face-swap",
+      "modelId": "kling-image-o1",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Kling O1: Image (api_kling_omni_image)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_kling_omni_image.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "face-swap",
+      "modelId": "flux-3-klein",
+      "support": "native",
+      "workflow": {
+        "source": "ours",
+        "name": "create-image-flux3klein-multiref-api.json",
+        "url": "workflows/create-image-flux3klein-multiref-api.json",
+        "author": "Imagination Is All You Need",
+        "license": "AGPL-3.0 (this repo)"
+      }
+    },
+    {
+      "featureId": "face-swap",
+      "modelId": "qwen-image-2.1",
+      "support": "native",
+      "workflow": {
+        "source": "community",
+        "name": "BFS Best Face Swap",
+        "url": "https://huggingface.co/Alissonerdx/BFS-Best-Face-Swap",
+        "author": "Alissonerdx",
+        "license": "MIT",
+        "note": "ours: workflows/create-image-qwen21-faceswap-api.json"
+      }
+    },
+    {
+      "featureId": "face-swap",
+      "modelId": "qwen-image-edit-2509",
+      "support": "native",
+      "workflow": {
+        "source": "ours",
+        "name": "create-image-qwen-edit2509-multiref-api.json",
+        "url": "workflows/create-image-qwen-edit2509-multiref-api.json",
+        "author": "Imagination Is All You Need",
+        "license": "AGPL-3.0 (this repo)"
+      }
+    },
+    {
+      "featureId": "face-swap",
+      "modelId": "flux-2-klein-4b",
+      "support": "native",
+      "workflow": {
+        "source": "community",
+        "name": "BFS Head Swap V1 Flux 2 Klein 4b_9b (base_distill).json",
+        "url": "https://huggingface.co/Alissonerdx/BFS-Best-Face-Swap/tree/main/workflows",
+        "author": "Alissonerdx",
+        "license": "MIT"
+      }
+    },
+    {
+      "featureId": "character-swap",
+      "modelId": "nano-banana-2",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Nano Banana 2: Image Edit (api_google_nano_banana2_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_google_nano_banana2_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "character-swap",
+      "modelId": "gpt-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "GPT Image 2: Image Edit (api_openai_gpt_image_2_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_openai_gpt_image_2_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "character-swap",
+      "modelId": "seedream-5.0-pro",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Seedream 5.0 Pro: Image Edit (api_bytedance_seedream_5_0_pro_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_bytedance_seedream_5_0_pro_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "character-swap",
+      "modelId": "flux-2-pro",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "FLUX.2 Pro (api_flux2)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_flux2.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "character-swap",
+      "modelId": "luma-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Luma UNI-1: Image Edit (api_luma_uni_1_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_luma_uni_1_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "character-swap",
+      "modelId": "kling-image-o1",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Kling O1: Image (api_kling_omni_image)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_kling_omni_image.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "character-swap",
+      "modelId": "flux-3-klein",
+      "support": "native",
+      "workflow": {
+        "source": "ours",
+        "name": "create-image-flux3klein-multiref-api.json",
+        "url": "workflows/create-image-flux3klein-multiref-api.json",
+        "author": "Imagination Is All You Need",
+        "license": "AGPL-3.0 (this repo)"
+      }
+    },
+    {
+      "featureId": "character-swap",
+      "modelId": "qwen-image-2.1",
+      "support": "native",
+      "workflow": {
+        "source": "community",
+        "name": "BFS Best Face Swap",
+        "url": "https://huggingface.co/Alissonerdx/BFS-Best-Face-Swap",
+        "author": "Alissonerdx",
+        "license": "MIT",
+        "note": "ours: workflows/create-image-qwen21-personswap-api.json"
+      }
+    },
+    {
+      "featureId": "character-swap",
+      "modelId": "qwen-image-edit-2509",
+      "support": "native",
+      "workflow": {
+        "source": "ours",
+        "name": "create-image-qwen-edit2509-multiref-api.json",
+        "url": "workflows/create-image-qwen-edit2509-multiref-api.json",
+        "author": "Imagination Is All You Need",
+        "license": "AGPL-3.0 (this repo)"
+      }
+    },
+    {
+      "featureId": "character-swap",
+      "modelId": "flux-2-klein-4b",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "FLUX.2 [Klein] 4B Distilled: Image Edit (image_flux2_klein_image_edit_4b_distilled)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_flux2_klein_image_edit_4b_distilled.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)",
+        "note": "ours: workflows/create-image-klein4b-edit-api.json"
+      }
+    },
+    {
+      "featureId": "shots",
+      "modelId": "nano-banana-2",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "3x3 Contact Sheet (template_3x3_contact_sheet)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/template_3x3_contact_sheet.json",
+        "author": "@enigmatic_e",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "shots",
+      "modelId": "gpt-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "GPT Image 2: Image Edit (api_openai_gpt_image_2_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_openai_gpt_image_2_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "shots",
+      "modelId": "seedream-5.0-pro",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Seedream 5.0 Pro: Image Edit (api_bytedance_seedream_5_0_pro_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_bytedance_seedream_5_0_pro_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "shots",
+      "modelId": "flux-2-pro",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "FLUX.2 Pro (api_flux2)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_flux2.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "shots",
+      "modelId": "luma-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Luma UNI-1: Image Edit (api_luma_uni_1_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_luma_uni_1_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "shots",
+      "modelId": "kling-image-o1",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Kling O1: Image (api_kling_omni_image)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_kling_omni_image.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "shots",
+      "modelId": "krea",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Krea 3: Image Edit (api_krea3_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_krea3_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "shots",
+      "modelId": "runway-gen4-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Runway: Reference to Image (api_runway_reference_to_image)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_runway_reference_to_image.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "shots",
+      "modelId": "grok-imagine-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Grok Imagine Image 2.0: Image Edit (api_grok_imagine_image_2_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_grok_imagine_image_2_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "shots",
+      "modelId": "qwen-image-3",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Qwen Image 3.0 Pro: Image Edit (api_qwen3_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_qwen3_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "shots",
+      "modelId": "hunyuan-image-3.5",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "HY Image 3.5 Preview: Image Edit (api_tencent_hy_image_3_5_preview_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_tencent_hy_image_3_5_preview_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "shots",
+      "modelId": "meta-muse-image",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Muse Image 1.0: Image Edit (api_meta_muse_image_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_meta_muse_image_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "shots",
+      "modelId": "flux-3-klein",
+      "support": "native",
+      "workflow": {
+        "source": "ours",
+        "name": "create-image-flux3klein-edit-api.json",
+        "url": "workflows/create-image-flux3klein-edit-api.json",
+        "author": "Imagination Is All You Need",
+        "license": "AGPL-3.0 (this repo)"
+      }
+    },
+    {
+      "featureId": "shots",
+      "modelId": "qwen-image-2.1",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Qwen Image 2.1: Image Edit (image_qwen_image_2_1_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_qwen_image_2_1_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)",
+        "note": "ours: workflows/create-image-qwen21-edit-api.json"
+      }
+    },
+    {
+      "featureId": "shots",
+      "modelId": "qwen-image-2.1-turbo",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "Qwen Image 2.1 Turbo: Image Edit (image_qwen_image_2_1_turbo_image_edit)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_qwen_image_2_1_turbo_image_edit.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)",
+        "note": "ours: workflows/create-image-qwen21-turbo-edit-api.json"
+      }
+    },
+    {
+      "featureId": "shots",
+      "modelId": "qwen-image-edit-2509",
+      "support": "native",
+      "workflow": {
+        "source": "ours",
+        "name": "create-image-qwen-edit2509-api.json",
+        "url": "workflows/create-image-qwen-edit2509-api.json",
+        "author": "Imagination Is All You Need",
+        "license": "AGPL-3.0 (this repo)"
+      }
+    },
+    {
+      "featureId": "shots",
+      "modelId": "qwen-image-edit-2509-angles",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "1 click Multiple Scene Angles (templates-1_click_multiple_scene_angles-v1.0)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/templates-1_click_multiple_scene_angles-v1.0.json",
+        "author": "@hellorob",
+        "license": "MIT (Comfy-Org/workflow_templates)"
+      }
+    },
+    {
+      "featureId": "shots",
+      "modelId": "flux-2-klein-4b",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "FLUX.2 [Klein] 4B Distilled: Image Edit (image_flux2_klein_image_edit_4b_distilled)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_flux2_klein_image_edit_4b_distilled.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)",
+        "note": "ours: workflows/create-image-klein4b-edit-api.json"
+      }
+    },
+    {
+      "featureId": "shots",
+      "modelId": "flux-2-dev",
+      "support": "native",
+      "workflow": {
+        "source": "official",
+        "name": "FLUX.2 Dev (image_flux2)",
+        "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_flux2.json",
+        "author": "Comfy Org",
+        "license": "MIT (Comfy-Org/workflow_templates)",
+        "note": "ours: workflows/create-image-flux2dev-api.json"
+      }
+    }
+  ]
+}

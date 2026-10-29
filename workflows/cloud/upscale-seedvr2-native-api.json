@@ -1,0 +1,207 @@
+{
+ "18": {
+  "class_type": "LoadVideo",
+  "inputs": {
+   "file": "input.mp4"
+  },
+  "_meta": {
+   "title": "Source video"
+  }
+ },
+ "15:1": {
+  "class_type": "GetVideoComponents",
+  "inputs": {
+   "video": [
+    "18",
+    0
+   ]
+  }
+ },
+ "15:5": {
+  "class_type": "ResizeImageMaskNode",
+  "inputs": {
+   "input": [
+    "15:1",
+    0
+   ],
+   "resize_type": "scale shorter dimension",
+   "resize_type.shorter_size": 1080,
+   "scale_method": "lanczos"
+  },
+  "_meta": {
+   "title": "Target size (shorter edge)"
+  }
+ },
+ "15:6": {
+  "class_type": "SeedVR2Preprocess",
+  "inputs": {
+   "resized_images": [
+    "15:5",
+    0
+   ]
+  }
+ },
+ "15:2": {
+  "class_type": "UNETLoader",
+  "inputs": {
+   "unet_name": "seedvr2_3b_int8_convrot.safetensors",
+   "weight_dtype": "default"
+  }
+ },
+ "15:3": {
+  "class_type": "VAELoader",
+  "inputs": {
+   "vae_name": "seedvr2_ema_vae_fp16.safetensors"
+  }
+ },
+ "15:7": {
+  "class_type": "VAEEncodeTiled",
+  "inputs": {
+   "pixels": [
+    "15:6",
+    0
+   ],
+   "vae": [
+    "15:3",
+    0
+   ],
+   "tile_size": 512,
+   "overlap": 128,
+   "temporal_size": 64,
+   "temporal_overlap": 8
+  }
+ },
+ "15:8": {
+  "class_type": "SeedVR2TemporalChunk",
+  "inputs": {
+   "latent": [
+    "15:7",
+    0
+   ],
+   "temporal_overlap": 0,
+   "chunking_mode": "auto"
+  },
+  "_meta": {
+   "title": "Temporal chunks (VRAM-sized)"
+  }
+ },
+ "15:9": {
+  "class_type": "SeedVR2Conditioning",
+  "inputs": {
+   "model": [
+    "15:2",
+    0
+   ],
+   "vae_conditioning": [
+    "15:8",
+    0
+   ]
+  }
+ },
+ "15:4": {
+  "class_type": "KSampler",
+  "inputs": {
+   "model": [
+    "15:2",
+    0
+   ],
+   "positive": [
+    "15:9",
+    0
+   ],
+   "negative": [
+    "15:9",
+    1
+   ],
+   "latent_image": [
+    "15:8",
+    0
+   ],
+   "seed": 1,
+   "steps": 1,
+   "cfg": 1.0,
+   "sampler_name": "euler",
+   "scheduler": "simple",
+   "denoise": 1.0
+  },
+  "_meta": {
+   "title": "One-step restore (seed)"
+  }
+ },
+ "15:10": {
+  "class_type": "SeedVR2TemporalMerge",
+  "inputs": {
+   "latents": [
+    "15:4",
+    0
+   ],
+   "temporal_overlap": [
+    "15:8",
+    1
+   ]
+  }
+ },
+ "15:11": {
+  "class_type": "VAEDecodeTiled",
+  "inputs": {
+   "samples": [
+    "15:10",
+    0
+   ],
+   "vae": [
+    "15:3",
+    0
+   ],
+   "tile_size": 512,
+   "overlap": 128,
+   "temporal_size": 64,
+   "temporal_overlap": 8
+  }
+ },
+ "15:12": {
+  "class_type": "SeedVR2PostProcessing",
+  "inputs": {
+   "images": [
+    "15:11",
+    0
+   ],
+   "original_resized_images": [
+    "15:5",
+    0
+   ],
+   "color_correction_method": "lab"
+  }
+ },
+ "16": {
+  "class_type": "CreateVideo",
+  "inputs": {
+   "images": [
+    "15:12",
+    0
+   ],
+   "fps": [
+    "15:1",
+    2
+   ],
+   "audio": [
+    "15:1",
+    1
+   ]
+  }
+ },
+ "17": {
+  "class_type": "SaveVideo",
+  "inputs": {
+   "filename_prefix": "openhiggsfield/upscale-seedvr2",
+   "format": "auto",
+   "format.codec": "auto",
+   "video": [
+    "16",
+    0
+   ]
+  },
+  "_meta": {
+   "title": "Output"
+  }
+ }
+}

@@ -1,0 +1,19 @@
+{
+  "workflowFile": "create-image-zimage-api.json",
+  "template": "image_z_image",
+  "model": "Z-Image base (Apache-2.0)",
+  "inputs": {
+    "prompt": {
+      "node": "76:67",
+      "field": "text"
+    }
+  },
+  "refs": [],
+  "seed": {
+    "node": "76:69",
+    "field": "seed"
+  },
+  "output": {
+    "node": "95"
+  }
+}

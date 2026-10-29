@@ -1,0 +1,78 @@
+{
+  "workflowFile": "object-swap-wan-animate-api.json",
+  "fallbackWorkflowFile": "object-swap-api.json",
+  "hubTemplate": "https://comfy.org/workflows/use-cases/ai-character-replacement/",
+  "officialTemplateSlug": "video_wan2_2_14B_animate-c2c4b45b7df5",
+  "uiReference": "video_wan2_2_14B_animate-ui.json",
+  "notes": "object-swap-api.json is now a REAL, validated API graph (built by scripts/build-object-swap.py from the official template; passes ComfyUI /prompt validation with KJNodes + controlnet_aux + segment-anything-2). Final SaveVideo is always 277. Length variants: object-swap/ext-N.json (N extends).",
+  "inputs": {
+    "image": {
+      "node": "10",
+      "field": "image",
+      "class_type": "LoadImage"
+    },
+    "video": {
+      "node": "145",
+      "field": "file",
+      "class_type": "LoadVideo"
+    },
+    "prompt": {
+      "node": "21",
+      "field": "text",
+      "class_type": "CLIPTextEncode",
+      "role": "positive prompt (describe the action/scene; WHO to replace is chosen by the SAM2 point in node 229, not by this text)"
+    }
+  },
+  "output": {
+    "node": "277",
+    "class_type": "SaveVideo"
+  },
+  "extra": {
+    "width": {
+      "node": "159",
+      "field": "value",
+      "default": 832,
+      "note": "multiple of 16; also set node 229 width"
+    },
+    "height": {
+      "node": "160",
+      "field": "value",
+      "default": 480,
+      "note": "multiple of 16; also set node 229 height"
+    },
+    "point": {
+      "node": "229",
+      "fields": [
+        "coordinates",
+        "points_store"
+      ],
+      "format": "pixels in width x height space, JSON [{x,y}]; points_store={\"positive\":[...],\"negative\":[...]}",
+      "note": "OpenHiggsfield point=x,y (normalized) -> x*width, y*height"
+    },
+    "negativePoint": {
+      "node": "229",
+      "field": "neg_coordinates"
+    },
+    "seed": {
+      "nodes": [
+        "232:63",
+        "extN:91"
+      ],
+      "field": "seed"
+    },
+    "fps": {
+      "value": 16,
+      "note": "graph assumes 16 fps; pre-convert source with ffmpeg -r 16 before upload, then remux original audio"
+    },
+    "lengthVariants": {
+      "ext-0": 4.8,
+      "ext-1": 9.3,
+      "ext-2": 13.8,
+      "ext-3": 18.3,
+      "ext-4": 22.8,
+      "ext-5": 27.3,
+      "ext-6": 31.8,
+      "unit": "seconds of output at 16 fps; pick the smallest variant >= source length"
+    }
+  }
+}

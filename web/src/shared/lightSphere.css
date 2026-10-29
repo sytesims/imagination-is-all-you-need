@@ -1,0 +1,81 @@
+/* LightSphere (shared/LightSphere.tsx): precise and dark. Hairlines, Inter labels, mono tabular numbers; orange only for the active light
+ * handle (drawn in the canvas) and keyboard focus. Self-contained (works inside a bar popover or on a page). Brand tokens only. */
+.ls{--ls-mono:var(--font-mono,'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace);--ls-line:rgba(255,255,255,.08);
+  display:flex;flex-direction:column;gap:12px;padding:12px;min-width:0;color:var(--text-1,#F7F7F8);font:500 13px/1.4 var(--font-sans,Inter,system-ui,sans-serif)}
+.ls :focus-visible{outline:1.5px solid rgba(255,122,26,.75);outline-offset:2px}
+
+/* presets: quiet chips; the picked one gets a stronger hairline and white text (no orange) */
+.ls-presets{display:flex;flex-wrap:wrap;gap:6px}
+.ls-preset{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:7px;height:26px;padding:0 10px 0 8px;border-radius:8px;cursor:pointer;
+  border:1px solid var(--ls-line);background:rgba(255,255,255,.03);color:var(--text-2,#898A8B);font:500 12px/1 var(--font-sans,Inter,system-ui,sans-serif);white-space:nowrap;
+  transition:background .15s ease,color .15s ease,border-color .15s ease}
+.ls-preset i{width:8px;height:8px;border-radius:50%;flex:none;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
+.ls-preset:hover{color:var(--text-1,#F7F7F8);background:rgba(255,255,255,.06)}
+.ls-preset.on{color:var(--text-1,#F7F7F8);border-color:rgba(255,255,255,.32);background:rgba(255,255,255,.07)}
+
+.ls-main{display:grid;grid-template-columns:auto minmax(240px,1fr);gap:16px;align-items:start}
+.ls-left{display:flex;flex-direction:column;gap:8px;min-width:0}
+
+/* the stage: the canvas on the page background, hairline frame, mono axis labels and a live HUD */
+.ls-stage{position:relative;flex:none;border-radius:14px;overflow:hidden;background:#0F1113;border:1px solid var(--ls-line);touch-action:none;outline:none}
+.ls-stage:focus-visible{outline:1.5px solid rgba(255,122,26,.75);outline-offset:2px}
+.ls-stage canvas{display:block;cursor:grab}
+.ls-stage canvas:active{cursor:grabbing}
+.ls-hud{position:absolute;left:10px;top:9px;font:500 10px/14px var(--ls-mono);letter-spacing:.06em;color:rgba(255,255,255,.42);font-variant-numeric:tabular-nums;pointer-events:none}
+.ls-hud b{color:rgba(255,255,255,.8);font-weight:600;margin-right:6px}
+.ls-hud em{font-style:normal;color:var(--text-1,#F7F7F8);margin:0 6px 0 2px}
+.ls-ax{position:absolute;font:500 9px/1 var(--ls-mono);letter-spacing:.14em;color:rgba(255,255,255,.3);pointer-events:none}
+.ls-ax-t{top:9px;right:10px}
+.ls-ax-b{bottom:9px;left:50%;transform:translateX(-50%)}
+.ls-ax-l{left:9px;top:50%;transform:translateY(-50%)}
+.ls-ax-r{right:9px;top:50%;transform:translateY(-50%)}
+.ls-wait{position:absolute;inset:auto 0 50% 0;text-align:center;font:500 11px/16px var(--ls-mono);color:rgba(255,255,255,.4);pointer-events:none}
+.ls-loading canvas,.ls-failed canvas{opacity:0}
+
+/* readouts: mono, tabular, one line per light, a dot in the light's colour */
+.ls-read{display:flex;flex-direction:column;gap:2px;font:500 11.5px/18px var(--ls-mono);font-variant-numeric:tabular-nums;color:var(--text-2,#898A8B)}
+.ls-read p{margin:0;display:flex;align-items:center;gap:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ls-read p.on{color:var(--text-1,#F7F7F8)}
+.ls-read i{width:6px;height:6px;border-radius:50%;flex:none;background:rgba(255,255,255,.3)}
+.ls-read .ls-amb i{background:transparent;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}
+
+/* controls */
+.ls-ctl{display:flex;flex-direction:column;gap:12px;min-width:0;min-height:362px} /* the same height on both tabs, so the popover never jumps */
+.ls-tabs{display:grid;grid-template-columns:1fr 1fr;gap:2px;padding:3px;border-radius:10px;background:rgba(255,255,255,.05)}
+.ls-tabs button{all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:6px;height:28px;border-radius:8px;cursor:pointer;color:var(--text-2,#898A8B);font:600 12.5px/1 var(--font-sans,Inter,system-ui,sans-serif)}
+.ls-tabs button:hover{color:var(--text-1,#F7F7F8)}
+.ls-tabs button.on{background:rgba(255,255,255,.1);color:var(--text-1,#F7F7F8)}
+.ls-tabs small{font:500 10px/1 var(--ls-mono);color:var(--text-3,rgba(255,255,255,.5));text-transform:uppercase;letter-spacing:.08em}
+.ls-row{display:flex;flex-direction:column;gap:6px;min-width:0}
+.ls-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.ls-h>span{font:700 10.5px/14px var(--font-sans,Inter,system-ui,sans-serif);letter-spacing:.12em;text-transform:uppercase;color:var(--text-3,rgba(255,255,255,.5))}
+.ls-h>em{font:500 12px/16px var(--ls-mono);font-style:normal;font-variant-numeric:tabular-nums;color:var(--text-1,#F7F7F8);white-space:nowrap}
+.ls-range-w.dim .ls-range{opacity:.4}
+.ls-range-w.dim .ls-h>em{color:var(--text-3,rgba(255,255,255,.5))}
+.ls-range{-webkit-appearance:none;appearance:none;width:100%;height:16px;margin:0;background:transparent;cursor:pointer}
+.ls-range::-webkit-slider-runnable-track{height:3px;border-radius:3px;background:var(--ls-track)}
+.ls-range::-moz-range-track{height:3px;border-radius:3px;background:var(--ls-track)}
+.ls-range::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;margin-top:-4.5px;border-radius:50%;background:#F7F7F8;border:2px solid #0F1113;box-shadow:0 0 0 1px rgba(255,255,255,.4)}
+.ls-range::-moz-range-thumb{width:10px;height:10px;border-radius:50%;background:#F7F7F8;border:2px solid #0F1113;box-shadow:0 0 0 1px rgba(255,255,255,.4)}
+.ls-range:focus-visible{outline:none}
+.ls-range:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 2px var(--accent,#FF7A1A)}
+.ls-range:focus-visible::-moz-range-thumb{box-shadow:0 0 0 2px var(--accent,#FF7A1A)}
+.ls-ends{display:flex;justify-content:space-between;margin-top:-3px;font:500 10px/12px var(--ls-mono);color:rgba(255,255,255,.32);letter-spacing:.04em}
+.ls-sw{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ls-sw button,.ls-sw-any{all:unset;box-sizing:border-box;position:relative;width:20px;height:20px;border-radius:50%;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(0,0,0,.35)}
+.ls-sw button.on{box-shadow:0 0 0 2px #0F1113,0 0 0 3px rgba(255,255,255,.85)}
+.ls-sw-k{display:grid;place-items:center;font:700 9px/1 var(--ls-mono);color:#14151A}
+.ls-sw-any{background:conic-gradient(#ff3b5c,#ffb347,#f5ff6b,#7cff6b,#33d6ff,#8a5cff,#e05ad8,#ff3b5c);overflow:hidden}
+.ls-sw-any input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.ls-sep{height:1px;background:var(--ls-line);margin:2px 0}
+.ls-empty{display:flex;flex-direction:column;gap:10px;padding:4px 0}
+.ls-empty p{margin:0;color:var(--text-2,#898A8B);font:400 12px/17px var(--font-sans,Inter,system-ui,sans-serif)}
+.ls-btn{all:unset;box-sizing:border-box;align-self:flex-start;display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:8px;cursor:pointer;
+  background:rgba(255,255,255,.08);color:var(--text-1,#F7F7F8);font:600 12px/1 var(--font-sans,Inter,system-ui,sans-serif)}
+.ls-btn:hover{background:rgba(255,255,255,.12)}
+.ls-btn-q{background:transparent;color:var(--text-2,#898A8B);padding:0;height:20px}
+.ls-btn-q:hover{background:transparent;color:var(--text-1,#F7F7F8)}
+.ls-tip{margin:0;font:400 11px/15px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-3,rgba(255,255,255,.5))}
+
+@media (max-width:640px){.ls-main{grid-template-columns:1fr}.ls-stage{margin:0 auto}}
+@media (prefers-reduced-motion:reduce){.ls-preset{transition:none}}

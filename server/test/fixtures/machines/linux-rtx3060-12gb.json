@@ -1,0 +1,44 @@
+{
+ "simulated": true,
+ "note": "SIMULATED profile: a /system_stats answer in ComfyUI's shape and an nvidia-smi line, reconstructed from public specs. Not recorded on this hardware.",
+ "label": "Ubuntu + RTX 3060 (12 GB)",
+ "host": {
+  "platform": "linux",
+  "arch": "x64",
+  "ramBytes": 34359738368,
+  "cpuModel": "Intel(R) Core(TM) i5-12400F"
+ },
+ "system_stats": {
+  "system": {
+   "os": "posix",
+   "ram_total": 34359738368,
+   "ram_free": 20615843020,
+   "comfyui_version": "0.42.5",
+   "python_version": "3.12.9",
+   "pytorch_version": "2.10.0",
+   "embedded_python": false,
+   "argv": [
+    "main.py"
+   ]
+  },
+  "devices": [
+   {
+    "name": "cuda:0 NVIDIA GeForce RTX 3060 : cudaMallocAsync",
+    "type": "cuda",
+    "index": 0,
+    "vram_total": 12884246528,
+    "vram_free": 12000000000
+   }
+  ]
+ },
+ "nvidia_smi": "NVIDIA GeForce RTX 3060, 12288, 11800, 8.6",
+ "expect": {
+  "id": "nvidia",
+  "backend": "cuda",
+  "vramClass": "12",
+  "fp8": "upcast",
+  "nvfp4": "emulated",
+  "tier": "most",
+  "comfyKind": "manual"
+ }
+}

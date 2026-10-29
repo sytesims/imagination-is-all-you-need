@@ -1,0 +1,248 @@
+/* Model vs Run-on (MODEL-ROUTE-SPEC §2.2–2.5): model rows with run-on chips, the Run-on field / chip / menu, Connections and first-run setup.
+   Loaded after ui-states.css; selectors are scoped (html body …) to sit above the older layered rules. Colours come from tokens.css. */
+
+/* ---------- Model menu: one row per model ---------- */
+html body .apop .ic-pop-model .mp-row.mp-slim.mp-m,html body .apop .ic-pop-model .mp-row.mp-slim:has(.mp-runs){height:auto;min-height:60px;align-items:center}
+html body .apop .ic-pop-model .mp-m .mp-txt,html body .apop .ic-pop-model .mp-row:has(.mp-runs) .mp-txt{gap:2px}
+.mp-runs{display:flex;flex-wrap:nowrap;gap:4px;margin-top:3px;min-width:0;overflow:hidden}
+.mp-ro{flex:none;height:16px;padding:0 5px;border-radius:4px;border:1px solid rgba(255,255,255,.14);font:600 10px/14px var(--font-sans,Inter,system-ui,sans-serif);font-style:normal;color:var(--text-2);white-space:nowrap}
+.mp-ro.ready{background:rgba(255,255,255,.1);border-color:transparent;color:var(--text-1,#f7f7f8)}
+.mp-ro.key{border-style:dashed;color:#c9cacb}
+.mp-ro.no{opacity:.55;text-decoration:line-through}
+.mp-ro.more{border-color:transparent;color:var(--text-2)}
+html body .apop .mp-r{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex:none;min-width:76px;margin-left:auto}
+.mp-from{font:600 12px/16px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-1,#f7f7f8);white-space:nowrap}
+.mp-from.muted{color:rgba(255,255,255,.55);font-weight:500}
+.mp-stw{display:inline-flex;align-items:center;gap:5px;font:500 11px/14px var(--font-sans,Inter,system-ui,sans-serif);color:#a9aaab;white-space:nowrap}
+.mp-stw .mp-st{width:6px;height:6px}
+html body .apop .ic-pop-model .mp-slim .mp-check{flex:none}
+@media (max-width:639px){html body .apop .mp-r{min-width:64px}.mp-ro{font-size:10px}}
+
+/* ---------- Model card: clean name + licence badge ---------- */
+html body .mc-card .mc-name{min-width:0;overflow:hidden;text-overflow:ellipsis}
+html body .mc-card .mc-open{flex:none;height:16px;padding:0 5px;border-radius:4px;background:rgba(255,255,255,.08);color:#d6d6d8;font:700 9px/16px var(--font-sans,Inter,system-ui,sans-serif);letter-spacing:.04em;text-transform:uppercase;font-style:normal}
+
+/* ---------- Run-on field (side panels): the Model card's twin ---------- */
+html body .vs-model.mc-card.ro-field{min-height:52px;margin-top:6px}
+html body .mc-card.ro-field .ro-val{gap:6px}
+html body .mc-card.ro-field .ro-val>span{flex:none}
+html body .mc-card.ro-field .ro-sub{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;color:rgba(255,255,255,.62);font-weight:500}
+html body .mc-card.ro-field .mp-st{flex:none}
+.ws-runon{margin:8px 0 4px}.as-runon{margin:0}.as-runon .ro-field{margin-top:0!important}
+.pv-card-row .ro-field{margin-top:8px}
+
+/* ---------- Run-on chip (Create Image dock) ---------- */
+html body .ic-dock .ic-chip.ro-chip,html body .ic-chip.ro-chip{gap:6px!important;color:rgba(255,255,255,.85)!important;max-width:220px}
+html body .ic-chip.ro-chip .ro-chip-t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html body .ic-chip.ro-chip .ro-sub{color:rgba(255,255,255,.62)}
+html body .ic-chip.ro-chip svg{flex:none;opacity:.6}
+html body .ic-chip.ro-chip:hover,html body .ic-chip.ro-chip.on{background:var(--state-hover)!important}
+html body .ic-chip.ro-chip:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:1px}
+
+/* ---------- Run-on menu ---------- */
+html body .apop.apop-runon{width:360px;max-width:calc(100vw - 16px)}
+html body .apop.apop-runon.apop-sheet{width:auto;max-width:none}
+.ro-pop{display:flex;flex-direction:column;padding:0 0 4px}
+.ro-h{padding:12px 14px 6px;font:600 13px/18px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-1,#f7f7f8)}
+.ro-h small{display:block;color:var(--text-2);font-weight:500;font-size:12px;line-height:16px}
+.apop-sheet .ro-h{display:none}
+.ro-opt{display:grid;grid-template-columns:18px minmax(0,1fr) auto;column-gap:10px;row-gap:2px;align-items:start;padding:9px 12px;margin:0 6px;border-radius:10px;cursor:pointer;outline:none;transition:background var(--t-state) var(--ease-state)}
+.ro-opt:hover,.ro-opt:focus-visible{background:rgba(255,255,255,.06)}
+.ro-opt:focus-visible{box-shadow:inset 0 0 0 2px var(--focus-ring-color)}
+.ro-opt.on{background:rgba(255,122,26,.1);box-shadow:inset 0 0 0 1px rgba(255,122,26,.45)}
+.ro-opt.dis{cursor:default;opacity:.5}
+.ro-rad{width:14px;height:14px;border-radius:50%;border:1.5px solid rgba(255,255,255,.5);margin-top:3px;box-sizing:border-box}
+.ro-opt.on .ro-rad{border-color:var(--accent);background:var(--accent);box-shadow:inset 0 0 0 3px #2a2018}
+.ro-ol{display:flex;align-items:center;gap:6px;min-width:0;flex-wrap:wrap;font:600 13px/20px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-1,#f7f7f8)}
+.ro-pill{display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:999px;font:600 10.5px/18px var(--font-sans,Inter,system-ui,sans-serif);font-style:normal;white-space:nowrap;background:rgba(255,255,255,.06);color:#b5b6b7}
+.ro-pill.ro-ok{background:rgba(74,222,128,.12);color:#86efac}
+.ro-pill.ro-warn{background:rgba(232,180,74,.14);color:#f2c46b}
+.ro-op{text-align:right;font:600 13px/20px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-1,#f7f7f8);white-space:nowrap}
+.ro-op small{display:block;font:500 11px/16px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-2)}
+.ro-os{grid-column:2/4;color:#a3a4a5;font:400 11.5px/16px var(--font-sans,Inter,system-ui,sans-serif)}
+html body .ro-lnk{all:unset;cursor:pointer;color:var(--accent);font:500 11.5px/16px var(--font-sans,Inter,system-ui,sans-serif);padding:2px 4px;margin:-2px -4px;border-radius:4px}
+html body .ro-lnk:hover,html body .ro-lnk:focus-visible{background:rgba(255,122,26,.12)}
+html body .ro-lnk:disabled{opacity:.6;cursor:default}
+.ro-grp{display:block;padding:10px 14px 2px;font:600 10px/14px var(--font-sans,Inter,system-ui,sans-serif);letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.5)}
+.ro-off{margin:0;padding:2px 14px 6px;color:#9a9b9c;font-size:11.5px;line-height:16px}.ro-off b{color:#c9cacb;font-weight:600}
+.ro-err{margin:6px 14px 0;color:var(--error);font-size:12px;line-height:16px}
+.ro-fb{display:flex;align-items:flex-start;gap:8px;margin-top:6px;padding:10px 14px 8px;border-top:1px solid rgba(255,255,255,.06);font-size:12px;line-height:16px;color:#b5b6b7;cursor:pointer}
+.ro-fb input{margin:1px 0 0;accent-color:var(--accent);flex:none;width:14px;height:14px}
+@media (max-width:639px){.ro-opt{padding:12px;min-height:44px}.ro-fb{min-height:44px;align-items:center}html body .ro-lnk{padding:8px 6px;margin:-8px -6px}}
+
+/* ---------- Settings → Connections ---------- */
+.conn{scroll-margin-top:72px}.conn-anchor{position:relative;top:-72px;display:block;height:0}
+.conn h2{margin:0 0 2px}
+.conn-lede{margin:0 0 12px;color:var(--text-2);font-size:13px;line-height:19px;max-width:640px}
+.conn-sec{margin-top:20px;scroll-margin-top:72px}
+.conn-sec-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:0 0 8px}
+.conn-sec-h h3{margin:0;font:600 15px/20px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text)}
+.conn-sec-h small{color:var(--text-2);font-size:12px;line-height:16px}
+.conn-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);scroll-margin-top:84px}
+.conn-card+.conn-card{margin-top:8px}
+.conn-card.is-on{border-color:rgba(74,222,128,.22)}
+.conn-card:target{box-shadow:0 0 0 2px rgba(255,122,26,.45)}
+.conn-t{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font:600 14px/22px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text)}
+.conn-acts{display:flex;align-items:center;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+.conn-facts{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px 14px;color:#a9aaab;font-size:12.5px;line-height:18px}
+.conn-facts b{color:var(--text);font-weight:600}
+.conn-facts .conn-note{flex-basis:100%;color:var(--text-2)}
+/* H3 runner Step 1: Your Comfy deployment card, one line per workflow it can run */
+.conn-deploy{margin-top:12px}
+.conn-deploy-list{grid-column:1/-1;margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px;font-size:12.5px;line-height:18px;color:var(--text-2);overflow-wrap:anywhere}
+.conn-deploy-list b{color:var(--text);font-weight:600}
+.conn-deploy-list li[data-ready=true]::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ok,#3ccf7a);margin-right:6px;vertical-align:middle}
+.conn-deploy-list li[data-ready=false]::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent,#ff7a1a);margin-right:6px;vertical-align:middle}
+/* One-time setup (2026-10-27): one row per Comfy Cloud import / deployment, its check, link and steps */
+.conn-setup{margin-top:12px}
+.conn-setup-list{grid-column:1/-1;margin:0;padding:0;list-style:none;display:flex;flex-direction:column}
+.conn-setup-list>li{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-top:1px solid rgba(255,255,255,.06);overflow-wrap:anywhere}
+.conn-setup-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.conn-setup-t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.conn-setup-t b{font:600 13px/20px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text)}
+.conn-setup-acts{display:flex;align-items:center;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;line-height:18px}
+.conn-setup-acts .conn-link{color:var(--accent)}
+.conn-setup-file{color:var(--text-2)}
+.conn-setup-steps{margin:0;padding:8px 12px 8px 30px;border-radius:8px;background:rgba(0,0,0,.2);color:var(--text-2);font-size:12.5px;line-height:19px;display:flex;flex-direction:column;gap:4px}
+.conn-setup-steps li::marker{color:var(--accent)}
+.conn-links{display:inline-flex;gap:12px}.conn-links a{color:var(--accent)}
+.conn-pill{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 8px;border-radius:999px;font:600 11px/20px var(--font-sans,Inter,system-ui,sans-serif);white-space:nowrap;background:rgba(255,255,255,.06);color:#b5b6b7}
+.conn-pill.cp-ok{background:rgba(74,222,128,.12);color:#86efac}.conn-pill.cp-warn{background:rgba(232,180,74,.14);color:#f2c46b}.conn-pill.cp-calm{background:rgba(255,255,255,.08);color:#d6d6d8}
+.conn-test,.conn-key{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.conn-input{flex:1 1 220px;min-width:0;height:34px;box-sizing:border-box;padding:0 10px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:var(--text);font:500 13px/20px var(--font-sans,Inter,system-ui,sans-serif)}
+.conn-input:focus-visible{outline:2px solid var(--focus-ring-color);outline-offset:1px}
+.conn-key-help{flex-basis:100%}
+.conn-ok{color:#86efac}
+.conn-pref{grid-column:1/-1;display:flex;align-items:flex-start;gap:12px;padding:10px 0 0;border-top:1px solid rgba(255,255,255,.06);margin-top:4px}
+.conn-sec>.conn-pref{padding:12px 0;margin:0}
+.conn-pref>span{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.conn-pref b{font:600 13px/20px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text)}
+.conn-pref .prov-sw{flex:0 0 34px;margin-top:1px}.conn-pref .prov-sw.on{background:var(--accent)}.conn-pref .prov-sw.on i{background:#fff}
+.conn-pref .prov-sw:disabled{opacity:.45;cursor:not-allowed}.conn-pref .prov-sw:focus-visible{outline:2px solid var(--focus-ring-color);outline-offset:2px}
+.conn-pref.off b{color:var(--text-2)}
+.conn-pref-row{align-items:center}
+.conn-list{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:#c9cacb}
+.conn-list li{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:28px}
+.conn-more{margin-top:8px;color:var(--accent)!important}
+@media (max-width:639px){.conn-card{grid-template-columns:1fr}.conn-acts{justify-content:flex-start}.conn-acts .btn,.conn-test .btn,.conn-key .btn,.conn-pref .btn{min-height:44px}.conn-input{height:44px}.conn-pref .prov-sw{margin-top:4px}.conn-list li{min-height:44px}.conn-more{min-height:44px}}
+
+/* ---------- First-run setup sheet ---------- */
+html body .dlg.rs-sheet{position:relative;isolation:isolate;display:flex;flex-direction:column;width:min(760px,100%);max-height:calc(100dvh - 32px);overflow:hidden;padding:0;background:var(--surface-2)}
+.rs-body{min-height:0;overflow:auto;padding:0 24px 20px;scrollbar-gutter:stable}
+.rs-sheet>*:not(.rs-drift):not(.rs-foot){position:relative;z-index:1}
+/* living background: our own results drifting slowly, blurred and faint, fading out before the cards */
+.rs-drift{position:absolute!important;z-index:0!important;left:0;right:0;top:0;height:300px;overflow:hidden;pointer-events:none;opacity:.26;filter:blur(8px) saturate(.8);
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 35%,transparent 100%);mask-image:linear-gradient(180deg,#000 0,#000 35%,transparent 100%)}
+.rs-drift-track{display:flex;gap:12px;width:max-content;padding-top:18px;animation:rs-drift 110s linear infinite}
+.rs-drift.paused .rs-drift-track{animation-play-state:paused}
+.rs-dt{flex:none;width:150px;height:190px;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.04)}
+.rs-dt img{display:block;width:100%;height:100%;object-fit:cover}
+.rs-dt-wave{display:flex;align-items:center;padding:0 14px;box-sizing:border-box}.rs-dt-wave .wf{height:90px;cursor:default}.rs-dt-wave .wf i{background:rgba(255,255,255,.7)}
+@keyframes rs-drift{to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.rs-drift-track{animation:none}}
+.rs-hero{display:flex;flex:none;align-items:center;gap:14px;margin:0;padding:24px}
+.rs-hero h2{margin:0;font:700 22px/28px var(--font-display);letter-spacing:-.02em;color:var(--text);text-transform:none}
+.rs-tagline{margin:4px 0 0;color:var(--text-2);font-size:13px;line-height:19px}
+.rs-q{margin:0 0 12px}
+.rs-q h3{margin:0;font:600 14px/20px var(--font-sans,Inter,system-ui,sans-serif);letter-spacing:0;color:var(--text)}
+.rs-sub{margin:2px 0 0;color:var(--text-2);font-size:13px;line-height:19px}
+.rs-opts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.rs-oc{all:unset;position:relative;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-height:168px;padding:12px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--border);
+  transition:background var(--t-state) var(--ease-state),border-color var(--t-state) var(--ease-state),transform var(--t-state) var(--ease-state),box-shadow var(--t-state) var(--ease-state)}
+.rs-oc:hover{background:var(--surface-3);border-color:var(--text-3)}
+.rs-oc:active{transform:translateY(0) scale(.99)}
+.rs-oc:focus-visible{outline:2px solid var(--focus-ring-color);outline-offset:1px}
+/* picked: a faint orange fill and a thin orange marker on the leading edge */
+.rs-oc.on{background:linear-gradient(rgba(255,122,26,.08),rgba(255,122,26,.08)),rgba(28,30,32,.9);border-color:rgba(255,122,26,.22)}
+.rs-oc::before{content:'';position:absolute;left:-1px;top:16px;bottom:16px;width:3px;border-radius:0 3px 3px 0;background:var(--accent);opacity:0;transform:scaleY(.4);transition:opacity var(--t-state) var(--ease-state),transform var(--t-state) var(--ease-state)}
+.rs-oc.on::before{opacity:1;transform:none}
+.rs-top{display:flex;align-items:center;min-height:36px}
+.rs-choice-copy{display:flex;flex-direction:column;gap:8px}
+.rs-vis{display:flex;align-items:center;height:36px}
+.rs-vis .mk-tile{--mk-s:36px}
+.rs-glyph{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.06);color:var(--text)}
+.rs-vis-strip{gap:4px}.rs-vis-strip img{width:36px;height:36px;border-radius:8px;object-fit:cover;background:rgba(255,255,255,.06)}
+.rs-rec{flex:none;padding:2px 8px;border-radius:999px;font-size:11px;line-height:16px;font-weight:600;color:var(--text);background:rgba(255,255,255,.08)}
+.rs-oc.on .rs-rec{color:var(--accent)}
+.rs-oc b{font:600 14px/20px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text)}
+.rs-oc small{font-size:12px;line-height:18px;color:var(--text-2)}
+.rs-tag{margin-top:auto;font-size:11px;line-height:16px;color:var(--text-2)}
+.rs-more{margin-top:12px;padding:14px;border-radius:12px;background:var(--surface);border:1px solid var(--border);display:flex;flex-direction:column;gap:10px}
+.rs-more .helper{margin:0}
+.rs-keyrow{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}.rs-keyrow .rs-key{flex:1 1 260px}
+.rs-keygrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.rs-key{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--text-2)}
+.rs-key input{height:44px;width:100%;min-width:0;box-sizing:border-box;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font:400 13px/20px var(--font-sans,Inter,system-ui,sans-serif)}
+.rs-key input:focus-visible{outline:2px solid var(--focus-ring-color);outline-offset:1px}
+.rs-sheet .rs-get,.rs-sheet .rs-check{box-sizing:border-box;min-height:44px;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;color:var(--text);text-decoration:none}
+.rs-ok{color:#86efac!important}
+.rs-foot{position:relative;z-index:2;flex:none;display:flex;justify-content:space-between;align-items:center;gap:32px;margin:0;padding:16px 24px;border-top:1px solid var(--border);background:var(--surface-2)}
+.rs-explore{max-width:340px}.rs-explore p{margin:6px 0 0;color:var(--text-2);font-size:12px;line-height:18px}
+.rs-sheet .rs-skip{min-height:40px;padding:0 12px;color:var(--text);font-size:13px;text-decoration:none}
+html body .rs-foot .gen-btn.gen-btn.gen-btn.rs-go{width:auto!important;min-width:200px!important;flex:none!important}
+@media (max-width:639px){.rs-scrim{place-items:end center;padding:0}html body .dlg.rs-sheet{width:100%;border-radius:16px 16px 0 0;max-height:92dvh;padding:0}
+  .rs-body{padding:0 16px 16px}.rs-hero{padding:18px 16px}.rs-hero h2{font-size:22px;line-height:28px}.rs-opts{grid-template-columns:1fr}.rs-oc{display:grid;grid-template-columns:30px minmax(0,1fr);align-items:center;min-height:0;padding:12px;gap:10px}.rs-choice-copy{gap:4px}.rs-oc .rs-tag{display:none}.rs-vis .mk-tile{--mk-s:30px}.rs-glyph{width:30px;height:30px}.rs-keygrid{grid-template-columns:1fr}.rs-keyrow .rs-key{flex-basis:180px}.rs-foot{flex-direction:column-reverse;align-items:stretch;padding:12px 16px calc(12px + env(safe-area-inset-bottom));gap:10px}.rs-explore{max-width:none;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px}.rs-explore p{display:block;margin:0}.rs-sheet .rs-skip{min-height:44px}
+  html body .rs-foot .gen-btn.gen-btn.gen-btn.rs-go{width:100%!important;min-width:0!important}}
+
+/* ---------- Pricing: one row per model, a column per place ---------- */
+.pr-by-model .pr-table th.pr-ro,.pr-by-model .pr-table td.pr-ro{text-align:right;white-space:nowrap}
+.pr-by-model .pr-table td:first-child small{display:block}
+.pr-by-model .pr-open{margin-left:6px;vertical-align:1px;background:rgba(255,255,255,.08);color:#d6d6d8;font-style:normal}
+.pr-other{display:block;font-size:12px;line-height:18px}
+.pr-table-note{margin:8px 0 0;font-size:12px}
+@media (max-width:767px){.pr-by-model .pr-table td.pr-ro{text-align:left}}
+/* GenerateBar's card row (Camera Moves, swaps, apps): the Run-on field sits full width under the model button */
+html body .pv-card-row{flex-wrap:wrap}
+html body .pv-card-row>.vs-model.ro-field{flex:1 1 100%;width:100%;max-width:none;margin-top:6px}
+html body .as-runon{display:block;width:100%}html body .as-runon>.vs-model.ro-field{width:100%;min-height:56px;border-radius:12px}
+html body .ws-runon>.vs-model.ro-field{width:100%}
+html body .apop .ro-fb input[type=checkbox]{all:revert;flex:none;width:16px;height:16px;margin:1px 0 0;accent-color:var(--accent)}
+@media (max-width:639px){html body .apop .ro-fb input[type=checkbox]{width:20px;height:20px;margin:0}}
+@media (max-width:639px){html body .conn-list .link-btn,html body .conn-facts .link-btn{min-height:44px;padding:0 8px}
+  html body .conn-pref .prov-sw{box-sizing:content-box;padding:12px 6px;margin:-8px -6px;background-clip:content-box}
+  html body .conn .prov-billing .subtabs button{min-height:44px}}
+html body .spend-filters .usage-tool-sel>.helper{white-space:nowrap}
+html body .gb-runon{margin:0 0 10px}html body .gb-runon>.vs-model.ro-field{width:100%;margin-top:0}
+/* Run on (2026-10-22, no Auto): three groups (Local / Comfy / Other API); a place that isn't set up stays listed, greyed, with its one action */
+.ro-grp-ic{display:inline-block;vertical-align:-2px;margin-right:6px;color:rgba(255,255,255,.62)}
+.ro-g+.ro-g{border-top:1px solid rgba(255,255,255,.06);margin-top:4px}
+.ro-opt.dim .ro-ol,.ro-opt.dim .ro-os,.ro-opt.dim .ro-op>span:first-child{opacity:.62}
+.ro-opt.dim .ro-rad{border-color:rgba(255,255,255,.3)}
+.ro-opt.dim.on .ro-rad{border-color:var(--accent)}
+.ro-pre{display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:999px;font:500 10.5px/18px var(--font-sans,Inter,system-ui,sans-serif);font-style:normal;color:var(--text-2);background:rgba(255,255,255,.06)}
+html body .ro-reset{all:unset;cursor:pointer;margin:6px 14px 4px;padding:8px 0 4px;border-top:1px solid rgba(255,255,255,.06);color:var(--text-2);font:500 12px/16px var(--font-sans,Inter,system-ui,sans-serif)}
+html body .ro-reset:hover,html body .ro-reset:focus-visible{color:var(--text-1,#f7f7f8)}
+@media (max-width:639px){html body .ro-reset{padding:12px 0 8px}}
+/* "Try on <place>" on a failed run (tile and viewer): one button per other ready place */
+.try-on{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.try-on .btn{min-height:32px}
+.ic-fail .try-on{justify-content:center;margin-top:6px}
+.ic-fail .try-on .btn{font-size:12px;padding:0 10px;min-height:28px}
+html body .ic.ic2 .ic-jfeed .ic-tile .ic-tryon{position:absolute;left:8px;right:8px;bottom:10px;display:flex;justify-content:center;z-index:3;pointer-events:none}
+html body .ic.ic2 .ic-jfeed .ic-tile .ic-tryon .try-on{pointer-events:auto;margin:0}
+html body .ic.ic2 .ic-jfeed .ic-tile .ic-tryon .btn{height:28px;min-height:28px;padding:0 10px;font:600 12px/1 var(--font-ui);border-radius:8px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+html body .ic.ic2 .ic-jfeed .ic-tile:has(.ic-tryon) .ic-tile-meta{display:none}
+@media (max-width:700px){html body .ic.ic2 .ic-jfeed .ic-tile .ic-tryon{left:4px;right:4px;bottom:4px}html body .ic.ic2 .ic-jfeed .ic-tile .ic-tryon .btn{height:24px;min-height:24px;padding:0 6px;font-size:11px}}
+html body .rvx-foot .try-on,html body .try-on:has(+ .rvx-primary){display:flex;flex-direction:column;gap:6px;margin:0 0 8px}
+html body .try-on:has(+ .rvx-primary) .try-on-btn{width:100%;min-height:40px;justify-content:center;border:1px solid rgba(255,122,26,.45);color:var(--text-1,#f7f7f8)}
+/* S-02: "Make <place> my default for <model>" under each Try on button (unchecked by default; only then is the choice saved) */
+.try-on-row{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
+html body .rvx-foot .try-on-row,html body .try-on:has(+ .rvx-primary) .try-on-row{align-items:stretch}
+.try-on-keep{display:inline-flex;align-items:center;gap:6px;font:500 12px/1.3 var(--font-ui,inherit);color:var(--text-2,#b4b4bb);cursor:pointer;pointer-events:auto;max-width:100%}
+.try-on-keep input{margin:0;accent-color:#ff7a1a;flex:none}
+.try-on-keep span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html body .ic.ic2 .ic-jfeed .ic-tile .ic-tryon .try-on-keep{font-size:11px;background:rgba(0,0,0,.55);border-radius:6px;padding:2px 6px}
+/* Your plans (prices in dollars, 2026-10-26): the Comfy plan picker */
+.conn-plans-pick{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.conn-plans-pick .subtabs{margin:0}
+.conn-plans .conn-help a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+/* 2026-10-27: a place's named ways to run the model, indented under it (Comfy Cloud · open workflow / MiniMax’s service) */
+.ro-opt.ro-choice{margin-left:30px;padding-top:7px;padding-bottom:7px}
+.ro-opt.ro-choice .ro-ol{font-weight:500}
+.ro-opt.ro-choice.dim{cursor:default}.ro-opt.ro-choice.dim .ro-ol,.ro-opt.ro-choice.dim .ro-op{color:var(--text-2,#B4B4BB)}
+/* Sample mode note (shared/SampleMode.tsx): first-run sheet + Settings → Connections */
+.sm-note{margin-top:12px}.sm-note .notice-text{display:block}
+.sm-cmd{display:flex;align-items:center;gap:8px;margin:8px 0 6px;padding:6px 6px 6px 10px;border-radius:8px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.08);max-width:100%}
+.sm-cmd code{flex:1 1 auto;min-width:0;overflow-x:auto;white-space:nowrap;font-size:12px;color:var(--text,#f7f7f8);background:none;padding:0}
+.sm-cmd .cp-line{flex:none;opacity:1}
+.sm-more{display:block;opacity:.8;line-height:1.45}.sm-more code{font-size:11.5px}

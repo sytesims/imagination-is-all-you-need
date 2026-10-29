@@ -1,0 +1,360 @@
+{
+ "47": {
+  "inputs": {
+   "file": "vintage_field_style_look.mp4"
+  },
+  "class_type": "LoadVideo",
+  "_meta": {
+   "title": "Load Video"
+  }
+ },
+ "109": {
+  "inputs": {
+   "video": [
+    "47",
+    0
+   ],
+   "start_time": 0,
+   "duration": 5,
+   "strict_duration": false
+  },
+  "class_type": "Video Slice",
+  "_meta": {
+   "title": "Video Slice"
+  }
+ },
+ "110": {
+  "inputs": {
+   "video": [
+    "109",
+    0
+   ]
+  },
+  "class_type": "GetVideoComponents",
+  "_meta": {
+   "title": "Get Video Components"
+  }
+ },
+ "111": {
+  "inputs": {
+   "image": [
+    "110",
+    0
+   ]
+  },
+  "class_type": "GetImageSize",
+  "_meta": {
+   "title": "Get Image Size"
+  }
+ },
+ "298:279": {
+  "inputs": {
+   "video": [
+    "109",
+    0
+   ]
+  },
+  "class_type": "GetVideoComponents",
+  "_meta": {
+   "title": "GetVideoComponents"
+  }
+ },
+ "298:264": {
+  "inputs": {
+   "clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+   "type": "wan",
+   "device": "default"
+  },
+  "class_type": "CLIPLoader",
+  "_meta": {
+   "title": "CLIPLoader"
+  }
+ },
+ "298:265": {
+  "inputs": {
+   "vae_name": "Wan2_1_VAE_bf16.safetensors"
+  },
+  "class_type": "VAELoader",
+  "_meta": {
+   "title": "VAELoader"
+  }
+ },
+ "298:270": {
+  "inputs": {
+   "unet_name": "wan2.2_bernini_r_high_noise_fp8_scaled.safetensors",
+   "weight_dtype": "default"
+  },
+  "class_type": "UNETLoader",
+  "_meta": {
+   "title": "UNETLoader"
+  }
+ },
+ "298:272": {
+  "inputs": {
+   "unet_name": "wan2.2_bernini_r_low_noise_fp8_scaled.safetensors",
+   "weight_dtype": "default"
+  },
+  "class_type": "UNETLoader",
+  "_meta": {
+   "title": "UNETLoader"
+  }
+ },
+ "298:271": {
+  "inputs": {
+   "model": [
+    "298:270",
+    0
+   ],
+   "lora_name": "lightx2v_T2V_14B_cfg_step_distill_v2_lora_rank64_bf16.safetensors",
+   "strength_model": 3
+  },
+  "class_type": "LoraLoaderModelOnly",
+  "_meta": {
+   "title": "LoraLoaderModelOnly"
+  }
+ },
+ "298:266": {
+  "inputs": {
+   "model": [
+    "298:272",
+    0
+   ],
+   "lora_name": "lightx2v_T2V_14B_cfg_step_distill_v2_lora_rank64_bf16.safetensors",
+   "strength_model": 1.5
+  },
+  "class_type": "LoraLoaderModelOnly",
+  "_meta": {
+   "title": "LoraLoaderModelOnly"
+  }
+ },
+ "298:267": {
+  "inputs": {
+   "clip": [
+    "298:264",
+    0
+   ],
+   "text": "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走"
+  },
+  "class_type": "CLIPTextEncode",
+  "_meta": {
+   "title": "CLIPTextEncode"
+  }
+ },
+ "298:284": {
+  "inputs": {
+   "string_a": "You are a helpful assistant specialized in video editing on content propagation.",
+   "string_b": "Replace the gray studio backdrop with a daytime urban street: brick buildings, shop windows, sidewalk, and soft overcast light. Keep the model's outfit, accessories, body pose, motion, and full-body framing unchanged. Only the environment behind the subject should change.",
+   "delimiter": ""
+  },
+  "class_type": "StringConcatenate",
+  "_meta": {
+   "title": "Prompt Construction"
+  }
+ },
+ "298:280": {
+  "inputs": {
+   "clip": [
+    "298:264",
+    0
+   ],
+   "text": [
+    "298:284",
+    0
+   ]
+  },
+  "class_type": "CLIPTextEncode",
+  "_meta": {
+   "title": "CLIPTextEncode"
+  }
+ },
+ "298:278": {
+  "inputs": {
+   "positive": [
+    "298:280",
+    0
+   ],
+   "negative": [
+    "298:267",
+    0
+   ],
+   "vae": [
+    "298:265",
+    0
+   ],
+   "source_video": [
+    "298:279",
+    0
+   ],
+   "width": 480,
+   "height": 832,
+   "length": [
+    "111",
+    2
+   ],
+   "batch_size": 1,
+   "ref_max_size": 848
+  },
+  "class_type": "BerniniConditioning",
+  "_meta": {
+   "title": "Bernini Conditioning"
+  }
+ },
+ "298:276": {
+  "inputs": {
+   "model": [
+    "298:272",
+    0
+   ],
+   "scheduler": "simple",
+   "steps": 6,
+   "denoise": 1
+  },
+  "class_type": "BasicScheduler",
+  "_meta": {
+   "title": "BasicScheduler"
+  }
+ },
+ "298:268": {
+  "inputs": {
+   "sigmas": [
+    "298:276",
+    0
+   ],
+   "step": 3
+  },
+  "class_type": "SplitSigmas",
+  "_meta": {
+   "title": "SplitSigmas"
+  }
+ },
+ "298:269": {
+  "inputs": {
+   "sampler_name": "res_multistep"
+  },
+  "class_type": "KSamplerSelect",
+  "_meta": {
+   "title": "KSamplerSelect"
+  }
+ },
+ "298:275": {
+  "inputs": {
+   "model": [
+    "298:271",
+    0
+   ],
+   "add_noise": true,
+   "noise_seed": 42,
+   "cfg": 1,
+   "positive": [
+    "298:278",
+    0
+   ],
+   "negative": [
+    "298:278",
+    1
+   ],
+   "sampler": [
+    "298:269",
+    0
+   ],
+   "sigmas": [
+    "298:268",
+    0
+   ],
+   "latent_image": [
+    "298:278",
+    2
+   ]
+  },
+  "class_type": "SamplerCustom",
+  "_meta": {
+   "title": "SamplerCustom"
+  }
+ },
+ "298:277": {
+  "inputs": {
+   "model": [
+    "298:266",
+    0
+   ],
+   "add_noise": false,
+   "noise_seed": 0,
+   "cfg": 1,
+   "positive": [
+    "298:278",
+    0
+   ],
+   "negative": [
+    "298:278",
+    1
+   ],
+   "sampler": [
+    "298:269",
+    0
+   ],
+   "sigmas": [
+    "298:268",
+    1
+   ],
+   "latent_image": [
+    "298:275",
+    0
+   ]
+  },
+  "class_type": "SamplerCustom",
+  "_meta": {
+   "title": "SamplerCustom"
+  }
+ },
+ "298:273": {
+  "inputs": {
+   "samples": [
+    "298:277",
+    0
+   ],
+   "vae": [
+    "298:265",
+    0
+   ]
+  },
+  "class_type": "VAEDecode",
+  "_meta": {
+   "title": "VAEDecode"
+  }
+ },
+ "298:274": {
+  "inputs": {
+   "images": [
+    "298:273",
+    0
+   ],
+   "audio": [
+    "298:279",
+    1
+   ],
+   "fps": [
+    "298:279",
+    2
+   ]
+  },
+  "class_type": "CreateVideo",
+  "_meta": {
+   "title": "CreateVideo"
+  }
+ },
+ "46": {
+  "inputs": {
+   "video": [
+    "298:274",
+    0
+   ],
+   "filename_prefix": "video/Bernini_r",
+   "format": "auto",
+   "format.codec": "auto"
+  },
+  "class_type": "SaveVideo",
+  "_meta": {
+   "title": "Save Video"
+  }
+ }
+}

@@ -1,0 +1,133 @@
+{
+  "2": {
+    "inputs": {
+      "model_name": "drama3_fp8experts_bf16.safetensors",
+      "experts": "in RAM",
+      "expert_cache_gb": 0,
+      "second_gpu": "none",
+      "split_layer": 0
+    },
+    "class_type": "Drama3Loader",
+    "_meta": {
+      "title": "Load Drama 3"
+    }
+  },
+  "3": {
+    "inputs": {
+      "codec_name": "drama3_codec.safetensors"
+    },
+    "class_type": "Drama3CodecLoader",
+    "_meta": {
+      "title": "Load Drama 3 Codec"
+    }
+  },
+  "4": {
+    "inputs": {
+      "audio": "drama3_example_voice.wav"
+    },
+    "class_type": "LoadAudio",
+    "_meta": {
+      "title": "Load Audio"
+    }
+  },
+  "5": {
+    "inputs": {
+      "transcript": [
+        "10",
+        0
+      ],
+      "codec": [
+        "3",
+        0
+      ],
+      "audio": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "Drama3EncodeVoice",
+    "_meta": {
+      "title": "Drama 3 Encode Voice"
+    }
+  },
+  "6": {
+    "inputs": {
+      "text": "[sighs] I told you this would happen. We should have left an hour ago. [laughs] But fine, I suppose a little adventure never hurt anyone.",
+      "seed": 42,
+      "temperature": 1.0,
+      "top_p": 0.9,
+      "top_k": 30,
+      "max_frames": 600,
+      "split_long_text": true,
+      "model": [
+        "2",
+        0
+      ],
+      "voices.voice0": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "Drama3Generate",
+    "_meta": {
+      "title": "Drama 3 Generate"
+    }
+  },
+  "7": {
+    "inputs": {
+      "codec": [
+        "3",
+        0
+      ],
+      "codes": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "Drama3Decode",
+    "_meta": {
+      "title": "Drama 3 Decode"
+    }
+  },
+  "8": {
+    "inputs": {
+      "filename_prefix": "openhiggsfield/voice",
+      "audio": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "SaveAudio",
+    "_meta": {
+      "title": "Save Audio (FLAC) (DEPRECATED)"
+    }
+  },
+  "9": {
+    "inputs": {
+      "model_name": "qwen3_asr_0.6b_bf16.safetensors"
+    },
+    "class_type": "Qwen3ASRLoader",
+    "_meta": {
+      "title": "Load Qwen3-ASR"
+    }
+  },
+  "10": {
+    "inputs": {
+      "language": "auto",
+      "context": "",
+      "max_new_tokens": 4096,
+      "model": [
+        "9",
+        0
+      ],
+      "audio": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "Qwen3ASRTranscribe",
+    "_meta": {
+      "title": "Qwen3-ASR Transcribe"
+    }
+  }
+}

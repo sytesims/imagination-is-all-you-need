@@ -1,0 +1,34 @@
+/* The bean's moods (ui/MascotMood.tsx). One soft loop per scene; nothing moves with prefers-reduced-motion. Origins are in the SVG's 64-unit grid. */
+.ohf-mood{flex:none;display:block;overflow:visible}
+.ohf-mood *{transform-box:view-box}
+@media (prefers-reduced-motion:no-preference){
+  .ohf-mood .mm-body{transform-origin:32px 53px;animation:mm-breathe 3.4s ease-in-out infinite}
+  .ohf-mood .mm-shrug{animation:mm-shrug 3.4s ease-in-out infinite}
+  .ohf-mood .mm-wallet{transform-origin:32px 58px;animation:mm-tilt 3s ease-in-out infinite}
+  .ohf-mood .mm-coin{animation:mm-coin 3s ease-in-out infinite}
+  .ohf-mood .mm-z{opacity:0;animation:mm-z 3.6s ease-in-out infinite}
+  .ohf-mood .mm-z2{animation-delay:1.2s}.ohf-mood .mm-z3{animation-delay:2.4s}
+  .ohf-mood .mm-q{transform-origin:51px 24px;animation:mm-q 2.8s ease-in-out infinite}
+  .ohf-mood .mm-plug{transform-origin:46px 41px;animation:mm-plug 2.6s ease-in-out infinite}
+  .ohf-mood .mm-spark{animation:mm-blink 2.6s ease-in-out infinite}
+  .ohf-mood .mm-key{transform-origin:51px 42px;animation:mm-swing 2.8s ease-in-out infinite}
+  .ohf-mood .mm-glint{animation:mm-blink 2.8s ease-in-out infinite .6s}
+  .ohf-mood .mm-arrow{animation:mm-arrow 2s ease-in-out infinite}
+  .ohf-mood .mm-cloud{animation:mm-drift 4s ease-in-out infinite}
+  .ohf-mood .mm-drop{opacity:0;animation:mm-drop 1.5s linear infinite}
+  .ohf-mood .mm-d2{animation-delay:.5s}.ohf-mood .mm-d3{animation-delay:1s}
+  .ohf-mood .mm-wave{transform-origin:45.4px 40px;animation:mm-wave 2.4s ease-in-out infinite}
+}
+@keyframes mm-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.025,.985)}}
+@keyframes mm-shrug{0%,55%,100%{transform:translateY(0)}65%,80%{transform:translateY(-1.6px)}}
+@keyframes mm-tilt{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+@keyframes mm-coin{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:.9;transform:translateY(-1.5px)}}
+@keyframes mm-z{0%{opacity:0;transform:translate(0,3px)}25%{opacity:1}75%{opacity:.8}100%{opacity:0;transform:translate(2px,-4px)}}
+@keyframes mm-q{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-2px) rotate(8deg)}}
+@keyframes mm-plug{0%,100%{transform:translateX(0)}50%{transform:translateX(1.4px)}}
+@keyframes mm-blink{0%,40%,100%{opacity:0}55%,70%{opacity:1}}
+@keyframes mm-swing{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
+@keyframes mm-arrow{0%{transform:translateY(-2px);opacity:.4}55%{transform:translateY(2px);opacity:1}100%{transform:translateY(-2px);opacity:.4}}
+@keyframes mm-drift{0%,100%{transform:translateX(0)}50%{transform:translateX(-1.6px)}}
+@keyframes mm-drop{0%{opacity:0;transform:translate(0,0)}15%{opacity:1}100%{opacity:0;transform:translate(-2px,9px)}}
+@keyframes mm-wave{0%,60%,100%{transform:rotate(0)}70%{transform:rotate(14deg)}80%{transform:rotate(-6deg)}90%{transform:rotate(10deg)}}

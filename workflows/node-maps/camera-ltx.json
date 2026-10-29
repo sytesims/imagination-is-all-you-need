@@ -1,0 +1,55 @@
+{
+  "workflowFile": "camera-ltx-api.json",
+  "template": "video_ltx2_i2v + LTX-2 camera-control LoRA (node 300)",
+  "inputs": {
+    "image": {
+      "node": "98",
+      "field": "image"
+    },
+    "prompt": {
+      "node": "92:3",
+      "field": "text"
+    }
+  },
+  "output": {
+    "node": "75"
+  },
+  "extra": {
+    "cameraLora": {
+      "node": "300",
+      "field": "lora_name",
+      "options": {
+        "dolly-in": "ltx-2-19b-lora-camera-control-dolly-in.safetensors",
+        "dolly-out": "ltx-2-19b-lora-camera-control-dolly-out.safetensors",
+        "dolly-left": "ltx-2-19b-lora-camera-control-dolly-left.safetensors",
+        "dolly-right": "ltx-2-19b-lora-camera-control-dolly-right.safetensors",
+        "jib-up": "ltx-2-19b-lora-camera-control-jib-up.safetensors",
+        "jib-down": "ltx-2-19b-lora-camera-control-jib-down.safetensors",
+        "static": "ltx-2-19b-lora-camera-control-static.safetensors"
+      }
+    },
+    "frames": {
+      "node": "92:62",
+      "field": "value",
+      "default": 121,
+      "note": "8n+1 at 24 fps"
+    },
+    "width": {
+      "node": "102",
+      "field": "resize_type.width",
+      "default": 1280
+    },
+    "height": {
+      "node": "102",
+      "field": "resize_type.height",
+      "default": 720
+    },
+    "seed": {
+      "nodes": [
+        "92:11",
+        "92:67"
+      ],
+      "field": "noise_seed"
+    }
+  }
+}

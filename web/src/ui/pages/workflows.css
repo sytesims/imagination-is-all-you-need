@@ -1,0 +1,46 @@
+/* Workflows page (was Apps, 2026-10-22): source tabs + one card per workflow (Workflows.tsx). Tokens only, so it follows the theme. */
+.wfp .pills.wfp-tabs{justify-content:flex-start;margin:0 0 var(--pad-3,16px)}
+.wfp .wfp-tabs .pill{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.wfp-n{font-size:var(--fs-2xs,11px);font-weight:600;opacity:.6}
+.wfp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.wfp-card{display:flex;flex-direction:column;min-width:0;border:1px solid var(--border-strong);border-radius:var(--r-lg);background:var(--surface-1);transition:border-color var(--fast) var(--ease),background var(--fast) var(--ease)}
+.wfp-card.shimmer{height:168px;margin:0;border-radius:var(--r-lg)}
+.wfp-card:hover{border-color:var(--accent-soft);background:var(--surface-2)}
+.wfp-main{display:flex;flex-direction:column;gap:8px;padding:14px 14px 10px;color:var(--text);text-decoration:none;flex:1;min-width:0;border-radius:var(--r-lg) var(--r-lg) 0 0}
+.wfp-main:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.wfp-head{display:flex;align-items:center;gap:8px;min-width:0}
+.wfp-ic{display:inline-grid;place-items:center;width:30px;height:30px;flex:none;border-radius:var(--r-md);background:var(--fill);color:var(--accent)}
+.wfp-name{font-size:var(--fs-14,14px);font-weight:var(--fw-semibold);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wfp-price{flex:none;font-size:var(--fs-12,12px);font-weight:600;color:var(--text-2);white-space:nowrap}
+.wfp-price.wfp-free{color:var(--accent)}
+.wfp-line{font-size:var(--fs-12,12px);line-height:1.45;color:var(--text-2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.wfp-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:auto;font-size:var(--fs-12,12px)}
+.wfp-model{font-weight:600;color:var(--text)}
+.wfp-places{display:inline-flex;flex-wrap:wrap;gap:4px}
+.wfp-place{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:var(--r-pill);background:var(--fill);color:var(--text-2);font-size:11px;white-space:nowrap}
+.wfp-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 10px;padding:9px 14px 12px;border-top:1px solid var(--border);font-size:var(--fs-12,12px);min-width:0}
+.wfp-src{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:100%}
+.wfp-none{color:var(--text-3)}
+.wfp-badge{display:inline-flex;align-items:center;gap:3px;flex:none;height:20px;padding:0 7px;border-radius:var(--r-pill);font-size:10.5px;font-weight:600;white-space:nowrap;background:var(--fill);color:var(--text-2)}
+.wfp-badge.wfp-official{color:var(--accent);background:var(--accent-soft)}
+.wfp-wf{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-2);text-decoration:none}
+a.wfp-wf:hover,a.wfp-wf:focus-visible{color:var(--text);text-decoration:underline}
+.wfp-dl{flex:none;color:var(--accent);text-decoration:none;font-weight:600;white-space:nowrap}
+.wfp-dl:hover,.wfp-dl:focus-visible{text-decoration:underline}
+@media (max-width:700px){.wfp-grid{grid-template-columns:1fr}.wfp .pills.wfp-tabs{flex-wrap:wrap}}
+/* Before / after split on cards that have preview images (SplitPreview). One column (phone): the split sits on top at 4:3.
+   Two or more columns: the card spans two columns with the split on its left, as tall as the row, so it is never taller than its
+   row neighbours (dense flow fills any gap the wider card leaves). The 4:3 frame matches the sheet; the square photo is framed on the person. */
+.wfp-grid{grid-auto-flow:row dense}
+.wfp-card .wfp-split{flex:none;aspect-ratio:4/3;border-radius:calc(var(--r-lg) - 1px) calc(var(--r-lg) - 1px) 0 0;border-bottom:1px solid var(--border)}
+.wfp-card .wfp-split .splitp-before{object-position:50% 40%}
+.wfp-card .wfp-split .splitp-after{object-position:50% 50%}
+.wfp-has-split .wfp-main{border-radius:0}
+.wfp-pv-note{margin:0;padding:8px 14px 0;font-size:11px;line-height:1.4;color:var(--text-3)}
+@media (min-width:701px){
+  .wfp-card.wfp-has-split{grid-column:span 2;display:grid;grid-template-columns:minmax(200px,36%) minmax(0,1fr);grid-template-rows:auto auto 1fr}
+  .wfp-has-split .wfp-split{grid-column:1;grid-row:1 / -1;aspect-ratio:auto;height:100%;min-height:150px;border-bottom:0;border-right:1px solid var(--border);border-radius:calc(var(--r-lg) - 1px) 0 0 calc(var(--r-lg) - 1px)}
+  .wfp-has-split .wfp-main{grid-column:2;grid-row:1;padding-bottom:4px}
+  .wfp-has-split .wfp-pv-note{grid-column:2;grid-row:2;padding:0 14px 8px}
+  .wfp-has-split .wfp-foot{grid-column:2;grid-row:3;align-self:end}
+}

@@ -1,0 +1,6 @@
+{"_source":"https://docs.bfl.ai/flux_tools/flux_video_upscale (transcribed by hand Oct 17 2026; HAND-WRITTEN, not recorded live)",
+ "method":"POST","url":"https://api.bfl.ai/v1/flux-tools/video-upscale-v1","auth_header":"x-key","auth_prefix":"",
+ "schema":{"type":"object","required":["input_video"],"properties":{
+  "input_video":{"type":"string"},"upscale_factor":{"type":"number","minimum":1.5,"maximum":3},"creativity":{"enum":[0,1]},"prompt":{"type":"string"},
+  "safety_tolerance":{"type":"integer","minimum":0,"maximum":4},"webhook_url":{"type":"string"},"webhook_secret":{"type":"string"}},
+  "additionalProperties":false}}

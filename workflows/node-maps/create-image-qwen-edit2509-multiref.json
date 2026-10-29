@@ -1,0 +1,37 @@
+{
+  "workflowFile": "create-image-qwen-edit2509-multiref-api.json",
+  "template": "image_qwen_image_edit_2509",
+  "model": "Qwen-Image-Edit-2509 (Apache-2.0), up to 3 images",
+  "inputs": {
+    "prompt": {
+      "node": "433:111",
+      "field": "prompt"
+    },
+    "image": {
+      "node": "78",
+      "field": "image"
+    }
+  },
+  "refs": [
+    {
+      "node": "78",
+      "field": "image"
+    },
+    {
+      "node": "79",
+      "field": "image"
+    },
+    {
+      "node": "80",
+      "field": "image"
+    }
+  ],
+  "seed": {
+    "node": "433:3",
+    "field": "seed"
+  },
+  "output": {
+    "node": "469"
+  },
+  "maxRefs": 3
+}

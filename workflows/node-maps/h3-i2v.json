@@ -1,0 +1,25 @@
+{
+  "workflowFile": "h3-i2v-api.json",
+  "template": "video_minimax_h3_i2v",
+  "license": "MiniMax H3 Community License",
+  "inputs": {
+    "prompt": null,
+    "image": {
+      "node": "114",
+      "field": "image"
+    }
+  },
+  "refs": [
+    {
+      "node": "114",
+      "field": "image"
+    }
+  ],
+  "seed": {
+    "node": "105:15",
+    "field": "noise_seed"
+  },
+  "output": {
+    "node": "92"
+  }
+}

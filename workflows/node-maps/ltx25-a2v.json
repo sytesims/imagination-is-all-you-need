@@ -1,0 +1,20 @@
+{
+  "workflowFile": "ltx25-a2v-api.json",
+  "template": "video_ltx2_5_i2v",
+  "source": "https://github.com/Lightricks/ComfyUI-LTXVideo/blob/master/example_workflows/2.5/LTX-2.5_A2V_Two_Stage_Distilled.json",
+  "license": "LTX-2.x Community License (weights); graph: our ltx25-ti2v graph (MIT, from Comfy-Org/workflow_templates) with the core audio-to-video nodes of Lightricks' A2V example",
+  "inputs": {
+    "prompt": { "node": "364", "field": "text" },
+    "negative": { "node": "373", "field": "text" },
+    "image": { "node": "395", "field": "image" },
+    "imageSize": { "node": "351" },
+    "latent": { "node": "356" },
+    "driverAudio": { "node": "400", "field": "audio" },
+    "audioSeconds": { "node": "401", "field": "duration" },
+    "soundtrack": { "node": "410", "field": "audio" }
+  },
+  "refs": [],
+  "seed": { "node": "339", "field": "noise_seed" },
+  "output": { "node": "75" },
+  "changes": "ltx25-ti2v-api.json with the empty audio latent (366) and the audio decode (358) replaced by Lightricks' A2V audio path in core nodes: Load Audio (400, the lip driver our server makes with the QuokkaiLab recipe) -> TrimAudioDuration (401, (8k + 1e-4) / 24 s) -> LTXVAudioVAEEncode (402) -> SetLatentNoiseMask with SolidMask 0 (403, 404), used by both stages, so the sound is never re-noised. The soundtrack is the clean speech (Load Audio 410) into CreateVideo, as Lightricks' graph muxes its input audio. Lightricks' Gemma API prompt enhancer is left out. Text only = the template's Switch to Text to Video (395, 351, 350, 357, 349 dropped)."
+}

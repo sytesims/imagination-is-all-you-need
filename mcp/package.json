@@ -1,0 +1,59 @@
+{
+  "name": "openhiggsfield-mcp",
+  "private": true,
+  "version": "0.1.0",
+  "description": "MCP server for Imagination Is All You Need: drive local image, video and audio tools from Claude, Cursor or any MCP client.",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "bin": {
+    "openhiggsfield-mcp": "dist/index.js"
+  },
+  "files": [
+    "README.md",
+    "dist",
+    "manifest.json",
+    "permissions.example.json",
+    "server.json",
+    "skills"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "mcp",
+    "comfyui",
+    "openhiggsfield"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "start:http": "node dist/index.js --http",
+    "dev": "tsx src/index.ts",
+    "test:e2e": "tsx test/e2e.ts",
+    "test:job-view": "tsx test/job-view.ts",
+    "test:permissions": "tsx test/permissions.ts",
+    "test:accounts": "tsx test/accounts.ts",
+    "prepack": "npm run build && rm -rf skills && cp -r ../agent-skills skills && cp -r ../skills skills/creative",
+    "postpack": "rm -rf skills",
+    "test:catalog": "tsx test/catalog.ts",
+    "gen:catalog": "tsx scripts/gen-catalog.ts",
+    "test:search": "tsx test/search.ts",
+    "test:library": "tsx test/library.ts",
+    "test:skills": "tsx test/skills.ts",
+    "test:dist-fresh": "tsx test/dist-fresh.ts",
+    "test:toolsets": "tsx test/toolsets.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "tsx": "^4.23.15",
+    "typescript": "5.6"
+  },
+  "allowScripts": {
+    "esbuild": true,
+    "fsevents": true
+  }
+}

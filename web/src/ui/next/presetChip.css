@@ -1,0 +1,10 @@
+/* "Preset: <name> ✕" in Create Image's bar (ImageCanvas presetChip, ?preset= from the header Image menu): first in a workflow's strip,
+ * or on its own row above the prompt in plain Create. Orange tint like the picked-workflow chip. */
+.ic-preset-row{display:flex;padding:0 0 6px}
+.ic-preset-on{display:inline-flex;align-items:center;gap:6px;flex:none;height:28px;max-width:100%;padding:0 4px 0 4px;border-radius:9px;background:rgba(255,122,26,.12);color:var(--text);font-size:12px;line-height:16px;white-space:nowrap}
+.ic-preset-on img{flex:none;width:20px;height:20px;border-radius:6px;object-fit:cover}
+.ic-preset-on>span{overflow:hidden;text-overflow:ellipsis;color:var(--text-2)}
+.ic-preset-on b{font-weight:600;color:var(--accent)}
+.ic-preset-x{display:grid;place-items:center;flex:none;width:20px;height:20px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--text-2);cursor:pointer}
+.ic-preset-x:hover,.ic-preset-x:focus-visible{background:rgba(255,122,26,.2);color:var(--text);outline:none}
+.wf-strip>.ic-preset-on{align-self:center}
