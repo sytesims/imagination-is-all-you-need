@@ -664,22 +664,36 @@ html body .apop.ade-pop{z-index:1210}
 .ade-panel .ad-brand{width:100%;box-sizing:border-box;border:1px solid var(--border,rgba(255,255,255,.05));background:var(--fill,rgba(255,255,255,.05))}
 @media (max-width:760px){.ade-main-p{flex-direction:column}.ade-main-p .ade-side.ade-panel{order:0;width:auto;margin:8px 0 0;max-height:46%}.ade-main-p .ade-stage{margin-left:0}
   .adp{flex-direction:column}.adp-rail{width:auto;flex-direction:row;border-right:0;border-bottom:1px solid var(--border,rgba(255,255,255,.05));overflow-x:auto}.adp-tab{flex:1 0 56px}.adp-pane{width:auto;flex:1}}
-/* the toolbar by the selected part (AdEditor, PartStyle bar): the panel's controls, smaller, each with a caption */
-.wfm .adt{position:absolute;z-index:3;display:flex;flex-wrap:wrap;align-items:flex-start;gap:4px 10px;max-width:calc(100% - 16px);box-sizing:border-box;padding:6px 10px 7px;border-radius:12px;
+/* the toolbar by the selected part (AdEditor, PartStyle bar): a compact row of icon controls, never wider than 360 px, never wrapping */
+.wfm .adt{position:absolute;z-index:3;display:flex;flex-wrap:nowrap;align-items:center;gap:6px;max-width:min(360px,calc(100% - 16px));box-sizing:border-box;padding:4px;border-radius:11px;
   background:rgba(24,25,28,.96);box-shadow:0 0 0 1px rgba(255,255,255,.08),0 10px 30px rgba(0,0,0,.5);backdrop-filter:blur(8px);cursor:default}
-.adt-g{display:flex;flex-direction:column;gap:3px;min-width:0}
-.adt-g+.adt-g{padding-left:10px;border-left:1px solid var(--border,rgba(255,255,255,.07))}
-.adt-l{padding-left:3px;font:600 9.5px/12px var(--font-sans,Inter,sans-serif);letter-spacing:.04em;text-transform:uppercase;color:var(--text-3,rgba(255,255,255,.5));white-space:nowrap}
-.wfm .adt.bp-host .bp-seg{margin:0;padding:2px;border-radius:9px}
-.wfm .adt.bp-host .bp-opt{min-height:26px;padding:3px 8px;border-radius:7px}
+.adt-g{display:flex;align-items:center;min-width:0;flex:none}
+.adt-g+.adt-g{padding-left:6px;border-left:1px solid var(--border,rgba(255,255,255,.07))}
+.wfm .adt.bp-host .bp-seg{margin:0;padding:2px;border-radius:8px}
+.wfm .adt.bp-host .bp-opt{min-height:26px;min-width:28px;padding:0 6px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center}
 .wfm .adt.bp-host .bp-opt-l{font-size:11.5px;line-height:15px}
 .wfm .adt.bp-host .bp-opt.on::after{bottom:1px;width:10px;margin-left:-5px}
-.adt .ade-sw{flex-wrap:nowrap;padding:1px 0}
-.adt .ade-sw{gap:2px}
-.adt .ade-sw button{height:26px;min-width:21px}
-.adt .ade-sw button i{width:16px;height:16px}
-.adt .ade-sw .ade-sw-auto{padding:0 7px 0 3px}
-.adt .ade-sw .ade-sw-auto i{width:16px;height:16px}
-.adt-aa{font-weight:400}.adt-aa.b{font-weight:800}
-.wfm .adt.bp-host .bp-opt-l svg{display:block}
-.adt-note{max-width:150px;font:400 10.5px/13px var(--font-sans,Inter,sans-serif);color:var(--text-2,#898A8B)}
+.wfm .adt.bp-host .bp-opt-l svg,.adt-gl{display:block}
+.adt-aa{font:400 13px/1 var(--font-sans,Inter,sans-serif)}.adt-aa.b{font-weight:800}
+.adt-tg,.adt-swb{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;cursor:pointer;color:var(--text-2,#898A8B)}
+.adt-tg:hover,.adt-swb:hover{background:var(--fill,rgba(255,255,255,.06));color:var(--text-1,#F7F7F8)}
+.adt-tg.on{color:var(--text-1,#F7F7F8)}
+.adt-swb i{width:18px;height:18px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22),0 0 0 2px rgba(24,25,28,.96),0 0 0 3px rgba(255,255,255,.18)}
+.adt-swb[aria-expanded=true] i{box-shadow:inset 0 0 0 1px rgba(255,255,255,.22),0 0 0 2px rgba(24,25,28,.96),0 0 0 3.5px var(--accent,#FF7A1A)}
+.adt-tg:focus-visible,.adt-swb:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}
+.apop.adt-pop .ade-sw{padding:2px 0 4px}
+/* the toolbar's little drawings: button shapes, the logo's plate and colour */
+.adt-gl{position:relative;width:18px;height:18px}
+.adt-gl b{position:absolute;display:block}
+.adt-gl[class*=btn-] b{left:0;top:4px;width:18px;height:10px;background:currentColor}
+.adt-gl-btn-pill b{border-radius:99px}.adt-gl-btn-rounded b{border-radius:2.5px}.adt-gl-btn-square b{border-radius:0}
+.adt-gl-btn-outline b{background:none!important;box-shadow:inset 0 0 0 1.5px currentColor;border-radius:99px}
+.adt-gl[class*=plate-]::before{content:"";position:absolute;inset:1px;border-radius:3px}
+.adt-gl[class*=plate-] b{left:6px;top:6px;width:6px;height:6px;border-radius:50%;background:currentColor}
+.adt-gl-plate-on::before{background:color-mix(in srgb,currentColor 45%,transparent);box-shadow:inset 0 0 0 1.2px currentColor}
+.adt-gl-plate-auto::before{border:1.2px dashed currentColor;opacity:.75}
+.adt-gl[class*=tone-] b{left:2px;top:2px;width:14px;height:14px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}
+.adt-gl-tone-original b{background:conic-gradient(var(--accent,#FF7A1A) 0 50%,#3B82F6 0)}
+.adt-gl-tone-light b{background:#fff}
+.adt-gl-tone-dark b{background:#14151A}
+.bp-opt:disabled .adt-gl{opacity:.4}

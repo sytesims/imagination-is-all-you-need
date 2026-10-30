@@ -13,9 +13,9 @@ import { BarPopover, PopNote, PopRow, PopSection } from '../shared/BarPop';
 import { navigate } from '../platform/router';
 import { ChevronDownIcon, CloseIcon, DownloadIcon, ImageIcon, LayoutIcon, PaletteIcon, PencilIcon, PhoneAdIcon, PlusIcon, TextIcon } from '../ui/Icons';
 import { AD_LIMITS, AD_PRESETS, type AdPreset } from './adLayout';
-import { AD_PLATFORMS, AD_PLATFORM_LIST, hasSafe } from './adPlatforms';
+import { AD_PLATFORMS, AD_PLATFORM_LIST } from './adPlatforms';
 import { isEdited, PIC_ZOOM } from './adEdit';
-import { AdEditor, PartStyle, type AdPanelCtx, type AdSection } from './AdEditor';
+import { AdEditor, PartStyle, SafeSwitch, type AdPanelCtx, type AdSection } from './AdEditor';
 import type { AdCard } from './AdNode';
 import type { BrandKit } from '../../../server/src/shared/brandKit';
 
@@ -140,8 +140,7 @@ function Section({ ad, id, x }: { ad: AdCard; id: AdSection; x: AdPanelCtx }) {
       <div className="ad-chips" role="group" aria-label="Where it runs">{AD_PLATFORM_LIST.map((p) => <button key={p} type="button" className={`ad-chip${ad.platforms.includes(p) ? ' on' : ''}`} aria-pressed={ad.platforms.includes(p)} data-testid={`ad-platform-${p}`} onClick={() => ad.togglePlatform(p)}>{AD_PLATFORMS[p].label}</button>)}</div>
       {!ad.platforms.length && <p className="ad-hint adp-pad" data-testid="ad-platform-hint">Pick where it will run to get the right sizes. Keeping the last ones for now.</p>}
       <h4 className="adp-sub">Safe zones</h4>
-      <div className="adp-pad"><label className={`ad-safe${hasSafe(ad.size.safe) ? '' : ' none'}`} {...tip(hasSafe(ad.size.safe) ? 'Shades what each app covers with its own buttons and captions. Only in the preview, never in the pictures you save.' : 'Nothing covers this size')}>
-        <input type="checkbox" checked={ad.showSafe} data-testid="ad-safe" onChange={(e) => ad.patch({ safeZones: e.target.checked })} /><i aria-hidden />Show what each app covers</label></div>
+      <div className="adp-pad"><SafeSwitch on={ad.showSafe} onChange={(v) => ad.patch({ safeZones: v })} safe={ad.size.safe} label="Show what each app covers" testId="ad-safe" /></div>
       {ad.showSafe && x.zones.length > 1 && <div className="adp-zones"><span className="ad-label">Show the zones of</span>
         <div className="ad-chips" role="radiogroup" aria-label="Zones for">
           <button type="button" role="radio" aria-checked={x.zone === 'all'} className={`ad-chip${x.zone === 'all' ? ' on' : ''}`} data-testid="ade-zones-all" {...tip('What the parts keep clear of')} onClick={() => x.setZone('all')}>All</button>
@@ -177,6 +176,6 @@ function Panel({ ad, x }: { ad: AdCard; x: AdPanelCtx }) {
 export function AdCardEditor({ ad }: { ad: AdCard }) {
   if (!ad.editing || !ad.pic || !ad.art) return null;
   return <AdEditor sizes={ad.sizes} size={ad.size} onSize={(s) => ad.patch({ size: s.shape })} pic={ad.pic} art={ad.art} text={{ headline: ad.view.headline, offer: ad.p.offer, button: ad.p.button }} preset={ad.preset}
-    style={ad.style} onStyle={ad.setStyle} edit={ad.edit} onEdit={(e) => ad.setEdit(ad.size.shape, e)} showSafe={ad.showSafe} platforms={ad.picked}
+    style={ad.style} onStyle={ad.setStyle} edit={ad.edit} onEdit={(e) => ad.setEdit(ad.size.shape, e)} showSafe={ad.showSafe} onShowSafe={(v) => ad.patch({ safeZones: v })} platforms={ad.picked}
     editedSizes={ad.sizes.filter((s) => isEdited(ad.edits[s.shape])).map((s) => s.shape)} onClose={() => ad.setEditing(false)} panel={(x) => <Panel ad={ad} x={x} />} />;
 }

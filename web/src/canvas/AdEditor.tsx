@@ -5,7 +5,8 @@
  * clear area. Drag the picture itself (where no part is) to frame it, and zoom it with the slider or the wheel / trackpad. Arrow keys
  * nudge (Shift: 10), Delete takes the logo, offer or button off this size ("Show …" brings it back). Edits are saved as they happen,
  * per size (adEdit.ts); "Reset layout" puts this size back to automatic. The selected part gets a small toolbar beside it (above, or below
- * when there's no room; hidden while dragging) with its style controls. Esc deselects, then closes; Done closes.
+ * when there's no room; hidden while dragging) with a compact set of its style controls (colour in a small popover; the rest stays in the side
+ * panel). A "Safe zones" switch sits beside the size tabs (the same setting as the Platforms section's). Esc deselects, then closes; Done closes.
  *
  * The side panel on the left is the card's (AdPanel.tsx: an icon rail and one section's controls); clicking a part of the ad opens its section. PartStyle here
  * styles one part, the same on every size (adLayout.AdStyle, saved on the card): the logo's plate and colour, the words' alignment,
@@ -14,11 +15,11 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { tip } from '../shared/Tooltip';
-import { PopNote, PopSection, Segmented } from '../shared/BarPop';
+import { BarPopover, PopNote, PopSection, Segmented } from '../shared/BarPop';
 import { AlignCenterIcon, AlignLeftIcon, AlignRightIcon, CloseIcon, PlusIcon } from '../ui/Icons';
 import { drawAd, drawSafeZones, type AdArt } from './adDraw';
 import { buttonColorOf, logoToneFor, type AdLayout, type AdPreset, type AdStyle, type AdText, type Box } from './adLayout';
-import { zonesFor, type AdPlatform, type AdSizeOption } from './adPlatforms';
+import { hasSafe, zonesFor, type AdPlatform, type AdSizeOption } from './adPlatforms';
 import { HIDEABLE, PART_NAME, clampBox, guidesFor, inBox, isEdited, moveFrame, placeOf, snapBox, snapTo, type AdEdit, type AdFrame, type AdPart } from './adEdit';
 
 /** The side panel's sections (its icon rail), in the order people think. */
@@ -32,10 +33,10 @@ const RESIZABLE: AdPart[] = ['logo', 'headline', 'button'];
 /** Topmost first (the order they're drawn, reversed). */
 const HIT_ORDER: AdPart[] = ['button', 'offer', 'logo', 'headline'];
 
-export function AdEditor({ sizes, size, onSize, pic, art, text, preset, style, onStyle, edit, onEdit, showSafe, platforms, editedSizes, onClose, panel }: {
+export function AdEditor({ sizes, size, onSize, pic, art, text, preset, style, onStyle, edit, onEdit, showSafe, onShowSafe, platforms, editedSizes, onClose, panel }: {
   sizes: AdSizeOption[]; size: AdSizeOption; onSize: (s: AdSizeOption) => void; pic: HTMLImageElement; art: AdArt; text: AdText; preset: AdPreset;
   /** the card's style, on every size */ style: AdStyle; onStyle: (s: AdStyle) => void;
-  /** this size's edits */ edit: AdEdit | undefined; onEdit: (e: AdEdit | null) => void; showSafe: boolean; platforms: AdPlatform[]; /** sizes with their own layout (a dot on the tab) */ editedSizes: string[]; onClose: () => void;
+  /** this size's edits */ edit: AdEdit | undefined; onEdit: (e: AdEdit | null) => void; showSafe: boolean; onShowSafe: (on: boolean) => void; platforms: AdPlatform[]; /** sizes with their own layout (a dot on the tab) */ editedSizes: string[]; onClose: () => void;
   /** the side panel (AdPanel.tsx) */ panel: (x: AdPanelCtx) => ReactNode;
 }) {
   const { w: W, h: H } = size; const e = edit ?? {}; const hidden = HIDEABLE.filter((p) => e.hide?.includes(p));
@@ -100,7 +101,7 @@ export function AdEditor({ sizes, size, onSize, pic, art, text, preset, style, o
   const selBox = sel && !dragging ? l?.boxes[sel] : undefined;
   useLayoutEffect(() => {
     const b = bar.current, s = stage.current, f = frame.current; if (!b || !s || !f || !selBox) { setBarAt(null); return; }
-    const sr = s.getBoundingClientRect(), fr = f.getBoundingClientRect(); const pad = 8, tag = 24, gap = 10;
+    const sr = s.getBoundingClientRect(), fr = f.getBoundingClientRect(); const pad = 8, tag = 24, gap = sel === 'logo' ? 18 : 10; /* below: a logo's plate reaches past its box */
     const x = fr.left - sr.left + selBox.x * k, y = fr.top - sr.top + selBox.y * k, w = selBox.w * k, h = selBox.h * k; const bw = b.offsetWidth, bh = b.offsetHeight;
     const left = Math.max(pad, Math.min(x + w / 2 - bw / 2, sr.width - pad - bw)); const fx = fr.left - sr.left, fy = fr.top - sr.top;
     /* above or below, whichever fits and covers least of the other parts (above on a tie); when neither fits, the side with more room */
@@ -149,6 +150,7 @@ export function AdEditor({ sizes, size, onSize, pic, art, text, preset, style, o
       </header>
       <div className="ade-bar">
         <div className="ad-seg" role="tablist" aria-label="Size">{sizes.map((s) => <button key={s.shape} type="button" role="tab" aria-selected={s.shape === size.shape} className={`${s.shape === size.shape ? 'on' : ''}${editedSizes.includes(s.shape) ? ' ed' : ''}`} data-testid={`ade-size-${s.shape}`} {...tip(`${s.w} × ${s.h} · ${s.where}`)} onClick={() => onSize(s)}>{s.label}</button>)}</div>
+        <SafeSwitch on={showSafe} onChange={onShowSafe} safe={size.safe} label="Safe zones" testId="ade-safe" />
       </div>
       <div className="ade-main ade-main-p">
       <aside className="ade-side ade-panel bp-host" aria-label="Edit and style" data-testid="ade-panel">{panel({ hit, zoom, zoomTo, zones, zone, setZone })}</aside>
@@ -188,39 +190,72 @@ function Swatches({ label, value, colors, auto, autoHex, onChange, testId }: { l
     {colors.map((h) => <button key={h} type="button" role="radio" aria-checked={value === h} aria-label={h} className={value === h ? 'on' : ''} {...tip(h)} onClick={() => onChange(h)}><i style={{ background: h }} aria-hidden /></button>)}
   </div>;
 }
+/** The safe-zones switch: in the editor's top bar and in the Platforms section, both on the card's one setting. Off (greyed) on a size
+ *  nothing covers. */
+export function SafeSwitch({ on, onChange, safe, label, testId }: { on: boolean; onChange: (on: boolean) => void; safe: AdSizeOption['safe']; label: string; testId: string }) {
+  const any = hasSafe(safe);
+  return <label className={`ad-safe${any ? '' : ' none'}`} {...tip(any ? 'Shades what each app covers with its own buttons and captions. Only in the preview, never in the pictures you save.' : 'Nothing covers this size')}>
+    <input type="checkbox" checked={on && any} disabled={!any} data-testid={testId} onChange={(ev) => onChange(ev.target.checked)} /><i aria-hidden />{label}</label>;
+}
+/** The toolbar's colour: one dot showing the colour; it opens the same swatches in a small popover. */
+function SwatchPick({ label, testId, ...sw }: Parameters<typeof Swatches>[0]) {
+  const btn = useRef<HTMLButtonElement>(null); const [open, setOpen] = useState(false);
+  return <>
+    <button ref={btn} type="button" className={`adt-swb${sw.value ? '' : ' auto'}`} aria-haspopup="dialog" aria-expanded={open} aria-label={`${label}: ${sw.value ?? 'Auto'}`} data-testid={testId} {...tip(label)} onClick={() => setOpen((o) => !o)}>
+      <i style={{ background: sw.value ?? sw.autoHex ?? '#FFFFFF' }} aria-hidden /></button>
+    <BarPopover open={open} anchor={btn} onClose={() => setOpen(false)} label={label} placement="top" width={212} className="ade-pop adt-pop" testId={`${testId}-pop`}>
+      <PopSection label={label}><Swatches {...sw} label={label} testId={`${testId}-sw`} onChange={(h) => { sw.onChange(h); setOpen(false); }} /></PopSection>
+    </BarPopover>
+  </>;
+}
+/** Small drawings for the toolbar's icon options. */
+const Glyph = ({ k }: { k: string }) => <span className={`adt-gl adt-gl-${k}`} aria-hidden><b /></span>;
+
 /** The style controls of one part (logo, words or button): the full set in the side panel's Text and Style sections, and the same
  *  controls, smaller, in the toolbar that floats by the selected part (bar). One set of controls, one style, saved on the card. */
 export function PartStyle({ part, style, onStyle, art, bar }: { part: AdPart; style: AdStyle; onStyle: (s: AdStyle) => void; art: AdArt; bar?: boolean }) {
   const set = (p: Partial<AdStyle>) => onStyle({ ...style, ...p }); const colors = swatchesOf(art);
   const words = part === 'headline' || part === 'offer';
-  /* a group: a labelled section in the panel, a captioned group in the toolbar (notes only in the panel unless they say why a control is off) */
-  const g = (label: string, control: ReactNode, note?: ReactNode, barNote?: ReactNode) => bar
-    ? <div key={label} className="adt-g"><span className="adt-l">{label}</span>{control}{barNote}</div>
+  /* a group: a labelled section in the panel; in the toolbar, a compact group with no caption (each control says what it is in its tooltip) */
+  const g = (label: string, control: ReactNode, note?: ReactNode) => bar
+    ? <div key={label} className="adt-g" role="group" aria-label={label}>{control}</div>
     : <PopSection key={label} label={label}>{control}{note}</PopSection>;
-  const opaque = !art.logoSeeThrough;
+  const opaque = !art.logoSeeThrough; const ownBg = 'This logo has its own background, so it stays as it is. Add a see-through PNG or SVG to the brand to make it white or dark.';
+  const id = (t: string) => `${bar ? 'adt' : 'ade'}-${t}`;
+  const textColor = { label: 'Text colour', value: style.textColor, colors, auto: 'White, or what reads on the panel', autoHex: '#FFFFFF', onChange: (h: string | undefined) => set({ textColor: h }), testId: id('text-color') };
+  const buttonColor = { label: 'Button colour', value: style.buttonColor, colors, auto: "The brand's main colour", autoHex: buttonColorOf(art.kit), onChange: (h: string | undefined) => set({ buttonColor: h }), testId: id('button-color') };
+  const bold = (style.textWeight ?? 'bold') === 'bold';
   return <>
     {part === 'logo' && <>
-      {g('Plate behind the logo', <Segmented label="Plate behind the logo" value={style.logoPlate ?? 'auto'} onChange={(v) => set({ logoPlate: v })} testId={bar ? 'adt-logo-plate' : 'ade-logo-plate'}
-        options={[{ value: 'auto', label: 'Auto', title: 'Only when the logo would get lost on the picture' }, { value: 'on', label: 'On' }, { value: 'off', label: 'Off' }]} />)}
-      {g('Logo colour', <Segmented label="Logo colour" value={logoToneFor(style.logoTone, art.logoSeeThrough)} onChange={(v) => set({ logoTone: v })} testId={bar ? 'adt-logo-tone' : 'ade-logo-tone'}
-        options={[{ value: 'original', label: 'As is' }, ...(['light', 'dark'] as const).map((v) => ({ value: v, label: v === 'light' ? 'Light' : 'Dark', disabled: opaque, title: opaque ? 'Needs a see-through logo' : undefined }))]} />,
-        opaque && <PopNote>This logo has its own background, so it stays as it is. Add a see-through PNG or SVG to the brand to make it white or dark.</PopNote>,
-        opaque && <small className="adt-note" data-testid="adt-logo-note">Has its own background, so it stays as it is</small>)}
+      {g('Plate behind the logo', <Segmented label="Plate behind the logo" value={style.logoPlate ?? 'auto'} onChange={(v) => set({ logoPlate: v })} testId={id('logo-plate')}
+        options={[{ value: 'auto', label: bar ? <Glyph k="plate-auto" /> : 'Auto', title: bar ? 'Plate: only when the logo would get lost on the picture' : 'Only when the logo would get lost on the picture' },
+          { value: 'on', label: bar ? <Glyph k="plate-on" /> : 'On', title: bar ? 'Plate: on' : undefined }, { value: 'off', label: bar ? <Glyph k="plate-off" /> : 'Off', title: bar ? 'Plate: off' : undefined }]} />)}
+      {g('Logo colour', <Segmented label="Logo colour" value={logoToneFor(style.logoTone, art.logoSeeThrough)} onChange={(v) => set({ logoTone: v })} testId={id('logo-tone')}
+        options={[{ value: 'original', label: bar ? <Glyph k="tone-original" /> : 'As is', title: bar ? (opaque ? ownBg : 'Logo: as it is') : undefined },
+          ...(['light', 'dark'] as const).map((v) => ({ value: v, label: bar ? <Glyph k={`tone-${v}`} /> : v === 'light' ? 'Light' : 'Dark', disabled: opaque,
+            title: opaque ? (bar ? ownBg : 'Needs a see-through logo') : bar ? `Logo: ${v === 'light' ? 'white' : 'dark'}` : undefined }))]} />,
+        opaque && <PopNote>{ownBg}</PopNote>)}
     </>}
     {words && <>
-      {g('Weight', <Segmented label="Headline weight" value={style.textWeight ?? 'bold'} onChange={(v) => set({ textWeight: v })} testId={bar ? 'adt-text-weight' : 'ade-text-weight'}
-        options={[{ value: 'regular', label: bar ? <span className="adt-aa">Aa</span> : 'Regular', title: 'Regular' }, { value: 'bold', label: bar ? <span className="adt-aa b">Aa</span> : 'Bold', title: 'Bold' }]} />)}
-      {g('Colour', <Swatches label="Text colour" value={style.textColor} colors={colors} auto="White, or what reads on the panel" autoHex="#FFFFFF" onChange={(h) => set({ textColor: h })} testId={bar ? 'adt-text-color' : 'ade-text-color'} />)}
-      {g('Align', <Segmented label="Align" value={style.textAlign ?? 'auto'} onChange={(v) => set({ textAlign: v === 'auto' ? undefined : v })} testId={bar ? 'adt-text-align' : 'ade-text-align'}
-        options={[{ value: 'auto', label: 'Auto', title: 'As the layout lines them up' }, { value: 'left', label: bar ? <AlignLeftIcon size={15} /> : 'Left', title: 'Left' }, { value: 'center', label: bar ? <AlignCenterIcon size={15} /> : 'Centre', title: 'Centre' }, { value: 'right', label: bar ? <AlignRightIcon size={15} /> : 'Right', title: 'Right' }]} />)}
-      {g('Behind the words', <Segmented label="Behind the words" cols={bar ? undefined : 2} value={style.backdrop ?? 'gradient'} onChange={(v) => set({ backdrop: v })} testId={bar ? 'adt-backdrop' : 'ade-backdrop'}
-        options={[{ value: 'none', label: 'None' }, { value: 'shadow', label: bar ? 'Shadow' : 'Soft shadow' }, { value: 'gradient', label: 'Gradient' }, { value: 'panel', label: bar ? 'Panel' : 'Solid panel' }]} />,
+      {g('Weight', bar
+        ? <button type="button" className={`adt-tg${bold ? ' on' : ''}`} aria-pressed={bold} data-testid="adt-text-weight" {...tip(bold ? 'Bold (click for regular)' : 'Regular (click for bold)')}
+            onClick={() => set({ textWeight: bold ? 'regular' : 'bold' })}><span className={`adt-aa${bold ? ' b' : ''}`}>Aa</span></button>
+        : <Segmented label="Headline weight" value={style.textWeight ?? 'bold'} onChange={(v) => set({ textWeight: v })} testId="ade-text-weight"
+            options={[{ value: 'regular', label: 'Regular', title: 'Regular' }, { value: 'bold', label: 'Bold', title: 'Bold' }]} />)}
+      {g('Colour', bar ? <SwatchPick {...textColor} /> : <Swatches {...textColor} />)}
+      {g('Align', bar
+        ? <Segmented label="Align" value={style.textAlign ?? 'auto'} onChange={(v) => set({ textAlign: v === style.textAlign || v === 'auto' ? undefined : v })} testId="adt-text-align"
+            options={[{ value: 'left', label: <AlignLeftIcon size={15} />, title: 'Left (click again: as the layout lines them up)' }, { value: 'center', label: <AlignCenterIcon size={15} />, title: 'Centre (click again: as the layout lines them up)' }, { value: 'right', label: <AlignRightIcon size={15} />, title: 'Right (click again: as the layout lines them up)' }]} />
+        : <Segmented label="Align" value={style.textAlign ?? 'auto'} onChange={(v) => set({ textAlign: v === 'auto' ? undefined : v })} testId="ade-text-align"
+            options={[{ value: 'auto', label: 'Auto', title: 'As the layout lines them up' }, { value: 'left', label: 'Left', title: 'Left' }, { value: 'center', label: 'Centre', title: 'Centre' }, { value: 'right', label: 'Right', title: 'Right' }]} />)}
+      {!bar && g('Behind the words', <Segmented label="Behind the words" cols={2} value={style.backdrop ?? 'gradient'} onChange={(v) => set({ backdrop: v })} testId="ade-backdrop"
+        options={[{ value: 'none', label: 'None' }, { value: 'shadow', label: 'Soft shadow' }, { value: 'gradient', label: 'Gradient' }, { value: 'panel', label: 'Solid panel' }]} />,
         (style.backdrop === 'none' || style.backdrop === 'shadow') && <PopNote>With nothing solid behind them, pick a colour that stands out on your picture.</PopNote>)}
     </>}
     {part === 'button' && <>
-      {g('Shape', <Segmented label="Button shape" cols={bar ? undefined : 2} value={style.buttonShape ?? 'pill'} onChange={(v) => set({ buttonShape: v })} testId={bar ? 'adt-button-shape' : 'ade-button-shape'}
-        options={[{ value: 'pill', label: 'Pill' }, { value: 'rounded', label: 'Rounded' }, { value: 'square', label: 'Square' }, { value: 'outline', label: 'Outline' }]} />)}
-      {g('Colour', <Swatches label="Button colour" value={style.buttonColor} colors={colors} auto="The brand's main colour" autoHex={buttonColorOf(art.kit)} onChange={(h) => set({ buttonColor: h })} testId={bar ? 'adt-button-color' : 'ade-button-color'} />,
+      {g('Shape', <Segmented label="Button shape" cols={bar ? undefined : 2} value={style.buttonShape ?? 'pill'} onChange={(v) => set({ buttonShape: v })} testId={id('button-shape')}
+        options={(['pill', 'rounded', 'square', 'outline'] as const).map((v) => { const name = v[0].toUpperCase() + v.slice(1); return { value: v, label: bar ? <Glyph k={`btn-${v}`} /> : name, title: bar ? name : undefined }; })} />)}
+      {g('Colour', bar ? <SwatchPick {...buttonColor} /> : <Swatches {...buttonColor} />,
         <PopNote>{style.buttonShape === 'outline' ? 'An outline that wouldn’t show on the picture turns white or black.' : 'Its words turn white or black, whichever reads best.'}</PopNote>)}
     </>}
   </>;
