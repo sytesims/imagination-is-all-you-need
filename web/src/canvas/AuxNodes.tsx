@@ -5,6 +5,7 @@ import { ACCEPT, kindOfFile, wrongTypeText } from '../../../server/src/shared/me
  *  - Upload: drop / pick an image, clip or sound (POST /api/media; the node keeps the /files/ URL);
  *  - Note: plain text for the user (never an input; its text can still feed a prompt);
  *  - Compare: two media inputs with the shared before/after slider;
+ *  - Ad layout: one picture with your headline, offer, button and logo laid on top by code (AdNode.tsx);
  *  - Group: a frame around generate nodes with Run all. The first press only quotes every member and shows ONE total;
  *    the second press (within six seconds) runs them. Nothing is submitted on the first press.
  */
@@ -24,13 +25,14 @@ import { groupGenIds, runAllCommit, runAllConfirm, runAllPriceLabel, type RunAll
 import { cardInputs } from './graph';
 import { quoteNode, submitInOrder } from './nodeRun';
 import * as Ic from './icons';
+import { AdView } from './AdNode';
 
-const KIND_ICON = { prompt: Ic.PromptIcon, upload: Ic.UploadIcon, note: Ic.NoteIcon, compare: Ic.CompareIcon, group: Ic.GroupIcon } as const;
+const KIND_ICON = { prompt: Ic.PromptIcon, upload: Ic.UploadIcon, note: Ic.NoteIcon, compare: Ic.CompareIcon, group: Ic.GroupIcon, ad: Ic.AdIcon } as const;
 
 export function AuxView({ shape }: { shape: AuxNodeShape }) {
   const kind = nodeDefOf(shape.type)?.kind ?? 'note'; const p = shape.props as AuxNodeProps; const Icon = KIND_ICON[kind as keyof typeof KIND_ICON] ?? Ic.PromptIcon;
   return <HTMLContainer style={{ pointerEvents: kind === 'group' ? 'none' : 'all' }} onPointerDown={keepNodeControls} onPointerUp={keepNodeControls}>
-    {kind === 'prompt' ? <PromptView shape={shape} p={p} Icon={Icon} /> : kind === 'upload' ? <UploadView shape={shape} p={p} Icon={Icon} /> : kind === 'note' ? <NoteView shape={shape} p={p} Icon={Icon} /> : kind === 'compare' ? <CompareView shape={shape} p={p} Icon={Icon} /> : <GroupView shape={shape} p={p} Icon={Icon} />}
+    {kind === 'prompt' ? <PromptView shape={shape} p={p} Icon={Icon} /> : kind === 'upload' ? <UploadView shape={shape} p={p} Icon={Icon} /> : kind === 'note' ? <NoteView shape={shape} p={p} Icon={Icon} /> : kind === 'compare' ? <CompareView shape={shape} p={p} Icon={Icon} /> : kind === 'ad' ? <AdView shape={shape as any} Icon={Icon} /> : <GroupView shape={shape} p={p} Icon={Icon} />}
   </HTMLContainer>;
 }
 

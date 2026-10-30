@@ -25,8 +25,8 @@ const srv = spawn('npx', ['tsx', 'src/index.ts'], { cwd: ROOT, detached: true, s
 const S = '../src/';
 const { getTool } = await import(S + 'tools/registry.ts') as any; const { routesFor } = await import(S + 'routing/routes.ts') as any;
 const { routeRunnable } = await import(S + 'routing/runnable.ts') as any; const { routerModelOfRoute } = await import(S + 'routing/routerModels.ts') as any;
-const { VIDEO_LIMITS, resolveDuration, durationsFor } = await import(S + 'tools/h3/videoCaps.ts') as any;
-const { buildPlan, hasPlan } = await import(S + 'comfy/plans.ts') as any; const { buildCloudPlan } = await import(S + 'comfy/cloudWorkflows.ts') as any;
+const { VIDEO_LIMITS, resolveDuration, durationsFor, videoCapsBlock } = await import(S + 'tools/h3/videoCaps.ts') as any;
+const { buildPlan, hasPlan } = await import(S + 'comfy/plans.ts') as any; const { buildCloudPlan, cloudWorkflowFor, isStandalone } = await import(S + 'comfy/cloudWorkflows.ts') as any;
 const { CLOUD_RUNNER_ROUTES } = await import(S + 'routing/runnable.ts') as any;
 // Comfy storage (comfy/storage.ts): URL-only Router fields (Seedance reference / edit video, Kling Omni Edit…) upload first. A FAKE in-process storage answers,
 // so those bodies are still built and checked against the schema with no network (the Router base above is unreachable on purpose).
@@ -82,7 +82,7 @@ function casesFor(tool: any): Case[] {
   const inp = (n: string) => (tool.inputs ?? []).find((i: any) => i.name === n);
   for (const p of tool.providers) {
     const apiRoutes = new Set((p.routes ?? []).map((r: any) => r.routeId ?? r.id ?? r)); const routes = routesFor(p.id, tdef).filter((r: any) => !apiRoutes.size || apiRoutes.has(r.routeId));
-    const L = app.videoLimits?.[p.id] ?? null; const caps = CAPS_TOOLS.has(tool.id) && !!L; const pm: string[] | undefined = app.providerModes?.[p.id];
+    const L = app.videoLimits?.[p.id] ?? (tool.id === 'h3-video' && VIDEO_LIMITS[p.id] ? videoCapsBlock(VIDEO_LIMITS[p.id]) : null); /* models added after the tool was built (FLUX 3 Max…): the bar reads them from /api/models videoLimits (VideoStudio limOf) */ const caps = CAPS_TOOLS.has(tool.id) && !!L; const pm: string[] | undefined = app.providerModes?.[p.id];
     const modes: { mode: string; file?: string }[] = am ? am.filter((x) => !pm || pm.includes(x.mode)) : CAPS_TOOLS.has(tool.id) ? (pm ?? (tool.presets ?? []).map((x: any) => x.id)).map((mode: string) => ({ mode })) : [{ mode: tool.presets?.[0]?.id ?? '' }];
     const durs: number[] = (app.durationsByProvider?.[p.id] ?? p.durations ?? L?.duration?.values ?? L?.durations ?? []).filter((n: number) => Number.isInteger(n));
     for (const route of routes) for (const { mode, file: modeFile } of modes) {
@@ -119,6 +119,7 @@ function casesFor(tool: any): Case[] {
         const needImg = CAPS_TOOLS.has(tool.id) ? !am && ['i2v', 'flf', 'r2v'].includes(mode) : ['camera', 'photo-fx', 'app-orbit-shot'].includes(tool.id);
         if (needImg && names.has('image') && !files.some(([n]) => n === 'image')) files.push(['image', PNG]);
         if (mode === 'flf' && !am && names.has('lastFrame')) files.push(['lastFrame', PNG2]);
+        if (mode === 'keyframes' && names.has('keyframes')) files.push(['keyframes', PNG], ['keyframes', PNG2]); // Keyframes: 2–5 stills (field keyframes)
         if (/swap|motion|restyle/.test(tool.id) && names.has('refs')) files.push(['refs', PNG2]);
         for (let k = 0; k < (v._refs ?? 0); k++) files.push(['refs', PNG2]); if (v._rv) files.push(['refVideos', MP4]); if (v._ra) files.push(['refAudios', MP3]);
         const asked = { duration: v.duration, resolution: v.resolution, aspect: v.aspect, audio: v.audio, audioOff: L?.audio?.off, mode };
@@ -136,7 +137,9 @@ async function bodyFor(c: Case, job: any): Promise<{ kind: 'json'; body: any; fi
     const spec = routerModelOfRoute(r.routeId); if (!spec) return { kind: 'none', why: 'no Router body builder' }; const sc = schemaFor(r, c.p.id, spec.id);
     return { kind: 'json', body: await spec.body(job.input, 0), file: sc?.file }; }
   if (r.kind === 'local') { if (!hasPlan(job)) return { kind: 'none', why: 'no native ComfyUI plan for this job (legacy runner)' }; return { kind: 'graphs', graphs: buildPlan(job).passes.map((x: any) => x.graph) }; }
-  if (r.kind === 'comfy-cloud') { if (!CLOUD_RUNNER_ROUTES.has(r.routeId)) return { kind: 'none', why: 'no Comfy Cloud runner for this route (samples only)' }; return { kind: 'graphs', graphs: buildCloudPlan(job).passes.map((x: any) => x.graph) }; }
+  if (r.kind === 'comfy-cloud') { if (!CLOUD_RUNNER_ROUTES.has(r.routeId)) return { kind: 'none', why: 'no Comfy Cloud runner for this route (samples only)' };
+    const wf = cloudWorkflowFor(r.routeId); if (isStandalone(wf) && wf.prepare) await wf.prepare(job); // the runner's free local prep first (routing/cloudRun.ts), e.g. H3 Extend cuts the clip's context
+    return { kind: 'graphs', graphs: buildCloudPlan(job).passes.map((x: any) => x.graph) }; }
   if (r.direct) { const req = await r.direct.build(job); const sc = schemaFor(r, c.p.id); return { kind: 'json', body: req.body, file: sc?.file, strip: sc?.strip, note: sc?.note, soft: sc?.soft }; }
   if (typeof r.request === 'function') { const sc = schemaFor(r, c.p.id); return { kind: 'json', body: await r.request(job), file: sc?.file }; }
   return { kind: 'none', why: 'no live runner for this route' };
@@ -167,8 +170,8 @@ async function runCase(c: Case) {
     opt.refused.push(`${c.route.routeId}: ${why.replace(/^.*can't run this job\.\s*/, '').replace(/\s*Pick another place.*$/, '')}`); note(c, `refuses ${c.tag}: ${why.replace(/^.*can't run this job\.\s*/, '').replace(/\s*Pick another place.*$/, '').slice(0, 120)}`); return; }
   if (s.status !== 200 || !s.b?.id) { fail(c, 'submit', `submit ${s.status} ${s.b?.code ?? ''} ${String(s.b?.error ?? s.b?.message ?? '').slice(0, 160)}`); return; }
   opt.ok++; if (s.b.route && s.b.route !== c.route.routeId) note(c, `job ran on ${s.b.route} (asked ${c.route.routeId})`);
-  // the mock result: waited for on the first case of each row (the rest only need the job created; mock renders still encode with ffmpeg)
-  let job: any = null; if (!row.resultChecked) { row.resultChecked = true; for (let k = 0; k < 200; k++) { job = (await j(`/api/jobs/${s.b.id}`)).b; if (['done', 'failed', 'blocked', 'canceled', 'needs_decision'].includes(job?.status)) break; await new Promise((ok) => setTimeout(ok, 150)); }
+  // the mock result (up to 90 s: a local job can queue behind others on a slow CI runner): waited for on the first case of each row (the rest only need the job created; mock renders still encode with ffmpeg)
+  let job: any = null; if (!row.resultChecked) { row.resultChecked = true; for (let k = 0; k < 600; k++) { job = (await j(`/api/jobs/${s.b.id}`)).b; if (['done', 'failed', 'blocked', 'canceled', 'needs_decision'].includes(job?.status)) break; await new Promise((ok) => setTimeout(ok, 150)); }
   if (job?.status !== 'done' || !(job.outputs?.length || job.resultUrl)) fail(c, 'submit', `job ${job?.status ?? 'missing'}${job?.error ? `: ${String(job.error).slice(0, 140)}` : ''}`); }
   // 1 + 2b: the body this job would send
   const input0 = await rawInput(s.b.id); if (!input0) { fail(c, 'schema', 'job input not found in the database'); return; }

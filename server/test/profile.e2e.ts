@@ -16,11 +16,12 @@ try {
   assert.equal(ok.status, 200); assert.equal(ok.body.displayName, 'Ada'); assert.equal(ok.body.handle, 'ada.makes'); assert.deepEqual(ok.body.avatar, { mood: 'happy', tint: 'mint' }); assert.deepEqual(ok.body.cover, { kind: 'gradient', id: 'dusk' });
   for (const [b, f] of [[{ handle: 'a b' }, 'handle'], [{ avatar: { mood: 'angry', tint: 'orange' } }, 'avatar'], [{ cover: { kind: 'image', url: 'https://x/y.png' } }, 'cover'], [{ displayName: 'x'.repeat(61) }, 'displayName'], [{ avatarUrl: 'javascript:alert(1)' }, 'avatarUrl']] as const) {
     const r = await put(b); assert.equal(r.status, 400, JSON.stringify(b)); assert.equal(r.body.issues[0].field, f); }
-  // upload: wrong type, too big, then a real PNG (sniffed, not trusted by name)
-  assert.equal((await up(Buffer.from('not a picture at all'), 'me.png')).body.code, 'unsupported');
-  { const big = await up(Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0, 0]), Buffer.alloc(2.5 * 1024 * 1024)]), 'big.png'); assert.equal(big.body.code, 'file_too_large', JSON.stringify(big)); }
+  // upload: wrong type, too big, then a real PNG (bytes checked, not trusted by name)
+  assert.equal((await up(Buffer.from('not a picture at all'), 'me.png')).body.code, 'upload_format'); // the upload gate (uploadSecurity.ts) refuses it
+  { const bigPng = path.join(D, 'big.png'); execFileSync('ffmpeg', ['-y', '-v', 'error', '-f', 'lavfi', '-i', 'color=c=gray:s=1200x1200,noise=alls=100:allf=t', '-frames:v', '1', bigPng]); // a real PNG (the upload gate refuses fake bytes first) over 2 MB
+    const big = await up(fs.readFileSync(bigPng), 'big.png'); assert.equal(big.body.code, 'file_too_large', JSON.stringify(big)); }
   const png = path.join(D, 'src.png'); execFileSync('ffmpeg', ['-y', '-v', 'error', '-f', 'lavfi', '-i', 'color=c=orange:s=256x256', '-frames:v', '1', png]);
-  const a1 = await up(fs.readFileSync(png), 'whatever.bin'); assert.equal(a1.status, 200, JSON.stringify(a1.body)); assert.match(a1.body.avatarUrl, /^\/files\/avatar-[\w-]+\.png$/);
+  const a1 = await up(fs.readFileSync(png), 'whatever.png'); // the upload gate needs a media extension that matches the bytes assert.equal(a1.status, 200, JSON.stringify(a1.body)); assert.match(a1.body.avatarUrl, /^\/files\/avatar-[\w-]+\.png$/);
   assert.equal((await fetch(B + a1.body.avatarUrl)).status, 200);
   // replacing it deletes the old file; DELETE brings the bean back and keeps the bean choice
   const a2 = await up(fs.readFileSync(png), 'again.png'); assert.notEqual(a2.body.avatarUrl, a1.body.avatarUrl); assert.ok(!fs.existsSync(path.join(D, path.basename(a1.body.avatarUrl))));

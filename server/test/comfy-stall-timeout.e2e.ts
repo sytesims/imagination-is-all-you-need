@@ -141,7 +141,7 @@ try {
   assert.ok(db.resultUrl && db.outputs.length === 1, 'outputs stored'); assert.ok(db.finishedLateAt); assert.equal(db.lateWatch, false); assert.equal(db.error, null); assert.equal(db.reasonCode, null);
   assert.ok(db.warnings.some((w: string) => /^Finished late/.test(w))); assert.equal((await fetch(B + db.resultUrl)).status, 200, 'the file is served');
   assert.equal(db.spend?.billedTo, 'local'); assert.equal(db.spend?.countedUsd, 0); assert.ok(!db.spend?.actualUsd, 'no charge recorded');
-  const lst = await get('/api/jobs?status=done,failed&limit=50&cursor='); const listed = (Array.isArray(lst) ? lst : lst.items ?? []).find((x: any) => x.id === b.id); assert.equal(listed?.status, 'done', 'the feed list shows it done');
+  const lst = await get('/api/jobs?status=done,failed&order=desc&limit=50&cursor=') /* newest first, as the feed: a status filter alone lists oldest first */; const listed = (Array.isArray(lst) ? lst : lst.items ?? []).find((x: any) => x.id === b.id); assert.equal(listed?.status, 'done', 'the feed list shows it done');
   ok('stalled with the prompt kept by ComfyUI: failed "Stopped: no progress for 1 min. Nothing was charged." (watched) → finished late → done, outputs stored, $0 local');
 
   // 2c. stalled while ComfyUI lists it as ours and running → interrupted, not watched

@@ -13,8 +13,9 @@
 .rc-play:focus-visible,.rc-tool:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}
 .rc-progress{position:absolute;left:0;right:0;bottom:0;z-index:3;height:2px;background:rgba(255,255,255,.12)}
 .rc-progress i{display:block;height:100%;background:var(--accent,#FF7A1A)}
-.rc-tools{position:absolute;top:8px;right:8px;z-index:4;display:flex;gap:4px;opacity:0;transform:translateY(-2px);transition:opacity var(--t-state,150ms) ease,transform var(--t-state,150ms) ease;pointer-events:none}
-.rc-tools.on{opacity:1;transform:none;pointer-events:auto}
+.rc-tools{position:absolute;top:8px;right:8px;z-index:4;display:flex;gap:4px;opacity:0;transform:translateY(-2px);transition:opacity var(--t-state,150ms) ease,transform var(--t-state,150ms) ease,visibility 0s linear var(--t-state,150ms);pointer-events:none;
+  visibility:hidden /* hidden, not only clear: its blurred buttons cost a redraw per card on the Canvas */}
+.rc-tools.on{opacity:1;transform:none;pointer-events:auto;visibility:visible;transition-delay:0s}
 .rc-tool{all:unset;display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 8px;border-radius:8px;cursor:pointer;background:rgba(35,36,39,.92);border:1px solid rgba(255,255,255,.1);color:var(--text-1,#F7F7F8);font:600 11px/1 var(--font-ui,Inter,sans-serif);backdrop-filter:blur(8px)}
 .rc-tool:hover{background:rgba(52,54,58,.96)}
 .rc-tool .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}

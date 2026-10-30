@@ -28,7 +28,7 @@ try {
     assert.equal(pj.body.route, 'local:comfy-h3-camera'); assert.deepEqual(pj.body.routing.order, ['local:comfy-h3-camera'], 'no demo fallback after a pinned local route');
     ok(`#2 H3 Camera Motion (Use local off): route line, quote and job all ${q.route} (demo, list ${q.listCredits}); local route local_off; pinned local stays local, no fal fallback`); }
   // #3 + #4 + #6 Edit Video menu = /api/routes = quote (Upscale SeedVR2)
-  { const m = (await get('/api/edit-video/tools')).body.tools.find((t: any) => t.id === 'upscale'); const rv = (await get('/api/routes?toolId=upscale&modelId=comfy-seedvr2')).body.routes[0]; const q = (await get('/api/tools/upscale/price')).body;
+  { const m = (await get('/api/edit-video/tools')).body.tools.find((t: any) => t.id === 'upscale'); const rv = (await get('/api/routes?toolId=upscale&modelId=comfy-seedvr2')).body.routes[0]; const q = (await get('/api/tools/upscale/price?provider=comfy-seedvr2')).body; /* SeedVR2's quote (the tool's own default is Topaz on Comfy Cloud since 2026-10-27, shared/cloudDefaults.ts) */
     const mm = m.models.find((x: any) => x.id === 'comfy-seedvr2');
     for (const r of mm.routes) { const l = rv.routes.find((x: any) => x.routeId === r.routeId); assert.equal(r.available, l.available, r.routeId); assert.equal(r.runnable, l.runnable, r.routeId); assert.equal(r.demo, l.demo, r.routeId); assert.equal(r.reasonCode, l.reasonCode ?? null, r.routeId); assert.equal(r.reason, l.reason ?? null, r.routeId); }
     const loc = mm.routes.find((r: any) => r.kind === 'local'); assert.equal(loc.runnable, false); /* 2026-10-26: SeedVR2 3B locally is NVIDIA-only; this test machine's GPU is unknown, so that is the reason shown */ assert.equal(loc.reasonCode, 'input_blocked'); assert.match(loc.reason, /NVIDIA graphics card/); assert.ok(!/Free · local/.test(loc.priceLine));
@@ -48,7 +48,7 @@ try {
     const s = await form('/api/tools/create-image/jobs', { rights: '1', types: '["generate"]', prompt: 'x', resolution: '9000p' }); assert.equal(s.status, 400); assert.equal(s.body.code, 'invalid_resolution'); assert.equal(s.body.refund.charged, false);
     ok('#7 resolution/aspect/quality/scale allowlists on quote + submit → 400 invalid_<field>; NUL never echoed; aliases still accepted'); }
   // #8 input block: real price, chargeable:false, blockedReason, no priceAvailable:false
-  { const q = (await get('/api/tools/h3-video/price?provider=comfy-h3&route=fal:minimax/h3/text-to-video&duration=6&resolution=768p')).body;
+  { const q = (await get('/api/tools/h3-video/price?provider=comfy-h3&route=fal:minimax/h3/text-to-video&duration=6&resolution=768p&types=["i2v"]&image=1')).body;
     assert.equal(q.runnable, false); assert.equal(q.reasonCode, 'input_blocked'); assert.ok(q.credits > 0); assert.equal(q.credits, q.listCredits); assert.equal(q.priceAvailable, true); assert.equal(q.chargeable, false);
     assert.match(q.blockedReason, /only does text to video/); assert.equal(q.unavailableReason, undefined); assert.ok(!/unavailable/i.test(q.priceLine));
     const nw = (await get('/api/tools/upscale/price?model=direct-flux3-upscale&route=fal:pending/flux-3-upscaler')).body; if (nw.runnable === false && nw.reasonCode !== 'input_blocked') assert.equal(nw.blockedReason, undefined);

@@ -26,8 +26,8 @@ try {
   { const t = (await get('/api/tools')).find((x: any) => x.id === 'restyle'); const max = t.inputs.find((i: any) => i.name === 'refs').max;
     const j = await post('restyle', { ...R, preset: 'anime-cel' }, [['video', mp4], ...Array.from({ length: max + 1 }, () => ['refs', png] as [string, string])]); assert.equal(j.status, 400); assert.ok(JSON.stringify(j.body).includes('too_many'), JSON.stringify(j.body).slice(0, 200));
     console.log(`ok (b) restyle rejects ref ${max + 1} (max ${max})`); }
-  // (c) unreadable upload → code unreadable
-  { const j = await post('object-swap', { ...R, prompt: 'x' }, [['video', junk], ['refs', png]]); assert.equal(j.status, 400); assert.equal(j.body.issues.find((i: any) => i.field === 'video')?.code, 'unreadable', JSON.stringify(j.body).slice(0, 200)); console.log('ok (c) zero-filled .mp4 → unreadable'); }
+  // (c) unreadable upload → refused by the upload gate (uploadSecurity.ts: code upload_format, issue format on the field)
+  { const j = await post('object-swap', { ...R, prompt: 'x' }, [['video', junk], ['refs', png]]); assert.equal(j.status, 400); assert.equal(j.body.code, 'upload_format'); assert.equal(j.body.issues.find((i: any) => i.field === 'video')?.code, 'format', JSON.stringify(j.body).slice(0, 200)); console.log('ok (c) zero-filled .mp4 → upload_format'); }
   // page 11
   { const l = await get('/api/presets?toolId=camera'); assert.ok(l.categories.includes('General') && l.categories.includes('Timelapse')); assert.ok(l.total >= 82, `camera presets: ${l.total}`) /* 65 + 20 catalogue moves, minus near-duplicates folded into aliases (94 → 88 → 82, 2026-10-27 preset audit) */; assert.equal(l.items[0].id, 'free');
     for (const p of l.items) { assert.ok(p.category && p.description && Array.isArray(p.providers) && Array.isArray(p.aspects), p.id); }

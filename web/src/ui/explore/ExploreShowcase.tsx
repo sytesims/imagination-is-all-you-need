@@ -2,7 +2,7 @@
  * Explore v3 (2026-10-26, from the approved mockups). The page's showcase sections, top to bottom:
  *  - XpHero: full-bleed, one clip looping with sound on (the LTX-2.5 Pro painter, EXPLORE_HERO; shared ShowcaseFilm, bleed variant),
  *    its title and line, and a film credit block under the line (MADE WITH · LENGTH · RAN ON: the real model and music, length, place and price),
- *    then one orange "Recreate this →". No quick links (2026-10-28). Nothing generates here.
+ *    then one orange "Make your own →". No quick links (2026-10-28). Nothing generates here.
  *  - XpStill: "From one still", one LTX-2.5 Pro image-to-video take (Comfy Cloud) from one still: a wide frame opens on the still and the shared
  *    HeroReel (reveal variant) sweeps an orange line across into the clip with sound (drag it to compare); one credits line, Recreate (Video,
  *    image to video, the still attached) and the prompt one click away.
@@ -72,13 +72,13 @@ function heroCredit(s: ReelShot, f: FeaturedItem) {
   return { model: s.model, music, length: s.facts.join(' · '), place: local ? 'Your computer' : 'Comfy Cloud', price: local ? 'Free' : f.costUsd != null ? `$${f.costUsd.toFixed(2)}` : null };
 }
 /** The hero's credit, a film credit block under the clip's line (user pick, 2026-10-28): spaced-caps labels over their values, in columns
- *  (MADE WITH · LENGTH · RAN ON), then the hero's one action, an orange "Recreate this →". */
+ *  (MADE WITH · LENGTH · RAN ON), then the hero's one action, an orange "Make your own →". */
 function HeroCredit({ s, f, rec }: { s: ReelShot; f: FeaturedItem; rec: string | null }) {
   const c = heroCredit(s, f);
   const cols: CreditCol[] = [['Made with', [c.model, c.music]], ['Length', [c.length]], ['Ran on', [c.place, c.price]]];
   return <div className="xph-credit" data-testid="xp-hero-caption">
     <FilmCredit cols={cols} />
-    {rec && <Link to={rec} className="xph-rec" data-testid="xp-hero-recreate">Recreate this <Arrow /></Link>}
+    {rec && <Link to={rec} className="xph-rec" data-testid="xp-hero-recreate">Make your own <Arrow /></Link>}
   </div>;
 }
 export function XpHero() {

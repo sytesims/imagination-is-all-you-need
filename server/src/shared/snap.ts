@@ -17,15 +17,16 @@ export function nearestAspect(list: readonly string[], aspect: string): string |
   if (r == null || !opts.length) return null;
   return opts.reduce((a, b) => (Math.abs(Math.log(b[1] / r)) < Math.abs(Math.log(a[1] / r)) ? b : a))[0];
 }
-/** A size tier as a number to compare: 720p → 720, 1080P → 1080, 2K → 1440, 4K → 2160, 1K → 1024, 0.75K → 768, 1.5K → 1536; else null. */
-export function tierSize(t: string): number | null {
+/** A size tier as a number to compare: 720p → 720, 1080P → 1080, 2K → 1440, 4K → 2160, 1K → 1024, 0.75K → 768, 1.5K → 1536; else null.
+ *  `image`: image sizes, where every K is 1024 px (2K → 2048, 4K → 4096), so 2K ranks above 1.5K. */
+export function tierSize(t: string, image = false): number | null {
   const s = String(t ?? '').trim().toLowerCase(); let m = /^(\d{3,4})p$/.exec(s); if (m) return +m[1];
   m = /^(\d+(?:\.\d+)?)k$/.exec(s); if (!m) return null; const k = +m[1];
-  return k === 2 ? 1440 : k === 4 ? 2160 : Math.round(k * 1024);
+  return image ? Math.round(k * 1024) : k === 2 ? 1440 : k === 4 ? 2160 : Math.round(k * 1024);
 }
-/** The listed tier nearest in size to `tier` (a tie goes to the larger); null when either side isn't a size. */
-export function nearestTier(list: readonly string[], tier: string): string | null {
-  const x = tierSize(tier); const opts = list.map((t) => [t, tierSize(t)] as const).filter((o): o is readonly [string, number] => o[1] != null);
+/** The listed tier nearest in size to `tier` (a tie goes to the larger); null when either side isn't a size. `image`: see tierSize. */
+export function nearestTier(list: readonly string[], tier: string, image = false): string | null {
+  const x = tierSize(tier, image); const opts = list.map((t) => [t, tierSize(t, image)] as const).filter((o): o is readonly [string, number] => o[1] != null);
   if (x == null || !opts.length) return null;
   return opts.reduce((a, b) => { const da = Math.abs(a[1] - x), db = Math.abs(b[1] - x); return db < da || (db === da && b[1] > a[1]) ? b : a; })[0];
 }

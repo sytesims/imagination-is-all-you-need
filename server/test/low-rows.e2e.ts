@@ -49,8 +49,8 @@ try {
   const t0 = await run('app-transition', { prompt: 'day to night', transition: 'whip' }, { image: PNG }); assert.equal(t0.status, 400); assert.equal(t0.body.issues[0].field, 'lastFrame');
   const t1 = await run('app-transition', { prompt: 'day to night', transition: 'whip' }, { image: PNG, lastFrame: PNG2 }); assert.equal(t1.status, 200, JSON.stringify(t1.body));
   assert.equal(mode(t1.job), 'flf'); assert.ok(t1.job.input.imageUrl && t1.job.input.lastFrameUrl, JSON.stringify(Object.keys(t1.job.input))); assert.equal(Number(t1.job.input.duration), 5); assert.match(t1.job.input.prompt, /whip pan/);
-  const t2 = await run('app-transition', { prompt: 'x', duration: '3' }, { image: PNG, lastFrame: PNG2 }); assert.equal(t2.qstatus, 400); assert.equal(t2.status, 400); assert.equal(t2.body.code, 'invalid_duration');
-  ok('Transitions: flf on comfy-h3 with start + end, default 5 s, 3 s → 400 invalid_duration on quote and submit, end image required');
+  const t2 = await run('app-transition', { prompt: 'x', duration: '3' }, { image: PNG, lastFrame: PNG2 }); assert.equal(t2.qstatus, 200); assert.equal(t2.status, 200, JSON.stringify(t2.body)); const t2to = Number(/Made at (\d+) s, the closest length/.exec(String(t2.quote.adjustNotes))?.[1]); assert.ok(t2to > 3, JSON.stringify(t2.quote.adjustNotes)); assert.equal(Number(t2.job.input.duration), t2to, 'made at the length the quote said'); // D5: snapped with a note
+  ok('Transitions: flf on comfy-h3 with start + end, default 5 s, 3 s → made at the nearest offered length with a note on quote and submit (D5), end image required');
 
   // T27 UGC Ad
   const u0 = await run('app-ugc-ad', { prompt: 'a reusable water bottle', presenter: 'gym-floor', hook: 'bold-claim' }); assert.equal(u0.status, 200, JSON.stringify(u0.body));
@@ -69,7 +69,7 @@ try {
   assert.match(o0.job.input.prompt, /^#orbit-l /); assert.equal(o0.job.input.aspect, '1:1'); assert.equal(o0.job.input.resolution, '720p'); assert.equal(Number(o0.job.input.duration), 5);
   assert.ok(!(o0.job.input.timelineIssues ?? o0.job.input.issues ?? []).some((i: any) => i.code === 'unknown_move')); assert.equal(o0.job.input.timeline?.[0]?.move, 'orbit-l'); assert.equal(o0.job.input.timeline[0].start, 0);
   const o1 = await run('app-orbit-shot', { prompt: 'x', duration: '15', provider: 'comfy-open' }, { image: PNG }); // B6: the default is Seedance 2.0 (takes 15 s); the local graph's 5/10 s rule
-  assert.equal(o1.qstatus, 400); assert.equal(o1.status, 400); assert.deepEqual(o1.body.durations, [5, 10]);
+  assert.equal(o1.qstatus, 200); assert.equal(o1.status, 200, JSON.stringify(o1.body)); assert.equal(Number(o1.job.input.duration), 10, 'D5: 15 s made at 10 s on the local graph');
   const o2 = await run('app-orbit-shot', { prompt: 'x' }); assert.equal(o2.status, 400); assert.equal(o2.body.issues[0].field, 'image');
   const o3 = await run('app-orbit-shot', { prompt: 'x', orbit: 'spin', duration: '10', provider: 'comfy-funcamera' }, { image: PNG }); assert.equal(o3.status, 200, JSON.stringify(o3.body)); assert.equal(o3.job.input.timeline[0].move, 'spin-3d');
   // Orbit P1: image only, no prompt = Auto prompt after the orbit tag; 200 on both routes; quote = charge and same credits as a typed prompt.

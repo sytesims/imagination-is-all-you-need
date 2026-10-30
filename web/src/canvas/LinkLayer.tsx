@@ -23,7 +23,6 @@ import { catalogNow } from './catalog';
 import { isNeighbour, notchAt, routeThread, threadPath, snapTarget, pulledApart, linkLook, type LBox, type Link } from './links';
 import { tidyBoard } from './tidy';
 import { reducedMotion } from './agentHand';
-import { Constellation } from './Constellation';
 
 const boxOf = (editor: Editor, id: string): LBox | null => { const b = editor.getShapePageBounds(id as TLShapeId); return b ? { id, x: b.x, y: b.y, w: b.w, h: b.h } : null; };
 /** Cards on the page (no groups) and the arrows that link two of them (start → end bindings). */
@@ -155,5 +154,5 @@ export function LinkLayer() {
   </>;
 }
 
-/** tldraw's OnTheCanvas slot: the links and, zoomed far out, the night sky. */
-export function CanvasOverlays() { return <><LinkLayer /><Constellation /><Magnet /></>; }
+/** tldraw's OnTheCanvas slot: the links and the magnetic snap. */
+export function CanvasOverlays() { return <><LinkLayer /><Magnet /></>; }

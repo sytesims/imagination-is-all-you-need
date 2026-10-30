@@ -3,7 +3,7 @@
 import { testPort } from './_ports.js'; import assert from 'node:assert/strict'; import { spawn, execFileSync, type ChildProcess } from 'node:child_process'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path';
 const CWD = path.resolve(import.meta.dirname, '..');
 const start = (port: number, extra: Record<string, string> = {}) => { const D = fs.mkdtempSync(path.join(os.tmpdir(), 'tc-'));
-  const p = spawn('npx', ['tsx', 'src/index.ts'], { cwd: CWD, env: { ...process.env, PORT: String(port), OPENHIGGSFIELD_DATA_DIR: D, OPENHIGGSFIELD_BACKEND: 'mock', OPENHIGGSFIELD_HOSTED: '', OPENHIGGSFIELD_MAX_QUEUED: '200', MAX_QUEUED: '200', ...extra }, stdio: 'ignore', detached: true }); return { p, D, B: `http://localhost:${port}` }; };
+  const p = spawn('npx', ['tsx', 'src/index.ts'], { cwd: CWD, env: { ...process.env, PORT: String(port), OPENHIGGSFIELD_DATA_DIR: D, OPENHIGGSFIELD_BACKEND: 'mock', OPENHIGGSFIELD_SEED_FEATURED: '0' /* counts your own results only (no Examples project) */, OPENHIGGSFIELD_HOSTED: '', OPENHIGGSFIELD_MAX_QUEUED: '200', MAX_QUEUED: '200', ...extra }, stdio: 'ignore', detached: true }); return { p, D, B: `http://localhost:${port}` }; };
 const up = async (B: string) => { for (let i = 0; i < 90; i++) { try { if ((await fetch(`${B}/api/health`)).ok) return; } catch { /* */ } await new Promise((r) => setTimeout(r, 1000)); } throw new Error(`${B} did not start`); };
 const A = start(testPort(8843)), H = start(testPort(8844), { OPENHIGGSFIELD_HOSTED: '1', OPENHIGGSFIELD_TRASH_DAYS: '7' }); const B = A.B, D = A.D;
 const get = async (u: string, b = B) => (await fetch(b + u)).json();

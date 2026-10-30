@@ -10,9 +10,10 @@ export const UPLOAD_TYPE = 'ohf-upload';
 export const NOTE_TYPE = 'ohf-note';
 export const COMPARE_TYPE = 'ohf-compare';
 export const GROUP_TYPE = 'ohf-group';
+export const AD_TYPE = 'ohf-ad';
 
-export type NodeKind = 'gen' | 'result' | 'prompt' | 'upload' | 'note' | 'compare' | 'group';
-export type NodeTint = 'image' | 'video' | 'audio' | '3d' | 'text' | 'upload' | 'compare' | 'group';
+export type NodeKind = 'gen' | 'result' | 'prompt' | 'upload' | 'note' | 'compare' | 'group' | 'ad';
+export type NodeTint = 'image' | 'video' | 'audio' | '3d' | 'text' | 'upload' | 'compare' | 'group' | 'ad';
 
 export interface NodeDef {
   kind: NodeKind;
@@ -51,6 +52,8 @@ export const NODE_DEFS: Record<NodeKind, NodeDef> = {
     defaultW: 440, defaultH: 420, minW: 320, minH: 300, maxW: 900, maxH: 900, tint: 'compare' },
   group: { kind: 'group', type: GROUP_TYPE, label: 'Group', hint: 'A frame with Run all', input: false, output: false, inputMax: 0,
     defaultW: 720, defaultH: 520, minW: 360, minH: 260, maxW: 1800, maxH: 1400, tint: 'group' },
+  ad: { kind: 'ad', type: AD_TYPE, label: 'Ad layout', hint: 'Your headline, price and logo on a picture', input: true, output: false, inputMax: 1,
+    defaultW: 400, defaultH: 840, minW: 340, minH: 640, maxW: 820, maxH: 1400, tint: 'ad' },
 };
 
 export const NODE_KINDS = Object.keys(NODE_DEFS) as NodeKind[];

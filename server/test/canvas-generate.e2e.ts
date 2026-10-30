@@ -63,7 +63,7 @@ try {
 
   // ---- a card → a job with the board's project and id; 4 takes; the spend chip counts it ----
   const proj = (await send('POST', '/api/projects', { name: 'Board runs' })).body; const board = (await send('POST', '/api/canvas/boards', { name: 'Gen test' })).body;
-  const before = (await get('/api/jobs')).length;
+  const before = (await get('/api/jobs?cursor=')).total /* the plain list is one 50-job page */;
   const c4 = spec('create', { vals: { n: '4' } }); assert.equal(c4.s.vals.n, '4');
   const q = await get(`/api/tools/create-image/price?${new URLSearchParams({ provider: c4.s.provider, ...c4.s.quote })}`); assert.equal(typeof q.credits, 'number', 'the card is priced before it runs');
   const f4 = runForm(c4.s, c4.bySlot, [], 'A ceramic mug on a sunlit table', { projectId: proj.id, boardId: board.id });
@@ -77,7 +77,7 @@ try {
   ok(`card → job ${id}: projectId + boardId, 4 takes, spend ${JSON.stringify(sp)}`);
 
   // ---- a quick action's card is a draft and runs nothing ----
-  const n1 = (await get('/api/jobs')).length; assert.equal(n1, before + 1);
+  const n1 = (await get('/api/jobs?cursor=')).total /* the plain list is one 50-job page */; assert.equal(n1, before + 1);
   const src = { id: 'shape:src', typeName: 'shape', type: 'ohf-result', x: 0, y: 0, rotation: 0, index: 'a1', parentId: 'page:page', isLocked: false, opacity: 1, meta: {}, props: { w: 320, h: 320, kind: 'image', jobId: id, url: takes[0].url, poster: takes[0].poster, title: 'Mug', model: 'Nano Banana 2.1', place: '', price: '', time: '' } };
   const qa = draftProps({ flow: 'upscale', parents: ['shape:src'] }); assert.equal(qa.status, 'draft'); assert.equal(qa.jobId, ''); assert.equal(qa.flow, 'upscale'); assert.equal(qa.medium, 'image');
   const up = spec('upscale', { inputs: [{ ...img('src'), url: takes[0].url }] }); const uq = await get(`/api/tools/${up.s.tool.id}/price?${new URLSearchParams({ provider: up.s.provider, ...up.s.quote })}`);
@@ -86,7 +86,7 @@ try {
   const arrow = { id: 'shape:arr', typeName: 'shape', type: 'arrow', x: 320, y: 160, rotation: 0, index: 'a3', parentId: 'page:page', isLocked: false, opacity: 1, meta: {}, props: { start: { x: 0, y: 0 }, end: { x: 80, y: 0 } } };
   const doc = (extra: Record<string, unknown>) => ({ schema: { schemaVersion: 2, sequences: {} }, store: { 'shape:src': src, 'shape:arr': arrow, ...extra } });
   const s1 = await send('PUT', `/api/canvas/boards/${board.id}`, { snapshot: doc({ 'shape:qa': card('shape:qa', qa) }) }); assert.equal(s1.status, 200);
-  await new Promise((r) => setTimeout(r, 400)); assert.equal((await get('/api/jobs')).length, n1, 'a quick action\'s card submits nothing');
+  await new Promise((r) => setTimeout(r, 400)); assert.equal((await get('/api/jobs?cursor=')).total /* the plain list is one 50-job page */, n1, 'a quick action\'s card submits nothing');
   ok('quick action → a priced draft, no job');
 
   // ---- reattach: a running card in a saved board is followed again after a reload, and finishes ----

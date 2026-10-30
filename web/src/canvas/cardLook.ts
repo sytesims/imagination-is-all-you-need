@@ -1,13 +1,15 @@
 /**
- * How a board card reads, as plain functions (no React, no tldraw), so the card, the zoomed-out pill and the tests share one set of words:
+ * How a board card reads, as plain functions (no React, no tldraw), so the card, the board and the tests share one set of words:
  *  - placeWord: where a quoted or finished run goes ("Your computer", "Comfy Cloud", "fal"); null for a sample run (its price says Sample).
- *  - FAR_ZOOM: under this zoom a card draws as a soft pill tinted by its medium, with its label only (the board stays legible at a glance).
- *  - cardLabel: the one label a card shows when zoomed out (the shot name, else the workflow).
+ *  - FAR_ZOOM: under this zoom the board draws cards without drop shadows or looping animations (CameraMotion.tsx); same card otherwise.
+ *  - TINY_ZOOM: under this zoom cards and what is in them draw square corners (rounded ones are 4 px or less by then and cost half the frame rate on a full board).
+ *  - cardLabel: a card's short label (the shot name, else the workflow).
  *  - emptyLine: what a draft's picture box says before the first run.
  */
 import { placeOfQuote } from '../shared/billing';
 
 export const FAR_ZOOM = 0.4;
+export const TINY_ZOOM = 0.2;
 const PLACES: Record<string, string> = { local: 'Your computer', 'comfy-cloud': 'Comfy Cloud', 'comfy-router': 'Comfy Cloud', comfy: 'Comfy Cloud', fal: 'fal', replicate: 'Replicate' };
 
 /** Where the run goes, in the board's words. */

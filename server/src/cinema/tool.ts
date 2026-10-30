@@ -3,7 +3,7 @@ import type { ToolDef } from '../tools/types.js';
 import type { Job } from '../jobs.js';
 import { DATA_DIR } from '../config.js';
 import { probe } from '../media.js';
-import { CINEMA_LOCAL_DURATIONS, durationsFor, resolveDuration, defaultDurationFor, durationErrorBody } from '../tools/h3/videoCaps.js';
+import { CINEMA_LOCAL_DURATIONS, durationsFor, resolveDuration, defaultDurationFor, durationErrorBody, noteSnap } from '../tools/h3/videoCaps.js';
 import { validateMentions } from '../shared/mentions.js';
 import { resolveElements } from '../elements/resolve.js';
 import { listElements } from '../library.js';
@@ -89,7 +89,7 @@ export const cinemaTool: ToolDef = {
     const bad = (code: string, field: string, message: string) => issues.push({ code, field, message });
     const prompt = (fields.prompt || '').slice(0, 10_000);
     const provId0 = fields.provider || 'comfy-open';
-    // ONE duration rule with the price quote (tools/h3/videoCaps durationsFor): an unsupported length → 400 invalid_duration + allowed list, never coerced
+    // ONE duration rule with the price quote (tools/h3/videoCaps resolveDuration): a length the model doesn't offer snaps to the nearest one, with a note (D5)
     const rd = resolveDuration('cinema', provId0, fields.duration ?? fields.seconds); if (rd && 'error' in rd) return { ...durationErrorBody(rd, fields.duration != null && fields.duration !== '' ? 'duration' : 'seconds') } as any;
     const duration = rd ? rd.seconds : defaultDurationFor('cinema', provId0)!;
     const resolution = truthy(fields.draft) ? '480p' : (fields.resolution || '1080p');
@@ -140,7 +140,7 @@ export const cinemaTool: ToolDef = {
     const lookPhrase = look.phrase ? `Look: ${look.phrase}` : '';
     const modePhrase = mode === 'extend' ? 'Continue the uploaded clip seamlessly from its last frame' : mode === 'edit' ? 'Edit the uploaded clip, keep its motion and timing' : '';
     const finalPrompt = [modePhrase, tl.cleanPrompt, tl.segments.length ? `Camera: ${timelinePhrase(tl.segments)}` : '', emo, lookPhrase].filter(Boolean).join('. ');
-    return {
+    const input = {
       prompt, finalPrompt, cleanPrompt: tl.cleanPrompt, timeline: tl.segments, timelineWarnings: tl.issues.map((i) => i.message),
       cameraPresets: [...new Set(tl.segments.map((s) => s.ltx).filter(Boolean))], funCameraPresets: [...new Set(tl.segments.map((s) => s.funCamera).filter(Boolean))],
       emotion, intensity, emotionStrength: emotionStrength(emotion, intensity), auto, panels: panels.map((p) => ({ ...p, finalPrompt: [tl.cleanPrompt, p.shot, `Camera: ${timelinePhrase(p.segments)}`, emo, lookPhrase].filter(Boolean).join('. ') })),
@@ -151,6 +151,8 @@ export const cinemaTool: ToolDef = {
       duration: mode === 'image' ? 1 : duration, resolution, draft: truthy(fields.draft), seed, warnings: tl.issues.filter((i) => i.code === 'overlap' || i.code === 'out_of_range').map((i) => i.message),
       simulate: mockFailOf(fields), target: '',
     };
+    if (mode !== 'image') noteSnap(input, rd); // the job says it was made at the nearest length, as the quote does
+    return input;
   },
   run(job: Job) {
     const n = Number(job.input.count) || 1;

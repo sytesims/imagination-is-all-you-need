@@ -6,14 +6,14 @@
 import { testPort } from './_ports.js'; import assert from 'node:assert/strict'; import { spawn } from 'node:child_process'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path';
 const ROOT = path.resolve(import.meta.dirname, '..'); const PORT = testPort(8897); const B = `http://localhost:${PORT}`;
 const srv = spawn('npx', ['tsx', 'src/index.ts'], { cwd: ROOT, env: { ...process.env, PORT: String(PORT), OPENHIGGSFIELD_DATA_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'canvas-agent-')),
-  OPENHIGGSFIELD_ENV_FILE: path.join(os.tmpdir(), 'canvas-agent-none.env'), OPENHIGGSFIELD_BACKEND: 'mock', OPENHIGGSFIELD_MOCK_KEYS: '1', OPENHIGGSFIELD_MOCK_DELAY_MS: '40', OPENHIGGSFIELD_DEMO_STEP_MS: '10' }, stdio: 'ignore', detached: true });
+  OPENHIGGSFIELD_ENV_FILE: path.join(os.tmpdir(), 'canvas-agent-none.env'), OPENHIGGSFIELD_BACKEND: 'mock', OPENHIGGSFIELD_MOCK_KEYS: '1', OPENHIGGSFIELD_MOCK_DELAY_MS: '40', OPENHIGGSFIELD_DEMO_STEP_MS: '10', OPENHIGGSFIELD_MOCK_BALANCE_COMFY: '32' }, stdio: 'ignore', detached: true });
 const ok = (m: string) => console.log('ok ' + m);
 const get = async (u: string, headers: Record<string, string> = {}) => (await (await fetch(B + u, { headers })).json()) as any;
 const send = async (method: string, u: string, body?: unknown, headers: Record<string, string> = {}) => {
   const r = await fetch(B + u, { method, ...(body !== undefined ? { body: JSON.stringify(body), headers: { 'content-type': 'application/json', ...headers } } : { headers }) });
   return { status: r.status, body: await r.json().catch(() => null) as any };
 };
-const submitJob = async () => { const fd = new FormData(); fd.append('prompt', 'A canvas agent bridge test'); fd.append('types', '["generate"]');
+const submitJob = async (prompt = 'A canvas agent bridge test') => { const fd = new FormData(); fd.append('prompt', prompt); fd.append('types', '["generate"]');
   const r = await fetch(`${B}/api/tools/create-image/jobs`, { method: 'POST', body: fd }); const b = await r.json().catch(() => null) as any; assert.equal(r.status, 200, `job submit: ${JSON.stringify(b)?.slice(0, 300)}`); return b.id as string; };
 const until = async (fn: () => Promise<any>, ms = 12_000) => { const end = Date.now() + ms; let v: any; while (Date.now() < end) { v = await fn(); if (v) return v; await new Promise((r) => setTimeout(r, 120)); } throw new Error('timed out'); };
 
@@ -50,9 +50,15 @@ try {
     if (op.kind === 'connect') return { arrowId: 'shape:arrow1', fromId: op.from_id, toId: op.to_id };
     if (op.kind === 'remove_card') { cards.delete(op.card_id); return { removed: op.card_id }; }
     if (op.kind === 'summary') return { nodes: [...cards.values(), ...notes.map((n) => ({ id: n.id, type: 'note', title: n.text })), ...[...frames.entries()].map(([id, name]) => ({ id, type: 'frame', title: name, children: frameKids.get(id) ?? [] }))] };
-    if (op.kind === 'propose_run') return { items: (op.card_ids as string[]).map((id) => ({ cardId: id, title: cards.get(id)?.prompt || 'Card', workflow: 'create', model: 'Mock Model', status: 'draft', usd: 0.04, credits: 4, quote: { credits: 4, demo: false, cost: { estUsd: 0.04, billedTo: 'mock' } }, problem: /UNWIRED/.test(cards.get(id)?.prompt ?? '') ? "MiniMax Music 3 isn't available on this server yet." : null })), totalUsd: 0.04 * (op.card_ids as string[]).length, totalCredits: 4 * (op.card_ids as string[]).length };
+    /* PAIDCOMFY: billed to Comfy at 7 Comfy credits a card (the server's simulated balance is 32); SAMPLECOMFY: the same, as a free sample */
+    const quoteOf = (p: string) => /PAIDCOMFY|SAMPLECOMFY/.test(p) ? { credits: 3, demo: /SAMPLE/.test(p), cost: { estUsd: /SAMPLE/.test(p) ? 0 : 0.03, billedTo: 'comfy', billedToName: 'Comfy Cloud', estUnits: 7, unitLabel: 'Comfy credits', demo: /SAMPLE/.test(p) } } : { credits: 4, demo: false, cost: { estUsd: 0.04, billedTo: 'mock', billedToName: 'Mock Cloud' } };
+    if (op.kind === 'propose_run') return { items: (op.card_ids as string[]).map((id) => ({ cardId: id, title: cards.get(id)?.prompt || 'Card', workflow: 'create', model: 'Mock Model', status: 'draft', usd: /SAMPLE/.test(cards.get(id)?.prompt ?? '') ? 0 : 0.04, credits: 4, quote: quoteOf(cards.get(id)?.prompt ?? ''), problem: /UNWIRED/.test(cards.get(id)?.prompt ?? '') ? "MiniMax Music 3 isn't available on this server yet." : null })), totalUsd: 0.04 * (op.card_ids as string[]).length, totalCredits: 4 * (op.card_ids as string[]).length };
     /* a card the server refuses (here: the poster look) stays a draft and is reported as failed, like agentBridge.runProposal */
-    if (op.kind === 'run_proposal') { const jobIds: string[] = []; const failed: any[] = []; for (const id of op.card_ids as string[]) { const c = cards.get(id); ran.push(id); if (/graphic poster/.test(c?.prompt ?? '')) { failed.push({ cardId: id, error: 'That model is busy. Nothing was charged.' }); continue; } jobIds.push(await submitJob()); if (c) { c.status = 'done'; c.results = [...(c.results ?? []), { url: '/samples/sample-keyframe.png', kind: 'image' }]; } } return { jobIds, failed }; }
+    if (op.kind === 'run_proposal') { const jobIds: string[] = []; const failed: any[] = []; for (const id of op.card_ids as string[]) { const c = cards.get(id); ran.push(id); if (/graphic poster/.test(c?.prompt ?? '')) { failed.push({ cardId: id, error: 'That model is busy. Nothing was charged.' }); continue; } /* [mockfail:credits] in the prompt: the mock job fails the way Comfy says "out of credits"; the card follows its job (failed, with its jobId) */
+      const fail = /\[mockfail/.test(c?.prompt ?? '') && (!/PARTIAL/.test(c?.prompt ?? '') || /close-up of the main character/.test(c?.prompt ?? ''));
+      const jid = await submitJob(fail ? `${c?.prompt ?? ''}` : 'A canvas agent bridge test'); jobIds.push(jid); if (c) c.jobId = jid;
+      if (fail) { await until(async () => ['failed', 'blocked'].includes((await get(`/api/jobs/${jid}`)).status)); if (c) c.status = 'failed'; }
+      else if (c) { c.status = 'done'; c.results = [...(c.results ?? []), { url: '/samples/sample-keyframe.png', kind: 'image' }]; } } return { jobIds, failed }; }
     if (op.kind === 'add_note') { const id = `shape:note${++cardN}`; notes.push({ id, ...op }); if (op.frame_id) frameKids.set(op.frame_id, [...(frameKids.get(op.frame_id) ?? []), id]); return { id, text: op.text }; }
     if (op.kind === 'add_frame') { const id = `shape:frame${++cardN}`; frames.set(id, op.name); return { id, name: op.name, x: op.at?.x ?? 0, y: op.at?.y ?? 0, w: op.w ?? 800, h: op.h ?? 500 }; }
     if (op.kind === 'move_into') { if (!frames.has(op.frame_id)) throw new Error(`No frame with id "${op.frame_id}" on this board.`); frameKids.set(op.frame_id, [...(frameKids.get(op.frame_id) ?? []), ...op.ids]); return { moved: op.ids.length, frameId: op.frame_id, frameName: frames.get(op.frame_id) }; }
@@ -120,7 +126,7 @@ try {
     await send('POST', `/api/canvas/boards/${board.id}/agent/proposals/${prop.id}/decision`, { decision: 'cancel' });
     ok('batch: refused whole before the page (bad or late ref), temp refs resolve, one dock line, one pending quote for all 12 cards'); }
   /* canvas_review from an MCP agent with vision: badges + a recommendation line; free (no job, no proposal) */
-  { const jobsNow = async () => (await get('/api/jobs')).length; const j0 = await jobsNow(); const p0 = (await get(`/api/canvas/boards/${board.id}/agent/proposals`)).items.length; const id = [...cards.keys()].at(-1)!;
+  { const jobsNow = async () => (await get('/api/jobs?cursor=')).total /* the plain list is one 50-job page */; const j0 = await jobsNow(); const p0 = (await get(`/api/canvas/boards/${board.id}/agent/proposals`)).items.length; const id = [...cards.keys()].at(-1)!;
     const rv = await send('POST', `/api/canvas/boards/${board.id}/agent/ops`, { ops: [{ kind: 'review_versions', cards: [{ card_id: id, reviews: [{ version: 1, verdict: 'check', reason: 'the face drifts' }, { version: 2, verdict: 'fits', reason: 'her face matches the sheet' }], recommend: 2 }], say: "Shot 2: I'd pick v2: her face matches the sheet. You choose." }] }, { 'x-ohf-agent-name': 'Claude' });
     assert.equal(rv.body.ok, true); assert.equal(cards.get(id).recommend, 2); assert.equal(cards.get(id).reviews[1].verdict, 'fits');
     assert.equal((await send('POST', `/api/canvas/boards/${board.id}/agent/ops`, { ops: [{ kind: 'review_versions', cards: [{ card_id: id, reviews: [{ version: 1, verdict: 'great' }] }] }] })).status, 400, 'only fits / check');
@@ -128,7 +134,7 @@ try {
     assert.equal(await jobsNow(), j0, 'reviewing starts no job'); assert.equal((await get(`/api/canvas/boards/${board.id}/agent/proposals`)).items.length, p0, 'and asks for no Go: it costs nothing');
     ok('canvas_review: an agent\'s own look lands as badges and a recommendation; no job, no quote'); }
 
-  const jobCount = async () => (await get('/api/jobs')).length;
+  const jobCount = async () => (await get('/api/jobs?cursor=')).total /* the plain list is one 50-job page */;
   const jobs0 = await jobCount();
 
   // ---- propose prices, but no job until Go ----
@@ -270,6 +276,64 @@ try {
   assert.ok((await feedNow()).some((e) => e.from === 'agent' && e.meta?.runId === d3.body.runId && /Nothing was charged/.test(e.text)), 'it says nothing was charged and ends');
   ok('demo agent: when nothing starts it ends kindly instead of waiting');
 
+  /* 2026-10-30: an unaffordable run is never offered. Comfy balance 32 credits (simulated), 5 cards × 7 = 35: the reason says so, Go is
+     refused, Cancel works. 4 cards (28) are fine; an unknown balance (the mock account) or free samples never block. */
+  { const mk = async (n: number, tag: string) => { const ids: string[] = []; for (let i = 0; i < n; i++) ids.push((await send('POST', `/api/canvas/boards/${board.id}/agent/ops`, { ops: [{ kind: 'add_card', workflow: 'create', prompt: `${tag} shot ${i}` }] })).body.results[0].result.card.id); return ids; };
+    const propose = async (ids: string[]) => (await send('POST', `/api/canvas/boards/${board.id}/agent/ops`, { ops: [{ kind: 'propose_run', card_ids: ids }] })).body.results[0].result.proposal;
+    const five = await mk(5, 'PAIDCOMFY'); const jb = await jobCount();
+    const short = await propose(five);
+    assert.equal(short.reason, 'Your Comfy balance is 32 credits; these runs need 35. Add credits on comfy.org, or run fewer cards.');
+    assert.deepEqual(short.balanceShort, { provider: 'comfy', name: 'Comfy Cloud', balance: 32, need: 35, unit: 'Comfy credits' });
+    const go = await send('POST', `/api/canvas/boards/${board.id}/agent/proposals/${short.id}/decision`, { decision: 'go' }); assert.equal(go.status, 409); assert.equal(go.body.code, 'balance_short');
+    assert.equal((await send('POST', `/api/canvas/boards/${board.id}/agent/proposals/${short.id}/decision`, { decision: 'cancel' })).status, 200, 'Cancel still works');
+    assert.equal(await jobCount(), jb, 'nothing ran');
+    const four = await propose(five.slice(0, 4)); assert.equal(four.reason, null, '28 of 32 credits: Go is on'); assert.equal(four.balanceShort, null);
+    await send('POST', `/api/canvas/boards/${board.id}/agent/proposals/${four.id}/decision`, { decision: 'cancel' });
+    const samples = await propose(await mk(6, 'SAMPLECOMFY')); assert.equal(samples.reason, null, 'free samples are never blocked');
+    await send('POST', `/api/canvas/boards/${board.id}/agent/proposals/${samples.id}/decision`, { decision: 'cancel' });
+    const unknown = await propose(await mk(12, 'Plain')); assert.equal(unknown.reason, null, 'an account whose balance can\'t be read: as before');
+    await send('POST', `/api/canvas/boards/${board.id}/agent/proposals/${unknown.id}/decision`, { decision: 'cancel' });
+    ok('balance: a proposal over the known Comfy balance says so in plain words and Go is refused (Cancel works); under it, samples or an unknown balance: Go is on'); }
+
+  /* 2026-10-30: when every card of a step fails, the agent names why, says nothing was charged only when true, and STOPS (no next phase).
+     The real case: "Make a 30s film", five key frames, Comfy out of credits. */
+  { const opsFrom = pageOps.length;
+    const df = await send('POST', `/api/canvas/boards/${board.id}/agent/demo`, { prompt: 'Make a 30s film: a fox at dawn [mockfail:credits]', starter: 'film' });
+    const pf = await pendingProp(/Five key frames/);
+    const offer = (await feedNow()).find((e) => e.from === 'agent' && e.meta?.proposalId === pf.id);
+    assert.match(offer.text, /Go runs real models, billed to your Mock Cloud account\./, 'the first quote says Go runs real models and who bills them');
+    await send('POST', `/api/canvas/boards/${board.id}/agent/proposals/${pf.id}/decision`, { decision: 'go' });
+    await until(async () => ((await get(`/api/canvas/boards/${board.id}/agent/state`)).demo.running ? null : true), 20_000);
+    const said = (await feedNow()).filter((e) => e.from === 'agent' && e.meta?.runId === df.body.runId).map((e) => e.text);
+    assert.ok(said.includes('None of the key frames finished: your Comfy account is out of credits. Nothing was charged for the failed cards. Fix that, then ask me to try again.'), said.join(' | '));
+    assert.ok(!said.some((t) => /Key frames are in|Now the clips/.test(t)), 'no success line, no next step');
+    assert.equal(pageOps.slice(opsFrom).filter((o) => o.kind === 'add_card' && o.workflow === 'video').length, 0, 'no clip cards were added');
+    ok('demo agent: every card of a step failed → the reason, "nothing was charged" (true here), and it stops'); }
+
+  /* some failed: it says how many and why, goes on with the ones that finished, and leaves out the clip made from the failed key frame */
+  { const opsFrom = pageOps.length;
+    const dp = await send('POST', `/api/canvas/boards/${board.id}/agent/demo`, { prompt: 'Make a 30s film: a fox at dawn PARTIAL [mockfail:credits]', starter: 'film' });
+    const pf = await pendingProp(/Five key frames/); const keys: string[] = pf.runCardIds;
+    await send('POST', `/api/canvas/boards/${board.id}/agent/proposals/${pf.id}/decision`, { decision: 'go' });
+    const pc = await pendingProp(/Five clips and the music/);
+    const said = (await feedNow()).filter((e) => e.from === 'agent' && e.meta?.runId === dp.body.runId).map((e) => e.text);
+    assert.ok(said.includes('1 of the 5 key frames didn’t finish: your Comfy account is out of credits. Nothing was charged for the failed cards. I’ll go on with the 4 that finished; Re-roll the others from their cards.'), said.join(' | '));
+    assert.ok(said.includes('I left out Hero close-up · clip: it needs a card that didn’t finish.'), said.join(' | '));
+    assert.ok(!said.some((t) => /^Key frames are in/.test(t)), 'no "all done" line');
+    const offer = said.filter((t) => /^That’s 5 runs/.test(t)).at(-1); assert.ok(offer && !/Go runs real models/.test(offer), 'the billing line is only on the first quote');
+    const clipOps = pageOps.slice(opsFrom).filter((o) => o.kind === 'add_card' && o.workflow === 'video'); assert.equal(clipOps.length, 4);
+    const failedKey = keys.find((id) => cards.get(id)?.status === 'failed'); assert.ok(failedKey && clipOps.every((o) => !o.inputs_from?.includes(failedKey)), 'no clip from the failed key frame');
+    assert.equal(pc.items.length, 5, 'four clips and the music');
+    await send('POST', `/api/canvas/boards/${board.id}/agent/demo/stop`);
+    ok('demo agent: some cards failed → how many and why, it goes on with the finished ones only'); }
+
+  /* the built-in agent never offers a run the balance can't cover: it says why and stops */
+  { const db = await send('POST', `/api/canvas/boards/${board.id}/agent/demo`, { prompt: 'Make a 30s film: a fox at dawn PAIDCOMFY', starter: 'film' });
+    await until(async () => ((await get(`/api/canvas/boards/${board.id}/agent/state`)).demo.running ? null : true), 20_000);
+    const said = (await feedNow()).filter((e) => e.from === 'agent' && e.meta?.runId === db.body.runId).map((e) => e.text);
+    assert.ok(said.some((t) => /^That’s 5 runs \(≈ \$0\.\d\d\)\. Your Comfy balance is 32 credits; these runs need 35\. Add credits on comfy\.org, or run fewer cards\. I’ll stop here/.test(t)), said.join(' | '));
+    ok('demo agent: a run over the balance is not offered; it says so and stops'); }
+
 
   /* "Short film from idea", the flagship: beats as notes → Looks good (an edit adds a beat, an edited note is what gets drawn) → cast →
      key frames from the cast → pick versions → film: clip cards wired to the picks are priced but NEVER run (video runs are off); only
@@ -340,6 +404,19 @@ try {
     assert.equal((await get(`/api/canvas/agent/proposals/${pcs.id}`)).status, 'cancelled');
     await new Promise((r) => setTimeout(r, 400)); assert.equal(await jobCount(), jobsT, 'Stop mid-flow runs nothing');
     ok('short film: Stop mid-flow cancels the waiting quote, nothing runs'); }
+
+  /* short film: the whole cast failed → the reason, and it stops before the key frames */
+  { const opsFrom = pageOps.length;
+    const dt = await send('POST', `/api/canvas/boards/${board.id}/agent/demo`, { prompt: 'A short film from my idea: a robot learns to whistle [mockfail:credits]', starter: 'short' });
+    const cs = await until(async () => (await feedNow()).find((e) => e.seq > dt.body.message.seq && e.from === 'agent' && e.meta?.confirm?.id) ?? null);
+    await send('POST', `/api/canvas/boards/${board.id}/agent/messages`, { text: 'Looks good', confirm_id: cs.meta.confirm.id });
+    const pcs = await pendingProp(/cast/i); await send('POST', `/api/canvas/boards/${board.id}/agent/proposals/${pcs.id}/decision`, { decision: 'go' });
+    await until(async () => ((await get(`/api/canvas/boards/${board.id}/agent/state`)).demo.running ? null : true), 20_000);
+    const said = (await feedNow()).filter((e) => e.from === 'agent' && e.meta?.runId === dt.body.runId).map((e) => e.text);
+    assert.ok(said.includes('None of the cast cards finished: your Comfy account is out of credits. Nothing was charged for the failed cards. Fix that, then ask me to try again.'), said.join(' | '));
+    assert.ok(!said.some((t) => /The cast is in|Step 3/.test(t)), 'no success line, no key frames');
+    assert.equal(pageOps.slice(opsFrom).filter((o) => o.kind === 'batch' && o.note?.startsWith('Key frames')).length, 0);
+    ok('short film: a step where nothing finished names the reason and stops'); }
 
   /* MCP: notes, frames, move_into, point_at and ask_pick go through the page; point_at leaves no feed row */
   const ops = await send('POST', `/api/canvas/boards/${board.id}/agent/ops`, { ops: [{ kind: 'add_frame', name: 'Shot 1 · Dawn', at: { x: 0, y: 0 }, w: 900, h: 500 }, { kind: 'add_note', text: 'Warm haze, low sun', color: 'yellow' }] });

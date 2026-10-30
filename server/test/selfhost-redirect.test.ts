@@ -59,10 +59,11 @@ assert.ok(!/github\.com\/sytesims/.test(shell), 'Shell uses the constant');
 assert.ok(/if \(\/\^https\?:\\\/\\\/\/i\.test\(to\)\) return <a [^>]*target="_blank" rel="noopener noreferrer"/.test(router), 'Link: external → new tab');
 // The moved docs exist
 const hw = readFileSync(new URL('../../docs/LOCAL-MODELS-AND-HARDWARE.md', import.meta.url), 'utf8');
-assert.ok(/^## Will it run on my machine\?$/m.test(hw) && /RTX 4090 \(24 GB\)/.test(hw), 'speed table in docs');
+// the public docs dropped the unverified speed table; the section and the per-tool memory table stay
+assert.ok(/^## Will it run on my machine\?$/m.test(hw) && /^## Graphics memory per tool$/m.test(hw) && /Fits 24 GB \(4090\)/.test(hw), 'fit section + memory table in docs');
 const cfg = readFileSync(new URL('../../docs/CONFIGURATION.md', import.meta.url), 'utf8');
 assert.ok(/^## Speech translation$/m.test(cfg), 'speech translation section in docs');
 const inst = readFileSync(new URL('../../docs/INSTALL.md', import.meta.url), 'utf8');
-assert.ok(/^## Docker$/m.test(inst) && /^## Mac \(Apple Silicon/m.test(inst) && /^## NVIDIA/m.test(inst) && /^## Real renders on Comfy Cloud$/m.test(inst), 'install steps in docs');
-ok('REPO_URL constant, GitHub → promo, new-tab links, docs hold the install steps and speed table');
+assert.ok(/^## Requirements$/m.test(inst) && /^### macOS$/m.test(inst) && /^### Windows$/m.test(inst) && /^## Start the app$/m.test(inst) && /^### Real renders on Comfy Cloud$/m.test(inst) && /Docker files are included/.test(inst), 'install steps in docs');
+ok('REPO_URL constant, GitHub → promo, new-tab links, docs hold the install steps and the fit / memory tables');
 console.log('ALL OK selfhost-redirect');

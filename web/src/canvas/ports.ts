@@ -31,6 +31,7 @@ export function portInfoOf(editor: Editor, s: TLShape, cat: GenCatalog | null): 
   if (def.kind === 'gen') { const st = cardState(editor, s, cat); if (!st.spec) return { ...base, ins: [{ kind: 'image', room: 1 }, { kind: 'text', room: 99 }] };
     return { ...base, ins: genIns(st.spec.slots, usedKinds(editor, s.id), st.spec.promptMode === 'hidden') }; }
   if (def.kind === 'compare') { const left = Math.max(0, NODE_DEFS.compare.inputMax - arrowsInto(editor, s.id).length); return { ...base, ins: [{ kind: 'image', room: left }, { kind: 'video', room: left }] }; }
+  if (def.kind === 'ad') return { ...base, ins: [{ kind: 'image', room: Math.max(0, NODE_DEFS.ad.inputMax - arrowsInto(editor, s.id).length) }] };
   return base;
 }
 

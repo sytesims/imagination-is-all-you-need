@@ -225,6 +225,7 @@ export const WF_TOOLS_EXCLUDED: Record<string, string> = {
   'app-change-voice': 'the engine behind Audio › Change voice (a-change-voice)',
   'app-translate-video': 'the engine behind Audio › Translate (a-translate)',
   'app-music-bed': 'the engine behind Audio › Music for a video (a-soundtrack-music)',
+  'two-person-swap': 'retired as a workflow choice: its links open Object / Person Swap (videoWorkflows.ts videoRedirect); the tool stays for old runs and their history feed',
 };
 
 // ------------------------------------------------------------------ chains

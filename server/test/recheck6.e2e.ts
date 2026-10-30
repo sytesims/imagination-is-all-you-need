@@ -15,11 +15,12 @@ try {
   // P2: no local route is ever a demo (lists, menu, quote, job)
   { const all = (await get('/api/routes')).body.routes.flatMap((m: any) => m.routes); const bad = all.filter((r: any) => r.kind === 'local' && (r.demo || r.status === 'Sample')); assert.deepEqual(bad.map((r: any) => r.routeId), []);
     const menu = (await get('/api/edit-video/tools')).body.tools.flatMap((t: any) => t.models.flatMap((m: any) => m.routes)); assert.deepEqual(menu.filter((r: any) => r.kind === 'local' && (r.demo || r.status === 'Sample')).map((r: any) => r.routeId), []);
-    const fr = menu.find((r: any) => r.routeId === 'local:comfy-rife'); if (fr) { assert.equal(fr.runnable, true); assert.equal(fr.reasonCode, 'local_auto'); assert.match(fr.priceLine, /^Free · on your computer/); }
-    const q = (await get('/api/tools/fps-boost/price')).body; assert.equal(q.routeKind, 'local', JSON.stringify(q)); assert.equal(q.demo, false); assert.equal(q.demoMessage, null); assert.match(q.priceLine, /^Free · on your computer/); assert.ok(!/List price/.test(JSON.stringify(q)), 'no list-price line'); assert.equal(q.credits, 0); assert.equal(q.reasonCode, 'local_auto');
+    // FPS Boost has a fal RIFE route too (tools/editVideo/index.ts): with Use local off and no keys, the sample runs there; the local row says "turn it on", never "Sample"
+    const fr = menu.find((r: any) => r.routeId === 'local:comfy-rife'); if (fr) { assert.equal(fr.runnable, false); assert.equal(fr.reasonCode, 'local_off'); assert.ok(!fr.demo); assert.match(fr.priceLine, /^Turn on Your computer/); }
+    const q = (await get('/api/tools/fps-boost/price')).body; assert.equal(q.routeKind, 'fal', JSON.stringify(q)); assert.equal(q.demo, true); assert.equal(q.credits, 0);
     const s = await form('/api/tools/fps-boost/jobs', { rights: '1', types: '["60"]' }, [['video', MP4]]); assert.equal(s.status, 200, JSON.stringify(s.body)); assert.equal(s.body.cost, 0); assert.equal(s.body.route, q.route);
-    const j = await done(s.body.id); assert.equal(j.status, 'done'); assert.ok(!j.demo, 'job not demo'); assert.equal(j.demoNotice ?? null, null);
-    ok(`P2: 0 local routes flagged demo in /api/routes (${all.filter((r: any) => r.kind === 'local').length} local) and the Edit Video menu; FPS Boost quote ${q.route} local/free (local_auto), job not demo`); }
+    const j = await done(s.body.id); assert.equal(j.status, 'done'); assert.equal(j.demo, true, 'a cloud sample');
+    ok(`P2: 0 local routes flagged demo in /api/routes (${all.filter((r: any) => r.kind === 'local').length} local) and the Edit Video menu; FPS Boost local row local_off, quote ${q.route} a free sample`); }
   // P3 case: types/mode/quality/resolution/aspect/scale normalised on quote AND submit
   { const q = await get('/api/tools/create-image/price?types=GENERATE&quality=HIGH&aspect=AUTO&resolution=720P&provider=api-ideogram'); assert.equal(q.status, 200, JSON.stringify(q.body)); // a model that takes Auto and quality tiers (the keyless default, Nano Banana 2.1, has none)
     const s = await form('/api/tools/create-image/jobs', { rights: '1', prompt: 'a mug', types: '["GENERATE"]', resolution: '1080P' }); assert.equal(s.status, 200, JSON.stringify(s.body)); const j = await done(s.body.id); assert.deepEqual(j.input.types, ['generate']);

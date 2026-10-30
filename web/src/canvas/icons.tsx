@@ -37,6 +37,7 @@ export const CoinIcon = I(<><circle cx="12" cy="12" r="8" /><path d="M14.5 9.5c-
 export const PromptIcon = I(<><path d="M4.5 6.5h15M4.5 11h10M4.5 15.5h12M4.5 20h7" /><path d="M18 14.5v4M16 16.5h4" /></>);
 export const UploadIcon = I(<><path d="M12 15V4M8 8l4-4 4 4" /><path d="M4.5 15v3.5A1.5 1.5 0 0 0 6 20h12a1.5 1.5 0 0 0 1.5-1.5V15" /></>);
 export const CompareIcon = I(<><rect x="3.5" y="5" width="17" height="14" rx="2.5" /><path d="M12 3.5v17" /><path d="m7 10 2-2 2 2M17 14l-2 2-2-2" /></>);
+export const AdIcon = I(<><rect x="4.5" y="3.5" width="15" height="17" rx="2.5" /><path d="M8 13.5h8M8 16.5h4.5" /><rect x="8" y="6.5" width="3.5" height="3.5" rx="1" /></>);
 export const TidyIcon = I(<><rect x="3.5" y="5" width="6" height="5" rx="1.4" /><rect x="14.5" y="5" width="6" height="5" rx="1.4" /><rect x="3.5" y="14" width="6" height="5" rx="1.4" /><rect x="14.5" y="14" width="6" height="5" rx="1.4" /><path d="M9.5 7.5h5M9.5 16.5h5" /></>);
 export const GroupIcon = I(<><path d="M8 3.5H5.5A2 2 0 0 0 3.5 5.5V8M16 3.5h2.5a2 2 0 0 1 2 2V8M20.5 16v2.5a2 2 0 0 1-2 2H16M8 20.5H5.5a2 2 0 0 1-2-2V16" /><rect x="8.5" y="8.5" width="7" height="7" rx="1.5" /></>);
 export const CheckIcon = I(<path d="m5 12.5 4.5 4.5L19 7.5" />);

@@ -30,19 +30,22 @@ try {
   const rw = (await o.get('/api/routes?toolId=h3-video&modelId=cloud-h3-wf')).routes[0].routes.find((x: any) => x.kind === 'comfy-cloud'); assert.equal(rw.routeId, 'comfy-cloud:cloud-h3-wf'); assert.notEqual(rw.reason, 'open-weights-only mode');
   const bad = await o.job('h3-video', { prompt: 'x', types: '["t2v"]', provider: 'cloud-h3' }); assert.equal(bad.status, 400, 'cloud-h3 refused in OW'); assert.match(JSON.stringify(bad.body), /open-weights-only|not supported|hosted/);
   ok('OW-only: cloud-h3-wf listed on /api/tools + /api/models with comfy-cloud route not blocked; cloud-h3 (API nodes) hidden and refused');
-  // DP 6d: 5 s / 10 s only (40 / 80 credits at 768p or 480p), quote = charge, mock run (no runner yet)
-  for (const [sec, want] of [[5, 40], [10, 80]] as const) {
+  // DP 6d: 5 s / 10 s only (40 / 80 credits at 768p; 480p has its own GPU-time rate since 2026-10-27, hostedPrices usdByQuality: 15 / 30), quote = charge, mock run
+  for (const [sec, want, want480] of [[5, 40, 15], [10, 80, 30]] as const) {
     const q = await o.get(`/api/models/quote?model=cloud-h3-wf&toolId=h3-video&seconds=${sec}`); assert.equal(q.valid, true, `${sec}s ${q.reason ?? q.error}`); assert.equal(q.route, 'comfy-cloud:cloud-h3-wf'); assert.equal(q.demo ? q.listCredits : q.credits, want, `${sec}s = ${want}`); if (q.demo) assert.equal(q.credits, 0, 'demo preview is free');
-    const q480 = await o.get(`/api/models/quote?model=cloud-h3-wf&toolId=h3-video&seconds=${sec}&resolution=480p`); assert.equal(q480.demo ? q480.listCredits : q480.credits, want, `${sec}s 480p = ${want}`);
+    const q480 = await o.get(`/api/models/quote?model=cloud-h3-wf&toolId=h3-video&seconds=${sec}&resolution=480p`); assert.equal(q480.demo ? q480.listCredits : q480.credits, want480, `${sec}s 480p = ${want480}`);
     const j = await o.job('h3-video', { prompt: 'a paper boat drifting', types: '["t2v"]', provider: 'cloud-h3-wf', seconds: String(sec) }); assert.equal(j.status, 200, JSON.stringify(j.body)); assert.equal(j.body.cost, q.credits, `${sec}s quote = charge`);
     if (sec === 5) { const d = await o.until(j.body.id); assert.equal(d.status, 'done'); assert.match(JSON.stringify(d.attribution ?? ''), /MiniMax H3/); }
   }
-  for (const sec of [2, 6, 8, 15, 16]) { assert.equal((await o.get(`/api/models/quote?model=cloud-h3-wf&toolId=h3-video&seconds=${sec}`)).valid, false, `${sec}s refused on quote`);
-    const j = await o.job('h3-video', { prompt: 'x', types: '["t2v"]', provider: 'cloud-h3-wf', seconds: String(sec) }); assert.equal(j.status, 400, `${sec}s refused on submit (no 120-credit 15 s job)`); }
+  // D5 (2026-10-28): any other length is made at the nearest offered one, with a note; quote = charge at that length (never a 120-credit 15 s job)
+  for (const [sec, to] of [[2, 5], [6, 5], [8, 10], [15, 10], [16, 10]] as const) { const q = await o.get(`/api/models/quote?model=cloud-h3-wf&toolId=h3-video&seconds=${sec}`);
+    assert.equal(q.valid, true, `${sec}s quote snaps`); assert.equal(q.demo ? q.listCredits : q.credits, to === 5 ? 40 : 80, `${sec}s quoted at ${to}s`);
+    const j = await o.job('h3-video', { prompt: 'x', types: '["t2v"]', provider: 'cloud-h3-wf', seconds: String(sec) }); assert.equal(j.status, 200, JSON.stringify(j.body)); assert.equal(j.body.cost, q.credits, `${sec}s quote = charge`);
+    assert.ok((j.body.warnings ?? []).some((w: string) => w.includes(`Made at ${to} s`)), JSON.stringify(j.body.warnings)); await o.until(j.body.id); }
   { const dq = await o.get('/api/models/quote?model=cloud-h3-wf&toolId=h3-video'); assert.equal(dq.demo ? dq.listCredits : dq.credits, 40, 'default 5 s = 40');
     const vl = (await o.get('/api/models?toolId=h3-video')).groups.flatMap((g: any) => g.models).find((m: any) => m.id === 'cloud-h3-wf').videoLimits;
     assert.deepEqual(vl.resolutions, ['768p', '480p']); assert.deepEqual(vl.durations, [5, 10]); assert.equal(vl.minSeconds, 5); assert.equal(vl.maxSeconds, 10); assert.deepEqual(vl.duration, { min: 5, max: 10, step: 5, values: [5, 10] }); }
-  ok('6d: cloud-h3-wf 5 s = 40, 10 s = 80 (768p and 480p), quote = charge, default 5 s; 2/6/8/15/16 s refused on quote + submit');
+  ok('6d: cloud-h3-wf 5 s = 40, 10 s = 80 at 768p (15 / 30 at 480p), quote = charge, default 5 s; 2/6/8/15/16 s snap to 5 or 10 s with a note');
   const hvN = (await n.get('/api/tools')).find((t: any) => t.id === 'h3-video'); assert.ok(ids(hvN).includes('cloud-h3') && ids(hvN).includes('cloud-h3-wf')); ok('normal mode: both cloud-h3 and cloud-h3-wf listed');
   // #12 local state
   const cN = await n.get('/api/config'); assert.deepEqual(cN.local, { reachable: true, enabled: false, status: 'off', statusText: 'Reachable, but off' }); assert.equal(cN.localReachable, true); assert.equal(cN.localEnabled, false);

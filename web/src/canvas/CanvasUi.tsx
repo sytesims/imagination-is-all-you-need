@@ -42,24 +42,40 @@ function ToolButton({ def }: { def: ToolDef }) {
 const GEN: { id: GenMedium; label: string; hint: string; icon: (p: { size?: number }) => JSX.Element }[] = [
   { id: 'image', label: 'Image', hint: 'Create, Relight, Upscale…', icon: ImageIcon }, { id: 'video', label: 'Video', hint: 'Create, Extend, Lip Sync…', icon: VideoIcon },
   { id: 'audio', label: 'Audio', hint: 'Music, sound, speech', icon: AudioIcon }, { id: '3d', label: '3D', hint: 'Image to 3D', icon: CubeIcon }];
-const NODES: { id: 'prompt' | 'upload' | 'note' | 'compare' | 'group'; label: string; hint: string; icon: (p: { size?: number }) => JSX.Element }[] = [
+const NODES: { id: 'prompt' | 'upload' | 'note' | 'compare' | 'group' | 'ad'; label: string; hint: string; icon: (p: { size?: number }) => JSX.Element }[] = [
   { id: 'prompt', label: 'Prompt', hint: 'Feeds a generate node', icon: Ic.PromptIcon }, { id: 'upload', label: 'Upload', hint: 'Image, clip or sound', icon: Ic.UploadIcon },
   { id: 'note', label: 'Note', hint: 'Plain text for you', icon: Ic.NoteIcon }, { id: 'compare', label: 'Compare', hint: 'Before / after slider', icon: Ic.CompareIcon },
-  { id: 'group', label: 'Group', hint: 'A frame with Run all', icon: Ic.GroupIcon }];
+  { id: 'group', label: 'Group', hint: 'A frame with Run all', icon: Ic.GroupIcon }, { id: 'ad', label: 'Ad layout', hint: 'Headline, price and logo', icon: Ic.AdIcon }];
 
-/** "New node": generate cards, the other node kinds, and every workflow the server can run. */
+type Make = (kind: 'gen' | 'prompt' | 'upload' | 'note' | 'compare' | 'group' | 'ad', flow?: string) => void;
+const plural = (n: number) => `${n} workflow${n === 1 ? '' : 's'}`;
+/** One menu tile; `more` (a medium with several workflows) shows its count and opens that medium's list. */
+const Tile = ({ id, label, hint, icon: I, more, onClick }: { id: string; label: string; hint: string; icon: (p: { size?: number }) => JSX.Element; more?: number; onClick: () => void }) =>
+  <button type="button" role="menuitem" className="cv-new-tile" data-testid={`cv-new-${id}`} aria-label={more ? `${label}, ${plural(more)}` : undefined} onClick={onClick}>
+    <i><I size={15} /></i>{more ? <em className="cv-new-n" aria-hidden>{more}<Ic.ChevronRightIcon size={12} /></em> : null}<b>{label}</b><small>{hint}</small></button>;
+
+/** "New node": the Generate tiles (each opens its medium's workflows) and the other node kinds. */
 export function NewNodeButton() {
-  const editor = useEditor(); const cat = useCatalog(); const btn = useRef<HTMLButtonElement>(null); const [open, setOpen] = useState(false);
-  const flows = availableFlows(cat).map(f => ({ ...f, category: f.medium }));
-  const make = (kind: 'gen' | 'prompt' | 'upload' | 'note' | 'compare' | 'group', flow?: string) => { setOpen(false); editor.setCurrentTool('select'); createNode(editor, kind, kind === 'gen' ? { flow: flow ?? DEFAULT_FLOW.image } : {}); };
+  const editor = useEditor(); const cat = useCatalog(); const btn = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false); const [step, setStep] = useState<GenMedium | null>(null);
+  const flows = availableFlows(cat); const count = (m: GenMedium) => flows.filter(f => f.medium === m).length;
+  const focus = (sel: string) => requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-testid="cv-new-pop"] ${sel}`)?.focus({ preventScroll: true }));
+  const close = () => { setOpen(false); setStep(null); };
+  const back = () => { const m = step; setStep(null); if (m) focus(`[data-testid="cv-new-${m}"]`); };
+  const pick = (m: GenMedium) => { if (count(m) > 1) { setStep(m); focus('.cv-new-flows [role=menuitem]'); } else make('gen', DEFAULT_FLOW[m]); };
+  const make: Make = (kind, flow) => { close(); editor.setCurrentTool('select'); createNode(editor, kind, kind === 'gen' ? { flow: flow ?? DEFAULT_FLOW.image } : {}); };
+  const g = step && GEN.find(k => k.id === step); const list = step ? flows.filter(f => f.medium === step) : [];
   return <>
-    <button ref={btn} type="button" className={`cv-tool cv-new${open ? ' on' : ''}`} aria-haspopup="menu" aria-expanded={open} aria-label="New node (G)" {...tip(open ? null : 'New node · G')} data-testid="cv-new" onClick={() => setOpen(o => !o)}><Ic.PlusIcon /></button>
-    <BarPopover open={open} anchor={btn} onClose={() => setOpen(false)} label="New node" placement="right" width={326} testId="cv-new-pop" role="menu">
-      <PopSection label="Generate"><div className="cv-new-grid" role="group">{GEN.map(k => <button key={k.id} type="button" role="menuitem" className="cv-new-tile" data-testid={`cv-new-${k.id}`} onClick={() => make('gen', DEFAULT_FLOW[k.id])}><i><k.icon size={15} /></i><b>{k.label}</b><small>{k.hint}</small></button>)}</div></PopSection>
-      <PopSection label="Nodes"><div className="cv-new-grid" role="group">{NODES.map(k => <button key={k.id} type="button" role="menuitem" className="cv-new-tile" data-testid={`cv-new-${k.id}`} onClick={() => make(k.id)}><i><k.icon size={15} /></i><b>{k.label}</b><small>{k.hint}</small></button>)}</div></PopSection>
-      <PopSection label="Workflows" aside={`${flows.length}`}>
-        <div className="cv-wf-scroll" role="group">{flows.map(w => <PopRow key={w.id} role="menuitem" icon={<FlowIcon flow={w.id} medium={w.medium} size={15} />} label={w.name} hint={w.needs} testId={`cv-new-wf-${w.id}`} onClick={() => make('gen', w.id)} />)}</div>
-      </PopSection>
+    <button ref={btn} type="button" className={`cv-tool cv-new${open ? ' on' : ''}`} aria-haspopup="menu" aria-expanded={open} aria-label="New node (G)" {...tip(open ? null : 'New node · G')} data-testid="cv-new" onClick={() => open ? close() : setOpen(true)}><Ic.PlusIcon /></button>
+    <BarPopover open={open} anchor={btn} onClose={close} onEscape={step ? back : close} label={g ? `New ${g.label} node` : 'New node'} placement="right" width={326} testId="cv-new-pop" role="menu">
+      {!g ? <>
+        <PopSection label="Generate"><div className="cv-new-grid" role="group">{GEN.map(k => { const n = count(k.id); return <Tile key={k.id} {...k} more={n > 1 ? n : undefined} onClick={() => pick(k.id)} />; })}</div></PopSection>
+        <PopSection label="Nodes"><div className="cv-new-grid" role="group">{NODES.map(k => <Tile key={k.id} {...k} onClick={() => make(k.id)} />)}</div></PopSection>
+      </> : <div className="cv-new-step">
+        <div className="cv-new-head"><button type="button" className="cv-new-back" aria-label="Back" data-testid="cv-new-back" onClick={back}><Ic.ChevronLeftIcon size={16} /></button>
+          <i><g.icon size={15} /></i><b>{g.label}</b><span>{plural(list.length)}</span></div>
+        <div className="cv-new-flows" role="group" aria-label={`${g.label} workflows`}>{list.map(f => <PopRow key={f.id} role="menuitem" className="cv-new-flow" icon={<FlowIcon flow={f.id} medium={f.medium} size={15} />} label={f.name} hint={f.tagline || f.needs} testId={`cv-new-wf-${f.id}`} onClick={() => make('gen', f.id)} />)}</div>
+      </div>}
       <p className="cv-new-note">A draft node with its price. Nothing runs until you press Generate.</p>
     </BarPopover>
   </>;

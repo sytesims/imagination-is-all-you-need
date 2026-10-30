@@ -18,7 +18,7 @@ assert.doesNotMatch(board, /\bhoverSound\b/, 'Canvas retains normal scroll-follo
 assert.doesNotMatch(board, /media: \(\) => null|<SoundToggle/, 'Canvas does not add a duplicate page-sound candidate or toggle');
 assert.match(board, /controls restartOnSound/);
 assert.match(trends, /controls hoverSound/);
-assert.equal((trends.match(/flow: 'Object \/ Person Swap'/g) ?? []).length, 3, 'all three final trend labels');
+assert.equal((trends.match(/flow: 'Object \/ Person Swap'/g) ?? []).length, 2, 'both final trend labels (the third card left in da25788)');
 assert.deepEqual(readSoundChoice(() => null), { on: true, migrated: false });
 const silent = { id: 'canvas', sound: false, share: 1, off: 0, explicit: true, playing: true, order: 1 };
 assert.equal(pickSound([silent], 'canvas', 'canvas'), null, 'even preferred/hovered silent Canvas cannot carry sound');

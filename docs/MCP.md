@@ -137,7 +137,7 @@ When your agent listens to a board, what you type in the canvas dock goes to it 
 
 | State | Pill · line | What it means |
 |---|---|---|
-| Not connected | Not connected · "Built-in demo" | No MCP client is connected. Starters play the built-in demo. |
+| Not connected | Not connected · "Built-in agent" | No MCP client is connected. Starters play the built-in agent: a scripted guide whose runs are real and billed (samples on a mock install). Every run waits for your Go. |
 | Connected | Connected · "Not reading this board yet" ("2 agents · not here yet" with several) | A client is connected, but nothing reads what you type. The dock shows the one thing to type in Claude Code, with a copy button. |
 | Working | Working · "Working on this board" | Your agent made a `canvas_*` call on this board in the last ~70 s (building over HTTP with no wait loop open). The dock says "Claude Code is working on this board"; what you type waits until it listens. |
 | Listening | Listening · "Reading this board" ("Messages go straight in" for a channel) | Its `canvas_wait_for_message` is open on this board (or returned under ~70 s ago), or a channel session is connected (see below). |

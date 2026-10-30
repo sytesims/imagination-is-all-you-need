@@ -333,6 +333,16 @@ async function account(id: string, refresh: boolean): Promise<AccountView> {
   cache.set(id, { at: Date.now(), v }); return v;
 }
 export const accounts = (refresh = false) => Promise.all(PROVIDER_BILLING.filter((p) => p.id !== 'local').map((p) => account(p.id, refresh)));
+/** One account's balance when it can be read (null when unknown: no key, no balance API, the read failed). Mock backend only:
+ *  OPENHIGGSFIELD_MOCK_BALANCE_<PROVIDER> (e.g. _COMFY=32, in that account's own units) simulates one, for tests and sandboxes. */
+export async function knownBalance(id: string, refresh = false): Promise<{ balance: number; balanceUnit: string; balanceUsd: number | null } | null> {
+  const sim = config.backend === 'mock' ? env(`MOCK_BALANCE_${id.toUpperCase()}`) : undefined;
+  if (sim != null && sim.trim() !== '' && Number.isFinite(Number(sim))) { const n = Number(sim);
+    return id === 'comfy' ? { balance: n, balanceUnit: 'Comfy credits', balanceUsd: r4(n / COMFY_CREDITS_PER_USD) } : id === 'bfl' ? { balance: n, balanceUnit: 'BFL credits', balanceUsd: n / 100 } : { balance: n, balanceUnit: 'USD', balanceUsd: n }; }
+  if (!PB[id] || id === 'local') return null;
+  const a = await account(id, refresh).catch(() => null);
+  return a && a.source === 'provider' && typeof a.balance === 'number' ? { balance: a.balance, balanceUnit: a.balanceUnit ?? 'USD', balanceUsd: a.balanceUsd ?? null } : null;
+}
 
 // ---------- HTTP ----------
 const canWrite = (req: FastifyRequest) => isLoopback(process.env.HOST) || isLoopback(req.ip);

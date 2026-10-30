@@ -28,6 +28,7 @@ import { MAC_WEIGHTS_REASON } from '../hardware/macWeights.js';
 import { mediaIssue } from '../mediaHandoff.js';
 import { routeOff, ROUTE_OFF_REASON } from './routeOff.js';
 import { videoFitBlock } from '../shared/videoFit.js';
+import { toolModes } from './defaults.js';
 
 /** Local ComfyUI available? Q5 (Oct 19): a real check. mock backend → yes (mock render). comfy backend → hardware.ts localReachable(): a cached
  * (30 s) /system_stats check of the ComfyUI address with a 1.5 s timeout, so an empty or Comfy Cloud address never counts as a local ComfyUI.
@@ -117,7 +118,8 @@ export function option(tool: ToolDef, r: RouteDef, input: Record<string, any> = 
   const h = r.priceRef ? HOSTED_BY_ID[r.priceRef] : undefined; const credits = routeCredits(tool, r, input, passes);
   const configured = keyConfigured(r.envKey, r.envAliases);
   const local = r.kind === 'local';
-  const modeOk = !r.modes || r.modes.includes(jobMode(input));
+  // no mode asked (a listing or quote without types): the tool's first mode, as its defaults read it (defaults.ts recommendedDefaults)
+  const modeOk = !r.modes || r.modes.includes(input.types == null && input.mode == null && input.type == null ? toolModes(tool)[0] ?? jobMode(input) : jobMode(input));
   let reason: string | undefined; let inputBlock = false; let tooHeavy = false; // Oct 19 #8: the job's inputs (mode, missing image…) block this route, not a key or wiring
   const fit = local && !r.comingSoon ? localFit(tool, r, input) : null;
   if (r.comingSoon) reason = r.comingSoon;

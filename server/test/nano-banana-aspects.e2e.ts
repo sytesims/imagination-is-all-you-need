@@ -28,8 +28,9 @@ const C = await import('../src/shared/imageCaps.ts'); const M = await import('..
     assert.match(c.source, /vertex-ai/); assert.match(c.source, /ai\.google\.dev/); assert.match(c.source, /nodes_gemini/);
     for (const a of list) assert.equal((C.checkImageCaps(id, { aspect: a }) as any).aspect, a, `${id} ${a} accepted`);
     const off = id === 'api-nano-banana-pro' ? ['1:4', '4:1', '1:8', '8:1', '5:7', '2:1'] : ['5:7', '2:1', '9:21', '7:5'];
-    for (const a of off) { const r = C.checkImageCaps(id, { aspect: a }) as any; assert.equal(r.ok, false, `${id} ${a} refused`); assert.equal(r.issues[0].field, 'aspect'); assert.match(r.issues[0].message, new RegExp(`Aspect ${a} isn't supported by this model`)); }
-    assert.equal((C.checkImageCaps(id, { aspect: 'auto' }) as any).ok, false, `${id}: Auto refused for a prompt-only run`);
+    // D5 (2026-10-28): the job check makes any other shape at the closest listed one, with a note (the Router body below still refuses it)
+    for (const a of off) { const r = C.checkImageCaps(id, { aspect: a }) as any; assert.ok(r.ok && (list as readonly string[]).includes(r.aspect), `${id} ${a} snapped: ${JSON.stringify(r)}`); assert.match(String(r.notes), /closest shape/); }
+    { const r = C.checkImageCaps(id, { aspect: 'auto' }) as any; assert.ok(r.ok && r.aspect !== 'auto' && (list as readonly string[]).includes(r.aspect), `${id}: Auto on a prompt-only run picks a listed shape (no Auto in the body)`); }
     assert.equal((C.checkImageCaps(id, { aspect: 'auto', mode: 'edit', refs: 1 }) as any).ok, true, `${id}: Auto taken on an edit`);
     assert.equal((C.checkImageCaps(id, { aspect: list.at(-1), mode: 'edit', refs: 1 }) as any).aspect, list.at(-1), `${id}: a picked aspect on an edit`);
   }
@@ -37,7 +38,7 @@ const C = await import('../src/shared/imageCaps.ts'); const M = await import('..
   assert.deepEqual(C.IMAGE_CAPS['api-kling-image'].aspects, ['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3', '21:9']); assert.ok(!C.IMAGE_CAPS['api-kling-image'].edit); // its own list since 2026-10-24 (hosted-aspects test; Seedream: router-image-sizes test)
   // one list everywhere: the Gemini API route's lists are the same constants
   assert.deepEqual(G.GEMINI_MODELS['gemini-nano-banana-2.1'].aspects, [...C.GEMINI_ASPECTS_14]); assert.deepEqual(G.GEMINI_MODELS['gemini-3-pro-image'].aspects, [...C.GEMINI_ASPECTS_10]);
-  ok('caps: 2.1 and 2 take 14 aspects, Pro 10; Auto on edits only; anything else refused with the plain message; other models unchanged');
+  ok('caps: 2.1 and 2 take 14 aspects, Pro 10; Auto on edits only; anything else snapped to the closest with a note; other models unchanged');
 }
 { // the Router body: exact, never snapped
   const R21 = M.ROUTER_MODELS['api-nano-banana-21']; const RP = M.ROUTER_MODELS['api-nano-banana-pro']; const R2 = M.ROUTER_MODELS['api-nano-banana'];
@@ -135,21 +136,22 @@ try {
   { const s = await post(nb({ types: '["edit"]', aspect: 'auto' }), [['image', PNG], ...Array.from({ length: 14 }, () => ['refs', PNG] as [string, string])]); assert.equal(s.status, 400, '15 images refused'); }
   ok('edit on Auto: aspectRatio left out (1 photo and 14 images); 15 images refused');
 
-  // ---- unsupported aspects via the API: 400, no call ----
-  for (const [f, re] of [[nb({ types: '["generate"]', aspect: '5:7' }), /Aspect 5:7 isn't supported/], [nb({ types: '["generate"]', aspect: 'auto' }), /no Auto aspect/],
-    [{ ...nb({ types: '["generate"]', aspect: '1:8' }), provider: 'api-nano-banana-pro', route: 'comfy-router:api-nano-banana-pro' }, /Aspect 1:8 isn't supported by this model/]] as const) {
-    const c0 = calls.length; const s = await post(f as Record<string, string>); assert.equal(s.status, 400, JSON.stringify(s.body)); assert.match(s.body.error, re); assert.equal(calls.length, c0, 'no Router call'); }
-  { const q = await get('/api/models/quote?model=api-nano-banana-pro&aspect=8:1&route=comfy-router:api-nano-banana-pro'); assert.ok(q.error || q.credits == null || q.issues, `Pro 8:1 quote refused: ${JSON.stringify(q).slice(0, 300)}`); }
-  ok('API: 5:7 and Auto (no photo) refused on 2.1, 1:8 refused on Pro (400, the caps message), no Router call made');
+  // ---- unsupported aspects via the API: made at the closest listed shape with a note (D5, 2026-10-28), never sent as asked ----
+  for (const [f, list, snapped] of [[nb({ types: '["generate"]', aspect: '5:7' }), FOURTEEN, true], [nb({ types: '["generate"]', aspect: 'auto' }), FOURTEEN, false /* no photo: the model's own default shape */],
+    [{ ...nb({ types: '["generate"]', aspect: '1:8' }), provider: 'api-nano-banana-pro', route: 'comfy-router:api-nano-banana-pro' }, TEN, true]] as const) {
+    const s = await post(f as Record<string, string>); assert.equal(s.status, 200, JSON.stringify(s.body)); const to = /Made at (\S+), the closest shape/.exec(String(s.body.warnings))?.[1];
+    if (snapped) assert.ok(to && (list as readonly string[]).includes(to), JSON.stringify(s.body.warnings)); else assert.ok(!to, JSON.stringify(s.body.warnings)); }
+  { const q = await get('/api/models/quote?model=api-nano-banana-pro&aspect=8:1&route=comfy-router:api-nano-banana-pro'); assert.ok(q.credits > 0 && (q.adjustNotes ?? []).some((n: string) => /closest shape/.test(n)), `Pro 8:1 quote snapped: ${JSON.stringify(q).slice(0, 300)}`); }
+  ok('API: 5:7 on 2.1 and 1:8 on Pro made at the closest listed shape with a note; Auto with no photo uses a listed shape; the quote says the same');
 
   // ---- prompt peek: the exact aspectRatio / imageSize ----
   { const p = await peek(nb({ types: '["generate"]', aspect: '1:8', imageResolution: '4K', n: '4' })); assert.equal(p.status, 200, JSON.stringify(p.body));
     assert.deepEqual(p.body.request, { model: 'vertexai/gemini-nano-banana-2.1', aspectRatio: '1:8', imageSize: '4K', images: 0 }); assert.equal(p.body.settings.n, 4);
     const e = await peek(nb({ types: '["edit"]', aspect: 'auto', imageResolution: '2K' }), { image: 1 }, { width: 640, height: 480 }); assert.equal(e.status, 200, JSON.stringify(e.body));
     assert.deepEqual(e.body.request, { model: 'vertexai/gemini-nano-banana-2.1', aspectRatio: null, imageSize: '2K', images: 1 }); assert.equal(e.body.settings.aspect, 'auto');
-    const bad = await peek(nb({ types: '["generate"]', aspect: '5:7' })); assert.equal(bad.status, 400); assert.match(bad.body.error, /Aspect 5:7 isn't supported/);
+    const bad = await peek(nb({ types: '["generate"]', aspect: '5:7' })); assert.equal(bad.status, 200, JSON.stringify(bad.body)); assert.ok(bad.body.request.aspectRatio !== '5:7' && (FOURTEEN as readonly string[]).includes(bad.body.request.aspectRatio), JSON.stringify(bad.body.request));
     const other = await peek({ provider: 'api-ideogram', prompt: 'x', types: '["generate"]', aspect: '16:9' }); assert.equal(other.body.request ?? null, null, 'other models: no request line');
-    ok('peek: request { aspectRatio 1:8, imageSize 4K } for t2i; aspectRatio null (left out) + imageSize 2K on an edit on Auto; 5:7 refused; other models unchanged'); }
+    ok('peek: request { aspectRatio 1:8, imageSize 4K } for t2i; aspectRatio null (left out) + imageSize 2K on an edit on Auto; 5:7 sent as the closest listed shape; other models unchanged'); }
   console.log('ALL OK nano-banana-aspects');
 } catch (e) { console.error(err.slice(-3000)); throw e; } finally {
   if (proc?.pid) { try { process.kill(-proc.pid, 'SIGTERM'); } catch { /* gone */ } }

@@ -105,7 +105,7 @@ try {
   { for (const [key, engine] of [['qwen-image', 'comfy-qwen-image'], ['nano-banana-2', 'api-nano-banana']] as const) {
       const pre = (await a.model(key)).preselect.runOn; const q = await a.quote(key);
       const s = await a.job({ model: key, runOn: 'auto', provider: engine }); assert.equal(s.status, 200, JSON.stringify(s.body)); assert.equal(s.body.runOn, pre, `${key}: submit runOn=auto ran on ${s.body.runOn}, pre-selected ${pre}`); assert.equal(s.body.route, q.route, 'quote route = submit route');
-      assert.equal(typeof s.body.runOnLabel, 'string'); assert.equal(s.body.routing.allowFallback, false); assert.equal(s.body.routing.order.length, 1, 'no fallback order');
+      assert.equal(typeof s.body.runOnLabel, 'string'); /* D4 (2026-10-28): Auto's pre-selected place moves on to the next ready place that costs the same or less (routing/select.ts planInner) */ assert.equal(s.body.routing.allowFallback, true); assert.equal(s.body.routing.order[0], q.route, 'the pre-selected place first');
       const s2 = await a.job({ model: key, provider: engine }); assert.equal(s2.body.runOn, pre, 'no runOn = the same place');
       const j = await a.until(s.body.id); assert.equal(j.status, 'done'); assert.equal(j.runOn, pre); }
     ok('submit with runOn=auto and without runOn: same place as the listing and the quote, named (runOn, runOnLabel), routing.order has one route'); }
@@ -125,9 +125,13 @@ try {
     await a.send('PUT', '/api/me/routing', { perTool: {} }); await b.send('PUT', '/api/me/routing', { perTool: {} });
     ok('saved choice: Replicate kept over a ready GPU and fal (quote + submit), survives settings changes; a saved Comfy without its key → runnable:false + "Add a Comfy key", submit refused, nothing charged'); }
 
-  // ---- 4. no automatic fallback; 5. Try on pins the place ----
+  // ---- 4. Auto moves on only when free and not dearer (D4, 2026-10-28), allowFallback=0 stays put; 5. Try on pins the place ----
   { const pre = await a.quote('qwen-image'); assert.equal(pre.runOn, 'fal');
-    const s = await a.job({ provider: 'comfy-qwen-image', simulateRouteFail: pre.route }); assert.equal(s.status, 200, JSON.stringify(s.body));
+    // D4 (2026-10-28): Auto's pre-selected place moves on to the next ready place that costs the same or less when the failed try wasn't charged
+    const mv = await a.job({ provider: 'comfy-qwen-image', simulateRouteFail: pre.route }); const jm = await a.until(mv.body.id);
+    assert.equal(jm.status, 'done', JSON.stringify(jm.routeAttempts)); assert.equal(jm.routeAttempts.length, 2); assert.equal(jm.runOn, 'local', 'moved on to the free ready place');
+    // allowFallback=0 turns that off: the failure stays on its place and lists tryOn
+    const s = await a.job({ provider: 'comfy-qwen-image', simulateRouteFail: pre.route, allowFallback: '0' }); assert.equal(s.status, 200, JSON.stringify(s.body));
     const j = await a.until(s.body.id); assert.equal(j.status, 'failed', 'stays failed: no automatic switch'); assert.equal(j.routeAttempts.length, 1); assert.equal(j.route, pre.route); assert.equal(j.runOn, 'fal');
     assert.ok(Array.isArray(j.tryOn) && j.tryOn.length >= 1, JSON.stringify(j.tryOn)); assert.ok(j.tryOn.every((o: any) => o.runOn !== 'fal'), 'only OTHER places');
     assert.equal(j.tryOn[0].runOn, 'local', 'the next ready place first (Local is ready; Replicate is only a sample)'); assert.equal(j.tryOn[0].credits, 0); assert.equal(j.tryOn[0].runOnLabel, 'Your computer');
@@ -139,11 +143,12 @@ try {
   { const nb = await a.quote('nano-banana-2'); assert.equal(nb.runOn, 'comfy-cloud');
     const s = await a.job({ provider: 'api-nano-banana', simulateRouteFail: nb.route, allowFallback: '1' }); const j = await a.until(s.body.id);
     assert.ok(j.routeAttempts.length > 1 || j.status === 'needs_decision', `allowFallback=1 (API opt-in) still moves on or asks: ${j.status} ${j.routeAttempts.length}`);
-    const s0 = await a.job({ provider: 'api-nano-banana', simulateRouteFail: nb.route }); const j0 = await a.until(s0.body.id); assert.equal(j0.status, 'failed'); assert.equal(j0.routeAttempts.length, 1);
-    ok(`allowFallback=1 on the request still opts in (${j.status}, ${j.routeAttempts.length} attempts); without it the same failure stays on Comfy (tryOn ${j0.tryOn.map((o: any) => o.runOn).join(', ')})`); }
+    const s0 = await a.job({ provider: 'api-nano-banana', simulateRouteFail: nb.route, allowFallback: '0' }); const j0 = await a.until(s0.body.id); assert.equal(j0.status, 'failed', JSON.stringify([j0.status, j0.routeAttempts, j0.routing])); assert.equal(j0.routeAttempts.length, 1);
+    ok(`allowFallback=1 on the request still opts in (${j.status}, ${j.routeAttempts.length} attempts); allowFallback=0 keeps the same failure on Comfy (tryOn ${j0.tryOn.map((o: any) => o.runOn).join(', ')})`); }
   // the saved global allowFallback from older settings is ignored (read as off)
   { await a.global({ allowFallback: true }); assert.equal((await a.get('/api/me/routing')).global.allowFallback, false);
-    const q = await a.quote('qwen-image'); const s = await a.job({ provider: 'comfy-qwen-image', simulateRouteFail: q.route }); const j = await a.until(s.body.id); assert.equal(j.status, 'failed'); assert.equal(j.routeAttempts.length, 1);
-    ok('a stored global allowFallback:true is read as off: still no automatic fallback'); }
+    // a place the user picked never moves on unless the request says allowFallback=1 (D4): the stored true doesn't change that
+    const q = await a.quote('qwen-image'); const s = await a.job({ provider: 'comfy-qwen-image', runOn: q.runOn, simulateRouteFail: q.route }); const j = await a.until(s.body.id); assert.equal(j.status, 'failed', JSON.stringify(j.routeAttempts)); assert.equal(j.routeAttempts.length, 1);
+    ok('a stored global allowFallback:true is read as off: a picked place still stays put'); }
   console.log('ALL OK runon-preselect');
 } finally { stop(S1); stop(S2); }

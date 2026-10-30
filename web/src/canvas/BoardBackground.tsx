@@ -45,8 +45,8 @@ export function BoardBackground() {
     const el = root.current; if (!el) return; const c = editor.getCamera(); const z = c.z;
     for (const node of el.querySelectorAll<HTMLElement>('[data-f]')) {
       const f = Number(node.dataset.f), zf = Number(node.dataset.zf), base = Number(node.dataset.tile);
-      /* the dot grid: one dot every 24 page px (96 when far out, so it never turns to noise) */
-      const size = node.dataset.grid ? 24 * (z < 0.4 ? 4 : z < 0.8 ? 2 : 1) * z : base * Math.pow(z, zf);
+      /* the dot grid: one dot every 24 page px (96 when far out, 384 very far out, so it never turns to noise) */
+      const size = node.dataset.grid ? 24 * (z < 0.15 ? 16 : z < 0.4 ? 4 : z < 0.8 ? 2 : 1) * z : base * Math.pow(z, zf);
       node.style.backgroundSize = `${size}px ${size}px`; node.style.inset = `${-size}px`;
       node.style.transform = `translate3d(${mod(c.x * z * f, size)}px,${mod(c.y * z * f, size)}px,0)`;
     }

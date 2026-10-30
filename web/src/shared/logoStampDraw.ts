@@ -7,7 +7,7 @@
  *    The original result is never touched; the copy is cached here per result + settings + brand.
  */
 import { fontStack, luminance, normHex, type BrandKit } from '../../../server/src/shared/brandKit';
-import { endCardLayout, plateFor, stampLayout, type StampLayout, type StampSettings } from '../../../server/src/shared/logoStamp';
+import { endCardLayout, plateFor, stampLayout, type Box, type StampLayout, type StampSettings } from '../../../server/src/shared/logoStamp';
 
 export interface StampArt { kit: BrandKit; logo: HTMLImageElement | null; logoSize: { w: number; h: number } | null; logoLum: number | null; font: string }
 const lumOf = (r: number, g: number, b: number) => (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
@@ -20,8 +20,8 @@ export function brightness(src: CanvasImageSource, part?: [number, number, numbe
     let s = 0, n = 0; for (let i = 0; i < d.length; i += 4) { if (d[i + 3] < 128) continue; s += lumOf(d[i], d[i + 1], d[i + 2]); n++; } return n ? s / n : null;
   } catch { return null; }
 }
-const loadImg = (src: string) => new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.decoding = 'async'; i.onload = () => res(i); i.onerror = () => rej(new Error('That image couldn’t be read.')); i.src = src; });
-const cssFont = (name: string) => fontStack(name || 'Manrope').map((f) => (/^(sans-serif|serif|monospace)$/.test(f) ? f : `"${f}"`)).join(', ');
+export const loadImg = (src: string) => new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.decoding = 'async'; i.onload = () => res(i); i.onerror = () => rej(new Error('That image couldn’t be read.')); i.src = src; });
+export const cssFont = (name: string) => fontStack(name || 'Manrope').map((f) => (/^(sans-serif|serif|monospace)$/.test(f) ? f : `"${f}"`)).join(', ');
 const artCache = new Map<string, Promise<StampArt>>();
 /** The brand's logo (loaded, with its own size and brightness) and the heading font (asked for, so the canvas uses it when the app has it). */
 export function loadStampArt(kit: BrandKit): Promise<StampArt> {
@@ -33,6 +33,14 @@ export function loadStampArt(kit: BrandKit): Promise<StampArt> {
     return { kit, logo, logoSize, logoLum: logo ? brightness(logo) : null, font };
   })();
   artCache.set(key, p); return p;
+}
+/** The logo in its box, on a soft plate when one is needed (else a faint shadow); `unit` (the logo's height) sizes the shadows.
+ *  Shared by the stamp and the Ad layout card, so a logo looks the same everywhere. */
+export function drawLogo(g: CanvasRenderingContext2D, img: CanvasImageSource, logo: Box, plate: (Box & { r: number; kind: 'light' | 'dark' }) | null, unit: number) {
+  if (plate) { g.fillStyle = plate.kind === 'light' ? 'rgba(255,255,255,0.86)' : 'rgba(12,12,14,0.74)'; g.shadowColor = 'rgba(0,0,0,0.22)'; g.shadowBlur = unit * 0.25; g.shadowOffsetY = unit * 0.05;
+    g.beginPath(); g.roundRect(plate.x, plate.y, plate.w, plate.h, plate.r); g.fill(); g.shadowColor = 'transparent'; }
+  else { g.shadowColor = 'rgba(0,0,0,0.3)'; g.shadowBlur = unit * 0.06; g.shadowOffsetY = unit * 0.02; }
+  g.drawImage(img, logo.x, logo.y, logo.w, logo.h); g.shadowColor = 'transparent';
 }
 /** The line of text the stamp shows ('' = none): the typed line, else the brand's name. */
 export const stampText = (kit: BrandKit, s: StampSettings) => (s.textOn ? (s.text.trim() || kit.name) : '');
@@ -47,9 +55,7 @@ export function drawStamp(g: CanvasRenderingContext2D, W: number, H: number, art
   const plate = art.logo ? plateFor(s.backing, art.logoLum, areaLum) : null;
   const l = plate ? stampLayout(W, H, s, art.logoSize, measure, true) : l0;
   g.save(); g.globalAlpha = s.opacity;
-  if (l.plate && plate) { g.fillStyle = plate === 'light' ? 'rgba(255,255,255,0.86)' : 'rgba(12,12,14,0.74)'; g.shadowColor = 'rgba(0,0,0,0.22)'; g.shadowBlur = l.logoH * 0.25; g.shadowOffsetY = l.logoH * 0.05;
-    g.beginPath(); g.roundRect(l.plate.x, l.plate.y, l.plate.w, l.plate.h, l.plate.r); g.fill(); g.shadowColor = 'transparent'; }
-  if (l.logo && art.logo) { if (!plate) { g.shadowColor = 'rgba(0,0,0,0.3)'; g.shadowBlur = l.logoH * 0.06; g.shadowOffsetY = l.logoH * 0.02; } g.drawImage(art.logo, l.logo.x, l.logo.y, l.logo.w, l.logo.h); g.shadowColor = 'transparent'; }
+  if (l.logo && art.logo) drawLogo(g, art.logo, l.logo, l.plate && plate ? { ...l.plate, kind: plate } : null, l.logoH);
   if (l.text) {
     const under = plate === 'light' ? 0.9 : plate === 'dark' ? 0.1 : areaLum ?? 0.3; const dark = under > 0.6;
     g.font = `700 ${l.fontPx}px ${art.font}`; g.textBaseline = 'top'; g.fillStyle = dark ? '#14151A' : '#FFFFFF';

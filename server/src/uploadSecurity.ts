@@ -20,7 +20,7 @@ const formats: Record<string, { kind: Kind; mime: string; codec?: string[] }> = 
 export function uploadKind(field: string): Kind | null {
   if (/^(video|refVideos?|videoRefs|matte|clip|streams)$/.test(field)) return 'video';
   if (/^(audio|voiceAudio|refAudios?|speech|samples|voiceSamples|voiceSample|sample)$/.test(field)) return 'audio';
-  if (/^(refs?|refImages|images?|style|mask|frame|start|end|sourceImage|keyframes?|firstFrame|startFrame|lastFrame|endImage|colourRef|personA|personB|presenterImage|faces?|person|garment|characters?|photos|reference|location|poster|titleCard|endCard|endcard|still|products|cue\d{1,3}|overlay|foreground|background)$/.test(field)) return 'image';
+  if (/^(refs?|refImages|images?|imageOriginal|style|mask|frame|start|end|sourceImage|keyframes?|firstFrame|startFrame|lastFrame|endImage|colourRef|personA|personB|presenterImage|faces?|person|garment|characters?|photos|reference|location|poster|titleCard|endCard|endcard|still|products|cue\d{1,3}|overlay|foreground|background)$/.test(field)) return 'image';
   return null;
 }
 const bad = (field: string, message = 'Unsupported or damaged media. Use a supported raster image, video or audio file.') => Object.assign(new Error(message), { statusCode: 400, code: 'upload_format', field });
@@ -154,12 +154,19 @@ export function registerUploadSecurity(app: FastifyInstance, tempRoot = os.tmpdi
           if (route === '/api/tools/:toolId/jobs' || route === '/api/jobs' || route === '/api/tools/:id/price') {
             const { getTool, DEFAULT_TOOL_ID } = await import('./tools/registry.js');
             const tool = getTool((req.params as any)?.toolId ?? (req.params as any)?.id ?? DEFAULT_TOOL_ID);
-            const input = tool?.inputs.find(i => ['file', 'files'].includes(i.kind) && i.name === field);
+            // imageOriginal: the photo as picked, before the bar fitted or cropped it (apps.ts imagePrepOf)
+            const input = field === 'imageOriginal' ? { accept: 'image/*' } : tool?.inputs.find(i => ['file', 'files'].includes(i.kind) && i.name === field);
             if (!input) throw bad(field, 'Unknown file input.');
             expected = acceptKind(input.accept) ?? undefined;
             if (!expected) throw bad(field);
           }
-          canonical = await validateUpload(file, part.filename, part.mimetype, part.fieldname, expected);
+          // Brand logos may also be SVG or GIF (brandKits.ts refuses SVGs with script); checked by content here, not by ffprobe
+          const logoExt = route === '/api/brand-kits/:id/logo' ? path.extname(part.filename).toLowerCase() : '';
+          if (logoExt === '.svg' || logoExt === '.gif') {
+            const head = (await readFile(file)).subarray(0, 512).toString('utf8');
+            if (logoExt === '.gif' ? !head.startsWith('GIF8') : !/<svg[\s>]/i.test(head)) throw bad(field);
+            canonical = logoExt === '.gif' ? { ext: '.gif', mime: 'image/gif' } : { ext: '.svg', mime: 'image/svg+xml' };
+          } else canonical = await validateUpload(file, part.filename, part.mimetype, part.fieldname, expected);
         }
         staged.push({ ...part, filename: `${path.basename(part.filename, path.extname(part.filename))}${canonical.ext}`, mimetype: canonical.mime, privateFile: file });
       }
@@ -191,7 +198,7 @@ export function registerUploadSecurity(app: FastifyInstance, tempRoot = os.tmpdi
 export function mediaResponseHeaders(res: { setHeader(name: string, value: string): unknown }, file: string) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'; media-src 'self'; img-src 'self' data:; style-src 'unsafe-inline'");
-  if (!/\.(png|jpe?g|webp|mp4|mov|webm|m4v|wav|mp3|m4a|aac|ogg|flac|glb|vtt|srt)$/i.test(file)) {
+  if (!/\.(png|jpe?g|webp|mp4|mov|webm|m4v|wav|mp3|m4a|aac|ogg|flac|glb|vtt|srt)$/i.test(file) && !/\/brand-[^/]*\.(svg|gif)$/i.test(file)) {
     res.setHeader('Content-Type', 'application/octet-stream'); res.setHeader('Content-Disposition', 'attachment');
   }
 }

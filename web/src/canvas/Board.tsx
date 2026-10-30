@@ -27,7 +27,7 @@ import { CanvasOverlays, linkArrowVisibility } from './LinkLayer';
 import { BoardBackground } from './BoardBackground';
 import { GenCardShapeUtil } from './genCardUtil';
 import { variationOf } from './variation';
-import { PromptNodeUtil, UploadNodeUtil, NoteNodeUtil, CompareNodeUtil, GroupNodeUtil } from './auxShapes';
+import { PromptNodeUtil, UploadNodeUtil, NoteNodeUtil, CompareNodeUtil, GroupNodeUtil, AdNodeUtil } from './auxShapes';
 import { lastFlowNow, setBoardCtx, exposeForDev, createNode, createCard } from './agentApi';
 import { reattachRunning } from './genRun';
 import { GEN_TYPE } from './graph';
@@ -46,13 +46,13 @@ const assetStore: TLAssetStore = {
     const w = Number((asset.props as any).w) || 0; return w ? gridSrc(src, Math.max(160, w * ctx.screenScale)) : src;
   },
 };
-const SHAPE_UTILS = [ResultCardShapeUtil, GenCardShapeUtil, PromptNodeUtil, UploadNodeUtil, NoteNodeUtil, CompareNodeUtil, GroupNodeUtil];
+const SHAPE_UTILS = [ResultCardShapeUtil, GenCardShapeUtil, PromptNodeUtil, UploadNodeUtil, NoteNodeUtil, CompareNodeUtil, GroupNodeUtil, AdNodeUtil];
 const THEMES = { default: BRAND_THEME };
 /* No tldraw main menu, page menu, toolbar, style panel or navigation clutter: our toolbar, zoom and switcher replace them.
    Context menu, keyboard shortcuts dialog, rich text / image / video toolbars, toasts and dialogs stay tldraw's. */
 const COMPONENTS: TLComponents = { MainMenu: null, PageMenu: null, MenuPanel: null, NavigationPanel: null, Toolbar: null, StylePanel: null, HelpMenu: null, ActionsMenu: null,
   QuickActions: null, DebugMenu: null, DebugPanel: null, SharePanel: null, TopPanel: null, Minimap: null, ZoomMenu: null, HelperButtons: null, Grid: null, Background: BoardBackground,
-  OnTheCanvas: CanvasOverlays /* links (notches, threads, stardust), magnetic snap, and zoomed far out the night sky (LinkLayer.tsx, Constellation.tsx) */ };
+  OnTheCanvas: CanvasOverlays /* links (notches, threads, stardust) and magnetic snap (LinkLayer.tsx) */ };
 
 /** A pasted link becomes a bookmark card with its title, description and picture (our /api/canvas/unfurl reads the page server side). */
 function registerLinkPreviews(editor: Editor) {
@@ -64,8 +64,11 @@ function registerLinkPreviews(editor: Editor) {
   });
 }
 /* One page per board (2026-10-28): the page menu is hidden, so the context menu's "Move to page → New page" sent a card somewhere no one
-   could reach it. Boards are the pages here. */
-const OPTIONS = { maxPages: 1 };
+   could reach it. Boards are the pages here.
+   Smooth zoom (2026-10-30): tldraw writes the zoom into a CSS variable on the board, and every change restyles every card on screen
+   (~10 ms a frame with 90 cards). Past 40 shapes it writes it once the camera stops instead of every frame (tldraw's own big-board
+   switch, default 500); only zoom-scaled details (link width, card text size) settle when you stop. */
+const OPTIONS = { maxPages: 1, debouncedZoomThreshold: 40 };
 /** Keyboard: G = new generate card, ⌘D on a generate card = variation (tldraw's actions keep every other shortcut). */
 const OVERRIDES: TLUiOverrides = {
   tools(editor, tools) { return { ...tools, note: { ...tools.note, kbd: undefined } }; },

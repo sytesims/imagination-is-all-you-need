@@ -36,7 +36,7 @@ try {
   assert.ok('posterUrl' in mine && 'caption' in mine); assert.equal(mine.posterUrl, null); assert.equal(mine.caption, null);
   ok('/api/jobs items carry posterUrl + caption (null for a normal job)');
   // (d) elements
-  const efd = new FormData(); efd.set('name', 'Bottle'); efd.set('kind', 'product'); efd.set('file', new Blob([fs.readFileSync(path.join(EX, 'assets/demo01.jpg'))], { type: 'image/jpeg' }), 'b.jpg');
+  const efd = new FormData(); efd.set('name', 'Bottle'); efd.set('kind', 'product'); efd.set('image' /* the element upload field (uploadSecurity.ts) */, new Blob([fs.readFileSync(path.join(EX, 'assets/demo01.jpg'))], { type: 'image/jpeg' }), 'b.jpg');
   const er = await fetch(B + '/api/elements', { method: 'POST', body: efd }); const el = await er.json() as any; assert.ok(er.ok, JSON.stringify(el)); assert.equal(el.aiGenerated ?? el.element?.aiGenerated, false, 'uploaded photo → not AI');
   const els = await get('/api/elements'); const list: any[] = els.items ?? els.elements ?? els; assert.ok(list.length >= 1);
   for (const e of list) { assert.equal(typeof e.aiGenerated, 'boolean'); assert.ok(e.credit === null || typeof e.credit === 'string'); }

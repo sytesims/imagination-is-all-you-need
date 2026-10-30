@@ -36,7 +36,7 @@ import { renderModelOf, renderNeeds, renderBillSeconds, renderQualityOf, RENDER_
 import { DATA_DIR } from '../config.js';
 import { env } from '../env.js';
 import { keyValue } from './keys.js';
-import { handOff, kindOfFile, canLink as canLinkFor } from '../mediaHandoff.js';
+import { handOff, bytesDataUri, kindOfFile, canLink as canLinkFor } from '../mediaHandoff.js';
 
 export type RouterOut = { url?: string; b64?: string; mime?: string };
 export interface RouterModelSpec {
@@ -301,7 +301,7 @@ const img = (o: Omit<RouterModelSpec, 'out' | 'queue' | 'block'> & { name: strin
 export const gptSizeOf = (i: In): string | null => gptImageSize(aspectOf(i) ?? '1:1', resOf(i));
 const gptSizeIssue = (i: In): string | null => (gptSizeOf(i) ? null : gptAspectMessage(aspectOf(i) ?? '1:1'));
 const gptBody = async (i: In, k: number) => { const bad = gptSizeIssue(i); if (bad) throw new Error(bad); const refs = imageRefs(i);
-  const mask = modeOf(i) === 'inpaint' ? `data:image/png;base64,${(await gptMaskBytes(i.maskPath, refs[0], 'comfy-router')).toString('base64')}` : undefined;
+  const mask = modeOf(i) === 'inpaint' ? bytesDataUri(await gptMaskBytes(i.maskPath, refs[0], 'comfy-router'), 'image/png') : undefined;
   return omit({ prompt: promptOf(i, k), quality: gptQuality(tierOf(i)), size: gptSizeOf(i)!, n: 1, output_format: 'png',
     image: refs.length ? await Promise.all(refs.map(dataUri)) : undefined, mask }); };
 /** GPT Image 1.5 (2026-10-25, models/openai/gpt-image-1-5): the same gpt-image schema, but only 1024x1024 / 1024x1536 / 1536x1024 (shared/gptImageSizes.ts
@@ -309,7 +309,7 @@ const gptBody = async (i: In, k: number) => { const bad = gptSizeIssue(i); if (b
 export const gpt15SizeOf = (i: In): string | null => gpt15ImageSize(aspectOf(i) ?? '1:1', resOf(i));
 const gpt15SizeIssue = (i: In): string | null => (gpt15SizeOf(i) ? null : resOf(i) !== '1K' ? `Resolution ${resOf(i)} isn't offered by this model (1K).` : gptAspectMessage(aspectOf(i) ?? '1:1', GPT15_ASPECTS));
 const gpt15Body = async (i: In, k: number) => { const bad = gpt15SizeIssue(i); if (bad) throw new Error(bad); const refs = imageRefs(i);
-  const mask = modeOf(i) === 'inpaint' ? `data:image/png;base64,${(await gptMaskBytes(i.maskPath, refs[0], 'comfy-router')).toString('base64')}` : undefined;
+  const mask = modeOf(i) === 'inpaint' ? bytesDataUri(await gptMaskBytes(i.maskPath, refs[0], 'comfy-router'), 'image/png') : undefined;
   return omit({ prompt: promptOf(i, k), quality: gptQuality(tierOf(i)), size: gpt15SizeOf(i)!, n: 1, output_format: 'png',
     image: refs.length ? await Promise.all(refs.map(dataUri)) : undefined, mask }); };
 const gptOutputs = (j: any) => (j?.data ?? []).map((d: any) => (d?.b64_json ? { b64: d.b64_json, mime: 'image/png' } : { url: d?.url })).filter((x: RouterOut) => x.b64 || x.url);
@@ -805,7 +805,7 @@ export const ROUTER_MODELS: Record<string, RouterModelSpec & { name?: string }> 
       await avContent('api-minimax-h3', i, content); // reference videos and audio as data URIs, Reference to video only
       // ratio: required (not adaptive) for text to video, ignored with a first / last frame, as picked in Reference to video (adaptive when Auto).
       // base_video (re-render a 768P H3 clip at 2K) is not wired: no tool makes that job.
-      return omit({ content, duration: Math.min(15, Math.max(5, Math.round(Number(i.duration) || 5))) /* 5–15 s: MiniMax's minimum (videoCaps api-minimax-h3) */, resolution: /^(2k|1080p)$/i.test(String(i.resolution)) ? '2K' : '768P', // 1080p (app tools) runs and is priced as 2K (hostedPrices); 480p / 720p as 768P
+      return omit({ content, duration: Math.min(15, Math.max(4, Math.round(Number(i.duration) || 5))) /* 4–15 s: what Comfy Router accepts (its minimax-h3 page) and the bar offers (videoCaps api-minimax-h3) */, resolution: /^(2k|1080p)$/i.test(String(i.resolution)) ? '2K' : '768P', // 1080p (app tools) runs and is priced as 2K (hostedPrices); 480p / 720p as 768P
         ratio: ['t2v', 'r2v'].includes(m) && ['21:9', '16:9', '4:3', '1:1', '3:4', '9:16'].includes(i.aspect) ? i.aspect : m === 't2v' ? '16:9' : 'adaptive', seed: seedOf(i, 0) }); },
     outputs: (j) => (/fail/i.test(String(j?.task?.status ?? '')) ? { refused: String(j.task.error?.message ?? j.task.status) } : j?.task?.content?.url ? [{ url: j.task.content.url }] : []) },
   // H3 Talking Photo on Comfy Router (2026-10-26, H3 map F2): reference to video with the portrait as reference_image and the speech as

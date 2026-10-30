@@ -68,6 +68,7 @@ const bad = (field: string, message: string, code = 'invalid') => ({ error: mess
 h3VideoTool.inputs.push({ name: 'lastFrame', kind: 'file', accept: 'image/png,image/jpeg,image/webp' },
   { name: 'aspect', kind: 'select', options: [...VIDEO_ASPECTS], default: 'auto' } as any, { name: 'audio', kind: 'select', options: ['1', '0'], default: '1' } as any,
   { name: 'bitrate', kind: 'select', options: BITRATES.map((b) => b.value), default: 'standard' } as any,
+  { name: 'refs', kind: 'files', accept: 'image/png,image/jpeg,image/webp', label: 'Reference images' } as any /* r2v reference images (the bar sends them as `refs`) */,
   { name: 'refVideos', kind: 'file', accept: 'video/mp4,video/quicktime,video/webm' } as any, { name: 'refAudios', kind: 'file', accept: 'audio/*' } as any,
   /* Keyframes (2026-10-27): 2–5 stills in clip order + their times in seconds (JSON array, the first 0), MiniMax H3 Keyframes · Comfy Cloud */
   { name: 'keyframes', kind: 'file', accept: 'image/png,image/jpeg,image/webp', label: 'Keyframes' } as any, { name: 'keyframeTimes', kind: 'text' } as any);
@@ -113,7 +114,7 @@ h3VideoTool.parseInput = async (fields, files) => {
   if (L) {
     { const rd = resolveDuration(h3VideoTool.id, prov, r.duration, fields.resolution ?? r.resolution); if (rd && 'error' in rd) return { ...durationErrorBody(rd) } as any; // ONE duration rule (quote = submit)
       if (rd?.snapped) { r.duration = rd.seconds; noteSnap(r, rd); } } // D5: an off-list length is made at the nearest one, with a note
-    let aspect = fields.aspect || 'auto'; if (!(VIDEO_ASPECTS as readonly string[]).includes(aspect)) return bad('aspect', `Aspect must be one of ${L.aspects.join(', ')} for this model.`, 'unsupported');
+    let aspect = fields.aspect || 'auto'; if (!(VIDEO_ASPECTS as readonly string[]).includes(aspect) && !L.aspects.includes(aspect) /* a model's own extra shape (FLUX 3 Max 2:1) */) return bad('aspect', `Aspect must be one of ${L.aspects.join(', ')} for this model.`, 'unsupported');
     if (!L.aspects.includes(aspect)) { const to = nearestAspect(L.aspects, aspect) ?? (L.aspects.includes('auto') ? 'auto' : L.aspects[0]); // D5: the closest shape this model makes, with a note
       addAdjustNote(r, to === 'auto' ? `Made in the shape of your picture, the only shape this model offers here (you picked ${aspect}).` : snapNote('shape', aspect, to)); aspect = to; }
     // a silent model (Wan 2.2 5B: no sound track) is always audio off; an Audio on/off field sent for it is ignored, never an error

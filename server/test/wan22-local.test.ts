@@ -79,12 +79,12 @@ assert.equal(r0.routeId, `local:${P}`); assert.equal(r0.kind, 'local'); assert.e
 assert.equal((r0.caps as any).audio, false); assert.deepEqual((r0.caps as any).durations, [2, 3, 4, 5]); assert.deepEqual((r0.caps as any).resolutions, ['704p', '480p']);
 assert.match(String((r0.caps as any).note), /slow/i, 'the route says honestly that local video is slow');
 assert.equal(getProvider(P)?.kind, 'open-weights'); assert.deepEqual(getProvider(P)?.licenseParts, ['apache-2.0']);
-// job parsing: 6 s refused (quote = submit), audio is always off, default 2 s
+// job parsing: 6 s is made at 5 s with a note (D5, 2026-10-28: the nearest length, never refused; quote = submit), audio is always off, default 2 s
 const parse = (f: Record<string, string>) => tool.parseInput({ provider: P, prompt: 'a fox', types: '["t2v"]', ...f }, {});
-const bad6: any = await parse({ duration: '6' }); assert.equal(bad6.code, 'invalid_duration', '6 s is refused'); assert.deepEqual(bad6.durations, [2, 3, 4, 5]);
+const snap6: any = await parse({ duration: '6' }); assert.ok(!('error' in snap6), JSON.stringify(snap6)); assert.equal(snap6.duration, 5, '6 s → 5 s'); assert.ok(snap6.warnings.some((w: string) => /5 s/.test(w) && /6 s/.test(w)), 'with a note');
 const okp: any = await parse({ audio: '1' }); assert.ok(!('error' in okp), JSON.stringify(okp)); assert.equal(okp.duration, 2, 'default 2 s'); assert.equal(okp.audio, false, 'silent model'); assert.equal(okp.frames, 49); assert.equal(okp.steps, 20); assert.equal(okp.resolution, '704p');
 const p720: any = await parse({ resolution: '720p' }); assert.equal(p720.resolution, '704p', '720p maps to 704p');
-ok('caps: t2v + i2v, 2–5 s (2 s default), 704p / 480p, silent, free local route with the slow note; 6 s refused');
+ok('caps: t2v + i2v, 2–5 s (2 s default), 704p / 480p, silent, free local route with the slow note; 6 s → 5 s with a note');
 
 // ---- 3. requirements + fit on a Mac ----
 const req = R.requirementsFor(tool, P, { mode: 't2v', resolution: '704p', duration: 2 })!;

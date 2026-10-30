@@ -60,7 +60,7 @@ assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpHero \/
   assert.match(hero, /<ShowcaseFilm\b[\s\S]*xp-headline[\s\S]*<HeroCredit /, 'the header plays the hero clip under its headline, line and credit');
   assert.doesNotMatch(hero, /xph-quick|xph-make|xp-quick|EXPLORE_QUICK/, 'no quick links on the hero (2026-10-28)');
   assert.match(hero, /\['Made with', \[c\.model, c\.music\]\], \['Length', \[c\.length\]\], \['Ran on', \[c\.place, c\.price\]\]/, 'the film credit block: MADE WITH · LENGTH · RAN ON');
-  assert.match(hero, /data-testid="xp-hero-recreate">Recreate this <Arrow \/>/, 'one action: Recreate this'); }
+  assert.match(hero, /data-testid="xp-hero-recreate">Make your own <Arrow \/>/, 'one action: Make your own'); }
 { const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8');
   assert.doesNotMatch(xs, /MakeBox|xp-make|queueGenerate|What do you want to make/, 'no prompt box or Generate in the hero');
   assert.ok(!fs.existsSync(path.join(WEB, 'shared/queuedGenerate.tsx')), 'queued Generate (prompt box only) removed'); }

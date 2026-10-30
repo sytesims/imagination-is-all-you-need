@@ -47,7 +47,7 @@
 .xph-copy{position:relative;isolation:isolate}
 .xph-copy::before{content:"";position:absolute;z-index:-1;inset:-18% -30% -26% -40%;pointer-events:none;
   background:radial-gradient(ellipse 56% 56% at 36% 60%,rgba(6,6,7,.56) 0%,rgba(6,6,7,.4) 45%,rgba(6,6,7,0) 100%)}
-/* the credit (user pick, 2026-10-28): a film credit block under the clip's line, spaced-caps labels over their values in columns, then one orange Recreate this */
+/* the credit (user pick, 2026-10-28): a film credit block under the clip's line, spaced-caps labels over their values in columns, then one orange Make your own */
 .xph-credit{margin-top:30px}
 .xph-cred{margin:0;display:flex;flex-wrap:wrap;gap:14px 0}
 .xph-cred>div{padding:0 26px;border-left:1px solid rgba(255,255,255,.18)}

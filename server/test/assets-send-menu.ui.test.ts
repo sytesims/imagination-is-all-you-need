@@ -5,7 +5,9 @@ import path from 'node:path';
 import os from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { createServer } from 'vite';
-import { openPage } from './_cdp';
+import { openPage, findChromium } from './_cdp';
+// Same rule as model-health-ui: the Chromium headless shell Playwright caches is never downloaded here; without it the check is skipped.
+if (!findChromium()) { console.log('skip: no Chromium headless shell (npx playwright install chromium-headless-shell)'); console.log('assets-send-menu: ALL OK (skipped)'); process.exit(0); }
 
 const root = path.resolve(import.meta.dirname, '../..');
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'assets-send-'));

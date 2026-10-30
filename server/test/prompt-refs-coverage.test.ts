@@ -199,6 +199,7 @@ const SENDERS: Record<string, { calls?: RegExp; why: string }> = {
   'cinema/enhance.ts': { why: 'prompt enhancer (a local LLM you run): rewrites the words before the job; the job then goes through the rewrite like any other' },
   'translate.ts': { why: 'Voice Studio translate: the transcript, not a prompt' },
   'cinema/story.ts': { why: 'submits each shot as a normal job (app.inject), which takes the usual path' }, 'routesEdit.ts': { why: 'submits a normal job (app.inject)' },
+  'filmProjects.ts': { why: 'submits each shot as a normal job and the stitch to /api/compose (app.inject)' }, 'canvasAgent.ts': { why: 'stitches finished clips through /api/compose (app.inject); no prompt' },
   'routesGaps.ts': { why: 'job webhooks: posts the finished job, not a model request' },
   'openapi.ts': { why: 'API description text' }, 'routesDiscover.ts': { why: 'API description text' }, 'routesSpecs.ts': { why: 'API description text' },
 };

@@ -14,13 +14,14 @@ function lockPageScroll() {
   return () => { if (--locks > 0 || !saved) return; [h.style.overflow, b.style.overflow] = saved; saved = null; };
 }
 const ITEMS = '[role=option]:not([aria-disabled=true]):not(:disabled),[role=menuitem]:not(:disabled),[role=menuitemradio]:not(:disabled),[role=radio]:not(:disabled),[data-apop-item]';
-export function Popover({ open, anchor, onClose, children, label, role = 'dialog', className = '', placement = 'top', align = 'start', testId, closeButton, focusFirst = true, width, avoid, over, gap = GAP, watch, keepOpen }: {
+export function Popover({ open, anchor, onClose, children, label, role = 'dialog', className = '', placement = 'top', align = 'start', testId, closeButton, focusFirst = true, width, avoid, over, gap = GAP, watch, keepOpen, onEscape }: {
   open: boolean; anchor: RefObject<HTMLElement | null>; onClose: () => void; children: ReactNode; label: string; role?: 'dialog' | 'listbox' | 'menu';
   className?: string; placement?: PopPlacement; align?: 'start' | 'center' | 'end'; testId?: string; /** desktop close button (phones always get one) */ closeButton?: boolean; focusFirst?: boolean; width?: number; /** opening upward, stay above this element's top edge too (e.g. the composer dock); placement 'right': open beside it (a side panel) */ avoid?: RefObject<HTMLElement | null>;
   /** a panel that sits over this element at its full width (e.g. the composer dock's Style panel), while `anchor` stays the trigger for focus and outside-click */ over?: RefObject<HTMLElement | null>;
   /** px between the trigger and the panel (default 8; composer chips use the reference's 4) */ gap?: number;
   /** re-place when this element resizes, without keeping clear of it (e.g. the composer dock under a chip popover that overlaps it) */ watch?: RefObject<HTMLElement | null>;
   /** clicks here don't close it (the prompt peek stays open while you type in the prompt) */ keepOpen?: RefObject<HTMLElement | null>;
+  /** Escape does this instead of closing (a menu's second step goes back first) */ onEscape?: () => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number; maxH: number; minH?: number; side: PopPlacement; ox: number; w?: number } | null>(null);
@@ -30,7 +31,7 @@ export function Popover({ open, anchor, onClose, children, label, role = 'dialog
   /** 2026-10-25: the vertical side (above / below) and the tallest height so far, kept while it stays open. A panel that gets shorter
    *  (fewer options, a narrower search) keeps its frame instead of jumping, and it never flips sides mid-use. A window resize starts over. */
   const openSide = useRef<PopPlacement | null>(null); const tallest = useRef(0);
-  useDismiss(open, onClose, anchor);
+  useDismiss(open, onEscape ?? onClose, anchor);
   const place = () => {
     const a = anchor.current, el = box.current; if (!a || !el) return;
     const vw = window.innerWidth, vh = window.innerHeight; setPhone(vw < PHONE);

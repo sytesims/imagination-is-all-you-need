@@ -67,9 +67,9 @@ for (const f of ['src/App.tsx', 'src/ui/Home.tsx', 'src/platform/router.tsx']) a
 assert.doesNotMatch(web('src/learn/EcomBook.tsx'), /^import (?!type )[^\n]*from '\.\/bookEngine'/m, 'three.js loads on demand inside the chunk');
 ok('/learn/ai-ecommerce is a lazy chunk');
 
-// Explore: one carousel card opening the book, with our own poster
-const home = web('src/ui/Home.tsx'); assert.match(home, /<Link to=\{BOOK_PATH\} className="xp-learn-c"/, 'Explore links the book (its Learn card, 2026-10-26)'); assert.ok(existsSync(new URL('../../web/public/learn/ecom-book-poster.svg', import.meta.url)));
-ok('Explore card');
+// Explore: the footer's About column links the book (the Learn card was removed from Explore)
+const home = web('src/ui/Home.tsx'); assert.match(home, /\['About', \[[^\n]*\['Learn: AI for e-commerce', BOOK_PATH\]/, 'Explore links the book (footer, About)');
+ok('Explore footer link');
 
 // prefill: ?prompt= fills the bar (and is removed from the URL), nothing else
 const pre = web('src/shared/usePrefill.ts'); assert.match(pre, /const pText = q\.get\('prompt'\)/); assert.match(pre, /q\.delete\('prompt'\)|\['prompt'(, '\w+')*\]\.forEach\(k => q\.delete\(k\)\)/, '?prompt= is removed from the URL (c30b30e2: with aspect and duration, in one forEach)'); assert.match(pre, /refUrl\|prompt(\|aspect\|duration)?(\|recipe)?(\|attach)?\)=/, 'a later ?prompt= on the same page re-runs the prefill (c30b30e2 added aspect / duration)');

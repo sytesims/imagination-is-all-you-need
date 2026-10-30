@@ -30,7 +30,7 @@ try {
   // ---- honest status (2026-10-28): three states, the copy, and the one thing to type ----
   assert.equal(dockState({ connected: false, listening: false }), 'off'); assert.equal(dockState({ connected: true, listening: false }), 'connected'); assert.equal(dockState({ connected: true, listening: true }), 'listening');
   assert.equal(dockState({ connected: true, listening: false, working: true }), 'working', 'building over MCP without a wait: working'); assert.equal(dockState({ connected: true, listening: true, working: true }), 'listening');
-  assert.equal(dockStatusLine('off', 'Claude Code'), 'Built-in demo'); assert.equal(dockPill('off'), 'Not connected');
+  assert.equal(dockStatusLine('off', 'Claude Code'), 'Built-in agent', 'not "demo": its runs are real on a real install'); assert.equal(dockPill('off'), 'Not connected');
   assert.equal(dockStatusLine('connected', 'Claude Code'), 'Not reading this board yet'); assert.equal(dockStatusLine('connected', 'Claude Code', { sessions: 2 }), '2 agents · not here yet');
   assert.equal(dockStatusLine('working', 'Claude Code'), 'Working on this board'); assert.equal(dockPill('working'), 'Working'); assert.equal(workingLine('Claude Code'), 'Claude Code is working on this board');
   assert.equal(dockStatusLine('listening', 'Claude Code'), 'Reading this board'); assert.equal(dockStatusLine('listening', 'Claude Code', { via: 'channel' }), 'Messages go straight in');

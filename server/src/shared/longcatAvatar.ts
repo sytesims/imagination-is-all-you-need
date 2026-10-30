@@ -35,7 +35,7 @@ export function probeLongCatCloud(objectInfo: Record<string, any> | null | undef
 }
 /** Price guess (not measured): about 30 GPU-seconds per output second on Comfy GPUs. */
 export const LONGCAT_GPU_SECONDS_PER_SECOND = 30;
-export const LONGCAT_REQUIREMENTS = 'NVIDIA GPU with 24 GB or more of VRAM and 64 GB or more of RAM (measured on a 4090: about 10 minutes per 5 s at 480p). Not for Mac.';
+export const LONGCAT_REQUIREMENTS = 'Needs an NVIDIA graphics card with 24 GB or more of VRAM and 64 GB or more of RAM (measured on a 4090: about 10 minutes per 5 s at 480p).';
 /** What a deployment's Build needs (docs/COMFY-CLOUD-SETUP.md lists the same). */
 export const LONGCAT_BUILD = {
   nodePacks: [{ name: 'ComfyUI-WanVideoWrapper (kijai)', repo: 'https://github.com/kijai/ComfyUI-WanVideoWrapper', commit: '088128b224', license: 'Apache-2.0', classes: [...LONGCAT_NODES] }],

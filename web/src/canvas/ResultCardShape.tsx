@@ -26,7 +26,7 @@ export function ResultCardView({ shape }: { shape: ResultCardShape }) {
   const active = useValue('card active', () => editor.getHoveredShapeId() === shape.id || (editor.getSelectedShapeIds().length === 1 && editor.getOnlySelectedShapeId() === shape.id), [editor, shape.id]);
   const role = useValue('lineage', () => lineageRole(editor, shape.id), [editor, shape.id]);
   const Icon = KIND_ICON[p.kind] ?? ImageIcon; const price = [p.price, p.time].filter(Boolean).join(' · ');
-  return <NodeFrame shapeId={shape.id} type={RESULT_TYPE} tint={p.kind} icon={<Icon />} title={<b title={p.title}>{p.title || 'Result'}</b>} testId="result-node" far={{ label: p.title || p.model || 'Result', media: p.kind, state: 'done' }}
+  return <NodeFrame shapeId={shape.id} type={RESULT_TYPE} tint={p.kind} icon={<Icon />} title={<b title={p.title}>{p.title || 'Result'}</b>} testId="result-node" label={p.title || p.model || 'Result'}
     rootAttrs={{ 'data-role': role ?? undefined, 'data-kind': p.kind, 'data-job': p.jobId || undefined }}
     status={<span className="nf-status nf-status-done">Done</span>}
     footer={<><span className="nf-model"><b {...tip(p.model)}>{p.model || 'Result'}</b></span>{price && <span className="nf-price"><span>{price}</span></span>}</>}>

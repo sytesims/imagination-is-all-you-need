@@ -43,7 +43,7 @@ NATIVE_DIRECT[TWO_SWAP_PROVIDER] = { label: 'Comfy Cloud', sourceUrl: CHARSWAP_L
   priceInput: (i: Record<string, any>) => ({ ...i, duration: twoSwapSeconds(i), resolution: i.resolution === '480p' ? '480p' : '768p' }),
   caps: { resolutions: [...TWO_SWAP_TIERS], minSeconds: TWO_SWAP_SECONDS.min, maxSeconds: TWO_SWAP_SECONDS.max, fps: 24, keepsAudio: true } } as any;
 registerModelInfo(TWO_SWAP_PROVIDER, { name: TWO_SWAP_NAME, speed: 'slow', quality: 'good', hint: `Recasts both people, one at a time, so faces never mix · ${TWO_SWAP_SECONDS.min}–${TWO_SWAP_SECONDS.max} s, 480p or 768p`, badges: [] } as any);
-MODEL_CATALOG[TWO_SWAP_PROVIDER] = { name: TWO_SWAP_NAME, family: 'MiniMax', description: `MiniMax H3 with Akatz's Character Swap LoRA on Comfy Cloud, run once per person in a single job: person 1 first, then person 2, each with their own photo. Motion, framing and sound stay. ${TWO_SWAP_SECONDS.min}–${TWO_SWAP_SECONDS.max} s at 480p or 768p.`,
+MODEL_CATALOG[TWO_SWAP_PROVIDER] = { name: TWO_SWAP_NAME, family: 'MiniMax', description: `MiniMax H3 Character Swap (by Akatz) on Comfy Cloud, run once per person in a single job: person 1 first, then person 2, each with their own photo. Motion, framing and sound stay. ${TWO_SWAP_SECONDS.min}–${TWO_SWAP_SECONDS.max} s at 480p or 768p.`,
   tech: 'MiniMax H3 Ref2VA int8 + H3 Character Swap LoRA v1.5 + 8-step turbo LoRA, SAM 3.1 person masks; two chained passes in one Comfy Cloud job (our own graph).' } as any;
 
 const bad = (field: string, message: string, code = 'invalid') => ({ error: message, code, issues: [{ code, field, message }] }) as any;

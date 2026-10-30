@@ -24,7 +24,7 @@ let fail = 0; const t0 = Date.now(); const step = (s: string) => console.log(`  
 try {
   for (let i = 0; i < 160; i++) { try { if ((await fetch(`${B}/api/health`)).ok) break; } catch { /* */ } await new Promise((r) => setTimeout(r, 500)); }
   // cast: a saved element (@hero) + nothing else
-  const fd = new FormData(); fd.append('file', new Blob([fs.readFileSync(PNG)], { type: 'image/png' }), 'hero.png'); fd.append('name', 'hero'); fd.append('kind', 'character');
+  const fd = new FormData(); fd.append('image', new Blob([fs.readFileSync(PNG)], { type: 'image/png' }), 'hero.png'); /* the documented field (openapi.ts; the upload gate allows only it) */ fd.append('name', 'hero'); fd.append('kind', 'character');
   const el = await j('/api/elements', { method: 'POST', body: fd }); assert.equal(el.status, 200, JSON.stringify(el.b)); const elUrl = el.b.url ?? el.b.element?.url; assert.ok(elUrl, 'element url');
   const opts = (await j('/api/stories/options')).b; assert.equal(opts.model, 'minimax-h3'); assert.equal(opts.credit, 'Powered by MiniMax H3'); assert.ok(opts.durations.includes(5));
   const spec = { title: 'Lighthouse', cast: ['@hero'], crossfade: 0.3, shots: [

@@ -55,7 +55,7 @@ export function graphIssues(g: Record<string, any>, OI: Record<string, any>): { 
   for (const [id, n] of Object.entries<any>(g)) {
     const spec = OI[n.class_type]; if (!spec) { errors.push(`node ${id}: class ${n.class_type} is not in /object_info`); continue; }
     const all = { ...(spec.input?.required ?? {}), ...(spec.input?.optional ?? {}) };
-    for (const k of Object.keys(spec.input?.required ?? {})) if (!(k in (n.inputs ?? {}))) errors.push(`${n.class_type}.${k} (required) missing`);
+    for (const k of Object.keys(spec.input?.required ?? {})) if (!(k in (n.inputs ?? {})) && !Object.keys(n.inputs ?? {}).some((x) => x.startsWith(`${k}.`)) /* dynamic / autogrow inputs arrive as <parent>.<child> (ComfyMathExpression values.a) */) errors.push(`${n.class_type}.${k} (required) missing`);
     for (const [k, v] of Object.entries<any>(n.inputs ?? {})) {
       if (k.includes('.')) continue; // dynamic combo children
       const s = all[k]; if (!s) { errors.push(`${n.class_type}.${k} is not an input of this node`); continue; }

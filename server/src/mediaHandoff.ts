@@ -188,6 +188,8 @@ export async function handOff(file: string, kind: MediaKind, provider: HandOffPr
   const job = (async () => { uploads++; const r = await P.upload!.run({ file: abs, bytes, mime, key }); cache.set(id, { value: r.url, until: Date.now() + r.ttlMs }); return r.url; })().finally(() => inflight.delete(id));
   inflight.set(id, job); return job;
 }
+/** Bytes the app made from handed-off files (a prepared GPT Image mask from handOffBytes) as a data URI: the one place that encodes inline. */
+export const bytesDataUri = (bytes: Buffer, mime: string) => `data:${mime};base64,${bytes.toString('base64')}`;
 /** Multipart bodies (OpenAI image edits): the bytes, after the same size rules. */
 export async function handOffBytes(file: string, kind: MediaKind, provider: HandOffProvider, o: HandOffOpts = {}): Promise<Buffer> {
   const abs = resolveFile(file); const b = sizeOf(abs); if (b < 0) throw new HandOffError(`Your ${NOUN[kind]} (${path.basename(file)}) is missing on the server; add it again.`, 'missing');

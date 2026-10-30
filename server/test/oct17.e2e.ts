@@ -32,9 +32,9 @@ try {
     const c = await js('POST', `/api/jobs/${j.body.id}/cancel`); assert.equal(c.status, 409); assert.equal(c.body.code, 'cannot_cancel_processing'); assert.equal(c.body.cancelInProcessing, false);
     const g = await get('/api/dev/mock-delay'); assert.equal(g.body.ms, 8000); const s = await js('POST', '/api/dev/mock-delay', { ms: null }); assert.equal(s.body.ms, 1500, 'reset → env value');
     assert.equal((await js('POST', '/api/dev/mock-delay', { ms: -1 })).status, 400); await done(j.body.id); console.log('ok cancel while processing → 409; mock delay env + POST/GET /api/dev/mock-delay (null resets to env)'); }
-  for (const [f, code] of [[low, 'low_res'], [junk, 'unreadable']] as const) { const r = await form('/api/media', {}, [['file', f]]); assert.equal(r.status, 400); assert.equal(r.body.code, code, JSON.stringify(r.body));
+  for (const [f, code] of [[low, 'low_res'], [junk, 'upload_format' /* the upload gate (uploadSecurity.ts) refuses damaged bytes */]] as const) { const r = await form('/api/media', {}, [['file', f]]); assert.equal(r.status, 400); assert.equal(r.body.code, code, JSON.stringify(r.body));
     const s = await form('/api/tools/object-swap/jobs', { ...L, prompt: 'x' }, [['video', mp4], ['refs', f]]); assert.equal(s.status, 400, `submit ${code}`); }
-  console.log('ok uploads: low-res → low_res, unreadable → unreadable (media upload + job submit)');
+  console.log('ok uploads: low-res → low_res, damaged → upload_format (media upload + job submit)');
   // ---- page 19: specs, next-actions, fromJob as=ref ----
   const img = await form('/api/tools/create-image/jobs', { rights: '1', types: '["generate"]', provider: 'comfy-zimage-turbo', prompt: 'a red mug', seed: '7' }); assert.equal(img.status, 200, JSON.stringify(img.body)); const ij = await done(img.body.id); assert.equal(ij.status, 'done', ij.error);
   assert.ok(ij.model); assert.equal(ij.specs.prompt, 'a red mug'); assert.equal(ij.specs.seed, 7); assert.ok('resolution' in ij.specs && 'durationSec' in ij.specs && 'aspect' in ij.specs); assert.equal(ij.visibility, 'private');

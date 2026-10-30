@@ -39,7 +39,7 @@ const quote = (id: string, i: any) => priceOf({ toolId: 'create-image', rates: {
   for (const [k, comfy] of Object.entries(DOCS)) { const [t, r] = k.split(':') as any;
     assert.equal(M[t][r], comfy == null ? null : cr(comfy), `menu price ${k}`); assert.equal(creditsPerImage('api-krea', t, r), comfy == null ? null : cr(comfy));
     const cap = checkImageCaps('api-krea', { quality: t, imageResolution: r, aspect: '1:1' });
-    if (comfy == null) { assert.equal(cap.ok, false, 'Think most at 1K is refused'); assert.match((cap as any).issues[0].message, /Think most needs 2K/); continue; }
+    if (comfy == null) { assert.ok(cap.ok, 'Think most at 1K is made at 2K (D5), not refused'); assert.equal((cap as any).imageResolution, '2K'); assert.match(String((cap as any).notes), /Think most needs 2K, so it was made at 2K/); continue; }
     assert.ok(cap.ok);
     const i = await parse({ provider: 'api-krea', quality: t, imageResolution: r, aspect: '16:9' }); assert.ok(!i.error, i.error);
     const b = await body('api-krea', i); assert.equal(b.thinking_mode, { low: 'fast', med: 'high', high: 'ultra' }[t as string]); assert.equal(b.resolution, r.toLowerCase());
@@ -67,7 +67,7 @@ const quote = (id: string, i: any) => priceOf({ toolId: 'create-image', rates: {
   for (const r of ['0.75K', '1.5K']) assert.match(bfl.unavailableFor!({ imageResolution: r } as any)!, /runs on Comfy Router/);
   assert.equal(bfl.unavailableFor!({ imageResolution: '2K' } as any), null);
   const e = await parse({ provider: 'api-flux3-image', imageResolution: '1.5K', aspect: 'auto' }, { image: ['ref1.png'] }); assert.ok(!e.error, e.error);
-  assert.equal(checkImageCaps('api-flux3-image', { imageResolution: '4K', mode: 'edit' }).ok, false, 'edits still stop at 2K');
+  { const e4: any = checkImageCaps('api-flux3-image', { imageResolution: '4K', mode: 'edit' }); assert.equal(e4.imageResolution, '2K', 'edits still stop at 2K: 4K is made at 2K (D5)'); assert.match(String(e4.notes), /closest size/); }
   ok('FLUX 3 Image: 0.75K (768sq, 6 credits) and 1.5K (1.5k, 11 credits) sent and quoted; the BFL route leaves them to Comfy Router'); }
 
 // ---- 3. Luma UNI-1 / Max ----
@@ -108,7 +108,7 @@ ok('Luma UNI-1 / Max: Look Auto | Manga → style, same price; other models refu
   for (const r of b.referenceImages) assert.match(r.uri, /^data:image\/png;base64,/, 'a data URI (the docs: HTTPS URL or data URI), so no public link is needed');
   assert.equal((await body('api-runway-image', await parse({ provider: 'api-runway-image', aspect: '1024:1024' }))).referenceImages, undefined, 'prompt only: none sent');
   const four = await parse({ provider: 'api-runway-image', aspect: '1920:1080' }, { image: ['ref1.png'], refs: ['ref2.png', 'ref3.png', 'ref4.png'] }); assert.match(four.error, /up to 3 images/);
-  assert.equal(checkImageCaps('api-runway-image', { mode: 'edit', aspect: 'auto' }).ok, false, 'a ratio is required (no Auto)');
+  { const ra: any = checkImageCaps('api-runway-image', { mode: 'edit', aspect: 'auto' }); assert.ok(ra.ok && c.edit!.aspects.includes(ra.aspect), 'a ratio is required (no Auto): Auto picks a listed ratio'); }
   assert.equal(priceOf({ toolId: 'create-image', rates: {}, quality: '720p', provider: 'api-runway-image', imageRes: '1K', refImages: 3 }).credits, cr(24.1384), 'same price with photos (24.1384, no reference surcharge listed)');
   ok('Runway Gen-4 Image: up to 3 photos as data-URI referenceImages, ratio required, same price'); }
 

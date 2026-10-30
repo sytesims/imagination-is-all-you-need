@@ -28,9 +28,9 @@ try {
     assert.equal(q.body.demoTag, 'Sample');
     const routes = await get('/api/routes?toolId=upscale');
     // 959c88cc (2026-10-26): the Upscale menu lists local first (Real-ESRGAN x2, free), while a keyless server keeps the cloud default (BH12):
-    // the quote's model (SeedVR2 on fal, a sample) is the row that says 'Sample'
+    // the quote's model (Topaz Starlight Fast on Comfy Cloud, a sample) is the row that says 'Sample'
     const top = (routes.body.routes ?? [])[0]; assert.equal(top?.modelId, 'comfy-video-esrgan'); assert.equal(top?.via?.text, 'local · free', JSON.stringify(top?.via));
-    assert.equal(q.body.route, 'fal:fal-ai/seedvr/upscale/video', 'keyless: the cloud default stays');
+    assert.equal(q.body.route, 'comfy-cloud:cloud-topaz-starlight-fast', 'keyless: the cloud default stays'); // shared/cloudDefaults.ts video-upscale (cloud first, 2026-10-27)
     const def = (routes.body.routes ?? []).find((m: any) => (m.routes ?? []).some((r: any) => r.routeId === q.body.route));
     assert.equal(def?.via?.text, 'Sample', JSON.stringify(def?.via));
     const demoRow = (routes.body.routes ?? []).flatMap((m: any) => m.routes ?? []).find((r: any) => r.demo);

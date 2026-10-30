@@ -54,7 +54,7 @@ try {
   { for (const [tool, route] of [['fps-boost', 'local:comfy-rife'], ['voice', 'local:comfy-h3-lipsync']]) {
       const rs = ((await get(A, `/api/routes?toolId=${tool}`)).body.routes as any[]).flatMap((m) => m.routes); const r = rs.find((x) => x.routeId === route); assert.ok(r, route);
       assert.notEqual(r.demo, true, route); assert.notEqual(r.status, 'Sample', route); }
-    const q = (await get(A, '/api/tools/fps-boost/price')).body; assert.equal(q.routeId, 'local:comfy-rife'); assert.equal(q.demo, false); assert.equal(q.credits, 0); }
+    const q = (await get(A, '/api/tools/fps-boost/price?runOn=local')).body /* Use local is off here, so Auto picks RIFE's fal place (B6 order); the local place is asked by name */; assert.equal(q.routeId, 'local:comfy-rife'); assert.equal(q.demo, false); assert.equal(q.credits, 0); }
   ok('4 FPS Boost RIFE / H3 lip-sync local routes: never demo (routes + quote)');
   // 5
   { const c = (await get(A, '/api/config')).body.mcp; assert.ok(!('npx' in c)); assert.ok(!c.snippets.npx); assert.ok(!JSON.stringify(c).includes('npx'));

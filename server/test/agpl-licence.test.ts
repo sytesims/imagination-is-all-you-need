@@ -74,7 +74,7 @@ for (const root of ROOTS) for (const file of walk(path.join(REPO, root))) {
   for (const m of src.matchAll(/(?:kind|source): 'ours'[^}\n]*?licence: '([^']*)'/g)) if (/^MIT/.test(m[1])) hits.push(`${path.relative(REPO, file)}: ours credited ${m[1]}`);
 }
 assert.deepEqual(hits, [], 'user-facing strings that call this app MIT');
-for (const f of ['README.md', 'docs/SUBMISSION-README.md', 'docs/USAGE-NOTES.md', 'docs/PROVIDERS-AND-MODELS.md', 'docs/CONTRIBUTING.md', 'brand/social/POST-COPY.md', 'LICENSES.md'])
+for (const f of ['README.md', 'docs/SUBMISSION-README.md', 'docs/USAGE-NOTES.md', 'docs/PROVIDERS-AND-MODELS.md', 'docs/CONTRIBUTING.md', 'LICENSES.md'])
   assert.doesNotMatch(read(f), /Our code:\*\* MIT|App code:\*\* MIT|open-source \(MIT\)|MIT-licensed|own code is MIT|It's MIT licensed|openhiggsfield \(MIT\)|\| (?:Turntable|Direct a Shot)[^|]*\| [^|]*\| \[MIT\]/, f);
 ok('no user-facing string or public doc calls our app MIT');
 console.log('ALL OK agpl-licence');

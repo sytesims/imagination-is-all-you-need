@@ -33,7 +33,7 @@ try {
 
   // ---- validation ----
   const noImg = await job({ rights: '1' }, null); assert.equal(noImg.status, 400); assert.equal(noImg.body.issues[0].field, 'image'); assert.equal(noImg.body.issues[0].code, 'required'); assert.equal(noImg.body.refund.charged, false);
-  const badImg = await job({ rights: '1' }, [Buffer.from('nope'), 'photo.gif', 'image/gif']); assert.equal(badImg.status, 400); assert.ok(/PNG or JPG/i.test(badImg.body.error), badImg.body.error);
+  const badImg = await job({ rights: '1' }, [Buffer.from('nope'), 'photo.gif', 'image/gif']); assert.equal(badImg.status, 400); assert.equal(badImg.body.code, 'upload_format', badImg.body.error); assert.equal(badImg.body.issues[0].field, 'image'); // the upload gate (uploadSecurity.ts) refuses it before the tool sees it
   const badShot = await job({ rights: '1', shots: '["front","sideways"]' }); assert.equal(badShot.status, 400); assert.equal(badShot.body.issues[0].field, 'shots'); assert.ok(!/sideways/.test(badShot.body.error), 'never echoes the raw value');
   const empty = await job({ rights: '1', shots: '[]' }); assert.equal(empty.status, 400); assert.equal(empty.body.issues[0].code, 'required');
   ok(`validation: no photo → ${noImg.body.error} · bad type → ${badImg.body.error} · unknown angle → 400 · none picked → ${empty.body.error}`);

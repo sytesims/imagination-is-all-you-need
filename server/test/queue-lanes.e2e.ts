@@ -92,7 +92,7 @@ try {
   await untilStatus(A.B, L[0], 'running');
   assert.equal((await send(A.B, 'POST', '/api/dev/mock-delay', { ms: 1200 })).status, 200);
   const C: string[] = []; for (let i = 0; i < 4; i++) { const s = await post(A.B, CLOUD); assert.equal(s.status, 200, JSON.stringify(s.body)); C.push(s.body.id); }
-  await untilStatus(A.B, C[0], 'running'); await wait(150);
+  await untilStatus(A.B, C[0], 'running'); await untilStatus(A.B, C[1], 'running'); await wait(150); // both cloud slots busy (a slow runner starts the second later)
   { const l1 = await job(A.B, L[1]); const l2 = await job(A.B, L[2]); const c2 = await job(A.B, C[2]); const c3 = await job(A.B, C[3]);
     assert.equal(l1.status, 'queued'); assert.equal(l1.runLane, 'local'); assert.equal(l1.queuePos, 1); assert.equal(l2.queuePos, 2);
     assert.match(l1.queueReason, /^Waiting for your computer: one run at a time$/); assert.equal(l1.progressInfo.queueReason, l1.queueReason);

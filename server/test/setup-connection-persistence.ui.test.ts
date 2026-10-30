@@ -7,8 +7,13 @@ import os from 'node:os';
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 import { createServer } from 'vite';
+import { findChromium } from './_cdp.ts';
 const require = createRequire(import.meta.url);
-const { chromium } = require(process.env.SETUP_PLAYWRIGHT || path.join(os.homedir(), '.npm/_npx/e41f203b7505f1fb/node_modules/playwright'));
+// Playwright is not a dependency and nothing is downloaded: skipped unless it (SETUP_PLAYWRIGHT, else a resolvable `playwright`) and a headless shell exist
+const playwright = (() => { for (const id of [process.env.SETUP_PLAYWRIGHT, 'playwright', path.join(os.homedir(), '.npm/_npx/e41f203b7505f1fb/node_modules/playwright')]) { if (!id) continue; try { return require(id); } catch { /* next */ } } return null; })();
+const chromiumPath = process.env.SETUP_CHROMIUM || findChromium();
+if (!playwright || !chromiumPath) { console.log(`SKIP setup-connection-persistence: ${!playwright ? 'Playwright' : 'Chromium headless shell'} not installed (nothing downloaded)`); process.exit(0); }
+const { chromium } = playwright;
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'opencode/setup-fixture-'));
 const evidence = process.env.SETUP_EVIDENCE || scratch;
 fs.mkdirSync(evidence, { recursive: true });
@@ -25,7 +30,7 @@ let browser: any;
 const results: any[] = [];
 try {
  await server.listen();
- browser=await chromium.launch({headless:true,executablePath:process.env.SETUP_CHROMIUM || path.join(os.homedir(), 'Library/Caches/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-mac-arm64/chrome-headless-shell')});
+ browser=await chromium.launch({headless:true,executablePath:chromiumPath});
  async function fixture(options: any = {}) {
   const context=await browser.newContext({viewport:{width:1440,height:900},reducedMotion:'reduce'});const page=await context.newPage();
   const writes: any[]=[];const state={fail:options.fail || '',url:options.url || 'http://127.0.0.1:8000', ...options};

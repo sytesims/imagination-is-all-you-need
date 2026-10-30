@@ -53,18 +53,17 @@ const pa = await price('provider=router-veo&duration=6&resolution=720p&audio=1&c
 assert.equal(pa.credits, Math.round(84.4 / 211 * 6 * 100) * 2); assert.equal(p2.credits, Math.round(42.2 / 211 * 6 * 100) * 2);
 r = await post({ prompt: 'a man walks', provider: 'router-veo', audio: '1', count: '2', duration: '6', resolution: '720p' }); assert.equal(r.status, 200, JSON.stringify(r.body)); assert.equal(r.body.cost, pa.credits, 'audio shown = charged');
 r = await post({ prompt: 'a man walks', provider: 'router-veo', duration: '6', resolution: '720p' }); j = await job(r.body.id); assert.equal(j.input.audio, false, 'Veo default audio off');
-// ONE duration rule (quote = submit): allowed lengths per model, exposed on /api/tools, /api/routes; unsupported → 400 invalid_duration + the list on BOTH
+// ONE duration rule (quote = submit): allowed lengths per model, exposed on /api/tools, /api/routes; a length the model doesn't offer snaps to the nearest one with a note on BOTH (D5, 2026-10-28)
 assert.deepEqual(caps.durationsByProvider['router-veo'], [4, 6, 8]); assert.deepEqual(caps.durationsByProvider['comfy-open'], [5, 10, 15, 20, 30]);
 assert.equal(caps.defaultDurationByProvider['router-veo'], 4); assert.equal(caps.defaultDurationByProvider['comfy-open'], 5);
 { const tp = tools.find((t) => t.id === 'cinema').providers; assert.deepEqual(tp.find((p: any) => p.id === 'router-veo').durations, [4, 6, 8]); assert.deepEqual(tp.find((p: any) => p.id === 'router-kling').durations, Array.from({ length: 13 }, (_, k) => k + 3)); }
 { const rv = await (await fetch(`${base}/api/routes?toolId=cinema&modelId=router-veo`)).json() as any; const m = rv.routes.find((x: any) => x.modelId === 'router-veo'); assert.deepEqual(m.durations, [4, 6, 8]); assert.ok(m.routes.length > 0); for (const o of m.routes) assert.deepEqual(o.durations, [4, 6, 8], o.routeId); }
-for (const [prov, d, allowed] of [['router-veo', '5', [4, 6, 8]], ['router-veo', '10', [4, 6, 8]], ['comfy-open', '7', [5, 10, 15, 20, 30]]] as const) {
-  const b1 = await bal();
+for (const [prov, d, to] of [['router-veo', '5', 6], ['router-veo', '10', 8], ['comfy-open', '7', 5]] as const) {
   const pq = await fetch(`${base}/api/tools/cinema/price?provider=${prov}&duration=${d}&resolution=720p`); const pb = await pq.json() as any;
-  assert.equal(pq.status, 400, `${prov} ${d}s quote`); assert.equal(pb.code, 'invalid_duration'); assert.deepEqual(pb.durations, allowed);
+  assert.equal(pq.status, 200, `${prov} ${d}s quote ` + JSON.stringify(pb).slice(0, 300)); assert.ok((pb.adjustNotes ?? []).some((n: string) => n.includes(`Made at ${to} s, the closest length`)), JSON.stringify(pb.adjustNotes));
   const sj = await post({ prompt: 'a man walks', provider: prov, duration: d, resolution: '720p' });
-  assert.equal(sj.status, 400, `${prov} ${d}s submit ` + JSON.stringify(sj.body)); assert.equal(sj.body.code, 'invalid_duration'); assert.deepEqual(sj.body.durations, allowed); assert.equal(sj.body.error, pb.error, 'same message on quote and submit');
-  assert.equal(await bal(), b1, 'no charge on invalid_duration');
+  assert.equal(sj.status, 200, `${prov} ${d}s submit ` + JSON.stringify(sj.body)); assert.equal(sj.body.cost, pb.credits, 'snapped quote = charge');
+  assert.ok((sj.body.warnings ?? []).some((n: string) => n.includes(`Made at ${to} s`)), JSON.stringify(sj.body.warnings)); assert.equal((await job(sj.body.id)).input.duration, to, `${prov} ${d}s made at ${to}s`);
 }
 // the job's length = the quoted length; no duration → the same default on quote and submit
 for (const [prov, d] of [['router-veo', '8'], ['router-kling', '7'], ['comfy-open', '10'], ['router-veo', '']] as const) {

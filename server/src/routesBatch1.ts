@@ -185,6 +185,8 @@ export function registerBatch1(app: FastifyInstance) {
     }
     const cap = checkImageCaps(model, { aspect: q.aspect, quality: q.quality, imageResolution: q.imageResolution, n: q.n ?? 1, refs: Number(q.refs) || 0, mode: q.mode, photoAspect: photoAspectOf(q as any) });
     if (!cap.ok) return reply.code(400).send({ error: cap.issues[0].message, errorType: 'validation', issues: cap.issues, valid: false });
+    if (cap.notes?.length) { const qq = q as Record<string, any>; // D5: the snapped settings route and price, as /api/tools/:id/price does (tools/apps.ts imageCapsQuoteError)
+      if (qq.aspect && qq.aspect !== cap.aspect) qq.aspect = cap.aspect; if (qq.imageResolution && qq.imageResolution !== cap.imageResolution) qq.imageResolution = cap.imageResolution; qq.__snapNotes = cap.notes; }
     const n = Number(q.n ?? 1);
     if (!Number.isInteger(n) || n < 1 || n > 4) return reply.code(400).send({ error: 'n must be 1–4.', errorType: 'validation', issues: [{ code: 'invalid', field: 'n', message: 'n must be 1–4.' }], valid: false });
     const p = priceOf({ toolId: t.id, rates: t.gpuSecPerSec, quality: '720p', provider: model, count: n, tier: cap.tier, imageRes: cap.imageResolution, aspect: cap.aspect, promptBytes: promptBytesFor(q as any) });

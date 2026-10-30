@@ -16,6 +16,7 @@ import { useEditor, useValue, type TLShapeId } from 'tldraw';
 import type { JobState } from '../api';
 import { getJob } from '../api';
 import { ResultCard } from '../shared/ResultCard';
+import { gridSrc } from '../shared/thumbs';
 import GenTile from '../shared/GenTile';
 import { useFailView } from '../shared/FailureState';
 import { GenPrice } from '../shared/GenPrice';
@@ -98,7 +99,7 @@ function TakeStrip({ shape }: { shape: GenCardShape }) {
     <span ref={strip} className="gc-v-thumbs" role="listbox" aria-label="Versions: the ringed one goes to the next card" tabIndex={n > 1 ? 0 : -1}
       onKeyDown={e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); set(i + (e.key === 'ArrowRight' ? 1 : -1)); } }}>
       {p.takes.map((t, k) => <button key={`${t.url}-${k}`} type="button" role="option" tabIndex={-1} className={`nf-tk${k === i ? ' on' : ''}${fresh === t.url ? ' develop' : ''}`} aria-label={`Version ${k + 1}`} aria-selected={k === i} data-testid={`gc-version-${k + 1}`}
-        {...tip(`${k === i ? `Version ${k + 1}: goes to the next card` : `Use version ${k + 1}`}${t.review ? `\n${badgeText(t.review)}${t.review.rec ? '\nThe agent would pick this one' : ''}` : ''}`)} onClick={() => set(k)}>{t.poster ? <img src={t.poster} alt="" draggable={false} loading="lazy" /> : <i>{k + 1}</i>}
+        {...tip(`${k === i ? `Version ${k + 1}: goes to the next card` : `Use version ${k + 1}`}${t.review ? `\n${badgeText(t.review)}${t.review.rec ? '\nThe agent would pick this one' : ''}` : ''}`)} onClick={() => set(k)}>{t.poster ? <img src={gridSrc(t.poster, 28)} alt="" draggable={false} loading="lazy" /> : <i>{k + 1}</i>}
         {t.review && <b className={`gc-v-badge ${t.review.verdict}`} data-testid={`gc-review-${k + 1}`} data-verdict={t.review.verdict} aria-label={badgeText(t.review)}>{t.review.verdict === 'fits' ? '✓' : '!'}</b>}
         {t.review?.rec && <span className="gc-v-rec" data-testid={`gc-rec-${k + 1}`} aria-label="The agent would pick this one" />}</button>)}
     </span>
@@ -120,7 +121,7 @@ function Inputs({ shape, slots, bySlot, selected }: { shape: GenCardShape; slots
     <input ref={file} type="file" hidden accept={ACCEPT[upFor?.accept === 'video' ? 'video' : upFor?.accept === 'audio' ? 'audio' : 'image']} onChange={e => { void onFile(e.target.files?.[0]); e.currentTarget.value = ''; }} />
     {slots.map(s => { const list = bySlot[s.name] ?? [];
       return <span key={s.name} className="nf-slot" data-testid={`gc-slot-${s.name}`} data-n={list.length}>
-        {list.map(i => <span key={i.key} className="nf-in-thumb" {...tip(`${s.label}: ${i.label}`)}>{i.poster ? <img src={i.poster} alt="" draggable={false} /> : i.kind === 'audio' ? <AudioIcon size={16} /> : <VideoIcon size={16} />}
+        {list.map(i => <span key={i.key} className="nf-in-thumb" {...tip(`${s.label}: ${i.label}`)}>{i.poster ? <img src={gridSrc(i.poster, 54)} alt="" draggable={false} /> : i.kind === 'audio' ? <AudioIcon size={16} /> : <VideoIcon size={16} />}
           <small>{s.label}</small><button type="button" className="nf-in-x" aria-label={`Remove ${s.label.toLowerCase()}`} data-testid={`gc-in-x-${s.name}`} onClick={() => remove(i)}><CloseIcon size={9} strokeWidth={2.4} /></button></span>)}
         {selected && list.length < s.max && <button type="button" className={`nf-add${s.required && !list.length ? ' req' : ''}`} aria-label={`Add ${s.label.toLowerCase()}${s.required ? '' : ' (optional)'}`} data-card-control {...tip(`${s.hint}. Draw an arrow into the node from a result or upload, or pick a file`)} onClick={() => { setUpFor(s); requestAnimationFrame(() => file.current?.click()); }}><PlusIcon size={12} />{list.length ? `${list.length}/${s.max}` : s.label}</button>}
       </span>; })}
@@ -206,7 +207,7 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
     : <TakeStrip shape={shape} />;
 
   return <div ref={box} className="gc-box" data-role={role ?? undefined} onPointerEnter={enter} onPointerLeave={leave}>
-    <NodeFrame shapeId={shape.id} type={GEN_TYPE} tint={p.medium} icon={<Medium />} testId="gen-card" className={`gc gc-${p.status}`} far={{ label: cardLabel(shot, name), media: p.medium, state: p.status }}
+    <NodeFrame shapeId={shape.id} type={GEN_TYPE} tint={p.medium} icon={<Medium />} testId="gen-card" className={`gc gc-${p.status}`} label={cardLabel(shot, name)}
       rootAttrs={{ 'data-status': p.status, 'data-flow': p.flow, 'data-medium': p.medium, 'data-job': p.jobId || undefined, 'data-role': role ?? undefined }}
       title={<button ref={wfRef} type="button" className={pop === 'wf' ? 'on' : ''} aria-haspopup="listbox" aria-expanded={pop === 'wf'} data-testid="gc-flow" disabled={!draft} {...tip(draft ? `${name}: change workflow` : spec?.flow.tagline ?? null)} onClick={() => setPop(pop === 'wf' ? '' : 'wf')}>
         <b className="gc-name">{name}</b>{draft && <Ic.CaretIcon size={13} />}</button>}

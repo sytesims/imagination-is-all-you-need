@@ -123,12 +123,12 @@ try {
   // Design Planner queue: seconds on quote + submit (one resolver), share page (no report form), model releasedAt/badges, zero-filled usage
   { const q = await get('/api/tools/object-swap/price?seconds=5&resolution=720p&provider=router-seedance'); assert.equal(q.credits, 134, JSON.stringify(q)); assert.equal(q.credits, Math.ceil(q.exactUsd * 100 - 1e-9), 'rounded up from the exact price ($1.3361)');
     assert.ok((await get('/api/tools/object-swap/price?seconds=10&resolution=720p&provider=router-seedance')).credits > 134);
-    const bad = await fetch(`${B}/api/tools/object-swap/price?seconds=99&provider=router-seedance`); assert.equal(bad.status, 400); assert.equal((await bad.json()).issues[0].field, 'seconds');
+    const bad = await fetch(`${B}/api/tools/object-swap/price?seconds=99&provider=router-seedance`); const badB: any = await bad.json(); assert.equal(bad.status, 200, 'D5: an off-list length snaps, never refused'); assert.ok((badB.adjustNotes ?? []).some((n: string) => /closest length/.test(n)), JSON.stringify(badB.adjustNotes));
     const q4 = await get('/api/tools/object-swap/price?seconds=4&resolution=720p&provider=router-seedance');
     const b0 = await bal(); const j = await post('object-swap', { ...R, prompt: 'swap', provider: 'router-seedance', resolution: '720p', seconds: '4' }, [['video', mp4], ['refs', png]]); assert.equal(j.status, 200, JSON.stringify(j.body));
     assert.equal(b0 - (await bal()), q4.credits, 'submit with seconds charges the quote'); await wait(j.body.id);
-    const jb = await post('object-swap', { ...R, prompt: 'swap', provider: 'router-seedance', seconds: '99' }, [['video', mp4], ['refs', png]]); assert.equal(jb.status, 400); assert.equal(field(jb.body), 'seconds');
-    console.log(`ok seconds: quote 5 s 720p = 134, 4 s quote = charge ${q4.credits}, 99 s → 400`); }
+    const jb = await post('object-swap', { ...R, prompt: 'swap', provider: 'router-seedance', seconds: '99' }, [['video', mp4], ['refs', png]]); assert.equal(jb.status, 200, JSON.stringify(jb.body)); assert.ok((jb.body.warnings ?? []).some((n: string) => /^Made at /.test(n)), JSON.stringify(jb.body.warnings)); await wait(jb.body.id);
+    console.log(`ok seconds: quote 5 s 720p = 134, 4 s quote = charge ${q4.credits}, 99 s → snapped with a note`); }
   { const j = await post('object-swap', { ...R, prompt: 'swap' }, [['video', mp4], ['refs', png]]); await wait(j.body.id); const sh = await (await fetch(`${B}/api/jobs/${j.body.id}/share`, { method: 'POST' })).json();
     const html = await (await fetch(`${B}/s/${sh.token}`)).text(); assert.ok(!html.includes('/report') && !html.includes('name="reason"') && !html.includes('mailto:'), 'no report form / abuse contact on /s/:token');
     assert.equal((await fetch(`${B}/s/${sh.token}`)).status, 200); console.log('ok /s/:token has no report form'); }

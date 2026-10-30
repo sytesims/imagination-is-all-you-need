@@ -52,7 +52,7 @@ try {
   { const t = T('photo-fx'); for (const a of ['auto', '16:9', '9:16', '1:1']) assert.ok(t.allowed.aspect.includes(a), a); assert.deepEqual(t.inputs.find((i: any) => i.name === 'aspect').byProvider['comfy-open'], ['auto', '16:9', '9:16', '1:1']); assert.ok(t.inputs.some((i: any) => i.name === 'aspect'));
     const bad = await get('/api/tools/photo-fx/price?aspect=zz'); assert.equal(bad.status, 400); assert.ok(bad.body.code, JSON.stringify(bad.body));
     const s = await submit('photo-fx', { rights: '1', types: '["float"]', aspect: '9:16' }, [['image', png]]); assert.equal(s.status, 200, JSON.stringify(s.body)); assert.equal((await job(s.body.id)).input.aspect, '9:16');
-    const sb = await submit('photo-fx', { rights: '1', types: '["float"]', aspect: '4:3' }, [['image', png]]); assert.equal(sb.status, 400); assert.ok(sb.body.code, JSON.stringify(sb.body)); }
+    const sb = await submit('photo-fx', { rights: '1', types: '["float"]', aspect: '4:3', provider: 'comfy-open' /* the local graph (Comfy Router models come first since B6) */ }, [['image', png]]); assert.equal(sb.status, 400); assert.ok(sb.body.code, JSON.stringify(sb.body)); }
   ok('Photo FX: aspect field (byProvider; local auto/16:9/9:16/1:1), zz → 400 invalid_aspect, 4:3 on the local graph → 400 unsupported, 9:16 runs');
   // Anime Restyle + Transitions
   { const ls = T('app-anime-restyle').app.gallery.lockedStyle; assert.equal(ls.field, 'preset'); assert.equal(ls.id, 'anime-cel'); assert.ok(ls.label && ls.label !== 'anime-cel', JSON.stringify(ls));
@@ -76,7 +76,9 @@ try {
   { assert.match(T('camera').description, /start image/); assert.ok(!/keyframe/i.test(T('camera').description));
     const ts = T('camera').stages?.map((s: any) => (Array.isArray(s) ? s[1] : s.label)).join(' ') ?? ''; assert.ok(!/keyframe/i.test(ts), ts);
     const fb = (tools.items ?? tools).find((t: any) => (t.providers ?? []).some((p: any) => (p.id ?? p) === 'comfy-rife')); assert.ok(fb, 'FPS Boost tool');
-    { const rs = (await get(`/api/routes?toolId=${fb.id}&modelId=comfy-rife`)).body; const all = JSON.stringify(rs); assert.ok(!/"demo":true/.test(all) && !/list price/i.test(all), all.slice(0, 400)); }
+    { const rs = (await get(`/api/routes?toolId=${fb.id}&modelId=comfy-rife`)).body; // the local route (the RIFE card also lists its fal place, a keyless sample here)
+      const local = (rs.routes as any[]).flatMap((m) => m.routes ?? []).filter((r: any) => r.kind === 'local'); assert.ok(local.length, 'a local RIFE route');
+      const all = JSON.stringify(local); assert.ok(!/"demo":true/.test(all) && !/list price/i.test(all), all.slice(0, 400)); }
     { const q = (await get(`/api/tools/${fb.id}/price`)).body; assert.notEqual(q.demo, true, JSON.stringify(q)); assert.ok(!/list price/i.test(JSON.stringify(q)), JSON.stringify(q).slice(0, 300)); } }
   ok('Camera Moves copy says start image; FPS Boost quote never demo / list price');
   console.log('ALL OK bh11');

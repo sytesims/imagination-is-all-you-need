@@ -15,7 +15,7 @@ const waitEnd = async (id: string) => { for (let i = 0; i < 80; i++) { const j =
 const Q = '/api/tools/create-image/price?provider=api-seedream';
 try {
   for (let i = 0; i < 120; i++) { try { if ((await fetch(`${B}/api/health`)).ok) break; } catch { /* */ } await new Promise((r) => setTimeout(r, 500)); }
-  const s0 = await get('/api/settings/billing'); assert.equal(s0.mode, 'own-accounts'); assert.equal(s0.modeLocked, false); assert.deepEqual(s0.limits, {});
+  const s0 = await get('/api/settings/billing'); assert.equal(s0.mode, 'own-accounts'); assert.equal(s0.modeLocked, false); assert.equal(s0.limits, undefined, 'spending limits were removed (2026-10-28)');
   assert.ok(s0.providers.some((x: any) => x.id === 'fal' && x.failureRule && x.billingUrl), 'provider billing info listed');
   assert.equal((await get('/api/config')).billingMode, 'own-accounts'); assert.equal((await get('/api/ledger')).billingMode, 'own-accounts');
   ok('default billing mode is own-accounts (settings, /api/config, /api/ledger)');
@@ -23,7 +23,7 @@ try {
   const q = await get(Q); assert.equal(q.billingMode, 'own-accounts'); assert.equal(q.routeKind, 'comfy-router'); assert.ok(q.credits > 0);
   assert.equal(q.cost.billedTo, 'comfy'); assert.equal(q.cost.estUsd, q.credits / 100); assert.equal(typeof q.exactUsd, 'number'); assert.ok(q.exactUsd <= q.cost.estUsd, 'credits round up, never below the exact price');
   assert.equal(q.cost.estUnits, Math.ceil(Math.round(q.exactUsd * 211 * 100) / 100), 'Comfy credits come from the exact routed price (×211, rounded up), not from the rounded ✦ credits'); assert.equal(q.cost.unitLabel, 'Comfy credits');
-  assert.equal(q.cost.failureRule, 'may-charge'); assert.equal(q.cost.estimated, true); assert.equal(q.warn, false);
+  assert.equal(q.cost.failureRule, 'may-charge'); assert.equal(q.cost.estimated, true); assert.equal(q.warn, undefined, 'no spending-limit warning (limits removed)');
   ok(`quote: ✦${q.credits} → cost {comfy, $${q.cost.estUsd}, ${q.cost.estUnits} Comfy credits, may-charge, estimated}`);
 
   const bal0 = (await get('/api/ledger')).balance; const r1 = await submit(); assert.equal(r1.status, 200, JSON.stringify(r1.body)); assert.equal(r1.body.billingMode, 'own-accounts');
@@ -32,7 +32,7 @@ try {
   const l1 = await get('/api/ledger'); assert.equal(l1.balance, bal0, 'own-accounts: the app balance is not charged'); assert.ok(!l1.entries.some((e: any) => e.jobId === r1.body.id), 'no ledger row for the job');
   ok('own-accounts submit: 200 with cost + estimate; no ledger charge');
 
-  const r2 = await submit({ simulateRouteFail: 'comfy-router:api-seedream' }); const j2 = await waitEnd(r2.body.id); assert.equal(j2.status, 'failed');
+  const r2 = await submit({ allowFallback: '0' /* stay failed (D4 would move Auto on) */, simulateRouteFail: 'comfy-router:api-seedream' }); const j2 = await waitEnd(r2.body.id); assert.equal(j2.status, 'failed');
   assert.ok(!/credits? (went )?back|back to your balance|refund/i.test(j2.error), `no credits-back promise: ${j2.error}`); assert.match(j2.error, /Comfy Cloud may still bill your account/);
   assert.equal(j2.refund.refunded, false); assert.ok(!(await get('/api/ledger')).entries.some((e: any) => e.kind === 'refund' && e.jobId === r2.body.id));
   ok('own-accounts failure: the provider rule in the message, no refund row');
@@ -43,7 +43,7 @@ try {
   const qt = await get(Q); assert.equal(qt.billingMode, 'team'); assert.equal(qt.credits, q.credits, 'the ✦ number is the same in both modes'); assert.equal(qt.cost.estUsd, q.cost.estUsd);
   const balT = (await get('/api/ledger')).balance; const r3 = await submit(); assert.equal(r3.status, 200); await waitEnd(r3.body.id);
   const lt = await get('/api/ledger'); assert.equal(lt.balance, balT - q.credits, 'team: charged'); assert.ok(lt.entries.some((e: any) => e.kind === 'charge' && e.jobId === r3.body.id));
-  const r4 = await submit({ simulateRouteFail: 'comfy-router:api-seedream' }); const j4 = await waitEnd(r4.body.id); assert.equal(j4.status, 'failed');
+  const r4 = await submit({ allowFallback: '0', simulateRouteFail: 'comfy-router:api-seedream' }); const j4 = await waitEnd(r4.body.id); assert.equal(j4.status, 'failed');
   const lt2 = await get('/api/ledger'); assert.equal(lt2.balance, balT - q.credits, 'team: the failed run went back'); assert.ok(j4.refund.refunded && j4.refund.amount === q.credits, JSON.stringify(j4.refund));
   ok('team mode: charge on submit, refund on failure (ledger as before)');
   await fetch(`${B}/api/dev/balance`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ credits: 1 }) });

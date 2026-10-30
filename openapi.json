@@ -1517,9 +1517,10 @@
                       "temporary",
                       "provider_outage",
                       "ip",
-                      "nsfw"
+                      "nsfw",
+                      "credits"
                     ],
-                    "description": "Mock backend only: force a failure. ip / nsfw simulate a PROVIDER refusing the job (status blocked, credits back to your balance (team mode; with your own accounts the provider failure rule applies) once); the app itself never pre-blocks content."
+                    "description": "Mock backend only: force a failure (credits: Comfy says the account is out of credits). ip / nsfw simulate a PROVIDER refusing the job (status blocked, credits back to your balance (team mode; with your own accounts the provider failure rule applies) once); the app itself never pre-blocks content."
                   }
                 }
               }
@@ -2001,9 +2002,10 @@
                       "temporary",
                       "provider_outage",
                       "ip",
-                      "nsfw"
+                      "nsfw",
+                      "credits"
                     ],
-                    "description": "Mock backend only: force a failure. ip / nsfw simulate a PROVIDER refusing the job (status blocked, credits back to your balance (team mode; with your own accounts the provider failure rule applies) once); the app itself never pre-blocks content."
+                    "description": "Mock backend only: force a failure (credits: Comfy says the account is out of credits). ip / nsfw simulate a PROVIDER refusing the job (status blocked, credits back to your balance (team mode; with your own accounts the provider failure rule applies) once); the app itself never pre-blocks content."
                   }
                 }
               }

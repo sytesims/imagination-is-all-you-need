@@ -34,7 +34,7 @@ try {
   const noFace = await job({ rights: '1' }, { image: both.image }); assert.equal(noFace.status, 400); assert.equal(noFace.body.issues[0].field, 'face'); assert.equal(noFace.body.issues[0].code, 'required'); assert.equal(noFace.body.refund.charged, false);
   const noTarget = await job({ rights: '1' }, { face: both.face }); assert.equal(noTarget.status, 400); assert.equal(noTarget.body.issues[0].field, 'image'); assert.equal(noTarget.body.issues[0].code, 'required');
   const badFace = await job({ rights: '1' }, { image: both.image, face: [Buffer.from('GIF89a not really'), 'face.gif', 'image/gif'] }); assert.equal(badFace.status, 400, JSON.stringify(badFace.body));
-  assert.ok(/PNG or JPG/i.test(badFace.body.error), badFace.body.error);
+  assert.equal(badFace.body.code, 'upload_format', JSON.stringify(badFace.body)); assert.equal(badFace.body.issues?.[0]?.field, 'face', 'the upload check names the face field'); assert.match(badFace.body.error, /supported raster image/); // refused at intake (uploadSecurity.ts) before the tool sees it
   const badTarget = await job({ rights: '1' }, { image: [Buffer.from('not an image'), 'target.txt', 'text/plain'], face: both.face }); assert.equal(badTarget.status, 400, JSON.stringify(badTarget.body));
   ok(`validation: missing face → ${noFace.body.error} · missing target → ${noTarget.body.error} · bad type → ${badFace.body.error}`);
 

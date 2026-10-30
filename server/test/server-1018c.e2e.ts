@@ -76,11 +76,13 @@ try {
   const ev = (await get(M, '/api/edit-video/tools?seconds=8&sourceResolution=720p')).body.tools.find((t: any) => t.id === 'upscale'); assert.equal(ev.estimated, false); assert.deepEqual(ev.sourceSize, { width: 1280, height: 720 });
   ok('upscale: sourceResolution / real size → estimated false (only missing seconds keep clip_not_loaded); no size → source_size_unknown; Edit Video menu the same');
   // (9) Edit Video Reframe reason
-  const rf = (await get(N, '/api/edit-video/tools')).body.tools.find((t: any) => t.id === 'reframe'); assert.equal(rf.available, false); assert.equal(rf.needsKey, true); assert.equal(rf.reason, 'Needs a fal key.'); assert.equal(rf.reasonDetail, 'Available once a fal key is added in Settings.');
+  // the Comfy key alone runs Reframe on Comfy Router (cloud first, shared/cloudDefaults.ts); the fal row still names its own key
+  const rf = (await get(N, '/api/edit-video/tools')).body.tools.find((t: any) => t.id === 'reframe'); assert.equal(rf.available, true); assert.equal(rf.needsKey, false);
+  assert.ok(rf.models[0].routes.some((r: any) => r.routeId.startsWith('comfy-router:') && r.available), JSON.stringify(rf.models[0].routes.map((r: any) => r.routeId)));
   const rr = rf.models[0].routes.find((r: any) => r.routeId === 'fal:fal-ai/luma-dream-machine/ray-2/reframe'); assert.equal(rr.needsKey, true); assert.equal(rr.keyOwner, 'fal'); assert.match(rr.priceLine, /^Needs a fal key\. Price once it's added/);
   const rfM = (await get(M, '/api/edit-video/tools')).body.tools.find((t: any) => t.id === 'reframe'); assert.equal(rfM.available, true); assert.equal(rfM.demo, true);
   assert.doesNotMatch(JSON.stringify(rf), /Auto picks a fal route/);
-  ok('edit video: Reframe → "Needs a fal key." / "Available once a fal key is added in Settings." (demo preview on mock)');
+  ok('edit video: Reframe runs on Comfy Router with the Comfy key; its fal route says "Needs a fal key." (demo preview on mock)');
   // steering: every Edit Video menu route carries the quote's runnable / needsKey / demo / reasonCode / priceLine / credits
   { let n = 0; const diffs: string[] = [];
     for (const [B, tag] of [[M, 'demo'], [N, 'nodemo']] as const) for (const t of (await get(B, '/api/edit-video/tools')).body.tools as any[]) for (const m of t.models ?? []) for (const r of m.routes) {

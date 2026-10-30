@@ -81,7 +81,9 @@ try {
     const qq = await d.get(`/api/models/quote?model=cloud-h3&toolId=h3-video&seconds=${sec}`); assert.equal(qq.valid, true, `${sec}s: ${qq.reason ?? qq.error}`);
     const jj = await d.job('h3-video', { prompt: 'a paper boat drifting', types: '["t2v"]', provider: 'cloud-h3', seconds: String(sec) }); assert.equal(jj.status, 200, JSON.stringify(jj.body)); assert.equal(jj.body.cost, qq.credits, `${sec}s quote ${qq.credits} = charge ${jj.body.cost}`);
   }
-  const q4 = await d.get('/api/models/quote?model=cloud-h3&toolId=h3-video&seconds=4'); assert.equal(q4.valid, false); assert.equal((await d.job('h3-video', { prompt: 'x', types: '["t2v"]', provider: 'cloud-h3', seconds: '4' })).status, 400);
-  { const dq = await d.get('/api/models/quote?model=cloud-h3&toolId=h3-video'); assert.equal(dq.demo ? dq.listCredits : dq.credits, 48, 'default stays 6 s = 48 cr (list price when shown as a sample run) ' + JSON.stringify(dq)); } ok('(3) cloud-h3 5–15 s: quote = charge at 5/6/11/15 s, 4 s refused on quote + submit, default 6 s = 48 cr');
+  // D5 (2026-10-28): 4 s is made at 5 s (the nearest length), never refused; quote = charge = the 5 s price
+  { const q5 = await d.get('/api/models/quote?model=cloud-h3&toolId=h3-video&seconds=5'); const q4 = await d.get('/api/models/quote?model=cloud-h3&toolId=h3-video&seconds=4'); assert.equal(q4.valid, true, JSON.stringify(q4)); assert.equal(q4.credits, q5.credits);
+    const j4 = await d.job('h3-video', { prompt: 'x', types: '["t2v"]', provider: 'cloud-h3', seconds: '4' }); assert.equal(j4.status, 200, JSON.stringify(j4.body)); assert.equal(j4.body.cost, q5.credits); }
+  { const dq = await d.get('/api/models/quote?model=cloud-h3&toolId=h3-video'); assert.equal(dq.demo ? dq.listCredits : dq.credits, 48, 'default stays 6 s = 48 cr (list price when shown as a sample run) ' + JSON.stringify(dq)); } ok('(3) cloud-h3 5–15 s: quote = charge at 5/6/11/15 s, 4 s → 5 s on quote + submit, default 6 s = 48 cr');
   console.log('PASS steering-1018');
 } finally { stop(D); stop(R); }

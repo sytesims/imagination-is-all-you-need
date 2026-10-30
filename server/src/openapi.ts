@@ -48,7 +48,7 @@ const JOB_FORM = {
     fromDraft: { type: 'string', description: 'Render the final of a draft job (same seed)' },
     useFree: { type: 'string', enum: ['0', '1'], description: 'Spend a free gen (≤ 720p, slower lane)' },
     customStyle: { type: 'string', enum: ['0', '1'] },
-    simulate: { type: 'string', enum: ['temporary', 'provider_outage', 'ip', 'nsfw'], description: 'Mock backend only: force a failure. ip / nsfw simulate a PROVIDER refusing the job (status blocked, credits back to your balance (team mode; with your own accounts the provider failure rule applies) once); the app itself never pre-blocks content.' },
+    simulate: { type: 'string', enum: ['temporary', 'provider_outage', 'ip', 'nsfw', 'credits'], description: 'Mock backend only: force a failure (credits: Comfy says the account is out of credits). ip / nsfw simulate a PROVIDER refusing the job (status blocked, credits back to your balance (team mode; with your own accounts the provider failure rule applies) once); the app itself never pre-blocks content.' },
   },
 };
 

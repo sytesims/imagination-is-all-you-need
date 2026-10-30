@@ -53,7 +53,10 @@ try {
     const ts = await N.get('/api/tools'); let compared = 0; const bad: string[] = [];
     for (const t of (Array.isArray(ts) ? ts : ts.tools)) for (const p of (t.providers ?? [])) {
       const pq = await N.get(`/api/tools/${t.id}/price?provider=${p.id}&image=1&video=1`); if (pq.credits == null || pq.runnable === false) continue; // image=1&video=1: the uploads below (app mode switches)
-      const sr = await N.post(`/api/tools/${t.id}/jobs`, { provider: p.id, rights: '1', prompt: 'a red mug on a table', text: 'hello there', quotedRouteId: pq.routeId ?? pq.route, quotedCredits: String(pq.credits) }, [['image', KEY, 'image/png'], ['video', MP4, 'video/mp4']]);
+      // only the file inputs this tool declares: the upload gate (uploadSecurity.ts) refuses any other file field before reading the rest of the request
+      const takes = (n: string) => (t.inputs ?? []).some((i: any) => i.name === n && ['file', 'files'].includes(i.kind));
+      const up = ([['image', KEY, 'image/png'], ['video', MP4, 'video/mp4']] as [string, string, string][]).filter(([n]) => takes(n));
+      const sr = await N.post(`/api/tools/${t.id}/jobs`, { provider: p.id, rights: '1', prompt: 'a red mug on a table', text: 'hello there', quotedRouteId: pq.routeId ?? pq.route, quotedCredits: String(pq.credits) }, up);
       if (sr.status === 409 && sr.body.error === 'route_changed') { bad.push(`${t.id}/${p.id}: quoted ${pq.credits} ${pq.route} → ${sr.body.quote?.credits} ${sr.body.quote?.route}`); continue; }
       if (sr.status !== 200) continue; compared++;
       if (sr.body.cost !== pq.credits || (sr.body.route ?? null) !== (pq.route ?? null)) bad.push(`${t.id}/${p.id}: quote ${pq.credits} ${pq.route} vs charge ${sr.body.cost} ${sr.body.route}`); }
@@ -62,14 +65,16 @@ try {
   { const pq = await N.get('/api/tools/upscale/price?duration=5&types=%5B%22precise%22%5D'); assert.ok('routeId' in pq && typeof pq.runnable === 'boolean' && typeof pq.demo === 'boolean');
     const okr = await N.post('/api/tools/upscale/jobs', { duration: '5', types: '["precise"]', rights: '1', quotedRouteId: pq.routeId, quotedCredits: String(pq.credits) }, [['video', MP4, 'video/mp4']]); assert.equal(okr.status, 200, JSON.stringify(okr.body)); assert.equal(okr.body.cost, pq.credits);
     const bal = (await N.get('/api/ledger')); const b0 = bal.balance ?? bal.summary?.balance;
-    const c1 = await N.post('/api/tools/upscale/jobs', { duration: '5', types: '["precise"]', rights: '1', quotedRouteId: 'fal:nope', quotedCredits: String(pq.credits) }, [['video', MP4, 'video/mp4']]);
-    assert.equal(c1.status, 409); assert.equal(c1.body.error, 'route_changed'); assert.equal(c1.body.message, 'The price changed. Nothing was charged.'); assert.equal(c1.body.userMessage, c1.body.message); assert.equal(c1.body.charged, false); assert.equal(c1.body.calm, true); assert.equal(c1.body.refund.charged, false); /* P2 3a */ assert.equal(c1.body.quote.routeId, pq.routeId); assert.equal(c1.body.quote.credits, pq.credits);
-    const c2 = await N.post('/api/tools/upscale/jobs', { duration: '5', types: '["precise"]', rights: '1', quotedRouteId: pq.routeId, quotedCredits: String(pq.credits + 7) }, [['video', MP4, 'video/mp4']]); assert.equal(c2.status, 409); assert.equal(c2.body.error, 'route_changed');
+    // D3 (2026-10-28, shared/priceChange.ts): ask again only when the run now costs more than the quote, or the place changed with no quoted price
+    const c1 = await N.post('/api/tools/upscale/jobs', { duration: '5', types: '["precise"]', rights: '1', quotedRouteId: 'fal:nope' }, [['video', MP4, 'video/mp4']]);
+    assert.equal(c1.status, 409, JSON.stringify(c1.body).slice(0, 800)); assert.equal(c1.body.error, 'route_changed'); assert.equal(c1.body.message, 'The price went up. Nothing was charged.' /* index.ts ROUTE_CHANGED_MSG (D3) */); assert.equal(c1.body.userMessage, c1.body.message); assert.equal(c1.body.charged, false); assert.equal(c1.body.calm, true); assert.equal(c1.body.refund.charged, false); /* P2 3a */ assert.equal(c1.body.quote.routeId, pq.routeId); assert.equal(c1.body.quote.credits, pq.credits);
+    const c2 = await N.post('/api/tools/upscale/jobs', { duration: '5', types: '["precise"]', rights: '1', quotedRouteId: pq.routeId, quotedCredits: String(pq.credits - 1) }, [['video', MP4, 'video/mp4']]); assert.equal(c2.status, 409, 'dearer than the quote asks'); assert.equal(c2.body.error, 'route_changed');
+    const c3 = await N.post('/api/tools/upscale/jobs', { duration: '5', types: '["precise"]', rights: '1', quotedRouteId: 'fal:nope', quotedCredits: String(pq.credits + 7) }, [['video', MP4, 'video/mp4']]); assert.equal(c3.status, 200, 'the same price or lower just runs, on any place');
     { const nr = await N.post('/api/tools/upscale/jobs', { duration: '5', types: '["precise"]', rights: '1', provider: 'comfy-seedvr2', route: 'local:comfy-seedvr2' } /* 2026-10-26: a pinned route that can't run here (SeedVR2 3B locally needs an NVIDIA GPU); SeedVR2 Creative is now refused at submit (400) */, [['video', MP4, 'video/mp4']]); // P2 3a: route_not_runnable
       assert.equal(nr.status, 409, JSON.stringify(nr.body).slice(0, 300)); assert.equal(nr.body.code, 'route_not_runnable'); assert.equal(nr.body.charged, false); assert.match(nr.body.userMessage, /Nothing was charged\.$/); assert.ok(!/\(/.test(nr.body.userMessage), nr.body.userMessage); }
     const b1 = (await N.get('/api/ledger')); assert.equal(b1.balance ?? b1.summary?.balance, b0, '409 charges nothing');
     const ex = await N.get('/api/tools/h3-extend/price?seconds=5'); assert.equal(typeof ex.credits, 'number', `Extend has a price ${JSON.stringify(ex).slice(0, 200)}`); assert.ok('routeId' in ex);
-    ok(`quote/submit: price has routeId/runnable/demo; matching quotedRouteId+quotedCredits → 200; route or credits differ → 409 route_changed with the fresh quote, nothing charged; Extend priced (${ex.credits})`); }
+    ok(`quote/submit: price has routeId/runnable/demo; matching quotedRouteId+quotedCredits → 200; dearer, or another place with no quoted price → 409 route_changed with the fresh quote, nothing charged; same or lower → 200; Extend priced (${ex.credits})`); }
   // ---- L4 UGC Ad photo → r2v (LOW-ROWS: presenter/product refs); L5 Transitions / UGC 720p → 768p with the note ----
   { const KEY = path.join(D, 'key-1280.png');
     const u = await N.post('/api/tools/app-ugc-ad/jobs', { prompt: 'a steel water bottle', rights: '1' }, [['image', KEY, 'image/png']]); assert.equal(u.status, 200, JSON.stringify(u.body));

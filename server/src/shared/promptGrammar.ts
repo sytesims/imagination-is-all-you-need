@@ -324,6 +324,21 @@ const VIDEO: PromptGrammar[] = [
   noPrompt('rife-4.9', 'RIFE 4.9', 'video', 'utility', 'Frame interpolation.', [{ at: 'server/src/comfy/plans.ts:252', follows: 'n/a' }], [REPO('workflows/fps-boost-rife-api.json')]),
   noPrompt('depth-anything-v2-small', 'Depth Anything V2 Small', 'video', 'utility', 'Depth map.', [], [REPO('workflows/depth-map-dav2-api.json')]),
   noPrompt('ffmpeg-hdr10', 'ffmpeg HDR10 conversion', 'video', 'utility', 'Not an AI model.', [], [I('https://ffmpeg.org/ffmpeg-filters.html#zscale')]),
+  // Official Comfy templates added 2026-10-27 (tools/comfyFeatured.ts, tools/promptEdit.ts)
+  g({ key: 'gemini-omni-1.1-flash', name: 'Gemini Omni 1.1 Flash', medium: 'video', kind: 'video', status: 'known', prompt: 'required',
+    refs: FRAME_ONLY([NODE('GeminiVideoOmniV2')], 'A start frame, or start + end frames (image to video); the prompt describes the motion.'), negative: 'none',
+    special: ['The length goes in the prompt in words ("A 6-second clip."), 3–10 s; we add it at the end'], structure: VIDEO_STRUCT,
+    example: 'A paper boat drifts down a rainy street gutter, the camera follows low, rain patter and distant traffic.',
+    code: [{ at: 'server/src/comfy/geminiOmniCloud.ts:65', follows: 'yes', note: 'The user\'s words, then the length in words.' }], sources: [NODE('GeminiVideoOmniV2')] }),
+  g({ key: 'wan-animate-2', name: 'Wan Animate 2', medium: 'video', kind: 'video-edit', status: 'known', prompt: 'optional',
+    refs: ORDER_IMG(1, [TUT('video/wan/wan-animate-2')], 'One character image and the driving clip; the prompt never names them.'), negative: 'field', languages: 'English and Chinese',
+    structure: 'Who the character is, then the scene, background and camera move; the motion comes from the clip.', example: 'A knight in silver armour on a windy cliff at dusk, slow orbit around him.',
+    code: [{ at: 'server/src/comfy/wanAnimate2Cloud.ts:64', follows: 'yes', note: 'The template\'s two-part shape (character, background); the pose prompt is fixed.' }], sources: [TUT('video/wan/wan-animate-2')] }),
+  g({ key: 'bernini-r', name: 'Bernini-R', medium: 'video', kind: 'video-edit', status: 'known', prompt: 'required',
+    refs: { style: 'none', note: 'The source clip only on our route; the instruction never names it.', src: [TUT('video/bytedance/bernini-r')] },
+    limits: { maxChars: 1500, src: [REPO('server/src/comfy/berniniCloud.ts')] }, negative: 'none',
+    structure: 'The one change, then what stays (motion and framing are kept).', example: 'Make it night with warm street lights, keep the people and the camera move.',
+    code: [{ at: 'server/src/comfy/berniniCloud.ts:81', follows: 'yes' }], sources: [TUT('video/bytedance/bernini-r'), NODE('BerniniConditioning')] }),
 ];
 
 // Image ----------------------------------------------------------------
@@ -482,6 +497,11 @@ const IMAGE: PromptGrammar[] = [
     structure: 'Empty = split every major element; or name the elements to separate.', example: 'Separate the man, the bicycle and the shop sign.', code: [{ at: 'server/src/routing/routerModels.ts:391', follows: 'yes' }], sources: [S.seedreamLayers, S.seedream] })),
   g({ key: 'qwen-image-layered', name: 'Qwen-Image-Layered', medium: 'image', kind: 'layers', status: 'unknown', reason: 'The official template\'s prompt role (caption or instruction) is not documented in the pages we read.', prompt: 'optional',
     refs: { style: 'none', src: [NODE('EmptyQwenImageLayeredLatentImage')] }, negative: 'unknown', structure: 'Unknown: leave empty or describe the scene.', example: '(leave empty)', code: [], sources: [NODE('EmptyQwenImageLayeredLatentImage')] }),
+  g({ key: 'bria-virtual-tryon', name: 'Bria Virtual Try-On', medium: 'image', kind: 'image-edit', status: 'known', prompt: 'optional',
+    refs: { style: 'none', note: 'Two photos by role (person_image, garment_images); the instruction never names them.', src: [ROUTER('bria/image-edit-product-virtual-tryon')] },
+    limits: { maxChars: 500, truncatedByUs: true, src: [REPO('server/src/routing/routerModels.ts')] }, negative: 'none', languages: 'English only, no special characters (Bria)',
+    structure: 'Optional: how the garment should sit (tucked, open, sleeves rolled).', example: 'Jacket worn open, sleeves rolled to the elbow.',
+    code: [{ at: 'server/src/routing/routerModels.ts:921', follows: 'yes', note: 'Only the user\'s own words (briaText).' }], sources: [ROUTER('bria/image-edit-product-virtual-tryon')] }),
 ];
 
 // Audio ----------------------------------------------------------------

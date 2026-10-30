@@ -79,13 +79,13 @@ for (const [id, spec] of Object.entries(SPECS)) {
     n++;
   }
   if (spec.covers) assert.deepEqual([...seen].sort(), [...spec.covers].sort(), `${id}: every docs value is offered`);
-  // a shape off the list is refused by the route (never snapped)
+  // a shape off the list is refused by the route body; the job check (checkImageCaps) snaps it to the closest listed shape first, with a note (D5, 2026-10-28)
   const off = ['7:3', '13:7'].find((x) => !c.aspects.includes(x))!;
   assert.ok(rm.block?.({ types: ['generate'], prompt: 'p', aspect: off }), `${id}: ${off} refused by the route`);
   await assert.rejects(rm.body({ types: ['generate'], prompt: 'p', aspect: off }, 0), `${id}: the body refuses ${off} too`);
-  assert.equal(checkImageCaps(id, { aspect: off }).ok, false, `${id}: checkImageCaps refuses ${off}`);
+  { const sc: any = checkImageCaps(id, { aspect: off }); assert.ok(sc.ok && c.aspects.includes(sc.aspect) && sc.notes?.some((x: string) => /closest shape/.test(x)), `${id}: checkImageCaps snaps ${off} to a listed shape: ${JSON.stringify(sc)}`); }
 }
-ok(`Comfy Router bodies: ${n} shape × resolution cases map to the docs' values; every docs value is offered; off-list shapes refused`);
+ok(`Comfy Router bodies: ${n} shape × resolution cases map to the docs' values; every docs value is offered; off-list shapes refused by the body, snapped by the job check`);
 
 // FLUX.2: the exact size, same pixel count per shape, inside 256–2048, close to the shape
 for (const a of A.FLUX2_ASPECTS) for (const res of ['1K', '2K']) { const s = A.flux2Size(a, res); assert.ok(s.width % 16 === 0 && s.height % 16 === 0, `FLUX.2 ${a} ${res}: multiples of 16`);

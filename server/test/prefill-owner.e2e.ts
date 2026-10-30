@@ -88,7 +88,7 @@ try {
   { const p = await get(`/api/jobs/${img.id}/prefill?action=turn-to-video`);
     assert.equal(p.tool, 'h3-video'); assert.equal(p.path, '/tools/h3-video'); assert.equal(p.url, `/tools/h3-video?fromJob=${img.id}&as=image&out=0`);
     assert.equal(p.fields.prompt, ''); assert.equal(p.imagePrompt, 'a red fox in snow'); assert.equal(p.startFrame, img.outputs[0].url); assert.equal(p.fields.image, img.outputs[0].url); assert.equal(p.slot, 'image');
-    assert.deepEqual(p.submit, { fromJob: img.id, output: '0' }); assert.equal(p.fields.types, '["i2v"]'); assert.ok(p.needs.includes('prompt'));
+    assert.deepEqual(p.submit, { fromJob: img.id, output: '0' }); assert.equal(p.fields.types, '["i2v"]'); assert.ok(!p.needs.includes('prompt'), 'image to video runs without a prompt (media.ts promptOptionalModes)');
     const j = await sendAndCheck(p, 'turn-to-video'); const full = await get(`/api/jobs/${j.id}`); assert.equal(full.parentId ?? img.id, img.id);
     ok(`turn-to-video → h3-video model ${p.model} aspect ${p.fields.aspect} startFrame ${p.startFrame}; submitted → ${j.id}`); }
   { const r = await req('GET', `/api/jobs/${vid.id}/prefill?action=turn-to-video`); assert.equal(r.status, 400); assert.equal(r.body.code, 'unsupported');

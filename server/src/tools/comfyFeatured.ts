@@ -116,6 +116,7 @@ NATIVE_DIRECT[F3M_PROVIDER] = { label: 'Comfy Cloud', endpoint: `POST https://cl
 EXTRA_ROUTES[F3M_PROVIDER] = [...(EXTRA_ROUTES[F3M_PROVIDER] ?? []), { ...routerPlace(F3M_PROVIDER, { audio: true, resolutions: ['720p'], note: 'Text to video at 720p' },
   { modes: ['t2v'], checkedAt: D, typicalLatencySec: 240 }), unavailableFor: f3mRouterIssue }];
 h3VideoTool.providers.push(F3M_PROVIDER);
+{ const a: any = h3VideoTool.inputs.find((x: any) => x.name === 'aspect'); if (a) for (const x of F3M_ASPECTS) if (!a.options.includes(x)) a.options.push(x); } // 2:1 is FLUX 3 Max's own shape: the tool's aspect list (quote/submit check) takes what its bar offers
 (h3VideoTool as any).app.providerModes[F3M_PROVIDER] = [...F3M_MODES];
 { // keyframe times and reasoning level ride on the job (API fields; the bar has no control for them yet)
   const p = h3VideoTool.parseInput.bind(h3VideoTool);

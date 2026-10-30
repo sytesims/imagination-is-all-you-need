@@ -18,7 +18,7 @@ export function canConnectTo(fromType: string | null | undefined, toType: string
   if (!from?.output || !to?.input) return false;
   if (to.inputMax > 0 && existingInputs >= to.inputMax) return false;
   if (from.kind === 'prompt' || from.kind === 'note') return to.kind === 'gen';
-  if (to.kind === 'gen' || to.kind === 'compare') return true;
+  if (to.kind === 'gen' || to.kind === 'compare' || to.kind === 'ad') return true;
   return false;
 }
 

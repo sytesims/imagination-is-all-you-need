@@ -9,7 +9,8 @@
  *    that take that kind and dims the others; a drop on a legal card draws the existing tldraw arrow binding (graph.linkShapes), so
  *    cardInputs keeps working exactly as before. A drop on a card that can't take it says what that card takes; a drop on empty
  *    board opens "What next?" (NextStepMenu) with the sensible workflows for that medium.
- *  - zoomed out (under FAR_ZOOM): a soft pill tinted by the medium, label only.
+ *  - one look at every zoom (2026-10-30: the zoomed-out pill is gone; links ended at card edges the pill no longer filled). Far out the
+ *    board drops shadows and loops (CameraMotion.tsx), and cards well off screen are empty shells.
  *
  * The frame is presentational: each shape util owns its props and resize rules; the shared registry (nodeTypes.ts) owns which ports
  * exist, nodeLogic.ts owns the typing rules and ports.ts reads them from the live board.
@@ -25,7 +26,6 @@ import { nodeDefOf, type NodeTint } from './nodeTypes';
 import { legalTargets, pickTypedTarget, takesLine, PORT_WORDS, type PortInfo, type PortKind } from './nodeLogic';
 import { boardPorts, portInfoOf } from './ports';
 import { catalogNow } from './catalog';
-import { FAR_ZOOM } from './cardLook';
 import { perfOff } from './CameraMotion';
 
 export interface NodeFrameProps {
@@ -37,8 +37,8 @@ export interface NodeFrameProps {
   variant?: 'node' | 'group';
   testId?: string;
   rootAttrs?: Record<string, string | undefined>;
-  /** zoomed out (under FAR_ZOOM): the card draws as a soft pill tinted by its medium with this label only; `state` adds a quiet dot */
-  far?: { label: string; media: string; state?: string };
+  /** the card's short label (its name for screen readers) */
+  label?: string;
 }
 
 const KIND_NAME: Record<PortKind, string> = { image: 'Picture', video: 'Clip', audio: 'Sound', text: 'Text' };
@@ -58,7 +58,7 @@ function DragGhost({ from }: { from: { x: number; y: number } }) {
   </div>, document.body);
 }
 
-export function NodeFrame({ shapeId, type, tint, icon, title, titleHint, status, actions, children, footer, className = '', bodyClass = '', variant = 'node', testId, rootAttrs, far }: NodeFrameProps) {
+export function NodeFrame({ shapeId, type, tint, icon, title, titleHint, status, actions, children, footer, className = '', bodyClass = '', variant = 'node', testId, rootAttrs, label }: NodeFrameProps) {
   const editor = useEditor(); const toast = useToast();
   const def = nodeDefOf(type);
   const selected = useValue('nf selected', () => editor.getSelectedShapeIds().includes(shapeId), [editor, shapeId]);
@@ -70,7 +70,6 @@ export function NodeFrame({ shapeId, type, tint, icon, title, titleHint, status,
   const [outK, insK] = ports.split('|'); const out = (outK || null) as PortKind | null;
   const ins = (insK ? insK.split(',') : []).map((x) => { const [k, r] = x.split(':'); return { kind: k as PortKind, room: Number(r) }; });
   const [start, setStart] = useState<{ x: number; y: number } | null>(null);
-  const isFar = useValue('nf far', () => variant === 'node' && editor.getZoomLevel() < FAR_ZOOM, [editor, variant]);
   /* far off screen (more than a screen away): an empty shell, so its media, timers and controls aren't mounted while you pan a big board.
      It fills back in a screen before it comes into view; selected cards always stay whole. Re-renders only when this flips. */
   const offscreen = useValue('nf offscreen', () => { if (variant !== 'node' || perfOff()) return false; const b = editor.getShapePageBounds(shapeId); if (!b) return false;
@@ -111,13 +110,6 @@ export function NodeFrame({ shapeId, type, tint, icon, title, titleHint, status,
   };
 
   if (offscreen) return <div className={`nf nf-${variant} nf-shell`} data-shape-id={shapeId} data-node-kind={def?.kind ?? 'node'} data-offscreen="1" aria-hidden />;
-  /* zoomed out: a soft pill with the label only (it fades in; the full card comes back past FAR_ZOOM) */
-  if (isFar) {
-    const media = far?.media ?? tint ?? def?.tint ?? 'text';
-    return <div className={`nf-far nf-far-${media}${selected ? ' nf-sel' : ''}${role ? ` nf-r-${role}` : ''}`} data-shape-id={shapeId} data-node-kind={def?.kind ?? 'node'} data-testid={testId ? `${testId}-far` : undefined} data-state={far?.state}>
-      <span className="nf-far-pill"><i className="nf-far-dot" aria-hidden /><b>{far?.label ?? (typeof title === 'string' ? title : def?.label ?? 'Node')}</b></span>
-    </div>;
-  }
   /* keyboard: a card is a focus stop (Tab moves between cards); Enter selects it, the same as a click */
   const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' && !editor.getSelectedShapeIds().includes(shapeId)) { e.preventDefault(); e.stopPropagation(); editor.select(shapeId); } };
   const canDrop = role === 'drop';
@@ -125,7 +117,7 @@ export function NodeFrame({ shapeId, type, tint, icon, title, titleHint, status,
   /* input dots sit around the middle of the left edge, 20 px apart */
   const n = ins.length; const top = (i: number) => `calc(50% + ${(i - (n - 1) / 2) * 20}px)`;
   return <div className={cls} data-shape-id={shapeId} data-node-kind={def?.kind ?? 'node'} data-node-type={type} data-selected={selected ? '1' : undefined} data-drop={canDrop ? '1' : undefined} data-drag-role={role || undefined} data-testid={testId} {...rootAttrs}
-    tabIndex={variant === 'node' ? 0 : undefined} aria-label={variant === 'node' ? (far?.label ?? def?.label) : undefined} onKeyDown={variant === 'node' ? onKey : undefined}>
+    tabIndex={variant === 'node' ? 0 : undefined} aria-label={variant === 'node' ? (label ?? def?.label) : undefined} onKeyDown={variant === 'node' ? onKey : undefined}>
     <header className="nf-head">
       <span className="nf-tile" aria-hidden>{icon}</span>
       <div className="nf-title" {...(titleHint ? tip(titleHint) : {})}>{title}</div>

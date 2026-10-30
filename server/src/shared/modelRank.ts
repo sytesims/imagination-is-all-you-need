@@ -226,6 +226,7 @@ Object.assign(CATALOGUE, {
   'flux-3-max': e('FLUX 3 Max', 27, 'api', 'Up to 10 keyframes to one shot with sound', { aliases: ['flux', 'flux 3', 'flux max', 'bfl', 'black forest labs', 'keyframes', 'video'] }),
   'gemini-omni-1.1-flash': e('Gemini Omni 1.1 Flash', 36, 'api', 'Text or frames to video with sound, to 4K', { aliases: ['gemini', 'omni', 'google', 'veo'] }),
   'wan-animate-2': e('Wan Animate 2', 37, 'api', 'Your character does the clip’s moves', { aliases: ['wan', 'animate', 'motion', 'alibaba', 'dance'] }),
+  'bernini-r': e('Bernini-R', 38, 'api', 'Edit a clip with one line, motion kept', { aliases: ['bernini', 'bytedance', 'wan', 'prompt edit', 'edit'] }), // Prompt Edit (2026-10-27)
 });
 /** Models that list this one as their variantOf (Z-Image-Turbo → [z-image, opensoul]). */
 export const variantsOf = (key: string): string[] => Object.keys(CATALOGUE).filter((k) => CATALOGUE[k].variantOf === key);

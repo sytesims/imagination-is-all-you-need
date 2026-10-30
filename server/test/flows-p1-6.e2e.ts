@@ -28,7 +28,7 @@ try {
   const r2 = await req('POST', `/api/jobs/${f.body.id}/retry`); assert.equal(r2.body.id, r1.body.id); assert.equal(r2.body.idempotentReplay, true);
   const nj = await settle(r1.body.id); assert.equal(nj.status, 'done'); assert.equal(nj.parentId, f.body.id);
   const led = (await req('GET', '/api/ledger')).body; const charge = led.entries.find((e: any) => e.jobId === r1.body.id && e.kind === 'charge');
-  assert.equal(led.balance, bal0 - r1.body.cost); assert.ok(r1.body.cost > 0); assert.ok(charge, 'retry is charged'); assert.equal(fj.refunded ?? r1.body.cost, r1.body.cost);
+  assert.equal(led.balance, bal0 - r1.body.cost); assert.ok(r1.body.cost > 0); assert.ok(charge, 'retry is charged'); assert.equal(led.entries.filter((e: any) => e.jobId === f.body.id).reduce((a: number, e: any) => a + e.amount, 0), 0, 'the failed job cost nothing net (each failed attempt went back; D4 may have tried a second place)');
   console.log(`ok POST /api/jobs/:id/retry: failed ${f.body.id} → new ${r1.body.id} (cost ${r1.body.cost}, charged=${!!charge}), second click → same id (idempotentReplay), runs to done`);
   assert.equal((await req('POST', `/api/jobs/${r1.body.id}/retry`)).body.code, 'not_failed'); assert.equal((await req('POST', `/api/jobs/${r1.body.id}/retry`)).status, 409);
   const nsfw = await form('/api/tools/create-image/jobs', { ...img, simulate: 'nsfw' }); await settle(nsfw.body.id); const rb = await req('POST', `/api/jobs/${nsfw.body.id}/retry`); assert.equal(rb.status, 200, JSON.stringify(rb.body)); assert.equal(rb.body.retryOf, nsfw.body.id);

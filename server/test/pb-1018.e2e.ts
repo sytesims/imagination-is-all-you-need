@@ -78,8 +78,9 @@ try {
     const r = await N.post('/api/tools/h3-video/jobs', { provider: 'cloud-h3-wf', prompt: 'a lighthouse at dusk', duration: '5', resolution: '720p', types: '["t2v"]' }); assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.cost, q.credits, 'quote = charge after mapping'); assert.ok((r.body.warnings ?? []).some((w: string) => /720p was mapped to 768p/.test(w)), JSON.stringify(r.body.warnings));
     const j = await N.get(`/api/jobs/${r.body.id}`); assert.equal(j.input.resolution, '768p');
-    const bad = await N.get('/api/tools/h3-video/price?provider=cloud-h3-wf&seconds=5&resolution=1080p'); assert.equal(bad.credits, null);
-    ok(`cloud-h3-wf 720p → 768p: quote ${q.credits} = charge ${r.body.cost}, note in quote + job warnings; 1080p still refused`); }
+    // D5 (2026-10-28): a tier the model lacks is made at the nearest one, with a note (never refused): 1080p → 768p, the same price as 720p → 768p
+    const big = await N.get('/api/tools/h3-video/price?provider=cloud-h3-wf&seconds=5&resolution=1080p'); assert.notEqual(big.credits, null, JSON.stringify(big).slice(0, 600)); assert.equal(big.listCredits ?? big.credits, q.listCredits ?? q.credits);
+    ok(`cloud-h3-wf 720p → 768p: quote ${q.credits} = charge ${r.body.cost}, note in quote + job warnings; 1080p → 768p too (D5)`); }
   // ---- cloud-ltx-camera: Comfy Cloud twin of camera-ltx-api.json (open weights, LTX presets only, placeholder estimated price, LTX2 ETA anchor) ----
   { const cam = (await N.get('/api/tools')); const c = (Array.isArray(cam) ? cam : cam.tools).find((t: any) => t.id === 'camera'); const pv = c.providers.find((p: any) => p.id === 'cloud-ltx-camera');
     assert.ok(pv && pv.openWeights === true, JSON.stringify(pv)); const ltx = c.presets.find((p: any) => p.id === 'ltx-dolly-in'); assert.ok(ltx.providers.includes('cloud-ltx-camera'));

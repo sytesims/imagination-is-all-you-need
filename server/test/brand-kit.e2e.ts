@@ -106,13 +106,18 @@ try {
     for (const id of made) assert.equal((await req('DELETE', `/api/brand-kits/${id}`)).status, 200);
     ok('several brands: grid order and quick switching'); }
 
-  // logo: PNG, SVG kept, SVG with script refused, wrong type refused
+  // logo: PNG, SVG kept and served as an image, SVG with script refused, GIF kept, fake GIF and wrong type refused
   const png = fs.readFileSync(path.join(ROOT, 'samples/sample-product.png'));
   const lg = await upload(`/api/brand-kits/${kid}/logo`, png, 'logo.png', 'image/png'); assert.equal(lg.status, 200, JSON.stringify(lg.body)); assert.match(lg.body.logo.url, /^\/files\/brand-/);
   assert.equal((await fetch(B + lg.body.logo.url)).status, 200);
   const svg = await upload(`/api/brand-kits/${kid}/logo`, Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" fill="#FF7A1A"/></svg>'), 'logo.svg', 'image/svg+xml');
   assert.equal(svg.status, 200); assert.equal(svg.body.logo.mime, 'image/svg+xml'); assert.ok(!fs.existsSync(path.join(DATA, lg.body.logo.url.slice(7))), 'the old logo file is removed');
   assert.equal((await upload(`/api/brand-kits/${kid}/logo`, Buffer.from('<svg><script>alert(1)</script></svg>'), 'x.svg', 'image/svg+xml')).status, 400, 'an SVG with script');
+  assert.match((await fetch(B + svg.body.logo.url)).headers.get('content-type') ?? '', /^image\/svg\+xml/, 'an SVG logo is served as an image, so it shows');
+  const gif = Buffer.from('R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==', 'base64'); // 1×1 GIF
+  const gl = await upload(`/api/brand-kits/${kid}/logo`, gif, 'logo.gif', 'image/gif'); assert.equal(gl.status, 200, JSON.stringify(gl.body)); assert.equal(gl.body.logo.mime, 'image/gif');
+  assert.equal((await upload(`/api/brand-kits/${kid}/logo`, Buffer.from('not a gif at all'), 'x.gif', 'image/gif')).status, 400, 'a fake GIF');
+  const sv2 = await upload(`/api/brand-kits/${kid}/logo`, Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>'), 'logo.svg', 'image/svg+xml'); assert.equal(sv2.status, 200);
   assert.equal((await upload(`/api/brand-kits/${kid}/logo`, Buffer.from('hello'), 'x.txt', 'text/plain')).status, 400);
   ok('logo upload');
 
@@ -143,7 +148,7 @@ try {
   ok('unknown kit 400, empty kit adds nothing, voiceover untouched, music gets the mood');
 
   // deleting a kit removes its own files
-  const logoFile = path.join(DATA, svg.body.logo.url.slice(7)); assert.ok(fs.existsSync(logoFile)); await req('DELETE', `/api/brand-kits/${kid}`); assert.ok(!fs.existsSync(logoFile));
+  const logoFile = path.join(DATA, sv2.body.logo.url.slice(7)); assert.ok(fs.existsSync(logoFile)); await req('DELETE', `/api/brand-kits/${kid}`); assert.ok(!fs.existsSync(logoFile));
   ok('delete removes the logo');
   console.log('PASS brand-kit');
 } finally { try { process.kill(-srv.pid!); } catch { /* gone */ } }

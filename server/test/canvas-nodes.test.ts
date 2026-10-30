@@ -2,7 +2,7 @@
 // membership, and the two-press Run all (a first press only prices; a run list comes back only on a fresh second press).
 // Run: npx tsx test/canvas-nodes.test.ts   (no server, no network, no browser)
 import assert from 'node:assert/strict';
-import { NODE_DEFS, NODE_KINDS, NODE_TYPES, GEN_TYPE, RESULT_TYPE, PROMPT_TYPE, UPLOAD_TYPE, NOTE_TYPE, COMPARE_TYPE, GROUP_TYPE, nodeDefOf } from '../../web/src/canvas/nodeTypes.ts';
+import { NODE_DEFS, NODE_KINDS, NODE_TYPES, GEN_TYPE, RESULT_TYPE, PROMPT_TYPE, UPLOAD_TYPE, NOTE_TYPE, COMPARE_TYPE, GROUP_TYPE, AD_TYPE, nodeDefOf } from '../../web/src/canvas/nodeTypes.ts';
 import { canConnectTo, pickPortTarget, groupGenIds, runAllConfirm, runAllCommit, runAllTotal, runAllPriceLabel } from '../../web/src/canvas/nodeLogic.ts';
 import { linkShapes, inputOfShape, withInputs } from '../../web/src/canvas/graph.ts';
 import { addVersions, MAX_VERSIONS } from '../../web/src/canvas/cardModel.ts';
@@ -11,8 +11,8 @@ import { outKindOf, genIns, canFeed, legalTargets, pickTypedTarget, takesLine, t
 const ok = (m: string) => console.log('ok ' + m);
 
 // ---- the registry: every node kind, one unique tldraw type, honest ports and sizes ----
-assert.equal(NODE_KINDS.length, 7); assert.equal(new Set(NODE_TYPES).size, 7);
-assert.deepEqual(NODE_TYPES, [GEN_TYPE, RESULT_TYPE, PROMPT_TYPE, UPLOAD_TYPE, NOTE_TYPE, COMPARE_TYPE, GROUP_TYPE]);
+assert.equal(NODE_KINDS.length, 8); assert.equal(new Set(NODE_TYPES).size, 8);
+assert.deepEqual(NODE_TYPES, [GEN_TYPE, RESULT_TYPE, PROMPT_TYPE, UPLOAD_TYPE, NOTE_TYPE, COMPARE_TYPE, GROUP_TYPE, AD_TYPE]);
 for (const k of NODE_KINDS) { const d = NODE_DEFS[k]; assert.equal(nodeDefOf(d.type), d); assert.ok(d.minW <= d.defaultW && d.defaultW <= d.maxW); assert.ok(d.minH <= d.defaultH && d.defaultH <= d.maxH); }
 assert.equal(NODE_DEFS.gen.input, true); assert.equal(NODE_DEFS.gen.output, true);
 assert.equal(NODE_DEFS.result.input, false); assert.equal(NODE_DEFS.result.output, true);
@@ -21,8 +21,9 @@ assert.equal(NODE_DEFS.upload.input, false); assert.equal(NODE_DEFS.upload.outpu
 assert.equal(NODE_DEFS.note.input, false); assert.equal(NODE_DEFS.note.output, true);
 assert.equal(NODE_DEFS.compare.input, true); assert.equal(NODE_DEFS.compare.inputMax, 2); assert.equal(NODE_DEFS.compare.output, false);
 assert.equal(NODE_DEFS.group.input, false); assert.equal(NODE_DEFS.group.output, false);
+assert.equal(NODE_DEFS.ad.input, true); assert.equal(NODE_DEFS.ad.inputMax, 1); assert.equal(NODE_DEFS.ad.output, false);
 assert.equal(nodeDefOf('ohf-nope'), null);
-ok('registry: 7 kinds, unique types, ports, input max, size limits');
+ok('registry: 8 kinds, unique types, ports, input max, size limits');
 
 // ---- port linking rules ----
 assert.equal(canConnectTo(GEN_TYPE, GEN_TYPE), true, 'a finished generate node feeds another');
@@ -36,6 +37,8 @@ assert.equal(canConnectTo(GEN_TYPE, GROUP_TYPE), false, 'a group never takes an 
 assert.equal(canConnectTo(COMPARE_TYPE, GEN_TYPE), false, 'compare has no output');
 assert.equal(canConnectTo(GEN_TYPE, COMPARE_TYPE, 2), false, 'compare takes exactly two');
 assert.equal(canConnectTo(GEN_TYPE, COMPARE_TYPE, 1), true);
+assert.equal(canConnectTo(UPLOAD_TYPE, AD_TYPE), true, 'a picture feeds an ad layout'); assert.equal(canConnectTo(RESULT_TYPE, AD_TYPE, 1), false, 'an ad layout takes one picture');
+assert.equal(canConnectTo(PROMPT_TYPE, AD_TYPE), false, 'its words are typed on the card'); assert.equal(canConnectTo(AD_TYPE, GEN_TYPE), false, 'an ad layout has no output');
 const cands = [{ id: 'shape:a', type: GEN_TYPE }, { id: 'shape:b', type: NOTE_TYPE }, { id: 'shape:c', type: COMPARE_TYPE, inputs: 2 }, { id: 'shape:d', type: COMPARE_TYPE, inputs: 1 }];
 assert.deepEqual(pickPortTarget(cands, 'shape:a', GEN_TYPE), { id: 'shape:d', type: COMPARE_TYPE }, 'skips self, a note and a full compare');
 assert.equal(pickPortTarget(cands, 'shape:a', PROMPT_TYPE), null, 'a prompt drag cannot land on compare / note');
@@ -76,7 +79,7 @@ assert.equal(outKindOf(GEN_TYPE, { medium: 'image', takes: [{ kind: 'image' }, {
 assert.equal(outKindOf(GEN_TYPE, { medium: '3d', takes: [] }), null, '3D feeds nothing');
 assert.equal(outKindOf(PROMPT_TYPE, {}), 'text'); assert.equal(outKindOf(NOTE_TYPE, {}), 'text');
 assert.equal(outKindOf(RESULT_TYPE, { kind: 'audio' }), 'audio'); assert.equal(outKindOf(UPLOAD_TYPE, { mediaKind: 'video' }), 'video');
-assert.equal(outKindOf(COMPARE_TYPE, {}), null); assert.equal(outKindOf(GROUP_TYPE, {}), null); assert.equal(outKindOf('image', {}), 'image');
+assert.equal(outKindOf(COMPARE_TYPE, {}), null); assert.equal(outKindOf(AD_TYPE, {}), null); assert.equal(outKindOf(GROUP_TYPE, {}), null); assert.equal(outKindOf('image', {}), 'image');
 const vidIns = genIns([{ accept: 'image', max: 1, label: 'First frame' }, { accept: 'image', max: 1, label: 'Last frame' }], { image: 1 }, false);
 assert.deepEqual(vidIns.map((i) => [i.kind, i.room]), [['image', 1], ['text', 99]], 'a video card: one more frame and a prompt');
 assert.deepEqual(genIns([], {}, true), [], 'a hidden-prompt card with no slots takes nothing');

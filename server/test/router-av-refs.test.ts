@@ -155,7 +155,7 @@ ok(`limits: ${BAD.length} bad jobs + the 100 MiB body cap refused by block and b
   for (const d of [4, 6, 8]) { const v: any = await V.body({ mode: 't2v', types: ['t2v'], prompt: 'x', duration: d, resolution: '1080p' }, 0); assert.equal(v.parameters.durationSeconds, 8); assert.equal(v.parameters.resolution, '1080p'); }
   const v720: any = await V.body({ mode: 't2v', types: ['t2v'], prompt: 'x', duration: 4, resolution: '720p' }, 0); assert.equal(v720.parameters.durationSeconds, 4);
   const vAud: any = await V.body({ mode: 't2v', types: ['t2v'], prompt: 'x', duration: 8, resolution: '720p' }, 0); assert.equal(vAud.parameters.generateAudio, false);
-  for (const [d, want] of [[3, 5], [4, 5], [5, 5], [15, 15], [20, 15]]) { const h: any = await H3.body({ mode: 't2v', types: ['t2v'], prompt: 'x', duration: d, resolution: '768p' }, 0); assert.equal(h.duration, want, `H3 ${d}s`); }
+  for (const [d, want] of [[3, 4], [4, 4], [5, 5], [15, 15], [20, 15]]) { const h: any = await H3.body({ mode: 't2v', types: ['t2v'], prompt: 'x', duration: d, resolution: '768p' }, 0); assert.equal(h.duration, want, `H3 ${d}s`); }
   const K = M.ROUTER_MODELS['router-kling']; assert.equal((await K.body({ mode: 't2v', prompt: 'x', duration: 5, resolution: '1080p' }, 0) as any).mode, 'pro'); assert.equal((await K.body({ mode: 't2v', prompt: 'x', duration: 5, resolution: '720p' }, 0) as any).mode, 'std');
   assert.equal((await K.body({ mode: 't2v', prompt: 'x', duration: 5, resolution: '720p' }, 0) as any).aspect_ratio, '16:9'); // Kling 3.0 Omni (2026-10-25): text keeps the aspect
   ok('Veo 1080p → 8 s (720p keeps 4 s, sound off unless asked); MiniMax H3 5–15 s; Kling 1080p / 720p → pro / std');
