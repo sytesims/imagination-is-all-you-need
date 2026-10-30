@@ -134,7 +134,7 @@ export async function listMedia(q: MediaQuery) {
 /** First-frame JPEG poster for a /files/ or /samples/ video, cached in DATA_DIR/thumbs. */
 export async function thumbFor(url: string): Promise<string | null> {
   // the app's shipped examples (/examples/…) count too: the Examples project's videos showed a broken picture in every picker
-  const m = /^\/(files|samples|examples)\/([\w.\-/]+)$/.exec(url); if (!m || m[2].includes('..')) return null;
+  const m = /^\/(files|samples|examples|showcase)\/([\w.\-/]+)$/.exec(url); if (!m || m[2].includes('..')) return null;
   const src = localFileOf(url); if (!src || typeOf(src) !== 'video') return null;
   const dir = path.join(DATA_DIR, 'thumbs'); mkdirSync(dir, { recursive: true });
   // WebM may carry alpha (Remove BG transparent: VP9 yuva420p). ffmpeg's native vp9 decoder drops alpha, so decode with libvpx-vp9 and keep it in a PNG
