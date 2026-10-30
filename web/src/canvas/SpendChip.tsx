@@ -17,8 +17,9 @@ interface SpendRun { id: string; model: string; status: string; url: string; pos
 type Spend = { runs: number; running: number; estUsd: number; countedUsd: number; simulated: number; local: number; recent?: SpendRun[] };
 
 const kindOf = (r: SpendRun): 'image' | 'video' | 'audio' => /\.(mp4|webm|mov|m4v)(\?|$)/i.test(r.url) ? 'video' : /\.(mp3|wav|m4a|ogg|aac)(\?|$)/i.test(r.url) ? 'audio' : 'image';
-const runPrice = (r: SpendRun) => r.demo ? 'Sample' : r.local ? 'Free' : fmtUsd(r.countedUsd || r.estUsd);
-const runHint = (r: SpendRun) => r.status === 'running' ? 'Running' : r.status === 'queued' ? 'Queued' : r.status === 'failed' ? 'Failed' : r.demo ? 'Sample run' : r.local ? 'Local run' : 'Done';
+const ended = (r: SpendRun) => r.status === 'failed' || r.status === 'blocked' || r.status === 'canceled'; // ended without a result: only what was charged
+const runPrice = (r: SpendRun) => r.demo ? 'Sample' : r.local ? 'Free' : ended(r) ? fmtUsd(r.countedUsd) : r.countedUsd ? fmtUsd(r.countedUsd) : `≈ ${fmtUsd(r.estUsd)}`;
+const runHint = (r: SpendRun) => r.status === 'running' ? 'Running' : r.status === 'queued' ? 'Queued' : r.status === 'failed' ? 'Failed' : r.status === 'canceled' ? 'Canceled' : r.demo ? 'Sample run' : r.local ? 'Local run' : 'Done';
 
 export function SpendChip({ boardId }: { boardId: string }) {
   const [s, setS] = useState<Spend | null>(null); const [open, setOpen] = useState(false); const btn = useRef<HTMLButtonElement>(null);
@@ -28,7 +29,7 @@ export function SpendChip({ boardId }: { boardId: string }) {
     return () => { on = false; clearTimeout(t); removeEventListener(SPEND_EVT, f); }; }, [boardId]);
   if (!s) return null;
   const samples = s.runs > 0 && s.simulated === s.runs; const free = s.runs > 0 && s.local === s.runs;
-  const money = !s.runs ? '$0.00' : free ? 'Free' : samples ? (s.estUsd > 0 ? `≈ ${fmtUsd(s.estUsd)}` : 'Sample') : fmtUsd(s.countedUsd);
+  const money = !s.runs ? '$0.00' : free ? 'Free' : samples ? (s.estUsd > 0 ? `≈ ${fmtUsd(s.estUsd)}` : 'Sample') : `${s.running ? '≈ ' : ''}${fmtUsd(s.countedUsd)}`; // ≈ while a run is going: its price is still the estimate
   const title = !s.runs ? 'Runs started on this board add up here.' : free ? 'Every run on this board ran locally: nothing was billed.'
     : samples ? `Sample runs on this server: nothing was billed.${s.estUsd > 0 ? ` Real runs would cost about ${fmtUsd(s.estUsd)} (an estimate).` : ''}`
     : `What runs started here cost${s.estUsd !== s.countedUsd ? ` (estimated at ${fmtUsd(s.estUsd)} when started)` : ''}. Details on the Spend page.`;

@@ -123,7 +123,9 @@ export async function runDoctor(e: DoctorEnv = realEnv(), o: DoctorOptions = {})
   const webUrl = `http://localhost:${webPort}`; const mcpUrl = `http://127.0.0.1:${mcpPort}/mcp`;
   const [webUp, mcpUp] = await Promise.all([answers(e, `http://127.0.0.1:${webPort}/`, T), answers(e, mcpUrl, T)]);
   const backend = apiUp ? String(health.json.backend ?? '') || null : null; const tools = apiUp && Array.isArray(health.json.tools) ? health.json.tools.length : null;
-  add({ id: 'api', section: 'app', status: apiUp ? 'ok' : 'warn', required: false, text: apiUp ? `API ${apiUrl} · backend ${backend}${tools != null ? ` · ${tools} tools` : ''}` : `App not running (nothing at ${apiUrl})`, fix: apiUp ? undefined : 'npm run dev   (or npm run setup)' });
+  // npm run setup runs the doctor before it starts the app (OPENHIGGSFIELD_DOCTOR_BEFORE_START=1): the app being down then is expected, not a problem
+  const beforeStart = !apiUp && e.env.OPENHIGGSFIELD_DOCTOR_BEFORE_START === '1';
+  add({ id: 'api', section: 'app', status: apiUp ? 'ok' : beforeStart ? 'info' : 'warn', required: false, text: apiUp ? `API ${apiUrl} · backend ${backend}${tools != null ? ` · ${tools} tools` : ''}` : beforeStart ? 'The app isn’t started yet: setup starts it next.' : `App not running (nothing at ${apiUrl})`, fix: apiUp || beforeStart ? undefined : 'npm run dev   (or npm run setup)' });
   if (apiUp) add({ id: 'web', section: 'app', status: webUp ? 'ok' : 'warn', required: false, text: `Web ${webUrl} ${webUp ? '' : '(not answering)'}· MCP ${mcpUp ? mcpUrl.replace('/mcp', '') : 'not running'}`.replace('  ', ' ') });
 
   // ---- ComfyUI ----

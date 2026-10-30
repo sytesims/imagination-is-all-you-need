@@ -80,14 +80,16 @@ export function saveSnapshot(id: string, body: any): CanvasBoard | { status: num
   put('canvas_boards', id, nb); return nb;
 }
 
+const ENDED_NO_RESULT = new Set(['failed', 'blocked', 'canceled']);
 /** What a board's runs cost (step 2): every job started from it (input.boardId, not in Trash), summed from the spend log the Spend page
  *  uses (billing.ts jobSpendView). countedUsd is what counts against limits (sample / mock runs and uncharged failures count $0); estUsd is
- *  the estimate at submit, so a board of sample runs can still say what real runs would have cost. */
+ *  the estimate at submit, so a board of sample runs can still say what real runs would have cost (a failed or canceled run adds only what it was charged). */
 export function boardSpend(id: string) {
   let runs = 0, running = 0, est = 0, counted = 0, simulated = 0, local = 0;
   for (const j of jobs.values()) {
     if ((j.input as any)?.boardId !== id || metaOf(j.id).deletedAt) continue; runs++; if (j.status === 'queued' || j.status === 'running') running++;
-    const v = jobSpendView(j.id); if (!v) continue; est += v.demo ? 0 : v.estUsd || 0; counted += v.countedUsd || 0; if (v.simulated || v.demo) simulated++; if (v.billedTo === 'local') local++;
+    // est: a run that ended without a result (failed, blocked, canceled) adds only what it was charged, never its estimate; done and running runs keep the estimate
+    const v = jobSpendView(j.id); if (!v) continue; est += v.demo ? 0 : ENDED_NO_RESULT.has(j.status) ? v.countedUsd || 0 : v.estUsd || 0; counted += v.countedUsd || 0; if (v.simulated || v.demo) simulated++; if (v.billedTo === 'local') local++;
   }
   const r4 = (n: number) => Math.round(n * 1e4) / 1e4;
   const recent = [...jobs.values()].filter(j => (j.input as any)?.boardId === id && !metaOf(j.id).deletedAt).sort((a, b) => b.createdAt - a.createdAt).slice(0, 6).map(j => {
