@@ -1,9 +1,8 @@
-<h1 align="center">Imagination Is All You Need</h1>
+<p align="center"><a href="https://x.com/IIAYNAPP"><img src="brand/social/readme-hero.png" alt="Imagination Is All You Need: an open studio for images, video, audio and 3D" width="100%"></a></p>
+
 <p align="center"><b>A home for your imagination.</b><br>An open-source studio for images, video, audio and 3D.</p>
 
-https://github.com/user-attachments/assets/12b48171-4171-4cc2-8189-0ae3a03904d8
-
-*Demo film · contains AI-generated content.*
+<p align="center">🎬 <a href="https://x.com/IIAYNAPP">Watch the demo film and tutorials on X</a></p>
 
 <p align="center">
   <a href="https://github.com/sytesims/imagination-is-all-you-need/actions/workflows/ci.yml"><img alt="Build and startup CI" src="https://github.com/sytesims/imagination-is-all-you-need/actions/workflows/ci.yml/badge.svg"></a>
