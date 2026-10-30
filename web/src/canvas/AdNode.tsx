@@ -30,6 +30,8 @@ import { AdCardEditor, Brand, EditBtn, ExportBtn, NO_BRAND, OfferButton, platfor
 import { drawAd, drawSafeZones, exportAdPack, loadAdArt, loadAdPicture, type AdArt } from './adDraw';
 import type { BrandKit } from '../../../server/src/shared/brandKit';
 
+/** The editor's last open section on each card, for this session. */
+const lastSection = new Map<string, AdSection>();
 const stop = { onPointerDown: (e: React.SyntheticEvent) => e.stopPropagation(), onKeyDown: (e: React.SyntheticEvent) => e.stopPropagation(), onKeyUp: (e: React.SyntheticEvent) => e.stopPropagation() };
 
 type AdShapeRef = { id: any; type: string; props: AdNodeProps };
@@ -47,7 +49,9 @@ function useAdCard(shape: AdShapeRef) {
   const preset = asPreset(p.layout); const showSafe = p.safeZones !== false;
   /* "Edit ad": each size's own edits; a size with none keeps the automatic layout */
   const style = useMemo(() => asStyle(p.style), [p.style]); const setStyle = (st: AdStyle) => patch({ style: asStyle(st) as Record<string, unknown> });
-  const edits = useMemo(() => asEdits(p.edits), [p.edits]); const edit = edits[size.shape]; const [editing, setEditing] = useState<false | AdSection>(false);
+  const edits = useMemo(() => asEdits(p.edits), [p.edits]); const edit = edits[size.shape]; const [editing, setOpen] = useState<false | AdSection>(false);
+  /* the editor opens where it was last left on this card (for the session); "where it runs" opens Platforms */
+  const setEditing = (at: false | AdSection | 'last') => { const s = at === 'last' ? lastSection.get(shape.id) ?? 'picture' : at; if (s) lastSection.set(shape.id, s); setOpen(s); };
   const setEdit = (shape: string, e: AdEdit | null) => { const next: AdEdits = { ...edits }; const one: AdEdit = { ...e };
     if (!one.at || !Object.keys(one.at).length) delete one.at; if (!one.hide?.length) delete one.hide;
     if (e && isEdited(one)) next[shape] = one; else delete next[shape]; patch({ edits: next as Record<string, unknown> }); };
@@ -111,7 +115,7 @@ function useAdCard(shape: AdShapeRef) {
   /* a double-click on the preview opens "Edit ad": the second press is caught here, before the board reads it as a double-click on
    *  empty board (which starts a text box); the first still selects and drags the card */
   const lastDown = useRef(0);
-  const twice = (e: React.PointerEvent) => { if (e.button !== 0) return; if (e.timeStamp - lastDown.current < 400 && art) { e.stopPropagation(); e.preventDefault(); lastDown.current = 0; setEditing('picture'); } else lastDown.current = e.timeStamp; };
+  const twice = (e: React.PointerEvent) => { if (e.button !== 0) return; if (e.timeStamp - lastDown.current < 400 && art) { e.stopPropagation(); e.preventDefault(); lastDown.current = 0; setEditing('last'); } else lastDown.current = e.timeStamp; };
 
   return { editor, p, patch, input, picUrl, kit, brand, platforms, picked, sizes, size, preset, showSafe, style, setStyle, edits, edit, setEdit, editing, setEditing, pickPreset, togglePlatform,
     headlines, shown, more, setMore, variants, view, art, pic, picErr, busy, setCanvas, placing, choose, exportPack, setHeadline, dropHeadline, count, folders, twice, W, H, safe };
@@ -140,7 +144,7 @@ export function AdView({ shape, Icon }: { shape: AdShapeRef; Icon: (q: { size?: 
               <span className="ad-g-text" aria-hidden><i className="ad-g-h" /><i className="ad-g-h ad-g-h2" /><i className="ad-g-offer" /><i className="ad-g-btn" /></span></div>}
         </div>
         {ad.pic && <div className="ad-under" data-card-control {...stop}>
-          <button type="button" className="ad-plat" data-testid="ad-platforms" disabled={!ad.art} {...tip('Where it runs: the platforms decide the sizes')} onClick={() => ad.setEditing('where')}>
+          <button type="button" className="ad-plat" data-testid="ad-platforms" disabled={!ad.art} {...tip('Where it runs: the platforms decide the sizes')} onClick={() => ad.setEditing('platforms')}>
             {ad.platforms.length > 0 && <span className="ad-plat-l">For</span>}<span>{platformSummary(ad)}</span><ChevronRightIcon size={12} /></button></div>}
       </div>
       <div className="ad-fields" data-card-control {...stop}>

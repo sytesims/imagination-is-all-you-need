@@ -6,7 +6,7 @@
  * nudge (Shift: 10), Delete takes the logo, offer or button off this size ("Show …" brings it back). Edits are saved as they happen,
  * per size (adEdit.ts); "Reset layout" puts this size back to automatic. Esc or Done closes.
  *
- * The side panel on the left is the card's (AdPanel.tsx: numbered sections); clicking a part of the ad opens its section. PartStyle here
+ * The side panel on the left is the card's (AdPanel.tsx: an icon rail and one section's controls); clicking a part of the ad opens its section. PartStyle here
  * styles one part, the same on every size (adLayout.AdStyle, saved on the card): the logo's plate and colour, the words' alignment,
  * weight, colour and what sits behind them, the button's shape and colour. Colours are the brand's, white or black.
  */
@@ -20,8 +20,8 @@ import { buttonColorOf, logoToneFor, type AdLayout, type AdPreset, type AdStyle,
 import { zonesFor, type AdPlatform, type AdSizeOption } from './adPlatforms';
 import { HIDEABLE, PART_NAME, clampBox, guidesFor, inBox, isEdited, moveFrame, placeOf, snapBox, snapTo, type AdEdit, type AdFrame, type AdPart } from './adEdit';
 
-/** The side panel's sections, in the order people think. */
-export type AdSection = 'picture' | 'words' | 'logo' | 'layout' | 'where' | 'export';
+/** The side panel's sections (its icon rail), in the order people think. */
+export type AdSection = 'picture' | 'text' | 'style' | 'layout' | 'platforms' | 'export';
 /** What the side panel gets from the editor: the last part clicked (n counts clicks), the picture's zoom, and whose safe zones show. */
 export type AdPanelCtx = { hit: { part: AdPart | 'picture'; n: number }; zoom: number; zoomTo: (z: number) => void;
   zones: { p: AdPlatform; label: string }[]; zone: AdPlatform | 'all'; setZone: (z: AdPlatform | 'all') => void };
@@ -105,6 +105,9 @@ export function AdEditor({ sizes, size, onSize, pic, art, text, preset, style, e
     const tg = ev.target as HTMLElement | null; const mine = !!tg && (tg === document.body || !!sheet.current?.contains(tg)); if (!mine) return;
     /* in the style panel, keys only press its buttons (Enter / Space) and Esc closes: arrows never nudge a part */
     ev.stopPropagation(); const side = !!tg?.closest('.ade-side');
+    /* the side panel's icon rail: arrow keys go to the next / previous section */
+    if (side && tg?.getAttribute('role') === 'tab' && /^Arrow(Up|Down|Left|Right)$/.test(ev.key)) { const tabs = [...(tg.parentElement?.querySelectorAll<HTMLElement>('[role=tab]') ?? [])];
+      const i = tabs.indexOf(tg) + (/Up|Left/.test(ev.key) ? -1 : 1); const to = tabs[(i + tabs.length) % tabs.length]; ev.preventDefault(); to?.focus(); to?.click(); return; }
     if (tg && (/^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName) || side)) { if (ev.key === 'Escape') { ev.preventDefault(); if (side && sel) { setSel(null); sheet.current?.focus({ preventScroll: true }); } else onClose(); } return; }
     if (ev.key === 'Escape') { ev.preventDefault(); if (sel) setSel(null); else onClose(); return; }
     if (!sel || !l?.boxes[sel]) return;

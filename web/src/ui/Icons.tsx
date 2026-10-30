@@ -132,6 +132,9 @@ export const ChevronRightIcon = svg(<><path d="m9.5 6 6 6-6 6" /></>, 'ChevronRi
 export const ChevronDownIcon = svg(<><path d="m6 9.5 6 6 6-6" /></>, 'ChevronDownIcon');
 export const PencilIcon = svg(<><path d="M15.5 4.5 19.5 8.5 9 19H5v-4z" /><path d="m13.5 6.5 4 4" /></>, 'PencilIcon');
 export const PlusIcon = svg(<><path d="M12 5v14M5 12h14" /></>, 'PlusIcon');
+/** Ad editor rail (2026-10-31): a "T" for words, and a frame split into a picture and a text block for layouts (our own drawings). */
+export const TextIcon = svg(<><path d="M5 6.5V5h14v1.5" /><path d="M12 5v14" /><path d="M9 19h6" /></>, 'TextIcon');
+export const LayoutIcon = svg(<><rect x="3.5" y="3.5" width="17" height="17" rx="2.5" /><path d="M3.5 13.5h17" /><path d="M7 16.5h6" /></>, 'LayoutIcon');
 export const MinusIcon = svg(<><path d="M5 12h14" /></>, 'MinusIcon');
 export const CloseIcon = svg(<><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" /></>, 'CloseIcon');
 export const LibraryIcon = svg(<><rect x="3.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="3.5" y="13.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="13.5" width="7" height="7" rx="1.5" /></>, 'LibraryIcon');
