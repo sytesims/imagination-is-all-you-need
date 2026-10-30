@@ -28,7 +28,8 @@ const wizard = `http://localhost:${webPort}/?setup=1`;
 const depsOk = () => ['node_modules/fastify', 'node_modules/tsx', 'node_modules/concurrently'].every((p) => fs.existsSync(path.join(REPO, p)));
 if (depsOk()) say('Dependencies installed');
 else if (checkOnly) say('Dependencies not installed (run npm run setup without --check, or npm install)');
-else { say('Installing dependencies (npm install)…'); const r = spawnSync(npm, ['install'], { cwd: REPO, stdio: 'inherit', shell: process.platform === 'win32' }); if (r.status !== 0) { console.error('npm install failed; fix the error above and run npm run setup again.'); process.exit(r.status ?? 1); } }
+else { const ci = fs.existsSync(path.join(REPO, 'package-lock.json')); /* npm ci installs exactly the lockfile and never rewrites it (a rewritten lockfile blocks git pull later) */
+  say(`Installing dependencies (npm ${ci ? 'ci' : 'install'})…`); const r = spawnSync(npm, [ci ? 'ci' : 'install', '--no-audit', '--no-fund'], { cwd: REPO, stdio: 'inherit', shell: process.platform === 'win32' }); if (r.status !== 0) { console.error('npm install failed; fix the error above and run npm run setup again.'); process.exit(r.status ?? 1); } }
 
 // 2. doctor
 say('Checking this computer (npm run doctor)…\n');

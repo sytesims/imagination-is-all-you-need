@@ -1,5 +1,6 @@
 {
   "name": "openhiggsfield",
+  "version": "1.1.0",
   "private": true,
   "license": "AGPL-3.0-or-later",
   "engines": {
@@ -36,6 +37,7 @@
     "check": "npm run check:proxy",
     "doctor": "node scripts/doctor.mjs",
     "setup": "node scripts/setup.mjs",
+    "update": "node scripts/update.mjs",
     "docs:api": "node scripts/gen-api-docs.mjs",
     "start:demo": "concurrently -n api,web,mcp -c magenta,cyan,yellow \"npm run start:tsx -w server\" \"npm run build:demo -w web && npm run preview -w web\" \"npm:mcp:dev\"",
     "test": "node scripts/test-all.mjs",

@@ -20,14 +20,14 @@ export const dockRoute = (o: { connected: boolean; demoRunning: boolean; confirm
 export const LISTEN_PHRASE = 'listen to my canvas';
 export const MCP_SERVER_NAME = 'imagination';
 export const listenCommand = (boardId: string, server = MCP_SERVER_NAME) => `/${server}:listen ${boardId}`;
-/** The dock's states: nobody connected (the built-in agent), connected but not on this board, working on this board (a canvas_* call on it in the
+/** The dock's states: nobody connected (built-in demo), connected but not on this board, working on this board (a canvas_* call on it in the
  *  last ~70 s, no wait loop: it builds but doesn't read what you type yet; 2026-10-28), listening (its wait is open, or a channel pushes). */
 export type DockState = 'off' | 'connected' | 'working' | 'listening';
 export const dockState = (o: { connected: boolean; listening: boolean; working?: boolean }): DockState => (o.listening ? 'listening' : o.working ? 'working' : o.connected ? 'connected' : 'off');
 /** The line under "Agent" in the dock header. Short and without the agent's name (that is in the pill's tip and the dock below), so it never
  *  truncates in the 380 px dock at any window size (2026-10-28: "2 agents connected · none …" was cut off). */
 export function dockStatusLine(state: DockState, _name: string, o: { sessions?: number; via?: 'wait' | 'channel' | null } = {}): string {
-  if (state === 'off') return 'Built-in agent'; /* not "demo": on a real install its runs are real and billed (2026-10-30) */
+  if (state === 'off') return 'Built-in demo';
   if (state === 'connected') return o.sessions && o.sessions > 1 ? `${o.sessions} agents · not here yet` : 'Not reading this board yet';
   if (state === 'working') return 'Working on this board';
   return o.via === 'channel' ? 'Messages go straight in' : 'Reading this board';

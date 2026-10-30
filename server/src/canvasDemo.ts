@@ -11,7 +11,7 @@
  */
 
 export interface DemoCard { key: string; name: string; workflow: string; prompt: string; col: number; row: number; from?: string[]; settings?: Record<string, string> }
-export interface DemoPhase { frame: string; say: string; cards: DemoCard[]; note: string; done: string; /** what the cards are, plural ("key frames"), for the agent's words when some fail */ what?: string; /** after the run: ask the user to pick one of these cards */ pick?: string }
+export interface DemoPhase { frame: string; say: string; cards: DemoCard[]; note: string; done: string; /** after the run: ask the user to pick one of these cards */ pick?: string }
 export interface DemoPlan { id: string; title: string; /** the sticky note the agent starts with: the idea in a few words */ idea: string; intro: string; steps: string[]; phases: DemoPhase[]; outro: string }
 
 /** The dock's starter chips. `prompt` is what the chip sends; the user can also type anything. */
@@ -73,8 +73,8 @@ export function demoPlan(prompt: string, starter?: string | null): DemoPlan {
     return { id: 'film', title: 'A 30 second film', idea: ideaOf(subject), steps: ['Key frames for five shots', 'Five 6 s clips and a music bed', 'Ready to cut'],
       intro: `Here’s the plan for a 30 second film: ${subject}. Five shots of about 6 seconds. I’ll set up a key frame per shot first, then turn each into a clip and add music. Every run waits for your Go.`,
       phases: [
-        { frame: 'Key frames', say: 'Setting up five key frames, one per shot.', cards: frames, note: 'Five key frames, one per shot', what: 'key frames', done: 'Key frames are in. Re-roll any shot that misses before we animate.' },
-        { frame: 'Clips and music', say: 'Now the clips: each one starts from its key frame, plus a music bed.', cards: [...clips, { key: 'm', name: 'Music bed', workflow: 'music', prompt: `Cinematic score for a 30 second short film: ${subject}. Gentle piano, rising strings, hopeful ending`, col: 5, row: 1, settings: MUSIC_30S }], note: 'Five clips and the music', what: 'cards', done: 'All five clips and the music are on the board.' },
+        { frame: 'Key frames', say: 'Setting up five key frames, one per shot.', cards: frames, note: 'Five key frames, one per shot', done: 'Key frames are in. Re-roll any shot that misses before we animate.' },
+        { frame: 'Clips and music', say: 'Now the clips: each one starts from its key frame, plus a music bed.', cards: [...clips, { key: 'm', name: 'Music bed', workflow: 'music', prompt: `Cinematic score for a 30 second short film: ${subject}. Gentle piano, rising strings, hopeful ending`, col: 5, row: 1, settings: MUSIC_30S }], note: 'Five clips and the music', done: 'All five clips and the music are on the board.' },
       ],
       outro: 'Your 30 second film is laid out shot by shot. Open any clip in its workflow to fine-tune it.' };
   }
@@ -85,8 +85,8 @@ export function demoPlan(prompt: string, starter?: string | null): DemoPlan {
     return { id: 'product', title: 'Product shots', idea: ideaOf(subject), steps: ['Four product shots', 'Pick your hero', 'A spin clip from your pick'],
       intro: `Product set for ${subject}: hero, lifestyle, detail and flat lay. You pick the hero, then I make a short spin clip from it. Nothing runs until you press Go.`,
       phases: [
-        { frame: 'Product shots', say: 'Placing the four shots.', cards: shots.map(([name, look], i) => ({ key: `p${i}`, name, workflow: 'create', prompt: `${subject}, ${look}`, col: i % 2, row: Math.floor(i / 2) })), note: 'Four product shots', what: 'product shots', done: 'Four shots are ready.', pick: 'Pick your hero shot. Click the one you like on the board.' },
-        { frame: 'Spin clip', say: 'A 6 second turntable clip from your pick.', cards: [{ key: 'v', name: 'Spin clip', workflow: 'video', prompt: `${subject} slowly rotating on a turntable, studio light, seamless backdrop, 6 seconds`, col: 2, row: 0, from: ['@pick'] }], note: 'A spin clip from your pick', what: 'clips', done: 'The spin clip is done.' },
+        { frame: 'Product shots', say: 'Placing the four shots.', cards: shots.map(([name, look], i) => ({ key: `p${i}`, name, workflow: 'create', prompt: `${subject}, ${look}`, col: i % 2, row: Math.floor(i / 2) })), note: 'Four product shots', done: 'Four shots are ready.', pick: 'Pick your hero shot. Click the one you like on the board.' },
+        { frame: 'Spin clip', say: 'A 6 second turntable clip from your pick.', cards: [{ key: 'v', name: 'Spin clip', workflow: 'video', prompt: `${subject} slowly rotating on a turntable, studio light, seamless backdrop, 6 seconds`, col: 2, row: 0, from: ['@pick'] }], note: 'A spin clip from your pick', done: 'The spin clip is done.' },
       ],
       outro: 'The product set is on the board. Open any shot in Create Image to tweak it.' };
   }
@@ -95,8 +95,8 @@ export function demoPlan(prompt: string, starter?: string | null): DemoPlan {
     return { id: 'storyboard', title: 'Storyboard', idea: ideaOf(beats[0] ?? 'Storyboard'), steps: [`${beats.length} panels, one per beat`, 'Pick the key moment', 'Animate it'],
       intro: `I read ${beats.length} beats in your script. One panel per beat, in a consistent hand-drawn storyboard style. Then you pick the moment to animate.`,
       phases: [
-        { frame: 'Storyboard', say: 'Drawing the panels in story order.', cards: beats.map((b, i) => ({ key: `s${i}`, name: `Panel ${i + 1}`, workflow: 'create', prompt: `${b}. Pencil and grey marker storyboard sketch, cinematic framing, consistent characters`, col: i % 3, row: Math.floor(i / 3) })), note: `${beats.length} storyboard panels`, what: 'panels', done: 'The panels are in order on the board.', pick: 'Pick the moment to animate. Click its panel on the board.' },
-        { frame: 'Animatic', say: 'Animating your pick as a 6 second animatic.', cards: [{ key: 'a', name: 'Animatic', workflow: 'video', prompt: 'Animatic: {pick}. Gentle camera move, storyboard style, 6 seconds', col: 3, row: 0, from: ['@pick'] }], note: 'An animatic of your pick', what: 'clips', done: 'The animatic is ready.' },
+        { frame: 'Storyboard', say: 'Drawing the panels in story order.', cards: beats.map((b, i) => ({ key: `s${i}`, name: `Panel ${i + 1}`, workflow: 'create', prompt: `${b}. Pencil and grey marker storyboard sketch, cinematic framing, consistent characters`, col: i % 3, row: Math.floor(i / 3) })), note: `${beats.length} storyboard panels`, done: 'The panels are in order on the board.', pick: 'Pick the moment to animate. Click its panel on the board.' },
+        { frame: 'Animatic', say: 'Animating your pick as a 6 second animatic.', cards: [{ key: 'a', name: 'Animatic', workflow: 'video', prompt: 'Animatic: {pick}. Gentle camera move, storyboard style, 6 seconds', col: 3, row: 0, from: ['@pick'] }], note: 'An animatic of your pick', done: 'The animatic is ready.' },
       ],
       outro: 'Your storyboard is laid out left to right, top to bottom. Use it as the shot list for a film.' };
   }
@@ -106,15 +106,15 @@ export function demoPlan(prompt: string, starter?: string | null): DemoPlan {
       ['Set', 'set design, half-buried brutalist structures in dunes, haze'], ['Light', 'lighting reference, low sun, long shadows, heat shimmer'], ['Props', 'prop sheet, weathered tech, hand-made tools'], ['Hero frame', 'hero still, lone figure crossing the dunes at golden hour, epic scale']];
     return { id: 'mood', title: 'Mood board', idea: ideaOf(subject), steps: ['Six mood tiles and a sound bed', 'Ready to share'],
       intro: `A mood board for ${subject}: palette, wardrobe, set, light, props and a hero frame, plus a sound bed to set the tone.`,
-      phases: [{ frame: 'Mood board', say: 'Filling the board.', cards: [...tiles.map(([name, look], i) => ({ key: `t${i}`, name, workflow: 'create', prompt: `${subject}, ${look}`, col: i % 3, row: Math.floor(i / 3) })), { key: 'snd', name: 'Sound bed', workflow: 'music', prompt: `Ambient sound bed for ${subject}: wind, low synth drones, distant metal`, col: 3, row: 0, settings: MUSIC_30S }], note: 'Six tiles and a sound bed', what: 'cards', done: 'The mood board is complete.' }],
+      phases: [{ frame: 'Mood board', say: 'Filling the board.', cards: [...tiles.map(([name, look], i) => ({ key: `t${i}`, name, workflow: 'create', prompt: `${subject}, ${look}`, col: i % 3, row: Math.floor(i / 3) })), { key: 'snd', name: 'Sound bed', workflow: 'music', prompt: `Ambient sound bed for ${subject}: wind, low synth drones, distant metal`, col: 3, row: 0, settings: MUSIC_30S }], note: 'Six tiles and a sound bed', done: 'The mood board is complete.' }],
       outro: 'The mood board is ready. Keep the tiles that fit and Re-roll the rest.' };
   }
   const subject = subjectOf(prompt, 'something beautiful');
   return { id: 'free', title: 'Explore an idea', idea: ideaOf(subject), steps: ['Three versions of the idea', 'Pick one', 'A short clip from your pick'],
     intro: `Let’s explore “${short(subject, 120)}”: three different looks as images. You pick one, and I turn it into a short clip. You approve each run.`,
     phases: [
-      { frame: 'Three versions', say: 'Three versions, three different looks.', cards: [['Cinematic', 'cinematic photo, dramatic light'], ['Painterly', 'painterly illustration, rich colour'], ['Poster', 'minimal graphic poster, bold shapes']].map(([name, look], i) => ({ key: `i${i}`, name, workflow: 'create', prompt: `${subject}, ${look}`, col: i, row: 0 })), note: 'Three versions', what: 'versions', done: 'Three versions are on the board.', pick: 'Pick the one you like. Click it on the board.' },
-      { frame: 'Clip', say: 'A 6 second clip from your pick.', cards: [{ key: 'v', name: 'Clip', workflow: 'video', prompt: `${subject}, slow cinematic camera move, 6 seconds`, col: 0, row: 1, from: ['@pick'] }], note: 'A clip from your pick', what: 'clips', done: 'The clip is done.' },
+      { frame: 'Three versions', say: 'Three versions, three different looks.', cards: [['Cinematic', 'cinematic photo, dramatic light'], ['Painterly', 'painterly illustration, rich colour'], ['Poster', 'minimal graphic poster, bold shapes']].map(([name, look], i) => ({ key: `i${i}`, name, workflow: 'create', prompt: `${subject}, ${look}`, col: i, row: 0 })), note: 'Three versions', done: 'Three versions are on the board.', pick: 'Pick the one you like. Click it on the board.' },
+      { frame: 'Clip', say: 'A 6 second clip from your pick.', cards: [{ key: 'v', name: 'Clip', workflow: 'video', prompt: `${subject}, slow cinematic camera move, 6 seconds`, col: 0, row: 1, from: ['@pick'] }], note: 'A clip from your pick', done: 'The clip is done.' },
     ],
     outro: 'That’s a first pass. Tell me what to change, or open any card in its workflow.' };
 }

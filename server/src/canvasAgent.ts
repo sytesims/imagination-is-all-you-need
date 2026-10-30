@@ -35,8 +35,6 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { getBoard, summary as boardSummary } from './canvasBoards.js';
 import { jobs } from './jobs.js';
-import { knownBalance, jobSpendView } from './billing.js';
-import { config } from './config.js';
 import { budgetOfRequest, budgetView, type AgentBudget } from './agentBudget.js';
 import { getTool } from './tools/registry.js';
 import { imageWorkflowsPayload } from './shared/workflows.js';
@@ -104,7 +102,6 @@ export interface BoardNode {
   price?: PriceView | null; jobId?: string | null; missing?: string | null;
 }
 export interface ProposalItem { cardId: string; title: string; workflow: string; model: string | null; status: string; usd: number | null; credits: number | null; quote: any; problem: string | null }
-export interface BalanceShort { provider: string; name: string; balance: number; need: number; unit: string }
 export interface ProposalBudget { id: string; name: string; budgetUsd: number | null; remainingUsd: number | null; spentUsd: number; budgetCredits: number | null; remainingCredits: number | null }
 export interface Proposal {
   id: string; boardId: string; cardIds: string[]; note: string | null; items: ProposalItem[]; totalUsd: number; totalCredits: number;
@@ -112,7 +109,6 @@ export interface Proposal {
   /** The cards Go starts: every item without a problem. A row that can't run here (a model not on this server, a missing input) is skipped, not a
    *  blocker for the rest; the total counts only these. `reason` is set (and Go is off) only when NONE can run, or the batch is over budget. */
   runCardIds: string[]; skipped: { cardId: string; title: string; problem: string }[]; /** cards Go tried that the server refused (they stay drafts) */ failedIds?: string[];
-  /** the account that bills these runs has less than they need (its balance was read): `reason` says so and Go is off */ balanceShort?: BalanceShort | null;
   status: 'pending' | 'running' | 'approved' | 'cancelled' | 'failed'; createdAt: number; decidedAt: number | null; jobIds: string[]; error: string | null;
 }
 export interface FeedEntry {
@@ -557,42 +553,14 @@ async function proposeRun(boardId: string, op: { card_ids: string[]; note?: stri
   const budgetViewOut: ProposalBudget | null = bv ? { id: bv.id, name: bv.name, budgetUsd: bv.budgetUsd, remainingUsd: bv.remainingUsd, spentUsd: bv.spentUsd, budgetCredits: bv.budgetCredits, remainingCredits: bv.remainingCredits } : null;
   const overBy = budgetViewOut?.remainingUsd != null ? r4(Math.max(0, totalUsd - budgetViewOut.remainingUsd)) : null;
   const over = overBy != null && overBy > 1e-9;
-  const short = over ? null : await balanceShortOf(runs);
   const reason = over
     ? `This is $${overBy!.toFixed(2)} over the $${(budgetViewOut!.remainingUsd ?? 0).toFixed(2)} left in the agent budget. Nothing will run.`
-    : short ? shortWords(short)
     : !runs.length ? (skipped.length === 1 ? skipped[0].problem : `None of these cards can run here. ${skipped[0].problem}`) : null;
   const proposal: Proposal = { id: uid('prop'), boardId, cardIds: op.card_ids, note: op.note?.trim() || null, items, totalUsd, totalCredits,
-    budget: budgetViewOut, overBudget: over, overByUsd: overBy, reason, balanceShort: short, runCardIds: runs.map((i) => i.cardId), skipped, status: 'pending', createdAt: now(), decidedAt: null, jobIds: [], error: null };
+    budget: budgetViewOut, overBudget: over, overByUsd: overBy, reason, runCardIds: runs.map((i) => i.cardId), skipped, status: 'pending', createdAt: now(), decidedAt: null, jobIds: [], error: null };
   rememberProposal(proposal);
   addActivity(boardId, `Proposed ${runs.length} run${runs.length === 1 ? '' : 's'} · $${totalUsd.toFixed(2)}${skipped.length ? ` · ${skipped.length} skipped` : ''}`, { proposalId: proposal.id, meta: { tool: 'propose_run', by } });
   return { ok: true, result: { proposal } };
-}
-
-/** Paid runs per billing account vs that account's balance, when it can be read (billing.knownBalance). The first account that can't cover
- *  its runs, else null. Unknown balances, samples and free / local runs never block. A low cached balance is read again before it blocks. */
-async function balanceShortOf(runs: ProposalItem[]): Promise<BalanceShort | null> {
-  const by = new Map<string, { name: string; usd: number; units: number; unit: string | null }>();
-  for (const i of runs) { const c = i.quote?.cost; const to = String(c?.billedTo ?? ''); const usd = typeof c?.estUsd === 'number' ? c.estUsd : i.usd ?? 0;
-    if (!to || to === 'local' || i.quote?.demo === true || c?.demo === true || !(usd > 0)) continue;
-    const g = by.get(to) ?? { name: String(c?.billedToName ?? to), usd: 0, units: 0, unit: c?.unitLabel ?? null }; g.usd += usd;
-    if (typeof c?.estUnits === 'number' && c?.unitLabel === g.unit) g.units += c.estUnits; else g.unit = null; /* mixed or missing units: compare in USD */
-    by.set(to, g); }
-  for (const [to, g] of by) {
-    for (const refresh of [false, true]) {
-      const b = await knownBalance(to, refresh); if (!b) break;
-      const units = !!g.unit && g.unit === b.balanceUnit; const need = units ? g.units : r4(g.usd); const have = units ? b.balance : b.balanceUsd;
-      if (have == null || have >= need - 1e-9) break;
-      if (refresh || config.backend === 'mock') return { provider: to, name: g.name, balance: have, need, unit: units ? g.unit! : 'USD' };
-    }
-  }
-  return null;
-}
-/** "Your Comfy balance is 32 credits; these runs need 35. Add credits on comfy.org, or run fewer cards." */
-export function shortWords(s: BalanceShort): string {
-  const n = (v: number, unit = true) => (s.unit === 'USD' ? `$${v.toFixed(2)}` : `${Math.floor(v * 100) / 100}${unit ? ` ${s.unit.replace(/^Comfy /, '')}` : ''}`);
-  const name = s.provider === 'comfy' ? 'Comfy' : s.name; const where = s.provider === 'comfy' ? 'comfy.org' : `your ${s.name} account`;
-  return `Your ${name} balance is ${n(s.balance)}; these runs need ${n(s.need, false)}. Add credits on ${where}, or run fewer cards.`;
 }
 
 function finishRunProposal(p: Proposal, r: OpResult) {
@@ -656,29 +624,6 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 /* A card's state after Go: 'draft' means it never started (the server refused it), so it counts as finished-without-a-result: the demo
    never waits on it (the old wait loop sat on such a card for 15 minutes, showing "Working on the board…"). */
 const settled = (st: string) => st === 'done' || st === 'failed' || st === 'gone' || st === 'draft';
-/** "Create Image failed: Comfy Router failed: your Comfy account is out of credits. Add credits…" → "your Comfy account is out of credits" (after the last "failed:") */
-export const reasonOf = (err: string) => firstSentence(err.replace(/^.{0,160}\bfailed:\s*/i, '').trim());
-/** Why these cards failed, from their jobs (deduped), and what that cost: " Nothing was charged for the failed cards." only when every
- *  failed job is known and counts $0 (billing.countedUsd); a possible charge is said; nothing is claimed for a card without a job. */
-export function failureWords(nodes: any[] | null, ids: string[]): { reason: string; charge: string } {
-  const reasons: string[] = []; let known = true; let usd = 0;
-  for (const id of ids) {
-    const n = nodes?.find((x) => x.id === id); const j = n?.jobId ? jobs.get(String(n.jobId)) : undefined;
-    const r = reasonOf(String(j?.error ?? n?.error ?? '')); if (r && !reasons.some((x) => x.toLowerCase() === r.toLowerCase())) reasons.push(r);
-    if (!j) { known = false; continue; }
-    usd += jobSpendView(j.id)?.countedUsd ?? 0;
-  }
-  const reason = !reasons.length ? 'I couldn’t read why' : reasons.length <= 2 ? reasons.join('; ') : `${reasons.slice(0, 2).join('; ')} and ${plural(reasons.length - 2, 'other reason')}`;
-  const charge = usd > 0 ? ` The failed runs may still cost about $${usd.toFixed(2)}; each card shows its cost.` : known && ids.length ? ' Nothing was charged for the failed cards.' : '';
-  return { reason, charge };
-}
-/** The first quote of a built-in run says plainly who pays: real models billed to an account, or free samples. */
-export function billingNote(p: Pick<Proposal, 'items' | 'runCardIds'>): string {
-  const run = new Set(p.runCardIds ?? []); const qs = p.items.filter((i) => !i.problem && (!run.size || run.has(i.cardId))).map((i) => i.quote);
-  if (qs.length && qs.every((q) => q?.demo === true)) return ' These are samples, so Go is free.';
-  const names = [...new Set(qs.filter((q) => q?.demo !== true && q?.cost?.billedTo && q.cost.billedTo !== 'local' && (q.cost.estUsd ?? 0) > 0).map((q) => String(q.cost.billedToName ?? q.cost.billedTo)))];
-  return names.length ? ` Go runs real models, billed to your ${names.join(' and ')} account${names.length > 1 ? 's' : ''}.` : '';
-}
 
 async function runDemo(run: DemoRun, plan: DemoPlan) {
   const { boardId } = run;
@@ -705,11 +650,8 @@ async function runDemo(run: DemoRun, plan: DemoPlan) {
       const fr = await op({ kind: 'add_frame', name: phase.frame, at: { x: fb.x, y: fb.y }, w: fb.w, h: fb.h }); if (!fr) return;
       const frameId = fr.ok ? String(fr.result?.id ?? '') : '';
       const phaseIds: string[] = [];
-      const left: string[] = [];
       for (const c of phase.cards) {
         if (!alive()) return;
-        /* a card made from one that didn't finish (or never got on the board) is left out: it would only fail or run without its input */
-        if ((c.from ?? []).some((k) => k !== '@pick' && !ids[k])) { left.push(c.name); continue; }
         const from = (c.from ?? []).map((k) => (k === '@pick' ? picked : ids[k])).filter((x): x is string => !!x);
         const pickedCard = picked ? cardOf[picked] : null;
         const prompt = c.prompt.replace('{pick}', pickedCard ? firstSentence(pickedCard.prompt) : 'the key moment');
@@ -721,7 +663,6 @@ async function runDemo(run: DemoRun, plan: DemoPlan) {
         ids[c.key] = id; cardOf[id] = c; phaseIds.push(id);
       }
       if (!alive()) return;
-      if (left.length) say(`I left out ${left.length === 1 ? left[0] : plural(left.length, 'card')}: ${left.length === 1 ? 'it needs' : 'they need'} a card that didn’t finish.`, { error: true });
       if (!phaseIds.length) { say('None of these cards made it onto the board, so I’ll stop here. Nothing was charged.', { error: true }); return; }
       if (frameId) await op({ kind: 'move_into', ids: phaseIds, frame_id: frameId });
       if (!alive()) return;
@@ -729,8 +670,7 @@ async function runDemo(run: DemoRun, plan: DemoPlan) {
       if (!pr.ok) { say(`I couldn’t price these cards: ${pr.error.replace(/\.$/, '')}. They stay on the board as drafts.`, { error: true }); return; }
       const p: Proposal = pr.result.proposal; runProposals.add(p.id);
       if (!p.runCardIds.length) { say(`None of these can run here yet: ${String(p.reason ?? 'no model for them on this server').replace(/\.$/, '')}. They stay on the board as drafts.`, { error: true }); return; }
-      if (p.balanceShort) { say(`That’s ${plural(p.runCardIds.length, 'run')} (${priceWords(p)}). ${p.reason} I’ll stop here; the cards stay on the board as drafts. Nothing was charged.`, { proposalId: p.id, error: true }); return; }
-      say(`That’s ${plural(p.runCardIds.length, 'run')} (${priceWords(p)}).${runProposals.size === 1 ? billingNote(p) : ''}${skipNote(p)} Press Go when you’re ready, or Cancel.`, { proposalId: p.id, waiting: true });
+      say(`That’s ${plural(p.runCardIds.length, 'run')} (${priceWords(p)}).${skipNote(p)} Press Go when you’re ready, or Cancel.`, { proposalId: p.id, waiting: true });
       /* the decision route changes this same object (proposalsById holds it) */
       while (p.status === 'pending' && alive()) await wait(250);
       if (!alive()) return; /* Stop says its own one line */
@@ -740,25 +680,19 @@ async function runDemo(run: DemoRun, plan: DemoPlan) {
       const refused = new Set(p.failedIds ?? []); const started = p.runCardIds.filter((id) => !refused.has(id));
       if (!started.length) { say(`Those didn’t start: ${String(p.error ?? 'the server said no').replace(/\.$/, '')}. Nothing was charged. The cards stay as drafts, so you can try again from each one.`, { error: true }); return; }
       if (refused.size) say(`${plural(refused.size, 'card')} didn’t start, so nothing was charged for ${refused.size === 1 ? 'it' : 'them'}. I’ll carry on with the rest.`, { error: true });
-      const until = Date.now() + 15 * 60_000; let states: string[] = []; let nodes: any[] = [];
+      const until = Date.now() + 15 * 60_000; let states: string[] = [];
       while (alive() && Date.now() < until) {
         const sum = await sendOp(boardId, { kind: 'summary' }, SUMMARY_TIMEOUT_MS);
         if (sum.ok) {
-          nodes = Array.isArray(sum.result?.nodes) ? sum.result.nodes : [];
+          const nodes: any[] = Array.isArray(sum.result?.nodes) ? sum.result.nodes : [];
           states = started.map((id) => nodes.find((n) => n.id === id)?.status ?? 'gone');
           if (states.every(settled)) break;
         }
         await wait(1500);
       }
       if (!alive()) return;
-      /* only finished cards go on: a later card made from one that didn't finish is left out (above) */
-      const notDone = started.filter((_, i) => states[i] !== 'done'); const what = phase.what ?? 'cards';
-      for (const [k, id] of Object.entries(ids)) if (notDone.includes(id)) delete ids[k];
-      if (notDone.length) {
-        const f = failureWords(nodes, notDone);
-        if (notDone.length === started.length) { say(`None of the ${what} finished: ${f.reason}.${f.charge} Fix that, then ask me to try again.`, { error: true }); return; }
-        say(`${notDone.length} of the ${plural(started.length, what.replace(/s$/, ''), what)} didn’t finish: ${f.reason}.${f.charge} I’ll go on with the ${started.length - notDone.length} that finished; Re-roll the others from their cards.`, { error: true, stepsDone: ++steps });
-      } else say(phase.done, { stepsDone: ++steps });
+      const failed = states.filter((x) => x === 'failed').length;
+      say(phase.done + (failed ? ` ${plural(failed, 'card')} didn’t finish; Re-roll ${failed === 1 ? 'it' : 'them'} from the card.` : ''), { stepsDone: ++steps });
       if (phase.pick) {
         const ready = started.filter((_, i) => states[i] === 'done');
         if (ready.length >= 2) {
@@ -846,8 +780,7 @@ async function runShortFilm(run: DemoRun, plan: ShortPlan) {
     if (!pr.ok) { say(`I couldn’t price these cards: ${pr.error.replace(/\.$/, '')}. They stay on the board as drafts.`, { error: true }); return null; }
     const p: Proposal = pr.result.proposal; runProposals.add(p.id);
     if (!p.runCardIds.length) { say(`None of these can run here yet: ${String(p.reason ?? 'no model for them on this server').replace(/\.$/, '')}. They stay on the board as drafts.`, { error: true }); return null; }
-    if (p.balanceShort) { say(`That’s ${plural(p.runCardIds.length, 'run')} (${priceWords(p)}). ${p.reason} I’ll stop here; the cards stay on the board as drafts. Nothing was charged.`, { proposalId: p.id, error: true }); return null; }
-    say(`That’s ${plural(p.runCardIds.length, 'run')} (${priceWords(p)}).${runProposals.size === 1 ? billingNote(p) : ''}${skipNote(p)} Press Go when you’re ready, or Generate on any card yourself.`, { proposalId: p.id, waiting: true });
+    say(`That’s ${plural(p.runCardIds.length, 'run')} (${priceWords(p)}).${skipNote(p)} Press Go when you’re ready, or Generate on any card yourself.`, { proposalId: p.id, waiting: true });
     let tick = 0;
     while (p.status === 'pending' && alive()) {
       await wait(250);
@@ -871,13 +804,6 @@ async function runShortFilm(run: DemoRun, plan: ShortPlan) {
       if (nodes) { states = ids.map((id) => nodes.find((n) => n.id === id)?.status ?? 'gone'); if (states.every(settled)) return states; }
       await wait(1500); }
     return alive() ? states : null;
-  };
-  /** After a step's runs: what didn't finish, and why. Returns false (and stops the plan) when none of them finished. */
-  const reportFailed = async (ids: string[], states: string[], what: string, goOn: string): Promise<boolean> => {
-    const notDone = ids.filter((_, i) => states[i] !== 'done'); if (!notDone.length) return true;
-    const f = failureWords(await liveNodes(boardId), notDone);
-    if (notDone.length === ids.length) { say(`None of the ${what} finished: ${f.reason}.${f.charge} Fix that, then ask me to try again.`, { error: true }); return false; }
-    say(`${notDone.length} of the ${plural(ids.length, what.replace(/s$/, ''), what)} didn’t finish: ${f.reason}.${f.charge} ${goOn}`, { error: true }); return true;
   };
   try {
     say(plan.intro, { plan: [...SHORT_STEPS], title: plan.title, tracker: true });
@@ -921,9 +847,8 @@ async function runShortFilm(run: DemoRun, plan: ShortPlan) {
     if (idOf(frc)) await op({ kind: 'move_into', ids: castIds, frame_id: idOf(frc) });
     const g1 = await goFor(castIds, 'The cast: a character sheet and the place'); if (!g1) return;
     const s1 = await settle(g1.started); if (!s1) return;
-    if (!(await reportFailed(g1.started, s1, 'cast cards', 'Retry it on its card; the key frames still work without it.'))) return;
     await reviewCards(castIds.filter((_, i) => s1[i] === 'done'));
-    say(s1.every((x) => x === 'done') ? 'The cast is in.' : 'The rest of the cast is in.', { stepsDone: ++steps });
+    say(`The cast is in.${s1.includes('failed') ? ' One didn’t finish; Retry it on its card, the key frames still work without it.' : ''}`, { stepsDone: ++steps });
 
     // ---- 3 Key frames: one picture per beat, wired from the cast; then a version per shot ----
     say(`Step 3, the key frames: one picture per beat, made from the cast.`);
@@ -938,7 +863,7 @@ async function runShortFilm(run: DemoRun, plan: ShortPlan) {
     const g2 = await goFor(keyIds, `${plural(keyIds.length, 'key frame')}, one per beat`); if (!g2) return;
     const s2 = await settle(g2.started); if (!s2) return;
     const okKeys = g2.started.filter((_, i) => s2[i] === 'done');
-    if (!(await reportFailed(g2.started, s2, 'key frames', 'I’ll only film the shots that finished; Retry the others on their cards.')) || !okKeys.length) return;
+    if (!okKeys.length) { say('None of the key frames finished, so there’s nothing to film yet. Retry them on their cards, then ask me again.', { error: true }); return; }
     await reviewCards(okKeys);
     const pickAns = await waitConfirm(`Your key frames are in. Pick a version on each shot: click a thumbnail in its strip (Recreate makes another one, and I'll look at it too). The ringed one is what gets filmed. Press Looks good when every shot has the one you want.`, 'Looks good', () => reviewCards(okKeys));
     if (!pickAns) return;
@@ -966,7 +891,6 @@ async function runShortFilm(run: DemoRun, plan: ShortPlan) {
     if (!runNow.length) { say('Nothing in the film step can run here yet. The cards stay on the board as drafts.', { error: true }); return; }
     const g3 = await goFor(runNow, videoOn ? 'The film: clips, voice and music' : 'The voice and the music bed'); if (!g3) return;
     const s3 = await settle(g3.started); if (!s3) return;
-    if (!(await reportFailed(g3.started, s3, 'film cards', 'Retry the others on their cards.'))) return;
     if (videoOn && clipIds.length) {
       const nodes = await liveNodes(boardId); const jobOf = (id: string) => (nodes?.find((n) => n.id === id)?.status === 'done' ? nodes?.find((n) => n.id === id)?.jobId ?? null : null);
       const body = stitchBody(clipIds.map(jobOf), musicId ? jobOf(musicId) : null, voiceId ? jobOf(voiceId) : null, plan.idea);
@@ -1246,7 +1170,7 @@ export function registerCanvasAgent(app: FastifyInstance) {
       p.status = 'cancelled'; p.decidedAt = now(); addDecision(b.id, 'cancel', p.id); updateProposal(p);
       return { ok: true, proposal: p };
     }
-    if (p.reason) return bad(reply, p.reason, p.overBudget ? 'over_budget' : p.balanceShort ? 'balance_short' : 'not_runnable', 409);
+    if (p.reason) return bad(reply, p.reason, p.overBudget ? 'over_budget' : 'not_runnable', 409);
     if (!hasCanvas(b.id)) return bad(reply, 'Open the board in the app first.', 'canvas_not_open', 409);
     p.status = 'running'; p.decidedAt = now(); addDecision(b.id, 'go', p.id); updateProposal(p);
     void sendOp(b.id, { kind: 'run_proposal', proposal_id: p.id, card_ids: p.runCardIds ?? p.cardIds, budget_id: p.budget?.id ?? null }, PROPOSAL_TIMEOUT_MS, (r) => finishRunProposal(p, r));

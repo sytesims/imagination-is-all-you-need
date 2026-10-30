@@ -117,6 +117,54 @@ npm.cmd run setup
 
 These values remain in that terminal session. Setup prints the selected web address. Keep services on loopback for local use; exposing the API/web/MCP proxy is not an authentication mechanism.
 
+## Updating
+
+Your library, boards and settings live in `server/data`, and your keys in `.env.local`. Updating never touches either of them.
+
+### If you installed with git clone
+
+**Coming from version 1.0?** It doesn't have `npm run update` yet. Update once by hand, in the app folder: `git checkout package-lock.json` (npm may have changed it; this puts it back), then `git pull`, then `npm ci`. After that, use `npm run update`.
+
+Stop the app first (**Ctrl+C** in its terminal), then in the app folder run:
+
+```text
+npm run update
+```
+
+On Windows, `npm.cmd run update` does the same. The update:
+
+1. Checks that you haven't changed any of the app's own files. If you have, it lists them and stops without changing anything. Put them aside with `git stash` (or commit them), then run it again.
+2. Checks that you're on `main`. If you're on another branch, it says how to switch back. `npm run update -- --force-branch` updates the branch you're on instead.
+3. Gets the new version from GitHub with `git pull --ff-only`. It never merges, resets or deletes anything.
+4. Installs new dependencies only when they changed, and rebuilds the MCP server only if you built it before (`npm run mcp:build`).
+5. Shows your old and new version and a short list of what's new.
+
+Then start the app again with `npm run setup` (or `npm run dev`).
+
+To see whether an update is ready without changing anything:
+
+```text
+npm run update -- --check
+```
+
+The full list of changes is in [CHANGELOG.md](../CHANGELOG.md) and on the [Releases page](https://github.com/sytesims/imagination-is-all-you-need/releases). Settings → Profile shows the version you're running.
+
+### If you downloaded a zip
+
+A zip copy can't update itself. To move to a new version:
+
+1. Download the latest release from the [Releases page](https://github.com/sytesims/imagination-is-all-you-need/releases) and unzip it next to your current folder.
+2. Copy `server/data` and `.env.local` from the old folder into the new one.
+3. In the new folder, run `npm run setup`.
+
+When the new version works, you can delete the old folder. Running `npm run update` in a zip copy prints these same steps.
+
+### Windows notes
+
+- Stop the app before you update. Windows locks files that are in use, so an install step can fail while the app runs. If it does, stop the app and run `npm ci` again.
+- Folders with spaces in their names are fine.
+- If PowerShell blocks `npm.ps1`, use `npm.cmd run update`.
+
 ## Other startup and advanced installation paths
 
 - `npm run dev`: starts API, Vite web and HTTP MCP after dependencies are installed.
