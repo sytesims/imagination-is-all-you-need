@@ -1,10 +1,11 @@
 /**
  * Brand Kit on a canvas (2026-10-27), all in the browser: (1) main colours of a logo or picture (a downscaled canvas → shared/brandKit extractColors,
  * our own k-means; SVGs are drawn first, transparent pixels are skipped, near-white / near-black left out), (2) the one-page brand sheet PNG and
- * (3) a palette PNG (one swatch per colour with its hex, for a design tool's brand colours). Fonts are drawn with what the page has loaded; a font
- * the app doesn't load falls back to the system's.
+ * (3) a palette PNG (one swatch per colour with its hex, for a design tool's brand colours). Fonts are the brand's own font files when it has
+ * them (brandFonts.ensureKitFonts), else what the page has; the sheet's logo is the one made for its background (light on dark, dark on light).
  */
-import { colourWords, extractColors, fontStack, luminance, moodWords, type BrandKit } from '../../../../server/src/shared/brandKit';
+import { colourWords, extractColors, fontStack, logoForBackground, luminance, moodWords, type BrandKit } from '../../../../server/src/shared/brandKit';
+import { ensureKitFonts } from '../../shared/brandFonts';
 
 const loadImg = (src: string): Promise<HTMLImageElement> => new Promise((res, rej) => { const i = new Image(); i.decoding = 'async'; i.onload = () => res(i); i.onerror = () => rej(new Error('That image couldn’t be read.')); i.src = src; });
 
@@ -41,14 +42,14 @@ function drawImg(g: CanvasRenderingContext2D, img: HTMLImageElement, x: number, 
 
 /** The one-page brand sheet: logo and name, the mood, every swatch with its hex, name and role, both fonts with a sample, do / don't and up to 3 examples. 1600 × 1000 (taller with examples). */
 export async function drawBrandSheet(kit: BrandKit): Promise<Blob> {
-  await document.fonts?.ready.catch(() => undefined);
+  await ensureKitFonts(kit); await document.fonts?.ready.catch(() => undefined);
   const bg = kit.colors.find((c) => c.role === 'background')?.hex ?? '#F6F5F2'; const fg = kit.colors.find((c) => c.role === 'text')?.hex ?? ink(bg);
   const sub = luminance(bg) > 0.4 ? 'rgba(20,21,26,.62)' : 'rgba(245,245,245,.62)'; const line = luminance(bg) > 0.4 ? 'rgba(20,21,26,.12)' : 'rgba(255,255,255,.12)';
   const ex = (await Promise.all(kit.examples.slice(0, 3).map((u) => loadImg(u).catch(() => null)))).filter(Boolean) as HTMLImageElement[];
   const W = 1600, P = 80, H = ex.length ? 1440 : 1000;
   const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d')!; g.fillStyle = bg; g.fillRect(0, 0, W, H); g.textBaseline = 'alphabetic';
   // header: logo + name + mood
-  let x = P; const logo = kit.logo ? await loadImg(kit.logo.url).catch(() => null) : null;
+  let x = P; const lu = logoForBackground(kit, luminance(bg)); const logo = lu ? await loadImg(lu.url).catch(() => null) : null;
   if (logo) { drawImg(g, logo, P, P - 8, 112, 112, 'contain'); x = P + 140; }
   g.fillStyle = fg; g.font = fontCss(kit.fonts.heading, 700, 64); g.fillText(fit(g, kit.name, W - x - P), x, P + 52);
   const mood = moodWords(kit.mood); g.fillStyle = sub; g.font = fontCss(kit.fonts.body, 500, 26); if (mood) g.fillText(fit(g, mood, W - x - P), x, P + 96);
@@ -82,11 +83,11 @@ export async function drawBrandSheet(kit: BrandKit): Promise<Blob> {
 
 /** A palette strip: one tall swatch per colour with its hex (a design tool's brand colours take hex, this is the picture of them). */
 export async function drawPalette(kit: BrandKit): Promise<Blob> {
-  await document.fonts?.ready.catch(() => undefined);
+  await ensureKitFonts(kit); await document.fonts?.ready.catch(() => undefined);
   const n = Math.max(1, kit.colors.length); const SW = 240, H = 360; const c = document.createElement('canvas'); c.width = SW * n; c.height = H; const g = c.getContext('2d')!;
   if (!kit.colors.length) { g.fillStyle = '#F6F5F2'; g.fillRect(0, 0, SW, H); }
   kit.colors.forEach((col, i) => { g.fillStyle = col.hex; g.fillRect(i * SW, 0, SW, H); g.fillStyle = ink(col.hex); g.font = fontCss('JetBrains Mono', 600, 26); g.fillText(col.hex, i * SW + 20, H - 28);
-    g.font = fontCss('Manrope', 600, 20); g.fillText(fit(g, col.name || colourWords(col.hex), SW - 40), i * SW + 20, H - 64); });
+    g.font = fontCss(kit.fonts.body, 600, 20); g.fillText(fit(g, col.name || colourWords(col.hex), SW - 40), i * SW + 20, H - 64); });
   return new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('Couldn’t draw the palette.'))), 'image/png'));
 }
 
