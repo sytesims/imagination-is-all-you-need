@@ -279,7 +279,7 @@ export const usd = plainUsd;
 
 // ---------- connected accounts ----------
 export interface AccountView { provider: string; name: string; connected: boolean; balance?: number | null; balanceUnit?: string | null; balanceUsd?: number | null; monthSpendUsd?: number | null; plan?: ComfyPlanId | null;
-  fetchedAt: string | null; source: 'provider' | 'unavailable'; note: string; billingUrl: string | null; failureRule: FailureRule; failureNote: string; actualCost: ProviderBilling['actualCost'];
+  fetchedAt: string | null; source: 'provider' | 'unavailable'; note: string; /** did the provider take the key just now (absent: no balance read for this provider, so the app can't tell) */ keyCheck?: 'ok' | 'rejected' | 'offline'; billingUrl: string | null; failureRule: FailureRule; failureNote: string; actualCost: ProviderBilling['actualCost'];
   mock?: { sample: true; balance: number; balanceUnit: string; balanceUsd: number; note: string } }
 const CACHE_MS = 5 * 60_000; const cache = new Map<string, { at: number; v: AccountView }>();
 type Reader = (key: string) => Promise<{ balance: number; balanceUnit: string; balanceUsd: number; monthSpendUsd?: number | null; plan?: ComfyPlanId | null }>;
@@ -326,10 +326,12 @@ async function account(id: string, refresh: boolean): Promise<AccountView> {
   if (!READERS[id]) return { ...base, connected: true, fetchedAt: null, source: 'unavailable', note: info.balanceNote };
   const hit = cache.get(id); if (hit && !refresh && Date.now() - hit.at < CACHE_MS) return hit.v;
   let v: AccountView;
-  try { const b = await READERS[id](key); v = { ...base, connected: true, balance: b.balance, balanceUnit: b.balanceUnit, balanceUsd: Number.isFinite(b.balanceUsd) ? r2(b.balanceUsd) : null, monthSpendUsd: b.monthSpendUsd ?? null, ...(b.plan ? { plan: b.plan } : {}), fetchedAt: new Date().toISOString(), source: 'provider', note: info.balanceNote }; }
+  try { const b = await READERS[id](key); v = { ...base, connected: true, balance: b.balance, balanceUnit: b.balanceUnit, balanceUsd: Number.isFinite(b.balanceUsd) ? r2(b.balanceUsd) : null, monthSpendUsd: b.monthSpendUsd ?? null, ...(b.plan ? { plan: b.plan } : {}), fetchedAt: new Date().toISOString(), source: 'provider', note: info.balanceNote, keyCheck: 'ok' }; }
   catch (e: any) { // never echo the key or the request; status only
     const why = e?.status === 401 && id === 'comfy' ? 'Comfy Cloud didn’t accept this key (401). Check that you pasted the whole key, or make a new one at platform.comfy.org.' : e?.status === 401 || e?.status === 403 ? `${info.name} refused the read (${e.status}): this key can’t read the balance.${id === 'fal' ? ' A fal key with billing read access (READONLY or BILLING preset) can.' : ''}` : `Couldn’t read the balance just now (${e?.status ? `HTTP ${e.status}` : 'network'}).`;
-    v = { ...base, connected: true, fetchedAt: new Date().toISOString(), source: 'unavailable', note: why }; }
+    /* 401 (or 403 from Comfy) = the key was refused; another provider's 403 only means this key can't read the balance */
+    const keyCheck = e?.status === 401 || (e?.status === 403 && id === 'comfy') ? 'rejected' as const : e?.status === 403 ? 'ok' as const : 'offline' as const;
+    v = { ...base, connected: true, fetchedAt: new Date().toISOString(), source: 'unavailable', note: why, keyCheck }; }
   cache.set(id, { at: Date.now(), v }); return v;
 }
 export const accounts = (refresh = false) => Promise.all(PROVIDER_BILLING.filter((p) => p.id !== 'local').map((p) => account(p.id, refresh)));
