@@ -31,6 +31,8 @@ try {
     const b = await S.post('/api/tools/upscale/jobs', { duration: '5', types: '["precise"]', rights: '1' }, [['video', MP4, 'video/mp4']]); assert.equal(b.status, 200);
     const ja = await S.until(a.body.id), jb = await S.until(b.body.id); assert.equal(ja.status, 'done'); assert.equal(jb.status, 'done');
     const outA = ja.outputs.find((o: any) => /\.mp4$/.test(o.url))?.url ?? ja.resultUrl; const th = await fetch(`${S.B}/api/media/thumb?url=${encodeURIComponent(outA)}`); assert.equal(th.status, 200);
+    const ex = await fetch(`${S.B}/api/media/thumb?url=${encodeURIComponent('/examples/starter/bus-stop-in.mp4')}`); // a shipped example video gets a picture too
+    assert.equal(ex.status, 200); assert.match(ex.headers.get('content-type') ?? '', /^image\//);
     const thumbs = () => fs.existsSync(path.join(DATA, 'thumbs')) ? fs.readdirSync(path.join(DATA, 'thumbs')).filter((f) => f.includes(ja.id)) : [];
     assert.ok(thumbs().length >= 1, 'thumb cached'); const beforeA = ls(ja.id + '-'); assert.ok(beforeA.some((f) => /video0/.test(f)) && beforeA.some((f) => /out0/.test(f)), beforeA.join());
     const inB = ls(jb.id + '-').find((f) => /video0/.test(f))!; const look = await fetch(`${S.B}/api/looks`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'keep', refs: [`/files/${inB}`] }) }); assert.ok(look.ok, String(look.status));
