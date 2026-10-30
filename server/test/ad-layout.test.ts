@@ -60,7 +60,7 @@ ok('layout: bottom up, margins, empty fields, long button, wide logo');
 const shapesOf = (ps: AdPlatform[]) => adSizesFor(ps).map((s) => `${s.shape}:${s.w}x${s.h}`);
 assert.deepEqual(shapesOf(['meta']), ['1x1:1080x1080', '4x5:1080x1350', '9x16:1080x1920'], 'Instagram & Facebook: square, feed, stories');
 assert.deepEqual(shapesOf(['tiktok']), ['9x16:1080x1920']);
-assert.deepEqual(shapesOf(['x']), ['1x1:1200x1200', '16x9:1200x675']);
+assert.deepEqual(shapesOf(['x']), ['1x1:1080x1080', '16x9:1920x1080'], "X: its own published sizes");
 assert.deepEqual(shapesOf(['pinterest']), ['2x3:1000x1500']);
 assert.deepEqual(shapesOf(['linkedin']), ['1x1:1200x1200', '191x1:1200x628']);
 assert.deepEqual(shapesOf(['youtube']), ['9x16:1080x1920', '16x9:1280x720']);

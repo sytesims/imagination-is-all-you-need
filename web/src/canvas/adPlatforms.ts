@@ -12,7 +12,8 @@
  *  - YouTube Shorts: Google Ads Help "Universal safe zones" vertical template (support.google.com/google-ads/answer/13547298), 1080×1920:
  *    288 px top, 672 px bottom, 48 px left, 192 px right. The 16:9 size is a thumbnail (same page: 1280×720): only the time badge covers
  *    the bottom corner, so we keep the bottom ~10% clear.
- *  - X (help.x.com/en/business-and-advertising/creative-ad-specifications), Pinterest standard ads 2:3, 1000×1500
+ *  - X: its own creative specs (help.x.com/en/business-and-advertising/creative-ad-specifications) give image ads 1:1 at 1080×1080 and
+ *    16:9 at 1920×1080 (sizes updated 2026-10-31). X, Pinterest standard ads 2:3, 1000×1500
  *    (help.pinterest.com/en/business/article/pinterest-product-specs) and LinkedIn single image ads 1.91:1 1200×628 and 1:1 1200×1200
  *    (linkedin.com/help/lms/answer/a426534): the picture shows in the feed with nothing on top, so no safe zone.
  */
@@ -43,8 +44,8 @@ export const AD_PLATFORMS: Record<AdPlatform, { label: string; sizes: Spot[] }> 
   tiktok: { label: 'TikTok', sizes: [
     { shape: '9x16', w: 1080, h: 1920, name: 'For You feed', safe: { top: 0.08, bottom: 0.30, left: 0.04, right: 0.13 } }] },
   x: { label: 'X', sizes: [
-    { shape: '1x1', w: 1200, h: 1200, name: 'Square' },
-    { shape: '16x9', w: 1200, h: 675, name: 'Wide' }] },
+    { shape: '1x1', w: 1080, h: 1080, name: 'Square' },
+    { shape: '16x9', w: 1920, h: 1080, name: 'Wide' }] },
   pinterest: { label: 'Pinterest', sizes: [
     { shape: '2x3', w: 1000, h: 1500, name: 'Pin' }] },
   linkedin: { label: 'LinkedIn', sizes: [

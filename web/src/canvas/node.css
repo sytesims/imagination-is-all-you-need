@@ -575,7 +575,7 @@ html:not(.cv-perf-off) .nf-media,html:not(.cv-perf-off) .nf-body{contain:layout 
 .ade-part.on{outline:1.5px solid var(--accent,#FF7A1A)}
 .ade-tag{position:absolute;left:-4px;bottom:calc(100% + 7px);padding:2px 6px;border-radius:5px;background:var(--accent,#FF7A1A);color:var(--on-accent,#14151A);font:600 10.5px/14px var(--font-sans,Inter,sans-serif);white-space:nowrap}
 .ade-handle{position:absolute;right:-9px;bottom:-9px;width:12px;height:12px;border-radius:3px;background:#fff;box-shadow:0 0 0 1.5px var(--accent,#FF7A1A),0 1px 4px rgba(0,0,0,.5);pointer-events:auto;cursor:nwse-resize}
-.ade-guide{position:absolute;pointer-events:none;background:#FF3EA5}
+.ade-guide{position:absolute;pointer-events:none;background:var(--accent,#FF7A1A)}
 .ade-guide.v{top:0;bottom:0;width:1px;margin-left:-.5px}
 .ade-guide.h{left:0;right:0;height:1px;margin-top:-.5px}
 .ade-hidden{display:flex;gap:4px;flex-wrap:wrap}
