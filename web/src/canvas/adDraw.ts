@@ -7,7 +7,7 @@ import type { BrandKit } from '../../../server/src/shared/brandKit';
 import { plateFor } from '../../../server/src/shared/logoStamp';
 import { zipStore } from '../../../server/src/shared/zipStore';
 import { brightness, cssFont, drawLogo, loadImg, loadStampArt, type StampArt } from '../shared/logoStampDraw';
-import { adColors, adPackFiles, layoutAd, logoSeeThrough, logoToneFor, postCopy, scrimAlpha, slugOf, type AdMeasure, type AdPreset, type AdStyle, type AdText, type LogoTone } from './adLayout';
+import { adColors, adPackFiles, buttonOn, layoutAd, logoSeeThrough, logoToneFor, postCopy, scrimAlpha, slugOf, type AdMeasure, type AdPreset, type AdStyle, type AdText, type LogoTone } from './adLayout';
 import { adExportPlan, type AdPlatform, type AdSizeOption, type Edges } from './adPlatforms';
 import { picCrop, type AdEdit, type AdEdits } from './adEdit';
 
@@ -102,7 +102,7 @@ export function drawAd(g: CanvasRenderingContext2D, W: number, H: number, pic: H
     h.lines.forEach((line, i) => g.fillText(line, xAt(h.x, h.w), h.y + h.lineH * i + h.px * 0.86)); }
   if (l.offer) { g.font = fontOf(art, 'offer', l.offer.px); g.shadowBlur = l.offer.px * col.shadowBlur; g.fillStyle = col.offer; g.fillText(l.offer.text, xAt(l.offer.x, l.offer.w), l.offer.y + l.offer.px * 0.92); }
   g.shadowColor = 'transparent'; g.textAlign = 'left';
-  if (l.button) { const b = l.button; const bc = col.button; g.beginPath(); g.roundRect(b.x, b.y, b.w, b.h, b.r);
+  if (l.button) { const b = l.button; const bc = l.panel || l.backdrop ? col.button : buttonOn(col.button, pic ? lumAt(b) : 0.06); g.beginPath(); g.roundRect(b.x, b.y, b.w, b.h, b.r);
     if (bc.fill) { g.shadowColor = 'rgba(0,0,0,0.28)'; g.shadowBlur = b.h * 0.3; g.shadowOffsetY = b.h * 0.06; g.fillStyle = bc.fill; g.fill(); }
     /* the edge: an outline button's own (inside the box, so it stays in the clear area), or a fill that matches its panel */
     if (bc.edge) { g.shadowColor = 'transparent'; const lw = (bc.fill ? 2 : 4) * l.unit; g.lineWidth = lw; g.strokeStyle = bc.edge;

@@ -237,11 +237,19 @@ export function adColors(kit: BrandKit | null | undefined, style: AdStyle | null
   const st = style ?? {}; const bd = st.backdrop ?? 'gradient'; const sf = surface ? panelColorOf(kit, st.textColor) : null;
   const ink = st.textColor ?? (sf ? inkOn(sf) : '#FFFFFF'); const light = inkOn(ink) === '#14151A';
   const offer = st.textColor ? rgbaOf(ink, 0.88) : light ? 'rgba(255,255,255,0.88)' : 'rgba(20,21,26,0.8)';
-  const shadow = sf || bd === 'none' ? 'transparent' : bd === 'shadow' ? (light ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)') : light ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.35)';
+  const shadow = sf || bd === 'none' ? 'transparent' : bd === 'shadow' ? (light ? 'rgba(0,0,0,0.9)' : 'rgba(255,255,255,0.9)') : light ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.35)';
   const fill = st.buttonColor ?? buttonColorOf(kit); let button: AdColors['button'];
   if (st.buttonShape === 'outline') { const c = sf && contrastOf(fill, sf) < 3 ? ink : fill; button = { fill: null, edge: c, text: c }; }
   else button = { fill, edge: sf && contrastOf(fill, sf) < 1.25 ? ink : null, text: inkOn(fill) };
-  return { surface: sf, ink, offer, shadow, shadowBlur: bd === 'shadow' ? 0.4 : 0.25, scrim: light ? 'dark' : 'light', button };
+  return { surface: sf, ink, offer, shadow, shadowBlur: bd === 'shadow' ? 0.3 : 0.25, scrim: light ? 'dark' : 'light', button };
+}
+
+/** The button on the picture (not on a panel): `behind` = the brightness (0..1) under it, as drawn. An outline that wouldn't read there
+ *  turns white or near black; a fill that melts into it gets a thin edge in that colour. */
+export function buttonOn(bc: AdColors['button'], behind: number | null): AdColors['button'] {
+  if (behind == null) return bc; const v = Math.round(Math.max(0, Math.min(1, behind)) * 255).toString(16).padStart(2, '0'); const bg = `#${v}${v}${v}`; const c = inkOn(bg);
+  if (!bc.fill) return contrastOf(bc.text, bg) >= 2.5 ? bc : { fill: null, edge: c, text: c };
+  return bc.edge || contrastOf(bc.fill, bg) >= 1.4 ? bc : { ...bc, edge: c };
 }
 
 // ---------------------------------------------------------------- brand
