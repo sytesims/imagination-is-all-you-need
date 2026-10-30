@@ -580,8 +580,7 @@ html body .apop.ade-pop{z-index:1210}
 .ade-side{flex:none;width:236px;box-sizing:border-box;margin:0 12px;padding:4px 6px;border-radius:12px;background:var(--surface-1,#131517);overflow-y:auto;display:flex;flex-direction:column}
 .wfm .ade-side.bp-host .bp-opt{padding:6px 2px}
 .wfm .ade-side.bp-host .bp-opt-l{font-size:12.5px}
-.ade-side-picks{display:flex;flex-wrap:wrap;gap:4px;padding:2px 4px}
-.ade-sw{display:flex;flex-wrap:wrap;gap:6px;padding:2px 8px 4px}
+.ade-sw{display:flex;flex-wrap:wrap;gap:4px;padding:2px 6px 4px}
 .ade-sw button{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:5px;height:26px;min-width:26px;justify-content:center;border-radius:99px;cursor:pointer;color:var(--text-2,#898A8B);font:600 11px/1 var(--font-sans,Inter,sans-serif)}
 .ade-sw button i{width:20px;height:20px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
 .ade-sw .ade-sw-auto{padding:0 8px 0 3px;background:var(--fill,rgba(255,255,255,.05))}
@@ -604,6 +603,7 @@ html body .apop.ade-pop{z-index:1210}
 .ad-plat:hover:not(:disabled){background:rgba(0,0,0,.42)}
 .ad-plat:disabled{cursor:default;opacity:.55}
 .ad-g-msg{top:46%}
+.ad-g-msg small{text-wrap:balance}
 .ad-ghost .ad-choose{background:var(--accent,#FF7A1A);border-color:transparent;color:var(--on-accent,#14151A);height:32px;padding:0 14px}
 .ad-ghost .ad-choose:hover:not(:disabled){background:var(--accent,#FF7A1A);filter:brightness(1.06)}
 .ad-hl-n{position:absolute;right:4px;top:4px;display:inline-flex;gap:2px}
@@ -641,6 +641,10 @@ button.adp-h:hover{background:var(--state-hover,rgba(255,255,255,.04))}
 .adp-zoom{display:flex;align-items:center;gap:8px;margin:10px 6px 0}
 .adp-zoom input{flex:1}
 .adp-fields{padding:0 6px 4px}
+.adp-folders{margin:0 6px 10px;padding:0;list-style:none;display:flex;flex-direction:column;gap:3px}
+.adp-folders li{display:flex;justify-content:space-between;gap:10px;padding:6px 9px;border-radius:7px;background:var(--fill,rgba(255,255,255,.05));font:600 11.5px/15px var(--font-sans,Inter,sans-serif);color:var(--text-1,#F7F7F8)}
+.adp-folders b{flex:none;font-weight:600;white-space:nowrap}
+.adp-folders small{min-width:0;color:var(--text-3,rgba(255,255,255,.5));font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .adp-zones{display:flex;flex-direction:column;gap:6px;padding:8px 6px 0}
 .ade-panel .ad-chips{padding:0 6px 8px}
 .adp-zones .ad-chips{padding:0}

@@ -115,9 +115,13 @@ function summaryOf(ad: AdCard, id: AdSection): string {
 function Panel({ ad, at, x }: { ad: AdCard; at: AdSection; x: AdPanelCtx }) {
   const [open, setOpen] = useState<AdSection>(at);
   useEffect(() => { if (x.hit.n) setOpen(SECTION_OF[x.hit.part]); }, [x.hit]);
+  /* the open section scrolls into view inside the panel (scrollIntoView would also scroll the page behind the sheet) */
+  const openEl = useRef<HTMLElement>(null);
+  useEffect(() => { const el = openEl.current; const box = el?.parentElement; if (!el || !box) return; const r = el.getBoundingClientRect(), b = box.getBoundingClientRect();
+    if (r.top < b.top) box.scrollTop += r.top - b.top; else if (r.bottom > b.bottom) box.scrollTop += Math.min(r.bottom - b.bottom, r.top - b.top); }, [open]);
   const art = ad.art!;
   const sec = (id: AdSection, body: React.ReactNode) => { const n = SECTIONS.findIndex((s) => s.id === id); const on = open === id;
-    return <section key={id} className={`adp-sec${on ? ' on' : ''}`} data-testid={`adp-${id}`}>
+    return <section key={id} ref={on ? openEl : undefined} className={`adp-sec${on ? ' on' : ''}`} data-testid={`adp-${id}`}>
       <button type="button" className="adp-h" aria-expanded={on} onClick={() => setOpen(id)}><i>{n + 1}</i>{SECTIONS[n].label}<span className="adp-sum">{on ? '' : summaryOf(ad, id)}</span></button>
       {on && <div className="adp-body">{body}</div>}</section>; };
   return <>
@@ -150,7 +154,11 @@ function Panel({ ad, at, x }: { ad: AdCard; at: AdSection; x: AdPanelCtx }) {
           <button type="button" role="radio" aria-checked={x.zone === 'all'} className={`ad-chip${x.zone === 'all' ? ' on' : ''}`} data-testid="ade-zones-all" {...tip('What the parts keep clear of')} onClick={() => x.setZone('all')}>All</button>
           {x.zones.map((z) => <button key={z.p} type="button" role="radio" aria-checked={x.zone === z.p} className={`ad-chip${x.zone === z.p ? ' on' : ''}`} data-testid={`ade-zones-${z.p}`} onClick={() => x.setZone(z.p)}>{z.label}</button>)}</div></div>}
     </>)}
-    {sec('export', <><p className="adp-p">{exportTip(ad)}.</p><div className="adp-pad"><ExportBtn ad={ad} /></div></>)}
+    {sec('export', <>
+      <p className="adp-p">{ad.count} pictures in one zip: a folder for each platform with its sizes, {ad.variants.length === 1 ? 'your headline' : `all ${ad.variants.length} headlines`}, and the post text to paste.</p>
+      <ul className="adp-folders">{ad.picked.map((p) => <li key={p}><b>{AD_PLATFORMS[p].label}</b><small>{AD_PLATFORMS[p].sizes.map((z) => z.name).join(' · ')}</small></li>)}</ul>
+      <div className="adp-pad"><ExportBtn ad={ad} /></div>
+    </>)}
   </>;
 }
 

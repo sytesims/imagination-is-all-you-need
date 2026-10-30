@@ -20,7 +20,7 @@ import { uploadMedia } from '../shared/batch1';
 import { NodeFrame } from './NodeFrame';
 import { arrowsInto, cardInputs, linkShapes } from './graph';
 import { freeSpot } from './placement';
-import { GROUP_TYPE, NODE_DEFS, nodeDefOf } from './nodeTypes';
+import { GROUP_TYPE, NODE_DEFS, adCardResize, nodeDefOf } from './nodeTypes';
 import { createAuxNode, type AdNodeProps } from './auxShapes';
 import { AD_LIMITS, adPackFiles, adVariants, asPreset, asStyle, type AdPreset, type AdStyle } from './adLayout';
 import { AD_PLATFORM_LIST, DEFAULT_PLATFORMS, adExportPlan, adSizesFor, asPlatforms, asShape, type AdPlatform } from './adPlatforms';
@@ -33,9 +33,6 @@ import type { BrandKit } from '../../../server/src/shared/brandKit';
 const stop = { onPointerDown: (e: React.SyntheticEvent) => e.stopPropagation(), onKeyDown: (e: React.SyntheticEvent) => e.stopPropagation(), onKeyUp: (e: React.SyntheticEvent) => e.stopPropagation() };
 
 type AdShapeRef = { id: any; type: string; props: AdNodeProps };
-/** Sizes the card was made at before (400 × 700, then 400 × 840): such a card takes today's size the first time it's shown. */
-const OLD_SIZES = [[400, 700], [400, 840]];
-
 /** All of the card's state and actions (the card and the editor's sections share them). */
 function useAdCard(shape: AdShapeRef) {
   const editor = useEditor(); const toast = useToast(); const brand = useBrand(); const p = shape.props;
@@ -64,15 +61,15 @@ function useAdCard(shape: AdShapeRef) {
   const filled = headlines.reduce((n, h, i) => (h.trim() ? i + 1 : n), 0); const [more, setMore] = useState(1); const shown = Math.max(1, more, filled);
   const variants = adVariants(headlines); const view = variants.find((v) => v.n === p.pick) ?? variants[0];
 
-  /* a card still at an old default size takes today's (smaller) one; a card shorter than the least it needs grows to today's height
-   *  the first time it's shown, unless that would cover another card */
+  /* a card still at an old default size takes today's (smaller) one; a card too short grows the first time it's shown, unless that
+   *  would cover another card (nodeTypes.adCardResize) */
   useEffect(() => {
-    const d = NODE_DEFS.ad; if (OLD_SIZES.some(([w, h]) => p.w === w && p.h === h)) { patch({ w: d.defaultW, h: d.defaultH }); return; }
-    const H0 = d.defaultH; const me = editor.getShapePageBounds(shape.id); if (!me || p.h >= d.minH) return;
-    const grown = { minX: me.minX, maxX: me.maxX, minY: me.minY, maxY: me.minY + H0 };
+    const to = adCardResize(p.w, p.h); if (!to) return; if (!to.grow) { patch({ w: to.w, h: to.h }); return; }
+    const me = editor.getShapePageBounds(shape.id); if (!me) return;
+    const grown = { minX: me.minX, maxX: me.maxX, minY: me.minY, maxY: me.minY + to.h };
     const hits = editor.getCurrentPageShapes().some((s) => { if (s.id === shape.id || s.type === GROUP_TYPE || !nodeDefOf(s.type)) return false; const b = editor.getShapePageBounds(s.id);
       return !!b && b.minX < grown.maxX && b.maxX > grown.minX && b.minY < grown.maxY && b.maxY > grown.minY; });
-    if (!hits) patch({ h: H0 });
+    if (!hits) patch({ h: to.h });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [art, setArt] = useState<AdArt | null>(null); const [pic, setPic] = useState<HTMLImageElement | null>(null); const [picErr, setPicErr] = useState(false); const [busy, setBusy] = useState(false);
   useEffect(() => { let on = true; loadAdArt(kit).then((a) => on && setArt(a)).catch(() => on && setArt(null)); return () => { on = false; }; }, [kit?.id, kit?.updatedAt, kit?.logo?.url, kit?.fonts.heading, kit?.fonts.body]);
@@ -144,7 +141,7 @@ export function AdView({ shape, Icon }: { shape: AdShapeRef; Icon: (q: { size?: 
         </div>
         {ad.pic && <div className="ad-under" data-card-control {...stop}>
           <button type="button" className="ad-plat" data-testid="ad-platforms" disabled={!ad.art} {...tip('Where it runs: the platforms decide the sizes')} onClick={() => ad.setEditing('where')}>
-            <span className="ad-plat-l">For</span><span>{platformSummary(ad)}</span><ChevronRightIcon size={12} /></button></div>}
+            {ad.platforms.length > 0 && <span className="ad-plat-l">For</span>}<span>{platformSummary(ad)}</span><ChevronRightIcon size={12} /></button></div>}
       </div>
       <div className="ad-fields" data-card-control {...stop}>
         <div className="ad-hl">
