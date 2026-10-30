@@ -2,7 +2,7 @@
 
 Newest first. To update a git install, run `npm run update` (see [Updating](docs/INSTALL.md#updating)). Every release is also on the [Releases page](https://github.com/sytesims/imagination-is-all-you-need/releases).
 
-## 1.1.0 — unreleased
+## 1.1.0 — 2026-10-30
 
 ### New
 - **Ad layout card on the Canvas.** Turn a picture into finished ads for Instagram & Facebook, TikTok, X, Pinterest, LinkedIn and YouTube. Your real logo, headline, offer and button go on top, so the words are always spelled right. Drag everything into place in the big editor, see each platform's safe zones, and export every size as PNGs in one zip. It's free: nothing goes to an AI model.
