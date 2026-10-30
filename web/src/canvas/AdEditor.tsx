@@ -1,6 +1,8 @@
 /**
- * "Edit & style" (2026-10-30, sections 2026-10-31): the Ad layout card's big editor, in the app's large sheet (MaskSheet's .wfm styles). The ad for the current size
- * at a readable size; drag the logo, headline, offer line and button, resize the logo, headline (its text follows) and the button (width)
+ * "Edit & style" (2026-10-30, sections 2026-10-31): the Ad layout card's big editor. It fills the window (2026-10-31): a slim top bar
+ * (title, size tabs, Safe zones, Reset layout, Done), the side panel, and the stage, where the ad is the hero: it fits the stage with a
+ * small margin on every size ("Fit"), or shows at a set scale (100%, − / +; the stage scrolls), from the zoom control at the bottom right
+ * (Cmd/Ctrl + 0, + and − too). drag the logo, headline, offer line and button, resize the logo, headline (its text follows) and the button (width)
  * from the corner; they snap to the clear area, the margins, the centre lines and each other (hold Alt for none) and can't leave the
  * clear area. Drag the picture itself (where no part is) to frame it, and zoom it with the slider or the wheel / trackpad. Arrow keys
  * nudge (Shift: 10), Delete takes the logo, offer or button off this size ("Show …" brings it back). Edits are saved as they happen,
@@ -16,7 +18,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
 import { createPortal } from 'react-dom';
 import { tip } from '../shared/Tooltip';
 import { BarPopover, PopNote, PopSection, Segmented } from '../shared/BarPop';
-import { AlignCenterIcon, AlignLeftIcon, AlignRightIcon, CloseIcon, PlusIcon } from '../ui/Icons';
+import { AlignCenterIcon, AlignLeftIcon, AlignRightIcon, MinusIcon, PlusIcon } from '../ui/Icons';
 import { drawAd, drawSafeZones, type AdArt } from './adDraw';
 import { buttonColorOf, logoToneFor, type AdLayout, type AdPreset, type AdStyle, type AdText, type Box } from './adLayout';
 import { hasSafe, zonesFor, type AdPlatform, type AdSizeOption } from './adPlatforms';
@@ -32,6 +34,8 @@ const halt = (ev: React.SyntheticEvent) => ev.stopPropagation();
 const RESIZABLE: AdPart[] = ['logo', 'headline', 'button'];
 /** Topmost first (the order they're drawn, reversed). */
 const HIT_ORDER: AdPart[] = ['button', 'offer', 'logo', 'headline'];
+/** The stage's zoom steps (screen px per ad px), and the margin around the ad at "Fit". */
+const STEPS = [0.1, 0.15, 0.2, 0.25, 0.33, 0.5, 0.67, 0.75, 1, 1.25, 1.5, 2]; const FIT_PAD = 24;
 
 export function AdEditor({ sizes, size, onSize, pic, art, text, preset, style, onStyle, edit, onEdit, showSafe, onShowSafe, platforms, editedSizes, onClose, panel }: {
   sizes: AdSizeOption[]; size: AdSizeOption; onSize: (s: AdSizeOption) => void; pic: HTMLImageElement; art: AdArt; text: AdText; preset: AdPreset;
@@ -40,9 +44,19 @@ export function AdEditor({ sizes, size, onSize, pic, art, text, preset, style, o
   /** the side panel (AdPanel.tsx) */ panel: (x: AdPanelCtx) => ReactNode;
 }) {
   const { w: W, h: H } = size; const e = edit ?? {}; const hidden = HIDEABLE.filter((p) => e.hide?.includes(p));
-  const stage = useRef<HTMLDivElement>(null); const sheet = useRef<HTMLDivElement>(null); const [room, setRoom] = useState<[number, number]>([0, 0]);
-  useLayoutEffect(() => { const s = stage.current; if (!s) return; const ro = new ResizeObserver(() => setRoom([s.clientWidth, s.clientHeight])); ro.observe(s); return () => ro.disconnect(); }, []);
-  const k = room[0] > 0 ? Math.min((room[0] - 48) / W, (room[1] - 48) / H) : 0; /* frame px → screen px */
+  const stage = useRef<HTMLDivElement>(null); const scroller = useRef<HTMLDivElement>(null); const sheet = useRef<HTMLDivElement>(null); const [room, setRoom] = useState<[number, number]>([0, 0]);
+  useLayoutEffect(() => { const s = scroller.current; if (!s) return; const ro = new ResizeObserver(() => setRoom([s.clientWidth, s.clientHeight])); ro.observe(s); return () => ro.disconnect(); }, []);
+  /* the stage's zoom: "fit" (the ad as big as the stage allows, recomputed as the window changes) or a set scale; frame px → screen px */
+  const [view, setView] = useState<'fit' | number>('fit'); useEffect(() => setView('fit'), [size.shape]);
+  const fitK = room[0] > 0 ? Math.max(0.02, Math.min((room[0] - 2 * FIT_PAD) / W, (room[1] - 2 * FIT_PAD) / H)) : 0;
+  const k = view === 'fit' ? fitK : view;
+  /* zooming keeps the middle of what you see in the middle */
+  const keep = useRef<[number, number] | null>(null);
+  const zoomView = (v: 'fit' | number) => { const s = scroller.current; if (s) keep.current = [(s.scrollLeft + s.clientWidth / 2) / s.scrollWidth, (s.scrollTop + s.clientHeight / 2) / s.scrollHeight]; setView(v); };
+  useLayoutEffect(() => { const s = scroller.current, c0 = keep.current; if (!s || !c0) return; keep.current = null; s.scrollLeft = c0[0] * s.scrollWidth - s.clientWidth / 2; s.scrollTop = c0[1] * s.scrollHeight - s.clientHeight / 2; }, [k]);
+  const zoomIn = () => zoomView(STEPS.find((z) => z > k + 1e-3) ?? STEPS[STEPS.length - 1]);
+  const zoomOut = () => zoomView([...STEPS].reverse().find((z) => z < k - 1e-3) ?? STEPS[0]);
+  const [scrolled, setScrolled] = useState(0);
   const [c, setCanvas] = useState<HTMLCanvasElement | null>(null); const [l, setL] = useState<AdLayout | null>(null);
   const [sel, setSel] = useState<AdPart | null>(null); const [hit, setHit] = useState<AdPanelCtx['hit']>({ part: 'picture', n: 0 }); const [hover, setHover] = useState<AdPart | null>(null); const [guide, setGuide] = useState<{ x: number | null; y: number | null } | null>(null);
   /* "Zones for": one platform's zones at a time (the parts still keep clear of all of them) */
@@ -110,11 +124,14 @@ export function AdEditor({ sizes, size, onSize, pic, art, text, preset, style, o
     const fits = [y - tag - bh, y + h + gap].filter((t) => t >= pad && t + bh <= sr.height - pad).sort((a, b) => covered(a) - covered(b));
     const top = fits[0] ?? (y > sr.height - y - h ? pad : sr.height - pad - bh);
     setBarAt({ left, top });
-  }, [selBox, k, room, style, sel]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selBox, k, room, style, sel, scrolled]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* the wheel / trackpad zooms the picture (a passive listener can't stop the page from scrolling) */
   const wheelRef = useRef<(ev: WheelEvent) => void>(() => undefined);
-  wheelRef.current = (ev) => { ev.preventDefault(); zoomTo((e.pic?.zoom ?? 1) * Math.exp(-ev.deltaY * (ev.ctrlKey ? 0.01 : 0.002))); };
+  wheelRef.current = (ev) => {
+    /* zoomed in past the stage: the wheel scrolls it (a pinch, or Ctrl + wheel, still zooms the picture) */
+    const s = scroller.current; if (!ev.ctrlKey && s && (s.scrollWidth > s.clientWidth + 1 || s.scrollHeight > s.clientHeight + 1)) return;
+    ev.preventDefault(); zoomTo((e.pic?.zoom ?? 1) * Math.exp(-ev.deltaY * (ev.ctrlKey ? 0.01 : 0.002))); };
   useEffect(() => { const s = stage.current; if (!s) return; const f = (ev: WheelEvent) => wheelRef.current(ev); s.addEventListener('wheel', f, { passive: false }); return () => s.removeEventListener('wheel', f); }, []);
 
   /* ---- keys: caught before the board sees them (Delete would remove the card), Esc closes */
@@ -123,6 +140,8 @@ export function AdEditor({ sizes, size, onSize, pic, art, text, preset, style, o
     const tg = ev.target as HTMLElement | null; const mine = !!tg && (tg === document.body || !!sheet.current?.contains(tg)); if (!mine) return;
     /* in the style panel, keys only press its buttons (Enter / Space) and Esc closes: arrows never nudge a part */
     ev.stopPropagation(); const side = !!tg?.closest('.ade-side, .adt');
+    /* the stage's zoom: Cmd/Ctrl + 0 fits, + and − step (instead of zooming the page) */
+    if ((ev.metaKey || ev.ctrlKey) && !ev.altKey && /^[0=+-]$/.test(ev.key) && !/^(INPUT|TEXTAREA)$/.test(tg?.tagName ?? '')) { ev.preventDefault(); if (ev.key === '0') zoomView('fit'); else if (ev.key === '-') zoomOut(); else zoomIn(); return; }
     /* the side panel's icon rail: arrow keys go to the next / previous section */
     if (side && tg?.getAttribute('role') === 'tab' && /^Arrow(Up|Down|Left|Right)$/.test(ev.key)) { const tabs = [...(tg.parentElement?.querySelectorAll<HTMLElement>('[role=tab]') ?? [])];
       const i = tabs.indexOf(tg) + (/Up|Left/.test(ev.key) ? -1 : 1); const to = tabs[(i + tabs.length) % tabs.length]; ev.preventDefault(); to?.focus(); to?.click(); return; }
@@ -142,19 +161,22 @@ export function AdEditor({ sizes, size, onSize, pic, art, text, preset, style, o
   const cursor = drag.current ? (drag.current.mode === 'pic' ? 'grabbing' : drag.current.mode === 'size' ? 'nwse-resize' : 'move') : hover ? 'move' : 'grab';
   /* the sheet sits in the card's React tree: its events stop here, so they never reach the card or the board */
   const own = { onPointerUp: halt, onPointerMove: halt, onClick: halt, onDoubleClick: halt, onKeyDown: halt, onKeyUp: halt, onContextMenu: halt, onWheel: halt };
-  return createPortal(<div className="wfm-back" data-testid="ad-editor" {...own} onPointerDown={(ev) => { ev.stopPropagation(); if (ev.target === ev.currentTarget) onClose(); }}>
+  const pct = `${Math.round(k * 100)}%`;
+  return createPortal(<div className="wfm-back ade-back" data-testid="ad-editor" {...own} onPointerDown={(ev) => { ev.stopPropagation(); if (ev.target === ev.currentTarget) onClose(); }}>
     <div ref={sheet} className="wfm ade" role="dialog" aria-modal="true" aria-labelledby="ade-title" tabIndex={-1}>
-      <header className="wfm-h ade-h">
-        <div><h2 id="ade-title">Edit & style</h2><p>Click a part of the ad to style it, drag to move it, drag a corner to resize (Alt: no snapping). Drag the picture to frame it.</p></div>
-        <button type="button" className="wfm-x" aria-label="Close" {...tip('Close (Esc)')} onClick={onClose}><CloseIcon size={16} /></button>
-      </header>
-      <div className="ade-bar">
+      <header className="ade-top">
+        <h2 id="ade-title">Edit & style</h2>
         <div className="ad-seg" role="tablist" aria-label="Size">{sizes.map((s) => <button key={s.shape} type="button" role="tab" aria-selected={s.shape === size.shape} className={`${s.shape === size.shape ? 'on' : ''}${editedSizes.includes(s.shape) ? ' ed' : ''}`} data-testid={`ade-size-${s.shape}`} {...tip(`${s.w} × ${s.h} · ${s.where}`)} onClick={() => onSize(s)}>{s.label}</button>)}</div>
         <SafeSwitch on={showSafe} onChange={onShowSafe} safe={size.safe} label="Safe zones" testId="ade-safe" />
-      </div>
+        <div className="wfm-end">
+          <button type="button" className="btn" data-testid="ade-reset" disabled={!edited} {...tip('Back to the automatic layout for this size')} onClick={() => { setSel(null); onEdit(null); }}>Reset layout</button>
+          <button type="button" className="btn btn-primary" data-testid="ade-done" {...tip('Close (Esc)')} onClick={onClose}>Done</button></div>
+      </header>
       <div className="ade-main ade-main-p">
       <aside className="ade-side ade-panel bp-host" aria-label="Edit and style" data-testid="ade-panel">{panel({ hit, zoom, zoomTo, zones, zone, setZone })}</aside>
+      <div className="ade-col">
       <div ref={stage} className="wfm-stage ade-stage">
+        <div ref={scroller} className="ade-scroll" data-testid="ade-scroll" onScroll={() => setScrolled((n) => n + 1)}><div className="ade-world">
         <div ref={frame} className="ade-frame" style={{ width: W * k, height: H * k, cursor }} data-testid="ade-frame" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onPointerLeave={() => !drag.current && setHover(null)}>
           <canvas ref={setCanvas} className="ade-cv" style={{ width: W * k, height: H * k }} aria-label={`Your ad, ${size.label}`} />
           {l && (Object.entries(l.boxes) as [AdPart, Box][]).map(([p, b]) => <div key={p} className={`ade-part${p === sel ? ' on' : p === hover ? ' hov' : ''}`} style={S(b)} data-testid={`ade-part-${p}`}>
@@ -163,17 +185,27 @@ export function AdEditor({ sizes, size, onSize, pic, art, text, preset, style, o
           {guide?.x != null && <i className="ade-guide v" style={{ left: guide.x * k }} aria-hidden />}
           {guide?.y != null && <i className="ade-guide h" style={{ top: guide.y * k }} aria-hidden />}
         </div>
+        </div></div>
         {sel && selBox && <div ref={bar} className="adt bp-host" role="toolbar" aria-label={`${PART_NAME[sel]} style`} data-testid="adt"
           style={barAt ?? { left: 0, top: 0, visibility: 'hidden' }} onPointerDown={halt}><PartStyle part={sel} style={style} onStyle={onStyle} art={art} bar /></div>}
       </div>
+      <div className="ade-status">
+        <div className="ade-foot">
+          {hidden.length > 0 && <div className="ade-hidden">{hidden.map((p) => <button key={p} type="button" className="ad-add" data-testid={`ade-show-${p}`} onClick={() => unhide(p)}><PlusIcon size={12} />Show {PART_NAME[p].toLowerCase()}</button>)}</div>}
+          <span className="ade-note">{sel ? `${PART_NAME[sel]}: arrow keys nudge (Shift: 10)${HIDEABLE.includes(sel) ? ', Delete takes it off' : ''}`
+            : `${edited ? 'Own layout for this size' : 'Automatic layout'} · Click a part to style it, drag to move, drag a corner to resize (Alt: no snapping)`}</span>
+        </div>
+        <div className="ade-zoom" role="group" aria-label="Zoom the view" data-testid="ade-view">
+          <button type="button" aria-label="Zoom out" {...tip('Zoom out (Cmd/Ctrl −)')} disabled={k <= STEPS[0] + 1e-3} onClick={zoomOut} data-testid="ade-view-out"><MinusIcon size={14} /></button>
+          <span data-testid="ade-view-pct">{pct}</span>
+          <button type="button" aria-label="Zoom in" {...tip('Zoom in (Cmd/Ctrl +)')} disabled={k >= STEPS[STEPS.length - 1] - 1e-3} onClick={zoomIn} data-testid="ade-view-in"><PlusIcon size={14} /></button>
+          <i aria-hidden />
+          <button type="button" className={view === 'fit' ? 'on' : ''} aria-pressed={view === 'fit'} {...tip('Fit the ad to the screen (Cmd/Ctrl 0)')} onClick={() => zoomView('fit')} data-testid="ade-view-fit">Fit</button>
+          <button type="button" className={view === 1 ? 'on' : ''} aria-pressed={view === 1} {...tip('Actual pixels')} onClick={() => zoomView(1)} data-testid="ade-view-100">100%</button>
+        </div>
       </div>
-      <footer className="wfm-tools ade-tools">
-        {hidden.length > 0 && <div className="ade-hidden">{hidden.map((p) => <button key={p} type="button" className="ad-add" data-testid={`ade-show-${p}`} onClick={() => unhide(p)}><PlusIcon size={12} />Show {PART_NAME[p].toLowerCase()}</button>)}</div>}
-        <span className="ade-note">{sel ? `${PART_NAME[sel]}: arrow keys nudge (Shift: 10)${HIDEABLE.includes(sel) ? ', Delete takes it off' : ''}` : edited ? 'This size has its own layout.' : 'This size uses the automatic layout.'}</span>
-        <div className="wfm-end">
-          <button type="button" className="btn" data-testid="ade-reset" disabled={!edited} {...tip('Back to the automatic layout for this size')} onClick={() => { setSel(null); onEdit(null); }}>Reset layout</button>
-          <button type="button" className="btn btn-primary" data-testid="ade-done" onClick={onClose}>Done</button></div>
-      </footer>
+      </div>
+      </div>
     </div>
   </div>, document.body);
 }

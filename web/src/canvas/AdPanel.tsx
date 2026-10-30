@@ -154,21 +154,31 @@ function Section({ ad, id, x }: { ad: AdCard; id: AdSection; x: AdPanelCtx }) {
   }
 }
 
-/** The icon rail and the open section beside it. Clicking a part of the ad opens its section; arrow keys move along the rail (AdEditor). */
+/** Whether the section panel is open beside the rail (remembered in this browser). */
+const OPEN_KEY = 'ad-editor-panel';
+const readOpen = () => { try { return localStorage.getItem(OPEN_KEY) !== 'closed'; } catch { return true; } };
+const writeOpen = (on: boolean) => { try { localStorage.setItem(OPEN_KEY, on ? 'open' : 'closed'); } catch { /* private window */ } };
+
+/** The icon rail and the open section beside it. Clicking a part of the ad opens its section; arrow keys move along the rail (AdEditor).
+ *  The section panel folds away (the « button, or the open section's icon) to give the ad more room; any icon brings it back. */
 function Panel({ ad, x }: { ad: AdCard; x: AdPanelCtx }) {
   const at = ad.editing || 'picture'; const go = (s: AdSection) => s !== at && ad.setEditing(s);
+  const [open, setOpenState] = useState(readOpen); const setOpen = (on: boolean) => { setOpenState(on); writeOpen(on); };
+  const pick = (s: AdSection) => { if (s === at && open) setOpen(false); else { if (!open) setOpen(true); go(s); } };
   useEffect(() => { if (x.hit.n) go(SECTION_OF[x.hit.part]); }, [x.hit]); // eslint-disable-line react-hooks/exhaustive-deps
   const body = useRef<HTMLDivElement>(null); useEffect(() => { if (body.current) body.current.scrollTop = 0; }, [at]);
   const cur = SECTIONS.find((s) => s.id === at)!;
   return <div className="adp">
     <div className="adp-rail" role="tablist" aria-orientation="vertical" aria-label="Edit and style">
-      {SECTIONS.map(({ id, label, Icon }) => <button key={id} type="button" role="tab" id={`adp-tab-${id}`} aria-selected={id === at} aria-controls="adp-pane" tabIndex={id === at ? 0 : -1}
-        className={`adp-tab${id === at ? ' on' : ''}`} data-testid={`adp-tab-${id}`} onClick={() => go(id)}><Icon size={20} /><span>{label}</span></button>)}
+      {SECTIONS.map(({ id, label, Icon }) => <button key={id} type="button" role="tab" id={`adp-tab-${id}`} aria-selected={id === at} aria-controls={open ? 'adp-pane' : undefined} tabIndex={id === at ? 0 : -1}
+        className={`adp-tab${id === at ? (open ? ' on' : ' on shut') : ''}`} data-testid={`adp-tab-${id}`} {...(id === at ? tip(open ? 'Hide the panel' : `Show ${label}`) : {})} onClick={() => pick(id)}><Icon size={20} /><span>{label}</span></button>)}
     </div>
-    <div ref={body} className="adp-pane" id="adp-pane" role="tabpanel" aria-labelledby={`adp-tab-${at}`} data-testid={`adp-${at}`}>
-      <header className="adp-head"><h3>{cur.label}</h3><p>{cur.hint}</p></header>
+    {open && <div ref={body} className="adp-pane" id="adp-pane" role="tabpanel" aria-labelledby={`adp-tab-${at}`} data-testid={`adp-${at}`}>
+      <header className="adp-head"><div className="adp-head-t"><h3>{cur.label}</h3>
+        <button type="button" className="adp-fold" aria-label="Hide the panel" data-testid="adp-fold" {...tip('Hide the panel (more room for the ad)')} onClick={() => setOpen(false)}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m11.5 7-5 5 5 5M18 7l-5 5 5 5" /></svg></button></div>
+        <p>{cur.hint}</p></header>
       <Section ad={ad} id={at} x={x} />
-    </div>
+    </div>}
   </div>;
 }
 
