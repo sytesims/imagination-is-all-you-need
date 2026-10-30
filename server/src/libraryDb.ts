@@ -141,7 +141,7 @@ export const userTagsOf = (id: string) => tags[id] ?? [];
 export const cleanTag = (t: unknown): string | null => { const s = String(t ?? '').toLowerCase().replace(/[^\p{L}\p{N} -]+/gu, ' ').replace(/\s+/g, ' ').trim(); return s && s.length <= 40 ? s : null; };
 function setTags(id: string, next: string[]) { tags = { ...tags }; if (next.length) tags[id] = next; else delete tags[id]; tagsRev++; setKv(TAGS_KV, tags); }
 const projectOf = (ids: string[]) => { const p = ids.map((x) => lib.getProject(x)).find(Boolean); return p ? { id: p.id, name: p.name } : null; };
-const thumbOf = (url: string, kind: MediaKind, poster?: string | null) => publicUrl(poster) ?? (kind === 'image' ? url : kind === 'video' && /^\/(files|samples|examples)\//.test(url) ? `/api/media/thumb?url=${encodeURIComponent(url)}` : null);
+const thumbOf = (url: string, kind: MediaKind, poster?: string | null) => publicUrl(poster) ?? (kind === 'image' ? url : kind === 'video' && /^\/(files|samples|examples|showcase)\//.test(url) ? `/api/media/thumb?url=${encodeURIComponent(url)}` : null);
 const mk = (r: Omit<RefItem, 'tags' | 'autoTags' | 'userTags'>): RefItem => { const autoTags = keywords(r.prompt ?? r.title, 6); const userTags = userTagsOf(r.id); return { ...r, autoTags, userTags, tags: [...new Set([...userTags, ...autoTags])] }; };
 
 function generations(): RefItem[] {
