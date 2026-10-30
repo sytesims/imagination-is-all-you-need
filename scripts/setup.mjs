@@ -33,7 +33,7 @@ else { const ci = fs.existsSync(path.join(REPO, 'package-lock.json')); /* npm ci
 
 // 2. doctor
 say('Checking this computer (npm run doctor)…\n');
-const doc = spawnSync(process.execPath, [path.join(REPO, 'scripts', 'doctor.mjs')], { cwd: REPO, stdio: 'inherit', env: launchEnv });
+const doc = spawnSync(process.execPath, [path.join(REPO, 'scripts', 'doctor.mjs')], { cwd: REPO, stdio: 'inherit', env: { ...launchEnv, ...(noStart ? {} : { OPENHIGGSFIELD_DOCTOR_BEFORE_START: '1' }) } }); // the app starts next: the doctor says so instead of "App not running"
 if (doc.status === 2) { console.error('\nThe app can’t start yet: fix the lines marked ✗ above, then run npm run setup again.'); process.exit(2); }
 
 // 3. start (or say where it runs)
