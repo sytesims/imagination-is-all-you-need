@@ -15,7 +15,7 @@ import { tip } from '../shared/Tooltip';
 import { BarPopover, PopNote, PopRow, PopSection, Segmented } from '../shared/BarPop';
 import { ChevronDownIcon, CloseIcon, PlusIcon } from '../ui/Icons';
 import { drawAd, drawSafeZones, type AdArt } from './adDraw';
-import { buttonColorOf, type AdLayout, type AdPreset, type AdStyle, type AdText, type Box } from './adLayout';
+import { buttonColorOf, logoToneFor, type AdLayout, type AdPreset, type AdStyle, type AdText, type Box } from './adLayout';
 import { hasSafe, zonesFor, type AdPlatform, type AdSizeOption } from './adPlatforms';
 import { HIDEABLE, PART_NAME, PIC_ZOOM, clampBox, guidesFor, inBox, isEdited, moveFrame, placeOf, snapBox, snapTo, type AdEdit, type AdFrame, type AdPart } from './adEdit';
 
@@ -183,9 +183,9 @@ function StylePanel({ part, parts, onPick, style, onStyle, art }: { part: AdPart
     {part === 'logo' && <>
       <PopSection label="Plate behind the logo"><Segmented label="Plate behind the logo" value={style.logoPlate ?? 'auto'} onChange={(v) => set({ logoPlate: v })} testId="ade-logo-plate"
         options={[{ value: 'auto', label: 'Auto', title: 'Only when the logo would get lost on the picture' }, { value: 'on', label: 'On' }, { value: 'off', label: 'Off' }]} /></PopSection>
-      <PopSection label="Logo colour"><Segmented label="Logo colour" value={style.logoTone ?? 'original'} onChange={(v) => set({ logoTone: v })} testId="ade-logo-tone"
-        options={[{ value: 'original', label: 'As is' }, { value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }]} />
-        <PopNote>Light and Dark work best with a see-through logo (PNG or SVG); a logo on a solid background turns into a block.</PopNote></PopSection>
+      <PopSection label="Logo colour"><Segmented label="Logo colour" value={logoToneFor(style.logoTone, art.logoSeeThrough)} onChange={(v) => set({ logoTone: v })} testId="ade-logo-tone"
+        options={[{ value: 'original', label: 'As is' }, ...(['light', 'dark'] as const).map((v) => ({ value: v, label: v === 'light' ? 'Light' : 'Dark', disabled: !art.logoSeeThrough, title: art.logoSeeThrough ? undefined : 'Needs a see-through logo' }))]} />
+        {!art.logoSeeThrough && <PopNote>This logo has its own background, so it stays as it is. Add a see-through PNG or SVG to the brand to make it white or dark.</PopNote>}</PopSection>
     </>}
     {words && <>
       <PopSection label="Align"><Segmented label="Align" value={style.textAlign ?? 'auto'} onChange={(v) => set({ textAlign: v === 'auto' ? undefined : v })} testId="ade-text-align"

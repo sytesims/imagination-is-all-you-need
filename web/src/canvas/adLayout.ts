@@ -182,7 +182,8 @@ export const scrimAlpha = (lum: number | null) => Math.min(0.9, 0.52 + 0.45 * (l
 /**
  * The card's style (2026-10-31), the same on every size; every field is optional and a missing one keeps the look from before styles:
  *  - logoPlate: the plate behind the logo: auto (only when the logo would get lost on the picture), on, off.
- *  - logoTone: the logo as it is, or all white (light) or all near black (dark).
+ *  - logoTone: the logo as it is, or all white (light) or all near black (dark). Only a see-through logo is recoloured (logoToneFor):
+ *    one with its own background (a JPG, a square app icon) would turn into a solid block, so it stays as it is.
  *  - buttonShape: pill, rounded, square or outline (no fill: the colour on the edge and the words); buttonColor: a hex (none: the brand's primary).
  *  - textAlign (none: the layout's own: left, centred for "Centred"), textWeight (none: bold), textColor (a hex; none: white, or the
  *    readable one on a panel) for the headline and the offer.
@@ -205,6 +206,13 @@ export function asStyle(v: unknown): AdStyle {
   put('textColor', normHex(o.textColor as string)); put('backdrop', oneOf(o.backdrop, ['none', 'shadow', 'gradient', 'panel'] as const));
   return out;
 }
+/** Is the logo see-through (a mark on a transparent background)? `rgba` = its pixels (any small sample); at least 12% of them clear.
+ *  A logo with its own background (a JPG, a square or rounded-square icon) is not: recolouring it all would paint a solid block. */
+export function logoSeeThrough(rgba: ArrayLike<number>): boolean {
+  let clear = 0, n = 0; for (let i = 3; i < rgba.length; i += 4) { n++; if (rgba[i] < 128) clear++; } return n > 0 && clear / n >= 0.12;
+}
+/** The logo colour actually drawn: Light / Dark only for a see-through logo, else the logo as it is. */
+export const logoToneFor = (tone: LogoTone | undefined, seeThrough: boolean): LogoTone => (tone && seeThrough ? tone : 'original');
 /** The button's corner radius for its shape (pill and outline: fully round). */
 export const buttonRadius = (shape: ButtonShape | undefined, h: number) => (shape === 'rounded' ? h * 0.24 : shape === 'square' ? 0 : h / 2);
 /** WCAG contrast between two colours (1..21). */

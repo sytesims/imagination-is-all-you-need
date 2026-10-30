@@ -7,12 +7,13 @@ import type { BrandKit } from '../../../server/src/shared/brandKit';
 import { plateFor } from '../../../server/src/shared/logoStamp';
 import { zipStore } from '../../../server/src/shared/zipStore';
 import { brightness, cssFont, drawLogo, loadImg, loadStampArt, type StampArt } from '../shared/logoStampDraw';
-import { adColors, adPackFiles, layoutAd, postCopy, scrimAlpha, slugOf, type AdMeasure, type AdPreset, type AdStyle, type AdText, type LogoTone } from './adLayout';
+import { adColors, adPackFiles, layoutAd, logoSeeThrough, logoToneFor, postCopy, scrimAlpha, slugOf, type AdMeasure, type AdPreset, type AdStyle, type AdText, type LogoTone } from './adLayout';
 import { adExportPlan, type AdPlatform, type AdSizeOption, type Edges } from './adPlatforms';
 import { picCrop, type AdEdit, type AdEdits } from './adEdit';
 
 const FALLBACK = '"Manrope", system-ui, sans-serif';
-export interface AdArt { kit: BrandKit | null; stamp: StampArt | null; heading: string; body: string; /** brand fonts this browser doesn't have */ missing: string[] }
+export interface AdArt { kit: BrandKit | null; stamp: StampArt | null; heading: string; body: string; /** brand fonts this browser doesn't have */ missing: string[];
+  /** the logo is see-through, so the Light / Dark logo colours can recolour it (adLayout.logoSeeThrough) */ logoSeeThrough: boolean }
 
 /** Does this browser have the font? (A missing one measures exactly like the generic fallback, with two different fallbacks.) */
 function hasFont(name: string): boolean {
@@ -27,10 +28,10 @@ export function loadAdArt(kit: BrandKit | null): Promise<AdArt> {
   const key = kit ? `${kit.id}|${kit.updatedAt}|${kit.logo?.url ?? ''}|${kit.fonts.heading}|${kit.fonts.body}` : '-'; const hit = artCache.get(key); if (hit) return hit;
   const p = (async () => {
     await Promise.all(['700 40px Manrope', '500 40px Manrope', '400 40px Manrope', ...(kit ? [`700 40px ${cssFont(kit.fonts.body)}`, `500 40px ${cssFont(kit.fonts.body)}`] : [])].map((f) => document.fonts?.load(f).catch(() => undefined)));
-    if (!kit) return { kit: null, stamp: null, heading: FALLBACK, body: FALLBACK, missing: [] };
+    if (!kit) return { kit: null, stamp: null, heading: FALLBACK, body: FALLBACK, missing: [], logoSeeThrough: false };
     const stamp = await loadStampArt(kit); const missing: string[] = [];
     const pick = (name: string) => { if (hasFont(name)) return `"${name}", ${FALLBACK}`; if (name.trim() && !missing.includes(name)) missing.push(name); return FALLBACK; };
-    return { kit, stamp, heading: pick(kit.fonts.heading), body: pick(kit.fonts.body), missing };
+    return { kit, stamp, heading: pick(kit.fonts.heading), body: pick(kit.fonts.body), missing, logoSeeThrough: stamp.logo ? seeThroughOf(stamp.logo) : false };
   })();
   artCache.set(key, p); p.catch(() => artCache.delete(key)); return p;
 }
@@ -39,6 +40,12 @@ export const loadAdPicture = (url: string) => loadImg(url);
 const fontOf = (art: AdArt, role: 'heading' | 'offer' | 'button', px: number, st?: AdStyle | null) =>
   role === 'heading' ? `${st?.textWeight === 'regular' ? 400 : 700} ${px}px ${art.heading}` : role === 'offer' ? `500 ${px}px ${art.body}` : `700 ${px}px ${art.body}`;
 
+/** Read the logo's pixels once (a 64 × 64 sample) to tell a see-through mark from a logo with its own background. */
+function seeThroughOf(img: HTMLImageElement): boolean {
+  try { const c = document.createElement('canvas'); c.width = 64; c.height = 64; const g = c.getContext('2d', { willReadFrequently: true }); if (!g) return true;
+    g.drawImage(img, 0, 0, 64, 64); return logoSeeThrough(g.getImageData(0, 0, 64, 64).data); }
+  catch { return true; }
+}
 /** The logo all white or all near black (the "Light" / "Dark" logo style), drawn once per logo and kept. */
 const tinted = new WeakMap<HTMLImageElement, Partial<Record<LogoTone, HTMLCanvasElement>>>();
 function logoIn(img: HTMLImageElement, tone: LogoTone | undefined): CanvasImageSource {
@@ -84,7 +91,7 @@ export function drawAd(g: CanvasRenderingContext2D, W: number, H: number, pic: H
     if (!placed && l.align === 'right') plateBox.x -= 2 * pad;
     const behind = l.panel && panel && lb.x >= l.panel.x && lb.y >= l.panel.y ? (col.scrim === 'dark' ? 0.06 : 0.94) : pic ? lumAt(plateBox) : 0.06;
     /* the logo's style: all white / near black, and the plate auto (as before), always or never */
-    const tone = st.logoTone; const logoLum = tone === 'light' ? 1 : tone === 'dark' ? 0.05 : art.stamp.logoLum;
+    const tone = logoToneFor(st.logoTone, art.logoSeeThrough); const logoLum = tone === 'light' ? 1 : tone === 'dark' ? 0.05 : art.stamp.logoLum;
     const kind = st.logoPlate === 'off' ? null : st.logoPlate === 'on' ? (logoLum != null && logoLum >= 0.5 ? 'dark' : 'light') : plateFor('auto', logoLum, behind); const q = placed ? (Math.min(lb.w, lb.h) - 2 * pad) / Math.min(lb.w, lb.h) : 1;
     const inner = placed ? { x: lb.x + (lb.w * (1 - q)) / 2, y: lb.y + (lb.h * (1 - q)) / 2, w: lb.w * q, h: lb.h * q } : { ...lb, x: plateBox.x + pad, y: plateBox.y + pad };
     drawLogo(g, logoIn(art.stamp.logo, tone), kind ? inner : lb, kind ? { ...plateBox, kind } : null, lb.h);

@@ -6,7 +6,7 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { crc32 as nodeCrc } from 'node:zlib';
-import { AD_PRESETS, coverCrop, fitLines, wrapWords, layoutAd, inkOn, buttonColorOf, adVariants, adFileName, scrimAlpha, asStyle, adColors, contrastOf, panelColorOf, adPackFiles, postCopy, trimWords, type AdMeasure, type AdStyle } from '../../web/src/canvas/adLayout.ts';
+import { AD_PRESETS, coverCrop, fitLines, wrapWords, layoutAd, inkOn, buttonColorOf, adVariants, adFileName, scrimAlpha, asStyle, adColors, contrastOf, panelColorOf, adPackFiles, postCopy, trimWords, logoSeeThrough, logoToneFor, type AdMeasure, type AdStyle } from '../../web/src/canvas/adLayout.ts';
 import { AD_PLATFORMS, AD_PLATFORM_LIST, AD_SHAPES, adExportPlan, adSizesFor, asPlatforms, asShape, type AdPlatform } from '../../web/src/canvas/adPlatforms.ts';
 import { asEdits, clampBox, clearArea, guidesFor, isEdited, moveFrame, picCrop, placeOf, snapBox, snapTo, type AdEdit } from '../../web/src/canvas/adEdit.ts';
 import { BUILTIN_KIT } from '../src/shared/brandKit.ts';
@@ -232,6 +232,17 @@ for (const p of AD_PLATFORM_LIST) for (const h of words) {
 assert.ok(postCopy('meta', ['Fresh coffee'], 'From $4', 'Order now').includes('Primary text (up to 125 characters):\nFresh coffee. From $4. Order now.\n'));
 assert.ok(postCopy('x', [''], '', '').includes('Link: [your link]'), 'an empty card still gives a file');
 ok('post copy: within every platform limit, whole words, link placeholder');
+
+// ---- the logo colour: Light / Dark only recolour a see-through logo; one with its own background stays as it is ----
+const px = (n: number, clear: number) => { const d = new Uint8ClampedArray(n * 4).fill(255); for (let i = 0; i < clear; i++) d[i * 4 + 3] = 0; return d; };
+assert.equal(logoSeeThrough(px(100, 0)), false, 'a JPG or a square logo: no clear pixels');
+assert.equal(logoSeeThrough(px(100, 4)), false, 'a rounded-square app icon: only its corners are clear');
+assert.equal(logoSeeThrough(px(100, 21)), true, 'a round badge on a clear background'); assert.equal(logoSeeThrough(px(100, 60)), true, 'a mark');
+assert.equal(logoSeeThrough(new Uint8ClampedArray(0)), false, 'no pixels read');
+assert.equal(logoToneFor('light', true), 'light'); assert.equal(logoToneFor('dark', true), 'dark');
+assert.equal(logoToneFor('light', false), 'original', 'an opaque logo is never painted into a block'); assert.equal(logoToneFor('dark', false), 'original');
+assert.equal(logoToneFor(undefined, true), 'original');
+ok('logo colour: only a see-through logo is recoloured');
 
 // ---- the shared zip writer: crc matches node, the archive opens ----
 const bytes = new TextEncoder().encode('123456789'); assert.equal(crc32(bytes), 0xcbf43926); assert.equal(crc32(bytes), nodeCrc(bytes) >>> 0);
