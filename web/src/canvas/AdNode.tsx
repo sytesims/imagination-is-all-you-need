@@ -1,11 +1,11 @@
 /**
- * The Ad layout card (2026-10-30): one picture in (an arrow from an upload or a result), your words typed on the card, and the brand's
- * logo, colours and fonts laid on top by code, so the words and the logo are always right. "Where will it run?" picks the platforms,
- * whose sizes become the size tabs (adPlatforms.ts); the preview shades each platform's safe zones, and the layout keeps out of them.
- * Four layouts (text bottom / top, centred, split). "Choose a picture" opens the app's media picker and puts the pick on the board as
- * an upload card, wired in. "Edit ad" (or a double-click on the preview) opens the big editor (AdEditor.tsx): move and resize the parts
- * and frame the picture, per size. "Export pack" saves every size × every headline as PNGs in one zip. Free, in the browser. The maths
- * is adLayout.ts and adEdit.ts, the drawing adDraw.ts.
+ * The Ad layout card (2026-10-30, compact card 2026-10-31): one picture in (an arrow from an upload or a result), your words typed on
+ * the card, and the brand's logo, colours and fonts laid on top by code, so the words and the logo are always right. The card is small:
+ * the preview with a size switch (the picked platforms' sizes) and "For <platforms> ›", the headline (1 2 3 when there are more), the
+ * offer, the button, Brand, "Edit & style" and "Export pack". Everything else is in the big editor (AdEditor.tsx with AdPanel.tsx's
+ * numbered sections): picture, words, logo & button, layout, where it runs, export. A double-click on the preview opens it too. "Export
+ * pack" saves every size × every headline as PNGs in one zip, a folder per platform with the post text. Free, in the browser. The maths
+ * is adLayout.ts, adPlatforms.ts and adEdit.ts, the drawing adDraw.ts.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useEditor, useValue } from 'tldraw';
@@ -13,10 +13,7 @@ import { useToast } from '../shared/Toast';
 import { askConfirm } from '../shared/Dialog';
 import { tip } from '../shared/Tooltip';
 import { useBrand } from '../shared/brandStore';
-import { KitDots } from '../shared/BrandChip';
-import { BarPopover, PopRow, PopSection } from '../shared/BarPop';
-import { navigate } from '../platform/router';
-import { ChevronDownIcon, CloseIcon, ImageIcon, PencilIcon, PlusIcon } from '../ui/Icons';
+import { ChevronRightIcon, ImageIcon } from '../ui/Icons';
 import { pickMedia } from '../shared/MediaPicker';
 import { libraryUrlOf } from '../shared/libraryFiles';
 import { uploadMedia } from '../shared/batch1';
@@ -25,17 +22,22 @@ import { arrowsInto, cardInputs, linkShapes } from './graph';
 import { freeSpot } from './placement';
 import { GROUP_TYPE, NODE_DEFS, nodeDefOf } from './nodeTypes';
 import { createAuxNode, type AdNodeProps } from './auxShapes';
-import { AD_LIMITS, AD_PRESETS, adPackFiles, adVariants, asPreset, asStyle, type AdPreset, type AdStyle } from './adLayout';
-import { AD_PLATFORMS, AD_PLATFORM_LIST, DEFAULT_PLATFORMS, adExportPlan, adSizesFor, asPlatforms, asShape, hasSafe, type AdPlatform } from './adPlatforms';
+import { AD_LIMITS, adPackFiles, adVariants, asPreset, asStyle, type AdPreset, type AdStyle } from './adLayout';
+import { AD_PLATFORM_LIST, DEFAULT_PLATFORMS, adExportPlan, adSizesFor, asPlatforms, asShape, type AdPlatform } from './adPlatforms';
 import { asEdits, isEdited, type AdEdit, type AdEdits } from './adEdit';
-import { AdEditor } from './AdEditor';
+import type { AdSection } from './AdEditor';
+import { AdCardEditor, Brand, EditBtn, ExportBtn, NO_BRAND, OfferButton, platformSummary } from './AdPanel';
 import { drawAd, drawSafeZones, exportAdPack, loadAdArt, loadAdPicture, type AdArt } from './adDraw';
 import type { BrandKit } from '../../../server/src/shared/brandKit';
 
-const NO_BRAND = 'none';
 const stop = { onPointerDown: (e: React.SyntheticEvent) => e.stopPropagation(), onKeyDown: (e: React.SyntheticEvent) => e.stopPropagation(), onKeyUp: (e: React.SyntheticEvent) => e.stopPropagation() };
 
-export function AdView({ shape, Icon }: { shape: { id: any; type: string; props: AdNodeProps }; Icon: (q: { size?: number }) => JSX.Element }) {
+type AdShapeRef = { id: any; type: string; props: AdNodeProps };
+/** Sizes the card was made at before (400 × 700, then 400 × 840): such a card takes today's size the first time it's shown. */
+const OLD_SIZES = [[400, 700], [400, 840]];
+
+/** All of the card's state and actions (the card and the editor's sections share them). */
+function useAdCard(shape: AdShapeRef) {
   const editor = useEditor(); const toast = useToast(); const brand = useBrand(); const p = shape.props;
   const patch = (props: Partial<AdNodeProps>) => editor.run(() => editor.updateShape({ id: shape.id, type: shape.type, props } as any), { history: 'ignore' });
   const input = useValue('ad input', () => cardInputs(editor, editor.getShape(shape.id)!).find((i) => i.kind === 'image') ?? null, [editor, shape.id]);
@@ -48,7 +50,7 @@ export function AdView({ shape, Icon }: { shape: { id: any; type: string; props:
   const preset = asPreset(p.layout); const showSafe = p.safeZones !== false;
   /* "Edit ad": each size's own edits; a size with none keeps the automatic layout */
   const style = useMemo(() => asStyle(p.style), [p.style]); const setStyle = (st: AdStyle) => patch({ style: asStyle(st) as Record<string, unknown> });
-  const edits = useMemo(() => asEdits(p.edits), [p.edits]); const edit = edits[size.shape]; const [editing, setEditing] = useState(false);
+  const edits = useMemo(() => asEdits(p.edits), [p.edits]); const edit = edits[size.shape]; const [editing, setEditing] = useState<false | AdSection>(false);
   const setEdit = (shape: string, e: AdEdit | null) => { const next: AdEdits = { ...edits }; const one: AdEdit = { ...e };
     if (!one.at || !Object.keys(one.at).length) delete one.at; if (!one.hide?.length) delete one.hide;
     if (e && isEdited(one)) next[shape] = one; else delete next[shape]; patch({ edits: next as Record<string, unknown> }); };
@@ -62,9 +64,11 @@ export function AdView({ shape, Icon }: { shape: { id: any; type: string; props:
   const filled = headlines.reduce((n, h, i) => (h.trim() ? i + 1 : n), 0); const [more, setMore] = useState(1); const shown = Math.max(1, more, filled);
   const variants = adVariants(headlines); const view = variants.find((v) => v.n === p.pick) ?? variants[0];
 
-  /* cards made when the card was 700 px tall grow to today's height the first time they're shown, unless that would cover another card */
+  /* a card still at an old default size takes today's (smaller) one; a card shorter than the least it needs grows to today's height
+   *  the first time it's shown, unless that would cover another card */
   useEffect(() => {
-    const H0 = NODE_DEFS.ad.defaultH; const me = editor.getShapePageBounds(shape.id); if (!me || p.h > 700) return;
+    const d = NODE_DEFS.ad; if (OLD_SIZES.some(([w, h]) => p.w === w && p.h === h)) { patch({ w: d.defaultW, h: d.defaultH }); return; }
+    const H0 = d.defaultH; const me = editor.getShapePageBounds(shape.id); if (!me || p.h >= d.minH) return;
     const grown = { minX: me.minX, maxX: me.maxX, minY: me.minY, maxY: me.minY + H0 };
     const hits = editor.getCurrentPageShapes().some((s) => { if (s.id === shape.id || s.type === GROUP_TYPE || !nodeDefOf(s.type)) return false; const b = editor.getShapePageBounds(s.id);
       return !!b && b.minX < grown.maxX && b.maxX > grown.minX && b.minY < grown.maxY && b.maxY > grown.minY; });
@@ -110,85 +114,48 @@ export function AdView({ shape, Icon }: { shape: { id: any; type: string; props:
   /* a double-click on the preview opens "Edit ad": the second press is caught here, before the board reads it as a double-click on
    *  empty board (which starts a text box); the first still selects and drags the card */
   const lastDown = useRef(0);
-  const twice = (e: React.PointerEvent) => { if (e.button !== 0) return; if (e.timeStamp - lastDown.current < 400 && art) { e.stopPropagation(); e.preventDefault(); lastDown.current = 0; setEditing(true); } else lastDown.current = e.timeStamp; };
+  const twice = (e: React.PointerEvent) => { if (e.button !== 0) return; if (e.timeStamp - lastDown.current < 400 && art) { e.stopPropagation(); e.preventDefault(); lastDown.current = 0; setEditing('picture'); } else lastDown.current = e.timeStamp; };
 
-  return <NodeFrame shapeId={shape.id} type={shape.type} icon={<Icon />} title="Ad layout"
-    label="Ad layout"
-    footer={<><span className="nf-model"><b>Free · made in your browser</b></span>
-      <button type="button" className="ad-export" data-card-control data-testid="ad-export" disabled={!pic || !art || busy} onClick={() => void exportPack()}
-        {...tip(pic ? `Saves ${count} pictures in one zip: a folder for each platform (${folders}) with its sizes, ${variants.length === 1 ? 'your headline' : `${variants.length} headlines`} and text to paste` : 'Connect a picture first')}>{busy ? 'Saving…' : 'Export pack'}</button></>}>
+  return { editor, p, patch, input, picUrl, kit, brand, platforms, picked, sizes, size, preset, showSafe, style, setStyle, edits, edit, setEdit, editing, setEditing, pickPreset, togglePlatform,
+    headlines, shown, more, setMore, variants, view, art, pic, picErr, busy, setCanvas, placing, choose, exportPack, setHeadline, dropHeadline, count, folders, twice, W, H, safe };
+}
+export type AdCard = ReturnType<typeof useAdCard>;
+
+/** The card: the preview (a size switch on top, "For <platforms> ›" under it), three short fields, Brand and "Edit & style". */
+export function AdView({ shape, Icon }: { shape: AdShapeRef; Icon: (q: { size?: number }) => JSX.Element }) {
+  const ad = useAdCard(shape); const { size, sizes, edits, W, H, headlines, view, variants } = ad; const i = view.n - 1;
+  const box = { aspectRatio: `${W} / ${H}`, width: `min(100cqw, ${(W / H).toFixed(4)} * 100cqh)` };
+  return <NodeFrame shapeId={shape.id} type={shape.type} icon={<Icon />} title="Ad layout" label="Ad layout"
+    footer={<><span className="nf-model"><b>Free · made in your browser</b></span><ExportBtn ad={ad} /></>}>
     <div className="ad-body">
-      <div className="ad-where" data-card-control {...stop}>
-        <span className="ad-label" id={`ad-where-${shape.id}`}>Where will it run?</span>
-        <div className="ad-chips" role="group" aria-labelledby={`ad-where-${shape.id}`}>{AD_PLATFORM_LIST.map((x) => <button key={x} type="button" className={`ad-chip${platforms.includes(x) ? ' on' : ''}`} aria-pressed={platforms.includes(x)} data-testid={`ad-platform-${x}`} onClick={() => togglePlatform(x)}>{AD_PLATFORMS[x].label}</button>)}</div>
-        {!platforms.length && <p className="ad-hint" data-testid="ad-platform-hint">Pick where it will run to get the right sizes. Keeping the last ones for now.</p>}
-      </div>
-      <div className="ad-seg" data-card-control {...stop} role="tablist" aria-label="Size">{sizes.map((s) => <button key={s.shape} type="button" role="tab" aria-selected={s === size} className={`${s === size ? 'on' : ''}${isEdited(edits[s.shape]) ? ' ed' : ''}`} data-testid={`ad-size-${s.shape}`} {...tip(`${s.w} × ${s.h} · ${s.where}${isEdited(edits[s.shape]) ? ' · your own layout' : ''}`)} onClick={() => patch({ size: s.shape })}>{s.label}</button>)}</div>
       <div className="ad-stage">
-        {pic ? <canvas ref={setCanvas} className="ad-canvas" onPointerDown={twice} style={{ aspectRatio: `${W} / ${H}`, width: `min(100cqw, ${(W / H).toFixed(4)} * 100cqh)` }} aria-label={`Ad preview, ${size.label}`} /> :
-          <div className="ad-ghost" style={{ aspectRatio: `${W} / ${H}`, width: `min(100cqw, ${(W / H).toFixed(4)} * 100cqh)` }} data-testid="ad-empty">
-            <i className="ad-g-logo" /><span className="ad-g-msg"><b>{picErr ? 'That picture couldn’t be read' : 'Connect a picture'}</b>
-              <small>{picErr ? 'Try another upload or result.' : 'Use a picture with no text; your headline, price and logo go on top. Or drag from a picture’s dot onto this card.'}</small>
-              <button type="button" className="ad-choose" data-card-control {...stop} data-testid="ad-choose" disabled={placing} onClick={choose}><ImageIcon size={14} />{placing ? 'Adding…' : picErr ? 'Choose another picture' : 'Choose a picture'}</button></span>
-            <span className="ad-g-text" aria-hidden><i className="ad-g-h" /><i className="ad-g-h ad-g-h2" /><i className="ad-g-offer" /><i className="ad-g-btn" /></span></div>}
-      </div>
-      <div className="ad-stagebar" data-card-control {...stop}>
-        <label className={`ad-safe${hasSafe(safe) ? '' : ' none'}`} {...tip(hasSafe(safe) ? 'Shades what each app covers with its own buttons and captions. Only in this preview, never in the pictures you save.' : 'Nothing covers this size')}>
-          <input type="checkbox" checked={showSafe} data-testid="ad-safe" onChange={(e) => patch({ safeZones: e.target.checked })} /><i aria-hidden />Show safe zones</label>
-        {pic && <span className="ad-stage-acts">
-          <button type="button" className="ad-change" data-testid="ad-change" disabled={placing} onClick={choose}>{placing ? 'Adding…' : 'Change picture'}</button>
-          <button type="button" className="ad-change ad-edit" data-testid="ad-edit" disabled={!art} {...tip('Move the logo, words and button, and frame the picture (or double-click the preview)')} onClick={() => setEditing(true)}><PencilIcon size={12} />Edit ad</button></span>}
-      </div>
-      <div className="ad-layouts" data-card-control {...stop} role="radiogroup" aria-label="Layout">{AD_PRESETS.map((x) => <button key={x.id} type="button" role="radio" aria-checked={x.id === preset} className={x.id === preset ? 'on' : ''} data-testid={`ad-layout-${x.id}`} onClick={() => void pickPreset(x.id)}><PresetThumb id={x.id} />{x.label}</button>)}</div>
-      {variants.length > 1 && <div className="ad-picks" data-card-control {...stop} role="tablist" aria-label="Headline">{variants.map((v) => <button key={v.n} type="button" role="tab" aria-selected={v.n === view.n} className={v.n === view.n ? 'on' : ''} onClick={() => patch({ pick: v.n })}>Headline {v.n}</button>)}</div>}
-      <div className="ad-fields" data-card-control {...stop}>
-        {headlines.slice(0, shown).map((h, i) => <div key={i} className="ad-hl">
-          <input className="ad-in ad-in-head" data-testid={`ad-headline-${i + 1}`} value={h} maxLength={AD_LIMITS.headline} placeholder={i === 0 ? 'Headline' : `Headline ${i + 1}`} autoFocus={i > 0 && i === more - 1 && !h}
-            aria-label={`Headline ${i + 1}`} onChange={(e) => setHeadline(i, e.target.value)} onFocus={() => h.trim() && patch({ pick: i + 1 })} />
-          {i > 0 && <button type="button" className="ad-hl-x" data-testid={`ad-headline-${i + 1}-remove`} aria-label={`Remove headline ${i + 1}`} {...tip('Remove')} onClick={() => dropHeadline(i)}><CloseIcon size={12} /></button>}
-        </div>)}
-        {shown < AD_LIMITS.headlines && <button type="button" className="ad-add" data-testid="ad-headline-add" onClick={() => setMore(shown + 1)}><PlusIcon size={12} />Add another headline</button>}
-        <div className="ad-pair">
-          <input className="ad-in" data-testid="ad-offer" value={p.offer} maxLength={AD_LIMITS.offer} placeholder="Price or offer" aria-label="Price or offer" onChange={(e) => patch({ offer: e.target.value })} />
-          <input className="ad-in" data-testid="ad-button" value={p.button} maxLength={AD_LIMITS.button} placeholder="Button" aria-label="Button text" onChange={(e) => patch({ button: e.target.value })} />
+        <div className="ad-over" data-card-control {...stop}>
+          <div className="ad-seg ad-seg-s" role="tablist" aria-label="Size">{sizes.map((s) => <button key={s.shape} type="button" role="tab" aria-selected={s === size} className={`${s === size ? 'on' : ''}${isEdited(edits[s.shape]) ? ' ed' : ''}`} data-testid={`ad-size-${s.shape}`}
+            {...tip(`${s.label} · ${s.w} × ${s.h} · ${s.where}${isEdited(edits[s.shape]) ? ' · your own layout' : ''}`)} onClick={() => ad.patch({ size: s.shape })}>{s.label.replace(' Story', '')}</button>)}</div>
         </div>
-        <BrandPick kits={brand.kits} kit={kit} none={p.brandId === NO_BRAND} onPick={(id) => patch({ brandId: id })} />
+        <div className="ad-stage-in">
+          {ad.pic ? <canvas ref={ad.setCanvas} className="ad-canvas" onPointerDown={ad.twice} style={box} aria-label={`Ad preview, ${size.label}`} /> :
+            <div className="ad-ghost" style={box} data-testid="ad-empty">
+              <i className="ad-g-logo" />
+              <span className="ad-g-msg"><b>{ad.picErr ? 'That picture couldn’t be read' : 'Start with a picture'}</b>
+                <small>{ad.picErr ? 'Try another one.' : 'One with no text. Your words and logo go on top.'}</small>
+                <button type="button" className="ad-choose" data-card-control {...stop} data-testid="ad-choose" disabled={ad.placing} onClick={ad.choose}><ImageIcon size={14} />{ad.placing ? 'Adding…' : ad.picErr ? 'Choose another picture' : 'Choose a picture'}</button></span>
+              <span className="ad-g-text" aria-hidden><i className="ad-g-h" /><i className="ad-g-h ad-g-h2" /><i className="ad-g-offer" /><i className="ad-g-btn" /></span></div>}
+        </div>
+        {ad.pic && <div className="ad-under" data-card-control {...stop}>
+          <button type="button" className="ad-plat" data-testid="ad-platforms" disabled={!ad.art} {...tip('Where it runs: the platforms decide the sizes')} onClick={() => ad.setEditing('where')}>
+            <span className="ad-plat-l">For</span><span>{platformSummary(ad)}</span><ChevronRightIcon size={12} /></button></div>}
       </div>
-      {art && art.missing.length > 0 && <p className="ad-note" data-testid="ad-font-note">This browser doesn’t have {art.missing.map((m) => `“${m}”`).join(' or ')}, so the ad uses Manrope.</p>}
-      {editing && pic && art && <AdEditor sizes={sizes} size={size} onSize={(s) => patch({ size: s.shape })} pic={pic} art={art} text={{ headline: view.headline, offer: p.offer, button: p.button }} preset={preset}
-        style={style} onStyle={setStyle} edit={edit} onEdit={(e) => setEdit(size.shape, e)} showSafe={showSafe} onSafe={(on) => patch({ safeZones: on })} platforms={picked} editedSizes={sizes.filter((s) => isEdited(edits[s.shape])).map((s) => s.shape)} onClose={() => setEditing(false)} />}
+      <div className="ad-fields" data-card-control {...stop}>
+        <div className="ad-hl">
+          <input className="ad-in ad-in-head" data-testid="ad-headline" value={headlines[i] ?? ''} maxLength={AD_LIMITS.headline} placeholder="Headline" aria-label={`Headline ${i + 1}`} onChange={(e) => ad.setHeadline(i, e.target.value)} />
+          {variants.length > 1 && <span className="ad-hl-n" role="tablist" aria-label="Headline">{variants.map((v) => <button key={v.n} type="button" role="tab" aria-selected={v.n === view.n} className={v.n === view.n ? 'on' : ''} data-testid={`ad-pick-${v.n}`} {...tip(`Headline ${v.n}`)} onClick={() => ad.patch({ pick: v.n })}>{v.n}</button>)}</span>}
+        </div>
+        <OfferButton ad={ad} />
+      </div>
+      <div className="ad-row" data-card-control {...stop}><Brand ad={ad} /><EditBtn ad={ad} /></div>
+      {ad.art && ad.art.missing.length > 0 && <p className="ad-note" data-testid="ad-font-note">This browser doesn’t have {ad.art.missing.map((m) => `“${m}”`).join(' or ')}, so the ad uses Manrope.</p>}
+      <AdCardEditor ad={ad} />
     </div>
   </NodeFrame>;
-}
-
-/** A tiny drawing of each layout: the picture, the words as bars, the button as a dot. */
-function PresetThumb({ id }: { id: AdPreset }) {
-  const bars = (y: number, c = false) => <><rect x={c ? 4 : 3} y={y} width="12" height="2" rx="1" /><rect x={c ? 6 : 3} y={y + 3} width="8" height="1.5" rx=".75" /><rect x={c ? 7 : 3} y={y + 6} width="6" height="2.5" rx="1.25" className="ad-pt-btn" /></>;
-  return <svg className="ad-pt" viewBox="0 0 20 24" width="16" height="19" aria-hidden>
-    <rect width="20" height="24" rx="2.5" className="ad-pt-pic" />
-    {id === 'split' && <rect y="12" width="20" height="12" className="ad-pt-panel" />}
-    {id === 'bottom' ? bars(13.5) : id === 'top' ? bars(2.5) : id === 'center' ? bars(8, true) : bars(13.5)}
-  </svg>;
-}
-
-/** "Brand: <name> ▾": the brand's logo, colours and fonts on the ad. The app's own bar popover (the board switcher's), with "No brand"
- *  and "Add a brand…" (Assets › Brands). */
-function BrandPick({ kits, kit, none, onPick }: { kits: BrandKit[]; kit: BrandKit | null; none: boolean; onPick: (id: string) => void }) {
-  const btn = useRef<HTMLButtonElement>(null); const [open, setOpen] = useState(false); const pick = (id: string) => { setOpen(false); onPick(id); };
-  const cur = none ? null : kit;
-  return <>
-    <button ref={btn} type="button" className="ad-brand" data-testid="ad-brand" aria-haspopup="menu" aria-expanded={open} aria-label={`Brand: ${cur?.name ?? 'No brand'}`} onClick={() => setOpen((o) => !o)}>
-      <span className="ad-brand-l">Brand</span><KitDots colors={cur?.colors ?? []} /><span className="ad-brand-n">{cur?.name ?? 'No brand'}</span><ChevronDownIcon size={14} /></button>
-    <BarPopover open={open} anchor={btn} onClose={() => setOpen(false)} label="Brand" placement="bottom" width={240} testId="ad-brand-pop">
-      <PopSection label="Brand">
-        <div role="radiogroup" aria-label="Brand">
-          {kits.map((k) => <PopRow key={k.id} role="radio" selected={k.id === cur?.id} icon={<KitDots colors={k.colors} size={12} />} label={k.name} onClick={() => pick(k.id)} testId={`ad-brand-${k.id}`} />)}
-          <PopRow role="radio" selected={!cur} icon={<KitDots colors={[]} size={12} />} label="No brand" onClick={() => pick(NO_BRAND)} testId="ad-brand-none" />
-        </div>
-      </PopSection>
-      <PopSection>
-        <PopRow role="menuitem" icon={<PlusIcon size={16} />} label="Add a brand…" onClick={() => { setOpen(false); navigate('/assets/brands?new=1'); }} testId="ad-brand-add" />
-      </PopSection>
-    </BarPopover>
-  </>;
 }

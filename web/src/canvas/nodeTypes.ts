@@ -53,7 +53,7 @@ export const NODE_DEFS: Record<NodeKind, NodeDef> = {
   group: { kind: 'group', type: GROUP_TYPE, label: 'Group', hint: 'A frame with Run all', input: false, output: false, inputMax: 0,
     defaultW: 720, defaultH: 520, minW: 360, minH: 260, maxW: 1800, maxH: 1400, tint: 'group' },
   ad: { kind: 'ad', type: AD_TYPE, label: 'Ad layout', hint: 'Your headline, price and logo on a picture', input: true, output: false, inputMax: 1,
-    defaultW: 400, defaultH: 840, minW: 340, minH: 640, maxW: 820, maxH: 1400, tint: 'ad' },
+    defaultW: 360, defaultH: 640, minW: 320, minH: 560, maxW: 820, maxH: 1400, tint: 'ad' },
 };
 
 export const NODE_KINDS = Object.keys(NODE_DEFS) as NodeKind[];

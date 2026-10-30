@@ -1,43 +1,50 @@
 /**
- * "Edit ad" (2026-10-30): the Ad layout card's big editor, in the app's large sheet (MaskSheet's .wfm styles). The ad for the current size
+ * "Edit & style" (2026-10-30, sections 2026-10-31): the Ad layout card's big editor, in the app's large sheet (MaskSheet's .wfm styles). The ad for the current size
  * at a readable size; drag the logo, headline, offer line and button, resize the logo, headline (its text follows) and the button (width)
  * from the corner; they snap to the clear area, the margins, the centre lines and each other (hold Alt for none) and can't leave the
  * clear area. Drag the picture itself (where no part is) to frame it, and zoom it with the slider or the wheel / trackpad. Arrow keys
  * nudge (Shift: 10), Delete takes the logo, offer or button off this size ("Show …" brings it back). Edits are saved as they happen,
  * per size (adEdit.ts); "Reset layout" puts this size back to automatic. Esc or Done closes.
  *
- * The side panel styles the picked part, the same on every size (adLayout.AdStyle, saved on the card): the logo's plate and colour, the
- * words' alignment, weight, colour and what sits behind them, the button's shape and colour. Colours are the brand's, white or black.
+ * The side panel on the left is the card's (AdPanel.tsx: numbered sections); clicking a part of the ad opens its section. PartStyle here
+ * styles one part, the same on every size (adLayout.AdStyle, saved on the card): the logo's plate and colour, the words' alignment,
+ * weight, colour and what sits behind them, the button's shape and colour. Colours are the brand's, white or black.
  */
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { tip } from '../shared/Tooltip';
-import { BarPopover, PopNote, PopRow, PopSection, Segmented } from '../shared/BarPop';
-import { ChevronDownIcon, CloseIcon, PlusIcon } from '../ui/Icons';
+import { PopNote, PopSection, Segmented } from '../shared/BarPop';
+import { CloseIcon, PlusIcon } from '../ui/Icons';
 import { drawAd, drawSafeZones, type AdArt } from './adDraw';
 import { buttonColorOf, logoToneFor, type AdLayout, type AdPreset, type AdStyle, type AdText, type Box } from './adLayout';
-import { hasSafe, zonesFor, type AdPlatform, type AdSizeOption } from './adPlatforms';
-import { HIDEABLE, PART_NAME, PIC_ZOOM, clampBox, guidesFor, inBox, isEdited, moveFrame, placeOf, snapBox, snapTo, type AdEdit, type AdFrame, type AdPart } from './adEdit';
+import { zonesFor, type AdPlatform, type AdSizeOption } from './adPlatforms';
+import { HIDEABLE, PART_NAME, clampBox, guidesFor, inBox, isEdited, moveFrame, placeOf, snapBox, snapTo, type AdEdit, type AdFrame, type AdPart } from './adEdit';
 
+/** The side panel's sections, in the order people think. */
+export type AdSection = 'picture' | 'words' | 'logo' | 'layout' | 'where' | 'export';
+/** What the side panel gets from the editor: the last part clicked (n counts clicks), the picture's zoom, and whose safe zones show. */
+export type AdPanelCtx = { hit: { part: AdPart | 'picture'; n: number }; zoom: number; zoomTo: (z: number) => void;
+  zones: { p: AdPlatform; label: string }[]; zone: AdPlatform | 'all'; setZone: (z: AdPlatform | 'all') => void };
 type Drag = { mode: 'move' | 'size' | 'pic'; part: AdPart | null; x0: number; y0: number; box: Box; px: number; frame: AdFrame | undefined };
 const halt = (ev: React.SyntheticEvent) => ev.stopPropagation();
 const RESIZABLE: AdPart[] = ['logo', 'headline', 'button'];
 /** Topmost first (the order they're drawn, reversed). */
 const HIT_ORDER: AdPart[] = ['button', 'offer', 'logo', 'headline'];
 
-export function AdEditor({ sizes, size, onSize, pic, art, text, preset, style, onStyle, edit, onEdit, showSafe, onSafe, platforms, editedSizes, onClose }: {
+export function AdEditor({ sizes, size, onSize, pic, art, text, preset, style, edit, onEdit, showSafe, platforms, editedSizes, onClose, panel }: {
   sizes: AdSizeOption[]; size: AdSizeOption; onSize: (s: AdSizeOption) => void; pic: HTMLImageElement; art: AdArt; text: AdText; preset: AdPreset;
-  /** the card's style, on every size */ style: AdStyle; onStyle: (s: AdStyle) => void;
-  /** this size's edits */ edit: AdEdit | undefined; onEdit: (e: AdEdit | null) => void; showSafe: boolean; onSafe: (on: boolean) => void; platforms: AdPlatform[]; /** sizes with their own layout (a dot on the tab) */ editedSizes: string[]; onClose: () => void;
+  /** the card's style, on every size */ style: AdStyle;
+  /** this size's edits */ edit: AdEdit | undefined; onEdit: (e: AdEdit | null) => void; showSafe: boolean; platforms: AdPlatform[]; /** sizes with their own layout (a dot on the tab) */ editedSizes: string[]; onClose: () => void;
+  /** the side panel (AdPanel.tsx) */ panel: (x: AdPanelCtx) => ReactNode;
 }) {
   const { w: W, h: H } = size; const e = edit ?? {}; const hidden = HIDEABLE.filter((p) => e.hide?.includes(p));
   const stage = useRef<HTMLDivElement>(null); const sheet = useRef<HTMLDivElement>(null); const [room, setRoom] = useState<[number, number]>([0, 0]);
   useLayoutEffect(() => { const s = stage.current; if (!s) return; const ro = new ResizeObserver(() => setRoom([s.clientWidth, s.clientHeight])); ro.observe(s); return () => ro.disconnect(); }, []);
   const k = room[0] > 0 ? Math.min((room[0] - 48) / W, (room[1] - 48) / H) : 0; /* frame px → screen px */
   const [c, setCanvas] = useState<HTMLCanvasElement | null>(null); const [l, setL] = useState<AdLayout | null>(null);
-  const [sel, setSel] = useState<AdPart | null>(null); const [hover, setHover] = useState<AdPart | null>(null); const [guide, setGuide] = useState<{ x: number | null; y: number | null } | null>(null);
+  const [sel, setSel] = useState<AdPart | null>(null); const [hit, setHit] = useState<AdPanelCtx['hit']>({ part: 'picture', n: 0 }); const [hover, setHover] = useState<AdPart | null>(null); const [guide, setGuide] = useState<{ x: number | null; y: number | null } | null>(null);
   /* "Zones for": one platform's zones at a time (the parts still keep clear of all of them) */
-  const zones = zonesFor(platforms, size.shape); const [zone, setZone] = useState<AdPlatform | 'all'>('all'); const [zonesOpen, setZonesOpen] = useState(false); const zonesBtn = useRef<HTMLButtonElement>(null);
+  const zones = zonesFor(platforms, size.shape); const [zone, setZone] = useState<AdPlatform | 'all'>('all');
   const zoneSafe = zone === 'all' ? size.safe : zones.find((z) => z.p === zone)?.safe ?? size.safe;
   useEffect(() => { if (zone !== 'all' && !zones.some((z) => z.p === zone)) setZone('all'); }, [size.shape]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { setSel(null); }, [size.shape]);
@@ -65,7 +72,7 @@ export function AdEditor({ sizes, size, onSize, pic, art, text, preset, style, o
   const down = (ev: React.PointerEvent) => {
     if (ev.button !== 0 || !l) return; const [x, y] = at(ev); sheet.current?.focus({ preventScroll: true });
     const handle = (ev.target as HTMLElement).dataset.handle as AdPart | undefined;
-    const part = handle ?? hitOf(x, y); setSel(part);
+    const part = handle ?? hitOf(x, y); setSel(part); setHit((h) => ({ part: part ?? 'picture', n: h.n + 1 }));
     drag.current = part ? { mode: handle ? 'size' : 'move', part, x0: x, y0: y, box: l.boxes[part]!, px: pxOf(part), frame: e.pic } : { mode: 'pic', part: null, x0: x, y0: y, box: l.pic, px: 0, frame: e.pic };
     try { ev.currentTarget.setPointerCapture(ev.pointerId); } catch { /* a pointer the browser no longer tracks */ } ev.preventDefault();
   };
@@ -95,7 +102,7 @@ export function AdEditor({ sizes, size, onSize, pic, art, text, preset, style, o
   /* ---- keys: caught before the board sees them (Delete would remove the card), Esc closes */
   const keyRef = useRef<(ev: KeyboardEvent) => void>(() => undefined);
   keyRef.current = (ev) => {
-    const tg = ev.target as HTMLElement | null; const mine = !!tg && (tg === document.body || !!sheet.current?.contains(tg)); if (!mine || zonesOpen) return;
+    const tg = ev.target as HTMLElement | null; const mine = !!tg && (tg === document.body || !!sheet.current?.contains(tg)); if (!mine) return;
     /* in the style panel, keys only press its buttons (Enter / Space) and Esc closes: arrows never nudge a part */
     ev.stopPropagation(); const side = !!tg?.closest('.ade-side');
     if (tg && (/^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName) || side)) { if (ev.key === 'Escape') { ev.preventDefault(); if (side && sel) { setSel(null); sheet.current?.focus({ preventScroll: true }); } else onClose(); } return; }
@@ -117,23 +124,14 @@ export function AdEditor({ sizes, size, onSize, pic, art, text, preset, style, o
   return createPortal(<div className="wfm-back" data-testid="ad-editor" {...own} onPointerDown={(ev) => { ev.stopPropagation(); if (ev.target === ev.currentTarget) onClose(); }}>
     <div ref={sheet} className="wfm ade" role="dialog" aria-modal="true" aria-labelledby="ade-title" tabIndex={-1}>
       <header className="wfm-h ade-h">
-        <div><h2 id="ade-title">Edit ad</h2><p>Drag to move, drag a corner to resize. Hold Alt to move without snapping. Drag the picture to frame it.</p></div>
+        <div><h2 id="ade-title">Edit & style</h2><p>Click a part of the ad to style it, drag to move it, drag a corner to resize (Alt: no snapping). Drag the picture to frame it.</p></div>
         <button type="button" className="wfm-x" aria-label="Close" {...tip('Close (Esc)')} onClick={onClose}><CloseIcon size={16} /></button>
       </header>
       <div className="ade-bar">
         <div className="ad-seg" role="tablist" aria-label="Size">{sizes.map((s) => <button key={s.shape} type="button" role="tab" aria-selected={s.shape === size.shape} className={`${s.shape === size.shape ? 'on' : ''}${editedSizes.includes(s.shape) ? ' ed' : ''}`} data-testid={`ade-size-${s.shape}`} {...tip(`${s.w} × ${s.h} · ${s.where}`)} onClick={() => onSize(s)}>{s.label}</button>)}</div>
-        <label className={`ad-safe${hasSafe(size.safe) ? '' : ' none'}`}><input type="checkbox" checked={showSafe} data-testid="ade-safe" onChange={(ev) => onSafe(ev.target.checked)} /><i aria-hidden />Show safe zones</label>
-        {showSafe && zones.length > 1 && <>
-          <button ref={zonesBtn} type="button" className="ad-brand ade-zones" data-testid="ade-zones" aria-haspopup="menu" aria-expanded={zonesOpen} onClick={() => setZonesOpen((o) => !o)}>
-            <span className="ad-brand-l">Zones for</span><span className="ad-brand-n">{zone === 'all' ? 'All' : zones.find((z) => z.p === zone)?.label}</span><ChevronDownIcon size={14} /></button>
-          <BarPopover open={zonesOpen} anchor={zonesBtn} onClose={() => setZonesOpen(false)} label="Zones for" placement="bottom" width={248} className="ade-pop" testId="ade-zones-pop">
-            <PopSection label="Show the zones of"><div role="radiogroup" aria-label="Zones for">
-              <PopRow role="radio" selected={zone === 'all'} label="All" hint="What the parts keep clear of" onClick={() => { setZone('all'); setZonesOpen(false); }} />
-              {zones.map((z) => <PopRow key={z.p} role="radio" selected={zone === z.p} label={z.label} onClick={() => { setZone(z.p); setZonesOpen(false); }} testId={`ade-zones-${z.p}`} />)}
-            </div></PopSection>
-          </BarPopover></>}
       </div>
-      <div className="ade-main">
+      <div className="ade-main ade-main-p">
+      <aside className="ade-side ade-panel bp-host" aria-label="Edit and style" data-testid="ade-panel">{panel({ hit, zoom, zoomTo, zones, zone, setZone })}</aside>
       <div ref={stage} className="wfm-stage ade-stage">
         <div className="ade-frame" style={{ width: W * k, height: H * k, cursor }} data-testid="ade-frame" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onPointerLeave={() => !drag.current && setHover(null)}>
           <canvas ref={setCanvas} className="ade-cv" style={{ width: W * k, height: H * k }} aria-label={`Your ad, ${size.label}`} />
@@ -144,10 +142,8 @@ export function AdEditor({ sizes, size, onSize, pic, art, text, preset, style, o
           {guide?.y != null && <i className="ade-guide h" style={{ top: guide.y * k }} aria-hidden />}
         </div>
       </div>
-      <StylePanel part={sel} parts={l ? (Object.keys(l.boxes) as AdPart[]) : []} onPick={setSel} style={style} onStyle={onStyle} art={art} />
       </div>
       <footer className="wfm-tools ade-tools">
-        <label className="wfm-size"><span>Picture zoom</span><input type="range" min={PIC_ZOOM.min} max={PIC_ZOOM.max} step={0.01} value={zoom} onChange={(ev) => zoomTo(+ev.target.value)} aria-label="Picture zoom" data-testid="ade-zoom" /><b>{Math.round(zoom * 100)}%</b></label>
         {hidden.length > 0 && <div className="ade-hidden">{hidden.map((p) => <button key={p} type="button" className="ad-add" data-testid={`ade-show-${p}`} onClick={() => unhide(p)}><PlusIcon size={12} />Show {PART_NAME[p].toLowerCase()}</button>)}</div>}
         <span className="ade-note">{sel ? `${PART_NAME[sel]}: arrow keys nudge (Shift: 10)${HIDEABLE.includes(sel) ? ', Delete takes it off' : ''}` : edited ? 'This size has its own layout.' : 'This size uses the automatic layout.'}</span>
         <div className="wfm-end">
@@ -170,16 +166,11 @@ function Swatches({ label, value, colors, auto, autoHex, onChange, testId }: { l
     {colors.map((h) => <button key={h} type="button" role="radio" aria-checked={value === h} aria-label={h} className={value === h ? 'on' : ''} {...tip(h)} onClick={() => onChange(h)}><i style={{ background: h }} aria-hidden /></button>)}
   </div>;
 }
-const PART_STYLE: { part: AdPart; label: string }[] = [{ part: 'logo', label: 'Logo' }, { part: 'headline', label: 'Words' }, { part: 'button', label: 'Button' }];
-/** The style of the picked part, in the bar popovers' controls (BarPop: sections, segmented, here on the sheet as a `.bp-host`). */
-function StylePanel({ part, parts, onPick, style, onStyle, art }: { part: AdPart | null; parts: AdPart[]; onPick: (p: AdPart) => void; style: AdStyle; onStyle: (s: AdStyle) => void; art: AdArt }) {
+/** The style controls of one part (logo, words or button): in the side panel's Words and Logo & button sections. */
+export function PartStyle({ part, style, onStyle, art }: { part: AdPart; style: AdStyle; onStyle: (s: AdStyle) => void; art: AdArt }) {
   const set = (p: Partial<AdStyle>) => onStyle({ ...style, ...p }); const colors = swatchesOf(art);
   const words = part === 'headline' || part === 'offer';
-  return <aside className="ade-side bp-host" aria-label="Style" data-testid="ade-style">
-    {!part && <PopSection label="Style">
-      <PopNote>Click the logo, the words or the button to change how they look. The style is the same on every size.</PopNote>
-      <div className="ade-side-picks">{PART_STYLE.filter((x) => parts.includes(x.part)).map((x) => <button key={x.part} type="button" className="ad-chip" data-testid={`ade-style-${x.part}`} onClick={() => onPick(x.part)}>{x.label}</button>)}</div>
-    </PopSection>}
+  return <>
     {part === 'logo' && <>
       <PopSection label="Plate behind the logo"><Segmented label="Plate behind the logo" value={style.logoPlate ?? 'auto'} onChange={(v) => set({ logoPlate: v })} testId="ade-logo-plate"
         options={[{ value: 'auto', label: 'Auto', title: 'Only when the logo would get lost on the picture' }, { value: 'on', label: 'On' }, { value: 'off', label: 'Off' }]} /></PopSection>
@@ -203,5 +194,5 @@ function StylePanel({ part, parts, onPick, style, onStyle, art }: { part: AdPart
       <PopSection label="Colour"><Swatches label="Button colour" value={style.buttonColor} colors={colors} auto="The brand's main colour" autoHex={buttonColorOf(art.kit)} onChange={(h) => set({ buttonColor: h })} testId="ade-button-color" />
         <PopNote>{style.buttonShape === 'outline' ? 'An outline that wouldn’t show on the picture turns white or black.' : 'Its words turn white or black, whichever reads best.'}</PopNote></PopSection>
     </>}
-  </aside>;
+  </>;
 }

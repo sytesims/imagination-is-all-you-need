@@ -220,22 +220,21 @@ body.nf-port-dragging,body.nf-port-dragging *{cursor:crosshair!important}
 
 /* ---------- ad layout (AdNode.tsx) ---------- */
 .ad-body{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px}
-.ad-seg,.ad-picks{display:inline-flex;gap:2px;padding:2px;border-radius:9px;background:var(--fill,rgba(255,255,255,.05));min-width:0}
-.ad-seg button,.ad-picks button{all:unset;box-sizing:border-box;height:24px;padding:0 9px;border-radius:7px;cursor:pointer;color:var(--text-2,#898A8B);font:600 11px/24px var(--font-sans,Inter,sans-serif);white-space:nowrap}
-.ad-seg button:hover,.ad-picks button:hover{color:var(--text-1,#F7F7F8)}
-.ad-seg button.on,.ad-picks button.on{background:var(--surface-3,#27292C);color:var(--text-1,#F7F7F8);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent,#FF7A1A) 35%,transparent)}
-.ad-seg button:focus-visible,.ad-picks button:focus-visible,.ad-brand:focus-visible,.ad-export:focus-visible,.ad-hl-x:focus-visible,.ad-add:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}
-.ad-seg,.ad-picks{align-self:flex-start}
+.ad-seg{display:inline-flex;gap:2px;padding:2px;border-radius:9px;background:var(--fill,rgba(255,255,255,.05));min-width:0}
+.ad-seg button{all:unset;box-sizing:border-box;height:24px;padding:0 9px;border-radius:7px;cursor:pointer;color:var(--text-2,#898A8B);font:600 11px/24px var(--font-sans,Inter,sans-serif);white-space:nowrap}
+.ad-seg button:hover{color:var(--text-1,#F7F7F8)}
+.ad-seg button.on{background:var(--surface-3,#27292C);color:var(--text-1,#F7F7F8);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent,#FF7A1A) 35%,transparent)}
+.ad-seg button:focus-visible,.ad-brand:focus-visible,.ad-export:focus-visible,.ad-hl-x:focus-visible,.ad-add:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}
+.ad-seg{align-self:flex-start}
 .ad-brand{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:7px;width:100%;min-width:0;height:30px;padding:0 9px 0 10px;border-radius:8px;cursor:pointer;
   background:var(--fill,rgba(255,255,255,.05));border:1px solid var(--border,rgba(255,255,255,.05));color:var(--text-1,#F7F7F8);font:600 12px/1 var(--font-sans,Inter,sans-serif);transition:border-color 150ms ease}
 .ad-brand:hover,.ad-brand[aria-expanded=true]{border-color:var(--border-strong,rgba(255,255,255,.1))}
 .ad-brand-l{flex:none;color:var(--text-3,rgba(255,255,255,.5));font-weight:500;margin-right:2px}
 .ad-brand-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ad-brand svg{flex:none;color:var(--text-2,#898A8B)}
-.ad-stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;border-radius:12px;background:var(--surface-1,#131517);overflow:hidden}
+.ad-stage{flex:1;min-height:0;display:flex;flex-direction:column;gap:6px;padding:6px;border-radius:12px;background:var(--surface-1,#131517);overflow:hidden}
 .ad-canvas{display:block;flex:none;height:auto;border-radius:4px;box-shadow:0 6px 22px rgba(0,0,0,.4)}
 /* before a picture: a faint outline of the ad in the current size (logo, headline, offer, button), so it's clear what goes where */
-.ad-stage{container-type:size}
 .ad-ghost{position:relative;box-sizing:border-box;flex:none;display:flex;flex-direction:column;justify-content:space-between;padding:7.4%;border-radius:6px;
   background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.05));box-shadow:inset 0 0 0 1px var(--border-strong,rgba(255,255,255,.1))}
 .ad-ghost i{display:block;border-radius:3px;background:rgba(255,255,255,.07)}
@@ -267,7 +266,6 @@ body.nf-port-dragging,body.nf-port-dragging *{cursor:crosshair!important}
 .ad-export:hover:not(:disabled){filter:brightness(1.06)}
 .ad-export:disabled{cursor:default;opacity:.45}
 /* where it runs (platform chips), the safe-zone toggle, Change picture, the four layouts */
-.ad-where{flex:none;display:flex;flex-direction:column;gap:5px}
 .ad-label{font:600 10.5px/14px var(--font-sans,Inter,sans-serif);color:var(--text-3,rgba(255,255,255,.5))}
 .ad-chips{display:flex;flex-wrap:wrap;gap:4px}
 .ad-chip{all:unset;box-sizing:border-box;height:24px;padding:0 9px;border-radius:99px;cursor:pointer;border:1px solid var(--border-strong,rgba(255,255,255,.1));color:var(--text-2,#898A8B);font:600 11px/22px var(--font-sans,Inter,sans-serif);white-space:nowrap;transition:background 150ms ease,color 150ms ease,border-color 150ms ease}
@@ -275,7 +273,6 @@ body.nf-port-dragging,body.nf-port-dragging *{cursor:crosshair!important}
 .ad-chip.on{color:var(--text-1,#F7F7F8);border-color:color-mix(in srgb,var(--accent,#FF7A1A) 55%,transparent);background:color-mix(in srgb,var(--accent,#FF7A1A) 14%,transparent)}
 .ad-hint{margin:0;font:400 10.5px/14px var(--font-sans,Inter,sans-serif);color:var(--warning,#E8B44A)}
 .ad-seg{flex-wrap:wrap}
-.ad-stagebar{flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:22px}
 .ad-safe{display:inline-flex;align-items:center;gap:7px;cursor:pointer;color:var(--text-2,#898A8B);font:600 11px/1 var(--font-sans,Inter,sans-serif)}
 .ad-safe input{position:absolute;opacity:0;width:1px;height:1px}
 .ad-safe i{position:relative;width:24px;height:14px;border-radius:99px;background:var(--surface-3,#27292C);box-shadow:inset 0 0 0 1px var(--border-strong,rgba(255,255,255,.1));transition:background 150ms ease}
@@ -284,11 +281,9 @@ body.nf-port-dragging,body.nf-port-dragging *{cursor:crosshair!important}
 .ad-safe input:checked+i::after{transform:translateX(10px);background:#fff}
 .ad-safe input:focus-visible+i{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}
 .ad-safe.none{opacity:.55}
-.ad-change{all:unset;height:22px;padding:0 6px;border-radius:6px;cursor:pointer;color:var(--text-2,#898A8B);font:600 11px/22px var(--font-sans,Inter,sans-serif)}
-.ad-change:hover:not(:disabled){color:var(--accent,#FF7A1A)}
 .ad-choose{all:unset;box-sizing:border-box;display:inline-flex;white-space:nowrap;align-items:center;gap:6px;margin-top:6px;height:30px;padding:0 12px;border-radius:9px;cursor:pointer;background:var(--surface-3,#27292C);border:1px solid var(--border-strong,rgba(255,255,255,.1));color:var(--text-1,#F7F7F8);font:600 11.5px/1 var(--font-sans,Inter,sans-serif)}
 .ad-choose:hover:not(:disabled){background:var(--state-hover,rgba(255,255,255,.09))}
-.ad-choose:disabled,.ad-change:disabled{cursor:default;opacity:.55}
+.ad-choose:disabled{cursor:default;opacity:.55}
 .ad-layouts{flex:none;display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
 .ad-layouts button{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:5px;min-width:0;height:30px;padding:0 5px;white-space:nowrap;border-radius:8px;cursor:pointer;border:1px solid var(--border,rgba(255,255,255,.05));background:var(--fill,rgba(255,255,255,.05));color:var(--text-2,#898A8B);font:600 10.5px/1.15 var(--font-sans,Inter,sans-serif)}
 .ad-layouts button:hover{color:var(--text-1,#F7F7F8)}
@@ -298,7 +293,7 @@ body.nf-port-dragging,body.nf-port-dragging *{cursor:crosshair!important}
 .ad-pt-panel{fill:rgba(255,255,255,.04)}
 .ad-pt rect:not([class]){fill:currentColor}
 .ad-pt-btn{fill:var(--accent,#FF7A1A)}
-.ad-chip:focus-visible,.ad-layouts button:focus-visible,.ad-change:focus-visible,.ad-choose:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}
+.ad-chip:focus-visible,.ad-layouts button:focus-visible,.ad-choose:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}
 
 /* ---------- spend chip (SpendChip.tsx) ---------- */
 .cv-spend2{all:unset;box-sizing:border-box;position:relative;display:inline-flex;align-items:center;gap:10px;height:44px;padding:0 12px;border-radius:12px;cursor:pointer;
@@ -560,8 +555,6 @@ html:not(.cv-perf-off) .nf-media,html:not(.cv-perf-off) .nf-body{contain:layout 
 .cv-far .nf *,.cv-far .nf *::before,.cv-far .nf *::after{animation-play-state:paused!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 .cv-tiny .nf,.cv-tiny .nf *{border-radius:0!important}
 /* Ad layout card, "Edit ad" (AdEditor.tsx): the app's large sheet (.wfm, maskSheet.css) with the ad, its parts and the snap guides */
-.ad-stage-acts{display:inline-flex;align-items:center;gap:2px}
-.ad-edit{display:inline-flex;align-items:center;gap:5px}
 .ad-seg button.ed::after{content:"";display:inline-block;width:5px;height:5px;margin-left:5px;border-radius:50%;background:var(--accent,#FF7A1A);vertical-align:middle}
 .wfm.ade:focus,.wfm.ade:focus-visible{outline:none;box-shadow:0 0 0 1px rgba(255,255,255,.08),0 30px 80px rgba(0,0,0,.6)}
 .ade-bar{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;padding:0 16px 10px}
@@ -597,3 +590,61 @@ html body .apop.ade-pop{z-index:1210}
 .ade-sw button.on.ade-sw-auto{color:var(--text-1,#F7F7F8)}
 .ade-sw button:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}
 @media (max-width:760px){.ade-main{flex-direction:column}.ade-side{width:auto;max-height:38%;margin:8px 0 0}}
+
+
+/* the compact card (2026-10-31): preview with a size switch on top and "For <platforms> ›" under it, three fields, Brand + Edit & style */
+.ad-over,.ad-under{flex:none;display:flex;justify-content:center;min-width:0}
+.ad-seg-s{flex-wrap:nowrap;overflow:hidden;align-self:center;background:rgba(0,0,0,.28)}
+.ad-seg-s button{height:22px;padding:0 7px;line-height:22px;font-size:10.5px}
+.ad-stage-in{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;container-type:size}
+.ad-plat{all:unset;box-sizing:border-box;flex:0 1 auto;min-width:0;display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 7px 0 10px;border-radius:99px;cursor:pointer;
+  background:rgba(0,0,0,.28);color:var(--text-2,#898A8B);font:600 10.5px/1 var(--font-sans,Inter,sans-serif)}
+.ad-plat span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-1,#F7F7F8)}
+.ad-plat .ad-plat-l{flex:none;color:var(--text-3,rgba(255,255,255,.5));font-weight:500}
+.ad-plat:hover:not(:disabled){background:rgba(0,0,0,.42)}
+.ad-plat:disabled{cursor:default;opacity:.55}
+.ad-g-msg{top:46%}
+.ad-ghost .ad-choose{background:var(--accent,#FF7A1A);border-color:transparent;color:var(--on-accent,#14151A);height:32px;padding:0 14px}
+.ad-ghost .ad-choose:hover:not(:disabled){background:var(--accent,#FF7A1A);filter:brightness(1.06)}
+.ad-hl-n{position:absolute;right:4px;top:4px;display:inline-flex;gap:2px}
+.ad-hl-n button{all:unset;width:22px;height:22px;border-radius:6px;text-align:center;cursor:pointer;color:var(--text-3,rgba(255,255,255,.5));font:600 11px/22px var(--font-sans,Inter,sans-serif)}
+.ad-hl-n button:hover{color:var(--text-1,#F7F7F8)}
+.ad-hl-n button.on{background:var(--surface-3,#27292C);color:var(--text-1,#F7F7F8)}
+.ad-hl:has(.ad-hl-n) .ad-in-head{padding-right:80px}
+.ad-row{flex:none;display:flex;align-items:center;gap:6px}
+.ad-row .ad-brand{flex:1}
+.ad-editbtn{all:unset;box-sizing:border-box;flex:none;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 11px;border-radius:8px;cursor:pointer;
+  background:var(--surface-3,#27292C);border:1px solid var(--border-strong,rgba(255,255,255,.1));color:var(--text-1,#F7F7F8);font:600 11.5px/1 var(--font-sans,Inter,sans-serif)}
+.ad-editbtn:hover:not(:disabled){background:var(--state-hover,rgba(255,255,255,.09))}
+.ad-editbtn:disabled{opacity:.45;cursor:default}
+.ad-editbtn:focus-visible,.ad-plat:focus-visible,.ad-hl-n button:focus-visible,button.adp-h:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}
+/* the editor's side panel (left): numbered sections, one open at a time (AdPanel.tsx) */
+.ade-main-p .ade-side.ade-panel{order:-1;width:320px;margin:0 0 0 12px;padding:4px 10px 14px;scroll-padding-top:4px}
+.ade-main-p .ade-stage{margin-left:12px}
+.adp-sec{padding:4px 2px;border-bottom:1px solid var(--border,rgba(255,255,255,.05))}
+.adp-sec:last-child{border-bottom:0}
+.adp-sec.on{padding-bottom:12px}
+button.adp-h{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:8px;width:100%;height:40px;padding:0 6px;border-radius:8px;cursor:pointer;font:600 13px/18px var(--font-sans,Inter,sans-serif);color:var(--text-2,#898A8B)}
+button.adp-h:hover{background:var(--state-hover,rgba(255,255,255,.04))}
+.adp-sec.on button.adp-h{color:var(--text-1,#F7F7F8)}
+.adp-h i{flex:none;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font:700 10.5px/1 var(--font-sans,Inter,sans-serif);font-style:normal;background:var(--surface-3,#27292C);color:var(--text-2,#898A8B)}
+.adp-sec.on .adp-h i{background:var(--accent,#FF7A1A);color:var(--on-accent,#14151A)}
+.adp-sum{flex:1;min-width:0;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:400 11.5px/16px var(--font-sans,Inter,sans-serif);color:var(--text-3,rgba(255,255,255,.5))}
+.adp-body{padding-top:4px}
+.adp-sub{margin:12px 6px 0;padding-top:12px;border-top:1px solid var(--border,rgba(255,255,255,.06));font:600 12.5px/16px var(--font-sans,Inter,sans-serif);color:var(--text-1,#F7F7F8)}
+.adp-pad{padding:2px 6px}
+.adp-p{margin:0 6px 8px;font:400 12px/17px var(--font-sans,Inter,sans-serif);color:var(--text-2,#898A8B)}
+.adp-pic{display:flex;align-items:center;gap:10px;padding:0 6px}
+.adp-pic img{flex:none;width:44px;height:44px;border-radius:8px;object-fit:cover}
+.adp-pic span{flex:1;min-width:0;font:400 11.5px/15px var(--font-sans,Inter,sans-serif);color:var(--text-2,#898A8B)}
+.adp-btn{flex:none;height:28px}
+.adp-zoom{display:flex;align-items:center;gap:8px;margin:10px 6px 0}
+.adp-zoom input{flex:1}
+.adp-fields{padding:0 6px 4px}
+.adp-zones{display:flex;flex-direction:column;gap:6px;padding:8px 6px 0}
+.ade-panel .ad-chips{padding:0 6px 8px}
+.adp-zones .ad-chips{padding:0}
+.ade-panel .ad-layouts{padding:0 6px}
+.ad-layouts-2{grid-template-columns:1fr 1fr}
+.ade-panel .ad-brand{border:1px solid var(--border,rgba(255,255,255,.05));background:var(--fill,rgba(255,255,255,.05))}
+@media (max-width:760px){.ade-main-p{flex-direction:column}.ade-main-p .ade-side.ade-panel{order:0;width:auto;margin:8px 0 0}.ade-main-p .ade-stage{margin-left:0}}
