@@ -556,6 +556,7 @@ html:not(.cv-perf-off) .nf-media,html:not(.cv-perf-off) .nf-body{contain:layout 
 .cv-tiny .nf,.cv-tiny .nf *{border-radius:0!important}
 /* Ad layout card, "Edit ad" (AdEditor.tsx): the app's large sheet (.wfm, maskSheet.css) with the ad, its parts and the snap guides */
 .ad-seg button.ed::after{content:"";display:inline-block;width:5px;height:5px;margin-left:5px;border-radius:50%;background:var(--accent,#FF7A1A);vertical-align:middle}
+.wfm.ade{width:min(1320px,100%)}
 .wfm.ade:focus,.wfm.ade:focus-visible{outline:none;box-shadow:0 0 0 1px rgba(255,255,255,.08),0 30px 80px rgba(0,0,0,.6)}
 .ade-bar{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;padding:0 16px 10px}
 .ade-bar .ad-seg{align-self:center}
@@ -663,3 +664,22 @@ html body .apop.ade-pop{z-index:1210}
 .ade-panel .ad-brand{width:100%;box-sizing:border-box;border:1px solid var(--border,rgba(255,255,255,.05));background:var(--fill,rgba(255,255,255,.05))}
 @media (max-width:760px){.ade-main-p{flex-direction:column}.ade-main-p .ade-side.ade-panel{order:0;width:auto;margin:8px 0 0;max-height:46%}.ade-main-p .ade-stage{margin-left:0}
   .adp{flex-direction:column}.adp-rail{width:auto;flex-direction:row;border-right:0;border-bottom:1px solid var(--border,rgba(255,255,255,.05));overflow-x:auto}.adp-tab{flex:1 0 56px}.adp-pane{width:auto;flex:1}}
+/* the toolbar by the selected part (AdEditor, PartStyle bar): the panel's controls, smaller, each with a caption */
+.wfm .adt{position:absolute;z-index:3;display:flex;flex-wrap:wrap;align-items:flex-start;gap:4px 10px;max-width:calc(100% - 16px);box-sizing:border-box;padding:6px 10px 7px;border-radius:12px;
+  background:rgba(24,25,28,.96);box-shadow:0 0 0 1px rgba(255,255,255,.08),0 10px 30px rgba(0,0,0,.5);backdrop-filter:blur(8px);cursor:default}
+.adt-g{display:flex;flex-direction:column;gap:3px;min-width:0}
+.adt-g+.adt-g{padding-left:10px;border-left:1px solid var(--border,rgba(255,255,255,.07))}
+.adt-l{padding-left:3px;font:600 9.5px/12px var(--font-sans,Inter,sans-serif);letter-spacing:.04em;text-transform:uppercase;color:var(--text-3,rgba(255,255,255,.5));white-space:nowrap}
+.wfm .adt.bp-host .bp-seg{margin:0;padding:2px;border-radius:9px}
+.wfm .adt.bp-host .bp-opt{min-height:26px;padding:3px 8px;border-radius:7px}
+.wfm .adt.bp-host .bp-opt-l{font-size:11.5px;line-height:15px}
+.wfm .adt.bp-host .bp-opt.on::after{bottom:1px;width:10px;margin-left:-5px}
+.adt .ade-sw{flex-wrap:nowrap;padding:1px 0}
+.adt .ade-sw{gap:2px}
+.adt .ade-sw button{height:26px;min-width:21px}
+.adt .ade-sw button i{width:16px;height:16px}
+.adt .ade-sw .ade-sw-auto{padding:0 7px 0 3px}
+.adt .ade-sw .ade-sw-auto i{width:16px;height:16px}
+.adt-aa{font-weight:400}.adt-aa.b{font-weight:800}
+.wfm .adt.bp-host .bp-opt-l svg{display:block}
+.adt-note{max-width:150px;font:400 10.5px/13px var(--font-sans,Inter,sans-serif);color:var(--text-2,#898A8B)}

@@ -177,6 +177,6 @@ function Panel({ ad, x }: { ad: AdCard; x: AdPanelCtx }) {
 export function AdCardEditor({ ad }: { ad: AdCard }) {
   if (!ad.editing || !ad.pic || !ad.art) return null;
   return <AdEditor sizes={ad.sizes} size={ad.size} onSize={(s) => ad.patch({ size: s.shape })} pic={ad.pic} art={ad.art} text={{ headline: ad.view.headline, offer: ad.p.offer, button: ad.p.button }} preset={ad.preset}
-    style={ad.style} edit={ad.edit} onEdit={(e) => ad.setEdit(ad.size.shape, e)} showSafe={ad.showSafe} platforms={ad.picked}
+    style={ad.style} onStyle={ad.setStyle} edit={ad.edit} onEdit={(e) => ad.setEdit(ad.size.shape, e)} showSafe={ad.showSafe} platforms={ad.picked}
     editedSizes={ad.sizes.filter((s) => isEdited(ad.edits[s.shape])).map((s) => s.shape)} onClose={() => ad.setEditing(false)} panel={(x) => <Panel ad={ad} x={x} />} />;
 }
