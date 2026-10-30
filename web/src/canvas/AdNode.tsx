@@ -23,10 +23,10 @@ import { uploadMedia } from '../shared/batch1';
 import { NodeFrame } from './NodeFrame';
 import { arrowsInto, cardInputs, linkShapes } from './graph';
 import { freeSpot } from './placement';
-import { NODE_DEFS } from './nodeTypes';
+import { GROUP_TYPE, NODE_DEFS, nodeDefOf } from './nodeTypes';
 import { createAuxNode, type AdNodeProps } from './auxShapes';
-import { AD_LIMITS, AD_PRESETS, adVariants, asPreset, type AdPreset } from './adLayout';
-import { AD_PLATFORMS, AD_PLATFORM_LIST, DEFAULT_PLATFORMS, adSizesFor, asPlatforms, asShape, hasSafe, type AdPlatform } from './adPlatforms';
+import { AD_LIMITS, AD_PRESETS, adPackFiles, adVariants, asPreset, asStyle, type AdPreset, type AdStyle } from './adLayout';
+import { AD_PLATFORMS, AD_PLATFORM_LIST, DEFAULT_PLATFORMS, adExportPlan, adSizesFor, asPlatforms, asShape, hasSafe, type AdPlatform } from './adPlatforms';
 import { asEdits, isEdited, type AdEdit, type AdEdits } from './adEdit';
 import { AdEditor } from './AdEditor';
 import { drawAd, drawSafeZones, exportAdPack, loadAdArt, loadAdPicture, type AdArt } from './adDraw';
@@ -47,6 +47,7 @@ export function AdView({ shape, Icon }: { shape: { id: any; type: string; props:
   const sizes = adSizesFor(platforms.length ? platforms : kept); const size = sizes.find((s) => s.shape === asShape(p.size)) ?? sizes[0];
   const preset = asPreset(p.layout); const showSafe = p.safeZones !== false;
   /* "Edit ad": each size's own edits; a size with none keeps the automatic layout */
+  const style = useMemo(() => asStyle(p.style), [p.style]); const setStyle = (st: AdStyle) => patch({ style: asStyle(st) as Record<string, unknown> });
   const edits = useMemo(() => asEdits(p.edits), [p.edits]); const edit = edits[size.shape]; const [editing, setEditing] = useState(false);
   const setEdit = (shape: string, e: AdEdit | null) => { const next: AdEdits = { ...edits }; const one: AdEdit = { ...e };
     if (!one.at || !Object.keys(one.at).length) delete one.at; if (!one.hide?.length) delete one.hide;
@@ -61,6 +62,14 @@ export function AdView({ shape, Icon }: { shape: { id: any; type: string; props:
   const filled = headlines.reduce((n, h, i) => (h.trim() ? i + 1 : n), 0); const [more, setMore] = useState(1); const shown = Math.max(1, more, filled);
   const variants = adVariants(headlines); const view = variants.find((v) => v.n === p.pick) ?? variants[0];
 
+  /* cards made when the card was 700 px tall grow to today's height the first time they're shown, unless that would cover another card */
+  useEffect(() => {
+    const H0 = NODE_DEFS.ad.defaultH; const me = editor.getShapePageBounds(shape.id); if (!me || p.h > 700) return;
+    const grown = { minX: me.minX, maxX: me.maxX, minY: me.minY, maxY: me.minY + H0 };
+    const hits = editor.getCurrentPageShapes().some((s) => { if (s.id === shape.id || s.type === GROUP_TYPE || !nodeDefOf(s.type)) return false; const b = editor.getShapePageBounds(s.id);
+      return !!b && b.minX < grown.maxX && b.maxX > grown.minX && b.minY < grown.maxY && b.maxY > grown.minY; });
+    if (!hits) patch({ h: H0 });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [art, setArt] = useState<AdArt | null>(null); const [pic, setPic] = useState<HTMLImageElement | null>(null); const [picErr, setPicErr] = useState(false); const [busy, setBusy] = useState(false);
   useEffect(() => { let on = true; loadAdArt(kit).then((a) => on && setArt(a)).catch(() => on && setArt(null)); return () => { on = false; }; }, [kit?.id, kit?.updatedAt, kit?.logo?.url, kit?.fonts.heading, kit?.fonts.body]);
   useEffect(() => { let on = true; setPicErr(false); if (!picUrl) { setPic(null); return; } loadAdPicture(picUrl).then((i) => on && setPic(i)).catch(() => { if (on) { setPic(null); setPicErr(true); } }); return () => { on = false; }; }, [picUrl]);
@@ -69,9 +78,9 @@ export function AdView({ shape, Icon }: { shape: { id: any; type: string; props:
   const [c, setCanvas] = useState<HTMLCanvasElement | null>(null); const { w: W, h: H, safe } = size;
   useEffect(() => {
     if (!c || !art || !pic) return; const k = 0.5; c.width = W * k; c.height = H * k;
-    const g = c.getContext('2d'); if (!g) return; g.setTransform(k, 0, 0, k, 0, 0); drawAd(g, W, H, pic, art, { headline: view.headline, offer: p.offer, button: p.button }, { safe, preset, edit });
+    const g = c.getContext('2d'); if (!g) return; g.setTransform(k, 0, 0, k, 0, 0); drawAd(g, W, H, pic, art, { headline: view.headline, offer: p.offer, button: p.button }, { safe, preset, edit, style });
     if (showSafe) drawSafeZones(g, W, H, safe);
-  }, [c, art, pic, W, H, safe, preset, showSafe, view.headline, p.offer, p.button, edit]);
+  }, [c, art, pic, W, H, safe, preset, showSafe, view.headline, p.offer, p.button, edit, style]);
 
   /* "Choose a picture": the app's media picker; the pick goes on the board as an upload card left of this one, wired in (replacing the old arrow) */
   const [placing, setPlacing] = useState(false);
@@ -89,14 +98,15 @@ export function AdView({ shape, Icon }: { shape: { id: any; type: string; props:
 
   const exportPack = async () => {
     if (!art || !pic || busy) return; setBusy(true);
-    try { const n = await exportAdPack(pic, art, headlines, p.offer, p.button, sizes, preset, edits); toast(`Saved ${n} pictures in one zip`); }
+    try { const n = await exportAdPack({ pic, art, headlines, offer: p.offer, button: p.button, platforms: picked, sizes, preset, edits, style }); toast(`Saved ${n} pictures and the post text in one zip`); }
     catch (e) { toast((e as Error).message || 'Couldn’t make the pack.', 'error'); } finally { setBusy(false); }
   };
   const setHeadline = (i: number, v: string) => { const h = [...headlines]; h[i] = v; patch({ headlines: h }); };
   /* remove an extra headline: the ones below move up, and the preview keeps showing the same words */
   const dropHeadline = (i: number) => { const h = headlines.filter((_, j) => j !== i); h.push(''); const n = p.pick === i + 1 ? 0 : p.pick > i + 1 ? p.pick - 1 : p.pick;
     patch({ headlines: h, pick: n }); setMore(shown - 1); };
-  const count = variants.length * sizes.length;
+  /* the pack: a folder per platform, its own sizes × every headline */
+  const picked = platforms.length ? platforms : kept; const count = adPackFiles(kit?.name ?? 'ad', picked, headlines).length; const folders = adExportPlan(picked).length;
   /* a double-click on the preview opens "Edit ad": the second press is caught here, before the board reads it as a double-click on
    *  empty board (which starts a text box); the first still selects and drags the card */
   const lastDown = useRef(0);
@@ -106,7 +116,7 @@ export function AdView({ shape, Icon }: { shape: { id: any; type: string; props:
     label="Ad layout"
     footer={<><span className="nf-model"><b>Free · made in your browser</b></span>
       <button type="button" className="ad-export" data-card-control data-testid="ad-export" disabled={!pic || !art || busy} onClick={() => void exportPack()}
-        {...tip(pic ? `Saves ${count} pictures (${variants.length} headline${variants.length === 1 ? '' : 's'} × ${sizes.length} size${sizes.length === 1 ? '' : 's'}) in one zip` : 'Connect a picture first')}>{busy ? 'Saving…' : 'Export pack'}</button></>}>
+        {...tip(pic ? `Saves ${count} pictures in one zip: a folder for each platform (${folders}) with its sizes, ${variants.length === 1 ? 'your headline' : `${variants.length} headlines`} and text to paste` : 'Connect a picture first')}>{busy ? 'Saving…' : 'Export pack'}</button></>}>
     <div className="ad-body">
       <div className="ad-where" data-card-control {...stop}>
         <span className="ad-label" id={`ad-where-${shape.id}`}>Where will it run?</span>
@@ -146,7 +156,7 @@ export function AdView({ shape, Icon }: { shape: { id: any; type: string; props:
       </div>
       {art && art.missing.length > 0 && <p className="ad-note" data-testid="ad-font-note">This browser doesn’t have {art.missing.map((m) => `“${m}”`).join(' or ')}, so the ad uses Manrope.</p>}
       {editing && pic && art && <AdEditor sizes={sizes} size={size} onSize={(s) => patch({ size: s.shape })} pic={pic} art={art} text={{ headline: view.headline, offer: p.offer, button: p.button }} preset={preset}
-        edit={edit} onEdit={(e) => setEdit(size.shape, e)} showSafe={showSafe} onSafe={(on) => patch({ safeZones: on })} platforms={platforms.length ? platforms : kept} editedSizes={sizes.filter((s) => isEdited(edits[s.shape])).map((s) => s.shape)} onClose={() => setEditing(false)} />}
+        style={style} onStyle={setStyle} edit={edit} onEdit={(e) => setEdit(size.shape, e)} showSafe={showSafe} onSafe={(on) => patch({ safeZones: on })} platforms={picked} editedSizes={sizes.filter((s) => isEdited(edits[s.shape])).map((s) => s.shape)} onClose={() => setEditing(false)} />}
     </div>
   </NodeFrame>;
 }

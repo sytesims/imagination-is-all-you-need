@@ -6,8 +6,8 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { crc32 as nodeCrc } from 'node:zlib';
-import { AD_PRESETS, coverCrop, fitLines, wrapWords, layoutAd, inkOn, buttonColorOf, adVariants, adFileName, scrimAlpha, type AdMeasure } from '../../web/src/canvas/adLayout.ts';
-import { AD_PLATFORMS, AD_PLATFORM_LIST, AD_SHAPES, adSizesFor, asPlatforms, asShape, type AdPlatform } from '../../web/src/canvas/adPlatforms.ts';
+import { AD_PRESETS, coverCrop, fitLines, wrapWords, layoutAd, inkOn, buttonColorOf, adVariants, adFileName, scrimAlpha, asStyle, adColors, contrastOf, panelColorOf, adPackFiles, postCopy, trimWords, type AdMeasure, type AdStyle } from '../../web/src/canvas/adLayout.ts';
+import { AD_PLATFORMS, AD_PLATFORM_LIST, AD_SHAPES, adExportPlan, adSizesFor, asPlatforms, asShape, type AdPlatform } from '../../web/src/canvas/adPlatforms.ts';
 import { asEdits, clampBox, clearArea, guidesFor, isEdited, moveFrame, picCrop, placeOf, snapBox, snapTo, type AdEdit } from '../../web/src/canvas/adEdit.ts';
 import { BUILTIN_KIT } from '../src/shared/brandKit.ts';
 import { crc32, zipStore } from '../src/shared/zipStore.ts';
@@ -170,6 +170,68 @@ assert.deepEqual(adVariants(['', ' ', '']), [{ n: 0, headline: '' }], 'no headli
 assert.equal(adFileName('Café Lumière', 1, '4x5'), 'cafe-lumiere-headline1-4x5.png');
 assert.equal(adFileName('', 0, AD_SHAPES['191x1'].tag), 'ad-1.91x1.png');
 ok('pack: variants and clear file names');
+
+// ---- styles: the same on every size, inside the clear area, defaults = the look from before styles ----
+assert.deepEqual(asStyle(undefined), {}, 'an old card: no style'); assert.deepEqual(asStyle({ backdrop: 'nope', buttonColor: 'red', textColor: '#abc', textAlign: 'right' }), { textColor: '#AABBCC', textAlign: 'right' }, 'odd values are dropped');
+for (const size of adSizesFor(AD_PLATFORM_LIST)) for (const { id } of AD_PRESETS) for (const edit of [null, { at: { headline: { x: 0.9, y: 0.95, w: 0.9, s: 0.1 }, button: { x: -1, y: 2 } } }]) {
+  const { w: W, h: H, safe } = size; const base = layoutAd(W, H, longHead, { w: 400, h: 100 }, measure, { safe, preset: id, edit });
+  assert.deepEqual(layoutAd(W, H, longHead, { w: 400, h: 100 }, measure, { safe, preset: id, edit, style: {} }), base, `${size.label} ${id}: an empty style draws as before`);
+  for (const textAlign of ['left', 'center', 'right'] as const) for (const backdrop of ['none', 'shadow', 'gradient', 'panel'] as const) for (const buttonShape of ['pill', 'rounded', 'square', 'outline'] as const) {
+    const style: AdStyle = { textAlign, backdrop, buttonShape }; const l = layoutAd(W, H, longHead, { w: 400, h: 100 }, measure, { safe, preset: id, edit, style }); const at = `${size.label} ${id} ${textAlign} ${backdrop} ${buttonShape}`;
+    for (const b of Object.values(l.boxes)) assert.ok(inside(b!, l.clear), `${at}: parts in the clear area`);
+    if (!edit) for (const b of Object.values(l.boxes)) assert.ok(inside(b!, l.area), `${at}: parts inside the margins`);
+    if (l.backdrop) { assert.ok(inside(l.backdrop, l.clear), `${at}: the panel stays out of the safe zones`); for (const p of ['headline', 'offer', 'button'] as const) assert.ok(inside(l.boxes[p]!, l.backdrop), `${at}: the panel is behind every word`); }
+    assert.equal(!!l.backdrop, backdrop === 'panel' && id !== 'split', `${at}: a panel only when picked`); assert.equal(!!l.scrim, backdrop === 'gradient' && id !== 'split', `${at}: the gradient only when picked`);
+    assert.equal(l.button!.r, buttonShape === 'rounded' ? l.button!.h * 0.24 : buttonShape === 'square' ? 0 : l.button!.h / 2, `${at}: button corners`);
+    if (!edit && textAlign === 'right') assert.ok(Math.abs(l.boxes.button!.x + l.boxes.button!.w - (l.col.x + l.col.w)) < 1e-6 && Math.abs(l.logo!.x + l.logo!.w - (l.col.x + l.col.w)) < 1e-6, `${at}: right: lined up on the right edge`);
+  }
+}
+ok('styles: every alignment, backdrop and button shape in every size stays in the clear area; an empty style changes nothing');
+/* colours: the defaults are the constants drawn before styles; picked colours stay readable */
+const kitBg = { ...BUILTIN_KIT, colors: [...BUILTIN_KIT.colors.filter((c) => c.role !== 'background'), { hex: '#0B1F3A', name: '', role: 'background' as const }] };
+assert.deepEqual(adColors(BUILTIN_KIT, {}, null), { surface: null, ink: '#FFFFFF', offer: 'rgba(255,255,255,0.88)', shadow: 'rgba(0,0,0,0.35)', shadowBlur: 0.25, scrim: 'dark', button: { fill: buttonColorOf(BUILTIN_KIT), edge: null, text: inkOn(buttonColorOf(BUILTIN_KIT)) } }, 'defaults: as before');
+assert.equal(adColors(kitBg, {}, 'split').surface, '#0B1F3A', 'split: the brand background, as before'); assert.equal(adColors(null, {}, 'split').surface, '#121316');
+assert.equal(adColors(null, { buttonColor: '#121316' }, 'split').button.edge, '#FFFFFF', 'a button the colour of its panel gets an edge');
+const picks = ['#FFFFFF', '#000000', '#FF7A1A', '#1A73E8', '#FFE14D', '#0B1F3A', '#7F7F7F', ...BUILTIN_KIT.colors.map((c) => c.hex)];
+for (const textColor of picks) for (const kit of [BUILTIN_KIT, kitBg, null]) {
+  const c = adColors(kit, { textColor, backdrop: 'panel' }, 'panel'); assert.ok(contrastOf(c.ink, c.surface!) >= 3, `${textColor}: readable on its panel (${c.surface})`);
+  assert.equal(c.surface, panelColorOf(kit, textColor));
+  const s2 = adColors(kit, { textColor }, null); assert.equal(s2.scrim, inkOn(textColor) === '#14151A' ? 'dark' : 'light', `${textColor}: the gradient is the opposite of the words`);
+}
+for (const buttonColor of picks) { const c = adColors(BUILTIN_KIT, { buttonColor }, null); assert.ok(contrastOf(c.button.text, c.button.fill!) >= 3, `${buttonColor}: the button's words read`);
+  const o = adColors(kitBg, { buttonColor, buttonShape: 'outline' }, 'panel'); assert.equal(o.button.fill, null); assert.ok(contrastOf(o.button.edge!, o.surface!) >= 3, `${buttonColor}: an outline reads on its panel`); }
+ok('style colours: defaults as before, picked text and button colours stay readable');
+
+// ---- Export pack by platform: one folder each, its own sizes, a shared size in both ----
+const plan = (ps: AdPlatform[]) => adExportPlan(ps).map((f) => `${f.folder}: ${f.sizes.map((s) => `${s.tag} ${s.w}x${s.h}`).join(', ')}`);
+assert.deepEqual(plan(['meta']), ['instagram-facebook: 1x1 1080x1080, 4x5 1080x1350, 9x16 1080x1920']);
+assert.deepEqual(plan(['youtube', 'x']), ['x: 1x1 1080x1080, 16x9 1920x1080', 'youtube: 9x16 1080x1920, 16x9 1280x720'], 'in the list order, each at its own size');
+assert.deepEqual(plan(AD_PLATFORM_LIST).map((s) => s.split(':')[0]), ['instagram-facebook', 'tiktok', 'x', 'pinterest', 'linkedin', 'youtube'], 'all six: six folders');
+assert.equal(new Set(AD_PLATFORM_LIST.map((p) => AD_PLATFORMS[p].folder)).size, 6); assert.deepEqual(adExportPlan([]), []);
+const pack = adPackFiles('Café Lumière', ['meta', 'tiktok', 'linkedin'], ['Fresh coffee', '', 'Hot now']);
+assert.equal(pack.length, (3 + 1 + 2) * 2, 'sizes × headlines, per platform'); assert.equal(new Set(pack.map((f) => f.path)).size, pack.length, 'no clashing names');
+assert.ok(pack.some((f) => f.path === 'instagram-facebook/cafe-lumiere-headline1-9x16.png') && pack.some((f) => f.path === 'tiktok/cafe-lumiere-headline3-9x16.png'), 'a size two platforms share is in both folders');
+assert.ok(pack.some((f) => f.path === 'linkedin/cafe-lumiere-headline1-1x1.png' && f.w === 1200) && pack.some((f) => f.path === 'instagram-facebook/cafe-lumiere-headline1-1x1.png' && f.w === 1080), 'each folder at its own pixel size');
+for (const f of adExportPlan(AD_PLATFORM_LIST)) for (const s of f.sizes) assert.ok(adSizesFor(AD_PLATFORM_LIST).some((t) => t.shape === s.shape), `${f.folder} ${s.tag}: drawn from a size tab`);
+ok('export: one folder per platform, its own sizes, shared sizes in both');
+
+// ---- post copy: each platform's limits, whole words, a link placeholder ----
+assert.equal(trimWords('Fresh coffee every morning', 100), 'Fresh coffee every morning'); assert.equal(trimWords('Fresh coffee every morning', 16), 'Fresh coffee…');
+assert.equal(trimWords('Fresh coffee, every morning', 15), 'Fresh coffee…', 'no comma before the …'); assert.equal(trimWords('Supercalifragilistic', 8), 'Superca…', 'one long word is cut');
+const words = ['Fresh roasted coffee, delivered to your door every single morning before you wake up, from our family farm', 'Lots of words '.repeat(40), 'Hi'];
+for (const p of AD_PLATFORM_LIST) for (const h of words) {
+  const txt = postCopy(p, [h, 'Hot now'], 'From $4 · first cup free with every order this week only', 'Order now'); const lines = txt.split('\n');
+  for (const f of AD_PLATFORMS[p].post) for (let i = 0; i < lines.length; i++) if (lines[i].startsWith(`${f.label} (`)) {
+    const v = lines[i + 1]; assert.ok(Array.from(v).length <= f.max - (f.keep ?? 0), `${p} ${f.label}: within ${f.max} (${Array.from(v).length})`);
+    const src = `${h} Hot now From $4 · first cup free with every order this week only. Order now.`;
+    for (const w of v.replace(/…$/, '').split(' ')) assert.ok(src.includes(w.replace(/[.]$/, '')), `${p} ${f.label}: whole words only ("${w}")`);
+  }
+  assert.ok(lines.includes('Link: [your link]') && !/https?:/.test(txt), `${p}: a link placeholder, never a made-up link`); assert.ok(lines.includes('Call to action: Order now'));
+  assert.ok(txt.includes('Headline 1') && txt.includes('Headline 2'), `${p}: a block per headline`);
+}
+assert.ok(postCopy('meta', ['Fresh coffee'], 'From $4', 'Order now').includes('Primary text (up to 125 characters):\nFresh coffee. From $4. Order now.\n'));
+assert.ok(postCopy('x', [''], '', '').includes('Link: [your link]'), 'an empty card still gives a file');
+ok('post copy: within every platform limit, whole words, link placeholder');
 
 // ---- the shared zip writer: crc matches node, the archive opens ----
 const bytes = new TextEncoder().encode('123456789'); assert.equal(crc32(bytes), 0xcbf43926); assert.equal(crc32(bytes), nodeCrc(bytes) >>> 0);

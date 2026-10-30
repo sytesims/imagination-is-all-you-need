@@ -5,14 +5,17 @@
  * clear area. Drag the picture itself (where no part is) to frame it, and zoom it with the slider or the wheel / trackpad. Arrow keys
  * nudge (Shift: 10), Delete takes the logo, offer or button off this size ("Show …" brings it back). Edits are saved as they happen,
  * per size (adEdit.ts); "Reset layout" puts this size back to automatic. Esc or Done closes.
+ *
+ * The side panel styles the picked part, the same on every size (adLayout.AdStyle, saved on the card): the logo's plate and colour, the
+ * words' alignment, weight, colour and what sits behind them, the button's shape and colour. Colours are the brand's, white or black.
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { tip } from '../shared/Tooltip';
-import { BarPopover, PopRow, PopSection } from '../shared/BarPop';
+import { BarPopover, PopNote, PopRow, PopSection, Segmented } from '../shared/BarPop';
 import { ChevronDownIcon, CloseIcon, PlusIcon } from '../ui/Icons';
 import { drawAd, drawSafeZones, type AdArt } from './adDraw';
-import type { AdLayout, AdPreset, AdText, Box } from './adLayout';
+import { buttonColorOf, type AdLayout, type AdPreset, type AdStyle, type AdText, type Box } from './adLayout';
 import { hasSafe, zonesFor, type AdPlatform, type AdSizeOption } from './adPlatforms';
 import { HIDEABLE, PART_NAME, PIC_ZOOM, clampBox, guidesFor, inBox, isEdited, moveFrame, placeOf, snapBox, snapTo, type AdEdit, type AdFrame, type AdPart } from './adEdit';
 
@@ -22,8 +25,9 @@ const RESIZABLE: AdPart[] = ['logo', 'headline', 'button'];
 /** Topmost first (the order they're drawn, reversed). */
 const HIT_ORDER: AdPart[] = ['button', 'offer', 'logo', 'headline'];
 
-export function AdEditor({ sizes, size, onSize, pic, art, text, preset, edit, onEdit, showSafe, onSafe, platforms, editedSizes, onClose }: {
+export function AdEditor({ sizes, size, onSize, pic, art, text, preset, style, onStyle, edit, onEdit, showSafe, onSafe, platforms, editedSizes, onClose }: {
   sizes: AdSizeOption[]; size: AdSizeOption; onSize: (s: AdSizeOption) => void; pic: HTMLImageElement; art: AdArt; text: AdText; preset: AdPreset;
+  /** the card's style, on every size */ style: AdStyle; onStyle: (s: AdStyle) => void;
   /** this size's edits */ edit: AdEdit | undefined; onEdit: (e: AdEdit | null) => void; showSafe: boolean; onSafe: (on: boolean) => void; platforms: AdPlatform[]; /** sizes with their own layout (a dot on the tab) */ editedSizes: string[]; onClose: () => void;
 }) {
   const { w: W, h: H } = size; const e = edit ?? {}; const hidden = HIDEABLE.filter((p) => e.hide?.includes(p));
@@ -41,9 +45,9 @@ export function AdEditor({ sizes, size, onSize, pic, art, text, preset, edit, on
   useEffect(() => {
     if (!c || k <= 0) return; const dpr = Math.min(2, window.devicePixelRatio || 1); c.width = Math.round(W * k * dpr); c.height = Math.round(H * k * dpr);
     const g = c.getContext('2d'); if (!g) return; g.setTransform(k * dpr, 0, 0, k * dpr, 0, 0);
-    setL(drawAd(g, W, H, pic, art, text, { safe: size.safe, preset, edit }));
+    setL(drawAd(g, W, H, pic, art, text, { safe: size.safe, preset, edit, style }));
     if (showSafe) drawSafeZones(g, W, H, zoneSafe);
-  }, [c, k, W, H, pic, art, text.headline, text.offer, text.button, size.safe, preset, edit, showSafe, zoneSafe]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [c, k, W, H, pic, art, text.headline, text.offer, text.button, size.safe, preset, edit, showSafe, zoneSafe, style]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ---- saving: every change goes straight to the card */
   const setPlace = (part: AdPart, b: Box, px?: number) => onEdit({ ...e, at: { ...e.at, [part]: placeOf(b, W, H, part === 'headline' || part === 'offer' ? px : undefined) } });
@@ -92,7 +96,9 @@ export function AdEditor({ sizes, size, onSize, pic, art, text, preset, edit, on
   const keyRef = useRef<(ev: KeyboardEvent) => void>(() => undefined);
   keyRef.current = (ev) => {
     const tg = ev.target as HTMLElement | null; const mine = !!tg && (tg === document.body || !!sheet.current?.contains(tg)); if (!mine || zonesOpen) return;
-    ev.stopPropagation(); if (tg && /^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName)) { if (ev.key === 'Escape') { ev.preventDefault(); onClose(); } return; }
+    /* in the style panel, keys only press its buttons (Enter / Space) and Esc closes: arrows never nudge a part */
+    ev.stopPropagation(); const side = !!tg?.closest('.ade-side');
+    if (tg && (/^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName) || side)) { if (ev.key === 'Escape') { ev.preventDefault(); if (side && sel) { setSel(null); sheet.current?.focus({ preventScroll: true }); } else onClose(); } return; }
     if (ev.key === 'Escape') { ev.preventDefault(); if (sel) setSel(null); else onClose(); return; }
     if (!sel || !l?.boxes[sel]) return;
     const step = (ev.shiftKey ? 10 : 1) / k; const n: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
@@ -127,6 +133,7 @@ export function AdEditor({ sizes, size, onSize, pic, art, text, preset, edit, on
             </div></PopSection>
           </BarPopover></>}
       </div>
+      <div className="ade-main">
       <div ref={stage} className="wfm-stage ade-stage">
         <div className="ade-frame" style={{ width: W * k, height: H * k, cursor }} data-testid="ade-frame" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onPointerLeave={() => !drag.current && setHover(null)}>
           <canvas ref={setCanvas} className="ade-cv" style={{ width: W * k, height: H * k }} aria-label={`Your ad, ${size.label}`} />
@@ -136,6 +143,8 @@ export function AdEditor({ sizes, size, onSize, pic, art, text, preset, edit, on
           {guide?.x != null && <i className="ade-guide v" style={{ left: guide.x * k }} aria-hidden />}
           {guide?.y != null && <i className="ade-guide h" style={{ top: guide.y * k }} aria-hidden />}
         </div>
+      </div>
+      <StylePanel part={sel} parts={l ? (Object.keys(l.boxes) as AdPart[]) : []} onPick={setSel} style={style} onStyle={onStyle} art={art} />
       </div>
       <footer className="wfm-tools ade-tools">
         <label className="wfm-size"><span>Picture zoom</span><input type="range" min={PIC_ZOOM.min} max={PIC_ZOOM.max} step={0.01} value={zoom} onChange={(ev) => zoomTo(+ev.target.value)} aria-label="Picture zoom" data-testid="ade-zoom" /><b>{Math.round(zoom * 100)}%</b></label>
@@ -147,4 +156,52 @@ export function AdEditor({ sizes, size, onSize, pic, art, text, preset, edit, on
       </footer>
     </div>
   </div>, document.body);
+}
+
+/** The brand's colours (no repeats), then white and black. */
+function swatchesOf(art: AdArt): string[] {
+  const out: string[] = []; for (const h of [...(art.kit?.colors ?? []).map((c) => c.hex), '#FFFFFF', '#000000']) { const x = h.toUpperCase(); if (!out.includes(x)) out.push(x); } return out;
+}
+/** A row of colour dots (a radio group); the first, "Auto", clears the pick. */
+function Swatches({ label, value, colors, auto, autoHex, onChange, testId }: { label: string; value: string | undefined; colors: string[]; auto: string; autoHex?: string; onChange: (hex: string | undefined) => void; testId: string }) {
+  return <div className="ade-sw" role="radiogroup" aria-label={label} data-testid={testId}>
+    <button type="button" role="radio" aria-checked={!value} className={`ade-sw-auto${!value ? ' on' : ''}`} {...tip(auto)} onClick={() => onChange(undefined)}>
+      <i style={autoHex ? { background: autoHex } : undefined} aria-hidden />Auto</button>
+    {colors.map((h) => <button key={h} type="button" role="radio" aria-checked={value === h} aria-label={h} className={value === h ? 'on' : ''} {...tip(h)} onClick={() => onChange(h)}><i style={{ background: h }} aria-hidden /></button>)}
+  </div>;
+}
+const PART_STYLE: { part: AdPart; label: string }[] = [{ part: 'logo', label: 'Logo' }, { part: 'headline', label: 'Words' }, { part: 'button', label: 'Button' }];
+/** The style of the picked part, in the bar popovers' controls (BarPop: sections, segmented, here on the sheet as a `.bp-host`). */
+function StylePanel({ part, parts, onPick, style, onStyle, art }: { part: AdPart | null; parts: AdPart[]; onPick: (p: AdPart) => void; style: AdStyle; onStyle: (s: AdStyle) => void; art: AdArt }) {
+  const set = (p: Partial<AdStyle>) => onStyle({ ...style, ...p }); const colors = swatchesOf(art);
+  const words = part === 'headline' || part === 'offer';
+  return <aside className="ade-side bp-host" aria-label="Style" data-testid="ade-style">
+    {!part && <PopSection label="Style">
+      <PopNote>Click the logo, the words or the button to change how they look. The style is the same on every size.</PopNote>
+      <div className="ade-side-picks">{PART_STYLE.filter((x) => parts.includes(x.part)).map((x) => <button key={x.part} type="button" className="ad-add" data-testid={`ade-style-${x.part}`} onClick={() => onPick(x.part)}>{x.label}</button>)}</div>
+    </PopSection>}
+    {part === 'logo' && <>
+      <PopSection label="Plate behind the logo"><Segmented label="Plate behind the logo" value={style.logoPlate ?? 'auto'} onChange={(v) => set({ logoPlate: v })} testId="ade-logo-plate"
+        options={[{ value: 'auto', label: 'Auto', title: 'Only when the logo would get lost on the picture' }, { value: 'on', label: 'On' }, { value: 'off', label: 'Off' }]} /></PopSection>
+      <PopSection label="Logo colour"><Segmented label="Logo colour" value={style.logoTone ?? 'original'} onChange={(v) => set({ logoTone: v })} testId="ade-logo-tone"
+        options={[{ value: 'original', label: 'As is' }, { value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }]} />
+        <PopNote>Light and Dark work best with a see-through logo (PNG or SVG); a logo on a solid background turns into a block.</PopNote></PopSection>
+    </>}
+    {words && <>
+      <PopSection label="Align"><Segmented label="Align" value={style.textAlign ?? 'auto'} onChange={(v) => set({ textAlign: v === 'auto' ? undefined : v })} testId="ade-text-align"
+        options={[{ value: 'auto', label: 'Auto', title: 'As the layout lines them up' }, { value: 'left', label: 'Left' }, { value: 'center', label: 'Centre' }, { value: 'right', label: 'Right' }]} /></PopSection>
+      <PopSection label="Headline weight"><Segmented label="Headline weight" value={style.textWeight ?? 'bold'} onChange={(v) => set({ textWeight: v })} testId="ade-text-weight"
+        options={[{ value: 'regular', label: 'Regular' }, { value: 'bold', label: 'Bold' }]} /></PopSection>
+      <PopSection label="Colour"><Swatches label="Text colour" value={style.textColor} colors={colors} auto="White, or what reads on the panel" autoHex="#FFFFFF" onChange={(h) => set({ textColor: h })} testId="ade-text-color" /></PopSection>
+      <PopSection label="Behind the words"><Segmented label="Behind the words" cols={2} value={style.backdrop ?? 'gradient'} onChange={(v) => set({ backdrop: v })} testId="ade-backdrop"
+        options={[{ value: 'none', label: 'None' }, { value: 'shadow', label: 'Soft shadow' }, { value: 'gradient', label: 'Gradient' }, { value: 'panel', label: 'Solid panel' }]} />
+        {(style.backdrop === 'none' || style.backdrop === 'shadow') && <PopNote>With nothing solid behind them, pick a colour that stands out on your picture.</PopNote>}</PopSection>
+    </>}
+    {part === 'button' && <>
+      <PopSection label="Shape"><Segmented label="Button shape" cols={2} value={style.buttonShape ?? 'pill'} onChange={(v) => set({ buttonShape: v })} testId="ade-button-shape"
+        options={[{ value: 'pill', label: 'Pill' }, { value: 'rounded', label: 'Rounded' }, { value: 'square', label: 'Square' }, { value: 'outline', label: 'Outline' }]} /></PopSection>
+      <PopSection label="Colour"><Swatches label="Button colour" value={style.buttonColor} colors={colors} auto="The brand's main colour" autoHex={buttonColorOf(art.kit)} onChange={(h) => set({ buttonColor: h })} testId="ade-button-color" />
+        <PopNote>Its words turn white or black, whichever reads best.</PopNote></PopSection>
+    </>}
+  </aside>;
 }
