@@ -178,7 +178,7 @@ function StylePanel({ part, parts, onPick, style, onStyle, art }: { part: AdPart
   return <aside className="ade-side bp-host" aria-label="Style" data-testid="ade-style">
     {!part && <PopSection label="Style">
       <PopNote>Click the logo, the words or the button to change how they look. The style is the same on every size.</PopNote>
-      <div className="ade-side-picks">{PART_STYLE.filter((x) => parts.includes(x.part)).map((x) => <button key={x.part} type="button" className="ad-add" data-testid={`ade-style-${x.part}`} onClick={() => onPick(x.part)}>{x.label}</button>)}</div>
+      <div className="ade-side-picks">{PART_STYLE.filter((x) => parts.includes(x.part)).map((x) => <button key={x.part} type="button" className="ad-chip" data-testid={`ade-style-${x.part}`} onClick={() => onPick(x.part)}>{x.label}</button>)}</div>
     </PopSection>}
     {part === 'logo' && <>
       <PopSection label="Plate behind the logo"><Segmented label="Plate behind the logo" value={style.logoPlate ?? 'auto'} onChange={(v) => set({ logoPlate: v })} testId="ade-logo-plate"
@@ -201,7 +201,7 @@ function StylePanel({ part, parts, onPick, style, onStyle, art }: { part: AdPart
       <PopSection label="Shape"><Segmented label="Button shape" cols={2} value={style.buttonShape ?? 'pill'} onChange={(v) => set({ buttonShape: v })} testId="ade-button-shape"
         options={[{ value: 'pill', label: 'Pill' }, { value: 'rounded', label: 'Rounded' }, { value: 'square', label: 'Square' }, { value: 'outline', label: 'Outline' }]} /></PopSection>
       <PopSection label="Colour"><Swatches label="Button colour" value={style.buttonColor} colors={colors} auto="The brand's main colour" autoHex={buttonColorOf(art.kit)} onChange={(h) => set({ buttonColor: h })} testId="ade-button-color" />
-        <PopNote>Its words turn white or black, whichever reads best.</PopNote></PopSection>
+        <PopNote>{style.buttonShape === 'outline' ? 'An outline that wouldn’t show on the picture turns white or black.' : 'Its words turn white or black, whichever reads best.'}</PopNote></PopSection>
     </>}
   </aside>;
 }

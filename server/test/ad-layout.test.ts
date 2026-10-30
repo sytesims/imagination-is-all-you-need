@@ -245,11 +245,12 @@ assert.equal(logoToneFor(undefined, true), 'original');
 ok('logo colour: only a see-through logo is recoloured');
 
 // ---- the button on the picture: an outline that wouldn't read flips to white / near black; a fill that melts in gets an edge ----
-assert.deepEqual(buttonOn({ fill: null, edge: '#000000', text: '#000000' }, 0.05), { fill: null, edge: '#FFFFFF', text: '#FFFFFF' }, 'a black outline on a dark picture turns white');
-assert.deepEqual(buttonOn({ fill: null, edge: '#FFFFFF', text: '#FFFFFF' }, 0.9), { fill: null, edge: '#14151A', text: '#14151A' }, 'a white outline on a light picture turns dark');
-assert.deepEqual(buttonOn({ fill: null, edge: '#FF7A1A', text: '#FF7A1A' }, 0.05), { fill: null, edge: '#FF7A1A', text: '#FF7A1A' }, 'the brand colour stays where it reads');
-assert.equal(buttonOn({ fill: '#000000', edge: null, text: '#FFFFFF' }, 0.04).edge, '#FFFFFF', 'a black fill on a dark picture gets a light edge');
-assert.equal(buttonOn({ fill: '#FF7A1A', edge: null, text: '#14151A' }, 0.05).edge, null, 'a fill that stands out: no edge');
+assert.deepEqual(buttonOn({ fill: null, edge: '#000000', text: '#000000' }, '#0D0D0D'), { fill: null, edge: '#FFFFFF', text: '#FFFFFF' }, 'a black outline on a dark picture turns white');
+assert.deepEqual(buttonOn({ fill: null, edge: '#FFFFFF', text: '#FFFFFF' }, '#E6E6E6'), { fill: null, edge: '#14151A', text: '#14151A' }, 'a white outline on a light picture turns dark');
+assert.deepEqual(buttonOn({ fill: null, edge: '#FF7A1A', text: '#FF7A1A' }, '#0D0D0D'), { fill: null, edge: '#FF7A1A', text: '#FF7A1A' }, 'the brand colour stays where it reads');
+assert.equal(buttonOn({ fill: '#000000', edge: null, text: '#FFFFFF' }, '#0A0A0A').edge, '#FFFFFF', 'a black fill on a dark picture gets a light edge');
+assert.equal(buttonOn({ fill: '#FF7A1A', edge: null, text: '#14151A' }, '#0D0D0D').edge, null, 'a fill that stands out: no edge');
+assert.equal(buttonOn({ fill: '#FF7A1A', edge: null, text: '#14151A' }, '#F07020').edge, '#14151A', 'an orange button on an orange coat gets an edge');
 const same = { fill: '#FFFFFF', edge: null, text: '#14151A' }; assert.equal(buttonOn(same, null), same, 'unknown picture: as picked');
 ok('button on the picture: always readable');
 

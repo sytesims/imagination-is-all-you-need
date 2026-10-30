@@ -244,10 +244,10 @@ export function adColors(kit: BrandKit | null | undefined, style: AdStyle | null
   return { surface: sf, ink, offer, shadow, shadowBlur: bd === 'shadow' ? 0.3 : 0.25, scrim: light ? 'dark' : 'light', button };
 }
 
-/** The button on the picture (not on a panel): `behind` = the brightness (0..1) under it, as drawn. An outline that wouldn't read there
- *  turns white or near black; a fill that melts into it gets a thin edge in that colour. */
-export function buttonOn(bc: AdColors['button'], behind: number | null): AdColors['button'] {
-  if (behind == null) return bc; const v = Math.round(Math.max(0, Math.min(1, behind)) * 255).toString(16).padStart(2, '0'); const bg = `#${v}${v}${v}`; const c = inkOn(bg);
+/** The button on the picture (not on a panel): `behind` = the picture's average colour under it, as drawn (a hex). An outline that
+ *  wouldn't read there turns white or near black; a fill that melts into it (an orange button on an orange coat) gets a thin edge. */
+export function buttonOn(bc: AdColors['button'], behind: string | null): AdColors['button'] {
+  const bg = behind && normHex(behind); if (!bg) return bc; const c = inkOn(bg);
   if (!bc.fill) return contrastOf(bc.text, bg) >= 2.5 ? bc : { fill: null, edge: c, text: c };
   return bc.edge || contrastOf(bc.fill, bg) >= 1.4 ? bc : { ...bc, edge: c };
 }
