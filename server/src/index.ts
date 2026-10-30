@@ -92,7 +92,7 @@ import { listSoon } from './tools/registry.js';
 import { getTool, listTools, DEFAULT_TOOL_ID } from './tools/registry.js';
 import { config, DATA_DIR, WORKFLOWS_DIR } from './config.js';
 import { mcpInfo } from './mcpInfo.js';
-import { repoInfo } from './repoInfo.js';
+import { repoInfo, APP_VERSION } from './repoInfo.js';
 import { checkComfyReady } from './comfyClient.js';
 import './routing/jobRefs.js'; // prompt grammar: local graphs rewrite @image1 with the runners' model key (comfy/plans.ts setPlanModelKey)
 
@@ -363,6 +363,8 @@ app.get('/api/health', async () => {
   const comfy = config.backend === 'comfy' ? checkComfyReady({ probeLocal: true }) : { ok: false as const, reason: 'backend=mock' };
   return {
     ok: true,
+    /** the app's version (root package.json), shown in Settings → Profile */
+    version: APP_VERSION,
     backend: config.backend,
     openWeightsOnly: openWeightsOnly(),
     comfyReady: comfy.ok,

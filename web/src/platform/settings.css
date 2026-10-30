@@ -159,6 +159,8 @@ html body .settings-page.st .st-help-t{flex:1;min-width:0;display:flex;flex-dire
 html body .settings-page.st .st-help-t b{font:500 14px/20px var(--font-ui)}
 html body .settings-page.st .st-help-row>i{font-style:normal;color:var(--text-3)}
 html body .settings-page.st .st-support-fallback textarea{width:100%;box-sizing:border-box;font:12px/18px var(--font-mono,ui-monospace,monospace);border-radius:10px;padding:10px}
+html body .settings-page.st .st-version{margin:12px 0 0;color:var(--text-3)}
+html body .settings-page.st .st-version a{color:var(--text-2)}
 html body .settings-page.st .conn-limits{margin:0}
 @media (max-width:760px){
   html body .settings-page.st .st-prof-card{flex-wrap:wrap}

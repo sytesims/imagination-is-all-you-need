@@ -26,7 +26,7 @@ export const GPU_DEFAULT = GPU_WAN_ANIMATE;
 /** `@image1` / `@img1` mentions in a prompt → 1-based reference indexes. */
 export const mentionsOf = (prompt: string) => imageMentions(prompt);
 /** Mock-only: `simulate=<type>` makes a run fail that way, so the UI states can be QA'd. */
-export const SIMULATE = ['temporary', 'provider_outage', 'ip', 'nsfw', 'credits'];
+export const SIMULATE = ['temporary', 'provider_outage', 'ip', 'nsfw'];
 /**
  * Mock force-fail switch. Any of: form field `simulate=<type>`, a prompt token `[mockfail]` / `[mockfail:<type>]`,
  * or env OPENHIGGSFIELD_MOCK_FAIL=1|<type> (applies to every job). `1`/bare token → 'temporary'. Mock backend only.
@@ -370,10 +370,9 @@ export async function mockRun(job: Job, stages: [string, string][], labels: stri
           provider_outage: 'The provider is unavailable right now. Credits went back to your balance.',
           ip: 'The provider rejected this job due to copyright restrictions (IP detected). Credits went back to your balance.',
           nsfw: "The provider's content filter flagged the output. Credits went back to your balance.",
-          credits: 'Comfy Router failed: your Comfy account is out of credits. Add credits on comfy.org, then try again.', // the Router's refusal before any work (comfyRouter.ts cloud_credits)
         };
         // mock of a PROVIDER-side refusal (ip / nsfw): ends 'blocked', refunded once; a plain retry resubmits it
-        job.status = sim === 'nsfw' || sim === 'ip' ? 'blocked' : 'failed'; job.errorType = sim; job.error = msg[sim]; if (sim === 'credits') job.reasonCode = 'cloud_credits'; return resolve();
+        job.status = sim === 'nsfw' || sim === 'ip' ? 'blocked' : 'failed'; job.errorType = sim; job.error = msg[sim]; return resolve();
       }
       if (p >= 1) {
         clearInterval(t);

@@ -3,6 +3,7 @@
  * with a self-contained docs page at /api/docs; any registered route missing from the curated list is appended as a
  * stub (see `withDiscovered`). `npm run openapi` writes the static copy to ../openapi.json.
  */
+import { APP_VERSION } from './repoInfo.js';
 type Op = Record<string, any>;
 const ref = (n: string) => ({ $ref: `#/components/schemas/${n}` });
 const json = (schema: any, description = 'OK') => ({ description, content: { 'application/json': { schema } } });
@@ -48,7 +49,7 @@ const JOB_FORM = {
     fromDraft: { type: 'string', description: 'Render the final of a draft job (same seed)' },
     useFree: { type: 'string', enum: ['0', '1'], description: 'Spend a free gen (≤ 720p, slower lane)' },
     customStyle: { type: 'string', enum: ['0', '1'] },
-    simulate: { type: 'string', enum: ['temporary', 'provider_outage', 'ip', 'nsfw', 'credits'], description: 'Mock backend only: force a failure (credits: Comfy says the account is out of credits). ip / nsfw simulate a PROVIDER refusing the job (status blocked, credits back to your balance (team mode; with your own accounts the provider failure rule applies) once); the app itself never pre-blocks content.' },
+    simulate: { type: 'string', enum: ['temporary', 'provider_outage', 'ip', 'nsfw'], description: 'Mock backend only: force a failure. ip / nsfw simulate a PROVIDER refusing the job (status blocked, credits back to your balance (team mode; with your own accounts the provider failure rule applies) once); the app itself never pre-blocks content.' },
   },
 };
 
@@ -360,11 +361,11 @@ const SCHEMAS = {
   Tool: { type: 'object', properties: { id: { type: 'string' }, name: { type: 'string' }, category: { type: 'string' }, media: { type: 'string', enum: ['image', 'video', 'audio'] }, badge: { type: ['string', 'null'], enum: ['new', 'free', 'top', null], description: 'One per tool. top = most jobs (fallback object-swap); new = addedAt within 7 days; free = a provider with priceFactor 0' },
     addedAt: { type: ['string', 'null'], format: 'date' }, freeGensCovered: { type: 'boolean', description: 'Free gens can be used on this tool' },
     freeGens: { type: ['object', 'null'], properties: { left: { type: 'integer' }, maxRes: { type: 'string' } }, description: 'Free-gen allowance when covered, else null' }, posterUrl: { type: 'string' }, route: { type: 'string' }, inputs: { type: 'array', items: { type: 'object' } }, presets: { type: 'array', items: { type: 'object' } }, providers: { type: 'array', items: { type: 'object' } }, defaultProvider: { type: ['string', 'null'] } } },
-  Health: { type: 'object', properties: { ok: { type: 'boolean' }, backend: { type: 'string' }, openWeightsOnly: { type: 'boolean' }, resultTtlDays: { type: 'integer' }, tools: { type: 'array', items: { type: 'string' } }, queue: { type: 'object' } } },
+  Health: { type: 'object', properties: { ok: { type: 'boolean' }, version: { type: 'string', description: 'App version (root package.json), e.g. 1.1.0' }, backend: { type: 'string' }, openWeightsOnly: { type: 'boolean' }, resultTtlDays: { type: 'integer' }, tools: { type: 'array', items: { type: 'string' } }, queue: { type: 'object' } } },
 };
 
 export function buildSpec(serverUrl = 'http://localhost:8787') {
-  return { openapi: '3.1.0', info: { title: 'Imagination Is All You Need API', version: '0.3.0', description: 'Local API of Imagination Is All You Need (open rebuild on ComfyUI; not affiliated with Higgsfield). Mock backend by default. Prices are in credits (1 credit = $0.01).', license: { name: 'AGPL-3.0-or-later', identifier: 'AGPL-3.0-or-later' } },
+  return { openapi: '3.1.0', info: { title: 'Imagination Is All You Need API', version: APP_VERSION, description: 'Local API of Imagination Is All You Need (open rebuild on ComfyUI; not affiliated with Higgsfield). Mock backend by default. Prices are in credits (1 credit = $0.01).', license: { name: 'AGPL-3.0-or-later', identifier: 'AGPL-3.0-or-later' } },
     servers: [{ url: serverUrl }], tags: ['Jobs', 'Tools', 'Assets', 'Share', 'Usage', 'Discover', 'System'].map((name) => ({ name })),
     paths: CURATED, components: { schemas: SCHEMAS } };
 }

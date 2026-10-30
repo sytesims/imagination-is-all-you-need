@@ -96,12 +96,13 @@ export default function Settings() {
  *  and a small Help card: the docs, the API, and Copy support info (app and browser facts only: never keys, prompts or file paths). */
 function ProfileSettings() {
   const pr = useProfile(); const [n, setN] = useState<number | null>(null);
-  const [copied, setCopied] = useState<'' | 'ok' | 'fail'>(''); const [text, setText] = useState(''); const toast = useToast();
+  const [copied, setCopied] = useState<'' | 'ok' | 'fail'>(''); const [text, setText] = useState(''); const toast = useToast(); const [ver, setVer] = useState('');
   useEffect(() => {
-    fetch('/api/me/stats').then(r => r.ok ? r.json() : null).then(st => { if (typeof st?.generations === 'number') setN(st.generations); }).catch(() => 0); }, []); /* the plain /api/jobs list stops at 50 */
+    fetch('/api/me/stats').then(r => r.ok ? r.json() : null).then(st => { if (typeof st?.generations === 'number') setN(st.generations); }).catch(() => 0); /* the plain /api/jobs list stops at 50 */
+    fetch('/api/health').then(r => r.ok ? r.json() : null).then(h => { if (typeof h?.version === 'string') setVer(h.version); }).catch(() => 0); }, []);
   const support = async () => {
     const [h, c] = await Promise.all([fetch('/api/health').then(r => r.ok ? r.json() : null).catch(() => null), fetch('/api/config').then(r => r.ok ? r.json() : null).catch(() => null)]);
-    const lines = ['Imagination Is All You Need support info', `Time: ${new Date().toISOString()}`,
+    const lines = ['Imagination Is All You Need support info', h?.version ? `Version: ${h.version}` : '', `Time: ${new Date().toISOString()}`,
       h ? `Backend: ${h.backend} · ComfyUI ready: ${h.comfyReady ? 'yes' : `no${h.comfyReason ? ` (${h.comfyReason})` : ''}`}` : 'Backend: the server didn’t answer',
       h ? `Tools: ${Array.isArray(h.tools) ? h.tools.length : '?'} · Open-weights only: ${h.openWeightsOnly ? 'yes' : 'no'}` : '',
       c ? `Queue: ${c.concurrency ?? '?'} at a time, ${c.maxQueued ?? '?'} can wait · Use local ComfyUI: ${c.useLocal ? 'on' : 'off'}` : '',
@@ -125,6 +126,8 @@ function ProfileSettings() {
       <button type="button" className="st-help-row" data-testid="settings-copy-support" onClick={support}><span className="st-help-ic" aria-hidden><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"><rect x="7" y="7" width="9" height="10" rx="2" /><path d="M4 13V5a2 2 0 0 1 2-2h6" /></svg></span><span className="st-help-t"><b>{copied === 'ok' ? 'Copied ✓' : 'Copy support info'}</b><small className="helper">For a bug report: app state and your browser. No keys, no prompts.</small></span></button>
     </div>
     {copied === 'fail' && <div className="st-support-fallback" data-testid="settings-support-text"><p className="helper" role="status">Your browser blocked copying. Select the text below and copy it.</p><textarea readOnly rows={7} value={text} onFocus={e => e.currentTarget.select()} /></div>}
+    {/* the app's version (root package.json via /api/health); updating is `npm run update`, see docs/INSTALL.md */}
+    {ver && <p className="helper st-version" data-testid="settings-version">Version {ver} · <a href={`${REPO_URL}/releases`} target="_blank" rel="noopener noreferrer" data-testid="settings-whats-new">What’s new</a></p>}
   </section>;
 }
 

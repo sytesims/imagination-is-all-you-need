@@ -196,7 +196,7 @@ function ProposalCard({ p, busy, onDecide, onFocus }: { p: Proposal; busy?: 'go'
     })}</ul>
     <div className="ap-total"><span>Total</span><b data-testid="agent-proposal-total">{nRun === 0 ? '—' : totalWords(runItems, p.totalUsd)}</b></div>
     {budget?.remainingUsd != null && <div className="ap-budget"><span>Agent budget left</span><b>${budget.remainingUsd.toFixed(2)} of ${(budget.budgetUsd ?? 0).toFixed(2)}</b></div>}
-    {p.reason && <p className={`ap-warn${p.overBudget || p.balanceShort ? ' over' : ''}`} data-testid="agent-proposal-reason">{p.reason}</p>}
+    {p.reason && <p className={`ap-warn${p.overBudget ? ' over' : ''}`} data-testid="agent-proposal-reason">{p.reason}</p>}
     {!p.reason && nSkip > 0 && pending && <p className="ap-skipnote" data-testid="agent-proposal-skipped">{nSkip === 1 ? '1 card can’t run here, so Go skips it.' : `${nSkip} cards can’t run here, so Go skips them.`} Nothing is charged for {nSkip === 1 ? 'it' : 'them'}.</p>}
     {p.error && <p className="ap-warn over">{p.error}</p>}
     {pending && <div className="ap-prop-actions">
@@ -434,7 +434,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
       <header className="ap-head">
         <div className="ap-brand"><span className="ap-mark"><SparkleIcon size={16} /></span><div><b>Agent</b><small data-testid="agent-mode" title={sessions.length > 1 ? sessionNames : connectedLine}>{connectedLine}</small></div></div>
         <div className="ap-head-r">
-          <span className={`ap-status${agentListening ? ' on' : agentWorking ? ' on work' : agentConnected ? ' idle' : ' demo'}`} data-testid="agent-status" data-state={state === 'off' ? 'demo' : state} {...tip(agentListening ? `${agentLabel} reads what you type here` : agentWorking ? `${agentLabel} is building on this board. What you type waits until it listens` : agentConnected ? `${sessionNames || agentLabel}: connected, not reading this board yet. What you type waits here` : 'Starters play the built-in agent, a scripted guide. Each run shows its price and waits for your Go. Connect your own AI to chat')}><i />{dockPill(state)}</span>
+          <span className={`ap-status${agentListening ? ' on' : agentWorking ? ' on work' : agentConnected ? ' idle' : ' demo'}`} data-testid="agent-status" data-state={state === 'off' ? 'demo' : state} {...tip(agentListening ? `${agentLabel} reads what you type here` : agentWorking ? `${agentLabel} is building on this board. What you type waits until it listens` : agentConnected ? `${sessionNames || agentLabel}: connected, not reading this board yet. What you type waits here` : 'Starters play the built-in demo. Connect your own AI for a real one')}><i />{dockPill(state)}</span>
           <button type="button" className="ap-icon" aria-label="Connect your own AI" {...tip('Connect your own AI (MCP)')} onClick={() => setSheet(true)} data-testid="agent-connect"><ApiPlugIcon size={16} /></button>
           <button type="button" className="ap-icon" aria-label="Hide the AI panel" {...tip('Hide the AI panel')} onClick={onClose} data-testid="agent-collapse"><ChevronLeftIcon size={16} /></button>
         </div>

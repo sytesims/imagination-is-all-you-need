@@ -69,6 +69,16 @@ Without a model connection, **Generate asks you to connect a key or ComfyUI**. I
 
 Need help getting started? [Install and run](docs/INSTALL.md) covers prerequisites and Windows/macOS instructions. It also includes Docker and advanced setup. Other ports and settings: [Configuration](docs/CONFIGURATION.md).
 
+### Updating
+
+Stop the app (**Ctrl+C**), then run this in the app folder:
+
+```text
+npm run update
+```
+
+It gets the latest version from GitHub, installs only what changed and lists what's new. Installed version 1.0? It doesn't have this command yet, so the first time run `git checkout package-lock.json`, then `git pull`, then `npm ci` instead. Your library, boards and keys stay as they are. `npm run update -- --check` only tells you if an update is ready. Downloaded the zip instead? See [Updating](docs/INSTALL.md#updating). You can see your version in Settings → Profile.
+
 ## Explore the studio
 
 Features depend on the selected model, route and installed prerequisites. Check the model's capabilities and setup status before a run.

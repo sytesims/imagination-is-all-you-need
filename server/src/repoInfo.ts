@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -19,3 +20,8 @@ export function repoInfo() {
   } catch { /* no git / no remote (e.g. Docker image) */ }
   return (cached = { repoUrl: null, repoUrlSource: null });
 }
+
+/** The app's version: the root package.json is the one place it lives (shown in /api/health, the API docs and Settings). */
+export const APP_VERSION: string = (() => {
+  try { return String(JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version || '0.0.0'); } catch { return '0.0.0'; }
+})();

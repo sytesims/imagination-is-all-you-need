@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Imagination Is All You Need API",
-    "version": "0.3.0",
+    "version": "1.1.0",
     "description": "Local API of Imagination Is All You Need (open rebuild on ComfyUI; not affiliated with Higgsfield). Mock backend by default. Prices are in credits (1 credit = $0.01).",
     "license": {
       "name": "AGPL-3.0-or-later",
@@ -1517,10 +1517,9 @@
                       "temporary",
                       "provider_outage",
                       "ip",
-                      "nsfw",
-                      "credits"
+                      "nsfw"
                     ],
-                    "description": "Mock backend only: force a failure (credits: Comfy says the account is out of credits). ip / nsfw simulate a PROVIDER refusing the job (status blocked, credits back to your balance (team mode; with your own accounts the provider failure rule applies) once); the app itself never pre-blocks content."
+                    "description": "Mock backend only: force a failure. ip / nsfw simulate a PROVIDER refusing the job (status blocked, credits back to your balance (team mode; with your own accounts the provider failure rule applies) once); the app itself never pre-blocks content."
                   }
                 }
               }
@@ -2002,10 +2001,9 @@
                       "temporary",
                       "provider_outage",
                       "ip",
-                      "nsfw",
-                      "credits"
+                      "nsfw"
                     ],
-                    "description": "Mock backend only: force a failure (credits: Comfy says the account is out of credits). ip / nsfw simulate a PROVIDER refusing the job (status blocked, credits back to your balance (team mode; with your own accounts the provider failure rule applies) once); the app itself never pre-blocks content."
+                    "description": "Mock backend only: force a failure. ip / nsfw simulate a PROVIDER refusing the job (status blocked, credits back to your balance (team mode; with your own accounts the provider failure rule applies) once); the app itself never pre-blocks content."
                   }
                 }
               }
@@ -13328,6 +13326,10 @@
         "properties": {
           "ok": {
             "type": "boolean"
+          },
+          "version": {
+            "type": "string",
+            "description": "App version (root package.json), e.g. 1.1.0"
           },
           "backend": {
             "type": "string"
