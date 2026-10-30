@@ -46,6 +46,11 @@ ok('comfyInstall: Desktop yaml → models folder, installations.json → ComfyUI
   assert.ok(r.checks.find((c) => c.id === 'api')!.fix!.includes('npm run dev')); assert.equal(r.models, null);
   const t = D.renderText(r); assert.match(t, /App not running/); assert.match(t, /exit code 0/); }
 ok('app down + no ComfyUI → exit 0, "App not running" with the fix, ComfyUI optional');
+// npm run setup runs the doctor just before it starts the app: the app being down is a note, not a problem
+{ const r = await D.runDoctor(env({ ...base(), env: { OPENHIGGSFIELD_DOCTOR_BEFORE_START: '1' } })); const api = r.checks.find((c) => c.id === 'api')!;
+  assert.equal(api.status, 'info'); assert.equal(api.fix, undefined); assert.equal(r.exitCode, 0);
+  const t = D.renderText(r); assert.doesNotMatch(t, /App not running/); assert.match(t, /The app isn’t started yet: setup starts it next\./); }
+ok('before start (npm run setup): "The app isn’t started yet: setup starts it next." as a note, no fix line');
 
 // ---- Node too old / deps missing → exit 2 ----
 { const r = await D.runDoctor(env({ ...base(), node: 'v18.19.0' })); assert.equal(r.exitCode, 2); assert.equal(r.checks.find((c) => c.id === 'node')!.status, 'fail');
