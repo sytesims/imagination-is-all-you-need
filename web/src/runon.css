@@ -127,7 +127,9 @@ html body .ro-lnk:disabled{opacity:.6;cursor:default}
 @media (max-width:639px){.conn-card{grid-template-columns:1fr}.conn-acts{justify-content:flex-start}.conn-acts .btn,.conn-test .btn,.conn-key .btn,.conn-pref .btn{min-height:44px}.conn-input{height:44px}.conn-pref .prov-sw{margin-top:4px}.conn-list li{min-height:44px}.conn-more{min-height:44px}}
 
 /* ---------- First-run setup sheet ---------- */
-html body .dlg.rs-sheet{position:relative;isolation:isolate;display:flex;flex-direction:column;width:min(760px,100%);max-height:calc(100dvh - 32px);overflow:hidden;padding:0;background:var(--surface-2)}
+/* anchored near the top (not centred) and the details area has one fixed height, so picking a card never moves the title, cards or buttons */
+.rs-scrim{--rs-top:clamp(16px,7vh,64px);place-items:start center;padding-top:var(--rs-top)}
+html body .dlg.rs-sheet{position:relative;isolation:isolate;display:flex;flex-direction:column;width:min(760px,100%);max-height:calc(100dvh - var(--rs-top,16px) - 16px);overflow:hidden;padding:0;background:var(--surface-2)}
 .rs-body{min-height:0;overflow:auto;padding:0 24px 20px;scrollbar-gutter:stable}
 .rs-sheet>*:not(.rs-drift):not(.rs-foot){position:relative;z-index:1}
 /* living background: our own results drifting slowly, blurred and faint, fading out before the cards */
@@ -163,11 +165,20 @@ html body .dlg.rs-sheet{position:relative;isolation:isolate;display:flex;flex-di
 .rs-glyph{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.06);color:var(--text)}
 .rs-vis-strip{gap:4px}.rs-vis-strip img{width:36px;height:36px;border-radius:8px;object-fit:cover;background:rgba(255,255,255,.06)}
 .rs-rec{flex:none;padding:2px 8px;border-radius:999px;font-size:11px;line-height:16px;font-weight:600;color:var(--text);background:rgba(255,255,255,.08)}
-.rs-oc.on .rs-rec{color:var(--accent)}
+.rs-rec.rs-st-connected,.rs-oc.on .rs-rec.rs-st-connected{color:var(--success);background:color-mix(in srgb,var(--success) 14%,transparent)}
+.rs-rec.rs-st-unreachable,.rs-rec.rs-st-rejected,.rs-rec.rs-st-missing{color:var(--warning);background:color-mix(in srgb,var(--warning) 14%,transparent)}
+.rs-rec.rs-st-checking{color:var(--text-2)}
 .rs-oc b{font:600 14px/20px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text)}
 .rs-oc small{font-size:12px;line-height:18px;color:var(--text-2)}
 .rs-tag{margin-top:auto;font-size:11px;line-height:16px;color:var(--text-2)}
-.rs-more{margin-top:12px;padding:14px;border-radius:12px;background:var(--surface);border:1px solid var(--border);display:flex;flex-direction:column;gap:10px}
+/* one height for every choice: what's left of the window after the title, cards and buttons (up to 224px); longer content scrolls inside */
+.rs-details{height:clamp(120px,calc(93dvh - 535px),224px);margin-top:12px;overflow:auto;overscroll-behavior:contain;border-radius:12px;display:flex;flex-direction:column;gap:10px}
+.rs-empty{flex:1;display:grid;place-items:center;margin:0;padding:16px;border:1px dashed var(--border);border-radius:12px;text-align:center}
+.rs-details>.rs-more{flex:none;animation:rs-in .18s ease-out both}
+@keyframes rs-in{from{opacity:0}}
+@media (max-height:760px) and (min-width:640px){.rs-hero{padding:18px 24px}.rs-details{height:clamp(120px,calc(93dvh - 522px),224px)}}
+@media (prefers-reduced-motion:reduce){.rs-details>.rs-more{animation:none}}
+.rs-more{padding:14px;border-radius:12px;background:var(--surface);border:1px solid var(--border);display:flex;flex-direction:column;gap:10px}
 .rs-more .helper{margin:0}
 .rs-keyrow{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}.rs-keyrow .rs-key{flex:1 1 260px}
 .rs-keygrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
@@ -181,7 +192,7 @@ html body .dlg.rs-sheet{position:relative;isolation:isolate;display:flex;flex-di
 .rs-sheet .rs-skip{min-height:40px;padding:0 12px;color:var(--text);font-size:13px;text-decoration:none}
 html body .rs-foot .gen-btn.gen-btn.gen-btn.rs-go{width:auto!important;min-width:200px!important;flex:none!important}
 @media (max-width:639px){.rs-scrim{place-items:end center;padding:0}html body .dlg.rs-sheet{width:100%;border-radius:16px 16px 0 0;max-height:92dvh;padding:0}
-  .rs-body{padding:0 16px 16px}.rs-hero{padding:18px 16px}.rs-hero h2{font-size:22px;line-height:28px}.rs-opts{grid-template-columns:1fr}.rs-oc{display:grid;grid-template-columns:30px minmax(0,1fr);align-items:center;min-height:0;padding:12px;gap:10px}.rs-choice-copy{gap:4px}.rs-oc .rs-tag{display:none}.rs-vis .mk-tile{--mk-s:30px}.rs-glyph{width:30px;height:30px}.rs-keygrid{grid-template-columns:1fr}.rs-keyrow .rs-key{flex-basis:180px}.rs-foot{flex-direction:column-reverse;align-items:stretch;padding:12px 16px calc(12px + env(safe-area-inset-bottom));gap:10px}.rs-explore{max-width:none;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px}.rs-explore p{display:block;margin:0}.rs-sheet .rs-skip{min-height:44px}
+  .rs-body{padding:0 16px 16px}.rs-hero{padding:18px 16px}.rs-hero h2{font-size:22px;line-height:28px}.rs-opts{grid-template-columns:1fr}.rs-oc{display:grid;grid-template-columns:30px minmax(0,1fr);align-items:center;min-height:0;padding:12px;gap:10px}.rs-choice-copy{gap:4px}.rs-oc .rs-tag{display:none}.rs-oc .rs-tag.has-status{display:block;grid-column:2;margin:0}.rs-vis .mk-tile{--mk-s:30px}.rs-glyph{width:30px;height:30px}.rs-keygrid{grid-template-columns:1fr}.rs-keyrow .rs-key{flex-basis:180px}.rs-foot{flex-direction:column-reverse;align-items:stretch;padding:12px 16px calc(12px + env(safe-area-inset-bottom));gap:10px}.rs-explore{max-width:none;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px}.rs-explore p{display:block;margin:0}.rs-sheet .rs-skip{min-height:44px}
   html body .rs-foot .gen-btn.gen-btn.gen-btn.rs-go{width:100%!important;min-width:0!important}}
 
 /* ---------- Pricing: one row per model, a column per place ---------- */
