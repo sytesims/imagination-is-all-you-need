@@ -142,7 +142,12 @@ export function registerUploadSecurity(app: FastifyInstance, tempRoot = os.tmpdi
         if ((route && routeFields[route] && !routeFields[route].test(field)) || (route?.startsWith('/api/brand-kits/') && field !== 'file')) throw bad(field);
         const model = (route === '/api/3d/upload' || route === '/api/3d/rig') && part.fieldname === 'model';
         let canonical: { ext: string; mime: string };
-        if (model) {
+        if (route === '/api/brand-kits/:id/font') {
+          // brand fonts: checked by content (brandFonts.sniffFont), never decoded by ffprobe
+          const { sniffFont, FONT_MIME } = await import('./brandFonts.js'); const ext = path.extname(part.filename).toLowerCase();
+          const f = sniffFont(await readFile(file), ext); if (!f) throw bad(field, 'That isn’t a font file. Use a TTF, OTF, WOFF or WOFF2 file.');
+          canonical = { ext, mime: FONT_MIME[f] };
+        } else if (model) {
           const { glbProblem } = await import('./routes3d.js');
           if (glbProblem(await readFile(file))) throw bad(part.fieldname, 'Invalid GLB model.');
           canonical = { ext: '.glb', mime: 'model/gltf-binary' };
@@ -198,7 +203,7 @@ export function registerUploadSecurity(app: FastifyInstance, tempRoot = os.tmpdi
 export function mediaResponseHeaders(res: { setHeader(name: string, value: string): unknown }, file: string) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'; media-src 'self'; img-src 'self' data:; style-src 'unsafe-inline'");
-  if (!/\.(png|jpe?g|webp|mp4|mov|webm|m4v|wav|mp3|m4a|aac|ogg|flac|glb|vtt|srt)$/i.test(file) && !/\/brand-[^/]*\.(svg|gif)$/i.test(file)) {
+  if (!/\.(png|jpe?g|webp|mp4|mov|webm|m4v|wav|mp3|m4a|aac|ogg|flac|glb|vtt|srt)$/i.test(file) && !/\/brand-[^/]*\.(svg|gif)$/i.test(file) && !/\/brand-fonts\/[\w-]+\/[^/]+\.(ttf|otf|woff2?)$/i.test(file)) {
     res.setHeader('Content-Type', 'application/octet-stream'); res.setHeader('Content-Disposition', 'attachment');
   }
 }
