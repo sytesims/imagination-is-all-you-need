@@ -105,7 +105,7 @@ export function registerBatch1(app: FastifyInstance) {
       const u = req.query.url ?? ''; const w = Number(req.query.w);
       const g = Number.isFinite(w) && w > 0 ? await (await import('./gridThumbs.js')).gridThumb(u, w) : null;
       if (g) return reply.header('cache-control', 'max-age=86400').sendFile(path.basename(g), path.dirname(g));
-      if (/^\/(files|samples|examples)\/|^\/api\/media\/poster\?/.test(u) && !u.includes('..')) return reply.redirect(u);
+      if (/^\/(files|samples|examples|showcase)\/|^\/api\/media\/poster\?/.test(u) && !u.includes('..')) return reply.redirect(u);
       return reply.code(404).send({ error: 'no thumbnail' });
     }
     const f = await thumbFor(req.query.url ?? ''); if (!f) return reply.code(404).send({ error: 'no thumbnail' });
