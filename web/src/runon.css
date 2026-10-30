@@ -171,10 +171,12 @@ html body .dlg.rs-sheet{position:relative;isolation:isolate;display:flex;flex-di
 .rs-oc b{font:600 14px/20px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text)}
 .rs-oc small{font-size:12px;line-height:18px;color:var(--text-2)}
 .rs-tag{margin-top:auto;font-size:11px;line-height:16px;color:var(--text-2)}
-.rs-details{height:clamp(150px,calc(100dvh - 500px),224px);margin-top:12px;overflow:auto;overscroll-behavior:contain;border-radius:12px;display:flex;flex-direction:column;gap:10px}
+/* one height for every choice: what's left of the window after the title, cards and buttons (up to 224px); longer content scrolls inside */
+.rs-details{height:clamp(120px,calc(93dvh - 535px),224px);margin-top:12px;overflow:auto;overscroll-behavior:contain;border-radius:12px;display:flex;flex-direction:column;gap:10px}
 .rs-empty{flex:1;display:grid;place-items:center;margin:0;padding:16px;border:1px dashed var(--border);border-radius:12px;text-align:center}
 .rs-details>.rs-more{flex:none;animation:rs-in .18s ease-out both}
 @keyframes rs-in{from{opacity:0}}
+@media (max-height:760px) and (min-width:640px){.rs-hero{padding:18px 24px}.rs-details{height:clamp(120px,calc(93dvh - 522px),224px)}}
 @media (prefers-reduced-motion:reduce){.rs-details>.rs-more{animation:none}}
 .rs-more{padding:14px;border-radius:12px;background:var(--surface);border:1px solid var(--border);display:flex;flex-direction:column;gap:10px}
 .rs-more .helper{margin:0}

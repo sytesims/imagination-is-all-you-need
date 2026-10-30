@@ -122,7 +122,8 @@ function RunSetup({ onClose }: { onClose: () => void }) {
   /* the details sit in one fixed-height area (CSS .rs-details) so the sheet never changes size; a newly opened box scrolls into view inside it */
   const details = useRef<HTMLDivElement>(null); const added = useRef<Choice | null>(null);
   useEffect(() => { const c = added.current; added.current = null; const el = c && details.current?.querySelector<HTMLElement>(`[data-testid=setup-${c}]`); if (!el || !details.current) return;
-    const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches; details.current.scrollTo({ top: el.offsetTop - details.current.offsetTop, behavior: smooth ? 'smooth' : 'auto' }); }, [pick]);
+    const d = details.current; const top = el.offsetTop - d.offsetTop; const want = Math.min(top, Math.max(d.scrollTop, top + el.offsetHeight - d.clientHeight)); // as little as needed to show it whole
+    if (want !== d.scrollTop) d.scrollTo({ top: want, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }, [pick]);
   const noStore = can === false && <p className="helper rs-note">Keys can be saved from the browser only when the server runs on this computer. <Link to={repoDoc('docs/CONFIGURATION.md', 'provider-keys')}>How to add a key on the server ↗</Link></p>;
   return createPortal(<div className={`dlg-scrim rs-scrim${closing ? ' out' : ''}`} onMouseDown={e => e.target === e.currentTarget && skip()} onKeyDown={onKey}>
     <div ref={box} className="dlg rs-sheet" role="dialog" aria-modal="true" aria-labelledby="rs-h" aria-describedby="rs-sub" data-testid="run-setup">
