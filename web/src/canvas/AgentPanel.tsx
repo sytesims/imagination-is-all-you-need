@@ -20,7 +20,7 @@ import { startAgentBridge, nameOf as cardNameOf, type FeedEntry, type Proposal, 
 import { handAtom, handOf, fx, setAgentName, reducedMotion } from './agentHand';
 import { flowById } from '../shared/genFlows';
 import { LOCAL_FREE } from '../../../server/src/shared/modelIds';
-import { STARTERS, mergeFeed, mergeProposals, planOf, confirmOf, focusAdded, focusCards, agentStarterPrompt, dockRoute, dockState, dockStatusLine, dockPill, workingLine, messageStatus, messageStatusText, listenCommand, LISTEN_PHRASE, type StarterId, type MsgStatus } from './agentDockModel';
+import { STARTERS, mergeFeed, mergeProposals, planOf, confirmOf, focusAdded, focusCards, setFollow, agentStarterPrompt, dockRoute, dockState, dockStatusLine, dockPill, workingLine, messageStatus, messageStatusText, listenCommand, LISTEN_PHRASE, type StarterId, type MsgStatus } from './agentDockModel';
 import { AgentMediaCard } from './AgentMediaCard';
 import { useCopied, Copied, useToast } from '../shared/Toast';
 import { GenPrice } from '../shared/GenPrice';
@@ -349,8 +349,10 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
         : await fetch(`${base}/demo`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ prompt: body, ...(starter ? { starter } : {}) }) });
       const b = await r.json().catch(() => ({})); if (!r.ok) throw new Error(b?.error || 'Could not send that.');
       if (b?.message) setFeed((prev) => mergeFeed(prev, [b.message]));
-      if (b?.runId) setDemo({ running: true, runId: b.runId, title: b.plan?.title ?? null });
-      setText('');
+      if (b?.reply) setFeed((prev) => mergeFeed(prev, [b.reply])); /* the built-in demo can't chat: its honest reply (server canvasDemo.demoReply) */
+      /* a demo starting turns Follow agent on, so the camera shows what it builds */
+      if (b?.runId) { setFollow(true); setDemo({ running: true, runId: b.runId, title: b.plan?.title ?? null }); }
+      if (!b?.kept) setText(''); /* words the demo couldn't take stay in the box, ready for Claude once it's connected */
     } catch (e) { setText(body); toast((e as Error).message, 'error'); }
     finally { setSending(false); }
   };
@@ -428,7 +430,8 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
   const statusOf = (e: FeedEntry): MsgStatus => (agentConnected ? messageStatus(e, lastAgentMsg?.seq ?? 0) : null);
   const agentPlanning = agentConnected && !!agentStatus && agentStatus.at > lastAgentMsgAt && Date.now() - agentStatus.at < 180_000;
   const thinking = (demo.running && !waiting && !pickWaiting && !confirm && !(last?.type === 'message' && last.meta?.finished)) || agentPlanning;
-  const locked = demo.running && !agentConnected && !confirm; /* the box opens while the agent waits for your OK */
+  /* the built-in demo's honest reply to typed words: the matching demo as one chip under it (only the newest, while nothing runs) */
+  const suggest = !demo.running && !agentConnected && last?.type === 'message' && last.meta?.demoReply ? STARTERS.find((x) => x.id === last.meta?.suggest) ?? null : null;
   const empty = shown.length === 0;
 
   return <>
@@ -450,7 +453,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
             <span className="ap-hello-mark"><SparkleIcon size={22} /></span>
             <h2>What should we make?</h2>
             {agentConnected ? <p data-testid="agent-hello-connected">{agentListening ? `${agentLabel} is listening.` : `${agentLabel} is connected.`} Tell it what to make; select cards first to point at them. Every paid step waits for your OK.</p>
-              : <><p>Describe it, or pick a starter. The board on the right builds as the agent works, and every paid step waits for your OK.</p>
+              : <><p>Pick a demo to watch the board build, or connect Claude to talk about your board. Every paid step waits for your OK.</p>
                 <Starters onPick={pickStarter} disabled={sending || demo.running} />
                 <button type="button" className="ap-connect" data-testid="agent-connect-offer" onClick={() => setSheet(true)}><ApiPlugIcon size={15} /><span><b>Connect your agent</b><small>Claude Code, Claude Desktop or any MCP client becomes the brain here</small></span></button></>}
           </div> : shown.map((e) => {
@@ -459,6 +462,8 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
                 <PlanCard title={String(e.meta.title ?? 'Plan')} steps={e.meta.plan} done={plan?.seq === e.seq ? plan.done : e.meta.plan.length} finished={plan?.seq === e.seq ? plan.finished : true} live={plan?.seq === e.seq && demo.running} /></div>;
               if (e.meta?.pick?.cardIds) return <div key={e.id} className="ap-group"><Message e={e} who={who} live={fresh.current.has(e.seq)} /><PickCard e={e} pick={pick} editor={editor} onPick={(id) => void choose(id)} onFocus={focus} /></div>;
               if (e.meta?.confirm?.id && confirm?.id === e.meta.confirm.id) return <div key={e.id} className="ap-group"><Message e={e} who={who} live={fresh.current.has(e.seq)} /><ConfirmCard label={confirm!.label} busy={sending} onOk={() => void send(confirm!.label, undefined, confirm!.id)} /></div>;
+              if (suggest && e === last) return <div key={e.id} className="ap-group"><Message e={e} who={who} live={fresh.current.has(e.seq)} />
+                <button type="button" className="ap-chip ap-chip-main" disabled={sending} onClick={() => pickStarter(suggest.id)} data-testid="agent-suggest">Want to see “{suggest.label}”?</button></div>;
               return <Message key={e.id} e={e} who={who} live={fresh.current.has(e.seq)} status={statusOf(e)} />;
             }
             if (e.type === 'activity' && e.meta?.tool === 'add_card' && e.cardId) return <AgentMediaCard key={e.id} editor={editor} cardId={e.cardId} meta={{ ...e.meta, title: e.text.replace(/^Added “|”$/g, '') }} onFocus={focus} onReroll={(id, t) => void reroll(id, t)} rerolling={!!rerolling[e.cardId]} />;
@@ -476,14 +481,14 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
           {state === 'working' && <p className="ap-working" data-testid="agent-working-note" aria-live="polite"><i aria-hidden /><span><b>{workingLine(agentLabel)}.</b> What you type waits until it listens.</span></p>}
           {!empty && !demo.running && !agentConnected && <div className="ap-chips" aria-label="Starters">{STARTERS.map((s) => <button key={s.id} type="button" className="ap-chip" disabled={sending} onClick={() => pickStarter(s.id)} data-testid={`agent-chip-${s.id}`}>{s.label}</button>)}</div>}
           <div className="ap-box">
-            <textarea ref={ta} value={text} onChange={(e) => setText(e.target.value)} rows={2} maxLength={4000} disabled={locked}
-              placeholder={confirm ? 'What should change? Or press Looks good.' : locked ? 'The agent is working. Stop it to start something new.' : agentConnected ? `Message ${agent.agentName || 'your AI'}…` : 'Describe a film, an ad, a picture to animate…'} aria-label="Message the agent" data-testid="agent-reply"
+            <textarea ref={ta} value={text} onChange={(e) => setText(e.target.value)} rows={2} maxLength={4000}
+              placeholder={confirm ? 'What should change? Or press Looks good.' : agentConnected ? `Message ${agent.agentName || 'your AI'}…` : 'Pick a demo, or connect Claude to chat'} aria-label="Message the agent" data-testid="agent-reply"
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(text); } }} />
-            {demo.running && !agentConnected && !(confirm && text.trim())
+            {demo.running && !agentConnected && !text.trim()
               ? <button type="button" className="ap-send stop" onClick={() => void stop()} aria-label="Stop the agent" {...tip('Stop. Cards already on the board stay')} data-testid="agent-stop"><StopIcon size={15} /></button>
               : <button type="submit" className="ap-send" disabled={!text.trim() || sending} aria-label="Send" data-testid="agent-send"><SendIcon size={16} /></button>}
           </div>
-          <p className="ap-hint">{agentListening ? `Goes straight to ${agentLabel}. Canvas proposals wait for your Go.` : agentConnected ? `Waits here until ${agentLabel} reads it. Canvas proposals wait for your Go.` : 'Builds drafts on this board. Canvas proposals wait for your Go.'}</p>
+          <p className="ap-hint">{agentListening ? `Goes straight to ${agentLabel}. Canvas proposals wait for your Go.` : agentConnected ? `Waits here until ${agentLabel} reads it. Canvas proposals wait for your Go.` : 'Demos build drafts on this board. Every run waits for your Go.'}</p>
         </form>
       </div>
       {sheet && <ConnectSheet config={config} mcpUrl={mcpUrl} onClose={() => setSheet(false)} boardId={boardId} />}

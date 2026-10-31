@@ -4,6 +4,7 @@
  * out point), its takes (one starred, older ones tucked away, billed beside quoted) and Generate with its price first (quote = charge).
  * The header reads "Shot 3 · Draft" with one ⋯ menu (move left/right, Split, Hide, Delete); "Add shot after" is a small link under the takes.
  */
+import { IMAGE_PAGE } from '../../../../server/src/shared/pages';
 import { VIDEO_PAGE } from '../../../../server/src/shared/videoWorkflows';
 import { useEffect, useRef, useState } from 'react';
 import type { ToolInfo } from '../../api';
@@ -12,6 +13,7 @@ import { useToast } from '../../shared/Toast';
 import { askConfirm } from '../../shared/Dialog';
 import { pickMedia } from '../../shared/MediaPicker';
 import { DockGenerate } from '../../shared/DockGenerate';
+import { nudgeMissing } from '../../shared/genNudge';
 import { Popover } from '../../shared/Popover';
 import { ModelMenu } from '../../shared/ModelMenu';
 import { RunOnChip } from '../routing/RunOn';
@@ -63,7 +65,7 @@ export default function FilmInspector({ film, shot, srvShot, label, tool, commit
   const q = useShotQuote(film.id, srvShot);
   const [busy, setBusy] = useState(false); const gen = useRef<HTMLButtonElement>(null);
   const missing = missingOf(film, { ...shot, prompt: text }); const over = budgetBlock(film, q);
-  const render = async () => { if (missing || over || busy) return; if (typeof q?.credits !== 'number') { toast('The price isn’t in yet. Try again in a moment.', 'warn'); return; } setBusy(true);
+  const render = async () => { if (missing) { nudgeMissing(gen.current); return; } /* waiting: say why (GenWhy), like every Generate */ if (over || busy) return; if (typeof q?.credits !== 'number') { toast('The price isn’t in yet. Try again in a moment.', 'warn'); return; } setBusy(true);
     try { await flush(); adopt(await renderShot(film.id, shot.id, { quotedCredits: q.credits, quotedRouteId: q.routeId ?? null })); }
     catch (e: any) { if (e?.code === 'route_changed' || e?.code === 'quote_mismatch' || e?.status === 409) { requestRequote(); toast('The price changed. Check the new price, then generate again.', 'warn'); }
       else toast(`That didn’t start. ${e?.message ?? ''}`.trim(), 'error'); }
@@ -120,7 +122,7 @@ export default function FilmInspector({ film, shot, srvShot, label, tool, commit
           <span className="fm-still-a">
             <button type="button" className="btn btn-sm" onClick={() => pickStill('start')} data-testid="film-pick-still">Choose</button>
             {canPrev && shot.kind !== 'bridge' && <button type="button" className="btn btn-sm btn-ghost" onClick={() => void fromPrev()} data-testid="film-from-prev" {...tip(`Start on the exact last frame of ${labels[i - 1]}`)}><LastFrameIcon size={14} />Last frame of {labels[i - 1]}</button>}
-            {!still && <Link to={withSearch('/tools/create-image', new URLSearchParams({ prompt: text }).toString())} className="btn btn-sm btn-ghost">Make one</Link>}
+            {!still && <Link to={withSearch(IMAGE_PAGE, new URLSearchParams({ prompt: text }).toString())} className="btn btn-sm btn-ghost">Make one</Link>}
             {!still && shot.kind !== 'bridge' && !shot.types.includes('t2v') && <button type="button" className="fm-link" onClick={textOnly} {...tip('No start still: the model draws everything from the prompt')}>Text only</button>}
           </span>
         </div>

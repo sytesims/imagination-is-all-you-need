@@ -95,9 +95,10 @@ export const VIDEO_BARS: Record<string, VideoBar> = {
       { field: 'resolution', label: 'Quality', group: 'quality', kind: 'choice', options: [opt('448p', 'Draft', 'Fastest'), opt('576p', 'Sharper', 'About twice as slow')], default: '448p' },
       { ...KEEP_AUDIO }],
     generateLabel: 'Apply effect' },
-  /* Prompt Edit (2026-10-27): Bernini-R on Comfy Cloud (tools/promptEdit.ts); the model's own limits: the first 5 s, 480p */
-  'prompt-edit': { slots: [clip('Clip', 'Add a clip', 'The clip to change · MP4, MOV or WEBM. Bernini-R edits up to 5 s at 480p; a longer clip uses its first 5 s')],
-    prompt: { mode: 'required', placeholder: 'What should change? e.g. make it night, remove the cup, turn her coat red' }, groups: [], controls: [{ ...KEEP_AUDIO }],
+  /* Prompt Edit (2026-10-27): Bernini-R on Comfy Cloud (tools/promptEdit.ts), the first 5 s at 480p (fixed); Kling 4.0 (2026-10-31): 3–30 s
+   * at 720p or 1080p, its Resolution chip shown for it alone (the tool's resolution input lists each model's sizes) */
+  'prompt-edit': { slots: [clip('Clip', 'Add a clip', 'The clip to change · MP4, MOV or WEBM. Bernini-R edits up to 5 s at 480p (a longer clip uses its first 5 s); Kling 4.0 edits 3–30 s at 720p or 1080p')],
+    prompt: { mode: 'required', placeholder: 'What should change? e.g. make it night, remove the cup, turn her coat red' }, groups: [G.quality], controls: [{ ...RES(), providers: ['cloud-kling4-edit'] }, { ...KEEP_AUDIO }],
     fixed: { types: '["edit"]', resolution: '480p' }, generateLabel: 'Generate' },
   /* Finish (2026-10-27): our own ffmpeg looks (shared/finishPresets.ts); free, a few seconds per clip */
   finish: { slots: [clip('Clip', 'Add a clip', 'Your footage · MP4, MOV or WEBM; up to 20 s (a longer clip uses its start) and 1080p (bigger is scaled down)')],

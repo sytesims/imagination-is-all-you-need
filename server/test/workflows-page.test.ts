@@ -34,15 +34,15 @@ assert.equal(appWorkflowFor('photo-fx', 'router-seedance')?.name.includes('First
 {
   const { workflowOpenHref, workflowRecreateHref } = await import('../../web/src/shared/workflowLinks.ts');
   for (const [t, w] of [['app-relight', 'relight'], ['app-face-swap', 'face-swap'], ['app-person-swap', 'person-swap'], ['app-character-sheet', 'character-sheet'], ['app-product-shot', 'product-shot'], ['image-upscale', 'upscale'], ['app-inpaint', 'brush-edit'], ['app-shots', 'camera-angles'], ['app-remove-bg', 'remove-bg'], ['app-expand', 'expand'], ['app-erase', 'erase'], ['app-try-on', 'try-on']])
-    assert.equal(workflowOpenHref(t), `/tools/create-image?workflow=${w}`, t);
+    assert.equal(workflowOpenHref(t), `/image?workflow=${w}`, t);
   /* 2026-10-23: Brush Edit and Camera Angles cards open the bar too; a Create Image job with a camera rig recreates into Camera & Lens, a plain one stays plain */
-  assert.equal(workflowRecreateHref({ id: 'j2', toolId: 'app-inpaint' }), '/tools/create-image?workflow=brush-edit&recreate=j2');
-  assert.equal(workflowRecreateHref({ id: 'j3', toolId: 'app-shots' }), '/tools/create-image?workflow=camera-angles&recreate=j3');
-  assert.equal(workflowRecreateHref({ id: 'j4', toolId: 'create-image', input: { camera: { body: 'nikon-f3' } } } as any), '/tools/create-image?workflow=camera-lens&recreate=j4');
+  assert.equal(workflowRecreateHref({ id: 'j2', toolId: 'app-inpaint' }), '/image?workflow=brush-edit&recreate=j2');
+  assert.equal(workflowRecreateHref({ id: 'j3', toolId: 'app-shots' }), '/image?workflow=camera-angles&recreate=j3');
+  assert.equal(workflowRecreateHref({ id: 'j4', toolId: 'create-image', input: { camera: { body: 'nikon-f3' } } } as any), '/image?workflow=camera-lens&recreate=j4');
   assert.equal(workflowRecreateHref({ id: 'j5', toolId: 'create-image', input: {} } as any), null);
-  assert.equal(workflowRecreateHref({ id: 'j1', toolId: 'image-upscale' }), '/tools/create-image?workflow=upscale&recreate=j1');
+  assert.equal(workflowRecreateHref({ id: 'j1', toolId: 'image-upscale' }), '/image?workflow=upscale&recreate=j1');
   const { IMAGE_REDIRECTS, featureById } = await import('../src/shared/imageFeatures.ts');
-  assert.equal(IMAGE_REDIRECTS['/tools/image-upscale'], '/tools/create-image?workflow=upscale', 'the old Upscale page redirects'); assert.equal(featureById('upscale')!.route, '/tools/create-image?workflow=upscale');
+  assert.equal(IMAGE_REDIRECTS['/tools/image-upscale'], '/image?workflow=upscale', 'the old Upscale page redirects'); assert.equal(featureById('upscale')!.route, '/image?workflow=upscale');
   ok('cards and Recreate open Create Image with the workflow; /tools/image-upscale redirects');
 }
 // Truth (2026-10-27, workflow audit): a card with a recorded example leads with the EXAMPLE's model and real cost, not the tool's lead or free
@@ -80,7 +80,7 @@ assert.equal(appWorkflowFor('photo-fx', 'router-seedance')?.name.includes('First
   assert.equal(runsPrice([]), null);
   ok(`cards with an example show its model and real cost (${want.length}); no job id, no "Made here"; ACE-Step not Local until installed`);
   /* 2026-10-28 (picks audit): Open passes the card's model on, so the tab opens what the card names */
-  assert.equal(row('i-character-sheet').openHref, '/tools/create-image?workflow=character-sheet&model=qwen-image-2.1-turbo');
+  assert.equal(row('i-character-sheet').openHref, '/image?workflow=character-sheet&model=qwen-image-2.1-turbo');
   assert.equal(row('v-extend').openHref, '/video?workflow=extend&model=minimax-h3-extend');
   assert.equal(row('v-direct-a-shot').openHref, wfEntryById('v-direct-a-shot')!.href, 'a tool with one model keeps its own link');
   /* the example's model leads only when it runs now: with no LTX key, Create Video leads with what runs (and names it), never "Needs an LTX key" */

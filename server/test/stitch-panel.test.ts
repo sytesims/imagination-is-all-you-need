@@ -87,5 +87,10 @@ const hist = fs.readFileSync(path.join(WEB, 'platform/History.tsx'), 'utf8'); as
 const panel = fs.readFileSync(path.join(WEB, 'ui/video/StitchPanel.tsx'), 'utf8');
 for (const shared of ['pickMedia', 'AudioCard', 'TrimRange', 'DockGenerate', 'BarPopover', 'Segmented', 'PopSwitch', 'VideoThumb', 'VideoWorkflowChip', 'useHostedVideoFeed', 'drawCue', 'captionStyle']) assert.ok(panel.includes(shared), `the panel reuses the shared ${shared}`);
 assert.match(fs.readFileSync(path.join(WEB, 'ui/video/stitch.css'), 'utf8'), /prefers-reduced-motion:no-preference/, 'motion only when the user allows it');
+/* A1/A3 (2026-10-31): Export with no clips waits like every Generate: DockGenerate's waiting state counts the caller's missing step, one shared look */
+const dg = fs.readFileSync(path.join(WEB, 'shared/DockGenerate.tsx'), 'utf8'); assert.match(dg, /const waiting = problems\.length > 0 \|\| !!missing;/, 'a missing step alone makes Generate wait');
+assert.match(dg, /\$\{waiting \? ' gen-wait' : ''\}[\s\S]{0,300}aria-disabled=\{waiting \|\| undefined\}/, 'waiting → gen-wait + aria-disabled');
+assert.match(fs.readFileSync(path.join(WEB, 'ui-states.css'), 'utf8'), /\.gen-wait\):not\(\[aria-busy=true\]\),[\s\S]{0,120}\{\s*background:var\(--wait-fill\)/, 'the one shared waiting look');
+assert.match(fs.readFileSync(path.join(WEB, 'canvas/node.css'), 'utf8'), /gen-node\.gen-wait,[^{]*\{background:var\(--wait-fill\)/, 'the Canvas node uses the same waiting tokens');
 ok('wiring: Stitch is a Video workflow with its own panel (shared components), its feed lists stitched videos, Add to Stitch in Assets');
 console.log('ALL OK stitch-panel');

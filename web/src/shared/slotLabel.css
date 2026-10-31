@@ -1,0 +1,5 @@
+/* SlotLabel (shared/SlotLabel.tsx): words never break inside; a long one gets smaller, then an ellipsis */
+.slot-lbl{overflow-wrap:normal!important;word-break:normal!important;hyphens:none}
+.slot-lbl .slot-w{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:top}
+.slot-lbl[data-fit=tight] .slot-w{font-size:.86em;letter-spacing:-.01em}
+.slot-lbl[data-fit=tighter] .slot-w{font-size:.8em;letter-spacing:-.02em}

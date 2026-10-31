@@ -83,9 +83,9 @@ assert.equal(toolHandoffHref({ id: 'h3-extend' }, 'fromJob=j1&out=0&ext=10'), `$
 assert.equal(videoWorkflowOfJob({ toolId: 'voice', input: { types: '["lipsync"]' } }), 'lip-sync'); assert.equal(videoWorkflowOfJob({ toolId: 'voice', input: { types: ['voiceover'] } }), null);
 assert.equal(workflowRecreateHref({ id: 'j3', toolId: 'voice', input: { types: ['lipsync'] } }), `${VIDEO_PAGE}?workflow=lip-sync&mode=lipsync&recreate=j3`);
 assert.equal(workflowRecreateHref({ id: 'j4', toolId: 'h3-video' }), null, 'Create Video keeps its own ?recreate=');
-assert.equal(workflowRecreateHref({ id: 'j5', toolId: 'app-relight' }), '/tools/create-image?workflow=relight&recreate=j5', 'image workflows unchanged');
+assert.equal(workflowRecreateHref({ id: 'j5', toolId: 'app-relight' }), '/image?workflow=relight&recreate=j5', 'image workflows unchanged');
 assert.equal(pageToolId(VIDEO_PAGE, ''), 'h3-video'); assert.equal(pageToolId(VIDEO_PAGE, '?workflow=lip-sync&mode=lipsync'), 'voice'); assert.equal(pageToolId(VIDEO_PAGE, '?workflow=nope'), 'h3-video');
-assert.equal(pageToolId('/tools/create-image', '?workflow=relight'), 'create-image', 'other pages: the path');
+assert.equal(pageToolId('/image', '?workflow=relight'), 'create-image', 'other pages: the path');
 assert.equal(withSearch(videoWorkflowHref('restyle'), 'preset=anime-cel'), `${VIDEO_PAGE}?workflow=restyle&preset=anime-cel`, 'a query-shaped route joins with &');
 ok('open, hand-off and Recreate links go straight to the workflow; hand-offs ask for the workflow tool’s slot');
 

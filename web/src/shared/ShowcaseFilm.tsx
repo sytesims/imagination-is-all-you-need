@@ -19,7 +19,7 @@ import { prefersReducedMotion } from './HoverClip';
 import { useDirectedSound, soundRefused } from './soundDirector';
 import './editorial.css';
 
-export interface FilmTake { key: string; url: string; poster: string; thumb?: string; label: string; /** duration to show while the manual player is still a poster */ sec?: number; /** the clip has an audio track (no sound button without it) */ sound?: boolean }
+export interface FilmTake { key: string; url: string; poster: string; thumb?: string; label: string; /** duration to show while the manual player is still a poster */ sec?: number; /** the clip has an audio track (no sound button without it) */ sound?: boolean; /** where the film starts (s): playback, replays and loops skip what comes before (an opener) */ start?: number }
 
 export function ShowcaseFilm({ takes, take, onTake, children, aside, testId, label, className = '', once = false, onEnded, onFail, onTick, restart = 0, restartOnSound = false, priority = false, explicit = false, seek, manual = false, controls = false, hoverSound = false, onStart }: {
   /** a page's own variant (Explore's full-bleed header: `sfilm-bleed`) */ className?: string; takes: FilmTake[]; /** the take on screen (its key) */ take: string; onTake: (key: string) => void; children?: ReactNode; aside?: ReactNode; testId?: string; label: string;
@@ -80,7 +80,7 @@ export function ShowcaseFilm({ takes, take, onTake, children, aside, testId, lab
     }
   };
   /* a jump (seek): applied now, or once the clip's metadata is in (just mounted, or the poster was showing under reduced motion) */
-  const pendingSeek = useRef<number | null>(null);
+  const pendingSeek = useRef<number | null>(null); const t0 = t?.start ?? 0;
   const applySeek = () => { const el = v.current, t0 = pendingSeek.current; if (!el || t0 == null || !(el.readyState >= 1)) return; pendingSeek.current = null; try { el.currentTime = t0; } catch { /* not seekable yet */ } start(); };
   useEffect(() => { if (!seek) return; wanted.current = true; setPressed(true); pendingSeek.current = seek.t; setStill(false); applySeek(); }, [seek?.n]); // eslint-disable-line react-hooks/exhaustive-deps
   /* play only while on screen */
@@ -91,16 +91,16 @@ export function ShowcaseFilm({ takes, take, onTake, children, aside, testId, lab
   }, [still, t?.url, restart, start, manual, hoverSound]);
   const play = (replay = false) => {
     wanted.current = true; setPressed(true);
-    if (still) { pendingSeek.current = 0; setStill(false); return; }
+    if (still) { pendingSeek.current = t0; setStill(false); return; }
     const el = v.current; if (!el) return;
-    if (replay || el.ended) el.currentTime = 0;
+    if (replay || el.ended || el.currentTime < t0) el.currentTime = t0;
     start();
   };
   const togglePlay = () => { const el = v.current; if (!still && el && !el.paused) { wanted.current = false; el.pause(); } else play(); };
   /* this clip's sound button: mute / unmute the page (the director moves the sound); on from here restarts it if asked */
   const toggleSound = () => {
     const on = snd.toggle(); const el = v.current;
-    if (el && on) { if (restartOnSound) { try { el.currentTime = 0; } catch { /* not loaded yet */ } } if (el.paused && !document.hidden) start(); }
+    if (el && on) { if (restartOnSound) { try { el.currentTime = t0; } catch { /* not loaded yet */ } } if (el.paused && !document.hidden) start(); }
   };
   /* the progress line, without a re-render per frame */
   useEffect(() => {
@@ -112,10 +112,10 @@ export function ShowcaseFilm({ takes, take, onTake, children, aside, testId, lab
   return <section ref={root} className={`sfilm${playing ? ' is-playing' : ''}${still ? ' is-still' : ''}${controls ? ' has-controls' : ''}${className ? ` ${className}` : ''}`} data-testid={testId} aria-label={label}>
     <div className="sfilm-stage">
       <img key={t.poster} className="sfilm-media" src={t.poster} alt="" decoding={priority ? 'sync' : 'async'} {...(priority ? { fetchpriority: 'high' } : {})} onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} /* a missing poster: the dark stage, no broken-image icon */ />
-      {!still && !failed && <video key={`${t.url}#${restart}`} ref={setVideo} className="sfilm-media sfilm-video" data-media-keep="" /* the hero: never budget-paused or unloaded (shared/mediaBudget); it still pauses with the tab */ src={t.url} poster={t.poster} muted loop={!once} playsInline preload={priority ? 'auto' : 'metadata'} aria-hidden
-        onLoadedMetadata={() => applySeek()}
+      {!still && !failed && <video key={`${t.url}#${restart}`} ref={setVideo} className="sfilm-media sfilm-video" data-media-keep="" /* the hero: never budget-paused or unloaded (shared/mediaBudget); it still pauses with the tab */ src={t.url} poster={t.poster} muted loop={!once && !t0} playsInline preload={priority ? 'auto' : 'metadata'} aria-hidden
+        onLoadedMetadata={(e) => { if (t0 && pendingSeek.current == null && e.currentTarget.currentTime < t0) e.currentTarget.currentTime = t0; applySeek(); }}
         onPlaying={() => { setPlaying(true); onStart?.(); }} onPause={e => pause(e.currentTarget)} onLoadStart={() => setPlaying(false)}
-        onEnded={once ? () => { wanted.current = false; tick.current?.(1); onEnded?.(); } : undefined} onError={() => { setBad(t.url); onFail?.(); }} />}
+        onEnded={once ? () => { wanted.current = false; tick.current?.(1); onEnded?.(); } : t0 ? (e) => { e.currentTarget.currentTime = t0; start(); } /* a loop that skips the opener */ : undefined} onError={() => { setBad(t.url); onFail?.(); }} />}
       <span className="sfilm-shade" aria-hidden />
       {!still && !failed && <span className="sfilm-progress" aria-hidden><span ref={bar} /></span>}
     </div>

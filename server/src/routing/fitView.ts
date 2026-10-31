@@ -39,6 +39,7 @@ export function fitAlternative(tool: ToolDef, input: Record<string, any> = {}): 
   }
   return null;
 }
+import { HEAVY_GB } from '../shared/thisComputer.js';
 export type AlternativeReason = 'slow' | 'too_heavy' | 'unknown' | 'weights_missing';
 export function alternativeReason(fit: { verdict?: string } | null | undefined, req: Pick<Requirements, 'missingBytes' | 'missingBytesSource'> | null | undefined): AlternativeReason | null {
   const v = fit?.verdict; if (v === 'too_heavy') return v; // a download wouldn't help: too heavy says why first
@@ -50,7 +51,9 @@ export function alternativeReason(fit: { verdict?: string } | null | undefined, 
 export function withAlternative<F extends Record<string, any>>(tool: ToolDef, modelId: string, input: Record<string, any>, fit: F, req: Requirements | null = requirementsFor(tool, modelId, input)): F & { alternative: FitAlternative | null; alternativeReason: AlternativeReason | null } {
   if (fit && 'alternative' in fit && 'alternativeReason' in fit) return fit as any;
   const why = alternativeReason(fit, req); let alternative: FitAlternative | null = null;
-  if (why) { try { alternative = fitAlternative(tool, input); } catch { alternative = null; } }
+  // a heavy model that fits still gets its cloud route (alternativeReason stays null): the fit check before Generate offers it when free memory is short now (shared/thisComputer.ts memoryCheck)
+  const heavy = !why && fit?.verdict === 'fits' && Number((fit as any).recommendedVramGB) >= HEAVY_GB;
+  if (why || heavy) { try { alternative = fitAlternative(tool, input); } catch { alternative = null; } }
   return { ...fit, alternative, alternativeReason: why };
 }
 /** Full fit + requirements for a model's local route on this job ({} for a model without a local route). */

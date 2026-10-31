@@ -10,7 +10,8 @@ export function agentStarterPrompt(boardId: string, boardName?: string | null): 
     'When takes finish, look at them (get_asset with include_image) and record what you see with canvas_review. I pick the version.',
     'Reply in a sentence or two with canvas_say, then wait again.'].join('\n');
 }
-/** Where the dock sends what you type: your connected agent's inbox, an answer to the demo's "Looks good?", or a new demo run. */
+/** Where the dock sends what you type: your connected agent's inbox, an answer to the demo's "Looks good?", or the built-in demo (a chip plays
+ *  a demo; typed words only get its honest "I can't chat yet" reply, never a run: server canvasDemo.demoReply). */
 export const dockRoute = (o: { connected: boolean; demoRunning: boolean; confirmWaiting: boolean }): 'messages' | 'demo' =>
   (o.connected || (o.demoRunning && o.confirmWaiting) ? 'messages' : 'demo');
 

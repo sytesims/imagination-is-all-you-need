@@ -1,8 +1,8 @@
 /**
  * The 3D tools (2026-10-23, shared/threeD.ts has the workflows, models and price keys):
- *  - `three-d` (page /tools/3d): Image to 3D. One image in, a GLB out. Output kind '3d' (input.outKind): stored and served like every other
+ *  - `three-d` (page /3d): Image to 3D. One image in, a GLB out. Output kind '3d' (input.outKind): stored and served like every other
  *    output (/files/<job>-out0.glb, model/gltf-binary), listed in jobs, history and Assets.
- *  - `three-d-turntable` (hidden; /tools/3d?workflow=turntable): the browser records an orbit of a 3D result from the viewer and uploads it;
+ *  - `three-d-turntable` (hidden; /3d?workflow=turntable): the browser records an orbit of a 3D result from the viewer and uploads it;
  *    this tool keeps it as a normal MP4 video result, free (ffmpeg on this computer, no provider).
  *
  *  Model                   Place                                   Price (published, read 2026-10-23)                         Licence
@@ -12,7 +12,7 @@
  *  Hunyuan 3D 3.1 Pro      fal-ai/hunyuan-3d/v3.1/pro/image-to-3d   $0.375; PBR +$0.15; a set face count +$0.15                Tencent Hunyuan 3D (hosted on fal; the
  *                                                                                                                              community licence excludes EU, UK, KR)
  *  Pixal3D + TRELLIS.2     Local, official template 3d_pixal3d_trellis2_image_to_model    free once its 15.2 GB of files are downloaded
- *                          Listed only: never runs or downloads until the user approves a download (COMING_SOON reason says so).
+ *                          Listed only (coming soon): never runs or downloads; there is no runner yet (COMING_SOON reason says so).
  *
  *  Nothing here was run against a paid API: request bodies follow the providers' schemas (fal OpenAPI, the ComfyUI node's object_info) and are
  *  checked in test/three-d.test.ts. Without a key every hosted route makes a labelled sample (our own GLB, server/samples/result-3d.glb).
@@ -133,8 +133,8 @@ for (const r of THREE_D_ROUTES) (EXTRA_ROUTES[r.modelId] ??= []).push(r);
 export const PIXAL3D_GB = fmtGB(PIXAL3D_FILES.reduce((a, f) => a + f.bytes, 0));
 registerProvider({ id: 'comfy-pixal3d-trellis2', name: 'Pixal3D + TRELLIS.2', kind: 'open-weights', via: `local ComfyUI, official template 3d_pixal3d_trellis2_image_to_model (needs ${PIXAL3D_GB} of files; not downloaded)`,
   docUrl: 'https://github.com/Comfy-Org/workflow_templates/blob/main/templates/3d_pixal3d_trellis2_image_to_model.json', licenseParts: ['mit', 'dinov3'], nodes: ['Trellis2ShapeStage', 'Trellis2TextureStage', 'Pixal3DConditioning'] } as any);
-/** Listed with its download size; it never runs (or downloads) until the user approves the download and a runner is added. */
-COMING_SOON['comfy-pixal3d-trellis2'] = `Needs a download first (${PIXAL3D_GB}, ${PIXAL3D_FILES.length} files)`;
+/** Listed with its file size as information only: there is no runner yet, so it never runs (or downloads); a download alone wouldn't make it run. */
+COMING_SOON['comfy-pixal3d-trellis2'] = `Coming soon (${PIXAL3D_FILES.length} files, ${PIXAL3D_GB})`;
 registerProvider({ id: 'local-turntable', name: 'Turntable (recorded in your browser)', kind: 'open-weights', via: 'This computer: the browser records the 3D viewer, ffmpeg saves an MP4 (no ComfyUI, no provider)', workflows: [], license: 'agpl-3.0-or-later', licenseParts: ['agpl-3.0-or-later'] } as any);
 NATIVE_DIRECT['local-turntable'] = { noComfy: true, label: 'Your computer · free' };
 

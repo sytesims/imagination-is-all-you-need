@@ -1,5 +1,5 @@
 /**
- * The 3D page (/tools/3d, 2026-10-23): one page like Image, Video and Audio. The feed is above (3D results as stills; one live viewer at a
+ * The 3D page (/3d, 2026-10-23): one page like Image, Video and Audio. The feed is above (3D results as stills; one live viewer at a
  * time), the bar below is the same two-row dock (Image's ic-dock classes, Video's layout): the workflow chip first in row 2, the model chip
  * with the shared ModelMenu (Default badge), the model's own setting chips (WorkflowControls: Detail, Texture), Format, the Settings fold
  * (seed), Run on, the prompt peek, and Generate with price · time or the first problem (PF_SHORT) and the "Before you generate" list.
@@ -14,6 +14,7 @@
  *    Stage (note; Camera, Colour; the player's Fly it / Play the actor; Next), Mockup (the player's takes, timeline and Edit take; Record mockup),
  *    Render (the newest mockup; model, price; Render video). Preview style, Frame, Record and the seed live in the ⋯ menu on the stage.
  */
+import { IMAGE_PAGE } from '../../../../server/src/shared/pages';
 import { IMAGE_ACCEPT, fileFits, wrongTypeText } from '../../../../server/src/shared/mediaAccept';
 import { RowMore } from '../../shared/RowMore';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -69,7 +70,7 @@ import { Viewer3D, useMeta3d, type Item3D } from '../../shared/Viewer3D';
 import { Model3D, jobIs3d, posterOf3d, edgeBusyness, startOrbitOf, type Model3DHandle } from '../../shared/model3d';
 import { savePoster } from '../../shared/Viewer3D';
 import ResultView from '../../shared/ResultView';
-import { useFeedViewer } from '../next/feed/ResultFeed';
+import { useFeedViewer, FeedH1 } from '../next/feed/ResultFeed';
 import { goToWorkflow } from '../../shared/goToWorkflow';
 import { directShotHref } from '../../shared/workflowLinks';
 import { carryModels } from '../../../../server/src/shared/previzModels';
@@ -82,6 +83,7 @@ import '../video/videoDock.css';
 import '../video/videoWorkflows.css';
 import './threeD.css';
 import { QUALITIES, QUALITY_LABEL, QUALITY_HINT, previzQuality, setPrevizQuality, onPrevizQuality } from '../../shared/previz/quality';
+import { SlotLabel } from '../../shared/SlotLabel';
 
 type Payload = { workflows: (ThreeDWorkflow & { runnable: boolean; defaults?: { hosted: string | null; local: string | null; why: { local?: string; hosted?: string }; active: { id: string; defaultProvider: string | null; why?: string; reason?: string | null; runs?: boolean } | null } })[];
   models: ThreeDModel[]; showcase: { dataset: { name: string; url: string; credit: string; licence: string; licenceUrl: string }; items: ShowcaseItem[] }; bigGlbBytes: number };
@@ -91,10 +93,10 @@ const useThreeD = () => { const [p, setP] = useState<Payload | null>(null);
 const TOOL = 'three-d';
 /** What a coming-soon workflow points to today (its bar's line, the button's workflow, an optional second way). */
 const SOON_TODAY: Record<string, { line: string; go: string; alt?: { label: string; href: string } }> = {
-  'text-to-3d': { line: 'Today: make a picture in Image, then turn it into a model with Image to 3D.', go: 'image-to-3d', alt: { label: 'Make a picture in Image', href: '/tools/create-image' } },
+  'text-to-3d': { line: 'Today: make a picture in Image, then turn it into a model with Image to 3D.', go: 'image-to-3d', alt: { label: 'Make a picture in Image', href: IMAGE_PAGE } },
   'multiview-to-3d': { line: 'Today, Image to 3D makes a model from one picture: your front view works best.', go: 'image-to-3d' },
   retexture: { line: 'Today, make a new model with Image to 3D from a picture that has the look you want.', go: 'image-to-3d' },
-  rig: { line: 'To move a character today, Direct a Shot has a ready-made actor you can walk through a scene.', go: 'plan-a-shot' },
+  rig: { line: 'For people it works today, free: open one of your 3D models and press Rig. Other shapes are coming.', go: 'image-to-3d' },
   default: { line: 'Image to 3D works today: one picture in, a textured model out.', go: 'image-to-3d' },
 };
 const LBL: Record<string, string> = { low: 'Low', standard: 'Standard', high: 'High', off: 'Off', hd: 'HD', pbr: 'PBR', auto: 'Auto', '10k': '10k', '50k': '50k', '200k': '200k' };
@@ -217,7 +219,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
   // ---- the model menu (shared ModelMenu, Default badge) ----
   const chipsEl = useRef<HTMLDivElement>(null); const folded = useChipFit(chipsEl); const fo = (k: string) => folded.includes(k);
   const [pop, setPop] = useState(() => (wantsPicker() ? 'wf' : '')); usePickerParam((o) => setPop(o ? 'wf' : '')); const mRef = useRef<HTMLButtonElement>(null); const wfRef = useRef<HTMLButtonElement>(null); const setRef = useRef<HTMLButtonElement>(null); const fileIn = useRef<HTMLInputElement>(null);
-  const items: MenuItem[] = tool.providers.map((x) => { const m = threeDModel(x.id); return { id: x.id, name: m?.name ?? x.name, open: x.kind === 'open-weights' || isOpenWeights(x, null), tag: m?.priceNote, off: m?.download ? `Needs a download first (${(m.download.bytes / 1e9).toFixed(1)} GB). Nothing downloads until you say so.` : null, p: x }; });
+  const items: MenuItem[] = tool.providers.map((x) => { const m = threeDModel(x.id); return { id: x.id, name: m?.name ?? x.name, open: x.kind === 'open-weights' || isOpenWeights(x, null), tag: m?.priceNote, off: m?.download ? `it isn’t added yet (${(m.download.bytes / 1e9).toFixed(1)} GB of files).` : null, p: x }; });
   // ---- viewer ----
   const done3d = results.filter((j) => j.status === 'done' && jobIs3d(j));
   /* the open item is ?view=<job id> or ?view=ex-<example id> (the shared useFeedViewer, like Image and Video): Back closes it, a reload reopens it */
@@ -226,8 +228,9 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
   /* an example's "Use this image": its input picture into Image to 3D's slot, with the example's model when this app has it (nothing runs) */
   const useExampleImage = async (i: number) => { const s0 = data?.showcase.items[i]; if (!s0) return;
     try { const f = await fileFromUrl(s0.input, `example-${s0.id}.${(s0.input.split('?')[0].split('.').pop() || 'png').toLowerCase()}`); takeImage(f);
-      const m = exampleModel(s0.model, data?.models ?? []); if (m && tool.providers.some((p) => p.id === m.id)) setDraft((d) => ({ ...d, provider: m.id }));
-      goToWorkflow(THREE_D_PAGE, () => setView(null)); toast(m ? `Image added to Image to 3D, with ${m.name}` : `Image added to Image to 3D. ${s0.model} isn’t in this app, so the default model is picked.`, 'info');
+      /* a coming-soon local model (Pixal3D: listed with its files, no runner; the model menu greys it out too) can't run: the default model stays picked */
+      const m0 = exampleModel(s0.model, data?.models ?? []); const m = m0 && tool.providers.some((p) => p.id === m0.id) && !threeDModel(m0.id)?.download ? m0 : null; if (m) setDraft((d) => ({ ...d, provider: m.id }));
+      goToWorkflow(THREE_D_PAGE, () => setView(null)); toast(m ? `Image added to Image to 3D, with ${m.name}` : `Image added to Image to 3D, with the default model. The example was made with ${s0.model}.`, 'info');
     } catch (e) { toast((e as Error).message, 'error'); } };
   // ---- turntable workflow: which 3D result to record ----
   const [ttPick, setTtPick] = useState(''); const ttJob = done3d.find((j) => j.id === ttPick) ?? done3d[0] ?? null; const ttRef = useRef<HTMLButtonElement>(null);
@@ -346,7 +349,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
           <header className="t3-hero"><h1>Make something in 3D</h1><p>Direct a camera move in a simple 3D scene, or turn one picture into a model you can spin, download and film. Pick a way in:</p></header>
           <SceneGrid label="Ways to start" testId="t3-start" size="lg" min={320} items={startItems} value={wf.id === 'image-to-3d' ? 'image-to-3d' : null} onPick={(it) => { if (it.id === 'image-to-3d') fileIn.current?.click(); else pick(it.id); }} />
           {showcase && <Showcase sc={showcase} models={data?.models ?? []} onOpen={(i, el) => setView({ kind: 'ex', i }, el)} />}</div>
-        : <div className="vs-hist t3-hist" data-testid="t3-feed">
+        : <div className="vs-hist t3-hist" data-testid="t3-feed"><FeedH1>3D</FeedH1>
           <div className="t3-feedbar" role="toolbar" aria-label="Your 3D results">
             <h2 className="t3-feed-h">Your 3D work<small data-testid="t3-count">{results.length.toLocaleString()}</small></h2>
             {(['3d', 'preview', 'real'] as FeedKind[]).filter((k) => counts[k] > 0).length > 1 && <span className="t3-kinds" role="group" aria-label="Show">{KINDS.filter((k) => k.id === 'all' || counts[k.id] > 0).map((k) => { const on = k.id === 'all' ? !kinds : !!kinds?.includes(k.id);
@@ -377,7 +380,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
           {!isPS && !isSoon && <div className="ic-lead" data-testid="t3-lead">
             {isPS ? null
             : isTT ? <span className="wf-strip wf-inputs"><button ref={ttRef} type="button" className={`wf-slot${ttJob ? ' full' : ' req'}`} data-testid="t3-tt-slot" aria-haspopup="listbox" aria-expanded={pop === 'tt'} onClick={() => setPop(pop === 'tt' ? '' : 'tt')} {...tip(ttJob ? 'Pick another 3D result' : 'Make a 3D model first')} disabled={!done3d.length}>
-                <span className="wf-slot-hit">{ttJob && posterOf3d(ttJob) ? <img src={posterOf3d(ttJob)!} alt="" /> : <CubeIcon size={14} />}<b>{ttJob ? 'Model' : 'No model yet'}</b></span></button></span>
+                <span className="wf-slot-hit">{ttJob && posterOf3d(ttJob) ? <img src={posterOf3d(ttJob)!} alt="" /> : <CubeIcon size={14} />}{ttJob ? <b>Model</b> : <SlotLabel text="No model yet" />}</span></button></span>
               : <WorkflowInputs recipe={recipe} files={{ image: img }} setFile={(_s, f) => takeImage(f)} onPick={() => fileIn.current?.click()} picking={null} onUrl={(_s, u) => { void fileFromUrl(u).then(takeImage).catch((e) => toast((e as Error).message, 'error')); }} flash={null} choose={null} onChoose={() => 0} onChooseCancel={() => 0} disabled={busy || rbBusy}
                 surface={img ? <button type="button" className="ic-chip t3-rmbg" data-testid="t3-remove-bg" disabled={rbBusy} onClick={() => void removeBg()} {...tip(`Cut out the subject first with Remove Background${rbQ ? ` · ${rbQ.demo ? 'sample here' : shownCredits(rbQ) === 0 ? 'free' : `≈ $${((rbQ.credits ?? 0) / 100).toFixed(2)}`}` : ''}`)}>{rbBusy ? <i className="as-spin" aria-hidden /> : null}Remove background</button> : null} />}
           </div>}
@@ -481,7 +484,7 @@ function exItem(d: Payload, i: number): Item3D | null {
   const s = d.showcase.items[i]; if (!s) return null; const ds = d.showcase.dataset;
   return { key: s.id, src: s.glb, name: s.title, role: `Made with ${s.model}`, poster: s.preview, inputUrl: s.input, inputLabel: 'Input image', mb: s.glbMB, downloadName: `scenario-${s.id}.glb`,
     badge: <span className="rvx-badges"><em className="exv-chip" {...tip('An example from Scenario’s open 3D dataset. It isn’t in your library.')}>Example</em></span>,
-    rows: [['Model', exampleModel(s.model, d.models) ? s.model : <span data-testid="v3d-not-in-app">{s.model} · <em className="t3-notin-row">not in this app</em> (Use this image picks the default model)</span>], ['Made by', ds.credit], ['Licence', <a href={ds.licenceUrl} target="_blank" rel="noreferrer">{ds.licence}</a>], ['Source', <a href={ds.url} target="_blank" rel="noreferrer">{ds.name}</a>]],
+    rows: [['Model', exampleModel(s.model, d.models) ? s.model : <span data-testid="v3d-not-in-app">{s.model} <em className="t3-notin-row">· Use this image picks the default model</em></span>], ['Made by', ds.credit], ['Licence', <a href={ds.licenceUrl} target="_blank" rel="noreferrer">{ds.licence}</a>], ['Source', <a href={ds.url} target="_blank" rel="noreferrer">{ds.name}</a>]],
     credit: <>3D models: <a href={ds.url} target="_blank" rel="noreferrer">Scenario</a> (<a href={ds.licenceUrl} target="_blank" rel="noreferrer">CC BY 4.0</a>), loaded from Hugging Face.</> };
 }
 
@@ -500,7 +503,7 @@ function Card({ j, own, onOpen, onVideo, onRetry, onMakeReal }: { j: JobState; o
       <FeedCaption title={`Mockup · ${pv.presetName ?? 'Shot'}`} parts={['Free', outs.map((o) => o.label?.replace(/ view$/, '')).filter(Boolean).join(' + ') || null, pv.shot ? `${pv.shot.seconds} s · ${pv.fps} fps` : null]} testId={`ps-cap-${j.id}`} />
       <span className="t3-acts"><a className="t3-act" href={j.resultUrl ?? '#'} download={appFileName(j.id, 'mp4')} data-testid={`ps-dl-${j.id}`} aria-label="Download MP4" {...tip('Download MP4')}><DownloadIcon size={14} /></a>
         <button type="button" className="t3-act ps-act-real" data-testid={`ps-real-${j.id}`} aria-label="Render real video" {...tip('Render real video from this mockup. Free on your computer.')} onClick={(e) => onMakeReal(e.currentTarget)}><SparkleIcon size={14} /></button>
-        <a className="t3-act" href={`/jobs/${j.id}`} onClick={(e) => { if (e.metaKey || e.ctrlKey) return; e.preventDefault(); navigate(`/jobs/${j.id}`); }} aria-label="More" {...tip('Open in Assets')}><MoreIcon size={14} /></a></span>
+        <a className="t3-act" href={`/jobs/${j.id}`} onClick={(e) => { if (e.metaKey || e.ctrlKey) return; e.preventDefault(); navigate(`/jobs/${j.id}`); }} aria-label="Open in Assets" {...tip('Open in Assets')}><MoreIcon size={14} /></a></span>
       {(() => { const mr: any[] = (j as any).madeReal ?? []; const last = mr[0]; return last ? <a className="ps-real-chip on" href={`/jobs/${last.id}`} data-testid={`ps-real-link-${j.id}`} onClick={(e) => { if (e.metaKey || e.ctrlKey) return; e.preventDefault(); navigate(`/jobs/${last.id}`); }}><SparkleIcon size={11} />{last.status === 'done' ? `Rendered${mr.length > 1 ? ` · ${mr.length}` : ''}` : last.status === 'running' || last.status === 'queued' ? 'Rendering…' : 'Render'}</a>
         : <button type="button" className="ps-real-chip" data-testid={`ps-real-chip-${j.id}`} onClick={(e) => onMakeReal(e.currentTarget)}><SparkleIcon size={11} />Render video</button>; })()}</div>; }
   if (j.toolId === MAKE_REAL_TOOL) { const m = (j.input as any)?.makeReal ?? {}; const p = m.plan ?? {}; const ar = p.width && p.height ? `${p.width} / ${p.height}` : '16 / 9'; const sample = /sample/i.test(j.outputs?.[0]?.label ?? '');
@@ -524,7 +527,7 @@ function Card({ j, own, onOpen, onVideo, onRetry, onMakeReal }: { j: JobState; o
     <span className="t3-acts"><a className="t3-act" href={j.resultUrl ?? '#'} download={appFileName(j.id, 'glb')} data-testid={`t3-dl-${j.id}`} aria-label="Download GLB" {...tip('Download GLB')}><DownloadIcon size={14} /></a>
       <button type="button" className="t3-act" data-testid={`t3-video-${j.id}`} aria-label="Make a video" {...tip(tt ? 'Record another turntable video (free)' : 'Make a video: record a turntable (free)')} onClick={onVideo}><VideoIcon size={14} /></button>
       <a className="t3-act" href={directShotHref(j.id)} data-testid={`t3-shot-${j.id}`} aria-label="Use in Direct a Shot" onClick={(e) => { if (e.metaKey || e.ctrlKey) return; e.preventDefault(); navigate(directShotHref(j.id)); }} {...tip('Use in Direct a Shot: film this model in a 3D set, as a prop or the actor (free)')}><PrevizIcon size={14} /></a>
-      <a className="t3-act" href={`/jobs/${j.id}`} onClick={(e) => { if (e.metaKey || e.ctrlKey) return; e.preventDefault(); navigate(`/jobs/${j.id}`); }} aria-label="More" {...tip('Open in Assets')}><MoreIcon size={14} /></a></span>
+      <a className="t3-act" href={`/jobs/${j.id}`} onClick={(e) => { if (e.metaKey || e.ctrlKey) return; e.preventDefault(); navigate(`/jobs/${j.id}`); }} aria-label="Open in Assets" {...tip('Open in Assets')}><MoreIcon size={14} /></a></span>
   </div>;
 }
 
@@ -537,11 +540,11 @@ function Showcase({ sc, models, onOpen }: { sc: Payload['showcase']; models: Thr
     <div className="t3-show-h"><h2>Made with these models</h2><p className="t3-credit" data-testid="t3-credit">3D models: <a href={sc.dataset.url} target="_blank" rel="noreferrer">Scenario</a> (<a href={sc.dataset.licenceUrl} target="_blank" rel="noreferrer">CC BY 4.0</a>)</p></div>
     {allBad ? <ul className="t3-show-links" data-testid="t3-showcase-links">{sc.items.map((s) => <li key={s.id}><a href={s.glb} target="_blank" rel="noreferrer">{s.title}</a> · {s.model}</li>)}</ul>
       : <div className="t3-show-row">{sc.items.map((s, i) => { const inApp = !!exampleModel(s.model, models);
-        return <button key={s.id} type="button" className="t3-ex" data-testid={`t3-ex-${i}`} onClick={(e) => onOpen(i, e.currentTarget)} aria-label={`${s.title}, made with ${s.model}${inApp ? '' : ' (not in this app)'}. Open in 3D`} hidden={bad.has(s.id)}>
+        return <button key={s.id} type="button" className="t3-ex" data-testid={`t3-ex-${i}`} onClick={(e) => onOpen(i, e.currentTarget)} aria-label={`${s.title}, made with ${s.model}. Open in 3D`} hidden={bad.has(s.id)}>
         <span className="t3-ex-media"><img src={s.preview} alt="" loading="lazy" decoding="async" onError={() => setBad((b) => new Set(b).add(s.id))} />
           <span className={`t3-ex-in${inOk.has(s.id) ? ' ok' : ''}`} data-testid={`t3-ex-in-${i}`} data-ok={inOk.has(s.id) || undefined} {...tip('The input image')}><img src={s.input} alt="" loading="lazy" decoding="async"
             ref={(el) => { if (el?.complete && el.naturalWidth > 0) markIn(s.id); }} onLoad={(e) => { if (e.currentTarget.naturalWidth > 0) markIn(s.id); }} /></span>
-          {!inApp && <em className="t3-notin" data-testid={`t3-ex-notin-${i}`} {...tip(`${s.model} isn’t one of this app’s 3D models`)}>Not in this app</em>}</span>
+          {!inApp && <em className="t3-notin" data-testid={`t3-ex-notin-${i}`} {...tip(`An example made with ${s.model}. Use this image picks one of the models here.`)}>Made with {s.model}</em>}</span>
         <span className="t3-ex-t"><b>{s.title}</b><span><MakerTile className="t3-ex-dot" medium="3d" maker={s.modelKey} fallback={s.model} />{s.model} · {s.glbMB} MB</span></span></button>; })}</div>}
   </section>;
 }

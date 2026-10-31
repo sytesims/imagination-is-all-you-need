@@ -32,9 +32,9 @@ const size = (u: string) => { const p = path.join(PUB, u); assert.ok(fs.existsSy
   assert.equal(X.steps[1].spin, X.mossbun.url, 'the 3D card turns the shipped GLB'); assert.ok(size(X.mossbun.url) < 3.6e6, 'Mossbun\'s web GLB');
   assert.equal(runByJob('092abb03')!.costUsd, X.mossbun.usd, 'the 3D model\'s price is the run\'s');
   assert.equal(featuredRecreateHref(X.key), '/video?recreate=50c0d92b', 'Recreate this shot opens Video with the prompt and the painted frame');
-  assert.match(X.make.href, /^\/tools\/3d\?workflow=image-to-3d&model=cloud-tripo-31$/, 'Make your own: 3D › Image to 3D on Tripo 3.1');
+  assert.match(X.make.href, /^\/3d\?workflow=image-to-3d&model=cloud-tripo-31$/, 'Make your own: 3D › Image to 3D on Tripo 3.1');
   assert.ok(EXPLORE_SHOWCASE_LINKS().includes(X.make.href) && EXPLORE_SHOWCASE_LINKS().includes(featuredRecreateHref(X.key)!), 'its links are in the checked list');
-  for (const u of EXPLORE_SHOWCASE_LINKS()) assert.match(u, /^\/(video|tools\/(3d|audio|create-image)|canvas|workflows|film)\b/, `showcase link opens a real page: ${u}`);
+  for (const u of EXPLORE_SHOWCASE_LINKS()) assert.match(u, /^\/(video|3d|audio|image|canvas|workflows|film)\b/, `showcase link opens a real page: ${u}`);
   assert.match(X.credit, /KayKit by Kay Lousberg and Kenney, CC0/, 'the CC0 kits are credited'); assert.match(X.credit, /Tripo 3\.1/, '...and Mossbun');
   for (const f2 of ['models/open-city/open-city.glb', 'models/kits/LICENSE.txt', 'models/open-city/LICENSE.txt']) assert.ok(fs.existsSync(path.join(PUB, f2)), f2);
   for (const u of ['showcase/x3d-bottle.webp', 'showcase/x3d-clay.webp', 'showcase/x3d-shelf.webp']) assert.ok(!fs.existsSync(path.join(PUB, u)), `${u}: gone with the old tiles`);

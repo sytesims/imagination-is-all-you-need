@@ -4,8 +4,9 @@ import { EnhanceButton, enhanceToastTitle, type EnhanceResult } from '../next/En
 import { PromptPeek, type PeekForm } from '../next/PromptPeek';
 import { BrandChip } from '../../shared/BrandChip';
 import { RowMore } from '../../shared/RowMore';
-import { SlotPreview, SlotCount, fullText, prepUpload, useSlotReorder, type SlotAction } from '../../shared/SlotPreview';
+import { SlotPreview, fullText, prepUpload, useSlotReorder, type SlotAction } from '../../shared/SlotPreview';
 import { MoreFiles, LeftNote, notAddedText, type TrayFile } from '../../shared/FilesTray';
+import { AddTile } from '../../shared/AddTile';
 import { thumbsShown } from '../../shared/presetBar';
 import { handoffOf } from '../../shared/handoffFiles';
 import { PF_SHORT } from '../../shared/DockGenerate';
@@ -71,7 +72,7 @@ import { closestAspect } from '../../../../server/src/shared/imageSnap';
 import { useViralTemplates } from './useViralTemplates';
 import { VideoThumb } from '../../shared/VideoThumb';
 import { KeyframeLead, KeyframePanel, keyframeTimesOf } from './KeyframeStrip';
-import { H3KF_MAX_FRAMES, H3KF_SECONDS } from '../../../../server/src/shared/h3Keyframes';
+import { H3KF_CAPS, H3KF_SECONDS, type KeyframeCaps } from '../../../../server/src/shared/h3Keyframes';
 import { Notice } from '../../shared/Notice';
 
 type R = { file: File; url: string };
@@ -95,6 +96,8 @@ export interface VideoStudioProps {
   /** how many of each reference list (refs, refVideos, refAudios) the picked model takes: the submit sends only these (the extras stay on the bar, marked) */ refCaps?: React.MutableRefObject<Record<string, number> | null>;
 }
 const MODE_ART: Record<string, string> = { t2v: 'soar', i2v: 'heroine', flf: 'city', r2v: 'giant', keyframes: 'dunes' };
+/** The Keyframes card's line, from the picked model's frame limits (H3: pinned times; Kling 4.0: spaced evenly). */
+const kfCopy = (c: KeyframeCaps) => (c.times ? `Pin ${c.min}–${c.max} frames to moments in one shot.` : `Up to ${c.max} frames through one shot, spaced evenly.`);
 const MODE_COPY: Record<string, string> = { t2v: 'Describe it, get a clip with sound.', i2v: 'Bring one still to life.', flf: 'Pick the first and last frame.', r2v: 'Keep a face or object consistent.', keyframes: 'Pin 2–5 frames to moments in one shot.' };
 const RK: [string, string][] = [['refs', 'image'], ['refVideos', 'video'], ['refAudios', 'audio']];
 /** File-picker types per reference kind; video / audio follow the model's refFormats (videoCaps) when it lists them. */
@@ -160,21 +163,23 @@ export default function VideoStudio(p: VideoStudioProps) {
   const qLocal = true; // quality is sent for every model again (backend: resolution wins; quality only counts as speed or as a resolution-like value)
 
   const [q, setQ] = useState<any>(null); const qFor = useRef<Record<string, string> | null>(null); /* the params the quote in `q` was asked with (the popups price only a quote for these settings) */
-  /* Keyframes (2026-10-27, MiniMax H3 Keyframes · Comfy Cloud): 2–5 frames (vrefs.keyframes) at their times (fv.keyframeTimes, JSON seconds; KeyframeStrip.tsx) */
-  const kfMode = p.mode === 'keyframes'; const kfFrames = p.vrefs.keyframes ?? []; const kfTimes = keyframeTimesOf(p.fv.keyframeTimes, kfFrames.length, p.duration);
-  const setKf = (f: R[], t: number[]) => { p.setVrefs('keyframes', f); p.setFv('keyframeTimes', f.length ? JSON.stringify(t) : ''); };
-  useEffect(() => { if (!kfMode) return; const want = kfFrames.length ? JSON.stringify(kfTimes) : ''; if (String(p.fv.keyframeTimes ?? '') !== want) p.setFv('keyframeTimes', want); }, [kfMode, JSON.stringify(kfTimes)]);
-  useEffect(() => { if (kfMode && p.duration < H3KF_SECONDS[0]) p.setDuration(H3KF_SECONDS[0]); }, [kfMode, p.duration]); /* Keyframes makes 5–15 s */
+  /* Keyframes (2026-10-27): frames (vrefs.keyframes) as many as the model takes (its videoLimits keyframes: MiniMax H3 2–5 at their times in
+   * fv.keyframeTimes, JSON seconds; Kling 4.0 up to 10 spaced evenly, no times; KeyframeStrip.tsx). The quote counts them (keyframes=<n>). */
+  const kfMode = p.mode === 'keyframes'; const kfCaps: KeyframeCaps = lim?.keyframes ?? H3KF_CAPS; const kfFrames = p.vrefs.keyframes ?? []; const kfTimes = keyframeTimesOf(p.fv.keyframeTimes, kfFrames.length, p.duration);
+  const setKf = (f: R[], t: number[]) => { p.setVrefs('keyframes', f); p.setFv('keyframeTimes', f.length && kfCaps.times ? JSON.stringify(t) : ''); };
+  useEffect(() => { if (!kfMode) return; const want = kfFrames.length && kfCaps.times ? JSON.stringify(kfTimes) : ''; if (String(p.fv.keyframeTimes ?? '') !== want) p.setFv('keyframeTimes', want); }, [kfMode, kfCaps.times, JSON.stringify(kfTimes)]);
+  useEffect(() => { if (kfMode && kfCaps.times && p.duration < H3KF_SECONDS[0]) p.setDuration(H3KF_SECONDS[0]); }, [kfMode, kfCaps.times, p.duration]); /* H3 Keyframes makes 5–15 s */
   const kfIn = useRef<HTMLInputElement>(null); const [kfErr, setKfErr] = useState('');
-  const addKf = (fs: File[]) => { const imgs = fs.filter(f => fileFits('image', f)); const room = H3KF_MAX_FRAMES - kfFrames.length;
-    setKfErr(imgs.length < fs.length ? 'Frames are pictures: PNG, JPG or WebP.' : imgs.length > room ? `Up to ${H3KF_MAX_FRAMES} frames: ${imgs.length - Math.max(0, room)} not added.` : '');
+  const addKf = (fs: File[]) => { const imgs = fs.filter(f => fileFits('image', f)); const room = kfCaps.max - kfFrames.length;
+    const err = imgs.length < fs.length ? 'Frames are pictures: PNG, JPG or WebP.' : imgs.length > room ? `${modelName || 'This model'} takes up to ${kfCaps.max} frames: ${imgs.length - Math.max(0, room)} not added.` : '';
+    setKfErr(err); if (err) toast(err, 'info'); /* said at once (the note list only opens from Generate) */
     const add = imgs.slice(0, Math.max(0, room)).map(f => ({ file: f, url: URL.createObjectURL(f) })); if (!add.length) return; const next = [...kfFrames, ...add];
     setKf(next, keyframeTimesOf('', next.length, p.duration)); };
   const nRefImg = kfMode ? kfFrames.length /* frame N = <Picture N> = @imageN */ : (p.image ? 1 : 0) + (p.vrefs.refs?.length ?? 0); // r2v: the photo and every image reference go to the model (job refPaths)
   /* The quote's params, shared by Generate's quote and the popups' option prices (one source, so they price the same run). */
   const qpOk = !((durListOf(cur, lim, cfg, p.resolution).length && !durListOf(cur, lim, cfg, p.resolution).includes(p.duration)) || (resList.length && !resList.includes(p.resolution)));
   const qpObj: Record<string, string> = { ...quoteParams(), provider: p.provider, duration: String(p.duration), resolution: p.resolution, types: p.mode, ...(qLocal ? { quality: p.quality } : {}), aspect: String(p.fv.aspect ?? 'auto'), ...(rvTotal > 0 ? { refVideoSeconds: String(rvTotal) } : {}), ...(p.mode === 'r2v' && nRefImg > 0 ? { refs: String(Math.min(nRefImg, refMax.image ?? 0)) } : {}) /* reference images the job sends (photo + refs): per-reference prices, e.g. MiniMax H3 beyond 5 */,
-    ...(kfMode ? {} : attachParams({ start: !!p.image, image: p.vrefs.refs?.length ?? 0, video: p.vrefs.refVideos?.length ?? 0, audio: p.vrefs.refAudios?.length ?? 0 })), /* each clip's seconds, when all are read (the route's length checks; the picker trims them per row) */
+    ...(kfMode ? { keyframes: String(kfFrames.length) } : attachParams({ start: !!p.image, image: p.vrefs.refs?.length ?? 0, video: p.vrefs.refVideos?.length ?? 0, audio: p.vrefs.refAudios?.length ?? 0 })), /* each clip's seconds, when all are read (the route's length checks; the picker trims them per row) */
     ...((p.vrefs.refVideos ?? []).length && (p.vrefs.refVideos ?? []).every(r => rvDur[r.url] > 0) ? { refVideoSecondsEach: (p.vrefs.refVideos ?? []).map(r => Math.round(rvDur[r.url] * 100) / 100).join(',') } : {}),
     ...((p.vrefs.refAudios ?? []).length && (p.vrefs.refAudios ?? []).every(r => raDur[r.url] > 0) ? { refAudioSecondsEach: (p.vrefs.refAudios ?? []).map(r => Math.round(raDur[r.url] * 100) / 100).join(',') } : {}),
     /* what's on the bar (shared/refFit.ts): the start frame (upload or hand-off) as image=1, so a quote never says "Needs a start image" with one attached; the picker fits each row from the counts */ audio: String(p.fv.audio ?? (aud0?.default === false ? '0' : '1')), bitrate: String(p.fv.bitrate ?? 'standard'), ...(p.fv.loop === '1' ? { loop: '1' } : {}), ...(lim?.stageToggle && p.resolution === lim.stageToggle.resolution && p.fv[lim.stageToggle.field] ? { [lim.stageToggle.field]: String(p.fv[lim.stageToggle.field]) } : {}) /* LTX-2.5 DFR: the 48 fps pass is priced */ };
@@ -264,7 +269,7 @@ export default function VideoStudio(p: VideoStudioProps) {
   const sndHint = sndDelta ? `Adds ${sndDelta.replace(/^\+/, '')} on this model` : aud?.priceAffects ? 'Changes the price on this model' : 'Same price either way';
   const refOther = vq.get('norefs'); const refDelta = ((d) => (d?.startsWith('+') ? d : null))(qFresh && refOther ? priceDelta(refOther, q, own) : null); /* what the billed references add */
   const keyNote = qBase && q.needsKey === true ? ' · once a key is added' : '';
-  const durRate: string | null = !qBase || !qpOk ? null : qLocalRun ? localLine(q) : psQ ? `${rateText(q, own)}${keyNote}` : priced ? `${rvTotal > 0 ? 'Reference clips are billed too' : 'Priced per clip'}${keyNote}` : q.demo === true && q.perSecond ? `Sample now · with a key, ${rateText({ ...q, demo: false }, own)}` /* the button says 'Sample': no option prices, the real rate as a note */ : null;
+  const durRate: string | null = !qBase || !qpOk ? null : qLocalRun ? localLine(q) : psQ ? `${rateText(q, own)}${keyNote}` : priced ? `${rvTotal > 0 ? (q?.upTo && q.upToNote ? `Up to: ${q.upToNote}` /* a range (Kling 4.0): the quote is its top */ : 'Reference clips are billed too') : 'Priced per clip'}${keyNote}` : q.demo === true && q.perSecond ? `Sample now · with a key, ${rateText({ ...q, demo: false }, own)}` /* the button says 'Sample': no option prices, the real rate as a note */ : null;
 
   /* Look → Camera: a Camera Moves preset on THIS run (job field cameraMove; the server puts its phrase first in the prompt). Same model, same price. */
   const camOn = String(p.fv.cameraMove ?? ''); const cam = camPresets.find(x => x.id === camOn || x.aliases?.includes(camOn)); /* old ids (aliases) from Recreate still show their move */
@@ -350,7 +355,7 @@ export default function VideoStudio(p: VideoStudioProps) {
     if (v.aspect) p.setFv('aspect', v.aspect); if (v.audio === '0' || v.audio === '1') p.setFv('audio', v.audio); };
   const sndNote = aud && !aud.supported ? `${modelName} makes silent clips` : aud?.supported ? `${modelName} always makes sound with the picture` : 'Sound depends on the model';
   const addOpts: { id: string; label: string; testId: string; go: () => void }[] = [];
-  if (kfMode) { if (kfFrames.length < H3KF_MAX_FRAMES) addOpts.push({ id: 'frames', label: 'Add frames', testId: 'vs-kf-add-menu', go: () => kfIn.current?.click() }); }
+  if (kfMode) { if (kfFrames.length < kfCaps.max) addOpts.push({ id: 'frames', label: 'Add frames', testId: 'vs-kf-add-menu', go: () => kfIn.current?.click() }); }
   else if (!p.image) addOpts.push({ id: 'start', label: p.mode === 'r2v' ? 'Upload a reference' : 'Start frame', testId: 'vs-start-add', go: () => fileIn.current?.click() });
   if (!kfMode && (refKinds.length > 1 || (refMax.image ?? 0) > 1) && RK.some(([k, kind]) => refKinds.includes(kind) && (p.vrefs[k]?.length ?? 0) < (refMax[kind] ?? 0))) addOpts.push({ id: 'refs', label: `References (${refKinds.join(', ')})`, testId: 'vs-ref-add', go: () => refIn.current?.click() });
   if (!kfMode && needLast && !p.lastFrame) addOpts.push({ id: 'end', label: 'End frame', testId: 'vs-end-add', go: () => lastIn.current?.click() });
@@ -425,7 +430,7 @@ export default function VideoStudio(p: VideoStudioProps) {
     viral.lookTab,
     /* modes this model makes; one mode only → no tab */
     { id: 'mode', label: 'Mode', searchLabel: 'Search modes', items: (() => { const ms = presets.filter(x => modeOk(p.provider, x.id)); return ms.length > 1 ? ms.map(x => { const e = exampleFor(MODE_ART[x.id] ?? x.id);
-        return { id: x.id, label: x.label, sub: MODE_COPY[x.id] ?? '', testId: `h3-mode-${x.id}`, selected: p.mode === x.id, video: { mp4: e.src, poster: e.poster }, onPick: () => pickLook(() => p.setMode(x.id)) }; }) : []; })() },
+        return { id: x.id, label: x.label, sub: (x.id === 'keyframes' ? kfCopy(kfCaps) : MODE_COPY[x.id]) ?? '', testId: `h3-mode-${x.id}`, selected: p.mode === x.id, video: { mp4: e.src, poster: e.poster }, onPick: () => pickLook(() => p.setMode(x.id)) }; }) : []; })() },
   ];
 
   /* the lead's thumbnails (start frame, references, end frame): a few on the bar, the rest behind "+N" (shared FilesTray, as on Image) */
@@ -457,12 +462,13 @@ export default function VideoStudio(p: VideoStudioProps) {
         {viral.strip}
         <div ref={prowRef} className="ic-prow" data-testid="vs-prow">
           <div className="ic-lead" data-testid="vs-dlead">
-            {kfMode ? <KeyframeLead frames={kfFrames} times={kfTimes} seconds={p.duration} onChange={setKf} onAdd={() => kfIn.current?.click()} onOpen={() => pop.setOpen('kf')} /> : <>
+            {kfMode ? <KeyframeLead frames={kfFrames} times={kfTimes} seconds={p.duration} caps={kfCaps} onChange={setKf} onAdd={() => kfIn.current?.click()} onOpen={() => pop.setOpen('kf')} /> : <>
             {leadThumbs.slice(0, leadShown.show).map(t => t.el)}
             <MoreFiles hidden={leadShown.more} items={leadThumbs.map(t => t.f)} watch={dock} testId="vs-more" summary={curFit && !curFit.all ? notUsedShort(curFit) : undefined} offText="Not used" action={overN > 0 ? { label: `Remove the ${overN} not used`, onClick: dropExtras } : null}
               onRemove={f => f.group === 'start' ? p.clearImage() : f.group === 'end' ? p.setLastFrame(null) : removeRef(f.group, f.idx)} onMove={(g, a, b) => moveRef(g)(a, b)} />
-            {(p.mode === 'r2v' || RK.some(([k]) => (p.vrefs[k]?.length ?? 0) > 0)) && <span className={`vs-slot-wrap${curFit && !curFit.all ? ' has-skip' : ''}`}><SlotCount used={refUsed} caps={refCaps} testId="vs-slot-count" />
-            {curFit && !curFit.all && <span className="vs-ref-skip" data-testid="vs-ref-skip" {...tip(`${modelName} won’t use ${skippedText(curFit)}. Pick another model, or remove ${curFit.haveN - curFit.usedN === 1 ? 'it' : 'them'}.`)}>{notUsedShort(curFit)}</span>}</span>}
+            {/* the dashed "+" for references (shared/AddTile): the model's real limit in its tooltip, a badge only near it; no counter text on the bar */}
+            {leadThumbs.length > 0 && (refCaps.image ?? 0) > 1 && <AddTile used={refUsed.image ?? 0} max={refCaps.image ?? 0} testId="vs-add-tile" onAdd={() => refIn.current?.click()} />}
+            {curFit && !curFit.all && <span className="vs-slot-wrap has-skip"><span className="vs-ref-skip" data-testid="vs-ref-skip" {...tip(`${modelName} won’t use ${skippedText(curFit)}. Pick another model, or remove ${curFit.haveN - curFit.usedN === 1 ? 'it' : 'them'}.`)}>{notUsedShort(curFit)}</span></span>}
             </>}
           </div>
           <label className="sr-only" htmlFor="app-prompt">Prompt</label>
@@ -477,17 +483,17 @@ export default function VideoStudio(p: VideoStudioProps) {
           <input ref={fileIn} type="file" hidden accept={IMAGE_ACCEPT} data-picker-title={p.mode === 'r2v' ? 'Choose a reference' : 'Choose a start frame'} data-picker-limits="One image · PNG, JPG or WebP · or a frame from one of your videos" data-picker-frames="" data-testid="vs-start-input" onChange={e => { const fs = Array.from(e.target.files ?? []); e.currentTarget.value = ''; if (fs[0]) void takeStart(fs[0]); }} />
           <input ref={refIn} type="file" hidden multiple data-picker-title="Choose references" data-picker-limits={refLimits} data-testid="vs-ref-input" accept={RK.filter(([, kind]) => refKinds.includes(kind)).map(([, kind]) => refAccept(kind, refFmts)).join(',')} onChange={e => { const fs = Array.from(e.target.files ?? []); e.currentTarget.value = ''; const r = repl.current; repl.current = null; if (r && fs[0]) void replaceRef(r.k, r.i, fs[0]); else void addRefs(fs); }} />
           <input ref={lastIn} type="file" hidden accept={IMAGE_ACCEPT} data-picker-title="Choose an end frame" data-picker-limits="One image · PNG, JPG or WebP · or a frame from one of your videos" data-picker-frames="" data-testid="h3-last-frame-input" onChange={e => { const f = e.target.files?.[0]; e.currentTarget.value = ''; if (f) void takeEnd(f); }} />
-          <input ref={kfIn} type="file" hidden multiple accept={IMAGE_ACCEPT} data-picker-title="Choose frames" data-picker-limits={`2 to ${H3KF_MAX_FRAMES} pictures · PNG, JPG or WebP · in clip order, or frames from your videos`} data-picker-frames="" data-testid="vs-kf-input" onChange={e => { const fs = Array.from(e.target.files ?? []); e.currentTarget.value = ''; if (fs.length) addKf(fs); }} />
+          <input ref={kfIn} type="file" hidden multiple accept={IMAGE_ACCEPT} data-picker-max={Math.max(0, kfCaps.max - kfFrames.length)} data-picker-title="Choose frames" data-picker-limits={`${kfCaps.min} to ${kfCaps.max} pictures · PNG, JPG or WebP · in clip order, or frames from your videos`} data-picker-frames="" data-testid="vs-kf-input" onChange={e => { const fs = Array.from(e.target.files ?? []); e.currentTarget.value = ''; if (fs.length) addKf(fs); }} />
           <span className="ic-fixed" data-testid="vs-chips-fixed">
             <VideoWorkflowChip tools={p.tools} dock watch={dock} />{/* bar match (2026-10-23): first chip of the chip row, like Image's "Create ⌃"; the prompt starts at the left */}
-              <button ref={aR.add} type="button" className="ic-chip ic-sq" data-testid="vs-add" aria-label="Add a photo" aria-haspopup="menu" aria-expanded={pop.open === 'add'} disabled={!addOpts.length} {...tip(addOpts.length ? 'Add a start frame or references' : kfMode ? `Up to ${H3KF_MAX_FRAMES} frames` : RK.some(([k]) => capOf(k) > 0) ? fullText(refCaps, modelName || 'This model') : 'Everything this mode takes is added')} onClick={() => { if (addOpts.length === 1) addOpts[0].go(); else pop.setOpen(pop.open === 'add' ? '' : 'add'); }}><svg className="ic-pi" width="16" height="16" viewBox="0 0 16 16" aria-hidden><path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg></button>
+              <button ref={aR.add} type="button" className="ic-chip ic-sq" data-testid="vs-add" aria-label="Add a photo" aria-haspopup="menu" aria-expanded={pop.open === 'add'} disabled={!addOpts.length} {...tip(addOpts.length ? 'Add a start frame or references' : kfMode ? `Up to ${kfCaps.max} frames` : RK.some(([k]) => capOf(k) > 0) ? fullText(refCaps, modelName || 'This model') : 'Everything this mode takes is added')} onClick={() => { if (addOpts.length === 1) addOpts[0].go(); else pop.setOpen(pop.open === 'add' ? '' : 'add'); }}><svg className="ic-pi" width="16" height="16" viewBox="0 0 16 16" aria-hidden><path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg></button>
             <button ref={aR.model} type="button" className={`ic-chip ic-model ${pop.open === 'model' ? 'on' : ''}`} data-testid="vs-model" aria-haspopup="listbox" aria-expanded={pop.open === 'model'} {...tip(pop.open === 'model' ? null : (viaTxt ? `${modelName} · ${viaTxt}` : modelName))} onClick={() => pop.setOpen(pop.open === 'model' ? '' : 'model')}><MakerTile className="ic-dot" medium="video" maker={tm?.maker} makerName={tm?.makerName} fallback={(cur as any)?.family || cur?.name} /><span className="ic-mname">{modelName}</span><svg className="ic-caret" width="16" height="16" viewBox="0 0 16 16" aria-hidden><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></button>
           </span>
           {/* Look: a compact popover above the chip (shared LookPicker): Camera (a move on this run), Style, Mode. The chip names what's picked:
             * "Camera · Slow pull", "Look · Noir", both joined; the ✕ clears the camera move and the style. Nothing here leaves the page. */}
           {(() => { const picks = [cam?.label, vp?.label].filter(Boolean) as string[]; const word = cam && !vp ? 'Camera' : 'Look'; const val = picks.join(' + ');
             return <button ref={aR.look} type="button" className={`ic-chip wf-grp vs-look${cam || vp ? " has-x" : ""}${pop.open === "look" ? " on" : ""}`} data-testid="vs-preset-change" aria-haspopup="dialog" aria-expanded={pop.open === 'look'} aria-label={`${word}${val ? `: ${val}` : ''}. Mode: ${preset?.label ?? 'General'}. Change camera move, style or mode`} {...tip(pop.open === 'look' ? null : `${val ? `${val} · ` : ''}Mode: ${preset?.label ?? 'General'}. Camera move, style or mode`)} onClick={() => pop.setOpen(pop.open === 'look' ? '' : 'look')}>{cam ? <span className="vs-look-glyph" aria-hidden><MotionGlyphIcon glyph={motionFor(cam.id, cam.category).glyph} size={14} /></span> : <BrushIcon size={14} />}{val ? <><span className="wf-grp-l">{word}</span><b data-testid="vs-look-value">{val}</b></> : <b>Look</b>}</button>; })()}
-          {kfMode && <button ref={aR.kf} type="button" className={`ic-chip wf-grp vs-kf-chip${pop.open === 'kf' ? ' on' : ''}`} data-testid="vs-kf-chip" aria-haspopup="dialog" aria-expanded={pop.open === 'kf'} aria-label={`Frames: ${kfFrames.length} of ${H3KF_MAX_FRAMES}. Change times or order`} {...tip(pop.open === 'kf' ? null : 'Frames: times and order')} onClick={() => pop.setOpen(pop.open === 'kf' ? '' : 'kf')}><ChipGlyph icon="layers" /><span className="wf-grp-l">Frames</span><b>{kfFrames.length}/{H3KF_MAX_FRAMES}</b></button>}
+          {kfMode && <button ref={aR.kf} type="button" className={`ic-chip wf-grp vs-kf-chip${pop.open === 'kf' ? ' on' : ''}`} data-testid="vs-kf-chip" aria-haspopup="dialog" aria-expanded={pop.open === 'kf'} aria-label={`Frames: ${kfFrames.length} of ${kfCaps.max}. Change ${kfCaps.times ? 'times or order' : 'the order'}`} {...tip(pop.open === 'kf' ? null : kfCaps.times ? 'Frames: times and order' : 'Frames: order (spaced evenly)')} onClick={() => pop.setOpen(pop.open === 'kf' ? '' : 'kf')}><ChipGlyph icon="layers" /><span className="wf-grp-l">Frames</span><b>{kfFrames.length}/{kfCaps.max}</b></button>}
           {(cam || vp) && <button type="button" className="ic-chip ic-sq vs-look-x" data-testid="vs-look-clear" aria-label={`Remove ${[cam ? 'camera move' : '', vp ? 'style' : ''].filter(Boolean).join(' and ')}`} {...tip(`Remove ${[cam?.label, vp?.label].filter(Boolean).join(' and ')}`)} onClick={() => { p.setFv('cameraMove', ''); p.setFv('videoPreset', ''); p.setFv('intensity', ''); requestAnimationFrame(() => aR.look.current?.focus()); }}><CloseIcon size={12} /></button>}
           {vp?.intensities && <span className="ic-chip ic-static vs-int vs-int-d" role="radiogroup" aria-label="Intensity" data-testid="vs-intensity">{vp.intensities.map((v: string) => <button key={v} type="button" role="radio" aria-checked={p.fv.intensity === v} className={p.fv.intensity === v ? 'on' : ''} onClick={() => p.setFv('intensity', v)}>{v}</button>)}</span>}
           <ModelMenu open={pop.open === 'model'} anchor={aR.model} watch={dock} gap={4} placement="top" onClose={closePop} items={menuItems} value={p.provider} testId="vs-model-list" rowTestId={id => `vs-model-${id}`}
@@ -546,7 +552,7 @@ export default function VideoStudio(p: VideoStudioProps) {
         <PopAction label="Rewrite my prompt now" hint="See the added detail first, then keep or undo it"><EnhanceButton model={tm?.key} prompt={p.prompt} kind="video" onApply={r => { showEnh(r); closePop(); }} /></PopAction>
       </PopSection></BarPopover>
       <BarPopover open={pop.open === 'kf'} anchor={aR.kf} avoid={dock} watch={dock} placement="top" gap={8} onClose={closePop} label="Frames" role="dialog" testId="vs-kf-menu" width={380}><div className="bp-wrap">
-        <KeyframePanel frames={kfFrames} times={kfTimes} seconds={p.duration} onChange={setKf} onAdd={() => kfIn.current?.click()} onOpen={() => 0} /></div></BarPopover>
+        <KeyframePanel frames={kfFrames} times={kfTimes} seconds={p.duration} caps={kfCaps} onChange={setKf} onAdd={() => kfIn.current?.click()} onOpen={() => 0} /></div></BarPopover>
       <LookPicker open={pop.open === 'look'} anchor={aR.look} avoid={dock} watch={dock} onClose={closePop} tabs={lookTabs} tab={lookTab} onTab={setLookTab} label="Look" testId="vs-look" />
       <BarPopover open={pop.open === 'add'} anchor={aR.add} avoid={dock} watch={dock} placement="top" gap={8} onClose={closePop} label="Add to your video" role="menu" testId="vs-add-menu" width={240}><PopSection label="Add"><PopList label="Add" role="group">{addOpts.map(o => <PopRow key={o.id} role="menuitem" testId={o.testId} label={o.label} onClick={() => { closePop(); o.go(); }} />)}</PopList></PopSection></BarPopover>
       <BarPopover open={pop.open === 'dur'} anchor={aR.dur} avoid={dock} watch={dock} onClose={closePop} label="Duration" testId="vs-duration-menu" className="vs-apop vs-apop-dur" autoWidth><DurationSlider values={durs} value={p.duration} onChange={p.setDuration} onDone={closePop} price={durPrice} rate={durRate} /></BarPopover>

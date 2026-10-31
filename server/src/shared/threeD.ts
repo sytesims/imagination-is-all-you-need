@@ -1,5 +1,5 @@
 /**
- * The 3D page (2026-10-23): one page at /tools/3d with its workflows in the bar's first chip, like Image, Video and Audio.
+ * The 3D page (2026-10-23): one page at /3d (shared/pages.ts; /tools/3d until 2026-10-31) with its workflows in the bar's first chip, like Image, Video and Audio.
  * Isomorphic (no server imports): the web reads the same lists. GET /api/3d-workflows serves them with the live defaults.
  *
  *  - Workflows: Image to 3D (default, runs on tool `three-d`), Turntable video (tool `three-d-turntable`: the browser records an orbit of the
@@ -10,19 +10,21 @@
  *    `threeDPriceKey()` (ToolDef.routeInput sets it on quotes and submits alike), and each hosted price row has one rate per key (quote = charge).
  */
 
+import { THREE_D_PAGE, THREE_D_TOOL, OLD_THREE_D_PAGE } from './pages.js';
+
 export type ThreeDWorkflowId = 'image-to-3d' | 'turntable' | 'plan-a-shot' | 'text-to-3d' | 'multiview-to-3d' | 'retexture' | 'rig';
 export type ThreeDCategory = 'create' | 'edit' | 'video';
 export interface ThreeDWorkflow {
   id: ThreeDWorkflowId; name: string; tagline: string; icon: string; category: ThreeDCategory;
   /** What it takes, in a few words ("1 image", "1 model"). */ needs: string;
   /** ready = runs now; soon = listed on the roadmap, never runnable. */ status: 'ready' | 'soon';
+  /** A soon row's menu line when part of it already works elsewhere (Rig: the viewer's free Rig tile). */ soonNote?: string;
   /** Tool and mode that run it (null for roadmap rows). */ toolId: string | null; mode: string | null;
   /** How it works, for the picker's ⓘ (our own words). */ how: [string, string][];
   /** Generate's label. */ generateLabel: string;
   /** Where the workflow (graph) comes from. */ source: { kind: 'official' | 'community' | 'ours'; note: string };
 }
-export const THREE_D_PAGE = '/tools/3d';
-export const THREE_D_TOOL = 'three-d';
+export { THREE_D_PAGE, THREE_D_TOOL, OLD_THREE_D_PAGE };
 export const TURNTABLE_TOOL = 'three-d-turntable';
 /** Direct a Shot (shared/previzTemplates.ts): the browser records a planned 3D shot frame by frame; the server keeps it as an MP4 (free). */
 export const PLAN_SHOT_TOOL = 'plan-a-shot';
@@ -44,7 +46,7 @@ export const THREE_D_WORKFLOWS: ThreeDWorkflow[] = [
     how: [['Add the views', 'Front first, then the sides and back.'], ['Get a GLB', 'The extra views fill in what one picture can’t show.']], generateLabel: 'Generate', source: { kind: 'official', note: 'coming soon' } },
   { id: 'retexture', name: 'Retexture', tagline: 'New surface, same shape', icon: 'brush', category: 'edit', needs: '1 model', status: 'soon', toolId: null, mode: null,
     how: [['Pick a model', 'Any GLB.'], ['Describe the new look', 'The shape stays; only the texture changes.']], generateLabel: 'Retexture', source: { kind: 'official', note: 'coming soon' } },
-  { id: 'rig', name: 'Rig', tagline: 'Add a skeleton so a character can move', icon: 'rig', category: 'edit', needs: '1 model', status: 'soon', toolId: null, mode: null,
+  { id: 'rig', name: 'Rig', tagline: 'Add a skeleton so a character can move', icon: 'rig', category: 'edit', needs: '1 model', status: 'soon', soonNote: 'Free for people today: open a model, then Rig', toolId: null, mode: null,
     how: [['Pick a character', 'A standing figure works best.'], ['Get a rigged GLB', 'Ready to pose or animate.']], generateLabel: 'Rig', source: { kind: 'official', note: 'coming soon' } },
 ];
 export const THREE_D_DEFAULT_WORKFLOW: ThreeDWorkflowId = 'image-to-3d';
@@ -53,10 +55,10 @@ export const threeDWorkflowById = (id: string | null | undefined): ThreeDWorkflo
 /** tool:mode → workflow (routing/defaults.ts resolves the per-workflow default with it). */
 export const threeDWorkflowForToolMode = (toolId: string, mode: string | null): ThreeDWorkflowId | null =>
   THREE_D_WORKFLOWS.find((w) => w.status === 'ready' && w.toolId === toolId && (!mode || w.mode === mode))?.id ?? null;
-/** /tools/3d?workflow=<id> for a known workflow; unknown ids open the default. */
+/** /3d?workflow=<id> for a known workflow; unknown ids open the default. */
 export const currentThreeDWorkflow = (search: string): ThreeDWorkflow => threeDWorkflowById(new URLSearchParams(search.replace(/^\?/, '')).get('workflow')) ?? THREE_D_WORKFLOWS[0];
 /** Old / alias URLs → the 3D page. Query parameters (?fromJob=…) are kept by the caller. */
-export const THREE_D_REDIRECTS: Record<string, string> = { '/3d': THREE_D_PAGE, '/tools/three-d': THREE_D_PAGE, '/tools/image-to-3d': threeDRoute('image-to-3d'), '/tools/turntable': threeDRoute('turntable'), '/tools/three-d-turntable': threeDRoute('turntable'), '/tools/plan-a-shot': threeDRoute('plan-a-shot') };
+export const THREE_D_REDIRECTS: Record<string, string> = { [OLD_THREE_D_PAGE]: THREE_D_PAGE /* the old address (until 2026-10-31) */, '/tools/three-d': THREE_D_PAGE, '/tools/image-to-3d': threeDRoute('image-to-3d'), '/tools/turntable': threeDRoute('turntable'), '/tools/three-d-turntable': threeDRoute('turntable'), '/tools/plan-a-shot': threeDRoute('plan-a-shot') };
 export function threeDRedirectTarget(pathname: string, search = '', hash = ''): string | null {
   const p = (pathname.replace(/\/+$/, '') || '/').toLowerCase(); const to = THREE_D_REDIRECTS[p]; if (!to) return null;
   const q = new URLSearchParams(search.replace(/^\?/, '')); const t = new URLSearchParams(to.split('?')[1] ?? '');
@@ -119,7 +121,7 @@ export const THREE_D_MODELS: ThreeDModel[] = [
     detail: null, texture: null, faces: null, seed: true, symmetry: false, formats: ['glb'], defaults: { detail: 'standard', texture: 'standard', faces: 'auto' },
     openWeights: true, licence: { id: 'mit', name: 'MIT (Pixal3D, TRELLIS.2, MoGe, BiRefNet); DINOv3 under Meta’s DINOv3 licence', url: 'https://huggingface.co/Comfy-Org/Pixal3D' },
     download: { bytes: PIXAL3D_FILES.reduce((a, f) => a + f.bytes, 0), files: PIXAL3D_FILES, template: '3d_pixal3d_trellis2_image_to_model', templateUrl: 'https://github.com/Comfy-Org/workflow_templates/blob/main/templates/3d_pixal3d_trellis2_image_to_model.json' },
-    priceNote: 'Needs download (15.2 GB) · then free, locally · MIT', typicalSec: 300 }, /* 15.2 GB = PIXAL3D_FILES (test checks) */
+    priceNote: 'Not added yet · 15.2 GB of files · MIT', typicalSec: 300 }, /* 15.2 GB = PIXAL3D_FILES (test checks) */
 ];
 export const THREE_D_MODEL_IDS = THREE_D_MODELS.map((m) => m.id);
 export const threeDModel = (id: string | null | undefined) => THREE_D_MODELS.find((m) => m.id === id) ?? null;

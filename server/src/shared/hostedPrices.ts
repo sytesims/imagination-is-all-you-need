@@ -35,7 +35,10 @@ export interface HostedPrice {
   /** USD per unit by our quality id (480p/720p/1080p) when the provider prices by resolution. */
   usdByQuality?: Record<string, number>;
   /** Rate per (input video s + output s) when a reference video is connected (token-billed: Seedance). */
-  videoInput?: { usd: number; usdByQuality: Record<string, number>; note: string };
+  videoInput?: { usd: number; usdByQuality: Record<string, number>; note: string;
+    /** The bill is a range the provider settles after the run (Kling 4.0, 2026-10-31): as low as rate × rangeFloor × output s. The charge is the
+     *  top (rate × (input video s + output s), the route's priceInput sets the input to its most), quoted '≈ up to' with the range in the note. */
+    rangeFloor?: number };
   /** Reference-video seconds billed at the row's own per-second rate on top of the output (MiniMax H3): billed s = whole seconds of
    *  min(reference total, maxTotal), rounded UP (each clip is at least minEach s: the form and the route refuse shorter ones). */
   refVideoAtRate?: { minEach: number; maxTotal: number; sourceUrl: string; checkedAt: string; note: string };
@@ -484,10 +487,19 @@ COMFY_TEMPLATE_PRICES.push(
 );
 // Kling 4.0 (2026-10-31, comfy/kling4Cloud.ts): the Kling4 partner nodes' price badge (ComfyUI PR #17364): USD per second of the clip,
 // 0.22451 at 720p and 0.33605 at 1080p, the same for text, frames and reference images. Not on the partner-node pricing page yet.
+// With reference videos the Reference to Video badge is a range: 0.13442 (720p) or 0.20163 (1080p) × (2 × duration) up to × (30 + duration),
+// so videoInput carries those rates and rangeFloor 2; the route bills the top (30 s of reference video, the most the node takes).
 COMFY_TEMPLATE_PRICES.push(
   { providerId: 'cloud-kling4', model: 'Kling 4.0 (Kling4 partner nodes) on Comfy Cloud', unit: 'second', usd: 0.33605, usdByQuality: { '720p': 0.22451, '1080p': 0.33605 },
     sourceUrl: 'https://github.com/Comfy-Org/ComfyUI/pull/17364', checkedAt: '2026-10-31' as HostedPrice['checkedAt'], estimated: false,
-    note: 'Kling 4.0 partner nodes (Text / Image / Reference to Video), price badge: $0.22451 per s at 720p and $0.33605 at 1080p (47.37 / 70.91 credits). Stereo sound is always included. Reference videos (a price range) are not wired.' } as HostedPrice,
+    note: 'Kling 4.0 partner nodes (Text / Image / Reference to Video), price badge: $0.22451 per s at 720p and $0.33605 at 1080p (47.37 / 70.91 credits). Stereo sound is always included.',
+    videoInput: { usd: 0.20163, usdByQuality: { '720p': 0.13442, '1080p': 0.20163 }, rangeFloor: 2,
+      note: 'Kling 4.0 Reference to Video with reference videos, price badge: a range, $0.13442 (720p) or $0.20163 (1080p) per s × (2 × clip s) up to × (30 + clip s). Quoted and held at the top.' } } as HostedPrice,
+  // Prompt Edit's Kling 4.0 model (Kling4EditVideoNode, tools/promptEdit.ts): the badge without reference inputs, $0.13442 (720p) or $0.20163 (1080p)
+  // × 2 per second of the input clip (the result keeps its length).
+  { providerId: 'cloud-kling4-edit', model: 'Kling 4.0 Edit Video (Kling4EditVideoNode) on Comfy Cloud', unit: 'second', usd: 0.40326, usdByQuality: { '720p': 0.26884, '1080p': 0.40326 },
+    sourceUrl: 'https://github.com/Comfy-Org/ComfyUI/pull/17364', checkedAt: '2026-10-31' as HostedPrice['checkedAt'], estimated: false,
+    note: 'Kling 4.0 Edit Video partner node, price badge: $0.13442 (720p) or $0.20163 (1080p) × 2 per second of input video = $0.26884 / $0.40326 per s (the result keeps the clip\'s length).' } as HostedPrice,
 );
 // One key runs everything (2026-10-27): the photo and clip tools that ran on fal only, on Comfy Router (pricing page, USD columns; routing/routerModels.ts).
 COMFY_TEMPLATE_PRICES.push(

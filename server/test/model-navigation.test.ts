@@ -1,18 +1,19 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { modelNavigationHref } from '../../web/src/shared/modelNavigation.ts';
+import { toolPage } from '../src/shared/pages.ts';
 
-const tool = (id: string, providerModes: Record<string, string[]>, route = `/tools/${id}`) => ({ id, route, app: { providerModes } } as any);
+const tool = (id: string, providerModes: Record<string, string[]>, route = toolPage(id)) => ({ id, route, app: { providerModes } } as any);
 const model = (key: string, ...engines: string[]) => ({ key, engines });
-assert.equal(modelNavigationHref(tool('audio', { eleven: ['sfx'] }), model('elevenlabs-sound-effects', 'eleven')), '/tools/audio?workflow=sfx&model=elevenlabs-sound-effects');
-assert.equal(modelNavigationHref(tool('audio', { speech: ['voice'] }), model('speech', 'speech')), '/tools/audio?workflow=voiceover&model=speech');
-assert.equal(modelNavigationHref(tool('audio', { seed: ['music', 'sfx', 'voice'] }), model('seed', 'seed')), '/tools/audio?workflow=music&model=seed');
-assert.equal(modelNavigationHref(tool('voice', { vc: ['change-voice'] }), model('voice-change', 'vc')), '/tools/audio?workflow=change-voice&model=voice-change');
+assert.equal(modelNavigationHref(tool('audio', { eleven: ['sfx'] }), model('elevenlabs-sound-effects', 'eleven')), '/audio?workflow=sfx&model=elevenlabs-sound-effects');
+assert.equal(modelNavigationHref(tool('audio', { speech: ['voice'] }), model('speech', 'speech')), '/audio?workflow=voiceover&model=speech');
+assert.equal(modelNavigationHref(tool('audio', { seed: ['music', 'sfx', 'voice'] }), model('seed', 'seed')), '/audio?workflow=music&model=seed');
+assert.equal(modelNavigationHref(tool('voice', { vc: ['change-voice'] }), model('voice-change', 'vc')), '/audio?workflow=change-voice&model=voice-change');
 assert.equal(modelNavigationHref(tool('voice', { infinite: ['lipsync'] }), model('infinitetalk', 'infinite')), '/video?workflow=lip-sync&mode=lipsync&model=infinitetalk');
-assert.equal(modelNavigationHref(tool('soundtrack', { mma: ['v2s'] }), model('mmaudio', 'mma')), '/tools/audio?workflow=soundtrack-sound&model=mmaudio');
-assert.equal(modelNavigationHref(tool('create-image', {}), model('image key', 'image')), '/tools/create-image?model=image%20key');
-assert.equal(modelNavigationHref(tool('three-d', {}, '/tools/3d?workflow=turntable'), model('3d', '3d')), '/tools/3d?workflow=turntable&model=3d');
-assert.equal(modelNavigationHref(tool('audio', {}), model('unknown', 'unknown')), '/tools/audio?model=unknown');
+assert.equal(modelNavigationHref(tool('soundtrack', { mma: ['v2s'] }), model('mmaudio', 'mma')), '/audio?workflow=soundtrack-sound&model=mmaudio');
+assert.equal(modelNavigationHref(tool('create-image', {}), model('image key', 'image')), '/image?model=image%20key');
+assert.equal(modelNavigationHref(tool('three-d', {}, '/3d?workflow=turntable'), model('3d', '3d')), '/3d?workflow=turntable&model=3d');
+assert.equal(modelNavigationHref(tool('audio', {}), model('unknown', 'unknown')), '/audio?model=unknown');
 // Dynamic page state must not survive a different model id (missing → valid used to retain the old error).
 const app = readFileSync(new URL('../../web/src/App.tsx', import.meta.url), 'utf8');
 assert.match(app, /<ModelPage key=\{path\} id=/);

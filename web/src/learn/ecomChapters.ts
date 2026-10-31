@@ -8,6 +8,7 @@
  * Pictures on the pages come from the art slots in ecomArt.ts (placeholders until real images made in the app are dropped in;
  * the list of what to make is docs/learn/ecom-book-art-list.md).
  */
+import { IMAGE_PAGE, AUDIO_PAGE, THREE_D_PAGE } from '../../../server/src/shared/pages';
 import { VIDEO_PAGE } from '../../../server/src/shared/videoWorkflows';
 import type { ArtSlot } from './ecomArt';
 
@@ -44,8 +45,8 @@ export const CHAPTERS: Chapter[] = [
     ],
     why: 'Plain words about light, angle and background give the model the same checklist a photographer uses.',
     cost: { local: 'Free on your computer', cloud: 'About $0.005 in the cloud', time: 'About 20 s' },
-    tryIt: { label: 'Make a clean reference', base: '/tools/create-image', model: 'z-image-turbo' },
-    more: [{ label: 'Upscale your photo (free on your computer)', to: '/tools/create-image?workflow=upscale&model=real-esrgan' }],
+    tryIt: { label: 'Make a clean reference', base: IMAGE_PAGE, model: 'z-image-turbo' },
+    more: [{ label: 'Upscale your photo (free on your computer)', to: `${IMAGE_PAGE}?workflow=upscale&model=real-esrgan` }],
     hotspots: [
       { id: 'light', label: 'Soft light', text: 'One big soft light from the side shapes the product without hard glare. A window or a lamp behind thin paper works.' },
       { id: 'angle', label: 'Eye-level angle', text: 'Shoot at the height of the product. Looking down makes bottles look short; three-quarter views show depth.' },
@@ -74,8 +75,8 @@ export const CHAPTERS: Chapter[] = [
     ],
     why: 'Backdrop, surface and light are three separate words. Change one at a time and you learn what each does.',
     cost: { local: 'Free on your computer', cloud: 'About $0.005 per image in the cloud', time: 'About 20 s each' },
-    tryIt: { label: 'Try a studio shot', base: '/tools/create-image', model: 'z-image-turbo' },
-    more: [{ label: 'Change the background of your photo (local)', to: '/tools/create-image?mode=edit&model=flux-2-klein-4b' }],
+    tryIt: { label: 'Try a studio shot', base: IMAGE_PAGE, model: 'z-image-turbo' },
+    more: [{ label: 'Change the background of your photo (local)', to: `${IMAGE_PAGE}?mode=edit&model=flux-2-klein-4b` }],
     hotspots: [
       { id: 'white', label: 'White sweep', text: 'Marketplaces often ask for a pure white background. Ask for a soft contact shadow so the product doesn’t float.' },
       { id: 'colour', label: 'Colour backdrop', text: 'A coloured paper backdrop sells a mood. Pick a colour that echoes the label.' },
@@ -103,8 +104,8 @@ export const CHAPTERS: Chapter[] = [
     ],
     why: 'Matching light direction is what makes a placed product look photographed, not pasted.',
     cost: { local: 'Free with FLUX.2 [klein] 4B', cloud: 'About $0.07 with Nano Banana 2.1', time: 'About 40 s' },
-    tryIt: { label: 'Place your product', base: '/tools/create-image?mode=edit', model: 'flux-2-klein-4b' },
-    more: [{ label: 'Or use the Product Shot workflow', to: '/tools/create-image?workflow=product-shot' }],
+    tryIt: { label: 'Place your product', base: `${IMAGE_PAGE}?mode=edit`, model: 'flux-2-klein-4b' },
+    more: [{ label: 'Or use the Product Shot workflow', to: `${IMAGE_PAGE}?workflow=product-shot` }],
     hotspots: [
       { id: 'window', label: 'Window light', text: 'Name the light source in the scene. Here it is a window on the left, the same side as in the product photo.' },
       { id: 'counter', label: 'The surface', text: 'A counter, a table, a shelf: one surface the product clearly stands on keeps scale believable.' },
@@ -133,8 +134,8 @@ export const CHAPTERS: Chapter[] = [
     ],
     why: 'The model reads the same style words the same way, so a fixed ending works like a brand guide.',
     cost: { local: 'Free on your computer', cloud: 'Priced per image before you generate', time: 'About 30 s each' },
-    tryIt: { label: 'Start your brand recipe', base: '/tools/create-image', model: 'qwen-image-2.1-turbo' },
-    more: [{ label: 'Character sheet for a mascot (local)', to: '/tools/create-image?workflow=character-sheet' }],
+    tryIt: { label: 'Start your brand recipe', base: IMAGE_PAGE, model: 'qwen-image-2.1-turbo' },
+    more: [{ label: 'Character sheet for a mascot (local)', to: `${IMAGE_PAGE}?workflow=character-sheet` }],
     hotspots: [
       { id: 'recipe', label: 'Style recipe', text: 'The same ending on every prompt: light, palette, lens, mood. Save it as a Look so it is one click next time.' },
       { id: 'seed', label: 'Same seed', text: 'Turn on Same seed in the bar. Change a word, keep the seed, and only that part of the picture moves.' },
@@ -162,8 +163,8 @@ export const CHAPTERS: Chapter[] = [
     ],
     why: 'Quoted words are copied letter by letter; describing where they sit stops them landing on the product.',
     cost: { local: 'Free with Qwen Image 2.1', cloud: 'About $0.03 with GPT Image 2.5 Flare', time: 'About 45 s' },
-    tryIt: { label: 'Lay out a poster', base: '/tools/create-image', model: 'qwen-image-2.1' },
-    more: [{ label: 'Cloud option: GPT Image 2.5 Flare (~$0.03)', to: '/tools/create-image?model=gpt-image-2.5-flare' }],
+    tryIt: { label: 'Lay out a poster', base: IMAGE_PAGE, model: 'qwen-image-2.1' },
+    more: [{ label: 'Cloud option: GPT Image 2.5 Flare (~$0.03)', to: `${IMAGE_PAGE}?model=gpt-image-2.5-flare` }],
     hotspots: [
       { id: 'headline', label: 'Headline', text: 'Short words in quotes, with a place: “top left, big bold sans serif”. Three or four words read best.' },
       { id: 'space', label: 'Empty space', text: 'Ask for “lots of empty space” on one side. It keeps the text off the product.' },
@@ -192,7 +193,7 @@ export const CHAPTERS: Chapter[] = [
     why: 'One named move and one small action give the model a clear plan, so it doesn’t invent extra motion.',
     cost: { local: 'Direct a Shot is free in your browser', cloud: 'About $0.08 per second (6 s ≈ $0.48)', time: 'A few minutes per clip' },
     tryIt: { label: 'Write the shot', base: VIDEO_PAGE, model: 'minimax-h3' },
-    more: [{ label: 'Direct it free in 3D first', to: '/tools/3d?workflow=plan-a-shot' }],
+    more: [{ label: 'Direct it free in 3D first', to: `${THREE_D_PAGE}?workflow=plan-a-shot` }],
     hotspots: [
       { id: 'move', label: 'One camera move', text: 'Orbit, push in or slide. One move per clip, said in plain words.' },
       { id: 'turntable', label: 'Turntable', text: 'A slow turn shows every side of the product. Ask for the label to face the camera at the end.' },
@@ -221,8 +222,8 @@ export const CHAPTERS: Chapter[] = [
     ],
     why: 'Mood plus instruments plus tempo is enough for a model to land close on the first try.',
     cost: { local: 'Free with YuE2', cloud: 'Priced before you generate in the cloud', time: 'A minute or two' },
-    tryIt: { label: 'Make a music bed', base: '/tools/audio?workflow=music', model: 'yue2' },
-    more: [{ label: 'Add a voiceover', to: '/tools/audio?workflow=voiceover' }],
+    tryIt: { label: 'Make a music bed', base: `${AUDIO_PAGE}?workflow=music`, model: 'yue2' },
+    more: [{ label: 'Add a voiceover', to: `${AUDIO_PAGE}?workflow=voiceover` }],
     hotspots: [
       { id: 'mood', label: 'Mood', text: 'Calm, playful, cosy: one word for the feeling comes first.' },
       { id: 'tempo', label: 'Tempo', text: 'Beats per minute set the pace. 80 feels relaxed, 110 feels lively.' },
@@ -250,7 +251,7 @@ export const CHAPTERS: Chapter[] = [
     ],
     why: 'Changing one thing between A and B tells you which thing made the difference.',
     cost: { local: 'Whole kit free on your computer', cloud: 'Usually under $2 for a mixed kit', time: 'An afternoon' },
-    tryIt: { label: 'Make version A', base: '/tools/create-image', model: 'z-image-turbo' },
+    tryIt: { label: 'Make version A', base: IMAGE_PAGE, model: 'z-image-turbo' },
     more: [{ label: 'Lay it out on Canvas', to: '/canvas' }, { label: 'See what it cost', to: '/spend' }],
     hotspots: [
       { id: 'ab', label: 'A / B', text: 'Two versions, one difference. Post both, keep the one people click.' },
@@ -280,7 +281,7 @@ export const tryHrefWith = (ch: Chapter, i: number): string => tryHref(ch, { ...
 /** The tool name a Try-it button names ("in Create Image"). */
 export function tryToolName(base: string): string {
   if (base.startsWith(VIDEO_PAGE)) return 'Video';
-  if (base.startsWith('/tools/audio')) return 'Audio';
+  if (base.startsWith(AUDIO_PAGE)) return 'Audio';
   if (base.includes('workflow=product-shot')) return 'Product Shot';
   if (base.includes('mode=edit')) return 'Edit Image';
   return 'Create Image';

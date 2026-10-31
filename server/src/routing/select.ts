@@ -56,7 +56,7 @@ export const NO_CONNECTION = { code: 'no_connection' as const, title: 'Connect a
 /** HW-SHAPES B3: the compact fit a local route carries on every option (full requirements ride on quotes, /api/routes and /api/models). */
 export function localFit(tool: ToolDef, r: RouteDef, input: Record<string, any> = {}) {
   try { const f = fitFor(tool, r.modelId, input); return { verdict: f.verdict, reasonCode: f.reasonCode, hardwareReasonCode: f.hardwareReasonCode, reason: f.reason, tier: f.tier, enforced: f.enforced, lighterVariantAvailable: f.lighterVariantAvailable,
-    recommendedVramGB: f.recommendedVramGB, effectiveVramGB: f.effectiveVramGB, etaSeconds: f.etaSeconds, eta: f.eta, etaRange: f.etaRange, missingBytes: f.missingBytes, missingBytesSource: f.missingBytesSource, downloadId: f.downloadId, diskFreeBytes: f.diskFreeBytes, blockers: f.blockers, vramFreeHint: f.vramFreeHint }; }
+    recommendedVramGB: f.recommendedVramGB, effectiveVramGB: f.effectiveVramGB, etaSeconds: f.etaSeconds, eta: f.eta, etaRange: f.etaRange, missingBytes: f.missingBytes, missingBytesSource: f.missingBytesSource, downloadId: f.downloadId, diskFreeBytes: f.diskFreeBytes, blockers: f.blockers, vramFreeHint: f.vramFreeHint, ...(f.variant ? { variant: f.variant } : {}) }; }
   catch { return null; }
 }
 /** types may be an array, a JSON array string, or a plain/comma string ("edit", as in GET ?types=edit): all three name the same mode, so quote and submit pick the same route. */
