@@ -79,7 +79,7 @@ export default function AudioFeed({ jobs }: { jobs: JobState[] }) {
       run={<GenTile job={j} testId={`ap-run-${j.id || 'new'}`} art={warmUp} note={WARM_NOTE[kind]} tag={w?.name} />} on={v.viewId === j.id}
       selecting={selecting} picked={selecting && sel.has(j.id)} noPick={selecting ? unselectable(j) : null} tag={j.status === 'done' && src ? null /* the card's own kind chip says it */ : w?.name ?? null} caption={null}
       onOpen={e => v.open(j.id, 0, e.currentTarget)} onTogglePick={() => togglePick(j)} media={null}
-      body={j.status === 'done' && src ? <AudioCard src={src} title={title} model={model} price={price(j)} duration={Number((j as any).input?.outputDuration ?? (j as any).input?.duration) || null}
+      body={j.status === 'done' && src ? <AudioCard src={src} title={title} model={model} price={price(j)} duration={Number((j as any).input?.outputDuration) || null /* the output's real length only (audit B2): input.duration is what was asked (a cap, or a server default for a model with none); the card reads the file's own length */}
         onOpen={from => v.open(j.id, 0, from)} testId={`ap-card-${j.id}`} kind={kind} tag={w && !PLAIN_KIND.has(w.id) ? w.name : null} seed={j.id} prompt={prompt || w?.name} lyrics={typeof (j as any).input?.lyrics === 'string' ? (j as any).input.lyrics : null}
         jobId={j.id} danceStyle={(j as any).danceStyle} cheer={cheer.has(j.id)} /> : undefined} />; };
   const emptyText = fs.isDefault ? 'No sounds yet. Describe a song, a voice or a sound effect below and press Generate.' : emptyTextFor(filt, pj.pid, SCOPE);

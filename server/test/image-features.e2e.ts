@@ -13,7 +13,7 @@ const ROOT = path.resolve(import.meta.dirname, '..'); const REPO = path.resolve(
 const ok = (m: string) => console.log('ok ' + m);
 
 // ---------------- names, menu, redirects ----------------
-assert.deepEqual(MENU_FEATURES.map((f) => f.name), ['Create Image', 'Upscale', 'Relight', 'Face Swap', 'Person Swap', 'Camera Angles', 'Camera & Lens', 'Brush Edit', 'Remove Background', 'Expand', 'Erase Object', 'Virtual Try-On', 'Image to layers', 'Character Sheet', 'Product Shot']); // photo tools (2026-10-23) after Brush Edit; Image to layers after them
+assert.deepEqual(MENU_FEATURES.map((f) => f.name), ['Create Image', 'Upscale', 'Relight', 'Face Swap', 'Person Swap', 'Camera Angles', 'Camera & Lens', 'Brush Edit', 'Remove Background', 'Expand', 'Erase Object', 'Virtual Try-On', 'Ad Pack', 'Image to layers', 'Character Sheet', 'Product Shot']); // photo tools (2026-10-23) after Brush Edit; Image to layers after them
 assert.ok(!MENU_FEATURES.some((f) => f.id === 'edit-image'), 'Edit Image is not a menu item (it lives inside Create Image, like the reference)');
 assert.equal(IMAGE_FEATURES.find((f) => f.id === 'edit-image')?.name, 'Edit Image');
 assert.ok(!JSON.stringify(IMAGE_FEATURES.map((f) => [f.name, f.tagline, f.description])).includes('OpenSoul'), 'no house name in feature copy');

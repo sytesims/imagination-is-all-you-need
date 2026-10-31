@@ -5,7 +5,9 @@
  */
 export interface AppOption { value: string; label: string; prompt?: string; tag?: string; poster?: string | null; preview?: string | null; [k: string]: unknown }
 export interface AppField {
-  name: string; label: string; kind: 'select' | 'number' | 'color' | 'json'; options?: AppOption[]; default?: string;
+  name: string; label: string; kind: 'select' | 'number' | 'color' | 'json' | 'text'; options?: AppOption[]; default?: string;
+  /** kind 'text': a short free-text field (Material Swap: what the object is); spaces collapsed, longer than this is a 400 too_long. */
+  maxLength?: number; placeholder?: string;
   /** kind 'json': checks and normalises the text (Relight's light sphere rig); an error is a 400 with code format. */
   parse?: (raw: string) => { value: string } | { error: string };
   min?: number; max?: number; step?: number; pattern?: string; help?: string;
