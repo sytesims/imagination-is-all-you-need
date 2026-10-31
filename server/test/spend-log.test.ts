@@ -85,6 +85,9 @@ try {
   ok('cursor paging');
   assert.equal((await get('/api/spend?provider=fal')).total, 0); assert.equal((await get('/api/spend?provider=comfy')).total, 2); assert.equal((await get('/api/spend?tool=voice')).total, 0);
   assert.equal((await get(`/api/spend?from=${encodeURIComponent(new Date(Date.now() + 60_000).toISOString())}`)).total, 0); assert.equal((await get('/api/spend?from=nonsense'))._status, 400);
+  // status filter (Spend page: the failed-runs warning opens All runs on failed runs that still count)
+  assert.equal((await get('/api/spend?status=failed')).total, 1); assert.equal((await get('/api/spend?status=done')).total, 1); assert.equal((await get('/api/spend?status=failed&counted=1')).items[0].status, 'failed');
+  { const ov = await get('/api/spend/overview?period=month'); assert.equal(Math.round((ov.totals.chargedUsd + ov.totals.estimatedUsd) * 1e4), Math.round(ov.totals.spentUsd * 1e4)); assert.ok(Array.isArray(ov.overQuotes)); }
   ok('filters: provider, tool, from (ISO); bad date → 400');
   const sd = await get('/api/spend/summary?period=day'); const c = sd.providers.find((x: any) => x.provider === 'comfy');
   assert.equal(c.runs, 2); assert.equal(c.estUsd, Math.round((ra.estUsd + rb.estUsd) * 10000) / 10000); assert.equal(c.actualUsd, null); assert.equal(sd.totals.runs, 2);

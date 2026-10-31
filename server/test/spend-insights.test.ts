@@ -2,7 +2,7 @@
 // over-quote detection, quote accuracy and hints, period starts, sparkline buckets and mosaic tile sizes.
 // Run: npx tsx test/spend-insights.test.ts (no server, no data dir).
 import assert from 'node:assert/strict';
-import { periodStart, buckets, cumulative, quoteHint, quoteAccuracy, worstOverQuote, shareByTool, tileSpans, tipLines } from '../src/shared/spendInsights.ts';
+import { periodStart, buckets, cumulative, quoteHint, quoteAccuracy, overQuoteByTool, priceFixedNow, shareByTool, tileSpans, tipLines } from '../src/shared/spendInsights.ts';
 const ok = (m: string) => console.log('ok ' + m);
 
 // share of spend
@@ -11,10 +11,17 @@ const ok = (m: string) => console.log('ok ' + m);
   assert.ok(Math.abs(s[0].share - 5.45 / 5.95) < 1e-9); assert.ok(Math.abs(s[0].share + s[1].share - 1) < 1e-9);
   assert.deepEqual(shareByTool([]), []); ok('share of spend per tool (free runs left out, shares add to 1)'); }
 
-// over-quote detection
-{ const rows = [{ id: 'a', estUsd: 0.03, actualUsd: 0.33 }, { id: 'b', estUsd: 0.02, actualUsd: 0.025 }, { id: 'c', estUsd: 0.1, actualUsd: 0.25 }, { id: 'd', estUsd: 0, actualUsd: 1 }, { id: 'e', estUsd: 1, actualUsd: null }];
-  const w = worstOverQuote(rows)!; assert.equal(w.row.id, 'a'); assert.ok(Math.abs(w.ratio - 11) < 1e-9); assert.equal(w.count, 2);
-  assert.equal(worstOverQuote([{ estUsd: 1, actualUsd: 1.9 }]), null); assert.equal(worstOverQuote([]), null); ok('over-quote: worst run, count at 2× and up, no estimate or no bill ignored'); }
+// over-quote detection: per tool, at least 2× AND at least $0.05 over, biggest dollar gap first
+{ const rows = [{ id: 'a', toolId: 'layers', estUsd: 0.03, actualUsd: 0.33 }, { id: 'b', toolId: 'img', estUsd: 0.02, actualUsd: 0.025 }, { id: 'c', toolId: 'layers', estUsd: 0.1, actualUsd: 0.25 },
+    { id: 'd', toolId: 'img', estUsd: 0, actualUsd: 1 }, { id: 'e', toolId: 'img', estUsd: 1, actualUsd: null }, { id: 'tiny', toolId: 'img', estUsd: 0.01, actualUsd: 0.02 },
+    { id: 'v', toolId: 'video', estUsd: 1, actualUsd: 2.5 }];
+  const g = overQuoteByTool(rows);
+  assert.deepEqual(g.map((x) => x.toolId), ['video', 'layers']); // img's only 2× run is a 1-cent gap: ignored
+  assert.equal(g[0].gapUsd, 1.5); assert.equal(g[1].row.id, 'a'); assert.ok(Math.abs(g[1].ratio - 11) < 1e-9); assert.equal(g[1].count, 2); assert.equal(g[1].gapUsd, 0.45);
+  assert.deepEqual(overQuoteByTool([{ toolId: 'x', estUsd: 1, actualUsd: 1.9 }]), []); assert.deepEqual(overQuoteByTool([]), []);
+  assert.equal(overQuoteByTool([{ toolId: 'x', estUsd: 0.01, actualUsd: 0.02 }], 2, 0).length, 1);
+  assert.equal(priceFixedNow({ actualUsd: 0.33, nowUsd: 0.4 }), true); assert.equal(priceFixedNow({ actualUsd: 0.33, nowUsd: 0.03 }), false); assert.equal(priceFixedNow({ actualUsd: 0.33 }), false); assert.equal(priceFixedNow({ actualUsd: 0.25, nowUsd: 0.64 }), false);
+  ok('over-quote: per tool, worst run, count, dollar gap; 1-cent gaps and missing figures ignored'); }
 
 // quote accuracy + per-run hint
 { assert.equal(quoteAccuracy([]), null); assert.equal(quoteAccuracy([{ estUsd: 1, actualUsd: null }]), null);
@@ -24,19 +31,29 @@ const ok = (m: string) => console.log('ok ' + m);
   assert.equal(quoteHint(0.02, 0.025)!.text, '+25% vs quote'); assert.equal(quoteHint(1, 0.6)!.text, '−40% vs quote'); assert.equal(quoteHint(1, 0.6)!.tone, 'under');
   assert.equal(quoteHint(0, 1), null); assert.equal(quoteHint(1, null), null); ok('quote accuracy (mean of min/max) and the per-run hint'); }
 
-// "would have cost" tip, over-quote warning, only when the data supports it
-{ const t = tipLines({ periodWords: 'this month', paidRuns: 30, top: { name: 'Generate Video', share: 0.85 }, shorter: { seconds: 6, fromSeconds: 15, usd: 1.31, fromUsd: 3.27 }, over: { ratio: 11, count: 1, name: 'Create Image' } });
-  assert.equal(t.length, 2); assert.deepEqual(t[0], { tone: 'warn', text: 'One run cost 11× its quote (Create Image).' });
-  assert.equal(t[1].text, 'Generate Video was 85% of this month. A 6-second clip instead of 15 s would have cost about $1.31 (not $3.27).');
+// notices: warnings by dollars (over-quote, failed runs counted), then the tip; only when the data supports them
+{ const ov = (o: Partial<{ toolId: string; name: string; ratio: number; count: number; gapUsd: number; estUsd: number; actualUsd: number; nowUsd: number | null }>) =>
+    ({ toolId: 'x', jobId: 'j-' + (o.name ?? 'x'), name: 'X', ratio: 3, count: 1, gapUsd: 0.3, estUsd: 0.15, actualUsd: 0.45, ...o });
+  const t = tipLines({ periodWords: "this month's spend", paidRuns: 30, top: { name: 'Generate Video', share: 0.62 }, shorter: { seconds: 5, fromSeconds: 15, usd: 1.09, fromUsd: 3.27 },
+    over: [ov({ name: 'Image to layers', ratio: 11, gapUsd: 0.3, estUsd: 0.03, actualUsd: 0.33 })] });
+  assert.equal(t.length, 2); assert.deepEqual(t[0], { tone: 'warn', kind: 'over', head: 'Image to layers ran 11× over', text: 'One Image to layers run cost 11× its quote ($0.33, quoted $0.03).', usd: 0.3, jobId: 'j-Image to layers' });
+  assert.equal(t[1].text, "Generate Video was 62% of this month's spend. Each 15\u00a0s clip cost about $3.27; at 5\u00a0s it'd be about $1.09."); assert.equal(t[1].kind, 'tip');
+  // the price was corrected since: today's quote for the same settings covers the bill
+  assert.match(tipLines({ periodWords: 'p', paidRuns: 0, over: [ov({ name: 'L', nowUsd: 0.5 })] })[0].text, /That price is fixed now: the same settings quote \$0\.50 today\.$/);
+  assert.doesNotMatch(tipLines({ periodWords: 'p', paidRuns: 0, over: [ov({ name: 'L', nowUsd: 0.15 })] })[0].text, /fixed/);
+  // several warnings: biggest dollar amount first, failed runs no longer hidden by a small over-quote gap, at most maxWarn
+  const w = tipLines({ periodWords: 'p', paidRuns: 0, over: [ov({ name: 'Y', ratio: 3, count: 4, gapUsd: 0.3 }), ov({ name: 'Z', gapUsd: 2 })], failedCharged: { runs: 16, usd: 14.84 } });
+  assert.deepEqual(w.map((x) => x.kind), ['failed', 'over', 'over']); assert.match(w[0].text, /^16 failed runs still counted \$14\.84/);
+  assert.match(w[2].text, /^4 Y runs cost at least twice their quote, \$0\.30 over in all; the biggest gap was 3×\.$/);
+  assert.equal(tipLines({ periodWords: 'p', paidRuns: 0, over: [ov({}), ov({}), ov({})], failedCharged: { runs: 1, usd: 0.4 } }).length, 3);
+  assert.equal(tipLines({ periodWords: 'p', paidRuns: 0, over: [ov({}), ov({})], failedCharged: { runs: 1, usd: 0.4 } }, 2).length, 2);
   // no tip under half the spend, with one paid run, or when the shorter clip saves under 20 %
   assert.deepEqual(tipLines({ periodWords: 'this month', paidRuns: 30, top: { name: 'X', share: 0.4 } }), []);
   assert.deepEqual(tipLines({ periodWords: 'this month', paidRuns: 1, top: { name: 'X', share: 1 } }), []);
-  assert.equal(tipLines({ periodWords: 'this month', paidRuns: 3, top: { name: 'X', share: 1 }, shorter: { seconds: 5, fromSeconds: 6, usd: 0.9, fromUsd: 1 } })[0].text, 'X was all of this month.');
-  // one warning at most: over-quote wins over a failed charged run
-  const w = tipLines({ periodWords: 'this month', paidRuns: 0, over: { ratio: 3, count: 4, name: 'Y' }, failedCharged: { runs: 2, usd: 0.4 } });
-  assert.equal(w.length, 1); assert.match(w[0].text, /^4 runs cost at least twice their quote; the biggest gap was 3×/);
-  assert.match(tipLines({ periodWords: 'this month', paidRuns: 0, failedCharged: { runs: 1, usd: 0.4 } })[0].text, /^One failed run still counted \$0\.40/);
-  assert.deepEqual(tipLines({ periodWords: 'this month', paidRuns: 0 }), []); ok('tip lines: share, would-have-cost, over-quote, failed charged, nothing when the data is thin'); }
+  assert.equal(tipLines({ periodWords: 'all your spend', paidRuns: 3, top: { name: 'X', share: 1 }, shorter: { seconds: 5, fromSeconds: 6, usd: 0.9, fromUsd: 1 } })[0].text, 'X was all of all your spend.');
+  assert.equal(tipLines({ periodWords: 'p', paidRuns: 0, failedCharged: { runs: 1, usd: 0.4 } })[0].text, 'One failed run still counted $0.40 at its estimate: the provider may bill failed runs.');
+  assert.match(tipLines({ periodWords: 'p', paidRuns: 0, failedCharged: { runs: 2, usd: 3, providers: ['Comfy Cloud', 'fal'] } })[0].text, /: Comfy Cloud and fal may bill failed runs\.$/);
+  assert.deepEqual(tipLines({ periodWords: 'p', paidRuns: 0 }), []); ok('notices: warnings by dollars with their action kind, fixed-price note, share tip, nothing when the data is thin'); }
 
 // periods, buckets, running total
 { const now = new Date(2026, 9, 24, 15, 0);
