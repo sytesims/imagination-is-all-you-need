@@ -21,7 +21,7 @@ const SWAP_TOOL_IDS = new Set(['object-swap', 'motion-transfer']);
 import type { ToolDef } from '../tools/types.js';
 import { toolProviders, getProvider } from '../providers.js';
 import { routesFor, isTwinAlias, toolKeys, tierLabel, tierOf } from './routes.js';
-import { option, resolveRoute, keyOwner, byTier, localAvailable, savedPinOf } from './select.js';
+import { option, resolveRoute, keyOwner, byTier, localAvailable, savedPinOf, localOnlyModel } from './select.js';
 import { getPrefs, favouriteOf } from './prefs.js';
 import { config } from '../config.js';
 import { LOCAL_OFF_REASON, LOCAL_UNREACHABLE_REASON, TOO_HEAVY_REASON, OPEN_WEIGHTS_ONLY_REASON, NOT_WIRED_REASON, reasonSentence } from './runnable.js';
@@ -132,7 +132,9 @@ export function modelStatus(tool: ToolDef, modelId: string, mode: string | null 
   if (local && !localAvailable()) return fail('local_unreachable', LOCAL_UNREACHABLE_REASON);
   // HW-SHAPES B3: every local route of this model is too heavy for this computer (checked before local_off: turning Use local on wouldn't help)
   { const locals = routes.filter((o) => o.kind === 'local'); if (locals.length && locals.every((o) => o.reasonCode === 'too_heavy')) return { ...fail('too_heavy', locals.every((o) => o.fit?.reasonCode === 'unsupported_weights') ? MAC_WEIGHTS_REASON : TOO_HEAVY_REASON), fit: locals[0].fit ?? null } as ModelStatus; }
-  if (local && !prefs.global.useLocal) return fail('local_off', LOCAL_OFF_REASON);
+  // a model that runs only on your computer runs with Use local off too (select.ts autoOrder), so "turn it on" isn't its step: the plan's own
+  // reason below says what is (its files, an add-on), the same step its menu row and setup card show (2026-10-31: Wan 2.2 Animate)
+  if (local && !prefs.global.useLocal && !localOnlyModel(modelId, tool, input)) return fail('local_off', LOCAL_OFF_REASON);
   const blocked = routes.find((o) => o.reasonCode === 'input_blocked');
   if (blocked) return fail('input_blocked', String(blocked.reason ?? 'This job does not fit this model'));
   if (routes.some((o) => o.reason === NOT_WIRED_REASON)) return fail('not_wired', `${name} isn’t ready yet. Pick another model`);
