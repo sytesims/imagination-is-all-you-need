@@ -823,7 +823,7 @@ export const APP_GALLERY: GalleryApp[] = [
     notes: ['Works best when both people are fully visible and roughly the same size in frame. Only swap people who agreed to it.'] },
   // Material Swap (2026-10-31): object photo + material photo on the two-image edit route (local Qwen Image 2.1 by default: its official edit template's
   // two inputs), plus hosted edit models that take 2+ images. Two optional short words fill our prompt (materialSwapPrompt); no new model.
-  { id: 'material-swap', name: 'Material Swap', route: '/tools/create-image?workflow=material-swap', category: 'Image', base: 'create-image', poster: null,
+  { id: 'material-swap', name: 'Material Swap', route: `${IMAGE_PAGE}?workflow=material-swap`, category: 'Image', base: 'create-image', poster: null,
     description: 'A photo of an object and a photo of a material: the object takes that material, its shape, light and scene kept.',
     locked: { types: '["edit"]' }, providers: MATERIAL_SWAP_MODELS, exposed: ['image', 'material', 'prompt', 'provider', 'rights', 'seed', 'object', 'fromMaterial'],
     labels: { image: 'Object', material: 'Material', prompt: 'Touch-ups (optional)' }, required: ['image', 'material'],
