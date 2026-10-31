@@ -381,7 +381,7 @@ export function registerRouting(app: FastifyInstance) {
     const r = preferRunnablePart(tool, resolveModelRequest(tool, { model: q.model, runOn: runOnRaw, provider: isQuote ? null : q.provider, route: q.route, types: q.mode ? [q.mode] : q.types, mode: q.mode }), q); // H3 map F1: the engine of this model that runs here
     if (!r.ok) { const { ok: _o, status, ...body } = r; return reply.code(status).send({ ...body, issues: [{ code: body.code, field: body.field, message: body.error }], valid: false, credits: null, priceAvailable: false }); }
     if (r.provider) { q.model = r.provider; if (!isQuote) q.provider = r.provider; }
-    if (r.route) q.route = r.route; if (r.types && !q.types && !q.mode) q.types = r.types;
+    if (r.route) q.route = r.route; if (r.types && !q.types && !q.mode && tool.inputs.some((i) => i.name === 'types')) q.types = r.types; // the default LTX move only where moves are a setting (Camera), not on the reel, which picks its own per photo
     (req as any).ohfModel = r;
   });
   /** Step 1: the model registry (static: models, per-tool models with their engines and routes, run-on ids, engine aliases). */
