@@ -1,5 +1,5 @@
 // The one-line installer (scripts/get.sh), in a scratch HOME. Never clones, installs or starts anything.
-// Fake `defaults`, `killall`, `brew` and `uname` come first in PATH, so the real Dock, Homebrew and /Applications are never touched.
+// Fake `defaults`, `killall`, `brew`, `uname` and `xcode-select` come first in PATH, so the real Dock, Homebrew and /Applications are never touched.
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, chmodSync, cpSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -20,6 +20,8 @@ const fake = (name: string, body: string, logged = true) => { writeFileSync(path
 fake('defaults', `case "$1" in read) sed -n 's|.*<string>\\(file:[^<]*\\)</string>.*|"_CFURLString" = "\\1";|p' "${dock}" 2>/dev/null;; write) echo "\${@: -1}" >> "${dock}";; esac`);
 fake('killall', '');
 fake('brew', '');
+// (a pretend Mac whose git is /usr/bin/git asks xcode-select whether the tools are installed; Linux runners have none)
+fake('xcode-select', 'echo /Library/Developer/CommandLineTools', false);
 fake('uname', '[ "$1" = -s ] && [ -n "$FAKE_OS" ] && { echo "$FAKE_OS"; exit 0; }; exec /usr/bin/uname "$@"', false);
 // (brew shellenv: a runner that has Homebrew asks it for its PATH; that's not a change to this computer)
 const calls = () => (existsSync(log) ? readFileSync(log, 'utf8') : '').split('\n').filter((l) => l !== 'brew shellenv').join('\n');
