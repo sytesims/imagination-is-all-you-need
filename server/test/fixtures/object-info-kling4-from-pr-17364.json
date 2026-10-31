@@ -961,5 +961,142 @@
   "output": [
    "VIDEO"
   ]
+ },
+ "Kling4EditVideoNode": {
+  "input": {
+   "required": {
+    "model": [
+     "COMFY_DYNAMICCOMBO_V3",
+     {
+      "options": [
+       {
+        "key": "kling-4.0",
+        "inputs": {
+         "required": {
+          "video_1": [
+           "VIDEO",
+           {}
+          ],
+          "reference_videos": [
+           "COMFY_AUTOGROW_V3",
+           {
+            "template": {
+             "input": {
+              "required": {
+               "reference_video": [
+                "VIDEO",
+                {}
+               ]
+              }
+             },
+             "names": [
+              "video_2",
+              "video_3",
+              "video_4",
+              "video_5"
+             ],
+             "min": 0
+            }
+           }
+          ],
+          "reference_images": [
+           "COMFY_AUTOGROW_V3",
+           {
+            "template": {
+             "input": {
+              "required": {
+               "reference_image": [
+                "IMAGE",
+                {}
+               ]
+              }
+             },
+             "names": [
+              "image_1",
+              "image_2",
+              "image_3",
+              "image_4",
+              "image_5",
+              "image_6",
+              "image_7",
+              "image_8",
+              "image_9",
+              "image_10"
+             ],
+             "min": 0
+            }
+           }
+          ],
+          "prompt": [
+           "STRING",
+           {
+            "default": "",
+            "multiline": true
+           }
+          ],
+          "resolution": [
+           "COMBO",
+           {
+            "default": "720p",
+            "multiselect": false,
+            "options": [
+             "720p",
+             "1080p"
+            ]
+           }
+          ],
+          "aspect_ratio": [
+           "COMBO",
+           {
+            "default": "adaptive",
+            "multiselect": false,
+            "options": [
+             "adaptive",
+             "16:9",
+             "9:16",
+             "1:1",
+             "21:9"
+            ]
+           }
+          ],
+          "seed": [
+           "INT",
+           {
+            "default": 42,
+            "min": 0,
+            "max": 2147483647,
+            "control_after_generate": true
+           }
+          ]
+         }
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "hidden": {
+    "auth_token_comfy_org": [
+     "AUTH_TOKEN_COMFY_ORG"
+    ],
+    "api_key_comfy_org": [
+     "API_KEY_COMFY_ORG"
+    ],
+    "unique_id": [
+     "UNIQUE_ID"
+    ]
+   }
+  },
+  "output": [
+   "VIDEO"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_name": [
+   "VIDEO"
+  ],
+  "category": "partner/video/Kling",
+  "api_node": true
  }
 }

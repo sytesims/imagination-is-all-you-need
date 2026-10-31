@@ -12,7 +12,8 @@
  * Wired here: text to video, image to video (start frame), start + end frame, reference to video (1–10 images), Keyframes (2–10 frames: the first,
  * up to 8 middle frames the node spaces evenly, the last; no times, K4_KEYFRAMES on the model's video limits), reference videos in reference to video
  * (up to 5 clips, 3–30 s each and 30 s in all, ≥ 24 fps, 700–4553 px a side, ≤ 8.3 MP, 2:5 to 5:2; autogrow "model.reference_videos.video_1…5", @Video1…).
- * Not wired yet: the Edit Video node (Prompt Edit is a one-model app today).
+ * Edit (Kling4EditVideoNode) is a model of Prompt Edit (tools/promptEdit.ts): your clip (3–30 s; Fit to model makes it fit) + one instruction → the same
+ * clip, same length, its shape kept (aspect "adaptive"), at 720p or 1080p. Its own route and price row (cloud-kling4-edit, below).
  * Price: the nodes' price badge, per second of the clip by resolution: $0.22451 at 720p, $0.33605 at 1080p (shared/hostedPrices.ts row cloud-kling4).
  * With reference videos the badge is a range, $0.13442 / $0.20163 per s × (2 × clip s) up to × (30 + clip s): k4PriceInput bills the top, and the
  * quote says '≈ up to' with the range (routing/videoQuote.ts rangeOf).
@@ -135,3 +136,38 @@ export function k4CloudPlan(j: { id: string; toolId: string; provider: string; i
 /** The job as this route bills it: with reference videos the node's price is a range, so the charge is its top (the most reference video the
  *  node takes, 30 s, at the reference rate: shared/hostedPrices.ts cloud-kling4 videoInput). Quote and charge both use it. */
 export const k4PriceInput = (i: In): In => ({ ...i, refVideoSeconds: modeOf(i) === 'r2v' && (pathsOf(i.refVideoPaths).length > 0 || Number(i.refVideoSeconds) > 0) ? K4_REF_VIDEO_SECONDS.maxTotal : 0 }); // clips left on the bar in another mode are not sent: not billed
+
+/* ---------------- Edit (Prompt Edit's Kling 4.0 model, 2026-10-31) ----------------
+ * Kling4EditVideoNode: model.video_1 (the clip, 3–30 s; the result keeps its length), prompt (@Video1 = the clip), resolution, aspect_ratio
+ * (adaptive keeps the clip's shape), seed. Reference videos / images of the node are not offered in Prompt Edit. Price badge (no references):
+ * $0.13442 (720p) or $0.20163 (1080p) × 2 per second of input video = $0.26884 / $0.40326 per second (shared/hostedPrices.ts cloud-kling4-edit). */
+export const K4_EDIT_PROVIDER = 'cloud-kling4-edit';
+export const K4_EDIT_ROUTE = `comfy-cloud:${K4_EDIT_PROVIDER}`;
+export const K4_EDIT_NODE = 'Kling4EditVideoNode';
+/** The clip it takes (seconds); Fit to model trims a longer one to its first 30 s (shared/videoFit.ts VIDEO_INPUT_LIMITS). */
+export const K4_EDIT_SECONDS = { min: 3, max: 30 } as const;
+/** USD per second of the input clip (the badge's rate × 2). */
+export const K4_EDIT_RATES = { '720p': 0.26884, '1080p': 0.40326 } as const;
+/** What the edit route can't take (null = fine). Reads only what the quote also has (resolution, the clip's seconds, the instruction). */
+export function k4EditIssue(i: In): string | null {
+  if (!(K4_RESOLUTIONS as readonly string[]).includes(k4Resolution(i))) return `${K4_NAME} edits at 720p or 1080p`;
+  const d = Number(i.duration); if (d && d < K4_EDIT_SECONDS.min - 0.01) return `${K4_NAME} needs a clip of at least ${K4_EDIT_SECONDS.min} s`;
+  if (d && d > K4_EDIT_SECONDS.max + 0.05) return `${K4_NAME} edits up to ${K4_EDIT_SECONDS.max} s; trim your clip`;
+  const len = promptOf(i).length; if (len > K4_MAX_CHARS) return `${K4_NAME} takes instructions up to ${K4_MAX_CHARS.toLocaleString('en-US')} characters; yours is ${len.toLocaleString('en-US')}`;
+  return null;
+}
+/** The API graph: LoadVideo → Kling4EditVideoNode → SaveVideo. `video` = an upload placeholder ({__file}) or a Cloud asset ref. */
+export function k4EditGraph(i: In, video: unknown): Record<string, any> {
+  return { '10': { class_type: 'LoadVideo', inputs: { file: video } },
+    '1': { class_type: K4_EDIT_NODE, inputs: { model: K4_NODE_MODEL, 'model.video_1': ['10', 0], 'model.prompt': promptOf(i).trim(), 'model.resolution': k4Resolution(i), 'model.aspect_ratio': 'adaptive', 'model.seed': seedOf(i.seed) } },
+    '2': { class_type: 'SaveVideo', inputs: { video: ['1', 0], filename_prefix: 'video/openhiggsfield-kling4-edit', format: 'auto', 'format.codec': 'auto' } } };
+}
+/** The plan: one pass on the (fitted) clip. "Keep the clip's sound" puts the clip's own sound back on the result; off keeps Kling's. */
+export function k4EditPlan(j: { id: string; toolId: string; provider: string; input: In }): Plan {
+  const i = j.input; const bad = k4EditIssue(i); if (bad) throw refuse(bad);
+  if (!promptOf(i).trim()) throw refuse('Say what to change, e.g. make it night'); if (!i.videoPath) throw refuse(`${K4_NAME} needs a clip`);
+  const graph = k4EditGraph(i, { __file: String(i.videoPath) }); const n = graph['1'].inputs;
+  return { tool: j.toolId, outKind: 'video', post: { kind: 'each' }, muxSourceAudio: i.clipSound === true,
+    notes: [`${K4_NAME} partner node (${K4_EDIT_NODE}) on Comfy Cloud: ${n['model.resolution']}, the clip's shape and length (${Number(i.duration) || '?'} s), ${i.clipSound ? 'the clip’s own sound' : 'Kling’s own sound'}`],
+    passes: [{ label: 'Edited', workflow: `partner:${K4_EDIT_NODE}`, graph, output: '2', expect: { resolution: n['model.resolution'] } }] };
+}

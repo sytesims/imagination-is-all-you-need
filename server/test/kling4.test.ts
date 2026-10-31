@@ -6,6 +6,8 @@
 //  4 prices: the price badge per second × resolution; the REAL quote endpoint = the charge (3 s and 30 s, 720p and 1080p)
 //  5 run on a fake Comfy Cloud (3 references): files uploaded, key once in extra_data, the checked graph submitted
 //  7 reference videos (2026-10-31): up to 5 clips in reference to video; the price is a range, quoted at its top '≈ up to' (quote = charge); refFit sees them
+//  8 Prompt Edit's Kling 4.0 (2026-10-31): Kling4EditVideoNode as a model choice beside Bernini-R (unchanged); 3–30 s, 720p / 1080p, Fit to model
+//    trims / enlarges; the badge price per second of the clip; quote = charge
 //  6 keyframes (2026-10-31): 2–10 frames, first / evenly spaced middle / last, no times; the bar's caps, the quote and the submit agree; H3 keeps 2–5 at times
 // Run: npx tsx test/kling4.test.ts
 import './fixtures/tmp-cleanup.mjs';
@@ -151,6 +153,49 @@ try {
     { const qs = new URLSearchParams({ provider: K.K4_PROVIDER, types: '["r2v"]', duration: '5', resolution: '720p', refs: '1', refVideos: '1', refVideoSeconds: '31', refVideoSecondsEach: '31' }); const b = (await app.inject({ url: `/api/tools/h3-video/price?${qs}` })).json();
       assert.equal(b.runnable, false); assert.match(String(b.blockedReason ?? b.reason), /at most 30 s/); }
     await app.close(); ok(`reference videos: graph + node schema, 5-clip / 3–30 s / 30 s total / frame / fps refusals, refFit uses them; ${seen.join('; ')}`); }
+
+  // ---- 8. Prompt Edit: Kling 4.0 ----
+  { const PE = await import('../src/tools/promptEdit.ts'); const tool = getTool('prompt-edit')!; const { videoFitFor } = await import('../src/shared/videoFit.ts'); const { VIDEO_BARS } = await import('../src/shared/videoBar.ts');
+    for (const res of K.K4_RESOLUTIONS) clean(`edit ${res}`, K.k4EditGraph({ prompt: 'make it night', resolution: res, seed: 7 }, ASSET));
+    { const g = K.k4EditGraph({ prompt: 'x' }, ASSET); assert.equal(g['1'].class_type, K.K4_EDIT_NODE); assert.equal(g['1'].inputs['model.aspect_ratio'], 'adaptive'); assert.equal(g['10'].class_type, 'LoadVideo');
+      bad(g, (x) => { x['1'].inputs['model.resolution'] = '480p'; }, /not in the list/); }
+    assert.deepEqual(tool.providers.map((p) => p.id ?? p), ['cloud-bernini-r', K.K4_EDIT_PROVIDER], 'Bernini-R stays first (the default)'); assert.deepEqual(Object.keys(PE.EDIT_MODELS), ['cloud-bernini-r', K.K4_EDIT_PROVIDER]);
+    const rs = routesFor(K.K4_EDIT_PROVIDER, tool); assert.deepEqual(rs.map((r) => r.routeId), [K.K4_EDIT_ROUTE]); const r = rs[0];
+    assert.ok(CLOUD_RUNNER_ROUTES.has(K.K4_EDIT_ROUTE) && (CLOUD_WORKFLOWS[K.K4_EDIT_ROUTE] as any).partnerAuth);
+    assert.match(String(r.unavailableFor!({ resolution: '480p', duration: 5 })), /720p or 1080p/); assert.match(String(r.unavailableFor!({ resolution: '720p', duration: 2 })), /at least 3 s/);
+    assert.equal(r.unavailableFor!({ resolution: '1080p', duration: 30 }), null);
+    { const m = toolModels('prompt-edit').find((x: any) => x.key === 'kling-4')!; assert.ok(m, 'Kling 4.0 on Prompt Edit'); assert.deepEqual(m.parts.map((p: any) => p.engine), [K.K4_EDIT_PROVIDER]);
+      assert.ok(toolModels('prompt-edit').some((x: any) => x.key === 'bernini-r'), 'Bernini-R still there'); }
+    { const c = VIDEO_BARS['prompt-edit'].controls.find((x) => x.field === 'resolution')!; assert.deepEqual(c.providers, [K.K4_EDIT_PROVIDER], 'the size chip for Kling only'); assert.deepEqual((tool as any).app.resolutionsByProvider, { 'cloud-bernini-r': ['480p'], [K.K4_EDIT_PROVIDER]: ['720p', '1080p'] }); }
+    // Fit to model: Kling's own video rules (the node's checks), fixed for free before the upload
+    { const f = (x: any) => videoFitFor('prompt-edit', K.K4_EDIT_PROVIDER, { width: 1280, height: 720, duration: 8, fps: 24, ...x })!;
+      assert.equal(f({}).changed, false); assert.equal(f({ width: 640, height: 360 }).frame.height, 700, 'a 360p clip is enlarged to 700 px'); assert.equal(f({ duration: 45 }).trimTo, 30);
+      assert.equal(f({ fps: 12 }).fps, 24); assert.match(String(f({ fps: 12 }).problems), /at least 24 fps/); assert.match(String(f({ duration: 2 }).blocked), /at least 3 s/);
+      assert.equal(videoFitFor('prompt-edit', 'cloud-bernini-r', { width: 640, height: 360, duration: 8 }), null, 'Bernini-R: no Fit row, as before'); }
+    const vclip = (name: string, size: string, secs: number) => { ff(['-f', 'lavfi', '-i', `testsrc=size=${size}:rate=24`, '-f', 'lavfi', '-i', 'sine=frequency=440', '-t', String(secs), '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest', path.join(D, name)]); return name; };
+    const e = (f: Record<string, string>, v: string) => tool.parseInput({ prompt: 'make it night', ...f }, { video: [v] }) as Promise<any>;
+    vclip('e8.mp4', '1280x720', 8); vclip('e2.mp4', '1280x720', 2); vclip('e32.mp4', '1280x720', 32);
+    { const j = await e({}, 'e8.mp4'); assert.ok(!j.error); assert.equal(j.resolution, '480p'); assert.equal(j.duration, 5); assert.equal(j.keepAudio, true); assert.match(j.warnings[0], /first 5 s/); } // Bernini-R as before
+    { const j = await e({ provider: K.K4_EDIT_PROVIDER }, 'e8.mp4'); assert.ok(!j.error, j.error); assert.equal(j.resolution, '720p'); assert.ok(Math.abs(j.duration - 8) < 0.1); assert.equal(j.keepAudio, undefined); assert.equal(j.clipSound, true);
+      const plan = K.k4EditPlan({ id: 'e', toolId: 'prompt-edit', provider: K.K4_EDIT_PROVIDER, input: j }); assert.equal(plan.muxSourceAudio, true); assert.equal(plan.passes[0].graph['1'].inputs['model.prompt'], 'make it night');
+      const off = await e({ provider: K.K4_EDIT_PROVIDER, keepAudio: '0', resolution: '1080p' }, 'e8.mp4'); assert.equal(off.clipSound, false); assert.equal(off.resolution, '1080p');
+      assert.equal(K.k4EditPlan({ id: 'e', toolId: 'prompt-edit', provider: K.K4_EDIT_PROVIDER, input: off }).muxSourceAudio, false, 'sound off: Kling\'s own sound'); }
+    assert.match(String((await e({ provider: K.K4_EDIT_PROVIDER, resolution: '480p' }, 'e8.mp4')).error), /Kling 4.0 edits at 720p or 1080p/);
+    assert.match(String((await e({ provider: K.K4_EDIT_PROVIDER }, 'e2.mp4')).error), /too short \(2\.0 s\)\. Kling 4\.0 needs one of at least 3 s/);
+    { const j = await e({ provider: K.K4_EDIT_PROVIDER }, 'e32.mp4'); assert.ok(!j.error); assert.ok(j.duration > 31, 'the clip as it is: Fit to model trims it'); assert.equal(videoFitFor('prompt-edit', K.K4_EDIT_PROVIDER, j)!.trimTo, 30); }
+    // prices: the badge per second of the clip; the quote = the charge (a 32 s clip is billed as its first 30 s)
+    const Fastify = (await import('fastify')).default; const app = Fastify(); (await import('../src/routesBatch1.ts')).registerBatch1(app); (await import('../src/routing/http.ts')).registerRouting(app); await app.ready();
+    assert.deepEqual(HOSTED_BY_ID[K.K4_EDIT_PROVIDER].usdByQuality, { '720p': 0.26884, '1080p': 0.40326 });
+    const seen: string[] = [];
+    for (const [v, res, secs] of [['e8.mp4', '720p', 8], ['e8.mp4', '1080p', 8], ['e32.mp4', '720p', 30]] as const) {
+      const j = await e({ provider: K.K4_EDIT_PROVIDER, resolution: res }, v); const fit = videoFitFor('prompt-edit', K.K4_EDIT_PROVIDER, j); if (fit?.trimTo) j.duration = fit.trimTo; // as the submit does
+      const charge = routeCredits(tool, findRoute(K.K4_EDIT_ROUTE)!, routeInput(tool, j))!;
+      const qs = new URLSearchParams({ provider: K.K4_EDIT_PROVIDER, types: '["edit"]', resolution: res, seconds: String(j.sourceSeconds), width: '1280', height: '720', fps: '24', videoFormat: 'mp4' });
+      const b = (await app.inject({ url: `/api/tools/prompt-edit/price?${qs}` })).json(); assert.equal(b.route, K.K4_EDIT_ROUTE); assert.ok(!b.blockedReason, b.blockedReason);
+      const quoted = b.listCredits ?? b.credits; assert.equal(quoted, charge, `${v} ${res}: quote ${quoted} = charge ${charge}`); assert.ok(Math.abs(j.duration - secs) < 0.1); assert.equal(charge, Math.ceil(Math.round(j.duration * K.K4_EDIT_RATES[res] * 100 * 1e6) / 1e6), 'the badge rate × the clip seconds');
+      seen.push(`${secs} s ${res} $${(quoted / 100).toFixed(2)}`); }
+    { const b = (await app.inject({ url: `/api/tools/prompt-edit/price?${new URLSearchParams({ provider: 'cloud-bernini-r', types: '["edit"]', resolution: '480p', seconds: '8', width: '1280', height: '720' })}` })).json(); assert.equal(b.route, 'comfy-cloud:cloud-bernini-r', 'Bernini-R quote as before'); }
+    await app.close(); ok(`Prompt Edit: Kling 4.0 beside Bernini-R (unchanged), 3–30 s, 720p / 1080p, Fit to model, Keep sound = the clip's or Kling's; quote = charge: ${seen.join(', ')}`); }
 
   // ---- 5. fake Comfy Cloud run ----
   process.env.COMFY_API_KEY = 'comfyui-fake-kling4-key-0000'; process.env.COMFY_CLOUD_URL = 'http://cloud.test';

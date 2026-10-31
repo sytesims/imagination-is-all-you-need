@@ -495,6 +495,11 @@ COMFY_TEMPLATE_PRICES.push(
     note: 'Kling 4.0 partner nodes (Text / Image / Reference to Video), price badge: $0.22451 per s at 720p and $0.33605 at 1080p (47.37 / 70.91 credits). Stereo sound is always included.',
     videoInput: { usd: 0.20163, usdByQuality: { '720p': 0.13442, '1080p': 0.20163 }, rangeFloor: 2,
       note: 'Kling 4.0 Reference to Video with reference videos, price badge: a range, $0.13442 (720p) or $0.20163 (1080p) per s × (2 × clip s) up to × (30 + clip s). Quoted and held at the top.' } } as HostedPrice,
+  // Prompt Edit's Kling 4.0 model (Kling4EditVideoNode, tools/promptEdit.ts): the badge without reference inputs, $0.13442 (720p) or $0.20163 (1080p)
+  // × 2 per second of the input clip (the result keeps its length).
+  { providerId: 'cloud-kling4-edit', model: 'Kling 4.0 Edit Video (Kling4EditVideoNode) on Comfy Cloud', unit: 'second', usd: 0.40326, usdByQuality: { '720p': 0.26884, '1080p': 0.40326 },
+    sourceUrl: 'https://github.com/Comfy-Org/ComfyUI/pull/17364', checkedAt: '2026-10-31' as HostedPrice['checkedAt'], estimated: false,
+    note: 'Kling 4.0 Edit Video partner node, price badge: $0.13442 (720p) or $0.20163 (1080p) × 2 per second of input video = $0.26884 / $0.40326 per s (the result keeps the clip\'s length).' } as HostedPrice,
 );
 // One key runs everything (2026-10-27): the photo and clip tools that ran on fal only, on Comfy Router (pricing page, USD columns; routing/routerModels.ts).
 COMFY_TEMPLATE_PRICES.push(
