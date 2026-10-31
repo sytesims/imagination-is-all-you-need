@@ -71,7 +71,7 @@ assert.equal(appWorkflowFor('photo-fx', 'router-seedance')?.name.includes('First
   for (const [id, model, price] of want) { const r = row(id); assert.ok(r.made, `${id}: made here`); assert.equal(r.model, model, `${id}: the example's model`); assert.equal(r.price?.text, price, `${id}: the example's real cost`); }
   assert.deepEqual(row('v-motion-control').runs.map((x) => x.jobId), ['dc114104', '1c5974e8'], 'Motion Control: the swap and its Topaz upscale');
   assert.deepEqual(row('v-extend').runs.map((x) => [x.jobId, x.costUsd]), [['42ceb1af', 0.8], ['50d2a3a0', 0.52]], 'Extend: both runs of the 20 s take');
-  assert.equal(row('v-motion-control').runs[0].place, 'Comfy Router', 'a Comfy Router run names its place (shared/modelIds.ts PLACE_LABELS)');
+  assert.equal(row('v-motion-control').runs[0].place, 'Comfy Cloud', 'a partner-model run on the Comfy key names its place Comfy Cloud (shared/modelIds.ts PLACE_LABELS)');
   const ps = row('i-product-shot'); assert.equal(ps.made, false, 'Product Shot: a preset picture with no job id is not "Made here"'); assert.notEqual(ps.media.kind, 'art');
   const mu = row('a-music'); assert.equal(mu.models[0].key, 'yue2', 'Music leads with YuE2'); assert.equal(mu.models.find((m) => m.key === 'ace-step-1.5')!.run.kind, 'setup', 'ACE-Step: set up first, never "Free · on your computer"');
   /* the card's one line is the lead model's best place: the example's own model when it runs here (LTX-2.5 Pro on Comfy), else a free local one */

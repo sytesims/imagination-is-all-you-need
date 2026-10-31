@@ -4,11 +4,11 @@ import { LTX_LORAS, ltxLoraPrompt, PHOTO_FX_LTX_LORA } from '../shared/ltxLoras.
 import { H3_CAMERA_MOVES } from './h3/catalog.js';
 import { CAMERA_CATALOG } from '../cinema/cameraCatalog.js';
 import { OPTION_MEDIA, wireOptionMedia, voiceSampleUrl, voiceSampleKind, wireSamplePresetMedia } from '../interimTiles.js';
-import { parseLightRig, rigPhrases, rigJson, spherePresetOf, type LightRig } from '../shared/lightRig.js';
+import { parseLightRig, rigPhrases, rigJson, spherePresetOf, lightUntouched, DEFAULT_RIG, type LightRig } from '../shared/lightRig.js';
 import { PRODUCT_SCENES, PRODUCT_KEEP, TRANSITION_TYPES, UGC_PRESENTERS, UGC_HOOKS, UGC_SETTINGS, UGC_FRAMINGS, ORBIT_TYPES, ORBIT_BACKDROPS, RELIGHT_DIRECTIONS, RELIGHT_QUALITY, RELIGHT_COLOUR_PRESETS, RELIGHT_LOOKS, relightLookOf, brightnessWord, colourName, padPhrase, LANGUAGE_NATIVE, CHARACTER_LAYOUTS, CHARACTER_LAYOUT_DEFAULT, type CharacterLayout, type AppField, type AppOption } from './appRows.js';
 import { TRANSLATE_LANGS } from '../comfy/plans.js';
 import { SHOT_ANGLES, parseShots, shotPrompt, FACE_SWAP_PROMPT, FACE_SWAP_KEEP, PERSON_SWAP_PROMPT, PERSON_SWAP_KEEP, type ShotAngle } from './shots.js';
-import { GENERATE_MODELS, EDIT_MODELS, TWO_IMAGE_MODELS, AD_PACK_MODELS, MASK_MODELS, REMOVE_BG_MODELS, EXPAND_MODELS, ERASE_MODELS, TRYON_MODELS, featureById, gridModelOf } from '../shared/imageFeatures.js';
+import { GENERATE_MODELS, EDIT_MODELS, TWO_IMAGE_MODELS, MATERIAL_SWAP_MODELS, AD_PACK_MODELS, MASK_MODELS, REMOVE_BG_MODELS, EXPAND_MODELS, ERASE_MODELS, TRYON_MODELS, featureById, gridModelOf } from '../shared/imageFeatures.js';
 import { promptGrammarOf } from '../shared/promptGrammar.js';
 import { fillPattern, patternFor } from '../shared/promptPatterns.js';
 import { EXPAND_ASPECTS, EXPAND_ASPECT_LABELS, TRYON_CATEGORIES, TRYON_PHOTO_TYPES, expandBlock, expandCanvas, photoBlock, eraseMaskBlock } from '../shared/imagePhotoTools.js';
@@ -621,7 +621,7 @@ export const relightFamilyOf = (provider?: string): RelightFamily => !provider ?
 /** Where the keep sentence goes (shared/promptPatterns.ts relight): first on Nano Banana (Comfy's NB2 relight template locks identity first), last elsewhere. */
 export const relightKeepFirst = (provider?: string) => patternFor('relight', provider && NANO_BANANA.test(provider) ? 'nano-banana' : provider && /^api-gpt-image/.test(provider) ? 'gpt-image' : null)?.keep === 'first';
 const keepPlaced = (provider: string | undefined, parts: string[]) => (relightKeepFirst(provider) ? [RELIGHT_SENTENCE_KEEP, ...parts] : [...parts, RELIGHT_SENTENCE_KEEP]).filter(Boolean).join(' ');
-/** With a look, FLUX-type models also get a short "make it visible" line (a soft white light from the left barely changed a real FLUX.2 klein run). */
+/** FLUX-type models also get a short "make it visible" line (a soft white light from the left barely changed a real FLUX.2 klein run). */
 export const RELIGHT_LOOK_CHANGE = 'the new lighting is clearly visible across the whole image';
 export const RELIGHT_SENTENCE_CHANGE = 'Only the lighting changes: shadows, highlights and colour across the whole image follow the new light.';
 export const RELIGHT_SENTENCE_KEEP = 'Keep the same person, face, expression, pose, clothes, objects and framing exactly as they are.';
@@ -638,24 +638,44 @@ export function relightRigPrompt(rig: LightRig, look: string | undefined, userPr
       desc ? S(`The setup: ${desc}`) : '', S(userPrompt), RELIGHT_SENTENCE_CHANGE]); }
   return joinPrompt(`relight the scene${setup ? ` with ${setup}` : ''}`, key, P.quality, P.rim, P.ambient, desc, userPrompt, RELIGHT_LOOK_CHANGE, 'keep the subject, pose and composition unchanged');
 }
-/** The Relight prompt. `look` blank or 'custom' = the pre-look prompt, byte for byte. A `light` rig (the 3D light sphere) words the light precisely instead. */
+/** The Relight prompt, worded per model family (Qwen / sentence / FLUX-type) with or without a look. A `light` rig (the light panel) words the
+ *  light precisely; untouched fields (no rig, no look, every light field at its default) use the panel's starting light, DEFAULT_RIG, so the
+ *  first run shows a clear change and names the spot the panel shows. Old drafts and links with their own light fields keep their light. */
 export function relightPrompt(v: Record<string, string>, userPrompt: string, provider?: string): string {
   const pr = v.light ? parseLightRig(v.light) : null; if (pr && 'rig' in pr) return relightRigPrompt(pr.rig, v.look, userPrompt, provider);
+  if (lightUntouched(v)) return relightRigPrompt(DEFAULT_RIG, undefined, userPrompt, provider);
   const pad = v.lightX !== '' && v.lightX != null && v.lightY !== '' && v.lightY != null ? padPhrase(Number(v.lightX), Number(v.lightY)) : pick(RELIGHT_DIRECTIONS, v.direction)?.prompt;
   const light = `${brightnessWord(Number(v.brightness))} ${colourName(v.color)} light`; const quality = pick(RELIGHT_QUALITY, v.lightQuality)?.prompt;
-  const fam = relightFamilyOf(provider); const L = relightLookOf(v.look);
-  if (!L) {
-    // Qwen edit models (2026-10-22 real runs): a "keep … unchanged" lock made them hold the old light. Name the new light first, ask for a clear
-    // change of light, shadows and colour, and lock only identity, pose, clothes and framing.
-    if (fam === 'qwen') return joinPrompt(`Relight the scene: ${light}, ${pad}`, quality, userPrompt, RELIGHT_CHANGE, RELIGHT_KEEP);
-    return joinPrompt('relight the scene', pad, quality, light, userPrompt, 'keep the subject, pose and composition unchanged');
-  }
+  const fam = relightFamilyOf(provider); const L = relightLookOf(v.look); const named = L ? ` with ${L.light}` : '';
   // the look's colour temperature only while the colour is still its own (a teal light on "Golden hour" drops "warm golden sunlight")
-  const tone = String(v.color ?? '').toUpperCase() === L.sets.color.toUpperCase() ? L.tone : '';
-  if (fam === 'qwen') return joinPrompt(`Relight the scene with ${L.light}: ${light}, ${pad}`, L.prompt, tone, quality, userPrompt, RELIGHT_CHANGE, RELIGHT_KEEP);
+  const tone = L && String(v.color ?? '').toUpperCase() === L.sets.color.toUpperCase() ? L.tone : '';
+  // Qwen edit models (2026-10-22 real runs): a "keep … unchanged" lock made them hold the old light. Name the new light first, ask for a clear
+  // change of light, shadows and colour, and lock only identity, pose, clothes and framing.
+  if (fam === 'qwen') return joinPrompt(`Relight the scene${named}: ${light}, ${pad}`, L?.prompt, tone, quality, userPrompt, RELIGHT_CHANGE, RELIGHT_KEEP);
   if (fam === 'sentence') { const S = (x?: string) => (x && x.trim() ? `${x.trim()[0].toUpperCase()}${x.trim().slice(1).replace(/[.;,]+$/, '')}.` : '');
-    return keepPlaced(provider, [`Relight this photo with ${L.light}.`, S(`The main light is ${light.replace(/ light$/, '')}${pad?.startsWith('light ') ? `, ${pad.replace(/^light /, 'coming ')}` : `: ${pad}`}`), S(`The setup: ${L.prompt}`), tone ? S(`Colour temperature: ${tone}`) : '', S(quality), S(userPrompt), RELIGHT_SENTENCE_CHANGE]); }
-  return joinPrompt(`relight the scene with ${L.light}`, pad, quality, light, L.prompt, tone, userPrompt, RELIGHT_LOOK_CHANGE, 'keep the subject, pose and composition unchanged');
+    return keepPlaced(provider, [`Relight this photo${named}.`, S(`The main light is ${light.replace(/ light$/, '')}${pad?.startsWith('light ') ? `, ${pad.replace(/^light /, 'coming ')}` : `: ${pad}`}`), L ? S(`The setup: ${L.prompt}`) : '', tone ? S(`Colour temperature: ${tone}`) : '', S(quality), S(userPrompt), RELIGHT_SENTENCE_CHANGE]); }
+  return joinPrompt(`relight the scene${named}`, pad, quality, light, L?.prompt, tone, userPrompt, RELIGHT_LOOK_CHANGE, 'keep the subject, pose and composition unchanged');
+}
+/** Material Swap (2026-10-31): the object in image 1 takes the material of image 2; everything else stays. Our own wording, after the official
+ *  Qwen-Image-Edit-2511 "change material" pattern (give the object the new texture "instead of its" old material). Written with "image 1 / image 2":
+ *  the shared prompt rules (shared/promptRefs.ts) turn those into each model's own tokens (<image1> on Qwen Image 2.1). Each family gets its
+ *  own sentence shape: Qwen one blanket keep clause; Nano Banana "Using … change only …, preserving …"; GPT Image a role per image + "change only";
+ *  Seedream names what stays fixed. Blank fields read as "the main object" and "its current material". */
+export type MaterialFamily = 'qwen' | 'nano' | 'gpt' | 'seedream';
+export const materialFamilyOf = (provider?: string): MaterialFamily => /^api-nano-banana|^direct-gemini/.test(provider ?? '') ? 'nano' : /^api-gpt-image/.test(provider ?? '') ? 'gpt' : /^api-seedream/.test(provider ?? '') ? 'seedream' : 'qwen';
+export const MATERIAL_TEXT_MAX = 60;
+const bare = (x?: string) => String(x ?? '').replace(/\s+/g, ' ').trim().replace(/^(a|an|the)\s+/i, '').replace(/[.;,:]+$/, '');
+const sentence = (x?: string) => { const t = String(x ?? '').replace(/\s+/g, ' ').trim().replace(/[.;,\s]+$/, ''); return t ? `${t[0].toUpperCase()}${t.slice(1)}.` : ''; };
+export function materialSwapPrompt(v: Record<string, string>, userPrompt: string, provider?: string): string {
+  const obj = bare(v.object) || 'main object'; const was = bare(v.fromMaterial); const old = was ? `its ${was}` : 'its current material'; const touch = sentence(userPrompt);
+  const fam = materialFamilyOf(provider); const join = (...xs: string[]) => xs.filter(Boolean).join(' ');
+  if (fam === 'nano') return join(`Using image 1 and image 2, change only the material of the ${obj} in image 1: give it the material and texture shown in image 2 instead of ${old}.`, touch,
+    'Keep everything else in image 1 the same, preserving the original shape, lighting and composition.');
+  if (fam === 'gpt') return join(`Image 1: the photo with the ${obj}. Image 2: the material reference. Give the ${obj} in image 1 the material and texture from image 2 instead of ${old}.`, touch,
+    'Change only its material; keep everything else the same.');
+  if (fam === 'seedream') return join(`Replace ${was ? `the ${was}` : 'the material'} of the ${obj} in image 1 with the material and texture from image 2.`, touch,
+    `Keep the ${obj}'s shape, the background, the lighting and the framing of image 1 unchanged.`);
+  return join(`Give the ${obj} in image 1 the material and texture from image 2 instead of ${old}.`, touch, 'Keep everything else in image 1 unchanged.');
 }
 /** Character Sheet (rewritten Oct 22; layouts 2026-10-25, our own wording): the subject, the layout's panels (appRows CHARACTER_LAYOUTS), one grey
  *  studio backdrop and light for every panel, then a "keep" block that fits the layout (feet and no body cropping only where there are full-body panels). */
@@ -727,7 +747,7 @@ export const APP_GALLERY: GalleryApp[] = [
     locked: { types: '["edit"]' }, providers: EDIT_MODELS, exposed: ['image', 'prompt', 'provider', 'rights', 'seed', 'look', 'direction', 'lightQuality', 'brightness', 'color', 'lightX', 'lightY', 'light'],
     labels: { prompt: 'Extra details (optional)' }, required: ['image'], promptTemplate: 'relight the scene: {prompt}; keep the subject, pose and composition unchanged',
     fields: [
-      // Looks (2026-10-23): a named setup sets the four controls below and adds its own description; Custom (default) = today's prompt.
+      // Looks (2026-10-23): a named setup sets the four controls below and adds its own description; Custom (default) = no look (untouched: the default light, DEFAULT_RIG).
       { name: 'look', label: 'Look', kind: 'select', control: 'tiles', options: RELIGHT_LOOKS, default: 'custom' },
       { name: 'direction', label: 'Light direction', kind: 'select', control: 'grid', options: RELIGHT_DIRECTIONS, default: 'front' },
       { name: 'lightX', label: 'Light position X', kind: 'number', control: 'pad', min: -1, max: 1, step: 0.1, optional: true, help: 'Pad (P2): x and y in −1…1 override the direction buttons.' },
@@ -820,6 +840,21 @@ export const APP_GALLERY: GalleryApp[] = [
     extra: { promptOptional: true, outputLabel: 'Person swap' },
     finish: (r) => ({ outputLabel: 'Person swap', ...(r.refPaths?.[1] ? { insetPath: r.refPaths[1] } : {}) }),
     notes: ['Works best when both people are fully visible and roughly the same size in frame. Only swap people who agreed to it.'] },
+  // Material Swap (2026-10-31): object photo + material photo on the two-image edit route (local Qwen Image 2.1 by default: its official edit template's
+  // two inputs), plus hosted edit models that take 2+ images. Two optional short words fill our prompt (materialSwapPrompt); no new model.
+  { id: 'material-swap', name: 'Material Swap', route: `${IMAGE_PAGE}?workflow=material-swap`, category: 'Image', base: 'create-image', poster: null,
+    description: 'A photo of an object and a photo of a material: the object takes that material, its shape, light and scene kept.',
+    locked: { types: '["edit"]' }, providers: MATERIAL_SWAP_MODELS, exposed: ['image', 'material', 'prompt', 'provider', 'rights', 'seed', 'object', 'fromMaterial'],
+    labels: { image: 'Object', material: 'Material', prompt: 'Touch-ups (optional)' }, required: ['image', 'material'],
+    extraInputs: [{ name: 'material', kind: 'file', accept: 'image/png,image/jpeg,image/webp', label: 'Material' }],
+    fields: [{ name: 'object', label: 'What the object is', kind: 'text', optional: true, maxLength: MATERIAL_TEXT_MAX, placeholder: 'Optional, e.g. sofa' },
+      { name: 'fromMaterial', label: 'Made of now', kind: 'text', optional: true, maxLength: MATERIAL_TEXT_MAX, placeholder: 'Optional, e.g. grey fabric' }],
+    // image 1 = the object, image 2 = the material
+    fileMap: (f) => { const { material, ...rest } = f; return { ...rest, refs: (material ?? []).slice(0, 1) }; },
+    compose: (v, c) => materialSwapPrompt(v, c.prompt, c.provider),
+    extra: { promptOptional: true, outputLabel: 'Material swap' },
+    finish: (r) => ({ outputLabel: 'Material swap', ...(r.refPaths?.[1] ? { insetPath: r.refPaths[1] } : {}) }),
+    notes: ['Works best with one clear object in picture 1 and a close, evenly lit material in picture 2 (a swatch or a flat surface).'] },
   // Ad Pack (2026-10-31, shared/adPack.ts): 1–3 product photos + headline / offer + Brand → one finished ad per picked style (the Shots
   // one-output-per-pick run: n images, n × the one-image price), in the picked platform size. The model paints the words; the kit's logo is
   // added by our code after the run (adPackLogo.ts, providers.runWithProvider), so the prompt only keeps its corner empty.

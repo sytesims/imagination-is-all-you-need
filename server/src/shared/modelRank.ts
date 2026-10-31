@@ -144,8 +144,8 @@ export const CATALOGUE: Record<string, CatalogueEntry> = {
   'seedance-2.0': e('Seedance 2.0', 3, 'api', 'Text or photo to video, camera moves', { featured: true, popular: true, aliases: ['seedance', 'bytedance', 'dreamina'] }),
   'kling-v3': e('Kling 3.0 Omni', 4, 'api', 'Text, photo or references to video', { featured: true, aliases: ['kling', 'kuaishou', 'kling 3', 'kling v3', 'omni'] }), // Kling 3.0 Omni on every mode (2026-10-25)
   // Video Swap cloud person swap (2026-10-25, shared/cloudSwap.ts): hosted video edits, the only person-swap models in the Video Swap list besides the local ones
-  'kling-v3-omni-edit': e('Kling 3.0 Omni Edit', 22, 'api', 'Swaps one person, keeps motion and sound', { aliases: ['kling', 'kuaishou', 'omni', 'edit', 'swap'] }),
-  'seedance-2.5-edit': e('Seedance 2.5 Edit', 23, 'api', 'Swaps one person, up to 30 s in one pass', { aliases: ['seedance', 'bytedance', 'edit', 'swap'] }),
+  'kling-v3-omni-edit': e('Kling 3.0 Omni Edit', 22, 'api', 'Swaps a person or object, keeps motion', { aliases: ['kling', 'kuaishou', 'omni', 'edit', 'swap'] }),
+  'seedance-2.5-edit': e('Seedance 2.5 Edit', 23, 'api', 'Often refuses photos of real people' /* shared/cloudSwap.ts SEEDANCE_PEOPLE_WARNING */, { aliases: ['seedance', 'bytedance', 'edit', 'swap'] }),
   'runway-aleph-2': e('Runway Aleph 2', 25, 'api', 'Edits a clip, keeps motion and timing', { aliases: ['runway', 'aleph', 'edit', 'render'] }),
   'luma-ray-3.2-edit': e('Luma Ray 3.2 Edit', 26, 'api', 'Re-renders a clip, keeps its structure', { aliases: ['luma', 'ray', 'edit', 'render'] }),
   'wan-3.0': e('Wan 3.0', 21, 'api', 'Up to 30 s at 1080p with sound', { aliases: ['wan', 'alibaba', 'wan 3', 'wan3'] }),

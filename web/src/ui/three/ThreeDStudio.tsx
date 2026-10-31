@@ -202,7 +202,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
   // ---- pre-flight: inputs → model → setup → money (shared list and words) ----
   const viewIssue = multiMode ? threeDViewIssue(Object.keys(activeFiles).filter(k => !!activeFiles[k])) : null;
   const pf = preflightProblems({ freeLocal: hasFreeLocal(TOOL), slots: recipe.slots.map(s => ({ name: s.name, label: s.label, required: s.required || (s.name === 'image_left' && !Object.keys(activeFiles).some(k => k !== 'image' && activeFiles[k])), filled: !!activeFiles[s.name], missing: s.missing, width: sizes[s.name]?.width ?? null, height: sizes[s.name]?.height ?? null })), prompt: textMode && !draft.prompt.trim() ? { missing: 'Write a prompt' } : null, minSide: 128, quote: q, modelName });
-  const [pfOpen, setPfOpen] = useState(false); const genRef = useRef<HTMLButtonElement>(null); const dock = useRef<HTMLDivElement>(null); const prowRef = useRef<HTMLDivElement>(null);
+  const [pfOpen, setPfOpen] = useState(false); const genRef = useRef<HTMLButtonElement>(null); const dock = useRef<HTMLDivElement>(null);
   type Note = { key: string; stage: string; node: ReactNode; hard?: boolean };
   const notes: Note[] = pf.map((p, i) => ({ key: `pf-${i}`, stage: p.stage[0].toUpperCase() + p.stage.slice(1), hard: true, node: <span data-testid={`t3-pf-${p.code}`}>{p.message}</span> }));
   if (gate && !pf.some((p) => p.code === 'needs_key')) notes.push({ key: 'gate', stage: 'Setup', hard: true, node: <KeyNeeded q={q} className="vs-key" toolId={TOOL} /> });
@@ -389,7 +389,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
       <div className="ic-frame"><div className="ic-panel"><div className="ic-main">
         {isPS && takeReady && <p className="ps-finish-note" role="status" data-testid="ps-take-ready"><b>{takeReady.name} saved.</b> Take data, not a video yet. {takeReady.performance ? 'Use its follow camera below, or Shoot it for another angle.' : 'Use this take below to make a free mockup MP4.'}</p>}
         {isPS && saveError && <div className="ps-save-error" role="alert" data-testid="ps-save-error"><span><b>Mockup not saved.</b> {saveError} Your takes are unchanged. Retry saves the original captured mockup; frames stay here until you leave or record again.</span><button type="button" className="fd-link" disabled={psBusy || !!playerBlock} {...tip(playerBlock || 'Save the completed frames again. Free; no provider run.')} onClick={() => void keepMockup()} data-testid="ps-retry-save">Retry save · free</button></div>}
-        <div ref={prowRef} className="ic-prow" data-testid="t3-prow">
+        <div className="ic-prow" data-testid="t3-prow">
           {!isPS && !isSoon && !textMode && <div className="ic-lead" data-testid="t3-lead">
             {isPS ? null
             : isTT ? <span className="wf-strip wf-inputs"><button ref={ttRef} type="button" className={`wf-slot${ttJob ? ' full' : ' req'}`} data-testid="t3-tt-slot" aria-haspopup="listbox" aria-expanded={pop === 'tt'} onClick={() => setPop(pop === 'tt' ? '' : 'tt')} {...tip(ttJob ? 'Pick another 3D result' : 'Make a 3D model first')} disabled={!done3d.length}>
@@ -431,7 +431,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
           {!noModel && <RowMore watch={dock} testId="t3-row-over" />}
         </div>
           {!noModel && tm && <RunOnChip compact toolId={TOOL} model={tm} engine={provider} quote={q} testId="t3-run-on" watch={dock} />}
-          {!noModel && <PromptPeek form={peekForm} place={ro.sub ? `${ro.main} (${ro.sub})` : ro.main} photos={recipe.slots.filter(s => !!activeFiles[s.name]).map(s => s.label)} watch={dock} keep={prowRef} />}
+          {!noModel && <PromptPeek form={peekForm} place={ro.sub ? `${ro.main} (${ro.sub})` : ro.main} photos={recipe.slots.filter(s => !!activeFiles[s.name]).map(s => s.label)} watch={dock} />}
         </div>
       </div>
       {isPS ? (takeReady ? <button type="button" className="ic-gen gen-btn gen-dock btn btn-primary ps-use-take" data-testid="pv-use-take" disabled={psBusy} aria-label={`Use ${takeReady.name}${takeReady.performance ? ' with its follow camera' : ''} in Mockup`} onClick={() => player.current?.useTake()} {...tip(`Finish live controls and select ${takeReady.name}. Nothing records until Record mockup.`)}><span className="gen-l">Use this take</span><small className="t3-time">Next: Mockup · free</small></button>

@@ -41,7 +41,7 @@ export function jobModes(j: FeedJob): string[] {
 }
 
 /** Apps that make pictures (server tools/apps.ts APP_GALLERY, imageFalApps, imageLayerApps): a run of theirs makes an image. */
-export const IMAGE_APPS = new Set(['app-character-sheet', 'app-product-shot', 'app-inpaint', 'app-relight', 'app-face-swap', 'app-shots', 'app-person-swap', 'app-remove-bg', 'app-expand', 'app-erase', 'app-try-on', 'app-ad-pack', 'app-image-layers']);
+export const IMAGE_APPS = new Set(['app-character-sheet', 'app-product-shot', 'app-inpaint', 'app-relight', 'app-face-swap', 'app-shots', 'app-person-swap', 'app-remove-bg', 'app-expand', 'app-erase', 'app-try-on', 'app-material-swap', 'app-ad-pack', 'app-image-layers']);
 /** Apps that make sound: never a picture, never a video until they have a video output. */
 export const SOUND_APPS = new Set(['app-music-bed', 'app-change-voice']);
 /** A frame saved from a video (Save frame, server pages.ts FRAME_TOOL): a finished job whose output is the PNG. */

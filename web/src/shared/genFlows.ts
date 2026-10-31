@@ -16,6 +16,7 @@ import { recipeFor } from './threeDRecipe';
 import { defaultsOf, pickDefault } from './defaults';
 import { THREE_D_WORKFLOWS, threeDModel, normalizeSettings, threeDSupportsMode, threeDViewIssue } from '../../../server/src/shared/threeD';
 import { canvasDefaultModel } from '../../../server/src/shared/cloudDefaults';
+import { tooManySwatches } from '../../../server/src/shared/swatchBatch';
 import { audioKindOf, type AudioKind } from './audioVizLogic';
 
 export type GenMedium = 'image' | 'video' | 'audio' | '3d';
@@ -23,7 +24,8 @@ export type InputKind = 'image' | 'video' | 'audio';
 export const MEDIA: { id: GenMedium; label: string }[] = [{ id: 'image', label: 'Image' }, { id: 'video', label: 'Video' }, { id: 'audio', label: 'Audio' }, { id: '3d', label: '3D' }];
 
 /** A labelled input of a run: what it accepts, how many, and the form field it goes out as (extra files of a multi slot go as `restAs`). */
-export interface GenSlot { name: string; label: string; accept: InputKind; required: boolean; max: number; sendsAs: string; restAs?: string; missing: string; hint: string }
+export interface GenSlot { name: string; label: string; accept: InputKind; required: boolean; max: number; sendsAs: string; restAs?: string; missing: string; hint: string;
+  /** several files, one run each (Material Swap's swatches, shared/swatchBatch.ts): the card runs once per file, as one set */ many?: boolean }
 export interface GenFlow { id: string; medium: GenMedium; name: string; tagline: string; needs: string; icon: string; toolId: string;
   /** an image workflow recipe (GET /api/image-workflows) */ recipeId?: string; /** the tool's mode (types) for a plain tool */ types?: string;
   /** the one model this flow runs (Lip Sync: H3 Talking Photo) */ provider?: string }
@@ -33,7 +35,7 @@ export interface GenFlow { id: string; medium: GenMedium; name: string; tagline:
  *  that the board doesn't draw yet, so they stay on their pages. */
 export const GEN_FLOWS: GenFlow[] = [
   { id: 'create', medium: 'image', name: 'Create Image', tagline: 'Text to image, or edit with references', needs: 'Prompt · images optional', icon: 'create', toolId: 'create-image' },
-  ...(['relight', 'upscale', 'remove-bg', 'image-layers', 'expand', 'product-shot', 'character-sheet', 'face-swap', 'person-swap', 'try-on', 'ad-pack'] as const)
+  ...(['relight', 'upscale', 'remove-bg', 'image-layers', 'expand', 'product-shot', 'character-sheet', 'face-swap', 'person-swap', 'try-on', 'material-swap', 'ad-pack'] as const)
     .map(id => ({ id, medium: 'image' as const, name: id, tagline: '', needs: '', icon: 'create', toolId: '', recipeId: id })),
   { id: 'video', medium: 'video', name: 'Create Video', tagline: 'Video with sound, from text or frames', needs: 'Prompt · first / last frame optional', icon: 'video', toolId: 'h3-video' },
   { id: 'transition', medium: 'video', name: 'Transitions', tagline: 'Animate from a start to an end image', needs: '2 images', icon: 'video', toolId: 'app-transition' },
@@ -146,7 +148,7 @@ export function flowSpec(f0: GenFlow, cat: GenCatalog, want: { provider?: string
 
   if (f.recipeId) { /* an image workflow: its recipe as the server sends it (slots, groups, models per mode) */
     const r = cat.recipes.find(x => x.id === f.recipeId); if (!r) return null;
-    const slots = [...r.slots].sort((a, b) => a.order - b.order).map(s => slot(s.name, s.label, 'image', s.required, s.missing, s.hint, { sendsAs: s.sendsAs }));
+    const slots = [...r.slots].sort((a, b) => a.order - b.order).map(s => slot(s.name, s.label, 'image', s.required, s.missing, s.hint, { sendsAs: s.sendsAs, ...(s.many ? { max: s.many, many: true } : {}) }));
     const mode = Object.entries(r.modes.whenSlot ?? {}).find(([k]) => fill(filled, k))?.[1] ?? r.modes.default;
     const providers = (r.models[mode] ?? []).map(id => tool.providers.find(p => p.id === id)).filter(Boolean) as ProviderInfo[];
     const provider = pickProvider(want.provider, providers, cardDefault(f, tool, mode, providers, (tool as any).defaultsByMode?.[mode]?.defaultProvider ?? tool.defaultProvider));
@@ -265,7 +267,8 @@ export function placeInputs<T extends { key: string; kind: InputKind }>(slots: G
 }
 /** "Uses 4 of 6 images: Nano Banana 2 takes up to 4." / "Create Video takes 2 images: 1 not used." */
 export function tooManyNote(spec: FlowSpec, extra: number, modelName: string): string | null {
-  if (!extra) return null; const imgSlots = spec.slots.filter(s => s.accept === 'image'); const cap = imgSlots.reduce((a, s) => a + s.max, 0);
+  if (!extra) return null; const many = spec.slots.find(s => s.many); if (many) return tooManySwatches(many.max + extra); /* Material Swap: "Up to 6 swatches in one go: 1 not added." */
+  const imgSlots = spec.slots.filter(s => s.accept === 'image'); const cap = imgSlots.reduce((a, s) => a + s.max, 0);
   if (spec.maxImages != null) return `${modelName} takes up to ${spec.maxImages} image${spec.maxImages === 1 ? '' : 's'}: ${extra} not used.`;
   return `${spec.flow.name} takes ${cap ? `${cap} image${cap === 1 ? '' : 's'}` : 'no inputs of that kind'}: ${extra} not used.`;
 }

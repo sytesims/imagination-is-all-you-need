@@ -83,6 +83,9 @@ for t, name, model in (("image_qwen_image_2_1_t2i", "create-image-qwen21-t2i-api
             if n["class_type"] == "UNETLoader": n["inputs"]["unet_name"] = "flux-2-klein-4b.safetensors"
             if n["class_type"] == "Flux2Scheduler": n["inputs"]["steps"] = 4
             if n["class_type"] == "CFGGuider": n["inputs"]["cfg"] = 1
+    if name == "create-image-qwen21-turbo-edit-api.json":  # 2026-10-31: the template links CFGGuider's cfg to the outer value 1 (Turbo samples at cfg 1); the converter kept the inner default 8
+        for n in g.values():
+            if n["class_type"] == "CFGGuider": n["inputs"]["cfg"] = 1
     write(name, g, {"template": t, "model": model, "inputs": {"prompt": prompt_ref(g), **({"image": {"node": ids(g, "LoadImage")[0], "field": "image"}} if ids(g, "LoadImage") else {})},
                     "refs": [{"node": k, "field": "image"} for k in ids(g, "LoadImage")], "seed": seed_ref(g), "output": {"node": save}})
 

@@ -17,7 +17,7 @@ import { defaultsOfFeature } from './imageDefaults.js';
 import { LAYER_MODELS, LAYERS_FLASH, LAYERS_PRO, LAYERS_LOCAL, QWEN_LAYERED_TEMPLATE } from './imageLayers.js';
 
 export type { WorkflowSource } from './workflowSources.js';
-export type ImageFeatureId = 'create-image' | 'edit-image' | 'upscale' | 'relight' | 'face-swap' | 'person-swap' | 'camera-angles' | 'camera-lens' | 'brush-edit' | 'character-sheet' | 'product-shot' | 'remove-bg' | 'expand' | 'erase' | 'try-on' | 'image-layers' | 'ad-pack';
+export type ImageFeatureId = 'create-image' | 'edit-image' | 'upscale' | 'relight' | 'face-swap' | 'person-swap' | 'camera-angles' | 'camera-lens' | 'brush-edit' | 'character-sheet' | 'product-shot' | 'remove-bg' | 'expand' | 'erase' | 'try-on' | 'image-layers' | 'material-swap' | 'ad-pack';
 type Mode = 'generate' | 'edit' | 'inpaint' | 'upscale';
 
 export interface ImageFeature {
@@ -61,6 +61,9 @@ export const EDIT_MODELS = ['api-nano-banana', 'api-gpt-image', 'comfy-flux3-kle
 /** Two-image edits (target + face / person): models whose route takes at least 2 images. Qwen Image 2.1 = the official edit template's two inputs
  * (grid finding 4, wired 2026-10-22). Not listed: FLUX.2 [klein] 4B (1 image wired), Qwen Image 2.1 Turbo (its official edit template takes one image). */
 export const TWO_IMAGE_MODELS = ['comfy-qwen-image', 'api-nano-banana', 'comfy-flux3-klein', 'api-gpt-image', 'api-seedream', 'api-flux2', 'api-luma-image', 'api-kling-image', 'comfy-qwen21'];
+/** Material Swap (2026-10-31): local Qwen Image 2.1 first (free, its official edit template's two inputs), then hosted edit models whose route takes
+ *  2+ images and whose prompt rules we word for (tools/apps.ts materialSwapPrompt): Nano Banana 2, GPT Image, Seedream 5.0, Qwen Image 3.0. */
+export const MATERIAL_SWAP_MODELS = ['comfy-qwen21', 'api-nano-banana', 'api-gpt-image', 'api-seedream', 'api-qwen-image'];
 /** Ad Pack (2026-10-31): edit models that take the product photo plus up to two more and draw clean words (shared/adPack.ts wording per family):
  *  GPT Image first (the cloud default: best text, user 2026-10-31), Nano Banana 2, local Qwen Image 2.1 (free; its edit template takes two photos), then Seedream 5.0, FLUX.2, FLUX 3 Klein. */
 export const AD_PACK_MODELS = ['api-gpt-image', 'api-nano-banana', 'comfy-qwen21', 'api-seedream', 'api-flux2', 'comfy-flux3-klein'];
@@ -128,6 +131,9 @@ export const IMAGE_FEATURES: ImageFeature[] = [
     tagline: 'Paint over something to remove it', description: 'Paint over a person, object or text; it disappears and the background is filled in. No prompt needed.', was: 'new', oldRoutes: ['/tools/erase', '/tools/app-erase'], providers: ERASE_MODELS },
   { id: 'try-on', name: 'Virtual Try-On', toolId: 'app-try-on', route: `${IMAGE_PAGE}?workflow=try-on`, inMenu: true, mode: 'edit', images: [2, 2], aspects: false, resolutions: false, count: 1, grid: 'try-on', recipe: null,
     tagline: 'Put a garment from one photo on a person', description: 'A photo of a person and a photo of a top, bottom or one-piece: the person wears it, pose and face kept.', was: 'new', oldRoutes: ['/tools/try-on', '/tools/app-try-on'], providers: TRYON_MODELS },
+  { id: 'material-swap', name: 'Material Swap', toolId: 'app-material-swap', route: `${IMAGE_PAGE}?workflow=material-swap`, inMenu: true, mode: 'edit', images: [2, 2], aspects: false, resolutions: false, count: 1, grid: 'edit-image',
+    recipe: 'Our material prompt: the object in image 1 takes the material and texture of image 2, everything else kept; worded for each model.', tagline: 'Give an object the material from another photo',
+    description: 'A photo of an object and a photo of a material: the object takes that material, its shape, light and scene kept.', was: 'new', oldRoutes: ['/tools/material-swap', '/tools/app-material-swap'], providers: MATERIAL_SWAP_MODELS },
   { id: 'ad-pack', name: 'Ad Pack', toolId: 'app-ad-pack', route: `${IMAGE_PAGE}?workflow=ad-pack`, inMenu: true, mode: 'edit', images: [1, 3], aspects: false, resolutions: false, count: 5, grid: 'edit-image',
     recipe: 'Our ad prompts: one per style, worded for each model, with your headline, offer and brand colours; your logo added after by code.', tagline: 'Finished ads from one product photo',
     description: 'A product photo and your offer: finished ads in several styles, sized for the platform, with your logo added.', was: 'new', oldRoutes: ['/tools/ad-pack', '/tools/app-ad-pack'], providers: AD_PACK_MODELS },

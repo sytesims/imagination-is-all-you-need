@@ -1,7 +1,7 @@
 /** The tab feeds' toolbar (Image and Video, 2026-10-27, layout A: "one calm row, about 6 items").
  *  Left: Project ▾ · Filter (n) ▾ · the filters that are on as small orange pills with × · Clear · "40 videos" · "12 failed" (only when runs failed).
  *  Right: the queue · today's spend (opens Spend) · Compare models (Image) · Select.
- *  Filter holds everything else: Search, Type (the tab's chip list), From (yours / Uploads / Featured), Show (All / Liked / Failed · N), Sort, Grid.
+ *  Filter holds everything else: Search, Type (the tab's chip list), From (yours / Uploads / Featured), Show (All / Favourites / Failed · N), Sort, Grid.
  *  Phones: one row (project ▾, Filter, count, Select, Compare icon); the pills scroll sideways on their own line; spend moves into the Filter sheet. */
 import { useEffect, useRef, useState } from 'react';
 import { Popover } from '../../../shared/Popover';
@@ -53,7 +53,7 @@ function FilterMenu({ f, setF, groups, noun, total, failed, from }: { f: FeedFil
   const types = typeGroups(groups);
   const failN = f.source === 'mine' && typeof failed === 'number' && failed > 0 ? ` · ${failed.toLocaleString()}` : '';
   const sources = ([['mine', `Your ${noun}`], ['uploads', 'Uploads'], ['featured', <><StarMark />Featured</>, 'Featured']] as (readonly [FeedSource, React.ReactNode, string?])[]).filter(([k]) => !from || from.includes(k));
-  const shows: (readonly [FeedShow, string, string?])[] = [['all', 'All'], ['liked', 'Liked'], ['failed', `Failed${failN}`, `Failed${failN ? `, ${failed}` : ''}`]];
+  const shows: (readonly [FeedShow, string, string?])[] = [['all', 'All'], ['liked', 'Favourites'], ['failed', `Failed${failN}`, `Failed${failN ? `, ${failed}` : ''}`]];
   return <>
     <button ref={ref} type="button" className={`fd-btn fd-filter${n ? ' on' : ''}${open ? ' open' : ''}`} aria-haspopup="dialog" aria-expanded={open} aria-label={filterSummary(f)} data-testid="fd-filter" data-active={n} onClick={() => setOpen(o => !o)} {...tip('Search, type, source, sort and grid size')}>
       <FilterIcon size={15} /><span className="fd-filter-l">Filter</span>{n > 0 && <span className="fd-filter-n" data-testid="fd-filter-n" aria-hidden>{n}</span>}<ChevronDownIcon size={13} /></button>

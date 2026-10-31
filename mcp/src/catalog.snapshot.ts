@@ -9,6 +9,7 @@ export const TOOL_SNAPSHOT: { id: string; name: string; media: string; listed?: 
   {"id":"app-face-swap","name":"Face Swap","media":"image"},
   {"id":"app-image-layers","name":"Image to layers","media":"image"},
   {"id":"app-inpaint","name":"Brush Edit","media":"image"},
+  {"id":"app-material-swap","name":"Material Swap","media":"image"},
   {"id":"app-music-bed","name":"Music Bed","media":"audio"},
   {"id":"app-orbit-shot","name":"Orbit Shot","media":"video"},
   {"id":"app-person-swap","name":"Person Swap","media":"image"},

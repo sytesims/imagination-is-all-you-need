@@ -16,10 +16,12 @@
  *  5. the first model that really runs now (a fal-only setup keeps working);  6. the cloud default needing its key (Generate says how to add it);
  *  7. the old rules. recommendedProvider = what 2-7 pick (the menu's "Recommended"), favouriteProvider = the user's own, defaultSource = which won.
  */
+import { swapNeverAuto, swapTypesOf, type SwapKind } from '../shared/cloudSwap.js';
+const SWAP_TOOL_IDS = new Set(['object-swap', 'motion-transfer']);
 import type { ToolDef } from '../tools/types.js';
 import { toolProviders, getProvider } from '../providers.js';
 import { routesFor, isTwinAlias, toolKeys, tierLabel, tierOf } from './routes.js';
-import { option, resolveRoute, keyOwner, byTier, localAvailable, savedPinOf } from './select.js';
+import { option, resolveRoute, keyOwner, byTier, localAvailable, savedPinOf, localOnlyModel } from './select.js';
 import { getPrefs, favouriteOf } from './prefs.js';
 import { config } from '../config.js';
 import { LOCAL_OFF_REASON, LOCAL_UNREACHABLE_REASON, TOO_HEAVY_REASON, OPEN_WEIGHTS_ONLY_REASON, NOT_WIRED_REASON, reasonSentence } from './runnable.js';
@@ -130,7 +132,9 @@ export function modelStatus(tool: ToolDef, modelId: string, mode: string | null 
   if (local && !localAvailable()) return fail('local_unreachable', LOCAL_UNREACHABLE_REASON);
   // HW-SHAPES B3: every local route of this model is too heavy for this computer (checked before local_off: turning Use local on wouldn't help)
   { const locals = routes.filter((o) => o.kind === 'local'); if (locals.length && locals.every((o) => o.reasonCode === 'too_heavy')) return { ...fail('too_heavy', locals.every((o) => o.fit?.reasonCode === 'unsupported_weights') ? MAC_WEIGHTS_REASON : TOO_HEAVY_REASON), fit: locals[0].fit ?? null } as ModelStatus; }
-  if (local && !prefs.global.useLocal) return fail('local_off', LOCAL_OFF_REASON);
+  // a model that runs only on your computer runs with Use local off too (select.ts autoOrder), so "turn it on" isn't its step: the plan's own
+  // reason below says what is (its files, an add-on), the same step its menu row and setup card show (2026-10-31: Wan 2.2 Animate)
+  if (local && !prefs.global.useLocal && !localOnlyModel(modelId, tool, input)) return fail('local_off', LOCAL_OFF_REASON);
   const blocked = routes.find((o) => o.reasonCode === 'input_blocked');
   if (blocked) return fail('input_blocked', String(blocked.reason ?? 'This job does not fit this model'));
   if (routes.some((o) => o.reason === NOT_WIRED_REASON)) return fail('not_wired', `${name} isn’t ready yet. Pick another model`);
@@ -180,7 +184,8 @@ function recommendedDefaults(tool: ToolDef, opts: DefaultsOpts = {}): ToolDefaul
   if (!models.length) return { mode, preferredProvider: null, defaultProvider: null, defaultRoute: null, defaultFallback: null, defaultState: null, models, editorial: null };
   const explicitLocal = getPrefs().global.useLocal; const anyCloud = models.some((m) => m.hasCloud && m.reasonCode !== 'not_wired'); // cloud routes that aren't built yet (Director) don't hold back a local model that runs
   // Provider audit (2026-10-21): a retiring model (shared/lifecycle.ts, e.g. Veo 3.1) stays listed and pinnable but is never the quality pick or the default.
-  const live = models.filter((m) => !isRetiring(m.id)); const pref = live[0] ?? models[0];
+  // a swap model with a known problem (shared/cloudSwap.ts warning: Seedance 2.5 Edit refuses photos of real people) is listed and pickable the same way
+  const live = models.filter((m) => !isRetiring(m.id) && !(SWAP_TOOL_IDS.has(tool.id) && swapNeverAuto(m.id))); const pref = live[0] ?? models[0];
   // Per-workflow defaults (2026-10-23, shared/imageDefaults.ts): after a saved pin, the workflow's chosen model for the active setup (local GPU or a
   // hosted key) when it runs now; else the old rule (the first model that runs). Only models this call lists count (mode, `only`).
   // Image features resolve per feature; Generate Video (h3-video) has its own table (shared/videoDefaults.ts) keyed by the tool id; the Audio
@@ -282,7 +287,7 @@ export function defaultFirst(tool: ToolDef, mode?: string | null): string[] {
 /** Mode of a request (types / mode field), for mode-aware defaults. */
 export const requestMode = (tool: ToolDef, f: Record<string, any>): string | null => { const ms = toolModes(tool); if (!ms.length) return null; const m = typesOf(f.types) ?? (typeof f.mode === 'string' ? f.mode : null); return m && ms.includes(m) ? m : null; };
 /** Video Swap (object-swap): which swap types each model serves (Person / Object toggle). The web filtered a local-only list; now the server says. */
-export const SWAP_TYPES: Record<string, string[]> = { 'comfy-open': ['person', 'object'], 'comfy-h3-charswap': ['person'], 'router-seedance': ['object'] /* person swaps run on the cloud edit models below (2026-10-25) */, 'router-kling-edit': ['person'], 'router-seedance-25-edit': ['person'] /* cloud person swap (2026-10-25) */ };
+export { SWAP_TYPES } from '../shared/cloudSwap.js'; // one table (shared/cloudSwap.ts): the menus per type and the cloud edits' own check read the same
 /** One model's status as clients read it (/api/tools providers[], swapTypes[].models[]). */
 export const modelFields = (s?: ModelStatus) => (s ? { qualityRank: s.rank, runnable: s.runnable, demoPreview: s.demo, ...(s.demo ? { demoTag: 'Sample' } : {}), needsKey: s.needsKey, keyOwner: s.keyOwner, wired: s.wired, hasCloud: s.hasCloud, reasonCode: s.reasonCode, reason: s.reason, statusRoute: s.routeId, pinned: s.pinned, fit: s.fit ? { verdict: s.fit.verdict, reasonCode: s.fit.reasonCode } : null } : {});
 const pick = (x: ToolDefaults) => ({ preferredProvider: x.preferredProvider, defaultProvider: x.defaultProvider, defaultRoute: x.defaultRoute, defaultFallback: x.defaultFallback, qualityOrder: x.models.map((s) => s.id), ...(x.editorial ? { editorialDefault: x.editorial } : {}), ...favFields(x) });
@@ -304,7 +309,7 @@ export function defaultsBlock(tool: ToolDef) {
   const all = qualityOrder(tool, null); const firstMode = (id: string) => (supports(tool, id, d.mode) ? d.mode : modes.find((m) => supports(tool, id, m)) ?? null);
   const status = Object.fromEntries(all.map((id, k) => [id, d.models.find((m) => m.id === id) ?? modelStatus(tool, id, firstMode(id), k + 1)]));
   for (const [k, id] of all.entries()) status[id] = { ...status[id], rank: k + 1 };
-  const swap = tool.id === 'object-swap' ? { swapTypes: Object.fromEntries(['person', 'object'].map((st) => { const x = toolDefaults(tool, { extra: { swapType: st }, only: (id) => (SWAP_TYPES[id] ?? ['person']).includes(st) });
+  const swap = tool.id === 'object-swap' ? { swapTypes: Object.fromEntries(['person', 'object'].map((st) => { const x = toolDefaults(tool, { extra: { swapType: st }, only: (id) => swapTypesOf(id).includes(st as SwapKind) });
     return [st, { ...pick(x), models: x.models.map((m, k) => ({ id: m.id, name: m.name, ...modelFields({ ...m, rank: k + 1 }) })) }]; })) } : {};
   return { preferredProvider: d.preferredProvider, defaultProvider: d.defaultProvider, defaultRoute: d.defaultRoute, defaultFallback: d.defaultFallback, defaultState: d.defaultState, ...favFields(d),
     qualityOrder: all, modelStatus: status, ...swap, ...(d.editorial ? { editorialDefault: d.editorial } : {}),

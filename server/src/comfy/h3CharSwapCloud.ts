@@ -18,6 +18,7 @@
  * for the optional 768p turbo import.
  * Credits: LoRA github.com/akatz-ai (HF akatz-ai/MiniMax-H3-Character-Swap-LoRA); recipe after Comfy's Openjutsu app and Akatz's H3 Relay.
  */
+import { swapSide } from '../shared/cloudSwap.js';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { WORKFLOWS_DIR } from '../config.js';
@@ -115,10 +116,7 @@ export function samNoun(target?: string) {
   return 'person';
 }
 /** "on the left" / "on the right" in who to swap → keep SAM's frame-0 find on that half of the frame only. */
-export function samSide(target?: string): 'left' | 'right' | null {
-  const t = (target ?? '').toLowerCase(); const l = /\bleft\b/.test(t), r = /\bright\b/.test(t);
-  return l === r ? null : l ? 'left' : 'right';
-}
+export const samSide = (target?: string): 'left' | 'right' | null => swapSide(target); // shared/cloudSwap.ts (the same rule decides whether H3 can run)
 /** How the edit mask is found. Motion transfer rebuilds the whole frame (no mask); maskMode "none" turns it off; an uploaded mask video wins; then
  *  the click point; else SAM text from maskPrompt (maskMode text) or who to swap. */
 export function charswapMask(i: Record<string, any>, motion: boolean): CharSwapMask {

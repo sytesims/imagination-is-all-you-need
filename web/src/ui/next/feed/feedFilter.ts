@@ -19,7 +19,7 @@ export const typeGroups = (groups: FeedGroup[]): FeedGroup[] => groups.filter(g 
 const ALL_GROUPS: FeedGroup[] = [...IMAGE_FEED_GROUPS, ...VIDEO_FEED_GROUPS, ...AUDIO_FEED_GROUPS].filter(g => !g.uploads);
 /** A Type's words ("Motion"); the same id means the same words in both tabs. */
 export const groupLabel = (id: string): string => ALL_GROUPS.find(g => g.id === id)?.label ?? 'All';
-export const SHOW_LABEL: Record<FeedShow, string> = { all: 'All', liked: 'Liked', failed: 'Failed' };
+export const SHOW_LABEL: Record<FeedShow, string> = { all: 'All', liked: 'Favourites', failed: 'Failed' };
 export const SOURCE_LABEL: Record<FeedSource, string> = { mine: 'Yours', uploads: 'Uploads', featured: 'Featured' };
 /** What actually applies: Type and Show only filter your own results (they are greyed out under Uploads and Featured). */
 export const effectiveFilter = (f: FeedFilter): FeedFilter => f.source === 'mine' ? f : { ...f, group: ALL_GROUP, show: 'all' };
@@ -51,14 +51,14 @@ function scopeNoun(scope: NonNullable<FeedScope>): string {
   if (scope.audioFeed) return audioFeedOf(scope.audioFeed)?.noun ?? 'sounds';
   return scope.media === 'video' ? 'clips' : scope.media === 'audio' ? 'tracks' : 'results';
 }
-/** Words for an empty result ("No liked motion videos yet."). */
+/** Words for an empty result ("No favourite motion videos yet."). */
 export function emptyTextFor(f0: FeedFilter, project: string | null, scope0: FeedScope): string {
   const f = effectiveFilter(f0); const inP = project ? ' in this project' : '';
   if (f.q.trim()) return `Nothing matches “${f.q.trim()}”${f.group !== ALL_GROUP ? ` in ${groupLabel(f.group)}` : ''}${f.source === 'featured' ? ' in Featured' : ''}.`;
   if (f.source === 'featured') return 'Nothing featured yet. Open a result, then More › Feature this.';
   const scope = scopeFor(f0, scope0); const noun = scope ? scopeNoun(scope) : 'results';
   if (f.source === 'uploads') return `No uploads${inP} yet.`;
-  return f.show === 'liked' ? `No liked ${noun}${inP} yet. Open a result and press the heart.` : f.show === 'failed' ? `No failed runs${inP}.` : tabFeedOf(scope) ? `No ${noun}${inP} yet.` : project ? 'This project is empty. New results go here while it’s picked.' : `No ${noun} yet.`;
+  return f.show === 'liked' ? `No favourite ${noun}${inP} yet. Tap the heart on any result to keep it here.` : f.show === 'failed' ? `No failed runs${inP}.` : tabFeedOf(scope) ? `No ${noun}${inP} yet.` : project ? 'This project is empty. New results go here while it’s picked.' : `No ${noun} yet.`;
 }
 export const isDefaultQuery = (f0: FeedFilter, project: string | null) => { const f = effectiveFilter(f0); return f.group === ALL_GROUP && f.source === 'mine' && f.show === 'all' && !f.q.trim() && f.sort === 'new' && !project; };
 /** What the feed shows under its toolbar (2026-10-27, user: "no extra empty page"; ResultFeed FeedGallery). Always the feed: 'cards' = the
@@ -67,7 +67,7 @@ export const isDefaultQuery = (f0: FeedFilter, project: string | null) => { cons
 export type FeedView = 'cards' | 'loading' | 'hint';
 export function feedView(o: { count: number; loading: boolean }): FeedView { return o.count ? 'cards' : o.loading ? 'loading' : 'hint'; }
 
-/** GET /api/jobs params for this filter (the tab's feed, narrowed to the Type; Liked / Failed; search; project; order). */
+/** GET /api/jobs params for this filter (the tab's feed, narrowed to the Type; Favourites / Failed; search; project; order). */
 export function serverParams(f0: FeedFilter, project: string | null, scope0: FeedScope = null): Record<string, string> {
   const f = effectiveFilter(f0);
   /* Featured (2026-10-26): your starred results of this tab's medium, whatever tool made them */
@@ -95,7 +95,7 @@ export function matches(j: JobState, f0: FeedFilter, project: string | null, sco
 }
 
 /* ---- what the main feed lists (2026-10-25) ----
- * Show: All / Liked (any Type) = finished results and runs still going. Failed and blocked runs live under Show: Failed (the toolbar's
+ * Show: All / Favourites (any Type) = finished results and runs still going. Failed and blocked runs live under Show: Failed (the toolbar's
  * "N failed" link opens it), except a run that failed during this visit: it stays where it was, with Retry, until you leave. Trashed
  * results are never listed, in either sort order (the server leaves them out; the page's own live jobs are checked here too). */
 export const LIVE_STATUS = ['queued', 'running', 'needs_decision'];
@@ -121,7 +121,7 @@ export function activePills(f0: FeedFilter): FilterPill[] {
 }
 /** How many filters are on (the Filter button's count). */
 export const activeCount = (f: FeedFilter): number => activePills(f).length;
-/** The Filter button's words for screen readers: "Filter, 2 on: Motion, Liked". */
+/** The Filter button's words for screen readers: "Filter, 2 on: Motion, Favourites". */
 export function filterSummary(f: FeedFilter): string {
   const on = activePills(f).map(p => p.key === 'q' ? `search ${p.label}` : p.label);
   return on.length ? `Filter, ${on.length} on: ${on.join(', ')}` : 'Filter';

@@ -3,7 +3,7 @@
  *  feed as one labelled group (CompareGroupHead) with a side-by-side view (CompareView). */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { JobState, ProviderInfo } from '../../../api';
+import { cancelJob, type JobState, type ProviderInfo } from '../../../api';
 import { Popover } from '../../../shared/Popover';
 import { tip } from '../../../shared/Tooltip';
 import { useToast } from '../../../shared/Toast';
@@ -14,7 +14,8 @@ import { useOwnAccounts, runPrice, fmtUsd, ledgerUsd } from '../../../shared/bil
 import { jobCaption } from '../../../shared/FeedCaption';
 import { isSubmitting } from '../../../shared/submitGuard';
 import { gridSrc } from '../../../shared/thumbs';
-import { CloseIcon, CompareIcon } from '../../Icons';
+import { CloseIcon, CompareIcon, MaterialIcon } from '../../Icons';
+import { jobInputs } from '../../../shared/jobInputs';
 import { MentionText } from '../../../shared/MentionChips';
 import { COMPARE_MAX, COMPARE_MIN, type CompareWant, type CompareParams, type CompareChange } from '../../../../../server/src/shared/compareAdapt';
 import { LOCAL_LABEL, LOCAL_FREE } from '../../../../../server/src/shared/modelIds';
@@ -105,10 +106,13 @@ export default function CompareModels(p: CompareModelsProps) {
 export function CompareGroupHead({ jobs, onSide }: { jobs: JobState[]; onSide: () => void }) {
   const own = useOwnAccounts(); const n = (jobs[0] as any)?.compare?.n ?? jobs.length; const prompt = String((jobs[0] as any)?.input?.prompt ?? '');
   const sample = jobs.length > 0 && jobs.every(j => (j as any).demo || (j as any).isSample); const charged = jobs.filter(j => !(j as any).demo && !(j as any).isSample && (j as any).runOn !== 'local' && !(j.status === 'failed' && ((j as any).refunded > 0 || (j as any).refund?.refunded))).reduce((s, j) => s + Number((j as any).cost ?? 0), 0);
-  const failed = jobs.filter(j => j.status === 'failed' || j.status === 'blocked').length;
-  return <div className="cmp-gh" data-testid="cmp-group-head"><CompareIcon size={14} /><b>Compare · {n} models</b>
-    {prompt && <span className="cmp-gh-p" title={prompt}>“<MentionText text={prompt} />”</span>}
+  const failed = jobs.filter(j => j.status === 'failed' || j.status === 'blocked').length; const sw = (jobs[0] as any)?.compare?.kind === 'swatch'; /* Material Swap: one run per swatch */
+  const toast = useToast(); const live = jobs.filter(j => j.status === 'queued' || j.status === 'running');
+  const stop = async () => { const r = await Promise.allSettled(live.map(j => cancelJob(j.id))); const n = r.filter(x => x.status === 'fulfilled').length; toast(n === live.length ? `Stopped ${n}. The finished ones stay.` : `Stopped ${n} of ${live.length}: the others were too far along to stop.`, n === live.length ? 'info' : 'warn'); };
+  return <div className="cmp-gh" data-testid="cmp-group-head" data-kind={sw ? 'swatch' : 'models'}>{sw ? <MaterialIcon size={14} /> : <CompareIcon size={14} />}<b>{sw ? `Material Swap · ${n} swatches` : `Compare · ${n} models`}</b>
+    {sw ? <span className="cmp-gh-p">Same object, one result per swatch</span> : prompt && <span className="cmp-gh-p" title={prompt}>“<MentionText text={prompt} />”</span>}
     <span className="cmp-gh-t" data-testid="cmp-group-total">{charged > 0 ? `${runPrice({ own, credits: charged }) ?? ''} total` : sample ? 'Samples · nothing billed' : 'Free'}{failed ? ` · ${failed} failed` : ''}{jobs.length < n ? ` · ${n - jobs.length} not shown` : ''}</span>
+    {sw && live.length > 0 && <button type="button" className="fd-link cmp-gh-b" data-testid="cmp-stop" onClick={() => void stop()} {...tip('Cancel the swatches that haven’t finished. What’s done stays.')}>Stop the rest</button>}
     <button type="button" className="fd-link cmp-gh-b" data-testid="cmp-side" onClick={onSide} disabled={!jobs.some(j => j.status === 'done')}>Side by side</button></div>;
 }
 /** Side by side: every model's first image with its caption; a click opens it in the viewer. */
@@ -126,4 +130,11 @@ export function CompareView({ jobs, onClose, onOpen }: { jobs: JobState[]; onClo
           <figcaption><b>{c.model}</b><span>{[c.place, c.price, c.time].filter(Boolean).join(' · ')}</span></figcaption></figure>; })}</div>
     </div>
   </div>, document.body);
+}
+
+/** A swatch run's caption in its set (Material Swap): the swatch it used, small, and its number, place and price. */
+export function SwatchCaption({ job }: { job: JobState }) {
+  const own = useOwnAccounts(); const c = jobCaption(job, own); const i = Number((job as any).compare?.i ?? 0); const sw = jobInputs(job).find(x => x.slot === 'Material') ?? jobInputs(job)[1];
+  const bad = job.status === 'failed' || job.status === 'blocked'; const line = bad ? '' : [c.model, c.price].filter(Boolean).join(' · '); /* a failed swatch: just which one, at the top (Try again sits at the foot) */
+  return <span className={`feed-cap cmp-sw${bad ? ' fail' : ''}`} data-testid={`cmp-sw-${job.id}`}><b>{sw ? <img className="cmp-sw-th" src={gridSrc(sw.url, 64)} alt="" /> : null}Swatch {i + 1}</b>{line && <span>{line}</span>}</span>;
 }

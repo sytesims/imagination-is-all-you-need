@@ -115,6 +115,7 @@ function casesFor(tool: any): Case[] {
         if (tool.id === 'cinema') fields.mode = 'generate';
         if (tool.id === 'reshoot') Object.assign(fields, { yaw: '30', tilt: '0' }); // one new angle (H3 CrossView needs azimuth + elevation)
         if (names.has('preset') && mode && !fields.preset) fields.preset = mode; // Restyle / swaps: the preset select carries the look
+        if (tool.id === 'object-swap' && names.has('target')) fields.target = 'the person on the right'; // who to swap, as the bar's left/right pick sends it (H3 Character Swap refuses a swap with no click, side or mask: shared/cloudSwap.ts charswapWhoIssue)
         const files: [string, string][] = [];
         for (const i of tool.inputs ?? []) if (i.kind === 'file' && i.required && !(CAPS_TOOLS.has(tool.id) && !am && (i.name === 'image' || i.name === 'lastFrame'))) files.push([i.name, /video/.test(i.accept ?? '') || i.name === 'video' ? MP4 : /audio/.test(i.accept ?? '') ? MP3 : i.name === 'lastFrame' ? PNG2 : PNG]);
         if (modeFile && !files.some(([n]) => n === modeFile)) files.push([modeFile, PNG]);

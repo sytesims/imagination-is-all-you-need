@@ -181,6 +181,10 @@ html body .ic.ic2 .ic-jfeed .ic-tile .ic-tryon .try-on-keep{font-size:11px;backg
 .conn-plans .conn-help a{color:inherit;text-decoration:underline;text-underline-offset:2px}
 /* 2026-10-27: a place's named ways to run the model, indented under it (Comfy Cloud · open workflow / MiniMax’s service) */
 .ro-opt.ro-choice{margin-left:30px;padding-top:7px;padding-bottom:7px}
+/* E1: a place that lists its ways is their heading, not a radio; only the ways below are picked */
+.ro-opt.ro-place{cursor:default;padding-bottom:4px}.ro-opt.ro-place:hover{background:none}.ro-rad.ro-rad-none{visibility:hidden}
+.apop.bp.apop-runon .ro-opt.ro-place:hover{background:none}
+.apop.bp.apop-runon .ro-opt.ro-choice{margin-left:26px}
 .ro-opt.ro-choice .ro-ol{font-weight:500}
 .ro-opt.ro-choice.dim{cursor:default}.ro-opt.ro-choice.dim .ro-ol,.ro-opt.ro-choice.dim .ro-op{color:var(--text-2,#B4B4BB)}
 /* Sample mode note (shared/SampleMode.tsx): first-run sheet + Settings → Connections */

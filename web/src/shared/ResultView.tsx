@@ -13,7 +13,7 @@ import { modelNameOf } from './imageFeatures';
 import { jobInputs, isFileUrl, type JobInput } from './jobInputs';
 const inputRefHref = (u: string) => `${IMAGE_PAGE}?refUrl=${encodeURIComponent(u)}`;
 /** The job's source photo when the result is that photo changed (upscale, edit, relight, swaps, brush edit): the viewer's Compare. Not for jobs that make a new picture from it (Product Shot, Character Sheet). */
-const COMPARE_TOOLS = new Set(['image-upscale', 'app-relight', 'app-face-swap', 'app-person-swap', 'app-inpaint']);
+const COMPARE_TOOLS = new Set(['image-upscale', 'app-relight', 'app-face-swap', 'app-person-swap', 'app-material-swap', 'app-inpaint']);
 /** Results whose viewer opens on the before/after split (Relight: the change is the light, best judged side by side). */
 const COMPARE_FIRST = new Set(['app-relight']);
 export const compareSourceOf = (job: JobState): string | null => { const i: any = job.input ?? {}; const u = typeof i.imageUrl === 'string' && /^\/(files|samples)\//.test(i.imageUrl) ? i.imageUrl : null; if (!u) return null;
