@@ -217,7 +217,7 @@ export function requirementsFor(tool: ToolDef, providerId: string, input: Record
     mpsNotes: macBlocked.length && !(worst?.mpsNotes ?? []).some((n) => /fp8|nvfp4|w4a8/i.test(n)) ? [...(worst?.mpsNotes ?? []), `${MAC_WEIGHTS_REASON} (${macBlocked.join(', ')})`] : worst?.mpsNotes ?? [], minComfyVersion: p.minComfyVersion ?? null,
     secondsPerTier: { all: cell('rtx4090') ?? cell('rtx5090'), most: null, light: null, mac: cell('mseries') }, variants: vv, variantId: chosen?.id ?? null, macBlockedFiles: macBlocked,
     downloadable: files.some((f) => !!f.url), modelsDir: HW.displayDir(dir), modelsDirSet: !!dir, downloadId: downloadIdFor(providerId, wfs), presenceSource: ov ? null : dir ? 'models_dir' : viaComfy ? 'comfyui' : null, platform: plat,
-    variant: picks.length ? { platform: plat!, verified: picks.every((p) => p.verified), format: picks[0].variant?.format ?? null, needsNodes: [...new Set(picks.flatMap((p) => p.variant?.needsNodes ?? []))], files: Object.values(swaps) } : null };
+    variant: picks.length && !wfs.some((w, i) => !wfBlocked[i].length && !picks.some((p) => p.workflow === w)) /* a graph that runs here as it is: the job needs no untested variant (OpenSoul: soul-zit) */ ? { platform: plat!, verified: picks.every((p) => p.verified), format: picks[0].variant?.format ?? null, needsNodes: [...new Set(picks.flatMap((p) => p.variant?.needsNodes ?? []))], files: Object.values(swaps) } : null };
   reqCache.set(ck, { at: Date.now(), r }); return r;
 }
 // ---- fit ----

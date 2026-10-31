@@ -68,7 +68,7 @@ function MachineCheck({ hw, h, onHw, onRecheck }: { hw: Hardware | null | undefi
     </div>
     {hw === null && <Notice as="p" kind="error" tone="line">Couldn’t read this computer’s hardware.</Notice>}
     {(seen || ram || disk?.totalBytes) && <div className="tc-bars">
-      {ram && ram.free != null && <Meter label="Memory now" used={ram.total - ram.free} total={ram.total} testId="tc-ram"
+      {ram && ram.free != null && ram.total > 0 && <Meter label="Memory now" used={ram.total - ram.free} total={ram.total} testId="tc-ram"
         sub={usable ? usable.replace(/^about/, 'About') : null} />}
       {!ram && usable && <small className="helper" data-testid="tc-usable">{usable.replace(/^about/, 'About')}</small>}
       {lv?.vram && <Meter label="Graphics memory now" used={lv.vram.totalBytes - lv.vram.freeBytes} total={lv.vram.totalBytes} testId="tc-vram" sub={null} />}

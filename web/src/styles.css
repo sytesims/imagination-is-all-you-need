@@ -5470,3 +5470,5 @@ html body .hm-legend .hm-kind{margin:0;flex:none}
 .fit-mem{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;color:var(--warning);font-size:var(--fs-xs)}
 .fit-mem>span{min-width:0}
 .ro-here.short{color:var(--warning)}
+.gen-price.gen-mem{color:var(--warning)}
+.gen-btn[data-mem=short] .gen-price,.gen-btn[data-mem=short] .gen-price *{color:var(--warning)}

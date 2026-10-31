@@ -79,7 +79,7 @@ for (const [prof, want] of Object.entries(EXPECT)) { HW.setHardwareOverride(prof
   want.forEach((w, i) => { if (w) assert.equal(got[i], w, `${prof} ${CASES[i][0]}/${CASES[i][1]}`); });
   if (prof === 'unknown') for (const [t, p, i] of CASES) assert.equal(R.fitFor(getTool(t)!, p, i, hw).enforced, false, 'unknown is never enforced'); }
 HW.setHardwareOverride('mac36'); { const f = R.fitFor(getTool('h3-video')!, 'comfy-h3', { types: ['t2v'] }); assert.equal(f.reasonCode, 'unsupported_weights'); assert.match(f.reason, /NVIDIA graphics card/); }
-{ const f = R.fitFor(getTool('reshoot')!, 'comfy-funcamera', {}); assert.equal(f.variant?.verified, false, 'Fun Camera on a Mac: its untested Mac variant'); assert.match(f.reason, /^Should run here \(not tested yet\)/); }
+{ const f = R.fitFor(getTool('reshoot')!, 'comfy-funcamera', {}); assert.equal(f.variant?.verified, false, 'Fun Camera on a Mac: its untested Mac variant'); assert.equal(f.verdict, 'slow'); }
 HW.setHardwareOverride('mid16'); { const f = R.fitFor(getTool('object-swap')!, 'comfy-h3-charswap', {}); assert.notEqual(f.reasonCode, 'no_gpu_needed', 'charswap uses its own workflow'); }
 { const f = R.fitFor(getTool('create-image')!, 'comfy-moss-image', {}); assert.notEqual(f.reasonCode, 'requirements_unknown', 'MOSS-Image has manifest rows (2026-10-25)'); assert.ok(f.recommendedVramGB! > 0); }
 ok('5 fit matrix: unknown/none/cpu/light8/mid16/rtx4090/mac36 × upscale/zimage/wan camera/h3-t2v/ltx reshoot/drama3 (mac36 + fp8 → unsupported_weights)');

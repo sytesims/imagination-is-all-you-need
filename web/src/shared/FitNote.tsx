@@ -3,7 +3,7 @@ import { runPrice, placeOfQuote, ownAccountsNow } from './billing';
 import { useEffect, useRef, useState } from 'react';
 import { DemoPrice } from './DemoPrice';
 import { Link } from '../platform/router';
-import { fitLabel, etaSourceNote, showLighter, gbText, noteOffersAlt, altCredits, LOCAL_SETUP_HREF, type Fit, type FitAlt } from './fit';
+import { fitLabel, etaSourceNote, showLighter, gbText, noteOffersAlt, altCredits, quoteFitOf, LOCAL_SETUP_HREF, type Fit, type FitAlt } from './fit';
 import { dryRunDownload, setDownloadIntent, useDownloadIntent, promptMounted, choiceText, useHardware, useLiveHardware, type DryRun, type DlChoice } from './hardware';
 import { memoryCheck, HEAVY_GB } from '../../../server/src/shared/thisComputer';
 /** B31: a 409 weights gate from a submit (api.ts), so the download prompt for that model shows the server's words and its options. */
@@ -51,6 +51,12 @@ export function FitNote({ fit, onUseCloud, className = '' }: { fit: Fit | null |
   </div>;
 }
 
+/** The same check for a quote (the dock's Generate button): only for a local route of 8 GB and up; null otherwise or when memory is fine. */
+export function useMemoryShort(quote: any): ReturnType<typeof memoryCheck> {
+  const f = quoteFitOf(quote); const local = !!f && (quote?.routeKind === 'local' || /^local:/.test(String(quote?.route ?? quote?.routeId ?? '')));
+  const need = local && (f!.verdict === 'fits' || f!.verdict === 'slow') ? f!.recommendedVramGB ?? null : null; const hw = useHardware();
+  const live = useLiveHardware(need != null && need >= HEAVY_GB && !!hw?.profile); const c = memoryCheck(need, hw?.profile, live); return c?.short ? c : null;
+}
 /** Fit check before a heavy local run (hardware plan §3.5): the model's memory need against what is free right now (shared memory on a Mac or a
  *  DGX Spark, the card's free memory otherwise; shared/thisComputer.ts memoryCheck). Short → "close other apps" and the cloud route when there is one.
  *  It never blocks Generate: ComfyUI offloads, so the run still works, slower. Reads memory only for models of 8 GB and up. */

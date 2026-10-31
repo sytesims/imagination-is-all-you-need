@@ -52,7 +52,7 @@ export const TIER_LABELS: Record<Tier, string> = {
   none: 'No local graphics card fit for these models: local runs are limited to the smallest tools',
   light: 'Runs the light local models (upscalers, cut-outs, voice and audio)',
   most: 'Runs most local models',
-  all: 'Runs every local model (some slowly)',
+  all: 'Runs the big local models too (some slowly)', // not "every": a 24 GB card still has a few too big (hardware plan B3); the unique-model count says how many
   unknown: "Couldn't check the hardware, so nothing is blocked",
 };
 /** The tier sentence for this machine class (2026-10-31, hardware plan B3): memory alone said "Runs every local model" on Apple Silicon, where
@@ -248,6 +248,10 @@ let liveMemo: { at: number; v: LiveReading } | null = null; const LIVE_MIN_MS = 
  *  where models live, and whether ComfyUI answers. Cheap: one /system_stats GET (1 s timeout) or one vm_stat; at most one reading per 2 s. Never Comfy Cloud. */
 export async function liveReading(): Promise<LiveReading> {
   if (liveMemo && Date.now() - liveMemo.at < LIVE_MIN_MS) return liveMemo.v;
+  const m = mockNow(); if (m?.ram.totalBytes) { // a mock / test profile: its own memory, never this machine's (OPENHIGGSFIELD_LIVE_FREE_GB pins free memory, mock backend only, like DISK_FREE_GB)
+    const pin = config.backend === 'mock' && env('LIVE_FREE_GB') ? Number(env('LIVE_FREE_GB')) * GiB : NaN; const tot = m.ram.totalBytes ?? 0; const g = m.gpu;
+    const vram = g && !g.unifiedMemory && g.vramTotalBytes ? { totalBytes: g.vramTotalBytes, freeBytes: Number.isFinite(pin) ? Math.min(pin, g.vramTotalBytes) : g.vramFreeBytes ?? g.vramTotalBytes } : null;
+    return { at: new Date().toISOString(), ram: { totalBytes: tot, freeBytes: Number.isFinite(pin) && !vram ? Math.min(pin, tot) : m.ram.freeBytes ?? Math.round(tot * 0.6), source: 'os' }, vram, disk: publicDisk(), comfy: { reachable: m.comfy.reachable, version: m.comfy.version, pytorch: null } }; }
   const local = !!config.comfyBaseUrl && !cloudUrl(config.comfyBaseUrl);
   const c = local ? await checkComfy(config.comfyBaseUrl, { timeoutMs: 1000, gguf: false }) : null; if (c) noteReach(c.reachable);
   const s = c?.reachable && c.stats ? parseSystemStats(c.stats) : null; // models run where ComfyUI runs, so its reading wins

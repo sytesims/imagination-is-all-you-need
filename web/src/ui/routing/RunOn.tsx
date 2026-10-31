@@ -94,7 +94,7 @@ const rule = (r: FailureRule | undefined) => (r ? RULE_TEXT[r].replace(/^./, c =
 /** One row's state word and tone. A row that isn't ready stays pickable (the chip then shows the fix); greyed by tone 'off'/'warn'. */
 function rowState(r: RunOnRow): { word: string; tone: 'ok' | 'warn' | 'off'; dim: boolean } {
   switch (r.status) {
-    case 'ready': return { word: 'Ready', tone: 'ok', dim: false };
+    case 'ready': return r.here?.untested ? { word: 'Not tested here yet', tone: 'warn', dim: false } /* item 5: a platform variant nobody has run on this kind of computer */ : { word: 'Ready', tone: 'ok', dim: false };
     case 'sample': return { word: 'Sample', tone: 'warn', dim: false };
     case 'needs-key': return { word: 'Needs a key', tone: 'warn', dim: true };
     case 'off': return { word: 'Off', tone: 'off', dim: true };

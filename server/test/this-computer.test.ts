@@ -23,7 +23,7 @@ const ok = (m: string) => console.log('ok ' + m); const GiB = 2 ** 30;
   assert.equal(MP.classifyMachine({ seen: true, ramBytes: 36 * GiB, gpu: { name: 'mps', type: 'mps', vramTotalBytes: null } }).label, 'Apple Silicon · 36 GB'); }
 { const nv = MP.classifyMachine(MP.inputFromNvidiaSmi('NVIDIA GeForce RTX 4090, 24564, 23000, 8.9', { platform: 'linux', arch: 'x64', ramBytes: 64 * GiB }));
   assert.equal(nv.id, 'nvidia'); assert.equal(nv.label, 'NVIDIA GeForce RTX 4090 · 24 GB'); assert.equal(nv.unifiedMemory, false); assert.equal(TC.usableText(nv), '24 GB graphics memory');
-  assert.equal(HW.tierLabelOf('all', nv), 'Runs every local model (some slowly)', 'NVIDIA: by VRAM'); assert.equal(HW.tierLabelOf('most', nv), 'Runs most local models');
+  assert.equal(HW.tierLabelOf('all', nv), 'Runs the big local models too (some slowly)', 'NVIDIA: by VRAM, never "every"'); assert.equal(HW.tierLabelOf('most', nv), 'Runs most local models');
   const small = MP.classifyMachine({ seen: true, platform: 'win32', arch: 'x64', ramBytes: 16 * GiB, gpu: { name: 'cuda:0 NVIDIA GeForce RTX 4050 Laptop GPU : cudaMallocAsync', type: 'cuda', vramTotalBytes: 6 * GiB } });
   assert.equal(small.label, 'NVIDIA GeForce RTX 4050 Laptop GPU · 6 GB', 'ComfyUI device name cleaned'); assert.equal(HW.tierLabelOf(HW.tierOf(6), small), 'Runs the light local models (upscalers, cut-outs, voice and audio)'); }
 { const host = { platform: 'linux', arch: 'arm64', ramBytes: 128 * GiB };
