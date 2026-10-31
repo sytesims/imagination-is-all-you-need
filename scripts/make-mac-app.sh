@@ -40,7 +40,8 @@ mkdir -p "$DEST"
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 
 # the app: a compiled AppleScript applet (a real Dock app with native dialogs) around launch.sh
-osacompile -o "$WORK/Imagination.app" "$HERE/mac-app/Imagination.applescript"
+# (osacompile always notes that it re-signs the applet: only show what it says when it fails)
+osacompile -o "$WORK/Imagination.app" "$HERE/mac-app/Imagination.applescript" 2>"$WORK/osacompile.log" || { cat "$WORK/osacompile.log" >&2; exit 1; }
 RES="$WORK/Imagination.app/Contents/Resources"
 cp "$HERE/mac-app/launch.sh" "$RES/launch.sh"; chmod 755 "$RES/launch.sh"
 printf '%s\n' "$REPO" > "$RES/repo-path"

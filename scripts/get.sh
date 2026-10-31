@@ -10,7 +10,8 @@
 #   2. Downloads the app into ~/Imagination, or updates it if it's already there (your library and keys are never touched).
 #   3. Installs the app's own parts (npm run setup -- --no-start). No AI models, no ComfyUI, no keys:
 #      you connect those inside the app when you want them.
-#   4. Offers a desktop shortcut that starts the app and opens it in your browser.
+#   4. Offers a way to start it again later: on macOS, Imagination.app in your Applications folder and Dock;
+#      on Linux, an Imagination entry in your apps menu and on your desktop.
 #   5. Starts the app (npm run setup) and opens it in your browser.
 #
 # Windows: use scripts/get.ps1 instead (irm https://iiayn.app/install.ps1 | iex).
@@ -20,6 +21,7 @@ set -euo pipefail
 
 REPO_URL="${IIAYN_REPO:-https://github.com/sytesims/imagination-is-all-you-need.git}" # IIAYN_REPO: another copy to clone from (tests)
 YES=0; DRY=0; START=1; SHORTCUT=1; MADE_SHORTCUT=0; BRANCH=main; DIR="$HOME/Imagination"
+APPS_DIR="${IIAYN_APPS_DIR:-/Applications}" # IIAYN_APPS_DIR: another folder instead of /Applications (tests)
 
 usage() { cat <<'EOF'
 Install Imagination Is All You Need and open it in your browser.
@@ -31,9 +33,11 @@ Options:
   --dir PATH       where to put the app (default: ~/Imagination)
   --branch NAME    get another branch of the app (for testing; default: main)
   --no-start       install, but don't start the app
-  --no-shortcut    don't offer a desktop shortcut
+  --no-shortcut    don't offer the shortcut (on a Mac: the app in Applications and the Dock)
   --dry-run        show every step, change nothing
   --help           show this help
+
+On a Mac the installer adds Imagination to Applications and your Dock.
 EOF
 }
 
@@ -48,11 +52,14 @@ run() { if [ "$DRY" = 1 ]; then printf '  + %s\n' "$*"; else "$@"; fi; }
 # write FILE: saves what comes in on stdin to FILE, or with --dry-run only says so.
 write() { if [ "$DRY" = 1 ]; then printf '  + write %s\n' "$1"; cat >/dev/null; else cat >"$1"; fi; }
 have_tty() { { : </dev/tty; } 2>/dev/null; }
-# ask "Question?": yes/no, default no. --yes says yes; with nobody at a keyboard it's no.
+# ask "Question?" [yes]: yes/no, default no (or yes when the second word is "yes").
+# --yes says yes; with nobody at a keyboard it's no.
 ask() {
   if [ "$YES" = 1 ]; then say "$1 yes (--yes)"; return 0; fi
   if ! have_tty; then say "$1 no (nobody to answer; add --yes to say yes)"; return 1; fi
-  local a=""; printf '%s [y/N] ' "$1" >/dev/tty; read -r a </dev/tty || a=""
+  local a="" hint="[y/N]"; [ "${2:-}" = yes ] && hint="[Y/n]"
+  printf '%s %s ' "$1" "$hint" >/dev/tty; read -r a </dev/tty || a=""
+  [ -z "$a" ] && [ "${2:-}" = yes ] && return 0
   case "$a" in [yY]|[yY][eE][sS]) return 0;; *) return 1;; esac
 }
 # as_root CMD...: runs a system command with sudo (never silently: callers say so first). Root needs no sudo.
@@ -193,26 +200,67 @@ set_up() {
 # ---- 4. shortcut -------------------------------------------------------------------------------
 add_shortcut() {
   [ "$SHORTCUT" = 1 ] || return 0
-  bold "4. Desktop shortcut"
-  ask "Add an Imagination shortcut to your desktop?" || { say "No shortcut."; return 0; }
-  local nodedir; nodedir="$(dirname "$(command -v node 2>/dev/null || echo /usr/local/bin/node)")"
-  case "$DIR$nodedir" in *[\"\$\`\\]*) say "Skipping the shortcut: the folder name has characters a shortcut can't hold."; return 0;; esac
-  if [ "$OS" = Darwin ]; then
-    local f="$HOME/Desktop/Imagination.command"; run mkdir -p "$HOME/Desktop"
-    # A .command file opens in Terminal when double-clicked: closing that window stops the app.
-    write "$f" <<EOF
+  case "$DIR" in *[\"\$\`\\]*) say "Skipping the shortcut: the folder name has characters a shortcut can't hold."; return 0;; esac
+  if [ "$OS" = Darwin ]; then add_mac_app; else add_linux_shortcut; fi
+}
+
+# The desktop file older installers wrote on macOS, except its PATH line (that one depends on where Node.js was).
+old_command_text() { cat <<EOF
 #!/bin/bash
 # Starts Imagination Is All You Need and opens it in your browser. Close this window (or press Ctrl+C) to stop it.
-export PATH="$nodedir:/opt/homebrew/bin:/usr/local/bin:\$PATH"
 cd "$DIR" || { echo "The app isn't in $DIR any more."; exit 1; }
 exec npm run setup -- --open
 EOF
-    run chmod +x "$f"; ok "Added Imagination.command to your desktop"; MADE_SHORTCUT=1
+}
+
+# macOS: Imagination.app (built by scripts/make-mac-app.sh) in Applications, pinned to the Dock.
+add_mac_app() {
+  bold "4. The Imagination app"
+  ask "Add Imagination to your Applications folder and Dock?" yes || { say "Not added."; return 0; }
+  local apps="$APPS_DIR"
+  if [ ! -w "$apps" ]; then
+    apps="$HOME/Applications"
+    say "$APPS_DIR needs an administrator to change, so Imagination goes in the Applications folder in your home folder ($apps)."
+  fi
+  local app="$apps/Imagination.app"
+  # Replace an Imagination.app from an earlier install, never someone else's.
+  if [ -e "$app" ] && [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Contents/Info.plist" 2>/dev/null)" != app.iiayn.launcher ]; then
+    say "There's already a different app called Imagination in $apps, so it stays as it is and nothing was added."
+    say "To add ours later, move that one away and run: cd \"$DIR\" && npm run mac-app"
+    return 0
+  fi
+  if [ "$DRY" = 1 ]; then run bash "$DIR/scripts/make-mac-app.sh" --repo "$DIR" --dest "$apps"
+  else bash "$DIR/scripts/make-mac-app.sh" --repo "$DIR" --dest "$apps" >/dev/null || { say "Couldn't build the Imagination app (see above)."; return 0; }
+  fi
+
+  # Pin it to the Dock unless it's already there: a new persistent-apps tile, then restart the Dock to show it.
+  local url="file://${app// /%20}/" tiles
+  tiles="$(defaults read com.apple.dock persistent-apps 2>/dev/null || true)"
+  if [[ "$tiles" == *"\"$url\""* ]]; then ok "Already in your Dock"
   else
-    local apps="${XDG_DATA_HOME:-$HOME/.local/share}/applications" desk
-    desk="$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME/Desktop")"
-    run mkdir -p "$apps"
-    write "$apps/imagination.desktop" <<EOF
+    run defaults write com.apple.dock persistent-apps -array-add \
+      "<dict><key>tile-data</key><dict><key>file-data</key><dict><key>_CFURLString</key><string>$url</string><key>_CFURLStringType</key><integer>15</integer></dict></dict><key>tile-type</key><string>file-tile</string></dict>"
+    run killall Dock
+  fi
+
+  # The desktop shortcut earlier installers made isn't needed any more (only removed when it's exactly ours).
+  local old="$HOME/Desktop/Imagination.command"
+  if [ -f "$old" ] && [ "$(grep -v '^export PATH=' "$old")" = "$(old_command_text)" ]; then
+    run rm "$old"; say "Removed the old Imagination.command shortcut from your desktop."
+  fi
+  ok "Imagination is in your Applications folder and Dock. Click it any time to start it."; MADE_SHORTCUT=1
+}
+
+# Linux: an entry in the apps menu, and a copy on the desktop.
+add_linux_shortcut() {
+  bold "4. Desktop shortcut"
+  ask "Add an Imagination shortcut to your desktop?" || { say "No shortcut."; return 0; }
+  local nodedir; nodedir="$(dirname "$(command -v node 2>/dev/null || echo /usr/local/bin/node)")"
+  case "$nodedir" in *[\"\$\`\\]*) say "Skipping the shortcut: the folder name has characters a shortcut can't hold."; return 0;; esac
+  local apps="${XDG_DATA_HOME:-$HOME/.local/share}/applications" desk
+  desk="$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME/Desktop")"
+  run mkdir -p "$apps"
+  write "$apps/imagination.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=Imagination
@@ -223,14 +271,13 @@ Icon=$DIR/web/public/app-icon-512.png
 Terminal=true
 Categories=Graphics;
 EOF
-    run chmod +x "$apps/imagination.desktop"
-    if [ -d "$desk" ] || [ "$DRY" = 1 ]; then
-      run cp "$apps/imagination.desktop" "$desk/imagination.desktop"; run chmod +x "$desk/imagination.desktop"
-      # GNOME only launches desktop files marked as trusted.
-      [ "$DRY" = 1 ] || gio set "$desk/imagination.desktop" metadata::trusted true 2>/dev/null || true
-    fi
-    ok "Added Imagination to your apps menu$([ -d "$desk" ] && echo " and desktop")"; MADE_SHORTCUT=1
+  run chmod +x "$apps/imagination.desktop"
+  if [ -d "$desk" ] || [ "$DRY" = 1 ]; then
+    run cp "$apps/imagination.desktop" "$desk/imagination.desktop"; run chmod +x "$desk/imagination.desktop"
+    # GNOME only launches desktop files marked as trusted.
+    [ "$DRY" = 1 ] || gio set "$desk/imagination.desktop" metadata::trusted true 2>/dev/null || true
   fi
+  ok "Added Imagination to your apps menu$([ -d "$desk" ] && echo " and desktop")"; MADE_SHORTCUT=1
 }
 
 # ---- 5. start ----------------------------------------------------------------------------------
@@ -239,7 +286,7 @@ start_app() {
   if [ "$START" = 0 ]; then say ""; bold "Installed. Start it any time with: $again"; return 0; fi
   bold "5. Starting the app"
   say "Your browser opens by itself when it's ready. Keep this window open while you use it; Ctrl+C stops it."
-  say "Start it again later with $([ "$MADE_SHORTCUT" = 1 ] && echo "the Imagination shortcut, or: " || echo ": ")$again"
+  say "Start it again later with $([ "$MADE_SHORTCUT" = 1 ] && echo "the Imagination $([ "$OS" = Darwin ] && echo app || echo shortcut), or: " || echo ": ")$again"
   say ""
   if [ "$DRY" = 1 ]; then run cd "$DIR"; run npm run setup -- --open; return 0; fi
   cd "$DIR"
@@ -272,7 +319,9 @@ main() {
   if [ "$MODE" = update ]; then say "  2. Update the app already in $DIR (your library and keys stay as they are)"
   else say "  2. Download the app into $DIR$([ "$BRANCH" != main ] && echo " (branch $BRANCH)")"; fi
   say "  3. Install the app's own parts (no AI models, no keys)"
-  [ "$SHORTCUT" = 1 ] && say "  4. Offer a desktop shortcut"
+  if [ "$SHORTCUT" = 1 ]; then
+    if [ "$OS" = Darwin ]; then say "  4. Offer to add Imagination to your Applications folder and Dock"; else say "  4. Offer a desktop shortcut"; fi
+  fi
   [ "$START" = 1 ] && say "  5. Start the app and open it in your browser"
   say ""
 

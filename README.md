@@ -25,7 +25,7 @@ On Windows, paste this into PowerShell:
 irm https://iiayn.app/install.ps1 | iex
 ```
 
-It checks for git, Node.js and ffmpeg and asks before installing any that are missing. Then it puts the app in an `Imagination` folder in your home folder, offers a desktop shortcut and opens the studio in your browser. It doesn't download AI models or ask for keys: you connect those in the app when you want them. Read the scripts first if you like: [get.sh](scripts/get.sh) · [get.ps1](scripts/get.ps1). Options and the manual steps: [Install and run](docs/INSTALL.md#install-in-one-line).
+It checks for git, Node.js and ffmpeg and asks before installing any that are missing. Then it puts the app in an `Imagination` folder in your home folder, offers a shortcut and opens the studio in your browser. On a Mac the installer adds Imagination to Applications and your Dock. It doesn't download AI models or ask for keys: you connect those in the app when you want them. Read the scripts first if you like: [get.sh](scripts/get.sh) · [get.ps1](scripts/get.ps1). Options and the manual steps: [Install and run](docs/INSTALL.md#install-in-one-line).
 
 It all started with Comfy's **#OpenSourceHiggsfield** challenge.
 

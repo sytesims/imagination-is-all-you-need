@@ -23,7 +23,7 @@ What they do, in order:
 1. Check for git, Node.js 20 or newer (with npm) and ffmpeg. For each missing one, they say what it is and ask before installing it with Homebrew (macOS; they offer Homebrew's official installer if it's missing), apt or dnf (Linux, with `sudo`, which asks for your password) or winget (Windows). Say no and they print the manual steps and stop. ffmpeg is optional: without it the app still opens.
 2. Download the app into `~/Imagination` (Windows: `%USERPROFILE%\Imagination`) with `git clone --depth 1`. If the app is already there, they run `npm run update` instead. Your library (`server/data`) and keys (`.env.local`) are never touched.
 3. Run `npm run setup -- --no-start`: app dependencies and the read-only check. No ComfyUI, models or keys.
-4. Ask whether to add a desktop shortcut (macOS: `Imagination.command`; Windows: `Imagination.lnk`; Linux: an `imagination.desktop` app entry).
+4. Ask whether to add a shortcut (Windows: `Imagination.lnk`; Linux: an `imagination.desktop` app entry). On a Mac the installer adds Imagination to Applications and your Dock: it builds the [Mac app](#mac-app-dock) into `/Applications` (or `~/Applications` when `/Applications` needs an administrator; never with `sudo`), pins it to the Dock unless it's already there, and removes the `Imagination.command` desktop shortcut older installers made.
 5. Start the app with `npm run setup` and open it in your browser. Keep the window open; Ctrl+C stops it.
 
 Options (Windows names in brackets):
@@ -34,7 +34,7 @@ Options (Windows names in brackets):
 | `--dir PATH` (`-Dir`) | Install somewhere else |
 | `--branch NAME` (`-Branch`) | Get another branch (for testing) |
 | `--no-start` (`-NoStart`) | Install, but don't start the app |
-| `--no-shortcut` (`-NoShortcut`) | Don't offer a desktop shortcut |
+| `--no-shortcut` (`-NoShortcut`) | Don't offer the shortcut (on a Mac: the app in Applications and the Dock) |
 | `--dry-run` (`-DryRun`) | Show every step, change nothing |
 | `--help` (`-Help`) | Show the options |
 
