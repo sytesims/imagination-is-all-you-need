@@ -121,7 +121,6 @@ export function schemaChoices(v: { schema: any; doc: any } | null): { durations?
  *  happens is reported so it can be removed here. Key: `<check>|<tool>|<routeId>|<mode>` (a trailing * matches any rest). */
 export const KNOWN: Record<string, string> = {
   'limits|h3-video|replicate:minimax/h3|r2v': 'Replicate H3 Reference to video always sends ratio adaptive, while the route lists 7 aspects (no Replicate schema saved to confirm r2v takes a ratio)',
-  'submit|app-ugc-ad|comfy-cloud:cloud-h3|*': 'UGC Ad locks 9:16; MiniMax H3 on its Comfy Cloud API-node place takes Auto only (samples-only place; pinning it → 400)',
   'limits|camera|comfy-router:api-minimax-h3|*': 'app bars offer 480p / 720p / 1080p; MiniMax H3 has 768P / 2K, so 480p runs as 768P and 1080p as 2K (priced as run)',
   'limits|photo-fx|comfy-router:api-minimax-h3|*': 'as Camera Moves: 480p → 768P, 1080p → 2K on MiniMax H3',
   'limits|app-orbit-shot|comfy-router:api-minimax-h3|*': 'as Camera Moves: 480p → 768P, 1080p → 2K on MiniMax H3',
