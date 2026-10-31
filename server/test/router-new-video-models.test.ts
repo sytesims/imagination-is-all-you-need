@@ -127,7 +127,8 @@ process.env.OPENHIGGSFIELD_PUBLIC_BASE_URL = '';
   assert.equal(VIDEO_LIMITS['router-veo-lite'].audio.priceAffects, true);
   assert.deepEqual(VIDEO_LIMITS['router-wan3-prime'].durations, VIDEO_LIMITS['router-wan3'].durations); assert.deepEqual(VIDEO_LIMITS['router-wan3-prime'].refKinds, { image: 10 });
   assert.deepEqual(VIDEO_LIMITS['router-pvideo2'].resolutions, ['720p', '1080p']); assert.equal(VIDEO_LIMITS['router-pvideo2'].maxSeconds, 20); assert.equal(VIDEO_LIMITS['router-pvideo2'].audio.priceAffects, false);
-  assert.deepEqual(VIDEO_LIMITS['router-grok-video-lite'].resolutions.slice().sort(), ['1080p', '480p', '720p']); assert.equal(VIDEO_LIMITS['router-grok-video-lite'].maxSeconds, 15); assert.equal(VIDEO_LIMITS['router-grok-video-lite'].audio.supported, false, 'Grok Lite page: Output: Video');
+  assert.deepEqual(VIDEO_LIMITS['router-grok-video-lite'].resolutions.slice().sort(), ['1080p', '480p', '720p']); assert.equal(VIDEO_LIMITS['router-grok-video-lite'].maxSeconds, 15); assert.deepEqual(VIDEO_LIMITS['router-grok-video-lite'].audio, { supported: true, toggle: false, default: true, priceAffects: false, off: 'provider' }, 'Grok Lite: always with sound (a real run returned audio; no audio field in the schema)');
+  assert.ok(!('audio' in (await S['router-grok-video-lite'].body(job({ mode: 't2v' }), 0) as any)) && !('generate_audio' in (await S['router-grok-video-lite'].body(job({ mode: 't2v' }), 0) as any)), 'Grok Lite: no audio field sent (the schema has none)');
   const modes = (hv as any).app?.providerModes ?? (hv as any).providerModes;
   if (modes) { assert.deepEqual(modes['router-veo-lite'], ['t2v', 'i2v']); assert.deepEqual(modes['router-wan3-prime'], ['t2v', 'i2v', 'flf', 'r2v']); assert.deepEqual(modes['router-pvideo2'], ['t2v', 'i2v', 'flf']); assert.deepEqual(modes['router-grok-video-lite'], ['t2v', 'i2v']); }
   // bodies
@@ -164,7 +165,11 @@ process.env.OPENHIGGSFIELD_PUBLIC_BASE_URL = '';
   assert.equal(cr('router-veo-lite', { duration: 4, resolution: '720p', audio: false }), up(6.33 * 4), 'Veo Lite 720p no sound');
   assert.equal(cr('router-veo-lite', { duration: 8, resolution: '720p', audio: true }), up(10.55 * 8), 'Veo Lite 720p sound');
   assert.equal(cr('router-veo-lite', { duration: 8, resolution: '1080p', audio: false }), up(10.55 * 8)); assert.equal(cr('router-veo-lite', { duration: 8, resolution: '1080p', audio: true }), up(16.88 * 8));
-  assert.equal(cr('router-wan3-prime', { duration: 5, resolution: '480p' }), up(14.348 * 5)); assert.equal(cr('router-wan3-prime', { duration: 5, resolution: '720p' }), up(29.54 * 5)); assert.equal(cr('router-wan3-prime', { duration: 30, resolution: '1080p' }), up(59.08 * 30));
+  // Wan 3.0 Prime (2026-10-31): the partner-node rates Router bills; the real 2 s 480p run was charged $0.1945 (41.04 credits), the quote must cover it
+  assert.equal(cr('router-wan3-prime', { duration: 2, resolution: '480p' }), up(20.52 * 2)); assert.ok(cr('router-wan3-prime', { duration: 2, resolution: '480p' }) / 100 >= 0.1945, 'Prime 2 s 480p quote ≥ the real charge');
+  assert.equal(cr('router-wan3-prime', { duration: 5, resolution: '480p' }), up(20.52 * 5)); assert.equal(cr('router-wan3-prime', { duration: 5, resolution: '720p' }), up(42.24 * 5)); assert.equal(cr('router-wan3-prime', { duration: 30, resolution: '1080p' }), up(84.48 * 30));
+  assert.equal(cr('router-wan3-prime', { duration: 2, resolution: '480p', audio: false }), cr('router-wan3-prime', { duration: 2, resolution: '480p', audio: true }), 'Wan Prime: no separate sound price is published');
+  assert.equal(cr('router-grok-video-lite', { duration: 2, resolution: '480p' }), 6, 'Grok Lite 2 s 480p = $0.0572 → 6 credits (the real charge was $0.0572)');
   assert.equal(cr('router-wan3-prime', { mode: 'r2v', refPaths: Array(10).fill(PNG), duration: 5 }), cr('router-wan3-prime', { duration: 5 }), 'Wan Prime: references do not change the price');
   assert.equal(cr('router-pvideo2', { duration: 5, resolution: '720p' }), up(7.5432 * 5)); assert.equal(cr('router-pvideo2', { duration: 20, resolution: '1080p' }), up(15.0865 * 20));
   assert.equal(cr('router-pvideo2', { duration: 5, audio: false }), cr('router-pvideo2', { duration: 5, audio: true }), 'P-Video-2: sound does not change the price');
