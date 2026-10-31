@@ -19,18 +19,21 @@ export const HF_SIZES: Record<string, number> = {
   'Qwen-Edit-2509-Multiple-angles.safetensors': 236117032, // Shots angles LoRA (HF LFS x-linked-size, 2026-10-21)
 };
 export interface WeightFile { file: string; folder: string; sizeBytes: number | null; sizeGB: number | null; sizeApprox: boolean; sizeSource: 'manifest' | 'huggingface-api' | null;
-  url: string; source: 'huggingface' | 'civitai' | 'other'; pageUrl: string | null }
-type Row = { file: string; folder: string; size?: number | null; url: string; hf_repo?: string | null; civitai_version?: number | null; page_url?: string | null; workflows?: string[] };
+  url: string; source: 'huggingface' | 'civitai' | 'other'; pageUrl: string | null;
+  /** A LoRA's base model family ('z-image-turbo', 'qwen-image', …; a list when one LoRA serves two bases), from the manifest (build-manifest.py add_bases). A LoRA runs wherever its base runs. */ base?: string | string[] | null }
+type Row = { file: string; folder: string; size?: number | null; url: string; hf_repo?: string | null; civitai_version?: number | null; page_url?: string | null; workflows?: string[]; base?: string | string[] | null };
 let rows: Row[] | null = null;
 const load = (): Row[] => { if (rows) return rows; try { rows = JSON.parse(readFileSync(MANIFEST, 'utf8')).models ?? []; } catch { rows = []; } return rows!; };
-/** 'workflows/soul-*-api.json (preset LoRA)' → a matcher on the bare workflow file name. */
+/** 'workflows/soul-zit-api.json (preset LoRA)' (a look LoRA its graph may load) → a matcher on the bare workflow file name ('*' globs still work). */
 const matcher = (w: string) => { const f = w.replace(/\s*\(.*\)\s*$/, '').replace(/^workflows\//, '').trim(); const re = new RegExp(`^${f.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*')}$`); return (x: string) => re.test(x); };
 const toFile = (r: Row): WeightFile => {
   const exact = r.size ?? HF_SIZES[r.file] ?? null;
   const source = /huggingface\.co/.test(r.url) ? 'huggingface' : /civitai\.com/.test(r.url) ? 'civitai' : 'other';
   return { file: r.file, folder: r.folder, sizeBytes: exact, sizeGB: exact == null ? null : Math.round(exact / 1e7) / 100, sizeApprox: false, sizeSource: r.size ? 'manifest' : HF_SIZES[r.file] ? 'huggingface-api' : null,
-    url: r.url, source, pageUrl: source === 'huggingface' && r.hf_repo ? `https://huggingface.co/${r.hf_repo}` : source === 'civitai' && r.civitai_version ? `https://civitai.com/api/v1/model-versions/${r.civitai_version}` : r.page_url ?? null }; // page_url: a model installed by hand (a folder, no single-file url): where to get it
+    url: r.url, source, pageUrl: source === 'huggingface' && r.hf_repo ? `https://huggingface.co/${r.hf_repo}` : source === 'civitai' && r.civitai_version ? `https://civitai.com/api/v1/model-versions/${r.civitai_version}` : r.page_url ?? null, ...(r.base !== undefined ? { base: r.base } : {}) }; // page_url: a model installed by hand (a folder, no single-file url): where to get it
 };
+/** One manifest file by name (a platform variant's file, which no graph lists), or null. */
+export const weightFileOf = (file: string): WeightFile | null => { const r = load().find((x) => x.file === file); return r ? toFile(r) : null; };
 /** Weight files loaded by any of these workflow files (bare names, e.g. camera-ltx-api.json). [] for cloud models (no local workflows). */
 export function weightsForWorkflows(workflows: string[]): WeightFile[] {
   if (!workflows.length) return [];

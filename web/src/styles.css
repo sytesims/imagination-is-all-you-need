@@ -5466,3 +5466,9 @@ html body .hm-mfoot .hm-all{margin-top:0}
 html body .hm-legend{display:flex;align-items:center;gap:6px;padding-left:12px;min-width:0;font:400 12px/16px Inter,system-ui,sans-serif;color:rgb(137,138,139);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 html body .hm-legend .hm-kind{margin:0;flex:none}
 @media (prefers-reduced-motion:reduce){html body .hm-ext{transition:none}}
+/* Fit check before a heavy local run (2026-10-31): free memory is short right now. Amber, never blocking. */
+.fit-mem{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;color:var(--warning);font-size:var(--fs-xs)}
+.fit-mem>span{min-width:0}
+.ro-here.short{color:var(--warning)}
+.gen-price.gen-mem{color:var(--warning)}
+.gen-btn[data-mem=short] .gen-price,.gen-btn[data-mem=short] .gen-price *{color:var(--warning)}

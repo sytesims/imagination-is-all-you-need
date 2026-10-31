@@ -247,6 +247,9 @@ export function catalogueNameOf(toolId: string, engine: string, served: string, 
 
 // ---------------------------------------------------------------- listings
 export type RunOnStatus = 'ready' | 'sample' | 'needs-key' | 'off' | 'not-installed' | 'coming-soon' | 'unavailable';
+/** The run menu's mini line for the Local row (hardware plan §3.5): the memory the model needs and its time on this computer (learned, else reported). */
+const hereOf = (f: any) => (f ? { memGB: typeof f.recommendedVramGB === 'number' ? f.recommendedVramGB : null, etaSeconds: typeof f.etaSeconds === 'number' && f.etaSeconds > 0 ? f.etaSeconds : null,
+  etaSource: f.etaRange?.source ?? f.eta?.source ?? null, samples: Number(f.etaRange?.samples ?? f.eta?.samples ?? 0) || 0, untested: !!f.variant && f.variant.verified === false } : null);
 /** 2026-10-25: a local route whose model files a Mac can't load (hardware/macWeights.ts, fit unsupported_weights): never runs here, so no Download. */
 const macBlockedOpt = (o: any) => o.kind === 'local' && o.fit?.reasonCode === 'unsupported_weights';
 const statusOf = (o: any): RunOnStatus => o.comingSoon || o.reasonCode === 'not_wired' || /coming soon/i.test(String(o.reason ?? '')) ? 'coming-soon'
@@ -354,13 +357,13 @@ export function modelsBlock(tool: ToolDef, providers: any[]): any[] {
         if (macBlockedOpt(o)) { o.reasonCode = 'unsupported_weights'; o.reason = MAC_WEIGHTS_REASON; }
         { const hw = r.kind === 'local' ? LOCAL_HW_BLOCK[part.engine]?.() : null; if (hw) { st = 'unavailable'; o.reasonCode = 'unsupported_hardware'; o.reason = hw; } } // Video Upscale: SeedVR2 3B locally on NVIDIA only
         rows.push({ engine: part.engine, routeId: r.routeId, runOn: runOnOfRoute(r), kind: r.kind, comfyVariant: comfyVariantOf(r) ?? null, status: st, credits: soon ? null : o.credits ?? null, listCredits: soon ? null : o.demo ? o.listCredits ?? null : o.credits ?? null, reason: o.reason ?? null, reasonCode: o.reasonCode ?? null,
-          wired: o.wired !== false, tier: typeof o.tier === 'number' ? o.tier : null, latency: Number(o.typicalLatencySec) || 0, missingBytes: wg?.missingBytes ?? null, downloadId: wg?.downloadId ?? null }); } }
+          wired: o.wired !== false, tier: typeof o.tier === 'number' ? o.tier : null, latency: Number(o.typicalLatencySec) || 0, missingBytes: wg?.missingBytes ?? null, downloadId: wg?.downloadId ?? null, here: r.kind === 'local' ? hereOf(o.fit) : null }); } }
     const runsOn = RUN_ON_IDS.filter((ro) => rows.some((x) => x.runOn === ro)).map((ro) => { const rs = rows.filter((x) => x.runOn === ro).sort((a, b) => RANK[a.status as RunOnStatus] - RANK[b.status as RunOnStatus] || (a.listCredits ?? 1e9) - (b.listCredits ?? 1e9));
       const best = rs[0]; const priced = rs.map((x) => x.listCredits).filter((c): c is number => typeof c === 'number');
       return { id: ro, label: RUN_ON_LABELS[ro], billedTo: RUN_ON_BILLED_TO[ro], status: best.status, credits: ro === 'local' ? (best.status === 'ready' ? 0 : null) /* free only once it runs here: an uninstalled / off GPU is never "Free" */ : priced.length ? Math.min(...priced) : null, reason: best.status === 'ready' || best.status === 'sample' ? null : best.reason, reasonCode: best.reasonCode,
         routes: rs.map((x) => x.routeId), engines: [...new Set(rs.map((x) => x.engine))], ...(rs.some((x) => x.comfyVariant) ? { comfyVariants: [...new Set(rs.map((x) => x.comfyVariant).filter(Boolean))] } : {}),
         group: ro === 'local' ? 'gpu' as const : ro === 'comfy-cloud' ? 'comfy' as const : 'api' as const, detail: ro === 'comfy-cloud' ? (rs.every((x) => x.comfyVariant === 'deployment') ? COMFY_DEPLOY_DETAIL : rs.some((x) => x.kind === 'comfy-router') && !rs.some((x) => x.kind === 'comfy-cloud') ? ['Comfy Router', methodOf(rs.map((x) => x.routeId))].filter(Boolean).join(' · ') /* how this place does it, when it differs from the model's own way (H3 Extend · via last frame, H3 camera · prompt-directed) */ : rs.some((x) => x.kind === 'comfy-cloud') && !rs.some((x) => x.kind === 'comfy-router') ? 'Comfy Cloud' : 'Comfy Cloud or Comfy Router') : null,
-        wired: rs.some((x) => x.wired), action: rowAction(ro, best), ...((c) => (c ? { choices: c } : {}))(choicesOf(ro, rs, makerOf(m.key)?.name ?? null)), _best: best }; });
+        wired: rs.some((x) => x.wired), action: rowAction(ro, best), ...(ro === 'local' && best.here ? { here: best.here } : {}), ...((c) => (c ? { choices: c } : {}))(choicesOf(ro, rs, makerOf(m.key)?.name ?? null)), _best: best }; });
     // Other providers the Comfy place (or your computer) covers are hidden unless Settings → Routing → Show other providers is on (routing/hiddenPlaces.ts)
     const vis = visiblePlaces(tool.id, m.key, runsOn, undefined, preselectOf(runsOn)?.runOn ?? null); const hiddenRows: any[] = [];
     if (vis.hidden.length) { const keepIds = new Set(vis.shown.map((r) => r.id)); for (let k = runsOn.length - 1; k >= 0; k--) if (!keepIds.has(runsOn[k].id)) hiddenRows.unshift(...runsOn.splice(k, 1)); }

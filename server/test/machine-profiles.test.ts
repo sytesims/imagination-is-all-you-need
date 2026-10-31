@@ -43,7 +43,7 @@ const EXPECT: Record<string, string[]> = {
   'linux-rtx3060-12gb': ['fits/fits', 'slow/offload', 'too_heavy/not_enough_vram', 'slow/offload', 'too_heavy/not_enough_vram'],
   'win-rtx5090': ['fits/fits', 'fits/fits', 'fits/fits' /* 32 GB holds H3 */, 'fits/fits', 'too_heavy/not_enough_vram'],
   'dgx-spark': ['fits/fits', 'fits/fits', 'fits/fits', 'fits/fits', 'fits/fits'], // ~120 GB unified: everything fits (slower than a desktop card)
-  'mac-m1-max': ['fits/fits', 'slow/mps', 'too_heavy/unsupported_weights', 'too_heavy/unsupported_weights', 'too_heavy/unsupported_weights'],
+  'mac-m1-max': ['fits/fits', 'slow/mps', 'too_heavy/unsupported_weights', 'slow/mps' /* Fun Camera: Mac variant, untested (2026-10-31) */, 'too_heavy/unsupported_weights'],
   'cpu-only': ['slow/cpu', 'too_heavy/no_gpu', 'too_heavy/no_gpu', 'too_heavy/no_gpu', 'too_heavy/no_gpu'],
 };
 config.comfyBaseUrl = ''; const table: string[] = [];

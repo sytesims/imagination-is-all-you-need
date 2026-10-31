@@ -20,7 +20,7 @@ The answer includes `tier`, `tierLabel`, `gpu`, `ram`, `disk`, `effectiveVramGB`
 | `none` | under 4 GB, or no graphics card | Local runs are limited to the smallest tools |
 | `light` | 4 to under 8 GB | Runs the light local models (upscalers, cut-outs, voice and audio) |
 | `most` | 8 to under 24 GB | Runs most local models |
-| `all` | 24 GB or more | Runs every local model (some slowly) |
+| `all` | 24 GB or more | Runs the big local models too (some slowly) |
 | `unknown` | couldn't be read | **Nothing is blocked.** The app doesn't guess |
 
 ## Machine classes

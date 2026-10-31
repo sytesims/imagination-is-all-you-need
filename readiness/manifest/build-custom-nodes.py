@@ -41,6 +41,25 @@ OPTIONAL = {
 EXPLICIT = {'RIFE VFI': 'ComfyUI-Frame-Interpolation', 'LoadRembgByBiRefNetModel': 'ComfyUI_BiRefNet_ll', 'RembgByBiRefNetAdvanced': 'ComfyUI_BiRefNet_ll',
             'SeedVR2LoadDiTModel': 'ComfyUI-SeedVR2_VideoUpscaler', 'SeedVR2LoadVAEModel': 'ComfyUI-SeedVR2_VideoUpscaler', 'SeedVR2VideoUpscaler': 'ComfyUI-SeedVR2_VideoUpscaler'}
 
+# ARM64 Linux (NVIDIA DGX Spark) notes per pack (hardware plan item 7, 2026-10-31), written to custom-nodes.json "aarch64"; install.sh prints them there.
+AARCH64 = {
+ "ComfyUI (core)": "DGX Spark (aarch64): install PyTorch from the cu130 wheel index (NVIDIA DGX Spark ComfyUI playbook); fp8 and nvfp4 run (sm_121). Not run here on a Spark yet.",
+ "ComfyUI-KJNodes": "Python on top of PyTorch, no compiled wheels of its own: expected to work on aarch64 (UNVERIFIED on a Spark).",
+ "comfyui_controlnet_aux": "DWPose uses onnxruntime: onnxruntime-gpu has no aarch64 wheel, so install.sh adds the CPU onnxruntime and DWPose runs on the processor (NVIDIA DGX Spark ComfyUI troubleshooting page).",
+ "ComfyUI-segment-anything-2": "PyTorch only: expected to work on aarch64 (UNVERIFIED on a Spark).",
+ "ComfyUI-Frame-Interpolation": "RIFE is pure PyTorch and works on aarch64; the cupy-based models need a cupy build for aarch64 CUDA (UNVERIFIED).",
+ "ComfyUI-SeedVR2_VideoUpscaler": "Not tested on aarch64 (UNVERIFIED); the native SeedVR2 graph uses core ComfyUI nodes instead.",
+ "ComfyUI-Drama3": "fp8 / w4a8 experts need CUDA kernels; whether they build on aarch64 is UNVERIFIED.",
+ "ComfyUI_BiRefNet_ll": "PyTorch only: expected to work on aarch64 (UNVERIFIED on a Spark).",
+ "ComfyUI-Chatterbox": "PyTorch audio stack: expected to work on aarch64 (UNVERIFIED on a Spark).",
+ "ComfyUI-MMAudio": "PyTorch only: expected to work on aarch64 (UNVERIFIED on a Spark).",
+ "ComfyUI-PuLID-Flux": "insightface + onnxruntime: insightface builds from source on aarch64 and onnxruntime is the CPU one (no onnxruntime-gpu wheel) (UNVERIFIED).",
+ "ComfyUI_InfiniteYou": "insightface + onnxruntime: insightface builds from source on aarch64 and onnxruntime is the CPU one (no onnxruntime-gpu wheel) (UNVERIFIED).",
+ "ComfyUI-F5-TTS": "PyTorch audio stack: expected to work on aarch64 (UNVERIFIED on a Spark).",
+ "ComfyUI-Qwen-TTS": "Same as on a Mac: only sox and tiktoken are installed (its requirements pin onnxruntime-openvino); expected to work on aarch64 (UNVERIFIED).",
+ "ComfyUI-GGUF": "Python + the gguf package: works on aarch64 (UNVERIFIED on a Spark). Prefer the bf16 / fp8 files there: 128 GB fits them."
+}
+
 def sh(*a, cwd=None): return subprocess.run(a, cwd=cwd, check=True, capture_output=True, text=True).stdout
 def checkout(name, p):
     d = os.path.join(CACHE, re.sub(r'\W', '_', name))
@@ -75,6 +94,8 @@ def main():
         rows.append({'class': cls, 'pack': pack, 'python_module': mod or None, 'in_validator_object_info': cls in oi, 'found_in_pin': bool(found), 'files': found[:3], 'workflows': sorted(use[cls])})
     packs = {k: {**p, 'classes': [r['class'] for r in rows if r['pack'] == k]} for k, p in PACKS.items()}
     packs.update({k: dict(v) for k, v in OPTIONAL.items()})
+    for k, n in AARCH64.items():
+        if k in packs: packs[k]['aarch64'] = n
     json.dump({'generated_by': 'npm run nodes:pins', 'packs': packs, 'classes': rows}, open(OUT, 'w'), indent=1)
     bad = [r['class'] for r in rows if not r['found_in_pin']]
     print(f"{len(rows)} classes, {sum(1 for r in rows if r['pack'] != 'ComfyUI (core)')} custom; not found in pin: {bad}")
