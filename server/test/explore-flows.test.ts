@@ -237,7 +237,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
       assert.match(pr, /^h264,video,1280,720,?\naac,audio,*$/, 'the animation: H.264 1280×720 plus its AAC sound design');
       assert.ok(Math.abs(Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', p]).toString()) - 16.67) < 0.05, '~16.67 s'); assert.ok(fs.readFileSync(p).subarray(0, 64).includes('moov'), 'faststart');
       assert.doesNotMatch(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format_tags', '-of', 'json', p]).toString(), /creation_time|location|com\.apple|comment|encoder/i, 'metadata stripped'); }
-    const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); const ly = xs.slice(xs.indexOf('export function XpLayers'), xs.indexOf('export function XpImages'));
+    const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); const ly = xs.slice(xs.indexOf('export function XpLayers'), xs.indexOf('export function XpLooks'));
     assert.match(ly, /<HoverClip src=\{S\.film\.url\}[^>]*mode="view"[^>]*directed restart=\{restart\} onFail=/, 'the shared HoverClip plays the animation on screen (loop; reduced motion: the poster); the sound director owns its sound');
     assert.match(ly, /useDirectedSound\(\{ root: box, media: \(\) => box\.current\?\.querySelector\('video'\)/, 'the shared sound director (the page\u2019s one choice)'); assert.doesNotMatch(xs, /_SOUND_KEY|useClipSound/, 'no per-section sound keys');
     assert.match(ly, /\{S\.film\.sound === true && !still && !failed && <SoundToggle on=\{snd\.lit\} waiting=\{snd\.waiting\} label=\{snd\.hint\} onToggle=\{onSound\} testId="xp-layers-sound"/, 'the shared SoundToggle, only for a clip with sound, hidden under reduced motion and when the clip fails');
@@ -308,14 +308,20 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.doesNotMatch(xs.slice(xs.indexOf('export function XpSwap'), xs.indexOf('export function XpLayers')), /\{S\.eyebrow\}/, 'swap chapter label removed');
     assert.match(xs, /<ChapterText id="layers" title=/, 'layers chapter label omitted without removing its headline');
     ok('Canvas: selected product-shots demo, on-screen loop, shared page sound button, uncropped recording; chapter labels removed'); }
-  for (const id of X.EXPLORE_IMAGES.rail) assert.ok(FEATURED.some((x) => x.key === `sc-${id}`), `image ${id}: in the showcase`);
-  for (const c of X.EXPLORE_IMAGES.covers) assert.ok(FEATURED.some((x) => x.key === c.key), `cover ${c.key}: a featured entry`);
-  /* Stills with a point of view: the middle Character Sheet cover is the Kaito sheet (GPT Image 2.5 Flare, Comfy Router), not the old local edit of a real person's photo */
-  { assert.deepEqual(X.EXPLORE_IMAGES.covers.map((c) => c.key), ['sc-032054ec', 'sheet-kaito', 'sc-0f1a0117']); assert.equal(X.EXPLORE_IMAGES.covers[1].label, 'Character Sheet');
-    assert.ok(!X.EXPLORE_IMAGES.covers.some((c) => /fad0bbe6/.test(c.key)), 'the fad0bbe6 cover is gone');
-    const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); const im = xs.slice(xs.indexOf('export function XpImages'), xs.indexOf('the agent builds the board'));
-    assert.match(im, /f\.runOn === 'local' \? <span className="xv-pill xv-pill-free">Free<\/span>[\s\S]*xp-image-paid-[\s\S]*f\.costUsd\.toFixed\(2\)/, 'a Comfy cover shows its price, not Free');
-    assert.equal(featuredRecreateHref('sheet-kaito'), '/tools/create-image?recreate=b5b82fcc', 'the cover’s Recreate opens Create Image with the sheet’s prompt and model'); }
+  /* One idea. Every look. (replaces Stills with a point of view): twelve free FLUX.2 [klein] 4B looks of one prompt; then Now it's your turn. */
+  { const L = X.EXPLORE_LOOKS; assert.equal((X as Record<string, unknown>).EXPLORE_IMAGES, undefined, 'Stills with a point of view is gone');
+    assert.deepEqual(L.looks.map((l) => l.name), ['Golden hour', 'Film noir', 'Neon rain', 'Teal & orange', '35mm', 'Documentary', 'Studio white', 'Spotlight', 'Pastel', 'Anime', 'Watercolour', 'Clay']);
+    assert.equal(L.model, 'FLUX.2 [klein] 4B'); assert.equal(L.looks[L.start].name, 'Neon rain');
+    for (const l of L.looks) for (const u of [l.url, l.thumb]) { assert.match(u, /^\/showcase\/look-[a-z0-9-]+\.webp$/, `${u}: a neutral name`); assert.ok(fs.existsSync(path.join(PUB, u)), `${u}: shipped`); }
+    const Y = X.EXPLORE_YOUR_TURN; const wall = Y.wall.flat(); assert.equal(Y.wall.length, 6); assert.ok(wall.length >= 28, `about 30 on the wall (${wall.length})`);
+    for (const t of wall) { assert.ok(fs.existsSync(path.join(PUB, t.src)), `${t.src}: shipped`); assert.ok(t.model, `${t.src}: names its model`); if (/\/(wall|look)-/.test(t.src)) assert.match(t.src, /^\/showcase\/(wall|look)-[a-z0-9-]+\.webp$/, `${t.src}: a neutral name`); }
+    assert.deepEqual(wall.filter((t) => t.star).map((t) => t.src), ['/showcase/wall-tortoise-village.webp'], 'the tortoise village is the one spotlit tile');
+    assert.equal(X.yourTurnHref('  a fox in the snow '), '/tools/create-image?prompt=a+fox+in+the+snow', 'Make it: Create Image with the words in the bar');
+    assert.equal(X.yourTurnHref(''), `/tools/create-image?${new URLSearchParams({ prompt: Y.placeholder })}`, 'empty: the example in the box');
+    const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8');
+    assert.match(xs, /onMouseEnter=\{\(\) => setCur\(k\)\} onFocus=\{\(\) => setCur\(k\)\} onClick=\{\(\) => setCur\(k\)\}/, 'hover, focus or tap swaps the look');
+    assert.match(xs, /goToWorkflow\(yourTurnHref\(text\)\)/, 'Make it goes in-app');
+    assert.match(fs.readFileSync(path.join(WEB, 'ui/explore/exploreShowcase.css'), 'utf8'), /prefers-reduced-motion:reduce\)\{\.xyt-track\{animation:none\}/, 'reduced motion: the wall stays still'); }
   /* One character. Every angle. (four GPT Image 2.5 Flare sheets on Comfy Router; Mossbun as a Tripo 3.1 model) */
   { const S = X.EXPLORE_SHEETS; assert.equal(S.title, 'One character. Every angle.'); assert.equal(S.eyebrow, 'Made with GPT Image 2.5 Flare'); assert.equal(S.via, 'Comfy Cloud');
     assert.doesNotMatch(`${S.title} ${S.line} ${S.cast.map((c) => `${c.name} ${c.style}`).join(' ')}`, /higgsfield|kling|seedance/i, 'our own words, no other products named');
@@ -340,7 +346,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.match(sx, /className="xpk-frame xpc-frame"/, 'the koi’s letterbox frame (shared look)'); assert.match(sx, /featuredRecreateHref\(f\.key\)[\s\S]*xp-sheets-recreate/, 'Recreate from the featured entry');
     assert.match(sx, /if \(!now \|\| paused \|\| still \|\| spin \|\| !seen\) return/, 'steps only on screen; Pause, reduced motion and 3D stop it');
     assert.match(fs.readFileSync(path.join(WEB, 'ui/explore/exploreShowcase.css'), 'utf8'), /\.xpc-sheet\{[^}]*width:min\(100cqw,calc\(100cqh \* var\(--ar\)\)\)/, 'the whole sheet fitted, never cropped');
-    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpLayers \/>\s*<XpSheets \/>\s*<XpPresenter \/>\s*<XpImages \/>/, 'character sheets follow Image to layers, then the talking-avatar example');
+    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpLayers \/>\s*<XpSheets \/>\s*<XpPresenter \/>\s*<XpLooks \/>/, 'character sheets follow Image to layers, then the talking-avatar example');
     ok('One character. Every angle.: 4 GPT Image 2.5 Flare sheets (Comfy Router, billed prices), real panels, Recreate into Create Image; Mossbun GLB ≤ 4 MB, no decoder'); }
   /* Mockup to film (replaces Build a world): Direct a Shot mockup (a1a50672, free) → first frame (645de70d, GPT Image 2.5 Flare, $0.02 billed) → film (1a1a33c6, LTX-2.5 22B + Layout to Render, Comfy Cloud, $0.28) */
   { const F = X.EXPLORE_FILM; assert.equal((X as Record<string, unknown>).EXPLORE_WORLDS, undefined, 'the Worlds tiles are gone'); assert.ok(!fs.existsSync(path.join(PUB, 'explore/worlds')), 'their images are gone');
@@ -409,7 +415,7 @@ ok('web: Examples shelf and empty-tab Featured feed removed; Filter › From ›
   assert.deepEqual(V.effects.map((v) => v.effect), ['day-to-night', 'vanish', 'flood', 'alpha-matte']);
   const lay = FEATURED.find((x) => x.key === V.layout.key)!; assert.equal(lay.model, 'LTX-2.5 + Layout to Render', 'Layout to Render reuses the Mockup to film clip'); assert.match(V.layout.sourceUrl, /Layout-To-Render/);
   assert.ok(X.EXPLORE_SHOWCASE_LINKS().includes(V.cta.href), 'the section\'s links are checked');
-  const home = fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'); assert.match(home, /<XpImages \/>\s*<\/div>\s*<footer/, 'shortened Explore ends with the image showcase, then the footer'); assert.doesNotMatch(home, /<XpVfx/);
+  const home = fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'); assert.match(home, /<XpLooks \/>\s*<\/div>[\s\S]*?<XpYourTurn \/>\s*<footer/, 'Explore ends with One idea. Every look., then Now it\u2019s your turn. full width, then the footer'); assert.doesNotMatch(home, /<XpVfx/);
   assert.doesNotMatch(home, /<MadeHere\s*\/>|<Jump\b|<Row\b|className="xp-flows-gap"|data-testid="xp-(learn|all)"/, 'the approved shorter page omits the shared bottom rows, jump links, Learn/Spend cards and workflow chip shelf');
   const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); assert.match(xs, /EXPLORE_VFX\.pending/, 'an effect without a shipped example says so');
   // #14: the swap's featured entry keeps the size the run rendered at
