@@ -1,7 +1,7 @@
 /**
  * The three special surfaces of Create Image's bar (2026-10-23; steps 3–4):
  *  - Brush Edit ('mask'): the strip's Paint mask button / mask thumbnail (the sheet itself is MaskSheet.tsx)
- *  - Camera Angles ('multi-output'): the Angles popover (chips, multi-select, max 9) and the per-image price
+ *  - Camera Angles and Ad Pack ('multi-output'): the picker popover (chips, multi-select: angles / ad styles) and the per-image price
  *  - Camera & Lens ('rig'): the Camera group chip over plain Create, opening the existing rig picker (RigPicker.tsx)
  * Styles: maskSheet.css (registered in pageStyles.ts).
  */
@@ -32,24 +32,30 @@ export function MaskStrip({ mask, hasPhoto, need, onPaint, onClear, disabled, er
 }
 
 /* ---------------- Camera Angles ---------------- */
-type Opt = { value: string; label: string };
-/** The picked angles, in grid order (blank / unreadable = all of them, like the server's parseShots). */
+type Opt = { value: string; label: string; description?: string };
+/** What one output is called (recipe.each: Camera Angles "angle", Ad Pack "ad"). */
+const eachOf = (r: WfRecipe) => r.each ?? { one: 'angle', many: 'angles', note: '' };
+/** The picked options, in grid order (blank = the recipe's defaults, else all of them, like the server's parse). */
 export function anglesOf(r: WfRecipe, v: string | undefined): string[] {
-  const all = (r.controls.find(c => c.field === 'shots')?.options ?? []).map(o => o.value); if (v == null || v.trim() === '') return all;
-  try { const x = JSON.parse(v); const ids = (Array.isArray(x) ? x : [x]).map(String); return all.filter(a => ids.includes(a)); } catch { return all; }
+  const c = r.controls.find(c => c.field === 'shots'); const all = (c?.options ?? []).map(o => o.value);
+  const read = (s: string | undefined): string[] | null => { if (s == null || s.trim() === '') return null; try { const x = JSON.parse(s); const ids = (Array.isArray(x) ? x : [x]).map(String); return all.filter(a => ids.includes(a)); } catch { return null; } };
+  return read(v) ?? read(c?.default) ?? all;
 }
 export const anglesSummary = (r: WfRecipe, ids: string[]): string => { const os = r.controls.find(c => c.field === 'shots')?.options ?? [];
-  return !ids.length ? 'None' : ids.length === os.length ? `All ${os.length}` : ids.length === 1 ? (os.find(o => o.value === ids[0])?.label ?? ids[0]) : `${ids.length} angles`; };
-export const anglesLabel = (n: number) => n === 0 ? 'Make angles' : n === 1 ? 'Make 1 angle' : `Make ${n} angles`;
+  return !ids.length ? 'None' : ids.length === os.length ? `All ${os.length}` : ids.length === 1 ? (os.find(o => o.value === ids[0])?.label ?? ids[0]) : `${ids.length} ${eachOf(r).many}`; };
+export const anglesLabel = (n: number, r?: WfRecipe | null) => { const e = r ? eachOf(r) : { one: 'angle', many: 'angles' }; return n === 0 ? `Make ${e.many}` : n === 1 ? `Make 1 ${e.one}` : `Make ${n} ${e.many}`; };
+/** "Pick at least one angle" / "… style" (the group's own word). */
+export const pickOneLabel = (r: WfRecipe) => `Pick at least one ${r.id === 'camera-angles' ? 'angle' : (r.groups.find(g => g.summary.includes('shots'))?.label ?? 'option').toLowerCase().replace(/s$/, '')}`;
 /** Chips (multi-select, max = every angle), All / None, and what it costs per image. */
 export function AnglesPanel({ r, ids, set, each }: { r: WfRecipe; ids: string[]; set: (ids: string[]) => void; /** the price of one image ("✦ 4 each", "Free · Local each") */ each: React.ReactNode }) {
-  const os: Opt[] = r.controls.find(c => c.field === 'shots')?.options ?? []; const all = os.map(o => o.value);
+  const os: Opt[] = r.controls.find(c => c.field === 'shots')?.options ?? []; const all = os.map(o => o.value); const e = eachOf(r); const glyph = r.id === 'camera-angles';
+  const head = r.groups.find(g => g.summary.includes('shots'))?.label ?? 'Angles';
   const toggle = (id: string) => set(ids.includes(id) ? ids.filter(x => x !== id) : all.filter(a => [...ids, id].includes(a)));
-  return <div className="wf-angles" data-testid="wf-angles-panel">
-    <div className="wf-pop-h"><span>Angles · {ids.length} of {all.length}</span><span className="wf-ang-bulk"><button type="button" onClick={() => set(all)} disabled={ids.length === all.length} data-testid="wf-angles-all">All</button><button type="button" onClick={() => set([])} disabled={!ids.length} data-testid="wf-angles-none">None</button></span></div>
-    <div className="wf-ang-grid" role="group" aria-label="Angles">{os.map(o => { const on = ids.includes(o.value);
-      return <button key={o.value} type="button" role="checkbox" aria-checked={on} className={`wf-ang${on ? ' on' : ''}`} data-testid={`wf-angle-${o.value}`} onClick={() => toggle(o.value)}><ShotGlyph id={o.value} /><span>{o.label}</span></button>; })}</div>
-    <p className={`wf-ang-note${ids.length ? '' : ' warn'}`} data-testid="wf-angles-note">{ids.length ? <>{`${ids.length} image${ids.length > 1 ? 's' : ''}, one per angle`}{each ? <> · {each}</> : null}. Views the photo never showed are the model's best guess.</> : 'Pick at least one angle.'}</p>
+  return <div className={`wf-angles${glyph ? '' : ' wf-layouts'}`} data-testid="wf-angles-panel">
+    <div className="wf-pop-h"><span>{head} · {ids.length} of {all.length}</span><span className="wf-ang-bulk"><button type="button" onClick={() => set(all)} disabled={ids.length === all.length} data-testid="wf-angles-all">All</button><button type="button" onClick={() => set([])} disabled={!ids.length} data-testid="wf-angles-none">None</button></span></div>
+    <div className="wf-ang-grid" role="group" aria-label={head}>{os.map(o => { const on = ids.includes(o.value);
+      return <button key={o.value} type="button" role="checkbox" aria-checked={on} className={`wf-ang${glyph ? '' : ' wf-lay'}${on ? ' on' : ''}`} data-testid={`wf-angle-${o.value}`} onClick={() => toggle(o.value)}>{glyph ? <ShotGlyph id={o.value} /> : null}<span>{o.label}</span>{!glyph && o.description ? <small>{o.description}</small> : null}</button>; })}</div>
+    <p className={`wf-ang-note${ids.length ? '' : ' warn'}`} data-testid="wf-angles-note">{ids.length ? <>{`${ids.length} image${ids.length > 1 ? 's' : ''}, one per ${e.one === 'ad' ? 'style' : e.one}`}{each ? <> · {each}</> : null}. {e.note}</> : `${pickOneLabel(r)}.`}</p>
   </div>;
 }
 /** Tiny camera-position glyph per angle (our own drawing: subject dot, camera triangle). */

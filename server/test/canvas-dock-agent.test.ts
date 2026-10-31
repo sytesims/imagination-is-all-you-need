@@ -23,6 +23,8 @@ try {
   assert.equal(dockRoute({ connected: true, demoRunning: false, confirmWaiting: false }), 'messages', 'an agent is listening: what you type goes to it');
   assert.equal(dockRoute({ connected: false, demoRunning: false, confirmWaiting: false }), 'demo', 'nobody listening: the built-in starters');
   assert.equal(dockRoute({ connected: false, demoRunning: true, confirmWaiting: true }), 'messages', 'the demo waiting for Looks good gets the answer');
+  assert.equal(dockRoute({ connected: true, demoRunning: true, confirmWaiting: false }), 'messages', 'a connected agent always gets what you type');
+  assert.equal(dockRoute({ connected: false, demoRunning: true, confirmWaiting: false }), 'demo', 'no agent: the demo answers honestly (server: never a run)');
   const prompt = agentStarterPrompt(board.id, 'Launch'); for (const t of ['canvas_wait_for_message', 'canvas_list_workflows', 'canvas_batch', 'canvas_propose_run', 'canvas_review', 'canvas_say', board.id]) assert.ok(prompt.includes(t), `the starter prompt names ${t}`);
   assert.match(prompt, /Never start a run any other way/);
   ok('dock routing: agent inbox when connected, starters when not; the starter prompt names the loop');

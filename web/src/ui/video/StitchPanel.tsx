@@ -112,7 +112,7 @@ export default function StitchPanel({ wf, tools }: { wf: VideoWorkflow; tools: T
   }, [addUrls, toast]);
   const full = d.clips.length >= MAX_CLIPS;
   const pickClips = () => { if (full) { toast(`Stitch takes up to ${MAX_CLIPS} clips. Remove one to add another.`, 'warn'); return; }
-    pickMedia({ accept: VIDEO_ACCEPT, multiple: true, title: 'Choose clips', limits: `Up to ${MAX_CLIPS} clips · MP4, MOV or WEBM · ${MAX_CLIPS - d.clips.length} more fit`, onFiles: fs => void addFiles(fs) }); };
+    pickMedia({ accept: VIDEO_ACCEPT, multiple: true, max: MAX_CLIPS - d.clips.length, title: 'Choose clips', limits: `Up to ${MAX_CLIPS} clips · MP4, MOV or WEBM · ${MAX_CLIPS - d.clips.length} more fit`, onFiles: fs => void addFiles(fs) }); };
   const setSound = useCallback(async (which: 'music' | 'voice', f: File) => {
     try { const url = await urlOfFile(f); const dur = await probeSound(url); const s: StitchSound = { url, name: f.name || nameOf(url), dur: dur || undefined }; upd(x => ({ ...x, [which]: s })); }
     catch (e) { toast((e as Error).message || 'Couldn’t add that sound.', 'error'); }

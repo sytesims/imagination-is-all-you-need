@@ -33,7 +33,7 @@ export interface GenFlow { id: string; medium: GenMedium; name: string; tagline:
  *  that the board doesn't draw yet, so they stay on their pages. */
 export const GEN_FLOWS: GenFlow[] = [
   { id: 'create', medium: 'image', name: 'Create Image', tagline: 'Text to image, or edit with references', needs: 'Prompt · images optional', icon: 'create', toolId: 'create-image' },
-  ...(['relight', 'upscale', 'remove-bg', 'image-layers', 'expand', 'product-shot', 'character-sheet', 'face-swap', 'person-swap', 'try-on'] as const)
+  ...(['relight', 'upscale', 'remove-bg', 'image-layers', 'expand', 'product-shot', 'character-sheet', 'face-swap', 'person-swap', 'try-on', 'ad-pack'] as const)
     .map(id => ({ id, medium: 'image' as const, name: id, tagline: '', needs: '', icon: 'create', toolId: '', recipeId: id })),
   { id: 'video', medium: 'video', name: 'Create Video', tagline: 'Video with sound, from text or frames', needs: 'Prompt · first / last frame optional', icon: 'video', toolId: 'h3-video' },
   { id: 'transition', medium: 'video', name: 'Transitions', tagline: 'Animate from a start to an end image', needs: '2 images', icon: 'video', toolId: 'app-transition' },
@@ -157,7 +157,7 @@ export function flowSpec(f0: GenFlow, cat: GenCatalog, want: { provider?: string
     const vals = c && ok?.length && !ok.includes(vals0.aspect ?? String(c.default ?? 'auto')) ? { ...vals0, aspect: r.modelInfo?.[provider]?.defaultAspect && ok.includes(r.modelInfo[provider].defaultAspect!) ? r.modelInfo[provider].defaultAspect! : ok.find(x => x !== 'auto') ?? ok[0] } : vals0;
     const ctlVals = Object.fromEntries(r.controls.map(x => [x.field, vals[x.field] ?? (x.optional ? '' : String(x.default ?? ''))]).filter(([, v]) => v !== ''));
     const sent = slots.filter(s => s.required || fill(filled, s.name));
-    const q: Record<string, string> = r.id === 'upscale' ? { scale: String(vals.scale ?? '4') } : { types: mode, ...ctlVals };
+    const q: Record<string, string> = r.id === 'upscale' ? { scale: String(vals.scale ?? '4') } : { types: mode, ...Object.fromEntries(Object.entries(ctlVals).filter(([k]) => r.controls.find(x => x.field === k)?.kind !== 'text')) /* typed words never change the price */ };
     return base(r, slots, providers, provider, mode, vals, {
       quote: { ...q, ...Object.fromEntries(sent.map(s => [s.sendsAs, '1'])), ...(sent.some(s => s.sendsAs === 'image') ? { image: '1' } : {}), ...(sent.length > 1 ? { refs: String(sent.length) } : {}) },
       /* the runner app decides the mode from its files (as Create Image's workflow submit): no types field */ fields: ctlVals });

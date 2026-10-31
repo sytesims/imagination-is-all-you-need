@@ -208,7 +208,7 @@ try {
   const jobsD = await jobCount(); const cardsBefore = cards.size;
   const d1 = await send('POST', `/api/canvas/boards/${board.id}/agent/demo`, { prompt: 'Product shots for a red kettle', starter: 'product' });
   assert.equal(d1.status, 200); assert.equal(d1.body.plan.id, 'product'); assert.match(d1.body.runId, /^demo_/);
-  assert.equal((await send('POST', `/api/canvas/boards/${board.id}/agent/demo`, { prompt: 'again' })).status, 409, 'one demo run per board');
+  assert.equal((await send('POST', `/api/canvas/boards/${board.id}/agent/demo`, { prompt: 'again', starter: 'free' })).status, 409, 'one demo run per board');
   const p1 = await pendingProp(/Four product shots/);
   assert.equal(p1.items.length, 4); assert.equal(cards.size, cardsBefore + 4, 'four cards added through the page');
   assert.equal(await jobCount(), jobsD, 'the demo proposal submitted nothing');
@@ -217,6 +217,20 @@ try {
   assert.ok(f1.some((e) => e.type === 'message' && e.from === 'agent' && Array.isArray(e.meta?.plan) && e.meta.runId === d1.body.runId), 'the plan message');
   assert.equal(f1.filter((e) => e.meta?.tool === 'add_card' && e.meta?.by === 'demo').length, 4, 'four add_card tool calls');
   assert.equal((await get(`/api/canvas/boards/${board.id}/agent/state`)).demo.running, true);
+  /* typing while the proposal waits for Go (2026-10-31): an honest reply, never an approval, a new step or a new plan */
+  const propsBefore = (await get(`/api/canvas/boards/${board.id}/agent/proposals`)).items.length; const feedBefore = (await feedNow()).length;
+  const typed = await send('POST', `/api/canvas/boards/${board.id}/agent/demo`, { prompt: 'How much will this cost me?' });
+  assert.equal(typed.status, 200); assert.equal(typed.body.kept, true, 'the words stay in the box'); assert.equal(typed.body.runId, undefined, 'no new demo');
+  assert.match(typed.body.reply.text, /built-in demo, so I can’t answer questions yet\. Press Go or Cancel on the card above to continue, or Stop the demo\. Connect Claude/);
+  await send('POST', `/api/canvas/boards/${board.id}/agent/demo`, { prompt: 'How much will this cost me?' });
+  await new Promise((r) => setTimeout(r, 600));
+  assert.equal((await get(`/api/canvas/agent/proposals/${p1.id}`)).status, 'pending', 'typing never approves');
+  assert.equal((await get(`/api/canvas/boards/${board.id}/agent/proposals`)).items.length, propsBefore, 'no new proposal');
+  assert.equal(await jobCount(), jobsD, 'typing ran nothing');
+  const fT = (await feedNow()).slice(feedBefore);
+  assert.equal(fT.length, 1, 'one honest reply (sent twice, said once); the question is not echoed and no step is added');
+  assert.ok(!fT.some((e) => e.type === 'decision'), 'no decision');
+  ok('demo agent: typing while a proposal waits gives an honest reply; nothing is approved, priced or run');
   await send('POST', `/api/canvas/boards/${board.id}/agent/proposals/${p1.id}/decision`, { decision: 'cancel' });
   await until(async () => ((await get(`/api/canvas/boards/${board.id}/agent/state`)).demo.running ? null : true));
   assert.ok((await feedNow()).some((e) => e.from === 'agent' && /Nothing ran/.test(e.text) && e.meta?.runId === d1.body.runId));
@@ -230,7 +244,7 @@ try {
   /* the free plan: three versions → Go → one is refused (it stays a draft): the demo says so kindly and moves on at once (it used to wait
      15 minutes on a card that never started, showing "Working on the board…") → it asks you to pick → only your pick goes on */
   const t0 = Date.now();
-  const d2 = await send('POST', `/api/canvas/boards/${board.id}/agent/demo`, { prompt: 'A paper boat in the rain' });
+  const d2 = await send('POST', `/api/canvas/boards/${board.id}/agent/demo`, { prompt: 'A paper boat in the rain', starter: 'free' });
   assert.equal(d2.body.plan.id, 'free');
   const p2 = await pendingProp(/Three versions/); const versionIds: string[] = p2.runCardIds;
   await send('POST', `/api/canvas/boards/${board.id}/agent/proposals/${p2.id}/decision`, { decision: 'go' });
@@ -252,6 +266,10 @@ try {
   const p3 = await pendingProp(/A clip from your pick/);
   assert.equal(p3.items.length, 1); assert.deepEqual(cards.get(p3.items[0].cardId)?.inputs, [chosen], 'only your pick goes on to video');
   assert.equal(await jobCount(), jobsD + 2, 'the clip waits for its own Go');
+  assert.ok((await feedNow()).some((e) => e.from === 'agent' && e.meta?.proposalId === p3.id && /^Step 2 of 2 is a new run: .*Nothing runs until you press Go\. Cancel stops here\./.test(e.text)), 'a later paid step says it is a new run');
+  const typed2 = await send('POST', `/api/canvas/boards/${board.id}/agent/demo`, { prompt: 'wait, can it be longer?' });
+  assert.match(typed2.body.reply.text, /Press Go or Cancel/); await new Promise((r) => setTimeout(r, 400));
+  assert.equal((await get(`/api/canvas/agent/proposals/${p3.id}`)).status, 'pending', 'typed words never approve the next step'); assert.equal(await jobCount(), jobsD + 2);
   assert.ok((await get(`/api/canvas/boards/${board.id}/agent/inbox`)).items.some((e: any) => e.from === 'user' && e.meta?.pickId === pk.id && e.meta?.cardId === chosen), 'the pick lands in the inbox');
   const stopped = await send('POST', `/api/canvas/boards/${board.id}/agent/demo/stop`);
   assert.equal(stopped.body.running, false);
@@ -262,7 +280,18 @@ try {
   ok('demo agent: a refused card is named kindly and never stalls it; it waits for your pick; only your pick goes on; Stop cancels');
 
   /* a Go where nothing starts: the demo ends kindly (no endless "Working on the board…") */
-  const d3 = await send('POST', `/api/canvas/boards/${board.id}/agent/demo`, { prompt: 'Three takes on a graphic poster idea', starter: 'nope' });
+  /* typed words with no demo running: an honest reply with the matching demo suggested, never a plan or a proposal */
+  { const propsN = (await get(`/api/canvas/boards/${board.id}/agent/proposals`)).items.length; const jobsN = await jobCount();
+    const q = await send('POST', `/api/canvas/boards/${board.id}/agent/demo`, { prompt: 'Can you extend my clip by 5 seconds?' });
+    assert.equal(q.status, 200); assert.equal(q.body.runId, undefined); assert.equal(q.body.kept, true);
+    assert.match(q.body.reply.text, /^I’m the built-in demo, so I can’t chat yet\. Connect Claude \(the plug icon\)/); assert.equal(q.body.reply.meta.suggest, 'animate');
+    const q2 = await send('POST', `/api/canvas/boards/${board.id}/agent/demo`, { prompt: 'what is this?', starter: 'nope' });
+    assert.equal(q2.body.runId, undefined); assert.equal(q2.body.reply.meta.suggest, null, 'an unknown starter is typed words too');
+    await new Promise((r) => setTimeout(r, 600));
+    assert.equal((await get(`/api/canvas/boards/${board.id}/agent/state`)).demo.running, false, 'no demo started');
+    assert.equal((await get(`/api/canvas/boards/${board.id}/agent/proposals`)).items.length, propsN, 'no proposal'); assert.equal(await jobCount(), jobsN);
+    ok('demo agent: a typed question never starts a demo or a proposal; it answers honestly and suggests the matching demo'); }
+  const d3 = await send('POST', `/api/canvas/boards/${board.id}/agent/demo`, { prompt: 'Three takes on a graphic poster idea', starter: 'free' });
   const p4 = await pendingProp(/Three versions/);
   for (const id of p4.runCardIds) { const c = cards.get(id); if (c) c.prompt = `${c.prompt} graphic poster`; } /* every card is refused now */
   await send('POST', `/api/canvas/boards/${board.id}/agent/proposals/${p4.id}/decision`, { decision: 'go' });
@@ -364,7 +393,7 @@ try {
   assert.equal(noPage.body.ok, false); assert.equal(noPage.body.results[0].code, 'canvas_not_open'); assert.match(noPage.body.results[0].error, /Open the board in the app first/);
   const noPageProp = await send('POST', `/api/canvas/boards/${board.id}/agent/ops`, { ops: [{ kind: 'propose_run', card_ids: [cardId] }] });
   assert.equal(noPageProp.body.results[0].code, 'canvas_not_open');
-  assert.equal((await send('POST', `/api/canvas/boards/${board.id}/agent/demo`, { prompt: 'x' })).body.code, 'canvas_not_open');
+  assert.equal((await send('POST', `/api/canvas/boards/${board.id}/agent/demo`, { prompt: 'x', starter: 'free' })).body.code, 'canvas_not_open');
   ok('no open canvas page: add and propose return "Open the board in the app first"');
 
   // ---- connected clients (2026-10-28): the MCP server's session list flips presence before any tool call ----

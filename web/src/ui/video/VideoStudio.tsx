@@ -4,8 +4,9 @@ import { EnhanceButton, enhanceToastTitle, type EnhanceResult } from '../next/En
 import { PromptPeek, type PeekForm } from '../next/PromptPeek';
 import { BrandChip } from '../../shared/BrandChip';
 import { RowMore } from '../../shared/RowMore';
-import { SlotPreview, SlotCount, fullText, prepUpload, useSlotReorder, type SlotAction } from '../../shared/SlotPreview';
+import { SlotPreview, fullText, prepUpload, useSlotReorder, type SlotAction } from '../../shared/SlotPreview';
 import { MoreFiles, LeftNote, notAddedText, type TrayFile } from '../../shared/FilesTray';
+import { AddTile } from '../../shared/AddTile';
 import { thumbsShown } from '../../shared/presetBar';
 import { handoffOf } from '../../shared/handoffFiles';
 import { PF_SHORT } from '../../shared/DockGenerate';
@@ -465,8 +466,9 @@ export default function VideoStudio(p: VideoStudioProps) {
             {leadThumbs.slice(0, leadShown.show).map(t => t.el)}
             <MoreFiles hidden={leadShown.more} items={leadThumbs.map(t => t.f)} watch={dock} testId="vs-more" summary={curFit && !curFit.all ? notUsedShort(curFit) : undefined} offText="Not used" action={overN > 0 ? { label: `Remove the ${overN} not used`, onClick: dropExtras } : null}
               onRemove={f => f.group === 'start' ? p.clearImage() : f.group === 'end' ? p.setLastFrame(null) : removeRef(f.group, f.idx)} onMove={(g, a, b) => moveRef(g)(a, b)} />
-            {(p.mode === 'r2v' || RK.some(([k]) => (p.vrefs[k]?.length ?? 0) > 0)) && <span className={`vs-slot-wrap${curFit && !curFit.all ? ' has-skip' : ''}`}><SlotCount used={refUsed} caps={refCaps} testId="vs-slot-count" />
-            {curFit && !curFit.all && <span className="vs-ref-skip" data-testid="vs-ref-skip" {...tip(`${modelName} won’t use ${skippedText(curFit)}. Pick another model, or remove ${curFit.haveN - curFit.usedN === 1 ? 'it' : 'them'}.`)}>{notUsedShort(curFit)}</span>}</span>}
+            {/* the dashed "+" for references (shared/AddTile): the model's real limit in its tooltip, a badge only near it; no counter text on the bar */}
+            {leadThumbs.length > 0 && (refCaps.image ?? 0) > 1 && <AddTile used={refUsed.image ?? 0} max={refCaps.image ?? 0} testId="vs-add-tile" onAdd={() => refIn.current?.click()} />}
+            {curFit && !curFit.all && <span className="vs-slot-wrap has-skip"><span className="vs-ref-skip" data-testid="vs-ref-skip" {...tip(`${modelName} won’t use ${skippedText(curFit)}. Pick another model, or remove ${curFit.haveN - curFit.usedN === 1 ? 'it' : 'them'}.`)}>{notUsedShort(curFit)}</span></span>}
             </>}
           </div>
           <label className="sr-only" htmlFor="app-prompt">Prompt</label>
@@ -481,7 +483,7 @@ export default function VideoStudio(p: VideoStudioProps) {
           <input ref={fileIn} type="file" hidden accept={IMAGE_ACCEPT} data-picker-title={p.mode === 'r2v' ? 'Choose a reference' : 'Choose a start frame'} data-picker-limits="One image · PNG, JPG or WebP · or a frame from one of your videos" data-picker-frames="" data-testid="vs-start-input" onChange={e => { const fs = Array.from(e.target.files ?? []); e.currentTarget.value = ''; if (fs[0]) void takeStart(fs[0]); }} />
           <input ref={refIn} type="file" hidden multiple data-picker-title="Choose references" data-picker-limits={refLimits} data-testid="vs-ref-input" accept={RK.filter(([, kind]) => refKinds.includes(kind)).map(([, kind]) => refAccept(kind, refFmts)).join(',')} onChange={e => { const fs = Array.from(e.target.files ?? []); e.currentTarget.value = ''; const r = repl.current; repl.current = null; if (r && fs[0]) void replaceRef(r.k, r.i, fs[0]); else void addRefs(fs); }} />
           <input ref={lastIn} type="file" hidden accept={IMAGE_ACCEPT} data-picker-title="Choose an end frame" data-picker-limits="One image · PNG, JPG or WebP · or a frame from one of your videos" data-picker-frames="" data-testid="h3-last-frame-input" onChange={e => { const f = e.target.files?.[0]; e.currentTarget.value = ''; if (f) void takeEnd(f); }} />
-          <input ref={kfIn} type="file" hidden multiple accept={IMAGE_ACCEPT} data-picker-title="Choose frames" data-picker-limits={`${kfCaps.min} to ${kfCaps.max} pictures · PNG, JPG or WebP · in clip order, or frames from your videos`} data-picker-frames="" data-testid="vs-kf-input" onChange={e => { const fs = Array.from(e.target.files ?? []); e.currentTarget.value = ''; if (fs.length) addKf(fs); }} />
+          <input ref={kfIn} type="file" hidden multiple accept={IMAGE_ACCEPT} data-picker-max={Math.max(0, kfCaps.max - kfFrames.length)} data-picker-title="Choose frames" data-picker-limits={`${kfCaps.min} to ${kfCaps.max} pictures · PNG, JPG or WebP · in clip order, or frames from your videos`} data-picker-frames="" data-testid="vs-kf-input" onChange={e => { const fs = Array.from(e.target.files ?? []); e.currentTarget.value = ''; if (fs.length) addKf(fs); }} />
           <span className="ic-fixed" data-testid="vs-chips-fixed">
             <VideoWorkflowChip tools={p.tools} dock watch={dock} />{/* bar match (2026-10-23): first chip of the chip row, like Image's "Create ⌃"; the prompt starts at the left */}
               <button ref={aR.add} type="button" className="ic-chip ic-sq" data-testid="vs-add" aria-label="Add a photo" aria-haspopup="menu" aria-expanded={pop.open === 'add'} disabled={!addOpts.length} {...tip(addOpts.length ? 'Add a start frame or references' : kfMode ? `Up to ${kfCaps.max} frames` : RK.some(([k]) => capOf(k) > 0) ? fullText(refCaps, modelName || 'This model') : 'Everything this mode takes is added')} onClick={() => { if (addOpts.length === 1) addOpts[0].go(); else pop.setOpen(pop.open === 'add' ? '' : 'add'); }}><svg className="ic-pi" width="16" height="16" viewBox="0 0 16 16" aria-hidden><path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg></button>

@@ -6,7 +6,8 @@
 import './fixtures/tmp-cleanup.mjs';
 import assert from 'node:assert/strict'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path';
 const D = fs.mkdtempSync(path.join(os.tmpdir(), 'hftok-')); const MODELS = path.join(D, 'models'); fs.mkdirSync(MODELS); const ENVF = path.join(D, 'env.local');
-Object.assign(process.env, { OPENHIGGSFIELD_DATA_DIR: D, OPENHIGGSFIELD_BACKEND: 'mock', OPENHIGGSFIELD_COMFY_MODELS_DIR: MODELS, OPENHIGGSFIELD_ENV_FILE: ENVF, OPENHIGGSFIELD_FILMING_FILE: path.join(D, 'nofilm.json'), OPENHIGGSFIELD_SEED_COMMUNITY: '0', OPENHIGGSFIELD_MOCK_KEYS: '1' });
+Object.assign(process.env, { OPENHIGGSFIELD_DATA_DIR: D, OPENHIGGSFIELD_BACKEND: 'mock', OPENHIGGSFIELD_COMFY_MODELS_DIR: MODELS, OPENHIGGSFIELD_ENV_FILE: ENVF, OPENHIGGSFIELD_FILMING_FILE: path.join(D, 'nofilm.json'), OPENHIGGSFIELD_SEED_COMMUNITY: '0', OPENHIGGSFIELD_MOCK_KEYS: '1',
+  OPENHIGGSFIELD_DISK_FREE_GB: '500' /* the download job below needs ~13 GB free: pin it, never the runner's real disk (CI had 8 GB) */ });
 for (const k of ['OPENHIGGSFIELD_HF_TOKEN', 'HF_TOKEN', 'CIVITAI_TOKEN', 'OPENHIGGSFIELD_HW_MOCK']) delete process.env[k];
 const S = await import('../src/routing/settings.js'); const DL = await import('../src/hardware/downloads.js');
 const ok = (m: string) => console.log('ok ' + m);

@@ -18,7 +18,7 @@
  *  POST /api/canvas/agent/sessions { process_id, sessions[] }  the MCP server's live client list (on every change + a heartbeat; mcp/src/sessions.ts)
  *  POST /api/canvas/agent/open     { board_id }                show a board on every open canvas page (canvas_create_board / canvas_switch_board)
  *  POST /api/canvas/boards/:id/agent/proposals { card_ids, note? }  the user's own Re-roll from the dock: priced like any proposal
- *  POST /api/canvas/boards/:id/agent/demo     { prompt, starter? }  the built-in demo agent plays a scripted plan (canvasDemo.ts)
+ *  POST /api/canvas/boards/:id/agent/demo     { prompt, starter? }  a chip (starter id) plays a scripted plan (canvasDemo.ts); typed words get an honest reply, never a run
  *  POST /api/canvas/boards/:id/agent/demo/stop                      stops it (nothing it added is removed)
  *  GET  /api/canvas/agent/starters                                  the dock's starter chips
  *  POST /api/canvas/boards/:id/agent/pick     { pick_id, card_id }  the user's choice for an ask_pick ("Pick the one you like")
@@ -38,7 +38,7 @@ import { jobs } from './jobs.js';
 import { budgetOfRequest, budgetView, type AgentBudget } from './agentBudget.js';
 import { getTool } from './tools/registry.js';
 import { imageWorkflowsPayload } from './shared/workflows.js';
-import { DEMO_STARTERS, isChip, demoPlan, demoCardAt, demoPlanSize, demoFrameOf, demoNoteAt, demoGridOffset, detectStarter, type DemoPlan, type DemoCard } from './canvasDemo.js';
+import { DEMO_STARTERS, isChip, demoPlan, demoCardAt, demoPlanSize, demoFrameOf, demoNoteAt, demoGridOffset, detectStarter, isStarterId, demoReply, type DemoPlan, type DemoCard } from './canvasDemo.js';
 import { SHORT_STEPS, shortFilmPlan, shortLayout, beatOfNote, beatNote, keyFramePrompt, clipPrompt, narrationOf, musicPrompt, SHORT_MUSIC, shortFilmVideoOn, stitchBody, type ShortPlan, type ShortBeat } from './canvasDemo.js';
 import { tagDemoCard, demoProviderOf } from './shared/demoMedia.js';
 import { config } from './config.js';
@@ -393,7 +393,7 @@ const BASE_WORKFLOWS: { id: string; medium: string; name: string; needs: string;
   { id: 'image-to-3d', medium: '3d', name: 'Image to 3D', needs: '1 image', tagline: 'One image into a textured 3D model', toolId: 'three-d' },
 ];
 /** The image recipe flows the canvas offers (the same list as web/src/shared/genFlows.ts; masks/angle sheets stay on their pages). */
-const IMAGE_RECIPE_IDS = new Set(['relight', 'upscale', 'remove-bg', 'image-layers', 'expand', 'product-shot', 'character-sheet', 'face-swap', 'person-swap', 'try-on']);
+const IMAGE_RECIPE_IDS = new Set(['relight', 'upscale', 'remove-bg', 'image-layers', 'expand', 'product-shot', 'character-sheet', 'face-swap', 'person-swap', 'try-on', 'ad-pack']);
 export function canvasWorkflows() {
   const out = BASE_WORKFLOWS.filter((f) => !!getTool(f.toolId));
   try {
@@ -676,7 +676,10 @@ async function runDemo(run: DemoRun, plan: DemoPlan) {
       if (!pr.ok) { say(`I couldn’t price these cards: ${pr.error.replace(/\.$/, '')}. They stay on the board as drafts.`, { error: true }); return; }
       const p: Proposal = pr.result.proposal; runProposals.add(p.id);
       if (!p.runCardIds.length) { say(`None of these can run here yet: ${String(p.reason ?? 'no model for them on this server').replace(/\.$/, '')}. They stay on the board as drafts.`, { error: true }); return; }
-      say(`That’s ${plural(p.runCardIds.length, 'run')} (${priceWords(p)}).${skipNote(p)} Press Go when you’re ready, or Cancel.`, { proposalId: p.id, waiting: true });
+      /* every paid step is its own decision: a later step says plainly it is a new run, and nothing goes on until its own Go */
+      const k = plan.phases.indexOf(phase); const n = plan.phases.length;
+      say(k > 0 ? `Step ${k + 1} of ${n} is a new run: ${plural(p.runCardIds.length, 'run')} (${priceWords(p)}).${skipNote(p)} Nothing runs until you press Go. Cancel stops here.`
+        : `That’s ${plural(p.runCardIds.length, 'run')} (${priceWords(p)}).${skipNote(p)} Press Go when you’re ready, or Cancel.`, { proposalId: p.id, waiting: true });
       /* the decision route changes this same object (proposalsById holds it) */
       while (p.status === 'pending' && alive()) await wait(250);
       if (!alive()) return; /* Stop says its own one line */
@@ -1001,6 +1004,17 @@ export function registerCanvasAgent(app: FastifyInstance) {
     const b = getBoard(req.params.id); if (!b) return notFound(reply);
     const parsed = demoBody.safeParse(req.body); if (!parsed.success) return bad(reply, zodText(parsed.error), 'invalid_demo');
     if (!hasCanvas(b.id)) return bad(reply, 'Open the board in the app first.', 'canvas_not_open', 409);
+    /* typed words (no chip): the demo can't chat, so it says so. It never builds, prices, approves or moves a running demo on (2026-10-31:
+       a typed question used to start a demo and a priced proposal). The words stay in the box (kept), so they can go to Claude once connected. */
+    if (!isStarterId(parsed.data.starter)) {
+      const s = stateOf(b.id); const running = demos.has(b.id);
+      const waiting = !running ? null : [...s.proposals.values()].some((p) => p.status === 'pending') ? 'go' : s.pick?.status === 'waiting' ? 'pick' : null;
+      const r = demoReply(parsed.data.prompt, { running, waiting });
+      const last = s.feed.at(-1);
+      const said = last?.type === 'message' && last.from === 'agent' && last.meta?.demoReply && last.text === r.text && (last.meta?.suggest ?? null) === r.suggest
+        ? last : addMessage(b.id, 'agent', r.text, { meta: { by: 'demo', demoReply: true, suggest: r.suggest } });
+      return { ok: true, kept: true, reply: said };
+    }
     if (demos.has(b.id)) return bad(reply, 'The agent is already working on this board. Stop it first.', 'demo_running', 409);
     const message = addMessage(b.id, 'user', parsed.data.prompt);
     if (detectStarter(parsed.data.prompt, parsed.data.starter ?? null) === 'short') { /* the flagship: Short film from idea */
