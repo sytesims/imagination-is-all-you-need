@@ -131,3 +131,8 @@ html body .cp .gen-btn.cp-go{width:100%!important;height:var(--cp-h)!important;m
 .cp-empty b{color:var(--text-1);font-size:14px}.cp-empty p{margin:0;max-width:240px}
 .cp-empty-i{display:grid;place-items:center;width:48px;height:48px;border-radius:14px;background:var(--state-fill);color:var(--text-3);margin-bottom:6px}
 @media (prefers-reduced-motion:reduce){.cp,.cp-ver::after{transition:none}}
+/* the card's own input slots in "Set it up" (CardInputs, node.css): ✕ always shown here, a little more room */
+.cp-ins{gap:8px}
+.cp-ins .nf-in-x{opacity:1}
+.cp-row-still{cursor:default}
+.cp-row-still:hover{background:none;color:var(--text-3)}
