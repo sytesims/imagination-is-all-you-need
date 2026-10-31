@@ -63,7 +63,7 @@ assert.equal(videoRedirect('/tools/voice', '?mode=lipsync&fromJob=j3'), '/video?
 assert.equal(videoRedirect('/tools/voice', '?mode=voiceover'), null, 'the other voice modes stay on the Audio page'); assert.equal(videoRedirect('/tools/voice', ''), null);
 assert.equal(videoRedirect('/tools/edit-video/reshoot', ''), '/video?workflow=reshoot'); assert.equal(videoRedirect('/tools/edit-video/h3-extend', '?a=1'), '/video?workflow=extend&a=1');
 assert.equal(videoRedirect('/tools/edit-video/whatever', ''), '/video?workflow=edit-video');
-assert.equal(videoRedirect('/tools/create-image', '?tab=motion'), null, 'other pages untouched');
+assert.equal(videoRedirect('/image', '?tab=motion'), null, 'other pages untouched');
 ok('?tab=motion, /tools/voice?mode=lipsync and /tools/edit-video/<x> redirect; everything else is left alone');
 
 // the Video page's address (2026-10-31): /video; the old /tools/h3-video keeps working with every query param, the tool id stays h3-video

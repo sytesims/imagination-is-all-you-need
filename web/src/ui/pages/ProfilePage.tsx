@@ -3,6 +3,7 @@
  * name and local @name, numbers from GET /api/me/stats, and tabs: Your work (finished results, newest first, loaded 30 at a time as you
  * scroll), Liked (your hearts), Looks (GET /api/user-looks) and Projects. Edit profile opens the picture picker. Everything stays on this machine.
  */
+import { IMAGE_PAGE, VIDEO_PAGE } from '../../../../server/src/shared/pages';
 import { IMAGE_ACCEPT } from '../../../../server/src/shared/mediaAccept';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -97,7 +98,7 @@ export default function ProfilePage({ tools = [] }: { tools?: ToolInfo[] }) {
     </div>
     <div role="tabpanel" id={`pf-panel-${tab}`} aria-labelledby={`pf-tab-${tab}`} className="pf2-panel" data-testid="pf-panel" tabIndex={0}>
       {tab === 0 && <JobGrid pages={work} toolName={toolName} empty={<Empty mood="happy" title="Your first creation lands here" line="Make a picture, a clip or a song. Every finished result shows up on this page, newest first."
-        acts={<><Link to="/image" className="btn btn-primary">Make an image</Link><Link to="/video" className="btn">Make a video</Link></>} />} />}
+        acts={<><Link to={IMAGE_PAGE} className="btn btn-primary">Make an image</Link><Link to={VIDEO_PAGE} className="btn">Make a video</Link></>} />} />}
       {tab === 1 && <JobGrid pages={liked} toolName={toolName} empty={<Empty mood="smile" title="Heart the ones you love" line="Tap the heart on any result and it’s kept here, one click away."
         acts={<Link to="/assets" className="btn btn-primary">Open Assets</Link>} />} />}
       {tab === 2 && (looks == null ? <Loading /> : looks.length ? <div className="pf2-grid" data-testid="pf-looks">{looks.map(l => <Link key={l.id} to={`/workflows/${encodeURIComponent(l.workflow)}/looks/${encodeURIComponent(l.id)}`} className="pf2-tile pf2-look" aria-label={`${l.name}${l.modelName ? `, made on ${l.modelName}` : ''}`}>

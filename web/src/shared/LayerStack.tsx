@@ -36,8 +36,8 @@ export function layersPosterOf(job: { layersPosterUrl?: string | null } | null |
 export const layerName = (l: Layer, k: number) => l.label?.trim() || (k === 0 ? 'Background' : `Layer ${k}`);
 const fileStem = (jobId: string, l: Layer, k: number) => `${jobId}-${String(k + 1).padStart(2, '0')}-${layerName(l, k).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48)}`;
 
-export function LayerCount({ n, testId }: { n: number; testId?: string }) {
-  return <span className="ly-count" data-testid={testId} {...tip('Each layer is a transparent PNG. Open it to show, hide or download them.')}><LayerSheetsIcon size={13} />{layerCountText(n)}</span>;
+export function LayerCount({ n, testId, hint = 'Each layer is a transparent PNG. Open it to show, hide or download them.' }: { n: number; testId?: string; hint?: string }) {
+  return <span className="ly-count" data-testid={testId} {...tip(hint)}><LayerSheetsIcon size={13} />{layerCountText(n)}</span>;
 }
 
 /** The viewer's layer state for one job: hidden layers (eye buttons) and the selected layer (its box outlined on the stage). Resets on another job. */

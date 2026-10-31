@@ -19,7 +19,8 @@ import { MENU_FEATURES, IMAGE_FEATURES } from '../shared/imageFeatures';
 import { workflowOpenHref } from '../shared/workflowLinks';
 import { availableVideoWorkflows, availableFlowShortcuts, videoWorkflowHref, isPanelWorkflow, VIDEO_WORKFLOWS, VIDEO_PAGE } from './video/VideoWorkflows';
 import { availableAudioWorkflows, AWIcon } from './audio/AudioWorkflows';
-import { AUDIO_PAGE, AUDIO_DEFAULT_WORKFLOW, audioRoute } from '../../../server/src/shared/audioWorkflows';
+import { AUDIO_DEFAULT_WORKFLOW, audioRoute } from '../../../server/src/shared/audioWorkflows';
+import { IMAGE_PAGE, AUDIO_PAGE } from '../../../server/src/shared/pages';
 import { pickerHref } from '../shared/WorkflowPicker';
 import { useProfile, nameOf, UserAvatar, type ProfileData } from '../shared/profile';
 import { REPO_URL } from '../shared/brand';
@@ -34,8 +35,8 @@ import { createHoverLock, isMenuActivation, HOVER_MENU_ZONE, type HoverLock } fr
 export const threeDWorkflowRows = () => THREE_D_WORKFLOWS.map(w => ({ key: w.id, to: w.id === 'image-to-3d' ? THREE_D_PAGE : threeDRoute(w.id), name: w.name, line: w.status === 'soon' ? `Coming soon · ${w.tagline}` : w.tagline, icon: w.id, soon: w.status === 'soon' }));
 
 /** Image menu rows (Image mega panel, mobile drawer): a plain list like the Video menu, one row per image feature in the approved order
- *  (shared/imageFeatures MENU_FEATURES). Create Image opens /tools/create-image; every other row opens Create Image with its workflow picked
- *  (workflowLinks: /tools/create-image?workflow=<id>; Camera & Lens runs on create-image itself, so its route carries the workflow).
+ *  (shared/imageFeatures MENU_FEATURES). Create Image opens /image; every other row opens Create Image with its workflow picked
+ *  (workflowLinks: /image?workflow=<id>; Camera & Lens runs on create-image itself, so its route carries the workflow).
  *  Edit Image is not a row here (editing lives inside Create Image); the header panel passes every feature (IMAGE_FEATURES) and picks its 8 from
  *  headerMenus MENU_FEATURE_ORDER, where Edit Image opens Create Image in edit mode. Tools the server doesn't have are skipped. */
 export const imageFeatureRows = (tools: ToolInfo[], list: readonly (typeof MENU_FEATURES)[number][] = MENU_FEATURES) => list.flatMap(f => { const t = tools.find(x => x.id === f.toolId);
@@ -49,7 +50,7 @@ export const videoWorkflowRows = (all: ToolInfo[], vid: ToolInfo[]) => { const c
     ...availableFlowShortcuts(all).map(w => { const t = all.find(x => x.id === w.toolId)!; return { key: w.id, to: w.href, name: w.name, line: w.tagline, icon: w.toolId, ui: t.ui, t: w.badge === 'New' ? { ...t, badge: 'new' } as ToolInfo : t, opensIn: w.opensIn }; }),
     ...vid.filter(t => !covered.has(t.id)).map(t => ({ key: t.id, to: t.route, name: t.name, line: toolLine(t), icon: t.id, ui: t.ui, t }))]; };
 /** Audio menu rows (One Audio page, 2026-10-23): one row per audio workflow (server shared/audioWorkflows.ts), each opening the Audio page with it
- *  picked (audioRoute: /tools/audio?workflow=<id>), the way the Video menu lists its workflows. Workflows whose tool the server lacks are skipped. */
+ *  picked (audioRoute: /audio?workflow=<id>), the way the Video menu lists its workflows. Workflows whose tool the server lacks are skipped. */
 export const audioWorkflowRows = (all: ToolInfo[]) => availableAudioWorkflows(all).map(w => ({ w, t: all.find(x => x.id === w.tool) }));
 
 /** ONE builder for the Features rows of all four header menus (mega panel and phone drawer): Image features, Video, Audio and 3D workflows,
@@ -68,7 +69,7 @@ export function menuFeatures(media: Medium, all: ToolInfo[], mediaTools: ToolInf
 /** Where a header menu's "See all" goes: the page's workflow picker (?picker=1, shared/WorkflowPicker) on Video, Audio and 3D; Image lists its
  *  features on the Workflows page. */
 export const menuSeeAllHref = (media: Medium): string => media === 'image' ? '/workflows' : pickerHref(media === 'video' ? VIDEO_PAGE : media === 'audio' ? AUDIO_PAGE : THREE_D_PAGE);
-/** A menu route with a query (/tools/create-image?workflow=relight) is current when the path and its query params match; Create Image itself only with no workflow picked and not in edit mode. */
+/** A menu route with a query (/image?workflow=relight) is current when the path and its query params match; Create Image itself only with no workflow picked and not in edit mode. */
 const routeOn = (route: string, path: string): boolean => { const [p, q] = route.split('?'); if (p !== path) return false; const cur = new URLSearchParams(location.search);
   return q ? [...new URLSearchParams(q)].every(([k, v]) => cur.get(k) === v) : !cur.get('workflow') && cur.get('mode') !== 'edit' /* Edit Image row */; };
 
@@ -295,8 +296,7 @@ export function TopNav({ tools, path }: { tools: ToolInfo[]; path: string }) {
   const under = (r: string) => path === r || path.startsWith(r + '/'); /* /tools/camera-lens is not under /tools/camera */
   /* H-1: the medium of the hub page or tool page you're on lights its nav item (same rule as the phone tab bar) */
   const curMedia = ['/workflows', '/community', '/plugins', '/mcp', '/api-docs'].some(on) ? null : routeMedia(tools, path);
-  /* E3: like the reference, a click goes straight into the main tool (hover still opens the panel; its "See all" row keeps the hub) */
-  const toolRoute = (id: string, hub: string) => byId(id)?.route ?? hub;
+  /* E3: like the reference, a click goes straight into the main tool's page (/image, /video, /audio, /3d; hover still opens the panel; its "See all" row keeps the hub) */
   const imgTools = ofMedia('image'), vidTools = ofMedia('video'), audTools = ofMedia('audio'), d3Tools = ofMedia('3d');
   const bp = (id: string) => badgeOf(byId(id)) ?? undefined; const qs = useSearch(); const hm = useHeaderMenus(path, qs); const { ref: hdr, fold } = useHeaderFold();
   return (
@@ -304,10 +304,10 @@ export function TopNav({ tools, path }: { tools: ToolInfo[]; path: string }) {
       <Link to="/" className="wordmark hn-logo" aria-label="Imagination Is All You Need"><Wordmark /></Link>
       <nav className="topnav-links" aria-label="Main">
         <Link to="/" className={`top-link ${path === '/' ? 'on' : ''}`}>Explore</Link>
-        <MediaTrigger id="image" label="Image" to={toolRoute('create-image', '/image')} icon={ImageIcon} hm={hm} on={curMedia === 'image'} />
-        <MediaTrigger id="video" label="Video" to={toolRoute('h3-video', '/video')} icon={VideoIcon} hm={hm} on={curMedia === 'video'} />
-        <MediaTrigger id="audio" label="Audio" to={toolRoute('audio', '/audio')} icon={AudioIcon} hm={hm} on={curMedia === 'audio'} />
-        {d3Tools.length > 0 && <MediaTrigger id="3d" label="3D" to={toolRoute('three-d', THREE_D_PAGE)} icon={CubeIcon} hm={hm} on={curMedia === '3d'} /> /* 3D (2026-10-23): after Audio */}
+        <MediaTrigger id="image" label="Image" to={IMAGE_PAGE} icon={ImageIcon} hm={hm} on={curMedia === 'image'} />
+        <MediaTrigger id="video" label="Video" to={VIDEO_PAGE} icon={VideoIcon} hm={hm} on={curMedia === 'video'} />
+        <MediaTrigger id="audio" label="Audio" to={AUDIO_PAGE} icon={AudioIcon} hm={hm} on={curMedia === 'audio'} />
+        {d3Tools.length > 0 && <MediaTrigger id="3d" label="3D" to={THREE_D_PAGE} icon={CubeIcon} hm={hm} on={curMedia === '3d'} /> /* 3D (2026-10-23): after Audio */}
         {L(CANVAS_NAV.to, CANVAS_NAV.label, undefined, 'hn-canvas')}{/* Canvas (2026-10-24): after 3D, a plain tab */}
         {L(FILM_NAV.to, FILM_NAV.label, undefined, 'hn-film')}{/* Film (2026-10-27): after Canvas, a plain tab */}
         {(hm.open === 'image' || hm.open === 'video' || hm.open === 'audio' || hm.open === '3d') && (() => { const ts = hm.open === 'image' ? imgTools : hm.open === 'video' ? vidTools : hm.open === '3d' ? d3Tools : audTools; return ts.length ? <MegaPanel media={hm.open} tools={ts} all={tools} groups={groups} path={path} hm={hm} /> : null; })()}
@@ -372,7 +372,7 @@ export function MobileTop({ title, tools = [], path = '' }: { title: string; too
       <div ref={panel} id="m-drawer" className="m-drawer" role="dialog" aria-modal="true" aria-label="Menu" data-testid="m-drawer">
         <div className="md-scroll">
           <div className="md-head"><Link to="/" className="wordmark md-wm" aria-label="Imagination Is All You Need"><Wordmark /></Link><button type="button" className="md-x" aria-label="Close menu" onClick={close}>✕</button></div>
-          <Link to={create?.route ?? '/video'} className="md-create" data-testid="md-create"><span className="md-plus" aria-hidden>+</span><span className="md-lbl">Make something<small>Video</small></span><span aria-hidden>›</span></Link>
+          <Link to={create?.route ?? VIDEO_PAGE} className="md-create" data-testid="md-create"><span className="md-plus" aria-hidden>+</span><span className="md-lbl">Make something<small>Video</small></span><span aria-hidden>›</span></Link>
           <nav aria-label="Main">
             <div className="md-flat">{A('/', 'Explore', <ExploreIcon size={18} />)}{A('/assets', 'Assets', <AssetsIcon size={18} />)}              {A('/mcp', 'MCP', glyph('M4 12h4l2-5 4 10 2-5h4'), <span className="md-pill">Connect</span>)}{A(REPO_URL, 'GitHub', glyph('M4 5h16v6H4zM4 13h16v6H4zM8 8h.01M8 16h.01'))}</div>
             <div className="md-accs">{acc('image', 'Image', <ImageIcon size={18} />, toolRows('image', 'All image tools'))}{acc('video', 'Video', <VideoIcon size={18} />, toolRows('video', 'All video tools'))}{acc('audio', 'Audio', <AudioIcon size={18} />, toolRows('audio', 'All audio tools'))}
@@ -396,7 +396,7 @@ export function MobileTabs({ tools, path }: { tools: ToolInfo[]; path: string })
   const T = (to: string, label: string, I: typeof ImageIcon, on: boolean) => <Link to={to} className={`m-tab ${on ? 'on' : ''}`} aria-current={on ? 'page' : undefined}><I size={22} /><span>{label}</span></Link>;
   return (
     <nav className="m-tabs" aria-label="Main">
-      {T('/', 'Explore', ExploreIcon, path === '/')}{T('/image', 'Image', ImageIcon, m === 'image')}{T('/video', 'Video', VideoIcon, m === 'video')}{T('/audio', 'Audio', AudioIcon, m === 'audio')}
+      {T('/', 'Explore', ExploreIcon, path === '/')}{T(IMAGE_PAGE, 'Image', ImageIcon, m === 'image')}{T(VIDEO_PAGE, 'Video', VideoIcon, m === 'video')}{T(AUDIO_PAGE, 'Audio', AudioIcon, m === 'audio')}
       {T('/assets', 'Assets', AssetsIcon, path === '/assets' || path === '/history' || path.startsWith('/jobs/'))}
     </nav>
   );

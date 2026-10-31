@@ -9,6 +9,7 @@
  */
 import { HOSTED_BY_ID, USD_PER_CREDIT } from '../shared/hostedPrices.js';
 import './routePrices.js'; // registers the fal / Replicate / direct / partner rows into HOSTED_BY_ID
+import { fmtUsd } from '../shared/runCost.js';
 
 export const PER_SECOND_NOTE = 'billed per second of video';
 export interface PerSecond { usd: number; credits: number; /** the unrounded rate, only when usd was rounded */ exactUsd?: number }
@@ -38,8 +39,18 @@ export function videoEta(r: Record<string, any> | null | undefined): VideoEta | 
   return { lowSec: Math.max(1, Math.round(lo)), highSec: Math.max(1, Math.round(hi)), basis };
 }
 
-/** The three quote fields for an h3-video quote. r0 = the quote so far (priceRef, etaRange / fit.etaRange); input = the priced job input. */
-export function videoQuoteFields(r0: Record<string, any>, input: Record<string, any>): { perSecond: PerSecond | null; perSecondNote: string | null; eta: VideoEta | null } {
+/** A bill that is a range (hosted row videoInput.rangeFloor, Kling 4.0 with reference videos): the quote is its top, so it says '≈ up to' and
+ *  names the range. input = the priced job input (output seconds in duration, the billed reference seconds in refVideoSeconds). */
+export function rangeOf(priceRef: string | null | undefined, input: Record<string, any>): { upTo: true; upToNote: string; minUsd: number; maxUsd: number } | null {
+  const h = priceRef ? HOSTED_BY_ID[priceRef] : undefined; const vi = h?.videoInput; const rv = Number(input.refVideoSeconds) || 0; const out = Number(input.duration) || 0;
+  if (!vi?.rangeFloor || !(rv > 0) || !(out > 0)) return null; const rate = vi.usdByQuality[String(input.resolution ?? '')] ?? vi.usd;
+  const minUsd = Math.round(rate * vi.rangeFloor * out * 1e6) / 1e6; const maxUsd = Math.round(rate * (out + Math.round(rv * 100) / 100) * 1e6) / 1e6;
+  if (fmtUsd(minUsd) === fmtUsd(Math.ceil(maxUsd * 100 - 1e-6) / 100)) return null; // the ends meet (Kling at 30 s: 2 × 30 = 30 + 30): one figure, no 'up to'
+  return { upTo: true, upToNote: `with reference clips the bill is ${fmtUsd(minUsd)}–${fmtUsd(Math.ceil(maxUsd * 100 - 1e-6) / 100) /* the top as quoted (whole cents up) */}, set by the provider after the run; quoted at the most`, minUsd, maxUsd };
+}
+/** The quote fields for an h3-video quote. r0 = the quote so far (priceRef, etaRange / fit.etaRange); input = the priced job input. */
+export function videoQuoteFields(r0: Record<string, any>, input: Record<string, any>): { perSecond: PerSecond | null; perSecondNote: string | null; eta: VideoEta | null; upTo?: true; upToNote?: string; priceRangeUsd?: { min: number; max: number } } {
   const perSecond = perSecondOf(r0.priceRef ?? null, input.resolution, Number(input.refVideoSeconds) || 0, !!input.audio);
-  return { perSecond, perSecondNote: perSecond ? PER_SECOND_NOTE : null, eta: videoEta(r0) };
+  const rg = rangeOf(r0.priceRef ?? null, input);
+  return { perSecond, perSecondNote: perSecond ? PER_SECOND_NOTE : null, eta: videoEta(r0), ...(rg ? { upTo: rg.upTo, upToNote: rg.upToNote, priceRangeUsd: { min: rg.minUsd, max: rg.maxUsd } } : {}) };
 }

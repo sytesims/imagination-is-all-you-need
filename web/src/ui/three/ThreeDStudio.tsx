@@ -1,5 +1,5 @@
 /**
- * The 3D page (/tools/3d, 2026-10-23): one page like Image, Video and Audio. The feed is above (3D results as stills; one live viewer at a
+ * The 3D page (/3d, 2026-10-23): one page like Image, Video and Audio. The feed is above (3D results as stills; one live viewer at a
  * time), the bar below is the same two-row dock (Image's ic-dock classes, Video's layout): the workflow chip first in row 2, the model chip
  * with the shared ModelMenu (Default badge), the model's own setting chips (WorkflowControls: Detail, Texture), Format, the Settings fold
  * (seed), Run on, the prompt peek, and Generate with price · time or the first problem (PF_SHORT) and the "Before you generate" list.
@@ -14,6 +14,7 @@
  *    Stage (note; Camera, Colour; the player's Fly it / Play the actor; Next), Mockup (the player's takes, timeline and Edit take; Record mockup),
  *    Render (the newest mockup; model, price; Render video). Preview style, Frame, Record and the seed live in the ⋯ menu on the stage.
  */
+import { IMAGE_PAGE } from '../../../../server/src/shared/pages';
 import { IMAGE_ACCEPT, fileFits, wrongTypeText } from '../../../../server/src/shared/mediaAccept';
 import { RowMore } from '../../shared/RowMore';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -92,7 +93,7 @@ const useThreeD = () => { const [p, setP] = useState<Payload | null>(null);
 const TOOL = 'three-d';
 /** What a coming-soon workflow points to today (its bar's line, the button's workflow, an optional second way). */
 const SOON_TODAY: Record<string, { line: string; go: string; alt?: { label: string; href: string } }> = {
-  'text-to-3d': { line: 'Today: make a picture in Image, then turn it into a model with Image to 3D.', go: 'image-to-3d', alt: { label: 'Make a picture in Image', href: '/tools/create-image' } },
+  'text-to-3d': { line: 'Today: make a picture in Image, then turn it into a model with Image to 3D.', go: 'image-to-3d', alt: { label: 'Make a picture in Image', href: IMAGE_PAGE } },
   'multiview-to-3d': { line: 'Today, Image to 3D makes a model from one picture: your front view works best.', go: 'image-to-3d' },
   retexture: { line: 'Today, make a new model with Image to 3D from a picture that has the look you want.', go: 'image-to-3d' },
   rig: { line: 'To move a character today, Direct a Shot has a ready-made actor you can walk through a scene.', go: 'plan-a-shot' },

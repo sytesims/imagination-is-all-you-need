@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { ToolInfo } from '../../api';
+import { IMAGE_PAGE, VIDEO_PAGE, AUDIO_PAGE, THREE_D_PAGE } from '../../../../server/src/shared/pages';
 import { Link } from '../../platform/router';
 import { prefetchRoute } from '../../platform/routeChunks';
 import { goClick } from '../../shared/goToWorkflow';
@@ -32,8 +33,8 @@ import './workflowFinder.css';
  * licence, then "Open in <tab>" (goToWorkflow; the tab's code is fetched as the sheet opens, so the click doesn't wait). A workflow with no
  * example of ours shows our own drawing of the flow, labelled as such. ?q= prefills the search; ?cat= picks a category; both follow the page.
  */
-const TAB: [RegExp, string][] = [[/^\/tools\/create-image/, 'Image'], [/^\/video(?=[/?]|$)/, 'Video'], [/^\/tools\/audio/, 'Audio'], [/^\/tools\/3d/, '3D']];
-export const tabOf = (href: string) => TAB.find(([r]) => r.test(href))?.[1] ?? 'the app';
+const TAB: [string, string][] = [[IMAGE_PAGE, 'Image'], [VIDEO_PAGE, 'Video'], [AUDIO_PAGE, 'Audio'], [THREE_D_PAGE, '3D']];
+export const tabOf = (href: string) => TAB.find(([p]) => href === p || /^[/?#]/.test(href.slice(p.length)) && href.startsWith(p))?.[1] ?? 'the app';
 const catLabel = (c: WfCat) => WF_CATS.find((x) => x.id === c)?.label ?? c;
 const mins = (ms: number) => ms < 60_000 ? `${Math.round(ms / 1000)} s` : `${Math.round(ms / 60_000)} min`;
 export { resolveRow, runsPrice, type Row };

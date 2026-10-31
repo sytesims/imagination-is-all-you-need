@@ -16,14 +16,14 @@ const recipes: any[] = imageWorkflowsPayload(getTool as any).workflows;
 const create: any = getTool('create-image'); assert.ok(create, 'create-image tool');
 
 // ---- the link
-assert.equal(exampleHref({ id: 'abc', workflow: 'create-image' }), '/tools/create-image?showcase=abc');
-assert.equal(exampleHref({ id: 'abc', workflow: 'character-sheet' }), '/tools/create-image?workflow=character-sheet&showcase=abc');
+assert.equal(exampleHref({ id: 'abc', workflow: 'create-image' }), '/image?showcase=abc');
+assert.equal(exampleHref({ id: 'abc', workflow: 'character-sheet' }), '/image?workflow=character-sheet&showcase=abc');
 ok('exampleHref: plain Create has no workflow=, a workflow keeps it (as presetHref)');
 
 // ---- every shipped example → a valid bar state
 const seen = new Set<string>();
 for (const s of SHOWCASE) {
-  const u = new URL(exampleHref(s), 'http://x'); assert.equal(u.pathname, '/tools/create-image'); assert.equal(u.searchParams.get('showcase'), s.id, `${s.id}: showcase=`);
+  const u = new URL(exampleHref(s), 'http://x'); assert.equal(u.pathname, '/image'); assert.equal(u.searchParams.get('showcase'), s.id, `${s.id}: showcase=`);
   if (s.workflow === 'create-image') {
     assert.equal(u.searchParams.get('workflow'), null, `${s.id}: no workflow=`);
     assert.ok(featureById('create-image')!.providers.includes(s.provider) && capsFor(s.provider), `${s.id}: ${s.provider} is a Create Image model with caps`);

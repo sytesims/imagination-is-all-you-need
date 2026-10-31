@@ -1,7 +1,7 @@
 /**
  * Audio workflow chip and picker, using the same controls and keys as
  * Create Image's (ui/next/WorkflowBar.tsx) and Video's (ui/video/VideoWorkflows.tsx). The list is shared/audioWorkflows.ts; a picked workflow is
- * ?workflow=<id> on /tools/audio and runs on its own tool and mode (audio / voice / soundtrack: inputs, quote and submit unchanged).
+ * ?workflow=<id> on /audio and runs on its own tool and mode (audio / voice / soundtrack: inputs, quote and submit unchanged).
  * GET /api/audio-workflows adds the live part (models per mode, each model's name and workflow credit, the Default for this setup).
  */
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
