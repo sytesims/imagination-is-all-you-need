@@ -125,6 +125,8 @@ export const fillPattern = (task: PatternTask, model: string | null | undefined,
   const p = patternFor(task, model); return p ? fillTemplate(p.template, slots) : '';
 };
 /** An exact-LoRA pattern's trained sentence for one of our ids (null = none listed). */
-/** A caption's subject: the user's words with a capital, or the fallback. */
-export const captionSubject = (words: string | null | undefined, fallback = 'The character') => { const w = String(words ?? '').trim().replace(/[.\s]+$/, ''); return w ? `${w[0].toUpperCase()}${w.slice(1)}` : fallback; };
+/** A caption's subject: the user's words with a capital (a reference word such as "image 1" stays as typed, so the ref grammar still finds it),
+ *  or the fallback. */
+export const captionSubject = (words: string | null | undefined, fallback = 'The character') => { const w = String(words ?? '').trim().replace(/[.\s]+$/, '');
+  return !w ? fallback : /^(@|(image|img|picture|video|audio) ?\d)/i.test(w) ? w : `${w[0].toUpperCase()}${w.slice(1)}`; };
 export const loraSentence = (task: PatternTask, model: string, id: string): string | null => patternFor(task, model)?.exact?.[id] ?? null;
