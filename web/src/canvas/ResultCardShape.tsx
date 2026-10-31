@@ -19,6 +19,7 @@ import { tip } from '../shared/Tooltip';
 import { RESULT_TYPE } from './nodeTypes';
 
 const openJob = (jobId: string) => { if (jobId) navigate(`/jobs/${encodeURIComponent(jobId)}`); };
+const KIND_WORD: Record<string, string> = { image: 'Image', video: 'Video', audio: 'Sound', '3d': '3D model' };
 const KIND_ICON = { image: ImageIcon, video: VideoIcon, audio: AudioIcon, '3d': CubeIcon } as const;
 
 export function ResultCardView({ shape }: { shape: ResultCardShape }) {
@@ -26,7 +27,7 @@ export function ResultCardView({ shape }: { shape: ResultCardShape }) {
   const active = useValue('card active', () => editor.getHoveredShapeId() === shape.id || (editor.getSelectedShapeIds().length === 1 && editor.getOnlySelectedShapeId() === shape.id), [editor, shape.id]);
   const role = useValue('lineage', () => lineageRole(editor, shape.id), [editor, shape.id]);
   const Icon = KIND_ICON[p.kind] ?? ImageIcon; const price = [p.price, p.time].filter(Boolean).join(' · ');
-  return <NodeFrame shapeId={shape.id} type={RESULT_TYPE} tint={p.kind} icon={<Icon />} title={<b title={p.title}>{p.title || 'Result'}</b>} testId="result-node" label={p.title || p.model || 'Result'}
+  return <NodeFrame shapeId={shape.id} type={RESULT_TYPE} tint={p.kind} icon={<Icon />} title={KIND_WORD[p.kind] ?? 'Result'} heading={p.title || 'Result'} testId="result-node" label={p.title || p.model || 'Result'}
     rootAttrs={{ 'data-role': role ?? undefined, 'data-kind': p.kind, 'data-job': p.jobId || undefined }}
     status={<span className="nf-status nf-status-done">Done</span>}
     footer={<><span className="nf-model"><b {...tip(p.model)}>{p.model || 'Result'}</b></span>{price && <span className="nf-price"><span>{price}</span></span>}</>}>
