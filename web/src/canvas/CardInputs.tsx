@@ -1,6 +1,6 @@
 /**
- * A generate card's input slots: thumbnails with ✕ (an arrow input deletes its arrow), plus a quiet Add chip per slot that still has room
- * (never a dashed box). One component for the card body and the card panel's "Set it up", so picking in one place fills the other: both
+ * A generate card's input slots: thumbnails with ✕ (an arrow input deletes its arrow); an empty slot shows a quiet Add chip with its name,
+ * a slot with something in it the bars' dashed "+" (shared/AddTile, 2026-10-31). One component for the card body and the card panel's "Set it up", so picking in one place fills the other: both
  * read the same card (cardState.bySlot) and write the same props (inputs + pins).
  */
 import { useEditor, type Editor, type TLShapeId } from 'tldraw';
@@ -10,6 +10,7 @@ import { uploadMedia } from '../shared/batch1';
 import { pickMedia } from '../shared/MediaPicker';
 import { useToast } from '../shared/Toast';
 import { tip } from '../shared/Tooltip';
+import { AddTile } from '../shared/AddTile';
 import { AudioIcon, VideoIcon, CloseIcon, PlusIcon } from '../ui/Icons';
 import type { GenSlot, InputKind } from '../shared/genFlows';
 import { GEN_TYPE, type BoardInput, type GenCardProps } from './cardModel';
@@ -39,7 +40,9 @@ export function CardInputs({ cardId, slots, bySlot, showAdd, className = '', tes
       return <span key={s.name} className="nf-slot" data-testid={`${testPrefix}-slot-${s.name}`} data-n={list.length}>
         {list.map(i => <span key={i.key} className="nf-in-thumb" {...tip(`${s.label}: ${i.label}`)}>{i.poster ? <img src={gridSrc(i.poster, 54)} alt="" draggable={false} /> : i.kind === 'audio' ? <AudioIcon size={16} /> : <VideoIcon size={16} />}
           <small>{s.label}</small><button type="button" className="nf-in-x" aria-label={`Remove ${s.label.toLowerCase()}`} data-testid={`${testPrefix}-in-x-${s.name}`} onClick={() => remove(i)}><CloseIcon size={9} strokeWidth={2.4} /></button></span>)}
-        {showAdd && list.length < s.max && <button type="button" className={`nf-add${s.required && !list.length ? ' req' : ''}`} aria-label={`Add ${s.label.toLowerCase()}${s.required ? '' : ' (optional)'}`} data-card-control data-testid={`${testPrefix}-add-${s.name}`} {...tip(`${s.hint}. Draw an arrow into the node from a result or upload, or pick a file`)} onClick={() => chooseForSlot(editor, cardId, s, toast)}><PlusIcon size={12} />{list.length ? `${list.length}/${s.max}` : s.label}</button>}
+        {showAdd && !list.length && <button type="button" className={`nf-add${s.required ? ' req' : ''}`} aria-label={`Add ${s.label.toLowerCase()}${s.required ? '' : ' (optional)'}`} data-card-control data-testid={`${testPrefix}-add-${s.name}`} {...tip(`${s.hint}. Draw an arrow into the node from a result or upload, or pick a file`)} onClick={() => chooseForSlot(editor, cardId, s, toast)}><PlusIcon size={12} />{s.label}</button>}
+        {/* with something in it: the bar's dashed "+" (shared/AddTile: the limit in its tooltip, a badge near it, disabled at it) */}
+        {showAdd && list.length > 0 && s.max > 1 && <AddTile size="card" used={list.length} max={s.max} noun={s.accept === 'video' ? 'clip' : s.accept === 'audio' ? 'sound' : 'picture'} testId={`${testPrefix}-add-${s.name}`} onAdd={() => chooseForSlot(editor, cardId, s, toast)} />}
       </span>; })}
   </div>;
 }

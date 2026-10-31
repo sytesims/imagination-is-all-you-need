@@ -199,7 +199,7 @@ export function WorkflowControls({ recipe: r, vals, setVal, provider, watch, mod
   const [open, setOpen] = useState(''); const refs = useRef<Record<string, HTMLButtonElement | null>>({}); const anchor = useRef<HTMLButtonElement | null>(null);
   useEffect(() => { if (openGroup?.g) { anchor.current = refs.current[openGroup.g] ?? null; setOpen(openGroup.g); } }, [openGroup?.k]); // eslint-disable-line react-hooks/exhaustive-deps
   const at = useMemo(() => viaOver(anchor, overRef), [overRef]); // eslint-disable-line react-hooks/exhaustive-deps
-  return <span className="wf-strip wf-ctl" data-testid="wf-controls" data-workflow={r.id}>
+  return <span className="wf-strip wf-ctl" data-testid="wf-controls" data-workflow={r.id} data-fit-main="first" /* the first group is the workflow's main control (Relight: Light): it never folds (shared/chipFit) */>
     {r.groups.map(g => { const sum = summaries?.[g.id] != null ? summaries[g.id] : g.id === 'scale' && upscale ? scaleChip(upscale, provider, Number(vals.scale ?? r.controls.find(c => c.field === 'scale')?.default ?? 4)) : g.id === 'shape' && (vals.aspect ?? 'auto') === 'auto' ? 'Auto' : groupSummary(r, g, vals);
       /* a tight bar drops the group word ("Clean studio"); the full "Scene: Clean studio" stays as the spoken name and the tooltip */
       return <button key={g.id} ref={el => { refs.current[g.id] = el; }} type="button" className={`ic-chip wf-grp wf-fold${open === g.id && !folded(refs.current[g.id]) ? ' on' : ''}`} aria-haspopup="dialog" aria-expanded={open === g.id} data-testid={`wf-group-${g.id}`} aria-label={`${g.label}: ${sum}`} {...tip(g.id === 'light' && !panels?.light ? `${g.label}: ${lightTip(vals)}` : `${g.label}: ${sum}`)}

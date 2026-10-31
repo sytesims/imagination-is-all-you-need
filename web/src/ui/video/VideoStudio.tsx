@@ -4,8 +4,9 @@ import { EnhanceButton, enhanceToastTitle, type EnhanceResult } from '../next/En
 import { PromptPeek, type PeekForm } from '../next/PromptPeek';
 import { BrandChip } from '../../shared/BrandChip';
 import { RowMore } from '../../shared/RowMore';
-import { SlotPreview, SlotCount, fullText, prepUpload, useSlotReorder, type SlotAction } from '../../shared/SlotPreview';
+import { SlotPreview, fullText, prepUpload, useSlotReorder, type SlotAction } from '../../shared/SlotPreview';
 import { MoreFiles, LeftNote, notAddedText, type TrayFile } from '../../shared/FilesTray';
+import { AddTile } from '../../shared/AddTile';
 import { thumbsShown } from '../../shared/presetBar';
 import { handoffOf } from '../../shared/handoffFiles';
 import { PF_SHORT } from '../../shared/DockGenerate';
@@ -465,8 +466,9 @@ export default function VideoStudio(p: VideoStudioProps) {
             {leadThumbs.slice(0, leadShown.show).map(t => t.el)}
             <MoreFiles hidden={leadShown.more} items={leadThumbs.map(t => t.f)} watch={dock} testId="vs-more" summary={curFit && !curFit.all ? notUsedShort(curFit) : undefined} offText="Not used" action={overN > 0 ? { label: `Remove the ${overN} not used`, onClick: dropExtras } : null}
               onRemove={f => f.group === 'start' ? p.clearImage() : f.group === 'end' ? p.setLastFrame(null) : removeRef(f.group, f.idx)} onMove={(g, a, b) => moveRef(g)(a, b)} />
-            {(p.mode === 'r2v' || RK.some(([k]) => (p.vrefs[k]?.length ?? 0) > 0)) && <span className={`vs-slot-wrap${curFit && !curFit.all ? ' has-skip' : ''}`}><SlotCount used={refUsed} caps={refCaps} testId="vs-slot-count" />
-            {curFit && !curFit.all && <span className="vs-ref-skip" data-testid="vs-ref-skip" {...tip(`${modelName} won’t use ${skippedText(curFit)}. Pick another model, or remove ${curFit.haveN - curFit.usedN === 1 ? 'it' : 'them'}.`)}>{notUsedShort(curFit)}</span>}</span>}
+            {/* the dashed "+" for references (shared/AddTile): the model's real limit in its tooltip, a badge only near it; no counter text on the bar */}
+            {leadThumbs.length > 0 && (refCaps.image ?? 0) > 1 && <AddTile used={refUsed.image ?? 0} max={refCaps.image ?? 0} testId="vs-add-tile" onAdd={() => refIn.current?.click()} />}
+            {curFit && !curFit.all && <span className="vs-slot-wrap has-skip"><span className="vs-ref-skip" data-testid="vs-ref-skip" {...tip(`${modelName} won’t use ${skippedText(curFit)}. Pick another model, or remove ${curFit.haveN - curFit.usedN === 1 ? 'it' : 'them'}.`)}>{notUsedShort(curFit)}</span></span>}
             </>}
           </div>
           <label className="sr-only" htmlFor="app-prompt">Prompt</label>

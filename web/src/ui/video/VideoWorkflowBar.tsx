@@ -35,6 +35,8 @@ import { LookPicker, type LookItem } from '../../shared/LookPicker';
 import { openPickerFor, withNativePicker } from '../../shared/MediaPicker';
 import { tip } from '../../shared/Tooltip';
 import { useDockHeight, useChipFit } from '../../shared/dockFit';
+import { fitPri } from '../../shared/chipFit';
+import { foldedRow, FoldedRows, type RowOverflowRow } from '../../shared/RowMore';
 import { usePromptGrow } from '../../shared/usePromptGrow';
 import { useToolModels, modelOfEngine, shownName, setupPlacesOf, engineForModelParam, modelParam, useModelParamSync, useRouting } from '../../shared/models';
 import { doSetupPlace } from '../../shared/SetupCard';
@@ -129,9 +131,9 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
   const anchorOf = (gid: string) => (anchors.current[gid] ??= { get current() { const e = gRefs.current[gid] ?? null; return e?.classList.contains('ic-folded') ? overRef.current : e; } });
   /* ONE chip row that never wraps (shared chip fit, as Image's): group words drop first, then chips fold into the ⋯ menu */
   const chipsRef = useRef<HTMLDivElement>(null); const overRef = useRef<HTMLButtonElement>(null); useChipFit(chipsRef, { over: '.wf-fold', observe: true });
-  const [overRows, setOverRows] = useState<{ label: string; target: HTMLElement | null }[]>([]);
+  const [overRows, setOverRows] = useState<RowOverflowRow[]>([]);
   const openOver = () => { if (pop === 'over') { setPop(''); return; } const c = chipsRef.current; if (!c) return;
-    setOverRows([...c.querySelectorAll<HTMLElement>('.wf-fold.ic-folded')].map(el => ({ label: (el.getAttribute('aria-label') ?? el.textContent ?? '').replace(/\s+/g, ' ').trim(), target: el })).filter(r => r.label)); setPop('over'); };
+    setOverRows([...c.querySelectorAll<HTMLElement>('.wf-fold.ic-folded')].map(el => foldedRow(el)).filter((r): r is RowOverflowRow => !!r)); setPop('over'); };
   const modelRef = useRef<HTMLButtonElement>(null); const slotIn = useRef<Record<string, HTMLInputElement | null>>({});
   useDockHeight(dock, '.vs'); usePromptGrow(promptRef, prompt);
   useToolModels(tool.id); const tm = modelOfEngine(tool.id, prov);
@@ -445,8 +447,8 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
                 <MakerTile className="ic-dot" medium="video" maker={tm?.maker} makerName={tm?.makerName} fallback={provInfo?.family || provInfo?.name} /><span className="ic-mname">{modelName}</span>
                 <svg className="ic-caret" width="16" height="16" viewBox="0 0 16 16" aria-hidden><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></button>
             </span>
-            <span className="wf-strip wf-ctl" data-testid="vbar-controls" data-workflow={wf.id}>{(() => { const ec = extra.chips?.(live()); const at = extra.chipsAfter ? bar.groups.findIndex(g => g.id === extra.chipsAfter) + 1 : 0; return <>{groupChips.slice(0, at)}{ec}{vfit.chip}{groupChips.slice(at)}</>; })()}
-              {lastSeed != null && <span className="ic-seed wf-fold" data-testid="vs-seed" aria-label={seedOn ? `Same seed ${lastSeed}` : 'Same seed: off'}><SameSeed seed={lastSeed} on={seedOn} onChange={setSeedOn} /></span>}</span>
+            <span className="wf-strip wf-ctl" data-testid="vbar-controls" data-workflow={wf.id} data-fit-main="first" /* its first control is the workflow's main one: never folds (shared/chipFit) */>{(() => { const ec = extra.chips?.(live()); const at = extra.chipsAfter ? bar.groups.findIndex(g => g.id === extra.chipsAfter) + 1 : 0; return <>{groupChips.slice(0, at)}{ec}{vfit.chip}{groupChips.slice(at)}</>; })()}
+              {lastSeed != null && <span className="ic-seed wf-fold" {...fitPri('low')} data-testid="vs-seed" aria-label={seedOn ? `Same seed ${lastSeed}` : 'Same seed: off'}><SameSeed seed={lastSeed} on={seedOn} onChange={setSeedOn} /></span>}</span>
             {toggles}
             <button ref={overRef} type="button" className={`ic-chip ic-sq ic-over${pop === 'over' ? ' on' : ''}`} aria-haspopup="menu" aria-expanded={pop === 'over'} aria-label="More settings" {...tip(pop === 'over' ? null : 'More settings')} data-testid="vbar-over" onClick={openOver}><MoreIcon size={16} /></button>
           </div>
@@ -468,7 +470,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
       {gallery && <LookPicker open={pop === `g:${gallery.group}`} anchor={anchorOf(gallery.group)} avoid={dock} watch={dock} onClose={() => setPop('')} label={gallery.label} testId="vbar-look"
         tabs={[{ id: gallery.field, label: gallery.label, searchLabel: `Search ${gallery.field === 'preset' ? 'styles' : gallery.field === 'move' ? 'moves' : gallery.field === 'look' ? 'looks' : 'effects'}`, items: galleryItems(gallery) }]} tab={gallery.field} onTab={() => undefined} />}
       <BarPopover open={pop === 'over'} anchor={overRef} watch={dock} gap={4} onClose={() => setPop('')} label="More settings" role="menu" testId="vbar-pop-over" width={240}>
-        <PopSection label="More settings"><PopList label="More settings" role="group">{overRows.map((r, i) => <PopRow key={i} role="menuitem" testId={`vbar-over-${i}`} label={r.label} onClick={() => { const t = r.target; setPop(''); if (t) requestAnimationFrame(() => t.click()); }} />)}</PopList></PopSection></BarPopover>
+        <PopSection label="More settings"><PopList label="More settings" role="group"><FoldedRows rows={overRows} testId="vbar-over" onPick={t => { setPop(''); requestAnimationFrame(() => t.click()); }} /></PopList></PopSection></BarPopover>
       <PreflightPop open={pfOpen && problems.length > 0} anchor={genRef} watch={dock} problems={problems} onClose={() => setPfOpen(false)} run={f => { void runFix(f); }} />
     </div></div>
   </div>;
