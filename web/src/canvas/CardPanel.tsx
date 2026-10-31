@@ -12,6 +12,7 @@ import { useEditor, useValue, type Editor, type TLShape, type TLShapeId, type TL
 import { getJob, type JobState } from '../api';
 import { gridSrc } from '../shared/thumbs';
 import { VideoControls } from '../shared/VideoControls';
+import { useExclusivePlayback } from '../shared/audioPlayer';
 import AudioCard from '../shared/AudioCard';
 import GenTile from '../shared/GenTile';
 import { GenPrice } from '../shared/GenPrice';
@@ -61,7 +62,7 @@ const readPin = () => { try { return localStorage.getItem(PIN_KEY) === '1'; } ca
 /* ------------------------------------------------------------------ what the panel reads from the board */
 type Media = { kind: 'image' | 'video' | 'audio' | '3d'; url: string; poster: string; jobId: string };
 /** A connection row. No id: a file added on the card itself (nothing to jump to). */
-type Link = { id?: TLShapeId; label: string; poster: string; kind: string; slot?: string };
+type Link = { id?: TLShapeId; label: string; poster: string; kind: string; slot?: string; /** the file itself, so a clip or sound plays in the preview */ url?: string };
 const MEDIUM_ICON = { image: ImageIcon, video: VideoIcon, audio: AudioIcon, '3d': CubeIcon } as const;
 const KIND_WORD: Record<string, string> = { image: 'Picture', video: 'Clip', audio: 'Sound', '3d': '3D model', text: 'Text' };
 const KIND_ICON: Record<string, typeof ImageIcon> = { image: ImageIcon, video: VideoIcon, audio: AudioIcon, '3d': CubeIcon, text: TextIcon };
@@ -81,7 +82,7 @@ function mediaOf(s: TLShape): Media | null {
   return null;
 }
 const linkOf = (s: TLShape, slot?: string): Link => { const m = mediaOf(s); const k = s.type === PROMPT_TYPE || s.type === NOTE_TYPE ? 'text' : m?.kind ?? String((s.props as any).medium ?? 'image');
-  return { id: s.id, label: shapeName(s), poster: m?.poster ?? '', kind: k, slot }; };
+  return { id: s.id, label: shapeName(s), poster: m?.poster ?? '', kind: k, slot, url: m?.url }; };
 /** The cards this one feeds: arrows that start on it and end on another node. */
 function usedByOf(editor: Editor, id: TLShapeId): Link[] {
   const out: Link[] = []; const seen = new Set<string>();
@@ -97,7 +98,7 @@ function inputsOf(editor: Editor, s: TLShape, bySlot: Record<string, { key: stri
   const placed = Object.keys(bySlot).length > 0; const slotOf = (key: string) => slotOfKey[key] ?? (placed ? NOT_USED : undefined);
   if (s.type === GEN_TYPE || s.type === COMPARE_TYPE || s.type === AD_TYPE) for (const [k, i] of cardInputs(editor, s).entries()) { const src = i.shapeId ? editor.getShape(i.shapeId as TLShapeId) : null;
     const slot = s.type === COMPARE_TYPE ? (k === 0 ? 'Before' : k === 1 ? 'After' : NOT_USED) : s.type === AD_TYPE ? (k === 0 ? 'Picture' : NOT_USED) : slotOf(i.key);
-    if (src) { if (!seen.has(src.id)) { seen.add(src.id); out.push(linkOf(src, slot)); } } else if (!i.shapeId) out.push({ label: i.label, poster: i.poster, kind: i.kind, slot }); }
+    if (src) { if (!seen.has(src.id)) { seen.add(src.id); out.push(linkOf(src, slot)); } } else if (!i.shapeId) out.push({ label: i.label, poster: i.poster, kind: i.kind, slot, url: i.url }); }
   for (const t of promptSourcesInto(editor, s.id)) { const src = editor.getShape(t.id); if (src && !seen.has(src.id)) { seen.add(src.id); out.push(linkOf(src, 'Prompt')); } }
   for (const pid of ((s.props as any).parents ?? []) as string[]) { const src = editor.getShape(pid as TLShapeId); if (src && !seen.has(src.id)) { seen.add(src.id); out.push(linkOf(src, s.type === RESULT_TYPE ? 'Pulled out of' : 'Made from')); } }
   return out;
@@ -225,23 +226,41 @@ function One({ id, head }: { id: TLShapeId; head: HeadFn }) {
   </>;
 }
 
-/** One frame for every kind: full width, a fixed height, contained, rounded. A clip's controls sit inside the same frame. */
+/** A clip in the preview frame, played in place with the shared transport (VideoControls): muted at first, the sound button once the clip
+ *  turns out to have sound, Space on the focused frame plays / pauses, never starts by itself (so reduced motion holds), and one player at a
+ *  time with the board's cards and sounds (useExclusivePlayback). Keyed by URL by the caller. */
+function PanelClip({ url, poster, label }: { url: string; poster?: string; label: string }) {
+  const vid = useRef<HTMLVideoElement>(null); const box = useRef<HTMLDivElement>(null); const [el, setEl] = useState<HTMLVideoElement | null>(null); const [sound, setSound] = useState(false);
+  useExclusivePlayback(vid); useEffect(() => { setEl(vid.current); }, []);
+  const toggle = () => { const e = vid.current; if (!e) return; if (e.paused || e.ended) void e.play().catch(() => undefined); else e.pause(); };
+  /* Safari / Firefox say up front; Chrome once some sound is decoded (right after Play) */
+  const hear = () => { const x: any = vid.current; if (!sound && x && (x.mozHasAudio || x.audioTracks?.length > 0 || x.webkitAudioDecodedByteCount > 0)) setSound(true); };
+  return <div ref={box} className="cp-clip" tabIndex={0} role="group" aria-label={`${label}. Space plays or pauses`} data-testid="cp-clip"
+    onKeyDown={e => { if (e.key === ' ' && e.target === e.currentTarget) { e.preventDefault(); toggle(); } }}>
+    <video ref={vid} src={url} poster={poster ? gridSrc(poster, 760) : undefined} muted playsInline loop preload="metadata" onClick={toggle} onLoadedData={hear} onTimeUpdate={hear} />
+    <VideoControls video={el} fullscreen={box} label="Clip playback" seekLabel="Seek clip" sound={sound ? undefined : false} testId="cp-clip" />
+  </div>;
+}
+
+/** One frame for every kind: full width, a fixed height, contained, rounded. Clips and sounds (results and inputs) play in place. */
 function Preview({ v, peek }: { v: View; peek: Take | null }) {
-  const vid = useRef<HTMLVideoElement>(null); const [el, setEl] = useState<HTMLVideoElement | null>(null); const box = useRef<HTMLDivElement>(null);
+  const box = useRef<HTMLDivElement>(null);
   const m: Media | null = peek ? { kind: peek.kind as any, url: peek.url, poster: peek.poster, jobId: peek.jobId } : v.media;
-  useEffect(() => { setEl(vid.current); }, [m?.url]);
   const k = peek ? v.takes.indexOf(peek) : -1;
   const tag = peek ? `Version ${k + 1}${k === v.take ? ' · goes on' : ''}` : null;
   let inner: ReactNode; let kind = 'media';
   if (v.gen && v.status === 'running') { kind = 'run'; inner = <GenTile job={v.job ?? ({ id: v.p.jobId, status: 'queued', stage: 'queued', progress: 0, outputs: [], input: {} } as any)} />; }
   else if (v.gen && v.status === 'failed' && !peek) { kind = 'empty'; inner = <><b>This run didn’t work</b><small>{v.p.error || 'Nothing was made.'}</small></>; }
   else if (!m && v.s.type === COMPARE_TYPE && v.ins.length >= 2 && v.ins[0].poster && v.ins[1].poster) { kind = 'input'; inner = <ImageCompare before={v.ins[0].poster} after={v.ins[1].poster} kind="image" />; }
-  else if (!m) { const first = v.ins.find(i => i.poster && i.slot && i.slot !== 'Prompt' && i.slot !== NOT_USED) ?? v.ins.find(i => i.poster); /* a used input before one that's not used */
-    if (first) { kind = 'input'; inner = <><img src={gridSrc(first.poster, 760)} alt="" /><span className="cp-tag">{first.slot ?? 'Input'} · {first.label}</span></>; }
+  else if (!m) { const shows = (i: Link) => !!i.poster || (!!i.url && (i.kind === 'video' || i.kind === 'audio'));
+    const first = v.ins.find(i => shows(i) && i.slot && i.slot !== 'Prompt' && i.slot !== NOT_USED) ?? v.ins.find(shows); /* a used input before one that's not used */
+    const tagText = first ? `${first.slot ?? 'Input'} · ${first.label}` : '';
+    if (first?.kind === 'video' && first.url) { kind = 'input'; inner = <><PanelClip key={first.url} url={first.url} poster={first.poster} label={tagText} /><span className="cp-tag">{tagText}</span></>; }
+    else if (first?.kind === 'audio' && first.url) { kind = 'audio'; inner = <AudioCard key={first.url} src={first.url} title={first.label} model="" tag={first.slot ?? 'Input'} />; }
+    else if (first) { kind = 'input'; inner = <><img src={gridSrc(first.poster, 760)} alt="" /><span className="cp-tag">{tagText}</span></>; }
     else { kind = 'empty'; const [t, l] = EMPTY_LINE[v.s.type] ?? ['Nothing made yet', v.draft ? 'Set it up below, then press Generate.' : 'No picture yet.']; inner = <><v.Icon size={22} /><b>{t}</b><small>{l}</small></>; } }
-  else if (m.kind === 'video') inner = <><video ref={vid} key={m.url} src={m.url} poster={m.poster ? gridSrc(m.poster, 760) : undefined} playsInline loop preload="metadata" onClick={() => { const e = vid.current; if (e) void (e.paused ? e.play() : e.pause()); }} />
-    <VideoControls video={el} fullscreen={box} label="Clip playback" seekLabel="Seek clip" /></>;
-  else if (m.kind === 'audio') { kind = 'audio'; inner = <AudioCard src={m.url} title={v.prompt || v.title} model={v.model} kind={v.audioKind} tag={v.s.type === UPLOAD_TYPE ? 'Your sound' : undefined} />; }
+  else if (m.kind === 'video') inner = <PanelClip key={m.url} url={m.url} poster={m.poster} label={v.title} />;
+  else if (m.kind === 'audio') { kind = 'audio'; inner = <AudioCard key={m.url} src={m.url} title={v.prompt || v.title} model={v.model} kind={v.audioKind} tag={v.s.type === UPLOAD_TYPE ? 'Your sound' : undefined} />; }
   else if (m.kind === '3d') inner = <>{m.poster && <img src={gridSrc(m.poster, 760)} alt="" />}<button type="button" className="cp-btn cp-tag-btn" onClick={() => open3d(m.jobId)}><CubeIcon size={14} />View 3D</button></>;
   else inner = <img key={m.url} src={gridSrc(m.url, 760)} alt={v.prompt || v.title} />;
   return <div ref={box} className={`cp-pv cp-pv-${kind}`}>{inner}{tag && <span className="cp-tag">{tag}</span>}</div>;

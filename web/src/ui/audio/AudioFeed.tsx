@@ -84,7 +84,7 @@ export default function AudioFeed({ jobs }: { jobs: JobState[] }) {
         jobId={j.id} danceStyle={(j as any).danceStyle} cheer={cheer.has(j.id)} /> : undefined} />; };
   const emptyText = fs.isDefault ? 'No sounds yet. Describe a song, a voice or a sound effect below and press Generate.' : emptyTextFor(filt, pj.pid, SCOPE);
   return <div className="ic ic2 apf" data-testid="ap-feed">
-    <FeedGallery st={fs} count={shown.length} emptyText={emptyText} testId="ap-grid" className="ap-gal" override={firstLoad ? <AudioFeedSkeleton /> : undefined}
+    <FeedGallery title="Audio" st={fs} count={shown.length} emptyText={emptyText} testId="ap-grid" className="ap-gal" override={firstLoad ? <AudioFeedSkeleton /> : undefined}
       toolbar={selecting ? <SelectBar sel={sel} setSel={setSel} total={feed.total} onExit={stopSelect} selectAll={selectAll} allLoading={allBusy} projects={pj.list} currentProject={pj.pid} patch={feed.patch} unpatch={feed.unpatch} refresh={feed.refresh}
           noun="sound" onTrashed={ids => { if (v.viewId && ids.includes(v.viewId)) v.setViewId(null); }} />
         : <FeedToolbar f={filt} setF={setFilt} groups={AUDIO_FEED_GROUPS} noun="sounds" from={['mine', 'featured']} total={feed.total} failed={feed.failed} loading={feed.loading} pj={pj} selecting={selecting} onSelect={() => selecting ? stopSelect() : setSelecting(true)} live={<QueueLine className="ic-gal-live" />} />}>

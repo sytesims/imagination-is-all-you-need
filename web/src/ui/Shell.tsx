@@ -32,7 +32,7 @@ import { modelNavigationHref } from '../shared/modelNavigation';
 import { createHoverLock, isMenuActivation, HOVER_MENU_ZONE, type HoverLock } from '../shared/hoverMenuLock';
 
 /** 3D menu rows (2026-10-23): one row per 3D workflow, each opening the 3D page with it picked; roadmap rows say Coming soon. */
-export const threeDWorkflowRows = () => THREE_D_WORKFLOWS.map(w => ({ key: w.id, to: w.id === 'image-to-3d' ? THREE_D_PAGE : threeDRoute(w.id), name: w.name, line: w.status === 'soon' ? `Coming soon · ${w.tagline}` : w.tagline, icon: w.id, soon: w.status === 'soon' }));
+export const threeDWorkflowRows = () => THREE_D_WORKFLOWS.map(w => ({ key: w.id, to: w.id === 'image-to-3d' ? THREE_D_PAGE : threeDRoute(w.id), name: w.name, line: w.status === 'soon' ? w.soonNote ?? `Coming soon · ${w.tagline}` : w.tagline, icon: w.id, soon: w.status === 'soon' }));
 
 /** Image menu rows (Image mega panel, mobile drawer): a plain list like the Video menu, one row per image feature in the approved order
  *  (shared/imageFeatures MENU_FEATURES). Create Image opens /image; every other row opens Create Image with its workflow picked
@@ -307,7 +307,7 @@ export function TopNav({ tools, path }: { tools: ToolInfo[]; path: string }) {
         <MediaTrigger id="image" label="Image" to={IMAGE_PAGE} icon={ImageIcon} hm={hm} on={curMedia === 'image'} />
         <MediaTrigger id="video" label="Video" to={VIDEO_PAGE} icon={VideoIcon} hm={hm} on={curMedia === 'video'} />
         <MediaTrigger id="audio" label="Audio" to={AUDIO_PAGE} icon={AudioIcon} hm={hm} on={curMedia === 'audio'} />
-        {d3Tools.length > 0 && <MediaTrigger id="3d" label="3D" to={THREE_D_PAGE} icon={CubeIcon} hm={hm} on={curMedia === '3d'} /> /* 3D (2026-10-23): after Audio */}
+        <MediaTrigger id="3d" label="3D" to={THREE_D_PAGE} icon={CubeIcon} hm={hm} on={curMedia === '3d'} />{/* 3D (2026-10-23): after Audio; always shown like Image/Video/Audio (2026-10-31) */}
         {L(CANVAS_NAV.to, CANVAS_NAV.label, undefined, 'hn-canvas')}{/* Canvas (2026-10-24): after 3D, a plain tab */}
         {L(FILM_NAV.to, FILM_NAV.label, undefined, 'hn-film')}{/* Film (2026-10-27): after Canvas, a plain tab */}
         {(hm.open === 'image' || hm.open === 'video' || hm.open === 'audio' || hm.open === '3d') && (() => { const ts = hm.open === 'image' ? imgTools : hm.open === 'video' ? vidTools : hm.open === '3d' ? d3Tools : audTools; return ts.length ? <MegaPanel media={hm.open} tools={ts} all={tools} groups={groups} path={path} hm={hm} /> : null; })()}
