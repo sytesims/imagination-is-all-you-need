@@ -14,3 +14,13 @@ export function feedSections<J extends { compare?: { id?: string } | null }, T>(
   }
   return out;
 }
+
+/** A set that is still being sent (Material Swap's swatches, Compare models' runs go one request at a time): every place it will have,
+ *  from the first frame, so the set row appears once at its full size and each card updates in place. `members` are the set's jobs so far
+ *  (any order); `make(i)` is a waiting card for place i. Places are 0 … n-1 (n from the members' compare.n). Sorted by place. */
+export function withSetPlaces<J extends { compare?: { n?: number; i?: number } | null }>(members: J[], make: (i: number) => J): J[] {
+  const byI = (x: J) => Number(x.compare?.i ?? 0); const n = Math.max(0, ...members.map(x => Number(x.compare?.n ?? 0)));
+  const have = new Set(members.map(byI)); const out = [...members];
+  for (let i = 0; i < n; i++) if (!have.has(i)) out.push(make(i));
+  return out.sort((a, b) => byI(a) - byI(b));
+}
