@@ -13,7 +13,7 @@
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { statfsSync } from 'node:fs';
+import { statfsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { config, DATA_DIR, comfyNeedsKey } from './config.js';
 import { env } from './env.js';
@@ -175,7 +175,8 @@ export function probeHost(exec: typeof execFileSync = execFileSync): { gpu: Gpu 
     if (rows.length) { const [name, tot, free] = rows[0]; gpu = cuda(name, Number(tot), Number(free)); gpu.count = rows.length;
       if (!Number.isFinite(Number(tot))) gpu = { ...gpu, vramTotalBytes: null, vramFreeBytes: null, vramTotalGB: null, unifiedMemory: /\bGB10\b/i.test(name) }; } } catch { gpu = null; } // GB10 (DGX Spark): memory "[N/A]", unified
   if (!gpu && process.platform === 'darwin' && process.arch === 'arm64') { try { const mem = Number(exec('sysctl', ['-n', 'hw.memsize'], { timeout: 3000 }).toString().trim()); if (mem > 0) gpu = { name: 'Apple Silicon', type: 'mps', count: 1, vramTotalBytes: null, vramFreeBytes: null, vramTotalGB: null, unifiedMemory: true }; } catch { /* */ } }
-  return { gpu, ramTotal: os.totalmem(), ramFree: os.freemem() };
+  let ramFree = os.freemem(); if (process.platform === 'linux') { try { ramFree = parseMemAvailable(readFileSync('/proc/meminfo', 'utf8')) ?? ramFree; } catch { /* keep MemFree */ } } // Spark: MemAvailable
+  return { gpu, ramTotal: os.totalmem(), ramFree };
 }
 /** ComfyUI is on this machine: the base URL host is loopback. (No base URL = Comfy Cloud, config.ts comfyNeedsKey, so never the host.) */
 export const comfySameHost = () => { const b = config.comfyBaseUrl.trim(); if (!b) return false; try { const h = new URL(b).hostname; return /^(localhost|127\.|0\.0\.0\.0|\[?::1\]?)$/.test(h) || /^127\./.test(h); } catch { return false; } };
@@ -230,7 +231,7 @@ export function machineName(h: Hardware = currentHardware()): string | null {
 }
 export const lastRefreshAt = () => lastProbeAt;
 // ---- "This computer" card (2026-10-31): memory and disk right now ----
-export interface LiveReading { at: string; ram: { totalBytes: number; freeBytes: number; source: 'comfyui' | 'vm_stat' | 'os' }; vram: { totalBytes: number; freeBytes: number } | null;
+export interface LiveReading { at: string; ram: { totalBytes: number; freeBytes: number; source: 'comfyui' | 'vm_stat' | 'meminfo' | 'os' }; vram: { totalBytes: number; freeBytes: number } | null;
   disk: ReturnType<typeof publicDisk>; comfy: { reachable: boolean | null; version: string | null; pytorch: string | null } }
 /** macOS: os.freemem() counts only free pages, so a busy 64 GB machine looks full. Available = free + speculative + inactive pages
  *  (about what psutil, and so ComfyUI, call available). null when vm_stat can't be read. */
@@ -239,6 +240,9 @@ export function parseVmStat(out: string): number | null {
   const n = (label: string) => Number(new RegExp(`Pages ${label}:\\s+(\\d+)`).exec(out)?.[1] ?? 0);
   const pages = n('free') + n('inactive') + n('speculative'); return pages > 0 ? pages * page : null;
 }
+/** Linux (DGX Spark, an NVIDIA PC): MemAvailable from /proc/meminfo, in bytes, as `free -h` reports it (os.freemem() is MemFree, which counts the page
+ *  cache as used). On GB10 this is also the memory the GPU can take: cudaMemGetInfo under-reports there (NVIDIA DGX Spark known issues). null when absent. */
+export function parseMemAvailable(meminfo: string): number | null { const kb = Number(/^MemAvailable:\s+(\d+)\s*kB/m.exec(meminfo)?.[1]); return kb > 0 ? kb * 1024 : null; }
 let liveMemo: { at: number; v: LiveReading } | null = null; const LIVE_MIN_MS = 2000;
 /** GET /api/hardware/live: free memory (ComfyUI's own reading when it answers on this computer, else the host's), free graphics memory on a card, free disk
  *  where models live, and whether ComfyUI answers. Cheap: one /system_stats GET (1 s timeout) or one vm_stat; at most one reading per 2 s. Never Comfy Cloud. */
@@ -249,8 +253,10 @@ export async function liveReading(): Promise<LiveReading> {
   const s = c?.reachable && c.stats ? parseSystemStats(c.stats) : null; // models run where ComfyUI runs, so its reading wins
   let ram: LiveReading['ram'];
   if (s && s.ramTotal && s.ramFree != null) ram = { totalBytes: s.ramTotal, freeBytes: s.ramFree, source: 'comfyui' };
-  else { let avail: number | null = null; if (process.platform === 'darwin') { try { avail = parseVmStat(execFileSync('vm_stat', [], { timeout: 2000 }).toString()); } catch { avail = null; } }
-    ram = { totalBytes: os.totalmem(), freeBytes: avail != null ? Math.min(avail, os.totalmem()) : os.freemem(), source: avail != null ? 'vm_stat' : 'os' }; }
+  else { let avail: number | null = null; let src: LiveReading['ram']['source'] = 'os';
+    if (process.platform === 'darwin') { try { avail = parseVmStat(execFileSync('vm_stat', [], { timeout: 2000 }).toString()); src = 'vm_stat'; } catch { avail = null; } }
+    else if (process.platform === 'linux') { try { avail = parseMemAvailable(readFileSync('/proc/meminfo', 'utf8')); src = 'meminfo'; } catch { avail = null; } }
+    ram = { totalBytes: os.totalmem(), freeBytes: avail != null ? Math.min(avail, os.totalmem()) : os.freemem(), source: avail != null ? src : 'os' }; }
   const g = s?.gpu; const vram = g && !g.unifiedMemory && g.vramTotalBytes && g.vramFreeBytes != null ? { totalBytes: g.vramTotalBytes, freeBytes: g.vramFreeBytes } : null;
   const v: LiveReading = { at: new Date().toISOString(), ram, vram, disk: publicDisk(), comfy: { reachable: c ? c.reachable : null, version: c?.version ?? null, pytorch: s?.pytorch ?? null } };
   liveMemo = { at: Date.now(), v }; return v;

@@ -12,6 +12,7 @@
 #   --install-comfy PATH       clone ComfyUI at the pinned commit into PATH (+ venv, torch for the detected GPU)
 #   --tools LIST               comma list of tool ids, or a preset: starter | audio | image | video | all | none
 #   --list-tools               print tools with download size / VRAM / Mac status and exit
+#   --detect                   print what this computer is (OS, arch, GPU, memory, PyTorch wheel index) and exit; changes nothing
 #   --models-only              only download models for --tools into --comfy-dir (no Node needed; used by docker compose)
 #   --yes | -y                 download without asking (ComfyUI clone, custom nodes, models). Required when not in a terminal:
 #                              without --yes and without a terminal to ask in, the script prints what it would download and exits 0
@@ -21,15 +22,15 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; cd "$ROOT"
 MANIFEST=readiness/manifest/models.json
 BACKEND=""; COMFY_URL="${OPENHIGGSFIELD_COMFY_URL:-${COMFY_BASE_URL:-}}"; COMFY_DIR=""; INSTALL_COMFY=""
-TOOLS=""; MODELS_ONLY=0; YES=0; DRY=0; SKIP_BUILD=0; SKIP_NODES=0; SKIP_MODELS=0; LIST=0
+TOOLS=""; MODELS_ONLY=0; YES=0; DRY=0; SKIP_BUILD=0; SKIP_NODES=0; SKIP_MODELS=0; LIST=0; DETECT=0
 c() { printf '\033[%sm%s\033[0m\n' "$1" "$2"; }; info() { c 36 "==> $*"; }; warn() { c 33 "WARN: $*"; }; die() { c 31 "ERROR: $*"; exit 1; }
 run() { if [ $DRY = 1 ]; then echo "+ $*"; else "$@"; fi; }
 while [ $# -gt 0 ]; do case "$1" in
   --mock) BACKEND=mock;; --comfy) BACKEND=comfy;;
   --comfy-url) COMFY_URL="$2"; shift;; --comfy-dir) COMFY_DIR="$2"; shift;; --install-comfy) INSTALL_COMFY="$2"; COMFY_DIR="$2"; shift;;
-  --tools) TOOLS="$2"; shift;; --models-only) MODELS_ONLY=1; SKIP_BUILD=1; SKIP_NODES=1;; --list-tools) LIST=1;; --yes|-y) YES=1;; --dry-run) DRY=1;;
+  --tools) TOOLS="$2"; shift;; --models-only) MODELS_ONLY=1; SKIP_BUILD=1; SKIP_NODES=1;; --list-tools) LIST=1;; --detect) DETECT=1;; --yes|-y) YES=1;; --dry-run) DRY=1;;
   --skip-build) SKIP_BUILD=1;; --skip-nodes) SKIP_NODES=1;; --skip-models) SKIP_MODELS=1;;
-  -h|--help) sed -n '2,23p' "$0"; exit 0;; *) die "unknown option $1 (see --help)";; esac; shift; done
+  -h|--help) sed -n '2,24p' "$0"; exit 0;; *) die "unknown option $1 (see --help)";; esac; shift; done
 # Never clone, install or download ComfyUI / custom nodes / models without an explicit yes (one confirmation, see "plan + confirm" below):
 # --yes skips it; in a terminal it asks once (default no); with no terminal to ask in and no --yes it prints the plan and exits 0.
 NOASK=0; if [ $YES = 0 ] && [ $DRY = 0 ] && [ $LIST = 0 ] && ! [ -t 0 ] && [ -n "$COMFY_DIR$INSTALL_COMFY" ]; then NOASK=1; fi
@@ -50,12 +51,22 @@ expand_one() { case "$1" in
 expand_tools() { local out="" t; for t in $(echo "$1" | tr ',' ' '); do out="$out $(expand_one "$t")"; done; echo "$out" | tr ' ' '\n' | awk 'NF && !s[$0]++' | tr '\n' ' '; }
 
 # ---- OS / GPU -------------------------------------------------------------------------------------
-OS="$(uname -s)"; ARCH="$(uname -m)"; GPU=cpu; VRAM_GB=0
-if [ "$OS" = Darwin ] && [ "$ARCH" = arm64 ]; then GPU=mps; VRAM_GB=$(( $(sysctl -n hw.memsize) / 1073741824 ))
+# One reading (hardware plan B9, 2026-10-31). Mac: unified memory, about 75% usable by the GPU (Apple's recommendedMaxWorkingSetSize; the app's
+# hardware.ts uses the same 0.75 estimate), never shown as "VRAM". NVIDIA: nvidia-smi memory.total. DGX Spark (GB10): nvidia-smi has no memory
+# figure ("[N/A]" / "Not Supported", NVIDIA DGX Spark known issues), so a non-number means unified memory: the system's MemTotal stands in.
+# PyTorch wheels: cu128 on x86_64; cu130 on aarch64, the index NVIDIA's DGX Spark ComfyUI playbook uses for sm_121 (build.nvidia.com/spark/comfyui).
+OS="$(uname -s)"; ARCH="$(uname -m)"; GPU=cpu; VRAM_GB=0; RAM_GB=0; UNIFIED=0; MEMINFO="${OPENHIGGSFIELD_MEMINFO:-/proc/meminfo}" # MEMINFO: tests point it at a fixture
+if [ "$OS" = Darwin ] && [ "$ARCH" = arm64 ]; then GPU=mps; UNIFIED=1; RAM_GB=$(( $(sysctl -n hw.memsize) / 1073741824 )); VRAM_GB=$(( RAM_GB * 3 / 4 ))
 elif command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1; then GPU=cuda
-  VRAM_GB=$(( $(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | head -1 | tr -d ' ') / 1024 )); fi
-case "$GPU" in cuda) GPU_LABEL="NVIDIA CUDA (${VRAM_GB} GB VRAM)";; mps) GPU_LABEL="Apple Silicon / MPS (${VRAM_GB} GB unified memory)";; *) GPU_LABEL="CPU only";; esac
+  MEM_MIB=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -1 | tr -d ' ' || true)
+  case "$MEM_MIB" in ''|*[!0-9]*) UNIFIED=1; RAM_GB=$(awk '/^MemTotal:/{printf "%d", $2/1048576}' "$MEMINFO" 2>/dev/null || true); RAM_GB=${RAM_GB:-0}; VRAM_GB=$RAM_GB;; # GB10: [N/A]
+    *) VRAM_GB=$(( MEM_MIB / 1024 ));; esac; fi
+TORCH_INDEX=cpu; [ "$GPU" = mps ] && TORCH_INDEX=default; if [ "$GPU" = cuda ]; then TORCH_INDEX=cu128; { [ "$ARCH" = aarch64 ] || [ "$ARCH" = arm64 ]; } && TORCH_INDEX=cu130; fi
+case "$GPU" in
+  cuda) if [ $UNIFIED = 1 ]; then GPU_LABEL="NVIDIA, unified memory (${VRAM_GB} GB shared with the system; DGX Spark class)"; else GPU_LABEL="NVIDIA CUDA (${VRAM_GB} GB VRAM)"; fi;;
+  mps) GPU_LABEL="Apple Silicon / MPS (${RAM_GB} GB unified memory, about ${VRAM_GB} GB usable for models)";; *) GPU_LABEL="CPU only";; esac
 info "System: $OS $ARCH, $GPU_LABEL"
+if [ $DETECT = 1 ]; then echo "OS=$OS ARCH=$ARCH GPU=$GPU UNIFIED=$UNIFIED VRAM_GB=$VRAM_GB RAM_GB=$RAM_GB TORCH_INDEX=$TORCH_INDEX"; exit 0; fi
 
 # ---- prerequisites --------------------------------------------------------------------------------
 if [ $MODELS_ONLY = 0 ]; then
@@ -75,7 +86,7 @@ man, comfy, gpu, vram, *pre = sys.argv[1:]; m = json.load(open(man)); vram = int
 wf = {k: v for k, v in m['workflows'].items() if not pre or any(k.startswith(p) for p in pre)}
 files = {x['file']: x for x in m['models']}; need = set()
 for k, v in sorted(wf.items()):
-    need |= set(v['models']); fit = '' if gpu != 'cuda' else (' ok' if v['vram_est_gb'] <= vram else ' >VRAM')
+    need |= set(v['models']); fit = '' if gpu not in ('cuda', 'mps') else (' ok' if v['vram_est_gb'] <= vram else ' >VRAM' if gpu == 'cuda' else ' >usable')  # mps: vram = the usable estimate
     print(f"  {k:52s} {v['total_gb']:7.2f} GB  ~{v['vram_est_gb']:5.1f} GB VRAM{fit}  mac:{v['mps']}")
 tot = have = 0
 for f in need:
@@ -136,13 +147,20 @@ if [ -n "$INSTALL_COMFY" ]; then
   if [ ! -d "$INSTALL_COMFY/.git" ]; then fetch git init -q "$INSTALL_COMFY"; fetch git -C "$INSTALL_COMFY" remote add origin https://github.com/comfyanonymous/ComfyUI; fi
   fetch git -C "$INSTALL_COMFY" fetch -q --depth 1 origin "$PIN"; fetch git -C "$INSTALL_COMFY" checkout -q FETCH_HEAD
   fetch "$PY" -m venv "$INSTALL_COMFY/venv"; VPY="$INSTALL_COMFY/venv/bin/python"
-  case "$GPU" in cuda) TIDX="--index-url https://download.pytorch.org/whl/cu128";; mps) TIDX="";; *) TIDX="--index-url https://download.pytorch.org/whl/cpu";; esac
+  case "$TORCH_INDEX" in default) TIDX="";; *) TIDX="--index-url https://download.pytorch.org/whl/$TORCH_INDEX";; esac # cu128 x86_64, cu130 aarch64 (DGX Spark), cpu
   fetch "$VPY" -m pip install -q --upgrade pip; fetch "$VPY" -m pip install -q torch torchvision torchaudio $TIDX
   fetch "$VPY" -m pip install -q -r "$INSTALL_COMFY/requirements.txt"; export PYTHON="$VPY"
 fi
 if [ -n "$COMFY_DIR" ]; then
   [ -z "${PYTHON:-}" ] && [ -x "$COMFY_DIR/venv/bin/python" ] && export PYTHON="$COMFY_DIR/venv/bin/python"
   if [ $SKIP_NODES = 0 ]; then info "Installing pinned custom nodes (npm run nodes:install)"; fetch npm run nodes:install -- "$COMFY_DIR"; fi
+  # ARM64 Linux (DGX Spark): onnxruntime-gpu has no aarch64 wheel, so DWPose / insightface use the CPU onnxruntime (NVIDIA's Spark troubleshooting page).
+  # Per-pack aarch64 notes: readiness/manifest/custom-nodes.json "aarch64".
+  if [ $SKIP_NODES = 0 ] && [ "$OS" = Linux ] && { [ "$ARCH" = aarch64 ] || [ "$ARCH" = arm64 ]; }; then
+    info "ARM64 Linux: installing the CPU onnxruntime (no onnxruntime-gpu wheel for aarch64)"; fetch "${PYTHON:-$PY}" -m pip install -q onnxruntime || warn "onnxruntime didn't install; DWPose and face-ID nodes won't load"
+    "$PY" -c "import json
+for k,p in json.load(open('readiness/manifest/custom-nodes.json'))['packs'].items():
+  if p.get('aarch64') and not p.get('optional'): print('  ' + k + ': ' + p['aarch64'])" 2>/dev/null || true; fi
   if [ $SKIP_MODELS = 0 ] && [ -n "$SEL" ]; then # SEL / PREFIXES / NEED / HAVE from the plan above
     FREE=$(df -Pk "$COMFY_DIR" | awk 'NR==2{printf "%.1f", $4/1048576}')
     info "Download: ${NEED} GB total, ${HAVE} GB already present, ${FREE} GB free on $(df -P "$COMFY_DIR" | awk 'NR==2{print $6}')"
