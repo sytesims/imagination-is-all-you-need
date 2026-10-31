@@ -47,7 +47,7 @@ export function draftProps(o: { flow?: string; medium?: GenMedium; provider?: st
 export function compactQuote(q: any): any {
   if (!q || typeof q !== 'object') return null;
   const c = q.cost && typeof q.cost === 'object' ? { billedTo: q.cost.billedTo, billedToName: q.cost.billedToName, estUsd: q.cost.estUsd, estUnits: q.cost.estUnits, unitLabel: q.cost.unitLabel, checkedAt: q.cost.checkedAt ?? null, plan: q.cost.plan ?? null, estimated: q.cost.estimated, demo: q.cost.demo, failureNote: q.cost.failureNote, realRunUsd: q.cost.realRunUsd } : null;
-  return JSON.parse(JSON.stringify({ credits: q.credits ?? null, demo: q.demo === true, localRun: q.localRun === true, needsKey: q.needsKey === true, runnable: q.runnable !== false, priceAvailable: q.priceAvailable, chargeable: q.chargeable, routeKind: q.routeKind ?? null, ...(c ? { cost: c } : {}) })); /* JSON only: tldraw's json props refuse undefined */
+  return JSON.parse(JSON.stringify({ credits: q.credits ?? null, demo: q.demo === true, localRun: q.localRun === true, needsKey: q.needsKey === true, runnable: q.runnable !== false, priceAvailable: q.priceAvailable, chargeable: q.chargeable, routeKind: q.routeKind ?? null, ...(q.runs > 1 ? { runs: q.runs } : {}) /* Material Swap: one run per swatch */, ...(c ? { cost: c } : {}) })); /* JSON only: tldraw's json props refuse undefined */
 }
 
 const IMG = /\.(png|jpe?g|webp)($|\?)/i;
@@ -84,6 +84,10 @@ export function runForm(spec: FlowSpec, bySlot: Record<string, BoardInput[]>, in
   return { fields, files };
 }
 
+/** Material Swap with several swatches wired in: the several-file slot and its inputs (one run each), else null (one plain run). */
+export function batchOf(slots: { name: string; many?: boolean }[], bySlot: Record<string, BoardInput[]>): { slot: string; inputs: BoardInput[] } | null {
+  const s = slots.find(x => x.many); const inputs = s ? bySlot[s.name] ?? [] : []; return s && inputs.length > 1 ? { slot: s.name, inputs } : null;
+}
 /** The inputs a run sends, in slot order, as the small "Made from" list its versions keep. */
 export function madeFromOf(slots: { name: string; label: string }[], bySlot: Record<string, BoardInput[]>): MadeFrom[] {
   return slots.flatMap(s => (bySlot[s.name] ?? []).map(i => ({ slot: s.label, kind: i.kind, label: i.label, poster: i.poster, url: i.url, ...(i.shapeId ? { shapeId: i.shapeId } : {}) })));

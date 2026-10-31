@@ -1,5 +1,5 @@
 // Qwen Image 2.1 Turbo (TRANSPARENCY-PLAN 4l, 2026-10-22): the official Turbo templates image_qwen_image_2_1_turbo_image_edit (ONE image)
-// and image_qwen_image_2_1_turbo_t2i, converted as-is (8 steps through ManualSigmas, CFGGuider cfg 8 for edit / cfg 1 for text-to-image).
+// and image_qwen_image_2_1_turbo_t2i, converted as-is (8 steps through ManualSigmas, CFGGuider cfg 1 for both: the edit template links it to the outer value 1).
 // Covers: the edit plan (one image, template settings untouched, enhancer pruned, seed on RandomNoise), a second image never reaching the
 // one-input graph, the text-to-image plan, caps and feature listings (Edit Image / Relight / Camera Angles, never the two-image swaps), the
 // workflow credit, the catalogue entry, and the weight files (route Ready when they exist, the Turbo file missing otherwise).
@@ -29,13 +29,15 @@ const sub = tpl.definitions.subgraphs[0]; const tw = (type: string) => sub.nodes
   assert.equal(enc.inputs.prompt, 'make it winter'); assert.equal(enc.inputs.resolution, tw('TextEncodeQwenImage21')[2]);
   assert.equal(of(g, 'UNETLoader')[0][1].inputs.unet_name, 'qwen_image_2.1_turbo_int8_convrot.safetensors');
   assert.equal(of(g, 'CLIPLoader')[0][1].inputs.clip_name, 'qwen3vl_8b_int8_convrot.safetensors'); assert.equal(of(g, 'VAELoader')[0][1].inputs.vae_name, 'qwen_image_2.1_vae_bf16.safetensors');
-  assert.equal(of(g, 'CFGGuider')[0][1].inputs.cfg, 8); assert.equal(of(g, 'CFGGuider')[0][1].inputs.cfg, tw('CFGGuider')[0]);
+  // 2026-10-31: the inner widget says 8, but the template links cfg to the subgraph input, which the outer node sets to 1 (Turbo samples at cfg 1)
+  const cfgIn = sub.inputs.findIndex((x: any) => x.name === 'cfg'); const outer = tpl.nodes.find((n: any) => n.id === 459).widgets_values;
+  assert.equal(sub.inputs[cfgIn].name, 'cfg'); assert.equal(outer[cfgIn], 1, 'outer cfg value is 1'); assert.equal(of(g, 'CFGGuider')[0][1].inputs.cfg, 1, 'Turbo edit samples at cfg 1');
   const sig = of(g, 'ManualSigmas')[0][1].inputs.sigmas; assert.equal(sig, tw('ManualSigmas')[0]); assert.equal(sig.split(',').length - 1, 8, '8 steps');
   assert.equal(of(g, 'KSamplerSelect')[0][1].inputs.sampler_name, 'euler'); assert.equal(of(g, 'SamplerCustomAdvanced').length, 1); assert.equal(of(g, 'KSampler').length, 0);
   assert.equal(of(g, 'RandomNoise')[0][1].inputs.noise_seed, 7);
   assert.ok(!of(g, 'TextGenerate').length && !of(g, 'BatchImagesNode').length, 'prompt enhancer pruned (template default off)');
   assert.equal(of(g, 'LoadImage').length, 1);
-  ok('edit: official Turbo template (8 sigmas, CFGGuider cfg 8, euler), one image, seed on RandomNoise, enhancer pruned');
+  ok('edit: official Turbo template (8 sigmas, CFGGuider cfg 1 as the template links it, euler), one image, seed on RandomNoise, enhancer pruned');
 }
 // ---- a second image never reaches the one-input graph ----
 {

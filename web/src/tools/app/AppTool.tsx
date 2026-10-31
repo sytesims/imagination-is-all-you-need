@@ -557,7 +557,7 @@ export default function AppTool({ tool, tools }: { tool: ToolInfo; tools?: ToolI
       mask={mask} setMask={setMask} canMask={canMask} style={style} setStyle={setStyle} styles={hasStyle ? styles.filter(x => x.id !== 'none') as any : []}
       price={estimate(tool, srcSec, resolution, 1, { provider, types: picked }) || null} ready={missing.length === 0} missing={missing} busy={submittingNow}
       onGenerate={extra => generate(false, extra)} jobs={jobs} selected={current?.id} onSelect={setSel} stage={stageEl} enhance={enhance} setEnhance={setEnhance} sameSeed={sameSeedEl} initial={icInit} allProviders={tool.providers}
-      onWorkflowGenerate={async (tid, fd) => { if (q.mockFail) fd.set('simulate', q.mockFail); await submit(fd, tid); }} intakeRef={intake} />;
+      onWorkflowGenerate={async (tid, fd) => { if (q.mockFail) fd.set('simulate', q.mockFail); return submit(fd, tid); }} intakeRef={intake} />;
   }
   return (
     <Workspace tool={tool} panel={<>

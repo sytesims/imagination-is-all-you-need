@@ -9,7 +9,8 @@ import { useValue } from 'tldraw';
 import { jobPct } from '../api';
 import { navigate } from '../platform/router';
 import { tip } from '../shared/Tooltip';
-import { flowById, type GenMedium } from '../shared/genFlows';
+import { flowById, flowInfo, type GenMedium } from '../shared/genFlows';
+import { catalogNow } from './catalog';
 import { GEN_TYPE, type GenCardProps } from './cardModel';
 import { liveJobs } from './genRun';
 import { priceView } from './agentBridge';
@@ -33,7 +34,7 @@ export function AgentMediaCard({ editor, cardId, meta, onFocus, onReroll, reroll
   const s = useValue('dock card', () => (editor ? snapOf(editor, cardId) : null), [editor, cardId]);
   const job = useValue('dock card job', () => (s?.jobId ? liveJobs.get()[s.jobId] : undefined), [s?.jobId]);
   const flow = s?.flow ?? meta?.workflow ?? ''; const medium: GenMedium = (s?.medium ?? meta?.kind ?? 'image') as GenMedium;
-  const name = flowById(flow)?.name ?? meta?.workflowName ?? 'Card';
+  const name = (flowById(flow) ? flowInfo(flowById(flow)!, catalogNow()).name : null) ?? meta?.workflowName ?? 'Card'; /* a workflow card's own name (Material Swap), not its id */
   /* the shot name the agent gave the card ("Hero close-up"), else its prompt */
   const title = (s?.name || meta?.title || s?.prompt || name).replace(/\s+/g, ' ').trim();
   const model = s?.model || meta?.model || '';

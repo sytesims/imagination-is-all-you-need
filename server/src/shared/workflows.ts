@@ -13,11 +13,13 @@ import { IMAGE_CAPS } from './imageCaps.js';
 import { UPSCALE_MODELS, UPSCALE_FACTORS } from './imageUpscale.js';
 import { RIG_OPTIONS, RIG_DEFAULT } from './cameraLens.js';
 import type { PromptFrame } from './typedPrompt.js';
+import { SWATCH_MAX } from './swatchBatch.js';
 
 export type WorkflowCategory = 'edit' | 'people' | 'product' | 'camera';
 export type ControlKind = 'select' | 'tiles' | 'grid' | 'pad' | 'segmented' | 'slider' | 'toggle' | 'swatches' | 'text' | 'chips-multi' | 'sphere';
 export interface WorkflowSource { kind: 'ours' | 'official' | 'community'; author: string; url: string | null; licence: string; file: string | null; /** one line, our words */ note: string }
-export interface WorkflowSlot { name: string; label: string; required: boolean; /** the form field the file goes out as (the app maps it on: Face Swap `face` → refs[0]) */ sendsAs: string; order: number; /** empty-slot text */ hint: string; /** Generate's text while it's empty */ missing: string }
+export interface WorkflowSlot { name: string; label: string; required: boolean; /** the form field the file goes out as (the app maps it on: Face Swap `face` → refs[0]) */ sendsAs: string; order: number; /** empty-slot text */ hint: string; /** Generate's text while it's empty */ missing: string;
+  /** several files, one run each (Material Swap's swatches: up to shared/swatchBatch SWATCH_MAX), shown as one set */ many?: number }
 export interface WorkflowControl { field: string; label: string; kind: ControlKind; group: string; optional?: boolean;
   /** kind 'text': the field's length cap and example words (Material Swap), filled from the tool */ maxLength?: number; placeholder?: string;
   /** filled from the tool (Relight looks also carry a swatch, the controls they set and a credit): */ options?: { value: string; label: string; swatch?: string; sets?: Record<string, string>; credit?: string; /** Character Sheet layouts: the tile's small line and the shape it asks for */ description?: string; aspect?: string }[]; default?: string; min?: number; max?: number; step?: number; pattern?: string; help?: string }
@@ -133,6 +135,13 @@ const DECLS: Decl[] = [
     controls: [{ field: 'category', label: 'Garment type', kind: 'segmented', group: 'garment' }, { field: 'garmentPhoto', label: 'Garment photo', kind: 'segmented', group: 'garment' }],
     prompt: { mode: 'hidden', placeholder: '', composer: 'plain' }, modes: { default: 'edit', whenSlot: null },
     output: { aspect: 'follow-photo', resolution: 'model', count: 1 }, surface: null, generateLabel: 'Try on', source: { url: 'https://fal.ai/models/fal-ai/fashn/tryon/v1.6/api', note: 'garment try-on' } },
+  // Material Swap (2026-10-31): the object + the material, two optional short words (what it is, what it is made of now) in a Details chip.
+  { id: 'material-swap', icon: 'material', category: 'product', runner: app('app-material-swap'), status: 'ready',
+    slots: [slot('image', 'Object', true, 'The object to change: a sofa, bag or shoe', 'Add an object photo'), { ...slot('material', 'Material', true, 'A swatch or photo of the new material: leather, marble, denim. Add up to 6: one result each', 'Add a material photo', 'material', 2), many: SWATCH_MAX }],
+    groups: [{ id: 'details', label: 'Details', icon: 'material', summary: ['object', 'fromMaterial'] }],
+    controls: [{ field: 'object', label: 'What the object is', kind: 'text', group: 'details', optional: true }, { field: 'fromMaterial', label: 'Made of now', kind: 'text', group: 'details', optional: true }],
+    prompt: { mode: 'optional', placeholder: 'Touch-ups (optional)', composer: 'recipe' }, modes: { default: 'edit', whenSlot: null },
+    output: { aspect: 'follow-photo', resolution: 'follow-photo', count: 1 }, surface: null, generateLabel: 'Swap material', source: { note: 'material prompt' } },
   // Image to layers (2026-10-24): Seedream 5.0 layer separation (official Comfy partner template) on Comfy Router; the result is several transparent PNG layers.
   { id: 'image-layers', icon: 'layers', category: 'edit', runner: app('app-image-layers'), status: 'ready',
     slots: [slot('image', 'Photo', true, 'Add the photo to split into layers', 'Add a photo')], groups: [{ id: 'size', label: 'Size', icon: 'aspect', summary: ['imageResolution'] }],

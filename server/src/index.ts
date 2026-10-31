@@ -96,6 +96,7 @@ import { mcpInfo } from './mcpInfo.js';
 import { repoInfo, APP_VERSION } from './repoInfo.js';
 import { checkComfyReady } from './comfyClient.js';
 import './routing/jobRefs.js'; // prompt grammar: local graphs rewrite @image1 with the runners' model key (comfy/plans.ts setPlanModelKey)
+import { SWATCH_MAX } from './shared/swatchBatch.js';
 
 mkdirSync(DATA_DIR, { recursive: true });
 const app = Fastify({ logger: { level: 'info' } });
@@ -719,8 +720,9 @@ async function createJob(toolId: string, req: FastifyRequest, reply: FastifyRepl
   if (inp.videoFit?.changed) job.videoFit = (await import('./shared/videoFit.js')).videoFitSummary(inp.videoFit, null); // Fit to model: shown in the viewer's details from the start
   // Create Image toolbar: the picked project gets the new result (an unknown id is ignored: the run still starts); a Compare models run names its group
   if (fields.projectId && lib.getProject(fields.projectId)) lib.setProject(job.id, fields.projectId);
-  { const cg = /^[\w-]{4,40}$/.test(fields.compareGroup || '') ? fields.compareGroup : ''; const cn = Math.min(4, Math.max(2, Number(fields.compareOf) || 0)); const ci = Number(fields.compareIndex);
-    if (cg && cn >= 2 && Number.isInteger(ci) && ci >= 0 && ci < cn) lib.setCompare(job.id, { id: cg, n: cn, i: ci }); }
+  { const cg = /^[\w-]{4,40}$/.test(fields.compareGroup || '') ? fields.compareGroup : ''; const sw = fields.compareKind === 'swatch'; /* Material Swap: one run per swatch, 2–6 (shared/swatchBatch.ts) */
+    const cn = Math.min(sw ? SWATCH_MAX : 4, Math.max(2, Number(fields.compareOf) || 0)); const ci = Number(fields.compareIndex);
+    if (cg && cn >= 2 && Number.isInteger(ci) && ci >= 0 && ci < cn) lib.setCompare(job.id, { id: cg, n: cn, i: ci, ...(sw ? { kind: 'swatch' as const } : {}) }); }
   if (fields.webhookUrl) (await import('./routesGaps.js')).registerWebhook(job.id, fields.webhookUrl);
   { const cid = String(req.headers['x-client-id'] ?? '').replace(/[^\w.-]/g, '').slice(0, 64); job.originClientId = cid || null; (job as any).originIp = req.ip; }
   if (routed) { job.routing = routed.routing; job.route = routed.first.routeId; job.routeAttempts = []; }
@@ -1010,6 +1012,7 @@ app.post<{ Params: { id: string }; Querystring: { failedOnly?: string; runOn?: s
     const free = !!inp.free && freeGensLeft() > 0; if (!free) inp.free = false;
     const r = await rerunJob(tool, inp, free, retryRunOn ? 'try-on' : 'retry'); if ('sent' in r) return r.sent;
     const { nj, routed, cost } = r;
+    { const set = lib.metaOf(j.id).compare; if (set) lib.setCompare(nj.id, set); } /* a run in a set (Compare models, Material Swap swatches) retries into the same place in that set */
     // S-02: Try on runs once on that place (pinned on this job only). Only remember:true saves it as the choice for this tool + model, through the
     // same PUT /api/me/routing the Settings page uses (its validation and the routing write log).
     let remembered = false;
