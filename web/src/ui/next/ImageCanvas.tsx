@@ -1,4 +1,5 @@
-import { SlotPreview, SlotCount, prepUpload, useSlotReorder } from '../../shared/SlotPreview';
+import { SlotPreview, SlotCount, slotText, prepUpload, useSlotReorder } from '../../shared/SlotPreview';
+import { MoreFiles, type TrayFile } from '../../shared/FilesTray';
 import { IMAGE_ACCEPT, fileFits, wrongTypeText } from '../../../../server/src/shared/mediaAccept';
 import { GenPrice } from '../../shared/GenPrice';
 import { hasFreeLocal } from '../../shared/KeyNeeded';
@@ -799,7 +800,6 @@ export default function ImageCanvas(p: ImageCanvasProps) {
    * slots, the mask, the Fit/Crop chip, "Use as …"; the preset tile first in every mode. Click a photo: the image picker. Delete / Backspace
    * on a focused photo, or its ✕, removes it. A photo that won't load shows a placeholder. */
   const photos = p.image ? [p.image, ...(p.refs ?? [])] : []; const ts = thumbsShown(photos.length);
-  const openPhotos = () => { replaceIndex.current = null; setPop(''); setPickFor(null); setRefTab(refTab === 'Uploads' && !pickFor ? null : 'Uploads'); };
   const focusLead = (k: number) => requestAnimationFrame(() => { const hs = [...(dock.current?.querySelectorAll<HTMLElement>('.ic-th-hit') ?? [])]; (hs[Math.min(k, hs.length - 1)] ?? p.promptRef.current)?.focus({ preventScroll: true }); });
   const removePhoto = (k: number, focus = false) => { if (k === 0) { p.clearImage(); p.setMask(null); setMasking(false); } else p.removeRef?.(k - 1); if (focus) focusLead(k); };
   const dragPhoto = useSlotReorder((from, to) => p.movePhoto?.(from, to));
@@ -819,7 +819,8 @@ export default function ImageCanvas(p: ImageCanvasProps) {
             : prepNow ? <PrepChip chipRef={prepChipRef} prep={prepNow} aspect={prepNow.aspect} shape="" busy={prepBusy || wfBusy} onFit={() => void applyPrep('fit')} onCrop={openCrop} onUndo={undoPrep} /> : null}</>} />
     : <>{presetChip}
       {photos.length > 0 && <div className="ic-attach ic-attach-in" data-testid="ic-attach">{photos.slice(0, ts.show).map(thumb)}
-        {ts.more > 0 && <button type="button" className="ic-th-more" data-ref-trigger data-testid="ic-thumbs-more" aria-haspopup="dialog" aria-label={`${ts.more} more photo${ts.more > 1 ? 's' : ''} (${refN} in all). Open your images`} {...tip(`${refN} photos in all · images ${ts.show + 1}–${refN} aren’t shown here`)} onClick={openPhotos}>+{ts.more}</button>}
+        <MoreFiles hidden={ts.more} watch={dock} testId="ic-thumbs-more" summary={slotText('image', refN, maxRefs)} onRemove={f => removePhoto(f.idx)} onMove={photos.length > 1 && p.movePhoto ? (_g, a, b) => p.movePhoto!(a, b) : undefined}
+          items={photos.map((ph, k): TrayFile => ({ key: ph.url, group: 'photos', idx: k, kind: 'image', url: ph.url, name: (ph as any).file?.name ?? `Image ${k + 1}`, label: refN > 1 ? `Picture ${k + 1} · @image${k + 1}` : 'Picture', off: k >= maxRefs || (!!p.mask && k > 0) }))} />
         {p.canMask && sup.draw !== false /* only models with a mask route (Brush Edit) */ && <>
           {p.mask && cMaskNow && <button type="button" className="ic-mask-t" data-testid="ic-mask-thumb" aria-label={`Mask: ${Math.max(1, Math.round(cMaskNow.cover * 100))}% of the photo. Edit mask`} {...tip(`Mask · ${Math.max(1, Math.round(cMaskNow.cover * 100))}% of the photo. Click to edit`)} onClick={openCreateMask}><img src={cMaskNow.preview} alt="" /></button>}
           <button type="button" className={`ic-chip ic-mask-b ${masking || p.mask ? 'on' : ''}`} data-testid="ic-mask-chip" aria-haspopup="dialog" {...tip(p.mask ? 'Brush Edit: only the painted area changes. Click to edit the mask' : 'Paint an area: only it changes')} onClick={openCreateMask}>{p.mask ? 'Mask ✓' : 'Mask'}</button></>}</div>}

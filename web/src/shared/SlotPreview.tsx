@@ -35,7 +35,7 @@ export function SlotCount({ used, caps, testId = 'slot-count' }: { used: Partial
   const kinds = all.filter((k, i) => (used[k] ?? 0) > 0 || k === 'image' || (i === 0 && !all.includes('image'))); if (!kinds.length) return null;
   const full = all.map(k => slotText(k, used[k] ?? 0, caps[k] ?? 0)).join(' · ');
   const over = kinds.some(k => (used[k] ?? 0) > (caps[k] ?? 0)); const isFull = kinds.every(k => (used[k] ?? 0) >= (caps[k] ?? 0));
-  return <span className={`slot-count${over ? ' over' : isFull ? ' full' : ''}`} data-testid={testId} role="status" aria-live="polite" title={full}>
+  return <span className={`slot-count${kinds.length > 1 ? ' multi' : ''}${over ? ' over' : isFull ? ' full' : ''}`} data-testid={testId} role="status" aria-live="polite" title={full}>
     {kinds.map((k, i) => <span key={k}>{i > 0 && <i aria-hidden> · </i>}{slotText(k, used[k] ?? 0, caps[k] ?? 0)}</span>)}</span>;
 }
 
