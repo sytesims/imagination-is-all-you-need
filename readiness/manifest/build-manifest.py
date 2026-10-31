@@ -58,6 +58,8 @@ OVERRIDES = {
  'ema_vae_fp16.safetensors': [(HF+'numz/SeedVR2_comfyUI/resolve/main/ema_vae_fp16.safetensors', 'SEEDVR2')],
  # Upscale (2026-10-22): SeedVR2 3B fp16 + VAE for the native-node image graph (Comfy-Org/SeedVR2), 4x Nomos2 DAT2 (Phhofm, GitHub release). Sizes and sha256 of the files on disk.
  'seedvr2_3b_fp16.safetensors': [(HF+'Comfy-Org/SeedVR2/resolve/main/diffusion_models/seedvr2_3b_fp16.safetensors', 'diffusion_models', {'size': 6784268336, 'sha256': '98669fd2c06df5eca88baf68cd5c478775c8e61fc110e598c52b350145ea2660'})],
+ # SeedVR2 3B int8 ConvRot (native video upscale graph, 2026-10-31): the URL the docs.comfy.org SeedVR2 tutorial lists (tutorials/utility/seedvr2); not probed here, so no size yet.
+ 'seedvr2_3b_int8_convrot.safetensors': [(HF+'Comfy-Org/SeedVR2/resolve/main/diffusion_models/seedvr2_3b_int8_convrot.safetensors', 'diffusion_models', {'head_status': 'not probed (URL from the docs.comfy.org SeedVR2 tutorial, 2026-10-31; run npm run models:manifest for its size)'})],
  'seedvr2_ema_vae_fp16.safetensors': [(HF+'Comfy-Org/SeedVR2/resolve/main/vae/seedvr2_ema_vae_fp16.safetensors', 'vae', {'size': 501324814, 'sha256': '20678548f420d98d26f11442d3528f8b8c94e57ee046ef93dbb7633da8612ca1'})],
  '4xNomos2_hq_dat2.pth': [('https://github.com/Phhofm/models/releases/download/4xNomos2_hq_dat2/4xNomos2_hq_dat2.pth', 'upscale_models', {'size': 140196334, 'sha256': '1f2be2b4786b5031776aed90e1818564f5576ab1e44da9355c7f3788ea25bdea'})],
  'seedvr2_ema_3b_fp8_e4m3fn.safetensors': [(HF+'numz/SeedVR2_comfyUI/resolve/main/seedvr2_ema_3b_fp8_e4m3fn.safetensors', 'SEEDVR2')],
@@ -136,8 +138,31 @@ OVERRIDES = {
  'Qwen3-TTS-12Hz-1.7B-CustomVoice/speech_tokenizer/model.safetensors': [('', 'qwen-tts', {'size': 682293092, 'head_status': 'install by hand (part of the same folder)', 'page_url': 'https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice/tree/main/speech_tokenizer'})],
  'flux2-vae_small.safetensors': [(HF+'Comfy-Org/MOSS-Image/resolve/main/vae/flux2-vae_small.safetensors', 'vae', {'size': 249521340, 'sha256': 'd8d52ba036475f5fb07c8b435e176d3d97ebfa82f0d1a1c317f9cc1e25bd013b', 'head_status': 'ok'})],
 }
-# Look LoRAs referenced by server/src/tools/soul/presets.ts (patched into soul-*-api.json at run time, so not in any template).
-SOUL_LOOK_LORAS = ['comfyui_subject_lora16.safetensors', 'sim_stage1/image_proj_model.bin', 'sim_stage1/infusenet_sim_fp8e4m3fn.safetensors', '50sNoirZ.safetensors', 'CCD_Dreams_qwen2507.safetensors', 'CandidInstaxphotoZ.safetensors', 'Cinematic Film Color style v1.2.safetensors', 'Modeling 101 v1.5.safetensors', 'Professional_studio_quality_-_ZIT_epoch_13.safetensors', 'Velatrix.safetensors', 'Z-TURBO_Photography_35mmPhoto_1536.safetensors', 'Z_Instapic_V1.safetensors', 'amateur_selfie.safetensors', 'd1rectflash.safetensors', 'flux-fash.safetensors']
+# Look LoRAs referenced by server/src/tools/soul/presets.ts (patched into soul-*-api.json at run time, so not in any template), per base model
+# (hardware plan B4, 2026-10-31): a LoRA is listed only for the graphs of its own base (server/src/tools/soul/plan.ts BASE_WF / ENGINE_WF / FAMILY), so the
+# InfiniteYou fp8 InfuseNet no longer lands on soul-zit (which made the whole card "Needs NVIDIA" on a Mac) and a graph counts only its own base's LoRAs.
+SOUL_GRAPHS = {'zit': ['soul-zit'], 'flux1dev': ['soul-flux1dev', 'soul-ref-pulid', 'soul-ref-infiniteyou', 'soul-ref-aceplus'], 'qwen': ['soul-qwen', 'soul-ref-qwenedit']}
+SOUL_LOOK_LORAS = {
+ 'comfyui_subject_lora16.safetensors': ('flux1-dev', ['soul-ref-aceplus']), 'sim_stage1/image_proj_model.bin': ('flux1-dev', ['soul-ref-infiniteyou']), 'sim_stage1/infusenet_sim_fp8e4m3fn.safetensors': ('flux1-dev', ['soul-ref-infiniteyou']),
+ **{f: ('z-image-turbo', SOUL_GRAPHS['zit']) for f in ['50sNoirZ.safetensors', 'CandidInstaxphotoZ.safetensors', 'Cinematic Film Color style v1.2.safetensors', 'Modeling 101 v1.5.safetensors', 'Professional_studio_quality_-_ZIT_epoch_13.safetensors', 'Velatrix.safetensors', 'Z-TURBO_Photography_35mmPhoto_1536.safetensors', 'Z_Instapic_V1.safetensors', 'amateur_selfie.safetensors']},
+ **{f: ('flux1-dev', SOUL_GRAPHS['flux1dev']) for f in ['d1rectflash.safetensors', 'flux-fash.safetensors']},
+ **{f: ('qwen-image', SOUL_GRAPHS['qwen']) for f in ['CCD_Dreams_qwen2507.safetensors']},
+}
+# The base model family of a LoRA (the `base` field on lora rows; a LoRA runs wherever its base runs): from the DiT files of the graphs that load it.
+BASES = [(r'z_image_turbo', 'z-image-turbo'), (r'qwen_image_edit_2509', 'qwen-image-edit-2509'), (r'qwen_image_edit_2511', 'qwen-image-edit-2511'), (r'qwen_image_2\.1', 'qwen-image-2.1'),
+ (r'qwen_image_(2512|fp8|bf16)|qwen-image-Q', 'qwen-image'), (r'flux1-(dev|fill)', 'flux1-dev'), (r'flux2_dev|flux2-dev', 'flux2-dev'), (r'flux-2-klein-4b', 'flux2-klein-4b'), (r'ltx-2\.5', 'ltx-2.5-22b'),
+ (r'ltx-2-19b', 'ltx-2-19b'), (r'wan2\.2_i2v', 'wan2.2-i2v-14b'), (r'Wan2_2-Animate|Wan2\.2-Animate', 'wan2.2-animate-14b'), (r'wan2\.1_vace', 'wan2.1-vace-14b'), (r'wan2\.2_fun_camera', 'wan2.2-fun-camera-14b'),
+ (r'wan2\.2_ti2v_5B', 'wan2.2-ti2v-5b'), (r'minimax_h3', 'minimax-h3'), (r'qwen_image_2\.1_turbo', 'qwen-image-2.1')]
+# Graphs whose custom node fetches its own weights (no file name in the graph, so no model row): their memory estimate and note (hardware plan B7).
+# vram_est_gb: the pack's weights + 1.5 GB activations, an ESTIMATE (Chatterbox from the hardware matrix, 2026-10-31; F5-TTS v1 Base ~1.3 GB, unverified).
+PACK_WORKFLOWS = {
+ 'workflows/voice-chatterbox-tts-api.json': {'vram_est_gb': 3.6, 'note': 'ComfyUI-Chatterbox downloads its own weights (ResembleAI) on first use; memory is an estimate'},
+ 'workflows/voice-chatterbox-vc-api.json': {'vram_est_gb': 3.6, 'note': 'ComfyUI-Chatterbox downloads its own weights (ResembleAI) on first use; memory is an estimate'},
+ 'workflows/voice-f5tts-api.json': {'vram_est_gb': 2.8, 'note': 'ComfyUI-F5-TTS downloads its own weights (F5TTS_v1_Base) on first use; memory is an estimate'},
+}
+# Notes written by hand before, kept in the generator so a re-run doesn't drop them.
+WF_NOTES = {'workflows/object-swap-wan-animate-api.json': 'Same model set as object-swap-api.json. Variants workflows/object-swap-wan-animate/ext-0..6.json and mask-ext-1.json use the same files. Sizes/sha256 re-checked 2026-10-17 by HF HEAD (x-linked-size / x-linked-etag); files not downloaded.'}
+LTX25_GGUF_MPS = 'GGUF Q4_K_M transformer (ComfyUI-GGUF), dequantised per layer; start ComfyUI with --use-split-cross-attention (LTX-2.5 gives black frames on MPS otherwise)'
 # Model files a custom node finds by itself (no file name in the workflow): file -> (workflow, node class, input that picks it).
 PACK_MODELS = {
  'Qwen3-TTS-12Hz-1.7B-CustomVoice/model.safetensors': ('workflows/voice-qwen3tts-api.json', 'FB_Qwen3TTSCustomVoice', 'model_choice'),
@@ -160,8 +185,9 @@ def collect():
                 if isinstance(v, str) and EXT.search(v):
                     r = refs.setdefault(v, {'file': v, 'inputs': set(), 'nodes': set(), 'workflows': set()})
                     r['inputs'].add(k); r['nodes'].add(n['class_type']); r['workflows'].add(rel)
-    for v in SOUL_LOOK_LORAS:
-        r = refs.setdefault(v, {'file': v, 'inputs': set(), 'nodes': set(), 'workflows': set()}); r['inputs'].add('lora_name'); r['nodes'].add('LoraLoaderModelOnly'); r['workflows'].add('workflows/soul-*-api.json (preset LoRA)')
+    for v, (base, graphs) in SOUL_LOOK_LORAS.items():
+        r = refs.setdefault(v, {'file': v, 'inputs': set(), 'nodes': set(), 'workflows': set()}); r['inputs'].add('lora_name'); r['nodes'].add('LoraLoaderModelOnly'); r['base'] = base
+        for g in graphs: r['workflows'].add(f'workflows/{g}-api.json (preset LoRA)')
     for v, (wf, node, inp) in PACK_MODELS.items():
         r = refs.setdefault(v, {'file': v, 'inputs': set(), 'nodes': set(), 'workflows': set()}); r['inputs'].add(inp); r['nodes'].add(node); r['workflows'].add(wf)
     return refs
@@ -258,10 +284,23 @@ def build(offline=False):
             **({'page_url': ov[0][2]['page_url']} if (ov := OVERRIDES.get(name)) and len(ov[0]) > 2 and ov[0][2].get('page_url') else {})})
     return models
 
+def add_bases(models):
+    """`base` on every LoRA row: the soul looks' own base, else the base family of the DiT files in the graphs that load it (BASES); null when unknown."""
+    dits = {}
+    for m in models:
+        if any(n in m.get('loaded_by', []) for n in ('UNETLoader', 'UnetLoaderGGUF', 'CheckpointLoaderSimple')):
+            for f in m['workflows']: dits.setdefault(f, []).append(m['file'])
+    for m in models:
+        if 'lora_name' not in m.get('input', []): continue
+        if m['file'] in SOUL_LOOK_LORAS: m['base'] = SOUL_LOOK_LORAS[m['file']][0]; continue
+        fams = sorted({b for f in m['workflows'] for d in dits.get(f, []) for rx, b in BASES if re.search(rx, d)})
+        m['base'] = fams[0] if len(fams) == 1 else (fams or None)
+
 def wf_index(models):
     w = {}
     for m in models:
         for f in m['workflows']:
+            if f.endswith(')'): continue  # 'workflows/soul-zit-api.json (preset LoRA)': a file the graph may load, not a graph of its own
             e = w.setdefault(f, {'models': [], 'total_gb': 0.0}); e['models'].append(m['file']); e['total_gb'] = round(e['total_gb'] + (m.get('size_gb') or 0), 2)
     return dict(sorted(w.items()))
 
@@ -293,6 +332,7 @@ def wf_meta(models, wf):
         if re.search(r'(^|[_.-])w\da\d+([_.-]|$)', names): mps = 'red'; notes.append('w4a8 / w6a8 weights: low-bit CUDA kernels, no MPS path')
         if 'int8_convrot' in names: mps = 'red' if mps == 'red' else 'amber'; notes.append('int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]')
         if 'bf16' in names: notes.append('bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]'); mps = mps if mps != 'green' else 'amber'
+        if 'ltx-2.5' in names and '.gguf' in names: notes.append(LTX25_GGUF_MPS)
         if 'yolox' in names: notes.append('DWPose yolox/torchscript: runs via onnxruntime/torchscript on CPU on Mac (slow but works)')
         if 'sam2' in names: notes.append('SAM2: kijai pack supports mps device but bf16/fp16 autocast varies; use fp32 on MPS')
         if 'rife' in names: notes.append('RIFE VFI: pure PyTorch, works on MPS/CPU')
@@ -327,7 +367,13 @@ if __name__ == '__main__':
     extra = json.load(open(OUT)).get('workflows_meta', {}) if os.path.exists(OUT) else {}
     meta_path = os.path.join(ROOT, 'readiness', 'manifest', 'vram-mps.json')
     meta = json.load(open(meta_path)) if os.path.exists(meta_path) else {}
-    wf = wf_index(models); wf_meta(models, wf)
+    add_bases(models); wf = wf_index(models); wf_meta(models, wf)
+    for f, p in PACK_WORKFLOWS.items():
+        wf[f] = {'models': [], 'total_gb': 0.0, 'vram_est_gb': p['vram_est_gb'], 'vram_basis': 'weights the node pack downloads itself + activations 1.5 GB (image/audio), an estimate',
+                 'fits': {'24GB': True, '32GB': True, '80GB': True}, 'mps': 'green', 'mps_notes': [], 'note': p['note']}
+    for f, n in WF_NOTES.items():
+        if f in wf: wf[f]['note'] = n
+    wf = dict(sorted(wf.items()))
     for f, e in wf.items(): e.update(meta.get('workflows', {}).get(os.path.basename(f), {}))
     json.dump({'generated_by': 'npm run models:manifest', 'note': 'size/sha256 from Hugging Face LFS headers on HEAD; vram/mps from readiness/manifest/vram-mps.json', 'sources': SOURCES,
                'models': models, 'workflows': wf}, open(OUT, 'w'), indent=1)

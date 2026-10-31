@@ -39,6 +39,31 @@
    ]
   },
   {
+   "file": "4xNomos2_hq_dat2.pth",
+   "folder": "upscale_models",
+   "hf_repo": null,
+   "revision": null,
+   "repo_path": null,
+   "url": "https://github.com/Phhofm/models/releases/download/4xNomos2_hq_dat2/4xNomos2_hq_dat2.pth",
+   "size": 140196334,
+   "size_gb": 0.14,
+   "sha256": "1f2be2b4786b5031776aed90e1818564f5576ab1e44da9355c7f3788ea25bdea",
+   "renamed_from": null,
+   "head_status": "ok (size and sha256 of the downloaded file, 2026-10-22; not probed)",
+   "workflows": [
+    "workflows/image-upscale-nomos2-x2-api.json",
+    "workflows/image-upscale-nomos2-x4-api.json"
+   ],
+   "loaded_by": [
+    "UpscaleModelLoader"
+   ],
+   "input": [
+    "model_name"
+   ],
+   "auto_downloaded_by_pack": false,
+   "tried": []
+  },
+  {
    "file": "50sNoirZ.safetensors",
    "folder": "loras",
    "hf_repo": null,
@@ -62,8 +87,9 @@
     "lora_name"
    ],
    "workflows": [
-    "workflows/soul-*-api.json (preset LoRA)"
-   ]
+    "workflows/soul-zit-api.json (preset LoRA)"
+   ],
+   "base": "z-image-turbo"
   },
   {
    "file": "BiRefNet-general.safetensors",
@@ -117,8 +143,10 @@
     "lora_name"
    ],
    "workflows": [
-    "workflows/soul-*-api.json (preset LoRA)"
-   ]
+    "workflows/soul-qwen-api.json (preset LoRA)",
+    "workflows/soul-ref-qwenedit-api.json (preset LoRA)"
+   ],
+   "base": "qwen-image"
   },
   {
    "file": "CandidInstaxphotoZ.safetensors",
@@ -144,8 +172,9 @@
     "lora_name"
    ],
    "workflows": [
-    "workflows/soul-*-api.json (preset LoRA)"
-   ]
+    "workflows/soul-zit-api.json (preset LoRA)"
+   ],
+   "base": "z-image-turbo"
   },
   {
    "file": "Cinematic Film Color style v1.2.safetensors",
@@ -171,8 +200,9 @@
     "lora_name"
    ],
    "workflows": [
-    "workflows/soul-*-api.json (preset LoRA)"
-   ]
+    "workflows/soul-zit-api.json (preset LoRA)"
+   ],
+   "base": "z-image-turbo"
   },
   {
    "file": "CoolShot_2000s_qwen.safetensors",
@@ -200,6 +230,10 @@
    "workflows": [
     "workflows/soul-qwen-api.json",
     "workflows/soul-ref-qwenedit-api.json"
+   ],
+   "base": [
+    "qwen-image",
+    "qwen-image-edit-2511"
    ]
   },
   {
@@ -227,7 +261,8 @@
    ],
    "workflows": [
     "workflows/create-image-flux2dev-api.json"
-   ]
+   ],
+   "base": "flux2-dev"
   },
   {
    "file": "Modeling 101 v1.5.safetensors",
@@ -253,8 +288,9 @@
     "lora_name"
    ],
    "workflows": [
-    "workflows/soul-*-api.json (preset LoRA)"
-   ]
+    "workflows/soul-zit-api.json (preset LoRA)"
+   ],
+   "base": "z-image-turbo"
   },
   {
    "file": "Professional_studio_quality_-_ZIT_epoch_13.safetensors",
@@ -280,8 +316,37 @@
     "lora_name"
    ],
    "workflows": [
-    "workflows/soul-*-api.json (preset LoRA)"
-   ]
+    "workflows/soul-zit-api.json (preset LoRA)"
+   ],
+   "base": "z-image-turbo"
+  },
+  {
+   "file": "Qwen-Edit-2509-Multiple-angles.safetensors",
+   "folder": "loras",
+   "hf_repo": "dx8152/Qwen-Edit-2509-Multiple-angles",
+   "revision": "main",
+   "repo_path": "%E9%95%9C%E5%A4%B4%E8%BD%AC%E6%8D%A2.safetensors",
+   "url": "https://huggingface.co/dx8152/Qwen-Edit-2509-Multiple-angles/resolve/main/%E9%95%9C%E5%A4%B4%E8%BD%AC%E6%8D%A2.safetensors",
+   "size": 236117032,
+   "size_gb": 0.24,
+   "sha256": "e0cea9508025a39e41f50da0e7d10fbd9db182d057c745136a42ef8829914c8f",
+   "repo_file": null,
+   "civitai_version": null,
+   "renamed_from": null,
+   "head_status": "ok",
+   "http": 302,
+   "auto_downloaded_by_pack": false,
+   "tried": [],
+   "loaded_by": [
+    "LoraLoaderModelOnly"
+   ],
+   "input": [
+    "lora_name"
+   ],
+   "workflows": [
+    "workflows/shots-qwen-edit2509-angles-api.json"
+   ],
+   "base": "qwen-image-edit-2509"
   },
   {
    "file": "Qwen-Image-Edit-2509-Lightning-4steps-V1.0-bf16.safetensors",
@@ -311,7 +376,8 @@
     "workflows/create-image-qwen-edit2509-inpaint-api.json",
     "workflows/create-image-qwen-edit2509-multiref-api.json",
     "workflows/shots-qwen-edit2509-angles-api.json"
-   ]
+   ],
+   "base": "qwen-image-edit-2509"
   },
   {
    "file": "Qwen-Image-Lightning-8steps-V1.0.safetensors",
@@ -338,7 +404,8 @@
    ],
    "workflows": [
     "workflows/create-image-qwen-t2i-api.json"
-   ]
+   ],
+   "base": "qwen-image"
   },
   {
    "file": "Qwen3-TTS-12Hz-1.7B-CustomVoice/model.safetensors",
@@ -495,8 +562,9 @@
     "lora_name"
    ],
    "workflows": [
-    "workflows/soul-*-api.json (preset LoRA)"
-   ]
+    "workflows/soul-zit-api.json (preset LoRA)"
+   ],
+   "base": "z-image-turbo"
   },
   {
    "file": "Wan2_2-Animate-14B_fp8_e4m3fn_scaled_KJ.safetensors",
@@ -582,7 +650,8 @@
     "workflows/object-swap/ext-4.json",
     "workflows/object-swap/ext-5.json",
     "workflows/object-swap/ext-6.json"
-   ]
+   ],
+   "base": "wan2.2-animate-14b"
   },
   {
    "file": "Z-Image-Turbo-Realism-LoRA.safetensors",
@@ -609,7 +678,8 @@
    ],
    "workflows": [
     "workflows/soul-zit-api.json"
-   ]
+   ],
+   "base": "z-image-turbo"
   },
   {
    "file": "Z-TURBO_Photography_35mmPhoto_1536.safetensors",
@@ -635,8 +705,9 @@
     "lora_name"
    ],
    "workflows": [
-    "workflows/soul-*-api.json (preset LoRA)"
-   ]
+    "workflows/soul-zit-api.json (preset LoRA)"
+   ],
+   "base": "z-image-turbo"
   },
   {
    "file": "Z_Instapic_V1.safetensors",
@@ -662,8 +733,9 @@
     "lora_name"
    ],
    "workflows": [
-    "workflows/soul-*-api.json (preset LoRA)"
-   ]
+    "workflows/soul-zit-api.json (preset LoRA)"
+   ],
+   "base": "z-image-turbo"
   },
   {
    "file": "ace_1.5_vae.safetensors",
@@ -833,8 +905,9 @@
     "lora_name"
    ],
    "workflows": [
-    "workflows/soul-*-api.json (preset LoRA)"
-   ]
+    "workflows/soul-zit-api.json (preset LoRA)"
+   ],
+   "base": "z-image-turbo"
   },
   {
    "file": "apple_DFN5B-CLIP-ViT-H-14-384_fp16.safetensors",
@@ -864,6 +937,62 @@
    ]
   },
   {
+   "file": "bfs_body_swap_v1.0_qwen_2.1.safetensors",
+   "folder": "loras",
+   "hf_repo": "Alissonerdx/BFS-Best-Face-Swap",
+   "revision": "main",
+   "repo_path": "bfs_body_swap_v1.0_qwen_2.1.safetensors",
+   "url": "https://huggingface.co/Alissonerdx/BFS-Best-Face-Swap/resolve/main/bfs_body_swap_v1.0_qwen_2.1.safetensors",
+   "size": 209753576,
+   "size_gb": 0.21,
+   "sha256": "7dc0a53aba4dbc70c204f498936a619d226559da11011f748c389189af46b664",
+   "repo_file": null,
+   "civitai_version": null,
+   "renamed_from": null,
+   "head_status": "ok",
+   "http": 302,
+   "auto_downloaded_by_pack": false,
+   "tried": [],
+   "loaded_by": [
+    "LoraLoaderModelOnly"
+   ],
+   "input": [
+    "lora_name"
+   ],
+   "workflows": [
+    "workflows/create-image-qwen21-personswap-api.json"
+   ],
+   "base": "qwen-image-2.1"
+  },
+  {
+   "file": "bfs_head_v1.1_qwen_2.1.safetensors",
+   "folder": "loras",
+   "hf_repo": "Alissonerdx/BFS-Best-Face-Swap",
+   "revision": "main",
+   "repo_path": "bfs_head_v1.1_qwen_2.1.safetensors",
+   "url": "https://huggingface.co/Alissonerdx/BFS-Best-Face-Swap/resolve/main/bfs_head_v1.1_qwen_2.1.safetensors",
+   "size": 260096144,
+   "size_gb": 0.26,
+   "sha256": "d1d748d5601077f3b6d05766f6823510e901970d916afa404a97e85dc92fa88e",
+   "repo_file": null,
+   "civitai_version": null,
+   "renamed_from": null,
+   "head_status": "ok",
+   "http": 302,
+   "auto_downloaded_by_pack": false,
+   "tried": [],
+   "loaded_by": [
+    "LoraLoaderModelOnly"
+   ],
+   "input": [
+    "lora_name"
+   ],
+   "workflows": [
+    "workflows/create-image-qwen21-faceswap-api.json"
+   ],
+   "base": "qwen-image-2.1"
+  },
+  {
    "file": "camera_motion_h3_lora_v1_3000_pruned.safetensors",
    "folder": "loras",
    "hf_repo": null,
@@ -888,7 +1017,8 @@
    ],
    "workflows": [
     "workflows/h3-camera-motion-api.json"
-   ]
+   ],
+   "base": "minimax-h3"
   },
   {
    "file": "clip_l.safetensors",
@@ -988,7 +1118,8 @@
    ],
    "workflows": [
     "workflows/soul-ref-aceplus-api.json"
-   ]
+   ],
+   "base": "flux1-dev"
   },
   {
    "file": "comfyui_subject_lora16.safetensors",
@@ -1014,8 +1145,9 @@
     "lora_name"
    ],
    "workflows": [
-    "workflows/soul-*-api.json (preset LoRA)"
-   ]
+    "workflows/soul-ref-aceplus-api.json (preset LoRA)"
+   ],
+   "base": "flux1-dev"
   },
   {
    "file": "d1rectflash.safetensors",
@@ -1041,8 +1173,40 @@
     "lora_name"
    ],
    "workflows": [
-    "workflows/soul-*-api.json (preset LoRA)"
-   ]
+    "workflows/soul-flux1dev-api.json (preset LoRA)",
+    "workflows/soul-ref-aceplus-api.json (preset LoRA)",
+    "workflows/soul-ref-infiniteyou-api.json (preset LoRA)",
+    "workflows/soul-ref-pulid-api.json (preset LoRA)"
+   ],
+   "base": "flux1-dev"
+  },
+  {
+   "file": "depth_anything_v2_vits.pth",
+   "folder": "custom_nodes/comfyui_controlnet_aux/ckpts/depth-anything/Depth-Anything-V2-Small",
+   "hf_repo": "depth-anything/Depth-Anything-V2-Small",
+   "revision": "main",
+   "repo_path": "depth_anything_v2_vits.pth",
+   "url": "https://huggingface.co/depth-anything/Depth-Anything-V2-Small/resolve/main/depth_anything_v2_vits.pth",
+   "size": null,
+   "size_gb": null,
+   "sha256": null,
+   "repo_file": null,
+   "civitai_version": null,
+   "renamed_from": null,
+   "head_status": "not_probed",
+   "http": null,
+   "auto_downloaded_by_pack": true,
+   "tried": [],
+   "loaded_by": [
+    "DepthAnythingV2Preprocessor"
+   ],
+   "input": [
+    "ckpt_name"
+   ],
+   "workflows": [
+    "workflows/depth-map-dav2-api.json"
+   ],
+   "note": "Edit Video Depth Map; manifest entry only (not downloaded). Re-run build-manifest.py to probe size/sha256."
   },
   {
    "file": "drama3_codec.safetensors",
@@ -1220,8 +1384,12 @@
     "lora_name"
    ],
    "workflows": [
-    "workflows/soul-*-api.json (preset LoRA)"
-   ]
+    "workflows/soul-flux1dev-api.json (preset LoRA)",
+    "workflows/soul-ref-aceplus-api.json (preset LoRA)",
+    "workflows/soul-ref-infiniteyou-api.json (preset LoRA)",
+    "workflows/soul-ref-pulid-api.json (preset LoRA)"
+   ],
+   "base": "flux1-dev"
   },
   {
    "file": "flux1-dev-fp8.safetensors",
@@ -1427,7 +1595,8 @@
     "workflows/soul-ref-aceplus-api.json",
     "workflows/soul-ref-infiniteyou-api.json",
     "workflows/soul-ref-pulid-api.json"
-   ]
+   ],
+   "base": "flux1-dev"
   },
   {
    "file": "full_encoder_small_decoder.safetensors",
@@ -1454,6 +1623,32 @@
    ],
    "workflows": [
     "workflows/create-image-flux2dev-api.json"
+   ]
+  },
+  {
+   "file": "gemma4-12b-with-proj-ltx-2.5-bf16.safetensors",
+   "folder": "text_encoders",
+   "hf_repo": "unsloth/LTX-2.5-GGUF",
+   "revision": "main",
+   "repo_path": "text_encoders/gemma4-12b-with-proj-ltx-2.5-bf16.safetensors",
+   "url": "https://huggingface.co/unsloth/LTX-2.5-GGUF/resolve/main/text_encoders/gemma4-12b-with-proj-ltx-2.5-bf16.safetensors",
+   "size": 26263858182,
+   "size_gb": 26.26,
+   "sha256": null,
+   "head_status": "ok (HF tree API 2026-10-24)",
+   "workflows": [
+    "workflows/ltx25-a2v-api.json",
+    "workflows/ltx25-dfr-i2v-api.json",
+    "workflows/ltx25-flf-api.json",
+    "workflows/ltx25-iclora-v2v-api.json",
+    "workflows/ltx25-layout-to-render-api.json",
+    "workflows/ltx25-ti2v-api.json"
+   ],
+   "loaded_by": [
+    "CLIPLoader"
+   ],
+   "input": [
+    "clip_name"
    ]
   },
   {
@@ -1510,7 +1705,8 @@
    ],
    "workflows": [
     "workflows/object-swap-h3-charswap-api.json"
-   ]
+   ],
+   "base": "minimax-h3"
   },
   {
    "file": "lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors",
@@ -1553,7 +1749,8 @@
     "workflows/object-swap/ext-4.json",
     "workflows/object-swap/ext-5.json",
     "workflows/object-swap/ext-6.json"
-   ]
+   ],
+   "base": "wan2.2-animate-14b"
   },
   {
    "file": "ltx-2-19b-dev-fp8.safetensors",
@@ -1613,7 +1810,8 @@
     "workflows/camera-ltx-api.json",
     "workflows/camera-ltx-flf-api.json",
     "workflows/reshoot-api.json"
-   ]
+   ],
+   "base": "ltx-2-19b"
   },
   {
    "file": "ltx-2-19b-ic-lora-pose-control.safetensors",
@@ -1640,7 +1838,8 @@
    ],
    "workflows": [
     "workflows/reshoot-api.json"
-   ]
+   ],
+   "base": "ltx-2-19b"
   },
   {
    "file": "ltx-2-19b-lora-camera-control-dolly-in.safetensors",
@@ -1668,7 +1867,8 @@
    "workflows": [
     "workflows/camera-ltx-api.json",
     "workflows/camera-ltx-flf-api.json"
-   ]
+   ],
+   "base": "ltx-2-19b"
   },
   {
    "file": "ltx-2-19b-lora-camera-control-dolly-left.safetensors",
@@ -1695,7 +1895,8 @@
    ],
    "workflows": [
     "workflows/reshoot-api.json"
-   ]
+   ],
+   "base": "ltx-2-19b"
   },
   {
    "file": "ltx-2-spatial-upscaler-x2-1.0.safetensors",
@@ -1724,6 +1925,241 @@
     "workflows/camera-ltx-api.json",
     "workflows/camera-ltx-flf-api.json",
     "workflows/reshoot-api.json"
+   ]
+  },
+  {
+   "file": "ltx-2.5-22b-distilled-Q4_K_M.gguf",
+   "folder": "diffusion_models",
+   "hf_repo": "unsloth/LTX-2.5-GGUF",
+   "revision": "main",
+   "repo_path": "distilled/ltx-2.5-22b-distilled-Q4_K_M.gguf",
+   "url": "https://huggingface.co/unsloth/LTX-2.5-GGUF/resolve/main/distilled/ltx-2.5-22b-distilled-Q4_K_M.gguf",
+   "size": 13584703872,
+   "size_gb": 13.58,
+   "sha256": null,
+   "head_status": "ok (HF tree API 2026-10-24)",
+   "workflows": [
+    "workflows/ltx25-a2v-api.json",
+    "workflows/ltx25-flf-api.json",
+    "workflows/ltx25-iclora-v2v-api.json",
+    "workflows/ltx25-layout-to-render-api.json",
+    "workflows/ltx25-ti2v-api.json"
+   ],
+   "loaded_by": [
+    "UnetLoaderGGUF"
+   ],
+   "input": [
+    "unet_name"
+   ]
+  },
+  {
+   "file": "ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
+   "folder": "diffusion_models",
+   "hf_repo": "Lightricks/LTX-2.5",
+   "revision": "main",
+   "repo_path": "diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
+   "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
+   "size": 21504034224,
+   "size_gb": 21.5,
+   "sha256": null,
+   "renamed_from": null,
+   "head_status": "ok (HF tree API 2026-10-29)",
+   "workflows": [
+    "workflows/ltx25-dfr-i2v-api.json"
+   ],
+   "loaded_by": [
+    "UNETLoader"
+   ],
+   "input": [
+    "unet_name"
+   ]
+  },
+  {
+   "file": "ltx-2.5-22b-ic-lora-clean-plate-1.0.safetensors",
+   "folder": "loras",
+   "hf_repo": "Lightricks/LTX-2.5-22b-IC-LoRA-Clean-Plate",
+   "revision": "main",
+   "repo_path": "ltx-2.5-22b-ic-lora-clean-plate-1.0.safetensors",
+   "url": "https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-Clean-Plate/resolve/main/ltx-2.5-22b-ic-lora-clean-plate-1.0.safetensors",
+   "size": 327318439,
+   "size_gb": 0.33,
+   "sha256": null,
+   "head_status": "not probed (size from the downloaded file, 2026-10-26)",
+   "workflows": [
+    "workflows/ltx25-iclora-v2v-api.json"
+   ],
+   "loaded_by": [
+    "LoraLoaderModelOnly"
+   ],
+   "input": [
+    "lora_name"
+   ],
+   "base": "ltx-2.5-22b"
+  },
+  {
+   "file": "ltx-2.5-22b-ic-lora-layout-to-render-1.0.safetensors",
+   "folder": "loras",
+   "hf_repo": "Lightricks/LTX-2.5-22b-IC-LoRA-Layout-To-Render",
+   "revision": "main",
+   "repo_path": "ltx-2.5-22b-ic-lora-layout-to-render-1.0.safetensors",
+   "url": "https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-Layout-To-Render/resolve/main/ltx-2.5-22b-ic-lora-layout-to-render-1.0.safetensors",
+   "size": 1308787439,
+   "size_gb": 1.31,
+   "sha256": null,
+   "head_status": "gated (accept the licence on Hugging Face; HF tree API 2026-10-24)",
+   "workflows": [
+    "workflows/ltx25-layout-to-render-api.json"
+   ],
+   "loaded_by": [
+    "LoraLoaderModelOnly"
+   ],
+   "input": [
+    "lora_name"
+   ],
+   "base": "ltx-2.5-22b"
+  },
+  {
+   "file": "ltx-2.5-22b-ic-lora-pixel-spatial-upscaler-x2-1.0.safetensors",
+   "folder": "loras",
+   "hf_repo": "Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler",
+   "revision": "main",
+   "repo_path": "ltx-2.5-22b-ic-lora-pixel-spatial-upscaler-x2-1.0.safetensors",
+   "url": "https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler/resolve/main/ltx-2.5-22b-ic-lora-pixel-spatial-upscaler-x2-1.0.safetensors",
+   "size": 327322640,
+   "size_gb": 0.33,
+   "sha256": null,
+   "renamed_from": null,
+   "head_status": "ok (HF tree API 2026-10-29)",
+   "workflows": [
+    "workflows/ltx25-dfr-i2v-api.json"
+   ],
+   "loaded_by": [
+    "LoraLoaderModelOnly"
+   ],
+   "input": [
+    "lora_name"
+   ],
+   "base": "ltx-2.5-22b"
+  },
+  {
+   "file": "ltx-2.5-audio-vae-bf16.safetensors",
+   "folder": "vae",
+   "hf_repo": "unsloth/LTX-2.5-GGUF",
+   "revision": "main",
+   "repo_path": "vae/ltx-2.5-audio-vae-bf16.safetensors",
+   "url": "https://huggingface.co/unsloth/LTX-2.5-GGUF/resolve/main/vae/ltx-2.5-audio-vae-bf16.safetensors",
+   "size": 364866540,
+   "size_gb": 0.36,
+   "sha256": null,
+   "head_status": "ok (HF tree API 2026-10-24)",
+   "workflows": [
+    "workflows/ltx25-a2v-api.json",
+    "workflows/ltx25-dfr-i2v-api.json",
+    "workflows/ltx25-flf-api.json",
+    "workflows/ltx25-iclora-v2v-api.json",
+    "workflows/ltx25-layout-to-render-api.json",
+    "workflows/ltx25-ti2v-api.json"
+   ],
+   "loaded_by": [
+    "VAELoader"
+   ],
+   "input": [
+    "vae_name"
+   ]
+  },
+  {
+   "file": "ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
+   "folder": "latent_upscale_models",
+   "hf_repo": "unsloth/LTX-2.5-GGUF",
+   "revision": "main",
+   "repo_path": "latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
+   "url": "https://huggingface.co/unsloth/LTX-2.5-GGUF/resolve/main/latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
+   "size": 995778752,
+   "size_gb": 1.0,
+   "sha256": null,
+   "head_status": "ok (HF tree API 2026-10-24)",
+   "workflows": [
+    "workflows/ltx25-a2v-api.json",
+    "workflows/ltx25-dfr-i2v-api.json",
+    "workflows/ltx25-flf-api.json",
+    "workflows/ltx25-iclora-v2v-api.json",
+    "workflows/ltx25-layout-to-render-api.json",
+    "workflows/ltx25-ti2v-api.json"
+   ],
+   "loaded_by": [
+    "LatentUpscaleModelLoader"
+   ],
+   "input": [
+    "model_name"
+   ]
+  },
+  {
+   "file": "ltx-2.5-latent-temporal-upscaler-x2-bf16-1.0.safetensors",
+   "folder": "latent_upscale_models",
+   "hf_repo": "Lightricks/LTX-2.5",
+   "revision": "main",
+   "repo_path": "latent_upscale_models/ltx-2.5-latent-temporal-upscaler-x2-bf16-1.0.safetensors",
+   "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/latent_upscale_models/ltx-2.5-latent-temporal-upscaler-x2-bf16-1.0.safetensors",
+   "size": 261944000,
+   "size_gb": 0.26,
+   "sha256": null,
+   "renamed_from": null,
+   "head_status": "ok (HF tree API 2026-10-29)",
+   "workflows": [
+    "workflows/ltx25-dfr-i2v-api.json"
+   ],
+   "loaded_by": [
+    "LatentUpscaleModelLoader"
+   ],
+   "input": [
+    "model_name"
+   ]
+  },
+  {
+   "file": "ltx-2.5-video-vae-bf16.safetensors",
+   "folder": "vae",
+   "hf_repo": "Lightricks/LTX-2.5",
+   "revision": "main",
+   "repo_path": "vae/ltx-2.5-video-vae-bf16.safetensors",
+   "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/vae/ltx-2.5-video-vae-bf16.safetensors",
+   "size": 1472223346,
+   "size_gb": 1.47,
+   "sha256": null,
+   "renamed_from": null,
+   "head_status": "ok (HF tree API 2026-10-29)",
+   "workflows": [
+    "workflows/ltx25-dfr-i2v-api.json"
+   ],
+   "loaded_by": [
+    "VAELoader"
+   ],
+   "input": [
+    "vae_name"
+   ]
+  },
+  {
+   "file": "ltx-2.5-video-vae-conv-bf16.safetensors",
+   "folder": "vae",
+   "hf_repo": "unsloth/LTX-2.5-GGUF",
+   "revision": "main",
+   "repo_path": "vae/ltx-2.5-video-vae-conv-bf16.safetensors",
+   "url": "https://huggingface.co/unsloth/LTX-2.5-GGUF/resolve/main/vae/ltx-2.5-video-vae-conv-bf16.safetensors",
+   "size": 1452269922,
+   "size_gb": 1.45,
+   "sha256": null,
+   "head_status": "ok (HF tree API 2026-10-24)",
+   "workflows": [
+    "workflows/ltx25-a2v-api.json",
+    "workflows/ltx25-flf-api.json",
+    "workflows/ltx25-iclora-v2v-api.json",
+    "workflows/ltx25-layout-to-render-api.json",
+    "workflows/ltx25-ti2v-api.json"
+   ],
+   "loaded_by": [
+    "VAELoader"
+   ],
+   "input": [
+    "vae_name"
    ]
   },
   {
@@ -1793,7 +2229,8 @@
     "workflows/h3-t2v-api.json",
     "workflows/h3-t2v-fast-api.json",
     "workflows/object-swap-h3-charswap-api.json"
-   ]
+   ],
+   "base": "minimax-h3"
   },
   {
    "file": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
@@ -1856,7 +2293,8 @@
     "workflows/h3-r2v-api.json",
     "workflows/h3-style-transfer-api.json",
     "workflows/h3-vfx-edit-api.json"
-   ]
+   ],
+   "base": "minimax-h3"
   },
   {
    "file": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
@@ -1914,7 +2352,8 @@
    ],
    "workflows": [
     "workflows/h3-style-transfer-api.json"
-   ]
+   ],
+   "base": "minimax-h3"
   },
   {
    "file": "minimax_h3_vfx_edit_v1.0_r128.safetensors",
@@ -1941,7 +2380,8 @@
    ],
    "workflows": [
     "workflows/h3-vfx-edit-api.json"
-   ]
+   ],
+   "base": "minimax-h3"
   },
   {
    "file": "minimax_h3_video_vae_int8_convrot.safetensors",
@@ -2488,11 +2928,11 @@
    ],
    "workflows": [
     "workflows/create-image-qwen21-edit-api.json",
+    "workflows/create-image-qwen21-faceswap-api.json",
+    "workflows/create-image-qwen21-personswap-api.json",
     "workflows/create-image-qwen21-t2i-api.json",
     "workflows/create-image-qwen21-turbo-edit-api.json",
-    "workflows/create-image-qwen21-turbo-t2i-api.json",
-    "workflows/create-image-qwen21-faceswap-api.json",
-    "workflows/create-image-qwen21-personswap-api.json"
+    "workflows/create-image-qwen21-turbo-t2i-api.json"
    ]
   },
   {
@@ -2641,9 +3081,9 @@
    ],
    "workflows": [
     "workflows/create-image-qwen21-edit-api.json",
-    "workflows/create-image-qwen21-t2i-api.json",
     "workflows/create-image-qwen21-faceswap-api.json",
-    "workflows/create-image-qwen21-personswap-api.json"
+    "workflows/create-image-qwen21-personswap-api.json",
+    "workflows/create-image-qwen21-t2i-api.json"
    ]
   },
   {
@@ -2699,11 +3139,11 @@
    ],
    "workflows": [
     "workflows/create-image-qwen21-edit-api.json",
+    "workflows/create-image-qwen21-faceswap-api.json",
+    "workflows/create-image-qwen21-personswap-api.json",
     "workflows/create-image-qwen21-t2i-api.json",
     "workflows/create-image-qwen21-turbo-edit-api.json",
-    "workflows/create-image-qwen21-turbo-t2i-api.json",
-    "workflows/create-image-qwen21-faceswap-api.json",
-    "workflows/create-image-qwen21-personswap-api.json"
+    "workflows/create-image-qwen21-turbo-t2i-api.json"
    ]
   },
   {
@@ -2914,6 +3354,52 @@
    ]
   },
   {
+   "file": "seedvr2_3b_fp16.safetensors",
+   "folder": "diffusion_models",
+   "hf_repo": "Comfy-Org/SeedVR2",
+   "revision": "main",
+   "repo_path": "diffusion_models/seedvr2_3b_fp16.safetensors",
+   "url": "https://huggingface.co/Comfy-Org/SeedVR2/resolve/main/diffusion_models/seedvr2_3b_fp16.safetensors",
+   "size": 6784268336,
+   "size_gb": 6.78,
+   "sha256": "98669fd2c06df5eca88baf68cd5c478775c8e61fc110e598c52b350145ea2660",
+   "renamed_from": null,
+   "head_status": "ok (size and sha256 of the downloaded file, 2026-10-22; not probed)",
+   "workflows": [
+    "workflows/image-upscale-seedvr2-3b-api.json"
+   ],
+   "loaded_by": [
+    "UNETLoader"
+   ],
+   "input": [
+    "unet_name"
+   ],
+   "auto_downloaded_by_pack": false,
+   "tried": []
+  },
+  {
+   "file": "seedvr2_3b_int8_convrot.safetensors",
+   "folder": "diffusion_models",
+   "hf_repo": "Comfy-Org/SeedVR2",
+   "revision": "main",
+   "repo_path": "diffusion_models/seedvr2_3b_int8_convrot.safetensors",
+   "url": "https://huggingface.co/Comfy-Org/SeedVR2/resolve/main/diffusion_models/seedvr2_3b_int8_convrot.safetensors",
+   "size": null,
+   "size_gb": null,
+   "sha256": null,
+   "renamed_from": null,
+   "head_status": "not probed (URL from the docs.comfy.org SeedVR2 tutorial, 2026-10-31; run npm run models:manifest for its size)",
+   "workflows": [
+    "workflows/upscale-seedvr2-native-api.json"
+   ],
+   "loaded_by": [
+    "UNETLoader"
+   ],
+   "input": [
+    "unet_name"
+   ]
+  },
+  {
    "file": "seedvr2_ema_3b_fp8_e4m3fn.safetensors",
    "folder": "SEEDVR2",
    "hf_repo": "numz/SeedVR2_comfyUI",
@@ -2974,6 +3460,31 @@
    ]
   },
   {
+   "file": "seedvr2_ema_vae_fp16.safetensors",
+   "folder": "vae",
+   "hf_repo": "Comfy-Org/SeedVR2",
+   "revision": "main",
+   "repo_path": "vae/seedvr2_ema_vae_fp16.safetensors",
+   "url": "https://huggingface.co/Comfy-Org/SeedVR2/resolve/main/vae/seedvr2_ema_vae_fp16.safetensors",
+   "size": 501324814,
+   "size_gb": 0.5,
+   "sha256": "20678548f420d98d26f11442d3528f8b8c94e57ee046ef93dbb7633da8612ca1",
+   "renamed_from": null,
+   "head_status": "ok (size and sha256 of the downloaded file, 2026-10-22; not probed)",
+   "workflows": [
+    "workflows/image-upscale-seedvr2-3b-api.json",
+    "workflows/upscale-seedvr2-native-api.json"
+   ],
+   "loaded_by": [
+    "VAELoader"
+   ],
+   "input": [
+    "vae_name"
+   ],
+   "auto_downloaded_by_pack": false,
+   "tried": []
+  },
+  {
    "file": "sheetsage2_bf16.safetensors",
    "folder": "audio_encoders",
    "hf_repo": "Comfy-Org/YuE2",
@@ -3025,8 +3536,9 @@
     "lora_name"
    ],
    "workflows": [
-    "workflows/soul-*-api.json (preset LoRA)"
-   ]
+    "workflows/soul-ref-infiniteyou-api.json (preset LoRA)"
+   ],
+   "base": "flux1-dev"
   },
   {
    "file": "sim_stage1/infusenet_sim_fp8e4m3fn.safetensors",
@@ -3052,8 +3564,9 @@
     "lora_name"
    ],
    "workflows": [
-    "workflows/soul-*-api.json (preset LoRA)"
-   ]
+    "workflows/soul-ref-infiniteyou-api.json (preset LoRA)"
+   ],
+   "base": "flux1-dev"
   },
   {
    "file": "stable-audio-open-1.0.safetensors",
@@ -3262,7 +3775,8 @@
    ],
    "workflows": [
     "workflows/restyle-api.json"
-   ]
+   ],
+   "base": "wan2.1-vace-14b"
   },
   {
    "file": "wan2.1_vace_14B_fp16.safetensors",
@@ -3399,7 +3913,8 @@
    ],
    "workflows": [
     "workflows/photo-fx-api.json"
-   ]
+   ],
+   "base": "wan2.2-i2v-14b"
   },
   {
    "file": "wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors",
@@ -3426,7 +3941,8 @@
    ],
    "workflows": [
     "workflows/photo-fx-api.json"
-   ]
+   ],
+   "base": "wan2.2-i2v-14b"
   },
   {
    "file": "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors",
@@ -3674,447 +4190,6 @@
     "workflows/image-upscale-zimage-2k-api.json",
     "workflows/soul-zit-api.json"
    ]
-  },
-  {
-   "file": "depth_anything_v2_vits.pth",
-   "folder": "custom_nodes/comfyui_controlnet_aux/ckpts/depth-anything/Depth-Anything-V2-Small",
-   "hf_repo": "depth-anything/Depth-Anything-V2-Small",
-   "revision": "main",
-   "repo_path": "depth_anything_v2_vits.pth",
-   "url": "https://huggingface.co/depth-anything/Depth-Anything-V2-Small/resolve/main/depth_anything_v2_vits.pth",
-   "size": null,
-   "size_gb": null,
-   "sha256": null,
-   "repo_file": null,
-   "civitai_version": null,
-   "renamed_from": null,
-   "head_status": "not_probed",
-   "http": null,
-   "auto_downloaded_by_pack": true,
-   "tried": [],
-   "loaded_by": [
-    "DepthAnythingV2Preprocessor"
-   ],
-   "input": [
-    "ckpt_name"
-   ],
-   "workflows": [
-    "workflows/depth-map-dav2-api.json"
-   ],
-   "note": "Edit Video Depth Map; manifest entry only (not downloaded). Re-run build-manifest.py to probe size/sha256."
-  },
-  {
-   "file": "Qwen-Edit-2509-Multiple-angles.safetensors",
-   "folder": "loras",
-   "hf_repo": "dx8152/Qwen-Edit-2509-Multiple-angles",
-   "revision": "main",
-   "repo_path": "%E9%95%9C%E5%A4%B4%E8%BD%AC%E6%8D%A2.safetensors",
-   "url": "https://huggingface.co/dx8152/Qwen-Edit-2509-Multiple-angles/resolve/main/%E9%95%9C%E5%A4%B4%E8%BD%AC%E6%8D%A2.safetensors",
-   "size": 236117032,
-   "size_gb": 0.24,
-   "sha256": "e0cea9508025a39e41f50da0e7d10fbd9db182d057c745136a42ef8829914c8f",
-   "repo_file": null,
-   "civitai_version": null,
-   "renamed_from": null,
-   "head_status": "ok",
-   "http": 302,
-   "auto_downloaded_by_pack": false,
-   "tried": [],
-   "loaded_by": [
-    "LoraLoaderModelOnly"
-   ],
-   "input": [
-    "lora_name"
-   ],
-   "workflows": [
-    "workflows/shots-qwen-edit2509-angles-api.json"
-   ]
-  },
-  {
-   "file": "bfs_head_v1.1_qwen_2.1.safetensors",
-   "folder": "loras",
-   "hf_repo": "Alissonerdx/BFS-Best-Face-Swap",
-   "revision": "main",
-   "repo_path": "bfs_head_v1.1_qwen_2.1.safetensors",
-   "url": "https://huggingface.co/Alissonerdx/BFS-Best-Face-Swap/resolve/main/bfs_head_v1.1_qwen_2.1.safetensors",
-   "size": 260096144,
-   "size_gb": 0.26,
-   "sha256": "d1d748d5601077f3b6d05766f6823510e901970d916afa404a97e85dc92fa88e",
-   "repo_file": null,
-   "civitai_version": null,
-   "renamed_from": null,
-   "head_status": "ok",
-   "http": 302,
-   "auto_downloaded_by_pack": false,
-   "tried": [],
-   "loaded_by": [
-    "LoraLoaderModelOnly"
-   ],
-   "input": [
-    "lora_name"
-   ],
-   "workflows": [
-    "workflows/create-image-qwen21-faceswap-api.json"
-   ]
-  },
-  {
-   "file": "bfs_body_swap_v1.0_qwen_2.1.safetensors",
-   "folder": "loras",
-   "hf_repo": "Alissonerdx/BFS-Best-Face-Swap",
-   "revision": "main",
-   "repo_path": "bfs_body_swap_v1.0_qwen_2.1.safetensors",
-   "url": "https://huggingface.co/Alissonerdx/BFS-Best-Face-Swap/resolve/main/bfs_body_swap_v1.0_qwen_2.1.safetensors",
-   "size": 209753576,
-   "size_gb": 0.21,
-   "sha256": "7dc0a53aba4dbc70c204f498936a619d226559da11011f748c389189af46b664",
-   "repo_file": null,
-   "civitai_version": null,
-   "renamed_from": null,
-   "head_status": "ok",
-   "http": 302,
-   "auto_downloaded_by_pack": false,
-   "tried": [],
-   "loaded_by": [
-    "LoraLoaderModelOnly"
-   ],
-   "input": [
-    "lora_name"
-   ],
-   "workflows": [
-    "workflows/create-image-qwen21-personswap-api.json"
-   ]
-  },
-  {
-   "file": "4xNomos2_hq_dat2.pth",
-   "folder": "upscale_models",
-   "hf_repo": null,
-   "revision": null,
-   "repo_path": null,
-   "url": "https://github.com/Phhofm/models/releases/download/4xNomos2_hq_dat2/4xNomos2_hq_dat2.pth",
-   "size": 140196334,
-   "size_gb": 0.14,
-   "sha256": "1f2be2b4786b5031776aed90e1818564f5576ab1e44da9355c7f3788ea25bdea",
-   "renamed_from": null,
-   "head_status": "ok (size and sha256 of the downloaded file, 2026-10-22; not probed)",
-   "workflows": [
-    "workflows/image-upscale-nomos2-x2-api.json",
-    "workflows/image-upscale-nomos2-x4-api.json"
-   ],
-   "loaded_by": [
-    "UpscaleModelLoader"
-   ],
-   "input": [
-    "model_name"
-   ],
-   "auto_downloaded_by_pack": false,
-   "tried": []
-  },
-  {
-   "file": "seedvr2_3b_fp16.safetensors",
-   "folder": "diffusion_models",
-   "hf_repo": "Comfy-Org/SeedVR2",
-   "revision": "main",
-   "repo_path": "diffusion_models/seedvr2_3b_fp16.safetensors",
-   "url": "https://huggingface.co/Comfy-Org/SeedVR2/resolve/main/diffusion_models/seedvr2_3b_fp16.safetensors",
-   "size": 6784268336,
-   "size_gb": 6.78,
-   "sha256": "98669fd2c06df5eca88baf68cd5c478775c8e61fc110e598c52b350145ea2660",
-   "renamed_from": null,
-   "head_status": "ok (size and sha256 of the downloaded file, 2026-10-22; not probed)",
-   "workflows": [
-    "workflows/image-upscale-seedvr2-3b-api.json"
-   ],
-   "loaded_by": [
-    "UNETLoader"
-   ],
-   "input": [
-    "unet_name"
-   ],
-   "auto_downloaded_by_pack": false,
-   "tried": []
-  },
-  {
-   "file": "seedvr2_ema_vae_fp16.safetensors",
-   "folder": "vae",
-   "hf_repo": "Comfy-Org/SeedVR2",
-   "revision": "main",
-   "repo_path": "vae/seedvr2_ema_vae_fp16.safetensors",
-   "url": "https://huggingface.co/Comfy-Org/SeedVR2/resolve/main/vae/seedvr2_ema_vae_fp16.safetensors",
-   "size": 501324814,
-   "size_gb": 0.5,
-   "sha256": "20678548f420d98d26f11442d3528f8b8c94e57ee046ef93dbb7633da8612ca1",
-   "renamed_from": null,
-   "head_status": "ok (size and sha256 of the downloaded file, 2026-10-22; not probed)",
-   "workflows": [
-    "workflows/image-upscale-seedvr2-3b-api.json",
-    "workflows/upscale-seedvr2-native-api.json"
-   ],
-   "loaded_by": [
-    "VAELoader"
-   ],
-   "input": [
-    "vae_name"
-   ],
-   "auto_downloaded_by_pack": false,
-   "tried": []
-  },
-  {
-   "file": "ltx-2.5-22b-distilled-Q4_K_M.gguf",
-   "folder": "diffusion_models",
-   "hf_repo": "unsloth/LTX-2.5-GGUF",
-   "revision": "main",
-   "repo_path": "distilled/ltx-2.5-22b-distilled-Q4_K_M.gguf",
-   "url": "https://huggingface.co/unsloth/LTX-2.5-GGUF/resolve/main/distilled/ltx-2.5-22b-distilled-Q4_K_M.gguf",
-   "size": 13584703872,
-   "size_gb": 13.58,
-   "sha256": null,
-   "head_status": "ok (HF tree API 2026-10-24)",
-   "workflows": [
-    "workflows/ltx25-a2v-api.json",
-    "workflows/ltx25-flf-api.json",
-    "workflows/ltx25-iclora-v2v-api.json",
-    "workflows/ltx25-layout-to-render-api.json",
-    "workflows/ltx25-ti2v-api.json"
-   ],
-   "loaded_by": [
-    "UnetLoaderGGUF"
-   ],
-   "input": [
-    "unet_name"
-   ]
-  },
-  {
-   "file": "gemma4-12b-with-proj-ltx-2.5-bf16.safetensors",
-   "folder": "text_encoders",
-   "hf_repo": "unsloth/LTX-2.5-GGUF",
-   "revision": "main",
-   "repo_path": "text_encoders/gemma4-12b-with-proj-ltx-2.5-bf16.safetensors",
-   "url": "https://huggingface.co/unsloth/LTX-2.5-GGUF/resolve/main/text_encoders/gemma4-12b-with-proj-ltx-2.5-bf16.safetensors",
-   "size": 26263858182,
-   "size_gb": 26.26,
-   "sha256": null,
-   "head_status": "ok (HF tree API 2026-10-24)",
-   "workflows": [
-    "workflows/ltx25-a2v-api.json",
-    "workflows/ltx25-dfr-i2v-api.json",
-    "workflows/ltx25-flf-api.json",
-    "workflows/ltx25-iclora-v2v-api.json",
-    "workflows/ltx25-layout-to-render-api.json",
-    "workflows/ltx25-ti2v-api.json"
-   ],
-   "loaded_by": [
-    "CLIPLoader"
-   ],
-   "input": [
-    "clip_name"
-   ]
-  },
-  {
-   "file": "ltx-2.5-video-vae-conv-bf16.safetensors",
-   "folder": "vae",
-   "hf_repo": "unsloth/LTX-2.5-GGUF",
-   "revision": "main",
-   "repo_path": "vae/ltx-2.5-video-vae-conv-bf16.safetensors",
-   "url": "https://huggingface.co/unsloth/LTX-2.5-GGUF/resolve/main/vae/ltx-2.5-video-vae-conv-bf16.safetensors",
-   "size": 1452269922,
-   "size_gb": 1.45,
-   "sha256": null,
-   "head_status": "ok (HF tree API 2026-10-24)",
-   "workflows": [
-    "workflows/ltx25-a2v-api.json",
-    "workflows/ltx25-flf-api.json",
-    "workflows/ltx25-iclora-v2v-api.json",
-    "workflows/ltx25-layout-to-render-api.json",
-    "workflows/ltx25-ti2v-api.json"
-   ],
-   "loaded_by": [
-    "VAELoader"
-   ],
-   "input": [
-    "vae_name"
-   ]
-  },
-  {
-   "file": "ltx-2.5-audio-vae-bf16.safetensors",
-   "folder": "vae",
-   "hf_repo": "unsloth/LTX-2.5-GGUF",
-   "revision": "main",
-   "repo_path": "vae/ltx-2.5-audio-vae-bf16.safetensors",
-   "url": "https://huggingface.co/unsloth/LTX-2.5-GGUF/resolve/main/vae/ltx-2.5-audio-vae-bf16.safetensors",
-   "size": 364866540,
-   "size_gb": 0.36,
-   "sha256": null,
-   "head_status": "ok (HF tree API 2026-10-24)",
-   "workflows": [
-    "workflows/ltx25-a2v-api.json",
-    "workflows/ltx25-dfr-i2v-api.json",
-    "workflows/ltx25-flf-api.json",
-    "workflows/ltx25-iclora-v2v-api.json",
-    "workflows/ltx25-layout-to-render-api.json",
-    "workflows/ltx25-ti2v-api.json"
-   ],
-   "loaded_by": [
-    "VAELoader"
-   ],
-   "input": [
-    "vae_name"
-   ]
-  },
-  {
-   "file": "ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
-   "folder": "latent_upscale_models",
-   "hf_repo": "unsloth/LTX-2.5-GGUF",
-   "revision": "main",
-   "repo_path": "latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
-   "url": "https://huggingface.co/unsloth/LTX-2.5-GGUF/resolve/main/latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
-   "size": 995778752,
-   "size_gb": 1.0,
-   "sha256": null,
-   "head_status": "ok (HF tree API 2026-10-24)",
-   "workflows": [
-    "workflows/ltx25-a2v-api.json",
-    "workflows/ltx25-dfr-i2v-api.json",
-    "workflows/ltx25-flf-api.json",
-    "workflows/ltx25-iclora-v2v-api.json",
-    "workflows/ltx25-layout-to-render-api.json",
-    "workflows/ltx25-ti2v-api.json"
-   ],
-   "loaded_by": [
-    "LatentUpscaleModelLoader"
-   ],
-   "input": [
-    "model_name"
-   ]
-  },
-  {
-   "file": "ltx-2.5-22b-ic-lora-clean-plate-1.0.safetensors",
-   "folder": "loras",
-   "hf_repo": "Lightricks/LTX-2.5-22b-IC-LoRA-Clean-Plate",
-   "revision": "main",
-   "repo_path": "ltx-2.5-22b-ic-lora-clean-plate-1.0.safetensors",
-   "url": "https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-Clean-Plate/resolve/main/ltx-2.5-22b-ic-lora-clean-plate-1.0.safetensors",
-   "size": 327318439,
-   "size_gb": 0.33,
-   "sha256": null,
-   "head_status": "not probed (size from the downloaded file, 2026-10-26)",
-   "workflows": [
-    "workflows/ltx25-iclora-v2v-api.json"
-   ],
-   "loaded_by": [
-    "LoraLoaderModelOnly"
-   ],
-   "input": [
-    "lora_name"
-   ]
-  },
-  {
-   "file": "ltx-2.5-22b-ic-lora-layout-to-render-1.0.safetensors",
-   "folder": "loras",
-   "hf_repo": "Lightricks/LTX-2.5-22b-IC-LoRA-Layout-To-Render",
-   "revision": "main",
-   "repo_path": "ltx-2.5-22b-ic-lora-layout-to-render-1.0.safetensors",
-   "url": "https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-Layout-To-Render/resolve/main/ltx-2.5-22b-ic-lora-layout-to-render-1.0.safetensors",
-   "size": 1308787439,
-   "size_gb": 1.31,
-   "sha256": null,
-   "head_status": "gated (accept the licence on Hugging Face; HF tree API 2026-10-24)",
-   "workflows": [
-    "workflows/ltx25-layout-to-render-api.json"
-   ],
-   "loaded_by": [
-    "LoraLoaderModelOnly"
-   ],
-   "input": [
-    "lora_name"
-   ]
-  },
-  {
-   "file": "ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
-   "folder": "diffusion_models",
-   "hf_repo": "Lightricks/LTX-2.5",
-   "revision": "main",
-   "repo_path": "diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
-   "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
-   "size": 21504034224,
-   "size_gb": 21.5,
-   "sha256": null,
-   "renamed_from": null,
-   "head_status": "ok (HF tree API 2026-10-29)",
-   "workflows": [
-    "workflows/ltx25-dfr-i2v-api.json"
-   ],
-   "loaded_by": [
-    "UNETLoader"
-   ],
-   "input": [
-    "unet_name"
-   ]
-  },
-  {
-   "file": "ltx-2.5-22b-ic-lora-pixel-spatial-upscaler-x2-1.0.safetensors",
-   "folder": "loras",
-   "hf_repo": "Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler",
-   "revision": "main",
-   "repo_path": "ltx-2.5-22b-ic-lora-pixel-spatial-upscaler-x2-1.0.safetensors",
-   "url": "https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler/resolve/main/ltx-2.5-22b-ic-lora-pixel-spatial-upscaler-x2-1.0.safetensors",
-   "size": 327322640,
-   "size_gb": 0.33,
-   "sha256": null,
-   "renamed_from": null,
-   "head_status": "ok (HF tree API 2026-10-29)",
-   "workflows": [
-    "workflows/ltx25-dfr-i2v-api.json"
-   ],
-   "loaded_by": [
-    "LoraLoaderModelOnly"
-   ],
-   "input": [
-    "lora_name"
-   ]
-  },
-  {
-   "file": "ltx-2.5-latent-temporal-upscaler-x2-bf16-1.0.safetensors",
-   "folder": "latent_upscale_models",
-   "hf_repo": "Lightricks/LTX-2.5",
-   "revision": "main",
-   "repo_path": "latent_upscale_models/ltx-2.5-latent-temporal-upscaler-x2-bf16-1.0.safetensors",
-   "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/latent_upscale_models/ltx-2.5-latent-temporal-upscaler-x2-bf16-1.0.safetensors",
-   "size": 261944000,
-   "size_gb": 0.26,
-   "sha256": null,
-   "renamed_from": null,
-   "head_status": "ok (HF tree API 2026-10-29)",
-   "workflows": [
-    "workflows/ltx25-dfr-i2v-api.json"
-   ],
-   "loaded_by": [
-    "LatentUpscaleModelLoader"
-   ],
-   "input": [
-    "model_name"
-   ]
-  },
-  {
-   "file": "ltx-2.5-video-vae-bf16.safetensors",
-   "folder": "vae",
-   "hf_repo": "Lightricks/LTX-2.5",
-   "revision": "main",
-   "repo_path": "vae/ltx-2.5-video-vae-bf16.safetensors",
-   "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/vae/ltx-2.5-video-vae-bf16.safetensors",
-   "size": 1472223346,
-   "size_gb": 1.47,
-   "sha256": null,
-   "renamed_from": null,
-   "head_status": "ok (HF tree API 2026-10-29)",
-   "workflows": [
-    "workflows/ltx25-dfr-i2v-api.json"
-   ],
-   "loaded_by": [
-    "VAELoader"
-   ],
-   "input": [
-    "vae_name"
-   ]
   }
  ],
  "workflows": {
@@ -4132,6 +4207,25 @@
    },
    "mps": "green",
    "mps_notes": []
+  },
+  "workflows/audio-minimax-music3-local-api.json": {
+   "models": [
+    "minimax_music3_dav.safetensors",
+    "minimax_music3_dit_fp16.safetensors",
+    "minimax_music3_text_encoder_pruned_int8_convrot.safetensors"
+   ],
+   "total_gb": 14.33,
+   "vram_est_gb": 10.9,
+   "vram_basis": "max(resident DiT 4.9, text encoder 9.2 offloaded after encode) + VAE 0.2 + aux 0.0 + activations 1.5 GB (image/audio)",
+   "fits": {
+    "24GB": true,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "amber",
+   "mps_notes": [
+    "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]"
+   ]
   },
   "workflows/audio-music-api.json": {
    "models": [
@@ -4167,7 +4261,64 @@
    "mps": "green",
    "mps_notes": []
   },
+  "workflows/audio-yue2-cover-api.json": {
+   "models": [
+    "sheetsage2_bf16.safetensors",
+    "yue2_3b_int8_convrot.safetensors"
+   ],
+   "total_gb": 5.35,
+   "vram_est_gb": 6.8,
+   "vram_basis": "max(resident DiT 4.0, text encoder 0.0 offloaded after encode) + VAE 0.0 + aux 1.4 + activations 1.5 GB (image/audio)",
+   "fits": {
+    "24GB": true,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "amber",
+   "mps_notes": [
+    "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]",
+    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
+   ]
+  },
+  "workflows/audio-yue2-song-api.json": {
+   "models": [
+    "yue2_3b_int8_convrot.safetensors"
+   ],
+   "total_gb": 3.96,
+   "vram_est_gb": 5.5,
+   "vram_basis": "max(resident DiT 4.0, text encoder 0.0 offloaded after encode) + VAE 0.0 + aux 0.0 + activations 1.5 GB (image/audio)",
+   "fits": {
+    "24GB": true,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "amber",
+   "mps_notes": [
+    "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]"
+   ]
+  },
   "workflows/camera-ltx-api.json": {
+   "models": [
+    "gemma_3_12B_it_fp4_mixed.safetensors",
+    "ltx-2-19b-dev-fp8.safetensors",
+    "ltx-2-19b-distilled-lora-384.safetensors",
+    "ltx-2-19b-lora-camera-control-dolly-in.safetensors",
+    "ltx-2-spatial-upscaler-x2-1.0.safetensors"
+   ],
+   "total_gb": 45.53,
+   "vram_est_gb": 40.1,
+   "vram_basis": "max(resident DiT 35.1, text encoder 9.4 offloaded after encode) + VAE 0.0 + aux 1.0 + activations 4.0 GB (video)",
+   "fits": {
+    "24GB": false,
+    "32GB": false,
+    "80GB": true
+   },
+   "mps": "red",
+   "mps_notes": [
+    "fp8 weights: MPS has no float8 dtype -> TypeError on load; needs fp16/bf16/GGUF swap or CPU fallback [mps-fp8, mps-fp8-workaround]"
+   ]
+  },
+  "workflows/camera-ltx-flf-api.json": {
    "models": [
     "gemma_3_12B_it_fp4_mixed.safetensors",
     "ltx-2-19b-dev-fp8.safetensors",
@@ -4343,6 +4494,46 @@
    "mps": "green",
    "mps_notes": []
   },
+  "workflows/create-image-moss-image-api.json": {
+   "models": [
+    "flux2-vae_small.safetensors",
+    "moss_image_sft_int8_convrot.safetensors",
+    "qwen3.5_9b_w4a8_gptq.safetensors"
+   ],
+   "total_gb": 13.0,
+   "vram_est_gb": 9.1,
+   "vram_basis": "max(resident DiT 5.4, text encoder 7.3 offloaded after encode) + VAE 0.2 + aux 0.0 + activations 1.5 GB (image/audio)",
+   "fits": {
+    "24GB": true,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "red",
+   "mps_notes": [
+    "w4a8 / w6a8 weights: low-bit CUDA kernels, no MPS path",
+    "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]"
+   ]
+  },
+  "workflows/create-image-moss-image-base-api.json": {
+   "models": [
+    "flux2-vae_small.safetensors",
+    "moss_image_base_int8_convrot.safetensors",
+    "qwen3.5_9b_w4a8_gptq.safetensors"
+   ],
+   "total_gb": 13.0,
+   "vram_est_gb": 9.1,
+   "vram_basis": "max(resident DiT 5.4, text encoder 7.3 offloaded after encode) + VAE 0.2 + aux 0.0 + activations 1.5 GB (image/audio)",
+   "fits": {
+    "24GB": true,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "red",
+   "mps_notes": [
+    "w4a8 / w6a8 weights: low-bit CUDA kernels, no MPS path",
+    "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]"
+   ]
+  },
   "workflows/create-image-qwen-edit2509-api.json": {
    "models": [
     "Qwen-Image-Edit-2509-Lightning-4steps-V1.0-bf16.safetensors",
@@ -4365,6 +4556,27 @@
    ]
   },
   "workflows/create-image-qwen-edit2509-inpaint-api.json": {
+   "models": [
+    "Qwen-Image-Edit-2509-Lightning-4steps-V1.0-bf16.safetensors",
+    "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+    "qwen_image_edit_2509_fp8_e4m3fn.safetensors",
+    "qwen_image_vae.safetensors"
+   ],
+   "total_gb": 30.91,
+   "vram_est_gb": 23.0,
+   "vram_basis": "max(resident DiT 21.3, text encoder 9.4 offloaded after encode) + VAE 0.2 + aux 0.0 + activations 1.5 GB (image/audio)",
+   "fits": {
+    "24GB": true,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "red",
+   "mps_notes": [
+    "fp8 weights: MPS has no float8 dtype -> TypeError on load; needs fp16/bf16/GGUF swap or CPU fallback [mps-fp8, mps-fp8-workaround]",
+    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
+   ]
+  },
+  "workflows/create-image-qwen-edit2509-multiref-api.json": {
    "models": [
     "Qwen-Image-Edit-2509-Lightning-4steps-V1.0-bf16.safetensors",
     "qwen_2.5_vl_7b_fp8_scaled.safetensors",
@@ -4415,6 +4627,48 @@
    "total_gb": 26.76,
    "vram_est_gb": 11.7,
    "vram_basis": "max(resident DiT 7.3, text encoder 9.5 offloaded after encode) + VAE 0.7 + aux 0.0 + activations 1.5 GB (image/audio)",
+   "fits": {
+    "24GB": true,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "amber",
+   "mps_notes": [
+    "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]",
+    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
+   ]
+  },
+  "workflows/create-image-qwen21-faceswap-api.json": {
+   "models": [
+    "bfs_head_v1.1_qwen_2.1.safetensors",
+    "qwen3vl_8b_int8_convrot.safetensors",
+    "qwen_image_2.1_int8_convrot.safetensors",
+    "qwen_image_2.1_vae_bf16.safetensors"
+   ],
+   "total_gb": 17.55,
+   "vram_est_gb": 11.5,
+   "vram_basis": "max(resident DiT 7.5, text encoder 9.3 offloaded after encode) + VAE 0.7 + aux 0.0 + activations 1.5 GB (image/audio)",
+   "fits": {
+    "24GB": true,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "amber",
+   "mps_notes": [
+    "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]",
+    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
+   ]
+  },
+  "workflows/create-image-qwen21-personswap-api.json": {
+   "models": [
+    "bfs_body_swap_v1.0_qwen_2.1.safetensors",
+    "qwen3vl_8b_int8_convrot.safetensors",
+    "qwen_image_2.1_int8_convrot.safetensors",
+    "qwen_image_2.1_vae_bf16.safetensors"
+   ],
+   "total_gb": 17.5,
+   "vram_est_gb": 11.5,
+   "vram_basis": "max(resident DiT 7.5, text encoder 9.3 offloaded after encode) + VAE 0.7 + aux 0.0 + activations 1.5 GB (image/audio)",
    "fits": {
     "24GB": true,
     "32GB": true,
@@ -4527,6 +4781,38 @@
     "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
    ]
   },
+  "workflows/depth-map-dav2-api.json": {
+   "models": [
+    "depth_anything_v2_vits.pth"
+   ],
+   "total_gb": 0.0,
+   "vram_est_gb": 1.5,
+   "vram_basis": "max(resident DiT 0.0, text encoder 0.0 offloaded after encode) + VAE 0.0 + aux 0.0 + activations 1.5 GB (image/audio)",
+   "fits": {
+    "24GB": true,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "green",
+   "mps_notes": []
+  },
+  "workflows/fps-boost-rife-api.json": {
+   "models": [
+    "rife49.pth"
+   ],
+   "total_gb": 0.02,
+   "vram_est_gb": 1.5,
+   "vram_basis": "max(resident DiT 0.0, text encoder 0.0 offloaded after encode) + VAE 0.0 + aux 0.0 + activations 1.5 GB (image/audio)",
+   "fits": {
+    "24GB": true,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "green",
+   "mps_notes": [
+    "RIFE VFI: pure PyTorch, works on MPS/CPU"
+   ]
+  },
   "workflows/h3-camera-motion-api.json": {
    "models": [
     "camera_motion_h3_lora_v1_3000_pruned.safetensors",
@@ -4545,8 +4831,8 @@
    },
    "mps": "red",
    "mps_notes": [
-    "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]",
-    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]"
+    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]",
+    "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]"
    ]
   },
   "workflows/h3-extend-api.json": {
@@ -4566,8 +4852,8 @@
    },
    "mps": "red",
    "mps_notes": [
-    "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]",
-    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]"
+    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]",
+    "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]"
    ]
   },
   "workflows/h3-flf-api.json": {
@@ -4587,8 +4873,8 @@
    },
    "mps": "red",
    "mps_notes": [
-    "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]",
-    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]"
+    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]",
+    "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]"
    ]
   },
   "workflows/h3-flf-fast-api.json": {
@@ -4609,9 +4895,9 @@
    },
    "mps": "red",
    "mps_notes": [
+    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]",
     "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]",
-    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]",
-    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]"
+    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
    ]
   },
   "workflows/h3-i2v-api.json": {
@@ -4632,9 +4918,9 @@
    },
    "mps": "red",
    "mps_notes": [
+    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]",
     "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]",
-    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]",
-    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]"
+    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
    ]
   },
   "workflows/h3-lipsync-api.json": {
@@ -4655,9 +4941,9 @@
    },
    "mps": "red",
    "mps_notes": [
+    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]",
     "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]",
-    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]",
-    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]"
+    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
    ]
   },
   "workflows/h3-r2v-api.json": {
@@ -4678,9 +4964,9 @@
    },
    "mps": "red",
    "mps_notes": [
+    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]",
     "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]",
-    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]",
-    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]"
+    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
    ]
   },
   "workflows/h3-style-transfer-api.json": {
@@ -4702,9 +4988,9 @@
    },
    "mps": "red",
    "mps_notes": [
+    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]",
     "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]",
-    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]",
-    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]"
+    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
    ]
   },
   "workflows/h3-t2v-api.json": {
@@ -4725,9 +5011,9 @@
    },
    "mps": "red",
    "mps_notes": [
+    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]",
     "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]",
-    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]",
-    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]"
+    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
    ]
   },
   "workflows/h3-t2v-fast-api.json": {
@@ -4748,9 +5034,9 @@
    },
    "mps": "red",
    "mps_notes": [
+    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]",
     "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]",
-    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]",
-    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]"
+    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
    ]
   },
   "workflows/h3-vfx-edit-api.json": {
@@ -4772,10 +5058,56 @@
    },
    "mps": "red",
    "mps_notes": [
+    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]",
     "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]",
-    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]",
-    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]"
+    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
    ]
+  },
+  "workflows/image-upscale-nomos2-x2-api.json": {
+   "models": [
+    "4xNomos2_hq_dat2.pth"
+   ],
+   "total_gb": 0.14,
+   "vram_est_gb": 1.6,
+   "vram_basis": "max(resident DiT 0.0, text encoder 0.0 offloaded after encode) + VAE 0.0 + aux 0.1 + activations 1.5 GB (image/audio)",
+   "fits": {
+    "24GB": true,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "green",
+   "mps_notes": []
+  },
+  "workflows/image-upscale-nomos2-x4-api.json": {
+   "models": [
+    "4xNomos2_hq_dat2.pth"
+   ],
+   "total_gb": 0.14,
+   "vram_est_gb": 1.6,
+   "vram_basis": "max(resident DiT 0.0, text encoder 0.0 offloaded after encode) + VAE 0.0 + aux 0.1 + activations 1.5 GB (image/audio)",
+   "fits": {
+    "24GB": true,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "green",
+   "mps_notes": []
+  },
+  "workflows/image-upscale-seedvr2-3b-api.json": {
+   "models": [
+    "seedvr2_3b_fp16.safetensors",
+    "seedvr2_ema_vae_fp16.safetensors"
+   ],
+   "total_gb": 7.28,
+   "vram_est_gb": 8.8,
+   "vram_basis": "max(resident DiT 6.8, text encoder 0.0 offloaded after encode) + VAE 0.5 + aux 0.0 + activations 1.5 GB (image/audio)",
+   "fits": {
+    "24GB": true,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "green",
+   "mps_notes": []
   },
   "workflows/image-upscale-ultrasharp-x4-api.json": {
    "models": [
@@ -4837,6 +5169,161 @@
    },
    "mps": "green",
    "mps_notes": []
+  },
+  "workflows/image-upscale-zimage-2k-api.json": {
+   "models": [
+    "RealESRGAN_x4plus.pth",
+    "ae.safetensors",
+    "qwen_3_4b.safetensors",
+    "z_image_turbo_bf16.safetensors"
+   ],
+   "total_gb": 20.76,
+   "vram_est_gb": 14.2,
+   "vram_basis": "max(resident DiT 12.3, text encoder 8.0 offloaded after encode) + VAE 0.3 + aux 0.1 + activations 1.5 GB (image/audio)",
+   "fits": {
+    "24GB": true,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "amber",
+   "mps_notes": [
+    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
+   ]
+  },
+  "workflows/ltx25-a2v-api.json": {
+   "models": [
+    "gemma4-12b-with-proj-ltx-2.5-bf16.safetensors",
+    "ltx-2.5-22b-distilled-Q4_K_M.gguf",
+    "ltx-2.5-audio-vae-bf16.safetensors",
+    "ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
+    "ltx-2.5-video-vae-conv-bf16.safetensors"
+   ],
+   "total_gb": 42.65,
+   "vram_est_gb": 33.1,
+   "vram_basis": "max(resident DiT 13.6, text encoder 26.3 offloaded after encode) + VAE 1.8 + aux 1.0 + activations 4.0 GB (video)",
+   "fits": {
+    "24GB": false,
+    "32GB": false,
+    "80GB": true
+   },
+   "mps": "amber",
+   "mps_notes": [
+    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]",
+    "GGUF Q4_K_M transformer (ComfyUI-GGUF), dequantised per layer; start ComfyUI with --use-split-cross-attention (LTX-2.5 gives black frames on MPS otherwise)"
+   ]
+  },
+  "workflows/ltx25-dfr-i2v-api.json": {
+   "models": [
+    "gemma4-12b-with-proj-ltx-2.5-bf16.safetensors",
+    "ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
+    "ltx-2.5-22b-ic-lora-pixel-spatial-upscaler-x2-1.0.safetensors",
+    "ltx-2.5-audio-vae-bf16.safetensors",
+    "ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
+    "ltx-2.5-latent-temporal-upscaler-x2-bf16-1.0.safetensors",
+    "ltx-2.5-video-vae-bf16.safetensors"
+   ],
+   "total_gb": 51.18,
+   "vram_est_gb": 33.4,
+   "vram_basis": "max(resident DiT 21.8, text encoder 26.3 offloaded after encode) + VAE 1.8 + aux 1.3 + activations 4.0 GB (video)",
+   "fits": {
+    "24GB": false,
+    "32GB": false,
+    "80GB": true
+   },
+   "mps": "amber",
+   "mps_notes": [
+    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
+   ]
+  },
+  "workflows/ltx25-flf-api.json": {
+   "models": [
+    "gemma4-12b-with-proj-ltx-2.5-bf16.safetensors",
+    "ltx-2.5-22b-distilled-Q4_K_M.gguf",
+    "ltx-2.5-audio-vae-bf16.safetensors",
+    "ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
+    "ltx-2.5-video-vae-conv-bf16.safetensors"
+   ],
+   "total_gb": 42.65,
+   "vram_est_gb": 33.1,
+   "vram_basis": "max(resident DiT 13.6, text encoder 26.3 offloaded after encode) + VAE 1.8 + aux 1.0 + activations 4.0 GB (video)",
+   "fits": {
+    "24GB": false,
+    "32GB": false,
+    "80GB": true
+   },
+   "mps": "amber",
+   "mps_notes": [
+    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]",
+    "GGUF Q4_K_M transformer (ComfyUI-GGUF), dequantised per layer; start ComfyUI with --use-split-cross-attention (LTX-2.5 gives black frames on MPS otherwise)"
+   ]
+  },
+  "workflows/ltx25-iclora-v2v-api.json": {
+   "models": [
+    "gemma4-12b-with-proj-ltx-2.5-bf16.safetensors",
+    "ltx-2.5-22b-distilled-Q4_K_M.gguf",
+    "ltx-2.5-22b-ic-lora-clean-plate-1.0.safetensors",
+    "ltx-2.5-audio-vae-bf16.safetensors",
+    "ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
+    "ltx-2.5-video-vae-conv-bf16.safetensors"
+   ],
+   "total_gb": 42.98,
+   "vram_est_gb": 33.1,
+   "vram_basis": "max(resident DiT 13.9, text encoder 26.3 offloaded after encode) + VAE 1.8 + aux 1.0 + activations 4.0 GB (video)",
+   "fits": {
+    "24GB": false,
+    "32GB": false,
+    "80GB": true
+   },
+   "mps": "amber",
+   "mps_notes": [
+    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]",
+    "GGUF Q4_K_M transformer (ComfyUI-GGUF), dequantised per layer; start ComfyUI with --use-split-cross-attention (LTX-2.5 gives black frames on MPS otherwise)"
+   ]
+  },
+  "workflows/ltx25-layout-to-render-api.json": {
+   "models": [
+    "gemma4-12b-with-proj-ltx-2.5-bf16.safetensors",
+    "ltx-2.5-22b-distilled-Q4_K_M.gguf",
+    "ltx-2.5-22b-ic-lora-layout-to-render-1.0.safetensors",
+    "ltx-2.5-audio-vae-bf16.safetensors",
+    "ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
+    "ltx-2.5-video-vae-conv-bf16.safetensors"
+   ],
+   "total_gb": 43.96,
+   "vram_est_gb": 33.1,
+   "vram_basis": "max(resident DiT 14.9, text encoder 26.3 offloaded after encode) + VAE 1.8 + aux 1.0 + activations 4.0 GB (video)",
+   "fits": {
+    "24GB": false,
+    "32GB": false,
+    "80GB": true
+   },
+   "mps": "amber",
+   "mps_notes": [
+    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]",
+    "GGUF Q4_K_M transformer (ComfyUI-GGUF), dequantised per layer; start ComfyUI with --use-split-cross-attention (LTX-2.5 gives black frames on MPS otherwise)"
+   ]
+  },
+  "workflows/ltx25-ti2v-api.json": {
+   "models": [
+    "gemma4-12b-with-proj-ltx-2.5-bf16.safetensors",
+    "ltx-2.5-22b-distilled-Q4_K_M.gguf",
+    "ltx-2.5-audio-vae-bf16.safetensors",
+    "ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
+    "ltx-2.5-video-vae-conv-bf16.safetensors"
+   ],
+   "total_gb": 42.65,
+   "vram_est_gb": 33.1,
+   "vram_basis": "max(resident DiT 13.6, text encoder 26.3 offloaded after encode) + VAE 1.8 + aux 1.0 + activations 4.0 GB (video)",
+   "fits": {
+    "24GB": false,
+    "32GB": false,
+    "80GB": true
+   },
+   "mps": "amber",
+   "mps_notes": [
+    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]",
+    "GGUF Q4_K_M transformer (ComfyUI-GGUF), dequantised per layer; start ComfyUI with --use-split-cross-attention (LTX-2.5 gives black frames on MPS otherwise)"
+   ]
   },
   "workflows/motion-transfer-api.json": {
    "models": [
@@ -5074,6 +5561,30 @@
     "SAM2: kijai pack supports mps device but bf16/fp16 autocast varies; use fp32 on MPS"
    ]
   },
+  "workflows/object-swap-h3-charswap-api.json": {
+   "models": [
+    "h3_character_swap_v1.5.safetensors",
+    "minimax_h3_audio_vae_fp32.safetensors",
+    "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
+    "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+    "minimax_h3_video_vae_int8_convrot.safetensors",
+    "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"
+   ],
+   "total_gb": 42.2,
+   "vram_est_gb": 30.5,
+   "vram_basis": "max(resident DiT 23.1, text encoder 15.7 offloaded after encode) + VAE 3.4 + aux 0.0 + activations 4.0 GB (video)",
+   "fits": {
+    "24GB": false,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "red",
+   "mps_notes": [
+    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]",
+    "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]",
+    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
+   ]
+  },
   "workflows/object-swap-wan-animate-api.json": {
    "models": [
     "Wan2_2-Animate-14B_fp8_e4m3fn_scaled_KJ.safetensors",
@@ -5102,30 +5613,6 @@
     "SAM2: kijai pack supports mps device but bf16/fp16 autocast varies; use fp32 on MPS"
    ],
    "note": "Same model set as object-swap-api.json. Variants workflows/object-swap-wan-animate/ext-0..6.json and mask-ext-1.json use the same files. Sizes/sha256 re-checked 2026-10-17 by HF HEAD (x-linked-size / x-linked-etag); files not downloaded."
-  },
-  "workflows/object-swap-h3-charswap-api.json": {
-   "models": [
-    "h3_character_swap_v1.5.safetensors",
-    "minimax_h3_audio_vae_fp32.safetensors",
-    "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
-    "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
-    "minimax_h3_video_vae_int8_convrot.safetensors",
-    "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"
-   ],
-   "total_gb": 42.2,
-   "vram_est_gb": 30.5,
-   "vram_basis": "max(resident DiT 23.1, text encoder 15.7 offloaded after encode) + VAE 3.4 + aux 0.0 + activations 4.0 GB (video)",
-   "fits": {
-    "24GB": false,
-    "32GB": true,
-    "80GB": true
-   },
-   "mps": "red",
-   "mps_notes": [
-    "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]",
-    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]",
-    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]"
-   ]
   },
   "workflows/object-swap/ext-0.json": {
    "models": [
@@ -5345,6 +5832,21 @@
     "fp8 weights: MPS has no float8 dtype -> TypeError on load; needs fp16/bf16/GGUF swap or CPU fallback [mps-fp8, mps-fp8-workaround]"
    ]
   },
+  "workflows/remove-bg-birefnet-api.json": {
+   "models": [
+    "BiRefNet-general.safetensors"
+   ],
+   "total_gb": 0.44,
+   "vram_est_gb": 1.9,
+   "vram_basis": "max(resident DiT 0.4, text encoder 0.0 offloaded after encode) + VAE 0.0 + aux 0.0 + activations 1.5 GB (image/audio)",
+   "fits": {
+    "24GB": true,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "green",
+   "mps_notes": []
+  },
   "workflows/reshoot-api.json": {
    "models": [
     "dw-ll_ucoco_384_bs5.torchscript.pt",
@@ -5410,27 +5912,17 @@
     "fp8 weights: MPS has no float8 dtype -> TypeError on load; needs fp16/bf16/GGUF swap or CPU fallback [mps-fp8, mps-fp8-workaround]"
    ]
   },
-  "workflows/soul-*-api.json (preset LoRA)": {
+  "workflows/shots-qwen-edit2509-angles-api.json": {
    "models": [
-    "50sNoirZ.safetensors",
-    "CCD_Dreams_qwen2507.safetensors",
-    "CandidInstaxphotoZ.safetensors",
-    "Cinematic Film Color style v1.2.safetensors",
-    "Modeling 101 v1.5.safetensors",
-    "Professional_studio_quality_-_ZIT_epoch_13.safetensors",
-    "Velatrix.safetensors",
-    "Z-TURBO_Photography_35mmPhoto_1536.safetensors",
-    "Z_Instapic_V1.safetensors",
-    "amateur_selfie.safetensors",
-    "comfyui_subject_lora16.safetensors",
-    "d1rectflash.safetensors",
-    "flux-fash.safetensors",
-    "sim_stage1/image_proj_model.bin",
-    "sim_stage1/infusenet_sim_fp8e4m3fn.safetensors"
+    "Qwen-Edit-2509-Multiple-angles.safetensors",
+    "Qwen-Image-Edit-2509-Lightning-4steps-V1.0-bf16.safetensors",
+    "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+    "qwen_image_edit_2509_fp8_e4m3fn.safetensors",
+    "qwen_image_vae.safetensors"
    ],
-   "total_gb": 5.96,
-   "vram_est_gb": 7.5,
-   "vram_basis": "max(resident DiT 6.0, text encoder 0.0 offloaded after encode) + VAE 0.0 + aux 0.0 + activations 1.5 GB (image/audio)",
+   "total_gb": 31.15,
+   "vram_est_gb": 23.3,
+   "vram_basis": "max(resident DiT 21.5, text encoder 9.4 offloaded after encode) + VAE 0.2 + aux 0.0 + activations 1.5 GB (image/audio)",
    "fits": {
     "24GB": true,
     "32GB": true,
@@ -5438,7 +5930,8 @@
    },
    "mps": "red",
    "mps_notes": [
-    "fp8 weights: MPS has no float8 dtype -> TypeError on load; needs fp16/bf16/GGUF swap or CPU fallback [mps-fp8, mps-fp8-workaround]"
+    "fp8 weights: MPS has no float8 dtype -> TypeError on load; needs fp16/bf16/GGUF swap or CPU fallback [mps-fp8, mps-fp8-workaround]",
+    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
    ]
   },
   "workflows/soul-flux1dev-api.json": {
@@ -5704,415 +6197,6 @@
     "fp8 weights: MPS has no float8 dtype -> TypeError on load; needs fp16/bf16/GGUF swap or CPU fallback [mps-fp8, mps-fp8-workaround]"
    ]
   },
-  "workflows/voice-chatterbox-ml-api.json": {
-   "models": [
-    "t3_mtl23ls_v3.safetensors"
-   ],
-   "total_gb": 2.14,
-   "vram_est_gb": 3.6,
-   "vram_basis": "max(resident DiT 0.0, text encoder 0.0 offloaded after encode) + VAE 0.0 + aux 2.1 + activations 1.5 GB (image/audio)",
-   "fits": {
-    "24GB": true,
-    "32GB": true,
-    "80GB": true
-   },
-   "mps": "green",
-   "mps_notes": []
-  },
-  "workflows/voice-drama3-clone-api.json": {
-   "models": [
-    "drama3_codec.safetensors",
-    "drama3_fp8experts_bf16.safetensors",
-    "qwen3_asr_0.6b_bf16.safetensors"
-   ],
-   "total_gb": 41.71,
-   "vram_est_gb": 43.2,
-   "vram_basis": "max(resident DiT 0.0, text encoder 0.0 offloaded after encode) + VAE 0.0 + aux 41.7 + activations 1.5 GB (image/audio)",
-   "fits": {
-    "24GB": false,
-    "32GB": false,
-    "80GB": true
-   },
-   "mps": "red",
-   "mps_notes": [
-    "fp8 weights: MPS has no float8 dtype -> TypeError on load; needs fp16/bf16/GGUF swap or CPU fallback [mps-fp8, mps-fp8-workaround]",
-    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
-   ]
-  },
-  "workflows/voice-drama3-tts-api.json": {
-   "models": [
-    "drama3_codec.safetensors",
-    "drama3_fp8experts_bf16.safetensors"
-   ],
-   "total_gb": 40.15,
-   "vram_est_gb": 41.6,
-   "vram_basis": "max(resident DiT 0.0, text encoder 0.0 offloaded after encode) + VAE 0.0 + aux 40.1 + activations 1.5 GB (image/audio)",
-   "fits": {
-    "24GB": false,
-    "32GB": false,
-    "80GB": true
-   },
-   "mps": "red",
-   "mps_notes": [
-    "fp8 weights: MPS has no float8 dtype -> TypeError on load; needs fp16/bf16/GGUF swap or CPU fallback [mps-fp8, mps-fp8-workaround]",
-    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
-   ]
-  },
-  "workflows/remove-bg-birefnet-api.json": {
-   "models": [
-    "BiRefNet-general.safetensors"
-   ],
-   "total_gb": 0.44,
-   "vram_est_gb": 1.9,
-   "vram_basis": "max(resident DiT 0.4, text encoder 0.0 offloaded after encode) + VAE 0.0 + aux 0.0 + activations 1.5 GB (image/audio)",
-   "fits": {
-    "24GB": true,
-    "32GB": true,
-    "80GB": true
-   },
-   "mps": "green",
-   "mps_notes": []
-  },
-  "workflows/fps-boost-rife-api.json": {
-   "models": [
-    "rife49.pth"
-   ],
-   "note": "RIFE only (no upscaler); vram not estimated",
-   "mps": "green"
-  },
-  "workflows/depth-map-dav2-api.json": {
-   "models": [
-    "depth_anything_v2_vits.pth"
-   ],
-   "note": "Depth Anything V2 Small (~100 MB); vram not estimated",
-   "mps": "green"
-  },
-  "workflows/create-image-qwen21-faceswap-api.json": {
-   "models": [
-    "bfs_head_v1.1_qwen_2.1.safetensors",
-    "qwen3vl_8b_int8_convrot.safetensors",
-    "qwen_image_2.1_int8_convrot.safetensors",
-    "qwen_image_2.1_vae_bf16.safetensors"
-   ],
-   "total_gb": 17.55,
-   "vram_est_gb": 11.5,
-   "vram_basis": "max(resident DiT 7.5, text encoder 9.3 offloaded after encode) + VAE 0.7 + aux 0.0 + activations 1.5 GB (image/audio)",
-   "fits": {
-    "24GB": true,
-    "32GB": true,
-    "80GB": true
-   },
-   "mps": "amber",
-   "mps_notes": [
-    "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]",
-    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
-   ]
-  },
-  "workflows/create-image-qwen21-personswap-api.json": {
-   "models": [
-    "bfs_body_swap_v1.0_qwen_2.1.safetensors",
-    "qwen3vl_8b_int8_convrot.safetensors",
-    "qwen_image_2.1_int8_convrot.safetensors",
-    "qwen_image_2.1_vae_bf16.safetensors"
-   ],
-   "total_gb": 17.5,
-   "vram_est_gb": 11.5,
-   "vram_basis": "max(resident DiT 7.5, text encoder 9.3 offloaded after encode) + VAE 0.7 + aux 0.0 + activations 1.5 GB (image/audio)",
-   "fits": {
-    "24GB": true,
-    "32GB": true,
-    "80GB": true
-   },
-   "mps": "amber",
-   "mps_notes": [
-    "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]",
-    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
-   ]
-  },
-  "workflows/image-upscale-nomos2-x2-api.json": {
-   "models": [
-    "4xNomos2_hq_dat2.pth"
-   ],
-   "total_gb": 0.14,
-   "vram_est_gb": 1.6,
-   "vram_basis": "max(resident DiT 0.0, text encoder 0.0 offloaded after encode) + VAE 0.0 + aux 0.1 + activations 1.5 GB (image/audio)",
-   "fits": {
-    "24GB": true,
-    "32GB": true,
-    "80GB": true
-   },
-   "mps": "green",
-   "mps_notes": []
-  },
-  "workflows/image-upscale-nomos2-x4-api.json": {
-   "models": [
-    "4xNomos2_hq_dat2.pth"
-   ],
-   "total_gb": 0.14,
-   "vram_est_gb": 1.6,
-   "vram_basis": "max(resident DiT 0.0, text encoder 0.0 offloaded after encode) + VAE 0.0 + aux 0.1 + activations 1.5 GB (image/audio)",
-   "fits": {
-    "24GB": true,
-    "32GB": true,
-    "80GB": true
-   },
-   "mps": "green",
-   "mps_notes": []
-  },
-  "workflows/image-upscale-seedvr2-3b-api.json": {
-   "models": [
-    "seedvr2_3b_fp16.safetensors",
-    "seedvr2_ema_vae_fp16.safetensors"
-   ],
-   "total_gb": 7.28,
-   "vram_est_gb": 8.8,
-   "vram_basis": "max(resident DiT 6.8, text encoder 0.0 offloaded after encode) + VAE 0.5 + aux 0.0 + activations 1.5 GB (image/audio)",
-   "fits": {
-    "24GB": true,
-    "32GB": true,
-    "80GB": true
-   },
-   "mps": "green",
-   "mps_notes": []
-  },
-  "workflows/image-upscale-zimage-2k-api.json": {
-   "models": [
-    "RealESRGAN_x4plus.pth",
-    "ae.safetensors",
-    "qwen_3_4b.safetensors",
-    "z_image_turbo_bf16.safetensors"
-   ],
-   "total_gb": 20.76,
-   "vram_est_gb": 14.2,
-   "vram_basis": "max(resident DiT 12.3, text encoder 8.0 offloaded after encode) + VAE 0.3 + aux 0.1 + activations 1.5 GB (image/audio)",
-   "fits": {
-    "24GB": true,
-    "32GB": true,
-    "80GB": true
-   },
-   "mps": "amber",
-   "mps_notes": [
-    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
-   ]
-  },
-  "workflows/voice-qwen3tts-api.json": {
-   "models": [
-    "Qwen3-TTS-12Hz-1.7B-CustomVoice/model.safetensors",
-    "Qwen3-TTS-12Hz-1.7B-CustomVoice/speech_tokenizer/model.safetensors"
-   ],
-   "total_gb": 4.51,
-   "vram_est_gb": 6.0,
-   "vram_basis": "max(resident DiT 0.0, text encoder 0.0 offloaded after encode) + VAE 0.0 + aux 4.5 + activations 1.5 GB (image/audio)",
-   "fits": {
-    "24GB": true,
-    "32GB": true,
-    "80GB": true
-   },
-   "mps": "green",
-   "mps_notes": []
-  },
-  "workflows/wan22-ti2v-5b-api.json": {
-   "models": [
-    "umt5_xxl_fp16.safetensors",
-    "wan2.2_ti2v_5B_fp16.safetensors",
-    "wan2.2_vae.safetensors"
-   ],
-   "total_gb": 22.78,
-   "vram_est_gb": 16.8,
-   "vram_basis": "max(resident DiT 10.0, text encoder 11.4 offloaded after encode) + VAE 1.4 + aux 0.0 + activations 4.0 GB (video)",
-   "fits": {
-    "24GB": true,
-    "32GB": true,
-    "80GB": true
-   },
-   "mps": "green",
-   "mps_notes": []
-  },
-  "workflows/ltx25-iclora-v2v-api.json": {
-   "models": [
-    "gemma4-12b-with-proj-ltx-2.5-bf16.safetensors",
-    "ltx-2.5-22b-distilled-Q4_K_M.gguf",
-    "ltx-2.5-22b-ic-lora-clean-plate-1.0.safetensors",
-    "ltx-2.5-audio-vae-bf16.safetensors",
-    "ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
-    "ltx-2.5-video-vae-conv-bf16.safetensors"
-   ],
-   "total_gb": 42.99,
-   "vram_est_gb": 33.1,
-   "vram_basis": "max(resident DiT 14.9, text encoder 26.3 offloaded after encode) + VAE 1.8 + aux 1.0 + activations 4.0 GB (video)",
-   "fits": {
-    "24GB": false,
-    "32GB": false,
-    "80GB": true
-   },
-   "mps": "amber",
-   "mps_notes": [
-    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]",
-    "GGUF Q4_K_M transformer (ComfyUI-GGUF), dequantised per layer; start ComfyUI with --use-split-cross-attention (LTX-2.5 gives black frames on MPS otherwise)"
-   ]
-  },
-  "workflows/ltx25-layout-to-render-api.json": {
-   "models": [
-    "gemma4-12b-with-proj-ltx-2.5-bf16.safetensors",
-    "ltx-2.5-22b-distilled-Q4_K_M.gguf",
-    "ltx-2.5-22b-ic-lora-layout-to-render-1.0.safetensors",
-    "ltx-2.5-audio-vae-bf16.safetensors",
-    "ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
-    "ltx-2.5-video-vae-conv-bf16.safetensors"
-   ],
-   "total_gb": 43.97,
-   "vram_est_gb": 33.1,
-   "vram_basis": "max(resident DiT 14.9, text encoder 26.3 offloaded after encode) + VAE 1.8 + aux 1.0 + activations 4.0 GB (video)",
-   "fits": {
-    "24GB": false,
-    "32GB": false,
-    "80GB": true
-   },
-   "mps": "amber",
-   "mps_notes": [
-    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]",
-    "GGUF Q4_K_M transformer (ComfyUI-GGUF), dequantised per layer; start ComfyUI with --use-split-cross-attention (LTX-2.5 gives black frames on MPS otherwise)"
-   ]
-  },
-  "workflows/audio-minimax-music3-local-api.json": {
-   "models": [
-    "minimax_music3_dav.safetensors",
-    "minimax_music3_dit_fp16.safetensors",
-    "minimax_music3_text_encoder_pruned_int8_convrot.safetensors"
-   ],
-   "total_gb": 14.33,
-   "vram_est_gb": 10.9,
-   "vram_basis": "max(resident DiT 4.9, text encoder 9.2 offloaded after encode) + VAE 0.2 + aux 0.0 + activations 1.5 GB (image/audio)",
-   "fits": {
-    "24GB": true,
-    "32GB": true,
-    "80GB": true
-   },
-   "mps": "amber",
-   "mps_notes": [
-    "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]"
-   ]
-  },
-  "workflows/audio-yue2-cover-api.json": {
-   "models": [
-    "sheetsage2_bf16.safetensors",
-    "yue2_3b_int8_convrot.safetensors"
-   ],
-   "total_gb": 5.35,
-   "vram_est_gb": 6.8,
-   "vram_basis": "max(resident DiT 4.0, text encoder 0.0 offloaded after encode) + VAE 0.0 + aux 1.4 + activations 1.5 GB (image/audio)",
-   "fits": {
-    "24GB": true,
-    "32GB": true,
-    "80GB": true
-   },
-   "mps": "amber",
-   "mps_notes": [
-    "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]",
-    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
-   ]
-  },
-  "workflows/audio-yue2-song-api.json": {
-   "models": [
-    "yue2_3b_int8_convrot.safetensors"
-   ],
-   "total_gb": 3.96,
-   "vram_est_gb": 5.5,
-   "vram_basis": "max(resident DiT 4.0, text encoder 0.0 offloaded after encode) + VAE 0.0 + aux 0.0 + activations 1.5 GB (image/audio)",
-   "fits": {
-    "24GB": true,
-    "32GB": true,
-    "80GB": true
-   },
-   "mps": "amber",
-   "mps_notes": [
-    "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]"
-   ]
-  },
-  "workflows/create-image-moss-image-api.json": {
-   "models": [
-    "flux2-vae_small.safetensors",
-    "moss_image_sft_int8_convrot.safetensors",
-    "qwen3.5_9b_w4a8_gptq.safetensors"
-   ],
-   "total_gb": 13.0,
-   "vram_est_gb": 9.1,
-   "vram_basis": "max(resident DiT 5.4, text encoder 7.3 offloaded after encode) + VAE 0.2 + aux 0.0 + activations 1.5 GB (image/audio)",
-   "fits": {
-    "24GB": true,
-    "32GB": true,
-    "80GB": true
-   },
-   "mps": "red",
-   "mps_notes": [
-    "w4a8 / w6a8 weights: low-bit CUDA kernels, no MPS path",
-    "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]"
-   ]
-  },
-  "workflows/create-image-moss-image-base-api.json": {
-   "models": [
-    "flux2-vae_small.safetensors",
-    "moss_image_base_int8_convrot.safetensors",
-    "qwen3.5_9b_w4a8_gptq.safetensors"
-   ],
-   "total_gb": 13.0,
-   "vram_est_gb": 9.1,
-   "vram_basis": "max(resident DiT 5.4, text encoder 7.3 offloaded after encode) + VAE 0.2 + aux 0.0 + activations 1.5 GB (image/audio)",
-   "fits": {
-    "24GB": true,
-    "32GB": true,
-    "80GB": true
-   },
-   "mps": "red",
-   "mps_notes": [
-    "w4a8 / w6a8 weights: low-bit CUDA kernels, no MPS path",
-    "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]"
-   ]
-  },
-  "workflows/ltx25-ti2v-api.json": {
-   "models": [
-    "gemma4-12b-with-proj-ltx-2.5-bf16.safetensors",
-    "ltx-2.5-22b-distilled-Q4_K_M.gguf",
-    "ltx-2.5-audio-vae-bf16.safetensors",
-    "ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
-    "ltx-2.5-video-vae-conv-bf16.safetensors"
-   ],
-   "total_gb": 42.65,
-   "vram_est_gb": 33.1,
-   "vram_basis": "max(resident DiT 13.6, text encoder 26.3 offloaded after encode) + VAE 1.8 + aux 1.0 + activations 4.0 GB (video)",
-   "fits": {
-    "24GB": false,
-    "32GB": false,
-    "80GB": true
-   },
-   "mps": "amber",
-   "mps_notes": [
-    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]",
-    "GGUF Q4_K_M transformer (ComfyUI-GGUF), dequantised per layer; start ComfyUI with --use-split-cross-attention (LTX-2.5 gives black frames on MPS otherwise)"
-   ]
-  },
-  "workflows/ltx25-flf-api.json": {
-   "models": [
-    "gemma4-12b-with-proj-ltx-2.5-bf16.safetensors",
-    "ltx-2.5-22b-distilled-Q4_K_M.gguf",
-    "ltx-2.5-audio-vae-bf16.safetensors",
-    "ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
-    "ltx-2.5-video-vae-conv-bf16.safetensors"
-   ],
-   "total_gb": 42.65,
-   "vram_est_gb": 33.1,
-   "vram_basis": "max(resident DiT 13.6, text encoder 26.3 offloaded after encode) + VAE 1.8 + aux 1.0 + activations 4.0 GB (video)",
-   "fits": {
-    "24GB": false,
-    "32GB": false,
-    "80GB": true
-   },
-   "mps": "amber",
-   "mps_notes": [
-    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]",
-    "GGUF Q4_K_M transformer (ComfyUI-GGUF), dequantised per layer; start ComfyUI with --use-split-cross-attention (LTX-2.5 gives black frames on MPS otherwise)"
-   ]
-  },
   "workflows/upscale-esrgan-api.json": {
    "models": [
     "RealESRGAN_x2plus.pth"
@@ -6161,28 +6245,134 @@
    "mps": "green",
    "mps_notes": []
   },
-  "workflows/ltx25-dfr-i2v-api.json": {
+  "workflows/voice-chatterbox-ml-api.json": {
    "models": [
-    "gemma4-12b-with-proj-ltx-2.5-bf16.safetensors",
-    "ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
-    "ltx-2.5-22b-ic-lora-pixel-spatial-upscaler-x2-1.0.safetensors",
-    "ltx-2.5-audio-vae-bf16.safetensors",
-    "ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
-    "ltx-2.5-latent-temporal-upscaler-x2-bf16-1.0.safetensors",
-    "ltx-2.5-video-vae-bf16.safetensors"
+    "t3_mtl23ls_v3.safetensors"
    ],
-   "total_gb": 51.18,
-   "vram_est_gb": 33.4,
-   "vram_basis": "max(resident DiT 21.8, text encoder 26.3 offloaded after encode) + VAE 1.8 + aux 1.3 + activations 4.0 GB (video)",
+   "total_gb": 2.14,
+   "vram_est_gb": 3.6,
+   "vram_basis": "max(resident DiT 0.0, text encoder 0.0 offloaded after encode) + VAE 0.0 + aux 2.1 + activations 1.5 GB (image/audio)",
+   "fits": {
+    "24GB": true,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "green",
+   "mps_notes": []
+  },
+  "workflows/voice-chatterbox-tts-api.json": {
+   "models": [],
+   "total_gb": 0.0,
+   "vram_est_gb": 3.6,
+   "vram_basis": "weights the node pack downloads itself + activations 1.5 GB (image/audio), an estimate",
+   "fits": {
+    "24GB": true,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "green",
+   "mps_notes": [],
+   "note": "ComfyUI-Chatterbox downloads its own weights (ResembleAI) on first use; memory is an estimate"
+  },
+  "workflows/voice-chatterbox-vc-api.json": {
+   "models": [],
+   "total_gb": 0.0,
+   "vram_est_gb": 3.6,
+   "vram_basis": "weights the node pack downloads itself + activations 1.5 GB (image/audio), an estimate",
+   "fits": {
+    "24GB": true,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "green",
+   "mps_notes": [],
+   "note": "ComfyUI-Chatterbox downloads its own weights (ResembleAI) on first use; memory is an estimate"
+  },
+  "workflows/voice-drama3-clone-api.json": {
+   "models": [
+    "drama3_codec.safetensors",
+    "drama3_fp8experts_bf16.safetensors",
+    "qwen3_asr_0.6b_bf16.safetensors"
+   ],
+   "total_gb": 41.71,
+   "vram_est_gb": 43.2,
+   "vram_basis": "max(resident DiT 0.0, text encoder 0.0 offloaded after encode) + VAE 0.0 + aux 41.7 + activations 1.5 GB (image/audio)",
    "fits": {
     "24GB": false,
     "32GB": false,
     "80GB": true
    },
-   "mps": "amber",
+   "mps": "red",
    "mps_notes": [
+    "fp8 weights: MPS has no float8 dtype -> TypeError on load; needs fp16/bf16/GGUF swap or CPU fallback [mps-fp8, mps-fp8-workaround]",
     "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
    ]
+  },
+  "workflows/voice-drama3-tts-api.json": {
+   "models": [
+    "drama3_codec.safetensors",
+    "drama3_fp8experts_bf16.safetensors"
+   ],
+   "total_gb": 40.15,
+   "vram_est_gb": 41.6,
+   "vram_basis": "max(resident DiT 0.0, text encoder 0.0 offloaded after encode) + VAE 0.0 + aux 40.1 + activations 1.5 GB (image/audio)",
+   "fits": {
+    "24GB": false,
+    "32GB": false,
+    "80GB": true
+   },
+   "mps": "red",
+   "mps_notes": [
+    "fp8 weights: MPS has no float8 dtype -> TypeError on load; needs fp16/bf16/GGUF swap or CPU fallback [mps-fp8, mps-fp8-workaround]",
+    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
+   ]
+  },
+  "workflows/voice-f5tts-api.json": {
+   "models": [],
+   "total_gb": 0.0,
+   "vram_est_gb": 2.8,
+   "vram_basis": "weights the node pack downloads itself + activations 1.5 GB (image/audio), an estimate",
+   "fits": {
+    "24GB": true,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "green",
+   "mps_notes": [],
+   "note": "ComfyUI-F5-TTS downloads its own weights (F5TTS_v1_Base) on first use; memory is an estimate"
+  },
+  "workflows/voice-qwen3tts-api.json": {
+   "models": [
+    "Qwen3-TTS-12Hz-1.7B-CustomVoice/model.safetensors",
+    "Qwen3-TTS-12Hz-1.7B-CustomVoice/speech_tokenizer/model.safetensors"
+   ],
+   "total_gb": 4.51,
+   "vram_est_gb": 6.0,
+   "vram_basis": "max(resident DiT 0.0, text encoder 0.0 offloaded after encode) + VAE 0.0 + aux 4.5 + activations 1.5 GB (image/audio)",
+   "fits": {
+    "24GB": true,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "green",
+   "mps_notes": []
+  },
+  "workflows/wan22-ti2v-5b-api.json": {
+   "models": [
+    "umt5_xxl_fp16.safetensors",
+    "wan2.2_ti2v_5B_fp16.safetensors",
+    "wan2.2_vae.safetensors"
+   ],
+   "total_gb": 22.78,
+   "vram_est_gb": 16.8,
+   "vram_basis": "max(resident DiT 10.0, text encoder 11.4 offloaded after encode) + VAE 1.4 + aux 0.0 + activations 4.0 GB (video)",
+   "fits": {
+    "24GB": true,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "green",
+   "mps_notes": []
   }
  }
 }

@@ -34,11 +34,12 @@ import { macBlockedFiles, MAC_WEIGHTS_REASON } from './macWeights.js';
 import { LTX_LORAS, ltxLorasForJob } from '../shared/ltxLoras.js';
 import { comfyFoldersKnown, comfyFileBytes, comfyModelsStamp } from './comfyModels.js';
 import { optionalFileSkipped } from '../comfy/flux3Klein.js';
+import { soulWorkflowOf } from '../tools/soul/plan.js';
 
 const MANIFEST = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../readiness/manifest/models.json');
 const WF_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../workflows');
 type MRow = { file: string; folder: string; size?: number | null; url: string; sha256?: string | null; hf_repo?: string | null; loaded_by: string[]; input: string[]; workflows: string[]; auto_downloaded_by_pack?: boolean };
-type MWf = { models: string[]; vram_est_gb?: number; mps?: string; mps_notes?: string[]; note?: string };
+type MWf = { models: string[]; vram_est_gb?: number; mps?: string; mps_notes?: string[]; note?: string; variants?: unknown };
 let man: { models: MRow[]; workflows: Record<string, MWf> } | null = null;
 export const manifest = (): { models: MRow[]; workflows: Record<string, MWf> } => (man ??= ((): { models: MRow[]; workflows: Record<string, MWf> } => { try { const j = JSON.parse(readFileSync(MANIFEST, 'utf8')); return { models: j.models ?? [], workflows: j.workflows ?? {} }; } catch { return { models: [], workflows: {} }; } })());
 const sizeGb = (r: MRow) => { const b = r.size ?? HF_SIZES[r.file] ?? null; return b == null ? 0 : Math.round((b / 1e9) * 100) / 100; };
@@ -50,7 +51,10 @@ const wfCache = new Map<string, WfVram | null>();
 /** build-manifest.py wf_meta() for one workflow key ('workflows/x-api.json' or 'plugins/…/workflow.json'), sizes filled from HF_SIZES. */
 export function wfVram(key: string): WfVram | null {
   const k = key.includes('/') ? key : `workflows/${key}`; if (wfCache.has(k)) return wfCache.get(k)!;
-  const ms = manifest().models.filter((m) => (m.workflows ?? []).includes(k)); if (!ms.length) { wfCache.set(k, null); return null; }
+  const ms = manifest().models.filter((m) => (m.workflows ?? []).includes(k));
+  if (!ms.length) { // a graph whose node pack fetches its own weights (Chatterbox, F5-TTS): the manifest's estimate, no files (build-manifest.py PACK_WORKFLOWS, hardware plan B7)
+    const mw = manifest().workflows[k]; const est = Number(mw?.vram_est_gb); const v: WfVram | null = mw && est > 0 ? { workflow: k, recommendedVramGB: est, minVramGB: est, residentGB: 0, teGB: 0, largestFileGB: 0, video: false, mps: (mw.mps as WfVram['mps']) ?? 'green', mpsNotes: mw.mps_notes ?? [], files: [] } : null;
+    wfCache.set(k, v); return v; }
   const dits = ms.filter((m) => roleOf(m) === 'dit').map(sizeGb).sort((a, b) => b - a); const te = Math.max(0, ...ms.filter((m) => roleOf(m) === 'te').map(sizeGb));
   const sum = (role: string) => ms.filter((m) => roleOf(m) === role).reduce((a, m) => a + sizeGb(m), 0);
   const loras = sum('lora'); const vae = sum('vae'); const aux = sum('aux');
@@ -112,6 +116,7 @@ export function jobWorkflows(tool: ToolDef, providerId: string, input: Record<st
   const qw = QUALITY_WORKFLOWS[providerId]?.find((q) => q.runs(input)); if (qw && tool.id === 'h3-video') return [qw.workflow]; // DFR: its own template and files
   const p = getProvider(providerId); if (!p) return []; const pw = providerWorkflows(tool, p); const all = pw.length ? pw : p.workflows ?? []; if (all.length <= 1) return all; // charswap: its graph is chosen in comfyClient, not by providerWorkflows
   const t = Array.isArray(input.types) ? String(input.types[0] ?? '') : typeof input.types === 'string' ? String(input.types).replace(/[[\]"]/g, '').split(',')[0] : String(input.mode ?? '');
+  if (providerId === 'comfy-soul') { const w = soulWorkflowOf(input); if (w && all.includes(w)) return [w]; } // OpenSoul: the look's (or engine's) own graph
   if (tool.id === 'camera') { const ltx = all.filter((w) => /camera-ltx/.test(w)); return /^ltx-/.test(t) ? (ltx.length ? ltx : all) : all.filter((w) => !/camera-ltx/.test(w)).length ? all.filter((w) => !/camera-ltx/.test(w)) : all; }
   if (t) { const hit = all.filter((w) => new RegExp(`[-_]${t.replace(/[^\w-]/g, '')}[-_.]`).test(w)); if (hit.length) return hit; }
   return all;
@@ -186,6 +191,9 @@ export function requirementsFor(tool: ToolDef, providerId: string, input: Record
   // Blocked only when EVERY workflow this job may run has such a file: a job that can run a Mac-safe graph of the same model stays available.
   const wfBlocked = wfs.map((w) => macBlockedFiles([...weightsForWorkflows([w]).map((x) => x.file), ...loaderFiles([w]).map((x) => x.file)].filter((f) => f !== chosen?.replaces)));
   const macBlocked = wfBlocked.length && wfBlocked.every((b) => b.length) ? [...new Set(wfBlocked.flat())] : [];
+  // The Mac rating of the graphs a Mac CAN run (OpenSoul: soul-zit is amber while the FLUX / Qwen recipes are red): the job isn't red because of a graph it won't use here.
+  const safeVs = wfs.map((w, i) => (wfBlocked[i].length ? null : wfVram(w))).filter((x): x is WfVram => !!x);
+  const macSafeMps = safeVs.length ? (safeVs.some((v) => v.mps === 'amber' || v.mps === 'red') ? 'amber' as const : 'green' as const) : null;
   const R = worst ? (chosen ? Math.min(worst.recommendedVramGB, chosen.vramEstGB) : worst.recommendedVramGB) : null;
   const M = worst ? r1(chosen && R != null ? worst.minVramGB * (R / worst.recommendedVramGB) : worst.minVramGB) : null;
   // secondsPerTier: timing.ts cells for this job (all → rtx4090, else rtx5090; mac → mseries). light / most stay null (no cross-GPU scaling, timing.ts:4).
@@ -196,7 +204,7 @@ export function requirementsFor(tool: ToolDef, providerId: string, input: Record
   const r: Requirements = { workflows: wfs.map((w) => `workflows/${w}`), recommendedVramGB: R, minVramGB: M, minVramEstimate: true,
     downloadBytes: files.reduce((a, f) => a + (f.bytes ?? 0), 0), downloadGB: Math.round(files.reduce((a, f) => a + (f.bytes ?? 0), 0) / 1e7) / 100,
     missingBytes: (missing ?? files).reduce((a, f) => a + (f.bytes ?? 0), 0), missingBytesSource: missing ? 'checked' : 'assumed_all', missingFiles: missing,
-    ramMinGB: worst ? Math.ceil(Math.max(worst.residentGB, worst.teGB) + 8) : null, mps: macBlocked.length ? 'red' : worst?.mps ?? null,
+    ramMinGB: worst ? Math.ceil(Math.max(worst.residentGB, worst.teGB) + 8) : null, mps: macBlocked.length ? 'red' : macSafeMps ?? worst?.mps ?? null,
     mpsNotes: macBlocked.length && !(worst?.mpsNotes ?? []).some((n) => /fp8|nvfp4|w4a8/i.test(n)) ? [...(worst?.mpsNotes ?? []), `${MAC_WEIGHTS_REASON} (${macBlocked.join(', ')})`] : worst?.mpsNotes ?? [], minComfyVersion: p.minComfyVersion ?? null,
     secondsPerTier: { all: cell('rtx4090') ?? cell('rtx5090'), most: null, light: null, mac: cell('mseries') }, variants: vv, variantId: chosen?.id ?? null, macBlockedFiles: macBlocked,
     downloadable: files.some((f) => !!f.url), modelsDir: HW.displayDir(dir), modelsDirSet: !!dir, downloadId: downloadIdFor(providerId, wfs), presenceSource: ov ? null : dir ? 'models_dir' : viaComfy ? 'comfyui' : null };
