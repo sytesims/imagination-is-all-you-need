@@ -73,7 +73,7 @@ export default function App() {
   let body: React.ReactNode; let title = 'Explore';
   if (err && !matchPage(path)) body = <div className="server-down-inline"><InlineError what={toolId ? 'this tool' : 'this page'} error={isRestartError(err) ? new Error('restarting') : failure ?? new Error(err)} onRetry={retryTools} /></div>;
   else if (matchPage(path)) { const [t, P] = matchPage(path)!; title = t; body = <P tools={tools} />; }
-  else if (FILM_ID_PATH.test(path)) { title = 'Film'; body = <PageComps.Film tools={tools} />; } // Film (2026-10-27): one film's editor (the list is PAGES /film)
+  else if (FILM_ID_PATH.test(path)) { title = 'Editor'; body = <PageComps.Film tools={tools} />; } // Film (2026-10-27): one film's editor (the list is PAGES /film)
   else if (WF_PATH.test(path)) { const [, wid, lid] = WF_PATH.exec(path)!; title = 'Workflows'; body = lid ? <LookPage key={`${wid}/${lid}`} id={decodeURIComponent(wid)} lookId={decodeURIComponent(lid)} /> : <WorkflowPage key={wid} id={decodeURIComponent(wid)} />; } // Workflows redesign (2026-10-23): a workflow's page and one look's page
   else if (/^\/share\/[^/]+/.test(path)) { title = 'Shared'; body = <SharePage key={path} token={path.split('/')[2]} />; }
   else if (/^\/models\/[^/]+/.test(path)) { title = 'Model'; body = <ModelPage key={path} id={decodeURIComponent(path.split('/')[2])} />; }
