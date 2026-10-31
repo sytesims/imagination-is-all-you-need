@@ -17,11 +17,11 @@ export type TrayFile = {
   /** pinned (the start frame): no remove here, no drag */ fixed?: boolean;
 };
 
-export function MoreFiles({ items, hidden, onRemove, onMove, watch, summary, offText = 'Not used', testId = 'more-files' }: {
+export function MoreFiles({ items, hidden, onRemove, onMove, watch, summary, offText = 'Not used', testId = 'more-files', action }: {
   items: TrayFile[]; /** how many aren't shown as thumbnails (the "+N") */ hidden: number;
   onRemove: (f: TrayFile) => void; onMove?: (group: string, from: number, to: number) => void;
   /** the composer dock: the tray opens above it */ watch?: RefObject<HTMLElement | null>; /** the head's right side ("Uses 9 of your 12") */ summary?: string;
-  offText?: string; testId?: string;
+  offText?: string; testId?: string; /** one action under the list ("Remove the 10 not used") */ action?: { label: string; onClick: () => void } | null;
 }) {
   const at = useRef<HTMLButtonElement>(null); const [open, setOpen] = useState(false);
   const drag = useRef<TrayFile | null>(null); const [over, setOver] = useState<string | null>(null);
@@ -49,6 +49,7 @@ export function MoreFiles({ items, hidden, onRemove, onMove, watch, summary, off
           </li>)}
         </ul>
         {onMove && <p className="ft-hint">Drag to reorder: the order sets @image1, @image2…</p>}
+        {action && <button type="button" className="ft-act" data-testid={`${testId}-action`} onClick={() => { setOpen(false); action.onClick(); }}>{action.label}</button>}
       </PopSection>
     </BarPopover>
   </>;

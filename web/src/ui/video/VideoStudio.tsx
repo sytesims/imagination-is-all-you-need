@@ -459,7 +459,7 @@ export default function VideoStudio(p: VideoStudioProps) {
           <div className="ic-lead" data-testid="vs-dlead">
             {kfMode ? <KeyframeLead frames={kfFrames} times={kfTimes} seconds={p.duration} onChange={setKf} onAdd={() => kfIn.current?.click()} onOpen={() => pop.setOpen('kf')} /> : <>
             {leadThumbs.slice(0, leadShown.show).map(t => t.el)}
-            <MoreFiles hidden={leadShown.more} items={leadThumbs.map(t => t.f)} watch={dock} testId="vs-more" summary={curFit && !curFit.all ? notUsedShort(curFit) : undefined} offText="Not used"
+            <MoreFiles hidden={leadShown.more} items={leadThumbs.map(t => t.f)} watch={dock} testId="vs-more" summary={curFit && !curFit.all ? notUsedShort(curFit) : undefined} offText="Not used" action={overN > 0 ? { label: `Remove the ${overN} not used`, onClick: dropExtras } : null}
               onRemove={f => f.group === 'start' ? p.clearImage() : f.group === 'end' ? p.setLastFrame(null) : removeRef(f.group, f.idx)} onMove={(g, a, b) => moveRef(g)(a, b)} />
             {(p.mode === 'r2v' || RK.some(([k]) => (p.vrefs[k]?.length ?? 0) > 0)) && <span className={`vs-slot-wrap${curFit && !curFit.all ? ' has-skip' : ''}`}><SlotCount used={refUsed} caps={refCaps} testId="vs-slot-count" />
             {curFit && !curFit.all && <span className="vs-ref-skip" data-testid="vs-ref-skip" {...tip(`${modelName} won’t use ${skippedText(curFit)}. Pick another model, or remove ${curFit.haveN - curFit.usedN === 1 ? 'it' : 'them'}.`)}>{notUsedShort(curFit)}</span>}</span>}

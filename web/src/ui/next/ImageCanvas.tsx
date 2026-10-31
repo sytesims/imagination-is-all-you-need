@@ -1,4 +1,4 @@
-import { SlotPreview, SlotCount, slotText, fullText, prepUpload, useSlotReorder } from '../../shared/SlotPreview';
+import { SlotPreview, SlotCount, fullText, prepUpload, useSlotReorder } from '../../shared/SlotPreview';
 import { MoreFiles, LeftNote, notAddedText, type TrayFile } from '../../shared/FilesTray';
 import { IMAGE_ACCEPT, fileFits, wrongTypeText } from '../../../../server/src/shared/mediaAccept';
 import { GenPrice } from '../../shared/GenPrice';
@@ -819,13 +819,13 @@ export default function ImageCanvas(p: ImageCanvasProps) {
             : prepNow ? <PrepChip chipRef={prepChipRef} prep={prepNow} aspect={prepNow.aspect} shape="" busy={prepBusy || wfBusy} onFit={() => void applyPrep('fit')} onCrop={openCrop} onUndo={undoPrep} /> : null}</>} />
     : <>{presetChip}
       {photos.length > 0 && <div className="ic-attach ic-attach-in" data-testid="ic-attach">{photos.slice(0, ts.show).map(thumb)}
-        <MoreFiles hidden={ts.more} watch={dock} testId="ic-thumbs-more" summary={slotText('image', refN, maxRefs)} onRemove={f => removePhoto(f.idx)} onMove={photos.length > 1 && p.movePhoto ? (_g, a, b) => p.movePhoto!(a, b) : undefined}
+        <MoreFiles hidden={ts.more} watch={dock} testId="ic-thumbs-more" summary={refN > maxRefs ? `${refN - maxRefs} not used` : undefined} action={refN > maxRefs && maxRefs > 0 ? { label: `Remove the ${refN - maxRefs} not used`, onClick: () => { for (let i = photos.length - 1; i >= maxRefs; i--) removePhoto(i); } } : null} onRemove={f => removePhoto(f.idx)} onMove={photos.length > 1 && p.movePhoto ? (_g, a, b) => p.movePhoto!(a, b) : undefined}
           items={photos.map((ph, k): TrayFile => ({ key: ph.url, group: 'photos', idx: k, kind: 'image', url: ph.url, name: (ph as any).file?.name ?? `Image ${k + 1}`, label: refN > 1 ? `Picture ${k + 1} · @image${k + 1}` : 'Picture', off: k >= maxRefs || (!!p.mask && k > 0) }))} />
         {p.canMask && sup.draw !== false /* only models with a mask route (Brush Edit) */ && <>
           {p.mask && cMaskNow && <button type="button" className="ic-mask-t" data-testid="ic-mask-thumb" aria-label={`Mask: ${Math.max(1, Math.round(cMaskNow.cover * 100))}% of the photo. Edit mask`} {...tip(`Mask · ${Math.max(1, Math.round(cMaskNow.cover * 100))}% of the photo. Click to edit`)} onClick={openCreateMask}><img src={cMaskNow.preview} alt="" /></button>}
           <button type="button" className={`ic-chip ic-mask-b ${masking || p.mask ? 'on' : ''}`} data-testid="ic-mask-chip" aria-haspopup="dialog" {...tip(p.mask ? 'Brush Edit: only the painted area changes. Click to edit the mask' : 'Paint an area: only it changes')} onClick={openCreateMask}>{p.mask ? 'Mask ✓' : 'Mask'}</button></>}</div>}
       </>}
-    {!recipe && photos.length > 0 && <><SlotCount used={{image:refN}} caps={{image:maxRefs}} testId="ic-slot-count" />{refN > maxRefs && maxRefs > 0 && <button type="button" className="lk-btn" data-testid="ic-remove-extra-photos" onClick={() => { for (let i = photos.length - 1; i >= maxRefs; i--) removePhoto(i); }}>Remove extras</button>}</>}
+    {!recipe && photos.length > 0 && <><SlotCount used={{image:refN}} caps={{image:maxRefs}} testId="ic-slot-count" />{refN > maxRefs && maxRefs > 0 && !ts.more /* with "+N" it sits in the tray */ && <button type="button" className="lk-btn" data-testid="ic-remove-extra-photos" onClick={() => { for (let i = photos.length - 1; i >= maxRefs; i--) removePhoto(i); }}>Remove extras</button>}</>}
     {photoPreview != null && (() => { const ph = photos[photoPreview] as {url:string;file?:File} | undefined; return ph?.file ? <SlotPreview open anchor={photoAnchor} onClose={() => setPhotoPreview(null)} item={{file:ph.file,url:ph.url}} kind="image" title={`Picture ${photoPreview + 1}`} watch={dock} testId="ic-photo-preview" warn={photoPreview >= maxRefs ? `Not sent: this model takes up to ${maxRefs} pictures.` : null} onRemove={() => removePhoto(photoPreview)} onReplace={p.replacePhoto ? () => { replaceIndex.current = photoPreview; file.current?.click(); } : undefined} /> : null; })()}
   </div>;
   /* Settings popover: only the Create controls folded off the bar (the fit above says which), each once. Enhance here is the same

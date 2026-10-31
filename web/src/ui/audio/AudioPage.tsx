@@ -154,7 +154,7 @@ export default function AudioPage(p: AudioPageProps) {
       if (d === 'song') { p.setSong(f); continue; }
       if (d === 'clip') { const was = p.clip?.file.name; p.setVideo(null); p.setClip({ file: f, sec: await durOf(f) }); if (was && was !== f.name) toast(`Replaced ${was} with ${f.name}`, 'info'); continue; }
       samples = ri != null && samples[ri] ? samples.map((x, j) => j === ri ? f : x) : [...samples, f]; p.setSamples(samples); p.setFieldVals(v => ({ ...v, voice: 'clone' })); }
-    setLeft(notAddedText(over, `this model takes up to ${maxS} voice sample${maxS > 1 ? 's' : ''}`));
+    setLeft(notAddedText(over, `${modelName || 'This model'} takes up to ${maxS} voice sample${maxS > 1 ? 's' : ''}`));
     if (wrong) msgs.push(slotOf('voiceAudio') && !maxS && !slotOf('audio') ? 'This model uses its own voices, so it can’t clone a sample.' : `${wf.name} takes ${wf.slots.map(s => s.label.toLowerCase()).join(', ') || 'no files'}.`);
     setUpErr(msgs.join(' ')); };
   const accept = [slotOf('video') ? VIDEO_ACCEPT : '', slotOf('audio') || (slotOf('voiceAudio') && maxS) ? AUDIO_ACCEPT : ''].filter(Boolean).join(',');
