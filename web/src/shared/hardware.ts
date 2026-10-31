@@ -26,7 +26,7 @@ export const refreshHardware = () => send<Hardware>('/api/hardware/refresh', 'PO
 export const setManualHardware = (vramGB: number, ramGB: number | null) => send<Hardware & { note?: string }>('/api/hardware', 'PUT', { vramGB, ramGB });
 export const clearManualHardware = () => send<Hardware>('/api/hardware/override', 'DELETE');
 export type ComfyAddr = { url: string | null; source: string | null; savedUrl?: string | null; serverDefault?: string | null; cloud?: boolean; canChange: boolean };
-export type ComfyTest = { url?: string | null; reachable: boolean; /** B31: refused | timeout | not_found | bad_response | unreachable | not_set | cloud | null */ errorCode?: string | null; timeoutSec?: number; version?: string | null; gpu?: { name?: string; vramTotalGB?: number | null } | null; ggufNode?: boolean | null; latencyMs?: number | null; error?: string | null };
+export type ComfyTest = { url?: string | null; reachable: boolean; /** B31: refused | timeout | not_found | bad_response | unreachable | not_set | cloud | null */ errorCode?: string | null; timeoutSec?: number; version?: string | null; gpu?: { name?: string; type?: string; vramTotalGB?: number | null } | null; ggufNode?: boolean | null; latencyMs?: number | null; error?: string | null };
 export const getComfy = () => send<ComfyAddr>('/api/local/comfy', 'GET');
 export const setComfy = (url: string | null) => send<ComfyAddr>('/api/local/comfy', 'PUT', { url });
 export const clearComfy = () => send<ComfyAddr>('/api/local/comfy', 'DELETE');

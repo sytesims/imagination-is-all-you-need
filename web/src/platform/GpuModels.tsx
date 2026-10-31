@@ -137,7 +137,7 @@ function ComfyCard({ addr, onAddr, onTested }: { addr: ComfyAddr | null; onAddr:
     {!ro && addr?.savedUrl && <button type="button" className="link-btn" data-testid="ls-comfy-clear" disabled={!!busy} onClick={() => save(null)}>Use the default</button>}
     {ro && addr && <p className="helper" data-testid="ls-comfy-ro">{addr.url ? 'Set on the server, so it can’t be changed here.' : 'Not set. It can only be set on the server.'}</p>}
     {t && <div className={`ls-test ${t.reachable ? 'ok' : 'bad'}`} role="status" data-testid="ls-comfy-result">
-      {t.reachable ? <><b>Connected</b>{[t.version ? `ComfyUI ${t.version}` : '', t.gpu?.name ? `${card(t.gpu.name)}${t.gpu.vramTotalGB != null ? ` · ${gb(t.gpu.vramTotalGB)}` : ''}` : '', t.ggufNode == null ? '' : t.ggufNode ? 'GGUF loader installed' : 'GGUF loader not installed', t.latencyMs != null ? `${t.latencyMs} ms` : ''].filter(Boolean).map(x => <span key={x}>{x}</span>)}</>
+      {t.reachable ? <><b>Connected</b>{[t.version ? `ComfyUI ${t.version}` : '', t.gpu?.name ? (t.gpu.type === 'mps' ? 'Apple graphics (shared memory)' /* ComfyUI names it "mps" (hardware plan B2) */ : `${card(t.gpu.name)}${t.gpu.vramTotalGB != null ? ` · ${gb(t.gpu.vramTotalGB)}` : ''}`) : '', t.ggufNode == null ? '' : t.ggufNode ? 'GGUF loader installed' : 'GGUF loader not installed', t.latencyMs != null ? `${t.latencyMs} ms` : ''].filter(Boolean).map(x => <span key={x}>{x}</span>)}</>
         : t.error ? <b data-testid="ls-comfy-err" data-code={t.errorCode ?? undefined}>{t.error /* B31: the server's sentence for its errorCode, word for word */}</b> : <b>Not reachable</b>}
     </div>}
     {err && <Notice as="p" kind="error" tone="line">{err}</Notice>}
