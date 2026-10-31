@@ -1,6 +1,7 @@
 /**
  * The board's look, through tldraw's own theme API (TLTheme): near-black canvas (--hf-bg), orange only for the selection,
  * the brush and focus, Inter for the sans font (already loaded by the app). The pen palette leads with our orange.
+ * Orange sticky notes: a lighter orange with near-black text (white on orange was hard to read).
  * tldraw's licence and watermark are untouched.
  */
 import { DEFAULT_THEME, type TLTheme, type TLDefaultColorStyle } from 'tldraw';
@@ -18,7 +19,7 @@ export const BRAND_THEME: TLTheme = {
       selectionStroke: ORANGE, selectionFill: 'rgba(255,122,26,.10)', selectedContrast: '#14151A',
       brushStroke: 'rgba(255,122,26,.55)', brushFill: 'rgba(255,122,26,.06)',
       snap: 'rgba(247,247,248,.55)', noteBorder: 'rgba(0,0,0,.4)',
-      orange: { ...dark.orange, solid: ORANGE, fill: ORANGE, linedFill: '#E66E17', semi: '#3A2618', pattern: '#B85A16', noteFill: '#9E4B10', frameHeadingStroke: '#7A3D10', frameStroke: '#7A3D10' },
+      orange: { ...dark.orange, solid: ORANGE, fill: ORANGE, linedFill: '#E66E17', semi: '#3A2618', pattern: '#B85A16', noteFill: '#F2913F', noteText: '#14151A', frameHeadingStroke: '#7A3D10', frameStroke: '#7A3D10' },
     },
   },
 };
