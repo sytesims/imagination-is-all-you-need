@@ -35,6 +35,10 @@ URL="http://localhost:$WEB_PORT/"
 web_up() { curl -s -o /dev/null --max-time 2 "http://127.0.0.1:$WEB_PORT/"; }
 api_up() { curl -sf -o /dev/null --max-time 2 "http://127.0.0.1:$API_PORT/api/health"; }
 ready() { web_up && api_up; }
+# something already listens on our ports (a copy started in a terminal, or one reloading after an update)
+port_busy() { lsof -ti "tcp:$WEB_PORT" -sTCP:LISTEN >/dev/null 2>&1 || lsof -ti "tcp:$API_PORT" -sTCP:LISTEN >/dev/null 2>&1; }
+# wait up to $1 seconds for the app to answer
+wait_ready() { local end=$((SECONDS + $1)); until ready; do (( SECONDS >= end )) && return 1; sleep 1; done; }
 # the saved process, only while it is still our app (guards against a reused process id)
 our_pid() {
   local pid; pid="$(cat "$PIDFILE" 2>/dev/null)" || return 1
@@ -96,6 +100,11 @@ echo $$ > "$LOCK/pid"
 trap 'rm -rf "$LOCK"' EXIT
 
 pid="$(our_pid)"
+# a copy we didn't start is already there (started in a terminal, or reloading after an update): use it, never start a second one
+if [ -z "$pid" ] && port_busy; then
+  wait_ready 30 && { open "$URL"; exit 0; }
+  fail "Something is using port $WEB_PORT or $API_PORT but Imagination isn't answering there. If Imagination is running in a terminal, give it a moment and open Imagination again."
+fi
 if [ -z "$pid" ]; then
   # 3. start it: the README's own command (npm run setup: installs what's missing, checks, then npm run dev), detached in its
   # own process group so closing this launcher or the browser never stops it
@@ -115,6 +124,7 @@ start=$SECONDS
 until ready; do
   if ! kill -0 "$pid" 2>/dev/null; then
     rm -f "$PIDFILE"
+    wait_ready 10 && break  # it found Imagination already running and handed over
     fail "Imagination stopped while starting. The last lines of its log:
 
 $(last_lines)
