@@ -23,7 +23,7 @@ What they do, in order:
 1. Check for git, Node.js 20 or newer (with npm) and ffmpeg. For each missing one, they say what it is and ask before installing it with Homebrew (macOS; they offer Homebrew's official installer if it's missing), apt or dnf (Linux, with `sudo`, which asks for your password) or winget (Windows). Say no and they print the manual steps and stop. ffmpeg is optional: without it the app still opens.
 2. Download the app into `~/Imagination` (Windows: `%USERPROFILE%\Imagination`) with `git clone --depth 1`. If the app is already there, they run `npm run update` instead. Your library (`server/data`) and keys (`.env.local`) are never touched.
 3. Run `npm run setup -- --no-start`: app dependencies and the read-only check. No ComfyUI, models or keys.
-4. Ask whether to add a desktop shortcut (macOS: `Imagination.command`; Windows: `Imagination.lnk`; Linux: an `imagination.desktop` app entry).
+4. Ask whether to add a shortcut (Windows: `Imagination.lnk`; Linux: an `imagination.desktop` app entry). On a Mac the installer adds Imagination to Applications and your Dock: it builds the [Mac app](#mac-app-dock) into `/Applications` (or `~/Applications` when `/Applications` needs an administrator; never with `sudo`), pins it to the Dock unless it's already there, and removes the `Imagination.command` desktop shortcut older installers made.
 5. Start the app with `npm run setup` and open it in your browser. Keep the window open; Ctrl+C stops it.
 
 Options (Windows names in brackets):
@@ -34,7 +34,7 @@ Options (Windows names in brackets):
 | `--dir PATH` (`-Dir`) | Install somewhere else |
 | `--branch NAME` (`-Branch`) | Get another branch (for testing) |
 | `--no-start` (`-NoStart`) | Install, but don't start the app |
-| `--no-shortcut` (`-NoShortcut`) | Don't offer a desktop shortcut |
+| `--no-shortcut` (`-NoShortcut`) | Don't offer the shortcut (on a Mac: the app in Applications and the Dock) |
 | `--dry-run` (`-DryRun`) | Show every step, change nothing |
 | `--help` (`-Help`) | Show the options |
 
@@ -105,6 +105,26 @@ Setup installs missing app dependencies, runs the read-only doctor and starts th
 Open the printed web URL. Keep the terminal open; **Ctrl+C** stops the services. Closing the browser does not stop them. `npm run setup -- --check` checks without installing or starting; `--no-start` permits dependency installation/checks but does not start services.
 
 `npm install` also attempts to install MCP dependencies. If that part fails, fix the reported dependency error and run `npm run mcp:install`; the app being reachable does not prove MCP is running.
+
+### Mac app (Dock)
+
+On macOS you can open the studio like any other app. In the app folder, run once:
+
+```text
+npm run mac-app
+```
+
+This builds `Imagination.app` in `~/Applications`, the Applications folder in your home folder. Drag it from there to the Dock.
+
+- **Opening it** starts the app in the background when it isn't running (the same `npm run setup`, so a first start also installs what's missing), shows "Starting Imagination…", then opens the studio in your browser. If it's already running (also when you started it in a terminal, or it is restarting after an update), it just opens the browser. Closing the browser doesn't stop it.
+- **While the studio runs**, Imagination stays in the Dock with its running dot. Click it to open the studio again. If the studio stops by itself, you get a notification and the app closes.
+- **To stop it**, quit Imagination (from its Dock menu, or Cmd-Q) and choose **Stop**; **Keep running** leaves the studio on. Or hold **Option** while you open Imagination and choose **Stop Imagination**. It only stops the copy it started; a copy started in a terminal stops with **Ctrl+C** there.
+- **If it can't start**, it shows the last lines of the log. The full log is `~/Library/Logs/Imagination/app.log` (it keeps about the last 1 MB).
+- **Ports and settings** work as above: `PORT` and `WEB_PORT` in `.env.local` are used.
+- **Moved or renamed the app folder?** Run `npm run mac-app` again from the new place. `npm run mac-app -- --dest DIR` builds it somewhere else. It only replaces its own `Imagination.app`, never another app with that name.
+- **To remove it**, drag `Imagination.app` to the Trash (and off the Dock). Optionally also delete `~/Library/Logs/Imagination` and `~/Library/Application Support/Imagination`.
+
+The app is built on your Mac, so macOS opens it without a download warning. The first time it shows a notification, macOS may ask whether Imagination can send notifications.
 
 ## Choose how to use it
 

@@ -25,7 +25,7 @@ On Windows, paste this into PowerShell:
 irm https://iiayn.app/install.ps1 | iex
 ```
 
-It checks for git, Node.js and ffmpeg and asks before installing any that are missing. Then it puts the app in an `Imagination` folder in your home folder, offers a desktop shortcut and opens the studio in your browser. It doesn't download AI models or ask for keys: you connect those in the app when you want them. Read the scripts first if you like: [get.sh](scripts/get.sh) · [get.ps1](scripts/get.ps1). Options and the manual steps: [Install and run](docs/INSTALL.md#install-in-one-line).
+It checks for git, Node.js and ffmpeg and asks before installing any that are missing. Then it puts the app in an `Imagination` folder in your home folder, offers a shortcut and opens the studio in your browser. On a Mac the installer adds Imagination to Applications and your Dock. It doesn't download AI models or ask for keys: you connect those in the app when you want them. Read the scripts first if you like: [get.sh](scripts/get.sh) · [get.ps1](scripts/get.ps1). Options and the manual steps: [Install and run](docs/INSTALL.md#install-in-one-line).
 
 It all started with Comfy's **#OpenSourceHiggsfield** challenge.
 
@@ -84,6 +84,16 @@ On Windows, use `npm.cmd run setup` if PowerShell selects a blocked `npm.ps1` sh
 Without a model connection, **Generate asks you to connect a key or ComfyUI**. It does not start a free generation. Included examples are existing outputs; the separate mock backend is for development and tests.
 
 Need help getting started? [Install and run](docs/INSTALL.md) covers prerequisites and Windows/macOS instructions. It also includes Docker and advanced setup. Other ports and settings: [Configuration](docs/CONFIGURATION.md).
+
+### Mac app (Dock)
+
+On a Mac, run this once in the app folder:
+
+```text
+npm run mac-app
+```
+
+It puts **Imagination** in your Applications folder (the one in your home folder). Drag it to the Dock. Clicking it starts the studio in the background when it isn't running, then opens it in your browser. No terminal to keep open. It stays in the Dock while the studio runs; quit it and choose **Stop** to stop the studio. More in [Install and run](docs/INSTALL.md#mac-app-dock).
 
 ### Updating
 
