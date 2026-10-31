@@ -45,7 +45,8 @@ export const TWO_SWAP_NODES = { video: '10', turbo: '3', shift: '7', attention: 
   /** first: the MaskToImage that feeds this person's frame-0 mask into the joint track ('170', object index = person index) */
   people: [{ detect: '143', point: '144', half: '145', side: '146', first: '160', pool: '150', grow: '153', area: '172' }, { detect: '243', point: '244', half: '245', side: '246', first: '161', pool: '250', grow: '253', area: '272' }],
   track: '170',
-  passes: [{ image: '312', prompt: '313', cond: '320', guide: '319', guider: '324' }, { image: '412', prompt: '413', cond: '420', guide: '419', guider: '424' }], save: '430' } as const;
+  passes: [{ image: '312', prompt: '313', cond: '320', guide: '319', guider: '324' }, { image: '412', prompt: '413', cond: '420', guide: '419', guider: '424' }], save: '430',
+  /** pass 1's own frames (person 1 recast, person 2 as filmed), saved as an extra output so a run shows what pass 1 did (2026-10-31) */ pass1Decode: '326', pass1Save: '332' } as const;
 
 const load = () => JSON.parse(readFileSync(path.join(WORKFLOWS_DIR, TWO_SWAP_GRAPH), 'utf8')) as Record<string, any>;
 /** What Comfy Cloud must have: every class in the graph and every model file a loader names (the LoRA is the user's import). */
@@ -138,6 +139,25 @@ function wholeBodies(g: Record<string, any>, clicks: ({ x: number; y: number } |
   });
 }
 
+/** Head room (2026-10-31, job fd1a2425's area outputs: a chest click's mask covered the jacket and arms only, so pass 1 kept the face). Each person's
+ *  final mask also grows UP and down by HEAD_ROOM of the frame height, inside the columns that person's mask fills (at least 2 cells of a column), so
+ *  the head above a torso-only mask is always edited; the mutual subtraction still keeps the other person out. Core nodes only, per frame, on the
+ *  latent grid. Node ids 11k0–11k7; every reader of the person's mask (grow, the other person's subtraction, the adds, the area output) reads 11k7. */
+export const HEAD_ROOM = 0.3;
+function headRoom(g: Record<string, any>, k: number, cw: number, ch: number) {
+  const src = g[k === 0 ? '153' : '253'].inputs.mask as [string, number]; const h = `11${k}`; const cells = Math.max(1, Math.round(ch * HEAD_ROOM));
+  g[`${h}0`] = { class_type: 'MaskToImage', inputs: { mask: src } };
+  g[`${h}1`] = { class_type: 'ImageScale', inputs: { image: L(`${h}0`), upscale_method: 'area', width: cw, height: 1, crop: 'disabled' }, _meta: { title: `Person ${k + 1}: columns they fill` } };
+  g[`${h}2`] = { class_type: 'ImageScale', inputs: { image: L(`${h}1`), upscale_method: 'nearest-exact', width: cw, height: ch, crop: 'disabled' } };
+  g[`${h}3`] = { class_type: 'ImageToMask', inputs: { image: L(`${h}2`), channel: 'red' } };
+  g[`${h}4`] = { class_type: 'ThresholdMask', inputs: { mask: L(`${h}3`), value: Math.min(0.99, 1.5 / ch) } }; // at least 2 cells of the column
+  g[`${h}5`] = { class_type: 'GrowMask', inputs: { mask: src, expand: cells, tapered_corners: false } };
+  g[`${h}6`] = { class_type: 'MaskComposite', inputs: { destination: L(`${h}5`), source: L(`${h}4`), x: 0, y: 0, operation: 'multiply' }, _meta: { title: `Person ${k + 1}: up and down in their own columns` } };
+  g[`${h}7`] = { class_type: 'MaskComposite', inputs: { destination: src, source: L(`${h}6`), x: 0, y: 0, operation: 'add' }, _meta: { title: `Person ${k + 1}: with head room` } };
+  const own = new Set([`${h}0`, `${h}5`, `${h}7`]);
+  for (const [id, n] of Object.entries<any>(g)) if (!own.has(id)) for (const [f, v] of Object.entries<any>(n.inputs ?? {})) if (Array.isArray(v) && v[0] === src[0] && v[1] === src[1]) n.inputs[f] = L(`${h}7`);
+}
+
 const refuse = (msg: string) => Object.assign(new Error(`${msg}. Nothing was sent or charged`), { reasonCode: 'input_invalid', errorType: 'validation' });
 
 /** The plan: one Comfy Cloud job, two chained passes. input.charswapLora / charswapTurbo = the loader values the free check found. */
@@ -176,12 +196,16 @@ export function twoSwapCloudPlan(j: { id: string; toolId: string; provider: stri
     if (i.hasAudio === false) { delete g[S.cond].inputs['ref_audios.ref_audio_0']; g[S.guider].inputs.conditioning = [S.cond, 0]; delete g[S.guide]; }
   });
   wholeBodies(g, at.map((a) => a.point), cw, ch, width, height);
-  pruneUnreachable(g, [N.save, N.people[0].area, N.people[1].area]); // SAM's text prompt is unused when both people are clicked
+  headRoom(g, 0, cw, ch); headRoom(g, 1, cw, ch); // after wholeBodies: on each person's final mask (whole body + click, or their half)
+  // pass 1's frames as their own output: the next run shows whether pass 1 changed person 1
+  g['331'] = { class_type: 'CreateVideo', inputs: { fps: 24, images: L(N.pass1Decode), bit_depth: 8 }, _meta: { title: 'Pass 1 frames' } };
+  g[N.pass1Save] = { class_type: 'SaveVideo', inputs: { filename_prefix: 'openhiggsfield/two-person-swap-pass1', format: 'auto', 'format.codec': 'auto', video: L('331') }, _meta: { title: 'Save pass 1 (person 1 only)' } };
+  pruneUnreachable(g, [N.save, N.people[0].area, N.people[1].area, N.pass1Save]); // SAM's text prompt is unused when both people are clicked
   const prep: Plan['passes'][number]['prep'] = [{ kind: 'fps', src: i.videoPath, out: src24, fps: 24, width, height, seconds, frames: length, audio: i.hasAudio !== false }];
   return { tool: j.toolId, outKind: 'video', post: { kind: 'each' }, muxSourceAudio: i.keepAudio !== false, labels: ['Both swapped'],
-    notes: [`Swap Two People on Comfy Cloud: ${TWO_SWAP_NAME} twice in one job (person 1, then person 2), ${tier}, ${width}×${height}, ${seconds} s (${length} frames), ${smp.turbo ? `turbo ${turboFile === TURBO_SHARED ? '(shared build)' : '768p build'}` : 'no turbo'} ${smp.steps} steps each, ${notes.join('; ')}, masks grown ${grow * H3_LATENT_CELL} px`],
+    notes: [`Swap Two People on Comfy Cloud: ${TWO_SWAP_NAME} twice in one job (person 1, then person 2), ${tier}, ${width}×${height}, ${seconds} s (${length} frames), ${smp.turbo ? `turbo ${turboFile === TURBO_SHARED ? '(shared build)' : '768p build'}` : 'no turbo'} ${smp.steps} steps each, ${notes.join('; ')}, masks grown ${grow * H3_LATENT_CELL} px, head room ${Math.round(HEAD_ROOM * 100)}% of the height`],
     passes: [{ label: 'Both swapped', workflow: TWO_SWAP_GRAPH, graph: g, output: N.save, prep,
-      extraOutputs: [{ node: N.people[0].area, label: 'Person 1 area' }, { node: N.people[1].area, label: 'Person 2 area' }],
+      extraOutputs: [{ node: N.people[0].area, label: 'Person 1 area' }, { node: N.people[1].area, label: 'Person 2 area' }, { node: N.pass1Save, label: 'Pass 1 (person 1 only)' }],
       expect: { fps: 24, width, height, length, seconds, tier, seed, prompts, lora: g[N.lora].inputs.lora_name, turbo: smp.turbo ? turboFile : null, steps: smp.steps, cast: at } }] };
 }
 
