@@ -1,6 +1,6 @@
 import { IMAGE_ACCEPT, fileFits, kindOfFile, wrongTypeText, type MediaKind } from '../../../../server/src/shared/mediaAccept';
-import { CloseIcon, BrushIcon, AspectIcon, ResolutionIcon, SparkleIcon } from '../Icons';
-import { EnhanceButton, enhanceToastTitle, type EnhanceResult } from '../next/Enhance';
+import { CloseIcon, BrushIcon, AspectIcon, ResolutionIcon } from '../Icons';
+import { EnhanceChip, EnhancePop, showEnhanced, type EnhanceResult } from '../next/Enhance';
 import { PromptPeek, type PeekForm } from '../next/PromptPeek';
 import { BrandChip } from '../../shared/BrandChip';
 import { RowMore } from '../../shared/RowMore';
@@ -40,7 +40,7 @@ import { quoteParams } from '../../shared/usePrefill';
 import { perSecondAt, optionToken, priceDelta, rateText, localLine, isLocalQuote, useVariantQuotes, shortToken, type Overrides } from '../../shared/optionPrice';
 import { OptPrice } from '../../shared/OptPrice';
 import { isOpenWeights, providerGroupOf, displayNameOf } from '../../shared/OpenWeights';
-import { BarPopover, PopSection, PopList, PopRow, PopSwitch, PopAction, Segmented, segCols, AspectShape, aspectWH } from '../../shared/BarPop';
+import { BarPopover, PopSection, PopList, PopRow, PopSwitch, Segmented, segCols, AspectShape, aspectWH } from '../../shared/BarPop';
 import { ModelMenu, type MenuItem } from '../../shared/ModelMenu';
 import { SwitchNote, useSwitchNote } from '../../shared/SwitchNote';
 import type { RowFit } from '../../shared/quote';
@@ -407,8 +407,7 @@ export default function VideoStudio(p: VideoStudioProps) {
 
   /* Enhance: Create Video keeps it in its fields (enhance=1 on the run, off unless turned on); the peek below shows the words it adds */
   const enhOn = p.fv.enhance === '1' || p.fv.enhance === true as any; const setEnh = (b: boolean) => p.setFv('enhance', b ? '1' : '');
-  const enhT = useRef<number>(0); const enhLong = useRef(false);
-  const showEnh = (r: EnhanceResult) => { const was = r.original; p.setPrompt(r.prompt); toast(enhanceToastTitle(r), 'info', { sub: [r.added.slice(0, 4).join(', '), r.source].filter(Boolean).join(' · ') || undefined, ms: 10000, action: { label: 'Undo', onClick: () => p.setPrompt(was) } }); };
+  const showEnh = (r: EnhanceResult) => showEnhanced(r, p.setPrompt, toast);
   /* "See the exact prompt": the fields AppTool's submit sends for this bar (types, prompt, resolution, duration, provider, every field value), the files as counts */
   const peekForm: PeekForm = { toolId: p.tool.id, fields: { types: JSON.stringify([p.mode]), prompt: p.prompt, resolution: p.resolution, duration: String(p.duration), ...(p.provider ? { provider: p.provider } : {}),
       ...Object.fromEntries(Object.entries(p.fv).filter(([, v]) => v !== '' && v != null).map(([k, v]) => [k, typeof v === 'boolean' ? (v ? '1' : '0') : String(v)])) },
@@ -513,11 +512,7 @@ export default function VideoStudio(p: VideoStudioProps) {
           {refDelta && !(rvs && (p.vrefs.refVideos?.length ?? 0) > 0) && <span className="ic-chip ic-static vs-rv" data-testid="vs-ref-price" {...tip(`Your references add ${refDelta.replace(/^\+/, '')} to this run`)}>Refs<small className="opt-delta">{refDelta}</small></span>}
           {p.sameSeed && <span className="ic-seed" data-testid="vs-seed">{p.sameSeed}</span>}
           {/* Enhance (Image's sparkle): a click turns it on/off for the run (field enhance=1, the server adds the words); right-click opens the panel (Rewrite my prompt now) */}
-          {(() => { const can = !!cfg.enhance; const on = can && enhOn;
-            return <button ref={aR.enh} type="button" data-fold="enh" className={`ic-chip ic-sq ic-enh-one${on ? ' on' : ''}${pop.open === 'enh' ? ' open' : ''}`} data-testid="vs-enhance" aria-label={can ? 'Enhance prompt' : 'Rewrite my prompt'} aria-pressed={can ? on : undefined} aria-haspopup={can ? undefined : 'dialog'} aria-expanded={can ? undefined : pop.open === 'enh'} {...tip(can ? `Enhance prompt: ${on ? 'On' : 'Off'} · right-click for options` : 'Rewrite my prompt with more detail')}
-              onClick={() => { if (enhLong.current) { enhLong.current = false; return; } if (can) setEnh(!enhOn); else pop.setOpen(pop.open === 'enh' ? '' : 'enh'); }}
-              onContextMenu={e => { e.preventDefault(); pop.setOpen(pop.open === 'enh' ? '' : 'enh'); }}
-              onPointerDown={e => { if (e.pointerType === 'mouse') return; clearTimeout(enhT.current); enhT.current = window.setTimeout(() => { enhLong.current = true; pop.setOpen('enh'); }, 450); }} onPointerUp={() => clearTimeout(enhT.current)} onPointerLeave={() => clearTimeout(enhT.current)}><SparkleIcon size={16} /></button>; })()}
+          <EnhanceChip ref={aR.enh} data-fold="enh" testId="vs-enhance" can={!!cfg.enhance} on={enhOn} open={pop.open === 'enh'} onToggle={setEnh} onPanel={o => pop.setOpen(o ? 'enh' : '')} />
           {(qOpts.length > 1 || bitrates.length > 1 || folded.length > 0 || sndShown) && <SettingsChip ref={aR.q} testId="vs-settings" open={pop.open === 'set'} soundOn={sndOn} ariaLabel={`Settings: ${[sndShown ? `sound ${sndOn ? 'on' : 'off'}` : '', qOpts.length > 1 ? 'quality and bitrate' : bitrates.length > 1 ? 'bitrate' : '', fo('asp') ? `aspect ${aspLabel}` : '', fo('res') ? `resolution ${resLbl(p.resolution)}` : '', fo('enh') ? `Enhance ${enhOn ? 'on' : 'off'}` : ''].filter(Boolean).join(', ')}`} tip={tip(pop.open === 'set' ? null : sndShown ? `Settings · Sound ${sndOn ? 'on' : 'off'}` : 'Settings')} onClick={() => pop.setOpen(pop.open === 'set' ? '' : 'set')} />}
           <RowMore watch={dock} testId="vs-row-over" />{/* Brand and the eye fold in here on a short row (shared/RowMore) */}
         </div>
@@ -547,10 +542,7 @@ export default function VideoStudio(p: VideoStudioProps) {
           onReplace={() => { if (pv === 'start') fileIn.current?.click(); else if (pv === 'end') lastIn.current?.click(); else { repl.current = { k, i }; refIn.current?.click(); } }}
           onRemove={() => { if (pv === 'start') p.clearImage(); else if (pv === 'end') p.setLastFrame(null); else removeRef(k, i); }} />; })()}
       <PreflightNotes open={pfOpen} notes={notes} anchor={genRef} dock={dock} onClose={() => setPfOpen(false)} testId="vs-notes" />
-      <BarPopover open={pop.open === 'enh'} anchor={aR.enh} avoid={dock} watch={dock} placement="top" gap={8} onClose={closePop} label="Prompt enhancer" testId="vs-pop-enh" width={320}><PopSection label="Prompt enhancer" testId="vs-enhance-panel">
-        {cfg.enhance && <PopSwitch testId="vs-enhance-toggle" label="Enhance when I generate" hint="Adds detail to the prompt as it runs; your text stays as you wrote it" on={enhOn} onChange={setEnh} />}
-        <PopAction label="Rewrite my prompt now" hint="See the added detail first, then keep or undo it"><EnhanceButton model={tm?.key} prompt={p.prompt} kind="video" onApply={r => { showEnh(r); closePop(); }} /></PopAction>
-      </PopSection></BarPopover>
+      <EnhancePop open={pop.open === 'enh'} anchor={aR.enh} avoid={dock} watch={dock} onClose={closePop} testId="vs-pop-enh" panelTestId="vs-enhance-panel" toggleTestId="vs-enhance-toggle" can={!!cfg.enhance} on={enhOn} onChange={setEnh} prompt={p.prompt} kind="video" model={tm?.key} onApply={showEnh} />
       <BarPopover open={pop.open === 'kf'} anchor={aR.kf} avoid={dock} watch={dock} placement="top" gap={8} onClose={closePop} label="Frames" role="dialog" testId="vs-kf-menu" width={380}><div className="bp-wrap">
         <KeyframePanel frames={kfFrames} times={kfTimes} seconds={p.duration} caps={kfCaps} onChange={setKf} onAdd={() => kfIn.current?.click()} onOpen={() => 0} /></div></BarPopover>
       <LookPicker open={pop.open === 'look'} anchor={aR.look} avoid={dock} watch={dock} onClose={closePop} tabs={lookTabs} tab={lookTab} onTab={setLookTab} label="Look" testId="vs-look" />

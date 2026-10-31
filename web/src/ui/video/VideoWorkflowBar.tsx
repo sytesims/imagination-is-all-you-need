@@ -63,6 +63,7 @@ import { VideoThumb } from '../../shared/VideoThumb';
 import { MentionLayer } from '../../shared/MentionChips';
 import { renumberMentions } from '../../../../server/src/shared/mentions';
 import { SlotLabel } from '../../shared/SlotLabel';
+import { EnhanceChip, EnhancePop, showEnhanced } from '../next/Enhance';
 
 const ICONS: Record<string, (p: IconProps) => ReactNode> = { clock: ClockIcon, resolution: ResolutionIcon, aspect: AspectIcon, quality: QualityIcon, extend: ExtendIcon, hdr: HdrIcon, fps: FpsIcon, depth: DepthIcon,
   cutout: CutoutIcon, upscale: UpscaleIcon, palette: PaletteIcon, transition: TransitionIcon, orbit: OrbitIcon, camera: CameraMovesIcon, fx: PhotoFxIcon, swap: ObjectSwapIcon, layers: LayersIcon, person: UserIcon, spark: SparkleIcon, select: SelectIcon, reshoot: ReshootIcon };
@@ -237,12 +238,14 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
     onFiles: (slot, rs) => { if (extra.onFiles?.(slot, rs.map(r => r.file))) return; const alt = bar.slots.find(x => x.altImage === slot); if (alt) { void putFiles(alt, rs.map(r => r.file)); return; }
       const s = bar.slots.find(x => x.name === slot); if (s && slot !== 'video' && slot !== 'image') void putFiles(s, rs.map(r => r.file)); },
     onRecreate: r => { const f = r.form ?? {}; extra.onRecreate?.(f); if (r.seed) { setLastSeed(r.seed); setSeedOn(false); } let ty: any = f.types; try { ty = JSON.parse(ty); } catch { ty = ty ? [ty] : []; } const t0 = Array.isArray(ty) ? String(ty[0] ?? '') : '';
-      setVals(v => { const n = { ...v }; for (const c of bar.controls) { const w = f[c.field] ?? (c.send === 'types' || c.send === 'field+types' ? t0 : undefined); if (w != null && w !== '') n[c.field] = String(w); } if (f.fit === 'crop' || f.fit === 'pad') n.fit = f.fit; return n; });
+      setVals(v => { const n = { ...v }; for (const c of bar.controls) { const w = f[c.field] ?? (c.send === 'types' || c.send === 'field+types' ? t0 : undefined); if (w != null && w !== '') n[c.field] = String(w); } if (f.fit === 'crop' || f.fit === 'pad') n.fit = f.fit; if (bar.enhance != null && f.enhance != null) n.enhance = f.enhance === '1' ? '1' : '0'; return n; });
       if (f.prompt != null && promptCfg.mode !== 'hidden') setPrompt(String(f.prompt)); const m = r.providerAvailable ? (r.model ?? f.provider) : f.provider; if (m && providers.some(p => p.id === m)) setProvider(m);
       setRcRoute(m && f.route && r.providerAvailable && providers.some(p => p.id === m) ? { engine: m, modelKey: r.modelKey ?? null, route: String(f.route) } : null); } });
 
+  /* Enhance (Transitions, Camera Moves, UGC Ad): the shared sparkle chip, starting as the recipe says; off sends enhance=0, the prompt as written */
+  const enhCan = bar.enhance != null && promptCfg.mode !== 'hidden'; const enhOn = (vals.enhance ?? bar.enhance) === '1';
   /* ---- what is sent: the fixed values, every shown control, the prompt, the files ---- */
-  const formVals = (): Record<string, string> => { const o: Record<string, string> = { ...(bar.fixed ?? {}) };
+  const formVals = (): Record<string, string> => { const o: Record<string, string> = { ...(bar.fixed ?? {}), ...(enhCan ? { enhance: enhOn ? '1' : '0' } : {}) };
     for (const c of shown) { const v = valOf(c); const t = typesOf(c, v); if (t) o.types = t; if (c.kind === 'toggle' && c.omitOff && v === '0') continue; if (c.send !== 'types' && v !== '') o[c.field] = v; }
     for (const [slot, ty] of Object.entries(bar.typesWhenFile ?? {})) { const s = bar.slots.find(x => x.name === slot); if (s && files[slot]?.length && slotShown(s)) { o.types = ty; break; } } /* UGC Ad: a product or presenter photo runs as reference video */
     if (bar.slots.some(s => s.kind === 'video' && slotShown(s) && files[s.name]?.length && !files[s.name][0].photo)) o.fit = vals.fit === 'crop' ? 'crop' : 'pad'; /* Fit to model (barExtras/VideoFit.tsx): Keep everything (pad) or Crop to fill */
@@ -449,6 +452,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
             </span>
             <span className="wf-strip wf-ctl" data-testid="vbar-controls" data-workflow={wf.id} data-fit-main="first" /* its first control is the workflow's main one: never folds (shared/chipFit) */>{(() => { const ec = extra.chips?.(live()); const at = extra.chipsAfter ? bar.groups.findIndex(g => g.id === extra.chipsAfter) + 1 : 0; return <>{groupChips.slice(0, at)}{ec}{vfit.chip}{groupChips.slice(at)}</>; })()}
               {lastSeed != null && <span className="ic-seed wf-fold" {...fitPri('low')} data-testid="vs-seed" aria-label={seedOn ? `Same seed ${lastSeed}` : 'Same seed: off'}><SameSeed seed={lastSeed} on={seedOn} onChange={setSeedOn} /></span>}</span>
+            {enhCan && <EnhanceChip ref={el => { gRefs.current.enh = el; }} testId="vbar-enhance" can on={enhOn} open={pop === 'enh'} onToggle={v => setVal('enhance', v ? '1' : '0')} onPanel={o => setPop(o ? 'enh' : '')} />}
             {toggles}
             <button ref={overRef} type="button" className={`ic-chip ic-sq ic-over${pop === 'over' ? ' on' : ''}`} aria-haspopup="menu" aria-expanded={pop === 'over'} aria-label="More settings" {...tip(pop === 'over' ? null : 'More settings')} data-testid="vbar-over" onClick={openOver}><MoreIcon size={16} /></button>
           </div>
@@ -465,6 +469,8 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
         warn={preview.index >= usedOf(preview.slot) ? `Not sent: this model takes up to ${usedOf(preview.slot)} files here.` : null}
         onReplace={() => openSlot(preview.slot.name, preview.index)} onRemove={() => clearSlot(preview.slot, preview.index)} />}
       {soundPop}
+      {enhCan && <EnhancePop open={pop === 'enh'} anchor={anchorOf('enh')} avoid={dock} watch={dock} onClose={() => setPop('')} testId="vbar-pop-enh" panelTestId="vbar-enhance-panel" toggleTestId="vbar-enhance-toggle" can on={enhOn} onChange={v => setVal('enhance', v ? '1' : '0')}
+        prompt={prompt} kind="video" model={tm?.key} onApply={r => showEnhanced(r, setPrompt, toast)} />}
       {extra.pops?.(live())}
       {vfit.popover}
       {gallery && <LookPicker open={pop === `g:${gallery.group}`} anchor={anchorOf(gallery.group)} avoid={dock} watch={dock} onClose={() => setPop('')} label={gallery.label} testId="vbar-look"

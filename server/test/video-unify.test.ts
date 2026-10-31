@@ -116,3 +116,8 @@ for (const [wid, comp] of Object.entries(EXTRAS)) { assert.match(vbar, new RegEx
   assert.equal(b.controls.find((c: any) => c.field === 'duration')?.default, '15', 'UGC Ad: 15 s by default, as before'); }
 assert.match(vbar, /<SameSeed /, 'Same seed (the shared switch) is in the Video bar');
 ok('Object Swap, Re-shoot and UGC Ad run in the same Video bar with their old fields; Same seed in the bar');
+// Settings audit (2026-11-01): no hidden enhance. Transitions, Camera Moves and UGC Ad show the shared Enhance chip, on to start; Lip Sync sends only its mode
+for (const id of ['transitions', 'camera-moves', 'ugc-ad']) { assert.equal(VIDEO_BARS[id].enhance, '1', `${id}: the Enhance chip starts on`); assert.equal(VIDEO_BARS[id].fixed?.enhance, undefined, `${id}: enhance is not a hidden fixed value`); }
+assert.deepEqual(VIDEO_BARS['lip-sync'].fixed, { types: '["lipsync"]' }, 'Lip Sync: no hidden voice / language / mix / volume (the server defaults)');
+assert.match(vbar, /<EnhanceChip /, 'the workflow bar uses the shared Enhance chip'); assert.match(vbar, /enhance: enhOn \? '1' : '0'/, 'Enhance off sends enhance=0');
+ok('Enhance is a visible chip on Transitions, Camera Moves and UGC Ad; Lip Sync sends no hidden voice settings');
