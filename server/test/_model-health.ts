@@ -12,7 +12,10 @@ export const CAPS_TOOLS = new Set(['h3-video', 'app-transition', 'app-ugc-ad']);
 const CACHE = path.join(os.homedir(), '.cache', 'openhiggsfield');
 export const ROUTER_SCHEMA_DIR = process.env.MODEL_HEALTH_SCHEMAS || process.env.ROUTER_SCHEMAS_DIR || path.join(CACHE, 'router-schemas');
 export const EXTRA_SCHEMA_DIR = process.env.MODEL_HEALTH_SCHEMAS_EXTRA || path.join(CACHE, 'extra-schemas');
-export const SCHEMA_DIRS = [ROUTER_SCHEMA_DIR, EXTRA_SCHEMA_DIR];
+/** Structure-only copies (field names, types, enums, limits; no prose) of the request schemas the swap tests must always check: Kling 3.0 Omni and
+ *  Seedance 2.5 (2026-10-31: without the cache those checks were skipped silently). Last in line: a full cached document wins. */
+export const FIXTURE_SCHEMA_DIR = path.join(path.dirname(new URL(import.meta.url).pathname), 'fixtures', 'router-request-schemas');
+export const SCHEMA_DIRS = [ROUTER_SCHEMA_DIR, EXTRA_SCHEMA_DIR, FIXTURE_SCHEMA_DIR];
 export const schemaPath = (file: string) => SCHEMA_DIRS.map((d) => path.join(d, `${file}.json`)).find((f) => fs.existsSync(f)) ?? null;
 
 // ---------------- request schemas ----------------

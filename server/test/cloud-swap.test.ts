@@ -8,7 +8,7 @@
 //  6. trim: a range is cut from the upload (sound kept); bad ranges are refused with field "trim".
 // Run: npx tsx test/cloud-swap.test.ts
 import assert from 'node:assert/strict'; import { execFileSync } from 'node:child_process'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path'; import { createRequire } from 'node:module';
-import { ROUTER_SCHEMA_DIR } from './_model-health.js';
+import { ROUTER_SCHEMA_DIR, FIXTURE_SCHEMA_DIR } from './_model-health.js';
 const D = fs.mkdtempSync(path.join(os.tmpdir(), 'cloudswap-')); const DATA = fs.mkdtempSync(path.join(D, 'data-'));
 Object.assign(process.env, { OPENHIGGSFIELD_DATA_DIR: DATA, OPENHIGGSFIELD_BACKEND: 'mock', OPENHIGGSFIELD_COMFY_ROUTER_URL: 'https://router.test', COMFY_API_KEY: '', OPENHIGGSFIELD_PUBLIC_BASE_URL: '' });
 const ok = (m: string) => console.log('ok ' + m);
@@ -106,13 +106,15 @@ const bodies: { k: any[]; s: any[] } = { k: [], s: [] };
   const SCHEMAS = ROUTER_SCHEMA_DIR; const req = createRequire(import.meta.url); let Ajv: any = null; try { Ajv = req('ajv/dist/2020.js').default ?? req('ajv/dist/2020.js'); } catch { /* none */ }
   let checked = 0;
   for (const [file, bs, bad] of [['kling__kling-v3-omni', bodies.k, { video_list: [{ refer_type: 'other' }] }], ['byteplus__dreamina-seedance-2-5-260628', bodies.s, { content: [], ratio: '5:4' }]] as const) {
-    const f = path.join(SCHEMAS, `${file}.json`); if (!fs.existsSync(f) || !Ajv) { console.log(`skip schema ${file}: ${!Ajv ? 'ajv not installed' : 'cached schema absent'}`); continue; }
+    // the full cached document when present, else the structure-only fixture: these checks never skip (2026-10-31)
+    const f = [path.join(SCHEMAS, `${file}.json`), path.join(FIXTURE_SCHEMA_DIR, `${file}.json`)].find((x) => fs.existsSync(x)); assert.ok(f, `${file}: no schema (the fixture is missing)`); assert.ok(Ajv, 'ajv is needed for the schema checks');
     const doc = JSON.parse(fs.readFileSync(f, 'utf8')); delete doc.openapi; const ajv = new Ajv({ strict: false, validateFormats: false, allErrors: true }); const id = `router-${file}`; ajv.addSchema({ ...doc, $id: id });
     const p = Object.keys(doc.paths).find((x) => doc.paths[x]?.post?.requestBody)!; const esc = p.replace(/~/g, '~0').replace(/\//g, '~1');
     const validate = ajv.compile({ $ref: `${id}#/paths/${esc}/post/requestBody/content/application~1json/schema` });
     assert.equal(validate(bad), false, `${file}: the validator refuses a bad body`);
     for (const b of bs) { assert.ok(validate(b), `${file}: ${JSON.stringify(validate.errors)?.slice(0, 400)}`); checked++; }
   }
+  assert.equal(checked, bodies.k.length + bodies.s.length, 'every Kling and Seedance body checked against its schema');
   ok(`bodies: Kling edit (base + keep_original_sound, one image as raw base64, std / pro, no duration; motion = feature + duration + aspect; passes ≤ 10 s at ≥ 720 px; 9:16 kept), Seedance edit (duration -1, clip as asset://, seed per version); clips via Comfy storage; ${checked} bodies schema-valid`);
 }
 
@@ -136,6 +138,7 @@ const bodies: { k: any[]; s: any[] } = { k: [], s: [] };
   assert.equal(K.block!(obj), null, 'Kling 3.0 Omni Edit swaps objects (a general video edit: refer_type base + reference image)');
   assert.match(K.block!(swapJob({ swapType: 'object', target: '' }))!, /Name the object to replace/, 'no name: nothing for the model to find');
   const kb = await K.body(obj, 0) as any; assert.match(kb.prompt, /^Replace the red mug in <<<video_1>>> with the object from <<<image_1>>>\./); assert.match(kb.prompt, /every person unchanged/); assert.doesNotMatch(kb.prompt, /character/);
+  { const MH = await import('./_model-health.ts'); const V = MH.validatorFor('kling__kling-v3-omni'); assert.ok(V, 'the model-health helper finds the Kling schema (cache or fixture)'); assert.equal(MH.schemaErrors(V!, kb), null, 'the object edit body is schema-valid'); }
   assert.equal(CS.swapTypesOf('router-kling-edit').join(), 'person,object'); assert.equal(CS.swapTypesOf('router-seedance-25-edit').join(), 'person');
   // the quote's input carries swapType + target (routing/http.ts swapQuoteFields), so the route refuses the quote exactly as the submit's block does
   const H = await import('../src/routing/http.ts'); const { findRoute } = await import('../src/routing/routes.ts'); const { getTool } = await import('../src/tools/registry.ts');
