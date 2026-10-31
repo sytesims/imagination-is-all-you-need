@@ -1,4 +1,6 @@
 /** One ordered photo recipe, shared by submit, quote and the Video composer. */
+/** The reel's tools (base + app): a composite that runs Camera Moves per photo, so it takes Camera Moves' places, models and downloads. */
+export const REEL_TOOL_IDS: readonly string[] = ['photos-reel', 'app-photos-to-reel'];
 export const REEL_KINDS = ['listing', 'event', 'hotel', 'trip', 'product'] as const;
 export type ReelKind = typeof REEL_KINDS[number];
 export interface ReelOptions { title: string; endLine: string; kind: ReelKind; seconds: 15 | 30; motion: 'all' | 'heroes'; music: 'on' | 'off' }
