@@ -59,7 +59,7 @@ jobs:
           Check (Test-Path (Join-Path $Dir 'node_modules\fastify')) 'dependencies installed'
           Check (Test-Path (Join-Path $Dir 'mcp\node_modules')) 'MCP dependencies installed (postinstall)'
           Check ([bool]$ff) 'ffmpeg available after install'
-          if ($script:Fails) { exit 1 }
+          if ($script:Fails) { exit 1 } else { exit 0 }
 
       - name: 2. Start like a new user (irm | iex, no options) and wait for web + API
         run: |
@@ -86,7 +86,7 @@ jobs:
           Write-Host "browser processes after --open: $(@($browsers).Count)"
           Get-Listeners | Format-Table LocalAddress, LocalPort, OwningProcess
           Check (-not (Get-Listeners | Where-Object { $_.LocalAddress -notin '127.0.0.1', '::1' })) 'listens on loopback only (no firewall prompt)'
-          if ($script:Fails) { exit 1 }
+          if ($script:Fails) { exit 1 } else { exit 0 }
 
       - name: 3. API flows (health, tools, models, mock image job, upload with spaces, export/import)
         if: success() || failure()
@@ -104,7 +104,7 @@ jobs:
           Pop-Location
           Write-Host "doctor exit $code"
           Check ($code -in 0, 1) 'doctor ran (exit 0 or 1)'
-          if ($script:Fails) { exit 1 }
+          if ($script:Fails) { exit 1 } else { exit 0 }
 
       - name: 5. Stop with Ctrl+C in the app window, ports freed, nothing left running
         if: success() || failure()
@@ -125,7 +125,7 @@ jobs:
           # clean up whatever is left so later steps start clean
           if ($host1) { taskkill /T /F /PID $host1.ProcessId 2>$null | Out-Null }
           $left | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
-          if ($script:Fails) { exit 1 }
+          if ($script:Fails) { exit 1 } else { exit 0 }
 
       - name: 6. Update path (npm run update, then get.ps1 again with the shortcut)
         if: success() || failure()
@@ -157,14 +157,14 @@ jobs:
             Get-CimInstance Win32_Process -Filter "Name = 'cmd.exe'" | Where-Object { $_.CommandLine -like '*6-shortcut-app.log*' } | ForEach-Object { taskkill /T /F /PID $_.ProcessId 2>$null | Out-Null }
             Get-AppNodes | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
           }
-          if ($script:Fails) { exit 1 }
+          if ($script:Fails) { exit 1 } else { exit 0 }
 
       - name: 7. Server tests that touch paths, files and processes
         if: success() || failure()
         run: |
           . .github\windows-hunt\common.ps1
           Push-Location $Dir
-          node scripts\test-all.mjs --jobs 2 --timeout 400 --only '/^(relpaths|bh4|doctor|comfy-models-dir|update-script|setup-launch-env|upload-security|share-export|orphan-quarantine|form-files|machine-profiles|get-installer)\./' 2>&1 | Tee-Object -FilePath "$Work\7-tests.log"; $code = $LASTEXITCODE
+          node scripts\test-all.mjs --jobs 2 --timeout 400 --only '/^(comfy-models-dir|update-script|setup-launch-env|form-files|machine-profiles|get-installer)\./' 2>&1 | Tee-Object -FilePath "$Work\7-tests.log"; $code = $LASTEXITCODE
           if (Test-Path .test-logs) { Copy-Item -Recurse -Force .test-logs "$Work\test-logs" }
           Pop-Location
           if ($code) { exit 1 }

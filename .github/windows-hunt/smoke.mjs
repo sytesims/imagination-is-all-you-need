@@ -32,7 +32,7 @@ if (out) {
 
 // 3. an upload whose name has spaces and non-ASCII letters
 const png = path.join(WORK, 'my holiday photo éÑ.png');
-const ff = spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'color=c=orange:s=96x64', '-frames:v', '1', png]);
+const ff = spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'color=c=orange:s=256x256', '-frames:v', '1', png]);
 if (ok(ff.status === 0 && fs.existsSync(png), 'made a test PNG with ffmpeg', String(ff.error ?? ff.stderr ?? ''))) {
   const up = new FormData(); up.set('file', new Blob([fs.readFileSync(png)], { type: 'image/png' }), path.basename(png));
   const u = await j(`${API}/api/media`, { method: 'POST', body: up }); const url = u.body?.url ?? u.body?.item?.url ?? u.body?.items?.[0]?.url;
