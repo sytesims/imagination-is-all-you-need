@@ -5,7 +5,7 @@ import { threeDRoute } from '../../../server/src/shared/threeD';
  *  Create Image with the workflow picked (a Create Image job with a camera rig reopens Camera & Lens) (/tools/create-image?workflow=relight&recreate=<job>); every other job keeps its own page. */
 export const READY_WORKFLOW_TOOLS: Record<string, string> = { 'app-relight': 'relight', 'app-face-swap': 'face-swap', 'app-person-swap': 'person-swap', 'app-character-sheet': 'character-sheet', 'app-product-shot': 'product-shot', 'image-upscale': 'upscale',
   'app-inpaint': 'brush-edit', 'app-shots': 'camera-angles' /* 2026-10-23: Brush Edit and Camera Angles moved into the bar too */,
-  'app-remove-bg': 'remove-bg', 'app-expand': 'expand', 'app-erase': 'erase', 'app-try-on': 'try-on' /* 2026-10-23: the photo tools on fal */, 'app-image-layers': 'image-layers' /* 2026-10-24: Image to layers */ };
+  'app-remove-bg': 'remove-bg', 'app-expand': 'expand', 'app-erase': 'erase', 'app-try-on': 'try-on' /* 2026-10-23: the photo tools on fal */, 'app-material-swap': 'material-swap' /* 2026-10-31 */, 'app-image-layers': 'image-layers' /* 2026-10-24: Image to layers */ };
 /** Camera & Lens runs on create-image itself: a Create Image job with a camera rig (input.camera) is a Camera & Lens job. */
 export const RIG_WORKFLOW = 'camera-lens';
 /** The workflow a job belongs to in Create Image's bar (null = plain Create, or a tool with its own page). */

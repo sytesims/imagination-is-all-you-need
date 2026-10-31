@@ -7,7 +7,7 @@ import { parseLightRig, rigPhrases, rigJson, spherePresetOf, type LightRig } fro
 import { PRODUCT_SCENES, PRODUCT_KEEP, TRANSITION_TYPES, UGC_PRESENTERS, UGC_HOOKS, UGC_SETTINGS, UGC_FRAMINGS, ORBIT_TYPES, ORBIT_BACKDROPS, RELIGHT_DIRECTIONS, RELIGHT_QUALITY, RELIGHT_COLOUR_PRESETS, RELIGHT_LOOKS, relightLookOf, brightnessWord, colourName, padPhrase, LANGUAGE_NATIVE, CHARACTER_LAYOUTS, CHARACTER_LAYOUT_DEFAULT, type CharacterLayout, type AppField, type AppOption } from './appRows.js';
 import { TRANSLATE_LANGS } from '../comfy/plans.js';
 import { SHOT_ANGLES, parseShots, shotPrompt, FACE_SWAP_PROMPT, FACE_SWAP_KEEP, PERSON_SWAP_PROMPT, PERSON_SWAP_KEEP, type ShotAngle } from './shots.js';
-import { GENERATE_MODELS, EDIT_MODELS, TWO_IMAGE_MODELS, MASK_MODELS, REMOVE_BG_MODELS, EXPAND_MODELS, ERASE_MODELS, TRYON_MODELS, featureById, gridModelOf } from '../shared/imageFeatures.js';
+import { GENERATE_MODELS, EDIT_MODELS, TWO_IMAGE_MODELS, MATERIAL_SWAP_MODELS, MASK_MODELS, REMOVE_BG_MODELS, EXPAND_MODELS, ERASE_MODELS, TRYON_MODELS, featureById, gridModelOf } from '../shared/imageFeatures.js';
 import { promptGrammarOf } from '../shared/promptGrammar.js';
 import { EXPAND_ASPECTS, EXPAND_ASPECT_LABELS, TRYON_CATEGORIES, TRYON_PHOTO_TYPES, expandBlock, expandCanvas, photoBlock, eraseMaskBlock } from '../shared/imagePhotoTools.js';
 import { maskCover } from './imageFalApps.js';
@@ -640,6 +640,27 @@ export function relightPrompt(v: Record<string, string>, userPrompt: string, pro
     return [`Relight this photo with ${L.light}.`, S(`The main light is ${light.replace(/ light$/, '')}${pad?.startsWith('light ') ? `, ${pad.replace(/^light /, 'coming ')}` : `: ${pad}`}`), S(`The setup: ${L.prompt}`), tone ? S(`Colour temperature: ${tone}`) : '', S(quality), S(userPrompt), RELIGHT_SENTENCE_CHANGE, RELIGHT_SENTENCE_KEEP].filter(Boolean).join(' '); }
   return joinPrompt(`relight the scene with ${L.light}`, pad, quality, light, L.prompt, tone, userPrompt, RELIGHT_LOOK_CHANGE, 'keep the subject, pose and composition unchanged');
 }
+/** Material Swap (2026-10-31): the object in image 1 takes the material of image 2; everything else stays. Our own wording, after the official
+ *  Qwen-Image-Edit-2511 "change material" pattern (give the object the new texture "instead of its" old material). Written with "image 1 / image 2":
+ *  the shared prompt rules (shared/promptRefs.ts) turn those into each model's own tokens (<image1> on Qwen Image 2.1). Each family gets its
+ *  own sentence shape: Qwen one blanket keep clause; Nano Banana "Using … change only …, preserving …"; GPT Image a role per image + "change only";
+ *  Seedream names what stays fixed. Blank fields read as "the main object" and "its current material". */
+export type MaterialFamily = 'qwen' | 'nano' | 'gpt' | 'seedream';
+export const materialFamilyOf = (provider?: string): MaterialFamily => /^api-nano-banana|^direct-gemini/.test(provider ?? '') ? 'nano' : /^api-gpt-image/.test(provider ?? '') ? 'gpt' : /^api-seedream/.test(provider ?? '') ? 'seedream' : 'qwen';
+export const MATERIAL_TEXT_MAX = 60;
+const bare = (x?: string) => String(x ?? '').replace(/\s+/g, ' ').trim().replace(/^(a|an|the)\s+/i, '').replace(/[.;,:]+$/, '');
+const sentence = (x?: string) => { const t = String(x ?? '').replace(/\s+/g, ' ').trim().replace(/[.;,\s]+$/, ''); return t ? `${t[0].toUpperCase()}${t.slice(1)}.` : ''; };
+export function materialSwapPrompt(v: Record<string, string>, userPrompt: string, provider?: string): string {
+  const obj = bare(v.object) || 'main object'; const was = bare(v.fromMaterial); const old = was ? `its ${was}` : 'its current material'; const touch = sentence(userPrompt);
+  const fam = materialFamilyOf(provider); const join = (...xs: string[]) => xs.filter(Boolean).join(' ');
+  if (fam === 'nano') return join(`Using image 1 and image 2, change only the material of the ${obj} in image 1: give it the material and texture shown in image 2 instead of ${old}.`, touch,
+    'Keep everything else in image 1 the same, preserving the original shape, lighting and composition.');
+  if (fam === 'gpt') return join(`Image 1: the photo with the ${obj}. Image 2: the material reference. Give the ${obj} in image 1 the material and texture from image 2 instead of ${old}.`, touch,
+    'Change only its material; keep everything else the same.');
+  if (fam === 'seedream') return join(`Replace ${was ? `the ${was}` : 'the material'} of the ${obj} in image 1 with the material and texture from image 2.`, touch,
+    `Keep the ${obj}'s shape, the background, the lighting and the framing of image 1 unchanged.`);
+  return join(`Give the ${obj} in image 1 the material and texture from image 2 instead of ${old}.`, touch, 'Keep everything else in image 1 unchanged.');
+}
 /** Character Sheet (rewritten Oct 22; layouts 2026-10-25, our own wording): the subject, the layout's panels (appRows CHARACTER_LAYOUTS), one grey
  *  studio backdrop and light for every panel, then a "keep" block that fits the layout (feet and no body cropping only where there are full-body panels). */
 const CHARACTER_STUDIO = 'Every panel has the same plain neutral grey seamless studio backdrop and soft, even, almost shadowless light, neutral 5600K white balance, natural skin texture with visible detail, catchlights in the eyes';
@@ -793,6 +814,21 @@ export const APP_GALLERY: GalleryApp[] = [
     extra: { promptOptional: true, outputLabel: 'Person swap' },
     finish: (r) => ({ outputLabel: 'Person swap', ...(r.refPaths?.[1] ? { insetPath: r.refPaths[1] } : {}) }),
     notes: ['Works best when both people are fully visible and roughly the same size in frame. Only swap people who agreed to it.'] },
+  // Material Swap (2026-10-31): object photo + material photo on the two-image edit route (local Qwen Image 2.1 by default: its official edit template's
+  // two inputs), plus hosted edit models that take 2+ images. Two optional short words fill our prompt (materialSwapPrompt); no new model.
+  { id: 'material-swap', name: 'Material Swap', route: '/tools/create-image?workflow=material-swap', category: 'Image', base: 'create-image', poster: null,
+    description: 'A photo of an object and a photo of a material: the object takes that material, its shape, light and scene kept.',
+    locked: { types: '["edit"]' }, providers: MATERIAL_SWAP_MODELS, exposed: ['image', 'material', 'prompt', 'provider', 'rights', 'seed', 'object', 'fromMaterial'],
+    labels: { image: 'Object', material: 'Material', prompt: 'Touch-ups (optional)' }, required: ['image', 'material'],
+    extraInputs: [{ name: 'material', kind: 'file', accept: 'image/png,image/jpeg,image/webp', label: 'Material' }],
+    fields: [{ name: 'object', label: 'What the object is', kind: 'text', optional: true, maxLength: MATERIAL_TEXT_MAX, placeholder: 'e.g. sofa' },
+      { name: 'fromMaterial', label: 'Made of now', kind: 'text', optional: true, maxLength: MATERIAL_TEXT_MAX, placeholder: 'e.g. grey fabric' }],
+    // image 1 = the object, image 2 = the material
+    fileMap: (f) => { const { material, ...rest } = f; return { ...rest, refs: (material ?? []).slice(0, 1) }; },
+    compose: (v, c) => materialSwapPrompt(v, c.prompt, c.provider),
+    extra: { promptOptional: true, outputLabel: 'Material swap' },
+    finish: (r) => ({ outputLabel: 'Material swap', ...(r.refPaths?.[1] ? { insetPath: r.refPaths[1] } : {}) }),
+    notes: ['Works best with one clear object in picture 1 and a close, evenly lit material in picture 2 (a swatch or a flat surface).'] },
   // ---- Photo tools (2026-10-23): fal-only models (tools/imageFalApps.ts), each in Create Image's bar. The prompt is ours (Expand also takes the user's
   // words for the new area); the models get only what their schema takes. Sizes and the mask are checked on submit (shared/imagePhotoTools.ts).
   { id: 'remove-bg', name: 'Remove Background', route: '/tools/create-image?workflow=remove-bg', category: 'Edit', base: 'create-image', poster: null,
@@ -851,7 +887,7 @@ export const APP_GALLERY: GalleryApp[] = [
 const typesOf = (t: string | undefined) => { try { return JSON.parse(String(t ?? '[]'))[0] as string | undefined; } catch { return undefined; } };
 const appFieldInput = (f: AppField) => ({ name: f.name, label: f.label, kind: f.kind === 'select' ? 'select' : f.kind === 'number' ? 'number' : 'text', appField: true, control: f.control,
   ...(f.options ? { options: f.options.map((o) => o.value), choices: f.options.map(({ prompt: _p, ...o }) => o) } : {}), ...(f.default != null ? { default: f.default } : {}),
-  ...(f.min != null ? { min: f.min, max: f.max, step: f.step } : {}), ...(f.pattern ? { pattern: f.pattern } : {}), ...(f.help ? { help: f.help } : {}), required: false });
+  ...(f.min != null ? { min: f.min, max: f.max, step: f.step } : {}), ...(f.pattern ? { pattern: f.pattern } : {}), ...(f.help ? { help: f.help } : {}), ...(f.maxLength ? { maxLength: f.maxLength } : {}), ...(f.placeholder ? { placeholder: f.placeholder } : {}), required: false });
 /** App duration rule: the app's own lengths when it has them (Orbit Shot), else the base tool's. */
 export const durToolOf = (t: ToolDef | undefined): string | undefined => !t ? undefined : hasToolDurations(t.id) ? t.id : ((t.app as any)?.gallery?.base ?? t.id);
 /** A blank duration on an app with a default: the longest allowed length ≤ the default for this model (UGC Ad 15 s → Veo 8 s). Quote and submit both use it. */
@@ -1021,11 +1057,13 @@ export function makeGalleryApp(a: GalleryApp, base: ToolDef): ToolDef {
       // App fields: validated, defaulted, stored raw (Recreate) and composed into the prompt.
       const vals: Record<string, string> = {};
       for (const af of a.fields ?? []) {
-        let v = f[af.name]; if (v == null || v === '') v = af.default ?? '';
+        let v = f[af.name]; if (af.kind === 'text' && v != null) v = String(v).replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim(); // short words: one line, spaces collapsed
+        if (v == null || v === '') v = af.default ?? '';
         if (v === '' && af.optional) { vals[af.name] = ''; continue; }
         if (af.kind === 'select' && !af.options!.some((o) => o.value === v)) return bad(af.name, `${af.label}: pick one of ${af.options!.map((o) => o.value).join(', ')}.`);
         if (af.kind === 'number') { const n = Number(v); if (!Number.isFinite(n) || n < af.min! || n > af.max!) return bad(af.name, `${af.label} must be ${af.min}–${af.max}.`, 'out_of_range'); v = String(n); }
         if (af.kind === 'color') { if (!new RegExp(af.pattern!).test(v)) return bad(af.name, af.help ?? `${af.label}: use a hex colour like #FFAA33.`, 'format'); v = v.toUpperCase(); }
+        if (af.kind === 'text' && af.maxLength && v.length > af.maxLength) return bad(af.name, `${af.label}: up to ${af.maxLength} characters.`, 'too_long');
         if (af.kind === 'json' && af.parse) { const r = af.parse(String(v)); if ('error' in r) return bad(af.name, r.error, 'format'); v = r.value; }
         vals[af.name] = v; if (a.passFields?.includes(af.name)) f[af.name] = v; else delete f[af.name]; // passFields: the base tool reads it too
       }

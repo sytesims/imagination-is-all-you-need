@@ -16,7 +16,7 @@ import { defaultsOfFeature } from './imageDefaults.js';
 import { LAYER_MODELS, LAYERS_FLASH, LAYERS_PRO, LAYERS_LOCAL, QWEN_LAYERED_TEMPLATE } from './imageLayers.js';
 
 export type { WorkflowSource } from './workflowSources.js';
-export type ImageFeatureId = 'create-image' | 'edit-image' | 'upscale' | 'relight' | 'face-swap' | 'person-swap' | 'camera-angles' | 'camera-lens' | 'brush-edit' | 'character-sheet' | 'product-shot' | 'remove-bg' | 'expand' | 'erase' | 'try-on' | 'image-layers';
+export type ImageFeatureId = 'create-image' | 'edit-image' | 'upscale' | 'relight' | 'face-swap' | 'person-swap' | 'camera-angles' | 'camera-lens' | 'brush-edit' | 'character-sheet' | 'product-shot' | 'remove-bg' | 'expand' | 'erase' | 'try-on' | 'image-layers' | 'material-swap';
 type Mode = 'generate' | 'edit' | 'inpaint' | 'upscale';
 
 export interface ImageFeature {
@@ -60,6 +60,9 @@ export const EDIT_MODELS = ['api-nano-banana', 'api-gpt-image', 'comfy-flux3-kle
 /** Two-image edits (target + face / person): models whose route takes at least 2 images. Qwen Image 2.1 = the official edit template's two inputs
  * (grid finding 4, wired 2026-10-22). Not listed: FLUX.2 [klein] 4B (1 image wired), Qwen Image 2.1 Turbo (its official edit template takes one image). */
 export const TWO_IMAGE_MODELS = ['comfy-qwen-image', 'api-nano-banana', 'comfy-flux3-klein', 'api-gpt-image', 'api-seedream', 'api-flux2', 'api-luma-image', 'api-kling-image', 'comfy-qwen21'];
+/** Material Swap (2026-10-31): local Qwen Image 2.1 first (free, its official edit template's two inputs), then hosted edit models whose route takes
+ *  2+ images and whose prompt rules we word for (tools/apps.ts materialSwapPrompt): Nano Banana 2, GPT Image, Seedream 5.0, Qwen Image 3.0. */
+export const MATERIAL_SWAP_MODELS = ['comfy-qwen21', 'api-nano-banana', 'api-gpt-image', 'api-seedream', 'api-qwen-image'];
 /** Mask (inpaint) models: only routes that take a mask. Not listed: Nano Banana 2 and Ideogram V4 (no mask on their routes). Ideogram 4.5 inpaints on fal only. */
 export const MASK_MODELS = ['api-gpt-image', 'api-gpt-image-25-flare', 'api-gpt-image-25-sunburst', 'api-gpt-image-15' /* 2026-10-25 */, 'api-bria-fibo2' /* 2026-10-26 */, 'comfy-flux3-klein', 'comfy-qwen-image',
   // fal image pass (2026-10-22): Ideogram 4.5 (mask on ideogram/v4.5/edit) and Bria GenFill (fal-ai/bria/genfill, a Brush Edit-only model)
@@ -122,6 +125,9 @@ export const IMAGE_FEATURES: ImageFeature[] = [
     tagline: 'Paint over something to remove it', description: 'Paint over a person, object or text; it disappears and the background is filled in. No prompt needed.', was: 'new', oldRoutes: ['/tools/erase', '/tools/app-erase'], providers: ERASE_MODELS },
   { id: 'try-on', name: 'Virtual Try-On', toolId: 'app-try-on', route: '/tools/create-image?workflow=try-on', inMenu: true, mode: 'edit', images: [2, 2], aspects: false, resolutions: false, count: 1, grid: 'try-on', recipe: null,
     tagline: 'Put a garment from one photo on a person', description: 'A photo of a person and a photo of a top, bottom or one-piece: the person wears it, pose and face kept.', was: 'new', oldRoutes: ['/tools/try-on', '/tools/app-try-on'], providers: TRYON_MODELS },
+  { id: 'material-swap', name: 'Material Swap', toolId: 'app-material-swap', route: '/tools/create-image?workflow=material-swap', inMenu: true, mode: 'edit', images: [2, 2], aspects: false, resolutions: false, count: 1, grid: 'edit-image',
+    recipe: 'Our material prompt: the object in image 1 takes the material and texture of image 2, everything else kept; worded for each model.', tagline: 'Give an object the material from another photo',
+    description: 'A photo of an object and a photo of a material: the object takes that material, its shape, light and scene kept.', was: 'new', oldRoutes: ['/tools/material-swap', '/tools/app-material-swap'], providers: MATERIAL_SWAP_MODELS },
   // Image to layers (2026-10-24): Seedream 5.0 layer separation on Comfy Router (Flash default, Pro), Qwen-Image-Layered listed for Local (needs a download)
   { id: 'image-layers', name: 'Image to layers', toolId: 'app-image-layers', route: '/tools/create-image?workflow=image-layers', inMenu: true, mode: 'edit', images: [1, 1], aspects: false, resolutions: true, count: 1, grid: 'image-layers', recipe: null,
     tagline: 'Split a photo into separate transparent layers', description: 'One photo in: the background and each element (people, objects, text) come back as their own transparent PNG layers, ready to move or edit.', was: 'new', oldRoutes: ['/tools/image-layers', '/tools/app-image-layers'], providers: LAYER_MODELS },

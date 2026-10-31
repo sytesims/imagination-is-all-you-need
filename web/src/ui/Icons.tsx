@@ -56,6 +56,8 @@ export const LayerSheetsIcon = svg(<><path d="m12 3.5 8.5 4.5-8.5 4.5L3.5 8z" />
 export const EraserIcon = svg(<><path d="m14.5 4.5 5 5-9 9H6l-2.5-2.5a1.5 1.5 0 0 1 0-2.1z" /><path d="M9.5 9.5l5 5M10.5 18.5H20" /></>, 'EraserIcon');
 /* Photo tools (2026-10-23): our own drawings. Expand = a photo inside a larger frame with arrows out; Garment = a T-shirt. */
 export const ExpandIcon = svg(<><rect x="8" y="8" width="8" height="8" rx="1.5" /><path d="M3 7V4.5A1.5 1.5 0 0 1 4.5 3H7M17 3h2.5A1.5 1.5 0 0 1 21 4.5V7M21 17v2.5a1.5 1.5 0 0 1-1.5 1.5H17M7 21H4.5A1.5 1.5 0 0 1 3 19.5V17" /></>, 'ExpandIcon');
+/* Material Swap (2026-10-31): our own drawing. An object (circle) with a hatched material swatch laid over its corner. */
+export const MaterialIcon = svg(<><circle cx="9" cy="9" r="5.5" /><rect x="11" y="11" width="9.5" height="9.5" rx="1.5" /><path d="M11 15.5 15.5 11M11.5 20 20 11.5M15.5 20.5l5-5" /></>, 'MaterialIcon');
 export const GarmentIcon = svg(<><path d="M9 3.5 4 6l-1.5 4.5L6 12v8.5h12V12l3.5-1.5L20 6l-5-2.5c-.4 1.4-1.6 2.3-3 2.3S9.4 4.9 9 3.5z" /></>, 'GarmentIcon');
 export const UndoIcon = svg(<><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></>, 'UndoIcon');
 export const RedoIcon = svg(<><path d="m15 14 5-5-5-5" /><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" /></>, 'RedoIcon');
@@ -208,7 +210,7 @@ export const ICONS = {
   more: MoreIcon, upload: UploadIcon, generate: GenerateIcon,
   extend: ExtendIcon, director: DirectorIcon, portrait: PortraitIcon, reframe: ReframeIcon, hdr: HdrIcon, fps: FpsIcon, depth: DepthIcon,
   characterSheet: CharacterSheetIcon, product: ProductIcon, brush: BrushIcon, light: LightIcon, transition: TransitionIcon, phoneAd: PhoneAdIcon,
-  faceSwap: FaceSwapIcon, shots: ShotsIcon, expand: ExpandIcon, garment: GarmentIcon, eraser: EraserIcon, layerSheets: LayerSheetsIcon,
+  faceSwap: FaceSwapIcon, shots: ShotsIcon, expand: ExpandIcon, garment: GarmentIcon, material: MaterialIcon, eraser: EraserIcon, layerSheets: LayerSheetsIcon,
   yourGpu: YourGpuIcon, comfyPlace: ComfyPlaceIcon, apiPlug: ApiPlugIcon, savedTag: SavedTagIcon, officialBadge: OfficialBadgeIcon, community: CommunityIcon, stopwatch: StopwatchIcon, sparkle: SparkleIcon, finish: FinishIcon,
   cube: CubeIcon, rig: RigIcon, orbit: OrbitIcon, previz: PrevizIcon, loop: LoopIcon, mic: MicIcon, changeVoice: ChangeVoiceIcon, translate: TranslateIcon, music: MusicIcon, musicBed: MusicBedIcon, stitch: StitchIcon,
 } as const;
@@ -226,7 +228,7 @@ export const TOOL_ICONS: Record<string, IconName> = {
   'h3-extend': 'extend', cinema: 'director', voice: 'mic', 'image-upscale': 'upscale', soul: 'portrait', reframe: 'reframe', 'remove-bg': 'cutout',
   'footage-fx': 'sparkle', 'prompt-edit': 'brush' /* Edit Video: Prompt Edit (Bernini-R) */, 'two-person-swap': 'faceSwap' /* Swap Two People (H3 Character Swap ×2) */, finish: 'finish', 'sdr-hdr': 'hdr', 'fps-boost': 'fps', 'depth-map': 'depth', 'app-character-sheet': 'characterSheet', 'app-product-shot': 'product',
   'app-inpaint': 'brush', 'app-relight': 'light', 'app-transition': 'transition', 'app-ugc-ad': 'phoneAd', 'app-orbit-shot': 'orbit', 'app-face-swap': 'faceSwap', 'app-shots': 'shots',
-  'app-remove-bg': 'cutout', 'app-expand': 'expand', 'app-erase': 'eraser', 'app-try-on': 'garment', 'app-image-layers': 'layerSheets', 'edit-image': 'brush' /* header Image menu: Edit Image (Create Image in edit mode) */,
+  'app-remove-bg': 'cutout', 'app-expand': 'expand', 'app-erase': 'eraser', 'app-try-on': 'garment', 'app-material-swap': 'material', 'app-image-layers': 'layerSheets', 'edit-image': 'brush' /* header Image menu: Edit Image (Create Image in edit mode) */,
   'app-anime-restyle': 'restyle', 'app-video-upscale': 'upscale', 'app-change-voice': 'changeVoice', 'app-translate-video': 'translate', 'app-music-bed': 'musicBed',
   'three-d': 'cube', 'three-d-turntable': 'orbit', 'image-to-3d': 'cube', turntable: 'orbit', 'plan-a-shot': 'previz', '3d': 'cube', loop: 'loop' /* Video flow shortcut: Loop */, 'direct-a-shot': 'previz', 'make-it-real': 'previz', compose: 'stitch' /* Video: Stitch (POST /api/compose) */,
 };
