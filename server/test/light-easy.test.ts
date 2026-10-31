@@ -64,19 +64,21 @@ const K = (az: number, el: number, intensity = 60, softness = 60) => ({ az, el, 
   const legacy = E.rigOfFields({ direction: 'left', lightQuality: 'hard', brightness: '80', color: '#FFC98A', look: 'window' }); assert.equal(legacy.key.az, -90); assert.equal(legacy.key.softness, 20); assert.equal(legacy.key.kelvin, 3200); assert.equal(legacy.preset, 'window');
   assert.equal(E.rigChipPlain(legacy), 'Window light · from the left');
   const pad = E.rigOfFields({ lightX: '0.5', lightY: '0.5', look: 'custom' }); assert.equal(pad.key.az, 45); assert.equal(pad.key.el, 45); assert.equal(pad.preset, undefined);
-  assert.equal(E.rigOfFields({ light: '{bad' }).key.az, 0, 'unreadable rig: the legacy fields (front) instead'); assert.deepEqual(E.rigOfFields({}).key.az, 0);
+  assert.equal(E.rigOfFields({ light: '{bad', direction: 'front', brightness: '70' }).key.az, 0, 'unreadable rig: the legacy fields (front) instead');
+  assert.deepEqual(E.rigOfFields({}), R.DEFAULT_RIG, 'untouched: the default light'); assert.deepEqual(E.rigOfFields({ light: '{bad' }), R.DEFAULT_RIG);
+  assert.equal(E.rigChipPlain(E.rigOfFields({ look: 'custom', direction: 'front', lightQuality: 'soft', brightness: '50', color: '#FFFFFF' })), 'Soft light · from the front-left');
   ok('saved rigs and pre-rig drafts open where their light was');
 }
 // ---- the prompt for a rig: the fixed position's words ----
 {
   const light = JSON.stringify({ key: { az: -80, el: 10, kelvin: 5600, intensity: 60, softness: 75 }, ambient: 30, preset: 'window' });
-  assert.equal(relightPrompt({ light, look: 'window' }, '', undefined), 'relight the scene with soft natural window light; key light from the left side of the frame, at eye level, split side lighting, neutral 5600K daylight, medium strength; soft diffused light with gentle shadow edges (softness 75%); low ambient fill: rich, dark shadows (ambient 30%); daylight from a large window just out of frame as the only source; the light wraps softly around the face and falls off quickly into a gentle shadow side that keeps its detail, a rectangular window catchlight in the eyes, soft highlights on the cheekbone and hair, the room behind dimmer and quietly shaded; the new lighting is clearly visible across the whole image; keep the subject, pose and composition unchanged');
-  assert.equal(relightPrompt({ direction: 'left', lightQuality: 'soft', brightness: '50', color: '#FFFFFF', look: 'custom' }, '', undefined), 'relight the scene; light from the left side of the frame; soft diffused light, gentle shadows; normal-strength neutral white light; keep the subject, pose and composition unchanged', 'old fields keep their old prompt');
+  assert.equal(relightPrompt({ light, look: 'window' }, '', undefined), 'relight the scene with soft natural window light; key light from the left side of the frame, at eye level, split side lighting, neutral 5600K daylight, medium strength; soft diffused light with gentle shadow edges; low ambient fill: rich, dark shadows; daylight from a large window just out of frame as the only source; the light wraps softly around the face and falls off quickly into a gentle shadow side that keeps its detail, a rectangular window catchlight in the eyes, soft highlights on the cheekbone and hair, the room in the background dimmer and quietly shaded; the new lighting is clearly visible across the whole image; keep the subject, pose and composition unchanged');
+  assert.equal(relightPrompt({ direction: 'left', lightQuality: 'soft', brightness: '50', color: '#FFFFFF', look: 'custom' }, '', undefined), 'relight the scene; light from the left side of the frame; soft diffused light, gentle shadows; normal-strength neutral white light; the new lighting is clearly visible across the whole image; keep the subject, pose and composition unchanged', 'old fields keep their light');
   // the panel's edits are plain rigs: the same rig sent through the field gives the same words as the rig itself
   const p = R.spherePresetOf('golden-hour')!; const r = E.withQuality(E.withStrength({ ...structuredClone(p.rig), key: E.withDirection(p.rig.key, 'left'), preset: p.id }, 'dramatic'), 'hard');
   const parsed = R.parseLightRig(R.rigJson(r)); assert.ok(parsed && 'rig' in parsed); assert.deepEqual(parsed.rig, r);
   assert.match(relightPrompt({ light: R.rigJson(r), look: p.look }, '', undefined), /key light from the left side of the frame, at eye level, split side lighting.*hard crisp light.*almost no ambient fill/);
-  ok('a rig is worded by its fixed position; old fields keep their old prompt; panel edits round-trip through the light field');
+  ok('a rig is worded by its fixed position; old fields keep their light; panel edits round-trip through the light field');
 }
 // ---- the preview handle and the sketch ----
 {

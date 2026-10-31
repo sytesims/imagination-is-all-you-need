@@ -1,5 +1,5 @@
 // Relight looks (2026-10-23): every look × model family composes a prompt with the look's lighting words and the right keep-lock, with no
-// "keep the lighting" next to "change the light"; Custom (and no look at all) gives the pre-look prompt byte for byte; a look's tone drops
+// "keep the lighting" next to "change the light"; Custom (and no look) is worded per family too, untouched = the default light; a look's tone drops
 // when the colour is changed; picking a look is validated like any select; the recipe carries swatches / sets / credits to the bar.
 // Run: npx tsx test/relight-looks.test.ts   (no server, no network)
 import assert from 'node:assert/strict'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path';
@@ -31,28 +31,39 @@ const FAMILY_PROVIDER = { qwen: 'comfy-qwen21-turbo', sentence: 'api-gpt-image',
   ok('keep sentence: first on Nano Banana, last on GPT Image');
 }
 
-// ---- Custom = the pre-look prompt exactly (the old compose, re-implemented here as the reference) ----
+// ---- Custom / no look: worded per family like the looks (2026-10-31); untouched fields = the panel's default light (DEFAULT_RIG) ----
 {
+  const { RELIGHT_SENTENCE_CHANGE, relightKeepFirst } = await import('../src/tools/apps.ts');
+  const { DEFAULT_RIG, rigJson } = await import('../src/shared/lightRig.ts');
   const join = (...xs: (string | undefined)[]) => xs.filter((x) => x && x.trim()).map((x) => x!.trim().replace(/[.;,]+$/, '')).join('; ');
-  const old = (v: Record<string, string>, prompt: string, provider?: string) => {
+  const S = (x?: string) => (x && x.trim() ? `${x.trim()[0].toUpperCase()}${x.trim().slice(1).replace(/[.;,]+$/, '')}.` : '');
+  const expected = (v: Record<string, string>, prompt: string, provider?: string) => {
     const pad = v.lightX !== '' && v.lightX != null && v.lightY !== '' && v.lightY != null ? padPhrase(Number(v.lightX), Number(v.lightY)) : RELIGHT_DIRECTIONS.find((o) => o.value === v.direction)?.prompt;
     const light = `${brightnessWord(Number(v.brightness))} ${colourName(v.color)} light`; const quality = RELIGHT_QUALITY.find((o) => o.value === v.lightQuality)?.prompt;
-    if (provider && ['comfy-qwen21', 'comfy-qwen21-turbo', 'comfy-qwen-image'].includes(provider)) return join(`Relight the scene: ${light}, ${pad}`, quality, prompt, RELIGHT_CHANGE, RELIGHT_KEEP);
-    return join('relight the scene', pad, quality, light, prompt, 'keep the subject, pose and composition unchanged');
+    const fam = relightFamilyOf(provider);
+    if (fam === 'qwen') return join(`Relight the scene: ${light}, ${pad}`, quality, prompt, RELIGHT_CHANGE, RELIGHT_KEEP); // unchanged since 2026-10-22
+    if (fam === 'sentence') { const parts = ['Relight this photo.', S(`The main light is ${light.replace(/ light$/, '')}, ${pad!.replace(/^light /, 'coming ')}`), S(quality), S(prompt), RELIGHT_SENTENCE_CHANGE].filter(Boolean);
+      return (relightKeepFirst(provider) ? [RELIGHT_SENTENCE_KEEP, ...parts] : [...parts, RELIGHT_SENTENCE_KEEP]).join(' '); }
+    return join('relight the scene', pad, quality, light, prompt, RELIGHT_LOOK_CHANGE, 'keep the subject, pose and composition unchanged');
   };
+  const untouched = { direction: 'front', lightQuality: 'soft', brightness: '50', color: '#FFFFFF', lightX: '', lightY: '' };
   const cases: Record<string, string>[] = [
-    { direction: 'front', lightQuality: 'soft', brightness: '50', color: '#FFFFFF', lightX: '', lightY: '' },
     { direction: 'left', lightQuality: 'hard', brightness: '80', color: '#FFB347', lightX: '', lightY: '' },
     { direction: 'right', lightQuality: 'soft', brightness: '10', color: '#5FD3C6', lightX: '-0.6', lightY: '0.7' },
+    { ...untouched, brightness: '55' },
   ];
-  for (const base of cases) for (const look of [undefined, '', 'custom']) for (const provider of [undefined, ...EDIT_MODELS]) for (const prompt of ['', 'deep orange sky']) {
-    const v = look === undefined ? base : { ...base, look };
-    assert.equal(a.compose!(v, { prompt, has, provider }), old(base, prompt, provider), `${look}/${provider}`);
+  for (const look of [undefined, '', 'custom']) for (const provider of [undefined, ...EDIT_MODELS]) for (const prompt of ['', 'deep orange sky']) {
+    for (const base of cases) { const v = look === undefined ? base : { ...base, look }; assert.equal(a.compose!(v, { prompt, has, provider }), expected(base, prompt, provider), `${look}/${provider}`); }
+    // untouched: the same prompt as the panel's default light sent as a rig (the panel opens on it)
+    const v = look === undefined ? untouched : { ...untouched, look };
+    assert.equal(a.compose!(v, { prompt, has, provider }), relightPrompt({ ...v, light: rigJson(DEFAULT_RIG) }, prompt, provider), `untouched ${look}/${provider}`);
   }
-  // the exact strings today's tests pin
-  assert.equal(a.compose!({ ...cases[0], look: 'custom' }, { prompt: '', has, provider: 'comfy-klein4b' }),
-    'relight the scene; light from the front, facing the subject; soft diffused light, gentle shadows; normal-strength neutral white light; keep the subject, pose and composition unchanged');
-  ok('Custom (and no look) = the pre-look prompt byte for byte, every edit model, pad and prompt');
+  // the exact strings: the hosted default (FLUX 3 Image) asks for a clearly visible change on the first, untouched run
+  assert.equal(a.compose!({ ...untouched, look: 'custom' }, { prompt: '', has, provider: 'api-flux3-image' }),
+    'relight the scene; key light from the front-left of the frame, high above eye level, Rembrandt-style three-quarter lighting, neutral 5600K daylight, bright; soft diffused light with gentle shadow edges; low ambient fill: rich, dark shadows; the new lighting is clearly visible across the whole image; keep the subject, pose and composition unchanged');
+  assert.equal(a.compose!({ ...cases[0], look: 'custom' }, { prompt: '', has, provider: 'api-nano-banana' }),
+    `${RELIGHT_SENTENCE_KEEP} Relight this photo. The main light is bright golden, coming from the left side of the frame. Hard direct light, crisp shadows. ${RELIGHT_SENTENCE_CHANGE}`);
+  ok('Custom (and no look): per-family wording and keep placement; untouched = the default light on every edit model');
 }
 
 // ---- every look × family ----
@@ -76,6 +87,8 @@ for (const L of LOOKS) for (const [fam, provider] of Object.entries(FAMILY_PROVI
   if (fam === 'flux') { assert.ok(s.startsWith(`relight the scene with ${L.light}; `), 'flux: today\'s order'); assert.ok(s.endsWith(`${RELIGHT_LOOK_CHANGE}; keep the subject, pose and composition unchanged`), 'flux: visible change, then the lock'); }
   // the look's description never names a colour or a frame side (those come from the controls)
   assert.ok(!/\b(left|right) (side|of the frame)\b/.test(L.prompt), `${L.value}: no frame side in the description`);
+  // nor a position: direction comes only from the controls / the light panel, so a moved light never meets "from above" or "behind" (2026-10-31)
+  assert.ok(!/\b(above|below|behind|overhead|horizon|eye level|face height|degrees|low near|low down|high up)\b/i.test(`${L.light} ${L.prompt}`), `${L.value}: no position words: ${L.light} / ${L.prompt}`);
 }
 ok(`${LOOKS.length} looks × 3 families: setup, description, tone, controls, extra text, change + keep lock in the right order, no light lock`);
 

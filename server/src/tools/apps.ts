@@ -4,7 +4,7 @@ import { LTX_LORAS, ltxLoraPrompt, PHOTO_FX_LTX_LORA } from '../shared/ltxLoras.
 import { H3_CAMERA_MOVES } from './h3/catalog.js';
 import { CAMERA_CATALOG } from '../cinema/cameraCatalog.js';
 import { OPTION_MEDIA, wireOptionMedia, voiceSampleUrl, voiceSampleKind, wireSamplePresetMedia } from '../interimTiles.js';
-import { parseLightRig, rigPhrases, rigJson, spherePresetOf, type LightRig } from '../shared/lightRig.js';
+import { parseLightRig, rigPhrases, rigJson, spherePresetOf, lightUntouched, DEFAULT_RIG, type LightRig } from '../shared/lightRig.js';
 import { PRODUCT_SCENES, PRODUCT_KEEP, TRANSITION_TYPES, UGC_PRESENTERS, UGC_HOOKS, UGC_SETTINGS, UGC_FRAMINGS, ORBIT_TYPES, ORBIT_BACKDROPS, RELIGHT_DIRECTIONS, RELIGHT_QUALITY, RELIGHT_COLOUR_PRESETS, RELIGHT_LOOKS, relightLookOf, brightnessWord, colourName, padPhrase, LANGUAGE_NATIVE, CHARACTER_LAYOUTS, CHARACTER_LAYOUT_DEFAULT, type CharacterLayout, type AppField, type AppOption } from './appRows.js';
 import { TRANSLATE_LANGS } from '../comfy/plans.js';
 import { SHOT_ANGLES, parseShots, shotPrompt, FACE_SWAP_PROMPT, FACE_SWAP_KEEP, PERSON_SWAP_PROMPT, PERSON_SWAP_KEEP, type ShotAngle } from './shots.js';
@@ -610,7 +610,7 @@ export const relightFamilyOf = (provider?: string): RelightFamily => !provider ?
 /** Where the keep sentence goes (shared/promptPatterns.ts relight): first on Nano Banana (Comfy's NB2 relight template locks identity first), last elsewhere. */
 export const relightKeepFirst = (provider?: string) => patternFor('relight', provider && NANO_BANANA.test(provider) ? 'nano-banana' : provider && /^api-gpt-image/.test(provider) ? 'gpt-image' : null)?.keep === 'first';
 const keepPlaced = (provider: string | undefined, parts: string[]) => (relightKeepFirst(provider) ? [RELIGHT_SENTENCE_KEEP, ...parts] : [...parts, RELIGHT_SENTENCE_KEEP]).filter(Boolean).join(' ');
-/** With a look, FLUX-type models also get a short "make it visible" line (a soft white light from the left barely changed a real FLUX.2 klein run). */
+/** FLUX-type models also get a short "make it visible" line (a soft white light from the left barely changed a real FLUX.2 klein run). */
 export const RELIGHT_LOOK_CHANGE = 'the new lighting is clearly visible across the whole image';
 export const RELIGHT_SENTENCE_CHANGE = 'Only the lighting changes: shadows, highlights and colour across the whole image follow the new light.';
 export const RELIGHT_SENTENCE_KEEP = 'Keep the same person, face, expression, pose, clothes, objects and framing exactly as they are.';
@@ -627,24 +627,23 @@ export function relightRigPrompt(rig: LightRig, look: string | undefined, userPr
       desc ? S(`The setup: ${desc}`) : '', S(userPrompt), RELIGHT_SENTENCE_CHANGE]); }
   return joinPrompt(`relight the scene${setup ? ` with ${setup}` : ''}`, key, P.quality, P.rim, P.ambient, desc, userPrompt, RELIGHT_LOOK_CHANGE, 'keep the subject, pose and composition unchanged');
 }
-/** The Relight prompt. `look` blank or 'custom' = the pre-look prompt, byte for byte. A `light` rig (the 3D light sphere) words the light precisely instead. */
+/** The Relight prompt, worded per model family (Qwen / sentence / FLUX-type) with or without a look. A `light` rig (the light panel) words the
+ *  light precisely; untouched fields (no rig, no look, every light field at its default) use the panel's starting light, DEFAULT_RIG, so the
+ *  first run shows a clear change and names the spot the panel shows. Old drafts and links with their own light fields keep their light. */
 export function relightPrompt(v: Record<string, string>, userPrompt: string, provider?: string): string {
   const pr = v.light ? parseLightRig(v.light) : null; if (pr && 'rig' in pr) return relightRigPrompt(pr.rig, v.look, userPrompt, provider);
+  if (lightUntouched(v)) return relightRigPrompt(DEFAULT_RIG, undefined, userPrompt, provider);
   const pad = v.lightX !== '' && v.lightX != null && v.lightY !== '' && v.lightY != null ? padPhrase(Number(v.lightX), Number(v.lightY)) : pick(RELIGHT_DIRECTIONS, v.direction)?.prompt;
   const light = `${brightnessWord(Number(v.brightness))} ${colourName(v.color)} light`; const quality = pick(RELIGHT_QUALITY, v.lightQuality)?.prompt;
-  const fam = relightFamilyOf(provider); const L = relightLookOf(v.look);
-  if (!L) {
-    // Qwen edit models (2026-10-22 real runs): a "keep … unchanged" lock made them hold the old light. Name the new light first, ask for a clear
-    // change of light, shadows and colour, and lock only identity, pose, clothes and framing.
-    if (fam === 'qwen') return joinPrompt(`Relight the scene: ${light}, ${pad}`, quality, userPrompt, RELIGHT_CHANGE, RELIGHT_KEEP);
-    return joinPrompt('relight the scene', pad, quality, light, userPrompt, 'keep the subject, pose and composition unchanged');
-  }
+  const fam = relightFamilyOf(provider); const L = relightLookOf(v.look); const named = L ? ` with ${L.light}` : '';
   // the look's colour temperature only while the colour is still its own (a teal light on "Golden hour" drops "warm golden sunlight")
-  const tone = String(v.color ?? '').toUpperCase() === L.sets.color.toUpperCase() ? L.tone : '';
-  if (fam === 'qwen') return joinPrompt(`Relight the scene with ${L.light}: ${light}, ${pad}`, L.prompt, tone, quality, userPrompt, RELIGHT_CHANGE, RELIGHT_KEEP);
+  const tone = L && String(v.color ?? '').toUpperCase() === L.sets.color.toUpperCase() ? L.tone : '';
+  // Qwen edit models (2026-10-22 real runs): a "keep … unchanged" lock made them hold the old light. Name the new light first, ask for a clear
+  // change of light, shadows and colour, and lock only identity, pose, clothes and framing.
+  if (fam === 'qwen') return joinPrompt(`Relight the scene${named}: ${light}, ${pad}`, L?.prompt, tone, quality, userPrompt, RELIGHT_CHANGE, RELIGHT_KEEP);
   if (fam === 'sentence') { const S = (x?: string) => (x && x.trim() ? `${x.trim()[0].toUpperCase()}${x.trim().slice(1).replace(/[.;,]+$/, '')}.` : '');
-    return keepPlaced(provider, [`Relight this photo with ${L.light}.`, S(`The main light is ${light.replace(/ light$/, '')}${pad?.startsWith('light ') ? `, ${pad.replace(/^light /, 'coming ')}` : `: ${pad}`}`), S(`The setup: ${L.prompt}`), tone ? S(`Colour temperature: ${tone}`) : '', S(quality), S(userPrompt), RELIGHT_SENTENCE_CHANGE]); }
-  return joinPrompt(`relight the scene with ${L.light}`, pad, quality, light, L.prompt, tone, userPrompt, RELIGHT_LOOK_CHANGE, 'keep the subject, pose and composition unchanged');
+    return keepPlaced(provider, [`Relight this photo${named}.`, S(`The main light is ${light.replace(/ light$/, '')}${pad?.startsWith('light ') ? `, ${pad.replace(/^light /, 'coming ')}` : `: ${pad}`}`), L ? S(`The setup: ${L.prompt}`) : '', tone ? S(`Colour temperature: ${tone}`) : '', S(quality), S(userPrompt), RELIGHT_SENTENCE_CHANGE]); }
+  return joinPrompt(`relight the scene${named}`, pad, quality, light, L?.prompt, tone, userPrompt, RELIGHT_LOOK_CHANGE, 'keep the subject, pose and composition unchanged');
 }
 /** Character Sheet (rewritten Oct 22; layouts 2026-10-25, our own wording): the subject, the layout's panels (appRows CHARACTER_LAYOUTS), one grey
  *  studio backdrop and light for every panel, then a "keep" block that fits the layout (feet and no body cropping only where there are full-body panels). */
@@ -707,7 +706,7 @@ export const APP_GALLERY: GalleryApp[] = [
     locked: { types: '["edit"]' }, providers: EDIT_MODELS, exposed: ['image', 'prompt', 'provider', 'rights', 'seed', 'look', 'direction', 'lightQuality', 'brightness', 'color', 'lightX', 'lightY', 'light'],
     labels: { prompt: 'Extra details (optional)' }, required: ['image'], promptTemplate: 'relight the scene: {prompt}; keep the subject, pose and composition unchanged',
     fields: [
-      // Looks (2026-10-23): a named setup sets the four controls below and adds its own description; Custom (default) = today's prompt.
+      // Looks (2026-10-23): a named setup sets the four controls below and adds its own description; Custom (default) = no look (untouched: the default light, DEFAULT_RIG).
       { name: 'look', label: 'Look', kind: 'select', control: 'tiles', options: RELIGHT_LOOKS, default: 'custom' },
       { name: 'direction', label: 'Light direction', kind: 'select', control: 'grid', options: RELIGHT_DIRECTIONS, default: 'front' },
       { name: 'lightX', label: 'Light position X', kind: 'number', control: 'pad', min: -1, max: 1, step: 0.1, optional: true, help: 'Pad (P2): x and y in −1…1 override the direction buttons.' },
