@@ -150,6 +150,8 @@ try {
       const plan = K.k4CloudPlan({ id: 'rv', toolId: 'h3-video', provider: K.K4_PROVIDER, input: j }); const pg = plan.passes[0].graph; assert.equal(pg['30'].class_type, 'LoadVideo'); assert.match(plan.notes[0], /1 reference image \+ 1 reference video/); }
     { const qs = new URLSearchParams({ provider: K.K4_PROVIDER, types: '["r2v"]', duration: '5', resolution: '720p', refs: '1' }); const b = (await app.inject({ url: `/api/tools/h3-video/price?${qs}` })).json();
       assert.ok(!b.upTo, 'no clips: one figure'); assert.equal(b.listCredits ?? b.credits, Math.ceil(5 * 22.451)); }
+    { const qs = new URLSearchParams({ provider: K.K4_PROVIDER, types: '["r2v"]', duration: '30', resolution: '720p', refs: '1', refVideos: '1', refVideoSeconds: '4' }); const b = (await app.inject({ url: `/api/tools/h3-video/price?${qs}` })).json();
+      assert.ok(!b.upTo, '30 s: the ends meet (2 × 30 = 30 + 30), one figure'); assert.equal(b.listCredits ?? b.credits, Math.ceil(Math.round(0.13442 * 60 * 100 * 1e6) / 1e6)); }
     { const qs = new URLSearchParams({ provider: K.K4_PROVIDER, types: '["r2v"]', duration: '5', resolution: '720p', refs: '1', refVideos: '1', refVideoSeconds: '31', refVideoSecondsEach: '31' }); const b = (await app.inject({ url: `/api/tools/h3-video/price?${qs}` })).json();
       assert.equal(b.runnable, false); assert.match(String(b.blockedReason ?? b.reason), /at most 30 s/); }
     await app.close(); ok(`reference videos: graph + node schema, 5-clip / 3–30 s / 30 s total / frame / fps refusals, refFit uses them; ${seen.join('; ')}`); }

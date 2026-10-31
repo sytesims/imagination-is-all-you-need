@@ -170,7 +170,8 @@ export default function VideoStudio(p: VideoStudioProps) {
   useEffect(() => { if (kfMode && kfCaps.times && p.duration < H3KF_SECONDS[0]) p.setDuration(H3KF_SECONDS[0]); }, [kfMode, kfCaps.times, p.duration]); /* H3 Keyframes makes 5–15 s */
   const kfIn = useRef<HTMLInputElement>(null); const [kfErr, setKfErr] = useState('');
   const addKf = (fs: File[]) => { const imgs = fs.filter(f => fileFits('image', f)); const room = kfCaps.max - kfFrames.length;
-    setKfErr(imgs.length < fs.length ? 'Frames are pictures: PNG, JPG or WebP.' : imgs.length > room ? `Up to ${kfCaps.max} frames: ${imgs.length - Math.max(0, room)} not added.` : '');
+    const err = imgs.length < fs.length ? 'Frames are pictures: PNG, JPG or WebP.' : imgs.length > room ? `${modelName || 'This model'} takes up to ${kfCaps.max} frames: ${imgs.length - Math.max(0, room)} not added.` : '';
+    setKfErr(err); if (err) toast(err, 'info'); /* said at once (the note list only opens from Generate) */
     const add = imgs.slice(0, Math.max(0, room)).map(f => ({ file: f, url: URL.createObjectURL(f) })); if (!add.length) return; const next = [...kfFrames, ...add];
     setKf(next, keyframeTimesOf('', next.length, p.duration)); };
   const nRefImg = kfMode ? kfFrames.length /* frame N = <Picture N> = @imageN */ : (p.image ? 1 : 0) + (p.vrefs.refs?.length ?? 0); // r2v: the photo and every image reference go to the model (job refPaths)

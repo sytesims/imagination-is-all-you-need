@@ -45,6 +45,7 @@ export function rangeOf(priceRef: string | null | undefined, input: Record<strin
   const h = priceRef ? HOSTED_BY_ID[priceRef] : undefined; const vi = h?.videoInput; const rv = Number(input.refVideoSeconds) || 0; const out = Number(input.duration) || 0;
   if (!vi?.rangeFloor || !(rv > 0) || !(out > 0)) return null; const rate = vi.usdByQuality[String(input.resolution ?? '')] ?? vi.usd;
   const minUsd = Math.round(rate * vi.rangeFloor * out * 1e6) / 1e6; const maxUsd = Math.round(rate * (out + Math.round(rv * 100) / 100) * 1e6) / 1e6;
+  if (fmtUsd(minUsd) === fmtUsd(Math.ceil(maxUsd * 100 - 1e-6) / 100)) return null; // the ends meet (Kling at 30 s: 2 × 30 = 30 + 30): one figure, no 'up to'
   return { upTo: true, upToNote: `with reference clips the bill is ${fmtUsd(minUsd)}–${fmtUsd(Math.ceil(maxUsd * 100 - 1e-6) / 100) /* the top as quoted (whole cents up) */}, set by the provider after the run; quoted at the most`, minUsd, maxUsd };
 }
 /** The quote fields for an h3-video quote. r0 = the quote so far (priceRef, etaRange / fit.etaRange); input = the priced job input. */
