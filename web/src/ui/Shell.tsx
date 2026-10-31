@@ -26,7 +26,7 @@ import { REPO_URL } from '../shared/brand';
 import { GPU_SETTINGS } from '../shared/legacyRoutes';
 import { THREE_D_WORKFLOWS, threeDRoute, THREE_D_PAGE } from '../../../server/src/shared/threeD';
 import { LOCAL_LABEL } from '../../../server/src/shared/modelIds';
-import { menuLinksOf, type MenuLinks } from '../../../server/src/shared/modelLinks';
+import { aboutLink } from '../../../server/src/shared/modelLinks';
 import { modelNavigationHref } from '../shared/modelNavigation';
 import { createHoverLock, isMenuActivation, HOVER_MENU_ZONE, type HoverLock } from '../shared/hoverMenuLock';
 
@@ -157,9 +157,9 @@ type HM = ReturnType<typeof useHeaderMenus>;
 
 /** One menu row: 48px icon tile (badge on its corner), title, one-line description. */
 type Row = { key: string; to: string; title: string; desc: string; tile: React.ReactNode; badge?: Badge | null; kind?: string; on?: boolean; /** another tab it opens in ('3D') */ opensIn?: string;
-  /** Models column: the maker's link and the weights (shared/modelLinks.ts menuLinksOf) */ links?: MenuLinks };
+  /** Models column: the maker's announcement or model page (shared/modelLinks.ts aboutLink) */ about?: string | null };
 const KIND: Record<string, string> = { 'open-weights': 'Open', hosted: 'Hosted', 'hosted-direct': 'Direct' };
-const MRow = ({ r }: { r: Row }) => <Link to={r.to} role="menuitem" className={`hm-row${r.on ? ' on' : ''}`} aria-current={r.on ? 'page' : undefined} title={r.desc || undefined}>
+const MRow = ({ r }: { r: Row }) => <Link to={r.to} role="menuitem" className={`hm-row${r.on ? ' on' : ''}`} aria-current={r.on ? 'page' : undefined}>
   <span className="hm-tile" aria-hidden>{r.tile}{r.badge && <Pill b={r.badge} />}</span>
   <span className="hm-txt"><b>{r.title}{r.badge && <span className="sr-only"> ({r.badge})</span>}{r.opensIn && <span className="hm-opens" data-testid={`hm-opens-${r.key}`}><span aria-hidden>↗ </span>{r.opensIn}<span className="sr-only"> (opens the {r.opensIn} tab)</span></span>}</b><small>{r.kind && <em className={`hm-kind k-${r.kind.split(' ')[0].toLowerCase()}`}>{r.kind}</em>}{r.desc}</small></span></Link>;
 const firstSentence = (d?: string) => { const m = /^.*?[.!?](?=\s|$)/.exec((d ?? '').trim()); return (m ? m[0] : d ?? '').replace(/\.$/, ''); };
@@ -212,7 +212,7 @@ export function mediaModels(media: Medium, tools: ToolInfo[], groups: ModelGroup
   const first = MENU_MODELS_FIRST[media] ?? []; const picked = [...cloud.slice(0, nCloud), ...gpu.slice(0, MAX_MODELS - nCloud)];
   const pinned = first.map(k => all.find(e => e.key === k)).filter((e): e is ModelEntry => !!e); /* pinned first, the rest in catalogue order, still MAX_MODELS */
   return [...pinned, ...picked.filter(e => !first.includes(e.key))].slice(0, MAX_MODELS).map((e): Row => ({ key: e.key, to: e.to, title: e.title, kind: e.open && e.maker !== 'openhiggsfield' ? KIND['open-weights'] : '', desc: e.desc || '', badge: e.isNew ? 'new' : null,
-    links: menuLinksOf(e.key, e.open),
+    about: aboutLink(e.key),
     tile: <MakerTile maker={e.maker} makerName={e.makerName} fallback={e.title} medium={media} /> }));
 }
 const toolLine = (t: ToolInfo) => TOOL_TAGLINE[t.id] || firstSentence(t.description);
@@ -239,15 +239,14 @@ function MegaPanel({ media, tools, all, groups, path, hm }: { media: MenuId; too
   </div>);
 }
 
-/** A Models-column row plus its outside links: the maker's announcement, docs or page, and "Weights" (Hugging Face) for open models.
- *  Shown on hover or focus, beside the row's own link (never inside it: no nested anchors). New tab, noopener. */
+/** A Models-column row plus one outside link, "About ↗": the maker's announcement or model page (shared/modelLinks.ts aboutLink).
+ *  It shows on hover or focus at the right of the title line, so the description keeps the full width; beside the row's own link, never
+ *  inside it (no nested anchors). New tab, noopener. Papers, model files and API docs live in the hover cards. */
 function ModelCell({ r }: { r: Row }) {
-  const m = r.links?.maker ?? null, w = r.links?.weights ?? null;
-  const ext = (href: string, label: string, id: string) => <a href={href} target="_blank" rel="noopener noreferrer" role="menuitem" data-testid={id} title={href.replace(/^https:\/\//, '')}>
-    {label}<span aria-hidden> ↗</span><span className="sr-only"> for {r.title} (opens in a new tab)</span></a>;
-  return <div className={`hm-mcell${m || w ? ' has-link' : ''}${m && w ? ' two' : ''}`}>
+  return <div className={`hm-mcell${r.about ? ' has-link' : ''}`}>
     <MRow r={r} />
-    {(m || w) && <span className="hm-opens hm-ext">{m && ext(m.href, m.label, `hm-ext-${r.key}`)}{m && w && <span aria-hidden className="hm-ext-dot">·</span>}{w && ext(w, 'Weights', `hm-weights-${r.key}`)}</span>}
+    {r.about && <a className="hm-ext" href={r.about} target="_blank" rel="noopener noreferrer" role="menuitem" data-testid={`hm-about-${r.key}`}>
+      About<span aria-hidden> ↗</span><span className="sr-only"> {r.title} (opens in a new tab)</span></a>}
   </div>;
 }
 

@@ -8,7 +8,7 @@ import { placeNeed, keyWord } from './ModelHoverCard';
 import { usdPrice } from './billing';
 import { quoteParamsOf } from './quote';
 import { gbText } from './fit';
-import { menuLinksOf } from '../../../server/src/shared/modelLinks';
+import { aboutLink, moreLinksOf, linksOf, releasedText } from '../../../server/src/shared/modelLinks';
 import { ClockIcon, ResolutionIcon, SoundIcon, ImageStackIcon, BrushIcon, MusicIcon, MicIcon, CubeIcon, AspectIcon, ImageIcon, UpscaleIcon, SparkleIcon, CloseIcon, InfoIcon } from '../ui/Icons';
 import './modelCard.css';
 /**
@@ -120,17 +120,16 @@ function PriceBlock({ p }: { p: CardPrice }) {
 /** The rest, for power users: attachments, sizes, shapes, prompt naming, limits, the price's units and date, licence and links. */
 function Details({ m, engine, tool, provider, price }: { m: ToolModel; engine?: string | null; tool?: any; provider?: any; price: CardPrice }) {
   const rows = cardDetailsOf(m, { engine, tool }); const lic = licOf(m); const page = modelPageOf(m, { engine, tool, provider });
-  const links = menuLinksOf(m.key, m.openWeights); const rate = listRateOf(m, engine);
+  const about = aboutLink(m.key); const more = moreLinksOf(m.key, page); const rel = releasedText(linksOf(m.key).released); const rate = listRateOf(m, engine);
   /* the published rate is a different number from this run's price: it always says where it applies */
   const priceRows = [price.detail ? { label: 'This price', value: price.detail } : null,
     rate && price.kind !== 'list' ? { label: 'List rate', value: `${rate.text} on ${rate.where}` } : null].filter(Boolean) as { label: string; value: string }[];
   return <>
-    <dl className="mc-dl" data-testid="mc-details">{[...rows, ...priceRows, ...(lic ? [{ label: 'Licence', value: lic }] : [])].map(r =>
+    <dl className="mc-dl" data-testid="mc-details">{[...rows, ...priceRows, ...(lic ? [{ label: 'Licence', value: lic }] : []), ...(rel ? [{ label: 'Released', value: rel }] : [])].map(r =>
       <div key={r.label}><dt>{r.label}</dt><dd>{r.value}</dd></div>)}</dl>
-    {(links.maker || links.weights || page) && <div className="mc-links">
-      {links.maker && <a href={links.maker.href} target="_blank" rel="noreferrer">{links.maker.label} ↗</a>}
-      {links.weights && <a href={links.weights} target="_blank" rel="noreferrer">Weights ↗</a>}
-      {page && page !== links.maker?.href && <a href={page} target="_blank" rel="noreferrer" data-testid="mpv-page">How to use ↗</a>}</div>}
+    {(about || more.length > 0) && <div className="mc-links" data-testid="mpv-links">
+      {about && <a href={about} target="_blank" rel="noreferrer" data-testid="mpv-about">About ↗</a>}
+      {more.map(l => <a key={l.href} href={l.href} target="_blank" rel="noreferrer">{l.label} ↗</a>)}</div>}
   </>;
 }
 
