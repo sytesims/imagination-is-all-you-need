@@ -72,7 +72,7 @@ ok('split, move');
   const f = film([a, b]); assert.equal(f.shots[1].status, 'draft');
   assert.deepEqual(L.stitchNote(f), { blocked: null, note: 'Leaves out Shot 2 (no clip yet)' });
   assert.deepEqual(L.stitchNote(film([a, { ...b, hidden: true }])), { blocked: null, note: null }, 'hidden cards aren’t called out');
-  assert.equal(L.stitchNote(film([{ ...a, hidden: true }])).blocked, 'Every card is hidden'); assert.equal(L.stitchNote(film([b])).blocked, 'No card has a finished clip yet');
+  assert.equal(L.stitchNote(film([{ ...a, hidden: true }])).blocked, 'Every shot is hidden'); assert.equal(L.stitchNote(film([b])).blocked, 'No shot has a finished clip yet');
   assert.equal(L.cutLen(f), 5, 'only kept cards count'); }
 ok('stitch note, cut length');
 

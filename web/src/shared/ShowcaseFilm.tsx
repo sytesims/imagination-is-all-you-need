@@ -12,8 +12,9 @@
  * Used by Explore's hero; any page with one hero clip can use it.
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { FitIcon, PauseIcon, PlayIcon, ResetIcon } from '../ui/Icons';
+import { PlayIcon } from '../ui/Icons';
 import { SoundToggle } from './SoundToggle';
+import { VideoControls } from './VideoControls';
 import { prefersReducedMotion } from './HoverClip';
 import { useDirectedSound, soundRefused } from './soundDirector';
 import './editorial.css';
@@ -33,10 +34,10 @@ export function ShowcaseFilm({ takes, take, onTake, children, aside, testId, lab
   /** Opt-in fine-pointer hover / keyboard-control focus sound handoff; never starts a poster or overrides page mute. */ hoverSound?: boolean;
   /** the video actually started, so a page can clear its title overlay */ onStart?: () => void;
 }) {
-  const root = useRef<HTMLElement>(null); const v = useRef<HTMLVideoElement>(null); const bar = useRef<HTMLSpanElement>(null); const seekBar = useRef<HTMLInputElement>(null);
+  const root = useRef<HTMLElement>(null); const v = useRef<HTMLVideoElement | null>(null); const bar = useRef<HTMLSpanElement>(null);
+  /* the <video> as state too, so the shared transport follows a new take */ const [vEl, setVEl] = useState<HTMLVideoElement | null>(null); const setVideo = useCallback((el: HTMLVideoElement | null) => { v.current = el; setVEl(el); }, []);
   const [playing, setPlaying] = useState(false); const [still, setStill] = useState(() => manual || prefersReducedMotion()); const [bad, setBad] = useState('');
-  const [paused, setPaused] = useState(true); const [time, setTime] = useState(0); const [duration, setDuration] = useState(0);
-  const wanted = useRef(!manual); const onScreen = useRef(false); const [fullscreenError, setFullscreenError] = useState('');
+  const wanted = useRef(!manual); const onScreen = useRef(false);
   const t = takes.find(x => x.key === take) ?? takes[0]; const failed = !!t && bad === t.url;
   const tick = useRef(onTick); tick.current = onTick; const [pressed, setPressed] = useState(false);
   /* the sound director owns `muted` (the <video> mounts muted); reduced motion's Play counts as an explicit play */
@@ -71,7 +72,6 @@ export function ShowcaseFilm({ takes, take, onTake, children, aside, testId, lab
     });
   }, [hoverSound]);
   const pause = (el: HTMLVideoElement) => {
-    setPaused(true);
     // Some browsers pause an already-playing video on a script unmute WITHOUT
     // rejecting its earlier play() promise. Recover only this opt-in autoplay case:
     // never an explicit Pause, offscreen/hidden pause, ended take, or detached video.
@@ -97,12 +97,6 @@ export function ShowcaseFilm({ takes, take, onTake, children, aside, testId, lab
     start();
   };
   const togglePlay = () => { const el = v.current; if (!still && el && !el.paused) { wanted.current = false; el.pause(); } else play(); };
-  const full = async () => {
-    setFullscreenError(''); const r = root.current as (HTMLElement & { webkitRequestFullscreen?: () => void }) | null;
-    try { if (document.fullscreenElement) await document.exitFullscreen(); else if (r?.requestFullscreen) await r.requestFullscreen(); else if (r?.webkitRequestFullscreen) r.webkitRequestFullscreen(); else setFullscreenError('Full screen is not available in this browser.'); }
-    catch { setFullscreenError('Full screen is not available right now.'); }
-  };
-  const tc = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
   /* this clip's sound button: mute / unmute the page (the director moves the sound); on from here restarts it if asked */
   const toggleSound = () => {
     const on = snd.toggle(); const el = v.current;
@@ -111,18 +105,17 @@ export function ShowcaseFilm({ takes, take, onTake, children, aside, testId, lab
   /* the progress line, without a re-render per frame */
   useEffect(() => {
     if (still) return; let raf = 0;
-    const step = () => { const el = v.current, b = bar.current; if (el && el.duration) { const f = Math.min(1, el.currentTime / el.duration); if (b) b.style.transform = `scaleX(${f.toFixed(4)})`; seekBar.current?.style.setProperty('--p', `${(f * 100).toFixed(2)}%`); tick.current?.(f); } raf = requestAnimationFrame(step); };
+    const step = () => { const el = v.current, b = bar.current; if (el && el.duration) { const f = Math.min(1, el.currentTime / el.duration); if (b) b.style.transform = `scaleX(${f.toFixed(4)})`; tick.current?.(f); } raf = requestAnimationFrame(step); };
     raf = requestAnimationFrame(step); return () => cancelAnimationFrame(raf);
   }, [still]);
   if (!t) return null;
-  const total = duration || t.sec || 0;
   return <section ref={root} className={`sfilm${playing ? ' is-playing' : ''}${still ? ' is-still' : ''}${controls ? ' has-controls' : ''}${className ? ` ${className}` : ''}`} data-testid={testId} aria-label={label}>
     <div className="sfilm-stage">
       <img key={t.poster} className="sfilm-media" src={t.poster} alt="" decoding={priority ? 'sync' : 'async'} {...(priority ? { fetchpriority: 'high' } : {})} onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} /* a missing poster: the dark stage, no broken-image icon */ />
-      {!still && !failed && <video key={`${t.url}#${restart}`} ref={v} className="sfilm-media sfilm-video" data-media-keep="" /* the hero: never budget-paused or unloaded (shared/mediaBudget); it still pauses with the tab */ src={t.url} poster={t.poster} muted loop={!once} playsInline preload={priority ? 'auto' : 'metadata'} aria-hidden
-        onLoadedMetadata={() => { setDuration(v.current?.duration || 0); applySeek(); }} onTimeUpdate={controls ? () => setTime(v.current?.currentTime || 0) : undefined}
-        onPlaying={() => { setPlaying(true); setPaused(false); onStart?.(); }} onPause={e => pause(e.currentTarget)} onLoadStart={() => setPlaying(false)}
-        onEnded={once ? () => { wanted.current = false; setPaused(true); tick.current?.(1); onEnded?.(); } : undefined} onError={() => { setBad(t.url); onFail?.(); }} />}
+      {!still && !failed && <video key={`${t.url}#${restart}`} ref={setVideo} className="sfilm-media sfilm-video" data-media-keep="" /* the hero: never budget-paused or unloaded (shared/mediaBudget); it still pauses with the tab */ src={t.url} poster={t.poster} muted loop={!once} playsInline preload={priority ? 'auto' : 'metadata'} aria-hidden
+        onLoadedMetadata={() => applySeek()}
+        onPlaying={() => { setPlaying(true); onStart?.(); }} onPause={e => pause(e.currentTarget)} onLoadStart={() => setPlaying(false)}
+        onEnded={once ? () => { wanted.current = false; tick.current?.(1); onEnded?.(); } : undefined} onError={() => { setBad(t.url); onFail?.(); }} />}
       <span className="sfilm-shade" aria-hidden />
       {!still && !failed && <span className="sfilm-progress" aria-hidden><span ref={bar} /></span>}
     </div>
@@ -134,18 +127,8 @@ export function ShowcaseFilm({ takes, take, onTake, children, aside, testId, lab
       {aside}
     </div>
     {still && !controls && <button type="button" className="sfilm-play" aria-label={`Play: ${label}`} data-testid={testId ? `${testId}-play` : undefined} onClick={() => { setPressed(true); setStill(false); }}><PlayIcon size={26} /></button>}
-    {controls && !failed && <div className="sfilm-controls" role="group" aria-label="Film playback">
-      <input ref={seekBar} className="sfilm-seek" type="range" min="0" max={total || 1} step="0.1" value={Math.min(time, total)} disabled={!duration}
-        aria-label="Seek film" aria-valuetext={`${tc(time)} of ${tc(total)}`} data-testid={testId ? `${testId}-seek` : undefined}
-        onChange={e => { const el = v.current; if (el) { el.currentTime = Number(e.target.value); setTime(el.currentTime); if (el.duration) e.target.style.setProperty('--p', `${(el.currentTime / el.duration) * 100}%`); } }} />
-      <div className="sfilm-transport"><button type="button" className="sfilm-btn sfilm-btn-play" onClick={togglePlay} aria-label={paused ? 'Play' : 'Pause'} title={paused ? 'Play' : 'Pause'} data-testid={testId ? `${testId}-play` : undefined}>{paused ? <PlayIcon size={20} /> : <PauseIcon size={18} />}</button>
-        <button type="button" className="sfilm-btn" onClick={() => play(true)} aria-label="Replay" title="Replay" data-testid={testId ? `${testId}-replay` : undefined}><ResetIcon size={18} strokeWidth={1.8} /></button>
-        <span className="sfilm-time">{tc(time)} <span>/ {tc(total)}</span></span>
-        <span className="sfilm-control-space" />
-        {t.sound === true && !still && <SoundToggle on={snd.lit} waiting={snd.waiting} label={hoverSound && snd.hint} onToggle={toggleSound} testId={testId ? `${testId}-sound` : undefined} />}
-        <button type="button" className="sfilm-btn" onClick={full} aria-label="Full screen" title="Full screen" data-testid={testId ? `${testId}-fullscreen` : undefined}><FitIcon size={18} strokeWidth={1.8} /></button>
-      </div>{fullscreenError && <span className="sfilm-control-error" role="status">{fullscreenError}</span>}
-    </div>}
+    {controls && !failed && <VideoControls video={still ? null : vEl} onToggle={togglePlay} onReplay={() => play(true)} fallbackSec={t.sec} fullscreen={root} testId={testId}
+      sound={t.sound === true && !still && <SoundToggle on={snd.lit} waiting={snd.waiting} label={hoverSound && snd.hint} onToggle={toggleSound} testId={testId ? `${testId}-sound` : undefined} />} />}
     {!controls && t.sound === true && !still && !failed && <SoundToggle on={snd.lit} waiting={snd.waiting} label={snd.hint} onToggle={toggleSound} testId={testId ? `${testId}-sound` : undefined} />}
   </section>;
 }
