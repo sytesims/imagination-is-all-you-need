@@ -47,10 +47,13 @@ try {
   await p.getByTestId('vbar-slot-photos-input').setInputFiles(['hq-gang.jpg','hq-elder.jpg','hq-soar.jpg','hq-dunes.jpg','hq-forest.jpg','hq-city.jpg','hq-snow.jpg','hq-trio.jpg'].map(f => path.join(root, f)));
   await p.waitForFunction(() => document.querySelector('[data-testid="vs-generate"]') && !document.querySelector('[data-testid="vs-generate"]').disabled);
   await p.waitForTimeout(1400); assert.ok(quoted);
-  await shot('07-fixed-composer', 'Title in composer · hero motion by default');
+  assert.equal(await p.getByTestId('vbar-group-words').getAttribute('aria-label'), 'End card');
+  await shot('12-followup-composer', 'Title in composer · hero motion by default');
   await p.getByTestId('vbar-slot-photos-stack').click();
   await p.getByText('Drag to change the order. The reel follows this order.', { exact: true }).waitFor();
-  await shot('08-fixed-photo-order', 'Every photo can be reordered');
+  const photoLabels = await p.locator('[data-testid="vbar-slot-photos"][data-filled="1"] .wf-slot-hit b').allTextContents();
+  assert.deepEqual(photoLabels, Array.from({ length: 8 }, (_, i) => `Photo ${i + 1}`));
+  await shot('13-followup-photo-order', 'Every photo can be reordered');
   await p.keyboard.press('Escape');
   const responsePromise = p.waitForResponse(r => r.request().method() === 'POST' && r.url().includes('/api/tools/app-photos-to-reel/jobs'));
   await p.getByTestId('vs-generate').click();
@@ -58,7 +61,7 @@ try {
   assert.equal(refused.status(), 409);
   assert.match(refused.request().postData() || '', /name="quotedCredits"\r\n\r\n0/);
   await p.getByText('The price went up', { exact: true }).waitFor();
-  await shot('09-price-approval', 'Real UI quote path · higher price requires approval');
+  await shot('14-followup-price-approval', 'Real UI quote path · higher price requires approval');
   await p.getByRole('button', { name: 'Not now', exact: true }).click();
   await p.unroute(pricePattern, oldPrice);
   await p.evaluate(async () => { const q = await import('/src/shared/quote.ts'); q.requestRequote(); });
@@ -70,16 +73,42 @@ try {
   const tile = p.getByTestId('vf-tile-' + started.id); await tile.waitFor();
   await tile.locator('.gt-has-prev').waitFor();
   const rect = await tile.boundingBox(); assert.ok(rect && rect.height > rect.width, 'Generating reel stays portrait');
-  await shot('10-generating-reel', 'One portrait reel tile · source photos while generating');
+  await shot('15-followup-generating-reel', 'One portrait reel tile · source photos while generating');
   let job;
   for (let n = 0; n < 720; n++) { job = await (await ctx.request.get(base + '/api/jobs/' + started.id)).json(); if (['done', 'failed', 'canceled'].includes(job.status)) break; await p.waitForTimeout(250); }
   assert.equal(job.status, 'done', JSON.stringify(job)); assert.ok(!job.partial, JSON.stringify(job.warnings));
   for (const id of [...(job.input.childIds || []), job.input.composeJobId].filter(Boolean)) assert.equal(await p.getByTestId('vf-tile-' + id).count(), 0, 'Child must not become a gallery tile');
   await tile.getByRole('button', { name: /Open result:/ }).click(); await p.locator('.rvx').waitFor();
   await p.getByRole('navigation', { name: 'Reel steps' }).waitFor();
-  await shot('11-fixed-result', 'Completed reel · child steps available in viewer');
+  assert.equal(await p.locator('.rvx section[aria-label="Title"] .rvx-lbl').textContent(), 'Title');
+  const stepImages = p.locator('nav[aria-label="Reel steps"] .ln-thumb img');
+  for (const img of await stepImages.all()) { await img.scrollIntoViewIfNeeded(); await img.evaluate(el => el.complete && el.naturalWidth > 0 ? Promise.resolve() : new Promise((resolve, reject) => { el.addEventListener('load', resolve, { once: true }); el.addEventListener('error', reject, { once: true }); })); }
+  await stepImages.first().scrollIntoViewIfNeeded();
+  await p.waitForFunction(() => { const imgs = [...document.querySelectorAll('nav[aria-label="Reel steps"] .ln-thumb img')]; return imgs.length > 1 && imgs.every(img => img.complete && img.naturalWidth > 0); });
+  await shot('16-followup-result', 'Reel title · loaded step posters');
+  // A real mock music failure must surface a UI retry and preserve all finished visuals.
+  const failureResponse = await ctx.request.post(base + '/api/tools/app-photos-to-reel/jobs', { multipart: {
+    ...Object.fromEntries(Object.entries(job.input.fields || {}).filter(([k, v]) => typeof v === 'string' && !['quotedCredits', 'fromJob', 'reuseInputs', 'simulateGroup'].includes(k))),
+    fromJob: job.id, reuseInputs: 'photos', title: 'Music retry check', seconds: '15', motion: 'heroes', music: 'on', simulateMusic: 'temporary'
+  } });
+  assert.equal(failureResponse.status(), 200, await failureResponse.text());
+  const failureStart = await failureResponse.json();
+  const waitJob = async id => { for (let n = 0; n < 720; n++) { const j = await (await ctx.request.get(base + '/api/jobs/' + id)).json(); if (['done', 'failed', 'canceled'].includes(j.status)) return j; await p.waitForTimeout(250); } throw new Error('Reel did not settle: ' + id); };
+  const musicFailed = await waitJob(failureStart.id);
+  assert.equal(musicFailed.status, 'done'); assert.equal(musicFailed.input.failedMusic, true); assert.equal((musicFailed.failedGroups || []).length, 0);
+  await p.goto(base + '/video?workflow=photos-to-reel');
+  await p.getByTestId('vf-tile-' + musicFailed.id).getByRole('button', { name: /Open result:/ }).click();
+  const musicRetryButton = p.locator('.rvx').getByRole('button', { name: 'Retry the music', exact: true });
+  await musicRetryButton.waitFor(); assert.equal(await musicRetryButton.isEnabled(), true);
+  await shot('17-followup-music-retry', 'Music-only failure · retry preserves finished video');
+  const retryResponsePromise = p.waitForResponse(r => r.request().method() === 'POST' && r.url().includes('/api/jobs/' + musicFailed.id + '/retry?failedOnly=1'));
+  await musicRetryButton.click();
+  const retryResponse = await retryResponsePromise; assert.equal(retryResponse.status(), 200);
+  const retry = await waitJob((await retryResponse.json()).id);
+  assert.equal(retry.status, 'done'); assert.ok(!retry.partial); assert.equal(retry.input.childIds.length, 1, 'Only the failed music reruns');
+  assert.equal(retry.input.composeJobId, musicFailed.input.composeJobId, 'Finished composition is reused');
   assert.deepEqual(errors, []);
-  const result = { status: 'passed', id: job.id, errors, priceApproval: 'UI quote → automatic quotedCredits → 409 → confirmation → decline', childTiles: 0 };
-  if (out) fs.writeFileSync(path.join(out, 'review-browser-check.json'), JSON.stringify(result, null, 2));
+  const result = { status: 'passed', id: job.id, errors, priceApproval: 'UI quote → automatic quotedCredits → 409 → confirmation → decline', childTiles: 0, musicRetry: 'UI retry → only music rerun', loadedStepPosters: true };
+  if (out) fs.writeFileSync(path.join(out, 'followup-browser-check.json'), JSON.stringify(result, null, 2));
   console.log(JSON.stringify(result, null, 2));
 } finally { await browser.close(); }
