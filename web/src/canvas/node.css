@@ -545,6 +545,8 @@ html:not(.cv-perf-off) .nf-media,html:not(.cv-perf-off) .nf-body{contain:layout 
 .nf-shell{box-shadow:none} /* the card's own surface, so a card panned in fast fills in instead of popping out of nothing */
 .cv-far .nf{box-shadow:none;transition:none}
 .cv-far .nf *,.cv-far .nf *::before,.cv-far .nf *::after{animation-play-state:paused!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+/* a card that finishes while zoomed out: its fade-in would stay paused at opacity 0 (a black picture until you zoom in), so it just shows */
+.cv-far .nf .gc-stage,.cv-far .nf .gc-stage.develop img,.cv-far .nf .gc-stage.develop video{animation:none!important}
 .cv-tiny .nf,.cv-tiny .nf *{border-radius:0!important}
 /* Ad layout card, "Edit & style" (AdEditor.tsx): the app's sheet styles (.wfm, maskSheet.css), filling the window: a slim top bar,
    the side panel and the stage, where the ad fits as big as it can (or scrolls when zoomed in) */
