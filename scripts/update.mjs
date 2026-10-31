@@ -27,7 +27,9 @@ const versionAt = (rev) => versionIn(git('show', `${rev}:package.json`).out) || 
 
 // 1. a zip install (or git missing): update by hand
 const top = git('rev-parse', '--show-toplevel');
-const same = (a, b) => (WIN ? path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase() : path.resolve(a) === path.resolve(b));
+/* realpath: git prints C:/Users/runneradmin/… while the folder may have been reached as C:\\Users\\RUNNER~1\\… (Windows short names) */
+const real = (p) => { try { return fs.realpathSync.native(path.resolve(p)); } catch { return path.resolve(p); } };
+const same = (a, b) => (WIN ? real(a).toLowerCase() === real(b).toLowerCase() : real(a) === real(b));
 if (!top.ok || !same(top.out, REPO)) {
   const why = spawnSync('git', ['--version']).status === 0 ? 'This folder isn’t a git copy of the app (it was probably downloaded as a zip),' : 'Git isn’t installed on this computer,';
   stop([`${why} so it can’t update itself. To update by hand:`, '',
