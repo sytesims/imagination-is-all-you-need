@@ -455,7 +455,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
           aria-haspopup={notes.length ? 'dialog' : undefined} aria-expanded={notes.length ? pfOpen : undefined} title={pfOpen ? undefined : (genWord || priceTitle(q, bill, { demo: isDemo, free: isFree, credits }) || undefined)}
           onClick={(e) => { if (blocking) { if (inputMissing) nudgeMissing(e.currentTarget); setPfOpen((o) => !o); return; } void generate(); }}>
           <span className="gen-l">{busy ? <i className="as-spin" aria-hidden /> : null}Generate</span>
-          {priceFirst ? <span className="t3-pt"><GenPrice compact testId="t3-price" q={q} demo={isDemo} free={isFree} credits={credits} /><small className="t3-time t3-need" data-testid="t3-time">{inputMissing.toLowerCase()}</small></span>
+          {priceFirst ? <><GenPrice compact testId="t3-price" q={q} demo={isDemo} free={isFree} credits={credits} /><small className="t3-time t3-need" data-testid="t3-time">{inputMissing.toLowerCase()}</small></>
             : genWord ? <span className="gen-price gen-missing" data-testid="t3-price">{genWord}</span>
             : <span className="t3-pt"><GenPrice compact testId="t3-price" q={q} demo={isDemo} free={isFree} credits={unpricedWhy || blockWhy ? null : credits} /><small className="t3-time" data-testid="t3-time">{etaText(typSec)}</small></span>}</button>}
       </div></div>

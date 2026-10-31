@@ -90,6 +90,7 @@ ok('start view off-front; aria labels; page behind the viewer inert');
   assert.match(web('ui/next/WorkflowBar.tsx'), /<OptPrice text=\{optPrice\(c\.field, o\.value\)\}/, 'the shared panel shows the shared OptPrice');
   assert.match(studio, /const priceFirst = !!inputMissing && !gate && !unpricedWhy && !blockWhy && credits != null/, 'the price shows before required inputs are added in every generation mode');
   assert.match(studio, /const inputMissing = textMode \? .*multiMode \? .*Add one more view/, 'price-first readiness covers text, multiview and image inputs');
+  assert.match(studio, /priceFirst \? <><GenPrice/, 'missing-input price and next step use the existing button column, so neither clips');
   assert.match(studio, /const isSoon = wf\.status === 'soon'/, 'a coming-soon link is guarded');
   for (const w of T.THREE_D_WORKFLOWS.filter((x) => x.status === 'soon')) assert.match(studio, new RegExp(`'?${w.id}'?: \\{ line: `), `${w.name} points to what works today`);
   assert.match(studio, /noModel = isTT \|\| isPS \|\| isSoon/, 'no Image to 3D controls on a coming-soon workflow');
