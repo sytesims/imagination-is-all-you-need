@@ -49,6 +49,10 @@ jobs:
           Write-Host "install took $([int]((Get-Date) - $t0).TotalSeconds) s"
           Update-PathFromRegistry
           $ff = Get-Command ffmpeg -ErrorAction SilentlyContinue
+          if (-not $ff -and -not (Get-Command winget -ErrorAction SilentlyContinue)) {
+            # no winget on this image (get.ps1 skips ffmpeg there, as documented): test-only fallback so the media checks can run
+            choco install ffmpeg -y --no-progress | Out-Null; Update-PathFromRegistry; $env:Path += ";$env:ProgramData\chocolatey\bin"; $ff = Get-Command ffmpeg -ErrorAction SilentlyContinue
+          }
           if ($ff) { Split-Path -Parent $ff.Source | Out-File -Append -Encoding ascii $env:GITHUB_PATH }
           Check (Test-Path (Join-Path $Dir 'node_modules\fastify')) 'dependencies installed'
           Check (Test-Path (Join-Path $Dir 'mcp\node_modules')) 'MCP dependencies installed (postinstall)'
