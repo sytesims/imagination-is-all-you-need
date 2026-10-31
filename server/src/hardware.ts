@@ -18,7 +18,7 @@ import { execFileSync } from 'node:child_process';
 import { config, DATA_DIR, comfyNeedsKey } from './config.js';
 import { env } from './env.js';
 import { getKv, setKv } from './db.js';
-import { classifyMachine, type MachineProfile } from './hardware/machineProfile.js';
+import { classifyMachine, cleanGpuName, type MachineProfile } from './hardware/machineProfile.js';
 import { comfyInstallOf, type ComfyKind } from './hardware/comfyInstall.js';
 
 export type Tier = 'none' | 'light' | 'most' | 'all' | 'unknown';
@@ -26,7 +26,7 @@ export type HwSource = 'comfyui-system_stats' | 'host' | 'mock' | 'manual' | 'no
 export interface Gpu { name: string; type: 'cuda' | 'mps' | 'cpu' | 'xpu' | 'rocm' | string; count: number; vramTotalBytes: number | null; vramFreeBytes: number | null; vramTotalGB: number | null; unifiedMemory: boolean }
 export interface Hardware {
   source: HwSource; checkedAt: string; cached: boolean; maxAgeSec: number;
-  comfy: { reachable: boolean | null; version: string | null; cloud: boolean; ggufNode: boolean | null;
+  comfy: { reachable: boolean | null; version: string | null; cloud: boolean; ggufNode: boolean | null; /** PyTorch in ComfyUI's Python (/system_stats system.pytorch_version), when read */ pytorch?: string | null;
     /** Setup step 4 (from /system_stats; null when not read): desktop | portable | docker | manual | unknown, its label, and the models folder ComfyUI's
      *  settings point at (shown as a folder name only; source 'desktop-yaml' | 'extra-paths-yaml' | 'base-directory' | 'main-py'). */
     kind?: ComfyKind | null; label?: string | null; modelsDir?: string | null; modelsDirSource?: string | null };
@@ -55,6 +55,13 @@ export const TIER_LABELS: Record<Tier, string> = {
   all: 'Runs every local model (some slowly)',
   unknown: "Couldn't check the hardware, so nothing is blocked",
 };
+/** The tier sentence for this machine class (2026-10-31, hardware plan B3): memory alone said "Runs every local model" on Apple Silicon, where
+ *  fp8-only models can't load at all. Apple Silicon: one honest sentence; NVIDIA (and DGX Spark): by graphics memory, as before. */
+export function tierLabelOf(tier: Tier, profile: Pick<MachineProfile, 'id'> | null | undefined): string {
+  if (profile?.id === 'apple-silicon' && (tier === 'most' || tier === 'all')) return 'Runs most local models; fp8-only ones need NVIDIA';
+  if (profile?.id === 'apple-silicon' && tier === 'light') return 'Runs the light local models; fp8-only ones need NVIDIA';
+  return TIER_LABELS[tier];
+}
 /** MPS: 0.75 × RAM (ESTIMATE: the macOS default GPU wired-memory limit). CUDA: VRAM total. cpu / none: 0.
  *  Unified-memory CUDA (NVIDIA GB10 / DGX Spark, setup step 2): nvidia-smi has no memory figure there, so system memory stands in for VRAM. */
 export function effectiveVram(gpu: Gpu | null, ramTotalBytes: number | null): number {
@@ -93,9 +100,9 @@ const isCloudBase = () => !!config.comfyBaseUrl && comfyNeedsKey();
 export const profileOf = (gpu: Gpu | null, ramTotal: number | null, seen: boolean, host: boolean): MachineProfile => classifyMachine({ seen, ramBytes: ramTotal, platform: host ? process.platform : null, arch: host ? process.arch : null,
   cpuModel: host ? os.cpus()[0]?.model ?? null : null, gpu: gpu ? { name: gpu.name, type: gpu.type, vramTotalBytes: gpu.vramTotalBytes ?? (gpu.unifiedMemory && gpu.type !== 'mps' ? ramTotal : null), count: gpu.count } : null });
 function build(source: HwSource, gpu: Gpu | null, ramTotal: number | null, ramFree: number | null, seen: boolean, comfy: Hardware['comfy'], note: string | null): Omit<Hardware, 'cached' | 'manual' | 'manualInUse'> {
-  const eff = seen ? effectiveVram(gpu, ramTotal) : null; const tier = tierOf(eff ?? 0, seen);
-  return { profile: profileOf(gpu, ramTotal, seen, source === 'host' || (source === 'comfyui-system_stats' && comfySameHost())), source, checkedAt: new Date().toISOString(), maxAgeSec: MAX_AGE_SEC, comfy, gpu, ram: { totalBytes: ramTotal == null ? null : Math.round(ramTotal), freeBytes: ramFree == null ? null : Math.round(ramFree), totalGB: gb(ramTotal) }, disk: publicDisk(),
-    effectiveVramGB: eff, tier, tierLabel: TIER_LABELS[tier], tierThresholdsGB: { ...TIER_THRESHOLDS_GB }, note };
+  const eff = seen ? effectiveVram(gpu, ramTotal) : null; const tier = tierOf(eff ?? 0, seen); const profile = profileOf(gpu, ramTotal, seen, source === 'host' || (source === 'comfyui-system_stats' && comfySameHost()));
+  return { profile, source, checkedAt: new Date().toISOString(), maxAgeSec: MAX_AGE_SEC, comfy, gpu, ram: { totalBytes: ramTotal == null ? null : Math.round(ramTotal), freeBytes: ramFree == null ? null : Math.round(ramFree), totalGB: gb(ramTotal) }, disk: publicDisk(),
+    effectiveVramGB: eff, tier, tierLabel: tierLabelOf(tier, profile), tierThresholdsGB: { ...TIER_THRESHOLDS_GB }, note };
 }
 const fromProfile = (name: string) => { const p = HW_PROFILES[name]; if (!p) return null; const ram = p.ramGB == null ? null : p.ramGB * GiB;
   return build(p.seen ? 'mock' : 'none', p.gpu, ram, ram == null ? null : ram * 0.6, p.seen, { reachable: p.seen ? true : null, version: p.comfyVersion ?? null, cloud: false, ggufNode: null }, p.seen ? null : "This computer's hardware couldn't be read."); };
@@ -109,7 +116,7 @@ let override: Omit<Hardware, 'cached' | 'manual' | 'manualInUse'> | null = null;
 /** Test hook (same pattern as setLocalAvailable): a profile name, a Hardware-like object, or null to clear. */
 export function setHardwareOverride(h: string | Partial<Hardware> | null) {
   if (h == null) override = null; else if (typeof h === 'string') override = fromProfile(h); else { const b = fromProfile('rtx4090')!; override = { ...b, ...h, source: (h.source ?? 'mock') as HwSource } as any;
-    if (h.gpu !== undefined || h.ram) { const eff = effectiveVram(override!.gpu, override!.ram.totalBytes); override!.effectiveVramGB = h.effectiveVramGB ?? eff; override!.tier = h.tier ?? tierOf(override!.effectiveVramGB, override!.source !== 'none'); override!.tierLabel = TIER_LABELS[override!.tier]; override!.profile = h.profile ?? profileOf(override!.gpu, override!.ram.totalBytes, override!.source !== 'none', false); } }
+    if (h.gpu !== undefined || h.ram) { const eff = effectiveVram(override!.gpu, override!.ram.totalBytes); override!.effectiveVramGB = h.effectiveVramGB ?? eff; override!.tier = h.tier ?? tierOf(override!.effectiveVramGB, override!.source !== 'none'); override!.profile = h.profile ?? profileOf(override!.gpu, override!.ram.totalBytes, override!.source !== 'none', false); override!.tierLabel = tierLabelOf(override!.tier, override!.profile); } }
   cache = null;
 }
 // ---- ComfyUI probe (shared by the hardware probe, Q5 reachability and DP 6 /api/local/comfy/test) ----
@@ -150,13 +157,13 @@ export async function checkComfy(url = config.comfyBaseUrl, o: { timeoutMs?: num
   } catch (e: any) { const code = netCode(e); return { url: base, reachable: false, version: null, latencyMs: Date.now() - t0, stats: null, ggufNode: null, cloud, error: comfyErrorText(code, base, { timeoutMs: tms }), errorCode: code }; }
 }
 /** /system_stats → gpu + ram (ComfyUI server.py: system.{ram_total, ram_free, comfyui_version}, devices[{name, type, vram_total, vram_free}], bytes). devices[0] = primary. */
-export function parseSystemStats(s: any): { gpu: Gpu | null; ramTotal: number | null; ramFree: number | null; version: string | null } {
+export function parseSystemStats(s: any): { gpu: Gpu | null; ramTotal: number | null; ramFree: number | null; version: string | null; pytorch: string | null } {
   const sys = s?.system ?? {}; const devs: any[] = Array.isArray(s?.devices) ? s.devices : []; const d = devs[0];
   const ramTotal = Number.isFinite(Number(sys.ram_total)) ? Number(sys.ram_total) : null; const ramFree = Number.isFinite(Number(sys.ram_free)) ? Number(sys.ram_free) : null;
   let gpu: Gpu | null = null;
   if (d && d.type && d.type !== 'cpu') { const vt = Number(d.vram_total) || null; gpu = { name: String(d.name ?? d.type), type: String(d.type), count: devs.filter((x) => x?.type === d.type).length || 1, vramTotalBytes: d.type === 'mps' ? null : vt, vramFreeBytes: d.type === 'mps' ? null : Number(d.vram_free) || null, vramTotalGB: d.type === 'mps' ? null : gb(vt), unifiedMemory: d.type === 'mps' || /\bGB10\b/i.test(String(d.name ?? '')) }; }
   else if (d && d.type === 'cpu') gpu = { name: 'cpu', type: 'cpu', count: 1, vramTotalBytes: 0, vramFreeBytes: 0, vramTotalGB: 0, unifiedMemory: false };
-  return { gpu, ramTotal, ramFree, version: sys.comfyui_version ? String(sys.comfyui_version) : null };
+  return { gpu, ramTotal, ramFree, version: sys.comfyui_version ? String(sys.comfyui_version) : null, pytorch: sys.pytorch_version ? String(sys.pytorch_version) : null };
 }
 /** Host probe (ComfyUI on this machine): nvidia-smi (3 s), or macOS arm64 sysctl hw.memsize → mps. gpu null when neither answers (e.g. this box). */
 export function probeHost(exec: typeof execFileSync = execFileSync): { gpu: Gpu | null; ramTotal: number; ramFree: number } {
@@ -178,7 +185,7 @@ async function probe(): Promise<Omit<Hardware, 'cached' | 'manual' | 'manualInUs
   if (c) noteReach(c.reachable);
   if (c?.reachable && c.stats) { const s = parseSystemStats(c.stats); const same = comfySameHost(); const inst = comfyInstallOf(same ? c.stats : { system: { ...c.stats.system, argv: [] } }); // another computer's paths mean nothing here
     detectedModelsDir = same ? inst.modelsDir : null;
-    return build('comfyui-system_stats', s.gpu, s.ramTotal, s.ramFree, true, { reachable: true, version: s.version, cloud: false, ggufNode: c.ggufNode, kind: inst.kind, label: inst.label, modelsDir: displayDir(inst.modelsDir), modelsDirSource: inst.modelsDirSource }, null); }
+    return build('comfyui-system_stats', s.gpu, s.ramTotal, s.ramFree, true, { reachable: true, version: s.version, pytorch: s.pytorch, cloud: false, ggufNode: c.ggufNode, kind: inst.kind, label: inst.label, modelsDir: displayDir(inst.modelsDir), modelsDirSource: inst.modelsDirSource }, null); }
   if (comfySameHost()) { const h = hostProbe(); return build('host', h.gpu, h.ramTotal, h.ramFree, true, { reachable: c?.reachable ?? null, version: c?.version ?? null, cloud: false, ggufNode: c?.ggufNode ?? null }, h.gpu ? null : 'No graphics card was found on this computer.'); }
   return build('none', null, null, null, false, { reachable: c ? c.reachable : null, version: null, cloud: false, ggufNode: null }, c ? "ComfyUI isn't answering, so this computer's hardware couldn't be read." : "No local ComfyUI is connected, so this computer's hardware couldn't be read.");
 }
@@ -219,9 +226,59 @@ export function machineName(h: Hardware = currentHardware()): string | null {
   return n.replace(/^(Apple|NVIDIA|AMD|Intel)\s+/i, '').replace(/^(GeForce|Radeon|Arc)\s+/i, '').replace(/\s+Laptop GPU$/i, ' Laptop').replace(/\s+GPU$/i, '').trim().slice(0, 40) || null;
 }
 export const lastRefreshAt = () => lastProbeAt;
+// ---- "This computer" card (2026-10-31): memory and disk right now ----
+export interface LiveReading { at: string; ram: { totalBytes: number; freeBytes: number; source: 'comfyui' | 'vm_stat' | 'os' }; vram: { totalBytes: number; freeBytes: number } | null;
+  disk: ReturnType<typeof publicDisk>; comfy: { reachable: boolean | null; version: string | null; pytorch: string | null } }
+/** macOS: os.freemem() counts only free pages, so a busy 64 GB machine looks full. Available = free + speculative + inactive pages
+ *  (about what psutil, and so ComfyUI, call available). null when vm_stat can't be read. */
+export function parseVmStat(out: string): number | null {
+  const page = Number(/page size of (\d+) bytes/.exec(out)?.[1]); if (!(page > 0)) return null;
+  const n = (label: string) => Number(new RegExp(`Pages ${label}:\\s+(\\d+)`).exec(out)?.[1] ?? 0);
+  const pages = n('free') + n('inactive') + n('speculative'); return pages > 0 ? pages * page : null;
+}
+let liveMemo: { at: number; v: LiveReading } | null = null; const LIVE_MIN_MS = 2000;
+/** GET /api/hardware/live: free memory (ComfyUI's own reading when it answers on this computer, else the host's), free graphics memory on a card, free disk
+ *  where models live, and whether ComfyUI answers. Cheap: one /system_stats GET (1 s timeout) or one vm_stat; at most one reading per 2 s. Never Comfy Cloud. */
+export async function liveReading(): Promise<LiveReading> {
+  if (liveMemo && Date.now() - liveMemo.at < LIVE_MIN_MS) return liveMemo.v;
+  const local = !!config.comfyBaseUrl && !cloudUrl(config.comfyBaseUrl);
+  const c = local ? await checkComfy(config.comfyBaseUrl, { timeoutMs: 1000, gguf: false }) : null; if (c) noteReach(c.reachable);
+  const s = c?.reachable && c.stats ? parseSystemStats(c.stats) : null; // models run where ComfyUI runs, so its reading wins
+  let ram: LiveReading['ram'];
+  if (s && s.ramTotal && s.ramFree != null) ram = { totalBytes: s.ramTotal, freeBytes: s.ramFree, source: 'comfyui' };
+  else { let avail: number | null = null; if (process.platform === 'darwin') { try { avail = parseVmStat(execFileSync('vm_stat', [], { timeout: 2000 }).toString()); } catch { avail = null; } }
+    ram = { totalBytes: os.totalmem(), freeBytes: avail != null ? Math.min(avail, os.totalmem()) : os.freemem(), source: avail != null ? 'vm_stat' : 'os' }; }
+  const g = s?.gpu; const vram = g && !g.unifiedMemory && g.vramTotalBytes && g.vramFreeBytes != null ? { totalBytes: g.vramTotalBytes, freeBytes: g.vramFreeBytes } : null;
+  const v: LiveReading = { at: new Date().toISOString(), ram, vram, disk: publicDisk(), comfy: { reachable: c ? c.reachable : null, version: c?.version ?? null, pytorch: s?.pytorch ?? null } };
+  liveMemo = { at: Date.now(), v }; return v;
+}
 export const REFRESH_MIN_SEC = REFRESH_MIN_MS / 1000;
-/** hwKey for learned timings: sha-free stable key from the GPU name, VRAM and type ('none' without a GPU). */
-export function hwKeyOf(h: Hardware = currentHardware()): string { const g = h.gpu; return g ? `${g.type}|${g.name}|${g.vramTotalGB ?? Math.round(h.effectiveVramGB ?? 0)}` : `none|${h.tier}`; }
+/** hwKey for learned timings (2026-10-31, hardware plan B8): the machine class, the chip or card name and its memory, so the same computer gets one
+ *  key whichever probe answered (before, Apple Silicon was 'mps|mps|48' through ComfyUI and 'mps|Apple Silicon|48' through the host probe).
+ *  Apple Silicon and DGX Spark: system memory (unified); a graphics card: its VRAM. 'none|<tier>' without a GPU. */
+type HwLike = Pick<Hardware, 'gpu' | 'tier' | 'effectiveVramGB' | 'profile'> & { ram?: { totalGB: number | null } | null };
+export function hwKeyOf(h: HwLike = currentHardware()): string {
+  const g = h.gpu; if (!g) return `none|${h.tier}`; const p = h.profile;
+  if (!p || p.id === 'unknown') return legacyHwKey(h);
+  const mem = p.unifiedMemory ? p.ramGB ?? h.ram?.totalGB ?? p.usableGB : p.vramGB ?? g.vramTotalGB ?? h.effectiveVramGB;
+  return `${p.id}|${p.gpuName ?? cleanGpuName(g.name)}|${Math.round(mem ?? 0)}`;
+}
+/** The key the same reading had before 2026-10-31 (GPU type, raw name, VRAM or the 0.75 × RAM estimate). */
+export const legacyHwKey = (h: Pick<Hardware, 'gpu' | 'tier' | 'effectiveVramGB'>) => { const g = h.gpu; return g ? `${g.type}|${g.name}|${g.vramTotalGB ?? Math.round(h.effectiveVramGB ?? 0)}` : `none|${h.tier}`; };
+/** Is k an old-style key this computer wrote? Same GPU type and memory figure, and the same card name (any name on Apple Silicon: 'mps', 'Apple Silicon', the chip). */
+export function isLegacyKeyOf(k: string, h: Pick<Hardware, 'gpu' | 'tier' | 'effectiveVramGB'>): boolean {
+  const g = h.gpu; if (!g) return false; const parts = k.split('|'); if (parts.length !== 3) return false; const [t, name, n] = parts;
+  const mine = g.vramTotalGB ?? Math.round(h.effectiveVramGB ?? 0);
+  return t === g.type && Number.isFinite(Number(n)) && Math.abs(Number(n) - mine) < 0.5 && (t === 'mps' || cleanGpuName(name) === cleanGpuName(g.name));
+}
+let canonMemo: { hw: unknown; f: (k: string) => string } | null = null;
+/** Merge on read (etaLearn.ts, stepEta.ts): old keys this computer wrote map to its current key, so learned timings aren't lost or split. The stored
+ *  rows keep their old key; nothing is rewritten. Uses the last reading (no probe, no disk read), memoised per reading. */
+export function hwKeyCanon(): (k: string) => string {
+  const raw = mockNow() ?? cache?.hw ?? null; if (canonMemo && canonMemo.hw === raw) return canonMemo.f;
+  const f = !raw?.gpu ? (k: string) => k : ((cur: string) => (k: string) => (k !== cur && isLegacyKeyOf(k, raw) ? cur : k))(hwKeyOf(raw));
+  canonMemo = { hw: raw, f }; return f;
+}
 
 // ---- Q5: real local reachability (cached 30 s) ----
 let reach: { at: number; ok: boolean } | null = null; let reachOverride: boolean | null = null; let reachInflight: Promise<boolean> | null = null;

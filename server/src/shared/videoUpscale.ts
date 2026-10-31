@@ -37,7 +37,7 @@ export interface VupModel {
   /** Price text for the menu (the quote is exact; this is the rule). */ price: string;
   /** Local: weights file the graph loads (models/upscale_models). */ file?: string;
   /** Local ComfyUI graph (workflows/). */ workflow?: string;
-  /** Local route runs only on an NVIDIA (CUDA) GPU (SeedVR2 3B: impractical on Apple Silicon). */ cudaOnly?: boolean;
+  /** Local route is practical only on an NVIDIA (CUDA) GPU (SeedVR2 3B: runs on Apple Silicon, but over an hour for 2 s). */ cudaOnly?: boolean;
   /** Seconds per clip second on each machine class at each target (timing.ts anchors). measured = from a real run. */
   speed?: { mseries?: Record<string, { s: number; measured: boolean; note: string }>; rtx4090?: Record<string, { s: number; measured: boolean; note: string }> };
   /** Credit: where the graph or the request body comes from. */ source: { kind: 'official' | 'community' | 'ours'; name: string; url: string | null; author: string };
@@ -63,9 +63,9 @@ export const VUP_MODELS: Record<string, VupModel> = {
     speed: { mseries: ultraMac, rtx4090: est({ '720p': 15, '1080p': 16, '1440p': 17, '2160p': 19 }, 'about a tenth of our test laptop’s time (estimate)') },
     source: { kind: 'ours', name: 'upscale-ultrasharp-api.json (model: 4x-UltraSharp by Kim2091)', url: 'https://huggingface.co/Kim2091/UltraSharp', author: 'Imagination Is All You Need' } },
   'comfy-seedvr2': { name: 'SeedVR2', place: 'cloud', placeLabel: 'fal', label: 'Best detail', fit: 'short', targets: [...VUP_TARGETS], modes: ['precise'], price: '$0.001 per output megapixel per frame (fal)',
-    blurb: 'SeedVR2: one-step diffusion, real texture, content kept. On fal (the cheapest good cloud option); locally SeedVR2 3B on NVIDIA GPUs only.',
+    blurb: 'SeedVR2: one-step diffusion, real texture, content kept. On fal (the cheapest good cloud option); locally SeedVR2 3B, quick on NVIDIA, very slow on Apple chips.',
     workflow: 'upscale-seedvr2-native-api.json', cudaOnly: true,
-    speed: { mseries: { '1080p': { s: 1800, measured: true, note: 'measured: over 60 min for 2 s on our test laptop, so it needs an NVIDIA graphics card' } }, rtx4090: est({ '720p': 20, '1080p': 30, '1440p': 50, '2160p': 110 }, 'SeedVR2 3B int8 one-step, scaled by output pixels (no run of ours on NVIDIA yet)') },
+    speed: { mseries: { '1080p': { s: 1800, measured: true, note: 'measured: over 60 min for 2 s on our test laptop (runs, but slow)' } }, rtx4090: est({ '720p': 20, '1080p': 30, '1440p': 50, '2160p': 110 }, 'SeedVR2 3B int8 one-step, scaled by output pixels (no run of ours on NVIDIA yet)') },
     source: { kind: 'official', name: 'Video Upscale: SeedVR2 (utility_seedvr2_video_upscale), native nodes', url: `${TPL}utility_seedvr2_video_upscale.json`, author: 'Comfy Org' } },
   'cloud-topaz-starlight-fast': { name: 'Topaz Starlight Fast', place: 'cloud', placeLabel: 'Comfy', label: 'Fast', fit: 'long', targets: ['1080p', '4k'], modes: ['precise'], price: '≈0.43 Comfy credits per source frame (1080p), ≈0.85 (4K)',
     blurb: 'Topaz Starlight (Astra) Fast: clean, faithful upscale to 1080p or 4K. Cheapest Topaz.',

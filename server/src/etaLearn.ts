@@ -14,6 +14,7 @@ import { all, put, del, tx, getKv, setKv } from './db.js';
 import { config } from './config.js';
 import { env } from './env.js';
 import { resetSteps, stepRows, stepSummary } from './stepEta.js';
+import { hwKeyCanon } from './hardware.js';
 
 export interface EtaSample { id: string; key: string; hwKey: string; renderSec: number; downloadSec: number; loadSec: number; bytesDownloaded: number; bytesLoaded: number; units: number; at: number }
 export interface Eta { seconds: number | null; source: 'learned' | 'estimate'; samples: number; estimateSeconds: number | null; learnedSeconds: number | null; hwKey: string; includesFirstUse: boolean }
@@ -26,8 +27,9 @@ export const unitsOf = (i: Record<string, any>, image: boolean, passes = 1) => (
 export const isImageJob = (i: Record<string, any>, tool?: { gpuSecPerSec?: Record<string, number> }) => i.outKind === 'image' || (!i.videoPath && !(Number(i.duration) > 0) && !tool?.gpuSecPerSec?.['480p']);
 export const etaKey = (toolId: string, routeId: string, i: Record<string, any>, image: boolean) => `${toolId}|${routeId}|${resBucket(i, image)}|${durBucket(i, image)}`;
 
-let mem: EtaSample[] | null = null;
-const load = () => (mem ??= all<EtaSample>('eta_samples'));
+let mem: EtaSample[] | null = null; let canonSeen: ((k: string) => string) | null = null;
+/** Rows with old hardware keys of this computer read as its current key (hardware.ts hwKeyCanon: merge on read; the table is not rewritten). */
+const load = () => { mem ??= all<EtaSample>('eta_samples'); const c = hwKeyCanon(); if (c !== canonSeen) { canonSeen = c; for (const r of mem) r.hwKey = c(r.hwKey); } return mem; };
 export function addSample(s: Omit<EtaSample, 'id' | 'at'> & { id?: string; at?: number }) {
   const row: EtaSample = { id: s.id ?? `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, at: s.at ?? Date.now(), ...s } as EtaSample;
   const rows = load(); rows.push(row); put('eta_samples', row.id, row);
@@ -54,7 +56,7 @@ export function blend(estimateSeconds: number | null, key: string, hwKey: string
 type Rates = Record<string, { download: number[]; load: number[] }>;
 export function pushRate(hwKey: string, kind: 'download' | 'load', bps: number) { const r = getKv<Rates>('eta.rates', {}); const e = (r[hwKey] ??= { download: [], load: [] }); e[kind] = [...e[kind], bps].slice(-KEEP); setKv('eta.rates', r); }
 export function rateOf(hwKey: string, kind: 'download' | 'load'): { bps: number; source: 'learned' | 'estimate' } {
-  const xs = getKv<Rates>('eta.rates', {})[hwKey]?.[kind] ?? []; return xs.length ? { bps: median(xs), source: 'learned' } : { bps: kind === 'download' ? DEFAULT_DOWNLOAD_BPS : DEFAULT_LOAD_BPS, source: 'estimate' };
+  const c = hwKeyCanon(); const xs = Object.entries(getKv<Rates>('eta.rates', {})).filter(([k]) => c(k) === hwKey).flatMap(([, v]) => v?.[kind] ?? []).slice(-KEEP); return xs.length ? { bps: median(xs), source: 'learned' } : { bps: kind === 'download' ? DEFAULT_DOWNLOAD_BPS : DEFAULT_LOAD_BPS, source: 'estimate' };
 }
 export const learnEnabled = () => config.backend !== 'mock' || /^(1|true)$/i.test(env('ETA_LEARN_MOCK') ?? '');
 /** queue.ts settle(): one sample per done, non-demo job. stageTimes (jobs.ts) split download / load from render. */
