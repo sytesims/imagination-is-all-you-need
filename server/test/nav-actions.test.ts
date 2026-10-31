@@ -53,6 +53,8 @@ const JOBS: [string, { id: string; toolId: string; input?: any }, string][] = [
   ['audio Sound for a video (was: Music for a video)', { id: 'a5', toolId: 'soundtrack', input: { types: ['v2s'] } }, '/audio?workflow=soundtrack-sound&recreate=a5'],
   ['audio, no mode', { id: 'a6', toolId: 'audio', input: {} }, '/audio?workflow=music&recreate=a6'],
   ['3D Image to 3D (had no Recreate)', { id: 'd1', toolId: 'three-d', input: { imageUrl: '/files/x.png' } }, '/3d?workflow=image-to-3d&recreate=d1'],
+  ['3D Text to 3D', { id: 'dt', toolId: 'three-d', input: { types: ['text-to-3d'], prompt: 'A red toy car' } }, '/3d?workflow=text-to-3d&recreate=dt'],
+  ['3D Multi-view to 3D', { id: 'dm', toolId: 'three-d', input: { mode: 'multiview-to-3d' } }, '/3d?workflow=multiview-to-3d&recreate=dm'],
   ['3D turntable', { id: 'd2', toolId: 'three-d-turntable' }, '/3d?workflow=turntable&recreate=d2'],
   ['3D mockup', { id: 'd3', toolId: 'plan-a-shot' }, '/3d?workflow=plan-a-shot&recreate=d3'],
   ['other tool, from the tool list', { id: 'o1', toolId: 'reframe' }, '/video?workflow=reframe&recreate=o1'],
@@ -65,6 +67,8 @@ ok(`${JOBS.length} kinds of job: Recreate opens its tab and workflow`);
 assert.equal(workflowOpenOf({ toolId: 'voice', input: { types: ['lipsync'] } }), '/video?workflow=lip-sync&mode=lipsync', 'Canvas Lip Sync → Video (was: Audio Voiceover)');
 assert.equal(workflowOpenOf({ toolId: 'audio', input: { types: ['sfx'] } }), '/audio?workflow=sfx');
 assert.equal(workflowOpenOf({ toolId: 'three-d' }), '/3d?workflow=image-to-3d');
+assert.equal(workflowOpenOf({ toolId: 'three-d', input: { types: '["text-to-3d"]' } }), '/3d?workflow=text-to-3d');
+assert.equal(workflowOpenOf({ toolId: 'three-d', input: { mode: 'multiview-to-3d' } }), '/3d?workflow=multiview-to-3d');
 assert.equal(workflowOpenOf({ toolId: 'h3-video' }), '/video');
 assert.equal(jobWorkflowHref({ toolId: 'create-image', input: {} }), null);
 ok('Canvas Open in tool: the same workflow tabs');

@@ -127,7 +127,7 @@ export const MENU_FEATURE_ORDER: Record<Medium, string[] | null> = {
   /* Explore rework (2026-10-26): the real flows first: LTX-2.5 Create, Direct a Shot, Loop, Morph, Exploded view, New angle, then the swaps and Lip Sync */
   video: ['create', 'direct-a-shot', 'loop', 'morph', 'exploded-view', 'new-angle', 'motion-control', 'object-swap', 'lip-sync', 'extend'],
   audio: null,
-  '3d': ['plan-a-shot', 'image-to-3d', 'turntable'], // 3D workflows (server shared/threeD.ts); Direct a Shot first; roadmap rows stay in the picker (flagged Coming soon), not the menu
+  '3d': ['plan-a-shot', 'image-to-3d', 'text-to-3d', 'multiview-to-3d', 'turntable'], // 3D workflows (server shared/threeD.ts); Direct a Shot first; roadmap rows stay in the picker (flagged Coming soon), not the menu
 };
 /** The rows the Features column shows: the medium's order (unknown ids skipped), else the list as given; capped at MAX_FEATURES. */
 export function menuFeatureRows<T extends { key: string }>(medium: Medium, rows: T[]): T[] {

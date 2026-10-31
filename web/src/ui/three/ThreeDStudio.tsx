@@ -4,7 +4,7 @@
  * with the shared ModelMenu (Default badge), the model's own setting chips (WorkflowControls: Detail, Texture), Format, the Settings fold
  * (seed), Run on, the prompt peek, and Generate with price · time or the first problem (PF_SHORT) and the "Before you generate" list.
  *  - Workflows (server shared/threeD.ts): Image to 3D runs on tool three-d; Turntable video records an orbit in the browser (free);
- *    Text to 3D, Multi-view to 3D, Retexture and Rig are listed as coming soon.
+ *    Text to 3D and Multi-view to 3D use the same Tripo runner; Retexture and Rig remain coming soon.
  *  - Empty feed: "Made with these models", examples from Scenario's open dataset (CC BY 4.0), loaded from Hugging Face at runtime.
  *  - Links: ?fromJob=<image job>&out=<n> puts that image in the slot (Send to 3D); a 3D result's "Make a video" records its turntable.
  *  - Direct a Shot (tool id plan-a-shot, 2026-10-24, shared/previzTemplates.ts): the main area becomes the shared player (shared/PrevizPlayer.tsx); the bar holds the
@@ -44,7 +44,7 @@ import { isOpenWeights, displayNameOf } from '../../shared/OpenWeights';
 import { durationText, jobTiming } from '../../shared/jobTiming';
 import { etaText } from '../../shared/queueActivity';
 import { preflightProblems } from '../../../../server/src/shared/preflight';
-import { THREE_D_WORKFLOWS, THREE_D_CATEGORIES, THREE_D_PAGE, threeDRoute, threeDWorkflowById, currentThreeDWorkflow, threeDModel, normalizeSettings, DETAILS, TEXTURES, FACES, type ThreeDWorkflow, type ThreeDModel, type ShowcaseItem } from '../../../../server/src/shared/threeD';
+import { THREE_D_WORKFLOWS, THREE_D_CATEGORIES, THREE_D_PAGE, threeDRoute, threeDWorkflowById, currentThreeDWorkflow, threeDModel, normalizeSettings, DETAILS, TEXTURES, FACES, type ThreeDWorkflow, type ThreeDModel, type ShowcaseItem, THREE_D_VIEW_SLOTS, threeDSupportsMode, threeDViewIssue, threeDMode } from '../../../../server/src/shared/threeD';
 import { PF_SHORT } from '../../shared/DockGenerate';
 import { recipeFor } from '../../shared/threeDRecipe';
 import { PromptPeek, type PeekForm } from '../next/PromptPeek';
@@ -93,8 +93,6 @@ const useThreeD = () => { const [p, setP] = useState<Payload | null>(null);
 const TOOL = 'three-d';
 /** What a coming-soon workflow points to today (its bar's line, the button's workflow, an optional second way). */
 const SOON_TODAY: Record<string, { line: string; go: string; alt?: { label: string; href: string } }> = {
-  'text-to-3d': { line: 'Today: make a picture in Image, then turn it into a model with Image to 3D.', go: 'image-to-3d', alt: { label: 'Make a picture in Image', href: IMAGE_PAGE } },
-  'multiview-to-3d': { line: 'Today, Image to 3D makes a model from one picture: your front view works best.', go: 'image-to-3d' },
   retexture: { line: 'Today, make a new model with Image to 3D from a picture that has the look you want.', go: 'image-to-3d' },
   rig: { line: 'For people it works today, free: open one of your 3D models and press Rig. Other shapes are coming.', go: 'image-to-3d' },
   default: { line: 'Image to 3D works today: one picture in, a textured model out.', go: 'image-to-3d' },
@@ -107,18 +105,25 @@ const fileFromUrl = async (url: string, name = 'image.png') => { const r = await
 
 export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: ToolInfo[] }) {
   const toast = useToast(); const search = useSearch(); const data = useThreeD(); const bill = useBilling();
-  const wf = currentThreeDWorkflow(search); const wfRow = data?.workflows.find((w) => w.id === wf.id); const imgWf = THREE_D_WORKFLOWS[0];
+  const wf = currentThreeDWorkflow(search); const wfRow = data?.workflows.find((w) => w.id === wf.id); const generation = wf.toolId === TOOL && wf.status === 'ready'; const textMode = wf.id === 'text-to-3d'; const multiMode = wf.id === 'multiview-to-3d';
   useToolModels(TOOL);
   // ---- model + settings (per workflow draft, like Image's) ----
-  const def = data?.workflows.find((w) => w.id === 'image-to-3d')?.defaults ?? null; const defId = def?.active?.defaultProvider ?? def?.hosted ?? 'cloud-tripo-31';
-  const [draft, setDraftS] = useState(() => loadDraft('3d:image-to-3d') ?? { prompt: '', provider: '', vals: {} as Record<string, string> });
-  const setDraft = (f: (d: typeof draft) => typeof draft) => setDraftS((d) => { const n = f(d); saveDraft('3d:image-to-3d', n); return n; });
-  const provider = draft.provider && tool.providers.some((p) => p.id === draft.provider) ? draft.provider : defId; const model = threeDModel(provider);
+  const def = wfRow?.defaults ?? null; const providers = tool.providers.filter(p => threeDSupportsMode(p.id, wf.mode ?? 'image-to-3d'));
+  const defId = [def?.active?.defaultProvider, def?.hosted, 'cloud-tripo-31', providers[0]?.id].find(id => providers.some(p => p.id === id)) ?? '';
+  const [drafts, setDrafts] = useState<Record<string, ReturnType<typeof loadDraft>>>({});
+  const draft = drafts[wf.id] ?? loadDraft(`3d:${wf.id}`) ?? { prompt: '', provider: '', vals: {} as Record<string, string> };
+  const setDraft = (f: (d: typeof draft) => typeof draft) => setDrafts(ds => { const n = f(ds[wf.id] ?? loadDraft(`3d:${wf.id}`) ?? { prompt: '', provider: '', vals: {} }); saveDraft(`3d:${wf.id}`, n); return { ...ds, [wf.id]: n }; });
+  const provider = draft.provider && providers.some(p => p.id === draft.provider) ? draft.provider : defId; const model = threeDModel(provider);
   const set = normalizeSettings(provider, draft.vals); const seed = draft.vals.seed ?? '';
-  const recipe = useMemo(() => recipeFor(model, imgWf), [model?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-  const [img, setImg] = useState<WfSlotFile | null>(null); const [imgSize, setImgSize] = useState<{ width: number; height: number } | null>(null); const [busyEdge, setBusyEdge] = useState<number | null>(null);
-  useEffect(() => { setImgSize(null); setBusyEdge(null); if (!img) return; let on = true; const i = new Image(); i.onload = () => { if (on) setImgSize({ width: i.naturalWidth, height: i.naturalHeight }); }; i.src = img.url; void edgeBusyness(img.url).then((b) => { if (on) setBusyEdge(b); }); return () => { on = false; }; }, [img?.url]); // eslint-disable-line react-hooks/exhaustive-deps
-  const takeImage = (f: File | null) => { if (!f) { setImg(null); return; } if (!fileFits('image', f)) { toast(wrongTypeText(f.name, ['image']), 'error'); return; } setImg({ file: f, url: URL.createObjectURL(f) }); };
+  const recipe = useMemo(() => recipeFor(model, wf), [model?.id, wf.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [files, setFiles] = useState<Record<string, WfSlotFile | null>>({}); const img = files.image ?? null;
+  const activeFiles = Object.fromEntries(recipe.slots.map(s => [s.name, files[s.name] ?? null]));
+  const [sizes, setSizes] = useState<Record<string, { width: number; height: number }>>({}); const imgSize = sizes.image ?? null; const [busyEdge, setBusyEdge] = useState<number | null>(null);
+  useEffect(() => { setSizes({}); let on = true; for (const [name, f] of Object.entries(files)) { if (!f) continue; const i = new Image(); i.onload = () => { if (on) setSizes(v => ({ ...v, [name]: { width: i.naturalWidth, height: i.naturalHeight } })); }; i.src = f.url; } return () => { on = false; }; }, [files]);
+  useEffect(() => { setBusyEdge(null); if (!img || multiMode || textMode) return; let on = true; void edgeBusyness(img.url).then(b => { if (on) setBusyEdge(b); }); return () => { on = false; }; }, [img?.url, multiMode, textMode]);
+  const takeFile = (slot: string, f: File | null) => { if (f && !fileFits('image', f)) { toast(wrongTypeText(f.name, ['image']), 'error'); return; } setFiles(v => ({ ...v, [slot]: f ? { file: f, url: URL.createObjectURL(f) } : null })); };
+  const takeImage = (f: File | null) => takeFile('image', f);
+  const pickedSlot = useRef('image');
   // Models page "Open in 3D": ?model=<3D model id> picks that model once (Image to 3D's draft keeps it)
   const pickedModel = useRef(''); useEffect(() => { const k = new URLSearchParams(search).get('model'); if (!k || pickedModel.current === k || !tool.providers.some((p) => p.id === k)) return; pickedModel.current = k; setDraft((d) => ({ ...d, provider: k })); }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
   // Send to 3D: ?fromJob=<image job>&out=<n> fills the slot once
@@ -128,7 +133,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
   /* Recreate (2026-10-27): ?recreate=<3D job> (Assets, the viewer, any feed: shared/workflowLinks recreateHref) puts that job's picture, model and
      settings back in Image to 3D, with a new seed; nothing runs until Generate. Read on mount and on every in-app navigation (popstate), so a
      Recreate of the same job twice, or from this page's own viewer, loads again. */
-  const takeRef = useRef(takeImage); takeRef.current = takeImage; const draftRef = useRef(setDraft); draftRef.current = setDraft;
+  const takeRef = useRef(takeFile); takeRef.current = takeFile; const draftRef = useRef(setDraft); draftRef.current = setDraft;
   useEffect(() => { let seq = 0;
     const run = () => { const q = new URLSearchParams(location.search); const rc = q.get('recreate'); if (!rc || location.pathname.replace(/\/+$/, '') !== THREE_D_PAGE) return;
       q.delete('recreate'); history.replaceState(history.state, '', location.pathname + (q.toString() ? `?${q}` : '') + location.hash); const my = ++seq;
@@ -137,12 +142,18 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
         if (my !== seq) return; if (j.toolId !== TOOL) return; /* a turntable or a mockup: its workflow is open, there is nothing to fill */
         const form: Record<string, string> = pr?.form ?? {}; const inp: any = j.input ?? {}; const prov = String(form.provider ?? (j as any).provider ?? '');
         const v: Record<string, string> = {}; for (const k of ['detail', 'texture', 'faces'] as const) { const x = form[k] ?? inp[k]; if (x != null && x !== '') v[k] = String(x); }
-        draftRef.current((d) => ({ ...d, provider: prov && tool.providers.some((p) => p.id === prov) ? prov : d.provider, vals: { ...d.vals, ...v, seed: '' } }));
-        const url: string | undefined = pr?.files?.image?.[0] ?? inp.imageUrl;
-        if (!url) { takeRef.current(null); toast('Same settings loaded. The picture of that run is no longer on disk: add it again before you generate.', 'warn'); return; }
-        const f = await fileFromUrl(url, url.split('/').pop() || 'image.png').catch(() => null); if (my !== seq) return;
-        if (!f) { takeRef.current(null); toast('Same settings loaded. The picture of that run is no longer on disk: add it again before you generate.', 'warn'); return; }
-        takeRef.current(f); toast('Same picture and settings loaded, with a new seed.', 'info');
+        draftRef.current((d) => ({ ...d, prompt: String(form.prompt ?? inp.prompt ?? ''), provider: prov && tool.providers.some((p) => p.id === prov) ? prov : d.provider, vals: { ...d.vals, ...v, seed: '' } }));
+        setFiles({}); const mode = threeDMode(inp);
+        if (mode === 'text-to-3d') { toast('Same prompt and settings loaded, with a new seed.', 'info'); return; }
+        const slots = mode === 'multiview-to-3d' ? THREE_D_VIEW_SLOTS : [{ name: 'image', label: 'Image' }];
+        let missing = false;
+        for (const slot of slots) {
+          const url: string | undefined = pr?.files?.[slot.name]?.[0] ?? inp[`${slot.name}Url`];
+          if (!url) { if (slot.name === 'image') missing = true; continue; }
+          const f = await fileFromUrl(url, url.split('/').pop() || `${slot.name}.png`).catch(() => null); if (my !== seq) return;
+          if (!f) missing = true; else takeRef.current(slot.name, f);
+        }
+        toast(missing ? 'Settings loaded. Some pictures are no longer on disk: add them again before you generate.' : 'Same pictures and settings loaded, with a new seed.', missing ? 'warn' : 'info');
       } catch (e) { if (my === seq) toast(`Couldn’t load that result: ${(e as Error).message}`, 'error'); } })(); };
     run(); addEventListener('popstate', run); return () => removeEventListener('popstate', run); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // ---- jobs (three-d + turntables) ----
@@ -180,8 +191,8 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
   /* the feed's kind filter (All · Models · Mockups · Renders; the default follows the workflow: feed3d.ts) */
   const { kinds, setKinds, counts, shownJobs } = useFeedKinds(results, wf.id);
   // ---- quote (= charge) ----
-  const qParams = { types: 'image-to-3d', detail: set.detail, texture: set.texture, faces: set.faces, ...(img ? { image: '1' } : {}) };
-  const q = useWorkflowQuote(wf.id === 'image-to-3d' ? TOOL : null, provider, qParams);
+  const qParams = { types: wf.mode ?? 'image-to-3d', detail: set.detail, texture: set.texture, faces: set.faces, ...Object.fromEntries(Object.entries(activeFiles).filter(([, f]) => !!f).map(([name]) => [name, '1'])) };
+  const q = useWorkflowQuote(generation ? TOOL : null, provider, qParams);
   const tm = modelOfEngine(TOOL, provider); const ro = runOnText(tm, useRunOn(TOOL, tm?.key).runOn, q);
   const credits: number | null = q ? shownCredits(q) : null; const unpricedWhy = unpricedReason(q); const gate = !!q && q.needsKey === true && q.runnable === false;
   const blockWhy = !gate && !unpricedWhy && q?.runnable === false ? String(runBlock(q) ?? q?.reason ?? '') : '';
@@ -189,7 +200,8 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
   const modelName = (tm ? shownName(tm) : null) ?? model?.name ?? provider;
   const typSec = model?.typicalSec ?? 90; /* estimated: no provider publishes a 3D run time */
   // ---- pre-flight: inputs → model → setup → money (shared list and words) ----
-  const pf = preflightProblems({ freeLocal: hasFreeLocal(TOOL), slots: [{ name: 'image', label: 'Image', required: true, filled: !!img, missing: 'Add an image', width: imgSize?.width ?? null, height: imgSize?.height ?? null }], minSide: 128, quote: q, modelName });
+  const viewIssue = multiMode ? threeDViewIssue(Object.keys(activeFiles).filter(k => !!activeFiles[k])) : null;
+  const pf = preflightProblems({ freeLocal: hasFreeLocal(TOOL), slots: recipe.slots.map(s => ({ name: s.name, label: s.label, required: s.required || (s.name === 'image_left' && !Object.keys(activeFiles).some(k => k !== 'image' && activeFiles[k])), filled: !!activeFiles[s.name], missing: s.missing, width: sizes[s.name]?.width ?? null, height: sizes[s.name]?.height ?? null })), prompt: textMode && !draft.prompt.trim() ? { missing: 'Write a prompt' } : null, minSide: 128, quote: q, modelName });
   const [pfOpen, setPfOpen] = useState(false); const genRef = useRef<HTMLButtonElement>(null); const dock = useRef<HTMLDivElement>(null); const prowRef = useRef<HTMLDivElement>(null);
   type Note = { key: string; stage: string; node: ReactNode; hard?: boolean };
   const notes: Note[] = pf.map((p, i) => ({ key: `pf-${i}`, stage: p.stage[0].toUpperCase() + p.stage.slice(1), hard: true, node: <span data-testid={`t3-pf-${p.code}`}>{p.message}</span> }));
@@ -198,13 +210,14 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
   if (img && busyEdge != null && busyEdge > 0.35) notes.push({ key: 'bg', stage: 'Inputs', node: <span data-testid="t3-bg-note">The background looks busy. A plain one makes a cleaner model: <button type="button" className="fd-link" onClick={() => void removeBg()}>Remove background</button></span> });
   const blocking = notes.some((n) => n.hard);
   useEffect(() => { if (pfOpen && !notes.length) setPfOpen(false); });
-  const genWord = !img ? 'Add an image' : gate ? (q?.setup?.action === 'add_key' && q.setup.actionText ? String(q.setup.actionText) : (q?.keyOwner ? addKeyText(q) : 'Add a key first')) : pf[0] ? (PF_SHORT[pf[0].code]?.(pf[0]) ?? pf[0].message) : unpricedWhy ? 'Price unavailable' : blockWhy ? 'Pick another model' : '';
+  const inputMissing = textMode ? (!draft.prompt.trim() ? 'Write a prompt' : '') : multiMode ? viewIssue ?? '' : !img ? 'Add an image' : '';
+  const genWord = inputMissing || (gate ? (q?.setup?.action === 'add_key' && q.setup.actionText ? String(q.setup.actionText) : (q?.keyOwner ? addKeyText(q) : 'Add a key first')) : pf[0] ? (PF_SHORT[pf[0].code]?.(pf[0]) ?? pf[0].message) : unpricedWhy ? 'Price unavailable' : blockWhy ? 'Pick another model' : '');
   /* no picture yet, nothing else wrong: the button shows what this model costs as set (the same quote: a picture doesn't change it), with "add an image" under it */
-  const priceFirst = !img && !gate && !unpricedWhy && !blockWhy && credits != null && pf.every((p) => p.stage === 'inputs');
+  const priceFirst = !!inputMissing && !gate && !unpricedWhy && !blockWhy && credits != null && pf.every((p) => p.stage === 'inputs');
   // ---- run ----
   const [busy, setBusy] = useState(false);
-  const generate = async () => { if (!img) return; setBusy(true); setPfOpen(false);
-    const fd = new FormData(); fd.append('types', '["image-to-3d"]'); fd.append('provider', provider); for (const k of ['detail', 'texture', 'faces'] as const) fd.append(k, set[k]); fd.append('format', 'glb'); if (seed) fd.append('seed', seed); fd.append('image', img.file, img.file.name || 'image.png');
+  const generate = async () => { if (inputMissing || blocking) return; setBusy(true); setPfOpen(false);
+    const fd = new FormData(); fd.append('types', JSON.stringify([wf.mode])); fd.append('provider', provider); for (const k of ['detail', 'texture', 'faces'] as const) fd.append(k, set[k]); fd.append('format', 'glb'); if (seed) fd.append('seed', seed); if (textMode) fd.append('prompt', draft.prompt.trim()); for (const [name, file] of Object.entries(activeFiles)) if (file) fd.append(name, file.file, file.file.name || `${name}.png`);
     try { const r = await createJob(TOOL, fd, { showsIssues: true }); toast(r.cost ? `Started: ${modelName}` : `Started: ${modelName}`, 'info'); await refresh(); }
     catch (e) { const iss = issuesOf(e); toast(iss[0]?.message ?? (e as Error).message, 'error'); } finally { setBusy(false); } };
   // Remove background first (the existing Remove Background tool; its own price, shown on the button)
@@ -219,7 +232,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
   // ---- the model menu (shared ModelMenu, Default badge) ----
   const chipsEl = useRef<HTMLDivElement>(null); const folded = useChipFit(chipsEl); const fo = (k: string) => folded.includes(k);
   const [pop, setPop] = useState(() => (wantsPicker() ? 'wf' : '')); usePickerParam((o) => setPop(o ? 'wf' : '')); const mRef = useRef<HTMLButtonElement>(null); const wfRef = useRef<HTMLButtonElement>(null); const setRef = useRef<HTMLButtonElement>(null); const fileIn = useRef<HTMLInputElement>(null);
-  const items: MenuItem[] = tool.providers.map((x) => { const m = threeDModel(x.id); return { id: x.id, name: m?.name ?? x.name, open: x.kind === 'open-weights' || isOpenWeights(x, null), tag: m?.priceNote, off: m?.download ? `it isn’t added yet (${(m.download.bytes / 1e9).toFixed(1)} GB of files).` : null, p: x }; });
+  const items: MenuItem[] = providers.map((x) => { const m = threeDModel(x.id); return { id: x.id, name: m?.name ?? x.name, open: x.kind === 'open-weights' || isOpenWeights(x, null), tag: textMode ? undefined : m?.priceNote, off: m?.download ? `it isn’t added yet (${(m.download.bytes / 1e9).toFixed(1)} GB of files).` : null, p: x }; });
   // ---- viewer ----
   const done3d = results.filter((j) => j.status === 'done' && jobIs3d(j));
   /* the open item is ?view=<job id> or ?view=ex-<example id> (the shared useFeedViewer, like Image and Video): Back closes it, a reload reopens it */
@@ -315,7 +328,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
   const planSummaries = { camera: flown ? `${flown.name} · flown` : `${PREVIZ_MOVES.find((m) => m.id === shot.move)?.label} · ${PREVIZ_SPEEDS.find((x) => x.id === shot.speed)?.label}`, frame: `${effShot.aspect} · ${effShot.seconds} s${effShot.fps === 24 ? '' :` · ${effShot.fps} fps`}` /* 24 fps is the default: the chip says fps only when it changes */,
     colour: colourOf(shot.colour).label, record: recMode === 'clay-depth' ? 'Clay + Depth' : `${PREVIZ_PASSES.find((p) => p.id === pvView)?.label} style` };
   const pick = (id: string) => navigate(id === 'image-to-3d' ? THREE_D_PAGE : threeDRoute(id));
-  const peekForm: PeekForm | null = isTT ? null : { toolId: TOOL, fields: { types: '["image-to-3d"]', provider, detail: set.detail, texture: set.texture, faces: set.faces, format: 'glb', ...(seed ? { seed } : {}) }, files: img ? { image: 1 } : {}, photo: imgSize };
+  const peekForm: PeekForm | null = isTT ? null : { toolId: TOOL, fields: { types: JSON.stringify([wf.mode]), ...(textMode ? { prompt: draft.prompt.trim() } : {}), provider, detail: set.detail, texture: set.texture, faces: set.faces, format: 'glb', ...(seed ? { seed } : {}) }, files: Object.fromEntries(Object.entries(activeFiles).filter(([, f]) => !!f).map(([name]) => [name, 1])), photo: textMode ? null : imgSize };
   const showcase = data?.showcase;
   /* the scene picker (shared/SceneGrid.tsx): our presets with their thumbnails drawn in the browser, your own scene, and room for the 3D sets */
   const thumb = useSceneThumbs(); const sceneAnchor = useRef<HTMLElement | null>(null);
@@ -377,12 +390,12 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
         {isPS && takeReady && <p className="ps-finish-note" role="status" data-testid="ps-take-ready"><b>{takeReady.name} saved.</b> Take data, not a video yet. {takeReady.performance ? 'Use its follow camera below, or Shoot it for another angle.' : 'Use this take below to make a free mockup MP4.'}</p>}
         {isPS && saveError && <div className="ps-save-error" role="alert" data-testid="ps-save-error"><span><b>Mockup not saved.</b> {saveError} Your takes are unchanged. Retry saves the original captured mockup; frames stay here until you leave or record again.</span><button type="button" className="fd-link" disabled={psBusy || !!playerBlock} {...tip(playerBlock || 'Save the completed frames again. Free; no provider run.')} onClick={() => void keepMockup()} data-testid="ps-retry-save">Retry save · free</button></div>}
         <div ref={prowRef} className="ic-prow" data-testid="t3-prow">
-          {!isPS && !isSoon && <div className="ic-lead" data-testid="t3-lead">
+          {!isPS && !isSoon && !textMode && <div className="ic-lead" data-testid="t3-lead">
             {isPS ? null
             : isTT ? <span className="wf-strip wf-inputs"><button ref={ttRef} type="button" className={`wf-slot${ttJob ? ' full' : ' req'}`} data-testid="t3-tt-slot" aria-haspopup="listbox" aria-expanded={pop === 'tt'} onClick={() => setPop(pop === 'tt' ? '' : 'tt')} {...tip(ttJob ? 'Pick another 3D result' : 'Make a 3D model first')} disabled={!done3d.length}>
                 <span className="wf-slot-hit">{ttJob && posterOf3d(ttJob) ? <img src={posterOf3d(ttJob)!} alt="" /> : <CubeIcon size={14} />}{ttJob ? <b>Model</b> : <SlotLabel text="No model yet" />}</span></button></span>
-              : <WorkflowInputs recipe={recipe} files={{ image: img }} setFile={(_s, f) => takeImage(f)} onPick={() => fileIn.current?.click()} picking={null} onUrl={(_s, u) => { void fileFromUrl(u).then(takeImage).catch((e) => toast((e as Error).message, 'error')); }} flash={null} choose={null} onChoose={() => 0} onChooseCancel={() => 0} disabled={busy || rbBusy}
-                surface={img ? <button type="button" className="ic-chip t3-rmbg" data-testid="t3-remove-bg" disabled={rbBusy} onClick={() => void removeBg()} {...tip(`Cut out the subject first with Remove Background${rbQ ? ` · ${rbQ.demo ? 'sample here' : shownCredits(rbQ) === 0 ? 'free' : `≈ $${((rbQ.credits ?? 0) / 100).toFixed(2)}`}` : ''}`)}>{rbBusy ? <i className="as-spin" aria-hidden /> : null}Remove background</button> : null} />}
+              : <WorkflowInputs recipe={recipe} files={activeFiles} setFile={takeFile} onPick={slot => { pickedSlot.current = slot; fileIn.current?.click(); }} picking={null} onUrl={(slot, u) => { void fileFromUrl(u).then(f => takeFile(slot, f)).catch((e) => toast((e as Error).message, 'error')); }} flash={null} choose={null} onChoose={() => 0} onChooseCancel={() => 0} disabled={busy || rbBusy}
+                surface={img && !multiMode && !textMode ? <button type="button" className="ic-chip t3-rmbg" data-testid="t3-remove-bg" disabled={rbBusy} onClick={() => void removeBg()} {...tip(`Cut out the subject first with Remove Background${rbQ ? ` · ${rbQ.demo ? 'sample here' : shownCredits(rbQ) === 0 ? 'free' : `≈ $${((rbQ.credits ?? 0) / 100).toFixed(2)}`}` : ''}`)}>{rbBusy ? <i className="as-spin" aria-hidden /> : null}Remove background</button> : null} />}
           </div>}
           {isPS ? (step === 'stage' ? <textarea className="ic-prompt prompt-field ps-note" rows={1} aria-label="Describe your shot" data-testid="ps-note" maxLength={600} placeholder={imported ? 'Describe your shot (kept with the video)' : `Describe your shot: ${tplNow.tagline.toLowerCase()}…`} value={shot.note} readOnly={psBusy} onChange={(e) => setShot({ note: e.target.value })} {...tip('Kept with your shot. Soon an assistant will set the scene up from this.')} />
             : step === 'mockup' ? <div ref={setSlotMain} className="ps-main" data-testid="ps-main">{imported && <p className="ps-line">Your scene moves its own camera. Play it here, then record a free mockup.</p>}</div>
@@ -393,13 +406,14 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
                 <button type="button" className="fd-link" data-testid="ps-use-last" onClick={() => setPlanPick(newestPlan.id)} {...tip('Render your newest mockup instead, from another set')}>Use your last mockup ({(newestPlan.input as any)?.previz?.presetName ?? 'Shot'})</button></p>
               : <p className="ps-line" data-testid="ps-render-empty">Record a mockup first. It’s free and takes seconds; then it turns into real video here.</p>}</div>)
           : isSoon && soonAlt ? <p className="ic-noprompt t3-soon" data-testid="t3-soon"><b>{wf.name} is coming soon.</b> {soonAlt.line}{soonAlt.alt && <>{' '}<a className="fd-link" href={soonAlt.alt.href} data-testid="t3-soon-alt" onClick={(e) => { if (e.metaKey || e.ctrlKey) return; e.preventDefault(); navigate(soonAlt.alt!.href); }}>{soonAlt.alt.label}</a></>}</p>
-          : <p className="ic-noprompt" data-testid="t3-noprompt">{isTT ? (ttJob ? 'Your browser records one orbit of the model and keeps it as a video. Free, nothing goes to a provider.' : 'Make a 3D model first, then record its turntable here.') : 'No prompt needed: Image to 3D works from your picture and the settings below.'}</p>}
+          : textMode ? <textarea className="ic-prompt prompt-field" rows={2} aria-label="Describe your model" data-testid="t3-prompt" placeholder={recipe.prompt.placeholder} value={draft.prompt} readOnly={busy} onChange={e => setDraft(d => ({ ...d, prompt: e.target.value }))} />
+          : <p className="ic-noprompt" data-testid="t3-noprompt">{isTT ? (ttJob ? 'Your browser records one orbit of the model and keeps it as a video. Free, nothing goes to a provider.' : 'Make a 3D model first, then record its turntable here.') : multiMode ? 'Add a front view and at least one side or back view of the same object. Different image sizes are fine.' : 'No prompt needed: Image to 3D works from your picture and the settings below.'}</p>}
           <input ref={htmlIn} type="file" accept=".html,.htm,text/html" hidden data-testid="ps-html-file" onChange={(e) => { const f = e.target.files?.[0] ?? null; e.currentTarget.value = ''; void takeHtml(f); }} />
-          <input ref={fileIn} type="file" accept={IMAGE_ACCEPT} hidden data-picker-title="Choose an image to turn into 3D" data-picker-limits="One image · PNG, JPG or WEBP · one clear object works best" data-testid="t3-file" onChange={(e) => { const f = e.target.files?.[0]; e.currentTarget.value = ''; if (f) takeImage(f); }} />
+          <input ref={fileIn} type="file" accept={IMAGE_ACCEPT} hidden data-picker-title={multiMode ? "Choose a view of the object" : "Choose an image to turn into 3D"} data-picker-limits="PNG, JPG or WEBP · one clear object works best" data-testid="t3-file" onChange={(e) => { const f = e.target.files?.[0]; e.currentTarget.value = ''; if (f) takeFile(pickedSlot.current, f); }} />
         </div>
         <div className="ic-chiprow"><div ref={chipsEl} className="ic-chips">
           <span className="ic-fixed" data-testid="t3-chips-fixed">{chip}
-            {!noModel && <button ref={mRef} type="button" className={`ic-chip ic-model ${pop === 'model' ? 'on' : ''}`} data-testid="t3-model" aria-label={`Model: ${modelName}. Change model`} aria-haspopup="listbox" aria-expanded={pop === 'model'} {...tip(pop === 'model' ? null : `${modelName}${model?.priceNote ? ` · ${model.priceNote}` : ''}`)} onClick={() => setPop(pop === 'model' ? '' : 'model')}>
+            {!noModel && <button ref={mRef} type="button" className={`ic-chip ic-model ${pop === 'model' ? 'on' : ''}`} data-testid="t3-model" aria-label={`Model: ${modelName}. Change model`} aria-haspopup="listbox" aria-expanded={pop === 'model'} {...tip(pop === 'model' ? null : `${modelName}${!textMode && model?.priceNote ? ` · ${model.priceNote}` : ''}`)} onClick={() => setPop(pop === 'model' ? '' : 'model')}>
               <MakerTile className="ic-dot" medium="3d" maker={tm?.maker ?? model?.maker} makerName={tm?.makerName ?? model?.makerName} fallback={modelName} /><span className="ic-mname">{displayNameOf(tm as any, null) ?? modelName}</span><svg className="ic-caret" width="16" height="16" viewBox="0 0 16 16" aria-hidden><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></button>}</span>
           {isPS && step === 'stage' && <>
             {!imported && <button ref={camRef} type="button" className={`ic-chip ps-chip${pop === 'camera' ? ' on' : ''}`} data-testid="ps-camera" aria-haspopup="dialog" aria-expanded={pop === 'camera'} onClick={() => setPop(pop === 'camera' ? '' : 'camera')} {...tip(pop === 'camera' ? null : 'The camera move and its speed')}><CameraMoveIcon /><b>{planSummaries.camera}</b></button>}
@@ -409,7 +423,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
             <span className="ic-chip ic-static ps-fact" data-testid="ps-render-cost">Your computer or cloud</span>
             <button type="button" className="ic-chip ps-chip" data-testid="ps-back-mockup" onClick={() => setStep('mockup')} disabled={psBusy} {...tip(lastPlan ? 'Back to Mockup: pick another take and record again' : 'Back to Mockup: record this shot')}>{lastPlan ? 'Record another' : 'Record one'}</button></>}
           {isPS && <span ref={setSlotChips} className="ps-slot-chips" data-testid="ps-slot-chips" />}
-          {!noModel && <WorkflowControls recipe={recipe} files={{ image: img }} vals={{ detail: set.detail, texture: set.texture, faces: set.faces }} setVal={(k, v) => setDraft((d) => ({ ...d, vals: { ...d.vals, [k]: v } }))} provider={provider} watch={dock} optPrice={optPrice} />}
+          {!noModel && <WorkflowControls recipe={recipe} files={activeFiles} vals={{ detail: set.detail, texture: set.texture, faces: set.faces }} setVal={(k, v) => setDraft((d) => ({ ...d, vals: { ...d.vals, [k]: v } }))} provider={provider} watch={dock} optPrice={optPrice} />}
           {!noModel && <span className="ic-chip ic-static" data-fold="fmt" data-testid="t3-format" {...tip('The file you get: GLB (glTF binary), opens in Blender, game engines and most 3D viewers')}><CubeIcon size={14} />GLB</span>}
           {!noModel && model?.symmetry && <span className="ic-chip ic-static" data-testid="t3-symmetry">Symmetry: Auto</span>}
           {isTT && <span className="ic-chip ic-static" data-testid="t3-tt-len" {...tip('One full orbit')}><OrbitIcon size={14} />6 s orbit</span>}
@@ -417,7 +431,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
           {!noModel && <RowMore watch={dock} testId="t3-row-over" />}
         </div>
           {!noModel && tm && <RunOnChip compact toolId={TOOL} model={tm} engine={provider} quote={q} testId="t3-run-on" watch={dock} />}
-          {!noModel && <PromptPeek form={peekForm} place={ro.sub ? `${ro.main} (${ro.sub})` : ro.main} photos={img ? ['Image'] : []} watch={dock} keep={prowRef} />}
+          {!noModel && <PromptPeek form={peekForm} place={ro.sub ? `${ro.main} (${ro.sub})` : ro.main} photos={recipe.slots.filter(s => !!activeFiles[s.name]).map(s => s.label)} watch={dock} keep={prowRef} />}
         </div>
       </div>
       {isPS ? (takeReady ? <button type="button" className="ic-gen gen-btn gen-dock btn btn-primary ps-use-take" data-testid="pv-use-take" disabled={psBusy} aria-label={`Use ${takeReady.name}${takeReady.performance ? ' with its follow camera' : ''} in Mockup`} onClick={() => player.current?.useTake()} {...tip(`Finish live controls and select ${takeReady.name}. Nothing records until Record mockup.`)}><span className="gen-l">Use this take</span><small className="t3-time">Next: Mockup · free</small></button>
@@ -439,9 +453,9 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
         : setupNeeded(tm, q, provider) && !pf.some((p) => p.stage === 'inputs') ? <SetupGenerate toolId={TOOL} model={tm} engine={provider} quote={q} className="ic-gen gen-btn gen-dock btn btn-primary" testId="t3-generate" priceTestId="t3-price" />
         : <button ref={genRef} type="button" className={`ic-gen gen-btn gen-dock btn btn-primary${blocking ? ' gen-wait' : ''}`} data-testid="t3-generate" data-problems={notes.length || undefined} disabled={busy} aria-busy={busy || undefined} aria-disabled={blocking || undefined}
           aria-haspopup={notes.length ? 'dialog' : undefined} aria-expanded={notes.length ? pfOpen : undefined} title={pfOpen ? undefined : (genWord || priceTitle(q, bill, { demo: isDemo, free: isFree, credits }) || undefined)}
-          onClick={(e) => { if (blocking) { if (!img) nudgeMissing(e.currentTarget); setPfOpen((o) => !o); return; } void generate(); }}>
+          onClick={(e) => { if (blocking) { if (inputMissing) nudgeMissing(e.currentTarget); setPfOpen((o) => !o); return; } void generate(); }}>
           <span className="gen-l">{busy ? <i className="as-spin" aria-hidden /> : null}Generate</span>
-          {priceFirst ? <span className="t3-pt"><GenPrice compact testId="t3-price" q={q} demo={isDemo} free={isFree} credits={credits} /><small className="t3-time t3-need" data-testid="t3-time">add an image</small></span>
+          {priceFirst ? <span className="t3-pt"><GenPrice compact testId="t3-price" q={q} demo={isDemo} free={isFree} credits={credits} /><small className="t3-time t3-need" data-testid="t3-time">{inputMissing.toLowerCase()}</small></span>
             : genWord ? <span className="gen-price gen-missing" data-testid="t3-price">{genWord}</span>
             : <span className="t3-pt"><GenPrice compact testId="t3-price" q={q} demo={isDemo} free={isFree} credits={unpricedWhy || blockWhy ? null : credits} /><small className="t3-time" data-testid="t3-time">{etaText(typSec)}</small></span>}</button>}
       </div></div>
