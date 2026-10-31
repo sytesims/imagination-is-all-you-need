@@ -58,8 +58,8 @@ OVERRIDES = {
  'ema_vae_fp16.safetensors': [(HF+'numz/SeedVR2_comfyUI/resolve/main/ema_vae_fp16.safetensors', 'SEEDVR2')],
  # Upscale (2026-10-22): SeedVR2 3B fp16 + VAE for the native-node image graph (Comfy-Org/SeedVR2), 4x Nomos2 DAT2 (Phhofm, GitHub release). Sizes and sha256 of the files on disk.
  'seedvr2_3b_fp16.safetensors': [(HF+'Comfy-Org/SeedVR2/resolve/main/diffusion_models/seedvr2_3b_fp16.safetensors', 'diffusion_models', {'size': 6784268336, 'sha256': '98669fd2c06df5eca88baf68cd5c478775c8e61fc110e598c52b350145ea2660'})],
- # SeedVR2 3B int8 ConvRot (native video upscale graph, 2026-10-31): the URL the docs.comfy.org SeedVR2 tutorial lists (tutorials/utility/seedvr2); not probed here, so no size yet.
- 'seedvr2_3b_int8_convrot.safetensors': [(HF+'Comfy-Org/SeedVR2/resolve/main/diffusion_models/seedvr2_3b_int8_convrot.safetensors', 'diffusion_models', {'head_status': 'not probed (URL from the docs.comfy.org SeedVR2 tutorial, 2026-10-31; run npm run models:manifest for its size)'})],
+ # SeedVR2 3B int8 ConvRot (native video upscale graph, 2026-10-31): the URL the docs.comfy.org SeedVR2 tutorial lists (tutorials/utility/seedvr2); size and sha256 from the HF tree API (LFS oid).
+ 'seedvr2_3b_int8_convrot.safetensors': [(HF+'Comfy-Org/SeedVR2/resolve/main/diffusion_models/seedvr2_3b_int8_convrot.safetensors', 'diffusion_models', {'size': 3458259704, 'sha256': 'c3dec8bcc5916843a8a858572970597462e1f2dc598d6dfd818f6cd40f53a157', 'head_status': 'ok (size and sha256 from the HF tree API, 2026-10-31; not probed)'})],
  'seedvr2_ema_vae_fp16.safetensors': [(HF+'Comfy-Org/SeedVR2/resolve/main/vae/seedvr2_ema_vae_fp16.safetensors', 'vae', {'size': 501324814, 'sha256': '20678548f420d98d26f11442d3528f8b8c94e57ee046ef93dbb7633da8612ca1'})],
  '4xNomos2_hq_dat2.pth': [('https://github.com/Phhofm/models/releases/download/4xNomos2_hq_dat2/4xNomos2_hq_dat2.pth', 'upscale_models', {'size': 140196334, 'sha256': '1f2be2b4786b5031776aed90e1818564f5576ab1e44da9355c7f3788ea25bdea'})],
  'seedvr2_ema_3b_fp8_e4m3fn.safetensors': [(HF+'numz/SeedVR2_comfyUI/resolve/main/seedvr2_ema_3b_fp8_e4m3fn.safetensors', 'SEEDVR2')],

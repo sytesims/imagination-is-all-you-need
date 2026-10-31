@@ -89,8 +89,9 @@ ok('learned timings: one key per computer (class|chip|memory); old "mps|mps|48" 
 // ---- 4. live reading ----
 { const out = 'Mach Virtual Memory Statistics: (page size of 16384 bytes)\nPages free:                               1000.\nPages active:                            5000.\nPages inactive:                           3000.\nPages speculative:                         500.\nPages wired down:                         2000.\nPages purgeable:                           100.\n';
   assert.equal(HW.parseVmStat(out), (1000 + 3000 + 500) * 16384, 'available = free + inactive + speculative'); assert.equal(HW.parseVmStat('nonsense'), null);
+  assert.equal(HW.parseMemAvailable('MemTotal:       131072000 kB\nMemFree:          2000000 kB\nMemAvailable:    90000000 kB\n'), 90000000 * 1024, 'Linux: MemAvailable, not MemFree'); assert.equal(HW.parseMemAvailable('MemFree: 5 kB\n'), null);
   const v = await HW.liveReading(); assert.ok(v.ram.totalBytes > 0 && v.ram.freeBytes >= 0 && v.ram.freeBytes <= v.ram.totalBytes, 'host memory read');
-  assert.ok(['comfyui', 'vm_stat', 'os'].includes(v.ram.source)); assert.equal(v.comfy.reachable, null, 'no ComfyUI address → not asked'); assert.ok(v.disk && 'freeBytes' in v.disk);
+  assert.ok(['comfyui', 'vm_stat', 'meminfo', 'os'].includes(v.ram.source), v.ram.source); assert.equal(v.comfy.reachable, null, 'no ComfyUI address → not asked'); assert.ok(v.disk && 'freeBytes' in v.disk);
   assert.equal(await HW.liveReading(), v, 'at most one reading per 2 s'); }
-ok('live reading: vm_stat parse, host memory without ComfyUI, disk, cached 2 s');
+ok('live reading: vm_stat and /proc/meminfo parse, host memory without ComfyUI, disk, cached 2 s');
 console.log('this-computer: all passed');

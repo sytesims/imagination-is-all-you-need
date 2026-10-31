@@ -3384,11 +3384,11 @@
    "revision": "main",
    "repo_path": "diffusion_models/seedvr2_3b_int8_convrot.safetensors",
    "url": "https://huggingface.co/Comfy-Org/SeedVR2/resolve/main/diffusion_models/seedvr2_3b_int8_convrot.safetensors",
-   "size": null,
-   "size_gb": null,
-   "sha256": null,
+   "size": 3458259704,
+   "size_gb": 3.46,
+   "sha256": "c3dec8bcc5916843a8a858572970597462e1f2dc598d6dfd818f6cd40f53a157",
    "renamed_from": null,
-   "head_status": "not probed (URL from the docs.comfy.org SeedVR2 tutorial, 2026-10-31; run npm run models:manifest for its size)",
+   "head_status": "ok (size and sha256 from the HF tree API, 2026-10-31; not probed)",
    "workflows": [
     "workflows/upscale-seedvr2-native-api.json"
    ],
@@ -8780,9 +8780,9 @@
     "seedvr2_3b_int8_convrot.safetensors",
     "seedvr2_ema_vae_fp16.safetensors"
    ],
-   "total_gb": 0.5,
-   "vram_est_gb": 4.5,
-   "vram_basis": "max(resident DiT 0.0, text encoder 0.0 offloaded after encode) + VAE 0.5 + aux 0.0 + activations 4.0 GB (video)",
+   "total_gb": 3.96,
+   "vram_est_gb": 8.0,
+   "vram_basis": "max(resident DiT 3.5, text encoder 0.0 offloaded after encode) + VAE 0.5 + aux 0.0 + activations 4.0 GB (video)",
    "fits": {
     "24GB": true,
     "32GB": true,
