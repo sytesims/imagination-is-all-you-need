@@ -20,6 +20,7 @@ import { useHoverIntent } from './hoverIntent';
 import { SearchIcon, ChevronRightIcon, InfoIcon, LogoMark, StarIcon } from '../ui/Icons';
 import { useDefaultModel, setDefaultModel } from './defaultModel';
 import { useToast } from './Toast';
+import { partText, bestRefPick, AUTO_REF_RULE, type RefFit } from '../../../server/src/shared/refFit';
 import './modelMenu.css';
 /**
  * THE model picker, "A · Orbit", quiet header (2026-10-24; one component everywhere): Create Image and every image feature, Generate Video,
@@ -204,10 +205,21 @@ function CapLine({ m, it, rate }: { m: ToolModel; it?: MenuItem; /** the publish
   return <span className={`orb-g${/^Text only/.test(it?.tag ?? '') ? ' orb-g-t' : ''}`}>{parts.map((p, i) => <span key={i} data-testid={p.id}>{p.t}</span>)}</span>;
 }
 
+/** Reference-aware picker (2026-10-31, shared/refFit.ts): what this row does with the files on the bar, in a few calm words: each part,
+ *  used ones with a tick ("Uses your 3 pictures", "Start frame"), skipped ones with a small slashed circle ("Skips your video", "No start
+ *  frame"). No green and no orange: a neutral tick, the skipped words a step dimmer. */
+const RF_OK = <svg className="orb-rf-i" width="12" height="12" viewBox="0 0 12 12" aria-hidden><path d="M2.5 6.2l2.3 2.3 4.7-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+const RF_NO = <svg className="orb-rf-i" width="12" height="12" viewBox="0 0 12 12" aria-hidden><circle cx="6" cy="6" r="4.3" fill="none" stroke="currentColor" strokeWidth="1.3" /><path d="M3 9l6-6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>;
+function RefNote({ f }: { f: RefFit }) {
+  const all = f.parts.map(partText).join(' · ');
+  return <span className="orb-rf" data-testid="mp-ref-fit" data-all={f.all ? '1' : undefined} title={all}>{f.parts.map((x, i) =>
+    <span key={i} className={`orb-rf-p${x.used < x.have ? ' skip' : ''}`}>{x.used ? RF_OK : RF_NO}{partText(x)}</span>)}</span>;
+}
+
 /** The live balance at the place that runs the pick: shared/menuPrice.ts ("$8.50 left on Comfy"; units and plan on hover). */
 export { balanceOf };
 
-export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, value, onPick, placement = 'right', testId = 'model-menu', rowTestId, toolId, modelHint, quote, supports, lastLabel, defaultId, defaultWhy, defaultReason, onReset, rateOf, onNeed }: {
+export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, value, onPick, placement = 'right', testId = 'model-menu', rowTestId, toolId, modelHint, quote, supports, lastLabel, defaultId, defaultWhy, defaultReason, onReset, rateOf, onNeed, refFit }: {
   open: boolean; anchor: RefObject<HTMLElement | null>; avoid?: RefObject<HTMLElement | null>; /** re-place when it resizes (Popover watch) */ watch?: RefObject<HTMLElement | null>; gap?: number; onClose: () => void; items: MenuItem[]; value: string;
   /** fit: what picking this model changes (the batch row's shared/settingsFit.ts answer); the page applies its values and shows its note. */ onPick: (id: string, fit?: RowFit | null) => void;
   /** A row that needs an input no setting can give (a start image): the page opens that slot. Absent = the reason only. */ onNeed?: (n: Need) => void;
@@ -222,6 +234,9 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
   /** Set while the user's own pick is selected: Auto (and "Reset") goes back to the workflow's default. */ onReset?: (() => void) | null;
   /** A model's published per-unit rate ("$0.10/1k chars", "$0.005/s"), shown in its capability line. Pages that price per unit pass it
    *  (Audio, 2026-10-27); others leave it out and nothing changes. */ rateOf?: (m: ToolModel) => string | null;
+  /** Reference-aware rows (Generate Video, 2026-10-31): what each engine would use of the files on the bar (shared/refFit.ts); null when
+   *  nothing is attached. The list is then two sections, "Works with your files" and "Skips some of your files", and Auto picks the best
+   *  model that works with them all (bestRefPick). */ refFit?: ((engine: string) => RefFit | null) | null;
 }) {
   const [q, setQ] = useState(''); const [roOpen, setRoOpen] = useState(false); const [soonOpen, setSoonOpen] = useState(false); const roRef = useRef<HTMLButtonElement>(null); const qRef = useRef<HTMLInputElement>(null);
   const [fam, setFam] = useState<string | null>(null); // the family whose versions are open (one at a time)
@@ -269,6 +284,8 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
   const ql = q.trim().toLowerCase(); const all = inTab.filter(m => !ql || matchesQuery(m, ql, famLine(m)));
   const itemOf = (m: ToolModel) => items.find(x => x.id === engineForModel(m, value, listed)) ?? items.find(x => m.engines.includes(x.id));
   const isLast = (m: ToolModel) => !!itemOf(m)?.last;
+  const fitOf = (m: ToolModel): RefFit | null => (refFit ? refFit(itemOf(m)?.id ?? m.primaryEngine) : null);
+  const refsOn = !!refFit && ms.some(m => !!fitOf(m));
   /** Disabled: the server says it can't run (Coming soon, Not available), or the page's engine can't run here (item.off, e.g. ComfyUI too old). */
   const offOf = (m: ToolModel) => modelStateLine(m).off || !!itemOf(m)?.off;
   const pinDef = !ql && !!defModel && all.includes(defModel) && !isLast(defModel) && sectionOf(defModel) !== 'soon';
@@ -294,15 +311,22 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
   /* Auto: the workflow's default when it runs here, else what the server's default rule (routing/defaults.ts → tool.defaultProvider) starts on */
   const tl: any = toolLike(toolId);
   const autoEngine = [defaultId && !defaultReason ? defaultId : null, tl?.defaultProvider, defaultId].find((x): x is string => !!x && listed.includes(x)) ?? null;
-  const autoModel = autoEngine ? ms.find(m => m.engines.includes(autoEngine) && !offOf(m) && !isLast(m)) ?? null : null;
+  const usualAuto = autoEngine ? ms.find(m => m.engines.includes(autoEngine) && !offOf(m) && !isLast(m)) ?? null : null;
+  /* with references on the bar: the usual pick when it uses them all, else the first model (server order: featured, then rank) that does,
+   * else the one that uses the most (shared/refFit.ts bestRefPick) */
+  /** works with all your files AND can run this job as set (a place that refuses it, e.g. a local graph with fewer slots, isn't "works with") */
+  const worksWith = (m: ToolModel) => !!fitOf(m)?.all && !blockOf(liveQ(m));
+  const autoModel = refsOn ? bestRefPick(ms.filter(m => !offOf(m) && !isLast(m) && sectionOf(m) !== 'soon'), m => { const f = fitOf(m); return f && f.all && !worksWith(m) ? { ...f, all: false } : f; }, usualAuto) : usualAuto;
+  const autoFit = autoModel ? fitOf(autoModel) : null;
   const autoShown = !ql && !!autoModel && all.includes(autoModel);
   const autoOn = autoShown && curModel?.key === autoModel!.key && !onReset;
   const pickAuto = () => { if (onReset) { onReset(); onClose(); } else if (autoModel) choose(autoModel); };
   const focusFam = (f: string) => requestAnimationFrame(() => listRef.current?.querySelector<HTMLElement>(`[data-family="${CSS.escape(f)}"]`)?.focus());
   const mrow = (m: ToolModel, parent?: string) => { const on = curModel?.key === m.key && !autoOn; const st = modelStateLine(m); const it = itemOf(m); const id = it?.id ?? m.primaryEngine; const off = offOf(m);
     const retiring = m.lifecycle === 'retiring'; const blk = off || !!it?.last || !!blockOf(liveQ(m)); // can't run as set: no orange, the reason shows
+    const rf = off ? null : fitOf(m); /* what it does with the references on the bar */
     return <div key={m.key} role="option" aria-selected={on} aria-disabled={off || undefined} data-status={it?.off ? 'off' : st.k} data-model-key={m.key} data-section={sectionOf(m)} tabIndex={0} data-model={id} data-testid={rowTestId?.(id)}
-      data-blocked={blk || undefined} className={`orb-row${parent ? ' orb-ver' : ''}${on ? ' on' : ''}${on && blk ? ' blk' : ''}${off ? ' dis' : ''}`} onClick={() => choose(m)}
+      data-blocked={blk || undefined} data-ref-all={rf ? (rf.all ? '1' : '0') : undefined} className={`orb-row${parent ? ' orb-ver' : ''}${on ? ' on' : ''}${on && blk ? ' blk' : ''}${off ? ' dis' : ''}`} onClick={() => choose(m)}
       onKeyDown={e => { hi.rowKeyDown(e); if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(m); } else if (e.key === 'ArrowLeft' && parent) { e.preventDefault(); setFam(null); focusFam(parent); } }}
       aria-describedby={hov?.key === m.key ? 'mpv-card' : undefined} onMouseEnter={e => hoverOn(m.key, e.currentTarget)} onMouseLeave={hoverOff}
       onFocus={e => { if (e.target === e.currentTarget) hoverOn(m.key, e.currentTarget, true); }} onBlur={e => { if (e.target === e.currentTarget) hoverOff(); }}>
@@ -314,7 +338,7 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
         aria-label={isFav(m) ? `${shownName(m)} is your default. Reset to recommended` : `Make ${shownName(m)} your default`} title={isFav(m) ? 'Your default · click to reset to recommended' : 'Make default'}
         onClick={e => { e.stopPropagation(); makeDefault(m, id); }} onKeyDown={e => e.stopPropagation()}><StarIcon size={14} /></button>}</span>
         <span className="orb-d" data-testid="mp-desc">{m.bestFor ?? sentence1(m.blurb)}</span>
-        <CapLine m={m} it={it} rate={!off ? rateOf?.(m) : null} />
+        {rf ? <RefNote f={rf} /> : <CapLine m={m} it={it} rate={!off ? rateOf?.(m) : null} />}
       </span>
       {it?.last ? <Price kind="text-only" top={it.off ?? 'Not for this'} status />
         : tab !== 'all' && placeFor(m) ? <PlaceRight p={placeFor(m)!} own={own} off={it?.off || off} rq={liveQ(m)} many={tab === 'api'} />
@@ -352,7 +376,8 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
     onMouseEnter={e => hoverOn(m.key, e.currentTarget)} onMouseLeave={hoverOff} onFocus={e => { if (e.target === e.currentTarget) hoverOn(m.key, e.currentTarget, true); }} onBlur={e => { if (e.target === e.currentTarget) hoverOff(); }}>
     <span className="orb-auto-tile" aria-hidden><LogoMark size={20} /></span>
     <span className="orb-t"><span className="orb-n"><span className="orb-name">Auto</span></span>
-      <span className="orb-d" data-testid="mp-auto-line">Picks <b>{shownName(m)}</b> for this</span></span>
+      <span className="orb-d" data-testid="mp-auto-line" title={autoFit ? AUTO_REF_RULE : undefined}>Picks <b>{shownName(m)}</b>{autoFit ? (autoFit.all ? ' · works with your files' : ' · uses the most of your files') : ' for this'}</span>
+      {autoFit && !autoFit.all ? <RefNote f={autoFit} /> : null}</span>
     {tab !== 'all' && placeFor(m) ? <PlaceRight p={placeFor(m)!} own={own} rq={liveQ(m)} /> : <ModelRight m={m} own={own} rq={liveQ(m)} />}
     {autoOn && <span className="orb-pick" aria-hidden data-testid="mp-picked"><LogoMark size={16} /></span>}
   </div>; };
@@ -394,7 +419,14 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
           onClick={() => goTab(x.id)}>{x.label}<em>{counts[x.id]}</em></button>)}</div>}
     </div>
     <div ref={listRef} onScroll={() => { if (hov && document.activeElement === hov.el) return; /* a row focused by keys scrolled into view keeps its card */ setHov(null); }} className="orb-list" data-testid="mp-list" data-count={all.length} data-tab={tab} role={showTabs ? 'tabpanel' : undefined} aria-label={showTabs ? tabLabel(tab) : undefined}>
-      {ql ? (main.length || soon.length ? grp('results', `${main.length + soon.length} result${main.length + soon.length === 1 ? '' : 's'}`, [...main, ...soon].map(m => row(m))) : null)
+      {refsOn && !ql ? <>{/* files on the bar (2026-10-31, user pick): the models that use them all first, then the rest with what they skip */}
+        {grp('ref-all', 'Works with your files', <>{autoShown && autoRow()}{main.filter(worksWith).map(m => row(m))}</>)}
+        {main.some(m => !worksWith(m)) && grp('ref-skip', 'Skips some of your files', main.filter(m => !worksWith(m)).map(m => row(m)))}
+        {soon.length > 0 && <div className="orb-grp" role="group" aria-label="Coming soon" data-testid="mp-section-soon">
+          <button type="button" className="orb-sec orb-sec-tog" aria-expanded={soonOpen} data-testid="mp-soon-toggle" onClick={() => setSoonOpen(o => !o)}><span className="orb-lbl">Coming soon <small>{soon.length}</small></span><ChevronRightIcon size={14} className="orb-sec-chev" /></button>
+          {soonOpen && soon.map(m => row(m))}</div>}
+      </>
+      : ql ? (main.length || soon.length ? grp('results', `${main.length + soon.length} result${main.length + soon.length === 1 ? '' : 's'}`, [...main, ...soon].map(m => row(m))) : null)
       : <>
         {favModel && grp('yours', 'Your default', row(favModel), resetFav)}
         {pinDef && favModel !== defModel && grp('default', favModel ? 'Recommended' : 'For this workflow', row(defModel!), favModel ? null : resetBtn)}
