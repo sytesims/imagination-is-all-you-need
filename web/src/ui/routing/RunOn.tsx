@@ -16,8 +16,8 @@ import { Link } from '../../platform/router';
 import { useLastQuote } from '../../shared/quote';
 import { ChevronRightIcon, placeIconFor } from '../Icons';
 import { useBilling, RULE_TEXT, modeOf, priceDetail, type FailureRule } from '../../shared/billing';
-import { setDownloadIntent, useHardware } from '../../shared/hardware';
-import { machineLabel } from '../../../../server/src/shared/thisComputer';
+import { setDownloadIntent, useHardware, useLiveHardware } from '../../shared/hardware';
+import { machineLabel, hereLine, memoryCheck, freeForModelsGB, HEAVY_GB } from '../../../../server/src/shared/thisComputer';
 import { navigate } from '../../platform/router';
 import { setRoute, routeChoiceOf, noteToolModels, type RouteChoice } from '../../shared/models';
 import { requestRequote } from '../../shared/quote';
@@ -110,9 +110,12 @@ const detailOf = (r: RunOnRow) => r.id === 'local' ? 'Free and private' : r.id =
 
 export function RunOnMenu({ open, anchor, avoid, watch, gap, onClose, toolId, model, engine, quote, placement = 'right', own: ownPick, scale }: { open: boolean; anchor: RefObject<HTMLElement | null>; avoid?: RefObject<HTMLElement | null>; watch?: RefObject<HTMLElement | null>; gap?: number; onClose: () => void; toolId: string; model: ToolModel; engine?: string | null; quote?: any; placement?: PopPlacement; own?: RunOnOwn; scale?: RunOnScale }) {
   useToolModels(toolId); const bill = useBilling(); const own = modeOf(bill, quote) !== 'team';
-  const hwName = machineLabel(useHardware()?.profile); // the Local row names this computer ("Apple M1 Max · 64 GB"), the same name as Settings → Your computer
+  const hw = useHardware(); const hwName = machineLabel(hw?.profile); // the Local row names this computer ("Apple M1 Max · 64 GB"), the same name as Settings → Your computer
   const [busy, setBusy] = useState(''); const [err, setErr] = useState('');
   const ms = modelsFor(toolId, model, engine); const multi = ms.length > 1;
+  const hereOf = (m: ToolModel) => m.runsOn.find(r => r.id === 'local')?.here ?? null;
+  /* the mini line under Local: free memory now (read only while the menu is open on a heavy model) and the time learned here; amber when memory is short */
+  const live = useLiveHardware(open && !!hw?.profile && ms.some(m => (hereOf(m)?.memGB ?? 0) >= HEAVY_GB));
   const pickOf = (m: ToolModel) => getRunOn(toolId, m.key);
   const curM = (multi ? ms.find(m => pickOf(m).runOn !== 'auto') : undefined) ?? model; const cur = ownPick ? { runOn: ownPick.runOn } : pickOf(curM);
   const saved = !!cur.runOn && cur.runOn !== 'auto'; const shownPlace = saved ? cur.runOn : placeOf(curM, null, quote);
@@ -157,12 +160,14 @@ export function RunOnMenu({ open, anchor, avoid, watch, gap, onClose, toolId, mo
   const opt = ({ m, r, s }: { m: ToolModel; r: RunOnRow; s: ReturnType<typeof rowState> }) => {
     const on = curM.key === m.key && shownPlace === r.id; const price = listPrice(sc(rowCredits(r)), r.id, own); const ps = perShot(r.credits, r.id); const cc = r.id === 'local' ? null : priceDetail(null, { runOn: r.id, credits: sc(rowCredits(r)) }); // the hover: '135 Comfy credits · on your Creator plan'
     const act = actionEl(m, r);
-    const sub = [detailOf(r), ps ? `per shot ${ps}` : '', multi ? `Runs ${shownName(m)}` : '', r.id === 'comfy-cloud' && (r.comfyVariants?.length ?? 0) > 1 && !(r.choices && r.choices.length > 1) ? comfyVariantText(r, m.name, m.family) : '' /* the choices below name each way */, billsText(r), r.id === 'local' ? (hwName ? `${hwName}, checked before it runs` : 'we check it fits your computer first') : rule(ruleOf(r))].filter(Boolean).join(' · ');
+    const sub = [detailOf(r), ps ? `per shot ${ps}` : '', multi ? `Runs ${shownName(m)}` : '', r.id === 'comfy-cloud' && (r.comfyVariants?.length ?? 0) > 1 && !(r.choices && r.choices.length > 1) ? comfyVariantText(r, m.name, m.family) : '' /* the choices below name each way */, billsText(r), r.id === 'local' ? '' : rule(ruleOf(r))].filter(Boolean).join(' · ');
+    const here = r.id === 'local' ? hereOf(m) : null; const mem = here ? memoryCheck(here.memGB, hw?.profile, live) : null;
+    const mini = r.id === 'local' ? (here || hwName ? hereLine({ name: hwName || null, freeGB: here && (here.memGB ?? 0) >= HEAVY_GB ? freeForModelsGB(hw?.profile, live) : null, ...here }) : 'we check it fits your computer first') : '';
     const pick = () => { if (!busy) void choose(m, r.id); };
     return <div key={`${m.key}:${r.id}`} role="radio" aria-checked={on} tabIndex={0} data-testid={`run-on-opt-${r.id}`} data-status={r.status} className={`ro-opt${on ? ' on' : ''}${s.dim ? ' dim' : ''}`}
       onClick={pick} onKeyDown={e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); pick(); } }}>
       <span className="ro-rad" aria-hidden /><span className="ro-ol">{rowPlaceLabel(r)}<em className={`ro-pill ro-${s.tone}`}>{s.word}</em>{on && !saved && !ownPick && <em className="ro-pre" data-testid="run-on-preselected">Default</em>}</span>
-      <span className="ro-op" title={cc ?? undefined}>{busy === `${m.key}:${r.id}` ? 'Saving…' : price ?? ''}{act && <small>{act}</small>}</span><span className="ro-os">{sub}</span></div>; };
+      <span className="ro-op" title={cc ?? undefined}>{busy === `${m.key}:${r.id}` ? 'Saving…' : price ?? ''}{act && <small>{act}</small>}</span><span className="ro-os">{sub}{mini && <span className={`ro-here${mem?.short ? ' short' : ''}`} data-testid="run-on-here" title={mem?.short ? mem.text : undefined}>{sub ? ' · ' : ''}{mini}</span>}</span></div>; };
   return <BarPopover open={open} anchor={anchor} avoid={avoid} watch={watch} gap={gap} placement={placement} onClose={onClose} label={`Run ${multi ? toolName : shownName(model)} on`} role="dialog" className="apop-runon" testId="run-on-menu" width={360}>
     <div className="ro-pop" role="radiogroup" aria-label={`Where ${shownName(model)} runs`} aria-busy={!!busy || undefined}>
       <div className="ro-h">Run {multi ? toolName : shownName(model)} on<small>{scale ? `Prices are for the whole ${scale.unit}. ` : ''}{saved || ownPick ? `Remembered for ${ownPick?.rememberedFor ?? toolName}.` : rows.some(x => x.r.id === shownPlace && x.m.key === curM.key && (x.r.status === 'ready' || x.r.status === 'sample')) ? `The default is the first option that’s ready: Comfy Cloud, then your other keys, then your computer. Your pick is remembered for ${toolName}.` : `Nothing is ready yet, so the first one to set up is the default. Your pick is remembered for ${toolName}.`}</small></div>

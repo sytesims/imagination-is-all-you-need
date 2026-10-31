@@ -49,3 +49,28 @@ export function usableText(p: ProfileLike | null | undefined): string {
 export const machineLabel = (p: ProfileLike | null | undefined): string => (p && p.id !== 'unknown' ? p.label : '');
 /** Bytes → "13 GB" (one decimal under 10 GB). */
 export const gbOf = (bytes: number | null | undefined): string => (bytes == null || !Number.isFinite(bytes) ? '' : gbs(bytes / 2 ** 30));
+
+// ---- Fit check against free memory before a heavy local run (2026-10-31, hardware plan §3.5 item 1) ----
+/** A model this big (GB) or bigger gets the free-memory check: smaller ones fit beside other apps. */
+export const HEAVY_GB = 8;
+export interface LiveLike { ram: { totalBytes: number; freeBytes: number }; vram: { totalBytes: number; freeBytes: number } | null }
+export interface MemoryCheck { needGB: number; freeGB: number; short: boolean; text: string }
+/** Free memory the model can use right now: shared memory on Apple Silicon and DGX Spark (the system's free RAM; on Spark that is MemAvailable, never
+ *  cudaMemGetInfo, which under-reports there: NVIDIA DGX Spark known issues), else the card's free graphics memory. null when there's no reading. */
+export function freeForModelsGB(p: ProfileLike | null | undefined, live: LiveLike | null | undefined): number | null {
+  if (!p || !live) return null; const bytes = p.unifiedMemory || p.id === 'apple-silicon' || p.id === 'dgx-spark' ? live.ram?.freeBytes : live.vram?.freeBytes;
+  return bytes == null || !Number.isFinite(bytes) ? null : bytes / 2 ** 30;
+}
+/** Compare what the model needs with what's free now. Never blocks (ComfyUI moves part of the model to system memory or disk, so it runs, slower):
+ *  short = say "close other apps" and offer the cloud route. null for small models, unknown needs or no reading. */
+export function memoryCheck(needGB: number | null | undefined, p: ProfileLike | null | undefined, live: LiveLike | null | undefined): MemoryCheck | null {
+  if (needGB == null || !(needGB >= HEAVY_GB)) return null; const free = freeForModelsGB(p, live); if (free == null) return null;
+  const short = free < needGB; const n = `${Math.round(needGB)} GB`; const f = gbs(free);
+  return { needGB, freeGB: free, short, text: short ? `Close other apps first: this model needs about ${n} and ${f} is free now. It still runs, more slowly.` : `${f} free now, about ${n} needed` };
+}
+/** The run menu's line under Local: "This computer · 13 GB free now · about 4 min (your last 5 runs)". '' when there's nothing to say. */
+export function hereLine(o: { name?: string | null; freeGB?: number | null; etaSeconds?: number | null; etaSource?: string | null; samples?: number | null }): string {
+  const s = Number(o.etaSeconds); const t = s > 0 ? (s < 90 ? `about ${Math.round(s)} s` : s < 5400 ? `about ${Math.round(s / 60)} min` : `about ${Math.round((s / 3600) * 10) / 10} h`) : '';
+  const src = t && o.etaSource === 'learned' && Number(o.samples) > 0 ? ` (your last ${o.samples} run${o.samples === 1 ? '' : 's'})` : '';
+  return [o.name || 'This computer', o.freeGB != null ? `${gbs(o.freeGB)} free now` : '', t ? `${t}${src}` : o.etaSource === 'first_run' ? 'first run: time unknown' : ''].filter(Boolean).join(' · ');
+}
