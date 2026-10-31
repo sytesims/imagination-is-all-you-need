@@ -1,7 +1,7 @@
 // Model menu filters + sort (web/src/shared/modelMenuSort.ts) and our quality order (server/src/shared/qualityRank.ts).
 // Run: npx tsx test/model-menu-sort.test.ts   (no server, no network)
 import assert from 'node:assert/strict';
-import { chipsFor, matchesChips, cheapestOf, sortModels, newestScore, gpuStateOf, matchesQuery, familiesOf, familyFrom, localScore, localFirst, featuredLocalFirst } from '../../web/src/shared/modelMenuSort.ts';
+import { chipsFor, matchesChips, cheapestOf, sortModels, newestScore, gpuStateOf, matchesQuery, familiesOf, familyFrom, shownOf, localScore, localFirst, featuredLocalFirst } from '../../web/src/shared/modelMenuSort.ts';
 import { specOf, priceOf, usdRange, cardFactsOf, cardDetailsOf, listRateOf } from '../../web/src/shared/modelSpec.ts';
 import { QUALITY_ORDER, qualityRank } from '../src/shared/qualityRank.ts';
 import { CATALOGUE, FAMILY_BLURB, THREE_D_BEST_FOR } from '../src/shared/modelRank.ts';
@@ -93,12 +93,17 @@ ok('quality order: real image models, no repeats, edit order differs (Sunburst f
   assert.ok(matchesQuery(q, 'free') && !matchesQuery(g, 'free'), '"free" = runs on your own computer');
   assert.ok(matchesQuery(g2, 'clear text', 'Google image models: clear text'), 'the family line is searchable');
   assert.deepEqual(familiesOf([g, q, g2]).map(f => [f.family, f.models.length]), [['Nano Banana', 2], ['Qwen', 1]], 'families in first-seen order');
-  const c = (usd: number) => ({ usd, place: 'comfy-cloud', placeLabel: 'Comfy Cloud', setup: null });
-  assert.deepEqual(familyFrom([g, g2], m => c(m === g ? 0.07 : 0.05)), { free: false, usd: 0.05 }, 'from = the cheapest version');
-  assert.deepEqual(familyFrom([q], () => c(0.03)), { free: true, usd: 0 }, 'a local version makes the family Free');
-  assert.deepEqual(familyFrom([q], () => c(0.03), false), { free: false, usd: 0.03 }, 'not Free in a tab without Local');
+  // the family row reads what its version rows show (ModelMenu rightOf → shownOf), never a place a row doesn't show (2026-10-31: LTX said Free)
+  assert.deepEqual(['Free', '≈ $0.08', '$1.72', '≈ up to $0.05', '$1,234.50', 'Sample', 'Turn on', null].map(shownOf),
+    [{ usd: 0, free: true }, { usd: 0.08, free: false }, { usd: 1.72, free: false }, { usd: 0.05, free: false }, { usd: 1234.5, free: false }, null, null, null], 'a row token → its shown price');
+  const $ = (usd: number) => ({ usd, free: false }); const free = { usd: 0, free: true };
+  assert.deepEqual(familyFrom([$(0.07), $(0.05)]), { free: false, usd: 0.05 }, 'from = the cheapest version row');
+  assert.deepEqual(familyFrom([$(0.14), $(1.72), $(0.9), $(0.3)]), { free: false, usd: 0.14 }, 'a version with a Local place its row does not show (LTX-2.5 22B on Comfy) is not Free');
+  assert.deepEqual(familyFrom([free, $(1.43)]), { free: true, usd: 0 }, 'Free only when a version row itself says Free (Wan 2.2 5B)');
+  assert.deepEqual(familyFrom([null, $(0.3)]), { free: false, usd: 0.3 }, 'a row with no price (Turn on, Sample, blocked, loading) is left out');
+  assert.deepEqual(familyFrom([null, undefined]), { free: false, usd: null }, 'no version shows a price: none');
   for (const [k, v] of [...Object.entries(FAMILY_BLURB), ...Object.entries(THREE_D_BEST_FOR)]) assert.ok(v.length <= 50 && !/\b(free|local|comfy|fal|\$)/i.test(v), `${k}: short, no place or price (${v})`); }
-ok('quiet menu: search matches makers, capabilities, keywords and "free"; families group versions; a family is Free or from its cheapest version; family lines ≤ 50 chars');
+ok('quiet menu: search matches makers, capabilities, keywords and "free"; families group versions; a family is Free or from the cheapest of its version rows; family lines ≤ 50 chars');
 
 // 6. Local first (2026-10-26, every menu): free local models lead All models and Featured; Featured keeps its cloud highlight after them
 { const cloud = model('cloud', 'google', [place('comfy-cloud')]); const cloud2 = model('cloud2', 'openai', [place('openai')]);

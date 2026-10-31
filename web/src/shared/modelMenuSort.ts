@@ -1,7 +1,7 @@
 /**
  * The model menu's pure helpers (ModelMenu.tsx). No React, so server/test/model-menu-sort.test.ts can run them.
- * Used by the quiet menu (2026-10-24): placesIn / groupOf (the All · Local · Comfy · Your keys row), cheapestOf (a family's "from" price),
- * menuSearchText / matchesQuery, familiesOf, familyFrom. The chips and sorts below are no longer shown (the menu has no filters or sort);
+ * Used by the quiet menu (2026-10-24): placesIn / groupOf (the All · Local · Comfy · Your keys row), cheapestOf (each model's cheapest place),
+ * menuSearchText / matchesQuery, familiesOf, shownOf / familyFrom (a family's price: the cheapest its version rows show). The chips and sorts below are no longer shown (the menu has no filters or sort);
  * they stay for their tests and any later use.
  *  - Chips per tab: All / Comfy → by maker; API → by provider (the place a route runs on: fal, Replicate, BFL, OpenAI…); Local →
  *    Installed · Needs download. Multi-select (a model matches when it has any chosen value).
@@ -128,10 +128,18 @@ export function familiesOf<T extends Pick<ToolModel, 'family' | 'key'>>(list: T[
   for (const m of list) { const f = m.family || m.key; const g = by.get(f); if (g) g.models.push(m); else by.set(f, { family: f, models: [m] }); }
   return [...by.values()];
 }
-/** A family row's price: "Free" when any version runs on your own computer (`local`: the tab shows Local places), else the lowest known price of its versions (null = none known). */
-export function familyFrom<T extends Pick<ToolModel, 'runsOn'>>(models: T[], cheap: (m: T) => Cheapest | null, local = true): { free: boolean; usd: number | null } {
-  if (local && models.some(m => m.runsOn.some(r => r.id === 'local' && livePlace(r)))) return { free: true, usd: 0 };
-  const vals = models.map(m => cheap(m)).filter((c): c is Cheapest => !!c && c.usd > 0).map(c => c.usd);
+/** The price a row's right column shows: Free (Local), or the dollars of its token ("≈ $0.08", "$0.01" over "Needs fal key"); null = no
+ *  price (a word: Sample, Turn on, a reason, still loading). */
+export interface Shown { usd: number; free: boolean }
+export function shownOf(tok: string | null | undefined): Shown | null {
+  if (!tok) return null; if (/^Free\b/i.test(tok)) return { usd: 0, free: true };
+  const m = /\$\s*([\d,]*\.?\d+)/.exec(tok); return m ? { usd: Number(m[1].replace(/,/g, '')), free: false } : null;
+}
+/** A family row's price, from what its version rows show (ModelMenu passes each version row's Shown, so the two never disagree):
+ *  "Free" only when a version row itself says Free, else "from" the lowest price a version row shows (null = none shows a price yet). */
+export function familyFrom(shown: readonly (Shown | null | undefined)[]): { free: boolean; usd: number | null } {
+  if (shown.some(s => s?.free)) return { free: true, usd: 0 };
+  const vals = shown.filter((s): s is Shown => !!s && s.usd > 0).map(s => s.usd);
   return { free: false, usd: vals.length ? Math.min(...vals) : null };
 }
 
