@@ -18,8 +18,8 @@ import { uploadedInput } from './fileDrop';
 
 type Toast = (msg: string, tone?: any) => void;
 /** Open the media picker for one slot of a card; the picked or uploaded file fills that slot. The + chip and the pre-flight's "Choose…" both use it. */
-export function chooseForSlot(editor: Editor, cardId: TLShapeId, s: Pick<GenSlot, 'name' | 'label' | 'accept'>, toast: Toast) {
-  pickMedia({ accept: ACCEPT[s.accept === 'video' ? 'video' : s.accept === 'audio' ? 'audio' : 'image'], title: `Choose ${s.label.toLowerCase()}`, onFiles: ([f]) => { void fillSlot(editor, cardId, s, f, toast); } });
+export function chooseForSlot(editor: Editor, cardId: TLShapeId, s: Pick<GenSlot, 'name' | 'label' | 'accept' | 'max'>, toast: Toast) {
+  pickMedia({ accept: ACCEPT[s.accept === 'video' ? 'video' : s.accept === 'audio' ? 'audio' : 'image'], title: `Choose ${s.label.toLowerCase()}`, multiple: s.max > 1, onFiles: fs => { void (async () => { for (const f of fs.slice(0, s.max)) await fillSlot(editor, cardId, s, f, toast); })(); } });
 }
 async function fillSlot(editor: Editor, cardId: TLShapeId, s: Pick<GenSlot, 'name' | 'accept'>, f: File | undefined, toast: Toast) {
   if (!f) return; const kind: InputKind | null = kindOfFile(f);

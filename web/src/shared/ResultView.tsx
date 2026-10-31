@@ -39,7 +39,7 @@ import { loadBrandKits } from './brandStore';
 import { useStamp } from './stampStore';
 import { makeStamped } from './logoStampDraw';
 import { activeKit, useBrand } from './brandStore';
-import { ownAccountsNow, jobCostText, fmtUsd, runPrice, placeOfQuote, ledgerUsd, jobCostAmount } from './billing';
+import { compositeCostText, ownAccountsNow, jobCostText, fmtUsd, runPrice, placeOfQuote, ledgerUsd, jobCostAmount } from './billing';
 import { fetchModels } from './batch1';
 import CompareSlider from './CompareSlider';
 import { continuesInput, seamOf, seamClock, seamJumpTo, withExtendModel } from './continuation';
@@ -170,7 +170,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
   const routeShown = /^local:/.test(jr) && servedName ? `${localWhere || LOCAL_LABEL} · ${servedName}` : routeLabel || (jr ? friendlyRoute(jr) : '');
   const sz = Number((cur as any).width) > 0 && Number((cur as any).height) > 0 ? `${(cur as any).width}×${(cur as any).height}` : '';
   const sets = [['Model', sample ? '' : credit.model], ['Look', (job as any).presetLabel || inp.presetLabel || inp.preset], ['Quality', kind === 'audio' ? '' : (job as any).qualityLabel || inp.quality] /* server's plain label, raw value as fallback */, ['Size', kind === 'audio' ? '' : sz], ['Created', (job as any).createdAt ? new Date((job as any).createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : ''], ['Seed', inp.seed], ['Resolution', kind === 'audio' || sz ? '' : inp.resolution], ['Duration', kind !== 'image' && inp.duration ? `${inp.duration}s` : ''], ['Aspect', (job as any).aspectLabel || inp.aspect], ['Made by', agentLine((job as any).agent)]].filter(([, v]) => v !== undefined && v !== null && v !== '');
-  { if (credit.ranOn) sets.push(['Ran on', credit.ranOn]); const cst = (job as any).cost; if (cst != null && !isDemoJob(job) && !sample) sets.push(['Cost', cst === 0 ? (credit.ranOn === LOCAL_LABEL ? LOCAL_FREE : 'Free') : ownAccountsNow() ? `${jobCostAmount(job) ?? jobCostText(cst, (job as any).runOn)} · billed to your ${credit.ranOn.replace(/\s*(\(.*\)|·.*)$/, '')} account` : `${ledgerUsd(cst)}${heldBack(job) ? ` (${ledgerUsd(heldBack(job))} returned to balance)` : ''}`]); }
+  { if (credit.ranOn) sets.push(['Ran on', credit.ranOn]); const cst = (job as any).cost; if (cst != null && !isDemoJob(job) && !sample) sets.push(['Cost', compositeCostText(job) ?? (cst === 0 ? (credit.ranOn === LOCAL_LABEL ? LOCAL_FREE : 'Free') : ownAccountsNow() ? `${jobCostAmount(job) ?? jobCostText(cst, (job as any).runOn)} · billed to your ${credit.ranOn.replace(/\s*(\(.*\)|·.*)$/, '')} account` : `${ledgerUsd(cst)}${heldBack(job) ? ` (${ledgerUsd(heldBack(job))} returned to balance)` : ''}`)]); }
   const inputs = jobInputs(job); const refThumbs = inputs.map(x => x.url);
   const promptRef = useRef<HTMLParagraphElement>(null); const [clampOn, setClampOn] = useState(true); const [overflow, setOverflow] = useState(false);
   useEffect(() => { setClampOn(true); setFullOn(false); const el = promptRef.current; if (!el) return; requestAnimationFrame(() => setOverflow(el.scrollHeight > el.clientHeight + 2)); }, [pr, job.id]);
@@ -547,6 +547,7 @@ export function creditOf(job: any, modelName: string, routeLabel: string, localW
   const where = ranOnOf(job, localWhere);
   const cost = typeof job?.cost === 'number' ? job.cost : null; const refunded = heldBack(job);
   const price = isDemoJob(job) ? '' /* the Sample chip and 'Sample output, nothing billed.' say it once */
+    : compositeCostText(job) != null ? compositeCostText(job)!
     : cost == null ? (loc ? 'Free' : '')
     : cost === 0 ? (loc ? LOCAL_FREE : 'Free')
     /* own accounts (QA #7): never ✦; app-balance refunds don't exist there (the failure line says what the provider bills) */

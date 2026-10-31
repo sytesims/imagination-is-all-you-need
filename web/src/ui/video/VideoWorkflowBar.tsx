@@ -42,7 +42,7 @@ import { pinQ } from '../routing/Routes';
 import { RunOnChip } from '../routing/RunOn';
 import { navigate } from '../../platform/router';
 import { readVideo } from '../../shared/UploadVideo';
-import { CloseIcon, PlusIcon, ClockIcon, ResolutionIcon, AspectIcon, QualityIcon, ExtendIcon, HdrIcon, FpsIcon, DepthIcon, CutoutIcon, UpscaleIcon, PaletteIcon, TransitionIcon, OrbitIcon, CameraMovesIcon, PhotoFxIcon, MoreIcon, VideoIcon, ImageIcon, AudioIcon, ObjectSwapIcon, LayersIcon, UserIcon, SparkleIcon, SelectIcon, ReshootIcon, type IconProps } from '../Icons';
+import { TextIcon, CloseIcon, PlusIcon, ClockIcon, ResolutionIcon, AspectIcon, QualityIcon, ExtendIcon, HdrIcon, FpsIcon, DepthIcon, CutoutIcon, UpscaleIcon, PaletteIcon, TransitionIcon, OrbitIcon, CameraMovesIcon, PhotoFxIcon, MoreIcon, VideoIcon, ImageIcon, AudioIcon, ObjectSwapIcon, LayersIcon, UserIcon, SparkleIcon, SelectIcon, ReshootIcon, type IconProps } from '../Icons';
 import SameSeed from '../../shared/SameSeed';
 import { AppTiles, appFieldsOf } from '../../tools/app/AppFields';
 import type { BarCtx, BarExtra, BarLive, SlotFile, UseBarExtra } from './barExtras/types';
@@ -61,7 +61,7 @@ import { VideoThumb } from '../../shared/VideoThumb';
 import { MentionLayer } from '../../shared/MentionChips';
 import { renumberMentions } from '../../../../server/src/shared/mentions';
 
-const ICONS: Record<string, (p: IconProps) => ReactNode> = { clock: ClockIcon, resolution: ResolutionIcon, aspect: AspectIcon, quality: QualityIcon, extend: ExtendIcon, hdr: HdrIcon, fps: FpsIcon, depth: DepthIcon,
+const ICONS: Record<string, (p: IconProps) => ReactNode> = { edit: TextIcon, gallery: ImageIcon, music: AudioIcon, clock: ClockIcon, resolution: ResolutionIcon, aspect: AspectIcon, quality: QualityIcon, extend: ExtendIcon, hdr: HdrIcon, fps: FpsIcon, depth: DepthIcon,
   cutout: CutoutIcon, upscale: UpscaleIcon, palette: PaletteIcon, transition: TransitionIcon, orbit: OrbitIcon, camera: CameraMovesIcon, fx: PhotoFxIcon, swap: ObjectSwapIcon, layers: LayersIcon, person: UserIcon, spark: SparkleIcon, select: SelectIcon, reshoot: ReshootIcon };
 /** The extra step of the workflows a recipe can't say alone (ui/video/barExtras/): one chip + popover in this bar. */
 const EXTRAS: Record<string, UseBarExtra> = { extend: useExtendExtra, 'object-swap': useObjectSwapExtra, reshoot: useReshootExtra, 'motion-control': useMotionControlExtra, 'lip-sync': useTalkingExtra };
@@ -168,6 +168,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
   const shown = bar.controls.filter(c => (!c.providers || c.providers.includes(prov)) && (!c.whenPhoto || photoIn(c.whenPhoto)) && (!c.whenPreset || c.whenPreset.includes(galleryPick)) && (extra.controlShown?.(c, live()) ?? true));
   /** The value a control sends now: the pick if this model takes it, else the recipe's default, the tool's default, the first option. */
   const valOf = (c: VBarControl): string => {
+    if (c.kind === 'text') return vals[c.field] ?? c.default ?? '';
     if (c.kind === 'toggle') return vals[c.field] ?? c.default ?? '1';
     if (c.kind === 'tiles') { const os = tileOpts(c.field); const w = vals[c.field]; if (w && os.some(o => o.value === w)) return w; const d = c.default ?? inp(c.field)?.default; return d != null && os.some(o => o.value === String(d)) ? String(d) : os[0]?.value ?? ''; }
     if (c.kind === 'slider') return vals[c.field] ?? c.default ?? String(c.min ?? 0);
@@ -177,7 +178,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
     const td = c.field === 'duration' ? cfg.defaultDurationByProvider?.[prov] ?? inp('duration')?.default : c.field === 'resolution' ? cfg.defaultResolutionByProvider?.[prov] ?? inp('resolution')?.default : inp(c.field)?.default;
     return ok(c.default) ? c.default! : ok(td != null ? String(td) : null) ? String(td) : os[0]?.value ?? '';
   };
-  const labelOf = (c: VBarControl, v: string) => c.kind === 'slider' ? (c.percent ? `${Math.round(Number(v) * 100)}%` : v) : c.kind === 'tiles' ? tileOpts(c.field).find(o => o.value === v)?.label ?? pretty(v) : optionsOf(c).find(o => o.value === v)?.label ?? pretty(v);
+  const labelOf = (c: VBarControl, v: string) => c.kind === 'text' ? (v.length > 18 ? `${v.slice(0, 17).trim()}…` : v) : c.kind === 'slider' ? (c.percent ? `${Math.round(Number(v) * 100)}%` : v) : c.kind === 'tiles' ? tileOpts(c.field).find(o => o.value === v)?.label ?? pretty(v) : optionsOf(c).find(o => o.value === v)?.label ?? pretty(v);
 
   /* ---- deep links: ?preset=<id> picks the gallery item (Camera Moves, Photo FX, Restyle), ?pick=<group> opens that option, ?ext= sets Extend's length ---- */
   const pendingPreset = useRef(q0.preset);
@@ -232,7 +233,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
     onFiles: (slot, rs) => { if (extra.onFiles?.(slot, rs.map(r => r.file))) return; const alt = bar.slots.find(x => x.altImage === slot); if (alt) { void putFiles(alt, rs.map(r => r.file)); return; }
       const s = bar.slots.find(x => x.name === slot); if (s && slot !== 'video' && slot !== 'image') void putFiles(s, rs.map(r => r.file)); },
     onRecreate: r => { const f = r.form ?? {}; extra.onRecreate?.(f); if (r.seed) { setLastSeed(r.seed); setSeedOn(false); } let ty: any = f.types; try { ty = JSON.parse(ty); } catch { ty = ty ? [ty] : []; } const t0 = Array.isArray(ty) ? String(ty[0] ?? '') : '';
-      setVals(v => { const n = { ...v }; for (const c of bar.controls) { const w = f[c.field] ?? (c.send === 'types' || c.send === 'field+types' ? t0 : undefined); if (w != null && w !== '') n[c.field] = String(w); } if (f.fit === 'crop' || f.fit === 'pad') n.fit = f.fit; return n; });
+      setVals(v => { const n = { ...v }; for (const c of bar.controls) { const w = f[c.field] ?? (c.send === 'types' || c.send === 'field+types' ? t0 : undefined); if (c.kind === 'text') n[c.field] = String(w ?? ''); else if (w != null && w !== '') n[c.field] = String(w); } if (f.fit === 'crop' || f.fit === 'pad') n.fit = f.fit; return n; });
       if (f.prompt != null && promptCfg.mode !== 'hidden') setPrompt(String(f.prompt)); const m = r.providerAvailable ? (r.model ?? f.provider) : f.provider; if (m && providers.some(p => p.id === m)) setProvider(m);
       setRcRoute(m && f.route && r.providerAvailable && providers.some(p => p.id === m) ? { engine: m, modelKey: r.modelKey ?? null, route: String(f.route) } : null); } });
 
@@ -246,11 +247,12 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
   const fv = formVals();
   const clip = bar.slots.filter(s => s.kind === 'video').map(s => files[s.name]?.[0]).find(x => x?.sec != null && x.sec > 0); const clipSec = clip?.sec;
   /* the quote prices this exact run: the clip's real seconds and size once it's loaded (else the example / sample it came from, or the server's own estimate) */
-  const qParams: Record<string, string> = { ...Object.fromEntries(Object.entries(fv).filter(([k]) => k !== 'prompt')), ...(rcRouteOn ? { route: rcRouteOn } : {}),
+  const qParams: Record<string, string> = { ...Object.fromEntries(Object.entries(fv).filter(([k]) => k !== 'prompt' && !bar.controls.some(c => c.field === k && c.kind === 'text'))), ...(rcRouteOn ? { route: rcRouteOn } : {}),
     ...(clip ? { seconds: String(Math.round(clipSec! * 100) / 100), ...(clip.w && clip.h ? { width: String(clip.w), height: String(clip.h), sourceResolution: `${Math.min(clip.w, clip.h)}p` } : {}) }
       : quoteParams().seconds ? {} : clipSrc.exId ? { example: clipSrc.exId } : clipSrc.sampleUrl ? { sample: clipSrc.sampleUrl } : {}) };
   /* the photos this run carries (image=1, lastFrame=1 …), as the submit sends them: apps switch mode on them (UGC Ad: a product photo = references; Transitions: start + end frame), so the quote prices that same job */
   for (const s of bar.slots) { const fl = files[s.name] ?? []; if (s.kind === 'video' || !fl.length || !slotShown(s)) continue; qParams[fl[0].photo && s.altImage ? s.altImage : s.name] = '1'; }
+  if (tool.id === 'app-photos-to-reel') qParams.photoCount = String(sentOf(bar.slots.find(s => s.name === 'photos')!).length);
   { const sp = files.speech?.[0]; if (sp?.sec != null && sp.sec > 0 && bar.slots.some(s => s.name === 'speech' && slotShown(s))) qParams.speechSeconds = String(Math.round(sp.sec * 100) / 100); } /* Lip Sync: the speech length sets the clip length and price, and hosted H3 takes 2–15 s (the quote says so before the run) */
   { const ext = clip?.file?.name.match(/\.([a-z0-9]+)$/i)?.[1]; if (clip && ext) qParams.videoFormat = ext.toLowerCase(); } /* Fit to model: the container (Topaz takes MP4) */
   for (const [k, v] of Object.entries(extra.quote?.(live()) ?? {})) { if (v == null) delete qParams[k]; else qParams[k] = v; }
@@ -260,10 +262,11 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
   /* ---- pre-flight: every reason it can't run yet, in order; Generate shows the first ---- */
   const gallery = shown.find(c => c.kind === 'gallery');
   const problems: PreflightProblem[] = (() => { const ps = preflightProblems({ freeLocal: hasFreeLocal(tool.id),
-    slots: bar.slots.filter(slotShown).map(s => ({ ...s, ...(extra.slotInfo?.(s, live()) ?? {}) })).map(s => ({ name: s.name, label: s.label, required: reqOf(s), filled: !!files[s.name]?.length, missing: s.missing })),
+    slots: bar.slots.filter(slotShown).map(s => ({ ...s, ...(extra.slotInfo?.(s, live()) ?? {}) })).map(s => ({ name: s.name, label: s.label, required: reqOf(s), filled: sentOf(s).length >= (s.min ?? 1), missing: s.missing })),
     prompt: promptCfg.mode === 'required' && !prompt.trim() ? { missing: 'Write a prompt' } : null,
     pick: gallery && !gallery.optional && !valOf(gallery) ? { group: gallery.group, missing: `Pick ${gallery.field === 'preset' ? 'a style' : gallery.field === 'move' ? 'a camera move' : gallery.field === 'look' ? 'a look' : 'an effect'}` } : null,
     quote: q, modelName });
+    for (const c of shown) if (c.kind === 'text' && c.required && !valOf(c).trim()) ps.splice(ps.filter(p => p.stage === 'inputs').length, 0, { code: 'pick_missing', stage: 'inputs', message: `Add ${c.label.toLowerCase()}`, fix: { kind: 'open-group', label: 'Open', args: { group: c.group } } });
     /* the extra's own steps (Object Swap: what to replace; Re-shoot: an angle), right after the inputs */
     const more: PreflightProblem[] = (extra.needs?.(live()) ?? []).map((n): PreflightProblem => { const fix: PreflightFix = n.model ? { kind: 'pick-model', label: 'Pick model…' } : n.slot ? { kind: 'choose-photo', label: 'Choose…', args: { slot: n.slot } } : { kind: 'open-group', label: 'Open', args: { group: n.group ?? '' } };
       return { code: n.model ? 'model_cant_run' : n.slot ? 'photo_missing' : 'pick_missing', stage: n.model ? 'model' : 'inputs', message: n.missing, fix }; });
@@ -326,6 +329,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
   const groupPanel = (gid: string) => { const cs = shown.filter(c => c.group === gid && c.kind !== 'toggle' && c.kind !== 'gallery' && c.kind !== 'tiles'); const g = bar.groups.find(x => x.id === gid)!;
     return <BarPopover key={gid} open={pop === `g:${gid}`} anchor={anchorOf(gid)} avoid={dock} watch={dock} placement="top" gap={8} onClose={() => setPop('')} label={g.label} testId={`vbar-pop-${gid}`} width={cs.some(c => optionsOf(c).length > 5 || optionsOf(c).some(o => o.hint)) ? 320 : 288}>
       {cs.map(c => { const v = valOf(c); const os = optionsOf(c);
+        if (c.kind === 'text') return <PopSection key={c.field} label={c.label} testId={`vbar-ctl-${c.field}`}><label className="bp-field"><input type="text" value={v} maxLength={c.maxLength} placeholder={c.placeholder ?? (c.optional ? 'Optional' : c.label)} aria-label={c.label} data-testid={`vbar-text-${c.field}`} onChange={e => setVal(c.field, e.target.value)} /></label></PopSection>;
         if (c.kind === 'slider') return <PopSection key={c.field} label={c.label} aside={labelOf(c, v)} testId={`vbar-ctl-${c.field}`}><input className="vbar-range" type="range" min={c.min} max={c.max} step={c.step} value={Number(v)} aria-label={c.label} aria-valuetext={labelOf(c, v)} onChange={e => setVal(c.field, e.target.value)} /></PopSection>;
         const ofm: { ext?: string; codec?: string; alpha?: boolean } | undefined = cfg.outputFormats?.[v]; /* Remove BG: Transparent → WebM with alpha */
         const note = ofm?.ext ? <PopNote testId={`vbar-out-${c.field}`}>Output: {ofm.ext.toUpperCase()}{ofm.codec ? ` (${ofm.codec.toUpperCase()})` : ''}{ofm.alpha ? ' with transparency' : ''}</PopNote> : null;

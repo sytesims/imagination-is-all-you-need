@@ -14,7 +14,7 @@ const isInputUrl = (u: unknown): u is string => isFileUrl(u) || isBundledInputUr
 export const mediaKindOf = (u: string): 'image' | 'video' | 'audio' => /\.(mp4|webm|mov|m4v|mkv)($|\?)/i.test(u) ? 'video' : /\.(mp3|wav|m4a|aac|ogg|oga|flac|opus)($|\?)/i.test(u) ? 'audio' : 'image';
 export type JobInput = { url: string; kind: 'image' | 'video' | 'audio'; slot: string; named: boolean; mask: string | null };
 /** The job's inputs in order: the photo(s) (imageUrl + refUrls; the same file twice stays twice), a last frame, then a source clip / audio. Up to 16 (GPT Image's limit). */
-export const jobInputs = (job: JobState): JobInput[] => { const i0: any = job.input ?? {}; const refs: string[] = Array.isArray(i0.refUrls) ? i0.refUrls.filter(isInputUrl) : [];
+export const jobInputs = (job: JobState): JobInput[] => { const i0: any = job.input ?? {}; const refs: string[] = Array.isArray(i0.photoUrls) ? i0.photoUrls.filter(isInputUrl) : Array.isArray(i0.refUrls) ? i0.refUrls.filter(isInputUrl) : [];
   const imgs = isInputUrl(i0.imageUrl) && !refs.includes(i0.imageUrl) ? [i0.imageUrl, ...refs] : refs;
   const all: [string, string][] = imgs.map((u, i) => [u, u === i0.lastFrameUrl && i > 0 ? 'Last frame' : '']);
   if (isInputUrl(i0.lastFrameUrl) && !imgs.includes(i0.lastFrameUrl)) all.push([i0.lastFrameUrl, 'Last frame']);

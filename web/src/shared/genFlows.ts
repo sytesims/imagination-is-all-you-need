@@ -8,6 +8,7 @@
  *
  * No React here (the Canvas card and bar import it; a page can too).
  */
+import { VIDEO_BARS } from '../../../server/src/shared/videoBar';
 import type { ProviderInfo, ToolInfo } from '../api';
 import type { WfRecipe } from '../ui/next/WorkflowBar';
 import { settingsOnSwitch } from './composerDraft';
@@ -23,7 +24,7 @@ export type InputKind = 'image' | 'video' | 'audio';
 export const MEDIA: { id: GenMedium; label: string }[] = [{ id: 'image', label: 'Image' }, { id: 'video', label: 'Video' }, { id: 'audio', label: 'Audio' }, { id: '3d', label: '3D' }];
 
 /** A labelled input of a run: what it accepts, how many, and the form field it goes out as (extra files of a multi slot go as `restAs`). */
-export interface GenSlot { name: string; label: string; accept: InputKind; required: boolean; max: number; sendsAs: string; restAs?: string; missing: string; hint: string }
+export interface GenSlot { name: string; label: string; accept: InputKind; required: boolean; min?: number; max: number; sendsAs: string; restAs?: string; missing: string; hint: string }
 export interface GenFlow { id: string; medium: GenMedium; name: string; tagline: string; needs: string; icon: string; toolId: string;
   /** an image workflow recipe (GET /api/image-workflows) */ recipeId?: string; /** the tool's mode (types) for a plain tool */ types?: string;
   /** the one model this flow runs (Lip Sync: H3 Talking Photo) */ provider?: string }
@@ -36,6 +37,7 @@ export const GEN_FLOWS: GenFlow[] = [
   ...(['relight', 'upscale', 'remove-bg', 'image-layers', 'expand', 'product-shot', 'character-sheet', 'face-swap', 'person-swap', 'try-on'] as const)
     .map(id => ({ id, medium: 'image' as const, name: id, tagline: '', needs: '', icon: 'create', toolId: '', recipeId: id })),
   { id: 'video', medium: 'video', name: 'Create Video', tagline: 'Video with sound, from text or frames', needs: 'Prompt · first / last frame optional', icon: 'video', toolId: 'h3-video' },
+  { id: 'photos-to-reel', medium: 'video', name: 'Photos → Reel', tagline: 'Your photos, made into a short vertical reel', needs: '8–15 photos · title', icon: 'video', toolId: 'app-photos-to-reel' },
   { id: 'transition', medium: 'video', name: 'Transitions', tagline: 'Animate from a start to an end image', needs: '2 images', icon: 'video', toolId: 'app-transition' },
   { id: 'extend', medium: 'video', name: 'Extend', tagline: 'Keep the shot going', needs: '1 clip', icon: 'video', toolId: 'h3-extend' },
   { id: 'video-upscale', medium: 'video', name: 'Video Upscale', tagline: 'Sharper, larger clips, audio kept', needs: '1 clip', icon: 'upscale', toolId: 'upscale', types: 'precise' },
@@ -181,6 +183,18 @@ export function flowSpec(f0: GenFlow, cat: GenCatalog, want: { provider?: string
     const recipe = plainRecipe(f, tool, controls, [grp('shape', 'Shape', 'aspect', ['aspect']), grp('quality', 'Quality', 'detail', ['quality']), grp('size', 'Size', 'aspect', ['imageResolution']), grp('takes', 'Takes', 'views', ['n'])], slots, 'required', 'Describe an image, or how to change yours', 'Generate');
     const mode = n ? 'edit' : 'generate';
     return base(recipe, slots, providers, provider, mode, vals, { maxImages, quote: { types: mode, mode, ...vals, refs: String(n), ...(n ? { image: '1' } : {}) } });
+  }
+  if (tool.id === 'app-photos-to-reel') {
+    // The Video page and Canvas share one recipe, including file count and option defaults.
+    const bar = VIDEO_BARS['photos-to-reel'];
+    const providers = tool.providers; const provider = pickProvider(want.provider, providers, cardDefault(f, tool, null, providers, tool.defaultProvider));
+    const controls = bar.controls.map(c => ({ ...c, kind: c.kind === 'text' ? 'text' : 'segmented', optional: c.kind === 'text' ? !c.required : c.optional, max: c.maxLength ?? c.max, options: c.options ?? opts(tool, c.field).map(value => ({ value, label: lbl(value, c.field) })) }));
+    const vals: Record<string, string> = Object.fromEntries(controls.map(c => [c.field, c.kind === 'text' ? wv[c.field] ?? c.default ?? '' : c.options.some(o => o.value === wv[c.field]) ? wv[c.field] : c.default ?? c.options[0]?.value ?? '']));
+    const slots = bar.slots.map(s => slot(s.name, s.label, s.kind, s.required === true, s.missing, s.hint, { min: s.min, max: s.multiple ?? 1 }));
+    const recipe = plainRecipe(f, tool, controls, bar.groups.map(g => grp(g.id, g.label, g.icon, controls.filter(c => c.group === g.id).map(c => c.field))), slots, 'hidden', '', bar.generateLabel);
+    const fields = { ...bar.fixed, ...vals };
+    const quote = { ...Object.fromEntries(Object.entries(fields).filter(([key]) => !controls.some(c => c.field === key && c.kind === 'text'))), photoCount: String(Math.min(15, filled.photos?.length ?? 0)) };
+    return base(recipe, slots, providers, provider, 'default', vals, { quote, fields, maxImages: 15 });
   }
   if (tool.id === 'h3-video' || tool.id === 'app-transition') { /* frames by mode: first frame → i2v, both → flf (only models that take a last frame) */
     const trans = tool.id === 'app-transition'; const all = tool.providers;

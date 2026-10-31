@@ -155,3 +155,10 @@ export function jobCostLine(j: any): { text: string; detail: string | null } | n
 /** The after-run amount alone ("$0.75 (quoted $0.76)", "≈ $0.76 (estimate)") for a sentence that names the account itself; null for samples
  *  and local runs (their own words say it). */
 export const jobCostAmount = (j: any): string | null => { const t = jobCostLine(j)?.text ?? ''; return /^Cost /.test(t) ? t.slice(5) : null; };
+
+/** A composite reel bills its child jobs. Its zero ledger cost is never the reel's displayed price. */
+export function compositeCostText(j: any): string | null {
+  if (j?.toolId !== 'app-photos-to-reel') return null;
+  if (j.demo || j.isSample || j.simulated || j.input?.demo) return 'Sample';
+  return typeof j.input?.reelCostText === 'string' && j.input.reelCostText.trim() ? j.input.reelCostText : 'See step costs';
+}
