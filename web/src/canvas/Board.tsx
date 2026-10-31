@@ -1,14 +1,15 @@
 /**
  * One board: tldraw with our theme, our chrome (CanvasUi) and the result card shape. Restores the saved snapshot, autosaves the
  * document (debounced, on tab hide, on leave and on page close), keeps the camera per board in this browser, and sends pictures
- * dropped or uploaded on the board through the app's upload endpoint (POST /api/media), so the snapshot only holds /files/ URLs.
+ * dropped or uploaded on the board through the app's upload endpoint (POST /api/media), so the snapshot only holds /files/ URLs: into the
+ * card under the drop, or as Upload nodes (registerFileDrops).
  * tldraw's licence key check and watermark are untouched (localhost needs no key; VITE_TLDRAW_LICENSE_KEY for a public deployment).
  * Step 2: generate cards (GenCardShape), each with its own controls (no bar). Keys: G makes a new card (tldraw's own G, "last geo
  * shape", is dropped: Rectangle R and Ellipse O stay), ⌘D / Ctrl+D on a generate card makes a variation (on anything else it stays
  * tldraw's Duplicate), Enter generates the selected card. Cards that were running when the board closed follow their job again.
  */
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { Tldraw, getSnapshot, useEditor, DefaultColorStyle, DefaultFontStyle, AssetRecordType, getHashForString, type Editor, type TLAssetStore, type TLComponents, type TLAsset, type TLUiOverrides } from 'tldraw';
+import { Tldraw, getSnapshot, useEditor, useValue, DefaultColorStyle, DefaultFontStyle, AssetRecordType, getHashForString, type Editor, type TLAssetStore, type TLComponents, type TLAsset, type TLUiOverrides, type TLShapeId } from 'tldraw';
 import 'tldraw/tldraw.css';
 import { uploadMedia } from '../shared/batch1';
 import { gridSrc, thumbable } from '../shared/thumbs';
@@ -21,6 +22,7 @@ import { posterOf3d } from '../shared/model3d';
 import { LeftToolbar, EmptyHint } from './CanvasUi';
 import { AssetsDrawer } from './AssetsDrawer';
 import { FollowAgent } from './FollowAgent';
+import { bindHand } from './agentHand';
 import { NextStepMenu } from './NextStepMenu';
 import { CameraMotion } from './CameraMotion';
 import { CanvasOverlays, linkArrowVisibility } from './LinkLayer';
@@ -31,8 +33,16 @@ import { PromptNodeUtil, UploadNodeUtil, NoteNodeUtil, CompareNodeUtil, GroupNod
 import { lastFlowNow, setBoardCtx, exposeForDev, createNode, createCard } from './agentApi';
 import { reattachRunning } from './genRun';
 import { GEN_TYPE } from './graph';
+import { UPLOAD_TYPE, NODE_DEFS } from './nodeTypes';
+import { cardState } from './cardState';
+import { catalogNow } from './catalog';
+import { addCardInputs } from './agentApi';
+import { createAuxNode } from './auxShapes';
+import { freeSpot } from './placement';
+import { planFileDrop, uploadedInput, mediaPoster } from './fileDrop';
 import { CARD_H } from './cardModel';
 import { saveBoard, saveBoardOnExit, BoardError, type Board as BoardDoc } from './boardsApi';
+import { OVERVIEW_ZOOM } from './cardLook';
 
 const Viewer3D = lazy(() => import('../shared/Viewer3D').then(m => ({ default: m.Viewer3D })));
 export type SaveState = 'saved' | 'saving' | 'error' | 'conflict';
@@ -63,6 +73,31 @@ function registerLinkPreviews(editor: Editor) {
       props: { src: url, title: m?.title || host, description: m?.description ?? '', image: m?.image ?? '', favicon: m?.favicon ?? '' } } as any;
   });
 }
+/** Files dropped (or pasted) on the board (B2, fileDrop.ts): over a generate card they fill its slots in order, through the same upload and
+ *  card write as the slot's Add chip; on empty board, or the ones left over from several, they become Upload nodes near the drop. An Upload
+ *  node takes a file dropped on it itself. Never a raw tldraw image. */
+function registerFileDrops(editor: Editor, toast: ReturnType<typeof useToast>) {
+  editor.registerExternalContentHandler('files', async ({ files, point }) => {
+    const at = point ?? editor.getViewportPageBounds().center;
+    const hit = editor.getShapeAtPoint(at, { hitInside: true, filter: s => s.type === GEN_TYPE || s.type === UPLOAD_TYPE });
+    if (hit?.type === UPLOAD_TYPE) return;
+    const st = hit ? cardState(editor, hit, catalogNow()) : null; const slots = st?.spec?.slots ?? [];
+    const plan = planFileDrop(files, slots, Object.fromEntries(slots.map(x => [x.name, st!.bySlot[x.name]?.length ?? 0])));
+    /* one file on a card that can't take it: say why, like the picker; files no node takes (a PDF) always say why */
+    const loose = hit && files.length === 1 ? [] : plan.rest.filter(r => r.kind);
+    for (const r of plan.rest) if (!loose.includes(r)) toast(r.why, 'warn');
+    /* each file uploads on its own: one refused (a sound too short) says why and the others still land */
+    const up = async (i: number) => { try { const [m] = await uploadMedia([files[i]]); if (!m?.url) throw new Error('Upload failed'); return m.url; }
+      catch (e) { toast((e as Error).message || 'Upload failed', 'error'); return null; } };
+    const [fillUrls, looseUrls] = await Promise.all([Promise.all(plan.fills.map(f => up(f.file))), Promise.all(loose.map(r => up(r.file)))]);
+    const filled = plan.fills.flatMap((f, i) => (fillUrls[i] ? [{ input: uploadedInput(f.kind, fillUrls[i]!, files[f.file].name), slot: f.slot }] : []));
+    if (hit && filled.length && editor.getShape(hit.id)) { editor.markHistoryStoppingPoint('drop files'); addCardInputs(editor, hit.id, filled); }
+    const { defaultW: w, defaultH: h } = NODE_DEFS.upload; const made: TLShapeId[] = [];
+    loose.forEach((r, i) => { const url = looseUrls[i]; if (!url) return; const card = hit && editor.getShapePageBounds(hit.id); const near = card ? { x: at.x, y: card.maxY + h / 2 + 40 } : at;
+      made.push(createAuxNode(editor, 'upload', { at: freeSpot(editor, w, h, near), select: false, media: { url, poster: mediaPoster(r.kind!, url), mediaKind: r.kind!, label: files[r.file].name } })); });
+    if (made.length) editor.select(...made);
+  });
+}
 /* One page per board (2026-10-28): the page menu is hidden, so the context menu's "Move to page → New page" sent a card somewhere no one
    could reach it. Boards are the pages here.
    Smooth zoom (2026-10-30): tldraw writes the zoom into a CSS variable on the board, and every change restyles every card on screen
@@ -86,6 +121,13 @@ const OVERRIDES: TLUiOverrides = {
   },
 };
 /** Enter with one generate card selected (focus on the board, not in a field) runs it, like its Generate button. */
+/** The cards' overview (node.css): under OVERVIEW_ZOOM the editor's container gets data-far and every card shows only its title (large),
+ *  its media and one status line. Re-renders only when that flips. */
+function OverviewZoom() {
+  const editor = useEditor(); const far = useValue('cards far', () => editor.getZoomLevel() < OVERVIEW_ZOOM, [editor]);
+  useEffect(() => { const el = editor.getContainer(); if (far) el.dataset.far = '1'; else delete el.dataset.far; }, [editor, far]);
+  return null;
+}
 function CardKeys() {
   const editor = useEditor();
   useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key !== 'Enter' || e.shiftKey || e.metaKey || e.ctrlKey || e.altKey || e.isComposing) return; const t = e.target as HTMLElement | null;
@@ -126,7 +168,7 @@ export function Board({ board, onSaveState, onSaved, drawerOpen, setDrawerOpen, 
     /* cards saved at the old 330 px height grow to the new card (title, picture, model row, prompt): once, not an undo step */
     const short = editor.getCurrentPageShapes().filter(s => s.type === GEN_TYPE && (s.props as any).h <= 330 && (s.props as any).h >= 300);
     if (short.length) editor.run(() => editor.updateShapes(short.map(s => ({ id: s.id, type: GEN_TYPE, props: { h: CARD_H } }) as any)), { history: 'ignore' });
-    registerLinkPreviews(editor);
+    registerLinkPreviews(editor); registerFileDrops(editor, toast);
     setBoardCtx({ boardId: id, projectId: board.projectId ?? null, editor }); exposeForDev(editor);
     editor.run(() => { editor.setStyleForNextShapes(DefaultColorStyle, 'orange'); editor.setStyleForNextShapes(DefaultFontStyle, 'sans'); });
     const save = async () => {
@@ -143,7 +185,8 @@ export function Board({ board, onSaveState, onSaved, drawerOpen, setDrawerOpen, 
     const onHide = () => { if (document.visibilityState === 'hidden') { writeCam(id, editor.getCamera()); void save(); } };
     const onExit = () => { writeCam(id, editor.getCamera()); if (dirty && !stopped && saveBoardOnExit(id, getSnapshot(editor.store).document, rev)) dirty = false; };
     document.addEventListener('visibilitychange', onHide); addEventListener('pagehide', onExit);
-    return () => { unDoc(); unCam(); clearTimeout(timer); clearTimeout(camTimer); document.removeEventListener('visibilitychange', onHide); removeEventListener('pagehide', onExit);
+    const unHand = bindHand(editor); /* the agent's cursor, outline and laser never outlive the board */
+    return () => { unHand(); unDoc(); unCam(); clearTimeout(timer); clearTimeout(camTimer); document.removeEventListener('visibilitychange', onHide); removeEventListener('pagehide', onExit);
       writeCam(id, editor.getCamera()); if (dirty && !stopped) { const snap = getSnapshot(editor.store).document; void saveBoard(id, snap, rev).then(onSaved).catch(() => saveBoardOnExit(id, snap, rev)); } };
   };
 
@@ -153,6 +196,7 @@ export function Board({ board, onSaveState, onSaved, drawerOpen, setDrawerOpen, 
       <LeftToolbar />
       <EmptyHint onOpenAssets={() => setDrawerOpen(true)} />
       <CardKeys />
+      <OverviewZoom />
       <FollowAgent />
       <NextStepMenu />
       <CameraMotion />

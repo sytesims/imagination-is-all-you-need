@@ -1,13 +1,17 @@
 /* The model menu, "A · Orbit" (shared/ModelMenu.tsx, preview card: shared/ModelPreviewCard.tsx). One look for Image, Video, Audio and 3D.
  * Brand tokens only (styles.css / tokens.css). Orange is a thin marker: the picked row's fill, bar and Orbit mark, and the DEFAULT tag.
  * Scoped under .apop-orbit / .orb so the older picker rules (.ic-pop-model, .mmenu) never apply. */
-html body .apop.apop-orbit{width:440px;background:var(--popover-bg,rgba(35,36,39,.95));-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+/* one frame for the list, the preview card and the Models page card (2026-10-31: one family, one surface, no darker cards). The cards
+ * take the list's own backdrop too: without it the 95% surface lets the page's text show through. */
+html body .apop.apop-orbit,.orb-pv{background:var(--popover-bg,rgba(35,36,39,.95));-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
   border:1px solid var(--border-strong,rgba(255,255,255,.1));border-radius:20px;box-shadow:0 24px 70px rgba(0,0,0,.6)}
+html body .apop.apop-orbit{width:440px}
 html body .apop.apop-orbit .apop-body{display:flex;flex-direction:column;overflow:hidden;scrollbar-gutter:auto}
-.orb{--orb-mono:var(--font-mono,'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace);display:flex;flex-direction:column;min-height:0;max-height:calc(var(--apop-max,640px) - 2px);color:var(--text-1,#F7F7F8);font:500 14px/1.45 var(--font-sans,Inter,system-ui,sans-serif)}
+.orb{display:flex;flex-direction:column;min-height:0;max-height:calc(var(--apop-max,640px) - 2px);color:var(--text-1,#F7F7F8);font:500 14px/1.45 var(--font-sans,Inter,system-ui,sans-serif)}
 .orb.orb-tall{height:min(640px,calc(var(--apop-max,640px) - 2px))}
 .orb-lbl{font:700 10.5px/14px var(--font-sans,Inter,system-ui,sans-serif);letter-spacing:.12em;text-transform:uppercase;color:var(--text-3,rgba(255,255,255,.5))}
-.orb-mono{font-family:var(--orb-mono);font-variant-numeric:tabular-nums}
+/* figures: the UI font with even digits (2026-10-31: no monospace in the picker) */
+.orb-mono{font-variant-numeric:tabular-nums}
 
 /* header: the search, then one quiet text row (All · Local · Comfy · Your keys) with counts; no pills, no chips */
 .orb-top{flex:none;display:flex;flex-direction:column;gap:10px;padding:14px 14px 6px}
@@ -92,12 +96,12 @@ html body .orb .mk-tile.orb-tile .mk-med svg,html body .orb .mk-tile.orb-mk-tile
 /* Auto: the Orbit mark in a quiet tile, "Picks <model> for this" */
 .orb-auto-tile{display:grid;place-items:center;width:40px;height:40px;box-sizing:border-box;border-radius:12px;background:var(--surface-2,#1C1E20);border:1px solid var(--border-strong,rgba(255,255,255,.1))}
 .orb-auto .orb-d b{font-weight:600;color:var(--text-1,#F7F7F8)}
-/* price: USD in mono, what it's in under it; FREE · Local in green */
+/* price: USD in the UI font with even digits, what it is in under it; FREE in plain text (2026-10-31: no mono, no green) */
 .orb-pr{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;text-align:right;min-width:0;max-width:128px}
-.orb-usd{font:600 14px/18px var(--orb-mono,ui-monospace,monospace);font-variant-numeric:tabular-nums;color:var(--text-1,#F7F7F8);white-space:nowrap}
-.orb-usd.orb-free{font:700 10.5px/18px var(--font-sans,Inter,system-ui,sans-serif);letter-spacing:.1em;text-transform:uppercase;color:var(--badge-free,#2FBF8F)}
+.orb-usd{font:600 14px/18px var(--font-sans,Inter,system-ui,sans-serif);font-variant-numeric:tabular-nums;color:var(--text-1,#F7F7F8);white-space:nowrap}
+.orb-usd.orb-free{font:700 10.5px/18px var(--font-sans,Inter,system-ui,sans-serif);letter-spacing:.1em;text-transform:uppercase;color:var(--text-1,#F7F7F8)}
 .orb-usd.orb-est{color:var(--text-2,#898A8B)}
-.orb-usd.orb-free.orb-est{color:color-mix(in srgb,var(--badge-free,#2FBF8F) 70%,transparent)}
+.orb-usd.orb-free.orb-est{color:var(--text-2,#898A8B)}
 .orb-usd.orb-word{font:500 12px/16px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-2,#898A8B);white-space:normal}
 .orb-cr{display:block;font:400 11px/14px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-3,rgba(255,255,255,.5));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:128px}
 .orb-cr.orb-need{color:var(--text-2,#898A8B)}
@@ -133,31 +137,15 @@ html body .orb .mk-tile.orb-tile .mk-med svg,html body .orb .mk-tile.orb-mk-tile
 .orb-chg:hover,.orb-chg[aria-expanded="true"]{color:var(--accent,#FF7A1A)}
 
 /* the preview card beside the menu (shared/ModelPreviewCard.tsx) */
-.orb-pv{position:fixed;z-index:calc(var(--z-popover,95) + 1);box-sizing:border-box;width:300px;overflow:hidden;pointer-events:none;opacity:0;
-  background:var(--surface-1,#131517);border:1px solid var(--border-strong,rgba(255,255,255,.1));border-radius:20px;box-shadow:0 24px 70px rgba(0,0,0,.6);color:var(--text-1,#F7F7F8)}
+.orb-pv{position:fixed;z-index:calc(var(--z-popover,95) + 1);box-sizing:border-box;width:300px;overflow:hidden;pointer-events:none;opacity:0;color:var(--text-1,#F7F7F8)}
 .orb-pv.in{opacity:1;transition:opacity .12s ease;pointer-events:auto}
 @media (prefers-reduced-motion:reduce){.orb-pv.in{transition:none}}
 .orb-pv a{pointer-events:auto}
 .orb-pv a:focus-visible{outline:none;border-radius:4px;box-shadow:var(--focus-ring,0 0 0 2px var(--accent,#FF7A1A))}
-.orb-pv-art{position:relative;height:240px;display:grid;place-items:center;overflow:hidden;
-  background:radial-gradient(70% 60% at 50% 42%,rgba(255,122,26,.16),transparent 70%),var(--surface-2,#1C1E20)}
-.orb-pv-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 25%}
-.orb-pv-art::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 50%,var(--surface-1,#131517));pointer-events:none}
-html body .orb-pv .mk-tile.orb-pv-big{--mk-s:96px;width:96px;height:96px;margin-top:-24px;border-radius:26px;background:var(--surface-3,#27292C);border:1px solid var(--border-strong,rgba(255,255,255,.1));color:var(--text-1,#F7F7F8);box-shadow:0 12px 40px rgba(0,0,0,.45)}
+html body .orb-pv .mk-tile.orb-pv-big{--mk-s:96px;width:96px;height:96px;margin-top:-24px;border-radius:26px;background:var(--surface-2,#1C1E20);border:1px solid var(--border-strong,rgba(255,255,255,.1));color:var(--text-1,#F7F7F8);box-shadow:none}
 html body .orb-pv .mk-tile.orb-pv-big .mk-svg{width:42px;height:42px;color:currentColor}
 html body .orb-pv .mk-tile .mk-med svg{fill:none}
 .orb-pv-credit{position:absolute;right:8px;top:8px;z-index:1;padding:2px 6px;border-radius:5px;background:rgba(15,17,19,.7);color:var(--text-2,#898A8B);font:500 10px/14px var(--font-sans,Inter,sans-serif);text-decoration:none}
-.orb-pv-bd{position:relative;padding:4px 16px 16px}
-.orb-pv-ttl{position:relative;z-index:1;display:flex;align-items:center;gap:10px;margin-top:-26px}
-html body .orb-pv .mk-tile.orb-pv-tile{--mk-s:36px;width:36px;height:36px;flex:none;border-radius:11px;background:var(--surface-2,#1C1E20);border:1px solid var(--border-strong,rgba(255,255,255,.1));color:var(--text-1,#F7F7F8)}
-html body .orb-pv .mk-tile.orb-pv-tile .mk-svg{width:16px;height:16px;color:currentColor}
-.orb-pv-ttl b{min-width:0;font:700 19px/24px var(--font-display,'Space Grotesk',Inter,sans-serif);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
-.orb-pv-d{margin:10px 0 12px;color:var(--text-2,#898A8B);font:400 13px/18px var(--font-sans,Inter,system-ui,sans-serif);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.orb-pv-spec{display:grid;grid-template-columns:1fr 1fr;margin:0;border-top:1px solid var(--border-strong,rgba(255,255,255,.1))}
-.orb-pv-sp{padding:9px 0;border-bottom:1px solid var(--border-strong,rgba(255,255,255,.1));min-width:0}
-.orb-pv-sp:nth-child(odd){padding-right:8px}
-.orb-pv-sp dt{display:block}
-.orb-pv-sp dd{margin:2px 0 0;font:600 13px/18px var(--font-mono,'JetBrains Mono',ui-monospace,monospace);font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* phones: the sheet. Taller rows, no preview card (the row's "i" opens details inline) */
 @media (max-width:640px){
@@ -179,3 +167,11 @@ html body .orb-pv .mk-tile.orb-pv-tile .mk-svg{width:16px;height:16px;color:curr
 .orb-pr[data-kind=needs]{max-width:8.5em}.orb-pr[data-kind=needs] .orb-usd{color:var(--text-2,#B4B4BB);font-weight:500;text-align:right}
 .orb-need-act{all:unset;cursor:pointer;color:var(--text-1,#F7F7F8);font-size:11.5px;line-height:1.3;border-radius:4px;text-decoration:underline;text-decoration-color:var(--text-3,#8A8A93);text-underline-offset:2px}
 .orb-need-act:hover{text-decoration-color:currentColor}.orb-need-act:focus-visible{outline:2px solid var(--text-1,#F7F7F8);outline-offset:2px}
+
+/* Reference-aware rows (2026-10-31, shared/refFit.ts): with files on the bar the list is "Works with your files" then "Skips some of your
+ * files"; each row says what it uses and skips. Calm: a neutral tick for what it uses, a slashed circle and dimmer words for what it skips. */
+.orb-rf{display:flex;flex-wrap:wrap;gap:2px 10px;min-width:0;margin-top:4px;font:500 11.5px/15px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-2,#898A8B)}
+.orb-rf-p{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.orb-rf-p.skip{color:var(--text-3,rgba(255,255,255,.5))}
+.orb-rf-i{flex:none}
+.orb-rf-p:not(.skip) .orb-rf-i{color:var(--text-1,#F7F7F8)}

@@ -9,7 +9,7 @@
  * names a real item, tool or mode.
  * Served by GET /api/capabilities; the MCP server's search_capabilities / describe read it (mcp/src/catalog.ts loadWorkflows).
  */
-import { VIDEO_WORKFLOWS, VIDEO_FLOW_SHORTCUTS, videoWorkflowHref, type VideoWorkflow } from './shared/videoWorkflows.js';
+import { VIDEO_PAGE, VIDEO_WORKFLOWS, VIDEO_FLOW_SHORTCUTS, videoWorkflowHref, type VideoWorkflow } from './shared/videoWorkflows.js';
 import { EXPLORE_ROWS } from './shared/exploreFlows.js';
 import { VIRAL_TEMPLATES, fillTemplate } from './shared/viralTemplates.js';
 import { getTool, listTools } from './tools/registry.js';
@@ -134,7 +134,7 @@ export function capabilities(): Capability[] {
     const id = `template/${t.id}`;
     out.push({ id, kind: 'template', area: 'video', name: t.name, tagline: t.line, toolId: 'h3-video', modelKey: t.settings.modelKey, needs: 'Prompt (filled in)', inputs: t.slots.map((s) => `${s.label} (e.g. ${[s.value, ...(s.ideas ?? [])].join(', ')})`),
       how: [`Tip: ${t.tip}`, 'Swap the slot values in the prompt for your own.'], keywords: dedupe([...t.keywords.split(/\s+/), ...TEMPLATE_WORDS, ...(KEYWORDS[id] ?? [])]),
-      run: { tool_id: 'h3-video', model: t.settings.modelKey, fields: templateFields(t) }, page: `/tools/h3-video?template=${t.id}`, status: 'ready' });
+      run: { tool_id: 'h3-video', model: t.settings.modelKey, fields: templateFields(t) }, page: `${VIDEO_PAGE}?template=${t.id}`, status: 'ready' });
   }
   const seen = new Set(out.map((c) => c.id.split('/')[1]));
   for (const row of EXPLORE_ROWS) for (const c of row.cards) {

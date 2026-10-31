@@ -26,6 +26,7 @@ import { VIDEO_LIMITS, ROUTE_LIMITS } from '../tools/h3/videoCaps.js';
 import { paramsOnSwitch } from '../shared/imageSnap.js';
 import { fitSettings, fitLength, fitResolution, changesBetween, fitNote, fitHint, needOf, videoFitCaps, type FitCaps, type FitValues } from '../shared/settingsFit.js';
 import type { ToolDef } from '../tools/types.js';
+import { rowRefParams } from '../shared/refFit.js';
 import { getPrefs } from './prefs.js';
 import { providerSettings } from './settings.js';
 import { mockKeys } from './keys.js';
@@ -94,7 +95,10 @@ export function registerQuotesBatch(app: FastifyInstance) {
     const L = own ?? VIDEO_LIMITS[at?.engine ?? m.primary]; if (!L) return null; return videoFitCaps({ ...L, ...(routeId ? ROUTE_LIMITS[routeId] ?? {} : {}) });
   };
   /** The page's params as the bar sets them when this video model is picked: fitted to its caps, and sound at the model's own default (Veo = off, 2026-10-25). */
-  const fitVideo = (base: Record<string, string>, caps: FitCaps | null, m: ToolModel) => {
+  const fitVideo = (base0: Record<string, string>, caps: FitCaps | null, m: ToolModel, tool?: ToolDef) => {
+    /* what's on the bar (image=1, refImages / refVideos / refAudios: shared/refFit.ts): the row is quoted in the mode it would run, with only
+     * the start frame and references it uses (2026-10-31: Seedance rows said "Needs a start image" with one attached) */
+    const L = VIDEO_LIMITS[m.primary]; const base = L ? rowRefParams(base0, { modes: (tool?.app as any)?.providerModes?.[m.primary] ?? null, refKinds: Object.keys(L.refKinds ?? {}), refMax: L.refKinds as Record<string, number> }) : base0;
     const f = fitSettings(caps, { duration: base.duration ?? base.seconds, resolution: base.resolution, aspect: base.aspect, audio: base.audio }); const out: Record<string, string> = { ...base };
     for (const [k, v] of Object.entries(f.values) as [keyof FitValues, string | undefined][]) if (v != null && v !== '') { if (k === 'duration' && base.duration == null && base.seconds != null) out.seconds = v; else if (base[k] != null) out[k] = v; }
     const A = VIDEO_LIMITS[m.primary]?.audio; const want = A?.supported && A.toggle ? (A.default ? '1' : '0') : undefined; if (want !== undefined && out.audio != null && !f.changes.some((c) => c.field === 'audio')) out.audio = want;
@@ -105,7 +109,7 @@ export function registerQuotesBatch(app: FastifyInstance) {
    *  answered offers other resolutions than the one guessed. */
   const quotePicked = async (tool: ToolDef, base: Record<string, string>, m: ToolModel, runOn: string | null, st: string) => {
     if (tool.id === 'h3-video') { // Create Video (2026-10-27, shared/settingsFit.ts): the settings picking this model gives, on the place that runs it
-      const pv = (rid: string | null) => fitVideo(base, videoCapsAt(tool, m, rid), m);
+      const pv = (rid: string | null) => fitVideo(base, videoCapsAt(tool, m, rid), m, tool);
       let p = pv(null); let r = await quoteRow(tool.id, p, m.key, runOn, st);
       const rid = typeof r.q.routeId === 'string' ? r.q.routeId : null; // the place's own limits (Router LTX-2.5 Pro: 6 / 8 / 10 s) narrow the model's
       // only when that place refuses the job as set: a place that takes it (our H3 graph runs 2–15 s) keeps the model's settings

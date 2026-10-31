@@ -146,7 +146,7 @@ const pngOf = (c: HTMLCanvasElement) => new Promise<Uint8Array>((res, rej) => c.
  * its own pixel size (a size two platforms share is drawn once and written in both folders), and a post-copy.txt with the card's words
  * cut to that platform's limits (adLayout.postCopy). Saved by the browser as one zip. Returns how many pictures went in.
  */
-export async function exportAdPack(o: { pic: HTMLImageElement | null; art: AdArt; headlines: string[]; offer: string; button: string; platforms: AdPlatform[]; sizes: AdSizeOption[]; preset: AdPreset; edits?: AdEdits; style?: AdStyle | null }): Promise<number> {
+export async function exportAdPack(o: { pic: HTMLImageElement | null; art: AdArt; headlines: string[]; offer: string; button: string; platforms: AdPlatform[]; sizes: readonly AdSizeOption[]; preset: AdPreset; edits?: AdEdits; style?: AdStyle | null }): Promise<number> {
   const brand = o.art.kit?.name ?? 'ad'; const files: { name: string; data: Uint8Array }[] = []; const drawn = new Map<string, Uint8Array>();
   for (const f of adPackFiles(brand, o.platforms, o.headlines)) {
     const tab = o.sizes.find((s) => s.shape === f.shape); if (!tab) continue; const key = `${f.n}|${f.shape}|${f.w}x${f.h}`;

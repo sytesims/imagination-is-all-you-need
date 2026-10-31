@@ -85,70 +85,91 @@ export function setAgentName(n: string | null | undefined) { agentName = (n || '
 
 class Hand {
   pos: { x: number; y: number } | null = null; private idle = 0; private gone = 0; private glideId = 0;
+  /** bumps on every leave(): a laser loop or glide that started before it stops and never brings the cursor back */
+  private gen = 0;
   constructor(readonly editor: Editor) {}
-  private rec(): TLInstancePresence | undefined { return this.editor.store.get(PRESENCE_ID) as TLInstancePresence | undefined; }
-  private put(p: Partial<TLInstancePresence>) {
+  private rec(): TLInstancePresence | undefined { return this.editor.isDisposed ? undefined : this.editor.store.get(PRESENCE_ID) as TLInstancePresence | undefined; }
+  /** Write the presence. `create` false: only touch a presence that is still there (cleanup never resurrects a cursor that left). */
+  private put(p: Partial<TLInstancePresence>, create = true) {
     const e = this.editor; if (e.isDisposed) return;
-    const cur = this.rec();
+    const cur = this.rec(); if (!cur && !create) return;
     const next = InstancePresenceRecordType.create({ ...(cur ?? {}), id: PRESENCE_ID, userId: AGENT_USER as any, userName: agentName, color: AGENT_COLOR, currentPageId: e.getCurrentPageId(), ...p, lastActivityTimestamp: Date.now() } as any);
     e.store.mergeRemoteChanges(() => e.store.put([next]));
   }
-  private arm() {
+  /** After a few quiet seconds the label, outline and any laser fade; after a while the cursor leaves. `stay` keeps the label and the
+   *  cursor (waiting for your pick) but the outline and laser still fade, and the cursor still leaves after 10 minutes. */
+  private arm(stay = false) {
     window.clearTimeout(this.idle); window.clearTimeout(this.gone);
-    /* after a few quiet seconds the label and outline fade; after a while the cursor leaves */
-    this.idle = window.setTimeout(() => { this.put({ chatMessage: '', selectedShapeIds: [], scribbles: [] }); setHand({ working: false, label: '' }); }, 4200);
-    this.gone = window.setTimeout(() => this.leave(), 45_000);
+    this.idle = window.setTimeout(() => { this.put({ ...(stay ? {} : { chatMessage: '' }), selectedShapeIds: [], scribbles: [] }, false); if (!stay) setHand({ working: false, label: '' }); }, 4200);
+    this.gone = window.setTimeout(() => this.leave(), stay ? 600_000 : 45_000);
   }
   /** Glide the cursor to a page point (instant when motion is off). */
   async glideTo(to: { x: number; y: number }, label?: string, ms = 520) {
-    const id = ++this.glideId; const from = this.pos ?? this.entry(to);
+    const id = ++this.glideId; const gen = this.gen; const from = this.pos ?? this.entry(to);
     if (label != null) setHand({ working: true, label }); setHand({ at: to });
     if (!animOK() || Math.hypot(to.x - from.x, to.y - from.y) < 2) { this.pos = to; this.put({ cursor: { x: to.x, y: to.y, type: 'default', rotation: 0 }, ...(label != null ? { chatMessage: label } : {}) }); this.arm(); return; }
-    if (label != null) this.put({ chatMessage: label });
+    this.put({ cursor: { x: from.x, y: from.y, type: 'default', rotation: 0 }, ...(label != null ? { chatMessage: label } : {}) });
     const dist = Math.hypot(to.x - from.x, to.y - from.y); const dur = Math.min(900, Math.max(280, ms * Math.min(1.6, 0.55 + dist / 1400)));
     const t0 = performance.now();
+    const live = () => id === this.glideId && gen === this.gen && !this.editor.isDisposed;
     await new Promise<void>((done0) => {
       /* a backgrounded pane may stop animation frames: never let the agent wait on them (snap to the end after the glide's time) */
       let over = false; const done = () => { if (over) return; over = true; window.clearTimeout(safety); done0(); };
-      const safety = window.setTimeout(() => { if (id === this.glideId && !this.editor.isDisposed) { this.pos = to; this.put({ cursor: { x: to.x, y: to.y, type: 'default', rotation: 0 } }); } done(); }, dur + 160);
+      const safety = window.setTimeout(() => { if (live()) { this.pos = to; this.put({ cursor: { x: to.x, y: to.y, type: 'default', rotation: 0 } }, false); } done(); }, dur + 160);
       const step = (now: number) => {
         if (over) return;
-        if (id !== this.glideId || this.editor.isDisposed) return done();
+        if (!live()) return done();
         const t = Math.min(1, (now - t0) / dur); const k = ease(t);
         /* a slight arc, like a hand moving across a table */
         const lift = Math.sin(Math.PI * t) * Math.min(60, dist * 0.08);
         const p = { x: from.x + (to.x - from.x) * k, y: from.y + (to.y - from.y) * k - lift };
-        this.pos = p; this.put({ cursor: { x: p.x, y: p.y, type: 'default', rotation: 0 } });
-        if (t < 1 && document.visibilityState !== 'hidden') requestAnimationFrame(step); else { this.pos = to; this.put({ cursor: { x: to.x, y: to.y, type: 'default', rotation: 0 } }); done(); }
+        this.pos = p; this.put({ cursor: { x: p.x, y: p.y, type: 'default', rotation: 0 } }, false);
+        if (t < 1 && document.visibilityState !== 'hidden') requestAnimationFrame(step); else { this.pos = to; this.put({ cursor: { x: to.x, y: to.y, type: 'default', rotation: 0 } }, false); done(); }
       };
       requestAnimationFrame(step);
     });
-    this.arm();
+    if (gen === this.gen) this.arm();
   }
   /** The first appearance: from the board's top-left corner of the view, so the cursor visibly arrives. */
   private entry(to: { x: number; y: number }) { const vb = this.editor.getViewportPageBounds(); return vb.containsPoint(to) ? { x: vb.minX + vb.w * 0.08, y: vb.minY + vb.h * 0.1 } : to; }
   /** A short label beside the cursor. `stay`: keep it (and the cursor) until the next step, e.g. while it waits for your pick. */
-  say(label: string, stay = false) { setHand({ working: true, label }); this.put({ chatMessage: label }); if (stay) { window.clearTimeout(this.idle); window.clearTimeout(this.gone); } else this.arm(); }
+  say(label: string, stay = false) { setHand({ working: true, label }); this.put({ chatMessage: label }); this.arm(stay); }
   touch(ids: string[]) { const live = ids.filter((id) => this.editor.getShape(id as TLShapeId)) as TLShapeId[]; this.put({ selectedShapeIds: live }); for (const id of live) { if (rules.has(`enter:${id}`)) window.setTimeout(() => fx.touched(id), 600); else fx.touched(id); } this.arm(); }
-  /** A laser loop around some shapes (or a point). */
+  /** A laser loop around some shapes (or a point). It stops (and the stroke goes) when the hand leaves, the board closes or the tab
+   *  hides: a hidden tab's timers crawl (up to a minute a step), which used to leave a half-drawn loop on the board for minutes. */
   async point(box: Box, label?: string) {
     await this.glideTo({ x: box.maxX - Math.min(40, box.w * 0.15), y: box.minY + Math.min(36, box.h * 0.2) }, label);
     if (!animOK()) return;
+    const gen = this.gen; const live = () => gen === this.gen && animOK() && !!this.rec();
     const cx = box.center.x, cy = box.center.y, rx = box.w / 2 + 28, ry = box.h / 2 + 28; const n = 36; const points: { x: number; y: number; z: number }[] = [];
     const sid = `agent-laser-${Date.now()}`;
-    for (let i = 0; i <= n + 6; i++) {
-      const a = -Math.PI / 2 + (i / n) * Math.PI * 2; points.push({ x: cx + Math.cos(a) * rx, y: cy + Math.sin(a) * ry, z: 0.5 });
-      this.put({ scribbles: [{ id: sid, points: [...points], size: 6, color: 'laser', opacity: 0.8, state: 'active', delay: 0, shrink: 0, taper: false }] as any });
-      await sleep(16);
-    }
-    await sleep(700); this.put({ scribbles: [] });
+    try {
+      for (let i = 0; i <= n + 6 && live(); i++) {
+        const a = -Math.PI / 2 + (i / n) * Math.PI * 2; points.push({ x: cx + Math.cos(a) * rx, y: cy + Math.sin(a) * ry, z: 0.5 });
+        this.put({ scribbles: [{ id: sid, points: [...points], size: 6, color: 'laser', opacity: 0.8, state: 'active', delay: 0, shrink: 0, taper: false }] as any }, false);
+        await sleep(16);
+      }
+      if (live()) await sleep(700);
+    } finally { this.put({ scribbles: [] }, false); }
+    if (gen === this.gen) this.arm();
   }
-  leave() { window.clearTimeout(this.idle); window.clearTimeout(this.gone); this.pos = null; setHand({ working: false, label: '', at: null });
-    if (!this.editor.isDisposed && this.rec()) this.editor.store.mergeRemoteChanges(() => this.editor.store.remove([PRESENCE_ID])); }
+  /** Drop the laser and outline at once (the tab hid), keeping the cursor. */
+  quiet() { this.put({ scribbles: [], selectedShapeIds: [] }, false); }
+  leave() { this.gen++; window.clearTimeout(this.idle); window.clearTimeout(this.gone); this.pos = null; setHand({ working: false, label: '', at: null });
+    if (this.rec()) this.editor.store.mergeRemoteChanges(() => this.editor.store.remove([PRESENCE_ID])); }
 }
 
 const hands = new WeakMap<Editor, Hand>();
 export function handOf(editor: Editor): Hand { let h = hands.get(editor); if (!h) { h = new Hand(editor); hands.set(editor, h); } return h; }
+/** The board closed (or switched): the hand leaves for good, so nothing of it stays on screen or comes back. */
+export function dropHand(editor: Editor) { hands.get(editor)?.leave(); hands.delete(editor); }
+/** Wire the hand's cleanup to the board's life: a hidden tab drops the laser and outline at once; unmount removes the hand.
+ *  Returns the cleanup (call it on unmount). */
+export function bindHand(editor: Editor): () => void {
+  const onVis = () => { if (document.visibilityState === 'hidden') hands.get(editor)?.quiet(); };
+  document.addEventListener('visibilitychange', onVis);
+  return () => { document.removeEventListener('visibilitychange', onVis); dropHand(editor); };
+}
 /** Frame the camera on this page area (FollowAgent eases to it). */
 export function workArea(b: { x: number; y: number; w: number; h: number } | null) { setHand({ area: b }); }
 /** The bounds of some shapes, as a plain box (null when none are on the board). */

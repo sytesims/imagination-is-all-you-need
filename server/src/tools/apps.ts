@@ -9,6 +9,7 @@ import { TRANSLATE_LANGS } from '../comfy/plans.js';
 import { SHOT_ANGLES, parseShots, shotPrompt, FACE_SWAP_PROMPT, FACE_SWAP_KEEP, PERSON_SWAP_PROMPT, PERSON_SWAP_KEEP, type ShotAngle } from './shots.js';
 import { GENERATE_MODELS, EDIT_MODELS, TWO_IMAGE_MODELS, MASK_MODELS, REMOVE_BG_MODELS, EXPAND_MODELS, ERASE_MODELS, TRYON_MODELS, featureById, gridModelOf } from '../shared/imageFeatures.js';
 import { promptGrammarOf } from '../shared/promptGrammar.js';
+import { fillPattern, patternFor } from '../shared/promptPatterns.js';
 import { EXPAND_ASPECTS, EXPAND_ASPECT_LABELS, TRYON_CATEGORIES, TRYON_PHOTO_TYPES, expandBlock, expandCanvas, photoBlock, eraseMaskBlock } from '../shared/imagePhotoTools.js';
 import { maskCover } from './imageFalApps.js';
 import { LAYER_MODELS, LAYER_SIZES, LAYER_SIZE_DEFAULT, LAYERS_NO_PROMPT, layersPhotoBlock, layerLabel } from '../shared/imageLayers.js';
@@ -164,7 +165,7 @@ export function makeApp(c: AppConfig): ToolDef {
       const resolution = draft ? '480p' : (fields.resolution || (resolutions.includes('720p') ? '720p' : resolutions[0]));
       if (!resolutions.includes(resolution) && !draft) return { error: `Resolution must be one of ${resolutions.join(', ')}.` };
       const pf = parseFields(c.fields ?? [], fields); if ('error' in pf) return { error: String(pf.error) };
-      const extra = { fields: pf, types, typePrompt, ...(aspect ? { aspect } : {}), finalPrompt: moveFirst(typePrompt, [prompt, enhance ? '(enhanced: cinematic, detailed, smooth motion)' : ''].filter(Boolean).join('. ')), enhance, steps: draft && steps ? Math.max(4, Math.round(steps / 2)) : steps };
+      const extra = { fields: pf, types, typePrompt, ...(aspect ? { aspect } : {}), finalPrompt: moveFirst(typePrompt, [prompt, enhance ? fillPattern('camera-enhance', null) /* a plain sentence, not an "(enhanced: …)" note */ : ''].filter(Boolean).join('. ')), enhance, steps: draft && steps ? Math.max(4, Math.round(steps / 2)) : steps };
       const durProv = fields.provider || PROVS[0]; const durRaw = fields.duration != null && fields.duration !== '' ? fields.duration : fields.seconds;
       const rd = c.durations ? resolveDuration(c.id, durProv, durRaw) : undefined; // same rule as the price quote: an off-list length snaps to the nearest (D5)
       if (rd && 'error' in rd) return { ...durationErrorBody(rd, fields.duration != null && fields.duration !== '' ? 'duration' : 'seconds') } as any;
@@ -603,7 +604,11 @@ export const RELIGHT_KEEP = 'keep the same person, face, pose, clothes and frami
 /** Relight looks: which prompt wording a model gets. 'qwen' = new light first, clear change, identity lock (2026-10-22 lesson);
  *  'sentence' = GPT Image / Nano Banana, which follow plain instruction sentences best; 'flux' = everything else (FLUX, Seedream…), today's order. */
 export type RelightFamily = 'qwen' | 'sentence' | 'flux';
-export const relightFamilyOf = (provider?: string): RelightFamily => !provider ? 'flux' : QWEN_EDIT.has(provider) ? 'qwen' : /^api-(gpt-image|nano-banana)/.test(provider) ? 'sentence' : 'flux';
+const NANO_BANANA = /^(api-nano-banana|direct-gemini-nb)/;
+export const relightFamilyOf = (provider?: string): RelightFamily => !provider ? 'flux' : QWEN_EDIT.has(provider) ? 'qwen' : /^api-gpt-image/.test(provider) || NANO_BANANA.test(provider) ? 'sentence' : 'flux';
+/** Where the keep sentence goes (shared/promptPatterns.ts relight): first on Nano Banana (Comfy's NB2 relight template locks identity first), last elsewhere. */
+export const relightKeepFirst = (provider?: string) => patternFor('relight', provider && NANO_BANANA.test(provider) ? 'nano-banana' : provider && /^api-gpt-image/.test(provider) ? 'gpt-image' : null)?.keep === 'first';
+const keepPlaced = (provider: string | undefined, parts: string[]) => (relightKeepFirst(provider) ? [RELIGHT_SENTENCE_KEEP, ...parts] : [...parts, RELIGHT_SENTENCE_KEEP]).filter(Boolean).join(' ');
 /** With a look, FLUX-type models also get a short "make it visible" line (a soft white light from the left barely changed a real FLUX.2 klein run). */
 export const RELIGHT_LOOK_CHANGE = 'the new lighting is clearly visible across the whole image';
 export const RELIGHT_SENTENCE_CHANGE = 'Only the lighting changes: shadows, highlights and colour across the whole image follow the new light.';
@@ -617,8 +622,8 @@ export function relightRigPrompt(rig: LightRig, look: string | undefined, userPr
   const key = `key light ${P.keyDir}, ${P.keyTint}`;
   if (fam === 'qwen') return joinPrompt(`Relight the scene${setup ? ` with ${setup}` : ''}: ${key}`, P.quality, P.rim, P.ambient, desc, userPrompt, RELIGHT_CHANGE, RELIGHT_KEEP);
   if (fam === 'sentence') { const S = (x?: string) => (x && x.trim() ? `${x.trim()[0].toUpperCase()}${x.trim().slice(1).replace(/[.;,]+$/, '')}.` : '');
-    return [`Relight this photo${setup ? ` with ${setup}` : ''}.`, S(`The key light comes ${P.keyDir}; ${P.keyTint}`), S(`Light quality: ${P.quality}`), P.rim ? S(`Add a ${P.rim}`) : '', S(P.ambient),
-      desc ? S(`The setup: ${desc}`) : '', S(userPrompt), RELIGHT_SENTENCE_CHANGE, RELIGHT_SENTENCE_KEEP].filter(Boolean).join(' '); }
+    return keepPlaced(provider, [`Relight this photo${setup ? ` with ${setup}` : ''}.`, S(`The key light comes ${P.keyDir}; ${P.keyTint}`), S(`Light quality: ${P.quality}`), P.rim ? S(`Add a ${P.rim}`) : '', S(P.ambient),
+      desc ? S(`The setup: ${desc}`) : '', S(userPrompt), RELIGHT_SENTENCE_CHANGE]); }
   return joinPrompt(`relight the scene${setup ? ` with ${setup}` : ''}`, key, P.quality, P.rim, P.ambient, desc, userPrompt, RELIGHT_LOOK_CHANGE, 'keep the subject, pose and composition unchanged');
 }
 /** The Relight prompt. `look` blank or 'custom' = the pre-look prompt, byte for byte. A `light` rig (the 3D light sphere) words the light precisely instead. */
@@ -637,7 +642,7 @@ export function relightPrompt(v: Record<string, string>, userPrompt: string, pro
   const tone = String(v.color ?? '').toUpperCase() === L.sets.color.toUpperCase() ? L.tone : '';
   if (fam === 'qwen') return joinPrompt(`Relight the scene with ${L.light}: ${light}, ${pad}`, L.prompt, tone, quality, userPrompt, RELIGHT_CHANGE, RELIGHT_KEEP);
   if (fam === 'sentence') { const S = (x?: string) => (x && x.trim() ? `${x.trim()[0].toUpperCase()}${x.trim().slice(1).replace(/[.;,]+$/, '')}.` : '');
-    return [`Relight this photo with ${L.light}.`, S(`The main light is ${light.replace(/ light$/, '')}${pad?.startsWith('light ') ? `, ${pad.replace(/^light /, 'coming ')}` : `: ${pad}`}`), S(`The setup: ${L.prompt}`), tone ? S(`Colour temperature: ${tone}`) : '', S(quality), S(userPrompt), RELIGHT_SENTENCE_CHANGE, RELIGHT_SENTENCE_KEEP].filter(Boolean).join(' '); }
+    return keepPlaced(provider, [`Relight this photo with ${L.light}.`, S(`The main light is ${light.replace(/ light$/, '')}${pad?.startsWith('light ') ? `, ${pad.replace(/^light /, 'coming ')}` : `: ${pad}`}`), S(`The setup: ${L.prompt}`), tone ? S(`Colour temperature: ${tone}`) : '', S(quality), S(userPrompt), RELIGHT_SENTENCE_CHANGE]); }
   return joinPrompt(`relight the scene with ${L.light}`, pad, quality, light, L.prompt, tone, userPrompt, RELIGHT_LOOK_CHANGE, 'keep the subject, pose and composition unchanged');
 }
 /** Character Sheet (rewritten Oct 22; layouts 2026-10-25, our own wording): the subject, the layout's panels (appRows CHARACTER_LAYOUTS), one grey

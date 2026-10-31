@@ -7,6 +7,7 @@ import { GPU_DEFAULT, GPU_LTX, mockRun, parseCommon, MAX_CHAR_REF_BYTES, applyBa
 /** Restyle: up to 30 character references (was 5), split into groups of ≤8 like the swap tools. */
 export const RESTYLE_MAX_REFS = 30;
 import { styleFor } from '../comfy/restyle.js';
+import { fillPattern } from '../shared/promptPatterns.js';
 import { LIMITS, RESOLUTIONS, probe } from '../media.js';
 import path from 'node:path';
 import { DATA_DIR } from '../config.js';
@@ -69,44 +70,47 @@ const STYLE_GROUPS: Record<string, string[]> = {
   'Live-Action': ['Live-action', 'Neon noir'],
 };
 const styleGroup = (s: string) => Object.entries(STYLE_GROUPS).find(([, xs]) => xs.includes(s))?.[0] ?? 'Look';
-const SWAP_PRESETS: Preset[] = [
-  ['main-person', 'Main person → reference', 'replace the main person with the reference character'],
-  ['left-person', 'Person on the left', 'replace the person on the left with the reference character'],
-  ['right-person', 'Person on the right', 'replace the person on the right with the reference character'],
-  ['outfit', 'Outfit swap', 'change the main person\'s outfit to the reference outfit'],
-  ['product', 'Product in hand', 'replace the product held in hand with the reference product'],
-  ['drink', 'Drink / can', 'replace the drink with the reference can or bottle'],
-  ['car', 'Car', 'replace the car with the reference vehicle'],
-  ['pet', 'Pet', 'replace the animal with the reference animal'],
-  ['location', 'Location', 'replace the background location with the reference location'],
-  ['sky', 'Sky', 'replace the sky with the reference sky'],
-  ['furniture', 'Furniture', 'replace the main piece of furniture with the reference item'],
-  ['logo', 'Logo / sign', 'replace the visible logo or sign with the reference artwork'],
-  ['shoes', 'Shoes', 'replace the shoes with the reference shoes'],
-  ['hat', 'Headwear', 'replace the headwear with the reference item'],
-  ['glasses', 'Eyewear', 'replace the eyewear with the reference glasses'],
-  ['bag', 'Bag', 'replace the bag with the reference bag'],
-  ['phone', 'Phone / device', 'replace the device with the reference device'],
-  ['food', 'Food', 'replace the food with the reference dish'],
-  ['toy', 'Toy / figure', 'replace the toy with the reference figure'],
-  ['robot', 'Robot cast', 'replace the main person with the reference robot'],
-  ['creature', 'Creature cast', 'replace the main person with the reference creature'],
-  ['mascot', 'Mascot', 'replace the main person with the reference mascot'],
-  ['jacket', 'Jacket', 'replace the jacket with the reference jacket'],
-  ['poster', 'Wall poster', 'replace the poster on the wall with the reference image'],
-  ['screen', 'Screen content', 'replace what is shown on the screen with the reference image'],
-  ['bottle', 'Bottle', 'replace the bottle with the reference bottle'],
-  ['watch', 'Watch', 'replace the watch with the reference watch'],
-  ['plant', 'Plant', 'replace the plant with the reference plant'],
-  ['bike', 'Bike', 'replace the bike with the reference bike'],
-  ['package', 'Package / box', 'replace the box with the reference package'],
-  ['instrument', 'Instrument', 'replace the instrument with the reference instrument'],
-].map(([a, b, c]) => ({ ...p(a, b, c), group: swapGroup(a) }));
+/** Swap presets name the new look by its slot ("image 1"), so shared/promptRefs.ts gives each model its own token (Kling <<<image_1>>>, Seedance
+ *  Image 1, H3 <Picture 1>): shared/promptPatterns.ts video-swap-preset. [id, label, what is replaced, what replaces it] or a full sentence. */
+const swapLine = (thing: string, what: string) => fillPattern('video-swap-preset', null, { thing, what });
+const SWAP_PRESETS: Preset[] = ([
+  ['main-person', 'Main person → reference', swapLine('the main person', 'character')],
+  ['left-person', 'Person on the left', swapLine('the person on the left', 'character')],
+  ['right-person', 'Person on the right', swapLine('the person on the right', 'character')],
+  ['outfit', 'Outfit swap', 'change the main person\'s outfit to the outfit in image 1'],
+  ['product', 'Product in hand', swapLine('the product held in hand', 'product')],
+  ['drink', 'Drink / can', swapLine('the drink', 'can or bottle')],
+  ['car', 'Car', swapLine('the car', 'vehicle')],
+  ['pet', 'Pet', swapLine('the animal', 'animal')],
+  ['location', 'Location', swapLine('the background location', 'location')],
+  ['sky', 'Sky', swapLine('the sky', 'sky')],
+  ['furniture', 'Furniture', swapLine('the main piece of furniture', 'item')],
+  ['logo', 'Logo / sign', swapLine('the visible logo or sign', 'artwork')],
+  ['shoes', 'Shoes', swapLine('the shoes', 'shoes')],
+  ['hat', 'Headwear', swapLine('the headwear', 'item')],
+  ['glasses', 'Eyewear', swapLine('the eyewear', 'glasses')],
+  ['bag', 'Bag', swapLine('the bag', 'bag')],
+  ['phone', 'Phone / device', swapLine('the device', 'device')],
+  ['food', 'Food', swapLine('the food', 'dish')],
+  ['toy', 'Toy / figure', swapLine('the toy', 'figure')],
+  ['robot', 'Robot cast', swapLine('the main person', 'robot')],
+  ['creature', 'Creature cast', swapLine('the main person', 'creature')],
+  ['mascot', 'Mascot', swapLine('the main person', 'mascot')],
+  ['jacket', 'Jacket', swapLine('the jacket', 'jacket')],
+  ['poster', 'Wall poster', 'replace the poster on the wall with image 1'],
+  ['screen', 'Screen content', 'replace what is shown on the screen with image 1'],
+  ['bottle', 'Bottle', swapLine('the bottle', 'bottle')],
+  ['watch', 'Watch', swapLine('the watch', 'watch')],
+  ['plant', 'Plant', swapLine('the plant', 'plant')],
+  ['bike', 'Bike', swapLine('the bike', 'bike')],
+  ['package', 'Package / box', swapLine('the box', 'package')],
+  ['instrument', 'Instrument', swapLine('the instrument', 'instrument')],
+] as [string, string, string][]).map(([a, b, c]) => ({ ...p(a, b, c), group: swapGroup(a) }));
 const MOTION_PRESETS: Preset[] = [
-  ['new-cast', 'New cast', 'rebuild the scene with the reference character performing the same motion'],
-  ['new-location', 'New location', 'keep the motion and camera, move the action to the reference location'],
-  ['new-look', 'New look', 'keep the motion and timing, apply the reference look to everything'],
-  ['cast-and-location', 'Cast + location', 'reference character in the reference location, same motion and camera'],
+  ['new-cast', 'New cast', 'rebuild the scene with the character in image 1 performing the same motion'],
+  ['new-location', 'New location', 'keep the motion and camera, move the action to the location in image 1'],
+  ['new-look', 'New look', 'keep the motion and timing, apply the look of image 1 to everything'],
+  ['cast-and-location', 'Cast + location', 'the character in image 1 in the location in image 2, same motion and camera'],
 ].map(([a, b, c]) => p(a, b, c));
 const STYLES: Preset[] = [
   'Anime cel', 'Watercolor', 'Claymation', 'Pixel art', 'Comic ink', 'Oil painting', 'Paper cutout', 'Pencil sketch',
@@ -131,7 +135,7 @@ export const objectSwapTool: ToolDef = {
     { name: 'firstFrameMode', kind: 'select', options: ['auto', 'upload'] } as any, { name: 'firstFrame', kind: 'file', accept: 'image/png,image/jpeg,image/webp' },
     { name: 'trimStart', kind: 'number' }, { name: 'trimEnd', kind: 'number' }],
   presets: SWAP_PRESETS,
-  workflows: [config.workflowPath.split('/').pop()!],
+  workflows: [path.basename(config.workflowPath)],
   model: 'Wan 2.2 Animate 14B (replace/mix) + SAM2 masks; LTX In/Outpaint IC-LoRA for objects',
   gpuSecPerSec: GPU_DEFAULT, stages: swapStages,
   // Kling 3.0 Omni's Router edit DOES take images (kling/kling-v3-omni schema: image_list next to video_list refer_type base, ≤ 4 with a video; checked

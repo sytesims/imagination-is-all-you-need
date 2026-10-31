@@ -9,7 +9,9 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { env } from './env.js';
 const PY_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'py');
-const python = () => env('PY') || path.join(PY_DIR, '.venv', 'bin', 'python');
+const WIN = process.platform === 'win32';
+/** A venv keeps python in bin/ (macOS, Linux) or Scripts\python.exe (Windows). */
+const python = () => env('PY') || path.join(PY_DIR, '.venv', WIN ? 'Scripts' : 'bin', WIN ? 'python.exe' : 'python');
 export const runnerScript = () => env('VOICE_RUNNER') || path.join(PY_DIR, 'voice_runner.py');
 function run(args: string[], stdin = '', timeoutMs = 20 * 60_000): Promise<any> {
   return new Promise((res, rej) => {

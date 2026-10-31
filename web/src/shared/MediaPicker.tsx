@@ -14,6 +14,10 @@
  * Each tile's ⋯ menu moves it to a project (a generation: its job, setJobProject; an upload: POST /api/media/project).
  * Search (2026-10-27): words in the box search the references database (GET /api/library/references, server libraryDb.ts) by title, prompt
  * and tags, ranked, in the same tab, kinds and project; an empty box is the plain list again.
+ * Clean pass (2026-10-31): tooltips are short names (tileName), never prompts; a slot that takes several picks tiles into a numbered
+ * selection with an "Add n" bar; the picked tab is a subtle fill with an orange underline.
+ * Tell files apart (2026-10-31, Canvas audit B4/B17): every tile has a one-line caption (short name, a clip's or sound's length), and a sound
+ * plays from its round button or Space (shared/PreviewPlay: one preview at a time, stopped when the picker closes or the tab changes).
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { gridSrc } from './thumbs';
@@ -26,6 +30,7 @@ import { useFeedProject, type ProjectRow } from './feedProject';
 import { ProjectCover, ProjectRows, useProjectList } from './ProjectPicker';
 import { setJobProject } from '../api';
 import { ChevronDownIcon, MoreIcon, ProjectsIcon, SearchIcon, CloseIcon } from '../ui/Icons';
+import { PlayButton, togglePreview, stopPreview, useMediaLength, fmtLength } from './PreviewPlay';
 import './mediaPicker.css';
 
 export type PickTab = 'Uploads' | 'Generations' | 'Liked';
@@ -47,14 +52,22 @@ export function kindsOf(accept: string | null | undefined): MediaKind[] {
   return (['image', 'video', 'audio'] as MediaKind[]).filter(k => out.has(k));
 }
 export const kindOfFile = (f: File): MediaKind | null => /^image\//.test(f.type) || /\.(png|jpe?g|webp|gif)$/i.test(f.name) ? 'image' : /^video\//.test(f.type) || /\.(mp4|mov|webm|m4v)$/i.test(f.name) ? 'video' : /^audio\//.test(f.type) || /\.(mp3|wav|m4a|aac|ogg|flac)$/i.test(f.name) ? 'audio' : null;
-const NOUN: Record<MediaKind, [string, string]> = { image: ['an image', 'images'], video: ['a video', 'videos'], audio: ['a sound', 'sounds'] };
+const NOUN: Record<MediaKind, [string, string]> = { image: ['a picture', 'pictures'], video: ['a video', 'videos'], audio: ['a sound', 'sounds'] };
 const list = (xs: string[]) => xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} or ${xs[xs.length - 1]}`;
-/** "Choose an image" / "Choose a video or a sound" */
-export const defaultTitle = (kinds: MediaKind[]) => `Choose ${list(kinds.map(k => NOUN[k][0]))}`;
+/** "Choose a picture" / "Choose pictures" (a slot that takes several) / "Choose a video or a sound" */
+export const defaultTitle = (kinds: MediaKind[], multiple?: boolean) => `Choose ${list(kinds.map(k => NOUN[k][multiple ? 1 : 0]))}`;
+const day = (t: number) => t > 0 ? new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
+/** A tile's short name, never a prompt: a saved frame says which frame, an upload its file name, a generation its feature. */
+export function tileName(x: Pick<LibItem, 'name' | 'type' | 'toolName'>, tab: PickTab): string {
+  const frame = /^(First frame|Last frame|Frame at [^·]+?)\s*·/.exec(x.name ?? '')?.[1]?.trim();
+  if (frame) return frame;
+  if (tab === 'Uploads') return /^[^/·\n]{1,200}\.[a-z0-9]{2,4}$/i.test((x.name ?? '').trim()) ? x.name.trim() : 'Upload';
+  return x.toolName || (x.type === 'video' ? 'Video' : x.type === 'audio' ? 'Sound' : 'Picture');
+}
 /** A slot label as a picker title: "Start frame" → "Choose a start frame", "Reference images" → "Choose reference images". */
 export function chooseTitle(label: string | null | undefined, kinds: MediaKind[], multiple?: boolean): string {
   const l = (label ?? '').replace(/\s*\(optional\)\s*$/i, '').replace(/^(upload|add|drop|pick)\s+(an?\s+|your\s+)?/i, '').trim();
-  if (!l) return defaultTitle(kinds); if (/^choose\b/i.test(l)) return l;
+  if (!l) return defaultTitle(kinds, multiple); if (/^choose\b/i.test(l)) return l;
   const lower = /^[A-Z][a-z]/.test(l) ? l[0].toLowerCase() + l.slice(1) : l;
   return `Choose ${multiple || /s$/.test(lower) ? '' : /^[aeiou]/i.test(lower) ? 'an ' : 'a '}${lower}`;
 }
@@ -65,7 +78,6 @@ export function wrongTypeMessage(files: File[], kinds: MediaKind[]): string | nu
   return `${what}. This slot takes ${list(kinds.map(x => NOUN[x][1]))}.`;
 }
 const kindsOk = (f: File, kinds: MediaKind[]) => { const k = kindOfFile(f); return !!k && kinds.includes(k); };
-const fmtDur = (s: number) => !isFinite(s) || s <= 0 ? '' : s < 60 ? `${Math.round(s)} s` : `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
 
 /** Lazily mounted children (thumbnails, audio metadata) once the tile scrolls near the view. */
 function useInView<T extends Element>(): [React.RefObject<T>, boolean] {
@@ -76,21 +88,28 @@ function useInView<T extends Element>(): [React.RefObject<T>, boolean] {
 }
 const Wave = () => <svg className="mpk-wave" viewBox="0 0 64 24" aria-hidden><g fill="currentColor">{[6, 12, 18, 9, 22, 14, 8, 16, 20, 10, 5, 13, 19, 11, 7].map((h, i) => <rect key={i} x={i * 4.3 + 0.5} y={12 - h / 2} width="2.4" height={h} rx="1.2" />)}</g></svg>;
 
-function Tile({ x, tab, onPick, onMore, moreOpen, frameHint }: { x: LibItem; tab: PickTab; onPick: (x: LibItem) => void; /** an image slot: a video tile gives a frame */ frameHint?: boolean; /** the ⋯ menu (Move to project); absent = no menu */ onMore?: (x: LibItem, el: HTMLButtonElement) => void; moreOpen?: boolean }) {
-  const [ref, seen] = useInView<HTMLDivElement>(); const [dur, setDur] = useState(0);
-  const loaded = (e: React.SyntheticEvent<HTMLElement>) => e.currentTarget.closest('.mpk-tile')?.classList.add('ld');
-  const tag = tab === 'Uploads' ? null : x.toolName ?? null;
-  const kindWord = x.type === 'image' ? 'Image' : x.type === 'video' ? 'Video' : 'Sound';
-  return <div ref={ref} className={`ic-ref-tile mpk-tile mpk-t-${x.type}`}><button type="button" className="mpk-pick" onClick={() => onPick(x)} aria-label={`${kindWord}: ${x.title || x.name}${dur ? `, ${fmtDur(dur)}` : ''}${frameHint && x.type === 'video' ? ' · pick a frame' : ''}`} title={x.title || x.name}
+function Tile({ x, tab, onPick, onMore, moreOpen, frameHint, sel }: { x: LibItem; tab: PickTab; onPick: (x: LibItem) => void; /** an image slot: a video tile gives a frame */ frameHint?: boolean; /** the ⋯ menu (Move to project); absent = no menu */ onMore?: (x: LibItem, el: HTMLButtonElement) => void; moreOpen?: boolean;
+  /** a slot that takes several: this tile's place in the selection (1-based); 0 = not picked; undefined = picks at once */ sel?: number }) {
+  const [ref, seen] = useInView<HTMLDivElement>(); const dur = useMediaLength(x.url, x.type, seen);
+  /* loaded: React state, so a re-render (picking it) keeps the class */ const [ld, setLd] = useState(false); const loaded = () => setLd(true);
+  const kindWord = x.type === 'image' ? 'Picture' : x.type === 'video' ? 'Video' : 'Sound';
+  const name = tileName(x, tab); const when = day(x.createdAt); const tip = when ? `${name} · ${when}` : name; const len = fmtLength(dur);
+  /* a sound: Space plays / pauses it (Enter still picks); the round button does the same with the mouse */
+  const space = (e: React.KeyboardEvent) => { if (x.type !== 'audio' || e.key !== ' ') return; e.preventDefault(); if (e.type === 'keydown' && !e.repeat) togglePreview(x.url); };
+  return <div ref={ref} className={`ic-ref-tile mpk-tile mpk-t-${x.type}${ld ? ' ld' : ''}${sel ? ' mpk-sel' : ''}`}><button type="button" className="mpk-pick" onClick={() => onPick(x)} onKeyDown={space} onKeyUp={space}
+    aria-label={`${kindWord}: ${tip}${len ? `, ${len}` : ''}${frameHint && x.type === 'video' ? ' · pick a frame' : ''}`} aria-keyshortcuts={x.type === 'audio' ? 'Space' : undefined} title={tip}
+    aria-pressed={sel === undefined || (frameHint && x.type === 'video') ? undefined : sel > 0}
     data-testid={tab === 'Generations' ? `ic-ref-gen-${x.id}` : tab === 'Liked' ? `ic-ref-liked-${x.id}` : `ic-ref-up-${x.id}`} data-kind={x.type}>
     {x.type === 'audio'
-      ? <span className="mpk-audio"><Wave /><span className="mpk-aname">{x.title || x.name}</span>{seen && <audio src={x.url} preload="metadata" onLoadedMetadata={e => setDur(e.currentTarget.duration)} hidden />}</span>
+      ? <span className="mpk-audio"><Wave /></span>
       : seen ? <img src={x.type === 'image' ? gridSrc(x.url, 160) : (x.thumbUrl || `/api/media/thumb?url=${encodeURIComponent(x.url)}`)} alt="" loading="lazy" decoding="async" onLoad={loaded} onError={loaded} /> : <span className="mpk-ph" aria-hidden />}
-    {x.type === 'video' && <span className={`mpk-badge${frameHint ? ' mpk-badge-frame' : ''}`} aria-hidden><svg width="9" height="9" viewBox="0 0 10 10"><path d="M2 1l7 4-7 4z" fill="currentColor" /></svg>{frameHint ? 'Pick a frame' : 'Video'}</span>}
-    {x.type === 'audio' && dur > 0 && <span className="mpk-badge" aria-hidden>{fmtDur(dur)}</span>}
-    {tag && <span className="ic-ref-feat">{tag}</span>}
+    {/* one quiet line: the short name (a file name, a feature, a frame), and a clip's or sound's length */}
+    <span className="mpk-cap" data-testid="mpk-cap" aria-hidden><span className="mpk-cap-n">{name}</span>
+      {x.type !== 'image' && <span className="mpk-cap-d">{x.type === 'video' && <svg width="7" height="8" viewBox="0 0 10 10"><path d="M2 1l7 4-7 4z" fill="currentColor" /></svg>}{len}</span>}</span>
+    {!!sel && <span className="mpk-seln" aria-hidden>{sel}</span>}
   </button>
-    {onMore && <button type="button" className="mpk-more" aria-haspopup="listbox" aria-expanded={!!moreOpen} aria-label={`Move ${x.title || x.name} to a project`} title="Move to project" data-testid="mpk-more" onClick={e => onMore(x, e.currentTarget)}><MoreIcon size={16} /></button>}
+    {x.type === 'audio' && <PlayButton url={x.url} label={name} className="mpk-pv" testId="mpk-play" />}
+    {onMore && <button type="button" className="mpk-more" aria-haspopup="listbox" aria-expanded={!!moreOpen} aria-label={`Move ${name} to a project`} title="Move to project" data-testid="mpk-more" onClick={e => onMore(x, e.currentTarget)}><MoreIcon size={16} /></button>}
   </div>;
 }
 
@@ -144,11 +163,14 @@ export function MediaPicker({ tab, setTab, onClose, title, limits, kinds, frames
   const projRow: ProjectRow | null = projects?.find(p => p.id === proj) ?? null; const hasProjects = !!projects?.length;
   const [projOpen, setProjOpen] = useState(false); const projBtn = useRef<HTMLButtonElement>(null);
   const [moveOf, setMoveOf] = useState<LibItem | null>(null); const moveBtn = useRef<HTMLButtonElement | null>(null);
+  /* a slot that takes several: tiles toggle into a selection (kept across tabs), "Add n" hands them over together */
+  const [sel, setSel] = useState<LibItem[]>([]);
   const panel = useRef<HTMLDivElement>(null); const sentinel = useRef<HTMLDivElement>(null); const depth = useRef(0);
   const showKinds = frames && kinds.includes('image') && !kinds.includes('video') ? [...kinds, 'video' as MediaKind] : kinds;
   const typeQ = showKinds.join(','); const [q, setQ] = useState(''); const [qd, setQd] = useState(''); /* qd: the search, 250 ms after typing stops */
   useEffect(() => { const t = setTimeout(() => setQd(q.trim()), 250); return () => clearTimeout(t); }, [q]);
-  useEffect(() => { setSortOpen(false); setFrameOf(null); setMsg(null); setProjOpen(false); setMoveOf(null); }, [tab]);
+  useEffect(() => { setSortOpen(false); setFrameOf(null); setMsg(null); setProjOpen(false); setMoveOf(null); stopPreview(); }, [tab]);
+  useEffect(() => stopPreview, []); /* a sound preview never outlives the picker */
   useEffect(() => { if (!sortOpen) return; const d = (e: PointerEvent) => { if (!(e.target as Element | null)?.closest?.('.ic-ref-sortw')) setSortOpen(false); }; document.addEventListener('pointerdown', d, true); return () => document.removeEventListener('pointerdown', d, true); }, [sortOpen]);
   /* data: GET /api/media (server mediaLibrary.ts): each upload once, generations and liked from every feature, filtered by kind */
   const seq = useRef(0);
@@ -181,9 +203,16 @@ export function MediaPicker({ tab, setTab, onClose, title, limits, kinds, frames
     document.addEventListener('paste', p); return () => document.removeEventListener('paste', p); }, [take]);
   const pick = async (x: LibItem) => {
     if (x.type === 'video' && !kinds.includes('video')) { setFrameOf(x); return; } // image slot: take a frame from this video
+    if (multiple) { setSel(xs => xs.some(y => y.id === x.id) ? xs.filter(y => y.id !== x.id) : [...xs, x]); return; }
     if (busyId) return; setBusyId(x.id);
-    try { onFile(await libraryFile(x.url, x.type, x.name && !/·/.test(x.name) ? x.name : undefined), x); }
+    try { onFile(await fileOf(x), x); }
     catch { toast('Couldn’t load that file. Try another one.', 'error'); } finally { setBusyId(null); }
+  };
+  const fileOf = (x: LibItem) => libraryFile(x.url, x.type, x.name && !/·/.test(x.name) ? x.name : undefined);
+  const addSel = async () => {
+    if (!sel.length || busyId) return; setBusyId('sel');
+    try { const fs = await Promise.all(sel.map(fileOf)); onFiles(fs); onClose(); }
+    catch { toast('Couldn’t load one of those files. Try again.', 'error'); setBusyId(null); }
   };
   /* Move to project: a generation moves its job; an upload's project set becomes just that one */
   const move = async (x: LibItem, pid: string | null) => {
@@ -196,6 +225,8 @@ export function MediaPicker({ tab, setTab, onClose, title, limits, kinds, frames
   };
   const moveValue = (x: LibItem | null) => { const ids = x?.projectIds ?? []; return ids.length > 1 ? undefined : ids[0] ?? null; };
   const noun = list(showKinds.map(k => NOUN[k][1]));
+  /* the count: one kind by name ("48 pictures"); an image slot that also lists videos (for a frame) says "items" */
+  const countNoun = (n: number) => showKinds.length > 1 ? (n === 1 ? 'item' : 'items') : NOUN[showKinds[0] ?? 'image'][1].replace(/s$/, n === 1 ? '' : 's');
   const empty = qd ? `Nothing matches “${qd}” here. Try other words or another tab.` : projRow ? `Nothing in ${projRow.name} here yet.` : tab === 'Uploads' ? `Nothing uploaded yet. Drop ${noun} here, paste with ⌘V, or upload from your computer.` : tab === 'Liked' ? `Nothing liked yet. Heart a result in Assets to see it here.` : `Your ${noun} will show up here once you make some.`;
   const accepts = acceptsProp ?? (kinds.length > 1 ? list(kinds.map(k => NOUN[k][1])).replace(/^./, c => c.toUpperCase()) : null) ?? kinds.map(k => k === 'image' ? 'PNG, JPG, WEBP' : k === 'video' ? 'MP4, MOV, WEBM' : 'MP3, WAV, M4A').join(' · ');
   const body = <div ref={panel} className={`ic-ref mpk${over ? ' mpk-over' : ''}${host ? ' mpk-dialog' : ''}`} role="dialog" aria-modal={host ? true : undefined} aria-label={title} data-testid="ic-ref" data-target={target ?? undefined} data-kinds={kinds.join(',')}
@@ -206,7 +237,7 @@ export function MediaPicker({ tab, setTab, onClose, title, limits, kinds, frames
       <div className="mpk-head"><h2 className="mpk-title" data-testid="mpk-title">{title}</h2>{limits && <p className="mpk-limits" data-testid="mpk-limits">{limits}</p>}</div>
       {hasProjects && <button ref={projBtn} type="button" className={`mpk-proj${projRow ? ' on' : ''}`} aria-haspopup="listbox" aria-expanded={projOpen} data-testid="mpk-project" data-project={proj} onClick={() => setProjOpen(o => !o)} title={projRow ? `Showing ${projRow.name}` : 'Showing every project'}>
         {projRow ? <ProjectCover p={projRow} size="btn" /> : <ProjectsIcon size={15} />}<span className="mpk-proj-k">Project:</span><span className="mpk-proj-n">{projRow?.name ?? 'All projects'}</span><ChevronDownIcon size={13} /></button>}
-      <button type="button" className="ic-ref-x" aria-label="Close" onClick={onClose}>×</button></div>
+      <button type="button" className="ic-ref-x" aria-label="Close" onClick={onClose}><CloseIcon size={16} /></button></div>
     <Popover open={projOpen} anchor={projBtn} onClose={() => setProjOpen(false)} label="Show project" placement="bottom" align="end" testId="mpk-pop-project" width={280} className="fd-pp-pop mpk-pop">
       <div className="fd-pp"><span className="fd-pp-h" id="mpk-pp-h">Show</span>
         <div className="fd-pp-list" role="listbox" aria-labelledby="mpk-pp-h"><ProjectRows list={projects} value={proj === 'all' ? null : proj} counts={false} testPre="mpk-project" first={{ label: 'All projects', testId: 'mpk-project-all' }}
@@ -223,7 +254,7 @@ export function MediaPicker({ tab, setTab, onClose, title, limits, kinds, frames
       <div className="mpk-tools">
         <label className="mpk-search" data-testid="mpk-search"><SearchIcon size={14} /><input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search by prompt or tag" aria-label="Search your media"
           onKeyDown={e => { if (e.key === 'Escape' && q) { e.preventDefault(); e.stopPropagation(); setQ(''); } }} />{q && <button type="button" className="mpk-search-x" aria-label="Clear search" onClick={() => setQ('')}><CloseIcon size={12} /></button>}</label>
-        {total != null && <span className="mpk-count" data-testid="mpk-count" aria-live="polite">{total.toLocaleString()} {total === 1 ? noun.replace(/s(?=\s|$)/g, '') : noun}</span>}
+        {total != null && <span className="mpk-count" data-testid="mpk-count" aria-live="polite">{total.toLocaleString()} {countNoun(total)}</span>}
         {!qd && <div className="ic-ref-sortw"><button type="button" className="ic-ref-sort" aria-haspopup="menu" aria-expanded={sortOpen} data-testid="ic-ref-sort" onClick={() => setSortOpen(o => !o)}><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden><path d="M2.5 4.5h11M4.5 8h7M6.5 11.5h3" /></svg><span className="mpk-sort-w">Sort by</span><span className="ic-ref-sort-v">{order === 'new' ? 'Most recent' : 'Oldest'}</span></button>
           {sortOpen && <div className="ic-ref-sortm" role="menu" aria-label="Sort by">{([['new', 'Most recent first'], ['old', 'Oldest first']] as const).map(([k, l]) => <button key={k} type="button" role="menuitemradio" aria-checked={order === k} className={order === k ? 'on' : ''} data-testid={`ic-ref-sort-${k}`} onClick={() => { setOrder(k); setSortOpen(false); }}>{l}{order === k && <span aria-hidden>✓</span>}</button>)}</div>}</div>}
       </div>
@@ -231,16 +262,20 @@ export function MediaPicker({ tab, setTab, onClose, title, limits, kinds, frames
     {msg && <p className="mpk-msg" role="alert" data-testid="mpk-msg">{msg}</p>}
     {frameOf ? <FrameGrab item={frameOf} onBack={() => setFrameOf(null)} onUse={f => onFiles([f])} />
       : <div className="ic-ref-grid mpk-grid" aria-busy={loading || undefined}>
-        {tab === 'Uploads' && <button type="button" className="ic-ref-tile ic-ref-up mpk-up" data-testid="ic-ref-upload" onClick={onUpload}>
-          <span className="mpk-up-ic" aria-hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg></span>
-          <b>Upload from your computer</b><small>{accepts}</small></button>}
-        {items.map(x => <Tile key={x.id} x={x} tab={tab} onPick={pick} frameHint={x.type === 'video' && !kinds.includes('video')} moreOpen={moveOf?.id === x.id} onMore={hasProjects && (tab === 'Uploads' || x.jobId) ? (it, el) => { moveBtn.current = el; setMoveOf(it); } : undefined} />)}
+        {tab === 'Uploads' && <button type="button" className="ic-ref-tile ic-ref-up mpk-up" data-testid="ic-ref-upload" onClick={onUpload} aria-label="Upload from your computer" title={`Upload from your computer · ${accepts}`}>
+          <span className="mpk-up-ic" aria-hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg></span>
+          <b>Upload</b><small>or drop files</small></button>}
+        {items.map(x => <Tile key={x.id} x={x} tab={tab} onPick={pick} frameHint={x.type === 'video' && !kinds.includes('video')} sel={multiple ? sel.findIndex(y => y.id === x.id) + 1 : undefined} moreOpen={moveOf?.id === x.id} onMore={hasProjects && (tab === 'Uploads' || x.jobId) ? (it, el) => { moveBtn.current = el; setMoveOf(it); } : undefined} />)}
         {loading && !items.length && Array.from({ length: 5 }, (_, i) => <span key={i} className="ic-ref-tile ic-ref-skel" aria-hidden />)}
         {!loading && !items.length && <p className="helper ic-ref-empty mpk-empty" data-testid="mpk-empty">{failed ? 'Couldn’t load your library. Close and try again.' : empty}
           {!failed && projRow && <button type="button" className="mpk-btn mpk-showall" data-testid="mpk-show-all" onClick={() => setProjByTab(m => ({ ...m, [tab]: 'all' }))}>Show all projects</button>}</p>}
         {more && <div ref={sentinel} className="mpk-sentinel" aria-hidden />}
-        {busyId && <span className="mpk-busy" role="status">Loading…</span>}
+        {busyId && busyId !== 'sel' && <span className="mpk-busy" role="status">Loading…</span>}
       </div>}
+    {multiple && sel.length > 0 && !frameOf && <div className="mpk-selbar" data-testid="mpk-selbar">
+      <span className="mpk-selbar-n" aria-live="polite"><b>{sel.length}</b> selected</span>
+      <button type="button" className="mpk-btn mpk-btn-q" onClick={() => setSel([])} data-testid="mpk-sel-clear">Clear</button>
+      <button type="button" className="mpk-btn mpk-btn-pri" disabled={busyId === 'sel'} onClick={() => void addSel()} data-testid="mpk-sel-add">{busyId === 'sel' ? 'Adding…' : `Add ${sel.length}`}</button></div>}
     {over && <div className="mpk-drop" aria-hidden><span>Drop to add</span></div>}
   </div>;
   /* data-apop-keep: a popover underneath (the Render sheet) treats clicks in the picker as inside, so it stays open and its input still gets the pick */
@@ -288,5 +323,5 @@ export function pickMedia(r: { accept: string; title?: string; limits?: string; 
   const kinds = kindsOf(r.accept);
   const native = () => { const i = document.createElement('input'); i.type = 'file'; i.accept = r.accept; i.multiple = !!r.multiple; i.onchange = () => { const fs = [...(i.files ?? [])]; if (fs.length) r.onFiles(fs); }; withNativePicker(() => i.click()); };
   if (!opener || !kinds.length) { native(); return; }
-  opener({ kinds, title: r.title ?? defaultTitle(kinds), limits: r.limits, frames: r.frames !== false, multiple: !!r.multiple, deliver: fs => r.onFiles(r.multiple ? fs : fs.slice(0, 1)), native });
+  opener({ kinds, title: r.title ?? defaultTitle(kinds, r.multiple), limits: r.limits, frames: r.frames !== false, multiple: !!r.multiple, deliver: fs => r.onFiles(r.multiple ? fs : fs.slice(0, 1)), native });
 }

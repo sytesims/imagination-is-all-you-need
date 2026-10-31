@@ -4,6 +4,7 @@
  * Components keep their names and props; only how they are loaded changes. The Suspense fallback is the app's usual
  * loading skeleton (App.tsx).
  */
+import { VIDEO_PAGE } from '../../../server/src/shared/videoWorkflows';
 import { lazy, type ComponentType } from 'react';
 import { videoBarOf } from '../../../server/src/shared/videoBar';
 
@@ -66,7 +67,7 @@ export const SCREEN_CHUNK: Record<string, ChunkKey> = {
 };
 const PAGE_CHUNK: Record<string, ChunkKey> = {
   '/mcp': 'pages', '/api-docs': 'pages', '/plugins': 'pages', '/community': 'pages', '/workflows': 'pages', '/models': 'pages', '/presets': 'pages',
-  '/image': 'pages', '/video': 'pages', '/audio': 'pages', '/profile': 'pages', '/settings': 'settings', '/licenses': 'licenses', '/canvas': 'canvas', '/film': 'film', '/learn/ai-ecommerce': 'learnEcom',
+  '/image': 'pages', '/audio': 'pages', '/profile': 'pages', '/settings': 'settings', '/licenses': 'licenses', '/canvas': 'canvas', '/film': 'film', '/learn/ai-ecommerce': 'learnEcom',
   '/account/usage': 'spend', '/usage': 'spend', '/spend': 'spend', '/terms': 'terms', '/usage-notes': 'terms',
 };
 /** /tools/<x> → screen key; App registers this from the tool registry (route / id → tool.id, tool.ui). */
@@ -84,7 +85,7 @@ export function chunksFor(to: string): ChunkKey[] {
   if (/^\/jobs\//.test(path)) return ['history', 'job'];
   if (/^\/workflows\/[^/]+/.test(path)) return ['workflowPages'];
   if (/^\/(share|models)\//.test(path)) return ['backlog'];
-  if (path === '/tools/h3-video') { const w = new URLSearchParams(search).get('workflow'); return w === 'stitch' ? ['videoPage', 'stitch'] : w && videoBarOf(w) ? ['videoPage', 'videoBar'] : ['videoPage', 'app']; } // One Video page: the shell and its feed, plus the bar (a workflow's, or Create Video's screen)
+  if (path === VIDEO_PAGE) { const w = new URLSearchParams(search).get('workflow'); return w === 'stitch' ? ['videoPage', 'stitch'] : w && videoBarOf(w) ? ['videoPage', 'videoBar'] : ['videoPage', 'app']; } // One Video page: the shell and its feed, plus the bar (a workflow's, or Create Video's screen)
   if (path.startsWith('/tools/')) { const ks = toolScreenOf(path).map(k => SCREEN_CHUNK[k]).filter(Boolean); return ks.length ? [ks[0]] : []; }
   return [];
 }

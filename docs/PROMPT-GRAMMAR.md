@@ -90,7 +90,7 @@ This page is the readable view. Step 2 (2026-10-26): one rewrite, [`server/src/s
 | `kling-image-o1` | Kling Image O1 | required | tag: `<<<image_{n}>>>` `<<<element_{n}>>>` · max 10 img<br>fal: `@Image{n}` `@Element{n}` | 2,500 chars | in-prompt | – | yes | official, third-party |
 | `krea` | Krea 3 | required | tag: `@Image{n}` · max 8 img | – | none | Krea rewrites the prompt; the same seed doesn't repeat an image | yes | official |
 | `runway-gen4-image` | Runway Gen-4 Image | required | tag: `@{tag}` · max 3 img | – | none | – | **no** | official, third-party |
-| `grok-imagine-image` | Grok Imagine Image 2.0 | required | order: `image {n}` · max 3 img | – | none | – | yes | official |
+| `grok-imagine-image` | Grok Imagine Image 2.0 | required | order: `image {n}` · max 5 img | – | none | – | yes | official |
 | `grok-imagine-image-pro` | Grok Imagine Image Pro | required | none | – | none | – | yes | official |
 | `qwen-image-3` | Qwen Image 3.0 | required | words: `image {n}` · max 3 img | – | field | prompt_extend rewrites (off unless asked) | yes | official |
 | `qwen-image-3-pro` | Qwen Image 3.0 Pro | required | words: `image {n}` · max 3 img | – | field | prompt_extend rewrites (off unless asked) | yes | official |
@@ -322,7 +322,7 @@ Examples are our own words.
 | `hunyuan-image-3.5` | Subject, setting, composition, light, style; for edits say what changes first, then what must stay the same. | A paper-cut diorama of a whale over a lighthouse, layered blues. |
 | `meta-muse-image` | Subject, setting, composition, light, style; for edits say what changes first, then what must stay the same. | A field guide page about the snowy owl, labelled sketches. |
 | `minimax-image-01` | Subject, setting, composition, light, style; for edits say what changes first, then what must stay the same. | Portrait of an old fisherman mending nets at dawn, warm side light. |
-| `fibo-2.0` | Instruction for edits; or a JSON structured prompt. | Make the sofa deep green velvet; keep the room and light. |
+| `fibo-2.0` | Instruction for edits; or a JSON structured prompt. | The sofa is deep green velvet. |
 | `qwen-image-2.1` | Start from <image1> as the base, say what to take from <image2>, then the keep list. | Start with <image1> as the base and replace the mug with the one in <image2>; keep the desk and light. |
 | `qwen-image-2.1-turbo` | The edit, then the keep list. | Turn <image1> into a rainy evening; keep the people where they are. |
 | `qwen-image` | Subject, setting, composition, light, style; for edits say what changes first, then what must stay the same. | A rain-washed Hong Kong street with glowing bilingual signs, cinematic. |

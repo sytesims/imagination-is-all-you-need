@@ -2,27 +2,21 @@
 // `npm run setup`: one command from a fresh clone to a running app.
 //   1. Dependencies: runs `npm install` when they're missing (--check: only says so).
 //   2. `npm run doctor`: what works, what's missing, how to fix it (read-only).
-//   3. Starts the app (`npm run dev`) unless it's already running (--no-start: don't), and prints the setup page: http://localhost:5174/?setup=1
+//   3. Starts the app (`npm start`: builds the web app when it changed, then runs it without file watching) unless it's already running (--no-start: don't), and prints the setup page: http://localhost:5174/?setup=1
 //      --open: also opens the app in the browser once the web page answers (desktop shortcuts and scripts/get.sh use it).
 // Nothing else is installed or downloaded: ComfyUI, custom nodes and models stay your choice (the doctor prints the commands).
 import { spawn, spawnSync } from 'node:child_process';
-import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
-const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+import fs from 'node:fs'; import path from 'node:path';
+import { REPO, webPort, launchEnv, apiUp as up } from './app-env.mjs'; // ports and env file: the same settings the app reads
 const args = process.argv.slice(2); const has = (f) => args.includes(f);
 if (has('--help') || has('-h')) { console.log('npm run setup [-- --check] [--no-start] [--open]\n  --check     only check (no npm install, no start)\n  --no-start  install + doctor, but don\'t start the app\n  --open      open the app in the browser once it\'s ready'); process.exit(0); }
 const checkOnly = has('--check'); const noStart = has('--no-start') || checkOnly; const openWhenReady = has('--open');
 const say = (s) => console.log(`\x1b[1m==>\x1b[0m ${s}`);
-const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const WIN = process.platform === 'win32'; const npm = WIN ? 'npm.cmd' : 'npm';
+/** npm.cmd needs a shell on Windows: give it one command line (fixed words only), not args + shell: true, which Node 24 warns about (DEP0190). */
+const npmCall = (a) => (WIN ? [`${npm} ${a.join(' ')}`, [], { shell: true }] : [npm, a, {}]);
 const major = Number(process.versions.node.split('.')[0]);
 if (major < 20) { console.error(`Node ${process.versions.node} is too old: install Node 22 or 24 (https://nodejs.org), then run npm run setup again.`); process.exit(2); }
-// ports and env file: the same settings the app reads (shell first, then the env file; values of these few settings only, never keys)
-const envFile = process.env.OPENHIGGSFIELD_ENV_FILE?.trim() ? path.resolve(process.env.OPENHIGGSFIELD_ENV_FILE.trim()) : path.join(REPO, '.env.local');
-const fileVal = (k) => { try { const m = fs.readFileSync(envFile, 'utf8').match(new RegExp(`^\\s*${k}\\s*=\\s*([^#\\r\\n]*)`, 'm')); return m ? m[1].trim().replace(/^(['"])(.*)\1$/, '$2') : ''; } catch { return ''; } };
-const setting = (k, d) => process.env[k]?.trim() || fileVal(k) || d;
-const apiPort = setting('PORT', '8787'); const webPort = setting('WEB_PORT', '5174');
-// The Vite and MCP processes must inherit the same ports as the printed wizard URL/API.
-// Only promote these non-secret settings, not the contents of the settings file.
-const launchEnv = { ...process.env, PORT: apiPort, WEB_PORT: webPort, MCP_PORT: setting('MCP_PORT', '8788') };
 const wizard = `http://localhost:${webPort}/?setup=1`;
 const home = `http://localhost:${webPort}/`; // --open opens the home page: the setup sheet shows by itself on a first visit
 /** Opens a page in the default browser; best effort (a computer without a desktop just keeps the printed address). */
@@ -36,7 +30,7 @@ const depsOk = () => ['node_modules/fastify', 'node_modules/tsx', 'node_modules/
 if (depsOk()) say('Dependencies installed');
 else if (checkOnly) say('Dependencies not installed (run npm run setup without --check, or npm install)');
 else { const ci = fs.existsSync(path.join(REPO, 'package-lock.json')); /* npm ci installs exactly the lockfile and never rewrites it (a rewritten lockfile blocks git pull later) */
-  say(`Installing dependencies (npm ${ci ? 'ci' : 'install'})…`); const r = spawnSync(npm, [ci ? 'ci' : 'install', '--no-audit', '--no-fund'], { cwd: REPO, stdio: 'inherit', shell: process.platform === 'win32' }); if (r.status !== 0) { console.error('npm install failed; fix the error above and run npm run setup again.'); process.exit(r.status ?? 1); } }
+  say(`Installing dependencies (npm ${ci ? 'ci' : 'install'})…`); const [c, a, o] = npmCall([ci ? 'ci' : 'install', '--no-audit', '--no-fund']); const r = spawnSync(c, a, { ...o, cwd: REPO, stdio: 'inherit' }); if (r.status !== 0) { console.error('npm install failed; fix the error above and run npm run setup again.'); process.exit(r.status ?? 1); } }
 
 // 2. doctor
 say('Checking this computer (npm run doctor)…\n');
@@ -44,18 +38,17 @@ const doc = spawnSync(process.execPath, [path.join(REPO, 'scripts', 'doctor.mjs'
 if (doc.status === 2) { console.error('\nThe app can’t start yet: fix the lines marked ✗ above, then run npm run setup again.'); process.exit(2); }
 
 // 3. start (or say where it runs)
-const up = async () => { try { const r = await fetch(`http://127.0.0.1:${apiPort}/api/health`, { signal: AbortSignal.timeout(1500) }); return r.ok; } catch { return false; } };
 const webUp = async () => { try { return (await fetch(home, { signal: AbortSignal.timeout(1500) })).ok; } catch { return false; } };
 console.log('');
 if (await up()) {
   if (openWhenReady) { openBrowser(home); say(`The app is already running: opened ${home} in your browser.`); process.exit(0); }
   say(`The app is already running. Open the setup page: ${wizard}`); process.exit(0);
 }
-if (noStart) { say(`Start it with npm run dev, then open the setup page: ${wizard}`); process.exit(doc.status ?? 0); }
-say(`Starting the app (npm run dev). Setup page: ${wizard}   (Ctrl+C stops it)`);
-const child = spawn(npm, ['run', 'dev'], { cwd: REPO, stdio: 'inherit', shell: process.platform === 'win32', env: launchEnv });
+if (noStart) { say(`Start it with npm start, then open the setup page: ${wizard}`); process.exit(doc.status ?? 0); }
+say(`Starting the app (npm start). Setup page: ${wizard}   (Ctrl+C stops it)`);
+const child = spawn(process.execPath, [path.join(REPO, 'scripts', 'start.mjs')], { cwd: REPO, stdio: 'inherit', env: launchEnv });
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => child.kill(sig));
 let ready = false; /* checks can overlap: open the browser once */
 const t0 = Date.now(); const tick = setInterval(async () => { if (ready) return; if (await up() && (!openWhenReady || await webUp()) && !ready) { ready = true; clearInterval(tick);
-  if (openWhenReady) { openBrowser(home); say(`Ready: opened ${home} in your browser. Keep this window open while you use it; Ctrl+C stops the app.`); } else say(`Ready: open ${wizard}`); } else if (Date.now() - t0 > 120_000) { clearInterval(tick); say(`Still starting… when it's up, open ${wizard}`); } }, 1500);
+  if (openWhenReady) { openBrowser(home); say(`Ready: opened ${home} in your browser. Keep this window open while you use it; Ctrl+C stops the app.`); } else say(`Ready: open ${wizard}`); } else if (Date.now() - t0 > 300_000) { clearInterval(tick); say(`Still starting… when it's up, open ${wizard}`); } }, 1500);
 child.on('exit', (code) => { clearInterval(tick); process.exit(code ?? 0); });

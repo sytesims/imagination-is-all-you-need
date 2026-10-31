@@ -236,7 +236,7 @@ export const MODELS: Record<string, ModelDef> = Object.fromEntries([
   // Comfy Router image batch (2026-10-25): ids and schemas from the Router model pages (docs.comfy.org/development/comfy-router/models/<provider>/<model>/code)
   m('gpt-image-1.5', 'GPT Image 1.5', 'GPT Image', 'image', false, P, 'api-gpt-image-15', { note: 'OpenAI gpt-image-1.5 on Comfy Router: 1024x1024, 1024x1536 or 1536x1024.', sourceUrl: 'https://docs.comfy.org/development/comfy-router/models/openai/gpt-image-1-5/code' }),
   m('seedream-4.5', 'Seedream 4.5', 'Seedream', 'image', false, P, 'api-seedream-45', { note: 'ByteDance seedream-4-5-251128 on Comfy Router: 2K and 4K.', sourceUrl: 'https://docs.comfy.org/development/comfy-router/models/byteplus/seedream-4-5-251128/code' }),
-  m('fibo-2.0', 'FIBO 2.0', 'Bria FIBO', 'image', true, 'CC BY-NC 4.0 (open weights); Bria API terms on Comfy Router', 'api-bria-fibo2', { note: 'Bria FIBO 2.0 on Comfy Router: bria/image makes new images (1MP / 4MP, 21 shapes), bria/fibo edits one photo (optional mask). Open weights: briaai/Fibo-2.0-dev and Fibo-2.0-edit-turbo (diffusers).', sourceUrl: 'https://docs.comfy.org/tutorials/partner-nodes/bria/fibo' }),
+  m('fibo-2.0', 'FIBO 2.0', 'Bria FIBO', 'image', true, 'bria-fibo', 'api-bria-fibo2', { note: 'Bria FIBO 2.0 on Comfy Router: bria/image makes new images (1MP / 4MP, 21 shapes), bria/fibo edits one photo (optional mask). Open weights: briaai/Fibo-2.0-dev and Fibo-2.0-edit-turbo (diffusers).', sourceUrl: 'https://docs.comfy.org/tutorials/partner-nodes/bria/fibo' }),
   m('grok-imagine-image-pro', 'Grok Imagine Image Pro', 'Grok', 'image', false, P, 'api-grok-image-pro', { note: 'xAI grok-imagine-image-pro on Comfy Router: text to image only (its schema takes no image).', sourceUrl: 'https://docs.comfy.org/development/comfy-router/models/xai/grok-imagine-image-pro/code' }),
   m('seedream-5.0-flash', 'Seedream 5.0 Flash', 'Seedream', 'image', false, P, 'api-seedream-flash', { note: 'ByteDance seedream-5-0-flash-260915.' }),
   m('ideogram-4.5', 'Ideogram 4.5', 'Ideogram', 'image', false, P, 'api-ideogram-45'),
@@ -377,6 +377,11 @@ MODEL_MAKER['flux-3-max'] = 'bfl';
 MODELS['flux-3-max'] = { ...m('flux-3-max', 'FLUX 3 Max', 'FLUX', 'video', false, P, 'cloud-flux3-max', { note: 'Black Forest Labs FLUX 3 Max through its Comfy partner nodes Flux3MaxTextToVideoNode / Flux3MaxImageToVideoNode on Comfy Cloud (official templates api_flux3_max_t2v / i2v) and Comfy Router fal/flux-3-max (text at 720p): text or 1–10 keyframes to one 5–20 s shot with sound.',
   sourceUrl: 'https://docs.comfy.org/tutorials/partner-nodes/black-forest-labs/flux-3-max' }), maker: 'bfl' };
 Object.assign(ENGINE_MODEL, { 'cloud-flux3-max': 'flux-3-max' });
+// Kling 4.0 (2026-10-31): Kuaishou's Kling 4.0 through its Comfy partner nodes on Comfy Cloud (tools/comfyFeatured.ts, comfy/kling4Cloud.ts).
+MODEL_MAKER['kling-4'] = 'kling';
+MODELS['kling-4'] = { ...m('kling-4', 'Kling 4.0', 'Kling', 'video', false, P, 'cloud-kling4', { note: 'Kling 4.0 through its Comfy partner nodes Kling4TextToVideoNode / Kling4ImageToVideoNode / Kling4ReferenceToVideoNode on Comfy Cloud (official templates api_kling4_t2v / i2v / r2v): text, start (+ end) frame or 1–10 reference images to a 3–30 s clip with stereo sound.',
+  sourceUrl: 'https://github.com/Comfy-Org/ComfyUI/pull/17364' }), maker: 'kling' };
+Object.assign(ENGINE_MODEL, { 'cloud-kling4': 'kling-4' });
 // Prompt Edit (2026-10-27, tools/promptEdit.ts): Bernini-R (ByteDance, Comfy-Org/Bernini-R, Apache-2.0) on Comfy Cloud.
 MODEL_MAKER['bernini-r'] = 'bytedance';
 MODELS['bernini-r'] = { ...m('bernini-r', 'Bernini-R', 'Wan', 'video', true, 'apache-2.0', 'cloud-bernini-r', { note: 'Bernini-R (ByteDance; renderer-only Wan 2.2, Comfy-Org/Bernini-R, Apache-2.0): edits a clip from one instruction, motion and framing kept. The official Comfy template video_bernini_r_video_editing on Comfy Cloud.',

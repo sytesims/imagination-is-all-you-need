@@ -4,7 +4,7 @@
 
 - **`/api/health` says `"backend":"mock"` with a `comfyReason`:** ComfyUI isn't reachable at `COMFY_BASE_URL`, the key is missing, or a workflow is missing. The app falls back to mock instead of crashing. Check `curl $COMFY_BASE_URL/system_stats`.
 - **The `mcp` process exits with `EADDRINUSE`:** something already listens on :8788. The API and web app keep running. Stop the other process or change `MCP_PORT`.
-- **The `mcp` process doesn't start after `npm install`:** the MCP dependencies didn't install. Run `npm run mcp:install`, then `npm run dev` again.
+- **The `mcp` process doesn't start after `npm install`:** the MCP dependencies didn't install. Run `npm run mcp:install`, then `npm start` again.
 - **Port in use (Docker or `docker/start.mjs`):** `OHF_PORT=8081 docker compose --profile mock up`, or `WEB_PORT=8081 node docker/start.mjs`. The Vite dev server uses a fixed port (`WEB_PORT`, default 5174) and stops if it's taken.
 - **`better-sqlite3` build error during `npm ci`:** install build tools (`xcode-select --install` on a Mac, `build-essential python3` on Linux), or use Node 20, 22 or 24, which have prebuilt binaries.
 - **`EBADENGINE` warnings on Node 20:** they come from the Comfy SDK and `eventsource-parser`, which ask for Node 22+. Mock mode works; see [INSTALL.md](INSTALL.md#requirements).
@@ -19,7 +19,7 @@
 - **"Too heavy for this computer":** it is never pre-selected. Pick it yourself to try anyway (it runs with a warning), use a lighter model or a cloud route. If the app got your hardware wrong, see [LOCAL-MODELS-AND-HARDWARE.md](LOCAL-MODELS-AND-HARDWARE.md#if-your-hardware-cant-be-detected).
 - **A job stopped and asks you to choose (`needs_decision`):** the route failed and the next one costs more than your quote. Pick a route (or cancel); nothing extra was charged.
 - **`400 invalid_duration`:** that model doesn't take that clip length. The error lists the allowed lengths.
-- **Can't save a key or change the ComfyUI address from the browser:** the server listens on the network (`HOST=0.0.0.0` or `NODE_ENV=production`). Start it with plain `npm run dev`, or put the values in `.env.local`.
+- **Can't save a key or change the ComfyUI address from the browser:** the server listens on the network (`HOST=0.0.0.0` or `NODE_ENV=production`). Start it with plain `npm start`, or put the values in `.env.local`.
 
 ## Local ComfyUI and models
 

@@ -61,10 +61,10 @@ export async function soulRoutedExtras(job: { id: string; input: Record<string, 
   return { imageSize: { width, height }, aspect: job.input.aspect as string, imageUrls: await Promise.all(refs.slice(0, 3).map((f, i) => dataUri(f, i, job.id, provider))) };
 }
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const PY = process.env.OPENHIGGSFIELD_PYTHON || 'python3';
+const PY = process.env.OPENHIGGSFIELD_PYTHON || (process.platform === 'win32' ? 'python' : 'python3'); // Windows has python (py launcher installs); python3 there is the Store stub
 /** Server-side colour match (free). Returns false if Python/PIL/numpy are missing (job gets a warning, output unchanged). */
 export function colourTransfer(target: string, ref: string, strength: number, method: string): Promise<boolean> {
-  const script = path.join(HERE, 'colour_transfer.py'); const src = script.includes('/src/') ? script : script.replace('/dist/', '/src/');
+  const script = path.join(HERE, 'colour_transfer.py'); const src = script.replace(/([\\/])dist([\\/])(?!.*[\\/]dist[\\/])/, '$1src$2'); // built server: the .py stays in src/ (either slash: Windows paths use \\)
   return new Promise((res) => { const c = spawn(PY, [src, target, ref, String(strength), method]); c.on('close', (x) => res(x === 0)); c.on('error', () => res(false)); });
 }
 /** After a routed run: colour match each output (server), then upscale (fal-ai/esrgan live; mock = lanczos resize, labelled). */

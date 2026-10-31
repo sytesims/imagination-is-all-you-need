@@ -8,7 +8,7 @@ assert.equal(modelNavigationHref(tool('audio', { eleven: ['sfx'] }), model('elev
 assert.equal(modelNavigationHref(tool('audio', { speech: ['voice'] }), model('speech', 'speech')), '/tools/audio?workflow=voiceover&model=speech');
 assert.equal(modelNavigationHref(tool('audio', { seed: ['music', 'sfx', 'voice'] }), model('seed', 'seed')), '/tools/audio?workflow=music&model=seed');
 assert.equal(modelNavigationHref(tool('voice', { vc: ['change-voice'] }), model('voice-change', 'vc')), '/tools/audio?workflow=change-voice&model=voice-change');
-assert.equal(modelNavigationHref(tool('voice', { infinite: ['lipsync'] }), model('infinitetalk', 'infinite')), '/tools/h3-video?workflow=lip-sync&mode=lipsync&model=infinitetalk');
+assert.equal(modelNavigationHref(tool('voice', { infinite: ['lipsync'] }), model('infinitetalk', 'infinite')), '/video?workflow=lip-sync&mode=lipsync&model=infinitetalk');
 assert.equal(modelNavigationHref(tool('soundtrack', { mma: ['v2s'] }), model('mmaudio', 'mma')), '/tools/audio?workflow=soundtrack-sound&model=mmaudio');
 assert.equal(modelNavigationHref(tool('create-image', {}), model('image key', 'image')), '/tools/create-image?model=image%20key');
 assert.equal(modelNavigationHref(tool('three-d', {}, '/tools/3d?workflow=turntable'), model('3d', '3d')), '/tools/3d?workflow=turntable&model=3d');

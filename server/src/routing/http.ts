@@ -332,6 +332,22 @@ const validPrefs = (b: any): string | null => {
 const offers = (t: string, id: string) => !!getTool(t) && (!!findToolModel(t, id) || getTool(t)!.providers.includes(id));
 /** …Create Image first, then Generate Video (the home of the video models; Camera Moves now lists MiniMax H3 too), else the first tool that does. */
 const toolForModel = (id: string) => (offers('create-image', id) ? getTool('create-image') : offers('h3-video', id) ? getTool('h3-video') : listTools().find((t) => !!findToolModel(t, id) || t.providers.includes(id)));
+/** GET /api/tools additions: providers[] carry the same displayName / providerGroup / runsOnKind as /api/models and /api/routes, and each tool
+ *  gets models[] (one row per model). Never throws: a tool whose rows fail keeps its plain providers. */
+export function enrichTools(payload: any[]): any[] {
+  try {
+  // providers[] carry the same displayName / providerGroup / runsOnKind as /api/models and /api/routes. Per provider, so one bad
+  // provider can't strip the labels from the whole listing; the fallback uses the same labelling rules as routesView.
+  return payload.map((t: any) => { if (!Array.isArray(t?.providers)) return t;
+    const providers = t.providers.map((p: any) => {
+      try { const v = routesView(t.id, p.id); if (v) return { ...p, ...v, modelKey: modelKeyOf(t.id, p.id) }; } catch { /* fall through to the plain labels */ }
+      return { ...p, ...providerLabels(t.id, p.id), modelKey: modelKeyOf(t.id, p.id) };
+    });
+    // Step 1: one row per MODEL (providers[] stays as is for the current web): key, name, runsOn[] with status and price, fromPrice, lifecycle.
+    let models: any[] | undefined; try { const tl = getTool(t.id); if (tl) models = withResolvedPreselect(tl, modelsBlock(tl, providers)); } catch (e) { console.error('[models] models[] failed for', t.id, (e as Error).message); }
+    return { ...t, providers, ...(models ? { models } : {}) }; });
+  } catch { return payload; }
+}
 export function registerRouting(app: FastifyInstance) {
   // Camera: the LTX-2 19B model's default move (first preset the LTX engine runs), for requests that name the model but no move.
   void import('../tools/apps.js').then((AP) => setLtxDefaultMove(() => AP.cameraDefaultMove('cloud-ltx-camera'))).catch(() => undefined);
@@ -578,7 +594,14 @@ export function registerRouting(app: FastifyInstance) {
           { const nr = refCount(q.refs); if (nr > 0) input.refPaths = Array.from({ length: nr }, (_, k) => `quote:ref${k}`); const m0 = (() => { try { const t = JSON.parse(String(q2types(q))); return Array.isArray(t) ? String(t[0] ?? '') : String(t); } catch { return String(q2types(q)).split(',')[0]; } })();
             if (q.image && !/^(generate|t2v|)$/.test(m0)) input.imagePath = 'quote:image';
             if (m0 && input.mode == null) input.mode = m0; // route checks that read input.mode (Replicate r2v needs public URLs) judge the quote like the job
-            if (m0 === 'r2v' && !input.refPaths) { const n = (q.image ? 1 : 0) + (q.presenterImage ? 1 : 0) + refCount(q.refs); if (n) input.refPaths = Array.from({ length: n }, (_, k) => `quote:ref${k}`); } } // r2v: every image upload is a reference (UGC Ad presenter + product), as on submit // generate / t2v ignore an image, as the job parser does
+            if (m0 === 'r2v' && !input.refPaths) { const n = (q.image ? 1 : 0) + (q.presenterImage ? 1 : 0) + refCount(q.refs); if (n) input.refPaths = Array.from({ length: n }, (_, k) => `quote:ref${k}`); }
+            /* reference videos / sounds on the bar (refVideos / refAudios counts: shared/refFit.ts attachParams): route checks see them as on submit (Reference mode only) */
+            if (m0 === 'r2v') { const RK0: any = isH3 ? (await import('../tools/h3/videoCaps.js')).limitsFor(model)?.refKinds ?? null : null; // the clips this model sends (the bar keeps the rest, marked "Not used")
+              const nv = Math.min(refCount(q.refVideos), RK0 ? RK0.video ?? 0 : Infinity), na = Math.min(refCount(q.refAudios), RK0 ? RK0.audio ?? 0 : Infinity);
+              /* each clip's seconds (refVideoSecondsEach / refAudioSecondsEach, "5,3.2"), else the total split evenly: the length checks judge them as on submit */
+              const each = (list: unknown, total: unknown, n: number) => { const l = String(list ?? '').split(',').map(Number).filter((x) => x > 0); return l.length >= n ? l.slice(0, n) : Number(total) > 0 ? Array.from({ length: n }, () => Number(total) / n) : []; };
+              if (nv > 0 && !input.refVideoPaths) { input.refVideoPaths = Array.from({ length: nv }, (_, k) => `quote:video${k}.mp4`); input.refVideoSecondsEach ??= each(q.refVideoSecondsEach, q.refVideoSeconds, nv); }
+              if (na > 0 && !input.refAudioPaths) { input.refAudioPaths = Array.from({ length: na }, (_, k) => `quote:audio${k}.mp3`); input.refAudioSecondsEach ??= each(q.refAudioSecondsEach, q.refAudioSeconds, na); } } } // r2v: every image upload is a reference (UGC Ad presenter + product), as on submit // generate / t2v ignore an image, as the job parser does
           // Fit to model (shared/videoFit.ts): the clip's size / fps / container and the fit choice (pad | crop | off) from the bar (width, height = the
           // clip's own pixels, as Upscale reads them), so the route check refuses what the free fix can't mend and the price follows a trim, as on submit.
           let vfPlan: ReturnType<typeof videoFitFor> = null;
@@ -621,17 +644,7 @@ export function registerRouting(app: FastifyInstance) {
       }
       const jm = url.match(/^\/api\/jobs\/([^/]+)$/);
       if (jm && payload && typeof payload === 'object' && !Array.isArray(payload)) { const j = jobs.get(jm[1]); if (j?.routing) return { ...payload, ...jobRouteFields(j) }; }
-      if (url === '/api/tools' && Array.isArray(payload))
-        // providers[] carry the same displayName / providerGroup / runsOnKind as /api/models and /api/routes. Per provider, so one bad
-        // provider can't strip the labels from the whole listing; the fallback uses the same labelling rules as routesView.
-        return payload.map((t: any) => { if (!Array.isArray(t?.providers)) return t;
-          const providers = t.providers.map((p: any) => {
-            try { const v = routesView(t.id, p.id); if (v) return { ...p, ...v, modelKey: modelKeyOf(t.id, p.id) }; } catch { /* fall through to the plain labels */ }
-            return { ...p, ...providerLabels(t.id, p.id), modelKey: modelKeyOf(t.id, p.id) };
-          });
-          // Step 1: one row per MODEL (providers[] stays as is for the current web): key, name, runsOn[] with status and price, fromPrice, lifecycle.
-          let models: any[] | undefined; try { const tl = getTool(t.id); if (tl) models = withResolvedPreselect(tl, modelsBlock(tl, providers)); } catch (e) { console.error('[models] models[] failed for', t.id, (e as Error).message); }
-          return { ...t, providers, ...(models ? { models } : {}) }; });
+      /* GET /api/tools: enrichTools runs once per build of the shared copy (toolsCache.ts), not here */
     } catch { /* never break the listing */ }
     return payload;
   });

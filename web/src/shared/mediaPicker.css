@@ -2,20 +2,26 @@
    ui/next/imageCanvas.css); this adds the header (title + limits), media tiles (video, sound), drop / paste states and the dialog
    (centred) / phone sheet used by every slot outside Create Image's bar. */
 html body .ic-ref.mpk{position:relative;font-family:var(--font-ui)}
-html body .ic-ref.mpk .mpk-top{gap:12px;align-items:flex-start;padding:14px 14px 10px 16px;border-bottom:0}
+html body .ic-ref.mpk .mpk-top{gap:10px;align-items:center;padding:14px 14px 10px 18px;border-bottom:0}
 html body .ic-ref.mpk .mpk-head{flex:1 1 auto;min-width:0}
 html body .ic-ref.mpk .mpk-title{margin:0;color:#fff;font:600 15px/20px var(--font-ui);letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 html body .ic-ref.mpk .mpk-limits{margin:2px 0 0;color:rgba(255,255,255,.55);font:500 12px/16px var(--font-ui)}
-html body .ic-ref.mpk .ic-ref-x{flex:none;width:32px;height:32px;border:0;background:rgba(255,255,255,.06);color:#fff;font-size:18px;cursor:pointer;transition:background-color var(--t-state,.15s) ease}
-html body .ic-ref.mpk .ic-ref-x:hover{background:rgba(255,255,255,.12)}
-html body .ic-ref.mpk .mpk-sub{gap:8px;padding:0 12px 10px;border-bottom:1px solid #2e2f33;flex-wrap:wrap}
-html body .ic-ref.mpk .ic-ref-tabs{display:flex;gap:4px;min-width:0}
-html body .ic-ref.mpk .mpk-tools{display:flex;align-items:center;gap:6px;margin-left:auto}
+html body .ic-ref.mpk .ic-ref-x{flex:none;width:32px;height:32px;border:0;border-radius:var(--radius-md,8px);background:transparent;color:rgba(255,255,255,.7);cursor:pointer;transition:background-color var(--t-state,.15s) ease,color var(--t-state,.15s) ease}
+html body .ic-ref.mpk .ic-ref-x:hover{background:var(--surface-hover,rgba(255,255,255,.1));color:#fff}
+/* tabs + tools: one line; the picked tab is the app's quiet selected look (subtle fill, orange underline), not a white pill */
+html body .ic-ref.mpk .mpk-sub{gap:12px;padding:0 16px;border-bottom:1px solid var(--border-strong,rgba(255,255,255,.1));flex-wrap:nowrap;align-items:center;min-width:0}
+html body .ic-ref.mpk .ic-ref-tabs{display:flex;gap:2px;min-width:0;align-self:stretch}
+html body .ic-ref.mpk .ic-ref-tabs button{position:relative;height:40px;padding:0 12px;border-radius:8px 8px 0 0;background:transparent;color:rgba(255,255,255,.6);font:600 13px/40px var(--font-ui)}
+html body .ic-ref.mpk .ic-ref-tabs button:hover:not(.on){color:#fff;background:transparent}
+html body .ic-ref.mpk .ic-ref-tabs button.on{background:var(--fill,rgba(255,255,255,.05));color:#fff}
+html body .ic-ref.mpk .ic-ref-tabs button.on::after{content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:2px;border-radius:2px;background:var(--accent)}
+html body .ic-ref.mpk .ic-ref-tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+html body .ic-ref.mpk .mpk-tools{display:flex;align-items:center;gap:10px;margin-left:auto;min-width:0;padding:5px 0}
 html body .ic-ref.mpk .ic-ref-scope button:focus-visible,html body .ic-ref.mpk .ic-ref-sort:focus-visible,html body .ic-ref.mpk .ic-ref-tile:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 html body .ic-ref.mpk .mpk-msg{margin:10px 12px 0;padding:8px 12px;border-radius:10px;background:rgba(255,92,72,.1);border:1px solid rgba(255,92,72,.35);color:#ffb4a8;font:500 13px/18px var(--font-ui)}
-html body .ic-ref.mpk .mpk-grid{grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:8px;padding:12px}
+html body .ic-ref.mpk .mpk-grid{grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:6px;padding:12px 16px 16px;overflow-x:hidden;overflow-y:auto;min-width:0}
 /* Project chip (top right, beside Close): the feed's project picker look in the picker's dark header */
-html body .ic-ref.mpk .mpk-proj{flex:0 1 auto;min-width:0;max-width:240px;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px 0 8px;border:1px solid #2e2f33;border-radius:10px;background:rgba(255,255,255,.04);color:#fff;font:500 12px/16px var(--font-ui);cursor:pointer;transition:background-color var(--t-state,.15s) ease,border-color var(--t-state,.15s) ease}
+html body .ic-ref.mpk .mpk-proj{flex:0 1 auto;min-width:0;max-width:240px;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px 0 8px;border:1px solid var(--border-strong,rgba(255,255,255,.1));border-radius:var(--radius-md,8px);background:rgba(255,255,255,.04);color:#fff;font:500 12px/16px var(--font-ui);cursor:pointer;transition:background-color var(--t-state,.15s) ease,border-color var(--t-state,.15s) ease}
 html body .ic-ref.mpk .mpk-proj:hover,html body .ic-ref.mpk .mpk-proj[aria-expanded=true]{background:rgba(255,255,255,.08);border-color:#3a3b40}
 html body .ic-ref.mpk .mpk-proj.on{border-color:color-mix(in srgb,var(--accent) 45%,#2e2f33);background:color-mix(in srgb,var(--accent) 8%,transparent)}
 html body .ic-ref.mpk .mpk-proj:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -28,14 +34,15 @@ html body .apop.mpk-pop{z-index:1210}
 html body:has(.apop.mpk-pop) .apop-scrim{z-index:1205}
 html body .apop.mpk-pop.apop-sheet .fd-pp-h{display:none} /* the sheet's own title says it */
 html body .ic-ref.mpk .mpk-showall{display:flex;margin:12px auto 0}
-/* Upload tile */
-html body .ic-ref.mpk .mpk-up{aspect-ratio:1;height:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px;border:1.5px dashed rgba(255,255,255,.18);background:rgba(255,255,255,.02);color:#fff;text-align:center;transition:border-color var(--t-state,.15s) ease,background-color var(--t-state,.15s) ease}
-html body .ic-ref.mpk .mpk-up:hover{outline:0;border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
-html body .ic-ref.mpk .mpk-up .mpk-up-ic{display:grid;place-items:center;width:40px;height:40px;margin-bottom:4px;border-radius:12px;background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);position:static;padding:0}
+/* Upload tile: quiet, same size as a tile */
+html body .ic-ref.mpk .mpk-up{aspect-ratio:1;height:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px;border:1px dashed rgba(255,255,255,.14);border-radius:8px;background:rgba(255,255,255,.02);color:rgba(255,255,255,.85);text-align:center;transition:border-color var(--t-state,.15s) ease,background-color var(--t-state,.15s) ease,color var(--t-state,.15s) ease}
+html body .ic-ref.mpk .mpk-up:hover{outline:0;border-color:color-mix(in srgb,var(--accent) 70%,transparent);background:color-mix(in srgb,var(--accent) 6%,transparent);color:#fff}
+html body .ic-ref.mpk .mpk-up .mpk-up-ic{display:grid;place-items:center;width:30px;height:30px;margin-bottom:4px;border-radius:8px;background:var(--fill,rgba(255,255,255,.05));color:var(--accent);position:static;padding:0}
 html body .ic-ref.mpk .mpk-up b{font:600 12px/16px var(--font-ui);position:static;background:none;padding:0}
-html body .ic-ref.mpk .mpk-up small{color:rgba(255,255,255,.5);font:500 10.5px/14px var(--font-ui);position:static;background:none;padding:0}
+html body .ic-ref.mpk .mpk-up small{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:rgba(255,255,255,.45);font:500 10px/13px var(--font-ui);position:static;background:none;padding:0}
 /* Tiles */
-html body .ic-ref.mpk .mpk-tile{aspect-ratio:1;height:auto;display:block;transition:transform .12s ease}
+html body .ic-ref.mpk .mpk-tile{aspect-ratio:1;height:auto;display:block;border-radius:8px;transition:transform .12s ease}
+html body .ic-ref.mpk .ic-ref-skel{border-radius:8px}
 html body .ic-ref.mpk .mpk-tile:hover{outline:2px solid var(--accent);outline-offset:-2px}
 html body .ic-ref.mpk .mpk-tile:active{transform:scale(.98)}
 /* the tile: a pick button over the whole square, plus a ⋯ (Move to project) shown on hover / focus, always on touch */
@@ -44,17 +51,35 @@ html body .ic-ref.mpk .mpk-pick img{position:absolute;inset:0;display:block;widt
 html body .ic-ref.mpk .mpk-tile:has(.mpk-pick:focus-visible){outline:2px solid var(--accent);outline-offset:-2px}
 html body .ic-ref.mpk .ic-ref-grid>.mpk-tile:has(img):not(.ld){background:linear-gradient(90deg,rgba(255,255,255,.04) 0%,rgba(255,255,255,.09) 40%,rgba(255,255,255,.04) 80%) #2b2c30;background-size:300% 100%;animation:skel-sh 1.4s ease-in-out infinite}
 html body .ic-ref.mpk .ic-ref-grid>.mpk-tile:has(img):not(.ld) img{opacity:0}
-html body .ic-ref.mpk .mpk-pick>.ic-ref-feat{position:absolute;top:6px;left:6px;right:auto;bottom:auto;max-width:calc(100% - 44px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:1px 6px;border-radius:5px;background:rgba(0,0,0,.6);color:#fff;font:600 10px/15px var(--font-ui);pointer-events:none}
 html body .ic-ref.mpk .mpk-more{position:absolute;top:5px;right:5px;z-index:2;display:grid;place-items:center;width:26px;height:26px;padding:0;border:0;border-radius:8px;background:rgba(10,10,12,.66);color:#fff;cursor:pointer;opacity:0;backdrop-filter:blur(6px);transition:opacity var(--t-state,.15s) ease,background-color var(--t-state,.15s) ease}
 html body .ic-ref.mpk .mpk-tile:hover .mpk-more,html body .ic-ref.mpk .mpk-more:focus-visible,html body .ic-ref.mpk .mpk-more[aria-expanded=true]{opacity:1}
 html body .ic-ref.mpk .mpk-more:hover{background:var(--accent);color:var(--on-accent)}
 html body .ic-ref.mpk .mpk-more:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 @media (hover:none){html body .ic-ref.mpk .mpk-more{opacity:1}}
 html body .ic-ref.mpk .mpk-ph{position:absolute;inset:0;background:#2b2c30}
-html body .ic-ref.mpk .mpk-badge{position:absolute;right:6px;bottom:6px;left:auto;display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border-radius:6px;background:rgba(0,0,0,.62);color:#fff;font:600 10px/14px var(--font-ui);pointer-events:none}
-html body .ic-ref.mpk .mpk-audio{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px;background:radial-gradient(120% 90% at 50% 0%,color-mix(in srgb,var(--accent) 22%,#232427) 0%,#232427 70%);color:var(--accent)}
-html body .ic-ref.mpk .mpk-audio .mpk-wave{width:70%;height:auto}
-html body .ic-ref.mpk .mpk-audio .mpk-aname{position:static;max-width:100%;padding:0;background:none;color:rgba(255,255,255,.82);font:500 11px/14px var(--font-ui);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* picked (a slot that takes several): an orange ring and its number */
+html body .ic-ref.mpk .mpk-tile.mpk-sel::after{content:"";position:absolute;inset:0;z-index:1;border:2px solid var(--accent);border-radius:inherit;pointer-events:none}
+html body .ic-ref.mpk .mpk-tile.mpk-sel img{opacity:.82}
+html body .ic-ref.mpk .mpk-seln{position:absolute;top:6px;left:6px;right:auto;bottom:auto;display:grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--accent);color:var(--on-accent);font:700 11px/20px var(--font-ui);box-shadow:0 1px 3px rgba(0,0,0,.4);pointer-events:none}
+/* the selection bar: count, Clear, Add n */
+html body .ic-ref.mpk .mpk-selbar{flex:none;display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--border-strong,rgba(255,255,255,.1))}
+html body .ic-ref.mpk .mpk-selbar-n{margin-right:auto;color:rgba(255,255,255,.7);font:500 13px/18px var(--font-ui)}
+html body .ic-ref.mpk .mpk-selbar-n b{color:var(--accent);font-weight:700;font-variant-numeric:tabular-nums}
+html body .ic-ref.mpk .mpk-btn.mpk-btn-q{background:transparent;color:rgba(255,255,255,.7)}
+html body .ic-ref.mpk .mpk-btn.mpk-btn-q:hover{background:var(--fill,rgba(255,255,255,.05));color:#fff}
+html body .ic-ref.mpk .mpk-audio{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px 12px 26px;background:radial-gradient(120% 90% at 50% 0%,color-mix(in srgb,var(--accent) 22%,#232427) 0%,#232427 70%);color:var(--accent)}
+html body .ic-ref.mpk .mpk-audio .mpk-wave{width:70%;height:auto;opacity:.55}
+/* every tile's one quiet line (2026-10-31, Canvas audit B17): the short name, and a clip's or sound's length at the right */
+html body .ic-ref.mpk .mpk-cap{position:absolute;left:0;right:0;bottom:0;z-index:1;display:flex;align-items:baseline;gap:6px;padding:14px 7px 5px;background:linear-gradient(transparent,rgba(0,0,0,.66));color:rgba(255,255,255,.88);font:500 10.5px/14px var(--font-ui);pointer-events:none}
+html body .ic-ref.mpk .mpk-t-audio .mpk-cap{background:none}
+html body .ic-ref.mpk .mpk-cap-n{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html body .ic-ref.mpk .mpk-cap-d{flex:none;display:inline-flex;align-items:center;gap:3px;color:rgba(255,255,255,.7);font-variant-numeric:tabular-nums}
+html body .ic-ref.mpk .mpk-cap-d svg{color:var(--accent)}
+html body .ic-ref.mpk .mpk-cap-d:empty{display:none}
+/* a sound's play button sits where the wave is; the tile around it still picks */
+html body .ic-ref.mpk .mpk-pv{top:calc(50% - 7px);left:50%;transform:translate(-50%,-50%)}
+html body .ic-ref.mpk .mpk-pv:active{transform:translate(-50%,-50%) scale(.94)}
+html body .ic-ref.mpk .mpk-tile.mpk-sel .pv-prog{bottom:2px;left:2px;right:2px}
 html body .ic-ref.mpk .mpk-empty{color:rgba(255,255,255,.55);font:500 13px/19px var(--font-ui);padding:28px 16px}
 html body .ic-ref.mpk .mpk-sentinel{grid-column:1/-1;height:1px}
 html body .ic-ref.mpk .mpk-busy{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);padding:6px 12px;border-radius:999px;background:#111214;color:#fff;font:500 12px/16px var(--font-ui);box-shadow:0 8px 24px rgba(0,0,0,.5)}
@@ -75,11 +100,10 @@ html body .ic-ref.mpk .mpk-frame-seg{display:inline-flex;gap:2px;padding:2px;bor
 html body .ic-ref.mpk .mpk-frame-seg .mpk-btn{height:28px;line-height:28px;background:transparent}
 html body .ic-ref.mpk .mpk-frame-seg .mpk-btn.on{background:rgba(255,255,255,.14);color:var(--accent)}
 html body .ic-ref.mpk .mpk-frame-t{min-width:96px}
-html body .ic-ref.mpk .mpk-badge-frame{background:var(--accent);color:var(--on-accent)}
 @media (max-width:640px){html body .ic-ref.mpk .mpk-frame-bar{flex-wrap:wrap}html body .ic-ref.mpk .mpk-frame-bar input[type=range]{flex-basis:100%;order:5}}
 /* Dialog (every slot outside Create Image's bar) */
 html body .ic-ref-scrim.mpk-scrim{position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;padding:32px 16px;background:rgba(8,8,10,.62);backdrop-filter:blur(2px)}
-html body .ic-ref-scrim.mpk-scrim .ic-ref.mpk-dialog{width:min(880px,calc(100vw - 32px));height:min(600px,calc(100vh - 64px));border-radius:18px;background:#1b1c1f;border:1px solid #2e2f33;box-shadow:0 32px 80px rgba(0,0,0,.6)}
+html body .ic-ref-scrim.mpk-scrim .ic-ref.mpk-dialog{width:min(960px,calc(100vw - 32px));height:min(600px,calc(100vh - 64px));border-radius:18px;background:#1b1c1f;border:1px solid #2e2f33;box-shadow:0 32px 80px rgba(0,0,0,.6)}
 @media (max-width:700px){
   html body .ic-ref-scrim.mpk-scrim{align-items:flex-end;padding:0}
   html body .ic-ref-scrim.mpk-scrim .ic-ref.mpk-dialog{width:100%;height:min(86dvh,640px);border-radius:18px 18px 0 0;border-bottom:0;padding-bottom:env(safe-area-inset-bottom)}
@@ -93,11 +117,12 @@ html body .ic-ref-scrim.mpk-scrim .ic-ref.mpk-dialog{width:min(880px,calc(100vw 
   html body .ic-ref.mpk .mpk-more{width:30px;height:30px}
 }
 @media (prefers-reduced-motion:reduce){html body .ic-ref.mpk .mpk-tile{transition:none}}
-.mpk-count { font: 500 12.5px/18px var(--font-ui, Inter, system-ui, sans-serif); color: var(--text-2, rgba(255,255,255,.7)); white-space: nowrap; }
+.mpk-count { font: 500 12px/18px var(--font-ui, Inter, system-ui, sans-serif); color: rgba(255,255,255,.5); white-space: nowrap; font-variant-numeric: tabular-nums; }
 /* Search (2026-10-27): the references database, in the tab's own kinds and project */
-html body .ic-ref.mpk .mpk-search{display:flex;align-items:center;gap:6px;height:30px;padding:0 8px 0 10px;border:1px solid var(--border, rgba(255,255,255,.12));border-radius:999px;background:var(--surface-2, rgba(255,255,255,.04));color:var(--text-2, rgba(255,255,255,.7));min-width:0;flex:0 1 220px}
+html body .ic-ref.mpk .mpk-search{display:flex;align-items:center;gap:6px;height:30px;padding:0 8px 0 10px;border:1px solid var(--border-strong, rgba(255,255,255,.1));border-radius:var(--radius-md,8px);background:var(--surface-2, rgba(255,255,255,.04));color:var(--text-2, rgba(255,255,255,.7));min-width:0;flex:0 1 220px}
 html body .ic-ref.mpk .mpk-search:focus-within{border-color:color-mix(in srgb,var(--accent) 70%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent)}
 html body .ic-ref.mpk .mpk-search input{flex:1;min-width:0;border:0;background:none;outline:none;color:var(--text);font:500 12.5px/18px var(--font-ui, Inter, system-ui, sans-serif);padding:0}
 html body .ic-ref.mpk .mpk-search input::-webkit-search-cancel-button{display:none}
 html body .ic-ref.mpk .mpk-search-x{display:grid;place-items:center;width:18px;height:18px;border:0;border-radius:50%;background:var(--surface-3, rgba(255,255,255,.1));color:var(--text-2);cursor:pointer;padding:0}
 html body .ic-ref.mpk .mpk-tools .ic-ref-sort{white-space:nowrap}
+html body .ic-ref.mpk .mpk-tools .ic-ref-sort{height:30px}

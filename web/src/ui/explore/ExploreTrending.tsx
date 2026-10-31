@@ -1,4 +1,5 @@
 /** Compact, natural-ratio remixes. Playback, hover sound and policy recovery stay in the shared player. */
+import { VIDEO_PAGE } from '../../../../server/src/shared/videoWorkflows';
 import { useRef, useState, type CSSProperties } from 'react';
 import { Link } from '../../platform/router';
 import { ShowcaseFilm } from '../../shared/ShowcaseFilm';
@@ -19,7 +20,7 @@ function examples(): Example[] {
     return [{ item, f: { before: f.before, out: f.out, photo: (f.input.refUrls as string[])[item.refIndex],
       // The historical two-pass dance run changed only the right dancer. Its showcase
       // uses the matching reference and single-person workflow, not the two-person route.
-      href: item.key === 'trend-dance' ? `/tools/h3-video?workflow=object-swap&swap=person&model=${encodeURIComponent(f.modelKey)}` : featuredRecreateHref(f.key)!,
+      href: item.key === 'trend-dance' ? `${VIDEO_PAGE}?workflow=object-swap&swap=person&model=${encodeURIComponent(f.modelKey)}` : featuredRecreateHref(f.key)!,
       credit: `${f.model} · Comfy Cloud`,
     } }];
   });

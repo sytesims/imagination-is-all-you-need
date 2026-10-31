@@ -24,7 +24,7 @@ import { lifecycleFields } from './shared/lifecycle.js';
 import { unitInfo, unitQty } from './shared/hostedPrices.js';
 import { FREE_GENS_MAX_RES, freeGensLeft, FREE_GENS_START, TOPUP_PACKS } from './ledger.js';
 import { toolProviders, getProvider, allowed, openWeightsOnly } from './providers.js';
-import { runFfmpeg, posterFrame } from './ffmpeg.js';
+import { runFfmpeg, posterFrame, ffmpegDrawsText } from './ffmpeg.js';
 import { DATA_DIR, SAMPLES_DIR, config } from './config.js';
 import { examplesFileOf } from './interimTiles.js';
 import { POSTER_STAND_IN } from './tools/shots.js';
@@ -72,9 +72,10 @@ export function badgeOf(t: ToolDef, top = topToolId()): Badge {
 const TEXT_BAKED = new Set(['app-anime-restyle']);
 const textBaked = (t: ToolDef) => TEXT_BAKED.has(t.id) && !(t as any).posterUrl && posterSourceOf(t).kind === 'card';
 /** Phase 1 quick-win apps (2026-10-21): until their own art is dropped at web/public/examples/tools/<id>.jpg, no poster URL (the title card needs ffmpeg
- *  drawtext, missing on some installs → 404); the web draws its branded stand-in (StandInArt) instead, as Photo FX does for its new effects. */
+ *  drawtext, missing on some installs → 404); the web draws its branded stand-in (StandInArt) instead, as Photo FX does for its new effects.
+ *  The same for every tool that would get a title card when this computer's ffmpeg can't draw text (2026-10-31: ~16 poster 404s on /video). */
 const STAND_IN = POSTER_STAND_IN;
-export const posterStandIn = (t: ToolDef) => STAND_IN.has(t.id) && !(t as any).posterUrl && posterSourceOf(t).kind === 'card';
+export const posterStandIn = (t: ToolDef) => (STAND_IN.has(t.id) || !ffmpegDrawsText()) && !(t as any).posterUrl && posterSourceOf(t).kind === 'card';
 export const posterUrlOf = (t: ToolDef): string | null => (t as any).posterUrl ?? (textBaked(t) || posterStandIn(t) ? null : `/api/posters/${t.id}.jpg`);
 export const toolExtras = (t: ToolDef, top = topToolId()) => ({ media: mediaOf(t), badge: badgeOf(t, top), addedAt: addedAtOf(t), freeGensCovered: !!t.freeGens, posterUrl: posterUrlOf(t), ...(posterStandIn(t) ? { posterStandIn: true } : {}) });
 

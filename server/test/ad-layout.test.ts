@@ -71,6 +71,10 @@ const story9 = adSizesFor(['meta', 'tiktok', 'youtube']).find((s) => s.shape ===
 assert.deepEqual(story9.safe, { top: 0.15, right: 0.18, bottom: 0.35, left: 0.06 }, '9:16 keeps clear of every picked app');
 assert.deepEqual(adSizesFor(['meta']).find((s) => s.shape === '4x5')!.safe, { top: 0, right: 0, bottom: 0, left: 0 }, 'feed: nothing covers it');
 assert.deepEqual(adSizesFor([]), [], 'no platform: no sizes (the card keeps the last ones)');
+/* the same platforms give the same objects (a fresh `safe` on every render kept the card's draw effect looping, 2026-10-31) */
+assert.equal(adSizesFor(['meta', 'tiktok']), adSizesFor(['meta', 'tiktok'].slice()), 'same platforms: the same list');
+assert.equal(adSizesFor(['meta', 'tiktok'])[0].safe, adSizesFor(['meta', 'tiktok'])[0].safe, 'same platforms: the same safe zone object');
+assert.notEqual(adSizesFor(['meta']), adSizesFor(['tiktok']), 'other platforms: another list');
 for (const p of AD_PLATFORM_LIST) for (const s of AD_PLATFORMS[p].sizes) assert.ok(Math.abs(s.w / s.h - AD_SHAPES[s.shape].w / AD_SHAPES[s.shape].h) < 0.02, `${p} ${s.name}: matches its shape`);
 assert.deepEqual(asPlatforms(undefined), ['meta'], 'an old card: Instagram & Facebook'); assert.deepEqual(asPlatforms(['youtube', 'nope', 'meta']), ['meta', 'youtube']); assert.deepEqual(asPlatforms([]), []);
 assert.equal(asShape('square'), '1x1'); assert.equal(asShape('portrait'), '4x5'); assert.equal(asShape('story'), '9x16'); assert.equal(asShape('191x1'), '191x1'); assert.equal(asShape('?'), '4x5');

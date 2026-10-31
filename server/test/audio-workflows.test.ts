@@ -41,7 +41,7 @@ assert.equal(R('/tools/voice/', '?mode=change-voice'), '/tools/audio?workflow=ch
 assert.equal(R('/tools/voice', '?mode=translate&from=j1', '#x'), '/tools/audio?workflow=translate&from=j1#x', 'other query and hash kept');
 const { videoRedirect } = await import('../src/shared/videoWorkflows.ts');
 assert.equal(R('/tools/voice', '?mode=lipsync&from=j3'), videoRedirect('/tools/voice', '?mode=lipsync&from=j3'), 'lip sync goes to Video, the same URL as the Video redirect');
-assert.match(R('/tools/voice', '?mode=lipsync')!, /^\/tools\/h3-video\?workflow=lip-sync/);
+assert.match(R('/tools/voice', '?mode=lipsync')!, /^\/video\?workflow=lip-sync/);
 assert.equal(R('/tools/soundtrack'), '/tools/audio?workflow=soundtrack-music'); assert.equal(R('/tools/soundtrack', '?mode=v2s'), '/tools/audio?workflow=soundtrack-sound');
 assert.equal(R('/tools/soundtrack', '?from=j2'), '/tools/audio?workflow=soundtrack-music&from=j2');
 assert.equal(R('/tools/audio', '?mode=cover'), '/tools/audio?workflow=cover'); assert.equal(R('/tools/audio'), null, 'the Audio page itself does not redirect');

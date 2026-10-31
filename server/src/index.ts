@@ -25,6 +25,7 @@ import { jobPoster } from './interimTiles.js';
 import { layersPosterUrl, writeLayerPoster } from './layerPoster.js';
 import Fastify, { FastifyReply, FastifyRequest } from 'fastify';
 import { etaFor } from './timing.js';
+import { setToolsBuilder, registerToolsInvalidation, registerResponseCache, toolsBody, toolsList } from './toolsCache.js';
 import multipart from '@fastify/multipart';
 import { listenHost } from './shared/listenHost.js';
 import { registerUploadSecurity, mediaResponseHeaders, uploadKind, validateUpload, acceptKind } from './uploadSecurity.js';
@@ -380,7 +381,14 @@ app.get('/api/health', async () => {
 const isVideoTool = (t: any) => !!t.gpuSecPerSec?.['480p'] && !/upscale/.test(t.id) && (toolExtras(t) as any).media === 'video';
 /** P2 (BUG-HUNT-8 #6): 409 route_changed copy: plain, says nothing was charged. */
 const ROUTE_CHANGED_MSG = 'The price went up. Nothing was charged.';
-app.get('/api/tools', async (_req, reply) => { try { if (process.env.OHF_TEST_FAIL_TOOLS === '1') throw new Error('forced failure (OHF_TEST_FAIL_TOOLS=1)'); return toolsPayload(); } catch (e: any) {
+/* built once and shared until something changes (toolsCache.ts; the builder is set with the routing below); the plain list goes out as
+ * cached JSON with an ETag (304 when unchanged), ?toolId= / ?fields= still go through the payload filters */
+registerToolsInvalidation(app); registerResponseCache(app, ['/api/models']); // before compression (registered last): the plain JSON is kept
+app.get('/api/tools', async (req, reply) => { try { if (process.env.OHF_TEST_FAIL_TOOLS === '1') throw new Error('forced failure (OHF_TEST_FAIL_TOOLS=1)');
+  const b = toolsBody(); if (Object.keys((req.query ?? {}) as object).length) return b.list;
+  reply.header('etag', b.etag).header('cache-control', 'no-cache');
+  if (String(req.headers['if-none-match'] ?? '').split(',').some((t) => t.trim().replace(/^W\//, '') === b.etag)) return reply.code(304).send();
+  return reply.type('application/json; charset=utf-8').send(b.json); } catch (e: any) {
   req_log(e); return reply.code(503).header('Retry-After', '3').send({ error: 'Could not load the tool registry. Retrying in 3 s.', errorType: 'temporary', retryable: true, retryAfterMs: 3000, detail: String(e?.message ?? e).slice(0, 300) });
 } });
 /** Display names never carry a backend suffix (" · mock"); the backend lives in providers[].backend. */
@@ -391,6 +399,8 @@ const CAMERA_PREVIEW_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.u
 const movePreview = (toolId: string, presetId: string) => toolId === 'camera' && existsSync(path.join(CAMERA_PREVIEW_DIR, `${presetId}.mp4`))
   ? { previewUrl: `/samples/camera/${presetId}.mp4`, previewWebm: `/samples/camera/${presetId}.webm`, previewGif: `/samples/camera/${presetId}.gif` } : null;
 function req_log(e: unknown) { app.log.error({ err: e }, 'GET /api/tools failed'); }
+/** A tool's presets as GET /api/tools and /api/presets list them: the visible ones, with their preview clips and licence. */
+const visiblePresets = (t: ReturnType<typeof listTools>[number]) => t.presets?.filter((p) => presetOk(p)).map((p) => ({ ...p, previewUrl: p.previewUrl ?? movePreview(t.id, p.id)?.previewUrl ?? null, ...(movePreview(t.id, p.id) ?? {}), ...(p.license ? { license: LICENSES[p.license] } : {}) }));
 /** B6: the per-model status DP shows on every model row (runnable, demo, needsKey, keyOwner, wired, reasonCode, reason, qualityRank). */
 function toolsPayload() { return (
   listTools().map((t) => {
@@ -400,7 +410,7 @@ function toolsPayload() { return (
     const wfs = workflows; void workflowOsi; // K3: every workflow listed whatever its licence
     return { id, name, ...(status ? { status } : {}), ...(t.listed === false ? { listed: false } : {}), ...((f) => (f ? { featureId: f.id } : {}))(IMAGE_FEATURES.find((f) => f.inMenu && f.toolId === t.id && f.route === t.route)), ...toolExtras(t), allowed: allowedFor(t) /* DP #20.3: effective enum allowlists (shared/enumParams.ts) */, ...((t as any).imageOptional ? { imageOptional: true } : {}) /* Camera Moves: some route runs without the start image */, ...((t as any).capabilities ? { capabilities: (t as any).capabilities } : {}) /* Re-shoot: angleSpace + imageInputByProvider */, category, group: category /* legacy alias */, previewUrl: previewUrl ?? null, description, route, ui,
       inputs: inputs.map((i: any) => (Array.isArray(i.options) ? { ...i, options: i.options.filter((o: string) => !hidden.has(o)) } : i)),
-      presets: presets?.filter((p) => !hidden.has(p.id)).map((p) => ({ ...p, previewUrl: p.previewUrl ?? movePreview(t.id, p.id)?.previewUrl ?? null, ...(movePreview(t.id, p.id) ?? {}), ...(p.license ? { license: LICENSES[p.license] } : {}) })),
+      presets: visiblePresets(t),
       app: appCfg ?? null, freeGens: freeGens ? { left: freeGensLeft(), maxRes: FREE_GENS_MAX_RES } : null, workflows: wfs,
       workflowVariants: wfs.map((file) => ({ file, license: workflowLicense(file) })), model, gpuSecPerSec, stages, backend: config.backend,
       ...(() => { const { modelStatus: _ms, ...D } = DEF; return D; })(), twinAliases: Object.fromEntries(ps.filter((p) => isTwinAlias(p.id, toolKeys(t))).map((p) => [p.id, TWIN_ALIASES[p.id]])),
@@ -791,8 +801,8 @@ app.get<{ Querystring: { toolId?: string } }>('/api/examples', async (req) => (a
   return { ...e, preset, types: e.types ? (types?.length ? types : [t.presets?.[0]?.id].filter(Boolean)) : undefined, route: `${t.route}?example=${e.id}`, toolName: t.name, previewUrl: e.previewUrl ?? null, prefill, price: prefill?.price ?? null };
 }))).filter(Boolean));
 registerBatch1(app);
-(await import('./libraryDb.js')).registerLibrary(app, { tools: async () => { const r = await app.inject({ method: 'GET', url: '/api/tools' }); return r.statusCode === 200 ? r.json() : []; } }); // workflows + references databases: /api/library/* (search, tags)
-(await import('./routing/http.js')).registerRouting(app); // multi-provider routing: settings, /api/me/routing, /api/routes, fallback
+(await import('./libraryDb.js')).registerLibrary(app, { tools: async () => { try { return toolsList(); } catch { return []; } } }); // workflows + references databases: /api/library/* (search, tags)
+{ const R = await import('./routing/http.js'); R.registerRouting(app); setToolsBuilder(() => stripLicenseLinks(R.enrichTools(toolsPayload())), () => stripLicenseLinks(listTools().map((t) => ({ id: t.id, name: t.name, presets: visiblePresets(t) })))); } // multi-provider routing: settings, /api/me/routing, /api/routes, fallback
 (await import('./billing.js')).registerBilling(app); (await import('./agentBudget.js')).registerAgentBudgets(app); // agent budgets (after billing's cost hook): /api/agent/budgets, receipts, POST /api/compose // real costs: /api/settings/billing, /api/spend, /api/spend/summary, /api/accounts; cost on every quote (after the routing hook)
 registerDiscover(app);
 (await import('./routesHub.js')).registerHub(app);

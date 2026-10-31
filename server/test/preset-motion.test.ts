@@ -77,5 +77,5 @@ ok('cameraMove on Generate Video: the Camera Moves phrase first; unknown → 400
 
 // the explicit "Use Camera Moves instead" target is still the Camera Moves workflow on the Video page
 const { toolHandoffHref } = await import('../../web/src/shared/workflowLinks.ts');
-assert.equal(toolHandoffHref({ id: 'camera' }, 'preset=orbit-r'), '/tools/h3-video?workflow=camera-moves&preset=orbit-r');
-ok('Use Camera Moves instead → /tools/h3-video?workflow=camera-moves&preset=<id>');
+assert.equal(toolHandoffHref({ id: 'camera' }, 'preset=orbit-r'), '/video?workflow=camera-moves&preset=orbit-r');
+ok('Use Camera Moves instead → /video?workflow=camera-moves&preset=<id>');

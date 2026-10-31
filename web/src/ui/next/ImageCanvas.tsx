@@ -1,4 +1,5 @@
-import { SlotPreview, SlotCount, prepUpload, useSlotReorder } from '../../shared/SlotPreview';
+import { SlotPreview, SlotCount, fullText, prepUpload, useSlotReorder } from '../../shared/SlotPreview';
+import { MoreFiles, LeftNote, notAddedText, type TrayFile } from '../../shared/FilesTray';
 import { IMAGE_ACCEPT, fileFits, wrongTypeText } from '../../../../server/src/shared/mediaAccept';
 import { GenPrice } from '../../shared/GenPrice';
 import { hasFreeLocal } from '../../shared/KeyNeeded';
@@ -107,7 +108,7 @@ import { showcaseById, type ShowcaseItem } from '../../../../server/src/shared/s
 /** the hero band: eight of our own shipped results (real generations made in this app), not stock clips */
 import { examplePrefill } from '../../../../server/src/shared/exampleLink';
 import { typedFromFrames } from '../../../../server/src/shared/typedPrompt';
-import { wfDefaultOf, startModel, pickKindOf, PICK_LABEL, savedPick, savePick } from '../../shared/workflowDefaults';
+import { wfDefaultOf, startModel, pickKindOf, PICK_LABEL, savedPick, savePick, featureSwitchTo } from '../../shared/workflowDefaults';
 import { LOCAL_LABEL } from '../../../../server/src/shared/modelIds';
 import { routeCapsOf, maxRefsOf } from '../../shared/refCaps';
 import { DockGenerate, PF_SHORT } from '../../shared/DockGenerate';
@@ -459,9 +460,9 @@ export default function ImageCanvas(p: ImageCanvasProps) {
   const aspects: string[] = imageChoices(caps, { editing: !!p.image && !p.mask, routeShapes: routeCaps }).aspects;
   const tiers: string[] = caps.qualityTiers ?? [];
   const resList: string[] = imageChoices(caps, { editing: !!p.image && !p.mask, routeResolutions: routeCaps.resolutions }).resList; /* shared with the model menu's row prices (shared/imageSnap.ts) */
-  const maxRefs = maxRefsOf(sup, routeCaps); if (p.refLimit) p.refLimit.current = maxRefs; const refN = (p.image ? 1 : 0) + (p.refs?.length ?? 0); const addRefs = async (fs: File[]) => { const room = maxRefs - refN; if (room <= 0) { setDropErr(maxRefs ? `This model takes up to ${maxRefs} image${maxRefs > 1 ? 's' : ''}. Remove one first.` : 'This model doesn’t take reference images. Pick an edit model to use one.'); return; } setDropErr(''); const bad = fs.filter(f => !fileFits('image', f)); if (bad.length && bad.length === fs.length) { setDropErr(wrongTypeText(bad[0].name, ['image'])); return; } const ready: File[] = []; for (const f of fs.filter(f => fileFits('image', f)).slice(0, room)) { const pr = await prepUpload(f, 'image'); if ('error' in pr) { setDropErr(pr.error); continue; } if (pr.note) toast(pr.note); ready.push(pr.file); } if (ready.length) p.onImage(ready); }; const maxN = Number(caps.maxBatch ?? 4) || 1;
+  const maxRefs = maxRefsOf(sup, routeCaps); if (p.refLimit) p.refLimit.current = maxRefs; const refN = (p.image ? 1 : 0) + (p.refs?.length ?? 0); const addRefs = async (fs: File[]) => { const room = maxRefs - refN; setLeft(''); if (!maxRefs) { setDropErr('This model doesn’t take reference images. Pick an edit model to use one.'); return; } setDropErr(''); { const n = fs.filter(f => fileFits('image', f)).length - Math.max(0, room); if (n > 0) setLeft(notAddedText(n, fullText({ image: maxRefs }, curName || 'This model'))); } if (room <= 0) return; const bad = fs.filter(f => !fileFits('image', f)); if (bad.length && bad.length === fs.length) { setDropErr(wrongTypeText(bad[0].name, ['image'])); return; } const ready: File[] = []; for (const f of fs.filter(f => fileFits('image', f)).slice(0, room)) { const pr = await prepUpload(f, 'image'); if ('error' in pr) { setDropErr(pr.error); continue; } if (pr.note) toast(pr.note); ready.push(pr.file); } if (ready.length) p.onImage(ready); }; const maxN = Number(caps.maxBatch ?? 4) || 1;
   const showEnh = (r: EnhanceResult) => { const was = r.original; p.setPrompt(r.prompt); toast(enhanceToastTitle(r), 'info', { sub: [r.added.slice(0, 4).join(', '), r.source].filter(Boolean).join(' · ') || undefined, ms: 10000, action: { label: 'Undo', onClick: () => p.setPrompt(was) } }); };
-  const [dropErr, setDropErr] = useState(''); const [badImg, setBadImg] = useState<Record<string, boolean>>({});
+  const [dropErr, setDropErr] = useState(''); const [left, setLeft] = useState(''); /* "N not added" under the prompt line */ useEffect(() => setLeft(''), [p.provider]); const [badImg, setBadImg] = useState<Record<string, boolean>>({});
   useEffect(() => { if (!dropErr) return; toast(dropErr, 'warn'); setDropErr(''); }, [dropErr]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (p.imgErr) toast(p.imgErr, 'warn'); }, [p.imgErr]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (wfErr) toast(wfErr, 'error'); }, [wfErr]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -629,7 +630,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
   const lastFid = useRef(camLens ? 'create-image' : fid);
   useEffect(() => { if (recipe) return; const prev = lastFid.current; if (prev === fid || !cDef) return; lastFid.current = fid; const ids = p.providers.map(x => x.id);
     const want = startModel(savedPick(fid), ids, cDef); const was = wfDefaultOf(p.tool, prev);
-    if (want && want !== p.provider && (p.provider === was?.start || p.provider === was?.id || p.provider === savedPick(prev))) p.setProvider(want); }, [fid, !!cDef, !!recipe]); // eslint-disable-line react-hooks/exhaustive-deps
+    const to = featureSwitchTo(p.provider, savedPick(prev), ids, was, want); if (to) p.setProvider(to); }, [fid, !!cDef, !!recipe]); // eslint-disable-line react-hooks/exhaustive-deps
   const rig: Rig = rigOfVals((wfDrafts[RIG_WORKFLOW] ?? loadDraft(RIG_WORKFLOW))?.vals ?? {}); const enhRef = useRef<HTMLButtonElement>(null); const enhT = useRef<number | undefined>(undefined); const enhLong = useRef(false);
   const rigFields = (): Record<string, string> => camLens ? { cameraBody: rig.body, lens: rig.lens, focal: String(rig.focal), aperture: rig.aperture, ...(rig.film ? { film: rig.film } : {}), ...(rig.lighting ? { lighting: rig.lighting } : {}), ...(rig.era ? { era: rig.era } : {}) } : {};
   /* model extras (server/src/shared/imageCaps.ts extras: Qwen Image 3.0, Wan 2.5): a negative prompt and the model's own prompt rewrite, in Settings; sent only to models that take them */
@@ -799,7 +800,6 @@ export default function ImageCanvas(p: ImageCanvasProps) {
    * slots, the mask, the Fit/Crop chip, "Use as …"; the preset tile first in every mode. Click a photo: the image picker. Delete / Backspace
    * on a focused photo, or its ✕, removes it. A photo that won't load shows a placeholder. */
   const photos = p.image ? [p.image, ...(p.refs ?? [])] : []; const ts = thumbsShown(photos.length);
-  const openPhotos = () => { replaceIndex.current = null; setPop(''); setPickFor(null); setRefTab(refTab === 'Uploads' && !pickFor ? null : 'Uploads'); };
   const focusLead = (k: number) => requestAnimationFrame(() => { const hs = [...(dock.current?.querySelectorAll<HTMLElement>('.ic-th-hit') ?? [])]; (hs[Math.min(k, hs.length - 1)] ?? p.promptRef.current)?.focus({ preventScroll: true }); });
   const removePhoto = (k: number, focus = false) => { if (k === 0) { p.clearImage(); p.setMask(null); setMasking(false); } else p.removeRef?.(k - 1); if (focus) focusLead(k); };
   const dragPhoto = useSlotReorder((from, to) => p.movePhoto?.(from, to));
@@ -819,12 +819,13 @@ export default function ImageCanvas(p: ImageCanvasProps) {
             : prepNow ? <PrepChip chipRef={prepChipRef} prep={prepNow} aspect={prepNow.aspect} shape="" busy={prepBusy || wfBusy} onFit={() => void applyPrep('fit')} onCrop={openCrop} onUndo={undoPrep} /> : null}</>} />
     : <>{presetChip}
       {photos.length > 0 && <div className="ic-attach ic-attach-in" data-testid="ic-attach">{photos.slice(0, ts.show).map(thumb)}
-        {ts.more > 0 && <button type="button" className="ic-th-more" data-ref-trigger data-testid="ic-thumbs-more" aria-haspopup="dialog" aria-label={`${ts.more} more photo${ts.more > 1 ? 's' : ''} (${refN} in all). Open your images`} {...tip(`${refN} photos in all · images ${ts.show + 1}–${refN} aren’t shown here`)} onClick={openPhotos}>+{ts.more}</button>}
+        <MoreFiles hidden={ts.more} watch={dock} testId="ic-thumbs-more" summary={refN > maxRefs ? `${refN - maxRefs} not used` : undefined} action={refN > maxRefs && maxRefs > 0 ? { label: `Remove the ${refN - maxRefs} not used`, onClick: () => { for (let i = photos.length - 1; i >= maxRefs; i--) removePhoto(i); } } : null} onRemove={f => removePhoto(f.idx)} onMove={photos.length > 1 && p.movePhoto ? (_g, a, b) => p.movePhoto!(a, b) : undefined}
+          items={photos.map((ph, k): TrayFile => ({ key: ph.url, group: 'photos', idx: k, kind: 'image', url: ph.url, name: (ph as any).file?.name ?? `Image ${k + 1}`, label: refN > 1 ? `Picture ${k + 1} · @image${k + 1}` : 'Picture', off: k >= maxRefs || (!!p.mask && k > 0) }))} />
         {p.canMask && sup.draw !== false /* only models with a mask route (Brush Edit) */ && <>
           {p.mask && cMaskNow && <button type="button" className="ic-mask-t" data-testid="ic-mask-thumb" aria-label={`Mask: ${Math.max(1, Math.round(cMaskNow.cover * 100))}% of the photo. Edit mask`} {...tip(`Mask · ${Math.max(1, Math.round(cMaskNow.cover * 100))}% of the photo. Click to edit`)} onClick={openCreateMask}><img src={cMaskNow.preview} alt="" /></button>}
           <button type="button" className={`ic-chip ic-mask-b ${masking || p.mask ? 'on' : ''}`} data-testid="ic-mask-chip" aria-haspopup="dialog" {...tip(p.mask ? 'Brush Edit: only the painted area changes. Click to edit the mask' : 'Paint an area: only it changes')} onClick={openCreateMask}>{p.mask ? 'Mask ✓' : 'Mask'}</button></>}</div>}
       </>}
-    {!recipe && photos.length > 0 && <><SlotCount used={{image:refN}} caps={{image:maxRefs}} testId="ic-slot-count" />{refN > maxRefs && maxRefs > 0 && <button type="button" className="lk-btn" data-testid="ic-remove-extra-photos" onClick={() => { for (let i = photos.length - 1; i >= maxRefs; i--) removePhoto(i); }}>Remove extras</button>}</>}
+    {!recipe && photos.length > 0 && <><SlotCount used={{image:refN}} caps={{image:maxRefs}} testId="ic-slot-count" />{refN > maxRefs && maxRefs > 0 && !ts.more /* with "+N" it sits in the tray */ && <button type="button" className="lk-btn" data-testid="ic-remove-extra-photos" onClick={() => { for (let i = photos.length - 1; i >= maxRefs; i--) removePhoto(i); }}>Remove extras</button>}</>}
     {photoPreview != null && (() => { const ph = photos[photoPreview] as {url:string;file?:File} | undefined; return ph?.file ? <SlotPreview open anchor={photoAnchor} onClose={() => setPhotoPreview(null)} item={{file:ph.file,url:ph.url}} kind="image" title={`Picture ${photoPreview + 1}`} watch={dock} testId="ic-photo-preview" warn={photoPreview >= maxRefs ? `Not sent: this model takes up to ${maxRefs} pictures.` : null} onRemove={() => removePhoto(photoPreview)} onReplace={p.replacePhoto ? () => { replaceIndex.current = photoPreview; file.current?.click(); } : undefined} /> : null; })()}
   </div>;
   /* Settings popover: only the Create controls folded off the bar (the fit above says which), each once. Enhance here is the same
@@ -907,6 +908,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
         <textarea data-enter-submits="" ref={p.promptRef} id="app-prompt" className="ic-prompt prompt-field" rows={2} style={recipe?.prompt.mode === 'hidden' || subjOn ? { display: 'none' } : undefined} aria-hidden={recipe?.prompt.mode === 'hidden' || subjOn || undefined} aria-label="Prompt" placeholder={promptPh} value={promptNow} onChange={e => { setPromptNow(e.target.value); if (!recipe) at.sync(e.target.value, e.target.selectionStart); }} onKeyDown={at.onKeyDown} onBlur={() => setTimeout(at.close, 120)} aria-autocomplete={recipe ? undefined : 'list'} aria-expanded={recipe ? undefined : at.open} /* Enter generates, Shift+Enter adds a line: shared/enterSubmit (an open @ picker uses Enter first) */ />{at.menu}
         <MentionLayer taRef={p.promptRef} value={promptNow} counts={{ image: p.image ? 1 + (p.refs?.length ?? 0) : 0, video: 0, audio: 0 }} /></div>
         <SwitchNote note={swNote.note} testId="ic-switch-note" />
+        <LeftNote text={left} onClose={() => setLeft('')} testId="ic-not-added" />
         <div className="ic-chiprow"><div ref={chipsRef} className="ic-chips" data-extras={extras || mOpts ? '1' : undefined}>
           <span className="ic-fixed" data-testid="ic-chips-fixed">{/* the reference keeps [+] and the model outside the scroll track (sticky on desktop; phones: display:contents) */}
           {(() => { const r = recipe ?? rigWf; /* the shared chip (shared/WorkflowChip.tsx), also Video's, Audio's and 3D's */
@@ -1010,7 +1012,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
         base={params()} prompt={p.prompt} ready={p.ready && !!p.prompt.trim()} notReady={p.prompt.trim() ? missingText(p.missing) || 'Not ready yet' : 'Write a prompt in the bar first'} run={async extra => p.onGenerate({ ...extra, ...lookField() })} />}
       {sideBy && sideJobs.length > 0 && <CompareView jobs={sideJobs} onClose={() => setSideBy(null)} onOpen={id => { setSideBy(null); open(id); }} />}
       {refTab && <ImagePicker tab={refTab} setTab={setRefTab} onClose={() => setRefTab(null)} target={pickFor && recipe ? slotLabel(recipe, pickFor) : null}
-        limits={pickFor && recipe ? undefined : maxRefs > 0 ? `Up to ${maxRefs} photo${maxRefs > 1 ? 's' : ''} · PNG, JPG or WebP` : undefined}
+        limits={pickFor && recipe ? undefined : maxRefs > 0 ? `Up to ${maxRefs} picture${maxRefs > 1 ? 's' : ''} · PNG, JPG or WebP` : undefined}
         onFile={f => usePicked(f)} onFiles={fs => deliverFiles(file.current, fs)} onUpload={() => file.current?.click()} />}
       {exShown && <ExampleViewer ex={exShown} onClose={closeExample} onUse={useExample} onUsePhoto={exUsePhoto} />}
       <select id="provider" className="sr-only-vis" value={p.provider} onChange={e => p.setProvider(e.target.value)} aria-label="Model">{p.providers.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select>

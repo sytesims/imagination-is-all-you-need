@@ -13,7 +13,7 @@
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { comfyInstallOf, type ComfyInstall } from '../hardware/comfyInstall.js';
 import { classifyMachine, inputFromSystemStats, parseNvidiaSmi, type MachineProfile } from '../hardware/machineProfile.js';
@@ -43,7 +43,9 @@ export interface DoctorOptions { apiUrl?: string; comfyUrl?: string; comfyDir?: 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 export const realEnv = (): DoctorEnv => ({
   fetch: (...a) => fetch(...a),
-  exec: (cmd, args, o = {}) => { try { return { ok: true, out: execFileSync(cmd, args, { timeout: 4000, cwd: o.cwd, stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true, shell: process.platform === 'win32' && cmd === 'npm' }).toString().trim() }; } catch (e: any) { return { ok: false, out: String(e?.stdout ?? '').trim() }; } },
+  // npm on Windows is npm.cmd, which needs a shell; one command line (fixed words, no user input) instead of args + shell, which Node 24 warns about (DEP0190)
+  exec: (cmd, args, o = {}) => { try { const opts = { timeout: 4000, cwd: o.cwd, stdio: ['ignore', 'pipe', 'ignore'] as any, windowsHide: true };
+    return { ok: true, out: (process.platform === 'win32' && cmd === 'npm' ? execSync(['npm', ...args].join(' '), opts) : execFileSync(cmd, args, opts)).toString().trim() }; } catch (e: any) { return { ok: false, out: String(e?.stdout ?? '').trim() }; } },
   fs, platform: process.platform, arch: process.arch, release: os.release(), cpus: () => os.cpus(), totalmem: () => os.totalmem(), nodeVersion: process.version,
   env: process.env as Record<string, string | undefined>, repoRoot: REPO_ROOT, now: () => new Date(),
 });
@@ -125,7 +127,7 @@ export async function runDoctor(e: DoctorEnv = realEnv(), o: DoctorOptions = {})
   const backend = apiUp ? String(health.json.backend ?? '') || null : null; const tools = apiUp && Array.isArray(health.json.tools) ? health.json.tools.length : null;
   // npm run setup runs the doctor before it starts the app (OPENHIGGSFIELD_DOCTOR_BEFORE_START=1): the app being down then is expected, not a problem
   const beforeStart = !apiUp && e.env.OPENHIGGSFIELD_DOCTOR_BEFORE_START === '1';
-  add({ id: 'api', section: 'app', status: apiUp ? 'ok' : beforeStart ? 'info' : 'warn', required: false, text: apiUp ? `API ${apiUrl} · backend ${backend}${tools != null ? ` · ${tools} tools` : ''}` : beforeStart ? 'The app isn’t started yet: setup starts it next.' : `App not running (nothing at ${apiUrl})`, fix: apiUp || beforeStart ? undefined : 'npm run dev   (or npm run setup)' });
+  add({ id: 'api', section: 'app', status: apiUp ? 'ok' : beforeStart ? 'info' : 'warn', required: false, text: apiUp ? `API ${apiUrl} · backend ${backend}${tools != null ? ` · ${tools} tools` : ''}` : beforeStart ? 'The app isn’t started yet: setup starts it next.' : `App not running (nothing at ${apiUrl})`, fix: apiUp || beforeStart ? undefined : 'npm start   (or npm run setup)' });
   if (apiUp) add({ id: 'web', section: 'app', status: webUp ? 'ok' : 'warn', required: false, text: `Web ${webUrl} ${webUp ? '' : '(not answering)'}· MCP ${mcpUp ? mcpUrl.replace('/mcp', '') : 'not running'}`.replace('  ', ' ') });
 
   // ---- ComfyUI ----
@@ -202,7 +204,7 @@ export async function runDoctor(e: DoctorEnv = realEnv(), o: DoctorOptions = {})
     accounts = { source: ef.found ? 'env-file' : 'none', connected: ACCOUNT_ENV.filter((a) => a.vars.some(has)).map((a) => a.id), notConnected: ACCOUNT_ENV.filter((a) => !a.vars.some(has)).map((a) => a.id) }; }
   const nameOf = (id: string) => ACCOUNT_ENV.find((a) => a.id === id)?.name ?? id;
   add({ id: 'accounts', section: 'accounts', status: accounts.connected.length ? 'ok' : 'info', required: false, text: accounts.connected.length ? `Connected: ${accounts.connected.map(nameOf).join(', ')}` : 'No accounts connected (models run as free samples, or on this computer)', fix: accounts.connected.length ? undefined : 'Settings → Connections, or a key line in .env.local' });
-  if (backend === 'mock' && accounts.connected.length) add({ id: 'sample-mode', section: 'accounts', status: 'info', required: false, text: 'Sample mode: runs make free samples, even with these accounts connected', fix: 'set OPENHIGGSFIELD_BACKEND=comfy in .env.local, then npm run dev again (every paid run still shows its price first)' });
+  if (backend === 'mock' && accounts.connected.length) add({ id: 'sample-mode', section: 'accounts', status: 'info', required: false, text: 'Sample mode: runs make free samples, even with these accounts connected', fix: 'set OPENHIGGSFIELD_BACKEND=comfy in .env.local, then restart the app (npm start) (every paid run still shows its price first)' });
   const hfConnected = accounts.connected.includes('hf') || (accounts.source !== 'app' && ACCOUNT_ENV[1].vars.some((v) => !!e.env[v]?.trim() || ef.names.includes(v)));
   if (!hfConnected) add({ id: 'hf', section: 'accounts', status: 'info', required: false, text: 'Hugging Face not connected: gated models (FLUX.1 Fill dev and a few others) can’t download', fix: 'Settings → Connections → Hugging Face (a free read token), or OPENHIGGSFIELD_HF_TOKEN in .env.local' });
 

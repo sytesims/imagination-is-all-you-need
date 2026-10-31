@@ -23,7 +23,7 @@ What they do, in order:
 1. Check for git, Node.js 20 or newer (with npm) and ffmpeg. For each missing one, they say what it is and ask before installing it with Homebrew (macOS; they offer Homebrew's official installer if it's missing), apt or dnf (Linux, with `sudo`, which asks for your password) or winget (Windows). Say no and they print the manual steps and stop. ffmpeg is optional: without it the app still opens.
 2. Download the app into `~/Imagination` (Windows: `%USERPROFILE%\Imagination`) with `git clone --depth 1`. If the app is already there, they run `npm run update` instead. Your library (`server/data`) and keys (`.env.local`) are never touched.
 3. Run `npm run setup -- --no-start`: app dependencies and the read-only check. No ComfyUI, models or keys.
-4. Ask whether to add a desktop shortcut (macOS: `Imagination.command`; Windows: `Imagination.lnk`; Linux: an `imagination.desktop` app entry).
+4. Ask whether to add a shortcut (Windows: `Imagination.lnk`; Linux: an `imagination.desktop` app entry). On a Mac the installer adds Imagination to Applications and your Dock: it builds the [Mac app](#mac-app-dock) into `/Applications` (or `~/Applications` when `/Applications` needs an administrator; never with `sudo`), pins it to the Dock unless it's already there, and removes the `Imagination.command` desktop shortcut older installers made.
 5. Start the app with `npm run setup` and open it in your browser. Keep the window open; Ctrl+C stops it.
 
 Options (Windows names in brackets):
@@ -34,7 +34,7 @@ Options (Windows names in brackets):
 | `--dir PATH` (`-Dir`) | Install somewhere else |
 | `--branch NAME` (`-Branch`) | Get another branch (for testing) |
 | `--no-start` (`-NoStart`) | Install, but don't start the app |
-| `--no-shortcut` (`-NoShortcut`) | Don't offer a desktop shortcut |
+| `--no-shortcut` (`-NoShortcut`) | Don't offer the shortcut (on a Mac: the app in Applications and the Dock) |
 | `--dry-run` (`-DryRun`) | Show every step, change nothing |
 | `--help` (`-Help`) | Show the options |
 
@@ -94,7 +94,7 @@ npm run setup
 
 On Windows, `npm.cmd run setup` is equivalent and avoids selecting the PowerShell npm shim.
 
-Setup installs missing app dependencies, runs the read-only doctor and starts the API, web app and HTTP MCP server. It prints the setup URL. With default ports:
+Setup installs missing app dependencies, runs the read-only doctor and starts the API, web app and HTTP MCP server with `npm start`. It prints the setup URL. With default ports:
 
 | Service | Address |
 |---|---|
@@ -102,9 +102,31 @@ Setup installs missing app dependencies, runs the read-only doctor and starts th
 | API | http://127.0.0.1:8787/api/health |
 | MCP | http://127.0.0.1:8788/mcp |
 
+The first start builds the web app, which takes a minute or two (it prints what it's doing); later starts skip that unless the app changed, for example after an update. `npm start` starts the app the same way without the setup checks.
+
 Open the printed web URL. Keep the terminal open; **Ctrl+C** stops the services. Closing the browser does not stop them. `npm run setup -- --check` checks without installing or starting; `--no-start` permits dependency installation/checks but does not start services.
 
 `npm install` also attempts to install MCP dependencies. If that part fails, fix the reported dependency error and run `npm run mcp:install`; the app being reachable does not prove MCP is running.
+
+### Mac app (Dock)
+
+On macOS you can open the studio like any other app. In the app folder, run once:
+
+```text
+npm run mac-app
+```
+
+This builds `Imagination.app` in `~/Applications`, the Applications folder in your home folder. Drag it from there to the Dock.
+
+- **Opening it** starts the app in the background when it isn't running (the same `npm run setup`, so a first start also installs what's missing and builds the app, which can take a few minutes), shows "Starting Imagination…", then opens the studio in your browser. If it's already running (also when you started it in a terminal, or it is restarting after an update), it just opens the browser. Closing the browser doesn't stop it.
+- **While the studio runs**, Imagination stays in the Dock with its running dot. Click it to open the studio again. If the studio stops by itself, you get a notification and the app closes.
+- **To stop it**, quit Imagination (from its Dock menu, or Cmd-Q) and choose **Stop**; **Keep running** leaves the studio on. Or hold **Option** while you open Imagination and choose **Stop Imagination**. It only stops the copy it started; a copy started in a terminal stops with **Ctrl+C** there.
+- **If it can't start**, it shows the last lines of the log. The full log is `~/Library/Logs/Imagination/app.log` (it keeps about the last 1 MB).
+- **Ports and settings** work as above: `PORT` and `WEB_PORT` in `.env.local` are used.
+- **Moved or renamed the app folder?** Run `npm run mac-app` again from the new place. `npm run mac-app -- --dest DIR` builds it somewhere else. It only replaces its own `Imagination.app`, never another app with that name.
+- **To remove it**, drag `Imagination.app` to the Trash (and off the Dock). Optionally also delete `~/Library/Logs/Imagination` and `~/Library/Application Support/Imagination`.
+
+The app is built on your Mac, so macOS opens it without a download warning. The first time it shows a notification, macOS may ask whether Imagination can send notifications.
 
 ## Choose how to use it
 
@@ -177,9 +199,10 @@ On Windows, `npm.cmd run update` does the same. The update:
 2. Checks that you're on `main`. If you're on another branch, it says how to switch back. `npm run update -- --force-branch` updates the branch you're on instead.
 3. Gets the new version from GitHub with `git pull --ff-only`. It never merges, resets or deletes anything.
 4. Installs new dependencies only when they changed, and rebuilds the MCP server only if you built it before (`npm run mcp:build`).
-5. Shows your old and new version and a short list of what's new.
+5. Builds the new version of the web app, unless the app is running (then its next start does it).
+6. Shows your old and new version and a short list of what's new.
 
-Then start the app again with `npm run setup` (or `npm run dev`).
+Then start the app again with `npm run setup` or `npm start`. A running app never restarts by itself after an update: it keeps the version it started with until you restart it.
 
 To see whether an update is ready without changing anything:
 
@@ -207,7 +230,8 @@ When the new version works, you can delete the old folder. Running `npm run upda
 
 ## Other startup and advanced installation paths
 
-- `npm run dev`: starts API, Vite web and HTTP MCP after dependencies are installed.
+- `npm start`: what setup and the Mac app run. Builds the web app when it changed since the last build, then starts the API (no file watching), the built web app (`vite preview`, same `/api` proxy) and HTTP MCP. Nothing restarts while it runs.
+- `npm run dev`: for working on the code. Starts the API with file watching, the Vite dev server with hot reload and HTTP MCP. Slower pages, and an edit or `git pull` restarts the API (which stops runs in progress).
 - `npm run start:demo`: non-watching API plus built web preview and HTTP MCP. It is not a separate hosted demo service.
 - `npm run build`: builds server/web assets. MCP's compiled stdio entrypoint has a separate `npm run mcp:build` step; see [MCP](MCP.md).
 - `scripts/install.ps1`: optional native Windows app install/build helper. Its printed start command uses app setup; it does not provision ComfyUI or model weights.

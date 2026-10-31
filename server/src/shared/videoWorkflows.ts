@@ -1,13 +1,19 @@
 /**
  * One Video page (2026-10-23): the workflows the Video page's bar can switch between, the way Create Image's bar does (shared/workflows.ts).
  * A workflow is a plain name for an existing video tool: picking it renders that tool's own inputs, controls, models, quote and submit
- * on the Video page (/tools/h3-video?workflow=<id>). Nothing here runs a job and no tool id or job contract changes.
+ * on the Video page (/video?workflow=<id>). Nothing here runs a job and no tool id or job contract changes.
  *
  * Isomorphic (no server imports): the web app reads it for the picker, the header Video menu and the redirects of the old pages.
  */
 
-/** The Video page. Create Video is this page with no workflow picked. */
-export const VIDEO_PAGE = '/tools/h3-video';
+/** The Video page. Create Video is this page with no workflow picked. Its tool id stays VIDEO_TOOL (jobs, /api/tools/h3-video, MCP). */
+export const VIDEO_PAGE = '/video';
+/** Create Video's tool id (API, jobs, stored data). */
+export const VIDEO_TOOL = 'h3-video';
+/** The Video page's old address (until 2026-10-31): redirects to VIDEO_PAGE with every query param kept. */
+export const OLD_VIDEO_PAGE = '/tools/h3-video';
+/** A tool's own page when the tool list isn't at hand: /tools/<id>, except Create Video (/video). */
+export const toolPage = (toolId: string): string => toolId === VIDEO_TOOL ? VIDEO_PAGE : `/tools/${toolId}`;
 export type VideoWorkflowCategory = 'create' | 'edit' | 'motion' | 'camera' | 'apps';
 export interface VideoWorkflow {
   /** URL id (?workflow=<id>); 'create' is the page with no workflow. */ id: string;
@@ -152,10 +158,11 @@ export const VIDEO_REDIRECTS: Record<string, string> = { ...Object.fromEntries(V
   /* Director removed from the app (2026-10-23): its page (and the /tools/director alias) opens Create Video; its API and old jobs still work. */
   ...Object.fromEntries(RETIRED_VIDEO_PAGES.map((r) => [r, VIDEO_PAGE])) };
 
-/** Redirects the path table can't say: /tools/h3-video?tab=motion (the old Motion Control tab) and /tools/edit-video/<x> (old sub-routes).
+/** Redirects the path table can't say: the old address /tools/h3-video (→ /video), /video?tab=motion (the old Motion Control tab) and /tools/edit-video/<x> (old sub-routes).
  *  Returns the new URL (query and hash kept, the old `tab` param dropped) or null. */
 export function videoRedirect(pathname: string, search: string, hash = ''): string | null {
   const p = (pathname.replace(/\/+$/, '') || '/').toLowerCase(); const q = new URLSearchParams(search);
+  if (p === OLD_VIDEO_PAGE) return videoRedirect(VIDEO_PAGE, search, hash) ?? `${VIDEO_PAGE}${search && search !== '?' ? (search.startsWith('?') ? search : `?${search}`) : ''}${hash}`;
   // Navigation consolidates on the existing single-subject tool. Recreate must NOT discard personB or reinterpret an old two-pass run.
   const oldSwap = p === '/tools/two-person-swap' || p === '/tools/edit-video/two-person-swap' || (p === VIDEO_PAGE && q.get('workflow') === 'two-person-swap');
   if (oldSwap) {

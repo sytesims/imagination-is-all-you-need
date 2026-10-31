@@ -3,6 +3,7 @@
 //   - Zip installs (no git): prints how to update by hand and stops.
 //   - Refuses (and changes nothing) when tracked files have local changes, or when you're not on main (--force-branch to allow).
 //   - git fetch + git pull --ff-only; reinstalls only when a lockfile changed; rebuilds mcp/dist only when the MCP code changed.
+//   - Rebuilds the web app for npm start when it changed, unless the app is running (a running app is never disturbed: its next start rebuilds).
 //   - Never touches server/data, .env.local or any other ignored file. No network calls except git and npm.
 //   --check  only says whether an update is available (fetch + compare); changes nothing.
 // Node only, no shell commands, so it runs the same on Windows, macOS and Linux.
@@ -27,7 +28,9 @@ const versionAt = (rev) => versionIn(git('show', `${rev}:package.json`).out) || 
 
 // 1. a zip install (or git missing): update by hand
 const top = git('rev-parse', '--show-toplevel');
-const same = (a, b) => (WIN ? path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase() : path.resolve(a) === path.resolve(b));
+/* realpath: git prints C:/Users/runneradmin/… while the folder may have been reached as C:\\Users\\RUNNER~1\\… (Windows short names) */
+const real = (p) => { try { return fs.realpathSync.native(path.resolve(p)); } catch { return path.resolve(p); } };
+const same = (a, b) => (WIN ? real(a).toLowerCase() === real(b).toLowerCase() : real(a) === real(b));
 if (!top.ok || !same(top.out, REPO)) {
   const why = spawnSync('git', ['--version']).status === 0 ? 'This folder isn’t a git copy of the app (it was probably downloaded as a zip),' : 'Git isn’t installed on this computer,';
   stop([`${why} so it can’t update itself. To update by hand:`, '',
@@ -101,17 +104,25 @@ const steps = [
   ...(rootDeps ? [{ label: 'Installing the app’s new dependencies (npm ci)…', cwd: REPO, args: ['ci', '--no-audit', '--no-fund'] }] : []),
   /* the root npm ci already installs mcp/ (scripts/install-mcp.mjs) */
   ...(mcpDeps && !rootDeps ? [{ label: 'Installing the MCP server’s new dependencies…', cwd: path.join(REPO, 'mcp'), args: ['ci', '--no-audit', '--no-fund'] }] : []),
-  /* only when you built it before: npm run dev runs the MCP server from source */
+  /* only when you built it before: npm start and npm run dev run the MCP server from source */
   ...(mcpCode && fs.existsSync(path.join(REPO, 'mcp', 'dist')) ? [{ label: 'Rebuilding the MCP server (npm run mcp:build)…', cwd: REPO, args: ['run', 'mcp:build'] }] : []),
 ];
 for (const s of steps) {
   if (process.env.OPENHIGGSFIELD_UPDATE_SKIP_INSTALL === '1') { say(`${s.label} skipped (OPENHIGGSFIELD_UPDATE_SKIP_INSTALL=1)`); continue; }
   say(s.label);
-  const r = spawnSync(NPM, s.args, { cwd: s.cwd, stdio: 'inherit', shell: WIN });
+  const r = WIN ? spawnSync(`${NPM} ${s.args.join(' ')}`, { cwd: s.cwd, stdio: 'inherit', shell: true }) /* npm.cmd needs a shell; one command line, not args + shell (Node 24 DEP0190) */ : spawnSync(NPM, s.args, { cwd: s.cwd, stdio: 'inherit' });
   if (r.status !== 0) stop(`\nThe new code is in place, but “npm ${s.args.join(' ')}” failed. Fix the error above, then run it again in ${s.cwd}.\nIf a file is in use, stop the app first (Ctrl+C in its terminal).`);
 }
 
-// 7. what's new: one line per change on main (a merged pull request's title rather than "Merge pull request …")
+// 7. the web app npm start serves: build it now so the next start is quick; never under a running app (its open tabs still use
+// the old files), which rebuilds by itself on its next start
+if (process.env.OPENHIGGSFIELD_UPDATE_SKIP_INSTALL !== '1') {
+  const { ensureWebBuild, webBuildReason } = await import('./web-build.mjs'); const { apiUp } = await import('./app-env.mjs');
+  if (!webBuildReason()) { /* up to date */ } else if (await apiUp()) say('The app is running, so the web app isn’t rebuilt now: its next start rebuilds it (a minute or two).');
+  else if (!ensureWebBuild()) say('The web build didn’t finish; the next start tries again.');
+}
+
+// 8. what's new: one line per change on main (a merged pull request's title rather than "Merge pull request …")
 const log = git('log', '--first-parent', '--format=%s%x1f%b%x1e', `${oldHead}..${newHead}`).out.split('\x1e').map((e) => e.trim()).filter(Boolean)
   .map((e) => { const [s, b = ''] = e.split('\x1f'); return /^Merge (pull request|branch)/.test(s) && b.trim() ? b.trim().split('\n')[0] : s; });
 say();

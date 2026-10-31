@@ -5,6 +5,8 @@ import { PromptPeek, type PeekForm } from '../next/PromptPeek';
 import { BrandChip } from '../../shared/BrandChip';
 import { RowMore } from '../../shared/RowMore';
 import { SlotPreview, SlotCount, fullText, prepUpload, useSlotReorder, type SlotAction } from '../../shared/SlotPreview';
+import { MoreFiles, LeftNote, notAddedText, type TrayFile } from '../../shared/FilesTray';
+import { thumbsShown } from '../../shared/presetBar';
 import { handoffOf } from '../../shared/handoffFiles';
 import { PF_SHORT } from '../../shared/DockGenerate';
 import { preflightProblems } from '../../../../server/src/shared/preflight';
@@ -41,6 +43,7 @@ import { BarPopover, PopSection, PopList, PopRow, PopSwitch, PopAction, Segmente
 import { ModelMenu, type MenuItem } from '../../shared/ModelMenu';
 import { SwitchNote, useSwitchNote } from '../../shared/SwitchNote';
 import type { RowFit } from '../../shared/quote';
+import { refFitOf, runModeOf, skippedText, notUsedBy, notUsedShort, attachParams, type RefsAdded } from '../../../../server/src/shared/refFit';
 /** Generate Video (page 4): left panel + main area, our layout.
  *  All copy, media, models and prices are ours; capabilities come from the tool config + /api/models + /api/tools/:id/price. */
 import VideoFeed from './VideoFeed';
@@ -170,9 +173,13 @@ export default function VideoStudio(p: VideoStudioProps) {
   const nRefImg = kfMode ? kfFrames.length /* frame N = <Picture N> = @imageN */ : (p.image ? 1 : 0) + (p.vrefs.refs?.length ?? 0); // r2v: the photo and every image reference go to the model (job refPaths)
   /* The quote's params, shared by Generate's quote and the popups' option prices (one source, so they price the same run). */
   const qpOk = !((durListOf(cur, lim, cfg, p.resolution).length && !durListOf(cur, lim, cfg, p.resolution).includes(p.duration)) || (resList.length && !resList.includes(p.resolution)));
-  const qpObj: Record<string, string> = { ...quoteParams(), provider: p.provider, duration: String(p.duration), resolution: p.resolution, types: p.mode, ...(qLocal ? { quality: p.quality } : {}), aspect: String(p.fv.aspect ?? 'auto'), ...(rvTotal > 0 ? { refVideoSeconds: String(rvTotal) } : {}), ...(p.mode === 'r2v' && nRefImg > 0 ? { refs: String(Math.min(nRefImg, refMax.image ?? 0)) } : {}) /* reference images the job sends (photo + refs): per-reference prices, e.g. MiniMax H3 beyond 5 */, audio: String(p.fv.audio ?? (aud0?.default === false ? '0' : '1')), bitrate: String(p.fv.bitrate ?? 'standard'), ...(p.fv.loop === '1' ? { loop: '1' } : {}), ...(lim?.stageToggle && p.resolution === lim.stageToggle.resolution && p.fv[lim.stageToggle.field] ? { [lim.stageToggle.field]: String(p.fv[lim.stageToggle.field]) } : {}) /* LTX-2.5 DFR: the 48 fps pass is priced */ };
+  const qpObj: Record<string, string> = { ...quoteParams(), provider: p.provider, duration: String(p.duration), resolution: p.resolution, types: p.mode, ...(qLocal ? { quality: p.quality } : {}), aspect: String(p.fv.aspect ?? 'auto'), ...(rvTotal > 0 ? { refVideoSeconds: String(rvTotal) } : {}), ...(p.mode === 'r2v' && nRefImg > 0 ? { refs: String(Math.min(nRefImg, refMax.image ?? 0)) } : {}) /* reference images the job sends (photo + refs): per-reference prices, e.g. MiniMax H3 beyond 5 */,
+    ...(kfMode ? {} : attachParams({ start: !!p.image, image: p.vrefs.refs?.length ?? 0, video: p.vrefs.refVideos?.length ?? 0, audio: p.vrefs.refAudios?.length ?? 0 })), /* each clip's seconds, when all are read (the route's length checks; the picker trims them per row) */
+    ...((p.vrefs.refVideos ?? []).length && (p.vrefs.refVideos ?? []).every(r => rvDur[r.url] > 0) ? { refVideoSecondsEach: (p.vrefs.refVideos ?? []).map(r => Math.round(rvDur[r.url] * 100) / 100).join(',') } : {}),
+    ...((p.vrefs.refAudios ?? []).length && (p.vrefs.refAudios ?? []).every(r => raDur[r.url] > 0) ? { refAudioSecondsEach: (p.vrefs.refAudios ?? []).map(r => Math.round(raDur[r.url] * 100) / 100).join(',') } : {}),
+    /* what's on the bar (shared/refFit.ts): the start frame (upload or hand-off) as image=1, so a quote never says "Needs a start image" with one attached; the picker fits each row from the counts */ audio: String(p.fv.audio ?? (aud0?.default === false ? '0' : '1')), bitrate: String(p.fv.bitrate ?? 'standard'), ...(p.fv.loop === '1' ? { loop: '1' } : {}), ...(lim?.stageToggle && p.resolution === lim.stageToggle.resolution && p.fv[lim.stageToggle.field] ? { [lim.stageToggle.field]: String(p.fv[lim.stageToggle.field]) } : {}) /* LTX-2.5 DFR: the 48 fps pass is priced */ };
   const rqTick = useRequoteTick(); useEffect(() => { /* No quote until the inputs are valid for this model (the default 15 s is clamped first). */ if (!qpOk) return; const u = new URLSearchParams(qpObj); const ac = new AbortController(); const asked = { ...qpObj };
-    fetch(`/api/tools/${p.tool.id}/price?${u}`, { signal: ac.signal }).then(readQuote).then(d => { qFor.current = asked; setQ(d); }).catch(() => 0); return () => ac.abort(); }, [rqTick, p.provider, p.duration, p.resolution, p.mode, p.quality, p.fv.aspect, p.fv.audio, p.fv.bitrate, p.fv.loop, lim?.stageToggle ? p.fv[lim.stageToggle.field] : '', rvTotal, nRefImg, String(durListOf(cur, lim, cfg, p.resolution)), resList.join()]);
+    fetch(`/api/tools/${p.tool.id}/price?${u}`, { signal: ac.signal }).then(readQuote).then(d => { qFor.current = asked; setQ(d); }).catch(() => 0); return () => ac.abort(); }, [rqTick, p.provider, p.duration, p.resolution, p.mode, p.quality, p.fv.aspect, p.fv.audio, p.fv.bitrate, p.fv.loop, lim?.stageToggle ? p.fv[lim.stageToggle.field] : '', rvTotal, nRefImg, !!p.image, JSON.stringify(rvDur), JSON.stringify(raDur), p.vrefs.refVideos?.length ?? 0, p.vrefs.refAudios?.length ?? 0, p.vrefs.refs?.length ?? 0, String(durListOf(cur, lim, cfg, p.resolution)), resList.join()]);
   const unpricedWhy = unpricedReason(q); const unpriced = !!unpricedWhy; const credits: number | null = shownCredits(q); /* B18: chargeable:false is never a charge */
   const free = credits === 0 && q?.routeKind === 'local'; const gate = !!q && q.needsKey === true && q.runnable === false;
   /* B19: any other runnable:false quote blocks Generate in the server's words; an input block (blockedReason) keeps its real price, shown muted. */
@@ -197,10 +204,20 @@ export default function VideoStudio(p: VideoStudioProps) {
   const startIsRef = p.mode === 'r2v' && !!p.image;
   const refCaps = Object.fromEntries(refKinds.map(k => [k, refMax[k] ?? 0])) as Partial<Record<MediaKind, number>>;
   const capOf = (k: string) => { const kind = RK.find(x => x[0] === k)?.[1] ?? ''; return !refKinds.includes(kind) ? 0 : Math.max(0, (refMax[kind] ?? 0) - (kind === 'image' && startIsRef ? 1 : 0)); };
+  /* Reference-aware picker (2026-10-31, shared/refFit.ts): what each model would use of what's on the bar; the menu's rows, Auto and the
+   * bar's "Not used" marks all read it. */
+  const added: RefsAdded = { start: !!p.image && !kfMode, image: p.vrefs.refs?.length ?? 0, video: p.vrefs.refVideos?.length ?? 0, audio: p.vrefs.refAudios?.length ?? 0 };
+  const anyAdded = !kfMode && added.image + added.video + added.audio > 0; /* references on the bar (a start frame alone: every model takes it) */
+  const capsOfEngine = (id: string) => { const L: any = limOf(id); return { modes: cfg.providerModes?.[id] ?? null, refKinds: L?.refKinds ?? ['image'], refMax: L?.refMax ?? { image: 1 } }; };
+  const curFit = anyAdded ? refFitOf(capsOfEngine(p.provider), added, p.mode, { keepMode: true }) : null;
+  const startOff = !!curFit && added.start && !curFit.startUsed;
+  const refFitFor = anyAdded ? (id: string) => refFitOf(capsOfEngine(id), added, p.mode) : null;
+  /** how many of a bar list the picked model uses (its limit, and, with references, Reference mode: shared/refFit.ts) */
+  const capNow = (k: string) => curFit ? Math.min(capOf(k), (curFit.caps as Record<string, number>)[k] ?? 0) : capOf(k);
   const refUsed: Partial<Record<MediaKind, number>> = { image: (startIsRef ? 1 : 0) + (p.vrefs.refs?.length ?? 0), video: p.vrefs.refVideos?.length ?? 0, audio: p.vrefs.refAudios?.length ?? 0 };
-  const overN = RK.reduce((n, [k]) => n + Math.max(0, (p.vrefs[k]?.length ?? 0) - capOf(k)), 0);
-  if (p.refCaps) p.refCaps.current = Object.fromEntries(RK.map(([k]) => [k, capOf(k)]));
-  const dropExtras = () => RK.forEach(([k]) => { if ((p.vrefs[k]?.length ?? 0) > capOf(k)) p.setVrefs(k, (p.vrefs[k] ?? []).slice(0, capOf(k))); });
+  const overN = RK.reduce((n, [k]) => n + Math.max(0, (p.vrefs[k]?.length ?? 0) - capNow(k)), 0);
+  if (p.refCaps) p.refCaps.current = Object.fromEntries(RK.map(([k]) => [k, capNow(k)]));
+  const dropExtras = () => RK.forEach(([k]) => { if ((p.vrefs[k]?.length ?? 0) > capNow(k)) p.setVrefs(k, (p.vrefs[k] ?? []).slice(0, capNow(k))); });
   // keep values inside the picked model's limits
   useEffect(() => { if (durs.length && !durs.includes(p.duration)) { const to = durs.reduce((a, b) => Math.abs(b - p.duration) < Math.abs(a - p.duration) ? b : a); p.setDuration(to);
     if (lim?.durationsByResolution?.[p.resolution]) toast(`${curM?.name ?? cur?.name ?? 'This model'} makes ${resLbl(p.resolution)} clips at ${durs.join(' or ')} s only: length set to ${to} s`, 'info'); } }, [p.provider, durs.join()]); // per-model lengths: snap to the nearest allowed (and say so when the resolution limits it)
@@ -256,17 +273,17 @@ export default function VideoStudio(p: VideoStudioProps) {
   const vp = vps.find(x => x.id === p.fv.videoPreset || x.aliases?.includes(p.fv.videoPreset)); /* a removed look's old id (Recreate) shows the kept look */
   /* Viral templates (useViralTemplates, 2026-10-26): Look → Viral, the fill-in row above the prompt, ?template= from an Explore card */
   const viral = useViralTemplates({ prompt: p.prompt, setPrompt: p.setPrompt, promptRef: p.promptRef, provider: p.provider, setProvider: p.setProvider, engines: provs.map(x => x.id), limOf, setFv: p.setFv, setDuration: p.setDuration, toast, closePop, engineName: id => models.find(m => m.id === id)?.name ?? provs.find(x => x.id === id)?.name ?? 'LTX-2.5 22B' });
-  const refIn = useRef<HTMLInputElement>(null); const [refErr, setRefErr] = useState('');
-  const addRefs = async (fs: File[]) => { setRefErr(''); const acc: Record<string, R[]> = {}; const left: string[] = []; const msgs: string[] = [];
+  const refIn = useRef<HTMLInputElement>(null); const [refErr, setRefErr] = useState(''); const [left, setLeft] = useState(''); /* "N not added" under the prompt line (shared LeftNote) */ useEffect(() => setLeft(''), [p.provider]);
+  const addRefs = async (fs: File[]) => { setRefErr(''); setLeft(''); const acc: Record<string, R[]> = {}; const left: string[] = []; const msgs: string[] = [];
     for (const f0 of fs) { const kind = kindOfFile(f0, refKinds as MediaKind[]); const k = RK.find(x => x[1] === kind)?.[0];
       if (!kind || !k) { msgs.push(wrongTypeText(f0.name, refKinds as MediaKind[])); continue; }
       const okFmt = kind === 'image' ? undefined : (refFmts as any)?.[kind] as string[] | undefined; const ext = (f0.name.split('.').pop() ?? '').toLowerCase();
       if (okFmt && !okFmt.includes(ext)) { msgs.push(`${f0.name}: this model takes ${kind === 'audio' ? 'sound' : kind} references as ${okFmt.map(x => x.toUpperCase()).join(' or ')}.`); continue; }
-      const cur = acc[k] ?? [...(p.vrefs[k] ?? [])]; if (cur.length >= capOf(k)) { left.push(f0.name); continue; }
+      const cur = acc[k] ?? [...(p.vrefs[k] ?? [])]; if (cur.length >= capOf(k)) { left.push(kind); continue; }
       const pr = await prepUpload(f0, kind); if ('error' in pr) { msgs.push(pr.error); continue; } if (pr.note) toast(pr.note, 'info');
       cur.push({ file: pr.file, url: URL.createObjectURL(pr.file) }); acc[k] = cur; }
     Object.entries(acc).forEach(([k, l]) => p.setVrefs(k, l));
-    if (left.length) msgs.push(`${fullText(refCaps, modelName || 'This model')}: ${left.length} not added.`); setRefErr(msgs.join(' ')); };
+    setLeft(notAddedText(left.length, fullText(Object.fromEntries(Object.entries(refCaps).filter(([kk]) => left.includes(kk))), modelName || 'This model'))); setRefErr(msgs.join(' ')); };
   const fileIn = useRef<HTMLInputElement>(null); const lastIn = useRef<HTMLInputElement>(null);
   const takeStart = async (f: File) => { p.onCancelFrameHandoff?.(); if (!fileFits('image', f)) { setRefErr(wrongTypeText(f.name, ['image'])); return; } const pr = await prepUpload(f, 'image'); if ('error' in pr) { setRefErr(pr.error); return; } if (pr.note) toast(pr.note, 'info'); setRefErr(''); p.onImage([pr.file]); };
   const takeEnd = async (f: File) => { if (!fileFits('image', f)) { setRefErr(wrongTypeText(f.name, ['image'])); return; } const pr = await prepUpload(f, 'image'); if ('error' in pr) { setRefErr(pr.error); return; } if (pr.note) toast(pr.note, 'info'); setRefErr(''); p.setLastFrame({ file: pr.file, url: URL.createObjectURL(pr.file) }); };
@@ -309,6 +326,8 @@ export default function VideoStudio(p: VideoStudioProps) {
   useEffect(() => { if (p.image && p.mode === 't2v' && modeOk(p.provider, 'i2v')) autoMode('i2v');
     else if (!p.image && hadImage.current !== false && p.mode === 'i2v' && modeOk(p.provider, 't2v')) autoMode('t2v');
     hadImage.current = !!p.image; }, [!!p.image]);
+  /* the first reference on the bar: Reference mode when this model makes it (references are used there only; shared/refFit.ts) */
+  useEffect(() => { if (anyAdded && p.mode !== 'r2v' && modeOk(p.provider, 'r2v')) autoMode('r2v'); }, [anyAdded]);
   const menuItems: MenuItem[] = provs.map(x => { const m = models.find(y => y.id === x.id); const name = displayNameOf(m, x) ?? m?.name ?? x.name; const ok = modeOk(x.id, p.mode);
     return { id: x.id, name, family: m?.family ?? (x as any).family ?? undefined, badge: (m?.badges ?? []).includes('new') ? 'New' : undefined, open: x.kind === 'open-weights' || isOpenWeights(x, m),
       tip: [...metaOf(m ?? x), ok ? '' : `Doesn’t do ${preset?.label?.toLowerCase()}; picking it switches the mode`].filter(Boolean).join(' · '), p: { ...m, ...x, routes: (x as any).routes ?? m?.routes } }; });
@@ -409,6 +428,19 @@ export default function VideoStudio(p: VideoStudioProps) {
         return { id: x.id, label: x.label, sub: MODE_COPY[x.id] ?? '', testId: `h3-mode-${x.id}`, selected: p.mode === x.id, video: { mp4: e.src, poster: e.poster }, onPick: () => pickLook(() => p.setMode(x.id)) }; }) : []; })() },
   ];
 
+  /* the lead's thumbnails (start frame, references, end frame): a few on the bar, the rest behind "+N" (shared FilesTray, as on Image) */
+  const leadThumbs: { f: TrayFile; el: React.ReactElement }[] = kfMode ? [] : [
+    ...(p.image ? [{ f: { key: 'start', group: 'start', idx: 0, kind: 'image' as MediaKind, url: p.image.url, name: p.image.file.name, label: p.mode === 'r2v' ? 'Picture 1 · @image1' : 'Start frame', off: startOff }, el: <span key="start" className={`ic-th${startOff ? ' slot-over' : ''}`} data-testid="vs-start-thumb" data-unused={startOff ? '1' : undefined} {...tip(pv ? null : `${p.mode === 'r2v' ? refChipTip(tm?.key, 'image', 1) : 'Start frame'}${startOff ? ` · ${notUsedBy(modelName)}` : ''}${handoffOf(p.image.file) ? ' · from your image' : ''} · click to see it`)}><button type="button" className="ic-th-hit" aria-haspopup="dialog" aria-expanded={pv === 'start'} aria-label={`${p.mode === 'r2v' ? 'Picture 1' : 'Start frame'}${handoffOf(p.image.file) ? ', from your image' : ''}. Open it`} onClick={openPv('start')}><img src={p.image.url} alt="Start frame" onLoad={() => p.onFrameImageReady?.(p.image!.url)} />{startOff ? <em className="slot-badge" aria-hidden>Not used</em> : handoffOf(p.image.file) && <em className="slot-badge from" aria-hidden>From image</em>}</button><button type="button" className="ic-x" aria-label="Remove start frame" onClick={p.clearImage}><CloseIcon size={12} /></button></span> }] : []),
+    ...RK.flatMap(([k, kind]) => (p.vrefs[k] ?? []).map((r, i) => { const off = i >= capNow(k); const n = kind === 'image' ? (startIsRef ? 1 : 0) + i + 1 : i + 1;
+              return { f: { key: k + i + r.url, group: k, idx: i, kind: kind as MediaKind, url: kind === 'audio' ? undefined : r.url, name: r.file.name, label: `${kind === 'image' ? `Picture ${n} · @image${n}` : kind === 'video' ? `Clip ${n} · @video${n}` : `Sound ${n}`}`, off }, el: <span key={k + i + r.url} className={`ic-th vs-ref-${kind}${off ? ' slot-over' : ''}${kind === 'video' && rvs && rvDur[r.url] !== undefined && rvDur[r.url] < rvs.minEach ? ' bad' : ''}`} data-testid={`vs-ref-thumb-${k}-${i}`} data-unused={off ? '1' : undefined} {...(kind === 'image' && (p.vrefs.refs?.length ?? 0) > 1 ? dragImg(i) : {})}
+                {...tip(pv ? null : `${r.file.name} · ${refChipTip(tm?.key, kind as 'image' | 'video' | 'audio', n)}${off ? ` · ${notUsedBy(modelName)}` : ''}${kind === 'image' && (p.vrefs.refs?.length ?? 0) > 1 ? ' · drag to reorder' : ''}`)}>
+                <button type="button" className="ic-th-hit" aria-haspopup="dialog" aria-expanded={pv === `${k}:${i}`} aria-label={`${kind === 'image' ? `Picture ${n}` : kind === 'video' ? `Clip ${n}` : `Sound ${n}`}: ${r.file.name}${off ? `. ${notUsedBy(modelName)}` : ''}. Open it`} onClick={openPv(`${k}:${i}`)}>
+                  {kind === 'image' ? <img src={r.url} alt="" /> : kind === 'video' ? <><VideoThumb src={r.url} /><em className="ic-att-n">{rvDur[r.url] !== undefined ? `${rvDur[r.url].toFixed(1)}s` : '…'}</em></> : <span aria-hidden>♪</span>}
+                  {off ? <em className="slot-badge" aria-hidden>Not used</em> : handoffOf(r.file) ? <em className="slot-badge from" aria-hidden>From image</em> : null}</button>
+                <button type="button" className="ic-x" aria-label={`Remove ${r.file.name}`} onClick={() => removeRef(k, i)}><CloseIcon size={12} /></button></span> }; })),
+    ...(needLast && p.lastFrame ? [{ f: { key: 'end', group: 'end', idx: 0, kind: 'image' as MediaKind, url: p.lastFrame.url, name: p.lastFrame.file.name, label: 'End frame' }, el: <span key="end" className="ic-th vs-end" data-testid="vs-end-thumb" {...tip(pv ? null : 'End frame · click to see it')}><button type="button" className="ic-th-hit" aria-haspopup="dialog" aria-expanded={pv === 'end'} aria-label="End frame. Open it" onClick={openPv('end')}><img src={p.lastFrame.url} alt="End frame" /></button><button type="button" className="ic-x" aria-label="Remove end frame" onClick={() => p.setLastFrame(null)}><CloseIcon size={12} /></button></span> }] : []),
+  ];
+  const leadShown = thumbsShown(leadThumbs.length);
   /* One Video feed (2026-10-26): on the Video page the feed is the page's own (ui/video/VideoPage), so switching workflows never remounts it; this bar only hands it its runs and actions */
   const hosted = useHostedVideoFeed({ jobs: p.jobs, onSelect: p.onSelect, viewerActions: p.viewerActions });
   return <div className={hosted ? 'vs-bar' : 'vs vs-dk'} data-testid={hosted ? 'vs-bar' : 'video-studio'} data-workflow="create">
@@ -426,16 +458,11 @@ export default function VideoStudio(p: VideoStudioProps) {
         <div ref={prowRef} className="ic-prow" data-testid="vs-prow">
           <div className="ic-lead" data-testid="vs-dlead">
             {kfMode ? <KeyframeLead frames={kfFrames} times={kfTimes} seconds={p.duration} onChange={setKf} onAdd={() => kfIn.current?.click()} onOpen={() => pop.setOpen('kf')} /> : <>
-            {p.image && <span className="ic-th" data-testid="vs-start-thumb" {...tip(pv ? null : `${p.mode === 'r2v' ? refChipTip(tm?.key, 'image', 1) : 'Start frame'}${handoffOf(p.image.file) ? ' · from your image' : ''} · click to see it`)}><button type="button" className="ic-th-hit" aria-haspopup="dialog" aria-expanded={pv === 'start'} aria-label={`${p.mode === 'r2v' ? 'Picture 1' : 'Start frame'}${handoffOf(p.image.file) ? ', from your image' : ''}. Open it`} onClick={openPv('start')}><img src={p.image.url} alt="Start frame" onLoad={() => p.onFrameImageReady?.(p.image!.url)} />{handoffOf(p.image.file) && <em className="slot-badge from" aria-hidden>From image</em>}</button><button type="button" className="ic-x" aria-label="Remove start frame" onClick={p.clearImage}><CloseIcon size={12} /></button></span>}
-            {RK.flatMap(([k, kind]) => (p.vrefs[k] ?? []).map((r, i) => { const off = i >= capOf(k); const n = kind === 'image' ? (startIsRef ? 1 : 0) + i + 1 : i + 1;
-              return <span key={k + i + r.url} className={`ic-th vs-ref-${kind}${off ? ' slot-over' : ''}${kind === 'video' && rvs && rvDur[r.url] !== undefined && rvDur[r.url] < rvs.minEach ? ' bad' : ''}`} data-testid={`vs-ref-thumb-${k}-${i}`} data-unused={off ? '1' : undefined} {...(kind === 'image' && (p.vrefs.refs?.length ?? 0) > 1 ? dragImg(i) : {})}
-                {...tip(pv ? null : `${r.file.name} · ${refChipTip(tm?.key, kind as 'image' | 'video' | 'audio', n)}${off ? ` · not sent: ${fullText(refCaps, modelName)}` : ''}${kind === 'image' && (p.vrefs.refs?.length ?? 0) > 1 ? ' · drag to reorder' : ''}`)}>
-                <button type="button" className="ic-th-hit" aria-haspopup="dialog" aria-expanded={pv === `${k}:${i}`} aria-label={`${kind === 'image' ? `Picture ${n}` : kind === 'video' ? `Clip ${n}` : `Sound ${n}`}: ${r.file.name}${off ? '. Not sent with this model' : ''}. Open it`} onClick={openPv(`${k}:${i}`)}>
-                  {kind === 'image' ? <img src={r.url} alt="" /> : kind === 'video' ? <><VideoThumb src={r.url} /><em className="ic-att-n">{rvDur[r.url] !== undefined ? `${rvDur[r.url].toFixed(1)}s` : '…'}</em></> : <span aria-hidden>♪</span>}
-                  {off ? <em className="slot-badge" aria-hidden>Not sent</em> : handoffOf(r.file) ? <em className="slot-badge from" aria-hidden>From image</em> : null}</button>
-                <button type="button" className="ic-x" aria-label={`Remove ${r.file.name}`} onClick={() => removeRef(k, i)}><CloseIcon size={12} /></button></span>; }))}
-            {needLast && p.lastFrame && <span className="ic-th vs-end" data-testid="vs-end-thumb" {...tip(pv ? null : 'End frame · click to see it')}><button type="button" className="ic-th-hit" aria-haspopup="dialog" aria-expanded={pv === 'end'} aria-label="End frame. Open it" onClick={openPv('end')}><img src={p.lastFrame.url} alt="End frame" /></button><button type="button" className="ic-x" aria-label="Remove end frame" onClick={() => p.setLastFrame(null)}><CloseIcon size={12} /></button></span>}
-            {(p.mode === 'r2v' || RK.some(([k]) => (p.vrefs[k]?.length ?? 0) > 0)) && <SlotCount used={refUsed} caps={refCaps} testId="vs-slot-count" />}
+            {leadThumbs.slice(0, leadShown.show).map(t => t.el)}
+            <MoreFiles hidden={leadShown.more} items={leadThumbs.map(t => t.f)} watch={dock} testId="vs-more" summary={curFit && !curFit.all ? notUsedShort(curFit) : undefined} offText="Not used" action={overN > 0 ? { label: `Remove the ${overN} not used`, onClick: dropExtras } : null}
+              onRemove={f => f.group === 'start' ? p.clearImage() : f.group === 'end' ? p.setLastFrame(null) : removeRef(f.group, f.idx)} onMove={(g, a, b) => moveRef(g)(a, b)} />
+            {(p.mode === 'r2v' || RK.some(([k]) => (p.vrefs[k]?.length ?? 0) > 0)) && <span className={`vs-slot-wrap${curFit && !curFit.all ? ' has-skip' : ''}`}><SlotCount used={refUsed} caps={refCaps} testId="vs-slot-count" />
+            {curFit && !curFit.all && <span className="vs-ref-skip" data-testid="vs-ref-skip" {...tip(`${modelName} won’t use ${skippedText(curFit)}. Pick another model, or remove ${curFit.haveN - curFit.usedN === 1 ? 'it' : 'them'}.`)}>{notUsedShort(curFit)}</span>}</span>}
             </>}
           </div>
           <label className="sr-only" htmlFor="app-prompt">Prompt</label>
@@ -445,6 +472,7 @@ export default function VideoStudio(p: VideoStudioProps) {
           {p.suggestPrompt && !p.prompt.trim() && <button type="button" className="ic-prompt-sugg" data-testid="use-image-prompt" {...tip(p.suggestPrompt)} onClick={() => { p.setPrompt(p.suggestPrompt!); requestAnimationFrame(() => p.promptRef.current?.focus()); }}>Use the picture’s prompt</button>}
         </div>
         <SwitchNote note={sw.note} testId="vs-switch-note" />
+        <LeftNote text={left} onClose={() => setLeft('')} testId="vs-not-added" />
         <div className="ic-chiprow"><div ref={chipsEl} className="ic-chips">
           <input ref={fileIn} type="file" hidden accept={IMAGE_ACCEPT} data-picker-title={p.mode === 'r2v' ? 'Choose a reference' : 'Choose a start frame'} data-picker-limits="One image · PNG, JPG or WebP · or a frame from one of your videos" data-picker-frames="" data-testid="vs-start-input" onChange={e => { const fs = Array.from(e.target.files ?? []); e.currentTarget.value = ''; if (fs[0]) void takeStart(fs[0]); }} />
           <input ref={refIn} type="file" hidden multiple data-picker-title="Choose references" data-picker-limits={refLimits} data-testid="vs-ref-input" accept={RK.filter(([, kind]) => refKinds.includes(kind)).map(([, kind]) => refAccept(kind, refFmts)).join(',')} onChange={e => { const fs = Array.from(e.target.files ?? []); e.currentTarget.value = ''; const r = repl.current; repl.current = null; if (r && fs[0]) void replaceRef(r.k, r.i, fs[0]); else void addRefs(fs); }} />
@@ -463,7 +491,8 @@ export default function VideoStudio(p: VideoStudioProps) {
           {(cam || vp) && <button type="button" className="ic-chip ic-sq vs-look-x" data-testid="vs-look-clear" aria-label={`Remove ${[cam ? 'camera move' : '', vp ? 'style' : ''].filter(Boolean).join(' and ')}`} {...tip(`Remove ${[cam?.label, vp?.label].filter(Boolean).join(' and ')}`)} onClick={() => { p.setFv('cameraMove', ''); p.setFv('videoPreset', ''); p.setFv('intensity', ''); requestAnimationFrame(() => aR.look.current?.focus()); }}><CloseIcon size={12} /></button>}
           {vp?.intensities && <span className="ic-chip ic-static vs-int vs-int-d" role="radiogroup" aria-label="Intensity" data-testid="vs-intensity">{vp.intensities.map((v: string) => <button key={v} type="button" role="radio" aria-checked={p.fv.intensity === v} className={p.fv.intensity === v ? 'on' : ''} onClick={() => p.setFv('intensity', v)}>{v}</button>)}</span>}
           <ModelMenu open={pop.open === 'model'} anchor={aR.model} watch={dock} gap={4} placement="top" onClose={closePop} items={menuItems} value={p.provider} testId="vs-model-list" rowTestId={id => `vs-model-${id}`}
-            onPick={(id, fit) => { p.setProvider(id); if (!modeOk(id, p.mode)) p.setMode(cfg.providerModes[id][0]); applyFit(fit); }} toolId={p.tool.id} quote={q}
+            onPick={(id, fit) => { p.setProvider(id); const to = anyAdded ? runModeOf(capsOfEngine(id), p.mode, added) : !modeOk(id, p.mode) ? cfg.providerModes[id][0] : p.mode; if (to !== p.mode) p.setMode(to); applyFit(fit); }}
+            refFit={refFitFor} toolId={p.tool.id} quote={q}
             onNeed={n => { if (n.action === 'add-image' || n.action === 'add-end-frame') window.setTimeout(() => (p.image && n.action === 'add-end-frame' ? lastIn : fileIn).current?.click(), 0); }} />
           {durs.length > 1 ? <button ref={aR.dur} type="button" className={`ic-chip${pop.open === 'dur' ? ' on' : ''}${durErr ? ' vs-bad' : ''}`} data-testid="vs-duration" aria-haspopup="listbox" aria-expanded={pop.open === 'dur'} aria-invalid={durErr ? true : undefined} {...tip(pop.open === 'dur' ? null : durErr || (lim?.verified === false ? 'Length · not verified on this model yet' : 'Length'))} onClick={() => pop.setOpen(pop.open === 'dur' ? '' : 'dur')}><ChipGlyph icon="clock" />{p.duration} s</button>
             : <span className={`ic-chip ic-static${durErr ? ' vs-bad' : ''}`} data-testid="vs-duration" {...tip(durErr || (lim?.verified === false ? 'The only length offered; not yet verified on this model' : lim?.durationsByResolution?.[p.resolution] ? `The only length this model makes at ${resLbl(p.resolution)}` : 'The only length this model makes'))}><ChipGlyph icon="clock" />{p.duration} s</span>}
@@ -500,7 +529,7 @@ export default function VideoStudio(p: VideoStudioProps) {
       </div></div>
       {p.missing.length > 0 && !gate && <p className="sr-only" id="vs-why">{why}</p>}
       {(() => { const [k, si] = pv.split(':'); const i = Number(si); const isRef = !!si; const it = pv === 'start' ? p.image : pv === 'end' ? p.lastFrame : isRef ? p.vrefs[k]?.[i] ?? null : null;
-        const kind: MediaKind = isRef ? (RK.find(x => x[0] === k)?.[1] as MediaKind) : 'image'; const off = isRef && i >= capOf(k);
+        const kind: MediaKind = isRef ? (RK.find(x => x[0] === k)?.[1] as MediaKind) : 'image'; const off = isRef && i >= capNow(k);
         const flf = modeOk(p.provider, 'flf') && (cfg.lastFrameModes ?? []).includes('flf'); const i2v = modeOk(p.provider, 'i2v');
         const acts: SlotAction[] = [];
         if (it && kind === 'image' && pv !== 'start' && i2v && !kfMode) acts.push({ label: 'Use as start frame', testId: 'vs-pv-as-start', onClick: () => { const was = p.image; if (pv === 'end') p.setLastFrame(was); else if (was) p.setVrefs(k, (p.vrefs[k] ?? []).map((r, j) => j === i ? was : r)); else p.setVrefs(k, (p.vrefs[k] ?? []).filter((_, j) => j !== i)); p.onImage([it.file]); if (p.mode !== 'i2v' && p.mode !== 'flf') autoMode('i2v'); } });
@@ -508,7 +537,7 @@ export default function VideoStudio(p: VideoStudioProps) {
         const from = it && handoffOf(it.file) ? 'From your image: the picture you turned into a video. Remove it to start from another.' : null;
         return <SlotPreview open={!!pv && !!it} anchor={pvAt} onClose={() => setPv('')} item={it} kind={kind} watch={dock} testId="vs-pv" aspect={String(p.fv.aspect ?? 'auto')}
           title={pv === 'start' ? (p.mode === 'r2v' ? 'Picture 1 · @image1' : 'Start frame') : pv === 'end' ? 'End frame' : kind === 'image' ? `Picture ${(startIsRef ? 1 : 0) + i + 1} · @image${(startIsRef ? 1 : 0) + i + 1}` : kind === 'video' ? `Clip ${i + 1} · @video${i + 1}` : `Sound ${i + 1}`}
-          warn={off ? `Not sent: ${fullText(refCaps, modelName || 'this model')}.` : null} notes={[from]} actions={acts}
+          warn={off ? `${notUsedBy(modelName)}.` : null} notes={[from]} actions={acts}
           onReplace={() => { if (pv === 'start') fileIn.current?.click(); else if (pv === 'end') lastIn.current?.click(); else { repl.current = { k, i }; refIn.current?.click(); } }}
           onRemove={() => { if (pv === 'start') p.clearImage(); else if (pv === 'end') p.setLastFrame(null); else removeRef(k, i); }} />; })()}
       <PreflightNotes open={pfOpen} notes={notes} anchor={genRef} dock={dock} onClose={() => setPfOpen(false)} testId="vs-notes" />

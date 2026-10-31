@@ -9,7 +9,7 @@ import { usdPrice } from './billing';
 import { quoteParamsOf } from './quote';
 import { gbText } from './fit';
 import { aboutLink, moreLinksOf, linksOf, releasedText } from '../../../server/src/shared/modelLinks';
-import { ClockIcon, ResolutionIcon, SoundIcon, ImageStackIcon, BrushIcon, MusicIcon, MicIcon, CubeIcon, AspectIcon, ImageIcon, UpscaleIcon, SparkleIcon, CloseIcon, InfoIcon } from '../ui/Icons';
+import { ClockIcon, ResolutionIcon, SoundIcon, ImageStackIcon, BrushIcon, MusicIcon, MicIcon, CubeIcon, AspectIcon, ImageIcon, UpscaleIcon, SparkleIcon, ChevronRightIcon, InfoIcon } from '../ui/Icons';
 import './modelCard.css';
 /**
  * The model menu's preview card (2026-10-29, user pick "b"): hovering or keyboard-focusing a row opens a 304 px card beside the menu, on the
@@ -17,7 +17,8 @@ import './modelCard.css';
  * hides it there). Understood in two seconds, plain words, ONE price: an example made with the model (shared/modelSpec.ts exampleOf; else a
  * large maker tile), the name, maker and Open tag, one best-at line, 2–3 key facts in a two-column grid with icons (modelSpec cardFactsOf),
  * the price of the user's current settings from the live row quote ("≈ $0.30 for this clip", "Estimate") and one quiet other-places line.
- * More details opens a small panel beside the card: attachments, prompt naming, limits, the price's units and date, licence and links.
+ * More details swaps the card's content for the details (same card, same size, Back returns; 2026-10-31: the old side panel covered the
+ * menu on narrow windows): attachments, prompt naming, limits, the price's units and date, licence and links.
  * One component for every menu (Image, Video, Audio, 3D). Hover intent (shared/hoverIntent.ts): the pointer can move from the row onto the
  * card and click its links; Tab from the row goes into it, Esc goes back.
  */
@@ -110,7 +111,7 @@ export function FactGrid({ facts }: { facts: CardFact[] }) {
 function PriceBlock({ p }: { p: CardPrice }) {
   return <div className="mc-price" data-testid="mc-price" data-kind={p.kind}>
     <div className="mc-pr-main">
-      <b className={`mc-big${p.kind === 'free' || p.kind === 'sample' ? ' mc-free' : ''}${p.kind === 'blocked' || p.kind === 'none' ? ' mc-word' : ''}`}>{p.est || p.kind === 'key' ? <span className="mc-approx" aria-label="about">≈ </span> : null}{p.big}</b>
+      <b className={`mc-big${p.kind === 'blocked' || p.kind === 'none' ? ' mc-word' : ''}`}>{p.est || p.kind === 'key' ? <span className="mc-approx" aria-label="about">≈ </span> : null}{p.big}</b>
       {p.what && <span className="mc-what">{p.what}</span>}
     </div>
     {(p.est || p.where) && <span className="mc-where">{p.est && <em className="mc-est" title="An estimate: the bill follows the real run">Estimate</em>}{p.est && p.where ? ' · ' : ''}{p.where}</span>}
@@ -133,14 +134,15 @@ function Details({ m, engine, tool, provider, price }: { m: ToolModel; engine?: 
   </>;
 }
 
-/** The card's body: example or maker tile, head, best-at line, the fact grid, the price and More details (a small panel beside the card). */
+/** The card's body: example or maker tile, head, best-at line, the fact grid, the price and More details (shown in place of the body). */
 function CardBody({ m, engine, tool, provider, note, run, rq }: BodyProps) {
-  const [open, setOpen] = useState(false); const facts = cardFactsOf(m, { engine, tool }); const price = cardPriceOf(m, { rq, run, tool, engine }); const desc = descOf(m);
+  /* open = the card's height when More details was pressed: the details take the same box (scrolling inside), so the card never jumps */
+  const [open, setOpen] = useState<number | null>(null); const facts = cardFactsOf(m, { engine, tool }); const price = cardPriceOf(m, { rq, run, tool, engine }); const desc = descOf(m);
   const ex = exampleOf(m, engine); const [broken, setBroken] = useState(false); const img = ex && !broken ? ex : null;
-  const self = useRef<HTMLDivElement | null>(null); const [side, setSide] = useState<'r' | 'l'>('r');
-  /* the panel goes on the side away from the menu, else the side with room */
-  useLayoutEffect(() => { if (!open) return; const card = self.current?.closest('.orb-pv') as HTMLElement | null; if (!card) return; const r = card.getBoundingClientRect(); const cs = card.dataset.side;
-    setSide(cs === 'l' ? (r.left - 268 >= 8 ? 'l' : 'r') : (r.right + 268 <= window.innerWidth - 8 ? 'r' : 'l')); }, [open]);
+  const self = useRef<HTMLDivElement | null>(null);
+  if (open != null) return <div ref={self} className="mc mc-panel" style={{ height: open }} role="group" aria-label={`${shownName(m)} details`} data-testid="mc-panel">
+    <div className="mc-panel-h"><button type="button" className="mc-back" data-testid="mc-back" autoFocus onClick={() => setOpen(null)}><ChevronRightIcon size={14} />Back</button><span>Details</span></div>
+    <Details m={m} engine={engine} tool={tool} provider={provider} price={price} /></div>;
   return <div ref={self} className="mc">
     <div className={`mc-art${img ? '' : ' mc-art-tile'}`} data-testid="mpv-art" data-kind={img ? 'image' : 'tile'}>{img ? <img src={img.src} alt={img.alt} loading="lazy" decoding="async" onError={() => setBroken(true)} />
       : <MakerTile className="orb-pv-big" maker={m.maker} makerName={m.makerName} fallback={m.family || m.name} medium={m.medium} title={false} />}
@@ -151,11 +153,8 @@ function CardBody({ m, engine, tool, provider, note, run, rq }: BodyProps) {
       {note && <p className="mc-note" data-testid="mpv-note">{note}</p>}
       <FactGrid facts={facts} />
       <PriceBlock p={price} />
-      <button type="button" className="mc-more" aria-expanded={open} data-testid="mc-more" onClick={() => setOpen(o => !o)}><InfoIcon size={14} />More details</button>
+      <button type="button" className="mc-more" data-testid="mc-more" onClick={() => setOpen(self.current?.offsetHeight ?? null)}><InfoIcon size={14} />More details</button>
     </div>
-    {open && <div className="mc-panel" data-side={side} role="dialog" aria-label={`${shownName(m)} details`} data-testid="mc-panel">
-      <div className="mc-panel-h"><span>Details</span><button type="button" className="mc-x" aria-label="Close details" onClick={() => setOpen(false)}><CloseIcon size={14} /></button></div>
-      <Details m={m} engine={engine} tool={tool} provider={provider} price={price} /></div>}
   </div>;
 }
 

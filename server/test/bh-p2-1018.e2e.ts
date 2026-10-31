@@ -11,7 +11,9 @@ try {
   for (let i = 0; i < 240; i++) { try { if ((await fetch(`${B}/api/config`)).ok) break; } catch { /* booting */ } await new Promise((r) => setTimeout(r, 250)); }
   const tools = await get('/api/tools'); const kinds = new Map<string, string>(((await get('/api/posters')).items as any[]).map((x) => [x.toolId, x.kind]));
   const drawtext = (() => { try { return /\bdrawtext\b/.test(execFileSync('ffmpeg', ['-hide_banner', '-filters'], { env: { ...process.env, PATH: `/opt/homebrew/bin:/usr/local/bin:${process.env.PATH}` }, stdio: ['ignore', 'pipe', 'ignore'] }).toString()); } catch { return false; } })(); // title cards need ffmpeg drawtext; builds without it 404 them (the web shows the tool glyph)
-  for (const id of ['app-character-sheet', 'app-product-shot']) { const t = tools.find((x: any) => x.id === id); assert.equal(t.posterUrl, `/api/posters/${id}.jpg`, id);
+  for (const id of ['app-character-sheet', 'app-product-shot']) { const t = tools.find((x: any) => x.id === id);
+    if (kinds.get(id) === 'card' && !drawtext) { assert.equal(t.posterUrl, null, id); assert.equal(t.posterStandIn, true, `${id}: no drawtext here, the stand-in tile instead of a 404`); continue; }
+    assert.equal(t.posterUrl, `/api/posters/${id}.jpg`, id);
     const r = await fetch(B + t.posterUrl); if (r.status === 404 && kinds.get(id) === 'card' && !drawtext) { console.log(`  (no ffmpeg drawtext here: ${id} title card not rendered)`); continue; }
     assert.equal(r.status, 200); assert.match(r.headers.get('content-type') ?? '', /image\/jpeg/); }
   assert.ok(!tools.some((t: any) => /^\/(samples\/(?!presets\/)|examples\/)/.test(t.posterUrl ?? '')), 'no tool poster is a sample / example file');

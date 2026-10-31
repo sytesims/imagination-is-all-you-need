@@ -25,7 +25,7 @@ On Windows, paste this into PowerShell:
 irm https://iiayn.app/install.ps1 | iex
 ```
 
-It checks for git, Node.js and ffmpeg and asks before installing any that are missing. Then it puts the app in an `Imagination` folder in your home folder, offers a desktop shortcut and opens the studio in your browser. It doesn't download AI models or ask for keys: you connect those in the app when you want them. Read the scripts first if you like: [get.sh](scripts/get.sh) · [get.ps1](scripts/get.ps1). Options and the manual steps: [Install and run](docs/INSTALL.md#install-in-one-line).
+It checks for git, Node.js and ffmpeg and asks before installing any that are missing. Then it puts the app in an `Imagination` folder in your home folder, offers a shortcut and opens the studio in your browser. On a Mac the installer adds Imagination to Applications and your Dock. It doesn't download AI models or ask for keys: you connect those in the app when you want them. Read the scripts first if you like: [get.sh](scripts/get.sh) · [get.ps1](scripts/get.ps1). Options and the manual steps: [Install and run](docs/INSTALL.md#install-in-one-line).
 
 It all started with Comfy's **#OpenSourceHiggsfield** challenge.
 
@@ -79,11 +79,23 @@ npm run setup
 
 Open the setup link printed in the terminal, normally **http://localhost:5174**, and choose how you want to create. Keep the terminal open while you use the studio; **Ctrl+C** stops it. Closing the browser does not stop the app.
 
+The first start prepares the app, which takes a minute or two; later starts are quick. After that, **`npm start`** starts the studio (setup runs it for you too). It only rebuilds when the app changed, for example after an update. Changing the app's code? Use `npm run dev` instead: it reloads as you edit.
+
 On Windows, use `npm.cmd run setup` if PowerShell selects a blocked `npm.ps1` shim. Do not disable your system's execution policy just to run the app.
 
 Without a model connection, **Generate asks you to connect a key or ComfyUI**. It does not start a free generation. Included examples are existing outputs; the separate mock backend is for development and tests.
 
 Need help getting started? [Install and run](docs/INSTALL.md) covers prerequisites and Windows/macOS instructions. It also includes Docker and advanced setup. Other ports and settings: [Configuration](docs/CONFIGURATION.md).
+
+### Mac app (Dock)
+
+On a Mac, run this once in the app folder:
+
+```text
+npm run mac-app
+```
+
+It puts **Imagination** in your Applications folder (the one in your home folder). Drag it to the Dock. Clicking it starts the studio in the background when it isn't running, then opens it in your browser. No terminal to keep open. It stays in the Dock while the studio runs; quit it and choose **Stop** to stop the studio. More in [Install and run](docs/INSTALL.md#mac-app-dock).
 
 ### Updating
 
@@ -127,7 +139,7 @@ Film-editor and project-management operations are not all exposed as dedicated M
 - [REST API](docs/API.md) · [API quick start](docs/API-QUICKSTART.md)
 - [Workflow sources and templates](workflows/README.md)
 
-The default development services are web **5174**, API **8787** and MCP **8788**. The app is intended to start on loopback; remote access needs a separately reviewed network/authentication setup. Do not expose a key-enabled local development instance to the internet.
+`npm start` (and `npm run setup`) runs the studio from a build, with nothing reloading while it runs. Developers run **`npm run dev`** instead, which reloads the page and restarts the server as files change. Both use web **5174**, API **8787** and MCP **8788**. The app is intended to start on loopback; remote access needs a separately reviewed network/authentication setup. Do not expose a key-enabled local development instance to the internet.
 
 ## Compatibility and verification
 

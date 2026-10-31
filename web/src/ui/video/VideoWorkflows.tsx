@@ -1,6 +1,6 @@
 /**
  * One Video page (2026-10-23): the workflow chip and picker in the Video bar, same look and keys as Create Image's (ui/next/WorkflowBar.tsx).
- * The list is shared/videoWorkflows.ts; a picked workflow is ?workflow=<id> on /tools/h3-video and renders its own tool's screen
+ * The list is shared/videoWorkflows.ts; a picked workflow is ?workflow=<id> on /video and renders its own tool's screen
  * (inputs, controls, models, quote and submit unchanged). "How it works" for each workflow is in the picker (each row's ⓘ), like Image's
  * picker carries its info and credits; the chip itself has no ⓘ (2026-10-23, bar match).
  */
