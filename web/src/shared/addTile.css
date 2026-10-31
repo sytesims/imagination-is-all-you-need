@@ -1,0 +1,13 @@
+/* the bar's dashed "+" tile (shared/AddTile.tsx): Image, Video and the Canvas card bars */
+.add-tile{all:unset;box-sizing:border-box;position:relative;flex:0 0 auto;display:grid;place-items:center;width:44px;height:44px;border-radius:10px;cursor:pointer;color:var(--text-2,#a4a5a8);border:1px dashed rgba(255,255,255,.26);background:transparent;transition:border-color .15s,color .15s,background .15s}
+.add-tile:hover{border-color:var(--accent,#FF7A1A);color:#fff;background:rgba(255,255,255,.04)}
+.add-tile:focus-visible{outline:2px solid var(--accent,#FF7A1A);outline-offset:2px}
+.add-tile.full{cursor:default;opacity:.4;border-color:rgba(255,255,255,.18)}
+.add-tile.full:hover{color:var(--text-2,#a4a5a8);background:transparent;border-color:rgba(255,255,255,.18)}
+.add-tile-card{width:36px;height:48px;border-radius:9px}
+.add-tile-n{position:absolute;right:2px;bottom:2px;padding:0 4px;border-radius:6px;background:var(--surface-2,#232427);box-shadow:0 0 0 1px rgba(255,255,255,.16);color:var(--text-1,#f7f7f8);font:600 9.5px/14px var(--font-ui,Inter,system-ui,sans-serif);white-space:nowrap;pointer-events:none}
+/* several pictures on a bar: small overlapping thumbnails (the hovered or focused one comes to the front), then "+N" and the "+" */
+html body .ic.ic2 .ic-dock .ic-lead .ic-th+.ic-th{margin-left:-20px}
+html body .ic.ic2 .ic-dock .ic-lead .ic-th+.ic-th .ic-th-hit{box-shadow:0 0 0 2px rgb(39,41,44)}
+html body .ic.ic2 .ic-dock .ic-lead .ic-th:hover,html body .ic.ic2 .ic-dock .ic-lead .ic-th:focus-within{z-index:3}
+html body .ic.ic2 .ic-dock .ic-lead .add-tile{flex:0 0 44px}
