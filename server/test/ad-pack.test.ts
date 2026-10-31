@@ -51,6 +51,9 @@ const { PROMPT_PATTERNS } = await import('../src/shared/promptPatterns.ts');
 // ---- 3. the tool ----
 const { getTool } = await import('../src/tools/registry.ts');
 const t: any = getTool('app-ad-pack'); assert.ok(t, 'app-ad-pack is registered');
+{ const { IMAGE_DEFAULTS } = await import('../src/shared/imageDefaults.ts'); const { CLOUD_DEFAULTS } = await import('../src/shared/cloudDefaults.ts');
+  assert.equal(CLOUD_DEFAULTS['ad-pack'].model, 'api-gpt-image', 'cloud default: GPT Image (best text, user 2026-10-31)'); assert.equal(IMAGE_DEFAULTS['ad-pack'].hosted, 'api-gpt-image'); assert.equal(IMAGE_DEFAULTS['ad-pack'].local, 'comfy-qwen21');
+  const ids = t.providers.map((p: any) => p.id ?? p); assert.equal(ids[0], 'api-gpt-image'); assert.ok(ids.includes('api-nano-banana'), 'Nano Banana 2 still selectable'); }
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEklEQVR4nGP4z8CAFWEXHbQSACj/P8Fu7N9hAAAAAElFTkSuQmCC', 'base64');
 fs.mkdirSync(path.join(D, 'uploads'), { recursive: true }); for (const f of ['p1.png', 'p2.png']) fs.writeFileSync(path.join(D, 'uploads', f), PNG);
 const run = (fields: Record<string, string>, files: Record<string, string[]> = { image: ['uploads/p1.png'] }) => t.parseInput({ rights: '1', ...fields }, files);

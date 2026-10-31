@@ -45,7 +45,7 @@ export const IMAGE_DEFAULTS: Record<ImageFeatureId, WorkflowDefaults> = {
   'remove-bg': { local: null, hosted: cloudModel('remove-bg'), why: { hosted: 'Clean cut-outs, made for this job' } },
   expand: { local: null, hosted: cloudModel('expand'), why: { hosted: 'Made for extending photos' } },
   erase: { local: null, hosted: cloudModel('erase'), why: { hosted: 'Made for removing objects' } },
-  'ad-pack': { local: 'comfy-qwen21', hosted: cloudModel('ad-pack'), why: { local: 'Free ads on your computer, clean text', hosted: 'Clean words on the picture and keeps the product as it is' } },
+  'ad-pack': { local: 'comfy-qwen21', hosted: cloudModel('ad-pack'), why: { local: 'Free ads on your computer, clean text', hosted: 'Cleanest words on the picture, keeps the product as it is' } },
   'try-on': { local: null, hosted: cloudModel('try-on'), why: { hosted: 'Made for trying on clothes' } },
   'image-layers': { local: 'comfy-qwen-image-layered', hosted: cloudModel('image-layers'), why: { local: 'Free layers locally once its files are downloaded', hosted: 'Fast, low-cost layer splits' } },
 };

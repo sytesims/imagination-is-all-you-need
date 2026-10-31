@@ -55,7 +55,7 @@ export const CLOUD_DEFAULTS: Record<string, CloudDefault> = {
   'remove-bg': { model: 'fal-bria-rmbg', comfyKey: true, place: R, cents: 2, typical: '1 photo', why: 'Clean cut-outs, made for this job', note: 'No partner model removes backgrounds' },
   expand: { model: 'fal-bria-expand', comfyKey: true, place: R, cents: 3, typical: '1 photo', why: 'Made for extending photos', note: 'No partner model extends photos' },
   erase: { model: 'fal-bria-eraser', comfyKey: true, place: R, cents: 3, typical: '1 photo', why: 'Made for removing objects', note: 'No partner model erases objects' },
-  'ad-pack': { model: 'api-nano-banana', comfyKey: true, place: R, cents: 9, typical: '1 ad', why: 'Clean words on the picture and keeps the product as it is', note: NANO_KEEP },
+  'ad-pack': { model: 'api-gpt-image', comfyKey: true, place: R, cents: 8, typical: '1 ad', why: 'Cleanest words on the picture, keeps the product as it is', note: 'Picked for its text (user, 2026-10-31); Nano Banana 2 and the others stay in the menu' },
   'try-on': { model: 'router-bria-tryon', comfyKey: true, place: R, cents: 6, typical: '1 try-on', why: 'Made for trying on clothes', note: 'No partner model does try-on' },
   soul: { model: 'comfy-soul', comfyKey: false, place: 'fal', cents: 1, typical: '1 image', why: 'Photo Looks run their LoRA on fal' },
 

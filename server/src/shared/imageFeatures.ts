@@ -61,8 +61,8 @@ export const EDIT_MODELS = ['api-nano-banana', 'api-gpt-image', 'comfy-flux3-kle
  * (grid finding 4, wired 2026-10-22). Not listed: FLUX.2 [klein] 4B (1 image wired), Qwen Image 2.1 Turbo (its official edit template takes one image). */
 export const TWO_IMAGE_MODELS = ['comfy-qwen-image', 'api-nano-banana', 'comfy-flux3-klein', 'api-gpt-image', 'api-seedream', 'api-flux2', 'api-luma-image', 'api-kling-image', 'comfy-qwen21'];
 /** Ad Pack (2026-10-31): edit models that take the product photo plus up to two more and draw clean words (shared/adPack.ts wording per family):
- *  Nano Banana 2 and GPT Image first (strongest text), local Qwen Image 2.1 (free; its edit template takes two photos), then Seedream 5.0, FLUX.2, FLUX 3 Klein. */
-export const AD_PACK_MODELS = ['api-nano-banana', 'api-gpt-image', 'comfy-qwen21', 'api-seedream', 'api-flux2', 'comfy-flux3-klein'];
+ *  GPT Image first (the cloud default: best text, user 2026-10-31), Nano Banana 2, local Qwen Image 2.1 (free; its edit template takes two photos), then Seedream 5.0, FLUX.2, FLUX 3 Klein. */
+export const AD_PACK_MODELS = ['api-gpt-image', 'api-nano-banana', 'comfy-qwen21', 'api-seedream', 'api-flux2', 'comfy-flux3-klein'];
 /** Mask (inpaint) models: only routes that take a mask. Not listed: Nano Banana 2 and Ideogram V4 (no mask on their routes). Ideogram 4.5 inpaints on fal only. */
 export const MASK_MODELS = ['api-gpt-image', 'api-gpt-image-25-flare', 'api-gpt-image-25-sunburst', 'api-gpt-image-15' /* 2026-10-25 */, 'api-bria-fibo2' /* 2026-10-26 */, 'comfy-flux3-klein', 'comfy-qwen-image',
   // fal image pass (2026-10-22): Ideogram 4.5 (mask on ideogram/v4.5/edit) and Bria GenFill (fal-ai/bria/genfill, a Brush Edit-only model)
