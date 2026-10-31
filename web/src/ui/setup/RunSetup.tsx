@@ -11,12 +11,13 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from '../../platform/router';
 import { plainCopy } from '../../shared/plainCopy';
-import { refreshTools } from '../../shared/useTools';
+import { refreshTools, useTools } from '../../shared/useTools';
 import { refreshAccounts, useAccounts } from '../../shared/billing';
 import { requestRequote } from '../../shared/quote';
 import { setRouting } from '../../shared/models';
 import { repoDoc } from '../../shared/brand';
 import { getHardware, type Hardware } from '../../shared/hardware';
+import { countLocalModels, localCountsText, type ToolsLike } from '../../../../server/src/shared/thisComputer';
 import { RUN_CHOICES, RUN_SETUP_TITLE, RUN_SETUP_TAGLINE, RUN_SETUP_QUESTION, RUN_SETUP_NOTE, RUN_SETUP_GO, RUN_SETUP_SKIP, isRunChoice, choicesForSetup, choiceStatus, STATUS_TAG, DIRECT_KEYS, type RunChoice, type SetupFacts } from '../../shared/runChoices';
 import { OrbitIntro } from '../../shared/OrbitIntro';
 import { MakerTile } from '../../shared/MakerTile';
@@ -151,10 +152,12 @@ function RunSetup({ onClose }: { onClose: () => void }) {
     </div></div>, document.body);
 }
 
-/** Setup step 8 (summary only): this computer as the server classifies it, in one line under "Use my GPU". */
+/** Setup step 8 (summary only): this computer as the server classifies it, in one line under "Use my GPU". What runs here is the unique-model count
+ *  (shared/thisComputer.ts, the same words as Connections and Settings → Your computer; hardware plan B3), the tier sentence only until the list loads. */
 function MachineLine({ hw }: { hw: Hardware }) {
+  const { tools } = useTools(); const counts = tools.length ? countLocalModels(tools as ToolsLike) : null;
   if (!hw.profile || hw.tier === 'unknown') return null;
   const free = hw.disk?.freeBytes != null ? `${Math.round(hw.disk.freeBytes / 1e9)} GB free` : null;
-  const parts = [hw.profile.label, hw.tierLabel, hw.comfy?.label ? `${hw.comfy.label}${hw.comfy.version ? ` ${hw.comfy.version}` : ''}` : null, free].filter(Boolean);
+  const parts = [hw.profile.label, counts?.total ? localCountsText(counts) : hw.tierLabel, hw.comfy?.label ? `${hw.comfy.label}${hw.comfy.version ? ` ${hw.comfy.version}` : ''}` : null, free].filter(Boolean);
   return <p className="helper rs-machine" data-testid="setup-machine"><b>Your computer:</b> {parts.join(' · ')}</p>;
 }

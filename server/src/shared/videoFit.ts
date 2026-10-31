@@ -28,7 +28,7 @@ export interface VideoInputLimits {
   /** What the result's shape does: 'source' = follows the clip; snap = the model returns one of these and centre-crops the rest (Kling edit:
    *  a 1720×720 clip came back 1280×720, sides cut, 2026-10-26); 'unknown' = not documented. */ output: 'source' | { snap: string[] } | 'unknown';
   /** Seconds (per job; a model that joins passes takes the job total). */ minSec?: number; maxSec?: number;
-  /** Frame rate range; outside it the clip is converted (to the nearest end). */ fps?: [number, number];
+  /** Frame rate range; outside it the clip is converted (to the nearest end). 0 as the top = no upper limit (Kling 4.0: at least 24 fps). */ fps?: [number, number];
   /** Largest file (bytes), and the container it must be (re-encoded to MP4 when not). */ maxBytes?: number; formats?: string[];
   /** false: a size problem is refused, not fixed (upscalers: shrinking a clip before upscaling it makes no sense). */ autoSize?: boolean;
   /** Where each figure comes from. */ source: string; verified: boolean; note?: string;
@@ -50,6 +50,10 @@ const SEEDANCE_SRC = `${COMFY('ByteDance2ReferenceNode')} (reference videos ≥ 
 export const VIDEO_INPUT_LIMITS: Record<string, VideoInputLimits & { byTool?: Record<string, Partial<VideoInputLimits>> }> = {
   'router-kling-edit': { ...KLING_EDIT, minSec: KS.minTotalSec, maxSec: KS.maxTotalSec, note: `Video Swap joins passes of ≤ ${KS.maxPassSec} s (shared/cloudSwap.ts planPasses), so a job takes ${KS.minTotalSec}–${KS.maxTotalSec} s.`,
     byTool: { 'make-it-real': { minSec: R(RENDER_KLING).clip.minSec, maxSec: R(RENDER_KLING).clip.maxSec, note: 'Render: one request (shared/renderModels.ts).' } } },
+  // Kling 4.0 Edit (Prompt Edit, 2026-10-31, comfy/kling4Cloud.ts): the node's own checks on every video it takes (ComfyUI PR #17364): 3–30 s,
+  // 700–4553 px a side, ≤ 8,294,400 px a frame, 2:5 to 5:2, at least 24 fps; adaptive aspect keeps the clip's shape.
+  'cloud-kling4-edit': { name: 'Kling 4.0', minSide: 700, maxSide: 4553, maxPixels: 8_294_400, aspect: [0.4, 2.5], fps: [24, 0], minSec: 3, maxSec: 30, output: 'source',
+    source: 'https://github.com/Comfy-Org/ComfyUI/pull/17364 (Kling4EditVideoNode: video 3–30 s, 700–4553 px a side, ≤ 3840×2160 pixels, 2:5–5:2, ≥ 24 fps; the result keeps the input length and, adaptive, its shape)', verified: true },
   'router-seedance-25-edit': { name: SS.name, minPixels: SEEDANCE_PIXELS[0], maxPixels: SEEDANCE_PIXELS[1], aspect: [0.4, 2.5], output: 'source', minSec: SS.minTotalSec, maxSec: SS.maxTotalSec, formats: ['mp4', 'mov'],
     source: SEEDANCE_SRC, verified: true, byTool: { 'make-it-real': { minSec: R(RENDER_SEEDANCE).clip.minSec, maxSec: R(RENDER_SEEDANCE).clip.maxSec },
       'motion-transfer': { output: 'unknown', note: 'New reference-guided generation with adaptive aspect, not a source-scene edit. Input padding is not cropped back out of the generated scene.' } } },
@@ -164,7 +168,7 @@ export function planVideoFit(src: { width: number; height: number; seconds?: num
   if (sec != null && l.maxSec && sec > l.maxSec + 0.05) { trimTo = l.maxSec; problems.push(`${who} takes up to ${l.maxSec} s; yours is ${Math.round(sec * 10) / 10} s.`); fixes.push(`trim to the first ${l.maxSec} s`); steps.push({ kind: 'trim', text: `trimmed to ${l.maxSec} s` }); }
   // 4. frame rate
   let toFps: number | null = null;
-  if (fps != null && l.fps && (fps < l.fps[0] - 0.01 || fps > l.fps[1] + 0.01)) { toFps = fps < l.fps[0] ? l.fps[0] : l.fps[1]; problems.push(`${who} takes ${l.fps[0]}–${l.fps[1]} fps; yours is ${Math.round(fps * 100) / 100} fps.`); fixes.push(`convert to ${toFps} fps`); steps.push({ kind: 'fps', text: `set to ${toFps} fps` }); }
+  if (fps != null && l.fps && (fps < l.fps[0] - 0.01 || (l.fps[1] > 0 && fps > l.fps[1] + 0.01))) { toFps = fps < l.fps[0] ? l.fps[0] : l.fps[1]; problems.push(`${who} takes ${l.fps[1] > 0 ? `${l.fps[0]}–${l.fps[1]}` : `at least ${l.fps[0]}`} fps; yours is ${Math.round(fps * 100) / 100} fps.`); fixes.push(`convert to ${toFps} fps`); steps.push({ kind: 'fps', text: `set to ${toFps} fps` }); }
   // 5. container
   const fmt = String(src.format ?? '').toLowerCase().replace(/^\./, ''); const toMp4 = !!fmt && !!l.formats && !l.formats.includes(fmt);
   if (toMp4) { problems.push(`${who} takes ${l.formats!.map((f) => f.toUpperCase()).join(' or ')} files; yours is ${fmt.toUpperCase()}.`); fixes.push('convert to MP4'); steps.push({ kind: 'format', text: 'converted to MP4' }); }

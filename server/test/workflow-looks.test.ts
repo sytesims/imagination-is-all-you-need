@@ -92,7 +92,7 @@ ok('trashed example → next example; none left → hidden here (404 on its page
 r = await call('PATCH', `/api/user-looks/${dup.id}`, { name: 'Night lighthouse' }); assert.equal(r.status, 200); assert.equal(r.body.name, 'Night lighthouse');
 assert.equal((await call('PATCH', `/api/user-looks/${dup.id}`, { name: '' })).status, 400); assert.equal((await call('PATCH', '/api/user-looks/my-00000000', { name: 'x' })).status, 404);
 const asPresets = WL.userLooksAsPresets(getTool as any, () => recipes as any) as any[]; const p = asPresets.find((x) => x.id === dup.id);
-assert.ok(p && p.ready && p.available && p.workflow === 'create-image' && p.href === `/tools/create-image?preset=${dup.id}` && p.provider === 'comfy-zimage-turbo', 'opens in Create via ?preset=');
+assert.ok(p && p.ready && p.available && p.workflow === 'create-image' && p.href === `/image?preset=${dup.id}` && p.provider === 'comfy-zimage-turbo', 'opens in Create via ?preset=');
 r = await call('DELETE', `/api/user-looks/${dup.id}`); assert.equal(r.status, 200); assert.equal((await call('DELETE', `/api/user-looks/${dup.id}`)).status, 404);
 assert.ok(!db.prepare('SELECT 1 FROM user_looks WHERE id = ?').get(dup.id), 'row deleted');
 ok('rename (name required), delete (row gone), and saved looks served as Create presets');

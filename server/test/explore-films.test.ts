@@ -20,7 +20,7 @@ const v = film.streams.find((s: any) => s.codec_type === 'video'); assert.deepEq
 assert.ok(film.streams.some((s: any) => s.codec_type === 'audio'), 'the film has sound'); assert.ok(Math.abs(Number(film.format.duration) - M.sec) < 1, `${M.sec} s`);
 assert.ok(!loop.streams.some((s: any) => s.codec_type === 'audio'), 'the loop is silent'); assert.ok(Number(loop.format.duration) <= 8, 'the loop ≤ 8 s'); assert.ok(fs.statSync(path.join(PUB, M.loop)).size <= 1e6, 'the loop < 1 MB');
 const tr = probe(M.trailer); assert.ok(!tr.streams.some((s: any) => s.codec_type === 'audio') && Number(tr.format.duration) <= 12, 'the trailer: silent, ≤ 12 s');
-assert.ok(M.identEnd > 3 && M.identEnd < M.shots[0].t0 + 0.01, 'recorded ident boundary precedes the first scene; full-film playback no longer skips it');
+assert.ok(M.identEnd > 3 && M.identEnd < M.shots[0].t0 + 0.01, 'recorded ident boundary precedes the first scene; full-film playback starts there (the opener is skipped)');
 for (const p of [film, loop]) assert.doesNotMatch(JSON.stringify(p.format.tags ?? {}), /creation_time|location|com\.apple/i, 'metadata stripped');
 ok(`folder ${(total / 1e6).toFixed(2)} MB; the film 1280×720 with sound, the loop silent, metadata stripped`);
 

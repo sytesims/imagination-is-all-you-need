@@ -765,6 +765,7 @@ html body .apop.ade-pop{z-index:1210}
 .tl-container .nf.nf-node .nf-heading{flex:none;margin:-2px 0 0;font:600 calc(20px * var(--nf-k))/1.18 var(--font-display,'Space Grotesk',Inter,sans-serif);letter-spacing:-.015em;color:var(--text-1,#F7F7F8);
   white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
 .tl-container .nf.nf-node .nf-heading-empty{color:var(--text-3,rgba(255,255,255,.35))}
+.tl-container .nf.nf-node input.nf-heading.cn-in{display:block;width:100%;box-sizing:border-box;padding:0 6px;margin:-2px -6px 0;width:calc(100% + 12px);border:0;border-radius:6px;outline:none;background:var(--surface-2,#1d1e21);box-shadow:inset 0 0 0 1px var(--accent,#FF7A1A);color:var(--text-1,#F7F7F8);pointer-events:all}
 
 /* 3 · the media, edge to edge: no inner border, no inner radius */
 .tl-container .nf.nf-node .nf-body>.nf-media,
@@ -838,3 +839,7 @@ html body .apop.ade-pop{z-index:1210}
 .tl-container[data-far] .nf.nf-node .gc-row-run .nf-dot{width:calc(6px * var(--far));height:calc(6px * var(--far))}
 
 @media (prefers-reduced-motion:reduce){.tl-container .nf-mbar.ind i{animation:none;width:100%;opacity:.5}}
+.gc-stage>.ly-count{top:8px;bottom:auto}
+/* zoomed out (B20): a card with no name of its own shows its workflow or kind as the big title ("Create Image", "Compare") */
+.tl-container .nf.nf-node .nf-far-only{display:none}
+.tl-container[data-far] .nf.nf-node .nf-far-only{display:-webkit-box}

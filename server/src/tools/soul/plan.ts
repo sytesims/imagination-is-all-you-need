@@ -32,6 +32,12 @@ export function bypass(g: Record<string, any>, id: string, to: [string, number])
 const wf = (name: string) => JSON.parse(readFileSync(path.join(WORKFLOWS_DIR, `${name}-api.json`), 'utf8'));
 const clampSeed = (s: any) => (Number.isInteger(s) ? s : 0) % 2_147_483_647;
 
+/** The graph a job runs (refs → its engine's graph, else its look's base), for the fit check (hardware/requirements.ts jobWorkflows): a Mac judges an OpenSoul
+ *  job by the graph it will load, so a Z-Image look runs and a FLUX / Qwen look says "Needs NVIDIA". null when the input names neither (the card as a whole). */
+export function soulWorkflowOf(i: Record<string, any>): string | null {
+  const refs = Array.isArray(i.refPaths) ? i.refPaths : []; if (refs.length && i.engine && ENGINE_WF[i.engine as SoulEngine]) return `${ENGINE_WF[i.engine as SoulEngine]}-api.json`;
+  const pr = i.preset ? presetById(i.preset) : null; return pr ? `${BASE_WF[pr.base]}-api.json` : null;
+}
 /** Which LoRAs land in the graph, and the trigger words they need. Exported for tests / quote. */
 export function loraStack(presetId: string | null, family: SoulBase, engine: SoulEngine | null) {
   const pr = presetId ? presetById(presetId) : null; const r = REALISM[family];
