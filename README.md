@@ -93,7 +93,7 @@ On a Mac, run this once in the app folder:
 npm run mac-app
 ```
 
-It puts **Imagination** in your Applications folder (the one in your home folder). Drag it to the Dock. Clicking it starts the studio in the background when it isn't running, then opens it in your browser. No terminal to keep open. Hold **Option** while opening it to stop the studio. More in [Install and run](docs/INSTALL.md#mac-app-dock).
+It puts **Imagination** in your Applications folder (the one in your home folder). Drag it to the Dock. Clicking it starts the studio in the background when it isn't running, then opens it in your browser. No terminal to keep open. It stays in the Dock while the studio runs; quit it and choose **Stop** to stop the studio. More in [Install and run](docs/INSTALL.md#mac-app-dock).
 
 ### Updating
 

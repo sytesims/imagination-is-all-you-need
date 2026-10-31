@@ -58,6 +58,12 @@ try {
   assert.equal(calls().trim(), 'defaults read com.apple.dock persistent-apps', 'only reads the Dock in a dry run');
   assert.equal(existsSync(path.join(home, 'Applications')), false);
 
+  // the Dock address is a real file URL, also for folder names with accents or # in them
+  const odd = path.join(home, 'Apps é#'); mkdirSync(odd);
+  const oddRun = run(['--dry-run', '--yes'], { ...mac, IIAYN_APPS_DIR: odd });
+  assert.ok(oddRun.out.includes(`<string>file://${home.replaceAll(' ', '%20')}/Apps%20%C3%A9%23/Imagination.app/</string>`), oddRun.out);
+  rmSync(odd, { recursive: true });
+
   // Applications needs an administrator: the Applications folder in the home folder instead, never sudo
   chmodSync(apps, 0o555);
   const locked = run(['--dry-run', '--yes'], mac);

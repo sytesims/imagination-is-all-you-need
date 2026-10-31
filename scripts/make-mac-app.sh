@@ -1,7 +1,7 @@
 #!/bin/bash
 # npm run mac-app: builds Imagination.app, a double-clickable Mac app for this checkout. Drag it to the Dock.
-# Opening it starts the studio in the background when it isn't running, then opens it in your browser.
-# Hold Option while opening it to stop the studio.
+# Opening it starts the studio in the background when it isn't running, then opens it in your browser. It stays in the
+# Dock while the studio runs; quitting it asks whether to stop the studio too.
 #
 #   scripts/make-mac-app.sh [--dest DIR] [--repo PATH] [--dry-run]
 #     --dest DIR   where Imagination.app goes (default ~/Applications)
@@ -29,6 +29,10 @@ done
 [ -d "$REPO" ] && REPO="$(cd "$REPO" && pwd)"
 [ -f "$REPO/scripts/setup.mjs" ] || { echo "make-mac-app: $REPO isn't an Imagination app folder (no scripts/setup.mjs)." >&2; exit 2; }
 APP="$DEST/Imagination.app"
+# only ever replace our own Imagination.app, never another app with the same name
+if [ -e "$APP" ] && [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist" 2>/dev/null)" != app.iiayn.launcher ]; then
+  echo "make-mac-app: $APP is a different app, so it stays as it is. Move it away or use --dest DIR." >&2; exit 3
+fi
 VERSION="$(sed -n 's/^  "version": "\([^"]*\)".*/\1/p' "$REPO/package.json" | head -n 1)"
 
 echo "Building $APP"
@@ -39,9 +43,9 @@ echo "  version: ${VERSION:-1.0.0}"
 mkdir -p "$DEST"
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 
-# the app: a compiled AppleScript applet (a real Dock app with native dialogs) around launch.sh
+# the app: a compiled stay-open AppleScript applet (a real Dock app with native dialogs) around launch.sh
 # (osacompile always notes that it re-signs the applet: only show what it says when it fails)
-osacompile -o "$WORK/Imagination.app" "$HERE/mac-app/Imagination.applescript" 2>"$WORK/osacompile.log" || { cat "$WORK/osacompile.log" >&2; exit 1; }
+osacompile -s -o "$WORK/Imagination.app" "$HERE/mac-app/Imagination.applescript" 2>"$WORK/osacompile.log" || { cat "$WORK/osacompile.log" >&2; exit 1; }
 RES="$WORK/Imagination.app/Contents/Resources"
 cp "$HERE/mac-app/launch.sh" "$RES/launch.sh"; chmod 755 "$RES/launch.sh"
 printf '%s\n' "$REPO" > "$RES/repo-path"
@@ -76,4 +80,4 @@ rm -rf "$APP"
 mv "$WORK/Imagination.app" "$APP"
 touch "$APP" # Finder and the Dock pick up the new icon
 echo "Done. Open it from $DEST, or drag Imagination to the Dock."
-echo "Hold Option while opening it to stop Imagination."
+echo "Quitting it asks whether to stop Imagination too."

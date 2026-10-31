@@ -116,11 +116,12 @@ npm run mac-app
 
 This builds `Imagination.app` in `~/Applications`, the Applications folder in your home folder. Drag it from there to the Dock.
 
-- **Opening it** starts the app in the background when it isn't running (the same `npm run setup`, so a first start also installs what's missing), shows "Starting Imagination…", then opens the studio in your browser. If it's already running, it just opens the browser. Closing the browser doesn't stop it.
-- **To stop it**, hold **Option** while you open Imagination and choose **Stop Imagination**. It only stops the copy it started; a copy started in a terminal stops with **Ctrl+C** there.
-- **If it can't start**, it shows the last lines of the log. The full log is `~/Library/Logs/Imagination/app.log`.
+- **Opening it** starts the app in the background when it isn't running (the same `npm run setup`, so a first start also installs what's missing), shows "Starting Imagination…", then opens the studio in your browser. If it's already running (also when you started it in a terminal, or it is restarting after an update), it just opens the browser. Closing the browser doesn't stop it.
+- **While the studio runs**, Imagination stays in the Dock with its running dot. Click it to open the studio again. If the studio stops by itself, you get a notification and the app closes.
+- **To stop it**, quit Imagination (from its Dock menu, or Cmd-Q) and choose **Stop**; **Keep running** leaves the studio on. Or hold **Option** while you open Imagination and choose **Stop Imagination**. It only stops the copy it started; a copy started in a terminal stops with **Ctrl+C** there.
+- **If it can't start**, it shows the last lines of the log. The full log is `~/Library/Logs/Imagination/app.log` (it keeps about the last 1 MB).
 - **Ports and settings** work as above: `PORT` and `WEB_PORT` in `.env.local` are used.
-- **Moved or renamed the app folder?** Run `npm run mac-app` again from the new place. `npm run mac-app -- --dest DIR` builds it somewhere else.
+- **Moved or renamed the app folder?** Run `npm run mac-app` again from the new place. `npm run mac-app -- --dest DIR` builds it somewhere else. It only replaces its own `Imagination.app`, never another app with that name.
 - **To remove it**, drag `Imagination.app` to the Trash (and off the Dock). Optionally also delete `~/Library/Logs/Imagination` and `~/Library/Application Support/Imagination`.
 
 The app is built on your Mac, so macOS opens it without a download warning. The first time it shows a notification, macOS may ask whether Imagination can send notifications.

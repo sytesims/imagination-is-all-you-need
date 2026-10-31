@@ -23,6 +23,15 @@ test('a folder that is not the app is refused', { skip }, () => {
   assert.match(r.stderr, /isn't an Imagination app folder/);
 });
 
+test('never replaces another app called Imagination', { skip }, () => {
+  const dest = tmp(); const theirs = path.join(dest, 'Imagination.app', 'Contents'); fs.mkdirSync(theirs, { recursive: true });
+  const plist = path.join(theirs, 'Info.plist');
+  fs.writeFileSync(plist, '<?xml version="1.0"?><plist version="1.0"><dict><key>CFBundleIdentifier</key><string>com.example.imagination</string></dict></plist>');
+  const r = spawnSync('bash', [SCRIPT, '--dest', dest, '--repo', REPO], { encoding: 'utf8' });
+  assert.equal(r.status, 3); assert.match(r.stderr, /is a different app/);
+  assert.match(fs.readFileSync(plist, 'utf8'), /com\.example\.imagination/);
+});
+
 test('builds a complete Imagination.app', { skip }, () => {
   const dest = tmp();
   execFileSync('bash', [SCRIPT, '--dest', dest, '--repo', REPO], { encoding: 'utf8' });
@@ -33,6 +42,7 @@ test('builds a complete Imagination.app', { skip }, () => {
   assert.equal(plist.CFBundlePackageType, 'APPL');
   assert.equal(plist.CFBundleIconFile, 'Imagination');
   assert.equal(plist.LSUIElement, undefined, 'a normal Dock app');
+  assert.equal(plist.OSAAppletStayOpen, true, 'stays in the Dock while Imagination runs');
   assert.equal(plist.NSCameraUsageDescription, undefined);
   const version = JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8')).version;
   assert.equal(plist.CFBundleShortVersionString, version);

@@ -213,6 +213,19 @@ exec npm run setup -- --open
 EOF
 }
 
+# url_path PATH: PATH for a file:// address, the way macOS writes it (bytes outside the safe set as %XX, e.g. "é" and spaces)
+url_path() {
+  local LC_ALL=C s="$1" out="" c i
+  for ((i = 0; i < ${#s}; i++)); do
+    c="${s:i:1}"
+    case "$c" in
+      [A-Za-z0-9/._~!\$\&\(\)*+,\;=:@-]|"'") out+="$c";;
+      *) out+="$(printf '%%%02X' $(( $(printf '%d' "'$c") & 255 )))";;
+    esac
+  done
+  printf '%s' "$out"
+}
+
 # macOS: Imagination.app (built by scripts/make-mac-app.sh) in Applications, pinned to the Dock.
 add_mac_app() {
   bold "4. The Imagination app"
@@ -234,7 +247,7 @@ add_mac_app() {
   fi
 
   # Pin it to the Dock unless it's already there: a new persistent-apps tile, then restart the Dock to show it.
-  local url="file://${app// /%20}/" tiles
+  local url tiles; url="file://$(url_path "$app")/"
   tiles="$(defaults read com.apple.dock persistent-apps 2>/dev/null || true)"
   if [[ "$tiles" == *"\"$url\""* ]]; then ok "Already in your Dock"
   else
