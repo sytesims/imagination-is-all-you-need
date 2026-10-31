@@ -1,6 +1,7 @@
 /**
- * Brand Kit (2026-10-27): one place to define your brand. A kit = name, colours (hex + name + role), two fonts (names only, no font files),
- * a mood line, do / don't lines, an optional logo and up to 3 example results. It (a) keeps what you make on-brand: with "Brand: <name>" on,
+ * Brand Kit (2026-10-27): one place to define your brand. A kit = name, colours (hex + name + role), two fonts (names, plus the font files
+ * kept on this computer: uploaded or downloaded once from Google Fonts), a mood line, do / don't lines, a logo set (main, light, dark, icon;
+ * 2026-10-31) and up to 3 example results. It (a) keeps what you make on-brand: with "Brand: <name>" on,
  * the server adds one short phrase to the prompt (brandPhrase, the ONE helper every tool uses) and (b) exports as an open W3C Design Tokens
  * file (tokensOf), CSS variables, a Tailwind theme and a plain hex list.
  * Isomorphic, no imports: the server (store, validation, prompt, exports) and the web (Assets › Brand, the chip, the exports) share it.
@@ -11,14 +12,23 @@ export const BRAND_ROLES: Exclude<BrandRole, ''>[] = ['primary', 'secondary', 'a
 export interface BrandColor { hex: string; name: string; role: BrandRole }
 export interface BrandFonts { heading: string; body: string }
 export interface BrandMedia { url: string; mime: string }
+/** The logo set: main (your usual logo), light (for dark backgrounds), dark (for light backgrounds), icon (a small square mark). */
+export type LogoSlot = 'main' | 'light' | 'dark' | 'icon';
+export const LOGO_SLOTS: LogoSlot[] = ['main', 'light', 'dark', 'icon'];
+export type BrandLogos = Record<LogoSlot, BrandMedia | null>;
+export type FontRole = 'heading' | 'body';
+export type FontFormat = 'truetype' | 'opentype' | 'woff' | 'woff2';
+/** A font file kept on this computer (DATA_DIR/brand-fonts/<kit>/). Uploaded files cover every weight (weight 0); Google Fonts downloads are 400 and 700. */
+export interface BrandFontFile { family: string; role: FontRole; weight: number; url: string; file: string; format: FontFormat; source: 'upload' | 'google'; licence: string; sourceUrl?: string }
 export interface BrandKit {
   id: string; name: string; colors: BrandColor[]; fonts: BrandFonts; mood: string; dos: string[]; donts: string[];
-  logo: BrandMedia | null; /** up to 3 picked results (image URLs) for the brand sheet */ examples: string[];
+  /** = logos.main (kept for older readers) */ logo: BrandMedia | null; logos: BrandLogos; fontFiles: BrandFontFile[];
+  /** up to 3 picked results (image URLs) for the brand sheet */ examples: string[];
   /** the app's own kit (read-only, always first) */ builtIn?: boolean; createdAt: string; updatedAt: string;
 }
 export type BrandMediaKind = 'image' | 'video' | 'audio';
 
-export const BRAND_LIMITS = { kits: 50, name: 60, colors: 12, colorName: 40, mood: 300, line: 160, lines: 10, examples: 3, font: 60 } as const;
+export const BRAND_LIMITS = { kits: 50, name: 60, colors: 12, colorName: 40, mood: 300, line: 160, lines: 10, examples: 3, font: 60, fontMB: 10 } as const;
 
 /** Open fonts the app already loads (Manrope, Inter, Space Grotesk, JetBrains Mono) first, then common Google Fonts. Names only: nothing is bundled. */
 export const BRAND_FONTS: { name: string; kind: 'sans' | 'serif' | 'display' | 'mono'; inApp?: boolean }[] = [
@@ -43,8 +53,26 @@ export const BUILTIN_KIT: BrandKit = {
   fonts: { heading: 'Space Grotesk', body: 'Manrope' }, mood: 'bold, playful, premium, cinematic',
   dos: ['One orange accent, used for the thing to press', 'Image first: let the result fill the frame', 'Plain, short words'],
   donts: ['White text on orange', 'More than one bright colour per screen'],
-  logo: { url: '/app-icon-512.png', mime: 'image/png' }, examples: [], createdAt: '2026-10-27T00:00:00.000Z', updatedAt: '2026-10-27T00:00:00.000Z',
+  logo: { url: '/app-icon-512.png', mime: 'image/png' }, logos: { main: { url: '/app-icon-512.png', mime: 'image/png' }, light: null, dark: null, icon: null }, fontFiles: [],
+  examples: [], createdAt: '2026-10-27T00:00:00.000Z', updatedAt: '2026-10-27T00:00:00.000Z',
 };
+
+/** A kit as stored by any version: an old single `logo` becomes logos.main, missing font files become []. `logo` always mirrors logos.main. */
+export function normalizeKit(k: BrandKit): BrandKit {
+  const raw = (k.logos ?? {}) as Partial<BrandLogos>; const main = raw.main !== undefined ? raw.main : k.logo ?? null;
+  const logos: BrandLogos = { main, light: raw.light ?? null, dark: raw.dark ?? null, icon: raw.icon ?? null };
+  return { ...k, logo: main, logos, fontFiles: Array.isArray(k.fontFiles) ? k.fontFiles : [] };
+}
+/** The logo for a slot: that slot's own, else main, else any logo the kit has (a light-only kit still gets its logo). */
+export function logoFor(kit: Pick<BrandKit, 'logo'> & { logos?: Partial<BrandLogos> }, slot: LogoSlot): BrandMedia | null {
+  const l = kit.logos ?? {}; return l[slot] ?? l.main ?? kit.logo ?? l.dark ?? l.light ?? l.icon ?? null;
+}
+/** The logo for a background of this brightness (0..1): the light logo on dark, the dark logo on light (each falls back to main). */
+export const logoForBackground = (kit: Parameters<typeof logoFor>[0], lum: number) => logoFor(kit, lum < 0.5 ? 'light' : 'dark');
+/** A family name a user (or a file name) gives: plain words, ≤ 60 characters. "BigCaslon-Bold.ttf" → "Big Caslon". */
+export const fontNameOk = (n: string) => !!n && n.length <= BRAND_LIMITS.font && /^[\p{L}\p{N} '\-]+$/u.test(n);
+export const familyOfFileName = (name: string) => String(name ?? '').replace(/\.[^.]+$/, '').replace(/[-_ ](regular|bold|medium|light|italic|book|roman|variable|vf|\d+)$/i, '').replace(/[-_]+/g, ' ')
+  .replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[^\p{L}\p{N} '\-]+/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, BRAND_LIMITS.font).trim();
 
 // ---------------------------------------------------------------- colour words
 export const HEX_RE = /^#[0-9a-f]{6}$/i;
@@ -177,6 +205,7 @@ export function validateKitInput(b: Record<string, unknown>, partial: boolean): 
   if (has('examples')) { const xs = b.examples; if (!Array.isArray(xs) || xs.length > L.examples || xs.some((u) => !isMediaUrl(u))) issues.push({ code: 'invalid', field: 'examples', message: `Up to ${L.examples} example images from your library.` }); else v.examples = xs as string[]; }
   if (has('logo') && b.logo !== null) issues.push({ code: 'invalid', field: 'logo', message: 'Upload a logo with POST /api/brand-kits/:id/logo (send logo: null to remove it).' });
   else if (has('logo')) v.logo = null;
+  if (has('logos') || has('fontFiles')) issues.push({ code: 'invalid', field: has('logos') ? 'logos' : 'fontFiles', message: 'Logos and font files are added with their own upload routes (/logo?slot=…, /font?role=…).' });
   return issues.length ? { ok: false, issues } : { ok: true, value: v };
 }
 /** A library file the app serves itself (no outside URLs, no "..", no query tricks). */
@@ -202,7 +231,10 @@ export function tokensOf(kit: BrandKit): Record<string, any> {
   return {
     $description: `${kit.name} brand kit${kit.mood ? `. Mood: ${moodWords(kit.mood)}` : ''}. Made with Imagination Is All You Need.`,
     color, font, spacing: dim(SPACING), radius: dim(RADIUS),
-    $extensions: { 'app.imagination.brand-kit': { name: kit.name, mood: kit.mood, dos: kit.dos, donts: kit.donts, version: 1 } },
+    $extensions: { 'app.imagination.brand-kit': { name: kit.name, mood: kit.mood, dos: kit.dos, donts: kit.donts, version: 2,
+      /* the files themselves: logos by slot and the font files (with where each font came from and its licence) */
+      logos: Object.fromEntries(LOGO_SLOTS.filter((s) => kit.logos?.[s]).map((s) => [s, kit.logos[s]!.url])),
+      fontFiles: (kit.fontFiles ?? []).map((f) => ({ family: f.family, role: f.role, weight: f.weight || 'all', file: f.url, format: f.format, source: f.source, licence: f.licence, ...(f.sourceUrl ? { sourceUrl: f.sourceUrl } : {}) })) } },
   };
 }
 /** Structure check for a tokens file (the test's and the importer's): every leaf token has $value, every group or token has a known $type, colours are hex. */

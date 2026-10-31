@@ -67,8 +67,10 @@ for (const f of ['src/App.tsx', 'src/ui/Home.tsx', 'src/platform/router.tsx']) a
 assert.doesNotMatch(web('src/learn/EcomBook.tsx'), /^import (?!type )[^\n]*from '\.\/bookEngine'/m, 'three.js loads on demand inside the chunk');
 ok('/learn/ai-ecommerce is a lazy chunk');
 
-// Explore: the footer's About column links the book (the Learn card was removed from Explore)
-const home = web('src/ui/Home.tsx'); assert.match(home, /\['About', \[[^\n]*\['Learn: AI for e-commerce', BOOK_PATH\]/, 'Explore links the book (footer, About)');
+// Explore: the footer's Learn column links the book as Guides (shared/footerLinks.ts, which Home's footer renders)
+const { footerCols } = await import('../../web/src/shared/footerLinks.ts'); const learn = footerCols('https://x').find(([h]) => h === 'Learn')?.[1] ?? [];
+assert.deepEqual(learn[0], ['Guides', BOOK_PATH], 'the footer links the book (Learn, Guides)');
+assert.match(web('src/ui/Home.tsx'), /footerCols\(/, 'Explore renders the shared footer columns');
 ok('Explore footer link');
 
 // prefill: ?prompt= fills the bar (and is removed from the URL), nothing else

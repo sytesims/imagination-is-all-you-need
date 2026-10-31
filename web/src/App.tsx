@@ -32,6 +32,7 @@ import { OfflineBanner, EdgeHost, isRestartError } from './ui/edge/Edge';
 import { InlineError } from './shared/InlineError';
 import { Skeleton } from './shared/Skeleton';
 import { REPO_URL } from './shared/brand';
+import { FOOT_NAME, FOOT_NOTES } from './shared/footerLinks';
 import { AnnounceBar, MobileTabs, MobileTop, TopNav, setRoadmap } from './ui/Shell';
 
 /** Platform shell: top nav grouped by registry category (desktop) / top bar + tab bar (mobile). Routes: / Explore, /tools/:toolId, /assets (alias /history). */
@@ -112,7 +113,7 @@ export default function App() {
       <MobileTop title={title} tools={tools} path={path} />
       <main ref={mainRef} className={`main ${toolId ? 'main-tool' : ''}`}>
         <Suspense fallback={<div className={skelCls}><Skeleton variant="tiles" count={skelN} /></div>}>{body}</Suspense>
-        <footer className="footer">Imagination Is All You Need · open source · runs on ComfyUI · AGPL-3.0 · <a className="footer-lic" href={REPO_URL} target="_blank" rel="noopener noreferrer" data-testid="footer-source">Source code</a>{/* AGPL section 13: people using the app over a network can get its source */} · <a className="footer-lic" href="/licenses">Models &amp; licences</a> · <a className="footer-lic" href="/terms">Usage notes</a> · Not affiliated with Higgsfield</footer>
+        <footer className="footer">© {new Date().getFullYear()} {FOOT_NAME} · <a className="footer-lic" href={REPO_URL} target="_blank" rel="noopener noreferrer" data-testid="footer-source">Source code</a>{/* AGPL section 13: people using the app over a network can get its source */}{FOOT_NOTES.map(([l, to]) => <span key={to}> · <a className="footer-lic" href={to}>{l}</a></span>)}</footer>
       </main>
       <MobileTabs tools={tools} path={path} />
       <EdgeHost />

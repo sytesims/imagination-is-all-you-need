@@ -2,6 +2,46 @@
 
 Install the studio on your computer, then choose whether to browse examples, connect a cloud account or connect your own ComfyUI. **Installing the app does not install ComfyUI, custom nodes or model weights.**
 
+## Install in one line
+
+On macOS or Linux, paste this into Terminal:
+
+```sh
+curl -fsSL https://iiayn.app/install | bash
+```
+
+On Windows, paste this into PowerShell:
+
+```powershell
+irm https://iiayn.app/install.ps1 | iex
+```
+
+The same scripts are in this repository, so you can read them before running them: [scripts/get.sh](../scripts/get.sh) (macOS and Linux) and [scripts/get.ps1](../scripts/get.ps1) (Windows). Straight from GitHub, the first line is `curl -fsSL https://raw.githubusercontent.com/sytesims/imagination-is-all-you-need/main/scripts/get.sh | bash`.
+
+What they do, in order:
+
+1. Check for git, Node.js 20 or newer (with npm) and ffmpeg. For each missing one, they say what it is and ask before installing it with Homebrew (macOS; they offer Homebrew's official installer if it's missing), apt or dnf (Linux, with `sudo`, which asks for your password) or winget (Windows). Say no and they print the manual steps and stop. ffmpeg is optional: without it the app still opens.
+2. Download the app into `~/Imagination` (Windows: `%USERPROFILE%\Imagination`) with `git clone --depth 1`. If the app is already there, they run `npm run update` instead. Your library (`server/data`) and keys (`.env.local`) are never touched.
+3. Run `npm run setup -- --no-start`: app dependencies and the read-only check. No ComfyUI, models or keys.
+4. Ask whether to add a desktop shortcut (macOS: `Imagination.command`; Windows: `Imagination.lnk`; Linux: an `imagination.desktop` app entry).
+5. Start the app with `npm run setup` and open it in your browser. Keep the window open; Ctrl+C stops it.
+
+Options (Windows names in brackets):
+
+| Option | What it does |
+|---|---|
+| `--yes` (`-Yes`) | Answer yes to every question |
+| `--dir PATH` (`-Dir`) | Install somewhere else |
+| `--branch NAME` (`-Branch`) | Get another branch (for testing) |
+| `--no-start` (`-NoStart`) | Install, but don't start the app |
+| `--no-shortcut` (`-NoShortcut`) | Don't offer a desktop shortcut |
+| `--dry-run` (`-DryRun`) | Show every step, change nothing |
+| `--help` (`-Help`) | Show the options |
+
+Pass options like this: `curl -fsSL https://iiayn.app/install | bash -s -- --dry-run`, or on Windows `& ([scriptblock]::Create((irm https://iiayn.app/install.ps1))) -DryRun`.
+
+To do it all by hand instead, follow the steps below.
+
 ## Requirements
 
 - A current Node **20, 22 or 24** release and npm. Node 22 or 24 is recommended; very old Node 20 releases lack flags used by the development server. Some optional provider dependencies require newer Node releases and can warn on Node 20.

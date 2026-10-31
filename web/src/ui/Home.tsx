@@ -4,7 +4,7 @@
  *    then 3D and IIAYN FILMS (including A Star to Steer By, formerly its own lighthouse section);
  *  - From one still (XpStill): two LTX-2.5 Pro image-to-video takes from one still, a wipe from the still into the clip, a Take 1 / Take 2 switch;
  *  - Make your own cartoon (XpKoi): a MiniMax H3 take extended by H3 Extend into one 20 s take, in a letterbox; it leads into the H3 chapter below;
- *  - chapters: Same dance. Two new casts. (H3 Character Swap and Kling 3.0 Omni Edit on Comfy Cloud), One picture. Every layer. (Image to layers, Seedream 5.0 Flash on Comfy Router), One character. Every angle. (four GPT Image 2.5 Flare character sheets, Mossbun in 3D), Image · made here, Your agent builds the board, then Block it in 3D. Film it for real. (Mockup to film: Direct a Shot, its first frame painted, the LTX film), Make it 3D. Then put it to work. (what 3D is for, live: explore/Explore3D.tsx);
+ *  - chapters: Same dance. Two new casts. (H3 Character Swap and Kling 3.0 Omni Edit on Comfy Cloud), One picture. Every layer. (Image to layers, Seedream 5.0 Flash on Comfy Router), One character. Every angle. (four GPT Image 2.5 Flare character sheets, Mossbun in 3D), Image · made here, Your agent builds the board, then Block it in 3D. Film it for real. (Mockup to film: Direct a Shot, its first frame painted, the LTX film), One drawing. A whole film. (Mossbun: sheet → 3D → city → film, explore/Explore3D.tsx);
  *  - Made here: a shared MediaRail of our own outputs (clips play on hover, stills), each opening as Recreate;
  *  - the flow rows (server/src/shared/exploreFlows.ts): numbered heads, bento strips of media tiles naming the real model and its price;
  *  - Learn / Spend, every tool, the footer.
@@ -15,12 +15,12 @@ import { useEffect, useState } from 'react';
 import type { ToolInfo } from '../api';
 import { Link } from '../platform/router';
 import { REPO_URL } from '../shared/brand';
-import { BOOK_PATH } from '../learn/ecomChapters';
+import { footerCols, FOOT_NAME } from '../shared/footerLinks';
 import { MakerTile } from '../shared/MakerTile';
 import { StandInArt } from '../shared/StandInArt';
 import { HoverClip, prefersReducedMotion } from '../shared/HoverClip';
 import { MediaRail } from '../shared/MediaRail';
-import { XpHero, XpStill, XpKoi, XpSwap, XpLayers, XpSheets, XpImages, XpBoard, XpFilm } from './explore/ExploreShowcase';
+import { XpHero, XpStill, XpKoi, XpSwap, XpLayers, XpSheets, XpLooks, XpYourTurn, XpBoard, XpFilm } from './explore/ExploreShowcase';
 import { EXPLORE_ROWS, type ExploreCard, type ExploreRow, type FlowArt } from '../../../server/src/shared/exploreFlows';
 import { featuredByKey, featuredRecreateHref, type FeaturedItem } from '../../../server/src/shared/featured';
 import { VideoIcon, MotionTransferIcon, ReshootIcon, LoopIcon, PhotoFxIcon, MusicIcon, MicIcon, PortraitIcon, CubeIcon, OrbitIcon, GridIcon, GenerateIcon, PrevizIcon, TransitionIcon, PriceTagIcon, ChevronRightIcon } from './Icons';
@@ -138,12 +138,6 @@ export default function Home({ tools }: { tools: ToolInfo[] }) {
   const rows = EXPLORE_ROWS.map(r => ({ ...r, cards: r.cards.filter(c => has(c.toolId)) })).filter(r => r.cards.length);
   const chips = tools.filter(x => (x as any).listed !== false).map(x => ({ id: x.id, name: x.name, route: x.route }));
   /* two tools with one name (Upscale for images and for clips): say which */ const dup = new Set(chips.map(c => c.name).filter((n, k, a) => a.indexOf(n) !== k)); chips.forEach(c => { if (dup.has(c.name)) { const m = (tools.find(t => t.id === c.id) as any)?.media ?? (/image|app-remove-bg/.test(c.id) ? 'image' : 'video'); c.name = `${c.name} · ${m === 'image' ? 'image' : 'video'}`; } });
-  const foot: [string, [string, string][]][] = [
-    ['On this page', [['From one still', '#xp-still'], ['Image to layers', '#xp-layers'], ['Character sheets', '#xp-sheets'], ['Canvas', '#xp-board']]],
-    ['Make', [['Video', '/tools/h3-video'], ['Image', '/tools/create-image'], ['Audio', '/tools/audio'], ['3D', '/tools/3d'], ['Canvas', '/canvas'], ['Workflows', '/workflows']]],
-    ['Platform', [['MCP', '/mcp'], ['API docs', '/api-docs'], ['Spend', '/spend'], ['Assets', '/assets'], ['Plugins', '/plugins']]],
-    ['About', [['Models & licences', '/licenses'], ['Usage notes', '/terms'], ['Learn: AI for e-commerce', BOOK_PATH], ['Settings', '/settings'], ...(repoUrl ? [['Source code', repoUrl] as [string, string]] : [])]],
-  ];
   return <div className="home xp" data-testid="explore">
     <h1 className="sr-only-vis">Imagination Is All You Need: an open studio for video, images, sound and 3D</h1>
     <XpHero />
@@ -160,10 +154,13 @@ export default function Home({ tools }: { tools: ToolInfo[] }) {
       <XpLayers />
       <XpSheets />
       <XpPresenter />
-      <XpImages />
+      <XpLooks />
     </div>
-    <footer className="xp-footer" data-sec="footer"><div className="xp-foot-in"><h2>IMAGINATION IS ALL YOU NEED</h2>
-      <div className="xp-fcols">{foot.map(([h, ls]) => <div key={h}><span className="xp-fh">{h}</span><span className="xp-flinks">{ls.map(([l, to]) => /^https?:/.test(to) ? <a key={l} href={to} target="_blank" rel="noreferrer">{l}</a> : to.startsWith('#') ? <a key={l} href={to}>{l}</a> : <Link key={l} to={to}>{l}</Link>)}</span></div>)}</div></div>
-      <div className="xp-fbot"><span>© {new Date().getFullYear()} Imagination Is All You Need · AGPL-3.0 · Not affiliated with Higgsfield<br /><small>Everything the tools make is AI-generated.</small></span><span className="xp-fsoc"><Link to="/licenses">Models &amp; licences</Link><Link to="/terms">Usage notes</Link><Link to="/mcp">MCP</Link><a href={repoUrl} target="_blank" rel="noopener noreferrer" data-testid="home-github">GitHub</a></span></div></footer>
+    {/* the closing moment, full width: a prompt box over a wall of things made here */}
+    <XpYourTurn />
+    <footer className="xp-footer" data-sec="footer"><div className="xp-foot-in">
+      <div className="xp-fbrand"><h2>Imagination is<br />all you need</h2><a className="xp-fgh" href={repoUrl} target="_blank" rel="noopener noreferrer" data-testid="home-github">GitHub <span aria-hidden>↗</span></a></div>
+      <div className="xp-fcols">{footerCols(repoUrl).map(([h, ls]) => <nav key={h} aria-label={h}><span className="xp-fh">{h}</span><span className="xp-flinks">{ls.map(([l, to]) => /^https?:/.test(to) ? <a key={l} href={to} target="_blank" rel="noopener noreferrer">{l}</a> : <Link key={l} to={to}>{l}</Link>)}</span></nav>)}</div></div>
+      <p className="xp-fbot">© {new Date().getFullYear()} {FOOT_NAME} · Everything the tools make is <span className="xp-nw">AI-generated</span>.</p></footer>
   </div>;
 }

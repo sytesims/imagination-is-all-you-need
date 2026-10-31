@@ -15,7 +15,8 @@
  *  - EXPLORE_SHEETS: "One character. Every angle." (four GPT Image 2.5 Flare character sheets, the highlight stepping across each sheet's real
  *    panels; Mossbun also as a Tripo 3.1 model to spin).
  *  - EXPLORE_BOARD: the actual Canvas built-in demo recording (scripted, sample results, no paid runs).
- *  - EXPLORE_IMAGES: the editorial Image section (showcase ids: three big covers, then a rail).
+ *  - EXPLORE_LOOKS: "One idea. Every look." (one prompt in twelve looks, each credited with its model: a big frame and twelve tiles).
+ *  - EXPLORE_YOUR_TURN: "Now it's your turn." (the page's last section: a prompt box over a drifting wall of things made here).
  *  - EXPLORE_MOODS: the Audio dancer showcase (the words that pick SyteSim's dance style, a tempo for the demo beat).
  *  - EXPLORE_FILM: "Mockup to film" (Direct a Shot made real: the mockup, its first frame painted into a photo, the film; replaces the Worlds tiles).
  *  - EXPLORE_VFX: "VFX with LTX-2.5" (Footage Effects: Lightricks' official LTX-2.5 IC-LoRAs on your own clip, free on your computer; plus Layout to Render).
@@ -266,19 +267,20 @@ export const EXPLORE_HEADLINE = 'Bring your ideas to life';
 
 // ---------------------------------------------------------------- Chapter 1: swap a character (two models, one dance, on Comfy Cloud)
 /** Chapter 1 (2026-10-28, the user's pick "C · Dance-off"; before it: one H3 run in a clip → result wipe): the same pink-stage dance swapped twice,
- *  side by side in step, the original small between them. H3 Character Swap (featured 'h3-char-swap', job 1f0cf6a2): the girl, from one photo.
+ *  side by side in step, each a before / after slider over the original. H3 Character Swap (featured 'h3-char-swap', job 1f0cf6a2): the girl, from one photo.
  *  Kling 3.0 Omni Edit (featured 'kling-dance-swap', Motion Control, job dc114104): both dancers, from two photos (the same girl's photo as H3's,
- *  plus his). Both play their Topaz upscale (`sharp`); the two source clips are the same 8 s take frame for frame, so all three play in step.
+ *  plus his). Both play their Topaz upscale (`sharp`); the two source clips are the same 8 s take frame for frame, so all four clips play in step.
  *  Models, places and prices on screen come from the featured entries. */
-export interface SwapRun { key: string; who: string; photos: string; cta: { label: string; href: string } }
+export interface SwapRun { key: string; who: string; photos: string; cta: { label: string; href: string };
+  /** the original's poster at the same moment as this run's poster (default: the original's own), so the two sides match before the clips play and under reduced motion */ originalPoster?: string }
 /** Object Swap with H3 Character Swap picked */ const SWAP_H3_CTA = { label: 'Swap a character', href: `${videoWorkflowHref('object-swap')}&model=minimax-h3-character-swap` };
 export const EXPLORE_SWAP = {
   key: 'h3-char-swap', eyebrow: 'Chapter 1 · Swap a character', title: ['Same dance.', 'Two new casts.'],
   line: 'One clip went in. One model swapped her, the other swapped them both. Not a step out of time.',
-  /** the original: the clip both runs started from (H3's copy of it; Omni Edit's is the same take) */ original: { label: 'The original', url: P('h3-char-swap-in.mp4'), poster: P('h3-char-swap-in.webp') },
+  /** the original: the clip both runs started from (H3’s copy of it; Omni Edit’s is the same take), left of each slider’s line */ original: { label: 'Original', url: P('h3-char-swap-in.mp4'), poster: P('h3-char-swap-in.webp') },
   runs: [
     { key: 'h3-char-swap', who: 'She changes', photos: 'One photo', cta: SWAP_H3_CTA },
-    { key: 'kling-dance-swap', who: 'They both change', photos: 'Two photos', cta: { label: 'Swap the whole cast', href: `${videoWorkflowHref('motion-control')}&model=kling-v3-omni-edit` } },
+    { key: 'kling-dance-swap', who: 'They both change', photos: 'Two photos', originalPoster: P('h3-char-swap-in-5s.webp'), cta: { label: 'Swap the whole cast', href: `${videoWorkflowHref('motion-control')}&model=kling-v3-omni-edit` } },
   ] as SwapRun[],
   cta: SWAP_H3_CTA,
 };
@@ -318,15 +320,46 @@ export const EXPLORE_BOARD = {
   cta: { label: 'Open Canvas', href: '/canvas' },
 };
 
-// ---------------------------------------------------------------- Image · made here
-export const EXPLORE_IMAGES = {
-  eyebrow: 'Image · made here', title: 'Stills with a point of view', line: 'Fashion, street, editorial and character sheets, all made right here. Open one to make it again with the same settings.',
-  /** the three covers (showcase ids, shared/showcase.ts): a split shows its before / after */
-  /** the middle one is a character sheet from "One character. Every angle." (a Comfy Router run: its model and real price show); `pos` = object-position */
-  covers: [{ key: 'sc-032054ec', label: 'Create Image' }, { key: 'sheet-kaito', label: 'Character Sheet', pos: '0% 0%' }, { key: 'sc-0f1a0117', label: 'Relight' }] as { key: string; label: string; pos?: string }[],
-  rail: ['d3c80885', '016bdc27', 'baf606ef', '98ba27ae', 'fcfe713a', '334bb02e', 'f7699cd4', '310cde89', 'd21b44c6', 'b718e875', '5846d360', '7205edb3', '396554e1', '973c88f8'],
-  more: { label: 'All image workflows', href: '/workflows' },
+// ---------------------------------------------------------------- One idea. Every look.
+/** Twelve free FLUX.2 [klein] 4B runs on this computer: one prompt (a red coat on a city street), a different look added each time.
+ *  Each look ships as a 1024 px frame (`look-<id>.webp`) and a 480 px tile (`look-<id>-480.webp`), metadata stripped. */
+const KLEIN_LOOKS: [id: string, name: string][] = [['golden-hour', 'Golden hour'], ['film-noir', 'Film noir'], ['neon-rain', 'Neon rain'], ['teal-orange', 'Teal & orange'],
+  ['35mm', '35mm'], ['documentary', 'Documentary'], ['studio-white', 'Studio white'], ['spotlight', 'Spotlight'], ['pastel', 'Pastel'], ['anime', 'Anime'], ['watercolour', 'Watercolour'], ['clay', 'Clay']];
+/** Looks remade with Qwen Image 2.1 (same prompt and seed; sharper faces); the rest are FLUX.2 [klein] 4B. */
+const QWEN_LOOKS = new Set(['golden-hour', 'neon-rain', 'teal-orange', '35mm', 'studio-white', 'spotlight', 'pastel']);
+export const EXPLORE_LOOKS = {
+  eyebrow: 'Image · one prompt, twelve looks', title: ['One idea.', 'Every look.'],
+  line: 'Write it once. Then change the light, the film, the whole art style. Same scene, same coat, twelve different worlds.',
+  model: 'FLUX.2 [klein] 4B', place: 'Free on your computer', /** the look shown first (Anime) */ start: 9,
+  looks: KLEIN_LOOKS.map(([id, name]) => ({ id, name, url: P(`look-${id}.webp`), thumb: P(`look-${id}-480.webp`), model: QWEN_LOOKS.has(id) ? 'Qwen Image 2.1' : 'FLUX.2 [klein] 4B' })),
+  cta: { label: 'Try your own look', href: '/tools/create-image?model=flux-2-klein-4b' },
 };
+
+// ---------------------------------------------------------------- Now it's your turn.
+/** One tile on the closing wall: a picture made in this app and the model that made it. */
+export interface WallTile { src: string; model: string; star?: boolean }
+const wallOf = (key: string): WallTile | null => { const f = featuredByKey(key); return f?.out.poster ? { src: f.out.poster, model: f.model } : null; };
+const look = (id: string): WallTile => ({ src: P(`look-${id}-480.webp`), model: EXPLORE_LOOKS.looks.find((l) => l.id === id)?.model ?? EXPLORE_LOOKS.model });
+const GPT = 'GPT Image 2.5 Flare', ZIT = 'Z-Image-Turbo', KLEIN = 'FLUX.2 [klein] 4B';
+export const EXPLORE_YOUR_TURN = {
+  eyebrow: 'Everything above was made in this app', title: ['Now it’s', 'your turn.'],
+  line: 'Imagination is all you need. Describe it and make it real: a picture, a film, a song, a world.',
+  placeholder: 'A lighthouse inside a glass jar, in a thunderstorm',
+  make: 'Make it', note: 'Free on your own computer · open source · yours to keep',
+  /** the other places to start */ tabs: [{ label: 'Image', href: '/tools/create-image' }, { label: 'Video', href: VIDEO_PAGE }, { label: 'Audio', href: '/tools/audio' },
+    { label: '3D', href: '/tools/3d' }, { label: 'Canvas', href: '/canvas' }],
+  /** the drifting wall behind it: six columns, top to bottom. The tortoise village sits in the fifth column (right of the words, in view first), spotlit. */
+  wall: ([
+    [wallOf('ltx-pro-painter'), { src: P('wall-ramen-stall.webp'), model: 'Qwen Image 2.1' }, look('neon-rain'), wallOf('sheet-kaito'), { src: P('wall-cherry-dune.webp'), model: ZIT }],
+    [{ src: P('wall-lighthouse-jar.webp'), model: ZIT }, wallOf('h3-koi-take'), { src: P('wall-storm-whale.webp'), model: GPT }, look('anime'), wallOf('ltx-fox-meadow')],
+    [{ src: P('wall-jellyfish-bamboo.webp'), model: GPT }, wallOf('sheet-mossbun'), { src: P('wall-salt-flat.webp'), model: KLEIN }, wallOf('ltx-rain-city'), wallOf('h3-glass-whale')],
+    [{ src: P('wall-orange-jacket.webp'), model: KLEIN }, { src: P('wall-knit-farm.webp'), model: ZIT }, look('clay'), { src: P('wall-rooftop-whale.webp'), model: GPT }, { src: P('x3d-city.webp'), model: '3D city · KayKit & Kenney' }],
+    [{ src: P('wall-glowing-city.webp'), model: GPT }, wallOf('kling-dance-swap'), { src: P('wall-tortoise-village.webp'), model: GPT, star: true }, { src: P('wall-aurora-dome.webp'), model: ZIT }, wallOf('mossbun-golden-hour')],
+    [{ src: P('wall-christmas-village.webp'), model: GPT }, wallOf('ltx-pro-whale-glide'), { src: P('wall-harbour-storm.webp'), model: GPT }, wallOf('sc-98ba27ae'), wallOf('ltx-lighthouse')],
+  ] as (WallTile | null)[][]).map((col) => col.filter((t): t is WallTile => !!t)),
+};
+/** Create Image with this prompt in the bar (shared/usePrefill reads ?prompt=); nothing runs until Generate. */
+export const yourTurnHref = (prompt: string): string => `/tools/create-image?${new URLSearchParams({ prompt: prompt.trim() || EXPLORE_YOUR_TURN.placeholder })}`;
 
 // ---------------------------------------------------------------- Audio: SyteSim dances
 export interface Mood { id: string; label: string; /** the words that pick the dancer's style (beanStyle.ts detectStyle) */ words: string; bpm: number; /** the demo beat's feel */ feel: 'boom' | 'four' | 'rock' | 'lofi' | 'ballad' }
@@ -443,76 +476,38 @@ export const EXPLORE_SCRIPT = {
   credit: 'One prompt, written as a timed shot list with the dialogue in Korean. MiniMax H3 (Hailuo) text to video on Comfy Cloud: 768p, 15 s, voices and sound made with the picture. English subtitles added here.',
 };
 
-// ---------------------------------------------------------------- Made for 3D (what 3D is for, each use tied to a real chain in the app)
-/** What a use shows live (one WebGL view at a time, explore/explore3dLive.tsx): Mossbun (the shared Model3D), the open city (the Direct a Shot
- *  engine, read-only), the product bottle (our own small three.js scene from the previz kits), or Mossbun as clay (shape only). */
-export type X3dLive = 'mossbun' | 'city' | 'bottle' | 'clay';
-/** One step of a chain: what you do, where (the tool), the real model, what it costs ("Free" when it runs in your browser). */
-export interface X3dStep { step: string; tool: string; model?: string; price: string }
-export interface X3dUse {
-  id: 'characters' | 'world' | 'product' | 'merch'; name: string; line: string; chain: X3dStep[]; live: X3dLive;
-  /** the poster (shown first, while loading, off screen, with reduced motion, and when 3D can't run) */ poster: string;
-  /** what the media is, in plain words (honest: the bottle is a kit model, not a customer's photo) */ shown: string;
-  cta: { label: string; href: string; download?: boolean }; more?: { label: string; href: string };
-  /** not in the app yet: said plainly, never a button */ soon?: string;
-  /** a small extra invitation under the chain: a line and its link (the city: your own model as the actor, Mossbun placed for you) */ try?: { line: string; label: string; href: string };
-}
+// ---------------------------------------------------------------- Your character, brought to life. (Mossbun: sheet → 3D → city → film)
 const TRIPO = { model: MOSSBUN_3D_RUN.model, place: MOSSBUN_3D_RUN.place, usd: MOSSBUN_3D_RUN.costUsd } as const;
 const IMAGE_TO_3D = `${threeDRoute('image-to-3d')}&model=cloud-tripo-31`;
-/** One step of the hero film's chain: its name, what it shows, and the runs that did it (job ids; shared/featured.ts runByJob gives each one's real
- *  model, place and price, so nothing here is typed twice). `thumb2`: a second frame the step swaps to on hover (the city: mockup → painted). */
-export interface X3dHeroStep { step: string; what: string; jobs: string[]; jobRoles?: Record<string, { role: string; tool?: string }>; thumb: string; thumb2?: string; alt: string }
+/** One step card under the film: its name, its picture and the run that made it (job id; shared/featured.ts runByJob gives the real model and
+ *  price, so nothing is typed twice). `tools`: the step's other runs, named in a small "+N tools" tip with their role. `before`: a small inset
+ *  (the city: the grey Direct a Shot capture under the painted frame). `spin`: the card turns the GLB slowly while on screen. */
+export interface X3dStep { step: string; job: string; thumb: string; alt: string; tools?: { job: string; role: string; tool?: string }[]; before?: string; spin?: string; caption?: string }
 const E3 = (f: string) => `/examples/showcase-3d/${f}`;
-/** The 3D section (2026-10-27): the hero film, then the uses (the kit shelf under them was taken off the page, user 2026-10-28). Free media only:
- *  Mossbun's GLB (Tripo 3.1, job 092abb03), the previz kits, the Mockup to film clips, and posters drawn by the app from its own 3D views. */
+/** The 3D section (rebuilt 2026-10-31): one headline, the finished film (featured 'mossbun-golden-hour'), then the four steps behind it and one
+ *  bottom row (the whole chain's price, Recreate, Make your own, Credits). Free media only: Mossbun's GLB (Tripo 3.1, job 092abb03) and stills. */
 export const EXPLORE_3D = {
-  eyebrow: 'Made for 3D', title: 'Make it 3D. Then put it to work.',
-  line: 'One picture becomes a 3D model, a staged shot, then a film. Watch the recorded demo and follow the making-of cards below.',
-  /** the hero film (2026-10-27): Mossbun, from one drawing to a film; the featured entry carries the film and every run behind it */
-  hero: {
-    key: 'mossbun-golden-hour', title: 'From one drawing to a film.',
-    line: 'Mossbun started as one character sheet. It became a 3D model, walked into the open city, and ended up on film at golden hour.',
-    steps: [
-      { step: 'Picture', what: 'A character sheet', jobs: ['9564386e'], jobRoles: { '9564386e': { role: 'Character design' } }, thumb: P('char-mossbun-480.webp'), alt: 'Mossbun’s character sheet: four views and five faces' },
-      { step: '3D model', what: 'Image to 3D', jobs: ['092abb03'], jobRoles: { '092abb03': { role: 'Model creation' } }, thumb: P('x3d-mossbun.webp'), alt: 'Mossbun as a 3D model' },
-      { step: 'City', what: 'Low hero angle → golden hour', jobs: ['13aca5cc', 'ea410812', 'b688b9c3'], jobRoles: { '13aca5cc': { role: 'Browser capture', tool: 'Direct a Shot' }, 'ea410812': { role: 'First-frame paint' }, 'b688b9c3': { role: 'Golden-hour edit' } }, thumb: E3('mossbun-city-mockup-480.webp'), thumb2: E3('mossbun-city-painted-480.webp'),
-        alt: 'Mossbun in the open city mockup; on hover, the same frame painted at golden hour' },
-      { step: 'Film', what: 'Image to video · 6 s · 1080p · sound', jobs: ['a11a0c78'], jobRoles: { 'a11a0c78': { role: 'Film animation' } }, thumb: E3('mossbun-golden-hour-480.webp'), alt: 'Mossbun holding up its lantern, a frame from the film' },
-    ] as X3dHeroStep[],
-    honest: 'This film starts from the painted city frame (image to video), so the camera move is its own. To follow your 3D camera exactly, use Layout to Render.',
-    honestLink: { label: 'See Mockup to film', href: '#xp-film' },
-    make: { label: 'Make your own', href: IMAGE_TO_3D }, recreate: 'Recreate this shot',
-  },
-  uses: [
-    { id: 'characters', name: 'Characters for games and films', live: 'mossbun', poster: P('x3d-mossbun.webp'), shown: 'Mossbun, made here with Tripo 3.1. Drag to turn him.',
-      line: 'Start from one picture and get a textured model you can turn, check from every side and drop into a game or a scene.',
-      chain: [{ step: 'A picture', tool: 'Image', price: 'Any image' }, { step: 'Image to 3D', tool: '3D', model: TRIPO.model, price: `$${TRIPO.usd.toFixed(2)} · ${TRIPO.place}` }, { step: 'Spin it', tool: '3D', price: 'Free' }],
-      cta: { label: 'Make a 3D model', href: IMAGE_TO_3D } },
-    { id: 'world', name: 'A 3D world to film in', live: 'city', poster: P('x3d-city.webp'), shown: 'Mossbun in the open city, live: he waits for the green, hops across, dances in the plaza and jumps when a car shoots past.',
-      line: 'A whole city to film in, with traffic, lights and people on the pavements. Walk it, drive it, fly the camera, then film it for real.',
-      chain: [{ step: 'Stage the shot', tool: 'Direct a Shot', price: 'Free' }, { step: 'Mockup', tool: 'Direct a Shot', price: 'Free' }, { step: 'Render', tool: 'Layout to Render', model: 'LTX-2.5 22B', price: '$0.28 · Comfy Cloud' }],
-      cta: { label: 'Open the city', href: `${threeDRoute('plan-a-shot')}&preset=open-city` }, more: { label: 'Recreate the film', href: featuredRecreateHref('ltx-mockup-film') ?? `${threeDRoute('plan-a-shot')}&preset=open-city` },
-      try: { line: 'Put your own 3D model in the city, like Mossbun.', label: 'Try it', href: `${threeDRoute('plan-a-shot')}&preset=open-city&useModel=mossbun` } },
-    { id: 'product', name: 'Product shots and ads', live: 'bottle', poster: P('x3d-bottle.webp'), shown: 'The app’s own product bottle (a free kit model) on a turntable.',
-      line: 'Make your product 3D, then record a turntable: a free MP4 spin made in your browser, ready to send to Video as a start frame.',
-      chain: [{ step: 'Product photo', tool: 'Image', price: 'Any image' }, { step: 'Image to 3D', tool: '3D', model: TRIPO.model, price: 'from $0.30 · Comfy Cloud' }, { step: 'Turntable video', tool: '3D', price: 'Free' }],
-      cta: { label: 'Record a turntable', href: threeDRoute('turntable') }, more: { label: 'Or stage it: Product hero', href: `${threeDRoute('plan-a-shot')}&preset=product-hero` } },
-    { id: 'merch', name: 'Toys, merch and 3D prints', live: 'clay', poster: P('x3d-clay.webp'), shown: 'Mossbun in clay: the bare shape you would print.',
-      line: 'Turn a character or a mascot into a model and download the GLB. Open it in Blender or a game engine; for a 3D printer, convert it to STL first.',
-      chain: [{ step: 'Your character', tool: 'Image', price: 'Any image' }, { step: 'Image to 3D', tool: '3D', model: TRIPO.model, price: `$${TRIPO.usd.toFixed(2)} · ${TRIPO.place}` }, { step: 'Download the GLB', tool: '3D', price: 'Free' }],
-      cta: { label: 'Make your own', href: IMAGE_TO_3D }, more: { label: 'Download Mossbun (GLB, 3.3 MB)', href: P('char-mossbun-3d.glb') } },
-  ] as X3dUse[],
-  /** the section's credit line: the CC0 kits the open city is built from, and Mossbun */
-  credit: 'Kits: KayKit by Kay Lousberg and Kenney, CC0 (free to use). Mossbun: Tripo 3.1 on Comfy Cloud, made here.',
+  key: 'mossbun-golden-hour', title: ['Your character,', 'brought to life.'],
+  line: 'Draw a friend. Watch it hop into 3D, explore a city and star in its very own film.',
+  steps: [
+    { step: 'Character sheet', job: '9564386e', thumb: P('char-mossbun-480.webp'), alt: 'Mossbun’s character sheet: four views and five faces' },
+    { step: '3D model', job: '092abb03', thumb: P('x3d-mossbun.webp'), spin: P('char-mossbun-3d.glb'), alt: 'Mossbun as a 3D model, turning slowly' },
+    /* the film starts from this frame: the golden-hour edit (job b688b9c3), featured 'mossbun-golden-hour' `before` (its 480 px poster) */
+    { step: 'City frame', job: 'b688b9c3', thumb: E3('mossbun-city-painted-480.webp'), before: E3('mossbun-city-mockup-480.webp'), alt: 'Mossbun on a palm-lined avenue at golden hour: the frame the film starts from',
+      tools: [{ job: '13aca5cc', role: 'staged in the 3D city', tool: 'Direct a Shot' }, { job: 'ea410812', role: 'first-frame paint' }] },
+    { step: 'Film · 6 s with sound', job: 'a11a0c78', thumb: E3('mossbun-golden-hour-480.webp'), alt: 'Mossbun holding up a lantern, a frame from the film', caption: '…and we gave her a lantern.' },
+  ] as X3dStep[],
+  make: { label: 'Make your own', href: IMAGE_TO_3D }, recreate: 'Recreate this shot',
+  /** the credits (the Credits tip on the bottom row): the CC0 kits the city is built from, and Mossbun */
+  credit: 'City kits: KayKit by Kay Lousberg and Kenney, CC0 (free to use). Mossbun: made in this app with Tripo 3.1 on Comfy Cloud.',
   mossbun: { url: P('char-mossbun-3d.glb'), ...TRIPO, faces: 127_504 },
-  /** the Mockup to film pair (shared/featured.ts), shown small beside the city */ filmKey: 'ltx-mockup-film',
 };
 
 /** Every link on the showcase sections (the tests check each one opens a real page). */
 export const EXPLORE_SHOWCASE_LINKS = (): string[] => [
   featuredRecreateHref('trend-mic') ?? '', featuredRecreateHref('trend-dance') ?? '',
-  featuredRecreateHref(EXPLORE_HERO.key) ?? '', featuredRecreateHref(EXPLORE_STILL.take.key) ?? '', featuredRecreateHref(EXPLORE_KOI.key) ?? '', EXPLORE_KOI.cta.href, featuredRecreateHref(EXPLORE_SEEDANCE.strip.key) ?? '', EXPLORE_SEEDANCE.make.href, EXPLORE_FILMS.editor.href, EXPLORE_FILMS.make.href, EXPLORE_FILMS.yours.href, EXPLORE_SWAP.cta.href, featuredRecreateHref(EXPLORE_SWAP.key) ?? '', EXPLORE_LAYERS.cta.href, featuredRecreateHref(EXPLORE_LAYERS.key) ?? '', EXPLORE_BOARD.cta.href, EXPLORE_IMAGES.more.href,
-  ...EXPLORE_SHEETS.cast.map((c) => featuredRecreateHref(c.key) ?? ''), featuredRecreateHref(EXPLORE_FILM.key) ?? '', EXPLORE_FILM.cta.href, featuredRecreateHref(EXPLORE_SCRIPT.key) ?? '', ...EXPLORE_IMAGES.covers.map((c) => featuredRecreateHref(c.key) ?? ''),
-  ...EXPLORE_3D.uses.flatMap((u) => [u.cta.href, u.more?.href ?? '', u.try?.href ?? '']).filter((h) => h && !/\.glb$/.test(h)), EXPLORE_3D.hero.make.href, featuredRecreateHref(EXPLORE_3D.hero.key) ?? '',
+  featuredRecreateHref(EXPLORE_HERO.key) ?? '', featuredRecreateHref(EXPLORE_STILL.take.key) ?? '', featuredRecreateHref(EXPLORE_KOI.key) ?? '', EXPLORE_KOI.cta.href, featuredRecreateHref(EXPLORE_SEEDANCE.strip.key) ?? '', EXPLORE_SEEDANCE.make.href, EXPLORE_FILMS.editor.href, EXPLORE_FILMS.make.href, EXPLORE_FILMS.yours.href, EXPLORE_SWAP.cta.href, featuredRecreateHref(EXPLORE_SWAP.key) ?? '', EXPLORE_LAYERS.cta.href, featuredRecreateHref(EXPLORE_LAYERS.key) ?? '', EXPLORE_BOARD.cta.href, EXPLORE_LOOKS.cta.href, ...EXPLORE_YOUR_TURN.tabs.map((t) => t.href), yourTurnHref(''),
+  ...EXPLORE_SHEETS.cast.map((c) => featuredRecreateHref(c.key) ?? ''), featuredRecreateHref(EXPLORE_FILM.key) ?? '', EXPLORE_FILM.cta.href, featuredRecreateHref(EXPLORE_SCRIPT.key) ?? '',
+  EXPLORE_3D.make.href, featuredRecreateHref(EXPLORE_3D.key) ?? '',
   EXPLORE_VFX.cta.href, ...EXPLORE_VFX.effects.map((v) => vfxTile(v)?.href ?? ''), featuredRecreateHref(EXPLORE_VFX.layout.key) ?? '',
 ];

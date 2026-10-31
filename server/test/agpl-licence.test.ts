@@ -43,7 +43,8 @@ const app = read('web/src/App.tsx');
 const footer = /<footer className="footer">[\s\S]*?<\/footer>/.exec(app)?.[0] ?? '';
 assert.match(footer, /<a [^>]*href=\{REPO_URL\}[^>]*data-testid="footer-source"[^>]*>Source code<\/a>/, 'footer Source code link');
 assert.match(app, /import \{ REPO_URL \} from '\.\/shared\/brand'/);
-assert.match(footer, /AGPL-3\.0/); assert.doesNotMatch(footer, /\bMIT\b/);
+assert.match(footer, /\{FOOT_NAME\}/); const footLinks = read('web/src/shared/footerLinks.ts'); // the line both footers share
+assert.match(/FOOT_NAME = '[^']*'/.exec(footLinks)?.[0] ?? '', /AGPL-3\.0/); assert.doesNotMatch(footer + footLinks, /\bMIT\b/);
 ok('global footer: AGPL-3.0 and a Source code link to REPO_URL');
 
 // 5. Our own tools and workflows are credited with the AGPL id

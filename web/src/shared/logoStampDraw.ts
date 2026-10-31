@@ -5,11 +5,16 @@
  *  - drawEndCard: the video end card (the logo and text centred on the brand's background colour).
  *  - makeStamped: draws the overlay (and the end card) at full size and asks the server to composite it (POST /api/jobs/:id/stamp). Free.
  *    The original result is never touched; the copy is cached here per result + settings + brand.
+ * The logo set (2026-10-31): the brand's light logo goes on dark pictures and its dark logo on bright ones (pickLogo, by the brightness right
+ * behind the logo); a missing one uses main. The text uses the brand's own heading font file when it has one (brandFonts.ensureKitFonts).
  */
-import { fontStack, luminance, normHex, type BrandKit } from '../../../server/src/shared/brandKit';
+import { fontStack, logoFor, luminance, normHex, type BrandKit } from '../../../server/src/shared/brandKit';
+import { ensureKitFonts } from './brandFonts';
 import { endCardLayout, plateFor, stampLayout, type Box, type StampLayout, type StampSettings } from '../../../server/src/shared/logoStamp';
 
-export interface StampArt { kit: BrandKit; logo: HTMLImageElement | null; logoSize: { w: number; h: number } | null; logoLum: number | null; font: string }
+export interface LogoArt { img: HTMLImageElement; size: { w: number; h: number }; lum: number | null }
+/** logo / logoSize / logoLum: the main logo (it sizes the layout); light and dark: the variants for dark and bright backgrounds (null = use main). */
+export interface StampArt { kit: BrandKit; logo: HTMLImageElement | null; logoSize: { w: number; h: number } | null; logoLum: number | null; light: LogoArt | null; dark: LogoArt | null; font: string }
 const lumOf = (r: number, g: number, b: number) => (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
 /** Average brightness (0..1) of a picture's opaque pixels, optionally only inside a part of it ([x0, y0, x1, y1] fractions). */
 export function brightness(src: CanvasImageSource, part?: [number, number, number, number]): number | null {
@@ -25,14 +30,23 @@ export const cssFont = (name: string) => fontStack(name || 'Manrope').map((f) =>
 const artCache = new Map<string, Promise<StampArt>>();
 /** The brand's logo (loaded, with its own size and brightness) and the heading font (asked for, so the canvas uses it when the app has it). */
 export function loadStampArt(kit: BrandKit): Promise<StampArt> {
-  const key = `${kit.id}|${kit.updatedAt}|${kit.logo?.url ?? ''}|${kit.fonts.heading}`; const hit = artCache.get(key); if (hit) return hit;
+  const key = `${kit.id}|${kit.updatedAt}|${JSON.stringify(kit.logos ?? kit.logo)}|${kit.fonts.heading}`; const hit = artCache.get(key); if (hit) return hit;
   const p = (async () => {
-    const font = cssFont(kit.fonts.heading); await document.fonts?.load(`700 32px ${font}`).catch(() => undefined);
-    let logo: HTMLImageElement | null = null; if (kit.logo?.url) logo = await loadImg(kit.logo.url).catch(() => null);
-    const logoSize = logo ? { w: logo.naturalWidth || 512, h: logo.naturalHeight || 512 } : null;
-    return { kit, logo, logoSize, logoLum: logo ? brightness(logo) : null, font };
+    const font = cssFont(kit.fonts.heading); await ensureKitFonts(kit); await document.fonts?.load(`700 32px ${font}`).catch(() => undefined);
+    const art = async (url: string | undefined): Promise<LogoArt | null> => { const img = url ? await loadImg(url).catch(() => null) : null; return img ? { img, size: { w: img.naturalWidth || 512, h: img.naturalHeight || 512 }, lum: brightness(img) } : null; };
+    const main = await art(logoFor(kit, 'main')?.url); const own = (s: 'light' | 'dark') => (kit.logos?.[s]?.url ? art(kit.logos[s]!.url) : Promise.resolve(null));
+    return { kit, logo: main?.img ?? null, logoSize: main?.size ?? null, logoLum: main?.lum ?? null, light: await own('light'), dark: await own('dark'), font };
   })();
   artCache.set(key, p); return p;
+}
+/** The logo to draw over a background this bright (0..1; null = unknown, main): light on dark, dark on bright, else main. */
+export function pickLogo(art: StampArt, behind: number | null): LogoArt | null {
+  const main = art.logo && art.logoSize ? { img: art.logo, size: art.logoSize, lum: art.logoLum } : null;
+  return behind == null ? main : (behind < 0.5 ? art.light : art.dark) ?? main;
+}
+/** A box shrunk to a picture's own shape, centred (a light or dark logo whose shape differs from main's). */
+export function containIn(b: Box, size: { w: number; h: number }): Box {
+  const k = Math.min(b.w / size.w, b.h / size.h); const w = size.w * k, h = size.h * k; return { x: b.x + (b.w - w) / 2, y: b.y + (b.h - h) / 2, w, h };
 }
 /** The logo in its box, on a soft plate when one is needed (else a faint shadow); `unit` (the logo's height) sizes the shadows.
  *  Shared by the stamp and the Ad layout card, so a logo looks the same everywhere. */
@@ -52,10 +66,10 @@ export function drawStamp(g: CanvasRenderingContext2D, W: number, H: number, art
   const text = stampText(art.kit, s); const measure = measurer(g, art.font, text);
   const l0 = stampLayout(W, H, s, art.logoSize, measure, false); const b = l0.box;
   const areaLum = picture ? brightness(picture, [Math.max(0, b.x / W), Math.max(0, b.y / H), Math.min(1, (b.x + b.w) / W), Math.min(1, (b.y + b.h) / H)]) : null;
-  const plate = art.logo ? plateFor(s.backing, art.logoLum, areaLum) : null;
+  const v = pickLogo(art, areaLum); const plate = v ? plateFor(s.backing, v.lum, areaLum) : null;
   const l = plate ? stampLayout(W, H, s, art.logoSize, measure, true) : l0;
   g.save(); g.globalAlpha = s.opacity;
-  if (l.logo && art.logo) drawLogo(g, art.logo, l.logo, l.plate && plate ? { ...l.plate, kind: plate } : null, l.logoH);
+  if (l.logo && v) drawLogo(g, v.img, containIn(l.logo, v.size), l.plate && plate ? { ...l.plate, kind: plate } : null, l.logoH);
   if (l.text) {
     const under = plate === 'light' ? 0.9 : plate === 'dark' ? 0.1 : areaLum ?? 0.3; const dark = under > 0.6;
     g.font = `700 ${l.fontPx}px ${art.font}`; g.textBaseline = 'top'; g.fillStyle = dark ? '#14151A' : '#FFFFFF';
@@ -72,7 +86,7 @@ export function drawEndCard(g: CanvasRenderingContext2D, W: number, H: number, a
   const bg = endColorOf(art.kit); const text = s.textOn ? (s.text.trim() || art.kit.name) : art.kit.name;
   g.fillStyle = bg; g.fillRect(0, 0, W, H);
   const l = endCardLayout(W, H, art.logoSize, measurer(g, art.font, text));
-  if (l.logo && art.logo) g.drawImage(art.logo, l.logo.x, l.logo.y, l.logo.w, l.logo.h);
+  const v = pickLogo(art, luminance(bg)); if (l.logo && v) { const b = containIn(l.logo, v.size); g.drawImage(v.img, b.x, b.y, b.w, b.h); }
   if (l.text) { g.font = `700 ${l.fontPx}px ${art.font}`; g.textBaseline = 'top'; g.fillStyle = luminance(bg) > 0.4 ? '#14151A' : '#F5F5F5'; g.fillText(text, l.text.x, l.text.y + l.fontPx * 0.1); }
 }
 const toPng = (c: HTMLCanvasElement) => new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('Couldn’t draw the logo.'))), 'image/png'));

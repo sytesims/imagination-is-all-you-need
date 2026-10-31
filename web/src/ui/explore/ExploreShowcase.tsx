@@ -9,8 +9,9 @@
  *  - XpKoi: "Make your own cartoon." (letterbox presentation): a MiniMax H3 take extended by H3 Extend (Comfy Cloud) into one 20 s take, shown
  *    wide (shared ShowcaseFilm, letterbox variant) between bars that carry the timecode, the models and a progress line notched at the join; then
  *    "[frame] 10 s + [frame] 10 s = one 20 s take", the two runs' prices, Recreate (Extend with the first 10 s and the prompt) and Start your scene (Video with MiniMax H3).
- *  - XpSwap: chapter 1, "Same dance. Two new casts." Two swaps of one dance side by side, in step (shared useSyncClips): H3 Character Swap (her, one
- *    photo) and Kling 3.0 Omni Edit (both, two photos), each with its model, price and Recreate; the original small between them; both upscaled.
+ *  - XpSwap: chapter 1, "Same dance. Two new casts." Two swaps of one dance side by side, each a before / after slider over the original (shared
+ *    CompareFrame), all in step (shared useSyncClips): H3 Character Swap (her, one photo) and Kling 3.0 Omni Edit (both, two photos), each with its
+ *    model, price and Recreate; both upscaled.
  *  - XpLayers: chapter 2, "One picture. Every layer." An Image to layers run (Seedream 5.0 Flash, Comfy Router): copy and steps (shared ChapterText),
  *    the run's animation on a loop (shared HoverClip, on screen only; reduced motion: its poster) with the shared SoundToggle (the sound director;
  *    turning it on from its button restarts the clip so the sound lines up with each layer), then the input → its 13 layers (shared
@@ -18,8 +19,9 @@
  *  - XpSheets: "One character. Every angle." Four GPT Image 2.5 Flare character sheets (Comfy Router, real prices): the whole sheet, never cropped,
  *    in the koi's letterbox frame; a highlight steps across the sheet's real panels (Whole sheet first), a cast switch, Recreate (Create Image
  *    with the prompt and model) and Pause. Mossbun also spins in 3D (Tripo 3.1, the shared Model3D: front first, slow auto-rotate, drag to orbit).
- *  - XpImages: the editorial Image section (Workflows page family: big covers with before / after, then a rail), each with Recreate; a Comfy
- *    run among the covers (the middle character sheet) shows its model and price instead of Free.
+ *  - XpLooks: "One idea. Every look." One FLUX.2 [klein] 4B prompt in twelve looks: a big 16:9 frame and twelve tiles that swap it (hover, focus, tap).
+ *  - XpYourTurn: "Now it's your turn." The page's last section, full width: a prompt box ("Make it" opens Create Image with the words) over a
+ *    dimmed, tilted, drifting wall of things made here (still under reduced motion), the other tabs and the wall's models.
  *  - XpBoard: the user-selected Canvas product-shots recording, with on-screen looping playback.
  *  - XpDance: SyteSim, the Audio tab's dancer (shared AudioCover / AudioVizLayer / useAudioViz), dancing to a beat made in the browser.
  *  - XpFilm: "Mockup to film" (replaces the Worlds tiles): the shared HeroReel (reveal with a before clip, holdSweep): the mockup, the line sweeps
@@ -37,15 +39,15 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from '../../platform/router';
+import { goToWorkflow } from '../../shared/goToWorkflow';
 import { ShowcaseFilm } from '../../shared/ShowcaseFilm';
 import { HeroReel, type ReelPhase } from '../../shared/HeroReel';
 import { Model3D } from '../../shared/model3d';
 import { SoundToggle } from '../../shared/SoundToggle';
 import { useSyncClips } from '../../shared/SyncClips';
+import { CompareFrame } from '../../shared/CompareSlider';
 import { HoverClip, prefersReducedMotion } from '../../shared/HoverClip';
 import { useDirectedSound } from '../../shared/soundDirector';
-import { MediaRail } from '../../shared/MediaRail';
-import SplitPreview from '../../shared/SplitPreview';
 import { LayerTile } from '../../shared/LayerStack';
 import { Segmented } from '../../shared/BarPop';
 import { AudioCover, AudioVizLayer, useAudioViz } from '../../shared/AudioViz';
@@ -53,7 +55,7 @@ import { Waveform } from '../../shared/Waveform';
 import { primeAudio } from '../../shared/audioGraph';
 import { detectStyle } from '../../shared/beanStyle';
 import { featuredByKey, featuredRecreateHref, placeOfRoute, FEATURED_BIG_POSTER, type FeaturedItem } from '../../../../server/src/shared/featured';
-import { EXPLORE_HERO, EXPLORE_STILL, EXPLORE_KOI, EXPLORE_SWAP, EXPLORE_LAYERS, EXPLORE_BOARD, EXPLORE_IMAGES, EXPLORE_MOODS, EXPLORE_DANCE, EXPLORE_SHEETS, EXPLORE_FILM, EXPLORE_VFX, vfxTile, EXPLORE_HEADLINE, type VfxTile, type ReelShot } from '../../../../server/src/shared/exploreShowcase';
+import { EXPLORE_HERO, EXPLORE_STILL, EXPLORE_KOI, EXPLORE_SWAP, EXPLORE_LAYERS, EXPLORE_BOARD, EXPLORE_LOOKS, EXPLORE_YOUR_TURN, yourTurnHref, EXPLORE_MOODS, EXPLORE_DANCE, EXPLORE_SHEETS, EXPLORE_FILM, EXPLORE_VFX, vfxTile, EXPLORE_HEADLINE, type VfxTile, type ReelShot } from '../../../../server/src/shared/exploreShowcase';
 import { CloseIcon, SoundIcon } from '../Icons';
 import { renderBeat } from './beatSynth';
 import '../../shared/audioCard.css';
@@ -205,28 +207,26 @@ const SwapUpscaled = ({ runs }: { runs: SwapRunView[] }) => { const h = runs.map
 /** the photos a run started from, as small round faces */
 const SwapFaces = ({ run }: { run: SwapRunView }) => <span className="xsd-faces" role="img" aria-label={`${run.r.photos}: who they become`}>{run.photos.map((u) => <img key={u} src={u} alt="" loading="lazy" decoding="async" draggable={false} />)}</span>;
 
-/** Chapter 1, "Same dance. Two new casts." (the dance-off): two swaps of one dance, H3 Character Swap (her) and Kling 3.0 Omni Edit (both of them),
- *  side by side in step (shared useSyncClips: the original leads and carries the sound, shared SoundToggle), cropped to the dancers, the original
- *  small between them; a card on each with the photos, the model, place and price, and Recreate. Reduced motion: the three posters. */
+/** Chapter 1, "Same dance. Two new casts." (layout A, 2026-10-31): two big cards side by side, each a before / after slider (shared CompareFrame):
+ *  the original left of the line, that card's swap right of it (H3 Character Swap: her; Kling 3.0 Omni Edit: both of them). All four clips (the
+ *  original under each slider and the two swaps) play in step (shared useSyncClips: the first original leads and carries the sound, one shared
+ *  SoundToggle under the headline). Each card keeps its bar: the photos, the model, place and price, and Recreate. Reduced motion: the posters. */
 export function XpSwap() {
-  const S = EXPLORE_SWAP; const runs = swapRuns(); const g = useSyncClips(3); if (runs.length < 2) return null;
+  const S = EXPLORE_SWAP; const runs = swapRuns(); const g = useSyncClips(4); if (runs.length < 2) return null;
   const media = (i: number, url: string, poster: string) => g.still ? <img className="xsdc-media" src={poster} alt="" draggable={false} /> : <video {...g.clip(i)} className="xsdc-media" src={url} poster={poster} />;
   return <section className="xv-sec xsdc" id="xp-swap" data-testid="xp-swap" aria-labelledby="xp-h-swap">
     <header className="xsdc-head">
       <h2 id="xp-h-swap" className="xps-h xsdc-h">{S.title.map((l) => <span key={l}>{l}</span>)}</h2>
       <p className="xps-p xsdc-p">{S.line}</p>
+      <span className="xsdc-snd">{!g.still && <SoundToggle on={g.sound.lit} waiting={g.sound.waiting} label={g.sound.hint} onToggle={g.toggleSound} testId="xp-swap-sound" />}</span>
     </header>
     <div ref={g.root} className="xsdc-stage" data-testid="xp-swap-danceoff">
-      {runs.map((x, k) => [k === 1 && <div key="mid" className="xsdc-mid">
-        <figure className="xsdc-orig" data-testid="xp-swap-original">{media(0, S.original.url, S.original.poster)}</figure>
-        <span className="xsdc-orig-l"><i aria-hidden>←</i>{S.original.label}<i aria-hidden>→</i></span>
-        {!g.still && <SoundToggle on={g.sound.lit} waiting={g.sound.waiting} label={g.sound.hint} onToggle={g.toggleSound} testId="xp-swap-sound" />}
-      </div>, <figure key={x.r.key} className={`xsdc-tile xsdc-tile${k}`} data-testid={`xp-swap-run-${x.r.key}`}>
-        {media(k + 1, x.url, x.poster)}<span className="xsdc-shade" aria-hidden />
-        <span className="xv-tag xsdc-who">{x.r.who}</span>
+      {runs.map((x, k) => <figure key={x.r.key} className="xsdc-tile" data-testid={`xp-swap-run-${x.r.key}`}>
+        <CompareFrame className="xsdc-cmp" intro="nudge" start={65} testId="xp-swap-slider" labels={[S.original.label, x.r.who]}
+          before={media(k, S.original.url, x.r.originalPoster ?? S.original.poster)} after={media(k + 2, x.url, x.poster)} />
         <figcaption className="xsdc-card"><SwapFaces run={x} /><span className="xsdc-meta"><strong>{x.f.model}</strong><small>{x.r.photos} · {x.place} · <b>{x.price}</b></small></span>
           <Link to={x.rec} className="xsdc-rec" data-testid={`xp-swap-recreate-${x.r.key}`}>Recreate<Arrow /></Link></figcaption>
-      </figure>])}
+      </figure>)}
     </div>
     <div className="xsdc-foot"><SwapUpscaled runs={runs} /><span className="xps-ctas">{runs.map((x, k) => <Link key={x.r.key} to={x.r.cta.href} className={k ? 'xv-quiet' : 'xv-btn'} data-testid={`xp-swap-cta-${x.r.key}`}>{x.r.cta.label}{!k && <Arrow />}</Link>)}</span></div>
   </section>;
@@ -259,26 +259,28 @@ export function XpLayers() {
   </section>;
 }
 
-/* ============================================================== Image · made here ============================================================== */
-export function XpImages() {
-  const covers = EXPLORE_IMAGES.covers.map((c) => ({ c, f: featuredByKey(c.key) })).filter((x): x is { c: typeof x.c; f: FeaturedItem } => !!x.f);
-  const rail = EXPLORE_IMAGES.rail.map((id) => featuredByKey(`sc-${id}`)).filter((x): x is FeaturedItem => !!x);
-  if (!covers.length) return null;
-  return <section className="xv-sec xpi" id="xp-images" data-testid="xp-images" aria-labelledby="xp-h-images">
-    <header className="xv-head"><div><span className="xv-eb">{EXPLORE_IMAGES.eyebrow}</span><h2 id="xp-h-images">{EXPLORE_IMAGES.title}</h2><p>{EXPLORE_IMAGES.line}</p></div>
-      <Link to={EXPLORE_IMAGES.more.href} className="xv-more">{EXPLORE_IMAGES.more.label}<Arrow /></Link></header>
-    <div className="xpi-covers">{covers.map(({ c, f }, k) => { const id = c.key.replace(/^sc-/, ''); return <div key={c.key} className={`xpi-cover${k === 1 ? ' is-wide' : ''}`} data-testid={`xp-image-cover-${id}`}>
-      {f.before ? <SplitPreview className="xpi-split" before={f.before.url} after={f.out.url} beforeLabel={f.before.label} afterLabel="Result" auto={k === 1} />
-        : <img className="xpi-img" src={f.out.url} alt={f.title} loading="lazy" decoding="async" style={c.pos ? { objectPosition: c.pos } : undefined} />}
-      <span className="xpi-cap"><b className="xpi-title">{c.label}</b><span className="xpi-line">{f.title}</span>
-        <span className="xpi-meta"><span className="xv-pill xv-pill-dark">{f.model}</span>{f.runOn === 'local' ? <span className="xv-pill xv-pill-free">Free</span>
-          : <span className="xv-pill xv-pill-dark" data-testid={`xp-image-paid-${id}`}>Comfy Cloud{f.costUsd != null ? ` · $${f.costUsd.toFixed(2)}` : ''}</span>}
-          {f.recreateHref && <Link to={f.recreateHref} className="xpi-rec" data-testid={`xp-image-recreate-${id}`}>Recreate</Link>}</span></span>
-    </div>; })}</div>
-    {rail.length > 0 && <MediaRail label="Images made here" className="xpi-rail" testId="xp-image-rail">{rail.map((f) => <Link key={f.key} to={f.recreateHref ?? '/tools/create-image'} className="xpi-card" data-testid={`xp-image-${f.key}`} aria-label={`${f.title}, ${f.model}. Recreate`}>
-      <img src={f.out.poster} alt="" loading="lazy" decoding="async" draggable={false} />
-      <span className="xpi-card-cap"><span className="xpi-card-t">{f.title}</span><span className="xpi-card-m"><span className="xv-pill xv-pill-dark">{f.model}</span><span className="xpi-card-r">Recreate</span></span></span>
-    </Link>)}</MediaRail>}
+/* ============================================================== One idea. Every look. ============================================================== */
+/** One prompt in twelve looks (EXPLORE_LOOKS: FLUX.2 [klein] 4B and Qwen Image 2.1, each credited): the copy on the left, the look in a big 16:9 frame on the right, twelve tiles
+ *  under both. Hovering, focusing or tapping a tile shows its look (a crossfade; reduced motion: a cut). */
+export function XpLooks() {
+  const L = EXPLORE_LOOKS; const [cur, setCur] = useState(L.start); const now = L.looks[cur];
+  return <section className="xv-sec xlk" id="xp-looks" data-testid="xp-looks" aria-labelledby="xp-h-looks">
+    <div className="xlk-text">
+      <span className="xv-eb">{L.eyebrow}</span>
+      <h2 id="xp-h-looks" className="xps-h xlk-h">{L.title.map((l) => <span key={l}>{l}</span>)}</h2>
+      <p className="xps-p">{L.line}</p>
+      <span className="xlk-meta" data-testid="xp-looks-model"><span className="xv-pill">{now.model}</span><span className="xv-free"><i />{L.place}</span></span>
+      <span className="xps-ctas"><Link to={L.cta.href} className="xv-btn" data-testid="xp-looks-cta">{L.cta.label}<Arrow /></Link></span>
+    </div>
+    <figure className="xlk-frame" data-testid="xp-looks-frame">
+      {L.looks.map((l, k) => <img key={l.id} src={l.url} alt={k === cur ? `${l.name}: a woman in a red coat on a city street, ${L.model}` : ''} aria-hidden={k !== cur || undefined}
+        className={k === cur ? 'on' : undefined} loading="lazy" decoding="async" draggable={false} />)}
+      <figcaption className="xlk-cap" aria-live="polite" data-testid="xp-looks-name">{now.name}</figcaption>
+      <span className="xv-pill xv-pill-dark xlk-count" data-testid="xp-looks-count">{cur + 1} / {L.looks.length}</span>
+    </figure>
+    <div className="xlk-tiles" role="group" aria-label="Looks">{L.looks.map((l, k) => <button key={l.id} type="button" className={k === cur ? 'on' : undefined} aria-pressed={k === cur}
+      onMouseEnter={() => setCur(k)} onFocus={() => setCur(k)} onClick={() => setCur(k)} data-testid={`xp-looks-tile-${l.id}`}>
+      <img src={l.thumb} alt="" loading="lazy" decoding="async" draggable={false} /><span>{l.name}</span></button>)}</div>
   </section>;
 }
 
@@ -464,5 +466,32 @@ export function XpVfx() {
     </div>
     {tiles.some((t) => !t.key || !featuredByKey(t.key)?.before) && <p className="xpx-pending" data-testid="xp-vfx-pending-line"><i aria-hidden />{V.pendingLine}</p>}
     <p className="xpf-src xpx-src">{V.credit}</p>
+  </section>;
+}
+
+/* ============================================================== Now it's your turn. ============================================================== */
+/** The page's last section (EXPLORE_YOUR_TURN), full width: a dimmed, tilted wall of things made here drifting behind (only while on screen;
+ *  reduced motion: still), and in the middle a prompt box whose "Make it" opens Create Image with the words in the bar, then the other tabs. */
+export function XpYourTurn() {
+  const Y = EXPLORE_YOUR_TURN; const root = useRef<HTMLElement>(null); const [on, setOn] = useState(false); const [text, setText] = useState('');
+  useEffect(() => { const el = root.current; if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(([e]) => setOn(e.isIntersecting)); io.observe(el); return () => io.disconnect(); }, []);
+  const models = [...new Set(Y.wall.flat().map((t) => t.model))];
+  return <section ref={root} className={`xyt${on ? ' on' : ''}`} id="xp-your-turn" data-testid="xp-your-turn" aria-labelledby="xp-h-your-turn">
+    <div className="xyt-wall" aria-hidden><div className="xyt-tilt">{Y.wall.map((col, c) => <div key={c} className="xyt-col"><div className="xyt-track">
+      {[...col, ...col].map((t, k) => <img key={k} src={t.src} alt="" loading="lazy" decoding="async" draggable={false} className={t.star ? 'is-star' : undefined} />)}</div></div>)}</div></div>
+    <div className="xyt-in">
+      <span className="xv-eb">{Y.eyebrow}</span>
+      <h2 id="xp-h-your-turn" className="xyt-h">{Y.title.map((l) => <span key={l}>{l}</span>)}</h2>
+      <p className="xyt-p">{Y.line}</p>
+      <form className="xyt-box" onSubmit={(e) => { e.preventDefault(); goToWorkflow(yourTurnHref(text)); }} data-testid="xp-your-turn-form">
+        <label className="sr-only-vis" htmlFor="xyt-prompt">Describe what you want to make</label>
+        <input id="xyt-prompt" value={text} onChange={(e) => setText(e.target.value)} placeholder={`${Y.placeholder}…`} maxLength={4000} autoComplete="off" spellCheck data-testid="xp-your-turn-input" />
+        <button type="submit" className="xv-btn" data-testid="xp-your-turn-make">{Y.make}<Arrow /></button>
+      </form>
+      <nav className="xyt-tabs" aria-label="Or start in">{Y.tabs.map((t) => <Link key={t.label} to={t.href} data-testid={`xp-your-turn-tab-${t.label.toLowerCase()}`}>{t.label}</Link>)}</nav>
+      <small className="xyt-note">{Y.note}</small>
+    </div>
+    <p className="xyt-credit" data-testid="xp-your-turn-credit">On the wall: {models.join(' · ')}</p>
   </section>;
 }

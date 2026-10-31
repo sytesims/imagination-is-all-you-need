@@ -1,9 +1,35 @@
-/* A compact bridge from character sheets to a speaking character. Source framing stays square. */
-.xps.xpa{grid-template-columns:minmax(0,400px) minmax(0,460px);gap:clamp(32px,4vw,56px)}
-.xpa .xps-text{position:static}
-.xpa-result{min-width:0;margin:0}.xpa .sfilm.xpa-film{width:100%;aspect-ratio:1;max-height:none;margin:0;border-radius:var(--radius-lg)}
-.xpa .xpa-film .sfilm-stage{aspect-ratio:1}.xpa .xpa-film .sfilm-media{object-fit:contain}
-.xpa-result figcaption{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 16px;margin-top:12px;color:var(--text-2);font:400 11px/1.5 var(--font-ui)}
-.xpa-input{display:flex;align-items:center;gap:12px;margin-top:20px;color:var(--text-2);font:400 11px/1.5 var(--font-ui)}
-.xpa-input img{display:block;width:56px;height:56px;object-fit:contain;border-radius:var(--radius-sm);border:1px solid var(--border-strong)}
-@media(max-width:980px){.xps.xpa{grid-template-columns:minmax(0,1fr);gap:24px}.xpa-result{width:100%;max-width:460px;justify-self:start}}
+/* "Give a character a voice": portrait + voice → talking video, one row under the #xp-swap-style headline. Tiles match #xp-swap's. */
+.xpa-row{display:grid;grid-template-columns:minmax(0,1fr) 36px minmax(0,1fr) 36px minmax(0,1.7fr);gap:clamp(10px,1.2vw,18px);align-items:center;max-width:1240px;margin:0 auto}
+.xpa-card{position:relative;margin:0;aspect-ratio:1;border-radius:22px;overflow:hidden;background:#111;border:1px solid rgba(255,255,255,.06);box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.xpa-card>.xv-tag{top:14px;left:14px}
+.xpa-portrait img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.xpa-link{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.7);font:600 16px/1 var(--font-ui)}
+.xpa-link:last-of-type{border-color:var(--accent);color:var(--accent)}
+/* the voice: real bars from the clip, a play button and its length */
+.xpa-voice{display:flex;flex-direction:column;justify-content:center;padding:0 clamp(18px,2vw,28px);transition:border-color var(--fast) var(--ease)}
+.xpa-voice.on{border-color:rgba(255,122,26,.45)}
+.xpa-wave.wf{height:38%}
+.xpa-voice-bar{position:absolute;left:clamp(18px,2vw,28px);right:clamp(18px,2vw,28px);bottom:clamp(16px,1.8vw,24px);display:flex;align-items:center;gap:12px;color:rgba(255,255,255,.7);font:500 13px/1 var(--font-ui);font-variant-numeric:tabular-nums}
+.xpa-voice-play{all:unset;box-sizing:border-box;display:grid;place-items:center;width:44px;height:44px;border-radius:50%;cursor:pointer;background:var(--accent);color:var(--xv-ink);transition:background var(--fast) var(--ease)}
+.xpa-voice-play:hover{background:#ff8a33}
+.xpa-voice-play svg{margin-left:2px}
+.xpa-voice-play:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap)}
+.xpa-pause{display:flex;gap:4px}.xpa-pause i{width:4px;height:14px;border-radius:1px;background:currentColor}
+/* the result: the shared film, square, one transport; its tag and model chip ride on top */
+.xpa .sfilm.xpa-film{display:block;width:100%;height:100%;aspect-ratio:1;max-height:none;margin:0;border-radius:0}
+.xpa .xpa-film .sfilm-stage{position:absolute;inset:0;aspect-ratio:auto}
+.xpa .xpa-film .sfilm-copy,.xpa .xpa-film .sfilm-aside{display:none}
+.xpa-top{position:absolute;top:14px;left:14px;right:14px;z-index:5;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;pointer-events:none}
+.xpa-top .xv-tag{position:static}
+.xpa-chip{display:inline-flex;align-items:center;height:26px;padding:0 11px;border-radius:999px;background:rgba(0,0,0,.55);color:rgba(255,255,255,.82);font:500 11.5px/1 var(--font-ui);white-space:nowrap}
+.xpa-ctas{justify-content:center;margin-top:40px}
+@media(max-width:760px){
+  .xpa-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+  .xpa-link{display:none}
+  .xpa-result{grid-column:1/-1}
+  .xpa-card{border-radius:18px}
+  .xpa-voice-play{width:38px;height:38px}
+  .xpa-ctas{margin-top:28px}
+}
+/* the headline always reads as two lines, the second in orange */
+.xpa .xsdc-h{flex-direction:column;align-items:center}
