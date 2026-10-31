@@ -1,5 +1,5 @@
 /**
- * The one media picker (2026-10-25), grown out of Create Image's ImagePicker: Uploads · Generations · Liked, an "Upload from your
+ * The one media picker (2026-10-25), grown out of Create Image's ImagePicker: Uploads · Generations · Favourites, an "Upload from your
  * computer" tile, Recent / All, Sort. Every upload slot in the app opens it:
  *  - Create Image's bar renders it in its dock (ui/next/ImagePicker.tsx, a thin wrapper).
  *  - Everywhere else, <MediaPickerHost/> (mounted once in App) catches the click on a slot's own file input (input[type=file] that takes
@@ -48,6 +48,8 @@ export type MediaKind = 'image' | 'video' | 'audio';
 export interface LibItem { id: string; url: string; thumbUrl: string; type: MediaKind; name: string; createdAt: number; toolName?: string | null; label?: string | null; uses?: number; title?: string; model?: string | null;
   /** the result's job (generations, liked) */ jobId?: string | null; /** projects it is in ([] = No project) */ projectIds?: string[] }
 const TABS: PickTab[] = ['Uploads', 'Generations', 'Liked'];
+/** what each tab says: 'Liked' is the hearted results, called Favourites everywhere (the id stays) */
+const TAB_LABEL: Record<PickTab, string> = { Uploads: 'Uploads', Generations: 'Generations', Liked: 'Favourites' };
 const PAGE = 48;
 
 /** Media kinds an `accept` string allows (empty when it takes none of them: such inputs keep Finder). */
@@ -311,7 +313,7 @@ export function MediaPicker({ tab, setTab, onClose, title, limits, kinds, frames
   const noun = list(shownKinds.map(k => NOUN[k][1]));
   /* the count: one kind by name ("48 images", "23 videos", "5 audio files"); more than one kind says "items" */
   const countNoun = (n: number) => shownKinds.length > 1 ? (n === 1 ? 'item' : 'items') : n === 1 ? NOUN[shownKinds[0] ?? 'image'][0].replace(/^an? /, '') : NOUN[shownKinds[0] ?? 'image'][1];
-  const empty = qd ? `Nothing matches “${qd}” here. Try other words or another tab.` : projRow ? `Nothing in ${projRow.name} here yet.` : tab === 'Uploads' ? `Nothing uploaded yet. Drop ${noun} here, paste with ⌘V, or upload from your computer.` : tab === 'Liked' ? `Nothing liked yet. Heart a result in Assets to see it here.` : `Your ${noun} will show up here once you make some.`;
+  const empty = qd ? `Nothing matches “${qd}” here. Try other words or another tab.` : projRow ? `Nothing in ${projRow.name} here yet.` : tab === 'Uploads' ? `Nothing uploaded yet. Drop ${noun} here, paste with ⌘V, or upload from your computer.` : tab === 'Liked' ? 'No favourites yet. Tap the heart on any result to keep it here.' : `Your ${noun} will show up here once you make some.`;
   const accepts = acceptsProp ?? (kinds.length > 1 ? list(kinds.map(k => NOUN[k][1])).replace(/^./, c => c.toUpperCase()) : null) ?? kinds.map(k => k === 'image' ? 'PNG, JPG, WEBP' : k === 'video' ? 'MP4, MOV, WEBM' : 'MP3, WAV, M4A').join(' · ');
   const body = <div ref={panel} className={`ic-ref mpk${over ? ' mpk-over' : ''}${host ? ' mpk-dialog' : ''}`} role="dialog" aria-modal={host ? true : undefined} aria-label={title} data-testid="ic-ref" data-target={target ?? undefined} data-kinds={kinds.join(',')}
     onDragEnter={e => { if (![...e.dataTransfer.types].includes('Files')) return; e.preventDefault(); depth.current++; setOver(true); }} onDragOver={e => { if ([...e.dataTransfer.types].includes('Files')) e.preventDefault(); }}
@@ -334,7 +336,7 @@ export function MediaPicker({ tab, setTab, onClose, title, limits, kinds, frames
     </Popover>
     <div className="ic-ref-sub mpk-sub" data-testid="ic-ref-sub">
       <div className="ic-ref-tabs" role="tablist" aria-label="Source">{TABS.map(t => <button key={t} type="button" role="tab" aria-selected={tab === t} className={tab === t ? 'on' : ''} data-testid={`ic-ref-tab-${t.toLowerCase()}`} onClick={() => setTab(t)}
-        onKeyDown={e => { if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return; e.preventDefault(); const i = (TABS.indexOf(t) + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length; setTab(TABS[i]); (e.currentTarget.parentElement?.children[i] as HTMLElement | undefined)?.focus(); }}>{t}</button>)}</div>
+        onKeyDown={e => { if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return; e.preventDefault(); const i = (TABS.indexOf(t) + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length; setTab(TABS[i]); (e.currentTarget.parentElement?.children[i] as HTMLElement | undefined)?.focus(); }}>{TAB_LABEL[t]}</button>)}</div>
       <div className="mpk-tools">
         <TypeFilter kinds={typeKinds} value={typ} onChange={setTyp} testPre="mpk-type" className="mpk-type" />
         <label className="mpk-search" data-testid="mpk-search"><SearchIcon size={14} /><input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search by prompt or tag" aria-label="Search your media"
