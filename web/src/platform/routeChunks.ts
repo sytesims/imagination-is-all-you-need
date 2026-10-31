@@ -4,7 +4,7 @@
  * Components keep their names and props; only how they are loaded changes. The Suspense fallback is the app's usual
  * loading skeleton (App.tsx).
  */
-import { VIDEO_PAGE } from '../../../server/src/shared/videoWorkflows';
+import { VIDEO_PAGE, pageTool } from '../../../server/src/shared/pages';
 import { lazy, type ComponentType } from 'react';
 import { videoBarOf } from '../../../server/src/shared/videoBar';
 
@@ -54,7 +54,7 @@ export const LookPage = named(L.workflowPages, 'LookPage');
 export const PageComps = {
   ApiDocs: named(L.pages, 'ApiDocs'), Mcp: named(L.pages, 'Mcp'), Plugins: named(L.pages, 'Plugins'), Community: named(L.pages, 'Community'),
   Workflows: named(L.pages, 'Workflows'), Models: named(L.pages, 'Models'),
-  Browse: named(L.pages, 'Browse'), Profile: named(L.pages, 'Profile'), RecipeImport: named(L.pages, 'RecipeImport'),
+  Profile: named(L.pages, 'Profile'), RecipeImport: named(L.pages, 'RecipeImport'),
   Canvas: named(L.canvas, 'default'), Film: named(L.film, 'default'), LearnEcom: named(L.learnEcom, 'default'),
   SpendOrUsage: named(L.spend, 'SpendOrUsage'), Licenses: named(L.licenses, 'default'), Settings: named(L.settings, 'default'), TermsPage: named(L.terms, 'default'),
 };
@@ -67,10 +67,10 @@ export const SCREEN_CHUNK: Record<string, ChunkKey> = {
 };
 const PAGE_CHUNK: Record<string, ChunkKey> = {
   '/mcp': 'pages', '/api-docs': 'pages', '/plugins': 'pages', '/community': 'pages', '/workflows': 'pages', '/models': 'pages', '/presets': 'pages',
-  '/image': 'pages', '/audio': 'pages', '/profile': 'pages', '/settings': 'settings', '/licenses': 'licenses', '/canvas': 'canvas', '/film': 'film', '/learn/ai-ecommerce': 'learnEcom',
+  '/profile': 'pages', '/settings': 'settings', '/licenses': 'licenses', '/canvas': 'canvas', '/film': 'film', '/learn/ai-ecommerce': 'learnEcom',
   '/account/usage': 'spend', '/usage': 'spend', '/spend': 'spend', '/terms': 'terms', '/usage-notes': 'terms',
 };
-/** /tools/<x> → screen key; App registers this from the tool registry (route / id → tool.id, tool.ui). */
+/** /tools/<x> (and /image, /audio, /3d) → screen key; App registers this from the tool registry (route / id → tool.id, tool.ui). */
 let toolScreenOf: (path: string) => string[] = () => [];
 export const setToolScreenResolver = (f: (path: string) => string[]) => { toolScreenOf = f; };
 
@@ -86,7 +86,7 @@ export function chunksFor(to: string): ChunkKey[] {
   if (/^\/workflows\/[^/]+/.test(path)) return ['workflowPages'];
   if (/^\/(share|models)\//.test(path)) return ['backlog'];
   if (path === VIDEO_PAGE) { const w = new URLSearchParams(search).get('workflow'); return w === 'stitch' ? ['videoPage', 'stitch'] : w && videoBarOf(w) ? ['videoPage', 'videoBar'] : ['videoPage', 'app']; } // One Video page: the shell and its feed, plus the bar (a workflow's, or Create Video's screen)
-  if (path.startsWith('/tools/')) { const ks = toolScreenOf(path).map(k => SCREEN_CHUNK[k]).filter(Boolean); return ks.length ? [ks[0]] : []; }
+  if (path.startsWith('/tools/') || pageTool(path)) { /* a tool page: /tools/<x>, or Image / Audio / 3D at their own address */ const ks = toolScreenOf(path).map(k => SCREEN_CHUNK[k]).filter(Boolean); return ks.length ? [ks[0]] : []; }
   return [];
 }
 /** Start loading a route's code (hover / focus on a link). Errors are ignored here; the real render retries. */

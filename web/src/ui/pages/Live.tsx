@@ -31,20 +31,6 @@ export function ToolTile({ t }: { t: any }) {
   return <Link to={toolOpenHref(t)} className="app-tile">{/* One Video page: a video tool's tile opens its workflow there */}{t.posterStandIn && !t.posterUrl ? <div className="poster" style={{ aspectRatio: '16/10', position: 'relative' }}><StandInArt id={t.id} toolId={t.id} group={t.category} /></div> : <Poster src={posterOf(t)} alt={t.name} />}<div className="app-meta"><ToolIconFor id={t.id} ui={t.ui} size={15} /><b>{t.name}</b><BadgePill b={badgeOf(t)} />{t.freeGensCovered && <span className="fg-hint">Free gens</span>}</div><p className="helper">{(t.description ?? '').split('.')[0]}.</p></Link>;
 }
 
-const LEDE: Record<Media, string> = { image: 'Generate and edit stills. Open weights by default, hosted models when you want them.', video: 'Swap, restyle, re-shoot and move the camera on real footage.', audio: 'Soundtracks and sound design for your clips.' };
-/** /image, /video, /audio: real data from GET /api/browse/:media. */
-export function Browse({ media }: { media: Media }) {
-  const { d, err, retry } = useJson<{ tools: any[] }>(`/api/browse/${media}`);
-  return <Page eyebrow="Browse" title={media[0].toUpperCase() + media.slice(1)} lede={LEDE[media]}>
-    {/* B34: the tile list loads late; its slot fills the first screen so the footer never jumps up into view and back */}<div className="br-body">
-    {!!err && <InlineError what={`${media} tools`} error={err} onRetry={retry} />}
-    {!d && !err && <Skeleton variant="tiles" count={8} className="apps-grid" label={`Loading ${media} tools`} />}
-    {d && <div className="apps-grid">{d.tools.map(t => <ToolTile key={t.id} t={t} />)}{!d.tools.length && <div className="xcard xcard-empty"><b>No {media} tools yet</b></div>}</div>}
-    </div>
-  </Page>;
-}
-
-
 const COPY = async (s: string, set: (b: boolean) => void) => { try { await navigator.clipboard.writeText(s); set(true); setTimeout(() => set(false), 1500); } catch { /* ignore */ } };
 function CopyCode({ label, code }: { label: string; code: string }) {
   const [ok, setOk] = useState(false);

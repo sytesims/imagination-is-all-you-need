@@ -1,3 +1,4 @@
+import { IMAGE_PAGE, toolPage } from '../../../server/src/shared/pages';
 import { IMAGE_ACCEPT } from '../../../server/src/shared/mediaAccept';
 import { withSearch } from '../shared/workflowLinks';
 import { isOpenWeights, OpenWeightsBadge } from '../shared/OpenWeights';
@@ -53,7 +54,7 @@ export default function Workspace({ tool, modes, panel, stage, hero }: { tool: T
 }
 
 const SECTIONS: Record<'image', [string, string][]> = {
-  image: [['/tools/create-image', 'Create'], ['/tools/create-image?mode=edit', 'Edit' /* Create Image's edit mode (QA #15), not Brush Edit */], ['/tools/create-image?workflow=upscale', 'Upscale']],
+  image: [[IMAGE_PAGE, 'Create'], [`${IMAGE_PAGE}?mode=edit`, 'Edit' /* Create Image's edit mode (QA #15), not Brush Edit */], [`${IMAGE_PAGE}?workflow=upscale`, 'Upscale']],
 };
 /** A section link with a query (?mode=edit, ?workflow=upscale) is current when its params match; a plain path when no sibling section with a query matches. */
 const qMatch = (to: string) => { const [p, q] = to.split('?'); if (location.pathname !== p) return false; const cur = new URLSearchParams(location.search); return !q || [...new URLSearchParams(q)].every(([k, v]) => cur.get(k) === v); };
@@ -261,7 +262,7 @@ function SwapLibrary({ tool }: { tool: ToolInfo }) {
   useEffect(() => { const ch = () => setPicker(p => !p); const ps = (e: Event) => setProv((e as CustomEvent<string>).detail); window.addEventListener('oj:swap-change', ch); window.addEventListener('oj:provider-state', ps); return () => { window.removeEventListener('oj:swap-change', ch); window.removeEventListener('oj:provider-state', ps); }; }, []);
   const [meta, setMeta] = useState<Record<string, { family?: string; badges?: string[]; openWeights?: boolean }>>({});
   useEffect(() => { fetch(`/api/models?toolId=${encodeURIComponent(tool.id)}`).then(r => r.json()).then(d => setMeta(Object.fromEntries((d.groups?.[0]?.models ?? []).map((m: any) => [m.providerId ?? m.id, { family: m.family, badges: m.badges, openWeights: m.openWeights }])))).catch(() => {}); }, [tool.id]);
-  const pickPreset = (pid: string, tid?: string) => { if (tid && tid !== tool.id) return navigate(`/tools/${tid}?preset=${encodeURIComponent(pid)}`); const v = picked === pid ? '' : pid; setPicked(v); window.dispatchEvent(new CustomEvent('oj:preset', { detail: v })); };
+  const pickPreset = (pid: string, tid?: string) => { if (tid && tid !== tool.id) return navigate(`${toolPage(tid)}?preset=${encodeURIComponent(pid)}`); const v = picked === pid ? '' : pid; setPicked(v); window.dispatchEvent(new CustomEvent('oj:preset', { detail: v })); };
   if (picker) return <div className="sw-picker" data-testid="swap-picker">
     <div className="sw-ptabs" role="tablist">{tool.providers.map(p => <button key={p.id} type="button" role="tab" aria-selected={prov === p.id} className={prov === p.id ? 'on' : ''} onClick={() => { setProv(p.id); window.dispatchEvent(new CustomEvent('oj:provider', { detail: p.id })); }}><span className="sw-pico" aria-hidden>{(meta[p.id]?.family ?? p.name).slice(0, 1)}</span>{p.name}{meta[p.id]?.badges?.some(b => /^new$/i.test(b)) && <span className="sw-new">NEW</span>}<OpenWeightsBadge on={isOpenWeights(meta[p.id], p)} className="ow-sm" /></button>)}</div>
     <div className="sw-pcards">{[['/tools/object-swap', 'Object / Person Swap', 'object-swap'], ['/tools/motion-transfer', 'Motion Transfer', 'motion-transfer']].map(([to, n, k]) => { const ex = exampleFor(k); return <Link key={to} to={to} className={`sw-pcard ${tool.id === k ? 'on' : ''}`}><video src={ex.src} poster={ex.poster} muted loop autoPlay playsInline aria-hidden /><b>{n}</b></Link>; })}</div>

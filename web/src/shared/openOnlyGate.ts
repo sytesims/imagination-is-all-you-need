@@ -1,5 +1,6 @@
 /** Open models only: a tool with no open model left (today: Reframe, hosted Luma only) says so on its Generate button instead of offering a run.
  *  The list comes from GET /api/settings/open-models (toolsUnavailable), fetched only while the switch is on. */
+import { toolPage } from '../../../server/src/shared/pages';
 import { useEffect, useState } from 'react';
 import { useOpenWeightsOnly } from './OpenWeights';
 import { TOOLS_REFRESH } from './useTools';
@@ -11,7 +12,7 @@ const unavailable = (): Promise<string[]> => (cache ??= fetch('/api/settings/ope
 export function useOpenOnlyBlock(): string {
   const ow = useOpenWeightsOnly(); const [why, setWhy] = useState('');
   useEffect(() => { if (!ow) { setWhy(''); return; } let on = true;
-    const check = () => unavailable().then(ids => { const p = location.pathname; if (on) setWhy(ids.some((id: string) => p === `/tools/${id}` || p.startsWith(`/tools/${id}/`)) ? OPEN_ONLY_BLOCK : ''); });
+    const check = () => unavailable().then(ids => { const p = location.pathname; if (on) setWhy(ids.some((id: string) => { const pg = toolPage(id); return p === pg || p.startsWith(`${pg}/`); }) ? OPEN_ONLY_BLOCK : ''); });
     const refresh = () => { cache = null; check(); };
     check(); addEventListener(TOOLS_REFRESH, refresh); addEventListener('popstate', check); return () => { on = false; removeEventListener(TOOLS_REFRESH, refresh); removeEventListener('popstate', check); }; }, [ow]);
   return why;

@@ -158,7 +158,7 @@ try {
   assert.equal(wf.status, 'ready'); assert.equal(wf.runner.toolId, 'image-upscale'); assert.deepEqual(wf.slots.map((s: any) => s.sendsAs), ['image']);
   assert.deepEqual(wf.controls[0].options.map((o: any) => Number(o.value)), iu.factors, 'the Scale chip lists every factor the page did (×16 disabled by the bar)');
   assert.deepEqual(wf.models.upscale, t.providers.map((p: any) => p.id), 'the model chip keeps the page order');
-  const { IMAGE_REDIRECTS } = await import('../src/shared/imageFeatures.ts'); assert.equal(IMAGE_REDIRECTS['/tools/image-upscale'], '/tools/create-image?workflow=upscale');
+  const { IMAGE_REDIRECTS } = await import('../src/shared/imageFeatures.ts'); assert.equal(IMAGE_REDIRECTS['/tools/image-upscale'], '/image?workflow=upscale');
   assert.ok(!fs.existsSync(path.resolve(ROOT, '../web/src/tools/imageApps/ImageUpscaleTool.tsx')), 'the old page is gone');
   const pf = (await get(`/api/jobs/${a.body.id}/prefill?action=recreate`)).body; assert.equal(pf.form.scale, '4'); assert.equal(pf.form.provider, 'comfy-realesrgan'); assert.ok(pf.files.image?.[0], 'Recreate brings the photo back');
   ok('Upscale workflow in the bar: same factors and models as the page, old route redirects, old jobs Recreate with photo, model and factor');

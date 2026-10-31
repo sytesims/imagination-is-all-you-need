@@ -22,7 +22,7 @@ for (const t of P.PREVIZ_TEMPLATES) {
 }
 const w = T.threeDWorkflowById('plan-a-shot')!; assert.equal(w.name, 'Direct a Shot'); assert.equal(w.status, 'ready'); assert.equal(w.category, 'video');
 const tool = getTool('plan-a-shot')! as any; assert.equal(tool.listed, false); assert.equal(tool.media, '3d'); assert.ok(tool.presets.some((p: any) => p.id === w.mode));
-assert.equal(T.threeDRedirectTarget('/tools/plan-a-shot', ''), '/tools/3d?workflow=plan-a-shot');
+assert.equal(T.threeDRedirectTarget('/tools/plan-a-shot', ''), '/3d?workflow=plan-a-shot');
 ok('registry: 5 presets with restyle prompts; Direct a Shot is a ready 3D workflow on its own hidden tool');
 
 // ---- 2. the shot object ----

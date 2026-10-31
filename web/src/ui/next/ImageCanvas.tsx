@@ -369,7 +369,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
   if (p.intakeRef) p.intakeRef.current = intake;
   useEffect(() => () => { if (p.intakeRef) p.intakeRef.current = null; }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (!pending.current.length) return; const fs = pending.current; if (recipe && recipe.id === wfIdRef.current) { pending.current = []; takeIncoming(fs); } else if (wfList.length && !wfActive()) { pending.current = []; p.onImage(fs); } }, [recipe?.id, wfList.length]); // eslint-disable-line react-hooks/exhaustive-deps
-  /* Recreate on a Relight / Face Swap result: /tools/create-image?workflow=relight&recreate=<job>. Runs before the page's own prefill (child layout effect),
+  /* Recreate on a Relight / Face Swap result: /image?workflow=relight&recreate=<job>. Runs before the page's own prefill (child layout effect),
    * so Create's own prompt and photo stay as they were; the workflow gets the job's photos, prompt, model and settings. */
   const wfRecreate = useRef<{ id: string; job: string } | null>(null); const [rcTick, setRcTick] = useState(0);
   useLayoutEffect(() => { const u = new URL(location.href); const w = u.searchParams.get('workflow'); const rc = u.searchParams.get('recreate');

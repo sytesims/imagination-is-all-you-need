@@ -1,6 +1,6 @@
 // Create bar height + scroll check (design audit 2026-10-23), run inside the app page in a real browser (the dev pane), not headless:
 // layout needs a visible page (a hidden pane reports stale ResizeObserver sizes).
-// Usage, on http://localhost:<web>/tools/create-image with a few results in the feed, at each width you want (1440, 1024, 375…):
+// Usage, on http://localhost:<web>/image with a few results in the feed, at each width you want (1440, 1024, 375…):
 //   const m = await import('/@fs/<repo>/scripts/qa/create-bar.mjs'); await m.run()
 // It switches modes the way the app does (in-page navigation, the workflow chip's ✕), waits for the bar to settle, and reports:
 //   heights: the bar (frame) height per mode, with and without a preset; equal = every mode the same height
@@ -22,7 +22,7 @@ async function settle(test = () => true) {
   for (let i = 0; i < 80 && same < 6; i++) { await sleep(60); const v = barH(); same = v === last && test() ? same + 1 : 0; last = v; }
   return last;
 }
-function go(search) { history.pushState(history.state, '', '/tools/create-image' + search); dispatchEvent(new PopStateEvent('popstate')); }
+function go(search) { history.pushState(history.state, '', '/image' + search); dispatchEvent(new PopStateEvent('popstate')); }
 function setPrompt(text) {
   const ta = document.querySelector('#app-prompt'); if (!ta || ta.offsetParent === null) return false;
   Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(ta, text); ta.dispatchEvent(new Event('input', { bubbles: true })); return true;

@@ -2,7 +2,7 @@
  *  shows the Learn column's two notes next to Source code. Settings, Spend and Assets live in the header and its menus, so not here.
  *  Guides is the book's BOOK_PATH (learn/ecomChapters.ts; the test checks they match), written out so the main bundle doesn't load the book's text.
  *  A link starting with http opens in a new tab; Source code takes the repo URL the server reports (Home reads /api/config). */
-import { VIDEO_PAGE } from '../../../server/src/shared/videoWorkflows';
+import { IMAGE_PAGE, VIDEO_PAGE, AUDIO_PAGE, THREE_D_PAGE } from '../../../server/src/shared/pages';
 
 export type FootLink = [label: string, to: string];
 
@@ -10,7 +10,7 @@ export type FootLink = [label: string, to: string];
 export const FOOT_NOTES: FootLink[] = [['Models & licences', '/licenses'], ['Usage notes', '/terms']];
 
 export const footerCols = (repoUrl: string): [string, FootLink[]][] => [
-  ['Make', [['Image', '/tools/create-image'], ['Video', VIDEO_PAGE], ['Audio', '/tools/audio'], ['3D', '/tools/3d'], ['Canvas', '/canvas'], ['Workflows', '/workflows']]],
+  ['Make', [['Image', IMAGE_PAGE], ['Video', VIDEO_PAGE], ['Audio', AUDIO_PAGE], ['3D', THREE_D_PAGE], ['Canvas', '/canvas'], ['Workflows', '/workflows']]],
   ['Learn', [['Guides', '/learn/ai-ecommerce'], ...FOOT_NOTES]],
   ['Project', [['Source code', repoUrl], ['MCP', '/mcp'], ['API docs', '/api-docs'], ['Plugins', '/plugins']]],
 ];

@@ -25,7 +25,7 @@ import { QWEN3_TTS, QWEN3_TTS_WORKFLOW, QWEN3_TTS_SPEAKERS, QWEN3_TTS_LANGUAGES,
 import { TRANSLATE_LANGS } from '../comfy/plans.js';
 import { registerToolProviderDurations, resolveDuration, durationErrorBody } from './h3/videoCaps.js';
 import { addAdjustNote } from '../shared/snap.js';
-import { VIDEO_PAGE } from '../shared/videoWorkflows.js';
+import { IMAGE_PAGE, VIDEO_PAGE, AUDIO_PAGE } from '../shared/pages.js';
 import { UPSCALE_MAX_SIDE, UPSCALE_FACTORS_BY_PROVIDER, UPSCALE_ORDER, UPSCALE_LOCAL, UPSCALE_WORKFLOWS, imageUpscaleInfo, imageUpscaleWorkflowOrDefault, upscaleBlock, upscaleOutSize, upscaleScaleOf } from '../shared/imageUpscale.js';
 import './imageUpscaleModels.js'; // Upscale engines, prices and cloud routes added 2026-10-22
 import './imageFalModels.js'; // fal image pass (2026-10-22): fal edit routes on existing image models, Bria GenFill for Brush Edit
@@ -42,7 +42,7 @@ import './imageLayerApps.js'; // Image to layers (2026-10-24): Seedream 5.0 laye
  */
 interface MediaCfg {
   id: string; name: string; category: string; description: string; status?: string;
-  /** The page's address when it isn't /tools/<id> (Create Video lives at /video). */ route?: string;
+  /** The page's address when it isn't /tools/<id> (Create Image, Create Video and Audio live at /image, /video, /audio: shared/pages.ts). */ route?: string;
   /** Modes that run without a video (Voice Studio voiceover → audio file). */ videoOptionalModes?: string[];
   /** Modes that take an audio file (field `audio`) instead of a video and return audio (Change Voice). */ audioInputModes?: string[];
   /** Batch outputs 1..maxN (priced per output). */ maxN?: number;
@@ -227,7 +227,7 @@ const qwenOrder = ['comfy-qwen21', 'comfy-qwen21-turbo', 'comfy-qwen-image'];
 const uniqIds = (xs: string[]) => [...new Set(xs)];
 
 export const createImageTool = makeMediaTool({
-  id: 'create-image', name: 'Create Image', category: 'Image', input: 'image-optional', outKind: 'image',
+  id: 'create-image', route: IMAGE_PAGE /* the Image page (2026-10-31): /image; the tool id stays create-image */, name: 'Create Image', category: 'Image', input: 'image-optional', outKind: 'image',
   description: 'Make an image from your words, or change one you upload. Pick any model; the price shows before you generate.',
   modes: [m('generate', 'Generate', ''), m('edit', 'Edit image', '') /* no prefix: the prompt the user wrote is what the model (and Details) gets */, m('inpaint', 'Inpaint (mask)', 'change only the masked area as described, keep everything else')], imageModes: ['edit', 'inpaint'], maskModes: ['inpaint'],
   styles: STYLE_PRESETS, enhance: true,
@@ -300,7 +300,7 @@ export const AUDIO_LENGTH_UP_TO = ['comfy-yue2', 'comfy-minimax-music3', 'cloud-
 const AUDIO_LENGTHS_CHECKED = Object.fromEntries(Object.entries(AUDIO_LENGTHS).filter(([p, v]) => p !== 'api-eleven-sfx' && v.length));
 registerToolProviderDurations('audio', AUDIO_LENGTHS_CHECKED);
 export const audioTool = makeMediaTool({
-  id: 'audio', name: 'Audio', category: 'Audio', input: 'none', outKind: 'audio',
+  id: 'audio', route: AUDIO_PAGE /* the Audio page (2026-10-31): /audio; the tool id stays audio */, name: 'Audio', category: 'Audio', input: 'none', outKind: 'audio',
   description: 'Music, sound effects or a voice from a prompt, or a cover of a song. Free on your computer, or in the cloud.',
   modes: [m('music', 'Music', '', 'music'), m('sfx', 'Sound effects', '', 'sfx'), m('voice', 'Voice', '', 'voice'), m('cover', 'Cover a song', '', 'music')],
   providers: uniq([...MUSIC, ...SFX, ...VOICE, ...COVER]),

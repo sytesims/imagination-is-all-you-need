@@ -19,6 +19,7 @@
  * Both indexes are built on first use and rebuilt when what they read has changed (db table writes: db.ts tableRev; the tool catalogue's
  * models and places; the ideas file; skills). Test: server/test/library-db.test.ts.
  */
+import { IMAGE_PAGE } from './shared/pages.js';
 import { createHash } from 'node:crypto';
 import { closeSync, existsSync, openSync, readdirSync, readFileSync, readSync, statSync } from 'node:fs';
 import path from 'node:path';
@@ -103,7 +104,7 @@ function savedLooks(): LibWorkflow[] {
       tags: ['saved look', 'yours', ...keywords(l.prompt, 4)], category: 'Your saved looks', mediaIn: ['text' as const], mediaOut: ['image' as const],
       steps: [{ id: null, name: toolName, toolId: l.toolId, model: l.modelName, canvas: l.toolId === 'create-image' ? 'create' : null }], models: [],
       examples: url ? [{ url, poster: url, prompt: cleanText(l.prompt) || null, model: l.modelName, place: null, costUsd: null, jobId: l.jobId }] : [],
-      runs: { where: 'app' as const, href: `/tools/create-image?look=${encodeURIComponent(l.id)}`, toolId: l.toolId, runnable: true }, status: 'ready' as const, source: null, extra: cleanText(l.prompt) }; });
+      runs: { where: 'app' as const, href: `${IMAGE_PAGE}?look=${encodeURIComponent(l.id)}`, toolId: l.toolId, runnable: true }, status: 'ready' as const, source: null, extra: cleanText(l.prompt) }; });
 }
 const mtime = (f: string) => { try { return statSync(f).mtimeMs; } catch { return 0; } };
 let wfCache: { sig: string; list: LibWorkflow[]; index: Bm25Index; at: number } | null = null; let toolsSig = ''; let toolsAt = 0;
