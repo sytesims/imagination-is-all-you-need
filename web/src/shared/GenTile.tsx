@@ -58,8 +58,10 @@ export default function GenTile({ job, inButton = false, testId, className = '',
   const act = useQueueActivity(live); const item = activityItem(act, job.id);
   const pl = placeOf(j, item);
   const queued = p.stage === 'queued'; const canceled = p.stage === 'canceled';
-  const preview = !queued && !canceled ? p.previewUrl ?? null : null;
-  const label = progressLabel(p); const eta = !queued && !canceled ? etaText(p.etaSeconds) : '';
+  const photos: string[] = j.toolId === 'app-photos-to-reel' && Array.isArray(j.input?.photoUrls) ? j.input.photoUrls : [];
+  const sourcePhoto = photos[Math.max(0, Math.min(photos.length - 1, Number(j.input?.currentPhoto) || 0))] ?? null;
+  const preview = !canceled ? (!queued ? p.previewUrl : null) ?? sourcePhoto : null;
+  const label = live && photos.length && /^(Photo \d+ of \d+|Stitching|Adding music|Choose where to continue this step)$/.test(String(j.stage)) ? String(j.stage) : progressLabel(p); const eta = !queued && !canceled ? etaText(p.etaSeconds) : '';
   const model: string = item?.model ?? j.modelName ?? j.model ?? '';
   const prompt: string = String((j.input ? typedPromptOf(j.input) : null) ?? item?.title ?? '').replace(/\s+/g, ' ').trim(); /* workflow jobs: your words (2026-10-25) */
   const [a, b] = hueOf(String(model || job.toolId || job.id));
@@ -68,7 +70,7 @@ export default function GenTile({ job, inButton = false, testId, className = '',
   return <div className={`gt gt-${p.stage}${preview ? ' gt-has-prev' : ''} ${className}`} data-testid={testId} data-stage={p.stage}
     style={{ ['--gt-a' as any]: a, ['--gt-b' as any]: b }} role="group" aria-label={`${label}${prompt ? `: ${prompt}` : ''}`}>
     <span className="gt-bg" aria-hidden><span className="gt-shim" /></span>
-    {preview ? <LivePreview url={preview} blur={previewBlur(p)} /> : !canceled && (art ? <span className="gt-art" aria-hidden>{art}</span> : <span className="gt-mascot" aria-hidden><Mascot size={28} wink={!queued} /></span>)}
+    {preview ? <LivePreview url={preview} blur={sourcePhoto && preview === sourcePhoto ? 0 : previewBlur(p)} /> : !canceled && (art ? <span className="gt-art" aria-hidden>{art}</span> : <span className="gt-mascot" aria-hidden><Mascot size={28} wink={!queued} /></span>)}
     <span className="gt-fade" aria-hidden />
     <div className="gt-top">
       {tag && <span className="gt-tag" data-testid="gt-tag">{tag}</span>}

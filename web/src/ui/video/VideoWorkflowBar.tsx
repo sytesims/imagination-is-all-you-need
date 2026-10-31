@@ -90,6 +90,7 @@ const CARRY: Record<VBarSlot['kind'], SlotFile | null> = { video: null, image: n
 const noSelect = () => undefined;
 export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWorkflow; bar: VideoBar; tool: ToolInfo; tools: ToolInfo[] }) {
   const toast = useToast(); const [preview, setPreview] = useState<{ slot: VBarSlot; index: number } | null>(null); const previewAnchor = useRef<HTMLElement | null>(null); const q0 = useToolQuery(); const clipSrc = useClipSource();
+  const reel = tool.id === 'app-photos-to-reel';
   const cfg: any = tool.app ?? {}; const inp = (n: string): any => (tool.inputs ?? []).find(i => i.name === n);
   const dKey = `${tool.id}:vbar:${wf.id}`;
   const [vals, setVals] = useDraftField<Record<string, string>>(dKey, 'vals', {}, v => !!v && typeof v === 'object');
@@ -132,7 +133,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
   const openOver = () => { if (pop === 'over') { setPop(''); return; } const c = chipsRef.current; if (!c) return;
     setOverRows([...c.querySelectorAll<HTMLElement>('.wf-fold.ic-folded')].map(el => ({ label: (el.getAttribute('aria-label') ?? el.textContent ?? '').replace(/\s+/g, ' ').trim(), target: el })).filter(r => r.label)); setPop('over'); };
   const modelRef = useRef<HTMLButtonElement>(null); const slotIn = useRef<Record<string, HTMLInputElement | null>>({});
-  useDockHeight(dock, '.vs'); usePromptGrow(promptRef, prompt);
+  useDockHeight(dock, '.vs'); usePromptGrow(promptRef, reel ? vals.title ?? '' : prompt);
   useToolModels(tool.id); const tm = modelOfEngine(tool.id, prov);
   const provInfo: any = tool.providers.find(p => p.id === prov);
   const pickedFx: any = (() => { const g = bar.controls.find(c => c.kind === 'gallery' && c.from === 'presets'); const v = g ? vals[g.field] : ''; return v ? (tool.presets ?? []).find((p: any) => p.id === v && Array.isArray(p.providers) && p.providers.includes(prov)) : null; })();
@@ -266,7 +267,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
     prompt: promptCfg.mode === 'required' && !prompt.trim() ? { missing: 'Write a prompt' } : null,
     pick: gallery && !gallery.optional && !valOf(gallery) ? { group: gallery.group, missing: `Pick ${gallery.field === 'preset' ? 'a style' : gallery.field === 'move' ? 'a camera move' : gallery.field === 'look' ? 'a look' : 'an effect'}` } : null,
     quote: q, modelName });
-    for (const c of shown) if (c.kind === 'text' && c.required && !valOf(c).trim()) ps.splice(ps.filter(p => p.stage === 'inputs').length, 0, { code: 'pick_missing', stage: 'inputs', message: `Add ${c.label.toLowerCase()}`, fix: { kind: 'open-group', label: 'Open', args: { group: c.group } } });
+    for (const c of shown) if (c.kind === 'text' && c.required && !valOf(c).trim()) ps.splice(ps.filter(p => p.stage === 'inputs').length, 0, { code: 'pick_missing', stage: 'inputs', message: `Add ${c.label.toLowerCase()}`, fix: reel && c.field === 'title' ? { kind: 'focus-prompt', label: 'Choose…' } : { kind: 'open-group', label: 'Choose…', args: { group: c.group } } });
     /* the extra's own steps (Object Swap: what to replace; Re-shoot: an angle), right after the inputs */
     const more: PreflightProblem[] = (extra.needs?.(live()) ?? []).map((n): PreflightProblem => { const fix: PreflightFix = n.model ? { kind: 'pick-model', label: 'Pick model…' } : n.slot ? { kind: 'choose-photo', label: 'Choose…', args: { slot: n.slot } } : { kind: 'open-group', label: 'Open', args: { group: n.group ?? '' } };
       return { code: n.model ? 'model_cant_run' : n.slot ? 'photo_missing' : 'pick_missing', stage: n.model ? 'model' : 'inputs', message: n.missing, fix }; });
@@ -303,15 +304,15 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
 
   /* ---- the bar ---- */
   const menuItems: MenuItem[] = providers.map(p => ({ id: p.id, name: (p as any).displayName ?? p.name, p }));
-  const groupChips = bar.groups.map(g => { const cs = shown.filter(c => c.group === g.id && c.kind !== 'toggle'); if (!cs.length) return null;
+  const groupChips = bar.groups.map(g0 => { const g = reel && g0.id === 'words' ? { ...g0, label: 'End card' } : g0; const cs = shown.filter(c => c.group === g.id && c.kind !== 'toggle' && !(reel && c.field === 'title')); if (!cs.length) return null;
     const single = cs.length === 1 && cs[0].kind === 'choice' && optionsOf(cs[0]).length <= 1;
-    const sum = cs.map(c => { const v = valOf(c); return v === '' ? (c.kind === 'choice' && c.options?.some(o => o.value === '') ? labelOf(c, v) /* an empty pick with its own name (Finish: One look only) */ : '') : c.kind === 'gallery' ? labelOf(c, v) : labelOf(c, v); }).filter(Boolean).join(' · ') || (gallery?.group === g.id ? (gallery.optional ? 'None' : `Pick ${g.label.toLowerCase()}`) : '');
+    const sum = cs.map(c => { const v = valOf(c); return v === '' ? (c.kind === 'choice' && c.options?.some(o => o.value === '') ? labelOf(c, v) /* an empty pick with its own name (Finish: One look only) */ : '') : c.kind === 'gallery' ? labelOf(c, v) : labelOf(c, v); }).filter(Boolean).join(' · ') || (gallery?.group === g.id ? (gallery.optional ? 'None' : `Pick ${g.label.toLowerCase()}`) : reel && g.id === 'words' ? 'End card' : '');
     const icon = g.id === 'shape' && aspectWH(valOf(cs[0])) ? (() => { const wh = aspectWH(valOf(cs[0]))!; return <AspectShape w={wh[0]} h={wh[1]} />; })() : <GIcon name={g.icon} />;
     if (single) return <span key={g.id} className="ic-chip ic-static wf-fold" aria-label={`${g.label}: ${sum}`} data-testid={`vbar-group-${g.id}`} {...tip(`${g.label}: the only option this model has`)}>{icon}<b>{sum}</b></span>;
     const missing = gallery?.group === g.id && !gallery.optional && !valOf(gallery);
     return <button key={g.id} ref={el => { gRefs.current[g.id] = el; }} type="button" className={`ic-chip wf-grp wf-fold${pop === `g:${g.id}` ? ' on' : ''}${missing ? ' vbar-need' : ''}`} aria-haspopup="dialog" aria-expanded={pop === `g:${g.id}`}
       data-testid={`vbar-group-${g.id}`} aria-label={`${g.label}: ${sum}`} {...tip(pop === `g:${g.id}` ? null : `${g.label}: ${sum}`)} onClick={() => setPop(pop === `g:${g.id}` ? '' : `g:${g.id}`)}>
-      {icon}<span className="wf-grp-l">{g.label}</span><b>{sum}</b></button>; });
+      {icon}{!(reel && g.id === 'words' && sum === 'End card') && <span className="wf-grp-l">{g.label}</span>}<b>{sum}</b></button>; });
   /* Sound toggles (Extend's sound, Keep the clip's sound, Re-shoot's new sound) sit in Settings, as on Create Video (SoundSetting.tsx, 2026-10-27);
    * the Settings button wears a speaker badge while one is on. It sits beside ⋯ and never folds (a 32 px square), so the sound state stays in sight. */
   const sndCtl = shown.filter(c => c.kind === 'toggle'); const sndAny = sndCtl.some(c => valOf(c) !== '0');
@@ -326,7 +327,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
       {own && <PopNote testId="vbar-tiles-own">{files.presenterImage?.length ? 'Your presenter photo leads the shot; the tile still sets the place.' : 'Or use your own presenter: add their photo in the Face slot.'}</PopNote>}
     </BarPopover>; };
 
-  const groupPanel = (gid: string) => { const cs = shown.filter(c => c.group === gid && c.kind !== 'toggle' && c.kind !== 'gallery' && c.kind !== 'tiles'); const g = bar.groups.find(x => x.id === gid)!;
+  const groupPanel = (gid: string) => { const cs = shown.filter(c => c.group === gid && c.kind !== 'toggle' && c.kind !== 'gallery' && c.kind !== 'tiles' && !(reel && c.field === 'title')); const g = bar.groups.find(x => x.id === gid)!;
     return <BarPopover key={gid} open={pop === `g:${gid}`} anchor={anchorOf(gid)} avoid={dock} watch={dock} placement="top" gap={8} onClose={() => setPop('')} label={g.label} testId={`vbar-pop-${gid}`} width={cs.some(c => optionsOf(c).length > 5 || optionsOf(c).some(o => o.hint)) ? 320 : 288}>
       {cs.map(c => { const v = valOf(c); const os = optionsOf(c);
         if (c.kind === 'text') return <PopSection key={c.field} label={c.label} testId={`vbar-ctl-${c.field}`}><label className="bp-field"><input type="text" value={v} maxLength={c.maxLength} placeholder={c.placeholder ?? (c.optional ? 'Optional' : c.label)} aria-label={c.label} data-testid={`vbar-text-${c.field}`} onChange={e => setVal(c.field, e.target.value)} /></label></PopSection>;
@@ -352,7 +353,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
   const stackAnchor = (name: string) => (stackAnchors.current[name] ??= { get current() { return stackEls.current[name] ?? null; } });
   /** One file of a slot: inline (a one-file slot) or in a multi-file slot's popover grid (numbered, reorder by arrows / drag / Alt+arrows, remove, click to change). */
   const fileTile = (s: VBarSlot, f: SlotFile, j: number, o: { multi: boolean; numbered: boolean; base: number; used: number; count: number }) => {
-    const off = j >= o.used; const name = o.numbered ? `Image ${o.base + j + 1}` : s.label; const why = `Not used by ${modelName} (max ${o.used})`; const canMove = o.multi && o.count > 1;
+    const off = j >= o.used; const name = o.numbered ? `${reel ? 'Photo' : 'Image'} ${o.base + j + 1}` : s.label; const why = `Not used by ${modelName} (max ${o.used})`; const canMove = o.multi && o.count > 1;
     return <span key={f.url} className={`wf-slot full vbar-slot vbar-${f.photo ? 'image' : s.kind}${off ? ' vbar-off' : ''}`} data-testid={`vbar-slot-${s.name}`} data-filled="1" data-index={o.multi ? j : undefined} data-unused={off ? '1' : undefined}
       onDragStart={canMove ? e => { dragFrom.current = { slot: s.name, i: j }; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/x-vbar-file', `${s.name}:${j}`); } : undefined}
       onDragEnd={() => { dragFrom.current = null; }}
@@ -363,7 +364,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
         onClick={e => { previewAnchor.current = e.currentTarget; setPreview({ slot: s, index: j }); }} aria-haspopup="dialog" onKeyDown={e => { if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); clearSlot(s, o.count > 1 ? j : undefined); }
           else if (canMove && e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); moveFile(s, j, j + (e.key === 'ArrowLeft' ? -1 : 1)); } }}>
         {s.kind === 'image' || f.photo ? <img src={f.url} alt="" draggable={false} /> : s.kind === 'video' ? <VideoThumb src={f.url} /> : <span className="vbar-snd" aria-hidden><AudioIcon size={14} /></span>}
-        <b>{off ? 'Not used' : s.kind === 'image' ? name : f.photo ? 'Photo' : fmtSec(f.sec) || s.label}</b></button>
+        <b>{off ? 'Not used' : s.kind === 'image' ? `${name}${reel && canMove ? ' ↔' : ''}` : f.photo ? 'Photo' : fmtSec(f.sec) || s.label}</b></button>
       {canMove && <span className="vbar-move">
         <button type="button" className="vbar-mv" disabled={j === 0} aria-label={`Move ${name} earlier`} data-testid={`vbar-slot-${s.name}-left-${j}`} {...tip('Move earlier')} onClick={() => moveFile(s, j, j - 1)}>{mvIcon(MV.l)}</button>
         <button type="button" className="vbar-mv" disabled={j === o.count - 1} aria-label={`Move ${name} later`} data-testid={`vbar-slot-${s.name}-right-${j}`} {...tip('Move later')} onClick={() => moveFile(s, j, j + 1)}>{mvIcon(MV.r)}</button></span>}
@@ -393,7 +394,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
       <PopSection label={s.label} aside={mx && mx > 1 ? `${Math.min(fs.length, used)} of ${used} used` : undefined} testId={`vbar-files-${s.name}`}>
         <div className="vbar-files-grid" data-testid={`vbar-files-grid-${s.name}`}>{fs.map((f, j) => fileTile(s, f, j, o))}{canAdd && addTile(s, { fs, req, firstEmpty: false, numbered, base })}</div>
         {unused > 0 ? <PopNote testId={`vbar-files-unused-${s.name}`}>{unused === 1 ? `${numbered ? `Image ${base + used + 1}` : 'The last one'} isn’t` : `${numbered ? `Images ${base + used + 1}–${base + fs.length}` : `The last ${unused}`} aren’t`} used: {modelName} takes up to {used}. They stay here for another model.</PopNote>
-          : numbered ? <PopNote>Drag or use the arrows to change the order. Image 1 is @image1 in the prompt.</PopNote> : null}
+          : numbered ? <PopNote>{reel ? 'Drag to change the order. The reel follows this order.' : 'Drag or use the arrows to change the order. Image 1 is @image1 in the prompt.'}</PopNote> : null}
       </PopSection></BarPopover>);
     const more = fs.length - STACK;
     return <span key={s.name} ref={el => { stackEls.current[s.name] = el; }} className="wf-slot-w vbar-slot-w vbar-multi vbar-stacked" data-testid={`vbar-slot-${s.name}-row`}>{arrow}{input}
@@ -432,11 +433,11 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
       <div className="ic-frame"><div className="ic-panel">
         <div className="ic-main">
           {vfit.note}
-          <div ref={prowRef} className={`ic-prow${promptCfg.mode === 'hidden' ? ' vbar-noprompt' : ''}`} data-testid="vs-prow">
+          <div ref={prowRef} className={`ic-prow${promptCfg.mode === 'hidden' && !reel ? ' vbar-noprompt' : ''}`} data-testid="vs-prow">
             <div className="ic-lead wf-strip wf-inputs vbar-slots" data-testid="vbar-slots" data-workflow={wf.id}><div className="wf-slots">{slotEls}</div></div>
-            {promptCfg.mode !== 'hidden' ? <><label className="sr-only" htmlFor="app-prompt">Prompt</label>
-              <textarea data-enter-submits="" ref={promptRef} id="app-prompt" className="ic-prompt prompt-field" rows={2} aria-label="Prompt" placeholder={promptCfg.placeholder} value={prompt} onChange={e => setPrompt(e.target.value)} data-testid="vbar-prompt" />
-              <MentionLayer taRef={promptRef} value={prompt} counts={Object.fromEntries((['image', 'video', 'audio'] as const).map(k => [k, shownSlots.filter(s => s.kind === k).reduce((n, s) => n + sentOf(s).length, 0)]))} /></>
+            {reel || promptCfg.mode !== 'hidden' ? <><label className="sr-only" htmlFor="app-prompt">{reel ? 'Title' : 'Prompt'}</label>
+              <textarea data-enter-submits="" ref={promptRef} id="app-prompt" className="ic-prompt prompt-field" rows={2} aria-label={reel ? 'Title' : 'Prompt'} maxLength={reel ? 120 : undefined} placeholder={reel ? 'Title for your reel' : promptCfg.placeholder} value={reel ? vals.title ?? '' : prompt} onChange={e => reel ? setVal('title', e.target.value) : setPrompt(e.target.value)} data-testid={reel ? 'vbar-title' : 'vbar-prompt'} />
+              {!reel && <MentionLayer taRef={promptRef} value={prompt} counts={Object.fromEntries((['image', 'video', 'audio'] as const).map(k => [k, shownSlots.filter(s => s.kind === k).reduce((n, s) => n + sentOf(s).length, 0)]))} />}</>
               : <p className="vbar-what" data-testid="vbar-what">{wf.tagline}. {(() => { const need = bar.slots.filter(x => reqOf(x) && !files[x.name]?.length); const w = need.map(x => /\d$/.test(x.label) ? x.label.toLowerCase() : `the ${x.label.toLowerCase()}`) /* "person 1", not "the person 1" */; return need.length ? `Add ${w.length > 2 ? `${w.slice(0, -1).join(', ')} and ${w[w.length - 1]}` : w.join(' and ')}.` : 'Check the price on the button, then generate.'; })()}</p>}
           </div>
           <div className="ic-chiprow"><div ref={chipsRef} className="ic-chips">

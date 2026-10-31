@@ -373,6 +373,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
       cmp={cmpWhy ? { mode: 'blocked', why: cmpWhy } : cmpSrc ? { mode: cmpOn ? 'on' : 'off', toggle: () => { setInView(null); setCmp(!cmpOn); } } : { mode: 'none' }}
       out={{ thumb: outThumb, b: upscale ? size : lys ? layerCountText(lys.length) : outs.length > 1 && !showingOriginal ? `${outIx + 1} of ${outs.length}` : '', on: outOn, onShow: () => { setInView(null); setCmp(false); } }} />;
     const info = <>{sampleNote}{demoNote}{extras}{children}
+      {job.toolId === 'app-photos-to-reel' && <LineageStrip jobId={job.id} label="Steps" />}
       {lys && <LayerList jobId={job.id} layers={lys} view={lyView} onError={m => toast(m, 'error')} />}
       <ViewerPrompt text={pr} full={fullPr} onCopy={copyPrompt} extra={<>{strip}
         {(job as any).elements?.length > 0 && <div className="el-chips rv-els">{(job as any).elements.map((e: any) => <span key={e.id + e.start} className="el-chip" title={e.kind}>{e.url && <img src={e.url} alt="" />}<b>{e.mention ?? `@${e.name}`}</b></span>)}</div>}</>} />

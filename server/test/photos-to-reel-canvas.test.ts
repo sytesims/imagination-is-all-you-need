@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { flowById, flowSpec, placeInputs, type GenCatalog } from '../../web/src/shared/genFlows.ts';
 import { runForm, type BoardInput } from '../../web/src/canvas/cardModel.ts';
 import { missingOf } from '../../web/src/canvas/cardState.ts';
+import { askedAr } from '../../web/src/ui/next/feed/feedMedia.ts';
+import { matches, FILTER_DEFAULT } from '../../web/src/ui/next/feed/feedFilter.ts';
 import { placeOf } from '../../web/src/shared/queueActivity.ts';
 import { compositeCostText } from '../../web/src/shared/billing.ts';
 import { jobInputs } from '../../web/src/shared/jobInputs.ts';
@@ -68,6 +70,16 @@ assert.equal(compositeCostText({ toolId: 'app-photos-to-reel', cost: 0, input: {
 assert.equal(compositeCostText({ toolId: 'app-photos-to-reel', cost: 0, simulated: true }), 'Sample');
 assert.equal(compositeCostText({ toolId: 'camera', cost: 0 }), null);
 assert.equal(placeOf(null, { toolId: 'app-photos-to-reel', price: { free: true, credits: 0, sample: false }, place: { runOn: null, label: '' } } as any).price, 'See step costs');
+for (const status of ['done', 'failed', 'canceled']) {
+  assert.equal(compositeCostText({ toolId: 'app-photos-to-reel', status, cost: 0, input: { childCost: 123, reelCostText: 'Estimated $5.00 across steps' } }), '$1.23 spent');
+  assert.equal(compositeCostText({ toolId: 'app-photos-to-reel', status, cost: 0, input: { childCost: 123, childCostUsd: 0.83 } }), '$0.83 spent');
+  assert.equal(compositeCostText({ toolId: 'app-photos-to-reel', status, cost: 0, input: { childCost: 0 } }), 'Free');
+  assert.equal(compositeCostText({ toolId: 'app-photos-to-reel', status, cost: 0, input: { reelCostText: 'Estimated $5.00 across steps' } }), 'See step costs');
+}
+assert.equal(compositeCostText({ toolId: 'app-photos-to-reel', status: 'running', input: { stepQuotes: [{ quote: { localRun: true } }], reelCostText: 'Estimated Free across steps' } }), 'Free');
+assert.equal(askedAr({ toolId: 'app-photos-to-reel', input: {} } as any), 9 / 16);
+assert.equal(matches({ id: 'child', toolId: 'camera', status: 'done', input: { reelParentId: 'reel' } } as any, FILTER_DEFAULT, null), false);
+assert.equal(matches({ id: 'reel', toolId: 'app-photos-to-reel', status: 'done', input: {} } as any, FILTER_DEFAULT, null), true);
 console.log('Photos → Reel Canvas contract: 8/15 inputs, order, settings, count, preflight and viewer passed');
 
 // Browser-side Canvas imports keep runtime timers alive; all assertions above are synchronous.

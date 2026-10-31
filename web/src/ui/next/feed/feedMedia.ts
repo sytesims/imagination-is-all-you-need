@@ -12,7 +12,7 @@ export function videoOutOf(j: JobState): { url: string; poster: string; ar: numb
   return { url, poster: o?.posterUrl ?? `/api/media/poster?url=${encodeURIComponent(url)}`, ar: o?.width > 0 && o?.height > 0 ? o.width / o.height : askedAr(j), sec: Number(o?.durationSec ?? a.specs?.durationSec ?? a.input?.duration ?? 0) || 0 };
 }
 /** The shape the run asked for (a running or failed clip's card keeps it): input aspect "9:16", else 16:9. */
-export function askedAr(j: JobState): number { const a = j as any; const m = /^(\d+):(\d+)$/.exec(String(a.input?.aspect ?? a.specs?.aspect ?? '')); return m ? Number(m[1]) / Number(m[2]) : 16 / 9; }
+export function askedAr(j: JobState): number { if (j.toolId === 'app-photos-to-reel') return 9 / 16; const a = j as any; const m = /^(\d+):(\d+)$/.exec(String(a.input?.aspect ?? a.specs?.aspect ?? '')); return m ? Number(m[1]) / Number(m[2]) : 16 / 9; }
 
 const MODE_TAG: Record<string, string> = { i2v: 'Image to video', flf: 'Start + end frame', r2v: 'Reference' };
 const words = (id: string) => id.replace(/[-_]+/g, ' ').replace(/^\w/, c => c.toUpperCase());
