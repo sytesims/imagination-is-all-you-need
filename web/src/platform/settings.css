@@ -3,26 +3,35 @@
    scoped `html body .settings-page.st` to win over the older single-class rules without !important. Colours and sizes come from tokens.css
    (state tokens, --hit-desktop / --hit-phone, --focus-ring-*). */
 
-/* ---------- Page frame: rail + one section (ST1 / C3) ---------- */
-html body .settings-page.st{max-width:1180px;padding:32px 24px 64px;gap:16px}  /* same frame as Spend and Profile, so moving between them doesn't shift the page */
-html body .settings-page.st>h1{margin:0}
-.st-grid{display:grid;grid-template-columns:208px minmax(0,1fr);gap:32px;align-items:start}
-.st-rail{position:sticky;top:calc(var(--nav-h) + 16px);display:flex;flex-direction:column;gap:2px}
-.st-tab{display:flex;align-items:center;gap:10px;min-height:36px;padding:0 12px;border-radius:var(--r-md);color:var(--text-2);font:500 13px/18px var(--font-ui);text-decoration:none;white-space:nowrap;
+/* ---------- Page frame (calm, 2026-10-31): title, a soft nav panel and the open section on one grid ----------
+   The title, the panel and the section share one left edge; the panel's top and the section heading start on the same line.
+   Tokens: tokens.css "Calm lists" (--calm-*); group labels: the shared .group-label (ui-states.css). */
+html body .settings-page.st{max-width:1440px;padding:32px 40px 96px;gap:24px}  /* Spend and Profile share this frame */
+html body .settings-page.st .st-head h1{margin:0;font:600 28px/36px var(--font-display);letter-spacing:-.015em}
+.st-grid{display:grid;grid-template-columns:248px minmax(0,1fr);gap:48px;align-items:start}
+.st-main{min-width:0;container-type:inline-size}
+/* the page title heads the left column, level with the open section's title */
+.st-side{display:grid;gap:20px;align-content:start;min-width:0}
+.st-side .st-head{margin:-4px 0 0}  /* the title's baseline sits on the section title's */
+/* nav: a soft panel, three groups under quiet labels, tall rows in one weight, thin muted icons; the open row = a soft tint + an orange icon */
+.st-rail{position:sticky;top:calc(var(--nav-h) + 16px);display:flex;flex-direction:column;gap:16px;padding:10px;border-radius:18px;background:var(--calm-surface)}
+.st-group{display:flex;flex-direction:column;gap:2px}
+.st-rail .st-group-l{padding:8px 14px 6px}  /* lines up with the row text's left edge */
+.st-tab{display:flex;align-items:center;gap:12px;min-height:var(--calm-row-h);padding:0 14px;border-radius:10px;color:var(--text-2);font:500 14px/20px var(--font-ui);text-decoration:none;white-space:nowrap;
   transition:background-color var(--t-state) var(--ease-state),color var(--t-state) var(--ease-state)}
-.st-tab svg{flex:none;opacity:.85}
-.st-tab:hover{background:var(--state-hover);color:var(--text)}
+.st-tab:hover{background:var(--calm-hover);color:var(--text)}
 .st-tab:active{background:var(--state-pressed)}
 .st-tab:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:-2px}
-.st-tab[aria-current=page]{background:var(--state-hover);color:var(--text);font-weight:600;box-shadow:inset 0 0 0 1px var(--state-border)}
-.st-tab[aria-current=page] svg{color:var(--accent);opacity:1}  /* the open section reads apart from a hovered one */
-.st-tab-out i{margin-left:auto;font-style:normal;color:var(--text-3)}
-.st-rail-sep{display:block;height:1px;margin:8px 12px;background:var(--hairline)}
-.st-main{min-width:0;max-width:760px}
-html body .settings-page.st .set-sec{gap:12px;margin-top:0}  /* every section's title starts at the same height */
+.st-tab[aria-current=page]{background:var(--calm-select);color:var(--text)}
+html body .settings-page.st :is(.st-tab,.st-help-ic) svg{flex:none;width:18px;height:18px;color:var(--calm-icon-ink)}
+html body .settings-page.st :is(.st-tab,.st-help-ic) svg *{vector-effect:non-scaling-stroke;stroke-width:var(--calm-stroke)}  /* one thin line whatever the icon's viewBox */
+html body .settings-page.st .st-tab[aria-current=page] svg{color:var(--accent)}
+.st-tab-out i{margin-left:auto;font:400 18px/1 var(--font-ui);color:var(--calm-icon-ink)}
+/* headings: the section title leads (its top on the panel's top); sub-sections are small grey labels with their line underneath */
+html body .settings-page.st .set-sec{gap:12px;margin-top:0}
 html body .settings-page.st .conn-anchor{position:absolute}
-html body .settings-page.st .set-sec>h2,html body .settings-page.st .conn-sec-h>h2{font:700 20px/28px var(--font-display);letter-spacing:-.01em;margin:0;color:var(--text)}
-html body .settings-page.st .st-sub{margin:12px 0 0;font:600 14px/20px var(--font-ui);color:var(--text)}
+html body .settings-page.st .set-sec>h2,html body .settings-page.st .conn-sec-h>h2{margin:0;font:600 26px/34px var(--font-display);letter-spacing:-.01em;color:var(--text)}
+html body .settings-page.st :is(.st-sub,.conn-sec-h>h3){margin:20px 0 0;font:600 11px/16px var(--font-ui);letter-spacing:.08em;text-transform:uppercase;color:var(--calm-label-ink)}
 html body .settings-page.st .set-learned{margin-top:12px}
 html body .settings-page.st .set-backup{margin:0;padding:0;border:0}
 html body .settings-page.st .st-note{margin:0;padding:10px 14px;border-radius:10px;background:#16161a;border:1px solid #5a4318;color:#ffd9a0;font-size:13px}
@@ -36,11 +45,8 @@ html body .settings-page.st .conn-input{height:36px}
 
 /* ---------- Switches (ST8 + C5): 3:1 off track, hover, focus ring, bigger hit area ---------- */
 html body .settings-page.st .settings-row{transition:border-color var(--t-state) var(--ease-state),background-color var(--t-state) var(--ease-state)}
-html body .settings-page.st .settings-row:hover{background:#18181c}
 html body .settings-page.st .settings-row>.set-sw-txt{flex:1}
 /* Connections: setup words for programmers (env names) and the queue note sit behind a small "Details" link (shared TechDetails) */
-html body .settings-page.st .conn-details{margin:0;font-size:12.5px;line-height:18px}
-html body .settings-page.st .conn-details>summary{display:inline-flex;align-items:center;min-height:24px;color:var(--accent);font-weight:600}
 html body .settings-page.st .conn-details>summary:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap);border-radius:var(--r-xs)}
 html body .settings-page.st .conn-details>p{margin:4px 0 0}
 html body .settings-page.st .conn-details code{padding:1px 6px;border-radius:var(--r-xs);background:rgba(255,255,255,.07);color:var(--text);font:500 12px/18px var(--font-mono);white-space:nowrap;word-break:normal}  /* text first, switch on the right, as in Connections and Routing */
@@ -61,9 +67,6 @@ html body .settings-page.st .prov-sw:focus-visible{outline:var(--focus-ring-w) s
 
 /* ---------- Connections cards ---------- */
 html body .settings-page.st .conn{scroll-margin-top:72px}
-html body .settings-page.st .conn-sec{margin-top:24px}
-html body .settings-page.st .conn-card{padding:14px 16px;gap:10px 12px}
-html body .settings-page.st .conn-t{gap:10px}
 html body .settings-page.st .conn-mark{--mk-s:24px;border-radius:var(--r-sm)}
 html body .settings-page.st .conn-mark b{font-size:10px}
 html body .settings-page.st .conn-mark svg{display:block}
@@ -108,7 +111,6 @@ html body .settings-page.st .conn :is(a,button):focus-visible{outline:var(--focu
 .conn-unl-list{list-style:none;margin:0;padding:0;max-height:min(360px,60vh);overflow:auto}
 .conn-unl-list li{padding:6px 14px;font:500 13px/18px var(--font-ui);color:var(--text)}
 /* Routing (C8) */
-html body .settings-page.st .conn-route>.conn-pref:first-child{border-top:0;padding-top:0;margin-top:0}
 html body .settings-page.st .conn-choices-empty{grid-column:1/-1;margin:4px 0 0;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);font-size:12.5px}
 html body .settings-page.st .conn-choices-empty b{color:var(--text);font-weight:600}
 html body .settings-page.st .om-card{margin:0 0 8px}
@@ -125,7 +127,6 @@ html body .footer a.footer-lic{display:inline-flex;align-items:center;min-height
   .st-rail::-webkit-scrollbar{display:none}
   .st-tab{flex:none;min-height:var(--hit-phone);padding:0 14px;border-radius:var(--r-pill);background:var(--state-fill);box-shadow:inset 0 0 0 1px var(--state-border)}
   html body .settings-page.st .st-tab[aria-current=page]{background:var(--text);color:var(--bg);box-shadow:none}
-  .st-tab-out i,.st-rail-sep{display:none}
   .st-rail::after{content:"";flex:none;width:16px}
   html body .settings-page.st .btn,html body .settings-page.st .btn-sm{min-height:var(--hit-phone)}
   html body .settings-page.st .conn-input{height:var(--hit-phone)}
@@ -141,7 +142,7 @@ html body .footer a.footer-lic{display:inline-flex;align-items:center;min-height
 }
 
 /* ---------- Profile + Help (PB-30) and the queue line (PB-01) ---------- */
-html body .settings-page.st .st-pcard{display:flex;border-radius:12px;background:#16161a;border:1px solid var(--hairline)}
+html body .settings-page.st .st-pcard{display:flex}
 html body .settings-page.st .st-prof-card{align-items:center;gap:14px;padding:14px 16px}
 html body .settings-page.st .st-prof-av{flex:none;width:48px;height:48px;border-radius:50%;object-fit:cover;display:grid;place-items:center;background:#2b2c30;color:var(--text);font:700 18px/1 var(--font-ui)}
 html body .settings-page.st .st-prof-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
@@ -154,7 +155,7 @@ html body .settings-page.st .st-help-row{display:flex;align-items:center;gap:12p
   transition:background-color var(--t-state) var(--ease-state)}
 html body .settings-page.st .st-help-row:hover{background:var(--state-hover)}
 html body .settings-page.st .st-help-row:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:-2px}
-html body .settings-page.st .st-help-ic{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:8px;background:#2b2c30;color:var(--text-2)}
+html body .settings-page.st .st-help-ic{flex:none;display:grid;place-items:center}
 html body .settings-page.st .st-help-t{flex:1;min-width:0;display:flex;flex-direction:column}
 html body .settings-page.st .st-help-t b{font:500 14px/20px var(--font-ui)}
 html body .settings-page.st .st-help-row>i{font-style:normal;color:var(--text-3)}
@@ -170,7 +171,6 @@ html body .settings-page.st .conn-limits{margin:0}
 
 /* ---------- Local models (#gpu; was the Self-host page's Local setup, 2026-10-23) ---------- */
 html body .settings-page.st .st-gpu .st-pcard{flex-direction:column;gap:12px;padding:16px;min-width:0}
-html body .settings-page.st .st-gpu .ls-card{border-radius:12px;background:#16161a;border-color:var(--hairline)}
 html body .settings-page.st .st-gpu>.helper{margin:-4px 0 0}
 .st-mc-top{display:flex;align-items:center;gap:12px}
 .st-mc-dot{flex:none;width:10px;height:10px;border-radius:50%;background:var(--text-3)}
@@ -200,6 +200,81 @@ html body .settings-page.st .st-gpu .ls-models>.link-btn,html body .settings-pag
 html body .settings-page.st .st-gpu .ls-models>.helper{margin:0}
 html body .settings-page.st .st-gpu-docs{margin:4px 0 0}
 @media (max-width:760px){.st-mc-facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+
+/* ---------- Calm content (2026-10-31): one card shape, one header row, grouped rows, quiet words ---------- */
+html body .settings-page.st :is(.conn-lede,.prov-sum,.set-sec>.helper){max-width:720px;margin:0;color:var(--text-2);font-size:14px;line-height:21px}
+html body .settings-page.st .prov-sum b{color:var(--text);font-weight:500}
+html body .settings-page.st .conn-sec-h{display:flex;flex-direction:column;align-items:flex-start;gap:4px;margin:0 0 14px}
+html body .settings-page.st .conn-sec-h>h3{margin:0}
+html body .settings-page.st .conn-sec-h small{font-size:13px;line-height:20px;color:var(--text-2)}
+html body .settings-page.st .conn-sec{margin-top:40px}
+html body .settings-page.st .conn>.conn-sec:first-of-type{margin-top:20px}
+/* every card: no border, the same lighter surface, the same padding */
+html body .settings-page.st :is(.conn-card,.st-pcard,.settings-row,.ls-card,.om-card){border:0;border-color:transparent;background:var(--calm-surface-2);border-radius:16px;box-shadow:none}
+html body .settings-page.st :is(.conn-card,.st-card-col,.st-prof-card,.st-gpu .st-pcard,.om-card){padding:20px 22px}
+html body .settings-page.st .conn-card{grid-template-columns:minmax(0,1fr) auto;align-content:start;gap:10px 16px;margin:0}  /* equal-height cards keep their rows at the top */
+/* one header row on every card: mark, title and status on the left, the action on the right, all on one 36 px line */
+html body .settings-page.st .conn-t{align-self:start;min-height:36px;gap:12px;font:500 15px/22px var(--font-ui)}
+html body .settings-page.st .conn-acts{align-self:start;display:flex;align-items:center;min-height:36px}
+html body .settings-page.st .conn-facts{color:var(--text-2);font-size:13px;line-height:20px}
+html body .settings-page.st .conn-foot{border-top:0;padding-top:4px}
+html body .settings-page.st .conn-route>.conn-pref,html body .settings-page.st .conn-pref{border-top:0;padding-top:14px}
+html body .settings-page.st .conn-route>.conn-pref:first-child{padding-top:0}
+/* grouped lists: cards (or switch rows) in a row touch with a 2 px seam; the group is rounded only at its ends */
+html body .settings-page.st :is(.conn-card,.settings-row){border-radius:4px}
+html body .settings-page.st .conn-card+.conn-card{margin-top:2px}
+html body .settings-page.st .settings-row{min-height:64px;padding:16px 22px;margin:0;font-size:14px}
+html body .settings-page.st .settings-row+.settings-row{margin-top:-10px}  /* the section's 12 px gap becomes the 2 px seam */
+html body .settings-page.st .settings-row:hover{background:rgba(255,255,255,.06)}
+html body .settings-page.st :is(.conn-card,.settings-row):not(:is(.conn-card,.settings-row)+*){border-top-left-radius:16px;border-top-right-radius:16px}
+html body .settings-page.st :is(.conn-card,.settings-row):not(:has(+ :is(.conn-card,.settings-row))){border-bottom-left-radius:16px;border-bottom-right-radius:16px}
+/* wide screens: account cards two by two (equal heights); long cards, notes and choices keep the full width */
+@container (min-width:960px){
+  html body .settings-page.st .conn-sec{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:stretch}
+  html body .settings-page.st .conn-sec>:not(.conn-card),html body .settings-page.st .conn-sec>:is(.conn-setup,.conn-plans){grid-column:1/-1}
+  html body .settings-page.st .conn-sec>.conn-sec-h{margin:0 0 2px}
+  html body .settings-page.st .conn-sec>.conn-card{margin:0;border-radius:16px}
+  html body .settings-page.st :is(.st-gpu,#preferences,#backup,#learned-timings,#profile,#routing){max-width:960px}  /* single lists stay readable */
+}
+/* "Details" toggles: one quiet style everywhere, a small chevron that turns when open */
+html body .settings-page.st .conn-details{grid-column:1/-1;margin:0;font-size:13px;line-height:20px;color:var(--text-2)}
+html body .settings-page.st .conn-details>summary{display:inline-flex;align-items:center;gap:6px;min-height:24px;list-style:none;color:var(--text-2);font-weight:500;cursor:pointer}
+html body .settings-page.st .conn-details>summary::-webkit-details-marker{display:none}
+html body .settings-page.st .conn-details>summary::before{content:"›";display:inline-block;width:10px;font-size:16px;line-height:1;transition:transform var(--t-state) var(--ease-state)}
+html body .settings-page.st .conn-details[open]>summary::before{transform:rotate(90deg)}
+html body .settings-page.st .conn-details>summary:hover{color:var(--text)}
+/* profile, help and your computer */
+html body .settings-page.st .st-prof-card{gap:16px}
+html body .settings-page.st .st-prof-t b{font-weight:500}
+html body .settings-page.st .st-card-col,html body .settings-page.st .st-gpu .st-pcard{gap:14px}
+html body .settings-page.st .st-help{padding:6px}
+html body .settings-page.st .st-help-row{min-height:56px;padding:8px 16px;gap:14px}
+html body .settings-page.st .st-help-ic{width:auto;height:auto;background:none}
+html body .settings-page.st .st-help-t b{font-weight:500}
+html body .settings-page.st .st-mc-facts{gap:0;border:0;background:none}
+html body .settings-page.st .st-mc-facts>div{background:none;padding:6px 0}
+html body .settings-page.st .st-mc-facts dt{color:var(--calm-label-ink)}
+html body .settings-page.st .st-gpu .ls-fit{background:none;border:0;box-shadow:none;padding:0;font-weight:500}  /* fit stays a coloured word, no pill */
+/* status words, not pills; only the green "connected" dot and the failed-runs warning keep colour */
+html body .settings-page.st .conn-pill{height:auto;padding:0;background:none;color:var(--text-2);font:500 12.5px/18px var(--font-ui)}
+html body .settings-page.st .conn-pill.cp-warn{color:var(--warning)}
+/* links read white with a faint underline; buttons are quiet; orange only for the main action and the open section */
+html body .settings-page.st :is(.conn-link,.conn-links a,.conn-more,.st-gpu a:not(.btn),.st-version a){color:var(--text);font-weight:500;text-decoration:underline;text-decoration-color:var(--hairline-strong);text-underline-offset:3px}
+html body .settings-page.st :is(.conn-link,.conn-links a,.conn-more,.st-gpu a:not(.btn)):hover{text-decoration-color:currentColor}
+html body .settings-page.st .btn:not(.conn-btn-off){border:0;box-shadow:none;background:rgba(255,255,255,.07);color:var(--text);font-weight:500}
+html body .settings-page.st .btn:not(.conn-btn-off):hover:not(:disabled){background:var(--state-hover);filter:none}
+html body .settings-page.st :is(.set-backup .btn-primary,[data-testid=conn-gpu-setup]){background:var(--accent);color:var(--on-accent);font-weight:600}
+html body .settings-page.st :is(.set-backup .btn-primary,[data-testid=conn-gpu-setup]):hover:not(:disabled){background:var(--accent);filter:brightness(1.07)}
+html body .settings-page.st .conn-input,html body .settings-page.st .ls-comfy-row input{border:0;background:rgba(0,0,0,.28);box-shadow:inset 0 0 0 1px var(--hairline)}
+html body .settings-page.st .conn-banner{border:0;background:rgba(232,180,74,.05)}
+html body .settings-page.st .seg{background:rgba(255,255,255,.07);border:0}
+
+@media (max-width:760px){
+  .st-rail{padding:0;background:none;border-radius:0}
+  .st-group{display:contents}
+  .st-group-l,.st-tab-out i{display:none}
+}
 /* "This computer" card (2026-10-31): the machine, memory and disk bars, ComfyUI facts, what runs here. Same card, tokens only. */
 .st-mc.tc .st-mc-top{align-items:flex-start}
 .tc-ic{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:8px;background:var(--state-fill);color:var(--text-2)}
