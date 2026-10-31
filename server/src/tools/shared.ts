@@ -339,7 +339,7 @@ export async function renderMockOutput(job: Job, i: number, out: string) {
 }
 
 /** The Canvas demo's card (job.input.demoRef, shared/demoMedia.ts): its real run as is, never cropped, looped or toned. A picture as PNG,
- *  a clip copied (H.264 + AAC already), a sound (or a clip's sound) as AAC. False when the media is not what this job makes: the usual sample then. */
+ *  a clip copied (H.264 + AAC already), a sound as AAC. False when the media is not what this job makes: the usual sample then. */
 async function renderDemoOutput(job: Job, m: DemoMedia, out: string): Promise<boolean> {
   const want = outExt(job) === 'png' ? 'image' : outExt(job) === 'm4a' ? 'audio' : outExt(job) === 'mp4' ? 'video' : null; const kind = demoKindOf(m);
   if (want !== kind) return false;

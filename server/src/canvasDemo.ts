@@ -21,7 +21,7 @@ export const DEMO_STARTERS = [
   { id: 'film', label: 'Make a 30s film', prompt: 'Make a 30s film: a lighthouse keeper finds a glowing bottle on the shore at dawn.' },
   { id: 'product', label: 'Product ad', prompt: 'A 15 second ad for a blue glass perfume: four moody shots on black sand at night.' },
   { id: 'animate', label: 'Make a clip longer', prompt: 'A boy cups a paper lantern in a rainy alley and it becomes a glowing koi. Then keep the shot going as the koi swims up to the moon.' },
-  { id: 'mood', label: 'Mood board', prompt: 'A mood board for a glass whale over the desert: a hero frame, the whale in motion and a sound bed.' },
+  { id: 'takes', label: 'One picture, three takes', prompt: 'A glass whale over the desert: one picture, then three video takes from it with different models.' },
   { id: 'free', label: 'Explore an idea', prompt: 'A woman in a red coat walking down a city street, in three looks.' },
 ] as const;
 /** The chip itself (its id and its own words, unedited): only then does the board show the chip's real runs. */
@@ -31,7 +31,7 @@ export type DemoStarterId = (typeof DEMO_STARTERS)[number]['id'];
 const clean = (s: string) => s.replace(/\s+/g, ' ').trim();
 /** What the user asked for, without the starter's lead-in ("Make a 30s film: …" → "…"). */
 function subjectOf(prompt: string, fallback: string): string {
-  const s = clean(prompt.replace(/^(make|create|build|do)?\s*(a|an|the)?\s*(30\s*s(ec(ond)?s?)?|thirty[- ]second)?\s*(film|movie|short|trailer|product shots?|mood ?board)\s*(for|of|about)?\s*[:,-]?\s*/i, ''));
+  const s = clean(prompt.replace(/^(make|create|build|do)?\s*(a|an|the)?\s*(30\s*s(ec(ond)?s?)?|thirty[- ]second)?\s*(film|movie|short|trailer|product shots?)\s*(for|of|about)?\s*[:,-]?\s*/i, ''));
   /* "a water bottle: hero, lifestyle, detail" → the subject is before the colon; the list after it is the plan's own job */
   const c = s.indexOf(':'); const subject = c > 0 && s.slice(c + 1).includes(',') ? s.slice(0, c) : s;
   return (subject.trim() || fallback).replace(/[.\s]+$/, '').slice(0, 220);
@@ -44,7 +44,6 @@ export function detectStarter(prompt: string, starter?: string | null): DemoStar
   if (/\bextend\b|make (it|the clip|a clip) longer|keep the shot going/.test(p)) return 'animate';
   if (/\bfilm\b|movie|trailer|\bshort\b|\bscene/.test(p)) return 'film';
   if (/product|packshot|bottle|sneaker|e-?commerce/.test(p)) return 'product';
-  if (/mood ?board|palette|look ?book/.test(p)) return 'mood';
   return 'free';
 }
 const FILM_SHOTS = [
@@ -90,15 +89,6 @@ export function demoPlan(prompt: string, starter?: string | null): DemoPlan {
   if (kind === 'animate') {
     const subject = subjectOf(prompt, 'a paper lantern becomes a glowing koi in a rainy alley');
     return animatePlan(subject, `${subject}, slow cinematic camera move, 10 seconds`, 'Keep the shot going: the same action at the same pace, same camera');
-  }
-  if (kind === 'mood') {
-    const subject = subjectOf(prompt, 'a desert sci-fi short');
-    const tiles = [['Palette', 'colour palette swatch board, dusty ochre, teal shadows, sun-bleached whites'], ['Wardrobe', 'wardrobe study, layered linen, worn leather, utilitarian gear'],
-      ['Set', 'set design, half-buried brutalist structures in dunes, haze'], ['Light', 'lighting reference, low sun, long shadows, heat shimmer'], ['Props', 'prop sheet, weathered tech, hand-made tools'], ['Hero frame', 'hero still, lone figure crossing the dunes at golden hour, epic scale']];
-    return { id: 'mood', title: 'Mood board', idea: ideaOf(subject), steps: ['Six mood tiles and a sound bed', 'Ready to share'],
-      intro: `A mood board for ${subject}: palette, wardrobe, set, light, props and a hero frame, plus a sound bed to set the tone.`,
-      phases: [{ frame: 'Mood board', say: 'Filling the board.', cards: [...tiles.map(([name, look], i) => ({ key: `t${i}`, name, workflow: 'create', prompt: `${subject}, ${look}`, col: i % 3, row: Math.floor(i / 3) })), { key: 'snd', name: 'Sound bed', workflow: 'music', prompt: `Ambient sound bed for ${subject}: wind, low synth drones, distant metal`, col: 3, row: 0, settings: MUSIC_30S }], note: 'Six tiles and a sound bed', done: 'The mood board is complete.' }],
-      outro: 'The mood board is ready. Keep the tiles that fit and Re-roll the rest.' };
   }
   const subject = subjectOf(prompt, 'something beautiful');
   return { id: 'free', title: 'Explore an idea', idea: ideaOf(subject), steps: ['Three versions of the idea', 'Pick one', 'A short clip from your pick'],
@@ -149,19 +139,20 @@ export function chipPlan(starter: string): DemoPlan | null {
       'Night, a narrow rainy stone alley: a boy in a navy raincoat cups a glowing paper lantern, and it slowly unfolds into a glowing koi that rises into the rain. 10 seconds.',
       'Keep the shot going: the koi circles once above the rooftops, then swims up toward the moonlit clouds.', { clip: r('clip'), extend: r('extend') });
   }
-  if (starter === 'mood') { const r = R('mood');
-    const hero = 'A massive translucent glass whale floats above red desert dunes at golden hour, rainbow light on the sand, a lone camel rider below for scale, cinematic photograph.';
-    const moves: [string, string, string][] = [['glide', 'The whale glides', 'The whale glides slowly overhead, its tail sweeping once; rainbow light ripples across the dunes and over the rider.'],
-      ['dive', 'The whale dives past', 'The whale zooms past the rider, its tail sweeping, a sand storm brewing; rainbow light ripples across the dunes.'],
-      ['dunes', 'Into the dunes', 'The glass whale glides low over the camel rider, then dives nose-first into the dunes; golden sand bursts up in a glowing wave.']];
-    return { id: 'mood', title: 'Mood board', idea: 'A glass whale over the desert', steps: ['A hero frame', 'The whale in motion and a sound bed'],
-      intro: 'A mood board for a glass whale over the desert: one hero frame, then three moving shots made from it, and a sound bed to set the tone.',
+  if (starter === 'takes') { const r = R('takes'); /* one picture, then three image-to-video takes from that exact picture (two models) */
+    const picture = 'A massive translucent glass whale floats above red desert dunes at golden hour, rainbow light refracting onto the sand, a lone camel rider below for scale, cinematic photograph.';
+    const takes: [string, string, string, string][] = [
+      ['glide', 'LTX-2.5 Pro · 6 s', '6', 'The whale glides slowly overhead, its tail sweeping once; rainbow light ripples across the dunes and over the rider; the camera tilts up slowly. With sound.'],
+      ['dive', 'LTX-2.5 Pro · 7 s', '10', 'The whale zooms past the rider, its tail sweeping, a sand storm brewing near the rider; rainbow light ripples across the dunes.'],
+      ['dunes', 'LTX-2.5 22B · 5 s', '5', 'The glass whale glides low over the camel rider, then dives nose-first into the dunes; golden sand bursts up in a glowing wave.']];
+    return { id: 'takes', title: 'One picture, three takes', idea: 'A glass whale over the desert', steps: ['One picture', 'Three video takes from it, two models'],
+      intro: 'One picture, then three video takes that all start from it, on two video models, so you can compare them side by side. Each step waits for your Go.',
       phases: [
-        { frame: 'Hero frame', say: 'The hero frame first: everything else grows from it.', cards: [{ key: 'hero', name: 'Hero frame', workflow: 'create', prompt: hero, col: 0, row: 0, ref: r('hero') }], note: 'The hero frame', done: 'The hero frame is in.' },
-        { frame: 'In motion', say: 'Three moving shots from the hero frame, and the sound bed.', cards: [...moves.map(([k, name, prompt], i): DemoCard => ({ key: k, name, workflow: 'video', prompt, col: i, row: 1, from: ['hero'], ref: r(k) })),
-          { key: 'sound', name: 'Sound bed', workflow: 'music', prompt: 'Sound bed: a low whale song and soft desert wind', col: 3, row: 1, settings: MUSIC_30S, ref: r('sound') }], note: 'Three clips and a sound bed', done: 'The mood board is complete.' },
+        { frame: 'The picture', say: 'First the picture: every take starts from it.', cards: [{ key: 'picture', name: 'The picture', workflow: 'create', prompt: picture, col: 0, row: 0, ref: r('picture') }], note: 'One picture', done: 'The picture is in.' },
+        { frame: 'Three takes', say: 'Now three takes from that picture: two on LTX-2.5 Pro, one on LTX-2.5 22B.', cards: takes.map(([k, name, duration, prompt], i): DemoCard => ({ key: k, name, workflow: 'video', prompt, col: i, row: 1, from: ['picture'], settings: { duration }, ref: r(k) })),
+          note: 'Three takes from the picture', done: 'Three takes from one picture, side by side.' },
       ],
-      outro: 'The mood board is ready. Keep what fits, Re-roll the rest, or add a palette card.' };
+      outro: 'Same picture, three takes. Keep the one you like, or Re-roll any take on another model.' };
   }
   if (starter === 'free') { const r = R('free'); const base = 'a woman in a red coat walking down a city street, medium shot.';
     const looks: [string, string][] = [['Golden hour', 'golden hour, low warm sun, long shadows, rim light, soft haze'], ['Watercolour', 'loose watercolour painting, paper texture'], ['Anime', 'cel-shaded anime illustration, clean line art']];

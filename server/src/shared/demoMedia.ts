@@ -13,7 +13,6 @@ export type DemoKind = 'image' | 'video' | 'audio';
 export interface DemoMedia {
   url: string; poster: string; w: number; h: number; sec?: number;
   /** the run that made it (credits) */ jobId?: string; model: string; place: string; costUsd: number;
-  /** what the card says after "Sample · " instead of "made with <model>" (a sound taken from a clip) */ note?: string;
 }
 const D = (f: string) => `/examples/demo/${f}`;
 const ST = (f: string) => `/examples/starter/${f}`;
@@ -22,7 +21,7 @@ const CLOUD = 'Comfy Cloud', LOCAL = 'Your computer';
 const FLARE = 'GPT Image 2.5 Flare', LTX = 'LTX-2.5 22B', LTXPRO = 'LTX-2.5 Pro', H3 = 'MiniMax H3', YUE = 'YuE2', KLEIN = 'FLUX.2 [klein] 4B';
 const still = (url: string, w: number, h: number, jobId: string, model: string, costUsd: number, place = CLOUD): DemoMedia => ({ url, poster: url.replace(/\.webp$/, '-480.webp'), w, h, jobId, model, place, costUsd });
 const clip = (url: string, w: number, h: number, sec: number, jobId: string, model: string, costUsd: number): DemoMedia => ({ url, poster: url.replace(/\.mp4$/, '-480.webp'), w, h, sec, jobId, model, place: CLOUD, costUsd });
-const sound = (url: string, sec: number, jobId: string, model: string, costUsd = 0, place = LOCAL): DemoMedia => ({ url, poster: '', w: 0, h: 0, sec, jobId, model, place, costUsd });
+const sound = (url: string, sec: number, jobId: string, model: string): DemoMedia => ({ url, poster: '', w: 0, h: 0, sec, jobId, model, place: LOCAL, costUsd: 0 });
 
 export const DEMO_MEDIA: Record<string, Record<string, DemoMedia>> = {
   /* Short film from idea, "The chalk whale". Wiring as the runs really went: k2 = the harbour + the whale sheet, k4 = k1 + the whale sheet,
@@ -53,12 +52,12 @@ export const DEMO_MEDIA: Record<string, Record<string, DemoMedia>> = {
     clip: clip(SC('h3-koi-take-in.mp4'), 1280, 714, 10.13, '42ceb1af', H3, 0.8),
     extend: clip(SC('h3-koi-take.mp4'), 1280, 714, 20.13, '2fb5ac80', 'H3 Extend', 0.52),
   },
-  /* Mood board, the glass whale over the desert: the GPT Image still, the three LTX clips made from it, and the sound of one of them. */
-  mood: {
-    hero: still(ST('glass-whale.webp'), 1344, 1008, '98073a1f', FLARE, 0.0159),
+  /* One picture, three takes, the glass whale: one GPT Image picture, then three image-to-video takes from that exact picture: LTX-2.5 Pro
+     (6 s with sound; asked 10 s, gave 7.4 s) on 10-24 and LTX-2.5 22B (5 s) on 10-27. */
+  takes: {
+    picture: still(ST('glass-whale.webp'), 1344, 1008, '98073a1f', FLARE, 0.0159),
     glide: clip(SC('ltx-pro-whale-glide.mp4'), 1920, 1080, 6.04, 'bc0005d7', LTXPRO, 1.46), dive: clip(SC('ltx-pro-whale-dive.mp4'), 1280, 720, 7.42, '39346ee1', LTXPRO, 2.44),
-    dunes: clip(D('mood/dunes.mp4'), 982, 540, 5.04, '83a6fc4f', LTX, 0.14),
-    sound: { ...sound(SC('ltx-pro-whale-glide.mp4'), 6.04, 'bc0005d7', LTXPRO, 1.46, CLOUD), note: `the sound of the ${LTXPRO} clip` },
+    dunes: clip(D('takes/dunes.mp4'), 982, 540, 5.04, '83a6fc4f', LTX, 0.14),
   },
   /* Explore an idea, the red coat: one prompt, three looks, free on this computer. */
   free: {
@@ -71,16 +70,16 @@ export const DEMO_MEDIA: Record<string, Record<string, DemoMedia>> = {
 export function demoMediaOf(ref: unknown): DemoMedia | null {
   const m = /^(\w+):(\w+)$/.exec(String(ref ?? '')); return m ? DEMO_MEDIA[m[1]]?.[m[2]] ?? null : null;
 }
-export const demoKindOf = (m: Pick<DemoMedia, 'url' | 'note'>): DemoKind => (m.note || /\.mp3$/i.test(m.url) ? 'audio' : /\.mp4$/i.test(m.url) ? 'video' : 'image');
+export const demoKindOf = (m: Pick<DemoMedia, 'url'>): DemoKind => (/\.mp3$/i.test(m.url) ? 'audio' : /\.mp4$/i.test(m.url) ? 'video' : 'image');
 /** The card's line: "Sample · made with LTX-2.5 22B". */
-export const demoLabel = (m: Pick<DemoMedia, 'model' | 'note'>) => `Sample · ${m.note ?? `made with ${m.model}`}`;
+export const demoLabel = (m: Pick<DemoMedia, 'model'>) => `Sample · made with ${m.model}`;
 
 /** The model id each run used (job.provider), so the demo's card names that model from its draft on: the proposal, the card and the
  *  result all say the same model. Not YuE2: it sings from lyrics, which a card can't send, so a music card keeps its own default (its result
- *  still says YuE2). A sound taken from a clip keeps the default too (no music model made it). */
+ *  still says YuE2). */
 const PROVIDER: Record<string, string> = { [FLARE]: 'api-gpt-image-25-flare', 'Seedream 5.0 Pro': 'api-seedream', 'Qwen Image 2.1': 'comfy-qwen21', [KLEIN]: 'comfy-klein4b',
   [LTX]: 'comfy-ltx25-video', [LTXPRO]: 'router-ltx-25-pro', 'Seedance 2.0': 'router-seedance', [H3]: 'comfy-h3', 'H3 Extend': 'comfy-h3-extend', 'Qwen3 TTS 1.7B': 'comfy-qwen3tts' };
-export const demoProviderOf = (ref: unknown): string | undefined => { const m = demoMediaOf(ref); return m && !m.note ? PROVIDER[m.model] : undefined; };
+export const demoProviderOf = (ref: unknown): string | undefined => { const m = demoMediaOf(ref); return m ? PROVIDER[m.model] : undefined; };
 
 // ---------------------------------------------------------------- which job shows which media
 /* The demo agent tags each card it adds (board + the card's prompt → ref); a run started from that card carries the same board id and prompt,

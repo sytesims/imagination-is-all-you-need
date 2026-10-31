@@ -17,7 +17,7 @@ export const STARTERS = [
   { id: 'film', label: 'Make a 30s film', hint: 'Five shots, clips and music', icon: 'film', prompt: 'Make a 30s film: a lighthouse keeper finds a glowing bottle on the shore at dawn.' },
   { id: 'product', label: 'Product ad', hint: 'One prompt, a 15 s ad', icon: 'product', prompt: 'A 15 second ad for a blue glass perfume: four moody shots on black sand at night.' },
   { id: 'animate', label: 'Make a clip longer', hint: 'A 10 s clip, then 10 s more', icon: 'extend', prompt: 'A boy cups a paper lantern in a rainy alley and it becomes a glowing koi. Then keep the shot going as the koi swims up to the moon.' },
-  { id: 'mood', label: 'Mood board', hint: 'A hero frame, motion and sound', icon: 'mood', prompt: 'A mood board for a glass whale over the desert: a hero frame, the whale in motion and a sound bed.' },
+  { id: 'takes', label: 'One picture, three takes', hint: 'Compare video models', icon: 'video', prompt: 'A glass whale over the desert: one picture, then three video takes from it with different models.' },
   { id: 'free', label: 'Explore an idea', hint: 'One prompt, three looks', icon: 'explore', prompt: 'A woman in a red coat walking down a city street, in three looks.' },
 ] as const;
 export type StarterId = (typeof STARTERS)[number]['id'];

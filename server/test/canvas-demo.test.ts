@@ -14,7 +14,7 @@ assert.equal(detectStarter('Make a short trailer about owls'), 'film');
 assert.equal(detectStarter('INT. KITCHEN – She opens the fridge.'), 'free', 'no storyboard plan (2026-10-31)');
 assert.equal(detectStarter('a fox in the snow, then extend it'), 'animate'); assert.equal(detectStarter('anything', 'animate'), 'animate');
 assert.equal(detectStarter('packshots for my sneaker brand'), 'product');
-assert.equal(detectStarter('a mood board for autumn'), 'mood');
+assert.equal(detectStarter('a mood board for autumn'), 'free', 'no mood board plan (2026-10-31)');
 assert.equal(detectStarter('a cat in space'), 'free');
 assert.equal(detectStarter('a cat astronaut, with a long description of the light'), 'free', '"description" is not a script');
 assert.equal(detectStarter('a cat', 'not-a-starter'), 'free');
@@ -87,12 +87,14 @@ const PUB = path.resolve(import.meta.dirname, '../../web/public');
 for (const [recipe, cards] of Object.entries(DEMO_MEDIA)) for (const [key, m] of Object.entries(cards)) {
   assert.ok(existsSync(path.join(PUB, m.url)), `${recipe}:${key}: ${m.url} ships`); if (m.poster) assert.ok(existsSync(path.join(PUB, m.poster)), `${recipe}:${key}: poster ${m.poster} ships`);
   assert.ok(m.model && m.place && m.costUsd >= 0, `${recipe}:${key}: credited`); assert.doesNotMatch(m.url, /[0-9a-f]{8}/, `${recipe}:${key}: no job id in the file name`); }
-assert.equal(demoLabel(DEMO_MEDIA.short.c1), 'Sample · made with LTX-2.5 22B'); assert.equal(demoLabel(DEMO_MEDIA.mood.sound), 'Sample · the sound of the LTX-2.5 Pro clip');
+assert.equal(demoLabel(DEMO_MEDIA.short.c1), 'Sample · made with LTX-2.5 22B'); assert.equal(demoLabel(DEMO_MEDIA.takes.dive), 'Sample · made with LTX-2.5 Pro');
 assert.equal(demoMediaOf('short:nope'), null); assert.equal(demoMediaOf('x'), null);
 for (const s of DEMO_STARTERS.filter((x) => x.id !== 'short')) { const pl = chipPlan(s.id)!; assert.ok(pl, `${s.id}: a chip plan`); const prompts = new Set<string>();
   for (const c of pl.phases.flatMap((p) => p.cards)) { assert.ok(c.ref && demoMediaOf(c.ref), `${s.id}: ${c.key} shows a real run`); assert.ok(!prompts.has(c.prompt), `${s.id}: prompts tell the cards apart`); prompts.add(c.prompt); } }
 assert.deepEqual(chipPlan('film')!.phases[1].cards.map((c) => c.key), ['c0', 'c1', 'm'], 'the 30s film: only shots 1 and 2 were animated');
-assert.deepEqual(chipPlan('mood')!.phases[1].cards.filter((c) => c.workflow === 'video').map((c) => c.from), [['hero'], ['hero'], ['hero']], 'the mood clips were made from the hero frame');
+{ const t = chipPlan('takes')!; assert.deepEqual(t.phases.flatMap((p) => p.cards).map((c) => c.workflow), ['create', 'video', 'video', 'video'], 'one picture, three takes, no sound card');
+  assert.deepEqual(t.phases[1].cards.map((c) => c.from), [['picture'], ['picture'], ['picture']], 'every take starts from the picture');
+  assert.deepEqual(t.phases[1].cards.map((c) => c.name), t.phases[1].cards.map((c) => `${demoMediaOf(c.ref)!.model} · ${Math.round(demoMediaOf(c.ref)!.sec!)} s`), 'each take is named by its real model and length'); }
 assert.equal(chipPlan('nope'), null);
 const chalk = shortFilmPlan(DEMO_STARTERS[0].prompt, true); assert.equal(chalk.beats.length, CHALK_WHALE.demo.keys.length); assert.deepEqual(chalk.cast.map((c) => c.ref), ['short:place', 'short:whale']);
 for (const c of CHALK_WHALE.demo.clips) { assert.ok(demoMediaOf(`short:${c.key}`), c.key); for (const f of c.from) assert.ok(/^k[0-5]$/.test(f) || chalk.cast.some((x) => x.key === f), `${c.key} from ${f}`); }
@@ -100,7 +102,7 @@ assert.ok(CHALK_WHALE.demo.keys.every((k, i) => demoMediaOf(`short:k${i}`) && k.
 assert.equal(shortFilmPlan(DEMO_STARTERS[0].prompt).demo, undefined, 'typed words: the general plan');
 tagDemoCard('brd_a', ' A  harbour ', 'short:place'); assert.equal(demoRefFor('brd_a', 'A harbour'), 'short:place'); assert.equal(demoRefFor('brd_b', 'A harbour'), null); assert.equal(demoRefFor('brd_a', 'A harbour, edited'), null);
 tagDemoCard('brd_a', 'x', 'short:nope'); assert.equal(demoRefFor('brd_a', 'x'), null);
-assert.ok(isChip('mood', DEMO_STARTERS[4].prompt) && !isChip('mood', 'A mood board for autumn') && !isChip(null, DEMO_STARTERS[4].prompt), 'only the chip itself, unedited');
+assert.ok(isChip('takes', DEMO_STARTERS[4].prompt) && !isChip('takes', 'A glass whale, three takes') && !isChip(null, DEMO_STARTERS[4].prompt), 'only the chip itself, unedited');
 assert.equal(demoPlan('Product shots for a red kettle', 'product').id, 'product'); assert.ok(demoPlan('Product shots for a red kettle', 'product').phases[0].pick, 'a chip id with other words: the general plan');
 /* the demo media folder stays small: stills ≤ 400 KB, clips ≤ 3 MB, the folder ≤ 12 MB */
 const DIR = path.join(PUB, 'examples/demo'); let total = 0;
