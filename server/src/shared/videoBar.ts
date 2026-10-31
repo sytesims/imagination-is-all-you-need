@@ -65,7 +65,8 @@ export const VIDEO_BARS: Record<string, VideoBar> = {
     slots: [{ name: 'photos', label: 'Photos', kind: 'image', required: true, multiple: 15, min: 8,
       hint: '8–15 photos, shown in this order', missing: 'Add 8–15 photos' }],
     prompt: { mode: 'hidden', placeholder: '' },
-    groups: [{ id: 'words', label: 'Words', icon: 'edit' }, { id: 'kind', label: 'Kind', icon: 'gallery' }, G.length,
+    /* Kind first: the bar's first group is its main control and never folds on a short bar (shared/chipFit data-fit-main) */
+    groups: [{ id: 'kind', label: 'Kind', icon: 'gallery' }, { id: 'words', label: 'Words', icon: 'edit' }, G.length,
       { id: 'motion', label: 'Motion', icon: 'camera' }, { id: 'sound', label: 'Music', icon: 'music' }],
     controls: [
       { field: 'title', label: 'Title', group: 'words', kind: 'text', required: true, maxLength: 120, placeholder: 'A short title for your reel' },

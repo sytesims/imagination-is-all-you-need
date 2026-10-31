@@ -22,12 +22,13 @@ import { LeftNote, notAddedText } from '../../shared/FilesTray';
 import { firstWords } from '../../shared/missing';
 import { TRANSLATE_DOC } from '../../shared/brand';
 import { useDockHeight, useChipFit } from '../../shared/dockFit';
+import { fitPri } from '../../shared/chipFit';
 import { usePromptGrow } from '../../shared/usePromptGrow';
 import { PreflightNotes, type PreflightNote } from '../../shared/PreflightNotes';
 import { CloseIcon, SparkleIcon, MicIcon, TranslateIcon, MusicIcon, PlayIcon, AudioIcon, VideoIcon } from '../Icons';
 import { PromptTabs, PromptField, PromptHelpers, PromptSwitch, type PromptTab, type HelperChip } from '../../shared/PromptTabs';
 import { useInsertAtCursor } from '../../shared/useInsertAtCursor';
-import { lyricsPlan, autoLength, tooShortFor, lengthText, SECTION_TAG_HL } from '../../shared/lyricsLength';
+import { lyricsPlan, autoLength, lengthFor, recreateAudio, tooShortFor, lengthText, SECTION_TAG_HL } from '../../shared/lyricsLength';
 import { EnhanceButton, enhanceToastTitle, type EnhanceResult } from '../next/Enhance';
 import { PromptPeek, type PeekForm } from '../next/PromptPeek';
 import { BrandChip } from '../../shared/BrandChip';
@@ -87,6 +88,8 @@ export interface AudioPageProps {
   samples: File[]; setSamples: (f: File[]) => void;
   busy: boolean; issues: any[]; /** AppTool's file precheck ("checking your files", "usable files (…)") */ checks: string[];
   onGenerate: (extra: Record<string, string>) => void; jobs: JobState[];
+  /** Recreate / "Make this": the job's lyrics and length (key: a new one per prefill). Lyrics live on this page, so AppTool hands them over. */
+  recreate?: { key: string; lyrics: string; duration: number | null } | null;
 }
 
 /** "$0.08/1k chars", "$0.0009/s", "$0.15/run" from the quote's perUnit (the charge's own row). */
@@ -224,13 +227,23 @@ export default function AudioPage(p: AudioPageProps) {
   const durs: number[] = (((tm as any)?.durations ?? (cur as any)?.durations ?? (cfg.durationsByProvider?.[p.provider]) ?? cfg.durations ?? []) as number[]).map(Number).filter(n => Number.isInteger(n) && n > 0);
   const lenOn = wf.controls.some(c => c.field === 'duration') && durs.length > 0;
   const swNote = useSwitchNote(); /* the bar's note after a model switch moved the length (shared/settingsFit.ts, the menu row's fit) */
-  useEffect(() => { if (lenOn && !durs.includes(p.duration)) p.setDuration(durs.reduce((a, b) => Math.abs(b - p.duration) < Math.abs(a - p.duration) ? b : a)); }, [p.provider, durs.join(), lenOn]); // eslint-disable-line react-hooks/exhaustive-deps
   /* Auto length (shared/lyricsLength.ts): where the model sings the lyrics, the length that fits them among the model's real lengths. It is
    * written into the length AppTool sends, so the quote, the peek and the job all use it (quote = charge). A picked length turns Auto off. */
   const autoAvail = lenOn && lyrUsed; const [autoPref, setAutoPrefRaw] = useState(() => lsGet(`${AUTO_KEY}:${p.tool.id}`) !== '0');
   const setAutoPref = (on: boolean) => { setAutoPrefRaw(on); lsSet(`${AUTO_KEY}:${p.tool.id}`, on ? null : '0'); };
   const lenAuto = autoAvail && autoPref; const al = autoLength(lyrics, durs);
-  useEffect(() => { if (lenAuto && al.seconds !== p.duration) p.setDuration(al.seconds); }, [lenAuto, al.seconds]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* Recreate (audit B3): the job's lyrics, Instrumental and length come back. Lyrics live here (per tool, in this browser), so AppTool hands them
+   * over. Auto stays on only when it would pick the job's own length; with a length set here the length effect below skips this pass (it sees the old values). */
+  const rcHold = useRef(false);
+  useEffect(() => { const rc = p.recreate; if (!rc) return;
+    const x = recreateAudio(wf.lyrics, pid, rc, durs, { lyrics, instrumental: instPref, lengthControl: lenOn });
+    if (x.lyrics != null) setLyrics(x.lyrics); if (x.instrumental != null) setInstrumental(x.instrumental); if (x.auto != null) setAutoPref(x.auto);
+    if (x.duration != null) { rcHold.current = true; p.setDuration(x.duration); } }, [p.recreate?.key]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* the one length rule (audit B1; shared/lyricsLength.ts lengthFor): Auto's length, else the picked one snapped to the model's list. One effect, so a
+   * model switch can't leave a hidden length (it read "Auto · 6:00" while Auto meant 30 s); it also runs when anything else moves the length. */
+  useEffect(() => { if (rcHold.current || !lenOn) return;
+    const next = lengthFor(durs, p.duration, lenAuto ? al.seconds : null); if (next != null && next !== p.duration) p.setDuration(next); }, [p.provider, durs.join(), lenOn, lenAuto, al.seconds, p.duration]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { rcHold.current = false; }); /* the hold lasts one pass only */
   const lenShort = autoAvail && !lenAuto && tooShortFor(p.duration, al.need);
   /* a model that takes the length as a cap (YuE2, MiniMax Music 3: max_duration) can end the song sooner: one note under the list says so;
    * with Auto on, the chip reads "Auto · 1:00" */
@@ -306,7 +319,8 @@ export default function AudioPage(p: AudioPageProps) {
   const dgProblems: PreflightProblem[] = [...missing.map(m => ({ code: 'input_problem', stage: 'inputs' as const, message: m, fix: { kind: 'focus-prompt' as const, label: m } })),
     ...(blocking && !missing.length ? [{ code: gate ? (localGate ? 'needs_setup' : 'needs_key') : 'model_cant_run', stage: 'setup' as const, message: genTitle ?? genWord0, fix: { kind: 'set-up' as const, label: genWord0 || 'See what to fix' } }] : [])];
   const generate = (e: React.MouseEvent<HTMLButtonElement>) => { if (blocking) { setPfOpen(o => !o); return; } if (missing.length) { nudgeMissing(e.currentTarget); return; } setPfOpen(false);
-    p.onGenerate(sendLyrics ? { lyrics } : {}); };
+    /* the length goes only where the chip shows (audit B2: a model with no length, Seed Audio, got a hidden 600 s); the same p.duration the quote used */
+    p.onGenerate({ ...(sendLyrics ? { lyrics } : {}), ...(lenOn ? { duration: String(p.duration) } : {}) }); };
 
   /* ---- Enhance (music and sound effects only; a voiceover script is read word for word and never rewritten) ---- */
   const enhOn = wf.id === 'music' || wf.id === 'sfx';
@@ -320,7 +334,7 @@ export default function AudioPage(p: AudioPageProps) {
 
   /* ---- the dock: height for the page padding, and the chip row's fit steps (Image's: words drop → the model name truncates → Enhance, Takes and
    *      Language fold into Settings, each given back when it fits → icon-only last) ---- */
-  const dock = useRef<HTMLDivElement>(null); const prowRef = useRef<HTMLDivElement>(null);
+  const dock = useRef<HTMLDivElement>(null);
   const filePreview = useFilePreview(dock); const replacingSample = useRef<number | null>(null);
   useDockHeight(dock, '.ap');
   /* shared with Image and Video: the prompt and the lyrics box grow 2 → 8 lines with their text, the bar upward */
@@ -363,10 +377,10 @@ export default function AudioPage(p: AudioPageProps) {
       onDragOver={e => { if (hasFiles(e)) e.preventDefault(); }} onDrop={e => { dragDepth.current = 0; setDrag(false); const fs = Array.from(e.dataTransfer.files); if (!fs.length) return; e.preventDefault(); pickFor.current = null; void takeFiles(fs); }}>
       <div className="ic-frame"><div className="ic-panel">
       <div className="ic-main">
-        <div ref={prowRef} className="ic-prow" data-testid="ap-prow">
+        <div className="ic-prow" data-testid="ap-prow">
           <div className="ic-lead" data-testid="ap-lead">
             {needs.map(nd => { const K = nd.id === 'audio' ? AudioIcon : VideoIcon; return <span key={nd.id} className="wf-slot-w ap-need"><span className={`wf-slot req wf-slot-next${drag ? ' over' : ''}`} data-testid={`ap-drop-${nd.id}`}>
-              <button type="button" className="wf-slot-hit" aria-label={`Add ${nd.label.toLowerCase()}`} {...tip(`${nd.hint}. Pick, or drop it on the bar`)} onClick={() => openPicker(nd.add)}><K size={16} /><b>{nd.label}</b></button></span></span>; })}
+              <button type="button" className="wf-slot-hit" aria-label={`Add ${nd.label.toLowerCase()}`} {...tip(`${nd.hint}. Pick, or drop it on the bar`)} onClick={() => openPicker(nd.add)}><K size={16} /><SlotLabel text={nd.label} /></button></span></span>; })}
             {p.video && <span className="ic-th ap-th" {...tip(`${p.video.file.name} · ${Math.round(p.video.duration)} s${p.video.trimmed ? ' · first 30 s used' : ''}`)} data-testid="ap-clip"><button type="button" className="ic-th-hit" aria-label="Preview video input" onClick={e => filePreview.show(e.currentTarget, p.video!.file, 'video', 'Video input', () => openPicker({id:'video',label:'',testId:''}), () => p.setVideo(null), p.video!.url)}><video src={p.video.url} muted /><em className="ic-att-n">{Math.round(p.video.duration)}s</em></button><button type="button" className="ic-x" aria-label="Remove clip" onClick={() => p.setVideo(null)}><CloseIcon size={12} /></button></span>}
             {p.clip && <span className="ic-th ap-th ap-aud" {...tip(`${p.clip.file.name} · audio comes back`)} data-testid="ap-audio-clip"><button type="button" className="ic-th-hit" aria-label="Preview audio input" onClick={e => filePreview.show(e.currentTarget, p.clip!.file, 'audio', 'Audio input', () => openPicker({id:'clip',label:'',testId:''}), () => p.setClip(null))}><span aria-hidden>♪</span>{p.clip.sec ? <em className="ic-att-n">{Math.round(p.clip.sec)}s</em> : null}</button><button type="button" className="ic-x" aria-label="Remove audio file" onClick={() => p.setClip(null)}><CloseIcon size={12} /></button></span>}
             {wf.id === 'cover' && p.song && <span className="ic-th ap-th ap-aud" {...tip(`Song: ${p.song.name}`)} data-testid="ap-song"><button type="button" className="ic-th-hit" aria-label="Preview song input" onClick={e => filePreview.show(e.currentTarget, p.song!, 'audio', 'Song input', () => openPicker({id:'song',label:'',testId:''}), () => p.setSong(null))}><span aria-hidden>♫</span>{songSec ? <em className="ic-att-n">{Math.round(songSec)}s</em> : null}</button><button type="button" className="ic-x" aria-label="Remove song" onClick={() => p.setSong(null)}><CloseIcon size={12} /></button></span>}
@@ -401,14 +415,14 @@ export default function AudioPage(p: AudioPageProps) {
           {takesOn && <button ref={aR.n} type="button" data-fold="n" data-rank="2" className={`ic-chip ic-cnt ${pop === 'n' ? 'on' : ''}`} aria-haspopup="dialog" aria-expanded={pop === 'n'} aria-label={`Takes: ${n} of ${nMax}`} {...tip(pop === 'n' ? null : `Takes: ${n} of ${nMax}, each a separate result`)} data-testid="ap-takes" data-n={n} onClick={() => setPop('n')}><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"><rect x="1.75" y="4.75" width="9.5" height="9.5" rx="2" /><path d="M4.75 2.25h7a2.5 2.5 0 0 1 2.5 2.5v7" /></svg><b>{n}×</b></button>}
           {voiceOn && (voiceOpts.length > 1 ? <button ref={aR.voice} type="button" {...(langOn ? { 'data-fold': 'voice', 'data-rank': '3' } : {})} className={`ic-chip wf-grp ap-voice${pop === 'voice' ? ' on' : ''}`} data-testid="ap-voice" aria-haspopup="listbox" aria-expanded={pop === 'voice'} aria-label={`Voice: ${voiceL}. Change`} {...tip(pop === 'voice' ? null : `Voice: ${voiceL}`)} onClick={() => setPop('voice')}><MicIcon size={14} /><span className="wf-grp-l">Voice</span><b>{voiceL}</b></button>
             : <span className="ic-chip ic-static ap-voice" data-testid="ap-voice" {...tip('The only voice this model offers')}><MicIcon size={14} /><b>{voiceL}</b></span>)}
-          {langOn && <button ref={aR.lang} type="button" data-fold="lang" data-rank="4" className={`ic-chip wf-grp ap-lang${pop === 'lang' ? ' on' : ''}${qLang ? ' vs-bad' : ''}`} data-testid="ap-language" aria-haspopup="listbox" aria-expanded={pop === 'lang'} aria-label={`Language: ${langL}. Change`} {...tip(pop === 'lang' ? null : `Target language: ${langL}`)} onClick={() => setPop('lang')}><TranslateIcon size={14} /><span className="wf-grp-l">Language</span><b>{langL}</b></button>}
+          {langOn && <button ref={aR.lang} type="button" data-fold="lang" {...fitPri('keep') /* Translate's main control */} className={`ic-chip wf-grp ap-lang${pop === 'lang' ? ' on' : ''}${qLang ? ' vs-bad' : ''}`} data-testid="ap-language" aria-haspopup="listbox" aria-expanded={pop === 'lang'} aria-label={`Language: ${langL}. Change`} {...tip(pop === 'lang' ? null : `Target language: ${langL}`)} onClick={() => setPop('lang')}><TranslateIcon size={14} /><span className="wf-grp-l">Language</span><b>{langL}</b></button>}
           {enhOn && <button ref={aR.enh} type="button" data-fold="enh" data-rank="1" className={`ic-chip ic-sq ic-enh-one${pop === 'enh' ? ' open' : ''}`} data-testid="ap-enhance" aria-label="Rewrite my prompt" aria-haspopup="dialog" aria-expanded={pop === 'enh'} {...tip(pop === 'enh' ? null : 'Enhance: rewrite my prompt with more detail')} onClick={() => setPop('enh')}><SparkleIcon size={16} /></button>}
           {setOn && <button ref={aR.set} type="button" className={`ic-chip ic-sq vs-sq${pop === 'set' ? ' on' : ''}`} data-testid="ap-settings" aria-haspopup="dialog" aria-expanded={pop === 'set'} aria-label="Settings" {...tip(pop === 'set' ? null : 'Settings')} onClick={() => setPop('set')}><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden><path d="M3 4h6M12 4h1M3 12h1M7 12h6M3 8h3M9 8h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /><circle cx="10.5" cy="4" r="1.5" fill="none" stroke="currentColor" strokeWidth="1.4" /><circle cx="5.5" cy="12" r="1.5" fill="none" stroke="currentColor" strokeWidth="1.4" /><circle cx="7.5" cy="8" r="1.5" fill="none" stroke="currentColor" strokeWidth="1.4" /></svg></button>}
           <RowMore watch={dock} testId="ap-row-over" />
         </div>
           {tm && <RunOnChip compact toolId={p.tool.id} model={tm} engine={cur?.id} quote={q} testId="ap-run-on" watch={dock} />}
           <BrandChip toolId={p.tool.id} mode={mode} watch={dock} />{/* Brand Kit: the mood words only, music only (a voiceover's script is read as typed) */}
-          <PromptPeek form={peekForm} place={ro.sub ? `${ro.main} (${ro.sub})` : ro.main} photos={[]} watch={dock} keep={prowRef} />
+          <PromptPeek form={peekForm} place={ro.sub ? `${ro.main} (${ro.sub})` : ro.main} photos={[]} watch={dock} />
         </div>
       </div>
       {noPlace ? <NoPlaceGenerate testId="ap-generate" priceTestId="ap-price" />
@@ -446,3 +460,4 @@ export default function AudioPage(p: AudioPageProps) {
 /* The feed is ui/audio/AudioFeed.tsx (2026-10-27): the shared result feed (useFeedState / FeedGallery / FeedCard / FeedToolbar / the shared viewer)
  * with the shared AudioCard as each finished card's body. Opening a sound shows it over this page (?view=<id>), never /jobs/<id>. */
 import AudioFeed from './AudioFeed';
+import { SlotLabel } from '../../shared/SlotLabel';

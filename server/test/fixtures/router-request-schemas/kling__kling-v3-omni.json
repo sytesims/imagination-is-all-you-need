@@ -1,0 +1,179 @@
+{
+ "$comment": "Structure only (field names, types, enums, limits, required) of the Comfy Router request schema for kling/kling-v3-omni, as published 2026-10-25 at https://docs.comfy.org/router-schemas/kling__kling-v3-omni.json (version 37e6c2ec747b). Prose removed. Test fixture: server/test/cloud-swap.test.ts and test/_model-health.ts use it when the full cached schema is absent.",
+ "paths": {
+  "/v2/models/kling/kling-v3-omni": {
+   "post": {
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "properties": {
+         "aspect_ratio": {
+          "enum": [
+           "16:9",
+           "9:16",
+           "1:1"
+          ],
+          "type": "string"
+         },
+         "callback_url": {
+          "format": "uri",
+          "type": "string"
+         },
+         "duration": {
+          "default": "5",
+          "enum": [
+           "3",
+           "4",
+           "5",
+           "6",
+           "7",
+           "8",
+           "9",
+           "10",
+           "11",
+           "12",
+           "13",
+           "14",
+           "15"
+          ],
+          "type": "string"
+         },
+         "element_list": {
+          "items": {
+           "properties": {
+            "element_id": {
+             "format": "int64",
+             "type": "integer"
+            }
+           },
+           "required": [
+            "element_id"
+           ],
+           "type": "object"
+          },
+          "type": "array"
+         },
+         "external_task_id": {
+          "type": "string"
+         },
+         "image_list": {
+          "items": {
+           "properties": {
+            "image_url": {
+             "type": "string"
+            },
+            "type": {
+             "enum": [
+              "first_frame",
+              "end_frame"
+             ],
+             "type": "string"
+            }
+           },
+           "type": "object"
+          },
+          "type": "array"
+         },
+         "mode": {
+          "default": "pro",
+          "enum": [
+           "pro",
+           "std"
+          ],
+          "type": "string"
+         },
+         "model_name": {
+          "nullable": true,
+          "type": "string"
+         },
+         "multi_prompt": {
+          "items": {
+           "properties": {
+            "duration": {
+             "type": "string"
+            },
+            "index": {
+             "type": "integer"
+            },
+            "prompt": {
+             "maxLength": 512,
+             "type": "string"
+            }
+           },
+           "type": "object"
+          },
+          "maxItems": 6,
+          "minItems": 1,
+          "type": "array"
+         },
+         "multi_shot": {
+          "default": false,
+          "type": "boolean"
+         },
+         "prompt": {
+          "maxLength": 2500,
+          "type": "string"
+         },
+         "shot_type": {
+          "enum": [
+           "customize",
+           "intelligence"
+          ],
+          "type": "string"
+         },
+         "sound": {
+          "default": "off",
+          "enum": [
+           "on",
+           "off"
+          ],
+          "type": "string"
+         },
+         "video_list": {
+          "items": {
+           "properties": {
+            "keep_original_sound": {
+             "enum": [
+              "yes",
+              "no"
+             ],
+             "type": "string"
+            },
+            "refer_type": {
+             "enum": [
+              "feature",
+              "base"
+             ],
+             "type": "string"
+            },
+            "video_url": {
+             "type": "string"
+            }
+           },
+           "required": [
+            "video_url"
+           ],
+           "type": "object"
+          },
+          "maxItems": 1,
+          "type": "array"
+         },
+         "watermark_info": {
+          "properties": {
+           "enabled": {
+            "type": "boolean"
+           }
+          },
+          "type": "object"
+         }
+        },
+        "type": "object"
+       }
+      }
+     }
+    }
+   }
+  }
+ }
+}

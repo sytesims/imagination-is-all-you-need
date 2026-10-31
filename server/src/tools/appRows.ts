@@ -5,7 +5,9 @@
  */
 export interface AppOption { value: string; label: string; prompt?: string; tag?: string; poster?: string | null; preview?: string | null; [k: string]: unknown }
 export interface AppField {
-  name: string; label: string; kind: 'select' | 'number' | 'color' | 'json'; options?: AppOption[]; default?: string;
+  name: string; label: string; kind: 'select' | 'number' | 'color' | 'json' | 'text'; options?: AppOption[]; default?: string;
+  /** kind 'text': a short free-text field (Material Swap: what the object is); spaces collapsed, longer than this is a 400 too_long. */
+  maxLength?: number; placeholder?: string;
   /** kind 'json': checks and normalises the text (Relight's light sphere rig); an error is a 400 with code format. */
   parse?: (raw: string) => { value: string } | { error: string };
   min?: number; max?: number; step?: number; pattern?: string; help?: string;
@@ -119,9 +121,9 @@ export const RELIGHT_COLOUR_PRESETS: AppOption[] = [
 ];
 /**
  * Relight looks (2026-10-23): named lighting setups. Picking one sets the four controls to its defaults (`sets`; the user can still change
- * them) and adds a rich description of the setup to the prompt. All wording is our own. The descriptions leave out direction and colour on
- * purpose: those come from the controls, so moving the light never contradicts the look. `tone` (the look's colour temperature) is only
- * added while the colour is still the look's own. `custom` = no look: today's prompt, unchanged.
+ * them) and adds a rich description of the setup to the prompt. All wording is our own. The descriptions and setup names leave out direction
+ * (no "from above", "low", "behind", "45 degrees") and colour on purpose: those come from the controls or the light panel, so moving the light
+ * never contradicts the look. `tone` (the look's colour temperature) is only added while the colour is still the look's own. `custom` = no look.
  * Names describe common photographic lighting setups and the Camera & Lens LIGHTING list
  * (server/src/shared/cameraLens.ts). Required third-party code/asset notices are retained separately.
  */
@@ -138,15 +140,15 @@ export const RELIGHT_LOOKS: RelightLook[] = [
   { ...opt('custom', 'Custom', ''), light: '', tone: '', sets: { direction: 'front', lightQuality: 'soft', brightness: '50', color: '#FFFFFF' },
     swatch: 'linear-gradient(135deg,#55555c,#1e1e22)', credit: 'Ours: your own direction, quality, brightness and colour' },
   look('studio-softbox', 'Studio softbox', 'a large studio softbox key light',
-    'one big diffused softbox close to the subject at about 45 degrees and a little above eye level, with a gentle fill from the other side; smooth gradual falloff from highlight to shadow, soft-edged shadows under the nose and chin, even flattering skin with natural texture kept, clean highlights in the hair, one soft square catchlight in each eye, the background a touch darker than the subject',
+    'one big diffused softbox close to the subject, with a gentle fill from the opposite side; smooth gradual falloff from highlight to shadow, soft-edged shadows, even flattering skin with natural texture kept, clean highlights in the hair, one soft square catchlight in each eye, the background a touch darker than the subject',
     'neutral 5500K studio white', { direction: 'left', lightQuality: 'soft', brightness: '60', color: '#FFFFFF' },
     'radial-gradient(circle at 30% 30%,#ffffff,#c9c9cf 40%,#4a4a52 80%)', 'Common lighting term; Camera & Lens lighting list'),
   look('window', 'Window light', 'soft natural window light',
-    'daylight from a large window just out of frame as the only source; the light wraps softly around the face and falls off quickly into a gentle shadow side that keeps its detail, a rectangular window catchlight in the eyes, soft highlights on the cheekbone and hair, the room behind dimmer and quietly shaded',
+    'daylight from a large window just out of frame as the only source; the light wraps softly around the face and falls off quickly into a gentle shadow side that keeps its detail, a rectangular window catchlight in the eyes, soft highlights on the cheekbone and hair, the room in the background dimmer and quietly shaded',
     'clean neutral daylight around 5600K', { direction: 'left', lightQuality: 'soft', brightness: '55', color: '#FFFFFF' },
     'linear-gradient(110deg,#f6f3ec 0 30%,#8c8a85 62%,#2a2927)', 'Common photographic lighting setup'),
-  look('golden-hour', 'Golden hour', 'low golden-hour sunlight',
-    'late-afternoon sun low near the horizon, raking across the scene at a shallow angle; long soft-edged shadows, a warm glowing edge on the hair and shoulders, honey-toned highlights on the skin, a light warm haze with slightly lifted shadows, warm bounce light on the background',
+  look('golden-hour', 'Golden hour', 'golden-hour sunlight',
+    'late-afternoon sun raking across the scene; long soft-edged shadows, a warm glowing edge on the hair and shoulders, honey-toned highlights on the skin, a light warm haze with slightly lifted shadows, warm bounce light on the background',
     'warm golden sunlight around 3200K against slightly cooler shadows', { direction: 'right', lightQuality: 'soft', brightness: '70', color: '#FFC98A' },
     'linear-gradient(160deg,#ffd58a,#e8823e 55%,#3a1d10)', 'Tested look: soft warm amber from the right on FLUX.2 klein 4B (2026-10-23); Camera & Lens lighting list'),
   look('blue-hour', 'Blue hour', 'cool blue-hour twilight',
@@ -158,15 +160,15 @@ export const RELIGHT_LOOKS: RelightLook[] = [
     'saturated magenta neon', { direction: 'right', lightQuality: 'hard', brightness: '65', color: '#E05AD8' },
     'linear-gradient(120deg,#ff2e88,#3a0d3d 50%,#00d0ff)', 'Common photographic lighting setup'),
   look('overcast', 'Overcast', 'soft overcast daylight',
-    'a bright cloudy sky acting as one huge soft light from above; soft wrap-around light with almost no visible shadows, even exposure across the subject and background, gentle shading under the brow and chin, true-to-life skin tones, calm muted colours, broad soft catchlights',
+    'a bright cloudy sky acting as one huge soft light; soft wrap-around light with almost no visible shadows, even exposure across the subject and background, gentle soft shading, true-to-life skin tones, calm muted colours, broad soft catchlights',
     'slightly cool neutral daylight around 6500K', { direction: 'top', lightQuality: 'soft', brightness: '50', color: '#FFFFFF' },
     'linear-gradient(180deg,#eef1f5,#b6bcc4 60%,#7c828a)', 'Common lighting term; Camera & Lens lighting list'),
-  look('rim', 'Rim / backlight', 'a strong backlight',
-    'a bright light behind the subject aimed toward the camera; a glowing outline along the hair, shoulders and edges of the body, the hair lit almost translucent, the front of the subject in soft low-key shade with just enough fill to keep the face readable, the background darker so the outline clearly separates the subject, a soft glow where the light grazes the edges',
+  look('rim', 'Rim / backlight', 'a strong edge light',
+    'a bright, hard-hitting edge light; a glowing outline along the hair, shoulders and edges of the body, the hair lit almost translucent, the rest of the subject in soft low-key shade with just enough fill to keep the face readable, the background darker so the outline clearly separates the subject, a soft glow where the light grazes the edges',
     'clean bright white edge light', { direction: 'back', lightQuality: 'hard', brightness: '75', color: '#FFFFFF' },
     'radial-gradient(circle at 50% 40%,#ffffff,#9fc6ff 22%,#1b2433 60%)', 'Common photographic lighting setup'),
   look('candlelight', 'Candlelight', 'warm candlelight',
-    'a few small candle flames close to the subject, just below face height, as the only light; a tiny point source with fast falloff so the light fades into darkness within arm\'s length, a warm flickering glow on the face and hands, deep soft shadows, dark surroundings, tiny warm points of light reflected in the eyes, an intimate low-key mood',
+    'a few small candle flames close to the subject as the only light; a tiny point source with fast falloff so the light fades into darkness within arm\'s length, a warm flickering glow on the face and hands, deep soft shadows, dark surroundings, tiny warm points of light reflected in the eyes, an intimate low-key mood',
     'very warm orange flame light around 1800K', { direction: 'front', lightQuality: 'soft', brightness: '25', color: '#FF9A3C' },
     'radial-gradient(circle at 50% 70%,#ffcf6b,#8a3b0a 32%,#0d0604 68%)', 'Common photographic lighting setup'),
 ];

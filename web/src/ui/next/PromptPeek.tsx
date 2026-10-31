@@ -2,11 +2,13 @@
  * "See the exact prompt" (2026-10-23): a small button by Generate opens what this run would send, built by the server's own job code
  * (POST /api/tools/:id/prompt-peek runs the tool's parseInput: Product Shot / Relight compose, Create Image's enhance, style and camera rig).
  * Nothing runs and nothing is charged. It refreshes as you type (debounced). Photos are named "(your photo)"; Upscale has no prompt.
+ * Closing: the eye again, ✕, Esc, or any click outside it (the prompt line too). Typing in the prompt never closes it, so it follows the text.
  */
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Popover } from '../../shared/Popover';
 import { tip } from '../../shared/Tooltip';
 import { rowAnchor } from '../../shared/RowMore';
+import { fitPri } from '../../shared/chipFit';
 import { useBrand, withBrandFields } from '../../shared/brandStore';
 import './promptPeek.css';
 
@@ -41,8 +43,8 @@ export function settingsLine(s: PeekResult['settings']): string {
 /** The eye: "see the exact prompt" (also the result viewer's full-prompt toggle, shared/ResultViewer ViewerPrompt). */
 export const PeekIcon = () => <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden><path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8z" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" /><circle cx="8" cy="8" r="2" fill="none" stroke="currentColor" strokeWidth="1.4" /></svg>;
 
-export function PromptPeek({ form, place, photos, watch, keep }: { /** null: nothing to peek yet (the workflow list is loading) */ form: PeekForm | null; /** where it runs: "Local", "Comfy", "fal"… */ place: string;
-  /** the filled photo slots, e.g. ["Product photo"], each shown as "(your photo)" */ photos: string[]; watch?: RefObject<HTMLElement | null>; /** the prompt line: typing there keeps the peek open (it follows the text) */ keep?: RefObject<HTMLElement | null> }) {
+export function PromptPeek({ form, place, photos, watch }: { /** null: nothing to peek yet (the workflow list is loading) */ form: PeekForm | null; /** where it runs: "Local", "Comfy", "fal"… */ place: string;
+  /** the filled photo slots, e.g. ["Product photo"], each shown as "(your photo)" */ photos: string[]; /** the dock: the peek opens above it, never over its controls */ watch?: RefObject<HTMLElement | null> }) {
   const [open, setOpen] = useState(false); const [st, setSt] = useState<State>({ kind: 'idle' }); const [copied, setCopied] = useState(false);
   const btn = useRef<HTMLButtonElement>(null); useBrand(); /* Brand on / off or another kit re-reads the peek */
   const sent = form ? { ...form, fields: withBrandFields(form.toolId, form.fields) } : null; const key = sent ? JSON.stringify(sent) : '';
@@ -58,11 +60,9 @@ export function PromptPeek({ form, place, photos, watch, keep }: { /** null: not
   const text = r ? (r.shots && r.shots.length > 1 ? r.shots.map(s => `${s.label}: ${s.prompt}`).join('\n\n') : `${r.prompt ?? ''}${r.lyrics ? `\n\nLyrics:\n${r.lyrics}` : ''}`) : '';
   const copy = async () => { try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1600); } catch { /* the text stays selectable */ } };
   return <>
-    <button ref={btn} type="button" className={`ic-chip ic-sq ic-peek${open ? ' on' : ''}`} aria-haspopup="dialog" aria-expanded={open} aria-label="See the exact prompt" data-testid="ic-peek" data-row-fold="peek" data-rank="2" {...tip(open ? null : 'See the exact prompt')} disabled={!form} onClick={() => setOpen(o => !o)}><PeekIcon /></button>
-    <Popover open={open} anchor={rowAnchor(btn)} avoid={watch} watch={watch} gap={8} align="end" keepOpen={keep} onClose={() => setOpen(false)} label="The exact prompt" testId="ic-pop-peek" className="pk-pop">
+    <button ref={btn} type="button" className={`ic-chip ic-sq ic-peek${open ? ' on' : ''}`} aria-haspopup="dialog" aria-expanded={open} aria-label="See the exact prompt" data-testid="ic-peek" data-row-fold="peek" {...fitPri('low')} {...tip(open ? null : 'See the exact prompt')} disabled={!form} onClick={() => setOpen(o => !o)}><PeekIcon /></button>
+    <Popover open={open} anchor={rowAnchor(btn)} avoid={watch} watch={watch} gap={8} align="end" closeButton onClose={() => setOpen(false)} label="What will be sent" testId="ic-pop-peek" className="pk-pop">
       <div className="pk" data-testid="ic-peek-panel" data-state={st.kind}>
-        <div className="pk-head"><span className="ic-pop-h">What will be sent</span>
-          {r && !r.noPrompt && <button type="button" className="pk-copy" data-testid="ic-peek-copy" onClick={copy} disabled={!text}>{copied ? 'Copied' : 'Copy'}</button>}</div>
         {st.kind === 'offline' ? <p className="pk-msg" role="status">Can’t load the prompt right now</p>
           : st.kind === 'invalid' ? <p className="pk-msg" role="status" data-testid="ic-peek-invalid">{st.message}</p>
           : !r ? <p className="pk-msg" role="status">Loading…</p>
@@ -82,7 +82,8 @@ export function PromptPeek({ form, place, photos, watch, keep }: { /** null: not
               <dt>Workflow</dt>{r.workflowCredit !== undefined /* video: the model, mode, place and source in words; the credit and file on hover */ ? <dd data-testid="ic-peek-workflow" {...tip([r.workflowCredit, r.workflowFile].filter(Boolean).join(' · ') || null)}>{r.workflowLine || 'Built in'}</dd>
                 : <dd data-testid="ic-peek-workflow" {...tip(r.workflowLine)}>{r.workflowFile ?? r.workflowLine ?? 'Built in'}</dd>}
             </dl>
-            <p className="pk-foot">Built by the same code as the run. Nothing runs and nothing is charged.</p></>}
+            <div className="pk-foot"><p>Built by the same code as the run. Nothing runs and nothing is charged.</p>
+              {!r.noPrompt && <button type="button" className="pk-copy" data-testid="ic-peek-copy" onClick={copy} disabled={!text}>{copied ? 'Copied' : 'Copy'}</button>}</div></>}
       </div>
     </Popover></>;
 }

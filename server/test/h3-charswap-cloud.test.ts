@@ -178,5 +178,23 @@ try {
     ok('uploads: content_type + file_path before the file (video/mp4, image/png); a refused upload → upload_failed with Cloud’s words kept, nothing submitted'); }
   delete process.env.COMFY_API_KEY; { const r = await runOnce({}); assert.equal(r.calls.length, 0); assert.equal(r.job.reasonCode, 'key_missing'); }
   ok('run: unmeasured → refused; LoRA missing → refused with the HF link after GETs only; imported (assets) → its loader_path; object_info fallback; checks down → goes on; no key → key_missing; key never in the job');
+  { // 2026-10-31: H3 needs WHO: a click or a side. Empty / "main person" came back unchanged (3 of 6 runs); every side or click swapped.
+    const SW = await import('../src/shared/cloudSwap.ts'); const H = await import('../src/routing/http.ts'); const { getTool } = await import('../src/tools/registry.ts');
+    const j = (o: Record<string, any>) => ({ mode: 'object_swap', swapType: 'person', duration: 5, target: '', point: null, ...o });
+    assert.match(SW.charswapWhoIssue(j({}))!, /click the person to swap, or pick left\/right/); assert.match(SW.charswapWhoIssue(j({ target: 'main person' }))!, /left\/right/);
+    assert.equal(SW.charswapWhoIssue(j({ target: 'the woman on the right' })), null); assert.equal(SW.charswapWhoIssue(j({ target: 'person on the left' })), null);
+    assert.match(SW.charswapWhoIssue(j({ target: 'left and right' }))!, /left\/right/, 'both sides = no side');
+    assert.equal(SW.charswapWhoIssue(j({ point: { x: 0.7, y: 0.4, t: 0 } })), null); assert.equal(SW.charswapWhoIssue(j({ maskPath: '/x/m.mp4' })), null);
+    assert.equal(SW.charswapWhoIssue(j({ mode: 'motion_transfer' })), null, 'motion transfer: no person to find');
+    assert.equal(SW.charswapWhoIssue({ mode: 'object_swap', duration: 5 }), null, 'a quote without the fields is not judged');
+    assert.equal(CS.samSide('the man on the left'), 'left', 'the mask uses the same side rule');
+    // both places, quote and submit: the route refuses the job and the quote (its input carries target / point, routing/http.ts swapQuoteFields)
+    const t = getTool('object-swap')!; const rs = routesFor('comfy-h3-charswap', t); const cloud = rs.find((r) => r.routeId === CS.CHARSWAP_CLOUD_ROUTE)!; const local = rs.find((r) => r.kind === 'local')!;
+    for (const r of [cloud, local]) { assert.match(r.unavailableFor!(j({ target: 'main person' }))!, /left\/right/, r.routeId); assert.equal(r.unavailableFor!(j({ target: 'the woman on the right' })), null, r.routeId);
+      const q = (x: Record<string, string>) => ({ ...H.routeQuoteInput(t, { duration: '5', mode: 'object_swap', swapType: 'person', ...x }), mode: 'object_swap' });
+      assert.match(r.unavailableFor!(q({ target: '' }))!, /left\/right/, `${r.routeId}: quote refuses`); assert.equal(r.unavailableFor!(q({ target: '', point: '0.7,0.4,0' })), null, `${r.routeId}: a click runs`); }
+    const cat = (await import('../src/shared/modelCatalog.ts')).MODEL_CATALOG['object-swap:comfy-h3-charswap']; assert.equal(cat.experimental, true, 'labelled Experimental in the menu');
+    ok('who: H3 needs a click, a side or a mask clip ("main person" / empty refused) on both places, quote and submit; motion transfer exempt; Experimental');
+  }
   console.log('ALL OK h3-charswap-cloud');
 } finally { setCloudFetch(null); fs.rmSync(D, { recursive: true, force: true }); }

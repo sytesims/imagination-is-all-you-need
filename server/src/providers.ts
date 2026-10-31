@@ -90,7 +90,8 @@ export async function runWithProvider(job: Job, tool: ToolDef) {
     const vc = await import('./tools/voice/voiceControls.js'); const { DATA_DIR } = await import('./config.js');
     if (!(await vc.voicePre(job, DATA_DIR))) return; await runWithProviderInner(job, tool); return vc.voicePostRun(job, DATA_DIR);
   }
-  return runWithProviderInner(job, tool);
+  await runWithProviderInner(job, tool);
+  if (job.input?.adLogo) await (await import('./adPackLogo.js')).stampAdLogos(job); // Ad Pack: the brand's logo onto each finished ad (free, our code)
 }
 async function runWithProviderInner(job: Job, tool: ToolDef) {
   if (job.routing && !directRun.has(job.id)) { await (await import('./routing/run.js')).runRouted(job, tool); if (job.input?.voiceFields) { const vc = await import('./tools/voice/voiceControls.js'); await vc.voicePostRun(job, (await import('./config.js')).DATA_DIR); } return; } // multi-provider routing (routing/run.ts)

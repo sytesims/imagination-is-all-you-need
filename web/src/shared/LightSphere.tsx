@@ -9,6 +9,8 @@
  */
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { SPHERE_PRESETS, KELVIN_MIN, KELVIN_MAX, kelvinRgb, lightRgb, lightReadout, rigToText, wrapAz, rgbHex, type LightRig, type RigLight, type SpherePreset } from '../../../server/src/shared/lightRig';
+import { snapAngles } from '../../../server/src/shared/lightRig';
+import { stepPosition, plainDir } from '../../../server/src/shared/lightEasy';
 import { createSphereEngine, type SphereEngine, type Which } from './lightSphereEngine';
 import './lightSphere.css';
 
@@ -28,7 +30,12 @@ export interface LightSphereProps {
   /** 'ball' (Relight's compact panel): only the stage, a soft shaded ball with glowing lights; no presets, sliders, mono readouts or axis labels.
    *  The page names the light in plain words (`label`) and picks which light the drag and arrows move (`active` / `onActive`). */
   variant?: 'full' | 'ball'; label?: string; active?: Which; onActive?: (w: Which) => void;
+  /** 'ball': the light while it moves (a drag), null when it lands, so the page can name the position live */ onLive?: (rig: LightRig | null) => void;
+  /** 'ball': drawn over the stage (the page's photo inset) */ children?: React.ReactNode;
+  /** the 3D view could not start (no WebGL): the page shows its flat control instead */ onFail?: () => void;
 }
+/** 'ball' (Relight, 2026-10-31): the camera sits a little to the front-right, or turned round to look from behind. */
+export const VIEW_FRONT = 28, VIEW_BACK = 208;
 
 const NEON = ['#E05AD8', '#33D6FF', '#FF3B5C', '#7CFF6B', '#8A5CFF', '#FFB347'];
 const clamp = (n: number, a: number, b: number) => Math.min(b, Math.max(a, n));
@@ -51,9 +58,10 @@ const css = (c: [number, number, number]) => `rgb(${c[0]},${c[1]},${c[2]})`;
 const TEMP_TRACK = `linear-gradient(90deg,${[2000, 3000, 4000, 5500, 7000, 10000].map((k, i, a) => `${css(kelvinRgb(k))} ${(i / (a.length - 1)) * 100}%`).join(',')})`;
 const signed = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(Math.round(n))}°`;
 
-export function LightSphere({ value, onChange, photo = null, presets = SPHERE_PRESETS, size = 272, testId = 'light-sphere', className = '', variant = 'full', label, active: activeIn, onActive }: LightSphereProps) {
+export function LightSphere({ value, onChange, photo = null, presets = SPHERE_PRESETS, size = 272, testId = 'light-sphere', className = '', variant = 'full', label, active: activeIn, onActive, onLive, children, onFail }: LightSphereProps) {
   const ball = variant === 'ball';
-  const [shown, setShown] = useState<LightRig>(value); const shownRef = useRef(shown); shownRef.current = shown;
+  const [own, setShown] = useState<LightRig>(value); const dragging = useRef(false);
+  /* 'ball': the page's value is what shows, except while a drag is moving the light */ const shown = ball && !dragging.current ? value : own; const shownRef = useRef(shown); shownRef.current = shown;
   const busy = useRef(false); /* a drag or a preset glide in flight: the value from outside waits */
   const key = JSON.stringify(value);
   useEffect(() => { if (!busy.current) setShown(value); }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -62,10 +70,17 @@ export function LightSphere({ value, onChange, photo = null, presets = SPHERE_PR
   const canvas = useRef<HTMLCanvasElement>(null); const eng = useRef<SphereEngine | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading');
   useEffect(() => { let dead = false; const c = canvas.current; if (!c) return;
-    createSphereEngine(c, size, { look: ball ? 'ball' : 'wire' }).then((e) => { if (dead) { e.dispose(); return; } eng.current = e; setState('ready'); }).catch(() => { if (!dead) setState('failed'); });
+    createSphereEngine(c, size, { look: ball ? 'orbit' : 'wire' }).then((e) => { if (dead) { e.dispose(); return; } eng.current = e; setState('ready'); }).catch(() => { if (!dead) { setState('failed'); onFail?.(); } });
     return () => { dead = true; eng.current?.dispose(); eng.current = null; }; }, [size, ball]);
   useEffect(() => { eng.current?.setPhoto(photo); }, [photo, state]);
   useEffect(() => { eng.current?.setRig(shown, act); }, [shown, act, state]);
+  /* 'ball': the view turns between the front and the back (a short turn; reduced motion: a cut) */
+  const [view, setView] = useState(VIEW_FRONT); const yawNow = useRef(VIEW_FRONT); const turn = useRef(0);
+  useEffect(() => { const e = eng.current; if (!e || !ball) return; cancelAnimationFrame(turn.current); const from = yawNow.current;
+    if (reduced() || from === view) { yawNow.current = view; e.setView(view); return; }
+    const t0 = performance.now(); const step = (now: number) => { const k = Math.min(1, (now - t0) / 480); yawNow.current = lerp(from, view, ease(k)); e.setView(yawNow.current); if (k < 1) turn.current = requestAnimationFrame(step); };
+    turn.current = requestAnimationFrame(step); return () => cancelAnimationFrame(turn.current); }, [view, state, ball]);
+  const behindView = view === VIEW_BACK;
   const anim = useRef(0); const glide = useRef(0); useEffect(() => () => { glide.current++; cancelAnimationFrame(anim.current); }, []);
 
   const commit = (r: LightRig, meta?: { preset?: SpherePreset }) => { const x = round(r); setShown(x); onChange(x, meta); };
@@ -74,20 +89,28 @@ export function LightSphere({ value, onChange, photo = null, presets = SPHERE_PR
     const { preset, ...rest } = s; commit({ ...(opts?.dropPreset ? rest : s), [w]: next }); };
 
   /* ---- drag: grab a handle (or anywhere: the active light) and move it over the sphere; a click without a drag jumps it there ---- */
-  const drag = useRef<{ x: number; y: number; moved: boolean; which: Which; grabbed: boolean } | null>(null);
+  const drag = useRef<{ x: number; y: number; moved: boolean; which: Which; grabbed: boolean; orbit?: { az: number; el: number } } | null>(null);
   const at = (e: React.PointerEvent) => { const b = canvas.current!.getBoundingClientRect(); return { x: ((e.clientX - b.left) / b.width) * size, y: ((e.clientY - b.top) / b.height) * size }; };
   const down = (e: React.PointerEvent) => { if (e.button !== 0) return; glide.current++; cancelAnimationFrame(anim.current); const p = at(e); const hit = eng.current?.pick(p.x, p.y) ?? null; const which = hit ?? act;
-    setActive(which); setTab(which); (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); drag.current = { ...p, moved: false, which, grabbed: !!hit }; busy.current = true; e.preventDefault(); };
+    setActive(which); setTab(which); (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); drag.current = { ...p, moved: false, which, grabbed: !!hit }; busy.current = true; if (ball) { setShown(shownRef.current); dragging.current = true; } e.preventDefault(); };
   const move = (e: React.PointerEvent) => { const d = drag.current; if (!d) return; const p = at(e); const dx = p.x - d.x, dy = p.y - d.y; if (!d.moved && Math.hypot(dx, dy) < 3) return;
     d.moved = true; d.x = p.x; d.y = p.y; const s = shownRef.current; const l = d.which === 'rim' ? s.rim : s.key; if (!l) return;
+    if (ball) { /* orbit like turning a globe: sideways goes round the subject (mirrored when looking from behind), up / down over the top or under;
+      the light snaps to the nearest fixed position while the drag keeps its own smooth angles */
+      const o = d.orbit ?? (d.orbit = { az: l.az, el: l.el }); o.az += dx * 0.75 * (behindView ? -1 : 1); o.el = clamp(o.el - dy * 0.75, -90, 90);
+      const sn = snapAngles(o.az, o.el); if (sn.az !== l.az || sn.el !== l.el) { const next = { ...s, [d.which]: { ...l, ...sn } }; setShown(next); onLive?.(next); } return; }
     const k = 0.55; setShown({ ...s, [d.which]: { ...l, az: wrapAz(l.az + dx * k), el: clamp(l.el - dy * k, -89, 89) } }); };
-  const up = (e: React.PointerEvent) => { const d = drag.current; drag.current = null; busy.current = false; if (!d) return;
-    if (!d.moved && !d.grabbed) { const p = at(e); const h = eng.current?.hitSphere(p.x, p.y); if (h) { setLight(d.which, { az: h.az, el: clamp(h.el, -89, 89) }); return; } }
+  const up = (e: React.PointerEvent) => { const d = drag.current; drag.current = null; busy.current = false; if (!d) return; if (ball) { dragging.current = false; onLive?.(null); }
+    if (!d.moved && !d.grabbed) { const p = at(e); const h = eng.current?.hitSphere(p.x, p.y); if (h) { setLight(d.which, ball ? snapAngles(h.az, h.el) : { az: h.az, el: clamp(h.el, -89, 89) }); return; } }
     if (d.moved) commit(shownRef.current); };
 
   /* ---- keyboard: arrows move the active light (Shift ×3, Alt 1°), K / R pick the light, Home = straight on ---- */
   const keys = (e: React.KeyboardEvent) => {
     const s = shownRef.current; const l = act === 'rim' ? s.rim : s.key; if (!l) return; const st = e.shiftKey ? 15 : e.altKey ? 1 : 5;
+    if (ball) { const to = stepPosition(l.az, l.el, behindView && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') ? (e.key === 'ArrowLeft' ? 'ArrowRight' : 'ArrowLeft') : e.key);
+      if (to) { e.preventDefault(); e.stopPropagation(); setLight(act, to); return; }
+      if (e.key === 'Home') { e.preventDefault(); setLight(act, { az: 0, el: 0 }); return; }
+      if ((e.key === 'v' || e.key === 'V') && !e.metaKey && !e.ctrlKey) { setView(behindView ? VIEW_FRONT : VIEW_BACK); return; } }
     const m: Record<string, [number, number]> = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, st], ArrowDown: [0, -st] };
     if (m[e.key]) { e.preventDefault(); e.stopPropagation(); setLight(act, { az: wrapAz(l.az + m[e.key][0]), el: clamp(l.el + m[e.key][1], -89, 89) }); return; }
     if (e.key === 'Home') { e.preventDefault(); setLight(act, { az: 0, el: 0 }); return; }
@@ -110,11 +133,14 @@ export function LightSphere({ value, onChange, photo = null, presets = SPHERE_PR
   const hudL = act === 'rim' && shown.rim ? shown.rim : shown.key;
 
   const stage = <div className={`ls-stage ls-${state}${ball ? ' ls-ball' : ''}`} style={{ width: size, height: size } as CSSProperties} tabIndex={0} role="group" aria-roledescription="light sphere"
-    aria-label={ball ? `${label ?? ''} Drag the light around the ball, or use the arrow keys${shown.rim ? '. K and R pick the light' : ''}.`.trim() : `Light sphere. ${lightReadout(hudL, act === 'rim' ? 'Rim' : 'Key')}. Arrow keys move the light, Shift for bigger steps, K and R pick the light.`}
-    data-testid={`${testId}-stage`} onKeyDown={keys}>
-    <canvas ref={canvas} width={size} height={size} style={{ width: size, height: size }} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} data-testid={`${testId}-canvas`} />
+    aria-label={ball ? `${label ?? plainDir(hudL.az, hudL.el)}. Drag the light round the head, over the top or behind it, or use the arrow keys. V turns the view${shown.rim ? '. K and R pick the light' : ''}.` : `Light sphere. ${lightReadout(hudL, act === 'rim' ? 'Rim' : 'Key')}. Arrow keys move the light, Shift for bigger steps, K and R pick the light.`}
+    data-testid={`${testId}-stage`} data-at={`${Math.round(hudL.az)},${Math.round(hudL.el)}`} onKeyDown={keys}>
+    <canvas ref={canvas} width={size} height={size} style={{ width: size, height: size }} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onLostPointerCapture={up} data-testid={`${testId}-canvas`} />
     {!ball && <><span className="ls-hud" aria-hidden><b>{act === 'rim' ? 'RIM' : 'KEY'}</b> AZ <em>{signed(Math.round(wrapAz(hudL.az)))}</em> EL <em>{signed(Math.round(hudL.el))}</em></span>
       <span className="ls-ax ls-ax-t" aria-hidden>TOP</span><span className="ls-ax ls-ax-b" aria-hidden>BELOW</span><span className="ls-ax ls-ax-l" aria-hidden>L</span><span className="ls-ax ls-ax-r" aria-hidden>R</span></>}
+    {ball && state === 'ready' && <button type="button" className="ls-view" aria-pressed={behindView} data-testid={`${testId}-view`} onClick={() => setView(behindView ? VIEW_FRONT : VIEW_BACK)}
+      aria-label={behindView ? 'Look from the front' : 'Look from behind'}><svg width="13" height="13" viewBox="0 0 16 16" aria-hidden><path d="M2.5 8a5.5 5.5 0 0 1 9.6-3.7M13.5 8a5.5 5.5 0 0 1-9.6 3.7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /><path d="M12.6 1.8v2.9H9.7M3.4 14.2v-2.9h2.9" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>{behindView ? 'Front view' : 'Back view'}</button>}
+    {ball && children}
     {state !== 'ready' && <span className="ls-wait" aria-hidden>{state === 'failed' ? (ball ? '3D view unavailable · use the arrows' : '3D view unavailable · use the arrows and sliders') : ball ? 'Loading…' : 'Loading 3D…'}</span>}
   </div>;
   if (ball) return <div className={`ls ls-v-ball ${className}`.trim()} data-testid={testId}>{stage}</div>;

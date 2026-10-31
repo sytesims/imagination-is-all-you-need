@@ -1,5 +1,8 @@
-import { SlotPreview, SlotCount, fullText, prepUpload, useSlotReorder } from '../../shared/SlotPreview';
+import { SlotPreview, fullText, prepUpload, useSlotReorder } from '../../shared/SlotPreview';
 import { MoreFiles, LeftNote, notAddedText, type TrayFile } from '../../shared/FilesTray';
+import { swatchesOf, nextSwatchKey, withoutSwatch, tooManySwatches, timesQuote, batchLabel, runBatch, batchToast } from '../../../../server/src/shared/swatchBatch';
+import { cloneForm } from '../../shared/useToolQuery';
+import { AddTile } from '../../shared/AddTile';
 import { IMAGE_ACCEPT, fileFits, wrongTypeText } from '../../../../server/src/shared/mediaAccept';
 import { GenPrice } from '../../shared/GenPrice';
 import { hasFreeLocal } from '../../shared/KeyNeeded';
@@ -26,7 +29,10 @@ import { useRouting } from '../routing/Routes';
 import { RunOnChip, runOnText } from '../routing/RunOn';
 import { PromptPeek, type PeekForm } from './PromptPeek';
 import { BrandChip } from '../../shared/BrandChip';
-import { rowOverflowRows } from '../../shared/RowMore';
+import { addBrandField } from '../../shared/brandStore';
+import { BRAND_OWN_WORDS } from '../../../../server/src/shared/brandKit';
+import { rowOverflowRows, foldedRow, FoldedRows, type RowOverflowRow } from '../../shared/RowMore';
+import { fitPri } from '../../shared/chipFit';
 import { ModelMenu, CHECK as check } from '../../shared/ModelMenu';
 import { useToolModels, modelOfEngine, useRunOn, runOnOfRoute, shownName, modelParamFor, engineForModelParam } from '../../shared/models';
 import { useEffect, useRef, useState } from 'react';
@@ -70,7 +76,7 @@ import { listTools } from '../../api';
 import { WfIcon, WorkflowPicker, WorkflowInputs, WorkflowControls, WorkflowCredit, useImageWorkflows, useWorkflowQuote, loadDraft, saveDraft, defaultVals, fitWfVals, READY_WORKFLOW_TOOLS, viaOver, type WfDraft, type WfSlotFile, type WfRecipe } from './WorkflowBar';
 import { RIG_WORKFLOW } from '../../shared/workflowLinks';
 import MaskSheet, { maskFromFile, photoSig, type WfMask } from './MaskSheet';
-import { MaskStrip, AnglesPanel, LayoutPanel, anglesOf, anglesSummary, anglesLabel, RigStrip, rigCredit, rigOfVals, valsOfRig, photoToolCheck, useHasAlpha } from './WorkflowSurfaces';
+import { MaskStrip, AnglesPanel, LayoutPanel, anglesOf, anglesSummary, anglesLabel, pickOneLabel, RigStrip, rigCredit, rigOfVals, valsOfRig, photoToolCheck, useHasAlpha } from './WorkflowSurfaces';
 import { loadDraftFile, saveDraftFile } from '../../shared/draftFiles';
 import { EDIT_MODELS, editTagOf } from '../../shared/imageFeatures';
 import { ImagePicker } from './ImagePicker';
@@ -83,7 +89,7 @@ import UpscaleExamples from '../../tools/imageApps/UpscaleExamples';
 import { pinQ } from '../routing/Routes';
 import FeedToolbar from './feed/FeedToolbar';
 import SelectBar, { unselectable } from './feed/SelectBar';
-import CompareModels, { CompareGroupHead, CompareView } from './feed/CompareModels';
+import CompareModels, { CompareGroupHead, CompareView, SwatchCaption } from './feed/CompareModels';
 import { emptyTextFor, imageScope, type FeedScope } from './feed/feedFilter';
 import { useLiveJobs, UploadsFeed, useUploads } from './feed/FeedScope';
 import { ALL_IMAGE_FEED, IMAGE_FEED_GROUPS, imageWorkflowNameOf } from '../../../../server/src/shared/imageFeed';
@@ -222,14 +228,22 @@ export default function ImageCanvas(p: ImageCanvasProps) {
     toast(`Switched to ${nm(wfProvider)}`, 'info', { sub: `${nm(o.id)} can’t run ${recipe.name}: ${o.reason}.` }); }, [recipe?.id, wfMode, draft?.provider, wfProvider, wfOff.length]); // eslint-disable-line react-hooks/exhaustive-deps
   /* "Use as …": an image arrived (Reference, a drop on the bar, a paste) and more than one slot could take it; the bar asks, inside the strip */
   const [choose, setChoose] = useState<{ file: File; url: string; slots: string[] } | null>(null);
-  const slotLabel = (r: WfRecipe, slot: string) => r.slots.find(s => s.name === slot)?.label ?? 'Photo';
+  const slotLabel = (r: WfRecipe, slot: string) => { const [b, k] = slot.split('#'); const l = r.slots.find(s => s.name === b)?.label ?? 'Photo'; return k ? `${l} ${k}` : l; };
+  /** Material Swap's swatches (shared/swatchBatch.ts): a several-file slot keeps its files as material, material#2 … material#6 */
+  const manyOf = (r: WfRecipe | null, slot: string) => { const s = r?.slots.find(x => x.name === slot.split('#')[0]); return s?.many ? s : null; };
   /** Put a photo in a slot (null clears it). `say`: a brief toast ("Added as Face") for images that came from somewhere else. */
   const setSlot = (slot: string, f: File | null, say?: boolean) => { if (!recipe) return; const r = recipe; setWfErr(''); setChoose(null);
     if (f && !fileFits('image', f)) { toast(wrongTypeText(f.name, ['image']), 'warn'); return; }
+    const ms = manyOf(r, slot); if (!f && ms) { setWfFiles(m => ({ ...m, [r.id]: withoutSwatch(m[r.id] ?? {}, ms.name, slot, ms.many) })); setFlash(x => x?.wf === r.id && x.slot === slot ? null : x); return; } /* the swatches after it move up */
     const had = !!(wfFiles[r.id] ?? {})[slot]; setWfFiles(m => ({ ...m, [r.id]: { ...(m[r.id] ?? {}), [slot]: f ? { file: f, url: URL.createObjectURL(f) } : null } }));
     setPreps(m => { const k = `${r.id}|${slot}`; if (!(k in m)) return m; const n = { ...m }; delete n[k]; return n; }); /* a new photo: its own shape again */
     if (!f) setFlash(x => x?.wf === r.id && x.slot === slot ? null : x); if (f) { setFlash({ wf: r.id, slot, k: Date.now() }); if (say) toast(`${had ? 'Replaced' : 'Added as'} ${slotLabel(r, slot)}`); } };
+  /** One more swatch: the next empty place, or the "up to 6" note when they're all taken (nothing is replaced). */
+  const addSwatch = (slot: string, f: File, say?: boolean) => { if (!recipe) return; const ms = manyOf(recipe, slot); if (!ms) { setSlot(slot, f, say); return; }
+    const k = nextSwatchKey(wfFilesRef.current[recipe.id] ?? {}, ms.name, ms.many); if (!k) { toast(tooManySwatches(ms.many! + 1), 'warn'); return; }
+    wfFilesRef.current = { ...wfFilesRef.current, [recipe.id]: { ...(wfFilesRef.current[recipe.id] ?? {}), [k]: { file: f, url: '' } } }; /* several in one go: each finds the next place */ setSlot(k, f, say); };
   const wfSlots = recipe ? [...recipe.slots].sort((a, b) => a.order - b.order) : [];
+  const nSw = (() => { const ms = wfSlots.find(s => s.many); return ms ? swatchesOf(files, ms.name, ms.many).length : 0; })(); /* Material Swap: swatches = runs */
   /* the first photo's pixel size (Upscale: the factor rules, the quote and the readout use it) */
   const [wfSize, setWfSize] = useState<{ url: string; s: Size } | null>(null); const s0url = wfSlots[0] ? files[wfSlots[0].name]?.url ?? null : null;
   useEffect(() => { if (!s0url) return; let live = true; const i = new Image(); i.onload = () => { if (live) setWfSize({ url: s0url, s: { width: i.naturalWidth, height: i.naturalHeight } }); }; i.src = s0url; return () => { live = false; }; }, [s0url]);
@@ -285,6 +299,8 @@ export default function ImageCanvas(p: ImageCanvasProps) {
     try { if (wfMask) localStorage.setItem('ohf:wf-mask-for', wfMask.forPhoto); else localStorage.removeItem('ohf:wf-mask-for'); } catch { /* private window */ } }, [bImg?.url, wfMask?.url]); // eslint-disable-line react-hooks/exhaustive-deps
   /* ---- Camera Angles (surface 'multi-output'): the picked angles (blank = all nine, as the server reads it) ---- */
   const isMulti = recipe?.surface === 'multi-output'; const angleIds = isMulti && recipe ? anglesOf(recipe, draft?.vals.shots) : [];
+  /* the picker's group (Camera Angles 'angles', Ad Pack 'styles') and what Generate waits for when nothing is picked */
+  const multiG = recipe?.groups.find(g => g.summary.includes('shots'))?.id ?? 'angles'; const pickOne = isMulti && recipe ? pickOneLabel(recipe) : '';
   const [openGroup, setOpenGroup] = useState<{ g: string; k: number } | null>(null);
   /* what Generate waits for: a required photo, else a prompt the recipe needs without its photo (Character Sheet), else a factor that can run */
   const rw = recipe?.prompt.requiredWithout; const wfPromptMissing = !wfSlotMissing && rw && !files[rw.slot] && !(draft?.prompt ?? '').trim() ? rw.missing : null;
@@ -295,12 +311,13 @@ export default function ImageCanvas(p: ImageCanvasProps) {
   const ptCheck = recipe && !wfSlotMissing ? photoToolCheck(recipe, wfSrc, draft?.vals ?? {}, wfMask) : null; const ptAlpha = useHasAlpha(files.image?.url, recipe?.id === 'remove-bg');
   const wfMissing: { missing: string; slot?: string; mask?: boolean; group?: string; prompt?: boolean; fit?: boolean } | null = wfSlotMissing ? { missing: wfSlotMissing.missing, slot: wfSlotMissing.name }
     : ptCheck ? { missing: ptCheck.missing, slot: ptCheck.slot, mask: ptCheck.mask, group: ptCheck.group } : wfTooSmall ? { missing: 'Photo too small (128 px min)', slot: wfSlots[0]?.name } : shapeOff ? { missing: `Fit photo to ${wfFit}`, fit: true } : wfMaskMissing ? { missing: recipe?.id === 'erase' ? 'Paint what to erase' : 'Paint the area first', mask: true } : wfPromptReq ? { missing: isMask ? 'Describe the change' : 'Write a prompt', prompt: true }
-    : isMulti && !angleIds.length ? { missing: 'Pick at least one angle', group: 'angles' } : wfPromptMissing ? { missing: wfPromptMissing } : upWhy ? { missing: `×${upScale} can’t run` } : null;
+    : isMulti && !angleIds.length ? { missing: pickOne, group: multiG } : wfPromptMissing ? { missing: wfPromptMissing } : upWhy ? { missing: `×${upScale} can’t run` } : null;
   /* priced as the job you'll send: required photos counted as there, optional ones when added (quote = charge) */
   const wfSent = wfSlots.filter(s => s.required || files[s.name]);
   const wfVals: Record<string, string> = recipe && draft ? fitWfVals(recipe, wfProvider, wfMode, draft.vals) : {}; /* a shape the model doesn't offer → its own default (QA #1) */
   const wfCtl: Record<string, string> = recipe && draft ? Object.fromEntries(recipe.controls.map(c => [c.field, wfVals[c.field] ?? (c.optional ? '' : String(c.default ?? ''))]).filter(([, v]) => v !== '')) : {};
-  const wfQ: Record<string, string> = { ...(upInfo ? { scale: String(upScale), ...(wfSrc ? { width: String(wfSrc.width), height: String(wfSrc.height) } : {}) } : { types: wfMode, ...wfCtl }), ...Object.fromEntries(wfSent.map(s => [s.sendsAs, '1'])), ...(wfSent.some(s => s.sendsAs === 'image') ? { image: '1' } : {}), ...(wfSent.length > 1 ? { refs: String(wfSent.length) } : {}), ...(isMask ? { mask: '1' } : {}), ...(isMulti ? { shots: JSON.stringify(angleIds) } : {}),
+  const wfQCtl = recipe ? Object.fromEntries(Object.entries(wfCtl).filter(([k]) => recipe.controls.find(c => c.field === k)?.kind !== 'text')) : wfCtl; // typed words (Material Swap, Ad Pack) never change the price: no re-quote per keystroke
+  const wfQ: Record<string, string> = { ...(upInfo ? { scale: String(upScale), ...(wfSrc ? { width: String(wfSrc.width), height: String(wfSrc.height) } : {}) } : { types: wfMode, ...wfQCtl }), ...Object.fromEntries(wfSent.map(s => [s.sendsAs, '1'])), ...(wfSent.some(s => s.sendsAs === 'image') ? { image: '1' } : {}), ...(wfSent.length > 1 ? { refs: String(wfSent.length) } : {}), ...(isMask ? { mask: '1' } : {}), ...(isMulti ? { shots: JSON.stringify(angleIds) } : {}),
     ...(!upInfo && imgSize && imgSlot && wfSent.includes(imgSlot) ? { photoWidth: String(imgSize.width), photoHeight: String(imgSize.height) } : {}) /* the photo's real shape: a fitted photo quotes on a model that keeps its shape */ };
   const wq = useWorkflowQuote(recipe && runTool ? recipe.runner.toolId : null, wfProvider, wfQ);
   /* ---- Pre-flight (2026-10-23): every reason this run can't start, inputs → model → setup → money (shared/preflight.ts; GET /api/tools/:id/preflight
@@ -311,7 +328,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
     const list = preflightProblems({ freeLocal: hasFreeLocal(runTool?.id), slots: wfSlots.map(s => ({ name: s.name, label: s.label, required: s.required, filled: !!files[s.name], missing: s.missing,
         ...(s === imgSlot && imgSize ? { width: imgSize.width, height: imgSize.height, fitTo: wfFit } : {}) })),
       minSide: isMask || isMulti ? 128 : null, mask: isMask && files.image ? { needed: true, painted: !!wfMask } : null, prompt: promptNeed ? { missing: promptNeed } : null,
-      pick: isMulti && !angleIds.length ? { group: 'angles', missing: 'Pick at least one angle' } : null,
+      pick: isMulti && !angleIds.length ? { group: multiG, missing: pickOne } : null,
       quote: wq ? (wfIntent && wq.setup?.action === 'download' ? { ...wq, runnable: true, setup: null, setupOptions: null } : wq) : null, /* a download you already said yes to runs */
       modelName: recipe.modelInfo?.[wfProvider]?.name ?? null });
     /* a workflow's own input rule (photo tools: a photo past 8192 px, Expand's shape, a whole-photo mask) and any step the bar waits for that the list
@@ -362,7 +379,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
     if (!f || !s0 || carried.current.has(key) || (wfFiles[recipe.id] ?? {})[s0.name]) return; carried.current.add(key); const url = p.image.url; setWfFiles(m => ({ ...m, [recipe.id]: { ...(m[recipe.id] ?? {}), [s0.name]: { file: f, url } } })); }, [recipe?.id, p.image?.url]); // eslint-disable-line react-hooks/exhaustive-deps
   /** An image with no named slot (Reference from the viewer, a hand-off, a drop on the bar, a paste): the only empty slot, else ask. */
   const takeIncoming = (fs: File[]) => { const r = recipe; const f = fs.find(x => /^image\//.test(x.type)); if (!r || !f) return; const cur = wfFiles[r.id] ?? {};
-    const pl = placeIncoming(r.slots, n => !!cur[n]); if (pl.kind === 'slot') setSlot(pl.slot, f, true); else if (pl.kind === 'ask') setChoose({ file: f, url: URL.createObjectURL(f), slots: pl.slots }); };
+    const pl = placeIncoming(r.slots, n => { const ms = manyOf(r, n); return ms ? !nextSwatchKey(cur, n, ms.many) : !!cur[n]; }); if (pl.kind === 'slot') (pl.replaced ? setSlot : addSwatch)(pl.slot, f, true); else if (pl.kind === 'ask') setChoose({ file: f, url: URL.createObjectURL(f), slots: pl.slots }); };
   /* Images that arrive while the picked workflow's recipe is still loading wait here (the ordering bug: they used to land in Create's hidden photo) */
   const pending = useRef<File[]>([]);
   const wfActive = () => !!wfIdRef.current && wfIdRef.current !== RIG_WORKFLOW && (!wfList.length || wfList.some(x => x.id === wfIdRef.current && x.status === 'ready' && x.surface !== 'rig'));
@@ -402,13 +419,21 @@ export default function ImageCanvas(p: ImageCanvasProps) {
   const wfGenerate = async (e: React.MouseEvent<HTMLButtonElement>) => {
     if (!recipe || !draft) return; if (wfPf.length) { setPfOpen(o => !o); return; } /* pre-flight: every problem with its fix, on the button */
     if (!p.onWorkflowGenerate || wfBusy) return; const fd = new FormData();
-    for (const s of wfSlots) { const f = files[s.name]; if (f) fd.append(s.sendsAs, f.file, f.file.name); }
+    for (const s of wfSlots) { if (s.many) continue; const f = files[s.name]; if (f) fd.append(s.sendsAs, f.file, f.file.name); }
     if (prepNow && imgSlot && files[imgSlot.name]) { fd.append('imagePrep', JSON.stringify({ kind: prepNow.kind, aspect: prepNow.aspect })); fd.append('imageOriginal', prepNow.orig.file, prepNow.orig.file.name); } /* the viewer shows the photo as picked, badged */
     if (recipe.prompt.mode !== 'hidden') { fd.append('prompt', draft.prompt); fd.append('seed', exSeedField().seed ?? String(Math.floor(Math.random() * 1e6))); /* an example's seed when Same seed is on */ } if (wfProvider) { fd.append('provider', wfProvider); const pq = pinQ(wfProvider); if (pq.route) fd.append('route', pq.route); }
     for (const c of recipe.controls) { if (isMulti && c.field === 'shots') continue; const v = wfVals[c.field] ?? (c.optional ? '' : String(c.default ?? '')); if (v !== '' && v != null) fd.append(c.field, v); }
     if (isMask && wfMask) fd.append('mask', wfMask.file, 'mask.png'); if (isMulti) fd.append('shots', JSON.stringify(angleIds));
+    addBrandField(recipe.runner.toolId, fd); /* Ad Pack: Brand's kit (colours, type and logo); no other workflow takes it */
     if (presetHere) fd.append('lookId', presetHere.p.id); /* the run was started from a look: its page on Workflows shows the result */
-    setWfBusy(true); setWfErr(''); try { await p.onWorkflowGenerate(recipe.runner.toolId, fd); } catch (er: any) { setWfErr(String(er?.message ?? 'That didn’t start.')); } finally { setWfBusy(false); } };
+    /* Material Swap: one run per swatch through the same submit (each its own quote, history, cancel, Retry), shown as one set (shared/swatchBatch.ts) */
+    const ms = wfSlots.find(s => s.many); const sw = ms ? swatchesOf(files, ms.name, ms.many) : []; const tid = recipe.runner.toolId; const go = p.onWorkflowGenerate;
+    if (sw.length <= 1) { if (ms && sw[0]) fd.append(ms.sendsAs, sw[0].file, sw[0].file.name); setWfBusy(true); setWfErr(''); try { await go(tid, fd); } catch (er: any) { setWfErr(String(er?.message ?? 'That didn’t start.')); } finally { setWfBusy(false); } return; }
+    setWfBusy(true); setWfErr('');
+    try { const r = await runBatch(sw, async (x, set) => { const f2 = cloneForm(fd); f2.append(ms!.sendsAs, x.file, x.file.name); for (const [k, v] of Object.entries(set)) f2.append(k, v);
+        const id = await go(tid, f2); if (!id) throw new Error('It didn’t start.'); return String(id); });
+      const t = batchToast(r, sw.length); toast(t.text, t.tone); if (!r.started) setWfErr(r.failed[0]?.error ?? 'That didn’t start.'); }
+    finally { setWfBusy(false); } };
   /** Camera & Lens: the rig lives in its workflow draft (localStorage), so it survives switching workflows and a refresh, and presets / Recreate fill it. */
   function setRig(f: (r: Rig) => Rig) { setWfDrafts(m => { const d0 = m[RIG_WORKFLOW] ?? loadDraft(RIG_WORKFLOW) ?? { prompt: '', provider: '', vals: {} }; const nd: WfDraft = { ...d0, vals: { ...d0.vals, ...valsOfRig(f(rigOfVals(d0.vals))) } }; saveDraft(RIG_WORKFLOW, nd); return { ...m, [RIG_WORKFLOW]: nd }; }); }
   const promptNow = recipe && draft ? draft.prompt : p.prompt; const setPromptNow = (v: string) => { if (recipe) setDraft(d => ({ ...d, prompt: v })); else p.setPrompt(v); };
@@ -419,15 +444,14 @@ export default function ImageCanvas(p: ImageCanvasProps) {
   /* ONE chip row that never wraps (desktop): when the chips don't fit, the low-priority ones fold into the Settings button, lowest first
    * (enhance, resolution, quality, aspect = reverse DOM order; the count chip never folds). Workflow, +, model and Run on always stay. Phones fold them all (CSS)
    * and the row scrolls sideways. Re-fits on resize and on any chip change (React re-renders reset className, so class edits are watched). */
-  const chipsRef = useRef<HTMLDivElement>(null); const prowRef = useRef<HTMLDivElement>(null);
+  const chipsRef = useRef<HTMLDivElement>(null);
   /** which Create settings are folded off the bar ('aspect' | 'quality' | 'res' | 'enh'; the count chip never folds): the shared chip fit
    *  (shared/dockFit useChipFit, also Video's, Audio's and 3D's), with a workflow's chips (.wf-fold) as the second tier that folds into ⋯ */
   const folded = useChipFit(chipsRef, { over: '.wf-fold', observe: true });
   /* the ⋯ overflow menu: the chips folded into it, read from the row when it opens (each row clicks its chip, whose popover then opens on ⋯) */
-  const overRef = useRef<HTMLButtonElement>(null); const [overRows, setOverRows] = useState<{ label: string; target: HTMLElement | null }[]>([]);
+  const overRef = useRef<HTMLButtonElement>(null); const [overRows, setOverRows] = useState<RowOverflowRow[]>([]);
   const openOver = () => { if (pop === 'over') { setPop(''); return; } const c = chipsRef.current; if (!c) return;
-    setOverRows([...c.querySelectorAll<HTMLElement>('.wf-fold.ic-folded')].map(el => { const t = el.matches('button') ? el : el.querySelector<HTMLElement>('button, input, a');
-      const label = (el.getAttribute('aria-label') ?? t?.getAttribute('aria-label') ?? el.textContent ?? '').replace(/\s+/g, ' ').trim(); return { label, target: t }; }).filter(r => r.label).concat(rowOverflowRows(c)) /* Brand and the eye, folded off a short row */);
+    setOverRows([...c.querySelectorAll<HTMLElement>('.wf-fold.ic-folded')].map(el => foldedRow(el, el.matches('button') ? el : el.querySelector<HTMLElement>('button, input, a'))).filter((r): r is RowOverflowRow => !!r).concat(rowOverflowRows(c)) /* Brand and the eye, folded off a short row */);
     setPop('over'); };
   const reg = useModels(p.tool.id); const regOf = (id: string) => reg.models.find(m => m.providerId === id || m.id === id) as any;
   /* R1: popovers are the shared anchored Popover (portal); it owns Escape, outside-click and focus return */
@@ -656,7 +680,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
   const pasteToSlot = (fs: File[]) => { const t = pickFor ?? (document.activeElement as Element | null)?.closest?.('[data-wf-slot]')?.getAttribute('data-wf-slot') ?? null; const f = fs.find(x => /^image\//.test(x.type)); if (t && f) setSlot(t, f, true); else takeIncoming(fs); };
   const addRefsRef = useRef<(fs: File[]) => void | Promise<void>>(addRefs); addRefsRef.current = recipe ? pasteToSlot : addRefs;
   useEffect(() => { const f = (e: ClipboardEvent) => { const fs = [...(e.clipboardData?.files ?? [])].filter(x => /^image\//.test(x.type)); if (!fs.length) return; e.preventDefault(); addRefsRef.current(fs.map((x, k) => x.name && x.name !== 'image.png' ? x : new File([x], `pasted-${Date.now()}${k ? `-${k}` : ''}.${x.type === 'image/jpeg' ? 'jpg' : 'png'}`, { type: x.type }))); }; document.addEventListener('paste', f); return () => document.removeEventListener('paste', f); }, []);
-  /** A picked tile (Uploads, Generations, Liked): into the slot the picker is for, else Create's photos. */
+  /** A picked tile (Uploads, Generations, Favourites): into the slot the picker is for, else Create's photos. */
   /* the shared picker hands a library photo as a File tagged with its URL (shared/libraryFiles.ts): sent by reference, no re-upload */
   const usePicked = (f: File) => { if (pickFor && recipe) setSlot(pickFor, f, true); else addRefs([f]); setRefTab(null); };
   const useUrl = async (url: string, name?: string) => { try { const f = await urlToFile(url, name); if (pickFor && recipe) setSlot(pickFor, f, true); else addRefs([f]); setRefTab(null); } catch { toast('Couldn’t load that image. Try another one.', 'error'); } };
@@ -681,7 +705,8 @@ export default function ImageCanvas(p: ImageCanvasProps) {
   const refFromUpload = async (url: string) => { try { const f = await libraryFile(url, 'image'); if (intake([f])) return; addRefs([f]); toast(refN ? `Added as image ${refN + 1}` : 'Added as a reference'); } catch { toast('Couldn’t load that image. Try another one.', 'error'); } };
   const [cmpOpen, setCmpOpen] = useState(false); const cmpRef = useRef<HTMLButtonElement>(null); const [sideBy, setSideBy] = useState<string | null>(null); const ownB = useOwnAccounts();
   /* compared runs sit together (in the order picked), so the viewer steps through them */
-  const grouped = (() => { const list = feed.jobs.filter(j => j.status !== 'canceled' || lingering(j)); const out: JobState[] = []; const done = new Set<string>();
+  const grouped = (() => { const all = feed.jobs.filter(j => j.status !== 'canceled' || lingering(j)); const out: JobState[] = []; const done = new Set<string>();
+    /* a retried run in a set: its Retry takes its place (the server puts the retry in the same set) */ const retried = new Set(all.filter(j => (j as any).compare && (j as any).input?.retryOf).map(j => String((j as any).input.retryOf))); const list = all.filter(j => !retried.has(j.id));
     for (const j of list) { const g = (j as any).compare?.id as string | undefined; if (!g) { out.push(j); continue; } if (done.has(g)) continue; done.add(g);
       out.push(...list.filter(x => (x as any).compare?.id === g).sort((a, b) => Number((a as any).compare?.i ?? 0) - Number((b as any).compare?.i ?? 0))); }
     return out; })();
@@ -754,7 +779,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
               className={multi ? `mr-card mr-${pres!.kind}` : ''} testId={`ic-tile-${j.id}`} tag={multi ? null : feat} onOpen={e => open(j.id, multi ? firstOut : k, e.currentTarget)} onTogglePick={() => togglePick(j)}
               media={multi && mode === 'mosaic' && j.status === 'done' ? <ResultMosaic items={multi} pres={pres!} width={tileMaxH() * clampAr(ar)} testId={`mr-mosaic-${j.id}`} /> : img}
               badges={multi && pres && !act ? <CountBadge items={multi} pres={pres} testId={pres.kind === 'layers' ? `ly-count-${j.id}` : `mr-count-${j.id}`} /> : null}
-              caption={cmpCap ? <FeedCaption title={cmpCap.model} parts={[cmpCap.place, cmpCap.price, cmpCap.time]} testId={`cmp-cap-${j.id}`} />
+              caption={cmp && (cmp as any).kind === 'swatch' && k === 0 ? <SwatchCaption job={j} /> : cmpCap ? <FeedCaption title={cmpCap.model} parts={[cmpCap.place, cmpCap.price, cmpCap.time]} testId={`cmp-cap-${j.id}`} />
                 : multi && !act ? <span className="ic-tile-meta mr-meta" data-testid={`mr-meta-${j.id}`}><b>{feat || 'Create Image'}</b>{prompt && <span>{prompt}</span>}</span>
                 : cap1 ? <FeedCaption className="ic-cap" title={prompt || cap1.model || feat || 'Image'} parts={[prompt ? cap1.model : null, cap1.price]} testId={`ic-cap-${j.id}`} /> /* the workflow (chip) and the real model, like the Video tab */ : undefined}>
               {multi && !act && j.status === 'done' && nDone > 1 && <a className="mr-dl" href={`/api/jobs/download.zip?ids=${encodeURIComponent(j.id)}`} download data-testid={`ic-dl-all-${j.id}`} aria-label={`Download all ${nDone} (ZIP)`} {...tip(`Download all ${nDone} (ZIP)`)} onClick={e => e.stopPropagation()}><DownloadIcon size={14} /></a>}
@@ -814,8 +839,8 @@ export default function ImageCanvas(p: ImageCanvasProps) {
         {refN > 1 && <b className="ic-att-n" data-testid={`ic-att-n-${k + 1}`}>{k + 1}</b>}</button>
       <button type="button" className="ic-x" aria-label={k === 0 ? 'Remove image' : `Remove image ${k + 1}`} onClick={() => removePhoto(k, true)}><CloseIcon size={10} strokeWidth={2.2} /></button></span>; };
   const lead = <div className="ic-lead" data-testid="ic-lead" data-mode={recipe ? 'workflow' : rigRecipe ? 'rig' : 'create'} role="group" aria-label={recipe ? `${recipe.name} inputs` : 'Photos and references'}>
-    {recipe && draft ? <WorkflowInputs recipe={recipe} files={files} setFile={(slot, f) => setSlot(slot, f)} onPick={openSlotPicker} picking={refTab ? pickFor : null} onUrl={(slot, u) => { urlToFile(u).then(f => setSlot(slot, f, true)).catch(() => undefined); }} flash={flash?.wf === recipe.id ? flash : null}
-        choose={choose ? { url: choose.url, slots: choose.slots.map(n => ({ name: n, label: slotLabel(recipe, n), full: !!files[n] })) } : null} onChoose={n => choose && setSlot(n, choose.file, true)} onChooseCancel={() => setChoose(null)} disabled={wfBusy} lead={presetChip}
+    {recipe && draft ? <WorkflowInputs recipe={recipe} files={files} setFile={(slot, f) => setSlot(slot, f)} addFile={(slot, f) => addSwatch(slot, f)} onPick={openSlotPicker} picking={refTab ? pickFor : null} onUrl={(slot, u) => { urlToFile(u).then(f => setSlot(slot, f, true)).catch(() => undefined); }} flash={flash?.wf === recipe.id ? flash : null}
+        choose={choose ? { url: choose.url, slots: choose.slots.map(n => ({ name: n, label: slotLabel(recipe, n), full: !!files[n] })) } : null} onChoose={n => choose && addSwatch(n, choose.file, true)} onChooseCancel={() => setChoose(null)} disabled={wfBusy} lead={presetChip}
         surface={<>{isMask ? <MaskStrip mask={wfMask} hasPhoto={!!files.image} need={!!wfMissing?.mask} onPaint={() => setMaskOpen(true)} onClear={() => setWfMask(null)} disabled={wfBusy} erase={recipe.id === 'erase'} /> : null}
           {wfFit && imgSize && (shapeOff || prepNow) ? <PrepChip chipRef={prepChipRef} prep={shapeOff ? null : prepNow} aspect={wfFit} shape={shapeName(imgSize.width, imgSize.height)} busy={prepBusy || wfBusy} onFit={() => void applyPrep('fit')} onCrop={openCrop} onUndo={undoPrep} />
             : prepNow ? <PrepChip chipRef={prepChipRef} prep={prepNow} aspect={prepNow.aspect} shape="" busy={prepBusy || wfBusy} onFit={() => void applyPrep('fit')} onCrop={openCrop} onUndo={undoPrep} /> : null}</>} />
@@ -823,11 +848,13 @@ export default function ImageCanvas(p: ImageCanvasProps) {
       {photos.length > 0 && <div className="ic-attach ic-attach-in" data-testid="ic-attach">{photos.slice(0, ts.show).map(thumb)}
         <MoreFiles hidden={ts.more} watch={dock} testId="ic-thumbs-more" summary={refN > maxRefs ? `${refN - maxRefs} not used` : undefined} action={refN > maxRefs && maxRefs > 0 ? { label: `Remove the ${refN - maxRefs} not used`, onClick: () => { for (let i = photos.length - 1; i >= maxRefs; i--) removePhoto(i); } } : null} onRemove={f => removePhoto(f.idx)} onMove={photos.length > 1 && p.movePhoto ? (_g, a, b) => p.movePhoto!(a, b) : undefined}
           items={photos.map((ph, k): TrayFile => ({ key: ph.url, group: 'photos', idx: k, kind: 'image', url: ph.url, name: (ph as any).file?.name ?? `Image ${k + 1}`, label: refN > 1 ? `Picture ${k + 1} · @image${k + 1}` : 'Picture', off: k >= maxRefs || (!!p.mask && k > 0) }))} />
+        {/* the dashed "+": the model's real limit in its tooltip, a badge only near it, disabled at it (shared/AddTile; no counter text on the bar) */}
+        {maxRefs > 0 && <AddTile used={refN} max={maxRefs} testId="ic-add-tile" onAdd={() => { replaceIndex.current = null; setPop(''); setRefTab('Uploads'); }} />}
         {p.canMask && sup.draw !== false /* only models with a mask route (Brush Edit) */ && <>
           {p.mask && cMaskNow && <button type="button" className="ic-mask-t" data-testid="ic-mask-thumb" aria-label={`Mask: ${Math.max(1, Math.round(cMaskNow.cover * 100))}% of the photo. Edit mask`} {...tip(`Mask · ${Math.max(1, Math.round(cMaskNow.cover * 100))}% of the photo. Click to edit`)} onClick={openCreateMask}><img src={cMaskNow.preview} alt="" /></button>}
           <button type="button" className={`ic-chip ic-mask-b ${masking || p.mask ? 'on' : ''}`} data-testid="ic-mask-chip" aria-haspopup="dialog" {...tip(p.mask ? 'Brush Edit: only the painted area changes. Click to edit the mask' : 'Paint an area: only it changes')} onClick={openCreateMask}>{p.mask ? 'Mask ✓' : 'Mask'}</button></>}</div>}
       </>}
-    {!recipe && photos.length > 0 && <><SlotCount used={{image:refN}} caps={{image:maxRefs}} testId="ic-slot-count" />{refN > maxRefs && maxRefs > 0 && !ts.more /* with "+N" it sits in the tray */ && <button type="button" className="lk-btn" data-testid="ic-remove-extra-photos" onClick={() => { for (let i = photos.length - 1; i >= maxRefs; i--) removePhoto(i); }}>Remove extras</button>}</>}
+    {!recipe && photos.length > 0 && <>{refN > maxRefs && maxRefs > 0 && !ts.more /* with "+N" it sits in the tray */ && <button type="button" className="lk-btn" data-testid="ic-remove-extra-photos" onClick={() => { for (let i = photos.length - 1; i >= maxRefs; i--) removePhoto(i); }}>Remove extras</button>}</>}
     {photoPreview != null && (() => { const ph = photos[photoPreview] as {url:string;file?:File} | undefined; return ph?.file ? <SlotPreview open anchor={photoAnchor} onClose={() => setPhotoPreview(null)} item={{file:ph.file,url:ph.url}} kind="image" title={`Picture ${photoPreview + 1}`} watch={dock} testId="ic-photo-preview" warn={photoPreview >= maxRefs ? `Not sent: this model takes up to ${maxRefs} pictures.` : null} onRemove={() => removePhoto(photoPreview)} onReplace={p.replacePhoto ? () => { replaceIndex.current = photoPreview; file.current?.click(); } : undefined} /> : null; })()}
   </div>;
   /* Settings popover: only the Create controls folded off the bar (the fit above says which), each once. Enhance here is the same
@@ -865,7 +892,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
   return <div className="ic ic2" ref={rootEl}>
     <div className="ic-stage">
       <div className="ic-work ic-work2" data-testid="ic-work">
-        <FeedGallery st={fs} count={upOn ? up.items.length : shown.length} emptyText={emptyTextFor(filt, pj.pid, SCOPE)} override={upOn ? <UploadsFeed up={up} media="image" size={filt.size} idPre="ic" onReference={u => void refFromUpload(u)} /> : undefined} toolbar={selecting ? <SelectBar sel={sel2} setSel={setSel} total={feed.total} onExit={stopSelect} selectAll={selectAll} allLoading={allBusy} projects={pj.list} currentProject={pj.pid} patch={feed.patch} unpatch={feed.unpatch} refresh={feed.refresh}
+        <FeedGallery title="Image" st={fs} count={upOn ? up.items.length : shown.length} emptyText={emptyTextFor(filt, pj.pid, SCOPE)} override={upOn ? <UploadsFeed up={up} media="image" size={filt.size} idPre="ic" onReference={u => void refFromUpload(u)} /> : undefined} toolbar={selecting ? <SelectBar sel={sel2} setSel={setSel} total={feed.total} onExit={stopSelect} selectAll={selectAll} allLoading={allBusy} projects={pj.list} currentProject={pj.pid} patch={feed.patch} unpatch={feed.unpatch} refresh={feed.refresh}
               useAsRefs={useAsRefs} refsTarget={recipe ? recipe.name : 'Create'} onTrashed={ids => { if (viewId && ids.includes(viewId)) setViewId(null); }} />
             : <FeedToolbar f={filt} setF={setFilt} groups={IMAGE_FEED_GROUPS} noun="images" total={upOn ? up.total : feed.total} failed={upOn ? null : feed.failed} loading={upOn ? up.loading : feed.loading} pj={pj} selecting={selecting} onSelect={() => selecting ? stopSelect() : setSelecting(true)}
               compareOff={compareOff} onCompare={() => setCmpOpen(o => !o)} compareRef={cmpRef} live={<QueueLine className="ic-gal-live" />} />}>
@@ -894,7 +921,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
         {maskOpen && isMask && files.image && <MaskSheet photo={files.image.url} photoFile={files.image.file} initial={wfMask?.url ?? null} onCancel={() => setMaskOpen(false)} {...(recipe.id === 'erase' ? { title: 'Paint what to erase', sub: 'Cover the object and its shadow, a little past the edges. It disappears and the background is filled in.' } : {})}
           onDone={m => { setMaskOpen(false); setWfMask(m); if (!m) toast('Nothing painted, so there is no mask yet'); }} />}
         {upEx && <UpscaleExamples model={wfProvider} modelName={upName(wfProviders.find(p => p.id === wfProvider))} onClose={() => setUpEx(false)} onTry={f => { setSlot('image', f, true); if ((upInfo?.factorsByProvider[wfProvider] ?? []).includes(4)) setDraft(d => ({ ...d, vals: { ...d.vals, scale: '4' } })); }} />}
-        <div ref={prowRef} className="ic-prow" data-testid="ic-prow">
+        <div className="ic-prow" data-testid="ic-prow">
         {lead}
         {recipe?.prompt.mode === 'hidden' && <p className="ic-noprompt" data-testid="ic-noprompt">No prompt needed: {recipe.name} works from your photo and its settings.</p>}
         {subjOn && sParts && presetHere && (() => { const det = sParts.details != null; const ph = det ? 'Add details (optional)' : sParts.hint;
@@ -924,12 +951,12 @@ export default function ImageCanvas(p: ImageCanvasProps) {
             return <><MakerTile className="ic-dot" medium="image" maker={mm?.maker ?? (pv as any)?.maker} makerName={mm?.makerName ?? (pv as any)?.makerName} fallback={pv?.family || pv?.name} /><span className="ic-mname">{short(recipe ? (mm ? shownName(mm) : null) ?? recipe.modelInfo?.[wfProvider]?.name ?? pv?.name : curName)}</span>{(() => { const k = recipe ? wfKind : cKind; return k ? <span className="ic-mpick" data-testid="ic-model-pick" data-kind={k}>{` · ${PICK_LABEL[k]}`}</span> : null; })()}</>; })()}{dlNow && <DlRing pct={dlNow.pct} label={dlLabel} />}<svg className="ic-caret" width="16" height="16" viewBox="0 0 16 16" aria-hidden><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
           </span>
           {recipe && draft && <WorkflowControls recipe={recipe} files={files} vals={wfVals} setVal={(k, v) => setDraft(d => ({ ...d, vals: { ...d.vals, [k]: v } }))} provider={wfProvider} watch={dock} mode={wfMode} upscale={upInfo ? { info: upInfo, models: wfProviders, src: wfSrc, onExamples: () => setUpEx(true) } : null}
-            overRef={overRef} panels={isMulti ? { angles: <AnglesPanel r={recipe} ids={angleIds} set={ids => setDraft(d => ({ ...d, vals: { ...d.vals, shots: JSON.stringify(ids) } }))} each={angleEach} /> }
+            overRef={overRef} panels={isMulti ? { [multiG]: <AnglesPanel r={recipe} ids={angleIds} set={ids => setDraft(d => ({ ...d, vals: { ...d.vals, shots: JSON.stringify(ids) } }))} each={angleEach} /> }
               : recipe.groups.some(g => g.id === 'layout') ? { layout: <LayoutPanel r={recipe} value={wfVals.layout ?? ''} set={v => setDraft(d => ({ ...d, vals: { ...d.vals, layout: v } }))} /> } : undefined}
-            summaries={isMulti ? { angles: anglesSummary(recipe, angleIds) } : undefined} openGroup={openGroup}
+            summaries={isMulti ? { [multiG]: anglesSummary(recipe, angleIds) } : undefined} openGroup={openGroup}
             after={isMulti && angleIds.length && angleEach ? <span className="ic-chip ic-static wf-each" data-testid="wf-angles-each">{angleEach}</span> : recipe.id === 'remove-bg' && ptAlpha ? <span className="ic-chip ic-static wf-pt-note" data-testid="wf-pt-note" {...tip('This photo already has a transparent background; running it again may trim the edges more.')}>Already transparent</span> : null} />}
           {rigRecipe && <RigStrip recipe={rigRecipe} rig={rig} setRig={setRig} watch={dock} overRef={overRef} />}
-          {seedEl && <span className="ic-seed wf-fold" data-testid="ic-seed">{seedEl}</span>}
+          {seedEl && <span className="ic-seed wf-fold" {...fitPri('low')} data-testid="ic-seed">{seedEl}</span>}
           {recipe ? null : followsPhoto ? <span className="ic-chip ic-static ic-fold ic-follows" data-fold="aspect" data-testid="ic-follows-photo" {...tip(`${ed!.note}. Edits keep your photo's shape.`)}><AspectIcon size={16} className="ic-auto" />Follows your photo{resList.length === 1 ? ` · ${imgRes || resList[0]}` : ''}</span>
           : showAspect && aspects.length === 1 ? <span className="ic-chip ic-static ic-fold" data-fold="aspect" data-testid="ic-aspect-static" {...tip('The only aspect ratio this model offers')}>{aspect === 'Auto' ? <AspectIcon size={16} className="ic-auto" /> : <Shape w={shapeOf(aspect)[0]} h={shapeOf(aspect)[1]} />}{arLabel(aspect)}</span> : showAspect && <button ref={aR.aspect} data-fold="aspect" data-preset={presetSet('aspect')} aria-expanded={pop === 'aspect'} type="button" className={`ic-chip ic-fold ${pop === 'aspect' ? 'on' : ''}`} aria-haspopup="listbox" {...tip(ed?.allowAuto && aspect === 'Auto' ? 'Match photo: the result keeps your photo’s shape' : null)} onClick={() => setPop(pop === 'aspect' ? '' : 'aspect')}>{aspect === 'Auto' ? <AspectIcon size={16} className="ic-auto" /> : <Shape w={shapeOf(aspect)[0]} h={shapeOf(aspect)[1]} />}{arLabel(aspect)}</button>}
           {!recipe && (showQual && tiers.length === 1 ? <span className="ic-chip ic-static ic-fold" data-fold="quality" data-testid="ic-quality-static" {...tip('The only quality tier this model offers')}><QualityIcon size={16} />{qName(qual2)}</span> : showQual && <button ref={aR.quality} data-fold="quality" aria-expanded={pop === 'quality'} type="button" className={`ic-chip ic-fold ${pop === 'quality' ? 'on' : ''}`} aria-haspopup="listbox" onClick={() => setPop(pop === 'quality' ? '' : 'quality')}><QualityIcon size={16} />{qName(qual2)}</button>)}
@@ -948,11 +975,11 @@ export default function ImageCanvas(p: ImageCanvasProps) {
         </div>
           {/* the place: outside the scrolling chips, next to Generate, one short word that never truncates (a needed step is its dot) */}
           {recipe ? (() => { const m = modelOfEngine(recipe.runner.toolId, wfProvider); return m ? <RunOnChip compact toolId={recipe.runner.toolId} model={m} engine={wfProvider} quote={wq} watch={dock} /> : null; })() : tmCur && <RunOnChip compact toolId={p.tool.id} model={tmCur} engine={cur?.id} quote={qj} watch={dock} />}
-          {!recipe && <BrandChip toolId={p.tool.id} watch={dock} /> /* Brand Kit: "Brand: <name>" (Create Image only; a picked workflow composes its own prompt) */}
-          <PromptPeek form={peekForm} place={peekPlace} photos={peekPhotos} watch={dock} keep={prowRef} />
+          {!recipe ? <BrandChip toolId={p.tool.id} watch={dock} /> : BRAND_OWN_WORDS.has(recipe.runner.toolId) ? <BrandChip toolId={recipe.runner.toolId} watch={dock} /> : null /* Brand Kit: "Brand: <name>" (Create Image; Ad Pack, which words the brand and adds its logo itself; other workflows compose their own prompt) */}
+          <PromptPeek form={peekForm} place={peekPlace} photos={peekPhotos} watch={dock} />
         </div>
       </div>
-      {recipe ? <DockGenerate toolId={recipe.runner.toolId} engine={wfProvider} quote={wq} label={isMulti ? anglesLabel(angleIds.length) : recipe.generateLabel} busy={wfBusy} disabled={!runTool} problems={wfPf} missing={wfMissing?.missing ?? null}
+      {recipe ? <DockGenerate toolId={recipe.runner.toolId} engine={wfProvider} quote={nSw > 1 ? timesQuote(wq, nSw) : wq /* Material Swap: the price of every swatch's run */} label={isMulti ? anglesLabel(angleIds.length, recipe) : batchLabel(recipe.generateLabel, nSw)} busy={wfBusy} disabled={!runTool} problems={wfPf} missing={wfMissing?.missing ?? null}
           pfOpen={pfOpen} genRef={genRef} onClick={wfGenerate} intent={wfIntent} dlSize={wfDlSize} workflowId={recipe.id} /> /* shared/DockGenerate.tsx (also the Canvas bar's) */
       : needSetup && !createPf.some(x => x.stage === 'inputs' || x.stage === 'model') ? <SetupGenerate toolId={p.tool.id} model={modelOfEngine(p.tool.id, cur?.id)} engine={cur?.id} quote={qj} className="ic-gen gen-btn gen-dock btn btn-primary" testId="ic-generate" priceTestId="ic-price" />
       : noPlace ? <NoPlaceGenerate testId="ic-generate" priceTestId="ic-price" />
@@ -983,8 +1010,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
       </PopSection></BarPopover>
       <BarPopover open={pop === 'over'} anchor={overRef} watch={dock} gap={4} onClose={closePop} label="More settings" role={!recipe && folded.length ? 'dialog' : 'menu'} testId="ic-pop-over" width={!recipe && folded.length ? 320 : 240}><div className="bp-wrap" data-testid="ic-over-panel">
         {!recipe && folded.length > 0 && setBody}
-        <PopSection label="More settings"><PopList label="More settings" role="group">{overRows.map((r, i) => r.target ? <PopRow key={i} role="menuitem" testId={`ic-over-${i}`} label={r.label} onClick={() => { const t = r.target!; setPop(''); requestAnimationFrame(() => t.click()); }} />
-          : <p key={i} className="bp-fact" role="none">{r.label}</p>)}</PopList></PopSection>
+        <PopSection label="More settings"><PopList label="More settings" role="group"><FoldedRows rows={overRows} testId="ic-over" onPick={t => { setPop(''); requestAnimationFrame(() => t.click()); }} /></PopList></PopSection>
       </div></BarPopover>
       <BarPopover open={pop === 'set'} anchor={aR.set} watch={dock} gap={4} onClose={closePop} label="Settings" testId="ic-pop-settings" width={320}><div className="bp-wrap" data-testid="ic-settings-panel">{setBody}</div></BarPopover>
       <BarPopover open={pop === 'aspect'} anchor={aR.aspect} watch={dock} gap={4} onClose={closePop} label="Aspect ratio" role="listbox" testId="ic-pop-aspect" width={arGroups ? 320 : 220}>

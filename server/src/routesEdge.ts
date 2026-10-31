@@ -132,9 +132,11 @@ export function filterJobList(q: JobListQuery): { all: any[]; defaultLimit: numb
     return (liked == null || !!m.favourite === liked) && (!proj || (proj === 'none' ? !m.projectId : m.projectId === proj)) && (!cmp || (cmp === 'any' ? !!m.compare : m.compare?.id === cmp)); };
   // ?featured=1 (2026-10-26): your starred results, newest first; ?media= picks the tab
   const featured = q.featured != null && /^(1|true|on|yes)$/i.test(q.featured);
+  /* a Material Swap swatch that failed stays with its set in the feed (finished + running: its Retry is one click there); a plain status=done list stays done only */
+  const inSet = (j: Job) => !!want?.includes('done') && want.includes('running') && (j.status === 'failed' || j.status === 'blocked') && lib.metaOf(j.id).compare?.kind === 'swatch';
   const asc = q.order === 'asc' || (want != null && q.order !== 'desc');
   const defaultLimit = Math.min(500, Number(q.limit) || (want ? 200 : 50));
-  const all = [...jobs.values()].filter((j) => !j.input.reelParentId && !(j as any).seed && (!featured || !!lib.metaOf(j.id).featured) && (!tool || j.toolId === tool) && (!want || want.includes(j.status)) && !lib.metaOf(j.id).deletedAt // community seed jobs aren't yours
+  const all = [...jobs.values()].filter((j) => !j.input.reelParentId && !(j as any).seed && (!featured || !!lib.metaOf(j.id).featured) && (!tool || j.toolId === tool) && (!want || want.includes(j.status) || inSet(j)) && !lib.metaOf(j.id).deletedAt // community seed jobs aren't yours
       && (from == null || j.createdAt >= from) && (to == null || j.createdAt <= to) && (!q.media || mediaOf(j) === q.media) && (enh == null || isEnhanced(j as any) === enh)
       && (!vfeed || inVideoFeed(j as any, vfeed)) && (!ifeed || inImageFeed(j as any, ifeed)) && (!afeed || inAudioFeed(j as any, afeed.id)) && (!feats || ((f) => !!f && (feats === '*' || feats.has(f)))(featureIdOfJob(j as any)))
       && (!needle || `${j.id} ${j.toolId} ${String((j.input as any)?.prompt ?? '')}`.toLowerCase().includes(needle)) && metaOk(j.id))

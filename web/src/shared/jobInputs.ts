@@ -1,7 +1,7 @@
 import type { JobState } from '../api';
 /* The job's input files, in order, with their slot names: one source for the result viewer (ResultView) and the in-progress screen (RunStage). */
 /** The input photos' names by the tool that took them (the workflow's slot names), else Image 1, Image 2… */
-export const INPUT_LABELS: Record<string, string[]> = { 'app-face-swap': ['Target', 'Face'], 'app-person-swap': ['Target', 'Person'], 'image-upscale': ['Photo'], 'app-relight': ['Photo'], 'app-inpaint': ['Photo'], 'app-character-sheet': ['Your photo'], 'app-product-shot': ['Product photo'], 'app-shots': ['Photo'] };
+export const INPUT_LABELS: Record<string, string[]> = { 'app-face-swap': ['Target', 'Face'], 'app-person-swap': ['Target', 'Person'], 'app-material-swap': ['Object', 'Material'], 'app-ad-pack': ['Product', 'Side 2', 'Side 3'], 'image-upscale': ['Photo'], 'app-relight': ['Photo'], 'app-inpaint': ['Photo'], 'app-character-sheet': ['Your photo'], 'app-product-shot': ['Product photo'], 'app-shots': ['Photo'] };
 /** Video tools that reuse the viewer: their source clip or audio is an input too */
 export const MEDIA_INPUTS: [string, string][] = [['videoUrl', 'Video'], ['sourceAudioUrl', 'Audio'], ['voiceSampleUrl', 'Voice sample'], ['speechUrl', 'Speech']];
 export const isFileUrl = (u: unknown): u is string => typeof u === 'string' && /^\/(files|samples)\//.test(u);

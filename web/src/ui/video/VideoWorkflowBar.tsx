@@ -35,6 +35,8 @@ import { LookPicker, type LookItem } from '../../shared/LookPicker';
 import { openPickerFor, withNativePicker } from '../../shared/MediaPicker';
 import { tip } from '../../shared/Tooltip';
 import { useDockHeight, useChipFit } from '../../shared/dockFit';
+import { fitPri } from '../../shared/chipFit';
+import { foldedRow, FoldedRows, type RowOverflowRow } from '../../shared/RowMore';
 import { usePromptGrow } from '../../shared/usePromptGrow';
 import { useToolModels, modelOfEngine, shownName, setupPlacesOf, engineForModelParam, modelParam, useModelParamSync, useRouting } from '../../shared/models';
 import { doSetupPlace } from '../../shared/SetupCard';
@@ -61,6 +63,7 @@ import { reelReadinessNote, reelSetupTarget } from '../../shared/genFlows';
 import { VideoThumb } from '../../shared/VideoThumb';
 import { MentionLayer } from '../../shared/MentionChips';
 import { renumberMentions } from '../../../../server/src/shared/mentions';
+import { SlotLabel } from '../../shared/SlotLabel';
 
 const ICONS: Record<string, (p: IconProps) => ReactNode> = { edit: TextIcon, gallery: ImageIcon, music: AudioIcon, clock: ClockIcon, resolution: ResolutionIcon, aspect: AspectIcon, quality: QualityIcon, extend: ExtendIcon, hdr: HdrIcon, fps: FpsIcon, depth: DepthIcon,
   cutout: CutoutIcon, upscale: UpscaleIcon, palette: PaletteIcon, transition: TransitionIcon, orbit: OrbitIcon, camera: CameraMovesIcon, fx: PhotoFxIcon, swap: ObjectSwapIcon, layers: LayersIcon, person: UserIcon, spark: SparkleIcon, select: SelectIcon, reshoot: ReshootIcon };
@@ -130,9 +133,9 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
   const anchorOf = (gid: string) => (anchors.current[gid] ??= { get current() { const e = gRefs.current[gid] ?? null; return e?.classList.contains('ic-folded') ? overRef.current : e; } });
   /* ONE chip row that never wraps (shared chip fit, as Image's): group words drop first, then chips fold into the ⋯ menu */
   const chipsRef = useRef<HTMLDivElement>(null); const overRef = useRef<HTMLButtonElement>(null); useChipFit(chipsRef, { over: '.wf-fold', observe: true });
-  const [overRows, setOverRows] = useState<{ label: string; target: HTMLElement | null }[]>([]);
+  const [overRows, setOverRows] = useState<RowOverflowRow[]>([]);
   const openOver = () => { if (pop === 'over') { setPop(''); return; } const c = chipsRef.current; if (!c) return;
-    setOverRows([...c.querySelectorAll<HTMLElement>('.wf-fold.ic-folded')].map(el => ({ label: (el.getAttribute('aria-label') ?? el.textContent ?? '').replace(/\s+/g, ' ').trim(), target: el })).filter(r => r.label)); setPop('over'); };
+    setOverRows([...c.querySelectorAll<HTMLElement>('.wf-fold.ic-folded')].map(el => foldedRow(el)).filter((r): r is RowOverflowRow => !!r)); setPop('over'); };
   const modelRef = useRef<HTMLButtonElement>(null); const slotIn = useRef<Record<string, HTMLInputElement | null>>({});
   useDockHeight(dock, '.vs'); usePromptGrow(promptRef, reel ? vals.title ?? '' : prompt);
   useToolModels(tool.id); const tm = modelOfEngine(tool.id, prov);
@@ -220,7 +223,9 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
   /** reorder a slot's files (arrows or drag): Image 1, Image 2… follow the new order */
   const moveFile = (s: VBarSlot, from: number, to: number) => setFiles(m => { const l = [...(m[s.name] ?? [])]; if (to < 0 || to >= l.length || from === to) return m; const [x] = l.splice(from, 1); l.splice(to, 0, x); return { ...m, [s.name]: l }; });
   const dragFrom = useRef<{ slot: string; i: number } | null>(null);
-  const openSlot = (name: string, at?: number) => { replaceAt.current = at == null ? null : { slot: name, i: at }; const el = slotIn.current[name]; if (el) openPickerFor(el); };
+  const openSlot = (name: string, at?: number) => { replaceAt.current = at == null ? null : { slot: name, i: at }; const el = slotIn.current[name]; if (!el) return;
+    /* replacing one file: one pick, even when the slot is full (data-picker-max is read as the picker opens) */
+    const was = el.getAttribute('data-picker-max'); if (at != null) el.setAttribute('data-picker-max', '1'); openPickerFor(el); if (at != null) { if (was == null) el.removeAttribute('data-picker-max'); else el.setAttribute('data-picker-max', was); } };
   /* a result handed over (Extend, Upscale, Turn to video…), Recreate, or a library file: into the matching slot */
   const firstOf = (k: VBarSlot['kind']) => bar.slots.find(s => s.kind === k);
   /** A Recreate's (or example's) files: the slot gets exactly these, in this order (never added to what it held; the model's "Not used" rule still marks extras). */
@@ -376,7 +381,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
   const addTile = (s: VBarSlot, o: { fs: SlotFile[]; req: boolean; firstEmpty: boolean; numbered: boolean; base: number; small?: boolean }) => { const K = KIND_ICON[s.kind];
     return <span className={`wf-slot ${o.req ? 'req' : 'opt'}${o.firstEmpty ? ' wf-slot-next' : ''} vbar-slot vbar-${s.kind}${o.small ? ' vbar-add-sm' : ''}`} data-testid={`vbar-slot-${s.name}`} data-next={o.firstEmpty ? '1' : undefined}
       onDragOver={e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); e.stopPropagation(); } }} onDrop={e => { if (!e.dataTransfer.files.length) return; e.preventDefault(); e.stopPropagation(); void takeFiles(s, Array.from(e.dataTransfer.files)); }}>
-      <button type="button" className="wf-slot-hit" data-ref-trigger aria-haspopup="dialog" aria-label={`Add ${o.numbered && o.fs.length ? `image ${o.base + o.fs.length + 1}` : s.label.toLowerCase()}${o.req ? '' : ' (optional)'}`} {...tip(`${(s.hint ?? '').replace(/\.\s*$/, '')}. Pick from your library, upload or drop`)} onClick={() => openSlot(s.name)}>{o.fs.length ? <PlusIcon size={14} /> : <K size={14} />}{!o.small && <b>{o.fs.length ? 'Add' : s.label}</b>}</button>
+      <button type="button" className="wf-slot-hit" data-ref-trigger aria-haspopup="dialog" aria-label={`Add ${o.numbered && o.fs.length ? `image ${o.base + o.fs.length + 1}` : s.label.toLowerCase()}${o.req ? '' : ' (optional)'}`} {...tip(`${(s.hint ?? '').replace(/\.\s*$/, '')}. Pick from your library, upload or drop`)} onClick={() => openSlot(s.name)}>{o.fs.length ? <PlusIcon size={14} /> : <K size={14} />}{!o.small && <SlotLabel text={o.fs.length ? 'Add' : s.label} />}</button>
       {!o.small && <button type="button" className="wf-slot-up" aria-label={`Upload ${s.label.toLowerCase()} from this computer`} data-testid={`vbar-slot-${s.name}-upload`} {...tip('Upload from this computer')} onClick={() => { replaceAt.current = null; withNativePicker(() => slotIn.current[s.name]?.click()); }}>
         <svg width="10" height="10" viewBox="0 0 16 16" aria-hidden><path d="M8 11V3M4.5 6.5 8 3l3.5 3.5M3 13h10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg></button>}</span>; };
   /** Popovers of the multi-file slots: every file as a labelled grid (Image 1…N), reorder, remove, add; what the model leaves unused is said once. */
@@ -385,7 +390,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
   const slotEls = shownSlots.map((s, i) => { const fs = files[s.name] ?? []; const req = reqOf(s); const firstEmpty = shownSlots.find(x => reqOf(x) && !files[x.name]?.length) === s; const mx = maxOf(s);
     const used = usedOf(s); const multi = (!!mx && mx > 1) || fs.length > 1; const numbered = multi && s.kind === 'image'; const base = numbered ? imgBase(s) : 0;
     const canAdd = !fs.length || (!!mx && mx > 1 && fs.length < mx); const o = { multi, numbered, base, used, count: fs.length };
-    const input = <input ref={el => { slotIn.current[s.name] = el; }} type="file" hidden accept={acceptOf(s)} multiple={!!mx && mx > 1} data-picker-title={s.missing ? `Choose ${s.missing.replace(/^Add /, '')}` : `Choose ${s.label.toLowerCase()}`} data-picker-limits={s.hint} data-picker-frames={s.kind === 'image' ? '' : undefined}
+    const input = <input ref={el => { slotIn.current[s.name] = el; }} type="file" hidden accept={acceptOf(s)} multiple={!!mx && mx > 1} data-picker-max={mx && mx > 1 ? Math.max(0, mx - fs.length) : undefined} data-picker-title={s.missing ? `Choose ${s.missing.replace(/^Add /, '')}` : `Choose ${s.label.toLowerCase()}`} data-picker-limits={s.hint} data-picker-frames={s.kind === 'image' ? '' : undefined}
       data-testid={`vbar-slot-${s.name}-input`} onChange={e => { const l = Array.from(e.target.files ?? []); e.currentTarget.value = ''; const r = replaceAt.current?.slot === s.name ? replaceAt.current.i : undefined; replaceAt.current = null; if (l.length) void takeFiles(s, l, r); }} />;
     const arrow = i > 0 && wf.id === 'transitions' && <span className="wf-arrow" aria-hidden>→</span>;
     if (!multi || !fs.length) return <span key={s.name} className={`wf-slot-w vbar-slot-w${multi ? ' vbar-multi vbar-stacked' : ''}`} data-testid={multi ? `vbar-slot-${s.name}-row` : undefined}>{arrow}{input}
@@ -451,8 +456,8 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
                 <MakerTile className="ic-dot" medium="video" maker={tm?.maker} makerName={tm?.makerName} fallback={provInfo?.family || provInfo?.name} /><span className="ic-mname">{modelName}</span>
                 <svg className="ic-caret" width="16" height="16" viewBox="0 0 16 16" aria-hidden><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></button>
             </span>
-            <span className="wf-strip wf-ctl" data-testid="vbar-controls" data-workflow={wf.id}>{(() => { const ec = extra.chips?.(live()); const at = extra.chipsAfter ? bar.groups.findIndex(g => g.id === extra.chipsAfter) + 1 : 0; return <>{groupChips.slice(0, at)}{ec}{vfit.chip}{groupChips.slice(at)}</>; })()}
-              {lastSeed != null && <span className="ic-seed wf-fold" data-testid="vs-seed" aria-label={seedOn ? `Same seed ${lastSeed}` : 'Same seed: off'}><SameSeed seed={lastSeed} on={seedOn} onChange={setSeedOn} /></span>}</span>
+            <span className="wf-strip wf-ctl" data-testid="vbar-controls" data-workflow={wf.id} data-fit-main="first" /* its first control is the workflow's main one: never folds (shared/chipFit) */>{(() => { const ec = extra.chips?.(live()); const at = extra.chipsAfter ? bar.groups.findIndex(g => g.id === extra.chipsAfter) + 1 : 0; return <>{groupChips.slice(0, at)}{ec}{vfit.chip}{groupChips.slice(at)}</>; })()}
+              {lastSeed != null && <span className="ic-seed wf-fold" {...fitPri('low')} data-testid="vs-seed" aria-label={seedOn ? `Same seed ${lastSeed}` : 'Same seed: off'}><SameSeed seed={lastSeed} on={seedOn} onChange={setSeedOn} /></span>}</span>
             {toggles}
             <button ref={overRef} type="button" className={`ic-chip ic-sq ic-over${pop === 'over' ? ' on' : ''}`} aria-haspopup="menu" aria-expanded={pop === 'over'} aria-label="More settings" {...tip(pop === 'over' ? null : 'More settings')} data-testid="vbar-over" onClick={openOver}><MoreIcon size={16} /></button>
           </div>
@@ -474,7 +479,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
       {gallery && <LookPicker open={pop === `g:${gallery.group}`} anchor={anchorOf(gallery.group)} avoid={dock} watch={dock} onClose={() => setPop('')} label={gallery.label} testId="vbar-look"
         tabs={[{ id: gallery.field, label: gallery.label, searchLabel: `Search ${gallery.field === 'preset' ? 'styles' : gallery.field === 'move' ? 'moves' : gallery.field === 'look' ? 'looks' : 'effects'}`, items: galleryItems(gallery) }]} tab={gallery.field} onTab={() => undefined} />}
       <BarPopover open={pop === 'over'} anchor={overRef} watch={dock} gap={4} onClose={() => setPop('')} label="More settings" role="menu" testId="vbar-pop-over" width={240}>
-        <PopSection label="More settings"><PopList label="More settings" role="group">{overRows.map((r, i) => <PopRow key={i} role="menuitem" testId={`vbar-over-${i}`} label={r.label} onClick={() => { const t = r.target; setPop(''); if (t) requestAnimationFrame(() => t.click()); }} />)}</PopList></PopSection></BarPopover>
+        <PopSection label="More settings"><PopList label="More settings" role="group"><FoldedRows rows={overRows} testId="vbar-over" onPick={t => { setPop(''); requestAnimationFrame(() => t.click()); }} /></PopList></PopSection></BarPopover>
       <PreflightPop open={pfOpen && problems.length > 0} anchor={genRef} watch={dock} problems={problems} onClose={() => setPfOpen(false)} run={f => { void runFix(f); }} />
     </div></div>
   </div>;

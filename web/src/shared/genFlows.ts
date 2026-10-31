@@ -17,6 +17,7 @@ import { recipeFor } from './threeDRecipe';
 import { defaultsOf, pickDefault } from './defaults';
 import { THREE_D_WORKFLOWS, threeDModel, normalizeSettings } from '../../../server/src/shared/threeD';
 import { canvasDefaultModel } from '../../../server/src/shared/cloudDefaults';
+import { tooManySwatches } from '../../../server/src/shared/swatchBatch';
 import { audioKindOf, type AudioKind } from './audioVizLogic';
 
 export type GenMedium = 'image' | 'video' | 'audio' | '3d';
@@ -24,7 +25,8 @@ export type InputKind = 'image' | 'video' | 'audio';
 export const MEDIA: { id: GenMedium; label: string }[] = [{ id: 'image', label: 'Image' }, { id: 'video', label: 'Video' }, { id: 'audio', label: 'Audio' }, { id: '3d', label: '3D' }];
 
 /** A labelled input of a run: what it accepts, how many, and the form field it goes out as (extra files of a multi slot go as `restAs`). */
-export interface GenSlot { name: string; label: string; accept: InputKind; required: boolean; min?: number; max: number; sendsAs: string; restAs?: string; missing: string; hint: string }
+export interface GenSlot { name: string; label: string; accept: InputKind; required: boolean; min?: number; max: number; sendsAs: string; restAs?: string; missing: string; hint: string;
+  /** several files, one run each (Material Swap's swatches, shared/swatchBatch.ts): the card runs once per file, as one set */ many?: boolean }
 export interface GenFlow { id: string; medium: GenMedium; name: string; tagline: string; needs: string; icon: string; toolId: string;
   /** an image workflow recipe (GET /api/image-workflows) */ recipeId?: string; /** the tool's mode (types) for a plain tool */ types?: string;
   /** the one model this flow runs (Lip Sync: H3 Talking Photo) */ provider?: string }
@@ -34,7 +36,7 @@ export interface GenFlow { id: string; medium: GenMedium; name: string; tagline:
  *  that the board doesn't draw yet, so they stay on their pages. */
 export const GEN_FLOWS: GenFlow[] = [
   { id: 'create', medium: 'image', name: 'Create Image', tagline: 'Text to image, or edit with references', needs: 'Prompt · images optional', icon: 'create', toolId: 'create-image' },
-  ...(['relight', 'upscale', 'remove-bg', 'image-layers', 'expand', 'product-shot', 'character-sheet', 'face-swap', 'person-swap', 'try-on'] as const)
+  ...(['relight', 'upscale', 'remove-bg', 'image-layers', 'expand', 'product-shot', 'character-sheet', 'face-swap', 'person-swap', 'try-on', 'material-swap', 'ad-pack'] as const)
     .map(id => ({ id, medium: 'image' as const, name: id, tagline: '', needs: '', icon: 'create', toolId: '', recipeId: id })),
   { id: 'video', medium: 'video', name: 'Create Video', tagline: 'Video with sound, from text or frames', needs: 'Prompt · first / last frame optional', icon: 'video', toolId: 'h3-video' },
   { id: 'photos-to-reel', medium: 'video', name: 'Photos → Reel', tagline: 'Your photos, made into a short vertical reel', needs: '8–15 photos · title', icon: 'video', toolId: 'app-photos-to-reel' },
@@ -148,7 +150,7 @@ export function flowSpec(f0: GenFlow, cat: GenCatalog, want: { provider?: string
 
   if (f.recipeId) { /* an image workflow: its recipe as the server sends it (slots, groups, models per mode) */
     const r = cat.recipes.find(x => x.id === f.recipeId); if (!r) return null;
-    const slots = [...r.slots].sort((a, b) => a.order - b.order).map(s => slot(s.name, s.label, 'image', s.required, s.missing, s.hint, { sendsAs: s.sendsAs }));
+    const slots = [...r.slots].sort((a, b) => a.order - b.order).map(s => slot(s.name, s.label, 'image', s.required, s.missing, s.hint, { sendsAs: s.sendsAs, ...(s.many ? { max: s.many, many: true } : {}) }));
     const mode = Object.entries(r.modes.whenSlot ?? {}).find(([k]) => fill(filled, k))?.[1] ?? r.modes.default;
     const providers = (r.models[mode] ?? []).map(id => tool.providers.find(p => p.id === id)).filter(Boolean) as ProviderInfo[];
     const provider = pickProvider(want.provider, providers, cardDefault(f, tool, mode, providers, (tool as any).defaultsByMode?.[mode]?.defaultProvider ?? tool.defaultProvider));
@@ -159,7 +161,7 @@ export function flowSpec(f0: GenFlow, cat: GenCatalog, want: { provider?: string
     const vals = c && ok?.length && !ok.includes(vals0.aspect ?? String(c.default ?? 'auto')) ? { ...vals0, aspect: r.modelInfo?.[provider]?.defaultAspect && ok.includes(r.modelInfo[provider].defaultAspect!) ? r.modelInfo[provider].defaultAspect! : ok.find(x => x !== 'auto') ?? ok[0] } : vals0;
     const ctlVals = Object.fromEntries(r.controls.map(x => [x.field, vals[x.field] ?? (x.optional ? '' : String(x.default ?? ''))]).filter(([, v]) => v !== ''));
     const sent = slots.filter(s => s.required || fill(filled, s.name));
-    const q: Record<string, string> = r.id === 'upscale' ? { scale: String(vals.scale ?? '4') } : { types: mode, ...ctlVals };
+    const q: Record<string, string> = r.id === 'upscale' ? { scale: String(vals.scale ?? '4') } : { types: mode, ...Object.fromEntries(Object.entries(ctlVals).filter(([k]) => r.controls.find(x => x.field === k)?.kind !== 'text')) /* typed words never change the price */ };
     return base(r, slots, providers, provider, mode, vals, {
       quote: { ...q, ...Object.fromEntries(sent.map(s => [s.sendsAs, '1'])), ...(sent.some(s => s.sendsAs === 'image') ? { image: '1' } : {}), ...(sent.length > 1 ? { refs: String(sent.length) } : {}) },
       /* the runner app decides the mode from its files (as Create Image's workflow submit): no types field */ fields: ctlVals });
@@ -188,7 +190,7 @@ export function flowSpec(f0: GenFlow, cat: GenCatalog, want: { provider?: string
     // The Video page and Canvas share one recipe, including file count and option defaults.
     const bar = VIDEO_BARS['photos-to-reel'];
     const providers = tool.providers; const provider = pickProvider(want.provider, providers, cardDefault(f, tool, null, providers, tool.defaultProvider));
-    const controls = bar.controls.map(c => ({ ...c, kind: c.kind === 'text' ? 'text' : 'segmented', optional: c.kind === 'text' ? !c.required : c.optional, max: c.maxLength ?? c.max, options: c.options ?? opts(tool, c.field).map(value => ({ value, label: lbl(value, c.field) })) }));
+    const controls = bar.controls.map(c => ({ ...c, kind: c.kind === 'text' ? 'text' : 'segmented', optional: c.kind === 'text' ? !c.required : c.optional, options: c.options ?? opts(tool, c.field).map(value => ({ value, label: lbl(value, c.field) })) }));
     const vals: Record<string, string> = Object.fromEntries(controls.map(c => [c.field, c.kind === 'text' ? wv[c.field] ?? c.default ?? '' : c.options.some(o => o.value === wv[c.field]) ? wv[c.field] : c.default ?? c.options[0]?.value ?? '']));
     const slots = bar.slots.map(s => slot(s.name, s.label, s.kind, s.required === true, s.missing, s.hint, { min: s.min, max: s.multiple ?? 1 }));
     const recipe = plainRecipe(f, tool, controls, bar.groups.map(g => grp(g.id, g.label, g.icon, controls.filter(c => c.group === g.id).map(c => c.field))), slots, 'hidden', '', bar.generateLabel);
@@ -277,7 +279,8 @@ export function placeInputs<T extends { key: string; kind: InputKind }>(slots: G
 }
 /** "Uses 4 of 6 images: Nano Banana 2 takes up to 4." / "Create Video takes 2 images: 1 not used." */
 export function tooManyNote(spec: FlowSpec, extra: number, modelName: string): string | null {
-  if (!extra) return null; const imgSlots = spec.slots.filter(s => s.accept === 'image'); const cap = imgSlots.reduce((a, s) => a + s.max, 0);
+  if (!extra) return null; const many = spec.slots.find(s => s.many); if (many) return tooManySwatches(many.max + extra); /* Material Swap: "Up to 6 swatches in one go: 1 not added." */
+  const imgSlots = spec.slots.filter(s => s.accept === 'image'); const cap = imgSlots.reduce((a, s) => a + s.max, 0);
   if (spec.maxImages != null) return `${modelName} takes up to ${spec.maxImages} image${spec.maxImages === 1 ? '' : 's'}: ${extra} not used.`;
   return `${spec.flow.name} takes ${cap ? `${cap} image${cap === 1 ? '' : 's'}` : 'no inputs of that kind'}: ${extra} not used.`;
 }

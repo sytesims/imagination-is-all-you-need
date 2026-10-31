@@ -52,21 +52,43 @@ export function kelvinName(k: number): string {
 /** The light's colour in words: the named temperature, or "magenta (#E05AD8) coloured". */
 export const tintName = (l: Pick<RigLight, 'kelvin' | 'color'>) => (l.color ? `${colourName(l.color)} (${l.color.toUpperCase()}) coloured` : kelvinName(l.kelvin));
 
-// ---- direction ----
+// ---- direction: 26 fixed light positions ----
+/**
+ * Fixed light positions (2026-10-31). The light snaps to one of 26 positions around the subject: eight sides (every 45°) at three heights
+ * (high, eye level, low), plus straight above and straight below. Each position has one plain label (the panel) and one fixed phrase (the
+ * prompt), both from the same table, so the panel and the model always agree and no in-between angle can give clashing words
+ * ("12° up" next to "at eye level"). Angles sent through the API are snapped the same way before they are worded.
+ */
+export const LIGHT_STEP = 45;
 const sideOf = (az: number) => (az < 0 ? 'left' : 'right');
-/** "the front-left of the frame", "directly behind the subject"… */
-export function dirWords(az: number, el: number): string {
-  if (el >= 70) return 'directly overhead'; if (el <= -70) return 'directly below';
-  const a = Math.abs(wrapAz(az)); const s = sideOf(wrapAz(az));
-  return a <= 12 ? 'the front' : a <= 35 ? `the front, slightly ${s}` : a <= 65 ? `the front-${s} of the frame` : a <= 115 ? `the ${s} side of the frame` : a <= 155 ? `behind the subject on the ${s}` : 'directly behind the subject';
+/** Any angles → the nearest fixed position (az a multiple of 45°, el one of −90, −45, 0, 45, 90; straight above / below has az 0). */
+export function snapAngles(az: number, el: number): { az: number; el: number } {
+  const E = clamp(Math.round(clamp(el, -90, 90) / LIGHT_STEP) * LIGHT_STEP, -90, 90);
+  if (Math.abs(E) === 90) return { az: 0, el: E };
+  return { az: wrapAz(Math.round(wrapAz(az) / LIGHT_STEP) * LIGHT_STEP) + 0, el: E + 0 };
 }
-export const heightWords = (el: number) => (el >= 70 ? 'straight down from above' : el >= 40 ? 'high above eye level' : el >= 15 ? 'slightly above eye level' : el > -15 ? 'at eye level' : el > -40 ? 'slightly below eye level' : 'from low below');
-/** Degrees as said in words: "45° left, 30° up" (front / behind / eye level spelled out). */
-export function degWords(az: number, el: number): string {
-  const A = r1(Math.abs(wrapAz(az))); const E = r1(el);
-  const h = A === 0 ? '0° (straight on)' : A === 180 ? '180° (from behind)' : `${A}° ${sideOf(wrapAz(az))}`;
-  return `${h}, ${E === 0 ? '0° (level)' : `${Math.abs(E)}° ${E > 0 ? 'up' : 'down'}`}`;
+export interface LightCell { /** "front-left-high", "above"… */ id: string; az: number; el: number; /** the panel's words: "From the front-left, high up" */ label: string;
+  /** the prompt's fixed phrase: "from the front-left of the frame, high above eye level" */ phrase: string }
+const SIDES: Record<number, { id: string; label: string; phrase: string }> = {
+  0: { id: 'front', label: 'the front', phrase: 'the front' },
+  45: { id: 'front-right', label: 'the front-right', phrase: 'the front-right of the frame' }, [-45]: { id: 'front-left', label: 'the front-left', phrase: 'the front-left of the frame' },
+  90: { id: 'right', label: 'the right', phrase: 'the right side of the frame' }, [-90]: { id: 'left', label: 'the left', phrase: 'the left side of the frame' },
+  135: { id: 'back-right', label: 'behind, on the right', phrase: 'behind the subject on the right' }, [-135]: { id: 'back-left', label: 'behind, on the left', phrase: 'behind the subject on the left' },
+  180: { id: 'back', label: 'behind', phrase: 'directly behind the subject' },
+};
+const HEIGHTS: Record<number, { id: string; label: string; phrase: string }> = {
+  45: { id: 'high', label: ', high up', phrase: 'high above eye level' }, 0: { id: 'level', label: '', phrase: 'at eye level' }, [-45]: { id: 'low', label: ', low down', phrase: 'low, below eye level' },
+};
+/** The fixed position for any angles (snapped first). */
+export function lightCell(az: number, el: number): LightCell {
+  const s = snapAngles(az, el);
+  if (s.el === 90) return { id: 'above', ...s, label: 'From straight above', phrase: 'from directly overhead' };
+  if (s.el === -90) return { id: 'below', ...s, label: 'From straight below', phrase: 'from directly below' };
+  const S = SIDES[s.az]; const H = HEIGHTS[s.el];
+  return { id: `${S.id}-${H.id}`, ...s, label: `From ${S.label}${H.label}`, phrase: `from ${S.phrase}, ${H.phrase}` };
 }
+/** All 26 positions (tests, docs). */
+export const LIGHT_CELLS: LightCell[] = [lightCell(0, 90), ...[45, 0, -45].flatMap((el) => [0, 45, 90, 135, 180, -135, -90, -45].map((az) => lightCell(az, el))), lightCell(0, -90)];
 /** A classic lighting name when the key sits in a well-known spot (models know these words). */
 export function setupName(az: number, el: number): string {
   const a = Math.abs(wrapAz(az));
@@ -74,20 +96,21 @@ export function setupName(az: number, el: number): string {
   if (a <= 15 && el >= 25) return 'butterfly lighting'; if (a >= 35 && a <= 65 && el >= 15 && el < 70) return 'Rembrandt-style three-quarter lighting';
   if (a >= 75 && a <= 105 && Math.abs(el) < 40) return 'split side lighting'; return '';
 }
-export const softnessWords = (s: number) => `${s <= 20 ? 'hard crisp light with sharp-edged shadows' : s <= 45 ? 'fairly hard light with defined shadow edges' : s <= 75 ? 'soft diffused light with gentle shadow edges' : 'very soft wrap-around light, shadows almost gone'} (softness ${r1(s)}%)`;
-export const ambientWords = (a: number) => `${a <= 10 ? 'almost no ambient fill: deep black shadows, low-key' : a <= 35 ? 'low ambient fill: rich, dark shadows' : a <= 65 ? 'moderate ambient fill: shadows keep their detail' : 'strong ambient fill: bright open shadows, high-key'} (ambient ${r1(a)}%)`;
+/** Softness and ambient in plain words only (no numbers: the model reads words, and "softness 70%" meant nothing to it). */
+export const softnessWords = (s: number) => `${s <= 20 ? 'hard crisp light with sharp-edged shadows' : s <= 45 ? 'fairly hard light with defined shadow edges' : s <= 75 ? 'soft diffused light with gentle shadow edges' : 'very soft wrap-around light, shadows almost gone'}`;
+export const ambientWords = (a: number) => `${a <= 10 ? 'almost no ambient fill: deep black shadows, low-key' : a <= 35 ? 'low ambient fill: rich, dark shadows' : a <= 65 ? 'moderate ambient fill: shadows keep their detail' : 'strong ambient fill: bright open shadows, high-key'}`;
 const power = (i: number) => (i <= 15 ? 'very dim' : i <= 35 ? 'dim' : i <= 60 ? 'medium strength' : i <= 85 ? 'bright' : 'very bright');
 
-export interface RigPhrases { /** "from the front-left of the frame (45° left, 30° up), slightly above eye level, Rembrandt-style three-quarter lighting" */ keyDir: string;
+export interface RigPhrases { /** "from the front-left of the frame, high above eye level, Rembrandt-style three-quarter lighting" */ keyDir: string;
   /** "warm 3200K tungsten, bright" */ keyTint: string; quality: string; /** "rim light from …" or '' */ rim: string; ambient: string }
-/** The precise words for each part of the rig (the server joins them per model family). */
+/** The words for each part of the rig (the server joins them per model family). Each light is worded by its fixed position (lightCell). */
 export function rigPhrases(rig: LightRig): RigPhrases {
-  const k = rig.key; const name = setupName(k.az, k.el); const at = dirWords(k.az, k.el);
-  const keyDir = `from ${at} (${degWords(k.az, k.el)})${k.el >= 70 || k.el <= -70 ? '' : `, ${heightWords(k.el)}`}${name ? `, ${name}` : ''}`;
+  const k = lightCell(rig.key.az, rig.key.el); const name = setupName(k.az, k.el);
+  const keyDir = `${k.phrase}${name ? `, ${name}` : ''}`;
   let rim = '';
-  if (rig.rim) { const r = rig.rim; const back = Math.abs(wrapAz(r.az)) >= 100;
-    rim = `${back ? 'rim light' : 'second accent light'} from ${dirWords(r.az, r.el)} (${degWords(r.az, r.el)}), ${tintName(r)}, ${power(r.intensity)}${back ? ': a bright edge outlining the hair, shoulders and silhouette' : ''}`; }
-  return { keyDir, keyTint: `${tintName(k)}, ${power(k.intensity)}`, quality: softnessWords(k.softness), rim, ambient: ambientWords(rig.ambient) };
+  if (rig.rim) { const r = lightCell(rig.rim.az, rig.rim.el); const back = Math.abs(r.az) >= 100;
+    rim = `${back ? 'rim light' : 'second accent light'} ${r.phrase}, ${tintName(rig.rim)}, ${power(rig.rim.intensity)}${back ? ': a bright edge outlining the hair, shoulders and silhouette' : ''}`; }
+  return { keyDir, keyTint: `${tintName(rig.key)}, ${power(rig.key.intensity)}`, quality: softnessWords(rig.key.softness), rim, ambient: ambientWords(rig.ambient) };
 }
 /** The rig as one line of prompt words (the shared `toText`; Relight words it per model family on the server). */
 export function rigToText(rig: LightRig): string {
@@ -130,31 +153,43 @@ const lightJson = (l: RigLight): RigLight => ({ az: l.az, el: l.el, kelvin: l.ke
 export const rigJson = (rig: LightRig) => JSON.stringify({ key: lightJson(rig.key), ...(rig.rim ? { rim: lightJson(rig.rim) } : {}), ambient: rig.ambient, ...(rig.preset ? { preset: rig.preset } : {}) });
 
 // ---- presets (shared by the sphere and the server) ----
-/** A sphere preset: where it puts the lights, and which Relight look it maps to (that look's rich description stays in the prompt). */
+/** A sphere preset: where it puts the lights (always on the fixed positions, so a picked look reads back exactly), and which Relight look it maps to (that look's rich description stays in the prompt). */
 export interface SpherePreset { id: string; label: string; /** Relight look id (tools/appRows.ts RELIGHT_LOOKS), 'custom' = none */ look: string; /** the setup's name in the prompt when no look carries one */ light: string; rig: LightRig }
 const L = (az: number, el: number, kelvin: number, intensity: number, softness: number, color?: string): RigLight => ({ az, el, kelvin, intensity, softness, ...(color ? { color } : {}) });
 export const SPHERE_PRESETS: SpherePreset[] = [
-  { id: 'golden-hour', label: 'Golden hour', look: 'golden-hour', light: 'low golden-hour sunlight', rig: { key: L(70, 12, 3200, 75, 65), rim: L(160, 20, 2800, 55, 30), ambient: 35 } },
-  { id: 'studio-softbox', label: 'Studio softbox', look: 'studio-softbox', light: 'a large studio softbox key light', rig: { key: L(-45, 30, 5500, 65, 80), ambient: 40 } },
-  { id: 'neon-rim', label: 'Neon rim', look: 'neon-night', light: 'coloured neon light at night', rig: { key: L(75, 5, 5600, 70, 30, '#E05AD8'), rim: L(-150, 15, 5600, 80, 20, '#33D6FF'), ambient: 8 } },
-  { id: 'overhead-noon', label: 'Overhead noon', look: 'custom', light: 'hard overhead noon sun', rig: { key: L(0, 82, 5600, 90, 10), ambient: 30 } },
-  { id: 'candle', label: 'Candle', look: 'candlelight', light: 'warm candlelight', rig: { key: L(20, -10, 2000, 35, 70), ambient: 6 } },
-  { id: 'moonlight', label: 'Moonlight', look: 'custom', light: 'cool moonlight at night', rig: { key: L(-60, 40, 8500, 35, 45), rim: L(150, 25, 9500, 45, 30), ambient: 12 } },
-  { id: 'window', label: 'Window light', look: 'window', light: 'soft natural window light', rig: { key: L(-80, 10, 5600, 60, 75), ambient: 30 } },
-  { id: 'blue-hour', label: 'Blue hour', look: 'blue-hour', light: 'cool blue-hour twilight', rig: { key: L(0, 15, 9000, 40, 90), ambient: 45 } },
-  { id: 'overcast', label: 'Overcast', look: 'overcast', light: 'soft overcast daylight', rig: { key: L(0, 70, 6500, 50, 95), ambient: 60 } },
-  { id: 'rim', label: 'Rim / backlight', look: 'rim', light: 'a strong backlight', rig: { key: L(180, 20, 5600, 75, 25), ambient: 20 } },
+  { id: 'golden-hour', label: 'Golden hour', look: 'golden-hour', light: 'golden-hour sunlight', rig: { key: L(90, 0, 3200, 75, 65), rim: L(180, 0, 2800, 55, 30), ambient: 35 } },
+  { id: 'studio-softbox', label: 'Studio softbox', look: 'studio-softbox', light: 'a large studio softbox key light', rig: { key: L(-45, 45, 5500, 65, 80), ambient: 40 } },
+  { id: 'neon-rim', label: 'Neon rim', look: 'neon-night', light: 'coloured neon light at night', rig: { key: L(90, 0, 5600, 70, 30, '#E05AD8'), rim: L(-135, 0, 5600, 80, 20, '#33D6FF'), ambient: 8 } },
+  { id: 'overhead-noon', label: 'Overhead noon', look: 'custom', light: 'hard midday sun', rig: { key: L(0, 90, 5600, 90, 10), ambient: 30 } },
+  { id: 'candle', label: 'Candle', look: 'candlelight', light: 'warm candlelight', rig: { key: L(0, 0, 2000, 35, 70), ambient: 6 } },
+  { id: 'moonlight', label: 'Moonlight', look: 'custom', light: 'cool moonlight at night', rig: { key: L(-45, 45, 8500, 35, 45), rim: L(135, 0, 9500, 45, 30), ambient: 12 } },
+  { id: 'window', label: 'Window light', look: 'window', light: 'soft natural window light', rig: { key: L(-90, 0, 5600, 60, 75), ambient: 30 } },
+  { id: 'blue-hour', label: 'Blue hour', look: 'blue-hour', light: 'cool blue-hour twilight', rig: { key: L(0, 0, 9000, 40, 90), ambient: 45 } },
+  { id: 'overcast', label: 'Overcast', look: 'overcast', light: 'soft overcast daylight', rig: { key: L(0, 45, 6500, 50, 95), ambient: 60 } },
+  { id: 'rim', label: 'Rim / backlight', look: 'rim', light: 'a strong edge light', rig: { key: L(180, 0, 5600, 75, 25), ambient: 20 } },
 ];
 export const spherePresetOf = (id: string | undefined) => SPHERE_PRESETS.find((p) => p.id === id);
-export const DEFAULT_RIG: LightRig = { key: L(-45, 30, 5600, 60, 60), ambient: 30 };
+/** The light Relight starts on (2026-10-31): a soft key from the front-left, high up (Rembrandt-style three-quarter light), at Balanced
+ *  strength. A clear, flattering change for portraits and products; a light from the front barely changed the photo. It sits on a fixed
+ *  position, so the panel and the prompt name the same spot. */
+export const DEFAULT_RIG: LightRig = { key: L(-45, 45, 5600, 65, 60), ambient: 30 };
+/** The old Relight fields at their defaults with no look: the light was never set (the panel untouched, or an API call with no light fields).
+ *  Callers use a readable `light` rig first; otherwise Relight uses DEFAULT_RIG, on the panel and in the prompt alike. Keep in step with the
+ *  field defaults (tools/apps.ts relight). */
+export function lightUntouched(v: Record<string, string | undefined>): boolean {
+  const is = (x: string | undefined, d: string) => x == null || x === '' || x.toUpperCase() === d.toUpperCase();
+  return is(v.look, 'custom') && is(v.direction, 'front') && is(v.lightQuality, 'soft') && (v.brightness == null || v.brightness === '' || Number(v.brightness) === 50)
+    && is(v.color, '#FFFFFF') && (v.lightX == null || v.lightX === '') && (v.lightY == null || v.lightY === '');
+}
 
 /** Today's Relight fields (direction / pad / quality / brightness / colour) → the rig the sphere opens on, so old drafts and links
- *  show where their light is. Nothing is sent until the user moves something (the old fields keep their old prompt). */
+ *  show where their light is. Nothing is sent until the user moves something (the old fields keep their old light). Untouched fields open on DEFAULT_RIG. */
 export function rigFromLegacy(v: Record<string, string | undefined>): LightRig {
-  const DIR: Record<string, [number, number]> = { top: [0, 75], front: [0, 15], left: [-90, 10], right: [90, 10], back: [180, 15], bottom: [0, -60] };
+  if (lightUntouched(v)) return structuredClone(DEFAULT_RIG);
+  const DIR: Record<string, [number, number]> = { top: [0, 90], front: [0, 0], left: [-90, 0], right: [90, 0], back: [180, 0], bottom: [0, -90] };
   let [az, el] = DIR[v.direction ?? 'front'] ?? DIR.front;
   // the pad (−1…1): x = frame left → right; y as Relight's padPhrase reads it (positive = upper)
-  if (v.lightX != null && v.lightX !== '' && v.lightY != null && v.lightY !== '') { az = r1(clamp(Number(v.lightX), -1, 1) * 90); el = r1(clamp(Number(v.lightY), -1, 1) * 60); }
+  if (v.lightX != null && v.lightX !== '' && v.lightY != null && v.lightY !== '') { ({ az, el } = snapAngles(clamp(Number(v.lightX), -1, 1) * 90, clamp(Number(v.lightY), -1, 1) * 60)); }
   const col = String(v.color ?? '#FFFFFF').toUpperCase();
   const WARM: Record<string, number> = { '#FFFFFF': 5600, '#FFC98A': 3200, '#FFB347': 2700, '#BFD9FF': 8000, '#FF9A3C': 2000 };
   const b = Number(v.brightness ?? 50); const intensity = Number.isFinite(b) ? clamp(b, 0, 100) : 50;

@@ -55,16 +55,19 @@ export function FeedHint({ children, action, testId = 'fd-empty' }: { children: 
   return <div className="fd-empty" data-testid={testId} role="status"><p>{children}</p>{action}</div>;
 }
 
+/** The page's one h1 in the feed state (2026-10-31): visually hidden, since the tab name is already in the nav. Image, Video, Audio and 3D share it. */
+export function FeedH1({ children }: { children: ReactNode }) { return <h1 className="sr-only-vis" data-testid="feed-h1">{children}</h1>; }
+
 /** The feed's frame: the toolbar (or Select bar), the grid, and Show more. `children` are the cards. One rule for every tab (2026-10-27, user:
  *  "never a special empty / onboarding screen"): the feed is always the feed. A fresh install isn't empty: its examples are ordinary results in
  *  the Examples project (server/src/featuredSeed.ts, 2026-10-29). Nothing to show gets one quiet line (a filter that matches nothing: Clear filters). */
-export function FeedGallery({ toolbar, count, st, emptyText, override, testId = 'ic-feed', className = '', children }: { toolbar: ReactNode; /** cards shown */ count: number; st: FeedState; emptyText: string;
+export function FeedGallery({ title, toolbar, count, st, emptyText, override, testId = 'ic-feed', className = '', children }: { /** the page's hidden h1 (FeedH1) */ title?: string; toolbar: ReactNode; /** cards shown */ count: number; st: FeedState; emptyText: string;
   /** shown under the toolbar instead of the cards */ override?: ReactNode; testId?: string; className?: string; children: ReactNode }) {
   const { feed, filt, setFilt } = st;
   const view = feedView({ count, loading: feed.loading });
   const grid = (cards: ReactNode) => <div className={`ic-feed ic-jfeed${feed.stale ? ' is-stale' : ''}`} data-size={filt.size} data-testid={testId} aria-busy={feed.stale || undefined}>{cards}<i className="ic-jfill" aria-hidden /></div>;
   return <section className={`ic-gal${className ? ` ${className}` : ''}`} aria-label="Your generations">
-    {toolbar}
+    {title && <FeedH1>{title}</FeedH1>}{toolbar}
     {override ? override : view === 'cards' ? grid(children)
       : <FeedHint action={view === 'hint' && !feed.error && !isDefaultQuery(filt, null) ? <button type="button" className="fd-link" data-testid="fd-empty-clear" onClick={() => setFilt(clearedFilter(filt))}>Clear filters</button> : undefined}>
         {view === 'loading' ? 'Loading…' : feed.error ? <>{feed.error} <button type="button" className="fd-link" onClick={feed.refresh}>Try again</button></> : emptyText}</FeedHint>}

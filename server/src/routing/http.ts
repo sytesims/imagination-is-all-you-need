@@ -84,6 +84,15 @@ export function extendQuoteFields(q: Record<string, unknown>): Record<string, an
   if (num(q.guideFrames)) o.guideFrames = num(q.guideFrames); if (num(q.extendSeconds)) o.extendSeconds = num(q.extendSeconds); return o;
 }
 
+/** Video Swap quote fields, typed as tools/videoSwap.ts parseInput keeps them on the job (swapType, target, point {x, y, t}), so a route's own check
+ *  (the cloud edits' swapIssue, H3 Character Swap's side-or-click rule) refuses the quote exactly as it refuses the submit (2026-10-31: Object mode
+ *  quoted Kling as runnable, then the submit refused it). Only fields the query carries; an absent field stays absent. */
+export function swapQuoteFields(q: Record<string, string | undefined>): Record<string, any> {
+  const o: Record<string, any> = {}; if (q.swapType === 'person' || q.swapType === 'object') o.swapType = q.swapType;
+  if (q.target != null) o.target = String(q.target).trim();
+  const m = /^([\d.]+),([\d.]+)(?:,([\d.]+))?$/.exec(String(q.point ?? '')); if (m) o.point = { x: Number(m[1]), y: Number(m[2]), t: Number(m[3] ?? 0) };
+  return o;
+}
 /** Job-shaped input for a route quote from query params (GET /api/routes, same names as /api/tools/:id/price): seconds|duration, resolution|quality,
  *  n, imageResolution, tier, mode|types, audio; Upscale: width, height (source px), scale, maxOutput | targetLongEdge | target → outputSize (same cap as the job), so quote = charge. */
 export function routeQuoteInput(tool: { id: string; app?: any; providers?: string[] }, q: Record<string, string | undefined>, modelId?: string): Record<string, any> {
@@ -98,6 +107,7 @@ export function routeQuoteInput(tool: { id: string; app?: any; providers?: strin
   for (const k of ['smooth48', 'loop'] as const) if (q[k] != null && q[k] !== '') i[k] = q[k]; // LTX-2.5 DFR: the 48 fps pass is priced; DFR with Loop runs at 720p (shared/ltxDfr.ts ltxDfrPriceInput)
   if (q.split != null && q.split !== '') i.split = /^(1|true|on|yes)$/i.test(q.split); // Talking Video: InfiniteTalk speech over 60 s in parts (shared/talkingVideo.ts)
   Object.assign(i, extendQuoteFields(q)); // LTX Extend on Comfy Cloud: the method and guide length set the rendered seconds (quote = charge)
+  Object.assign(i, swapQuoteFields(q)); // Video Swap: Person / Object, the target, the click (same route checks as the job)
   for (const k of ['detail', 'texture', 'faces'] as const) if (q[k]) i[k] = q[k]; // 3D (2026-10-23): the price key's settings (ToolDef.routeInput turns them into it)
   const a = tool.app;
   if (a?.scales) {
@@ -562,6 +572,7 @@ export function registerRouting(app: FastifyInstance) {
           if (Array.isArray((q as any).__snapNotes)) { const SN = await import('../shared/snap.js'); for (const n of (q as any).__snapNotes) SN.addAdjustNote(input, n); } // D5: Create Image settings snapped by the caps check (tools/apps.ts imageCapsQuoteError)
           for (const k of ['detail', 'texture', 'faces'] as const) if (q[k]) input[k] = String(q[k]); // 3D: the price key's settings (three-d routeInput)
           Object.assign(input, extendQuoteFields(q)); // Extend: method / guide length / seconds as the job keeps them (Comfy Cloud LTX bills guide vs continuation differently; quote = charge)
+          Object.assign(input, swapQuoteFields(q)); // Video Swap: Person / Object, who or what to replace, the click (the route checks read them, quote = submit)
           if (q.variantId) input.variantId = String(q.variantId); if (q.downloadWeights) input.downloadWeights = /^(1|true|on|yes)$/i.test(String(q.downloadWeights)); // HW-SHAPES Q7 / Q4
           if (tool.id === 'camera' && !input.types) { const dm = cameraDefaultMove(model); if (dm) input.types = `["${dm}"]`; } // Oct 19 #2: no move asked → the model's first move (same as the route listing)
           if (tool.id === 'make-it-real') { const RM = await import('../shared/renderModels.js'); const sec = Number(q.seconds ?? q.duration); if (sec > 0) input.duration = RM.renderBillSeconds(model ?? '', sec); input.clipSeconds = sec > 0 ? sec : undefined; } // Render: each model's own whole-second lengths (shared/renderModels.ts); the billed seconds (Ray: 5 / 10), as the job

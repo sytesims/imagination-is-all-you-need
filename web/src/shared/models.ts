@@ -12,13 +12,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { requestRequote } from './quote';
 import { runPrice } from './billing';
-import { LOCAL_LABEL, placeOf as sharedPlaceOf, PLACE_LABELS, type Place } from '../../../server/src/shared/modelIds';
+import { LOCAL_LABEL, COMFY_DEPLOY_DETAIL, placeOf as sharedPlaceOf, PLACE_LABELS, type Place } from '../../../server/src/shared/modelIds';
 
 export type RunOnStatus = 'ready' | 'sample' | 'needs-key' | 'off' | 'not-installed' | 'coming-soon' | 'unavailable';
 /** The one action a place that isn't ready needs (server: routing/modelRegistry.ts rowAction / routing/select.ts placeAction). */
 export interface PlaceAction { kind: 'turn_on' | 'download' | 'install_node' | 'add_key' | 'set_up_gpu' | string; text: string; missingBytes?: number | null; downloadId?: string | null; /** 'deploy': the Comfy place needs your own deployment, not a key (Connections → Your Comfy deployment) */ connection?: string }
 export interface RunOnRow { id: string; label: string; billedTo: string; status: RunOnStatus; credits: number | null; reason: string | null; reasonCode: string | null; routes: string[]; engines: string[]; comfyVariants?: ('workflow' | 'partner')[];
-  /** Run on groups: gpu (Local), comfy (Comfy Cloud / Comfy Router), api (direct providers). */ group?: 'gpu' | 'comfy' | 'api'; /** "Comfy Router" / "Comfy Cloud" on the Comfy row. */ detail?: string | null; action?: PlaceAction | null;
+  /** Run on groups: gpu (Local), comfy (Comfy Cloud / Comfy Router), api (direct providers). */ group?: 'gpu' | 'comfy' | 'api'; /** How the Comfy row runs ("Open workflow", "Partner model", shared/modelIds.ts comfyHowLine), or "Your Comfy deployment". */ detail?: string | null; action?: PlaceAction | null;
   /** Local row (hardware plan §3.5): the memory the model needs and its time on this computer, for the run menu's mini line. */ here?: { memGB: number | null; etaSeconds: number | null; etaSource: string | null; samples: number; untested?: boolean } | null;
   /** Local, files that don't fit on the disk (reasonCode not_enough_disk): the bytes they need ("Needs 43 GB space") */ missingBytes?: number | null;
   /** 2026-10-27: the model's ways to run at this place when there are two or more (server shared/routeNames.ts): each by name, with its price and limits. */ choices?: RouteChoice[] }
@@ -61,11 +61,11 @@ export const RUN_ON_CHIP: Record<string, string> = { local: LOCAL_LABEL, 'comfy-
 export const RUN_ON_BILLING: Record<string, string> = { local: 'local', 'comfy-cloud': 'comfy', fal: 'fal', replicate: 'replicate', bfl: 'bfl', minimax: 'minimax', ltx: 'ltx', openai: 'openai', google: 'google', byteplus: 'byteplus', dashscope: 'dashscope', luma: 'luma' };
 export const runOnLabel = (id?: string | null) => (id ? RUN_ON_LABEL[id] ?? id : '');
 /** The place a quote, job, route or spend row ran or will run on, in the one set of words (server/src/shared/modelIds.ts placeOf): Your computer,
- *  Comfy Cloud, Comfy Router, Comfy deployment, fal… The server's own place wins; then the route id; then the run-on. */
+ *  Comfy Cloud, Comfy deployment, fal… The server's own place wins; then the route id; then the run-on. */
 export const placeOfAny = (x: any): Place | null => (x?.place && typeof x.place === 'object' && x.place.label && x.place.billing ? x.place as Place : sharedPlaceOf({ kind: x?.routeKind ?? x?.kind ?? null, routeId: x?.routeId ?? x?.route ?? null, runOn: x?.runOn ?? null, comfyVariant: x?.comfyVariant ?? null }));
 export const placeLabelOf = (x: any): string => String(x?.placeLabel ?? '') || placeOfAny(x)?.label || runOnLabel(x?.runOn);
-/** A model's Run on row in the place words: the Comfy row says which Comfy place it is (Comfy Cloud, Comfy Router, Comfy deployment, or both). */
-export const rowPlaceLabel = (r: { id: string; label: string; detail?: string | null }): string => r.id === 'local' ? LOCAL_LABEL : r.id !== 'comfy-cloud' || !r.detail ? r.label : /deployment/i.test(r.detail) ? PLACE_LABELS['comfy-deploy'] : /^Comfy Router/.test(r.detail) ? PLACE_LABELS['comfy-router'] : /^Comfy Cloud or Comfy Router$/.test(r.detail) ? 'Comfy Cloud or Comfy Router' : PLACE_LABELS['comfy-cloud'];
+/** A model's Run on row in the place words: the Comfy row is "Comfy Cloud" (one key, open workflow or partner model alike), or "Comfy deployment" for your own. */
+export const rowPlaceLabel = (r: { id: string; label: string; detail?: string | null }): string => r.id === 'local' ? LOCAL_LABEL : r.id !== 'comfy-cloud' ? r.label : r.detail === COMFY_DEPLOY_DETAIL ? PLACE_LABELS['comfy-deploy'] : PLACE_LABELS['comfy-cloud'];
 /** Route id → run-on, learned from the server's listings (each route's explicit vendor: models[].runsOn[].routes). */
 const ROUTE_RUN_ON = new Map<string, string>();
 type RouteLike = { routeId?: string | null; kind?: string | null; runOn?: string | null; vendor?: string | null };
@@ -303,13 +303,13 @@ export function cleanModelName(job: any, served: string): string {
   const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); const names = [m.name, m.displayName].filter(Boolean).map(x => norm(String(x))); const s = norm(served);
   return !served || names.some(n => s.startsWith(n) || n.startsWith(s)) ? shownName(m) : served;
 }
-/** Where a job ran, in the Run-on words: "Local", "Comfy · Comfy Cloud", "Comfy · Comfy Router", "fal". */
+/** Where a job ran, in the Run-on words: "Your computer", "Comfy Cloud", "Comfy Cloud · open workflow", "fal". */
 export function ranOnOf(job: any, localWhere = ''): string {
   const route = String(job?.route ?? ''); const ro = String(job?.runOn ?? '') || runOnOfRoute(route) || '';
   if (!ro) return ''; if (ro === 'local') return localWhere && !/local comfyui|your gpu/i.test(localWhere) ? localWhere : LOCAL_LABEL;
   const ch = route ? routeChoiceOf(modelsOf(job?.toolId).find(x => x.key === job?.modelKey) ?? null, route) : null; if (ch) return ch.name; // "Comfy Cloud · open workflow" when the place has several ways
   const label = String(job?.runOnLabel ?? '') || runOnLabel(ro);
-  return placeLabelOf(job) || label; /* the one place words (Comfy Cloud / Comfy Router / Comfy deployment / fal…), server/src/shared/modelIds.ts placeOf */
+  return placeLabelOf(job) || label; /* the one place words (Comfy Cloud / Comfy deployment / fal…), server/src/shared/modelIds.ts placeOf */
 }
 
 // ---------------------------------------------------------------- the place shown (Run on, 2026-10-22: no Auto)

@@ -14,7 +14,7 @@
  */
 
 export type PatternTask = 'i2v-default' | 'camera-move' | 'camera-scene' | 'camera-static' | 'camera-enhance' | 'camera-angle' | 'video-swap' | 'video-swap-preset'
-  | 'motion-transfer' | 'video-restyle' | 'relight' | 'face-swap' | 'person-swap';
+  | 'motion-transfer' | 'video-restyle' | 'relight' | 'face-swap' | 'person-swap' | 'ad' | 'ad-text';
 export type PatternFamily = 'minimax-h3' | 'wan' | 'ltx' | 'kling' | 'seedance' | 'qwen-edit' | 'nano-banana' | 'gpt-image' | 'flux' | 'bria' | 'any';
 export interface PromptPattern {
   /** a PROMPT_GRAMMAR key (shared/promptGrammar.ts), a family, or 'any' (the fallback) */
@@ -39,6 +39,10 @@ const WAN_GUIDE = 'https://www.alibabacloud.com/help/en/model-studio/text-to-vid
 const LTX_GUIDE = 'https://docs.ltx.io/api-documentation/implementation-guides/prompting-guide';
 const ANGLES_2509 = 'https://huggingface.co/dx8152/Qwen-Edit-2509-Multiple-angles';
 const D = '2026-10-31';
+const GPT_GUIDE = 'https://developers.openai.com/cookbook/examples/multimodal/image-gen-1.5-prompting_guide';
+const GEMINI_GUIDE = 'https://ai.google.dev/gemini-api/docs/image-generation';
+const FLUX_GUIDE = 'https://docs.bfl.ml/guides/prompting_guide_flux2';
+const QWEN_CARD = 'https://huggingface.co/Qwen/Qwen-Image';
 
 export const PROMPT_PATTERNS: PromptPattern[] = [
   // ---- image to video with an empty prompt ----
@@ -109,6 +113,35 @@ export const PROMPT_PATTERNS: PromptPattern[] = [
     template: 'Replace the face of the person in image 1 with the face of the person in image 2', note: '"Replace X in image 1 with Y from image 2"; the keep list follows.' },
   { model: 'any', task: 'person-swap', form: 'instruction', keep: 'last', negative: 'n/a', checked: D, sources: ['https://docs.bfl.ai/guides/prompting_guide_flux2'],
     template: 'Replace the person in image 1 with the person from image 2', note: 'Same form as the face swap.' },
+
+  // ---- Ad Pack (2026-10-31, shared/adPack.ts): one finished ad per style, the model paints the scene and the words; our code adds the logo after.
+  // 'ad' is the frame ({scene} = the style's sentence), 'ad-text' the words line. Every guide below agrees on the text rules: exact words in
+  // double quotes, short, with the font feel and the place named. Our own wording after each vendor's guide; product photos as "image N" words.
+  { model: 'gpt-image', task: 'ad', form: 'instruction', keep: 'last', negative: 'n/a', checked: D, sources: [GPT_GUIDE],
+    template: 'Image 1 is the product photo.[ {more}] Create a finished {shape} social media ad for this product. Scene: {scene}.[ About the product: {details}.] Product: keep it exactly as in image 1, with the same shape, colours, label and printed text.[ {text}][ Brand colours: {colours}.][ Layout: keep the {corner} corner as plain background with nothing in it, for a logo added later.][ Keep all text and the product clear of the {safe} of the frame.] No other words, watermarks or logos.',
+    note: 'OpenAI: label each input image by its role, then scene → subject → details → constraints; say what the image is for (an ad); the preserve list stated in full; "no other text" as the last constraint.' },
+  { model: 'gpt-image', task: 'ad-text', form: 'instruction', keep: 'none', negative: 'n/a', checked: D, sources: [GPT_GUIDE],
+    template: 'Text, verbatim, each once and perfectly legible: {quoted}. Typography: {type}.', note: 'OpenAI: literal text in quotes, "verbatim", appears once, typography as a constraint.' },
+  { model: 'nano-banana', task: 'ad', form: 'instruction', keep: 'last', negative: 'n/a', checked: D, sources: [GEMINI_GUIDE],
+    template: 'Using the provided image of the product (image 1), create a high-resolution {shape} advertising photograph of it.[ {more}] {scene}.[ The product: {details}.] The product stays exactly as it is in the image, with its shape, colours and label unchanged.[ {text}][ The colour scheme uses {colours}.][ The {corner} corner is clean, empty background with no text or objects.][ All text and the product stay clear of the {safe} of the frame.] There is no other text or logo in the image.',
+    note: 'Google: "Using the provided image of …" for edits; describe the scene in sentences, not keywords; the product-photography template (surface, light, angle); the shape named in the prompt as well as the request.' },
+  { model: 'nano-banana', task: 'ad-text', form: 'instruction', keep: 'none', negative: 'n/a', checked: D, sources: [GEMINI_GUIDE],
+    template: 'The ad shows {quoted} in {type}.', note: 'Google text template: the exact words in quotes, then the font style and the design.' },
+  { model: 'flux', task: 'ad', form: 'instruction', keep: 'none', negative: 'none', checked: D, sources: [FLUX_GUIDE],
+    template: 'Advertising photograph of the product from image 1. {scene}.[ {more}][ The product: {details}.] The product keeps its exact shape, colours and label from image 1.[ {text}][ Background and accents in {coloursHex}.][ The {corner} corner is clean, empty background.][ Text and product sit clear of the {safe} of the frame.] Format: {shape}.',
+    note: 'BFL FLUX.2: most important first (subject, then scene, then style); no negative prompt, so the ad says what it wants; brand colours as hex codes tied to objects ("in colour #…").' },
+  { model: 'flux', task: 'ad-text', form: 'instruction', keep: 'none', negative: 'none', checked: D, sources: [FLUX_GUIDE],
+    template: 'The image shows {quoted}, in {type}.', note: 'BFL: quoted text, its typeface style, size and where it sits.' },
+  { model: 'qwen-edit', task: 'ad', form: 'instruction', keep: 'last', negative: 'n/a', checked: D, sources: [QWEN_CARD],
+    template: 'Turn the product in image 1 into a {shape} advertising photo.[ {more}] {scene}.[ The product: {details}.] Keep the product\'s shape, colours and label exactly as in image 1.[ {text}][ Colour palette: {colours}.][ Keep the {corner} corner as empty background.][ Keep the text and the product clear of the {safe} of the frame.]',
+    note: 'Qwen Image: short edit instruction on image 1, text in double quotes (the card\'s own examples). Its "Ultra HD, 4K" suffix is for text-to-image, so not added to an edit.' },
+  { model: 'qwen-edit', task: 'ad-text', form: 'instruction', keep: 'none', negative: 'n/a', checked: D, sources: [QWEN_CARD],
+    template: 'Add {quoted} in {type}.', note: 'Qwen Image: the words in double quotes.' },
+  { model: 'any', task: 'ad', form: 'instruction', keep: 'last', negative: 'n/a', checked: D, sources: [],
+    template: 'Create a {shape} advertising photo of the product in image 1.[ {more}] {scene}.[ The product: {details}.] Keep the product exactly as in image 1, with the same shape, colours and label.[ {text}][ Brand colours: {colours}.][ Leave the {corner} corner as empty background.][ Keep the text and the product clear of the {safe} of the frame.]',
+    note: 'Our own default for the other edit models (Seedream, Qwen Image 3.0…): the shared rules, plain order.' },
+  { model: 'any', task: 'ad-text', form: 'instruction', keep: 'none', negative: 'n/a', checked: D, sources: [],
+    template: 'Add {quoted}, in {type}.', note: 'Quoted words, font feel and place.' },
 ];
 
 /** Which family a PROMPT_GRAMMAR key belongs to (null = none of ours). */

@@ -26,6 +26,7 @@ import { r4, comfyUnits, exactWithinCent, providerUnits } from './shared/runCost
 import { RUN_ON_LABELS, runOnOfRoute, LOCAL_LABEL } from './shared/modelIds.js';
 import { metaOf } from './library.js';
 import { periodStart, isSpendPeriod, buckets, quoteAccuracy, overQuoteByTool, shareByTool, type SpendPeriod } from './shared/spendInsights.js';
+import { policyRefusalCharge } from './shared/policyBilling.js';
 
 export type FailureRule = 'not-charged' | 'may-charge' | 'unknown';
 export type BilledTo = 'local' | 'comfy' | string;
@@ -195,7 +196,12 @@ const live = (r: SpendRow): SpendRow => { const j = jobs.get(r.jobId);
   // estimate for lack of credits, used nothing, so it counts $0 whatever the provider's failed-run rule says.
   // a gate refusal (Router not switched on for this model, the plan) happens before any run even when a request id came back: never spend
   const gate = ['route_not_enabled', 'cloud_plan'].includes(String((j as any)?.reasonCode ?? '')) && !j?.actualCost;
-  const neverSent = !!j && (j.status === 'failed' || j.status === 'blocked' || j.status === 'canceled') && PRE_DISPATCH.has(String((j as any).reasonCode ?? '')) && (gate || !(j.requestIds?.length || j.cloudJobId || (j as any).routerRequestId || j.comfyPrompt || j.actualCost));
+  // the runner's chargeNote 'not_charged' (routerRun.ts: a Router 422 before the call, or a content refusal on a model whose catalog says refusals aren't billed)
+  // with no reported cost: nothing was charged, so nothing counts (2026-10-31: two Seedance 2.5 refusals each counted their 239-credit estimate)
+  // (older jobs carry no chargeNote: the same catalog rule is read from the refusal itself)
+  const notCharged = !!j && (j.status === 'failed' || j.status === 'blocked') && !j.actualCost
+    && ((j as any).chargeNote === 'not_charged' || ((j as any).reasonCode === 'content_blocked' && policyRefusalCharge(j as any) === 'no'));
+  const neverSent = notCharged || (!!j && (j.status === 'failed' || j.status === 'blocked' || j.status === 'canceled') && PRE_DISPATCH.has(String((j as any).reasonCode ?? '')) && (gate || !(j.requestIds?.length || j.cloudJobId || (j as any).routerRequestId || j.comfyPrompt || j.actualCost)));
   if (!r.modelName && j) r = { ...r, modelName: displayName(j) }; // PB-08: rows written before the name was stored
   if (r.modelName) r = { ...r, modelName: catalogueNameOf(r.toolId, r.model, r.modelName, j?.input ?? null) }; // older rows stored "Seedance": the catalogue name with version
   if (r.finishedAt) return legacySim ? { ...r, simulated: true } : neverSent ? { ...r, neverSent: true } : r;
@@ -220,7 +226,7 @@ export function countedUsd(r: SpendRow): number {
   if (r.demo || r.billedTo === 'local') return 0;
   if (r.actualUsd != null) return r.actualUsd; // a provider reported a real cost
   if (r.simulated && !countSimulated()) return 0; // mock / sample runs are never real spend
-  if (r.neverSent) return 0; // ended before reaching the provider: nothing was used
+  if (r.neverSent) return 0; // ended before reaching the provider, or a failure the provider doesn't bill: nothing was used
   if (r.status === 'canceled' && !r.started) return 0;
   if ((r.status === 'failed' || r.status === 'blocked' || r.status === 'canceled') && r.failureRule === 'not-charged') return 0;
   return r.estUsd;

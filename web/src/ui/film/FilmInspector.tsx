@@ -13,6 +13,7 @@ import { useToast } from '../../shared/Toast';
 import { askConfirm } from '../../shared/Dialog';
 import { pickMedia } from '../../shared/MediaPicker';
 import { DockGenerate } from '../../shared/DockGenerate';
+import { nudgeMissing } from '../../shared/genNudge';
 import { Popover } from '../../shared/Popover';
 import { ModelMenu } from '../../shared/ModelMenu';
 import { RunOnChip } from '../routing/RunOn';
@@ -64,7 +65,7 @@ export default function FilmInspector({ film, shot, srvShot, label, tool, commit
   const q = useShotQuote(film.id, srvShot);
   const [busy, setBusy] = useState(false); const gen = useRef<HTMLButtonElement>(null);
   const missing = missingOf(film, { ...shot, prompt: text }); const over = budgetBlock(film, q);
-  const render = async () => { if (missing || over || busy) return; if (typeof q?.credits !== 'number') { toast('The price isn’t in yet. Try again in a moment.', 'warn'); return; } setBusy(true);
+  const render = async () => { if (missing) { nudgeMissing(gen.current); return; } /* waiting: say why (GenWhy), like every Generate */ if (over || busy) return; if (typeof q?.credits !== 'number') { toast('The price isn’t in yet. Try again in a moment.', 'warn'); return; } setBusy(true);
     try { await flush(); adopt(await renderShot(film.id, shot.id, { quotedCredits: q.credits, quotedRouteId: q.routeId ?? null })); }
     catch (e: any) { if (e?.code === 'route_changed' || e?.code === 'quote_mismatch' || e?.status === 409) { requestRequote(); toast('The price changed. Check the new price, then generate again.', 'warn'); }
       else toast(`That didn’t start. ${e?.message ?? ''}`.trim(), 'error'); }

@@ -77,9 +77,11 @@ html body .nf .nf-foot .gen-btn.gen-node .gen-price::before{content:none!importa
 html body .nf .nf-foot .gen-btn.gen-node .gen-price .gp-sub{display:none!important}
 html body .nf .nf-foot .gen-btn.gen-node .gen-price.gp-empty{display:none!important}
 html body .nf .nf-foot .gen-btn.gen-node .gen-setup-sub{display:none!important}
-html body .nf .nf-foot .gen-btn.gen-node.gen-wait,html body .nf .nf-foot .gen-btn.gen-node[aria-disabled=true],html body .nf .nf-foot .gen-btn.gen-node:disabled{background:transparent!important;color:var(--text-2,#898A8B)!important;box-shadow:inset 0 0 0 1px var(--border-strong,rgba(255,255,255,.1))!important;cursor:pointer!important;filter:none!important}
-html body .nf .nf-foot .gen-btn.gen-node.gen-wait:hover,html body .nf .nf-foot .gen-btn.gen-node[aria-disabled=true]:hover{background:var(--fill,rgba(255,255,255,.05))!important;color:var(--text-1,#F7F7F8)!important}
-html body .nf .nf-foot .gen-btn.gen-node.gen-wait .gen-price,html body .nf .nf-foot .gen-btn.gen-node[aria-disabled=true] .gen-price{background:none!important;color:var(--text-2,#898A8B)!important;-webkit-text-fill-color:var(--text-2,#898A8B)!important;padding:0!important;max-width:170px!important;font-family:var(--font-sans,Inter,sans-serif)!important;font-weight:500!important;font-size:10.5px!important}
+/* waiting: the shared look (tokens.css --wait-*, as ui-states.css .gen-wait), in the node's slim pill */
+html body .nf .nf-foot .gen-btn.gen-node.gen-wait,html body .nf .nf-foot .gen-btn.gen-node[aria-disabled=true]{background:var(--wait-fill)!important;color:var(--wait-ink)!important;box-shadow:inset 0 0 0 1px var(--wait-ring)!important;cursor:pointer!important;filter:none!important}
+html body .nf .nf-foot .gen-btn.gen-node.gen-wait:hover,html body .nf .nf-foot .gen-btn.gen-node[aria-disabled=true]:hover{background:var(--wait-fill-hover)!important;color:var(--wait-ink)!important}
+html body .nf .nf-foot .gen-btn.gen-node.gen-wait .gen-price,html body .nf .nf-foot .gen-btn.gen-node[aria-disabled=true] .gen-price{background:none!important;color:var(--wait-sub)!important;-webkit-text-fill-color:var(--wait-sub)!important;padding:0!important;max-width:170px!important;font-family:var(--font-sans,Inter,sans-serif)!important;font-weight:500!important;font-size:10.5px!important}
+html body .nf .nf-foot .gen-btn.gen-node:disabled{background:transparent!important;color:var(--text-2,#898A8B)!important;box-shadow:inset 0 0 0 1px var(--border-strong,rgba(255,255,255,.1))!important;filter:none!important}
 html body .nf .nf-foot .gen-btn.gen-node:disabled{cursor:default!important;opacity:.65!important}
 html body .nf .nf-foot .gen-btn.gen-node .as-spin{width:11px!important;height:11px!important}
 
@@ -545,6 +547,8 @@ html:not(.cv-perf-off) .nf-media,html:not(.cv-perf-off) .nf-body{contain:layout 
 .nf-shell{box-shadow:none} /* the card's own surface, so a card panned in fast fills in instead of popping out of nothing */
 .cv-far .nf{box-shadow:none;transition:none}
 .cv-far .nf *,.cv-far .nf *::before,.cv-far .nf *::after{animation-play-state:paused!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+/* a card that finishes while zoomed out: its fade-in would stay paused at opacity 0 (a black picture until you zoom in), so it just shows */
+.cv-far .nf .gc-stage,.cv-far .nf .gc-stage.develop img,.cv-far .nf .gc-stage.develop video{animation:none!important}
 .cv-tiny .nf,.cv-tiny .nf *{border-radius:0!important}
 /* Ad layout card, "Edit & style" (AdEditor.tsx): the app's sheet styles (.wfm, maskSheet.css), filling the window: a slim top bar,
    the side panel and the stage, where the ad fits as big as it can (or scrolls when zoomed in) */

@@ -57,6 +57,7 @@ import AudioPage from '../../ui/audio/AudioPage';
 import { addBrandField } from '../../shared/brandStore';
 import { audioPageWorkflow } from '../../ui/audio/AudioWorkflows';
 import { AUDIO_DEFAULT_WORKFLOW } from '../../../../server/src/shared/audioWorkflows';
+import { shortestLength } from '../../shared/lyricsLength';
 import { VoiceControls, useVoiceControls, CTRL as VOICE_CTRL, MODEL_VOICE_KEYS } from '../../ui/audio/VoiceControls';
 import MetaTagChips, { MetaTag, metaTagsFor } from '../../ui/next/MetaTags';
 import { StylePresets, AudioModeTabs, AudioMode } from '../../ui/next/Gen';
@@ -96,7 +97,7 @@ export default function AppTool({ tool, tools }: { tool: ToolInfo; tools?: ToolI
   const gal0: any = (cfg as any).gallery ?? null; const galDef: Record<string, string> = gal0?.defaults ?? {}; const galHide = new Set<string>(Array.isArray(gal0?.hideControls) ? gal0.hideControls : []);
   const hid = (n: string) => galHide.has(n);
   const galDur = galDef.duration != null && cfg.durations?.includes(Number(galDef.duration)) ? Number(galDef.duration) : null; const galRes = galDef.resolution && cfg.resolutions.includes(galDef.resolution) ? galDef.resolution : null;
-  const defaults = { picked: [] as string[], prompt: '', enhance: true, duration: galDur ?? (cfg.durations ? cfg.durations[cfg.durations.length - 1] : 5), steps: cfg.steps?.[0] ?? 0,
+  const defaults = { picked: [] as string[], prompt: '', enhance: true, duration: galDur ?? (cfg.durations ? (awf ? shortestLength(cfg.durations, 5) /* Audio (audit B1): never a hidden longest length */ : cfg.durations[cfg.durations.length - 1]) : 5), steps: cfg.steps?.[0] ?? 0,
     resolution: galRes ?? (cfg.resolutions.includes('720p') ? '720p' : cfg.resolutions[0]), provider: tool.defaultProvider ?? '' };
   /** Generic plugin fields (tool.app.fields): name → value; posted as form fields of the same name. */
   type FieldSpec = { name: string; label?: string; kind: 'select' | 'text' | 'number' | 'boolean'; help?: string; options?: { value: string; label?: string }[]; default?: string | number | boolean; min?: number; max?: number; maxLength?: number; providers?: string[]; gallery?: boolean };
@@ -155,6 +156,8 @@ export default function AppTool({ tool, tools }: { tool: ToolInfo; tools?: ToolI
   /* C2: after Recreate, a new seed by default; the Same seed toggle swaps in the original. */
   const [rcSeed, setRcSeed] = useState<number | null>(null); const [sameSeedOn, setSameSeedOn] = useState(false);
   const [icInit, setIcInit] = useState<Record<string, string> | null>(null);
+  /* the Audio page's Recreate / "Make this": the job's lyrics and length (lyrics live on AudioPage, not in this form; audit B3) */
+  const [audioRc, setAudioRc] = useState<{ key: string; lyrics: string; duration: number | null } | null>(null);
   const toggleSame = (v: boolean) => { setSameSeedOn(v); if (rcSeed != null) setSeed(v ? rcSeed : Math.floor(Math.random() * 1e6)); };
   const sameSeedEl = rcSeed != null ? <SameSeed seed={rcSeed} on={sameSeedOn} onChange={toggleSame} /> : null;
   const applyExample = (ex: import('../../api').Example) => {
@@ -167,7 +170,8 @@ export default function AppTool({ tool, tools }: { tool: ToolInfo; tools?: ToolI
     if (rc || fromRecipe) { const tg = pf.toggles ?? {}; const fv: Record<string, string | number | boolean> = {}; fieldSpecs.forEach(sp => { if (tg[sp.name] != null) fv[sp.name] = tg[sp.name]; });
       if ((cfg as any).voiceCaps) [...VOICE_CTRL, ...MODEL_VOICE_KEYS].forEach(k => { if (tg[k] != null && tg[k] !== '') fv[k] = tg[k]; }); /* Recreate: the voice controls too (speed…, Qwen3 TTS voice, language, Style) */
       if (Object.keys(fv).length) setFieldVals(f => ({ ...f, ...fv })); const av: Record<string, string> = {}; appFs.forEach(sp => { if (tg[sp.name] != null) av[sp.name] = String(tg[sp.name]); }); if (Object.keys(av).length) setAppVals(v => ({ ...v, ...av }));
-      const ic: Record<string, string> = {}; ['aspect', 'quality', 'imageResolution', 'n'].forEach(k => { if (tg[k] != null) ic[k] = String(tg[k]); }); setIcInit({ ...ic, _k: String(Date.now()) }); }
+      const ic: Record<string, string> = {}; ['aspect', 'quality', 'imageResolution', 'n'].forEach(k => { if (tg[k] != null) ic[k] = String(tg[k]); }); setIcInit({ ...ic, _k: String(Date.now()) });
+      if (awf) setAudioRc({ key: `${ex.id}:${Date.now()}`, lyrics: typeof tg.lyrics === 'string' ? tg.lyrics : '', duration: Number(tg.duration) > 0 ? Number(tg.duration) : null }); }
     if (cfg.resolutions.includes(pf.quality)) setResolution(pf.quality); if (pf.provider && tool.providers.some(x => x.id === pf.provider)) setProvider(pf.provider);
     /* the Video bar's aspect and sound live in fieldVals without a field spec: take them from any prefill (Recreate, Explore, ?aspect=); VideoStudio snaps an aspect the model lacks */
     if (tool.id === 'h3-video' && (cfg as any).aspects?.length && !fieldSpecs.some(sp => sp.name === 'aspect')) { const tg = pf.toggles ?? {}; const fv: Record<string, string> = {};
@@ -382,7 +386,7 @@ export default function AppTool({ tool, tools }: { tool: ToolInfo; tools?: ToolI
   /* Per-model clip lengths (providers[].durations; absent = the tool's own list). Whole seconds only; a model change snaps to the nearest allowed. */
   const durList: number[] = ((cfg as any).durationsByProvider?.[provider] ?? (tool.providers.find(x => x.id === provider) as any)?.durations ?? cfg.durations ?? []).map(Number).filter((n: number) => Number.isInteger(n));
   const lastProv = useRef(provider);
-  useEffect(() => { const changed = lastProv.current !== provider; lastProv.current = provider; if (!cfg.durations || !durList.length) return; const kept = keepDur.current; keepDur.current = null; if (kept != null && durList.includes(kept)) { if (kept !== duration) setDuration(kept); return; } const def = Number((cfg as any).defaultDurationByProvider?.[provider]);
+  useEffect(() => { const changed = lastProv.current !== provider; lastProv.current = provider; if (!cfg.durations || !durList.length || awf /* the Audio page owns its length (AudioPage lengthFor) */) return; const kept = keepDur.current; keepDur.current = null; if (kept != null && durList.includes(kept)) { if (kept !== duration) setDuration(kept); return; } const def = Number((cfg as any).defaultDurationByProvider?.[provider]);
     /* Same as Director: a provider change snaps to its default; otherwise only an out-of-list value moves (to the nearest). */
     const next = changed && durList.includes(def) ? def : durList.includes(duration) ? duration : durList.includes(def) ? def : durList.reduce((a, b) => Math.abs(b - duration) < Math.abs(a - duration) ? b : a);
     if (next !== duration) setDuration(next); }, [provider, durList.join()]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -443,7 +447,7 @@ export default function AppTool({ tool, tools }: { tool: ToolInfo; tools?: ToolI
     const build = (s: number, parentId = '', extra: Record<string, string> = {}) => {
       const fd = new FormData();
       fd.append('types', JSON.stringify(f.picked)); if (!f.autoActive) fd.append('prompt', f.prompt); if (!ignoresRes(tool.id)) fd.append('resolution', f.resolution); fd.append('seed', String(s));
-      if (cfg.enhance && tool.id !== 'h3-video' /* Create Video keeps its ✨ in fieldVals.enhance (off unless turned on), sent below */) fd.append('enhance', f.enhance ? '1' : '0'); if (cfg.durations) fd.append('duration', String(f.duration)); if (cfg.steps) fd.append('steps', String(f.steps));
+      if (cfg.enhance && tool.id !== 'h3-video' /* Create Video keeps its ✨ in fieldVals.enhance (off unless turned on), sent below */) fd.append('enhance', f.enhance ? '1' : '0'); if (cfg.durations && !awf /* the Audio page sends it in extra, only where its length chip shows (audit B2) */) fd.append('duration', String(f.duration)); if (cfg.steps) fd.append('steps', String(f.steps));
       if (f.provider) fd.append('provider', f.provider); if (parentId) fd.append('parentId', parentId);
       Object.entries(slotFiles).forEach(([k, fs]) => fs.forEach(x => fd.append(k, x, x.name)));
       Object.entries(f.appVals).forEach(([k, v]) => { if (v !== '' && v != null) fd.append(k, v); });
@@ -519,7 +523,7 @@ export default function AppTool({ tool, tools }: { tool: ToolInfo; tools?: ToolI
       fieldVals={fieldVals} setFieldVals={setFieldVals as any} fieldDefaults={fieldDefaults} langOpts={(() => { const lf = fieldSpecs.find(f => f.name === 'language'); return lf ? optsFor(lf) : undefined; })()} langNote={langNote}
       video={video} setVideo={setVideo} clip={cvAny ? cvAudio : null} setClip={setCvAudio} song={slotFiles.audio?.[0] ?? null} setSong={f => setSlotFiles(m => { const n = { ...m }; if (f) n.audio = [f]; else delete n.audio; return n; })}
       samples={voiceSample ? [voiceSample, ...voiceExtra] : []} setSamples={fs => { setVoiceSample(fs[0] ?? null); setVoiceExtra(fs.slice(1)); }}
-      busy={submittingNow} issues={issues} checks={missing.filter(m => /^(checking your files|usable files)/.test(m))} onGenerate={extra => generate(false, extra)} jobs={jobs} />;
+      busy={submittingNow} issues={issues} checks={missing.filter(m => /^(checking your files|usable files)/.test(m))} onGenerate={extra => generate(false, extra)} jobs={jobs} recreate={audioRc} />;
   }
   if (tool.id === 'voice') {
     return <AudioStudio tool={tool} langOpts={(() => { const lf = fieldSpecs.find(f => f.name === 'language'); return lf ? optsFor(lf) : undefined; })()} langNote={langNote} mode={mode || 'voiceover'} setMode={id => setPicked([id])} provider={provider} setProvider={setProvider} prompt={prompt} setPrompt={setPrompt} promptRef={promptRef}
@@ -553,7 +557,7 @@ export default function AppTool({ tool, tools }: { tool: ToolInfo; tools?: ToolI
       mask={mask} setMask={setMask} canMask={canMask} style={style} setStyle={setStyle} styles={hasStyle ? styles.filter(x => x.id !== 'none') as any : []}
       price={estimate(tool, srcSec, resolution, 1, { provider, types: picked }) || null} ready={missing.length === 0} missing={missing} busy={submittingNow}
       onGenerate={extra => generate(false, extra)} jobs={jobs} selected={current?.id} onSelect={setSel} stage={stageEl} enhance={enhance} setEnhance={setEnhance} sameSeed={sameSeedEl} initial={icInit} allProviders={tool.providers}
-      onWorkflowGenerate={async (tid, fd) => { if (q.mockFail) fd.set('simulate', q.mockFail); await submit(fd, tid); }} intakeRef={intake} />;
+      onWorkflowGenerate={async (tid, fd) => { if (q.mockFail) fd.set('simulate', q.mockFail); return submit(fd, tid); }} intakeRef={intake} />;
   }
   return (
     <Workspace tool={tool} panel={<>
