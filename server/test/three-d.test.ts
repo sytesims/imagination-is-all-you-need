@@ -103,6 +103,7 @@ try {
   for (const [p, s, want] of cases) {
     const q = (await j(`/api/tools/three-d/price?${new URLSearchParams({ provider: p, types: 'image-to-3d', ...s })}`)).body;
     assert.equal(q.credits, want, `${p} ${JSON.stringify(s)}: quote ${q.credits} = ${want}`); assert.equal(q.runnable, true);
+    if(p==='cloud-tripo-31') assert.equal(q.exactUsd,want/100,'Tripo precise metadata matches priced settings');
     const r = await submit({ provider: p, types: '["image-to-3d"]', ...s }); assert.equal(r.status, 200, JSON.stringify(r.body).slice(0, 300)); assert.equal(r.body.cost, want, `${p}: charge = quote`);
     const b = await done(r.body.id); assert.equal(b.status, 'done', b.error); assert.match(b.resultUrl, /\.glb$/); assert.equal(b.outputs[0].kind, '3d'); assert.equal(b.cost, want);
     if (!firstGlb) { firstGlb = b.resultUrl; firstId = b.id; }
@@ -111,7 +112,7 @@ try {
   const side=path.join(D,'side.png');execFileSync('ffmpeg',['-v','error','-y','-f','lavfi','-i','color=blue:s=480x640','-frames:v','1',side]);
   for(const mode of ['text-to-3d','multiview-to-3d']) for(const [settings,want] of [[{texture:'off'},mode==='text-to-3d'?10:20],[{texture:'pbr',detail:'standard'},mode==='text-to-3d'?20:30],[{texture:'hd',detail:'high'},mode==='text-to-3d'?50:60]] as [Record<string,string>,number][]) {
     const q=(await j(`/api/tools/three-d/price?${new URLSearchParams({provider:'cloud-tripo-31',types:mode,...settings})}`)).body;
-    assert.equal(q.credits,want,`${mode}: full quote`);
+    assert.equal(q.credits,want,`${mode}: full quote`);assert.equal(q.exactUsd,want/100,`${mode}: precise metadata matches mode and settings`);
     const r=await submitMode(mode,{prompt:'A ceramic fox',...settings},mode==='multiview-to-3d'?['image','image_left']:[]);assert.equal(r.status,200,JSON.stringify(r.body));assert.equal(r.body.cost,q.credits);
     const result=await done(r.body.id);assert.equal(result.status,'done',result.error);assert.match(result.resultUrl,/\.glb$/);assert.equal(result.outputs[0].kind,'3d');assert.equal(result.cost,want);
   }
