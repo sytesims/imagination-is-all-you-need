@@ -33,7 +33,9 @@ import { WorkflowControls } from '../ui/next/WorkflowBar';
 import { ImageIcon, VideoIcon, AudioIcon, CubeIcon, DownloadIcon, CloseIcon, TextIcon, ChevronRightIcon, ExpandIcon } from '../ui/Icons';
 import { CopyIcon, RetryIcon, PullOutIcon, NoteIcon, PromptIcon, UploadIcon, AdIcon, CompareIcon, GroupIcon } from './icons';
 import { useCatalog, catalogNow } from './catalog';
-import { GEN_TYPE, type GenCardProps, type Take, type MadeFrom as MadeFromT } from './cardModel';
+import { GEN_TYPE, layersLine, type GenCardProps, type Take, type MadeFrom as MadeFromT } from './cardModel';
+import { LayerTile } from '../shared/LayerStack';
+import { pullOutResult } from './resultCardUtil';
 import { CardInputs } from './CardInputs';
 import { CardName } from './CardName';
 import { RESULT_TYPE, PROMPT_TYPE, NOTE_TYPE, UPLOAD_TYPE, AD_TYPE, COMPARE_TYPE, GROUP_TYPE, isNodeType } from './nodeTypes';
@@ -203,6 +205,7 @@ function One({ id, head }: { id: TLShapeId; head: HeadFn }) {
       {!isText && v.s.type !== GROUP_TYPE && <Preview v={v} peek={peek} />}
       {v.s.type === GROUP_TYPE && <GroupBody v={v} />}
       {v.s.type === AD_TYPE && <Section title="Words"><AdWords v={v} /></Section>}
+      {v.gen && v.takes[v.take]?.layers && <Section title="Layers" aside={layersLine(v.takes[v.take]) ?? undefined}><Layers v={v} /></Section>}
       {v.gen && v.takes.length > 1 && <Section title="Versions" aside={`${v.take + 1} of ${v.takes.length} goes on`}><Versions v={v} onPeek={setPeek} /></Section>}
       {isText && <Section title="Text"><TextEdit v={v} /></Section>}
       {v.gen && v.spec && v.status !== 'running' && <Section title={v.draft ? 'Set it up' : 'Run again'} aside={v.draft ? undefined : 'Same model and settings'}><RunBlock v={v} /></Section>}
@@ -250,6 +253,24 @@ function Versions({ v, onPeek }: { v: View; onPeek: (t: Take | null) => void }) 
         {t.review && <b className={`cp-ver-mark ${t.review.verdict}`} aria-label={badgeText(t.review)}>{t.review.verdict === 'fits' ? '✓' : '!'}</b>}</button>)}
     </div>
     <Caption>{review ? badgeText(review) : 'Hover to look, click to pick the one that goes on.'}</Caption>
+  </>;
+}
+
+/** Image to layers: the layers stay together on the card (top first, like an editor's layer list); each can come out as its own Result card. */
+function Layers({ v }: { v: View }) {
+  const editor = useEditor(); const toast = useToast(); const t = v.takes[v.take]; const ls = t.layers ?? []; const [busy, setBusy] = useState(false);
+  const shot = String((v.s.meta as any)?.name ?? '').trim(); /* a pulled-out layer is named for the layer ("Sun"), with the card's own name when it has one */
+  const pull = (k: number, o: { select?: boolean; at?: { x: number; y: number } } = {}) => pullOutResult(editor, v.s.id, { jobId: t.jobId, kind: 'image', url: ls[k].url, poster: ls[k].url, model: v.model, title: shot ? `${shot} · ${ls[k].label}` : ls[k].label }, o);
+  /* every layer, top first, as a grid of four across beside the card */
+  const all = async () => { setBusy(true); try { const first = await pull(ls.length - 1, { select: false }); const b = editor.getShapePageBounds(first);
+      for (let i = 1; i < ls.length; i++) await pull(ls.length - 1 - i, { select: false, at: b ? { x: b.midX + (i % 4) * (b.w + 32), y: b.midY + Math.floor(i / 4) * (b.h + 32) } : undefined });
+      toast(`${ls.length} layers are on the board`); } finally { setBusy(false); } };
+  return <>
+    <div className="cp-layers" role="list" aria-label="Layers">{ls.map((l, k) => ({ l, k })).reverse().map(({ l, k }) => <div key={l.url} role="listitem" className="cp-layer" data-testid={`cp-layer-${k}`}>
+      <LayerTile layer={l} className="cp-layer-pic" /><span className="cp-layer-n" title={l.label}>{l.label}</span>
+      <button type="button" className="cp-icon" aria-label={`Pull out ${l.label}`} {...tip('Put this layer on the board as its own card')} onClick={() => { void pull(k, {}).then(() => toast(`${l.label} is on the board`)); }}><PullOutIcon size={14} /></button></div>)}</div>
+    <button type="button" className="cp-btn cp-wide" disabled={busy} data-testid="cp-layers-all" onClick={() => void all()}><PullOutIcon size={14} />{busy ? 'Pulling out…' : `Pull out all ${ls.length}`}</button>
+    <Caption>The card keeps them together; it passes the whole picture on.</Caption>
   </>;
 }
 

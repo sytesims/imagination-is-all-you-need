@@ -13,7 +13,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useEditor, useValue } from 'tldraw';
 import type { JobState } from '../api';
-import { getJob } from '../api';
 import { ResultCard } from '../shared/ResultCard';
 import { gridSrc } from '../shared/thumbs';
 import GenTile from '../shared/GenTile';
@@ -28,7 +27,6 @@ import { useToolQuote } from '../shared/useToolQuote';
 import { useDownloadIntent } from '../shared/hardware';
 import { intentSize, doSetupPlace } from '../shared/SetupCard';
 import { modelOfEngine, setupPlacesOf } from '../shared/models';
-import { jobCaption } from '../shared/FeedCaption';
 import { useToast } from '../shared/Toast';
 import { tip } from '../shared/Tooltip';
 import { navigate } from '../platform/router';
@@ -38,18 +36,19 @@ import { ImageIcon, VideoIcon, AudioIcon, CubeIcon, SoundIcon } from '../ui/Icon
 import { preflightProblems, type PreflightFix } from '../../../server/src/shared/preflight';
 import { MEDIA, availableFlows, flowById, flowInfo, tooManyNote, type GenMedium } from '../shared/genFlows';
 import { useCatalog, catalogNow } from './catalog';
-import { GEN_TYPE, type GenCardProps } from './cardModel';
+import { GEN_TYPE, layersLine, type GenCardProps } from './cardModel';
 import type { GenCardShape } from './genCardUtil';
 import { variationOf } from './variation';
 import { RUN_EVT, OPEN_GROUP_EVT, open3d } from './canvasEvents';
 import { cardState, makerOf, missingOf, modelNameOf } from './cardState';
-import { lineageRole, linkShapes, promptSourcesInto, waitingInputsOf } from './graph';
+import { lineageRole, promptSourcesInto, waitingInputsOf } from './graph';
 import { liveJobs, retryCard } from './genRun';
-import { setCard, submit, reveal } from './agentApi';
-import { addResultCard, probeSize } from './resultCardUtil';
+import { setCard, submit } from './agentApi';
+import { pullOutResult, probeSize } from './resultCardUtil';
 import { QuickActions } from './QuickActions';
 import { NodeFrame } from './NodeFrame';
 import { CardName } from './CardName';
+import { LayerCount } from '../shared/LayerStack';
 import { CardInputs, chooseForSlot } from './CardInputs';
 import { useClipInfo } from '../shared/clipInfo';
 import { clipIssue, clipRuleFor } from '../../../server/src/shared/clipLimits';
@@ -87,13 +86,8 @@ function TakeStrip({ shape }: { shape: GenCardShape }) {
   useEffect(() => { if (n > seen.current && p.takes[n - 1]) { setFresh(p.takes[n - 1].url); const t = window.setTimeout(() => setFresh(''), 1000); seen.current = n; return () => window.clearTimeout(t); } seen.current = n; }, [n]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { const el = strip.current?.children[i] as HTMLElement | undefined; el?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); }, [i, n]);
   const set = (k: number) => { if (!n) return; const t = ((k % n) + n) % n; editor.run(() => editor.updateShape({ id: shape.id, type: GEN_TYPE, props: { take: t, ratio: 0, ...(p.status === 'failed' ? { status: 'done', error: '' } : {}) } } as any), { history: 'ignore' }); };
-  const pull = async () => { const t = p.takes[i]; if (!t) return; let j: JobState | null = liveJobs.get()[t.jobId] ?? null; if (!j) j = await getJob(t.jobId).catch(() => null);
-    const cap = j ? jobCaption(j, null) : { model: p.model, place: '', price: '', time: '' };
-    const b = editor.getShapePageBounds(shape.id); const prev = editor.getCurrentPageShapes().filter(x => x.type === 'ohf-result' && ((x.props as any).parents ?? []).includes(shape.id)).map(x => editor.getShapePageBounds(x.id)!).filter(Boolean);
-    const at = b ? { x: b.maxX + 96 + 180, y: (prev.length ? Math.max(...prev.map(r => r.maxY)) + 32 : b.minY) + 180 } : undefined;
-    const shot = String((shape.meta as any)?.name ?? '').trim();
-    const id = await addResultCard(editor, t.jobId, { kind: t.kind, url: t.url, poster: t.poster, title: shot ? `${shot} · v${i + 1}` : p.prompt || cap.model || 'Result', caption: cap as any }, at);
-    editor.run(() => { editor.updateShape({ id, type: 'ohf-result', props: { parents: [shape.id] } } as any); linkShapes(editor, shape.id, id); }); reveal(editor, id);
+  const pull = async () => { const t = p.takes[i]; if (!t) return; const shot = String((shape.meta as any)?.name ?? '').trim();
+    await pullOutResult(editor, shape.id, { jobId: t.jobId, kind: t.kind, url: t.url, poster: t.poster, model: p.model, title: shot ? `${shot} · v${i + 1}` : p.prompt || p.model || 'Result' });
     toast(`Version ${i + 1} is on the board`); };
   if (!n) return <div className="gc-versions gc-versions-none" data-testid="gc-takes" />;
   return <div className="nf-takes gc-versions" data-testid="gc-takes" data-card-control>
@@ -169,7 +163,7 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
   /* the shot name an agent gave the card ("Hero close-up"): the first thing you read, also zoomed out */
   const shot = typeof (shape.meta as any)?.name === 'string' ? String((shape.meta as any).name).trim() : '';
   const quoting = draft && !!spec && !q;
-  const statusWord = draft ? (quoting ? 'Pricing' : 'Draft') : p.status === 'running' ? (job && job.status === 'queued' ? 'Queued' : 'Running') : p.status === 'done' ? (p.takes.length > 1 ? `${p.takes.length} versions` : 'Done') : 'Failed';
+  const statusWord = draft ? (quoting ? 'Pricing' : 'Draft') : p.status === 'running' ? (job && job.status === 'queued' ? 'Queued' : 'Running') : p.status === 'done' ? (p.takes.length > 1 ? `${p.takes.length} versions` : layersLine(take) ?? 'Done') : 'Failed';
   const statusTone = draft ? '' : p.status === 'done' ? ' nf-status-done' : p.status === 'failed' ? ' nf-status-failed' : p.status === 'running' ? ' nf-status-running' : '';
   const enter = () => { clearTimeout(hoverT.current); setHover(true); }; const leave = () => { clearTimeout(hoverT.current); hoverT.current = window.setTimeout(() => setHover(false), 260); };
   const Medium = MEDIUM_ICON[p.medium] ?? ImageIcon;
@@ -218,6 +212,7 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
         {p.status === 'running' && <div className="gc-stage" key="run"><GenTile job={job ?? stubJob(p)} testId="gc-running" /></div>}
         {running && <MediaBar job={job ?? stubJob(p)} />}
         {p.status === 'done' && take && <div className={`gc-stage${developing === take.url ? ' develop' : ''}`} key={`done-${take.url}`} data-developing={developing === take.url ? '1' : undefined}><ResultCard kind={take.kind} url={take.url} poster={take.poster} title={p.prompt || name} model={model} width={p.w} active={selected || hover} onView3d={take.kind === '3d' ? () => open3d(take.jobId) : undefined} testId="gc-result" />
+          {take.layers && <LayerCount n={take.layers.length} testId="gc-layers" hint="Kept together on this card. Select it to see each layer and pull any out as its own card" />}
           {(take.kind === 'image' || take.kind === 'video') && <QuickActions editor={editor} sourceId={shape.id} kind={take.kind} url={take.url} show={selected || hover} />}</div>}
         {p.status === 'failed' && <div className="gc-stage" key="fail"><Failed shape={shape} job={job ?? stubJob(p, 'failed')} /></div>}
       </div>

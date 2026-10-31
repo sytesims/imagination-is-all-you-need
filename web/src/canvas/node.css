@@ -837,3 +837,4 @@ html body .apop.ade-pop{z-index:1210}
 .tl-container[data-far] .nf.nf-node .gc-row-run .nf-dot{width:calc(6px * var(--far));height:calc(6px * var(--far))}
 
 @media (prefers-reduced-motion:reduce){.tl-container .nf-mbar.ind i{animation:none;width:100%;opacity:.5}}
+.gc-stage>.ly-count{top:8px;bottom:auto}
