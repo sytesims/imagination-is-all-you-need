@@ -10,7 +10,7 @@
  */
 import { SHOWCASE, SHOWCASE_GALLERY, showcaseById, type ShowcaseItem } from './showcase.js';
 import { threeDRoute } from './threeD.js';
-import { VIDEO_PAGE, videoWorkflowHref, videoWorkflowOfTool } from './videoWorkflows.js';
+import { VIDEO_PAGE, toolPage, videoWorkflowHref, videoWorkflowOfTool } from './videoWorkflows.js';
 import { audioRoute } from './audioWorkflows.js';
 import { placeOf } from './modelIds.js';
 /** Where one of our own runs happened, in run chips (copy wave 1: never the brand of computer). Compare with isOurComputer, never the words. */
@@ -502,7 +502,7 @@ export function featuredRecreateHref(key: string, extra: Record<string, string> 
   const f = featuredByKey(key); if (!f) return null; if (f.recreateHref) return f.recreateHref; const id = FEATURED_SEED_IDS[key]; if (!id) return null;
   const wf = f.toolId === 'two-person-swap' ? 'two-person-swap' /* history-only warning, never a lossy one-person prefill */ : f.toolId === 'app-transition' ? 'transitions' : f.toolId !== 'h3-video' ? videoWorkflowOfTool(f.toolId)?.id : undefined;
   const u = new URLSearchParams({ ...(wf ? { workflow: wf } : {}), recreate: id, ...extra });
-  return `${wf ? VIDEO_PAGE : `/tools/${f.toolId}`}?${u}`;
+  return `${wf ? VIDEO_PAGE : toolPage(f.toolId)}?${u}`;
 }
 /** Full-frame posters (WebP) for the clips Explore shows full width. */
 export const FEATURED_BIG_POSTER: Record<string, string> = { 'h3-glass-whale': S('h3-glass-whale.jpg'), 'ltx-fox-meadow': S('ltx-fox-meadow.webp'), 'ltx-fox-meadow-close': S('ltx-fox-meadow-close.webp'), 'ltx-pro-painter': S('ltx-pro-painter.webp'), 'h3-char-swap': S('h3-char-swap.webp'),

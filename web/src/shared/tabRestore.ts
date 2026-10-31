@@ -21,7 +21,7 @@ export const ssJson = <T,>(k: string, fallback: T): T => { const s = ssGet(k); i
 
 /** Query params that open something over the page and don't make it another page (the result viewer). */
 const OVERLAY_PARAMS = ['view'];
-/** The key a page's scroll is kept under: path + sorted query, without overlay params, so /tools/h3-video?view=a and ?view=b share it. */
+/** The key a page's scroll is kept under: path + sorted query, without overlay params, so /video?view=a and ?view=b share it. */
 export function scrollKey(pathname: string, search: string): string {
   const q = new URLSearchParams(search); OVERLAY_PARAMS.forEach(p => q.delete(p));
   const pairs = [...q.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));

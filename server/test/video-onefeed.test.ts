@@ -32,7 +32,7 @@ ok('Create Video and every workflow bar share the page’s one feed');
 
 // ---- route prefetch: the Video page and the bar it needs ----
 if (chunksFor) {
-  assert.deepEqual(chunksFor('/tools/h3-video'), ['videoPage', 'app']); assert.deepEqual(chunksFor('/tools/h3-video?workflow=motion-control'), ['videoPage', 'videoBar']);
+  assert.deepEqual(chunksFor('/video'), ['videoPage', 'app']); assert.deepEqual(chunksFor('/video?workflow=motion-control'), ['videoPage', 'videoBar']);
   ok('a Video link prefetches the page shell and its bar');
 }
 

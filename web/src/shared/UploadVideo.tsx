@@ -1,3 +1,4 @@
+import { VIDEO_PAGE, VIDEO_TOOL } from '../../../server/src/shared/videoWorkflows';
 import { useDraftFile } from './draftFiles';
 import LibraryButton from '../ui/b1/LibraryButton';
 import FilledMedia from '../ui/b1/FilledMedia';
@@ -50,7 +51,7 @@ export default function UploadVideo({ title = 'Video', hint, video, onChange, di
             onChange({ ...m, trimmed });
     } catch (e) { fail((e as Error).message === 'timeout' ? 'Couldn’t read that clip. Try again or use another file.' : 'Unsupported format.'); } finally { setBusy(false); }
   };
-  useDraftFile(draftKey ?? (location.pathname.startsWith('/tools/') ? location.pathname.slice(7) : undefined), `video:${title}`, video?.file ?? null, f => { void onFile([f]); });
+  useDraftFile(draftKey ?? (location.pathname.startsWith('/tools/') ? location.pathname.slice(7) : location.pathname === VIDEO_PAGE ? VIDEO_TOOL /* the same draft key as before the move to /video */ : undefined), `video:${title}`, video?.file ?? null, f => { void onFile([f]); });
   return (
     <section className="card">
       <h2>{title}</h2>

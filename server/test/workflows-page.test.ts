@@ -81,12 +81,12 @@ assert.equal(appWorkflowFor('photo-fx', 'router-seedance')?.name.includes('First
   ok(`cards with an example show its model and real cost (${want.length}); no job id, no "Made here"; ACE-Step not Local until installed`);
   /* 2026-10-28 (picks audit): Open passes the card's model on, so the tab opens what the card names */
   assert.equal(row('i-character-sheet').openHref, '/tools/create-image?workflow=character-sheet&model=qwen-image-2.1-turbo');
-  assert.equal(row('v-extend').openHref, '/tools/h3-video?workflow=extend&model=minimax-h3-extend');
+  assert.equal(row('v-extend').openHref, '/video?workflow=extend&model=minimax-h3-extend');
   assert.equal(row('v-direct-a-shot').openHref, wfEntryById('v-direct-a-shot')!.href, 'a tool with one model keeps its own link');
   /* the example's model leads only when it runs now: with no LTX key, Create Video leads with what runs (and names it), never "Needs an LTX key" */
   const noKey = tools.map((t) => t.id !== wfEntryById('v-create')!.toolId ? t : { ...t, models: t.models.map((m: any) => m.key === 'ltx-2.5-pro' ? { ...m, runsOn: [{ id: 'ltx', status: 'needs-key' }] } : m) });
   const cv = resolveRow(wfEntryById('v-create')!, noKey, hub)!; assert.equal(cv.models[0].key, 'wan-2.2-5b'); assert.equal(cv.model, 'Wan 2.2 5B', 'the card names the model Open runs');
-  assert.equal(cv.openHref, '/tools/h3-video?model=wan-2.2-5b'); assert.ok(cv.made && cv.exampleModel === 'LTX-2.5 Pro', 'the example keeps its own model (said in the sheet)');
+  assert.equal(cv.openHref, '/video?model=wan-2.2-5b'); assert.ok(cv.made && cv.exampleModel === 'LTX-2.5 Pro', 'the example keeps its own model (said in the sheet)');
   /* the server's own pick of place (models[].autoRunOn: "Use local ComfyUI" off → the cloud) is the place the card says */
   const auto = tools.map((t) => t.id !== wfEntryById('v-create')!.toolId ? t : { ...t, models: t.models.map((m: any) => m.key === 'minimax-h3' ? { ...m, runsOn: [{ id: 'local', status: 'ready', credits: 0 }, { id: 'comfy-cloud', status: 'ready', credits: 64 }], autoRunOn: 'comfy-cloud' } : m) });
   const h3 = resolveRow(wfEntryById('v-create')!, auto, hub)!.models.find((m) => m.key === 'minimax-h3')!; assert.equal(h3.run.id, 'comfy-cloud', 'the tab’s own place, not the free local one it won’t pick');

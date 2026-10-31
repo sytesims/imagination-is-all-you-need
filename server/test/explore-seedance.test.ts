@@ -27,14 +27,14 @@ assert.equal(lh.input.duration, 15); assert.equal(lh.input.resolution, '720p'); 
 assert.equal(fa.jobId, '4bb53e5b'); assert.equal(fa.route, 'comfy-router:router-seedance'); assert.equal(fa.input.duration, 5); assert.equal(fa.input.mode, 'i2v'); assert.deepEqual([fa.out.width, fa.out.height], [720, 1280], '9:16');
 assert.ok(Math.abs(fa.costUsd! - 1.09) < 0.01); assert.deepEqual(fa.from, [{ jobId: 'ab863543', model: 'Qwen Image 2.1', place: 'on our computer', costUsd: 0 }], 'the still: Qwen Image 2.1, free');
 assert.deepEqual(F.runByJob('ab863543'), fa.from![0]); assert.equal(F.runByJob('5b612365')?.model, 'Seedance 2.0');
-for (const f of [lh, fa]) { assert.equal(F.FEATURED_SEED_IDS[f.key], featuredIdOf(f.key)); assert.equal(F.featuredRecreateHref(f.key), `/tools/h3-video?recreate=${featuredIdOf(f.key)}`, `${f.key}: Recreate opens Video (Seedance from the seeded job)`); }
+for (const f of [lh, fa]) { assert.equal(F.FEATURED_SEED_IDS[f.key], featuredIdOf(f.key)); assert.equal(F.featuredRecreateHref(f.key), `/video?recreate=${featuredIdOf(f.key)}`, `${f.key}: Recreate opens Video (Seedance from the seeded job)`); }
 const cuts = S.strip.shots.map((x) => x.t0); assert.deepEqual(cuts, [...cuts].sort((a, b) => a - b)); assert.ok(cuts[0] === 0 && cuts.at(-1)! < lh.out.sec!, 'shot cuts inside the clip');
 ok('Lighthouse (5b612365, $3.25, 15 s, 1280×720) and fashion (4bb53e5b, $1.09, 5 s, 9:16, still ab863543 free) as they ran; Recreate opens Video');
 
 // ---- links and copy
 const links = [F.featuredRecreateHref(lh.key)!, S.make.href];
-for (const u of links) { assert.match(u, /^\/tools\/h3-video\?/, u); assert.ok(EXPLORE_SHOWCASE_LINKS().includes(u), `${u}: in the checked list`); }
-assert.equal(S.make.href, '/tools/h3-video?model=seedance-2.0', 'Make your own: Video with Seedance 2.0 picked');
+for (const u of links) { assert.match(u, /^\/video\?/, u); assert.ok(EXPLORE_SHOWCASE_LINKS().includes(u), `${u}: in the checked list`); }
+assert.equal(S.make.href, '/video?model=seedance-2.0', 'Make your own: Video with Seedance 2.0 picked');
 assert.equal(S.strip.title, 'A star to steer by.'); assert.equal(S.strip.line, 'Nine words became the picture. A poem, a lullaby and a final line made it a film.');
 assert.ok(!('part' in S) && !('stillHref' in S), 'Silver, meet storm. is gone from Explore (user, 2026-10-29)');
 for (const t of [S.strip.title, S.strip.line]) assert.doesNotMatch(t, /\bMac\b|\blocal\b|Comfy|Qwen|Seedance/i, `no jargon in the words: ${t}`);

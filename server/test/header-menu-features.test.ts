@@ -15,7 +15,7 @@ assert.deepEqual(MENU_FEATURE_ORDER['3d'], ['plan-a-shot', 'image-to-3d', 'turnt
 assert.equal(MENU_FEATURE_ORDER.audio, null, 'Audio keeps its own order');
 for (const id of MENU_FEATURE_ORDER.image!) assert.ok(IMAGE_FEATURES.some((f) => f.id === id), `image feature ${id} exists`);
 for (const id of MENU_FEATURE_ORDER.video!) assert.ok([...VIDEO_WORKFLOWS, ...VIDEO_FLOW_SHORTCUTS].some((w) => w.id === id), `video workflow or flow shortcut ${id} exists`);
-for (const w of VIDEO_FLOW_SHORTCUTS) { assert.ok(!VIDEO_WORKFLOWS.some((x) => x.id === w.id), `${w.id}: a shortcut id never shadows a workflow`); assert.match(w.href, /^\/tools\//, `${w.id}: opens a tool page`); }
+for (const w of VIDEO_FLOW_SHORTCUTS) { assert.ok(!VIDEO_WORKFLOWS.some((x) => x.id === w.id), `${w.id}: a shortcut id never shadows a workflow`); assert.match(w.href, /^\/(tools\/|video\?)/, `${w.id}: opens a tool page`); }
 ok('every configured id exists');
 
 const rows = (ids: string[]) => ids.map((key) => ({ key }));

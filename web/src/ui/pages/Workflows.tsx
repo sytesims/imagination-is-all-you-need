@@ -32,7 +32,7 @@ import './workflowFinder.css';
  * licence, then "Open in <tab>" (goToWorkflow; the tab's code is fetched as the sheet opens, so the click doesn't wait). A workflow with no
  * example of ours shows our own drawing of the flow, labelled as such. ?q= prefills the search; ?cat= picks a category; both follow the page.
  */
-const TAB: [RegExp, string][] = [[/^\/tools\/create-image/, 'Image'], [/^\/tools\/h3-video/, 'Video'], [/^\/tools\/audio/, 'Audio'], [/^\/tools\/3d/, '3D']];
+const TAB: [RegExp, string][] = [[/^\/tools\/create-image/, 'Image'], [/^\/video(?=[/?]|$)/, 'Video'], [/^\/tools\/audio/, 'Audio'], [/^\/tools\/3d/, '3D']];
 export const tabOf = (href: string) => TAB.find(([r]) => r.test(href))?.[1] ?? 'the app';
 const catLabel = (c: WfCat) => WF_CATS.find((x) => x.id === c)?.label ?? c;
 const mins = (ms: number) => ms < 60_000 ? `${Math.round(ms / 1000)} s` : `${Math.round(ms / 60_000)} min`;

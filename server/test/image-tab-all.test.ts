@@ -83,7 +83,7 @@ assert.match(ic, /useUploads\('image', pj\.pid, filt, upOn\)/); assert.match(src
 const { uploadUses, uploadTag } = await import('../../web/src/ui/next/feed/uploadLinks.ts');
 assert.deepEqual(uploadUses({ type: 'image', url: '/files/upl-a.png' }).map((u: any) => u.k), ['ref', 'start', 'upscale']);
 assert.deepEqual(uploadUses({ type: 'video', url: '/files/upl-b.mp4' }).map((u: any) => u.k), ['motion', 'extend', 'upscale']);
-assert.match(uploadUses({ type: 'image', url: '/files/upl-a.png' })[1].href, /^\/tools\/h3-video\?refUrl=%2Ffiles%2Fupl-a\.png&as=start$/);
+assert.match(uploadUses({ type: 'image', url: '/files/upl-a.png' })[1].href, /^\/video\?refUrl=%2Ffiles%2Fupl-a\.png&as=start$/);
 assert.match(uploadUses({ type: 'video', url: '/files/upl-b.mp4' })[0].href, /workflow=motion-control&refUrl=%2Ffiles%2Fupl-b\.mp4$/);
 assert.equal(uploadTag({ label: 'Video frame' }), 'Video frame'); assert.equal(uploadTag({ label: null }), 'Upload');
 const { recordUpload, listMedia } = await import('../src/mediaLibrary.ts');

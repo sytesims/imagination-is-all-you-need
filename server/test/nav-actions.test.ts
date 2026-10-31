@@ -34,7 +34,7 @@ const { sendTo3dHref } = await import('../src/shared/threeD.ts');
 
 /** JobPage's close (platform/JobPage.tsx): Back when the viewer was opened in-app. */
 const jobPageClose = () => { if ((history.state as any)?.inApp) history.back(); };
-const TOOLS = [{ id: 'create-image', route: '/tools/create-image' }, { id: 'h3-video', route: '/tools/h3-video' }, { id: 'audio', route: '/tools/audio' }, { id: 'voice', route: '/tools/voice' },
+const TOOLS = [{ id: 'create-image', route: '/tools/create-image' }, { id: 'h3-video', route: '/video' }, { id: 'audio', route: '/tools/audio' }, { id: 'voice', route: '/tools/voice' },
   { id: 'three-d', route: '/tools/3d' }, { id: 'soundtrack', route: '/tools/soundtrack' }, { id: 'h3-extend', route: '/tools/h3-extend' }, { id: 'app-relight', route: '/tools/app-relight' }];
 const params = (u: string) => Object.fromEntries(new URL(u, ORIGIN).searchParams);
 
@@ -43,9 +43,9 @@ const JOBS: [string, { id: string; toolId: string; input?: any }, string][] = [
   ['image (Create Image)', { id: 'i1', toolId: 'create-image', input: {} }, '/tools/create-image?recreate=i1'],
   ['image workflow (Relight)', { id: 'i2', toolId: 'app-relight' }, '/tools/create-image?workflow=relight&recreate=i2'],
   ['image Camera & Lens', { id: 'i3', toolId: 'create-image', input: { camera: { body: 'x' } } }, '/tools/create-image?workflow=camera-lens&recreate=i3'],
-  ['video (Create Video)', { id: 'v1', toolId: 'h3-video', input: {} }, '/tools/h3-video?recreate=v1'],
-  ['video workflow (Extend)', { id: 'v2', toolId: 'h3-extend' }, '/tools/h3-video?workflow=extend&recreate=v2'],
-  ['video Lip Sync (voice:lipsync)', { id: 'v3', toolId: 'voice', input: { types: ['lipsync'] } }, '/tools/h3-video?workflow=lip-sync&mode=lipsync&recreate=v3'],
+  ['video (Create Video)', { id: 'v1', toolId: 'h3-video', input: {} }, '/video?recreate=v1'],
+  ['video workflow (Extend)', { id: 'v2', toolId: 'h3-extend' }, '/video?workflow=extend&recreate=v2'],
+  ['video Lip Sync (voice:lipsync)', { id: 'v3', toolId: 'voice', input: { types: ['lipsync'] } }, '/video?workflow=lip-sync&mode=lipsync&recreate=v3'],
   ['audio Music', { id: 'a1', toolId: 'audio', input: { types: ['music'] } }, '/tools/audio?workflow=music&recreate=a1'],
   ['audio Sound effects (was: Music)', { id: 'a2', toolId: 'audio', input: { types: '["sfx"]' } }, '/tools/audio?workflow=sfx&recreate=a2'],
   ['audio Change voice (was: Voiceover)', { id: 'a3', toolId: 'voice', input: { types: ['change-voice'] } }, '/tools/audio?workflow=change-voice&recreate=a3'],
@@ -55,17 +55,17 @@ const JOBS: [string, { id: string; toolId: string; input?: any }, string][] = [
   ['3D Image to 3D (had no Recreate)', { id: 'd1', toolId: 'three-d', input: { imageUrl: '/files/x.png' } }, '/tools/3d?workflow=image-to-3d&recreate=d1'],
   ['3D turntable', { id: 'd2', toolId: 'three-d-turntable' }, '/tools/3d?workflow=turntable&recreate=d2'],
   ['3D mockup', { id: 'd3', toolId: 'plan-a-shot' }, '/tools/3d?workflow=plan-a-shot&recreate=d3'],
-  ['other tool, from the tool list', { id: 'o1', toolId: 'reframe' }, '/tools/h3-video?workflow=reframe&recreate=o1'],
+  ['other tool, from the tool list', { id: 'o1', toolId: 'reframe' }, '/video?workflow=reframe&recreate=o1'],
 ];
 for (const [what, job, want] of JOBS) assert.equal(recreateHref(job, TOOLS), want, what);
 assert.equal(recreateHref({ id: '', toolId: 'audio' }), null, 'no id, no Recreate');
 assert.equal(recreateHref({ id: 'x1', toolId: 'unknown-tool' }), '/tools/unknown-tool?recreate=x1', 'an unknown tool keeps its own page');
 ok(`${JOBS.length} kinds of job: Recreate opens its tab and workflow`);
 // Canvas "Open in tool" with no finished job: the same tabs
-assert.equal(workflowOpenOf({ toolId: 'voice', input: { types: ['lipsync'] } }), '/tools/h3-video?workflow=lip-sync&mode=lipsync', 'Canvas Lip Sync → Video (was: Audio Voiceover)');
+assert.equal(workflowOpenOf({ toolId: 'voice', input: { types: ['lipsync'] } }), '/video?workflow=lip-sync&mode=lipsync', 'Canvas Lip Sync → Video (was: Audio Voiceover)');
 assert.equal(workflowOpenOf({ toolId: 'audio', input: { types: ['sfx'] } }), '/tools/audio?workflow=sfx');
 assert.equal(workflowOpenOf({ toolId: 'three-d' }), '/tools/3d?workflow=image-to-3d');
-assert.equal(workflowOpenOf({ toolId: 'h3-video' }), '/tools/h3-video');
+assert.equal(workflowOpenOf({ toolId: 'h3-video' }), '/video');
 assert.equal(jobWorkflowHref({ toolId: 'create-image', input: {} }), null);
 ok('Canvas Open in tool: the same workflow tabs');
 
@@ -91,14 +91,14 @@ await fromUrlViewer(A('v1'), frameHandoffHref('v1', 0, 2.5, true), 'Assets → U
 await fromUrlViewer(A('a1'), lipSyncHandoffHref('a1', 0), 'Assets → Make it talk');
 await fromUrlViewer(A('i1'), sendTo3dHref('i1', 0), 'Assets → Send to 3D');
 await fromUrlViewer(A('i1'), '/tools/create-image?fromJob=i1&out=0&as=ref', 'Assets → Reference');
-await fromUrlViewer(['/', '/spend', '/jobs/v1'], '/tools/h3-video?workflow=extend&fromJob=v1&out=0', 'Spend → Extend');
-await fromUrlViewer(['/', '/assets', '/jobs/f1'], '/tools/h3-video?recreate=f1', 'Assets → failed run → Change settings');
+await fromUrlViewer(['/', '/spend', '/jobs/v1'], '/video?workflow=extend&fromJob=v1&out=0', 'Spend → Extend');
+await fromUrlViewer(['/', '/assets', '/jobs/f1'], '/video?recreate=f1', 'Assets → failed run → Change settings');
 ok('URL viewer (Assets, Profile, Spend → /jobs/:id): every action lands on its workflow; Back reopens the viewer, then the page');
 
 // Feed viewers use ?view and their own ohfView history entry, rather than /jobs/:id.
 // Exercise the real click handler used by both the Turn-to-video link and the Extend menu buttons.
 for (const n of [5, 10]) {
-  reset(['/', '/tools/h3-video', '/tools/h3-video?view=v1']);
+  reset(['/', '/video', '/video?view=v1']);
   B.entries[B.ix].state = { inApp: true, ohfView: true };
   const viewerUrl = here(); let closed = 0; let prevented = false;
   const closeFeed = () => { closed++; history.back(); };
@@ -106,18 +106,18 @@ for (const n of [5, 10]) {
   await settle();
   assert.equal(prevented, true);
   assert.equal(closed, 0, `Extend +${n}: a URL feed viewer is left by navigation, not history.back`);
-  assert.equal(here(), `/tools/h3-video?workflow=extend&fromJob=v1&out=0&ext=${n}`, `Extend +${n}: retains workflow, source and length after async history settles`);
+  assert.equal(here(), `/video?workflow=extend&fromJob=v1&out=0&ext=${n}`, `Extend +${n}: retains workflow, source and length after async history settles`);
   history.back(); await settle();
   assert.equal(here(), viewerUrl, `Extend +${n}: Back restores the source viewer`);
   closeFeed(); await settle();
-  assert.equal(here(), '/tools/h3-video', `Extend +${n}: Close then returns to the source feed`);
+  assert.equal(here(), '/video', `Extend +${n}: Close then returns to the source feed`);
 }
 {
   reset(['/', '/tools/create-image?model=flux-3-image', '/tools/create-image?model=flux-3-image&view=i1']);
   B.entries[B.ix].state = { inApp: true, ohfView: true };
   const source = here(); let closed = 0;
-  goClick('/tools/h3-video?fromJob=i1&as=image&out=0', () => { closed++; history.back(); })({button: 0, preventDefault() {}} as any);
-  await settle(); assert.equal(here(), '/tools/h3-video?fromJob=i1&as=image&out=0'); assert.equal(closed, 0);
+  goClick('/video?fromJob=i1&as=image&out=0', () => { closed++; history.back(); })({button: 0, preventDefault() {}} as any);
+  await settle(); assert.equal(here(), '/video?fromJob=i1&as=image&out=0'); assert.equal(closed, 0);
   history.back(); await settle(); assert.equal(here(), source, 'Turn to video: Back restores the Image viewer including its model');
 }
 ok('feed URL viewer click actions: Extend +5/+10 and Turn to video preserve handoff inputs and Back history');
@@ -128,7 +128,7 @@ ok('feed URL viewer click actions: Extend +5/+10 and Turn to video preserve hand
   goToWorkflow('/tools/create-image?workflow=relight&recreate=i2', () => { open = false; }); await settle(); removeEventListener('popstate', f);
   assert.equal(open, false, 'the feed viewer closes'); assert.equal(here(), '/tools/create-image?workflow=relight&recreate=i2'); assert.equal(pops, 1, 'one popstate: the open page re-reads the query once');
   history.back(); await settle(); assert.equal(here(), '/tools/create-image', 'Back returns to the feed'); }
-{ reset(['/', '/tools/h3-video']); let open = true; goToWorkflow(recreateHref({ id: 'a3', toolId: 'voice', input: { types: ['change-voice'] } }, TOOLS)!, () => { open = false; }); await settle();
+{ reset(['/', '/video']); let open = true; goToWorkflow(recreateHref({ id: 'a3', toolId: 'voice', input: { types: ['change-voice'] } }, TOOLS)!, () => { open = false; }); await settle();
   assert.equal(open, false); assert.equal(here(), '/tools/audio?workflow=change-voice&recreate=a3', 'Video feed → Audio Recreate'); }
 ok('state viewer (feeds): closes, then goes; same-tab targets fire one popstate');
 
@@ -139,8 +139,8 @@ ok('state viewer (feeds): closes, then goes; same-tab targets fire one popstate'
 ok('Explore / Canvas: a push to the tab, Back returns');
 
 // The race itself, for the record: closing a URL viewer first (the old code) lands back on Assets
-{ reset(A('v2')); jobPageClose(); (await import('../../web/src/platform/router.tsx')).navigate('/tools/h3-video?workflow=extend&recreate=v2'); await settle();
-  assert.notEqual(here(), '/tools/h3-video?workflow=extend&recreate=v2', 'old behaviour: close (history.back) then push loses the push');
+{ reset(A('v2')); jobPageClose(); (await import('../../web/src/platform/router.tsx')).navigate('/video?workflow=extend&recreate=v2'); await settle();
+  assert.notEqual(here(), '/video?workflow=extend&recreate=v2', 'old behaviour: close (history.back) then push loses the push');
   ok(`old behaviour reproduced: ended on ${here()}`); }
 assert.deepEqual(params(recreateHref({ id: 'v2', toolId: 'h3-extend' })!), { workflow: 'extend', recreate: 'v2' });
 function withSearch(to: string, s: string) { return to.includes('?') ? `${to}&${s}` : `${to}?${s}`; }

@@ -8,6 +8,7 @@
  * Pictures on the pages come from the art slots in ecomArt.ts (placeholders until real images made in the app are dropped in;
  * the list of what to make is docs/learn/ecom-book-art-list.md).
  */
+import { VIDEO_PAGE } from '../../../server/src/shared/videoWorkflows';
 import type { ArtSlot } from './ecomArt';
 
 export const BOOK_PATH = '/learn/ai-ecommerce';
@@ -190,7 +191,7 @@ export const CHAPTERS: Chapter[] = [
     ],
     why: 'One named move and one small action give the model a clear plan, so it doesn’t invent extra motion.',
     cost: { local: 'Direct a Shot is free in your browser', cloud: 'About $0.08 per second (6 s ≈ $0.48)', time: 'A few minutes per clip' },
-    tryIt: { label: 'Write the shot', base: '/tools/h3-video', model: 'minimax-h3' },
+    tryIt: { label: 'Write the shot', base: VIDEO_PAGE, model: 'minimax-h3' },
     more: [{ label: 'Direct it free in 3D first', to: '/tools/3d?workflow=plan-a-shot' }],
     hotspots: [
       { id: 'move', label: 'One camera move', text: 'Orbit, push in or slide. One move per clip, said in plain words.' },
@@ -278,7 +279,7 @@ export function tryHref(ch: Chapter, link: TryLink = ch.tryIt): string {
 export const tryHrefWith = (ch: Chapter, i: number): string => tryHref(ch, { ...ch.tryIt, prompt: i });
 /** The tool name a Try-it button names ("in Create Image"). */
 export function tryToolName(base: string): string {
-  if (base.startsWith('/tools/h3-video')) return 'Video';
+  if (base.startsWith(VIDEO_PAGE)) return 'Video';
   if (base.startsWith('/tools/audio')) return 'Audio';
   if (base.includes('workflow=product-shot')) return 'Product Shot';
   if (base.includes('mode=edit')) return 'Edit Image';
