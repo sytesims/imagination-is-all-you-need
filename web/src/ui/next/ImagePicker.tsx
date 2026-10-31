@@ -15,8 +15,8 @@ export function ImagePicker({ tab, setTab, onClose, target, onFile, onUpload, on
   /** Upload from your computer (opens Finder on the bar's input) */ onUpload: () => void;
   /** photos dropped or pasted on the panel */ onFiles: (f: File[]) => void; limits?: string;
 }) {
-  const title = !target ? 'Choose reference photos' : /^(photo|image|picture)$/i.test(target.trim()) ? 'Choose a photo' : `Choose a photo for ${target}`;
+  const title = !target ? 'Choose pictures' : /^(photo|image|picture)$/i.test(target.trim()) ? 'Choose a picture' : `Choose a picture for ${target}`;
   return <MediaPicker tab={tab} setTab={setTab} onClose={onClose} title={title} target={target} kinds={['image']} multiple={!target} accepts="PNG, JPG or WebP"
-    limits={limits ?? (target ? 'One photo · PNG, JPG or WebP' : 'PNG, JPG or WebP')}
+    limits={limits ?? (target ? 'One picture · PNG, JPG or WebP' : 'PNG, JPG or WebP')}
     onFile={f => onFile(f)} onFiles={onFiles} onUpload={() => withNativePicker(onUpload)} />;
 }
