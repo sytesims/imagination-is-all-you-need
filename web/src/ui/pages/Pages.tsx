@@ -1,3 +1,4 @@
+import { toolPage } from '../../../../server/src/shared/pages';
 import { Notice } from '../../shared/Notice';
 import ScrollFade from '../../shared/ScrollFade';
 import { ApiEndpoints } from './Backlog';
@@ -12,7 +13,7 @@ import { presetArt, PLACEHOLDER_TITLE } from '../../shared/posterSlots';
 import { ToolIconFor } from '../Icons';
 import { ApiDocsLinks, ToolTile } from './Live';
 import './presets.css'; /* PP: Presets page styles (scoped to .pp-presets) */
-export { Mcp, Browse } from './Live';
+export { Mcp } from './Live';
 export { default as Community } from './CommunityPage';
 export { default as Workflows } from './Workflows';
 export { default as Models } from './Models';
@@ -79,7 +80,7 @@ function PluginCard({ p }: { p: any }) {
       if (!r.ok) throw new Error(String(r.status)); const j = await r.json().catch(() => ({})); if (typeof j.enabled === 'boolean') setOn(j.enabled); }
     catch { setOn(!next); setTErr(next ? 'Couldn’t turn it on. Try again.' : 'Couldn’t turn it off. Try again.'); } finally { setBusy(false); } };
   const st = failed ? ['err', 'Failed to load'] : !on ? ['off', 'Off'] : ['ok', 'Loaded'];
-  const tool = p.toolId ? `/tools/${p.toolId}` : null;
+  const tool = p.toolId ? toolPage(p.toolId) : null;
   return <div className="xcard plug-card" data-testid={`plugin-${id}`}>
     <div className="plug-head">{p.icon ? <img className="plug-ic" src={p.icon} alt="" /> : <span className="plug-ic plug-ic-fb" aria-hidden>{name.slice(0, 1)}</span>}
       <b>{name}</b><span className={`plug-st plug-${st[0]}`}>{st[1]}</span></div>
@@ -113,7 +114,7 @@ export function Plugins() {
       const cats = [...new Set(bi.map(t => t.category || 'Other'))];
       return <section className="pl-builtins" data-testid="plugins-builtins" aria-busy={!tl}><h2 className="xh2">Built-in{tl ? <span className="helper"> · {bi.length} tools</span> : null}</h2>
         <p className="helper">These come with the app. A plugin adds a tool to this list the same way.</p>
-        {!tl ? <div className="pl-bi-ph shimmer" aria-hidden /> : cats.map(c => <div key={c} className="pl-bi-row"><b className="pl-bi-c">{c}</b><div className="pl-bi-list">{bi.filter(t => (t.category || 'Other') === c).map(t => <Link key={t.id} to={t.route ?? `/tools/${t.id}`} className="chip pl-bi-chip">{t.name}</Link>)}</div></div>)}</section>; })()}
+        {!tl ? <div className="pl-bi-ph shimmer" aria-hidden /> : cats.map(c => <div key={c} className="pl-bi-row"><b className="pl-bi-c">{c}</b><div className="pl-bi-list">{bi.filter(t => (t.category || 'Other') === c).map(t => <Link key={t.id} to={t.route ?? toolPage(t.id)} className="chip pl-bi-chip">{t.name}</Link>)}</div></div>)}</section>; })()}
   </Page>;
 }
 
@@ -137,7 +138,7 @@ export function Presets({ tools }: { tools: ToolInfo[] }) {
     return () => c.abort(); }, [src, toolId, media, cat, dq, tick]);
   const more = () => { if (!next || busy) return; setBusy(true); fetch('/api/presets?' + qs(next)).then(r => r.json()).then(j => { setItems(xs => [...(xs ?? []), ...(j.items ?? [])]); setNext(j.nextCursor ?? null); }).finally(() => setBusy(false)); };
   const toolsWith = tools.filter(t => (t.presets ?? []).length > 0 && (!byTool || (byTool[t.id] ?? 0) > 0));
-  const route = (id: string) => tools.find(t => t.id === id)?.route ?? `/tools/${id}`;
+  const route = (id: string) => tools.find(t => t.id === id)?.route ?? toolPage(id);
   /* Stand-in art: the server marks it, or it is one of the interim diagram posters in /samples/presets/ (they carry baked-in text). Those get a branded tile instead. */
   const hash = (s: string) => { let h = 7; for (let k = 0; k < s.length; k++) h = (h * 31 + s.charCodeAt(k)) >>> 0; return h; };
   const chips: [string, string][] = toolId ? [['', 'All'], ...cats.map(k => [k, k] as [string, string])] : [['', 'All'], ['image', 'Image'], ['video', 'Video'], ['audio', 'Audio']];

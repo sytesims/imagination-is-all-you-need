@@ -18,7 +18,7 @@ assert.equal(new Set(CHAPTERS.map((c) => c.id)).size, CHAPTERS.length, 'unique i
 ok(`${CHAPTERS.length} chapters`);
 
 // Try it: an existing tool page, the chapter's prompt, a model the page knows; local models first (H3 for video, priced on the page)
-const TOOL_PAGES = new Set(['/tools/create-image', VIDEO_PAGE, AUDIO_PAGE]);
+const TOOL_PAGES = new Set(['/image', VIDEO_PAGE, AUDIO_PAGE]);
 const LOCAL = new Set(['z-image-turbo', 'flux-2-klein-4b', 'qwen-image-2.1', 'qwen-image-2.1-turbo', 'yue2']);
 const VIDEO_OK = new Set(['minimax-h3']);
 for (const c of CHAPTERS) {
@@ -31,11 +31,11 @@ for (const c of CHAPTERS) {
     assert.equal(u.searchParams.get('prompt'), c.prompts[i], `${c.id}: prompt ${i + 1} goes in`);
     const m = u.searchParams.get('model'); assert.ok(m && (LOCAL.has(m) || (u.pathname === VIDEO_PAGE && VIDEO_OK.has(m))), `${c.id}: model ${m} is local (or H3 for video)`);
     const wf = u.searchParams.get('workflow');
-    if (wf) assert.ok(u.pathname === AUDIO_PAGE ? AUDIO_WORKFLOW_IDS.includes(wf) : IMAGE_FEATURES.some((f) => f.route === `/tools/create-image?workflow=${wf}`), `${c.id}: workflow ${wf} exists`);
-    const mode = u.searchParams.get('mode'); if (mode) assert.ok(IMAGE_FEATURES.some((f) => f.route === `/tools/create-image?mode=${mode}`), `${c.id}: mode ${mode} exists`);
+    if (wf) assert.ok(u.pathname === AUDIO_PAGE ? AUDIO_WORKFLOW_IDS.includes(wf) : IMAGE_FEATURES.some((f) => f.route === `/image?workflow=${wf}`), `${c.id}: workflow ${wf} exists`);
+    const mode = u.searchParams.get('mode'); if (mode) assert.ok(IMAGE_FEATURES.some((f) => f.route === `/image?mode=${mode}`), `${c.id}: mode ${mode} exists`);
   });
   assert.equal(tryHref(c), tryHrefWith(c, 0));
-  for (const m of c.more ?? []) assert.ok(/^\/(tools\/[\w-]+|canvas|spend)(\?|$)/.test(m.to), `${c.id}: more link ${m.to}`);
+  for (const m of c.more ?? []) assert.ok(/^\/(tools\/[\w-]+|image|audio|3d|video|canvas|spend)(\?|$)/.test(m.to), `${c.id}: more link ${m.to}`);
 }
 ok('every Try it opens an existing tool page with its prompt and a local model');
 

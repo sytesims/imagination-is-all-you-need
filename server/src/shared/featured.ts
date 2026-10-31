@@ -8,6 +8,7 @@
  *  - Explore (web/src/ui/Home.tsx) shows the same media and opens the same Recreate links.
  * Files: web/public/showcase/ (H.264 + AAC, metadata stripped; WebP posters); Explore 3D's hero film in web/public/examples/showcase-3d/. Isomorphic: no server-only imports.
  */
+import { IMAGE_PAGE } from './pages.js';
 import { SHOWCASE, SHOWCASE_GALLERY, showcaseById, type ShowcaseItem } from './showcase.js';
 import { threeDRoute } from './threeD.js';
 import { VIDEO_PAGE, toolPage, videoWorkflowHref, videoWorkflowOfTool } from './videoWorkflows.js';
@@ -449,7 +450,7 @@ export const FEATURED_LAYERS: FeaturedItem[] = [
     out: { url: S('image-layers-paw-l0.webp'), poster: S('image-layers-paw-in-480.webp'), width: 1024, height: 1024 },
     before: { url: S('image-layers-paw-in.jpg'), poster: S('image-layers-paw-in-480.webp'), width: 1024, height: 1024, label: 'Input' },
     layers: PAW_LAYERS.map(([label, box], k) => ({ url: S(`image-layers-paw-l${k}.webp`), label, box })),
-    runOn: 'comfy-cloud', route: 'comfy-router:api-seedream-layers-flash', costUsd: 0.3346, jobId: '829b6ef1', recreateHref: '/tools/create-image?workflow=image-layers&recreate=3e481a29' },
+    runOn: 'comfy-cloud', route: 'comfy-router:api-seedream-layers-flash', costUsd: 0.3346, jobId: '829b6ef1', recreateHref: `${IMAGE_PAGE}?workflow=image-layers&recreate=3e481a29` },
 ];
 
 /* Explore "One character. Every angle." (2026-10-27): four of the maintainer's own character sheets, GPT Image 2.5 Flare text to image on Comfy
@@ -459,7 +460,7 @@ const sheet = (id: string, title: string, /** the run (job id) */ jobId: string,
   key: `sheet-${id}`, tab: 'image', title, toolId: 'create-image', provider: 'api-gpt-image-25-flare', modelKey: 'gpt-image-2.5-flare', model: 'GPT Image 2.5 Flare', flow: 'Create Image', prompt,
   input: { types: ['generate'], mode: 'generate', outKind: 'image', aspect, quality: 'med', tier: 'med', imageResolution: '1K', seed: 397533, n: 1 },
   out: { url: S(`char-${id}.webp`), poster: S(`char-${id}-480.webp`), width, height }, runOn: 'comfy-cloud', route: 'comfy-router:api-gpt-image-25-flare', costUsd, jobId,
-  recreateHref: `/tools/create-image?recreate=${SHEET_SEED[`sheet-${id}`]}` });
+  recreateHref: `${IMAGE_PAGE}?recreate=${SHEET_SEED[`sheet-${id}`]}` });
 export const KAITO_SHEET_PROMPT = 'Professional anime character design sheet of an original 19-year-old storm courier named KAITO VEY, on a deep charcoal near-black background with thin light-grey hairline panel dividers and rounded corners. Spiky black hair with one vivid orange streak, bright amber eyes, determined half-smile, silver-and-black segmented armour over a dark flight suit, a long tattered orange scarf, armoured gloves, sleek boots, a short glowing baton on the hip. Top row: four full-body views (front, three-quarter, side, back) at identical scale. Bottom row: four head close-ups (calm, grin, shouting, focused) and a small colour palette strip. Crisp cel shading, clean line art, small white uppercase labels in a geometric sans-serif. No other text, no watermark.';
 export const MOSSBUN_SHEET_PROMPT = 'Premium 3D animated-feature creature model sheet on a deep charcoal background with soft studio light and thin hairline panel dividers. An original small forest creature named MOSSBUN: rounded pear-shaped body the size of a rabbit, soft moss-green fur with a cream belly, long floppy ears with leaf-shaped tips, big warm amber eyes, a tiny pink nose, stubby legs, and exactly one long fluffy tail ending in a softly glowing orange lantern bulb that lights its fur. Top row: front, three-quarter, side and back views at identical scale. Bottom row: five expression heads (happy, sleepy, surprised, shy, giggling) and a small colour palette. Small white uppercase title "MOSSBUN". No other text, no watermark.';
 export const MECHANIC_SHEET_PROMPT = 'Ultra-realistic character turnaround sheet of a fictional harbour mechanic in her early fifties, laid out as a production model sheet on a deep charcoal studio background with soft rim light. Five panels in a row separated by thin light-grey hairlines: face close-up, full-body front, left profile, back, right profile, same scale, feet in frame, a thin height scale beside each full-body view. Short grey-streaked dark hair, weathered tanned skin with fine lines, calm green eyes, faded navy work jacket over a cream henley, oil-stained canvas apron, dark work trousers, scuffed brown boots, one bright orange safety tag clipped to the apron. Natural skin texture, cinematic lighting, small white uppercase labels. No other text, no watermark.';
@@ -480,7 +481,7 @@ const fromShowcase = (s: ShowcaseItem): FeaturedItem => ({
   key: `sc-${s.id}`, tab: 'image', title: s.name, toolId: IMAGE_TOOL_OF[s.workflow] ?? s.toolId, provider: s.provider, modelKey: s.provider, model: s.model, flow: FLOW_OF[s.workflow] ?? s.workflow,
   prompt: s.subject ?? s.prompt, input: { outKind: 'image', prompt: s.prompt, ...s.settings, workflow: s.workflow, showcase: s.id, ...(s.before ? { imageUrl: s.before.image } : {}) },
   out: { url: s.image, poster: s.thumb, width: s.width, height: s.height }, ...(s.before ? { before: { url: s.before.image, poster: s.before.thumb, width: s.width, height: s.height, label: s.before.label } } : {}),
-  runOn: 'local', runMs: s.runMs, jobId: s.id, recreateHref: `/tools/create-image?${s.workflow !== 'create-image' ? `workflow=${encodeURIComponent(s.workflow)}&` : ''}showcase=${encodeURIComponent(s.id)}`,
+  runOn: 'local', runMs: s.runMs, jobId: s.id, recreateHref: `${IMAGE_PAGE}?${s.workflow !== 'create-image' ? `workflow=${encodeURIComponent(s.workflow)}&` : ''}showcase=${encodeURIComponent(s.id)}`,
 });
 export const EXPLORE_ONLY_SHOWCASE = ['0f1a0117', 'fad0bbe6', 'd3c80885', '016bdc27', '973c88f8', '31465e96', 'b718e875', 'f7699cd4', '7205edb3', 'fa96f109'];
 export const FEATURED_IMAGE: FeaturedItem[] = [...SHOWCASE_GALLERY.map((id) => showcaseById(id)).filter((s): s is ShowcaseItem => !!s).map(fromShowcase),

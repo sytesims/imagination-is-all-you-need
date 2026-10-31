@@ -22,11 +22,12 @@ try {
   ok('rule: fp8 / nvfp4 / wNaM blocked; int8_convrot, bf16, fp16, GGUF not');
 
   // ---- 2. fit on Apple Silicon ----
-  const BLOCKED: [string, string, any][] = [['create-image', 'comfy-qwen-image', {}], ['create-image', 'comfy-flux2dev', {}], ['create-image', 'comfy-moss-image', {}], ['create-image', 'comfy-moss-image-base', {}],
+  const BLOCKED: [string, string, any][] = [['create-image', 'comfy-flux2dev', {}], ['create-image', 'comfy-moss-image', {}], ['create-image', 'comfy-moss-image-base', {}],
     ['h3-video', 'comfy-h3', { types: ['t2v'] }], ['audio', 'comfy-drama3', {}] /* bf16 + fp8 experts in one file */];
   const SAFE: [string, string, any][] = [['create-image', 'comfy-qwen21', {}], ['create-image', 'comfy-qwen21-turbo', {}], ['create-image', 'comfy-zimage-turbo', { types: ['generate'] }], ['create-image', 'comfy-klein4b', {}], ['create-image', 'comfy-flux3-klein', {}] /* 2026-10-27: int8_convrot upsampler */,
     ['h3-video', 'comfy-wan22-5b', { types: ['t2v'] }], ['audio', 'comfy-yue2', {}], ['audio', 'comfy-minimax-music3', {}]];
   HW.setHardwareOverride('mac36');
+  { const f = R.fitFor(getTool('create-image')!, 'comfy-qwen-image', {}); assert.equal(f.verdict, 'slow', 'Qwen-Image on a Mac: through its Mac variant (2026-10-31)'); assert.equal(f.variant?.verified, false); }
   for (const [t, p, i] of BLOCKED) { const f = R.fitFor(getTool(t)!, p, i); assert.equal(`${f.verdict}/${f.reasonCode}`, 'too_heavy/unsupported_weights', `mac: ${p}`); assert.equal(f.reason, `${MAC_WEIGHTS_REASON}.`); assert.ok(f.enforced);
     const q = R.requirementsFor(getTool(t)!, p, i)!; assert.ok(q.macBlockedFiles.length > 0, `${p} names its files`); assert.equal(q.mps, 'red'); }
   for (const [t, p, i] of SAFE) { const f = R.fitFor(getTool(t)!, p, i); assert.notEqual(f.reasonCode, 'unsupported_weights', `mac: ${p} stays available (${f.verdict}/${f.reasonCode})`); assert.notEqual(f.verdict, 'too_heavy', `mac: ${p}`);

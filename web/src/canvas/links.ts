@@ -103,3 +103,9 @@ export function linkLook(o: { reduced: boolean; lit: boolean; flowing: boolean; 
   if (o.reduced) return { opacity: o.lit ? 0.55 : 0.32, pulse: false, dust: false };
   return { opacity: o.lit ? 0.6 : 0.15, pulse: o.flowing || o.lit, dust: o.running };
 }
+
+/** The link arrows that go with a deleted card (B8, 2026-10-31): arrows bound at BOTH ends with that card at one of them. A loose arrow
+ *  someone drew (one end free) stays. */
+export function linkArrowsWith(cardId: string, arrows: { id: string; from: string | null; to: string | null }[]): string[] {
+  return arrows.filter(a => a.from && a.to && (a.from === cardId || a.to === cardId)).map(a => a.id);
+}

@@ -26,12 +26,12 @@ for (const w of T.THREE_D_WORKFLOWS) {
 }
 assert.deepEqual(T.THREE_D_WORKFLOWS.filter((w) => w.status === 'soon').map((w) => w.id).sort(), ['multiview-to-3d', 'retexture', 'rig', 'text-to-3d']);
 assert.equal(T.currentThreeDWorkflow('?workflow=turntable').id, 'turntable'); assert.equal(T.currentThreeDWorkflow('?workflow=nope').id, 'image-to-3d'); assert.equal(T.currentThreeDWorkflow('').id, 'image-to-3d');
-assert.equal(T.threeDRoute('image-to-3d'), '/tools/3d?workflow=image-to-3d');
-assert.equal(T.threeDRedirectTarget('/tools/three-d', '?fromJob=j1'), '/tools/3d?fromJob=j1'); assert.equal(T.threeDRedirectTarget('/tools/turntable/', ''), '/tools/3d?workflow=turntable');
-assert.equal(T.threeDRedirectTarget('/tools/image-to-3d', '?fromJob=a&out=1', '#x'), '/tools/3d?workflow=image-to-3d&fromJob=a&out=1#x'); assert.equal(T.threeDRedirectTarget('/tools/3d', ''), null);
-assert.equal(T.sendTo3dHref('ab c', 2), '/tools/3d?workflow=image-to-3d&fromJob=ab%20c&out=2');
+assert.equal(T.threeDRoute('image-to-3d'), '/3d?workflow=image-to-3d');
+assert.equal(T.threeDRedirectTarget('/tools/three-d', '?fromJob=j1'), '/3d?fromJob=j1'); assert.equal(T.threeDRedirectTarget('/tools/turntable/', ''), '/3d?workflow=turntable');
+assert.equal(T.threeDRedirectTarget('/tools/image-to-3d', '?fromJob=a&out=1', '#x'), '/3d?workflow=image-to-3d&fromJob=a&out=1#x'); assert.equal(T.threeDRedirectTarget('/3d', ''), null);
+assert.equal(T.sendTo3dHref('ab c', 2), '/3d?workflow=image-to-3d&fromJob=ab%20c&out=2');
 assert.equal(T.threeDWorkflowForToolMode('three-d', 'image-to-3d'), 'image-to-3d'); assert.equal(T.threeDWorkflowForToolMode('h3-video', 't2v'), null);
-const tool = getTool('three-d')! as any; assert.equal(tool.route, '/tools/3d'); assert.equal(tool.media, '3d'); assert.equal(getTool('image-to-3d')?.id, 'three-d', 'alias');
+const tool = getTool('three-d')! as any; assert.equal(tool.route, '/3d'); assert.equal(tool.media, '3d'); assert.equal(getTool('image-to-3d')?.id, 'three-d', 'alias');
 assert.equal((getTool('three-d-turntable') as any).listed, false, 'turntable tool is hidden from menus');
 ok('registry: workflows, roadmap rows, deep links, redirects, Send to 3D');
 

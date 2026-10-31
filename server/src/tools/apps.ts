@@ -1,3 +1,4 @@
+import { IMAGE_PAGE } from '../shared/pages.js';
 import { upscaleOutputSize } from '../shared/pricing.js';
 import { LTX_LORAS, ltxLoraPrompt, PHOTO_FX_LTX_LORA } from '../shared/ltxLoras.js';
 import { H3_CAMERA_MOVES } from './h3/catalog.js';
@@ -800,14 +801,14 @@ export const APP_GALLERY: GalleryApp[] = [
     notes: ['Works best when both people are fully visible and roughly the same size in frame. Only swap people who agreed to it.'] },
   // ---- Photo tools (2026-10-23): fal-only models (tools/imageFalApps.ts), each in Create Image's bar. The prompt is ours (Expand also takes the user's
   // words for the new area); the models get only what their schema takes. Sizes and the mask are checked on submit (shared/imagePhotoTools.ts).
-  { id: 'remove-bg', name: 'Remove Background', route: '/tools/create-image?workflow=remove-bg', category: 'Edit', base: 'create-image', poster: null,
+  { id: 'remove-bg', name: 'Remove Background', route: `${IMAGE_PAGE}?workflow=remove-bg`, category: 'Edit', base: 'create-image', poster: null,
     description: 'Keeps the subject and makes everything else transparent: a PNG you can drop on any background.',
     locked: { types: '["edit"]' }, providers: [], extraProviders: REMOVE_BG_MODELS, exposed: ['image', 'provider', 'rights', 'seed'], labels: { image: 'Photo' }, required: ['image'],
     compose: () => 'remove the background, keep the subject on a transparent background',
     prepare: async (r) => { const p = await probe(r.imagePath); const b = photoBlock(p); return b ? { error: { field: 'image', ...b } } : { sourceSize: p ? { width: p.width, height: p.height } : null }; },
     extra: { promptOptional: true, outputLabel: 'Cutout' }, finish: () => ({ outputLabel: 'Cutout', transparent: true, mockLook: 'cutout' }),
     notes: ['Works best with one clear subject. A photo with no clear subject may keep too much or too little.', 'The result is a PNG with a transparent background.'] },
-  { id: 'expand', name: 'Expand', route: '/tools/create-image?workflow=expand', category: 'Edit', base: 'create-image', poster: null,
+  { id: 'expand', name: 'Expand', route: `${IMAGE_PAGE}?workflow=expand`, category: 'Edit', base: 'create-image', poster: null,
     description: 'Pick a new shape; the model paints the missing area around your photo, which stays as it was.',
     locked: { types: '["edit"]' }, providers: [], extraProviders: EXPAND_MODELS, exposed: ['image', 'prompt', 'provider', 'rights', 'seed', 'target'], labels: { image: 'Photo', prompt: 'What fills the new area (optional)' }, required: ['image'],
     fields: [{ name: 'target', label: 'New shape', kind: 'select', control: 'segmented', options: EXPAND_ASPECTS.map((a) => ({ value: a, label: EXPAND_ASPECT_LABELS[a] })), default: '1:1' }],
@@ -817,7 +818,7 @@ export const APP_GALLERY: GalleryApp[] = [
       return src ? { sourceSize: src, expand: expandCanvas(src, target) } : { error: { field: 'image', code: 'format', message: 'That photo could not be read. Use a PNG or JPG.' } }; },
     extra: { promptOptional: true, outputLabel: 'Expanded' }, finish: () => ({ outputLabel: 'Expanded', mockLook: 'expand' }),
     notes: ['Your photo stays as it was; only the new area is painted.', 'Bria Expand keeps your photo at full size (up to 25 MP in all); Ideogram 3.0 Reframe returns about 1 MP.'] },
-  { id: 'erase', name: 'Erase Object', route: '/tools/create-image?workflow=erase', category: 'Edit', base: 'create-image', poster: null,
+  { id: 'erase', name: 'Erase Object', route: `${IMAGE_PAGE}?workflow=erase`, category: 'Edit', base: 'create-image', poster: null,
     description: 'Paint over a person, object or text; it disappears and the background is filled in. No prompt needed.',
     locked: { types: '["inpaint"]' }, providers: [], extraProviders: ERASE_MODELS, exposed: ['image', 'mask', 'provider', 'rights', 'seed'], labels: { image: 'Photo', mask: 'mask: paint over what to erase' }, required: ['image', 'mask'],
     compose: () => 'remove the painted object and fill in the background',
@@ -826,7 +827,7 @@ export const APP_GALLERY: GalleryApp[] = [
       const mb = eraseMaskBlock(cover); return mb ? { error: { field: 'mask', ...mb } } : { maskCover: cover }; },
     extra: { promptOptional: true, outputLabel: 'Erased' }, finish: () => ({ outputLabel: 'Erased', mockLook: 'erase' }),
     notes: ['Paint a little past the edges, shadow included. Very small areas are widened a few pixels by the model.'] },
-  { id: 'try-on', name: 'Virtual Try-On', route: '/tools/create-image?workflow=try-on', category: 'Image', base: 'create-image', poster: null,
+  { id: 'try-on', name: 'Virtual Try-On', route: `${IMAGE_PAGE}?workflow=try-on`, category: 'Image', base: 'create-image', poster: null,
     description: 'A photo of a person and a photo of a top, bottom or one-piece: the person wears it, pose and face kept.',
     locked: { types: '["edit"]' }, providers: [], extraProviders: TRYON_MODELS, exposed: ['image', 'garment', 'provider', 'rights', 'seed', 'category', 'garmentPhoto'],
     labels: { image: 'Person', garment: 'Garment' }, required: ['image', 'garment'],
@@ -842,7 +843,7 @@ export const APP_GALLERY: GalleryApp[] = [
   // ---- Image to layers (2026-10-24, shared/imageLayers.ts): Seedream 5.0 layer separation on Comfy Router (Flash default, Pro), Qwen-Image-Layered listed for Local.
   // One photo in, the background plate and each element back as transparent PNG layers (one Router call, one flat price). The prompt is optional and only the
   // user's own words go to the model (it can name the elements to pull out). Size 1K / 2K goes to the base tool too (caps check + per-size price).
-  { id: 'image-layers', name: 'Image to layers', route: '/tools/create-image?workflow=image-layers', category: 'Edit', base: 'create-image', poster: null,
+  { id: 'image-layers', name: 'Image to layers', route: `${IMAGE_PAGE}?workflow=image-layers`, category: 'Edit', base: 'create-image', poster: null,
     description: 'One photo in: the background and each element (people, objects, text) come back as their own transparent PNG layers, ready to move or edit.',
     locked: { types: '["edit"]' }, providers: [], extraProviders: LAYER_MODELS, exposed: ['image', 'prompt', 'provider', 'rights', 'seed'], labels: { image: 'Photo', prompt: 'Name the layers to pull out (optional)' }, required: ['image'],
     fields: [{ name: 'imageResolution', label: 'Size', kind: 'select', control: 'segmented', options: LAYER_SIZES.map((v) => ({ value: v, label: v })), default: LAYER_SIZE_DEFAULT }], passFields: ['imageResolution'],

@@ -5,6 +5,7 @@
  * each setting against the tool's real options. "Open in <Tool>" fills that tool's bar through the same prefill as Recreate (?recipe=, one
  * object: prompt, model, quality, duration, aspect, seed, fields). Nothing runs until Generate. Everything from the link is shown as text.
  */
+import { IMAGE_PAGE, toolPage } from '../../../../server/src/shared/pages';
 import { jobWorkflowHref, withSearch } from '../../shared/workflowLinks';
 import { goToWorkflow } from '../../shared/goToWorkflow';
 import { useEffect, useMemo, useState } from 'react';
@@ -79,7 +80,7 @@ export default function RecipeImport({ tools }: { tools: ToolInfo[] }) {
     const q = new URLSearchParams(); if (wf) q.set('workflow', wf.id); if (engine && (pickedModel || mm?.known)) q.set('model', pickedModel?.key ?? engine); q.set('recipe', encodeRecipe(out));
     /* the tool's tab with its workflow picked (shared/workflowLinks; a route that already carries ?workflow= used to get a second '?') */
     const types = (r.settings as any)?.types; const t0 = Array.isArray(types) ? types[0] : typeof types === 'string' ? types : (r.settings as any)?.preset;
-    const base = wf ? '/tools/create-image' : jobWorkflowHref({ toolId: tool.id, input: t0 ? { types: [t0] } : {} }) ?? tool.route ?? `/tools/${tool.id}`;
+    const base = wf ? IMAGE_PAGE : jobWorkflowHref({ toolId: tool.id, input: t0 ? { types: [t0] } : {} }) ?? tool.route ?? toolPage(tool.id);
     goToWorkflow(withSearch(base, q.toString()));
   };
   const loadPaste = () => { const p = parseRecipeInput(paste); if (!p.ok) { setPasteErr(p.error); return; } setPasteErr(''); setPaste(''); setShowPaste(false); setCode(encodeRecipe(p.recipe)); };

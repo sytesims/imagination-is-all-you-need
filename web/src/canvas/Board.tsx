@@ -32,7 +32,7 @@ import { variationOf } from './variation';
 import { PromptNodeUtil, UploadNodeUtil, NoteNodeUtil, CompareNodeUtil, GroupNodeUtil, AdNodeUtil } from './auxShapes';
 import { lastFlowNow, setBoardCtx, exposeForDev, createNode, createCard } from './agentApi';
 import { reattachRunning } from './genRun';
-import { GEN_TYPE } from './graph';
+import { GEN_TYPE, registerLinkCleanup } from './graph';
 import { UPLOAD_TYPE, NODE_DEFS } from './nodeTypes';
 import { cardState } from './cardState';
 import { catalogNow } from './catalog';
@@ -168,7 +168,7 @@ export function Board({ board, onSaveState, onSaved, drawerOpen, setDrawerOpen, 
     /* cards saved at the old 330 px height grow to the new card (title, picture, model row, prompt): once, not an undo step */
     const short = editor.getCurrentPageShapes().filter(s => s.type === GEN_TYPE && (s.props as any).h <= 330 && (s.props as any).h >= 300);
     if (short.length) editor.run(() => editor.updateShapes(short.map(s => ({ id: s.id, type: GEN_TYPE, props: { h: CARD_H } }) as any)), { history: 'ignore' });
-    registerLinkPreviews(editor); registerFileDrops(editor, toast);
+    registerLinkPreviews(editor); registerFileDrops(editor, toast); const unLinks = registerLinkCleanup(editor);
     setBoardCtx({ boardId: id, projectId: board.projectId ?? null, editor }); exposeForDev(editor);
     editor.run(() => { editor.setStyleForNextShapes(DefaultColorStyle, 'orange'); editor.setStyleForNextShapes(DefaultFontStyle, 'sans'); });
     const save = async () => {
@@ -186,7 +186,7 @@ export function Board({ board, onSaveState, onSaved, drawerOpen, setDrawerOpen, 
     const onExit = () => { writeCam(id, editor.getCamera()); if (dirty && !stopped && saveBoardOnExit(id, getSnapshot(editor.store).document, rev)) dirty = false; };
     document.addEventListener('visibilitychange', onHide); addEventListener('pagehide', onExit);
     const unHand = bindHand(editor); /* the agent's cursor, outline and laser never outlive the board */
-    return () => { unHand(); unDoc(); unCam(); clearTimeout(timer); clearTimeout(camTimer); document.removeEventListener('visibilitychange', onHide); removeEventListener('pagehide', onExit);
+    return () => { unHand(); unLinks(); unDoc(); unCam(); clearTimeout(timer); clearTimeout(camTimer); document.removeEventListener('visibilitychange', onHide); removeEventListener('pagehide', onExit);
       writeCam(id, editor.getCamera()); if (dirty && !stopped) { const snap = getSnapshot(editor.store).document; void saveBoard(id, snap, rev).then(onSaved).catch(() => saveBoardOnExit(id, snap, rev)); } };
   };
 
