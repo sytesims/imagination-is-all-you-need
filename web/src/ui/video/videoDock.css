@@ -58,3 +58,13 @@ html body .vs.vs-dk .ic.ic2.vf{display:block;min-height:0;padding:12px 0 0}
 html body .ic.ic2 .ic-dock .ic-chips[data-trunc] .vs-look.has-x b{max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} /* a long move name truncates before the whole row goes icon-only; the tooltip has it in full */
 /* Loop on (LTX-2.5 22B): the loop glyph turns brand orange, so the on state reads even when the chip is icon-only */
 html body .ic.ic2 .ic-dock .vs-loop-t.on .sc-ic{color:var(--accent)}
+
+/* Reference-aware picker (2026-10-31): a reference the picked model won't use is dimmed with a calm "Not used" (no orange ring), and one
+ * plain line beside the thumbs names what it skips ("Kling 3.0 Omni won't use your video"); the full sentence is the tooltip. */
+html body .ic.ic2 .ic-dock.vs-dock .ic-lead .ic-th.slot-over .ic-th-hit{box-shadow:inset 0 0 0 1px var(--border-strong,rgba(255,255,255,.18))}
+html body .ic.ic2 .ic-dock.vs-dock .ic-lead .ic-th.slot-over .ic-th-hit > :not(.slot-badge),html body .ic.ic2 .ic-dock.vs-dock .ic-lead .ic-th.slot-over .ic-th-hit img{opacity:.35;filter:grayscale(1)}
+html body .ic.ic2 .ic-dock.vs-dock .ic-lead .ic-th.slot-over .slot-badge{color:var(--text-1,#F7F7F8);background:rgba(0,0,0,.75)}
+html body .ic.ic2 .ic-dock.vs-dock .ic-lead .vs-slot-wrap{flex:none;align-self:center;position:sticky;right:0;z-index:3;display:flex;flex-direction:column;align-items:flex-start;background:rgb(39,41,44);box-shadow:-8px 0 8px rgb(39,41,44)}
+html body .ic.ic2 .ic-dock.vs-dock .ic-lead .vs-slot-wrap .slot-count{position:static;box-shadow:none}
+html body .ic.ic2 .ic-dock.vs-dock .ic-lead .vs-slot-wrap.has-skip .slot-count{padding-bottom:0}
+html body .ic.ic2 .ic-dock.vs-dock .ic-lead .vs-ref-skip{padding:0 6px 4px;color:var(--text-2,#b4b5b8);font:500 12px/16px var(--font-ui,Inter,system-ui,sans-serif);white-space:nowrap}

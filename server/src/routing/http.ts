@@ -594,7 +594,14 @@ export function registerRouting(app: FastifyInstance) {
           { const nr = refCount(q.refs); if (nr > 0) input.refPaths = Array.from({ length: nr }, (_, k) => `quote:ref${k}`); const m0 = (() => { try { const t = JSON.parse(String(q2types(q))); return Array.isArray(t) ? String(t[0] ?? '') : String(t); } catch { return String(q2types(q)).split(',')[0]; } })();
             if (q.image && !/^(generate|t2v|)$/.test(m0)) input.imagePath = 'quote:image';
             if (m0 && input.mode == null) input.mode = m0; // route checks that read input.mode (Replicate r2v needs public URLs) judge the quote like the job
-            if (m0 === 'r2v' && !input.refPaths) { const n = (q.image ? 1 : 0) + (q.presenterImage ? 1 : 0) + refCount(q.refs); if (n) input.refPaths = Array.from({ length: n }, (_, k) => `quote:ref${k}`); } } // r2v: every image upload is a reference (UGC Ad presenter + product), as on submit // generate / t2v ignore an image, as the job parser does
+            if (m0 === 'r2v' && !input.refPaths) { const n = (q.image ? 1 : 0) + (q.presenterImage ? 1 : 0) + refCount(q.refs); if (n) input.refPaths = Array.from({ length: n }, (_, k) => `quote:ref${k}`); }
+            /* reference videos / sounds on the bar (refVideos / refAudios counts: shared/refFit.ts attachParams): route checks see them as on submit (Reference mode only) */
+            if (m0 === 'r2v') { const RK0: any = isH3 ? (await import('../tools/h3/videoCaps.js')).limitsFor(model)?.refKinds ?? null : null; // the clips this model sends (the bar keeps the rest, marked "Not used")
+              const nv = Math.min(refCount(q.refVideos), RK0 ? RK0.video ?? 0 : Infinity), na = Math.min(refCount(q.refAudios), RK0 ? RK0.audio ?? 0 : Infinity);
+              /* each clip's seconds (refVideoSecondsEach / refAudioSecondsEach, "5,3.2"), else the total split evenly: the length checks judge them as on submit */
+              const each = (list: unknown, total: unknown, n: number) => { const l = String(list ?? '').split(',').map(Number).filter((x) => x > 0); return l.length >= n ? l.slice(0, n) : Number(total) > 0 ? Array.from({ length: n }, () => Number(total) / n) : []; };
+              if (nv > 0 && !input.refVideoPaths) { input.refVideoPaths = Array.from({ length: nv }, (_, k) => `quote:video${k}.mp4`); input.refVideoSecondsEach ??= each(q.refVideoSecondsEach, q.refVideoSeconds, nv); }
+              if (na > 0 && !input.refAudioPaths) { input.refAudioPaths = Array.from({ length: na }, (_, k) => `quote:audio${k}.mp3`); input.refAudioSecondsEach ??= each(q.refAudioSecondsEach, q.refAudioSeconds, na); } } } // r2v: every image upload is a reference (UGC Ad presenter + product), as on submit // generate / t2v ignore an image, as the job parser does
           // Fit to model (shared/videoFit.ts): the clip's size / fps / container and the fit choice (pad | crop | off) from the bar (width, height = the
           // clip's own pixels, as Upscale reads them), so the route check refuses what the free fix can't mend and the price follows a trim, as on submit.
           let vfPlan: ReturnType<typeof videoFitFor> = null;
