@@ -292,7 +292,7 @@ function twinRoutes(modelId: string, toolIds: string[]): RouteDef[] {
     const r = nativeRoute(p); return [{ ...r, modelId, twinProvider: t.twin, tools: t.tools, label: 'Comfy Cloud', ...(t.notAChoice ? { notAChoice: true } : {}), ...(t.modes ? { modes: t.modes } : {}), ...(t.unavailableFor ? { unavailableFor: t.unavailableFor } : {}), ...(t.priceInput ? { priceInput: t.priceInput } : {}), ...(t.adjustNote ? { adjustNote: t.adjustNote } : {}), ...(t.heldUntilMeasured ? { heldUntilMeasured: true } : {}), ...(t.caps ? { caps: { ...(r.caps ?? {}), ...t.caps } } : {}) }]; });
 }
 /** The tool ids a route list is built for: the tool itself and, for gallery apps, its base tool. */
-export const toolKeys = (tool?: { id: string; app?: any } | null): string[] => (tool ? [tool.id, ...((tool as any).app?.gallery?.base ? [(tool as any).app.gallery.base] : [])] : []);
+export const toolKeys = (tool?: { id: string; app?: any } | null): string[] => (tool ? [tool.id, ...((tool as any).app?.gallery?.base ? [(tool as any).app.gallery.base] : []), ...(['photos-reel', 'app-photos-to-reel'].includes(tool.id) ? ['camera'] : [])] : []);
 /** Routes of one model. With a tool (B6), Comfy Cloud workflow twins serving that tool are added as routes of the open model. */
 export function routesFor(modelId: string, tool?: { id: string; app?: any } | string | null): RouteDef[] {
   const p = getProvider(modelId); if (!p) return [];

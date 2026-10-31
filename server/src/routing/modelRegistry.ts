@@ -37,7 +37,7 @@ import { routeChoiceNames } from '../shared/routeNames.js';
 import { RELEASES } from '../releaseDates.js';
 
 export { normRunOn, runOnOfRoute, RUN_ON_LABELS, type RunOn };
-export const baseToolOf = (tool?: { id: string; app?: any } | null): string | null => (tool as any)?.app?.gallery?.base ?? null;
+export const baseToolOf = (tool?: { id: string; app?: any } | null): string | null => tool && ['photos-reel', 'app-photos-to-reel'].includes(tool.id) ? 'camera' : (tool as any)?.app?.gallery?.base ?? null;
 const toolOf = (t: ToolDef | string) => (typeof t === 'string' ? getTool(t) : t);
 /** Job / request `types` (array, JSON string, comma list) → move ids. */
 export const typesList = (v: unknown): string[] => { if (Array.isArray(v)) return v.map(String); const s = String(v ?? '').trim(); if (!s) return [];

@@ -5,7 +5,7 @@ import { parseReelOptions } from '../shared/photosToReel.js';
 export const photosReelTool: ToolDef = {
   id: 'photos-reel', name: 'Photos → Reel', category: 'Video', route: '/video?workflow=photos-to-reel', listed: false, ui: 'app',
   description: 'Turn 8–15 photos into a short vertical reel.',
-  providers: cameraApp.providers.filter(p => p !== 'comfy-h3-camera'), workflows: [], gpuSecPerSec: {}, stages: [],
+  providers: cameraApp.providers.filter(p => p !== 'comfy-h3-camera'), workflows: cameraApp.workflows, gpuSecPerSec: {}, stages: [],
   inputs: [{ name: 'photos', kind: 'files', accept: 'image/png,image/jpeg,image/webp', max: 15, required: true, label: 'Photos' },
     { name: 'aspect', kind: 'select', options: ['9:16'], default: '9:16' }, { name: 'resolution', kind: 'select', options: ['720p'], default: '720p' },
     { name: 'title', kind: 'text', required: true }, { name: 'endLine', kind: 'text' },

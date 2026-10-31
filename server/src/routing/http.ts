@@ -290,6 +290,7 @@ function withResolvedPreselect(tool: ToolDef, models: any[]): any[] {
 }
 /** The job a listing / status check judges a model on (app locks, Camera's first move and length), shared with routing/defaults.ts. */
 export function listingInput(tool: ToolDef, modelId: string, rawInput: Record<string, any> = {}) {
+  if (tool.id === 'app-photos-to-reel' || tool.id === 'photos-reel') { const camera = getTool('camera'); if (camera) return listingInput(camera, modelId, { ...rawInput, duration: 5, aspect: '9:16', types: [modelId === 'comfy-open' || modelId === 'cloud-ltx-camera' ? 'ltx-dolly-in' : 'push-in'] }); }
   const G = (tool as any).app?.gallery as { locked?: Record<string, string> } | undefined;
   const locked = G?.locked ? routeQuoteInput(tool, Object.fromEntries(Object.entries(G.locked).filter(([k]) => k !== 'provider'))) : {};
   const camDef = tool.id === 'camera' && rawInput.types == null && cameraDefaultMove(modelId) ? { types: [cameraDefaultMove(modelId)], ...(rawInput.duration == null && defaultDurationFor('camera', modelId) ? { duration: defaultDurationFor('camera', modelId) } : {}) } : {};
@@ -356,7 +357,7 @@ export function registerRouting(app: FastifyInstance) {
   app.addHook('preHandler', async (req, reply) => {
     if (req.method !== 'GET') return; const url = req.url.split('?')[0];
     const pm = url.match(/^\/api\/tools\/([^/]+)\/price$/); const isQuote = url === '/api/models/quote'; if (!pm && !isQuote) return;
-    if (pm?.[1] === 'app-photos-to-reel') return; // Composite children resolve their own models and routes.
+    if (pm?.[1] === 'app-photos-to-reel' || (isQuote && (req.query as any)?.toolId === 'app-photos-to-reel')) return; // Composite children resolve their own models and routes.
     const q = (req.query ?? {}) as Record<string, string>; const runOnRaw = q.runOn ?? q.run_on;
     { // Enum case (re-check 6): validate + normalise the user's enum values (aspect=AUTO → auto, quality=HIGH → high) BEFORE the price handler's
       // per-model checks, exactly as the submit does (index.ts enumParamError on the job fields), so quote = submit for the same params. Same 400 body.
