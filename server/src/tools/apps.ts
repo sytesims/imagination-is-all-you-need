@@ -821,8 +821,8 @@ export const APP_GALLERY: GalleryApp[] = [
     locked: { types: '["edit"]' }, providers: MATERIAL_SWAP_MODELS, exposed: ['image', 'material', 'prompt', 'provider', 'rights', 'seed', 'object', 'fromMaterial'],
     labels: { image: 'Object', material: 'Material', prompt: 'Touch-ups (optional)' }, required: ['image', 'material'],
     extraInputs: [{ name: 'material', kind: 'file', accept: 'image/png,image/jpeg,image/webp', label: 'Material' }],
-    fields: [{ name: 'object', label: 'What the object is', kind: 'text', optional: true, maxLength: MATERIAL_TEXT_MAX, placeholder: 'e.g. sofa' },
-      { name: 'fromMaterial', label: 'Made of now', kind: 'text', optional: true, maxLength: MATERIAL_TEXT_MAX, placeholder: 'e.g. grey fabric' }],
+    fields: [{ name: 'object', label: 'What the object is', kind: 'text', optional: true, maxLength: MATERIAL_TEXT_MAX, placeholder: 'Optional, e.g. sofa' },
+      { name: 'fromMaterial', label: 'Made of now', kind: 'text', optional: true, maxLength: MATERIAL_TEXT_MAX, placeholder: 'Optional, e.g. grey fabric' }],
     // image 1 = the object, image 2 = the material
     fileMap: (f) => { const { material, ...rest } = f; return { ...rest, refs: (material ?? []).slice(0, 1) }; },
     compose: (v, c) => materialSwapPrompt(v, c.prompt, c.provider),

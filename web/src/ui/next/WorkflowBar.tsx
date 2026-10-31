@@ -133,9 +133,11 @@ const pickLabel = (r: WfRecipe, field: string, v: string) => r.controls.find(c =
 /** A control group's chip text: "Left · Soft · 50% · Warm". */
 export function groupSummary(r: WfRecipe, g: WfRecipe['groups'][number], vals: Record<string, string>): string {
   if (g.id === 'light' && (vals.light || r.controls.some(c => c.field === 'light'))) return rigChipPlain(rigOfVals(vals));
-  return g.summary.map(f => { const c = r.controls.find(x => x.field === f); const v = vals[f] ?? c?.default ?? ''; if (!c || v === '' || (f === 'look' && v === 'custom')) return '';
-    if (c.kind === 'slider') return `${v}%`; if (f === 'direction' && vals.lightX && vals.lightY) return 'Custom'; if (c.kind === 'text') return v.length > 18 ? `${v.slice(0, 17).trim()}…` : v;
+  const out = g.summary.map(f => { const c = r.controls.find(x => x.field === f); const v = vals[f] ?? c?.default ?? ''; if (!c || v === '' || (f === 'look' && v === 'custom')) return '';
+    if (c.kind === 'slider') return `${v}%`; if (f === 'direction' && vals.lightX && vals.lightY) return 'Custom'; if (c.kind === 'text') return v;
     return c.kind === 'swatches' ? (c.options?.find(o => o.value.toUpperCase() === v.toUpperCase())?.label ?? v.toUpperCase()) : pickLabel(r, f, v); }).filter(Boolean).join(' · ');
+  // typed words (Material Swap) can be long: the chip keeps a short start so it stays in the row (the popover shows them in full)
+  return g.summary.some(f => r.controls.find(x => x.field === f)?.kind === 'text') && out.length > 18 ? `${out.slice(0, 17).trim()}…` : out;
 }
 
 /** Light group (Relight, 2026-10-24): the shared 3D light sphere. Its rig goes out as the `light` field (the server words it precisely);
