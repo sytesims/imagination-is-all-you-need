@@ -15,7 +15,7 @@ import { useEffect, useState } from 'react';
 import type { ToolInfo } from '../api';
 import { Link } from '../platform/router';
 import { REPO_URL } from '../shared/brand';
-import { footerCols, FOOT_NAME, FOOT_NOTE } from '../shared/footerLinks';
+import { footerCols, FOOT_NAME } from '../shared/footerLinks';
 import { MakerTile } from '../shared/MakerTile';
 import { StandInArt } from '../shared/StandInArt';
 import { HoverClip, prefersReducedMotion } from '../shared/HoverClip';
@@ -161,6 +161,6 @@ export default function Home({ tools }: { tools: ToolInfo[] }) {
     <footer className="xp-footer" data-sec="footer"><div className="xp-foot-in">
       <div className="xp-fbrand"><h2>Imagination is<br />all you need</h2><a className="xp-fgh" href={repoUrl} target="_blank" rel="noopener noreferrer" data-testid="home-github">GitHub <span aria-hidden>↗</span></a></div>
       <div className="xp-fcols">{footerCols(repoUrl).map(([h, ls]) => <nav key={h} aria-label={h}><span className="xp-fh">{h}</span><span className="xp-flinks">{ls.map(([l, to]) => /^https?:/.test(to) ? <a key={l} href={to} target="_blank" rel="noopener noreferrer">{l}</a> : <Link key={l} to={to}>{l}</Link>)}</span></nav>)}</div></div>
-      <p className="xp-fbot">© {new Date().getFullYear()} {FOOT_NAME} · {FOOT_NOTE} · Everything the tools make is <span className="xp-nw">AI-generated</span>.</p></footer>
+      <p className="xp-fbot">© {new Date().getFullYear()} {FOOT_NAME} · Everything the tools make is <span className="xp-nw">AI-generated</span>.</p></footer>
   </div>;
 }

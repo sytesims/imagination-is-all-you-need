@@ -14,6 +14,5 @@ export const footerCols = (repoUrl: string): [string, FootLink[]][] => [
   ['Project', [['Source code', repoUrl], ['MCP', '/mcp'], ['API docs', '/api-docs'], ['Plugins', '/plugins']]],
 ];
 
-/** The quiet line under both footers: the name and licence first, the note last (the grey strip puts its links between them). */
+/** The quiet line under both footers: the name and licence (the grey strip adds its links after them). */
 export const FOOT_NAME = 'Imagination Is All You Need · AGPL-3.0';
-export const FOOT_NOTE = 'Not affiliated with Higgsfield';
