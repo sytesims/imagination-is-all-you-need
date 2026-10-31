@@ -1,5 +1,6 @@
 import { goClick } from '../../shared/goToWorkflow';
 import { IMAGE_ACCEPT, fileFits, wrongTypeText } from '../../../../server/src/shared/mediaAccept';
+import { hasPicture } from '../../../../server/src/shared/refFit';
 import { Notice } from '../../shared/Notice';
 import { continuesInput, withExtendModel } from '../../shared/continuation';
 import { promptLimitIssue } from '../../../../server/src/shared/promptRefs';
@@ -312,9 +313,10 @@ export default function AppTool({ tool, tools }: { tool: ToolInfo; tools?: ToolI
   useEffect(() => { if (tileTypes) dispatchEvent(new CustomEvent('oj:types-state', { detail: picked })); }, [tileTypes, picked.join()]);
   useEffect(() => { if (!tileTypes) return; const f = () => dispatchEvent(new CustomEvent('oj:types-state', { detail: picked })); addEventListener('oj:types-ask', f); return () => removeEventListener('oj:types-ask', f); }, [tileTypes, picked.join()]);
 
+  const refPics = tool.id === 'h3-video' ? Math.min(vrefs.refs?.length ?? 0, vCaps.current?.refs ?? Infinity) : 0; /* Reference mode: picture references count as the picture (refFit hasPicture) */
   const missing: string[] = [];
   if (isLip) { if (!portrait) missing.push('a portrait'); if (!speech) missing.push('speech audio'); }
-  else if (cfg.input === 'video' ? !video && !(cvAny && cvAudio) : needsImage && !image) missing.push(cfg.input === 'video' ? (cvApp || cvAny ? CV_NEED : 'a valid video') : 'an image');
+  else if (cfg.input === 'video' ? !video && !(cvAny && cvAudio) : needsImage && !hasPicture(mode, !!image, refPics)) missing.push(cfg.input === 'video' ? (cvApp || cvAny ? CV_NEED : 'a valid video') : 'an image');
   if (requireLast && !lastFrame) missing.push('an end frame');
   /* Keyframes (2026-10-27): 2–5 frames, each at its time (the bar keeps the times valid) */
   if (tool.id === 'h3-video' && mode === 'keyframes') { const n = vrefs.keyframes?.length ?? 0; if (n < 2) missing.push(n ? 'Add one more frame' : 'Add 2 to 5 frames'); }
@@ -326,7 +328,7 @@ export default function AppTool({ tool, tools }: { tool: ToolInfo; tools?: ToolI
   // L3: a start frame plus video/audio refs is not a valid H3 combination (refs are Reference-mode only).
   const refAV = (vrefs.refVideos?.length ?? 0) + (vrefs.refAudios?.length ?? 0);
   const conflict = tool.id === 'h3-video' && !!image && refAV > 0 && mode !== 'r2v' ? 'A start frame can’t be combined with video or audio references. Remove the start frame to use them (Reference mode), or remove the references.' : null;
-  const mentions = useMentions(prompt, setPrompt, { images: tool.id === 'h3-video' && mode === 'keyframes' ? vrefs.keyframes?.length ?? 0 /* Keyframes: @imageN = frame N */ : tool.id === 'create-image' ? (image ? 1 + extraRefs.length : 0) /* @image1 = the photo, @image2… = the extra references */ : (needsImage || !!imgLabel || imgOptional) && image ? 1 : 0, videos: cfg.input === 'video' && video ? 1 : 0 });
+  const mentions = useMentions(prompt, setPrompt, { images: tool.id === 'h3-video' && mode === 'keyframes' ? vrefs.keyframes?.length ?? 0 /* Keyframes: @imageN = frame N */ : tool.id === 'create-image' ? (image ? 1 + extraRefs.length : 0) /* @image1 = the photo, @image2… = the extra references */ : tool.id === 'h3-video' && mode === 'r2v' ? (image ? 1 : 0) + refPics /* Reference mode: the start picture, then the picture references (the server counts image + refs) */ : (needsImage || !!imgLabel || imgOptional) && image ? 1 : 0, videos: cfg.input === 'video' && video ? 1 : tool.id === 'h3-video' && mode === 'r2v' ? Math.min(vrefs.refVideos?.length ?? 0, vCaps.current?.refVideos ?? Infinity) : 0 });
   /** Create Image: removing attached image n (1-based) renumbers later @image mentions and drops the removed one's. */
   const dropMention = (n: number) => setPrompt(p => removeImageMention(p, n));
   /* QA #10: say which mention is broken ("@image2 has no photo (1 attached)…"), not only "valid @ mentions" */
