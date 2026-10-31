@@ -38,8 +38,11 @@ export function DockGenerate({ toolId, engine, quote, label, busy, disabled, pro
   if (!busy && setupNeeded(m, quote, engine, intent) && !problems.some(x => x.stage === 'inputs' || x.stage === 'model'))
     return <SetupGenerate toolId={toolId} model={m} engine={engine} quote={quote} className={`${base} ${className}`.trim()} testId={testId} priceTestId={priceTestId} />;
   const lead = leadOf(problems, missing);
-  return <button ref={genRef} type="button" className={`${base}${problems.length ? ' gen-wait' : ''} ${className}`.trim()} data-testid={testId} data-workflow={workflowId} data-problems={problems.length || undefined}
-    disabled={busy || !!disabled} aria-disabled={problems.length > 0 || undefined} aria-haspopup={problems.length ? 'dialog' : undefined} aria-expanded={problems.length ? pfOpen : undefined} onClick={onClick}
+  /* waiting (A1, 2026-10-31): a pre-flight problem OR the caller's own missing step (Stitch's 'Add clips', the Canvas panel, Film) is the one
+     shared waiting look (ui-states.css .gen-wait), never the ready accent; the click still reaches onClick, which says or fixes what's missing */
+  const waiting = problems.length > 0 || !!missing;
+  return <button ref={genRef} type="button" className={`${base}${waiting ? ' gen-wait' : ''} ${className}`.trim()} data-testid={testId} data-workflow={workflowId} data-problems={problems.length || undefined}
+    disabled={busy || !!disabled} aria-disabled={waiting || undefined} aria-haspopup={problems.length ? 'dialog' : undefined} aria-expanded={problems.length ? pfOpen : undefined} onClick={onClick}
     title={pfOpen ? undefined : lead ?? (mem ? `${mem.text} Or pick Comfy Cloud in the run menu.` : undefined)} data-mem-short={mem ? '1' : undefined}><span className="gen-l">{busy ? <i className="as-spin" aria-hidden /> : null}{label}</span>
     {lead ? <span className="gen-price gen-missing" data-testid={priceTestId}>{lead}</span> : mem ? <span className="gen-price gen-mem" data-testid={priceTestId} data-mem="short">Free · only {gbOf(mem.freeGB * 2 ** 30)} free now, needs ~{Math.round(mem.needGB)} GB</span> : <GenPrice compact testId={priceTestId} q={quote} demo={!wKey && quote?.demo === true} text={unpriced ? (isPlainBlock(quote) ? '' : 'Price unavailable') /* a plain refusal says its own words (the pre-flight list), never 'Price unavailable' */ : dlSize ? intentLine(dlSize) : null} free={!wKey && cr === 0} credits={wKey ? null : cr} />}</button>;
 }
