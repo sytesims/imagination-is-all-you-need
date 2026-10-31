@@ -222,7 +222,7 @@ function camera(job: Job): Plan {
     if (p.engine === 'funcamera') for (const s of p.segments) {
       const k = passes.length; const size = sizeFor(i.resolution === '480p' || i.draft ? '480p' : '720p', 16, 9, 16); const g = wf('camera-moves-api.json'); const img = k === 0 ? i.imagePath : `${base}.${job.id}-last${k - 1}.png`;
       if (!img) throw new Error('Wan 2.2 Fun Camera needs a start image (image-to-video only).');
-      setIn(g, '97', 'image', F(img)); setIn(g, '107', 'text', `${prompt}. ${p.hint}`); Object.assign(g['108'].inputs, { camera_pose: s.pose, speed: s.speed, width: size.width, height: size.height, length: s.length }); g['102'].inputs.noise_seed = seed + k; setFps(g, 16);
+      setIn(g, '97', 'image', F(img)); setIn(g, '107', 'text', `${prompt}. ${p.sentence}`); Object.assign(g['108'].inputs, { camera_pose: s.pose, speed: s.speed, width: size.width, height: size.height, length: s.length }); g['102'].inputs.noise_seed = seed + k; setFps(g, 16);
       passes.push({ label: s.pose, workflow: 'camera-moves-api.json', graph: g, output: '106', prep: k ? [{ kind: 'frameFromPass', pass: k - 1, out: img }] : [], expect: { fps: 16, width: size.width, height: size.height, mult: 16, frames: s.length, rule: '4n+1', seed: seed + k } });
     } else {
       // (O) end frame: the LAST move uses camera-ltx-flf-api.json (LTXVAddGuide at frame -1) when endImagePath is set
@@ -235,7 +235,7 @@ function camera(job: Job): Plan {
       else { // text-to-video: blank guide image, image conditioning bypassed (same as the Director's LTX text path)
         g['398'] = { class_type: 'EmptyImage', inputs: { width: size.width, height: size.height, batch_size: 1, color: 0 } }; g['102'].inputs.input = ['398', 0]; delete g['98'];
         g['92:107'].inputs.bypass = true; g['92:108'].inputs.bypass = true; }
-      setIn(g, '92:3', 'text', `${prompt}. ${lp.hint}`); g['300'].inputs.lora_name = lp.lora; g['300'].inputs.strength_model = lp.strength;
+      setIn(g, '92:3', 'text', `${prompt}. ${lp.sentence}`); g['300'].inputs.lora_name = lp.lora; g['300'].inputs.strength_model = lp.strength;
       setIn(g, '92:62', 'value', lp.frames); g['102'].inputs['resize_type.width'] = size.width; g['102'].inputs['resize_type.height'] = size.height; for (const n of ['92:11', '92:67']) g[n].inputs.noise_seed = seed + k; setFps(g, 24);
       passes.push({ label: lp.hint, workflow: file, graph: g, output: '75', prep: k ? [{ kind: 'frameFromPass', pass: k - 1, out: img! }] : [], expect: { fps: 24, width: size.width, height: size.height, mult: 32, frames: lp.frames, rule: '8n+1', seed: seed + k, lora: lp.lora, loraStrength: lp.strength, ...(flf ? { endFrame: true } : {}), audio: i.generateAudio !== false, t2v: !img } });
     }

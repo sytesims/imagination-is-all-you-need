@@ -17,7 +17,15 @@ export const H3_CAMERA_MOVES: [string, string, string][] = [
   ['h3-handheld', 'Handheld', 'handheld follow with natural shake'], ['h3-orbit', 'Orbit', 'orbit around the subject'],
   ['h3-aerial', 'Aerial', 'aerial drone move over the scene'], ['h3-crane', 'Crane', 'crane up rising above the subject'], ['h3-pan', 'Pan', 'pan across the scene'],
 ];
-export const H3_INTENSITY = { slow: { label: 'Slow', strength: 0.6, adverb: 'slow, smooth' }, aggressive: { label: 'Aggressive', strength: 1.0, adverb: 'fast, aggressive' } } as const;
+export const H3_INTENSITY = { slow: { label: 'Slow', strength: 0.6, adverb: 'slow, smooth', amplitude: 'small', speed: 'slow' }, aggressive: { label: 'Aggressive', strength: 1.0, adverb: 'fast, aggressive', amplitude: 'large', speed: 'fast' } } as const;
+/** The same moves in base H3's own camera grammar (no LoRA; MiniMax H3 base-en): a move type, then amplitude and speed, then the target
+ *  (shared/promptPatterns.ts camera-move). Used where the H3 weights run without the camera LoRA (Comfy Router). */
+export const H3_BASE_CAMERA: Record<string, { move: string; target?: string }> = {
+  'h3-push-in': { move: 'pushes in', target: 'toward the subject' }, 'h3-pull-back': { move: 'pulls out', target: 'to reveal the scene' },
+  'h3-handheld': { move: 'shakes slightly', target: 'as it tracks the subject handheld' }, 'h3-orbit': { move: 'arcs', target: 'around the subject' },
+  'h3-aerial': { move: 'tracks', target: 'over the scene from high above' }, 'h3-crane': { move: 'pedestals up', target: 'rising above the subject' },
+  'h3-pan': { move: 'pans right', target: 'across the scene' },
+};
 export type H3Intensity = keyof typeof H3_INTENSITY;
 export const cameraPrompt = (move: string, intensity: H3Intensity = 'slow', extra = '') => `camera motion, ${H3_INTENSITY[intensity].adverb} ${move}${extra ? `. ${extra}` : ''}`;
 /** Extend: +5 s / +10 s. Overlap = 22 source frames (17·1+5) anchored at frame 0 for continuity, trimmed on concat. */

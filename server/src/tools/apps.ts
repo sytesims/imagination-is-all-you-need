@@ -9,6 +9,7 @@ import { TRANSLATE_LANGS } from '../comfy/plans.js';
 import { SHOT_ANGLES, parseShots, shotPrompt, FACE_SWAP_PROMPT, FACE_SWAP_KEEP, PERSON_SWAP_PROMPT, PERSON_SWAP_KEEP, type ShotAngle } from './shots.js';
 import { GENERATE_MODELS, EDIT_MODELS, TWO_IMAGE_MODELS, MASK_MODELS, REMOVE_BG_MODELS, EXPAND_MODELS, ERASE_MODELS, TRYON_MODELS, featureById, gridModelOf } from '../shared/imageFeatures.js';
 import { promptGrammarOf } from '../shared/promptGrammar.js';
+import { fillPattern } from '../shared/promptPatterns.js';
 import { EXPAND_ASPECTS, EXPAND_ASPECT_LABELS, TRYON_CATEGORIES, TRYON_PHOTO_TYPES, expandBlock, expandCanvas, photoBlock, eraseMaskBlock } from '../shared/imagePhotoTools.js';
 import { maskCover } from './imageFalApps.js';
 import { LAYER_MODELS, LAYER_SIZES, LAYER_SIZE_DEFAULT, LAYERS_NO_PROMPT, layersPhotoBlock, layerLabel } from '../shared/imageLayers.js';
@@ -164,7 +165,7 @@ export function makeApp(c: AppConfig): ToolDef {
       const resolution = draft ? '480p' : (fields.resolution || (resolutions.includes('720p') ? '720p' : resolutions[0]));
       if (!resolutions.includes(resolution) && !draft) return { error: `Resolution must be one of ${resolutions.join(', ')}.` };
       const pf = parseFields(c.fields ?? [], fields); if ('error' in pf) return { error: String(pf.error) };
-      const extra = { fields: pf, types, typePrompt, ...(aspect ? { aspect } : {}), finalPrompt: moveFirst(typePrompt, [prompt, enhance ? '(enhanced: cinematic, detailed, smooth motion)' : ''].filter(Boolean).join('. ')), enhance, steps: draft && steps ? Math.max(4, Math.round(steps / 2)) : steps };
+      const extra = { fields: pf, types, typePrompt, ...(aspect ? { aspect } : {}), finalPrompt: moveFirst(typePrompt, [prompt, enhance ? fillPattern('camera-enhance', null) /* a plain sentence, not an "(enhanced: …)" note */ : ''].filter(Boolean).join('. ')), enhance, steps: draft && steps ? Math.max(4, Math.round(steps / 2)) : steps };
       const durProv = fields.provider || PROVS[0]; const durRaw = fields.duration != null && fields.duration !== '' ? fields.duration : fields.seconds;
       const rd = c.durations ? resolveDuration(c.id, durProv, durRaw) : undefined; // same rule as the price quote: an off-list length snaps to the nearest (D5)
       if (rd && 'error' in rd) return { ...durationErrorBody(rd, fields.duration != null && fields.duration !== '' ? 'duration' : 'seconds') } as any;
