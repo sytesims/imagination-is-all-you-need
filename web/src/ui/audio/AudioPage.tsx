@@ -27,7 +27,7 @@ import { PreflightNotes, type PreflightNote } from '../../shared/PreflightNotes'
 import { CloseIcon, SparkleIcon, MicIcon, TranslateIcon, MusicIcon, PlayIcon, AudioIcon, VideoIcon } from '../Icons';
 import { PromptTabs, PromptField, PromptHelpers, PromptSwitch, type PromptTab, type HelperChip } from '../../shared/PromptTabs';
 import { useInsertAtCursor } from '../../shared/useInsertAtCursor';
-import { lyricsPlan, autoLength, tooShortFor, lengthText, SECTION_TAG_HL } from '../../shared/lyricsLength';
+import { lyricsPlan, autoLength, lengthFor, recreateAudio, tooShortFor, lengthText, SECTION_TAG_HL } from '../../shared/lyricsLength';
 import { EnhanceButton, enhanceToastTitle, type EnhanceResult } from '../next/Enhance';
 import { PromptPeek, type PeekForm } from '../next/PromptPeek';
 import { BrandChip } from '../../shared/BrandChip';
@@ -87,6 +87,8 @@ export interface AudioPageProps {
   samples: File[]; setSamples: (f: File[]) => void;
   busy: boolean; issues: any[]; /** AppTool's file precheck ("checking your files", "usable files (…)") */ checks: string[];
   onGenerate: (extra: Record<string, string>) => void; jobs: JobState[];
+  /** Recreate / "Make this": the job's lyrics and length (key: a new one per prefill). Lyrics live on this page, so AppTool hands them over. */
+  recreate?: { key: string; lyrics: string; duration: number | null } | null;
 }
 
 /** "$0.08/1k chars", "$0.0009/s", "$0.15/run" from the quote's perUnit (the charge's own row). */
@@ -224,13 +226,23 @@ export default function AudioPage(p: AudioPageProps) {
   const durs: number[] = (((tm as any)?.durations ?? (cur as any)?.durations ?? (cfg.durationsByProvider?.[p.provider]) ?? cfg.durations ?? []) as number[]).map(Number).filter(n => Number.isInteger(n) && n > 0);
   const lenOn = wf.controls.some(c => c.field === 'duration') && durs.length > 0;
   const swNote = useSwitchNote(); /* the bar's note after a model switch moved the length (shared/settingsFit.ts, the menu row's fit) */
-  useEffect(() => { if (lenOn && !durs.includes(p.duration)) p.setDuration(durs.reduce((a, b) => Math.abs(b - p.duration) < Math.abs(a - p.duration) ? b : a)); }, [p.provider, durs.join(), lenOn]); // eslint-disable-line react-hooks/exhaustive-deps
   /* Auto length (shared/lyricsLength.ts): where the model sings the lyrics, the length that fits them among the model's real lengths. It is
    * written into the length AppTool sends, so the quote, the peek and the job all use it (quote = charge). A picked length turns Auto off. */
   const autoAvail = lenOn && lyrUsed; const [autoPref, setAutoPrefRaw] = useState(() => lsGet(`${AUTO_KEY}:${p.tool.id}`) !== '0');
   const setAutoPref = (on: boolean) => { setAutoPrefRaw(on); lsSet(`${AUTO_KEY}:${p.tool.id}`, on ? null : '0'); };
   const lenAuto = autoAvail && autoPref; const al = autoLength(lyrics, durs);
-  useEffect(() => { if (lenAuto && al.seconds !== p.duration) p.setDuration(al.seconds); }, [lenAuto, al.seconds]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* Recreate (audit B3): the job's lyrics, Instrumental and length come back. Lyrics live here (per tool, in this browser), so AppTool hands them
+   * over. Auto stays on only when it would pick the job's own length; with a length set here the length effect below skips this pass (it sees the old values). */
+  const rcHold = useRef(false);
+  useEffect(() => { const rc = p.recreate; if (!rc) return;
+    const x = recreateAudio(wf.lyrics, pid, rc, durs, { lyrics, instrumental: instPref, lengthControl: lenOn });
+    if (x.lyrics != null) setLyrics(x.lyrics); if (x.instrumental != null) setInstrumental(x.instrumental); if (x.auto != null) setAutoPref(x.auto);
+    if (x.duration != null) { rcHold.current = true; p.setDuration(x.duration); } }, [p.recreate?.key]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* the one length rule (audit B1; shared/lyricsLength.ts lengthFor): Auto's length, else the picked one snapped to the model's list. One effect, so a
+   * model switch can't leave a hidden length (it read "Auto · 6:00" while Auto meant 30 s); it also runs when anything else moves the length. */
+  useEffect(() => { if (rcHold.current || !lenOn) return;
+    const next = lengthFor(durs, p.duration, lenAuto ? al.seconds : null); if (next != null && next !== p.duration) p.setDuration(next); }, [p.provider, durs.join(), lenOn, lenAuto, al.seconds, p.duration]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { rcHold.current = false; }); /* the hold lasts one pass only */
   const lenShort = autoAvail && !lenAuto && tooShortFor(p.duration, al.need);
   /* a model that takes the length as a cap (YuE2, MiniMax Music 3: max_duration) can end the song sooner: one note under the list says so;
    * with Auto on, the chip reads "Auto · 1:00" */
@@ -306,7 +318,8 @@ export default function AudioPage(p: AudioPageProps) {
   const dgProblems: PreflightProblem[] = [...missing.map(m => ({ code: 'input_problem', stage: 'inputs' as const, message: m, fix: { kind: 'focus-prompt' as const, label: m } })),
     ...(blocking && !missing.length ? [{ code: gate ? (localGate ? 'needs_setup' : 'needs_key') : 'model_cant_run', stage: 'setup' as const, message: genTitle ?? genWord0, fix: { kind: 'set-up' as const, label: genWord0 || 'See what to fix' } }] : [])];
   const generate = (e: React.MouseEvent<HTMLButtonElement>) => { if (blocking) { setPfOpen(o => !o); return; } if (missing.length) { nudgeMissing(e.currentTarget); return; } setPfOpen(false);
-    p.onGenerate(sendLyrics ? { lyrics } : {}); };
+    /* the length goes only where the chip shows (audit B2: a model with no length, Seed Audio, got a hidden 600 s); the same p.duration the quote used */
+    p.onGenerate({ ...(sendLyrics ? { lyrics } : {}), ...(lenOn ? { duration: String(p.duration) } : {}) }); };
 
   /* ---- Enhance (music and sound effects only; a voiceover script is read word for word and never rewritten) ---- */
   const enhOn = wf.id === 'music' || wf.id === 'sfx';
