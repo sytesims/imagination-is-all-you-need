@@ -18,7 +18,7 @@ import { UserIcon, DocsIcon } from '../ui/Icons';
 import './settings.css';
 import { useProfile, nameOf, UserAvatar } from '../shared/profile';
 /**
- * Settings (PAGES-ROUND2 ST1/C3): a left rail on desktop and a chip row on phones, one section at a time. Profile (PB-30: your local profile
+ * Settings (PAGES-ROUND2 ST1/C3; calm panel 2026-10-31): a soft grouped nav panel on desktop and a chip row on phones, one section at a time. Profile (PB-30: your local profile
  * plus a Help card) sits at the top of the rail; Connections stays the default section.
  * The section lives in the URL hash (#connections, #gpu (alias #local), #routing, #preferences, #data; ?section=gpu works too); old anchors (#conn-fal, #use-local, #open-models,
  * #notifications, #backup, #learned-timings, #providers) open the section that holds them. The last section is remembered per browser.
@@ -34,6 +34,8 @@ const ICON: Record<Tab, JSX.Element> = {
   data: <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"><ellipse cx="10" cy="5.5" rx="6" ry="2.5" /><path d="M4 5.5v9c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5v-9M4 10c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5" /></svg>,
 };
 const TABS: [Tab, string][] = [['profile', 'Profile'], ['connections', 'Connections'], ['gpu', 'Your computer'], ['routing', 'Routing'], ['preferences', 'Preferences'], ['data', 'Backup & data']];
+/** The rail in three small groups, each under a quiet label (2026-10-31). Spend opens its own page, so it sits under Account with a chevron. */
+const GROUPS: [string, Tab[]][] = [['Account', ['profile']], ['Where models run', ['connections', 'gpu', 'routing']], ['App', ['preferences', 'data']]];
 function tabOf(hash: string): Tab | null {
   const h = hash.replace(/^#/, ''); if (!h) return null;
   if (h === 'profile' || h === 'help') return 'profile';
@@ -72,14 +74,18 @@ export default function Settings() {
     else if (h && tab !== 'connections') setTimeout(() => document.getElementById(h)?.scrollIntoView({ block: 'start' }), 60); }, [tab]);
   const pick = (t: Tab) => (e: React.MouseEvent) => { e.preventDefault(); setTab(t); history.replaceState(history.state, '', `#${t}`); window.scrollTo({ top: 0 }); };
   return <section className="settings-page st" data-testid="settings-page">
-    <header className="mh st-head"><span className="eyebrow">Account</span><h1 className="pg-h1">Settings</h1></header>
     {owOnly && <p className="settings-row ow-only-row" data-testid="settings-ow-only"><OpenWeightsOnlyPill /><span>Open models only: closed cloud models are hidden. Change it in Settings → Connections.</span></p>}
     <div className="st-grid">
+      <div className="st-side">
+      <header className="mh st-head"><h1 className="pg-h1">Settings</h1></header>
       <nav className="st-rail" aria-label="Settings sections" data-testid="settings-nav">
-        {TABS.map(([t, label]) => <a key={t} href={`#${t}`} className="st-tab" aria-current={tab === t ? 'page' : undefined} data-testid={`settings-tab-${t}`} onClick={pick(t)}>{ICON[t]}<span>{label}</span></a>)}
-        <span className="st-rail-sep" aria-hidden />
-        <Link to="/spend" className="st-tab st-tab-out" data-testid="settings-tab-spend"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M4 16V9M10 16V4M16 16v-5" /></svg><span>{own === false ? 'Usage' : 'Spend'}</span><i aria-hidden>›</i></Link>
+        {GROUPS.map(([g, ts], gi) => <div key={g} className="st-group" role="group" aria-labelledby={`st-g-${gi}`}>
+          <span className="group-label st-group-l" id={`st-g-${gi}`}>{g}</span>
+          {ts.map(t => <a key={t} href={`#${t}`} className="st-tab" aria-current={tab === t ? 'page' : undefined} data-testid={`settings-tab-${t}`} onClick={pick(t)}>{ICON[t]}<span>{TABS.find(([x]) => x === t)![1]}</span></a>)}
+          {gi === 0 && <Link to="/spend" className="st-tab st-tab-out" data-testid="settings-tab-spend"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M4 16V9M10 16V4M16 16v-5" /></svg><span>{own === false ? 'Usage' : 'Spend'}</span><i aria-hidden>›</i></Link>}
+        </div>)}
       </nav>
+      </div>
       <div className="st-main">
         {tab === 'profile' && <ProfileSettings />}
         {tab === 'connections' && <Connections />}

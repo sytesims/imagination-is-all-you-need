@@ -8,6 +8,7 @@ import { createHash } from 'node:crypto';
 import { keyConfigured } from './keys.js';
 import { getKv, setKv } from '../db.js';
 import { env } from '../env.js';
+import { invalidateTools } from '../toolsCache.js';
 import { openWeightsOnly } from '../providers.js';
 import { aKey } from '../shared/modelIds.js';
 import { FAL_ENV, REPLICATE_ENV, COMFY_ENV } from './routes.js';
@@ -100,7 +101,7 @@ export function storeKey(id: string, value: string, file = ENV_LOCAL): { ok: tru
   const lines = fs.existsSync(file) ? fs.readFileSync(file, 'utf8').split('\n').filter((l) => !l.startsWith(`${p.envKey}=`)) : [];
   while (lines.length && lines.at(-1) === '') lines.pop();
   lines.push(`${p.envKey}=${value}`); fs.writeFileSync(file, lines.join('\n') + '\n', { mode: 0o600 });
-  process.env[p.envKey] = value;
+  process.env[p.envKey] = value; invalidateTools();
   try { const all = getKv<Record<string, SavedKey>>(KEYS_KV, {}) ?? {}; all[p.id] = { setAt: new Date().toISOString(), fp: fpOf(value) }; setKv(KEYS_KV, all); } catch { /* status only */ }
   return { ok: true, envKey: p.envKey, keyFormat: keyFormatOf(p.id, value) === 'ok' ? 'ok' : 'unchecked' };
 }
@@ -110,7 +111,7 @@ export function removeKey(id: string, file = ENV_LOCAL): { ok: true; envKey: str
   const p = P.find((x) => x.id === id && x.id !== 'local'); if (!p) return { error: `unknown provider ${id}`, code: 'unknown_provider' };
   const meta = keyMeta(p, true); if (meta.keySource !== 'saved') return { error: 'This key wasn’t added here, so it can’t be removed here. Remove it from the server’s settings file.', code: 'not_saved_here' };
   if (fs.existsSync(file)) { const lines = fs.readFileSync(file, 'utf8').split('\n').filter((l) => !l.startsWith(`${p.envKey}=`)); while (lines.length && lines.at(-1) === '') lines.pop(); fs.writeFileSync(file, lines.length ? lines.join('\n') + '\n' : '', { mode: 0o600 }); }
-  delete process.env[p.envKey];
+  delete process.env[p.envKey]; invalidateTools();
   try { const all = getKv<Record<string, SavedKey>>(KEYS_KV, {}) ?? {}; delete all[p.id]; setKv(KEYS_KV, all); } catch { /* status only */ }
   // an alias variable (FAL_KEY, REPLICATE_API_TOKEN) in the server's environment keeps the provider connected: say which one, never its value
   const still = envVarInUse(p);

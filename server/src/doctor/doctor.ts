@@ -13,7 +13,7 @@
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { comfyInstallOf, type ComfyInstall } from '../hardware/comfyInstall.js';
 import { classifyMachine, inputFromSystemStats, parseNvidiaSmi, type MachineProfile } from '../hardware/machineProfile.js';
@@ -43,7 +43,9 @@ export interface DoctorOptions { apiUrl?: string; comfyUrl?: string; comfyDir?: 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 export const realEnv = (): DoctorEnv => ({
   fetch: (...a) => fetch(...a),
-  exec: (cmd, args, o = {}) => { try { return { ok: true, out: execFileSync(cmd, args, { timeout: 4000, cwd: o.cwd, stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true, shell: process.platform === 'win32' && cmd === 'npm' }).toString().trim() }; } catch (e: any) { return { ok: false, out: String(e?.stdout ?? '').trim() }; } },
+  // npm on Windows is npm.cmd, which needs a shell; one command line (fixed words, no user input) instead of args + shell, which Node 24 warns about (DEP0190)
+  exec: (cmd, args, o = {}) => { try { const opts = { timeout: 4000, cwd: o.cwd, stdio: ['ignore', 'pipe', 'ignore'] as any, windowsHide: true };
+    return { ok: true, out: (process.platform === 'win32' && cmd === 'npm' ? execSync(['npm', ...args].join(' '), opts) : execFileSync(cmd, args, opts)).toString().trim() }; } catch (e: any) { return { ok: false, out: String(e?.stdout ?? '').trim() }; } },
   fs, platform: process.platform, arch: process.arch, release: os.release(), cpus: () => os.cpus(), totalmem: () => os.totalmem(), nodeVersion: process.version,
   env: process.env as Record<string, string | undefined>, repoRoot: REPO_ROOT, now: () => new Date(),
 });

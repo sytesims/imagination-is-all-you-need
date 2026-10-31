@@ -168,7 +168,7 @@ VIDEO_LIMITS['router-veo-fast'] = { ...VIDEO_LIMITS['router-veo'],
 //  - P-Video-2: duration 1–20 s, 720p / 1080p, aspect 16:9 / 9:16 / 4:3 / 3:4 / 1:1 (+ 3:2 / 2:3, not on our list; ignored with an image), first + last
 //    frame, sound kept or not (save_audio; the price doesn't change). Audio-driven input and Draft are not offered (routerModels.ts).
 //  - Grok Imagine Video 1.5 Lite: duration 1–15 s, 480p / 720p / 1080p (pricing rows), aspect 1:1 / 16:9 / 9:16 / 4:3 / 3:4 (+ 3:2 / 2:3), one start image;
-//    the page lists Output: Video (no sound track).
+//    sound always on: a real run (2026-10-31) returned an audio stream and the schema has no audio switch, so there is no Sound toggle (same price).
 VIDEO_LIMITS['router-veo-lite'] = { ...VIDEO_LIMITS['router-veo'], maxResolution: '1080p', resolutions: ['720p', '1080p'], durationsByResolution: { '1080p': [8] },
   source: 'https://docs.comfy.org/development/comfy-router/models/veo/veo-3-1-lite-generate-001/code (veo-3.1-lite-generate-001: Veo 3.1 schema; 720p / 1080p priced, no 4K; durationSeconds 4 / 6 / 8, 1080p at 8 s; aspect 16:9 / 9:16; one image; priced by sound on/off) + https://blog.google/innovation-and-ai/technology/ai/veo-3-1-lite/ (2026-10-31)' };
 VIDEO_LIMITS['router-wan3-prime'] = { ...VIDEO_LIMITS['router-wan3'],
@@ -177,8 +177,8 @@ VIDEO_LIMITS['router-pvideo2'] = h3({ maxResolution: '1080p', resolutions: ['720
   audio: { supported: true, toggle: true, default: true, priceAffects: false, off: 'provider' },
   source: 'https://docs.comfy.org/development/comfy-router/models/pruna/p-video-2/code (p-video-2: duration 1–20 s, 720p / 1080p, aspect_ratio 7 values, image + last_frame_image, save_audio default true, fps 24 / 48; 2026-10-31)' });
 VIDEO_LIMITS['router-grok-video-lite'] = h3({ maxResolution: '1080p', resolutions: ['720p', '480p', '1080p'], minSeconds: 2, maxSeconds: 15, durations: range(2, 15), defaultSeconds: 5, aspects: ['auto', '16:9', '9:16', '4:3', '3:4', '1:1'], refKinds: { image: 1 },
-  audio: { supported: false, toggle: false, default: false, priceAffects: false, off: 'strip' },
-  source: 'https://docs.comfy.org/development/comfy-router/models/xai/grok-imagine-video-1-5-lite/code (grok-imagine-video-1.5-lite: duration 1–15 s, aspect_ratio 7 values, image (data URI ok), Output: Video) + https://docs.comfy.org/development/comfy-router/pricing (480p / 720p / 1080p rates; 2026-10-31)' });
+  audio: { supported: true, toggle: false, default: true, priceAffects: false, off: 'provider' },
+  source: 'https://docs.comfy.org/development/comfy-router/models/xai/grok-imagine-video-1-5-lite/code (grok-imagine-video-1.5-lite: duration 1–15 s, aspect_ratio 7 values, image (data URI ok), no audio field; a real run returned sound) + https://docs.comfy.org/development/comfy-router/pricing (480p / 720p / 1080p rates; 2026-10-31)' });
 /** Route-level narrowing for comfy-h3 routes (routeId → limits). Aspect applies to text-to-video; image modes follow the frame ('auto'). */
 export const ROUTE_LIMITS: Record<string, Partial<VideoLimits>> = {
   // 2026-10-27: the Comfy Cloud twin (comfy/ltx25Cloud.ts) adds 720p (1280×704 / 704×1280 / 960×960); the Mac keeps Draft / Sharper.

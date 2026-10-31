@@ -229,3 +229,6 @@ html body .vs-drop:focus-within{outline:var(--focus-ring-w) solid var(--focus-ri
    One ink on every orange surface: var(--on-accent) from tokens.css (6.99:1); quieter lines use var(--on-accent-2) (4.9:1). Never white.
    Links need the extra weight below: styles.css `a:not(.btn):not(.top-link){color:inherit}` (0,2,1) beats a plain component rule,
    so an orange <a>/<Link> inherited the page's white text (2.4:1). Add the class here when a new link gets an orange fill. */
+
+/* ---------- Group label (2026-10-31): a small grey uppercase heading for a group of rows, used instead of a box or a divider ---------- */
+.group-label{display:block;margin:0;padding:0;font:600 11px/16px var(--font-ui);letter-spacing:.08em;text-transform:uppercase;color:var(--calm-label-ink)}

@@ -124,8 +124,8 @@ lib.trashHooks.push(dropCaptions);
 
 export const SETUP_STEPS = [
   'Install Python 3.10 or newer.',
-  'From the app folder: python3 -m venv server/py/.venv',
-  'Then: server/py/.venv/bin/pip install faster-whisper==1.2.1 av==16.1.0 (or the whole of server/py/requirements.txt)',
+  process.platform === 'win32' ? 'From the app folder: python -m venv server\\py\\.venv' : 'From the app folder: python3 -m venv server/py/.venv',
+  `Then: ${process.platform === 'win32' ? 'server\\py\\.venv\\Scripts\\pip' : 'server/py/.venv/bin/pip'} install faster-whisper==1.2.1 av==16.1.0 (or the whole of server/py/requirements.txt)`,
   'The first captions download the Whisper base model (about 145 MB) once. Nothing else is needed.',
 ];
 export const captionsStatus = () => { const r = voiceRunnerReady(); return { ready: r.ready, model: process.env.OPENHIGGSFIELD_WHISPER_MODEL || 'base', steps: SETUP_STEPS }; };

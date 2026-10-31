@@ -40,7 +40,8 @@ export function refreshActiveJobs(): Promise<string> { return (ticking ??= tick(
 function start() {
   if (stop) return;
   void refreshActiveJobs();
-  const poll = pollWithBackoff(() => refreshActiveJobs());
+  /* a hidden tab stops polling while nothing runs; with a run going it keeps polling, so "Generation finished" still notifies */
+  const poll = pollWithBackoff(() => refreshActiveJobs(), { pauseHidden: () => active.size === 0 });
   const focus = () => { void refreshActiveJobs(); clearBadge(); };
   addEventListener('focus', focus); const vis = () => { if (!document.hidden) focus(); }; document.addEventListener('visibilitychange', vis);
   const off = onReconnect(() => { void refreshActiveJobs(); });

@@ -109,15 +109,15 @@ try {
   for (const id of ['app-character-sheet', 'app-product-shot', 'app-inpaint', 'app-relight']) { assert.notEqual(by[id].file, 'create-image-generate.jpg', id); assert.ok(!String(by[id].file ?? '').startsWith('create-image'), id); }
   // /image tiles are menu features now (ids like 'relight' → tool app-relight), so each tile carries its own posterUrl (or posterStandIn: no art yet, the
   // branded stand-in shows). Camera & Lens is Create Image with a rig, so it shows Create Image's poster: distinct poster URLs must be distinct files.
-  const byUrl = new Map<string, any>(ps.items.map((x: any) => [x.posterUrl, x])); const cards404: string[] = [];
+  const byUrl = new Map<string, any>(ps.items.map((x: any) => [x.posterUrl, x])); const cards404: string[] = []; const standIns: string[] = [];
   const drawtext = (() => { try { return /\bdrawtext\b/.test(execFileSync('ffmpeg', ['-hide_banner', '-filters'], { env: { ...process.env, PATH: `/opt/homebrew/bin:/usr/local/bin:${process.env.PATH}` }, stdio: ['ignore', 'pipe', 'ignore'] }).toString()); } catch { return false; } })();
   const tiles = (await get(A, '/api/browse/image')).body.tools as any[]; const img7 = tiles.map((t) => t.id); const hashes = new Map<string, string>(); const seen = new Set<string>();
-  for (const t of tiles) { if (t.posterStandIn) { assert.equal(t.posterUrl ?? null, null, `${t.id}: stand-in has no poster url`); continue; }
+  for (const t of tiles) { if (t.posterStandIn) { assert.equal(t.posterUrl ?? null, null, `${t.id}: stand-in has no poster url`); standIns.push(t.id); continue; }
     assert.match(t.posterUrl ?? '', /^\/api\/posters\/[\w-]+\.jpg$/, t.id); if (seen.has(t.posterUrl)) { assert.ok(t.id === 'camera-lens' && t.posterUrl === '/api/posters/create-image.jpg', `${t.id} reuses ${t.posterUrl}`); continue; } seen.add(t.posterUrl);
     const r = await fetch(`${A}${t.posterUrl}`);
     // a title card (no art file yet) is drawn with ffmpeg drawtext; builds without it 404 and the web shows the tool glyph instead (Live.tsx)
     if (r.status === 404 && byUrl.get(t.posterUrl)?.kind === 'card' && !drawtext) { cards404.push(t.id); continue; } assert.equal(r.status, 200, t.id); const h = createHash('md5').update(Buffer.from(await r.arrayBuffer())).digest('hex'); assert.ok(!hashes.has(h), `${t.id} shares its poster with ${hashes.get(h)}`); hashes.set(h, t.id); }
-  assert.ok(hashes.size + cards404.length >= 7, `${hashes.size} distinct posters`); if (cards404.length) console.log(`  (ffmpeg has no drawtext here: title cards not rendered for ${cards404.join(', ')})`);
+  assert.ok(hashes.size + cards404.length + (drawtext ? 0 : standIns.length) >= 7, `${hashes.size} distinct posters`); /* no drawtext: title-card tools are stand-in tiles (routesDiscover.posterStandIn) */ if (cards404.length) console.log(`  (ffmpeg has no drawtext here: title cards not rendered for ${cards404.join(', ')})`);
   ok(`posters: ${hashes.size} distinct posters across ${img7.length} /image tiles; still need a real poster: ${ps.needsRealPoster.join(', ') || 'none'}`);
   // (8) Remove BG / app video upscale: no clip → estimate flags
   for (const t of ['remove-bg', 'app-video-upscale']) { const p = (await get(A, `/api/tools/${t}/price`)).body; assert.equal(p.estimated, true, t); assert.equal(typeof p.assumedSeconds, 'number', t); assert.match(p.estimateMessage, /Estimate for/, t); }

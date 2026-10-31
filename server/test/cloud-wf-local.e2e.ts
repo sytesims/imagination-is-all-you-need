@@ -62,7 +62,7 @@ try {
   const upPost = async (provider: string) => { const fd = new FormData(); for (const [k, v] of Object.entries({ types: '["precise"]', provider, route: `local:${provider}` })) fd.append(k, v);
     fd.append('video', new Blob([fs.readFileSync(path.join(ROOT, 'samples/sample-pattern.mp4'))], { type: 'video/mp4' }), 'clip.mp4');
     const r = await fetch(`http://localhost:${testPort(8942)}/api/tools/upscale/jobs`, { method: 'POST', body: fd }); return { status: r.status, body: await r.json() as any }; };
-  { const s = await upPost('comfy-seedvr2'); assert.equal(s.status, 409, JSON.stringify(s.body).slice(0, 300)); assert.equal(s.body.code, 'route_not_runnable'); assert.match(s.body.reason, /NVIDIA graphics card/); assert.equal(s.body.charged, false);
+  { const s = await upPost('comfy-seedvr2'); assert.equal(s.status, 409, JSON.stringify(s.body).slice(0, 300)); assert.equal(s.body.code, 'route_not_runnable'); assert.match(s.body.reason, /graphics card/); assert.equal(s.body.charged, false);
     ok('#7a: local SeedVR2 on a computer without a readable NVIDIA GPU: 409 with the plain reason, nothing charged'); }
   { const LR = 'local:comfy-video-esrgan'; const s0 = await upPost('comfy-video-esrgan'); const up = s0.body; assert.equal(s0.status, 200, JSON.stringify(up)); assert.equal(up.cost, 0);
     const done = await n.until(up.id); assert.equal(done.status, 'done', JSON.stringify(done.error));
