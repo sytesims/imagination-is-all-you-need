@@ -196,13 +196,9 @@ video.preview{display:block;width:100%;max-height:300px;border-radius:var(--r-md
 .result-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
 .result-head h2{margin:0;font-size:var(--fs-lg);text-transform:uppercase}
 .result .seg{margin-bottom:12px}
-.compare{position:relative;width:100%;border-radius:var(--r-md);overflow:hidden;background:#000;user-select:none;touch-action:none}
+.compare{position:relative;width:100%;border-radius:var(--r-md);overflow:hidden;background:#000}
 .compare video{display:block;width:100%;max-height:62vh;object-fit:contain}
 .compare .after{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
-.compare .handle{position:absolute;top:0;bottom:0;width:44px;margin-left:-22px;cursor:ew-resize;display:flex;justify-content:center}
-.compare .handle::before{content:'';width:2px;height:100%;background:var(--accent);box-shadow:0 0 12px var(--accent)}
-.compare .handle::after{content:'⇆';position:absolute;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-weight:700;box-shadow:var(--glow)}
-.compare .tag{position:absolute;top:12px;padding:3px 10px;border-radius:var(--r-pill);background:color-mix(in srgb,var(--bg) 70%,transparent);backdrop-filter:blur(6px);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
 .compare .wm{position:absolute;right:12px;bottom:12px;font-size:var(--fs-xs);background:color-mix(in srgb,var(--bg) 70%,transparent);padding:2px 8px;border-radius:var(--r-sm)}
 .sbs{display:grid;grid-template-columns:1fr 1fr;gap:var(--gutter-media)}
 .sbs video{width:100%;border-radius:var(--r-md);background:#000}
@@ -3548,9 +3544,6 @@ html body .gen-row .helper.gb-demo{white-space:normal;overflow:visible;text-over
 .rv-ph .rv-ph-seg button{pointer-events:none;opacity:.55}
 .rv-ph .rv-ph-note{margin-top:10px}
 .lineage-ph .ln-row{min-height:95px}
-/* The slider handle moves by transform (the auto-sweep no longer counts as layout shift). */
-.compare .handle-track{position:absolute;inset:0;pointer-events:none}
-.compare .handle-track .handle{pointer-events:auto}
 /* Generate Video: Model button grows a third row for the via line. */
 .vs-model:has(.vs-via){height:auto;min-height:48px;grid-template-rows:16px 20px 15px}
 .vs-model .vs-via{grid-column:1;font:500 11px/15px Inter,system-ui,sans-serif;color:var(--vs-g);opacity:1}

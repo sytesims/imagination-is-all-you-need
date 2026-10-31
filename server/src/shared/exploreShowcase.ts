@@ -267,19 +267,20 @@ export const EXPLORE_HEADLINE = 'Bring your ideas to life';
 
 // ---------------------------------------------------------------- Chapter 1: swap a character (two models, one dance, on Comfy Cloud)
 /** Chapter 1 (2026-10-28, the user's pick "C · Dance-off"; before it: one H3 run in a clip → result wipe): the same pink-stage dance swapped twice,
- *  side by side in step, the original small between them. H3 Character Swap (featured 'h3-char-swap', job 1f0cf6a2): the girl, from one photo.
+ *  side by side in step, each a before / after slider over the original. H3 Character Swap (featured 'h3-char-swap', job 1f0cf6a2): the girl, from one photo.
  *  Kling 3.0 Omni Edit (featured 'kling-dance-swap', Motion Control, job dc114104): both dancers, from two photos (the same girl's photo as H3's,
- *  plus his). Both play their Topaz upscale (`sharp`); the two source clips are the same 8 s take frame for frame, so all three play in step.
+ *  plus his). Both play their Topaz upscale (`sharp`); the two source clips are the same 8 s take frame for frame, so all four clips play in step.
  *  Models, places and prices on screen come from the featured entries. */
-export interface SwapRun { key: string; who: string; photos: string; cta: { label: string; href: string } }
+export interface SwapRun { key: string; who: string; photos: string; cta: { label: string; href: string };
+  /** the original's poster at the same moment as this run's poster (default: the original's own), so the two sides match before the clips play and under reduced motion */ originalPoster?: string }
 /** Object Swap with H3 Character Swap picked */ const SWAP_H3_CTA = { label: 'Swap a character', href: `${videoWorkflowHref('object-swap')}&model=minimax-h3-character-swap` };
 export const EXPLORE_SWAP = {
   key: 'h3-char-swap', eyebrow: 'Chapter 1 · Swap a character', title: ['Same dance.', 'Two new casts.'],
   line: 'One clip went in. One model swapped her, the other swapped them both. Not a step out of time.',
-  /** the original: the clip both runs started from (H3's copy of it; Omni Edit's is the same take) */ original: { label: 'The original', url: P('h3-char-swap-in.mp4'), poster: P('h3-char-swap-in.webp') },
+  /** the original: the clip both runs started from (H3’s copy of it; Omni Edit’s is the same take), left of each slider’s line */ original: { label: 'Original', url: P('h3-char-swap-in.mp4'), poster: P('h3-char-swap-in.webp') },
   runs: [
     { key: 'h3-char-swap', who: 'She changes', photos: 'One photo', cta: SWAP_H3_CTA },
-    { key: 'kling-dance-swap', who: 'They both change', photos: 'Two photos', cta: { label: 'Swap the whole cast', href: `${videoWorkflowHref('motion-control')}&model=kling-v3-omni-edit` } },
+    { key: 'kling-dance-swap', who: 'They both change', photos: 'Two photos', originalPoster: P('h3-char-swap-in-5s.webp'), cta: { label: 'Swap the whole cast', href: `${videoWorkflowHref('motion-control')}&model=kling-v3-omni-edit` } },
   ] as SwapRun[],
   cta: SWAP_H3_CTA,
 };
