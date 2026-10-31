@@ -1010,7 +1010,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
         base={params()} prompt={p.prompt} ready={p.ready && !!p.prompt.trim()} notReady={p.prompt.trim() ? missingText(p.missing) || 'Not ready yet' : 'Write a prompt in the bar first'} run={async extra => p.onGenerate({ ...extra, ...lookField() })} />}
       {sideBy && sideJobs.length > 0 && <CompareView jobs={sideJobs} onClose={() => setSideBy(null)} onOpen={id => { setSideBy(null); open(id); }} />}
       {refTab && <ImagePicker tab={refTab} setTab={setRefTab} onClose={() => setRefTab(null)} target={pickFor && recipe ? slotLabel(recipe, pickFor) : null}
-        limits={pickFor && recipe ? undefined : maxRefs > 0 ? `Up to ${maxRefs} photo${maxRefs > 1 ? 's' : ''} · PNG, JPG or WebP` : undefined}
+        limits={pickFor && recipe ? undefined : maxRefs > 0 ? `Up to ${maxRefs} picture${maxRefs > 1 ? 's' : ''} · PNG, JPG or WebP` : undefined}
         onFile={f => usePicked(f)} onFiles={fs => deliverFiles(file.current, fs)} onUpload={() => file.current?.click()} />}
       {exShown && <ExampleViewer ex={exShown} onClose={closeExample} onUse={useExample} onUsePhoto={exUsePhoto} />}
       <select id="provider" className="sr-only-vis" value={p.provider} onChange={e => p.setProvider(e.target.value)} aria-label="Model">{p.providers.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
