@@ -482,6 +482,13 @@ COMFY_TEMPLATE_PRICES.push(
     get usdByQuality() { return f3mPromo() ? { '720p': 0.0303875 } : { '720p': 0.12155 }; }, sourceUrl: CR, checkedAt: '2026-10-27' as HostedPrice['checkedAt'], estimated: false,
     note: 'Comfy Router pricing, fal rates per second: fal/flux-3-max $0.0303875 per s until November 7, 2026, then $0.12155. Router publishes one rate, so this place takes 720p text to video only; 1080p runs on the partner node.' } as HostedPrice,
 );
+// Kling 4.0 (2026-10-31, comfy/kling4Cloud.ts): the Kling4 partner nodes' price badge (ComfyUI PR #17364): USD per second of the clip,
+// 0.22451 at 720p and 0.33605 at 1080p, the same for text, frames and reference images. Not on the partner-node pricing page yet.
+COMFY_TEMPLATE_PRICES.push(
+  { providerId: 'cloud-kling4', model: 'Kling 4.0 (Kling4 partner nodes) on Comfy Cloud', unit: 'second', usd: 0.33605, usdByQuality: { '720p': 0.22451, '1080p': 0.33605 },
+    sourceUrl: 'https://github.com/Comfy-Org/ComfyUI/pull/17364', checkedAt: '2026-10-31' as HostedPrice['checkedAt'], estimated: false,
+    note: 'Kling 4.0 partner nodes (Text / Image / Reference to Video), price badge: $0.22451 per s at 720p and $0.33605 at 1080p (47.37 / 70.91 credits). Stereo sound is always included. Reference videos (a price range) are not wired.' } as HostedPrice,
+);
 // One key runs everything (2026-10-27): the photo and clip tools that ran on fal only, on Comfy Router (pricing page, USD columns; routing/routerModels.ts).
 COMFY_TEMPLATE_PRICES.push(
   { providerId: 'comfy-router:fal-bria-rmbg', model: 'Bria Remove Background (bria/image-edit-remove-background) on Comfy Router', unit: 'image', usd: 0.018, sourceUrl: CR, checkedAt: '2026-10-27', estimated: false, note: 'Comfy Router: $0.018 (3.798 credits) per image.' },
