@@ -127,8 +127,8 @@ RR.setRouterFetch(routerFake, async () => {});
   const input: any = { types: ['h3-orbit'], mode: 'camera', intensity: 'aggressive', duration: 5, prompt: 'Keep the statue still.', imagePath: at('portrait.png') };
   const job: any = { id: 'job_cam1', toolId: 'camera', provider: 'comfy-h3-camera', input, status: 'running', outputs: [] };
   const { body } = await routeRequest(job, r, 0) as any; const text = body.content[0].text as string;
-  assert.match(text, /^Camera move: fast, aggressive orbit around the subject\. Keep the statue still\./); assert.ok(!/camera motion,/.test(text), 'no LoRA trigger'); assert.equal(body.content[1].role, 'first_frame');
-  const slow = (await routeRequest({ ...job, input: { ...input, types: ['h3-push-in'], intensity: 'slow' } }, r, 0) as any).body.content[0].text; assert.match(slow, /^Camera move: slow, smooth push-in toward the subject/);
+  assert.equal(text, 'The camera arcs with large amplitude at fast speed around the subject. Keep the statue still. Start exactly on the first frame and keep its subject, setting and look; only the camera moves. One continuous shot, no cuts.', 'base H3 camera grammar: type + amplitude + speed + target'); assert.ok(!/camera motion,/.test(text), 'no LoRA trigger'); assert.equal(body.content[1].role, 'first_frame');
+  const slow = (await routeRequest({ ...job, input: { ...input, types: ['h3-push-in'], intensity: 'slow' } }, r, 0) as any).body.content[0].text; assert.match(slow, /^The camera pushes in with small amplitude at slow speed toward the subject\. /);
   assert.equal(routeCredits(tool, r, input), 65);
   // W4 (2026-10-28): a 3 s move is not refused: made and billed as 4 s (MiniMax H3's shortest on Router), with a note; 5 s needs no note
   const three = { ...input, duration: 3 }; assert.equal(r.unavailableFor!(three), null); assert.equal((await routeRequest({ ...job, input: three }, r, 0) as any).body.duration, 4);
@@ -136,7 +136,7 @@ RR.setRouterFetch(routerFake, async () => {});
   const { adjustNotesById } = await import('../src/routing/select.js'); assert.match(adjustNotesById(tool, r.routeId, three)[0] ?? '', /3 s camera move is made \(and charged\) as 4 s/); assert.deepEqual(adjustNotesById(tool, r.routeId, input), []);
   assert.equal((resolveRoute(tool, 'comfy-h3-camera', three) as any).first?.routeId, r.routeId, '3 s runs on Router');
   const pl = resolveRoute(tool, 'comfy-h3-camera', input) as any; assert.equal(pl.first?.routeId, r.routeId, pl.error);
-  ok('Camera Moves: H3 Camera Motion on Router, move in words (Slow / Aggressive adverbs, no LoRA trigger), 65 credits for 5 s, Auto picks it; 3 s → made as 4 s with a note');
+  ok('Camera Moves: H3 Camera Motion on Router, move in base H3 camera grammar (Slow = small / slow, Aggressive = large / fast, no LoRA trigger), 65 credits for 5 s, Auto picks it; 3 s → made as 4 s with a note');
 }
 
 // ---------------- 5. CrossView without a deployment ----------------

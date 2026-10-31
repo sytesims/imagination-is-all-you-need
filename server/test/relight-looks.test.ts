@@ -18,7 +18,17 @@ const FAMILY_PROVIDER = { qwen: 'comfy-qwen21-turbo', sentence: 'api-gpt-image',
   for (const p of ['api-gpt-image', 'api-gpt-image-25-flare', 'api-nano-banana', 'api-nano-banana-pro', 'api-nano-banana-21']) assert.equal(relightFamilyOf(p), 'sentence', p);
   for (const p of ['comfy-klein4b', 'comfy-flux3-klein', 'api-flux2', 'api-seedream', 'api-qwen-image']) assert.equal(relightFamilyOf(p), 'flux', p);
   assert.equal(relightFamilyOf(undefined), 'flux');
+  assert.equal(relightFamilyOf('direct-gemini-nb2-lite'), 'sentence', 'Nano Banana 2 Lite is Nano Banana too');
   ok('model families: qwen / sentence (GPT Image, Nano Banana) / flux (the rest)');
+}
+// ---- keep sentence position (shared/promptPatterns.ts relight): Nano Banana first (Comfy's NB2 relight template), GPT Image last ----
+{
+  const { relightKeepFirst } = await import('../src/tools/apps.ts');
+  const v = { look: 'golden-hour', direction: 'left', lightQuality: 'soft', brightness: '60', color: '#FFFFFF', lightX: '', lightY: '' };
+  for (const p of ['api-nano-banana', 'api-nano-banana-pro', 'api-nano-banana-21', 'direct-gemini-nb2-lite']) { assert.ok(relightKeepFirst(p), p); const s = relightPrompt(v, '', p);
+    assert.ok(s.startsWith(`${RELIGHT_SENTENCE_KEEP} Relight this photo with `), `${p}: ${s}`); assert.equal(s.split(RELIGHT_SENTENCE_KEEP).length, 2, 'once'); }
+  for (const p of ['api-gpt-image', 'api-gpt-image-15']) { assert.ok(!relightKeepFirst(p), p); assert.ok(relightPrompt(v, '', p).endsWith(RELIGHT_SENTENCE_KEEP), p); }
+  ok('keep sentence: first on Nano Banana, last on GPT Image');
 }
 
 // ---- Custom = the pre-look prompt exactly (the old compose, re-implemented here as the reference) ----
