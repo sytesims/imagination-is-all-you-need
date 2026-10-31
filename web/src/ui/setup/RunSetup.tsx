@@ -19,13 +19,19 @@ import { repoDoc } from '../../shared/brand';
 import { getHardware, type Hardware } from '../../shared/hardware';
 import { RUN_CHOICES, RUN_SETUP_TITLE, RUN_SETUP_TAGLINE, RUN_SETUP_QUESTION, RUN_SETUP_NOTE, RUN_SETUP_GO, RUN_SETUP_SKIP, isRunChoice, choicesForSetup, choiceStatus, STATUS_TAG, DIRECT_KEYS, type RunChoice, type SetupFacts } from '../../shared/runChoices';
 import { OrbitIntro } from '../../shared/OrbitIntro';
-import { MakerTile } from '../../shared/MakerTile';
 import { Waveform, fallbackPeaks } from '../../shared/Waveform';
-import { LaptopIcon, KeyIcon } from '../Icons';
+import { ChoiceVisual } from './WelcomeParts';
+import { WelcomeSteps } from './WelcomeSteps';
+import { WelcomeList } from './WelcomeList';
 import { SHOWCASE_HERO, SHOWCASE_GALLERY, showcaseById } from '../../../../server/src/shared/showcase';
 import { THREE_D_SHOWCASE } from '../../../../server/src/shared/threeD';
 
-const OPEN_EVT = 'ohf:run-setup'; const SEEN = 'ohf:setup:seen';
+const OPEN_EVT = 'ohf:run-setup';
+/** Review switch for the calm Welcome: ?welcome=a (steps) or ?welcome=b (one panel), kept for this tab. Without it, the sheet below is unchanged. */
+type Variant = 'a' | 'b' | null;
+const welcomeVariant = (): Variant => { try { const q = new URLSearchParams(location.search).get('welcome'); if (q === 'a' || q === 'b') { sessionStorage.setItem('ohf:welcome', q); return q; }
+  const s = sessionStorage.getItem('ohf:welcome'); return s === 'a' || s === 'b' ? s : null; } catch { return null; } };
+const SEEN = 'ohf:setup:seen';
 export const openRunSetup = () => { try { dispatchEvent(new Event(OPEN_EVT)); } catch { /* ignore */ } };
 const seen = () => { try { return localStorage.getItem(SEEN) === '1'; } catch { return false; } };
 const markSeen = () => { try { localStorage.setItem(SEEN, '1'); } catch { /* private mode */ } };
@@ -39,12 +45,6 @@ const TILES: Tile[] = [
   ...heroThumbs.slice(2).map(t => ({ kind: 'img' as const, src: t.src })), ...moreThumbs.slice(0, 2).map(src => ({ kind: 'img' as const, src })),
   { kind: '3d', src: THREE_D_SHOWCASE[5].preview }, ...moreThumbs.slice(2).map(src => ({ kind: 'img' as const, src })), { kind: 'wave' }];
 const WAVE = fallbackPeaks(28);
-/** The card's small picture: three sample thumbnails, a laptop, the Comfy maker tile, a key. */
-function Visual({ id }: { id: Choice }) {
-  if (id === 'comfy') return <span className="rs-vis"><MakerTile maker="comfy" title={false} /></span>;
-  const G = id === 'gpu' ? LaptopIcon : KeyIcon;
-  return <span className="rs-vis"><span className="rs-glyph"><G size={18} /></span></span>;
-}
 /** Slow-drifting, blurred strip behind the cards. Paused under reduced motion (CSS) and while the tab is hidden. */
 function Drift() {
   const [hidden, setHidden] = useState(() => typeof document !== 'undefined' && document.hidden);
@@ -56,13 +56,14 @@ function Drift() {
 
 /** Mounted once (App): opens itself on a first visit, with ?setup=1 (the link `npm run setup` prints), or when openRunSetup() is called. */
 export function RunSetupHost() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(false); const [variant] = useState(welcomeVariant);
   useEffect(() => { const f = () => setOpen(true); addEventListener(OPEN_EVT, f); return () => removeEventListener(OPEN_EVT, f); }, []);
-  useEffect(() => { try { if (new URLSearchParams(location.search).get('setup')) { setOpen(true); return; } } catch { /* */ } // npm run setup prints …/?setup=1
+  useEffect(() => { try { const q = new URLSearchParams(location.search); if (q.get('setup') || q.get('welcome')) { setOpen(true); return; } } catch { /* */ } // npm run setup prints …/?setup=1
     if (seen() || /^\/(share|jobs)\//.test(location.pathname)) return; let live = true;
     fetch('/api/setup').then(r => r.ok ? r.json() : null).then(s => { if (!live || !s) return; if (s.done) { markSeen(); return; } if (s.suggest) setOpen(true); }).catch(() => 0);
     return () => { live = false; }; }, []);
-  return open ? <RunSetup onClose={() => setOpen(false)} /> : null;
+  if (!open) return null; const close = () => setOpen(false);
+  return variant === 'a' ? <WelcomeSteps onClose={close} /> : variant === 'b' ? <WelcomeList onClose={close} /> : <RunSetup onClose={close} />;
 }
 
 function RunSetup({ onClose }: { onClose: () => void }) {
@@ -133,7 +134,7 @@ function RunSetup({ onClose }: { onClose: () => void }) {
       <div className="rs-q"><h3 id="rs-q">{RUN_SETUP_QUESTION}</h3><p id="rs-sub" className="rs-sub">{RUN_SETUP_NOTE}</p></div>
       <div className="rs-opts" role="group" aria-labelledby="rs-q">{RUN_CHOICES.map((o, i) => { const on = pick.has(o.id);
         return <button key={o.id} type="button" className={`rs-oc${on ? ' on' : ''}`} aria-pressed={on} data-testid={`setup-opt-${o.id}`} data-autofocus={i === 0 ? true : undefined} onClick={() => toggle(o.id)}>
-          <span className="rs-top"><Visual id={o.id} /></span><span className="rs-choice-copy"><b>{o.id === 'gpu' ? 'Run models on your computer' : o.title}</b><small>{o.id === 'gpu' ? 'Use local models through ComfyUI. Connect your existing installation or see how to set one up.' : o.id === 'comfy' ? 'Run models without a local GPU. One key, billed to your Comfy account.' : 'Connect supported providers with keys from your own accounts.'}</small></span>{(() => { const st = facts && choiceStatus(o.id, facts);
+          <span className="rs-top"><ChoiceVisual id={o.id} /></span><span className="rs-choice-copy"><b>{o.id === 'gpu' ? 'Run models on your computer' : o.title}</b><small>{o.id === 'gpu' ? 'Use local models through ComfyUI. Connect your existing installation or see how to set one up.' : o.id === 'comfy' ? 'Run models without a local GPU. One key, billed to your Comfy account.' : 'Connect supported providers with keys from your own accounts.'}</small></span>{(() => { const st = facts && choiceStatus(o.id, facts);
             return <span className={`rs-tag${st ? ' has-status' : ''}`}>{st ? <span className={`rs-rec rs-st-${st}`} data-testid={`setup-status-${o.id}`} data-status={st}>{STATUS_TAG[st]}</span> : on ? 'Selected' : 'Choose'}</span>; })()}</button>; })}</div>
       <div ref={details} className="rs-details" data-testid="setup-details">{!pick.size && <p className="helper rs-empty">Pick one or more ways above to see what each needs.</p>}
       {pick.has('gpu') && <div className="rs-more" style={{ overflowWrap: 'anywhere' }} data-testid="setup-gpu">{gpu.busy ? <p className="helper">Looking for ComfyUI…</p> : gpu.ok ? <><p className="helper rs-ok" role="status">{gpu.t}</p>{hw && <MachineLine hw={hw} />}</>
