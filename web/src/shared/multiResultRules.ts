@@ -6,7 +6,7 @@
  */
 import { isLayerJob } from '../../../server/src/shared/imageLayers';
 
-export type MultiKind = 'angles' | 'batch' | 'layers' | 'sheet' | 'takes';
+export type MultiKind = 'angles' | 'ads' | 'batch' | 'layers' | 'sheet' | 'takes';
 export interface Presentation {
   kind: MultiKind;
   /** the badge's noun: "9 angles", "4 images", "6 layers" */ noun: [string, string];
@@ -23,6 +23,8 @@ const base: Omit<Presentation, 'kind' | 'noun'> = { fit: 'cover', card: 'mosaic'
 export const PRESENTATIONS: Record<MultiKind, Presentation> = {
   /* nine views of one subject: a 3×3 contact sheet in angle order is the natural "sheet"; compare each angle with the photo it came from */
   angles: { ...base, kind: 'angles', noun: ['angle', 'angles'], compare: true },
+  /* Ad Pack: one finished ad per style, named by its style; a new picture, so no compare with the product photo */
+  ads: { ...base, kind: 'ads', noun: ['ad', 'ads'] },
   /* variants of one prompt: no names worth showing; compare only for an edit of your photo (compareSourceOf decides) */
   batch: { ...base, kind: 'batch', noun: ['image', 'images'], labels: false },
   /* transparent PNGs the size of the picture: shown whole on a checkerboard; the card is the composite (a mosaic of cut-outs reads as noise);
@@ -40,6 +42,7 @@ export const isActiveJob = (j: JobLike) => j.status === 'queued' || j.status ===
 
 export function kindOf(j: JobLike): MultiKind {
   if (isLayerJob(j as any) || j.toolId === 'app-image-layers') return 'layers';
+  if (j.toolId === 'app-ad-pack') return 'ads';
   if (j.toolId === 'app-shots' || (Array.isArray(j.input?.shots) && j.input.shots.length)) return 'angles';
   if (j.toolId === 'app-character-sheet') return 'sheet';
   if ((j.outputs ?? []).some((o) => VIDEO.test(String(o?.url ?? '')))) return 'takes';

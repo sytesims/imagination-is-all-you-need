@@ -8,11 +8,14 @@ import { parseLightRig, rigPhrases, rigJson, spherePresetOf, type LightRig } fro
 import { PRODUCT_SCENES, PRODUCT_KEEP, TRANSITION_TYPES, UGC_PRESENTERS, UGC_HOOKS, UGC_SETTINGS, UGC_FRAMINGS, ORBIT_TYPES, ORBIT_BACKDROPS, RELIGHT_DIRECTIONS, RELIGHT_QUALITY, RELIGHT_COLOUR_PRESETS, RELIGHT_LOOKS, relightLookOf, brightnessWord, colourName, padPhrase, LANGUAGE_NATIVE, CHARACTER_LAYOUTS, CHARACTER_LAYOUT_DEFAULT, type CharacterLayout, type AppField, type AppOption } from './appRows.js';
 import { TRANSLATE_LANGS } from '../comfy/plans.js';
 import { SHOT_ANGLES, parseShots, shotPrompt, FACE_SWAP_PROMPT, FACE_SWAP_KEEP, PERSON_SWAP_PROMPT, PERSON_SWAP_KEEP, type ShotAngle } from './shots.js';
-import { GENERATE_MODELS, EDIT_MODELS, TWO_IMAGE_MODELS, MATERIAL_SWAP_MODELS, MASK_MODELS, REMOVE_BG_MODELS, EXPAND_MODELS, ERASE_MODELS, TRYON_MODELS, featureById, gridModelOf } from '../shared/imageFeatures.js';
+import { GENERATE_MODELS, EDIT_MODELS, TWO_IMAGE_MODELS, MATERIAL_SWAP_MODELS, AD_PACK_MODELS, MASK_MODELS, REMOVE_BG_MODELS, EXPAND_MODELS, ERASE_MODELS, TRYON_MODELS, featureById, gridModelOf } from '../shared/imageFeatures.js';
 import { promptGrammarOf } from '../shared/promptGrammar.js';
 import { fillPattern, patternFor } from '../shared/promptPatterns.js';
 import { EXPAND_ASPECTS, EXPAND_ASPECT_LABELS, TRYON_CATEGORIES, TRYON_PHOTO_TYPES, expandBlock, expandCanvas, photoBlock, eraseMaskBlock } from '../shared/imagePhotoTools.js';
 import { maskCover } from './imageFalApps.js';
+import { AD_STYLES, AD_STYLE_DEFAULT, AD_STYLE_IDS, AD_PLACEMENTS, AD_PLACEMENT_DEFAULT, AD_CORNERS, AD_TEXT_MAX, AD_ASPECT, adPrompt, placementOf } from '../shared/adPack.js';
+import { logoFor, type BrandKit } from '../shared/brandKit.js';
+import { getBrandKit } from '../brandKits.js';
 import { LAYER_MODELS, LAYER_SIZES, LAYER_SIZE_DEFAULT, LAYERS_NO_PROMPT, layersPhotoBlock, layerLabel } from '../shared/imageLayers.js';
 import { mockLayerNames, mockLayerCount } from './mockLayers.js';
 import { checkImageCaps, capsFor, ratioOf } from '../shared/imageCaps.js';
@@ -532,6 +535,8 @@ for (const p of (upscaleApp.app?.scenes ?? []) as Preset[]) p.posterUrl ??= `/sa
 
 // ---- Apps gallery: one-purpose preset tools declared as data (per spec). ----
 // Each entry = base tool + locked params + exposed fields; registered as its own runnable tool `app-<id>` and listed at GET /api/apps.
+/** One option of a one-output-per-pick app (Shots angles, Ad Pack styles). */
+export type PerOutputOption = AppOption & { description?: string; prompt?: string; mockVf?: string };
 export interface GalleryApp {
   id: string; name: string; description: string; category: string; poster: string | null;
   base: string; locked: Record<string, string>; exposed: string[];
@@ -553,11 +558,13 @@ export interface GalleryApp {
   /** App-only fields (tiles, sliders, colour). Stored on job.input under the same names (Recreate restores them); composed into the prompt server side. */
   fields?: AppField[];
   /** Builds the prompt from the user's text + the app fields. */
-  compose?: (v: Record<string, string>, ctx: { prompt: string; has: (file: string) => boolean; /** the picked engine (provider id), when the request names one */ provider?: string;
+  compose?: (v: Record<string, string>, ctx: { prompt: string; has: (file: string) => boolean; /** the picked engine (provider id), when the request names one */ provider?: string; /** apps with `brand`: the kit in use */ brandKit?: BrandKit | null;
     /** that engine's prompt cap (shared/promptGrammar.ts limits.maxChars), so a recipe can pick its short wording; the route check still refuses what doesn't fit */ maxChars?: number }) => string;
   /** Locks that follow the app fields and the engine (2026-10-25, Character Sheet: each layout's own aspect, snapped to the model). Applied
    *  after `locked` on submit and on the quote (appQuoteParams), so the price and the run use the same shape. */
   lockedFor?: (v: Record<string, string>, ctx: { provider?: string; mode: string }) => Record<string, string>;
+  /** The field lockedFor reads (default: the app's tiles field), so every value it can give is allowed (Ad Pack: placement). */
+  lockedField?: string;
   /** App-only file inputs (Orbit Shot `image` = subject photo; UGC Ad `presenterImage`). */
   extraInputs?: Record<string, any>[];
   /** File fields that must be present (400 `required` otherwise). Arrays = any one of them. */
@@ -580,7 +587,11 @@ export interface GalleryApp {
   route?: string;
   /** One output per picked option, each with its own prompt (Shots: camera angles). The job runs n = picked options; price = n × the one-output
    *  price (routing/select.ts routeCredits caps n at `max`, not Create Image's 4). Field value: JSON array or comma list; blank = every option. */
-  perOutput?: { field: string; label: string; options: ShotAngle[]; max: number; parse: (raw: unknown) => { ids: string[] } | { error: string; code: string }; prompt: (o: ShotAngle, userPrompt: string) => string };
+  perOutput?: { field: string; label: string; options: PerOutputOption[]; max: number; parse: (raw: unknown) => { ids: string[] } | { error: string; code: string };
+    /** Ad Pack: the options picked when nothing is sent (else every option) */ defaults?: string[];
+    prompt: (o: PerOutputOption, userPrompt: string, ctx: { vals: Record<string, string>; provider?: string; has: (file: string) => boolean; brandKit: BrandKit | null }) => string };
+  /** The app words the brand itself (Ad Pack): Brand's kit reaches compose / perOutput as ctx.brandKit and the job as brandKitId; no phrase is added to the prompt. */
+  brand?: boolean;
   /** After the base tool parsed the job (files saved, sizes readable): a check that needs the files (Expand: the photo's shape vs the target), or
    *  extra keys for the run. `{ error }` = 400 with that field and code, nothing charged. Runs on submit only (a quote has no files). */
   prepare?: (r: Record<string, any>, vals: Record<string, string>) => Promise<{ error: { field: string; message: string; code: string } } | Record<string, any>>;
@@ -693,6 +704,15 @@ export const providerPromptCap = (provider?: string): number | undefined => { if
   return (promptGrammarOf(provider) ?? promptGrammarOf(gridModelOf(provider)))?.limits?.maxChars ?? undefined; };
 /** A layout's frame on this model (2026-10-25): its own shape when the model takes it, else the nearest one it takes (21:9 → 16:9). Edits on a
  *  model that keeps the photo's shape stay on the recipe's locked 4:3 (the bar fits the photo to it first, shared/workflows.ts photoFitOf): null. */
+/** Ad Pack styles: a JSON list or comma list of style ids; blank = the three default styles (adPack.ts AD_STYLE_DEFAULT). */
+export function parseAdStyles(raw: unknown): { ids: string[] } | { error: string; code: string } {
+  const t = String(raw ?? '').trim(); if (!t) return { ids: [...AD_STYLE_DEFAULT] };
+  let xs: unknown; try { xs = JSON.parse(t); } catch { xs = t.split(','); }
+  const ids = [...new Set((Array.isArray(xs) ? xs : [xs]).map((x) => String(x).trim()).filter(Boolean))];
+  if (!ids.length) return { error: 'Pick at least one style.', code: 'required' };
+  if (ids.some((x) => !AD_STYLE_IDS.includes(x))) return { error: `That style isn't on the list. Pick from: ${AD_STYLES.map((a) => a.label).join(', ')}.`, code: 'invalid' };
+  return { ids: AD_STYLE_IDS.filter((x) => ids.includes(x)) };
+}
 export function sheetAspect(want: string, provider: string | undefined, mode: string): string | null {
   const c = provider ? capsFor(provider) : null; if (!c) return want;
   if (mode === 'edit' && c.edit && !c.edit.aspects.length) return null;
@@ -806,7 +826,7 @@ export const APP_GALLERY: GalleryApp[] = [
   { id: 'shots', name: 'Camera Angles', route: '/tools/camera-angles', category: 'Image', base: 'create-image', poster: null, description: 'One photo becomes up to nine camera angles of the same subject: front, three-quarter, side, back, low, high, close-up and wide.',
     locked: { types: '["edit"]' }, providers: featureById('camera-angles')!.providers.filter((p) => p !== 'comfy-qwen-angles'), extraProviders: ['comfy-qwen-angles'],
     exposed: ['image', 'prompt', 'provider', 'rights', 'seed'], labels: { image: 'Photo', prompt: 'Subject (optional)' }, required: ['image'],
-    perOutput: { field: 'shots', label: 'Angles', options: SHOT_ANGLES, max: SHOT_ANGLES.length, parse: parseShots, prompt: shotPrompt },
+    perOutput: { field: 'shots', label: 'Angles', options: SHOT_ANGLES, max: SHOT_ANGLES.length, parse: parseShots, prompt: (o, u) => shotPrompt(o as ShotAngle, u) },
     compose: (_v, c) => shotPrompt(SHOT_ANGLES[0], c.prompt),
     extra: { promptOptional: true },
     notes: ['Each angle is its own image, priced like one image. Views the photo never showed (the back, the far side) are the model\'s best guess.'] },
@@ -836,6 +856,29 @@ export const APP_GALLERY: GalleryApp[] = [
     extra: { promptOptional: true, outputLabel: 'Material swap' },
     finish: (r) => ({ outputLabel: 'Material swap', ...(r.refPaths?.[1] ? { insetPath: r.refPaths[1] } : {}) }),
     notes: ['Works best with one clear object in picture 1 and a close, evenly lit material in picture 2 (a swatch or a flat surface).'] },
+  // Ad Pack (2026-10-31, shared/adPack.ts): 1–3 product photos + headline / offer + Brand → one finished ad per picked style (the Shots
+  // one-output-per-pick run: n images, n × the one-image price), in the picked platform size. The model paints the words; the kit's logo is
+  // added by our code after the run (adPackLogo.ts, providers.runWithProvider), so the prompt only keeps its corner empty.
+  { id: 'ad-pack', name: 'Ad Pack', route: `${IMAGE_PAGE}?workflow=ad-pack`, category: 'Image', base: 'create-image', poster: null, brand: true,
+    description: 'A product photo and your offer: finished ads in several styles, sized for the platform, with your logo added.',
+    locked: { types: '["edit"]' }, providers: AD_PACK_MODELS, exposed: ['image', 'product2', 'product3', 'prompt', 'provider', 'rights', 'seed', 'headline', 'offer', 'placement', 'logoCorner'],
+    labels: { image: 'Product photo', prompt: 'About the product (optional)' }, required: ['image'],
+    extraInputs: [{ name: 'product2', kind: 'file', accept: 'image/png,image/jpeg,image/webp', label: 'Another side (optional)' }, { name: 'product3', kind: 'file', accept: 'image/png,image/jpeg,image/webp', label: 'Another side (optional)' }],
+    fields: [{ name: 'headline', label: 'Headline', kind: 'text', optional: true, maxLength: AD_TEXT_MAX, placeholder: 'Optional, e.g. Run lighter' },
+      { name: 'offer', label: 'Offer', kind: 'text', optional: true, maxLength: AD_TEXT_MAX, placeholder: 'e.g. 20% off this weekend' },
+      { name: 'placement', label: 'Platform', kind: 'select', control: 'segmented', options: AD_PLACEMENTS.map((p) => ({ value: p.value, label: p.label })), default: AD_PLACEMENT_DEFAULT },
+      { name: 'logoCorner', label: 'Logo corner', kind: 'select', control: 'segmented', options: AD_CORNERS.map((c) => ({ ...c })), default: 'tl' }],
+    // image 1 = the main product photo, images 2–3 = other sides of it
+    fileMap: (f) => { const { product2, product3, ...rest } = f; return { ...rest, refs: [...(product2 ?? []), ...(product3 ?? [])].slice(0, 2) }; },
+    // the platform's shape, snapped to what the model makes (null = this edit route keeps the photo's shape; the logo still follows the result's size)
+    lockedFor: (v, c) => { const a = sheetAspect(AD_ASPECT[placementOf(v.placement).shape], c.provider, c.mode); return a ? { aspect: a } : {} as Record<string, string>; }, lockedField: 'placement',
+    perOutput: { field: 'shots', label: 'Styles', options: AD_STYLES.map(({ value, label, description }) => ({ value, label, description })), max: AD_STYLES.length, defaults: AD_STYLE_DEFAULT,
+      parse: parseAdStyles, prompt: (o, u, c) => adPrompt({ style: o.value, provider: c.provider, headline: c.vals.headline, offer: c.vals.offer, details: u, placement: c.vals.placement, corner: c.vals.logoCorner,
+        extraPhotos: Number(c.has('product2')) + Number(c.has('product3')), kit: c.brandKit, logo: !!(c.brandKit && logoFor(c.brandKit, 'main')) }) },
+    compose: (v, c) => adPrompt({ style: AD_STYLE_DEFAULT[0], provider: c.provider, headline: v.headline, offer: v.offer, details: c.prompt, placement: v.placement, corner: v.logoCorner, kit: c.brandKit, logo: !!(c.brandKit && logoFor(c.brandKit, 'main')) }),
+    extra: { promptOptional: true, outputLabel: 'Ad' },
+    finish: (r) => ({ outputLabel: 'Ad', ...(r.brandKitId ? { adLogo: { kit: r.brandKitId, corner: r.appFields?.logoCorner || 'tl', placement: r.appFields?.placement || AD_PLACEMENT_DEFAULT } } : {}) }),
+    notes: ['Short words come out cleanest: a headline and an offer of a few words each. Your logo is added after, never drawn by the model.'] },
   // ---- Photo tools (2026-10-23): fal-only models (tools/imageFalApps.ts), each in Create Image's bar. The prompt is ours (Expand also takes the user's
   // words for the new area); the models get only what their schema takes. Sizes and the mask are checked on submit (shared/imagePhotoTools.ts).
   { id: 'remove-bg', name: 'Remove Background', route: `${IMAGE_PAGE}?workflow=remove-bg`, category: 'Edit', base: 'create-image', poster: null,
@@ -942,10 +985,10 @@ export function appQuoteParams(t: ToolDef | undefined, q: Record<string, string>
   for (const [k, v] of Object.entries<string>(G.defaults ?? {})) if (k !== 'duration' && (out[k] == null || out[k] === '')) out[k] = v;
   Object.assign(out, G.locked ?? {});
   for (const [f, ty] of Object.entries<string>(G.modeWhenFile ?? {})) if (q[f]) out.types = ty;
-  const PO = G.perOutput as { field: string; max: number; options: { value: string }[] } | null; // Shots: n = the picked angles (blank = all), so quote = n × one image
+  const PO = G.perOutput as { field: string; max: number; options: { value: string }[]; defaults?: string[] } | null; // Shots: n = the picked angles (blank = all; Ad Pack: its default styles, as the submit), so quote = n × one image
   if (PO) { const raw = String(q[PO.field] ?? '').trim(); let ids: string[] = [];
     if (raw) { let xs: unknown; try { xs = JSON.parse(raw); } catch { xs = raw.split(','); } ids = [...new Set((Array.isArray(xs) ? xs : [xs]).map((x) => String(x).trim()))].filter((x) => PO.options.some((o) => o.value === x)); }
-    out.n = String(Math.min(PO.max, ids.length || (raw ? 0 : Number(q.n) > 0 ? Number(q.n) : PO.options.length)) || 1); }
+    out.n = String(Math.min(PO.max, ids.length || (raw ? 0 : Number(q.n) > 0 ? Number(q.n) : PO.defaults?.length || PO.options.length)) || 1); }
   const m = typesOf(out.types); const pm = G.providersByMode as Record<string, string[]> | undefined;
   if (m && pm?.[m] && !out.provider && !out.model) { const first = (t && appDefaultFor?.(t, m, pm[m])) || pm[m][0]; if (first) out.provider = first; }
   if (typeof G.lockedFor === 'function') { const vals = Object.fromEntries(((G.fields ?? []) as any[]).map((f) => [f.name, String(out[f.name] ?? '') || String(f.default ?? '')]));
@@ -1009,7 +1052,7 @@ export function makeGalleryApp(a: GalleryApp, base: ToolDef): ToolDef {
     }),
     ...(a.fields ?? []).map(appFieldInput),
     ...(a.perOutput ? [{ name: a.perOutput.field, label: a.perOutput.label, kind: 'list', appField: true, control: 'chips', options: a.perOutput.options.map((o) => o.value), max: a.perOutput.max,
-      default: JSON.stringify(a.perOutput.options.map((o) => o.value)), choices: a.perOutput.options.map(({ prompt: _p, mockVf: _m, ...o }) => o), required: false }] : []),
+      default: JSON.stringify(a.perOutput.defaults ?? a.perOutput.options.map((o) => o.value)), choices: a.perOutput.options.map(({ prompt: _p, mockVf: _m, ...o }) => o), required: false }] : []),
   ];
   if (a.durations) registerToolDurations(appId, a.durations, Number(a.defaults?.duration) || a.durations[0]);
   const pm = base.app?.providerModes as Record<string, string[]> | undefined;
@@ -1036,7 +1079,7 @@ export function makeGalleryApp(a: GalleryApp, base: ToolDef): ToolDef {
         defaults: a.defaults ?? {}, fields: (a.fields ?? []).map((f) => ({ ...f, options: f.options?.map(({ prompt: _p, ...o }) => (OPTION_MEDIA[a.id] === f.name ? wireOptionMedia(a.id, f.name, o) : o)) })), required: a.required ?? [], fileOrPrompt: a.fileOrPrompt ?? null, providersByMode,
         hideControls, modeRow: false, promptBox: shown.has('prompt'), promptFrames: a.compose || a.promptTemplate ? promptFrames(a) : [] /* 2026-10-25: the web keeps recipe text out of the subject box (shared/typedPrompt.ts) */,
         ...(a.previewBefore && a.previewAfter ? { preview: { before: a.previewBefore, after: a.previewAfter, beforeLabel: a.previewLabels?.[0] ?? 'Before', afterLabel: a.previewLabels?.[1] ?? 'After', model: a.previewModel ?? null } } : {}),
-        perOutput: a.perOutput ? { field: a.perOutput.field, label: a.perOutput.label, max: a.perOutput.max, options: a.perOutput.options.map(({ prompt: _p, mockVf: _m, ...o }) => o) } : null, lockedChips, ui: a.ui ?? base.ui ?? null, notes: a.notes ?? [], ...(a.durations ? { durations: a.durations, ...durs } : {}), ...(a.extra ?? {}) } },
+        perOutput: a.perOutput ? { field: a.perOutput.field, label: a.perOutput.label, max: a.perOutput.max, ...(a.perOutput.defaults ? { defaults: a.perOutput.defaults } : {}), options: a.perOutput.options.map(({ prompt: _p, mockVf: _m, ...o }) => o) } : null, lockedChips, ui: a.ui ?? base.ui ?? null, notes: a.notes ?? [], ...(a.durations ? { durations: a.durations, ...durs } : {}), ...(a.extra ?? {}) } },
     async parseInput(fields, files0) {
       const bad = (field: string, message: string, code = 'invalid') => ({ error: message, issues: [{ code, field, message }] }) as any;
       // 2026-10-25: a composed prompt sent back as the words (a box that got the recipe text, a caller sending the whole prompt) is peeled first, so it is never composed twice
@@ -1080,7 +1123,8 @@ export function makeGalleryApp(a: GalleryApp, base: ToolDef): ToolDef {
       let appSnap: string | null = null; // D5: an off-list length runs at the nearest one, with a note
       if (a.durations) { const rd = resolveDuration(appId, f.provider || providers[0], f.duration ?? f.seconds); if (rd && 'error' in rd) return { ...durationErrorBody(rd, f.duration != null && f.duration !== '' ? 'duration' : 'seconds') } as any;
         if (rd?.snapped) { f.duration = String(rd.seconds); delete f.seconds; appSnap = rd.snapped.note; } }
-      if (a.compose) { const pv = typeof f.provider === 'string' ? f.provider : undefined; f.prompt = a.compose(vals, { prompt: userPrompt, has: (n) => !!files0[n]?.length, provider: pv, maxChars: providerPromptCap(pv) }).replace(/\s+([:,.;])/g, '$1').trim(); }
+      const kit = a.brand && fields.brandKit ? getBrandKit(String(fields.brandKit)) ?? null : null; // Ad Pack: Brand's kit (index.ts already refused an unknown id)
+      if (a.compose) { const pv = typeof f.provider === 'string' ? f.provider : undefined; f.prompt = a.compose(vals, { prompt: userPrompt, has: (n) => !!files0[n]?.length, provider: pv, maxChars: providerPromptCap(pv), brandKit: kit }).replace(/\s+([:,.;])/g, '$1').trim(); }
       else if (a.promptTemplate) f.prompt = a.promptTemplate.replace('{prompt}', userPrompt).replace(/\s+([:,.])/g, '$1').trim();
       Object.assign(f, a.locked);
       for (const [field, types] of Object.entries(a.modeWhenFile ?? {})) if (files0[field]?.length) {
@@ -1097,16 +1141,16 @@ export function makeGalleryApp(a: GalleryApp, base: ToolDef): ToolDef {
       if (a.prepare) { const x = await a.prepare(r, vals); if (x && 'error' in x && x.error && typeof x.error === 'object') return bad(x.error.field, x.error.message, x.error.code); Object.assign(r, x); }
       const extraUrls: Record<string, string> = {};
       for (const x of a.extraInputs ?? []) { const up = files0[x.name]?.[0]; if (up) extraUrls[`${x.name}Url`] = `/files/${up}`; }
-      const per = a.perOutput && perIds ? (() => { const po = a.perOutput!; const shots = perIds.map((id) => { const o = po.options.find((x) => x.value === id)!; return { id, label: o.label, prompt: po.prompt(o, userPrompt) }; });
+      const per = a.perOutput && perIds ? (() => { const po = a.perOutput!; const shots = perIds.map((id) => { const o = po.options.find((x) => x.value === id)!; return { id, label: o.label, prompt: po.prompt(o, userPrompt, { vals, provider: f.provider || providers[0], has: (n) => !!files0[n]?.length, brandKit: kit }) }; });
         vals[po.field] = JSON.stringify(perIds); return { shots, n: shots.length, finalPrompt: shots[0].prompt }; })() : {};
-      const out = { ...r, ...Object.fromEntries(Object.entries(vals).filter(([k]) => r[k] == null || k === 'voice')), ...per /* the shots list wins over its raw field value */, ...extraUrls, ...imagePrepOf(fields, files0), appFields: vals, appPrompt: userPrompt, appId: a.id, baseTool: base.id };
+      const out = { ...r, ...Object.fromEntries(Object.entries(vals).filter(([k]) => r[k] == null || k === 'voice')), ...per /* the shots list wins over its raw field value */, ...extraUrls, ...imagePrepOf(fields, files0), ...(kit ? { brandKitId: kit.id } : {}), appFields: vals, appPrompt: userPrompt, appId: a.id, baseTool: base.id };
       return a.finish ? { ...out, ...a.finish(out) } : out;
     },
   } as ToolDef;
   // DP #21: an app that locks its base tool's style (Anime Restyle: preset anime-cel) names it, live (the preset's poster follows interim stills).
   if (a.lockedFor) { const G = (def.app as any).gallery; Object.defineProperty(G, 'lockedFor', { enumerable: false, value: a.lockedFor }); // the quote (appQuoteParams) applies it too; never on the wire
     // every value those locks can give, per field (shared/enumParams.ts allowlist: Character Sheet's aspect = its layouts' shapes on each model)
-    const tile = (a.fields ?? []).find((f) => f.control === 'tiles'); const combos = tile ? tile.options!.map((o) => ({ [tile.name]: o.value })) : [{}]; const vs: Record<string, Set<string>> = {};
+    const tile = (a.fields ?? []).find((f) => (a.lockedField ? f.name === a.lockedField : f.control === 'tiles')); const combos = tile ? tile.options!.map((o) => ({ [tile.name]: o.value })) : [{}]; const vs: Record<string, Set<string>> = {};
     for (const v of combos) for (const p of providers) for (const mode of ['', ...Object.values(a.modeWhenFile ?? {}).map((t) => typesOf(t) ?? ''), typesOf(a.locked.types) ?? '']) for (const [k, x] of Object.entries(a.lockedFor(v, { provider: p, mode }))) (vs[k] ??= new Set(a.locked[k] ? [a.locked[k]] : [])).add(x);
     G.lockedValues = Object.fromEntries(Object.entries(vs).map(([k, s]) => [k, [...s]])); }
   const lockedPreset = typeof a.locked?.preset === 'string' ? a.locked.preset : null;

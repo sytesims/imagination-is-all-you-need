@@ -52,11 +52,11 @@ export const isUserLookId = (id: string) => /^my-[a-z0-9]{8}$/.test(id);
 export const INTENTS = [{ id: 'make', label: 'Make from text' }, { id: 'change', label: 'Change a photo' }, { id: 'people', label: 'People' }, { id: 'products', label: 'Products' }, { id: 'fix', label: 'Fix and finish' }] as const;
 export const WORKFLOW_INTENTS: Record<string, string[]> = {
   'create-image': ['make'], 'camera-lens': ['make'], 'character-sheet': ['make', 'people'], 'product-shot': ['make', 'products'],
-  relight: ['change'], 'face-swap': ['change', 'people'], 'person-swap': ['change', 'people'], 'try-on': ['change', 'people', 'products'], 'material-swap': ['change', 'products'],
+  relight: ['change'], 'face-swap': ['change', 'people'], 'person-swap': ['change', 'people'], 'try-on': ['change', 'people', 'products'], 'material-swap': ['change', 'products'], 'ad-pack': ['make', 'products'],
   'brush-edit': ['change', 'fix'], 'camera-angles': ['change'], expand: ['change', 'fix'], erase: ['fix'], 'remove-bg': ['fix', 'products'], upscale: ['fix'], 'image-layers': ['change', 'fix'],
 };
 /** The order on /workflows: Create Image first, then making, changing, fixing. */
-export const HUB_ORDER = ['create-image', 'relight', 'character-sheet', 'face-swap', 'product-shot', 'upscale', 'camera-lens', 'person-swap', 'brush-edit', 'camera-angles', 'try-on', 'material-swap', 'expand', 'erase', 'remove-bg', 'image-layers'];
+export const HUB_ORDER = ['create-image', 'relight', 'character-sheet', 'face-swap', 'product-shot', 'upscale', 'camera-lens', 'person-swap', 'brush-edit', 'camera-angles', 'try-on', 'material-swap', 'ad-pack', 'expand', 'erase', 'remove-bg', 'image-layers'];
 export const hubWorkflowIds = (): string[] => HUB_ORDER.filter((id) => id === 'create-image' || (WORKFLOW_IDS as readonly string[]).includes(id));
 
 type Recipe = { id: string; name: string; tagline: string; needs: string; runner: { toolId: string }; status: string; surface: string | null; source: any; slots: any[]; controls: { field: string }[];

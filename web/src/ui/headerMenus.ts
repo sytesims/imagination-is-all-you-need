@@ -80,6 +80,7 @@ export const TOOL_TAGLINE: Record<string, string> = {
   'app-erase': 'Paint over something to remove it',
   'app-try-on': 'Put a garment from one photo on a person',
   'app-material-swap': 'Give an object the material from another photo',
+  'app-ad-pack': 'Finished ads from one product photo',
   'app-image-layers': 'Split a photo into separate transparent layers',
   // Video
   'h3-video': 'Video with sound, from text or an image',

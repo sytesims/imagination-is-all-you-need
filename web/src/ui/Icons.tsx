@@ -228,7 +228,7 @@ export const TOOL_ICONS: Record<string, IconName> = {
   'h3-extend': 'extend', cinema: 'director', voice: 'mic', 'image-upscale': 'upscale', soul: 'portrait', reframe: 'reframe', 'remove-bg': 'cutout',
   'footage-fx': 'sparkle', 'prompt-edit': 'brush' /* Edit Video: Prompt Edit (Bernini-R) */, 'two-person-swap': 'faceSwap' /* Swap Two People (H3 Character Swap ×2) */, finish: 'finish', 'sdr-hdr': 'hdr', 'fps-boost': 'fps', 'depth-map': 'depth', 'app-character-sheet': 'characterSheet', 'app-product-shot': 'product',
   'app-inpaint': 'brush', 'app-relight': 'light', 'app-transition': 'transition', 'app-ugc-ad': 'phoneAd', 'app-orbit-shot': 'orbit', 'app-face-swap': 'faceSwap', 'app-shots': 'shots',
-  'app-remove-bg': 'cutout', 'app-expand': 'expand', 'app-erase': 'eraser', 'app-try-on': 'garment', 'app-material-swap': 'material', 'app-image-layers': 'layerSheets', 'edit-image': 'brush' /* header Image menu: Edit Image (Create Image in edit mode) */,
+  'app-remove-bg': 'cutout', 'app-expand': 'expand', 'app-erase': 'eraser', 'app-try-on': 'garment', 'app-material-swap': 'material', 'app-ad-pack': 'phoneAd', 'app-image-layers': 'layerSheets', 'edit-image': 'brush' /* header Image menu: Edit Image (Create Image in edit mode) */,
   'app-anime-restyle': 'restyle', 'app-video-upscale': 'upscale', 'app-change-voice': 'changeVoice', 'app-translate-video': 'translate', 'app-music-bed': 'musicBed',
   'three-d': 'cube', 'three-d-turntable': 'orbit', 'image-to-3d': 'cube', turntable: 'orbit', 'plan-a-shot': 'previz', '3d': 'cube', loop: 'loop' /* Video flow shortcut: Loop */, 'direct-a-shot': 'previz', 'make-it-real': 'previz', compose: 'stitch' /* Video: Stitch (POST /api/compose) */,
 };

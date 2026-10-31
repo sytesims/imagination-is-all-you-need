@@ -44,6 +44,7 @@ export interface WorkflowRecipe {
   output: { aspect: 'model' | 'follow-photo' | 'fixed'; fixedAspect?: string; resolution: 'model' | 'follow-photo'; count: number | 'model' | 'perOption' };
   /** Values the runner locks (filled from the tool's gallery.locked). */ locked: Record<string, string>;
   /** A special surface the bar needs (later steps): mask sheet, multi-output picker, camera rig. */ surface: 'mask' | 'multi-output' | 'rig' | null;
+  /** multi-output: what one output is called and the line under the picker (Camera Angles: angle / angles; Ad Pack: ad / ads). */ each?: { one: string; many: string; note: string };
   generateLabel: string;
   aliases: { toolId: string; routes: string[] };
   /** 'ready' = pickable in Create Image's bar (all of them since 2026-10-23); 'soon' = listed, opens its own page. */ status: 'ready' | 'soon';
@@ -91,6 +92,18 @@ const DECLS: Decl[] = [
     controls: [{ field: 'scene', label: 'Scene', kind: 'tiles', group: 'scene' }, { field: 'aspect', label: 'Aspect ratio', kind: 'segmented', group: 'shape' }],
     prompt: { mode: 'optional', placeholder: 'Describe the product', composer: 'recipe', requiredWithout: { slot: 'image', missing: 'Add a photo or text' } }, modes: { default: 'generate', whenSlot: { image: 'edit' } },
     output: { aspect: 'model', resolution: 'model', count: 'model' }, surface: null, generateLabel: 'Make shot', source: { note: 'product scene prompts' } },
+  // Ad Pack (2026-10-31, tools/apps.ts + shared/adPack.ts): product photo(s), the words, the platform; one ad per picked style (the multi-output picker).
+  { id: 'ad-pack', icon: 'ad', category: 'product', runner: app('app-ad-pack'), status: 'ready',
+    slots: [slot('image', 'Product', true, 'Your product photo', 'Add a product photo'), slot('product2', 'Side 2', false, 'Optional: another side of the product', '', 'product2', 2),
+      slot('product3', 'Side 3', false, 'Optional: one more side', '', 'product3', 3)],
+    // two chips: the styles (one ad each) and the ad's words + where it runs (one popover, so Brand keeps its place in the row)
+    groups: [{ id: 'styles', label: 'Styles', icon: 'ad', summary: ['shots'] }, { id: 'words', label: 'Words & size', icon: 'words', summary: ['offer', 'headline'] }],
+    controls: [{ field: 'shots', label: 'Styles', kind: 'chips-multi', group: 'styles' }, { field: 'headline', label: 'Headline', kind: 'text', group: 'words', optional: true },
+      { field: 'offer', label: 'Offer', kind: 'text', group: 'words', optional: true }, { field: 'placement', label: 'Platform', kind: 'segmented', group: 'words' },
+      { field: 'logoCorner', label: 'Logo corner (with Brand on)', kind: 'segmented', group: 'words' }],
+    prompt: { mode: 'optional', placeholder: 'What the product is (optional)', composer: 'recipe' }, modes: { default: 'edit', whenSlot: null },
+    output: { aspect: 'fixed', resolution: 'model', count: 'perOption' }, surface: 'multi-output', each: { one: 'ad', many: 'ads', note: 'One ad per style. With Brand on, your logo goes in the corner after.' },
+    generateLabel: 'Make ads', source: { note: 'ad prompts' } },
   // Upscale (2026-10-22): the image-upscale tool in the bar. Factors and models come from shared/imageUpscale.ts (the same table the page, quote and run use).
   { id: 'upscale', icon: 'upscale', category: 'edit', runner: app('image-upscale'), status: 'ready',
     slots: [slot('image', 'Photo', true, 'Add the image to upscale', 'Add an image')], groups: [{ id: 'scale', label: 'Scale', icon: 'upscale', summary: ['scale'] }],
@@ -101,7 +114,7 @@ const DECLS: Decl[] = [
     slots: [slot('image', 'Photo', true, 'Add the photo', 'Add a photo')], groups: [{ id: 'angles', label: 'Angles', icon: 'shots', summary: ['shots'] }],
     controls: [{ field: 'shots', label: 'Angles', kind: 'chips-multi', group: 'angles' }],
     prompt: { mode: 'optional', placeholder: 'Subject (optional)', composer: 'recipe' }, modes: { default: 'edit', whenSlot: null },
-    output: { aspect: 'follow-photo', resolution: 'follow-photo', count: 'perOption' }, surface: 'multi-output', generateLabel: 'Make angles', source: { note: 'angle prompts' } },
+    output: { aspect: 'follow-photo', resolution: 'follow-photo', count: 'perOption' }, surface: 'multi-output', each: { one: 'angle', many: 'angles', note: 'Views the photo never showed are the model’s best guess.' }, generateLabel: 'Make angles', source: { note: 'angle prompts' } },
   // Photo tools (2026-10-23): fal-only models (tools/imageFalApps.ts). The source is the model's own credit (official Bria templates, else our fal request).
   { id: 'remove-bg', icon: 'cutout', category: 'edit', runner: app('app-remove-bg'), status: 'ready',
     slots: [slot('image', 'Photo', true, 'Add the photo to cut out', 'Add a photo')], groups: [], controls: [],
@@ -150,10 +163,10 @@ export const WORKFLOW_CATEGORY_OF: Record<string, WorkflowCategory> = Object.fro
 export const WORKFLOW_CATEGORIES: { id: WorkflowCategory | 'all'; label: string }[] = [{ id: 'all', label: 'All' }, { id: 'edit', label: 'Edit' }, { id: 'people', label: 'People' }, { id: 'product', label: 'Product' }, { id: 'camera', label: 'Camera' }];
 
 /** What a recipe needs, in the picker's words. */
-export function needsLine(slots: WorkflowSlot[], surface: WorkflowRecipe['surface']): string {
+export function needsLine(slots: WorkflowSlot[], surface: WorkflowRecipe['surface'], maxOut?: number): string {
   const req = slots.filter((s) => s.required).length; const opt = slots.length - req;
   const base = req ? `${req} photo${req > 1 ? 's' : ''}` : opt ? 'Photo optional' : 'Prompt';
-  return surface === 'mask' ? `${base} + mask` : surface === 'multi-output' ? `${base} → up to 9` : base;
+  return surface === 'mask' ? `${base} + mask` : surface === 'multi-output' ? `${base} → up to ${maxOut ?? 9}` : base;
 }
 /** "Edits · up to 4 images" or "Text only": what a Create Image model does with a photo (EDIT_MODELS + imageCaps maxRefs). */
 export { editTagOf } from './imageFeatures.js';
@@ -172,7 +185,7 @@ export function recipeOf(d: Decl, getTool: (id: string) => ToolLike | undefined)
   const gf = (n: string) => (g?.fields ?? []).find((x: any) => x.name === n);
   const controls: WorkflowControl[] = d.controls.map((c) => {
     if (c.field === 'scale' && d.id === 'upscale') return { ...c, options: UPSCALE_FACTORS.map((k) => ({ value: String(k), label: `×${k}` })), default: '4' };
-    if (c.field === 'shots' && g?.perOutput) return { ...c, options: g.perOutput.options.map((o: any) => ({ value: String(o.value), label: String(o.label ?? o.value) })), default: '' };
+    if (c.field === 'shots' && g?.perOutput) return { ...c, options: g.perOutput.options.map((o: any) => ({ value: String(o.value), label: String(o.label ?? o.value), ...(o.description ? { description: String(o.description) } : {}) })), default: g.perOutput.defaults ? JSON.stringify(g.perOutput.defaults) : '' };
     if (d.surface === 'rig' && c.field in RIG_OPTIONS) { const os = (RIG_OPTIONS as Record<string, readonly (string | number | { id: string; label: string })[]>)[c.field];
       const dv = c.field === 'cameraBody' ? RIG_DEFAULT.body : (RIG_DEFAULT as Record<string, string | number>)[c.field];
       return { ...c, options: os.map((o) => typeof o === 'object' ? { value: o.id, label: o.label } : { value: String(o), label: c.field === 'focal' ? `${o} mm` : c.field === 'aperture' ? `f/${o}` : String(o) }), ...(dv !== '' && dv != null ? { default: String(dv) } : {}) }; }
@@ -189,7 +202,7 @@ export function recipeOf(d: Decl, getTool: (id: string) => ToolLike | undefined)
   // a whenSlot mode the tool didn't split out (single-mode tools) still lists the tool's models
   for (const m of Object.values(d.modes.whenSlot ?? {})) models[m] ??= provs;
   const { source: src, ...rest } = d;
-  return { ...rest, prompt: { ...rest.prompt, frames: (g?.promptFrames ?? []) as PromptFrame[] }, controls, name: f.name, tagline: f.tagline, needs: needsLine(d.slots, d.surface), source: { ...OURS(src?.note ?? ''), ...src } as WorkflowSource,
+  return { ...rest, prompt: { ...rest.prompt, frames: (g?.promptFrames ?? []) as PromptFrame[] }, controls, name: f.name, tagline: f.tagline, needs: needsLine(d.slots, d.surface, g?.perOutput?.max), source: { ...OURS(src?.note ?? ''), ...src } as WorkflowSource,
     models, locked, aliases: { toolId: d.runner.toolId, routes: [...new Set([f.route, ...(t?.route ? [t.route] : []), ...f.oldRoutes])] }, route: f.route };
 }
 /** What the server's quote says about one (workflow, model, settings): the same check GET /api/tools/<runner>/price runs (null = it quotes). */

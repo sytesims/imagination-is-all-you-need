@@ -35,7 +35,7 @@ export interface GenFlow { id: string; medium: GenMedium; name: string; tagline:
  *  that the board doesn't draw yet, so they stay on their pages. */
 export const GEN_FLOWS: GenFlow[] = [
   { id: 'create', medium: 'image', name: 'Create Image', tagline: 'Text to image, or edit with references', needs: 'Prompt · images optional', icon: 'create', toolId: 'create-image' },
-  ...(['relight', 'upscale', 'remove-bg', 'image-layers', 'expand', 'product-shot', 'character-sheet', 'face-swap', 'person-swap', 'try-on', 'material-swap'] as const)
+  ...(['relight', 'upscale', 'remove-bg', 'image-layers', 'expand', 'product-shot', 'character-sheet', 'face-swap', 'person-swap', 'try-on', 'material-swap', 'ad-pack'] as const)
     .map(id => ({ id, medium: 'image' as const, name: id, tagline: '', needs: '', icon: 'create', toolId: '', recipeId: id })),
   { id: 'video', medium: 'video', name: 'Create Video', tagline: 'Video with sound, from text or frames', needs: 'Prompt · first / last frame optional', icon: 'video', toolId: 'h3-video' },
   { id: 'transition', medium: 'video', name: 'Transitions', tagline: 'Animate from a start to an end image', needs: '2 images', icon: 'video', toolId: 'app-transition' },
