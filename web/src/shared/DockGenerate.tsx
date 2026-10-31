@@ -6,6 +6,8 @@
  * pre-flight list (the caller's onClick decides); nothing ever runs from here without the caller's onClick.
  */
 import type { RefObject } from 'react';
+import { useMemoryShort } from './FitNote';
+import { gbOf } from '../../../server/src/shared/thisComputer';
 import { GenPrice } from './GenPrice';
 import { shownCredits, isPlainBlock } from './quote';
 import { SetupGenerate, setupNeeded } from './SetupCard';
@@ -32,12 +34,12 @@ export function DockGenerate({ toolId, engine, quote, label, busy, disabled, pro
   /** 'dock': the bar's big two-line button; 'card': a one-line button on a Canvas card; 'node': the Canvas node's slim pill */ variant?: 'dock' | 'card' | 'node' }) {
   const base = variant === 'dock' ? 'ic-gen gen-btn gen-dock btn btn-primary' : variant === 'node' ? 'gen-btn gen-card gen-node' : 'gen-btn gen-card';
   const cr: number | null = quote ? shownCredits(quote) : null; const wKey = !!quote && quote.needsKey === true && quote.runnable === false; const unpriced = !!quote && quote.credits == null && quote.priceAvailable === false;
-  const m = modelOfEngine(toolId, engine);
+  const m = modelOfEngine(toolId, engine); const mem = useMemoryShort(variant === 'dock' ? quote : null); // a heavy local run with memory short right now: said, never blocked
   if (!busy && setupNeeded(m, quote, engine, intent) && !problems.some(x => x.stage === 'inputs' || x.stage === 'model'))
     return <SetupGenerate toolId={toolId} model={m} engine={engine} quote={quote} className={`${base} ${className}`.trim()} testId={testId} priceTestId={priceTestId} />;
   const lead = leadOf(problems, missing);
   return <button ref={genRef} type="button" className={`${base}${problems.length ? ' gen-wait' : ''} ${className}`.trim()} data-testid={testId} data-workflow={workflowId} data-problems={problems.length || undefined}
     disabled={busy || !!disabled} aria-disabled={problems.length > 0 || undefined} aria-haspopup={problems.length ? 'dialog' : undefined} aria-expanded={problems.length ? pfOpen : undefined} onClick={onClick}
-    title={pfOpen ? undefined : lead ?? undefined}><span className="gen-l">{busy ? <i className="as-spin" aria-hidden /> : null}{label}</span>
-    {lead ? <span className="gen-price gen-missing" data-testid={priceTestId}>{lead}</span> : <GenPrice compact testId={priceTestId} q={quote} demo={!wKey && quote?.demo === true} text={unpriced ? (isPlainBlock(quote) ? '' : 'Price unavailable') /* a plain refusal says its own words (the pre-flight list), never 'Price unavailable' */ : dlSize ? intentLine(dlSize) : null} free={!wKey && cr === 0} credits={wKey ? null : cr} />}</button>;
+    title={pfOpen ? undefined : lead ?? (mem ? `${mem.text} Or pick Comfy Cloud in the run menu.` : undefined)} data-mem-short={mem ? '1' : undefined}><span className="gen-l">{busy ? <i className="as-spin" aria-hidden /> : null}{label}</span>
+    {lead ? <span className="gen-price gen-missing" data-testid={priceTestId}>{lead}</span> : mem ? <span className="gen-price gen-mem" data-testid={priceTestId} data-mem="short">Free · only {gbOf(mem.freeGB * 2 ** 30)} free now, needs ~{Math.round(mem.needGB)} GB</span> : <GenPrice compact testId={priceTestId} q={quote} demo={!wKey && quote?.demo === true} text={unpriced ? (isPlainBlock(quote) ? '' : 'Price unavailable') /* a plain refusal says its own words (the pre-flight list), never 'Price unavailable' */ : dlSize ? intentLine(dlSize) : null} free={!wKey && cr === 0} credits={wKey ? null : cr} />}</button>;
 }

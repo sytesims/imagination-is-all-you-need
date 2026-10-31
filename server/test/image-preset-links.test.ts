@@ -12,8 +12,8 @@ const NOKEYS = { OPENHIGGSFIELD_BFL_API_KEY: '', OPENHIGGSFIELD_FAL_KEY: '', FAL
 const ok = (m: string) => console.log('ok ' + m);
 
 // ---- 1. pure ----
-assert.equal(presetHref({ id: 'golden-haze', workflow: 'create-image' }), '/tools/create-image?preset=golden-haze');
-assert.equal(presetHref({ id: 'neon-rim', workflow: 'relight' }), '/tools/create-image?workflow=relight&preset=neon-rim');
+assert.equal(presetHref({ id: 'golden-haze', workflow: 'create-image' }), '/image?preset=golden-haze');
+assert.equal(presetHref({ id: 'neon-rim', workflow: 'relight' }), '/image?workflow=relight&preset=neon-rim');
 { const f = presetPrefill({ workflow: 'create-image', promptTemplate: '{subject}, on a wet street', subjectHint: 'a bicycle', settings: { aspect: '16:9', style: 'neon-night' } }, CREATE_PRESET_FIELDS);
   assert.deepEqual(f, { workflow: '', prompt: 'a bicycle, on a wet street', select: [0, 9], vals: { aspect: '16:9', style: 'neon-night' }, skipped: [] }); }
 { const f = presetPrefill({ workflow: 'create-image', promptTemplate: 'a plate of {subject}: one specimen', subjectHint: 'a fern', settings: {} }, CREATE_PRESET_FIELDS);
@@ -37,7 +37,7 @@ try {
   const seenWf = new Set<string>();
   for (const p of menu) {
     assert.equal(p.href, presetHref(p), `${p.id}: href`);
-    const u = new URL(p.href, B); assert.equal(u.pathname, '/tools/create-image', `${p.id}: opens Create Image`); assert.equal(u.searchParams.get('preset'), p.id, `${p.id}: preset=`);
+    const u = new URL(p.href, B); assert.equal(u.pathname, '/image', `${p.id}: opens Create Image`); assert.equal(u.searchParams.get('preset'), p.id, `${p.id}: preset=`);
     if (p.workflow === 'create-image') { assert.equal(u.searchParams.get('workflow'), null, `${p.id}: plain Create has no workflow=`);
       const f = presetPrefill(p, CREATE_PRESET_FIELDS); assert.deepEqual(f.skipped, [], `${p.id}: every setting placed (${f.skipped})`); assert.deepEqual(f.vals, presetFields(p), `${p.id}: settings applied`);
       if (f.vals.style) assert.ok(opts('style').includes(f.vals.style), `${p.id}: style ${f.vals.style} is a Create Image style`);

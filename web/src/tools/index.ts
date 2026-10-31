@@ -13,6 +13,6 @@ export const toolScreens: Record<string, ComponentType<ToolProps>> = {
   /* Extend, Reframe, SDR to HDR, FPS Boost, Depth Map, Remove BG and Video Upscale have no page of their own (2026-10-25): they run in the
    * Video page's bar (ui/video/VideoWorkflowBar.tsx, recipes in server/src/shared/videoBar.ts); their old URLs redirect there. */
   'app-face-swap': FaceSwapTool, 'app-person-swap': FaceSwapTool, 'app-shots': ShotsTool,
-  'three-d': ThreeDStudio, // the 3D page (/tools/3d, 2026-10-23): Image to 3D and Turntable video (tools three-d, three-d-turntable) // image apps (phase 1 quick wins): two photo slots / angle chips + a results grid
-  // Upscale (image-upscale) runs in Create Image's bar now: /tools/image-upscale redirects to /tools/create-image?workflow=upscale (shared/imageFeatures oldRoutes)
+  'three-d': ThreeDStudio, // the 3D page (/3d, 2026-10-23): Image to 3D and Turntable video (tools three-d, three-d-turntable) // image apps (phase 1 quick wins): two photo slots / angle chips + a results grid
+  // Upscale (image-upscale) runs in Create Image's bar now: /tools/image-upscale redirects to /image?workflow=upscale (shared/imageFeatures oldRoutes)
 };

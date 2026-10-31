@@ -26,7 +26,7 @@ export const refreshHardware = () => send<Hardware>('/api/hardware/refresh', 'PO
 export const setManualHardware = (vramGB: number, ramGB: number | null) => send<Hardware & { note?: string }>('/api/hardware', 'PUT', { vramGB, ramGB });
 export const clearManualHardware = () => send<Hardware>('/api/hardware/override', 'DELETE');
 export type ComfyAddr = { url: string | null; source: string | null; savedUrl?: string | null; serverDefault?: string | null; cloud?: boolean; canChange: boolean };
-export type ComfyTest = { url?: string | null; reachable: boolean; /** B31: refused | timeout | not_found | bad_response | unreachable | not_set | cloud | null */ errorCode?: string | null; timeoutSec?: number; version?: string | null; gpu?: { name?: string; vramTotalGB?: number | null } | null; ggufNode?: boolean | null; latencyMs?: number | null; error?: string | null };
+export type ComfyTest = { url?: string | null; reachable: boolean; /** B31: refused | timeout | not_found | bad_response | unreachable | not_set | cloud | null */ errorCode?: string | null; timeoutSec?: number; version?: string | null; gpu?: { name?: string; type?: string; vramTotalGB?: number | null } | null; ggufNode?: boolean | null; latencyMs?: number | null; error?: string | null };
 export const getComfy = () => send<ComfyAddr>('/api/local/comfy', 'GET');
 export const setComfy = (url: string | null) => send<ComfyAddr>('/api/local/comfy', 'PUT', { url });
 export const clearComfy = () => send<ComfyAddr>('/api/local/comfy', 'DELETE');
@@ -55,6 +55,17 @@ export function useHardware(): Hardware | null | undefined {
   const [h, setH] = useState<Hardware | null | undefined>(undefined);
   useEffect(() => { let live = true; hwCache ??= getHardware().then(r => (r.ok ? r.data : null)); hwCache.then(x => { if (live) setH(x); }); const f = (x: Hardware | null) => setH(x); hwSubs.add(f); return () => { live = false; hwSubs.delete(f); }; }, []);
   return h;
+}
+
+/** Memory right now (GET /api/hardware/live), shared by every heavy-run fit check on screen: one request every 5 s while at least one is mounted
+ *  with `on` and the tab is visible (the server keeps one reading per 2 s). `on` false (a small model, no local run) reads nothing. */
+let liveNow: LiveHardware | null = null; const liveSubs = new Set<(x: LiveHardware) => void>(); let liveTimer: ReturnType<typeof setTimeout> | null = null; let liveBusy = false;
+const liveTick = () => { liveTimer = null; if (!liveSubs.size || liveBusy) return; const next = () => { if (liveSubs.size && !liveTimer) liveTimer = setTimeout(liveTick, 5000); };
+  if (document.visibilityState === 'hidden') { next(); return; } liveBusy = true; getLiveHardware().then(r => { if (r.ok) { liveNow = r.data; liveSubs.forEach(f => f(r.data)); } }).finally(() => { liveBusy = false; next(); }); };
+export function useLiveHardware(on: boolean): LiveHardware | null {
+  const [v, setV] = useState<LiveHardware | null>(liveNow);
+  useEffect(() => { if (!on) return; liveSubs.add(setV); if (liveNow) setV(liveNow); if (!liveTimer) liveTick(); return () => { liveSubs.delete(setV); if (!liveSubs.size && liveTimer) { clearTimeout(liveTimer); liveTimer = null; } }; }, [on]);
+  return on ? v : null;
 }
 
 /** First-use download: the user said yes for this model, so its next run is sent with downloadWeights=1 (and the lighter variant if picked). */

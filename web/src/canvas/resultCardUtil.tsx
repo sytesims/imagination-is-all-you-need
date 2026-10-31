@@ -1,11 +1,15 @@
 /** The result node's shape util and the helpers that place one (the view is ResultCardShape.tsx; no component here, so it hot-reloads cleanly). */
-import { BaseBoxShapeUtil, HTMLContainer, T, createShapeId, type Editor, type TLShape, type TLShapePartial, type VecLike } from 'tldraw';
+import { BaseBoxShapeUtil, HTMLContainer, T, createShapeId, type Editor, type TLShape, type TLShapeId, type TLShapePartial, type VecLike } from 'tldraw';
 import { resultCardSize, type ResultKind, type ResultMedia } from '../shared/resultMedia';
 import { RESULT_TYPE, NODE_DEFS } from './nodeTypes';
 import { keepNodeControls } from './nodeFrameModel';
 import { open3d } from './canvasEvents';
 import { ResultCardView } from './ResultCardShape';
 import { freeSpot, reveal } from './placement';
+import { getJob, type JobState } from '../api';
+import { jobCaption } from '../shared/FeedCaption';
+import { liveJobs } from './genRun';
+import { linkShapes } from './graph';
 
 export { RESULT_TYPE } from './nodeTypes';
 export interface ResultCardProps { w: number; h: number; kind: ResultKind; jobId: string; url: string; poster: string; title: string; model: string; place: string; price: string; time: string; /** lineage: the generate card it was pulled out of */ parents?: string[] }
@@ -49,5 +53,18 @@ export async function addResultCard(editor: Editor, jobId: string, m: ResultMedi
   editor.createShape<ResultCardShape>({ id, type: RESULT_TYPE, x: c.x - size.w / 2, y: c.y - h / 2,
     props: { w: size.w, h, kind: m.kind, jobId, url: m.url, poster: m.poster, title: m.title.slice(0, 300), model: m.caption.model, place: m.caption.place, price: m.caption.price, time: m.caption.time } });
   editor.select(id); if (!at || o.free) reveal(editor, id);
+  return id;
+}
+
+/** Pull one of a card's results out onto the board as its own Result card: right of the card, under any already pulled out of it,
+ *  linked to it (lineage). A version from the strip and a layer of Image to layers both come out this way. Returns the new card. */
+export async function pullOutResult(editor: Editor, cardId: TLShapeId, m: { jobId: string; kind: ResultKind; url: string; poster: string; title: string; model?: string }, o: { select?: boolean; /** where its centre goes (else right of the card, under the ones already out) */ at?: VecLike } = {}): Promise<TLShapeId> {
+  let j: JobState | null = liveJobs.get()[m.jobId] ?? null; if (!j) j = await getJob(m.jobId).catch(() => null);
+  const cap = j ? jobCaption(j, null) : { model: m.model ?? '', place: '', price: '', time: '' };
+  const b = editor.getShapePageBounds(cardId); const prev = editor.getCurrentPageShapes().filter(x => x.type === RESULT_TYPE && ((x.props as any).parents ?? []).includes(cardId)).map(x => editor.getShapePageBounds(x.id)!).filter(Boolean);
+  const at = o.at ?? (b ? { x: b.maxX + 96 + 180, y: (prev.length ? Math.max(...prev.map(r => r.maxY)) + 32 : b.minY) + 180 } : undefined);
+  const id = await addResultCard(editor, m.jobId, { kind: m.kind, url: m.url, poster: m.poster, title: m.title, caption: cap as any }, at);
+  editor.run(() => { editor.updateShape({ id, type: RESULT_TYPE, props: { parents: [cardId] } } as any); linkShapes(editor, cardId, id); });
+  if (o.select === false) editor.select(cardId); else reveal(editor, id);
   return id;
 }

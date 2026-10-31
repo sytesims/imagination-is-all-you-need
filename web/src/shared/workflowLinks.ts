@@ -1,8 +1,9 @@
-import { videoWorkflowOfTool, videoWorkflowHref, videoWorkflowById, VIDEO_PAGE, VIDEO_TOOL, toolPage } from '../../../server/src/shared/videoWorkflows';
+import { IMAGE_PAGE, VIDEO_PAGE, VIDEO_TOOL, toolPage, pageTool } from '../../../server/src/shared/pages';
+import { videoWorkflowOfTool, videoWorkflowHref, videoWorkflowById } from '../../../server/src/shared/videoWorkflows';
 import { audioWorkflowForToolMode, audioRoute, type AudioWorkflowId } from '../../../server/src/shared/audioWorkflows';
 import { threeDRoute } from '../../../server/src/shared/threeD';
 /** Unified Create Image: the workflows Create Image's bar runs today, by the tool that runs them. Recreate on their results reopens
- *  Create Image with the workflow picked (a Create Image job with a camera rig reopens Camera & Lens) (/tools/create-image?workflow=relight&recreate=<job>); every other job keeps its own page. */
+ *  Create Image with the workflow picked (a Create Image job with a camera rig reopens Camera & Lens) (/image?workflow=relight&recreate=<job>); every other job keeps its own page. */
 export const READY_WORKFLOW_TOOLS: Record<string, string> = { 'app-relight': 'relight', 'app-face-swap': 'face-swap', 'app-person-swap': 'person-swap', 'app-character-sheet': 'character-sheet', 'app-product-shot': 'product-shot', 'image-upscale': 'upscale',
   'app-inpaint': 'brush-edit', 'app-shots': 'camera-angles' /* 2026-10-23: Brush Edit and Camera Angles moved into the bar too */,
   'app-remove-bg': 'remove-bg', 'app-expand': 'expand', 'app-erase': 'erase', 'app-try-on': 'try-on' /* 2026-10-23: the photo tools on fal */, 'app-material-swap': 'material-swap' /* 2026-10-31 */, 'app-image-layers': 'image-layers' /* 2026-10-24: Image to layers */ };
@@ -11,7 +12,7 @@ export const RIG_WORKFLOW = 'camera-lens';
 /** The workflow a job belongs to in Create Image's bar (null = plain Create, or a tool with its own page). */
 export const workflowOfJob = (job: { toolId: string; input?: any }): string | null => READY_WORKFLOW_TOOLS[job.toolId] ?? (job.toolId === 'create-image' && job.input?.camera ? RIG_WORKFLOW : null);
 /** Where a workflow opens: Create Image with it picked (the Workflows page cards, the Image menu, old routes). */
-export const workflowOpenHref = (toolId: string): string | null => { const w = READY_WORKFLOW_TOOLS[toolId]; return w ? `/tools/create-image?workflow=${w}` : null; };
+export const workflowOpenHref = (toolId: string): string | null => { const w = READY_WORKFLOW_TOOLS[toolId]; return w ? `${IMAGE_PAGE}?workflow=${w}` : null; };
 /** One Video page: the video workflow a job belongs to (a lip-sync job of the voice tool is Lip Sync; Create Video's own jobs are null). */
 export const videoWorkflowOfJob = (job: { toolId: string; input?: any }): string | null => {
   if (job.toolId === 'two-person-swap') return 'two-person-swap';
@@ -24,13 +25,13 @@ const modeOfJob = (job: { input?: any }): string | null => { let t = job.input?.
 const AUDIO_TOOL_DEFAULT: Record<string, AudioWorkflowId> = { audio: 'music', voice: 'voiceover', soundtrack: 'soundtrack-music', 'app-music-bed': 'soundtrack-music' };
 export const audioWorkflowOfJob = (job: { toolId: string; input?: any }): AudioWorkflowId | null => {
   if (!(job.toolId in AUDIO_TOOL_DEFAULT)) return null; return audioWorkflowForToolMode(job.toolId, modeOfJob(job)) ?? AUDIO_TOOL_DEFAULT[job.toolId]; };
-/** The 3D page: Image to 3D, Turntable and Direct a Shot jobs open their own workflow (/tools/3d?workflow=<id>). */
+/** The 3D page: Image to 3D, Turntable and Direct a Shot jobs open their own workflow (/3d?workflow=<id>). */
 const THREE_D_JOB: Record<string, string> = { 'three-d': 'image-to-3d', 'three-d-turntable': 'turntable', 'plan-a-shot': 'plan-a-shot', 'make-it-real': 'plan-a-shot' };
 /** Where a job's workflow lives, by tab: Image (Create Image with the workflow picked), Video (?workflow= on the Video page), Audio, 3D.
  *  null = the tool's own page (Create Image, Create Video and other tools: the caller adds the tool route). */
 export const jobWorkflowHref = (job: { toolId: string; input?: any }): string | null => {
   if (job.toolId === 'two-person-swap') return `${VIDEO_PAGE}?workflow=two-person-swap`; // historical Recreate opens a warning, never a one-person prefill
-  const w = workflowOfJob(job); if (w) return `/tools/create-image?workflow=${w}`;
+  const w = workflowOfJob(job); if (w) return `${IMAGE_PAGE}?workflow=${w}`;
   const v = videoWorkflowOfJob(job); if (v) return videoWorkflowHref(v);
   const a = audioWorkflowOfJob(job); if (a) return audioRoute(a);
   const d = THREE_D_JOB[job.toolId]; if (d) return threeDRoute(d);
@@ -59,7 +60,7 @@ export const toolHandoffHref = (t: { id: string; route?: string | null }, query:
 
 /** Join a redirect target that may carry its own query (?workflow=relight) with the current query (?fromJob=…). */
 export const withSearch = (to: string, search: string): string => { const s = search.replace(/^\?/, ''); return !s ? to : to.includes('?') ? `${to}&${s}` : `${to}?${s}`; };
-/** Old path → its new URL with the query and hash kept (/tools/app-relight?fromJob=j1 → /tools/create-image?workflow=relight&fromJob=j1); null = no redirect. */
+/** Old path → its new URL with the query and hash kept (/tools/app-relight?fromJob=j1 → /image?workflow=relight&fromJob=j1); null = no redirect. */
 export const redirectTarget = (pathname: string, search: string, hash: string, map: Record<string, string>): string | null => {
   const r = map[(pathname.replace(/\/+$/, '') || '/').toLowerCase()]; return r ? withSearch(r, search) + hash : null;
 };
@@ -75,10 +76,10 @@ export function workflowCardTools<T extends { id: string; name: string }>(tools:
     .filter(t => { const n = workflowCardName(t).toLowerCase(); if (names.has(n)) return false; names.add(n); return true; });
 }
 
-/** The tool a page runs: /tools/<id>, or on the one Video page the picked workflow's own tool (/video?workflow=extend → h3-extend; /video alone → h3-video),
+/** The tool a page runs: /tools/<id>, Image / Audio / 3D's own tool at /image, /audio, /3d (shared/pages.ts), or on the one Video page the picked workflow's own tool (/video?workflow=extend → h3-extend; /video alone → h3-video),
  *  so a hand-off (Extend, Upscale, Turn to video…) asks the server for that tool's slot, not Create Video's (shared/usePrefill.ts). */
 export function pageToolId(path = location.pathname, search = location.search): string {
-  if ((path.replace(/\/+$/, '') || '/') !== VIDEO_PAGE) return path.split('/')[2] ?? '';
+  if ((path.replace(/\/+$/, '') || '/') !== VIDEO_PAGE) return pageTool(path) ?? path.split('/')[2] ?? '';
   const w = videoWorkflowById(new URLSearchParams(search).get('workflow')); return w?.toolId || VIDEO_TOOL;
 }
 /** Use in Direct a Shot (2026-10-27): a finished 3D model (job id) placed in Direct a Shot's set, ready to move, size or make the actor. */

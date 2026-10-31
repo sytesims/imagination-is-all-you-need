@@ -1,3 +1,4 @@
+import { IMAGE_PAGE } from '../../../server/src/shared/pages';
 import { VIDEO_PAGE } from '../../../server/src/shared/videoWorkflows';
 import { recreateHref as jobRecreateHref, toolHandoffHref, lipSyncHandoffHref, frameHandoffHref } from './workflowLinks';
 import { goClick } from './goToWorkflow';
@@ -10,7 +11,7 @@ import { ViewerImage } from './ViewerImage';
 import { layersOf, layersPosterOf, layerCountText, LayerCanvas, LayerList, useLayerView } from './LayerStack';
 import { modelNameOf } from './imageFeatures';
 import { jobInputs, isFileUrl, type JobInput } from './jobInputs';
-const inputRefHref = (u: string) => `/tools/create-image?refUrl=${encodeURIComponent(u)}`;
+const inputRefHref = (u: string) => `${IMAGE_PAGE}?refUrl=${encodeURIComponent(u)}`;
 /** The job's source photo when the result is that photo changed (upscale, edit, relight, swaps, brush edit): the viewer's Compare. Not for jobs that make a new picture from it (Product Shot, Character Sheet). */
 const COMPARE_TOOLS = new Set(['image-upscale', 'app-relight', 'app-face-swap', 'app-person-swap', 'app-material-swap', 'app-inpaint']);
 /** Results whose viewer opens on the before/after split (Relight: the change is the light, best judged side by side). */
@@ -321,7 +322,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
     const trashed = !!(job as any).deletedAt;
     const live = !sample && !showingOriginal && !!job.id && !trashed;
     const canHand = live && kind === 'image';
-    const refUrl = canHand ? (tools?.length ? refTarget(job, tools, outIx)?.url : null) ?? `/tools/create-image?${qs}&as=ref` : null;
+    const refUrl = canHand ? (tools?.length ? refTarget(job, tools, outIx)?.url : null) ?? `${IMAGE_PAGE}?${qs}&as=ref` : null;
     const S = Object.fromEntries(sets) as Record<string, any>;
     const mk = modelOfEngine(job.toolId, (job as any).provider, (job as any).modelKey);
     const o: any = cur;
@@ -400,7 +401,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
           {others}</section>; })()
       : (() => { const rl = hr('relight'), up = hr('upscale');
         return <section className="rvx-sec" aria-label="Edit this image"><p className="rvx-hint">Opens the tool with this image already loaded. Nothing runs until you press Generate there.</p>
-          {editRow('prompt', 'Edit with a prompt', 'Describe the change in Create Image', <PencilIcon size={18} />, canHand ? `/tools/create-image?${qs}` : null, 'Not for this result')}
+          {editRow('prompt', 'Edit with a prompt', 'Describe the change in Create Image', <PencilIcon size={18} />, canHand ? `${IMAGE_PAGE}?${qs}` : null, 'Not for this result')}
           {editRow('inpaint', 'Inpaint', 'Paint over an area and redo just that part', <BrushIcon size={18} />, canHand ? `/tools/app-inpaint?${qs}` : null, 'Not for this result')}
           {editRow('relight', 'Relight', 'Change the light, keep the subject', <LightIcon size={18} />, rl.url, rl.why)}
           {editRow('upscale', 'Upscale', 'More pixels, sharper detail', <UpscaleIcon size={18} />, up.url, up.why)}

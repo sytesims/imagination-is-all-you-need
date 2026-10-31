@@ -20,7 +20,7 @@ import { startAgentBridge, nameOf as cardNameOf, type FeedEntry, type Proposal, 
 import { handAtom, handOf, fx, setAgentName, reducedMotion } from './agentHand';
 import { flowById, flowInfo } from '../shared/genFlows';
 import { LOCAL_FREE } from '../../../server/src/shared/modelIds';
-import { STARTERS, mergeFeed, mergeProposals, planOf, confirmOf, focusAdded, focusCards, agentStarterPrompt, dockRoute, dockState, dockStatusLine, dockPill, workingLine, messageStatus, messageStatusText, listenCommand, LISTEN_PHRASE, type StarterId, type MsgStatus } from './agentDockModel';
+import { STARTERS, mergeFeed, mergeProposals, planOf, confirmOf, focusAdded, focusCards, setFollow, agentStarterPrompt, dockRoute, dockState, dockStatusLine, dockPill, workingLine, messageStatus, messageStatusText, listenCommand, LISTEN_PHRASE, type StarterId, type MsgStatus } from './agentDockModel';
 import { AgentMediaCard } from './AgentMediaCard';
 import { useCopied, Copied, useToast } from '../shared/Toast';
 import { GenPrice } from '../shared/GenPrice';
@@ -349,7 +349,8 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
         : await fetch(`${base}/demo`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ prompt: body, ...(starter ? { starter } : {}) }) });
       const b = await r.json().catch(() => ({})); if (!r.ok) throw new Error(b?.error || 'Could not send that.');
       if (b?.message) setFeed((prev) => mergeFeed(prev, [b.message]));
-      if (b?.runId) setDemo({ running: true, runId: b.runId, title: b.plan?.title ?? null });
+      /* a demo starting turns Follow agent on, so the camera shows what it builds */
+      if (b?.runId) { setFollow(true); setDemo({ running: true, runId: b.runId, title: b.plan?.title ?? null }); }
       setText('');
     } catch (e) { setText(body); toast((e as Error).message, 'error'); }
     finally { setSending(false); }

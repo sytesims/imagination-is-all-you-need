@@ -17,6 +17,7 @@ import { defaultsOf, pickDefault } from './defaults';
 import { THREE_D_WORKFLOWS, threeDModel, normalizeSettings } from '../../../server/src/shared/threeD';
 import { canvasDefaultModel } from '../../../server/src/shared/cloudDefaults';
 import { tooManySwatches } from '../../../server/src/shared/swatchBatch';
+import { audioKindOf, type AudioKind } from './audioVizLogic';
 
 export type GenMedium = 'image' | 'video' | 'audio' | '3d';
 export type InputKind = 'image' | 'video' | 'audio';
@@ -52,6 +53,9 @@ export const flowById = (id: string | null | undefined) => GEN_FLOWS.find(f => f
 
 /** What the catalog needs from the server, loaded once per page (canvas/catalog.ts). */
 export interface GenCatalog { tools: ToolInfo[]; recipes: WfRecipe[]; /** GET /api/models rows by provider id (image caps live here) */ models: Record<string, any> }
+
+/** Music, a voice or a sound effect: what a flow's sound is (the card panel's sound tile names it; never "Music" for every sound). */
+export const flowAudioKind = (f: Pick<GenFlow, 'id' | 'toolId' | 'types'>): AudioKind => audioKindOf({ toolId: f.toolId, mode: f.types ?? f.id });
 
 /** A flow named in our words with the recipe's own name and line (Relight, "Relight a photo…"), and the tool that runs it. */
 export function flowInfo(f: GenFlow, cat: GenCatalog | null): GenFlow {

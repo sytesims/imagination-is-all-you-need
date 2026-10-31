@@ -3,6 +3,7 @@
  * the "Follow agent" state and the cards the agent is working on, and where "Open in tool" goes. No components here, so the dock's
  * view files stay Fast Refresh friendly.
  */
+import { IMAGE_PAGE } from '../../../server/src/shared/pages';
 import { atom } from 'tldraw';
 import { flowById, flowInfo } from '../shared/genFlows';
 import { catalogNow } from './catalog';
@@ -68,7 +69,7 @@ export function toolHrefOf(flowId: string, jobId?: string | null): string | null
   const f = flowById(flowId); if (!f) return null; const cat = catalogNow(); const toolId = cat ? flowInfo(f, cat).toolId : f.toolId; if (!toolId) return null;
   /* the workflow's own tab (shared/workflowLinks, the same links Assets and the viewer use): Image recipes on Create Image, video flows on the
      Video page (Lip Sync too, not Audio), Music / Sound effects / Text to speech on Audio, Image to 3D on the 3D page */
-  const base = f.medium === 'image' && f.id !== 'create' ? `/tools/create-image?workflow=${encodeURIComponent(f.id)}` : workflowOpenOf({ toolId, input: f.types ? { types: [f.types] } : {} });
+  const base = f.medium === 'image' && f.id !== 'create' ? `${IMAGE_PAGE}?workflow=${encodeURIComponent(f.id)}` : workflowOpenOf({ toolId, input: f.types ? { types: [f.types] } : {} });
   return jobId ? withSearch(base, `recreate=${encodeURIComponent(jobId)}`) : base;
 }
 

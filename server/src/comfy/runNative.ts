@@ -71,6 +71,7 @@ export async function runNative(job: Job, transport?: ComfyTransport, build: (j:
   const local = !transport && String(job.route ?? '').startsWith('local:'); const S = local ? await import('../hardware/stages.js') : null;
   if (S) await S.prePhase(job, false); // HW-SHAPES Q4: downloadWeights=1 → downloading_model through the shared downloader (never automatic)
   const variant = local && typeof job.input.variantId === 'string' ? (await import('../hardware/requirements.js')).findVariant(job.input.variantId) : null;
+  const PV = local ? await import('../hardware/variants.js') : null; const plat = PV ? PV.platformOf((await import('../hardware.js')).currentHardware().profile) : null; // item 5: this computer's picked files, by role
   const cache = new Map<string, any>(); const outs: string[][] = []; const outLabels: string[][] = []; const n = plan.passes.length; let stepT0: number | undefined;
   // Step-ETA learning (stepEta.ts): local runs only. est = this computer's learned load + steps × seconds per step + post for this exact workflow.
   const SE = local ? await import('../stepEta.js') : null; const hk = SE ? (await import('../hardware.js')).hwKeyOf() : '';
@@ -80,6 +81,7 @@ export async function runNative(job: Job, transport?: ComfyTransport, build: (j:
     for (const p of pass.prep ?? []) await doPrep(p, outs, pass.graph, job).catch((e) => { throw new PrepError(e instanceof Error ? e.message : String(e)); });
     const graph = await substitute(pass.graph, c, cache);
     (await import('../stepEta.js')).applyGgufVariant(graph, variant); // Q7 GGUF drop-in
+    if (PV) PV.applyFileSwap(graph, PV.swapsFor([pass.workflow], plat));
     if (SE && k === 0) { // the estimate for this run, now (warm / cold as things stand); the job notes when this run is the calibration run
       const reported = job.etaRange?.source === 'reported' ? job.etaRange.seconds : null;
       const feats = SE.featuresOfPlan(plan.passes.map((p, j) => ({ workflow: p.workflow, graph: j === 0 ? graph : SE.applyGgufVariant(structuredClone(p.graph), variant) }))); sig = feats ? SE.keysOf(feats).modelsSig : null;

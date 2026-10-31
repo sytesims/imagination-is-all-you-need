@@ -41,13 +41,13 @@ type Seek = { t: number; n: number } | undefined;
 /** the label, as on the film's ident: spaced caps over one thin orange line */
 const Mark = ({ small = false }: { small?: boolean }) => <span className={`xpfm-mark${small ? ' is-small' : ''}`} aria-label={X.label}><b aria-hidden>{X.label}</b><i aria-hidden /></span>;
 
-/** The complete film, never the thumbnail loop or an ident-skipping media fragment. Explicit play owns the sound while watching. */
+/** The complete film from its first scene (the IIAYN FILMS opener is skipped, 2026-10-31), never the thumbnail loop. Explicit play owns the sound while watching. */
 function Film({ className = '', onTick, seek, f = M }: { className?: string; onTick?: (f: number) => void; seek?: Seek; f?: Feature }) {
   const [failed, setFailed] = useState(false);
   return <div className={`xpfm-film-box${failed ? ' is-failed' : ''}`}>
     <ShowcaseFilm className={`xpfm-film ${className}`} testId="xp-films-film" label={`${X.label}: ${nameOf(f)}, ${f.episode}`} take={f.key} onTake={() => 0}
       explicit onFail={() => setFailed(true)} onTick={onTick} seek={seek}
-      takes={[{ key: f.key, url: f.url, poster: f.poster, label: nameOf(f), sound: true }]} />
+      takes={[{ key: f.key, url: f.url, poster: f.poster, label: nameOf(f), sound: true, start: f.identEnd || undefined }]} />
   </div>;
 }
 

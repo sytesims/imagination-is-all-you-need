@@ -49,6 +49,8 @@ const ff = (...a: string[]) => execFileSync('ffmpeg', ['-y', '-v', 'error', ...a
 const PNG = path.join(D, 'a.png'); ff('-f', 'lavfi', '-i', 'testsrc2=size=1280x720', '-frames:v', '1', PNG);
 const PNG2 = path.join(D, 'b.png'); ff('-f', 'lavfi', '-i', 'color=c=orange:s=1280x720', '-frames:v', '1', PNG2);
 const MP4 = path.join(D, 'v.mp4'); ff('-f', 'lavfi', '-i', 'testsrc2=size=854x480:rate=24', '-f', 'lavfi', '-i', 'sine=d=5', '-t', '5', '-pix_fmt', 'yuv420p', '-c:v', 'libx264', '-c:a', 'aac', '-shortest', MP4);
+// a 720p reference clip for models whose reference videos must be bigger than 480p (Kling 4.0: at least 700 px a side, VIDEO_LIMITS refVideoFrame.minSide)
+const MP4_720 = path.join(D, 'v720.mp4'); ff('-f', 'lavfi', '-i', 'testsrc2=size=1280x720:rate=24', '-f', 'lavfi', '-i', 'sine=d=5', '-t', '5', '-pix_fmt', 'yuv420p', '-c:v', 'libx264', '-c:a', 'aac', '-shortest', MP4_720);
 const MP3 = path.join(D, 'a.mp3'); ff('-f', 'lavfi', '-i', 'sine=frequency=440:duration=3', MP3);
 const TYPE: Record<string, string> = { '.png': 'image/png', '.mp4': 'video/mp4', '.mp3': 'audio/mpeg' };
 
@@ -121,7 +123,7 @@ function casesFor(tool: any): Case[] {
         if (mode === 'flf' && !am && names.has('lastFrame')) files.push(['lastFrame', PNG2]);
         if (mode === 'keyframes' && names.has('keyframes')) files.push(['keyframes', PNG], ['keyframes', PNG2]); // Keyframes: 2–5 stills (field keyframes)
         if (/swap|motion|restyle/.test(tool.id) && names.has('refs')) files.push(['refs', PNG2]);
-        for (let k = 0; k < (v._refs ?? 0); k++) files.push(['refs', PNG2]); if (v._rv) files.push(['refVideos', MP4]); if (v._ra) files.push(['refAudios', MP3]);
+        for (let k = 0; k < (v._refs ?? 0); k++) files.push(['refs', PNG2]); if (v._rv) files.push(['refVideos', (VIDEO_LIMITS[p.id]?.refVideoFrame?.minSide ?? 0) > 480 ? MP4_720 : MP4]); if (v._ra) files.push(['refAudios', MP3]);
         const asked = { duration: v.duration, resolution: v.resolution, aspect: v.aspect, audio: v.audio, audioOff: L?.audio?.off, mode };
         const tag = Object.entries({ d: v.duration, res: v.resolution, ar: v.aspect, snd: v.audio == null ? undefined : v.audio ? 'on' : 'off', refs: v._refs ? v._refs + 1 : undefined, rv: v._rv, ra: v._ra }).filter(([, x]) => x != null).map(([k, x]) => `${k}=${x}`).join(' ');
         out.push({ tool, p, route, mode, fields, files, asked, tag: tag || 'default' });
