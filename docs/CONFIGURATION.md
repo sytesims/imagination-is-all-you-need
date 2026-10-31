@@ -4,8 +4,8 @@ Imagination Is All You Need is configured with environment variables and a few s
 
 ## Where settings go
 
-- **`.env.local` in the repo root.** `npm run dev` loads it into the API server (`tsx watch --env-file-if-exists=../.env.local`). Put one `NAME=value` per line. `scripts/install.sh` writes this file, and keys you save in **Settings** are stored here.
-- **Your shell.** A variable you `export` before `npm run dev` wins over the same name in `.env.local`.
+- **`.env.local` in the repo root.** `npm start` and `npm run dev` load it into the API server (`tsx --env-file-if-exists=../.env.local`). Put one `NAME=value` per line. `scripts/install.sh` writes this file, and keys you save in **Settings** are stored here.
+- **Your shell.** A variable you `export` before `npm start` wins over the same name in `.env.local`.
 - **`.env.example`** lists the names the app reads, with empty or default values. Copy it to `.env.local` and fill in what you need, or create `.env.local` with only the lines you need. The Object Swap workflow line is commented out, so the code default (`object-swap-wan-animate-api.json`) applies unless you set it.
 - **Never commit `.env.local` or any real key.** `.gitignore` ignores `.env` and `.env.*` (except `.env.example`).
 
@@ -64,7 +64,7 @@ Leave these empty unless you use that provider. Settings shows which ones are se
 
 Which of these actually run today: [PROVIDERS-AND-MODELS.md](PROVIDERS-AND-MODELS.md#which-providers-run-today).
 
-**Saving a key from the browser** works when the server listens on this computer (the default for `npm run dev`). Otherwise put keys in `.env.local` and restart. Either way, real runs need `OPENHIGGSFIELD_BACKEND=comfy`.
+**Saving a key from the browser** works when the server listens on this computer (the default for `npm start` and `npm run dev`). Otherwise put keys in `.env.local` and restart. Either way, real runs need `OPENHIGGSFIELD_BACKEND=comfy`.
 
 ## Your Comfy deployment
 

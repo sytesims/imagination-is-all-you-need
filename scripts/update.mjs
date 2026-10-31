@@ -102,7 +102,7 @@ const steps = [
   ...(rootDeps ? [{ label: 'Installing the app’s new dependencies (npm ci)…', cwd: REPO, args: ['ci', '--no-audit', '--no-fund'] }] : []),
   /* the root npm ci already installs mcp/ (scripts/install-mcp.mjs) */
   ...(mcpDeps && !rootDeps ? [{ label: 'Installing the MCP server’s new dependencies…', cwd: path.join(REPO, 'mcp'), args: ['ci', '--no-audit', '--no-fund'] }] : []),
-  /* only when you built it before: npm run dev runs the MCP server from source */
+  /* only when you built it before: npm start and npm run dev run the MCP server from source */
   ...(mcpCode && fs.existsSync(path.join(REPO, 'mcp', 'dist')) ? [{ label: 'Rebuilding the MCP server (npm run mcp:build)…', cwd: REPO, args: ['run', 'mcp:build'] }] : []),
 ];
 for (const s of steps) {

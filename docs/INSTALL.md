@@ -94,13 +94,15 @@ npm run setup
 
 On Windows, `npm.cmd run setup` is equivalent and avoids selecting the PowerShell npm shim.
 
-Setup installs missing app dependencies, runs the read-only doctor and starts the API, web app and HTTP MCP server. It prints the setup URL. With default ports:
+Setup installs missing app dependencies, runs the read-only doctor and starts the API, web app and HTTP MCP server with `npm start`. It prints the setup URL. With default ports:
 
 | Service | Address |
 |---|---|
 | Web app / wizard | http://localhost:5174/?setup=1 |
 | API | http://127.0.0.1:8787/api/health |
 | MCP | http://127.0.0.1:8788/mcp |
+
+The first start builds the web app, which takes a minute or two (it prints what it's doing); later starts skip that unless the app changed, for example after an update. `npm start` starts the app the same way without the setup checks.
 
 Open the printed web URL. Keep the terminal open; **Ctrl+C** stops the services. Closing the browser does not stop them. `npm run setup -- --check` checks without installing or starting; `--no-start` permits dependency installation/checks but does not start services.
 
@@ -116,7 +118,7 @@ npm run mac-app
 
 This builds `Imagination.app` in `~/Applications`, the Applications folder in your home folder. Drag it from there to the Dock.
 
-- **Opening it** starts the app in the background when it isn't running (the same `npm run setup`, so a first start also installs what's missing), shows "Starting Imagination…", then opens the studio in your browser. If it's already running (also when you started it in a terminal, or it is restarting after an update), it just opens the browser. Closing the browser doesn't stop it.
+- **Opening it** starts the app in the background when it isn't running (the same `npm run setup`, so a first start also installs what's missing and builds the app, which can take a few minutes), shows "Starting Imagination…", then opens the studio in your browser. If it's already running (also when you started it in a terminal, or it is restarting after an update), it just opens the browser. Closing the browser doesn't stop it.
 - **While the studio runs**, Imagination stays in the Dock with its running dot. Click it to open the studio again. If the studio stops by itself, you get a notification and the app closes.
 - **To stop it**, quit Imagination (from its Dock menu, or Cmd-Q) and choose **Stop**; **Keep running** leaves the studio on. Or hold **Option** while you open Imagination and choose **Stop Imagination**. It only stops the copy it started; a copy started in a terminal stops with **Ctrl+C** there.
 - **If it can't start**, it shows the last lines of the log. The full log is `~/Library/Logs/Imagination/app.log` (it keeps about the last 1 MB).
@@ -197,9 +199,10 @@ On Windows, `npm.cmd run update` does the same. The update:
 2. Checks that you're on `main`. If you're on another branch, it says how to switch back. `npm run update -- --force-branch` updates the branch you're on instead.
 3. Gets the new version from GitHub with `git pull --ff-only`. It never merges, resets or deletes anything.
 4. Installs new dependencies only when they changed, and rebuilds the MCP server only if you built it before (`npm run mcp:build`).
-5. Shows your old and new version and a short list of what's new.
+5. Builds the new version of the web app, unless the app is running (then its next start does it).
+6. Shows your old and new version and a short list of what's new.
 
-Then start the app again with `npm run setup` (or `npm run dev`).
+Then start the app again with `npm run setup` or `npm start`. A running app never restarts by itself after an update: it keeps the version it started with until you restart it.
 
 To see whether an update is ready without changing anything:
 
@@ -227,7 +230,8 @@ When the new version works, you can delete the old folder. Running `npm run upda
 
 ## Other startup and advanced installation paths
 
-- `npm run dev`: starts API, Vite web and HTTP MCP after dependencies are installed.
+- `npm start`: what setup and the Mac app run. Builds the web app when it changed since the last build, then starts the API (no file watching), the built web app (`vite preview`, same `/api` proxy) and HTTP MCP. Nothing restarts while it runs.
+- `npm run dev`: for working on the code. Starts the API with file watching, the Vite dev server with hot reload and HTTP MCP. Slower pages, and an edit or `git pull` restarts the API (which stops runs in progress).
 - `npm run start:demo`: non-watching API plus built web preview and HTTP MCP. It is not a separate hosted demo service.
 - `npm run build`: builds server/web assets. MCP's compiled stdio entrypoint has a separate `npm run mcp:build` step; see [MCP](MCP.md).
 - `scripts/install.ps1`: optional native Windows app install/build helper. Its printed start command uses app setup; it does not provision ComfyUI or model weights.

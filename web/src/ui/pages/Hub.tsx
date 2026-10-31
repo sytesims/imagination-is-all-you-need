@@ -66,7 +66,7 @@ function Drawer({ id, onClose, onChange }: { id: string; onClose: () => void; on
         </div>
         {it.sample && <p className="helper hub-sample-why">{SAMPLE_WHY}</p>}
         {err && <p className="inline-err">{err}</p>}
-        {restart && <Notice kind="success" title="Installed.">Restart the server to load it (<code>npm run dev</code>).</Notice>}
+        {restart && <Notice kind="success" title="Installed.">Restart the server to load it (<code>npm start</code>).</Notice>}
       </>}
     </aside>
   </div>, document.body);

@@ -14,7 +14,7 @@ Instructions for AI coding agents installing and running Imagination Is All You 
 ## 1. Check prerequisites
 
 ```bash
-node -v        # need v20, v22 or v24 (package.json: "engines": {"node": ">=20"}); a current Node 20 release, since `npm run dev` uses --env-file-if-exists
+node -v        # need v20, v22 or v24 (package.json: "engines": {"node": ">=20"}); a current Node 20 release, since the API start uses --env-file-if-exists
 npm -v
 ffmpeg -version && ffprobe -version     # needed for media steps
 python3 --version                       # 3.10+; only for scripts/install.sh, model downloads and workflow scripts
@@ -38,7 +38,7 @@ npm install          # root workspaces (server, web) + the MCP server's deps via
 
 > "Do you want to (a) make real renders on Comfy Cloud with your Comfy API key, (b) run models locally with your own ComfyUI, or (c) both?"
 
-Write their answer into **`.env.local`** in the repo root (the API reads it on `npm run dev`; shell exports win over it). Either copy `.env.example` to `.env.local` and fill in what's needed, or create `.env.local` with only the lines below. Never echo key values back. The backend is `comfy` by default (real runs); `OPENHIGGSFIELD_BACKEND=mock` gives sample results and is for development and tests only. With nothing set up, Generate opens "Connect a Comfy key or your ComfyUI to start" (nothing runs, nothing is charged); the Examples project shows what the app makes.
+Write their answer into **`.env.local`** in the repo root (the API reads it when it starts, with `npm start` or `npm run dev`; shell exports win over it). Either copy `.env.example` to `.env.local` and fill in what's needed, or create `.env.local` with only the lines below. Never echo key values back. The backend is `comfy` by default (real runs); `OPENHIGGSFIELD_BACKEND=mock` gives sample results and is for development and tests only. With nothing set up, Generate opens "Connect a Comfy key or your ComfyUI to start" (nothing runs, nothing is charged); the Examples project shows what the app makes.
 
 | Choice | `.env.local` |
 |---|---|
@@ -46,19 +46,20 @@ Write their answer into **`.env.local`** in the repo root (the API reads it on `
 | (b) Own GPU | `COMFY_BASE_URL=http://127.0.0.1:8188`, `OPENHIGGSFIELD_COMFY_MODELS_DIR=<their ComfyUI>/models`, `OPENHIGGSFIELD_USE_LOCAL=1` |
 | (c) Both | the lines of (a) and (b) |
 
-`npm run dev` keeps the API on this computer (`127.0.0.1`), so the user can also save keys and change the ComfyUI address from the browser (setup sheet or **Settings → Connections**); keys saved there work at once. `HOST=0.0.0.0` opens the API to the network and turns browser key saving off. Other keys (fal, Replicate, and official lab keys: Black Forest Labs, MiniMax, LTX) are listed in [docs/CONFIGURATION.md](docs/CONFIGURATION.md#provider-keys). Let the user add keys themselves (in `.env.local` or **Settings**) if they prefer.
+`npm start` and `npm run dev` keep the API on this computer (`127.0.0.1`), so the user can also save keys and change the ComfyUI address from the browser (setup sheet or **Settings → Connections**); keys saved there work at once. `HOST=0.0.0.0` opens the API to the network and turns browser key saving off. Other keys (fal, Replicate, and official lab keys: Black Forest Labs, MiniMax, LTX) are listed in [docs/CONFIGURATION.md](docs/CONFIGURATION.md#provider-keys). Let the user add keys themselves (in `.env.local` or **Settings**) if they prefer.
 
 Tell the user honestly what will work: workflow/source documentation distinguishes graphs that have made real results (*Ran*) from validation-only entries (*Built*). Neither establishes every platform or provider route. Routes with no live runner must say so. See [workflows/README.md](workflows/README.md) and [docs/PROVIDERS-AND-MODELS.md](docs/PROVIDERS-AND-MODELS.md).
 
 ## 4. Start it
 
 ```bash
-npm run dev
+npm start            # everyday use: builds the web app when it changed (first time: a minute or two), then runs it without file watching
+npm run dev          # only when changing the code: hot reload, and the API restarts on every file change
 ```
 
-`npm run setup` does install + doctor + start in one go and prints `http://localhost:5174/?setup=1` (the first-run sheet; it also opens by itself on a first visit); `-- --check` only checks, `-- --no-start` doesn't start.
+`npm run setup` does install + doctor + start (`npm start`) in one go and prints `http://localhost:5174/?setup=1` (the first-run sheet; it also opens by itself on a first visit); `-- --check` only checks, `-- --no-start` doesn't start.
 
-`npm run dev` starts three processes (`concurrently`): `api` on **:8787**, `web` on **:5174**, `mcp` (HTTP) on **:8788**. For a run without file watching: `npm run start:demo`. Ports: `PORT` (API), `WEB_PORT` (web), `MCP_PORT` (MCP).
+Both start three processes (`concurrently`): `api` on **:8787**, `web` on **:5174**, `mcp` (HTTP) on **:8788**. `npm start` never restarts while running, so it is the safe choice for a user's app (a restart cancels runs in progress). Ports: `PORT` (API), `WEB_PORT` (web), `MCP_PORT` (MCP).
 
 ## 5. Verify (second terminal)
 
@@ -105,7 +106,7 @@ Full guide: [docs/LOCAL-MODELS-AND-HARDWARE.md](docs/LOCAL-MODELS-AND-HARDWARE.m
 | Symptom | Fix |
 |---|---|
 | `mcp` exits with `EADDRINUSE` | Something already uses :8788. API and web keep running. Free the port or set `MCP_PORT` |
-| `mcp` won't start after install | `npm run mcp:install`, then `npm run dev` |
+| `mcp` won't start after install | `npm run mcp:install`, then `npm start` |
 | Web won't start: port 5174 in use | Vite uses a strict port. Free it or set `WEB_PORT` |
 | Node rejects `--env-file-if-exists` (a "bad option" error) | Node too old; use a current Node 20, 22 or 24 |
 | Generate → "Connect a Comfy key or your ComfyUI to start" (402 `no_connection`) | Nothing is set up: paste a Comfy key, or point the app at your ComfyUI (Settings → Connections) |
