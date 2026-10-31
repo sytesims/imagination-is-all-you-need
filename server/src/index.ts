@@ -432,6 +432,7 @@ const spendGuard: typeof import('./spendGuard.js').spendGuard = async (reply, o)
 async function createJob(toolId: string, req: FastifyRequest, reply: FastifyReply) {
   const tool = getTool(toolId);
   if (!tool) return reply.code(404).send({ error: `unknown tool ${toolId}` });
+  if (tool.id === 'photos-reel') return reply.code(400).send({ error: 'Use the Photos → Reel workflow (app-photos-to-reel).' });
   const id = randomUUID().slice(0, 8); (req as any).uploadJobId = id; // BH4 #2: safeCreateJob removes this request's files unless the job is created
   const fields: Record<string, string> = {};
   const files: Record<string, string[]> = {};
@@ -493,6 +494,11 @@ async function createJob(toolId: string, req: FastifyRequest, reply: FastifyRepl
       if (j) return reply.code(200).send({ id: j.id, toolId: j.toolId, provider: j.provider, warnings: j.warnings, cost: j.cost ?? 0, free: !!j.input.free, freeGensLeft: freeGensLeft(), balance: getBalance(), seed: j.input.seed, idempotentReplay: true });
     }
     I.idemTrack(req, idemKey, fieldsHash);
+  }
+  if (tool.id === 'app-photos-to-reel') {
+    const result = await (await import('./photosToReel.js')).startReel(app, req, reply, id, fields, files);
+    if (jobs.has(id) && idemKey) I.idemPut(idemKey, { fieldsHash, jobId: id, ts: Date.now() });
+    return result;
   }
   /** Step 2 (MODEL-ROUTE-SPEC): model (a model key, or an old engine id) + runOn → the engine / route fields below, by the SAME
    *  resolveModelRequest the quote's preHandler uses (routing/http.ts), before the app locks apply (as on the quote). */
@@ -951,6 +957,7 @@ const processingCancelText = (j: { cost?: number; input?: Record<string, any> })
 app.post<{ Params: { id: string } }>('/api/jobs/:id/cancel', async (req, reply) => {
   const j = jobs.get(req.params.id);
   if (!j) return reply.code(404).send({ error: 'not found' });
+  if (j.toolId === 'app-photos-to-reel') { const ok = await (await import('./photosToReel.js')).cancelReel(app, j); return ok ? pub(j) : reply.code(409).send({ error: 'This reel has already finished.' }); }
   const { cancelRun, CANCEL_IN_PROCESSING } = await import('./queue.js');
   const r = await cancelRun(j); // local ComfyUI: cancellable at every stage (our queue, ComfyUI's queue, running); hosted: only before dispatch
   if (r.result === 'done') return reply.code(409).send({ error: 'It finished before it could be canceled, so the result is kept.', errorType: 'not_cancellable', code: 'already_done', jobId: j.id, status: j.status, state: stateOf(j), progress: j.progress });
@@ -964,6 +971,14 @@ app.post<{ Params: { id: string } }>('/api/jobs/:id/cancel', async (req, reply) 
  *  S-02: Try on (runOn) pins THIS job only; remember:true (body or query) also saves that place as the tool + model's choice (Settings › Routing). */
 app.post<{ Params: { id: string }; Querystring: { failedOnly?: string; runOn?: string; remember?: string } }>('/api/jobs/:id/retry', async (req, reply) => {
   const j = jobs.get(req.params.id); if (!j) return reply.code(404).send({ error: 'not found' });
+  if (j.toolId === 'app-photos-to-reel') {
+    const partialRetry = j.status === 'done' && /^(1|true)$/.test(req.query.failedOnly ?? '') && !!j.partial && (j.input.failedPhotos?.length ?? 0) > 0;
+    if (j.status !== 'failed' && j.status !== 'blocked' && !partialRetry) return reply.code(409).send({ error: 'Only failed reels or failed photos can be retried.' });
+    const previous = [...jobs.values()].find(x => x.parentId === j.id && x.input.retryOf === j.id && !['failed','blocked','canceled'].includes(x.status));
+    if (previous) return { id: previous.id, toolId: previous.toolId, idempotentReplay: true };
+    const id = randomUUID().slice(0, 8);
+    return (await import('./photosToReel.js')).startReel(app, req, reply, id, { ...j.input.fields, simulateGroup: '0', quotedCredits: '', fromJob: j.id, reuseInputs: 'photos' }, {}, j);
+  }
   // Run on (2026-10-22): "Try on <place>": runOn (body or query) re-runs the job there, pinned to that place (no fallback). Without it, the same route as before.
   const retryRunOn = String((req.body as any)?.runOn ?? (req.body as any)?.run_on ?? req.query.runOn ?? '').trim();
   if (retryRunOn) { const { normRunOn } = await import('./shared/modelIds.js'); if (!normRunOn(retryRunOn)) return reply.code(400).send({ error: 'runOn must be a place id (local, comfy-cloud, fal, replicate, bfl…). Nothing was charged.', errorType: 'validation', code: 'invalid_run_on', issues: [{ code: 'invalid_run_on', field: 'runOn', message: 'unknown place' }], charged: false }); }

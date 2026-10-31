@@ -1,3 +1,4 @@
+import { photosReelTool } from './photosReel.js';
 import type { ToolDef } from './types.js';
 import { invalidateTools } from '../toolsCache.js';
 import { objectSwapTool, motionTransferTool, restyleTool } from './videoSwap.js';
@@ -67,6 +68,7 @@ registerTool(promptEditTool); // Prompt Edit (2026-10-27): Bernini-R on Comfy Cl
 registerTool(finishTool); // Finish (2026-10-27): eight one-click finishing looks (ffmpeg, our own graphs), free on this computer
 for (const t of NEW_EDIT_TOOLS) registerTool(t, ...(({ 'sdr-hdr': ['hdr'], 'depth-map': ['depth'] } as Record<string, string[]>)[t.id] ?? [])); // Edit Video tools (tools/editVideo)
 // Apps gallery (data in tools/apps.ts APP_GALLERY): each app is a runnable tool `app-<id>` wrapping its base tool.
+registerTool(photosReelTool);
 for (const a of APP_GALLERY) { const b = tools.get(a.base); if (b) registerTool(makeGalleryApp(a, b)); else console.warn(`[apps] ${a.id}: unknown base tool ${a.base}`); }
 
 // ---- Roadmap (CLEANROOM-SPEC P1/P2; our own names). Registering a real tool with the same id removes it from Soon. ----

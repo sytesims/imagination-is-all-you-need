@@ -146,6 +146,7 @@ export function registerBatch1(app: FastifyInstance) {
   // ---- Live price (same function the web runs locally) ----
   app.get<{ Params: { toolId: string }; Querystring: Record<string, string> }>('/api/tools/:toolId/price', async (req, reply) => {
     const t = getTool(req.params.toolId); if (!t) return reply.code(404).send({ error: 'unknown tool' });
+    if (t.id === 'app-photos-to-reel') { const r = await (await import('./photosToReel.js')).quoteReel(app, req.query); return reply.code(r.status).send(r.body); }
     const q = req.query; const on = (v?: string) => /^(1|true|on)$/i.test(v ?? '');
     if (q.model && !q.provider) (q as any).provider = q.model; // model= is an alias of provider= (the routed-price hook reads the same query)
     // videoPath=/files/… or /samples/… (the MCP quote): a trim-aware video tool (Video Swap family) is billed per second of the clip, so price the

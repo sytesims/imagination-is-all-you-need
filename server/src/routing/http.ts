@@ -356,6 +356,7 @@ export function registerRouting(app: FastifyInstance) {
   app.addHook('preHandler', async (req, reply) => {
     if (req.method !== 'GET') return; const url = req.url.split('?')[0];
     const pm = url.match(/^\/api\/tools\/([^/]+)\/price$/); const isQuote = url === '/api/models/quote'; if (!pm && !isQuote) return;
+    if (pm?.[1] === 'app-photos-to-reel') return; // Composite children resolve their own models and routes.
     const q = (req.query ?? {}) as Record<string, string>; const runOnRaw = q.runOn ?? q.run_on;
     { // Enum case (re-check 6): validate + normalise the user's enum values (aspect=AUTO → auto, quality=HIGH → high) BEFORE the price handler's
       // per-model checks, exactly as the submit does (index.ts enumParamError on the job fields), so quote = submit for the same params. Same 400 body.
@@ -480,6 +481,7 @@ export function registerRouting(app: FastifyInstance) {
   });
   // Enrich model and tool listings additively (no change to their handlers).
   app.addHook('preSerialization', async (req, reply, payload: any) => {
+    if (payload?.composite === true) return payload;
     const url = req.url.split('?')[0];
     try {
       if (url === '/api/models' && payload && typeof payload === 'object') {

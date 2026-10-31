@@ -1,0 +1,38 @@
+import assert from 'node:assert/strict';
+import { spawn, spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import { testPort } from './_ports.js';
+import { parseReelOptions, heroIndices, reelPlan } from '../src/shared/photosToReel.js';
+const ROOT = path.resolve(import.meta.dirname, '..');
+const preview = path.join(ROOT, '../.preview'); fs.mkdirSync(preview,{recursive:true});
+const D = fs.mkdtempSync(path.join(preview,'reel-test-')); const empty = path.join(preview,'empty.env'); fs.writeFileSync(empty,'');
+const PORT = testPort(8938), base = `http://127.0.0.1:${PORT}`;
+const env = { PATH:process.env.PATH, HOME:process.env.HOME, PORT:String(PORT),HOST:'127.0.0.1', OPENHIGGSFIELD_DATA_DIR:D, OPENHIGGSFIELD_ENV_FILE:empty, OPENHIGGSFIELD_BACKEND:'mock', OPENHIGGSFIELD_MOCK_KEYS:'1', OPENHIGGSFIELD_MOCK_DELAY_MS:'1', OPENHIGGSFIELD_USE_LOCAL:'0', COMFY_BASE_URL:'http://127.0.0.1:9', OPENHIGGSFIELD_COMFY_DETECT_URLS:'http://127.0.0.1:9' };
+for (const [n,size] of [['wide','320x240'],['tall','240x320']]) { const r = spawnSync('ffmpeg',['-y','-v','error','-f','lavfi','-i',`testsrc=size=${size}`,'-frames:v','1',path.join(D,`${n}.png`)],{env}); assert.equal(r.status,0,String(r.stderr)); }
+let log=''; const p=spawn(process.execPath,['--import','tsx','src/index.ts'],{cwd:ROOT,env,stdio:['ignore','pipe','pipe']}); p.stdout.on('data',x=>{log+=x});p.stderr.on('data',x=>{log+=x});
+const get=async(url:string)=>{const r=await fetch(base+url);return {status:r.status,body:await r.json() as any}};
+const post=async(url:string,body?:FormData)=>{const r=await fetch(base+url,{method:'POST',body});return {status:r.status,body:await r.json() as any}};
+const wait=async(id:string)=>{for(let n=0;n<600;n++){const r=await get(`/api/jobs/${id}`);if(['done','failed','canceled'].includes(r.body.status))return r.body;await new Promise(r=>setTimeout(r,250));}throw Error('reel timeout');};
+const form=(extra:Record<string,string>={},count=8)=>{const f=new FormData();for(let i=0;i<count;i++)f.append('photos',new Blob([fs.readFileSync(path.join(D,`${i%2?'tall':'wide'}.png`))],{type:'image/png'}),`${i}.png`);for(const[k,v]of Object.entries({title:'A short trip',endLine:'See you soon',seconds:'15',music:'off',motion:'heroes',provider:'api-minimax-h3',...extra}))f.set(k,v);return f;};
+try {
+  for(let n=0;n<160;n++){try{if((await get('/api/health')).status===200)break}catch{}if(p.exitCode!==null)throw Error(log);if(n===159)throw Error(log);await new Promise(r=>setTimeout(r,250));}
+  assert.deepEqual(heroIndices(8),[0,4,7]);assert.equal(heroIndices(15).length,4);
+  assert.ok('error' in parseReelOptions({title:'x'},7)); assert.ok('error' in parseReelOptions({title:'x'},16));
+  assert.equal(reelPlan(15,parseReelOptions({title:'x',motion:'all'},15) as any).cameraCount,15);
+  const quotes:any[]=[];
+  for(const count of [8,15])for(const motion of ['heroes','all']){const q=await get(`/api/tools/app-photos-to-reel/price?photoCount=${count}&motion=${motion}&seconds=30&music=on&provider=api-minimax-h3`);assert.equal(q.status,200,JSON.stringify(q.body));assert.equal(q.body.cameraCount,motion==='all'?count:count===8?3:4);assert.ok(q.body.composite);assert.equal(q.body.cost.usdText,`~$${q.body.cost.realRunUsd.toFixed(2)}`);assert.ok(q.body.cost.realRunUsd > q.body.steps[0].quote.cost.realRunUsd);quotes.push({count,motion,credits:q.body.credits,cost:q.body.cost});}
+  console.log('mock quotes',JSON.stringify(quotes));
+  const invalid=await get('/api/tools/app-photos-to-reel/price?photoCount=7');assert.equal(invalid.status,400);
+  const changed=await post('/api/tools/app-photos-to-reel/jobs',form({quotedCredits:'0'}));assert.equal(changed.status,409,JSON.stringify(changed.body));
+  const cancel=await post('/api/tools/app-photos-to-reel/jobs',form());assert.equal(cancel.status,200,JSON.stringify(cancel.body));await post(`/api/jobs/${cancel.body.id}/cancel`);assert.equal((await wait(cancel.body.id)).status,'canceled');
+  const started=await post('/api/tools/app-photos-to-reel/jobs',form());assert.equal(started.status,200,JSON.stringify(started.body));const done=await wait(started.body.id);assert.equal(done.status,'done',JSON.stringify(done));assert.ok(done.resultUrl);assert.equal(done.toolId,'app-photos-to-reel');
+  const probe=spawnSync('ffprobe',['-v','error','-show_entries','stream=width,height:format=duration','-of','json',path.join(D,path.basename(done.resultUrl))],{env,encoding:'utf8'});const media=JSON.parse(probe.stdout);assert.ok(Math.abs(Number(media.format.duration)-15)<0.2);assert.ok(media.streams[0].height>media.streams[0].width);
+  assert.equal(done.input.childIds.length,3,'no music submits only the three hero camera jobs');
+  const partialStart=await post('/api/tools/app-photos-to-reel/jobs',form({simulateGroup:'1'}));assert.equal(partialStart.status,200);const partial=await wait(partialStart.body.id);assert.equal(partial.status,'done',JSON.stringify(partial));assert.equal(partial.partial,true);assert.deepEqual(partial.failedGroups,[0]);assert.ok(partial.input.photoJobs[0]);
+  const retry=await post(`/api/jobs/${partial.id}/retry?failedOnly=1`);assert.equal(retry.status,200,JSON.stringify(retry.body));const duplicate=await post(`/api/jobs/${partial.id}/retry?failedOnly=1`);assert.equal(duplicate.body.id,retry.body.id);const retried=await wait(retry.body.id);assert.equal(retried.status,'done',JSON.stringify(retried));assert.equal(retried.input.childIds.length,1,'only the failed hero is regenerated');assert.equal(Object.keys(retried.input.clipsByPhoto).length,8);
+  const musicStart=await post('/api/tools/app-photos-to-reel/jobs',form({seconds:'30',music:'on'},15));assert.equal(musicStart.status,200,JSON.stringify(musicStart.body));const musicDone=await wait(musicStart.body.id);assert.equal(musicDone.status,'done',JSON.stringify(musicDone));assert.equal(musicDone.input.childIds.length,5,'four heroes plus music');assert.ok(!musicDone.partial,JSON.stringify(musicDone.warnings));
+  const musicProbe=spawnSync('ffprobe',['-v','error','-show_entries','stream=codec_type,width,height:format=duration','-of','json',path.join(D,path.basename(musicDone.resultUrl))],{env,encoding:'utf8'});const mm=JSON.parse(musicProbe.stdout), mv=mm.streams.find((x:any)=>x.codec_type==='video');assert.ok(mv.height>mv.width);assert.ok(mm.streams.some((x:any)=>x.codec_type==='audio'));assert.ok(Math.abs(Number(mm.format.duration)-30)<0.2);
+  console.log('PASS: partial completion, failed-only retry reuses successful clips, retry dedupe, 15 photos with music at 30s portrait');
+  console.log('PASS: quote totals, validation, changed-price refusal, cancellation, ordered mixed-photo reel, real Stitch, duration and portrait output');
+} finally { p.kill('SIGTERM'); }
