@@ -1,13 +1,12 @@
 /* The model menu's preview card (shared/ModelPreviewCard.tsx; user pick "b", 2026-10-29). One spacing scale: 4 · 8 · 12 · 16.
-   Nothing is clamped or cut: every line wraps. Dark surfaces, orange accent only on the price, the fact icons and the Open tag.
-   The card frame (.orb-pv: position, border, shadow, fade) lives in modelMenu.css. */
+   Nothing is clamped or cut: every line wraps. The menu's own surface (2026-10-31: one family, no darker card, no gradient band); inner
+   blocks are the menu's --fill. Orange only on the fact icons, the Open tag and the one orange action. The frame (.orb-pv) lives in modelMenu.css. */
 #mpv-card.orb-pv{width:304px;overflow:visible}
 .mc{position:relative;border-radius:20px;font:400 13px/18px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-1,#F7F7F8);overflow-wrap:anywhere}
 .mc-bd{padding:16px;display:flex;flex-direction:column;gap:12px}
-.mc-art{position:relative;height:148px;overflow:hidden;border-radius:19px 19px 0 0;background:var(--surface-2,#1C1E20)}
+.mc-art{position:relative;height:148px;overflow:hidden;border-radius:19px 19px 0 0;background:var(--fill,rgba(255,255,255,.05))}
 .mc-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 30%}
-.mc-art::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,var(--surface-1,#131517));pointer-events:none}
-.mc-art-tile{display:grid;place-items:center;background:radial-gradient(120% 90% at 50% 0%,rgba(255,122,26,.16),transparent 60%),var(--surface-2,#1C1E20)}
+.mc-art-tile{display:grid;place-items:center;height:112px;background:none}
 html body .orb-pv .mc-art-tile .mk-tile.orb-pv-big{margin-top:0;--mk-s:72px;width:72px;height:72px;border-radius:20px}
 html body .orb-pv .mc-art-tile .mk-tile.orb-pv-big .mk-svg{width:32px;height:32px}
 
@@ -21,20 +20,19 @@ html body .orb-pv .mk-tile.mc-tile .mk-svg{width:18px;height:18px;color:currentC
 .mc-open{font:700 9.5px/14px var(--font-sans,Inter,system-ui,sans-serif);font-style:normal;letter-spacing:.1em;text-transform:uppercase;padding:1px 6px;border-radius:5px;color:var(--accent,#FF7A1A);background:rgba(255,122,26,.12);border:1px solid rgba(255,122,26,.28)}
 
 .mc-d{margin:0;color:var(--text-1,#F7F7F8);font-size:14px;line-height:20px}
-.mc-note{margin:0;padding:8px 10px;border-radius:10px;background:var(--surface-2,#1C1E20);color:var(--text-2,#c4c5c8);font-size:12px;line-height:16px}
+.mc-note{margin:0;padding:8px 10px;border-radius:10px;background:var(--fill,rgba(255,255,255,.05));color:var(--text-2,#c4c5c8);font-size:12px;line-height:16px}
 
 /* the key facts: a two-column grid with icons; an odd last fact spans both columns */
 .mc-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.mc-grid li{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:10px;background:var(--surface-2,#1C1E20);font-size:12px;line-height:16px;color:var(--text-1,#F7F7F8);min-width:0}
+.mc-grid li{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:10px;background:var(--fill,rgba(255,255,255,.05));font-size:12px;line-height:16px;color:var(--text-1,#F7F7F8);min-width:0}
 .mc-grid li span{min-width:0}
 .mc-grid li:last-child:nth-child(odd){grid-column:1 / -1}
 .mc-fic{flex:none;margin-top:1px;color:var(--accent,#FF7A1A)}
 
 /* the one price */
-.mc-price{display:flex;flex-direction:column;gap:4px;padding:12px;border-radius:14px;background:var(--surface-2,#1C1E20);border:1px solid var(--border,rgba(255,255,255,.06))}
+.mc-price{display:flex;flex-direction:column;gap:4px;padding:12px;border-radius:14px;background:var(--fill,rgba(255,255,255,.05));border:1px solid var(--border,rgba(255,255,255,.06))}
 .mc-pr-main{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px}
-.mc-big{font:700 20px/24px var(--font-mono,'JetBrains Mono',ui-monospace,monospace);font-variant-numeric:tabular-nums;color:var(--accent,#FF7A1A)}
-.mc-big.mc-free{color:var(--ok,#4ADE80)}
+.mc-big{font:700 20px/24px var(--font-sans,Inter,system-ui,sans-serif);font-variant-numeric:tabular-nums;color:var(--text-1,#F7F7F8)}
 .mc-big.mc-word{font:600 14px/20px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-2,#a4a5a8)}
 .mc-approx{font-weight:500;opacity:.8}
 .mc-what{color:var(--text-1,#F7F7F8);font-size:13px}
@@ -42,19 +40,16 @@ html body .orb-pv .mk-tile.mc-tile .mk-svg{width:18px;height:18px;color:currentC
 .mc-where{color:var(--text-2,#a4a5a8);font-size:12px;line-height:16px}
 .mc-other{color:var(--text-3,rgba(255,255,255,.5));font-size:12px;line-height:16px}
 
-/* More details: a button, then a small panel beside the card (away from the menu) */
+/* More details: a button; the details then fill the same card (Back returns) */
 .mc-more{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px;border:1px solid var(--border-strong,rgba(255,255,255,.1));border-radius:10px;color:var(--text-2,#a4a5a8);font:600 12px/16px var(--font-sans,Inter,system-ui,sans-serif)}
-.mc-more:hover,.mc-more[aria-expanded="true"]{color:var(--text-1,#F7F7F8)}
-.mc-more[aria-expanded="true"]{border-color:rgba(255,122,26,.4)}
+.mc-more:hover{color:var(--text-1,#F7F7F8)}
 .mc-more:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px var(--accent,#FF7A1A))}
-.mc-panel{position:absolute;top:0;width:256px;box-sizing:border-box;max-height:calc(100vh - 16px);overflow:auto;padding:12px 16px 16px;display:flex;flex-direction:column;gap:12px;
-  background:var(--surface-1,#131517);border:1px solid var(--border-strong,rgba(255,255,255,.1));border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.6)}
-.mc-panel[data-side="r"]{left:calc(100% + 8px)}
-.mc-panel[data-side="l"]{right:calc(100% + 8px)}
+.mc-panel{box-sizing:border-box;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;padding:12px 16px 16px;display:flex;flex-direction:column;gap:12px}
 .mc-panel-h{display:flex;align-items:center;justify-content:space-between;font:700 10.5px/14px var(--font-sans,Inter,system-ui,sans-serif);letter-spacing:.12em;text-transform:uppercase;color:var(--text-3,rgba(255,255,255,.5))}
-.mc-x{all:unset;cursor:pointer;display:grid;place-items:center;width:24px;height:24px;border-radius:6px;color:var(--text-2,#a4a5a8)}
-.mc-x:hover{background:rgba(255,255,255,.06);color:var(--text-1,#F7F7F8)}
-.mc-x:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px var(--accent,#FF7A1A))}
+.mc-back{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px 0 4px;margin-left:-4px;border-radius:8px;color:var(--text-2,#a4a5a8);font:600 12px/16px var(--font-sans,Inter,system-ui,sans-serif);letter-spacing:0;text-transform:none}
+.mc-back svg{transform:scaleX(-1)}
+.mc-back:hover{background:var(--fill,rgba(255,255,255,.05));color:var(--text-1,#F7F7F8)}
+.mc-back:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px var(--accent,#FF7A1A))}
 .mc-dl{margin:0;display:flex;flex-direction:column;gap:8px}
 .mc-dl>div{display:grid;grid-template-columns:84px 1fr;gap:8px;align-items:baseline}
 .mc-dl dt{color:var(--text-3,rgba(255,255,255,.5));font-size:12px;line-height:16px}
@@ -62,13 +57,13 @@ html body .orb-pv .mk-tile.mc-tile .mk-svg{width:18px;height:18px;color:currentC
 /* link pills (both cards: the picker's More details and the Models page card's Read more): one height, one gap, wrap, never touching */
 .mc-links{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0}
 html body .mc-links a{box-sizing:border-box;display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 10px;border-radius:999px;white-space:nowrap;
-  background:var(--surface-2,#1C1E20);border:1px solid var(--border,rgba(255,255,255,.06));color:var(--text-1,#F7F7F8);font:500 12px/16px var(--font-sans,Inter,system-ui,sans-serif);text-decoration:none;
+  background:var(--fill,rgba(255,255,255,.05));border:1px solid var(--border,rgba(255,255,255,.06));color:var(--text-1,#F7F7F8);font:500 12px/16px var(--font-sans,Inter,system-ui,sans-serif);text-decoration:none;
   transition:border-color var(--fast,.12s) var(--ease,ease),background var(--fast,.12s) var(--ease,ease)}
-html body .mc-links a:hover{border-color:var(--accent-soft,rgba(255,122,26,.45));background:var(--surface-3,#27292C)}
+html body .mc-links a:hover{border-color:var(--accent-soft,rgba(255,122,26,.45));background:var(--surface-hover,rgba(255,255,255,.1))}
 html body .mc-links a:focus-visible{outline:none;border-radius:999px;box-shadow:var(--focus-ring,0 0 0 2px var(--accent,#FF7A1A))}
 
 /* the card's one orange action (Models page "Open in Video"): dark ink on orange, like every orange button (tokens.css --on-accent) */
 html body a.mc-cta{display:flex;align-items:center;justify-content:center;height:40px;border-radius:12px;background:var(--accent,#FF7A1A);color:var(--on-accent,#14151A);font:600 14px/20px var(--font-sans,Inter,system-ui,sans-serif);text-decoration:none}
 html body a.mc-cta:hover{filter:brightness(1.06)}
 html body a.mc-cta:focus-visible{outline:none;border-radius:12px;box-shadow:0 0 0 2px var(--surface-1,#131517),0 0 0 4px var(--accent,#FF7A1A)}
-html body a.mc-cta.off{background:var(--surface-2,#1C1E20);color:var(--text-3,rgba(255,255,255,.5));cursor:not-allowed;filter:none}
+html body a.mc-cta.off{background:var(--fill,rgba(255,255,255,.05));color:var(--text-3,rgba(255,255,255,.5));cursor:not-allowed;filter:none}
