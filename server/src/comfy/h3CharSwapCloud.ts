@@ -1,5 +1,6 @@
 /**
- * H3 Character Swap · Comfy Cloud (Oct 26–27): the Openjutsu recipe (MiniMax H3 Ref2VA + Akatz H3 Character Swap LoRA v1.5) as an ordinary Comfy Cloud
+ * H3 Character Swap · Comfy Cloud (Oct 26–27): the H3 Character Swap recipe (MiniMax H3 Ref2VA + Akatz H3 Character Swap LoRA v1.5), after Comfy's
+ * Openjutsu app and Akatz Labs' H3 Character Swap workflow, as an ordinary Comfy Cloud
  * workflow job (shared Comfy Cloud, the user's Creator plan), a standalone entry in comfy/cloudWorkflows.ts on route comfy-cloud:cloud-h3-charswap.
  * Graph: workflows/cloud/h3-charswap-api.json, our own core-node API graph (every class and model file checked against Comfy Cloud's object_info,
  * 2026-10-26, test/fixtures/object-info-comfy-cloud-2026-10-26.json):
@@ -16,7 +17,8 @@
  * (the mask-free behaviour), so a miss never returns the source unchanged. Motion transfer and maskMode "none" stay mask-free.
  * Before anything is uploaded, a free check (GET only) confirms the LoRA is in the account's model library (a clear refusal otherwise) and looks
  * for the optional 768p turbo import.
- * Credits: LoRA github.com/akatz-ai (HF akatz-ai/MiniMax-H3-Character-Swap-LoRA); recipe after Comfy's Openjutsu app and Akatz's H3 Relay.
+ * Credits: LoRA by Akatz Labs (HF akatz-ai/MiniMax-H3-Character-Swap-LoRA); recipe after Comfy's Openjutsu app (github.com/Comfy-Org/comfy-openjutsu, MIT) and Akatz Labs' H3 Character Swap workflow (github.com/akatz-labs/h3-character-swap-tool, MIT);
+ * edit mask after Akatz's H3 Relay. Licence texts: licenses/comfy-openjutsu-LICENSE-MIT.md, licenses/akatz-h3-character-swap-tool-LICENSE-MIT.md.
  */
 import { swapSide } from '../shared/cloudSwap.js';
 import { readFileSync } from 'node:fs';
@@ -48,12 +50,12 @@ export const TURBO_768_HF_FILE = 'minimax_h3_fl2v_turbo_8step_v1.0_768p_comfyui_
 export const TURBO_768_DEFAULT = `lightx2v__Minimax-h3-Turbo__${TURBO_768_HF_FILE}`;
 export const TURBO_768_URL = `https://huggingface.co/lightx2v/Minimax-h3-Turbo/blob/main/${TURBO_768_HF_FILE}`;
 export const TURBO_SHARED = 'minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors';
-/** What the free check reports: the files the Openjutsu settings want, where to import them from and the name Comfy Cloud gives an import. */
+/** What the free check reports: the files the recipe (after Comfy's Openjutsu app) wants, where to import them from and the name Comfy Cloud gives an import. */
 export const CHARSWAP_RECOMMENDED = [
   { id: 'charswap-lora', required: true, file: CHARSWAP_LORA_HF_FILE, importAs: CHARSWAP_LORA_DEFAULT, hf: `${CHARSWAP_LORA_URL}/blob/main/${CHARSWAP_LORA_HF_FILE}`, type: 'LoRA', size: '0.16 GB',
     why: 'The Character Swap adapter itself. Without it the route refuses to run.' },
   { id: 'turbo-768p', required: false, file: TURBO_768_HF_FILE, importAs: TURBO_768_DEFAULT, hf: TURBO_768_URL, type: 'LoRA', size: '1.96 GB',
-    why: 'Openjutsu\'s turbo build, trained at 768p. Without it, 768p runs use Cloud\'s shared 8-step turbo (the non-768p build).' },
+    why: 'The turbo build trained at 768p, as Comfy\'s Openjutsu app uses for Sharper (768p). Without it, 768p runs use Cloud\'s shared 8-step turbo (the non-768p build).' },
 ] as const;
 
 /** Seconds one pass takes (Ref2V's trained range is ~124–362 frames at 24 fps; the reference clip must be 2–15 s). */
@@ -61,9 +63,10 @@ export const CHARSWAP_CLOUD_SECONDS = { min: 2, max: 15 } as const;
 /** Pixel budgets per tier, as Openjutsu / H3 Relay size the canvas: 480 = up to 0.5 MP, 768 = up to 1.0 MP. Our 720p and 1080p render at 768. */
 export const CHARSWAP_CLOUD_BUDGET = { '480p': 500_000, '768p': 1_000_000 } as const;
 export type CharSwapTier = keyof typeof CHARSWAP_CLOUD_BUDGET;
-/** Presets: "openjutsu" (default) = the Openjutsu settings at 768p; "fast" = the same recipe at 480p (about half the price). */
+/** Presets: "openjutsu" (default, shown as "Sharper (768p)") = the recipe at 768p as in Comfy's Openjutsu app; "fast" = the same recipe at 480p
+ *  (about half the price). The key "openjutsu" stays so saved jobs and Recreate keep working. */
 export const CHARSWAP_PRESETS = {
-  openjutsu: { label: 'Openjutsu settings (768p)', tier: '768p' },
+  openjutsu: { label: 'Sharper (768p)', tier: '768p' },
   fast: { label: 'Faster and cheaper (480p)', tier: '480p' },
 } as const satisfies Record<string, { label: string; tier: CharSwapTier }>;
 export type CharSwapPreset = keyof typeof CHARSWAP_PRESETS;
@@ -94,7 +97,7 @@ export const charswapGrowCells = (height: number, width: number, grow?: string) 
   const px = CHARSWAP_GROW_PX[(grow && grow in CHARSWAP_GROW_PX ? grow : 'normal') as keyof typeof CHARSWAP_GROW_PX];
   return Math.max(1, Math.round((px * Math.min(width, height)) / 736 / H3_LATENT_CELL));
 };
-/** Sampling: Openjutsu's turbo recipe (8 steps, er_sde / normal, sigma shift 12/3) or, without turbo, Akatz's native recipe (20 steps,
+/** Sampling: the turbo recipe of Comfy's Openjutsu app (8 steps, er_sde / normal, sigma shift 12/3) or, without turbo, Akatz Labs' native recipe (20 steps,
  *  res_multistep / simple, no turbo LoRA, no sigma shift). steps 4–40 overrides; LoRA strength 0–1.5 (the card's default 1.0). */
 export function charswapSampling(i: Record<string, any>) {
   const turbo = !(i.turbo === false || i.turbo === '0' || i.turbo === 'false' || i.turbo === 'off');
@@ -246,7 +249,7 @@ export const charswapRecommendedReport = (lora: { state: string; loaderPath: str
  *  charswapMask off. Only the fields that are set; other routes ignore them. */
 export function charswapFields(f: Record<string, string>): Record<string, any> | { error: string } {
   const o: Record<string, any> = {}; const has = (k: string) => f[k] != null && String(f[k]).trim() !== '';
-  if (has('charswapPreset')) { if (!(f.charswapPreset in CHARSWAP_PRESETS)) return { error: 'charswapPreset must be openjutsu or fast.' }; o.charswapPreset = f.charswapPreset; }
+  if (has('charswapPreset')) { if (!(f.charswapPreset in CHARSWAP_PRESETS)) return { error: 'charswapPreset must be openjutsu (Sharper, 768p) or fast (Faster and cheaper, 480p).' }; o.charswapPreset = f.charswapPreset; }
   if (has('turbo')) { if (!/^(0|1|true|false|on|off)$/i.test(f.turbo)) return { error: 'turbo must be 1 or 0.' }; o.turbo = /^(1|true|on)$/i.test(f.turbo); }
   if (has('steps')) { const n = Number(f.steps); if (!Number.isInteger(n) || n < 4 || n > 40) return { error: 'steps must be a whole number from 4 to 40.' }; o.steps = n; }
   if (has('loraStrength')) { const n = Number(f.loraStrength); if (!Number.isFinite(n) || n < 0 || n > 1.5) return { error: 'loraStrength must be from 0 to 1.5.' }; o.loraStrength = n; }

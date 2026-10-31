@@ -66,6 +66,17 @@ Mesh2Motion (Scott Petrovic)
   notice in each file and in licenses/mesh2motion-LICENSE-MIT.md. The human
   skeleton and moves are CC0 (licenses/mesh2motion-LICENSE-CC0.md).
 
+Comfy-Org/comfy-openjutsu (Comfy Org)
+  MIT. The H3 Character Swap recipe settings follow Comfy's Openjutsu app
+  (https://github.com/Comfy-Org/comfy-openjutsu). Full text in
+  licenses/comfy-openjutsu-LICENSE-MIT.md.
+
+akatz-labs/h3-character-swap-tool (Akatz Labs)
+  MIT. The H3 Character Swap recipe follows Akatz Labs' H3 Character Swap
+  workflow (https://github.com/akatz-labs/h3-character-swap-tool). Full text
+  in licenses/akatz-h3-character-swap-tool-LICENSE-MIT.md. The Character Swap
+  LoRA itself is under the MiniMax H3 Community License (see LICENSES.md).
+
 3D kits, YAMNet and other bundled assets (web/public/models/)
   Each folder keeps its own LICENSE file (CC0, Apache-2.0 and others; YAMNet
   also keeps its NOTICE). See ASSETS-CREDITS.md.
