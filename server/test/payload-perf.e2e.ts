@@ -26,6 +26,14 @@ try {
   const zlib = await import('node:zlib'); assert.equal(JSON.parse(zlib.brotliDecompressSync(br.body).toString()).length, tools.length);
   const gz = await raw('/api/tools', { 'accept-encoding': 'gzip' }); assert.equal(gz.headers['content-encoding'], 'gzip'); assert.equal(JSON.parse(zlib.gunzipSync(gz.body).toString()).length, tools.length);
   const small = await raw('/api/health', { 'accept-encoding': 'br' }); assert.equal(small.status, 200);
+  // shared /api/tools copy (toolsCache.ts): ETag + 304 while unchanged; a routing change shows on the very next read
+  const tag = String(full.headers.etag); assert.match(tag, /^"t-/); assert.equal(full.headers['cache-control'], 'no-cache');
+  assert.equal((await raw('/api/tools', { 'if-none-match': tag })).status, 304, 'unchanged: 304');
+  const put = (on: boolean) => fetch(`${B}/api/me/routing`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ global: { mode: 'auto', allowFallback: false, useLocal: on } }) });
+  const ui = await (await fetch(`${B}/api/tools`)).text(); assert.equal((await put(true)).status, 200);
+  const after = await raw('/api/tools'); assert.notEqual(after.body.toString(), ui, 'a routing change rebuilds the list at once'); assert.notEqual(after.headers.etag, tag);
+  assert.equal((await raw('/api/tools', { 'if-none-match': tag })).status, 200, 'the old ETag no longer matches'); await put(false);
+  const pr = await (await fetch(`${B}/api/presets?toolId=camera`)).json() as any; assert.ok(pr.items.length > 0, 'presets read the shared copy');
   // grid thumbnails: a scaled JPEG of a PNG, the original when it is already small, a redirect for unknown files
   const png = path.join(DATA, 'pp-test.png'); const big = spawn('ffmpeg', ['-y', '-v', 'error', '-f', 'lavfi', '-i', 'nullsrc=size=1600x900,geq=random(1)*255:128:128', '-frames:v', '1', png]); await new Promise((r) => big.on('close', r));
   const t = await raw(`/api/media/thumb?url=${encodeURIComponent('/files/pp-test.png')}&w=600`); assert.equal(t.status, 200); assert.equal(t.headers['content-type'], 'image/jpeg');

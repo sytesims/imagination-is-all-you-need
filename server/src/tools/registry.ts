@@ -1,4 +1,5 @@
 import type { ToolDef } from './types.js';
+import { invalidateTools } from '../toolsCache.js';
 import { objectSwapTool, motionTransferTool, restyleTool } from './videoSwap.js';
 import { reshootTool } from './reshoot.js';
 import { cameraApp, photoFxApp, upscaleApp } from './apps.js';
@@ -23,6 +24,7 @@ export function registerTool(t: ToolDef, ...alias: string[]) {
   if (tools.has(t.id)) throw new Error(`duplicate tool id ${t.id}`);
   tools.set(t.id, t);
   alias.forEach((a) => aliases.set(a, t.id));
+  invalidateTools(); // a plugin tool added after start shows in GET /api/tools at once
 }
 /** Disabled plugin tools (POST /api/plugins/:id {enabled:false}): hidden from lookups and lists without a restart. */
 const hidden = new Set<string>();
