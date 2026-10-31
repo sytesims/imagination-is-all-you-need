@@ -2,7 +2,7 @@
  * The picked card's inspector: what it starts from (a still, the last frame before it, any image from Assets), the prompt, model and Run on
  * (THE model menu and Run-on chip, with this card's own place), length and quality, the trim (half-second nudges with the frames around the
  * out point), its takes (one starred, older ones tucked away, billed beside quoted) and Generate with its price first (quote = charge).
- * Card actions: Add shot after, Split, Hide, Delete, move.
+ * The header reads "Shot 3 · Draft" with one ⋯ menu (move left/right, Split, Hide, Delete); "Add shot after" is a small link under the takes.
  */
 import { useEffect, useRef, useState } from 'react';
 import type { ToolInfo } from '../../api';
@@ -11,6 +11,7 @@ import { useToast } from '../../shared/Toast';
 import { askConfirm } from '../../shared/Dialog';
 import { pickMedia } from '../../shared/MediaPicker';
 import { DockGenerate } from '../../shared/DockGenerate';
+import { Popover } from '../../shared/Popover';
 import { ModelMenu } from '../../shared/ModelMenu';
 import { RunOnChip } from '../routing/RunOn';
 import { Segmented } from '../../shared/BarPop';
@@ -19,7 +20,7 @@ import { tip } from '../../shared/Tooltip';
 import { requestRequote, useRequoteTick } from '../../shared/quote';
 import { modelsOf, modelOfEngine, engineForModel, shownName, useToolModels } from '../../shared/models';
 import { withSearch } from '../../shared/workflowLinks';
-import { StarIcon, ChevronRightIcon, ChevronDownIcon, TrashIcon, PlusIcon, LastFrameIcon, ImageIcon, VideoIcon } from '../Icons';
+import { StarIcon, ChevronRightIcon, ChevronDownIcon, TrashIcon, PlusIcon, MinusIcon, CopyIcon, MoreIcon, LastFrameIcon, ImageIcon, VideoIcon } from '../Icons';
 import { quoteShot, renderShot, continueFrame, takeFrame, quoteStill, makeStill, jobResult, STILL_TOOL } from './filmApi';
 import { GenPrice } from '../../shared/GenPrice';
 import { budgetBlock, quoteUsd, activeTake, playable, fullLen, missingOf, isBusy, startUrl, startSourceOf, shotLabels, clampTrim, splitShot, newShot, takesView, secText, usdText, STATUS_WORD, TRIM_STEP, MIN_TRIM_SEC, FILM_VIDEO_TOOL, moveId, worldNotesOf, needsWorld, promptWithWorld, nextShotContext, lastFrameTarget, firstFrameTarget, type NextShotContext } from './filmLogic';
@@ -30,6 +31,8 @@ const LENGTHS = ['auto', '4', '5', '6', '8', '10', '15'];
 /** The film page's R key: generate the picked card again, price first (FilmEditor useFilmKeys sends it with { shotId }). */
 export const FILM_AGAIN_EVENT = 'film:generate-again';
 const QUALITIES = ['', '480p', '720p', '1080p'];
+/** Next-shot ideas stay hidden until the AI agent can write them (the slot and what it reads are kept below). */
+const SHOW_IDEAS = false;
 
 /** The card's price as the server would charge it (POST …/quote), re-read when what it renders changes. Off while `on` is false.
  *  A card that can't render yet (400 missing_frame) still gets the price of the model as set. */
@@ -82,7 +85,7 @@ export default function FilmInspector({ film, shot, srvShot, label, tool, commit
   const fromPrev = async () => { try { await flush(); adopt(await continueFrame(film.id, shot.id)); } catch (e: any) { toast(`Couldn’t take the last frame. ${e?.message ?? ''}`.trim(), 'error'); } };
   const textOnly = () => void up({ types: ['t2v'], startFrom: { kind: 'none', url: null, jobId: null }, stillUrl: null, stillJobId: null, continueFromPrev: false });
   const addAfter = (s: FilmShot) => { void commit([{ op: 'upsert_shot', shot: s, index: i + 1 }]); onSelect(s.id); };
-  const remove = async () => { if (!await askConfirm({ title: `Delete ${label.toLowerCase()}?`, body: shot.takes.length ? 'The card leaves the film. Its clips stay in Assets. To keep the card, hide it instead.' : 'The card leaves the film.', confirm: 'Delete', danger: true })) return;
+  const remove = async () => { if (!await askConfirm({ title: `Delete ${label.toLowerCase()}?`, body: shot.takes.length ? 'The shot leaves the film. Its clips stay in Assets. To keep the shot, hide it instead.' : 'The shot leaves the film.', confirm: 'Delete', danger: true })) return;
     void commit([{ op: 'delete_shot', shotId: shot.id }]); };
   const move = (by: number) => { const ids = film.shots.map(s => s.id); const order = moveId(ids, shot.id, by); if (order !== ids) void commit([{ op: 'reorder_shots', order }]); };
   const world = worldNotesOf(film.script.markdown);
@@ -103,11 +106,7 @@ export default function FilmInspector({ film, shot, srvShot, label, tool, commit
   return <aside className={`fm-insp bp-host${shot.hidden ? ' fm-is-hidden' : ''}`} aria-label={`${label} settings`} data-testid="film-inspector">
     <div className="fm-insp-h">
       <h2>{label}<span className={`fm-status fm-st-${shot.status}`}>{STATUS_WORD[shot.status]}</span>{shot.hidden && <span className="fm-status">Hidden</span>}</h2>
-      <div className="fm-insp-tools"><span className="fm-order-label">Order</span>
-        <button type="button" className="fm-icon-btn" aria-label="Move left" disabled={i === 0} onClick={() => move(-1)} {...tip('Move left (Alt + ←)')}><ChevronRightIcon size={16} className="fm-flip" /></button>
-        <button type="button" className="fm-icon-btn" aria-label="Move right" disabled={i === film.shots.length - 1} onClick={() => move(1)} {...tip('Move right (Alt + →)')}><ChevronRightIcon size={16} /></button>
-        <button type="button" className="fm-icon-btn" aria-label={`Delete ${label}`} onClick={() => void remove()} {...tip('Delete card')}><TrashIcon size={15} /></button>
-      </div>
+      <ShotMenu label={label} first={i === 0} last={i === film.shots.length - 1} hidden={!!shot.hidden} onMove={move} onSplit={() => addAfter(splitShot(shot))} onHide={() => void up({ hidden: !shot.hidden })} onDelete={() => void remove()} />
     </div>
     <div className="fm-insp-scroll" tabIndex={0} role="region" aria-label={`${label} controls`}>
     {shot.kind === 'bridge' && <p className="fm-note">A short move from the last frame before it into the next start still. Best when the two frames are close: the same place, a small change of angle. Far apart, give the next shot a new start still instead.</p>}
@@ -134,9 +133,9 @@ export default function FilmInspector({ film, shot, srvShot, label, tool, commit
     </section>
 
     <section className="fm-group">
-      <label className="fm-field fm-prompt"><span>{shot.kind === 'bridge' ? 'The move' : 'Prompt'}</span>
+      <label className="fm-field fm-prompt"><span>{shot.kind === 'bridge' ? 'The move' : <>Prompt<small className="fm-prompt-hint">who · where · what happens · sound</small></>}</span>
         <textarea value={text} rows={4} maxLength={8000} onChange={e => { dirty.current = true; setText(e.target.value); }} onBlur={() => void flush()} data-testid="film-prompt"
-          placeholder={shot.kind === 'bridge' ? 'One continuous move from the first frame to the last, no cuts' : 'Who, where, the beats in order, the hold on a face, the sound'} /></label>
+          placeholder={shot.kind === 'bridge' ? 'One continuous move from the first frame to the last, no cuts' : 'A woman waits at a snowy bus stop and looks up as the bus arrives. Hold on her face.'} /></label>
       {needsWorld(text, world) && <p className="fm-world-hint" data-testid="film-world-hint"><span><b>World</b> {world}</span>
         <button type="button" className="fm-link" onClick={() => { dirty.current = true; setText(v => promptWithWorld(v, world)); }} data-testid="film-world-add">Add to prompt</button></p>}
     </section>
@@ -163,12 +162,8 @@ export default function FilmInspector({ film, shot, srvShot, label, tool, commit
 
     {playable(t) && <TrimPanel shot={shot} url={t.url} full={fullLen(shot)} commit={commit} />}
     <Takes film={film} shot={shot} commit={commit} onSelect={onSelect} />
-    <section className="fm-group"><h3>Card actions</h3><div className="fm-insp-acts">
-      <button type="button" className="btn btn-sm btn-ghost" onClick={() => addAfter(newShot({ modelKey: shot.kind === 'bridge' ? null : shot.modelKey, runOn: shot.kind === 'bridge' ? null : shot.runOn, resolution: shot.kind === 'bridge' ? '' : shot.resolution }))} data-testid="film-add-after"><PlusIcon size={14} />Add shot after</button>
-      <button type="button" className="btn btn-sm btn-ghost" onClick={() => addAfter(splitShot(shot))} data-testid="film-split" {...tip('A copy right after this card, same still and model, to rewrite as its own shot')}>Split into two</button>
-      <button type="button" className="btn btn-sm btn-ghost" onClick={() => void up({ hidden: !shot.hidden })} data-testid="film-hide" {...tip(shot.hidden ? 'Put it back in the film' : 'Leave it out of the film, takes kept')}>{shot.hidden ? 'Show in film' : 'Hide'}</button>
-    </div></section>
-    <NextIdeas ctx={nextShotContext(film, shot, m ? shownName(m) : 'the default model', null)} />
+    <button type="button" className="fm-link fm-add-after" onClick={() => addAfter(newShot({ modelKey: shot.kind === 'bridge' ? null : shot.modelKey, runOn: shot.kind === 'bridge' ? null : shot.runOn, resolution: shot.kind === 'bridge' ? '' : shot.resolution }))} data-testid="film-add-after"><PlusIcon size={14} />Add shot after</button>
+    {SHOW_IDEAS && <NextIdeas ctx={nextShotContext(film, shot, m ? shownName(m) : 'the default model', null)} />}
 
     </div><div className="fm-gen">
       {tool ? <DockGenerate toolId={FILM_VIDEO_TOOL} engine={engine} quote={q} label={shot.takes.length ? 'Generate again' : 'Generate'} busy={busy || isBusy(shot)} disabled={!!over && !missing} problems={[]} missing={missing ?? (over ? 'Over budget' : null)} pfOpen={false} genRef={gen}
@@ -179,6 +174,27 @@ export default function FilmInspector({ film, shot, srvShot, label, tool, commit
       <Link to={openHref} className="fm-link fm-open-video" {...tip('Every control of the Video page for this clip')}><VideoIcon size={14} />Open in Video</Link>
     </div>
   </aside>;
+}
+
+/** The shot's ⋯ menu: move left / right (Alt + ← →), Split, Hide or show, Delete. */
+function ShotMenu({ label, first, last, hidden, onMove, onSplit, onHide, onDelete }: { label: string; first: boolean; last: boolean; hidden: boolean; onMove: (by: number) => void; onSplit: () => void; onHide: () => void; onDelete: () => void }) {
+  const [open, setOpen] = useState(false); const btn = useRef<HTMLButtonElement>(null);
+  const item = (testId: string, icon: JSX.Element, text: string, act: () => void, opts: { off?: boolean; keys?: string; danger?: boolean; hint?: string } = {}) =>
+    <button type="button" role="menuitem" className={`fm-menu-row fm-menu-line${opts.danger ? ' fm-menu-danger' : ''}`} disabled={opts.off} onClick={() => { setOpen(false); act(); }} data-testid={testId} {...tip(opts.hint ?? null)}>
+      {icon}<b>{text}</b>{opts.keys && <kbd>{opts.keys}</kbd>}</button>;
+  return <>
+    <button ref={btn} type="button" className={`fm-icon-btn fm-more${open ? ' on' : ''}`} aria-haspopup="menu" aria-expanded={open} aria-label={`${label} actions`} onClick={() => setOpen(o => !o)} data-testid="film-shot-menu" {...tip(open ? null : 'Move, split, hide or delete')}><MoreIcon size={18} /></button>
+    <Popover open={open} anchor={btn} onClose={() => setOpen(false)} label={`${label} actions`} role="menu" placement="bottom" align="end" width={220} testId="film-shot-menu-pop">
+      <div className="fm-menu" role="none">
+        {item('film-move-left', <ChevronRightIcon size={16} className="fm-flip" />, 'Move left', () => onMove(-1), { off: first, keys: 'Alt ←' })}
+        {item('film-move-right', <ChevronRightIcon size={16} />, 'Move right', () => onMove(1), { off: last, keys: 'Alt →' })}
+        {item('film-split', <CopyIcon size={16} />, 'Split into two', onSplit, { hint: 'A copy right after this shot, same still and model, to rewrite as its own shot' })}
+        {item('film-hide', hidden ? <PlusIcon size={16} /> : <MinusIcon size={16} />, hidden ? 'Show in film' : 'Hide from film', onHide, { hint: hidden ? 'Put it back in the film' : 'Leave it out of the film, takes kept' })}
+        <hr className="fm-menu-sep" role="separator" />
+        {item('film-delete', <TrashIcon size={16} />, 'Delete shot', onDelete, { danger: true })}
+      </div>
+    </Popover>
+  </>;
 }
 
 /** In and out in half seconds (the shared trim slider plus nudge buttons), and the frames around the out point so a hold isn't cut too early.
@@ -251,7 +267,7 @@ function TakeFrames({ film, shot, take, commit, onSelect }: { film: FilmProject;
   const chip = (u: string | null, word: string, act: (() => void) | null, why: string) => <button type="button" className="fm-fchip" disabled={!u || !act} onClick={() => act?.()} data-testid={`film-frame-${word.toLowerCase()}`} {...tip(u ? why : 'Reading the frame…')}>
     <span className="fm-fchip-img">{u ? <img src={u} alt="" loading="lazy" /> : <i className="as-spin" aria-hidden />}</span><small>{word}</small></button>;
   return <span className="fm-fchips" role="group" aria-label="First and last frame">
-    {chip(first, 'First', br ? useFirst : null, br ? `Land the ${brName} on this first frame` : 'The first frame. Add a bridge before this card to land on it.')}
+    {chip(first, 'First', br ? useFirst : null, br ? `Land the ${brName} on this first frame` : 'The first frame. Add a bridge before this shot to land on it.')}
     {chip(last, 'Last', useLast, nx.shot ? `Use last frame: ${nxName} starts on it` : 'Use last frame: a new shot after this one starts on it')}
   </span>;
 }

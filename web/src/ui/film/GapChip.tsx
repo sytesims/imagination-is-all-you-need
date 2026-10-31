@@ -1,9 +1,9 @@
 /**
  * The gap between two cards: one chip with the join and its price ("Cut · Free"). It opens a popover with A's last frame beside B's first,
- * a quick "Frames match?" read (colour and brightness, no model), then the joins grouped:
- *  - Free (Stitch, on this computer): Cut, J-cut, L-cut, Crossfade, Fade through black, each with a one-line tip from the editing grammar;
- *  - AI (priced before anything runs): Continue (a next card from A's last frame), Bridge (first and last frame, LTX-2.5 4 s), Extend A
- *    (opens Extend with A's clip; its price shows there before it runs).
+ * a quick "Frames match?" read (colour and brightness, no model), or one line when a frame isn't there yet, then the joins grouped:
+ *  - Free (Stitch, on this computer): Cut, J-cut, L-cut, Crossfade, Fade through black as one row of icons, the picked one's name and tip below;
+ *  - AI (priced before anything runs): Continue (a next shot from A's last frame), Bridge (first and last frame, LTX-2.5 4 s), Extend A
+ *    (opens Extend with A's clip; its price shows there before it runs). A row that can't run shows only its reason, never a price.
  * A join into or out of a bridge stays a plain cut (the bridge lands on the exact frames). Also used by the "B" shortcut (open prop).
  */
 import { useEffect, useRef, useState } from 'react';
@@ -15,13 +15,14 @@ import { GenPrice } from '../../shared/GenPrice';
 import { tip } from '../../shared/Tooltip';
 import { toolHandoffHref } from '../../shared/workflowLinks';
 import type { useToast } from '../../shared/Toast';
+import type { SetupKind } from '../../shared/ConnectSheet';
 import { LastFrameIcon, TransitionIcon, ExtendIcon, PlusIcon, ImageIcon } from '../Icons';
 import { takeFrame, continueFrame, addBridge, gapQuote } from './filmApi';
-import { activeTake, playable, startUrl, newShot, seamOf, seamLocked, bridgeCutOps, transitionOf, joinKindOf, FREE_JOINS, XFADE_SECS, SPLIT_SECS, BRIDGE_SEAM_TIP, frameStatsOf, frameMatch, MATCH_WORD, type FrameStats, type JoinKind } from './filmLogic';
+import { activeTake, playable, startUrl, newShot, seamOf, seamLocked, bridgeCutOps, transitionOf, joinKindOf, FREE_JOINS, XFADE_SECS, SPLIT_SECS, BRIDGE_SEAM_TIP, frameStatsOf, frameMatch, blockReason, MATCH_WORD, type FrameStats, type JoinKind } from './filmLogic';
 import { BRIDGE_DEFAULTS, type FilmOp, type FilmProject, type FilmShot } from './types';
 
 type Toast = ReturnType<typeof useToast>;
-export interface JoinCtx { film: FilmProject; commit: (o: FilmOp[]) => Promise<unknown>; adopt: (d: any) => void; setSel: (id: string) => void; toast: Toast }
+export interface JoinCtx { film: FilmProject; commit: (o: FilmOp[]) => Promise<unknown>; adopt: (d: any) => void; setSel: (id: string) => void; toast: Toast; /** what is connected (no prices when nothing is) */ setup?: SetupKind | null }
 
 /** A new card's settings like the card before it (a bridge's own model isn't carried on). */
 export const likeShot = (s: FilmShot | null) => s?.kind === 'bridge' ? {} : { modelKey: s?.modelKey ?? null, runOn: s?.runOn ?? null, resolution: s?.resolution ?? '', durationSec: s?.durationSec ?? null };
@@ -38,8 +39,8 @@ export async function bridgeAfter(c: JoinCtx, after: FilmShot): Promise<void> {
 }
 /** Why Continue / Bridge can't run yet (null = ready). */
 export function joinBlock(f: FilmProject, after: FilmShot): { cont: string | null; bridge: string | null } {
-  const next = f.shots[f.shots.findIndex(x => x.id === after.id) + 1] ?? null; const noClip = playable(activeTake(after)) ? null : 'Needs a finished clip on this card first';
-  return { cont: noClip, bridge: noClip ?? (!next ? 'Add the next card first' : !startUrl(next) ? 'The next card needs a start still first' : null) };
+  const next = f.shots[f.shots.findIndex(x => x.id === after.id) + 1] ?? null; const noClip = playable(activeTake(after)) ? null : 'Needs a finished clip on this shot first';
+  return { cont: noClip, bridge: noClip ?? (!next ? 'Add the next shot first' : !startUrl(next) ? 'The next shot needs a start still first' : null) };
 }
 
 /** The image's stats on a small canvas (same-origin library files); null when it can't be read. */
@@ -61,8 +62,21 @@ function useGapFrames(a: FilmShot, b: FilmShot, on: boolean): { last: string | n
   return { last, first, reading };
 }
 
-const priceOf = (q: any) => q == null ? null : q.priceAvailable === false && q.credits == null ? <span className="fm-gap-na" {...tip(q.error ?? null)}>Can’t run as set</span>
-  : <GenPrice q={q} demo={q?.demo === true} credits={typeof q?.credits === 'number' ? q.credits : null} free={q?.credits === 0 && q?.demo !== true} />;
+/** An AI row's right side: nothing while it is blocked (its reason is the row's line), the reason it can't run yet, else its price. */
+const priceOf = (q: any, blocked: boolean, setup?: SetupKind | null) => { if (blocked || q == null) return null; const why = blockReason(null, q, setup);
+  return why ? <span className="fm-gap-na" {...tip(q.error && q.error !== why ? q.error : null)}>{why}</span>
+    : <GenPrice q={q} demo={q?.demo === true} credits={typeof q?.credits === 'number' ? q.credits : null} free={q?.credits === 0 && q?.demo !== true} />; };
+
+const cap1 = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+/** Small pictures of the five free joins: picture on top, sound below (J and L split the sound early or late). */
+const JOIN_GLYPH: Record<JoinKind, JSX.Element> = {
+  cut: <><rect x="2.5" y="5" width="8" height="14" rx="1.5" /><rect x="13.5" y="5" width="8" height="14" rx="1.5" /></>,
+  jcut: <><rect x="2.5" y="4" width="9" height="8" rx="1.5" /><rect x="12.5" y="4" width="9" height="8" rx="1.5" /><rect x="2.5" y="15" width="4" height="5" rx="1.5" /><rect x="7.5" y="15" width="14" height="5" rx="1.5" fill="currentColor" /></>,
+  lcut: <><rect x="2.5" y="4" width="9" height="8" rx="1.5" /><rect x="12.5" y="4" width="9" height="8" rx="1.5" /><rect x="2.5" y="15" width="14" height="5" rx="1.5" fill="currentColor" /><rect x="17.5" y="15" width="4" height="5" rx="1.5" /></>,
+  crossfade: <><path d="M2.5 6h6l7 12h6M2.5 18h6l7-12h6" /></>,
+  fade: <><rect x="2.5" y="5" width="6" height="14" rx="1.5" /><rect x="9.5" y="5" width="5" height="14" rx="1" fill="currentColor" /><rect x="15.5" y="5" width="6" height="14" rx="1.5" /></>,
+};
+const joinIcon = (k: JoinKind) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>{JOIN_GLYPH[k]}</svg>;
 
 export function GapChip({ ctx, a, b, labels, tools, open: openProp, onOpenChange }: { ctx: JoinCtx; a: FilmShot; b: FilmShot; labels: [string, string]; tools: ToolInfo[]; open?: boolean; onOpenChange?: (v: boolean) => void }) {
   const { film, commit } = ctx; const [open0, setOpen0] = useState(false); const open = openProp ?? open0; const setOpen = (v: boolean) => { setOpen0(v); onOpenChange?.(v); };
@@ -83,6 +97,13 @@ export function GapChip({ ctx, a, b, labels, tools, open: openProp, onOpenChange
   const ext = tools.find(t => t.id === 'h3-extend'); const ta = activeTake(a); const extHref = ext && playable(ta) ? toolHandoffHref(ext, `fromJob=${encodeURIComponent(ta.jobId)}&out=0`) : null;
   const run = async (w: 'cont' | 'bridge') => { setBusy(w); try { await (w === 'cont' ? continueAfter(ctx, a) : bridgeAfter(ctx, a)); setOpen(false); } finally { setBusy(null); } };
   const secs = kind === 'crossfade' ? XFADE_SECS : kind === 'jcut' || kind === 'lcut' ? SPLIT_SECS : null;
+  const cur = FREE_JOINS.find(j => j.kind === kind) ?? FREE_JOINS[0];
+  /* one line instead of two empty frames: A has no clip, or B has nothing to start on */
+  const noFrames = !playable(ta) ? `${labels[0]} has no clip yet. Generate it to compare frames.` : !playable(activeTake(b)) && !startUrl(b) ? `${labels[1]} has no start still yet. Add one to compare frames.` : null;
+  /* ← → move between the join icons and pick (a radio group); kept inside so the shot row behind doesn't move too */
+  const iconKeys = (e: React.KeyboardEvent<HTMLDivElement>) => { if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return; e.preventDefault(); e.stopPropagation();
+    const os = FREE_JOINS.filter(j => !(locked && j.kind !== 'cut')); const at = os.findIndex(j => j.kind === kind); const n = os[(at + (e.key === 'ArrowLeft' ? -1 : 1) + os.length) % os.length];
+    if (n.kind !== kind) pick(n.kind); e.currentTarget.querySelector<HTMLElement>(`[data-testid="film-join-${n.kind}"]`)?.focus(); };
 
   return <div className="fm-seam fm-gap">
     <button ref={btn} type="button" className={`fm-gap-chip fm-gap-${kind}${open ? ' on' : ''}${blocked ? ' fix' : ''}${locked ? ' locked' : ''}`} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(!open)}
@@ -91,39 +112,41 @@ export function GapChip({ ctx, a, b, labels, tools, open: openProp, onOpenChange
       <span className="fm-gap-k">{kind === 'jcut' ? 'J' : kind === 'lcut' ? 'L' : name.split(' ')[0]}{(kind === 'crossfade' || kind === 'jcut' || kind === 'lcut') && <small>{tr.sec} s</small>}</span>
       <span className="fm-gap-p">{blocked ? 'Fix' : 'Free'}</span>
     </button>
-    <Popover open={open} anchor={btn} onClose={() => setOpen(false)} label={`Join ${labels[0]} to ${labels[1]}`} placement="bottom" align="center" width={600} testId="film-gap-pop">
+    <Popover open={open} anchor={btn} onClose={() => setOpen(false)} label={`Join ${labels[0]} to ${labels[1]}`} placement="bottom" align="center" width={420} testId="film-gap-pop">
       <div className="fm-gap-pop bp-host" data-testid="film-gap-body">
-        <div className="fm-gap-frames" aria-label="Last frame and first frame">
-          {([[fr.last, `${labels[0]} · last frame`], [fr.first, `${labels[1]} · first frame`]] as const).map(([u, cap], k) => <figure key={k} className="fm-gap-f">
-            <span className="fm-gap-img">{u ? <img src={u} alt={cap} /> : fr.reading ? <i className="as-spin" aria-hidden /> : <ImageIcon size={18} />}</span>
+        {noFrames ? <p className="fm-gap-none" data-testid="film-gap-noframes"><ImageIcon size={14} />{noFrames}</p>
+          : <div className="fm-gap-frames" aria-label="Last frame and first frame">
+          {([[fr.last, `${labels[0]} · last`], [fr.first, `${labels[1]} · first`]] as const).map(([u, cap], k) => <figure key={k} className="fm-gap-f">
+            <span className="fm-gap-img">{u ? <img src={u} alt={`${cap} frame`} /> : fr.reading ? <i className="as-spin" aria-hidden /> : <ImageIcon size={16} />}</span>
             <figcaption>{cap}</figcaption></figure>)}
-        </div>
-        <p className={`fm-match fm-match-${m?.level ?? 'none'}`} role="status" data-testid="film-gap-match" data-level={m?.level ?? ''} data-distance={m?.distance ?? ''}>
-          <i aria-hidden /><b>Frames match?</b><span>{m ? <><em>{MATCH_WORD[m.level]}:</em> {m.line.slice(m.line.indexOf(':') + 2)}</> : fr.reading ? 'Reading the frames…' : !fr.last ? `${labels[0]} has no finished clip yet.` : !fr.first ? `${labels[1]} has no start still yet.` : 'Couldn’t read the frames.'}</span>
-        </p>
+          <p className={`fm-match fm-match-${m?.level ?? 'none'}`} role="status" data-testid="film-gap-match" data-level={m?.level ?? ''} data-distance={m?.distance ?? ''}>
+            <b><i aria-hidden />{m ? MATCH_WORD[m.level] : 'Frames match?'}</b><span>{m ? cap1(m.line.slice(m.line.indexOf(':') + 2)) : fr.reading ? 'Reading the frames…' : 'Couldn’t read the frames.'}</span>
+          </p>
+        </div>}
 
-        <div className="fm-gap-cols">
         <div className="fm-gap-grp" role="radiogroup" aria-label="Free joins">
           <h4>Free<small>Stitch joins these on your computer</small></h4>
+          <div className="fm-join-icons" onKeyDown={iconKeys}>
+            {FREE_JOINS.map(j => { const on = kind === j.kind; const off = locked && j.kind !== 'cut';
+              return <button key={j.kind} type="button" role="radio" aria-checked={on} aria-label={j.name} disabled={off} tabIndex={on ? 0 : -1} className={`fm-join-ic${on ? ' on' : ''}`} onClick={() => !on && pick(j.kind)} data-testid={`film-join-${j.kind}`} {...tip(j.name)}>
+                {joinIcon(j.kind)}</button>; })}
+          </div>
+          <p className="fm-join-now" data-testid="film-join-now"><b>{cur.name}</b><span>{cur.tip}</span><em>Free</em></p>
           {locked && <p className="fm-note" data-testid="film-gap-locked">{BRIDGE_SEAM_TIP}</p>}
-          {FREE_JOINS.map(j => { const on = kind === j.kind; const off = locked && j.kind !== 'cut';
-            return <button key={j.kind} type="button" role="radio" aria-checked={on} disabled={off} className={`fm-join${on ? ' on' : ''}`} onClick={() => !on && pick(j.kind)} data-testid={`film-join-${j.kind}`}>
-              <i className="fm-join-dot" aria-hidden /><span><b>{j.name}</b><small>{j.tip}</small></span><em>Free</em></button>; })}
           {secs && !locked && <Segmented<number> label={kind === 'crossfade' ? 'Blend length' : kind === 'jcut' ? 'Sound leads by' : 'Sound runs on by'} value={tr.sec} testId="film-join-sec"
             onChange={v => set({ type: tr.type, sec: v })} options={(secs as readonly number[]).map(n => ({ value: n, label: `${n} s` }))} />}
         </div>
 
         <div className="fm-gap-grp" aria-label="AI joins">
-          <h4>AI<small>Price first. Nothing runs until you generate the new card</small></h4>
+          <h4>AI<small>Price first. Nothing runs until you generate the new shot</small></h4>
           <button type="button" className="fm-join fm-join-ai" disabled={!!jb.cont || !!busy} onClick={() => void run('cont')} data-testid="film-gap-continue">
-            <LastFrameIcon size={16} /><span><b>Continue</b><small>{jb.cont ?? `A new card after ${labels[0].toLowerCase()} that starts on its last frame`}</small></span><em>{busy === 'cont' ? <i className="as-spin" aria-hidden /> : priceOf(qc)}</em></button>
+            <LastFrameIcon size={16} /><span><b>Continue</b><small>{jb.cont ?? `A new shot after ${labels[0].toLowerCase()} that starts on its last frame`}</small></span><em>{busy === 'cont' ? <i className="as-spin" aria-hidden /> : priceOf(qc, !!jb.cont, ctx.setup)}</em></button>
           {!nextIsBridge && !aIsBridge && <button type="button" className="fm-join fm-join-ai" disabled={!!jb.bridge || !!busy} onClick={() => void run('bridge')} data-testid="film-gap-bridge">
             <TransitionIcon size={16} /><span><b>Bridge</b><small>{jb.bridge ?? `One ${BRIDGE_DEFAULTS.durationSec} s move from this last frame into the next start still · LTX-2.5`}{m?.level === 'far' && !jb.bridge ? <><br /><span className="fm-join-warn">The frames are far apart, so it may morph.</span></> : null}</small></span>
-            <em>{busy === 'bridge' ? <i className="as-spin" aria-hidden /> : priceOf(qb)}</em></button>}
+            <em>{busy === 'bridge' ? <i className="as-spin" aria-hidden /> : priceOf(qb, !!jb.bridge, ctx.setup)}</em></button>}
           {ext && (extHref ? <Link to={extHref} className="fm-join fm-join-ai" data-testid="film-gap-extend" onClick={() => setOpen(false)}>
               <ExtendIcon size={16} /><span><b>Extend {labels[0].toLowerCase()}</b><small>Keep this shot going. Opens Extend with its clip, price first</small></span><em className="fm-join-go">Open</em></Link>
-            : <button type="button" className="fm-join fm-join-ai" disabled data-testid="film-gap-extend"><ExtendIcon size={16} /><span><b>Extend {labels[0].toLowerCase()}</b><small>Needs a finished clip on this card first</small></span><em /></button>)}
-        </div>
+            : <button type="button" className="fm-join fm-join-ai" disabled data-testid="film-gap-extend"><ExtendIcon size={16} /><span><b>Extend {labels[0].toLowerCase()}</b><small>Needs a finished clip on this shot first</small></span><em /></button>)}
         </div>
         <div className="fm-gap-foot">
           <button type="button" className="fm-link" onClick={() => { const s = newShot(likeShot(a)); void commit([{ op: 'upsert_shot', shot: s, index: film.shots.findIndex(x => x.id === a.id) + 1 }]); ctx.setSel(s.id); setOpen(false); }} data-testid="film-gap-add"><PlusIcon size={14} />Add a shot here</button>

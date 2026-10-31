@@ -1,19 +1,20 @@
-/* Workflows, the Finder (2026-10-27). Tokens only (tokens.css). The tile language follows Explore (explore.css .xp-tile / .xp-head): edge-to-edge
-   media, the caption on a dark fade, uppercase display titles, numbered section heads, the accent for the one action, the orange glow on hover.
+/* Workflows, the Finder (2026-10-27; calmer 2026-10-31). Tokens only (tokens.css). The cards are Explore's banded tile (explore.css .xp-tile.is-band):
+   the picture at one ratio, the caption on a solid band under it. One surface tone, hairlines, the accent only for the picked category and the actions.
    A workflow with no example of ours gets a "blueprint" tile: our drawing of the flow on a dotted plate with a soft accent light. */
-.wn-page{max-width:1480px;margin:0 auto;padding:0 32px 112px;overflow-x:clip;color:var(--text)}
+.wn-page{max-width:2400px;margin:0 auto;padding:0 32px 112px;overflow-x:clip;color:var(--text)}
 .wn h1,.wn h2,.wn h3{margin:0}
 .wn-brand{display:inline-block;font:700 11px/1 var(--font-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
 .wn-shim{display:block;border-radius:12px;background:linear-gradient(90deg,var(--surface-2),var(--surface-3),var(--surface-2));background-size:200% 100%;animation:oj-shim 1.4s linear infinite}
-.wn-shim-search{height:44px}.wn-shim-cat{height:30px;opacity:.6}.wn-shim-h{height:56px;width:60%;margin-bottom:40px}.wn-shim-card{border-radius:var(--r-tile)}
+.wn-shim-search{height:44px}.wn-shim-cat{height:30px;opacity:.6}.wn-shim-h{height:28px;width:40%;margin-bottom:40px}.wn-shim-card{height:300px;border-radius:var(--r-tile)}
 
 /* ---------- layout: the finder rail and the results */
-.wn-b{display:grid;grid-template-columns:264px minmax(0,1fr);gap:40px;padding-top:40px;align-items:start}
+.wn-b{display:grid;grid-template-columns:264px minmax(0,1fr);gap:32px;padding-top:32px;align-items:start}
 .wn-side{position:sticky;top:calc(var(--nav-h) + 24px);display:flex;flex-direction:column;gap:16px;max-height:calc(100vh - var(--nav-h) - 48px);overflow-y:auto;padding:0 4px 16px 0;scrollbar-width:thin}
 .wn-side h1{margin-top:-6px;font:700 34px/1 var(--font-display);text-transform:uppercase;letter-spacing:-.02em}
 .wn-main{min-width:0}
-.wn-mhead h2{font:700 clamp(36px,3.4vw,56px)/.95 var(--font-display);text-transform:uppercase;letter-spacing:-.03em;text-wrap:balance}
-.wn-mhead p{margin:12px 0 0;max-width:62ch;color:var(--text-2);font:500 15px/1.55 var(--font-ui)}
+.wn-mhead{padding-top:20px}
+.wn-mhead h2{font:700 26px/1.05 var(--font-display);text-transform:uppercase;letter-spacing:-.015em}
+.wn-mhead p{margin:6px 0 0;color:var(--text-2);font:500 14px/1.5 var(--font-ui)}
 
 /* ---------- search, goals, categories */
 .wn-search{position:relative;display:flex;align-items:center;gap:10px;height:44px;padding:0 12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--hairline-strong);color:var(--text-2);
@@ -23,7 +24,7 @@
 .wn-search input:focus,.wn-search input:focus-visible{outline:none!important;box-shadow:none!important;border:0!important;background:none!important}
 .wn-search input::-webkit-search-cancel-button{display:none}
 .wn-clear{display:grid;place-items:center;width:26px;height:26px;min-height:0;padding:0;border-radius:8px;border:0;background:var(--state-fill);color:var(--text-2);cursor:pointer}
-.wn-goals{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.wn-goals{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
 .wn-goal{cursor:pointer}
 .wn-goal.on{color:var(--text);background:var(--surface-3);border-color:color-mix(in srgb,var(--accent) 55%,transparent)}
 .bp-host .wn-cats{gap:2px;background:none;padding:0;margin:0}
@@ -47,19 +48,18 @@
 .wn-first-big{margin-top:40px;font-size:14px}
 
 /* ---------- sections (Explore's head) */
-.wn-sec{margin-top:64px;scroll-margin-top:calc(var(--nav-h) + 24px)}
-.wn-head{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:end;gap:18px;margin:0 0 20px}
-.wn-num{align-self:start;padding-top:6px;font:700 13px/1 var(--font-display);letter-spacing:.08em;color:var(--accent)}
-.wn-head h2{font:700 var(--fs-section)/1 var(--font-display);letter-spacing:-.02em;text-transform:uppercase}
-.wn-head p{margin:8px 0 0;max-width:72ch;color:var(--text-2);font:500 14px/1.5 var(--font-ui)}
-/* the count sits beside the title as a small pill, as in the rail (2026-10-28) */
-.wn-head h2{display:flex;align-items:center;gap:12px}
-.wn-count{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:999px;border:1px solid var(--hairline-strong);background:var(--surface-2);font:600 12px/1 var(--font-mono);letter-spacing:0;color:var(--text-2);transform:translateY(-2px)}
+.wn-sec{margin-top:36px;scroll-margin-top:calc(var(--nav-h) + 24px)}
+.wn-head{margin:0 0 14px}
+.wn-head h2{display:flex;align-items:baseline;gap:10px;font:700 19px/1.1 var(--font-display);letter-spacing:-.01em;text-transform:uppercase}
+/* the count beside the title, quiet, as the rail shows it */
+.wn-count{font:600 13px/1 var(--font-mono);letter-spacing:0;color:var(--text-3)}
+.wn-head p{margin:4px 0 0;color:var(--text-2);font:500 13px/1.5 var(--font-ui)}
 
-/* ---------- a card: Explore's tile (explore.css .xp-tile / .xp-cap / .xp-badge / .xp-go); only the grid size, the click and the run line are ours */
-.wn-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:clamp(272px,20vw,340px);gap:var(--gap-tile)}
+/* ---------- a card: Explore's banded tile (explore.css .xp-tile.is-band); only the grid, the click and the corner marks are ours.
+   The grid fills the width: 4 cards a row at 1440, 5 at 1920. */
+.wn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(242px,1fr));gap:16px}
 .wn-card{cursor:pointer}
-.wn-card:hover{transform:translateY(-3px);box-shadow:0 22px 48px -26px rgba(0,0,0,.9)}
+.wn-card:hover{transform:translateY(-2px);box-shadow:0 16px 36px -24px rgba(0,0,0,.9)}
 .wn-card:focus-within::after{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 55%,transparent)}
 .wn-media .hclip img{transition:transform var(--t-media) var(--ease-out)}
 .wn-media .wn-split{position:absolute;inset:0;width:100%;height:100%}
@@ -70,23 +70,19 @@
 .wn-card:hover .wn-ba-after{animation:wn-ba 2.6s var(--ease-out) both}
 @keyframes wn-ba{0%,22%{-webkit-mask-position:100% 0;mask-position:100% 0}100%{-webkit-mask-position:0 0;mask-position:0 0}}
 @media (prefers-reduced-motion:reduce){.wn-card:hover .wn-ba-after{animation:none}}
-.wn-card:not(.is-real) .wn-cap{background:linear-gradient(180deg,rgba(9,9,9,0),rgba(9,9,9,.72) 40%)}
-.wn-cap{gap:5px;padding:40px 18px 16px}
-.wn-title{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;margin:0;padding:0;border:0;background:none;text-align:left;cursor:pointer;
-  font:700 clamp(19px,1.45vw,25px)/1.02 var(--font-display)}
+.wn-title{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;margin:0;padding:0;border:0;background:none;text-align:left;cursor:pointer}
 .wn-title:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
-.wn-meta{margin-top:4px;gap:6px 10px;flex-wrap:wrap}
-.wn-model{flex:1 0 auto;max-width:100%}
-.wn-model small{flex:none;font:600 11px var(--font-ui);color:rgba(255,255,255,.5)}
+.wn-meta{gap:6px 10px}
+.wn-model{max-width:100%}
+.wn-model small{flex:none;font:600 11px/16px var(--font-ui);color:var(--text-3)}
 .wn-meta .runl{flex:0 1 auto;max-width:100%}
-.wn-top{position:absolute;top:14px;left:14px;right:56px;z-index:4;display:flex;gap:6px;pointer-events:none}
+.wn-top{position:absolute;top:10px;left:10px;right:52px;z-index:4;display:flex;gap:6px;pointer-events:none}
 .wn-top>*{pointer-events:auto}
-.wn-made{background:var(--accent);color:var(--on-accent)}
-.wn-save{position:absolute;top:10px;right:10px;z-index:5;display:grid;place-items:center;width:32px;height:32px;min-height:0;padding:0;border-radius:10px;border:0;background:rgba(10,10,10,.55);color:#fff;cursor:pointer;opacity:0;
-  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);transition:opacity var(--t-state),background var(--t-state)}
+.wn-save{position:absolute;top:8px;right:8px;z-index:5;display:grid;place-items:center;width:30px;height:30px;min-height:0;padding:0;border-radius:8px;border:1px solid var(--hairline-strong);background:var(--surface);color:var(--text);cursor:pointer;opacity:0;
+  transition:opacity var(--t-state),background var(--t-state)}
 .wn-card:hover .wn-save,.wn-card:focus-within .wn-save,.wn-chain:hover .wn-save,.wn-chain:focus-within .wn-save,.wn-save.on,.wn-save:focus-visible{opacity:1}
-.wn-save:hover{background:rgba(10,10,10,.8)}
-.wn-save.on{background:var(--accent);color:var(--on-accent)}
+.wn-save:hover{background:var(--surface-3)}
+.wn-save.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 @media (hover:none){.wn-save{opacity:1}}
 /* a gentle rise when a category is picked (reduced motion: none) */
 .wn-results.is-rising .wn-card,.wn-results.is-rising .wn-chain{animation:wn-in .42s var(--ease-out) backwards;animation-delay:calc(var(--i,0) * 28ms)}
@@ -94,7 +90,7 @@
 
 /* ---------- the blueprint tile (no example of ours yet) */
 .wn-art{position:absolute;inset:0;overflow:hidden}
-.wn-art .xp-art{padding-bottom:30%;background:radial-gradient(60% 50% at 50% 34%,rgba(255,122,26,.16),rgba(255,122,26,0) 70%),linear-gradient(180deg,#141414 0%,#0d0d0d 62%,#090909 100%)}
+.wn-art .xp-art{padding-bottom:0;background:radial-gradient(60% 50% at 50% 34%,rgba(255,122,26,.16),rgba(255,122,26,0) 70%),linear-gradient(180deg,#141414 0%,#0d0d0d 62%,#090909 100%)}
 .wn-art .xp-art::before{background-image:radial-gradient(rgba(255,255,255,.11) 1px,transparent 1.2px);background-size:18px 18px}
 .wn-art::before{content:"";position:absolute;inset:12px;z-index:1;border-radius:10px;border:1px dashed rgba(255,255,255,.08);pointer-events:none;transition:border-color var(--base)}
 .wn-art .xp-diagram{width:min(78%,340px)}
@@ -197,14 +193,11 @@
 @media (max-width:1180px){
   .wn-page{padding:0 24px 88px}
   .wn-b{grid-template-columns:220px minmax(0,1fr);gap:24px}
-  /* 3 columns down to 1000 px, a slightly shorter tile (2026-10-28: a 15-card section took 8 scrolls in 2) */
-  .wn-grid{grid-auto-rows:clamp(232px,24vw,280px)}
-  .wn-grid .xp-line{-webkit-line-clamp:2}
 }
 @media (max-width:760px){
   .wn-page{padding:0 16px 64px}
   .wn-b{grid-template-columns:1fr;padding-top:24px}.wn-side{position:static;max-height:none}
-  .wn-grid,.wn-chains-b{grid-template-columns:1fr}.wn-grid{grid-auto-rows:280px}
+  .wn-chains-b{grid-template-columns:1fr}
 }
 @media (prefers-reduced-motion:reduce){
   .wn-card,.wn-card::after,.wn-chain,.wn-media .hclip img,.wn-save,.wn-art .xp-art svg,.wn-art::before,.wn-surprise svg{transition:none}
@@ -242,15 +235,7 @@
 a.wn-idea-src:hover{color:var(--accent)}
 
 /* ---------- the user's picks (2026-10-28) */
-@media (max-width:1000px) and (min-width:761px){.wn-grid,.wn-chains-b{grid-template-columns:repeat(2,minmax(0,1fr))}}
-/* the featured row: the same tiles on a quietly lit plate, so it reads first without shouting */
-.wn-featured{position:relative;padding:22px 22px 24px;margin-left:-22px;margin-right:-22px;border-radius:calc(var(--r-tile) + 8px);border:1px solid color-mix(in srgb,var(--accent) 22%,var(--hairline));
-  background:radial-gradient(70% 60% at 12% 0%,color-mix(in srgb,var(--accent) 10%,transparent),transparent 70%),color-mix(in srgb,var(--surface) 70%,transparent)}
-.wn-featured .wn-head{margin-bottom:18px}
-@media (max-width:1180px){.wn-featured{padding:16px;margin-left:-16px;margin-right:-16px}}
-@media (max-width:760px){.wn-featured{padding:12px;margin-left:-8px;margin-right:-8px}}
-/* a chain's card: the same tile as a workflow's; its sheet lists the steps */
-.wn-chaintile .wn-model span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:1000px) and (min-width:761px){.wn-chains-b{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .wv-pbody .wn-steps{margin:4px 0 6px}.wv-pbody .wn-steps button{padding:8px}.wv-pbody .wn-steps small+small{color:var(--text-2)}
 .wv-pbody .wn-chain-foot{justify-content:flex-start;margin-top:12px}
 /* a search that matches workflows not on this page */

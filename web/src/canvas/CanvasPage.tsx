@@ -17,7 +17,8 @@ import { AgentPanel } from './AgentPanel';
 import { SpendChip } from './SpendChip';
 import { FollowToggle } from './FollowAgent';
 import { DOCK_W } from './agentDockModel';
-import { useValue } from 'tldraw';
+import { useValue, EditorProvider, type Editor } from 'tldraw';
+import { CardPanel } from './CardPanel'; /* MOCKUP: the card panel */
 import { BOARD_LOOKS, boardLookAtom, setBoardLook } from './boardLook';
 import { BoardIcon, ChevronIcon, PanelIcon } from './icons';
 import { PlusIcon, PencilIcon, TrashIcon, SparkleIcon } from '../ui/Icons';
@@ -86,7 +87,7 @@ export default function CanvasPage() {
   const search = useSearch(); const toast = useToast(); const { top, bottom } = useHeaderBottom();
   const want = new URLSearchParams(search).get('board');
   const [boards, setBoards] = useState<BoardSummary[] | null>(null); const [board, setBoard] = useState<BoardDoc | null>(null);
-  const [err, setErr] = useState(''); const [save, setSave] = useState<SaveState>('saved'); const [drawer, setDrawer] = useState(false); const [ask] = useState(() => new URLSearchParams(location.search).get('ask') ?? '') /* Explore's Ask an agent: read before the board link replaces the URL */; const [agentOpen, setAgentOpen] = useState(() => readAgentOpen() || !!ask); const [agentBusy, setAgentBusy] = useState(false);
+  const [err, setErr] = useState(''); const [save, setSave] = useState<SaveState>('saved'); const [drawer, setDrawer] = useState(false); const [ask] = useState(() => new URLSearchParams(location.search).get('ask') ?? '') /* Explore's Ask an agent: read before the board link replaces the URL */; const [agentOpen, setAgentOpen] = useState(() => readAgentOpen() || !!ask); const [agentBusy, setAgentBusy] = useState(false); const [editor, setEditor] = useState<Editor | null>(null); const [panelOn, setPanelOn] = useState(false);
   const go = (id: string, replace = false) => navigate(`/canvas?board=${encodeURIComponent(id)}`, { replace });
 
   const refresh = useCallback(() => listBoards().then(bs => { setBoards(bs); return bs; }), []);
@@ -119,11 +120,11 @@ export default function CanvasPage() {
   const onBoardsChanged = useCallback(() => { void refresh().catch(() => undefined); }, [refresh]);
   const onAgentOpen = useCallback((id: string, name: string, by: string) => { void refresh().catch(() => undefined); go(id); toast(`${by} opened “${name}”`); }, [refresh]); // eslint-disable-line react-hooks/exhaustive-deps
   const current = boards?.find(b => b.id === board?.id) ?? (board ? { ...board } : null);
-  const rootStyle = { top, bottom, '--cv-agent-w': agentOpen ? `var(--cv-dock,${DOCK_W}px)` : '0px' } as CSSProperties;
+  const rootStyle = { top, bottom, '--cv-agent-w': agentOpen ? `var(--cv-dock,${DOCK_W}px)` : '0px', '--cv-panel-w': panelOn && !drawer ? 'var(--cv-dock,380px)' : '0px' } as CSSProperties;
   return <div className={`cv-root${agentOpen ? ' cv-agent-open' : ''}`} style={rootStyle} data-testid="canvas-page">
     {err ? <div className="cv-msg"><p>{err}</p><button type="button" className="cv-empty-btn" onClick={() => navigate(`/canvas${search}`, { replace: true })}>Try again</button></div>
       : board && current ? <>
-        <Board key={board.id} board={board} onSaveState={setSave} onSaved={onSaved} drawerOpen={drawer} setDrawerOpen={setDrawer} onProject={onProject} />
+        <Board key={board.id} onEditor={setEditor} board={board} onSaveState={setSave} onSaved={onSaved} drawerOpen={drawer} setDrawerOpen={setDrawer} onProject={onProject} />
         <div className="cv-topl">
           {!agentOpen && <button type="button" className={`cv-agent-btn${agentBusy ? ' busy' : ''}`} aria-pressed={false} aria-label="Show the AI panel" data-testid="cv-agent-toggle" onClick={toggleAgent}><SparkleIcon size={16} /><span>AI</span>{agentBusy && <i className="cv-agent-dot" aria-hidden />}</button>}
           <BoardSwitcher boards={boards ?? []} current={current} save={save} onPick={id => id !== board.id && go(id)} onNew={onNew} onRename={onRename} onDelete={onDelete} /><SpendChip boardId={board.id} /><FollowToggle busy={agentBusy} />
@@ -131,6 +132,7 @@ export default function CanvasPage() {
         <div className="cv-agent-slot" data-slot="agent-panel" data-testid="cv-agent-slot" aria-hidden={!agentOpen}>
           <AgentPanel key={board.id} boardId={board.id} ask={ask} open={agentOpen} onClose={toggleAgent} onBusy={setAgentBusy} onBoards={onBoardsChanged} onOpenBoard={onAgentOpen} />
         </div>
+        {editor && <EditorProvider editor={editor}><CardPanel hidden={drawer} onOpen={setPanelOn} /></EditorProvider>}
         <button type="button" className={`cv-assets-btn${drawer ? ' on' : ''}`} aria-pressed={drawer} data-testid="cv-assets" onClick={toggleDrawer}><PanelIcon size={16} /><span>Assets</span></button>
       </> : <div className="cv-msg"><Skeleton variant="tiles" count={3} /></div>}
   </div>;
