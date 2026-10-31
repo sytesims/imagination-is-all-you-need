@@ -52,7 +52,7 @@ export default function VideoFeed({ jobs, onSelect, viewerActions, tools, workfl
       caption={act ? null : j.status !== "done" ? undefined : <FeedCaption className="vf-cap" title={prompt || cap.model} parts={[prompt ? cap.model : null, cap.price]} testId={`vf-cap-${j.id}`} />} />; };
   return <div className="ic ic2 vf" data-testid="vf">
     <div className="ic-work ic-work2" data-testid="vs-history">
-      <FeedGallery st={fs} count={upOn ? up.items.length : shown.length} emptyText={emptyTextFor(filt, pj.pid, SCOPE)} testId="vf-feed" override={upOn ? <UploadsFeed up={up} media="video" size={filt.size} idPre="vf" /> : undefined}
+      <FeedGallery title="Video" st={fs} count={upOn ? up.items.length : shown.length} emptyText={emptyTextFor(filt, pj.pid, SCOPE)} testId="vf-feed" override={upOn ? <UploadsFeed up={up} media="video" size={filt.size} idPre="vf" /> : undefined}
         toolbar={selecting ? <SelectBar sel={sel} setSel={setSel} total={feed.total} onExit={stopSelect} selectAll={selectAll} allLoading={allBusy} projects={pj.list} currentProject={pj.pid} patch={feed.patch} unpatch={feed.unpatch} refresh={feed.refresh}
             noun="clip" onTrashed={ids => { if (v.viewId && ids.includes(v.viewId)) v.setViewId(null); }} />
           : <FeedToolbar f={filt} setF={setFilt} groups={VIDEO_FEED_GROUPS} noun="videos" total={upOn ? up.total : feed.total} failed={upOn ? null : feed.failed} loading={upOn ? up.loading : feed.loading} pj={pj} selecting={selecting} onSelect={() => selecting ? stopSelect() : setSelecting(true)} live={<QueueLine className="ic-gal-live" />} />}>
