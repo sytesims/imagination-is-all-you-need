@@ -58,9 +58,10 @@ assert.match(rd('ui/video/StitchPanel.tsx'), /max: MAX_CLIPS - d\.clips\.length/
 ok('pick several: tick, Shift-click run, Space ticks, Enter adds, "n left", refuses past the limit');
 
 // Larger preview (2026-10-31): hover-hold or Space, the shared PreviewMedia, Space / Esc close, arrows move; the server says the model
-assert.match(mp, /const HOLD = 400/, 'hover-hold ~400 ms'); assert.match(mp, /<PreviewMedia url=\{x\.url\} kind=\{x\.type\}/, 'the shared preview media (SlotPreview\'s)');
+assert.match(mp, /const HOLD = 500/, 'hover-hold ~500 ms'); assert.match(mp, /if \(calm\?\.current === x\.id\) return;/, 'a closed preview never reopens on the next nudge'); assert.match(mp, /<PreviewMedia url=\{x\.url\} kind=\{x\.type\}/, 'the shared preview media (SlotPreview\'s)');
 assert.match(rd('shared/SlotPreview.tsx'), /export function PreviewMedia/); assert.match(rd('shared/SlotPreview.tsx'), /<PreviewMedia url=\{item\.url\}/, 'SlotPreview uses the same piece');
-assert.match(mp, /if \(peek\) closePeek\(\); else if \(frameOf\)/, 'Esc closes the preview first');
+assert.match(mp, /if \(peek\) closePeek\(\); else if \(frameOf\)/, 'Esc closes the preview first'); assert.match(mp, /useDismiss\(!!peek, closePeek\)/, 'Esc closes only the preview, even in a host that also listens for Esc');
+assert.match(rd('shared/mediaPicker.css'), /\.mpk-peek-media\{[^}]*grid-template:minmax\(0,1fr\)\/minmax\(0,1fr\)/, 'the whole picture fits the preview (a definite cell, so max-height holds)');
 assert.match(mp, /e\.key === 'ArrowRight' \|\| e\.key === 'ArrowLeft'/, 'arrows move'); assert.match(mp, /e\.key === ' ' && !onMedia\) \{ e\.preventDefault\(\); onClose\(\)/, 'Space closes');
 assert.ok(g.items.every((x: any) => 'model' in x), 'each item says its model');
 ok('larger preview: hover-hold or Space, shared media piece, Space / Esc close, arrows move, model listed');

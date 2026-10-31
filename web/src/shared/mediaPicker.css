@@ -140,7 +140,7 @@ html body .ic-ref.mpk .mpk-tools .ic-ref-sort{white-space:nowrap}
 html body .ic-ref.mpk .mpk-tools .ic-ref-sort{height:30px}
 /* The larger preview (MediaPicker Peek): over the whole panel, the file as large as it fits, one bar under it */
 html body .ic-ref.mpk .mpk-peek{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:inherit;background:#1b1c1f;outline:none}
-html body .ic-ref.mpk .mpk-peek-media{flex:1;min-height:0;display:grid;place-items:center;border-radius:12px;overflow:hidden;background:repeating-conic-gradient(#232427 0 25%,#1b1c1f 0 50%) 0 0/16px 16px}
+html body .ic-ref.mpk .mpk-peek-media{flex:1;min-height:0;display:grid;grid-template:minmax(0,1fr)/minmax(0,1fr);place-items:center;border-radius:12px;overflow:hidden;background:repeating-conic-gradient(#232427 0 25%,#1b1c1f 0 50%) 0 0/16px 16px}
 html body .ic-ref.mpk .mpk-peek-media img,html body .ic-ref.mpk .mpk-peek-media video{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain}
 html body .ic-ref.mpk .mpk-peek-video .mpk-peek-media video{width:100%;height:100%} /* a clip fills the box (contained), its controls along the bottom */
 html body .ic-ref.mpk .mpk-peek-video .mpk-peek-media,html body .ic-ref.mpk .mpk-peek-audio .mpk-peek-media{background:#000}
