@@ -91,10 +91,13 @@ export function refSlots(workflow: string): { encoder: string; mp: number[] } | 
       out = { encoder: enc.class_type, mp }; } } catch { /* unreadable workflow: no reference term */ }
   refSlotsCache.set(w, out); return out;
 }
-/** How many reference pictures this job sends: the job's own (refPaths, else the one photo), else the feature's minimum (Material Swap 2), else 1. */
+/** How many reference pictures this job sends: the job's own (refPaths, else the one photo), else the feature's minimum (Material Swap 2), else 1.
+ *  Create Image with no picture and no edit mode is text to image: none (its edit graph is only listed as the worst case, it doesn't run). */
 const refCountOf = (tool: ToolDef, input: Record<string, any>) => {
   const own = Array.isArray(input.refPaths) && input.refPaths.length ? input.refPaths.length : Array.isArray(input.refUrls) && input.refUrls.length ? input.refUrls.length : input.imagePath ? 1 : 0;
-  if (own) return own; const f = IMAGE_FEATURES.find((x) => x.toolId === tool.id && tool.id !== 'create-image'); return typeof f?.images[0] === 'number' && f.images[0] > 0 ? f.images[0] : 1;
+  if (own) return own;
+  if (tool.id === 'create-image') return input.mode === 'edit' || (Array.isArray(input.types) && input.types.includes('edit')) ? 1 : 0;
+  const f = IMAGE_FEATURES.find((x) => x.toolId === tool.id && tool.id !== 'create-image'); return typeof f?.images[0] === 'number' && f.images[0] > 0 ? f.images[0] : 1;
 };
 /** GB the job's reference pictures add on this hardware (0 when the graph has no reference encoder). Edit Image's 1K / 2K resizes them (comfy/plans.ts editSize). */
 export function refMemoryGB(tool: ToolDef, workflow: string, input: Record<string, any> = {}, hw: Hardware = currentHardware()): number {
