@@ -101,7 +101,8 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.match(xp, /<ShowcaseFilm\b[\s\S]*?\bpriority\n/, 'the hero: the page\u2019s first film'); assert.doesNotMatch(xp, /soundOn|soundKey|soundLabel/, 'the hero\u2019s sound is the page-wide choice (shared/soundDirector.ts)');
     assert.match(xp, /url: f\.out\.url/, 'the hero clip comes from the featured entry (one place to swap the file)');
     assert.doesNotMatch(xp, /\bonce\b|onEnded|Now showing|xph-reel|role="tablist"/, 'one looping clip: no reel, no counter, no play-once');
-    assert.match(film, /loop=\{!once\}/, 'ShowcaseFilm loops unless once');
+    assert.match(film, /loop=\{!once && !t0\}/, 'ShowcaseFilm loops unless once (natively when the take has no start)');
+    assert.match(film, /onEnded=\{once \? [\s\S]*? : t0 \? \(e\) => \{ e\.currentTarget\.currentTime = t0; start\(\); \}/, 'a take with a start (no opener) still loops, back to its start');
     assert.match(film, /NotAllowedError[\s\S]*el\.muted = true; soundRefused\(\)/, 'refused sound: plays muted and waits for a gesture');
     assert.match(film, /useDirectedSound\(\{ root, media: \(\) => v\.current/, 'the sound director owns the film\u2019s sound');
     const dir = fs.readFileSync(path.join(WEB, 'shared/soundDirector.ts'), 'utf8');
