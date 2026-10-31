@@ -22,7 +22,7 @@ export function routeWord(r: RouteNameIn, maker?: string | null): string {
   // your computer and the key places: the label after its place words ("Local ComfyUI · fast draft" → "fast draft")
   const tail = String(r.label ?? '').split(' · ').slice(1).join(' · ').trim();
   if (tail) return tail.charAt(0).toLowerCase() + tail.slice(1);
-  // a key place's endpoint ("fal-ai/luma-dream-machine/ray-2-flash/reframe") in words: its last two parts, "ray 2 flash reframe"
+  // a key place's endpoint ("luma/agent/ray/v3.2/reframe") in words: its last two parts, "v3.2 reframe"
   const parts = r.routeId.slice(r.routeId.indexOf(':') + 1).split('/').filter(Boolean); return (parts.length > 2 ? parts.slice(-2) : parts.slice(-1)).join(' ').replace(/[-_]+/g, ' ');
 }
 /** What makes it different, in one short line for the Run on row. */

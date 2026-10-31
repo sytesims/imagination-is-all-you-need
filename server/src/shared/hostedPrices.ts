@@ -67,7 +67,7 @@ export interface HostedPrice {
   priceUnmeasured?: boolean;
   /** usd:null rows (no published price): the per-unit USD the run is quoted at as an estimate (D1, 2026-10-28), with why in `estimateNote`. */
   estimateUsd?: number; estimateNote?: string;
-  sourceUrl: string; checkedAt: '2026-10-16' | '2026-10-17' | '2026-10-21' | '2026-10-22' | '2026-10-23' | '2026-10-24' | '2026-10-25' | '2026-10-26' | '2026-10-27' | '2026-10-28'; estimated: boolean; note?: string;
+  sourceUrl: string; checkedAt: '2026-10-16' | '2026-10-17' | '2026-10-21' | '2026-10-22' | '2026-10-23' | '2026-10-24' | '2026-10-25' | '2026-10-26' | '2026-10-27' | '2026-10-28' | '2026-10-31'; estimated: boolean; note?: string;
   /** GPT Image (2026-10-24): priced per job by gptImageQuote (the exact size from the aspect, the prompt length); usdByTierRes = no shape or prompt known. */
   tokenImage?: { family: 'gpt-image-2' | 'gpt-image-2.5' | 'gpt-image-1.5' };
   /** FLUX.2 on Comfy Router (2026-10-24): priced per job on the exact size the body sends for the shape (shared/hostedAspects.ts flux2Size):

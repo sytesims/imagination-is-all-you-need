@@ -63,7 +63,7 @@ try {
   console.log(`app variants: ${vran}/${variants.length} quote = charge`);
   // BH10 P1-4: every route that ran names its engine (job.modelName / model): never empty, never a generic label
   await new Promise((r) => setTimeout(r, 1500)); const named: string[] = []; const GENERIC = /^(open weights|auto|opensoul|local comfyui|comfy cloud|this computer|fal|replicate|demo)$/i;
-  const EXPECT: [RegExp, RegExp][] = [[/^remove-bg@.*bria/i, /Bria/], [/^reframe@.*ray-2/i, /Luma Ray 2/], [/^app-anime-restyle@comfy-open/, /Wan 2\.1 VACE/], [/^soul@.*(fal|replicate)/, /Z-Image-Turbo.*LoRA/]];
+  const EXPECT: [RegExp, RegExp][] = [[/^remove-bg@.*bria/i, /Bria/], [/^reframe@.*ray\/v3\.2/i, /Luma Ray 3\.2/], [/^app-anime-restyle@comfy-open/, /Wan 2\.1 VACE/], [/^soul@.*(fal|replicate)/, /Z-Image-Turbo.*LoRA/]];
   for (const [tid, jid, route] of ids) {
     const j = (await (await fetch(`${B}/api/jobs/${jid}`)).json()) as any; const nm = String(j.modelName ?? '').trim();
     if (!nm || GENERIC.test(nm) || nm !== j.model) bad.push(`${tid} ${route}: modelName "${nm}" (model "${j.model}")`); else named.push(`${tid} ${route} → ${nm}`);

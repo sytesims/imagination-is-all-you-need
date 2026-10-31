@@ -199,7 +199,7 @@ export const MODELS: Record<string, ModelDef> = Object.fromEntries([
   m('crystal-video-upscaler', 'Crystal Video Upscaler', 'Crystal', 'video', false, P, 'router-crystal-video', { note: 'Clarity AI on Comfy Router (fal/crystal-video-upscaler); price not published yet.' }),
   m('birefnet', 'BiRefNet', 'BiRefNet', 'video', true, 'mit', 'comfy-birefnet-video'),
   m('bria-video-background-removal', 'Bria Video Background Removal', 'Bria', 'video', false, P, 'comfy-birefnet-video', { note: 'The fal route of Remove Background runs Bria, not BiRefNet.', sourceUrl: 'https://fal.ai/models/bria/video/background-removal' }),
-  m('luma-ray-2-reframe', 'Luma Reframe', 'Luma', 'video', false, P, 'direct-luma-reframe', { lifecycleKey: 'direct-luma-reframe', note: 'Luma Ray 2 Reframe (High) / Ray 2 Flash Reframe (Fast).' }),
+  m('luma-ray-2-reframe', 'Luma Reframe', 'Luma', 'video', false, P, 'direct-luma-reframe', { lifecycleKey: 'direct-luma-reframe', note: 'Luma Ray 3.2 Reframe: 720p (High) / 540p (Fast). The id keeps its old Ray 2 name so saved settings still work.' }),
   m('rife-4.9', 'RIFE 4.9', 'RIFE', 'video', true, 'mit', 'comfy-rife'),
   m('depth-anything-v2-small', 'Depth Anything V2 Small', 'Depth Anything', 'video', true, 'apache-2.0', 'comfy-depth-anything-v2'),
   m('ffmpeg-hdr10', 'ffmpeg HDR10 conversion', 'ffmpeg', 'video', true, null, 'local-ffmpeg-hdr', { note: 'Not an AI model: ffmpeg zscale/tonemap on this computer.' }),
