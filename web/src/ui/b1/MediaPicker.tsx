@@ -19,7 +19,7 @@ export default function MediaPicker({ open, kind, sources, onPick, onUpload, onC
     return [...xs].sort((a, b) => sort === 'name' ? (a.name ?? '').localeCompare(b.name ?? '') : ((b.ts ?? 0) - (a.ts ?? 0)) * (sort === 'new' ? 1 : -1));
   }, [sources, tab, kind, range, sort]);
   if (!open) return null;
-  const tabs: [PickerTab, string][] = [['uploads', 'Uploads'], ['presets', 'Looks'], ['generations', 'My generations'], ['liked', 'Liked']];
+  const tabs: [PickerTab, string][] = [['uploads', 'Uploads'], ['presets', 'Looks'], ['generations', 'My generations'], ['liked', 'Favourites']];
   return createPortal(
     <div className="mp-scrim" onMouseDown={e => e.target === e.currentTarget && onClose()}>
       <div className="mp" role="dialog" aria-modal="true" aria-label={`Choose a ${kind}`}>

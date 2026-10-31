@@ -66,7 +66,7 @@ assert.equal(emptyTextFor(FILTER_DEFAULT, 'p1', MC), 'No Motion Control videos i
 assert.equal(emptyTextFor(FILTER_DEFAULT, null, MC), 'No Motion Control videos yet.');
 assert.equal(emptyTextFor(FILTER_DEFAULT, 'p1', videoScope('all')), 'No videos in this project yet.');
 assert.equal(emptyTextFor(FILTER_DEFAULT, 'p1', videoScope('create')), 'No generated videos in this project yet.');
-assert.match(emptyTextFor({ ...FILTER_DEFAULT, show: 'liked' }, 'p1', MC), /No liked Motion Control videos in this project yet/);
+assert.match(emptyTextFor({ ...FILTER_DEFAULT, show: 'liked' }, 'p1', MC), /No favourite Motion Control videos in this project yet/);
 ok('the web feed sends videoFeed + project, tests live jobs the same way, and says “No Motion Control videos in this project yet”');
 
 // ---- the server list: GET /api/jobs?videoFeed=…&project=… (filterJobList) ----

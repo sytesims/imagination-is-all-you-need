@@ -10,7 +10,7 @@ const WEB = path.resolve(import.meta.dirname, '../../web/src'); const src = (f: 
 assert.equal(feedView({ count: 1, loading: false }), 'cards', 'results: cards');
 assert.equal(feedView({ count: 0, loading: true }), 'loading');
 assert.equal(feedView({ count: 0, loading: false }), 'hint', 'nothing to show: one quiet line (a fresh install has its Examples project, so no starter view)');
-assert.ok(!isDefaultQuery({ ...FILTER_DEFAULT, show: 'liked' }, null)); assert.match(emptyTextFor({ ...FILTER_DEFAULT, show: 'liked' }, null, videoScope('all')), /No liked/);
+assert.ok(!isDefaultQuery({ ...FILTER_DEFAULT, show: 'liked' }, null)); assert.match(emptyTextFor({ ...FILTER_DEFAULT, show: 'liked' }, null, videoScope('all')), /No favourite/);
 ok('feedView: cards, else one quiet line');
 
 // ---- the shared frame renders it; no page renders a separate empty screen ----

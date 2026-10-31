@@ -32,7 +32,7 @@ assert.deepEqual(serverParams({ ...FILTER_DEFAULT, group: 'group:motion' }, null
 assert.deepEqual(serverParams({ ...FILTER_DEFAULT, source: 'featured' }, null, S), { featured: '1', media: 'audio', status: 'done', order: 'desc' });
 assert.ok(matches(song, FILTER_DEFAULT, null, S) && !matches(lips, FILTER_DEFAULT, null, S) && !matches(clip, FILTER_DEFAULT, null, S));
 assert.ok(matches({ status: 'running' } as any, FILTER_DEFAULT, null, S), 'a placeholder while it uploads joins');
-assert.equal(emptyTextFor({ ...FILTER_DEFAULT, show: 'liked' }, null, S), 'No liked sounds yet. Open a result and press the heart.');
+assert.equal(emptyTextFor({ ...FILTER_DEFAULT, show: 'liked' }, null, S), 'No favourite sounds yet. Tap the heart on any result to keep it here.');
 ok('Audio scope: GET /api/jobs?audioFeed=, Type chips, Failed, Featured; live jobs tested the same way on the page');
 
 // ---- the server list ----

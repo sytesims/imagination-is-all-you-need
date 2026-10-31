@@ -59,7 +59,7 @@ assert.equal(matches(h3, F({ group: 'group:create', show: 'liked' }), null, VA),
 assert.equal(matches({ ...h3, featured: true }, F({ source: 'featured', group: 'group:motion' }), null, VA), true, 'Featured: Type is greyed out, not applied');
 assert.equal(matches(h3, F({ source: 'uploads' }), null, VA), false, 'Uploads hold no jobs');
 assert.deepEqual(staleView([mt, h3], F({ group: 'group:motion' }), null, VA).map((j) => j.id), ['mt'], 'stale view narrows by Type');
-assert.equal(emptyTextFor(F({ group: 'group:motion', show: 'liked' }), null, VA), 'No liked motion videos yet. Open a result and press the heart.');
+assert.equal(emptyTextFor(F({ group: 'group:motion', show: 'liked' }), null, VA), 'No favourite motion videos yet. Tap the heart on any result to keep it here.');
 assert.equal(emptyTextFor(F({ group: 'group:upscale' }), 'p', IA), 'No upscaled images in this project yet.'); assert.equal(emptyTextFor(F({ q: 'fox', group: 'group:motion' }), null, VA), 'Nothing matches “fox” in Motion.');
 assert.match(emptyTextFor(F({ source: 'featured', group: 'group:motion' }), null, VA), /^Nothing featured yet/); assert.equal(emptyTextFor(F({ show: 'failed' }), null, VA), 'No failed runs.');
 assert.equal(isDefaultQuery(FILTER_DEFAULT, null), true); assert.equal(isDefaultQuery(F({ group: 'group:edit' }), null), false); assert.equal(isDefaultQuery(F({ source: 'uploads' }), null), false);
@@ -67,7 +67,7 @@ ok('Type × From × Show: server params, live matches, stale view and empty word
 
 // ---- pills and the Filter count (Grid size is a view choice, not a filter) ----
 assert.equal(activeCount(FILTER_DEFAULT), 0); assert.equal(activeCount(F({ size: 'large' })), 0, 'grid size is not a filter'); assert.equal(activeCount(F({ q: '  ' })), 0, 'blank search');
-assert.deepEqual(activePills(F({ group: 'group:motion', show: 'liked' })).map((p) => [p.key, p.label]), [['type', 'Motion'], ['show', 'Liked']]);
+assert.deepEqual(activePills(F({ group: 'group:motion', show: 'liked' })).map((p) => [p.key, p.label]), [['type', 'Motion'], ['show', 'Favourites']]);
 assert.deepEqual(activePills(F({ group: 'group:motion', show: 'liked', source: 'featured', q: 'fox', sort: 'old' })).map((p) => p.label), ['Featured', '“fox”', 'Oldest first'], 'under Featured the greyed Type / Show make no pills');
 assert.deepEqual(activePills(F({ group: 'group:product' })).find((p) => p.key === 'type')!.clear, { group: 'all' }, '× clears only its own filter');
 assert.equal(filterSummary(FILTER_DEFAULT), 'Filter'); assert.equal(filterSummary(F({ show: 'failed', q: 'fox', sort: 'old' })), 'Filter, 3 on: Failed, search “fox”, Oldest first');
