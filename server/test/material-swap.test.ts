@@ -79,3 +79,41 @@ ok('tool: object → image 1, material → image 2; missing picture, too-long wo
   assert.deepEqual(w.models.edit, MATERIAL_SWAP_MODELS);
   ok('listing: 2 photos, Object + Material slots, two optional 60-character fields, models in order (Qwen 2.1 first), official template credit');
 }
+
+// ---- memory: the need grows with the reference pictures; the default place follows it (2026-10-31) ----
+{
+  const HW = await import('../src/hardware.ts'); const R = await import('../src/hardware/requirements.ts');
+  const { toolDefaults } = await import('../src/routing/defaults.ts'); const { setLocalAvailable } = await import('../src/routing/select.ts'); const PR = await import('../src/routing/prefs.ts');
+  const ms = getTool('app-material-swap')!; const ci = getTool('create-image')!; const EDIT = 'create-image-qwen21-edit-api.json';
+  assert.deepEqual(R.refSlots(EDIT), { encoder: 'TextEncodeQwenImage21', mp: [1, 1] }, 'the official edit graph: two slots at resolution 1024 = 1 MP each');
+  assert.deepEqual(R.refSlots('create-image-qwen21-personswap-api.json')!.mp, [2, 0.59], 'resolution 0: the scale nodes in front of the encoder');
+  assert.equal(R.refSlots('create-image-qwen21-t2i-api.json')?.mp.length ?? 0, 0, 'text to image: no reference term');
+  const need = (prof: string, tool: any, input: Record<string, any>) => { HW.setHardwareOverride(prof); R.clearRequirementsCache(); return { r: R.requirementsFor(tool, 'comfy-qwen21', input)!, f: R.fitFor(tool, 'comfy-qwen21', input) }; };
+  const base = R.wfVram(EDIT)!.recommendedVramGB;
+  const two = need('mac64', ms, { types: ['edit'] }); // the listing's input has no files yet: Material Swap's two pictures are assumed
+  assert.equal(R.refMemoryGB(ms, EDIT, { types: ['edit'] }), 64); assert.equal(two.r.recommendedVramGB, Math.round((base + 64) * 10) / 10, 'Mac: base + 2 × 32 GB (measured 70–79 GB)');
+  assert.ok(two.r.recommendedVramGB >= 70 && two.r.recommendedVramGB <= 79, `in the measured range (${two.r.recommendedVramGB})`);
+  assert.equal(two.f.verdict, 'too_heavy', `64 GB Mac: two pictures are too heavy (${two.f.reason})`);
+  const one = need('mac64', ci, { mode: 'edit', types: ['edit'], imagePath: '/x.png' });
+  assert.equal(one.r.recommendedVramGB, Math.round((base + 32) * 10) / 10); assert.notEqual(one.f.verdict, 'too_heavy', 'one 1024 picture still runs on the 64 GB Mac (measured)');
+  assert.equal(need('mac64', ci, { mode: 'edit', types: ['edit'], imagePath: '/x.png', imageResolution: '2K' }).r.recommendedVramGB, Math.round((base + 128) * 10) / 10, 'Edit Image 2K: 4 MP reference');
+  assert.notEqual(need('mac256', ms, { types: ['edit'] }).f.verdict, 'too_heavy', '256 GB Mac: two pictures fit');
+  const nv = need('rtx4090', ms, { types: ['edit'], refPaths: ['/a.png', '/b.png'] }); assert.equal(nv.r.recommendedVramGB, Math.round((base + 4.4) * 10) / 10, 'NVIDIA: the prefix cache only (2.2 GB per MP)'); assert.equal(nv.f.verdict, 'fits');
+  ok('memory: base + 32 GB per reference megapixel on a Mac (2.2 elsewhere), from the graph\'s own sizes; 64 GB Mac too heavy for two pictures, one still runs; 256 GB fits');
+  // default place: Use local on → local where it fits, else the cloud default (local stays selectable with the too-heavy warning)
+  PR.savePrefs({ ...PR.getPrefs(), global: { ...PR.getPrefs().global, useLocal: true } }); setLocalAvailable(true);
+  for (const [prof, want] of [['mac256', 'comfy-qwen21'], ['mac64', 'api-qwen-image']] as const) {
+    HW.setHardwareOverride(prof); R.clearRequirementsCache(); const d = toolDefaults(ms);
+    assert.equal(d.defaultProvider, want, `${prof}: default ${d.defaultProvider} (${d.defaultFallback?.note ?? ''})`);
+    if (prof === 'mac64') { const q = d.models.find((m) => m.id === 'comfy-qwen21')!; assert.equal(q.reasonCode, 'too_heavy'); assert.equal(q.fit?.verdict, 'too_heavy'); }
+  }
+  HW.setHardwareOverride(null); setLocalAvailable(null as any);
+  ok('default place: 256 GB Mac → local Qwen Image 2.1 (free); 64 GB Mac → the cloud default, local listed as too heavy');
+}
+
+// ---- Qwen Image 2.1 Turbo edit samples at cfg 1 (the template links CFGGuider's cfg to the outer value 1) ----
+{
+  const g = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, '../../workflows/create-image-qwen21-turbo-edit-api.json'), 'utf8'));
+  assert.equal(g['459:507'].class_type, 'CFGGuider'); assert.equal(g['459:507'].inputs.cfg, 1);
+  ok('Turbo edit: CFGGuider 459:507 cfg 1');
+}

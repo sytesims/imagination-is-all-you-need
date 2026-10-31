@@ -3,6 +3,7 @@
  *  - recommendedVramGB re-runs readiness/manifest/build-manifest.py wf_meta() in TS with the Hugging Face size fill-ins
  *    (modelWeights.ts HF_API_SIZES), so the flux3klein rows (manifest 1.5, sizes were missing) become ≈8.6 and RIFE / DAv2 get a value.
  *    Formula: max(resident DiT + LoRAs, text encoder offloaded after encode) + VAE + aux + activations (1.5 GB image/audio, 4 GB video).
+ *  - Reference pictures (2026-10-31): graphs whose encoder splices them into the sequence add REF_GB_PER_MP × their megapixels to R and M (below).
  *  - minVramGB (ESTIMATE): activations + VAE + aux + 25 % of the resident DiT (ComfyUI offloads the rest to RAM). ramMinGB = largest resident file + 8 GB.
  *  - variants[]: lighter files verified on the public Hugging Face API tree listing (Oct 19 2026). Information only (wired:false), except GGUF
  *    drop-ins for a UNETLoader DiT, which become runnable (selectable with variantId) when the connected ComfyUI reports UnetLoaderGGUF (Q7).
@@ -34,6 +35,8 @@ import { macBlockedFiles, MAC_WEIGHTS_REASON } from './macWeights.js';
 import { LTX_LORAS, ltxLorasForJob } from '../shared/ltxLoras.js';
 import { comfyFoldersKnown, comfyFileBytes, comfyModelsStamp } from './comfyModels.js';
 import { optionalFileSkipped } from '../comfy/flux3Klein.js';
+import { IMAGE_FEATURES } from '../shared/imageFeatures.js';
+import { RES_PX } from '../shared/imageCaps.js';
 
 const MANIFEST = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../readiness/manifest/models.json');
 const WF_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../workflows');
@@ -62,6 +65,38 @@ export function wfVram(key: string): WfVram | null {
     if (low.includes('fp8')) { mps = 'red'; notes.push('fp8 weights: MPS has no float8 dtype'); } if (low.includes('nvfp4') && mps !== 'red') mps = 'amber'; if (low.includes('int8_convrot') && mps !== 'red') mps = 'amber'; if (low.includes('bf16') && mps === 'green') mps = 'amber'; }
   const v: WfVram = { workflow: k, recommendedVramGB: peak, minVramGB: r1(act + vae + aux + 0.25 * resident), residentGB: r1(resident), teGB: te, largestFileGB: Math.max(0, ...ms.map(sizeGb)), video, mps, mpsNotes: notes, files: ms.map((m) => m.file) };
   wfCache.set(k, v); return v;
+}
+// ---- reference pictures (2026-10-31) ----
+/** Memory each reference picture adds, in GB per megapixel of reference, by the graph's reference encoder. The encoder puts every reference
+ *  into the transformer's sequence (1 MP = 4096 tokens on Qwen Image 2.1), so the need grows with the number and size of the pictures.
+ *  Qwen Image 2.1 (TextEncodeQwenImage21), measured on an M1 Max 64 GB (ComfyUI, MPS, split attention): one 1024 picture finishes, two peak at
+ *  70–79 GB. base 11.7 + 2 × 32 ≈ 76 matches the two-picture peak; one picture = 43.7, under a 64 GB Mac's 48 GB. Other GPUs (memory-efficient
+ *  attention): the prefix cache only, ≈ 2.2 GB per 4096 tokens in bf16 (2 × 32 layers × 4096 hidden × 2 bytes). Add a row to cover another encoder. */
+export const REF_GB_PER_MP: Record<string, { mps: number; other: number }> = { TextEncodeQwenImage21: { mps: 32, other: 2.2 } };
+const refSlotsCache = new Map<string, { encoder: string; mp: number[] } | null>();
+/** A graph's reference slots: the encoder (a REF_GB_PER_MP class) and each linked picture's megapixels as the graph sizes it
+ *  (the encoder's `resolution`², or with resolution 0 the ImageScaleToTotalPixels in front of it; unknown = 1 MP). */
+export function refSlots(workflow: string): { encoder: string; mp: number[] } | null {
+  const w = workflow.replace(/^workflows\//, ''); if (refSlotsCache.has(w)) return refSlotsCache.get(w)!; let out: { encoder: string; mp: number[] } | null = null;
+  try { const g = JSON.parse(readFileSync(path.join(WF_DIR, w), 'utf8')) as Record<string, any>;
+    const enc = Object.values<any>(g).find((n) => REF_GB_PER_MP[n?.class_type]);
+    if (enc) { const res = Number(enc.inputs?.resolution ?? 0);
+      const mp = Object.entries<any>(enc.inputs ?? {}).filter(([k, v]) => /^images\.image_\d+$/.test(k) && Array.isArray(v)).sort(([a], [b]) => Number(a.split('_').pop()) - Number(b.split('_').pop()))
+        .map(([, v]) => { if (res > 0) return (res / 1024) ** 2; const s = g[v[0]]; return s?.class_type === 'ImageScaleToTotalPixels' ? Number(s.inputs?.megapixels) || 1 : 1; });
+      out = { encoder: enc.class_type, mp }; } } catch { /* unreadable workflow: no reference term */ }
+  refSlotsCache.set(w, out); return out;
+}
+/** How many reference pictures this job sends: the job's own (refPaths, else the one photo), else the feature's minimum (Material Swap 2), else 1. */
+const refCountOf = (tool: ToolDef, input: Record<string, any>) => {
+  const own = Array.isArray(input.refPaths) && input.refPaths.length ? input.refPaths.length : Array.isArray(input.refUrls) && input.refUrls.length ? input.refUrls.length : input.imagePath ? 1 : 0;
+  if (own) return own; const f = IMAGE_FEATURES.find((x) => x.toolId === tool.id && tool.id !== 'create-image'); return typeof f?.images[0] === 'number' && f.images[0] > 0 ? f.images[0] : 1;
+};
+/** GB the job's reference pictures add on this hardware (0 when the graph has no reference encoder). Edit Image's 1K / 2K resizes them (comfy/plans.ts editSize). */
+export function refMemoryGB(tool: ToolDef, workflow: string, input: Record<string, any> = {}, hw: Hardware = currentHardware()): number {
+  const s = refSlots(workflow); if (!s || !s.mp.length) return 0; const per = REF_GB_PER_MP[s.encoder]; const gb = hw.gpu?.type === 'mps' ? per.mps : per.other;
+  const res = tool.id === 'create-image' && input.imageResolution ? RES_PX[input.imageResolution as keyof typeof RES_PX] : null;
+  const mp = s.mp.slice(0, refCountOf(tool, input)).map((x) => (res ? (res / 1024) ** 2 : x)).reduce((a, b) => a + b, 0);
+  return r1(gb * mp);
 }
 // ---- lighter variants (public HF API tree, Oct 19 2026; /workspace pb-scratch/hw cache) ----
 export interface Variant { id: string; file: string; repoPath: string; url: string; folder: string; bytes: number; precision: string; loader: 'core' | 'gguf'; replaces: string; dropIn: boolean;
@@ -161,9 +196,10 @@ export function requirementsFor(tool: ToolDef, providerId: string, input: Record
   const p = getProvider(providerId); if (!p || p.kind !== 'open-weights') return null;
   const wfs = jobWorkflows(tool, providerId, input); const variantId = typeof input.variantId === 'string' && input.variantId ? input.variantId : null;
   const loras = ltxLorasForJob(tool.id, providerId, input); // LTX LoRAs this job loads (shared/ltxLoras.ts): their files join "Files needed"
-  const ck = `${tool.id}|${providerId}|${wfs.join(',')}|${loras.map((l) => l.file).join(',')}|${variantId}|${input.resolution ?? ''}|${input.duration ?? ''}|${input.n ?? ''}|${vupSourceFactor(providerId, input)}|${hw.comfy.ggufNode}|${modelsDir()}|${comfyModelsStamp()}|${JSON.stringify(missOverride[`local:${providerId}`] ?? null)}|${String(input.promptRewrite ?? '')}`;
+  const ck = `${tool.id}|${providerId}|${wfs.join(',')}|${loras.map((l) => l.file).join(',')}|${variantId}|${input.resolution ?? ''}|${input.duration ?? ''}|${input.n ?? ''}|${vupSourceFactor(providerId, input)}|${hw.comfy.ggufNode}|${modelsDir()}|${comfyModelsStamp()}|${JSON.stringify(missOverride[`local:${providerId}`] ?? null)}|${String(input.promptRewrite ?? '')}|${input.refPaths?.length ?? input.refUrls?.length ?? (input.imagePath ? 1 : 0)}|${input.imageResolution ?? ''}|${hw.gpu?.type ?? ''}`;
   const hit = reqCache.get(ck); if (hit && Date.now() - hit.at < 10_000) return hit.r;
-  const vs = wfs.map(wfVram).filter((x): x is WfVram => !!x);
+  // the reference pictures' share (REF_GB_PER_MP) is working memory: it adds to both the recommended and the minimum need
+  const vs = wfs.map((w) => { const v = wfVram(w); const add = v ? refMemoryGB(tool, w, input, hw) : 0; return v && add ? { ...v, recommendedVramGB: r1(v.recommendedVramGB + add), minVramGB: r1(v.minVramGB + add) } : v; }).filter((x): x is WfVram => !!x);
   const worst = vs.length ? vs.reduce((a, b) => (b.recommendedVramGB > a.recommendedVramGB ? b : a)) : null;
   const weights = weightsForWorkflows(wfs);
   const vv = VARIANTS.filter((v) => v.providers.includes(providerId) && weights.some((w) => w.file === v.replaces)).map((v) => variantView(v, hw));

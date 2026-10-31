@@ -79,6 +79,9 @@ export const HW_PROFILES: Record<string, { gpu: Gpu | null; ramGB: number | null
   mid16: { gpu: cuda('NVIDIA GeForce RTX 4080', 16376, 15200), ramGB: 32, seen: true, comfyVersion: '0.41.0' },
   rtx4090: { gpu: cuda('NVIDIA GeForce RTX 4090', 24564, 23000), ramGB: 64, seen: true, comfyVersion: '0.41.0' },
   mac36: { gpu: { name: 'Apple M3 Max', type: 'mps', count: 1, vramTotalBytes: null, vramFreeBytes: null, vramTotalGB: null, unifiedMemory: true }, ramGB: 36, seen: true, comfyVersion: '0.41.0' },
+  // 2026-10-31: the Macs Material Swap's memory rule was measured on (M1 Max 64 GB) and the large-memory case (Mac Studio 256 GB)
+  mac64: { gpu: { name: 'Apple M1 Max', type: 'mps', count: 1, vramTotalBytes: null, vramFreeBytes: null, vramTotalGB: null, unifiedMemory: true }, ramGB: 64, seen: true, comfyVersion: '0.43.2' },
+  mac256: { gpu: { name: 'Apple M3 Ultra', type: 'mps', count: 1, vramTotalBytes: null, vramFreeBytes: null, vramTotalGB: null, unifiedMemory: true }, ramGB: 256, seen: true, comfyVersion: '0.43.2' },
 };
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 /** HW2 (BH): a folder as shown in API answers, never the server's absolute path: repo-relative inside the repo ('server/data'), else the folder name. */

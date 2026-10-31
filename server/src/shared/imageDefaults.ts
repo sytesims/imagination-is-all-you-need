@@ -46,7 +46,7 @@ export const IMAGE_DEFAULTS: Record<ImageFeatureId, WorkflowDefaults> = {
   expand: { local: null, hosted: cloudModel('expand'), why: { hosted: 'Made for extending photos' } },
   erase: { local: null, hosted: cloudModel('erase'), why: { hosted: 'Made for removing objects' } },
   'try-on': { local: null, hosted: cloudModel('try-on'), why: { hosted: 'Made for trying on clothes' } },
-  'material-swap': { local: 'comfy-qwen21', hosted: cloudModel('material-swap'), why: { local: 'Free two-photo edit locally', hosted: 'Keeps the object and the scene while the material changes' } },
+  'material-swap': { local: 'comfy-qwen21', hosted: cloudModel('material-swap'), why: { local: 'Free two-photo edit locally', hosted: 'Lowest-cost cloud two-photo edit' } },
   'image-layers': { local: 'comfy-qwen-image-layered', hosted: cloudModel('image-layers'), why: { local: 'Free layers locally once its files are downloaded', hosted: 'Fast, low-cost layer splits' } },
 };
 
