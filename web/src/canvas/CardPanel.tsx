@@ -22,7 +22,7 @@ import { shownCredits } from '../shared/quote';
 import { useToolQuote } from '../shared/useToolQuote';
 import { jobCaption } from '../shared/FeedCaption';
 import { modelOfEngine, shownName } from '../shared/models';
-import { flowById, availableFlows, type GenMedium } from '../shared/genFlows';
+import { flowById, availableFlows, tooManyNote, type GenMedium } from '../shared/genFlows';
 import { workflowRecreateHref } from '../shared/workflowLinks';
 import { tip } from '../shared/Tooltip';
 import { useToast } from '../shared/Toast';
@@ -31,7 +31,8 @@ import { WorkflowControls } from '../ui/next/WorkflowBar';
 import { ImageIcon, VideoIcon, AudioIcon, CubeIcon, DownloadIcon, CloseIcon, TextIcon, ChevronRightIcon, ExpandIcon } from '../ui/Icons';
 import { CopyIcon, RetryIcon, PullOutIcon, NoteIcon, PromptIcon, UploadIcon, AdIcon } from './icons';
 import { useCatalog } from './catalog';
-import { GEN_TYPE, type GenCardProps, type Take } from './cardModel';
+import { GEN_TYPE, type GenCardProps, type Take, type MadeFrom as MadeFromT } from './cardModel';
+import { CardInputs } from './CardInputs';
 import { RESULT_TYPE, PROMPT_TYPE, NOTE_TYPE, UPLOAD_TYPE, AD_TYPE, isNodeType } from './nodeTypes';
 import { cardState, makerOf, missingOf, modelNameOf } from './cardState';
 import { cardInputs, promptSourcesInto } from './graph';
@@ -52,9 +53,11 @@ const readPin = () => { try { return localStorage.getItem(PIN_KEY) === '1'; } ca
 
 /* ------------------------------------------------------------------ what the panel reads from the board */
 type Media = { kind: 'image' | 'video' | 'audio' | '3d'; url: string; poster: string; jobId: string };
-type Link = { id: TLShapeId; label: string; poster: string; kind: string; slot?: string };
+/** A connection row. No id: a file added on the card itself (nothing to jump to). */
+type Link = { id?: TLShapeId; label: string; poster: string; kind: string; slot?: string };
 const MEDIUM_ICON = { image: ImageIcon, video: VideoIcon, audio: AudioIcon, '3d': CubeIcon } as const;
 const KIND_WORD: Record<string, string> = { image: 'Picture', video: 'Clip', audio: 'Sound', '3d': '3D model', text: 'Text' };
+const KIND_ICON: Record<string, typeof ImageIcon> = { image: ImageIcon, video: VideoIcon, audio: AudioIcon, '3d': CubeIcon, text: TextIcon };
 
 function shapeName(s: TLShape): string {
   const p: any = s.props; const shot = String((s.meta as any)?.name ?? '').trim(); if (shot) return shot;
@@ -80,16 +83,17 @@ function usedByOf(editor: Editor, id: TLShapeId): Link[] {
     if (to && to.id !== id && isNodeType(to.type) && !seen.has(to.id)) { seen.add(to.id); out.push(linkOf(to)); } }
   return out;
 }
-/** What feeds it: arrow inputs (with their slot), Prompt / Note text, and the card it was pulled out of. */
+/** What feeds it: arrow inputs and files added on the card (with their slot), Prompt / Note text, and the card it was pulled out of. */
 function inputsOf(editor: Editor, s: TLShape, bySlot: Record<string, { key: string }[]>, slotLabel: Record<string, string>): Link[] {
   const out: Link[] = []; const seen = new Set<string>(); const slotOfKey: Record<string, string> = {};
   for (const [name, list] of Object.entries(bySlot)) for (const i of list) slotOfKey[i.key] = slotLabel[name] ?? name;
-  if (s.type === GEN_TYPE) for (const i of cardInputs(editor, s)) { const src = i.shapeId ? editor.getShape(i.shapeId as TLShapeId) : null; if (src && !seen.has(src.id)) { seen.add(src.id); out.push(linkOf(src, slotOfKey[i.key])); } }
+  if (s.type === GEN_TYPE) for (const i of cardInputs(editor, s)) { const src = i.shapeId ? editor.getShape(i.shapeId as TLShapeId) : null;
+    if (src) { if (!seen.has(src.id)) { seen.add(src.id); out.push(linkOf(src, slotOfKey[i.key])); } } else if (!i.shapeId) out.push({ label: i.label, poster: i.poster, kind: i.kind, slot: slotOfKey[i.key] }); }
   for (const t of promptSourcesInto(editor, s.id)) { const src = editor.getShape(t.id); if (src && !seen.has(src.id)) { seen.add(src.id); out.push(linkOf(src, 'Prompt')); } }
   for (const pid of ((s.props as any).parents ?? []) as string[]) { const src = editor.getShape(pid as TLShapeId); if (src && !seen.has(src.id)) { seen.add(src.id); out.push(linkOf(src, s.type === RESULT_TYPE ? 'Pulled out of' : 'Made from')); } }
   return out;
 }
-const jump = (editor: Editor, id: TLShapeId) => { editor.select(id); reveal(editor, id); };
+const jump = (editor: Editor, id: TLShapeId | undefined) => { if (!id || !editor.getShape(id)) return; editor.select(id); reveal(editor, id); };
 
 /** The finished job behind a take: real cost, where it ran, how long it took. */
 function useJob(jobId: string | undefined): JobState | null {
@@ -176,6 +180,7 @@ function One({ id, head }: { id: TLShapeId; head: HeadFn }) {
   if (!s || !v) return <Empty head={head} />;
   const finished = v.gen ? v.status === 'done' && !!v.media : !!v.media;
   const isText = v.s.type === PROMPT_TYPE || v.s.type === NOTE_TYPE;
+  const from: MadeFromT[] = (peek ?? v.takes[v.take])?.from ?? [];
   return <>
     {head({ icon: <v.Icon size={15} />, tint: v.tint, title: v.title, sub: [v.kindLine, v.statusWord].filter(Boolean).join(' · '), live: v.status === 'running' })}
     <div className="cp-body">
@@ -185,6 +190,7 @@ function One({ id, head }: { id: TLShapeId; head: HeadFn }) {
       {isText && <Section title="Text"><TextEdit v={v} /></Section>}
       {v.gen && v.spec && v.status !== 'running' && <Section title={v.draft ? 'Set it up' : 'Run again'} aside={v.draft ? undefined : 'Same model and settings'}><RunBlock v={v} /></Section>}
       {(v.gen || v.s.type === RESULT_TYPE) && <Section title={v.draft ? 'Model' : 'Made with'}><MadeWith v={v} /></Section>}
+      {!v.draft && from.length > 0 && <Section title="Made from" aside={peek ? `Version ${v.takes.indexOf(peek) + 1}` : undefined}><MadeFrom list={from} /></Section>}
       {finished && v.media && v.media.kind !== '3d' && <Section title="Next steps" aside="Each makes a new card"><NextSteps v={v} /></Section>}
       {(v.ins.length > 0 || v.outs.length > 0) && <Section title="Connections" aside={[v.ins.length && `${v.ins.length} in`, v.outs.length && `${v.outs.length} out`].filter(Boolean).join(' · ')}><Connections v={v} /></Section>}
     </div>
@@ -279,7 +285,10 @@ function RunBlock({ v }: { v: View }) {
       <button type="button" className="cp-btn" onClick={tweak} {...tip('A copy beside it with the same settings, ready to change. Nothing runs until you press Generate')}><CopyIcon size={14} />Change settings</button>
       <button type="button" className="cp-btn cp-btn-main" disabled={busy} onClick={() => void again()} {...tip('Same settings again. The new version joins the strip')}><RetryIcon size={14} />{busy ? 'Starting…' : 'Run again'}<PriceSuffix q={v.q ?? p.quote} /></button>
     </div></div>;
+  const note = v.st?.extra.length ? tooManyNote(spec, v.st.extra.length, v.model) : null;
   return <div className="cp-run" ref={box}>
+    {spec.slots.length > 0 && <CardInputs cardId={v.s.id} slots={spec.slots} bySlot={v.st?.bySlot ?? {}} showAdd className="cp-ins" testPrefix="cp" />}
+    {note && <Caption>{note}</Caption>}
     {spec.promptMode !== 'hidden' && !v.linkedPrompt && <textarea className="cp-text cp-text-s" rows={3} value={p.prompt} placeholder={spec.placeholder ?? 'Describe what you want'} aria-label="Prompt" onChange={e => setCard(editor, v.s.id, { prompt: e.target.value })} />}
     {settings(false)}
     <DockGenerate toolId={spec.tool.id} engine={spec.provider} quote={v.q} label={spec.generateLabel} busy={busy} problems={[]} missing={missing} pfOpen={false} genRef={genRef} onClick={() => runCard(v.s.id)} workflowId={spec.flow.id} className="cp-go" variant="node" testId="cp-generate" />
@@ -300,10 +309,22 @@ function NextSteps({ v }: { v: View }) {
 /** What feeds it and what it feeds; a click jumps to that card. */
 function Connections({ v }: { v: View }) {
   const editor = useEditor();
-  const row = (l: Link, dir: 'in' | 'out') => <button key={`${dir}-${l.id}`} type="button" className="cp-row" onClick={() => jump(editor, l.id)}>
-    <span className="cp-row-t">{l.poster ? <img src={gridSrc(l.poster, 72)} alt="" /> : l.kind === 'text' ? <TextIcon size={14} /> : <ImageIcon size={14} />}</span>
-    <span className="cp-row-n"><b>{l.label}</b><small>{dir === 'in' ? `Uses · ${l.slot ?? KIND_WORD[l.kind] ?? 'Input'}` : `Used by · ${KIND_WORD[l.kind] ?? 'Card'}`}</small></span><ChevronRightIcon size={14} /></button>;
-  return <div className="cp-rows">{v.ins.map(l => row(l, 'in'))}{v.outs.map(l => row(l, 'out'))}</div>;
+  const row = (l: Link, dir: 'in' | 'out', k: number) => <Row key={`${dir}-${l.id ?? k}`} poster={l.poster} kind={l.kind} label={l.label} sub={dir === 'in' ? `Uses · ${l.slot ?? KIND_WORD[l.kind] ?? 'Input'}` : `Used by · ${KIND_WORD[l.kind] ?? 'Card'}`}
+    onClick={l.id ? () => jump(editor, l.id) : undefined} />;
+  return <div className="cp-rows">{v.ins.map((l, k) => row(l, 'in', k))}{v.outs.map((l, k) => row(l, 'out', k))}</div>;
+}
+/** One row: a thumbnail (or the kind's icon), a name and a small line. With a card behind it, a click jumps there; otherwise it just shows. */
+function Row({ poster, kind, label, sub, onClick }: { poster: string; kind: string; label: string; sub: string; onClick?: () => void }) {
+  const I = KIND_ICON[kind] ?? ImageIcon;
+  const inner = <><span className="cp-row-t">{poster ? <img src={gridSrc(poster, 72)} alt="" /> : <I size={14} />}</span>
+    <span className="cp-row-n"><b title={label}>{label}</b><small>{sub}</small></span>{onClick && <ChevronRightIcon size={14} />}</>;
+  return onClick ? <button type="button" className="cp-row" onClick={onClick}>{inner}</button> : <div className="cp-row cp-row-still">{inner}</div>;
+}
+
+/** What a finished version was made from: the inputs it was sent with, kept on the version (a card that's still there is one click away). */
+function MadeFrom({ list }: { list: MadeFromT[] }) {
+  const editor = useEditor(); const live = useValue('made from live', () => list.map(i => !!i.shapeId && !!editor.getShape(i.shapeId as TLShapeId)), [editor, list]);
+  return <div className="cp-rows" data-testid="cp-made-from">{list.map((i, k) => <Row key={`${i.url}-${k}`} poster={i.poster} kind={i.kind} label={i.label} sub={i.slot} onClick={live[k] ? () => jump(editor, i.shapeId as TLShapeId) : undefined} />)}</div>;
 }
 
 /** The footer, the same on every finished card: Download · Open in its page · full size (two equal buttons and one square). */
