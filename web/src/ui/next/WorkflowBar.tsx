@@ -22,6 +22,7 @@ import { ScalePanel, outOf, sizeText, scaleWhy, type UpInfo, type Size } from '.
 import type { WorkflowRecipe } from '../../../../server/src/shared/workflows';
 import { draftPromptOk } from '../../shared/batch1';
 import './workflowBar.css';
+import { SlotLabel } from '../../shared/SlotLabel';
 
 export type WfRecipe = WorkflowRecipe & { modelInfo?: Record<string, { name: string | null; workflow: { line: string; url: string | null; source: string } | null; /** product shot: the aspects this model takes, per mode */ aspects?: Record<string, string[]>; /** the model's own shape when the picked one isn't offered */ defaultAspect?: string; /** the credit when a photo switches the mode */ workflowByMode?: Record<string, { line: string; url: string | null; source: string } | null> }> };
 export type WfSlotFile = { file: File; url: string };
@@ -122,7 +123,7 @@ function SlotBox({ slot, file, onFile, onUrl, onPick, picking, flash, onClear, d
     {file ? <><button ref={hit} type="button" className={`wf-slot-hit${bad === file.url ? ' bad' : ''}`} data-ref-trigger aria-haspopup="dialog" aria-expanded={preview} aria-label={`${slot.label}: open preview. Delete removes it`} {...tip(preview ? null : `${slot.label} · ${size}. Click to preview`)} onClick={() => setPreview(true)} disabled={disabled}
           onKeyDown={e => { if ((e.key === 'Delete' || e.key === 'Backspace') && !disabled) { e.preventDefault(); onClear(); } }}>{bad === file.url ? <ImageIcon size={14} /> : <img src={file.url} alt="" onLoad={e => setDims(`${e.currentTarget.naturalWidth}×${e.currentTarget.naturalHeight}`)} onError={() => setBad(file.url)} />}<b>{slot.label}</b></button>
         <button type="button" className="wf-slot-x" aria-label={`Remove ${slot.label.toLowerCase()}`} onClick={onClear} disabled={disabled}><CloseIcon size={10} strokeWidth={2.2} /></button></>
-      : <><button type="button" className="wf-slot-hit" data-ref-trigger aria-haspopup="dialog" aria-expanded={picking} aria-label={`${num ? `${num}. ` : ''}Add ${slot.label.toLowerCase()}${slot.required ? '' : ' (optional)'}`} {...tip(`${slot.hint}. Pick from your images, upload, drop or paste`)} onClick={onPick} disabled={disabled}><PlusIcon size={14} /><b>{slot.label}</b></button>
+      : <><button type="button" className="wf-slot-hit" data-ref-trigger aria-haspopup="dialog" aria-expanded={picking} aria-label={`${num ? `${num}. ` : ''}Add ${slot.label.toLowerCase()}${slot.required ? '' : ' (optional)'}`} {...tip(`${slot.hint}. Pick from your images, upload, drop or paste`)} onClick={onPick} disabled={disabled}><PlusIcon size={14} /><SlotLabel text={slot.label} /></button>
         <button type="button" className="wf-slot-up" aria-label={`Upload ${slot.label.toLowerCase()} from this computer`} data-testid={`wf-slot-${slot.name}-upload`} {...tip('Upload from this computer')} onClick={() => withNativePicker(() => inp.current?.click())} disabled={disabled}><UploadGlyph /></button></>}
     <SlotPreview open={preview && !!file} anchor={hit} onClose={() => setPreview(false)} item={file} kind="image" title={slot.label} onReplace={onPick} onRemove={onClear} testId={`wf-slot-${slot.name}-preview`} />
   </span>;
