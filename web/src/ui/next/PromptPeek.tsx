@@ -9,6 +9,7 @@ import { Popover } from '../../shared/Popover';
 import { tip } from '../../shared/Tooltip';
 import { rowAnchor } from '../../shared/RowMore';
 import { fitPri } from '../../shared/chipFit';
+import { scaleText } from '../../shared/scaleText';
 import { useBrand, withBrandFields } from '../../shared/brandStore';
 import './promptPeek.css';
 
@@ -77,7 +78,7 @@ export function PromptPeek({ form, place, photos, watch }: { /** null: nothing t
                 : photos.length > 0 && <><dt>Photos</dt><dd data-testid="ic-peek-photos">{photos.map(p => `${p} (your photo)`).join(', ')}</dd></>}
               {r.brand && <><dt>Brand</dt><dd data-testid="ic-peek-brand">{r.brand.applied ? <>{r.brand.name}: added “{r.brand.phrase}”</> : `${r.brand.name}: nothing added${r.brand.phrase ? ' (no prompt yet)' : ' (the kit has no colours or mood)'}`}</dd></>}
               <dt>Model</dt><dd data-testid="ic-peek-model">{r.model ?? r.provider}{place ? ` · ${place}` : ''}</dd>
-              <dt>Settings</dt><dd data-testid="ic-peek-settings">{r.noPrompt ? (form?.fields.scale ? `×${form.fields.scale}` : '—') : settingsLine(r.settings)}</dd>
+              <dt>Settings</dt><dd data-testid="ic-peek-settings">{r.noPrompt ? (form?.fields.scale ? scaleText(form.fields.scale) : '—') : settingsLine(r.settings)}</dd>
               {r.request && <><dt>Request</dt><dd data-testid="ic-peek-request" {...tip(`Fields sent to ${r.request.model}, ${r.request.layers ? 'one request for every layer' : 'one request per image'}`)}>{requestLine(r.request)}</dd></>}
               <dt>Workflow</dt>{r.workflowCredit !== undefined /* video: the model, mode, place and source in words; the credit and file on hover */ ? <dd data-testid="ic-peek-workflow" {...tip([r.workflowCredit, r.workflowFile].filter(Boolean).join(' · ') || null)}>{r.workflowLine || 'Built in'}</dd>
                 : <dd data-testid="ic-peek-workflow" {...tip(r.workflowLine)}>{r.workflowFile ?? r.workflowLine ?? 'Built in'}</dd>}
