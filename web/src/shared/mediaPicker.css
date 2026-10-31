@@ -65,9 +65,14 @@ html body .ic-ref.mpk .mpk-hint{margin:10px 16px 0;color:rgba(255,255,255,.6);fo
 html body .ic-ref.mpk .mpk-tile.mpk-sel::after{content:"";position:absolute;inset:0;z-index:1;border:2px solid var(--accent);border-radius:inherit;pointer-events:none}
 html body .ic-ref.mpk .mpk-tile.mpk-sel img{opacity:.82}
 html body .ic-ref.mpk .mpk-seln{position:absolute;top:6px;left:6px;right:auto;bottom:auto;display:grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--accent);color:var(--on-accent);font:700 11px/20px var(--font-ui);box-shadow:0 1px 3px rgba(0,0,0,.4);pointer-events:none}
+/* a slot that takes several: an empty tick on hover / focus (always on touch), the number once picked */
+html body .ic-ref.mpk .mpk-tick{position:absolute;top:6px;left:6px;z-index:1;width:18px;height:18px;border-radius:999px;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.9),0 1px 3px rgba(0,0,0,.45);background:rgba(10,10,12,.35);opacity:0;pointer-events:none;transition:opacity var(--t-state,.15s) ease}
+html body .ic-ref.mpk .mpk-tile:hover .mpk-tick,html body .ic-ref.mpk .mpk-tile:has(.mpk-pick:focus-visible) .mpk-tick{opacity:1}
+@media (hover:none){html body .ic-ref.mpk .mpk-tick{opacity:1}}
 /* the selection bar: count, Clear, Add n */
 html body .ic-ref.mpk .mpk-selbar{flex:none;display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--border-strong,rgba(255,255,255,.1))}
 html body .ic-ref.mpk .mpk-selbar-n{margin-right:auto;color:rgba(255,255,255,.7);font:500 13px/18px var(--font-ui)}
+html body .ic-ref.mpk .mpk-selbar-note{margin-left:10px;color:#ffc89e;font-style:normal}
 html body .ic-ref.mpk .mpk-selbar-n b{color:var(--accent);font-weight:700;font-variant-numeric:tabular-nums}
 html body .ic-ref.mpk .mpk-btn.mpk-btn-q{background:transparent;color:rgba(255,255,255,.7)}
 html body .ic-ref.mpk .mpk-btn.mpk-btn-q:hover{background:var(--fill,rgba(255,255,255,.05));color:#fff}

@@ -218,7 +218,9 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
   /** reorder a slot's files (arrows or drag): Image 1, Image 2… follow the new order */
   const moveFile = (s: VBarSlot, from: number, to: number) => setFiles(m => { const l = [...(m[s.name] ?? [])]; if (to < 0 || to >= l.length || from === to) return m; const [x] = l.splice(from, 1); l.splice(to, 0, x); return { ...m, [s.name]: l }; });
   const dragFrom = useRef<{ slot: string; i: number } | null>(null);
-  const openSlot = (name: string, at?: number) => { replaceAt.current = at == null ? null : { slot: name, i: at }; const el = slotIn.current[name]; if (el) openPickerFor(el); };
+  const openSlot = (name: string, at?: number) => { replaceAt.current = at == null ? null : { slot: name, i: at }; const el = slotIn.current[name]; if (!el) return;
+    /* replacing one file: one pick, even when the slot is full (data-picker-max is read as the picker opens) */
+    const was = el.getAttribute('data-picker-max'); if (at != null) el.setAttribute('data-picker-max', '1'); openPickerFor(el); if (at != null) { if (was == null) el.removeAttribute('data-picker-max'); else el.setAttribute('data-picker-max', was); } };
   /* a result handed over (Extend, Upscale, Turn to video…), Recreate, or a library file: into the matching slot */
   const firstOf = (k: VBarSlot['kind']) => bar.slots.find(s => s.kind === k);
   /** A Recreate's (or example's) files: the slot gets exactly these, in this order (never added to what it held; the model's "Not used" rule still marks extras). */
@@ -378,7 +380,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
   const slotEls = shownSlots.map((s, i) => { const fs = files[s.name] ?? []; const req = reqOf(s); const firstEmpty = shownSlots.find(x => reqOf(x) && !files[x.name]?.length) === s; const mx = maxOf(s);
     const used = usedOf(s); const multi = (!!mx && mx > 1) || fs.length > 1; const numbered = multi && s.kind === 'image'; const base = numbered ? imgBase(s) : 0;
     const canAdd = !fs.length || (!!mx && mx > 1 && fs.length < mx); const o = { multi, numbered, base, used, count: fs.length };
-    const input = <input ref={el => { slotIn.current[s.name] = el; }} type="file" hidden accept={acceptOf(s)} multiple={!!mx && mx > 1} data-picker-title={s.missing ? `Choose ${s.missing.replace(/^Add /, '')}` : `Choose ${s.label.toLowerCase()}`} data-picker-limits={s.hint} data-picker-frames={s.kind === 'image' ? '' : undefined}
+    const input = <input ref={el => { slotIn.current[s.name] = el; }} type="file" hidden accept={acceptOf(s)} multiple={!!mx && mx > 1} data-picker-max={mx && mx > 1 ? Math.max(0, mx - fs.length) : undefined} data-picker-title={s.missing ? `Choose ${s.missing.replace(/^Add /, '')}` : `Choose ${s.label.toLowerCase()}`} data-picker-limits={s.hint} data-picker-frames={s.kind === 'image' ? '' : undefined}
       data-testid={`vbar-slot-${s.name}-input`} onChange={e => { const l = Array.from(e.target.files ?? []); e.currentTarget.value = ''; const r = replaceAt.current?.slot === s.name ? replaceAt.current.i : undefined; replaceAt.current = null; if (l.length) void takeFiles(s, l, r); }} />;
     const arrow = i > 0 && wf.id === 'transitions' && <span className="wf-arrow" aria-hidden>→</span>;
     if (!multi || !fs.length) return <span key={s.name} className={`wf-slot-w vbar-slot-w${multi ? ' vbar-multi vbar-stacked' : ''}`} data-testid={multi ? `vbar-slot-${s.name}-row` : undefined}>{arrow}{input}
