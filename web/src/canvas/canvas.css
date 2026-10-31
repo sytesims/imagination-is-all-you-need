@@ -178,3 +178,8 @@ html:has(.cv-root) .notify-opt{display:none!important}
 .cv-dr-proj .fd-proj-k{color:var(--text-2,#898A8B)}
 .cv-dr-proj .fd-proj-n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .cv-dr-proj .fd-pp-cv-btn{flex:none;width:18px;height:18px;border-radius:5px;font-size:10px;line-height:18px}
+/* a drawer tile and, for a sound, the shared play button beside it (2026-10-31, Canvas audit B4) */
+.cv-dr-cell{position:relative;display:grid;min-width:0;border-radius:10px;overflow:hidden}
+.cv-dr-cell .cv-dr-pv{top:calc(50% - 20px);left:50%;transform:translate(-50%,-50%);width:40px;height:40px}
+.cv-dr-cell .cv-dr-pv:active{transform:translate(-50%,-50%) scale(.94)}
+.cv-dr-cell[data-kind=audio] .cv-dr-ph{background:radial-gradient(120% 90% at 50% 0%,color-mix(in srgb,var(--accent) 18%,#1C1E20) 0%,#1C1E20 70%)}
