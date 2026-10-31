@@ -26,6 +26,8 @@ import { useRouting } from '../routing/Routes';
 import { RunOnChip, runOnText } from '../routing/RunOn';
 import { PromptPeek, type PeekForm } from './PromptPeek';
 import { BrandChip } from '../../shared/BrandChip';
+import { addBrandField } from '../../shared/brandStore';
+import { BRAND_OWN_WORDS } from '../../../../server/src/shared/brandKit';
 import { rowOverflowRows } from '../../shared/RowMore';
 import { ModelMenu, CHECK as check } from '../../shared/ModelMenu';
 import { useToolModels, modelOfEngine, useRunOn, runOnOfRoute, shownName, modelParamFor, engineForModelParam } from '../../shared/models';
@@ -69,7 +71,7 @@ import { listTools } from '../../api';
 import { WfIcon, WorkflowPicker, WorkflowInputs, WorkflowControls, WorkflowCredit, useImageWorkflows, useWorkflowQuote, loadDraft, saveDraft, defaultVals, fitWfVals, READY_WORKFLOW_TOOLS, viaOver, type WfDraft, type WfSlotFile, type WfRecipe } from './WorkflowBar';
 import { RIG_WORKFLOW } from '../../shared/workflowLinks';
 import MaskSheet, { maskFromFile, photoSig, type WfMask } from './MaskSheet';
-import { MaskStrip, AnglesPanel, LayoutPanel, anglesOf, anglesSummary, anglesLabel, RigStrip, rigCredit, rigOfVals, valsOfRig, photoToolCheck, useHasAlpha } from './WorkflowSurfaces';
+import { MaskStrip, AnglesPanel, LayoutPanel, anglesOf, anglesSummary, anglesLabel, pickOneLabel, RigStrip, rigCredit, rigOfVals, valsOfRig, photoToolCheck, useHasAlpha } from './WorkflowSurfaces';
 import { loadDraftFile, saveDraftFile } from '../../shared/draftFiles';
 import { EDIT_MODELS, editTagOf } from '../../shared/imageFeatures';
 import { ImagePicker } from './ImagePicker';
@@ -284,6 +286,8 @@ export default function ImageCanvas(p: ImageCanvasProps) {
     try { if (wfMask) localStorage.setItem('ohf:wf-mask-for', wfMask.forPhoto); else localStorage.removeItem('ohf:wf-mask-for'); } catch { /* private window */ } }, [bImg?.url, wfMask?.url]); // eslint-disable-line react-hooks/exhaustive-deps
   /* ---- Camera Angles (surface 'multi-output'): the picked angles (blank = all nine, as the server reads it) ---- */
   const isMulti = recipe?.surface === 'multi-output'; const angleIds = isMulti && recipe ? anglesOf(recipe, draft?.vals.shots) : [];
+  /* the picker's group (Camera Angles 'angles', Ad Pack 'styles') and what Generate waits for when nothing is picked */
+  const multiG = recipe?.groups.find(g => g.summary.includes('shots'))?.id ?? 'angles'; const pickOne = isMulti && recipe ? pickOneLabel(recipe) : '';
   const [openGroup, setOpenGroup] = useState<{ g: string; k: number } | null>(null);
   /* what Generate waits for: a required photo, else a prompt the recipe needs without its photo (Character Sheet), else a factor that can run */
   const rw = recipe?.prompt.requiredWithout; const wfPromptMissing = !wfSlotMissing && rw && !files[rw.slot] && !(draft?.prompt ?? '').trim() ? rw.missing : null;
@@ -294,12 +298,13 @@ export default function ImageCanvas(p: ImageCanvasProps) {
   const ptCheck = recipe && !wfSlotMissing ? photoToolCheck(recipe, wfSrc, draft?.vals ?? {}, wfMask) : null; const ptAlpha = useHasAlpha(files.image?.url, recipe?.id === 'remove-bg');
   const wfMissing: { missing: string; slot?: string; mask?: boolean; group?: string; prompt?: boolean; fit?: boolean } | null = wfSlotMissing ? { missing: wfSlotMissing.missing, slot: wfSlotMissing.name }
     : ptCheck ? { missing: ptCheck.missing, slot: ptCheck.slot, mask: ptCheck.mask, group: ptCheck.group } : wfTooSmall ? { missing: 'Photo too small (128 px min)', slot: wfSlots[0]?.name } : shapeOff ? { missing: `Fit photo to ${wfFit}`, fit: true } : wfMaskMissing ? { missing: recipe?.id === 'erase' ? 'Paint what to erase' : 'Paint the area first', mask: true } : wfPromptReq ? { missing: isMask ? 'Describe the change' : 'Write a prompt', prompt: true }
-    : isMulti && !angleIds.length ? { missing: 'Pick at least one angle', group: 'angles' } : wfPromptMissing ? { missing: wfPromptMissing } : upWhy ? { missing: `×${upScale} can’t run` } : null;
+    : isMulti && !angleIds.length ? { missing: pickOne, group: multiG } : wfPromptMissing ? { missing: wfPromptMissing } : upWhy ? { missing: `×${upScale} can’t run` } : null;
   /* priced as the job you'll send: required photos counted as there, optional ones when added (quote = charge) */
   const wfSent = wfSlots.filter(s => s.required || files[s.name]);
   const wfVals: Record<string, string> = recipe && draft ? fitWfVals(recipe, wfProvider, wfMode, draft.vals) : {}; /* a shape the model doesn't offer → its own default (QA #1) */
   const wfCtl: Record<string, string> = recipe && draft ? Object.fromEntries(recipe.controls.map(c => [c.field, wfVals[c.field] ?? (c.optional ? '' : String(c.default ?? ''))]).filter(([, v]) => v !== '')) : {};
-  const wfQ: Record<string, string> = { ...(upInfo ? { scale: String(upScale), ...(wfSrc ? { width: String(wfSrc.width), height: String(wfSrc.height) } : {}) } : { types: wfMode, ...wfCtl }), ...Object.fromEntries(wfSent.map(s => [s.sendsAs, '1'])), ...(wfSent.some(s => s.sendsAs === 'image') ? { image: '1' } : {}), ...(wfSent.length > 1 ? { refs: String(wfSent.length) } : {}), ...(isMask ? { mask: '1' } : {}), ...(isMulti ? { shots: JSON.stringify(angleIds) } : {}),
+  const wfQCtl = recipe ? Object.fromEntries(Object.entries(wfCtl).filter(([k]) => recipe.controls.find(c => c.field === k)?.kind !== 'text')) : wfCtl; // typed words (Material Swap, Ad Pack) never change the price: no re-quote per keystroke
+  const wfQ: Record<string, string> = { ...(upInfo ? { scale: String(upScale), ...(wfSrc ? { width: String(wfSrc.width), height: String(wfSrc.height) } : {}) } : { types: wfMode, ...wfQCtl }), ...Object.fromEntries(wfSent.map(s => [s.sendsAs, '1'])), ...(wfSent.some(s => s.sendsAs === 'image') ? { image: '1' } : {}), ...(wfSent.length > 1 ? { refs: String(wfSent.length) } : {}), ...(isMask ? { mask: '1' } : {}), ...(isMulti ? { shots: JSON.stringify(angleIds) } : {}),
     ...(!upInfo && imgSize && imgSlot && wfSent.includes(imgSlot) ? { photoWidth: String(imgSize.width), photoHeight: String(imgSize.height) } : {}) /* the photo's real shape: a fitted photo quotes on a model that keeps its shape */ };
   const wq = useWorkflowQuote(recipe && runTool ? recipe.runner.toolId : null, wfProvider, wfQ);
   /* ---- Pre-flight (2026-10-23): every reason this run can't start, inputs → model → setup → money (shared/preflight.ts; GET /api/tools/:id/preflight
@@ -310,7 +315,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
     const list = preflightProblems({ freeLocal: hasFreeLocal(runTool?.id), slots: wfSlots.map(s => ({ name: s.name, label: s.label, required: s.required, filled: !!files[s.name], missing: s.missing,
         ...(s === imgSlot && imgSize ? { width: imgSize.width, height: imgSize.height, fitTo: wfFit } : {}) })),
       minSide: isMask || isMulti ? 128 : null, mask: isMask && files.image ? { needed: true, painted: !!wfMask } : null, prompt: promptNeed ? { missing: promptNeed } : null,
-      pick: isMulti && !angleIds.length ? { group: 'angles', missing: 'Pick at least one angle' } : null,
+      pick: isMulti && !angleIds.length ? { group: multiG, missing: pickOne } : null,
       quote: wq ? (wfIntent && wq.setup?.action === 'download' ? { ...wq, runnable: true, setup: null, setupOptions: null } : wq) : null, /* a download you already said yes to runs */
       modelName: recipe.modelInfo?.[wfProvider]?.name ?? null });
     /* a workflow's own input rule (photo tools: a photo past 8192 px, Expand's shape, a whole-photo mask) and any step the bar waits for that the list
@@ -406,6 +411,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
     if (recipe.prompt.mode !== 'hidden') { fd.append('prompt', draft.prompt); fd.append('seed', exSeedField().seed ?? String(Math.floor(Math.random() * 1e6))); /* an example's seed when Same seed is on */ } if (wfProvider) { fd.append('provider', wfProvider); const pq = pinQ(wfProvider); if (pq.route) fd.append('route', pq.route); }
     for (const c of recipe.controls) { if (isMulti && c.field === 'shots') continue; const v = wfVals[c.field] ?? (c.optional ? '' : String(c.default ?? '')); if (v !== '' && v != null) fd.append(c.field, v); }
     if (isMask && wfMask) fd.append('mask', wfMask.file, 'mask.png'); if (isMulti) fd.append('shots', JSON.stringify(angleIds));
+    addBrandField(recipe.runner.toolId, fd); /* Ad Pack: Brand's kit (colours, type and logo); no other workflow takes it */
     if (presetHere) fd.append('lookId', presetHere.p.id); /* the run was started from a look: its page on Workflows shows the result */
     setWfBusy(true); setWfErr(''); try { await p.onWorkflowGenerate(recipe.runner.toolId, fd); } catch (er: any) { setWfErr(String(er?.message ?? 'That didn’t start.')); } finally { setWfBusy(false); } };
   /** Camera & Lens: the rig lives in its workflow draft (localStorage), so it survives switching workflows and a refresh, and presets / Recreate fill it. */
@@ -922,9 +928,9 @@ export default function ImageCanvas(p: ImageCanvasProps) {
             return <><MakerTile className="ic-dot" medium="image" maker={mm?.maker ?? (pv as any)?.maker} makerName={mm?.makerName ?? (pv as any)?.makerName} fallback={pv?.family || pv?.name} /><span className="ic-mname">{short(recipe ? (mm ? shownName(mm) : null) ?? recipe.modelInfo?.[wfProvider]?.name ?? pv?.name : curName)}</span>{(() => { const k = recipe ? wfKind : cKind; return k ? <span className="ic-mpick" data-testid="ic-model-pick" data-kind={k}>{` · ${PICK_LABEL[k]}`}</span> : null; })()}</>; })()}{dlNow && <DlRing pct={dlNow.pct} label={dlLabel} />}<svg className="ic-caret" width="16" height="16" viewBox="0 0 16 16" aria-hidden><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
           </span>
           {recipe && draft && <WorkflowControls recipe={recipe} files={files} vals={wfVals} setVal={(k, v) => setDraft(d => ({ ...d, vals: { ...d.vals, [k]: v } }))} provider={wfProvider} watch={dock} mode={wfMode} upscale={upInfo ? { info: upInfo, models: wfProviders, src: wfSrc, onExamples: () => setUpEx(true) } : null}
-            overRef={overRef} panels={isMulti ? { angles: <AnglesPanel r={recipe} ids={angleIds} set={ids => setDraft(d => ({ ...d, vals: { ...d.vals, shots: JSON.stringify(ids) } }))} each={angleEach} /> }
+            overRef={overRef} panels={isMulti ? { [multiG]: <AnglesPanel r={recipe} ids={angleIds} set={ids => setDraft(d => ({ ...d, vals: { ...d.vals, shots: JSON.stringify(ids) } }))} each={angleEach} /> }
               : recipe.groups.some(g => g.id === 'layout') ? { layout: <LayoutPanel r={recipe} value={wfVals.layout ?? ''} set={v => setDraft(d => ({ ...d, vals: { ...d.vals, layout: v } }))} /> } : undefined}
-            summaries={isMulti ? { angles: anglesSummary(recipe, angleIds) } : undefined} openGroup={openGroup}
+            summaries={isMulti ? { [multiG]: anglesSummary(recipe, angleIds) } : undefined} openGroup={openGroup}
             after={isMulti && angleIds.length && angleEach ? <span className="ic-chip ic-static wf-each" data-testid="wf-angles-each">{angleEach}</span> : recipe.id === 'remove-bg' && ptAlpha ? <span className="ic-chip ic-static wf-pt-note" data-testid="wf-pt-note" {...tip('This photo already has a transparent background; running it again may trim the edges more.')}>Already transparent</span> : null} />}
           {rigRecipe && <RigStrip recipe={rigRecipe} rig={rig} setRig={setRig} watch={dock} overRef={overRef} />}
           {seedEl && <span className="ic-seed wf-fold" data-testid="ic-seed">{seedEl}</span>}
@@ -946,11 +952,11 @@ export default function ImageCanvas(p: ImageCanvasProps) {
         </div>
           {/* the place: outside the scrolling chips, next to Generate, one short word that never truncates (a needed step is its dot) */}
           {recipe ? (() => { const m = modelOfEngine(recipe.runner.toolId, wfProvider); return m ? <RunOnChip compact toolId={recipe.runner.toolId} model={m} engine={wfProvider} quote={wq} watch={dock} /> : null; })() : tmCur && <RunOnChip compact toolId={p.tool.id} model={tmCur} engine={cur?.id} quote={qj} watch={dock} />}
-          {!recipe && <BrandChip toolId={p.tool.id} watch={dock} /> /* Brand Kit: "Brand: <name>" (Create Image only; a picked workflow composes its own prompt) */}
+          {!recipe ? <BrandChip toolId={p.tool.id} watch={dock} /> : BRAND_OWN_WORDS.has(recipe.runner.toolId) ? <BrandChip toolId={recipe.runner.toolId} watch={dock} /> : null /* Brand Kit: "Brand: <name>" (Create Image; Ad Pack, which words the brand and adds its logo itself; other workflows compose their own prompt) */}
           <PromptPeek form={peekForm} place={peekPlace} photos={peekPhotos} watch={dock} keep={prowRef} />
         </div>
       </div>
-      {recipe ? <DockGenerate toolId={recipe.runner.toolId} engine={wfProvider} quote={wq} label={isMulti ? anglesLabel(angleIds.length) : recipe.generateLabel} busy={wfBusy} disabled={!runTool} problems={wfPf} missing={wfMissing?.missing ?? null}
+      {recipe ? <DockGenerate toolId={recipe.runner.toolId} engine={wfProvider} quote={wq} label={isMulti ? anglesLabel(angleIds.length, recipe) : recipe.generateLabel} busy={wfBusy} disabled={!runTool} problems={wfPf} missing={wfMissing?.missing ?? null}
           pfOpen={pfOpen} genRef={genRef} onClick={wfGenerate} intent={wfIntent} dlSize={wfDlSize} workflowId={recipe.id} /> /* shared/DockGenerate.tsx (also the Canvas bar's) */
       : needSetup && !createPf.some(x => x.stage === 'inputs' || x.stage === 'model') ? <SetupGenerate toolId={p.tool.id} model={modelOfEngine(p.tool.id, cur?.id)} engine={cur?.id} quote={qj} className="ic-gen gen-btn gen-dock btn btn-primary" testId="ic-generate" priceTestId="ic-price" />
       : noPlace ? <NoPlaceGenerate testId="ic-generate" priceTestId="ic-price" />
