@@ -107,7 +107,7 @@ import { showcaseById, type ShowcaseItem } from '../../../../server/src/shared/s
 /** the hero band: eight of our own shipped results (real generations made in this app), not stock clips */
 import { examplePrefill } from '../../../../server/src/shared/exampleLink';
 import { typedFromFrames } from '../../../../server/src/shared/typedPrompt';
-import { wfDefaultOf, startModel, pickKindOf, PICK_LABEL, savedPick, savePick } from '../../shared/workflowDefaults';
+import { wfDefaultOf, startModel, pickKindOf, PICK_LABEL, savedPick, savePick, featureSwitchTo } from '../../shared/workflowDefaults';
 import { LOCAL_LABEL } from '../../../../server/src/shared/modelIds';
 import { routeCapsOf, maxRefsOf } from '../../shared/refCaps';
 import { DockGenerate, PF_SHORT } from '../../shared/DockGenerate';
@@ -629,7 +629,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
   const lastFid = useRef(camLens ? 'create-image' : fid);
   useEffect(() => { if (recipe) return; const prev = lastFid.current; if (prev === fid || !cDef) return; lastFid.current = fid; const ids = p.providers.map(x => x.id);
     const want = startModel(savedPick(fid), ids, cDef); const was = wfDefaultOf(p.tool, prev);
-    if (want && want !== p.provider && (p.provider === was?.start || p.provider === was?.id || p.provider === savedPick(prev))) p.setProvider(want); }, [fid, !!cDef, !!recipe]); // eslint-disable-line react-hooks/exhaustive-deps
+    const to = featureSwitchTo(p.provider, savedPick(prev), ids, was, want); if (to) p.setProvider(to); }, [fid, !!cDef, !!recipe]); // eslint-disable-line react-hooks/exhaustive-deps
   const rig: Rig = rigOfVals((wfDrafts[RIG_WORKFLOW] ?? loadDraft(RIG_WORKFLOW))?.vals ?? {}); const enhRef = useRef<HTMLButtonElement>(null); const enhT = useRef<number | undefined>(undefined); const enhLong = useRef(false);
   const rigFields = (): Record<string, string> => camLens ? { cameraBody: rig.body, lens: rig.lens, focal: String(rig.focal), aperture: rig.aperture, ...(rig.film ? { film: rig.film } : {}), ...(rig.lighting ? { lighting: rig.lighting } : {}), ...(rig.era ? { era: rig.era } : {}) } : {};
   /* model extras (server/src/shared/imageCaps.ts extras: Qwen Image 3.0, Wan 2.5): a negative prompt and the model's own prompt rewrite, in Settings; sent only to models that take them */

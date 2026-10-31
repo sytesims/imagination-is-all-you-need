@@ -262,7 +262,8 @@ export default function AppTool({ tool, tools }: { tool: ToolInfo; tools?: ToolI
   const modeDefaults = defaultsOf(tool, mode); const modeSeen = useRef(mode); /* a mode the page switched by itself (a photo added / removed on Create Video): the picked model stays when it runs that mode too */ const autoModeSwitch = useRef(false);
   useEffect(() => { const ids = modeProviders.map(p => p.id); const changed = modeSeen.current !== mode; modeSeen.current = mode;
     const auto = changed && autoModeSwitch.current; if (changed) autoModeSwitch.current = false; /* child effects run first: the first-render pass must not use up a switch made in the same commit */
-    const keepOpen = ids.includes(provider) && (auto || (tool.providers.find(x => x.id === provider) as any)?.kind === 'open-weights');
+    /* Create Image's mode follows the photo (Create → Edit when one is added): the model you picked stays when it edits too (it flipped to FLUX 3 Image, 2026-10-31) */
+    const keepOpen = ids.includes(provider) && (auto || tool.id === 'create-image' || (tool.providers.find(x => x.id === provider) as any)?.kind === 'open-weights');
     if (changed && !keepOpen && (tool as any).defaultsByMode?.[mode] && ids.length) { const d = pickDefault(modeDefaults, ids, provider); if (d && d !== provider) setProvider(d); return; }
     if (ids.length && !ids.includes(provider)) setProvider(pickDefault(modeDefaults, ids)); }, [mode]);
   const audioVoice = tool.id === 'audio' && ((cfg as any).voiceControlModes ?? []).includes(mode);
