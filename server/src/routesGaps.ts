@@ -4,6 +4,7 @@ import { tzKeyer, tzBuckets } from './pages.js';
 import type { FastifyInstance } from 'fastify';
 import { existsSync, readFileSync, statfsSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { jobs } from './jobs.js';
 import * as lib from './library.js';
 import { getTool, listTools, setToolHidden } from './tools/registry.js';
@@ -51,7 +52,7 @@ function modelsOnDisk(modelsDir: string | null) {
 /** dp30 (l): path is shown like /api/hardware disk.path (repo-relative / folder name, never an absolute dir). */
 function freeDisk(dir: string) { const shown = displayDir(dir) ?? 'server data folder'; try { const s = statfsSync(dir); return { path: shown, freeBytes: Number(s.bavail) * Number(s.bsize), totalBytes: Number(s.blocks) * Number(s.bsize) }; } catch { return { path: shown, freeBytes: null, totalBytes: null }; } }
 
-const MANIFEST = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../readiness/manifest/models.json');
+const MANIFEST = fileURLToPath(new URL('../../readiness/manifest/models.json', import.meta.url)); // fileURLToPath: a URL's pathname is /C:/… with %20s on Windows
 /** Item 2: env-var names → plain words for the self-host 'Technical details' text. */
 const DEV_WORDS: [RegExp, string][] = [[/\b(?:OPENHIGGSFIELD|OPENJUTSU)_BACKEND\b/g, 'the server backend setting'], [/\bCOMFY_BASE_URL\b/g, 'the ComfyUI address'],
   [/\bCOMFY_API_KEY\b/g, 'the Comfy API key'], [/\b(?:(?:OPENHIGGSFIELD|OPENJUTSU)_)?COMFY_MODELS_DIR\b/g, 'the ComfyUI models folder']];
@@ -128,7 +129,7 @@ export function registerGaps(app: FastifyInstance) {
     const hw = await (await import('./hardware.js')).getHardware();
     const gpu: { name: string; memoryMB: number }[] | null = hw.gpu && hw.gpu.type !== 'cpu' ? Array.from({ length: Math.max(1, hw.gpu.count) }, () => ({ name: hw.gpu!.name, memoryMB: Math.round((hw.gpu!.vramTotalBytes ?? 0) / 1048576) })) : null;
     const modelsDir = env('COMFY_MODELS_DIR')?.trim() || null; let modelsMissing: { file: string; folder: string; sizeGB: number }[] | null = null; let modelsTotal = 0;
-    try { const ms: any[] = (await import(MANIFEST, { with: { type: 'json' } } as any)).default.models; modelsTotal = ms.length;
+    try { const ms: any[] = JSON.parse(readFileSync(MANIFEST, 'utf8')).models; modelsTotal = ms.length;
       // DP #20.7: no models folder → every expected file is reported missing (never an empty list)
       modelsMissing = ms.filter((m) => !modelsDir || !existsSync(path.join(modelsDir, m.folder, m.file))).map((m) => ({ file: m.file, folder: m.folder, sizeGB: m.size_gb })); } catch { /* manifest missing */ }
     if (!comfyVersion) { const v = comfyVersionFromDisk(modelsDir); comfyVersion = v.version; comfyVersionSource = v.source; }

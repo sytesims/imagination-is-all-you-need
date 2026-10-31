@@ -37,7 +37,7 @@ function mapDeep(o: any, f: (s: string) => string, text: ((s: string) => string)
   return o;
 }
 /** For storage: path fields relative, host data-dir prefixes stripped from free text. Returns the same object when nothing changes. */
-export const toRelDeep = <T>(o: T, dataDir: string): T => mapDeep(o, (s) => relOf(s, dataDir) ?? s, (s) => (s.includes('/') ? stripText(s, dataDir) : s));
+export const toRelDeep = <T>(o: T, dataDir: string): T => mapDeep(o, (s) => relOf(s, dataDir) ?? s, (s) => (/[\\/]/.test(s) ? stripText(s, dataDir) : s));
 /** For the live map: path fields absolute under the current data dir. */
 export const toAbsDeep = <T>(o: T, dataDir: string): T => mapDeep(o, (s) => absOf(s, dataDir), null);
 /** Every media file (relative to dataDir) a stored row mentions: path fields (relative or absolute) and /files/<name> URLs. */
@@ -55,7 +55,7 @@ export function migrateRows<T extends { id: string }>(rows: T[], dataDir: string
   const changed: T[] = []; let values = 0; const prefixes: Record<string, number> = {};
   for (const r of rows) {
     const rel = mapDeep(r, (s) => { const x = relOf(s, dataDir); if (x == null) return s; values++; const pre = s.slice(0, s.length - x.length); prefixes[pre] = (prefixes[pre] ?? 0) + 1; return x; },
-      (s) => (s.includes('/') ? stripText(s, dataDir) : s));
+      (s) => (/[\\/]/.test(s) ? stripText(s, dataDir) : s));
     if (rel !== r) changed.push(rel); }
   return { changed, rows: changed.length, values, prefixes };
 }

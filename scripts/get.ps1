@@ -72,8 +72,11 @@ Options:
     try { $a = Read-Host "$question [y/N]" } catch { Say "$question no (nobody to answer; add -Yes to say yes)"; return $false }
     return ($a -match '^(y|yes)$')
   }
-  # Runs a program (or with -DryRun only prints it) and says whether it worked.
+  # Runs a program (or with -DryRun only prints it) and says whether it worked. Its exit code decides, never its messages:
+  # in Windows PowerShell 5.1 a program's progress on stderr ("Cloning into ...") counts as an error whenever output is
+  # redirected (PowerShell ISE, "*> install.log", CI), and with 'Stop' that ended the install.
   function Run([string]$exe, [string[]]$argv) {
+    $ErrorActionPreference = 'Continue'
     if ($DryRun) { Say ("  + $exe " + ($argv -join ' ')); return $true }
     & $exe @argv | Out-Host # to the screen, so only the true/false below is returned
     return ($LASTEXITCODE -eq 0)
@@ -200,7 +203,7 @@ Options:
   if ($DryRun) { Say "  + cd $Dir"; Say '  + npm.cmd run setup -- --no-start' }
   else {
     Push-Location $Dir
-    try { & npm.cmd run setup '--' '--no-start'; $st = $LASTEXITCODE } finally { Pop-Location }
+    try { & { $ErrorActionPreference = 'Continue'; & npm.cmd run setup '--' '--no-start' }; $st = $LASTEXITCODE } finally { Pop-Location }
     # setup's own check: 0 = ready, 1 = something optional is missing (it says what), 2 = the app can't start yet.
     if ($st -ge 2) { Stop-Install "The app isn't ready to start yet." "Fix the lines marked with a cross above, then run: cd `"$Dir`"; npm.cmd run setup" }
   }
@@ -240,7 +243,7 @@ Options:
   Say ''
   if ($DryRun) { Say "  + cd $Dir"; Say '  + npm.cmd run setup -- --open'; return }
   Push-Location $Dir
-  try { & npm.cmd run setup '--' '--open' } finally { Pop-Location }
+  try { & { $ErrorActionPreference = 'Continue'; & npm.cmd run setup '--' '--open' } } finally { Pop-Location }
 }
 
 try {
