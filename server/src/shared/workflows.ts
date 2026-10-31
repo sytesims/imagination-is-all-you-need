@@ -236,6 +236,14 @@ export function workflowQuoteQueries(r: WorkflowRecipe, mode: string, provider: 
   return [{ types: JSON.stringify([mode]), ...ctl, ...(fit ? { photoAspect: fit } : {}), ...Object.fromEntries(sent.map((s) => [s.sendsAs, '1'])), ...(sent.some((s) => s.sendsAs === 'image') ? { image: '1' } : {}),
     ...(sent.length > 1 ? { refs: String(sent.length) } : {}), ...(r.surface === 'mask' ? { mask: '1' } : {}) }];
 }
+/** The uploads a recipe's bar always sends on its runner tool (its required photos, in its default mode), as the quote reads them (image=1,
+ *  refs=<n>): the /api/tools listing judges each model on this job, so its pre-selected place is the place the bar's quote names. null = no recipe
+ *  runs on this tool (Create Image's own page sends a photo only when you add one). */
+export function recipeUploadsOf(toolId: string): { mode: string; image: boolean; refs: number } | null {
+  const d = DECLS.find((x) => x.runner.toolId === toolId); if (!d || toolId === 'create-image') return null;
+  const sent = d.slots.filter((s) => s.required || d.modes.whenSlot?.[s.name] === d.modes.default);
+  return { mode: d.modes.default, image: sent.some((s) => s.sendsAs === 'image'), refs: sent.length > 1 ? sent.length : 0 };
+}
 /** Why a model can't run this recipe, in the menu's words ("Edits keep your photo's shape; Character Sheet needs 4:3"). */
 export function workflowOffReason(r: WorkflowRecipe, mode: string, provider: string, issue: WorkflowQuoteIssue): string {
   const cap = IMAGE_CAPS[provider]; const q = workflowQuoteQueries(r, mode, provider)[0] ?? {}; const imgs = (k: number) => `${k} image${k === 1 ? '' : 's'}`;

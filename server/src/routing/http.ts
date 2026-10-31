@@ -49,6 +49,7 @@ import { durToolOf, cameraDefaultMove } from '../tools/apps.js';
 import { videoQuoteFields } from './videoQuote.js';
 import { audioQuoteFields, AUDIO_TOOLS } from './audioQuote.js';
 import { enumParamError } from '../shared/enumParams.js';
+import { recipeUploadsOf } from '../shared/workflows.js';
 import type { ToolDef } from '../tools/types.js';
 import { ledgerUsd } from '../shared/priceText.js';
 /** Quote flags follow the route that would actually run: an open-weights model quoted on a cloud route (useLocal off → cloud first) is not "free · runs locally". */
@@ -247,6 +248,11 @@ function fitListing(o: any, pinnedId: string | null, modelId: string) {
 }
 /** The quote's `refs` field as a count: a number ("0" = none), else any other value = one image. */
 const refCount = (v: unknown): number => { if (v == null || v === '') return 0; const n = Number(v); return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 1; };
+/** 2026-11-01: the uploads an Image recipe's bar always sends (its required photos), as the quote turns image=1 / refs=<n> into the job, so a
+ *  listing judges the job the bar quotes (a Relight with no photo made every hosted edit route look blocked: the listing then pre-selected,
+ *  and hid, other places than the quote named). Callers' own fields win. */
+const recipeJob = (toolId: string): Record<string, any> => { const u = recipeUploadsOf(toolId); if (!u) return {};
+  return { ...(u.refs > 0 ? { refPaths: Array.from({ length: u.refs }, (_, k) => `quote:ref${k}`) } : {}), ...(u.image && !/^(generate|t2v|)$/.test(u.mode) ? { imagePath: 'quote:image' } : {}) }; };
 export function routesView(toolId: string, modelId: string, rawInput: Record<string, any> = {}, o: { hw?: boolean } = {}) {
   const tool = getTool(toolId); if (!tool) return null;
   // Item 4 / P0: the listing applies the tool's fixed routing input (routeInput, e.g. h3-extend mode extend) like resolveRoute does, so the
@@ -256,7 +262,7 @@ export function routesView(toolId: string, modelId: string, rawInput: Record<str
   const locked = G?.locked ? routeQuoteInput(tool, Object.fromEntries(Object.entries(G.locked).filter(([k]) => k !== 'provider'))) : {};
   // Oct 19 #2: Camera is judged on the job it starts as (the model's first move, its default length), like the quote and the job, so the route line names the route that runs
   const camDef = toolId === 'camera' && rawInput.types == null && cameraDefaultMove(modelId) ? { types: [cameraDefaultMove(modelId)], ...(rawInput.duration == null && defaultDurationFor('camera', modelId) ? { duration: defaultDurationFor('camera', modelId) } : {}) } : {};
-  const input = routeInput(tool, { ...camDef, ...rawInput, ...locked });
+  const input = routeInput(tool, { ...recipeJob(toolId), ...camDef, ...rawInput, ...locked });
   const labels = { ...providerLabels(toolId, modelId), ...((n) => (n ? { displayName: n } : {}))(modelNameForRun(toolId, modelId, input)), ...lifecycleFields(modelId) }; // BH9 P1-4; audit 2026-10-21: lifecycle (retiring)
   const prefs = getPrefs(); const saved = savedPinOf(tool, modelId, input);
   const choice = saved?.route ?? prefs.global.mode ?? 'auto';
@@ -308,7 +314,7 @@ export function listingInput(tool: ToolDef, modelId: string, rawInput: Record<st
   // quote ran on Comfy).
   const ms = rawInput.types == null && rawInput.mode == null && !(camDef as any).types && !(locked as any).types ? toolModes(tool) : [];
   const modeDef = ms.length && !ms.includes('generate') ? { types: [ms[0]] } : {};
-  return routeInput(tool, { ...camDef, ...modeDef, ...rawInput, ...locked });
+  return routeInput(tool, { ...recipeJob(tool.id), ...camDef, ...modeDef, ...rawInput, ...locked });
 }
 setStatusInput((tool, modelId) => listingInput(tool, modelId));
 /** BH12: a keyless default route says plainly what happens: '<route> · sample output · needs a <owner> key for real runs' (or 'not connected here yet'). */
