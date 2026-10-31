@@ -12,7 +12,7 @@ import { modelOfEngine, shownName } from '../../../shared/models';
 import { forgetQuote, requestRequote } from '../../../shared/quote';
 import { useOwnAccounts, runPrice, fmtUsd, ledgerUsd } from '../../../shared/billing';
 import { jobCaption } from '../../../shared/FeedCaption';
-import { isSubmitting } from '../../../shared/submitGuard';
+import { isSubmitting, beginSet } from '../../../shared/submitGuard';
 import { gridSrc } from '../../../shared/thumbs';
 import { CloseIcon, CompareIcon, MaterialIcon } from '../../Icons';
 import { jobInputs } from '../../../shared/jobInputs';
@@ -60,13 +60,13 @@ export default function CompareModels(p: CompareModelsProps) {
   const nameOf = (id: string) => { const r = models.find(y => y.x.id === id); return (r?.m ? shownName(r.m) : null) ?? r?.x.name ?? id; };
   const why = !p.ready ? p.notReady : picked.length < COMPARE_MIN ? `Pick at least ${COMPARE_MIN} models` : qErr || (q?.block?.message ?? '') || (qBusy || !q ? 'Pricing…' : '');
   const go = async () => {
-    if (!q || why || busy) return; setBusy(true); const g = newGroup(); const inc = q.included; let started = 0; const notStarted: string[] = [];
+    if (!q || why || busy) return; setBusy(true); const g = newGroup(); const inc = q.included; let started = 0; const notStarted: string[] = []; const sent = beginSet(g); /* the feed shows every place at once */
     try {
       for (const id of q.order) { const r = q.rows.find(x => x.model === id)!; const pr = r.params!; await waitIdle(p.toolId); forgetQuote(p.toolId, id);
         const rid = await p.run({ ...p.base, aspect: pr.aspect, quality: pr.quality ?? '', imageResolution: pr.imageResolution ?? '', n: String(pr.n), provider: id,
           compareGroup: g, compareOf: String(inc.length), compareIndex: String(inc.indexOf(id)), ...(r.routeId ? { quotedRouteId: r.routeId, quotedCredits: String(r.credits ?? 0) } : {}) }).catch(() => undefined);
         if (rid) started++; else notStarted.push(nameOf(id)); }
-    } finally { setBusy(false); requestRequote(); }
+    } finally { sent(); setBusy(false); requestRequote(); }
     if (!notStarted.length) { toast(`Comparing ${started} models. Results land together in your feed.`); p.onClose(); }
     else toast(`${started} of ${inc.length} started. ${notStarted.join(', ')} didn’t start, so ${notStarted.length > 1 ? 'they weren’t' : 'it wasn’t'} charged.`, started ? 'warn' : 'error');
   };
@@ -105,13 +105,14 @@ export default function CompareModels(p: CompareModelsProps) {
 /** The header over a comparison group in the feed. */
 export function CompareGroupHead({ jobs, onSide }: { jobs: JobState[]; onSide: () => void }) {
   const own = useOwnAccounts(); const n = (jobs[0] as any)?.compare?.n ?? jobs.length; const prompt = String((jobs[0] as any)?.input?.prompt ?? '');
-  const sample = jobs.length > 0 && jobs.every(j => (j as any).demo || (j as any).isSample); const charged = jobs.filter(j => !(j as any).demo && !(j as any).isSample && (j as any).runOn !== 'local' && !(j.status === 'failed' && ((j as any).refunded > 0 || (j as any).refund?.refunded))).reduce((s, j) => s + Number((j as any).cost ?? 0), 0);
+  const sent = jobs.filter(j => j.id); /* the set's jobs so far (a set still being sent also has waiting cards, no id yet) */
+  const sample = sent.length > 0 && sent.every(j => (j as any).demo || (j as any).isSample); const charged = jobs.filter(j => !(j as any).demo && !(j as any).isSample && (j as any).runOn !== 'local' && !(j.status === 'failed' && ((j as any).refunded > 0 || (j as any).refund?.refunded))).reduce((s, j) => s + Number((j as any).cost ?? 0), 0);
   const failed = jobs.filter(j => j.status === 'failed' || j.status === 'blocked').length; const sw = (jobs[0] as any)?.compare?.kind === 'swatch'; /* Material Swap: one run per swatch */
-  const toast = useToast(); const live = jobs.filter(j => j.status === 'queued' || j.status === 'running');
+  const toast = useToast(); const live = sent.filter(j => j.status === 'queued' || j.status === 'running');
   const stop = async () => { const r = await Promise.allSettled(live.map(j => cancelJob(j.id))); const n = r.filter(x => x.status === 'fulfilled').length; toast(n === live.length ? `Stopped ${n}. The finished ones stay.` : `Stopped ${n} of ${live.length}: the others were too far along to stop.`, n === live.length ? 'info' : 'warn'); };
   return <div className="cmp-gh" data-testid="cmp-group-head" data-kind={sw ? 'swatch' : 'models'}>{sw ? <MaterialIcon size={14} /> : <CompareIcon size={14} />}<b>{sw ? `Material Swap · ${n} swatches` : `Compare · ${n} models`}</b>
     {sw ? <span className="cmp-gh-p">Same object, one result per swatch</span> : prompt && <span className="cmp-gh-p" title={prompt}>“<MentionText text={prompt} />”</span>}
-    <span className="cmp-gh-t" data-testid="cmp-group-total">{charged > 0 ? `${runPrice({ own, credits: charged }) ?? ''} total` : sample ? 'Samples · nothing billed' : 'Free'}{failed ? ` · ${failed} failed` : ''}{jobs.length < n ? ` · ${n - jobs.length} not shown` : ''}</span>
+    <span className="cmp-gh-t" data-testid="cmp-group-total">{charged > 0 ? `${runPrice({ own, credits: charged }) ?? ''} total` : sample ? 'Samples · nothing billed' : !sent.length ? 'Starting…' : 'Free'}{failed ? ` · ${failed} failed` : ''}{jobs.length < n ? ` · ${n - jobs.length} not shown` : ''}</span>
     {sw && live.length > 0 && <button type="button" className="fd-link cmp-gh-b" data-testid="cmp-stop" onClick={() => void stop()} {...tip('Cancel the swatches that haven’t finished. What’s done stays.')}>Stop the rest</button>}
     <button type="button" className="fd-link cmp-gh-b" data-testid="cmp-side" onClick={onSide} disabled={!jobs.some(j => j.status === 'done')}>Side by side</button></div>;
 }
