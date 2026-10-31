@@ -13,6 +13,7 @@ import type { WorkflowSlot, WorkflowControl, WorkflowGroup, WorkflowSource, Cont
 import { appWorkflowFor, YUE2_SONG, YUE2_COVER, MINIMAX_MUSIC3_LOCAL } from './appWorkflows.js';
 import { engineModelKey, MODELS } from './modelIds.js';
 import { videoWorkflowHref } from './videoWorkflows.js';
+import { AUDIO_PAGE, OLD_AUDIO_PAGE } from './pages.js';
 
 export type AudioWorkflowId = 'music' | 'sfx' | 'voiceover' | 'change-voice' | 'translate' | 'soundtrack-music' | 'soundtrack-sound' | 'cover';
 export type AudioCategory = 'create' | 'voice' | 'video';
@@ -35,7 +36,8 @@ export interface AudioWorkflowRecipe {
 type Decl = Omit<AudioWorkflowRecipe, 'name' | 'tagline' | 'needs' | 'models' | 'locked' | 'aliases' | 'route' | 'controls' | 'source' | 'runner' | 'modes' | 'status' | 'surface'> & {
   name: string; tagline: string; controls: Omit<WorkflowControl, 'options' | 'default' | 'min' | 'max' | 'step' | 'pattern' | 'help'>[]; oldRoutes: string[]; source?: Partial<WorkflowSource> };
 
-export const AUDIO_PAGE = '/tools/audio';
+/** The Audio page: /audio (shared/pages.ts; /tools/audio until 2026-10-31, which redirects with its query kept). */
+export { AUDIO_PAGE, OLD_AUDIO_PAGE };
 export const audioRoute = (id: AudioWorkflowId) => `${AUDIO_PAGE}?workflow=${id}`;
 const OURS = (note: string): WorkflowSource => ({ kind: 'ours', author: 'Imagination Is All You Need', url: null, licence: 'AGPL-3.0', file: null, note });
 const slot = (name: string, label: string, required: boolean, hint: string, missing: string, order = 1, sendsAs = name): WorkflowSlot => ({ name, label, required, sendsAs, order, hint, missing });
@@ -118,14 +120,15 @@ export const AUDIO_REDIRECTS: Record<string, string> = {
   '/tools/voice?mode=translate': audioRoute('translate'), '/tools/voice?mode=lipsync': videoWorkflowHref('lip-sync'),
   '/tools/soundtrack': audioRoute('soundtrack-music'), '/tools/soundtrack?mode=music': audioRoute('soundtrack-music'), '/tools/soundtrack?mode=v2s': audioRoute('soundtrack-sound'),
   '/tools/soundtrack?mode=sfx': audioRoute('soundtrack-sound'),
-  '/audio': audioRoute('music') /* the old Browse › Audio landing (2026-10-27): straight to the Audio page, Music first, as the nav's Audio link */,
-  '/tools/audio?mode=music': audioRoute('music'), '/tools/audio?mode=sfx': audioRoute('sfx'), '/tools/audio?mode=voice': audioRoute('voiceover'), '/tools/audio?mode=cover': audioRoute('cover'),
+  [`${AUDIO_PAGE}?mode=music`]: audioRoute('music'), [`${AUDIO_PAGE}?mode=sfx`]: audioRoute('sfx'), [`${AUDIO_PAGE}?mode=voice`]: audioRoute('voiceover'), [`${AUDIO_PAGE}?mode=cover`]: audioRoute('cover'),
 };
 /** Path redirects only (for a REDIRECTS map keyed by path, like IMAGE_REDIRECTS). */
 export const AUDIO_PATH_REDIRECTS: Record<string, string> = Object.fromEntries(Object.entries(AUDIO_REDIRECTS).filter(([k]) => !k.includes('?')));
 /** Where an old Audio URL goes (a mode link first, then the path); null = no redirect. `mode` is consumed, the rest of the query and the hash are kept. */
 export function audioRedirectTarget(pathname: string, search = '', hash = ''): string | null {
   const p = (pathname.replace(/\/+$/, '') || '/').toLowerCase(); const q = new URLSearchParams(search.replace(/^\?/, ''));
+  /* the old address (/tools/audio, until 2026-10-31) → /audio, its old ?mode= links too; every other param and the hash kept */
+  if (p === OLD_AUDIO_PAGE) { const s = search.replace(/^\?/, ''); return audioRedirectTarget(AUDIO_PAGE, s, hash) ?? `${AUDIO_PAGE}${s ? `?${s}` : ''}${hash}`; }
   if (q.has('workflow')) return null; // already on a workflow link
   const mode = q.get('mode'); const to = (mode && AUDIO_REDIRECTS[`${p}?mode=${mode}`]) || AUDIO_REDIRECTS[p]; if (!to) return null;
   q.delete('mode'); const rest = q.toString(); return `${to}${rest ? `${to.includes('?') ? '&' : '?'}${rest}` : ''}${hash}`;

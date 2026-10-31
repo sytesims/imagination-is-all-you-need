@@ -21,7 +21,7 @@ ok('reachable once the page is tall enough');
 
 assert.equal(withViewParam('/tools/h3-video?workflow=swap', 'j1'), '/tools/h3-video?workflow=swap&view=j1');
 assert.equal(withViewParam('/tools/h3-video?workflow=swap&view=j1', null), '/tools/h3-video?workflow=swap');
-assert.equal(withViewParam('/tools/create-image?view=a#x', 'b'), '/tools/create-image?view=b#x');
+assert.equal(withViewParam('/image?view=a#x', 'b'), '/image?view=b#x');
 assert.equal(withViewParam('http://localhost:5174/tools/h3-video', 'id with space'), '/tools/h3-video?view=id+with+space');
 assert.equal(viewParam('?view=j1&workflow=x'), 'j1'); assert.equal(viewParam('?view='), null); assert.equal(viewParam(''), null);
 ok('?view=<id>: set, replace, remove; other params and the hash stay');

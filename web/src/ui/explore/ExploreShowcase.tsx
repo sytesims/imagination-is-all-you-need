@@ -37,6 +37,7 @@
  * sound most in view plays with it, crossfading as you scroll; every clip with an audio track gets the shared SoundToggle (a page-wide mute);
  * silent clips get none.
  */
+import { IMAGE_PAGE } from '../../../../server/src/shared/pages';
 import { VIDEO_PAGE } from '../../../../server/src/shared/videoWorkflows';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from '../../platform/router';
@@ -358,7 +359,7 @@ export function XpSheets() {
   const now = cast[cur] ?? cast[0]; const n = (now?.c.panels.length ?? 0) + 1;
   useEffect(() => { if (!now || paused || still || spin || !seen) return; const t = window.setTimeout(() => setStep((v) => (v + 1) % n), (step === 0 ? 1.6 : 1) * S.dwell); return () => window.clearTimeout(t); }, [step, cur, paused, still, spin, seen, n, S.dwell, now]);
   if (!now) return null;
-  const { c, f } = now; const W = f.out.width, H = f.out.height; const rec = featuredRecreateHref(f.key) ?? '/tools/create-image';
+  const { c, f } = now; const W = f.out.width, H = f.out.height; const rec = featuredRecreateHref(f.key) ?? IMAGE_PAGE;
   const pick = (k: number) => { setCur(k); setStep(0); setSpin(false); setWipe((w) => w + 1); };
   const panel = step > 0 ? c.panels[step - 1] : null; const name = panel ? panel[0] : 'Whole sheet';
   const box = panel ? { left: `${(panel[1] / W) * 100}%`, top: `${(panel[2] / H) * 100}%`, width: `${(panel[3] / W) * 100}%`, height: `${(panel[4] / H) * 100}%` } : { left: '0%', top: '0%', width: '100%', height: '100%' };

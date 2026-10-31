@@ -17,7 +17,7 @@ const tm = Object.fromEntries(pl.workflows.map((w) => [w.id, `${w.tool}:${w.mode
 assert.deepEqual(tm, { music: 'audio:music', sfx: 'audio:sfx', voiceover: 'voice:voiceover', 'change-voice': 'voice:change-voice', translate: 'voice:translate', 'soundtrack-music': 'soundtrack:music', 'soundtrack-sound': 'soundtrack:v2s', cover: 'audio:cover' });
 assert.ok(!pl.workflows.some((w) => /lip/i.test(w.id) || w.mode === 'lipsync'), 'lip sync is not an Audio workflow');
 for (const w of pl.workflows) {
-  assert.ok(w.models[w.mode]?.length, `${w.id}: has models`); assert.equal(w.route, `/tools/audio?workflow=${w.id}`); assert.equal(w.runner.toolId, w.tool); assert.equal(w.locked.types, JSON.stringify([w.mode]));
+  assert.ok(w.models[w.mode]?.length, `${w.id}: has models`); assert.equal(w.route, `/audio?workflow=${w.id}`); assert.equal(w.runner.toolId, w.tool); assert.equal(w.locked.types, JSON.stringify([w.mode]));
   for (const p of w.models[w.mode]) assert.ok(w.modelInfo[p], `${w.id}: modelInfo for ${p}`);
   for (const c of w.controls) if (c.options) assert.ok(c.options.length && (c.default == null || c.options.some((o) => o.value === c.default)), `${w.id}.${c.field}: default is an option`);
 }
@@ -36,17 +36,17 @@ ok('music: YuE2 > MiniMax Music 3 > ACE-Step locally; Cover = YuE2 + song + lyri
 
 // redirects
 const R = (p: string, s = '', h = '') => W.audioRedirectTarget(p, s, h);
-assert.equal(R('/tools/voice'), '/tools/audio?workflow=voiceover');
-assert.equal(R('/tools/voice/', '?mode=change-voice'), '/tools/audio?workflow=change-voice');
-assert.equal(R('/tools/voice', '?mode=translate&from=j1', '#x'), '/tools/audio?workflow=translate&from=j1#x', 'other query and hash kept');
+assert.equal(R('/tools/voice'), '/audio?workflow=voiceover');
+assert.equal(R('/tools/voice/', '?mode=change-voice'), '/audio?workflow=change-voice');
+assert.equal(R('/tools/voice', '?mode=translate&from=j1', '#x'), '/audio?workflow=translate&from=j1#x', 'other query and hash kept');
 const { videoRedirect } = await import('../src/shared/videoWorkflows.ts');
 assert.equal(R('/tools/voice', '?mode=lipsync&from=j3'), videoRedirect('/tools/voice', '?mode=lipsync&from=j3'), 'lip sync goes to Video, the same URL as the Video redirect');
 assert.match(R('/tools/voice', '?mode=lipsync')!, /^\/video\?workflow=lip-sync/);
-assert.equal(R('/tools/soundtrack'), '/tools/audio?workflow=soundtrack-music'); assert.equal(R('/tools/soundtrack', '?mode=v2s'), '/tools/audio?workflow=soundtrack-sound');
-assert.equal(R('/tools/soundtrack', '?from=j2'), '/tools/audio?workflow=soundtrack-music&from=j2');
-assert.equal(R('/tools/audio', '?mode=cover'), '/tools/audio?workflow=cover'); assert.equal(R('/tools/audio'), null, 'the Audio page itself does not redirect');
-assert.equal(R('/tools/audio', '?workflow=sfx&mode=music'), null, 'a workflow link is left alone');
-assert.equal(R('/tools/voice', '?mode=unknown'), '/tools/audio?workflow=voiceover', 'an unknown mode falls back to the path');
-assert.deepEqual(Object.keys(W.AUDIO_PATH_REDIRECTS).sort(), ['/audio', '/tools/soundtrack', '/tools/voice']); assert.equal(R('/audio'), '/tools/audio?workflow=music', '/audio opens the Audio page (2026-10-27)');
-ok('redirects: voice / soundtrack and their mode links → /tools/audio?workflow=…; lipsync → Video');
+assert.equal(R('/tools/soundtrack'), '/audio?workflow=soundtrack-music'); assert.equal(R('/tools/soundtrack', '?mode=v2s'), '/audio?workflow=soundtrack-sound');
+assert.equal(R('/tools/soundtrack', '?from=j2'), '/audio?workflow=soundtrack-music&from=j2');
+assert.equal(R('/audio', '?mode=cover'), '/audio?workflow=cover'); assert.equal(R('/audio'), null, 'the Audio page itself does not redirect');
+assert.equal(R('/audio', '?workflow=sfx&mode=music'), null, 'a workflow link is left alone');
+assert.equal(R('/tools/voice', '?mode=unknown'), '/audio?workflow=voiceover', 'an unknown mode falls back to the path');
+assert.deepEqual(Object.keys(W.AUDIO_PATH_REDIRECTS).sort(), ['/tools/soundtrack', '/tools/voice']); assert.equal(R('/audio'), null, '/audio is the Audio page itself (2026-10-31)');
+ok('redirects: voice / soundtrack and their mode links → /audio?workflow=…; lipsync → Video');
 console.log('audio-workflows: all checks passed');

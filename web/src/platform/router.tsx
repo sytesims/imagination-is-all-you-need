@@ -1,5 +1,6 @@
 import { IMAGE_REDIRECTS } from '../shared/imageFeatures';
-import { VIDEO_REDIRECTS, VIDEO_PAGE, videoRedirect } from '../../../server/src/shared/videoWorkflows';
+import { VIDEO_REDIRECTS, videoRedirect } from '../../../server/src/shared/videoWorkflows';
+import { pageTool } from '../../../server/src/shared/pages';
 import { audioRedirectTarget } from '../../../server/src/shared/audioWorkflows';
 import { threeDRedirectTarget } from '../../../server/src/shared/threeD';
 import { redirectTarget, withSearch } from '../shared/workflowLinks';
@@ -14,11 +15,11 @@ export const REDIRECTS: Record<string, string> = { '/licences': '/licenses', '/l
 /** Join a redirect target that may carry its own query (?mode=edit) with the current query (pure; shared/workflowLinks.ts, tested in server/test/image-redirects.test.ts). */
 export { withSearch };
 /** An in-app link to an old path goes straight to its new home (before pushState), so the page listening for that navigation sees the final URL
- *  (/tools/image-upscale?fromJob=… → /tools/create-image?workflow=upscale&fromJob=…). */
+ *  (/tools/image-upscale?fromJob=… → /image?workflow=upscale&fromJob=…). */
 function canonTo(to: string): string { try { const u = new URL(to, location.origin); if (u.origin !== location.origin) return to; return selfHostRedirect(u.pathname) ?? redirectTarget(u.pathname, u.search, u.hash, REDIRECTS) ?? videoRedirect(u.pathname, u.search, u.hash) ?? audioRedirectTarget(u.pathname, u.search, u.hash) ?? threeDRedirectTarget(u.pathname, u.search, u.hash) ?? to; } catch { return to; } }
 function canonPath(): string {
   const k = (location.pathname.replace(/\/+$/, '') || '/').toLowerCase();
-  const to = selfHostRedirect(location.pathname) ?? redirectTarget(location.pathname, location.search, location.hash, REDIRECTS) ?? videoRedirect(location.pathname, location.search, location.hash) ?? audioRedirectTarget(location.pathname, location.search, location.hash) /* One Audio page (2026-10-23): /tools/voice, /tools/soundtrack and their modes → /tools/audio?workflow=<id> (shared/audioWorkflows.ts) */ ?? threeDRedirectTarget(location.pathname, location.search, location.hash) /* 3D (2026-10-23): /3d, /tools/three-d, /tools/image-to-3d, /tools/turntable */ ?? (k.startsWith('/apps/') ? withSearch('/workflows', location.search) + location.hash : null);
+  const to = selfHostRedirect(location.pathname) ?? redirectTarget(location.pathname, location.search, location.hash, REDIRECTS) ?? videoRedirect(location.pathname, location.search, location.hash) ?? audioRedirectTarget(location.pathname, location.search, location.hash) /* One Audio page (2026-10-23): /tools/voice, /tools/soundtrack and their modes → /audio?workflow=<id> (shared/audioWorkflows.ts) */ ?? threeDRedirectTarget(location.pathname, location.search, location.hash) /* 3D (2026-10-23): /3d, /tools/three-d, /tools/image-to-3d, /tools/turntable */ ?? (k.startsWith('/apps/') ? withSearch('/workflows', location.search) + location.hash : null);
   if (to) history.replaceState(history.state, '', to);
   return location.pathname;
 }
@@ -48,7 +49,7 @@ export function Link({ to, children, className, onClick, ...rest }: { to: string
 
 // ---- Header slot routes (DESIGN-NOTES 21/23). Components are Design Planner's (ui/pages, ui/Usage). ----
 import { PageComps, prefetchRoute } from './routeChunks'; // each page is its own chunk (performance)
-const { Canvas, Film, LearnEcom, SpendOrUsage, Licenses, Settings, TermsPage, ApiDocs, Mcp, Plugins, Community, Workflows, Models, Browse, Profile, RecipeImport } = PageComps;
+const { Canvas, Film, LearnEcom, SpendOrUsage, Licenses, Settings, TermsPage, ApiDocs, Mcp, Plugins, Community, Workflows, Models, Profile, RecipeImport } = PageComps;
 export type PageRoute = [title: string, Comp: React.ComponentType<{ tools: any[] }>];
 export const PAGES: Record<string, PageRoute> = {
   '/mcp': ['MCP', Mcp], '/api-docs': ['API', ApiDocs], '/plugins': ['Plugins', Plugins], '/community': ['Community', Community],
@@ -57,7 +58,6 @@ export const PAGES: Record<string, PageRoute> = {
   '/r': ['Make this', RecipeImport as any], // a shared recipe (/r?recipe=…, shared/recipe.ts): check it, then open it in the tool; nothing runs until Generate
   '/learn/ai-ecommerce': ['AI for e-commerce', LearnEcom as any], // the pop-up book (learn/EcomBook.tsx), full screen over the app
   '/workflows': ['Workflows', Workflows], '/models': ['Models', Models],
-  '/image': ['Image', () => <Browse media="image" />], '/audio': ['Audio', () => <Browse media="audio" />],
   '/settings': ['Settings', Settings as any], '/profile': ['Profile', Profile as any], '/licenses': ['Licences', Licenses as any], '/account/usage': ['Spend', SpendOrUsage as any], '/usage': ['Spend', SpendOrUsage as any], '/spend': ['Spend', SpendOrUsage as any], '/terms': ['Usage & licence notes', TermsPage as any], '/usage-notes': ['Usage & licence notes', TermsPage as any],
 };
 /** Page route for a path (trailing slash tolerated), or undefined. */
@@ -67,7 +67,7 @@ export const matchPage = (path: string): PageRoute | undefined => PAGES[path] ??
 export const WF_PATH = /^\/workflows\/([^/]+)(?:\/looks\/([^/]+))?\/?$/;
 /** Film (2026-10-27): one film's editor. */
 export const FILM_ID_PATH = /^\/film\/[^/]+\/?$/;
-export const isKnownPath = (path: string) => path === '/' || path === VIDEO_PAGE /* Create Video (2026-10-31) */ || !!matchPage(path) || WF_PATH.test(path) || FILM_ID_PATH.test(path) || /^\/(tools|jobs|share|models)\/[^/]+\/?$/.test(path) || isAssetsPath(path);
+export const isKnownPath = (path: string) => path === '/' || !!pageTool(path) /* Image, Video, Audio, 3D at /image, /video, /audio, /3d (2026-10-31) */ || !!matchPage(path) || WF_PATH.test(path) || FILM_ID_PATH.test(path) || /^\/(tools|jobs|share|models)\/[^/]+\/?$/.test(path) || isAssetsPath(path);
 /** PB-22: Assets and its section / media paths (/assets/trash, /assets/videos…; /history is the old name). */
 /* 'elements' stays a known path so old /assets/elements links open Assets (History rewrites the URL) */
 export const ASSET_SLUGS = ['projects', 'favourites', 'favorites', 'elements', 'brands', 'brand' /* Brands (2026-10-27); /assets/brand is the first name, rewritten to /assets/brands */, 'trash', 'images', 'videos', 'video', 'audio', 'enhanced'];

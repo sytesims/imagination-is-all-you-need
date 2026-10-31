@@ -23,7 +23,7 @@ const ok = (m: string) => console.log('ok ' + m); const GiB = 2 ** 30;
   assert.equal(MP.classifyMachine({ seen: true, ramBytes: 36 * GiB, gpu: { name: 'mps', type: 'mps', vramTotalBytes: null } }).label, 'Apple Silicon · 36 GB'); }
 { const nv = MP.classifyMachine(MP.inputFromNvidiaSmi('NVIDIA GeForce RTX 4090, 24564, 23000, 8.9', { platform: 'linux', arch: 'x64', ramBytes: 64 * GiB }));
   assert.equal(nv.id, 'nvidia'); assert.equal(nv.label, 'NVIDIA GeForce RTX 4090 · 24 GB'); assert.equal(nv.unifiedMemory, false); assert.equal(TC.usableText(nv), '24 GB graphics memory');
-  assert.equal(HW.tierLabelOf('all', nv), 'Runs every local model (some slowly)', 'NVIDIA: by VRAM'); assert.equal(HW.tierLabelOf('most', nv), 'Runs most local models');
+  assert.equal(HW.tierLabelOf('all', nv), 'Runs the big local models too (some slowly)', 'NVIDIA: by VRAM, never "every"'); assert.equal(HW.tierLabelOf('most', nv), 'Runs most local models');
   const small = MP.classifyMachine({ seen: true, platform: 'win32', arch: 'x64', ramBytes: 16 * GiB, gpu: { name: 'cuda:0 NVIDIA GeForce RTX 4050 Laptop GPU : cudaMallocAsync', type: 'cuda', vramTotalBytes: 6 * GiB } });
   assert.equal(small.label, 'NVIDIA GeForce RTX 4050 Laptop GPU · 6 GB', 'ComfyUI device name cleaned'); assert.equal(HW.tierLabelOf(HW.tierOf(6), small), 'Runs the light local models (upscalers, cut-outs, voice and audio)'); }
 { const host = { platform: 'linux', arch: 'arm64', ramBytes: 128 * GiB };
@@ -47,7 +47,7 @@ ok('labels: Apple Silicon (chip name, "usable for models", fp8 sentence), NVIDIA
     { models: [model('f', L('not-installed', 'nodes_missing', { kind: 'install_node' })), model('g', L('off', 'local_off'))] },
   ];
   const c = TC.countLocalModels(tools);
-  assert.deepEqual(c, { total: 7, runs: 4, ready: 1, download: 1, setUp: 1, needsNvidia: 2, tooBig: 1 }, 'unique models: a and c listed twice count once; coming-soon and cloud-only are not local models');
+  assert.deepEqual(c, { total: 7, runs: 4, ready: 1, download: 1, setUp: 1, needsNvidia: 2, tooBig: 1, untested: 0 }, 'unique models: a and c listed twice count once; coming-soon and cloud-only are not local models');
   assert.equal(TC.localCountsText(c), '4 of 7 local models run here · 2 need NVIDIA · 1 too big'); assert.equal(TC.localReadyText(c), '1 ready, 1 to download, 1 need a node pack');
   assert.equal(TC.localCountsText(TC.countLocalModels([])), '', 'no local models → no line');
   // the shape of this computer's audit (2026-10-31): 25 ready, 11 to download, 21 need NVIDIA → the line the plan expects
@@ -89,8 +89,9 @@ ok('learned timings: one key per computer (class|chip|memory); old "mps|mps|48" 
 // ---- 4. live reading ----
 { const out = 'Mach Virtual Memory Statistics: (page size of 16384 bytes)\nPages free:                               1000.\nPages active:                            5000.\nPages inactive:                           3000.\nPages speculative:                         500.\nPages wired down:                         2000.\nPages purgeable:                           100.\n';
   assert.equal(HW.parseVmStat(out), (1000 + 3000 + 500) * 16384, 'available = free + inactive + speculative'); assert.equal(HW.parseVmStat('nonsense'), null);
+  assert.equal(HW.parseMemAvailable('MemTotal:       131072000 kB\nMemFree:          2000000 kB\nMemAvailable:    90000000 kB\n'), 90000000 * 1024, 'Linux: MemAvailable, not MemFree'); assert.equal(HW.parseMemAvailable('MemFree: 5 kB\n'), null);
   const v = await HW.liveReading(); assert.ok(v.ram.totalBytes > 0 && v.ram.freeBytes >= 0 && v.ram.freeBytes <= v.ram.totalBytes, 'host memory read');
-  assert.ok(['comfyui', 'vm_stat', 'os'].includes(v.ram.source)); assert.equal(v.comfy.reachable, null, 'no ComfyUI address → not asked'); assert.ok(v.disk && 'freeBytes' in v.disk);
+  assert.ok(['comfyui', 'vm_stat', 'meminfo', 'os'].includes(v.ram.source), v.ram.source); assert.equal(v.comfy.reachable, null, 'no ComfyUI address → not asked'); assert.ok(v.disk && 'freeBytes' in v.disk);
   assert.equal(await HW.liveReading(), v, 'at most one reading per 2 s'); }
-ok('live reading: vm_stat parse, host memory without ComfyUI, disk, cached 2 s');
+ok('live reading: vm_stat and /proc/meminfo parse, host memory without ComfyUI, disk, cached 2 s');
 console.log('this-computer: all passed');

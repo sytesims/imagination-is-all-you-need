@@ -6,14 +6,10 @@
  * Isomorphic (no server imports): the web app reads it for the picker, the header Video menu and the redirects of the old pages.
  */
 
-/** The Video page. Create Video is this page with no workflow picked. Its tool id stays VIDEO_TOOL (jobs, /api/tools/h3-video, MCP). */
-export const VIDEO_PAGE = '/video';
-/** Create Video's tool id (API, jobs, stored data). */
-export const VIDEO_TOOL = 'h3-video';
-/** The Video page's old address (until 2026-10-31): redirects to VIDEO_PAGE with every query param kept. */
-export const OLD_VIDEO_PAGE = '/tools/h3-video';
-/** A tool's own page when the tool list isn't at hand: /tools/<id>, except Create Video (/video). */
-export const toolPage = (toolId: string): string => toolId === VIDEO_TOOL ? VIDEO_PAGE : `/tools/${toolId}`;
+import { VIDEO_PAGE, OLD_VIDEO_PAGE, VIDEO_TOOL, THREE_D_PAGE, toolPage } from './pages.js';
+/** The Video page (/video, shared/pages.ts). Create Video is this page with no workflow picked. Its tool id stays VIDEO_TOOL (jobs, /api/tools/h3-video, MCP).
+ *  toolPage(id) gives any tool's page when the tool list isn't at hand. */
+export { VIDEO_PAGE, OLD_VIDEO_PAGE, VIDEO_TOOL, toolPage };
 export type VideoWorkflowCategory = 'create' | 'edit' | 'motion' | 'camera' | 'apps';
 export interface VideoWorkflow {
   /** URL id (?workflow=<id>); 'create' is the page with no workflow. */ id: string;
@@ -128,7 +124,7 @@ export interface VideoFlowShortcut extends VideoWorkflow { href: string; /** a s
 const SC = (w: Omit<VideoFlowShortcut, 'oldRoutes' | 'inMenu'>): VideoFlowShortcut => ({ ...w, oldRoutes: [], inMenu: true });
 export const VIDEO_FLOW_SHORTCUTS: VideoFlowShortcut[] = [
   SC({ id: 'direct-a-shot', name: 'Direct a Shot', toolId: 'plan-a-shot', category: 'create', tagline: 'Block it in 3D. Film it for real, with sound', needs: 'Opens in 3D',
-    inputs: ['Preset scene', 'Camera move', 'Render prompt'], href: '/tools/3d?workflow=plan-a-shot', badge: 'Free', opensIn: '3D' /* the only Video menu row that leaves the Video tab (user, 2026-10-26) */,
+    inputs: ['Preset scene', 'Camera move', 'Render prompt'], href: `${THREE_D_PAGE}?workflow=plan-a-shot`, badge: 'Free', opensIn: '3D' /* the only Video menu row that leaves the Video tab (user, 2026-10-26) */,
     how: [['Stage', 'Pick a scene and a camera move in your browser.'], ['Mockup', 'Record it: free, takes seconds.'], ['Render', 'Get real video with sound back. Free on your computer.']] }),
   SC({ id: 'loop', name: 'Loop', toolId: 'h3-video', category: 'create', tagline: 'A clip that ends where it began', needs: 'Start frame',
     inputs: ['Start frame', 'Prompt'], href: `${VIDEO_PAGE}?model=ltx-2.5-22b&loop=1`, badge: 'New',

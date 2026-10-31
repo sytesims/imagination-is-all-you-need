@@ -1,7 +1,7 @@
 import { AUDIO_ACCEPT, VIDEO_ACCEPT, fileFits } from '../../../../server/src/shared/mediaAccept';
 import { prepUpload, useFilePreview } from '../../shared/SlotPreview';
 /**
- * Shared Audio page: /tools/audio?workflow=<id>. The feed fills the page; the Create bar is
+ * Shared Audio page: /audio?workflow=<id>. The feed fills the page; the Create bar is
  * docked at the bottom with Image's dock classes (ic ic2 > ic-dock > ic-frame > ic-panel > ic-main > ic-prow / ic-chiprow, ic-chip, ic-gen), the
  * same as Video. Row 1: the workflow's files (voice samples n/max, a clip, a song) then the prompt area (shared/PromptTabs: Style | Lyrics where
  * the model sings, with Instrumental where it can make one; "Script" for a voiceover; the bare prompt otherwise).

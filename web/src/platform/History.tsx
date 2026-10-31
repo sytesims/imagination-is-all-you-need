@@ -1,3 +1,4 @@
+import { IMAGE_PAGE } from '../../../server/src/shared/pages';
 import { AudioCover } from '../shared/AudioViz';
 import { audioKindOfJob } from '../shared/audioVizLogic';
 import { is3dUrl, posterOf3d } from '../shared/model3d';
@@ -344,7 +345,7 @@ export default function History({ tools, toolId }: { tools: ToolInfo[]; toolId?:
       {j.status === 'done' && owner && <button type="button" className="am-item" role="menuitem" data-testid={`am-workflow-${j.id}`} onClick={run(() => setWfJob(j.id))}>{G(<><rect x="1.5" y="2.5" width="4.5" height="3.5" rx="1" /><rect x="10" y="2.5" width="4.5" height="3.5" rx="1" /><rect x="5.75" y="10" width="4.5" height="3.5" rx="1" /><path d="M6 4.25h4M3.75 6v1.5A1.5 1.5 0 0 0 5.25 9H6M12.25 6v1.5A1.5 1.5 0 0 1 10.75 9H10" /></>)}<span className="am-l">View workflow</span><small className="am-x">ComfyUI</small></button>}
       {trash && <><hr className="am-div" /><button type="button" className="am-item am-danger" role="menuitem" data-testid={`am-trash-${j.id}`} onClick={run(() => askTrash([j.id]))}><TrashIcon size={16} className="am-ic" /><span className="am-l">Move to Trash</span></button></>}
     </div>; })();
-  const startLink = <Link to={tools.find(t => t.id === 'create-image')?.route ?? tools[0]?.route ?? '/tools/create-image'} className="btn as-start" data-testid="as-start"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M10 3.5 11.8 8.2 16.5 10l-4.7 1.8L10 16.5l-1.8-4.7L3.5 10l4.7-1.8z" /><path d="M18 14.5v5M15.5 17h5" /></svg>Start generating</Link>;
+  const startLink = <Link to={tools.find(t => t.id === 'create-image')?.route ?? tools[0]?.route ?? IMAGE_PAGE} className="btn as-start" data-testid="as-start"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M10 3.5 11.8 8.2 16.5 10l-4.7 1.8L10 16.5l-1.8-4.7L3.5 10l4.7-1.8z" /><path d="M18 14.5v5M15.5 17h5" /></svg>Start generating</Link>;
   const secCount = (n: string) => counts ? ({ Assets: counts.all, Projects: counts.projects, Favourites: counts.favourites, Trash: counts.trash } as Record<string, number>)[n] : undefined;
   /* Filter popover: rows that open in place (Type, Model, Tool, Date range), then Activity and Status */
   const frow = (k: 'type' | 'model' | 'tool' | 'date', lbl: string, val: string, body: React.ReactNode) => <>

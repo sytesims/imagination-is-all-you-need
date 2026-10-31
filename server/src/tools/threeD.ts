@@ -1,8 +1,8 @@
 /**
  * The 3D tools (2026-10-23, shared/threeD.ts has the workflows, models and price keys):
- *  - `three-d` (page /tools/3d): Image to 3D. One image in, a GLB out. Output kind '3d' (input.outKind): stored and served like every other
+ *  - `three-d` (page /3d): Image to 3D. One image in, a GLB out. Output kind '3d' (input.outKind): stored and served like every other
  *    output (/files/<job>-out0.glb, model/gltf-binary), listed in jobs, history and Assets.
- *  - `three-d-turntable` (hidden; /tools/3d?workflow=turntable): the browser records an orbit of a 3D result from the viewer and uploads it;
+ *  - `three-d-turntable` (hidden; /3d?workflow=turntable): the browser records an orbit of a 3D result from the viewer and uploads it;
  *    this tool keeps it as a normal MP4 video result, free (ffmpeg on this computer, no provider).
  *
  *  Model                   Place                                   Price (published, read 2026-10-23)                         Licence

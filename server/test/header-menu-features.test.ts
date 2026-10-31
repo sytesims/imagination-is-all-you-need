@@ -15,7 +15,7 @@ assert.deepEqual(MENU_FEATURE_ORDER['3d'], ['plan-a-shot', 'image-to-3d', 'turnt
 assert.equal(MENU_FEATURE_ORDER.audio, null, 'Audio keeps its own order');
 for (const id of MENU_FEATURE_ORDER.image!) assert.ok(IMAGE_FEATURES.some((f) => f.id === id), `image feature ${id} exists`);
 for (const id of MENU_FEATURE_ORDER.video!) assert.ok([...VIDEO_WORKFLOWS, ...VIDEO_FLOW_SHORTCUTS].some((w) => w.id === id), `video workflow or flow shortcut ${id} exists`);
-for (const w of VIDEO_FLOW_SHORTCUTS) { assert.ok(!VIDEO_WORKFLOWS.some((x) => x.id === w.id), `${w.id}: a shortcut id never shadows a workflow`); assert.match(w.href, /^\/(tools\/|video\?)/, `${w.id}: opens a tool page`); }
+for (const w of VIDEO_FLOW_SHORTCUTS) { assert.ok(!VIDEO_WORKFLOWS.some((x) => x.id === w.id), `${w.id}: a shortcut id never shadows a workflow`); assert.match(w.href, /^\/(tools\/|video\?|3d\?)/, `${w.id}: opens a tool page`); }
 ok('every configured id exists');
 
 const rows = (ids: string[]) => ids.map((key) => ({ key }));
@@ -28,11 +28,11 @@ assert.equal(menuFeatureRows('audio', rows(Array.from({ length: 20 }, (_, i) => 
 assert.equal(menuFeatureRows('image', rows([...MENU_FEATURE_ORDER.image!, 'create-image'])).length, MENU_FEATURE_ORDER.image!.length, 'a duplicate key shows once');
 ok('rows: order, skip, cap');
 
-// Audio (2026-10-24): the Audio menu lists the audio workflows (shared/audioWorkflows.ts) in their own order, each opening /tools/audio?workflow=<id>
+// Audio (2026-10-24): the Audio menu lists the audio workflows (shared/audioWorkflows.ts) in their own order, each opening /audio?workflow=<id>
 const { AUDIO_WORKFLOW_IDS, audioRoute } = await import('../src/shared/audioWorkflows.ts');
 const aud = rows(AUDIO_WORKFLOW_IDS);
 assert.deepEqual(menuFeatureRows('audio', aud).map((r) => r.key), AUDIO_WORKFLOW_IDS.slice(0, MAX_FEATURES), 'audio workflows, in their order');
-assert.equal(audioRoute('voiceover'), '/tools/audio?workflow=voiceover');
+assert.equal(audioRoute('voiceover'), '/audio?workflow=voiceover');
 ok('audio menu: the audio workflows');
 
 // Canvas (2026-10-24): a plain header tab after 3D, its own lazy chunk; the Shell builds it from headerMenus CANVAS_NAV

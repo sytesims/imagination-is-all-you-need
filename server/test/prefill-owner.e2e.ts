@@ -55,7 +55,7 @@ try {
 
   // ---- Recreate ----
   { const p = await get(`/api/jobs/${img.id}/prefill?action=recreate`);
-    assert.equal(p.tool, 'create-image'); assert.equal(p.path, '/tools/create-image'); assert.equal(p.url, `/tools/create-image?recreate=${img.id}`);
+    assert.equal(p.tool, 'create-image'); assert.equal(p.path, '/image'); assert.equal(p.url, `/image?recreate=${img.id}`);
     assert.equal(p.model, 'comfy-flux3-klein'); assert.equal(p.fields.provider, 'comfy-flux3-klein'); assert.equal(p.form.provider, 'comfy-flux3-klein'); assert.equal(p.fields.aspect, '1:1'); assert.equal(p.form.aspect, '1:1');
     assert.equal(p.fields.prompt, 'a red fox in snow'); assert.equal(p.seed, null); assert.ok(!('seed' in p.fields)); assert.ok(!('seed' in p.form)); assert.equal(p.originalSeed, 1234); assert.equal(p.sameSeed, false);
     assert.equal(p.available, true); assert.equal(p.reason, null); assert.equal(p.providerAvailable, true);

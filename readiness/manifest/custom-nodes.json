@@ -118,7 +118,8 @@
     "WanCameraImageToVideo",
     "WanImageToVideo",
     "WanVaceToVideo"
-   ]
+   ],
+   "aarch64": "DGX Spark (aarch64): install PyTorch from the cu130 wheel index (NVIDIA DGX Spark ComfyUI playbook); fp8 and nvfp4 run (sm_121). Not run here on a Spark yet."
   },
   "ComfyUI-KJNodes": {
    "repo": "https://github.com/kijai/ComfyUI-KJNodes",
@@ -129,7 +130,8 @@
     "BlockifyMask",
     "DrawMaskOnImage",
     "PointsEditor"
-   ]
+   ],
+   "aarch64": "Python on top of PyTorch, no compiled wheels of its own: expected to work on aarch64 (UNVERIFIED on a Spark)."
   },
   "comfyui_controlnet_aux": {
    "repo": "https://github.com/Fannovel16/comfyui_controlnet_aux",
@@ -139,7 +141,8 @@
    "classes": [
     "DWPreprocessor",
     "PixelPerfectResolution"
-   ]
+   ],
+   "aarch64": "DWPose uses onnxruntime: onnxruntime-gpu has no aarch64 wheel, so install.sh adds the CPU onnxruntime and DWPose runs on the processor (NVIDIA DGX Spark ComfyUI troubleshooting page)."
   },
   "ComfyUI-segment-anything-2": {
    "repo": "https://github.com/kijai/ComfyUI-segment-anything-2",
@@ -149,7 +152,8 @@
    "classes": [
     "DownloadAndLoadSAM2Model",
     "Sam2Segmentation"
-   ]
+   ],
+   "aarch64": "PyTorch only: expected to work on aarch64 (UNVERIFIED on a Spark)."
   },
   "ComfyUI-Frame-Interpolation": {
    "repo": "https://github.com/Fannovel16/ComfyUI-Frame-Interpolation",
@@ -158,7 +162,8 @@
    "license": "MIT",
    "classes": [
     "RIFE VFI"
-   ]
+   ],
+   "aarch64": "RIFE is pure PyTorch and works on aarch64; the cupy-based models need a cupy build for aarch64 CUDA (UNVERIFIED)."
   },
   "ComfyUI-SeedVR2_VideoUpscaler": {
    "repo": "https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler",
@@ -169,7 +174,8 @@
     "SeedVR2LoadDiTModel",
     "SeedVR2LoadVAEModel",
     "SeedVR2VideoUpscaler"
-   ]
+   ],
+   "aarch64": "Not tested on aarch64 (UNVERIFIED); the native SeedVR2 graph uses core ComfyUI nodes instead."
   },
   "ComfyUI-Drama3": {
    "repo": "https://github.com/PedroMarinhoDev/ComfyUI-Drama3",
@@ -184,7 +190,8 @@
     "Drama3Loader",
     "Qwen3ASRLoader",
     "Qwen3ASRTranscribe"
-   ]
+   ],
+   "aarch64": "fp8 / w4a8 experts need CUDA kernels; whether they build on aarch64 is UNVERIFIED."
   },
   "ComfyUI_BiRefNet_ll": {
    "repo": "https://github.com/lldacing/ComfyUI_BiRefNet_ll",
@@ -194,7 +201,8 @@
    "classes": [
     "LoadRembgByBiRefNetModel",
     "RembgByBiRefNetAdvanced"
-   ]
+   ],
+   "aarch64": "PyTorch only: expected to work on aarch64 (UNVERIFIED on a Spark)."
   },
   "ComfyUI-Chatterbox": {
    "repo": "https://github.com/wildminder/ComfyUI-Chatterbox",
@@ -205,7 +213,8 @@
     "ChatterboxMTLTTS",
     "ChatterboxTTS",
     "ChatterboxVC"
-   ]
+   ],
+   "aarch64": "PyTorch audio stack: expected to work on aarch64 (UNVERIFIED on a Spark)."
   },
   "ComfyUI-MMAudio": {
    "repo": "https://github.com/kijai/ComfyUI-MMAudio",
@@ -220,7 +229,8 @@
     "MMAudioFeatureUtilsLoader",
     "MMAudioModelLoader",
     "MMAudioSampler"
-   ]
+   ],
+   "aarch64": "PyTorch only: expected to work on aarch64 (UNVERIFIED on a Spark)."
   },
   "ComfyUI-PuLID-Flux": {
    "repo": "https://github.com/balazik/ComfyUI-PuLID-Flux",
@@ -232,7 +242,8 @@
     "PulidFluxEvaClipLoader",
     "PulidFluxInsightFaceLoader",
     "PulidFluxModelLoader"
-   ]
+   ],
+   "aarch64": "insightface + onnxruntime: insightface builds from source on aarch64 and onnxruntime is the CPU one (no onnxruntime-gpu wheel) (UNVERIFIED)."
   },
   "ComfyUI_InfiniteYou": {
    "repo": "https://github.com/bytedance/ComfyUI_InfiniteYou",
@@ -245,7 +256,8 @@
     "IDEmbeddingModelLoader",
     "InfuseNetApply",
     "InfuseNetLoader"
-   ]
+   ],
+   "aarch64": "insightface + onnxruntime: insightface builds from source on aarch64 and onnxruntime is the CPU one (no onnxruntime-gpu wheel) (UNVERIFIED)."
   },
   "ComfyUI-F5-TTS": {
    "repo": "https://github.com/niknah/ComfyUI-F5-TTS",
@@ -254,7 +266,8 @@
    "license": "MIT (pack; submodule SWivid/F5-TTS @2f866649 MIT code, weights CC BY-NC 4.0)",
    "classes": [
     "F5TTSAudioInputs"
-   ]
+   ],
+   "aarch64": "PyTorch audio stack: expected to work on aarch64 (UNVERIFIED on a Spark)."
   },
   "ComfyUI-Qwen-TTS": {
    "repo": "https://github.com/flybirdxx/ComfyUI-Qwen-TTS",
@@ -268,7 +281,8 @@
    "note": "Install only sox and tiktoken: its requirements.txt pins transformers<5 and onnxruntime-openvino (no macOS wheel). Model folder: models/qwen-tts/Qwen3-TTS-12Hz-1.7B-CustomVoice (docs/LOCAL-MODELS-AND-HARDWARE.md).",
    "classes": [
     "FB_Qwen3TTSCustomVoice"
-   ]
+   ],
+   "aarch64": "Same as on a Mac: only sox and tiktoken are installed (its requirements pin onnxruntime-openvino); expected to work on aarch64 (UNVERIFIED)."
   },
   "ComfyUI-GGUF": {
    "repo": "https://github.com/city96/ComfyUI-GGUF",
@@ -279,7 +293,8 @@
    "classes": [
     "UnetLoaderGGUF"
    ],
-   "note": "Optional. Enables the lighter GGUF variants of large local models (the app checks for UnetLoaderGGUF). Not installed by nodes:install; add it in ComfyUI Manager."
+   "note": "Optional. Enables the lighter GGUF variants of large local models (the app checks for UnetLoaderGGUF). Not installed by nodes:install; add it in ComfyUI Manager.",
+   "aarch64": "Python + the gguf package: works on aarch64 (UNVERIFIED on a Spark). Prefer the bf16 / fp8 files there: 128 GB fits them."
   }
  },
  "classes": [
