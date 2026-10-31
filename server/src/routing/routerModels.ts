@@ -30,7 +30,7 @@ import { publicBase } from '../tools/h3/cloud.js';
 import { H3_CAMERA_MOVES, H3_INTENSITY, H3_BASE_CAMERA, type H3Intensity } from '../tools/h3/catalog.js';
 import { fillPattern } from '../shared/promptPatterns.js';
 import { h3RouterExtendIssue, h3RouterExtendSeconds, h3ExtendLastFrame, joinRouterExtension, H3_ROUTER_EXTEND_LABEL } from '../tools/h3/routerExtend.js';
-import { CLOUD_SWAP_MODELS, planPasses, swapPrompt, swapImagesMax, type SwapMode } from '../shared/cloudSwap.js';
+import { CLOUD_SWAP_MODELS, planPasses, swapPrompt, swapImagesMax, swapTypesOf, type SwapMode } from '../shared/cloudSwap.js';
 import { videoInputLimits } from '../shared/videoFit.js';
 import { preparePass, joinPasses } from '../swapClips.js';
 import { hasClipUpload, clipLink } from './renderUpload.js';
@@ -552,13 +552,14 @@ const seedanceImageIssue = (p: string): string | null => { const d = imageDimsOf
   const r = d.width / d.height; return r > 2.5 || r < 0.4 ? `Seedance 2.5 Edit takes character images from 0.4 to 2.5 wide per tall; yours is ${d.width}×${d.height}. Crop it` : null; };
 /** The prompt a swap job sends: our template around the user's "Who to replace" text and prompt. */
 export const swapPromptOf = (key: SwapKey, i: In) => { const n = Math.max(1, pathsOf(i.refPaths).length); const img = (k: number) => (key === 'router-kling-edit' ? `<<<image_${k}>>>` : `Image ${k}`);
-  return swapPrompt({ mode: swapModeOf(i), who: i.target, extra: i.prompt, images: Array.from({ length: n }, (_, k) => img(k + 1)),
+  return swapPrompt({ mode: swapModeOf(i), kind: i.swapType === 'object' ? 'object' : 'person', who: i.target, extra: i.prompt, images: Array.from({ length: n }, (_, k) => img(k + 1)),
     ...(key === 'router-kling-edit' ? { video: '<<<video_1>>>', image: '<<<image_1>>>' } : { video: 'Video 1', image: 'Image 1' } /* Seedance's own positional labels (shared/promptGrammar.ts) */) }); };
 /** Why this job can't run on a cloud swap route (null = fine). Checked at quote / submit with a key (nothing charged) and again in the body. */
 export function swapIssue(key: SwapKey, i: In, strict = false): string | null {
   const m = CLOUD_SWAP_MODELS[key];
   if ((i.mode || strict) && !['object_swap', 'motion_transfer'].includes(String(modeId(i)))) return `${m.name} on Comfy Router runs Video Swap jobs (person swap or motion transfer)`;
-  if (i.swapType === 'object') return `${m.name} swaps people and characters here; for objects pick another model`;
+  if (i.swapType === 'object' && !swapTypesOf(key).includes('object')) return `${m.name} swaps people and characters here; for objects pick another model`; // shared/cloudSwap.ts SWAP_TYPES
+  if (i.swapType === 'object' && modeId(i) !== 'motion_transfer' && Object.prototype.hasOwnProperty.call(i, 'target') && !String(i.target ?? '').trim()) return `Name the object to replace, like “red mug”: ${m.name} finds it from your words`; // a quote or job that carries the field
   // a quote carries no files yet (the form says what's missing): the clip and image are checked when they are there, and always in the body (strict)
   if (!i.videoPath && strict) return `${m.name} needs your video`;
   const refs = pathsOf(i.refPaths); if (!refs.length && (strict || Array.isArray(i.refPaths) && i.videoPath)) return `${m.name} needs one character image`;

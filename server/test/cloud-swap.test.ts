@@ -120,13 +120,34 @@ const bodies: { k: any[]; s: any[] } = { k: [], s: [] };
 {
   assert.match(K.block!(swapJob({ refPaths: [] }))!, /needs one character image/); assert.match(K.block!(swapJob({ refPaths: [at('char.png'), at('char.png')] }))!, /takes one character image.*remove the 1 extra/);
   assert.match(K.block!(swapJob({ duration: 35 }))!, /swaps 4–30 s.*yours is 35 s/); assert.match(K.block!(swapJob({ refPaths: [at('wide.png')] }))!, /1:2\.5 to 2\.5:1/);
-  assert.match(K.block!(swapJob({ mode: 'restyle' }))!, /runs Video Swap jobs/); assert.match(K.block!(swapJob({ swapType: 'object' }))!, /swaps people/);
+  assert.match(K.block!(swapJob({ mode: 'restyle' }))!, /runs Video Swap jobs/); assert.match(S.block!(swapJob({ swapType: 'object', target: 'the red mug' }))!, /swaps people/, 'Seedance 2.5 Edit: people only');
   assert.match(K.block!(swapJob({ prompt: 'x'.repeat(2600) }))!, /up to 2500 characters/);
   assert.equal(K.block!({ mode: 'object_swap', swapType: 'person', duration: 8, resolution: '720p' }), null, 'a quote (no files yet) is not blocked: the form says what is missing');
   assert.equal(K.block!({ mode: 'motion-transfer', duration: 6, resolution: '720p' }), null, "a quote's ?mode=motion-transfer (the tool id's spelling) is the motion job, not a non-swap job (the Video bar showed no price)");
   process.env.COMFY_API_KEY = 'test-not-a-real-key'; assert.match(S.block!(swapJob({ refPaths: [at('wide.png')] }))!, /0\.4 to 2\.5/); assert.equal(S.block!(swapJob({ width: 1200, height: 400 })), null, 'a 3:1 clip is no longer refused here: Fit to model pads it to 2.5:1 (shared/videoFit.ts)'); assert.equal((await import('../src/shared/videoFit.ts')).videoFitFor('object-swap', 'router-seedance-25-edit', { width: 1200, height: 400, duration: 8 })!.aspect.target, '2.5:1'); assert.equal(S.block!(swapJob()), null, 'with the key: the clip is uploaded'); process.env.COMFY_API_KEY = '';
   assert.match(S.block!(swapJob())!, /uploaded with your Comfy key/); assert.match(K.block!(swapJob())!, /uploaded with your Comfy key/); await assert.rejects(S.body(swapJob(), 0), /Comfy key/, 'the body refuses too (no call made)');
-  ok('blocks: no image, two images, 35 s, wide sheet, non-swap job, object swap, long prompt, no key and no public address (body refuses too)');
+  ok('blocks: no image, two images, 35 s, wide sheet, non-swap job, object swap on Seedance, long prompt, no key and no public address (body refuses too)');
+}
+
+// ---------------- 3a. Object mode (2026-10-31): Kling's edit takes objects; the quote applies the submit's own check ----------------
+{
+  process.env.COMFY_API_KEY = 'test-not-a-real-key';
+  const obj = swapJob({ swapType: 'object', target: 'the red mug' });
+  assert.equal(K.block!(obj), null, 'Kling 3.0 Omni Edit swaps objects (a general video edit: refer_type base + reference image)');
+  assert.match(K.block!(swapJob({ swapType: 'object', target: '' }))!, /Name the object to replace/, 'no name: nothing for the model to find');
+  const kb = await K.body(obj, 0) as any; assert.match(kb.prompt, /^Replace the red mug in <<<video_1>>> with the object from <<<image_1>>>\./); assert.match(kb.prompt, /every person unchanged/); assert.doesNotMatch(kb.prompt, /character/);
+  assert.equal(CS.swapTypesOf('router-kling-edit').join(), 'person,object'); assert.equal(CS.swapTypesOf('router-seedance-25-edit').join(), 'person');
+  // the quote's input carries swapType + target (routing/http.ts swapQuoteFields), so the route refuses the quote exactly as the submit's block does
+  const H = await import('../src/routing/http.ts'); const { findRoute } = await import('../src/routing/routes.ts'); const { getTool } = await import('../src/tools/registry.ts');
+  const t = getTool('object-swap')!; const qi = (q: Record<string, string>) => ({ ...H.routeQuoteInput(t, { duration: '8', resolution: '720p', mode: 'object_swap', ...q }), mode: 'object_swap' });
+  assert.deepEqual(H.swapQuoteFields({ swapType: 'object', target: ' red mug ', point: '0.5,0.25,1.5' }), { swapType: 'object', target: 'red mug', point: { x: 0.5, y: 0.25, t: 1.5 } });
+  const rk = findRoute('comfy-router:router-kling-edit')!; const rs = findRoute('comfy-router:router-seedance-25-edit')!;
+  for (const [r, q] of [[rk, { swapType: 'object', target: 'red mug' }], [rk, { swapType: 'object', target: '' }], [rs, { swapType: 'object', target: 'red mug' }], [rk, { swapType: 'person', target: '' }]] as const) {
+    const quote = r.unavailableFor!(qi(q)); const submit = (r.routeId.endsWith('kling-edit') ? K : S).block!(swapJob({ ...q }));
+    assert.equal(quote, submit, `${r.routeId} ${JSON.stringify(q)}: quote "${quote}" = submit "${submit}"`); }
+  assert.equal(rs.unavailableFor!(qi({ swapType: 'object', target: 'red mug' })) != null, true, 'Seedance on an object quote: refused, as on submit');
+  process.env.COMFY_API_KEY = '';
+  ok('object mode: Kling takes objects (own prompt, a name required), Seedance stays people only; the quote input carries swapType/target so quote = submit');
 }
 
 // ---------------- 3b. motion transfer with several characters (2026-10-26): every image in order, the model's max ----------------

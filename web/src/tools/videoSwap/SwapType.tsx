@@ -15,6 +15,7 @@ export const SWAP_HELP: Record<SwapType, string> = { person: 'People and charact
 export const SWAP_MODELS: Record<SwapType, { id: string; label: string; hint: string; speed: string }[]> = {
   person: [{ id: 'router-kling-edit', label: 'Kling 3.0 Omni Edit', hint: 'Swaps the person you describe; motion, light and sound kept', speed: 'Fast · best' }, { id: 'router-seedance-25-edit', label: 'Seedance 2.5 Edit', hint: 'Often refuses photos of real people', speed: 'Balanced · best' }, { id: 'comfy-open', label: 'Wan 2.2 Animate', hint: 'Swaps the person; motion, light and audio kept', speed: 'Slow · best' }, { id: 'comfy-h3-charswap', label: 'H3 Character Swap', hint: 'Quicker backup; the look comes from your reference', speed: 'Balanced · good' }],
   object: [
+    { id: 'router-kling-edit', label: 'Kling 3.0 Omni Edit', hint: 'Swaps the object you name; motion, light and sound kept', speed: 'Fast · best' },
     { id: 'comfy-vace22-swap', label: 'Wan 2.2 VACE Fun', hint: 'Masks the object and paints in your photo', speed: 'Slow · best' },
     { id: 'comfy-vace21-swap', label: 'Wan 2.1 VACE', hint: 'Same idea, older model, very stable', speed: 'Balanced · good' },
     { id: 'comfy-ltx23-inpaint', label: 'LTX-2.3 Inpaint', hint: 'Fills the masked area, keeps the rest; uses your first frame', speed: 'Balanced · good' },

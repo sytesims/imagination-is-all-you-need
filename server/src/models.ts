@@ -95,7 +95,7 @@ const INFO: Record<string, Info> = {
   'router-wan3-prime': { name: 'Wan 3.0 Prime', speed: 'fast', quality: 'best', hint: 'Hosted API', badges: ['premium'] },
   'router-pvideo2': { name: 'P-Video-2', speed: 'fast', quality: 'good', hint: 'Hosted API', badges: ['premium'] },
   'router-grok-video-lite': { name: 'Grok Imagine Video 1.5 Lite', speed: 'fast', quality: 'good', hint: 'Hosted API', badges: ['premium'] },
-  'router-kling-edit': { name: 'Kling 3.0 Omni Edit', speed: 'fast', quality: 'best', hint: 'Swaps the person you describe; motion, light and sound kept · up to 10 s a pass', badges: ['premium'] },
+  'router-kling-edit': { name: 'Kling 3.0 Omni Edit', speed: 'fast', quality: 'best', hint: 'Swaps the person or object you describe; motion, light and sound kept · up to 10 s a pass', badges: ['premium'] },
   'router-aleph2': { name: 'Runway Aleph 2', speed: 'fast', quality: 'best', hint: 'Render: real video from your mockup, first frame optional', badges: ['premium'] },
   'router-ray32-edit': { name: 'Luma Ray 3.2 Edit', speed: 'fast', quality: 'good', hint: 'Render: keeps the mockup’s structure; billed as 5 s or 10 s', badges: ['premium'] },
   'router-seedance-25-edit': { name: 'Seedance 2.5 Edit', speed: 'balanced', quality: 'best', hint: 'Often refuses photos of real people; up to 30 s in one pass', badges: ['premium'] },

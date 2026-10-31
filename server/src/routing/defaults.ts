@@ -16,7 +16,7 @@
  *  5. the first model that really runs now (a fal-only setup keeps working);  6. the cloud default needing its key (Generate says how to add it);
  *  7. the old rules. recommendedProvider = what 2-7 pick (the menu's "Recommended"), favouriteProvider = the user's own, defaultSource = which won.
  */
-import { swapNeverAuto } from '../shared/cloudSwap.js';
+import { swapNeverAuto, swapTypesOf, type SwapKind } from '../shared/cloudSwap.js';
 const SWAP_TOOL_IDS = new Set(['object-swap', 'motion-transfer']);
 import type { ToolDef } from '../tools/types.js';
 import { toolProviders, getProvider } from '../providers.js';
@@ -285,7 +285,7 @@ export function defaultFirst(tool: ToolDef, mode?: string | null): string[] {
 /** Mode of a request (types / mode field), for mode-aware defaults. */
 export const requestMode = (tool: ToolDef, f: Record<string, any>): string | null => { const ms = toolModes(tool); if (!ms.length) return null; const m = typesOf(f.types) ?? (typeof f.mode === 'string' ? f.mode : null); return m && ms.includes(m) ? m : null; };
 /** Video Swap (object-swap): which swap types each model serves (Person / Object toggle). The web filtered a local-only list; now the server says. */
-export const SWAP_TYPES: Record<string, string[]> = { 'comfy-open': ['person', 'object'], 'comfy-h3-charswap': ['person'], 'router-seedance': ['object'] /* person swaps run on the cloud edit models below (2026-10-25) */, 'router-kling-edit': ['person'], 'router-seedance-25-edit': ['person'] /* cloud person swap (2026-10-25) */ };
+export { SWAP_TYPES } from '../shared/cloudSwap.js'; // one table (shared/cloudSwap.ts): the menus per type and the cloud edits' own check read the same
 /** One model's status as clients read it (/api/tools providers[], swapTypes[].models[]). */
 export const modelFields = (s?: ModelStatus) => (s ? { qualityRank: s.rank, runnable: s.runnable, demoPreview: s.demo, ...(s.demo ? { demoTag: 'Sample' } : {}), needsKey: s.needsKey, keyOwner: s.keyOwner, wired: s.wired, hasCloud: s.hasCloud, reasonCode: s.reasonCode, reason: s.reason, statusRoute: s.routeId, pinned: s.pinned, fit: s.fit ? { verdict: s.fit.verdict, reasonCode: s.fit.reasonCode } : null } : {});
 const pick = (x: ToolDefaults) => ({ preferredProvider: x.preferredProvider, defaultProvider: x.defaultProvider, defaultRoute: x.defaultRoute, defaultFallback: x.defaultFallback, qualityOrder: x.models.map((s) => s.id), ...(x.editorial ? { editorialDefault: x.editorial } : {}), ...favFields(x) });
@@ -307,7 +307,7 @@ export function defaultsBlock(tool: ToolDef) {
   const all = qualityOrder(tool, null); const firstMode = (id: string) => (supports(tool, id, d.mode) ? d.mode : modes.find((m) => supports(tool, id, m)) ?? null);
   const status = Object.fromEntries(all.map((id, k) => [id, d.models.find((m) => m.id === id) ?? modelStatus(tool, id, firstMode(id), k + 1)]));
   for (const [k, id] of all.entries()) status[id] = { ...status[id], rank: k + 1 };
-  const swap = tool.id === 'object-swap' ? { swapTypes: Object.fromEntries(['person', 'object'].map((st) => { const x = toolDefaults(tool, { extra: { swapType: st }, only: (id) => (SWAP_TYPES[id] ?? ['person']).includes(st) });
+  const swap = tool.id === 'object-swap' ? { swapTypes: Object.fromEntries(['person', 'object'].map((st) => { const x = toolDefaults(tool, { extra: { swapType: st }, only: (id) => swapTypesOf(id).includes(st as SwapKind) });
     return [st, { ...pick(x), models: x.models.map((m, k) => ({ id: m.id, name: m.name, ...modelFields({ ...m, rank: k + 1 }) })) }]; })) } : {};
   return { preferredProvider: d.preferredProvider, defaultProvider: d.defaultProvider, defaultRoute: d.defaultRoute, defaultFallback: d.defaultFallback, defaultState: d.defaultState, ...favFields(d),
     qualityOrder: all, modelStatus: status, ...swap, ...(d.editorial ? { editorialDefault: d.editorial } : {}),
