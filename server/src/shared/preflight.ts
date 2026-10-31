@@ -17,7 +17,8 @@ export const PREFLIGHT_CODES = ['photo_missing', 'photo_too_small', 'photo_shape
 export const PREFLIGHT_STAGES: PreflightStage[] = ['inputs', 'model', 'setup', 'money'];
 
 export interface PreflightSlot { name: string; label: string; required: boolean; filled: boolean; /** Generate's words while empty ("Add a face") */ missing?: string;
-  width?: number | null; height?: number | null; /** the aspect this slot's photo must have for the picked model (input prep), else null */ fitTo?: string | null }
+  width?: number | null; height?: number | null; /** what the run would refuse about the filled input, in its words (a clip too small or too long: clipLimits.ts) */ issue?: string | null;
+  /** the aspect this slot's photo must have for the picked model (input prep), else null */ fitTo?: string | null }
 export interface PreflightState {
   slots?: PreflightSlot[];
   /** shortest side the run accepts (edits: 128 px) */ minSide?: number | null;
@@ -54,6 +55,7 @@ export function preflightProblems(s: PreflightState): PreflightProblem[] {
   // ---- inputs ----
   for (const sl of s.slots ?? []) {
     if (sl.required && !sl.filled) { add({ code: 'photo_missing', stage: 'inputs', message: sl.missing || `Add ${sl.label.toLowerCase()}`, fix: { kind: 'choose-photo', label: 'Choose…', args: { slot: sl.name } } }); continue; }
+    if (sl.filled && sl.issue) { add({ code: 'input_problem', stage: 'inputs', message: sl.issue.replace(/\.$/, ''), fix: { kind: 'choose-photo', label: 'Choose another…', args: { slot: sl.name } } }); continue; }
     if (!sl.filled || !(Number(sl.width) > 0 && Number(sl.height) > 0)) continue;
     const w = Number(sl.width), h = Number(sl.height);
     if (s.minSide && Math.min(w, h) < s.minSide) { add({ code: 'photo_too_small', stage: 'inputs', message: `${sl.label} is ${w}×${h}; it needs ${s.minSide} px on the short side`, fix: { kind: 'choose-photo', label: 'Choose another…', args: { slot: sl.name } } }); continue; }

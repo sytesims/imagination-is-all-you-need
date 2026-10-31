@@ -30,6 +30,7 @@ import { probe } from '../../media.js';
 import { prepareLipAudio, LIP_MAX_SECONDS } from '../../audio/lipDriver.js';
 import { VIDEO_ASPECTS, BITRATES, VIDEO_LIMITS, limitsFor, resolveResolution, resolutionMap, RES_LIKE, videoCapsBlock, postEncode, videoPresetById, defaultSecondsFor, resolveDuration, durationErrorBody, noteSnap, snapResolution } from './videoCaps.js';
 import { addAdjustNote, nearestAspect, snapNote } from '../../shared/snap.js';
+import { clipShortSideText, EXTEND_MAX_SEC, EXTEND_TOO_LONG_TEXT } from '../../shared/clipLimits.js';
 export { H3_LORAS, H3_CAMERA_MOVES, H3_INTENSITY } from './catalog.js';
 
 registerLicense({ id: 'h3-camera-motion-civitai', name: 'camera_motion_h3 (Civitai licence, verified 2026-10-17): commercial use allowed incl. selling outputs, selling the model and running it on paid generation services (Image, Rent, RentCivit, Sell, SellMerge); no credit required; derivatives and relicensing allowed. Base MiniMax H3 Community Licence terms still apply.', osi: false, url: 'https://civitai.com/models/2914784/cameramotionh3' });
@@ -251,7 +252,7 @@ export const h3ExtendTool: ToolDef = {
     if (fields.resolution && !H3_EXTEND_RES.includes(fields.resolution)) return bad('resolution', `Resolution must be one of ${H3_EXTEND_RES.join(', ')}.`);
     const res = fields.resolution === '480p' ? '480p' : '768p';
     const c: any = await parseCommon({ ...fields, prompt, resolution: '480p' }, files, { refsRequired: false, maxRefs: 0, minSec: 1 /* via last frame takes any clip; the local graph and fal need 4 s (their routes say so: cloud.ts h3ClassicExtendIssue) */ }); if ('error' in c) return c;
-    if (c.duration > 60) return bad('video', 'Extend takes clips up to 60 s.', 'too_long');
+    if (c.duration > EXTEND_MAX_SEC) return bad('video', EXTEND_TOO_LONG_TEXT, 'too_long');
     const character = await h3xCharacterFor(fields, files); if (character && 'error' in character) return character.error;
     return { ...c, ...(character ? character : {}), mode: 'extend', types: ['extend'], prompt, finalPrompt: prompt, promptDefaulted: !userPrompt, extendSeconds: add, duration: add, outputDuration: add, sourceSeconds: c.duration, frames: h3Frames(add), resolution: res, outKind: 'av-video', target: '' };
   },
@@ -277,8 +278,8 @@ async function ltxExtendParse(fields: Record<string, string>, files: Record<stri
   if (fields.direction === 'backward') return bad('direction', 'LTX-2.5 extends forward from the last frame. Pick Forward, Sequel or Camera pull.', 'unsupported');
   const src = path.join(DATA_DIR, vf); const p = await probe(src);
   if (!p || !(p.width > 0)) return bad('video', 'That clip could not be read. Re-export it as MP4 (H.264) and try again.', 'unreadable');
-  if (Math.min(p.width, p.height) < 128) return bad('video', `That clip is too small (${p.width}×${p.height}); use one at least 128 px on its short side.`, 'too_small');
-  if (p.duration > 60) return bad('video', 'Extend takes clips up to 60 s.', 'too_long');
+  if (Math.min(p.width, p.height) < 128) return bad('video', clipShortSideText(p.width, p.height, 128), 'too_small');
+  if (p.duration > EXTEND_MAX_SEC) return bad('video', EXTEND_TOO_LONG_TEXT, 'too_long');
   // the cheap checks first (nothing written for a bad field)
   const pre = extendPlan({ width: p.width, height: p.height, frames: 999 }, { seconds: fields.extendSeconds, resolution: fields.resolution, guideFrames: fields.guideFrames, crossfade: fields.extendMethod === 'continue' ? undefined : fields.crossfade });
   if ('error' in pre) return bad(pre.field, pre.error, pre.field === 'extendSeconds' ? 'invalid_duration' : 'invalid');

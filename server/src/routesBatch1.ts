@@ -53,11 +53,17 @@ export async function examplePrefill(e: Example) {
   };
 }
 
+/** A clip's width, height and length (ffprobe), so the picker and the Canvas card's pre-flight can flag a clip the run would refuse; nulls for other files. */
+async function clipDims(type: string, file: string): Promise<{ width: number | null; height: number | null; duration: number | null }> {
+  const p = type === 'video' ? await probe(file) : null;
+  return { width: p?.width ?? null, height: p?.height ?? null, duration: p?.duration ? Math.round(p.duration * 100) / 100 : null };
+}
+
 export function registerBatch1(app: FastifyInstance) {
   // ---- Media picker ----
   app.get<{ Querystring: MediaQuery & { source?: string; kind?: string } }>('/api/media', async (req) => { const q = req.query; return listMedia({ ...q, tab: q.tab ?? (q.source === 'presets' ? 'presets' : q.source), type: q.type ?? q.kind, sort: ({ new: 'newest', old: 'oldest' } as Record<string, string>)[q.sort ?? ''] ?? q.sort }); }); // sort=new|old|name (aliases of newest|oldest) // page 16: ?source=presets&kind=video|image (picker Presets tab)
   /** "Upload media" tile: multipart `file` (image, video or audio) → listed under the Uploads tab.
-   * Quality checks (mediaCheck.ts): images unreadable / low_res (<128px short side) / all-black → 400; audio unreadable / too_short (<3 s) / silent → 400.
+   * Quality checks (mediaCheck.ts): images unreadable / low_res (<128px short side) / all-black → 400; audio unreadable / too_short (<3 s) / silent → 400. Videos come back with their width, height and duration (ffprobe) for the Canvas pre-flight.
    * Softer findings (low_res <512px, very dark/bright) come back as warnings[] on the item. Rejected files are deleted, nothing is listed. */
   app.post<{ Querystring: { projectId?: string } }>('/api/media', async (req, reply) => {
     const saved = [];
@@ -76,7 +82,7 @@ export function registerBatch1(app: FastifyInstance) {
       if ((part.file as any).truncated) { await unlink(tmp).catch(() => undefined); return reply.code(400).send({ error: 'File too large.', errorType: 'validation', code: 'file_too_large', issues: [{ code: 'file_too_large', field: part.fieldname, message: 'File too large.' }] }); }
       const hash = h.digest('hex'); const id = `upl-${hash.slice(0, 16)}`; const name = `${id}${ext === '.jpeg' ? '.jpg' : ext}`; const file = path.join(DATA_DIR, name);
       const prev = all<UploadRow>('uploads').find((u) => u.url === `/files/${name}`);
-      if (prev && existsSync(file)) { await unlink(tmp).catch(() => undefined); const again = { ...prev, createdAt: Date.now(), projectIds: tagged(prev.projectIds) }; /* same file, another project: it belongs to both */ recordUpload(again); saved.push({ ...again, width: null, height: null, duration: null, warnings: [], existing: true }); continue; }
+      if (prev && existsSync(file)) { await unlink(tmp).catch(() => undefined); const again = { ...prev, createdAt: Date.now(), projectIds: tagged(prev.projectIds) }; /* same file, another project: it belongs to both */ recordUpload(again); saved.push({ ...again, ...(await clipDims(type, file)), warnings: [], existing: true }); continue; }
       renameSync(tmp, file);
       const chk = type === 'image' ? await checkImage(file, part.fieldname) : type === 'audio' ? await checkAudio(file, part.fieldname) : null;
       if (chk && !chk.ok) {
@@ -86,7 +92,7 @@ export function registerBatch1(app: FastifyInstance) {
       }
       const row: UploadRow = { id, url: `/files/${name}`, name: (part.filename || name).slice(0, 120), type: type as 'image' | 'video' | 'audio', createdAt: Date.now(), projectIds: tagged([]) };
       recordUpload(row); rememberHash(name, hash, statSync(file).size);
-      saved.push({ ...row, width: chk?.width ?? null, height: chk?.height ?? null, duration: chk?.duration ?? null, warnings: chk?.issues ?? [] });
+      saved.push({ ...row, ...(type === 'video' ? await clipDims(type, file) : { width: chk?.width ?? null, height: chk?.height ?? null, duration: chk?.duration ?? null }), warnings: chk?.issues ?? [] });
     }
     if (!saved.length) return reply.code(400).send({ error: 'Attach a file.', errorType: 'validation' });
     return { items: saved };

@@ -17,6 +17,7 @@ import { imageMentions, validateMentions } from '../shared/mentions.js';
 import { priceOf, outputMegapixels, priceMode, promptBytesFor, DRAFT_FACTOR as DF } from '../shared/pricing.js';
 import { upscaleOutMegapixels } from '../shared/imageUpscale.js';
 import { routerRefImages } from '../routing/routerModels.js';
+import { clipTooShortText, clipTooFewPixelsText } from '../shared/clipLimits.js';
 
 /** RTX 5090 estimates from CLEANROOM-SPEC Builder Q&A #10 (community benchmarks), GPU seconds per source second. */
 // Wan 2.2 Animate: 15 s ≈ 4–6 min @480p, 10–15 min @720p. 1080p = our extrapolation ("slow / upscale pass").
@@ -63,8 +64,8 @@ export async function parseCommon(fields: Record<string, string>, files: Record<
     if (!p) bad('unreadable', 'video', "Couldn't read this video: the file looks damaged or empty. Re-export it as MP4 (H.264) and upload again."); // type already passed the upload gate
     else {
       const minSec = opts.minSec ?? (opts.soundOnly ? 1 : LIMITS.minSec);
-      if (p.duration < minSec) bad('too_short', 'video', `Clip is too short — minimum ${minSec} second${minSec === 1 ? '' : 's'}.`);
-      if (!opts.soundOnly && p.width * p.height < LIMITS.minPixels) bad('too_small', 'video', `Video too small: needs ≥ 409,600 px per frame (e.g. 854×480). Yours is ${p.width}×${p.height}.`);
+      if (p.duration < minSec) bad('too_short', 'video', clipTooShortText(minSec));
+      if (!opts.soundOnly && p.width * p.height < LIMITS.minPixels) bad('too_small', 'video', clipTooFewPixelsText(p.width, p.height));
     }
   }
   const refs = files.refs ?? files.image ?? [];
