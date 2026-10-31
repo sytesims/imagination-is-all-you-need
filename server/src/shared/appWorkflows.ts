@@ -78,6 +78,7 @@ const RECORDED: Record<string, Record<string, WorkflowSource>> = {
 // Official Comfy templates from comfy.org/workflows "Most popular" (2026-10-27, server tools/comfyFeatured.ts): run on Comfy Cloud from the template graphs.
 Object.assign((RECORDED['h3-video'] ??= {}), { 'cloud-gemini-omni': official('api_google_gemini_omni_flash_1_1_i2v', 'Gemini Omni 1.1 Flash: Image to Video (also text to video and start + end frame)') });
 Object.assign((RECORDED['h3-video'] ??= {}), { 'cloud-flux3-max': official('api_flux3_max_i2v', 'FLUX 3 Max: Image to Video (also FLUX 3 Max: Text to Video)') });
+Object.assign((RECORDED['h3-video'] ??= {}), { 'cloud-kling4': official('api_kling4_i2v', 'Kling 4.0: Image to Video (also Kling 4.0: Text to Video and Reference to Video)') });
 Object.assign((RECORDED['motion-transfer'] ??= {}), { 'cloud-wan-animate2': official('video_wan_animate2', 'Wan Animate 2: Motion Transfer', 'cloud-featured/wan-animate2-api.json') });
 Object.assign((RECORDED['two-person-swap'] ??= {}), { 'cloud-h3-two-swap': ours('cloud/h3-two-person-swap-api.json') }); // our own two-pass recipe on the H3 Character Swap LoRA
 Object.assign((RECORDED['prompt-edit'] ??= {}), { 'cloud-bernini-r': official('video_bernini_r_video_editing', 'Bernini-R: Video Editing', 'cloud/bernini-r-edit-api.json') });

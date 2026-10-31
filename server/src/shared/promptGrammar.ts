@@ -322,6 +322,13 @@ const VIDEO: PromptGrammar[] = [
     special: ['reasoning_level expands the prompt before generation (same price)', 'Write cuts explicitly: SHOT ONE, HARD CUT, SHOT TWO', 'Describe ambience, music and speech separately for layered audio'],
     structure: 'The shot (and any cuts), the camera, then the sound layers.', example: 'SHOT ONE: a red panda walks along a mossy log. HARD CUT. SHOT TWO: it looks up at falling leaves. Ambience: birdsong. No music.',
     code: [{ at: 'server/src/comfy/flux3MaxCloud.ts', follows: 'yes' }], sources: [TUT('partner-nodes/black-forest-labs/flux-3-max'), ROUTER('fal/flux-3-max'), NODE('Flux3MaxTextToVideoNode'), NODE('Flux3MaxImageToVideoNode')] }),
+  // Kling 4.0 (2026-10-31): the Kling4 partner nodes take @Image1… (frames in order, or the reference images) and turn them into Kling's @image_1.
+  g({ key: 'kling-4', name: 'Kling 4.0', medium: 'video', kind: 'video', status: 'known', prompt: 'required', limits: { maxChars: 26000, minChars: 1, src: [O('https://github.com/Comfy-Org/ComfyUI/pull/17364')] },
+    refs: { style: 'tag', image: '@Image{n}', base: 1, perKind: true, maxImages: 10, frames: { named: true, withRefs: false }, unnamed: 'Used; say each image\'s role.',
+      note: 'Image to video names the frames in order (@Image1 = start, @Image2 = end); reference to video names up to 10 images. The node checks every name has an input.', src: [O('https://github.com/Comfy-Org/ComfyUI/pull/17364')] }, negative: 'in-prompt',
+    special: ['Stereo sound in every clip: describe dialogue, ambience and music in the prompt', 'Timed shots in one prompt (0-1.5s: …, 1.5-3s: hard cut …)'],
+    structure: 'Shots with timings, subject and action, camera, then sound.', example: 'Two shots. 0-3s: @Image1 walks into the hall from @Image2, slow dolly in. 3-6s: hard cut, close-up, she smiles. Sound: footsteps, soft piano.',
+    code: [{ at: 'server/src/comfy/kling4Cloud.ts', follows: 'yes' }], sources: [O('https://github.com/Comfy-Org/ComfyUI/pull/17364')] }),
   noPrompt('seedvr2', 'SeedVR2', 'video', 'upscale', 'Video upscale: source clip only.', [{ at: 'server/src/comfy/plans.ts:238', follows: 'n/a' }], [REPO('workflows/upscale-api.json')]),
   noPrompt('seedvr2-3b-video', 'SeedVR2 3B', 'video', 'upscale', 'Video upscale (local, NVIDIA only): source clip only.', [{ at: 'server/src/tools/videoUpscaleModels.ts', follows: 'n/a' }], [REPO('workflows/upscale-seedvr2-native-api.json')]),
   noPrompt('real-esrgan-x2-video', 'Real-ESRGAN x2', 'video', 'upscale', 'Per-frame video upscale: source clip only.', [{ at: 'server/src/tools/videoUpscaleModels.ts', follows: 'n/a' }], [REPO('workflows/upscale-esrgan-api.json')]),

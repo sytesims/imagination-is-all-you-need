@@ -94,6 +94,7 @@ export const MODEL_LINKS: Record<string, ModelLinks> = {
   'flux-3-video': { announce: FLUX3, docs: 'https://docs.bfl.ml/flux_3/flux3_video', released: '2026-07' },
   'flux-3-upscaler': { announce: FLUX3, docs: 'https://docs.bfl.ai/flux_tools/flux_video_upscale' },
   seedvr2: { ...SEEDVR2, card: 'https://huggingface.co/ByteDance-Seed/SeedVR2-7B' },
+  'kling-4': { site: 'https://kling.ai/release-note/release-notes', docs: 'https://github.com/Comfy-Org/ComfyUI/pull/17364', released: '2026-10' /* Comfy v0.43.0 changelog, Oct 27, 2026; no dedicated Kling 4.0 page could be confirmed */ },
   'kling-v3': { site: 'https://kling.ai/release-note/release-notes', docs: 'https://kling.ai/document-api', released: '2026-02' },
   'luma-ray-2-reframe': { ...RAY32, docs: 'https://fal.ai/models/luma/agent/ray/v3.2/reframe/api' },
   'bria-video-background-removal': { site: 'https://bria.ai/video-background-removal', docs: 'https://fal.ai/models/bria/video/background-removal' },
