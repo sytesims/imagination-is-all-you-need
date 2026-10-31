@@ -73,8 +73,17 @@ await t('API-first order today: Create Image models by rank put every API model 
 });
 await t('task 12: every model NOT_ON_ROUTER is Coming soon (COMING_SOON), never Ready — keys or not', () => {
   for (const id of Object.keys(NOT_ON_ROUTER)) { assert.ok(COMING_SOON[id], `${id} not in COMING_SOON`); const r = routesFor(id)[0]; assert.ok(r.comingSoon, `${id}: native route not coming soon`); }
-  for (const [toolId, key] of [['create-image', 'hunyuan-image-3.5'], ['create-image', 'meta-muse-image'], ['voice', 'fish-audio-s2.1-pro'], ['voice', 'heygen-voice'], ['audio', 'sonilo-music']]) {
+  for (const [toolId, key] of [['create-image', 'hunyuan-image-3.5'], ['create-image', 'meta-muse-image'], ['voice', 'fish-audio-s2.1-pro'], ['audio', 'sonilo-music']] /* HeyGen Voice runs on Comfy Router since 2026-10-31 (heygen/starfish) */) {
     const m = R.modelsBlock(getTool(toolId)!, []).find((x: any) => x.key === key); assert.ok(m, `${toolId}/${key}`); assert.equal(m.state, 'coming-soon', `${toolId}/${key}: ${m.state}`); }
+});
+await t('2026-10-31: HeyGen Voice is no longer Coming soon; the four new Router video models are API rows with a catalogue entry', () => {
+  assert.equal(NOT_ON_ROUTER['api-heygen-tts'], undefined); assert.equal(COMING_SOON['api-heygen-tts'], undefined); assert.ok(!routesFor('api-heygen-tts')[0].comingSoon);
+  const hv = R.modelsBlock(getTool('voice')!, []).find((x: any) => x.key === 'heygen-voice'); assert.ok(hv, 'voice/heygen-voice'); assert.notEqual(hv.state, 'coming-soon', `heygen-voice: ${hv.state}`);
+  const vids = R.modelsBlock(getTool('h3-video')!, []);
+  for (const [key, variantOf] of [['veo-3.1-lite', 'veo-3.1'], ['wan-3.0-prime', 'wan-3.0'], ['p-video-2', undefined], ['grok-imagine-video-1.5-lite', undefined]] as const) {
+    const m = vids.find((x: any) => x.key === key); assert.ok(m, `h3-video/${key}`); assert.equal(m.home, 'api', `${key} home`); assert.ok(m.displayName && m.bestFor, `${key}: name + best-for`);
+    assert.notEqual(m.section, 'featured', `${key}: never featured on arrival`); assert.ok(!m.lifecycle, `${key}: no lifecycle`); if (variantOf) assert.equal(m.variantOf, variantOf, `${key} variantOf`); }
+  for (const key of ['veo-3.1', 'veo-3.1-fast']) { const m = vids.find((x: any) => x.key === key); assert.ok(m, key); assert.notEqual(m.lifecycle, 'retiring', `${key}: the released Router id is not retiring`); }
 });
 await t('task 5: models[] carry a section, sorted Featured → API → Local → Coming soon, rank inside; ≤ 5 featured; isNew from releasedAt', () => {
   for (const tool of listTools()) {

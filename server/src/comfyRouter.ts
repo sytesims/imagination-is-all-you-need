@@ -111,15 +111,20 @@ export function routerErrorFor(status: number, errorType: string | null, body = 
   return mk('cloud_unreachable', true);
 }
 
-export interface RouterEstimate { source: 'exact' | 'estimated' | 'unknown'; usd: number | null; minUsd: number | null; maxUsd: number | null; credits: number | null; reason?: string; pricingAsOf?: string }
+/** source: exact | estimated | free | unknown (docs.comfy.org/development/comfy-router/reference, RouterCostEstimate: "read any other value as unknown").
+ *  free = the rate card prices this request at zero: usd 0 and credits 0, never unknown (2026-10-31). */
+export interface RouterEstimate { source: 'exact' | 'estimated' | 'free' | 'unknown'; usd: number | null; minUsd: number | null; maxUsd: number | null; credits: number | null; reason?: string; pricingAsOf?: string }
 export interface RouterHandle { requestId: string; statusUrl: string; responseUrl: string; cancelUrl: string; estimate: RouterEstimate | null }
 export interface RouterResult { contentType: string; json: any | null; bytes: Buffer | null; creditsUsed: number | null; requestId: string | null; replayed: boolean }
 const num = (s: unknown) => { const n = typeof s === 'number' ? s : Number(s); return s != null && s !== '' && Number.isFinite(n) ? n : null; };
 export function parseEstimate(j: any): RouterEstimate {
-  const src = j?.source === 'exact' || j?.source === 'estimated' ? j.source : 'unknown';
+  const src = j?.source === 'exact' || j?.source === 'estimated' || j?.source === 'free' ? j.source : 'unknown';
+  if (src === 'free') return { source: 'free', usd: 0, minUsd: null, maxUsd: null, credits: 0, ...(j?.pricing_as_of ? { pricingAsOf: String(j.pricing_as_of) } : {}) }; // "$0": the amount reads "0"
   return { source: src, usd: src === 'exact' ? num(j.amount) : null, minUsd: src === 'estimated' ? num(j.min_amount) : null, maxUsd: src === 'estimated' ? num(j.max_amount) : null,
     credits: num(j?.credits), ...(src === 'unknown' ? { reason: String(j?.reason ?? 'not_quotable') } : {}), ...(j?.pricing_as_of ? { pricingAsOf: String(j.pricing_as_of) } : {}) };
 }
+/** The most this call can cost by its estimate (USD): exact / free amount, the estimated range's top, null when unknown. */
+export const estimateHigh = (e: RouterEstimate | null | undefined): number | null => (e?.source === 'exact' || e?.source === 'free' ? e.usd : e?.source === 'estimated' ? e.maxUsd : null);
 /** X-Comfy-Credits-Used → credits (a number), or null when absent / unreadable (absent = not reported, never free). */
 export const creditsUsed = (h: Headers) => num(h.get('x-comfy-credits-used'));
 const sleepDefault = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -196,7 +201,8 @@ export class ComfyRouter {
     const r = await this.call(h.statusUrl, { method: 'GET' }, 'status'); if (!r.ok) return this.fail(r, 'status');
     const j: any = await r.json(); const ra = num(r.headers.get('retry-after'));
     if (!['IN_QUEUE', 'IN_PROGRESS', 'COMPLETED'].includes(j?.status)) throw new RouterError('provider_error', ROUTER_MESSAGES.provider_error, r.status, null, true, `status: unknown ${j?.status}`);
-    return { status: j.status as 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED', errorType: (j.error_type as string | undefined) ?? null, queuePosition: num(j.queue_position), retryAfterMs: ra != null ? ra * 1000 : null };
+    return { status: j.status as 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED', errorType: (j.error_type as string | undefined) ?? null, queuePosition: num(j.queue_position), retryAfterMs: ra != null ? ra * 1000 : null,
+      creditsUsed: creditsUsed(r.headers) /* the status read carries X-Comfy-Credits-Used too (reference: RouterQueueStatusResponse headers) */ };
   }
   /** Ask to cancel (best effort, never throws). */
   async cancel(h: RouterHandle): Promise<boolean> { try { const r = await this.call(h.cancelUrl, { method: 'PUT' }, 'cancel'); return r.status === 202 || r.status === 409; } catch { return false; } }
@@ -216,7 +222,9 @@ export class ComfyRouter {
       const s = await this.busy(() => this.status(h), false); o.onStatus?.(s.status, s.queuePosition); // a busy status read (429) waits and reads again: the request keeps running
       if (s.status === 'COMPLETED') {
         if (s.errorType) throw await this.failedRequest(h, s.errorType);
-        const res = await this.busy(() => this.collect(h), false); if (res) return { ...res, handle: h };
+        // the charge: the collect response's X-Comfy-Credits-Used, else the COMPLETED status read's (Router may send it on either; 2026-10-31: P-Video-2 /
+        // HeyGen Starfish jobs recorded no cost when only the collect header was read)
+        const res = await this.busy(() => this.collect(h), false); if (res) return { ...res, creditsUsed: res.creditsUsed ?? s.creditsUsed, handle: h };
       }
       await this.sleep(Math.max(50, (s.retryAfterMs ?? o.defaultPollMs ?? 3000) * this.retryScale));
     }

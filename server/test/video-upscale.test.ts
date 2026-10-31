@@ -1,5 +1,5 @@
 // Video Upscale wiring (2026-10-26, shared/videoUpscale.ts + tools/videoUpscaleModels.ts).
-// Covers: the menu order; on an Apple Silicon profile the default is Real-ESRGAN x2 and SeedVR2's local route says why it can't run (CUDA only);
+// Covers: the menu order; on an Apple Silicon profile the default is Real-ESRGAN x2 and SeedVR2's local route runs, but slow (with the time);
 // on an NVIDIA profile the SeedVR2 local route is offered; fal SeedVR2 at 1080p sends target_resolution 1080p and costs $0.25 for 5 s at 1024×576;
 // the Topaz route graph (TopazVideoEnhanceV2) and its per-frame price; the FLUX Video Upscale and Crystal Router bodies; sizes per model (portrait,
 // a clip already at the target, Topaz 1080p / 4K only); the local graphs against ComfyUI's /object_info (fixture read from ComfyUI 0.42.5);
@@ -40,19 +40,19 @@ assert.equal(toolDefaults(t).defaultProvider, 'cloud-topaz-starlight-fast', 'Use
 P.savePrefs({ ...p0, global: { ...p0.global, useLocal: true } });
 assert.equal(toolDefaults(t).defaultProvider, 'comfy-video-esrgan', 'Apple Silicon, Use local on: default is Real-ESRGAN x2');
 assert.equal(toolDefaults(draft).defaultProvider, 'comfy-video-esrgan', 'Draft Upscale too');
-{ const o = opt('comfy-seedvr2', 'local:comfy-seedvr2'); assert.equal(o.available, false); assert.match(String(o.reason), /NVIDIA graphics card/); }
+{ const o: any = opt('comfy-seedvr2', 'local:comfy-seedvr2', { duration: 2 }); assert.equal(o.available, true, 'Apple Silicon: SeedVR2 local runs (hardware plan B5)'); assert.equal(o.fit?.verdict, 'slow'); assert.match(String(o.fit?.reason), /^Runs, but slow \(about \d+ (min|h) here\)/, 'the slow verdict names the time'); }
 assert.equal(opt('comfy-video-esrgan', 'local:comfy-video-esrgan').available, true);
 HW.setHardwareOverride('rtx4090'); assert.equal(toolDefaults(t).defaultProvider, 'comfy-video-esrgan', 'NVIDIA, Use local on: Real-ESRGAN x2 is still the quick default');
 assert.equal(opt('comfy-seedvr2', 'local:comfy-seedvr2').available, true, 'NVIDIA: SeedVR2 3B local is offered');
-assert.equal(M.seedvr2LocalBlock('cuda'), null); assert.match(String(M.seedvr2LocalBlock('mps')), /needs an NVIDIA graphics card/); assert.match(String(M.seedvr2LocalBlock(null)), /couldn’t check yours/);
+assert.equal(M.seedvr2LocalBlock('cuda'), null); assert.equal(M.seedvr2LocalBlock('mps'), null); assert.match(String(M.seedvr2LocalBlock('cpu')), /needs a graphics card/); assert.match(String(M.seedvr2LocalBlock(null)), /couldn’t check yours/);
 HW.setHardwareOverride('mac36'); { const R = await import('../src/routing/modelRegistry.ts'); const ms = R.modelsBlock(t, []); const s3 = ms.find((m: any) => m.key === 'seedvr2-3b-video');
-  const loc = s3.runsOn.find((r: any) => r.id === 'local'); assert.equal(loc.status, 'unavailable', 'Mac: SeedVR2 3B local is not a live place (the family row never says Free · Your computer)'); assert.equal(loc.reasonCode, 'unsupported_hardware'); assert.equal(loc.reason, 'Needs an NVIDIA graphics card');
+  const loc = s3.runsOn.find((r: any) => r.id === 'local'); assert.notEqual(loc.reasonCode, 'unsupported_hardware', 'Apple Silicon: SeedVR2 3B local is not refused for the hardware (it runs, slowly)'); assert.notEqual(loc.reason, 'Needs an NVIDIA graphics card');
   HW.setHardwareOverride('rtx4090'); assert.notEqual(R.modelsBlock(t, []).find((m: any) => m.key === 'seedvr2-3b-video').runsOn.find((r: any) => r.id === 'local').reasonCode, 'unsupported_hardware', 'NVIDIA: not refused for the hardware'); }
 { const { preflightProblems } = await import('../src/shared/preflight.ts');
   const q = { valid: false, errorType: 'validation', code: 'already_at_target', error: 'Your clip is already 1080p, so 1080p would not make it larger. Pick a bigger size.', credits: null, priceAvailable: false };
   const ps = preflightProblems({ quote: q, modelName: 'Real-ESRGAN x2' } as any); assert.deepEqual(ps.map((x: any) => x.code), ['model_cant_run'], 'a plain refusal, never "no verified price"'); }
 HW.setHardwareOverride(null); P.savePrefs(p0);
-ok('Apple Silicon: Real-ESRGAN x2 default, SeedVR2 local refused with a plain reason; NVIDIA: SeedVR2 local offered');
+ok('Apple Silicon: Real-ESRGAN x2 default, SeedVR2 local runs but slow (time named); no graphics card: refused; NVIDIA: SeedVR2 local offered');
 
 // ---- 3. fal SeedVR2: 1080p is asked for, priced at $0.25 for 5 s ----
 const clip = path.join(D, 'clip.mp4'); fs.writeFileSync(clip, Buffer.from('fake'));

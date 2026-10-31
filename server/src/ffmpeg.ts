@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { access } from 'node:fs/promises';
 
 /** Remux video from `videoPath` with audio from `audioSourcePath` (withSource=false → video only). Falls back to video only if no audio track. */
@@ -16,6 +16,10 @@ async function videoOnlyRemux(videoPath: string, outPath: string): Promise<void>
   if (videoOnly !== 0) throw new Error(`ffmpeg remux failed (exit ${videoOnly})`);
 }
 
+/** Can this computer's ffmpeg draw text (the drawtext filter, which needs libfreetype)? Many builds (Homebrew's default among them) can't,
+ *  so a tool's plain title-card poster can't be made there. Asked once, on first use. */
+let drawText: boolean | null = null;
+export const ffmpegDrawsText = (): boolean => (drawText ??= (() => { try { const r = spawnSync('ffmpeg', ['-hide_banner', '-filters'], { encoding: 'utf8', timeout: 5000 }); return r.status === 0 && /\sdrawtext\s/.test(r.stdout); } catch { return false; } })());
 export function runFfmpeg(args: string[]): Promise<number> {
   return new Promise((resolve) => {
     const child = spawn('ffmpeg', args, { stdio: ['ignore', 'ignore', 'pipe'] });

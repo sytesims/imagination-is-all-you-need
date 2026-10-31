@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 /** Batch 28: this computer's hardware, the local ComfyUI address, model downloads and learned timings (server HW endpoints). */
 export type Hardware = { source: 'none' | 'comfyui-system_stats' | 'host' | 'manual' | string; tier: 'none' | 'light' | 'most' | 'all' | 'unknown' | string; tierLabel?: string; note?: string;
-  effectiveVramGB?: number | null; gpu?: { name?: string; type?: string; vramTotalGB?: number | null; count?: number } | null; ram?: { totalGB?: number | null } | null;
-  disk?: { freeBytes?: number | null; totalBytes?: number | null } | null; comfy?: { reachable?: boolean | null; version?: string | null; cloud?: boolean; ggufNode?: boolean | null; kind?: string | null; label?: string | null; modelsDir?: string | null } | null;
-  /** machine class (server hardware/machineProfile.ts) */ profile?: { id: string; label: string; usableGB?: number | null; notes?: string[] } | null;
+  effectiveVramGB?: number | null; gpu?: { name?: string; type?: string; vramTotalGB?: number | null; count?: number } | null; ram?: { totalGB?: number | null; totalBytes?: number | null; freeBytes?: number | null } | null;
+  disk?: { path?: string | null; freeBytes?: number | null; totalBytes?: number | null } | null; comfy?: { reachable?: boolean | null; version?: string | null; pytorch?: string | null; cloud?: boolean; ggufNode?: boolean | null; kind?: string | null; label?: string | null; modelsDir?: string | null } | null;
+  /** machine class (server hardware/machineProfile.ts) */ profile?: { id: string; label: string; usableGB?: number | null; vramGB?: number | null; ramGB?: number | null; unifiedMemory?: boolean; notes?: string[] } | null;
   manual?: { vramGB?: number | null; ramGB?: number | null } | null; manualInUse?: boolean; refreshAfterSec?: number; checkedAt?: string; tierThresholdsGB?: Record<string, number> };
 export type DlFile = { file: string; folder?: string; bytes?: number | null; bytesTotal?: number | null; bytesDone?: number | null; status?: string };
 export type Download = { id: string; downloadId?: string | null; providerId?: string | null; variantId?: string | null; label?: string; status: string; files: DlFile[]; bytesDone?: number | null; totalBytes?: number | null; bytesTotal?: number | null; etaSeconds?: number | null; error?: string | null; /** 'hf_gated': Hugging Face refused a gated file; helpUrl = its model page */ errorCode?: string | null; helpUrl?: string | null };
@@ -18,6 +18,10 @@ const send = async <T,>(url: string, method: string, data?: unknown): Promise<{ 
   } catch { return { ok: false, status: 0, error: 'Couldn’t reach the server.' }; }
 };
 export const getHardware = () => send<Hardware>('/api/hardware', 'GET');
+/** "This computer" card: memory, graphics memory (a card only) and disk right now, and whether ComfyUI answers (server hardware.ts liveReading). */
+export type LiveHardware = { at: string; ram: { totalBytes: number; freeBytes: number; source: string }; vram: { totalBytes: number; freeBytes: number } | null;
+  disk: { path?: string | null; freeBytes: number | null; totalBytes: number | null }; comfy: { reachable: boolean | null; version: string | null; pytorch: string | null } };
+export const getLiveHardware = () => send<LiveHardware>('/api/hardware/live', 'GET');
 export const refreshHardware = () => send<Hardware>('/api/hardware/refresh', 'POST');
 export const setManualHardware = (vramGB: number, ramGB: number | null) => send<Hardware & { note?: string }>('/api/hardware', 'PUT', { vramGB, ramGB });
 export const clearManualHardware = () => send<Hardware>('/api/hardware/override', 'DELETE');

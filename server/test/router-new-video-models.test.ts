@@ -108,4 +108,73 @@ process.env.OPENHIGGSFIELD_PUBLIC_BASE_URL = '';
   assert.equal(cr('router-veo-fast', { duration: 8, resolution: '1080p', audio: true }), up(25.32 * 8), 'Veo Fast 1080p sound on');
   ok('limits and prices: refs at max, i2v without a photo, no audio alone on 2.0, Veo 1080p = 8 s, 30 s on 2.5 only; Router rates × seconds, Veo sound toggle');
 }
+
+// ---------------- 4. Comfy Router video models of 2026-10-31: Veo 3.1 Lite, Wan 3.0 Prime, Pruna P-Video-2, Grok Imagine Video 1.5 Lite ----------------
+// Sources: docs.comfy.org/development/comfy-router/models/{veo/veo-3-1-lite-generate-001,wan/wan3-0-video-prime,pruna/p-video-2,xai/grok-imagine-video-1-5-lite}/code
+// ("Schema → Input / Output") and …/comfy-router/pricing (fetched 2026-10-31). The body checks below follow those field lists (no cached schema needed).
+{
+  const hv = getTool('h3-video')!; const ms = toolModels(hv); const S = M.ROUTER_MODELS;
+  const NEW4: [string, string, string, string][] = [['router-veo-lite', 'veo-3.1-lite', 'Veo 3.1 Lite', 'veo/veo-3.1-lite-generate-001'], ['router-wan3-prime', 'wan-3.0-prime', 'Wan 3.0 Prime', 'wan/wan3.0-video-prime'],
+    ['router-pvideo2', 'p-video-2', 'P-Video-2', 'pruna/p-video-2'], ['router-grok-video-lite', 'grok-imagine-video-1.5-lite', 'Grok Imagine Video 1.5 Lite', 'xai/grok-imagine-video-1.5-lite']];
+  for (const [pid, key, name, rid] of NEW4) {
+    assert.ok(hv.providers.includes(pid), `${pid} on Generate Video`); const m = ms.find((x) => x.key === key)!; assert.ok(m, key); assert.equal(m.def.name, name); assert.deepEqual(m.parts.map((p) => p.engine), [pid]);
+    assert.equal(S[pid].id, rid); assert.equal(S[pid].out, 'video'); assert.equal(S[pid].queue, true); assert.match(S[pid].doc, /^https:\/\/docs\.comfy\.org\/development\/comfy-router\/models\/.+\/code$/);
+    const r = findRoute(`comfy-router:${pid}`)!; assert.ok(r, `${pid} route`); assert.equal(r.caps?.routerModel, rid); assert.ok(r.caps?.videoCaps, `${pid}: route videoCaps`);
+    assert.ok(VIDEO_LIMITS[pid].source.includes('docs.comfy.org/development/comfy-router/models/'), `${pid}: caps sourced`);
+  }
+  // caps = the schema (UI shows only valid controls)
+  assert.deepEqual(VIDEO_LIMITS['router-veo-lite'].resolutions, ['720p', '1080p'], 'Veo Lite: no 4K'); assert.deepEqual(VIDEO_LIMITS['router-veo-lite'].durations, [4, 6, 8]); assert.deepEqual(VIDEO_LIMITS['router-veo-lite'].aspects, ['auto', '16:9', '9:16']);
+  assert.equal(VIDEO_LIMITS['router-veo-lite'].audio.priceAffects, true);
+  assert.deepEqual(VIDEO_LIMITS['router-wan3-prime'].durations, VIDEO_LIMITS['router-wan3'].durations); assert.deepEqual(VIDEO_LIMITS['router-wan3-prime'].refKinds, { image: 10 });
+  assert.deepEqual(VIDEO_LIMITS['router-pvideo2'].resolutions, ['720p', '1080p']); assert.equal(VIDEO_LIMITS['router-pvideo2'].maxSeconds, 20); assert.equal(VIDEO_LIMITS['router-pvideo2'].audio.priceAffects, false);
+  assert.deepEqual(VIDEO_LIMITS['router-grok-video-lite'].resolutions.slice().sort(), ['1080p', '480p', '720p']); assert.equal(VIDEO_LIMITS['router-grok-video-lite'].maxSeconds, 15); assert.deepEqual(VIDEO_LIMITS['router-grok-video-lite'].audio, { supported: true, toggle: false, default: true, priceAffects: false, off: 'provider' }, 'Grok Lite: always with sound (a real run returned audio; no audio field in the schema)');
+  assert.ok(!('audio' in (await S['router-grok-video-lite'].body(job({ mode: 't2v' }), 0) as any)) && !('generate_audio' in (await S['router-grok-video-lite'].body(job({ mode: 't2v' }), 0) as any)), 'Grok Lite: no audio field sent (the schema has none)');
+  const modes = (hv as any).app?.providerModes ?? (hv as any).providerModes;
+  if (modes) { assert.deepEqual(modes['router-veo-lite'], ['t2v', 'i2v']); assert.deepEqual(modes['router-wan3-prime'], ['t2v', 'i2v', 'flf', 'r2v']); assert.deepEqual(modes['router-pvideo2'], ['t2v', 'i2v', 'flf']); assert.deepEqual(modes['router-grok-video-lite'], ['t2v', 'i2v']); }
+  // bodies
+  const vl: any = await S['router-veo-lite'].body(job({ mode: 't2v', duration: 6, resolution: '4K', audio: true }), 0);
+  assert.equal(vl.parameters.resolution, '720p', 'Veo Lite: 4K never sent'); assert.equal(vl.parameters.generateAudio, true); assert.equal(vl.instances[0].prompt, job({}).prompt);
+  const vl1080: any = await S['router-veo-lite'].body(job({ mode: 'i2v', imagePath: PNG, duration: 4, resolution: '1080p' }), 0); assert.equal(vl1080.parameters.durationSeconds, 8); assert.ok(vl1080.instances[0].image.bytesBase64Encoded);
+  const wp: any = await S['router-wan3-prime'].body(job({ mode: 'r2v', refPaths: Array(10).fill(PNG), resolution: '1080p', duration: 30 }), 0);
+  assert.equal(wp.input.media.length, 10); assert.equal(wp.parameters.resolution, '1080P'); assert.equal(wp.parameters.duration, 30); assert.equal(wp.parameters.ratio, '16:9');
+  assert.match(String(S['router-wan3-prime'].block!(job({ mode: 'r2v', refPaths: Array(11).fill(PNG) }))), /./, 'Wan Prime: 11 refs refused (body caps at 10)');
+  const pv: any = await S['router-pvideo2'].body(job({ mode: 't2v', duration: 30, resolution: '1080p', aspect: '4:3', audio: false }), 0);
+  assert.deepEqual(Object.keys(pv), ['input']); assert.equal(pv.input.duration, 20, 'P-Video-2: 20 s cap'); assert.equal(pv.input.resolution, '1080p'); assert.equal(pv.input.aspect_ratio, '4:3');
+  assert.equal(pv.input.draft, false); assert.equal(pv.input.save_audio, false); assert.equal(pv.input.fps, 24); assert.equal(pv.input.image, undefined);
+  process.env.OPENHIGGSFIELD_PUBLIC_BASE_URL = 'https://me.example.test/';
+  const pvf: any = await S['router-pvideo2'].body(job({ mode: 'flf', imagePath: PNG, lastFramePath: PNG, aspect: '1:1' }), 0);
+  assert.equal(pvf.input.image, 'https://me.example.test/files/ref.png', 'P-Video-2: the frame goes as a link (URI field)'); assert.equal(pvf.input.last_frame_image, 'https://me.example.test/files/ref.png'); assert.equal(pvf.input.aspect_ratio, undefined, 'aspect ignored with an image: not sent');
+  process.env.OPENHIGGSFIELD_PUBLIC_BASE_URL = '';
+  assert.match(String(S['router-pvideo2'].block!(job({ mode: 'r2v', refPaths: [PNG] }))), /no reference images/);
+  assert.match(String(S['router-pvideo2'].block!(job({ mode: 'r2v', refPaths: [], refAudioPaths: [A3], refAudioSecondsEach: [3] }))), /./, 'P-Video-2: reference audio not taken here');
+  const gk: any = await S['router-grok-video-lite'].body(job({ mode: 't2v', duration: 20, resolution: '480p', aspect: '9:16' }), 0);
+  assert.equal(gk.model, 'grok-imagine-video-1.5-lite'); assert.equal(gk.duration, 15, 'Grok Lite: 15 s cap'); assert.equal(gk.resolution, '480p'); assert.equal(gk.aspect_ratio, '9:16'); assert.equal(gk.image, undefined);
+  const gki: any = await S['router-grok-video-lite'].body(job({ mode: 'i2v', imagePath: PNG }), 0); assert.equal(gki.image.type, 'image_url'); assert.match(gki.image.url, /^data:image\/png;base64,/); assert.equal(gki.aspect_ratio, undefined);
+  assert.match(String(S['router-grok-video-lite'].block!(job({ mode: 't2v', prompt: 'x'.repeat(4097) }))), /4,096 characters; yours is 4,097/);
+  assert.equal(S['router-grok-video-lite'].block!(job({ mode: 't2v', prompt: 'x'.repeat(4096) })), null);
+  assert.match(String(S['router-grok-video-lite'].block!(job({ mode: 'flf', imagePath: PNG, lastFramePath: PNG }))), /text or a first frame/);
+  // outputs and refusals
+  assert.deepEqual(S['router-pvideo2'].outputs({ status: 'succeeded', generation_url: 'https://x.test/v.mp4' }), [{ url: 'https://x.test/v.mp4' }]);
+  assert.deepEqual(S['router-pvideo2'].outputs({ status: 'failed', error: 'nsfw' }), { refused: 'nsfw' });
+  assert.deepEqual(S['router-grok-video-lite'].outputs({ status: 'done', video: { url: 'https://x.test/g.mp4' } }), [{ url: 'https://x.test/g.mp4' }]);
+  assert.deepEqual(S['router-grok-video-lite'].outputs({ block_reason: 'moderation' }), { refused: 'moderation' });
+  assert.deepEqual(S['router-wan3-prime'].outputs({ output: { task_status: 'SUCCEEDED', video_url: 'https://x.test/w.mp4' } }), [{ url: 'https://x.test/w.mp4' }]);
+  // prices = the Router pricing page (credits per s × seconds, rounded up)
+  const rt = (id: string) => findRoute(`comfy-router:${id}`)!; const up = (cc: number) => Math.ceil(Math.round(cc / 211 * 1e5) / 1e3 - 1e-9);
+  const cr = (id: string, o: Record<string, any>) => routeCredits(hv, rt(id), job({ mode: 't2v', ...o }));
+  assert.equal(cr('router-veo-lite', { duration: 4, resolution: '720p', audio: false }), up(6.33 * 4), 'Veo Lite 720p no sound');
+  assert.equal(cr('router-veo-lite', { duration: 8, resolution: '720p', audio: true }), up(10.55 * 8), 'Veo Lite 720p sound');
+  assert.equal(cr('router-veo-lite', { duration: 8, resolution: '1080p', audio: false }), up(10.55 * 8)); assert.equal(cr('router-veo-lite', { duration: 8, resolution: '1080p', audio: true }), up(16.88 * 8));
+  // Wan 3.0 Prime (2026-10-31): the partner-node rates Router bills; the real 2 s 480p run was charged $0.1945 (41.04 credits), the quote must cover it
+  assert.equal(cr('router-wan3-prime', { duration: 2, resolution: '480p' }), up(20.52 * 2)); assert.ok(cr('router-wan3-prime', { duration: 2, resolution: '480p' }) / 100 >= 0.1945, 'Prime 2 s 480p quote ≥ the real charge');
+  assert.equal(cr('router-wan3-prime', { duration: 5, resolution: '480p' }), up(20.52 * 5)); assert.equal(cr('router-wan3-prime', { duration: 5, resolution: '720p' }), up(42.24 * 5)); assert.equal(cr('router-wan3-prime', { duration: 30, resolution: '1080p' }), up(84.48 * 30));
+  assert.equal(cr('router-wan3-prime', { duration: 2, resolution: '480p', audio: false }), cr('router-wan3-prime', { duration: 2, resolution: '480p', audio: true }), 'Wan Prime: no separate sound price is published');
+  assert.equal(cr('router-grok-video-lite', { duration: 2, resolution: '480p' }), 6, 'Grok Lite 2 s 480p = $0.0572 → 6 credits (the real charge was $0.0572)');
+  assert.equal(cr('router-wan3-prime', { mode: 'r2v', refPaths: Array(10).fill(PNG), duration: 5 }), cr('router-wan3-prime', { duration: 5 }), 'Wan Prime: references do not change the price');
+  assert.equal(cr('router-pvideo2', { duration: 5, resolution: '720p' }), up(7.5432 * 5)); assert.equal(cr('router-pvideo2', { duration: 20, resolution: '1080p' }), up(15.0865 * 20));
+  assert.equal(cr('router-pvideo2', { duration: 5, audio: false }), cr('router-pvideo2', { duration: 5, audio: true }), 'P-Video-2: sound does not change the price');
+  assert.equal(cr('router-grok-video-lite', { duration: 5, resolution: '480p' }), up(6.0346 * 5)); assert.equal(cr('router-grok-video-lite', { duration: 5, resolution: '720p' }), up(9.0519 * 5)); assert.equal(cr('router-grok-video-lite', { duration: 15, resolution: '1080p' }), up(42.2422 * 15));
+  assert.equal((resolveDuration('h3-video', 'router-veo-lite', 6, '1080p') as any).seconds, 8, 'Veo Lite 1080p: 8 s'); assert.equal((resolveDuration('h3-video', 'router-pvideo2', 25) as any).seconds, 20); assert.equal((resolveDuration('h3-video', 'router-grok-video-lite', 20) as any).seconds, 15);
+  ok('2026-10-31 models: Veo 3.1 Lite / Wan 3.0 Prime / P-Video-2 / Grok Imagine Video 1.5 Lite each one card; caps, bodies, refusals and Router prices match the docs');
+}
 fs.rmSync(D, { recursive: true, force: true });

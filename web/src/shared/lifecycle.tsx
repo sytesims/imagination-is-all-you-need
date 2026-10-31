@@ -11,6 +11,6 @@ export function LifecyclePill({ of, className = '' }: { of: any; className?: str
   return <em className={`lc-pill lc-${l} ${className}`.trim()} title={note} data-testid="lifecycle-pill">{LABEL[l]}{note && <span className="sr-only">: {note}</span>}</em>;
 }
 /** A model restored from a saved draft (localStorage) is used only when the tool still lists it and it isn't retiring; otherwise the tool's
- *  default wins (a removed model such as Reve, or Veo 3.1 while Google retires it). Picking a retiring model by hand or by ?model= still works. */
+ *  default wins (a removed model such as Reve, or a model marked retiring). Picking a retiring model by hand or by ?model= still works. */
 export const restorableProvider = (tool: { providers?: { id: string }[] } | null | undefined, id: unknown): id is string =>
   typeof id === 'string' && !!id && (tool?.providers ?? []).some(p => p.id === id && !isRetiringModel(p));

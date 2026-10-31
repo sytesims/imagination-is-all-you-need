@@ -38,7 +38,7 @@ const HIT_ORDER: AdPart[] = ['button', 'offer', 'logo', 'headline'];
 const STEPS = [0.1, 0.15, 0.2, 0.25, 0.33, 0.5, 0.67, 0.75, 1, 1.25, 1.5, 2]; const FIT_PAD = 24;
 
 export function AdEditor({ sizes, size, onSize, pic, art, text, preset, style, onStyle, edit, onEdit, showSafe, onShowSafe, platforms, editedSizes, onClose, panel }: {
-  sizes: AdSizeOption[]; size: AdSizeOption; onSize: (s: AdSizeOption) => void; pic: HTMLImageElement; art: AdArt; text: AdText; preset: AdPreset;
+  sizes: readonly AdSizeOption[]; size: AdSizeOption; onSize: (s: AdSizeOption) => void; pic: HTMLImageElement; art: AdArt; text: AdText; preset: AdPreset;
   /** the card's style, on every size */ style: AdStyle; onStyle: (s: AdStyle) => void;
   /** this size's edits */ edit: AdEdit | undefined; onEdit: (e: AdEdit | null) => void; showSafe: boolean; onShowSafe: (on: boolean) => void; platforms: AdPlatform[]; /** sizes with their own layout (a dot on the tab) */ editedSizes: string[]; onClose: () => void;
   /** the side panel (AdPanel.tsx) */ panel: (x: AdPanelCtx) => ReactNode;

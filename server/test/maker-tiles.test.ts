@@ -27,7 +27,7 @@ ok(`${LOGO.size} logos wired, every file present; ${GLYPH.size} makers on our ow
 
 /** Makers with no usable official mark (no Simple Icons icon and no square SVG on an official site): their initial. Keep this short. */
 const NO_LOGO_YET = new Set(['xai', 'stability', 'topaz', 'heygen', 'bria', 'tripo', 'microsoft', 'resemble', 'sonilo', 'meshy', 'rodin', 'meigen',
-  'real-esrgan', 'ultrasharp', 'phhofm', 'rife', 'depth-anything', 'birefnet', 'mmaudio', 'swivid', 'm-a-p', 'ace-step', 'openmoss', 'pixal3d']);
+  'real-esrgan', 'ultrasharp', 'phhofm', 'rife', 'depth-anything', 'birefnet', 'mmaudio', 'swivid', 'm-a-p', 'ace-step', 'openmoss', 'pixal3d', 'pruna' /* P-Video-2, 2026-10-31 */]);
 for (const k of NO_LOGO_YET) assert.ok(!LOGO.has(k), `${k} has a logo now: take it off NO_LOGO_YET`);
 const tileOf = (k: string) => (LOGO.has(k) ? 'logo' : GLYPH.has(k) ? 'glyph' : NO_LOGO_YET.has(k) ? 'initial' : null);
 

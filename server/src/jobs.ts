@@ -1,7 +1,7 @@
 export type Stage = string;
 export type Status = 'queued' | 'running' | 'done' | 'failed' | 'canceled' | 'blocked' | 'needs_decision';
 /** box / description: Image to layers only (the layer's [left, top, right, bottom] on the picture, and the model's own words for it). */
-export interface Output { label: string; url: string; box?: number[]; description?: string }
+export interface Output { label: string; url: string; box?: number[]; description?: string; /** a Canvas demo sample: "Sample · made with <the model that made it>" (shared/demoMedia.ts) */ madeWith?: string }
 export interface Job {
   id: string;
   toolId: string;

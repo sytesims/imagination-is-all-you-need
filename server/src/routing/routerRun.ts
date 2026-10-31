@@ -14,7 +14,7 @@ import { DATA_DIR } from '../config.js';
 import { probe } from '../media.js';
 import { runFfmpeg } from '../ffmpeg.js';
 import { keyValue } from './keys.js';
-import { ComfyRouter, RouterError, ROUTER_MESSAGES, routerBase, providerSaid, type RouterEstimate } from '../comfyRouter.js';
+import { ComfyRouter, RouterError, ROUTER_MESSAGES, routerBase, providerSaid, estimateHigh, type RouterEstimate } from '../comfyRouter.js';
 import { markRouteOff, clearRouteOff } from './routeOff.js';
 import { COMFY_CREDITS_PER_USD } from '../shared/hostedPrices.js';
 import { refundAttempt, creditsBackNote } from '../ledger.js';
@@ -88,7 +88,7 @@ export async function runRouter(job: Job, r: RouteDef, attempt: RouteAttempt, ti
       job.stage = 'submitted'; const { body } = await routeRequest(job, r, k); // routing/routeRequest.ts: the same rewrite (refInputFor), then spec.body
       const est = await c.estimate(rid, body).catch((e) => { if (e instanceof RouterError && !e.temporary) throw e; return null; }); // a key / credits / plan / body problem fails here, before anything runs
       if (est) estimates.push(est); // null = 403 not_enabled / 503: no estimate (never a failure by itself)
-      const hi = est?.source === 'exact' ? est.usd : est?.source === 'estimated' ? est.maxUsd : null;
+      const hi = estimateHigh(est); // free = $0, a known price (2026-10-31)
       const quoted = quotedAt(k);
       if (hi != null && quoted > 0 && hi > quoted + OVER_QUOTE_MARGIN_USD) throw new RouterError('price_changed', `${ROUTER_MESSAGES.price_changed.replace(/\.$/, '')} ($${hi.toFixed(4)} now, $${quoted.toFixed(4)} quoted).`, null, null, false, `estimate ${JSON.stringify(est)}`);
       if (hi == null && TOKEN_BILLED.has(spec.provider) && !QUOTE_HAS_ALLOWANCE.has(spec.provider)) throw new RouterError('price_changed', NO_ESTIMATE_MESSAGE((spec as any).name ?? spec.id), null, null, false, `no usable estimate (${est ? est.source : 'none'}) for a token-billed model without a quote allowance`);

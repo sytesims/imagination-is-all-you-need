@@ -9,7 +9,7 @@ import { PlaceList, livePlaces } from './ModelHoverCard';
 import { runPrice, priceDetail } from './billing';
 import { CloseIcon } from '../ui/Icons';
 import { PromptGrammarTip } from './PromptGrammarTip';
-import { linksOf, releasedText, type ModelLinks } from '../../../server/src/shared/modelLinks';
+import { linksOf, releasedText, aboutLink, moreLinksOf } from '../../../server/src/shared/modelLinks';
 import { THREE_D_MODELS } from '../../../server/src/shared/threeD';
 import './modelMenu.css';
 import './modelHoverCard.css';
@@ -27,14 +27,11 @@ import './modelInfoCard.css';
 export interface InfoTarget { key: string; title: string; maker?: string | null; makerName?: string | null; medium: string; to: string; m?: ToolModel; tool?: any; soon?: string | null; open?: boolean }
 
 const MEDIUM_WORD: Record<string, string> = { image: 'Image', video: 'Video', audio: 'Audio', '3d': '3D' };
-const LINK_ROWS: [keyof ModelLinks, string][] = [['announce', 'Announcement'], ['paper', 'Paper'], ['card', 'Model card'], ['site', 'Official page'], ['docs', 'Docs']];
-
-/** The maker's links for a model, deduped, with the tool's own doc page as the Docs fallback. */
-export function linksFor(key: string, m?: ToolModel, tool?: any): { label: string; href: string; kind: string }[] {
-  const l = { ...linksOf(key) }; if (!l.docs && m) { const p = modelPageOf(m, { tool }); if (p && !Object.values(l).includes(p)) l.docs = p; }
-  const seen = new Set<string>(); const out: { label: string; href: string; kind: string }[] = [];
-  for (const [k, label] of LINK_ROWS) { const href = l[k]; if (typeof href === 'string' && /^https:\/\//.test(href) && !seen.has(href)) { seen.add(href); out.push({ label, href, kind: k }); } }
-  return out;
+/** The maker's links for a model, in plain words: "About" (the maker's post or page, shared/modelLinks.ts aboutLink), then Paper,
+ *  Model files and API docs, with the tool's own doc page as the API docs fallback. Same helpers as the model menus. */
+export function linksFor(key: string, m?: ToolModel, tool?: any): { label: string; href: string }[] {
+  const about = aboutLink(key); const docs = m && !linksOf(key).docs ? modelPageOf(m, { tool }) : null;
+  return [...(about ? [{ label: 'About', href: about }] : []), ...moreLinksOf(key, docs)];
 }
 /** Licence name + link: the listing's licence, else the 3D model's own licence row. No URL (the tools listing leaves licence URLs to
  *  GET /api/licenses): the name links to the app's Models & licences page, where the text and terms are. */
@@ -70,7 +67,7 @@ export function ModelInfoBody({ t, own }: { t: InfoTarget; own: boolean }) {
         {lic && <div><dt>Licence</dt><dd>{lic.url ? <a href={lic.url} target="_blank" rel="noreferrer" data-testid="mic-licence">{lic.name} ↗</a> : <Link to="/licenses" data-testid="mic-licence" title="Licence text, terms and credit lines">{lic.name}</Link>}</dd></div>}
         {rel && <div><dt>Released</dt><dd data-testid="mic-released">{rel}</dd></div>}</dl>}
       <div className="mic-more"><span className="mic-lbl">Read more</span>
-        {links.length ? <div className="mc-links" data-testid="mic-links">{links.map(l => <a key={l.href} href={l.href} target="_blank" rel="noreferrer" data-kind={l.kind} title={l.href}>{l.label} ↗</a>)}</div>
+        {links.length ? <div className="mc-links" data-testid="mic-links">{links.map(l => <a key={l.href} href={l.href} target="_blank" rel="noreferrer">{l.label} ↗</a>)}</div>
           : <p className="mic-none" data-testid="mic-nolinks">{t.maker === 'openhiggsfield' ? 'Built into this app: nothing to link to.' : 'No official page we could confirm yet.'}</p>}</div>
       <Link to={t.to} className={`mc-cta${t.soon ? ' off' : ''}`} data-testid="mic-open" aria-disabled={t.soon ? true : undefined} onClick={t.soon ? (e: RMouseEvent) => e.preventDefault() : undefined}>
         {t.soon ? 'Not available yet' : `Open in ${medium}`}</Link>

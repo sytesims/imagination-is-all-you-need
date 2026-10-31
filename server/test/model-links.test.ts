@@ -10,6 +10,7 @@ const R = await import('../src/routing/modelRegistry.js');
 const { MAKERS, MODEL_MAKER, MODELS, makerOf } = await import('../src/shared/modelIds.js');
 const { THREE_D_MODELS } = await import('../src/shared/threeD.js');
 const { MODEL_LINKS, linksOf, releasedText } = await import('../src/shared/modelCatalog.js');
+const { aboutLink, moreLinksOf } = await import('../src/shared/modelLinks.js');
 const ok = (m: string) => console.log('ok ' + m);
 
 // 1. every catalog model has a maker mapping (registry table, every tool's models, the 3D list)
@@ -38,5 +39,22 @@ const linked = Object.keys(MODEL_LINKS).filter((k) => Object.keys(linksOf(k)).so
 assert.ok(linked.length >= 100, `at least 100 models have a link (${linked.length})`);
 assert.deepEqual(linksOf('local-turntable'), {}, 'our own in-browser tools have no links'); assert.deepEqual(linksOf(null), {});
 assert.equal(releasedText('2025-11'), 'Nov 2025'); assert.equal(releasedText('bad'), null);
+// 2026-10-31: the new Router models each have an About link on the maker's own site (never Comfy or fal)
+for (const k of ['veo-3.1-lite', 'wan-3.0-prime', 'p-video-2', 'grok-imagine-video-1.5-lite', 'heygen-voice']) { const l = linksOf(k); const urls = [l.announce, l.site].filter(Boolean) as string[];
+  assert.ok(urls.length || l.docs, `${k}: an About link`); for (const u of [...urls, l.docs].filter(Boolean) as string[]) assert.ok(!/comfy\.org|fal\.ai/.test(u), `${k}: maker link, not ${u}`); }
+assert.equal(linksOf('veo-3.1-lite').announce, 'https://blog.google/innovation-and-ai/technology/ai/veo-3-1-lite/'); assert.equal(linksOf('p-video-2').site, 'https://www.pruna.ai/p-video-2');
 ok(`${linked.length} models with links, ${urls} URLs, all https and well-formed; papers are arXiv, cards are Hugging Face`);
+// 3. the menus' one "About" link (2026-10-31): the maker's post, else its page, never Comfy docs or fal; the rest in plain words, no repeats
+const about = [...offered].filter((k) => aboutLink(k));
+for (const k of about) assert.doesNotMatch(aboutLink(k)!, /^https:\/\/(docs\.comfy\.org|fal\.ai)\//, `${k}: About is a page for people`);
+assert.ok(about.length >= 120, `most models have an About link (${about.length} of ${offered.size})`);
+assert.equal(aboutLink('nano-banana-pro'), linksOf('nano-banana-pro').announce, 'the announcement comes first');
+assert.equal(aboutLink('seedance-2.0'), linksOf('seedance-2.0').site, 'else the model page');
+assert.equal(aboutLink('cloud-tripo-31'), linksOf('cloud-tripo-31').site); assert.equal(aboutLink('local-turntable'), null);
+assert.equal(aboutLink('crystal-video-upscaler'), null, 'nothing we could confirm: no About link');
+assert.deepEqual(moreLinksOf('qwen-image').map((l) => l.label), ['Paper', 'Model files']);
+assert.deepEqual(moreLinksOf('gpt-image-1.5', 'https://x.test/page').map((l) => l.label), ['API docs'], 'own docs win over the fallback');
+assert.equal(moreLinksOf('local-turntable', 'https://x.test/page')[0].href, 'https://x.test/page', 'the fallback stands in for missing docs');
+for (const k of offered) { const m = moreLinksOf(k); assert.equal(new Set(m.map((l) => l.href)).size, m.length, `${k}: no repeats`); assert.ok(!m.some((l) => l.href === aboutLink(k)), `${k}: About not repeated`); }
+ok(`${about.length} of ${offered.size} models have an About link; Paper / Model files / API docs never repeat it`);
 fs.rmSync(D, { recursive: true, force: true });

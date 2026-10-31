@@ -35,14 +35,15 @@ export function classifyMachine(i: MachineInput): MachineProfile {
   const P = (p: Partial<MachineProfile> & Pick<MachineProfile, 'id' | 'label' | 'backend'>): MachineProfile => ({ gpuName: name, vramGB: vram, ramGB, usableGB: null, unifiedMemory: false, vramClass: null, weights: { fp8: 'no', nvfp4: 'no', gguf: true }, notes: [], ...p });
   if (!i.seen) return P({ id: 'unknown', label: "Hardware not read", backend: 'unknown', gpuName: null, vramGB: null, weights: { fp8: 'upcast', nvfp4: 'emulated', gguf: true }, notes: ["Couldn't read the hardware, so nothing is blocked."] });
   if (!g || g.type === 'cpu') return P({ id: 'cpu-only', label: 'No graphics card (processor only)', backend: 'cpu', gpuName: null, vramGB: 0, usableGB: 0, weights: { fp8: 'upcast', nvfp4: 'no', gguf: true }, notes: ['Only the small image tools run locally; the rest is best on Comfy Cloud.'] });
-  if (g.type === 'mps') { const chip = i.cpuModel && /Apple/i.test(i.cpuModel) ? i.cpuModel.trim() : 'Apple Silicon';
+  if (g.type === 'mps') { const chip = i.cpuModel && /Apple/i.test(i.cpuModel) ? i.cpuModel.trim() : name && /^Apple\s+M\d/i.test(name) ? name : 'Apple Silicon'; // the chip: the host's CPU name, else a device name that already is one
     return P({ id: 'apple-silicon', label: `${chip}${ramGB ? ` · ${Math.round(ramGB)} GB` : ''}`, backend: 'mps', gpuName: chip, vramGB: null, usableGB: ramGB != null ? r1(ramGB * 0.75) : null, unifiedMemory: true, weights: { fp8: 'no', nvfp4: 'no', gguf: true },
       notes: ['fp8, nvfp4 and w4a8 weights don’t load on Apple graphics (no float8 type); those models run on Comfy Cloud.'] }); }
   if (g.type === 'xpu') return P({ id: 'intel-xpu', label: `${name} (Intel)`, backend: 'xpu', usableGB: vram, vramClass: vram != null ? vramClassOf(vram) : null, weights: { fp8: 'upcast', nvfp4: 'no', gguf: true }, notes: ['Intel graphics: untested here, so nothing is blocked beyond memory.'] });
   if (g.type === 'rocm' || isAmd(name ?? '')) return P({ id: 'amd-rocm', label: `${name} (ROCm)`, backend: 'rocm', usableGB: vram, vramClass: vram != null ? vramClassOf(vram) : null, weights: { fp8: 'upcast', nvfp4: 'no', gguf: true },
     notes: ['AMD (ROCm): ComfyUI runs, but some custom nodes are CUDA-only.'] });
   const cap = capMajor(i.computeCap); const n = name ?? '';
-  if (isGb10(n) || (i.arch === 'arm64' && i.platform === 'linux' && cap === 12.1)) {
+  // DGX Spark: the GB10 name, or compute capability 12.1 (sm_121, GB10 only), or an NVIDIA GPU on ARM64 Linux that reports no memory of its own (unified)
+  if (isGb10(n) || cap === 12.1 || (i.arch === 'arm64' && i.platform === 'linux' && vram == null)) {
     // GB10: CPU and GPU share LPDDR5x; nvidia-smi shows no memory figure ([N/A]) and torch reports (about) all of system memory.
     const usable = vram ?? ramGB; return P({ id: 'dgx-spark', label: `NVIDIA DGX Spark (GB10${usable ? ` · ${Math.round(usable)} GB unified` : ''})`, backend: 'cuda', gpuName: n || 'NVIDIA GB10', vramGB: usable, usableGB: usable, unifiedMemory: true, vramClass: usable != null ? vramClassOf(usable) : null,
       weights: { fp8: 'native', nvfp4: 'native', gguf: true }, notes: ['Graphics memory is the system memory (unified), so big models fit, but generation is slower than on a desktop RTX card.', 'ARM64 Linux: some custom nodes have no aarch64 Python wheels (build them, or skip those nodes).'] }); }

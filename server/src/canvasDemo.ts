@@ -10,24 +10,28 @@
  * version they like: `from: ['@pick']` in a later phase is that card, so only the pick goes on (less is spent).
  */
 
-export interface DemoCard { key: string; name: string; workflow: string; prompt: string; col: number; row: number; from?: string[]; settings?: Record<string, string> }
+export interface DemoCard { key: string; name: string; workflow: string; prompt: string; col: number; row: number; from?: string[]; settings?: Record<string, string>; /** the demo media it shows on the sample server (shared/demoMedia.ts) */ ref?: string }
 export interface DemoPhase { frame: string; say: string; cards: DemoCard[]; note: string; done: string; /** after the run: ask the user to pick one of these cards */ pick?: string }
 export interface DemoPlan { id: string; title: string; /** the sticky note the agent starts with: the idea in a few words */ idea: string; intro: string; steps: string[]; phases: DemoPhase[]; outro: string }
 
-/** The dock's starter chips. `prompt` is what the chip sends; the user can also type anything. */
+/** The dock's starter chips. `prompt` is what the chip sends; the user can also type anything. A chip's own board (chipPlan) shows the
+ *  maintainer's real runs on the sample server (shared/demoMedia.ts); typed words get the general plans below. Same list: web agentDockModel.ts. */
 export const DEMO_STARTERS = [
-  { id: 'short', label: 'Short film from idea', prompt: 'A short film: on the night the town turns off the last harbor lamp, a girl sets a paper boat on the water, and every dark window answers.' },
+  { id: 'short', label: 'Short film from idea', prompt: 'A girl chalks a whale on a stormy harbour rooftop, and the sea answers by lighting the city.' },
   { id: 'film', label: 'Make a 30s film', prompt: 'Make a 30s film: a lighthouse keeper finds a glowing bottle on the shore at dawn.' },
-  { id: 'product', label: 'Product shots', prompt: 'Product shots for a matte orange water bottle: hero, lifestyle, detail and flat lay.' },
-  { id: 'storyboard', label: 'Storyboard from a script', prompt: 'Storyboard from a script:\nINT. NIGHT MARKET – A girl buys a paper lantern. It lifts her off the ground. She floats over the stalls, laughing, and lands on a rooftop where an old man is waiting with tea.' },
-  { id: 'mood', label: 'Mood board', prompt: 'A mood board for a desert sci-fi short: palette, wardrobe, set and light.' },
+  { id: 'product', label: 'Product ad', prompt: 'A 15 second ad for a blue glass perfume: four moody shots on black sand at night.' },
+  { id: 'animate', label: 'Make a clip longer', prompt: 'A boy cups a paper lantern in a rainy alley and it becomes a glowing koi. Then keep the shot going as the koi swims up to the moon.' },
+  { id: 'takes', label: 'One picture, three takes', prompt: 'A glass whale over the desert: one picture, then three video takes from it with different models.' },
+  { id: 'free', label: 'Explore an idea', prompt: 'A woman in a red coat walking down a city street, in three looks.' },
 ] as const;
+/** The chip itself (its id and its own words, unedited): only then does the board show the chip's real runs. */
+export const isChip = (starter: string | null | undefined, prompt: string) => !!starter && DEMO_STARTERS.some((s) => s.id === starter && clean(s.prompt) === clean(prompt));
 export type DemoStarterId = (typeof DEMO_STARTERS)[number]['id'];
 
 const clean = (s: string) => s.replace(/\s+/g, ' ').trim();
 /** What the user asked for, without the starter's lead-in ("Make a 30s film: …" → "…"). */
 function subjectOf(prompt: string, fallback: string): string {
-  const s = clean(prompt.replace(/^(make|create|build|do)?\s*(a|an|the)?\s*(30\s*s(ec(ond)?s?)?|thirty[- ]second)?\s*(film|movie|short|trailer|product shots?|storyboard( from a script)?|mood ?board)\s*(for|of|about)?\s*[:,-]?\s*/i, ''));
+  const s = clean(prompt.replace(/^(make|create|build|do)?\s*(a|an|the)?\s*(30\s*s(ec(ond)?s?)?|thirty[- ]second)?\s*(film|movie|short|trailer|product shots?)\s*(for|of|about)?\s*[:,-]?\s*/i, ''));
   /* "a water bottle: hero, lifestyle, detail" → the subject is before the colon; the list after it is the plan's own job */
   const c = s.indexOf(':'); const subject = c > 0 && s.slice(c + 1).includes(',') ? s.slice(0, c) : s;
   return (subject.trim() || fallback).replace(/[.\s]+$/, '').slice(0, 220);
@@ -37,20 +41,11 @@ export function detectStarter(prompt: string, starter?: string | null): DemoStar
   if (starter && DEMO_STARTERS.some((s) => s.id === starter)) return starter as DemoStarterId;
   const p = prompt.toLowerCase();
   if (/\bshort film\b|\bfilm from (an |my )?idea\b|\bfrom (an|my) idea\b/.test(p)) return 'short'; /* the flagship (shortFilmPlan) */
-  if (/\bstoryboard\b|\bscript\b|\bint\.|\bext\./.test(p)) return 'storyboard'; /* whole words: "description" is not a script */
+  if (/\bextend\b|make (it|the clip|a clip) longer|keep the shot going/.test(p)) return 'animate';
   if (/\bfilm\b|movie|trailer|\bshort\b|\bscene/.test(p)) return 'film';
   if (/product|packshot|bottle|sneaker|e-?commerce/.test(p)) return 'product';
-  if (/mood ?board|palette|look ?book/.test(p)) return 'mood';
   return 'free';
 }
-/** Script → panels: one per sentence (at most six), so the storyboard follows the beats the user wrote. */
-function beatsOf(script: string): string[] {
-  const body = script.replace(/^storyboard( from a script)?\s*:?/i, '').replace(/^(INT|EXT)\.[^–-]*[–-]\s*/m, '');
-  const scene = (script.match(/(INT|EXT)\.\s*([^–\n-]+)/) ?? [])[2]?.trim();
-  const out = clean(body).split(/(?<=[.!?])\s+/).map((x) => x.replace(/[.!?]+$/, '').trim()).filter((x) => x.length > 3).slice(0, 6);
-  return (out.length ? out : ['The hero arrives', 'Something unexpected happens', 'The hero reacts', 'The ending']).map((b) => (scene ? `${b}, ${scene.toLowerCase()}` : b));
-}
-
 const FILM_SHOTS = [
   ['Wide establishing shot', 'wide establishing shot, misty coastline at dawn, cinematic, anamorphic'],
   ['Hero close-up', 'close-up of the main character, soft rim light, shallow depth of field'],
@@ -65,6 +60,7 @@ const short = (s: string, n = 60) => (s.length > n ? `${s.slice(0, n - 1).trimEn
 const ideaOf = (s: string) => { const t = short(s, 90); return t.charAt(0).toUpperCase() + t.slice(1); };
 
 export function demoPlan(prompt: string, starter?: string | null): DemoPlan {
+  const chip = isChip(starter, prompt) ? chipPlan(starter!) : null; if (chip) return chip;
   const kind = detectStarter(prompt, starter);
   if (kind === 'film' || kind === 'short') { /* 'short' plays shortFilmPlan (canvasAgent.runShortFilm); this is its classic fallback */
     const subject = subjectOf(prompt, 'a lighthouse keeper finds a glowing bottle on the shore at dawn');
@@ -90,24 +86,9 @@ export function demoPlan(prompt: string, starter?: string | null): DemoPlan {
       ],
       outro: 'The product set is on the board. Open any shot in Create Image to tweak it.' };
   }
-  if (kind === 'storyboard') {
-    const beats = beatsOf(prompt);
-    return { id: 'storyboard', title: 'Storyboard', idea: ideaOf(beats[0] ?? 'Storyboard'), steps: [`${beats.length} panels, one per beat`, 'Pick the key moment', 'Animate it'],
-      intro: `I read ${beats.length} beats in your script. One panel per beat, in a consistent hand-drawn storyboard style. Then you pick the moment to animate.`,
-      phases: [
-        { frame: 'Storyboard', say: 'Drawing the panels in story order.', cards: beats.map((b, i) => ({ key: `s${i}`, name: `Panel ${i + 1}`, workflow: 'create', prompt: `${b}. Pencil and grey marker storyboard sketch, cinematic framing, consistent characters`, col: i % 3, row: Math.floor(i / 3) })), note: `${beats.length} storyboard panels`, done: 'The panels are in order on the board.', pick: 'Pick the moment to animate. Click its panel on the board.' },
-        { frame: 'Animatic', say: 'Animating your pick as a 6 second animatic.', cards: [{ key: 'a', name: 'Animatic', workflow: 'video', prompt: 'Animatic: {pick}. Gentle camera move, storyboard style, 6 seconds', col: 3, row: 0, from: ['@pick'] }], note: 'An animatic of your pick', done: 'The animatic is ready.' },
-      ],
-      outro: 'Your storyboard is laid out left to right, top to bottom. Use it as the shot list for a film.' };
-  }
-  if (kind === 'mood') {
-    const subject = subjectOf(prompt, 'a desert sci-fi short');
-    const tiles = [['Palette', 'colour palette swatch board, dusty ochre, teal shadows, sun-bleached whites'], ['Wardrobe', 'wardrobe study, layered linen, worn leather, utilitarian gear'],
-      ['Set', 'set design, half-buried brutalist structures in dunes, haze'], ['Light', 'lighting reference, low sun, long shadows, heat shimmer'], ['Props', 'prop sheet, weathered tech, hand-made tools'], ['Hero frame', 'hero still, lone figure crossing the dunes at golden hour, epic scale']];
-    return { id: 'mood', title: 'Mood board', idea: ideaOf(subject), steps: ['Six mood tiles and a sound bed', 'Ready to share'],
-      intro: `A mood board for ${subject}: palette, wardrobe, set, light, props and a hero frame, plus a sound bed to set the tone.`,
-      phases: [{ frame: 'Mood board', say: 'Filling the board.', cards: [...tiles.map(([name, look], i) => ({ key: `t${i}`, name, workflow: 'create', prompt: `${subject}, ${look}`, col: i % 3, row: Math.floor(i / 3) })), { key: 'snd', name: 'Sound bed', workflow: 'music', prompt: `Ambient sound bed for ${subject}: wind, low synth drones, distant metal`, col: 3, row: 0, settings: MUSIC_30S }], note: 'Six tiles and a sound bed', done: 'The mood board is complete.' }],
-      outro: 'The mood board is ready. Keep the tiles that fit and Re-roll the rest.' };
+  if (kind === 'animate') {
+    const subject = subjectOf(prompt, 'a paper lantern becomes a glowing koi in a rainy alley');
+    return animatePlan(subject, `${subject}, slow cinematic camera move, 10 seconds`, 'Keep the shot going: the same action at the same pace, same camera');
   }
   const subject = subjectOf(prompt, 'something beautiful');
   return { id: 'free', title: 'Explore an idea', idea: ideaOf(subject), steps: ['Three versions of the idea', 'Pick one', 'A short clip from your pick'],
@@ -117,6 +98,70 @@ export function demoPlan(prompt: string, starter?: string | null): DemoPlan {
       { frame: 'Clip', say: 'A 6 second clip from your pick.', cards: [{ key: 'v', name: 'Clip', workflow: 'video', prompt: `${subject}, slow cinematic camera move, 6 seconds`, col: 0, row: 1, from: ['@pick'] }], note: 'A clip from your pick', done: 'The clip is done.' },
     ],
     outro: 'That’s a first pass. Tell me what to change, or open any card in its workflow.' };
+}
+
+/** Make a clip longer: a clip, then Extend on it (two steps, each waits for Go). */
+function animatePlan(idea: string, clipPrompt: string, extendPrompt: string, refs?: { clip: string; extend: string }): DemoPlan {
+  return { id: 'animate', title: 'Make a clip longer', idea: ideaOf(idea), steps: ['A 10 s clip', '10 s more with Extend'],
+    intro: 'Two steps: a 10 second clip from your words, then Extend keeps the same shot going for 10 seconds more. Each run waits for your Go.',
+    phases: [
+      { frame: 'The clip', say: 'First the clip.', cards: [{ key: 'v', name: 'The clip', workflow: 'video', prompt: clipPrompt, col: 0, row: 0, settings: { duration: '10' }, ref: refs?.clip }], note: 'A 10 second clip', done: 'The clip is in.' },
+      { frame: 'Extend', say: 'Now Extend picks up from the last frame of that clip.', cards: [{ key: 'e', name: '10 s more', workflow: 'extend', prompt: extendPrompt, col: 1, row: 0, from: ['v'], ref: refs?.extend }], note: 'Extend the clip by 10 seconds', done: 'Extended: one 20 second take.' },
+    ],
+    outro: 'One take, twice as long. Extend it again from the new card, or open it in Video.' };
+}
+
+// ---------------------------------------------------------------- the chips' own boards (2026-10-31)
+/* A chip shows what really happened in the maintainer's runs, card by card (shared/demoMedia.ts): each card is the step that made its media,
+   wired from the inputs that run really had, with a plain prompt that matches it. On the sample server every card plays that media; with a
+   key or a GPU the same cards run for real. 'short' is the flagship flow (shortFilmPlan + CHALK_WHALE). */
+const R = (recipe: string) => (key: string) => `${recipe}:${key}`;
+export function chipPlan(starter: string): DemoPlan | null {
+  if (starter === 'film') { /* a real run of the 30s film recipe: shots 3–5 were never animated, so only shots 1–2 have clips */
+    const plan = demoPlan(DEMO_STARTERS[1].prompt, null); const r = R('film');
+    plan.phases[0].cards.forEach((c) => { c.ref = r(c.key); });
+    const p2 = plan.phases[1]; p2.cards = p2.cards.filter((c) => c.key === 'c0' || c.key === 'c1' || c.key === 'm').map((c) => ({ ...c, ref: r(c.key), ...(c.key === 'm' ? { col: 2 } : {}) }));
+    p2.say = 'Now the clips for the first two shots, each from its key frame, plus a music bed.'; p2.note = 'Two clips and the music'; p2.done = 'The two clips and the music are on the board.';
+    plan.steps = ['Key frames for five shots', 'Clips for shots 1 and 2, and a music bed', 'Ready to cut'];
+    plan.outro = 'Your 30 second film is laid out shot by shot. Shots 3 to 5 are key frames only in this demo: add a Create Video card from any of them.';
+    return plan;
+  }
+  if (starter === 'product') { const r = R('product');
+    return { id: 'product', title: 'Product ad', idea: 'A blue glass perfume, a 15 s ad', steps: ['One prompt, shot by shot', 'One 15 s ad with sound'],
+      intro: 'One prompt, one run: a 15 second ad in four shots, with sound. It waits for your Go.',
+      phases: [{ frame: 'The ad', say: 'Writing the ad as one prompt, shot by shot.', cards: [{ key: 'ad', name: '15 s ad', workflow: 'video', col: 0, row: 0, settings: { duration: '15' }, ref: r('ad'),
+        prompt: 'Luxury fragrance ad, 15 seconds, four shots: a faceted glass perfume bottle on wet black sand at night, blue light blooming inside the glass, moody teal and black, slow elegant motion.' }],
+        note: 'One 15 second ad', done: 'The ad is ready.' }],
+      outro: 'The ad is on the board. Re-roll it, or open it in Video to change a shot.' };
+  }
+  if (starter === 'animate') { const r = R('animate');
+    return animatePlan('A paper lantern becomes a glowing koi',
+      'Night, a narrow rainy stone alley: a boy in a navy raincoat cups a glowing paper lantern, and it slowly unfolds into a glowing koi that rises into the rain. 10 seconds.',
+      'Keep the shot going: the koi circles once above the rooftops, then swims up toward the moonlit clouds.', { clip: r('clip'), extend: r('extend') });
+  }
+  if (starter === 'takes') { const r = R('takes'); /* one picture, then three image-to-video takes from that exact picture (two models) */
+    const picture = 'A massive translucent glass whale floats above red desert dunes at golden hour, rainbow light refracting onto the sand, a lone camel rider below for scale, cinematic photograph.';
+    const takes: [string, string, string, string][] = [
+      ['glide', 'LTX-2.5 Pro · 6 s', '6', 'The whale glides slowly overhead, its tail sweeping once; rainbow light ripples across the dunes and over the rider; the camera tilts up slowly. With sound.'],
+      ['dive', 'LTX-2.5 Pro · 7 s', '10', 'The whale zooms past the rider, its tail sweeping, a sand storm brewing near the rider; rainbow light ripples across the dunes.'],
+      ['dunes', 'LTX-2.5 22B · 5 s', '5', 'The glass whale glides low over the camel rider, then dives nose-first into the dunes; golden sand bursts up in a glowing wave.']];
+    return { id: 'takes', title: 'One picture, three takes', idea: 'A glass whale over the desert', steps: ['One picture', 'Three video takes from it, two models'],
+      intro: 'One picture, then three video takes that all start from it, on two video models, so you can compare them side by side. Each step waits for your Go.',
+      phases: [
+        { frame: 'The picture', say: 'First the picture: every take starts from it.', cards: [{ key: 'picture', name: 'The picture', workflow: 'create', prompt: picture, col: 0, row: 0, ref: r('picture') }], note: 'One picture', done: 'The picture is in.' },
+        { frame: 'Three takes', say: 'Now three takes from that picture: two on LTX-2.5 Pro, one on LTX-2.5 22B.', cards: takes.map(([k, name, duration, prompt], i): DemoCard => ({ key: k, name, workflow: 'video', prompt, col: i, row: 1, from: ['picture'], settings: { duration }, ref: r(k) })),
+          note: 'Three takes from the picture', done: 'Three takes from one picture, side by side.' },
+      ],
+      outro: 'Same picture, three takes. Keep the one you like, or Re-roll any take on another model.' };
+  }
+  if (starter === 'free') { const r = R('free'); const base = 'a woman in a red coat walking down a city street, medium shot.';
+    const looks: [string, string][] = [['Golden hour', 'golden hour, low warm sun, long shadows, rim light, soft haze'], ['Watercolour', 'loose watercolour painting, paper texture'], ['Anime', 'cel-shaded anime illustration, clean line art']];
+    return { id: 'free', title: 'Explore an idea', idea: 'A woman in a red coat on a city street', steps: ['One prompt', 'Three looks of it'],
+      intro: 'Let’s explore one idea in three looks: the same prompt, a different look added each time. It waits for your Go.',
+      phases: [{ frame: 'Three looks', say: 'Three looks, one prompt.', cards: looks.map(([name, look], i) => ({ key: `i${i}`, name, workflow: 'create', prompt: `${base} ${look}`, col: i, row: 0, ref: r(`i${i}`) })), note: 'Three looks', done: 'Three looks are on the board.' }],
+      outro: 'Three looks, one idea. Open any card in Create Image, or add a Create Video card from your favourite.' };
+  }
+  return null;
 }
 
 /** Grid → page point (centre of a card). Cards are 340 × 430; frames get `pad` around their cards, and the gap between rows leaves room
@@ -168,7 +213,40 @@ const BEAT_SHAPES: [string, string][] = [
 /** The look line every picture shares (one film, one look). */
 export const SHORT_LOOK = 'cinematic still, soft 35 mm grain, natural light, consistent colour palette, no text in frame';
 export interface ShortBeat { name: string; line: string; text: string }
-export interface ShortPlan { id: 'short'; title: string; idea: string; subject: string; intro: string; beats: ShortBeat[]; cast: DemoCard[]; outro: string; videoOff: string }
+export interface ShortPlan { id: 'short'; title: string; idea: string; subject: string; intro: string; beats: ShortBeat[]; cast: DemoCard[]; outro: string; videoOff: string; /** the chip's real runs (CHALK_WHALE) */ demo?: ShortDemo }
+/** A short film's real runs (the chip): per shot its key frame prompt and inputs, the clips that were really made and what each one started
+ *  (and ended) on, the voice line. Keys: cast keys, k0…, c0… (refs short:<key> in shared/demoMedia.ts). A shot keeps its demo wiring only while
+ *  its beat note reads as written here; an edited beat is yours, and its cards get the general prompts and plain samples. */
+export interface ShortDemo { keys: { prompt: string; from: string[] }[]; clips: { key: string; col: number; name: string; from: string[]; prompt: string }[]; voice: string; music: string }
+const WHALE = 'a colossal humpback whale with dark slate skin, barnacle scars and long white fins (the whale from the sheet)';
+const STORM = 'a dense harbour city at night in a heavy storm, wet glass towers, rain, lightning';
+export const CHALK_WHALE: { beats: [string, string][]; cast: DemoCard[]; demo: ShortDemo } = {
+  beats: [['Opening', 'the city goes dark in the storm'], ['The hero', 'a girl chalks a whale on a rooftop'], ['The spark', 'the whale bursts out of the harbour'],
+    ['The turn', 'a wave floods the avenue'], ['The big moment', 'the whale meets the girl at the roof’s edge'], ['Final image', 'every window in the city lights up']],
+  cast: [
+    { key: 'place', name: 'The harbour', workflow: 'create', col: 0, row: 0, ref: 'short:place', prompt: `Wide establishing shot of ${STORM}, seen from the water: two tall glass towers with black, choppy harbour water between them. Live-action film still` },
+    { key: 'whale', name: 'The whale', workflow: 'create', col: 1, row: 0, ref: 'short:whale', prompt: 'Creature reference sheet: a colossal humpback whale, dark slate skin with pale barnacle scars, long white pectoral fins, a scarred left eye. Five views on one sheet, photorealistic' },
+  ],
+  demo: {
+    keys: [
+      { prompt: `Very wide aerial shot of ${STORM}: most windows dark after a power cut, black harbour water below. Live-action film still`, from: [] },
+      { prompt: `High wide shot on a flat rooftop of ${STORM}: a girl in a yellow raincoat kneels, finishing a huge white chalk drawing of a whale. Live-action film still`, from: [] },
+      { prompt: `The same shot as the harbour picture, but now ${WHALE} bursts straight up out of the water between the towers. Live-action film still`, from: ['place', 'whale'] },
+      { prompt: `Low street-level shot down a long empty avenue of ${STORM}, the harbour far ahead. Live-action film still`, from: [] },
+      { prompt: `The same rooftop and girl, now close over her shoulder at the roof’s edge: right beside her, the head of ${WHALE} rises out of the dark water. Live-action film still`, from: ['k1', 'whale'] },
+      { prompt: 'The exact same aerial shot as the reference, but now every window in every tower is lit, warm gold, the harbour reflecting the light. Live-action film still', from: ['k0'] },
+    ],
+    clips: [
+      { key: 'c0', col: 0, name: 'Shot 1 · clip', from: ['k0', 'k5'], prompt: 'From the dark city to the lit one: a deep whale song rolls across the harbour and the lights come on window by window, tower by tower. 5 seconds' },
+      { key: 'c1', col: 1, name: 'Shot 2 · clip', from: ['k1'], prompt: 'The girl finishes the chalk whale and sits back; thunder cracks and the puddles shiver as something huge moves below. 5 seconds' },
+      { key: 'c2', col: 2, name: 'The harbour · clip', from: ['place', 'k2'], prompt: 'From the harbour picture to the breach: the water between the towers heaves, then the whale bursts straight up into the air. 5 seconds' },
+      { key: 'c3', col: 3, name: 'Shot 4 · clip', from: ['k3'], prompt: 'Far down the avenue a wall of white water surges toward the camera, cars lift and the street lights go dark. 5 seconds' },
+      { key: 'c4', col: 4, name: 'Shot 5 · clip', from: ['k4'], prompt: 'The whale slowly glides past the rooftop, eye to eye with the girl. 5 seconds' },
+    ],
+    voice: 'Every drawing you made was alive.',
+    music: 'Gentle film cue: a magical music box, celesta, soft felt piano and warm strings, dreamy, soft humming',
+  },
+};
 
 /** "Opening: the place, quiet and wide…" as a note; the number goes on the card, not in the note. */
 export const beatNote = (b: Pick<ShortBeat, 'name' | 'line'>) => `${b.name}: ${b.line}`;
@@ -177,16 +255,16 @@ export function beatOfNote(text: string, i: number): ShortBeat {
   const t = clean(text); const c = t.indexOf(':'); const name = c > 0 && c <= 32 ? t.slice(0, c).trim() : `Beat ${i + 1}`; const line = c > 0 && c <= 32 ? t.slice(c + 1).trim() : t;
   return { name, line, text: t };
 }
-export function shortFilmPlan(prompt: string): ShortPlan {
+export function shortFilmPlan(prompt: string, chip = false): ShortPlan {
   const subject = subjectOf(prompt.replace(/^(a\s+)?short film( from (an|my) idea)?\s*[:,-]?\s*/i, ''), 'a girl sets a paper boat on the dark harbor and every window answers');
   const words = subject.split(/\s+/).length; const pick = words > 18 ? [0, 1, 2, 3, 4, 5, 6, 7] : [0, 1, 2, 4, 5, 7];
-  const beats = pick.map((k) => { const [name, line] = BEAT_SHAPES[k]; return { name, line, text: beatNote({ name, line }) }; });
-  const cast: DemoCard[] = [
+  const beats = chip ? CHALK_WHALE.beats.map(([name, line]) => ({ name, line, text: beatNote({ name, line }) })) : pick.map((k) => { const [name, line] = BEAT_SHAPES[k]; return { name, line, text: beatNote({ name, line }) }; });
+  const cast: DemoCard[] = chip ? CHALK_WHALE.cast.map((c) => ({ ...c })) : [
     { key: 'hero', name: 'Main character', workflow: 'create', col: 0, row: 0,
       prompt: `Character reference sheet of the main character of this story: ${subject}. Three panels on a plain grey backdrop: front full body, back full body, face close-up. Same person in every panel, soft even light, no text` },
     { key: 'place', name: 'The place', workflow: 'create', col: 1, row: 0, prompt: `Location plate with no people, the main setting of this story: ${subject}. Wide, ${SHORT_LOOK}` },
   ];
-  return { id: 'short', title: 'Short film from idea', idea: ideaOf(subject), subject, beats, cast,
+  return { id: 'short', title: 'Short film from idea', idea: ideaOf(subject), subject, beats, cast, ...(chip ? { demo: CHALK_WHALE.demo } : {}),
     intro: `A short film from your idea: ${short(subject, 140)}. Four steps: beats, cast, key frames, film. You can edit or take over any of them, and every run waits for your Go.`,
     outro: 'That’s your short film, shot by shot. Change any beat, re-roll any shot, and Go again on just that card.',
     videoOff: 'Video runs are switched off, so they wait as drafts.' };

@@ -94,7 +94,7 @@ export const LOCAL_ROUTE_BLOCK: Record<string, (i: Record<string, any>) => strin
 /** Why a model's LOCAL route can't run on this computer at all, whatever the job (SeedVR2 3B: NVIDIA only). The menu shows that place as unavailable. */
 export const LOCAL_HW_BLOCK: Record<string, () => string | null> = {};
 /** Native routes that are coming soon (reason shown instead of running). */
-/** Partner models not in the Comfy Router catalog (routerModels.ts NOT_ON_ROUTER: HY Image 3.5, Muse Image, Fish Audio S2.1 Pro, Sonilo, HeyGen Voice)
+/** Partner models not in the Comfy Router catalog (routerModels.ts NOT_ON_ROUTER: HY Image 3.5, Muse Image, Fish Audio S2.1 Pro, Sonilo; HeyGen Voice left 2026-10-31)
  *  are Coming soon in every mode: with or without keys (mock keys included) they never show Ready, never run and never charge. Tool files add more. */
 export const COMING_SOON: Record<string, string> = { ...NOT_ON_ROUTER };
 /** FLUX 3 Upscaler on BFL: Precise / Creative mode = the Upscale tool's Mode preset; limits per the BFL docs (2026-10-17). */

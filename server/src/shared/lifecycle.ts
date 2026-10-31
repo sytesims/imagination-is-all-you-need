@@ -8,11 +8,11 @@
 export type LifecycleStatus = 'retiring' | 'unavailable';
 export interface LifecycleInfo { status: LifecycleStatus; note: string; /** first date the provider stops or deprecates it */ from?: string; replacement?: string; sourceUrl: string; checkedAt: string }
 
-const VEO: LifecycleInfo = { status: 'retiring', from: '2026-10-22', replacement: 'Gemini Omni Flash (gemini-omni-1.1-flash)',
-  note: 'Google is retiring Veo 3.1 previews (from 2026-10-22). It may stop working.', sourceUrl: 'https://ai.google.dev/gemini-api/docs/deprecations', checkedAt: '2026-10-21' };
 export const LIFECYCLE: Record<string, LifecycleInfo> = {
-  // Veo 3.1 on the Comfy partner node (model id = price ref; route comfy-router:router-veo)
-  'router-veo': VEO, 'comfy-router:router-veo': VEO,
+  // 2026-10-31: no Veo entry. Google's deprecation (https://ai.google.dev/gemini-api/docs/deprecations, from 2026-10-22) retires the Gemini API
+  // *preview* ids (veo-3.1-generate-preview / veo-3.1-fast-generate-preview). Our Veo routes call the released Vertex models on Comfy Router
+  // (veo/veo-3.1-generate-001, veo/veo-3.1-fast-generate-001, veo/veo-3.1-lite-generate-001), still listed in the Router docs and pricing
+  // (docs.comfy.org/development/comfy-router/models/veo/*, checked 2026-10-31), so they are not retiring. No route here calls a preview id.
 };
 /** Route ids no longer served: the hosted model each ran, so old jobs keep a readable engine name (fal retires Ray 2 reframe on 2026-11-05). */
 export const RETIRED_ROUTES: Record<string, string> = {
