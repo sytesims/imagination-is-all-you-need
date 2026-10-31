@@ -42,7 +42,7 @@ function TextNode({ shape, p, Icon, note = false }: { shape: AuxNodeShape; p: Au
   const set = (text: string) => editor.run(() => editor.updateShape({ id: shape.id, type: shape.type, props: { text } } as any), { history: 'ignore' });
   const words = p.text.trim() ? p.text.trim().split(/\s+/).length : 0;
   return <NodeFrame shapeId={shape.id} type={shape.type} icon={<Icon />} title={note ? 'Note' : 'Prompt'} status={<span className="nf-status">{note ? 'Note' : 'Text'}</span>}
-    footer={<><span className="nf-model"><b>{words ? `${words} word${words === 1 ? '' : 's'}` : note ? 'A note for you' : 'Text input'}</b></span><span className="nf-price" {...tip(note ? 'A note never takes an input; its output can feed a prompt' : 'Drag the output onto a generate node to feed its prompt')}>{note ? 'Not an input' : 'Prompt'}</span></>}>
+    footer={<><span className="nf-model"><b>{words ? `${words} word${words === 1 ? '' : 's'}` : note ? 'A note for you' : 'Text input'}</b></span><span className="nf-price" {...tip(note ? 'A note is for you. Drag its output onto a generate card and its text becomes that card’s prompt' : 'Drag the output onto a generate card to feed its prompt')}>{note ? 'Can feed a prompt' : 'Prompt'}</span></>}>
     <div className={`ax-body${note ? ' ax-note' : ''}`}>
       <textarea className="ax-text" data-card-control data-testid={note ? 'note-text' : 'prompt-text'} value={p.text} placeholder={note ? 'Write a note for yourself…' : 'Write a prompt, then drag its output onto a generate node…'}
         onPointerDown={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()} onKeyUp={e => e.stopPropagation()} onChange={e => set(e.target.value)} />
@@ -82,7 +82,7 @@ function CompareView({ shape, p, Icon }: { shape: AuxNodeShape; p: AuxNodeProps;
   const editor = useEditor();
   const inputs = useValue('compare inputs', () => cardInputs(editor, shape).filter(i => i.kind === 'image' || i.kind === 'video'), [editor, shape.id, p.w, p.h]);
   const a = inputs[0], b = inputs[1]; const video = inputs.some(i => i.kind === 'video');
-  return <NodeFrame shapeId={shape.id} type={shape.type} icon={<Icon />} title="Compare" status={<span className="nf-status">{inputs.length}/2</span>}
+  return <NodeFrame shapeId={shape.id} type={shape.type} icon={<Icon />} title="Compare" farName="Compare" status={<span className="nf-status">{inputs.length}/2</span>}
     footer={<><span className="ax-ins">{a && <span className="ax-chip">{a.poster ? <img src={a.poster} alt="" /> : <ImageIcon size={12} />}<span>Before</span></span>}{b && <span className="ax-chip">{b.poster ? <img src={b.poster} alt="" /> : <ImageIcon size={12} />}<span>After</span></span>}</span><span className="nf-price">{inputs.length === 2 ? 'Ready' : 'Needs 2'}</span></>}>
     <div className="ax-body"><div className="ax-compare" data-card-control>
       {a && b ? <ImageCompare before={a.poster || a.url} after={b.poster || b.url} kind={video ? 'video' : 'image'} aspect={video ? '16 / 9' : undefined} /> :

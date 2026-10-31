@@ -44,6 +44,8 @@ export interface NodeFrameProps {
   heading?: ReactNode;
   /** the heading is the card's name: a double-click renames it (meta.name, shown instead of the heading when set) */
   renamable?: boolean;
+  /** a card with no heading: the name it shows as its big title when the board is zoomed out (B20), else nothing readable names it */
+  farName?: string;
 }
 
 const KIND_NAME: Record<PortKind, string> = { image: 'Picture', video: 'Clip', audio: 'Sound', text: 'Text' };
@@ -63,7 +65,7 @@ function DragGhost({ from }: { from: { x: number; y: number } }) {
   </div>, document.body);
 }
 
-export function NodeFrame({ shapeId, type, tint, icon, title, titleHint, status, actions, children, footer, className = '', bodyClass = '', variant = 'node', testId, rootAttrs, label, heading, renamable }: NodeFrameProps) {
+export function NodeFrame({ shapeId, type, tint, icon, title, titleHint, status, actions, children, footer, className = '', bodyClass = '', variant = 'node', testId, rootAttrs, label, heading, renamable, farName }: NodeFrameProps) {
   const editor = useEditor(); const toast = useToast();
   const def = nodeDefOf(type);
   const selected = useValue('nf selected', () => editor.getSelectedShapeIds().includes(shapeId), [editor, shapeId]);
@@ -124,7 +126,7 @@ export function NodeFrame({ shapeId, type, tint, icon, title, titleHint, status,
       <div className="nf-title" {...(titleHint ? tip(titleHint) : {})}>{title}</div>
       <div className="nf-head-r">{actions && <span className="nf-acts" data-card-control>{actions}</span>}{status && <span className="nf-status-wrap">{status}</span>}</div>
     </header>
-    {(children != null || heading != null) && <div className={`nf-body ${bodyClass}`.trim()}>{heading != null && (renamable && typeof heading === 'string' ? <CardName id={shapeId} name={metaName} shown={metaName || heading} className="nf-heading" testId="nf-name" />
+    {(children != null || heading != null) && <div className={`nf-body ${bodyClass}`.trim()}>{farName && heading == null && <h3 className="nf-heading nf-far-only" aria-hidden>{farName}</h3>}{heading != null && (renamable && typeof heading === 'string' ? <CardName id={shapeId} name={metaName} shown={metaName || heading} className="nf-heading" testId="nf-name" />
       : <h3 className="nf-heading" title={typeof heading === 'string' ? heading : undefined}>{heading}</h3>)}{children}</div>}
     {footer != null && <footer className="nf-foot">{footer}</footer>}
     {ins.map((p, i) => <span key={p.kind} className={`nf-port nf-in nf-k-${p.kind}${p.room <= 0 ? ' full' : ''}${dragKind === p.kind && role !== 'dim' ? ' want' : ''}`} style={{ top: top(i) }} data-card-control data-kind={p.kind} data-testid={`port-in-${p.kind}`}

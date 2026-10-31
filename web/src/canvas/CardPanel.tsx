@@ -51,7 +51,7 @@ import { variationOf } from './variation';
 import { QUICK_ACTIONS, NEXT_STEPS, quickCard, type Act } from './quickActionsModel';
 import { actionPrice } from './QuickActions';
 import { toolHrefOf } from './agentDockModel';
-import { placeWord } from './cardLook';
+import { placeWord, linkedFrom, panelSlide } from './cardLook';
 import { badgeText } from '../../../server/src/shared/takeReview';
 import './cardPanel.css';
 
@@ -124,7 +124,7 @@ function useCardView(editor: Editor, s: TLShape | null, cat: ReturnType<typeof u
   const media = s ? mediaOf(s) : null; const job = useJob(media?.jobId || (s?.type === GEN_TYPE ? p.jobId : undefined));
   return s ? buildView(s, { st, spec, draft, q, media, job, links, linked }) : null;
 }
-function buildView(s: TLShape, x: { st: ReturnType<typeof cardState> | null; spec: any; draft: boolean; q: any; media: Media | null; job: JobState | null; links: { ins: Link[]; outs: Link[] }; linked: { id: TLShapeId; text: string }[] }) {
+function buildView(s: TLShape, x: { st: ReturnType<typeof cardState> | null; spec: any; draft: boolean; q: any; media: Media | null; job: JobState | null; links: { ins: Link[]; outs: Link[] }; linked: { id: TLShapeId; type: string; text: string }[] }) {
   const p: any = s.props; const gen = s.type === GEN_TYPE; const f0 = gen ? flowById(p.flow) : null; const f = f0 ? flowInfo(f0, catalogNow()) : null;
   const medium: GenMedium | 'text' = gen ? p.medium : s.type === RESULT_TYPE || s.type === UPLOAD_TYPE ? (x.media?.kind ?? 'image') as GenMedium : 'text';
   const model = gen ? (x.draft ? modelNameOf(x.spec) || p.model : p.model || modelNameOf(x.spec)) : s.type === RESULT_TYPE ? p.model : '';
@@ -135,6 +135,7 @@ function buildView(s: TLShape, x: { st: ReturnType<typeof cardState> | null; spe
   const cap = x.job ? jobCaption(x.job, null) : null;
   const typeWord = gen ? `${f?.name ?? 'Generate'}` : s.type === RESULT_TYPE ? `${KIND_WORD[p.kind] ?? 'Result'} on the board` : s.type === UPLOAD_TYPE ? `Your ${String(KIND_WORD[p.mediaKind] ?? 'file').toLowerCase()}` : s.type === PROMPT_TYPE ? 'Text that feeds other cards' : s.type === NOTE_TYPE ? 'A note for you' : s.type === AD_TYPE ? 'Your words on a picture' : s.type === COMPARE_TYPE ? 'Before and after' : s.type === GROUP_TYPE ? 'A frame with Run all' : 'Card';
   const explain = gen ? (f?.tagline ? `${f.tagline}.` : null) : s.type === RESULT_TYPE ? 'A finished result. Wire it into another card to keep going.' : s.type === PROMPT_TYPE ? 'Every card this feeds uses this text as its prompt.'
+    : s.type === NOTE_TYPE ? 'A note for you. Wire it into a generate card and its text becomes that card’s prompt.'
     : s.type === COMPARE_TYPE ? 'Two pictures or clips with a slider between them. The first arrow in is Before, the second After.'
     : s.type === GROUP_TYPE ? 'Every generate card inside the frame runs together. You see the total first.'
     : s.type === AD_TYPE ? 'Your headline, offer, button and logo laid on one picture by code, sized for each platform. Free, in the browser.' : null;
@@ -142,7 +143,8 @@ function buildView(s: TLShape, x: { st: ReturnType<typeof cardState> | null; spe
   const prompt = x.linked.map(l => l.text).join('\n\n') || (gen ? p.prompt : s.type === PROMPT_TYPE || s.type === NOTE_TYPE ? p.text : s.type === RESULT_TYPE ? p.title : '');
   const quote = x.draft ? x.q : p.quote;
   const tint = s.type === COMPARE_TYPE ? 'compare' : s.type === GROUP_TYPE ? 'group' : s.type === AD_TYPE ? 'ad' : medium;
-  return { s, p, gen, f, medium, tint, model, maker, m, status, statusWord, draft: x.draft, title: shapeName(s), kindLine: typeWord, explain, Icon, prompt, linkedPrompt: x.linked.length > 0,
+  const linkedWord = linkedFrom(x.linked.map(l => l.type));
+  return { s, p, gen, f, medium, tint, model, linkedWord, maker, m, status, statusWord, draft: x.draft, title: shapeName(s), kindLine: typeWord, explain, Icon, prompt, linkedPrompt: x.linked.length > 0,
     spec: x.spec, st: x.st, q: x.q, quote, media: x.media, job: x.job, cap, ins: x.links.ins, outs: x.links.outs, takes: (gen ? p.takes : []) as Take[], take: gen ? Math.max(0, Math.min(p.take, p.takes.length - 1)) : 0,
     hint: gen && p.takes.length > 1 ? 'The ringed one goes on' : undefined,
     /* music, a voice or a sound effect (the panel's sound tile says which): the workflow's, else the job's */
@@ -157,10 +159,15 @@ export function CardPanel({ hidden, onOpen }: { hidden: boolean; onOpen?: (on: b
   const open = !hidden && (ids.length > 0 || pin);
   useEffect(() => { onOpen?.(open); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   /* the board gives up its right edge to the panel: if the picked card now sits under the panel, slide the board just enough to show it */
-  useEffect(() => { if (!open || !ids.length) return; const t = window.setTimeout(() => { const b = editor.getSelectionPageBounds(); if (!b) return; const vp = editor.getViewportScreenBounds(); const z = editor.getZoomLevel();
-      const right = editor.pageToViewport({ x: b.maxX, y: b.minY }).x; const over = right + 24 - vp.w; const left = editor.pageToViewport({ x: b.minX, y: b.minY }).x;
-      if (over > 0) { const c = editor.getCamera(); editor.setCamera({ ...c, x: c.x - Math.min(over, Math.max(0, left - 80)) / z }, { animation: { duration: 240 } }); } }, 320);
-    return () => window.clearTimeout(t); }, [open, ids.join()]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* the same after a resize (B19): the picked card's size is watched too, and the slide waits until the resize has ended */
+  const size = useValue('panel selection size', () => { const b = ids.length ? editor.getSelectionPageBounds() : null; return b ? `${Math.round(b.w)}x${Math.round(b.h)}` : ''; }, [editor, ids.join()]);
+  useEffect(() => { if (!open || !ids.length) return; const t = window.setTimeout(() => { if (editor.isIn('select.resizing')) return; const b = editor.getSelectionPageBounds(); if (!b) return; const vp = editor.getViewportScreenBounds(); const z = editor.getZoomLevel();
+      const c = editor.getCamera(); const fits = b.w * z <= vp.w - 104;
+      /* a card wider than the space left: zoom out until it fits, its left edge 80 px in, its middle at the same height */
+      if (!fits) { const nz = (vp.w - 104) / b.w; const sy = (b.midY + c.y) * z; editor.setCamera({ ...c, x: 80 / nz - b.minX, y: sy / nz - b.midY, z: nz }, { animation: { duration: 240 } }); return; }
+      const dx = panelSlide(editor.pageToViewport({ x: b.minX, y: b.minY }).x, editor.pageToViewport({ x: b.maxX, y: b.minY }).x, vp.w);
+      if (dx > 0) editor.setCamera({ ...c, x: c.x - dx / z }, { animation: { duration: 240 } }); }, 320);
+    return () => window.clearTimeout(t); }, [open, ids.join(), size]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === 'Escape' && ids.length && !(e.target as HTMLElement)?.closest?.('input,textarea,[contenteditable]')) editor.selectNone(); };
     addEventListener('keydown', k); return () => removeEventListener('keydown', k); }, [editor, ids.length]);
   const close = () => { setPin(false); editor.selectNone(); };
@@ -286,7 +293,7 @@ function MadeWith({ v }: { v: View }) {
     {v.prompt && !v.draft && <div className="cp-quote">
       <p className={more ? 'open' : ''}>{v.prompt}</p>
       <button type="button" className="cp-icon cp-quote-copy" aria-label="Copy the prompt" {...tip('Copy the prompt')} onClick={() => { void navigator.clipboard?.writeText(v.prompt).then(() => toast('Prompt copied')); }}><CopyIcon size={13} /></button>
-      {(long || v.linkedPrompt) && <span className="cp-quote-f">{v.linkedPrompt && <small>From {v.ins.find(i => i.slot === 'Prompt')?.label ?? 'a note'}</small>}{long && <button type="button" className="cp-link" onClick={() => setMore(o => !o)}>{more ? 'Less' : 'More'}</button>}</span>}
+      {(long || v.linkedPrompt) && <span className="cp-quote-f">{v.linkedPrompt && <small>{v.linkedWord}</small>}{long && <button type="button" className="cp-link" onClick={() => setMore(o => !o)}>{more ? 'Less' : 'More'}</button>}</span>}
     </div>}
     {v.model && <div className="cp-model">
       <MakerTile className="cp-model-tile" maker={v.m?.maker ?? v.maker} makerName={v.m?.makerName} fallback={v.model} medium={v.m?.medium ?? v.medium} title={false} />

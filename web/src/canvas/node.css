@@ -838,3 +838,6 @@ html body .apop.ade-pop{z-index:1210}
 
 @media (prefers-reduced-motion:reduce){.tl-container .nf-mbar.ind i{animation:none;width:100%;opacity:.5}}
 .gc-stage>.ly-count{top:8px;bottom:auto}
+/* zoomed out (B20): a card with no name of its own shows its workflow or kind as the big title ("Create Image", "Compare") */
+.tl-container .nf.nf-node .nf-far-only{display:none}
+.tl-container[data-far] .nf.nf-node .nf-far-only{display:-webkit-box}

@@ -53,7 +53,7 @@ import { CardInputs, chooseForSlot } from './CardInputs';
 import { useClipInfo } from '../shared/clipInfo';
 import { clipIssue, clipRuleFor } from '../../../server/src/shared/clipLimits';
 import * as Ic from './icons';
-import { placeWord, cardLabel, emptyLine } from './cardLook';
+import { placeWord, cardLabel, emptyLine, linkedFrom } from './cardLook';
 import { badgeText } from '../../../server/src/shared/takeReview';
 import { progressOfJob, progressLabel, overallFill, etaText } from '../shared/queueActivity';
 
@@ -200,6 +200,7 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
         <button type="button" className="nf-act" aria-label="Recreate: run it again" data-testid="gc-recreate" disabled={busy} {...tip('Recreate: run it again with the same settings. The new version joins the strip')} onClick={() => void recreate()}><Ic.RetryIcon size={14} /></button></> : undefined}
       footer={footer}>
       <CardName id={shape.id} name={shot} shown={shot || 'Untitled'} empty={!shot} className={`gc-shot nf-heading${shot ? '' : ' nf-heading-empty'}`} testId={shot ? 'gc-shot' : 'gc-shot-empty'} />
+      {!shot && <h3 className="nf-heading nf-far-only" aria-hidden>{name}</h3>}
       <div className={`nf-media gc-media gc-media-${p.status}`} data-testid="gc-media">
         {draft && <div className="gc-stage gc-draft" key="draft">
           {spec && spec.slots.length > 0 && (open || (st?.inputs.length ?? 0) > 0) && <CardInputs cardId={shape.id} slots={spec.slots} bySlot={st?.bySlot ?? {}} showAdd={selected} />}
@@ -225,7 +226,7 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
               onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void generate(); } else if (e.key === 'Escape') { e.preventDefault(); e.currentTarget.blur(); } }}
               onKeyUp={e => e.stopPropagation()} onWheel={e => { if (e.currentTarget.scrollHeight > e.currentTarget.clientHeight) e.stopPropagation(); }} /></div>
         : draft && spec?.promptMode === 'hidden' && !linked ? <p className="gc-prompt nf-noprompt" data-testid="gc-noprompt">No prompt needed: {name} works from its {spec.slots.length ? 'input' : 'settings'}.</p>
-        : <PromptText text={prompt} linked={!!linked} />}
+        : <PromptText text={prompt} linked={linked ? linkedFrom(promptNodes.map(x => x.type)) : ''} />}
     </NodeFrame>
     {spec && <ModelMenu open={pop === 'model'} anchor={mRef} watch={box} gap={6} onClose={() => setPop('')} placement="bottom" testId="gc-pop-model" toolId={spec.tool.id} value={spec.provider} quote={q}
       items={spec.providers.map(x => ({ id: x.id, name: spec.recipe.modelInfo?.[x.id]?.name ?? x.name, p: x }))} onPick={id => { setCard(editor, shape.id, { provider: id }); setPop(''); }} />}
@@ -236,12 +237,12 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
 }
 
 /** The prompt under the picture: two lines, "More" opens the rest over the card (nothing below moves). */
-function PromptText({ text, linked }: { text: string; linked: boolean }) {
+function PromptText({ text, linked }: { text: string; /** "From a prompt" when Prompt / Note cards feed it, else '' */ linked: string }) {
   const [open, setOpen] = useState(false); const ref = useRef<HTMLParagraphElement>(null); const [long, setLong] = useState(false);
   useEffect(() => { const el = ref.current; if (el) setLong(el.scrollHeight > el.clientHeight + 4 || open); }, [text, open]);
   if (!text.trim()) return <p className="gc-prompt gc-prompt-none" aria-hidden />;
   return <div className={`gc-prompt gc-prompt-ro${open ? ' open' : ''}`} data-testid="gc-prompt">
-    {linked && <small className="gc-linked" data-testid="gc-linked-prompt">From a note</small>}
+    {linked && <small className="gc-linked" data-testid="gc-linked-prompt">{linked}</small>}
     <p ref={ref} className="nf-prompt-line">{text}</p>
     {(long || open) && <button type="button" className="gc-more" data-card-control aria-expanded={open} data-testid="gc-prompt-more" onClick={() => setOpen(o => !o)}>{open ? 'Less' : 'More'}</button>}
   </div>;
