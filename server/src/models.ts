@@ -98,7 +98,7 @@ const INFO: Record<string, Info> = {
   'router-kling-edit': { name: 'Kling 3.0 Omni Edit', speed: 'fast', quality: 'best', hint: 'Swaps the person you describe; motion, light and sound kept · up to 10 s a pass', badges: ['premium'] },
   'router-aleph2': { name: 'Runway Aleph 2', speed: 'fast', quality: 'best', hint: 'Render: real video from your mockup, first frame optional', badges: ['premium'] },
   'router-ray32-edit': { name: 'Luma Ray 3.2 Edit', speed: 'fast', quality: 'good', hint: 'Render: keeps the mockup’s structure; billed as 5 s or 10 s', badges: ['premium'] },
-  'router-seedance-25-edit': { name: 'Seedance 2.5 Edit', speed: 'balanced', quality: 'best', hint: 'Higher quality, up to 30 s in one pass; motion and sound kept', badges: ['premium'] },
+  'router-seedance-25-edit': { name: 'Seedance 2.5 Edit', speed: 'balanced', quality: 'best', hint: 'Often refuses photos of real people; up to 30 s in one pass', badges: ['premium'] },
 };
 /** Plugins: model card info for `<toolId>:<providerId>`. */
 export const registerModelInfo = (key: string, info: Info) => { INFO[key] = info; };

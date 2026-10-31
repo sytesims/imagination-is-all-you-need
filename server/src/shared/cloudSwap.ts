@@ -25,7 +25,12 @@ export interface CloudSwapModel {
   /** Character images one Person swap request takes (we send exactly one: "a clear full view or a character sheet"). */ maxImages: number;
   /** Character images one Motion transfer request takes (2026-10-26: several people in one clip, Image 1, Image 2… in order; the prompt says who goes where). */ maxCharacterImages: number;
   /** Router doc page (request body source). */ doc: string;
+  /** A known problem, said in one line on its menu row and card (it stays listed and pickable, but is never the automatic pick). */ warning?: string;
 }
+/** Seedance 2.5 Edit (BytePlus) turns down most photos of real people (content rules); a drawn or made-up character runs. */
+export const SEEDANCE_PEOPLE_WARNING = 'Often refuses photos of real people';
+/** A swap model with a known problem: listed and pickable, never the automatic pick on Video Swap / Motion Transfer (routing/defaults.ts). */
+export const swapNeverAuto = (provider: string | null | undefined): boolean => !!cloudSwapOf(provider)?.warning;
 const DOC = (p: string) => `https://docs.comfy.org/development/comfy-router/models/${p}/code`;
 /** Facts from the Router schemas and official node documentation (reviewed 2026-10-25):
  *  - Kling 3.0 Omni edit (video_list refer_type base): source video 3–10.05 s, 720–2160 px a side, 24–60 fps, mp4 / mov, ≤ 200 MB; ≤ 4 reference images
@@ -35,7 +40,9 @@ export const CLOUD_SWAP_MODELS: Record<string, CloudSwapModel> = {
   'router-kling-edit': { id: 'router-kling-edit', name: 'Kling 3.0 Omni Edit', routerModel: 'kling/kling-v3-omni', maxPassSec: 10, minPassSec: 3, maxTotalSec: 30, minTotalSec: 4,
     qualities: ['720p', '1080p'], defaultQuality: '720p', qualityHints: { '720p': 'Standard · cheaper', '1080p': 'Pro · sharper' }, maxImages: 1, maxCharacterImages: 4 /* ≤ 4 reference images with a video */, doc: DOC('kling/kling-v3-omni') },
   'router-seedance-25-edit': { id: 'router-seedance-25-edit', name: 'Seedance 2.5 Edit', routerModel: 'byteplus/dreamina-seedance-2-5-260628', maxPassSec: 30, minPassSec: 4, maxTotalSec: 30, minTotalSec: 4,
-    qualities: ['480p', '720p', '1080p'], defaultQuality: '720p', qualityHints: { '480p': 'Faster · cheaper', '720p': 'Sharper', '1080p': 'Sharpest · slow' }, maxImages: 1, maxCharacterImages: 30 /* Seedance 2.5 reference images (shared/promptGrammar.ts seedance-2.5-edit) */, doc: DOC('byteplus/dreamina-seedance-2-5-260628') },
+    qualities: ['480p', '720p', '1080p'], defaultQuality: '720p', qualityHints: { '480p': 'Faster · cheaper', '720p': 'Sharper', '1080p': 'Sharpest · slow' }, maxImages: 1, maxCharacterImages: 30 /* Seedance 2.5 reference images (shared/promptGrammar.ts seedance-2.5-edit) */, doc: DOC('byteplus/dreamina-seedance-2-5-260628'),
+    // 2026-10-31: 0 of 2 motion transfers ran; both were content-policy refusals of a real person's photo (BytePlus PrivacyInformation)
+    warning: SEEDANCE_PEOPLE_WARNING },
 };
 export const isCloudSwap = (provider: string | null | undefined): boolean => !!provider && provider in CLOUD_SWAP_MODELS;
 export const cloudSwapOf = (provider: string | null | undefined): CloudSwapModel | null => (provider && CLOUD_SWAP_MODELS[provider]) || null;

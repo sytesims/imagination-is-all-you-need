@@ -51,6 +51,20 @@ const CS = await import('../src/shared/cloudSwap.ts'); const M = await import('.
   ok('shared: planPasses (balanced whole seconds, every 4–30 s range in ≤ 10 s passes), clampTrim, prompt template, pass note');
 }
 
+// ---------------- 1b. Seedance 2.5 Edit (2026-10-31): listed with its warning, never the automatic pick ----------------
+{
+  process.env.COMFY_API_KEY = 'test-not-a-real-key';
+  const D = await import('../src/routing/defaults.ts'); const { getTool } = await import('../src/tools/registry.ts'); const { CATALOGUE } = await import('../src/shared/modelRank.ts');
+  assert.equal(CS.swapNeverAuto('router-seedance-25-edit'), true); assert.equal(CS.swapNeverAuto('router-kling-edit'), false);
+  assert.equal(CATALOGUE['seedance-2.5-edit'].bestFor, CS.SEEDANCE_PEOPLE_WARNING, 'the menu row says it');
+  for (const id of ['object-swap', 'motion-transfer']) { const t = getTool(id)!;
+    assert.ok(t.providers.includes('router-seedance-25-edit'), `${id}: still listed`);
+    assert.equal(D.toolDefaults(t, { noFavourite: true }).defaultProvider, 'router-kling-edit', `${id}: Kling is the default`);
+    const without = D.toolDefaults(t, { noFavourite: true, only: (x) => x !== 'router-kling-edit' }).defaultProvider; assert.notEqual(without, 'router-seedance-25-edit', `${id}: with Kling out, never Seedance (${without})`); }
+  process.env.COMFY_API_KEY = '';
+  ok('Seedance 2.5 Edit: listed, its row says "Often refuses photos of real people", never the automatic pick (Kling stays the default)');
+}
+
 // ---------------- 2. bodies vs the official schemas ----------------
 const swapJob = (o: Record<string, any> = {}) => ({ mode: 'object_swap', swapType: 'person', videoPath: at('src26.mp4'), duration: 8, width: 854, height: 480, refPaths: [at('char.png')], target: 'the person on the left', prompt: '', resolution: '720p', keepAudio: true, seed: 42, count: 1, ...o });
 const K = M.ROUTER_MODELS['router-kling-edit']; const S = M.ROUTER_MODELS['router-seedance-25-edit'];

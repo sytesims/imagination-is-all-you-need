@@ -16,6 +16,8 @@
  *  5. the first model that really runs now (a fal-only setup keeps working);  6. the cloud default needing its key (Generate says how to add it);
  *  7. the old rules. recommendedProvider = what 2-7 pick (the menu's "Recommended"), favouriteProvider = the user's own, defaultSource = which won.
  */
+import { swapNeverAuto } from '../shared/cloudSwap.js';
+const SWAP_TOOL_IDS = new Set(['object-swap', 'motion-transfer']);
 import type { ToolDef } from '../tools/types.js';
 import { toolProviders, getProvider } from '../providers.js';
 import { routesFor, isTwinAlias, toolKeys, tierLabel, tierOf } from './routes.js';
@@ -180,7 +182,8 @@ function recommendedDefaults(tool: ToolDef, opts: DefaultsOpts = {}): ToolDefaul
   if (!models.length) return { mode, preferredProvider: null, defaultProvider: null, defaultRoute: null, defaultFallback: null, defaultState: null, models, editorial: null };
   const explicitLocal = getPrefs().global.useLocal; const anyCloud = models.some((m) => m.hasCloud && m.reasonCode !== 'not_wired'); // cloud routes that aren't built yet (Director) don't hold back a local model that runs
   // Provider audit (2026-10-21): a retiring model (shared/lifecycle.ts, e.g. Veo 3.1) stays listed and pinnable but is never the quality pick or the default.
-  const live = models.filter((m) => !isRetiring(m.id)); const pref = live[0] ?? models[0];
+  // a swap model with a known problem (shared/cloudSwap.ts warning: Seedance 2.5 Edit refuses photos of real people) is listed and pickable the same way
+  const live = models.filter((m) => !isRetiring(m.id) && !(SWAP_TOOL_IDS.has(tool.id) && swapNeverAuto(m.id))); const pref = live[0] ?? models[0];
   // Per-workflow defaults (2026-10-23, shared/imageDefaults.ts): after a saved pin, the workflow's chosen model for the active setup (local GPU or a
   // hosted key) when it runs now; else the old rule (the first model that runs). Only models this call lists count (mode, `only`).
   // Image features resolve per feature; Generate Video (h3-video) has its own table (shared/videoDefaults.ts) keyed by the tool id; the Audio
