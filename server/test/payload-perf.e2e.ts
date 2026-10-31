@@ -34,6 +34,14 @@ try {
   const after = await raw('/api/tools'); assert.notEqual(after.body.toString(), ui, 'a routing change rebuilds the list at once'); assert.notEqual(after.headers.etag, tag);
   assert.equal((await raw('/api/tools', { 'if-none-match': tag })).status, 200, 'the old ETag no longer matches'); await put(false);
   const pr = await (await fetch(`${B}/api/presets?toolId=camera`)).json() as any; assert.ok(pr.items.length > 0, 'presets read the shared copy');
+  assert.deepEqual(pr.items.map((p: any) => p.id).sort(), tools.find((t) => t.id === 'camera').presets.map((p: any) => p.id).sort(), 'the presets copy lists the same presets as /api/tools');
+  // a preset pick (a write) shows on the very next presets read
+  const p0 = pr.items[0]; assert.equal((await fetch(`${B}/api/presets/${p0.id}/use`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ toolId: 'camera' }) })).status, 200);
+  const pr2 = await (await fetch(`${B}/api/presets?toolId=camera`)).json() as any; assert.equal(pr2.items.find((p: any) => p.id === p0.id).picks, p0.picks + 1, 'a pick shows at once');
+  // GET /api/models answers are kept per URL (same body on a repeat) and dropped by any write: a routing change shows on the very next read
+  const m1 = await (await fetch(`${B}/api/models`)).text(); assert.equal(await (await fetch(`${B}/api/models`)).text(), m1, 'kept: same body');
+  assert.equal((await put(true)).status, 200); const m2 = await (await fetch(`${B}/api/models`)).text(); assert.notEqual(m2, m1, 'a routing change rebuilds the model cards at once'); await put(false);
+  assert.deepEqual(JSON.parse(await (await fetch(`${B}/api/models?fields=hint,badges`)).text()).groups.length, JSON.parse(m1).groups.length, 'filtered URLs are kept apart');
   // grid thumbnails: a scaled JPEG of a PNG, the original when it is already small, a redirect for unknown files
   const png = path.join(DATA, 'pp-test.png'); const big = spawn('ffmpeg', ['-y', '-v', 'error', '-f', 'lavfi', '-i', 'nullsrc=size=1600x900,geq=random(1)*255:128:128', '-frames:v', '1', png]); await new Promise((r) => big.on('close', r));
   const t = await raw(`/api/media/thumb?url=${encodeURIComponent('/files/pp-test.png')}&w=600`); assert.equal(t.status, 200); assert.equal(t.headers['content-type'], 'image/jpeg');

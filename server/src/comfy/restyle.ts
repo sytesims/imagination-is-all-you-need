@@ -8,6 +8,7 @@ import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import { SAMPLES_DIR } from '../config.js';
 import { runFfmpeg } from '../ffmpeg.js';
+import { captionSubject } from '../shared/promptPatterns.js';
 
 export const VACE_FPS = 16, CHUNK = 81, OVERLAP = 16;
 const STYLE_META: { styles: { id: string; label: string; swatch: string; prompt: string; negative: string }[] } =
@@ -37,9 +38,10 @@ export function patchRestyle(graph: Record<string, any>, v: { video: unknown; st
   return g;
 }
 
-/** Build the prompt from the preset template (+ user text as subject). */
+/** Build the prompt from the preset template (+ user text as subject). VACE reads a caption of the target clip (shared/promptPatterns.ts video-restyle):
+ *  "{Subject}, in {style} style: {traits}." The control video carries the motion, so no "keep the motion" words. */
 export const restylePrompt = (presetId: string, user: string) => {
-  const s = styleFor(presetId); const subject = user.trim() || 'the scene';
+  const s = styleFor(presetId); const subject = captionSubject(user, 'The scene');
   return s ? { prompt: s.prompt.replace('{subject}', subject), negative: s.negative } : { prompt: `${subject}, ${user}`, negative: undefined };
 };
 
