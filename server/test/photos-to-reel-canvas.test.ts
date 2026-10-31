@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { flowById, flowSpec, placeInputs, type GenCatalog } from '../../web/src/shared/genFlows.ts';
 import { runForm, type BoardInput } from '../../web/src/canvas/cardModel.ts';
 import { missingOf } from '../../web/src/canvas/cardState.ts';
+import { placeOf } from '../../web/src/shared/queueActivity.ts';
 import { compositeCostText } from '../../web/src/shared/billing.ts';
 import { jobInputs } from '../../web/src/shared/jobInputs.ts';
 
@@ -66,4 +67,8 @@ assert.equal(compositeCostText({ toolId: 'app-photos-to-reel', cost: 0 }), 'See 
 assert.equal(compositeCostText({ toolId: 'app-photos-to-reel', cost: 0, input: { reelCostText: 'Estimated $2.50 across steps' } }), 'Estimated $2.50 across steps');
 assert.equal(compositeCostText({ toolId: 'app-photos-to-reel', cost: 0, simulated: true }), 'Sample');
 assert.equal(compositeCostText({ toolId: 'camera', cost: 0 }), null);
+assert.equal(placeOf(null, { toolId: 'app-photos-to-reel', price: { free: true, credits: 0, sample: false }, place: { runOn: null, label: '' } } as any).price, 'See step costs');
 console.log('Photos → Reel Canvas contract: 8/15 inputs, order, settings, count, preflight and viewer passed');
+
+// Browser-side Canvas imports keep runtime timers alive; all assertions above are synchronous.
+process.exit(0);

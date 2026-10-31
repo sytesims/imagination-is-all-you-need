@@ -31,3 +31,12 @@ export function reelPlan(count: number, o: ReelOptions) {
   const heroes = o.motion === 'all' ? Array.from({ length: count }, (_, i) => i) : heroIndices(count);
   return { heroes, cameraCount: heroes.length, photoSeconds: o.seconds / count, cameraSeconds: 5, aspect: '9:16' as const };
 }
+
+/** Plan only the work still needed after a failed/interrupted parent. A soundtrack belongs to one exact visual edit. */
+export function reelResumePlan(count: number, o: ReelOptions, saved?: { clipsByPhoto?: Record<string, string>; musicStatus?: string }) {
+  const plan = reelPlan(count,o);
+  const ready = (i: number) => !!saved?.clipsByPhoto?.[i];
+  const unchangedVisual = !!saved && Array.from({length:count},(_,i)=>i).every(ready);
+  const reuseMusic = unchangedVisual && ['queued','running','needs_decision','done'].includes(saved?.musicStatus ?? '');
+  return { unchangedVisual, pendingCameraCount: plan.heroes.filter(i => !ready(i)).length, pendingMusicCount: o.music === 'on' && !reuseMusic ? 1 : 0 };
+}

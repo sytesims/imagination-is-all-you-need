@@ -482,7 +482,7 @@ export function registerRouting(app: FastifyInstance) {
   });
   // Enrich model and tool listings additively (no change to their handlers).
   app.addHook('preSerialization', async (req, reply, payload: any) => {
-    if (payload?.composite === true) return payload;
+    if (payload?.composite === true && payload.toolId === 'app-photos-to-reel') return payload;
     const url = req.url.split('?')[0];
     try {
       if (url === '/api/models' && payload && typeof payload === 'object') {

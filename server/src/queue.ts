@@ -174,7 +174,8 @@ export const RESUME_COMFY = !/^(0|false|off|no)$/i.test(env('RESUME_COMFY') ?? '
 const resumable = (j: Job) => RESUME_COMFY && j.status === 'running' && !!j.comfyPrompt?.id && j.comfyPrompt.resumable === true && !!j.comfyPrompt.base;
 for (const j of jobs.values()) {
   if (j.status !== 'queued' && j.status !== 'running') continue;
-  if (j.status === 'queued' && REQUEUE_ON_RESTART && j.toolId !== 'app-photos-to-reel') { requeue.push(j); continue; }
+  if (j.toolId === 'app-photos-to-reel') { j.status = 'failed'; j.stage = 'failed'; j.errorType = 'temporary'; j.error = 'The server restarted. Retry the reel to continue from finished photos. See individual step jobs for any costs.'; j.finishedAt = Date.now(); persistJob(j); continue; }
+  if (j.status === 'queued' && REQUEUE_ON_RESTART) { requeue.push(j); continue; }
   if (resumable(j)) { reconnect.push(j); j.stage = 'reconnecting'; j.progressKind = 'indeterminate'; j.updatedAt = Date.now(); continue; }
   j.status = 'failed'; j.errorType = 'temporary'; j.stage = 'failed'; j.queuePos = 0; j.eta = 0;
   // B7: settle() adds the accurate outcome (credits back only when something was charged; else "Nothing was charged.")

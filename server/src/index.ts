@@ -974,10 +974,13 @@ app.post<{ Params: { id: string }; Querystring: { failedOnly?: string; runOn?: s
   if (j.toolId === 'app-photos-to-reel') {
     const partialRetry = j.status === 'done' && /^(1|true)$/.test(req.query.failedOnly ?? '') && !!j.partial && (j.input.failedPhotos?.length ?? 0) > 0;
     if (j.status !== 'failed' && j.status !== 'blocked' && !partialRetry) return reply.code(409).send({ error: 'Only failed reels or failed photos can be retried.' });
-    const previous = [...jobs.values()].find(x => x.parentId === j.id && x.input.retryOf === j.id && !['failed','blocked','canceled'].includes(x.status));
-    if (previous) return { id: previous.id, toolId: previous.toolId, idempotentReplay: true };
-    const id = randomUUID().slice(0, 8);
-    return (await import('./photosToReel.js')).startReel(app, req, reply, id, { ...j.input.fields, simulateGroup: '0', quotedCredits: '', fromJob: j.id, reuseInputs: 'photos' }, {}, j);
+    const reel = await import('./photosToReel.js');
+    return reel.withReelRetryLock(j.id, async () => {
+      const previous = [...jobs.values()].find(x => x.parentId === j.id && x.input.retryOf === j.id && !['failed','blocked','canceled'].includes(x.status));
+      if (previous) return { id: previous.id, toolId: previous.toolId, idempotentReplay: true };
+      const id = randomUUID().slice(0, 8);
+      return reel.startReel(app, req, reply, id, { ...j.input.fields, simulateGroup: '0', quotedCredits: '', fromJob: j.id, reuseInputs: 'photos' }, {}, j);
+    });
   }
   // Run on (2026-10-22): "Try on <place>": runOn (body or query) re-runs the job there, pinned to that place (no fallback). Without it, the same route as before.
   const retryRunOn = String((req.body as any)?.runOn ?? (req.body as any)?.run_on ?? req.query.runOn ?? '').trim();
