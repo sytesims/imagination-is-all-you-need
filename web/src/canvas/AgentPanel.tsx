@@ -1,6 +1,6 @@
 /**
  * The canvas AI dock (left edge, 380 px, open by default; mounted in CanvasPage's .cv-agent-slot). One conversation with the agent:
- *  - an empty board starts with a prompt box and starters (Make a 30s film, Product shots, Storyboard from a script, Mood board);
+ *  - an empty board starts with a prompt box and starters (Short film from idea, Make a 30s film, Product ad, Make a clip longer, Mood board, Explore an idea);
  *  - the agent's plan shows as a checklist, and every tool call it makes shows as a media card (AgentMediaCard: live thumbnail,
  *    progress, model, price or Free, Keep / Re-roll / Open in tool) while the board on the right builds;
  *  - each paid step is a proposal card with its quote, total and Go / Cancel. Go is the only thing that starts a run: the server sends
@@ -25,14 +25,14 @@ import { AgentMediaCard } from './AgentMediaCard';
 import { useCopied, Copied, useToast } from '../shared/Toast';
 import { GenPrice } from '../shared/GenPrice';
 import { tip } from '../shared/Tooltip';
-import { SparkleIcon, CloseIcon, TrashIcon, DirectorIcon, ProductIcon, GridIcon, PaletteIcon, ApiPlugIcon } from '../ui/Icons';
+import { SparkleIcon, CloseIcon, TrashIcon, DirectorIcon, ProductIcon, ExtendIcon, ExploreIcon, PaletteIcon, ApiPlugIcon } from '../ui/Icons';
 import { CopyIcon, PlusIcon, ArrowIcon, RetryIcon, CoinIcon, ChevronLeftIcon, CheckIcon, StopIcon, SendIcon, NoteIcon, GroupIcon } from './icons';
 import { useProfile, nameOf, UserAvatar } from '../shared/profile';
 import './agentPanel.css';
 
 const AGENT_FRESH_MS = 90_000; /* the server's window: an agent that stopped waiting or polling for 90 s isn't listening any more */
 const time = (t: number) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-const STARTER_ICON: Record<StarterId, (p: { size?: number }) => JSX.Element> = { short: SparkleIcon, film: DirectorIcon, product: ProductIcon, storyboard: GridIcon, mood: PaletteIcon };
+const STARTER_ICON: Record<StarterId, (p: { size?: number }) => JSX.Element> = { short: SparkleIcon, film: DirectorIcon, product: ProductIcon, animate: ExtendIcon, mood: PaletteIcon, free: ExploreIcon };
 type Demo = { running: boolean; runId: string | null; title: string | null };
 
 /** Board.tsx puts the editor in agentApi's context; the dock lives outside <Tldraw>, so wait for a live one (after a board switch the
@@ -475,7 +475,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
           {!empty && !demo.running && !agentConnected && <div className="ap-chips" aria-label="Starters">{STARTERS.map((s) => <button key={s.id} type="button" className="ap-chip" disabled={sending} onClick={() => pickStarter(s.id)} data-testid={`agent-chip-${s.id}`}>{s.label}</button>)}</div>}
           <div className="ap-box">
             <textarea ref={ta} value={text} onChange={(e) => setText(e.target.value)} rows={2} maxLength={4000} disabled={locked}
-              placeholder={confirm ? 'What should change? Or press Looks good.' : locked ? 'The agent is working. Stop it to start something new.' : agentConnected ? `Message ${agent.agentName || 'your AI'}…` : 'Describe a film, a shoot, a storyboard…'} aria-label="Message the agent" data-testid="agent-reply"
+              placeholder={confirm ? 'What should change? Or press Looks good.' : locked ? 'The agent is working. Stop it to start something new.' : agentConnected ? `Message ${agent.agentName || 'your AI'}…` : 'Describe a film, an ad, a mood board…'} aria-label="Message the agent" data-testid="agent-reply"
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(text); } }} />
             {demo.running && !agentConnected && !(confirm && text.trim())
               ? <button type="button" className="ap-send stop" onClick={() => void stop()} aria-label="Stop the agent" {...tip('Stop. Cards already on the board stay')} data-testid="agent-stop"><StopIcon size={15} /></button>

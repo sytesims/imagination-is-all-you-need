@@ -13,11 +13,12 @@ export const DOCK_W = 380;
 
 /** The dock's starters (the server has the same list at GET /api/canvas/agent/starters; this is the offline copy). */
 export const STARTERS = [
-  { id: 'short', label: 'Short film from idea', hint: 'Beats, cast, key frames, film', icon: 'film', prompt: 'A short film: on the night the town turns off the last harbor lamp, a girl sets a paper boat on the water, and every dark window answers.' },
+  { id: 'short', label: 'Short film from idea', hint: 'Beats, cast, key frames, film', icon: 'film', prompt: 'A girl chalks a whale on a stormy harbour rooftop, and the sea answers by lighting the city.' },
   { id: 'film', label: 'Make a 30s film', hint: 'Five shots, clips and music', icon: 'film', prompt: 'Make a 30s film: a lighthouse keeper finds a glowing bottle on the shore at dawn.' },
-  { id: 'product', label: 'Product shots', hint: 'Hero, lifestyle, detail, flat lay', icon: 'product', prompt: 'Product shots for a matte orange water bottle: hero, lifestyle, detail and flat lay.' },
-  { id: 'storyboard', label: 'Storyboard from a script', hint: 'One panel per beat', icon: 'storyboard', prompt: 'Storyboard from a script:\nINT. NIGHT MARKET – A girl buys a paper lantern. It lifts her off the ground. She floats over the stalls, laughing, and lands on a rooftop where an old man is waiting with tea.' },
-  { id: 'mood', label: 'Mood board', hint: 'Palette, wardrobe, set, light', icon: 'mood', prompt: 'A mood board for a desert sci-fi short: palette, wardrobe, set and light.' },
+  { id: 'product', label: 'Product ad', hint: 'One prompt, a 15 s ad', icon: 'product', prompt: 'A 15 second ad for a blue glass perfume: four moody shots on black sand at night.' },
+  { id: 'animate', label: 'Make a clip longer', hint: 'A 10 s clip, then 10 s more', icon: 'extend', prompt: 'A boy cups a paper lantern in a rainy alley and it becomes a glowing koi. Then keep the shot going as the koi swims up to the moon.' },
+  { id: 'mood', label: 'Mood board', hint: 'A hero frame, motion and sound', icon: 'mood', prompt: 'A mood board for a glass whale over the desert: a hero frame, the whale in motion and a sound bed.' },
+  { id: 'free', label: 'Explore an idea', hint: 'One prompt, three looks', icon: 'explore', prompt: 'A woman in a red coat walking down a city street, in three looks.' },
 ] as const;
 export type StarterId = (typeof STARTERS)[number]['id'];
 

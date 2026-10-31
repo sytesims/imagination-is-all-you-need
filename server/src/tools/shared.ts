@@ -7,6 +7,7 @@ import type { Job } from '../jobs.js';
 import type { ToolDef } from './types.js';
 import { DATA_DIR, SAMPLES_DIR, WEB_PUBLIC_DIR } from '../config.js';
 import { SAMPLE_CLIPS, SAMPLE_STILLS } from '../shared/featured.js';
+import { demoMediaOf, demoKindOf, demoLabel, type DemoMedia } from '../shared/demoMedia.js';
 import { LIMITS, probe, RESOLUTIONS, trim } from '../media.js';
 import { runFfmpeg } from '../ffmpeg.js';
 import { refundPartial, creditsBackNote } from '../ledger.js';
@@ -337,6 +338,18 @@ export async function renderMockOutput(job: Job, i: number, out: string) {
   if (code !== 0) throw new Error(`Something went wrong rendering the mock result (ffmpeg ${code}). Credits went back to your balance.`);
 }
 
+/** The Canvas demo's card (job.input.demoRef, shared/demoMedia.ts): its real run as is, never cropped, looped or toned. A picture as PNG,
+ *  a clip copied (H.264 + AAC already), a sound (or a clip's sound) as AAC. False when the media is not what this job makes: the usual sample then. */
+async function renderDemoOutput(job: Job, m: DemoMedia, out: string): Promise<boolean> {
+  const want = outExt(job) === 'png' ? 'image' : outExt(job) === 'm4a' ? 'audio' : outExt(job) === 'mp4' ? 'video' : null; const kind = demoKindOf(m);
+  if (want !== kind) return false;
+  const src = path.resolve(WEB_PUBLIC_DIR, m.url.replace(/^\//, ''));
+  if (kind === 'video') { await copyFile(src, out); return true; }
+  const code = await runFfmpeg(kind === 'image' ? ['-y', '-i', src, '-frames:v', '1', out] : ['-y', '-i', src, '-vn', '-map', '0:a:0', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', out]);
+  if (code !== 0) throw new Error(`Something went wrong rendering the sample (ffmpeg ${code}). Credits went back to your balance.`);
+  return true;
+}
+
 /**
  * Generic mock run: walks the tool's stages over `ms`, then copies the source video
  * into one output per label (mock "results" reuse local media).
@@ -381,7 +394,9 @@ export async function mockRun(job: Job, stages: [string, string][], labels: stri
           for (let i = 0; i < labels.length; i++) {
             const name = `${job.id}-out${i}.${outExt(job)}`;
             const out = path.join(DATA_DIR, name);
-            const meta = job.input.layers && job.input.outKind === 'image' ? await writeMockLayer(job, i, out) /* Image to layers: drawn sample layers with name, description, box */ : (await renderMockOutput(job, i, out), {}); // mock: sample result clip + the input's audio
+            const demo = i === 0 ? demoMediaOf(job.input.demoRef) : null; // the Canvas demo's card: its real run, labelled with the model that made it
+            const meta = job.input.layers && job.input.outKind === 'image' ? await writeMockLayer(job, i, out) /* Image to layers: drawn sample layers with name, description, box */
+              : demo && await renderDemoOutput(job, demo, out) ? { madeWith: demoLabel(demo) } : (await renderMockOutput(job, i, out), {}); // mock: sample result clip + the input's audio
             job.outputs.push({ label: job.input.draft ? `${labels[i]} (draft 480p)` : labels[i], url: `/files/${name}`, ...meta });
           }
           if (job.input.layers) await writeLayerPoster(job); // Image to layers: the composite, once, as the card's poster
