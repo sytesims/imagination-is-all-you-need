@@ -116,3 +116,21 @@ export function swapPrompt(o: { mode: SwapMode; who?: string | null; extra?: str
     : `Replace ${who} in ${o.video} with the character from ${o.image}. Keep that person's exact motion, pose, gestures, lip movement and timing. Keep the camera, framing, lighting, background and every other person unchanged. The character keeps the face, hair, body and full outfit shown in ${o.image}.`;
   return [core, extra].filter(Boolean).join(' ');
 }
+
+/** "on the left" / "on the right" in Who to swap (both or neither = no side). */
+export function swapSide(target?: string | null): 'left' | 'right' | null {
+  const t = String(target ?? '').toLowerCase(); const l = /\bleft\b/.test(t), r = /\bright\b/.test(t);
+  return l === r ? null : l ? 'left' : 'right';
+}
+/** H3 Character Swap's "who" prompt (the Replace popover and the reason a job can't run). */
+export const H3_WHO_HINT = 'Click the person to swap, or pick left/right';
+/** H3 Character Swap needs to know WHO (2026-10-31): of 6 finished runs, the 3 with an empty "who" or "main person" came back unchanged, while every run
+ *  naming a side or with a click swapped. So a person swap on H3 needs a click, a side (left / right) or a mask clip. Motion transfer rebuilds the
+ *  whole frame (no person to find). A quote that doesn't carry the fields isn't judged; the job always carries target. Quote and submit alike. */
+export function charswapWhoIssue(i: Record<string, any>): string | null {
+  if (/^motion[_-]transfer$/.test(String(i.mode ?? ''))) return null;
+  if (!Object.prototype.hasOwnProperty.call(i, 'target') && i.point == null) return null;
+  const p = i.point; if (p && Number.isFinite(Number(p.x)) && Number.isFinite(Number(p.y))) return null;
+  if (i.maskPath) return null;
+  return swapSide(i.target) ? null : `H3 Character Swap: ${H3_WHO_HINT.charAt(0).toLowerCase()}${H3_WHO_HINT.slice(1)}`;
+}
