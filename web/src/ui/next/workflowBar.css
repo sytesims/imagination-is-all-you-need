@@ -117,8 +117,8 @@ html body .ic.ic2 .ic-dock .wf-strip .wf-grp{flex:none;gap:6px;height:32px;min-h
 html body .ic.ic2 .ic-dock .wf-strip .wf-grp svg{color:var(--accent)}
 html body .ic.ic2 .ic-dock .wf-strip .wf-grp .wf-grp-l{color:var(--text-3,#8a8b90);font-weight:500}
 html body .ic.ic2 .ic-dock .wf-strip .wf-grp b{font-weight:600;color:#fff;white-space:nowrap}
-/* Relight's light chip ("Window light · from the left"): a little more room before a tight bar cuts it */
-html body .ic.ic2 .ic-dock .ic-chips[data-trunc] .wf-grp[data-testid="wf-group-light"] b{max-width:210px}
+/* a workflow's main control (the first in its strip, which never folds: Relight's "Window light · from the left") keeps more room before it truncates */
+html body .ic.ic2 .ic-dock .ic-chips[data-trunc] [data-fit-main="first"]>.wf-grp:first-child b{max-width:210px}
 .wf-grp-dot{width:10px;height:10px;border-radius:3px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
 .wf-hint{color:var(--text-2,#b4b5b8);font:400 13px/18px Inter,system-ui,sans-serif;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .wf-credit{margin-left:auto;flex:0 100 auto;min-width:0;max-width:40%;text-align:right;color:var(--text-3,#8a8b90);font:400 11px/14px Inter,system-ui,sans-serif;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
@@ -212,7 +212,6 @@ html body .ic.ic2 .ic-dock .wf-strip .wf-exlink:focus-visible{box-shadow:var(--f
   .wf-slot .wf-slot-up:focus-visible::before,.wf-slot .wf-slot-x:focus-visible::before{box-shadow:var(--focus)}
 }
 .ic-chip.ic-model .ic-mpick{flex:none;color:var(--text-2,#a4a5a8);font-weight:500;white-space:nowrap}
-@media (min-width:641px){html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-model:has(.ic-mpick){max-width:290px!important}}
 /* a roadmap row in a workflow picker (3D: Text to 3D, Rig…): listed, greyed, not pickable */
 .wf-row.wf-soon{opacity:.55;cursor:default}
 .wf-seg .wf-opt-note{display:block;font-size:10px;line-height:12px;opacity:.7;font-weight:400}

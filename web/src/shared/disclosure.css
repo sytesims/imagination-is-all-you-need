@@ -1,0 +1,12 @@
+/* Disclosure (shared/Disclosure.tsx): a quiet full-width row with a chevron; the body opens below it. App fonts, orange focus ring. */
+.dc{display:flex;flex-direction:column;gap:10px;min-width:0;border-top:1px solid var(--border-strong,rgba(255,255,255,.1));padding-top:4px}
+.dc-btn{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:8px;min-height:32px;padding:0 4px 0 2px;border-radius:8px;cursor:pointer;
+  font:600 12.5px/16px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-1,#F7F7F8);transition:background .15s ease}
+.dc-btn:hover{background:var(--fill,rgba(255,255,255,.05))}
+.dc-btn:focus-visible{outline:1.5px solid rgba(255,122,26,.75);outline-offset:1px}
+.dc-l{flex:none}
+.dc-hint{flex:1;min-width:0;text-align:right;font:500 11.5px/16px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-3,rgba(255,255,255,.5));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dc-chev{flex:none;margin-left:auto;color:var(--text-2,#B4B5B8);transition:transform .18s ease}
+.dc.open .dc-chev{transform:rotate(180deg)}
+.dc-body{display:flex;flex-direction:column;gap:9px;min-width:0}
+@media (prefers-reduced-motion:reduce){.dc-btn,.dc-chev{transition:none}}

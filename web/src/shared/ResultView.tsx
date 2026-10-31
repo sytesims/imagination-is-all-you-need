@@ -170,7 +170,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
   const routeShown = /^local:/.test(jr) && servedName ? `${localWhere || LOCAL_LABEL} · ${servedName}` : routeLabel || (jr ? friendlyRoute(jr) : '');
   const sz = Number((cur as any).width) > 0 && Number((cur as any).height) > 0 ? `${(cur as any).width}×${(cur as any).height}` : '';
   const sets = [['Model', sample ? '' : credit.model], ['Look', (job as any).presetLabel || inp.presetLabel || inp.preset], ['Quality', kind === 'audio' ? '' : (job as any).qualityLabel || inp.quality] /* server's plain label, raw value as fallback */, ['Size', kind === 'audio' ? '' : sz], ['Created', (job as any).createdAt ? new Date((job as any).createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : ''], ['Seed', inp.seed], ['Resolution', kind === 'audio' || sz ? '' : inp.resolution], ['Duration', kind !== 'image' && inp.duration ? `${inp.duration}s` : ''], ['Aspect', (job as any).aspectLabel || inp.aspect], ['Made by', agentLine((job as any).agent)]].filter(([, v]) => v !== undefined && v !== null && v !== '');
-  { if (credit.ranOn) sets.push(['Ran on', credit.ranOn]); const cst = (job as any).cost; if (cst != null && !isDemoJob(job) && !sample) sets.push(['Cost', cst === 0 ? (credit.ranOn === LOCAL_LABEL ? LOCAL_FREE : 'Free') : ownAccountsNow() ? `${jobCostAmount(job) ?? jobCostText(cst, (job as any).runOn)} · billed to your ${credit.ranOn.replace(/\s*(\(.*\)|·.*)$/, '')} account` : `${ledgerUsd(cst)}${heldBack(job) ? ` (${ledgerUsd(heldBack(job))} returned to balance)` : ''}`]); }
+  { if (credit.ranOn) sets.push([(job as any).isSample ? 'Would run on' : 'Ran on', credit.ranOn]); const cst = (job as any).cost; if (cst != null && !isDemoJob(job) && !sample && !(job as any).isSample) sets.push(['Cost', cst === 0 ? (credit.ranOn === LOCAL_LABEL ? LOCAL_FREE : 'Free') : ownAccountsNow() ? `${jobCostAmount(job) ?? jobCostText(cst, (job as any).runOn)} · billed to your ${credit.ranOn.replace(/\s*(\(.*\)|·.*)$/, '')} account` : `${ledgerUsd(cst)}${heldBack(job) ? ` (${ledgerUsd(heldBack(job))} returned to balance)` : ''}`]); }
   const inputs = jobInputs(job); const refThumbs = inputs.map(x => x.url);
   const promptRef = useRef<HTMLParagraphElement>(null); const [clampOn, setClampOn] = useState(true); const [overflow, setOverflow] = useState(false);
   useEffect(() => { setClampOn(true); setFullOn(false); const el = promptRef.current; if (!el) return; requestAnimationFrame(() => setOverflow(el.scrollHeight > el.clientHeight + 2)); }, [pr, job.id]);
@@ -252,7 +252,11 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
   const moreMenu = sample ? <button type="button" className="btn rv-ic rv-copy" data-testid="rv-copy-link" aria-label="Copy link" {...tip('Copy link')} onClick={copyLink}>⧉</button> : more;
   const aiBadge = (job as any).aiGenerated ? <span className="ai-badge" data-testid="rv-ai" title="Made by an AI model">AI-generated</span> : null;
   const demo = !sample && isDemoJob(job);
+  /* a sample run (mock backend, or a keyless preview): the server says nothing was generated or billed (isSample). The picture is a stand-in,
+     so the viewer says so at the top of Info, and the details show what it would cost instead of a price, render time or place as if it ran. */
+  const mockRun = !sample && !demo && !!(job as any).isSample;
   const sampleChip = demo ? <em className="demo-badge rv-sample-chip" data-testid="rv-sample-chip" title="Sample output, nothing billed.">Sample</em> : null;
+  const mockNote = mockRun ? <div className="rv-demo rv-mock" data-testid="rv-sample-run"><em className="comm-badge comm-badge-sample">Sample</em><p className="helper">Nothing was generated or charged. This picture is a stand-in, not a real result.</p></div> : null;
   const demoNote = demo ? <div className="rv-demo" data-testid="rv-demo"><p className="helper">Sample output, nothing billed.</p></div> : null;
   const sampleNote = sample ? <div className="rv-sample" data-testid="rv-sample"><em className="comm-badge comm-badge-sample">{sampleLabel(job)}</em>{(job as any).sample?.credit && <p className="helper">{(job as any).sample.credit}{(job as any).sample.license ? <> · {(job as any).sample.licenseUrl ? <a href={(job as any).sample.licenseUrl} target="_blank" rel="noreferrer">{(job as any).sample.license}</a> : (job as any).sample.license}</> : null}{(job as any).sample.sourceUrl ? <> · <a href={(job as any).sample.sourceUrl} target="_blank" rel="noreferrer">Source</a></> : null}</p>}</div> : null; // the AI-generated pill is aiBadge (one per header)
   /* Add sound (one-click soundtrack, MMAudio): on your own finished video results; a soundtrack result can be scored again */
@@ -338,7 +342,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
       kind: kind as DetailsInfo['kind'], feature: feat?.name ?? (sample ? sampleLabel(job) : tools?.find(t => t.id === job.toolId)?.name ?? toolLike(job.toolId)?.name) ?? '', model: S.Model ? String(S.Model) : '', maker: mk ? { maker: mk.maker, makerName: mk.makerName } : null,
       ranOn: credit.ranOn, size: kind === 'audio' ? '' : size || (kind === 'video' ? String(inp.resolution ?? '') : ''), aspect: kind === 'audio' ? '' : String(S.Aspect ?? ''), seed: S.Seed ?? null,
       durationSec: kind !== 'image' ? dur : 0, fps: kind === 'video' && fps > 0 ? fps : 0, sampleRate: kind === 'audio' && sr > 0 ? sr : 0, format: kind === 'audio' ? ext : '',
-      preset: S.Preset ? String(S.Preset) : '', quality: !local && S.Quality ? String(S.Quality) : '', madeBy: S['Made by'] ? String(S['Made by']) : '', workflow: feat?.workflow ?? null, sample: sample || isDemoJob(job), recovered,
+      preset: S.Preset ? String(S.Preset) : '', quality: !local && S.Quality ? String(S.Quality) : '', madeBy: S['Made by'] ? String(S['Made by']) : '', workflow: feat?.workflow ?? null, sample: sample || isDemoJob(job) || mockRun, recovered,
       madeFrom: job.parentId ? <a className="rv-parent" data-testid="rv-made-from" href={`/jobs/${encodeURIComponent(job.parentId)}`} onClick={go(`/jobs/${job.parentId}`)}>{job.parentId}</a> : null,
     };
     const copyPrompt = () => navigator.clipboard?.writeText(pr).then(() => { toast('Prompt copied'); }, () => { toast('Couldn’t copy the prompt', 'error'); return false; });
@@ -372,7 +376,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
     const strip = inputs.length > 0 && <IoStrip key={job.id} items={ioTiles} viewing={inView} onView={i => { setCmp(false); setInView(i); }} bad={badIn} onBad={i => setBadIn(s => s.has(i) ? s : new Set(s).add(i))}
       cmp={cmpWhy ? { mode: 'blocked', why: cmpWhy } : cmpSrc ? { mode: cmpOn ? 'on' : 'off', toggle: () => { setInView(null); setCmp(!cmpOn); } } : { mode: 'none' }}
       out={{ thumb: outThumb, b: upscale ? size : lys ? layerCountText(lys.length) : outs.length > 1 && !showingOriginal ? `${outIx + 1} of ${outs.length}` : '', on: outOn, onShow: () => { setInView(null); setCmp(false); } }} />;
-    const info = <>{sampleNote}{demoNote}{extras}{children}
+    const info = <>{sampleNote}{mockNote}{demoNote}{extras}{children}
       {lys && <LayerList jobId={job.id} layers={lys} view={lyView} onError={m => toast(m, 'error')} />}
       <ViewerPrompt text={pr} full={fullPr} onCopy={copyPrompt} extra={<>{strip}
         {(job as any).elements?.length > 0 && <div className="el-chips rv-els">{(job as any).elements.map((e: any) => <span key={e.id + e.start} className="el-chip" title={e.kind}>{e.url && <img src={e.url} alt="" />}<b>{e.mention ?? `@${e.name}`}</b></span>)}</div>}</>} />

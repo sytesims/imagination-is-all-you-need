@@ -1,0 +1,6 @@
+/* Type filter (shared/TypeFilter.tsx): All · Images · Videos · Audio, a quiet segmented row (media picker, Canvas Assets drawer) */
+.tyf{display:inline-flex;flex:none;gap:2px;padding:2px;border-radius:9px;background:var(--fill,rgba(255,255,255,.06))}
+.tyf button{all:unset;box-sizing:border-box;height:26px;padding:0 10px;border-radius:7px;color:var(--text-2,rgba(255,255,255,.62));font:600 12px/26px var(--font-ui,Inter,system-ui,sans-serif);white-space:nowrap;cursor:pointer;transition:background-color var(--t-state,.15s) ease,color var(--t-state,.15s) ease}
+.tyf button:hover:not(.on){color:var(--text,#fff)}
+.tyf button.on{background:rgba(255,255,255,.12);color:var(--text,#fff)}
+.tyf button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;box-shadow:none}

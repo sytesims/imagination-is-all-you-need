@@ -1554,7 +1554,7 @@ button[data-action=upscale]::before{content:'⤢';font-size:14px}
 .ic-chip{height:39px!important;min-height:39px;padding:0 12px!important;border-radius:9px!important;background:#323336!important;border:0!important;color:#fff!important;font-size:13px!important;font-weight:500!important;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;flex:none;cursor:pointer}
 .ic-chip:hover,.ic-chip.on{background:#3d3e42!important}
 .ic-sq{width:39px;padding:0!important;justify-content:center;font-size:16px!important}
-.ic-model{max-width:220px!important}.ic-mname{overflow:hidden;text-overflow:ellipsis}.ic-caret{opacity:.6;font-size:15px}
+.ic-mname{overflow:hidden;text-overflow:ellipsis}.ic-caret{opacity:.6;font-size:15px}
 .ic-dot{width:18px;height:18px;border-radius:5px;background:var(--accent) center/cover;flex:none}
 .ic-shape{display:inline-block;border:1.5px solid currentColor;border-radius:2px;opacity:.85;flex:none}
 .ic-auto{font-size:14px;opacity:.85}
@@ -3409,7 +3409,7 @@ html body .ws .sw-lib .sw-pillrow .sw-search{height:30px!important}
 /* (d) Home: small, muted "Not affiliated" line under the hero */
 /* L2: demo-preview note before Generate, and the demo label on results */
 html body .demo-badge{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:999px;background:rgba(255,122,26,.16);color:var(--accent);font:600 11px/20px Inter,system-ui,sans-serif;white-space:nowrap}
-html body .rv-demo{display:grid;gap:4px;margin:8px 0}html body .rv-demo .demo-badge{justify-self:start}html body .rv-demo .helper{margin:0;font-size:12px}
+html body .rv-demo{display:grid;gap:4px;margin:8px 0}html body .rv-demo .demo-badge{justify-self:start}html body .rv-demo .helper{margin:0;font-size:12px}html body .rv-mock .comm-badge{justify-self:start}
 /* L7: MCP setup at 390. Setup steps and code blocks must shrink to the viewport (they sized the grid to the longest command) */
 html body .mcp-setup{min-width:0;max-width:100%;display:grid;grid-template-columns:minmax(0,1fr)}
 html body .mcp-setup .mcp-steps,html body .mcp-setup .mcp-steps li,html body .mcp-setup .xcode-wrap{min-width:0;max-width:100%}
