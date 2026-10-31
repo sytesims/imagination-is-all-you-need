@@ -3,7 +3,8 @@
  * this file holds no React component of its own, so editing a view hot-reloads as a Fast Refresh.
  */
 import { BaseBoxShapeUtil, T, createShapeId, resizeBox, type Editor, type TLResizeInfo, type TLShape, type TLShapeId, type VecLike } from 'tldraw';
-import { NODE_DEFS, nodeDefOf, GROUP_TYPE, PROMPT_TYPE, UPLOAD_TYPE, NOTE_TYPE, COMPARE_TYPE, AD_TYPE, type NodeKind } from './nodeTypes';
+import { NODE_DEFS, nodeDefOf, adCardHeight, GROUP_TYPE, PROMPT_TYPE, UPLOAD_TYPE, NOTE_TYPE, COMPARE_TYPE, AD_TYPE, type NodeKind } from './nodeTypes';
+import { AD_SHAPES, asShape } from './adPlatforms';
 import { freeSpot } from './placement';
 import { AuxView } from './AuxNodes';
 
@@ -67,7 +68,10 @@ function makeAuxUtil(kind: NodeKind, type: string) {
     getDefaultProps(): AuxNodeProps | AdNodeProps { return kind === 'ad' ? adProps() : auxProps(kind); }
     override canEdit() { return false; }
     override canResize() { return true; }
-    override onResize(shape: any, info: TLResizeInfo<any>) { const n = resizeBox(shape, info); const d = NODE_DEFS[kind]; return { ...n, props: { ...n.props, w: clamp(n.props.w, d.minW, d.maxW), h: clamp(n.props.h, d.minH, d.maxH) } }; }
+    override onResize(shape: any, info: TLResizeInfo<any>) { const n = resizeBox(shape, info); const d = NODE_DEFS[kind]; const w = clamp(n.props.w, d.minW, d.maxW);
+      /* an ad layout's height follows its ad's shape (nodeTypes.adCardHeight) */
+      const a = kind === 'ad' ? AD_SHAPES[asShape(shape.props.size)] : null;
+      return { ...n, props: { ...n.props, w, h: a ? adCardHeight(w, a.w / a.h) : clamp(n.props.h, d.minH, d.maxH) } }; }
     component(shape: any) { return <AuxView shape={shape} />; }
     getIndicatorPath(shape: any) { const p = new Path2D(); p.roundRect(0, 0, shape.props.w || NODE_DEFS[kind].defaultW, shape.props.h || NODE_DEFS[kind].defaultH, 18); return p; }
   };

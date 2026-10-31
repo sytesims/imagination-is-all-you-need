@@ -53,14 +53,22 @@ export const NODE_DEFS: Record<NodeKind, NodeDef> = {
   group: { kind: 'group', type: GROUP_TYPE, label: 'Group', hint: 'A frame with Run all', input: false, output: false, inputMax: 0,
     defaultW: 720, defaultH: 520, minW: 360, minH: 260, maxW: 1800, maxH: 1400, tint: 'group' },
   ad: { kind: 'ad', type: AD_TYPE, label: 'Ad layout', hint: 'Your headline, price and logo on a picture', input: true, output: false, inputMax: 1,
-    defaultW: 360, defaultH: 640, minW: 320, minH: 560, maxW: 820, maxH: 1400, tint: 'ad' },
+    defaultW: 360, defaultH: 514, minW: 300, minH: 240, maxW: 820, maxH: 1500, tint: 'ad' },
 };
 
-/** An Ad layout card's size when it's shown: a card still at an old default (400 × 700, then 400 × 840) takes today's smaller one; a
- *  card shorter than the least it needs grows to today's height ('grow': only when that covers no other card); otherwise null. */
-export function adCardResize(w: number, h: number): { w: number; h: number; grow?: true } | null {
-  const d = NODE_DEFS.ad; if (w === 400 && (h === 700 || h === 840)) return { w: d.defaultW, h: d.defaultH };
-  return h < d.minH ? { w, h: d.defaultH, grow: true } : null;
+/** The Ad layout card is mostly its preview (2026-10-31): a slim title row, the ad edge to edge, one bar under it. Its height follows
+ *  the ad's shape at the card's width (`aspect` = the ad's width / height), so 9:16 is tall and 1.91:1 is short. AD_CHROME is the
+ *  title row, the bar, the gaps and the frame (node.css .ad-card); AD_SIDE the frame and the side padding. */
+export const AD_CHROME = 86, AD_SIDE = 18;
+export const adCardHeight = (w: number, aspect: number) => { const d = NODE_DEFS.ad;
+  return Math.round(Math.max(d.minH, Math.min(d.maxH, AD_CHROME + (w - AD_SIDE) / (aspect > 0 ? aspect : 0.8)))); };
+/** An Ad layout card's size for its ad's shape: a card still at an old default (400 × 700, 400 × 840) takes today's width; the height
+ *  then follows the shape. 'grow': the card gets taller (only when that covers no other card; otherwise the preview fits inside).
+ *  null: already right. */
+export function adCardFit(w: number, h: number, aspect: number): { w: number; h: number; grow?: true } | null {
+  const nw = w === 400 && (h === 700 || h === 840) ? NODE_DEFS.ad.defaultW : w; const nh = adCardHeight(nw, aspect);
+  if (nw === w && Math.abs(nh - h) < 1) return null;
+  return nh > h ? { w: nw, h: nh, grow: true } : { w: nw, h: nh };
 }
 
 export const NODE_KINDS = Object.keys(NODE_DEFS) as NodeKind[];

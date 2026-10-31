@@ -2,7 +2,7 @@
 // membership, and the two-press Run all (a first press only prices; a run list comes back only on a fresh second press).
 // Run: npx tsx test/canvas-nodes.test.ts   (no server, no network, no browser)
 import assert from 'node:assert/strict';
-import { NODE_DEFS, NODE_KINDS, NODE_TYPES, GEN_TYPE, RESULT_TYPE, PROMPT_TYPE, UPLOAD_TYPE, NOTE_TYPE, COMPARE_TYPE, GROUP_TYPE, AD_TYPE, nodeDefOf, adCardResize } from '../../web/src/canvas/nodeTypes.ts';
+import { NODE_DEFS, NODE_KINDS, NODE_TYPES, GEN_TYPE, RESULT_TYPE, PROMPT_TYPE, UPLOAD_TYPE, NOTE_TYPE, COMPARE_TYPE, GROUP_TYPE, AD_TYPE, nodeDefOf, adCardFit, adCardHeight } from '../../web/src/canvas/nodeTypes.ts';
 import { canConnectTo, pickPortTarget, groupGenIds, runAllConfirm, runAllCommit, runAllTotal, runAllPriceLabel } from '../../web/src/canvas/nodeLogic.ts';
 import { linkShapes, inputOfShape, withInputs } from '../../web/src/canvas/graph.ts';
 import { addVersions, MAX_VERSIONS } from '../../web/src/canvas/cardModel.ts';
@@ -149,12 +149,17 @@ ok('Run all: first press only prices (no run list), second fresh press runs, sta
   assert.deepEqual(r.now, ['hero', 'lone']); assert.deepEqual(r.later, ['clip', 'chained']); assert.deepEqual(r.blocked, [{ id: 'orphan', name: 'Other' }]);
   ok('run order: upstream first, downstream waits, a card whose input will never come is not started'); }
 /* the Ad layout card is compact (2026-10-31): old default sizes take the new one, a too-short card grows, others stay */
-assert.deepEqual([NODE_DEFS.ad.defaultW, NODE_DEFS.ad.defaultH], [360, 640]);
-assert.deepEqual(adCardResize(400, 840), { w: 360, h: 640 }, 'the old 400 x 840 default takes today\'s size');
-assert.deepEqual(adCardResize(400, 700), { w: 360, h: 640 }, 'so does the older 400 x 700');
-assert.deepEqual(adCardResize(400, 500), { w: 400, h: 640, grow: true }, 'a card too short grows (when nothing is in the way)');
-assert.equal(adCardResize(360, 640), null); assert.equal(adCardResize(500, 900), null, 'a card the user resized stays');
-ok('ad card: compact size, old cards adapt');
+// the ad card is mostly its preview: its height follows the ad's shape at the card's width
+assert.deepEqual([NODE_DEFS.ad.defaultW, NODE_DEFS.ad.defaultH], [360, adCardHeight(360, 4 / 5)], 'the default fits a 4:5 ad');
+assert.equal(adCardHeight(360, 4 / 5), 514); assert.equal(adCardHeight(360, 9 / 16), 694); assert.equal(adCardHeight(360, 1), 428); assert.equal(adCardHeight(360, 1.91), 265);
+assert.ok(adCardHeight(360, 9 / 16) > adCardHeight(360, 1) && adCardHeight(360, 1) > adCardHeight(360, 1.91), '9:16 is tall, 1.91:1 is short');
+for (const a of [4 / 5, 9 / 16, 1, 1.91]) { const h = adCardHeight(360, a); const pv = (360 - 18) * ((360 - 18) / a); assert.ok(pv / (360 * h) > (a > 1.5 ? 0.6 : 0.75), `the preview is most of the card at ${a}`); }
+assert.deepEqual(adCardFit(400, 840, 9 / 16), { w: 360, h: 694 }, 'the old 400 x 840 default takes today\'s width, the height follows the shape');
+assert.deepEqual(adCardFit(400, 700, 4 / 5), { w: 360, h: 514 }, 'so does the older 400 x 700');
+assert.deepEqual(adCardFit(360, 640, 4 / 5), { w: 360, h: 514 }, 'the last default gets shorter for a 4:5 ad');
+assert.deepEqual(adCardFit(360, 514, 9 / 16), { w: 360, h: 694, grow: true }, 'a taller shape grows the card (when nothing is in the way)');
+assert.equal(adCardFit(360, 514, 4 / 5), null, 'already right'); assert.equal(adCardFit(500, adCardHeight(500, 1), 1), null, 'a wider card keeps its width');
+ok('ad card: preview first, height follows the ad shape, old cards adapt');
 
 console.log('canvas-nodes: all ok');
 process.exit(0);
