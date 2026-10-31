@@ -14,6 +14,7 @@ import { pickMedia } from '../../shared/MediaPicker';
 import { libraryUrlOf } from '../../shared/libraryFiles';
 import { uploadMedia } from '../../shared/batch1';
 import { VideoThumb } from '../../shared/VideoThumb';
+import { VideoControls } from '../../shared/VideoControls';
 import { GenPrice } from '../../shared/GenPrice';
 import AudioCard from '../../shared/AudioCard';
 import { MissingMedia } from '../../shared/ResultViewer';
@@ -139,17 +140,18 @@ function WorldNotes({ film, commit }: { film: FilmProject; commit: (o: FilmOp[])
 
 /** The picked card's active take, played inside its trim (the stitched film uses the same in and out). */
 function Preview({ shot, label, aspect }: { shot: FilmShot | null; label: string; aspect: string }) {
-  const a = shot ? activeTake(shot) : null; const t = playable(a) ? a : null; const v = useRef<HTMLVideoElement>(null); const [gone, setGone] = useState(false);
+  const a = shot ? activeTake(shot) : null; const t = playable(a) ? a : null; const [v, setV] = useState<HTMLVideoElement | null>(null); const screen = useRef<HTMLDivElement>(null); const [gone, setGone] = useState(false);
   useEffect(() => setGone(false), [t?.url]); const full = shot ? fullLen(shot) : null;
   const inS = shot?.trim.inSec ?? 0; const outS = shot?.trim.outSec ?? null;
   const ar = /^(\d+):(\d+)$/.exec(aspect); const style = ar ? { aspectRatio: `${ar[1]} / ${ar[2]}` } : undefined;
   return <section className="fm-preview" aria-label="Preview">
-    <div className="fm-screen" style={style}>
+    <div className="fm-screen" ref={screen} style={style}>
       {!shot ? <span className="fm-screen-ph">Your film plays here</span>
         : gone || a?.status === 'missing' ? <MissingMedia />
-        : t?.url ? <span className="fm-vwrap" key={t.url}><video ref={v} src={t.url} poster={t.posterUrl ?? undefined} controls playsInline preload="metadata" data-testid="film-preview-video"
+        : t?.url ? <span className="fm-vwrap" key={t.url}><video ref={setV} src={t.url} poster={t.posterUrl ?? undefined} playsInline preload="metadata" data-testid="film-preview-video"
             onLoadedMetadata={e => { if (inS > 0) e.currentTarget.currentTime = inS; }} onError={() => setGone(true)}
-            onTimeUpdate={e => { const el = e.currentTarget; if (outS != null && el.currentTime >= outS) { el.pause(); el.currentTime = outS; } }} onPlay={e => { const el = e.currentTarget; if (el.currentTime < inS - 0.05 || (outS != null && el.currentTime >= outS - 0.05)) el.currentTime = inS; }} /></span>
+            onTimeUpdate={e => { const el = e.currentTarget; if (outS != null && el.currentTime >= outS) { el.pause(); el.currentTime = outS; } }} onPlay={e => { const el = e.currentTarget; if (el.currentTime < inS - 0.05 || (outS != null && el.currentTime >= outS - 0.05)) el.currentTime = inS; }} />
+          <VideoControls video={v} fullscreen={screen} fallbackSec={full ?? undefined} testId="film-preview" label="Preview playback" seekLabel="Seek the shot" /></span>
         : startUrl(shot) ? <span className="fm-vwrap" key={startUrl(shot)!}>{/* keyed: a broken still marks its host, so the next card's still gets a fresh one */}<img src={startUrl(shot)!} alt={`${label} start still`} /></span>
         : <span className="fm-screen-ph">{shot.status === 'failed' ? (latestTake(shot)?.error ?? 'This take didn’t finish. Nothing more is charged for it.') : isBusy(shot) ? 'Generating…' : 'No clip yet'}</span>}
       {shot && isBusy(shot) && <span className="fm-screen-busy" role="status"><i className="as-spin" aria-hidden />Generating {label.toLowerCase()}…</span>}
@@ -314,10 +316,11 @@ function StitchBar({ film, models, commit, adopt, onRough }: { film: FilmProject
 function RoughCut({ r, film, labels, onStop }: { r: Rough; film: FilmProject; labels: string[]; onStop: () => void }) {
   const [t, setT] = useState(0); const parts = r.shotIds.map(id => { const k = film.shots.findIndex(s => s.id === id); return { id, label: labels[k] ?? 'Shot', len: k >= 0 ? playLen(film.shots[k]) : 0 }; });
   const total = r.durationSec ?? parts.reduce((n, p) => n + p.len, 0); let acc = 0; const on = parts.findIndex(p => { acc += p.len; return t < acc; });
-  const ar = /^(\d+):(\d+)$/.exec(film.aspect);
+  const ar = /^(\d+):(\d+)$/.exec(film.aspect); const [v, setV] = useState<HTMLVideoElement | null>(null); const screen = useRef<HTMLDivElement>(null);
   return <section className="fm-preview fm-rough" aria-label="Rough cut" data-testid="film-rough-player">
-    <div className="fm-screen" style={ar ? { aspectRatio: `${ar[1]} / ${ar[2]}` } : undefined}>
-      <span className="fm-vwrap" key={r.url}><video src={r.url} autoPlay controls playsInline onTimeUpdate={e => setT(e.currentTarget.currentTime)} /></span>
+    <div className="fm-screen" ref={screen} style={ar ? { aspectRatio: `${ar[1]} / ${ar[2]}` } : undefined}>
+      <span className="fm-vwrap" key={r.url}><video ref={setV} src={r.url} autoPlay playsInline onTimeUpdate={e => setT(e.currentTarget.currentTime)} />
+        <VideoControls video={v} fullscreen={screen} fallbackSec={total} testId="film-rough" label="Rough cut playback" seekLabel="Seek the rough cut" /></span>
       <span className="fm-rough-tag">Rough cut{on >= 0 ? ` · ${parts[on].label}` : ''}</span>
     </div>
     <div className="fm-rough-bar">
@@ -384,7 +387,7 @@ function useFilmKeys(o: { film: FilmProject | null; sel: string | null; setSel: 
     const on = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.repeat) return; const k = filmKeyOf(e); if (!k) return; const el = e.target as HTMLElement | null;
       if (el?.closest?.('[role="dialog"],[role="menu"],[role="listbox"],[role="radiogroup"],[role="slider"],[role="tablist"],.pop,.dlg')) return;
-      if (el?.tagName === 'VIDEO' || el?.tagName === 'INPUT') return; /* a focused player keeps its own Space; a slider keeps its arrows */
+      if (el?.tagName === 'VIDEO' || el?.tagName === 'INPUT' || el?.closest?.('.sfilm-controls')) return; /* a focused player control keeps its own Space; a slider keeps its arrows */
       const { film, sel, setSel, setGap, setHelp, commit, adopt, toast } = ref.current; if (!film) return;
       const i = film.shots.findIndex(s => s.id === sel); const shot = i >= 0 ? film.shots[i] : null; const labels = shotLabels(film.shots);
       const done = () => e.preventDefault();

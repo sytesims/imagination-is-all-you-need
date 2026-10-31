@@ -50,6 +50,9 @@
 .fm-screen .rvx-media{width:100%;height:100%}
 .fm-screen-ph{color:var(--text-3);font-size:var(--fs-sm)}
 .fm-screen-busy{position:absolute;left:12px;bottom:12px;display:inline-flex;gap:8px;align-items:center;background:rgba(0,0,0,.66);padding:6px 10px;border-radius:var(--r-pill);font-size:var(--fs-xs)}
+/* the shared player transport (shared/VideoControls) sits at the bottom: the busy chip moves to the top; full screen drops the frame */
+.fm-screen:has(.sfilm-controls) .fm-screen-busy{bottom:auto;top:12px}.fm-screen:fullscreen{border:0;border-radius:0}
+@media (max-width:600px){.fm-screen .sfilm-controls{padding:24px 8px 4px}.fm-screen .sfilm-transport{min-height:36px;margin-top:0}}
 .fm-preview-cap{margin:0;color:var(--text-2);font-size:var(--fs-sm)}.fm-preview-cap b{color:var(--text)}
 .fm-rough-tag{position:absolute;top:10px;left:10px;background:rgba(0,0,0,.66);padding:4px 10px;border-radius:var(--r-pill);font-size:var(--fs-xs)}
 .fm-rough-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
