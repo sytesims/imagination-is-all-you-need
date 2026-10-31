@@ -69,6 +69,16 @@ Without a model connection, **Generate asks you to connect a key or ComfyUI**. I
 
 Need help getting started? [Install and run](docs/INSTALL.md) covers prerequisites and Windows/macOS instructions. It also includes Docker and advanced setup. Other ports and settings: [Configuration](docs/CONFIGURATION.md).
 
+### Mac app (Dock)
+
+On a Mac, run this once in the app folder:
+
+```text
+npm run mac-app
+```
+
+It puts **Imagination** in your Applications folder (the one in your home folder). Drag it to the Dock. Clicking it starts the studio in the background when it isn't running, then opens it in your browser. No terminal to keep open. Hold **Option** while opening it to stop the studio. More in [Install and run](docs/INSTALL.md#mac-app-dock).
+
 ### Updating
 
 Stop the app (**Ctrl+C**), then run this in the app folder:

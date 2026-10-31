@@ -38,6 +38,7 @@
     "doctor": "node scripts/doctor.mjs",
     "setup": "node scripts/setup.mjs",
     "update": "node scripts/update.mjs",
+    "mac-app": "bash scripts/make-mac-app.sh",
     "docs:api": "node scripts/gen-api-docs.mjs",
     "start:demo": "concurrently -n api,web,mcp -c magenta,cyan,yellow \"npm run start:tsx -w server\" \"npm run build:demo -w web && npm run preview -w web\" \"npm:mcp:dev\"",
     "test": "node scripts/test-all.mjs",

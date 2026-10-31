@@ -66,6 +66,25 @@ Open the printed web URL. Keep the terminal open; **Ctrl+C** stops the services.
 
 `npm install` also attempts to install MCP dependencies. If that part fails, fix the reported dependency error and run `npm run mcp:install`; the app being reachable does not prove MCP is running.
 
+### Mac app (Dock)
+
+On macOS you can open the studio like any other app. In the app folder, run once:
+
+```text
+npm run mac-app
+```
+
+This builds `Imagination.app` in `~/Applications`, the Applications folder in your home folder. Drag it from there to the Dock.
+
+- **Opening it** starts the app in the background when it isn't running (the same `npm run setup`, so a first start also installs what's missing), shows "Starting Imagination…", then opens the studio in your browser. If it's already running, it just opens the browser. Closing the browser doesn't stop it.
+- **To stop it**, hold **Option** while you open Imagination and choose **Stop Imagination**. It only stops the copy it started; a copy started in a terminal stops with **Ctrl+C** there.
+- **If it can't start**, it shows the last lines of the log. The full log is `~/Library/Logs/Imagination/app.log`.
+- **Ports and settings** work as above: `PORT` and `WEB_PORT` in `.env.local` are used.
+- **Moved or renamed the app folder?** Run `npm run mac-app` again from the new place. `npm run mac-app -- --dest DIR` builds it somewhere else.
+- **To remove it**, drag `Imagination.app` to the Trash (and off the Dock). Optionally also delete `~/Library/Logs/Imagination` and `~/Library/Application Support/Imagination`.
+
+The app is built on your Mac, so macOS opens it without a download warning. The first time it shows a notification, macOS may ask whether Imagination can send notifications.
+
 ## Choose how to use it
 
 ### Browse the included Examples project
