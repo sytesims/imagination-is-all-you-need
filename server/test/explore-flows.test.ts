@@ -212,7 +212,10 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
       for (const u of e.input.refUrls as string[]) file(u, 2e5); file(FEATURED_BIG_POSTER[r.key] ?? e.out.poster.replace(/-480\.webp$/, '.webp')); }
     assert.equal(f.sharp!.url, '/showcase/h3-char-swap-sharp.mp4'); assert.equal(f.out.url, '/showcase/h3-char-swap.mp4', 'the original H3 result stays the featured result (Recreate, feeds)');
     const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); const sw = xs.slice(xs.indexOf('function swapRuns'), xs.indexOf('export function XpLayers')); /* the runs helper (Recreate links) sits just above XpSwap */
-    assert.match(sw, /useSyncClips\(3\)/, 'the three clips play in step (shared useSyncClips)'); assert.match(sw, /<SoundToggle on=\{g\.sound\.lit\} waiting=\{g\.sound\.waiting\} label=\{g\.sound\.hint\}/, 'the shared sound toggle');
+    assert.match(sw, /useSyncClips\(4\)/, 'the original under each slider and both swaps play in step (shared useSyncClips)');
+    assert.match(sw, /<CompareFrame [^>]*intro="nudge"/, 'each card is the shared before / after slider (CompareFrame), nudged once');
+    assert.doesNotMatch(xs, /xsdc-mid|xsdc-orig/, 'no small original between the cards');
+    for (const r of S.runs) if (r.originalPoster) file(r.originalPoster); assert.match(sw, /<SoundToggle on=\{g\.sound\.lit\} waiting=\{g\.sound\.waiting\} label=\{g\.sound\.hint\}/, 'the shared sound toggle');
     assert.match(sw, /g\.still \? <img className="xsdc-media" src=\{poster\}/, 'reduced motion: posters'); assert.match(sw, /featuredRecreateHref\(f\.key\)/, 'Recreate from each featured entry');
     assert.match(sw, /\{x\.f\.model\}[\s\S]*\{x\.price\}/, 'each card names the real model and price'); assert.doesNotMatch(xs, /\?swap=|SWAP_DEV|XpSwapNow|XpSwapThree|XpSwapPick|XpStage|EXPLORE_STAGE/, 'no leftover layouts');
     assert.match(fs.readFileSync(path.join(WEB, 'shared/SyncClips.ts'), 'utf8'), /export function useSyncClips/);
@@ -257,7 +260,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     const hero = part('export function XpHero', 'a prompt as it ran (shared)'); assert.match(hero, /sound: f\.out\.sound/);
     const still = part('export function XpStill', 'Make your own cartoon (MiniMax H3'); assert.match(still, /<HeroReel [^\n]*sound=\{f\.out\.sound === true\} restartOnSound/, 'From one still: the shared toggle, from 0 when sound goes on');
     const koi = part('export function XpKoi', "a chapter's copy column"); assert.match(koi, /restartOnSound/, 'the koi take: from 0 when sound goes on'); assert.match(koi, /sound: f\.out\.sound/);
-    const swap = part('export function XpSwap', 'Chapter 2: image to layers'); assert.match(swap, /useSyncClips\(3\)[\s\S]*\{!g\.still && <SoundToggle on=\{g\.sound\.lit\}/, 'the swap: the shared toggle (the original leads and carries the sound; not under reduced motion)');
+    const swap = part('export function XpSwap', 'Chapter 2: image to layers'); assert.match(swap, /useSyncClips\(4\)[\s\S]*\{!g\.still && <SoundToggle on=\{g\.sound\.lit\}/, 'the swap: the shared toggle (the original leads and carries the sound; not under reduced motion)');
     assert.doesNotMatch(xs, /_SOUND_KEY|soundKey|soundGroup|useClipSound/, 'no per-section sound keys or groups left');
     for (const src of [film, reel, fs.readFileSync(path.join(WEB, 'shared/SyncClips.ts'), 'utf8')]) { assert.match(src, /useDirectedSound\(/, 'every Explore player registers with the sound director'); assert.doesNotMatch(src, /soundKey|soundGroup|useClipSound|setBlocked/, 'no per-player sound state'); }
     assert.ok(!fs.existsSync(path.join(WEB, 'shared/soundGroup.ts')), 'sound groups folded into the director');
