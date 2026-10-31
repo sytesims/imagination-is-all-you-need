@@ -18,6 +18,10 @@
  * selection with an "Add n" bar; the picked tab is a subtle fill with an orange underline.
  * Tell files apart (2026-10-31, Canvas audit B4/B17): every tile has a one-line caption (short name, a clip's or sound's length), and a sound
  * plays from its round button or Space (shared/PreviewPlay: one preview at a time, stopped when the picker closes or the tab changes).
+ * Type filter (2026-10-31): All · Pictures · Clips · Sounds (shared/TypeFilter, the same row as Canvas's Assets drawer), only the kinds the slot can
+ * use and that exist; it starts on what the slot takes (a picture slot: Pictures; Clips is there for a frame). Tiles show a short title
+ * (server shared/shortTitle.ts: the job's title, else its prompt's first words, else the feature; "Layer N · …" for layers) on a checkerboard
+ * (transparent layers read), with a clip's or sound's length in its own slot.
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { gridSrc } from './thumbs';
@@ -31,6 +35,7 @@ import { ProjectCover, ProjectRows, useProjectList } from './ProjectPicker';
 import { setJobProject } from '../api';
 import { ChevronDownIcon, MoreIcon, ProjectsIcon, SearchIcon, CloseIcon } from '../ui/Icons';
 import { PlayButton, togglePreview, stopPreview, useMediaLength, fmtLength } from './PreviewPlay';
+import { TypeFilter, TYPE_LABEL, type TypePick } from './TypeFilter';
 import './mediaPicker.css';
 
 export type PickTab = 'Uploads' | 'Generations' | 'Liked';
@@ -58,11 +63,11 @@ const list = (xs: string[]) => xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).
 export const defaultTitle = (kinds: MediaKind[], multiple?: boolean) => `Choose ${list(kinds.map(k => NOUN[k][multiple ? 1 : 0]))}`;
 const day = (t: number) => t > 0 ? new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
 /** A tile's short name, never a prompt: a saved frame says which frame, an upload its file name, a generation its feature. */
-export function tileName(x: Pick<LibItem, 'name' | 'type' | 'toolName'>, tab: PickTab): string {
+export function tileName(x: Pick<LibItem, 'name' | 'type' | 'toolName' | 'title'>, tab: PickTab): string {
   const frame = /^(First frame|Last frame|Frame at [^·]+?)\s*·/.exec(x.name ?? '')?.[1]?.trim();
   if (frame) return frame;
   if (tab === 'Uploads') return /^[^/·\n]{1,200}\.[a-z0-9]{2,4}$/i.test((x.name ?? '').trim()) ? x.name.trim() : 'Upload';
-  return x.toolName || (x.type === 'video' ? 'Video' : x.type === 'audio' ? 'Sound' : 'Picture');
+  return x.title?.trim() || x.toolName || (x.type === 'video' ? 'Video' : x.type === 'audio' ? 'Sound' : 'Picture');
 }
 /** A slot label as a picker title: "Start frame" → "Choose a start frame", "Reference images" → "Choose reference images". */
 export function chooseTitle(label: string | null | undefined, kinds: MediaKind[], multiple?: boolean): string {
@@ -96,7 +101,7 @@ function Tile({ x, tab, onPick, onMore, moreOpen, frameHint, sel }: { x: LibItem
   const name = tileName(x, tab); const when = day(x.createdAt); const tip = when ? `${name} · ${when}` : name; const len = fmtLength(dur);
   /* a sound: Space plays / pauses it (Enter still picks); the round button does the same with the mouse */
   const space = (e: React.KeyboardEvent) => { if (x.type !== 'audio' || e.key !== ' ') return; e.preventDefault(); if (e.type === 'keydown' && !e.repeat) togglePreview(x.url); };
-  return <div ref={ref} className={`ic-ref-tile mpk-tile mpk-t-${x.type}${ld ? ' ld' : ''}${sel ? ' mpk-sel' : ''}`}><button type="button" className="mpk-pick" onClick={() => onPick(x)} onKeyDown={space} onKeyUp={space}
+  return <div ref={ref} className={`ic-ref-tile mpk-tile mpk-t-${x.type}${x.type === 'image' ? ' alpha-bg' : ''}${ld ? ' ld' : ''}${sel ? ' mpk-sel' : ''}`}><button type="button" className="mpk-pick" onClick={() => onPick(x)} onKeyDown={space} onKeyUp={space}
     aria-label={`${kindWord}: ${tip}${len ? `, ${len}` : ''}${frameHint && x.type === 'video' ? ' · pick a frame' : ''}`} aria-keyshortcuts={x.type === 'audio' ? 'Space' : undefined} title={tip}
     aria-pressed={sel === undefined || (frameHint && x.type === 'video') ? undefined : sel > 0}
     data-testid={tab === 'Generations' ? `ic-ref-gen-${x.id}` : tab === 'Liked' ? `ic-ref-liked-${x.id}` : `ic-ref-up-${x.id}`} data-kind={x.type}>
@@ -167,7 +172,10 @@ export function MediaPicker({ tab, setTab, onClose, title, limits, kinds, frames
   const [sel, setSel] = useState<LibItem[]>([]);
   const panel = useRef<HTMLDivElement>(null); const sentinel = useRef<HTMLDivElement>(null); const depth = useRef(0);
   const showKinds = frames && kinds.includes('image') && !kinds.includes('video') ? [...kinds, 'video' as MediaKind] : kinds;
-  const typeQ = showKinds.join(','); const [q, setQ] = useState(''); const [qd, setQd] = useState(''); /* qd: the search, 250 ms after typing stops */
+  /* the type filter: starts on what the slot takes (a picture slot: Pictures, even though Clips are there for a frame) */
+  const [typ, setTyp] = useState<TypePick>(kinds.length === 1 ? kinds[0] : 'all');
+  const shownKinds = typ === 'all' ? showKinds : showKinds.filter(k => k === typ);
+  const typeQ = shownKinds.join(','); const [q, setQ] = useState(''); const [qd, setQd] = useState(''); /* qd: the search, 250 ms after typing stops */
   useEffect(() => { const t = setTimeout(() => setQd(q.trim()), 250); return () => clearTimeout(t); }, [q]);
   useEffect(() => { setSortOpen(false); setFrameOf(null); setMsg(null); setProjOpen(false); setMoveOf(null); stopPreview(); }, [tab]);
   useEffect(() => stopPreview, []); /* a sound preview never outlives the picker */
@@ -181,12 +189,18 @@ export function MediaPicker({ tab, setTab, onClose, title, limits, kinds, frames
     /* a search: the references database, ranked, in this tab (uploads / generations / liked), kinds and project */
     const lq = qd ? new URLSearchParams({ q: qd, kind: typeQ, limit: String(PAGE), cursor: String((p - 1) * PAGE), ...(tab === 'Liked' ? { fav: '1', source: 'generated' } : { source: tab === 'Uploads' ? 'uploaded' : 'generated' }), ...(proj !== 'all' ? { project: proj } : {}) }) : null;
     try { const r = await fetch(lq ? `/api/library/references?${lq}` : `/api/media?${qs}`); if (!r.ok) throw new Error(String(r.status)); const raw = await r.json(); if (n !== seq.current) return;
-      const d = lq ? { items: (raw.items ?? []).map((x: any): LibItem => ({ id: x.id, url: x.url, thumbUrl: x.thumbUrl ?? '', type: x.kind, name: x.title, title: x.title, createdAt: x.createdAt, jobId: x.jobId, projectIds: x.projectIds, toolName: x.workflow })), hasMore: !!raw.nextCursor, total: raw.total } : raw;
+      const d = lq ? { items: (raw.items ?? []).map((x: any): LibItem => ({ id: x.id, url: x.url, thumbUrl: x.thumbUrl ?? '', type: x.kind, name: x.title, title: x.short ?? x.title, createdAt: x.createdAt, jobId: x.jobId, projectIds: x.projectIds, toolName: x.workflow })), hasMore: !!raw.nextCursor, total: raw.total } : raw;
       setItems(xs => p === 1 ? d.items : [...xs, ...d.items.filter((y: LibItem) => !xs.some(x => x.id === y.id))]); setMore(!!d.hasMore); setPage(p); setTotal(typeof d.total === 'number' ? d.total : null); }
     catch { if (n === seq.current) { setFailed(true); if (p === 1) setItems([]); } }
     finally { if (n === seq.current) setLoading(false); }
   }, [tab, order, typeQ, proj, qd]);
   useEffect(() => { void load(1); }, [load]);
+  /* which kinds exist in this tab and project (one tiny count each), so the filter offers only those */
+  const [has, setHas] = useState<Partial<Record<MediaKind, boolean>>>({});
+  useEffect(() => { if (showKinds.length < 2) return; let on = true;
+    void Promise.all(showKinds.map(k => fetch(`/api/media?${new URLSearchParams({ tab: tab.toLowerCase(), type: k, page: '1', pageSize: '1', ...(proj !== 'all' ? { project: proj } : {}) })}`).then(r => r.ok ? r.json() : null).then(d => [k, !d || (d.total ?? 1) > 0] as const).catch(() => [k, true] as const)))
+      .then(xs => { if (on) setHas(Object.fromEntries(xs)); }); return () => { on = false; }; }, [tab, proj, showKinds.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+  const typeKinds = showKinds.filter(k => has[k] !== false || k === typ);
   /* All: the next page loads as the end of the grid scrolls into view */
   useEffect(() => { const el = sentinel.current; if (!el || !more || typeof IntersectionObserver === 'undefined') return; const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting) && !loading) void load(page + 1); }, { rootMargin: '300px' }); io.observe(el); return () => io.disconnect(); }, [more, loading, page, load]);
   /* keyboard: Esc closes (the frame view first); focus moves into the panel and back to the slot on close */
@@ -224,9 +238,9 @@ export function MediaPicker({ tab, setTab, onClose, title, limits, kinds, frames
     } catch { toast('Couldn’t move it. Try again.', 'error'); }
   };
   const moveValue = (x: LibItem | null) => { const ids = x?.projectIds ?? []; return ids.length > 1 ? undefined : ids[0] ?? null; };
-  const noun = list(showKinds.map(k => NOUN[k][1]));
+  const noun = list(shownKinds.map(k => NOUN[k][1]));
   /* the count: one kind by name ("48 pictures"); an image slot that also lists videos (for a frame) says "items" */
-  const countNoun = (n: number) => showKinds.length > 1 ? (n === 1 ? 'item' : 'items') : NOUN[showKinds[0] ?? 'image'][1].replace(/s$/, n === 1 ? '' : 's');
+  const countNoun = (n: number) => shownKinds.length > 1 ? (n === 1 ? 'item' : 'items') : TYPE_LABEL[shownKinds[0] ?? 'image'].toLowerCase().replace(/s$/, n === 1 ? '' : 's'); /* the filter's words: "23 clips" */
   const empty = qd ? `Nothing matches “${qd}” here. Try other words or another tab.` : projRow ? `Nothing in ${projRow.name} here yet.` : tab === 'Uploads' ? `Nothing uploaded yet. Drop ${noun} here, paste with ⌘V, or upload from your computer.` : tab === 'Liked' ? `Nothing liked yet. Heart a result in Assets to see it here.` : `Your ${noun} will show up here once you make some.`;
   const accepts = acceptsProp ?? (kinds.length > 1 ? list(kinds.map(k => NOUN[k][1])).replace(/^./, c => c.toUpperCase()) : null) ?? kinds.map(k => k === 'image' ? 'PNG, JPG, WEBP' : k === 'video' ? 'MP4, MOV, WEBM' : 'MP3, WAV, M4A').join(' · ');
   const body = <div ref={panel} className={`ic-ref mpk${over ? ' mpk-over' : ''}${host ? ' mpk-dialog' : ''}`} role="dialog" aria-modal={host ? true : undefined} aria-label={title} data-testid="ic-ref" data-target={target ?? undefined} data-kinds={kinds.join(',')}
@@ -252,6 +266,7 @@ export function MediaPicker({ tab, setTab, onClose, title, limits, kinds, frames
       <div className="ic-ref-tabs" role="tablist" aria-label="Source">{TABS.map(t => <button key={t} type="button" role="tab" aria-selected={tab === t} className={tab === t ? 'on' : ''} data-testid={`ic-ref-tab-${t.toLowerCase()}`} onClick={() => setTab(t)}
         onKeyDown={e => { if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return; e.preventDefault(); const i = (TABS.indexOf(t) + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length; setTab(TABS[i]); (e.currentTarget.parentElement?.children[i] as HTMLElement | undefined)?.focus(); }}>{t}</button>)}</div>
       <div className="mpk-tools">
+        <TypeFilter kinds={typeKinds} value={typ} onChange={setTyp} testPre="mpk-type" className="mpk-type" />
         <label className="mpk-search" data-testid="mpk-search"><SearchIcon size={14} /><input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search by prompt or tag" aria-label="Search your media"
           onKeyDown={e => { if (e.key === 'Escape' && q) { e.preventDefault(); e.stopPropagation(); setQ(''); } }} />{q && <button type="button" className="mpk-search-x" aria-label="Clear search" onClick={() => setQ('')}><CloseIcon size={12} /></button>}</label>
         {total != null && <span className="mpk-count" data-testid="mpk-count" aria-live="polite">{total.toLocaleString()} {countNoun(total)}</span>}
@@ -260,6 +275,7 @@ export function MediaPicker({ tab, setTab, onClose, title, limits, kinds, frames
       </div>
     </div>
     {msg && <p className="mpk-msg" role="alert" data-testid="mpk-msg">{msg}</p>}
+    {typ === 'video' && !kinds.includes('video') && !frameOf && <p className="mpk-hint" data-testid="mpk-frame-hint">Pick a clip, then choose the frame to use.</p>}
     {frameOf ? <FrameGrab item={frameOf} onBack={() => setFrameOf(null)} onUse={f => onFiles([f])} />
       : <div className="ic-ref-grid mpk-grid" aria-busy={loading || undefined}>
         {tab === 'Uploads' && <button type="button" className="ic-ref-tile ic-ref-up mpk-up" data-testid="ic-ref-upload" onClick={onUpload} aria-label="Upload from your computer" title={`Upload from your computer · ${accepts}`}>

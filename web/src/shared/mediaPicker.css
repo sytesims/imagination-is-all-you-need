@@ -57,6 +57,10 @@ html body .ic-ref.mpk .mpk-more:hover{background:var(--accent);color:var(--on-ac
 html body .ic-ref.mpk .mpk-more:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 @media (hover:none){html body .ic-ref.mpk .mpk-more{opacity:1}}
 html body .ic-ref.mpk .mpk-ph{position:absolute;inset:0;background:#2b2c30}
+/* pictures sit on the shared checkerboard (the tile's .alpha-bg class, styles.css) so a transparent layer reads; an opaque one covers it,
+   and the loading shimmer above wins until the picture loads */
+/* a picture slot showing clips: one quiet line saying a clip gives a frame */
+html body .ic-ref.mpk .mpk-hint{margin:10px 16px 0;color:rgba(255,255,255,.6);font:500 12px/16px var(--font-ui)}
 /* picked (a slot that takes several): an orange ring and its number */
 html body .ic-ref.mpk .mpk-tile.mpk-sel::after{content:"";position:absolute;inset:0;z-index:1;border:2px solid var(--accent);border-radius:inherit;pointer-events:none}
 html body .ic-ref.mpk .mpk-tile.mpk-sel img{opacity:.82}
@@ -70,10 +74,11 @@ html body .ic-ref.mpk .mpk-btn.mpk-btn-q:hover{background:var(--fill,rgba(255,25
 html body .ic-ref.mpk .mpk-audio{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px 12px 26px;background:radial-gradient(120% 90% at 50% 0%,color-mix(in srgb,var(--accent) 22%,#232427) 0%,#232427 70%);color:var(--accent)}
 html body .ic-ref.mpk .mpk-audio .mpk-wave{width:70%;height:auto;opacity:.55}
 /* every tile's one quiet line (2026-10-31, Canvas audit B17): the short name, and a clip's or sound's length at the right */
-html body .ic-ref.mpk .mpk-cap{position:absolute;left:0;right:0;bottom:0;z-index:1;display:flex;align-items:baseline;gap:6px;padding:14px 7px 5px;background:linear-gradient(transparent,rgba(0,0,0,.66));color:rgba(255,255,255,.88);font:500 10.5px/14px var(--font-ui);pointer-events:none}
+html body .ic-ref.mpk .mpk-cap{position:absolute;left:0;right:0;bottom:0;z-index:1;display:flex;align-items:baseline;gap:8px;padding:14px 7px 5px;background:linear-gradient(transparent,rgba(0,0,0,.66));color:rgba(255,255,255,.88);font:500 10.5px/14px var(--font-ui);pointer-events:none}
 html body .ic-ref.mpk .mpk-t-audio .mpk-cap{background:none}
 html body .ic-ref.mpk .mpk-cap-n{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-html body .ic-ref.mpk .mpk-cap-d{flex:none;display:inline-flex;align-items:center;gap:3px;color:rgba(255,255,255,.7);font-variant-numeric:tabular-nums}
+/* the length: its own fixed slot at the right, so a long name ends in a clean ellipsis before it */
+html body .ic-ref.mpk .mpk-cap-d{flex:none;min-width:30px;display:inline-flex;align-items:center;justify-content:flex-end;gap:3px;color:rgba(255,255,255,.7);font-variant-numeric:tabular-nums;white-space:nowrap}
 html body .ic-ref.mpk .mpk-cap-d svg{color:var(--accent)}
 html body .ic-ref.mpk .mpk-cap-d:empty{display:none}
 /* a sound's play button sits where the wave is; the tile around it still picks */
@@ -120,7 +125,9 @@ html body .ic-ref-scrim.mpk-scrim .ic-ref.mpk-dialog{width:min(960px,calc(100vw 
 .mpk-count { font: 500 12px/18px var(--font-ui, Inter, system-ui, sans-serif); color: rgba(255,255,255,.5); white-space: nowrap; font-variant-numeric: tabular-nums; }
 /* Search (2026-10-27): the references database, in the tab's own kinds and project */
 html body .ic-ref.mpk .mpk-search{display:flex;align-items:center;gap:6px;height:30px;padding:0 8px 0 10px;border:1px solid var(--border-strong, rgba(255,255,255,.1));border-radius:var(--radius-md,8px);background:var(--surface-2, rgba(255,255,255,.04));color:var(--text-2, rgba(255,255,255,.7));min-width:0;flex:0 1 220px}
-html body .ic-ref.mpk .mpk-search:focus-within{border-color:color-mix(in srgb,var(--accent) 70%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent)}
+/* one focus ring, on the box (as the feed's search): no outer glow, and the inner input draws none of its own (styles.css *:focus-visible) */
+html body .ic-ref.mpk .mpk-search:focus-within{border-color:var(--accent);box-shadow:none;color:var(--text,#fff)}
+html body .ic-ref.mpk .mpk-search input:focus,html body .ic-ref.mpk .mpk-search input:focus-visible{outline:none;box-shadow:none}
 html body .ic-ref.mpk .mpk-search input{flex:1;min-width:0;border:0;background:none;outline:none;color:var(--text);font:500 12.5px/18px var(--font-ui, Inter, system-ui, sans-serif);padding:0}
 html body .ic-ref.mpk .mpk-search input::-webkit-search-cancel-button{display:none}
 html body .ic-ref.mpk .mpk-search-x{display:grid;place-items:center;width:18px;height:18px;border:0;border-radius:50%;background:var(--surface-3, rgba(255,255,255,.1));color:var(--text-2);cursor:pointer;padding:0}

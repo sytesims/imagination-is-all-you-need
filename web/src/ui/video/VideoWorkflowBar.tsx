@@ -60,6 +60,7 @@ import './videoWorkflowBar.css';
 import { VideoThumb } from '../../shared/VideoThumb';
 import { MentionLayer } from '../../shared/MentionChips';
 import { renumberMentions } from '../../../../server/src/shared/mentions';
+import { SlotLabel } from '../../shared/SlotLabel';
 
 const ICONS: Record<string, (p: IconProps) => ReactNode> = { clock: ClockIcon, resolution: ResolutionIcon, aspect: AspectIcon, quality: QualityIcon, extend: ExtendIcon, hdr: HdrIcon, fps: FpsIcon, depth: DepthIcon,
   cutout: CutoutIcon, upscale: UpscaleIcon, palette: PaletteIcon, transition: TransitionIcon, orbit: OrbitIcon, camera: CameraMovesIcon, fx: PhotoFxIcon, swap: ObjectSwapIcon, layers: LayersIcon, person: UserIcon, spark: SparkleIcon, select: SelectIcon, reshoot: ReshootIcon };
@@ -368,7 +369,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
   const addTile = (s: VBarSlot, o: { fs: SlotFile[]; req: boolean; firstEmpty: boolean; numbered: boolean; base: number; small?: boolean }) => { const K = KIND_ICON[s.kind];
     return <span className={`wf-slot ${o.req ? 'req' : 'opt'}${o.firstEmpty ? ' wf-slot-next' : ''} vbar-slot vbar-${s.kind}${o.small ? ' vbar-add-sm' : ''}`} data-testid={`vbar-slot-${s.name}`} data-next={o.firstEmpty ? '1' : undefined}
       onDragOver={e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); e.stopPropagation(); } }} onDrop={e => { if (!e.dataTransfer.files.length) return; e.preventDefault(); e.stopPropagation(); void takeFiles(s, Array.from(e.dataTransfer.files)); }}>
-      <button type="button" className="wf-slot-hit" data-ref-trigger aria-haspopup="dialog" aria-label={`Add ${o.numbered && o.fs.length ? `image ${o.base + o.fs.length + 1}` : s.label.toLowerCase()}${o.req ? '' : ' (optional)'}`} {...tip(`${(s.hint ?? '').replace(/\.\s*$/, '')}. Pick from your library, upload or drop`)} onClick={() => openSlot(s.name)}>{o.fs.length ? <PlusIcon size={14} /> : <K size={14} />}{!o.small && <b>{o.fs.length ? 'Add' : s.label}</b>}</button>
+      <button type="button" className="wf-slot-hit" data-ref-trigger aria-haspopup="dialog" aria-label={`Add ${o.numbered && o.fs.length ? `image ${o.base + o.fs.length + 1}` : s.label.toLowerCase()}${o.req ? '' : ' (optional)'}`} {...tip(`${(s.hint ?? '').replace(/\.\s*$/, '')}. Pick from your library, upload or drop`)} onClick={() => openSlot(s.name)}>{o.fs.length ? <PlusIcon size={14} /> : <K size={14} />}{!o.small && <SlotLabel text={o.fs.length ? 'Add' : s.label} />}</button>
       {!o.small && <button type="button" className="wf-slot-up" aria-label={`Upload ${s.label.toLowerCase()} from this computer`} data-testid={`vbar-slot-${s.name}-upload`} {...tip('Upload from this computer')} onClick={() => { replaceAt.current = null; withNativePicker(() => slotIn.current[s.name]?.click()); }}>
         <svg width="10" height="10" viewBox="0 0 16 16" aria-hidden><path d="M8 11V3M4.5 6.5 8 3l3.5 3.5M3 13h10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg></button>}</span>; };
   /** Popovers of the multi-file slots: every file as a labelled grid (Image 1…N), reorder, remove, add; what the model leaves unused is said once. */

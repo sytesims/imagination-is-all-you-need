@@ -39,6 +39,8 @@ import { runLabel, canRun } from './shared/runLabel.js';
 import { wfEntryById } from './shared/workflowCatalog.js';
 import { featureById } from './shared/imageFeatures.js';
 import { Bm25Index, keywords, type SearchDoc } from './shared/bm25.js';
+import { resultTitle } from './shared/shortTitle.js';
+import { isLayerJob } from './shared/imageLayers.js';
 import { catalogWorkflows, fromSkill, fromIdea, buildWorkflowIndex, searchWorkflows, type LibWorkflow, type LibModel, type LibStep } from './shared/libraryWorkflows.js';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -133,7 +135,7 @@ export function canvasHint(w: LibWorkflow) {
 export type RefSource = 'generated' | 'uploaded';
 export interface RefItem {
   id: string; kind: MediaKind; source: RefSource; url: string; thumbUrl: string | null; width: number | null; height: number | null; durationSec: number | null; createdAt: number;
-  title: string; prompt: string | null; model: string | null; modelKey: string | null; workflow: string | null; toolId: string | null; jobId: string | null;
+  title: string; /** a few words for a small tile (shared/shortTitle.ts) */ short?: string; prompt: string | null; model: string | null; modelKey: string | null; workflow: string | null; toolId: string | null; jobId: string | null;
   project: { id: string; name: string } | null; projectIds: string[]; tags: string[]; autoTags: string[]; userTags: string[]; favourite: boolean;
 }
 const TAGS_KV = 'libraryTags'; let tags: Record<string, string[]> = getKv(TAGS_KV, {}); let tagsRev = 0;
@@ -153,7 +155,7 @@ function generations(): RefItem[] {
     const prompt = cleanText(j.input?.prompt) || null; const tool = getTool(j.toolId); let model: string | null = null; try { model = engineNameOf(j); } catch { model = null; }
     outs.forEach((o, k) => { const url = urls[k]; const kind = url ? kindOfUrl(url) : null; if (!url || !kind || !localFileOf(url)) return; // a missing file is left out (no broken tiles)
       out.push(mk({ id: `gen-${j.id}-${k}`, kind, source: 'generated', url, thumbUrl: thumbOf(url, kind, kind === '3d' ? still : null), width: null, height: null, durationSec: null, createdAt: (j.finishedAt ?? j.createdAt) - k,
-        title: cleanText(m.title) || (prompt ? prompt.slice(0, 70) : `${tool?.name ?? j.toolId}${outs.length > 1 ? ` · ${o.label}` : ''}`), prompt, model, modelKey: j.modelKey ?? null,
+        title: cleanText(m.title) || (prompt ? prompt.slice(0, 70) : `${tool?.name ?? j.toolId}${outs.length > 1 ? ` · ${o.label}` : ''}`), prompt, short: resultTitle({ title: m.title, prompt, feature: tool?.name ?? j.toolId, layer: isLayerJob(j) ? k : null }), model, modelKey: j.modelKey ?? null,
         workflow: tool?.name ?? j.toolId, toolId: j.toolId, jobId: j.id, project: projectOf(m.projectId ? [m.projectId] : []), projectIds: m.projectId && lib.getProject(m.projectId) ? [m.projectId] : [], favourite: !!m.favourite })); });
   }
   return out;

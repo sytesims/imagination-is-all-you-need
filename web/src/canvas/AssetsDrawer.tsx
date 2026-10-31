@@ -14,13 +14,14 @@ import { addResultCard } from './resultCardUtil';
 import { ProjectPicker, useProjectList, type ProjectPick } from '../shared/ProjectPicker';
 import { AudioIcon, CubeIcon, CloseIcon } from '../ui/Icons';
 import { PlayButton, stopPreview, togglePreview, useMediaLength, fmtLength } from '../shared/PreviewPlay';
+import { TypeFilter, type TypePick } from '../shared/TypeFilter';
 
 type Item = { job: JobState; m: ResultMedia };
-const FILTERS: { id: 'all' | ResultKind; label: string }[] = [{ id: 'all', label: 'All' }, { id: 'image', label: 'Image' }, { id: 'video', label: 'Video' }, { id: 'audio', label: 'Audio' }, { id: '3d', label: '3D' }];
+const KINDS: ResultKind[] = ['image', 'video', 'audio', '3d'];
 
 export function AssetsDrawer({ open, onClose, projectId, onProject }: { open: boolean; onClose: () => void; /** the board's project: the drawer shows its results */ projectId: string | null; onProject: (id: string | null) => void }) {
   const editor = useEditor(); const own = useOwnAccounts();
-  const [jobs, setJobs] = useState<JobState[] | null>(null); const [err, setErr] = useState(''); const [filter, setFilter] = useState<'all' | ResultKind>('all');
+  const [jobs, setJobs] = useState<JobState[] | null>(null); const [err, setErr] = useState(''); const [filter, setFilter] = useState<TypePick>('all');
   const [drag, setDrag] = useState<{ item: Item; x: number; y: number } | null>(null); const start = useRef<{ item: Item; x: number; y: number; moved: boolean } | null>(null);
   /* the shared project picker (same component and GET /api/jobs?project= as the Create Image feed); the pick is the board's project */
   const { list: projects, reload } = useProjectList();
@@ -32,6 +33,9 @@ export function AssetsDrawer({ open, onClose, projectId, onProject }: { open: bo
   /* search (2026-10-27): the references database ranks your results by title, prompt and tags; the drawer keeps that order */
   const [q, setQ] = useState(''); const [rank, setRank] = useState<string[] | null>(null);
   useEffect(() => { const w = q.trim(); if (!w) { setRank(null); return; } let on = true; const t = setTimeout(() => { fetch(`/api/library/references?${new URLSearchParams({ q: w, source: 'generated', limit: '100', ...(projectId ? { project: projectId } : {}) })}`).then(r => r.json()).then(d => { if (on) setRank([...new Set<string>((d.items ?? []).map((x: any) => x.jobId))]); }).catch(() => on && setRank([])); }, 250); return () => { on = false; clearTimeout(t); }; }, [q, projectId]);
+  /* the shared type filter (shared/TypeFilter, as the media picker): only the kinds there are; a kind that runs out falls back to All */
+  const kinds = KINDS.filter(k => items.some(i => i.m.kind === k));
+  useEffect(() => { if (filter !== 'all' && jobs != null && !kinds.includes(filter as ResultKind)) setFilter('all'); }, [filter, jobs, kinds.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
   const kindShown = filter === 'all' ? items : items.filter(i => i.m.kind === filter);
   const shown = rank ? rank.map(id => kindShown.find(i => i.job.id === id)).filter((x): x is Item => !!x) : kindShown;
 
@@ -54,9 +58,7 @@ export function AssetsDrawer({ open, onClose, projectId, onProject }: { open: bo
     <aside className={`cv-drawer${open ? ' open' : ''}`} aria-label="Assets" aria-hidden={!open} data-testid="cv-drawer" {...(!open ? { inert: '' } as any : {})}>
       <header className="cv-dr-head"><h2>Assets</h2><button type="button" className="cv-icon-btn" aria-label="Close Assets" onClick={onClose}><CloseIcon size={16} /></button></header>
       <div className="cv-dr-proj"><ProjectPicker pj={pj} heading="This board's project" testId="cv-project" tipText={pj.current ? `Showing ${pj.current.name}. This board keeps it, and results made from the board will go there.` : 'Showing all generations. Pick a project to keep this board to it.'} /></div>
-      <div className="cv-dr-filters" role="radiogroup" aria-label="Show">
-        {FILTERS.map(f => <button key={f.id} type="button" role="radio" aria-checked={filter === f.id} className={`cv-chip${filter === f.id ? ' on' : ''}`} onClick={() => setFilter(f.id)}>{f.label}</button>)}
-      </div>
+      {kinds.length > 1 && <div className="cv-dr-filters"><TypeFilter kinds={kinds} value={filter} onChange={setFilter} testPre="cv-dr-type" /></div>}
       <input type="search" className="cv-dr-search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search by prompt or tag" aria-label="Search your results" data-testid="cv-dr-search" />
       <p className="cv-dr-hint">Click to add at the centre, or drag onto the board.</p>
       <div className="cv-dr-grid" data-testid="cv-dr-grid">
@@ -76,7 +78,7 @@ function DrawerTile({ it, onDown, onMove, onUp, onCancel, onPlace }: { it: Item;
   const audio = it.m.kind === 'audio'; const len = fmtLength(useMediaLength(it.m.url, it.m.kind, audio));
   const title = audio ? it.m.title : it.m.caption.model || it.m.title;
   return <div className="cv-dr-cell" data-kind={it.m.kind}>
-    <button type="button" className="cv-dr-tile" data-kind={it.m.kind} data-testid="cv-dr-item" title={it.m.title} aria-label={audio ? `Sound: ${title}${len ? `, ${len}` : ''}` : undefined}
+    <button type="button" className={`cv-dr-tile${it.m.kind === 'image' ? ' alpha-bg' : ''}`} data-kind={it.m.kind} data-testid="cv-dr-item" title={it.m.title} aria-label={audio ? `Sound: ${title}${len ? `, ${len}` : ''}` : undefined}
       onPointerDown={e => onDown(e, it)} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onCancel}
       onKeyDown={e => { if (e.key === ' ' && audio) { e.preventDefault(); if (!e.repeat) togglePreview(it.m.url); } else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPlace(it); } }}>
       {it.m.poster ? <img src={gridSrc(it.m.poster, 150)} alt="" loading="lazy" draggable={false} /> : <span className="cv-dr-ph">{it.m.kind === '3d' && <CubeIcon size={26} />}</span>}
