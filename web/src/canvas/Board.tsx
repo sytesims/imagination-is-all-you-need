@@ -21,6 +21,7 @@ import { posterOf3d } from '../shared/model3d';
 import { LeftToolbar, EmptyHint } from './CanvasUi';
 import { AssetsDrawer } from './AssetsDrawer';
 import { FollowAgent } from './FollowAgent';
+import { bindHand } from './agentHand';
 import { NextStepMenu } from './NextStepMenu';
 import { CameraMotion } from './CameraMotion';
 import { CanvasOverlays, linkArrowVisibility } from './LinkLayer';
@@ -143,7 +144,8 @@ export function Board({ board, onSaveState, onSaved, drawerOpen, setDrawerOpen, 
     const onHide = () => { if (document.visibilityState === 'hidden') { writeCam(id, editor.getCamera()); void save(); } };
     const onExit = () => { writeCam(id, editor.getCamera()); if (dirty && !stopped && saveBoardOnExit(id, getSnapshot(editor.store).document, rev)) dirty = false; };
     document.addEventListener('visibilitychange', onHide); addEventListener('pagehide', onExit);
-    return () => { unDoc(); unCam(); clearTimeout(timer); clearTimeout(camTimer); document.removeEventListener('visibilitychange', onHide); removeEventListener('pagehide', onExit);
+    const unHand = bindHand(editor); /* the agent's cursor, outline and laser never outlive the board */
+    return () => { unHand(); unDoc(); unCam(); clearTimeout(timer); clearTimeout(camTimer); document.removeEventListener('visibilitychange', onHide); removeEventListener('pagehide', onExit);
       writeCam(id, editor.getCamera()); if (dirty && !stopped) { const snap = getSnapshot(editor.store).document; void saveBoard(id, snap, rev).then(onSaved).catch(() => saveBoardOnExit(id, snap, rev)); } };
   };
 
