@@ -91,6 +91,7 @@ ok('caps 1 image; Edit Image / Relight / Camera Angles list it, Face Swap / Pers
     assert.equal(s, `Relight the scene: bright golden light, light from the left side of the frame; hard direct light, crisp shadows; deep orange sky; ${RELIGHT_CHANGE}; ${RELIGHT_KEEP}`, provider);
     assert.ok(!/unchanged|exactly/.test(s), 'no lock on the light');
   }
-  assert.match(a.compose!(v, { prompt: '', has, provider: 'api-nano-banana' }), /^relight the scene; .*keep the subject, pose and composition unchanged$/, 'other models keep the old recipe');
+  assert.match(a.compose!(v, { prompt: '', has, provider: 'api-nano-banana' }), /^Keep the same person.* Relight this photo\. The main light is bright golden, coming from the left side of the frame\./, 'Nano Banana: its own sentence wording');
+  assert.match(a.compose!(v, { prompt: '', has, provider: 'comfy-klein4b' }), /^relight the scene; .*clearly visible across the whole image; keep the subject, pose and composition unchanged$/, 'FLUX-type: the old order plus a visible-change line');
   ok('Relight on Qwen edit models: light first, clear change of light/shadows/colour, identity + pose + clothes + framing kept');
 }

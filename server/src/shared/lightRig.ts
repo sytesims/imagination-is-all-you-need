@@ -96,8 +96,9 @@ export function setupName(az: number, el: number): string {
   if (a <= 15 && el >= 25) return 'butterfly lighting'; if (a >= 35 && a <= 65 && el >= 15 && el < 70) return 'Rembrandt-style three-quarter lighting';
   if (a >= 75 && a <= 105 && Math.abs(el) < 40) return 'split side lighting'; return '';
 }
-export const softnessWords = (s: number) => `${s <= 20 ? 'hard crisp light with sharp-edged shadows' : s <= 45 ? 'fairly hard light with defined shadow edges' : s <= 75 ? 'soft diffused light with gentle shadow edges' : 'very soft wrap-around light, shadows almost gone'} (softness ${r1(s)}%)`;
-export const ambientWords = (a: number) => `${a <= 10 ? 'almost no ambient fill: deep black shadows, low-key' : a <= 35 ? 'low ambient fill: rich, dark shadows' : a <= 65 ? 'moderate ambient fill: shadows keep their detail' : 'strong ambient fill: bright open shadows, high-key'} (ambient ${r1(a)}%)`;
+/** Softness and ambient in plain words only (no numbers: the model reads words, and "softness 70%" meant nothing to it). */
+export const softnessWords = (s: number) => `${s <= 20 ? 'hard crisp light with sharp-edged shadows' : s <= 45 ? 'fairly hard light with defined shadow edges' : s <= 75 ? 'soft diffused light with gentle shadow edges' : 'very soft wrap-around light, shadows almost gone'}`;
+export const ambientWords = (a: number) => `${a <= 10 ? 'almost no ambient fill: deep black shadows, low-key' : a <= 35 ? 'low ambient fill: rich, dark shadows' : a <= 65 ? 'moderate ambient fill: shadows keep their detail' : 'strong ambient fill: bright open shadows, high-key'}`;
 const power = (i: number) => (i <= 15 ? 'very dim' : i <= 35 ? 'dim' : i <= 60 ? 'medium strength' : i <= 85 ? 'bright' : 'very bright');
 
 export interface RigPhrases { /** "from the front-left of the frame, high above eye level, Rembrandt-style three-quarter lighting" */ keyDir: string;
@@ -156,23 +157,35 @@ export const rigJson = (rig: LightRig) => JSON.stringify({ key: lightJson(rig.ke
 export interface SpherePreset { id: string; label: string; /** Relight look id (tools/appRows.ts RELIGHT_LOOKS), 'custom' = none */ look: string; /** the setup's name in the prompt when no look carries one */ light: string; rig: LightRig }
 const L = (az: number, el: number, kelvin: number, intensity: number, softness: number, color?: string): RigLight => ({ az, el, kelvin, intensity, softness, ...(color ? { color } : {}) });
 export const SPHERE_PRESETS: SpherePreset[] = [
-  { id: 'golden-hour', label: 'Golden hour', look: 'golden-hour', light: 'low golden-hour sunlight', rig: { key: L(90, 0, 3200, 75, 65), rim: L(180, 0, 2800, 55, 30), ambient: 35 } },
+  { id: 'golden-hour', label: 'Golden hour', look: 'golden-hour', light: 'golden-hour sunlight', rig: { key: L(90, 0, 3200, 75, 65), rim: L(180, 0, 2800, 55, 30), ambient: 35 } },
   { id: 'studio-softbox', label: 'Studio softbox', look: 'studio-softbox', light: 'a large studio softbox key light', rig: { key: L(-45, 45, 5500, 65, 80), ambient: 40 } },
   { id: 'neon-rim', label: 'Neon rim', look: 'neon-night', light: 'coloured neon light at night', rig: { key: L(90, 0, 5600, 70, 30, '#E05AD8'), rim: L(-135, 0, 5600, 80, 20, '#33D6FF'), ambient: 8 } },
-  { id: 'overhead-noon', label: 'Overhead noon', look: 'custom', light: 'hard overhead noon sun', rig: { key: L(0, 90, 5600, 90, 10), ambient: 30 } },
+  { id: 'overhead-noon', label: 'Overhead noon', look: 'custom', light: 'hard midday sun', rig: { key: L(0, 90, 5600, 90, 10), ambient: 30 } },
   { id: 'candle', label: 'Candle', look: 'candlelight', light: 'warm candlelight', rig: { key: L(0, 0, 2000, 35, 70), ambient: 6 } },
   { id: 'moonlight', label: 'Moonlight', look: 'custom', light: 'cool moonlight at night', rig: { key: L(-45, 45, 8500, 35, 45), rim: L(135, 0, 9500, 45, 30), ambient: 12 } },
   { id: 'window', label: 'Window light', look: 'window', light: 'soft natural window light', rig: { key: L(-90, 0, 5600, 60, 75), ambient: 30 } },
   { id: 'blue-hour', label: 'Blue hour', look: 'blue-hour', light: 'cool blue-hour twilight', rig: { key: L(0, 0, 9000, 40, 90), ambient: 45 } },
   { id: 'overcast', label: 'Overcast', look: 'overcast', light: 'soft overcast daylight', rig: { key: L(0, 45, 6500, 50, 95), ambient: 60 } },
-  { id: 'rim', label: 'Rim / backlight', look: 'rim', light: 'a strong backlight', rig: { key: L(180, 0, 5600, 75, 25), ambient: 20 } },
+  { id: 'rim', label: 'Rim / backlight', look: 'rim', light: 'a strong edge light', rig: { key: L(180, 0, 5600, 75, 25), ambient: 20 } },
 ];
 export const spherePresetOf = (id: string | undefined) => SPHERE_PRESETS.find((p) => p.id === id);
-export const DEFAULT_RIG: LightRig = { key: L(-45, 45, 5600, 60, 60), ambient: 30 };
+/** The light Relight starts on (2026-10-31): a soft key from the front-left, high up (Rembrandt-style three-quarter light), at Balanced
+ *  strength. A clear, flattering change for portraits and products; a light from the front barely changed the photo. It sits on a fixed
+ *  position, so the panel and the prompt name the same spot. */
+export const DEFAULT_RIG: LightRig = { key: L(-45, 45, 5600, 65, 60), ambient: 30 };
+/** The old Relight fields at their defaults with no look: the light was never set (the panel untouched, or an API call with no light fields).
+ *  Callers use a readable `light` rig first; otherwise Relight uses DEFAULT_RIG, on the panel and in the prompt alike. Keep in step with the
+ *  field defaults (tools/apps.ts relight). */
+export function lightUntouched(v: Record<string, string | undefined>): boolean {
+  const is = (x: string | undefined, d: string) => x == null || x === '' || x.toUpperCase() === d.toUpperCase();
+  return is(v.look, 'custom') && is(v.direction, 'front') && is(v.lightQuality, 'soft') && (v.brightness == null || v.brightness === '' || Number(v.brightness) === 50)
+    && is(v.color, '#FFFFFF') && (v.lightX == null || v.lightX === '') && (v.lightY == null || v.lightY === '');
+}
 
 /** Today's Relight fields (direction / pad / quality / brightness / colour) → the rig the sphere opens on, so old drafts and links
- *  show where their light is. Nothing is sent until the user moves something (the old fields keep their old prompt). */
+ *  show where their light is. Nothing is sent until the user moves something (the old fields keep their old light). Untouched fields open on DEFAULT_RIG. */
 export function rigFromLegacy(v: Record<string, string | undefined>): LightRig {
+  if (lightUntouched(v)) return structuredClone(DEFAULT_RIG);
   const DIR: Record<string, [number, number]> = { top: [0, 90], front: [0, 0], left: [-90, 0], right: [90, 0], back: [180, 0], bottom: [0, -90] };
   let [az, el] = DIR[v.direction ?? 'front'] ?? DIR.front;
   // the pad (−1…1): x = frame left → right; y as Relight's padPhrase reads it (positive = upper)

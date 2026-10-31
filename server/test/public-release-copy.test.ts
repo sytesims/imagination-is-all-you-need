@@ -7,7 +7,7 @@ import { TOOLSETS, DEFAULT_TOOLSETS, HTTP_DEFAULT_TOOLSETS } from '../../mcp/src
 import { featuredByKey, featuredRuns, MOSSBUN_SHEET_RUN, MOSSBUN_CITY_RUNS } from '../src/shared/featured.js';
 
 const recipes = JSON.stringify(RELIGHT_LOOKS.map(({ credit, ...recipe }) => recipe));
-assert.equal(createHash('sha256').update(recipes).digest('hex'), '9ec18f32bef338e4eb889af32d71998d4475c7e40ce8a835b77449c0f27cb996', 'recipe IDs, prompts, defaults and swatches unchanged by the note cleanup');
+assert.equal(createHash('sha256').update(recipes).digest('hex'), '44f8b977d21af7e063937caf8f2edac0414fa4534c21a8384acc7484c7278fad', 'recipe IDs, prompts, defaults and swatches pinned (updated for the position-free look wording)');
 for (const look of RELIGHT_LOOKS) {
   assert.ok(look.credit.trim());
   assert.doesNotMatch(look.credit, /research|study|preset hunt|idea only/i, 'tooltips explain the lighting, not internal research');
