@@ -11,7 +11,7 @@ import { Segmented } from '../../shared/BarPop';
 import { tip } from '../../shared/Tooltip';
 import { loadHub } from '../../shared/looks';
 import { RunLine, RunPlaces, device } from '../../shared/RunLine';
-import { ToolIconFor, SearchIcon, CloseIcon, ChevronRightIcon, OfficialBadgeIcon, CommunityIcon, SparkleIcon, SavedTagIcon, GenerateIcon } from '../Icons';
+import { ToolIconFor, SearchIcon, CloseIcon, OfficialBadgeIcon, CommunityIcon, SparkleIcon, SavedTagIcon, GenerateIcon } from '../Icons';
 import { FlowDiagram, hasDiagram } from '../exploreArt';
 import { featuredByKey, runByJob, type FeaturedRun } from '../../../../server/src/shared/featured';
 import { resolveRow, whyHidden, runsPrice, runCost, openHrefOf, type Row, type Hub } from './workflowRows';
@@ -25,8 +25,8 @@ import './workflowFinder.css';
  * (shared/runLabel.ts words, shared/RunLine.tsx), and image examples from GET /api/workflow-hub. A workflow no model can run here is left out
  * (the rail names what was left out and why).
  *  - Left: the brand line, search ("/" focuses it), the categories with their counts (empty ones hidden), Multi-step and Saved, Surprise me.
- *  - Right: goals, "Yours" (saved workflows and chains, this browser only), then the chains and one even grid per category, in Explore's tile
- *    language (explore.css .xp-tile / .xp-cap): the picture, the name, one line and the model (where it runs and the price depend on the
+ *  - Right: goals, "Yours" (saved workflows and chains, this browser only), then the picks in grids that fill the width, in Explore's
+ *    banded tile (explore.css .xp-tile.is-band): the picture, then on a solid band the name, one line and the model (where it runs and the price depend on the
  *    user's setup, so they live in the sheet and on the tab's Generate, not on the card).
  * A card opens the workflow sheet: its example, how it works, every model with every place it runs (status and price), the source credit and
  * licence, then "Open in <tab>" (goToWorkflow; the tab's code is fetched as the sheet opens, so the click doesn't wait). A workflow with no
@@ -155,28 +155,28 @@ function SaveBtn({ id, s, label }: { id: string; s: Saved; label: string }) {
   const on = s.saved.includes(id);
   return <button type="button" className={`wn-save${on ? ' on' : ''}`} aria-pressed={on} aria-label={on ? `Remove ${label} from saved` : `Save ${label}`} {...tip(on ? 'Saved' : 'Save')} onClick={(e) => { e.stopPropagation(); s.toggle(id); }} data-testid="wn-save"><SavedTagIcon size={15} /></button>;
 }
-/** "Made here" (our own recorded run) or, for a look's picture with no recorded run, "Preview". Nothing on our drawings. */
-function Badge({ r }: { r: Row }) {
-  if (r.made) return <span className="xp-badge wn-made" {...tip(`Our own run: ${r.runs.map((x) => `${x.model}, ${runCost(x)}`).join(' → ')}${r.runs.length > 1 ? ` (${runsPrice(r.runs)?.text} in all)` : ''}`)}>Made here</span>;
+/** "Made here" (our own recorded run; left off when every card on the page is made here) or, for a look's picture with no recorded run, "Preview". Nothing on our drawings. */
+function Badge({ r, show }: { r: Row; show: boolean }) {
+  if (r.made) return !show ? null : <span className="xp-badge wn-made" {...tip(`Our own run: ${r.runs.map((x) => `${x.model}, ${runCost(x)}`).join(' → ')}${r.runs.length > 1 ? ` (${runsPrice(r.runs)?.text} in all)` : ''}`)}>Made here</span>;
   return r.media.kind !== 'art' ? <span className="xp-badge" {...tip('A look’s preview picture; we have no recorded run of it')}>Preview</span> : null;
 }
 
 /** A card's model name, short (the sheet keeps the full one): "ByteDance Seedream 5.0 Flash · layers (hosted)" → "Seedream 5.0 Flash". */
 export const shortModel = (n: string) => n.replace(/\s*·.*$/, '').replace(/\s*\((hosted|local)\)$/i, '').replace(/^ByteDance\s+/, '');
-/** A workflow card, Explore's tile: the media fills it, the caption sits on it (name, line, model: no place or price, those depend on the setup), the whole card opens the sheet. */
-function Card({ r, onOpen, s, i = 0 }: { r: Row; onOpen: () => void; s: Saved; i?: number }) {
+/** A workflow card, Explore's tile with the caption on a solid band under the picture (xp-tile is-band): name, line, model (no place or price,
+ *  those depend on the setup). The whole card opens the sheet. `showMade`: the "Made here" mark (off when every card is made here). */
+function Card({ r, onOpen, s, i = 0, showMade }: { r: Row; onOpen: () => void; s: Saved; i?: number; showMade: boolean }) {
   /* a click anywhere opens it (the before / after wipe is hover-only on a card); only the Save button keeps its own click */
   const open = (ev: React.MouseEvent) => { if ((ev.target as HTMLElement).closest('a,button')) return; onOpen(); };
-  return <div className={`xp-tile wn-card${r.media.kind !== 'art' ? ' is-real' : ''}`} onClick={open} onPointerEnter={() => warm(r.e.href)} data-hover-play data-testid={`wn-card-${r.e.id}`} style={{ ['--i' as string]: Math.min(i, 12) }}>
+  return <div className={`xp-tile is-band wn-card${r.media.kind !== 'art' ? ' is-real' : ''}`} onClick={open} onPointerEnter={() => warm(r.e.href)} data-hover-play data-testid={`wn-card-${r.e.id}`} style={{ ['--i' as string]: Math.min(i, 12) }}>
     <span className="xp-tile-media wn-media"><MediaView r={r} thumb={r.thumb} /></span>
-    <span className="wn-top"><Badge r={r} /></span>
+    <span className="wn-top"><Badge r={r} show={showMade} /></span>
     <SaveBtn id={r.e.id} s={s} label={r.e.name} />
     <span className="xp-cap wn-cap">
       <button type="button" className="xp-title wn-title" onClick={onOpen} onFocus={() => warm(r.e.href)} aria-label={`${r.e.name}: ${r.e.line}. Details`}>{r.e.name}</button>
       <span className="xp-line">{r.e.line}</span>
       <span className="xp-meta wn-meta"><span className="xp-model wn-model" title={r.models.map((m) => m.name).join(', ')}><span>{r.model ? shortModel(r.model) : 'Model on the bar'}</span>{r.models.length > 1 && <small>+{r.models.length - 1}</small>}</span></span>
     </span>
-    <span className="xp-go" aria-hidden><ChevronRightIcon size={18} /></span>
   </div>;
 }
 
@@ -189,22 +189,21 @@ function chainFacts(c: WfChain, rows: Row[]) {
   /* "Start with": the first step's tab on the step's own model (K-drama and One long take: MiniMax H3), like a card's Open */
   const startHref = first.r ? (fm ? openHrefOf(first.r.e, [fm, ...first.r.models.filter((x) => x.key !== fm.key)]) : first.r.openHref) : null;
   const ran = steps.every((x) => x.rs.length > 0); const f = c.featured ? featuredByKey(c.featured) : undefined;
-  return { steps, first, startHref, ran, f, run: fm?.run ?? first.r?.run ?? null };
+  return { steps, first, startHref, ran, f, made: !!f && ran, run: fm?.run ?? first.r?.run ?? null };
 }
 const ChainArt = ({ c }: { c: WfChain }) => <span className="xp-art" aria-hidden>{c.art && hasDiagram(c.art) ? <FlowDiagram art={c.art} /> : <GenerateIcon size={40} />}</span>;
 /** A chain as a card, the same size as a workflow’s: its clip and its steps’ models. Opens the chain’s sheet. */
-function ChainTile({ c, rows, onOpen, s, i = 0 }: { c: WfChain; rows: Row[]; onOpen: () => void; s: Saved; i?: number }) {
+function ChainTile({ c, rows, onOpen, s, i = 0, showMade }: { c: WfChain; rows: Row[]; onOpen: () => void; s: Saved; i?: number; showMade: boolean }) {
   const k = chainFacts(c, rows); const open = (ev: React.MouseEvent) => { if ((ev.target as HTMLElement).closest('a,button')) return; onOpen(); };
-  return <div className={`xp-tile wn-card wn-chaintile${k.f ? ' is-real' : ''}`} onClick={open} onPointerEnter={() => k.startHref && warm(k.startHref)} data-hover-play data-testid={`wn-chain-${c.id}`} style={{ ['--i' as string]: Math.min(i, 12) }}>
+  return <div className={`xp-tile is-band wn-card wn-chaintile${k.f ? ' is-real' : ''}`} onClick={open} onPointerEnter={() => k.startHref && warm(k.startHref)} data-hover-play data-testid={`wn-chain-${c.id}`} style={{ ['--i' as string]: Math.min(i, 12) }}>
     <span className="xp-tile-media wn-media">{k.f ? <HoverClip src={k.f.out.url} poster={cardThumb(`chain:${c.id}`) ?? k.f.out.poster} label={c.name} /> : <span className="wn-art"><ChainArt c={c} /></span>}</span>
-    <span className="wn-top">{k.f && k.ran && <span className="xp-badge wn-made">Made here</span>}<span className="xp-badge">{c.steps.length} {c.steps.length === 1 ? 'step' : 'steps'}</span></span>
+    {showMade && k.made && <span className="wn-top"><span className="xp-badge wn-made">Made here</span></span>}
     <SaveBtn id={`chain:${c.id}`} s={s} label={c.name} />
     <span className="xp-cap wn-cap">
       <button type="button" className="xp-title wn-title" onClick={onOpen} aria-label={`${c.name}: ${c.line}. ${c.steps.length} steps. Details`}>{c.name}</button>
       <span className="xp-line">{c.line}</span>
       <span className="xp-meta wn-meta"><span className="xp-model wn-model" title={k.steps.map((x) => x.model).filter(Boolean).join(' → ')}><span>{[...new Set(k.steps.map((x) => x.model).filter(Boolean))].join(' → ')}</span></span></span>
     </span>
-    <span className="xp-go" aria-hidden><ChevronRightIcon size={18} /></span>
   </div>;
 }
 /** A chain's sheet: its example, its steps in order (each names its workflow and real model, and opens that workflow's sheet), how the hand-off
@@ -316,11 +315,9 @@ function LeftOut({ left }: { left: { e: { name: string }; why: string }[] }) {
   return <details className="wn-left" data-testid="wn-left"><summary>{left.length} not shown here</summary><ul>{left.map((x) => <li key={x.e.name}><b>{x.e.name}</b>: {x.why}</li>)}</ul></details>;
 }
 
-const two = (n: number) => String(n).padStart(2, '0');
-/** A section head in Explore's language: a number in the accent, an uppercase display title with its count beside it (a small pill, as the rail
- *  shows it), one plain line. */
-const Head = ({ n, id, title, line, count }: { n: string; id: string; title: string; line: string; count?: number }) =>
-  <header className="xp-head wn-head"><span className="xp-num" aria-hidden>{n}</span><div><h2 id={id}>{title}{count != null && <span className="wn-count" aria-label={`${count} ${count === 1 ? 'workflow' : 'workflows'}`}>{count}</span>}</h2><p>{line}</p></div></header>;
+/** A section head: the title with its count beside it, one plain line. On the page background (no plate, no numbers). */
+const Head = ({ id, title, line, count }: { id: string; title: string; line: string; count?: number }) =>
+  <header className="wn-head"><h2 id={id}>{title}{count != null && <span className="wn-count" aria-label={`${count} ${count === 1 ? 'workflow' : 'workflows'}`}>{count}</span>}</h2>{line && <p>{line}</p>}</header>;
 
 /** Yours: saved workflows and chains, first; a first-time note when there are none. */
 function Yours({ rows, chains, s, open, openChain }: { rows: Row[]; chains: WfChain[]; s: Saved; open: (r: Row) => void; openChain: (c: WfChain) => void }) {
@@ -372,7 +369,10 @@ export default function Workflows({ tools }: { tools: ToolInfo[] }) {
   const inCat = f.cat === 'chains' ? picked.filter((x) => x.kind === 'chain') : f.cat === 'saved' ? savedItems : picked.filter((x) => catOfItem(x) === f.cat);
   const catInfo = WF_CATS.find((c) => c.id === f.cat);
   const nothing = f.cat === 'all' ? !picked.length : f.cat === 'ideas' ? !f.ideas.length : !inCat.length;
-  const tile = (x: Item, i: number) => x.kind === 'row' ? <Card key={x.id} r={x.r} s={s} i={i} onOpen={() => openRow(x.r)} /> : <ChainTile key={x.id} c={x.c} rows={rows} s={s} i={i} onOpen={() => openChain(x.c)} />;
+  /* "Made here" marks the exceptions: when every card on the page is made here, no card carries it */
+  const showMade = !picked.every((x) => (x.kind === 'row' ? x.r.made : chainFacts(x.c, rows).made));
+  /* `mark`: false where the section's own line already says "made here" (Start here) */
+  const tiles = (list: Item[], mark = showMade) => list.map((x, i) => x.kind === 'row' ? <Card key={x.id} r={x.r} s={s} i={i} showMade={mark} onOpen={() => openRow(x.r)} /> : <ChainTile key={x.id} c={x.c} rows={rows} s={s} i={i} showMade={mark} onOpen={() => openChain(x.c)} />);
   return <div className="wn-page" data-testid="workflows-page">
     <div className="wn wn-b">
       <aside className="wn-side" aria-label="Find a workflow">
@@ -384,23 +384,23 @@ export default function Workflows({ tools }: { tools: ToolInfo[] }) {
         <LeftOut left={left.filter((x) => onWorkflowsPage(x.e.id))} />
       </aside>
       <main className="wn-main">
-        <header className="wn-mhead"><h2>What do you want to make?</h2><p>{total} hand-picked workflows, each with its real model. Open one to see where it can run and what it costs on your setup, then it opens ready to go. Every other workflow is in its own tab.</p><Goals f={f} /></header>
+        <header className="wn-mhead"><h2>What do you want to make?</h2><p>{total} workflows, each with its real model. Open one to see where it runs and what it costs.</p><Goals f={f} /></header>
         <Yours rows={rows} chains={chainsAll} s={s} open={openRow} openChain={openChain} />
         <div className={`wn-results${rise ? ' is-rising' : ''}`} key={f.cat}>
         {nothing && !f.elsewhere.length ? (f.cat === 'saved' && !f.q ? <p className="wn-first wn-first-big">Nothing saved yet. Press <SavedTagIcon size={13} /> on any card.</p> : <Empty f={f} rows={f.rows} open={openRow} />) : <>
-          {f.cat === 'all' && featured.length > 0 && <section className="wn-sec wn-featured" aria-labelledby="wn-h-featured" data-testid="wn-sec-featured">
-            <Head n="01" id="wn-h-featured" title="Start here" line="Our favourites: each one made a real result here. Open one to see how it was made." count={featured.length} />
-            <div className="wn-grid">{featured.map(tile)}</div></section>}
+          {f.cat === 'all' && featured.length > 0 && <section className="wn-sec" aria-labelledby="wn-h-featured" data-testid="wn-sec-featured">
+            <Head id="wn-h-featured" title="Start here" line="Our favourites, each with a real result made here." count={featured.length} />
+            <div className="wn-grid">{tiles(featured, false)}</div></section>}
           {f.cat === 'all' && kept.length > 0 && <section className="wn-sec" aria-labelledby="wn-h-more" data-testid="wn-sec-more">
-            <Head n="02" id="wn-h-more" title="More workflows" line="Longer takes, a shot from a 3D sketch, try-ons, music and sound." count={kept.length} />
-            <div className="wn-grid">{kept.map(tile)}</div></section>}
+            <Head id="wn-h-more" title="More workflows" line="Longer takes, a shot from a 3D sketch, try-ons, music and sound." count={kept.length} />
+            <div className="wn-grid">{tiles(kept)}</div></section>}
           {f.cat !== 'all' && f.cat !== 'ideas' && inCat.length > 0 && <section className="wn-sec" aria-labelledby={`wn-h-${f.cat}`} data-testid={`wn-sec-${f.cat}`}>
-            <Head n={f.cat === 'chains' ? '00' : f.cat === 'saved' ? '··' : two(WF_CATS.findIndex((x) => x.id === f.cat) + 1)} id={`wn-h-${f.cat}`}
+            <Head id={`wn-h-${f.cat}`}
               title={f.cat === 'chains' ? 'Multi-step' : f.cat === 'saved' ? 'Saved' : catInfo?.label ?? f.cat}
               line={f.cat === 'chains' ? 'Workflows that hand off to each other. Each step names its model and is priced before you run it.' : f.cat === 'saved' ? 'Kept in this browser.' : catInfo?.line ?? ''} count={inCat.length} />
-            <div className="wn-grid">{inCat.map(tile)}</div></section>}
+            <div className="wn-grid">{tiles(inCat)}</div></section>}
           {f.cat === 'ideas' && <section className="wn-sec" aria-labelledby="wn-h-ideas" data-testid="wn-sec-ideas">
-            <Head n="··" id="wn-h-ideas" title="Ideas, not built yet" line="Workflows we found in the wild and may add. They don't run here yet: each names where it comes from." count={f.ideas.length} />
+            <Head id="wn-h-ideas" title="Ideas, not built yet" line="Workflows we found in the wild and may add. They don't run here yet: each names where it comes from." count={f.ideas.length} />
             <div className="wn-ideas">{f.ideas.map((w) => <IdeaCard key={w.id} w={w} />)}</div></section>}
           {f.elsewhere.length > 0 && f.cat !== 'ideas' && <section className="wn-sec wn-elsewhere" aria-labelledby="wn-h-else" data-testid="wn-elsewhere">
             <h3 id="wn-h-else" className="wn-else-h">{nothing ? `Not on this page, but in its tab` : 'Also in the tabs'}</h3>
