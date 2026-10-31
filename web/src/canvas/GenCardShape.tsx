@@ -190,7 +190,9 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
   const place = placeWord(quote);
 
   /* model · place · price: one quiet row under the picture, the same on every state (the model is the model menu on a draft) */
-  const chips = <div className="gc-row" data-testid="gc-chips-row">
+  /* a demo sample (shared/demoMedia.ts) names the model that really made it, never the card's own model */
+  const made = !draft && p.status === 'done' ? take?.made : undefined;
+  const chips = made ? <div className="gc-row" data-testid="gc-chips-row"><span className="gc-row-model" data-testid="gc-made"><b {...tip(made)}>{made}</b></span></div> : <div className="gc-row" data-testid="gc-chips-row">
     {draft && spec ? <button ref={mRef} type="button" className="gc-row-model gc-row-btn" aria-haspopup="listbox" aria-expanded={pop === 'model'} data-testid="gc-model-chip" disabled={spec.providers.length < 2} {...tip(pop === 'model' ? null : `Model: ${model}`)} onClick={() => setPop(pop === 'model' ? '' : 'model')}>
         <MakerTile className="gc-mk" medium={p.medium} maker={maker} fallback={model} /><b>{model || 'Model'}</b>{spec.providers.length > 1 && <Ic.CaretIcon size={11} />}</button>
       : <span className="gc-row-model"><MakerTile className="gc-mk" medium={p.medium} maker={maker} fallback={model} /><b {...tip(model)}>{model || (spec ? 'Model' : 'Loading…')}</b></span>}
