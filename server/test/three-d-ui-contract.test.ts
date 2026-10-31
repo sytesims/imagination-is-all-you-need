@@ -27,8 +27,8 @@ for (const id of ['image-to-3d', 'text-to-3d', 'multiview-to-3d']) {
   assert.deepEqual(recipe.controls.map(c => c.field), ['detail', 'faces', 'texture']);
   assert.equal(workflowRecreateHref({ id: 'result', toolId: 'three-d', input: { types: [id] } }), `/3d?workflow=${id}&recreate=result`);
 }
-assert.equal(threeDPriceNote('cloud-tripo-31', 'text-to-3d'), '$0.10–$0.50 a model on Comfy credits (texture and detail)');
-for (const mode of ['image-to-3d', 'multiview-to-3d']) assert.equal(threeDPriceNote('cloud-tripo-31', mode), '$0.20–$0.60 a model on Comfy credits (texture and detail)');
+assert.equal(threeDPriceNote('cloud-tripo-31', 'text-to-3d'), '$0.10–$0.50 on Comfy credits, by texture and detail');
+for (const mode of ['image-to-3d', 'multiview-to-3d']) assert.equal(threeDPriceNote('cloud-tripo-31', mode), '$0.20–$0.60 on Comfy credits, by texture and detail');
 assert.equal(threeDPriceNote('fal-trellis2'), threeDModel('fal-trellis2')!.priceNote);
 const text = make('text-to-3d', []);
 assert.equal(text.spec.provider, 'cloud-tripo-31');

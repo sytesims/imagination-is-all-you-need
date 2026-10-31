@@ -29,8 +29,8 @@ import { ModelMenu, type MenuItem } from '../../shared/ModelMenu';
 import { MakerTile } from '../../shared/MakerTile';
 import { GenPrice, priceTitle } from '../../shared/GenPrice';
 import { shownCredits, unpricedReason, unpricedPrefix, runBlock } from '../../shared/quote';
-import { useBilling, ownAccountsNow, modeOf, fmtUsd } from '../../shared/billing';
-import { useVariantQuotes, optionToken, type Overrides } from '../../shared/optionPrice';
+import { useBilling, ownAccountsNow, modeOf } from '../../shared/billing';
+import { useVariantQuotes, optionDelta, type Overrides } from '../../shared/optionPrice';
 import { addKeyText, KeyNeeded, hasFreeLocal } from '../../shared/KeyNeeded';
 import { SetupGenerate, setupNeeded } from '../../shared/SetupCard';
 import { nudgeMissing } from '../../shared/genNudge';
@@ -250,14 +250,13 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
   const isTT = wf.id === 'turntable'; const isPS = wf.id === 'plan-a-shot';
   /* a coming-soon workflow opened by a link (?workflow=text-to-3d): the bar says so and offers what works today, never Image to 3D's controls (2026-10-27) */
   const isSoon = wf.status === 'soon'; const soonAlt = isSoon ? SOON_TODAY[wf.id] ?? SOON_TODAY.default : null; const noModel = isTT || isPS || isSoon;
-  /* each Detail / Face count / Texture option's price (2026-10-27): the Generate price once it is picked, one variant request (shared/optionPrice.ts).
-     A sample run (mock) has no charge, so the option shows its list price, marked as such in its tooltip. */
+  /* each Shape / Mesh detail / Texture option shows only what it changes ('+$0.20'; nothing when it costs the same, nothing on the picked one): the
+     total stays on Generate (2026-11-01). One variant request (shared/optionPrice.ts); a sample run (mock) compares list prices, said in the tooltip. */
   const own = ((m) => (m == null ? null : m === 'own-accounts'))(modeOf(bill, q));
   const optVariants: Record<string, Overrides> = {}; if (model && !noModel) for (const f of ['detail', 'texture', 'faces'] as const) for (const o of model[f] ?? []) optVariants[`${f}:${o.value}`] = { [f]: o.value };
   const vq = useVariantQuotes(model && !noModel ? TOOL : null, model && !noModel ? { ...qParams, provider } : null, optVariants);
-  const optTok = (x: any): string | null => { if (!x || (typeof x.status === 'number' && x.status >= 400)) return null; if (x.demo !== true) return optionToken(x, own);
-    const u = x.cost?.realRunUsd ?? x.exactUsd; return typeof u === 'number' && u > 0 ? `≈ ${fmtUsd(u)} · list price; sample run here, nothing billed` : null; };
-  const optPrice = (f: string, v: string): string | null | undefined => { if (q && set[f as 'detail'] === v) return optTok(q); const x = vq.get(`${f}:${v}`); return x === undefined ? undefined : optTok(x); };
+  const optPrice = (f: string, v: string): string | null | undefined => { if (!q || set[f as 'detail'] === v) return null; const x = vq.get(`${f}:${v}`);
+    return x === undefined ? undefined : !x || (typeof x.status === 'number' && x.status >= 400) ? null : optionDelta(q, x, own); };
   // ---- Direct a Shot: the one shot object (PlanShot), the view, what to record, an imported scene, the recording ----
   const setPs = (f: (p: PlanState) => PlanState) => setPsS((p) => { const n = f(p); savePlan(n); return n; });
   const setStep = (st: PlanStep) => { setPop(''); setPs((p) => ({ ...p, step: st })); };
@@ -470,8 +469,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
         <PopSection label="Seed" aside={model?.seed ? (seed ? <span className="bp-mono">{seed}</span> : 'Random') : undefined}>
           {model?.seed ? <label className="bp-field"><input type="number" min={0} inputMode="numeric" placeholder="Random" aria-label="Seed" value={seed} data-testid="t3-seed" onChange={(e) => setDraft((d) => ({ ...d, vals: { ...d.vals, seed: e.target.value.replace(/\D/g, '') } }))} /><small>Same seed + same settings = a similar model</small></label>
             : <p className="bp-fact">{modelName} picks its own seed.</p>}</PopSection>
-        <PopSection label="Resolution"><p className="bp-fact" data-testid="t3-set-res">{model?.detail ? `Set by Detail: ${model.detail.map((o) => `${o.label}${o.note ? ` (${o.note})` : ''}`).join(', ')}` : `${modelName} picks its own resolution.`}</p></PopSection>
-        <PopSection label="Format" aside="GLB"><p className="bp-fact">Binary glTF with its textures inside.</p></PopSection>
+        <PopSection label="Format" aside="GLB"><p className="bp-fact">One file with its textures inside. Opens in Blender, game engines and most 3D apps.</p></PopSection>
       </div>}</BarPopover>
       {isPS && <BarPopover open={pop === 'camera'} anchor={camRef} avoid={dock} watch={dock} onClose={() => setPop('')} label="Camera" role="dialog" testId="ps-camera-menu" width={320}><div className="bp-wrap ps-pop">{planPanels.camera}</div></BarPopover>}
       {isPS && <BarPopover open={pop === 'colour'} anchor={colRef} avoid={dock} watch={dock} onClose={() => setPop('')} label={tplNow.subjectLabel} role="dialog" testId="ps-colour-menu" width={320}><div className="bp-wrap ps-pop">{planPanels.colour}</div></BarPopover>}

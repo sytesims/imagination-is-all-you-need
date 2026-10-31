@@ -112,9 +112,9 @@ export function Viewer3D({ item, onClose, onPrev, onNext, pos, bigBytes = BIG_GL
 }
 /** The details rows for a 3D job: model, where it ran, price and time, and the settings it ran with. */
 export function jobRows3d(j: any, priceText: string | null): [string, ReactNode][] {
-  const i = j?.input ?? {}; const t = jobTiming(j); const L: Record<string, string> = { low: 'Low', standard: 'Standard', high: 'High', off: 'Off', hd: 'HD', pbr: 'PBR', auto: 'Auto' };
+  const i = j?.input ?? {}; const t = jobTiming(j); const L: Record<string, string> = { low: 'Low', standard: 'Standard', high: 'High', off: 'None', hd: 'HD', pbr: 'Realistic (PBR)', auto: 'Auto' }; /* plain words, as in the bar */
   return [['Model', j?.model ?? j?.provider ?? ''], ['Ran on', j?.place?.label ?? j?.runOnLabel ?? ''], ...(priceText ? [['Price', priceText] as [string, ReactNode]] : []), ...(t.renderMs ? [['Time', durationText(t.renderMs)] as [string, ReactNode]] : []),
-    ...(i.detail ? [['Detail', L[i.detail] ?? i.detail] as [string, ReactNode]] : []), ...(i.texture ? [['Texture', L[i.texture] ?? i.texture] as [string, ReactNode]] : []), ...(i.faces ? [['Face count', L[i.faces] ?? i.faces] as [string, ReactNode]] : []),
+    ...(i.detail ? [['Detail', L[i.detail] ?? i.detail] as [string, ReactNode]] : []), ...(i.texture ? [['Texture', L[i.texture] ?? i.texture] as [string, ReactNode]] : []), ...(i.faces ? [['Mesh detail', L[i.faces] ?? i.faces] as [string, ReactNode]] : []),
     ...(i.seed != null ? [['Seed', String(i.seed)] as [string, ReactNode]] : [])].filter(([, v]) => v !== '' && v != null) as [string, ReactNode][];
 }
 export { posterOf3d };

@@ -85,7 +85,8 @@ export const DETAILS: Detail[] = ['low', 'standard', 'high'];
 export const TEXTURES: Texture[] = ['off', 'standard', 'hd', 'pbr'];
 export const FACES: Faces[] = ['auto', '10k', '50k', '200k'];
 export const FACE_COUNT: Record<Exclude<Faces, 'auto'>, number> = { '10k': 10_000, '50k': 50_000, '200k': 200_000 };
-type Opt<T extends string> = { value: T; label: string; note?: string };
+/** note: a short hint under the option (never just the label again); chip: the bar chip's own words for it ('' = left off the chip, for a default) */
+type Opt<T extends string> = { value: T; label: string; note?: string; chip?: string };
 export interface ThreeDModel {
   id: string; name: string; maker: string; makerName: string;
   /** Where it runs: Comfy (partner node, Comfy key), fal (fal key), or this computer. */ place: 'comfy' | 'fal' | 'local';
@@ -107,26 +108,28 @@ export const PIXAL3D_FILES = [
   { file: 'moge_2_vitl_normal_fp16.safetensors', bytes: 662_000_000, url: HF('Comfy-Org/MoGe', 'geometry_estimation/moge_2_vitl_normal_fp16.safetensors') },
   { file: 'birefnet.safetensors', bytes: 444_000_000, url: HF('Comfy-Org/BiRefNet', 'background_removal/birefnet.safetensors') },
 ];
+/** Mesh detail (face count) and Tripo's texture choices, in plain words (the tech term stays in the hint). */
+const FACES_OPTS: Opt<Faces>[] = [{ value: 'auto', label: 'Auto', note: 'Model picks', chip: '' }, { value: '10k', label: '10k', note: 'For games', chip: '10k mesh' }, { value: '50k', label: '50k', note: 'Balanced', chip: '50k mesh' }, { value: '200k', label: '200k', note: 'Most detail', chip: '200k mesh' }];
+const TEX_TRIPO: Opt<Texture>[] = [{ value: 'off', label: 'None', note: 'Shape only', chip: 'No texture' }, { value: 'standard', label: 'Colour', note: 'Standard' }, { value: 'hd', label: 'HD colour', note: 'Sharper' }, { value: 'pbr', label: 'Realistic', note: 'PBR materials' }];
 export const THREE_D_MODELS: ThreeDModel[] = [
   { id: 'cloud-tripo-31', name: 'Tripo 3.1', maker: 'tripo', makerName: 'Tripo AI (VAST)', place: 'comfy',
-    detail: [{ value: 'standard', label: 'Standard', note: 'Standard geometry' }, { value: 'high', label: 'High', note: 'Detailed geometry' }],
-    texture: [{ value: 'off', label: 'Off', note: 'Bare geometry' }, { value: 'standard', label: 'Standard', note: 'Colour textures' }, { value: 'hd', label: 'HD', note: 'Detailed textures' }, { value: 'pbr', label: 'PBR', note: 'Standard textures + PBR maps' }],
-    faces: [{ value: 'auto', label: 'Auto', note: 'Model decides' }, { value: '10k', label: '10k', note: 'Light, for games' }, { value: '50k', label: '50k', note: 'Balanced' }, { value: '200k', label: '200k', note: 'Most detail' }],
+    detail: [{ value: 'standard', label: 'Standard', note: 'Faster, smooth shapes', chip: '' }, { value: 'high', label: 'High', note: 'Sharper edges and fine parts', chip: 'High detail' }],
+    texture: TEX_TRIPO, faces: FACES_OPTS,
     seed: true, symmetry: false, formats: ['glb'], defaults: { detail: 'standard', texture: 'pbr', faces: 'auto' },
-    openWeights: false, licence: { id: 'tripo-terms', name: 'Tripo terms of service (hosted)', url: 'https://www.tripo3d.ai/terms' }, priceNote: 'Text $0.10–$0.50; image or views $0.20–$0.60 (texture and detail)', typicalSec: 90 },
+    openWeights: false, licence: { id: 'tripo-terms', name: 'Tripo terms of service (hosted)', url: 'https://www.tripo3d.ai/terms' }, priceNote: 'Text $0.10–$0.50; image or views $0.20–$0.60, by texture and detail', typicalSec: 90 },
   { id: 'fal-trellis2', name: 'TRELLIS.2', maker: 'microsoft', makerName: 'Microsoft', place: 'fal',
-    detail: [{ value: 'low', label: 'Low', note: '512 resolution' }, { value: 'standard', label: 'Standard', note: '1024 resolution' }, { value: 'high', label: 'High', note: '1536 resolution' }],
-    texture: [{ value: 'standard', label: 'Standard', note: '2K texture' }, { value: 'hd', label: 'HD', note: '4K texture' }],
-    faces: [{ value: 'auto', label: 'Auto', note: 'Model decides' }, { value: '10k', label: '10k', note: 'Light, for games' }, { value: '50k', label: '50k', note: 'Balanced' }, { value: '200k', label: '200k', note: 'Most detail' }],
+    detail: [{ value: 'low', label: 'Low', note: 'Draft · 512', chip: 'Low detail' }, { value: 'standard', label: 'Standard', note: 'Balanced · 1024', chip: '' }, { value: 'high', label: 'High', note: 'Finest · 1536', chip: 'High detail' }],
+    texture: [{ value: 'standard', label: '2K', note: 'Lighter file', chip: '2K texture' }, { value: 'hd', label: '4K', note: 'Sharpest', chip: '4K texture' }],
+    faces: FACES_OPTS,
     seed: true, symmetry: false, formats: ['glb'], defaults: { detail: 'standard', texture: 'standard', faces: 'auto' },
-    openWeights: true /* huggingface.co/microsoft/TRELLIS.2-4B, MIT */, licence: { id: 'mit', name: 'MIT (TRELLIS.2 weights and code)', url: 'https://huggingface.co/microsoft/TRELLIS.2-4B' }, priceNote: '$0.25 / $0.30 / $0.35 by resolution on fal', typicalSec: 60 },
+    openWeights: true /* huggingface.co/microsoft/TRELLIS.2-4B, MIT */, licence: { id: 'mit', name: 'MIT (TRELLIS.2 weights and code)', url: 'https://huggingface.co/microsoft/TRELLIS.2-4B' }, priceNote: '$0.25 / $0.30 / $0.35 by shape detail on fal', typicalSec: 60 },
   { id: 'fal-hunyuan3d-31', name: 'Hunyuan 3D 3.1', maker: 'tencent-hunyuan', makerName: 'Tencent Hunyuan', place: 'fal',
     detail: null,
-    texture: [{ value: 'standard', label: 'Standard', note: 'Colour textures' }, { value: 'pbr', label: 'PBR', note: 'Adds PBR maps' }],
-    faces: [{ value: 'auto', label: 'Auto', note: 'About 500k' }, { value: '50k', label: '50k', note: 'Lighter mesh' }, { value: '200k', label: '200k', note: 'Medium mesh' }],
+    texture: [{ value: 'standard', label: 'Colour', note: 'Standard' }, { value: 'pbr', label: 'Realistic', note: 'PBR materials' }],
+    faces: [{ value: 'auto', label: 'Auto', note: 'Most detail · 500k', chip: '' }, { value: '50k', label: '50k', note: 'For games', chip: '50k mesh' }, { value: '200k', label: '200k', note: 'Balanced', chip: '200k mesh' }],
     seed: false, symmetry: false, formats: ['glb'], defaults: { detail: 'standard', texture: 'standard', faces: 'auto' },
     openWeights: false /* 3.x is API-only as far as we could confirm (Comfy docs: partner node); 2.x weights are public */, licence: { id: 'tencent-hunyuan-3d', name: 'Tencent Hunyuan 3D (hosted on fal)', url: 'https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1/blob/main/LICENSE', note: 'Tencent’s Hunyuan 3D community licence does not apply in the EU, the UK or South Korea; hosted runs follow fal’s terms.' },
-    priceNote: '$0.375 a model on fal; PBR or a set face count +$0.15 each', typicalSec: 120 },
+    priceNote: '$0.375 on fal; Realistic or a set mesh +$0.15 each', typicalSec: 120 },
   { id: 'comfy-pixal3d-trellis2', name: 'Pixal3D + TRELLIS.2', maker: 'pixal3d', makerName: 'Pixal3D authors', place: 'local',
     detail: null, texture: null, faces: null, seed: true, symmetry: false, formats: ['glb'], defaults: { detail: 'standard', texture: 'standard', faces: 'auto' },
     openWeights: true, licence: { id: 'mit', name: 'MIT (Pixal3D, TRELLIS.2, MoGe, BiRefNet); DINOv3 under Meta’s DINOv3 licence', url: 'https://huggingface.co/Comfy-Org/Pixal3D' },
@@ -176,7 +179,7 @@ export const usdByKey = (modelId: string): Record<string, number> => Object.from
 export function threeDPriceNote(modelId: string, mode = 'image-to-3d'): string | undefined {
   const model = threeDModel(modelId); if (!model || modelId !== 'cloud-tripo-31') return model?.priceNote;
   const prices = Object.entries(usdByKey(modelId)).filter(([key]) => key.startsWith('text.') === (mode === 'text-to-3d')).map(([, usd]) => usd);
-  return `$${Math.min(...prices).toFixed(2)}–$${Math.max(...prices).toFixed(2)} a model on Comfy credits (texture and detail)`;
+  return `$${Math.min(...prices).toFixed(2)}–$${Math.max(...prices).toFixed(2)} on Comfy credits, by texture and detail`;
 }
 /** A huge GLB: warn before loading it in the viewer (bytes). */
 export const BIG_GLB_BYTES = 60 * 1024 * 1024;

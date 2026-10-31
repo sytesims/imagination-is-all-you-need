@@ -7,8 +7,9 @@ import { THREE_D_TOOL as TOOL, type ThreeDWorkflow, type ThreeDModel, THREE_D_VI
 
 /** The model's settings as a workflow recipe, so the bar's shared group chips (WorkflowControls) show only what this model takes. */
 export function recipeFor(m: ThreeDModel | null, wf: ThreeDWorkflow): WfRecipe {
-  const ctl = (field: 'detail' | 'texture' | 'faces', label: string, group: string, opts: { value: string; label: string; note?: string }[] | null) => opts && opts.length > 0 ? [{ field, label, kind: 'segmented', group, options: opts.map((o) => ({ value: o.value, label: o.label, ...(o.note ? { credit: o.note } : {}) })), default: m!.defaults[field] }] : [];
-  const controls = m ? [...ctl('detail', 'Detail', 'detail', m.detail), ...ctl('faces', 'Face count', 'detail', m.faces), ...ctl('texture', 'Texture', 'texture', m.texture)] : [];
+  const ctl = (field: 'detail' | 'texture' | 'faces', label: string, group: string, opts: { value: string; label: string; note?: string; chip?: string }[] | null) => opts && opts.length > 0 ? [{ field, label, kind: 'segmented', group, options: opts.map((o) => ({ value: o.value, label: o.label, ...(o.note ? { credit: o.note } : {}), ...(o.chip != null ? { chip: o.chip } : {}) })), default: m!.defaults[field] }] : [];
+  /* plain words: "Shape" and "Mesh detail" (the face count), each option's hint says what it does; the chip names only what isn't the default ("High detail · 50k mesh"), else just "Detail" */
+  const controls = m ? [...ctl('detail', 'Shape', 'detail', m.detail), ...ctl('faces', 'Mesh detail', 'detail', m.faces), ...ctl('texture', 'Texture', 'texture', m.texture)] : [];
   const groups = [controls.some((c) => c.group === 'detail') && { id: 'detail', label: 'Detail', icon: 'detail', summary: controls.filter((c) => c.group === 'detail').map((c) => c.field) },
     controls.some((c) => c.group === 'texture') && { id: 'texture', label: 'Texture', icon: 'texture', summary: ['texture'] }].filter(Boolean);
   const slots = wf.id === 'text-to-3d' ? [] : wf.id === 'multiview-to-3d'
