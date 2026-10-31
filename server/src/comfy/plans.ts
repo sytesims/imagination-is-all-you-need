@@ -277,7 +277,7 @@ function fpsBoost(job: Job, srcFps = 30): Plan {
     passes: [{ label: `${target} fps`, workflow: 'fps-boost-rife-api.json', graph: g, output: '5', expect: { fps: g['4'].inputs.fps, multiplier: mult, finalFps: target } }] };
 }
 /** Edit jobs whose output takes the app's aspect instead of the input photo's shape (where the graph allows it): Character Sheet. */
-const CHARACTER_SHEET_TOOLS = new Set(['app-character-sheet']);
+const CHARACTER_SHEET_TOOLS = new Set(['app-character-sheet', 'app-ad-pack']); // Ad Pack (2026-10-31): the platform's shape, not the product photo's
 const IMAGE_WF: Record<string, Record<string, string>> = {
   'comfy-qwen21': { generate: 'create-image-qwen21-t2i', edit: 'create-image-qwen21-edit', multiref: 'create-image-qwen21-edit' /* 2 images: the template's two inputs */ },
   'comfy-qwen21-turbo': { generate: 'create-image-qwen21-turbo-t2i', edit: 'create-image-qwen21-turbo-edit' /* official Turbo templates: 8 steps, edit takes ONE image (no multiref) */ },

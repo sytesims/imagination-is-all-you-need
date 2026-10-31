@@ -45,3 +45,24 @@ export function lyricsPlan(r: LyricsRecipe, provider: string, text: string, inst
 export const tooShortFor = (seconds: number, need: number | null) => need != null && seconds < need * 0.75;
 /** "45 s", "1:10" */
 export function lengthText(sec: number): string { const s = Math.round(sec); return s < 60 ? `${s} s` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
+/** The Audio page's one length rule (2026-10-31, audit B1): Auto's length while Auto is on, else the picked length when the model allows it, else
+ *  the allowed length nearest to it. null when the model takes no length (nothing is sent then). Quote and job both use the result. */
+export function lengthFor(allowed: number[], current: number, auto: number | null): number | null {
+  const xs = allowed.filter(n => Number.isFinite(n) && n > 0); if (!xs.length) return null;
+  if (auto != null && xs.includes(auto)) return auto;
+  return xs.includes(current) ? current : xs.reduce((a, b) => Math.abs(b - current) < Math.abs(a - current) ? b : a);
+}
+/** The length before anything is picked: the shortest allowed, never the longest (a hidden default must not run up the price). */
+export const shortestLength = (allowed: number[] | null | undefined, fallback: number): number => {
+  const xs = (allowed ?? []).filter(n => Number.isFinite(n) && n > 0); return xs.length ? Math.min(...xs) : fallback; };
+/** Recreate on the Audio page (audit B3): what comes back from the job. Where the model reads lyrics: the job's lyrics, and Instrumental on when the
+ *  job sent none and the model can make one (else off). The job's length when the model allows it; Auto stays on only if it would pick that same
+ *  length for those lyrics (else a fixed length, so the rerun matches). Undefined fields are left as they are. */
+export function recreateAudio(r: LyricsRecipe, provider: string, job: { lyrics: string; duration: number | null }, allowed: number[], cur: { lyrics: string; instrumental: boolean; lengthControl: boolean }) {
+  const lp = lyricsPlan(r, provider, job.lyrics, false);
+  const lyrics = lp.on ? job.lyrics : undefined; const instrumental = lp.on ? lp.instAvail && !job.lyrics.trim() : undefined;
+  const used = lyricsPlan(r, provider, lyrics ?? cur.lyrics, instrumental ?? cur.instrumental).used;
+  const duration = job.duration != null && allowed.includes(job.duration) ? job.duration : null;
+  const auto = duration != null && cur.lengthControl && used ? autoLength(lyrics ?? cur.lyrics, allowed).seconds === duration : undefined;
+  return { lyrics, instrumental, duration, auto };
+}

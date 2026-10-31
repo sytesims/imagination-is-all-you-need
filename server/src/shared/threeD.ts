@@ -18,6 +18,7 @@ export interface ThreeDWorkflow {
   id: ThreeDWorkflowId; name: string; tagline: string; icon: string; category: ThreeDCategory;
   /** What it takes, in a few words ("1 image", "1 model"). */ needs: string;
   /** ready = runs now; soon = listed on the roadmap, never runnable. */ status: 'ready' | 'soon';
+  /** A soon row's menu line when part of it already works elsewhere (Rig: the viewer's free Rig tile). */ soonNote?: string;
   /** Tool and mode that run it (null for roadmap rows). */ toolId: string | null; mode: string | null;
   /** How it works, for the picker's ⓘ (our own words). */ how: [string, string][];
   /** Generate's label. */ generateLabel: string;
@@ -45,7 +46,7 @@ export const THREE_D_WORKFLOWS: ThreeDWorkflow[] = [
     how: [['Add the views', 'Front first, then the sides and back.'], ['Get a GLB', 'The extra views fill in what one picture can’t show.']], generateLabel: 'Generate', source: { kind: 'official', note: 'coming soon' } },
   { id: 'retexture', name: 'Retexture', tagline: 'New surface, same shape', icon: 'brush', category: 'edit', needs: '1 model', status: 'soon', toolId: null, mode: null,
     how: [['Pick a model', 'Any GLB.'], ['Describe the new look', 'The shape stays; only the texture changes.']], generateLabel: 'Retexture', source: { kind: 'official', note: 'coming soon' } },
-  { id: 'rig', name: 'Rig', tagline: 'Add a skeleton so a character can move', icon: 'rig', category: 'edit', needs: '1 model', status: 'soon', toolId: null, mode: null,
+  { id: 'rig', name: 'Rig', tagline: 'Add a skeleton so a character can move', icon: 'rig', category: 'edit', needs: '1 model', status: 'soon', soonNote: 'Free for people today: open a model, then Rig', toolId: null, mode: null,
     how: [['Pick a character', 'A standing figure works best.'], ['Get a rigged GLB', 'Ready to pose or animate.']], generateLabel: 'Rig', source: { kind: 'official', note: 'coming soon' } },
 ];
 export const THREE_D_DEFAULT_WORKFLOW: ThreeDWorkflowId = 'image-to-3d';
@@ -120,7 +121,7 @@ export const THREE_D_MODELS: ThreeDModel[] = [
     detail: null, texture: null, faces: null, seed: true, symmetry: false, formats: ['glb'], defaults: { detail: 'standard', texture: 'standard', faces: 'auto' },
     openWeights: true, licence: { id: 'mit', name: 'MIT (Pixal3D, TRELLIS.2, MoGe, BiRefNet); DINOv3 under Meta’s DINOv3 licence', url: 'https://huggingface.co/Comfy-Org/Pixal3D' },
     download: { bytes: PIXAL3D_FILES.reduce((a, f) => a + f.bytes, 0), files: PIXAL3D_FILES, template: '3d_pixal3d_trellis2_image_to_model', templateUrl: 'https://github.com/Comfy-Org/workflow_templates/blob/main/templates/3d_pixal3d_trellis2_image_to_model.json' },
-    priceNote: 'Needs download (15.2 GB) · then free, locally · MIT', typicalSec: 300 }, /* 15.2 GB = PIXAL3D_FILES (test checks) */
+    priceNote: 'Not added yet · 15.2 GB of files · MIT', typicalSec: 300 }, /* 15.2 GB = PIXAL3D_FILES (test checks) */
 ];
 export const THREE_D_MODEL_IDS = THREE_D_MODELS.map((m) => m.id);
 export const threeDModel = (id: string | null | undefined) => THREE_D_MODELS.find((m) => m.id === id) ?? null;

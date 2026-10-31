@@ -162,9 +162,11 @@ export function withoutBrand(prompt: string, phrase: string): string {
   return p.endsWith(tail) ? p.slice(0, -tail.length) : p.endsWith(phrase) ? p.slice(0, -phrase.length).replace(/[\s.,;:]+$/, '') : p;
 }
 
+/** Tools that word the brand themselves (Ad Pack: colours and type feel inside its own ad prompt, the logo added after): Brand is on for them, no phrase is appended. */
+export const BRAND_OWN_WORDS = new Set(['app-ad-pack']);
 /** Which tools take the brand words, and as which media. Audio only for music (a voiceover's script is read word for word). null = not a brand tool. */
 export function brandMediaFor(toolId: string, mode?: string | null): BrandMediaKind | null {
-  if (toolId === 'create-image') return 'image';
+  if (toolId === 'create-image' || BRAND_OWN_WORDS.has(toolId)) return 'image';
   if (toolId === 'h3-video') return 'video';
   if (toolId === 'audio' || toolId === 'soundtrack') return !mode || mode === 'music' ? 'audio' : null;
   return null;
