@@ -15,11 +15,11 @@ for (const media of [f.before.url, f.out.url, f.out.poster, String(f.input.speec
   assert.ok(existsSync(new URL(`../../web/public${media}`, import.meta.url)), `existing input/output exists: ${media}`);
 }
 assert.match(featuredRecreateHref(f.key)!, /workflow=lip-sync/);
-assert.match(source, /<ChapterText id="presenter"/, 'the same chapter component used by Image to layers');
-assert.match(source, /cta=\{\{ label: 'Make it talk'/, 'primary action starts the Lip Sync workflow');
-assert.match(source, /rec=\{href\} recLabel="Recreate this one"/, 'the quieter action recreates this exact example');
-assert.match(source, /name: 'Portrait'[\s\S]*name: 'Voice'[\s\S]*name: 'Talking avatar'/, 'same three-step hierarchy as Image to layers');
-assert.match(source, /controls hoverSound restartOnSound/, 'shared video and sound controls, no custom playback implementation');
+assert.match(source, /Portrait[\s\S]*Voice[\s\S]*Talking video/, 'one row: portrait + voice → talking video');
+assert.match(source, /useWaveform/, 'the voice card draws the real speech clip');
+assert.match(source, /<ShowcaseFilm[^>]*controls/, 'shared video and sound controls, no custom playback implementation');
+assert.match(source, /videoWorkflowHref\('lip-sync'\)[^>]*>Make it talk/, 'primary action starts the Lip Sync workflow');
+assert.match(source, /to=\{rec\}[^>]*>or recreate this one/, 'the quieter action recreates this exact example');
 assert.match(source, /placeOfRoute\(f\.route\)/, 'run location comes from the featured record');
-assert.match(css, /\.xpa-film \.sfilm-media\{object-fit:contain\}/);
-console.log('ok presenter placement, shipped portrait/speech/video, native square frame, real model, Lip Sync recreation');
+assert.match(css, /\.xpa-film\{[^}]*aspect-ratio:1/, "the square result sits in a square card, so nothing is cropped");
+console.log('ok presenter row: shipped portrait, speech and video, square frame, real model, Lip Sync and recreate links');
