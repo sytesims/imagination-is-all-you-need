@@ -3,7 +3,7 @@
  * and one-click model downloads (Q4). Registered from index.ts.
  */
 import type { FastifyInstance } from 'fastify';
-import { getHardware, setManual, getManual, lastRefreshAt, REFRESH_MIN_SEC, comfyUrlState, comfyUrlError, setComfyUrl, checkComfy, safeUrl, refreshReachability, parseSystemStats, hwKeyOf, displayDir } from './hardware.js';
+import { getHardware, setManual, getManual, lastRefreshAt, REFRESH_MIN_SEC, comfyUrlState, comfyUrlError, setComfyUrl, checkComfy, safeUrl, refreshReachability, parseSystemStats, hwKeyOf, displayDir, liveReading } from './hardware.js';
 import { isLoopback } from './routing/settings.js';
 import { learnedSummary, resetLearned, rateOf } from './etaLearn.js';
 import { startDownload, listDownloads, getDownload, cancelDownload, downloadView, downloadCheck, DlError } from './hardware/downloads.js';
@@ -24,6 +24,8 @@ export function registerHardware(app: FastifyInstance) {
     return { ...hw, hwKey: hwKeyOf(hw), refreshAfterSec: next, rates: { download: rateOf(hwKeyOf(hw), 'download'), load: rateOf(hwKeyOf(hw), 'load') } }; };
   app.get<{ Querystring: { refresh?: string } }>('/api/hardware', async (req) => view(/^(1|true)$/i.test(req.query.refresh ?? '')));
   app.post('/api/hardware/refresh', async () => view(true));
+  /** "This computer" card: memory and disk right now (polled every few seconds while the card is visible). GET only, no probe of Comfy Cloud. */
+  app.get('/api/hardware/live', async () => liveReading());
   app.put<{ Body: { vramGB?: unknown; ramGB?: unknown } }>('/api/hardware', async (req, reply) => {
     const v = num(req.body?.vramGB); const r = req.body?.ramGB == null || req.body.ramGB === '' ? null : num(req.body.ramGB);
     if (!Number.isFinite(v) || v < 0 || v > 1024) return reply.code(400).send(bad('vramGB', 'vramGB must be a number of GB between 0 and 1024 (0 = no graphics card).'));

@@ -3,13 +3,14 @@
 //   1. Dependencies: runs `npm install` when they're missing (--check: only says so).
 //   2. `npm run doctor`: what works, what's missing, how to fix it (read-only).
 //   3. Starts the app (`npm run dev`) unless it's already running (--no-start: don't), and prints the setup page: http://localhost:5174/?setup=1
+//      --open: also opens the app in the browser once the web page answers (desktop shortcuts and scripts/get.sh use it).
 // Nothing else is installed or downloaded: ComfyUI, custom nodes and models stay your choice (the doctor prints the commands).
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2); const has = (f) => args.includes(f);
-if (has('--help') || has('-h')) { console.log('npm run setup [-- --check] [--no-start]\n  --check     only check (no npm install, no start)\n  --no-start  install + doctor, but don\'t start the app'); process.exit(0); }
-const checkOnly = has('--check'); const noStart = has('--no-start') || checkOnly;
+if (has('--help') || has('-h')) { console.log('npm run setup [-- --check] [--no-start] [--open]\n  --check     only check (no npm install, no start)\n  --no-start  install + doctor, but don\'t start the app\n  --open      open the app in the browser once it\'s ready'); process.exit(0); }
+const checkOnly = has('--check'); const noStart = has('--no-start') || checkOnly; const openWhenReady = has('--open');
 const say = (s) => console.log(`\x1b[1m==>\x1b[0m ${s}`);
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const major = Number(process.versions.node.split('.')[0]);
@@ -23,6 +24,12 @@ const apiPort = setting('PORT', '8787'); const webPort = setting('WEB_PORT', '51
 // Only promote these non-secret settings, not the contents of the settings file.
 const launchEnv = { ...process.env, PORT: apiPort, WEB_PORT: webPort, MCP_PORT: setting('MCP_PORT', '8788') };
 const wizard = `http://localhost:${webPort}/?setup=1`;
+const home = `http://localhost:${webPort}/`; // --open opens the home page: the setup sheet shows by itself on a first visit
+/** Opens a page in the default browser; best effort (a computer without a desktop just keeps the printed address). */
+const openBrowser = (url) => {
+  const [cmd, a] = process.platform === 'darwin' ? ['open', [url]] : process.platform === 'win32' ? ['rundll32', ['url.dll,FileProtocolHandler', url]] : ['xdg-open', [url]];
+  try { spawn(cmd, a, { stdio: 'ignore', detached: true }).on('error', () => {}).unref(); } catch { /* the printed address still works */ }
+};
 
 // 1. dependencies
 const depsOk = () => ['node_modules/fastify', 'node_modules/tsx', 'node_modules/concurrently'].every((p) => fs.existsSync(path.join(REPO, p)));
@@ -38,11 +45,17 @@ if (doc.status === 2) { console.error('\nThe app can’t start yet: fix the line
 
 // 3. start (or say where it runs)
 const up = async () => { try { const r = await fetch(`http://127.0.0.1:${apiPort}/api/health`, { signal: AbortSignal.timeout(1500) }); return r.ok; } catch { return false; } };
+const webUp = async () => { try { return (await fetch(home, { signal: AbortSignal.timeout(1500) })).ok; } catch { return false; } };
 console.log('');
-if (await up()) { say(`The app is already running. Open the setup page: ${wizard}`); process.exit(0); }
+if (await up()) {
+  if (openWhenReady) { openBrowser(home); say(`The app is already running: opened ${home} in your browser.`); process.exit(0); }
+  say(`The app is already running. Open the setup page: ${wizard}`); process.exit(0);
+}
 if (noStart) { say(`Start it with npm run dev, then open the setup page: ${wizard}`); process.exit(doc.status ?? 0); }
 say(`Starting the app (npm run dev). Setup page: ${wizard}   (Ctrl+C stops it)`);
 const child = spawn(npm, ['run', 'dev'], { cwd: REPO, stdio: 'inherit', shell: process.platform === 'win32', env: launchEnv });
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => child.kill(sig));
-const t0 = Date.now(); const tick = setInterval(async () => { if (await up()) { clearInterval(tick); say(`Ready: open ${wizard}`); } else if (Date.now() - t0 > 120_000) { clearInterval(tick); say(`Still starting… when it's up, open ${wizard}`); } }, 1500);
+let ready = false; /* checks can overlap: open the browser once */
+const t0 = Date.now(); const tick = setInterval(async () => { if (ready) return; if (await up() && (!openWhenReady || await webUp()) && !ready) { ready = true; clearInterval(tick);
+  if (openWhenReady) { openBrowser(home); say(`Ready: opened ${home} in your browser. Keep this window open while you use it; Ctrl+C stops the app.`); } else say(`Ready: open ${wizard}`); } else if (Date.now() - t0 > 120_000) { clearInterval(tick); say(`Still starting… when it's up, open ${wizard}`); } }, 1500);
 child.on('exit', (code) => { clearInterval(tick); process.exit(code ?? 0); });

@@ -275,3 +275,21 @@ html body .settings-page.st .seg{background:rgba(255,255,255,.07);border:0}
   .st-group{display:contents}
   .st-group-l,.st-tab-out i{display:none}
 }
+/* "This computer" card (2026-10-31): the machine, memory and disk bars, ComfyUI facts, what runs here. Same card, tokens only. */
+.st-mc.tc .st-mc-top{align-items:flex-start}
+.tc-ic{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:8px;background:var(--state-fill);color:var(--text-2)}
+.tc-eyebrow{font:500 11px/16px var(--font-ui);letter-spacing:.04em;text-transform:uppercase;color:var(--text-3)}
+.tc-bars{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+.tc-meter{min-width:0;display:flex;flex-direction:column;gap:6px}
+.tc-meter-h{display:flex;justify-content:space-between;gap:8px;font:500 12px/16px var(--font-ui);color:var(--text-2)}
+.tc-meter-n{color:var(--text-3);white-space:nowrap}.tc-meter-n b{color:var(--text);font-weight:600}
+.tc-bar{height:6px;border-radius:var(--r-pill);background:var(--state-fill);overflow:hidden}
+.tc-bar i{display:block;height:100%;border-radius:inherit;background:var(--text-2);transition:width var(--slow) var(--ease)}
+.tc-meter[data-low] .tc-bar i{background:var(--warning)}
+.tc-meter small{margin:0}
+html body .settings-page.st .st-mc.tc .st-mc-facts{grid-template-columns:repeat(3,minmax(0,1fr))}
+.st-mc.tc .st-mc-facts dd{display:flex;align-items:center;gap:8px}
+.st-mc.tc .st-mc-facts .st-mc-dot{width:8px;height:8px}
+.st-mc.tc .st-mc-facts .st-mc-dot.ok,.st-mc.tc .st-mc-facts .st-mc-dot.bad{box-shadow:none}
+.tc-runs{margin:0;font:500 13.5px/20px var(--font-ui);color:var(--text)}.tc-runs b{font-weight:600}
+@media (max-width:760px){.tc-bars{grid-template-columns:minmax(0,1fr)}.st-mc.tc .st-mc-facts>div{padding:10px}}

@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { FitTag } from '../shared/FitNote';
 import { gbText, localFitOf } from '../shared/fit';
 import { repoDoc } from '../shared/brand';
-import { getHardware, refreshHardware, setManualHardware, clearManualHardware, publishHardware, getComfy, setComfy, clearComfy, testComfy, startDownload, dryRunDownload, listDownloads, getDownload, cancelDownload, dlDone, dlTotal,
+import { listTools } from '../api';
+import { countLocalModels, localCountsText, localReadyText, machineLabel, usableText, gbOf, type ToolsLike } from '../../../server/src/shared/thisComputer';
+import { getHardware, getLiveHardware, type LiveHardware, refreshHardware, setManualHardware, clearManualHardware, publishHardware, getComfy, setComfy, clearComfy, testComfy, startDownload, dryRunDownload, listDownloads, getDownload, cancelDownload, dlDone, dlTotal,
   type Hardware, type ComfyAddr, type ComfyTest, type Download, type DlChoice, choiceText } from '../shared/hardware';
 
 /** Settings → Local models (#gpu; was the Self-host page's Local setup until 2026-10-23): what this computer has, the ComfyUI address,
@@ -34,44 +36,76 @@ export default function GpuModels() {
   </section>;
 }
 
-/** One card: ComfyUI, GPU, memory, free disk, models on disk, and Re-check (reads the hardware again and the server's health). */
+/** "This computer" (2026-10-31, hardware plan §3.5): the machine by its own name, what models can use, memory and disk right now (bars, re-read every
+ *  5 s while the card is on screen), ComfyUI, PyTorch and the GGUF loader, and how many local models run here (shared/thisComputer.ts, the same
+ *  count as Connections). Re-check reads the hardware again; the manual form shows when it can't be read. */
 function MachineCheck({ hw, h, onHw, onRecheck }: { hw: Hardware | null | undefined; h: Health | undefined; onHw: (h: Hardware | null) => void; onRecheck: () => void }) {
   const [busy, setBusy] = useState(false); const [wait, setWait] = useState(0); const [err, setErr] = useState(''); const [note, setNote] = useState('');
+  const [tools, setTools] = useState<ToolsLike | null>(null); const live = useLive(); const ref = live.ref;
   useEffect(() => { if (wait <= 0) return; const t = setTimeout(() => setWait(w => w - 1), 1000); return () => clearTimeout(t); }, [wait]);
+  useEffect(() => { listTools().then(t => setTools(t as any)).catch(() => setTools([])); }, []);
   const recheck = async () => { setBusy(true); setErr(''); onRecheck(); const r = await refreshHardware(); setBusy(false);
     if (r.ok) { onHw(r.data); setWait(Math.min(60, Math.max(0, Number(r.data.refreshAfterSec) || 0))); } else setErr(r.error); };
   const loading = hw === undefined || h === undefined;
-  const c = h?.comfy ?? {}; const preview = h?.backend === 'mock';
-  const on = c.ready === true || c.reachable === true || hw?.comfy?.reachable === true;
+  const c = h?.comfy ?? {}; const preview = h?.backend === 'mock'; const lv = live.data;
+  const on = lv?.comfy.reachable != null ? lv.comfy.reachable : c.ready === true || c.reachable === true || hw?.comfy?.reachable === true;
   const state: 'ok' | 'bad' | 'na' = loading ? 'na' : on ? 'ok' : preview && c.reachable !== false ? 'na' : 'bad';
-  const title = loading ? 'Checking this computer…' : on ? `ComfyUI connected${c.version ? ` · ${c.version}` : ''}` : preview && c.reachable !== false ? 'Sample mode · free samples' : 'ComfyUI not reachable';
-  const src = String(hw?.source ?? 'none'); const tier = String(hw?.tier ?? 'unknown');
-  /* B34 (pb/dp30): effectiveVramGB null = unread → 'Not found'; 0 = a real 0 (manual / CPU-only) */
-  const vram0 = hw ? (hw.effectiveVramGB !== undefined ? hw.effectiveVramGB : (hw.gpu?.vramTotalGB ?? null)) : null; const vram = vram0 == null || (src === 'none' && vram0 !== 0) ? null : vram0;
-  const gpu = hw?.gpu?.name ? `${card(hw.gpu.name)}${vram != null ? ` · ${gb(vram)}` : ''}` : h?.gpu?.name ? `${card(h.gpu.name)}${h.gpu.memoryTotal ? ` · ${h.gpu.memoryTotal}` : ''}` : vram === 0 ? 'None' : vram != null ? gb(vram) : 'Not found';
-  const miss = Array.isArray(h?.models?.missing) ? h!.models!.missing!.length : null; const tot = typeof h?.models?.total === 'number' ? h.models.total : null;
-  const models = miss != null && tot != null ? `${tot - miss} of ${tot}` : 'Not checked';
-  const tierText = hw && tier !== 'unknown' ? hw.tierLabel || '' : '';
-  const showForm = !!hw && (src === 'none' || tier === 'unknown');
-  return <div className="st-pcard st-mc" data-testid="gpu-check" data-state={state} aria-busy={loading || busy}>
+  const version = lv?.comfy.version ?? hw?.comfy?.version ?? c.version ?? null; const torch = lv?.comfy.pytorch ?? hw?.comfy?.pytorch ?? null;
+  const comfyText = loading ? '…' : on ? `Running${version ? ` · ${version}` : ''}` : preview && c.reachable !== false ? 'Sample mode' : 'Not running';
+  const src = String(hw?.source ?? 'none'); const tier = String(hw?.tier ?? 'unknown'); const seen = !!hw && tier !== 'unknown';
+  const name = machineLabel(hw?.profile) || (hw?.gpu?.name ? card(hw.gpu.name) : '');
+  const title = loading ? 'Checking this computer…' : seen && name ? name : 'This computer';
+  const usable = usableText(hw?.profile);
+  const gguf = hw?.comfy?.ggufNode == null ? 'Not checked' : hw.comfy.ggufNode ? 'Installed' : 'Not installed';
+  const ram = lv ? { total: lv.ram.totalBytes, free: lv.ram.freeBytes } : hw?.ram?.totalBytes ? { total: hw.ram.totalBytes, free: hw.ram.freeBytes ?? null } : null;
+  const disk = lv?.disk ?? hw?.disk ?? null; const diskDir = disk?.path ?? hw?.comfy?.modelsDir ?? null;
+  const counts = tools ? countLocalModels(tools) : null; const showForm = !!hw && (src === 'none' || tier === 'unknown');
+  return <div className="st-pcard st-mc tc" ref={ref} data-testid="gpu-check" data-state={state} aria-busy={loading || busy}>
     <div className="st-mc-top">
-      <span className={`st-mc-dot ${state}`} aria-hidden />
-      <span className="st-mc-t"><b data-testid="gpu-comfy-state" role="status">{title}</b>{tierText && <small className="helper" data-testid="ls-tier-label">{tierText}</small>}</span>
+      <span className="tc-ic" aria-hidden><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"><rect x="5" y="5" width="10" height="10" rx="2" /><path d="M8 2.5v2.5M12 2.5v2.5M8 15v2.5M12 15v2.5M2.5 8h2.5M2.5 12h2.5M15 8h2.5M15 12h2.5" /></svg></span>
+      <span className="st-mc-t"><small className="tc-eyebrow">This computer</small><b data-testid="gpu-fact-gpu">{title}</b>{seen && hw?.tierLabel && <small className="helper" data-testid="ls-tier-label">{hw.tierLabel}</small>}</span>
       <button type="button" className="btn btn-sm btn-ghost" data-testid="ready-recheck" disabled={busy || wait > 0} aria-busy={busy} onClick={recheck}>{busy ? 'Checking…' : wait > 0 ? `Re-check in ${wait} s` : 'Re-check'}</button>
     </div>
     {hw === null && <Notice as="p" kind="error" tone="line">Couldn’t read this computer’s hardware.</Notice>}
+    {(seen || ram || disk?.totalBytes) && <div className="tc-bars">
+      {ram && ram.free != null && <Meter label="Memory now" used={ram.total - ram.free} total={ram.total} testId="tc-ram"
+        sub={usable ? usable.replace(/^about/, 'About') : null} />}
+      {!ram && usable && <small className="helper" data-testid="tc-usable">{usable.replace(/^about/, 'About')}</small>}
+      {lv?.vram && <Meter label="Graphics memory now" used={lv.vram.totalBytes - lv.vram.freeBytes} total={lv.vram.totalBytes} testId="tc-vram" sub={null} />}
+      {disk?.freeBytes != null && disk.totalBytes ? <Meter label="Disk for models" used={disk.totalBytes - disk.freeBytes} total={disk.totalBytes} testId="tc-disk" sub={diskDir ? `In ${diskDir}` : null} /> : null}
+    </div>}
     <dl className="st-mc-facts" data-testid="gpu-facts">
-      <div><dt>GPU</dt><dd data-testid="gpu-fact-gpu">{loading ? '…' : gpu}</dd></div>
-      <div><dt>Memory</dt><dd>{loading ? '…' : Number(hw?.ram?.totalGB) > 0 ? `${hw?.ram?.totalGB} GB` : 'Not found'}</dd></div>
-      <div><dt>Free disk</dt><dd>{loading ? '…' : hw?.disk?.freeBytes != null ? gbText(hw.disk.freeBytes) : 'Not found'}</dd></div>
-      <div><dt>Models on disk</dt><dd data-testid="gpu-fact-models">{loading ? '…' : models}</dd></div>
+      <div><dt>ComfyUI</dt><dd data-testid="gpu-comfy-state" role="status"><span className={`st-mc-dot ${state}`} aria-hidden />{comfyText}</dd></div>
+      <div><dt>PyTorch</dt><dd data-testid="tc-torch">{loading ? '…' : torch ?? (on ? 'Not reported' : '—')}</dd></div>
+      <div><dt>GGUF loader</dt><dd data-testid="tc-gguf">{loading ? '…' : gguf}</dd></div>
     </dl>
+    {counts && counts.total > 0 && seen && <p className="tc-runs" data-testid="tc-counts"><b>{localCountsText(counts)}</b>{localReadyText(counts) && <span className="helper"> ({localReadyText(counts)})</span>}</p>}
     {!loading && state === 'bad' && <p className="helper st-mc-hint" data-testid="gpu-not-connected">Start ComfyUI, then test its address below. New to it? <a href={INSTALL_DOC} target="_blank" rel="noopener noreferrer">Install guide ↗</a></p>}
     {err && <Notice as="p" kind="error" tone="line">{err}</Notice>}
     {src === 'manual' && <p className="helper" data-testid="ls-manual">Using what you entered{hw?.manual?.vramGB != null ? `: ${hw.manual.vramGB} GB graphics memory` : ''}{hw?.manual?.ramGB != null ? `, ${hw.manual.ramGB} GB memory` : ''}. <button type="button" className="link-btn" data-testid="ls-clear" onClick={async () => { setErr(''); const r = await clearManualHardware(); if (r.ok) { onHw(r.data); setNote(''); } else setErr(r.error); }}>Clear</button></p>}
     {showForm && <ManualForm onSaved={(x, t) => { onHw(x); setNote(t); }} />}
     {note && <p className="helper" role="status" data-testid="ls-saved-note">{note}</p>}
   </div>;
+}
+
+/** A used / free bar: "Memory now · 51 GB used · 13 GB free". */
+function Meter({ label, used, total, sub, testId }: { label: string; used: number; total: number; sub: string | null; testId: string }) {
+  const pct = total > 0 ? Math.min(100, Math.max(0, (used / total) * 100)) : 0; const low = total > 0 && (total - used) / total < 0.1;
+  return <div className="tc-meter" data-testid={testId} data-low={low || undefined}>
+    <div className="tc-meter-h"><span>{label}</span><span className="tc-meter-n"><b>{gbOf(total - used)} free</b> of {gbOf(total)}</span></div>
+    <div className="tc-bar" role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)} aria-valuetext={`${gbOf(used)} used, ${gbOf(total - used)} free`}><i style={{ width: `${pct}%` }} /></div>
+    {sub && <small className="helper">{sub}</small>}
+  </div>;
+}
+
+/** GET /api/hardware/live every 5 s while the card is on screen and the tab is visible. */
+function useLive() {
+  const [data, setData] = useState<LiveHardware | null>(null); const [el, setEl] = useState<HTMLDivElement | null>(null); const [seen, setSeen] = useState(true);
+  useEffect(() => { if (!el || typeof IntersectionObserver === 'undefined') return; const o = new IntersectionObserver(([e]) => setSeen(!!e?.isIntersecting)); o.observe(el); return () => o.disconnect(); }, [el]);
+  useEffect(() => { if (!seen) return; let alive = true; let t: ReturnType<typeof setTimeout>;
+    const tick = () => { if (document.visibilityState === 'hidden') { t = setTimeout(tick, 5000); return; } getLiveHardware().then(r => { if (alive && r.ok) setData(r.data); }).finally(() => { if (alive) t = setTimeout(tick, 5000); }); };
+    tick(); return () => { alive = false; clearTimeout(t); }; }, [seen]);
+  return { data, ref: setEl };
 }
 
 function ManualForm({ onSaved }: { onSaved: (h: Hardware, note: string) => void }) {

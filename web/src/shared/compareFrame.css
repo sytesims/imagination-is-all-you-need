@@ -1,0 +1,17 @@
+/* CompareFrame (shared/CompareSlider.tsx): the before / after drag slider. A thin white line and a round white knob with ‹ ›; orange on hover
+   and focus. The line moves by transform (no layout shift); 'nudge' eases it. Pages size the box; the media inside fill it. */
+.cmpf{position:relative;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:pan-y;cursor:ew-resize}
+.cmpf-after{position:absolute;inset:0;pointer-events:none}
+.cmpf-track{position:absolute;inset:0;pointer-events:none;z-index:3}
+.cmpf.is-easing .cmpf-track{transition:transform .8s cubic-bezier(.45,0,.2,1)}
+.cmpf.is-easing .cmpf-after{transition:clip-path .8s cubic-bezier(.45,0,.2,1)}
+.cmpf-bar{position:absolute;top:0;bottom:0;left:0;width:44px;margin-left:-22px;display:flex;justify-content:center;pointer-events:auto;outline:none;cursor:ew-resize}
+.cmpf-bar::before{content:"";width:2px;height:100%;background:#fff;box-shadow:0 0 8px rgba(0,0,0,.45)}
+.cmpf-bar i{position:absolute;top:50%;width:40px;height:40px;margin-top:-20px;border-radius:50%;display:grid;place-items:center;background:#fff;color:#141416;
+  font:700 16px/1 var(--font-ui,system-ui);font-style:normal;letter-spacing:.06em;box-shadow:0 4px 14px rgba(0,0,0,.45);transition:background .15s ease,color .15s ease,transform .15s ease}
+.cmpf:hover .cmpf-bar i,.cmpf-bar:focus-visible i{background:var(--accent);color:var(--on-accent,#141416)}
+.cmpf .cmpf-bar:focus-visible{outline:none;box-shadow:none}
+.cmpf-bar:focus-visible i{transform:scale(1.08);box-shadow:0 0 0 3px #fff,0 0 0 6px var(--accent)}
+.cmpf-tag{position:absolute;top:12px;z-index:4;padding:5px 10px;border-radius:999px;background:rgba(12,12,14,.72);color:#fff;pointer-events:none;
+  font:700 10.5px/1 var(--font-display,var(--font-ui,system-ui));letter-spacing:.12em;text-transform:uppercase}
+.cmpf-tag-l{left:12px}.cmpf-tag-r{right:12px;background:var(--accent);color:var(--on-accent,#141416)}

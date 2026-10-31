@@ -4,7 +4,7 @@
  *    then 3D and IIAYN FILMS (including A Star to Steer By, formerly its own lighthouse section);
  *  - From one still (XpStill): two LTX-2.5 Pro image-to-video takes from one still, a wipe from the still into the clip, a Take 1 / Take 2 switch;
  *  - Make your own cartoon (XpKoi): a MiniMax H3 take extended by H3 Extend into one 20 s take, in a letterbox; it leads into the H3 chapter below;
- *  - chapters: Same dance. Two new casts. (H3 Character Swap and Kling 3.0 Omni Edit on Comfy Cloud), One picture. Every layer. (Image to layers, Seedream 5.0 Flash on Comfy Router), One character. Every angle. (four GPT Image 2.5 Flare character sheets, Mossbun in 3D), Image · made here, Your agent builds the board, then Block it in 3D. Film it for real. (Mockup to film: Direct a Shot, its first frame painted, the LTX film), Make it 3D. Then put it to work. (what 3D is for, live: explore/Explore3D.tsx);
+ *  - chapters: Same dance. Two new casts. (H3 Character Swap and Kling 3.0 Omni Edit on Comfy Cloud), One picture. Every layer. (Image to layers, Seedream 5.0 Flash on Comfy Router), One character. Every angle. (four GPT Image 2.5 Flare character sheets, Mossbun in 3D), Image · made here, Your agent builds the board, then Block it in 3D. Film it for real. (Mockup to film: Direct a Shot, its first frame painted, the LTX film), One drawing. A whole film. (Mossbun: sheet → 3D → city → film, explore/Explore3D.tsx);
  *  - Made here: a shared MediaRail of our own outputs (clips play on hover, stills), each opening as Recreate;
  *  - the flow rows (server/src/shared/exploreFlows.ts): numbered heads, bento strips of media tiles naming the real model and its price;
  *  - Learn / Spend, every tool, the footer.

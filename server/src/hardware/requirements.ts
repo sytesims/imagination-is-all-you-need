@@ -211,6 +211,9 @@ export interface Fit { verdict: Verdict; reasonCode: string; reason: string; har
   missingBytes: number | null; missingBytesSource: 'checked' | 'assumed_all' | null; downloadId: string | null; diskFreeBytes: number | null; blockers: { code: 'not_enough_disk'; needBytes: number; freeBytes: number }[]; vramFreeHint: string | null }
 const cmpVer = (a: string, b: string) => { const x = a.split('.').map(Number); const y = b.split('.').map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] ?? 0) - (y[i] ?? 0); if (d) return Math.sign(d); } return 0; };
 const fmt = (n: number) => (Math.round(n * 10) / 10).toString();
+/** " (about 4 min here)" for a slow verdict's reason, from the estimate (learned on this computer, else measured or reported); '' when unknown. */
+export const aboutTime = (sec: number | null | undefined) => { if (!(Number(sec) > 0)) return ''; const s = Number(sec);
+  const t = s < 90 ? `${Math.round(s)} s` : s < 90 * 60 ? `${Math.round(s / 60)} min` : `${Math.round((s / 3600) * 10) / 10} h`; return ` (about ${t} here)`; };
 export function fitFor(tool: ToolDef, providerId: string, input: Record<string, any> = {}, hw: Hardware = currentHardware(), req: Requirements | null = requirementsFor(tool, providerId, input, hw)): Fit {
   const E0 = hw.effectiveVramGB; const E = E0 ?? 0; const R = req?.recommendedVramGB ?? null; const M = req?.minVramGB ?? null; const ramGB = hw.ram.totalGB;
   const lighter = !!req?.variants.some((v) => R != null && v.vramEstGB < R);
@@ -240,7 +243,7 @@ export function fitFor(tool: ToolDef, providerId: string, input: Record<string, 
     if (R <= 2 && image) return done('slow', 'cpu', 'Runs on the processor without a graphics card, slowly.');
     return done('too_heavy', 'no_gpu', `Needs a graphics card with about ${fmt(R)} GB of memory; your computer has none.`); }
   if (hw.gpu.type === 'mps' && req.mps === 'red') return done('too_heavy', 'unsupported_weights', `${MAC_WEIGHTS_REASON}.`);
-  if (R <= E - 1) return done(hw.gpu.type === 'mps' && req.mps === 'amber' ? 'slow' : 'fits', hw.gpu.type === 'mps' && req.mps === 'amber' ? 'mps' : 'fits', hw.gpu.type === 'mps' && req.mps === 'amber' ? 'Runs on Apple graphics, slowly or untested for these weights.' : `Fits in your ${fmt(E)} GB of graphics memory.`);
+  if (R <= E - 1) return done(hw.gpu.type === 'mps' && req.mps === 'amber' ? 'slow' : 'fits', hw.gpu.type === 'mps' && req.mps === 'amber' ? 'mps' : 'fits', hw.gpu.type === 'mps' && req.mps === 'amber' ? `Runs, but slow${aboutTime(base.etaSeconds)}: these weights are slow or untested on Apple graphics.` : `Fits in your ${fmt(E)} GB of graphics memory.`);
   const ramOk = ramGB == null || req.ramMinGB == null || ramGB >= req.ramMinGB;
   if (M != null && M <= E && ramOk) return done('slow', hw.gpu.type === 'mps' ? 'mps' : 'offload', `Needs about ${fmt(R)} GB of graphics memory; your ${fmt(E)} GB computer will run it more slowly by moving part of it to system memory.`);
   if (M != null && M <= E && !ramOk) return done('too_heavy', 'not_enough_ram', `Needs at least ${req.ramMinGB} GB of system memory to run on your ${fmt(E)} GB card; your computer has ${fmt(ramGB!)} GB.`);
