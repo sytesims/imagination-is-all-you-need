@@ -823,7 +823,7 @@ export const APP_GALLERY: GalleryApp[] = [
   // Ad Pack (2026-10-31, shared/adPack.ts): 1–3 product photos + headline / offer + Brand → one finished ad per picked style (the Shots
   // one-output-per-pick run: n images, n × the one-image price), in the picked platform size. The model paints the words; the kit's logo is
   // added by our code after the run (adPackLogo.ts, providers.runWithProvider), so the prompt only keeps its corner empty.
-  { id: 'ad-pack', name: 'Ad Pack', route: '/tools/create-image?workflow=ad-pack', category: 'Image', base: 'create-image', poster: null, brand: true,
+  { id: 'ad-pack', name: 'Ad Pack', route: `${IMAGE_PAGE}?workflow=ad-pack`, category: 'Image', base: 'create-image', poster: null, brand: true,
     description: 'A product photo and your offer: finished ads in several styles, sized for the platform, with your logo added.',
     locked: { types: '["edit"]' }, providers: AD_PACK_MODELS, exposed: ['image', 'product2', 'product3', 'prompt', 'provider', 'rights', 'seed', 'headline', 'offer', 'placement', 'logoCorner'],
     labels: { image: 'Product photo', prompt: 'About the product (optional)' }, required: ['image'],
