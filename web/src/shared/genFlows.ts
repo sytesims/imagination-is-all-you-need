@@ -281,3 +281,18 @@ export function tooManyNote(spec: FlowSpec, extra: number, modelName: string): s
   if (spec.maxImages != null) return `${modelName} takes up to ${spec.maxImages} image${spec.maxImages === 1 ? '' : 's'}: ${extra} not used.`;
   return `${spec.flow.name} takes ${cap ? `${cap} image${cap === 1 ? '' : 's'}` : 'no inputs of that kind'}: ${extra} not used.`;
 }
+
+/** A local pin can deliberately run a heavy model; show its existing quote warning before Generate. */
+export function reelReadinessNote(q: any): string | null {
+  if (!q) return null;
+  const warning = q.fitWarning ?? q.fit?.warning ?? q.fit?.pinWarning;
+  if (typeof warning === 'string' && warning.trim()) return warning;
+  return q.fit?.verdict === 'too_heavy' ? 'This model is too heavy for your computer. Choose another model or run it in the cloud.' : null;
+}
+
+/** Setup belongs to the blocked child step; submitting still belongs to the reel. */
+export function reelSetupTarget(toolId: string, engine: string, q: any): { toolId: string; engine: string } {
+  if (toolId !== 'app-photos-to-reel' || !q?.reelStep) return { toolId, engine };
+  const music = q.reelStep === 'Music Bed';
+  return { toolId: music ? 'app-music-bed' : 'camera', engine: q.provider || (music ? (q.runOn === 'local' ? 'comfy-acestep' : '') : engine) };
+}

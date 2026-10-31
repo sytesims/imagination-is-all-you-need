@@ -1,6 +1,7 @@
 // Shared Video recipe → Canvas slots/quote → multipart submission, without a server or provider run.
 import assert from 'node:assert/strict';
-import { flowById, flowSpec, placeInputs, type GenCatalog } from '../../web/src/shared/genFlows.ts';
+import { preflightProblems } from '../src/shared/preflight.ts';
+import { reelReadinessNote, reelSetupTarget, flowById, flowSpec, placeInputs, type GenCatalog } from '../../web/src/shared/genFlows.ts';
 import { runForm, type BoardInput } from '../../web/src/canvas/cardModel.ts';
 import { missingOf } from '../../web/src/canvas/cardState.ts';
 import { askedAr } from '../../web/src/ui/next/feed/feedMedia.ts';
@@ -80,6 +81,22 @@ assert.equal(compositeCostText({ toolId: 'app-photos-to-reel', status: 'running'
 assert.equal(askedAr({ toolId: 'app-photos-to-reel', input: {} } as any), 9 / 16);
 assert.equal(matches({ id: 'child', toolId: 'camera', status: 'done', input: { reelParentId: 'reel' } } as any, FILTER_DEFAULT, null), false);
 assert.equal(matches({ id: 'reel', toolId: 'app-photos-to-reel', status: 'done', input: {} } as any, FILTER_DEFAULT, null), true);
+{
+  // quoteReel passes a blocked camera quote through; the same helper powers the Video Generate preflight.
+  const quote = { valid: true, runnable: false, runOn: 'local', credits: 0, setupOptions: [{ runOn: 'local', action: 'download', missingBytes: 12e9 }] };
+  const problems = preflightProblems({ quote, modelName: 'Camera Moves', slots: [{ name: 'photos', label: 'Photos', required: true, filled: true }] });
+  assert.equal(problems[0].code, 'needs_download');
+  assert.match(problems[0].message, /isn’t downloaded yet/);
+  assert.equal(problems[0].fix.kind, 'download');
+  const heavy = { valid: false, runnable: false, runOn: 'local', code: 'too_heavy', error: 'Camera Moves is too heavy for your computer' };
+  assert.match(preflightProblems({ quote: heavy, modelName: 'Camera Moves' })[0].message, /too heavy/);
+  assert.match(reelReadinessNote({ runnable: true, runOn: 'local', fit: { verdict: 'too_heavy' } })!, /too heavy/);
+  assert.equal(reelReadinessNote({ runnable: true, fitWarning: 'Needs more memory than is available.' }), 'Needs more memory than is available.');
+  assert.equal(reelReadinessNote({ runnable: true, runOn: 'local', fit: { verdict: 'fits' } }), null);
+}
+assert.deepEqual(reelSetupTarget('app-photos-to-reel', 'comfy-camera', { reelStep: 'Music Bed', provider: 'comfy-acestep', runOn: 'local' }), { toolId: 'app-music-bed', engine: 'comfy-acestep' });
+assert.deepEqual(reelSetupTarget('app-photos-to-reel', 'comfy-camera', { reelStep: 'Camera Moves', provider: 'comfy-open' }), { toolId: 'camera', engine: 'comfy-open' });
+assert.deepEqual(reelSetupTarget('camera', 'comfy-open', {}), { toolId: 'camera', engine: 'comfy-open' });
 console.log('Photos → Reel Canvas contract: 8/15 inputs, order, settings, count, preflight and viewer passed');
 
 // Browser-side Canvas imports keep runtime timers alive; all assertions above are synchronous.

@@ -57,6 +57,7 @@ import '../next/createBar.css';
 import './videoPanel.css';
 import './videoDock.css';
 import './videoWorkflowBar.css';
+import { reelReadinessNote, reelSetupTarget } from '../../shared/genFlows';
 import { VideoThumb } from '../../shared/VideoThumb';
 import { MentionLayer } from '../../shared/MentionChips';
 import { renumberMentions } from '../../../../server/src/shared/mentions';
@@ -258,6 +259,8 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
   { const ext = clip?.file?.name.match(/\.([a-z0-9]+)$/i)?.[1]; if (clip && ext) qParams.videoFormat = ext.toLowerCase(); } /* Fit to model: the container (Topaz takes MP4) */
   for (const [k, v] of Object.entries(extra.quote?.(live()) ?? {})) { if (v == null) delete qParams[k]; else qParams[k] = v; }
   const q0q = useToolQuote(tool.id, prov, qParams); const q = extra.wrapQuote ? extra.wrapQuote(q0q, live()) : q0q;
+  const setupTarget = reelSetupTarget(tool.id, prov, q);
+  useToolModels(setupTarget.toolId); const setupModel = modelOfEngine(setupTarget.toolId, setupTarget.engine);
   const vfit = useVideoFit({ toolId: tool.id, prov, clip, seconds: Number(qParams.seconds) || null, mode: vals.fit === 'crop' ? 'crop' : 'pad', setMode: m => setVal('fit', m), pop, setPop, anchorOf, chipRef: gid => el => { gRefs.current[gid] = el; }, dock, busy });
 
   /* ---- pre-flight: every reason it can't run yet, in order; Generate shows the first ---- */
@@ -266,7 +269,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
     slots: bar.slots.filter(slotShown).map(s => ({ ...s, ...(extra.slotInfo?.(s, live()) ?? {}) })).map(s => ({ name: s.name, label: s.label, required: reqOf(s), filled: sentOf(s).length >= (s.min ?? 1), missing: s.missing })),
     prompt: promptCfg.mode === 'required' && !prompt.trim() ? { missing: 'Write a prompt' } : null,
     pick: gallery && !gallery.optional && !valOf(gallery) ? { group: gallery.group, missing: `Pick ${gallery.field === 'preset' ? 'a style' : gallery.field === 'move' ? 'a camera move' : gallery.field === 'look' ? 'a look' : 'an effect'}` } : null,
-    quote: q, modelName });
+    quote: q, modelName: reel && q?.reelStep ? q.reelStep : modelName });
     for (const c of shown) if (c.kind === 'text' && c.required && !valOf(c).trim()) ps.splice(ps.filter(p => p.stage === 'inputs').length, 0, { code: 'pick_missing', stage: 'inputs', message: `Add ${c.label.toLowerCase()}`, fix: reel && c.field === 'title' ? { kind: 'focus-prompt', label: 'Choose…' } : { kind: 'open-group', label: 'Choose…', args: { group: c.group } } });
     /* the extra's own steps (Object Swap: what to replace; Re-shoot: an angle), right after the inputs */
     const more: PreflightProblem[] = (extra.needs?.(live()) ?? []).map((n): PreflightProblem => { const fix: PreflightFix = n.model ? { kind: 'pick-model', label: 'Pick model…' } : n.slot ? { kind: 'choose-photo', label: 'Choose…', args: { slot: n.slot } } : { kind: 'open-group', label: 'Open', args: { group: n.group ?? '' } };
@@ -279,8 +282,8 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
       case 'focus-prompt': setPfOpen(false); requestAnimationFrame(() => promptRef.current?.focus()); return;
       case 'open-group': setPfOpen(false); setPop(`g:${a.group}`); return;
       case 'pick-model': setPfOpen(false); setPop('model'); return;
-      case 'add-key': case 'download': case 'turn-on': case 'install-node': case 'set-up': { const pl = setupPlacesOf(tm, q).find((x: any) => x.runOn === a.runOn) ?? setupPlacesOf(tm, q)[0]; if (!pl) return;
-        try { await doSetupPlace(tool.id, tm, prov, pl); } catch (er) { toast((er as Error).message || 'That didn’t work. Try again.', 'error'); } if (f.kind !== 'download') setPfOpen(false); return; }
+      case 'add-key': case 'download': case 'turn-on': case 'install-node': case 'set-up': { const pl = setupPlacesOf(setupModel, q).find((x: any) => x.runOn === a.runOn) ?? setupPlacesOf(setupModel, q)[0]; if (!pl) return;
+        try { await doSetupPlace(setupTarget.toolId, setupModel, setupTarget.engine, pl); } catch (er) { toast((er as Error).message || 'That didn’t work. Try again.', 'error'); } if (f.kind !== 'download') setPfOpen(false); return; }
       default: setPfOpen(false);
     } };
 
@@ -433,6 +436,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
       <div className="ic-frame"><div className="ic-panel">
         <div className="ic-main">
           {vfit.note}
+          {reel && reelReadinessNote(q) && <p className="helper warn" role="status" data-testid="reel-readiness">{reelReadinessNote(q)}</p>}
           <div ref={prowRef} className={`ic-prow${promptCfg.mode === 'hidden' && !reel ? ' vbar-noprompt' : ''}`} data-testid="vs-prow">
             <div className="ic-lead wf-strip wf-inputs vbar-slots" data-testid="vbar-slots" data-workflow={wf.id}><div className="wf-slots">{slotEls}</div></div>
             {reel || promptCfg.mode !== 'hidden' ? <><label className="sr-only" htmlFor="app-prompt">{reel ? 'Title' : 'Prompt'}</label>
@@ -455,7 +459,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
             {tm && <RunOnChip compact toolId={tool.id} model={tm} engine={prov} quote={q} testId="vs-run-on" watch={dock} />}
           </div>
         </div>
-        <DockGenerate toolId={tool.id} engine={prov} quote={q} label={extra.label?.(live()) ?? bar.generateLabel} busy={busy} problems={problems} pfOpen={pfOpen} genRef={genRef} onClick={generate} testId="vs-generate" priceTestId="vs-price" workflowId={wf.id} />
+        <DockGenerate toolId={tool.id} engine={prov} quote={q} setupTarget={setupTarget} label={extra.label?.(live()) ?? bar.generateLabel} busy={busy} problems={problems} pfOpen={pfOpen} genRef={genRef} onClick={generate} testId="vs-generate" priceTestId="vs-price" workflowId={wf.id} />
       </div></div>
       <ModelMenu open={pop === 'model'} anchor={modelRef} avoid={dock} watch={dock} onClose={() => setPop('')} items={menuItems} value={prov} testId="vs-model-list" rowTestId={id => `vs-model-${id}`} onPick={id => { setProvider(id); setPop(''); }} toolId={tool.id} quote={q} placement="top" />
       {bar.groups.filter(g => shown.some(c => c.group === g.id && c.kind !== 'toggle' && c.kind !== 'gallery' && c.kind !== 'tiles')).map(g => groupPanel(g.id))}
