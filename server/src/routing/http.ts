@@ -332,6 +332,22 @@ const validPrefs = (b: any): string | null => {
 const offers = (t: string, id: string) => !!getTool(t) && (!!findToolModel(t, id) || getTool(t)!.providers.includes(id));
 /** …Create Image first, then Generate Video (the home of the video models; Camera Moves now lists MiniMax H3 too), else the first tool that does. */
 const toolForModel = (id: string) => (offers('create-image', id) ? getTool('create-image') : offers('h3-video', id) ? getTool('h3-video') : listTools().find((t) => !!findToolModel(t, id) || t.providers.includes(id)));
+/** GET /api/tools additions: providers[] carry the same displayName / providerGroup / runsOnKind as /api/models and /api/routes, and each tool
+ *  gets models[] (one row per model). Never throws: a tool whose rows fail keeps its plain providers. */
+export function enrichTools(payload: any[]): any[] {
+  try {
+  // providers[] carry the same displayName / providerGroup / runsOnKind as /api/models and /api/routes. Per provider, so one bad
+  // provider can't strip the labels from the whole listing; the fallback uses the same labelling rules as routesView.
+  return payload.map((t: any) => { if (!Array.isArray(t?.providers)) return t;
+    const providers = t.providers.map((p: any) => {
+      try { const v = routesView(t.id, p.id); if (v) return { ...p, ...v, modelKey: modelKeyOf(t.id, p.id) }; } catch { /* fall through to the plain labels */ }
+      return { ...p, ...providerLabels(t.id, p.id), modelKey: modelKeyOf(t.id, p.id) };
+    });
+    // Step 1: one row per MODEL (providers[] stays as is for the current web): key, name, runsOn[] with status and price, fromPrice, lifecycle.
+    let models: any[] | undefined; try { const tl = getTool(t.id); if (tl) models = withResolvedPreselect(tl, modelsBlock(tl, providers)); } catch (e) { console.error('[models] models[] failed for', t.id, (e as Error).message); }
+    return { ...t, providers, ...(models ? { models } : {}) }; });
+  } catch { return payload; }
+}
 export function registerRouting(app: FastifyInstance) {
   // Camera: the LTX-2 19B model's default move (first preset the LTX engine runs), for requests that name the model but no move.
   void import('../tools/apps.js').then((AP) => setLtxDefaultMove(() => AP.cameraDefaultMove('cloud-ltx-camera'))).catch(() => undefined);
@@ -621,17 +637,7 @@ export function registerRouting(app: FastifyInstance) {
       }
       const jm = url.match(/^\/api\/jobs\/([^/]+)$/);
       if (jm && payload && typeof payload === 'object' && !Array.isArray(payload)) { const j = jobs.get(jm[1]); if (j?.routing) return { ...payload, ...jobRouteFields(j) }; }
-      if (url === '/api/tools' && Array.isArray(payload))
-        // providers[] carry the same displayName / providerGroup / runsOnKind as /api/models and /api/routes. Per provider, so one bad
-        // provider can't strip the labels from the whole listing; the fallback uses the same labelling rules as routesView.
-        return payload.map((t: any) => { if (!Array.isArray(t?.providers)) return t;
-          const providers = t.providers.map((p: any) => {
-            try { const v = routesView(t.id, p.id); if (v) return { ...p, ...v, modelKey: modelKeyOf(t.id, p.id) }; } catch { /* fall through to the plain labels */ }
-            return { ...p, ...providerLabels(t.id, p.id), modelKey: modelKeyOf(t.id, p.id) };
-          });
-          // Step 1: one row per MODEL (providers[] stays as is for the current web): key, name, runsOn[] with status and price, fromPrice, lifecycle.
-          let models: any[] | undefined; try { const tl = getTool(t.id); if (tl) models = withResolvedPreselect(tl, modelsBlock(tl, providers)); } catch (e) { console.error('[models] models[] failed for', t.id, (e as Error).message); }
-          return { ...t, providers, ...(models ? { models } : {}) }; });
+      /* GET /api/tools: enrichTools runs once per build of the shared copy (toolsCache.ts), not here */
     } catch { /* never break the listing */ }
     return payload;
   });

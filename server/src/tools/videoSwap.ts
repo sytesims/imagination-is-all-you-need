@@ -131,7 +131,7 @@ export const objectSwapTool: ToolDef = {
     { name: 'firstFrameMode', kind: 'select', options: ['auto', 'upload'] } as any, { name: 'firstFrame', kind: 'file', accept: 'image/png,image/jpeg,image/webp' },
     { name: 'trimStart', kind: 'number' }, { name: 'trimEnd', kind: 'number' }],
   presets: SWAP_PRESETS,
-  workflows: [config.workflowPath.split('/').pop()!],
+  workflows: [path.basename(config.workflowPath)],
   model: 'Wan 2.2 Animate 14B (replace/mix) + SAM2 masks; LTX In/Outpaint IC-LoRA for objects',
   gpuSecPerSec: GPU_DEFAULT, stages: swapStages,
   // Kling 3.0 Omni's Router edit DOES take images (kling/kling-v3-omni schema: image_list next to video_list refer_type base, ≤ 4 with a video; checked

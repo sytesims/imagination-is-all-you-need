@@ -10,7 +10,7 @@ import Database from 'better-sqlite3';
 import { DATA_DIR } from './config.js';
 import { db } from './db.js';
 import { flushJobs } from './jobs.js';
-import { EXPORT_FORMAT, EXPORT_VERSION, EXPORT_TMP, STAGE_DIR, exportSelection } from './backup.js';
+import { EXPORT_FORMAT, EXPORT_VERSION, EXPORT_TMP, STAGE_DIR, TAR, exportSelection } from './backup.js';
 import { collectRefs } from './mediaPaths.js';
 
 const UPLOAD_DIR = path.join(DATA_DIR, '.import-upload');
@@ -35,7 +35,7 @@ export function registerBackup(app: FastifyInstance) {
       writeFileSync(path.join(work, 'manifest.json'), JSON.stringify(manifest, null, 2));
       writeFileSync(path.join(work, 'files.txt'), media.map((m) => m.rel).join('\n'));
       const args = ['-czf', '-', '-C', work, 'manifest.json', 'openhiggsfield.db', ...(media.length ? ['-C', DATA_DIR, ...media.map((m) => m.rel)] : [])]; // operands, not -T: macOS bsdtar reads a -T after operands as a file name and drops every media file
-      const tar = spawn('tar', args, { stdio: ['ignore', 'pipe', 'pipe'] }); let err = ''; tar.stderr.on('data', (d) => { err += d; });
+      const tar = spawn(TAR, args, { stdio: ['ignore', 'pipe', 'pipe'] }); let err = ''; tar.stderr.on('data', (d) => { err += d; });
       const cleanup = () => rmSync(work, { recursive: true, force: true }); tar.on('close', (code) => { if (code) app.log.error({ code, err: err.slice(-400) }, 'export tar failed'); cleanup(); });
       reply.raw.on('close', () => { if (tar.exitCode == null) tar.kill(); });
       const day = new Date().toISOString().slice(0, 10);
@@ -50,10 +50,10 @@ export function registerBackup(app: FastifyInstance) {
       mkdirSync(UPLOAD_DIR, { recursive: true }); const file = path.join(UPLOAD_DIR, `${randomUUID().slice(0, 8)}.tar.gz`); const stage = path.join(DATA_DIR, `.import-check-${randomUUID().slice(0, 8)}`);
       try {
         await pipeline(req.body as any, createWriteStream(file));
-        let list: string[]; try { list = execFileSync('tar', ['-tvzf', file], { maxBuffer: 256 * 1024 * 1024 }).toString().split('\n').filter(Boolean); } catch { return bad(reply, 400, 'This file isn’t an Imagination Is All You Need export.', 'tar could not read it as .tar.gz'); }
+        let list: string[]; try { list = execFileSync(TAR, ['-tvzf', file], { maxBuffer: 256 * 1024 * 1024 }).toString().split('\n').filter(Boolean); } catch { return bad(reply, 400, 'This file isn’t an Imagination Is All You Need export.', 'tar could not read it as .tar.gz'); }
         for (const l of list) { const type = l[0]; const name = l.split(/\s+/).slice(5).join(' ');
-          if (!['-', 'd'].includes(type) || name.split(' ').some((t) => t.startsWith('/') || t.split('/').includes('..')) /* per token: macOS bsdtar -tv has 3 date fields, so name also holds the date */) return bad(reply, 400, 'This export contains an entry that can’t be imported safely.', `entry ${JSON.stringify(name)} (type ${type})`); }
-        mkdirSync(stage, { recursive: true }); execFileSync('tar', ['-xzf', file, '-C', stage, '--no-same-owner', '--no-same-permissions']);
+          if (!['-', 'd'].includes(type) || name.split(' ').some((t) => t.startsWith('/') || t.startsWith('\\') || /^[a-z]:/i.test(t) || t.split(/[\\/]/).includes('..')) /* per token: macOS bsdtar -tv has 3 date fields, so name also holds the date */) return bad(reply, 400, 'This export contains an entry that can’t be imported safely.', `entry ${JSON.stringify(name)} (type ${type})`); }
+        mkdirSync(stage, { recursive: true }); execFileSync(TAR, ['-xzf', file, '-C', stage, '--no-same-owner', '--no-same-permissions']);
         const mf = path.join(stage, 'manifest.json'); const dbf = path.join(stage, 'openhiggsfield.db');
         if (!existsSync(mf) || !existsSync(dbf)) return bad(reply, 400, 'This file isn’t an Imagination Is All You Need export.', 'manifest.json or openhiggsfield.db missing');
         const manifest = JSON.parse(readFileSync(mf, 'utf8')); if (manifest.format !== EXPORT_FORMAT || !(manifest.version <= EXPORT_VERSION)) return bad(reply, 400, 'This export was made by a newer or different app and can’t be imported.', `format ${manifest.format} v${manifest.version}`);

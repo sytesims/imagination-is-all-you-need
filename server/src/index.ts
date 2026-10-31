@@ -25,6 +25,7 @@ import { jobPoster } from './interimTiles.js';
 import { layersPosterUrl, writeLayerPoster } from './layerPoster.js';
 import Fastify, { FastifyReply, FastifyRequest } from 'fastify';
 import { etaFor } from './timing.js';
+import { setToolsBuilder, registerToolsInvalidation, toolsBody, toolsList } from './toolsCache.js';
 import multipart from '@fastify/multipart';
 import { listenHost } from './shared/listenHost.js';
 import { registerUploadSecurity, mediaResponseHeaders, uploadKind, validateUpload, acceptKind } from './uploadSecurity.js';
@@ -380,7 +381,14 @@ app.get('/api/health', async () => {
 const isVideoTool = (t: any) => !!t.gpuSecPerSec?.['480p'] && !/upscale/.test(t.id) && (toolExtras(t) as any).media === 'video';
 /** P2 (BUG-HUNT-8 #6): 409 route_changed copy: plain, says nothing was charged. */
 const ROUTE_CHANGED_MSG = 'The price went up. Nothing was charged.';
-app.get('/api/tools', async (_req, reply) => { try { if (process.env.OHF_TEST_FAIL_TOOLS === '1') throw new Error('forced failure (OHF_TEST_FAIL_TOOLS=1)'); return toolsPayload(); } catch (e: any) {
+/* built once and shared until something changes (toolsCache.ts; the builder is set with the routing below); the plain list goes out as
+ * cached JSON with an ETag (304 when unchanged), ?toolId= / ?fields= still go through the payload filters */
+registerToolsInvalidation(app);
+app.get('/api/tools', async (req, reply) => { try { if (process.env.OHF_TEST_FAIL_TOOLS === '1') throw new Error('forced failure (OHF_TEST_FAIL_TOOLS=1)');
+  const b = toolsBody(); if (Object.keys((req.query ?? {}) as object).length) return b.list;
+  reply.header('etag', b.etag).header('cache-control', 'no-cache');
+  if (String(req.headers['if-none-match'] ?? '').split(',').some((t) => t.trim().replace(/^W\//, '') === b.etag)) return reply.code(304).send();
+  return reply.type('application/json; charset=utf-8').send(b.json); } catch (e: any) {
   req_log(e); return reply.code(503).header('Retry-After', '3').send({ error: 'Could not load the tool registry. Retrying in 3 s.', errorType: 'temporary', retryable: true, retryAfterMs: 3000, detail: String(e?.message ?? e).slice(0, 300) });
 } });
 /** Display names never carry a backend suffix (" · mock"); the backend lives in providers[].backend. */
@@ -791,8 +799,8 @@ app.get<{ Querystring: { toolId?: string } }>('/api/examples', async (req) => (a
   return { ...e, preset, types: e.types ? (types?.length ? types : [t.presets?.[0]?.id].filter(Boolean)) : undefined, route: `${t.route}?example=${e.id}`, toolName: t.name, previewUrl: e.previewUrl ?? null, prefill, price: prefill?.price ?? null };
 }))).filter(Boolean));
 registerBatch1(app);
-(await import('./libraryDb.js')).registerLibrary(app, { tools: async () => { const r = await app.inject({ method: 'GET', url: '/api/tools' }); return r.statusCode === 200 ? r.json() : []; } }); // workflows + references databases: /api/library/* (search, tags)
-(await import('./routing/http.js')).registerRouting(app); // multi-provider routing: settings, /api/me/routing, /api/routes, fallback
+(await import('./libraryDb.js')).registerLibrary(app, { tools: async () => { try { return toolsList(); } catch { return []; } } }); // workflows + references databases: /api/library/* (search, tags)
+{ const R = await import('./routing/http.js'); R.registerRouting(app); setToolsBuilder(() => stripLicenseLinks(R.enrichTools(toolsPayload()))); } // multi-provider routing: settings, /api/me/routing, /api/routes, fallback
 (await import('./billing.js')).registerBilling(app); (await import('./agentBudget.js')).registerAgentBudgets(app); // agent budgets (after billing's cost hook): /api/agent/budgets, receipts, POST /api/compose // real costs: /api/settings/billing, /api/spend, /api/spend/summary, /api/accounts; cost on every quote (after the routing hook)
 registerDiscover(app);
 (await import('./routesHub.js')).registerHub(app);

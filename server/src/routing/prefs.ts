@@ -2,6 +2,7 @@
 import { getKv, setKv } from '../db.js';
 import type { RoutingPrefs, ToolPin } from './types.js';
 import { env } from '../env.js';
+import { invalidateTools } from '../toolsCache.js';
 import { RETIRED_MODELS } from '../shared/lifecycle.js';
 /** OPENHIGGSFIELD_USE_LOCAL=1 / 0 in the env (or the env file) is an explicit choice: null = not set. It is the default of global.useLocal (product default: off = cloud first)
  *  AND, when set, it is applied again each time the server starts (applyEnvPrefsAtStartup), so a stored row from an earlier launch no longer hides it. */
@@ -32,7 +33,7 @@ export function applyEnvPrefsAtStartup(): { applied: boolean; useLocal: boolean 
 }
 /** Saves the row. A caller that doesn't carry `favourites` (the routing PUT, Settings) keeps the saved ones. */
 export const savePrefs = (p: RoutingPrefs) => { const favourites = p.favourites ?? getKv<RoutingPrefs>(KEY, DEFAULT_PREFS).favourites ?? {};
-  setKv(KEY, { global: p.global, perModel: p.perModel, v: 2, perTool: p.perTool ?? {}, favourites }); return { ...p, v: 2 as const, perTool: p.perTool ?? {}, favourites }; };
+  setKv(KEY, { global: p.global, perModel: p.perModel, v: 2, perTool: p.perTool ?? {}, favourites }); invalidateTools(); return { ...p, v: 2 as const, perTool: p.perTool ?? {}, favourites }; };
 /** The user's own default model for a tool (★ Make default), if any. */
 export const favouriteOf = (toolId: string, p: RoutingPrefs = getPrefs()): string | null => p.favourites?.[toolId] ?? null;
 /** Make `model` the tool's default (null = Reset to recommended). */
