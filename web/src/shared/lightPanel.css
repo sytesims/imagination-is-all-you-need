@@ -1,7 +1,8 @@
 /* LightPanel (shared/LightPanel.tsx): Relight's light panel. Lives in a BarPopover (barPop.css gives the glass and the segmented controls).
  * Two numbered steps, top to bottom, in one frame whose size never changes: the looks grid is fixed, the preview keeps one height and the
  * tab box beside it is exactly that tall (its content scrolls inside when it needs to). The app's UI fonts only, orange for picked states. */
-.lp{display:flex;flex-direction:column;align-items:stretch;gap:8px;min-width:0;padding:2px 2px 4px;--lp-line:var(--border-strong,rgba(255,255,255,.1));--lp-h:236px}
+.lp{display:flex;flex-direction:column;align-items:stretch;gap:8px;min-width:0;padding:2px 2px 4px;--lp-line:var(--border-strong,rgba(255,255,255,.1));--lp-h:300px}
+.lp .lp-step2{min-height:26px}
 
 /* step headers: "1 Pick a look" / "2 Adjust the light" */
 .lp-step{display:flex;align-items:center;gap:8px;min-height:28px;min-width:0}
@@ -22,12 +23,6 @@
 .lp .pt.lp-tile{width:auto;height:64px;min-width:0}
 .lp .pt.lp-tile .pt-c{left:7px;right:6px;bottom:6px}
 .lp .pt.lp-tile .pt-c b{font:600 11.5px/14px var(--font-sans,Inter,system-ui,sans-serif);text-transform:none}
-
-/* step 2 tabs: the shared .lk-tabs, sized for a step header */
-.lp-tabs{margin-left:auto}
-.lp .lk-tabs>button{height:28px;font:600 12.5px/16px var(--font-sans,Inter,system-ui,sans-serif)}
-.lp .lk-tabs>button.on{background:var(--fill,rgba(255,255,255,.06))}
-.lp .lk-tabs>button.on::after{bottom:-1px}
 
 /* the approximate sketch: the photo, then CSS light layers masked to the photo's own shape (a transparent PNG stays clean) */
 .lsk{position:absolute;inset:0;display:block;overflow:hidden;isolation:isolate;border-radius:inherit;
@@ -64,7 +59,23 @@
 .lp-which~.lp-tag{top:auto;bottom:6px}
 .lp-which i{width:7px;height:7px;border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
 
-.lp-pane{height:calc(var(--lp-h) + 21px);overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:9px;padding:0 4px 0 0;scrollbar-width:thin}
+.lp-pane{height:calc(var(--lp-h) + 21px);overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:10px;padding:0 6px 0 2px;scrollbar-width:thin;scrollbar-gutter:stable}
+/* the live position, as the direction section's title ("From behind, on the left, high up"); the light's name is for screen readers */
+.lp-h.lp-where>em{text-align:left;font:600 13px/18px var(--font-sans,Inter,system-ui,sans-serif);white-space:normal}
+.lp-vh{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* Shadows: label and Soft / Hard on one line */
+.lp-row.lp-inline{flex-direction:row;align-items:center;gap:12px}
+.lp-row.lp-inline>.lp-h{width:auto;flex:none}
+.lp-row.lp-inline>.bp-seg{flex:1;min-width:0}
+/* six quick picks in 3 × 2, each with room to breathe */
+html body .apop.bp.bp .lp-dirs{grid-template-columns:repeat(3,minmax(0,1fr));margin:0}
+html body .apop.bp.bp .lp-dirs .bp-opt{min-height:28px;padding:3px 6px}
+html body .apop.bp.bp .lp-pane .bp-seg{margin:0}
+/* the 3D orbit (shared LightSphere 'ball'), the photo inset and the view switch */
+.lp .ls.ls-v-ball{padding:0;gap:0}
+.lp .ls-v-ball .ls-stage{border-radius:12px;border-color:rgba(255,255,255,.08);background:radial-gradient(circle at 50% 42%,#202227 0,#141518 70%)}
+.lp-inset{position:absolute;top:8px;right:8px;z-index:3;width:46px;height:58px;border-radius:7px;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.18),0 4px 12px rgba(0,0,0,.4)}
+.lp-inset .lsk{border-radius:7px}
 .lp-row{display:flex;flex-direction:column;align-items:stretch;gap:6px;min-width:0}
 .lp-row>*{width:100%;box-sizing:border-box;margin-left:0;margin-right:0}
 .lp-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;min-width:0}
@@ -106,10 +117,10 @@ html body .apop.bp.bp .lp-seg-sm .bp-opt-l{font:600 12px/16px var(--font-sans,In
   .lp{--lp-h:200px}
   .lp .pt.lp-tile{height:56px}
   .lp .pt.lp-tile .pt-c b{font-size:10.5px;line-height:13px}
-  .lp-step2{flex-wrap:wrap}
   .lp-adj{grid-template-columns:1fr}
   .lp-prev{width:100%}
-  .lp-pane{height:236px}
+  .lp-prev-w{align-items:center}
+  .lp-pane{height:auto;overflow:visible}
 }
 @media (prefers-reduced-motion:reduce){
   .lsk>img,.lsk-l,.lp-grid,.lp-handle,.lp-sw>button,.lp-sw-any,.lp-reset{transition:none}

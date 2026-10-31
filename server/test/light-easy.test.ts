@@ -19,6 +19,11 @@ const K = (az: number, el: number, intensity = 60, softness = 60) => ({ az, el, 
   for (const d of E.DIRECTIONS) assert.equal(E.directionOf(d.az, d.el), d.id, `${d.id} reads back as itself`);
   assert.equal(E.directionOf(-45, 30), null, 'another position: no chip'); assert.equal(E.directionOf(-80, 10), 'left'); assert.equal(E.directionOf(170, 0), 'behind'); assert.equal(E.directionOf(-175, 20), 'behind');
   assert.equal(E.directionOf(40, 82), 'top'); assert.equal(E.directionOf(0, -70), 'below'); assert.equal(E.directionOf(0, 45), null, 'front, high: no chip'); assert.equal(E.directionOf(270, 0), 'left', 'wraps');
+  // arrow keys: one fixed position per press; eight rights orbit the subject back to the front; up goes over the top and stops there
+  let at2 = { az: 0, el: 0 }; const seen: string[] = []; for (let i = 0; i < 8; i++) { at2 = E.stepPosition(at2.az, at2.el, 'ArrowRight')!; seen.push(R.lightCell(at2.az, at2.el).id); }
+  assert.deepEqual(seen, ['front-right-level', 'right-level', 'back-right-level', 'back-level', 'back-left-level', 'left-level', 'front-left-level', 'front-level']);
+  assert.deepEqual(E.stepPosition(180, 0, 'ArrowUp'), { az: 180, el: 45 }); assert.deepEqual(E.stepPosition(180, 45, 'ArrowUp'), { az: 0, el: 90 }); assert.deepEqual(E.stepPosition(0, 90, 'ArrowLeft'), { az: 0, el: 90 }, 'straight above: no sides');
+  assert.deepEqual(E.stepPosition(0, -45, 'ArrowDown'), { az: 0, el: -90 }); assert.equal(E.stepPosition(0, 0, 'Enter'), null);
   ok('six quick picks on fixed positions; any angle maps to its quick pick or none');
 }
 // ---- plain-words labels (degrees only in the tooltip) ----

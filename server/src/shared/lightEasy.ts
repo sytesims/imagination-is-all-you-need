@@ -26,6 +26,13 @@ export function directionOf(az: number, el: number): DirId | null {
 /** A light moved to a quick pick: only its angles change (colour, strength and softness stay). */
 export function withDirection(l: RigLight, id: DirId): RigLight { const d = DIRECTIONS.find((x) => x.id === id) ?? DIRECTIONS[0]; return { ...l, az: d.az, el: d.el }; }
 
+/** One arrow key from a fixed position: left / right go round the subject (past the side to behind and on round), up / down go through
+ *  high, level, low and straight above / below (from there only up / down move). null = not an arrow key. Shared by the 3D orbit and the flat preview. */
+export function stepPosition(az: number, el: number, key: string): { az: number; el: number } | null {
+  const m: Record<string, [number, number]> = { ArrowLeft: [-45, 0], ArrowRight: [45, 0], ArrowUp: [0, 45], ArrowDown: [0, -45] }; const d = m[key]; if (!d) return null;
+  const c = snapAngles(az, el); if (Math.abs(c.el) === 90 && d[0]) return c;
+  return snapAngles(c.az + d[0], clamp(c.el + d[1], -90, 90));
+}
 /** The light's direction in plain words, from its fixed position: "From the left, high up", "From straight above". The prompt words the same position. */
 export const plainDir = (az: number, el: number): string => lightCell(az, el).label;
 /** The short form for the bar chip: "from the left", "from above", "from behind". */
