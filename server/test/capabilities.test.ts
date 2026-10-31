@@ -16,6 +16,12 @@ const { getTool } = await import('../src/tools/registry.ts');
 
 const items = capabilities(); const byId = new Map(items.map((c) => [c.id, c]));
 assert.equal(byId.size, items.length, 'unique ids');
+for (const mode of ['image-to-3d', 'text-to-3d', 'multiview-to-3d']) {
+  const c = byId.get(`3d/${mode}`); assert.ok(c, `${mode} is discoverable through MCP capabilities`);
+  assert.equal(c.area, '3d'); assert.equal(c.run?.tool_id, 'three-d'); assert.deepEqual(c.run?.fields.types, [mode]);
+  assert.equal(c.page, `/3d?workflow=${mode}`); if (mode !== 'image-to-3d') assert.equal(c.run?.model, 'cloud-tripo-31');
+}
+
 for (const w of VIDEO_WORKFLOWS) assert.ok(byId.has(`video/${w.id}`), `workflow ${w.id} listed`);
 for (const s of VIDEO_FLOW_SHORTCUTS) assert.ok(byId.has(`video/${s.id}`), `shortcut ${s.id} listed`);
 for (const t of VIRAL_TEMPLATES) assert.ok(byId.has(`template/${t.id}`), `template ${t.id} listed`);

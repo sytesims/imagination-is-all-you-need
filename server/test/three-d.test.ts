@@ -24,7 +24,7 @@ for (const w of T.THREE_D_WORKFLOWS) {
   else { assert.equal(w.toolId, null, `${w.id}: roadmap rows have no tool`); }
   assert.ok(w.how.length >= 2 && w.tagline && w.needs, `${w.id}: how it works, tagline, needs`);
 }
-assert.deepEqual(T.THREE_D_WORKFLOWS.filter((w) => w.status === 'soon').map((w) => w.id).sort(), ['multiview-to-3d', 'retexture', 'rig', 'text-to-3d']);
+assert.deepEqual(T.THREE_D_WORKFLOWS.filter((w) => w.status === 'soon').map((w) => w.id).sort(), ['retexture', 'rig']);
 assert.equal(T.currentThreeDWorkflow('?workflow=turntable').id, 'turntable'); assert.equal(T.currentThreeDWorkflow('?workflow=nope').id, 'image-to-3d'); assert.equal(T.currentThreeDWorkflow('').id, 'image-to-3d');
 assert.equal(T.threeDRoute('image-to-3d'), '/3d?workflow=image-to-3d');
 assert.equal(T.threeDRedirectTarget('/tools/three-d', '?fromJob=j1'), '/3d?fromJob=j1'); assert.equal(T.threeDRedirectTarget('/tools/turntable/', ''), '/3d?workflow=turntable');
@@ -93,6 +93,7 @@ try {
   const j = async (u: string, init?: RequestInit) => { const r = await fetch(B + u, init); return { status: r.status, body: await r.json().catch(() => ({})) as any }; };
   const wf = (await j('/api/3d-workflows')).body; assert.equal(wf.default, 'image-to-3d'); assert.equal(wf.workflows.find((w: any) => w.id === 'image-to-3d').defaults.hosted, 'cloud-tripo-31');
   assert.equal(wf.workflows.find((w: any) => w.id === 'rig').runnable, false); assert.equal(wf.showcase.items.length, 10); assert.match(wf.showcase.dataset.licence, /CC BY 4\.0/);
+  for(const mode of ['text-to-3d','multiview-to-3d']) assert.deepEqual(wf.workflows.find((w:any)=>w.id===mode).modelIds,['cloud-tripo-31']);
   ok('GET /api/3d-workflows: defaults, roadmap rows not runnable, showcase with its licence');
   const submit = async (fields: Record<string, string>, file = img) => { const fd = new FormData(); fd.append('image', new Blob([fs.readFileSync(file)], { type: 'image/png' }), 'in.png'); for (const [k, v] of Object.entries(fields)) fd.append(k, v); return j('/api/tools/three-d/jobs', { method: 'POST', body: fd }); };
   const done = async (id: string) => { for (let i = 0; i < 300; i++) { const b = (await j(`/api/jobs/${id}`)).body; if (!['queued', 'running'].includes(b.status)) return b; await new Promise((r) => setTimeout(r, 200)); } throw new Error(`job ${id} did not finish`); };
@@ -106,6 +107,30 @@ try {
     const b = await done(r.body.id); assert.equal(b.status, 'done', b.error); assert.match(b.resultUrl, /\.glb$/); assert.equal(b.outputs[0].kind, '3d'); assert.equal(b.cost, want);
     if (!firstGlb) { firstGlb = b.resultUrl; firstId = b.id; }
   }
+  const submitMode=async(mode:string,fields:Record<string,string>={},slots:string[]=[])=>{const fd=new FormData();fd.append('types',JSON.stringify([mode]));fd.append('provider','cloud-tripo-31');for(const [k,v] of Object.entries(fields))fd.append(k,v);for(const slot of slots)fd.append(slot,new Blob([fs.readFileSync(slot==='image'?img:side)],{type:'image/png'}),`${slot}.png`);return j('/api/tools/three-d/jobs',{method:'POST',body:fd});};
+  const side=path.join(D,'side.png');execFileSync('ffmpeg',['-v','error','-y','-f','lavfi','-i','color=blue:s=480x640','-frames:v','1',side]);
+  for(const mode of ['text-to-3d','multiview-to-3d']) for(const [settings,want] of [[{texture:'off'},mode==='text-to-3d'?10:20],[{texture:'pbr',detail:'standard'},mode==='text-to-3d'?20:30],[{texture:'hd',detail:'high'},mode==='text-to-3d'?50:60]] as [Record<string,string>,number][]) {
+    const q=(await j(`/api/tools/three-d/price?${new URLSearchParams({provider:'cloud-tripo-31',types:mode,...settings})}`)).body;
+    assert.equal(q.credits,want,`${mode}: full quote`);
+    const r=await submitMode(mode,{prompt:'A ceramic fox',...settings},mode==='multiview-to-3d'?['image','image_left']:[]);assert.equal(r.status,200,JSON.stringify(r.body));assert.equal(r.body.cost,q.credits);
+    const result=await done(r.body.id);assert.equal(result.status,'done',result.error);assert.match(result.resultUrl,/\.glb$/);assert.equal(result.outputs[0].kind,'3d');assert.equal(result.cost,want);
+  }
+  for(const mode of ['text-to-3d','multiview-to-3d']) {
+    const q=await j(`/api/tools/three-d/price?provider=fal-trellis2&types=${mode}`);
+    assert.ok(q.status>=400||q.body.runnable===false||q.body.valid===false,'unsupported model cannot offer a runnable quote');
+    const fd=new FormData();fd.append('provider','fal-trellis2');fd.append('types',JSON.stringify([mode]));fd.append('prompt','A ceramic fox');
+    assert.ok((await j('/api/tools/three-d/jobs',{method:'POST',body:fd})).status>=400);
+  }
+  for(const types of ['null','42','\"text-to-3d\"','[null]']) assert.equal((await submit({types})).status,400,`malformed mode ${types} returns plain validation`);
+  assert.equal((await submitMode('text-to-3d',{prompt:'  '})).status,400);
+  assert.equal((await submitMode('multiview-to-3d',{},['image'])).status,400);
+  assert.equal((await submitMode('multiview-to-3d',{},['image_left','image_back'])).status,400);
+  assert.equal((await submitMode('multiview-to-3d',{},['image','image','image_left'])).status,400);
+  const four=await submitMode('multiview-to-3d',{},['image','image_left','image_back','image_right']);assert.equal(four.status,200,JSON.stringify(four.body));assert.equal((await done(four.body.id)).status,'done');
+  const failed=await submitMode('text-to-3d',{prompt:'A ceramic fox',simulate:'temporary'});const failure=await done(failed.body.id);assert.equal(failure.status,'failed');assert.ok(failure.error);
+  const retry=await j(`/api/jobs/${failed.body.id}/retry`,{method:'POST'});assert.equal(retry.status,200,JSON.stringify(retry.body));assert.equal((await done(retry.body.id)).status,'done');
+  const cancel=await submitMode('multiview-to-3d',{},['image','image_back']);assert.equal(cancel.status,200);await j(`/api/jobs/${cancel.body.id}/cancel`,{method:'POST'});assert.equal((await done(cancel.body.id)).status,'canceled');
+  ok('text/multiview quotes equal charges; GLB results; mixed image sizes; empty prompt, missing/duplicate views; failure, retry and cancel');
   ok('quote = charge: Tripo (Comfy) and TRELLIS.2 / Hunyuan 3D (fal) for every priced setting; results are GLBs of kind 3d');
   const head = await fetch(B + firstGlb); assert.equal(head.headers.get('content-type'), 'model/gltf-binary'); await head.arrayBuffer();
   const meta = (await j(`/api/3d/meta?url=${encodeURIComponent(firstGlb)}`)).body; assert.equal(meta.faces, 7168); assert.equal(meta.big, false);

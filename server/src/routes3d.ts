@@ -18,12 +18,12 @@ import { glbInfo } from './glbInfo.js';
 import { withWorkflowDefaults } from './routing/defaults.js';
 import { threeDDefaultsOf } from './shared/threeDDefaults.js';
 import { MODEL_MAX_BYTES, cleanWords, MODEL_NAME_MAX } from './shared/previzModels.js';
-import { THREE_D_WORKFLOWS, THREE_D_CATEGORIES, THREE_D_DEFAULT_WORKFLOW, THREE_D_REDIRECTS, THREE_D_MODELS, THREE_D_SHOWCASE, SCENARIO_DATASET, BIG_GLB_BYTES, threeDRoute } from './shared/threeD.js';
+import { THREE_D_WORKFLOWS, THREE_D_CATEGORIES, THREE_D_DEFAULT_WORKFLOW, THREE_D_REDIRECTS, THREE_D_MODELS, THREE_D_SHOWCASE, SCENARIO_DATASET, BIG_GLB_BYTES, threeDRoute, threeDSupportsMode } from './shared/threeD.js';
 
 export function threeDWorkflowsPayload() {
   return {
     categories: THREE_D_CATEGORIES, default: THREE_D_DEFAULT_WORKFLOW, redirects: THREE_D_REDIRECTS, bigGlbBytes: BIG_GLB_BYTES,
-    workflows: THREE_D_WORKFLOWS.map((w) => ({ ...w, route: threeDRoute(w.id), runner: { toolId: w.toolId ?? '' }, modes: { default: w.mode ?? '' }, runnable: w.status === 'ready' && !!w.toolId && !!getTool(w.toolId) })),
+    workflows: THREE_D_WORKFLOWS.map((w) => ({ ...w, modelIds: THREE_D_MODELS.filter(m=>threeDSupportsMode(m.id,w.mode??'')).map(m=>m.id), route: threeDRoute(w.id), runner: { toolId: w.toolId ?? '' }, modes: { default: w.mode ?? '' }, runnable: w.status === 'ready' && !!w.toolId && !!getTool(w.toolId) })),
     models: THREE_D_MODELS, showcase: { dataset: SCENARIO_DATASET, items: THREE_D_SHOWCASE },
   };
 }

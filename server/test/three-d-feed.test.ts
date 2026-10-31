@@ -69,7 +69,7 @@ assert.match(v3d, /aria-label="Auto-rotate"/, 'rotate button label');
 assert.match(web('shared/ResultViewer.tsx'), /root\.inert = true/, 'the page behind any viewer (3D too) is inert');
 ok('start view off-front; aria labels; page behind the viewer inert');
 
-// ---- UX audit batch B (2026-10-27): the Render step's mockup, coming-soon links, picker order, option captions + prices, price before an image ----
+// ---- UX audit batch B (2026-10-27): the Render step's mockup, coming-soon links, picker order, option captions + prices, price before required inputs ----
 { const pj = (id: string, template: string, extra: Record<string, unknown> = {}, status = 'done', scene = 'preset') => ({ id, toolId: 'plan-a-shot', status, input: { previz: { scene, presetName: template, shot: { template, move: 'dolly', ...extra } } } });
   const jobs = [pj('n1', 'city-night', {}, 'running'), pj('w2', 'walk-by', { move: 'push-in' }), pj('c3', 'city', { cameraPath: { takes: [{ id: 't1' }], chosen: 't1' } }), pj('w4', 'walk-by'), pj('i5', 'x', {}, 'done', 'imported'), { id: 'm6', toolId: 'make-it-real', status: 'done', input: {} }];
   assert.equal(F.mockupForShot(jobs, { template: 'walk-by', move: 'dolly', takeId: null, imported: false })?.id, 'w4', 'same set and same move wins over a newer other move');
@@ -87,11 +87,12 @@ ok('start view off-front; aria labels; page behind the viewer inert');
   assert.match(studio, /optPrice=\{optPrice\}/, 'the 3D bar passes option prices to the shared group panels');
   assert.match(studio, /useVariantQuotes\(/, 'option prices come from the shared variant quotes (= Generate once picked)');
   assert.match(web('ui/next/WorkflowBar.tsx'), /<OptPrice text=\{optPrice\(c\.field, o\.value\)\}/, 'the shared panel shows the shared OptPrice');
-  assert.match(studio, /const priceFirst = !img && !gate && !unpricedWhy && !blockWhy && credits != null/, 'the price shows before an image is added');
+  assert.match(studio, /const priceFirst = !!inputMissing && !gate && !unpricedWhy && !blockWhy && credits != null/, 'the price shows before required inputs are added in every generation mode');
+  assert.match(studio, /const inputMissing = textMode \? .*multiMode \? viewIssue/, 'price-first readiness covers text, multiview and image inputs');
   assert.match(studio, /const isSoon = wf\.status === 'soon'/, 'a coming-soon link is guarded');
   for (const w of T.THREE_D_WORKFLOWS.filter((x) => x.status === 'soon')) assert.match(studio, new RegExp(`'?${w.id}'?: \\{ line: `), `${w.name} points to what works today`);
   assert.match(studio, /noModel = isTT \|\| isPS \|\| isSoon/, 'no Image to 3D controls on a coming-soon workflow');
   const picker = web('shared/WorkflowPicker.tsx');
   assert.match(picker, /data-testid=\{`\$\{prefix\}-soon-toggle`\}/, 'the picker has one Coming soon group');
   assert.match(picker, /const rows = showSoon \? \[\.\.\.ready, \.\.\.later\] : ready/, 'working workflows first; the soon ones after, only when open');
-  ok('coming-soon guard, picker order, option captions + prices, price before an image'); }
+  ok('coming-soon guard, picker order, option captions + prices, price before required inputs'); }

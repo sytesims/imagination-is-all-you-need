@@ -82,7 +82,7 @@ function A(id: AudioWorkflowId, cat: WfCat, o: Partial<WfEntry> & { model?: stri
 /** A 3D tab workflow (ready ones only). */
 function D(id: string, cat: WfCat, o: Partial<WfEntry> = {}): WfEntry {
   const d = threeDWorkflowById(id); if (!d || d.status !== 'ready' || !d.toolId) throw new Error(`3D workflow ${id}`);
-  return { id: `d-${id}`, source: `3d:${id}`, name: d.name, line: d.tagline, cat, tags: [], medium: '3d', toolId: d.toolId, href: threeDRoute(id), models: [], needs: d.needs, ...o };
+  return { id: `d-${id}`, source: `3d:${id}`, name: d.name, line: d.tagline, cat, tags: [], medium: '3d', toolId: d.toolId, href: threeDRoute(id), models: [], mode: d.mode ?? undefined, needs: d.needs, ...o };
 }
 
 /** A Footage Effects effect (shared/footageFx.ts): the Video tab's Footage Effects with that effect picked (?preset=), named after the effect
@@ -166,6 +166,8 @@ export const WF_ENTRIES: WfEntry[] = [
   A('soundtrack-sound', 'music', { model: 'mmaudio', art: 'foley', tags: ['foley', 'video to sound', 'mmaudio'] }),
   // 3D & worlds
   D('image-to-3d', '3d', { models: ['cloud-tripo-31'] /* our real run: Mossbun, job 092abb03 */, art: 'cube', tags: ['glb', 'model', 'mesh', 'tripo', 'trellis', 'hunyuan'] }),
+  D('text-to-3d', '3d', { models: ['cloud-tripo-31'], modelsOnly: true, art: 'cube', tags: ['text', 'glb', 'mesh', 'tripo'] }),
+  D('multiview-to-3d', '3d', { models: ['cloud-tripo-31'], modelsOnly: true, art: 'cube', tags: ['views', 'photos', 'glb', 'tripo'] }),
   D('turntable', '3d', { art: 'turntable', tags: ['spin', 'spin video', 'showcase'] }),
   // Fix & upscale
   I('upscale', 'fix', { showcase: '1492ccf1', tags: ['sharper', '4x', 'enhance'] }),

@@ -10,6 +10,7 @@
  * Served by GET /api/capabilities; the MCP server's search_capabilities / describe read it (mcp/src/catalog.ts loadWorkflows).
  */
 import { VIDEO_PAGE, VIDEO_WORKFLOWS, VIDEO_FLOW_SHORTCUTS, videoWorkflowHref, type VideoWorkflow } from './shared/videoWorkflows.js';
+import { THREE_D_WORKFLOWS, threeDRoute } from './shared/threeD.js';
 import { EXPLORE_ROWS } from './shared/exploreFlows.js';
 import { VIRAL_TEMPLATES, fillTemplate } from './shared/viralTemplates.js';
 import { getTool, listTools } from './tools/registry.js';
@@ -136,7 +137,13 @@ export function capabilities(): Capability[] {
       how: [`Tip: ${t.tip}`, 'Swap the slot values in the prompt for your own.'], keywords: dedupe([...t.keywords.split(/\s+/), ...TEMPLATE_WORDS, ...(KEYWORDS[id] ?? [])]),
       run: { tool_id: 'h3-video', model: t.settings.modelKey, fields: templateFields(t) }, page: `${VIDEO_PAGE}?template=${t.id}`, status: 'ready' });
   }
-  const seen = new Set(out.map((c) => c.id.split('/')[1]));
+  for (const w of THREE_D_WORKFLOWS.filter(w => w.status === 'ready' && w.toolId === 'three-d')) {
+    out.push({ id: `3d/${w.id}`, kind: 'flow', area: '3d', name: w.name, tagline: w.tagline, toolId: w.toolId, modelKey: null,
+      needs: w.needs, inputs: w.mode === 'text-to-3d' ? ['Prompt'] : w.mode === 'multiview-to-3d' ? ['Front image', 'Left, back or right image (at least one)'] : ['Image'],
+      how: w.how.map(([a,b]) => `${a}: ${b}`), keywords: [w.name.toLowerCase(), '3d model', 'glb', 'mesh'],
+      run: { tool_id: w.toolId!, ...(w.mode !== 'image-to-3d' ? { model: 'cloud-tripo-31' } : {}), fields: { types: [w.mode] } }, page: threeDRoute(w.id), status: 'ready' });
+  }
+  const seen = new Set(out.filter(c => !c.id.startsWith('3d/')).map((c) => c.id.split('/')[1]));
   for (const row of EXPLORE_ROWS) for (const c of row.cards) {
     if (seen.has(c.id) || c.id.startsWith('vt-')) continue;
     const id = `explore/${c.id}`; const tool = c.toolId ? getTool(c.toolId) : undefined;
