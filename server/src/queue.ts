@@ -182,7 +182,7 @@ const resumable = (j: Job) => RESUME_COMFY && j.status === 'running' && !!j.comf
 // Older reel runs recorded their step IDs before the hiding marker existed. Backfill only that explicit ownership list.
 for (const parent of jobs.values()) if (parent.toolId === 'app-photos-to-reel') {
   const ids=new Set([...(parent.input.childIds??[]),...Object.values(parent.input.photoJobs??{}),parent.input.musicJobId,parent.input.composeJobId]);
-  for (const id of ids) { const child=typeof id==='string'?jobs.get(id):undefined; if (child && child.toolId!=='app-photos-to-reel' && !child.input.reelParentId && ((parent.input.childIds??[]).includes(id) || child.parentId===parent.id || (id===parent.input.musicJobId && child.parentId===parent.input.composeJobId))) { child.input.reelParentId=parent.id;child.parentId=parent.id;persistJob(child); } }
+  for (const id of ids) { const child=typeof id==='string'?jobs.get(id):undefined; if (child && child.toolId!=='app-photos-to-reel' && !child.input.reelParentId && ((parent.input.childIds??[]).includes(id) || child.parentId===parent.id || (id===parent.input.musicJobId && child.parentId===parent.input.composeJobId && jobs.get(parent.input.composeJobId)?.parentId===parent.id))) { child.input.reelParentId=parent.id;child.parentId=parent.id;persistJob(child); } }
 }
 // Mark interrupted reel parents first, regardless of saved row order, then stop their undispatched children.
 const interruptedReels = new Set([...jobs.values()].filter(j=>j.toolId === 'app-photos-to-reel' && ['queued','running','failed'].includes(j.status)).map(j=>j.id));
