@@ -7,7 +7,7 @@ import { OPTION_MEDIA, wireOptionMedia, voiceSampleUrl, voiceSampleKind, wireSam
 import { parseLightRig, rigPhrases, rigJson, spherePresetOf, lightUntouched, DEFAULT_RIG, type LightRig } from '../shared/lightRig.js';
 import { PRODUCT_SCENES, PRODUCT_KEEP, TRANSITION_TYPES, UGC_PRESENTERS, UGC_HOOKS, UGC_SETTINGS, UGC_FRAMINGS, ORBIT_TYPES, ORBIT_BACKDROPS, RELIGHT_DIRECTIONS, RELIGHT_QUALITY, RELIGHT_COLOUR_PRESETS, RELIGHT_LOOKS, relightLookOf, brightnessWord, colourName, padPhrase, LANGUAGE_NATIVE, CHARACTER_LAYOUTS, CHARACTER_LAYOUT_DEFAULT, type CharacterLayout, type AppField, type AppOption } from './appRows.js';
 import { TRANSLATE_LANGS } from '../comfy/plans.js';
-import { SHOT_ANGLES, parseShots, shotPrompt, FACE_SWAP_PROMPT, FACE_SWAP_KEEP, PERSON_SWAP_PROMPT, PERSON_SWAP_KEEP, type ShotAngle } from './shots.js';
+import { SHOT_ANGLES, parseShots, shotPrompt, FACE_SWAP_PROMPT, FACE_SWAP_KEEP, PERSON_SWAP_PROMPT, PERSON_SWAP_KEEP, PERSON_SWAP_KEEP_OUTFIT_WHO, PERSON_SWAP_KEEP_OUTFIT, PERSON_SWAP_OUTFITS, type ShotAngle } from './shots.js';
 import { GENERATE_MODELS, EDIT_MODELS, TWO_IMAGE_MODELS, MATERIAL_SWAP_MODELS, AD_PACK_MODELS, MASK_MODELS, REMOVE_BG_MODELS, EXPAND_MODELS, ERASE_MODELS, TRYON_MODELS, featureById, gridModelOf } from '../shared/imageFeatures.js';
 import { promptGrammarOf } from '../shared/promptGrammar.js';
 import { fillPattern, patternFor } from '../shared/promptPatterns.js';
@@ -831,15 +831,22 @@ export const APP_GALLERY: GalleryApp[] = [
     notes: ['Each angle is its own image, priced like one image. Views the photo never showed (the back, the far side) are the model\'s best guess.'] },
   // Person Swap (image; 2026-10-22): the whole person from photo 2 replaces the person in photo 1. Same two-image edit as Face Swap (image grid: character swap,
   // official edit templates for the hosted models, our multi-reference graph for Qwen-Image-Edit-2509 and FLUX 3 Klein).
-  { id: 'person-swap', name: 'Person Swap', route: '/tools/person-swap', category: 'Image', base: 'create-image', poster: null, description: 'Replace the person in a photo with the person from another photo: face, hair, body and outfit. Pose, framing and the scene stay.',
+  { id: 'person-swap', name: 'Person Swap', route: '/tools/person-swap', category: 'Image', base: 'create-image', poster: null, description: 'Replace the person in a photo with the person from another photo: face, hair, body and outfit, or keep the photo\'s outfit. Pose, framing and the scene stay.',
     locked: { types: '["edit"]' }, providers: TWO_IMAGE_MODELS,
-    exposed: ['image', 'person', 'prompt', 'provider', 'rights', 'seed'], labels: { image: 'Target photo', person: 'Person', prompt: 'Touch-ups (optional)' }, required: ['image', 'person'],
+    exposed: ['image', 'person', 'prompt', 'provider', 'rights', 'seed', 'outfit'], labels: { image: 'Target photo', person: 'Person', prompt: 'Touch-ups (optional)' }, required: ['image', 'person'],
     extraInputs: [{ name: 'person', kind: 'file', accept: 'image/png,image/jpeg,image/webp', label: 'Person' }],
+    // Outfit (2026-11-01): 'person' = today's swap (default; older jobs have no value and run the same); 'keep' = only who the person is changes
+    fields: [{ name: 'outfit', label: 'Outfit', kind: 'select', control: 'segmented', options: PERSON_SWAP_OUTFITS.map((o) => ({ ...o })), default: 'person',
+      help: 'Works best with one person. With several, say who in Touch-ups (e.g. the woman on the left).' }],
     fileMap: (f) => { const { person, ...rest } = f; return { ...rest, refs: (person ?? []).slice(0, 1) }; },
-    compose: (_v, c) => joinPrompt(PERSON_SWAP_PROMPT, PERSON_SWAP_KEEP, c.prompt),
+    // keep: the registry's person-swap row (one row for every model today; family rows can follow a real run); touch-ups as the last sentence
+    compose: (v, c) => v.outfit === 'keep' ? [fillPattern('person-swap', c.provider && NANO_BANANA.test(c.provider) ? 'nano-banana' : c.provider && /^api-gpt-image/.test(c.provider) ? 'gpt-image' : null,
+      { who: PERSON_SWAP_KEEP_OUTFIT_WHO, keepOutfit: PERSON_SWAP_KEEP_OUTFIT }), sentence(c.prompt)].filter(Boolean).join(' ') : joinPrompt(PERSON_SWAP_PROMPT, PERSON_SWAP_KEEP, c.prompt),
     extra: { promptOptional: true, outputLabel: 'Person swap' },
     finish: (r) => ({ outputLabel: 'Person swap', ...(r.refPaths?.[1] ? { insetPath: r.refPaths[1] } : {}) }),
-    notes: ['Works best when both people are fully visible and roughly the same size in frame. Only swap people who agreed to it.'] },
+    notes: ['Works best when both people are fully visible and roughly the same size in frame. Only swap people who agreed to it.',
+      'Outfit: "Use the person\'s outfit" (default) brings the clothes from the person photo; "Keep the photo\'s outfit" keeps the target\'s clothes and accessories.',
+      'With several people in the target, say who in Touch-ups (e.g. the woman on the left). Sunglasses on the person photo hide the face, so it won\'t carry over. Crop phone status bars off screenshots first.'] },
   // Material Swap (2026-10-31): object photo + material photo on the two-image edit route (local Qwen Image 2.1 by default: its official edit template's
   // two inputs), plus hosted edit models that take 2+ images. Two optional short words fill our prompt (materialSwapPrompt); no new model.
   { id: 'material-swap', name: 'Material Swap', route: `${IMAGE_PAGE}?workflow=material-swap`, category: 'Image', base: 'create-image', poster: null,

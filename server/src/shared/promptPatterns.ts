@@ -101,8 +101,10 @@ export const PROMPT_PATTERNS: PromptPattern[] = [
     template: 'relight the scene: {light}', note: 'FLUX, Seedream, Grok…: change then keep. FIBO 2.0 may prefer no keep clause; A/B before changing.' },
   { model: 'any', task: 'face-swap', form: 'instruction', keep: 'last', negative: 'n/a', checked: D, sources: ['https://docs.bfl.ai/guides/prompting_guide_flux2'],
     template: 'Replace the face of the person in image 1 with the face of the person in image 2', note: '"Replace X in image 1 with Y from image 2"; the keep list follows.' },
-  { model: 'any', task: 'person-swap', form: 'instruction', keep: 'last', negative: 'n/a', checked: D, sources: ['https://docs.bfl.ai/guides/prompting_guide_flux2'],
-    template: 'Replace the person in image 1 with the person from image 2', note: 'Same form as the face swap.' },
+  { model: 'any', task: 'person-swap', form: 'instruction', keep: 'last', negative: 'n/a', checked: '2026-11-01', sources: ['https://docs.bfl.ai/guides/prompting_guide_flux2', 'https://developers.openai.com/cookbook/examples/multimodal/image-gen-1.5-prompting_guide'],
+    template: 'Replace the person in image 1 with the person from image 2: their {who}.[ {keepOutfit}] Keep the pose, framing, camera angle, lighting, colours and background of image 1 unchanged, and match its light and grain.',
+    note: 'Same form as the face swap; {who} = what comes from the person, [{keepOutfit}] only for "Keep the photo\'s outfit" (tools/shots.ts PERSON_SWAP_KEEP_OUTFIT*, refitted to the new body, after OpenAI\'s try-on advice). '
+      + '"of image 1", never a possessive on a reference (tag models: <image1>\'s). Used by the keep-outfit choice; the default swap still sends its 2026-10-22 wording (shots.ts PERSON_SWAP_*) until a run compares them. One row for every model until a real run shows a family needs its own.' },
 
   // ---- Ad Pack (2026-10-31, shared/adPack.ts): one finished ad per style, the model paints the scene and the words; our code adds the logo after.
   // 'ad' is the frame ({scene} = the style's sentence), 'ad-text' the words line. Every guide below agrees on the text rules: exact words in

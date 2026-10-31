@@ -77,8 +77,10 @@ const DECLS: Decl[] = [
     prompt: { mode: 'required', placeholder: 'Describe the change in the painted area', composer: 'plain' }, modes: { default: 'inpaint', whenSlot: null },
     output: { aspect: 'follow-photo', resolution: 'follow-photo', count: 1 }, surface: 'mask', generateLabel: 'Edit area', source: { note: 'mask edit' } },
   { id: 'person-swap', icon: 'user', category: 'people', runner: app('app-person-swap'), status: 'ready',
-    slots: [slot('image', 'Target', true, 'The photo to change', 'Add a target photo'), slot('person', 'Person', true, 'Add a photo of the person', 'Add a person', 'person', 2)],
-    groups: [], controls: [], prompt: { mode: 'optional', placeholder: 'Touch-ups (optional)', composer: 'recipe' }, modes: { default: 'edit', whenSlot: null },
+    // Outfit (2026-11-01): keep the target photo's clothes, or take the person's (default). /image?workflow=person-swap&outfit=keep opens it on Keep.
+    slots: [slot('image', 'Target', true, 'A photo you’re allowed to use', 'Add a target photo'), slot('person', 'Person', true, 'A clear, front-facing photo of you', 'Add a person', 'person', 2)],
+    groups: [{ id: 'outfit', label: 'Outfit', icon: 'garment', summary: ['outfit'] }], controls: [{ field: 'outfit', label: 'Outfit', kind: 'segmented', group: 'outfit' }],
+    prompt: { mode: 'optional', placeholder: 'Touch-ups (optional)', composer: 'recipe' }, modes: { default: 'edit', whenSlot: null },
     output: { aspect: 'follow-photo', resolution: 'follow-photo', count: 1 }, surface: null, generateLabel: 'Swap person', source: { note: 'two-image swap prompt' } },
   { id: 'character-sheet', icon: 'character-sheet', category: 'people', runner: app('app-character-sheet'), status: 'ready',
     // Layout (2026-10-25): tiles with a small panel diagram, the Camera Angles picker's look (web WorkflowSurfaces LayoutPanel); each sets its own shape

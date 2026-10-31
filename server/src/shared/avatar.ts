@@ -18,6 +18,8 @@ export interface ProfileData {
   avatarUrl: string | null;
   avatar: AvatarChoice | null;
   cover: Cover | null;
+  /** "Me" (2026-11-01): your full-size photo for Person Swap's Person slot ("Save as my photo" / "Use my photo"): a library upload's /files/… path; Canvas and MCP read it here too */
+  mePhotoUrl: string | null;
   /** first time the profile was read (member since) */
   createdAt: number | null;
 }
