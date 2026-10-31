@@ -108,7 +108,7 @@ export function WorkflowPicker({ open, anchor, list, current, onPick, onClose, w
 }
 
 /** One labelled photo slot in the strip: dashed when empty (orange = required, grey = optional), the photo with ✕ when filled.
- *  Click opens the shared picker (Uploads, Generations, Liked) for this slot; the small ⇪ uploads a file straight away.
+ *  Click opens the shared picker (Uploads, Generations, Favourites) for this slot; the small ⇪ uploads a file straight away.
  *  Drop a file (or a picture dragged from the feed) on it; paste while it has focus. */
 function SlotBox({ slot, file, onFile, onMore, onUrl, onPick, picking, flash, onClear, disabled, num, next, more }: { slot: WfRecipe['slots'][number]; file: WfSlotFile | null; onFile: (f: File) => void; onUrl: (url: string) => void; onPick: () => void; picking: boolean; flash: number; onClear: () => void; disabled?: boolean;
   /** a several-file slot (Material Swap's swatches): the files after the first go here, each to the next place */ onMore?: (f: File) => void; /** the small "add another" box after the swatches */ more?: boolean;

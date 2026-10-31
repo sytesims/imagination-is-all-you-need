@@ -14,13 +14,12 @@ function lockPageScroll() {
   return () => { if (--locks > 0 || !saved) return; [h.style.overflow, b.style.overflow] = saved; saved = null; };
 }
 const ITEMS = '[role=option]:not([aria-disabled=true]):not(:disabled),[role=menuitem]:not(:disabled),[role=menuitemradio]:not(:disabled),[role=radio]:not(:disabled),[data-apop-item]';
-export function Popover({ open, anchor, onClose, children, label, role = 'dialog', className = '', placement = 'top', align = 'start', testId, closeButton, focusFirst = true, width, avoid, over, gap = GAP, watch, keepOpen, onEscape }: {
+export function Popover({ open, anchor, onClose, children, label, role = 'dialog', className = '', placement = 'top', align = 'start', testId, closeButton, focusFirst = true, width, avoid, over, gap = GAP, watch, onEscape }: {
   open: boolean; anchor: RefObject<HTMLElement | null>; onClose: () => void; children: ReactNode; label: string; role?: 'dialog' | 'listbox' | 'menu';
   className?: string; placement?: PopPlacement; align?: 'start' | 'center' | 'end'; testId?: string; /** desktop close button (phones always get one) */ closeButton?: boolean; focusFirst?: boolean; width?: number; /** opening upward, stay above this element's top edge too (e.g. the composer dock); placement 'right': open beside it (a side panel) */ avoid?: RefObject<HTMLElement | null>;
   /** a panel that sits over this element at its full width (e.g. the composer dock's Style panel), while `anchor` stays the trigger for focus and outside-click */ over?: RefObject<HTMLElement | null>;
   /** px between the trigger and the panel (default 8; composer chips use the reference's 4) */ gap?: number;
   /** re-place when this element resizes, without keeping clear of it (e.g. the composer dock under a chip popover that overlaps it) */ watch?: RefObject<HTMLElement | null>;
-  /** clicks here don't close it (the prompt peek stays open while you type in the prompt) */ keepOpen?: RefObject<HTMLElement | null>;
   /** Escape does this instead of closing (a menu's second step goes back first) */ onEscape?: () => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
@@ -57,7 +56,7 @@ export function Popover({ open, anchor, onClose, children, label, role = 'dialog
     if (!open) return; let raf = 0; const re = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(place); };
     const resized = () => { openSide.current = null; tallest.current = 0; re(); }; /* a new window size: measure afresh */
     addEventListener('resize', resized); addEventListener('scroll', re, true); const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(re) : null; if (box.current) ro?.observe(box.current); if (avoid?.current) ro?.observe(avoid.current); if (watch?.current) ro?.observe(watch.current); /* the dock grows (notes, quote) → re-place */
-    const down = (e: PointerEvent) => { const t = e.target as Node; if (box.current?.contains(t) || anchor.current?.contains(t) || keepOpen?.current?.contains(t)) return; /* a nested popover (portal) counts as inside */ if ((t as Element).closest?.('.apop,[data-apop-keep]')) return; onClose(); };
+    const down = (e: PointerEvent) => { const t = e.target as Node; if (box.current?.contains(t) || anchor.current?.contains(t)) return; /* a nested popover (portal) counts as inside */ if ((t as Element).closest?.('.apop,[data-apop-keep]')) return; onClose(); };
     document.addEventListener('pointerdown', down, true);
     return () => { cancelAnimationFrame(raf); removeEventListener('resize', resized); removeEventListener('scroll', re, true); ro?.disconnect(); document.removeEventListener('pointerdown', down, true); };
   }, [open, onClose]);

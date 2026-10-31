@@ -1,7 +1,7 @@
 /**
  * /profile: your creator page. Banner (a brand gradient or one of your own images), your picture (the bean mascot by default, or a photo),
  * name and local @name, numbers from GET /api/me/stats, and tabs: Your work (finished results, newest first, loaded 30 at a time as you
- * scroll), Liked (your hearts), Looks (GET /api/user-looks) and Projects. Edit profile opens the picture picker. Everything stays on this machine.
+ * scroll), Favourites (your hearts), Looks (GET /api/user-looks) and Projects. Edit profile opens the picture picker. Everything stays on this machine.
  */
 import { IMAGE_PAGE, VIDEO_PAGE } from '../../../../server/src/shared/pages';
 import { IMAGE_ACCEPT } from '../../../../server/src/shared/mediaAccept';
@@ -56,7 +56,7 @@ export default function ProfilePage({ tools = [] }: { tools?: ToolInfo[] }) {
   useEffect(() => { setStatsErr(false); fetch('/api/me/stats').then(r => r.ok ? r.json() : Promise.reject()).then(setStats).catch(() => setStatsErr(true)); }, [tick]);
   useEffect(() => { fetch('/api/user-looks').then(r => r.ok ? r.json() : { items: [] }).then(b => setLooks(b.items ?? [])).catch(() => setLooks([]));
     fetch('/api/projects').then(r => r.ok ? r.json() : []).then(b => setProjects(Array.isArray(b) ? b : [])).catch(() => setProjects([])); }, []);
-  const TABS = ['Your work', 'Liked', 'Looks', 'Projects'];
+  const TABS = ['Your work', 'Favourites', 'Looks', 'Projects'];
   const [tab, setTab, onTabKey] = useTabs(TABS);
   const counts = [work.total, liked.total, looks?.length ?? null, projects?.length ?? null];
   const toolName = (id: string) => tools.find(t => t.id === id)?.name ?? 'Result';

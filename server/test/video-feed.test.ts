@@ -32,7 +32,7 @@ assert.equal(serverParams(FILTER_DEFAULT, null).features, '*', 'Image keeps ever
 assert.equal(serverParams({ ...FILTER_DEFAULT, show: 'failed' }, 'p1', V).status, 'failed,blocked'); assert.equal(serverParams({ ...FILTER_DEFAULT, show: 'failed' }, 'p1', V).project, 'p1');
 const job = (o: any) => ({ id: 'j', status: 'done', toolId: 'h3-video', input: { prompt: 'a fox' }, ...o }) as any;
 assert.equal(matches(job({}), FILTER_DEFAULT, null, V), true); assert.equal(matches(job({ toolId: 'create-image' }), FILTER_DEFAULT, null, V), false, 'another tool’s job stays out');
-assert.equal(emptyTextFor(FILTER_DEFAULT, null, V), 'No clips yet.'); assert.match(emptyTextFor({ ...FILTER_DEFAULT, show: 'liked' }, null, V), /No liked clips/);
+assert.equal(emptyTextFor(FILTER_DEFAULT, null, V), 'No clips yet.'); assert.match(emptyTextFor({ ...FILTER_DEFAULT, show: 'liked' }, null, V), /No favourite clips/);
 ok('the Video feed lists only its own clips, with the same filters (liked, failed, project, search)');
 
 // ---- clip cards: shape, poster, length, chip ----
