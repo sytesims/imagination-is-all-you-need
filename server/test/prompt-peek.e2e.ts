@@ -44,7 +44,7 @@ try {
   { const light = JSON.stringify({ key: { az: -45, el: 30, kelvin: 3200, intensity: 70, softness: 60 }, rim: { az: 150, el: 20, kelvin: 7500, intensity: 60 }, ambient: 25, preset: 'golden-hour' });
     for (const provider of ['api-nano-banana-21', 'comfy-qwen21-turbo']) {
       const r = await same(`Relight light sphere (${provider})`, 'app-relight', { prompt: '', look: 'golden-hour', light, provider }, true);
-      assert.match(r.prompt, /45° left, 30° up/); assert.match(r.prompt, /warm 3200K tungsten/); assert.match(r.prompt, /rim light/); assert.match(r.prompt, /ambient 25%/);
+      assert.match(r.prompt, /front-left of the frame, high above eye level/); assert.doesNotMatch(r.prompt, /°/); assert.match(r.prompt, /warm 3200K tungsten/); assert.match(r.prompt, /rim light/); assert.match(r.prompt, /ambient 25%/);
     }
     const bad = await fetch(`${B}/api/tools/app-relight/prompt-peek`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ fields: { light: '{"key":{"az":0}}' }, files: { image: 1 } }) });
     assert.equal(bad.status, 400, 'a broken rig is refused'); ok('Relight light sphere: a broken rig is a 400');

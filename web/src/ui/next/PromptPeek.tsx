@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Popover } from '../../shared/Popover';
 import { tip } from '../../shared/Tooltip';
 import { rowAnchor } from '../../shared/RowMore';
+import { fitPri } from '../../shared/chipFit';
 import { useBrand, withBrandFields } from '../../shared/brandStore';
 import './promptPeek.css';
 
@@ -58,7 +59,7 @@ export function PromptPeek({ form, place, photos, watch, keep }: { /** null: not
   const text = r ? (r.shots && r.shots.length > 1 ? r.shots.map(s => `${s.label}: ${s.prompt}`).join('\n\n') : `${r.prompt ?? ''}${r.lyrics ? `\n\nLyrics:\n${r.lyrics}` : ''}`) : '';
   const copy = async () => { try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1600); } catch { /* the text stays selectable */ } };
   return <>
-    <button ref={btn} type="button" className={`ic-chip ic-sq ic-peek${open ? ' on' : ''}`} aria-haspopup="dialog" aria-expanded={open} aria-label="See the exact prompt" data-testid="ic-peek" data-row-fold="peek" data-rank="2" {...tip(open ? null : 'See the exact prompt')} disabled={!form} onClick={() => setOpen(o => !o)}><PeekIcon /></button>
+    <button ref={btn} type="button" className={`ic-chip ic-sq ic-peek${open ? ' on' : ''}`} aria-haspopup="dialog" aria-expanded={open} aria-label="See the exact prompt" data-testid="ic-peek" data-row-fold="peek" {...fitPri('low')} {...tip(open ? null : 'See the exact prompt')} disabled={!form} onClick={() => setOpen(o => !o)}><PeekIcon /></button>
     <Popover open={open} anchor={rowAnchor(btn)} avoid={watch} watch={watch} gap={8} align="end" keepOpen={keep} onClose={() => setOpen(false)} label="The exact prompt" testId="ic-pop-peek" className="pk-pop">
       <div className="pk" data-testid="ic-peek-panel" data-state={st.kind}>
         <div className="pk-head"><span className="ic-pop-h">What will be sent</span>

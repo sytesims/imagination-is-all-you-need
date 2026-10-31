@@ -2,8 +2,7 @@
  * Upload slots, the shared parts (2026-10-29), used by every Create bar's thumbnails (Create Video first; .ic-th in shared createBar.css):
  *  - <SlotPreview>: click a thumbnail → a larger preview with its name, size and notes, and Replace / Remove (+ "Use as start frame / end
  *    frame" where the model takes one). One popover, anchored to the thumbnail.
- *  - <SlotCount>: "1 of 9 pictures · 0 of 3 clips", from the selected model's real caps (the bar passes them; one source of truth);
- *    over the limit it says what is used, as the model menu does: "Uses 1 of your 9 pictures".
+ *  - (the "1 of 9 pictures" count left the bar on 2026-10-31: the dashed "+" says the limit, shared/AddTile)
  *  - fullText(): the reason the + is dimmed ("This model takes up to 9 pictures").
  *  - prepUpload(): the size check every upload goes through: a picture bigger than the largest size any model renders is scaled down
  *    (with a note), a clip or sound over the upload cap is refused with the limit.
@@ -24,19 +23,6 @@ export const nounOf = (k: MediaKind, n: number) => NOUN[k][n === 1 ? 0 : 1];
 export function fullText(caps: Partial<Record<MediaKind, number>>, who = 'This model'): string {
   const parts = (Object.entries(caps) as [MediaKind, number][]).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${nounOf(k, n)}`);
   return parts.length ? `${who} takes up to ${parts.join(' and ')}` : `${who} takes no references`;
-}
-
-/** One kind on the count: "3 of 9 pictures", or over the limit "Uses 1 of your 9 pictures" (the model menu's words, shared/refFit partText). */
-export const slotText = (k: MediaKind, used: number, cap: number) => used > cap ? `Uses ${cap} of your ${used} ${nounOf(k, used)}` : `${used} of ${cap} ${nounOf(k, cap)}`;
-/** "1 of 9 pictures · 0 of 3 clips": one item per kind the model takes; over the limit turns it orange. */
-export function SlotCount({ used, caps, testId = 'slot-count' }: { used: Partial<Record<MediaKind, number>>; caps: Partial<Record<MediaKind, number>>; testId?: string }) {
-  const all = (Object.keys(caps) as MediaKind[]).filter(k => (caps[k] ?? 0) > 0 && ((caps[k] ?? 0) > 1 || (used[k] ?? 0) > 0));
-  /* on the bar: the kinds in use (pictures always); every kind in the tooltip */
-  const kinds = all.filter((k, i) => (used[k] ?? 0) > 0 || k === 'image' || (i === 0 && !all.includes('image'))); if (!kinds.length) return null;
-  const full = all.map(k => slotText(k, used[k] ?? 0, caps[k] ?? 0)).join(' · ');
-  const over = kinds.some(k => (used[k] ?? 0) > (caps[k] ?? 0)); const isFull = kinds.every(k => (used[k] ?? 0) >= (caps[k] ?? 0));
-  return <span className={`slot-count${kinds.length > 1 ? ' multi' : ''}${over ? ' over' : isFull ? ' full' : ''}`} data-testid={testId} role="status" aria-live="polite" title={full}>
-    {kinds.map((k, i) => <span key={k}>{i > 0 && <i aria-hidden> · </i>}{slotText(k, used[k] ?? 0, caps[k] ?? 0)}</span>)}</span>;
 }
 
 export const UPLOAD_MAX_MB = 200; // the server's upload cap (index.ts MAX_UPLOAD_MB)
@@ -73,6 +59,14 @@ export function useSlotReorder(onMove: (from: number, to: number) => void) {
     onDragEnd: () => { from.current = null; setOver(null); } });
 }
 
+/** One file shown large (this preview and the media picker's): a picture, a clip with its controls (muted), or a sound with its player.
+ *  play: start it at once (the picker's preview); onDims / onSec report its size and length. */
+export function PreviewMedia({ url, kind, alt = '', play, onDims, onSec }: { url: string; kind: MediaKind; alt?: string; play?: boolean; onDims?: (w: number, h: number) => void; onSec?: (s: number) => void }) {
+  return kind === 'image' ? <img src={url} alt={alt} onLoad={e => onDims?.(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)} />
+    : kind === 'video' ? <video key={url} src={url} controls muted playsInline autoPlay={play} loop={play} preload="metadata" onLoadedMetadata={e => { onSec?.(e.currentTarget.duration); onDims?.(e.currentTarget.videoWidth, e.currentTarget.videoHeight); }} />
+    : <audio key={url} src={url} controls autoPlay={play} preload="metadata" onLoadedMetadata={e => onSec?.(e.currentTarget.duration)} />;
+}
+
 export type SlotAction = { label: string; testId: string; onClick: () => void; primary?: boolean };
 /** The larger preview of one uploaded file. */
 export function SlotPreview({ open, anchor, onClose, item, kind, title, notes = [], warn, onReplace, onRemove, actions = [], aspect, watch, testId = 'slot-preview' }: {
@@ -88,9 +82,7 @@ export function SlotPreview({ open, anchor, onClose, item, kind, title, notes = 
   return <Popover open={open} anchor={anchor} avoid={watch} watch={watch} gap={8} onClose={onClose} label={title} testId={testId} className="slot-pv-pop" width={320}>
     <div className="slot-pv">
       <div className="slot-pv-media">
-        {kind === 'image' ? <img src={item.url} alt={title} onLoad={e => setDims([e.currentTarget.naturalWidth, e.currentTarget.naturalHeight])} />
-          : kind === 'video' ? <video src={item.url} controls muted playsInline preload="metadata" onLoadedMetadata={e => { setSec(e.currentTarget.duration); setDims([e.currentTarget.videoWidth, e.currentTarget.videoHeight]); }} />
-          : <audio src={item.url} controls preload="metadata" onLoadedMetadata={e => setSec(e.currentTarget.duration)} />}
+        <PreviewMedia url={item.url} kind={kind} alt={title} onDims={(w, h) => setDims([w, h])} onSec={setSec} />
       </div>
       <div className="slot-pv-head"><b>{title}</b><small title={item.file.name}>{item.file.name}</small><small data-testid={`${testId}-facts`}>{facts}</small></div>
       {warn && <p className="slot-pv-note warn" data-testid={`${testId}-warn`}>{warn}</p>}
