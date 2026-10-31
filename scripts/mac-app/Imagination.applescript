@@ -50,8 +50,8 @@ on idle
 	end try
 	if state is "stopped" then
 		set downChecks to downChecks + 1
-		-- about 20 seconds: an update or a reload restarts the servers for a few seconds, that's not stopping
-		if downChecks ≥ 4 then
+		-- about a minute with nothing on its ports: an update or a reload restarts the servers for a while, that's not stopping
+		if downChecks ≥ 12 then
 			display notification "Imagination stopped. Open it again to start it." with title "Imagination"
 			set quitQuietly to true
 			quit

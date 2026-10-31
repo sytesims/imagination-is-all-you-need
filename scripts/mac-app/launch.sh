@@ -65,7 +65,8 @@ trim_log() {
 case "${1:-}" in
   --status) # (the app asks every few seconds while it is open: a good moment to keep the log small)
     trim_log
-    if ready; then echo running; elif our_pid >/dev/null; then echo starting; else echo stopped; fi; exit 0 ;;
+    # (a copy that is reloading after an update still holds its ports: that's "starting", not stopped)
+    if ready; then echo running; elif our_pid >/dev/null || port_busy; then echo starting; else echo stopped; fi; exit 0 ;;
   --stop)
     if ! pid="$(our_pid)"; then
       web_up || api_up || fail "Imagination isn't running."
