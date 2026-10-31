@@ -78,7 +78,7 @@ function DrawerTile({ it, onDown, onMove, onUp, onCancel, onPlace }: { it: Item;
   const audio = it.m.kind === 'audio'; const len = fmtLength(useMediaLength(it.m.url, it.m.kind, audio));
   const title = audio ? it.m.title : it.m.caption.model || it.m.title;
   return <div className="cv-dr-cell" data-kind={it.m.kind}>
-    <button type="button" className={`cv-dr-tile${it.m.kind === 'image' ? ' alpha-bg' : ''}`} data-kind={it.m.kind} data-testid="cv-dr-item" title={it.m.title} aria-label={audio ? `Sound: ${title}${len ? `, ${len}` : ''}` : undefined}
+    <button type="button" className={`cv-dr-tile${it.m.kind === 'image' ? ' alpha-bg' : ''}`} data-kind={it.m.kind} data-testid="cv-dr-item" title={it.m.title} aria-label={audio ? `Audio: ${title}${len ? `, ${len}` : ''}` : undefined}
       onPointerDown={e => onDown(e, it)} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onCancel}
       onKeyDown={e => { if (e.key === ' ' && audio) { e.preventDefault(); if (!e.repeat) togglePreview(it.m.url); } else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPlace(it); } }}>
       {it.m.poster ? <img src={gridSrc(it.m.poster, 150)} alt="" loading="lazy" draggable={false} /> : <span className="cv-dr-ph">{it.m.kind === '3d' && <CubeIcon size={26} />}</span>}

@@ -1,7 +1,7 @@
 // Media picker tiles and slot labels (2026-10-31). In process, temp data dir; no browser.
 //  - shared/shortTitle: a few plain words from a prompt; the job's own title first; the feature last; "Layer N · …" for Image to layers
 //  - GET /api/media generations carry that short title (never the bare feature name ×12 for layers)
-//  - the picker and Canvas's Assets drawer share one type filter (All · Pictures · Clips · Sounds); the picker starts on what the slot takes
+//  - the picker and Canvas's Assets drawer share one type filter (All · Images · Videos · Audio); the picker starts on what the slot takes
 //  - slot labels never break inside a word (shared/SlotLabel in every bar, no overflow-wrap:anywhere on the dock label)
 //  - the picker's search draws one focus ring (no outer glow, none on the inner input); pictures sit on the shared checkerboard
 // Run: npx tsx test/picker-titles.test.ts
@@ -34,9 +34,9 @@ ok('GET /api/media: tiles carry the short title, layers numbered');
 
 const W = path.resolve(import.meta.dirname, '../../web/src'); const rd = (p: string) => fs.readFileSync(path.join(W, p), 'utf8');
 const mp = rd('shared/MediaPicker.tsx'); const dr = rd('canvas/AssetsDrawer.tsx'); const tf = rd('shared/TypeFilter.tsx');
-assert.match(tf, /all: 'All', image: 'Pictures', video: 'Clips', audio: 'Sounds'/); assert.match(tf, /kinds\.length < 2\) return null/, 'one kind: no filter');
+assert.match(tf, /all: 'All', image: 'Images', video: 'Videos', audio: 'Audio'/); assert.match(tf, /kinds\.length < 2\) return null/, 'one kind: no filter');
 assert.match(mp, /<TypeFilter kinds=\{typeKinds\}/); assert.match(dr, /<TypeFilter kinds=\{kinds\}/); assert.doesNotMatch(dr, /cv-chip/, 'the drawer uses the shared filter');
-assert.match(mp, /useState<TypePick>\(kinds\.length === 1 \? kinds\[0\] : 'all'\)/, 'starts on what the slot takes (a picture slot: Pictures)');
+assert.match(mp, /useState<TypePick>\(kinds\.length === 1 \? kinds\[0\] : 'all'\)/, 'starts on what the slot takes (an image slot: Images)');
 assert.match(mp, /return x\.title\?\.trim\(\) \|\|/, 'a tile shows the short title before the feature');
 assert.match(mp, /x\.type === 'image' \? ' alpha-bg' : ''/, 'pictures on the shared checkerboard');
 const css = rd('shared/mediaPicker.css');
