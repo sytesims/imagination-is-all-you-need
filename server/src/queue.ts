@@ -6,7 +6,7 @@ import { getTool } from './tools/registry.js';
 import { runWithProvider, getProvider } from './providers.js';
 import { charge, refund, refundFreeGen, useFreeGen, creditsBackNote, runEndedWhat } from './ledger.js';
 import { env } from './env.js';
-import { settleSpend, billingInfo, billedToOf, PRE_DISPATCH } from './billing.js';
+import { settleSpend, jobSpendView, billingInfo, billedToOf, PRE_DISPATCH } from './billing.js';
 import { teamMode } from './billingMode.js';
 import { dropPreview } from './comfy/preview.js';
 import { config } from './config.js';
@@ -110,6 +110,13 @@ function settle(job: Job) {
     if (job.status !== 'canceled' || job.error) job.error = `${(job.error ?? 'Something went wrong.').replace(/\s*(Your )?[Cc]redits (were )?refunded[^.]*\.?(;\s*)?/g, ' ').replace(/\s*[Cc]redits (went |are )?back (to|in) your (app )?balance[^.]*\.?(;\s*)?/g, ' ').replace(/\s*[Cc]redits were not returned to your balance\.?/g, ' ').replace(/\s+/g, ' ').trim()} ${note}`.trim();
   }
   const fix = afterSettle.get(job); if (fix) { afterSettle.delete(job); fix(); } // routing/run.ts: a routed failure's own refund + message win over the plain-failure rewrite above
+  const parent = jobs.get(job.input.reelParentId);
+  if (parent?.toolId === 'app-photos-to-reel') {
+    const children = [...jobs.values()].filter(j=>j.input.reelParentId === parent.id);
+    parent.input.childCost = children.reduce((sum,j)=>sum+Math.max(0,Number(j.cost??0)-Number(j.refunded??0)),0);
+    parent.input.childCostUsd = children.reduce((sum,j)=>sum+Number(jobSpendView(j.id)?.countedUsd ?? 0),0); parent.updatedAt=Date.now(); persistJob(parent);
+  }
+
 }
 
 /** Own-accounts mode, a failed / canceled paid run: what the provider does with it (its documented rule), never an app refund. */
@@ -172,8 +179,16 @@ const requeue: Job[] = []; const orphans: Job[] = []; const reconnect: Job[] = [
  *  OPENHIGGSFIELD_RESUME_COMFY=0 restores the old "fail it" behaviour. */
 export const RESUME_COMFY = !/^(0|false|off|no)$/i.test(env('RESUME_COMFY') ?? '1');
 const resumable = (j: Job) => RESUME_COMFY && j.status === 'running' && !!j.comfyPrompt?.id && j.comfyPrompt.resumable === true && !!j.comfyPrompt.base;
+// Older reel runs recorded their step IDs before the hiding marker existed. Backfill only that explicit ownership list.
+for (const parent of jobs.values()) if (parent.toolId === 'app-photos-to-reel') {
+  const ids=new Set([...(parent.input.childIds??[]),...Object.values(parent.input.photoJobs??{}),parent.input.musicJobId,parent.input.composeJobId]);
+  for (const id of ids) { const child=typeof id==='string'?jobs.get(id):undefined; if (child && child.toolId!=='app-photos-to-reel' && !child.input.reelParentId && ((parent.input.childIds??[]).includes(id) || child.parentId===parent.id || (id===parent.input.musicJobId && child.parentId===parent.input.composeJobId))) { child.input.reelParentId=parent.id;child.parentId=parent.id;persistJob(child); } }
+}
+// Mark interrupted reel parents first, regardless of saved row order, then stop their undispatched children.
+const interruptedReels = new Set([...jobs.values()].filter(j=>j.toolId === 'app-photos-to-reel' && ['queued','running','failed'].includes(j.status)).map(j=>j.id));
 for (const j of jobs.values()) {
   if (j.status !== 'queued' && j.status !== 'running') continue;
+  if (j.status === 'queued' && j.toolId !== 'app-photos-to-reel' && j.input.reelParentId && interruptedReels.has(j.input.reelParentId)) { j.status='canceled';j.stage='canceled';j.error='The reel was interrupted before this step started. Retry the reel to continue.';settle(j);persistJob(j);continue; }
   if (j.toolId === 'app-photos-to-reel') { j.status = 'failed'; j.stage = 'failed'; j.errorType = 'temporary'; j.error = 'The server restarted. Retry the reel to continue from finished photos. See individual step jobs for any costs.'; j.finishedAt = Date.now(); persistJob(j); continue; }
   if (j.status === 'queued' && REQUEUE_ON_RESTART) { requeue.push(j); continue; }
   if (resumable(j)) { reconnect.push(j); j.stage = 'reconnecting'; j.progressKind = 'indeterminate'; j.updatedAt = Date.now(); continue; }
@@ -183,6 +198,7 @@ for (const j of jobs.values()) {
   if (j.routeAttempts?.length || j.cloudJobId) orphans.push(j);
   settle(j);
 }
+for (const id of interruptedReels) { const parent=jobs.get(id)!; const children=[...jobs.values()].filter(j=>j.input.reelParentId===id); parent.input.childCost=children.reduce((sum,j)=>sum+Math.max(0,Number(j.cost??0)-Number(j.refunded??0)),0); parent.input.childCostUsd=children.reduce((sum,j)=>sum+Number(jobSpendView(j.id)?.countedUsd??0),0);persistJob(parent); }
 // B7: interrupted Comfy Cloud runs are cancelled on Cloud too (best effort, after boot; lazy import keeps queue.ts free of routing cycles).
 if (orphans.length) setTimeout(() => { import('./routing/orphans.js').then(({ cancelOrphan }) => Promise.all(orphans.map((j) => cancelOrphan(j)))).catch((e) => console.error('[openhiggsfield] orphan cancel:', e)); }, 0);
 if (reconnect.length) setTimeout(() => { import('./comfy/resume.js').then(({ resumeNative }) => Promise.all(reconnect.map((j) => resumeNative(j).then(() => settle(j)))))

@@ -720,6 +720,7 @@ async function createJob(toolId: string, req: FastifyRequest, reply: FastifyRepl
   // Agent budgets (agentBudget.ts): a run started with X-OHF-Agent-Budget that would go over that budget is refused here, before the job is enqueued (nothing reaches a provider). Local / free runs cost $0.
   const AB = await import('./agentBudget.js'); const ag = AB.admitAgentRun(req, reply, { jobId: id, toolId: tool.id, model: MR?.modelKey ?? prov.id, estUsd: wantFree ? 0 : runCost.estUsd, credits: wantFree || runCost.demo ? 0 : routedCost ?? cost });
   if (!('agent' in ag)) return ag;
+  if (fields.reelParentId && jobs.get(fields.reelParentId)?.toolId === 'app-photos-to-reel') { inp.reelParentId = fields.reelParentId; fields.parentId = fields.reelParentId; }
   const job = enqueue(tool.id, inp, est, id, fields.parentId || null, prov.id, routedCost ?? cost, wantFree);
   if (ag.agent) job.agent = ag.agent;
   if (inp.videoFit?.changed) job.videoFit = (await import('./shared/videoFit.js')).videoFitSummary(inp.videoFit, null); // Fit to model: shown in the viewer's details from the start
@@ -842,7 +843,7 @@ app.delete<{ Params: { id: string } }>('/api/jobs/:id', async (req, reply) => { 
 app.post<{ Params: { id: string } }>('/api/jobs/:id/restore', async (req, reply) => { const j = need(jobs.get(req.params.id), reply); if (!j) return; lib.restore(j.id); return pub(j); });
 // count = live (not trashed) items; coverUrl = the newest finished image (the Project picker's cover; null → the initial tile)
 app.get('/api/projects', async () => { const n = new Map<string, number>(); const cover = new Map<string, { at: number; url: string }>(); const IMG = /\.(png|jpe?g|webp|gif)(\?|$)/i;
-  for (const j of jobs.values()) { const m = lib.metaOf(j.id); if (!m.projectId || m.deletedAt) continue; n.set(m.projectId, (n.get(m.projectId) ?? 0) + 1);
+  for (const j of jobs.values()) { const m = lib.metaOf(j.id); if (!m.projectId || m.deletedAt || j.input.reelParentId) continue; n.set(m.projectId, (n.get(m.projectId) ?? 0) + 1);
     if (j.status !== 'done') continue; const url = j.outputs?.find((o) => IMG.test(o.url))?.url; const c = cover.get(m.projectId); if (url && (!c || j.createdAt > c.at)) cover.set(m.projectId, { at: j.createdAt, url }); }
   return lib.listProjects().map((p) => ({ ...p, parentId: p.parentId ?? null, count: n.get(p.id) ?? 0, coverUrl: cover.get(p.id)?.url ?? null })); });
 app.post<{ Body: { name?: string; parentId?: string | null } }>('/api/projects', async (req, reply) => { const p = lib.createProject(req.body?.name ?? ''); if (req.body?.parentId) { const m = lib.moveProject(p.id, req.body.parentId); if ('error' in m) { lib.deleteProject(p.id); return reply.code(400).send({ error: m.error, errorType: 'validation', issues: [{ code: 'invalid', field: 'parentId', message: m.error }] }); } return m; } return { ...p, parentId: null }; });
@@ -904,9 +905,10 @@ app.get<{ Querystring: { toolId?: string; limit?: string; section?: string; incl
   if (req.query.job) { const fj = jobs.get(req.query.job); if (!fj || (lib.metaOf(fj.id).deletedAt && sec !== 'trash')) return reply.code(404).send({ error: `job ${req.query.job} not found`, errorType: 'not_found' });
     const shape = (j: Job) => ({ ...(j.status === 'done' ? pub(j) : { ...pub(j), state: j.status, refund: refundOf(j.id) }), highlighted: j.id === fj.id });
     if (req.query.focus !== 'highlight') { const xs = [fj, ...[...jobs.values()].filter((x) => x.parentId === fj.id && !lib.metaOf(x.id).deletedAt).sort((a, b) => b.createdAt - a.createdAt)]; reply.header('x-focus-index', '0'); return xs.map(shape); }
-    const lim = Number(req.query.limit) || 100; const all = history(req.query.toolId).filter((j) => { const m = lib.metaOf(j.id); return sec === 'trash' ? !!m.deletedAt : !m.deletedAt && ((j.status === 'done' && j.outputs.length) || (ended && ENDED.has(j.status))); });
+    const lim = Number(req.query.limit) || 100; const all = history(req.query.toolId).filter((j) => { if (j.input.reelParentId) return false; const m = lib.metaOf(j.id); return sec === 'trash' ? !!m.deletedAt : !m.deletedAt && ((j.status === 'done' && j.outputs.length) || (ended && ENDED.has(j.status))); });
     let page = all.slice(0, lim); if (!page.some((j) => j.id === fj.id)) page = [...page, fj]; reply.header('x-focus-index', String(page.findIndex((j) => j.id === fj.id))); return page.map(shape); }
   return history(req.query.toolId).filter((j) => {
+    if (j.input.reelParentId) return false;
     const m = lib.metaOf(j.id);
     if (sec === 'trash') return !!m.deletedAt;
     if (m.deletedAt) return false;
@@ -935,7 +937,7 @@ app.get<{ Params: { id: string } }>('/api/jobs/:id/preview', async (req, reply) 
 /** Queue activity pill (TRANSPARENCY-PLAN 4i, D1): running and waiting jobs, compact, for one poll every 1–2 s. Only active jobs are built (one pass over the
  *  job map, one spend-row read per active job). items: running first (oldest start first), then waiting in queue order. */
 app.get('/api/queue/activity', async () => {
-  const act = [...jobs.values()].filter((j) => (j.status === 'running' || j.status === 'queued') && !(j as any).seed && !lib.metaOf(j.id).deletedAt)
+  const act = [...jobs.values()].filter((j) => (j.status === 'running' || j.status === 'queued') && !(j as any).seed && !j.input.reelParentId && !lib.metaOf(j.id).deletedAt)
     .sort((a, b) => (a.status === b.status ? (a.status === 'running' ? (a.startedAt ?? a.createdAt) - (b.startedAt ?? b.createdAt) : (a.queuePos || 1e9) - (b.queuePos || 1e9) || a.createdAt - b.createdAt) : a.status === 'running' ? -1 : 1));
   const items = act.map((j) => {
     const prompt = String(j.input?.prompt ?? '').replace(/\s+/g, ' ').trim(); const sp = jobSpendView(j.id); const place = placeOfJob(j); const free = sp ? sp.billedTo === 'local' : place.runOn === 'local';
@@ -972,14 +974,14 @@ app.post<{ Params: { id: string } }>('/api/jobs/:id/cancel', async (req, reply) 
 app.post<{ Params: { id: string }; Querystring: { failedOnly?: string; runOn?: string; remember?: string } }>('/api/jobs/:id/retry', async (req, reply) => {
   const j = jobs.get(req.params.id); if (!j) return reply.code(404).send({ error: 'not found' });
   if (j.toolId === 'app-photos-to-reel') {
-    const partialRetry = j.status === 'done' && /^(1|true)$/.test(req.query.failedOnly ?? '') && !!j.partial && (j.input.failedPhotos?.length ?? 0) > 0;
+    const partialRetry = j.status === 'done' && /^(1|true)$/.test(req.query.failedOnly ?? '') && !!j.partial && ((j.input.failedPhotos?.length ?? 0) > 0 || !!j.input.failedMusic);
     if (j.status !== 'failed' && j.status !== 'blocked' && !partialRetry) return reply.code(409).send({ error: 'Only failed reels or failed photos can be retried.' });
     const reel = await import('./photosToReel.js');
     return reel.withReelRetryLock(j.id, async () => {
       const previous = [...jobs.values()].find(x => x.parentId === j.id && x.input.retryOf === j.id && !['failed','blocked','canceled'].includes(x.status));
       if (previous) return { id: previous.id, toolId: previous.toolId, idempotentReplay: true };
       const id = randomUUID().slice(0, 8);
-      return reel.startReel(app, req, reply, id, { ...j.input.fields, simulateGroup: '0', quotedCredits: '', fromJob: j.id, reuseInputs: 'photos' }, {}, j);
+      return reel.startReel(app, req, reply, id, { ...j.input.fields, simulateGroup: '0', simulateMusic: '', quotedCredits: '', fromJob: j.id, reuseInputs: 'photos' }, {}, j);
     });
   }
   // Run on (2026-10-22): "Try on <place>": runOn (body or query) re-runs the job there, pinned to that place (no fallback). Without it, the same route as before.
