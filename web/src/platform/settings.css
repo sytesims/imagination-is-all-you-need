@@ -10,6 +10,9 @@ html body .settings-page.st{max-width:1440px;padding:32px 40px 96px;gap:24px}  /
 html body .settings-page.st .st-head h1{margin:0;font:600 28px/36px var(--font-display);letter-spacing:-.015em}
 .st-grid{display:grid;grid-template-columns:248px minmax(0,1fr);gap:48px;align-items:start}
 .st-main{min-width:0;container-type:inline-size}
+/* the page title heads the left column, level with the open section's title */
+.st-side{display:grid;gap:20px;align-content:start;min-width:0}
+.st-side .st-head{margin:-4px 0 0}  /* the title's baseline sits on the section title's */
 /* nav: a soft panel, three groups under quiet labels, tall rows in one weight, thin muted icons; the open row = a soft tint + an orange icon */
 .st-rail{position:sticky;top:calc(var(--nav-h) + 16px);display:flex;flex-direction:column;gap:16px;padding:10px;border-radius:18px;background:var(--calm-surface)}
 .st-group{display:flex;flex-direction:column;gap:2px}

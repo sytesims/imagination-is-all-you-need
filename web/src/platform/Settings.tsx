@@ -74,9 +74,10 @@ export default function Settings() {
     else if (h && tab !== 'connections') setTimeout(() => document.getElementById(h)?.scrollIntoView({ block: 'start' }), 60); }, [tab]);
   const pick = (t: Tab) => (e: React.MouseEvent) => { e.preventDefault(); setTab(t); history.replaceState(history.state, '', `#${t}`); window.scrollTo({ top: 0 }); };
   return <section className="settings-page st" data-testid="settings-page">
-    <header className="mh st-head"><h1 className="pg-h1">Settings</h1></header>
     {owOnly && <p className="settings-row ow-only-row" data-testid="settings-ow-only"><OpenWeightsOnlyPill /><span>Open models only: closed cloud models are hidden. Change it in Settings → Connections.</span></p>}
     <div className="st-grid">
+      <div className="st-side">
+      <header className="mh st-head"><h1 className="pg-h1">Settings</h1></header>
       <nav className="st-rail" aria-label="Settings sections" data-testid="settings-nav">
         {GROUPS.map(([g, ts], gi) => <div key={g} className="st-group" role="group" aria-labelledby={`st-g-${gi}`}>
           <span className="group-label st-group-l" id={`st-g-${gi}`}>{g}</span>
@@ -84,6 +85,7 @@ export default function Settings() {
           {gi === 0 && <Link to="/spend" className="st-tab st-tab-out" data-testid="settings-tab-spend"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M4 16V9M10 16V4M16 16v-5" /></svg><span>{own === false ? 'Usage' : 'Spend'}</span><i aria-hidden>›</i></Link>}
         </div>)}
       </nav>
+      </div>
       <div className="st-main">
         {tab === 'profile' && <ProfileSettings />}
         {tab === 'connections' && <Connections />}
