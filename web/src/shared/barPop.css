@@ -135,3 +135,7 @@ html body .apop.bp.bp.vs-apop-dur .apop-body{padding:0;overflow:visible}
 :is(.apop.bp,.bp-host) .mo-in:focus-visible{box-shadow:inset 0 0 0 1.5px rgba(255,122,26,.7)}
 :is(.apop.bp,.bp-host) .mo-tight .bp-opt{padding:6px 2px}
 :is(.apop.bp,.bp-host) .mo-tight .bp-opt-l{font-size:13px;overflow:visible}
+/* a control folded off a short bar, as a "···" row (shared/RowMore FoldedRows): its own icon, its name over its full value, its on/off */
+:is(.apop.bp,.bp-host) .bp-fold-row .bp-fold-ic{display:grid;place-items:center;width:18px;height:18px}
+:is(.apop.bp,.bp-host) .bp-fold-row .bp-fold-ic svg{width:16px;height:16px}
+:is(.apop.bp,.bp-host) .bp-fold-row .bp-row-a{color:var(--text-1,#F7F7F8)}

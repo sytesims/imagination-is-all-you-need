@@ -2,11 +2,12 @@
  * "Brand: <name>" (2026-10-27): the chip in the Image, Video and Audio bars. On, the server adds the active brand's words after your prompt
  * (shared/brandKit brandPhrase; the eye beside it shows the exact text). Its menu switches between your brands in one click, or Off, and has
  * "Manage brands…" and "+ New brand" (Assets › Brands). Hidden for tools that don't take brand words (a picked workflow, a voiceover).
- * The model and the price never change.
+ * The model and the price never change. On a short bar an active Brand never folds (its name truncates); off, it is one of the first to fold.
  */
 import { useRef, useState, type RefObject } from 'react';
 import { Popover } from './Popover';
 import { rowAnchor } from './RowMore';
+import { fitPri } from './chipFit';
 import { tip } from './Tooltip';
 import { Link } from '../platform/router';
 import { activeKit, setActiveKit, setBrandOn, useBrand } from './brandStore';
@@ -26,7 +27,7 @@ export function BrandChip({ toolId, mode, watch }: { toolId: string; mode?: stri
   const on = s.on[media]; const phrase = brandPhrase(kit, media);
   const pick = (id: string | null) => { setErr(''); if (!id) { setBrandOn(media, false); return; } if (id !== kit.id) setActiveKit(id).catch(e => setErr(String(e.message))); setBrandOn(media, true); };
   return <>
-    <button ref={btn} type="button" className={`ic-chip bk-chip${on ? ' on' : ''}${on && !phrase ? ' bk-chip-empty' : ''}`} data-testid="bk-chip" data-row-fold="brand" data-rank="1" aria-haspopup="menu" aria-expanded={open}
+    <button ref={btn} type="button" className={`ic-chip bk-chip${on ? ' on' : ''}${on && !phrase ? ' bk-chip-empty' : ''}`} data-testid="bk-chip" data-row-fold="brand" {...fitPri(on ? 'keep' : 'low')} data-fit-state={on ? 'On' : 'Off'} aria-haspopup="menu" aria-expanded={open}
       aria-label={on ? `Brand: ${kit.name}` : 'Brand: off'} {...tip(open ? null : on ? (phrase ? `Adds: ${phrase}` : `${kit.name} has nothing to add yet`) : 'Use one of your brands')} onClick={() => setOpen(o => !o)}>
       {on ? <KitDots colors={kit.colors} /> : <KitDots colors={[]} />}<span className="bk-chip-l">{on ? `Brand: ${kit.name}` : 'Brand'}</span></button>
     <Popover open={open} anchor={rowAnchor(btn)} avoid={watch} watch={watch} gap={8} align="start" onClose={() => setOpen(false)} label="Brand" testId="bk-pop" className="bk-pop">
