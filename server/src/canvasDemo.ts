@@ -41,7 +41,7 @@ export function detectStarter(prompt: string, starter?: string | null): DemoStar
   if (starter && DEMO_STARTERS.some((s) => s.id === starter)) return starter as DemoStarterId;
   const p = prompt.toLowerCase();
   if (/\bshort film\b|\bfilm from (an |my )?idea\b|\bfrom (an|my) idea\b/.test(p)) return 'short'; /* the flagship (shortFilmPlan) */
-  if (/\bextend\b|make (it|the clip|a clip) longer|keep the shot going/.test(p)) return 'animate';
+  if (/\bextend\b|make (it|the clip|a clip|my clip) longer|keep the shot going/.test(p)) return 'animate';
   if (/\bfilm\b|movie|trailer|\bshort\b|\bscene/.test(p)) return 'film';
   if (/product|packshot|bottle|sneaker|e-?commerce/.test(p)) return 'product';
   return 'free';

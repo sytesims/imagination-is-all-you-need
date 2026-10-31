@@ -22,7 +22,7 @@ ok('starters are matched by id or by the words typed');
 
 /* typed words never play a demo (2026-10-31): an honest line, the matching demo suggested; while one runs, what it waits for */
 assert.equal(isStarterId('animate'), true); assert.equal(isStarterId('nope'), false); assert.equal(isStarterId(undefined), false);
-assert.deepEqual(demoReply('can you extend my clip?', { running: false }).suggest, 'animate');
+assert.deepEqual(demoReply('can you extend my clip?', { running: false }).suggest, 'animate'); assert.equal(demoReply('Can you make my clip longer?', { running: false }).suggest, 'animate');
 assert.equal(demoReply('make a film about owls', { running: false }).suggest, 'film');
 assert.equal(demoReply('what can you do?', { running: false }).suggest, null, 'no catch-all suggestion');
 assert.match(demoReply('hi', { running: false }).text, /^I’m the built-in demo, so I can’t chat yet\. Connect Claude \(the plug icon\) to talk about your board, or try a demo:$/);
