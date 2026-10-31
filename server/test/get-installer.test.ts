@@ -55,7 +55,7 @@ try {
   assert.match(macDry.out, /\+ killall Dock/);
   assert.match(macDry.out, /Imagination is in your Applications folder and Dock\. Click it any time to start it\./);
   assert.doesNotMatch(macDry.out, /Imagination\.command/);
-  assert.equal(calls().trim(), 'defaults read com.apple.dock persistent-apps', 'only reads the Dock in a dry run');
+  assert.equal(calls().split('\n').filter((l) => l && l !== 'brew shellenv').join('\n'), 'defaults read com.apple.dock persistent-apps', 'only reads the Dock in a dry run'); // (brew shellenv: a runner that has Homebrew)
   assert.equal(existsSync(path.join(home, 'Applications')), false);
 
   // the Dock address is a real file URL, also for folder names with accents or # in them
