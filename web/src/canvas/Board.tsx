@@ -8,7 +8,7 @@
  * tldraw's Duplicate), Enter generates the selected card. Cards that were running when the board closed follow their job again.
  */
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { Tldraw, getSnapshot, useEditor, DefaultColorStyle, DefaultFontStyle, AssetRecordType, getHashForString, type Editor, type TLAssetStore, type TLComponents, type TLAsset, type TLUiOverrides } from 'tldraw';
+import { Tldraw, getSnapshot, useEditor, useValue, DefaultColorStyle, DefaultFontStyle, AssetRecordType, getHashForString, type Editor, type TLAssetStore, type TLComponents, type TLAsset, type TLUiOverrides } from 'tldraw';
 import 'tldraw/tldraw.css';
 import { uploadMedia } from '../shared/batch1';
 import { gridSrc, thumbable } from '../shared/thumbs';
@@ -34,6 +34,7 @@ import { reattachRunning } from './genRun';
 import { GEN_TYPE } from './graph';
 import { CARD_H } from './cardModel';
 import { saveBoard, saveBoardOnExit, BoardError, type Board as BoardDoc } from './boardsApi';
+import { OVERVIEW_ZOOM } from './cardLook';
 
 const Viewer3D = lazy(() => import('../shared/Viewer3D').then(m => ({ default: m.Viewer3D })));
 export type SaveState = 'saved' | 'saving' | 'error' | 'conflict';
@@ -87,6 +88,13 @@ const OVERRIDES: TLUiOverrides = {
   },
 };
 /** Enter with one generate card selected (focus on the board, not in a field) runs it, like its Generate button. */
+/** The cards' overview (node.css): under OVERVIEW_ZOOM the editor's container gets data-far and every card shows only its title (large),
+ *  its media and one status line. Re-renders only when that flips. */
+function OverviewZoom() {
+  const editor = useEditor(); const far = useValue('cards far', () => editor.getZoomLevel() < OVERVIEW_ZOOM, [editor]);
+  useEffect(() => { const el = editor.getContainer(); if (far) el.dataset.far = '1'; else delete el.dataset.far; }, [editor, far]);
+  return null;
+}
 function CardKeys() {
   const editor = useEditor();
   useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key !== 'Enter' || e.shiftKey || e.metaKey || e.ctrlKey || e.altKey || e.isComposing) return; const t = e.target as HTMLElement | null;
@@ -155,6 +163,7 @@ export function Board({ board, onSaveState, onSaved, drawerOpen, setDrawerOpen, 
       <LeftToolbar />
       <EmptyHint onOpenAssets={() => setDrawerOpen(true)} />
       <CardKeys />
+      <OverviewZoom />
       <FollowAgent />
       <NextStepMenu />
       <CameraMotion />

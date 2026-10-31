@@ -200,11 +200,12 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
     <span className={`gc-row-price${quoting ? ' gc-quoting' : ''}`} data-testid="gc-price">{quoting ? <i className="gc-shimmer" aria-label="Pricing" /> : <GenPrice q={quote} demo={!key && quote?.demo === true} free={!key && cr === 0} credits={key ? null : cr} text={key ? 'Needs a key' : place === 'Your computer' ? 'Free' : null} />}</span>
   </div>;
 
-  const footer = draft
+  /* while it runs there is no action row: the one status line sits where the model row goes, the bar on the picture's bottom edge */
+  const running = p.status === 'running';
+  const footer = running ? undefined : draft
     ? (spec ? <DockGenerate toolId={spec.tool.id} engine={spec.provider} quote={q} label={spec.generateLabel} busy={busy} problems={problems} missing={missing} pfOpen={pfOpen} genRef={genRef} onClick={() => void generate()}
         intent={intent} dlSize={dlSize} workflowId={spec.flow.id} className="gen-node" variant="node" testId="gc-generate" priceTestId="gc-gen-price" />
       : <button type="button" className="gen-btn gen-node" disabled><span className="gen-l">Generate</span></button>)
-    : p.status === 'running' ? <RunFoot job={job ?? stubJob(p)} />
     : p.status === 'failed' ? <FailFoot shape={shape} job={job ?? stubJob(p, 'failed')} />
     : <TakeStrip shape={shape} />;
 
@@ -218,7 +219,7 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
         <button type="button" className="nf-act" aria-label="Make a variation" data-testid="gc-variation" {...tip('Variation: a copy with the same settings beside it, ready to tweak. Nothing runs until you press Generate (⌘D does the same)')} onClick={() => void runVariation()}><Ic.CopyIcon size={14} /></button>
         <button type="button" className="nf-act" aria-label="Recreate: run it again" data-testid="gc-recreate" disabled={busy} {...tip('Recreate: run it again with the same settings. The new version joins the strip')} onClick={() => void recreate()}><Ic.RetryIcon size={14} /></button></> : undefined}
       footer={footer}>
-      {shot && <h3 className="gc-shot" data-testid="gc-shot" title={shot}>{shot}</h3>}
+      {shot ? <h3 className="gc-shot nf-heading" data-testid="gc-shot" title={shot}>{shot}</h3> : <h3 className="gc-shot nf-heading nf-heading-empty" aria-hidden>Untitled</h3>}
       <div className={`nf-media gc-media gc-media-${p.status}`} data-testid="gc-media">
         {draft && <div className="gc-stage gc-draft" key="draft">
           {spec && spec.slots.length > 0 && (open || (st?.inputs.length ?? 0) > 0) && <Inputs shape={shape} slots={spec.slots} bySlot={st?.bySlot ?? {}} selected={selected} />}
@@ -229,11 +230,12 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
             files={{ image: st?.bySlot.image?.[0]?.url ? { file: null as any, url: st?.bySlot.image[0].poster || st?.bySlot.image[0].url } : null }} openGroup={openGroup} /></div>}
         </div>}
         {p.status === 'running' && <div className="gc-stage" key="run"><GenTile job={job ?? stubJob(p)} testId="gc-running" /></div>}
+        {running && <MediaBar job={job ?? stubJob(p)} />}
         {p.status === 'done' && take && <div className={`gc-stage${developing === take.url ? ' develop' : ''}`} key={`done-${take.url}`} data-developing={developing === take.url ? '1' : undefined}><ResultCard kind={take.kind} url={take.url} poster={take.poster} title={p.prompt || name} model={model} width={p.w} active={selected || hover} onView3d={take.kind === '3d' ? () => open3d(take.jobId) : undefined} testId="gc-result" />
           {(take.kind === 'image' || take.kind === 'video') && <QuickActions editor={editor} sourceId={shape.id} kind={take.kind} url={take.url} show={selected || hover} />}</div>}
         {p.status === 'failed' && <div className="gc-stage" key="fail"><Failed shape={shape} job={job ?? stubJob(p, 'failed')} /></div>}
       </div>
-      {chips}
+      {running ? <RunLine job={job ?? stubJob(p)} /> : chips}
       {draft && !linked && spec?.promptMode !== 'hidden'
         ? <div className={`gc-prompt${focus ? ' open' : ''}`}>
             <textarea ref={ta} className="nf-text gc-prompt-in" rows={2} data-card-control data-testid="gc-prompt-in" aria-label="Prompt" placeholder={spec?.placeholder ?? 'Describe what you want'} value={p.prompt}
@@ -264,13 +266,14 @@ function PromptText({ text, linked }: { text: string; linked: boolean }) {
   </div>;
 }
 
-/** Running: the stage in one word, a thin bar and the time left (the shared queue words). */
-function RunFoot({ job }: { job: JobState }) {
-  const pr = progressOfJob(job); const fill = overallFill(pr); const eta = etaText(pr.etaSeconds);
-  return <div className="gc-run" data-testid="gc-run-foot" role="status">
-    <span className="gc-run-l"><b>{progressLabel(pr)}</b>{eta && <small>{eta}</small>}</span>
-    <span className={`gc-run-bar${fill == null ? ' ind' : ''}`} aria-hidden><i style={fill == null ? undefined : { width: `${Math.max(3, Math.round(fill * 100))}%` }} /></span>
-  </div>;
+/** The run's one status line ("Loading the model · ~10 min") and the thin bar on the picture's bottom edge. */
+function RunLine({ job }: { job: JobState }) {
+  const pr = progressOfJob(job); const eta = etaText(pr.etaSeconds);
+  return <div className="gc-row gc-row-run" data-testid="gc-run-line" role="status"><i className="nf-dot" aria-hidden /><b>{progressLabel(pr)}</b>{eta && <span className="gc-run-eta">{eta}</span>}</div>;
+}
+function MediaBar({ job }: { job: JobState }) {
+  const fill = overallFill(progressOfJob(job));
+  return <span className={`nf-mbar${fill == null ? ' ind' : ''}`} aria-hidden><i style={fill == null ? undefined : { width: `${Math.max(3, Math.round(fill * 100))}%` }} /></span>;
 }
 
 /** Failed: one calm line and Retry (the reason sits in the picture box). */

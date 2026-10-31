@@ -162,7 +162,7 @@ function InlineText({ ad }: { ad: AdCard }) {
 export function AdView({ shape, Icon }: { shape: AdShapeRef; Icon: (q: { size?: number }) => JSX.Element }) {
   const ad = useAdCard(shape); const { size, sizes, edits, W, H, view, variants } = ad;
   const box = { aspectRatio: `${W} / ${H}`, width: `min(100cqw, ${(W / H).toFixed(4)} * 100cqh)` };
-  return <NodeFrame shapeId={shape.id} type={shape.type} icon={<Icon />} title="Ad layout" label="Ad layout" className="ad-card">
+  return <NodeFrame shapeId={shape.id} type={shape.type} icon={<Icon />} title="Ad layout" heading={view?.headline || 'Your headline'} label="Ad layout" className="ad-card">
     <div className="ad-body">
       <div className="ad-stage">
         {ad.pic ? <div className="ad-pv" style={box}>
