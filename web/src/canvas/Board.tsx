@@ -99,8 +99,8 @@ const camKey = (id: string) => `ohf-canvas-camera:${id}`;
 const readCam = (id: string) => { try { const v = JSON.parse(localStorage.getItem(camKey(id)) ?? 'null'); return v && isFinite(v.x) && isFinite(v.y) && v.z > 0 ? v as { x: number; y: number; z: number } : null; } catch { return null; } };
 const writeCam = (id: string, c: { x: number; y: number; z: number }) => { try { localStorage.setItem(camKey(id), JSON.stringify({ x: c.x, y: c.y, z: c.z })); } catch { /* private window */ } };
 
-export function Board({ board, onSaveState, onSaved, drawerOpen, setDrawerOpen, onProject }: {
-  board: BoardDoc; onProject: (id: string | null) => void; onSaveState: (s: SaveState) => void; onSaved: (r: { rev: number; updatedAt: number; shapes: number }) => void; drawerOpen: boolean; setDrawerOpen: (v: boolean) => void;
+export function Board({ board, onSaveState, onSaved, drawerOpen, setDrawerOpen, onProject, onEditor }: {
+  board: BoardDoc; /** MOCKUP: the card panel needs the editor */ onEditor?: (e: Editor | null) => void; onProject: (id: string | null) => void; onSaveState: (s: SaveState) => void; onSaved: (r: { rev: number; updatedAt: number; shapes: number }) => void; drawerOpen: boolean; setDrawerOpen: (v: boolean) => void;
 }) {
   const toast = useToast(); const [view3d, setView3d] = useState<any | null>(null);
   const snapshot = useMemo(() => (board.snapshot ? { document: board.snapshot } as any : undefined), [board.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -117,7 +117,7 @@ export function Board({ board, onSaveState, onSaved, drawerOpen, setDrawerOpen, 
       if (cards.length) editor.updateShapes(cards.map(c => ({ id: c.id, type: RESULT_TYPE, props: { poster } }))); }).catch(() => undefined); }, 1200); };
 
   const onMount = (editor: Editor) => {
-    ed.current = editor; const id = board.id; let rev = board.rev; let dirty = false, saving = false, stopped = false; let timer = 0, camTimer = 0;
+    ed.current = editor; onEditor?.(editor); const id = board.id; let rev = board.rev; let dirty = false, saving = false, stopped = false; let timer = 0, camTimer = 0;
     /* first visit: the pen starts orange and text in Inter; a saved camera comes back, else the board fits its content */
     editor.user.updateUserPreferences({ colorScheme: 'dark' });
     if ((import.meta as any).env?.DEV) (window as any).__ohfCanvas = editor; /* dev only: lets checks drive the board */
