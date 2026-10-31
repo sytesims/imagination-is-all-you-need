@@ -16,6 +16,8 @@
  * and tags, ranked, in the same tab, kinds and project; an empty box is the plain list again.
  * Clean pass (2026-10-31): tooltips are short names (tileName), never prompts; a slot that takes several picks tiles into a numbered
  * selection with an "Add n" bar; the picked tab is a subtle fill with an orange underline.
+ * Tell files apart (2026-10-31, Canvas audit B4/B17): every tile has a one-line caption (short name, a clip's or sound's length), and a sound
+ * plays from its round button or Space (shared/PreviewPlay: one preview at a time, stopped when the picker closes or the tab changes).
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { gridSrc } from './thumbs';
@@ -28,6 +30,7 @@ import { useFeedProject, type ProjectRow } from './feedProject';
 import { ProjectCover, ProjectRows, useProjectList } from './ProjectPicker';
 import { setJobProject } from '../api';
 import { ChevronDownIcon, MoreIcon, ProjectsIcon, SearchIcon, CloseIcon } from '../ui/Icons';
+import { PlayButton, togglePreview, stopPreview, useMediaLength, fmtLength } from './PreviewPlay';
 import './mediaPicker.css';
 
 export type PickTab = 'Uploads' | 'Generations' | 'Liked';
@@ -58,7 +61,7 @@ const day = (t: number) => t > 0 ? new Date(t).toLocaleDateString(undefined, { m
 export function tileName(x: Pick<LibItem, 'name' | 'type' | 'toolName'>, tab: PickTab): string {
   const frame = /^(First frame|Last frame|Frame at [^·]+?)\s*·/.exec(x.name ?? '')?.[1]?.trim();
   if (frame) return frame;
-  if (tab === 'Uploads') return /^[^\s/·]{1,48}\.[a-z0-9]{2,4}$/i.test(x.name ?? '') ? x.name : 'Upload';
+  if (tab === 'Uploads') return /^[^/·\n]{1,200}\.[a-z0-9]{2,4}$/i.test((x.name ?? '').trim()) ? x.name.trim() : 'Upload';
   return x.toolName || (x.type === 'video' ? 'Video' : x.type === 'audio' ? 'Sound' : 'Picture');
 }
 /** A slot label as a picker title: "Start frame" → "Choose a start frame", "Reference images" → "Choose reference images". */
@@ -75,7 +78,6 @@ export function wrongTypeMessage(files: File[], kinds: MediaKind[]): string | nu
   return `${what}. This slot takes ${list(kinds.map(x => NOUN[x][1]))}.`;
 }
 const kindsOk = (f: File, kinds: MediaKind[]) => { const k = kindOfFile(f); return !!k && kinds.includes(k); };
-const fmtDur = (s: number) => !isFinite(s) || s <= 0 ? '' : s < 60 ? `${Math.round(s)} s` : `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
 
 /** Lazily mounted children (thumbnails, audio metadata) once the tile scrolls near the view. */
 function useInView<T extends Element>(): [React.RefObject<T>, boolean] {
@@ -88,22 +90,25 @@ const Wave = () => <svg className="mpk-wave" viewBox="0 0 64 24" aria-hidden><g 
 
 function Tile({ x, tab, onPick, onMore, moreOpen, frameHint, sel }: { x: LibItem; tab: PickTab; onPick: (x: LibItem) => void; /** an image slot: a video tile gives a frame */ frameHint?: boolean; /** the ⋯ menu (Move to project); absent = no menu */ onMore?: (x: LibItem, el: HTMLButtonElement) => void; moreOpen?: boolean;
   /** a slot that takes several: this tile's place in the selection (1-based); 0 = not picked; undefined = picks at once */ sel?: number }) {
-  const [ref, seen] = useInView<HTMLDivElement>(); const [dur, setDur] = useState(0);
+  const [ref, seen] = useInView<HTMLDivElement>(); const dur = useMediaLength(x.url, x.type, seen);
   /* loaded: React state, so a re-render (picking it) keeps the class */ const [ld, setLd] = useState(false); const loaded = () => setLd(true);
-  const tag = tab === 'Uploads' ? null : x.toolName ?? null;
   const kindWord = x.type === 'image' ? 'Picture' : x.type === 'video' ? 'Video' : 'Sound';
-  const name = tileName(x, tab); const when = day(x.createdAt); const tip = when ? `${name} · ${when}` : name;
-  return <div ref={ref} className={`ic-ref-tile mpk-tile mpk-t-${x.type}${ld ? ' ld' : ''}${sel ? ' mpk-sel' : ''}`}><button type="button" className="mpk-pick" onClick={() => onPick(x)} aria-label={`${kindWord}: ${tip}${dur ? `, ${fmtDur(dur)}` : ''}${frameHint && x.type === 'video' ? ' · pick a frame' : ''}`} title={tip}
+  const name = tileName(x, tab); const when = day(x.createdAt); const tip = when ? `${name} · ${when}` : name; const len = fmtLength(dur);
+  /* a sound: Space plays / pauses it (Enter still picks); the round button does the same with the mouse */
+  const space = (e: React.KeyboardEvent) => { if (x.type !== 'audio' || e.key !== ' ') return; e.preventDefault(); if (e.type === 'keydown' && !e.repeat) togglePreview(x.url); };
+  return <div ref={ref} className={`ic-ref-tile mpk-tile mpk-t-${x.type}${ld ? ' ld' : ''}${sel ? ' mpk-sel' : ''}`}><button type="button" className="mpk-pick" onClick={() => onPick(x)} onKeyDown={space} onKeyUp={space}
+    aria-label={`${kindWord}: ${tip}${len ? `, ${len}` : ''}${frameHint && x.type === 'video' ? ' · pick a frame' : ''}`} aria-keyshortcuts={x.type === 'audio' ? 'Space' : undefined} title={tip}
     aria-pressed={sel === undefined || (frameHint && x.type === 'video') ? undefined : sel > 0}
     data-testid={tab === 'Generations' ? `ic-ref-gen-${x.id}` : tab === 'Liked' ? `ic-ref-liked-${x.id}` : `ic-ref-up-${x.id}`} data-kind={x.type}>
     {x.type === 'audio'
-      ? <span className="mpk-audio"><Wave /><span className="mpk-aname">{name}</span>{seen && <audio src={x.url} preload="metadata" onLoadedMetadata={e => setDur(e.currentTarget.duration)} hidden />}</span>
+      ? <span className="mpk-audio"><Wave /></span>
       : seen ? <img src={x.type === 'image' ? gridSrc(x.url, 160) : (x.thumbUrl || `/api/media/thumb?url=${encodeURIComponent(x.url)}`)} alt="" loading="lazy" decoding="async" onLoad={loaded} onError={loaded} /> : <span className="mpk-ph" aria-hidden />}
-    {x.type === 'video' && <span className="mpk-badge" aria-hidden><svg width="9" height="9" viewBox="0 0 10 10"><path d="M2 1l7 4-7 4z" fill="currentColor" /></svg></span>}
-    {x.type === 'audio' && dur > 0 && <span className="mpk-badge" aria-hidden>{fmtDur(dur)}</span>}
-    {tag && <span className="ic-ref-feat">{tag}</span>}
+    {/* one quiet line: the short name (a file name, a feature, a frame), and a clip's or sound's length */}
+    <span className="mpk-cap" data-testid="mpk-cap" aria-hidden><span className="mpk-cap-n">{name}</span>
+      {x.type !== 'image' && <span className="mpk-cap-d">{x.type === 'video' && <svg width="7" height="8" viewBox="0 0 10 10"><path d="M2 1l7 4-7 4z" fill="currentColor" /></svg>}{len}</span>}</span>
     {!!sel && <span className="mpk-seln" aria-hidden>{sel}</span>}
   </button>
+    {x.type === 'audio' && <PlayButton url={x.url} label={name} className="mpk-pv" testId="mpk-play" />}
     {onMore && <button type="button" className="mpk-more" aria-haspopup="listbox" aria-expanded={!!moreOpen} aria-label={`Move ${name} to a project`} title="Move to project" data-testid="mpk-more" onClick={e => onMore(x, e.currentTarget)}><MoreIcon size={16} /></button>}
   </div>;
 }
@@ -164,7 +169,8 @@ export function MediaPicker({ tab, setTab, onClose, title, limits, kinds, frames
   const showKinds = frames && kinds.includes('image') && !kinds.includes('video') ? [...kinds, 'video' as MediaKind] : kinds;
   const typeQ = showKinds.join(','); const [q, setQ] = useState(''); const [qd, setQd] = useState(''); /* qd: the search, 250 ms after typing stops */
   useEffect(() => { const t = setTimeout(() => setQd(q.trim()), 250); return () => clearTimeout(t); }, [q]);
-  useEffect(() => { setSortOpen(false); setFrameOf(null); setMsg(null); setProjOpen(false); setMoveOf(null); }, [tab]);
+  useEffect(() => { setSortOpen(false); setFrameOf(null); setMsg(null); setProjOpen(false); setMoveOf(null); stopPreview(); }, [tab]);
+  useEffect(() => stopPreview, []); /* a sound preview never outlives the picker */
   useEffect(() => { if (!sortOpen) return; const d = (e: PointerEvent) => { if (!(e.target as Element | null)?.closest?.('.ic-ref-sortw')) setSortOpen(false); }; document.addEventListener('pointerdown', d, true); return () => document.removeEventListener('pointerdown', d, true); }, [sortOpen]);
   /* data: GET /api/media (server mediaLibrary.ts): each upload once, generations and liked from every feature, filtered by kind */
   const seq = useRef(0);
