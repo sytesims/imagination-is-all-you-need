@@ -5,6 +5,8 @@ import { PromptPeek, type PeekForm } from '../next/PromptPeek';
 import { BrandChip } from '../../shared/BrandChip';
 import { RowMore } from '../../shared/RowMore';
 import { SlotPreview, SlotCount, fullText, prepUpload, useSlotReorder, type SlotAction } from '../../shared/SlotPreview';
+import { MoreFiles, LeftNote, notAddedText, type TrayFile } from '../../shared/FilesTray';
+import { thumbsShown } from '../../shared/presetBar';
 import { handoffOf } from '../../shared/handoffFiles';
 import { PF_SHORT } from '../../shared/DockGenerate';
 import { preflightProblems } from '../../../../server/src/shared/preflight';
@@ -271,17 +273,17 @@ export default function VideoStudio(p: VideoStudioProps) {
   const vp = vps.find(x => x.id === p.fv.videoPreset || x.aliases?.includes(p.fv.videoPreset)); /* a removed look's old id (Recreate) shows the kept look */
   /* Viral templates (useViralTemplates, 2026-10-26): Look → Viral, the fill-in row above the prompt, ?template= from an Explore card */
   const viral = useViralTemplates({ prompt: p.prompt, setPrompt: p.setPrompt, promptRef: p.promptRef, provider: p.provider, setProvider: p.setProvider, engines: provs.map(x => x.id), limOf, setFv: p.setFv, setDuration: p.setDuration, toast, closePop, engineName: id => models.find(m => m.id === id)?.name ?? provs.find(x => x.id === id)?.name ?? 'LTX-2.5 22B' });
-  const refIn = useRef<HTMLInputElement>(null); const [refErr, setRefErr] = useState('');
-  const addRefs = async (fs: File[]) => { setRefErr(''); const acc: Record<string, R[]> = {}; const left: string[] = []; const msgs: string[] = [];
+  const refIn = useRef<HTMLInputElement>(null); const [refErr, setRefErr] = useState(''); const [left, setLeft] = useState(''); /* "N not added" under the prompt line (shared LeftNote) */ useEffect(() => setLeft(''), [p.provider]);
+  const addRefs = async (fs: File[]) => { setRefErr(''); setLeft(''); const acc: Record<string, R[]> = {}; const left: string[] = []; const msgs: string[] = [];
     for (const f0 of fs) { const kind = kindOfFile(f0, refKinds as MediaKind[]); const k = RK.find(x => x[1] === kind)?.[0];
       if (!kind || !k) { msgs.push(wrongTypeText(f0.name, refKinds as MediaKind[])); continue; }
       const okFmt = kind === 'image' ? undefined : (refFmts as any)?.[kind] as string[] | undefined; const ext = (f0.name.split('.').pop() ?? '').toLowerCase();
       if (okFmt && !okFmt.includes(ext)) { msgs.push(`${f0.name}: this model takes ${kind === 'audio' ? 'sound' : kind} references as ${okFmt.map(x => x.toUpperCase()).join(' or ')}.`); continue; }
-      const cur = acc[k] ?? [...(p.vrefs[k] ?? [])]; if (cur.length >= capOf(k)) { left.push(f0.name); continue; }
+      const cur = acc[k] ?? [...(p.vrefs[k] ?? [])]; if (cur.length >= capOf(k)) { left.push(kind); continue; }
       const pr = await prepUpload(f0, kind); if ('error' in pr) { msgs.push(pr.error); continue; } if (pr.note) toast(pr.note, 'info');
       cur.push({ file: pr.file, url: URL.createObjectURL(pr.file) }); acc[k] = cur; }
     Object.entries(acc).forEach(([k, l]) => p.setVrefs(k, l));
-    if (left.length) msgs.push(`${fullText(refCaps, modelName || 'This model')}: ${left.length} not added.`); setRefErr(msgs.join(' ')); };
+    setLeft(notAddedText(left.length, fullText(Object.fromEntries(Object.entries(refCaps).filter(([kk]) => left.includes(kk))), modelName || 'This model'))); setRefErr(msgs.join(' ')); };
   const fileIn = useRef<HTMLInputElement>(null); const lastIn = useRef<HTMLInputElement>(null);
   const takeStart = async (f: File) => { p.onCancelFrameHandoff?.(); if (!fileFits('image', f)) { setRefErr(wrongTypeText(f.name, ['image'])); return; } const pr = await prepUpload(f, 'image'); if ('error' in pr) { setRefErr(pr.error); return; } if (pr.note) toast(pr.note, 'info'); setRefErr(''); p.onImage([pr.file]); };
   const takeEnd = async (f: File) => { if (!fileFits('image', f)) { setRefErr(wrongTypeText(f.name, ['image'])); return; } const pr = await prepUpload(f, 'image'); if ('error' in pr) { setRefErr(pr.error); return; } if (pr.note) toast(pr.note, 'info'); setRefErr(''); p.setLastFrame({ file: pr.file, url: URL.createObjectURL(pr.file) }); };
@@ -426,6 +428,19 @@ export default function VideoStudio(p: VideoStudioProps) {
         return { id: x.id, label: x.label, sub: MODE_COPY[x.id] ?? '', testId: `h3-mode-${x.id}`, selected: p.mode === x.id, video: { mp4: e.src, poster: e.poster }, onPick: () => pickLook(() => p.setMode(x.id)) }; }) : []; })() },
   ];
 
+  /* the lead's thumbnails (start frame, references, end frame): a few on the bar, the rest behind "+N" (shared FilesTray, as on Image) */
+  const leadThumbs: { f: TrayFile; el: React.ReactElement }[] = kfMode ? [] : [
+    ...(p.image ? [{ f: { key: 'start', group: 'start', idx: 0, kind: 'image' as MediaKind, url: p.image.url, name: p.image.file.name, label: p.mode === 'r2v' ? 'Picture 1 · @image1' : 'Start frame', off: startOff }, el: <span key="start" className={`ic-th${startOff ? ' slot-over' : ''}`} data-testid="vs-start-thumb" data-unused={startOff ? '1' : undefined} {...tip(pv ? null : `${p.mode === 'r2v' ? refChipTip(tm?.key, 'image', 1) : 'Start frame'}${startOff ? ` · ${notUsedBy(modelName)}` : ''}${handoffOf(p.image.file) ? ' · from your image' : ''} · click to see it`)}><button type="button" className="ic-th-hit" aria-haspopup="dialog" aria-expanded={pv === 'start'} aria-label={`${p.mode === 'r2v' ? 'Picture 1' : 'Start frame'}${handoffOf(p.image.file) ? ', from your image' : ''}. Open it`} onClick={openPv('start')}><img src={p.image.url} alt="Start frame" onLoad={() => p.onFrameImageReady?.(p.image!.url)} />{startOff ? <em className="slot-badge" aria-hidden>Not used</em> : handoffOf(p.image.file) && <em className="slot-badge from" aria-hidden>From image</em>}</button><button type="button" className="ic-x" aria-label="Remove start frame" onClick={p.clearImage}><CloseIcon size={12} /></button></span> }] : []),
+    ...RK.flatMap(([k, kind]) => (p.vrefs[k] ?? []).map((r, i) => { const off = i >= capNow(k); const n = kind === 'image' ? (startIsRef ? 1 : 0) + i + 1 : i + 1;
+              return { f: { key: k + i + r.url, group: k, idx: i, kind: kind as MediaKind, url: kind === 'audio' ? undefined : r.url, name: r.file.name, label: `${kind === 'image' ? `Picture ${n} · @image${n}` : kind === 'video' ? `Clip ${n} · @video${n}` : `Sound ${n}`}`, off }, el: <span key={k + i + r.url} className={`ic-th vs-ref-${kind}${off ? ' slot-over' : ''}${kind === 'video' && rvs && rvDur[r.url] !== undefined && rvDur[r.url] < rvs.minEach ? ' bad' : ''}`} data-testid={`vs-ref-thumb-${k}-${i}`} data-unused={off ? '1' : undefined} {...(kind === 'image' && (p.vrefs.refs?.length ?? 0) > 1 ? dragImg(i) : {})}
+                {...tip(pv ? null : `${r.file.name} · ${refChipTip(tm?.key, kind as 'image' | 'video' | 'audio', n)}${off ? ` · ${notUsedBy(modelName)}` : ''}${kind === 'image' && (p.vrefs.refs?.length ?? 0) > 1 ? ' · drag to reorder' : ''}`)}>
+                <button type="button" className="ic-th-hit" aria-haspopup="dialog" aria-expanded={pv === `${k}:${i}`} aria-label={`${kind === 'image' ? `Picture ${n}` : kind === 'video' ? `Clip ${n}` : `Sound ${n}`}: ${r.file.name}${off ? `. ${notUsedBy(modelName)}` : ''}. Open it`} onClick={openPv(`${k}:${i}`)}>
+                  {kind === 'image' ? <img src={r.url} alt="" /> : kind === 'video' ? <><VideoThumb src={r.url} /><em className="ic-att-n">{rvDur[r.url] !== undefined ? `${rvDur[r.url].toFixed(1)}s` : '…'}</em></> : <span aria-hidden>♪</span>}
+                  {off ? <em className="slot-badge" aria-hidden>Not used</em> : handoffOf(r.file) ? <em className="slot-badge from" aria-hidden>From image</em> : null}</button>
+                <button type="button" className="ic-x" aria-label={`Remove ${r.file.name}`} onClick={() => removeRef(k, i)}><CloseIcon size={12} /></button></span> }; })),
+    ...(needLast && p.lastFrame ? [{ f: { key: 'end', group: 'end', idx: 0, kind: 'image' as MediaKind, url: p.lastFrame.url, name: p.lastFrame.file.name, label: 'End frame' }, el: <span key="end" className="ic-th vs-end" data-testid="vs-end-thumb" {...tip(pv ? null : 'End frame · click to see it')}><button type="button" className="ic-th-hit" aria-haspopup="dialog" aria-expanded={pv === 'end'} aria-label="End frame. Open it" onClick={openPv('end')}><img src={p.lastFrame.url} alt="End frame" /></button><button type="button" className="ic-x" aria-label="Remove end frame" onClick={() => p.setLastFrame(null)}><CloseIcon size={12} /></button></span> }] : []),
+  ];
+  const leadShown = thumbsShown(leadThumbs.length);
   /* One Video feed (2026-10-26): on the Video page the feed is the page's own (ui/video/VideoPage), so switching workflows never remounts it; this bar only hands it its runs and actions */
   const hosted = useHostedVideoFeed({ jobs: p.jobs, onSelect: p.onSelect, viewerActions: p.viewerActions });
   return <div className={hosted ? 'vs-bar' : 'vs vs-dk'} data-testid={hosted ? 'vs-bar' : 'video-studio'} data-workflow="create">
@@ -443,15 +458,9 @@ export default function VideoStudio(p: VideoStudioProps) {
         <div ref={prowRef} className="ic-prow" data-testid="vs-prow">
           <div className="ic-lead" data-testid="vs-dlead">
             {kfMode ? <KeyframeLead frames={kfFrames} times={kfTimes} seconds={p.duration} onChange={setKf} onAdd={() => kfIn.current?.click()} onOpen={() => pop.setOpen('kf')} /> : <>
-            {p.image && <span className={`ic-th${startOff ? ' slot-over' : ''}`} data-testid="vs-start-thumb" data-unused={startOff ? '1' : undefined} {...tip(pv ? null : `${p.mode === 'r2v' ? refChipTip(tm?.key, 'image', 1) : 'Start frame'}${startOff ? ` · ${notUsedBy(modelName)}` : ''}${handoffOf(p.image.file) ? ' · from your image' : ''} · click to see it`)}><button type="button" className="ic-th-hit" aria-haspopup="dialog" aria-expanded={pv === 'start'} aria-label={`${p.mode === 'r2v' ? 'Picture 1' : 'Start frame'}${handoffOf(p.image.file) ? ', from your image' : ''}. Open it`} onClick={openPv('start')}><img src={p.image.url} alt="Start frame" onLoad={() => p.onFrameImageReady?.(p.image!.url)} />{startOff ? <em className="slot-badge" aria-hidden>Not used</em> : handoffOf(p.image.file) && <em className="slot-badge from" aria-hidden>From image</em>}</button><button type="button" className="ic-x" aria-label="Remove start frame" onClick={p.clearImage}><CloseIcon size={12} /></button></span>}
-            {RK.flatMap(([k, kind]) => (p.vrefs[k] ?? []).map((r, i) => { const off = i >= capNow(k); const n = kind === 'image' ? (startIsRef ? 1 : 0) + i + 1 : i + 1;
-              return <span key={k + i + r.url} className={`ic-th vs-ref-${kind}${off ? ' slot-over' : ''}${kind === 'video' && rvs && rvDur[r.url] !== undefined && rvDur[r.url] < rvs.minEach ? ' bad' : ''}`} data-testid={`vs-ref-thumb-${k}-${i}`} data-unused={off ? '1' : undefined} {...(kind === 'image' && (p.vrefs.refs?.length ?? 0) > 1 ? dragImg(i) : {})}
-                {...tip(pv ? null : `${r.file.name} · ${refChipTip(tm?.key, kind as 'image' | 'video' | 'audio', n)}${off ? ` · ${notUsedBy(modelName)}` : ''}${kind === 'image' && (p.vrefs.refs?.length ?? 0) > 1 ? ' · drag to reorder' : ''}`)}>
-                <button type="button" className="ic-th-hit" aria-haspopup="dialog" aria-expanded={pv === `${k}:${i}`} aria-label={`${kind === 'image' ? `Picture ${n}` : kind === 'video' ? `Clip ${n}` : `Sound ${n}`}: ${r.file.name}${off ? `. ${notUsedBy(modelName)}` : ''}. Open it`} onClick={openPv(`${k}:${i}`)}>
-                  {kind === 'image' ? <img src={r.url} alt="" /> : kind === 'video' ? <><VideoThumb src={r.url} /><em className="ic-att-n">{rvDur[r.url] !== undefined ? `${rvDur[r.url].toFixed(1)}s` : '…'}</em></> : <span aria-hidden>♪</span>}
-                  {off ? <em className="slot-badge" aria-hidden>Not used</em> : handoffOf(r.file) ? <em className="slot-badge from" aria-hidden>From image</em> : null}</button>
-                <button type="button" className="ic-x" aria-label={`Remove ${r.file.name}`} onClick={() => removeRef(k, i)}><CloseIcon size={12} /></button></span>; }))}
-            {needLast && p.lastFrame && <span className="ic-th vs-end" data-testid="vs-end-thumb" {...tip(pv ? null : 'End frame · click to see it')}><button type="button" className="ic-th-hit" aria-haspopup="dialog" aria-expanded={pv === 'end'} aria-label="End frame. Open it" onClick={openPv('end')}><img src={p.lastFrame.url} alt="End frame" /></button><button type="button" className="ic-x" aria-label="Remove end frame" onClick={() => p.setLastFrame(null)}><CloseIcon size={12} /></button></span>}
+            {leadThumbs.slice(0, leadShown.show).map(t => t.el)}
+            <MoreFiles hidden={leadShown.more} items={leadThumbs.map(t => t.f)} watch={dock} testId="vs-more" summary={curFit && !curFit.all ? notUsedShort(curFit) : undefined} offText="Not used" action={overN > 0 ? { label: `Remove the ${overN} not used`, onClick: dropExtras } : null}
+              onRemove={f => f.group === 'start' ? p.clearImage() : f.group === 'end' ? p.setLastFrame(null) : removeRef(f.group, f.idx)} onMove={(g, a, b) => moveRef(g)(a, b)} />
             {(p.mode === 'r2v' || RK.some(([k]) => (p.vrefs[k]?.length ?? 0) > 0)) && <span className={`vs-slot-wrap${curFit && !curFit.all ? ' has-skip' : ''}`}><SlotCount used={refUsed} caps={refCaps} testId="vs-slot-count" />
             {curFit && !curFit.all && <span className="vs-ref-skip" data-testid="vs-ref-skip" {...tip(`${modelName} won’t use ${skippedText(curFit)}. Pick another model, or remove ${curFit.haveN - curFit.usedN === 1 ? 'it' : 'them'}.`)}>{notUsedShort(curFit)}</span>}</span>}
             </>}
@@ -463,6 +472,7 @@ export default function VideoStudio(p: VideoStudioProps) {
           {p.suggestPrompt && !p.prompt.trim() && <button type="button" className="ic-prompt-sugg" data-testid="use-image-prompt" {...tip(p.suggestPrompt)} onClick={() => { p.setPrompt(p.suggestPrompt!); requestAnimationFrame(() => p.promptRef.current?.focus()); }}>Use the picture’s prompt</button>}
         </div>
         <SwitchNote note={sw.note} testId="vs-switch-note" />
+        <LeftNote text={left} onClose={() => setLeft('')} testId="vs-not-added" />
         <div className="ic-chiprow"><div ref={chipsEl} className="ic-chips">
           <input ref={fileIn} type="file" hidden accept={IMAGE_ACCEPT} data-picker-title={p.mode === 'r2v' ? 'Choose a reference' : 'Choose a start frame'} data-picker-limits="One image · PNG, JPG or WebP · or a frame from one of your videos" data-picker-frames="" data-testid="vs-start-input" onChange={e => { const fs = Array.from(e.target.files ?? []); e.currentTarget.value = ''; if (fs[0]) void takeStart(fs[0]); }} />
           <input ref={refIn} type="file" hidden multiple data-picker-title="Choose references" data-picker-limits={refLimits} data-testid="vs-ref-input" accept={RK.filter(([, kind]) => refKinds.includes(kind)).map(([, kind]) => refAccept(kind, refFmts)).join(',')} onChange={e => { const fs = Array.from(e.target.files ?? []); e.currentTarget.value = ''; const r = repl.current; repl.current = null; if (r && fs[0]) void replaceRef(r.k, r.i, fs[0]); else void addRefs(fs); }} />

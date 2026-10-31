@@ -180,7 +180,7 @@ function makeMediaTool(c: MediaCfg): ToolDef {
       const needImg = (c.imageModes ?? []).includes(mode.id);
       if (needImg && !img) return { error: `${mode.label} needs an image (PNG/JPG).` };
       const allImgs = [...(files.image ?? []), ...(files.refs ?? [])]; // Create Image: up to the model's maxRefs (checked above); FLUX 3 Klein takes 10
-      const mv = validateMentions(prompt, { images: img && needImg ? allImgs.length : mode.id === 'keyframes' ? (files.keyframes?.length ?? 0) /* Keyframes: @image1… = frame 1… */ : 0, videos: 0 });
+      const mv = validateMentions(prompt, { images: img && needImg ? allImgs.length : mode.id === 'keyframes' ? (files.keyframes?.length ?? 0) /* Keyframes: @image1… = frame 1… */ : 0, videos: mode.id === 'r2v' ? (files.refVideos?.length ?? 0) /* Reference mode: @video1… = the reference clips */ : 0 });
       if (!mv.ok) return { error: mv.issues[0].message, mentionIssues: mv.issues.map((i) => ({ code: i.code, mention: i.mention.raw, start: i.mention.start, end: i.mention.end, message: i.message })) } as any;
       const needMask = (c.maskModes ?? []).includes(mode.id); const mask = files.mask?.[0];
       if (needMask && !mask) return { error: `${mode.label} needs a mask: paint the area to change (white = repaint).` };

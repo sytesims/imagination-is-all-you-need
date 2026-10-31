@@ -17,6 +17,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { JobState, ToolInfo } from '../../api';
 import type { VideoMeta } from '../../shared/UploadVideo';
 import { readVideo } from '../../shared/UploadVideo';
+import { planAudioIntake, type AudioPick } from './audioIntake';
+import { LeftNote, notAddedText } from '../../shared/FilesTray';
 import { firstWords } from '../../shared/missing';
 import { TRANSLATE_DOC } from '../../shared/brand';
 import { useDockHeight, useChipFit } from '../../shared/dockFit';
@@ -137,17 +139,24 @@ export default function AudioPage(p: AudioPageProps) {
   useEffect(() => { if (p.fieldVals.voice === 'clone' && !p.samples.length) p.setFieldVals(v => ({ ...v, voice: p.fieldDefaults.voice })); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [upErr, setUpErr] = useState(''); const fileIn = useRef<HTMLInputElement>(null); const [songSec, setSongSec] = useState<number | undefined>();
   useEffect(() => { let on = true; if (p.song) durOf(p.song).then(d => on && setSongSec(d)); else setSongSec(undefined); return () => { on = false; }; }, [p.song]);
-  const takeFiles = async (fs: File[]) => { setUpErr(''); if (!fs.length) return; let samples = [...p.samples];
-    for (const f of fs) {
-      const isA = fileFits('audio', f); const isV = fileFits('video', f);
-      if (isA || isV) { const ready = await prepUpload(f, isA ? 'audio' : 'video'); if ('error' in ready) { setUpErr(ready.error); continue; } }
-      if (isV && slotOf('video')) { p.setClip(null); try { const m = await readVideo(f); p.setVideo({ ...m, trimmed: m.duration > 30 }); } catch { setUpErr('Couldn’t read that video.'); } continue; }
-      if (isA && slotOf('audio') && wf.id === 'cover') { p.setSong(f); continue; }
-      if (isA && slotOf('audio') && wf.oneOf?.includes('audio')) { p.setVideo(null); p.setClip({ file: f, sec: await durOf(f) }); continue; }
-      if (isA && slotOf('voiceAudio')) { if (!maxS) { setUpErr('This model uses its own voices, so it can’t clone a sample.'); continue; }
-        const ri = replacingSample.current; replacingSample.current = null; const add = ri != null ? samples.map((x,i) => i === ri ? f : x) : [...samples, f]; if (add.length > maxS) { setUpErr(`Up to ${maxS} voice sample${maxS > 1 ? 's' : ''}.`); continue; } samples = add; p.setSamples(add); p.setFieldVals(v => ({ ...v, voice: 'clone' })); continue; }
-      setUpErr(`${wf.name} takes ${wf.slots.map(s => s.label.toLowerCase()).join(', ') || 'no files'}.`);
-    } };
+  /* where each file goes: the "+" row you picked (Voice sample → the samples), else the clip first, then the samples (audioIntake.ts) */
+  const pickFor = useRef<AudioPick | null>(null);
+  const [left, setLeft] = useState(''); /* "N not added" under the prompt line (shared LeftNote) */
+  const takeFiles = async (fs: File[]) => { setUpErr(''); setLeft(''); const want = pickFor.current; pickFor.current = null; if (!fs.length) return;
+    const ri = replacingSample.current; replacingSample.current = null;
+    const plan = planAudioIntake(fs.map(f => fileFits('audio', f) ? 'audio' : fileFits('video', f) ? 'video' : 'other'), { want, slots: { video: !!slotOf('video'), audio: !!slotOf('audio'), voice: !!slotOf('voiceAudio') },
+      cover: wf.id === 'cover', clipIsAudio: !!wf.oneOf?.includes('audio'), hasClip: !!p.clip, hasVideo: !!p.video, samples: p.samples.length, maxSamples: maxS, replacing: ri != null });
+    let samples = [...p.samples]; let over = 0; let wrong = 0; const msgs: string[] = [];
+    for (let i = 0; i < fs.length; i++) { const f = fs[i]; const d = plan[i];
+      if (d === 'over') { over++; continue; } if (d === 'wrong') { wrong++; continue; }
+      const ready = await prepUpload(f, d === 'video' ? 'video' : 'audio'); if ('error' in ready) { msgs.push(ready.error); continue; }
+      if (d === 'video') { p.setClip(null); try { const m = await readVideo(f); p.setVideo({ ...m, trimmed: m.duration > 30 }); } catch { msgs.push('Couldn’t read that video.'); } continue; }
+      if (d === 'song') { p.setSong(f); continue; }
+      if (d === 'clip') { const was = p.clip?.file.name; p.setVideo(null); p.setClip({ file: f, sec: await durOf(f) }); if (was && was !== f.name) toast(`Replaced ${was} with ${f.name}`, 'info'); continue; }
+      samples = ri != null && samples[ri] ? samples.map((x, j) => j === ri ? f : x) : [...samples, f]; p.setSamples(samples); p.setFieldVals(v => ({ ...v, voice: 'clone' })); }
+    setLeft(notAddedText(over, `${modelName || 'This model'} takes up to ${maxS} voice sample${maxS > 1 ? 's' : ''}`));
+    if (wrong) msgs.push(slotOf('voiceAudio') && !maxS && !slotOf('audio') ? 'This model uses its own voices, so it can’t clone a sample.' : `${wf.name} takes ${wf.slots.map(s => s.label.toLowerCase()).join(', ') || 'no files'}.`);
+    setUpErr(msgs.join(' ')); };
   const accept = [slotOf('video') ? VIDEO_ACCEPT : '', slotOf('audio') || (slotOf('voiceAudio') && maxS) ? AUDIO_ACCEPT : ''].filter(Boolean).join(',');
   type Add = { id: string; label: string; testId: string };
   const addOpts: Add[] = [];
@@ -155,7 +164,7 @@ export default function AudioPage(p: AudioPageProps) {
   if (slotOf('audio') && wf.id === 'cover' && !p.song) addOpts.push({ id: 'song', label: 'Song file', testId: 'ap-add-song' });
   if (slotOf('audio') && wf.id !== 'cover' && !p.clip && !p.video) addOpts.push({ id: 'clip', label: 'Audio file', testId: 'ap-add-audio' });
   if (slotOf('voiceAudio') && maxS > 0 && p.samples.length < maxS) addOpts.push({ id: 'sample', label: `Voice sample (${p.samples.length}/${maxS})`, testId: 'ap-add-sample' });
-  const openPicker = (o?: Add) => { const el = fileIn.current; if (!el) return; el.accept = !o ? accept : o.id === 'video' ? VIDEO_ACCEPT : AUDIO_ACCEPT; el.multiple = o?.id === 'sample';
+  const openPicker = (o?: Add) => { const el = fileIn.current; if (!el) return; el.accept = !o ? accept : o.id === 'video' ? VIDEO_ACCEPT : AUDIO_ACCEPT; el.multiple = o?.id === 'sample'; pickFor.current = (o?.id as AudioPick | undefined) ?? null;
     /* the media picker's title and limits for this slot (shared/MediaPicker.tsx reads data-picker-*) */
     const t = !o ? null : o.id === 'video' ? ['Choose a video', wf.id === 'cover' ? 'MP4, MOV or WEBM' : 'The clip to score · MP4, MOV or WEBM'] : o.id === 'song' ? ['Choose a song to cover', 'MP3, WAV or M4A'] : o.id === 'sample' ? ['Choose a voice sample', `Up to ${maxS} sample${maxS > 1 ? 's' : ''} · clear speech, a few seconds or more`] : ['Choose a sound', 'MP3, WAV or M4A'];
     if (t) { el.dataset.pickerTitle = t[0]; el.dataset.pickerLimits = t[1]; } else { delete el.dataset.pickerTitle; delete el.dataset.pickerLimits; }
@@ -351,7 +360,7 @@ export default function AudioPage(p: AudioPageProps) {
     </section>
     <div className="ic ic2 vs-icd"><div className={`ic-dock ap-dock${drag ? ' ic-drag' : ''}`} data-testid="ap-dock" data-drag={drag ? '1' : undefined} ref={dock}
       onDragEnter={e => { if (!hasFiles(e)) return; dragDepth.current++; setDrag(true); }} onDragLeave={() => { dragDepth.current = Math.max(0, dragDepth.current - 1); if (!dragDepth.current) setDrag(false); }}
-      onDragOver={e => { if (hasFiles(e)) e.preventDefault(); }} onDrop={e => { dragDepth.current = 0; setDrag(false); const fs = Array.from(e.dataTransfer.files); if (!fs.length) return; e.preventDefault(); void takeFiles(fs); }}>
+      onDragOver={e => { if (hasFiles(e)) e.preventDefault(); }} onDrop={e => { dragDepth.current = 0; setDrag(false); const fs = Array.from(e.dataTransfer.files); if (!fs.length) return; e.preventDefault(); pickFor.current = null; void takeFiles(fs); }}>
       <div className="ic-frame"><div className="ic-panel">
       <div className="ic-main">
         <div ref={prowRef} className="ic-prow" data-testid="ap-prow">
@@ -374,6 +383,7 @@ export default function AudioPage(p: AudioPageProps) {
             </PromptTabs>}
         </div>
         <SwitchNote note={swNote.note} testId="ap-switch-note" />
+        <LeftNote text={left} onClose={() => setLeft('')} testId="ap-not-added" />
         <div className="ic-chiprow"><div ref={chipsEl} className="ic-chips">
           <input ref={fileIn} type="file" hidden data-testid="ap-file-input" accept={accept} onChange={e => { const fs = Array.from(e.target.files ?? []); e.currentTarget.value = ''; void takeFiles(fs); }} />
           <span className="ic-fixed" data-testid="ap-chips-fixed">
