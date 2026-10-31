@@ -6,15 +6,15 @@ import './compareFrame.css';
 /**
  * CompareFrame (shared): the before / after drag slider. `before` fills the box, `after` sits on top, cut at the line (after on the right).
  * Drag or click anywhere to move the line, ← → (Home / End) on the focused knob. Corner labels at the top. Touch: pan-y, so the page still
- * scrolls past it. `intro`: 'sweep' runs the line left to right once on mount, then parks it at 50% (ResultView); 'nudge' moves it to 35% and
+ * scrolls past it. `intro`: 'sweep' runs the line left to right once on mount, then parks it at 50% (ResultView); 'nudge' moves it 15 points left of `start` and
  * back once, the first time the box is mostly in view (Explore); neither under reduced motion. Used by CompareSlider (ResultView) and
  * Explore's swap section.
  */
-export function CompareFrame({ before, after, labels = ['Before', 'After'], className = '', style, intro, testId, children }: {
+export function CompareFrame({ before, after, labels = ['Before', 'After'], className = '', style, intro, start = 50, testId, children }: {
   before: ReactNode; after: ReactNode; labels?: [string, string]; className?: string; style?: React.CSSProperties;
-  intro?: 'sweep' | 'nudge'; testId?: string; /** extra overlays (a watermark) */ children?: ReactNode;
+  intro?: 'sweep' | 'nudge'; /** where the line rests, in % from the left */ start?: number; testId?: string; /** extra overlays (a watermark) */ children?: ReactNode;
 }) {
-  const [pos, setPos] = useState(intro === 'sweep' && !prefersReducedMotion() ? 0 : 50);
+  const [pos, setPos] = useState(intro === 'sweep' && !prefersReducedMotion() ? 0 : start);
   const [easing, setEasing] = useState(false);
   const box = useRef<HTMLDivElement>(null); const drag = useRef(false); const timers = useRef<number[]>([]);
   const stopIntro = () => { timers.current.forEach((t) => { clearTimeout(t); clearInterval(t); }); timers.current = []; setEasing(false); };
@@ -27,7 +27,7 @@ export function CompareFrame({ before, after, labels = ['Before', 'After'], clas
     const el = box.current; if (!el || typeof IntersectionObserver === 'undefined') return;
     const io = new IntersectionObserver(([e]) => {
       if (!e.isIntersecting) return; io.disconnect(); setEasing(true);
-      timers.current.push(window.setTimeout(() => setPos(35), 400), window.setTimeout(() => setPos(50), 1200), window.setTimeout(() => setEasing(false), 2000));
+      timers.current.push(window.setTimeout(() => setPos(start - 15), 400), window.setTimeout(() => setPos(start), 1200), window.setTimeout(() => setEasing(false), 2000));
     }, { threshold: 0.6 });
     io.observe(el); return () => { io.disconnect(); stopIntro(); };
   }, [intro]); // eslint-disable-line react-hooks/exhaustive-deps

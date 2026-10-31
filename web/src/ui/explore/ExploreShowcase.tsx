@@ -222,7 +222,7 @@ export function XpSwap() {
     </header>
     <div ref={g.root} className="xsdc-stage" data-testid="xp-swap-danceoff">
       {runs.map((x, k) => <figure key={x.r.key} className="xsdc-tile" data-testid={`xp-swap-run-${x.r.key}`}>
-        <CompareFrame className="xsdc-cmp" intro="nudge" testId="xp-swap-slider" labels={[S.original.label, x.r.who]}
+        <CompareFrame className="xsdc-cmp" intro="nudge" start={65} testId="xp-swap-slider" labels={[S.original.label, x.r.who]}
           before={media(k, S.original.url, x.r.originalPoster ?? S.original.poster)} after={media(k + 2, x.url, x.poster)} />
         <figcaption className="xsdc-card"><SwapFaces run={x} /><span className="xsdc-meta"><strong>{x.f.model}</strong><small>{x.r.photos} · {x.place} · <b>{x.price}</b></small></span>
           <Link to={x.rec} className="xsdc-rec" data-testid={`xp-swap-recreate-${x.r.key}`}>Recreate<Arrow /></Link></figcaption>
