@@ -99,10 +99,11 @@ export interface TipInput {
   /** providers: who billed them (names), said in the warning */
   failedCharged?: { runs: number; usd: number; providers?: string[] } | null;
 }
+/** head: a short headline for compact layouts; text: the full sentence. */
 export type Notice =
-  | { tone: 'warn'; kind: 'over'; text: string; usd: number; jobId: string }
-  | { tone: 'warn'; kind: 'failed'; text: string; usd: number }
-  | { tone: 'tip'; kind: 'tip'; text: string; usd: number };
+  | { tone: 'warn'; kind: 'over'; head: string; text: string; usd: number; jobId: string }
+  | { tone: 'warn'; kind: 'failed'; head: string; text: string; usd: number }
+  | { tone: 'tip'; kind: 'tip'; head: string; text: string; usd: number };
 const usd2 = (n: number) => `$${n < 0.1 ? n.toFixed(3).replace(/0$/, '') : n.toFixed(2)}`;
 const times = (k: number) => `${k >= 10 ? Math.round(k) : Math.round(k * 10) / 10}×`;
 /** Today's quote for the same settings now matches what was billed (from 15 % under to 50 % over: an 'up to' quote may sit above the bill),
@@ -117,19 +118,19 @@ export function tipLines(t: TipInput, maxWarn = 3): Notice[] {
     let s = o.count > 1 ? `${o.count} ${o.name} runs cost at least twice their quote, ${usd2(o.gapUsd)} over in all; the biggest gap was ${times(o.ratio)}.`
       : `One ${o.name} run cost ${times(o.ratio)} its quote (${usd2(o.actualUsd)}, quoted ${usd2(o.estUsd)}).`;
     if (priceFixedNow(o)) s += ` That price is fixed now: the same settings quote ${usd2(o.nowUsd!)} today.`;
-    warn.push({ tone: 'warn', kind: 'over', text: s, usd: o.gapUsd, jobId: o.jobId });
+    warn.push({ tone: 'warn', kind: 'over', head: o.count > 1 ? `${o.name} ran over its quote` : `${o.name} ran ${times(o.ratio)} over`, text: s, usd: o.gapUsd, jobId: o.jobId });
   }
   const f = t.failedCharged;
   if (f && f.runs > 0 && f.usd > 0)
-    warn.push({ tone: 'warn', kind: 'failed', usd: f.usd, text: `${f.runs === 1 ? 'One failed run' : `${f.runs} failed runs`} still counted ${usd2(f.usd)} at ${f.runs === 1 ? 'its' : 'their'} estimate: ${f.providers?.length ? f.providers.join(' and ') : 'the provider'} may bill failed runs.` });
+    warn.push({ tone: 'warn', kind: 'failed', usd: f.usd, head: `${f.runs === 1 ? 'One failed run' : `${f.runs} failed runs`} counted`, text: `${f.runs === 1 ? 'One failed run' : `${f.runs} failed runs`} still counted ${usd2(f.usd)} at ${f.runs === 1 ? 'its' : 'their'} estimate: ${f.providers?.length ? f.providers.join(' and ') : 'the provider'} may bill failed runs.` });
   const out = warn.sort((a, b) => b.usd - a.usd).slice(0, maxWarn);
   if (t.top && t.paidRuns >= 2 && t.top.share >= 0.5) {
     const pct = Math.round(t.top.share * 100);
     let s = `${t.top.name} was ${pct >= 100 ? 'all' : `${pct}%`} of ${t.periodWords}.`;
-    const sh = t.shorter;
-    if (sh && sh.fromSeconds > sh.seconds && sh.usd > 0 && sh.usd <= sh.fromUsd * 0.8)
+    const sh = t.shorter; const shorter = !!sh && sh.fromSeconds > sh.seconds && sh.usd > 0 && sh.usd <= sh.fromUsd * 0.8;
+    if (sh && shorter)
       s += ` Each ${sh.fromSeconds}\u00a0s clip cost about ${usd2(sh.fromUsd)}; at ${sh.seconds}\u00a0s it'd be about ${usd2(sh.usd)}.`;
-    out.push({ tone: 'tip', kind: 'tip', text: s, usd: 0 });
+    out.push({ tone: 'tip', kind: 'tip', head: shorter ? 'Shorter clips cost less' : `${t.top.name} is most of your spend`, text: s, usd: 0 });
   }
   return out;
 }

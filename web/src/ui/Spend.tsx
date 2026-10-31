@@ -1,7 +1,7 @@
 /** Account → Spend, "Gallery" design (2026-10-24; own-accounts mode). What your runs cost on the accounts that bill them, shown as the
  *  results you paid for.
  *  - Overview: a hero total for 7 days / Month / All with a sparkline, four KPI cards, a mosaic of results sized by cost (Paid / Everything;
- *    a tile opens its job) and one tip line computed from the data (only when the data supports it). No spending limits (removed
+ *    a tile opens its job) and a "Worth a look" card of notices computed from the data (only when the data supports it). No spending limits (removed
  *    2026-10-28, user decision: spend is controlled by how much you top up).
  *  - All runs: the full filterable run table with thumbnails, estimate next to actual, and each provider's failed-run rule shown once.
  *  GET /api/spend/overview, /api/spend, /api/spend/summary, /api/accounts, GET/PUT /api/settings/billing. Team mode shows the credits
@@ -191,15 +191,26 @@ function OverviewTab({ ov, period, setPeriod, toolName, nameOf, onAllRuns, tools
         </div>}
       </section>}
 
-      {tips.length > 0 && <div className="spg-tips" data-testid="spend-tips">{tips.map((x, i) => <div key={i} className={`spg-tip ${x.tone}`} data-testid={`spend-tip-${x.kind}`}>
-        <span className="spg-tip-ic" aria-hidden>{x.tone === 'warn' ? '!' : '✦'}</span><p>{x.text}</p>
-        {x.kind === 'over' ? <Link to={`/jobs/${x.jobId}`} className="spg-ghost">Open run</Link>
-          : x.kind === 'failed' ? <button type="button" className="spg-ghost" data-testid="spend-failed-runs" onClick={() => onAllRuns({ status: 'failed-counted', from: period === 'all' ? '' : dateOf(d!.from) })}>Show failed runs</button>
-          : tipTo ? <Link to={tipTo} className="spg-ghost">{shorter ? `Try ${shorter.seconds}\u00a0s` : `Open ${toolName(d!.topRun!.toolId)}`}</Link> : null}</div>)}</div>}
+      {tips.length > 0 && <section className="spn" data-testid="spend-tips" aria-label="Worth a look">
+        <h2 className="eyebrow spn-title">Worth a look</h2>
+        <div className="spn-list">{tips.map((x, i) => { const fig = x.kind === 'over' ? `+${fmtUsd(x.usd)}` : x.kind === 'failed' ? fmtUsd(x.usd) : `${Math.round((d!.tools[0]?.share ?? 0) * 100)}%`;
+          const label = x.kind === 'over' ? 'Open run' : x.kind === 'failed' ? 'Show failed runs' : tipTo ? (shorter ? `Try ${shorter.seconds}\u00a0s` : `Open ${toolName(d!.topRun!.toolId)}`) : '';
+          const act = x.kind === 'over' ? <Link to={`/jobs/${x.jobId}`} className="spn-act">{label}<span aria-hidden> →</span></Link>
+            : x.kind === 'failed' ? <button type="button" className="spn-act" data-testid="spend-failed-runs" onClick={() => onAllRuns({ status: 'failed-counted', from: period === 'all' ? '' : dateOf(d!.from) })}>{label}<span aria-hidden> →</span></button>
+            : label ? <Link to={tipTo!} className="spn-act">{label}<span aria-hidden> →</span></Link> : null;
+          return <div key={i} className={`spn-item is-${x.kind}`} data-testid={`spend-tip-${x.kind}`}>
+            <span className="spn-ic" aria-hidden>{NOTICE_ICON[x.kind]}</span>
+            <div className="spn-body"><b>{x.head}</b><p>{x.text}</p></div>
+            <span className="spn-fig">{fig}</span>{act}</div>; })}</div>
+      </section>}
     </>}
 
   </>;
 }
+
+/** The notices' icons: over quote, failed runs counted, the saving tip. */
+const ic = (d: string) => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>;
+const NOTICE_ICON = { over: ic('M7 17L17 7M9 7h8v8'), failed: ic('M12 8v5M12 16.5v.01M10.3 3.9L2.4 17.5A2 2 0 0 0 4.1 20.5h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z'), tip: ic('M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z') } as const;
 
 /** The hero sparkline: running total over the period, an end dot, the first date and "Today" under it. */
 function Spark({ points, unit }: { points: { t: number; usd: number }[]; unit: 'day' | 'month' }) {

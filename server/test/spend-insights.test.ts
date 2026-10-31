@@ -36,7 +36,7 @@ const ok = (m: string) => console.log('ok ' + m);
     ({ toolId: 'x', jobId: 'j-' + (o.name ?? 'x'), name: 'X', ratio: 3, count: 1, gapUsd: 0.3, estUsd: 0.15, actualUsd: 0.45, ...o });
   const t = tipLines({ periodWords: "this month's spend", paidRuns: 30, top: { name: 'Generate Video', share: 0.62 }, shorter: { seconds: 5, fromSeconds: 15, usd: 1.09, fromUsd: 3.27 },
     over: [ov({ name: 'Image to layers', ratio: 11, gapUsd: 0.3, estUsd: 0.03, actualUsd: 0.33 })] });
-  assert.equal(t.length, 2); assert.deepEqual(t[0], { tone: 'warn', kind: 'over', text: 'One Image to layers run cost 11× its quote ($0.33, quoted $0.03).', usd: 0.3, jobId: 'j-Image to layers' });
+  assert.equal(t.length, 2); assert.deepEqual(t[0], { tone: 'warn', kind: 'over', head: 'Image to layers ran 11× over', text: 'One Image to layers run cost 11× its quote ($0.33, quoted $0.03).', usd: 0.3, jobId: 'j-Image to layers' });
   assert.equal(t[1].text, "Generate Video was 62% of this month's spend. Each 15\u00a0s clip cost about $3.27; at 5\u00a0s it'd be about $1.09."); assert.equal(t[1].kind, 'tip');
   // the price was corrected since: today's quote for the same settings covers the bill
   assert.match(tipLines({ periodWords: 'p', paidRuns: 0, over: [ov({ name: 'L', nowUsd: 0.5 })] })[0].text, /That price is fixed now: the same settings quote \$0\.50 today\.$/);
