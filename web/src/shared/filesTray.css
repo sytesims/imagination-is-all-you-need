@@ -18,3 +18,6 @@
 .ft-hint{margin:2px 10px 0;color:var(--text-3,#8a8b90);font:400 11px/15px var(--font-ui,Inter,system-ui,sans-serif)}
 /* the "+N" tile when a file it hides isn't used */
 html body .ic.ic2 .ic-dock .ic-lead .ic-th-more.warn{box-shadow:inset 0 0 0 1.5px rgba(255,122,26,.8);color:#ffc89e}
+/* "N not added", inline under the composer's thumbnails */
+.bar-left{display:flex;align-items:center;gap:4px;margin:0;padding:0 2px;color:#ffc89e;font:500 12px/1.4 var(--font-ui,Inter,system-ui,sans-serif)}
+.bar-left .ft-x{width:18px;height:18px}

@@ -5,7 +5,7 @@ import { PromptPeek, type PeekForm } from '../next/PromptPeek';
 import { BrandChip } from '../../shared/BrandChip';
 import { RowMore } from '../../shared/RowMore';
 import { SlotPreview, SlotCount, fullText, prepUpload, useSlotReorder, type SlotAction } from '../../shared/SlotPreview';
-import { MoreFiles, type TrayFile } from '../../shared/FilesTray';
+import { MoreFiles, LeftNote, notAddedText, type TrayFile } from '../../shared/FilesTray';
 import { thumbsShown } from '../../shared/presetBar';
 import { handoffOf } from '../../shared/handoffFiles';
 import { PF_SHORT } from '../../shared/DockGenerate';
@@ -273,17 +273,17 @@ export default function VideoStudio(p: VideoStudioProps) {
   const vp = vps.find(x => x.id === p.fv.videoPreset || x.aliases?.includes(p.fv.videoPreset)); /* a removed look's old id (Recreate) shows the kept look */
   /* Viral templates (useViralTemplates, 2026-10-26): Look → Viral, the fill-in row above the prompt, ?template= from an Explore card */
   const viral = useViralTemplates({ prompt: p.prompt, setPrompt: p.setPrompt, promptRef: p.promptRef, provider: p.provider, setProvider: p.setProvider, engines: provs.map(x => x.id), limOf, setFv: p.setFv, setDuration: p.setDuration, toast, closePop, engineName: id => models.find(m => m.id === id)?.name ?? provs.find(x => x.id === id)?.name ?? 'LTX-2.5 22B' });
-  const refIn = useRef<HTMLInputElement>(null); const [refErr, setRefErr] = useState('');
-  const addRefs = async (fs: File[]) => { setRefErr(''); const acc: Record<string, R[]> = {}; const left: string[] = []; const msgs: string[] = [];
+  const refIn = useRef<HTMLInputElement>(null); const [refErr, setRefErr] = useState(''); const [left, setLeft] = useState(''); /* "N not added" under the prompt line (shared LeftNote) */ useEffect(() => setLeft(''), [p.provider]);
+  const addRefs = async (fs: File[]) => { setRefErr(''); setLeft(''); const acc: Record<string, R[]> = {}; const left: string[] = []; const msgs: string[] = [];
     for (const f0 of fs) { const kind = kindOfFile(f0, refKinds as MediaKind[]); const k = RK.find(x => x[1] === kind)?.[0];
       if (!kind || !k) { msgs.push(wrongTypeText(f0.name, refKinds as MediaKind[])); continue; }
       const okFmt = kind === 'image' ? undefined : (refFmts as any)?.[kind] as string[] | undefined; const ext = (f0.name.split('.').pop() ?? '').toLowerCase();
       if (okFmt && !okFmt.includes(ext)) { msgs.push(`${f0.name}: this model takes ${kind === 'audio' ? 'sound' : kind} references as ${okFmt.map(x => x.toUpperCase()).join(' or ')}.`); continue; }
-      const cur = acc[k] ?? [...(p.vrefs[k] ?? [])]; if (cur.length >= capOf(k)) { left.push(f0.name); continue; }
+      const cur = acc[k] ?? [...(p.vrefs[k] ?? [])]; if (cur.length >= capOf(k)) { left.push(kind); continue; }
       const pr = await prepUpload(f0, kind); if ('error' in pr) { msgs.push(pr.error); continue; } if (pr.note) toast(pr.note, 'info');
       cur.push({ file: pr.file, url: URL.createObjectURL(pr.file) }); acc[k] = cur; }
     Object.entries(acc).forEach(([k, l]) => p.setVrefs(k, l));
-    if (left.length) msgs.push(`${fullText(refCaps, modelName || 'This model')}: ${left.length} not added.`); setRefErr(msgs.join(' ')); };
+    setLeft(notAddedText(left.length, fullText(Object.fromEntries(Object.entries(refCaps).filter(([kk]) => left.includes(kk))), modelName || 'This model'))); setRefErr(msgs.join(' ')); };
   const fileIn = useRef<HTMLInputElement>(null); const lastIn = useRef<HTMLInputElement>(null);
   const takeStart = async (f: File) => { p.onCancelFrameHandoff?.(); if (!fileFits('image', f)) { setRefErr(wrongTypeText(f.name, ['image'])); return; } const pr = await prepUpload(f, 'image'); if ('error' in pr) { setRefErr(pr.error); return; } if (pr.note) toast(pr.note, 'info'); setRefErr(''); p.onImage([pr.file]); };
   const takeEnd = async (f: File) => { if (!fileFits('image', f)) { setRefErr(wrongTypeText(f.name, ['image'])); return; } const pr = await prepUpload(f, 'image'); if ('error' in pr) { setRefErr(pr.error); return; } if (pr.note) toast(pr.note, 'info'); setRefErr(''); p.setLastFrame({ file: pr.file, url: URL.createObjectURL(pr.file) }); };
@@ -472,6 +472,7 @@ export default function VideoStudio(p: VideoStudioProps) {
           {p.suggestPrompt && !p.prompt.trim() && <button type="button" className="ic-prompt-sugg" data-testid="use-image-prompt" {...tip(p.suggestPrompt)} onClick={() => { p.setPrompt(p.suggestPrompt!); requestAnimationFrame(() => p.promptRef.current?.focus()); }}>Use the picture’s prompt</button>}
         </div>
         <SwitchNote note={sw.note} testId="vs-switch-note" />
+        <LeftNote text={left} onClose={() => setLeft('')} testId="vs-not-added" />
         <div className="ic-chiprow"><div ref={chipsEl} className="ic-chips">
           <input ref={fileIn} type="file" hidden accept={IMAGE_ACCEPT} data-picker-title={p.mode === 'r2v' ? 'Choose a reference' : 'Choose a start frame'} data-picker-limits="One image · PNG, JPG or WebP · or a frame from one of your videos" data-picker-frames="" data-testid="vs-start-input" onChange={e => { const fs = Array.from(e.target.files ?? []); e.currentTarget.value = ''; if (fs[0]) void takeStart(fs[0]); }} />
           <input ref={refIn} type="file" hidden multiple data-picker-title="Choose references" data-picker-limits={refLimits} data-testid="vs-ref-input" accept={RK.filter(([, kind]) => refKinds.includes(kind)).map(([, kind]) => refAccept(kind, refFmts)).join(',')} onChange={e => { const fs = Array.from(e.target.files ?? []); e.currentTarget.value = ''; const r = repl.current; repl.current = null; if (r && fs[0]) void replaceRef(r.k, r.i, fs[0]); else void addRefs(fs); }} />

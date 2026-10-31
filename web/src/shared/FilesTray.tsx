@@ -54,3 +54,10 @@ export function MoreFiles({ items, hidden, onRemove, onMove, watch, summary, off
   </>;
 }
 
+/** "3 not added: Nano Banana 2 takes up to 4 pictures", inline under the composer's prompt line (beside the switch note), until dismissed or the next add. */
+export function LeftNote({ text, onClose, testId = 'bar-left' }: { text: string; onClose: () => void; testId?: string }) {
+  if (!text) return null;
+  return <p className="bar-left" role="status" data-testid={testId}><span>{text}</span><button type="button" className="ft-x" aria-label="Dismiss" onClick={onClose}><CloseIcon size={10} /></button></p>;
+}
+/** The words of LeftNote: "3 not added: Nano Banana 2 takes up to 4 pictures." */
+export const notAddedText = (n: number, takes: string) => (n > 0 ? `${n} not added: ${takes.replace(/^This model/, 'this model')}.` : '');

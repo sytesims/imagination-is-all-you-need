@@ -18,6 +18,7 @@ import type { JobState, ToolInfo } from '../../api';
 import type { VideoMeta } from '../../shared/UploadVideo';
 import { readVideo } from '../../shared/UploadVideo';
 import { planAudioIntake, type AudioPick } from './audioIntake';
+import { LeftNote, notAddedText } from '../../shared/FilesTray';
 import { firstWords } from '../../shared/missing';
 import { TRANSLATE_DOC } from '../../shared/brand';
 import { useDockHeight, useChipFit } from '../../shared/dockFit';
@@ -140,7 +141,8 @@ export default function AudioPage(p: AudioPageProps) {
   useEffect(() => { let on = true; if (p.song) durOf(p.song).then(d => on && setSongSec(d)); else setSongSec(undefined); return () => { on = false; }; }, [p.song]);
   /* where each file goes: the "+" row you picked (Voice sample → the samples), else the clip first, then the samples (audioIntake.ts) */
   const pickFor = useRef<AudioPick | null>(null);
-  const takeFiles = async (fs: File[]) => { setUpErr(''); const want = pickFor.current; pickFor.current = null; if (!fs.length) return;
+  const [left, setLeft] = useState(''); /* "N not added" under the prompt line (shared LeftNote) */
+  const takeFiles = async (fs: File[]) => { setUpErr(''); setLeft(''); const want = pickFor.current; pickFor.current = null; if (!fs.length) return;
     const ri = replacingSample.current; replacingSample.current = null;
     const plan = planAudioIntake(fs.map(f => fileFits('audio', f) ? 'audio' : fileFits('video', f) ? 'video' : 'other'), { want, slots: { video: !!slotOf('video'), audio: !!slotOf('audio'), voice: !!slotOf('voiceAudio') },
       cover: wf.id === 'cover', clipIsAudio: !!wf.oneOf?.includes('audio'), hasClip: !!p.clip, hasVideo: !!p.video, samples: p.samples.length, maxSamples: maxS, replacing: ri != null });
@@ -152,7 +154,7 @@ export default function AudioPage(p: AudioPageProps) {
       if (d === 'song') { p.setSong(f); continue; }
       if (d === 'clip') { const was = p.clip?.file.name; p.setVideo(null); p.setClip({ file: f, sec: await durOf(f) }); if (was && was !== f.name) toast(`Replaced ${was} with ${f.name}`, 'info'); continue; }
       samples = ri != null && samples[ri] ? samples.map((x, j) => j === ri ? f : x) : [...samples, f]; p.setSamples(samples); p.setFieldVals(v => ({ ...v, voice: 'clone' })); }
-    if (over) msgs.push(`Up to ${maxS} voice sample${maxS > 1 ? 's' : ''}: ${over} not added.`);
+    setLeft(notAddedText(over, `this model takes up to ${maxS} voice sample${maxS > 1 ? 's' : ''}`));
     if (wrong) msgs.push(slotOf('voiceAudio') && !maxS && !slotOf('audio') ? 'This model uses its own voices, so it can’t clone a sample.' : `${wf.name} takes ${wf.slots.map(s => s.label.toLowerCase()).join(', ') || 'no files'}.`);
     setUpErr(msgs.join(' ')); };
   const accept = [slotOf('video') ? VIDEO_ACCEPT : '', slotOf('audio') || (slotOf('voiceAudio') && maxS) ? AUDIO_ACCEPT : ''].filter(Boolean).join(',');
@@ -381,6 +383,7 @@ export default function AudioPage(p: AudioPageProps) {
             </PromptTabs>}
         </div>
         <SwitchNote note={swNote.note} testId="ap-switch-note" />
+        <LeftNote text={left} onClose={() => setLeft('')} testId="ap-not-added" />
         <div className="ic-chiprow"><div ref={chipsEl} className="ic-chips">
           <input ref={fileIn} type="file" hidden data-testid="ap-file-input" accept={accept} onChange={e => { const fs = Array.from(e.target.files ?? []); e.currentTarget.value = ''; void takeFiles(fs); }} />
           <span className="ic-fixed" data-testid="ap-chips-fixed">
