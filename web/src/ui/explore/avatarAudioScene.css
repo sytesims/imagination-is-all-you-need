@@ -10,7 +10,7 @@
 .aas-scene .sfilm-controls{z-index:3;left:18px;right:38px;bottom:22px;top:auto;padding:28px 12px 8px;border:0;border-radius:0 0 18px 18px;background:linear-gradient(transparent,#14151ad9)}
 .aas[data-scene-phase=portrait] .sfilm-controls{visibility:hidden}
 .aas[data-scene-phase=reveal] .sfilm-controls{visibility:hidden}
-.aas-scene .sfilm-seek{height:12px;opacity:.7}.aas-scene .sfilm-transport{gap:10px}.aas-scene .sfilm-transport>button{font-size:11px}
+.aas-scene .sfilm-transport{gap:4px}
 .aas-scene .sfilm-time{font-size:11px}.aas .sfilm-control-space{min-width:0}
 .aas-scene .aas-connection{display:block;position:absolute;z-index:1;left:0;top:0;overflow:visible;pointer-events:none}
 .aas-connection path{fill:none;stroke-linecap:round;stroke-linejoin:round}
@@ -26,5 +26,5 @@
 .aas .sfilm:fullscreen .sfilm-controls{bottom:12px}
 .aas :focus-visible{outline:2px solid var(--text-1);outline-offset:3px}
 @media(max-width:1200px){.aas-scene{--aas-card-top:78px}.aas-scene .aas-player{padding-top:78px}.aas-scene .aas-voice{left:auto;right:24px;top:0;width:166px;padding:10px 12px;gap:3px;grid-template-columns:1fr 56px;align-items:center}.aas-voice svg{grid-column:2;grid-row:1/3;height:24px}.aas-voice-caption{grid-row:2}.aas-scene .aas-demo{top:calc(66% + 27px)}}
-@media(max-width:600px){.aas-scene .aas-card-shadow{left:18px}.aas-scene .sfilm-controls{left:14px;right:26px;bottom:20px;padding:24px 8px 5px}.aas .sfilm-transport{gap:6px}.aas .sfilm-transport>button{min-height:44px;font-size:11px}.aas .sfilm-time{font-size:11px}.aas-scene .sfilm-seek{height:12px}.aas-scene .aas-voice{right:20px}.aas-scene .aas-demo{left:48%;padding:0 16px}.aas-scene .sfilm-transport>button:last-child{font-size:0}.aas-scene .sfilm-transport>button:last-child::after{content:'⛶';font-size:17px}}
+@media(max-width:600px){.aas-scene .aas-card-shadow{left:18px}.aas-scene .sfilm-controls{left:14px;right:26px;bottom:20px;padding:24px 8px 5px}.aas .sfilm-transport{gap:2px}.aas .sfilm-time{font-size:11px}.aas-scene .aas-voice{right:20px}.aas-scene .aas-demo{left:48%;padding:0 16px}}
 @media(prefers-reduced-motion:reduce){.aas-canvas,.aas-demo,.aas-voice,.aas-connection,.aas-card-shadow{display:none!important}.aas-scene .sfilm-stage{visibility:visible}}

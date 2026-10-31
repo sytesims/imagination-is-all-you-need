@@ -303,8 +303,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.match(css, /\.xpb-player \.sfilm-media\{object-fit:contain\}/, 'uncropped screen recording');
     assert.match(css, /\.xpb-player \.sfilm-controls\{position:relative/, 'transport does not cover screen text');
     assert.match(board, /className="xv-btn" data-testid="xp-board-cta"/, 'Canvas uses the same full-size primary action as other chapters');
-    assert.match(css, /\.xpb-player \.sfilm-transport>button\{min-height:44px;[^}]*border-radius:var\(--radius-md\)/, 'Canvas-only quiet controls retain touch-sized targets');
-    assert.match(css, /\.xpb-player \.sfilm-transport \.snd-toggle\{width:44px;height:44px\}/, 'the shared sound control is not a tiny exception');
+    assert.match(css, /\.xpb-player \.sfilm-btn,\.xpb-player \.sfilm-transport \.snd-toggle\{width:44px;height:44px\}/, 'Canvas keeps touch-sized round controls, sound included');
     assert.doesNotMatch(xs.slice(xs.indexOf('export function XpSwap'), xs.indexOf('export function XpLayers')), /\{S\.eyebrow\}/, 'swap chapter label removed');
     assert.match(xs, /<ChapterText id="layers" title=/, 'layers chapter label omitted without removing its headline');
     ok('Canvas: selected product-shots demo, on-screen loop, shared page sound button, uncropped recording; chapter labels removed'); }

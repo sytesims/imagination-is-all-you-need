@@ -97,14 +97,41 @@
 @media (max-width:900px){.sfilm{aspect-ratio:auto;max-height:none;display:flex;flex-direction:column}.sfilm-stage{position:relative;aspect-ratio:16/9}
   .sfilm-copy,.sfilm-aside{position:relative;left:auto;right:auto;bottom:auto;width:auto;max-width:none;padding:20px}.sfilm-aside{align-items:stretch;padding-top:0}.sfilm-takes{flex-direction:row;flex-wrap:wrap}}
 
-/* Opt-in ShowcaseFilm transport; the ordinary autoplay showcases are unchanged. */
-.sfilm-controls{position:absolute;left:20px;right:20px;bottom:12px;z-index:4;color:#fff;font:500 12px/1 var(--font-ui)}
-.sfilm-seek{display:block;width:100%;height:16px;margin:0;padding:0;accent-color:var(--accent);cursor:pointer}
-.sfilm-transport{display:flex;align-items:center;gap:14px;min-height:36px}
-.sfilm-transport>button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:32px;padding:4px 2px;border:0;border-radius:4px;background:none;color:rgba(255,255,255,.85);font:600 12px/1 var(--font-ui);cursor:pointer}
-.sfilm-transport>button:hover{color:#fff;background:rgba(255,255,255,.07)}
-.sfilm-transport>button:focus-visible,.sfilm-seek:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap)}
-.sfilm-time{font-variant-numeric:tabular-nums;white-space:nowrap}.sfilm-time>span{color:rgba(255,255,255,.45)}.sfilm-control-space{flex:1}
-.sfilm-transport .snd{position:static;display:inline-flex}.sfilm-transport .snd-toggle{width:32px;height:32px}
+/* Opt-in ShowcaseFilm transport (2026-10-31): a soft bottom fade, a thin orange progress line (a real range input, drawn the same in Safari,
+   Chrome and Firefox; --p is the played share, set without a re-render), a round orange Play/Pause and quiet round icon buttons. */
+.sfilm-controls{position:absolute;left:0;right:0;bottom:0;z-index:4;padding:48px 16px 10px;color:#fff;font:500 12px/1 var(--font-ui);
+  background:linear-gradient(to bottom,transparent,rgba(0,0,0,.38) 45%,rgba(0,0,0,.72));pointer-events:none}
+.sfilm-controls>*{pointer-events:auto}
+.sfilm-seek{--th:3px;display:block;width:100%;height:16px;margin:0;padding:0;background:transparent;cursor:pointer;-webkit-appearance:none;appearance:none}
+.sfilm-seek:hover,.sfilm-seek:focus-visible,.sfilm-seek:active{--th:5px}
+.sfilm-seek::-webkit-slider-runnable-track{height:var(--th);border-radius:999px;transition:height .15s ease;
+  background:linear-gradient(to right,var(--accent) var(--p,0%),rgba(255,255,255,.28) var(--p,0%))}
+.sfilm-seek::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:13px;height:13px;margin-top:calc((var(--th) - 13px) / 2);border:0;border-radius:50%;
+  background:var(--accent);box-shadow:0 0 0 3px rgba(0,0,0,.25);transform:scale(0);transition:transform .15s ease}
+.sfilm-seek::-moz-range-track{height:var(--th);border-radius:999px;background:rgba(255,255,255,.28)}
+.sfilm-seek::-moz-range-progress{height:var(--th);border-radius:999px;background:var(--accent)}
+.sfilm-seek::-moz-range-thumb{width:13px;height:13px;border:0;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px rgba(0,0,0,.25);transform:scale(0);transition:transform .15s ease}
+.sfilm-seek:is(:hover,:focus-visible,:active)::-webkit-slider-thumb{transform:scale(1)}
+.sfilm-seek:is(:hover,:focus-visible,:active)::-moz-range-thumb{transform:scale(1)}
+.sfilm-controls .sfilm-seek:focus-visible{outline:none;box-shadow:none} /* focus shows on the thumb, not as a box */
+.sfilm-seek:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 var(--focus-ring-w) #fff}
+.sfilm-seek:focus-visible::-moz-range-thumb{box-shadow:0 0 0 var(--focus-ring-w) #fff}
+.sfilm-seek:disabled{cursor:default;opacity:.5}
+.sfilm-transport{display:flex;align-items:center;gap:6px;min-height:44px;margin-top:4px}
+.sfilm-btn{display:inline-grid;place-items:center;flex:none;width:36px;height:36px;padding:0;border:0;border-radius:50%;background:transparent;color:#fff;cursor:pointer;
+  transition:background .15s ease,transform .15s ease}
+.sfilm-btn:hover{background:rgba(255,255,255,.14)}
+.sfilm-btn:active{transform:scale(.94)}
+.sfilm-btn-play{width:40px;height:40px;margin-right:4px;background:var(--accent);color:var(--on-accent);box-shadow:0 4px 14px rgba(0,0,0,.3)}
+.sfilm-btn-play:hover{background:color-mix(in srgb,var(--accent) 88%,#fff)}
+.sfilm-btn-play svg{margin-left:2px}.sfilm-btn-play[aria-label="Pause"] svg{margin-left:0}
+.sfilm-btn:focus-visible,.sfilm-transport .snd-toggle:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap)}
+.sfilm-time{margin-left:6px;font:500 12px/1 var(--font-ui);font-variant-numeric:tabular-nums;white-space:nowrap;color:#fff}.sfilm-time>span{color:rgba(255,255,255,.6)}.sfilm-control-space{flex:1}
+/* the shared sound button, drawn as one of the round icon buttons (the icon itself says on / off) */
+.sfilm-transport .snd{position:static;display:inline-flex}
+.sfilm-transport .snd-toggle{width:36px;height:36px;background:transparent;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+.sfilm-transport .snd-toggle:hover{background:rgba(255,255,255,.14)}
+.sfilm-transport .snd-toggle.is-on{background:transparent;color:#fff}.sfilm-transport .snd-toggle.is-on:hover{background:rgba(255,255,255,.14)}
 .sfilm-control-error{display:block;margin-top:4px;font-size:12px;line-height:1.4}
-@media(pointer:coarse){.sfilm-transport>button,.sfilm-transport .snd-toggle{min-height:44px;min-width:44px}.sfilm-seek{height:24px}}
+@media(pointer:coarse){.sfilm-btn,.sfilm-transport .snd-toggle{width:44px;height:44px}.sfilm-seek{height:24px}}
+@media(prefers-reduced-motion:reduce){.sfilm-btn,.sfilm-seek::-webkit-slider-thumb,.sfilm-seek::-moz-range-thumb,.sfilm-seek::-webkit-slider-runnable-track{transition:none}.sfilm-btn:active{transform:none}}
