@@ -12,11 +12,12 @@ import { priceOf, generateLabel, Price } from './price';
 import { validateMentions, renumberMentions, mentionLabel, MentionKind } from './mentions';
 import { KEY_PREFIX } from './useJobs';
 import { hasModelTokens } from '../../../server/src/shared/typedPrompt';
+import { primeClip } from './clipInfo';
 
 // ---------- Media picker ----------
 export type MediaTab = 'uploads' | 'presets' | 'generations' | 'liked';
 export interface MediaItem { id: string; tab: MediaTab; type: 'image' | 'video'; url: string; thumbUrl: string; name: string; createdAt: number; jobId?: string | null; toolId?: string | null; label?: string | null;
-  /** how many times the file was used or uploaded */ uses?: number; /** a frame saved from a video: its source clip */ frameOf?: { jobId?: string | null; url?: string; at?: unknown; t?: number } }
+  /** how many times the file was used or uploaded */ uses?: number; /** a fresh upload's size and length (clips: ffprobe) */ width?: number | null; height?: number | null; duration?: number | null; /** a frame saved from a video: its source clip */ frameOf?: { jobId?: string | null; url?: string; at?: unknown; t?: number } }
 export interface MediaPage { tab: MediaTab; type: 'image' | 'video' | 'all'; range: 'recent' | 'all'; sort: string; q: string; page: number; pageSize: number; total: number; hasMore: boolean; counts: Record<MediaTab, number>; items: MediaItem[] }
 export interface MediaFilter { tab: MediaTab; type?: 'image' | 'video' | 'all'; range?: 'recent' | 'all'; sort?: 'new' | 'old' | 'name'; q?: string; pageSize?: number; /** <project id> | none | all */ project?: string }
 export async function fetchMedia(f: MediaFilter & { page?: number }): Promise<MediaPage> {
@@ -26,7 +27,7 @@ export async function fetchMedia(f: MediaFilter & { page?: number }): Promise<Me
 export async function uploadMedia(files: File[], projectId?: string | null): Promise<MediaItem[]> {
   const fd = new FormData(); if (projectId) fd.append('projectId', projectId); /* tags the upload to that project (before the files) */ files.forEach(f => fd.append('file', f));
   const r = await fetch('/api/media', { method: 'POST', body: fd }); const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error || 'Upload failed'); return j.items;
+  if (!r.ok) throw new Error(j.error || 'Upload failed'); for (const m of j.items ?? []) if (m?.type === 'video') primeClip(m.url, m); return j.items;
 }
 /** Turn a picked library item into a File for the existing upload slots. */
 export async function mediaToFile(m: MediaItem): Promise<File> {

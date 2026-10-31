@@ -49,7 +49,9 @@ import { setCard, submit, reveal } from './agentApi';
 import { addResultCard, probeSize } from './resultCardUtil';
 import { QuickActions } from './QuickActions';
 import { NodeFrame } from './NodeFrame';
-import { CardInputs } from './CardInputs';
+import { CardInputs, chooseForSlot } from './CardInputs';
+import { useClipInfo } from '../shared/clipInfo';
+import { clipIssue, clipRuleFor } from '../../../server/src/shared/clipLimits';
 import * as Ic from './icons';
 import { placeWord, cardLabel, emptyLine } from './cardLook';
 import { badgeText } from '../../../server/src/shared/takeReview';
@@ -126,7 +128,11 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
   const seenTakes = useRef(p.takes.length); const [developing, setDeveloping] = useState('');
   useEffect(() => { const n = p.takes.length; if (n > seenTakes.current && p.status === 'done' && take) { setDeveloping(take.url); const t = window.setTimeout(() => setDeveloping(''), 1500); seenTakes.current = n; return () => window.clearTimeout(t); } seenTakes.current = n; }, [p.takes.length, p.status]); // eslint-disable-line react-hooks/exhaustive-deps
   const intent = useDownloadIntent(spec?.provider || null); const dlSize = spec ? intentSize(q, intent, spec.provider) : null;
-  const problems = spec && draft ? preflightProblems({ slots: spec.slots.map(s => ({ name: s.name, label: s.label, required: s.required, filled: !!st?.bySlot[s.name]?.length, missing: s.missing })),
+  /* a clip the run would refuse (too small, too short, too long) is flagged here, in the server's words (B9) */
+  const clipRule = spec ? clipRuleFor(spec.tool.id, spec.provider) : null;
+  const clips = useClipInfo(clipRule && draft && spec ? spec.slots.filter(s => s.accept === 'video').flatMap(s => (st?.bySlot[s.name] ?? []).map(i => i.url)) : []);
+  const clipProblem = (name: string) => { const u = st?.bySlot[name]?.find(i => i.kind === 'video')?.url; return u ? clipIssue(clipRule, clips[u])?.message ?? null : null; };
+  const problems = spec && draft ? preflightProblems({ slots: spec.slots.map(s => ({ name: s.name, label: s.label, required: s.required, filled: !!st?.bySlot[s.name]?.length, missing: s.missing, issue: s.accept === 'video' ? clipProblem(s.name) : null })),
     prompt: missing && !spec.slots.some(s => s.required && !st?.bySlot[s.name]?.length) ? { missing } : null, quote: q, modelName: model }) : [];
 
   /* prompt field fills the node body; keys stay in the field; Enter generates, Shift+Enter is a new line, Esc leaves */
@@ -153,6 +159,7 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
       case 'focus-prompt': setPfOpen(false); requestAnimationFrame(() => ta.current?.focus()); return;
       case 'add-key': case 'download': case 'turn-on': case 'install-node': case 'set-up': { const ps = setupPlacesOf(m, q); const pl = ps.find(x => x.runOn === a.runOn) ?? ps[0]; if (!pl) return;
         try { await doSetupPlace(spec.tool.id, m, spec.provider, pl); } catch (er) { toast((er as Error).message || 'That didn’t work. Try again.', 'error'); } if (f.kind !== 'download') setPfOpen(false); return; }
+      case 'choose-photo': { const sl = spec.slots.find(x => x.name === a.slot) ?? spec.slots.find(x => x.required) ?? spec.slots[0]; setPfOpen(false); if (sl) chooseForSlot(editor, shape.id, sl, toast); return; }
       default: setPfOpen(false); toast('Draw an arrow into the node from a result, or use Add to pick a file.');
     } };
   useEffect(() => { const f = (e: Event) => { if ((e as CustomEvent).detail?.cardId === shape.id) void generate(); }; addEventListener(RUN_EVT, f); return () => removeEventListener(RUN_EVT, f); });
