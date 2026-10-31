@@ -55,7 +55,7 @@ export const CLOUD_DEFAULTS: Record<string, CloudDefault> = {
   'remove-bg': { model: 'fal-bria-rmbg', comfyKey: true, place: R, cents: 2, typical: '1 photo', why: 'Clean cut-outs, made for this job', note: 'No partner model removes backgrounds' },
   expand: { model: 'fal-bria-expand', comfyKey: true, place: R, cents: 3, typical: '1 photo', why: 'Made for extending photos', note: 'No partner model extends photos' },
   erase: { model: 'fal-bria-eraser', comfyKey: true, place: R, cents: 3, typical: '1 photo', why: 'Made for removing objects', note: 'No partner model erases objects' },
-  'material-swap': { model: 'api-qwen-image', comfyKey: true, place: R, cents: 5, typical: '1 image', why: 'Lowest-cost two-photo edit; the same Qwen wording as the free local route', note: 'User (2026-10-31): when the local run does not fit in memory, start on the cheapest cloud model (Qwen Image 3.0 and Seedream 5.0 both list at 5 cents)' },
+  'material-swap': { model: 'api-nano-banana', comfyKey: true, place: R, cents: 9, typical: '1 image', why: 'Keeps the object and the scene while the material changes', note: NANO_KEEP },
   'try-on': { model: 'router-bria-tryon', comfyKey: true, place: R, cents: 6, typical: '1 try-on', why: 'Made for trying on clothes', note: 'No partner model does try-on' },
   soul: { model: 'comfy-soul', comfyKey: false, place: 'fal', cents: 1, typical: '1 image', why: 'Photo Looks run their LoRA on fal' },
 

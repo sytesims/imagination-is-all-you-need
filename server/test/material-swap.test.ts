@@ -102,7 +102,7 @@ ok('tool: object → image 1, material → image 2; missing picture, too-long wo
   ok('memory: base + 32 GB per reference megapixel on a Mac (2.2 elsewhere), from the graph\'s own sizes; 64 GB Mac too heavy for two pictures, one still runs; 256 GB fits');
   // default place: Use local on → local where it fits, else the cloud default (local stays selectable with the too-heavy warning)
   PR.savePrefs({ ...PR.getPrefs(), global: { ...PR.getPrefs().global, useLocal: true } }); setLocalAvailable(true);
-  for (const [prof, want] of [['mac256', 'comfy-qwen21'], ['mac64', 'api-qwen-image']] as const) {
+  for (const [prof, want] of [['mac256', 'comfy-qwen21'], ['mac64', 'api-nano-banana']] as const) {
     HW.setHardwareOverride(prof); R.clearRequirementsCache(); const d = toolDefaults(ms);
     assert.equal(d.defaultProvider, want, `${prof}: default ${d.defaultProvider} (${d.defaultFallback?.note ?? ''})`);
     if (prof === 'mac64') { const q = d.models.find((m) => m.id === 'comfy-qwen21')!; assert.equal(q.reasonCode, 'too_heavy'); assert.equal(q.fit?.verdict, 'too_heavy'); }
