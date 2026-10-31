@@ -78,8 +78,15 @@ export const asShape = (v: unknown): AdShape => (AD_SHAPE_LIST.includes(v as AdS
 
 export interface AdSizeOption { shape: AdShape; label: string; tag: string; w: number; h: number; /** "Instagram & Facebook Feed, X Square" */ where: string; safe: Edges }
 /** The sizes for these platforms: one per shape (in the order the shapes are listed), drawn at the biggest size any of them asks for,
- *  with the safe zone that keeps clear of every one of them. */
-export function adSizesFor(platforms: AdPlatform[]): AdSizeOption[] {
+ *  with the safe zone that keeps clear of every one of them. The same platforms give back the same (frozen) objects: the cards' draw
+ *  effects depend on `safe`, and a fresh object on every render kept them redrawing forever (perf audit 2026-10-31). */
+const sizesCache = new Map<string, readonly AdSizeOption[]>();
+export function adSizesFor(platforms: readonly AdPlatform[]): readonly AdSizeOption[] {
+  const key = platforms.join(); let hit = sizesCache.get(key);
+  if (!hit) { hit = Object.freeze(buildSizes(platforms).map((s) => Object.freeze({ ...s, safe: Object.freeze(s.safe) }))); sizesCache.set(key, hit); }
+  return hit;
+}
+function buildSizes(platforms: readonly AdPlatform[]): AdSizeOption[] {
   const out: AdSizeOption[] = [];
   for (const shape of AD_SHAPE_LIST) {
     const spots = platforms.flatMap((p) => AD_PLATFORMS[p].sizes.filter((s) => s.shape === shape).map((s) => ({ ...s, p })));

@@ -149,7 +149,8 @@ function runOne(file) {
     const env = { ...baseEnv, TEST_PORT_OFFSET: String(2000 + slot * 1000), TMPDIR: path.join(dir, 'tmp'), OPENHIGGSFIELD_DATA_DIR: path.join(dir, 'data'),
       OPENHIGGSFIELD_ENV_FILE: path.join(dir, 'none.env'), OPENHIGGSFIELD_FILMING_FILE: path.join(dir, 'filming.json'), FORCE_COLOR: '0', NO_COLOR: '1',
       OPENHIGGSFIELD_BACKEND: 'mock' /* tests run on the mock backend unless they ask for comfy (the app's own default is comfy since 2026-10-29) */,
-      OPENHIGGSFIELD_COMFY_DETECT_URLS: '' /* never look for a real ComfyUI on this machine's usual ports */ };
+      OPENHIGGSFIELD_COMFY_DETECT_URLS: '' /* never look for a real ComfyUI on this machine's usual ports */,
+      OPENHIGGSFIELD_TOOLS_CACHE_MS: '0' /* GET /api/tools rebuilt on every read (tests drop files and read the change back at once); payload-perf tests the cache */ };
     const log = fs.openSync(path.join(LOGS, file.replace(/\.ts$/, '.log')), 'w'); const start = Date.now();
     const p = spawn(TSX, [path.join('test', file)], { cwd: SERVER, env, stdio: ['ignore', log, log], detached: true });
     running.set(file, p); progress(); let timedOut = false;
