@@ -34,7 +34,7 @@ ok('flow shortcuts open in the Video tab; only Direct a Shot leaves, marked “3
 for (const w of VIDEO_WORKFLOWS) for (const r of w.oldRoutes) assert.ok(VIDEO_REDIRECTS[r]?.startsWith(VIDEO_PAGE), `${r} redirects in`);
 for (const id of ['object-swap', 'motion-transfer', 'restyle', 'reshoot', 'camera', 'photo-fx', 'upscale', 'h3-extend', 'footage-fx', 'reframe', 'remove-bg', 'sdr-hdr', 'fps-boost', 'depth-map', 'cutout', 'app-transition', 'app-ugc-ad', 'app-orbit-shot', 'app-anime-restyle', 'app-video-upscale'])
   assert.ok(VIDEO_REDIRECTS[`/tools/${id}`]?.startsWith(`${VIDEO_PAGE}?workflow=`), `/tools/${id} redirects to its workflow`);
-ok('old /tools/<id> video pages redirect to /tools/h3-video?workflow=<id>');
+ok('old /tools/<id> video pages redirect to /video?workflow=<id>');
 
 // 4. the standalone screens are gone and nothing registers them
 for (const f of ['tools/videoSwap/VideoSwapTool.tsx', 'tools/reshoot/ReshootTool.tsx', 'tools/reshoot/AnglesStart.tsx', 'ui/video/StudioGen.tsx']) assert.ok(!fs.existsSync(path.join(WEB, f)), `${f} removed`);

@@ -439,18 +439,11 @@ body.nf-port-dragging,body.nf-port-dragging *{cursor:crosshair!important}
 html body .nf.gc .nf-foot .gen-btn.gen-node{flex:1!important;max-width:none!important;height:34px!important;min-height:34px!important;font-size:calc(12.5px * var(--nf-k))!important}
 html body .nf.gc .nf-foot .gen-btn.gen-node .gen-price{display:none!important}
 .gc .nf-foot .nf-takes{flex:1;min-width:0;margin:0}
-.gc-run{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px}
-.gc-run-l{display:flex;align-items:baseline;gap:8px;min-width:0}
-.gc-run-l b{font:600 calc(12px * var(--nf-k))/1.2 var(--font-sans,Inter,sans-serif);color:var(--text-1,#F7F7F8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gc-run-l small{margin-left:auto;font:500 calc(10.5px * var(--nf-k))/1 var(--font-mono,'JetBrains Mono',monospace);color:var(--text-2,#898A8B)}
-.gc-run-bar{position:relative;height:3px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
-.gc-run-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:inherit;background:var(--accent,#FF7A1A);transition:width 400ms var(--ease,ease)}
-.gc-run-bar.ind i{width:32%;animation:gc-sweep 1.4s var(--ease,ease) infinite}
 @keyframes gc-sweep{from{left:-32%}to{left:100%}}
 .gc-failfoot{flex:1;min-width:0;display:flex;align-items:center;gap:8px}
 .gc-failfoot small{flex:1;min-width:0;font:500 calc(11.5px * var(--nf-k))/1.3 var(--font-sans,Inter,sans-serif);color:var(--text-2,#898A8B);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-@media (prefers-reduced-motion:reduce){.gc-stage,.gc .gc-prompt-in,.gc-run-bar i{animation:none;transition:none}.gc-shimmer,.gc-run-bar.ind i{animation:none}}
+@media (prefers-reduced-motion:reduce){.gc-stage,.gc .gc-prompt-in{animation:none;transition:none}.gc-shimmer{animation:none}}
 
 /* ---------- typed ports (2026-10-27): a dot per input kind on the left edge, one output dot on the right, coloured by what travels ---------- */
 .nf-k-image{--k:var(--media-image,#FF8A3D)}.nf-k-video{--k:var(--media-video,#A98BFF)}.nf-k-audio{--k:var(--media-audio,#4FC9B8)}.nf-k-text{--k:var(--media-text,#D9D9DE)}
@@ -731,3 +724,115 @@ html body .apop.ade-pop{z-index:1210}
 .adt-gl-tone-light b{background:#fff}
 .adt-gl-tone-dark b{background:#14151A}
 .bp-opt:disabled .adt-gl{opacity:.4}
+
+/* ======================================================================================================================
+   One card anatomy for every type (2026-10-31; supersedes the per-type layouts above where they overlap): generate, result,
+   upload, ad, prompt, note and compare cards all share NodeFrame and these rules:
+     a type line (small icon + type) with a status dot on the right → a big title → the media edge to edge, with a thin
+     progress bar on its bottom edge while it runs → one status line (the run's stage and time left, or model · price) →
+     the prompt once (two lines, a quiet More) → one action row.
+   Under OVERVIEW_ZOOM (cardLook.ts, 60 %) the board's container gets data-far: a card shows only its title (large), its
+   media and one status line.
+   ====================================================================================================================== */
+.tl-container .nf.nf-node{--lk-pad:14px;--nf-k:clamp(1,calc(.85 / var(--tl-zoom,1)),1.5);overflow:hidden;
+  background:var(--surface-1,#131517);border-color:rgba(255,255,255,.07)}
+.tl-container .nf.nf-node.nf-sel{border-color:color-mix(in srgb,var(--accent,#FF7A1A) 60%,transparent)}
+.tl-container .nf.nf-node .nf-port{z-index:9}
+/* the ports sit on the edge: the frame clips its inside, not the ports */
+.tl-container .nf.nf-node{overflow:visible}
+.tl-container .nf.nf-node>.nf-body{overflow:hidden}
+
+/* 1 · the type line: a small icon, the card type, a status dot on the right */
+.tl-container .nf.nf-node>.nf-head{height:38px;min-height:38px;padding:0 var(--lk-pad);gap:7px}
+.tl-container .nf.nf-node .nf-tile{width:auto;height:auto;background:none;box-shadow:none;color:var(--text-3,rgba(255,255,255,.5))}
+.tl-container .nf.nf-node .nf-tile svg{width:calc(13px * var(--nf-k));height:calc(13px * var(--nf-k))}
+.tl-container .nf.nf-node .nf-title,.tl-container .nf.nf-node.gc .nf-title{font:500 calc(12px * var(--nf-k))/1.2 var(--font-sans,Inter,sans-serif);color:var(--text-3,rgba(255,255,255,.5));letter-spacing:0}
+.tl-container .nf.nf-node .nf-title>button{height:24px;padding:0 4px 0 0}
+.tl-container .nf.nf-node .nf-title>button>svg{width:11px;height:11px}
+/* the status: one dot, its word for screen readers and the tooltip only */
+.tl-container .nf.nf-node .nf-status{font-size:0!important;min-height:0;height:auto;padding:0;background:none;opacity:1;gap:0}
+.tl-container .nf.nf-node .nf-status>.nf-dot{display:none}
+.tl-container .nf.nf-node .nf-status::before{content:'';width:calc(8px * var(--nf-k));height:calc(8px * var(--nf-k));border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--text-3,rgba(255,255,255,.4))}
+.tl-container .nf.nf-node .nf-status-done::before{background:var(--success,#3DDC97);box-shadow:0 0 0 3px color-mix(in srgb,var(--success,#3DDC97) 18%,transparent)}
+.tl-container .nf.nf-node .nf-status-failed::before{background:var(--warning,#E8B44A);box-shadow:0 0 0 3px color-mix(in srgb,var(--warning,#E8B44A) 18%,transparent)}
+.tl-container .nf.nf-node .nf-status-running::before{background:var(--accent,#FF7A1A);box-shadow:0 0 0 3px var(--accent-soft,rgba(255,122,26,.25));animation:nf-pulse 1.4s ease-in-out infinite}
+.tl-container .nf.nf-node .nf-acts{margin-right:2px}
+
+/* 2 · the big title */
+.tl-container .nf.nf-node>.nf-body{padding:0 var(--lk-pad) 12px;gap:10px}
+.tl-container .nf.nf-node .nf-heading{flex:none;margin:-2px 0 0;font:600 calc(20px * var(--nf-k))/1.18 var(--font-display,'Space Grotesk',Inter,sans-serif);letter-spacing:-.015em;color:var(--text-1,#F7F7F8);
+  white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.tl-container .nf.nf-node .nf-heading-empty{color:var(--text-3,rgba(255,255,255,.35))}
+
+/* 3 · the media, edge to edge: no inner border, no inner radius */
+.tl-container .nf.nf-node .nf-body>.nf-media,
+.tl-container .nf.nf-node .ax-upload,
+.tl-container .nf.nf-node .ad-stage{margin:0 calc(-1 * var(--lk-pad));border:0;border-radius:0;background:#0C0D0F}
+.tl-container .nf.nf-node .ax-body,.tl-container .nf.nf-node .ad-body{margin:0}
+.tl-container .nf.nf-node .nf-media .rc-media,.tl-container .nf.nf-node .ax-media{background:#0C0D0F}
+.tl-container .nf.nf-node .ad-pv{border-radius:0;box-shadow:none}
+.tl-container .nf.nf-node .gc-stage.gc-draft{background:radial-gradient(120% 90% at 50% 0%,rgba(255,255,255,.035),transparent 70%)}
+/* the running tile keeps its picture; its words and the prompt copy go (the status line below says it once) */
+.tl-container .nf.nf-node .gt-bot,.tl-container .nf.nf-node .gt-fade,.tl-container .nf.nf-node .gt-chip{display:none}
+.tl-container .nf.nf-node .ax-media-bar small{display:none}
+.tl-container .nf.nf-node .ax-media-bar{justify-content:flex-end;background:none}
+
+/* 4 · one status place: a thin bar on the media's bottom edge and one short line (when done: model · price) */
+.nf-mbar{display:none}
+.tl-container .nf-mbar{display:block;position:absolute;left:0;right:0;bottom:0;z-index:8;height:3px;background:rgba(255,255,255,.1);overflow:hidden}
+.tl-container .nf-mbar i{position:absolute;left:0;top:0;bottom:0;background:var(--accent,#FF7A1A);box-shadow:0 0 10px rgba(255,122,26,.6);transition:width 400ms var(--ease,ease)}
+.tl-container .nf-mbar.ind i{width:30%;animation:gc-sweep 1.6s var(--ease,ease) infinite}
+.tl-container .nf.nf-node .gc-row{min-height:22px;font:500 calc(12.5px * var(--nf-k))/1.3 var(--font-sans,Inter,sans-serif);color:var(--text-2,#898A8B)}
+.tl-container .nf.nf-node .gc-row-model{flex:1 1 auto;color:var(--text-2,#A0A1A3)}
+.tl-container .nf.nf-node .gc-row-model .mk-tile{--mk-s:16px}
+.tl-container .nf.nf-node .gc-row-place{display:none}
+.tl-container .nf.nf-node .gc-row-price{min-height:0;padding:0;background:none;color:var(--text-1,#F7F7F8)}
+.tl-container .nf.nf-node .gc-row-price .gen-price,.tl-container .nf.nf-node .nf-price .gen-price{font:600 calc(12px * var(--nf-k))/1.3 var(--font-sans,Inter,sans-serif)!important}
+.tl-container .nf.nf-node .gc-row-run{gap:8px;color:var(--text-1,#F7F7F8)}
+.tl-container .nf.nf-node .gc-row-run .nf-dot{flex:none}
+.tl-container .nf.nf-node .gc-row-run b{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tl-container .nf.nf-node .gc-run-eta{margin-left:auto;flex:none;color:var(--text-2,#898A8B);font-variant-numeric:tabular-nums}
+.tl-container .nf.nf-node .nf-model small{font-family:var(--font-sans,Inter,sans-serif)}
+
+/* 5 · the prompt once: two quiet lines, a "More" that reads as a link, never a box */
+.tl-container .nf.nf-node .gc-prompt-ro .nf-prompt-line{padding-right:0;color:var(--text-2,#898A8B)}
+.tl-container .nf.nf-node .gc-more{padding:0 0 0 18px;border-radius:0;background:linear-gradient(90deg,transparent,var(--surface-1,#131517) 16px);color:var(--text-1,#F7F7F8);font-weight:500;text-decoration:underline;text-decoration-color:rgba(255,255,255,.25);text-underline-offset:3px}
+.tl-container .nf.nf-node .gc-more:hover{background:linear-gradient(90deg,transparent,var(--surface-1,#131517) 16px);text-decoration-color:currentColor}
+.tl-container .nf.nf-node .gc-prompt-ro.open .gc-more{bottom:-2px;right:4px;background:none}
+.tl-container .nf.nf-node .gc-prompt-in{padding:0;border:0;border-radius:0;background:transparent;color:var(--text-1,#F7F7F8)}
+.tl-container .nf.nf-node .gc-prompt-in:hover{background:transparent}
+.tl-container .nf.nf-node .gc-prompt.open .gc-prompt-in{padding:10px 12px;border-radius:10px;background:var(--surface-2,#1C1E20)}
+.tl-container .nf.nf-node .gc-prompt-in::placeholder{color:var(--text-3,rgba(255,255,255,.4))}
+
+/* 6 · one action row: no rule above it, the same height everywhere */
+.tl-container .nf.nf-node>.nf-foot{border-top:0;min-height:48px;height:auto;padding:0 var(--lk-pad) 12px;gap:8px}
+.tl-container .nf.nf-node .nf-model{font:500 calc(12.5px * var(--nf-k))/1.3 var(--font-sans,Inter,sans-serif)}
+.tl-container .nf.nf-node .nf-price,.tl-container .nf.nf-node .nf-price span{font-family:var(--font-sans,Inter,sans-serif)!important}
+.tl-container .nf.nf-node .nf-price{padding:0;background:none;color:var(--text-1,#F7F7F8);font:600 calc(12px * var(--nf-k))/1.3 var(--font-sans,Inter,sans-serif)}
+.tl-container .nf.nf-node .nf-takes{background:none;padding:0}
+.tl-container .nf.nf-node .gc-v-n,.tl-container .nf.nf-node .nf-tk-n{font-family:var(--font-sans,Inter,sans-serif)}
+.tl-container .nf.nf-node.ad-card .nf-body{padding:0 var(--lk-pad) 10px}
+.tl-container .nf.nf-node .ad-bar{margin-top:2px}
+
+/* ---------- the overview: under 60 % zoom ---------- */
+/* far out a card is its title (large), its media and one status line; every small word goes */
+.tl-container[data-far] .nf.nf-node{--far:calc(1 / var(--tl-zoom,1))}
+.tl-container[data-far] .nf.nf-node>.nf-head{position:absolute;top:0;right:0;z-index:9;height:auto;min-height:0;padding:calc(10px * var(--far))}
+.tl-container[data-far] .nf.nf-node>.nf-head>.nf-tile,.tl-container[data-far] .nf.nf-node>.nf-head>.nf-title,.tl-container[data-far] .nf.nf-node .nf-acts{display:none}
+.tl-container[data-far] .nf.nf-node .nf-status::before{width:calc(9px * var(--far));height:calc(9px * var(--far))}
+.tl-container[data-far] .nf.nf-node>.nf-body{padding:calc(10px * var(--far)) var(--lk-pad) calc(8px * var(--far));gap:calc(6px * var(--far))}
+.tl-container[data-far] .nf.nf-node .nf-heading{margin:0;padding-right:calc(18px * var(--far));font-size:min(calc(15px * var(--far)),46px);line-height:1.1}
+.tl-container[data-far] .nf.nf-node .nf-heading-empty{visibility:hidden;height:0}
+.tl-container[data-far] .nf.nf-node .gc-row{font-size:min(calc(11px * var(--far)),34px);min-height:0}
+.tl-container[data-far] .nf.nf-node .gc-row-model .mk-tile,.tl-container[data-far] .nf.nf-node .gc-row-model>svg,.tl-container[data-far] .nf.nf-node .gc-row-price,
+.tl-container[data-far] .nf.nf-node .gc-prompt,.tl-container[data-far] .nf.nf-node>.nf-foot,.tl-container[data-far] .nf.nf-node .nf-ins,
+.tl-container[data-far] .nf.nf-node .gc-waits,.tl-container[data-far] .nf.nf-node .gc-empty small,.tl-container[data-far] .nf.nf-node .nf-fail-l,
+.tl-container[data-far] .nf.nf-node .ad-bar,.tl-container[data-far] .nf.nf-node .ax-media-bar,.tl-container[data-far] .nf.nf-node .rc-play,
+.tl-container[data-far] .nf.nf-node .gt-top,.tl-container[data-far] .nf.nf-node .ad-dots,.tl-container[data-far] .nf.nf-node .gc-settings{display:none!important}
+.tl-container[data-far] .nf.nf-node .gc-media,.tl-container[data-far] .nf.nf-node .nf-body>.nf-media{margin-bottom:0}
+.tl-container[data-far] .nf.nf-node .nf-fail-t{font-size:calc(12px * var(--far))}
+.tl-container[data-far] .nf.nf-node .ax-text{font-size:min(calc(13px * var(--far)),40px);line-height:1.3}
+.tl-container[data-far] .nf-mbar{height:calc(3px * var(--far))}
+.tl-container[data-far] .nf.nf-node .gc-row-run .nf-dot{width:calc(6px * var(--far));height:calc(6px * var(--far))}
+
+@media (prefers-reduced-motion:reduce){.tl-container .nf-mbar.ind i{animation:none;width:100%;opacity:.5}}

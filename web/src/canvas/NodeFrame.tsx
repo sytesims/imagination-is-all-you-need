@@ -18,7 +18,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useEditor, useValue, type TLShapeId } from 'tldraw';
-import { portDragAtom, nextStepAtom } from './nodeFrameModel';
+import { portDragAtom, nextStepAtom, listenPortDrag } from './nodeFrameModel';
 import { tip } from '../shared/Tooltip';
 import { useToast } from '../shared/Toast';
 import { linkShapes } from './graph';
@@ -39,6 +39,8 @@ export interface NodeFrameProps {
   rootAttrs?: Record<string, string | undefined>;
   /** the card's short label (its name for screen readers) */
   label?: string;
+  /** the big title under the type line (a result's name, an upload's file, an ad's headline) */
+  heading?: ReactNode;
 }
 
 const KIND_NAME: Record<PortKind, string> = { image: 'Picture', video: 'Clip', audio: 'Sound', text: 'Text' };
@@ -58,7 +60,7 @@ function DragGhost({ from }: { from: { x: number; y: number } }) {
   </div>, document.body);
 }
 
-export function NodeFrame({ shapeId, type, tint, icon, title, titleHint, status, actions, children, footer, className = '', bodyClass = '', variant = 'node', testId, rootAttrs, label }: NodeFrameProps) {
+export function NodeFrame({ shapeId, type, tint, icon, title, titleHint, status, actions, children, footer, className = '', bodyClass = '', variant = 'node', testId, rootAttrs, label, heading }: NodeFrameProps) {
   const editor = useEditor(); const toast = useToast();
   const def = nodeDefOf(type);
   const selected = useValue('nf selected', () => editor.getSelectedShapeIds().includes(shapeId), [editor, shapeId]);
@@ -101,12 +103,7 @@ export function NodeFrame({ shapeId, type, tint, icon, title, titleHint, status,
         if (moved) nextStepAtom.set({ fromId: shapeId, kind: out, screen: { x: ev.clientX, y: ev.clientY }, page: editor.screenToPage({ x: ev.clientX, y: ev.clientY }) }); }
       endDrag();
     };
-    const key = (ev: KeyboardEvent) => { if (ev.key === 'Escape') endDrag(); };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
-    window.addEventListener('pointercancel', up);
-    window.addEventListener('keydown', key, true);
-    cleanup.current = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); window.removeEventListener('keydown', key, true); };
+    cleanup.current = listenPortDrag(window, { move, up, cancel: endDrag });
   };
 
   if (offscreen) return <div className={`nf nf-${variant} nf-shell`} data-shape-id={shapeId} data-node-kind={def?.kind ?? 'node'} data-offscreen="1" aria-hidden />;
@@ -123,7 +120,7 @@ export function NodeFrame({ shapeId, type, tint, icon, title, titleHint, status,
       <div className="nf-title" {...(titleHint ? tip(titleHint) : {})}>{title}</div>
       <div className="nf-head-r">{actions && <span className="nf-acts" data-card-control>{actions}</span>}{status && <span className="nf-status-wrap">{status}</span>}</div>
     </header>
-    {children != null && <div className={`nf-body ${bodyClass}`.trim()}>{children}</div>}
+    {(children != null || heading != null) && <div className={`nf-body ${bodyClass}`.trim()}>{heading != null && <h3 className="nf-heading" title={typeof heading === 'string' ? heading : undefined}>{heading}</h3>}{children}</div>}
     {footer != null && <footer className="nf-foot">{footer}</footer>}
     {ins.map((p, i) => <span key={p.kind} className={`nf-port nf-in nf-k-${p.kind}${p.room <= 0 ? ' full' : ''}${dragKind === p.kind && role !== 'dim' ? ' want' : ''}`} style={{ top: top(i) }} data-card-control data-kind={p.kind} data-testid={`port-in-${p.kind}`}
       {...tip(p.room > 0 ? `Takes ${PORT_WORDS[p.kind]}` : `${KIND_NAME[p.kind]} input is full`)}><i /></span>)}

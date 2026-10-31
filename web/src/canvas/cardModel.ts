@@ -16,7 +16,10 @@ import type { TakeReview } from '../../../server/src/shared/takeReview';
 
 export { GEN_TYPE } from './nodeTypes';
 export interface Take { url: string; poster: string; kind: ResultKind; jobId: string; out: number; /** the agent's look at this version (shared/takeReview.ts); never decides which one is active */ review?: TakeReview;
-  /** a demo sample's own line ("Sample · made with LTX-2.5 22B"): the card shows it instead of the card's model */ made?: string }
+  /** a demo sample's own line ("Sample · made with LTX-2.5 22B"): the card shows it instead of the card's model */ made?: string;
+  /** the inputs this version was made from, kept on the version so they're never lost when an input or arrow goes later */ from?: MadeFrom[] }
+/** One input a run used: its slot's label ("Portrait"), what it was, and the card it came from (arrow inputs). */
+export interface MadeFrom { slot: string; kind: InputKind; label: string; poster: string; url: string; shapeId?: string }
 export interface BoardInput { key: string; kind: InputKind; url: string; poster: string; jobId: string; /** the shape it comes from (arrow inputs) */ shapeId?: string; /** the arrow that binds it */ arrowId?: string; label: string }
 export type CardStatus = 'draft' | 'running' | 'done' | 'failed';
 export interface GenCardProps {
@@ -65,6 +68,13 @@ export function runForm(spec: FlowSpec, bySlot: Record<string, BoardInput[]>, in
   for (const s of spec.slots) (bySlot[s.name] ?? []).forEach((inp, i) => files.push({ field: i > 0 && s.restAs ? s.restAs : s.sendsAs, input: inp, name: `${s.name}-${i + 1}` }));
   return { fields, files };
 }
+
+/** The inputs a run sends, in slot order, as the small "Made from" list its versions keep. */
+export function madeFromOf(slots: { name: string; label: string }[], bySlot: Record<string, BoardInput[]>): MadeFrom[] {
+  return slots.flatMap(s => (bySlot[s.name] ?? []).map(i => ({ slot: s.label, kind: i.kind, label: i.label, poster: i.poster, url: i.url, ...(i.shapeId ? { shapeId: i.shapeId } : {}) })));
+}
+/** New versions with the inputs they were made from (unchanged when there were none). */
+export const withFrom = (takes: Take[], from: MadeFrom[] | undefined): Take[] => (from?.length ? takes.map(t => ({ ...t, from })) : takes);
 
 /** The most versions a card keeps (the oldest drop off; Pull out keeps one as its own card). */
 export const MAX_VERSIONS = 24;

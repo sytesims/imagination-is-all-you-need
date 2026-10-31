@@ -12,8 +12,13 @@ import { createJob, getJob, retryJob, type JobState } from '../api';
 import { pinQ } from '../ui/routing/Routes';
 import { mediaToFile } from '../shared/urlFile';
 import type { FlowSpec } from '../shared/genFlows';
-import { GEN_TYPE, compactQuote, runForm, takesOf, addVersions, type BoardInput } from './cardModel';
+import { GEN_TYPE, compactQuote, runForm, takesOf, addVersions, madeFromOf, withFrom, type BoardInput, type MadeFrom, type Take } from './cardModel';
+import { cardInputs } from './graph';
 export { compactQuote, takesOf, addVersions, MAX_VERSIONS, type Take } from './cardModel';
+/** job id → the inputs it was sent with (its versions keep them as "Made from"). A reload falls back to the card's inputs at the end. */
+const usedBy = new Map<string, MadeFrom[]>();
+const KIND_SLOT: Record<string, string> = { image: 'Picture', video: 'Clip', audio: 'Sound' };
+const fromOfCard = (editor: Editor, c: any): MadeFrom[] => usedBy.get(c.props.jobId) ?? cardInputs(editor, c).map(i => ({ slot: KIND_SLOT[i.kind] ?? 'Input', kind: i.kind, label: i.label, poster: i.poster, url: i.url, ...(i.shapeId ? { shapeId: i.shapeId } : {}) }));
 
 /** The live job of each running card (progress, stage, ETA for the shared GenTile). Not saved with the board. */
 export const liveJobs = atom<Record<string, JobState>>('ohf-gen-live', {});
@@ -27,8 +32,8 @@ function settle(editor: Editor, j: JobState) {
   if (editor.isDisposed) return; const cards = cardsOfJob(editor, j.id); if (!cards.length) return;
   const done = j.status === 'done'; const takes = done ? takesOf(j) : [];
   /* versions stay on the card: a new run's outputs join the strip and the first of them becomes the active version */
-  editor.run(() => editor.updateShapes(cards.map(c => ({ id: c.id, type: GEN_TYPE, props: done && takes.length ? { status: 'done', ...addVersions((c.props as any).takes ?? [], takes), error: '', ratio: 0 } : { status: 'failed', error: String(j.error || (done ? 'The run finished without a result.' : j.status === 'canceled' ? 'Canceled.' : 'The run failed.')).slice(0, 400) } } as any))), { history: 'ignore' });
-  dispatchEvent(new Event(SPEND_EVT));
+  editor.run(() => editor.updateShapes(cards.map(c => ({ id: c.id, type: GEN_TYPE, props: done && takes.length ? { status: 'done', ...addVersions((c.props as any).takes ?? [], withFrom(takes, fromOfCard(editor, c))), error: '', ratio: 0 } : { status: 'failed', error: String(j.error || (done ? 'The run finished without a result.' : j.status === 'canceled' ? 'Canceled.' : 'The run failed.')).slice(0, 400) } } as any))), { history: 'ignore' });
+  if (done) usedBy.delete(j.id); dispatchEvent(new Event(SPEND_EVT));
 }
 
 const watching = new Map<string, Set<Editor>>();
@@ -58,6 +63,7 @@ export async function submitCard(editor: Editor, cardId: TLShapeId, c: RunCtx): 
   const fd = new FormData(); for (const [k, v] of Object.entries(form.fields)) fd.append(k, v);
   for (const f of form.files) { const file = await mediaToFile(f.input.url, f.input.kind, f.name); fd.append(f.field, file, file.name); }
   const r = await createJob(spec.tool.id, fd, { showsIssues: true });
+  usedBy.set(r.id, madeFromOf(spec.slots, c.bySlot));
   startRun(editor, cardId, r.id, c);
   return r.id;
 }
@@ -70,5 +76,5 @@ function startRun(editor: Editor, cardId: TLShapeId, jobId: string, c: Pick<RunC
 /** Retry a failed run with the same settings (the jobs API's retry, like the failure view's Retry). */
 export async function retryCard(editor: Editor, cardId: TLShapeId) {
   const s = editor.getShape(cardId); const jobId = (s?.props as any)?.jobId; if (!jobId) throw new Error('Nothing to retry yet.');
-  const id = await retryJob(jobId); startRun(editor, cardId, id, null); return id;
+  const id = await retryJob(jobId); const last: Take | undefined = (s!.props as any).takes?.at?.(-1); const was = usedBy.get(jobId) ?? last?.from; if (was) usedBy.set(id, was); startRun(editor, cardId, id, null); return id;
 }

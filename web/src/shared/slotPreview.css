@@ -17,6 +17,9 @@
 .slot-pv-btn.danger:hover{background:rgba(255,90,70,.12)}
 /* the count in the prompt line, after the thumbnails */
 html body .ic.ic2 .ic-dock .ic-lead .slot-count{flex:none;align-self:center;position:sticky;right:0;z-index:3;padding:4px 6px;border-radius:6px;background:rgb(39,41,44);box-shadow:-8px 0 8px rgb(39,41,44);color:var(--text-3,#8a8b90);font:500 12px/16px var(--font-ui,Inter,system-ui,sans-serif);white-space:nowrap}
+/* several kinds (pictures, clips, sounds): one short line each, stacked beside the thumbnails, so the count never runs over them */
+html body .ic.ic2 .ic-dock .ic-lead .slot-count.multi{display:grid;padding:2px 6px;font-size:11px;line-height:14px;white-space:nowrap}
+html body .ic.ic2 .ic-dock .ic-lead .slot-count.multi i{display:none}
 html body .ic.ic2 .ic-dock .ic-lead .slot-count.full{color:var(--text-2,#b4b5b8)}
 html body .ic.ic2 .ic-dock .ic-lead .slot-count.over{color:#ffb27a}
 /* a thumbnail over the model's limit: dimmed, dashed orange ring, a small badge */

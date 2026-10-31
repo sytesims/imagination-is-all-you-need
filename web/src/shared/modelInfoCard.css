@@ -11,7 +11,7 @@
 .orb-pv.mic .mhc-places{margin:0}
 .orb-pv.mic .mhc-places li{min-height:32px;font-size:13px;border-top:1px solid var(--border,rgba(255,255,255,.06))}
 .orb-pv.mic .mhc-places li:first-child{border-top:0}
-.orb-pv.mic .mhc-pr b{font:600 13px/18px var(--font-mono,'JetBrains Mono',ui-monospace,monospace);font-variant-numeric:tabular-nums}
+.orb-pv.mic .mhc-pr b{font:600 13px/18px var(--font-sans,Inter,system-ui,sans-serif);font-variant-numeric:tabular-nums}
 /* licence · released: the Details panel's rows */
 .orb-pv.mic .mc-dl a{color:var(--text-1,#F7F7F8);text-decoration:none;border-bottom:1px solid var(--border-strong,rgba(255,255,255,.18))}
 .orb-pv.mic .mc-dl a:hover,.orb-pv.mic .mc-dl a:focus-visible{border-bottom-color:var(--accent,#FF7A1A);outline:none;box-shadow:none}

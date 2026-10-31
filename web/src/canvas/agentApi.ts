@@ -14,7 +14,7 @@ import type { Editor, TLShapeId, VecLike } from 'tldraw';
 import { availableFlows, flowById, type GenMedium } from '../shared/genFlows';
 import { catalogNow } from './catalog';
 import { cardState, makerOf, missingOf, modelNameOf } from './cardState';
-import { GEN_TYPE, draftProps, type GenCardProps } from './cardModel';
+import { GEN_TYPE, draftProps, type BoardInput, type GenCardProps } from './cardModel';
 import { linkShapes, promptInto } from './graph';
 import { quoteNode, submitNode } from './nodeRun';
 import { createShapeId } from 'tldraw';
@@ -52,6 +52,11 @@ export function setCard(editor: Editor, id: TLShapeId, patch: Partial<Pick<GenCa
   const s = editor.getShape(id); if (!s || s.type !== GEN_TYPE) return; const f = patch.flow ? flowById(patch.flow) : null;
   const props: Partial<GenCardProps> = { ...patch, ...(f ? { medium: f.medium, provider: patch.provider ?? f.provider ?? '', vals: patch.vals ?? {}, ratio: 0 } : {}) };
   editor.run(() => editor.updateShape({ id, type: GEN_TYPE, props } as any), { history: 'ignore' });
+}
+/** Put uploaded files into a card's slots (pinned there), in one change: the slot's Add chip and a file dropped on the card both use it. */
+export function addCardInputs(editor: Editor, id: TLShapeId, added: { input: BoardInput; slot: string }[]) {
+  const p = editor.getShape(id)?.props as GenCardProps | undefined; if (!p || !added.length) return;
+  setCard(editor, id, { inputs: [...p.inputs, ...added.map(a => a.input)], pins: { ...p.pins, ...Object.fromEntries(added.map(a => [a.input.key, a.slot])) } });
 }
 /** Wire a node's output into another node's input: an arrow, exactly as a person would draw it. */
 export function connect(editor: Editor, fromId: TLShapeId, toId: TLShapeId): TLShapeId | null { editor.markHistoryStoppingPoint('connect input'); return linkShapes(editor, fromId, toId); }

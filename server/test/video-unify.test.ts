@@ -1,4 +1,4 @@
-// One Video page, steps 2 and 3 (2026-10-25): every video workflow resolves to the one Video page (/tools/h3-video?workflow=<id>) and runs
+// One Video page, steps 2 and 3 (2026-10-25): every video workflow resolves to the one Video page (/video?workflow=<id>) and runs
 // in its own bar (shared/videoBar.ts recipes; Object Swap's "what to replace" and Re-shoot's angles as bar extras, ui/video/barExtras/); old pages, the Camera Moves / Photo FX galleries and the old Edit Video list redirect there
 // with their query kept; links, Recreate and hand-offs go straight to the workflow and ask the server for the workflow's own tool.
 // Run: npx tsx test/video-unify.test.ts

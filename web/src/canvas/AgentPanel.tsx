@@ -367,6 +367,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
   useEffect(() => { setAgentName(agentConnected ? agent.agentName || 'Your AI' : 'Agent'); }, [agentConnected, agent.agentName]);
   /* the hand leaves a moment after the demo ends (or right away when you stop it) */
   useEffect(() => { if (!editor || demo.running) return; const t = window.setTimeout(() => handOf(editor).leave(), 2600); return () => window.clearTimeout(t); }, [editor, demo.running]);
+  useEffect(() => () => { if (editor) handOf(editor).leave(); }, [editor]); /* the dock closes (board switch): the hand goes with it */
   /* pick one: the choices pulse on the board until one is chosen; a click on one of them (it becomes the only selection) is the choice */
   const choose = useCallback(async (cardId: string) => {
     const pk = pickRef.current; if (!pk || pk.status !== 'waiting' || !pk.cardIds.includes(cardId) || choosing.current) return; choosing.current = true;
@@ -388,6 +389,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
   useEffect(() => () => fx.pick([]), []);
 
   const stop = async () => {
+    if (editor) handOf(editor).leave(); /* the hand goes at once, not after the demo's last step */
     try { await fetch(`/api/canvas/boards/${encodeURIComponent(boardId)}/agent/demo/stop`, { method: 'POST' }); setDemo({ running: false, runId: null, title: null }); }
     catch { toast('Could not stop the agent. Try again.', 'error'); }
   };

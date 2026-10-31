@@ -1,3 +1,4 @@
+import { VIDEO_PAGE } from '../../../server/src/shared/videoWorkflows';
 import { recreateHref as jobRecreateHref, toolHandoffHref, lipSyncHandoffHref, frameHandoffHref } from './workflowLinks';
 import { goClick } from './goToWorkflow';
 import { saveVideoFrame } from './videoFrame';
@@ -178,7 +179,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
   /* Director was removed (2026-10-23): its old jobs (and stories) still open and play here, with no Recreate (its page now opens Create Video). */
   const retired = job.toolId === 'cinema' || job.toolId === 'director';
   const recreate = sample || recreateHref === null || retired ? null : recreateHref ?? (job as any).example?.recreateHref ?? jobRecreateHref(job, tools);
-  const toVideo = kind === 'image' && job.id && !sample ? `/tools/h3-video?fromJob=${encodeURIComponent(job.id)}&as=image&out=${outIx}` : null;
+  const toVideo = kind === 'image' && job.id && !sample ? `${VIDEO_PAGE}?fromJob=${encodeURIComponent(job.id)}&as=image&out=${outIx}` : null;
   const download = <a className="btn rv-dl" data-testid="rv-download" href={cleanHref(cur.url)} download={appFileName(`${job.id}-${cur.label}`, ext)}><DownloadIcon size={15} />{storyShots && !showingOriginal ? 'Download film' : 'Download'}</a>;
   const rcCost = rcPrice ? (rcPrice.needsKey && rcPrice.runnable === false ? 'Needs a key' : (rcPrice as any).demo ? 'Sample' : shownCredits(rcPrice) === 0 ? 'Free' : runPrice({ own: ownAccountsNow(), credits: shownCredits(rcPrice), runOn: placeOfQuote(rcPrice) }) ?? '') : ''; /* QA #7: the Generate button's words */
   const recreateBtn = (primary: boolean) => recreate && <a href={recreate} onClick={goClick(recreate, onClose)} className={`btn ${primary ? 'rv-primary' : 'rv-second'} recreate-btn`} data-action="recreate" data-testid="rv-recreate"><span aria-hidden>↻</span>Recreate{rcCost && <span className="rv-cost" data-testid="rv-recreate-cost">{rcCost}</span>}</a>;

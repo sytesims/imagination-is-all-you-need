@@ -53,6 +53,10 @@ export function refFitOf(c: RefCapsOf, a: RefsAdded, cur: string, o: { keepMode?
   return { mode, parts, all: usedN === haveN, usedN, haveN, caps, startUsed };
 }
 
+/** The picture a mode needs is there: the start frame, or in Reference mode the first picture reference it sends (the server makes it
+ *  picture 1: files.image ?? files.refs[0]). `refsSent` = the picture references the run sends (the bar's list, capped by the model). */
+export const hasPicture = (mode: string, start: boolean, refsSent: number) => start || (mode === 'r2v' && refsSent > 0);
+
 const NOUN: Record<Exclude<RefKind, 'start'>, [string, string]> = { image: ['picture', 'pictures'], video: ['video', 'videos'], audio: ['sound', 'sounds'] };
 /** One part in a few calm words: "Start frame", "No start frame", "Uses your video", "Skips your video", "Uses 2 of your 3 pictures". */
 export function partText(p: RefPart): string {

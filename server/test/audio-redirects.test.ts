@@ -42,7 +42,7 @@ assert.equal(audioRedirectTarget('/tools/voice', '?mode=nope'), audioRoute('voic
 ok('query + hash kept, mode consumed, case and trailing slash tolerated');
 
 // no loop: the Audio page itself, a ?workflow= link and unrelated pages never redirect
-for (const [p, s] of [[AUDIO_PAGE, ''], [AUDIO_PAGE, '?workflow=translate'], ['/tools/voice', '?workflow=voiceover'], ['/tools/create-image', ''], ['/tools/h3-video', '?workflow=lip-sync']] as const)
+for (const [p, s] of [[AUDIO_PAGE, ''], [AUDIO_PAGE, '?workflow=translate'], ['/tools/voice', '?workflow=voiceover'], ['/tools/create-image', ''], ['/video', '?workflow=lip-sync']] as const)
   assert.equal(audioRedirectTarget(p, s), null, `${p}${s} stays`);
 for (const id of AUDIO_WORKFLOW_IDS) { const [p, s] = audioRoute(id).split('?'); assert.equal(route(p, `?${s}`), null, `${audioRoute(id)} is final`); }
 ok('deep links to each of the 8 workflows are final (no redirect loop)');

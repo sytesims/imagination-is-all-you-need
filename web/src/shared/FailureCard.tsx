@@ -1,3 +1,4 @@
+import { toolPage } from '../../../server/src/shared/videoWorkflows';
 import { retryJob, forgetSubmitDedupe } from '../api';
 import type { JobState } from '../api';
 import { useToast, useCopied, Copied } from './Toast';
@@ -25,7 +26,7 @@ export default function FailureCard({ job, onRetry }: { job: JobState; onRetry?:
         {tips && <ul className="fs-tips">{tips.map(x => <li key={x}>{x}</li>)}</ul>}</>} />
       <div className="fs-sub" role="group" aria-label="More options">
         {!setup && !v.actions.includes('retry') && <button type="button" className="fs-link" data-testid="fc-retry" onClick={doRetry}>Retry</button>}
-        {!setup && !v.actions.some(a => a === 'recreate' || a === 'changePhoto') && <a className="fs-link" data-testid="fc-recreate" href={`/tools/${encodeURIComponent(job.toolId)}?recreate=${encodeURIComponent(job.id)}`} onClick={e => { if (e.metaKey || e.ctrlKey) return; e.preventDefault(); navigate(`/tools/${job.toolId}?recreate=${job.id}`); }} title="Open the tool with the same settings and a new seed">Change settings</a>}
+        {!setup && !v.actions.some(a => a === 'recreate' || a === 'changePhoto') && <a className="fs-link" data-testid="fc-recreate" href={`${toolPage(encodeURIComponent(job.toolId))}?recreate=${encodeURIComponent(job.id)}`} onClick={e => { if (e.metaKey || e.ctrlKey) return; e.preventDefault(); navigate(`${toolPage(job.toolId)}?recreate=${job.id}`); }} title="Open the tool with the same settings and a new seed">Change settings</a>}
         <button type="button" className="fs-link" data-testid="fc-copy-support" onClick={details}>{copied ? <Copied /> : 'Copy support info'}</button>
       </div>
     </section>

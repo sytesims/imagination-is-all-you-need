@@ -37,6 +37,7 @@
  * sound most in view plays with it, crossfading as you scroll; every clip with an audio track gets the shared SoundToggle (a page-wide mute);
  * silent clips get none.
  */
+import { VIDEO_PAGE } from '../../../../server/src/shared/videoWorkflows';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from '../../platform/router';
 import { goToWorkflow } from '../../shared/goToWorkflow';
@@ -112,7 +113,7 @@ export function XpStill() {
   const W = EXPLORE_STILL; const t = W.take; const f = featuredByKey(t.key);
   const [replay, setReplay] = useState(0); const [open, setOpen] = useState(false);
   if (!f?.before) return null;
-  const still = f.before; const rec = featuredRecreateHref(f.key) ?? '/tools/h3-video'; const ran = Number(f.input.duration) || Math.round(f.out.sec ?? 0);
+  const still = f.before; const rec = featuredRecreateHref(f.key) ?? VIDEO_PAGE; const ran = Number(f.input.duration) || Math.round(f.out.sec ?? 0);
   const words = f.prompt.split(/\s+/).filter(Boolean).length;
   return <section className="xv-sec xpo" id="xp-still" data-testid="xp-still" aria-labelledby="xp-h-still">
     <header className="xv-head"><div><span className="xv-eb">{W.eyebrow}</span><h2 id="xp-h-still" className="xpo-h" data-testid="xp-still-title">{W.title}</h2><p data-testid="xp-still-line">{W.line}</p></div></header>
