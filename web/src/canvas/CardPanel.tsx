@@ -87,12 +87,15 @@ function usedByOf(editor: Editor, id: TLShapeId): Link[] {
 function inputsOf(editor: Editor, s: TLShape, bySlot: Record<string, { key: string }[]>, slotLabel: Record<string, string>): Link[] {
   const out: Link[] = []; const seen = new Set<string>(); const slotOfKey: Record<string, string> = {};
   for (const [name, list] of Object.entries(bySlot)) for (const i of list) slotOfKey[i.key] = slotLabel[name] ?? name;
+  const placed = Object.keys(bySlot).length > 0; const slotOf = (key: string) => slotOfKey[key] ?? (placed ? NOT_USED : undefined);
   if (s.type === GEN_TYPE) for (const i of cardInputs(editor, s)) { const src = i.shapeId ? editor.getShape(i.shapeId as TLShapeId) : null;
-    if (src) { if (!seen.has(src.id)) { seen.add(src.id); out.push(linkOf(src, slotOfKey[i.key])); } } else if (!i.shapeId) out.push({ label: i.label, poster: i.poster, kind: i.kind, slot: slotOfKey[i.key] }); }
+    if (src) { if (!seen.has(src.id)) { seen.add(src.id); out.push(linkOf(src, slotOf(i.key))); } } else if (!i.shapeId) out.push({ label: i.label, poster: i.poster, kind: i.kind, slot: slotOf(i.key) }); }
   for (const t of promptSourcesInto(editor, s.id)) { const src = editor.getShape(t.id); if (src && !seen.has(src.id)) { seen.add(src.id); out.push(linkOf(src, 'Prompt')); } }
   for (const pid of ((s.props as any).parents ?? []) as string[]) { const src = editor.getShape(pid as TLShapeId); if (src && !seen.has(src.id)) { seen.add(src.id); out.push(linkOf(src, s.type === RESULT_TYPE ? 'Pulled out of' : 'Made from')); } }
   return out;
 }
+/** An input past its slot's limit: wired in, but the run leaves it out. */
+const NOT_USED = 'Not used';
 const jump = (editor: Editor, id: TLShapeId | undefined) => { if (!id || !editor.getShape(id)) return; editor.select(id); reveal(editor, id); };
 
 /** The finished job behind a take: real cost, where it ran, how long it took. */
@@ -208,7 +211,7 @@ function Preview({ v, peek }: { v: View; peek: Take | null }) {
   let inner: ReactNode; let kind = 'media';
   if (v.gen && v.status === 'running') { kind = 'run'; inner = <GenTile job={v.job ?? ({ id: v.p.jobId, status: 'queued', stage: 'queued', progress: 0, outputs: [], input: {} } as any)} />; }
   else if (v.gen && v.status === 'failed' && !peek) { kind = 'empty'; inner = <><b>This run didn’t work</b><small>{v.p.error || 'Nothing was made.'}</small></>; }
-  else if (!m) { const first = v.ins.find(i => i.poster);
+  else if (!m) { const first = v.ins.find(i => i.poster && i.slot && i.slot !== 'Prompt' && i.slot !== NOT_USED) ?? v.ins.find(i => i.poster); /* a used input before one that's not used */
     if (first) { kind = 'input'; inner = <><img src={gridSrc(first.poster, 760)} alt="" /><span className="cp-tag">{first.slot ?? 'Input'} · {first.label}</span></>; }
     else { kind = 'empty'; inner = <><v.Icon size={22} /><b>Nothing made yet</b><small>{v.draft ? 'Set it up below, then press Generate.' : 'No picture yet.'}</small></>; } }
   else if (m.kind === 'video') inner = <><video ref={vid} key={m.url} src={m.url} poster={m.poster ? gridSrc(m.poster, 760) : undefined} playsInline loop preload="metadata" onClick={() => { const e = vid.current; if (e) void (e.paused ? e.play() : e.pause()); }} />
