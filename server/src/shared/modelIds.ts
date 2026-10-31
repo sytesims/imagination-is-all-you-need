@@ -24,6 +24,17 @@ export const LOCAL_FREE = 'Free · on your computer';
 export const RUN_ON_LABELS: Record<RunOn, string> = { local: LOCAL_LABEL, 'comfy-cloud': 'Comfy Cloud', fal: 'fal', replicate: 'Replicate', bfl: 'Black Forest Labs', minimax: 'MiniMax', ltx: 'LTX', openai: 'OpenAI', google: 'Google', byteplus: 'BytePlus', dashscope: 'Alibaba Cloud', luma: 'Luma AI', direct: 'Direct API' };
 /** H3 runner Step 1: the Comfy detail line of a route on the user's own Comfy deployment (route id comfy-deploy:<engine>; Run on stays "Comfy"). */
 export const COMFY_DEPLOY_DETAIL = 'Your Comfy deployment';
+/** How a Comfy Cloud run works, the small secondary words under the one place name (2026-11-01: one Comfy key, one place, "Comfy Cloud"):
+ *  an open workflow on Comfy's GPUs, or a partner model (the maker's own, through a Comfy node or the maker's service). */
+export const COMFY_HOW = { workflow: 'Open workflow', partner: 'Partner model' } as const;
+/** The Comfy row's how line from its routes' variants: "Open workflow", "Partner model", both ("Open workflow or partner model"), plus the
+ *  route's own method when every route shares it ("Partner model · via last frame"); the deployment line when it's all your deployment. */
+export function comfyHowLine(variants: readonly (string | null | undefined)[], method = ''): string {
+  if (variants.length && variants.every((v) => v === 'deployment')) return COMFY_DEPLOY_DETAIL;
+  const hs = [...new Set(variants.filter((v) => v !== 'deployment').map((v) => (v === 'workflow' ? COMFY_HOW.workflow : COMFY_HOW.partner)))];
+  const how = hs.length > 1 ? `${COMFY_HOW.workflow} or ${COMFY_HOW.partner.toLowerCase()}` : hs[0] ?? '';
+  return [how, method].filter(Boolean).join(' · ');
+}
 /** Who bills each run-on (billing.ts PROVIDER_BILLING ids). */
 export const RUN_ON_BILLED_TO: Record<RunOn, string> = { local: 'local', 'comfy-cloud': 'comfy', fal: 'fal', replicate: 'replicate', bfl: 'bfl', minimax: 'minimax', ltx: 'ltx', openai: 'openai', google: 'google', byteplus: 'byteplus', dashscope: 'dashscope', luma: 'luma', direct: 'direct' };
 /** Accepted spellings (spec ids, route kinds, billing ids) → RunOn. */
@@ -55,13 +66,15 @@ export const runOnOfRouteId = (routeId?: string | null): RunOn | null => {
  * Where a run happens, in the same words everywhere (setups-routing 2026-10-29: the model picker, the price line, the hover card, the Models
  * page, result details, Spend and the Workflows sheets all read this one helper). Run on (RunOn) stays the one-key grouping for routing; the
  * place splits the Comfy key into what it really runs on, because they bill differently:
- *  Your computer (free) · Comfy Cloud (a workflow on Comfy's GPUs, billed by GPU time, so an estimate) · Comfy Router (a partner model through
- *  the Comfy key, at a set price) · Comfy deployment (your own deployment, GPU time) · fal / Replicate / a lab's own API (needs that key).
+ *  Your computer (free) · Comfy Cloud (a workflow on Comfy's GPUs, billed by GPU time, so an estimate; or a partner model through the Comfy
+ *  key, at a set price: id comfy-router, same "Comfy Cloud" label) · Comfy deployment (your own deployment, GPU time) · fal / Replicate / a lab's own API (needs that key).
  */
 export type PlaceId = 'local' | 'comfy-cloud' | 'comfy-router' | 'comfy-deploy' | Exclude<RunOn, 'local' | 'comfy-cloud'>;
 export type PlaceBilling = 'free' | 'gpu-time' | 'set-price';
 export interface Place { id: PlaceId; label: string; billing: PlaceBilling; /** short, for a chip or a price line */ short: string; /** one sentence, for a hover card or details */ note: string }
-export const PLACE_LABELS = { local: LOCAL_LABEL, 'comfy-cloud': 'Comfy Cloud', 'comfy-router': 'Comfy Router', 'comfy-deploy': 'Comfy deployment' } as const;
+/** 2026-11-01: one Comfy key is one place, "Comfy Cloud", whether it runs an open workflow or a partner model (Comfy Router, id kept); the
+ *  difference shows as the billing word (placeLine: "set price") and the how words (COMFY_HOW). Your own deployment stays its own place. */
+export const PLACE_LABELS = { local: LOCAL_LABEL, 'comfy-cloud': RUN_ON_LABELS['comfy-cloud'], 'comfy-router': RUN_ON_LABELS['comfy-cloud'], 'comfy-deploy': 'Comfy deployment' } as const;
 const PLACE_SHORT: Record<PlaceBilling, string> = { free: 'free', 'gpu-time': 'GPU time, estimate', 'set-price': 'set price' };
 /** The place of a route, a route id, or a job/quote that carries one (kind, routeId or route, vendor/envKey; comfyVariant 'partner' | 'workflow' | 'deployment' when known). */
 export function placeOf(x: { kind?: string | null; routeId?: string | null; route?: string | null; runOn?: string | null; envKey?: string | null; vendor?: string | null; comfyVariant?: string | null } | null | undefined): Place | null {
@@ -78,7 +91,7 @@ export function placeOf(x: { kind?: string | null; routeId?: string | null; rout
   if (ro === 'comfy-cloud') return mk('comfy-cloud', PLACE_LABELS['comfy-cloud'], 'gpu-time', 'Through your Comfy key.');
   const label = RUN_ON_LABELS[ro]; return mk(ro as PlaceId, label, 'set-price', `Through ${aKey(label)}, billed by ${label}.`);
 }
-/** "Comfy Router · set price", "Your computer · free": the label with its billing word, one line. */
+/** "Comfy Cloud · set price", "Your computer · free": the label with its billing word, one line. */
 export const placeLine = (p: Place | null | undefined) => (p ? `${p.label} · ${p.short}` : '');
 
 export type Medium = 'image' | 'video' | 'audio';

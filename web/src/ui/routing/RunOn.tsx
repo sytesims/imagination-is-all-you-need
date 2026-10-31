@@ -1,6 +1,6 @@
 /**
  * "Run on" (MODEL-ROUTE-SPEC §2.3; 2026-10-22: no Auto): where a model runs and who bills it, one choice per PLACE, in three groups:
- * Local (local ComfyUI, free), Comfy (Comfy Cloud / Comfy Router) and Other API (fal, Replicate, BFL…, one row each with its price).
+ * Local (local ComfyUI, free), Comfy Cloud (one Comfy key: open workflows and partner models) and Other API (fal, Replicate, BFL…, one row each with its price).
  * Only the places the model really has are listed; a place that isn't set up stays, greyed, with its one action (Download, Install node,
  * Add a key, Turn on). With no saved choice the place shown is the PRE-SELECTED one (first ready: Comfy → other API → Local; else the mock
  * sample; else none: "Not set up", and the setup card asks), named on the chip. Picking saves it per (tool, model) (PUT /api/me/routing perTool); a saved place that stops working
@@ -23,7 +23,7 @@ import { setRoute, routeChoiceOf, noteToolModels, type RouteChoice } from '../..
 import { requestRequote } from '../../shared/quote';
 import { RUN_ON_BILLING, billsText, comfyVariantText, enginesModels, listPrice, runOnLabel, setActiveModel, setRunOn, setRouting, statusDot, STATUS_WORD, CHIP_ACTION_WORD,
   placeOf, toolLike, useRunOn, useToolModels, getRunOn, type RunOnRow, type ToolModel, type PlaceAction, shownName, RUN_ON_CHIP, rowPlaceLabel } from '../../shared/models';
-import { LOCAL_LABEL } from '../../../../server/src/shared/modelIds';
+import { LOCAL_LABEL, COMFY_DEPLOY_DETAIL } from '../../../../server/src/shared/modelIds';
 
 /** Kept for callers: the place the pre-selection resolved for this job (the live quote's place, else the listing's). */
 export const autoPlaceOf = (m: ToolModel | undefined, q?: any): string | null => placeOf(m, null, q);
@@ -106,7 +106,11 @@ function rowState(r: RunOnRow): { word: string; tone: 'ok' | 'warn' | 'off'; dim
 const listed = (r: RunOnRow) => r.status !== 'coming-soon' && r.status !== 'unavailable';
 const GROUPS: { id: 'gpu' | 'comfy' | 'api'; label: string }[] = [{ id: 'gpu', label: LOCAL_LABEL }, { id: 'comfy', label: 'Comfy Cloud' }, { id: 'api', label: 'Your keys' }];
 const groupOf = (r: RunOnRow) => r.group ?? (r.id === 'local' ? 'gpu' : r.id === 'comfy-cloud' ? 'comfy' : 'api');
-const detailOf = (r: RunOnRow) => r.id === 'local' ? 'Free and private' : r.id === 'comfy-cloud' ? String(r.detail ?? '').replace(/^(Comfy Cloud or Comfy Router|Comfy Router|Comfy Cloud)\s*(·\s*)?/, '') /* the row already says Comfy Cloud; keep only how it runs ("via last frame") or the deployment */ : '';
+/** The ways one place lists for this model (two or more); Story's own pick (ownPick) keeps one row per place. */
+const waysOf = (r: RunOnRow, ownPick?: RunOnOwn) => (!ownPick && r.choices && r.choices.length > 1 ? r.choices : null);
+/** The sub-line's how words (server comfyHowLine: "Partner model · via last frame"). Not when the ways are listed under it, nor when
+ *  comfyVariantText says it in full, nor the deployment line (the row's name already says Comfy deployment). */
+const detailOf = (r: RunOnRow, ways: boolean) => r.id === 'local' ? 'Free and private' : r.id === 'comfy-cloud' && !ways && (r.comfyVariants?.length ?? 0) < 2 && r.detail !== COMFY_DEPLOY_DETAIL ? String(r.detail ?? '') : '';
 
 export function RunOnMenu({ open, anchor, avoid, watch, gap, onClose, toolId, model, engine, quote, placement = 'right', own: ownPick, scale }: { open: boolean; anchor: RefObject<HTMLElement | null>; avoid?: RefObject<HTMLElement | null>; watch?: RefObject<HTMLElement | null>; gap?: number; onClose: () => void; toolId: string; model: ToolModel; engine?: string | null; quote?: any; placement?: PopPlacement; own?: RunOnOwn; scale?: RunOnScale }) {
   useToolModels(toolId); const bill = useBilling(); const own = modeOf(bill, quote) !== 'team';
@@ -141,8 +145,14 @@ export function RunOnMenu({ open, anchor, avoid, watch, gap, onClose, toolId, mo
   const modesText = (c: RouteChoice) => { const ms = (c.modes ?? []).map(x => MODE_WORD[x]).filter(Boolean); return ms.length ? `Only ${ms.join(', ')}` : ''; };
   const limitsText = (c: RouteChoice) => { const l = c.limits; if (!l) return modesText(c); const d = l.durations?.length ? (l.durations.length > 3 && l.durations.every((x, i, a) => i === 0 || x - a[i - 1] === a[1] - a[0]) ? `${l.durations[0]}–${l.durations[l.durations.length - 1]} s` : `${l.durations.join(' / ')} s`) : '';
     return [modesText(c), l.resolutions?.length ? l.resolutions.join(' / ') : '', d].filter(Boolean).join(' · '); };
-  const choiceOn = (m: ToolModel, r: RunOnRow, c: RouteChoice) => { const p = pickOf(m); if (p.route) return p.route === c.routeId; return curM.key === m.key && shownPlace === r.id && !!quote && quote.runOn === r.id && quote.routeId === c.routeId; };
-  const choiceRow = (m: ToolModel, r: RunOnRow, c: RouteChoice) => { const on = !ownPick && choiceOn(m, r, c); const ready = c.status === 'ready' || c.status === 'sample'; const qc = quote && quote.routeId === c.routeId && quote.runOn === r.id ? (quote.listCredits ?? quote.credits) : null; const price = listPrice(sc(typeof qc === 'number' && qc > 0 ? qc : c.credits), r.id, own); // this run's price on the route it quoted
+  /* E1 (2026-11-01): one source for what's checked, so exactly one radio is: the model, the place and, when that place lists its ways, the
+   * way (the saved one, else the one this run quotes, else the first ready one: the order the server would pick). A place that lists its
+   * ways is a heading, not a radio; its ways are the radios under it. */
+  const shownRow = rows.find(x => x.m.key === curM.key && x.r.id === shownPlace); const shownWays = shownRow ? waysOf(shownRow.r, ownPick) : null;
+  const selRoute = (() => { if (!shownWays) return null; const has = (id: string | null | undefined) => (id && shownWays.some(c => c.routeId === id) ? id : null);
+    return has(saved && !ownPick ? pickOf(curM).route : null) ?? has(quote && quote.runOn === shownPlace ? quote.routeId : null) ?? (shownWays.find(c => c.status === 'ready' || c.status === 'sample') ?? shownWays[0]).routeId; })();
+  const isOn = (m: ToolModel, r: RunOnRow, routeId: string | null = null) => curM.key === m.key && shownPlace === r.id && routeId === (waysOf(r, ownPick) ? selRoute : null);
+  const choiceRow = (m: ToolModel, r: RunOnRow, c: RouteChoice) => { const on = isOn(m, r, c.routeId); const ready = c.status === 'ready' || c.status === 'sample'; const qc = quote && quote.routeId === c.routeId && quote.runOn === r.id ? (quote.listCredits ?? quote.credits) : null; const price = listPrice(sc(typeof qc === 'number' && qc > 0 ? qc : c.credits), r.id, own); // this run's price on the route it quoted
     const pick = () => { if (busy || ownPick || !ready) return; void save(`${m.key}:${c.routeId}`, async () => { if (multi) setActiveModel(toolId, m.key); await setRoute(toolId, m.key, r.id, c.routeId); onClose(); }); };
     return <div key={`${m.key}:${c.routeId}`} role="radio" aria-checked={on} aria-disabled={!ready || undefined} tabIndex={ready ? 0 : -1} data-testid={`run-on-choice-${c.routeId}`} data-status={c.status}
       className={`ro-opt ro-choice${on ? ' on' : ''}${ready ? '' : ' dim'}`} onClick={pick} onKeyDown={e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); pick(); } }}>
@@ -158,21 +168,22 @@ export function RunOnMenu({ open, anchor, avoid, watch, gap, onClose, toolId, mo
     const to = a.connection === 'deploy' ? '/settings#conn-deploy' : a.kind === 'add_key' ? `/settings#conn-${RUN_ON_BILLING[r.id] ?? r.id}` : '/settings#gpu';
     return <Link to={to} className="ro-lnk" data-testid={`run-on-act-${r.id}`} onClick={(e: any) => { stop(e); onClose(); }}>{a.text}</Link>; };
   const opt = ({ m, r, s }: { m: ToolModel; r: RunOnRow; s: ReturnType<typeof rowState> }) => {
-    const on = curM.key === m.key && shownPlace === r.id; const price = listPrice(sc(rowCredits(r)), r.id, own); const ps = perShot(r.credits, r.id); const cc = r.id === 'local' ? null : priceDetail(null, { runOn: r.id, credits: sc(rowCredits(r)) }); // the hover: '135 Comfy credits · on your Creator plan'
+    const ways = waysOf(r, ownPick); const on = !ways && isOn(m, r); const price = ways ? null /* each way has its own */ : listPrice(sc(rowCredits(r)), r.id, own); const ps = perShot(r.credits, r.id); const cc = r.id === 'local' ? null : priceDetail(null, { runOn: r.id, credits: sc(rowCredits(r)) }); // the hover: '135 Comfy credits · on your Creator plan'
     const act = actionEl(m, r);
-    const sub = [detailOf(r), ps ? `per shot ${ps}` : '', multi ? `Runs ${shownName(m)}` : '', r.id === 'comfy-cloud' && (r.comfyVariants?.length ?? 0) > 1 && !(r.choices && r.choices.length > 1) ? comfyVariantText(r, m.name, m.family) : '' /* the choices below name each way */, billsText(r), r.id === 'local' ? '' : rule(ruleOf(r))].filter(Boolean).join(' · ');
+    const sub = [detailOf(r, !!ways), ps ? `per shot ${ps}` : '', multi ? `Runs ${shownName(m)}` : '', r.id === 'comfy-cloud' && (r.comfyVariants?.length ?? 0) > 1 && !ways ? comfyVariantText(r, m.name, m.family) : '' /* the ways below name each one */, billsText(r), r.id === 'local' ? '' : rule(ruleOf(r))].filter(Boolean).join(' · ');
     const here = r.id === 'local' ? hereOf(m) : null; const mem = here ? memoryCheck(here.memGB, hw?.profile, live) : null;
     const mini = r.id === 'local' ? (here || hwName ? hereLine({ name: hwName || null, freeGB: here && (here.memGB ?? 0) >= HEAVY_GB ? freeForModelsGB(hw?.profile, live) : null, ...here }) : 'we check it fits your computer first') : '';
-    const pick = () => { if (!busy) void choose(m, r.id); };
-    return <div key={`${m.key}:${r.id}`} role="radio" aria-checked={on} tabIndex={0} data-testid={`run-on-opt-${r.id}`} data-status={r.status} className={`ro-opt${on ? ' on' : ''}${s.dim ? ' dim' : ''}`}
-      onClick={pick} onKeyDown={e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); pick(); } }}>
-      <span className="ro-rad" aria-hidden /><span className="ro-ol">{rowPlaceLabel(r)}<em className={`ro-pill ro-${s.tone}`}>{s.word}</em>{on && !saved && !ownPick && <em className="ro-pre" data-testid="run-on-preselected">Default</em>}</span>
+    const pick = () => { if (!busy) void choose(m, r.id); }; const hid = `ro-h-${m.key}-${r.id}`.replace(/[^\w-]/g, '-');
+    const isDefault = curM.key === m.key && shownPlace === r.id && !saved && !ownPick;
+    const radio = ways ? { id: hid } : { role: 'radio', 'aria-checked': on, tabIndex: 0, onClick: pick, onKeyDown: (e: React.KeyboardEvent) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); pick(); } } };
+    return <div key={`${m.key}:${r.id}`} {...radio} data-testid={`run-on-opt-${r.id}`} data-status={r.status} className={`ro-opt${ways ? ' ro-place' : ''}${on ? ' on' : ''}${s.dim ? ' dim' : ''}`}>
+      <span className={ways ? 'ro-rad ro-rad-none' : 'ro-rad'} aria-hidden /><span className="ro-ol">{rowPlaceLabel(r)}<em className={`ro-pill ro-${s.tone}`}>{s.word}</em>{isDefault && <em className="ro-pre" data-testid="run-on-preselected">Default</em>}</span>
       <span className="ro-op" title={cc ?? undefined}>{busy === `${m.key}:${r.id}` ? 'Saving…' : price ?? ''}{act && <small>{act}</small>}</span><span className="ro-os">{sub}{mini && <span className={`ro-here${mem?.short ? ' short' : ''}`} data-testid="run-on-here" title={mem?.short ? mem.text : undefined}>{sub ? ' · ' : ''}{mini}</span>}</span></div>; };
   return <BarPopover open={open} anchor={anchor} avoid={avoid} watch={watch} gap={gap} placement={placement} onClose={onClose} label={`Run ${multi ? toolName : shownName(model)} on`} role="dialog" className="apop-runon" testId="run-on-menu" width={360}>
     <div className="ro-pop" role="radiogroup" aria-label={`Where ${shownName(model)} runs`} aria-busy={!!busy || undefined}>
       <div className="ro-h">Run {multi ? toolName : shownName(model)} on<small>{scale ? `Prices are for the whole ${scale.unit}. ` : ''}{saved || ownPick ? `Remembered for ${ownPick?.rememberedFor ?? toolName}.` : rows.some(x => x.r.id === shownPlace && x.m.key === curM.key && (x.r.status === 'ready' || x.r.status === 'sample')) ? `The default is the first option that’s ready: Comfy Cloud, then your other keys, then your computer. Your pick is remembered for ${toolName}.` : `Nothing is ready yet, so the first one to set up is the default. Your pick is remembered for ${toolName}.`}</small></div>
       {GROUPS.map(g => { const rs = rows.filter(x => groupOf(x.r) === g.id); if (!rs.length) return null;
-        return <div key={g.id} className="ro-g" role="group" aria-label={g.label} data-testid={`run-on-group-${g.id}`}><span className="ro-grp">{(() => { const Ic = placeIconFor(g.id); return <Ic size={12} className="ro-grp-ic" />; })()}{g.label}</span>{rs.map(x => [opt(x), ...(!ownPick && x.r.choices && x.r.choices.length > 1 ? x.r.choices.map(c => choiceRow(x.m, x.r, c)) : [])])}</div>; })}
+        return <div key={g.id} className="ro-g" role="group" aria-label={g.label} data-testid={`run-on-group-${g.id}`}><span className="ro-grp">{(() => { const Ic = placeIconFor(g.id); return <Ic size={12} className="ro-grp-ic" />; })()}{g.label}</span>{rs.map(x => { const ways = waysOf(x.r, ownPick); return ways ? <div key={`${x.m.key}:${x.r.id}`} className="ro-nest" role="group" aria-labelledby={`ro-h-${x.m.key}-${x.r.id}`.replace(/[^\w-]/g, '-')} data-testid={`run-on-ways-${x.r.id}`}>{opt(x)}{ways.map(c => choiceRow(x.m, x.r, c))}</div> : opt(x); })}</div>; })}
       {!rows.length && <p className="ro-off" data-testid="run-on-none">Nothing can run {shownName(model)} on this server yet.</p>}
       {err && <Notice as="p" kind="error" tone="line" className="ro-err" testId="run-on-error">{err}</Notice>}
       {saved && !ownPick && <button type="button" className="ro-reset" data-testid="run-on-reset" disabled={!!busy} onClick={() => void save('reset', async () => { await setRunOn(toolId, curM.key, ''); onClose(); })}>Use the default</button>}
