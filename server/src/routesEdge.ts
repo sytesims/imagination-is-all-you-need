@@ -21,7 +21,7 @@ import { MAX_QUEUED, queuedCount, queueFull } from './edge.js';
 import { DATA_DIR } from './config.js';
 import { env } from './env.js';
 import { getTool } from './tools/registry.js';
-import { toolsList } from './toolsCache.js';
+import { presetsList } from './toolsCache.js';
 import { getProvider } from './providers.js';
 import * as lib from './library.js';
 import { makeZip } from './zip.js';
@@ -172,7 +172,7 @@ export function registerEdge(app: FastifyInstance, pub: (j: Job) => any) {
     const source = (req.query as any).source ?? 'ours'; if (!['ours', 'community'].includes(source)) return reply.code(400).send({ error: 'source must be ours or community', errorType: 'validation', issues: [{ code: 'invalid', field: 'source', message: 'source must be ours or community' }] });
     if (source === 'community') return { toolId: req.query.toolId ?? null, source, communityAvailable: false, note: 'No community presets on a local install yet.', categories: [], items: [], total: 0, cursor: null, limit: null, nextCursor: null, sort: req.query.sort ?? null, byTool: {} };
     if (req.query.toolId && !getTool(req.query.toolId)) return reply.code(404).send({ error: `unknown tool ${req.query.toolId}`, errorType: 'validation', issues: [{ code: 'unknown', field: 'toolId', message: 'Unknown tool id (GET /api/tools).' }] });
-    const tools: any[] = toolsList().filter((t) => !req.query.toolId || t.id === req.query.toolId);
+    const tools: any[] = presetsList().filter((t) => !req.query.toolId || t.id === req.query.toolId);
     let items = tools.flatMap((t) => (t.presets ?? []).map((p: any) => ({ ...p, toolId: t.id, toolName: t.name })));
     // ?q= name search; ?sort=trending (real job counts per tool+preset, last `days`, default 7) | new (addedAt, newest first; undated last).
     const qq = (req.query.q ?? '').trim().toLowerCase(); if (qq) items = items.filter((p: any) => `${p.label} ${p.id} ${p.group ?? ''} ${p.toolName}`.toLowerCase().includes(qq));
@@ -207,7 +207,7 @@ export function registerEdge(app: FastifyInstance, pub: (j: Job) => any) {
    *  → {id, toolId, uses (runs + picks), runs, picks}. Unknown preset → 404. */
   app.post<{ Params: { id: string }; Body: { toolId?: string } }>('/api/presets/:id/use', async (req, reply) => {
     const tid = (req.body as any)?.toolId ?? (req.query as any)?.toolId;
-    const t = toolsList().find((x) => (!tid || x.id === tid) && (x.presets ?? []).some((p: any) => p.id === req.params.id));
+    const t = presetsList().find((x) => (!tid || x.id === tid) && (x.presets ?? []).some((p: any) => p.id === req.params.id));
     if (!t) return reply.code(404).send({ error: `unknown preset ${req.params.id}${tid ? ` for ${tid}` : ''}`, errorType: 'not_found' });
     const k = `${t.id}|${req.params.id}`; const u = getKv<Record<string, number>>('presetUses', {}); u[k] = (u[k] ?? 0) + 1; setKv('presetUses', u);
     let runs = 0; for (const j of jobs.values()) { if (!countsAsRun(j) || j.toolId !== t.id || ['failed', 'canceled', 'blocked'].includes(j.status)) continue; if ((Array.isArray(j.input?.types) && j.input.types.includes(req.params.id)) || j.input?.preset === req.params.id) runs++; }
