@@ -13,7 +13,7 @@ const port = (server.address() as import('node:net').AddressInfo).port;
 try {
   mkdirSync(path.join(root, 'scripts'));
   for (const name of ['fastify', 'tsx', 'concurrently']) mkdirSync(path.join(root, 'node_modules', name), { recursive: true });
-  writeFileSync(path.join(root, 'scripts', 'setup.mjs'), readFileSync(new URL('../../scripts/setup.mjs', import.meta.url)));
+  for (const f of ['setup.mjs', 'app-env.mjs']) writeFileSync(path.join(root, 'scripts', f), readFileSync(new URL(`../../scripts/${f}`, import.meta.url)));
   writeFileSync(path.join(root, 'scripts', 'doctor.mjs'), 'console.log(JSON.stringify({ports:[process.env.PORT,process.env.WEB_PORT,process.env.MCP_PORT]}));console.log("beforeStart="+(process.env.OPENHIGGSFIELD_DOCTOR_BEFORE_START??""));');
   const settings = path.join(root, 'custom settings.env');
   writeFileSync(settings, `PORT=${port}\nWEB_PORT=5294\nMCP_PORT=8894\n`);
@@ -33,7 +33,7 @@ try {
   const shellPorts = await run({ WEB_PORT: '5295', MCP_PORT: '8895' });
   assert.ok(shellPorts.includes(JSON.stringify({ ports: [String(port), '5295', '8895'] })), 'shell ports override env-file ports');
   assert.match(shellPorts, /http:\/\/localhost:5295\/\?setup=1/);
-  // without --no-start setup starts the app right after the doctor, so it tells the doctor (a fake app that's already up keeps npm run dev from starting)
+  // without --no-start setup starts the app right after the doctor, so it tells the doctor (a fake app that's already up keeps npm start from starting)
   const up = http.createServer((_req, res) => { res.writeHead(200, { 'content-type': 'application/json' }); res.end('{"ok":true}'); });
   await new Promise<void>(resolve => up.listen(0, '127.0.0.1', resolve));
   try { const starting = await run({ PORT: String((up.address() as import('node:net').AddressInfo).port) }, []);

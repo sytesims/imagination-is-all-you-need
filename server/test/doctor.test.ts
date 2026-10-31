@@ -43,7 +43,7 @@ ok('comfyInstall: Desktop yaml → models folder, installations.json → ComfyUI
 
 // ---- app down, no ComfyUI: works (exit 0), ComfyUI optional ----
 { const r = await D.runDoctor(env(base())); assert.equal(r.exitCode, 0); assert.equal(r.app.api.up, false); assert.equal(r.comfy.reachable, false); assert.equal(r.comfy.required, false);
-  assert.ok(r.checks.find((c) => c.id === 'api')!.fix!.includes('npm run dev')); assert.equal(r.models, null);
+  assert.ok(r.checks.find((c) => c.id === 'api')!.fix!.includes('npm start')); assert.equal(r.models, null);
   const t = D.renderText(r); assert.match(t, /App not running/); assert.match(t, /exit code 0/); }
 ok('app down + no ComfyUI → exit 0, "App not running" with the fix, ComfyUI optional');
 // npm run setup runs the doctor just before it starts the app: the app being down is a note, not a problem

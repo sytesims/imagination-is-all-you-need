@@ -127,7 +127,7 @@ export async function runDoctor(e: DoctorEnv = realEnv(), o: DoctorOptions = {})
   const backend = apiUp ? String(health.json.backend ?? '') || null : null; const tools = apiUp && Array.isArray(health.json.tools) ? health.json.tools.length : null;
   // npm run setup runs the doctor before it starts the app (OPENHIGGSFIELD_DOCTOR_BEFORE_START=1): the app being down then is expected, not a problem
   const beforeStart = !apiUp && e.env.OPENHIGGSFIELD_DOCTOR_BEFORE_START === '1';
-  add({ id: 'api', section: 'app', status: apiUp ? 'ok' : beforeStart ? 'info' : 'warn', required: false, text: apiUp ? `API ${apiUrl} · backend ${backend}${tools != null ? ` · ${tools} tools` : ''}` : beforeStart ? 'The app isn’t started yet: setup starts it next.' : `App not running (nothing at ${apiUrl})`, fix: apiUp || beforeStart ? undefined : 'npm run dev   (or npm run setup)' });
+  add({ id: 'api', section: 'app', status: apiUp ? 'ok' : beforeStart ? 'info' : 'warn', required: false, text: apiUp ? `API ${apiUrl} · backend ${backend}${tools != null ? ` · ${tools} tools` : ''}` : beforeStart ? 'The app isn’t started yet: setup starts it next.' : `App not running (nothing at ${apiUrl})`, fix: apiUp || beforeStart ? undefined : 'npm start   (or npm run setup)' });
   if (apiUp) add({ id: 'web', section: 'app', status: webUp ? 'ok' : 'warn', required: false, text: `Web ${webUrl} ${webUp ? '' : '(not answering)'}· MCP ${mcpUp ? mcpUrl.replace('/mcp', '') : 'not running'}`.replace('  ', ' ') });
 
   // ---- ComfyUI ----
@@ -204,7 +204,7 @@ export async function runDoctor(e: DoctorEnv = realEnv(), o: DoctorOptions = {})
     accounts = { source: ef.found ? 'env-file' : 'none', connected: ACCOUNT_ENV.filter((a) => a.vars.some(has)).map((a) => a.id), notConnected: ACCOUNT_ENV.filter((a) => !a.vars.some(has)).map((a) => a.id) }; }
   const nameOf = (id: string) => ACCOUNT_ENV.find((a) => a.id === id)?.name ?? id;
   add({ id: 'accounts', section: 'accounts', status: accounts.connected.length ? 'ok' : 'info', required: false, text: accounts.connected.length ? `Connected: ${accounts.connected.map(nameOf).join(', ')}` : 'No accounts connected (models run as free samples, or on this computer)', fix: accounts.connected.length ? undefined : 'Settings → Connections, or a key line in .env.local' });
-  if (backend === 'mock' && accounts.connected.length) add({ id: 'sample-mode', section: 'accounts', status: 'info', required: false, text: 'Sample mode: runs make free samples, even with these accounts connected', fix: 'set OPENHIGGSFIELD_BACKEND=comfy in .env.local, then npm run dev again (every paid run still shows its price first)' });
+  if (backend === 'mock' && accounts.connected.length) add({ id: 'sample-mode', section: 'accounts', status: 'info', required: false, text: 'Sample mode: runs make free samples, even with these accounts connected', fix: 'set OPENHIGGSFIELD_BACKEND=comfy in .env.local, then restart the app (npm start) (every paid run still shows its price first)' });
   const hfConnected = accounts.connected.includes('hf') || (accounts.source !== 'app' && ACCOUNT_ENV[1].vars.some((v) => !!e.env[v]?.trim() || ef.names.includes(v)));
   if (!hfConnected) add({ id: 'hf', section: 'accounts', status: 'info', required: false, text: 'Hugging Face not connected: gated models (FLUX.1 Fill dev and a few others) can’t download', fix: 'Settings → Connections → Hugging Face (a free read token), or OPENHIGGSFIELD_HF_TOKEN in .env.local' });
 

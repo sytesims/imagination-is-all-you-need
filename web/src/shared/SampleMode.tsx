@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { Notice } from './Notice';
 
-export const REAL_RUNS_CMD = 'OPENHIGGSFIELD_BACKEND=comfy npm run dev';
+export const REAL_RUNS_CMD = 'OPENHIGGSFIELD_BACKEND=comfy npm start';
 export const REAL_RUNS_LINE = 'OPENHIGGSFIELD_BACKEND=comfy';
 
 let cached: Promise<string | null> | null = null;

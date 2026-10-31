@@ -171,7 +171,7 @@ function KeysOffBanner({ example }: { example: string }) {
     <div><b id="conn-keys-off-h">Add keys on the computer that runs the app</b>
       <p>For safety, keys can only be added there. To add a key, either:</p>
       <ol>
-        <li>Restart it on this computer only, with plain <code>npm run dev</code> (or <code>HOST=127.0.0.1</code>), then use Add key here.</li>
+        <li>Restart it on this computer only, with plain <code>npm start</code> (or <code>HOST=127.0.0.1</code>), then use Add key here.</li>
         <li>Or put the key in <code>.env.local</code> in the app folder (a line such as <code>{example}=…</code>) and restart.</li>
       </ol>
       <Link to={repoDoc('docs/INSTALL.md')} className="conn-link">Setup guide ↗</Link></div>

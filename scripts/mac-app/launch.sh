@@ -184,7 +184,8 @@ elif port_busy; then
   wait_ready 30 && { show_app; exit 0; }
   fail "Something is using port $WEB_PORT or $API_PORT but Imagination isn't answering there. If Imagination is running in a terminal, give it a moment and open Imagination again."
 else
-  # 3. start it: the README's own command (npm run setup: installs what's missing, checks, then npm run dev), detached in its
+  # 3. start it: the README's own command (npm run setup: installs what's missing, checks, then npm start, which builds the web
+  # app when it changed and runs it without file watching), detached in its
   # own process group so closing this launcher or the browser never stops it
   { echo; echo "=== $(date '+%Y-%m-%d %H:%M:%S') Starting Imagination from $REPO (web $WEB_PORT, api $API_PORT)"; } >> "$LOG"
   cd "$REPO" || fail "Imagination couldn't open $REPO."
@@ -194,11 +195,12 @@ else
   set +m
   printf '%s\n%s\n' "$pid" "$REPO" > "$PIDFILE"
 fi
-notify "Starting Imagination…"
-
-# 4. wait until it answers (longer on a first start that still has to install), then open the browser
+# 4. wait until it answers, then open the browser: longer on a first start that still has to install, and on a start that
+# rebuilds the web app (the first one, or the first after an update: a minute or two)
 deps_ok() { [ -d "$REPO/node_modules/fastify" ] && [ -d "$REPO/node_modules/tsx" ] && [ -d "$REPO/node_modules/concurrently" ]; }
-limit="${IMAGINATION_START_TIMEOUT:-}"; [ -z "$limit" ] && { deps_ok && limit=180 || limit=900; }
+if [ "$started" = 1 ] && [ ! -f "$REPO/web/dist/index.html" ]; then notify "Starting Imagination… The first start prepares the app and takes a few minutes."
+else notify "Starting Imagination…"; fi
+limit="${IMAGINATION_START_TIMEOUT:-}"; [ -z "$limit" ] && { deps_ok && limit=420 || limit=900; }
 start=$SECONDS
 until ready; do
   if ! kill -0 "$pid" 2>/dev/null; then
