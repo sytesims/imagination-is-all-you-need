@@ -15,14 +15,15 @@ export interface VBarSlot {
   /** the form field the file goes out as */ name: string; label: string; kind: VBarSlotKind;
   /** true, false, or 'by-model' (the tool input's requiredByProvider says, per model) */ required: boolean | 'by-model';
   /** the empty slot's tooltip */ hint: string; /** Generate's words while it's empty */ missing: string;
-  /** several files in one slot (style images); the number is the most it takes */ multiple?: number;
+  /** several files in one slot (style images); the number is the most it takes */ multiple?: number; min?: number;
   /** shown only for these models (Re-shoot's video references: Seedance only) */ providers?: string[];
   /** this slot also takes a photo, sent as this field instead (Re-shoot: a still in place of the take) */ altImage?: string;
 }
-export type VBarControlKind = 'choice' | 'toggle' | 'slider' | 'gallery' | 'tiles';
+export type VBarControlKind = 'choice' | 'toggle' | 'slider' | 'gallery' | 'tiles' | 'text';
 export interface VBarOption { value: string; label: string; hint?: string }
 export interface VBarControl {
   field: string; label: string; group: string; kind: VBarControlKind;
+  maxLength?: number; placeholder?: string; required?: boolean;
   /** fixed options in our words (filtered by what the tool and model take); none = from the tool (`from`) */ options?: VBarOption[];
   /** where the options come from: the tool input of the same field (its byProvider list per model), the model's lengths or resolutions, or the tool's presets */
   from?: 'input' | 'durations' | 'resolutions' | 'presets';
@@ -60,6 +61,21 @@ const G = { length: { id: 'length', label: 'Length', icon: 'clock' }, quality: {
 
 /** The recipes, by video workflow id (shared/videoWorkflows.ts). A workflow with no recipe keeps its own screen inside the Video page. */
 export const VIDEO_BARS: Record<string, VideoBar> = {
+  'photos-to-reel': {
+    slots: [{ name: 'photos', label: 'Photos', kind: 'image', required: true, multiple: 15, min: 8,
+      hint: '8–15 photos, shown in this order', missing: 'Add 8–15 photos' }],
+    prompt: { mode: 'hidden', placeholder: '' },
+    groups: [{ id: 'words', label: 'Words', icon: 'edit' }, { id: 'kind', label: 'Kind', icon: 'gallery' }, G.length,
+      { id: 'motion', label: 'Motion', icon: 'camera' }, { id: 'sound', label: 'Music', icon: 'music' }],
+    controls: [
+      { field: 'title', label: 'Title', group: 'words', kind: 'text', required: true, maxLength: 120, placeholder: 'A short title for your reel' },
+      { field: 'endLine', label: 'End card (optional)', group: 'words', kind: 'text', maxLength: 120, placeholder: 'A final line' },
+      { field: 'kind', label: 'Kind', group: 'kind', kind: 'choice', default: 'listing', options: [opt('listing', 'Listing'), opt('event', 'Event'), opt('hotel', 'Hotel'), opt('trip', 'Trip'), opt('product', 'Product')] },
+      { field: 'seconds', label: 'Length', group: 'length', kind: 'choice', default: '30', options: [opt('15', '15 s'), opt('30', '30 s')] },
+      { field: 'motion', label: 'Camera moves', group: 'motion', kind: 'choice', default: 'heroes', options: [opt('heroes', 'Hero photos', 'Camera moves on 3–4 photos; a slow zoom on the rest'), opt('all', 'Every photo')] },
+      { field: 'music', label: 'Music', group: 'sound', kind: 'choice', default: 'on', options: [opt('on', 'Music on'), opt('off', 'No music')] },
+    ], fixed: { aspect: '9:16' }, generateLabel: 'Generate',
+  },
   extend: { slots: [clip('Clip', 'Add the clip to extend', 'The clip to continue from its last frame · MP4, MOV or WEBM · up to 60 s in total'),
       /* H3 Extend · Comfy Cloud (2026-10-27): an optional character photo for every segment (carried over from the clip's own run when it had one) */
       { name: 'character', label: 'Character', kind: 'image', required: false, providers: ['comfy-h3-extend'], hint: 'Optional: a photo of the person, kept for every segment so the face stays the same (H3 Extend · Comfy Cloud). A photo from the clip\'s own run is used automatically', missing: 'Add a photo' }], prompt: { mode: 'optional', placeholder: 'What happens next? (optional)' },

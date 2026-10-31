@@ -97,6 +97,7 @@ function FX(id: string, o: Partial<WfEntry> = {}): WfEntry {
 
 export const WF_ENTRIES: WfEntry[] = [
   // Make a video
+  V('photos-to-reel', 'video', { art: 'move', tags: ['photos', 'reel', 'listing', 'event', 'hotel', 'trip', 'product'], needs: '8–15 photos + a title' }),
   V('create', 'video', { name: 'Create Video', featured: 'ltx-pro-painter', tags: ['text to video', 'image to video', 'sound', 'ltx', 'multi-shot', 'dialogue'] }),
   V('loop', 'video', { featured: 'ltx-village-loop', model: 'ltx-2.5-22b', tags: ['seamless', 'gif', 'local'] }),
   V('morph', 'video', { featured: 'ltx-morph', model: 'ltx-2.5-22b', tags: ['transition', 'start and end frame'] }),

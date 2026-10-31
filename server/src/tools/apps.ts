@@ -680,6 +680,12 @@ export function sheetAspect(want: string, provider: string | undefined, mode: st
 }
 const joinPrompt = (...xs: (string | undefined | false)[]) => xs.filter((x) => x && String(x).trim()).map((x) => String(x).trim().replace(/[.;,]+$/, '')).join('; ');
 export const APP_GALLERY: GalleryApp[] = [
+  { id: 'photos-to-reel', name: 'Photos → Reel', category: 'Video', base: 'photos-reel', poster: null,
+    description: 'Turn 8–15 photos into a vertical reel with gentle movement, title cards and optional music.',
+    locked: { aspect: '9:16' }, exposed: ['photos', 'title', 'endLine', 'kind', 'seconds', 'motion', 'music', 'aspect', 'provider', 'resolution', 'seed'],
+    defaults: { kind: 'listing', seconds: '30', motion: 'heroes', music: 'on' }, required: ['photos'], labels: { photos: 'Photos' },
+    route: '/video?workflow=photos-to-reel',
+    notes: ['Keep 8–15 photos in the order you want them shown. Hero photos use camera moves; the other photos use a slow zoom.'] },
   { id: 'character-sheet', name: 'Character Sheet', category: 'Image', base: 'create-image', poster: null, description: 'One image, same person in several panels on a flat background: a reusable reference.',
     // Oct 22: an optional photo of the person switches to Edit image (same face, hair and outfit; edit-capable models only, as Product Shot); no photo = text-to-image.
     providers: GENERATE_MODELS /* shared/imageFeatures.ts: models that really work here */, // Landscape 4:3 for three tall panels (every listed model takes 4:3); no style preset (the sheet prompt sets backdrop and light itself).

@@ -68,6 +68,7 @@ export const CLOUD_DEFAULTS: Record<string, CloudDefault> = {
   'object-swap': { model: 'router-kling-edit', comfyKey: true, place: R, cents: 101, typical: '5 s clip', why: 'Swaps people and objects, keeps the motion', note: 'MiniMax H3 character swap on Comfy Cloud waits for a measured price' },
   'motion-transfer': { model: 'router-kling-edit', comfyKey: true, place: R, cents: 101, typical: '5 s clip', why: 'Moves your character like the clip', note: 'No sponsor model does motion transfer on the Comfy key' },
   'make-it-real': { model: 'router-kling-edit', comfyKey: true, place: R, cents: 101, typical: '5 s render', why: 'The lowest-priced cloud render of a mockup', note: 'LTX-2.5 Layout to Render on Comfy Cloud waits for a measured price' },
+  'app-photos-to-reel': { model: 'api-minimax-h3', comfyKey: true, place: R, cents: null, typical: '15 or 30 s reel', why: 'Gentle camera moves from your photos', note: 'The live quote adds every camera move and optional music before Generate.' },
   camera: { model: 'api-minimax-h3', comfyKey: true, place: R, cents: 65, typical: '5 s, 768p, with sound', why: 'MiniMax H3 has camera moves built in', sponsor: 'MiniMax' },
   'photo-fx': { model: 'api-minimax-h3', comfyKey: true, place: R, cents: 65, typical: '5 s, 768p, with sound', why: 'Brings a photo to life with sound, for less', sponsor: 'MiniMax' },
   'app-transition': { model: 'api-minimax-h3', comfyKey: true, place: R, cents: 65, typical: '5 s, 768p', why: 'First-to-last-frame moves with sound', sponsor: 'MiniMax' },

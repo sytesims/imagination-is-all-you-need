@@ -381,6 +381,7 @@ const zodText = (e: z.ZodError) => { const i = e.issues[0]; return i ? `${i.path
 
 // ---------------------------------------------------------------- workflows (the ids canvas_add_card accepts)
 const BASE_WORKFLOWS: { id: string; medium: string; name: string; needs: string; tagline?: string; toolId: string }[] = [
+  { id: 'photos-to-reel', medium: 'video', name: 'Photos → Reel', needs: '8–15 photos + a title', tagline: 'An ordered photo set into a vertical reel with optional music', toolId: 'app-photos-to-reel' },
   { id: 'create', medium: 'image', name: 'Create Image', needs: 'Prompt · images optional', tagline: 'Text to image, or edit with references', toolId: 'create-image' },
   { id: 'video', medium: 'video', name: 'Create Video', needs: 'Prompt · first / last frame optional', tagline: 'Video with sound, from text or frames', toolId: 'h3-video' },
   { id: 'transition', medium: 'video', name: 'Transitions', needs: '2 images', tagline: 'Animate from a start to an end image', toolId: 'app-transition' },

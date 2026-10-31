@@ -31,7 +31,7 @@ export interface LibWorkflow {
 }
 
 /** Workflows page entry → its Canvas card workflow id (server/src/canvasAgent.ts canvasWorkflows; image recipes by their own id). */
-const CANVAS_BY_SOURCE: Record<string, string> = { 'video:create': 'video', 'video:extend': 'extend', 'video:transitions': 'transition', 'video:upscale': 'video-upscale', 'video:lip-sync': 'lip-sync',
+const CANVAS_BY_SOURCE: Record<string, string> = { 'video:photos-to-reel': 'photos-to-reel', 'video:create': 'video', 'video:extend': 'extend', 'video:transitions': 'transition', 'video:upscale': 'video-upscale', 'video:lip-sync': 'lip-sync',
   'audio:music': 'music', 'audio:sfx': 'sfx', 'audio:voiceover': 'voice', '3d:image-to-3d': 'image-to-3d', 'image:create-image': 'create', 'image:edit-image': 'create' };
 const CANVAS_IMAGE = new Set(['relight', 'upscale', 'remove-bg', 'image-layers', 'expand', 'product-shot', 'character-sheet', 'face-swap', 'person-swap', 'try-on']);
 export const canvasIdOf = (e: WfEntry): string | null => CANVAS_BY_SOURCE[e.source] ?? (e.source.startsWith('image:') && CANVAS_IMAGE.has(e.source.slice(6)) ? e.source.slice(6) : null);
