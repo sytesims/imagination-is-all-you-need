@@ -667,8 +667,8 @@ const pvideoIssue = (i: In): string | null => { const { m, frame } = videoJob(i)
 // ---- Grok Imagine Video 1.5 Lite on Comfy Router (2026-10-31, docs.comfy.org/development/comfy-router/models/xai/grok-imagine-video-1-5-lite/code) ----
 // Body { model, prompt (≤ 4,096 characters), duration 1–15, aspect_ratio (1:1, 16:9, 9:16, 4:3, 3:4, 3:2, 2:3), resolution, image { type image_url, url (data URI ok) } }.
 // model is sent (the field defaults to grok-imagine-video). Resolution 480p / 720p / 1080p: the Router pricing rows (the schema doesn't list values).
-// Text and image to video only: reference_images has no documented count for Lite, so Reference to video is not offered. The page says Output: Video (no
-// sound). Refusal: block_reason; the result is video.url. The response carries usage.cost_in_usd_ticks (xAI's own cost).
+// Text and image to video only: reference_images has no documented count for Lite, so Reference to video is not offered. Sound: the page says Output: Video,
+// but a real run (2026-10-31) returned an audio stream and the schema has no audio field, so the clip always has sound (videoCaps: no toggle). Refusal: block_reason; the result is video.url. The response carries usage.cost_in_usd_ticks (xAI's own cost).
 export const GROK_VIDEO_PROMPT_MAX = 4096; export const GROK_VIDEO_ASPECTS = ['16:9', '9:16', '4:3', '3:4', '1:1'];
 const grokVideoIssue = (i: In): string | null => { const { m, text } = videoJob(i);
   if (m === 'r2v' || m === 'flf') return 'Grok Imagine Video 1.5 Lite on Comfy Router takes text or a first frame';
