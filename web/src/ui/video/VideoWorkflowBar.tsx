@@ -311,10 +311,10 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
     const single = cs.length === 1 && cs[0].kind === 'choice' && optionsOf(cs[0]).length <= 1;
     const sum = cs.map(c => { const v = valOf(c); return v === '' ? (c.kind === 'choice' && c.options?.some(o => o.value === '') ? labelOf(c, v) /* an empty pick with its own name (Finish: One look only) */ : '') : c.kind === 'gallery' ? labelOf(c, v) : labelOf(c, v); }).filter(Boolean).join(' · ') || (gallery?.group === g.id ? (gallery.optional ? 'None' : `Pick ${g.label.toLowerCase()}`) : reel && g.id === 'words' ? 'End card' : '');
     const icon = g.id === 'shape' && aspectWH(valOf(cs[0])) ? (() => { const wh = aspectWH(valOf(cs[0]))!; return <AspectShape w={wh[0]} h={wh[1]} />; })() : <GIcon name={g.icon} />;
-    if (single) return <span key={g.id} className="ic-chip ic-static wf-fold" aria-label={`${g.label}: ${sum}`} data-testid={`vbar-group-${g.id}`} {...tip(`${g.label}: the only option this model has`)}>{icon}<b>{sum}</b></span>;
+    if (single) return <span key={g.id} className="ic-chip ic-static wf-fold" aria-label={sum === g.label ? g.label : `${g.label}: ${sum}`} data-testid={`vbar-group-${g.id}`} {...tip(`${g.label}: the only option this model has`)}>{icon}<b>{sum}</b></span>;
     const missing = gallery?.group === g.id && !gallery.optional && !valOf(gallery);
     return <button key={g.id} ref={el => { gRefs.current[g.id] = el; }} type="button" className={`ic-chip wf-grp wf-fold${pop === `g:${g.id}` ? ' on' : ''}${missing ? ' vbar-need' : ''}`} aria-haspopup="dialog" aria-expanded={pop === `g:${g.id}`}
-      data-testid={`vbar-group-${g.id}`} aria-label={`${g.label}: ${sum}`} {...tip(pop === `g:${g.id}` ? null : `${g.label}: ${sum}`)} onClick={() => setPop(pop === `g:${g.id}` ? '' : `g:${g.id}`)}>
+      data-testid={`vbar-group-${g.id}`} aria-label={sum === g.label ? g.label : `${g.label}: ${sum}`} {...tip(pop === `g:${g.id}` ? null : sum === g.label ? g.label : `${g.label}: ${sum}`)} onClick={() => setPop(pop === `g:${g.id}` ? '' : `g:${g.id}`)}>
       {icon}{!(reel && g.id === 'words' && sum === 'End card') && <span className="wf-grp-l">{g.label}</span>}<b>{sum}</b></button>; });
   /* Sound toggles (Extend's sound, Keep the clip's sound, Re-shoot's new sound) sit in Settings, as on Create Video (SoundSetting.tsx, 2026-10-27);
    * the Settings button wears a speaker badge while one is on. It sits beside ⋯ and never folds (a 32 px square), so the sound state stays in sight. */
@@ -367,7 +367,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
         onClick={e => { previewAnchor.current = e.currentTarget; setPreview({ slot: s, index: j }); }} aria-haspopup="dialog" onKeyDown={e => { if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); clearSlot(s, o.count > 1 ? j : undefined); }
           else if (canMove && e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); moveFile(s, j, j + (e.key === 'ArrowLeft' ? -1 : 1)); } }}>
         {s.kind === 'image' || f.photo ? <img src={f.url} alt="" draggable={false} /> : s.kind === 'video' ? <VideoThumb src={f.url} /> : <span className="vbar-snd" aria-hidden><AudioIcon size={14} /></span>}
-        <b>{off ? 'Not used' : s.kind === 'image' ? `${name}${reel && canMove ? ' ↔' : ''}` : f.photo ? 'Photo' : fmtSec(f.sec) || s.label}</b></button>
+        <b>{off ? 'Not used' : s.kind === 'image' ? name : f.photo ? 'Photo' : fmtSec(f.sec) || s.label}</b></button>
       {canMove && <span className="vbar-move">
         <button type="button" className="vbar-mv" disabled={j === 0} aria-label={`Move ${name} earlier`} data-testid={`vbar-slot-${s.name}-left-${j}`} {...tip('Move earlier')} onClick={() => moveFile(s, j, j - 1)}>{mvIcon(MV.l)}</button>
         <button type="button" className="vbar-mv" disabled={j === o.count - 1} aria-label={`Move ${name} later`} data-testid={`vbar-slot-${s.name}-right-${j}`} {...tip('Move later')} onClick={() => moveFile(s, j, j + 1)}>{mvIcon(MV.r)}</button></span>}

@@ -152,17 +152,17 @@ export function ViewerShell({ label, bg, media, who, badge, tabs, tab, setTab, b
 
 /** PROMPT block: label, Copy, the prompt in a lighter box clamped to about six lines with a fade, then See all. */
 /** onCopy: resolves false when the copy failed, so the button only says Copied when it worked. */
-export function ViewerPrompt({ text, onCopy, extra, full }: { text: string; onCopy: () => Promise<unknown> | void; extra?: ReactNode;
+export function ViewerPrompt({ text, onCopy, extra, full, label = 'Prompt' }: { label?: string; text: string; onCopy: () => Promise<unknown> | void; extra?: ReactNode;
   /** 2026-10-25: a workflow job: `text` is your words, `full` the prompt the workflow composed (behind the eye) */ full?: string | null }) {
   const [copied, flash] = useCopied(); const ref = useRef<HTMLParagraphElement>(null); const [open, setOpen] = useState(false); const [over, setOver] = useState(false); const [showFull, setShowFull] = useState(false);
   const shown = showFull && full ? full : text;
   useEffect(() => { setShowFull(false); }, [text, full]);
   useEffect(() => { setOpen(false); const el = ref.current; if (!el) return; const m = () => setOver(el.scrollHeight > el.clientHeight + 2); requestAnimationFrame(m); }, [shown]);
-  return <section className="rvx-sec" aria-label="Prompt">
-    <div className="rvx-sec-h"><span className="rvx-lbl"><PromptGlyph />{showFull ? 'Full prompt' : full ? 'Your words' : 'Prompt'}</span><span className="rvx-sec-acts">
+  return <section className="rvx-sec" aria-label={label}>
+    <div className="rvx-sec-h"><span className="rvx-lbl"><PromptGlyph />{showFull ? 'Full prompt' : full && label === 'Prompt' ? 'Your words' : label}</span><span className="rvx-sec-acts">
       {full && <button type="button" className={`rvx-copy rvx-peek${showFull ? ' on' : ''}`} data-testid="rvx-full-prompt" aria-pressed={showFull} {...tip(showFull ? 'Back to your words' : 'See the full prompt the workflow sent')} onClick={() => setShowFull(s => !s)}><PeekIcon /></button>}
       {shown && <button type="button" className="rvx-copy" data-testid="rvx-copy" onClick={() => { void Promise.resolve(showFull && full ? navigator.clipboard?.writeText(full) : onCopy()).then(ok => { if (ok !== false) flash(); }); }}>{copied ? <Copied /> : 'Copy'}</button>}</span></div>
-    <div className={`rvx-prompt${open ? ' open' : ''}${over && !open ? ' fade' : ''}`}><p ref={ref} data-testid="rvx-prompt">{shown ? <MentionText text={shown} /> : <span className="rvx-none">{full ? 'None: the workflow wrote the prompt' : 'No prompt'}</span>}</p></div>
+    <div className={`rvx-prompt${open ? ' open' : ''}${over && !open ? ' fade' : ''}`}><p ref={ref} data-testid="rvx-prompt">{shown ? <MentionText text={shown} /> : <span className="rvx-none">{full ? 'None: the workflow wrote the prompt' : `No ${label.toLowerCase()}`}</span>}</p></div>
     {(over || open) && <button type="button" className="rvx-seeall" aria-expanded={open} data-testid="rvx-see-all" onClick={() => setOpen(o => !o)}>{open ? 'Show less' : 'See all'}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d={open ? 'm6 15 6-6 6 6' : 'm6 9 6 6 6-6'} /></svg></button>}
     {extra}
   </section>;

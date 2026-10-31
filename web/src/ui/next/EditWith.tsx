@@ -34,10 +34,10 @@ export function EditWith({ jobId, kind, output = 0, exclude }: { jobId: string; 
 }
 
 /** Lineage strip: GET /api/jobs/:id/lineage → {chain[], children[]} (root first). */
-type Node = { id: string; toolId: string; toolName: string; status: string; resultUrl: string | null; prompt?: string | null };
+type Node = { id: string; toolId: string; toolName: string; status: string; resultUrl: string | null; posterUrl?: string | null; prompt?: string | null };
 const Thumb = ({ n, cur }: { n: Node; cur?: boolean }) => {
-  const isVid = /\.(mp4|webm|mov)$/i.test(n.resultUrl ?? '');
-  return <Link to={`/jobs/${n.id}`} className={`ln-node ${cur ? 'cur' : ''} ln-${n.status}`}><span className="ln-thumb">{n.resultUrl ? (isVid ? <video src={n.resultUrl} muted preload="metadata" /> : <img src={n.resultUrl} alt="" loading="lazy" />) : <i>{n.status}</i>}</span><b title={n.toolName}>{n.toolName}</b><small>{n.status}</small></Link>;
+  const isVid = /\.(mp4|webm|mov)(?:[?#]|$)/i.test(n.resultUrl ?? '');
+  return <Link to={`/jobs/${n.id}`} className={`ln-node ${cur ? 'cur' : ''} ln-${n.status}`}><span className="ln-thumb">{n.resultUrl ? (isVid ? <img src={n.posterUrl || `/api/media/thumb?url=${encodeURIComponent(n.resultUrl)}`} alt="" loading="lazy" /> : <img src={n.resultUrl} alt="" loading="lazy" />) : <i>{n.status}</i>}</span><b title={n.toolName}>{n.toolName}</b><small>{n.status}</small></Link>;
 };
 export function LineageStrip({ jobId, reserve, label = 'History' }: { jobId: string; reserve?: boolean; label?: string }) {
   const [d, setD] = useState<{ chain: Node[]; children: Node[] } | null>(null);

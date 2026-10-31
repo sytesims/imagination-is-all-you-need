@@ -129,7 +129,7 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
   const clipProblem = (name: string) => { const u = st?.bySlot[name]?.find(i => i.kind === 'video')?.url; return u ? clipIssue(clipRule, clips[u])?.message ?? null : null; };
   const problems = spec && draft ? preflightProblems({ slots: spec.slots.map(s => ({ name: s.name, label: s.label, required: s.required, filled: (st?.bySlot[s.name]?.length ?? 0) >= (s.min ?? 1), missing: s.missing, issue: s.accept === 'video' ? clipProblem(s.name) : null })),
     prompt: missing && spec.promptMode !== 'hidden' && !spec.slots.some(s => s.required && (st?.bySlot[s.name]?.length ?? 0) < (s.min ?? 1)) ? { missing } : null, quote: q, modelName: model }) : [];
-  if (spec && draft) for (const c of spec.recipe.controls) if (c.kind === 'text' && !c.optional && !spec.vals[c.field]?.trim()) problems.splice(problems.filter(p => p.stage === 'inputs').length, 0, { code: 'pick_missing', stage: 'inputs', message: `Add ${c.label.toLowerCase()}`, fix: { kind: 'open-group', label: 'Open', args: { group: c.group } } });
+  if (spec && draft) for (const c of spec.recipe.controls) if (c.kind === 'text' && !c.optional && !spec.vals[c.field]?.trim()) problems.splice(problems.filter(p => p.stage === 'inputs').length, 0, { code: 'pick_missing', stage: 'inputs', message: `Add ${c.label.toLowerCase()}`, fix: { kind: 'open-group', label: 'Choose…', args: { group: c.group } } });
 
   /* prompt field fills the node body; keys stay in the field; Enter generates, Shift+Enter is a new line, Esc leaves */
   const ta = useRef<HTMLTextAreaElement>(null);

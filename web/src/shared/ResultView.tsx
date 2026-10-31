@@ -161,6 +161,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
   const [rcPrice, setRcPrice] = useState<{ credits?: number; runnable?: boolean; needsKey?: boolean } | null>(null);
   useEffect(() => { setRcPrice(null); /* #22: never show the previous job's price while this one loads */ if (!job.id || recreateHref === null || sample) return; let live = true; fetch(`/api/jobs/${encodeURIComponent(job.id)}/prefill?action=recreate`).then(r => r.ok ? r.json() : null).then(b => { if (live) setRcPrice(b?.price ?? null); }).catch(() => 0); return () => { live = false; }; }, [job.id]);
   /* 2026-10-25: a workflow job shows your words; the prompt it composed stays one click away (the eye / "Full prompt") */
+  const promptLabel = job.toolId === 'app-photos-to-reel' ? 'Title' : 'Prompt';
   const inp: any = job.input ?? {}; const pr = typedPromptOf(inp).trim(); const appPr: string[] = Array.isArray((job as any).runSource?.appPrompts) ? (job as any).runSource.appPrompts : []; const fullPr = composedDiffers(inp) ? String(inp.prompt).trim() : appPr.length ? appPr.map((p, i) => (appPr.length > 1 ? `${i + 1}. ${p}` : p)).join('\n\n') : null; /* a workflow that writes its own prompts (Swap Two People: one per person, jobSource.ts) shows them behind the eye */ const [fullOn, setFullOn] = useState(false);
   const storyShots: string[] | null = Array.isArray(inp.story?.shots) && inp.story.shots.length ? inp.story.shots.map((x: any) => String(x?.prompt ?? '').trim()) : null;
   /* The model that made it is always credited (licences such as MiniMax H3 require its name on screen), whatever route ran it. */
@@ -174,7 +175,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
   const inputs = jobInputs(job); const refThumbs = inputs.map(x => x.url);
   const promptRef = useRef<HTMLParagraphElement>(null); const [clampOn, setClampOn] = useState(true); const [overflow, setOverflow] = useState(false);
   useEffect(() => { setClampOn(true); setFullOn(false); const el = promptRef.current; if (!el) return; requestAnimationFrame(() => setOverflow(el.scrollHeight > el.clientHeight + 2)); }, [pr, job.id]);
-  const copyTxt = [pr && `Prompt: ${pr}`, ...sets.map(([k, v]) => `${k}: ${v}`)].filter(Boolean).join('\n');
+  const copyTxt = [pr && `${promptLabel}: ${pr}`, ...sets.map(([k, v]) => `${k}: ${v}`)].filter(Boolean).join('\n');
   /* PB-14: the menu item itself says Copied (no toast); a private link says so in its grey line. */
   const copyLink = () => { const tok = (job as any).shareToken; const u = tok ? `${location.origin}/s/${tok}` : `${location.origin}/jobs/${job.id}`; navigator.clipboard?.writeText(u).then(() => flash('link')).catch(() => toast('Couldn’t copy the link', 'error')); };
   /* Director was removed (2026-10-23): its old jobs (and stories) still open and play here, with no Recreate (its page now opens Create Video). */
@@ -280,8 +281,8 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
     {showOriginalTab && <button role="tab" className={showingOriginal ? 'on' : ''} onClick={() => setSel(-1)}>Original</button>}
     {outs.map((o, i) => <button role="tab" key={o.url} className={!showingOriginal && sel === i ? 'on' : ''} onClick={() => setSel(i)}>{o.label}</button>)}
   </div>;
-  const meta = <section className="rv-meta" aria-label="Prompt and settings">
-    <div className="rv-meta-h"><span className="rv-lbl">Prompt</span><button type="button" className="btn btn-sm rv-copy" onClick={() => navigator.clipboard?.writeText(copyTxt).then(() => { flash('prompt'); toast('Prompt and settings copied'); }, () => 0)}>{copied === 'prompt' ? <Copied /> : 'Copy'}</button></div>
+  const meta = <section className="rv-meta" aria-label={`${promptLabel} and settings`}>
+    <div className="rv-meta-h"><span className="rv-lbl">{promptLabel}</span><button type="button" className="btn btn-sm rv-copy" onClick={() => navigator.clipboard?.writeText(copyTxt).then(() => { flash('prompt'); toast(`${promptLabel} and settings copied`); }, () => 0)}>{copied === 'prompt' ? <Copied /> : 'Copy'}</button></div>
     {inputs.some(x => x.kind === 'image') && <div className="rv-refs rv-inputs" data-testid="rv-refs" aria-label="Inputs">{inputs.map((x, i) => x.kind === 'image' && <a key={i} className="rv-in" href={x.url} target="_blank" rel="noreferrer" {...tip(`${x.slot}: open full size`)}><img src={x.url} alt={x.slot} loading="lazy" /><span>{x.slot}</span></a>)}</div>}
     {storyShots ? <ol className={`rv-story-shots${clampOn ? ' clamp' : ''}`} data-testid="rv-story-shots">{(clampOn ? storyShots.slice(0, 2) : storyShots).map((t, i) => <li key={i}><b>Shot {i + 1}</b> {withMentions(t)}</li>)}</ol>
       : <p ref={promptRef} className={`rv-prompt ${clampOn ? 'clamp' : ''}`} data-testid="rv-prompt">{fullOn && fullPr ? fullPr : pr ? withMentions(pr) : <span className="helper">{fullPr ? 'None: the workflow wrote the prompt' : 'No prompt'}</span>}</p>}
@@ -341,7 +342,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
       preset: S.Preset ? String(S.Preset) : '', quality: !local && S.Quality ? String(S.Quality) : '', madeBy: S['Made by'] ? String(S['Made by']) : '', workflow: feat?.workflow ?? null, sample: sample || isDemoJob(job), recovered,
       madeFrom: job.parentId ? <a className="rv-parent" data-testid="rv-made-from" href={`/jobs/${encodeURIComponent(job.parentId)}`} onClick={go(`/jobs/${job.parentId}`)}>{job.parentId}</a> : null,
     };
-    const copyPrompt = () => navigator.clipboard?.writeText(pr).then(() => { toast('Prompt copied'); }, () => { toast('Couldn’t copy the prompt', 'error'); return false; });
+    const copyPrompt = () => navigator.clipboard?.writeText(pr).then(() => { toast(`${promptLabel} copied`); }, () => { toast(`Couldn’t copy the ${promptLabel.toLowerCase()}`, 'error'); return false; });
     const natM = nat.match(/^(\d+)×(\d+)$/); const fitAr = ow > 0 && oh > 0 ? ow / oh : natM ? Number(natM[1]) / Number(natM[2]) : 0;
     /* Compare: the first input against the first output, once the image's shape is known (ViewerImage's split) */
     /* Several results (2026-10-25, shared/MultiResult): a filmstrip under the picture steps through them (← → and the stage arrows step results
@@ -375,7 +376,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
     const info = <>{sampleNote}{demoNote}{extras}{children}
       {job.toolId === 'app-photos-to-reel' && <LineageStrip jobId={job.id} label="Steps" />}
       {lys && <LayerList jobId={job.id} layers={lys} view={lyView} onError={m => toast(m, 'error')} />}
-      <ViewerPrompt text={pr} full={fullPr} onCopy={copyPrompt} extra={<>{strip}
+      <ViewerPrompt label={promptLabel} text={pr} full={fullPr} onCopy={copyPrompt} extra={<>{strip}
         {(job as any).elements?.length > 0 && <div className="el-chips rv-els">{(job as any).elements.map((e: any) => <span key={e.id + e.start} className="el-chip" title={e.kind}>{e.url && <img src={e.url} alt="" />}<b>{e.mention ?? `@${e.name}`}</b></span>)}</div>}</>} />
       <ResultDetails job={job} info={details} extra={<RouteAttempts job={job} label={credit.ranOn} />} onViewWorkflow={wfOk ? () => setWf('get') : undefined} /></>;
     /* Edit: the existing hand-offs, with this result as the input (availability from GET /api/jobs/:id/prefill). */
