@@ -5,6 +5,7 @@ import { existsSync } from 'node:fs'; import { spawnSync } from 'node:child_proc
 const MCP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../mcp');
 if (process.env.OPENHIGGSFIELD_SKIP_MCP === '1' || !existsSync(path.join(MCP, 'package-lock.json'))) process.exit(0);
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-const r = spawnSync(npm, ['ci', '--no-audit', '--no-fund'], { cwd: MCP, stdio: 'inherit', shell: process.platform === 'win32' });
+// Windows: npm.cmd needs a shell; one command line rather than args + shell (Node 24 DEP0190)
+const r = process.platform === 'win32' ? spawnSync(`${npm} ci --no-audit --no-fund`, { cwd: MCP, stdio: 'inherit', shell: true }) : spawnSync(npm, ['ci', '--no-audit', '--no-fund'], { cwd: MCP, stdio: 'inherit' });
 if (r.status !== 0) console.warn('[postinstall] mcp/ install failed; the API and web app still run. Retry with: npm run mcp:install');
 process.exit(0);

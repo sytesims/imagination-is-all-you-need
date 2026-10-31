@@ -107,7 +107,7 @@ const steps = [
 for (const s of steps) {
   if (process.env.OPENHIGGSFIELD_UPDATE_SKIP_INSTALL === '1') { say(`${s.label} skipped (OPENHIGGSFIELD_UPDATE_SKIP_INSTALL=1)`); continue; }
   say(s.label);
-  const r = spawnSync(NPM, s.args, { cwd: s.cwd, stdio: 'inherit', shell: WIN });
+  const r = WIN ? spawnSync(`${NPM} ${s.args.join(' ')}`, { cwd: s.cwd, stdio: 'inherit', shell: true }) /* npm.cmd needs a shell; one command line, not args + shell (Node 24 DEP0190) */ : spawnSync(NPM, s.args, { cwd: s.cwd, stdio: 'inherit' });
   if (r.status !== 0) stop(`\nThe new code is in place, but “npm ${s.args.join(' ')}” failed. Fix the error above, then run it again in ${s.cwd}.\nIf a file is in use, stop the app first (Ctrl+C in its terminal).`);
 }
 

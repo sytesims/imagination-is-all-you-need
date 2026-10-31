@@ -12,7 +12,9 @@ const args = process.argv.slice(2); const has = (f) => args.includes(f);
 if (has('--help') || has('-h')) { console.log('npm run setup [-- --check] [--no-start] [--open]\n  --check     only check (no npm install, no start)\n  --no-start  install + doctor, but don\'t start the app\n  --open      open the app in the browser once it\'s ready'); process.exit(0); }
 const checkOnly = has('--check'); const noStart = has('--no-start') || checkOnly; const openWhenReady = has('--open');
 const say = (s) => console.log(`\x1b[1m==>\x1b[0m ${s}`);
-const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const WIN = process.platform === 'win32'; const npm = WIN ? 'npm.cmd' : 'npm';
+/** npm.cmd needs a shell on Windows: give it one command line (fixed words only), not args + shell: true, which Node 24 warns about (DEP0190). */
+const npmCall = (a) => (WIN ? [`${npm} ${a.join(' ')}`, [], { shell: true }] : [npm, a, {}]);
 const major = Number(process.versions.node.split('.')[0]);
 if (major < 20) { console.error(`Node ${process.versions.node} is too old: install Node 22 or 24 (https://nodejs.org), then run npm run setup again.`); process.exit(2); }
 // ports and env file: the same settings the app reads (shell first, then the env file; values of these few settings only, never keys)
@@ -36,7 +38,7 @@ const depsOk = () => ['node_modules/fastify', 'node_modules/tsx', 'node_modules/
 if (depsOk()) say('Dependencies installed');
 else if (checkOnly) say('Dependencies not installed (run npm run setup without --check, or npm install)');
 else { const ci = fs.existsSync(path.join(REPO, 'package-lock.json')); /* npm ci installs exactly the lockfile and never rewrites it (a rewritten lockfile blocks git pull later) */
-  say(`Installing dependencies (npm ${ci ? 'ci' : 'install'})…`); const r = spawnSync(npm, [ci ? 'ci' : 'install', '--no-audit', '--no-fund'], { cwd: REPO, stdio: 'inherit', shell: process.platform === 'win32' }); if (r.status !== 0) { console.error('npm install failed; fix the error above and run npm run setup again.'); process.exit(r.status ?? 1); } }
+  say(`Installing dependencies (npm ${ci ? 'ci' : 'install'})…`); const [c, a, o] = npmCall([ci ? 'ci' : 'install', '--no-audit', '--no-fund']); const r = spawnSync(c, a, { ...o, cwd: REPO, stdio: 'inherit' }); if (r.status !== 0) { console.error('npm install failed; fix the error above and run npm run setup again.'); process.exit(r.status ?? 1); } }
 
 // 2. doctor
 say('Checking this computer (npm run doctor)…\n');
@@ -53,7 +55,7 @@ if (await up()) {
 }
 if (noStart) { say(`Start it with npm run dev, then open the setup page: ${wizard}`); process.exit(doc.status ?? 0); }
 say(`Starting the app (npm run dev). Setup page: ${wizard}   (Ctrl+C stops it)`);
-const child = spawn(npm, ['run', 'dev'], { cwd: REPO, stdio: 'inherit', shell: process.platform === 'win32', env: launchEnv });
+const [devCmd, devArgs, devOpts] = npmCall(['run', 'dev']); const child = spawn(devCmd, devArgs, { ...devOpts, cwd: REPO, stdio: 'inherit', env: launchEnv });
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => child.kill(sig));
 let ready = false; /* checks can overlap: open the browser once */
 const t0 = Date.now(); const tick = setInterval(async () => { if (ready) return; if (await up() && (!openWhenReady || await webUp()) && !ready) { ready = true; clearInterval(tick);
