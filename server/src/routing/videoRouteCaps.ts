@@ -31,6 +31,9 @@ export const ROUTE_VIDEO_CAPS: Record<string, RouteVideoCaps> = {
   'comfy-router:router-kling-edit': fromLimits('router-kling-edit'), 'comfy-router:router-seedance-25-edit': fromLimits('router-seedance-25-edit'), // Video Swap (2026-10-25)
   'comfy-router:router-seedance-25': fromLimits('router-seedance-25'), 'comfy-router:router-seedance-20-fast': fromLimits('router-seedance-20-fast'),
   'comfy-router:router-seedance-20-mini': fromLimits('router-seedance-20-mini'), 'comfy-router:router-veo-fast': fromLimits('router-veo-fast'),
+  // Comfy Router video models (2026-10-31)
+  'comfy-router:router-veo-lite': fromLimits('router-veo-lite'), 'comfy-router:router-wan3-prime': fromLimits('router-wan3-prime'),
+  'comfy-router:router-pvideo2': fromLimits('router-pvideo2'), 'comfy-router:router-grok-video-lite': fromLimits('router-grok-video-lite'),
   // Processing routes (fal model API tabs)
   'fal:fal-ai/seedvr/upscale/video': proc({ sourceUrl: 'https://fal.ai/models/fal-ai/seedvr/upscale/video/api', resolutions: ['720p', '1080p', '1440p', '2160p'],
     inputLimits: { upscale_mode: ['factor', 'target'], upscale_factor: { default: 2 }, target_resolution: ['720p', '1080p', '1440p', '2160p'], output_format: ['X264 (.mp4)', 'VP9 (.webm)', 'PRORES4444 (.mov)', 'GIF (.gif)'] },

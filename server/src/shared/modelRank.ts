@@ -33,9 +33,10 @@
  *          52 FIBO 2.0 (Bria, Comfy Router, 2026-10-26)
  *          60+ Local: Qwen Image 2.1, Qwen Image 2.1 Turbo, Z-Image-Turbo, Qwen-Image, FLUX.2 [klein] 4B, MOSS-Image, FLUX.2 [dev], base models, edit and upscale models
  *   Video  3 Seedance 2.0 (featured, popular: the Router's flagship video model), 4 Kling v3 (featured), 8 MiniMax H3 (featured, popular: also locally),
- *          9–13 hosted tool models (H3 Max Extend, Bria, Luma Reframe), 19 Veo 3.1 (retiring: last in API)
+ *          9–13 hosted tool models (H3 Max Extend, Bria, Luma Reframe), 19 Veo 3.1
  *          17–18, 30–34 Video Upscale (SeedVR2 on fal, Topaz, FLUX Video Upscale, Crystal; 2026-10-26; rank = the Upscale menu order)
- *          40+ Local: LTX-2 19B, Wan 2.x, H3 recipes, SeedVR2 3B, Real-ESRGAN x2, 4x-UltraSharp, RIFE, BiRefNet, Depth Anything, ffmpeg HDR10
+ *          40 Wan 3.0 Prime, 41 Veo 3.1 Lite, 42 P-Video-2, 43 Grok Imagine Video 1.5 Lite (Comfy Router, 2026-10-31)
+ *          50+ Local (moved up by 10 on 2026-10-31 to make room): LTX-2 19B, Wan 2.x, H3 recipes, SeedVR2 3B, Real-ESRGAN x2, 4x-UltraSharp, RIFE, BiRefNet, Depth Anything, ffmpeg HDR10
  *   Audio  1 ElevenLabs v4 (featured, popular: the best-known voiceover model), 2 MiniMax Music 3 (featured, popular), 3 ElevenLabs Sound Effects (featured),
  *          4–9 Seed Audio, MiniMax Speech 2.8 HD, Sonilo, HeyGen Voice, Fish Audio S2.1 Pro, 11 MiniMax Speech 2.8 Turbo,
  *          12–13 ElevenLabs v3, ElevenLabs v4 Turbo (2026-10-25)
@@ -170,31 +171,36 @@ export const CATALOGUE: Record<string, CatalogueEntry> = {
   'luma-ray-2-reframe': e('Luma Ray 3.2 Reframe', 12, 'api', 'New aspect ratio, edges filled in', { aliases: ['luma', 'ray 3.2', 'ray 2', 'reframe'] }),
   'veo-3.1': e('Veo 3.1', 19, 'api', 'Text or photo to video with sound', { aliases: ['veo', 'google', 'gemini'] }),
   'veo-3.1-fast': e('Veo 3.1 Fast', 20, 'api', 'Quicker Veo, text or photo with sound', { aliases: ['veo', 'google', 'gemini', 'fast'], variantOf: 'veo-3.1' }), // Comfy Router (2026-10-25)
-  'ltx-2-19b': e('LTX-2 19B', 40, 'gpu', 'New angles, camera moves, directed shots', { aliases: ['ltx', 'ltx-2', 'lightricks'] }),
-  'wan-2.2-fun-camera-14b': e('Wan 2.2 Fun Camera 14B', 41, 'gpu', 'Camera moves from one still', { aliases: ['wan', 'fun camera', 'alibaba'] }),
-  'wan-2.2-animate-14b': e('Wan 2.2 Animate 14B', 42, 'gpu', 'Subject swap that keeps the motion', { aliases: ['wan', 'animate', 'alibaba'] }),
-  'wan-2.1-vace-14b': e('Wan 2.1 VACE 14B', 43, 'gpu', 'Whole-clip restyle', { aliases: ['wan', 'vace', 'alibaba'] }),
-  'wan-2.2-i2v-14b': e('Wan 2.2 I2V 14B', 44, 'gpu', 'Animates a photo with an effect', { aliases: ['wan', 'i2v', 'alibaba'] }),
-  'minimax-h3-camera-motion': e('H3 Camera Motion', 45, 'gpu', 'Seven camera moves, slow or aggressive', { aliases: ['h3', 'minimax', 'camera'], variantOf: 'minimax-h3' }),
-  'minimax-h3-talking-photo': e('H3 Talking Photo', 46, 'gpu', 'Portrait plus speech into a talking clip', { aliases: ['h3', 'minimax', 'lip sync', 'lipsync'], variantOf: 'minimax-h3' }),
-  'minimax-h3-extend': e('H3 Extend', 47, 'gpu', 'Continues a clip by 5 or 10 s', { aliases: ['h3', 'minimax', 'extend'], variantOf: 'minimax-h3' }),
+  // Comfy Router (2026-10-31): affordable and fast tiers; ranks are unique per medium and API ranks stay below Local (local video moved to 50+)
+  'veo-3.1-lite': e('Veo 3.1 Lite', 41, 'api', 'Lowest-cost Veo, text or photo with sound', { aliases: ['veo', 'google', 'gemini', 'lite'], variantOf: 'veo-3.1' }),
+  'wan-3.0-prime': e('Wan 3.0 Prime', 40, 'api', 'Faster Wan 3.0, up to 30 s at 1080p', { aliases: ['wan', 'alibaba', 'wan 3', 'wan3', 'prime'], variantOf: 'wan-3.0' }),
+  'p-video-2': e('P-Video-2', 42, 'api', 'Quick, low-cost clips with sound', { aliases: ['pruna', 'p-video', 'p video', 'cheap'] }),
+  'grok-imagine-video-1.5-lite': e('Grok Imagine Video 1.5 Lite', 43, 'api', 'Quick, low-cost clips from text or photo', { aliases: ['grok', 'xai', 'imagine', 'lite'] }),
+  'ltx-2-19b': e('LTX-2 19B', 50, 'gpu', 'New angles, camera moves, directed shots', { aliases: ['ltx', 'ltx-2', 'lightricks'] }),
+  'wan-2.2-fun-camera-14b': e('Wan 2.2 Fun Camera 14B', 51, 'gpu', 'Camera moves from one still', { aliases: ['wan', 'fun camera', 'alibaba'] }),
+  'wan-2.2-animate-14b': e('Wan 2.2 Animate 14B', 52, 'gpu', 'Subject swap that keeps the motion', { aliases: ['wan', 'animate', 'alibaba'] }),
+  'wan-2.1-vace-14b': e('Wan 2.1 VACE 14B', 53, 'gpu', 'Whole-clip restyle', { aliases: ['wan', 'vace', 'alibaba'] }),
+  'wan-2.2-i2v-14b': e('Wan 2.2 I2V 14B', 54, 'gpu', 'Animates a photo with an effect', { aliases: ['wan', 'i2v', 'alibaba'] }),
+  'minimax-h3-camera-motion': e('H3 Camera Motion', 55, 'gpu', 'Seven camera moves, slow or aggressive', { aliases: ['h3', 'minimax', 'camera'], variantOf: 'minimax-h3' }),
+  'minimax-h3-talking-photo': e('H3 Talking Photo', 56, 'gpu', 'Portrait plus speech into a talking clip', { aliases: ['h3', 'minimax', 'lip sync', 'lipsync'], variantOf: 'minimax-h3' }),
+  'minimax-h3-extend': e('H3 Extend', 57, 'gpu', 'Continues a clip by 5 or 10 s', { aliases: ['h3', 'minimax', 'extend'], variantOf: 'minimax-h3' }),
   'minimax-h3-crossview': e('H3 CrossView', 24, 'api', 'Re-shoots a take from a new angle', { aliases: ['h3', 'minimax', 'crossview', 'new angle', 'reshoot'], variantOf: 'minimax-h3' }),
   'minimax-h3-fast': e('MiniMax H3 Fast', 29, 'api', 'H3 in 8 steps: quick drafts with sound', { aliases: ['h3', 'minimax', 'fasth3', 'fastvideo', 'fast'], variantOf: 'minimax-h3' }),
-  'minimax-h3-character-swap': e('H3 Character Swap', 48, 'gpu', 'Character swap, motion kept', { aliases: ['h3', 'minimax', 'swap'], variantOf: 'minimax-h3' }),
-  'minimax-h3-style-transfer': e('H3 Style Transfer', 49, 'gpu', 'Restyle from an image or text', { aliases: ['h3', 'minimax', 'restyle'], variantOf: 'minimax-h3' }),
-  'minimax-h3-vfx-edit': e('H3 VFX Edit', 50, 'gpu', 'Prompt-directed effects', { aliases: ['h3', 'minimax', 'vfx'], variantOf: 'minimax-h3' }),
+  'minimax-h3-character-swap': e('H3 Character Swap', 58, 'gpu', 'Character swap, motion kept', { aliases: ['h3', 'minimax', 'swap'], variantOf: 'minimax-h3' }),
+  'minimax-h3-style-transfer': e('H3 Style Transfer', 59, 'gpu', 'Restyle from an image or text', { aliases: ['h3', 'minimax', 'restyle'], variantOf: 'minimax-h3' }),
+  'minimax-h3-vfx-edit': e('H3 VFX Edit', 60, 'gpu', 'Prompt-directed effects', { aliases: ['h3', 'minimax', 'vfx'], variantOf: 'minimax-h3' }),
   seedvr2: e('SeedVR2', 17, 'api', 'Real texture, content kept, 720p to 4K', { aliases: ['seedvr', 'bytedance', 'upscale'] }),
-  'seedvr2-3b-video': e('SeedVR2 3B', 61, 'gpu', 'Real texture on NVIDIA GPUs', { aliases: ['seedvr', 'seedvr2', 'bytedance', 'upscale'] }),
-  'real-esrgan-x2-video': e('Real-ESRGAN x2', 59, 'gpu', 'Sharper clips, quickly', { aliases: ['esrgan', 'realesrgan', 'upscale'] }),
-  '4x-ultrasharp-video': e('4x-UltraSharp', 60, 'gpu', 'Sharper still; fine texture may shimmer', { aliases: ['ultrasharp', 'upscale'] }),
-  'rife-4.9': e('RIFE 4.9', 52, 'gpu', 'Smoother motion at 48 or 60 fps', { aliases: ['rife', 'interpolation', 'fps'] }),
-  birefnet: e('BiRefNet', 53, 'gpu', 'Clean subject cut-outs', { aliases: ['background', 'remove bg', 'matte'] }),
-  'depth-anything-v2-small': e('Depth Anything V2 Small', 54, 'gpu', 'Depth video from a clip', { aliases: ['depth'] }),
-  'ffmpeg-hdr10': e('ffmpeg HDR10 conversion', 55, 'gpu', 'SDR footage to HDR10', { aliases: ['hdr', 'ffmpeg'] }),
+  'seedvr2-3b-video': e('SeedVR2 3B', 71, 'gpu', 'Real texture on NVIDIA GPUs', { aliases: ['seedvr', 'seedvr2', 'bytedance', 'upscale'] }),
+  'real-esrgan-x2-video': e('Real-ESRGAN x2', 69, 'gpu', 'Sharper clips, quickly', { aliases: ['esrgan', 'realesrgan', 'upscale'] }),
+  '4x-ultrasharp-video': e('4x-UltraSharp', 70, 'gpu', 'Sharper still; fine texture may shimmer', { aliases: ['ultrasharp', 'upscale'] }),
+  'rife-4.9': e('RIFE 4.9', 62, 'gpu', 'Smoother motion at 48 or 60 fps', { aliases: ['rife', 'interpolation', 'fps'] }),
+  birefnet: e('BiRefNet', 63, 'gpu', 'Clean subject cut-outs', { aliases: ['background', 'remove bg', 'matte'] }),
+  'depth-anything-v2-small': e('Depth Anything V2 Small', 64, 'gpu', 'Depth video from a clip', { aliases: ['depth'] }),
+  'ffmpeg-hdr10': e('ffmpeg HDR10 conversion', 65, 'gpu', 'SDR footage to HDR10', { aliases: ['hdr', 'ffmpeg'] }),
   'infinitetalk-wan-2.1': e('InfiniteTalk (Wan 2.1)', 10, 'api', 'Photo plus long speech into a talking clip', { aliases: ['infinitetalk', 'infinite talk', 'wan', 'meigen', 'lip sync', 'lipsync', 'talking photo', 'talking head', 'comfy cloud'] }),
-  'ltx-2.5-talking-photo': e('LTX-2.5 Talking Photo', 58, 'gpu', 'Photo plus speech into a talking clip', { aliases: ['ltx', 'lightricks', 'lip sync', 'lipsync', 'talking photo', 'local', 'mac'], variantOf: 'ltx-2.5-22b' }),
-  'ltx-2.5-22b': e('LTX-2.5 22B', 57, 'gpu', 'Clips with their own sound', { aliases: ['ltx', 'lightricks', 'ltx 2.5', '22b', 'local', 'mac', 'open weights'] }),
-  'wan-2.2-ti2v-5b': e('Wan 2.2 5B', 56, 'gpu', 'Runs on most computers, in minutes', { aliases: ['wan', 'ti2v', '5b', 'alibaba', 'mac'] }),
+  'ltx-2.5-talking-photo': e('LTX-2.5 Talking Photo', 68, 'gpu', 'Photo plus speech into a talking clip', { aliases: ['ltx', 'lightricks', 'lip sync', 'lipsync', 'talking photo', 'local', 'mac'], variantOf: 'ltx-2.5-22b' }),
+  'ltx-2.5-22b': e('LTX-2.5 22B', 67, 'gpu', 'Clips with their own sound', { aliases: ['ltx', 'lightricks', 'ltx 2.5', '22b', 'local', 'mac', 'open weights'] }),
+  'wan-2.2-ti2v-5b': e('Wan 2.2 5B', 66, 'gpu', 'Runs on most computers, in minutes', { aliases: ['wan', 'ti2v', '5b', 'alibaba', 'mac'] }),
   // ---------------------------------------------------------------- Audio
   'elevenlabs-v4': e('ElevenLabs v4', 1, 'api', 'Natural voiceover from a script', { featured: true, popular: true, kind: 'voice', aliases: ['elevenlabs', 'eleven', '11labs', 'tts'] }),
   // 2026-10-27: one card for the open MiniMax Music 3 (Local + Comfy Cloud); the old 'minimax-music-3-open' variant row is gone.

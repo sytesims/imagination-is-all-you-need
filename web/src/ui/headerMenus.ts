@@ -4,7 +4,7 @@
  *    ltx-2-19b). The column's ORDER is the server's (models[].section, then catalogue rank), the same as the pickers (Shell mediaModels);
  *    Pricing's chips also read this list.
  *  - A model description is the server catalogue bestFor line (server shared/modelRank.ts); no name-keyed table here.
- *    A model the server marks lifecycle 'retiring' (e.g. Veo 3.1) is never featured: not listed here and
+ *    A model the server marks lifecycle 'retiring' is never featured: not listed here and
  *    never used to top up the column (provider audit, 2026-10-21).
  *  - TOOL_TAGLINE: one short line per tool (~45 characters max); a tool without one falls back to the first
  *    sentence of its registry description.

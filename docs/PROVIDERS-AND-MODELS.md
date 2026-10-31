@@ -66,8 +66,9 @@ A model or route the provider is shutting down is marked **Retiring** (an amber 
 
 | Model | Status | Why (checked 2026-10-21) |
 |---|---|---|
-| Veo 3.1 (Comfy partner node) | Retiring | Google shuts down the Veo 3.1 previews in the Gemini API from 2026-10-22 ([deprecations](https://ai.google.dev/gemini-api/docs/deprecations)); fal deprecates `veo3.1` on 2026-11-17. Priced with sound off ($0.20/s) and on ($0.40/s); the price follows the Sound toggle |
 | Reve | Removed | Reve's API wound down on 2026-08-14. Old Reve results still show in Assets under the name Reve; a saved Reve choice falls back to the tool's default |
+
+Veo 3.1 is no longer marked Retiring (2026-10-31). Google's [deprecation](https://ai.google.dev/gemini-api/docs/deprecations) covers the Gemini API *preview* ids; our Veo 3.1, Veo 3.1 Fast and Veo 3.1 Lite run the released Vertex models on Comfy Router (`veo/veo-3.1-generate-001`, `-fast-`, `-lite-`), which the Router docs and pricing still list.
 
 ## Prices and costs
 
@@ -98,7 +99,10 @@ Each video model accepts only the clip lengths it supports. Any other length is 
 | MiniMax H3 (local `comfy-h3`, and the H3 API routes) | 4–15 s |
 | MiniMax H3 · Comfy Cloud workflow (`cloud-h3-wf`) | 5 or 10 s |
 | MiniMax H3 · Comfy Cloud (`cloud-h3`) | 5–15 s |
-| Veo | 4, 6 or 8 s |
+| Veo (3.1, Fast, Lite) | 4, 6 or 8 s (1080p and 4K: 8 s) |
+| Wan 3.0, Wan 3.0 Prime | 2–30 s |
+| P-Video-2 | 2–20 s |
+| Grok Imagine Video 1.5 Lite | 2–15 s |
 | Kling | 3–15 s |
 | Seedance | 4–15 s |
 | Director API (`cinema`, no page in the app) on local LTX-2 19B or Wan Fun Camera | 5, 10, 15, 20 or 30 s |
@@ -199,6 +203,10 @@ Every model has a maker (`maker` and `makerName` on each `models[]` entry of `GE
 | Seedance | ByteDance | video | no |
 | Veo | Google | video | no |
 | Kling | Kuaishou Kling | video | no |
+| Veo 3.1 Lite | Google | video | no |
+| Wan 3.0 Prime | Alibaba Wan | video | no |
+| P-Video-2 | Pruna AI | video | no |
+| Grok Imagine Video 1.5 Lite | xAI | video | no |
 | SeedVR2 | ByteDance | video | yes |
 | FLUX 3 Upscaler | Black Forest Labs | video | no |
 | BiRefNet | BiRefNet authors | video | yes |

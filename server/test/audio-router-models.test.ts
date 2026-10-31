@@ -105,6 +105,28 @@ ok(`ElevenLabs v4 / v3 / v4 Turbo: one body (voices, seed, tags as typed), synch
   assert.equal(CATALOGUE['elevenlabs-v4-turbo'].variantOf, 'elevenlabs-v4'); assert.equal(CATALOGUE['seed-audio'].kind, 'voice');
   ok('tools: Audio Voice + Voice Studio Voiceover list v4, v3, v4 Turbo together; model keys, names and catalogue entries set'); }
 
+// ---- 6. HeyGen Voice on Comfy Router (2026-10-31): heygen/starfish (docs.comfy.org/development/comfy-router/models/heygen/starfish/code), no longer "Not on Router" ----
+{ const H = R['api-heygen-tts']; assert.ok(H, 'HeyGen Voice has a Router spec'); assert.equal(H.id, 'heygen/starfish'); assert.equal(H.out, 'audio'); assert.match(H.doc, /\/models\/heygen\/starfish\/code$/);
+  assert.equal(M.NOT_ON_ROUTER['api-heygen-tts'], undefined, 'the outdated "Not on Comfy Router yet" note is gone');
+  const b: any = await H.body({ prompt: 'Thanks for watching.', voice: 'deep-calm', voiceNative: { speed: 1.25 } } as any, 0); valid('heygen/starfish', b, 'library voice + speed');
+  assert.deepEqual(b, { text: 'Thanks for watching.', voice_id: M.HEYGEN_VOICES['deep-calm'].id, speed: 1.25, input_type: 'text' });
+  for (const [v, x] of Object.entries(M.HEYGEN_VOICES)) { assert.match(x.id, /^[0-9a-f]{32}$/); assert.equal(((await H.body({ prompt: 'x', voice: v } as any, 0)) as any).voice_id, x.id, v); }
+  assert.equal(M.HEYGEN_VOICES['narrator-crisp'].id, 'd2f4f24783d04e22ab49ee8fdc3715e0', 'the docs example voice');
+  assert.equal(((await H.body({ prompt: 'x', voice: '0123456789abcdef0123456789abcdef' } as any, 0)) as any).voice_id, '0123456789abcdef0123456789abcdef', 'a HeyGen voice id passes as is');
+  assert.equal(((await H.body({ prompt: 'x', voice: 'nope' } as any, 0)) as any).voice_id, M.HEYGEN_VOICES['narrator-warm'].id, 'unknown → the default voice');
+  for (const [sp, want] of [[0.1, 0.5], [3, 2], [undefined, 1], [0.75, 0.75]] as const) assert.equal(((await H.body({ prompt: 'x', voiceNative: sp == null ? undefined : { speed: sp } } as any, 0)) as any).speed, want, `speed ${sp}`);
+  assert.equal(H.block!({ prompt: 'x'.repeat(5000) } as any), null); assert.match(String(H.block!({ prompt: 'x'.repeat(5001) } as any)), /^HeyGen Voice reads scripts up to 5,000 characters; yours is 5,001\./);
+  await assert.rejects(() => H.body({ prompt: 'y'.repeat(6000) } as any, 0) as Promise<any>, /5,000 characters/); await assert.rejects(() => H.body({ prompt: '  ' } as any, 0) as Promise<any>, /needs a script/);
+  assert.match(String(H.block!({ voice: 'clone', prompt: 'x' } as any)), /own voices; voice cloning runs on another model/);
+  assert.deepEqual(H.outputs({ data: { audio_url: 'https://x.test/s.mp3', duration: 2.5 } }), [{ url: 'https://x.test/s.mp3' }]);
+  // price: Router pricing "Rates by duration" 0.2013 credits / s, seconds estimated from the script (6 letters / s), up to 840 s
+  const h = HOSTED_BY_ID['api-heygen-tts']; assert.equal(h.unit, 'second'); assert.match(h.sourceUrl, /comfy-router\/pricing/); assert.equal(h.checkedAt, '2026-10-31'); assert.equal(h.usd, 0.000954);
+  assert.equal(priceOf({ provider: 'api-heygen-tts', chars: 600 } as any).credits, Math.max(1, usdToCredits(100 * 0.000954)), '600 letters ≈ up to 100 s');
+  assert.equal(priceOf({ provider: 'api-heygen-tts', chars: 5000 } as any).credits, usdToCredits(834 * 0.000954), '5,000 letters ≈ up to 834 s');
+  assert.equal(priceOf({ provider: 'api-heygen-tts' } as any).credits, usdToCredits(840 * 0.000954), 'no script yet: the 840 s cap');
+  const { routesFor } = await import('../src/routing/routes.ts'); const rr = routesFor('api-heygen-tts')[0]; assert.equal(rr.routeId, 'comfy-router:api-heygen-tts'); assert.ok(!rr.comingSoon, 'not Coming soon any more'); assert.equal((rr.caps as any)?.routerModel, 'heygen/starfish');
+  ok('HeyGen Voice: heygen/starfish body (voices, speed 0.5–2, 5,000 characters), clone refused, outputs; 0.2013 credits per s from the script; Router route live'); }
+
 console.log(checked ? `ok schema: ${checked} body variants valid against the official Router schemas` : `skip schema: ${SCHEMAS} not found (${skipped} checks skipped)`);
 fs.rmSync(D, { recursive: true, force: true });
 console.log('audio-router-models: all checks passed');

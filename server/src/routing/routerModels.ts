@@ -5,7 +5,8 @@
  * model ids: the catalog is GET /v2/models, which needs a key.
  *
  * Key = our provider id; its native route `comfy-router:<id>` is the Router route (label "Comfy Cloud · partner API" today).
- * Not on Router (catalog checked): Hunyuan Image, Meta Muse, Fish Audio, Sonilo (music, video-to-music), HeyGen TTS → COMING_SOON (routes.ts).
+ * Not on Router (catalog checked): Hunyuan Image, Meta Muse, Fish Audio, Sonilo (music, video-to-music) → COMING_SOON (routes.ts). HeyGen Voice runs on
+ * heygen/starfish since 2026-10-31.
  * Media inputs go inline (data: URIs or raw base64, as each schema asks); every Router request body is capped at 100 MiB. Fields whose schema takes a
  * file only as a URL (Kling edit video_list, Seedance reference / edit video) get a Comfy storage link (comfy/storage.ts, the official partner nodes' flow).
  */
@@ -512,13 +513,13 @@ function seedanceRouter(key: SeedanceKey, o: { name: string; model: string; apps
 }
 // ---- Veo 3.1 / 3.1 Fast on Comfy Router: one Vertex schema (identical request bodies). image / lastFrame mimeType is image/jpeg or image/png only (schema),
 //      so any other frame (webp…) is converted to PNG first (veoImage); parameters.negativePrompt = the user's negative prompt when given.
-function veoRouter(name: string, id: string, docPath: string): RouterModelSpec {
+function veoRouter(name: string, id: string, docPath: string, o: { k4?: boolean } = { k4: true }): RouterModelSpec {
   return { tools: ['h3-video'], id, doc: DOC(docPath), out: 'video', queue: true, maxRefs: 0, block: noVideoRefs(name),
     body: async (i) => { const m = i.mode ?? modeOf(i); const d = Number(i.duration) || 8; const inst: Record<string, unknown> = { prompt: promptOf(i) };
       if ((m === 'i2v' || m === 'flf') && i.imagePath) inst.image = await veoImage(i.imagePath);
       if (m === 'flf' && i.lastFramePath) inst.lastFrame = await veoImage(i.lastFramePath);
       const neg = typeof i.negativePrompt === 'string' && i.negativePrompt.trim() ? i.negativePrompt.trim() : undefined;
-      const is4k = String(i.resolution ?? '').toLowerCase() === '4k'; const hiRes = is4k || i.resolution === '1080p'; // 4K: Router resolution enum 720p / 1080p / 4k (veo-3-1-generate-001/code.md)
+      const is4k = !!o.k4 && String(i.resolution ?? '').toLowerCase() === '4k' /* Veo 3.1 Lite: no 4K rate on the Router pricing page, so never sent */; const hiRes = is4k || i.resolution === '1080p'; // 4K: Router resolution enum 720p / 1080p / 4k (veo-3-1-generate-001/code.md)
       return { instances: [inst], parameters: omit({ durationSeconds: hiRes ? 8 /* Google: 1080p and 4K are 8 s only (videoCaps durationsByResolution) */ : d <= 4 ? 4 : d <= 6 ? 6 : 8, aspectRatio: i.aspect === '9:16' ? '9:16' : '16:9', resolution: is4k ? '4k' : i.resolution === '1080p' ? '1080p' : '720p', generateAudio: i.audio === true, sampleCount: 1, seed: seedOf(i, 0), negativePrompt: neg, enhancePrompt: i.promptRewrite !== false && i.promptRewrite !== '0' /* Veo's default (true), as before: only an explicit off (a rewrite switch, or an API / MCP caller) sends false */ }) }; },
     outputs: (j) => { if (j?.error?.message) return { refused: String(j.error.message) }; const v = (j?.response?.videos ?? []) as any[];
       if (!v.length && j?.response?.raiMediaFilteredCount) return { refused: String(j.response.raiMediaFilteredReasons?.[0] ?? 'filtered') };
@@ -652,6 +653,59 @@ function withRender(swap: RouterModelSpec & { name: string }, render: RouterMode
     body: (i, k) => pick(i).body(i, k), finish: async (job, outs) => (isRenderJob(job.input) ? outs : swap.finish ? swap.finish(job, outs) : outs) };
 }
 
+// ---- Pruna P-Video-2 on Comfy Router (2026-10-31, docs.comfy.org/development/comfy-router/models/pruna/p-video-2/code) ----
+// Body { input: { prompt, image?, last_frame_image?, duration 1–20, resolution 720p | 1080p, aspect_ratio (16:9, 9:16, 4:3, 3:4, 3:2, 2:3, 1:1; ignored with an
+// image), fps 24 | 48, draft, save_audio, prompt_upsampling, seed } }. image / last_frame_image are "URI" strings, and Pruna's own docs pass a file URL
+// (docs.pruna.ai p-video-2: "Upload a reference image, then pass its file URL"), so the frames go as a link (mediaLink: Comfy storage with the key).
+// Standard quality only (draft false): the Draft rate needs its own price tier, not wired yet. input.audio (the clip sets the length) is not wired either:
+// our quote can't follow an audio clip's length yet. Billed per second of the returned clip (whole seconds). Refusal: status failed / canceled + error.
+export const PVIDEO2_ASPECTS = ['16:9', '9:16', '4:3', '3:4', '1:1']; // the schema's 7 minus 3:2 / 2:3, which Generate Video's aspect list doesn't have
+const pvideoIssue = (i: In): string | null => { const { m, frame } = videoJob(i);
+  if (m === 'r2v') return 'P-Video-2 on Comfy Router takes text, a first frame, or first + last frame; it has no reference images';
+  if ((m === 'i2v' || m === 'flf') && frame && !canLink()) return 'P-Video-2 on Comfy Router takes your frames as a link, uploaded with your Comfy key: add the key in Settings';
+  return null; };
+// ---- Grok Imagine Video 1.5 Lite on Comfy Router (2026-10-31, docs.comfy.org/development/comfy-router/models/xai/grok-imagine-video-1-5-lite/code) ----
+// Body { model, prompt (≤ 4,096 characters), duration 1–15, aspect_ratio (1:1, 16:9, 9:16, 4:3, 3:4, 3:2, 2:3), resolution, image { type image_url, url (data URI ok) } }.
+// model is sent (the field defaults to grok-imagine-video). Resolution 480p / 720p / 1080p: the Router pricing rows (the schema doesn't list values).
+// Text and image to video only: reference_images has no documented count for Lite, so Reference to video is not offered. The page says Output: Video (no
+// sound). Refusal: block_reason; the result is video.url. The response carries usage.cost_in_usd_ticks (xAI's own cost).
+export const GROK_VIDEO_PROMPT_MAX = 4096; export const GROK_VIDEO_ASPECTS = ['16:9', '9:16', '4:3', '3:4', '1:1'];
+const grokVideoIssue = (i: In): string | null => { const { m, text } = videoJob(i);
+  if (m === 'r2v' || m === 'flf') return 'Grok Imagine Video 1.5 Lite on Comfy Router takes text or a first frame';
+  return text.length > GROK_VIDEO_PROMPT_MAX ? `Grok Imagine Video 1.5 Lite takes prompts up to ${GROK_VIDEO_PROMPT_MAX.toLocaleString('en-US')} characters; yours is ${text.length.toLocaleString('en-US')}. Shorten it` : null; };
+// ---- HeyGen Voice on Comfy Router (2026-10-31, docs.comfy.org/development/comfy-router/models/heygen/starfish/code): heygen/starfish, HeyGen's Starfish TTS ----
+// Body { text (1–5,000 characters), voice_id (a voice that supports Starfish), speed 0.5–2, input_type text, locale / language left out (read from the text) }.
+// Output { data: { audio_url, duration } }. Billed per second of audio returned (Router pricing: 0.2013 credits / s).
+// Our voice library → HeyGen Starfish voices (ids from HeyGen's own Starfish-compatible stock voices; narrator-crisp = the docs' own example voice).
+// A 32-character HeyGen voice id passes as is (a voice of yours that supports Starfish).
+export const HEYGEN_TEXT_MAX = 5000;
+export const HEYGEN_VOICES: Record<string, { id: string; name: string }> = {
+  'narrator-warm': { id: '007e1378fc454a9f976db570ba6164a7', name: 'Aria' }, 'narrator-crisp': { id: 'd2f4f24783d04e22ab49ee8fdc3715e0', name: 'Chill Brian' },
+  'young-bright': { id: '084760b4922a44599575c770070ec2d7', name: 'Peppy Stella' }, 'deep-calm': { id: '03fcf8ecb0a94b6b94e9007edb7c35f8', name: 'Reassuring Rupert' },
+  'energetic-host': { id: '0516c2d857eb425c94e90b068241914e', name: 'Dynamic Derek' }, 'whisper-soft': { id: '0258bbc2cd8648cfa357adfb833f6d7b', name: 'Saffron' },
+};
+export const heygenVoiceId = (v: unknown): string => { const s = String(v ?? ''); return HEYGEN_VOICES[s]?.id ?? (/^[0-9a-f]{32}$/i.test(s) ? s : HEYGEN_VOICES['narrator-warm'].id); };
+const heygenSpeed = (i: In) => { const n = Number(i.voiceNative?.speed ?? i.voiceControls?.speed ?? 1); return Number.isFinite(n) ? Math.min(2, Math.max(0.5, Math.round(n * 100) / 100)) : 1; };
+const heygenLong = scriptTooLong('HeyGen Voice', HEYGEN_TEXT_MAX);
+
+// Wan 3.0 / Wan 3.0 Prime on Comfy Router (2026-10-25, Prime 2026-10-31; docs.comfy.org/development/comfy-router/models/wan/wan3-0-video/code and
+// …/wan3-0-video-prime/code: one schema): input.media first_frame (+ last_frame) or reference_image (≤10; the two kinds never in one request), images inline
+// as data URIs (videos / audio would need a public URL: not wired). parameters: resolution 480P / 720P / 1080P, duration 2–30 s, ratio (adaptive with a frame or
+// in Reference to video when Auto; 16:9 for Auto text to video, like Seedance), audio on / off, prompt_extend off unless asked, watermark false.
+// Refusal: root code / message, or output.task_status FAILED with output.message.
+function wan3Router(name: string, id: string, docPath: string): RouterModelSpec {
+  return { tools: ['h3-video'], id, doc: DOC(docPath), out: 'video', queue: true, maxRefs: WAN3_REFS, block: noVideoRefs(name),
+    body: async (i) => { const { m, text, frame } = videoJob(i); const media: { type: string; url: string }[] = [];
+      if ((m === 'i2v' || m === 'flf') && frame) media.push({ type: 'first_frame', url: await dataUri(frame) });
+      if (m === 'flf' && frame && i.lastFramePath) media.push({ type: 'last_frame', url: await dataUri(i.lastFramePath) });
+      for (const p of videoRefPaths(i, WAN3_REFS)) media.push({ type: 'reference_image', url: await dataUri(p) });
+      const keyed = media.some((x) => x.type !== 'reference_image');
+      return { input: omit({ prompt: text, negative_prompt: negOf(i), media: media.length ? media : undefined }),
+        parameters: omit({ resolution: ({ '480p': '480P', '720p': '720P', '1080p': '1080P' } as Record<string, string>)[String(i.resolution)] ?? '720P', duration: Math.min(30, Math.max(2, Math.round(Number(i.duration) || 5))),
+          ratio: keyed ? 'adaptive' : ['16:9', '9:16', '1:1', '4:3', '3:4'].includes(i.aspect) ? i.aspect : m === 'r2v' ? 'adaptive' : '16:9', audio: i.audio !== false, prompt_extend: i.promptRewrite === true, watermark: false, seed: seedOf(i, 0) }) }; },
+    outputs: (j) => { if (j?.code && !j?.output?.video_url) return { refused: String(j.message ?? j.code) }; const st = String(j?.output?.task_status ?? '');
+      if (/^(FAILED|CANCELED)$/.test(st)) return { refused: String(j.output.message ?? j.output.code ?? st) }; return j?.output?.video_url ? [{ url: j.output.video_url }] : []; } };
+}
 export const ROUTER_MODELS: Record<string, RouterModelSpec & { name?: string }> = {
   // ---------------- Create Image ----------------
   'api-gpt-image': img({ name: 'GPT Image 2', id: 'openai/gpt-image-2', doc: DOC('openai/gpt-image-2'), maxRefs: 16, mask: true, block: gptSizeIssue, body: gptBody, outputs: gptOutputs }),
@@ -780,23 +834,34 @@ export const ROUTER_MODELS: Record<string, RouterModelSpec & { name?: string }> 
   // Bodies: renderBody above; schemas: Router pages runway/aleph2 and luma_2/ray-3-2 (the Luma Agents request object, same as uni-1's cached schema).
   [RENDER_ALEPH]: renderSpec(RENDER_ALEPH),
   [RENDER_RAY]: renderSpec(RENDER_RAY),
-  // Wan 3.0 (2026-10-25, docs.comfy.org/development/comfy-router/models/wan/wan3-0-video/code): input.media first_frame (+ last_frame) or reference_image
-  // (≤10; the two kinds never in one request), images inline as data URIs (videos / audio would need a public URL: not wired). parameters: resolution
-  // 480P / 720P / 1080P, duration 2–30 s, ratio (adaptive with a frame or in Reference to video when Auto; 16:9 for Auto text to video, like Seedance),
-  // audio on / off, prompt_extend off unless asked, watermark false. Refusal: root code / message, or output.task_status FAILED with output.message.
-  'router-wan3': { tools: ['h3-video'], id: 'wan/wan3.0-video', doc: DOC('wan/wan3-0-video'), out: 'video', queue: true, maxRefs: WAN3_REFS, block: noVideoRefs('Wan 3.0'),
-    body: async (i) => { const { m, text, frame } = videoJob(i); const media: { type: string; url: string }[] = [];
-      if ((m === 'i2v' || m === 'flf') && frame) media.push({ type: 'first_frame', url: await dataUri(frame) });
-      if (m === 'flf' && frame && i.lastFramePath) media.push({ type: 'last_frame', url: await dataUri(i.lastFramePath) });
-      for (const p of videoRefPaths(i, WAN3_REFS)) media.push({ type: 'reference_image', url: await dataUri(p) });
-      const keyed = media.some((x) => x.type !== 'reference_image');
-      return { input: omit({ prompt: text, negative_prompt: negOf(i), media: media.length ? media : undefined }),
-        parameters: omit({ resolution: ({ '480p': '480P', '720p': '720P', '1080p': '1080P' } as Record<string, string>)[String(i.resolution)] ?? '720P', duration: Math.min(30, Math.max(2, Math.round(Number(i.duration) || 5))),
-          ratio: keyed ? 'adaptive' : ['16:9', '9:16', '1:1', '4:3', '3:4'].includes(i.aspect) ? i.aspect : m === 'r2v' ? 'adaptive' : '16:9', audio: i.audio !== false, prompt_extend: i.promptRewrite === true, watermark: false, seed: seedOf(i, 0) }) }; },
-    outputs: (j) => { if (j?.code && !j?.output?.video_url) return { refused: String(j.message ?? j.code) }; const st = String(j?.output?.task_status ?? '');
-      if (/^(FAILED|CANCELED)$/.test(st)) return { refused: String(j.output.message ?? j.output.code ?? st) }; return j?.output?.video_url ? [{ url: j.output.video_url }] : []; } },
+  // Wan 3.0 (2026-10-25): wan3Router above (body, refusal).
+  'router-wan3': wan3Router('Wan 3.0', 'wan/wan3.0-video', 'wan/wan3-0-video'),
+  // Wan 3.0 Prime (2026-10-31, docs.comfy.org/development/comfy-router/models/wan/wan3-0-video-prime/code): the same input schema as Wan 3.0 (field
+  // lists identical), its own Router id and price; Alibaba's faster tier of Wan 3.0.
+  'router-wan3-prime': wan3Router('Wan 3.0 Prime', 'wan/wan3.0-video-prime', 'wan/wan3-0-video-prime'),
   'router-veo': veoRouter('Veo 3.1', 'veo/veo-3.1-generate-001', 'veo/veo-3-1-generate-001'),
   'router-veo-fast': veoRouter('Veo 3.1 Fast', 'veo/veo-3.1-fast-generate-001', 'veo/veo-3-1-fast-generate-001'), // 2026-10-25: same schema and rules as Veo 3.1
+  // Veo 3.1 Lite (2026-10-31, docs.comfy.org/development/comfy-router/models/veo/veo-3-1-lite-generate-001/code): the same Vertex schema as Veo 3.1 (field lists
+  // identical). 720p / 1080p only: the Router pricing page has no 4K rate for Lite, and Google's launch post lists 720p and 1080p, 4 / 6 / 8 s, 16:9 / 9:16.
+  'router-veo-lite': veoRouter('Veo 3.1 Lite', 'veo/veo-3.1-lite-generate-001', 'veo/veo-3-1-lite-generate-001', { k4: false }),
+  // Pruna P-Video-2 (2026-10-31): pvideoIssue above. Text, first frame or first + last frame; 720p / 1080p; 2–20 s (1 s isn't on Generate Video's length list).
+  'router-pvideo2': { name: 'P-Video-2', tools: ['h3-video'], id: 'pruna/p-video-2', doc: DOC('pruna/p-video-2'), out: 'video', queue: true, maxRefs: 0,
+    block: (i) => noVideoRefs('P-Video-2')(i) ?? pvideoIssue(i),
+    body: async (i) => { const bad = pvideoIssue(i); if (bad) throw new Error(bad); const { m, text, frame } = videoJob(i);
+      const image = (m === 'i2v' || m === 'flf') && frame ? await mediaLink(frame, 'P-Video-2') : undefined;
+      const last = m === 'flf' && frame && i.lastFramePath ? await mediaLink(String(i.lastFramePath), 'P-Video-2') : undefined;
+      return { input: omit({ prompt: text, image, last_frame_image: last, duration: Math.min(20, Math.max(1, Math.round(Number(i.duration) || 5))), resolution: i.resolution === '1080p' ? '1080p' : '720p',
+        aspect_ratio: image ? undefined : PVIDEO2_ASPECTS.includes(i.aspect) ? i.aspect : '16:9', fps: 24, draft: false, save_audio: i.audio !== false,
+        prompt_upsampling: i.promptRewrite === false || i.promptRewrite === '0' ? false : undefined /* Pruna's default (true) unless switched off */, seed: seedOf(i, 0) }) }; },
+    outputs: (j) => (/^(failed|canceled)$/i.test(String(j?.status ?? '')) ? { refused: String(j?.error ?? j?.message ?? j.status) } : typeof j?.generation_url === 'string' && j.generation_url ? [{ url: j.generation_url }] : []) },
+  // Grok Imagine Video 1.5 Lite (2026-10-31): grokVideoIssue above. 2–15 s (1 s isn't on Generate Video's length list), 480p / 720p / 1080p.
+  'router-grok-video-lite': { name: 'Grok Imagine Video 1.5 Lite', tools: ['h3-video'], id: 'xai/grok-imagine-video-1.5-lite', doc: DOC('xai/grok-imagine-video-1-5-lite'), out: 'video', queue: true, maxRefs: 0,
+    block: (i) => noVideoRefs('Grok Imagine Video 1.5 Lite')(i) ?? grokVideoIssue(i),
+    body: async (i) => { const bad = grokVideoIssue(i); if (bad) throw new Error(bad); const { m, text, frame } = videoJob(i);
+      const image = m === 'i2v' && frame ? { type: 'image_url', url: await dataUri(frame) } : undefined;
+      return omit({ model: 'grok-imagine-video-1.5-lite', prompt: text, duration: Math.min(15, Math.max(1, Math.round(Number(i.duration) || 5))),
+        aspect_ratio: image ? undefined : GROK_VIDEO_ASPECTS.includes(i.aspect) ? i.aspect : '16:9', resolution: ['480p', '720p', '1080p'].includes(i.resolution) ? i.resolution : '720p', image }); },
+    outputs: (j) => (j?.block_reason ? { refused: String(j.block_reason) } : typeof j?.video?.url === 'string' && j.video.url ? [{ url: j.video.url }] : []) },
   'api-minimax-h3': { tools: ['h3-video', ...ROUTER_VIDEO_APPS], id: 'minimax/minimax-h3', doc: DOC('minimax/minimax-h3'), out: 'video', queue: true, maxRefs: 9, block: noVideoRefs('MiniMax H3', true, 'api-minimax-h3'),
     body: async (i) => { const { m, text, frame, aspect } = videoJob(i); const content: any[] = [{ type: 'text', text }];
       if ((m === 'i2v' || m === 'flf') && frame) content.push({ type: 'image_url', image_url: { url: await frameUri(frame, aspect) }, role: 'first_frame' });
@@ -881,6 +946,12 @@ export const ROUTER_MODELS: Record<string, RouterModelSpec & { name?: string }> 
     block: (i) => seedAudioTextIssue(promptOf(i), i),
     body: async (i) => { const text = promptOf(i); const bad = text.trim() ? seedAudioTextIssue(text, i) : 'Seed Audio needs a prompt (1 to 3,000 characters)'; if (bad) throw new Error(bad); return { text_prompt: text, audio_config: { format: 'mp3', sample_rate: seedAudioRate(i) } }; },
     outputs: (j) => (j?.code && j.code !== 0 && !j?.audio && !j?.url ? { refused: String(j.message ?? j.code) } : j?.audio ? [{ b64: j.audio, mime: 'audio/mpeg' }] : j?.url ? [{ url: j.url }] : []) },
+  // HeyGen Voice (2026-10-31): heygen/starfish (HEYGEN_VOICES above). Our voices only (no cloning); speed = the Speed control (native, 0.5–2).
+  'api-heygen-tts': { name: 'HeyGen Voice', id: 'heygen/starfish', doc: DOC('heygen/starfish'), out: 'audio', queue: true, maxRefs: 0,
+    block: (i) => (i.voice === 'clone' || pathsOf(i.voiceSamplePaths).length ? 'HeyGen Voice on Comfy Router reads with its own voices; voice cloning runs on another model' : null) ?? heygenLong(promptOf(i)),
+    body: async (i) => { const text = promptOf(i); const bad = text.trim() ? heygenLong(text) : 'HeyGen Voice needs a script (1 to 5,000 characters)'; if (bad) throw new Error(bad);
+      return { text, voice_id: heygenVoiceId(i.voice), speed: heygenSpeed(i), input_type: 'text' }; },
+    outputs: (j) => (typeof j?.data?.audio_url === 'string' && j.data.audio_url ? [{ url: j.data.audio_url }] : j?.error ? { refused: String(j.error?.message ?? j.error) } : []) },
   // ---------------- Image to layers (2026-10-24, shared/imageLayers.ts) ----------------
   // Seedream 5.0 layer separation: the Seedream schema with layer_decomposition true, ONE photo, size 1K / 2K (layer mode: 1K, 1.5K, 2K, auto), no
   // sequential_image_generation / stream (refused in layer mode). One call returns data[] = the base plate (z_index 0) then each layer by z_index, every
@@ -934,10 +1005,10 @@ const ray32Reframe = (): RouterModelSpec => ({ name: 'Luma Ray 3.2 Reframe', too
 Object.assign(ROUTER_MODELS, { 'direct-luma-reframe': ray32Reframe(), 'auto-reframe': ray32Reframe() });
 export const ROUTER_RUNNER_ROUTES = new Set(Object.keys(ROUTER_MODELS).map((id) => `comfy-router:${id}`));
 export const routerModelOfRoute = (routeId: string) => { const id = routeId.startsWith('comfy-router:') ? routeId.slice('comfy-router:'.length) : ''; return ROUTER_MODELS[id] ? { provider: id, ...ROUTER_MODELS[id] } : null; };
-/** Hosted models whose Comfy partner node is NOT in the Router catalog (docs.comfy.org/development/comfy-router/models, 2026-10-22). */
+/** Hosted models whose Comfy partner node is NOT in the Router catalog (docs.comfy.org/development/comfy-router/models, 2026-10-22; re-checked 2026-10-31). */
 export const NOT_ON_ROUTER: Record<string, string> = {
   'api-hunyuan-image': 'Not on Comfy Router yet', 'api-meta-muse': 'Not on Comfy Router yet', 'api-fish-tts': 'Not on Comfy Router yet',
-  'api-sonilo-music': 'Not on Comfy Router yet', 'api-sonilo-v2m': 'Not on Comfy Router yet', 'api-heygen-tts': 'Not on Comfy Router yet',
+  'api-sonilo-music': 'Not on Comfy Router yet', 'api-sonilo-v2m': 'Not on Comfy Router yet', // HeyGen Voice: on Router as heygen/starfish since 2026-10-31
 };
 /** Reference images this job's Router body sends per request (what per-reference prices count: shared/hostedPrices.ts refImages).
  *  0 when the route sends none (maxRefs 0, e.g. Krea 3 today) or the job sends none (generate / t2v / i2v / flf). */
