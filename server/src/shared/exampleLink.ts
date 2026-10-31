@@ -3,15 +3,16 @@
  * in the bar. The page shows the example in the result viewer, labelled as an example (it is never a job in your library), and fills the bar
  * with its workflow, model, prompt and settings so Generate makes your own. Pure and dependency-light, so the web bar and the tests share it.
  */
+import { IMAGE_PAGE } from './pages.js';
 import { settingsOnSwitch, type SnapCaps } from './imageSnap.js';
 
 type ExampleLike = { id: string; workflow: string; provider: string; prompt: string; /** the subject box's words for a composing workflow (showcase.ts) */ subject?: string; settings: Record<string, string | number> };
 /** A workflow control as the bar sees it (GET /api/image-workflows recipe.controls): its field and, when it is a choice, the values offered. */
 export type ControlLike = { field: string; options?: { value: string | number }[] | null };
 
-/** `/tools/create-image?workflow=<id>&showcase=<id>`, or just `?showcase=<id>` for plain Create Image (as presetHref). Not `example=`: usePrefill already reads that for the server's tool examples. */
+/** `/image?workflow=<id>&showcase=<id>`, or just `?showcase=<id>` for plain Create Image (as presetHref). Not `example=`: usePrefill already reads that for the server's tool examples. */
 export const exampleHref = (s: Pick<ExampleLike, 'id' | 'workflow'>): string =>
-  `/tools/create-image?${s.workflow !== 'create-image' ? `workflow=${encodeURIComponent(s.workflow)}&` : ''}showcase=${encodeURIComponent(s.id)}`;
+  `${IMAGE_PAGE}?${s.workflow !== 'create-image' ? `workflow=${encodeURIComponent(s.workflow)}&` : ''}showcase=${encodeURIComponent(s.id)}`;
 
 /** Settings an example records for information only (the workflow file it ran), never a bar setting. */
 const INFO = new Set(['workflow']);

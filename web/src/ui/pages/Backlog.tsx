@@ -1,3 +1,4 @@
+import { toolPage } from '../../../../server/src/shared/pages';
 import { comfyNote } from '../../shared/comfyVersion';
 import { ledgerUsd } from '../../shared/billing';
 import { openWeightsOf } from '../../shared/OpenWeights';
@@ -57,7 +58,7 @@ export function HandoffMenu({ jobId }: { jobId: string }) {
   const [t, setT] = useState<any[] | null>(null); const toast = useToast();
   useEffect(() => { j(`/api/jobs/${encodeURIComponent(jobId)}/handoff`).then(d => setT(d.targets ?? [])).catch(() => setT([])); }, [jobId]);
   if (!t?.length) return null;
-  const go = async (to: string, as?: string) => { try { const r = await j(`/api/jobs/${encodeURIComponent(jobId)}/handoff?to=${encodeURIComponent(to)}${as ? `&as=${as}` : ''}`); navigate(r.route ?? `/tools/${to}`); } catch (e) { toast((e as Error).message, 'error'); } };
+  const go = async (to: string, as?: string) => { try { const r = await j(`/api/jobs/${encodeURIComponent(jobId)}/handoff?to=${encodeURIComponent(to)}${as ? `&as=${as}` : ''}`); navigate(r.route ?? toolPage(to)); } catch (e) { toast((e as Error).message, 'error'); } };
   return <label className="send-to-wrap" data-testid="handoff"><span aria-hidden>↗</span><select className="send-to" aria-label="Send to" value="" onChange={e => { const [to, as] = e.target.value.split('|'); if (to) go(to, as || undefined); }}>
     <option value="">Send to…</option>{t.map((x: any) => <option key={x.toolId + (x.as ?? '')} value={`${x.toolId}|${x.as ?? ''}`}>{x.name ?? x.toolId}{x.as === 'ref' ? ' (as reference)' : ''}</option>)}</select></label>;
 }

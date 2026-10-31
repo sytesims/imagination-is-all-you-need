@@ -1,6 +1,6 @@
 # Direct a Shot
 
-**Stage the scene and camera in simple 3D, record a free mockup, then render it as real video.** It lives in the 3D tab (`/tools/3d?workflow=plan-a-shot`; the id is unchanged).
+**Stage the scene and camera in simple 3D, record a free mockup, then render it as real video.** It lives in the 3D tab (`/3d?workflow=plan-a-shot`; the id is unchanged).
 
 1. **Stage** (free): pick a preset, set the camera move, speed, length and frame, and scrub through it. Everything is drawn in your browser; nothing goes to a provider.
 2. **Mockup** (free, takes seconds): **Record mockup** draws every frame and saves an MP4 in your feed.

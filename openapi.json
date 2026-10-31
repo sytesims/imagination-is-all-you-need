@@ -285,7 +285,7 @@
         "tags": [
           "Tools"
         ],
-        "summary": "Image presets (shared/presets.ts): saved recipes, one workflow each. {categories[Scene | Style | Look | Light | People | Product | Camera], presets[{id, name, workflow (create-image or a GET /api/image-workflows id), category, description, promptTemplate ({subject} / {prompt} = the user's text), subjectHint, settings {field: value} (the runner tool's real fields; lists as arrays), lora {name, strength, url, licence} | null, thumbnail (web path) | null, thumbnailModel (what made it) | null, hero, available (false = workflow not wired into Create Image yet), inspiredBy[] (plain notes), runner {toolId}, workflowStatus ready | soon, ready (available and pickable now), href (the Create Image link that opens it: /tools/create-image?workflow=<id>&preset=<id>)}]}. Presets never pick the model. Checked at boot; a preset with an unknown workflow, field or value is logged and left out. Quote with GET /api/tools/{runner.toolId}/price and the settings. Cache-friendly: ETag and max-age=60; If-None-Match → 304.",
+        "summary": "Image presets (shared/presets.ts): saved recipes, one workflow each. {categories[Scene | Style | Look | Light | People | Product | Camera], presets[{id, name, workflow (create-image or a GET /api/image-workflows id), category, description, promptTemplate ({subject} / {prompt} = the user's text), subjectHint, settings {field: value} (the runner tool's real fields; lists as arrays), lora {name, strength, url, licence} | null, thumbnail (web path) | null, thumbnailModel (what made it) | null, hero, available (false = workflow not wired into Create Image yet), inspiredBy[] (plain notes), runner {toolId}, workflowStatus ready | soon, ready (available and pickable now), href (the Create Image link that opens it: /image?workflow=<id>&preset=<id>)}]}. Presets never pick the model. Checked at boot; a preset with an unknown workflow, field or value is logged and left out. Quote with GET /api/tools/{runner.toolId}/price and the settings. Cache-friendly: ETag and max-age=60; If-None-Match → 304.",
         "responses": {
           "200": {
             "description": "OK",
@@ -4083,7 +4083,7 @@
         "tags": [
           "Account"
         ],
-        "summary": "Save as look {jobId, name (≤ 80), output?} → 201 look. Finished, real (not sample) image results of an image workflow only; 400 with code not_done | trashed | not_image | file_missing | sample | no_workflow | required | too_long; 404 unknown job. Opens in Create with /tools/create-image?preset=<id>; a run started from it carries lookId.",
+        "summary": "Save as look {jobId, name (≤ 80), output?} → 201 look. Finished, real (not sample) image results of an image workflow only; 400 with code not_done | trashed | not_image | file_missing | sample | no_workflow | required | too_long; 404 unknown job. Opens in Create with /image?preset=<id>; a run started from it carries lookId.",
         "responses": {
           "200": {
             "description": "OK",

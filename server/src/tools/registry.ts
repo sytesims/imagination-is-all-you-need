@@ -57,9 +57,9 @@ registerTool(cinemaTool, 'director');
 registerTool(voiceStudioTool, 'voice-studio');
 registerTool(imageUpscaleTool);
 registerTool(soulTool, 'opensoul');
-registerTool(threeDTool, 'image-to-3d'); // 3D page (2026-10-23): /tools/3d
+registerTool(threeDTool, 'image-to-3d'); // 3D page (2026-10-23): /3d
 registerTool(turntableTool, 'turntable');
-registerTool(previzTool, 'previz'); // Direct a Shot (2026-10-24): /tools/3d?workflow=plan-a-shot
+registerTool(previzTool, 'previz'); // Direct a Shot (2026-10-24): /3d?workflow=plan-a-shot
 registerTool(makeItRealTool); // Direct a Shot step 3 (2026-10-24): LTX-2.5 + Layout to Render, local and free
 registerTool(footageFxTool); // Footage Effects (2026-10-26): Lightricks LTX-2.5 IC-LoRA effects on your own clip, local and free
 registerTool(twoPersonSwapTool); // Swap Two People (2026-10-27): H3 Character Swap twice in one Comfy Cloud job (tools/twoPersonSwap.ts)

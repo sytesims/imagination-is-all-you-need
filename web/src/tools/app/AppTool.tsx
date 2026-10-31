@@ -1,3 +1,4 @@
+import { toolPage } from '../../../../server/src/shared/pages';
 import { goClick } from '../../shared/goToWorkflow';
 import { IMAGE_ACCEPT, fileFits, wrongTypeText } from '../../../../server/src/shared/mediaAccept';
 import { hasPicture } from '../../../../server/src/shared/refFit';
@@ -71,7 +72,7 @@ import { TRANSLATE_DOC } from '../../shared/brand';
 /** C4: tools that work on one picture show it large after upload. */
 const SRC_PREVIEW = ['image-upscale', 'app-inpaint', 'app-relight', 'relight', 'inpaint'];
 export default function AppTool({ tool, tools }: { tool: ToolInfo; tools?: ToolInfo[] }) {
-  /* One Audio page (2026-10-23): on /tools/audio?workflow=<id> this tool runs that workflow's mode in the Audio bar (ui/audio/AudioPage.tsx) */
+  /* One Audio page (2026-10-23): on /audio?workflow=<id> this tool runs that workflow's mode in the Audio bar (ui/audio/AudioPage.tsx) */
   const awf = useRef(audioPageWorkflow(tool.id)).current;
   const cfg = tool.app!; const types = tool.presets ?? []; const toast = useToast();
   /** Row 22: Camera Moves is single-select (one move per shot; the hero card shows the pick). Other tools keep the server's `mix`. */
@@ -609,7 +610,7 @@ export default function AppTool({ tool, tools }: { tool: ToolInfo; tools?: ToolI
         {bfl && bflModes.length > 0 && <><label className="field">MODE</label><div className="seg" role="radiogroup" data-testid="upscale-mode">{bflModes.map(m => { const on = picked[0] === m; return <button key={m} type="button" role="radio" aria-checked={on} data-testid={`upscale-mode-${m}`} className={on ? 'on' : ''} onClick={() => setPicked([m])}>{m[0].toUpperCase() + m.slice(1)}</button>; })}</div>
           <div className="helper" data-testid="upscale-caps">Up to {bfl.maxSeconds}s · {bfl.maxSource} · {bfl.maxMB} MB · {bfl.factor.min}–{bfl.factor.max}×{bfl.keepsAudio ? ' · keeps audio' : ''}{bflOut ? ` · output ${bflOut.width}×${bflOut.height}` : ''}</div></>}
         {isUpscale && !sizeLine(upQ) && readout && <p className="helper up-readout" data-readout>{readout}</p> /* B18/19: the server's sizes (quote-size line) win over our own readout */}
-        {tryTool && <Notice as="p" kind="warn" tone="line" className="try-tool">This input fits another tool better. <Link to={`/tools/${tryTool}`}>Try {tryTool.replace(/-/g, ' ')} →</Link></Notice>}
+        {tryTool && <Notice as="p" kind="warn" tone="line" className="try-tool">This input fits another tool better. <Link to={toolPage(tryTool)}>Try {tryTool.replace(/-/g, ' ')} →</Link></Notice>}
         {tool.id === 'voice' && <><label className="field">TAKES</label><div className="seg n-seg" role="radiogroup" aria-label="Number of takes">{[1, 2, 3, 4].map(n => { const on = String(fieldVals.n ?? 1) === String(n); return <button key={n} type="button" role="radio" aria-checked={on} className={on ? 'on' : ''} onClick={() => setFieldVals(v => ({ ...v, n: String(n) }))}>{n}</button>; })}</div></>}
         {Array.isArray((cfg as any).refSlots) && (cfg as any).refSlots.length > 0 && <><label className="field">REFERENCES <span className="helper">optional</span></label><div className="ref-slots">{((cfg as any).refSlots as { name: string; label: string; max?: number }[]).map(sl => { const fs = slotFiles[sl.name] ?? []; const max = sl.max ?? 1; return <label key={sl.name} className={`ref-slot ${fs.length ? 'has' : ''}`} data-slot={sl.name}>{fs[0] ? <img src={URL.createObjectURL(fs[0])} alt="" /> : <span className="rs-plus" aria-hidden>+</span>}<span className="rs-l">{sl.label}{max > 1 ? ` ${fs.length}/${max}` : ''}</span><input type="file" accept={IMAGE_ACCEPT} multiple={max > 1} hidden onChange={e => { const xs = [...(e.target.files ?? [])]; setSlotFiles(v => ({ ...v, [sl.name]: [...(max > 1 ? fs : []), ...xs].slice(0, max) })); e.target.value = ''; }} />{fs.length > 0 && <button type="button" className="rs-x" aria-label={`Clear ${sl.label}`} onClick={e => { e.preventDefault(); setSlotFiles(v => ({ ...v, [sl.name]: [] })); }}>×</button>}</label>; })}</div></>}
         {tool.id === 'photo-fx' && <>{/* Photo FX aspect: the per-model row below (server list) */}

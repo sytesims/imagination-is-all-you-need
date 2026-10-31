@@ -1,4 +1,4 @@
-// One Audio page (2026-10-23): /tools/voice, /tools/soundtrack, their modes and the old /tools/audio?mode= links open /tools/audio?workflow=<id>;
+// One Audio page (2026-10-23): /tools/voice, /tools/soundtrack, their modes and the old /tools/audio?mode= links open /audio?workflow=<id>;
 // voice lip-sync goes to Video's Lip Sync workflow. The rest of the query and the hash are kept, a ?workflow= link never redirects, and the web
 // router's order (image / video tables, then videoRedirect, then audioRedirectTarget) lands every old URL on the same place.
 // Run: npx tsx test/audio-redirects.test.ts
@@ -25,7 +25,8 @@ const CASES: [path: string, search: string, want: string][] = [
   ['/tools/voice', '', audioRoute('voiceover')], ['/tools/voice', '?mode=voiceover', audioRoute('voiceover')], ['/tools/voice', '?mode=change-voice', audioRoute('change-voice')],
   ['/tools/voice', '?mode=translate', audioRoute('translate')], ['/tools/soundtrack', '', audioRoute('soundtrack-music')], ['/tools/soundtrack', '?mode=music', audioRoute('soundtrack-music')],
   ['/tools/soundtrack', '?mode=v2s', audioRoute('soundtrack-sound')], ['/tools/soundtrack', '?mode=sfx', audioRoute('soundtrack-sound')],
-  ['/audio', '', audioRoute('music')], ['/audio/', '', audioRoute('music')], ['/tools/audio', '?mode=music', audioRoute('music')], ['/tools/audio', '?mode=sfx', audioRoute('sfx')], ['/tools/audio', '?mode=voice', audioRoute('voiceover')], ['/tools/audio', '?mode=cover', audioRoute('cover')],
+  ['/tools/audio', '?mode=music', audioRoute('music')], ['/tools/audio', '?mode=sfx', audioRoute('sfx')], ['/tools/audio', '?mode=voice', audioRoute('voiceover')], ['/tools/audio', '?mode=cover', audioRoute('cover')],
+  ['/audio', '?mode=music', audioRoute('music')], ['/audio/', '?mode=cover', audioRoute('cover')],
 ];
 for (const [p, s, want] of CASES) { assert.equal(audioRedirectTarget(p, s), want, `${p}${s}`); assert.equal(route(p, s), want, `${p}${s} through the router chain`); }
 ok(`${CASES.length} old links land on their workflow`);
@@ -42,7 +43,7 @@ assert.equal(audioRedirectTarget('/tools/voice', '?mode=nope'), audioRoute('voic
 ok('query + hash kept, mode consumed, case and trailing slash tolerated');
 
 // no loop: the Audio page itself, a ?workflow= link and unrelated pages never redirect
-for (const [p, s] of [[AUDIO_PAGE, ''], [AUDIO_PAGE, '?workflow=translate'], ['/tools/voice', '?workflow=voiceover'], ['/tools/create-image', ''], ['/video', '?workflow=lip-sync']] as const)
+for (const [p, s] of [[AUDIO_PAGE, ''], ['/audio/', ''], [AUDIO_PAGE, '?workflow=translate'], [AUDIO_PAGE, '?model=yue2'], ['/tools/voice', '?workflow=voiceover'], ['/image', ''], ['/video', '?workflow=lip-sync']] as const)
   assert.equal(audioRedirectTarget(p, s), null, `${p}${s} stays`);
 for (const id of AUDIO_WORKFLOW_IDS) { const [p, s] = audioRoute(id).split('?'); assert.equal(route(p, `?${s}`), null, `${audioRoute(id)} is final`); }
 ok('deep links to each of the 8 workflows are final (no redirect loop)');

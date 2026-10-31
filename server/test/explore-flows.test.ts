@@ -43,11 +43,11 @@ for (const f of [...FEATURED_STARTER_VIDEO, ...FEATURED_VIDEO, ...FEATURED_AUDIO
   for (const k of ['ltx-christmas-take', 'ltx-street-take', 'ltx-fox-meadow-close', 'ltx-rain-city', 'ltx-lighthouse', 'ltx-village-loop', 'ltx-morph', 'seedance-fashion', 'sc-0f1a0117', 'sc-fad0bbe6', 'sc-d3c80885',
     'sc-016bdc27', 'sc-973c88f8', 'sc-31465e96', 'sc-b718e875', 'sc-f7699cd4', 'sc-7205edb3', 'sc-fa96f109']) { assert.ok(FEATURED.some((f) => f.key === k), `${k}: Explore still shows it`); assert.ok(!STARTER.some((f) => f.key === k), `${k}: out of the starter pack`); }
   for (const k of ['ltx-pro-duet', 'sc-c0ce448f', 'sc-baed513e', 'sc-e774ad5c']) assert.ok(!FEATURED.some((f) => f.key === k), `${k}: removed`);
-  for (const f of FEATURED_AUDIO) { assert.match(f.out.url, /^\/examples\/starter\/[\w-]+\.mp3$/); assert.match(featuredRecreateHref(f.key)!, /^\/tools\/audio\?workflow=(music|sfx)&recreate=[0-9a-f]{8}$/, `${f.key}: Recreate opens Audio`); }
+  for (const f of FEATURED_AUDIO) { assert.match(f.out.url, /^\/examples\/starter\/[\w-]+\.mp3$/); assert.match(featuredRecreateHref(f.key)!, /^\/audio\?workflow=(music|sfx)&recreate=[0-9a-f]{8}$/, `${f.key}: Recreate opens Audio`); }
   assert.equal(featuredRecreateHref('presenter-talk'), '/video?workflow=lip-sync&mode=lipsync&recreate=af93a883', 'Lip Sync (its workflow link carries the mode)');
   assert.equal(featuredRecreateHref('bus-stop-sharp'), '/video?workflow=upscale&recreate=d47db426', 'Video Upscale');
   assert.equal(featuredRecreateHref('h3-fox-extend'), '/video?workflow=extend&recreate=0f0707ea', 'Extend');
-  assert.match(featuredRecreateHref('mossbun-mockup-film')!, /^\/tools\/3d\?workflow=plan-a-shot&preset=open-city&realPrompt=/, 'Direct a Shot');
+  assert.match(featuredRecreateHref('mossbun-mockup-film')!, /^\/3d\?workflow=plan-a-shot&preset=open-city&realPrompt=/, 'Direct a Shot');
   const dir = path.join(PUB, 'examples/starter'); let total = 0; for (const n of fs.readdirSync(dir)) { total += fs.statSync(path.join(dir, n)).size; if (/\.webp$|\.jpg$/.test(n)) assert.ok(!fs.readFileSync(path.join(dir, n)).includes('Exif'), `${n}: no EXIF`); }
   assert.ok(total < 21e6, `starter folder ${total} B (< 21 MB)`); }
 for (const [k, id] of Object.entries(FEATURED_SEED_IDS)) assert.equal(featuredIdOf(k), id, `${k}: seed id`);
@@ -64,14 +64,14 @@ assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpHero \/
 { const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8');
   assert.doesNotMatch(xs, /MakeBox|xp-make|queueGenerate|What do you want to make/, 'no prompt box or Generate in the hero');
   assert.ok(!fs.existsSync(path.join(WEB, 'shared/queuedGenerate.tsx')), 'queued Generate (prompt box only) removed'); }
-assert.match(featuredRecreateHref('ltx-christmas-take')!, /^\/tools\/3d\?workflow=plan-a-shot&preset=diorama&realPrompt=/);
+assert.match(featuredRecreateHref('ltx-christmas-take')!, /^\/3d\?workflow=plan-a-shot&preset=diorama&realPrompt=/);
 for (const c of SAMPLE_CLIPS) file(`/${c}`); for (const s of SAMPLE_STILLS) file(`/${s}`);
 ok(`${FEATURED.length} featured generations: files ship small, metadata stripped, seed ids and Recreate links right`);
 
 // ---- Explore rows ----
 assert.equal(EXPLORE_ROWS[0].id, 'video'); assert.deepEqual(EXPLORE_ROWS.map((r) => r.title), ['Make a video', 'Direct a Shot', 'Swap a character', 'New angle', 'Loop & Morph', 'Exploded view & effects', 'Viral templates', 'Make music & make it talk', '3D', 'Agents']);
 assert.equal(new Set(EXPLORE_CARDS.map((c) => c.id)).size, EXPLORE_CARDS.length, 'unique card ids');
-const PAGES = /^\/(tools\/(3d|audio|create-image)|video|mcp|canvas)\b/;
+const PAGES = /^\/(3d|audio|image|video|mcp|canvas)\b/;
 for (const c of EXPLORE_CARDS) {
   assert.match(c.href, PAGES, `${c.id}: opens a real page (${c.href})`); assert.doesNotMatch(`${c.title} ${c.line}`, /coming soon|soon\b/i, `${c.id}: no coming-soon card`);
   if (c.toolId && !['plan-a-shot', 'make-it-real', 'three-d-turntable'].includes(c.toolId)) assert.ok(getTool(c.toolId), `${c.id}: ${c.toolId} is a tool`);
@@ -184,7 +184,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
   assert.equal((X as Record<string, unknown>).EXPLORE_QUICK, undefined, 'the hero has no quick links (2026-10-28)');
   assert.equal(X.EXPLORE_TAGLINES.length, 3, 'three tagline options'); assert.ok(X.EXPLORE_TAGLINES.includes(X.EXPLORE_TAGLINE));
   for (const t of X.EXPLORE_TAGLINES) { assert.ok(t.title.length && t.line, 'tagline copy'); assert.doesNotMatch(`${t.title.join(' ')} ${t.line}`, /higgsfield/i, 'no other products named'); }
-  const LINK = /^\/(tools\/(3d|audio|create-image)|video|canvas|workflows|film)\b/;
+  const LINK = /^\/(3d|audio|image|video|canvas|workflows|film)\b/;
   for (const u of X.EXPLORE_SHOWCASE_LINKS()) assert.match(u, LINK, `showcase link opens a real page: ${u}`);
   /* chapter 1: swap a character, the dance-off (2026-10-28, the user's pick C): two swaps of one dance, H3 Character Swap (job 1f0cf6a2) and Kling 3.0 Omni Edit (job dc114104) */
   { const S = X.EXPLORE_SWAP; assert.equal((X as Record<string, unknown>).EXPLORE_STAGE, undefined, 'the Direct a Shot chapter is gone'); assert.equal((X as Record<string, unknown>).EXPLORE_SWAP_DUO, undefined, 'one layout, no A / B leftovers');
@@ -224,11 +224,11 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
   { const L = X.EXPLORE_LAYERS; assert.match(L.eyebrow, /^Chapter 2 · Image to layers$/); assert.deepEqual(L.title, ['One picture.', 'Every layer.']);
     assert.deepEqual(L.steps.map((x) => x.name), ['Picture', 'Split'], 'two steps from the data, the third is the run itself');
     assert.doesNotMatch(`${L.title.join(' ')} ${L.line} ${L.steps.map((x) => x.line).join(' ')}`, /higgsfield/i, 'our own words, no other products named');
-    assert.equal(L.cta.href, '/tools/create-image?workflow=image-layers', 'Split an image opens Create Image with Image to layers picked');
+    assert.equal(L.cta.href, '/image?workflow=image-layers', 'Split an image opens Create Image with Image to layers picked');
     const f = FEATURED.find((x) => x.key === L.key)!; assert.ok(f, 'the run ships as a featured entry');
     assert.deepEqual([f.tab, f.toolId, f.provider, f.modelKey, f.model, f.route, f.costUsd, f.runOn], ['image', 'app-image-layers', 'api-seedream-layers-flash', 'seedream-5.0-flash-layers',
       'ByteDance Seedream 5.0 Flash · layers (hosted)', 'comfy-router:api-seedream-layers-flash', 0.3346, 'comfy-cloud'], 'the real model and its real cost ($0.33)');
-    assert.equal(featuredIdOf(L.key), FEATURED_SEED_IDS[L.key]); assert.equal(featuredRecreateHref(L.key), `/tools/create-image?workflow=image-layers&recreate=${FEATURED_SEED_IDS[L.key]}`, 'Recreate opens Image to layers');
+    assert.equal(featuredIdOf(L.key), FEATURED_SEED_IDS[L.key]); assert.equal(featuredRecreateHref(L.key), `/image?workflow=image-layers&recreate=${FEATURED_SEED_IDS[L.key]}`, 'Recreate opens Image to layers');
     assert.equal(f.input.layers, true); assert.equal(f.input.imageUrl, f.before!.url, 'the poster Recreate loads is the strip’s input');
     assert.ok(fs.statSync(file(String(f.input.imageUrl), 200_001)).size <= 200_000, 'the input stays ≤ 200 KB');
     assert.equal(f.layers!.length, 13, '13 layers'); assert.equal(f.layers![0].label, 'Background'); assert.deepEqual([...L.order].sort((a, b) => a - b), f.layers!.map((_, k) => k), 'the strip shows every layer once');
@@ -319,8 +319,8 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     const Y = X.EXPLORE_YOUR_TURN; const wall = Y.wall.flat(); assert.equal(Y.wall.length, 6); assert.ok(wall.length >= 28, `about 30 on the wall (${wall.length})`);
     for (const t of wall) { assert.ok(fs.existsSync(path.join(PUB, t.src)), `${t.src}: shipped`); assert.ok(t.model, `${t.src}: names its model`); if (/\/(wall|look)-/.test(t.src)) assert.match(t.src, /^\/showcase\/(wall|look)-[a-z0-9-]+\.webp$/, `${t.src}: a neutral name`); }
     assert.deepEqual(wall.filter((t) => t.star).map((t) => t.src), ['/showcase/wall-tortoise-village.webp'], 'the tortoise village is the one spotlit tile');
-    assert.equal(X.yourTurnHref('  a fox in the snow '), '/tools/create-image?prompt=a+fox+in+the+snow', 'Make it: Create Image with the words in the bar');
-    assert.equal(X.yourTurnHref(''), `/tools/create-image?${new URLSearchParams({ prompt: Y.placeholder })}`, 'empty: the example in the box');
+    assert.equal(X.yourTurnHref('  a fox in the snow '), '/image?prompt=a+fox+in+the+snow', 'Make it: Create Image with the words in the bar');
+    assert.equal(X.yourTurnHref(''), `/image?${new URLSearchParams({ prompt: Y.placeholder })}`, 'empty: the example in the box');
     const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8');
     assert.match(xs, /onMouseEnter=\{\(\) => setCur\(k\)\} onFocus=\{\(\) => setCur\(k\)\} onClick=\{\(\) => setCur\(k\)\}/, 'hover, focus or tap swaps the look');
     assert.match(xs, /goToWorkflow\(yourTurnHref\(text\)\)/, 'Make it goes in-app');
@@ -332,7 +332,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.deepEqual(S.cast.map((c) => c.key), want.map((w) => w[0]), 'Kaito, Mossbun, the mechanic, Kip');
     for (const [k, id, , w, h, usd, words] of want) { const f = FEATURED.find((x) => x.key === k)!; const c = S.cast.find((x) => x.key === k)!; assert.ok(f, `${k}: a featured entry`);
       assert.deepEqual([f.tab, f.toolId, f.provider, f.modelKey, f.model, f.runOn, f.route, f.costUsd], ['image', 'create-image', 'api-gpt-image-25-flare', 'gpt-image-2.5-flare', 'GPT Image 2.5 Flare', 'comfy-cloud', 'comfy-router:api-gpt-image-25-flare', usd], `${k}: GPT Image 2.5 Flare on Comfy Router, its billed price`);
-      assert.match(f.prompt, words); assert.equal(f.input.seed, 397533); assert.equal(featuredIdOf(k), id); assert.equal(featuredRecreateHref(k), `/tools/create-image?recreate=${id}`, `${k}: Recreate opens Create Image`);
+      assert.match(f.prompt, words); assert.equal(f.input.seed, 397533); assert.equal(featuredIdOf(k), id); assert.equal(featuredRecreateHref(k), `/image?recreate=${id}`, `${k}: Recreate opens Create Image`);
       assert.deepEqual([f.out.width, f.out.height], [w, h], `${k}: its real size`); const p = file(f.out.url, 2e5); assert.equal(fs.readFileSync(p).subarray(8, 12).toString(), 'WEBP');
       assert.ok(!fs.readFileSync(p).includes('EXIF') && !fs.readFileSync(p).includes('Exif'), `${k}: no EXIF`); file(f.out.poster, 5e4); file(c.face, 8e3);
       assert.ok(c.panels.length >= 5, `${k}: its panels`); for (const [l, x, y, pw, ph] of c.panels) assert.ok(l && x >= 0 && y >= 0 && pw > 0 && ph > 0 && x + pw <= w && y + ph <= h, `${k} ${l}: inside the sheet`); }
@@ -355,11 +355,11 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
   { const F = X.EXPLORE_FILM; assert.equal((X as Record<string, unknown>).EXPLORE_WORLDS, undefined, 'the Worlds tiles are gone'); assert.ok(!fs.existsSync(path.join(PUB, 'explore/worlds')), 'their images are gone');
     assert.equal(F.title, 'Block it in 3D. Film it for real.'); assert.deepEqual(F.beats.map((b) => [b.n, b.step, b.model, b.place, b.usd, b.jobId]),
       [[1, 'Mockup', 'Direct a Shot', 'drawn in your browser', 0, 'a1a50672'], [2, 'First frame', 'GPT Image 2.5 Flare', 'Comfy Cloud', 0.0238, '645de70d'], [3, 'Film', 'LTX-2.5 22B + Layout to Render', 'Comfy Cloud', 0.28, '1a1a33c6']], 'the three passes, real models and prices');
-    assert.match(F.beats[2].note, /8 s run · first shot shown/); assert.equal(F.cta.href, '/tools/3d?workflow=plan-a-shot&preset=open-city');
+    assert.match(F.beats[2].note, /8 s run · first shot shown/); assert.equal(F.cta.href, '/3d?workflow=plan-a-shot&preset=open-city');
     const f = FEATURED.find((x) => x.key === F.key)!; assert.ok(f?.before, 'the film ships as a featured entry with its mockup');
     assert.deepEqual([f.toolId, f.provider, f.model, f.flow, f.runOn, f.route, f.costUsd], ['make-it-real', 'comfy-ltx25-layout', 'LTX-2.5 + Layout to Render', 'Direct a Shot', 'comfy-cloud', 'comfy-cloud:cloud-ltx25-layout', 0.28]);
     assert.match(f.prompt, /^A young woman in a burnt-orange jacket walks/); assert.equal(featuredIdOf(F.key), '8ec31949');
-    assert.match(featuredRecreateHref(F.key)!, /^\/tools\/3d\?workflow=plan-a-shot&preset=open-city&realPrompt=A%20young%20woman/, 'Recreate: Direct a Shot on Open city, the Render prompt waiting');
+    assert.match(featuredRecreateHref(F.key)!, /^\/3d\?workflow=plan-a-shot&preset=open-city&realPrompt=A%20young%20woman/, 'Recreate: Direct a Shot on Open city, the Render prompt waiting');
     for (const [u, audio, max] of [[f.out.url, true, 3e6], [f.before!.url, false, 1.2e6]] as const) { const p = file(u, max); const pr = execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=codec_name,profile,width,height,nb_frames', '-of', 'csv=p=0', p]).toString();
       assert.match(pr, /h264,High,1280,720,95/, `${u}: H.264 High 1280×720, 95 frames (the first shot)`); if (audio) assert.match(pr, /aac/, `${u}: AAC`); else assert.doesNotMatch(pr, /aac/, `${u}: silent`);
       assert.ok(fs.readFileSync(p).subarray(0, 64).includes('moov'), `${u}: faststart`);

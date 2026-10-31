@@ -1,5 +1,5 @@
 /**
- * The 3D page (2026-10-23): one page at /tools/3d with its workflows in the bar's first chip, like Image, Video and Audio.
+ * The 3D page (2026-10-23): one page at /3d (shared/pages.ts; /tools/3d until 2026-10-31) with its workflows in the bar's first chip, like Image, Video and Audio.
  * Isomorphic (no server imports): the web reads the same lists. GET /api/3d-workflows serves them with the live defaults.
  *
  *  - Workflows: Image to 3D (default, runs on tool `three-d`), Turntable video (tool `three-d-turntable`: the browser records an orbit of the
@@ -9,6 +9,8 @@
  *  - Price key: hosted 3D prices depend on detail, texture and face count, not on a video resolution. The job's `resolution` carries
  *    `threeDPriceKey()` (ToolDef.routeInput sets it on quotes and submits alike), and each hosted price row has one rate per key (quote = charge).
  */
+
+import { THREE_D_PAGE, THREE_D_TOOL, OLD_THREE_D_PAGE } from './pages.js';
 
 export type ThreeDWorkflowId = 'image-to-3d' | 'turntable' | 'plan-a-shot' | 'text-to-3d' | 'multiview-to-3d' | 'retexture' | 'rig';
 export type ThreeDCategory = 'create' | 'edit' | 'video';
@@ -21,8 +23,7 @@ export interface ThreeDWorkflow {
   /** Generate's label. */ generateLabel: string;
   /** Where the workflow (graph) comes from. */ source: { kind: 'official' | 'community' | 'ours'; note: string };
 }
-export const THREE_D_PAGE = '/tools/3d';
-export const THREE_D_TOOL = 'three-d';
+export { THREE_D_PAGE, THREE_D_TOOL, OLD_THREE_D_PAGE };
 export const TURNTABLE_TOOL = 'three-d-turntable';
 /** Direct a Shot (shared/previzTemplates.ts): the browser records a planned 3D shot frame by frame; the server keeps it as an MP4 (free). */
 export const PLAN_SHOT_TOOL = 'plan-a-shot';
@@ -53,10 +54,10 @@ export const threeDWorkflowById = (id: string | null | undefined): ThreeDWorkflo
 /** tool:mode → workflow (routing/defaults.ts resolves the per-workflow default with it). */
 export const threeDWorkflowForToolMode = (toolId: string, mode: string | null): ThreeDWorkflowId | null =>
   THREE_D_WORKFLOWS.find((w) => w.status === 'ready' && w.toolId === toolId && (!mode || w.mode === mode))?.id ?? null;
-/** /tools/3d?workflow=<id> for a known workflow; unknown ids open the default. */
+/** /3d?workflow=<id> for a known workflow; unknown ids open the default. */
 export const currentThreeDWorkflow = (search: string): ThreeDWorkflow => threeDWorkflowById(new URLSearchParams(search.replace(/^\?/, '')).get('workflow')) ?? THREE_D_WORKFLOWS[0];
 /** Old / alias URLs → the 3D page. Query parameters (?fromJob=…) are kept by the caller. */
-export const THREE_D_REDIRECTS: Record<string, string> = { '/3d': THREE_D_PAGE, '/tools/three-d': THREE_D_PAGE, '/tools/image-to-3d': threeDRoute('image-to-3d'), '/tools/turntable': threeDRoute('turntable'), '/tools/three-d-turntable': threeDRoute('turntable'), '/tools/plan-a-shot': threeDRoute('plan-a-shot') };
+export const THREE_D_REDIRECTS: Record<string, string> = { [OLD_THREE_D_PAGE]: THREE_D_PAGE /* the old address (until 2026-10-31) */, '/tools/three-d': THREE_D_PAGE, '/tools/image-to-3d': threeDRoute('image-to-3d'), '/tools/turntable': threeDRoute('turntable'), '/tools/three-d-turntable': threeDRoute('turntable'), '/tools/plan-a-shot': threeDRoute('plan-a-shot') };
 export function threeDRedirectTarget(pathname: string, search = '', hash = ''): string | null {
   const p = (pathname.replace(/\/+$/, '') || '/').toLowerCase(); const to = THREE_D_REDIRECTS[p]; if (!to) return null;
   const q = new URLSearchParams(search.replace(/^\?/, '')); const t = new URLSearchParams(to.split('?')[1] ?? '');
