@@ -172,7 +172,7 @@ export function MoodPanel({ d, ro, patch }: PanelProps) {
 /* ---------------------------------------------------------------- examples */
 export function ExamplesPanel({ d, ro, patch, apply, flush }: PanelProps) {
   const toast = useToast();
-  const add = () => pickMedia({ accept: IMAGE_ACCEPT, title: 'Pick example results', limits: `Up to ${BK.BRAND_LIMITS.examples} images for the brand sheet`, multiple: true, frames: false, onFiles: async (fs) => {
+  const add = () => pickMedia({ accept: IMAGE_ACCEPT, title: 'Pick example results', limits: `Up to ${BK.BRAND_LIMITS.examples} images for the brand sheet`, multiple: true, max: BK.BRAND_LIMITS.examples - d.examples.length, frames: false, onFiles: async (fs) => {
     const room = BK.BRAND_LIMITS.examples - d.examples.length; if (room <= 0) { toast(`Up to ${BK.BRAND_LIMITS.examples} examples. Remove one first.`, 'warn'); return; }
     const lib = fs.slice(0, room).map((f) => libraryUrlOf(f)).filter((u): u is string => !!u && BK.isMediaUrl(u)); const up = fs.slice(0, room).filter((f) => !libraryUrlOf(f));
     try { await flush(); let k: BrandKit | null = null; if (lib.length) k = await api('PATCH', `/api/brand-kits/${d.id}`, { examples: [...d.examples, ...lib] });

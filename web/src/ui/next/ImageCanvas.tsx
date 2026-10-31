@@ -1,5 +1,6 @@
-import { SlotPreview, SlotCount, fullText, prepUpload, useSlotReorder } from '../../shared/SlotPreview';
+import { SlotPreview, fullText, prepUpload, useSlotReorder } from '../../shared/SlotPreview';
 import { MoreFiles, LeftNote, notAddedText, type TrayFile } from '../../shared/FilesTray';
+import { AddTile } from '../../shared/AddTile';
 import { IMAGE_ACCEPT, fileFits, wrongTypeText } from '../../../../server/src/shared/mediaAccept';
 import { GenPrice } from '../../shared/GenPrice';
 import { hasFreeLocal } from '../../shared/KeyNeeded';
@@ -28,7 +29,8 @@ import { PromptPeek, type PeekForm } from './PromptPeek';
 import { BrandChip } from '../../shared/BrandChip';
 import { addBrandField } from '../../shared/brandStore';
 import { BRAND_OWN_WORDS } from '../../../../server/src/shared/brandKit';
-import { rowOverflowRows } from '../../shared/RowMore';
+import { rowOverflowRows, foldedRow, FoldedRows, type RowOverflowRow } from '../../shared/RowMore';
+import { fitPri } from '../../shared/chipFit';
 import { ModelMenu, CHECK as check } from '../../shared/ModelMenu';
 import { useToolModels, modelOfEngine, useRunOn, runOnOfRoute, shownName, modelParamFor, engineForModelParam } from '../../shared/models';
 import { useEffect, useRef, useState } from 'react';
@@ -430,10 +432,9 @@ export default function ImageCanvas(p: ImageCanvasProps) {
    *  (shared/dockFit useChipFit, also Video's, Audio's and 3D's), with a workflow's chips (.wf-fold) as the second tier that folds into ⋯ */
   const folded = useChipFit(chipsRef, { over: '.wf-fold', observe: true });
   /* the ⋯ overflow menu: the chips folded into it, read from the row when it opens (each row clicks its chip, whose popover then opens on ⋯) */
-  const overRef = useRef<HTMLButtonElement>(null); const [overRows, setOverRows] = useState<{ label: string; target: HTMLElement | null }[]>([]);
+  const overRef = useRef<HTMLButtonElement>(null); const [overRows, setOverRows] = useState<RowOverflowRow[]>([]);
   const openOver = () => { if (pop === 'over') { setPop(''); return; } const c = chipsRef.current; if (!c) return;
-    setOverRows([...c.querySelectorAll<HTMLElement>('.wf-fold.ic-folded')].map(el => { const t = el.matches('button') ? el : el.querySelector<HTMLElement>('button, input, a');
-      const label = (el.getAttribute('aria-label') ?? t?.getAttribute('aria-label') ?? el.textContent ?? '').replace(/\s+/g, ' ').trim(); return { label, target: t }; }).filter(r => r.label).concat(rowOverflowRows(c)) /* Brand and the eye, folded off a short row */);
+    setOverRows([...c.querySelectorAll<HTMLElement>('.wf-fold.ic-folded')].map(el => foldedRow(el, el.matches('button') ? el : el.querySelector<HTMLElement>('button, input, a'))).filter((r): r is RowOverflowRow => !!r).concat(rowOverflowRows(c)) /* Brand and the eye, folded off a short row */);
     setPop('over'); };
   const reg = useModels(p.tool.id); const regOf = (id: string) => reg.models.find(m => m.providerId === id || m.id === id) as any;
   /* R1: popovers are the shared anchored Popover (portal); it owns Escape, outside-click and focus return */
@@ -829,11 +830,13 @@ export default function ImageCanvas(p: ImageCanvasProps) {
       {photos.length > 0 && <div className="ic-attach ic-attach-in" data-testid="ic-attach">{photos.slice(0, ts.show).map(thumb)}
         <MoreFiles hidden={ts.more} watch={dock} testId="ic-thumbs-more" summary={refN > maxRefs ? `${refN - maxRefs} not used` : undefined} action={refN > maxRefs && maxRefs > 0 ? { label: `Remove the ${refN - maxRefs} not used`, onClick: () => { for (let i = photos.length - 1; i >= maxRefs; i--) removePhoto(i); } } : null} onRemove={f => removePhoto(f.idx)} onMove={photos.length > 1 && p.movePhoto ? (_g, a, b) => p.movePhoto!(a, b) : undefined}
           items={photos.map((ph, k): TrayFile => ({ key: ph.url, group: 'photos', idx: k, kind: 'image', url: ph.url, name: (ph as any).file?.name ?? `Image ${k + 1}`, label: refN > 1 ? `Picture ${k + 1} · @image${k + 1}` : 'Picture', off: k >= maxRefs || (!!p.mask && k > 0) }))} />
+        {/* the dashed "+": the model's real limit in its tooltip, a badge only near it, disabled at it (shared/AddTile; no counter text on the bar) */}
+        {maxRefs > 0 && <AddTile used={refN} max={maxRefs} testId="ic-add-tile" onAdd={() => { replaceIndex.current = null; setPop(''); setRefTab('Uploads'); }} />}
         {p.canMask && sup.draw !== false /* only models with a mask route (Brush Edit) */ && <>
           {p.mask && cMaskNow && <button type="button" className="ic-mask-t" data-testid="ic-mask-thumb" aria-label={`Mask: ${Math.max(1, Math.round(cMaskNow.cover * 100))}% of the photo. Edit mask`} {...tip(`Mask · ${Math.max(1, Math.round(cMaskNow.cover * 100))}% of the photo. Click to edit`)} onClick={openCreateMask}><img src={cMaskNow.preview} alt="" /></button>}
           <button type="button" className={`ic-chip ic-mask-b ${masking || p.mask ? 'on' : ''}`} data-testid="ic-mask-chip" aria-haspopup="dialog" {...tip(p.mask ? 'Brush Edit: only the painted area changes. Click to edit the mask' : 'Paint an area: only it changes')} onClick={openCreateMask}>{p.mask ? 'Mask ✓' : 'Mask'}</button></>}</div>}
       </>}
-    {!recipe && photos.length > 0 && <><SlotCount used={{image:refN}} caps={{image:maxRefs}} testId="ic-slot-count" />{refN > maxRefs && maxRefs > 0 && !ts.more /* with "+N" it sits in the tray */ && <button type="button" className="lk-btn" data-testid="ic-remove-extra-photos" onClick={() => { for (let i = photos.length - 1; i >= maxRefs; i--) removePhoto(i); }}>Remove extras</button>}</>}
+    {!recipe && photos.length > 0 && <>{refN > maxRefs && maxRefs > 0 && !ts.more /* with "+N" it sits in the tray */ && <button type="button" className="lk-btn" data-testid="ic-remove-extra-photos" onClick={() => { for (let i = photos.length - 1; i >= maxRefs; i--) removePhoto(i); }}>Remove extras</button>}</>}
     {photoPreview != null && (() => { const ph = photos[photoPreview] as {url:string;file?:File} | undefined; return ph?.file ? <SlotPreview open anchor={photoAnchor} onClose={() => setPhotoPreview(null)} item={{file:ph.file,url:ph.url}} kind="image" title={`Picture ${photoPreview + 1}`} watch={dock} testId="ic-photo-preview" warn={photoPreview >= maxRefs ? `Not sent: this model takes up to ${maxRefs} pictures.` : null} onRemove={() => removePhoto(photoPreview)} onReplace={p.replacePhoto ? () => { replaceIndex.current = photoPreview; file.current?.click(); } : undefined} /> : null; })()}
   </div>;
   /* Settings popover: only the Create controls folded off the bar (the fit above says which), each once. Enhance here is the same
@@ -935,7 +938,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
             summaries={isMulti ? { [multiG]: anglesSummary(recipe, angleIds) } : undefined} openGroup={openGroup}
             after={isMulti && angleIds.length && angleEach ? <span className="ic-chip ic-static wf-each" data-testid="wf-angles-each">{angleEach}</span> : recipe.id === 'remove-bg' && ptAlpha ? <span className="ic-chip ic-static wf-pt-note" data-testid="wf-pt-note" {...tip('This photo already has a transparent background; running it again may trim the edges more.')}>Already transparent</span> : null} />}
           {rigRecipe && <RigStrip recipe={rigRecipe} rig={rig} setRig={setRig} watch={dock} overRef={overRef} />}
-          {seedEl && <span className="ic-seed wf-fold" data-testid="ic-seed">{seedEl}</span>}
+          {seedEl && <span className="ic-seed wf-fold" {...fitPri('low')} data-testid="ic-seed">{seedEl}</span>}
           {recipe ? null : followsPhoto ? <span className="ic-chip ic-static ic-fold ic-follows" data-fold="aspect" data-testid="ic-follows-photo" {...tip(`${ed!.note}. Edits keep your photo's shape.`)}><AspectIcon size={16} className="ic-auto" />Follows your photo{resList.length === 1 ? ` · ${imgRes || resList[0]}` : ''}</span>
           : showAspect && aspects.length === 1 ? <span className="ic-chip ic-static ic-fold" data-fold="aspect" data-testid="ic-aspect-static" {...tip('The only aspect ratio this model offers')}>{aspect === 'Auto' ? <AspectIcon size={16} className="ic-auto" /> : <Shape w={shapeOf(aspect)[0]} h={shapeOf(aspect)[1]} />}{arLabel(aspect)}</span> : showAspect && <button ref={aR.aspect} data-fold="aspect" data-preset={presetSet('aspect')} aria-expanded={pop === 'aspect'} type="button" className={`ic-chip ic-fold ${pop === 'aspect' ? 'on' : ''}`} aria-haspopup="listbox" {...tip(ed?.allowAuto && aspect === 'Auto' ? 'Match photo: the result keeps your photo’s shape' : null)} onClick={() => setPop(pop === 'aspect' ? '' : 'aspect')}>{aspect === 'Auto' ? <AspectIcon size={16} className="ic-auto" /> : <Shape w={shapeOf(aspect)[0]} h={shapeOf(aspect)[1]} />}{arLabel(aspect)}</button>}
           {!recipe && (showQual && tiers.length === 1 ? <span className="ic-chip ic-static ic-fold" data-fold="quality" data-testid="ic-quality-static" {...tip('The only quality tier this model offers')}><QualityIcon size={16} />{qName(qual2)}</span> : showQual && <button ref={aR.quality} data-fold="quality" aria-expanded={pop === 'quality'} type="button" className={`ic-chip ic-fold ${pop === 'quality' ? 'on' : ''}`} aria-haspopup="listbox" onClick={() => setPop(pop === 'quality' ? '' : 'quality')}><QualityIcon size={16} />{qName(qual2)}</button>)}
@@ -989,8 +992,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
       </PopSection></BarPopover>
       <BarPopover open={pop === 'over'} anchor={overRef} watch={dock} gap={4} onClose={closePop} label="More settings" role={!recipe && folded.length ? 'dialog' : 'menu'} testId="ic-pop-over" width={!recipe && folded.length ? 320 : 240}><div className="bp-wrap" data-testid="ic-over-panel">
         {!recipe && folded.length > 0 && setBody}
-        <PopSection label="More settings"><PopList label="More settings" role="group">{overRows.map((r, i) => r.target ? <PopRow key={i} role="menuitem" testId={`ic-over-${i}`} label={r.label} onClick={() => { const t = r.target!; setPop(''); requestAnimationFrame(() => t.click()); }} />
-          : <p key={i} className="bp-fact" role="none">{r.label}</p>)}</PopList></PopSection>
+        <PopSection label="More settings"><PopList label="More settings" role="group"><FoldedRows rows={overRows} testId="ic-over" onPick={t => { setPop(''); requestAnimationFrame(() => t.click()); }} /></PopList></PopSection>
       </div></BarPopover>
       <BarPopover open={pop === 'set'} anchor={aR.set} watch={dock} gap={4} onClose={closePop} label="Settings" testId="ic-pop-settings" width={320}><div className="bp-wrap" data-testid="ic-settings-panel">{setBody}</div></BarPopover>
       <BarPopover open={pop === 'aspect'} anchor={aR.aspect} watch={dock} gap={4} onClose={closePop} label="Aspect ratio" role="listbox" testId="ic-pop-aspect" width={arGroups ? 320 : 220}>

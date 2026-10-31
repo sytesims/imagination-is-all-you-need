@@ -83,6 +83,7 @@ import '../video/videoDock.css';
 import '../video/videoWorkflows.css';
 import './threeD.css';
 import { QUALITIES, QUALITY_LABEL, QUALITY_HINT, previzQuality, setPrevizQuality, onPrevizQuality } from '../../shared/previz/quality';
+import { SlotLabel } from '../../shared/SlotLabel';
 
 type Payload = { workflows: (ThreeDWorkflow & { runnable: boolean; defaults?: { hosted: string | null; local: string | null; why: { local?: string; hosted?: string }; active: { id: string; defaultProvider: string | null; why?: string; reason?: string | null; runs?: boolean } | null } })[];
   models: ThreeDModel[]; showcase: { dataset: { name: string; url: string; credit: string; licence: string; licenceUrl: string }; items: ShowcaseItem[] }; bigGlbBytes: number };
@@ -378,7 +379,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
           {!isPS && !isSoon && <div className="ic-lead" data-testid="t3-lead">
             {isPS ? null
             : isTT ? <span className="wf-strip wf-inputs"><button ref={ttRef} type="button" className={`wf-slot${ttJob ? ' full' : ' req'}`} data-testid="t3-tt-slot" aria-haspopup="listbox" aria-expanded={pop === 'tt'} onClick={() => setPop(pop === 'tt' ? '' : 'tt')} {...tip(ttJob ? 'Pick another 3D result' : 'Make a 3D model first')} disabled={!done3d.length}>
-                <span className="wf-slot-hit">{ttJob && posterOf3d(ttJob) ? <img src={posterOf3d(ttJob)!} alt="" /> : <CubeIcon size={14} />}<b>{ttJob ? 'Model' : 'No model yet'}</b></span></button></span>
+                <span className="wf-slot-hit">{ttJob && posterOf3d(ttJob) ? <img src={posterOf3d(ttJob)!} alt="" /> : <CubeIcon size={14} />}{ttJob ? <b>Model</b> : <SlotLabel text="No model yet" />}</span></button></span>
               : <WorkflowInputs recipe={recipe} files={{ image: img }} setFile={(_s, f) => takeImage(f)} onPick={() => fileIn.current?.click()} picking={null} onUrl={(_s, u) => { void fileFromUrl(u).then(takeImage).catch((e) => toast((e as Error).message, 'error')); }} flash={null} choose={null} onChoose={() => 0} onChooseCancel={() => 0} disabled={busy || rbBusy}
                 surface={img ? <button type="button" className="ic-chip t3-rmbg" data-testid="t3-remove-bg" disabled={rbBusy} onClick={() => void removeBg()} {...tip(`Cut out the subject first with Remove Background${rbQ ? ` · ${rbQ.demo ? 'sample here' : shownCredits(rbQ) === 0 ? 'free' : `≈ $${((rbQ.credits ?? 0) / 100).toFixed(2)}`}` : ''}`)}>{rbBusy ? <i className="as-spin" aria-hidden /> : null}Remove background</button> : null} />}
           </div>}

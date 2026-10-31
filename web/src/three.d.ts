@@ -3,7 +3,7 @@ declare module 'three' {
   export const WebGLRenderer: any; export const Scene: any; export const PerspectiveCamera: any; export const Vector3: any; export const Quaternion: any;
   export const BufferGeometry: any; export const Float32BufferAttribute: any; export const LineSegments: any; export const Line: any; export const LineBasicMaterial: any;
   export const LineDashedMaterial: any; export const Mesh: any; export const PlaneGeometry: any; export const ConeGeometry: any; export const ShaderMaterial: any;
-  export const Sprite: any; export const SpriteMaterial: any; export const CanvasTexture: any; export const TextureLoader: any; export const Color: any; export const Group: any;
+  export const Sprite: any; export const SpriteMaterial: any; export const Points: any; export const PointsMaterial: any; export const CanvasTexture: any; export const TextureLoader: any; export const Color: any; export const Group: any;
   export const AdditiveBlending: any; export const DoubleSide: any; export const LinearFilter: any; export const SRGBColorSpace: any;
 }
 /* Direct a Shot (shared/previz/engine.ts): the extra classes its scenes use, loosely typed like the rest. */
