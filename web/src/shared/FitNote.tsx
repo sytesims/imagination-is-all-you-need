@@ -3,8 +3,9 @@ import { runPrice, placeOfQuote, ownAccountsNow } from './billing';
 import { useEffect, useRef, useState } from 'react';
 import { DemoPrice } from './DemoPrice';
 import { Link } from '../platform/router';
-import { fitLabel, etaSourceNote, showLighter, gbText, noteOffersAlt, altCredits, LOCAL_SETUP_HREF, type Fit, type FitAlt } from './fit';
-import { dryRunDownload, setDownloadIntent, useDownloadIntent, promptMounted, choiceText, type DryRun, type DlChoice } from './hardware';
+import { fitLabel, etaSourceNote, showLighter, gbText, noteOffersAlt, altCredits, quoteFitOf, LOCAL_SETUP_HREF, type Fit, type FitAlt } from './fit';
+import { dryRunDownload, setDownloadIntent, useDownloadIntent, promptMounted, choiceText, useHardware, useLiveHardware, type DryRun, type DlChoice } from './hardware';
+import { memoryCheck, HEAVY_GB } from '../../../server/src/shared/thisComputer';
 /** B31: a 409 weights gate from a submit (api.ts), so the download prompt for that model shows the server's words and its options. */
 export const WEIGHTS_GATE_EVT = 'ohf:weights-gate';
 const gates = new Map<string, any>();
@@ -45,8 +46,26 @@ export function FitNote({ fit, onUseCloud, className = '' }: { fit: Fit | null |
     {fit.warning && <p className="fit-warn" data-testid="fit-warning">{fit.warning}</p>}{fit.pinnedAnyway && !fit.warning && <p className="fit-warn" data-testid="fit-pinned-note">Pinned anyway.</p>}
     {showLighter(fit) && <small className="helper fit-lighter" data-testid="fit-lighter">A lighter version is available.</small>}
     {alt && <AltButton alt={alt} testId="fit-use-cloud" onPick={e => { const b = e.currentTarget; const host = hostOf(b); (onUseCloud ?? useCloudInstead)(alt.providerId); refocus(host, b); }} />}
+    {(l.kind === 'fits' || l.kind === 'slow') && <MemoryWarn fit={fit} alt={alt ? null : fit.alternative ?? null} onUseCloud={onUseCloud} />}
     {l.kind === 'unknown' && fit.reasonCode !== 'requirements_unknown' && <Link to={LOCAL_SETUP_HREF} className="fit-setup" data-testid="fit-setup-link">Set up your computer</Link>}
   </div>;
+}
+
+/** The same check for a quote (the dock's Generate button): only for a local route of 8 GB and up; null otherwise or when memory is fine. */
+export function useMemoryShort(quote: any): ReturnType<typeof memoryCheck> {
+  const f = quoteFitOf(quote); const local = !!f && (quote?.routeKind === 'local' || /^local:/.test(String(quote?.route ?? quote?.routeId ?? '')));
+  const need = local && (f!.verdict === 'fits' || f!.verdict === 'slow') ? f!.recommendedVramGB ?? null : null; const hw = useHardware();
+  const live = useLiveHardware(need != null && need >= HEAVY_GB && !!hw?.profile); const c = memoryCheck(need, hw?.profile, live); return c?.short ? c : null;
+}
+/** Fit check before a heavy local run (hardware plan §3.5): the model's memory need against what is free right now (shared memory on a Mac or a
+ *  DGX Spark, the card's free memory otherwise; shared/thisComputer.ts memoryCheck). Short → "close other apps" and the cloud route when there is one.
+ *  It never blocks Generate: ComfyUI offloads, so the run still works, slower. Reads memory only for models of 8 GB and up. */
+function MemoryWarn({ fit, alt, onUseCloud }: { fit: Fit; alt: FitAlt | null; onUseCloud?: (providerId: string) => void }) {
+  const need = fit.recommendedVramGB ?? null; const heavy = need != null && need >= HEAVY_GB;
+  const hw = useHardware(); const live = useLiveHardware(heavy && !!hw?.profile);
+  const c = memoryCheck(need, hw?.profile, live); if (!c?.short) return null;
+  return <div className="fit-mem" data-testid="fit-mem" role="status"><span>{c.text}</span>
+    {alt?.providerId && <AltButton alt={alt} testId="fit-mem-cloud" onPick={e => { const b = e.currentTarget; const host = hostOf(b); (onUseCloud ?? useCloudInstead)(alt.providerId); refocus(host, b); }} />}</div>;
 }
 
 /* B30: after 'Use cloud instead' the button unmounts; put focus on the model picker (or Generate) in the same composer, not <body>. */

@@ -6,7 +6,7 @@ export type FitAlt = { providerId: string; routeId?: string | null; name?: strin
 export type AltReason = 'slow' | 'too_heavy' | 'unknown' | 'weights_missing' | null;
 export type Fit = { verdict: 'fits' | 'slow' | 'too_heavy' | 'unknown' | string; reasonCode?: string; hardwareReasonCode?: string; reason?: string | null; tier?: string;
   recommendedVramGB?: number | null; effectiveVramGB?: number | null; lighterVariantAvailable?: boolean; etaSeconds?: number | null; eta?: FitEta | null;
-  alternative?: FitAlt | null; alternativeReason?: AltReason | string; warning?: string | null; missingBytes?: number | null; missingBytesSource?: 'checked' | 'assumed_all' | string | null; diskFreeBytes?: number | null; pinnedAnyway?: boolean; downloadId?: string | null };
+  alternative?: FitAlt | null; alternativeReason?: AltReason | string; warning?: string | null; /** item 5: the platform variant picked for this computer */ variant?: { platform: string; verified: boolean; format?: string | null } | null; missingBytes?: number | null; missingBytesSource?: 'checked' | 'assumed_all' | string | null; diskFreeBytes?: number | null; pinnedAnyway?: boolean; downloadId?: string | null };
 export type FitKind = 'fits' | 'slow' | 'heavy' | 'disk' | 'unknown';
 export const LOCAL_SETUP_HREF = '/settings#gpu';
 
@@ -32,6 +32,7 @@ export function fitLabel(f: Fit | null | undefined): { kind: FitKind; text: stri
   if (!isFit(f)) return null;
   const code = f.reasonCode ?? '';
   if (code === 'not_enough_disk' && f.missingBytesSource !== 'assumed_all' /* B31: an assumed full size is never a disk blocker */) return { kind: 'disk', text: typeof f.missingBytes === 'number' && f.missingBytes > 0 ? `Not enough disk, needs ${gbText(f.missingBytes)} more` : 'Not enough disk' };
+  if ((f.verdict === 'fits' || f.verdict === 'slow') && f.variant && f.variant.verified === false) return { kind: 'slow', text: 'Should run here (not tested yet)' }; // item 5: never "runs" before a real run
   if (f.verdict === 'fits') return { kind: 'fits', text: 'Runs on your computer' };
   if (f.verdict === 'slow') { const m = typeof f.etaSeconds === 'number' && f.etaSeconds > 0 ? minutesOf(f.etaSeconds) : null; return { kind: 'slow', text: m ? `Slow on your computer, about ${m} min` : 'Slow on this computer' }; }
   if (f.verdict === 'too_heavy') return { kind: 'heavy', text: 'Too heavy for your computer' };

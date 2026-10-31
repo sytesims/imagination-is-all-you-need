@@ -17,10 +17,10 @@ assert.deepEqual(MENU_FEATURES.map((f) => f.name), ['Create Image', 'Upscale', '
 assert.ok(!MENU_FEATURES.some((f) => f.id === 'edit-image'), 'Edit Image is not a menu item (it lives inside Create Image, like the reference)');
 assert.equal(IMAGE_FEATURES.find((f) => f.id === 'edit-image')?.name, 'Edit Image');
 assert.ok(!JSON.stringify(IMAGE_FEATURES.map((f) => [f.name, f.tagline, f.description])).includes('OpenSoul'), 'no house name in feature copy');
-assert.equal(IMAGE_REDIRECTS['/soul'], '/tools/create-image'); assert.equal(IMAGE_REDIRECTS['/tools/soul'], '/tools/create-image');
-assert.equal(IMAGE_REDIRECTS['/tools/app-shots'], '/tools/create-image?workflow=camera-angles'); assert.equal(IMAGE_REDIRECTS['/tools/app-inpaint'], '/tools/create-image?workflow=brush-edit'); // workflows live in the Create bar (2026-10-23)
-assert.equal(IMAGE_REDIRECTS['/tools/edit-image'], '/tools/create-image?mode=edit', 'an old edit URL opens Create Image in edit mode');
-assert.equal(featureForPath('/tools/create-image')?.toolId, 'create-image'); assert.equal(featureForPath('/tools/brush-edit'), undefined); // workflow pages are now Create-bar redirects
+assert.equal(IMAGE_REDIRECTS['/soul'], '/image'); assert.equal(IMAGE_REDIRECTS['/tools/soul'], '/image');
+assert.equal(IMAGE_REDIRECTS['/tools/app-shots'], '/image?workflow=camera-angles'); assert.equal(IMAGE_REDIRECTS['/tools/app-inpaint'], '/image?workflow=brush-edit'); // workflows live in the Create bar (2026-10-23)
+assert.equal(IMAGE_REDIRECTS['/tools/edit-image'], '/image?mode=edit', 'an old edit URL opens Create Image in edit mode');
+assert.equal(featureForPath('/image')?.toolId, 'create-image'); assert.equal(featureForPath('/tools/brush-edit'), undefined); // workflow pages are now Create-bar redirects
 ok('plain names in menu order, Edit Image inside Create Image, old URLs redirect (/soul, /tools/app-shots, /tools/app-inpaint, /tools/edit-image)');
 
 // ---------------- models per feature (only models that really work) ----------------
@@ -93,7 +93,7 @@ try {
   assert.equal(T('create-image').providers.find((p: any) => p.id === 'api-gpt-image').name, 'GPT Image 2');
   const br = (await get('/api/browse/image')).body.tools.map((t: any) => t.name); assert.deepEqual(br, MENU_FEATURES.map((f) => f.name), '/image lists the features in menu order');
   const sr = (await get('/api/search?q=opensoul&types=tool')).body.results; assert.equal(sr.length, 0, 'search: no OpenSoul');
-  const cl = (await get('/api/search?q=camera%20%26&types=tool')).body.results; assert.ok(cl.some((r: any) => r.route === '/tools/create-image?workflow=camera-lens'), 'search finds Camera & Lens');
+  const cl = (await get('/api/search?q=camera%20%26&types=tool')).body.results; assert.ok(cl.some((r: any) => r.route === '/image?workflow=camera-lens'), 'search finds Camera & Lens');
   ok('API: tool names and URLs, Person Swap, legacy look tool unlisted, picker lists, /image order, search');
 
   const feats = (await get('/api/image-features')).body.features; assert.equal(feats.length, IMAGE_FEATURES.length);

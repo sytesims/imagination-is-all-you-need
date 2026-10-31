@@ -2,6 +2,7 @@
  * Opening an image preset (shared/presets.ts) in Create Image: its link and what it puts in the bar. Dependency-free on purpose, so the
  * web bar can import it without pulling the preset list or the workflow recipes into its bundle.
  */
+import { IMAGE_PAGE } from './pages.js';
 type PresetValue = string | number | string[];
 type PresetLike = { id: string; workflow: string; promptTemplate: string; subjectHint: string; settings: Record<string, PresetValue> };
 
@@ -18,7 +19,7 @@ export const presetFields = (p: Pick<PresetLike, 'settings'>): Record<string, st
 
 /** The link that opens a preset in Create Image: `?workflow=<id>&preset=<id>`, or just `?preset=<id>` for plain Create Image. */
 export const presetHref = (p: Pick<PresetLike, 'id' | 'workflow'>): string =>
-  `/tools/create-image?${p.workflow !== 'create-image' ? `workflow=${encodeURIComponent(p.workflow)}&` : ''}preset=${encodeURIComponent(p.id)}`;
+  `${IMAGE_PAGE}?${p.workflow !== 'create-image' ? `workflow=${encodeURIComponent(p.workflow)}&` : ''}preset=${encodeURIComponent(p.id)}`;
 /** What opening a preset puts in the bar (shared by the web bar and the tests, so the link → settings mapping is checked server-side):
  *  - `prompt`: the template with the subject hint in the placeholder's place; `select` = that hint's [start, end) so typing replaces it.
  *    No hint ({prompt} touch-ups) → the template without the placeholder, caret at the end.

@@ -7,11 +7,10 @@ import { useBilling, useAccounts, modeOf, priceToken, priceDetail, fmtUsd } from
 import { splitToken, balanceOf, blockOf, reasonShort, reasonBody, COMFY_CR } from './menuPrice';
 import { useRowQuotes, shownCredits, ROW_PENDING, ROW_FAILED, type RowQuote, type PlacePrice, type RowFit } from './quote';
 import type { Need } from '../../../server/src/shared/settingsFit';
-import { groupOf, livePlace, placesIn, cheapestOf, matchesQuery, familiesOf, familyFrom, localFirst, featuredLocalFirst, type MenuTab, type Family } from './modelMenuSort';
+import { groupOf, livePlace, placesIn, matchesQuery, familiesOf, familyFrom, shownOf, localBlocker, localFirst, featuredLocalFirst, type MenuTab, type Family, type Shown } from './modelMenuSort';
 import { familyBlurb } from '../../../server/src/shared/modelRank';
 import { LOCAL_LABEL, LOCAL_FREE } from '../../../server/src/shared/modelIds';
-import { useToolModels, modelOfEngine, engineForModel, enginesModels, setActiveModel, setRunOn, listPrice, modelStateLine, useRunOn, getRunOn, shownName, toolLike, RUN_ON_CHIP, RUN_ON_BILLING, STATUS_WORD, type ToolModel, type RunOnRow } from './models';
-import { fmtBytes } from '../api';
+import { useToolModels, modelOfEngine, engineForModel, enginesModels, setActiveModel, setRunOn, listPrice, modelStateLine, useRunOn, getRunOn, shownName, toolLike, RUN_ON_CHIP, RUN_ON_BILLING, type ToolModel, type RunOnRow } from './models';
 import { CHECK } from './checkGlyph';
 import { RunOnMenu, runOnText } from '../ui/routing/RunOn';
 import { InfoCardBody } from './ModelHoverCard';
@@ -90,13 +89,16 @@ function Price({ kind, top, sub, free, est, need, title, runOn, status }: { kind
     {top != null && <b className={`orb-usd${free ? ' orb-free' : ''}${est ? ' orb-est' : ''}${status ? ' orb-word' : ''}`} data-testid={status ? undefined : 'mp-row-price'}>{top}</b>}
     {sub ? <small className={`orb-cr${need ? ' orb-need' : ''}`}>{sub}</small> : null}</span>;
 }
+/** A row's right column and the price it shows (null: a word, a sample, a wait). The family row's price is built from these (familyFrom). */
+type Right = { node: ReactNode; shown: Shown | null };
+const R = (node: ReactNode, shown: Shown | null = null): Right => ({ node, shown }); const FREE: Shown = { usd: 0, free: true };
 /** A price token ('≈ $0.08', '≈ $0.42', 'Free') as the two lines: '$0.08' over the place ('Comfy', 'fal'). Dollars only; `detail` (the place's
  *  own units, plan and price date: billing.ts priceDetail) is the hover. */
-function tokenPrice(tok: string, place: string, o: { kind: string; title?: string; runOn?: string | null; est?: boolean; detail?: string | null }) {
-  const { detail, ...po } = o;
-  if (/^Free\b/.test(tok)) return <Price {...po} top="Free" sub={LOCAL_LABEL} free />;
+function tokenPrice(tok: string, place: string, o: { kind: string; title?: string; runOn?: string | null; est?: boolean; detail?: string | null }): Right {
+  const { detail, ...po } = o; const shown = shownOf(tok);
+  if (/^Free\b/.test(tok)) return R(<Price {...po} top="Free" sub={LOCAL_LABEL} free />, shown);
   const { usd, sub } = splitToken(tok, place);
-  return <Price {...po} top={usd} sub={sub} title={[o.title ?? (tok.startsWith('≈') ? `${usd}, an estimate.` : null), detail].filter(Boolean).join(' ') || tok} />;
+  return R(<Price {...po} top={usd} sub={sub} title={[o.title ?? (tok.startsWith('≈') ? `${usd}, an estimate.` : null), detail].filter(Boolean).join(' ') || tok} />, shown);
 }
 /** A row that can't run (as set, or here at all): the reason in a few words, the full sentence on hover. */
 const offWords = (s: string | null | undefined) => { const r = reasonShort(s); return r === 'Not for these settings' ? 'Not available' : r; };
@@ -132,23 +134,23 @@ export const adjustedWords = (a: Record<string, string | null>): string => Objec
 const sampleRow = (runOn?: string | null) => <Price kind="sample" runOn={runOn} top="Sample" sub="Free run" status title="Sample output: free until a key is added." />;
 /** A model row's right column: ONE status from the server's rowStatus (MODEL-PICKER-REVIEW §5b.4); a model that runs now shows the price of
  *  this run at the place that would run it (rowPrice), so the row, Run on and Generate say the same thing. */
-export function ModelRight({ m, own, off, rq }: { m: ToolModel; own: boolean; /** true, or the page's reason (item.off) */ off?: boolean | string | null; rq?: RowQuote | any | null }) {
+function modelRight({ m, own, off, rq }: { m: ToolModel; own: boolean; /** true, or the page's reason (item.off) */ off?: boolean | string | null; rq?: RowQuote | any | null }): Right {
   const rs = m.rowStatus;
   if (!rs || (off && rs.kind !== 'coming_soon')) { const why = typeof off === 'string' ? off : rs?.kind === 'unavailable' ? (rs.text !== 'Not available' ? rs.text : null) : null;
-    return <Price kind="unavailable" top={offWords(why)} status title={why ?? 'Not available here.'} />; }
+    return R(<Price kind="unavailable" top={offWords(why)} status title={why ?? 'Not available here.'} />); }
   if (rs.kind === 'ready' || rs.kind === 'sample') { const rp = rowPrice(rq, own);
-    if (rp?.sample) return sampleRow(rq.runOn);
+    if (rp?.sample) return R(sampleRow(rq.runOn));
     if (rp?.price) return tokenPrice(rp.price, rp.place, { kind: 'ready', runOn: rq.runOn, title: rp.title, detail: priceDetail(rq, { credits: shownCredits(rq) }) });
-    const b = blockOf(rq); if (b) return <Blocked b={b} runOn={rq.runOn} />; } // this job can't run on this model as set (e.g. needs a photo): why, in a few words
-  if (rs.kind === 'ready' && (rq?.pending || rq?.failed)) return <RowWait failed={!!rq.failed} place={placeShort(rs.runOn, rs.text)} />;
+    const b = blockOf(rq); if (b) return R(<Blocked b={b} runOn={rq.runOn} />); } // this job can't run on this model as set (e.g. needs a photo): why, in a few words
+  if (rs.kind === 'ready' && (rq?.pending || rq?.failed)) return R(<RowWait failed={!!rq.failed} place={placeShort(rs.runOn, rs.text)} />);
   if (rs.kind === 'ready') { const price = listPrice(rs.credits, rs.runOn, own); // no batch answer (older server)
-    return price ? tokenPrice(price, placeShort(rs.runOn, rs.text), { kind: 'ready', detail: priceDetail(null, { credits: rs.credits, runOn: rs.runOn }) }) : <Price kind="ready" top={placeShort(rs.runOn, rs.text)} status />; }
-  if (rs.kind === 'sample') return sampleRow(rs.runOn);
+    return price ? tokenPrice(price, placeShort(rs.runOn, rs.text), { kind: 'ready', detail: priceDetail(null, { credits: rs.credits, runOn: rs.runOn }) }) : R(<Price kind="ready" top={placeShort(rs.runOn, rs.text)} status />); }
+  if (rs.kind === 'sample') return R(sampleRow(rs.runOn));
   /* a row that needs a key still says what this run would cost there (the quote's setupOptions): "$0.01 · Needs fal key" */
   const so: any = (rs.kind === 'add_key' || rs.kind === 'set_up') && Array.isArray(rq?.setupOptions) ? rq.setupOptions.find((o: any) => o?.action === 'add_key' && typeof o.credits === 'number' && o.credits > 0) : null;
   const soPrice = so ? listPrice(so.credits, so.runOn, own) : null;
-  if (so && soPrice) return <NeedsKey price={soPrice} place={placeShort(so.runOn, so.runOnLabel ?? '')} kind={rs.kind} title={`${so.actionText ?? rs.text}. An estimate for this run once the key is added.`} />;
-  return wordStatus(rs.kind, rs.kind === 'download' ? String(rs.text).replace(/^Download\b/, 'Download') : rs.text);
+  if (so && soPrice) return R(<NeedsKey price={soPrice} place={placeShort(so.runOn, so.runOnLabel ?? '')} kind={rs.kind} title={`${so.actionText ?? rs.text}. An estimate for this run once the key is added.`} />, shownOf(soPrice));
+  return R(wordStatus(rs.kind, rs.kind === 'download' ? String(rs.text).replace(/^Download\b/, 'Download') : rs.text));
 }
 /** This run's price is loading (or the batch call failed): a quiet placeholder, never a price for other settings. */
 function RowWait({ failed, place, runOn }: { failed: boolean; place: string; runOn?: string }) {
@@ -162,30 +164,28 @@ function NeedsKey({ price, place, kind = 'add_key', title, runOn }: { price: str
   return <span className="orb-pr" data-testid="mp-row-status" data-kind={kind} data-setup-price="1" data-run-on={runOn} title={title}><b data-testid="mp-row-price" className="orb-usd orb-est">{usd}</b><small className="orb-cr orb-need">Needs {place} key</small></span>;
 }
 /** A row's right column inside a place tab (Local · Comfy · Your keys): what THIS place charges for this run, or what it still needs.
- *  Local: FREE, or FREE over "Download 17.2 GB" / "turn on". Comfy / Your keys: the batch quote for that place (same token as Generate),
+ *  Local: Free when it runs now, else its blocker over "Free once ready" ("Download 43 GB", "Needs 43 GB space", "Turn on"; modelMenuSort localBlocker). Comfy / Your keys: the batch quote for that place (same token as Generate),
  *  Sample for a sample run, the price over "Needs fal key" when a key is missing; the place's list price until the quote answers. */
-export function PlaceRight({ p, own, off, rq, many }: { p: RunOnRow; own: boolean; /** true, or the page's reason (item.off) */ off?: boolean | string | null; rq?: RowQuote | any | null; /** the tab has several places: name it */ many?: boolean }) {
+function placeRight({ p, own, off, rq, many }: { p: RunOnRow; own: boolean; /** true, or the page's reason (item.off) */ off?: boolean | string | null; rq?: RowQuote | any | null; /** the tab has several places: name it */ many?: boolean }): Right {
   const short = placeShort(p.id, p.label); void many;
-  if (off) { const why = typeof off === 'string' ? off : p.reason ?? null; return <Price kind="unavailable" runOn={p.id} top={offWords(why)} status title={why ?? 'Not available here.'} />; }
-  if (p.id === 'local') { const a = p.action;
-    if (p.status === 'ready') return <Price kind="ready" runOn="local" top="Free" sub={LOCAL_LABEL} free />;
-    if (a?.kind === 'download') return <Price kind="download" runOn="local" top="Free" free est sub={`Download${a.missingBytes ? ` ${fmtBytes(a.missingBytes)}` : ''}`} need title={p.reason ?? undefined} />;
-    const need = a?.text ?? STATUS_WORD[p.status] ?? '';
-    return <Price kind={a?.kind ?? p.status} runOn="local" top="Free" free est sub={need || LOCAL_LABEL} need={!!need} title={p.reason ?? undefined} />; }
+  if (off) { const why = typeof off === 'string' ? off : p.reason ?? null; return R(<Price kind="unavailable" runOn={p.id} top={offWords(why)} status title={why ?? 'Not available here.'} />); }
+  if (p.id === 'local') { const b = localBlocker(p); // Free only when it runs now; else the blocker, and no price (the family isn't Free on it)
+    if (!b) return R(<Price kind="ready" runOn="local" top="Free" sub={LOCAL_LABEL} free />, FREE);
+    return R(<Price kind={p.action?.kind ?? p.reasonCode ?? p.status} runOn="local" top={b.word} status sub={b.sub} title={p.reason ?? undefined} />); }
   const mine = rq && (!rq.runOn || rq.runOn === p.id) ? rq : null;
   const keyPrice = (c: number | null | undefined) => listPrice(c, p.id, own);
-  if (mine?.demo === true || (!mine && p.status === 'sample')) return sampleRow(p.id);
+  if (mine?.demo === true || (!mine && p.status === 'sample')) return R(sampleRow(p.id));
   if (mine?.needsKey === true || (!mine && p.status === 'needs-key')) { const price = keyPrice(typeof mine?.credits === 'number' && mine.credits > 0 ? mine.credits : p.credits);
-    return price ? <NeedsKey price={price} place={short} runOn={p.id} title={`${p.action?.text ?? 'Add a key'}. An estimate for this run once the key is added.`} />
-      : <Price kind="add_key" runOn={p.id} top="Add key" sub={short} status need />; }
+    return price ? R(<NeedsKey price={price} place={short} runOn={p.id} title={`${p.action?.text ?? 'Add a key'}. An estimate for this run once the key is added.`} />, shownOf(price))
+      : R(<Price kind="add_key" runOn={p.id} top="Add key" sub={short} status need />); }
   const rp = mine ? rowPrice(mine, own) : null;
   if (rp?.price) return tokenPrice(rp.price, short, { kind: 'ready', runOn: p.id, title: rp.title, detail: priceDetail(mine, { credits: shownCredits(mine) }) });
-  const b = mine ? blockOf(mine) : null; if (b) return <Blocked b={b} runOn={p.id} />;
-  if (rq?.pending || rq?.failed) return <RowWait failed={!!rq.failed} place={short} runOn={p.id} />;
+  const b = mine ? blockOf(mine) : null; if (b) return R(<Blocked b={b} runOn={p.id} />);
+  if (rq?.pending || rq?.failed) return R(<RowWait failed={!!rq.failed} place={short} runOn={p.id} />);
   const lp = keyPrice(p.credits); // no quote (older server): the place's list price
-  return lp ? tokenPrice(lp, short, { kind: p.status, runOn: p.id, est: true, detail: priceDetail(null, { credits: p.credits, runOn: p.id }) }) : <Price kind={p.status} runOn={p.id} top={short} status />;
+  return lp ? tokenPrice(lp, short, { kind: p.status, runOn: p.id, est: true, detail: priceDetail(null, { credits: p.credits, runOn: p.id }) }) : R(<Price kind={p.status} runOn={p.id} top={short} status />);
 }
-/** A family row's price: "Free" over Local when a version runs on your own computer, else "from $0.04" (its cheapest version for this run). */
+/** A family row's price (familyFrom over its version rows' rightOf): "Free" over Local when a version row says Free, else "from $0.04" (the cheapest a version row shows). */
 function FamPrice({ p, wait }: { p: { free: boolean; usd: number | null }; wait: boolean }) {
   if (p.free) return <span className="orb-pr" data-testid="mp-row-status" data-kind="from"><b data-testid="mp-fam-price" className="orb-usd orb-free">Free</b><small className="orb-cr">{LOCAL_LABEL}</small></span>;
   if (p.usd != null) return <span className="orb-pr" data-testid="mp-row-status" data-kind="from" title="The cheapest version for this run"><b data-testid="mp-fam-price" className="orb-usd">from {fmtUsd(p.usd)}</b></span>;
@@ -297,8 +297,6 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
   const { quotes: rqs, state: rqState } = useRowQuotes(toolId, open, asks); const asked = new Set(asks.map(a => a.model));
   const liveQ = (m: ToolModel) => { const at = tab === 'all' ? null : placeFor(m)?.id ?? null;
     return curModel?.key === m.key && quote && (!quote.modelKey || quote.modelKey === m.key) && (quote.runOn || quote.demo) && (!at || quote.runOn === at) ? quote : rqs?.[m.key] ?? (asked.has(m.key) && rqState === 'pending' ? ROW_PENDING : asked.has(m.key) && rqState === 'failed' ? ROW_FAILED : null); };
-  /** A model's cheapest place in this tab for this run (the batch row quote first: it carries every place's price for this run). */
-  const cheap = (m: ToolModel) => cheapestOf(m, rqs?.[m.key] ?? liveQ(m), tab);
   const choose = (m: ToolModel) => { if (offOf(m)) return;
     // picked in a place tab: it runs there (saved like Run on's own choice), when the model has other places too
     const p = tab === 'all' ? null : placeFor(m);
@@ -320,6 +318,10 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
   const autoFit = autoModel ? fitOf(autoModel) : null;
   const autoShown = !ql && !!autoModel && all.includes(autoModel);
   const autoOn = autoShown && curModel?.key === autoModel!.key && !onReset;
+  /** A row's right column (its price at the place this tab shows, or what it needs), the ONE answer the row and its family row both read. */
+  const rightOf = (m: ToolModel): Right => { const it = itemOf(m); const p = tab !== 'all' ? placeFor(m) : null;
+    return it?.last ? R(<Price kind="text-only" top={it.off ?? 'Not for this'} status />)
+      : p ? placeRight({ p, own, off: it?.off || offOf(m), rq: liveQ(m), many: tab === 'api' }) : modelRight({ m, own, off: it?.off || null, rq: liveQ(m) }); };
   const pickAuto = () => { if (onReset) { onReset(); onClose(); } else if (autoModel) choose(autoModel); };
   const focusFam = (f: string) => requestAnimationFrame(() => listRef.current?.querySelector<HTMLElement>(`[data-family="${CSS.escape(f)}"]`)?.focus());
   const mrow = (m: ToolModel, parent?: string) => { const on = curModel?.key === m.key && !autoOn; const st = modelStateLine(m); const it = itemOf(m); const id = it?.id ?? m.primaryEngine; const off = offOf(m);
@@ -332,7 +334,7 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
       onFocus={e => { if (e.target === e.currentTarget) hoverOn(m.key, e.currentTarget, true); }} onBlur={e => { if (e.target === e.currentTarget) hoverOff(); }}>
       <MakerTile className="orb-tile" maker={m.maker} makerName={m.makerName} fallback={m.family || m.name} medium={shownMedium(m)} title={false} />
       <span className="orb-t">
-        <span className="orb-n"><span className="orb-name" title={shownName(m)}>{shownName(m)}</span>{isFav(m) ? <em className="orb-tag orb-tag-y" data-testid="mp-your-default" title="You made this the default here. The filled star resets it.">Your default</em>
+        <span className="orb-n"><span className="orb-name">{shownName(m)}</span>{isFav(m) ? <em className="orb-tag orb-tag-y" data-testid="mp-your-default" title="You made this the default here. The filled star resets it.">Your default</em>
           : isRec(m) || isDef(m) ? <em className={`orb-tag ${favourite ? 'orb-tag-rec' : 'orb-tag-d'}`} data-testid="mp-default" title={defaultLine(defaultWhy, defaultReason) ?? undefined}>{favourite ? 'Recommended' : 'Default'}</em> : null}{m.isNew && !retiring && <em className="orb-tag orb-tag-n" data-testid="mp-new">New</em>}{retiring && <em className="orb-tag orb-tag-r" data-testid="lifecycle-pill">Retiring</em>}
           {!off && sectionOf(m) !== 'soon' && !it?.last && <button type="button" className={`orb-star${isFav(m) ? ' on' : ''}`} data-testid="mp-make-default" aria-pressed={isFav(m)}
         aria-label={isFav(m) ? `${shownName(m)} is your default. Reset to recommended` : `Make ${shownName(m)} your default`} title={isFav(m) ? 'Your default · click to reset to recommended' : 'Make default'}
@@ -340,9 +342,7 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
         <span className="orb-d" data-testid="mp-desc">{m.bestFor ?? sentence1(m.blurb)}</span>
         {rf ? <RefNote f={rf} /> : <CapLine m={m} it={it} rate={!off ? rateOf?.(m) : null} />}
       </span>
-      {it?.last ? <Price kind="text-only" top={it.off ?? 'Not for this'} status />
-        : tab !== 'all' && placeFor(m) ? <PlaceRight p={placeFor(m)!} own={own} off={it?.off || off} rq={liveQ(m)} many={tab === 'api'} />
-        : <ModelRight m={m} own={own} off={it?.off || null} rq={liveQ(m)} />}
+      {rightOf(m).node}
       {on && <span className="orb-pick" aria-hidden data-testid="mp-picked"><LogoMark size={16} /></span>}
       <button type="button" className={`orb-i${info === m.key ? ' on' : ''}`} data-testid="mp-row-info" aria-label={`About ${shownName(m)}`} aria-expanded={info === m.key}
         onClick={e => { e.stopPropagation(); setInfo(i => (i === m.key ? null : m.key)); }} onKeyDown={e => e.stopPropagation()}><InfoIcon size={16} /></button>
@@ -354,7 +354,7 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
   const row = (m: ToolModel, parent?: string) => info === m.key ? [mrow(m, parent), <div key={`${m.key}-info`} className="mhc mhc-inline" data-testid="model-info-card" data-model-key={m.key}><InfoCardBody m={{ ...m, medium: shownMedium(m) }} own={own} rq={liveQ(m)} note={noteOf(m)} /></div>] : mrow(m, parent);
   /** A family with several versions: one row (logo, name, versions, its line, "from $0.04" or Free) whose › opens the versions in place. */
   const famRow = (f: Family<ToolModel>) => { const openF = fam === f.family; const picked = f.models.find(m => curModel?.key === m.key && !autoOn) ?? null;
-    const lead = picked ?? f.models[0]; const fp = familyFrom(f.models, cheap, tab === 'all' || tab === 'gpu');
+    const lead = picked ?? f.models[0]; const fp = familyFrom(f.models.map(m => rightOf(m).shown));
     const wait = f.models.some(m => asked.has(m.key)) && rqState === 'pending'; const line = famLine(lead) ?? lead.bestFor ?? sentence1(lead.blurb);
     const toggle = (to = !openF) => { setFam(to ? f.family : null); setHov(null); };
     return [<div key={`fam:${f.family}`} role="option" aria-selected={false} aria-expanded={openF} data-family={f.family} data-testid="mp-family" data-count={f.models.length} tabIndex={0}
@@ -367,7 +367,7 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
         <span className="orb-d">{line}</span>
         <span className="orb-g"><span data-testid="mp-family-count">{f.models.length} versions</span>{picked && <span className="orb-g-pick">{shownName(picked)} picked</span>}</span>
       </span>
-      <FamPrice p={fp} wait={wait} />
+      {fp.free || fp.usd != null || wait ? <FamPrice p={fp} wait={wait} /> : rightOf(lead).node /* no version shows a price (all need a download, space, a switch…): what the first one needs */}
       <ChevronRightIcon size={16} className="orb-fam-chev" aria-hidden />
       {picked && <span className="orb-pick" aria-hidden data-testid="mp-picked-in"><LogoMark size={16} /></span>}
     </div>, openF ? <div key={`fam:${f.family}:v`} className="orb-vers" role="group" aria-label={`${f.family} versions`} data-testid="mp-family-versions">{f.models.flatMap(m => row(m, f.family))}</div> : null]; };
@@ -378,7 +378,7 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
     <span className="orb-t"><span className="orb-n"><span className="orb-name">Auto</span></span>
       <span className="orb-d" data-testid="mp-auto-line" title={autoFit ? AUTO_REF_RULE : undefined}>Picks <b>{shownName(m)}</b>{autoFit ? (autoFit.all ? ' · works with your files' : ' · uses the most of your files') : ' for this'}</span>
       {autoFit && !autoFit.all ? <RefNote f={autoFit} /> : null}</span>
-    {tab !== 'all' && placeFor(m) ? <PlaceRight p={placeFor(m)!} own={own} rq={liveQ(m)} /> : <ModelRight m={m} own={own} rq={liveQ(m)} />}
+    {rightOf(m).node}
     {autoOn && <span className="orb-pick" aria-hidden data-testid="mp-picked"><LogoMark size={16} /></span>}
   </div>; };
   const hm = hov ? ms.find(m => m.key === hov.key) : null;

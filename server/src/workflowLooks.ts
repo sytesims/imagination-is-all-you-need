@@ -18,6 +18,7 @@
  *   DELETE /api/user-looks/:id                        → { ok, id }
  * Prices: the server's own quote (GET /api/tools/:id/price, quote = charge) for models not run yet; what a run was charged for models that ran.
  */
+import { IMAGE_PAGE } from './shared/pages.js';
 import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
@@ -228,7 +229,7 @@ export function registerWorkflowLooks(app: FastifyInstance, d: Deps, form: (t: a
     intents: INTENTS,
     workflows: hubWorkflowIds().map((id) => hubWorkflow(id, d)).filter((w): w is HubWorkflow => !!w).map((wf) => { const ls = looksOf(wf, d);
       return { id: wf.id, name: wf.name, tagline: wf.tagline, needs: wf.needs, toolId: wf.toolId, intents: wf.intents, models: wf.models, looks: ls.length, example: cardExample(wf, ls, d),
-        href: `/workflows/${wf.id}`, createHref: `/tools/create-image${wf.id === 'create-image' ? '' : `?workflow=${wf.id}`}` }; }),
+        href: `/workflows/${wf.id}`, createHref: `${IMAGE_PAGE}${wf.id === 'create-image' ? '' : `?workflow=${wf.id}`}` }; }),
   }));
 
   /** "See how it was made" grows with the app: your own favourite or liked finished images from the image workflows (newest first). Samples never. */
@@ -241,7 +242,7 @@ export function registerWorkflowLooks(app: FastifyInstance, d: Deps, form: (t: a
     const used = new Map<string, number>(); for (const l of ls) for (const e of l.examples) if (e.provider && wf.models.includes(e.provider)) used.set(e.provider, (used.get(e.provider) ?? 0) + 1);
     const bestIds = [...[...used.entries()].sort((a, b) => b[1] - a[1]).map(([p]) => p), ...wf.models].filter((p, i, a) => a.indexOf(p) === i).slice(0, MAX_BEST);
     const best = await Promise.all(bestIds.map(async (p) => ({ provider: p, name: modelName(wf, p), quote: await quote(wf, p) })));
-    return { workflow: { id: wf.id, name: wf.name, tagline: wf.tagline, needs: wf.needs, toolId: wf.toolId, intents: wf.intents, photo: wf.photo, createHref: `/tools/create-image${wf.id === 'create-image' ? '' : `?workflow=${wf.id}`}`,
+    return { workflow: { id: wf.id, name: wf.name, tagline: wf.tagline, needs: wf.needs, toolId: wf.toolId, intents: wf.intents, photo: wf.photo, createHref: `${IMAGE_PAGE}${wf.id === 'create-image' ? '' : `?workflow=${wf.id}`}`,
       example: cardExample(wf, ls, d), howItWorks: howItWorks(wf) }, looks: ls.map((l) => lookView(l, wf)), best };
   });
 

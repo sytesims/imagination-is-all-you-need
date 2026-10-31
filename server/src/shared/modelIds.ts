@@ -381,7 +381,7 @@ Object.assign(ENGINE_MODEL, { 'cloud-flux3-max': 'flux-3-max' });
 MODEL_MAKER['kling-4'] = 'kling';
 MODELS['kling-4'] = { ...m('kling-4', 'Kling 4.0', 'Kling', 'video', false, P, 'cloud-kling4', { note: 'Kling 4.0 through its Comfy partner nodes Kling4TextToVideoNode / Kling4ImageToVideoNode / Kling4ReferenceToVideoNode on Comfy Cloud (official templates api_kling4_t2v / i2v / r2v): text, start (+ end) frame or 1–10 reference images to a 3–30 s clip with stereo sound.',
   sourceUrl: 'https://github.com/Comfy-Org/ComfyUI/pull/17364' }), maker: 'kling' };
-Object.assign(ENGINE_MODEL, { 'cloud-kling4': 'kling-4' });
+Object.assign(ENGINE_MODEL, { 'cloud-kling4': 'kling-4', 'cloud-kling4-edit': 'kling-4' /* Prompt Edit's Kling 4.0 (Kling4EditVideoNode, tools/promptEdit.ts) */ });
 // Prompt Edit (2026-10-27, tools/promptEdit.ts): Bernini-R (ByteDance, Comfy-Org/Bernini-R, Apache-2.0) on Comfy Cloud.
 MODEL_MAKER['bernini-r'] = 'bytedance';
 MODELS['bernini-r'] = { ...m('bernini-r', 'Bernini-R', 'Wan', 'video', true, 'apache-2.0', 'cloud-bernini-r', { note: 'Bernini-R (ByteDance; renderer-only Wan 2.2, Comfy-Org/Bernini-R, Apache-2.0): edits a clip from one instruction, motion and framing kept. The official Comfy template video_bernini_r_video_editing on Comfy Cloud.',

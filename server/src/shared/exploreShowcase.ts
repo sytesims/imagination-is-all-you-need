@@ -23,6 +23,7 @@
  *  - EXPLORE_SCRIPT: the K-drama beat's script (shots, lines, measured times). Its Explore section left the page on 2026-10-28; the beat is now
  *    a film in IIAYN FILMS (EXPLORE_FILMS.comedy, 그래요? · IS THAT SO?) and its subtitles use these timings.
  */
+import { IMAGE_PAGE, AUDIO_PAGE, THREE_D_PAGE } from './pages.js';
 import { featuredByKey, featuredRecreateHref, MOSSBUN_3D_RUN } from './featured.js';
 import { threeDRoute } from './threeD.js';
 import { VIDEO_PAGE, videoWorkflowHref } from './videoWorkflows.js';
@@ -301,7 +302,7 @@ export const EXPLORE_LAYERS = {
   film: { url: P('image-layers-paw.mp4'), poster: P('image-layers-paw.webp'), thumb: P('image-layers-paw-480.webp'), label: 'The poster coming apart into its 13 layers', /** it has an audio track: the shared sound button shows */ sound: true },
   input: 'Input',
   /** the strip's tile order (layer index): the subjects and the type first, the plates last */ order: [12, 11, 8, 5, 2, 3, 4, 6, 7, 9, 10, 1, 0],
-  /** Create Image with Image to layers picked */ cta: { label: 'Split an image', href: '/tools/create-image?workflow=image-layers' },
+  /** Create Image with Image to layers picked */ cta: { label: 'Split an image', href: `${IMAGE_PAGE}?workflow=image-layers` },
 };
 
 // ---------------------------------------------------------------- the agent builds the board
@@ -332,7 +333,7 @@ export const EXPLORE_LOOKS = {
   line: 'Write it once. Then change the light, the film, the whole art style. Same scene, same coat, twelve different worlds.',
   model: 'FLUX.2 [klein] 4B', place: 'Free on your computer', /** the look shown first (Anime) */ start: 9,
   looks: KLEIN_LOOKS.map(([id, name]) => ({ id, name, url: P(`look-${id}.webp`), thumb: P(`look-${id}-480.webp`), model: QWEN_LOOKS.has(id) ? 'Qwen Image 2.1' : 'FLUX.2 [klein] 4B' })),
-  cta: { label: 'Try your own look', href: '/tools/create-image?model=flux-2-klein-4b' },
+  cta: { label: 'Try your own look', href: `${IMAGE_PAGE}?model=flux-2-klein-4b` },
 };
 
 // ---------------------------------------------------------------- Now it's your turn.
@@ -346,8 +347,8 @@ export const EXPLORE_YOUR_TURN = {
   line: 'Imagination is all you need. Describe it and make it real: a picture, a film, a song, a world.',
   placeholder: 'A lighthouse inside a glass jar, in a thunderstorm',
   make: 'Make it', note: 'Free on your own computer · open source · yours to keep',
-  /** the other places to start */ tabs: [{ label: 'Image', href: '/tools/create-image' }, { label: 'Video', href: VIDEO_PAGE }, { label: 'Audio', href: '/tools/audio' },
-    { label: '3D', href: '/tools/3d' }, { label: 'Canvas', href: '/canvas' }],
+  /** the other places to start */ tabs: [{ label: 'Image', href: IMAGE_PAGE }, { label: 'Video', href: VIDEO_PAGE }, { label: 'Audio', href: AUDIO_PAGE },
+    { label: '3D', href: THREE_D_PAGE }, { label: 'Canvas', href: '/canvas' }],
   /** the drifting wall behind it: six columns, top to bottom. The tortoise village sits in the fifth column (right of the words, in view first), spotlit. */
   wall: ([
     [wallOf('ltx-pro-painter'), { src: P('wall-ramen-stall.webp'), model: 'Qwen Image 2.1' }, look('neon-rain'), wallOf('sheet-kaito'), { src: P('wall-cherry-dune.webp'), model: ZIT }],
@@ -359,7 +360,7 @@ export const EXPLORE_YOUR_TURN = {
   ] as (WallTile | null)[][]).map((col) => col.filter((t): t is WallTile => !!t)),
 };
 /** Create Image with this prompt in the bar (shared/usePrefill reads ?prompt=); nothing runs until Generate. */
-export const yourTurnHref = (prompt: string): string => `/tools/create-image?${new URLSearchParams({ prompt: prompt.trim() || EXPLORE_YOUR_TURN.placeholder })}`;
+export const yourTurnHref = (prompt: string): string => `${IMAGE_PAGE}?${new URLSearchParams({ prompt: prompt.trim() || EXPLORE_YOUR_TURN.placeholder })}`;
 
 // ---------------------------------------------------------------- Audio: SyteSim dances
 export interface Mood { id: string; label: string; /** the words that pick the dancer's style (beanStyle.ts detectStyle) */ words: string; bpm: number; /** the demo beat's feel */ feel: 'boom' | 'four' | 'rock' | 'lofi' | 'ballad' }

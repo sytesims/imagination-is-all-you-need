@@ -20,7 +20,8 @@ import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { env } from '../env.js';
-import { HF_SIZES, weightsForWorkflows } from '../modelWeights.js';
+import { HF_SIZES, weightsForWorkflows, weightFileOf } from '../modelWeights.js';
+import { platformOf, swapsFor, swappedPicks, type PlatformKey } from './variants.js';
 import { getProvider, providerWorkflows } from '../providers.js';
 import { etaFor } from '../timing.js';
 import { VUP_MODELS, vupSourceFactor } from '../shared/videoUpscale.js';
@@ -34,11 +35,12 @@ import { macBlockedFiles, MAC_WEIGHTS_REASON } from './macWeights.js';
 import { LTX_LORAS, ltxLorasForJob } from '../shared/ltxLoras.js';
 import { comfyFoldersKnown, comfyFileBytes, comfyModelsStamp } from './comfyModels.js';
 import { optionalFileSkipped } from '../comfy/flux3Klein.js';
+import { soulWorkflowOf } from '../tools/soul/plan.js';
 
 const MANIFEST = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../readiness/manifest/models.json');
 const WF_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../workflows');
 type MRow = { file: string; folder: string; size?: number | null; url: string; sha256?: string | null; hf_repo?: string | null; loaded_by: string[]; input: string[]; workflows: string[]; auto_downloaded_by_pack?: boolean };
-type MWf = { models: string[]; vram_est_gb?: number; mps?: string; mps_notes?: string[]; note?: string };
+type MWf = { models: string[]; vram_est_gb?: number; mps?: string; mps_notes?: string[]; note?: string; variants?: unknown };
 let man: { models: MRow[]; workflows: Record<string, MWf> } | null = null;
 export const manifest = (): { models: MRow[]; workflows: Record<string, MWf> } => (man ??= ((): { models: MRow[]; workflows: Record<string, MWf> } => { try { const j = JSON.parse(readFileSync(MANIFEST, 'utf8')); return { models: j.models ?? [], workflows: j.workflows ?? {} }; } catch { return { models: [], workflows: {} }; } })());
 const sizeGb = (r: MRow) => { const b = r.size ?? HF_SIZES[r.file] ?? null; return b == null ? 0 : Math.round((b / 1e9) * 100) / 100; };
@@ -50,7 +52,10 @@ const wfCache = new Map<string, WfVram | null>();
 /** build-manifest.py wf_meta() for one workflow key ('workflows/x-api.json' or 'plugins/…/workflow.json'), sizes filled from HF_SIZES. */
 export function wfVram(key: string): WfVram | null {
   const k = key.includes('/') ? key : `workflows/${key}`; if (wfCache.has(k)) return wfCache.get(k)!;
-  const ms = manifest().models.filter((m) => (m.workflows ?? []).includes(k)); if (!ms.length) { wfCache.set(k, null); return null; }
+  const ms = manifest().models.filter((m) => (m.workflows ?? []).includes(k));
+  if (!ms.length) { // a graph whose node pack fetches its own weights (Chatterbox, F5-TTS): the manifest's estimate, no files (build-manifest.py PACK_WORKFLOWS, hardware plan B7)
+    const mw = manifest().workflows[k]; const est = Number(mw?.vram_est_gb); const v: WfVram | null = mw && est > 0 ? { workflow: k, recommendedVramGB: est, minVramGB: est, residentGB: 0, teGB: 0, largestFileGB: 0, video: false, mps: (mw.mps as WfVram['mps']) ?? 'green', mpsNotes: mw.mps_notes ?? [], files: [] } : null;
+    wfCache.set(k, v); return v; }
   const dits = ms.filter((m) => roleOf(m) === 'dit').map(sizeGb).sort((a, b) => b - a); const te = Math.max(0, ...ms.filter((m) => roleOf(m) === 'te').map(sizeGb));
   const sum = (role: string) => ms.filter((m) => roleOf(m) === role).reduce((a, m) => a + sizeGb(m), 0);
   const loras = sum('lora'); const vae = sum('vae'); const aux = sum('aux');
@@ -104,7 +109,10 @@ export interface Requirements { workflows: string[]; recommendedVramGB: number |
   ramMinGB: number | null; mps: 'green' | 'amber' | 'red' | null; mpsNotes: string[]; minComfyVersion: string | null; secondsPerTier: Record<'all' | 'most' | 'light' | 'mac', { seconds: number; source: 'cited' | 'estimate'; gpuClass: string } | null>;
   variants: Variant[]; variantId: string | null; /** 2026-10-25: this route's weight files a Mac can't load (hardware/macWeights.ts; [] = none). */ macBlockedFiles: string[]; downloadable: boolean; modelsDir: string | null; modelsDirSet: boolean; downloadId: string;
   /** Setup step 4: where "on this computer" was checked: 'models_dir' (OPENHIGGSFIELD_COMFY_MODELS_DIR), 'comfyui' (the connected ComfyUI's own model lists, e.g. Comfy Desktop), null (not checked: assumed_all). */
-  presenceSource: 'models_dir' | 'comfyui' | null }
+  presenceSource: 'models_dir' | 'comfyui' | null;
+  /** Item 5 (2026-10-31): this computer's platform key (hardware/variants.ts) and, when its pick swaps files, that variant: verified false = not run on
+   *  this platform yet ("should run here, not tested yet"); needsNodes = loader nodes the swapped files need (UnetLoaderGGUF for a .gguf DiT). */
+  platform: PlatformKey | null; variant: { platform: PlatformKey; verified: boolean; format: string | null; needsNodes: string[]; files: string[] } | null }
 /** Which of the provider's workflows serve this job: Camera LTX moves → camera-ltx*; a mode named in the file (h3-t2v, …-edit-…) → those; else all. */
 /** Graphs a model runs only at one quality, kept out of its card's default set (downloads, Ready): LTX-2.5 22B's DFR (2026-10-29, shared/ltxDfr.ts). */
 export const QUALITY_WORKFLOWS: Record<string, { workflow: string; runs: (input: Record<string, any>) => boolean }[]> = { 'comfy-ltx25-video': [{ workflow: 'ltx25-dfr-i2v-api.json', runs: ltxDfrRuns }] };
@@ -112,6 +120,7 @@ export function jobWorkflows(tool: ToolDef, providerId: string, input: Record<st
   const qw = QUALITY_WORKFLOWS[providerId]?.find((q) => q.runs(input)); if (qw && tool.id === 'h3-video') return [qw.workflow]; // DFR: its own template and files
   const p = getProvider(providerId); if (!p) return []; const pw = providerWorkflows(tool, p); const all = pw.length ? pw : p.workflows ?? []; if (all.length <= 1) return all; // charswap: its graph is chosen in comfyClient, not by providerWorkflows
   const t = Array.isArray(input.types) ? String(input.types[0] ?? '') : typeof input.types === 'string' ? String(input.types).replace(/[[\]"]/g, '').split(',')[0] : String(input.mode ?? '');
+  if (providerId === 'comfy-soul') { const w = soulWorkflowOf(input); if (w && all.includes(w)) return [w]; } // OpenSoul: the look's (or engine's) own graph
   if (tool.id === 'camera') { const ltx = all.filter((w) => /camera-ltx/.test(w)); return /^ltx-/.test(t) ? (ltx.length ? ltx : all) : all.filter((w) => !/camera-ltx/.test(w)).length ? all.filter((w) => !/camera-ltx/.test(w)) : all; }
   if (t) { const hit = all.filter((w) => new RegExp(`[-_]${t.replace(/[^\w-]/g, '')}[-_.]`).test(w)); if (hit.length) return hit; }
   return all;
@@ -161,9 +170,12 @@ export function requirementsFor(tool: ToolDef, providerId: string, input: Record
   const p = getProvider(providerId); if (!p || p.kind !== 'open-weights') return null;
   const wfs = jobWorkflows(tool, providerId, input); const variantId = typeof input.variantId === 'string' && input.variantId ? input.variantId : null;
   const loras = ltxLorasForJob(tool.id, providerId, input); // LTX LoRAs this job loads (shared/ltxLoras.ts): their files join "Files needed"
-  const ck = `${tool.id}|${providerId}|${wfs.join(',')}|${loras.map((l) => l.file).join(',')}|${variantId}|${input.resolution ?? ''}|${input.duration ?? ''}|${input.n ?? ''}|${vupSourceFactor(providerId, input)}|${hw.comfy.ggufNode}|${modelsDir()}|${comfyModelsStamp()}|${JSON.stringify(missOverride[`local:${providerId}`] ?? null)}|${String(input.promptRewrite ?? '')}`;
+  const ck = `${tool.id}|${providerId}|${wfs.join(',')}|${loras.map((l) => l.file).join(',')}|${variantId}|${input.resolution ?? ''}|${input.duration ?? ''}|${input.n ?? ''}|${vupSourceFactor(providerId, input)}|${hw.comfy.ggufNode}|${modelsDir()}|${comfyModelsStamp()}|${JSON.stringify(missOverride[`local:${providerId}`] ?? null)}|${String(input.promptRewrite ?? '')}|${platformOf(hw.profile)}`;
   const hit = reqCache.get(ck); if (hit && Date.now() - hit.at < 10_000) return hit.r;
-  const vs = wfs.map(wfVram).filter((x): x is WfVram => !!x);
+  const plat = platformOf(hw.profile); const picks = swappedPicks(wfs, plat); const swaps = swapsFor(wfs, plat);
+  // a graph whose pick swaps files on this platform takes the memory of the picked files (build-manifest.py variants_for memGB)
+  const vs = wfs.map((w) => { const v = wfVram(w); const mem = picks.find((p) => p.workflow === w)?.variant?.memGB; if (!v || !(Number(mem) > 0)) return v; const k = mem! / v.recommendedVramGB;
+    return { ...v, recommendedVramGB: mem!, minVramGB: r1(v.minVramGB * k), residentGB: r1(v.residentGB * k), teGB: r1(v.teGB * k), mps: 'amber' as const }; }).filter((x): x is WfVram => !!x);
   const worst = vs.length ? vs.reduce((a, b) => (b.recommendedVramGB > a.recommendedVramGB ? b : a)) : null;
   const weights = weightsForWorkflows(wfs);
   const vv = VARIANTS.filter((v) => v.providers.includes(providerId) && weights.some((w) => w.file === v.replaces)).map((v) => variantView(v, hw));
@@ -176,6 +188,8 @@ export function requirementsFor(tool: ToolDef, providerId: string, input: Record
   // Setup step 4: no models folder set → ask the connected ComfyUI which files it has (hardware/comfyModels.ts), once every folder's list is in
   const viaComfy = !dir && !ov && files.length > 0 && comfyFoldersKnown([...files, ...loaderFiles(wfs)].map((f) => f.folder));
   if ((dir || viaComfy) && !ov) files = [...files, ...loaderFiles(wfs).filter((f) => !files.some((x) => x.file === f.file))]; // files the manifest doesn't list yet
+  if (Object.keys(swaps).length) { const seen = new Set<string>(); files = files.map((f) => { const to = swaps[f.file]; const w = to ? weightFileOf(to) : null;
+    return w ? { file: w.file, folder: w.folder, bytes: w.sizeBytes, url: w.url, autoDownloaded: false } : f; }).filter((f) => (seen.has(f.file) ? false : (seen.add(f.file), true))); } // this platform's picked files only (Files needed, downloads)
   files = files.filter((f) => !optionalFileSkipped(providerId, f.file, input)); // a file the job opted out of (FLUX 3 Klein without its prompt upsampler) is never needed
   const haveBytes = (f: { folder: string; file: string }) => (dir ? modelFileBytes(dir, f.folder, f.file) : comfyFileBytes(f.folder, f.file));
   /** Present AND complete: a file smaller than its known size is still downloading (or broken), never ready (Render, 2026-10-24). */
@@ -184,8 +198,11 @@ export function requirementsFor(tool: ToolDef, providerId: string, input: Record
     .map((f) => { const have = haveBytes(f); return have != null && have > 0 ? { ...f, haveBytes: have, partial: true } : f; }) : null; // partial = on disk but short of its size: still downloading
   // Mac check (hardware/macWeights.ts), per workflow: the manifest's files and the workflow loaders' own (a lighter variant replaces its file).
   // Blocked only when EVERY workflow this job may run has such a file: a job that can run a Mac-safe graph of the same model stays available.
-  const wfBlocked = wfs.map((w) => macBlockedFiles([...weightsForWorkflows([w]).map((x) => x.file), ...loaderFiles([w]).map((x) => x.file)].filter((f) => f !== chosen?.replaces)));
+  const wfBlocked = wfs.map((w) => { const sw = swapsFor([w], plat); return macBlockedFiles([...weightsForWorkflows([w]).map((x) => x.file), ...loaderFiles([w]).map((x) => x.file)].filter((f) => f !== chosen?.replaces && !sw[f])); }); // the picked variant's swapped files are gone (B6)
   const macBlocked = wfBlocked.length && wfBlocked.every((b) => b.length) ? [...new Set(wfBlocked.flat())] : [];
+  // The Mac rating of the graphs a Mac CAN run (OpenSoul: soul-zit is amber while the FLUX / Qwen recipes are red): the job isn't red because of a graph it won't use here.
+  const safeVs = wfs.map((w, i) => (wfBlocked[i].length ? null : wfVram(w))).filter((x): x is WfVram => !!x);
+  const macSafeMps = safeVs.length ? (safeVs.some((v) => v.mps === 'amber' || v.mps === 'red') ? 'amber' as const : 'green' as const) : null;
   const R = worst ? (chosen ? Math.min(worst.recommendedVramGB, chosen.vramEstGB) : worst.recommendedVramGB) : null;
   const M = worst ? r1(chosen && R != null ? worst.minVramGB * (R / worst.recommendedVramGB) : worst.minVramGB) : null;
   // secondsPerTier: timing.ts cells for this job (all → rtx4090, else rtx5090; mac → mseries). light / most stay null (no cross-GPU scaling, timing.ts:4).
@@ -196,10 +213,11 @@ export function requirementsFor(tool: ToolDef, providerId: string, input: Record
   const r: Requirements = { workflows: wfs.map((w) => `workflows/${w}`), recommendedVramGB: R, minVramGB: M, minVramEstimate: true,
     downloadBytes: files.reduce((a, f) => a + (f.bytes ?? 0), 0), downloadGB: Math.round(files.reduce((a, f) => a + (f.bytes ?? 0), 0) / 1e7) / 100,
     missingBytes: (missing ?? files).reduce((a, f) => a + (f.bytes ?? 0), 0), missingBytesSource: missing ? 'checked' : 'assumed_all', missingFiles: missing,
-    ramMinGB: worst ? Math.ceil(Math.max(worst.residentGB, worst.teGB) + 8) : null, mps: macBlocked.length ? 'red' : worst?.mps ?? null,
+    ramMinGB: worst ? Math.ceil(Math.max(worst.residentGB, worst.teGB) + 8) : null, mps: macBlocked.length ? 'red' : macSafeMps ?? worst?.mps ?? null,
     mpsNotes: macBlocked.length && !(worst?.mpsNotes ?? []).some((n) => /fp8|nvfp4|w4a8/i.test(n)) ? [...(worst?.mpsNotes ?? []), `${MAC_WEIGHTS_REASON} (${macBlocked.join(', ')})`] : worst?.mpsNotes ?? [], minComfyVersion: p.minComfyVersion ?? null,
     secondsPerTier: { all: cell('rtx4090') ?? cell('rtx5090'), most: null, light: null, mac: cell('mseries') }, variants: vv, variantId: chosen?.id ?? null, macBlockedFiles: macBlocked,
-    downloadable: files.some((f) => !!f.url), modelsDir: HW.displayDir(dir), modelsDirSet: !!dir, downloadId: downloadIdFor(providerId, wfs), presenceSource: ov ? null : dir ? 'models_dir' : viaComfy ? 'comfyui' : null };
+    downloadable: files.some((f) => !!f.url), modelsDir: HW.displayDir(dir), modelsDirSet: !!dir, downloadId: downloadIdFor(providerId, wfs), presenceSource: ov ? null : dir ? 'models_dir' : viaComfy ? 'comfyui' : null, platform: plat,
+    variant: picks.length && !wfs.some((w, i) => !wfBlocked[i].length && !picks.some((p) => p.workflow === w)) /* a graph that runs here as it is: the job needs no untested variant (OpenSoul: soul-zit) */ ? { platform: plat!, verified: picks.every((p) => p.verified), format: picks[0].variant?.format ?? null, needsNodes: [...new Set(picks.flatMap((p) => p.variant?.needsNodes ?? []))], files: Object.values(swaps) } : null };
   reqCache.set(ck, { at: Date.now(), r }); return r;
 }
 // ---- fit ----
@@ -208,7 +226,8 @@ export interface Fit { verdict: Verdict; reasonCode: string; reason: string; har
   etaSeconds: number | null; eta: { source: 'learned' | 'estimate'; samples: number; hwKey: string; estimateSeconds: number | null; learnedSeconds: number | null };
   /** Step-ETA learning (stepEta.ts): {seconds, low, high, source learned | scaled | reported | first_run, samples, includesLoad cold | warm | null, calibrating, …}. */
   etaRange: EtaRange;
-  missingBytes: number | null; missingBytesSource: 'checked' | 'assumed_all' | null; downloadId: string | null; diskFreeBytes: number | null; blockers: { code: 'not_enough_disk'; needBytes: number; freeBytes: number }[]; vramFreeHint: string | null }
+  missingBytes: number | null; missingBytesSource: 'checked' | 'assumed_all' | null; downloadId: string | null; diskFreeBytes: number | null; blockers: { code: 'not_enough_disk'; needBytes: number; freeBytes: number }[]; vramFreeHint: string | null;
+  /** Item 5: the platform variant this computer picked (files swapped for it); verified false → "should run here (not tested yet)". */ variant?: Requirements['variant'] }
 const cmpVer = (a: string, b: string) => { const x = a.split('.').map(Number); const y = b.split('.').map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] ?? 0) - (y[i] ?? 0); if (d) return Math.sign(d); } return 0; };
 const fmt = (n: number) => (Math.round(n * 10) / 10).toString();
 /** " (about 4 min here)" for a slow verdict's reason, from the estimate (learned on this computer, else measured or reported); '' when unknown. */
@@ -228,11 +247,12 @@ export function fitFor(tool: ToolDef, providerId: string, input: Record<string, 
   const base = { tier: hw.tier, lighterVariantAvailable: lighter, recommendedVramGB: R, effectiveVramGB: E0, etaSeconds: etaRange.seconds, etaRange, eta: { source: e.source, samples: e.samples, hwKey: hk, estimateSeconds: e.estimateSeconds, learnedSeconds: e.learnedSeconds },
     missingBytes: req?.missingBytes ?? null, missingBytesSource: req?.missingBytesSource ?? null, downloadId: req?.downloadId ?? null, diskFreeBytes: hw.disk.freeBytes, blockers: [] as Fit['blockers'], vramFreeHint: null as string | null };
   const done = (verdict: Verdict, reasonCode: string, reason: string, enforced = true): Fit => {
-    const f: Fit = { ...base, verdict, reasonCode, hardwareReasonCode: reasonCode, reason, enforced };
+    const f: Fit = { ...base, verdict, reasonCode, hardwareReasonCode: reasonCode, reason, enforced, ...(req?.variant ? { variant: req.variant } : {}) };
+    if (req?.variant && !req.variant.verified && (verdict === 'fits' || verdict === 'slow')) f.reason = `${UNTESTED_VARIANT}: it uses files made for this kind of computer (${req.variant.format ?? 'lighter files'}). ${reason}`; // never "runs here" before a real run
     if (req?.missingBytes && req.missingBytesSource === 'checked' && hw.disk.freeBytes != null && req.missingBytes > hw.disk.freeBytes * 0.95) {
       f.blockers.push({ code: 'not_enough_disk', needBytes: req.missingBytes, freeBytes: hw.disk.freeBytes });
       if (verdict !== 'too_heavy') { f.reasonCode = 'not_enough_disk'; f.reason = `Its files need ${fmt(req.missingBytes / 1e9)} GB of disk space; ${fmt(hw.disk.freeBytes / 1e9)} GB is free.`; } }
-    if (verdict === 'fits' && hw.gpu?.vramFreeBytes != null && R != null && hw.gpu.vramFreeBytes / 2 ** 30 < R) f.vramFreeHint = `Other apps are using graphics memory right now (${fmt(hw.gpu.vramFreeBytes / 2 ** 30)} GB free); close them for full speed.`;
+    if (verdict === 'fits' && !hw.gpu?.unifiedMemory && !hw.profile?.unifiedMemory /* GB10: cudaMemGetInfo under-reports (NVIDIA DGX Spark known issues) */ && hw.gpu?.vramFreeBytes != null && R != null && hw.gpu.vramFreeBytes / 2 ** 30 < R) f.vramFreeHint = `Other apps are using graphics memory right now (${fmt(hw.gpu.vramFreeBytes / 2 ** 30)} GB free); close them for full speed.`;
     return f; };
   if (hw.tier === 'unknown') return done('unknown', 'hardware_unknown', "This computer's hardware couldn't be read, so this route isn't checked.", false);
   if (!req || !req.workflows.length) return done('fits', 'no_gpu_needed', 'Runs on your computer.');
@@ -253,6 +273,8 @@ import * as HW from '../hardware.js';
 /** Q2: the loud warning a pinned too_heavy route carries on the quote and the job (it still runs; nothing switches silently). */
 export const tooHeavyWarning = (f: Fit, label: string) => (f.reasonCode === 'unsupported_weights' ? `${label} needs an NVIDIA graphics card, so it won’t run on your computer.` : `${label} may be too heavy for your computer. It can fail or run very slowly.`);
 export const SLOW_LOCAL_NOTE = 'Free on your computer, but slow';
+/** Item 5: the words for a platform variant nobody has run on this kind of computer yet. */
+export const UNTESTED_VARIANT = 'Should run here (not tested yet)';
 // ---- Q4 weights gate (real runs need the files; the mock backend only reports unless OPENHIGGSFIELD_ENFORCE_WEIGHTS=1) ----
 import { config as CFG } from '../config.js';
 import { missingNodes } from '../comfyNodes.js';
@@ -263,6 +285,8 @@ export interface WeightsGate { code: 'weights_missing' | 'not_enough_disk' | 'no
 export function weightsGate(tool: ToolDef, providerId: string, input: Record<string, any> = {}, hw: Hardware = currentHardware()): WeightsGate | null {
   const wantsDl = /^(1|true|on|yes)$/i.test(String(input.downloadWeights ?? '')); if (!enforceWeights() && !wantsDl) return null; // a requested download is always disk-checked
   if (enforceWeights()) { const wfs = jobWorkflows(tool, providerId, input); const nodes = missingNodes(wfs.length ? wfs : providerId === 'comfy-open' ? tool.workflows ?? [] : []); // custom nodes the local ComfyUI doesn't have: it would refuse the prompt
+    const vn = (requirementsFor(tool, providerId, input, hw)?.variant?.needsNodes ?? []).filter((n) => n === 'UnetLoaderGGUF' && hw.comfy.ggufNode === false); // the picked variant's .gguf files need ComfyUI-GGUF
+    for (const n of vn) if (!nodes.includes(n)) nodes.push(n);
     if (nodes.length) return { code: 'nodes_missing', missingNodes: nodes, message: `Your ComfyUI is missing the custom node${nodes.length > 1 ? 's' : ''} this model needs (${nodes.slice(0, 4).join(', ')}${nodes.length > 4 ? '…' : ''}). Install ${nodes.length > 1 ? 'them' : 'it'} with ComfyUI Manager and restart ComfyUI, or use another route.`,
       missingBytes: 0, missingFiles: [], diskFreeBytes: hw.disk.freeBytes, downloadable: false, downloadEndpoint: '/api/local/downloads', downloadId: '' }; }
   const req = requirementsFor(tool, providerId, input, hw); if (!req?.missingFiles) return null;
