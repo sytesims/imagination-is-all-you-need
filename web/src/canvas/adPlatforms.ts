@@ -12,7 +12,8 @@
  *  - YouTube Shorts: Google Ads Help "Universal safe zones" vertical template (support.google.com/google-ads/answer/13547298), 1080×1920:
  *    288 px top, 672 px bottom, 48 px left, 192 px right. The 16:9 size is a thumbnail (same page: 1280×720): only the time badge covers
  *    the bottom corner, so we keep the bottom ~10% clear.
- *  - X (help.x.com/en/business-and-advertising/creative-ad-specifications), Pinterest standard ads 2:3, 1000×1500
+ *  - X: its own creative specs (help.x.com/en/business-and-advertising/creative-ad-specifications) give image ads 1:1 at 1080×1080 and
+ *    16:9 at 1920×1080 (sizes updated 2026-10-31). X, Pinterest standard ads 2:3, 1000×1500
  *    (help.pinterest.com/en/business/article/pinterest-product-specs) and LinkedIn single image ads 1.91:1 1200×628 and 1:1 1200×1200
  *    (linkedin.com/help/lms/answer/a426534): the picture shows in the feed with nothing on top, so no safe zone.
  */
@@ -35,22 +36,34 @@ export const AD_SHAPES: Record<AdShape, { label: string; tag: string; w: number;
 export const AD_SHAPE_LIST = Object.keys(AD_SHAPES) as AdShape[];
 
 interface Spot { shape: AdShape; w: number; h: number; name: string; safe?: Edges }
-export const AD_PLATFORMS: Record<AdPlatform, { label: string; sizes: Spot[] }> = {
-  meta: { label: 'Instagram & Facebook', sizes: [
+/**
+ * The post text each platform takes, for the Export pack's post-copy.txt (characters; checked 2026-10-31 against each one's own help pages):
+ *  - Meta Ads Guide (facebook.com/business/ads-guide): primary text, about 125 characters show before "See more"; headline, about 40
+ *    recommended (some placements cut it sooner, so it goes first in the file and stays short).
+ *  - TikTok ad text (ads.tiktok.com/help, "Ad text"): up to 100 characters.
+ *  - X posts (help.x.com, "Counting characters"): 280 characters, where a link always counts as 23; we keep 24 free for the link line.
+ *  - LinkedIn single image ads (linkedin.com/help/lms, ad specs): introductory text up to 600, but about 150 show before "…see more" on
+ *    desktop; we use the shown 150 (the conservative one).
+ *  - Pinterest (help.pinterest.com, product specs): title up to 100, description up to 500.
+ *  - YouTube (support.google.com/youtube): video titles up to 100 characters.
+ */
+export interface PostField { label: string; max: number; /** what goes in: the headline only, or headline + offer + call to action */ from: 'headline' | 'all'; /** characters kept free for the link */ keep?: number }
+export const AD_PLATFORMS: Record<AdPlatform, { label: string; /** its folder in the Export pack */ folder: string; post: PostField[]; sizes: Spot[] }> = {
+  meta: { label: 'Instagram & Facebook', folder: 'instagram-facebook', post: [{ label: 'Primary text', max: 125, from: 'all' }, { label: 'Headline', max: 40, from: 'headline' }], sizes: [
     { shape: '4x5', w: 1080, h: 1350, name: 'Feed' },
     { shape: '1x1', w: 1080, h: 1080, name: 'Square' },
     { shape: '9x16', w: 1080, h: 1920, name: 'Stories and Reels', safe: { top: 0.14, bottom: 0.35, left: 0.06, right: 0.06 } }] },
-  tiktok: { label: 'TikTok', sizes: [
+  tiktok: { label: 'TikTok', folder: 'tiktok', post: [{ label: 'Ad text', max: 100, from: 'all' }], sizes: [
     { shape: '9x16', w: 1080, h: 1920, name: 'For You feed', safe: { top: 0.08, bottom: 0.30, left: 0.04, right: 0.13 } }] },
-  x: { label: 'X', sizes: [
-    { shape: '1x1', w: 1200, h: 1200, name: 'Square' },
-    { shape: '16x9', w: 1200, h: 675, name: 'Wide' }] },
-  pinterest: { label: 'Pinterest', sizes: [
+  x: { label: 'X', folder: 'x', post: [{ label: 'Post', max: 280, from: 'all', keep: 24 }], sizes: [
+    { shape: '1x1', w: 1080, h: 1080, name: 'Square' },
+    { shape: '16x9', w: 1920, h: 1080, name: 'Wide' }] },
+  pinterest: { label: 'Pinterest', folder: 'pinterest', post: [{ label: 'Title', max: 100, from: 'headline' }, { label: 'Description', max: 500, from: 'all' }], sizes: [
     { shape: '2x3', w: 1000, h: 1500, name: 'Pin' }] },
-  linkedin: { label: 'LinkedIn', sizes: [
+  linkedin: { label: 'LinkedIn', folder: 'linkedin', post: [{ label: 'Introductory text', max: 150, from: 'all' }], sizes: [
     { shape: '191x1', w: 1200, h: 628, name: 'Wide' },
     { shape: '1x1', w: 1200, h: 1200, name: 'Square' }] },
-  youtube: { label: 'YouTube', sizes: [
+  youtube: { label: 'YouTube', folder: 'youtube', post: [{ label: 'Title', max: 100, from: 'headline' }], sizes: [
     { shape: '16x9', w: 1280, h: 720, name: 'Thumbnail', safe: { top: 0, bottom: 0.10, left: 0, right: 0 } },
     { shape: '9x16', w: 1080, h: 1920, name: 'Shorts', safe: { top: 0.15, bottom: 0.35, left: 0.045, right: 0.18 } }] },
 };
@@ -80,3 +93,10 @@ export const hasSafe = (e: Edges) => e.top > 0 || e.right > 0 || e.bottom > 0 ||
 /** Each picked platform's own safe zone on this shape (only the ones that cover something), for "Zones for" in Edit ad. */
 export const zonesFor = (platforms: AdPlatform[], shape: AdShape): { p: AdPlatform; label: string; safe: Edges }[] =>
   platforms.flatMap((p) => AD_PLATFORMS[p].sizes.filter((s) => s.shape === shape && s.safe && hasSafe(s.safe)).map((s) => ({ p, label: AD_PLATFORMS[p].label, safe: s.safe! })));
+
+/** The Export pack, one folder per picked platform: each of its own sizes, at its own pixel size, drawn with the tab's layout (the
+ *  shape's combined safe zone and hand edits, as in the preview). A shape two platforms share is in both folders. */
+export function adExportPlan(platforms: AdPlatform[]): { p: AdPlatform; folder: string; sizes: { shape: AdShape; tag: string; w: number; h: number }[] }[] {
+  return AD_PLATFORM_LIST.filter((p) => platforms.includes(p)).map((p) => ({ p, folder: AD_PLATFORMS[p].folder,
+    sizes: AD_SHAPE_LIST.flatMap((shape) => AD_PLATFORMS[p].sizes.filter((s) => s.shape === shape).map((s) => ({ shape, tag: AD_SHAPES[shape].tag, w: s.w, h: s.h }))) }));
+}

@@ -2,7 +2,7 @@
 // membership, and the two-press Run all (a first press only prices; a run list comes back only on a fresh second press).
 // Run: npx tsx test/canvas-nodes.test.ts   (no server, no network, no browser)
 import assert from 'node:assert/strict';
-import { NODE_DEFS, NODE_KINDS, NODE_TYPES, GEN_TYPE, RESULT_TYPE, PROMPT_TYPE, UPLOAD_TYPE, NOTE_TYPE, COMPARE_TYPE, GROUP_TYPE, AD_TYPE, nodeDefOf } from '../../web/src/canvas/nodeTypes.ts';
+import { NODE_DEFS, NODE_KINDS, NODE_TYPES, GEN_TYPE, RESULT_TYPE, PROMPT_TYPE, UPLOAD_TYPE, NOTE_TYPE, COMPARE_TYPE, GROUP_TYPE, AD_TYPE, nodeDefOf, adCardResize } from '../../web/src/canvas/nodeTypes.ts';
 import { canConnectTo, pickPortTarget, groupGenIds, runAllConfirm, runAllCommit, runAllTotal, runAllPriceLabel } from '../../web/src/canvas/nodeLogic.ts';
 import { linkShapes, inputOfShape, withInputs } from '../../web/src/canvas/graph.ts';
 import { addVersions, MAX_VERSIONS } from '../../web/src/canvas/cardModel.ts';
@@ -148,5 +148,13 @@ ok('Run all: first press only prices (no run list), second fresh press runs, sta
   const r = runOrder(['hero', 'clip', 'lone', 'orphan', 'chained'], id => ups[id] ?? []);
   assert.deepEqual(r.now, ['hero', 'lone']); assert.deepEqual(r.later, ['clip', 'chained']); assert.deepEqual(r.blocked, [{ id: 'orphan', name: 'Other' }]);
   ok('run order: upstream first, downstream waits, a card whose input will never come is not started'); }
+/* the Ad layout card is compact (2026-10-31): old default sizes take the new one, a too-short card grows, others stay */
+assert.deepEqual([NODE_DEFS.ad.defaultW, NODE_DEFS.ad.defaultH], [360, 640]);
+assert.deepEqual(adCardResize(400, 840), { w: 360, h: 640 }, 'the old 400 x 840 default takes today\'s size');
+assert.deepEqual(adCardResize(400, 700), { w: 360, h: 640 }, 'so does the older 400 x 700');
+assert.deepEqual(adCardResize(400, 500), { w: 400, h: 640, grow: true }, 'a card too short grows (when nothing is in the way)');
+assert.equal(adCardResize(360, 640), null); assert.equal(adCardResize(500, 900), null, 'a card the user resized stays');
+ok('ad card: compact size, old cards adapt');
+
 console.log('canvas-nodes: all ok');
 process.exit(0);

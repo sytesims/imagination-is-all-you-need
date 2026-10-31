@@ -53,8 +53,15 @@ export const NODE_DEFS: Record<NodeKind, NodeDef> = {
   group: { kind: 'group', type: GROUP_TYPE, label: 'Group', hint: 'A frame with Run all', input: false, output: false, inputMax: 0,
     defaultW: 720, defaultH: 520, minW: 360, minH: 260, maxW: 1800, maxH: 1400, tint: 'group' },
   ad: { kind: 'ad', type: AD_TYPE, label: 'Ad layout', hint: 'Your headline, price and logo on a picture', input: true, output: false, inputMax: 1,
-    defaultW: 400, defaultH: 840, minW: 340, minH: 640, maxW: 820, maxH: 1400, tint: 'ad' },
+    defaultW: 360, defaultH: 640, minW: 320, minH: 560, maxW: 820, maxH: 1400, tint: 'ad' },
 };
+
+/** An Ad layout card's size when it's shown: a card still at an old default (400 × 700, then 400 × 840) takes today's smaller one; a
+ *  card shorter than the least it needs grows to today's height ('grow': only when that covers no other card); otherwise null. */
+export function adCardResize(w: number, h: number): { w: number; h: number; grow?: true } | null {
+  const d = NODE_DEFS.ad; if (w === 400 && (h === 700 || h === 840)) return { w: d.defaultW, h: d.defaultH };
+  return h < d.minH ? { w, h: d.defaultH, grow: true } : null;
+}
 
 export const NODE_KINDS = Object.keys(NODE_DEFS) as NodeKind[];
 export const NODE_TYPES = NODE_KINDS.map(k => NODE_DEFS[k].type);
