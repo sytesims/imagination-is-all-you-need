@@ -13,7 +13,8 @@ import { tip } from '../shared/Tooltip';
 import { AudioIcon, VideoIcon, CloseIcon, PlusIcon } from '../ui/Icons';
 import type { GenSlot, InputKind } from '../shared/genFlows';
 import { GEN_TYPE, type BoardInput, type GenCardProps } from './cardModel';
-import { setCard } from './agentApi';
+import { setCard, addCardInputs } from './agentApi';
+import { uploadedInput } from './fileDrop';
 
 export function CardInputs({ cardId, slots, bySlot, showAdd, className = '', testPrefix = 'gc' }: { cardId: TLShapeId; slots: GenSlot[]; bySlot: Record<string, BoardInput[]>; showAdd: boolean; className?: string; /** 'gc' on the card, 'cp' in the panel */ testPrefix?: string }) {
   const editor = useEditor(); const toast = useToast(); const file = useRef<HTMLInputElement>(null); const [upFor, setUpFor] = useState<GenSlot | null>(null);
@@ -22,9 +23,8 @@ export function CardInputs({ cardId, slots, bySlot, showAdd, className = '', tes
     const p = props(); if (!p) return; const { [i.key]: _gone, ...pins } = p.pins ?? {}; setCard(editor, cardId, { inputs: p.inputs.filter(x => x.key !== i.key), pins }); };
   const onFile = async (f: File | undefined) => { const s = upFor; setUpFor(null); if (!f || !s) return; const kind: InputKind | null = kindOfFile(f);
     if (kind !== s.accept) { toast(wrongTypeText(f.name, [s.accept]), 'warn'); return; }
-    try { const [m] = await uploadMedia([f]); if (!m?.url) throw new Error('Upload failed'); const key = `u:${Date.now().toString(36)}`; const cur = props(); if (!cur || editor.getShape(cardId)?.type !== GEN_TYPE) return;
-      const inp: BoardInput = { key, kind, url: m.url, poster: kind === 'image' ? m.url : kind === 'video' ? `/api/media/thumb?url=${encodeURIComponent(m.url)}` : '', jobId: '', label: f.name };
-      setCard(editor, cardId, { inputs: [...cur.inputs, inp], pins: { ...cur.pins, [key]: s.name } }); }
+    try { const [m] = await uploadMedia([f]); if (!m?.url) throw new Error('Upload failed'); if (editor.getShape(cardId)?.type !== GEN_TYPE) return;
+      addCardInputs(editor, cardId, [{ input: uploadedInput(s.accept, m.url, f.name), slot: s.name }]); }
     catch (e) { toast((e as Error).message || 'Upload failed', 'error'); } };
   return <div className={`nf-ins${className ? ` ${className}` : ''}`} data-testid={`${testPrefix}-inputs`}>
     <input ref={file} type="file" hidden accept={ACCEPT[upFor?.accept === 'video' ? 'video' : upFor?.accept === 'audio' ? 'audio' : 'image']} onChange={e => { void onFile(e.target.files?.[0]); e.currentTarget.value = ''; }} />

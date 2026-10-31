@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import { HTMLContainer, useEditor, useValue, type TLShapeId } from 'tldraw';
 import { useToast } from '../shared/Toast';
 import { uploadMedia } from '../shared/batch1';
+import { mediaPoster } from './fileDrop';
 import ImageCompare from '../shared/ImageCompare';
 import { AudioCard } from '../shared/AudioCard';
 import { tip } from '../shared/Tooltip';
@@ -56,7 +57,7 @@ function UploadView({ shape, p, Icon }: { shape: AuxNodeShape; p: AuxNodeProps; 
   const patch = (props: Partial<AuxNodeProps>) => editor.run(() => editor.updateShape({ id: shape.id, type: shape.type, props } as any), { history: 'ignore' });
   const take = async (f: File | undefined) => { if (!f || busy) return; const mediaKind = kindOfFile(f);
     if (!mediaKind) { toast(wrongTypeText(f.name, ['image', 'video', 'audio']), 'warn'); return; } setBusy(true);
-    try { const [m] = await uploadMedia([f]); if (!m?.url) throw new Error('Upload failed'); const kind = (m as any).type || mediaKind; const poster = kind === 'image' ? m.url : kind === 'video' ? `/api/media/thumb?url=${encodeURIComponent(m.url)}` : '';
+    try { const [m] = await uploadMedia([f]); if (!m?.url) throw new Error('Upload failed'); const kind = (m as any).type || mediaKind; const poster = mediaPoster(kind, m.url);
       patch({ url: m.url, poster, mediaKind: kind, label: f.name }); }
     catch (e) { toast((e as Error).message || 'Upload failed', 'error'); } finally { setBusy(false); } };
   const pick = () => file.current?.click();
