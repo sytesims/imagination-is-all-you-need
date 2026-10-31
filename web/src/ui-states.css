@@ -28,10 +28,14 @@ html body .gen-btn.gen-btn.gen-btn:not(:disabled):not([aria-disabled=true]):not(
 html body .gen-btn.gen-btn.gen-btn:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color)!important;outline-offset:var(--focus-ring-gap)!important}
 /* busy: spinner + 'Generating…', still accent, clicks ignored, width unchanged */
 html body .gen-btn.gen-btn.gen-btn[aria-busy=true]{cursor:progress;filter:saturate(.85)!important}
-/* needs input (aria-disabled / gen-wait): visibly off, still focusable; a click or focus shows why (GenWhy) */
+/* waiting (aria-disabled / gen-wait): the ONE shared waiting look (tokens.css --wait-*), used by every Generate incl. the Canvas node and Film:
+   neutral fill, faint accent ring, white label, the reason in --text-2. Still focusable; a click or focus shows why (GenWhy) */
 html body .gen-btn.gen-btn.gen-btn:is([aria-disabled=true],.gen-wait):not([aria-busy=true]),
 html body .gen-btn.gen-btn.gen-btn:has(.gen-price[data-limit]){
-  background:color-mix(in srgb,var(--accent) 30%,#1c1e20)!important;color:#d6cbc3!important;box-shadow:none!important;filter:none!important;transform:none!important;cursor:not-allowed!important}
+  background:var(--wait-fill)!important;color:var(--wait-ink)!important;box-shadow:inset 0 0 0 1px var(--wait-ring)!important;filter:none!important;transform:none!important;cursor:pointer!important}
+html body .gen-btn.gen-btn.gen-btn:is([aria-disabled=true],.gen-wait):not([aria-busy=true]):not(:disabled):hover{background:var(--wait-fill-hover)!important;filter:none!important}
+html body .gen-btn.gen-btn.gen-btn:is([aria-disabled=true],.gen-wait):not([aria-busy=true]) .gen-price,
+html body .gen-btn.gen-btn.gen-btn:has(.gen-price[data-limit]) .gen-price{color:var(--wait-sub)!important}
 /* can't run as set (key, no price, blocked route): flat grey, readable, still focusable so it can say why */
 html body .gen-btn.gen-btn.gen-btn.gen-off[aria-disabled=true]{background:var(--disabled-fill)!important;color:#a3a4a9!important;box-shadow:inset 0 0 0 1px #3a3a3e!important;filter:none!important;transform:none!important;cursor:not-allowed!important}
 /* disabled (key, no price, blocked route): flat grey, readable */
