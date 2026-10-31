@@ -948,10 +948,10 @@ export function appQuoteParams(t: ToolDef | undefined, q: Record<string, string>
   for (const [k, v] of Object.entries<string>(G.defaults ?? {})) if (k !== 'duration' && (out[k] == null || out[k] === '')) out[k] = v;
   Object.assign(out, G.locked ?? {});
   for (const [f, ty] of Object.entries<string>(G.modeWhenFile ?? {})) if (q[f]) out.types = ty;
-  const PO = G.perOutput as { field: string; max: number; options: { value: string }[] } | null; // Shots: n = the picked angles (blank = all), so quote = n × one image
+  const PO = G.perOutput as { field: string; max: number; options: { value: string }[]; defaults?: string[] } | null; // Shots: n = the picked angles (blank = all; Ad Pack: its default styles, as the submit), so quote = n × one image
   if (PO) { const raw = String(q[PO.field] ?? '').trim(); let ids: string[] = [];
     if (raw) { let xs: unknown; try { xs = JSON.parse(raw); } catch { xs = raw.split(','); } ids = [...new Set((Array.isArray(xs) ? xs : [xs]).map((x) => String(x).trim()))].filter((x) => PO.options.some((o) => o.value === x)); }
-    out.n = String(Math.min(PO.max, ids.length || (raw ? 0 : Number(q.n) > 0 ? Number(q.n) : PO.options.length)) || 1); }
+    out.n = String(Math.min(PO.max, ids.length || (raw ? 0 : Number(q.n) > 0 ? Number(q.n) : PO.defaults?.length || PO.options.length)) || 1); }
   const m = typesOf(out.types); const pm = G.providersByMode as Record<string, string[]> | undefined;
   if (m && pm?.[m] && !out.provider && !out.model) { const first = (t && appDefaultFor?.(t, m, pm[m])) || pm[m][0]; if (first) out.provider = first; }
   if (typeof G.lockedFor === 'function') { const vals = Object.fromEntries(((G.fields ?? []) as any[]).map((f) => [f.name, String(out[f.name] ?? '') || String(f.default ?? '')]));
