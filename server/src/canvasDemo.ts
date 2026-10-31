@@ -46,6 +46,20 @@ export function detectStarter(prompt: string, starter?: string | null): DemoStar
   if (/product|packshot|bottle|sneaker|e-?commerce/.test(p)) return 'product';
   return 'free';
 }
+/** A demo plays only from its chip (a starter id). */
+export const isStarterId = (starter: string | null | undefined): starter is DemoStarterId => !!starter && DEMO_STARTERS.some((s) => s.id === starter);
+/** What the built-in demo says to typed words (2026-10-31): it can't chat, so it says so and never builds or prices anything.
+ *  `waiting`: what a running demo waits for. `suggest`: the chip whose words match (never the catch-all 'free'). */
+export function demoReply(prompt: string, o: { running: boolean; waiting?: 'go' | 'pick' | 'ok' | null }): { text: string; suggest: DemoStarterId | null } {
+  const connect = 'Connect Claude (the plug icon) to talk about your board';
+  if (o.running) {
+    const next = o.waiting === 'go' ? 'Press Go or Cancel on the card above to continue, or Stop the demo.' : o.waiting === 'pick' ? 'Click the one you like on the board to continue, or Stop the demo.'
+      : o.waiting === 'ok' ? 'Press Looks good above to continue, or Stop the demo.' : 'It carries on by itself, and every run waits for your Go. Stop the demo any time.';
+    return { text: `I’m the built-in demo, so I can’t answer questions yet. ${next} ${connect}.`, suggest: null };
+  }
+  const k = detectStarter(prompt); const suggest = k === 'free' ? null : k;
+  return { text: `I’m the built-in demo, so I can’t chat yet. ${connect}, or try a demo:`, suggest };
+}
 const FILM_SHOTS = [
   ['Wide establishing shot', 'wide establishing shot, misty coastline at dawn, cinematic, anamorphic'],
   ['Hero close-up', 'close-up of the main character, soft rim light, shallow depth of field'],

@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { DEMO_STARTERS, demoPlan, chipPlan, isChip, detectStarter, demoCardAt, demoPlanSize, demoFrameOf, demoNoteAt, demoGridOffset, shortFilmPlan, shortLayout, beatOfNote, keyFramePrompt, stitchBody, shortFilmVideoOn, SHORT_STEPS, CHALK_WHALE } from '../src/canvasDemo.ts';
+import { DEMO_STARTERS, demoReply, isStarterId, demoPlan, chipPlan, isChip, detectStarter, demoCardAt, demoPlanSize, demoFrameOf, demoNoteAt, demoGridOffset, shortFilmPlan, shortLayout, beatOfNote, keyFramePrompt, stitchBody, shortFilmVideoOn, SHORT_STEPS, CHALK_WHALE } from '../src/canvasDemo.ts';
 import { DEMO_MEDIA, demoMediaOf, demoLabel, tagDemoCard, demoRefFor } from '../src/shared/demoMedia.ts';
 const ok = (m: string) => console.log('ok ' + m);
 const WORKFLOWS = new Set(['create', 'video', 'music', 'extend']);
@@ -19,6 +19,18 @@ assert.equal(detectStarter('a cat in space'), 'free');
 assert.equal(detectStarter('a cat astronaut, with a long description of the light'), 'free', '"description" is not a script');
 assert.equal(detectStarter('a cat', 'not-a-starter'), 'free');
 ok('starters are matched by id or by the words typed');
+
+/* typed words never play a demo (2026-10-31): an honest line, the matching demo suggested; while one runs, what it waits for */
+assert.equal(isStarterId('animate'), true); assert.equal(isStarterId('nope'), false); assert.equal(isStarterId(undefined), false);
+assert.deepEqual(demoReply('can you extend my clip?', { running: false }).suggest, 'animate');
+assert.equal(demoReply('make a film about owls', { running: false }).suggest, 'film');
+assert.equal(demoReply('what can you do?', { running: false }).suggest, null, 'no catch-all suggestion');
+assert.match(demoReply('hi', { running: false }).text, /^I’m the built-in demo, so I can’t chat yet\. Connect Claude \(the plug icon\) to talk about your board, or try a demo:$/);
+assert.match(demoReply('hi', { running: true, waiting: 'go' }).text, /Press Go or Cancel on the card above to continue, or Stop the demo\./);
+assert.match(demoReply('hi', { running: true, waiting: 'pick' }).text, /Click the one you like/);
+assert.equal(demoReply('extend it', { running: true, waiting: 'go' }).suggest, null, 'nothing suggested while a demo runs');
+for (const w of ['go', 'pick', 'ok', null] as const) { const t = demoReply('x', { running: true, waiting: w }).text; assert.ok(!/\bMac\b/.test(t) && t.length < 260); }
+ok('typed words: an honest reply, the matching demo suggested, never a run');
 
 const CASES: [string, string | null][] = [...DEMO_STARTERS.map((s): [string, string | null] => [s.prompt, null]), ...DEMO_STARTERS.filter((s) => s.id !== 'short').map((s): [string, string | null] => [s.prompt, s.id]), ['a cat in space', null], ['   ', null], ['x'.repeat(4000), null]];
 for (const [prompt, starter] of CASES) {

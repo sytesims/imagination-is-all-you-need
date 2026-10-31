@@ -285,6 +285,7 @@
 .ap-chip{all:unset;box-sizing:border-box;flex:none;height:26px;padding:0 10px;border-radius:999px;cursor:pointer;background:var(--surface-2);border:1px solid var(--border);color:var(--text-2);font:500 11.5px/24px var(--font-sans,Inter,sans-serif)}
 .ap-chip:hover:not(:disabled){color:var(--text-1);border-color:rgba(255,122,26,.35)}
 .ap-chip:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}
+.ap-chip-main{align-self:flex-start;margin-top:6px;color:var(--text-1);border-color:rgba(255,122,26,.45);background:rgba(255,122,26,.12)}
 .ap-box{position:relative;display:flex;align-items:flex-end;gap:8px;padding:6px 6px 6px 4px;border-radius:16px;background:var(--surface-2);border:1px solid var(--border-strong);transition:border-color var(--t-state,150ms) ease,box-shadow var(--t-state,150ms) ease}
 .ap-box:focus-within{border-color:rgba(255,122,26,.5);box-shadow:0 0 0 3px rgba(255,122,26,.12)}
 .ap-hint{margin:7px 4px 0;font:400 10.5px/14px var(--font-sans,Inter,sans-serif);color:var(--text-3)}
