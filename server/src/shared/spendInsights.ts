@@ -4,7 +4,7 @@
  *  - periodStart: where 7 days / Month / All begin.
  *  - buckets + cumulative: the hero sparkline (spend over the period).
  *  - quoteAccuracy / quoteHint: actual vs estimate, per run and overall.
- *  - shareByTool / worstOverQuote: what the tip line may say; tipLines builds the words, only when the data supports them.
+ *  - shareByTool / overQuoteByTool: what the notices may say; tipLines builds the words (warnings by dollars, then the tip), only when the data supports them.
  *  - tileSpans: which mosaic tiles grow (2×2 / 2×1) by cost.
  */
 export type SpendPeriod = '7d' | 'month' | 'all';
@@ -57,14 +57,17 @@ export function quoteAccuracy(rows: { estUsd: number; actualUsd: number | null }
   const m = xs.reduce((s, r) => { const a = r.actualUsd as number; const hi = Math.max(a, r.estUsd); return s + (hi > 0 ? Math.min(a, r.estUsd) / hi : 1); }, 0) / xs.length;
   return { pct: Math.round(m * 100), runs: xs.length };
 }
-/** The run whose bill was furthest over its quote (at least `minRatio`×), and how many runs went that far over. */
-export function worstOverQuote<T extends { estUsd: number; actualUsd: number | null }>(rows: T[], minRatio = 2): { row: T; ratio: number; count: number } | null {
-  let best: { row: T; ratio: number } | null = null; let count = 0;
+/** Runs billed at least `minRatio`× their quote AND at least `minGapUsd` over it (a 1-cent quote billed 2 cents is not worth a warning), grouped
+ *  per tool: the worst run, how many went that far over, and the dollars over quote in all. Biggest dollar gap first. */
+export function overQuoteByTool<T extends { toolId: string; estUsd: number; actualUsd: number | null }>(rows: T[], minRatio = 2, minGapUsd = 0.05): { toolId: string; row: T; ratio: number; count: number; gapUsd: number }[] {
+  const m = new Map<string, { toolId: string; row: T; ratio: number; count: number; gapUsd: number }>();
   for (const r of rows) {
-    if (r.actualUsd == null || !(r.estUsd > 0)) continue; const ratio = r.actualUsd / r.estUsd; if (ratio < minRatio) continue;
-    count++; if (!best || ratio > best.ratio) best = { row: r, ratio };
+    if (r.actualUsd == null || !(r.estUsd > 0)) continue; const ratio = r.actualUsd / r.estUsd; const gap = r.actualUsd - r.estUsd;
+    if (ratio < minRatio || gap < minGapUsd) continue;
+    const g = m.get(r.toolId); if (!g) { m.set(r.toolId, { toolId: r.toolId, row: r, ratio, count: 1, gapUsd: gap }); continue; }
+    g.count++; g.gapUsd += gap; if (ratio > g.ratio) Object.assign(g, { row: r, ratio });
   }
-  return best ? { ...best, count } : null;
+  return [...m.values()].map((g) => ({ ...g, gapUsd: r4(g.gapUsd) })).sort((a, b) => b.gapUsd - a.gapUsd);
 }
 /** Money per tool, biggest first, with each one's share of the total (0–1). */
 export function shareByTool(rows: { toolId: string; usd: number }[]): { toolId: string; usd: number; runs: number; share: number }[] {
@@ -85,31 +88,48 @@ export function tileSpans(usds: number[], wide = 3): ('big' | 'wide' | '')[] {
 }
 
 export interface TipInput {
-  periodWords: string;           // 'this month', 'the last 7 days', 'all time'
+  /** what the share is of: "this month's spend", "your spend in the last 7 days", "all your spend" */
+  periodWords: string;
   paidRuns: number;
   top?: { name: string; share: number } | null;
   /** a real quote for a shorter clip of the costliest run of the top tool */
   shorter?: { seconds: number; fromSeconds: number; usd: number; fromUsd: number } | null;
-  over?: { ratio: number; count: number; name: string } | null;
-  failedCharged?: { runs: number; usd: number } | null;
+  /** over-quote groups (overQuoteByTool) with the tool's name; nowUsd: today's quote for the worst run's own settings, when known */
+  over?: { toolId: string; jobId: string; name: string; ratio: number; count: number; gapUsd: number; estUsd: number; actualUsd: number; nowUsd?: number | null }[];
+  /** providers: who billed them (names), said in the warning */
+  failedCharged?: { runs: number; usd: number; providers?: string[] } | null;
 }
+export type Notice =
+  | { tone: 'warn'; kind: 'over'; text: string; usd: number; jobId: string }
+  | { tone: 'warn'; kind: 'failed'; text: string; usd: number }
+  | { tone: 'tip'; kind: 'tip'; text: string; usd: number };
 const usd2 = (n: number) => `$${n < 0.1 ? n.toFixed(3).replace(/0$/, '') : n.toFixed(2)}`;
-/** The tip line(s), plain words, only when the data supports them. 'tip' is a saving idea, 'warn' a bill that went over its quote. */
-export function tipLines(t: TipInput): { tone: 'tip' | 'warn'; text: string }[] {
-  const out: { tone: 'tip' | 'warn'; text: string }[] = [];
-  if (t.over && t.over.ratio >= 2) {
-    const k = t.over.ratio >= 10 ? Math.round(t.over.ratio) : Math.round(t.over.ratio * 10) / 10;
-    out.push({ tone: 'warn', text: t.over.count > 1 ? `${t.over.count} runs cost at least twice their quote; the biggest gap was ${k}× (${t.over.name}).` : `One run cost ${k}× its quote (${t.over.name}).` });
+const times = (k: number) => `${k >= 10 ? Math.round(k) : Math.round(k * 10) / 10}×`;
+/** Today's quote for the same settings now matches what was billed (from 15 % under to 50 % over: an 'up to' quote may sit above the bill),
+ *  so the price table was wrong then and has been corrected. A quote far from the bill compares unlike settings: no claim. */
+export const priceFixedNow = (o: { actualUsd: number; nowUsd?: number | null }) => o.nowUsd != null && o.actualUsd > 0 && o.nowUsd >= o.actualUsd * 0.85 && o.nowUsd <= o.actualUsd * 1.5;
+/** The notices under the gallery, plain words, only when the data supports them. Warnings (a bill over its quote, failed runs that still
+ *  counted) come first, biggest dollar amount first, at most `maxWarn`; then the saving tip. Each says what its button does (kind). */
+export function tipLines(t: TipInput, maxWarn = 3): Notice[] {
+  const warn: Notice[] = [];
+  for (const o of t.over ?? []) {
+    if (!(o.ratio >= 2)) continue;
+    let s = o.count > 1 ? `${o.count} ${o.name} runs cost at least twice their quote, ${usd2(o.gapUsd)} over in all; the biggest gap was ${times(o.ratio)}.`
+      : `One ${o.name} run cost ${times(o.ratio)} its quote (${usd2(o.actualUsd)}, quoted ${usd2(o.estUsd)}).`;
+    if (priceFixedNow(o)) s += ` That price is fixed now: the same settings quote ${usd2(o.nowUsd!)} today.`;
+    warn.push({ tone: 'warn', kind: 'over', text: s, usd: o.gapUsd, jobId: o.jobId });
   }
-  else if (t.failedCharged && t.failedCharged.runs > 0 && t.failedCharged.usd > 0) // one warning at most: a bill over its quote first
-    out.push({ tone: 'warn', text: `${t.failedCharged.runs === 1 ? 'One failed run' : `${t.failedCharged.runs} failed runs`} still counted ${usd2(t.failedCharged.usd)}: that provider may bill failed runs.` });
+  const f = t.failedCharged;
+  if (f && f.runs > 0 && f.usd > 0)
+    warn.push({ tone: 'warn', kind: 'failed', usd: f.usd, text: `${f.runs === 1 ? 'One failed run' : `${f.runs} failed runs`} still counted ${usd2(f.usd)} at ${f.runs === 1 ? 'its' : 'their'} estimate: ${f.providers?.length ? f.providers.join(' and ') : 'the provider'} may bill failed runs.` });
+  const out = warn.sort((a, b) => b.usd - a.usd).slice(0, maxWarn);
   if (t.top && t.paidRuns >= 2 && t.top.share >= 0.5) {
     const pct = Math.round(t.top.share * 100);
     let s = `${t.top.name} was ${pct >= 100 ? 'all' : `${pct}%`} of ${t.periodWords}.`;
     const sh = t.shorter;
     if (sh && sh.fromSeconds > sh.seconds && sh.usd > 0 && sh.usd <= sh.fromUsd * 0.8)
-      s += ` A ${sh.seconds}-second clip instead of ${sh.fromSeconds} s would have cost about ${usd2(sh.usd)} (not ${usd2(sh.fromUsd)}).`;
-    out.push({ tone: 'tip', text: s });
+      s += ` Each ${sh.fromSeconds}\u00a0s clip cost about ${usd2(sh.fromUsd)}; at ${sh.seconds}\u00a0s it'd be about ${usd2(sh.usd)}.`;
+    out.push({ tone: 'tip', kind: 'tip', text: s, usd: 0 });
   }
   return out;
 }

@@ -117,3 +117,8 @@
 .spg-skel td{padding:8px 0}.spg-skel i{display:block;height:40px;border-radius:10px;background:linear-gradient(90deg,var(--surface-1),var(--surface-2),var(--surface-1));background-size:200% 100%;animation:spg-sh 1.4s ease-in-out infinite}
 @keyframes spg-sh{to{background-position:-200% 0}}
 .spg-spark-gap{flex:1 1 auto}
+/* the hero's honest split: what providers reported vs estimates */
+.spg-split{margin:6px 0 0;color:var(--text-3);font-size:12.5px;font-variant-numeric:tabular-nums}.spg-split i{font-style:normal}
+button.spg-ghost{cursor:pointer}
+/* phone: the notice's button drops under its words instead of squeezing them */
+@media (max-width:760px){.spg-tip{flex-wrap:wrap;row-gap:8px}.spg-tip p{flex:1 1 calc(100% - 34px)}.spg-tip .spg-ghost{margin-left:34px}}

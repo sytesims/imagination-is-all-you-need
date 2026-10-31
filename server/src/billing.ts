@@ -25,7 +25,7 @@ import { COMFY_PLANS, isComfyPlanId, comfyPlanName, usdToken, costDetail, costLi
 import { r4, comfyUnits, exactWithinCent, providerUnits } from './shared/runCost.js';
 import { RUN_ON_LABELS, runOnOfRoute, LOCAL_LABEL } from './shared/modelIds.js';
 import { metaOf } from './library.js';
-import { periodStart, isSpendPeriod, buckets, quoteAccuracy, worstOverQuote, shareByTool, type SpendPeriod } from './shared/spendInsights.js';
+import { periodStart, isSpendPeriod, buckets, quoteAccuracy, overQuoteByTool, shareByTool, type SpendPeriod } from './shared/spendInsights.js';
 
 export type FailureRule = 'not-charged' | 'may-charge' | 'unknown';
 export type BilledTo = 'local' | 'comfy' | string;
@@ -183,6 +183,7 @@ export function settleSpend(job: Job) {
     save(r);
   } catch (e) { console.error('[billing] settleSpend failed:', (e as Error).message); }
 }
+const FAILED_STATUS = new Set(['failed', 'blocked', 'canceled']);
 /** Failure reasons the provider gives before any work is queued (Router estimate / submit checks): nothing can have been used. */
 export const PRE_DISPATCH = new Set(['cloud_credits', 'cloud_plan', 'route_not_enabled', 'key_invalid', 'input_invalid', 'price_changed', 'model_unavailable', 'upload_failed']);
 /** Status from the live job when the row hasn't settled yet (needs_decision, running). */
@@ -251,7 +252,7 @@ export function spendOverview(period: SpendPeriod, now = new Date()) {
   const series = buckets(list.map((x) => ({ createdAt: x.r.createdAt, usd: x.usd })), from, to);
   const real = list.filter((x) => !x.r.demo && x.r.billedTo !== 'local' && (!x.r.simulated || countSimulated()));
   const acc = quoteAccuracy(real.map((x) => ({ estUsd: x.r.estUsd, actualUsd: x.r.actualUsd })));
-  const over = worstOverQuote(real.map((x) => ({ jobId: x.r.jobId, toolId: x.r.toolId, estUsd: x.r.estUsd, actualUsd: x.r.actualUsd })));
+  const over = overQuoteByTool(real.map((x) => ({ ...x, toolId: x.r.toolId, estUsd: x.r.estUsd, actualUsd: x.r.actualUsd }))).slice(0, 3);
   const failed = paid.filter((x) => x.r.status === 'failed' || x.r.status === 'blocked' || x.r.status === 'canceled');
   const tile = (x: { r: SpendRow; usd: number }) => { const j = jobs.get(x.r.jobId); const th = jobThumb(j); const inp: any = j?.input ?? {}; const sec = Number(inp.duration ?? inp.seconds);
     return { jobId: x.r.jobId, toolId: x.r.toolId, model: x.r.model, route: x.r.route, modelName: x.r.modelName, createdAt: x.r.createdAt, status: x.r.status, billedTo: x.r.billedTo,
@@ -264,11 +265,15 @@ export function spendOverview(period: SpendPeriod, now = new Date()) {
   // the costliest run of the top tool (the tip line asks the server for a shorter clip's real price)
   const topRun = tools[0] ? byUsd.find((x) => x.r.toolId === tools[0].toolId) : null;
   const saved = list.filter((x) => x.r.billedTo === 'local' && x.r.status === 'done' && !x.r.simulated && !x.r.demo && (x.r.savedUsd ?? 0) > 0);
+  // the hero's honest split: what providers reported (charged) vs estimates (no reported cost, incl. failed runs counted at their estimate)
+  const charged = r4(paid.reduce((s, x) => s + (x.r.actualUsd != null ? x.usd : 0), 0));
+  const overQuotes = over.map((g) => ({ jobId: g.row.r.jobId, toolId: g.toolId, ratio: Math.round(g.ratio * 10) / 10, count: g.count, gapUsd: g.gapUsd, estUsd: g.row.r.estUsd, actualUsd: g.row.r.actualUsd as number, run: tile(g.row) }));
   return { period, from: new Date(from).toISOString(), to: new Date(to).toISOString(), billingMode: billingMode(),
-    totals: { spentUsd: spent, runs: list.length, everRuns: all0.length, paidRuns: paid.length, freeRuns: free.length, sampleRuns: samples.length, savedUsd: r4(saved.reduce((s, x) => s + (x.r.savedUsd ?? 0), 0)) },
+    totals: { spentUsd: spent, runs: list.length, everRuns: all0.length, paidRuns: paid.length, freeRuns: free.length, sampleRuns: samples.length, savedUsd: r4(saved.reduce((s, x) => s + (x.r.savedUsd ?? 0), 0)),
+      chargedUsd: charged, estimatedUsd: r4(Math.max(0, spent - charged)) },
     series, biggest: byUsd[0] ? tile(byUsd[0]) : null, accuracy: acc,
-    overQuote: over ? { jobId: over.row.jobId, toolId: over.row.toolId, ratio: Math.round(over.ratio * 10) / 10, count: over.count, estUsd: over.row.estUsd, actualUsd: over.row.actualUsd } : null,
-    failedCharged: failed.length ? { runs: failed.length, usd: r4(failed.reduce((s, x) => s + x.usd, 0)) } : null,
+    overQuote: overQuotes[0] ? (({ run, ...o }) => o)(overQuotes[0]) : null, overQuotes, // overQuote: the biggest one (older clients)
+    failedCharged: failed.length ? { runs: failed.length, usd: r4(failed.reduce((s, x) => s + x.usd, 0)), providers: [...new Set(failed.map((x) => billingInfo(x.r.billedTo).name))] } : null,
     tools: tools.slice(0, 8), topRun: topRun ? tile(topRun) : null,
     paidTiles: byUsd.slice(0, 60).map(tile), paidMore: Math.max(0, byUsd.length - 60), freeTiles: recentFree.slice(0, 60).map(tile), freeMore: Math.max(0, recentFree.length - 60) };
 }
@@ -374,6 +379,8 @@ export function registerBilling(app: FastifyInstance) {
     if ((q.from && from == null) || (q.to && to == null)) return reply.code(400).send({ error: 'from / to must be ISO dates or epoch milliseconds', errorType: 'validation' });
     let list = rows().filter((r) => (from == null || r.createdAt >= from) && (to == null || r.createdAt < to) && (!q.provider || r.billedTo === q.provider) && (!q.tool || r.toolId === q.tool)
       && (!q.agent || (q.agent === 'any' ? !!r.agentId : q.agent === 'none' ? !r.agentId : r.agentId === q.agent)))
+      .filter((r) => { if (!q.status) return true; const v = live(r); // status=done | failed (failed, blocked or canceled); counted=1: only runs that count money
+        return (q.status === 'failed' ? FAILED_STATUS.has(v.status) : v.status === q.status) && (q.counted !== '1' || countedUsd(v) > 0); })
       .sort((a, b) => b.createdAt - a.createdAt || (a.id < b.id ? 1 : -1));
     const total = list.length;
     if (q.cursor) { const [t, id] = String(q.cursor).split('~'); const ts = Number(t); list = list.filter((r) => r.createdAt < ts || (r.createdAt === ts && r.id < id)); }

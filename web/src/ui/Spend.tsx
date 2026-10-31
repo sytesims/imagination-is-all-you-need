@@ -27,12 +27,13 @@ import './spend.css';
 const STATUS: Record<string, string> = { done: 'Done', failed: 'Failed', blocked: 'Blocked', canceled: 'Canceled', queued: 'Queued', running: 'Running', needs_decision: 'Waiting for you' };
 const ruleClass = (r: FailureRule) => (r === 'not-charged' ? 'ok' : r === 'may-charge' ? 'warn' : 'muted');
 const dayStart = (d: string) => (d ? new Date(`${d}T00:00:00`).getTime() : null);
-const PERIOD_WORDS: Record<SpendPeriod, { hero: string; tip: string }> = { '7d': { hero: 'Spent in the last 7 days', tip: 'the last 7 days' }, month: { hero: 'Spent this month', tip: 'this month' }, all: { hero: 'Spent so far', tip: 'all your spend' } };
+const PERIOD_WORDS: Record<SpendPeriod, { hero: string; tip: string; share: string }> = { '7d': { hero: 'Spent in the last 7 days', tip: 'the last 7 days', share: 'your spend in the last 7 days' }, month: { hero: 'Spent this month', tip: 'this month', share: "this month's spend" }, all: { hero: 'Spent so far', tip: 'all your spend', share: 'all your spend' } };
 const FAILED = new Set(['failed', 'blocked', 'canceled']);
 
 interface Tile { jobId: string; toolId: string; model: string; route: string | null; modelName: string | null; createdAt: number; status: string; billedTo: string; usd: number; estUsd: number; actualUsd: number | null; local: boolean; sample: boolean; url: string; poster: string; seconds: number | null; resolution: string | null; types: string | null }
-interface Overview { period: SpendPeriod; from: string; to: string; totals: { spentUsd: number; runs: number; everRuns: number; paidRuns: number; freeRuns: number; sampleRuns: number; savedUsd: number }; series: { unit: 'day' | 'month'; points: { t: number; usd: number }[] };
-  biggest: Tile | null; accuracy: { pct: number; runs: number } | null; overQuote: { jobId: string; toolId: string; ratio: number; count: number; estUsd: number; actualUsd: number } | null; failedCharged: { runs: number; usd: number } | null;
+interface Overview { period: SpendPeriod; from: string; to: string; totals: { spentUsd: number; runs: number; everRuns: number; paidRuns: number; freeRuns: number; sampleRuns: number; savedUsd: number; chargedUsd?: number; estimatedUsd?: number }; series: { unit: 'day' | 'month'; points: { t: number; usd: number }[] };
+  biggest: Tile | null; accuracy: { pct: number; runs: number } | null; overQuote: { jobId: string; toolId: string; ratio: number; count: number; estUsd: number; actualUsd: number } | null; failedCharged: { runs: number; usd: number; providers?: string[] } | null;
+  overQuotes?: { jobId: string; toolId: string; ratio: number; count: number; gapUsd: number; estUsd: number; actualUsd: number; run: Tile }[];
   tools: { toolId: string; usd: number; runs: number; share: number }[]; topRun: Tile | null; paidTiles: Tile[]; paidMore: number; freeTiles: Tile[]; freeMore: number }
 
 /** A run's media for a tile or a table thumbnail: kind from its URL, the still to draw (image itself, a video's / 3D model's poster). */
@@ -55,6 +56,22 @@ function useOverview(period: SpendPeriod, tick: number) {
   return { d, err, loading: !d || d.period !== period };
 }
 
+/** Today's quote (free: a quote never runs anything) for a run's own model, route and settings, at `seconds` (else its own length). 0 when none. */
+async function quoteRun(run: Tile, seconds = run.seconds): Promise<number> {
+  const u = new URLSearchParams({ provider: run.model }); if (seconds != null) u.set('seconds', String(seconds));
+  if (run.route) u.set('route', run.route); if (run.resolution) u.set('resolution', run.resolution); if (run.types) u.set('types', run.types);
+  const j = await fetch(`/api/tools/${encodeURIComponent(run.toolId)}/price?${u}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const c = j?.cost; return c ? (c.estUsd > 0 ? c.estUsd : c.realRunUsd ?? 0) : 0;
+}
+/** Today's quotes for the over-quote warnings' worst runs, by jobId (to say when the price has since been fixed). */
+function useNowQuotes(runs: Tile[]): Record<string, number> {
+  const [q, setQ] = useState<Record<string, number>>({}); const k = runs.map((r) => r.jobId).join(',');
+  useEffect(() => { if (!runs.length) return; let on = true;
+    void Promise.all(runs.map(async (r) => [r.jobId, await quoteRun(r)] as const)).then((xs) => { if (on) setQ(Object.fromEntries(xs.filter(([, v]) => v > 0))); });
+    return () => { on = false; }; }, [k]); // eslint-disable-line react-hooks/exhaustive-deps
+  return q;
+}
+
 /** Real quotes (free: a quote never runs anything) for the costliest run of the top tool: the same model, route and resolution at its own
  *  length and at 5 (or 6) seconds. Shown only when today's quote for its own length still matches what it was quoted (within 25 %),
  *  so the two numbers compare like with like. */
@@ -62,9 +79,7 @@ function useShorterQuote(run: Tile | null | undefined): { seconds: number; usd: 
   const [q, setQ] = useState<{ k: string; seconds: number; usd: number; fromUsd: number } | null>(null);
   const k = run ? `${run.jobId}:${run.seconds}` : '';
   useEffect(() => { if (!run || run.seconds == null || run.seconds <= 6 || !(run.estUsd > 0)) return; let on = true;
-    const quote = async (s: number) => { const u = new URLSearchParams({ provider: run.model, seconds: String(s) }); if (run.route) u.set('route', run.route); if (run.resolution) u.set('resolution', run.resolution); if (run.types) u.set('types', run.types);
-      const j = await fetch(`/api/tools/${encodeURIComponent(run.toolId)}/price?${u}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
-      const c = j?.cost; return c ? (c.estUsd > 0 ? c.estUsd : c.realRunUsd ?? 0) : 0; };
+    const quote = (s: number) => quoteRun(run, s);
     const ask = async () => { const from = await quote(run.seconds!); if (!(from > 0) || Math.abs(from - run.estUsd) / run.estUsd > 0.25) return;
       for (const s of [5, 6]) { const usd = await quote(s); if (usd > 0) { if (on) setQ({ k, seconds: s, usd, fromUsd: from }); return; } } };
     void ask(); return () => { on = false; }; }, [k]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -85,7 +100,8 @@ export default function Spend({ tools }: { tools: ToolInfo[] }) {
   const ov = useOverview(period, tick);
   const toolName = (id: string) => (id === 'compose' ? 'Stitch' : tools.find((t) => t.id === id)?.name ?? id);
   const nameOf = (id: string) => (id === 'local' ? LOCAL_LABEL : b?.providers.find((p) => p.id === id)?.name ?? id);
-  const go = (t: 'overview' | 'runs') => { setTab(t); try { history.replaceState(null, '', t === 'runs' ? '#runs' : location.pathname); } catch { /* sandboxed */ } };
+  const [runsInit, setRunsInit] = useState<RunsFilter>({}); // the failed-runs warning opens All runs pre-filtered
+  const go = (t: 'overview' | 'runs', f: RunsFilter = {}) => { setRunsInit(f); setTab(t); try { history.replaceState(null, '', t === 'runs' ? '#runs' : location.pathname); } catch { /* sandboxed */ } };
   return (
     <div className="spg bp-host" data-testid="spend-page">
       <header className="spg-head">
@@ -95,14 +111,14 @@ export default function Spend({ tools }: { tools: ToolInfo[] }) {
           options={[{ value: 'overview', label: 'Overview', testId: 'spend-tab-overview' }, { value: 'runs', label: 'All runs', testId: 'spend-tab-runs' }]} />
       </header>
       {tab === 'overview'
-        ? <OverviewTab ov={ov} period={period} setPeriod={setPeriod} toolName={toolName} nameOf={nameOf} onAllRuns={() => go('runs')} tools={tools} />
-        : <RunsTab tools={tools} toolName={toolName} tick={tick} />}
+        ? <OverviewTab ov={ov} period={period} setPeriod={setPeriod} toolName={toolName} nameOf={nameOf} onAllRuns={(f) => go('runs', f)} tools={tools} />
+        : <RunsTab key={JSON.stringify(runsInit)} init={runsInit} tools={tools} toolName={toolName} tick={tick} />}
       <p className="spg-foot">Balances and keys: <Link to="/settings#connections">Settings → Connections</Link>. You pay each provider on its own site; this app never handles payments.</p>
     </div>
   );
 }
 
-function OverviewTab({ ov, period, setPeriod, toolName, nameOf, onAllRuns, tools }: { ov: ReturnType<typeof useOverview>; period: SpendPeriod; setPeriod: (p: SpendPeriod) => void; toolName: (id: string) => string; nameOf: (id: string) => string; onAllRuns: () => void; tools: ToolInfo[] }) {
+function OverviewTab({ ov, period, setPeriod, toolName, nameOf, onAllRuns, tools }: { ov: ReturnType<typeof useOverview>; period: SpendPeriod; setPeriod: (p: SpendPeriod) => void; toolName: (id: string) => string; nameOf: (id: string) => string; onAllRuns: (f?: RunsFilter) => void; tools: ToolInfo[] }) {
   const b = useBilling(); const day = useSpendDay(); const month = useSpendMonth(); const acc = useAccounts();
   const d = ov.d; const t = d?.totals;
   const shorter = useShorterQuote(d?.topRun && d.tools[0] && d.topRun.toolId === d.tools[0].toolId ? d.topRun : null);
@@ -118,10 +134,15 @@ function OverviewTab({ ov, period, setPeriod, toolName, nameOf, onAllRuns, tools
   const tiles = useMemo(() => !d ? [] : mode === 'paid' ? d.paidTiles : [...d.paidTiles, ...d.freeTiles].sort((x, y) => y.usd - x.usd || y.createdAt - x.createdAt), [d, mode]);
   const spans = useMemo(() => tileSpans(tiles.map((x) => x.usd)), [tiles]);
   const more = !d ? 0 : (mode === 'paid' ? d.paidMore : d.paidMore + d.freeMore);
-  const tips = !d ? [] : tipLines({ periodWords: PERIOD_WORDS[period].tip, paidRuns: t!.paidRuns,
+  const overs = d?.overQuotes ?? []; const nowQ = useNowQuotes(useMemo(() => overs.map((o) => o.run), [d])); // eslint-disable-line react-hooks/exhaustive-deps
+  const tips = !d ? [] : tipLines({ periodWords: PERIOD_WORDS[period].share, paidRuns: t!.paidRuns,
     top: d.tools[0] ? { name: toolName(d.tools[0].toolId), share: d.tools[0].share } : null,
     shorter: shorter && d.topRun?.seconds ? { seconds: shorter.seconds, fromSeconds: d.topRun.seconds, usd: shorter.usd, fromUsd: shorter.fromUsd } : null,
-    over: d.overQuote ? { ratio: d.overQuote.ratio, count: d.overQuote.count, name: toolName(d.overQuote.toolId) } : null, failedCharged: d.failedCharged });
+    over: overs.map((o) => ({ ...o, name: toolName(o.toolId), nowUsd: nowQ[o.jobId] ?? null })), failedCharged: d.failedCharged });
+  // the tip's button: the top tool with the same model at the shorter length when there is one, else the tool itself (its price shows there)
+  const topTool = d?.topRun ? tools.find((x) => x.id === d.topRun!.toolId) : undefined;
+  const tipTo = topTool && d?.topRun ? `${topTool.route}${topTool.route.includes('?') ? '&' : '?'}${new URLSearchParams({ model: d.topRun.model, ...(shorter ? { duration: String(shorter.seconds) } : {}) })}` : null;
+  const dateOf = (iso: string) => { const x = new Date(iso); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
   const kpis: { k: string; label: string; value: string; sub?: string; tone?: 'free'; to?: string }[] = [];
   if (d) {
     kpis.push({ k: 'paid', label: 'Paid runs', value: t!.paidRuns.toLocaleString(), sub: t!.sampleRuns ? `${t!.sampleRuns} sample run${t!.sampleRuns === 1 ? '' : 's'}, nothing billed` : t!.paidRuns ? `of ${t!.runs.toLocaleString()} runs` : 'Nothing billed' });
@@ -141,6 +162,7 @@ function OverviewTab({ ov, period, setPeriod, toolName, nameOf, onAllRuns, tools
       <div className="spg-hero-l">
         <span className="eyebrow">{PERIOD_WORDS[period].hero}</span>
         <div className="spg-huge" data-testid="spend-total">{d ? fmtUsd(t!.spentUsd) : <span className="spg-ph" aria-hidden>$0.00</span>}</div>
+        {d && (t!.estimatedUsd ?? 0) > 0 && <p className="spg-split" data-testid="spend-split" {...tip('Charged: costs the provider reported. Estimated: runs with no reported cost, and failed runs counted at their estimate.')}>{(t!.chargedUsd ?? 0) > 0 ? <>{fmtUsd(t!.chargedUsd!)} charged <i aria-hidden>·</i> {fmtUsd(t!.estimatedUsd!)} estimated</> : 'All estimated: no provider reported a bill yet'}</p>}
         {line.length > 0 && <p className="spg-line">{line.map((x, i) => <span key={i}>{i > 0 && <i aria-hidden> · </i>}{x}</span>)}</p>}
       </div>
       {d && t!.everRuns > 0 && <Spark points={d.series.points} unit={d.series.unit} />}{d && t!.everRuns === 0 && <span className="spg-spark-gap" />}
@@ -165,14 +187,15 @@ function OverviewTab({ ov, period, setPeriod, toolName, nameOf, onAllRuns, tools
           : <div className="spg-none">{t!.runs ? `No paid runs ${PERIOD_WORDS[period].tip === 'all your spend' ? 'yet' : `in ${PERIOD_WORDS[period].tip}`}.` : `No runs in ${PERIOD_WORDS[period].tip}.`}{t!.runs > 0 && mode === 'paid' && <> <button type="button" className="spg-link" onClick={() => setShow('all')}>Show everything</button></>}</div>}
         {(tiles.length > limit || more > 0) && <div className="spg-more">
           {tiles.length > limit && <button type="button" className="btn btn-sm" onClick={() => setLimit((n) => n + 24)} data-testid="spend-more">Show more</button>}
-          {more > 0 && tiles.length <= limit && <button type="button" className="btn btn-sm" onClick={onAllRuns}>See all {(t!.runs).toLocaleString()} runs</button>}
+          {more > 0 && tiles.length <= limit && <button type="button" className="btn btn-sm" onClick={() => onAllRuns()}>See all {(t!.runs).toLocaleString()} runs</button>}
         </div>}
       </section>}
 
-      {tips.length > 0 && <div className="spg-tips" data-testid="spend-tips">{tips.map((x, i) => <div key={i} className={`spg-tip ${x.tone}`} data-testid={`spend-tip-${x.tone}`}>
+      {tips.length > 0 && <div className="spg-tips" data-testid="spend-tips">{tips.map((x, i) => <div key={i} className={`spg-tip ${x.tone}`} data-testid={`spend-tip-${x.kind}`}>
         <span className="spg-tip-ic" aria-hidden>{x.tone === 'warn' ? '!' : '✦'}</span><p>{x.text}</p>
-        {x.tone === 'warn' && d?.overQuote && x.text.includes('quote') ? <Link to={`/jobs/${d.overQuote.jobId}`} className="spg-ghost">Open run</Link>
-          : x.tone === 'tip' ? <Link to="/models" className="spg-ghost">See prices</Link> : null}</div>)}</div>}
+        {x.kind === 'over' ? <Link to={`/jobs/${x.jobId}`} className="spg-ghost">Open run</Link>
+          : x.kind === 'failed' ? <button type="button" className="spg-ghost" data-testid="spend-failed-runs" onClick={() => onAllRuns({ status: 'failed-counted', from: period === 'all' ? '' : dateOf(d!.from) })}>Show failed runs</button>
+          : tipTo ? <Link to={tipTo} className="spg-ghost">{shorter ? `Try ${shorter.seconds}\u00a0s` : `Open ${toolName(d!.topRun!.toolId)}`}</Link> : null}</div>)}</div>}
     </>}
 
   </>;
@@ -219,24 +242,26 @@ function AudioTile({ src }: { src: string }) {
 
 /** All runs: the filterable table (ran on, tool, made by, date range), with thumbnails, estimate next to actual, and each provider's
  *  failed-run rule said once above the table instead of on every row. */
-function RunsTab({ tools, toolName, tick }: { tools: ToolInfo[]; toolName: (id: string) => string; tick: number }) {
+type RunsFilter = { status?: string; from?: string };
+function RunsTab({ init, tools, toolName, tick }: { init: RunsFilter; tools: ToolInfo[]; toolName: (id: string) => string; tick: number }) {
   const b = useBilling();
-  const [prov, setProv] = useState(''); const [tool, setTool] = useState(''); const [from, setFrom] = useState(''); const [to, setTo] = useState(''); const [agent, setAgent] = useState(''); const [agents, setAgents] = useState<{ id: string; name: string }[]>([]);
+  const [prov, setProv] = useState(''); const [tool, setTool] = useState(''); const [status, setStatus] = useState(init.status ?? ''); const [from, setFrom] = useState(init.from ?? ''); const [to, setTo] = useState(''); const [agent, setAgent] = useState(''); const [agents, setAgents] = useState<{ id: string; name: string }[]>([]);
   const [rows, setRows] = useState<any[] | null>(null); const [next, setNext] = useState<string | null>(null); const [total, setTotal] = useState(0); const [err, setErr] = useState(''); const [more, setMore] = useState(false);
-  const qs = (cursor?: string | null) => { const u = new URLSearchParams({ limit: '50' }); if (prov) u.set('provider', prov); if (tool) u.set('tool', tool); if (agent) u.set('agent', agent); const f = dayStart(from); const t = dayStart(to); if (f != null) u.set('from', String(f)); if (t != null) u.set('to', String(t + 86_400_000)); if (cursor) u.set('cursor', cursor); return u; };
+  const qs = (cursor?: string | null) => { const u = new URLSearchParams({ limit: '50' }); if (prov) u.set('provider', prov); if (tool) u.set('tool', tool); if (agent) u.set('agent', agent); if (status) { u.set('status', status === 'failed-counted' ? 'failed' : status); if (status === 'failed-counted') u.set('counted', '1'); } const f = dayStart(from); const t = dayStart(to); if (f != null) u.set('from', String(f)); if (t != null) u.set('to', String(t + 86_400_000)); if (cursor) u.set('cursor', cursor); return u; };
   const load = (cursor?: string | null) => fetch(`/api/spend?${qs(cursor)}`).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))));
-  useEffect(() => { setErr(''); load().then((j) => { setRows(j.items); setNext(j.nextCursor); setTotal(j.total); }).catch((e) => setErr(e.message)); }, [prov, tool, from, to, agent, tick]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setErr(''); load().then((j) => { setRows(j.items); setNext(j.nextCursor); setTotal(j.total); }).catch((e) => setErr(e.message)); }, [prov, tool, status, from, to, agent, tick]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { fetch('/api/agent/budgets').then((r) => (r.ok ? r.json() : null)).then((j) => j && setAgents(j.items)).catch(() => undefined); }, [tick]); // agent budgets (MCP): the "Made by" filter
   const loadMore = () => { setMore(true); load(next).then((j) => { setRows((x) => [...(x ?? []), ...j.items]); setNext(j.nextCursor); }).catch((e) => setErr(e.message)).finally(() => setMore(false)); };
   const toolIds = useMemo(() => [...new Set((rows ?? []).map((r) => r.toolId))], [rows]);
   const rules = useMemo(() => { const m = new Map<string, { name: string; rule: FailureRule }>(); for (const r of rows ?? []) if (r.billedTo !== 'local' && !r.demo && !m.has(r.billedTo)) m.set(r.billedTo, { name: r.billedToName, rule: r.failureRule });
     return [...m.values()]; }, [rows]);
-  const filtered = !!(prov || tool || from || to || agent);
+  const filtered = !!(prov || tool || status || from || to || agent);
   return <section className="spg-runs" id="runs">
     <div className="usage-filters spend-filters spg-filters">
       <label className="usage-tool-sel"><span className="helper">Ran on</span><select data-testid="spend-provider" value={prov} onChange={(e) => setProv(e.target.value)}><option value="">All</option>{(b?.providers ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
       <label className="usage-tool-sel"><span className="helper">Tool</span><select data-testid="spend-tool" value={tool} onChange={(e) => setTool(e.target.value)}><option value="">All tools</option>{[...new Set([...toolIds, ...(tool ? [tool] : [])])].map((id) => <option key={id} value={id}>{toolName(id)}</option>)}</select></label>
       {agents.length > 0 && <label className="usage-tool-sel"><span className="helper">Made by</span><select data-testid="spend-agent" value={agent} onChange={(e) => setAgent(e.target.value)}><option value="">Everyone</option><option value="none">You</option><option value="any">Any agent</option>{agents.map((a) => <option key={a.id} value={a.id}>Agent: {a.name}</option>)}</select></label>}
+      <label className="usage-tool-sel"><span className="helper">Status</span><select data-testid="spend-status" value={status} onChange={(e) => setStatus(e.target.value)}><option value="">All</option><option value="done">Done</option><option value="failed">Failed</option><option value="failed-counted">Failed, still counted</option></select></label>
       <label className="usage-tool-sel"><span className="helper">From</span><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} data-testid="spend-from" /></label>
       <label className="usage-tool-sel"><span className="helper">To</span><input type="date" value={to} onChange={(e) => setTo(e.target.value)} data-testid="spend-to" /></label>
     </div>
