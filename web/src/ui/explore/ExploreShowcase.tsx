@@ -260,7 +260,7 @@ export function XpLayers() {
 }
 
 /* ============================================================== One idea. Every look. ============================================================== */
-/** One FLUX.2 [klein] 4B prompt in twelve looks (EXPLORE_LOOKS): the copy on the left, the look in a big 16:9 frame on the right, twelve tiles
+/** One prompt in twelve looks (EXPLORE_LOOKS: FLUX.2 [klein] 4B and Qwen Image 2.1, each credited): the copy on the left, the look in a big 16:9 frame on the right, twelve tiles
  *  under both. Hovering, focusing or tapping a tile shows its look (a crossfade; reduced motion: a cut). */
 export function XpLooks() {
   const L = EXPLORE_LOOKS; const [cur, setCur] = useState(L.start); const now = L.looks[cur];
@@ -269,7 +269,7 @@ export function XpLooks() {
       <span className="xv-eb">{L.eyebrow}</span>
       <h2 id="xp-h-looks" className="xps-h xlk-h">{L.title.map((l) => <span key={l}>{l}</span>)}</h2>
       <p className="xps-p">{L.line}</p>
-      <span className="xlk-meta" data-testid="xp-looks-model"><span className="xv-pill">{L.model}</span><span className="xv-free"><i />{L.place}</span></span>
+      <span className="xlk-meta" data-testid="xp-looks-model"><span className="xv-pill">{now.model}</span><span className="xv-free"><i />{L.place}</span></span>
       <span className="xps-ctas"><Link to={L.cta.href} className="xv-btn" data-testid="xp-looks-cta">{L.cta.label}<Arrow /></Link></span>
     </div>
     <figure className="xlk-frame" data-testid="xp-looks-frame">

@@ -15,7 +15,7 @@
  *  - EXPLORE_SHEETS: "One character. Every angle." (four GPT Image 2.5 Flare character sheets, the highlight stepping across each sheet's real
  *    panels; Mossbun also as a Tripo 3.1 model to spin).
  *  - EXPLORE_BOARD: the actual Canvas built-in demo recording (scripted, sample results, no paid runs).
- *  - EXPLORE_LOOKS: "One idea. Every look." (one FLUX.2 [klein] 4B prompt in twelve looks: a big frame and twelve tiles).
+ *  - EXPLORE_LOOKS: "One idea. Every look." (one prompt in twelve looks, each credited with its model: a big frame and twelve tiles).
  *  - EXPLORE_YOUR_TURN: "Now it's your turn." (the page's last section: a prompt box over a drifting wall of things made here).
  *  - EXPLORE_MOODS: the Audio dancer showcase (the words that pick SyteSim's dance style, a tempo for the demo beat).
  *  - EXPLORE_FILM: "Mockup to film" (Direct a Shot made real: the mockup, its first frame painted into a photo, the film; replaces the Worlds tiles).
@@ -324,11 +324,13 @@ export const EXPLORE_BOARD = {
  *  Each look ships as a 1024 px frame (`look-<id>.webp`) and a 480 px tile (`look-<id>-480.webp`), metadata stripped. */
 const KLEIN_LOOKS: [id: string, name: string][] = [['golden-hour', 'Golden hour'], ['film-noir', 'Film noir'], ['neon-rain', 'Neon rain'], ['teal-orange', 'Teal & orange'],
   ['35mm', '35mm'], ['documentary', 'Documentary'], ['studio-white', 'Studio white'], ['spotlight', 'Spotlight'], ['pastel', 'Pastel'], ['anime', 'Anime'], ['watercolour', 'Watercolour'], ['clay', 'Clay']];
+/** Looks remade with Qwen Image 2.1 (same prompt and seed; sharper faces); the rest are FLUX.2 [klein] 4B. */
+const QWEN_LOOKS = new Set(['golden-hour', 'neon-rain', 'teal-orange', '35mm', 'studio-white', 'spotlight', 'pastel']);
 export const EXPLORE_LOOKS = {
   eyebrow: 'Image · one prompt, twelve looks', title: ['One idea.', 'Every look.'],
   line: 'Write it once. Then change the light, the film, the whole art style. Same scene, same coat, twelve different worlds.',
   model: 'FLUX.2 [klein] 4B', place: 'Free on your computer', /** the look shown first (Anime) */ start: 9,
-  looks: KLEIN_LOOKS.map(([id, name]) => ({ id, name, url: P(`look-${id}.webp`), thumb: P(`look-${id}-480.webp`) })),
+  looks: KLEIN_LOOKS.map(([id, name]) => ({ id, name, url: P(`look-${id}.webp`), thumb: P(`look-${id}-480.webp`), model: QWEN_LOOKS.has(id) ? 'Qwen Image 2.1' : 'FLUX.2 [klein] 4B' })),
   cta: { label: 'Try your own look', href: '/tools/create-image?model=flux-2-klein-4b' },
 };
 
@@ -336,7 +338,7 @@ export const EXPLORE_LOOKS = {
 /** One tile on the closing wall: a picture made in this app and the model that made it. */
 export interface WallTile { src: string; model: string; star?: boolean }
 const wallOf = (key: string): WallTile | null => { const f = featuredByKey(key); return f?.out.poster ? { src: f.out.poster, model: f.model } : null; };
-const look = (id: string): WallTile => ({ src: P(`look-${id}-480.webp`), model: EXPLORE_LOOKS.model });
+const look = (id: string): WallTile => ({ src: P(`look-${id}-480.webp`), model: EXPLORE_LOOKS.looks.find((l) => l.id === id)?.model ?? EXPLORE_LOOKS.model });
 const GPT = 'GPT Image 2.5 Flare', ZIT = 'Z-Image-Turbo', KLEIN = 'FLUX.2 [klein] 4B';
 export const EXPLORE_YOUR_TURN = {
   eyebrow: 'Everything above was made in this app', title: ['Now it’s', 'your turn.'],

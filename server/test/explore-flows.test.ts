@@ -312,6 +312,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
   { const L = X.EXPLORE_LOOKS; assert.equal((X as Record<string, unknown>).EXPLORE_IMAGES, undefined, 'Stills with a point of view is gone');
     assert.deepEqual(L.looks.map((l) => l.name), ['Golden hour', 'Film noir', 'Neon rain', 'Teal & orange', '35mm', 'Documentary', 'Studio white', 'Spotlight', 'Pastel', 'Anime', 'Watercolour', 'Clay']);
     assert.equal(L.model, 'FLUX.2 [klein] 4B'); assert.equal(L.looks[L.start].name, 'Anime');
+    assert.equal(L.looks.find((l) => l.id === 'neon-rain')?.model, 'Qwen Image 2.1'); assert.equal(L.looks.find((l) => l.id === 'anime')?.model, 'FLUX.2 [klein] 4B');
     for (const l of L.looks) for (const u of [l.url, l.thumb]) { assert.match(u, /^\/showcase\/look-[a-z0-9-]+\.webp$/, `${u}: a neutral name`); assert.ok(fs.existsSync(path.join(PUB, u)), `${u}: shipped`); }
     const Y = X.EXPLORE_YOUR_TURN; const wall = Y.wall.flat(); assert.equal(Y.wall.length, 6); assert.ok(wall.length >= 28, `about 30 on the wall (${wall.length})`);
     for (const t of wall) { assert.ok(fs.existsSync(path.join(PUB, t.src)), `${t.src}: shipped`); assert.ok(t.model, `${t.src}: names its model`); if (/\/(wall|look)-/.test(t.src)) assert.match(t.src, /^\/showcase\/(wall|look)-[a-z0-9-]+\.webp$/, `${t.src}: a neutral name`); }
