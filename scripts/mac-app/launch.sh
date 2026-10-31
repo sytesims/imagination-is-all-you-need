@@ -43,6 +43,61 @@ api_up() { curl -sf -o /dev/null --max-time 2 "http://127.0.0.1:$API_PORT/api/he
 ready() { web_up && api_up; }
 # something already listens on our ports (a copy started in a terminal, or one reloading after an update)
 port_busy() { lsof -ti "tcp:$WEB_PORT" -sTCP:LISTEN >/dev/null 2>&1 || lsof -ti "tcp:$API_PORT" -sTCP:LISTEN >/dev/null 2>&1; }
+# bring an open Imagination tab to the front instead of opening another one (Safari and Chrome-style browsers that are already
+# running; macOS asks once whether Imagination may control the browser). Anything else, or no tab yet: open the address.
+# Two scripts: the Chrome one only compiles where Chrome is installed, and must never stop the Safari one.
+SAFARI_TAB='on run argv
+	set marks to {"//localhost:" & item 1 of argv & "/", "//127.0.0.1:" & item 1 of argv & "/"}
+	if application "Safari" is not running then return ""
+	tell application "Safari"
+		repeat with w in windows
+			repeat with t in tabs of w
+				set u to (URL of t) as text
+				repeat with m in marks
+					if u contains m then
+						set current tab of w to t
+						set index of w to 1
+						activate
+						return "found"
+					end if
+				end repeat
+			end repeat
+		end repeat
+	end tell
+	return ""
+end run'
+CHROME_TAB='on run argv
+	set marks to {"//localhost:" & item 1 of argv & "/", "//127.0.0.1:" & item 1 of argv & "/"}
+	repeat with b in {"Google Chrome", "Arc", "Brave Browser", "Microsoft Edge", "Chromium"}
+		if application b is running then
+			using terms from application "Google Chrome"
+				tell application b
+					repeat with w in windows
+						set i to 0
+						repeat with t in tabs of w
+							set i to i + 1
+							set u to (URL of t) as text
+							repeat with m in marks
+								if u contains m then
+									set active tab index of w to i
+									set index of w to 1
+									activate
+									return "found"
+								end if
+							end repeat
+						end repeat
+					end repeat
+				end tell
+			end using terms from
+		end if
+	end repeat
+	return ""
+end run'
+show_app() {
+  [ "$(osascript -e "$SAFARI_TAB" "$WEB_PORT" 2>/dev/null)" = found ] && return 0
+  [ "$(osascript -e "$CHROME_TAB" "$WEB_PORT" 2>/dev/null)" = found ] && return 0
+  open "$URL"
+}
 # wait up to $1 seconds for the app to answer
 wait_ready() { local end=$((SECONDS + $1)); until ready; do (( SECONDS >= end )) && return 1; sleep 1; done; }
 # the saved process, only while it is still the app we started: setup.mjs, leading its own process group (guards against
@@ -83,7 +138,7 @@ esac
 trim_log
 
 # 1. already running: just open it
-if ready; then open "$URL"; exit 0; fi
+if ready; then show_app; exit 0; fi
 
 # Apps opened from Finder or the Dock get a bare PATH. First the PATH your terminal has (your shell's startup files, at
 # most 5 seconds), then the usual places node lives (Homebrew, nvm, volta, fnm, asdf, mise).
@@ -126,7 +181,7 @@ if [ -n "$pid" ]; then
   [ -z "$other" ] || [ "$other" = "$REPO" ] || fail "Imagination is already running from another folder ($other). Hold Option while opening Imagination and choose Stop Imagination, then open it again."
 elif port_busy; then
   # a copy we didn't start is already there (started in a terminal, or reloading after an update): use it, never start a second one
-  wait_ready 30 && { open "$URL"; exit 0; }
+  wait_ready 30 && { show_app; exit 0; }
   fail "Something is using port $WEB_PORT or $API_PORT but Imagination isn't answering there. If Imagination is running in a terminal, give it a moment and open Imagination again."
 else
   # 3. start it: the README's own command (npm run setup: installs what's missing, checks, then npm run dev), detached in its
@@ -171,5 +226,5 @@ Full log: $LOG"
   sleep 1
 done
 notify "Imagination is ready"
-open "$URL"
+show_app
 exit 0

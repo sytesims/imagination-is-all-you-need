@@ -44,7 +44,9 @@ const takeCalls = () => { const c = fs.existsSync(calls) ? fs.readFileSync(calls
 const opens = (c) => c.split('\n').filter((l) => l.startsWith('open ')).length;
 const savedPid = () => Number(fs.readFileSync(path.join(support, 'app.pid'), 'utf8').split('\n')[0]);
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
-const setupCount = () => execFileSync('ps', ['-ax', '-o', 'command='], { encoding: 'utf8' }).split('\n').filter((l) => l.startsWith('node scripts/setup.mjs')).length;
+const setupPids = () => execFileSync('ps', ['-ax', '-o', 'pid=,command='], { encoding: 'utf8' }).split('\n').map((l) => l.trim()).filter((l) => / node scripts\/setup\.mjs/.test(` ${l.replace(/^\d+/, '')}`)).map((l) => l.split(' ')[0]);
+const otherSetups = new Set(setupPids()); // (a real Imagination already running on this computer isn't ours to count)
+const setupCount = () => setupPids().filter((pid) => !otherSetups.has(pid)).length;
 // a copy we didn't start (a terminal): both pages, or only one of them
 const terminalCopy = (what = 'both') => spawn(process.execPath, [path.join(root, 'server.cjs'), String(WEB), String(API), what], { stdio: 'ignore' });
 const until = async (ok, ms = 5000) => { const end = Date.now() + ms; while (!ok() && Date.now() < end) await new Promise((r) => setTimeout(r, 100)); return ok(); };
