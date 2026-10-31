@@ -56,3 +56,11 @@ assert.match(mp, /if \(e\.key === 'Enter'\)/, 'Enter adds'); assert.match(mp, /l
 assert.match(mp, /const maxAttr = /, 'data-picker-max read from the slot'); assert.match(rd('ui/video/VideoWorkflowBar.tsx'), /data-picker-max=\{mx && mx > 1 \? Math\.max\(0, mx - fs\.length\)/);
 assert.match(rd('ui/video/StitchPanel.tsx'), /max: MAX_CLIPS - d\.clips\.length/);
 ok('pick several: tick, Shift-click run, Space ticks, Enter adds, "n left", refuses past the limit');
+
+// Larger preview (2026-10-31): hover-hold or Space, the shared PreviewMedia, Space / Esc close, arrows move; the server says the model
+assert.match(mp, /const HOLD = 400/, 'hover-hold ~400 ms'); assert.match(mp, /<PreviewMedia url=\{x\.url\} kind=\{x\.type\}/, 'the shared preview media (SlotPreview\'s)');
+assert.match(rd('shared/SlotPreview.tsx'), /export function PreviewMedia/); assert.match(rd('shared/SlotPreview.tsx'), /<PreviewMedia url=\{item\.url\}/, 'SlotPreview uses the same piece');
+assert.match(mp, /if \(peek\) closePeek\(\); else if \(frameOf\)/, 'Esc closes the preview first');
+assert.match(mp, /e\.key === 'ArrowRight' \|\| e\.key === 'ArrowLeft'/, 'arrows move'); assert.match(mp, /e\.key === ' ' && !onMedia\) \{ e\.preventDefault\(\); onClose\(\)/, 'Space closes');
+assert.ok(g.items.every((x: any) => 'model' in x), 'each item says its model');
+ok('larger preview: hover-hold or Space, shared media piece, Space / Esc close, arrows move, model listed');

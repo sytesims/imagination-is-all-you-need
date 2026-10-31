@@ -21,13 +21,14 @@ import { localFileOf } from './outputMeta.js';
 import { resultTitle } from './shared/shortTitle.js';
 import { featuredByKey } from './shared/featured.js';
 import { isLayerJob } from './shared/imageLayers.js';
+import { engineNameOf } from './engineName.js';
 
 export const MEDIA_TABS = ['uploads', 'presets', 'generations', 'liked'] as const;
 export type MediaTab = (typeof MEDIA_TABS)[number];
 export const RECENT_DAYS = 7;
 export interface MediaItem {
   id: string; tab: MediaTab; type: 'image' | 'video' | 'audio'; url: string; thumbUrl: string; name: string; createdAt: number;
-  jobId?: string | null; toolId?: string | null; label?: string | null; toolName?: string | null; uses?: number; title?: string;
+  jobId?: string | null; toolId?: string | null; label?: string | null; toolName?: string | null; uses?: number; title?: string; /** the model that made it (the picker's preview) */ model?: string | null;
   /** live projects this item is in ([] = No project) */ projectIds?: string[];
   /** a frame saved from a video: where it came from */ frameOf?: import('./videoFrame.js').FrameOf;
 }
@@ -112,8 +113,9 @@ function generations(likedOnly: boolean): MediaItem[] {
     if (m.deletedAt || j.status !== 'done' || (likedOnly && !m.favourite) || (!likedOnly && (j as any).seed)) continue; // community seed: only when you liked it
     if (!likedOnly && j.toolId === FRAME_TOOL) continue; // a saved frame is listed once, in Uploads
     const outs = j.outputs?.length ? j.outputs : j.resultUrl ? [{ label: String(j.input?.outputLabel ?? 'Result'), url: j.resultUrl }] : []; // older jobs kept only resultUrl
+    let model: string | null = null; try { model = engineNameOf(j as any) || null; } catch { model = j.modelName ?? null; }
     const feature = getTool(j.toolId)?.name ?? j.toolId; const ex = (j as any).featuredExample; const own = m.title || (typeof ex === 'string' ? featuredByKey(ex)?.title : null) || (j as any).title;
-    outs.forEach((o: { label?: string; url: string }, k: number) => { const it = item(likedOnly ? 'liked' : 'generations', o.url, `${j.toolId} · ${o.label}`, (j.finishedAt ?? j.createdAt) - k, { jobId: j.id, toolId: j.toolId, label: o.label, toolName: feature,
+    outs.forEach((o: { label?: string; url: string }, k: number) => { const it = item(likedOnly ? 'liked' : 'generations', o.url, `${j.toolId} · ${o.label}`, (j.finishedAt ?? j.createdAt) - k, { jobId: j.id, toolId: j.toolId, label: o.label, toolName: feature, model,
       /* picker tile caption: a short title (shared/shortTitle.ts), never the bare feature name when the job says more */
       title: resultTitle({ title: own, prompt: j.input?.prompt, feature, layer: isLayerJob(j) ? k : null }), projectIds: liveProjects([m.projectId]) }); if (it) out.push(it); });
   }

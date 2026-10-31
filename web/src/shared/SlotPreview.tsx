@@ -73,6 +73,14 @@ export function useSlotReorder(onMove: (from: number, to: number) => void) {
     onDragEnd: () => { from.current = null; setOver(null); } });
 }
 
+/** One file shown large (this preview and the media picker's): a picture, a clip with its controls (muted), or a sound with its player.
+ *  play: start it at once (the picker's preview); onDims / onSec report its size and length. */
+export function PreviewMedia({ url, kind, alt = '', play, onDims, onSec }: { url: string; kind: MediaKind; alt?: string; play?: boolean; onDims?: (w: number, h: number) => void; onSec?: (s: number) => void }) {
+  return kind === 'image' ? <img src={url} alt={alt} onLoad={e => onDims?.(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)} />
+    : kind === 'video' ? <video key={url} src={url} controls muted playsInline autoPlay={play} loop={play} preload="metadata" onLoadedMetadata={e => { onSec?.(e.currentTarget.duration); onDims?.(e.currentTarget.videoWidth, e.currentTarget.videoHeight); }} />
+    : <audio key={url} src={url} controls autoPlay={play} preload="metadata" onLoadedMetadata={e => onSec?.(e.currentTarget.duration)} />;
+}
+
 export type SlotAction = { label: string; testId: string; onClick: () => void; primary?: boolean };
 /** The larger preview of one uploaded file. */
 export function SlotPreview({ open, anchor, onClose, item, kind, title, notes = [], warn, onReplace, onRemove, actions = [], aspect, watch, testId = 'slot-preview' }: {
@@ -88,9 +96,7 @@ export function SlotPreview({ open, anchor, onClose, item, kind, title, notes = 
   return <Popover open={open} anchor={anchor} avoid={watch} watch={watch} gap={8} onClose={onClose} label={title} testId={testId} className="slot-pv-pop" width={320}>
     <div className="slot-pv">
       <div className="slot-pv-media">
-        {kind === 'image' ? <img src={item.url} alt={title} onLoad={e => setDims([e.currentTarget.naturalWidth, e.currentTarget.naturalHeight])} />
-          : kind === 'video' ? <video src={item.url} controls muted playsInline preload="metadata" onLoadedMetadata={e => { setSec(e.currentTarget.duration); setDims([e.currentTarget.videoWidth, e.currentTarget.videoHeight]); }} />
-          : <audio src={item.url} controls preload="metadata" onLoadedMetadata={e => setSec(e.currentTarget.duration)} />}
+        <PreviewMedia url={item.url} kind={kind} alt={title} onDims={(w, h) => setDims([w, h])} onSec={setSec} />
       </div>
       <div className="slot-pv-head"><b>{title}</b><small title={item.file.name}>{item.file.name}</small><small data-testid={`${testId}-facts`}>{facts}</small></div>
       {warn && <p className="slot-pv-note warn" data-testid={`${testId}-warn`}>{warn}</p>}
