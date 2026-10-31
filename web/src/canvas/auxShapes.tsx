@@ -3,7 +3,8 @@
  * this file holds no React component of its own, so editing a view hot-reloads as a Fast Refresh.
  */
 import { BaseBoxShapeUtil, T, createShapeId, resizeBox, type Editor, type TLResizeInfo, type TLShape, type TLShapeId, type VecLike } from 'tldraw';
-import { NODE_DEFS, nodeDefOf, GROUP_TYPE, PROMPT_TYPE, UPLOAD_TYPE, NOTE_TYPE, COMPARE_TYPE, AD_TYPE, type NodeKind } from './nodeTypes';
+import { NODE_DEFS, nodeDefOf, adCardHeight, GROUP_TYPE, PROMPT_TYPE, UPLOAD_TYPE, NOTE_TYPE, COMPARE_TYPE, AD_TYPE, type NodeKind } from './nodeTypes';
+import { AD_SHAPES, asShape } from './adPlatforms';
 import { freeSpot } from './placement';
 import { AuxView } from './AuxNodes';
 
@@ -11,8 +12,9 @@ export interface AuxNodeProps { w: number; h: number; text: string; url: string;
 /** The Ad layout card's own words (its picture comes in by arrow): up to 3 headlines, the offer line, the button, the brand ('' = the active one),
  *  and which size / headline the preview shows. Where it will run (platforms), the layout and the safe-zone toggle came later, so cards
  *  saved before them don't have them (adPlatforms.asPlatforms / adLayout.asPreset fill them in). `edits`: "Edit ad"'s hand edits per size
- *  (adEdit.ts, read through asEdits); none = the automatic layout. */
-export interface AdNodeProps { w: number; h: number; headlines: string[]; offer: string; button: string; brandId: string; size: string; pick: number; platforms?: string[]; layout?: string; safeZones?: boolean; edits?: Record<string, unknown> }
+ *  (adEdit.ts, read through asEdits); none = the automatic layout. `style`: the look on every size (adLayout.AdStyle, read through asStyle);
+ *  none = the look from before styles. */
+export interface AdNodeProps { w: number; h: number; headlines: string[]; offer: string; button: string; brandId: string; size: string; pick: number; platforms?: string[]; layout?: string; safeZones?: boolean; edits?: Record<string, unknown>; style?: Record<string, unknown> }
 declare module 'tldraw' {
   export interface TLGlobalShapePropsMap {
     [PROMPT_TYPE]: AuxNodeProps; [UPLOAD_TYPE]: AuxNodeProps; [NOTE_TYPE]: AuxNodeProps; [COMPARE_TYPE]: AuxNodeProps; [GROUP_TYPE]: AuxNodeProps; [AD_TYPE]: AdNodeProps;
@@ -23,7 +25,7 @@ export type AuxNodeShape = TLShape<typeof PROMPT_TYPE>;
 const AUX_PROPS = { w: T.number, h: T.number, text: T.string, url: T.string, poster: T.string, mediaKind: T.string, label: T.string, title: T.string };
 export function auxProps(kind: NodeKind): AuxNodeProps { const d = NODE_DEFS[kind]; return { w: d.defaultW, h: d.defaultH, text: '', url: '', poster: '', mediaKind: '', label: '', title: d.label }; }
 const AD_PROPS = { w: T.number, h: T.number, headlines: T.arrayOf(T.string), offer: T.string, button: T.string, brandId: T.string, size: T.string, pick: T.number,
-  platforms: T.optional(T.arrayOf(T.string)), layout: T.optional(T.string), safeZones: T.optional(T.boolean), edits: T.optional(T.jsonValue as any) };
+  platforms: T.optional(T.arrayOf(T.string)), layout: T.optional(T.string), safeZones: T.optional(T.boolean), edits: T.optional(T.jsonValue as any), style: T.optional(T.jsonValue as any) };
 export function adProps(): AdNodeProps { const d = NODE_DEFS.ad; return { w: d.defaultW, h: d.defaultH, headlines: ['', '', ''], offer: '', button: 'Shop now', brandId: '', size: '4x5', pick: 0, platforms: ['meta'], layout: 'bottom', safeZones: true }; }
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 
@@ -66,7 +68,10 @@ function makeAuxUtil(kind: NodeKind, type: string) {
     getDefaultProps(): AuxNodeProps | AdNodeProps { return kind === 'ad' ? adProps() : auxProps(kind); }
     override canEdit() { return false; }
     override canResize() { return true; }
-    override onResize(shape: any, info: TLResizeInfo<any>) { const n = resizeBox(shape, info); const d = NODE_DEFS[kind]; return { ...n, props: { ...n.props, w: clamp(n.props.w, d.minW, d.maxW), h: clamp(n.props.h, d.minH, d.maxH) } }; }
+    override onResize(shape: any, info: TLResizeInfo<any>) { const n = resizeBox(shape, info); const d = NODE_DEFS[kind]; const w = clamp(n.props.w, d.minW, d.maxW);
+      /* an ad layout's height follows its ad's shape (nodeTypes.adCardHeight) */
+      const a = kind === 'ad' ? AD_SHAPES[asShape(shape.props.size)] : null;
+      return { ...n, props: { ...n.props, w, h: a ? adCardHeight(w, a.w / a.h) : clamp(n.props.h, d.minH, d.maxH) } }; }
     component(shape: any) { return <AuxView shape={shape} />; }
     getIndicatorPath(shape: any) { const p = new Path2D(); p.roundRect(0, 0, shape.props.w || NODE_DEFS[kind].defaultW, shape.props.h || NODE_DEFS[kind].defaultH, 18); return p; }
   };

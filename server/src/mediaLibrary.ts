@@ -17,6 +17,7 @@ import { fileRefs } from './mediaGc.js';
 import { foldKeys } from './mediaStore.js';
 import { getTool } from './tools/registry.js';
 import { FRAME_TOOL } from './pages.js';
+import { localFileOf } from './outputMeta.js';
 
 export const MEDIA_TABS = ['uploads', 'presets', 'generations', 'liked'] as const;
 export type MediaTab = (typeof MEDIA_TABS)[number];
@@ -132,8 +133,9 @@ export async function listMedia(q: MediaQuery) {
 }
 /** First-frame JPEG poster for a /files/ or /samples/ video, cached in DATA_DIR/thumbs. */
 export async function thumbFor(url: string): Promise<string | null> {
-  const m = /^\/(files|samples)\/([\w.\-/]+)$/.exec(url); if (!m || m[2].includes('..')) return null;
-  const src = path.join(m[1] === 'files' ? DATA_DIR : SAMPLES_DIR, m[2]); if (!existsSync(src) || typeOf(src) !== 'video') return null;
+  // the app's shipped examples (/examples/…) count too: the Examples project's videos showed a broken picture in every picker
+  const m = /^\/(files|samples|examples|showcase)\/([\w.\-/]+)$/.exec(url); if (!m || m[2].includes('..')) return null;
+  const src = localFileOf(url); if (!src || typeOf(src) !== 'video') return null;
   const dir = path.join(DATA_DIR, 'thumbs'); mkdirSync(dir, { recursive: true });
   // WebM may carry alpha (Remove BG transparent: VP9 yuva420p). ffmpeg's native vp9 decoder drops alpha, so decode with libvpx-vp9 and keep it in a PNG
   // (transparent pixels stay transparent instead of flattening to black). Other videos stay JPEG.

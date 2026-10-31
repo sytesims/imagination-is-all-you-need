@@ -32,7 +32,7 @@ try {
   for (const s of humanBits) assert.doesNotMatch(s, /_second|1k_|mp_/, `human price string leaked a raw unit: ${s}`);
   ok('units: /api/pricing hosted rows keep unit + unitLabel/unitHelp/exampleLabel; no human-facing price string contains _second / 1k_ / mp_');
   // (2) the reported case: Reframe, Luma fal route asked with ?route= alone
-  const RF = 'fal:fal-ai/luma-dream-machine/ray-2/reframe';
+  const RF = 'fal:luma/agent/ray/v3.2/reframe';
   const r1 = (await get(N, `/api/tools/reframe/price?route=${RF}`)).body; assert.equal(r1.needsKey, true, JSON.stringify(r1)); assert.equal(r1.runnable, false); assert.equal(r1.demo, false); assert.equal(r1.keyMissing, true); assert.equal(r1.listCredits, r1.credits); assert.match(r1.priceLine, /^Needs a fal key\. Price once it's added: ≈ \$\d/);
   const r2 = (await get(M, `/api/tools/reframe/price?route=${RF}`)).body; assert.equal(r2.demo, true, JSON.stringify(r2)); assert.equal(r2.credits, 0); assert.equal(r2.routeId, RF);
   ok(`Reframe ?route=${RF}: no demo → needsKey/runnable:false/keyMissing (list ${r1.listCredits}); demo backend → sample output of that route`);

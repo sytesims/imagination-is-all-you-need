@@ -895,13 +895,13 @@ export const ROUTER_MODELS: Record<string, RouterModelSpec & { name?: string }> 
 // ---------------- One key runs everything (2026-10-27): the photo / clip tools that ran on fal only, as Comfy Router places ----------------
 // Bria's own models on Router (docs.comfy.org/development/comfy-router/models/bria/*): the same Bria models as the fal cards (RMBG, Expand, Eraser), plus
 // Bria Product Virtual Try-On (a new card; FASHN is fal only), Bria Video Background Removal and Luma Ray 3.2 Reframe (the Luma Reframe card's
-// newer model: fal's Ray 2 reframe endpoints were retired on 2026-10-25). sync is never sent (Router refuses it). Images go as plain base64; a clip
+// newer model: fal retires its Ray 2 reframe endpoints on 2026-11-05). sync is never sent (Router refuses it). Images go as plain base64; a clip
 // only as a link (bria video: "Publicly accessible URL"), through the shared clip link (Comfy storage upload with the key). Outputs: Bria's status body.
 const photoOf = (i: In) => String(i.imagePath ?? i.refPaths?.[0] ?? '');
 const briaText = (i: In) => String(i.appPrompt ?? '').replace(/[^\p{L}\p{N}\s,.'-]/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 500);
 const briaVideoOutputs = (j: any) => (j?.status === 'ERROR' || j?.error ? { refused: String(j?.error?.message ?? j?.error?.details ?? 'Bria refused the request') } : urls([j?.result?.video_url]));
 export const BRIA_VIDEO_BG: Record<string, string> = { transparent: 'Transparent', white: 'White', black: 'Black', green: 'Green' };
-/** Ray 3.2 reframe: the tool's quality → the Router resolution it bills (High = 720p, Fast = 540p; Ray 2 / Ray 2 Flash on fal made the same pair). */
+/** Ray 3.2 reframe: the tool's quality → the Router resolution it bills (High = 720p, Fast = 540p; the fal Ray 3.2 route sends the same). */
 export const RAY32_REFRAME_RES = (i: In) => ((i.fields?.quality ?? (i.resolution === 'fast' || i.resolution === 'high' ? i.resolution : null)) === 'fast' ? '540p' : '720p');
 export const RAY32_REFRAME_MAX_SEC = 10;
 /** "The ray-3.2 video models support the subset 9:16, 3:4, 1:1, 4:3, 16:9, 21:9" (aspect_ratio field). */

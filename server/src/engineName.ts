@@ -8,14 +8,15 @@ import { HOSTED_BY_ID } from './shared/hostedPrices.js';
 import { getTool } from './tools/registry.js';
 import { getProvider } from './providers.js';
 import { SOUL_LORAS } from './tools/soul/presets.js';
-import { RETIRED_MODELS } from './shared/lifecycle.js';
+import { RETIRED_MODELS, RETIRED_ROUTES } from './shared/lifecycle.js';
 import { catalogueNameOf } from './routing/modelRegistry.js';
 
 const GENERIC = /^(open weights|auto|openSoul)\b/i;
 const clean = (s: string | null | undefined) => (s ? s.replace(/\s*·\s*(free|demo).*$/i, '').replace(/\s*\((fal|replicate|local)\)$/i, '').trim() || null : null);
-/** fal / Replicate route → the hosted model ('Bria Video Background Removal', 'Luma Ray 2 Reframe', 'Z-Image-Turbo + LoRA'). */
+/** fal / Replicate route → the hosted model ('Bria Video Background Removal', 'Luma Ray 3.2 Reframe', 'Z-Image-Turbo + LoRA'). */
 export function hostedRouteModel(routeId?: string | null): string | null {
   if (!routeId || !/^(fal|replicate):/.test(routeId)) return null; const r = findRoute(routeId);
+  if (!r && RETIRED_ROUTES[routeId]) return RETIRED_ROUTES[routeId]; // an old job on a route that is gone
   return clean((r?.priceRef ? HOSTED_BY_ID[r.priceRef]?.model : null) ?? r?.label ?? null);
 }
 const SOUL_FAMILY: Record<string, string> = { zit: 'Z-Image-Turbo', qwen: 'Qwen-Image-Edit-2511', flux1dev: 'FLUX.1 [dev]' };

@@ -6,6 +6,7 @@
  * take one source video and keep its length, so durations=null and the limit (if documented) is maxSeconds / inputLimits.
  */
 import { VIDEO_LIMITS } from '../tools/h3/videoCaps.js';
+import { RAY32_ASPECTS, RAY32_REFRAME_MAX_SEC } from './routerModels.js';
 export interface RouteVideoCaps {
   durations: number[] | null; minSeconds: number | null; maxSeconds: number | null; aspects: string[] | null; resolutions: string[] | null;
   audio: { supported: boolean; toggle: boolean; default: boolean | null; passthrough: boolean | null } | null; refKinds: string[]; refMax: { image?: number; video?: number; audio?: number };
@@ -39,10 +40,8 @@ export const ROUTE_VIDEO_CAPS: Record<string, RouteVideoCaps> = {
   'fal:bria/video/background-removal': proc({ sourceUrl: 'https://fal.ai/models/bria/video/background-removal/api', maxSeconds: 30,
     audio: { supported: true, toggle: true, default: true, passthrough: true }, inputLimits: { maxWidth: 4000, maxHeight: 4000, maxSecondsExclusive: 30, background_color: ['Transparent', 'Black', 'White', 'Gray', 'Red', 'Green', 'Blue', 'Yellow', 'Cyan', 'Magenta', 'Orange'],
       output_container_and_codec: ['mp4_h265', 'mp4_h264', 'webm_vp9', 'mov_h265', 'mov_proresks', 'mkv_h265', 'mkv_h264', 'mkv_vp9', 'gif'] }, note: 'Page: size < 4000×4000 and duration < 30 s; preserve_audio default true.' }),
-  'fal:fal-ai/luma-dream-machine/ray-2/reframe': proc({ sourceUrl: 'https://fal.ai/models/fal-ai/luma-dream-machine/ray-2/reframe/api', aspects: ['1:1', '16:9', '9:16', '4:3', '3:4', '21:9', '9:21'],
-    refKinds: ['video', 'image'], refMax: { video: 1, image: 1 }, note: 'aspect_ratio required; optional first-frame image_url; no duration/resolution/audio limit stated.' }),
-  'fal:fal-ai/luma-dream-machine/ray-2-flash/reframe': proc({ sourceUrl: 'https://fal.ai/models/fal-ai/luma-dream-machine/ray-2-flash/reframe/api', aspects: ['1:1', '16:9', '9:16', '4:3', '3:4', '21:9', '9:21'],
-    refKinds: ['video', 'image'], refMax: { video: 1, image: 1 }, note: 'Same schema as Ray 2 reframe.' }),
+  'fal:luma/agent/ray/v3.2/reframe': proc({ sourceUrl: 'https://fal.ai/models/luma/agent/ray/v3.2/reframe/api', checkedAt: '2026-10-31', maxSeconds: RAY32_REFRAME_MAX_SEC, aspects: RAY32_ASPECTS, resolutions: ['540p', '720p', '1080p'],
+    inputLimits: { prompt: 'required', duration: ['5s', '10s'] }, note: 'prompt, video_url and aspect_ratio required; source 10 s or less; resolution default 540p (we send 720p High, 540p Fast).' }),
   // BFL direct (limits already read for UPSCALE_BFL: docs.bfl.ai flux_video_upscale)
   'direct:direct-flux3-upscale': proc({ sourceUrl: 'https://docs.bfl.ai/flux_tools/flux_video_upscale', maxSeconds: 20, audio: { supported: true, toggle: false, default: true, passthrough: true },
     inputLimits: { maxSource: '2560x1440', maxMB: 50, scales: [1.5, 2, 3], mode: ['precise', 'creative'] } }),

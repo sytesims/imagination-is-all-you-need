@@ -10525,7 +10525,7 @@
         "tags": [
           "Settings"
         ],
-        "summary": "Connected provider accounts (read-only): [{provider, name, connected (a real key is set), balance?, balanceUnit?, balanceUsd?, monthSpendUsd? (Comfy), fetchedAt, source \"provider\" | \"unavailable\", note, billingUrl, failureRule, failureNote, actualCost, mock? {sample:true, balance, balanceUnit, balanceUsd, note} (mock backend with no key only: a sample for building the UI, never real)}]. Balances come from fal GET /v1/account/billing?expand=credits, BFL GET /v1/credits and Comfy Cloud GET /api/billing/usage/timeseries; cached 5 minutes (?refresh=1 skips the cache). Never calls a billing write, top-up or payment endpoint; keys are never returned.",
+        "summary": "Connected provider accounts (read-only): [{provider, name, connected (a real key is set), balance?, balanceUnit?, balanceUsd?, monthSpendUsd? (Comfy), fetchedAt, source \"provider\" | \"unavailable\", note, keyCheck? \"ok\" | \"rejected\" | \"offline\" (did the provider take the key on the last read; absent when there is no read), billingUrl, failureRule, failureNote, actualCost, mock? {sample:true, balance, balanceUnit, balanceUsd, note} (mock backend with no key only: a sample for building the UI, never real)}]. Balances come from fal GET /v1/account/billing?expand=credits, BFL GET /v1/credits and Comfy Cloud GET /api/billing/usage/timeseries; cached 5 minutes (?refresh=1 skips the cache). Never calls a billing write, top-up or payment endpoint; keys are never returned.",
         "responses": {
           "200": {
             "description": "OK",

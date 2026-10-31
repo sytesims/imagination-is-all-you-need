@@ -167,7 +167,7 @@ export const CATALOGUE: Record<string, CatalogueEntry> = {
   'topaz-starlight-creative': e('Topaz Starlight Creative', 33, 'api', 'Strongest re-imagined detail', { aliases: ['topaz', 'starlight', 'creative', 'upscale'] }),
   'crystal-video-upscaler': e('Crystal Video Upscaler', 34, 'api', 'Faithful clip upscale, sound kept', { aliases: ['crystal', 'clarity', 'upscale'] }),
   'bria-video-background-removal': e('Bria Video Background Removal', 11, 'api', 'Subject cut out of a clip', { aliases: ['bria', 'background', 'remove bg'] }),
-  'luma-ray-2-reframe': e('Luma Ray 2 Reframe', 12, 'api', 'New aspect ratio, edges filled in', { aliases: ['luma', 'ray 2', 'reframe'] }),
+  'luma-ray-2-reframe': e('Luma Ray 3.2 Reframe', 12, 'api', 'New aspect ratio, edges filled in', { aliases: ['luma', 'ray 3.2', 'ray 2', 'reframe'] }),
   'veo-3.1': e('Veo 3.1', 19, 'api', 'Text or photo to video with sound', { aliases: ['veo', 'google', 'gemini'] }),
   'veo-3.1-fast': e('Veo 3.1 Fast', 20, 'api', 'Quicker Veo, text or photo with sound', { aliases: ['veo', 'google', 'gemini', 'fast'], variantOf: 'veo-3.1' }), // Comfy Router (2026-10-25)
   'ltx-2-19b': e('LTX-2 19B', 40, 'gpu', 'New angles, camera moves, directed shots', { aliases: ['ltx', 'ltx-2', 'lightricks'] }),
