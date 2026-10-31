@@ -249,7 +249,7 @@ export function catalogueNameOf(toolId: string, engine: string, served: string, 
 export type RunOnStatus = 'ready' | 'sample' | 'needs-key' | 'off' | 'not-installed' | 'coming-soon' | 'unavailable';
 /** The run menu's mini line for the Local row (hardware plan §3.5): the memory the model needs and its time on this computer (learned, else reported). */
 const hereOf = (f: any) => (f ? { memGB: typeof f.recommendedVramGB === 'number' ? f.recommendedVramGB : null, etaSeconds: typeof f.etaSeconds === 'number' && f.etaSeconds > 0 ? f.etaSeconds : null,
-  etaSource: f.etaRange?.source ?? f.eta?.source ?? null, samples: Number(f.etaRange?.samples ?? f.eta?.samples ?? 0) || 0 } : null);
+  etaSource: f.etaRange?.source ?? f.eta?.source ?? null, samples: Number(f.etaRange?.samples ?? f.eta?.samples ?? 0) || 0, untested: !!f.variant && f.variant.verified === false } : null);
 /** 2026-10-25: a local route whose model files a Mac can't load (hardware/macWeights.ts, fit unsupported_weights): never runs here, so no Download. */
 const macBlockedOpt = (o: any) => o.kind === 'local' && o.fit?.reasonCode === 'unsupported_weights';
 const statusOf = (o: any): RunOnStatus => o.comingSoon || o.reasonCode === 'not_wired' || /coming soon/i.test(String(o.reason ?? '')) ? 'coming-soon'

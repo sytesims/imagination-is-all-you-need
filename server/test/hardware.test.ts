@@ -71,14 +71,15 @@ const EXPECT: Record<string, string[]> = {
   light8: ['fits/fits', 'too_heavy/not_enough_ram', 'too_heavy/not_enough_vram', 'too_heavy/not_enough_vram', 'too_heavy/not_enough_vram', 'too_heavy/not_enough_vram'],
   mid16: ['fits/fits', 'fits/fits', 'slow/offload', 'slow/offload', 'slow/offload', 'too_heavy/not_enough_vram'],
   rtx4090: ['fits/fits', 'fits/fits', 'slow/offload', 'slow/offload', 'fits/fits', 'too_heavy/not_enough_vram'],
-  mac36: [null as any, 'slow/mps', 'too_heavy/unsupported_weights' /* every camera graph: fp8 or nvfp4 */, 'too_heavy/unsupported_weights' /* nvfp4 text encoder (2026-10-25, hardware/macWeights.ts) */, 'too_heavy/unsupported_weights', 'too_heavy/unsupported_weights'],
+  mac36: [null as any, 'slow/mps', 'slow/mps' /* 2026-10-31: the Wan Fun Camera graphs have a Mac variant (GGUF + fp16 encoder, untested); LTX-2 ones don't */, 'too_heavy/unsupported_weights' /* nvfp4 text encoder (2026-10-25, hardware/macWeights.ts) */, 'slow/mps' /* Fun Camera Mac variant */, 'too_heavy/unsupported_weights'],
 };
 config.comfyBaseUrl = '';
 for (const [prof, want] of Object.entries(EXPECT)) { HW.setHardwareOverride(prof); const hw = HW.currentHardware();
   const got = CASES.map(([t, p, i]) => { const f = R.fitFor(getTool(t)!, p, i, hw); return `${f.verdict}/${f.reasonCode === 'not_enough_disk' ? f.hardwareReasonCode : f.reasonCode}`; });
   want.forEach((w, i) => { if (w) assert.equal(got[i], w, `${prof} ${CASES[i][0]}/${CASES[i][1]}`); });
   if (prof === 'unknown') for (const [t, p, i] of CASES) assert.equal(R.fitFor(getTool(t)!, p, i, hw).enforced, false, 'unknown is never enforced'); }
-HW.setHardwareOverride('mac36'); { const f = R.fitFor(getTool('reshoot')!, 'comfy-funcamera', {}); assert.equal(f.reasonCode, 'unsupported_weights'); assert.match(f.reason, /NVIDIA graphics card/); }
+HW.setHardwareOverride('mac36'); { const f = R.fitFor(getTool('h3-video')!, 'comfy-h3', { types: ['t2v'] }); assert.equal(f.reasonCode, 'unsupported_weights'); assert.match(f.reason, /NVIDIA graphics card/); }
+{ const f = R.fitFor(getTool('reshoot')!, 'comfy-funcamera', {}); assert.equal(f.variant?.verified, false, 'Fun Camera on a Mac: its untested Mac variant'); assert.match(f.reason, /^Should run here \(not tested yet\)/); }
 HW.setHardwareOverride('mid16'); { const f = R.fitFor(getTool('object-swap')!, 'comfy-h3-charswap', {}); assert.notEqual(f.reasonCode, 'no_gpu_needed', 'charswap uses its own workflow'); }
 { const f = R.fitFor(getTool('create-image')!, 'comfy-moss-image', {}); assert.notEqual(f.reasonCode, 'requirements_unknown', 'MOSS-Image has manifest rows (2026-10-25)'); assert.ok(f.recommendedVramGB! > 0); }
 ok('5 fit matrix: unknown/none/cpu/light8/mid16/rtx4090/mac36 × upscale/zimage/wan camera/h3-t2v/ltx reshoot/drama3 (mac36 + fp8 → unsupported_weights)');
@@ -97,14 +98,15 @@ process.env.OPENHIGGSFIELD_DISK_FREE_GB = '500';
     await new Promise((r) => setTimeout(r, 150)); return new Response(PAY, { status: 200, headers: { 'content-length': String(PAY.length) } }); }) as any;
   try {
     DL.setDownloadTransport(DL.httpTransport);
-    const d = DL.startDownload({ variantId: 'qwen-image-q4km' }); assert.ok(['queued', 'downloading'].includes(d.status)); assert.equal(d.files.length, 1); assert.equal(d.bytesTotal, 13065746976, 'size shown = the real file size');
+    // the Q8 file (no checksum in the manifest: the tiny mock payload passes); the Q4 file is a Mac variant file with its sha256 now (2026-10-31)
+    const d = DL.startDownload({ variantId: 'qwen-image-q8' }); assert.ok(['queued', 'downloading'].includes(d.status)); assert.equal(d.files.length, 1); assert.equal(d.bytesTotal, 21761817120, 'size shown = the real file size');
     const end = await DL.waitDownload(d.id); assert.equal(end!.status, 'done', String(end!.error)); assert.equal(end!.bytesDone, end!.bytesTotal);
-    const f = path.join(MODELS, 'unet', 'qwen-image-Q4_K_M.gguf'); assert.equal(fs.statSync(f).size, PAY.length, 'only the tiny mock payload is written'); assert.ok(!fs.existsSync(`${f}.part`));
-    assert.equal(calls.length, 1); assert.match(calls[0].url, /^https:\/\/huggingface\.co\/city96\/Qwen-Image-gguf\/resolve\/main\/qwen-image-Q4_K_M\.gguf$/); assert.equal(calls[0].auth, null, 'no token to Hugging Face');
-    await assert.rejects(async () => DL.startDownload({ variantId: 'qwen-image-q4km' }), (e: any) => e.code === 'nothing_to_download');
+    const f = path.join(MODELS, 'unet', 'qwen-image-Q8_0.gguf'); assert.equal(fs.statSync(f).size, PAY.length, 'only the tiny mock payload is written'); assert.ok(!fs.existsSync(`${f}.part`));
+    assert.equal(calls.length, 1); assert.match(calls[0].url, /^https:\/\/huggingface\.co\/city96\/Qwen-Image-gguf\/resolve\/main\/qwen-image-Q8_0\.gguf$/); assert.equal(calls[0].auth, null, 'no token to Hugging Face');
+    await assert.rejects(async () => DL.startDownload({ variantId: 'qwen-image-q8' }), (e: any) => e.code === 'nothing_to_download');
     // resume: a leftover .part is continued with Range
-    const f2 = path.join(MODELS, 'unet', 'qwen-image-Q8_0.gguf'); fs.writeFileSync(`${f2}.part`, 'abc'); calls.length = 0;
-    await DL.waitDownload(DL.startDownload({ variantId: 'qwen-image-q8' }).id); assert.equal(calls[0].range, 'bytes=3-'); assert.equal(fs.statSync(f2).size, PAY.length, 'server ignored Range (200) → started over');
+    const f2 = path.join(MODELS, 'unet', 'Wan2.2-Animate-14B-Q3_K_M.gguf'); fs.writeFileSync(`${f2}.part`, 'abc'); calls.length = 0;
+    await DL.waitDownload(DL.startDownload({ variantId: 'wan-animate-q3km' }).id); assert.equal(calls[0].range, 'bytes=3-'); assert.equal(fs.statSync(f2).size, PAY.length, 'server ignored Range (200) → started over');
     // cancel
     const c = DL.startDownload({ variantId: 'wan-vace-q8' }); DL.cancelDownload(c.id); const ce = await DL.waitDownload(c.id); assert.equal(ce!.status, 'canceled'); assert.ok(!fs.existsSync(path.join(MODELS, 'unet', 'Wan2.1_14B_VACE-Q8_0.gguf')));
     // Civitai: Bearer CIVITAI_TOKEN only when set, only to civitai.com, never in the view or the error

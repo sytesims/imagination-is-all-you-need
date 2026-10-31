@@ -32,6 +32,8 @@ const toFile = (r: Row): WeightFile => {
   return { file: r.file, folder: r.folder, sizeBytes: exact, sizeGB: exact == null ? null : Math.round(exact / 1e7) / 100, sizeApprox: false, sizeSource: r.size ? 'manifest' : HF_SIZES[r.file] ? 'huggingface-api' : null,
     url: r.url, source, pageUrl: source === 'huggingface' && r.hf_repo ? `https://huggingface.co/${r.hf_repo}` : source === 'civitai' && r.civitai_version ? `https://civitai.com/api/v1/model-versions/${r.civitai_version}` : r.page_url ?? null, ...(r.base !== undefined ? { base: r.base } : {}) }; // page_url: a model installed by hand (a folder, no single-file url): where to get it
 };
+/** One manifest file by name (a platform variant's file, which no graph lists), or null. */
+export const weightFileOf = (file: string): WeightFile | null => { const r = load().find((x) => x.file === file); return r ? toFile(r) : null; };
 /** Weight files loaded by any of these workflow files (bare names, e.g. camera-ltx-api.json). [] for cloud models (no local workflows). */
 export function weightsForWorkflows(workflows: string[]): WeightFile[] {
   if (!workflows.length) return [];

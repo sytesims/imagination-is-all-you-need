@@ -1,7 +1,7 @@
 import { routesFor } from './routing/routes.js';
 import { LTX_DFR_MODEL, ltxDfrRuns } from './shared/ltxDfr.js';
 import { VUP_MODELS, VUP_TOOLS } from './shared/videoUpscale.js';
-import { weightsForWorkflows } from './modelWeights.js';
+import { weightsHere } from './hardware/variants.js';
 import { releaseInfo } from './releaseDates.js';
 import { limitsFor, videoCapsBlock } from './tools/h3/videoCaps.js';
 /**
@@ -147,7 +147,7 @@ export function modelsFor(tool: ToolDef): ModelCard[] {
       /** N2: technical detail for a 'details' line (null when none); description/hint stay plain. */ tech: cat?.tech ?? info.tech ?? (p.kind === 'hosted' && !comfyCloudOpenish(p) ? 'Comfy partner node (API)' : null),
       id: p.id, providerId: p.id, toolId: tool.id, providerName: cat?.name ?? cleanName(userLabel(p.name)), kind: p.kind, mockOnly: isMockOnly(p.via), openWeights: providerOpenWeights(p),
       license: providerLicense(tool, p), speed: info.speed, quality: info.quality, hint: userLabel(info.hint), badges: [...new Set([...(info.badges ?? []).filter((b) => b !== 'new') /* 'new' only from a sourced releasedAt */, ...(releaseInfo(p.id).isNew ? ['new'] : [])])], releasedAt: releaseInfo(p.id).releasedAt, releaseSource: releaseInfo(p.id).releaseSource,
-      priceFactor: tool.pricing?.providerFactors?.[p.id] ?? PROVIDER_FACTORS[p.id] ?? 1, workflows: providerWorkflows(tool, p), /** DP #20.8: weight files for the local workflows (name, folder, exact size, download link; public metadata). */ weights: weightsForWorkflows(providerWorkflows(tool, p)), default: p.id === defId,
+      priceFactor: tool.pricing?.providerFactors?.[p.id] ?? PROVIDER_FACTORS[p.id] ?? 1, workflows: providerWorkflows(tool, p), /** DP #20.8: weight files for the local workflows (name, folder, exact size, download link; public metadata). */ weights: weightsHere(providerWorkflows(tool, p)), default: p.id === defId,
       docUrl: p.docUrl ?? null, nodes: p.nodes ?? [], modes: (tool.app as any)?.providerModes?.[p.id] ?? null, minComfyVersion: p.minComfyVersion ?? null,
       /** P2 3b: plain licence name and requirement note for the card and the model page (the version note lives here only, not in description). */
       licenseName: providerLicense(tool, p)?.name ?? null, requirementNote: requirementNote(p.minComfyVersion),

@@ -33,7 +33,8 @@ try {
   const f = R.fitFor(soul, 'comfy-soul', {}); assert.notEqual(f.reasonCode, 'unsupported_weights', `OpenSoul on a Mac: ${f.verdict}/${f.reasonCode}`);
   assert.equal(R.fitFor(soul, 'comfy-soul', { preset: 'retro-bw' }).reasonCode !== 'unsupported_weights', true, 'a Z-Image look runs on a Mac');
   assert.deepEqual(R.jobWorkflows(soul, 'comfy-soul', { preset: 'subtle-flash' }), ['soul-flux1dev-api.json'], 'a FLUX look is judged by its own graph');
-  assert.equal(R.fitFor(soul, 'comfy-soul', { preset: 'subtle-flash' }).reasonCode, 'unsupported_weights', 'a FLUX look needs NVIDIA on a Mac');
+  assert.equal(R.fitFor(soul, 'comfy-soul', { preset: 'subtle-flash' }).variant?.verified, false, 'a FLUX look on a Mac: only through its untested GGUF variant (item 5)');
+  assert.equal(R.fitFor(soul, 'comfy-soul', { preset: 'y2k-street' }).reasonCode, 'unsupported_weights', 'a Qwen 2512 look needs NVIDIA on a Mac (no Mac files for it)');
   assert.equal(R.fitFor(soul, 'comfy-soul', { refPaths: ['a.png'], engine: 'infiniteyou' }).reasonCode, 'unsupported_weights', 'InfiniteYou needs NVIDIA on a Mac');
   ok(`B4: soul-zit carries only Z-Image looks (no fp8); OpenSoul on a Mac is ${f.verdict}/${f.reasonCode}, not "Needs NVIDIA"`);
 

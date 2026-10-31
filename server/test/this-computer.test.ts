@@ -47,7 +47,7 @@ ok('labels: Apple Silicon (chip name, "usable for models", fp8 sentence), NVIDIA
     { models: [model('f', L('not-installed', 'nodes_missing', { kind: 'install_node' })), model('g', L('off', 'local_off'))] },
   ];
   const c = TC.countLocalModels(tools);
-  assert.deepEqual(c, { total: 7, runs: 4, ready: 1, download: 1, setUp: 1, needsNvidia: 2, tooBig: 1 }, 'unique models: a and c listed twice count once; coming-soon and cloud-only are not local models');
+  assert.deepEqual(c, { total: 7, runs: 4, ready: 1, download: 1, setUp: 1, needsNvidia: 2, tooBig: 1, untested: 0 }, 'unique models: a and c listed twice count once; coming-soon and cloud-only are not local models');
   assert.equal(TC.localCountsText(c), '4 of 7 local models run here · 2 need NVIDIA · 1 too big'); assert.equal(TC.localReadyText(c), '1 ready, 1 to download, 1 need a node pack');
   assert.equal(TC.localCountsText(TC.countLocalModels([])), '', 'no local models → no line');
   // the shape of this computer's audit (2026-10-31): 25 ready, 11 to download, 21 need NVIDIA → the line the plan expects

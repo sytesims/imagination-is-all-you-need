@@ -5,9 +5,9 @@
  *  - "Run here" = every local model the hardware doesn't refuse: ready, to download, or a node pack to add. "Need NVIDIA" = weights or nodes this
  *    computer can't load (reasonCode unsupported_weights / unsupported_hardware). "Too big" = a too_heavy fit (not enough graphics or system memory).
  */
-export interface LocalRowLike { id: string; status: string; reasonCode?: string | null; action?: { kind?: string } | null }
+export interface LocalRowLike { id: string; status: string; reasonCode?: string | null; action?: { kind?: string } | null; /** item 5: runs only with a platform variant nobody has tested here */ here?: { untested?: boolean } | null }
 export type ToolsLike = { models?: { key: string; runsOn?: LocalRowLike[] }[] }[];
-export interface LocalCounts { total: number; runs: number; ready: number; download: number; setUp: number; needsNvidia: number; tooBig: number }
+export interface LocalCounts { total: number; runs: number; ready: number; download: number; setUp: number; needsNvidia: number; tooBig: number; /** should run with files made for this computer, not tested yet (never counted as "run here") */ untested: number }
 
 const NVIDIA_ONLY = new Set(['unsupported_weights', 'unsupported_hardware']);
 const TOO_BIG = new Set(['too_heavy', 'not_enough_vram', 'not_enough_ram', 'no_gpu']);
@@ -16,10 +16,11 @@ export function countLocalModels(tools: ToolsLike): LocalCounts {
   const seen = new Map<string, LocalRowLike>();
   for (const t of tools) for (const m of t.models ?? []) {
     const r = m.runsOn?.find((x) => x.id === 'local'); if (!r || r.status === 'coming-soon' || seen.has(m.key)) continue; seen.set(m.key, r); }
-  const c: LocalCounts = { total: seen.size, runs: 0, ready: 0, download: 0, setUp: 0, needsNvidia: 0, tooBig: 0 };
+  const c: LocalCounts = { total: seen.size, runs: 0, ready: 0, download: 0, setUp: 0, needsNvidia: 0, tooBig: 0, untested: 0 };
   for (const r of seen.values()) {
     if (NVIDIA_ONLY.has(String(r.reasonCode))) c.needsNvidia++;
     else if (TOO_BIG.has(String(r.reasonCode))) c.tooBig++;
+    else if (r.here?.untested) c.untested++;
     else { c.runs++; if (r.status === 'ready') c.ready++; else if (r.reasonCode === 'weights_missing' || r.action?.kind === 'download') c.download++; else if (r.reasonCode === 'nodes_missing' || r.action?.kind === 'install_node') c.setUp++; } } // the rest (Local switched off, ComfyUI not answering) still runs here
   return c;
 }
@@ -27,7 +28,7 @@ export function countLocalModels(tools: ToolsLike): LocalCounts {
 /** "36 of 57 local models run here · 21 need NVIDIA" (· "2 too big" when any). '' when there are no local models. */
 export function localCountsText(c: LocalCounts): string {
   if (!c.total) return '';
-  return [`${c.runs} of ${c.total} local models run here`, c.needsNvidia ? `${c.needsNvidia} need NVIDIA` : '', c.tooBig ? `${c.tooBig} too big` : ''].filter(Boolean).join(' · ');
+  return [`${c.runs} of ${c.total} local models run here`, c.untested ? `${c.untested} should run (not tested yet)` : '', c.needsNvidia ? `${c.needsNvidia} need NVIDIA` : '', c.tooBig ? `${c.tooBig} too big` : ''].filter(Boolean).join(' · ');
 }
 /** "25 ready, 11 to download" for the models that run here (+ "2 need a node pack"); '' when nothing to say. */
 export function localReadyText(c: LocalCounts): string {
@@ -69,8 +70,8 @@ export function memoryCheck(needGB: number | null | undefined, p: ProfileLike | 
   return { needGB, freeGB: free, short, text: short ? `Close other apps first: this model needs about ${n} and ${f} is free now. It still runs, more slowly.` : `${f} free now, about ${n} needed` };
 }
 /** The run menu's line under Local: "This computer · 13 GB free now · about 4 min (your last 5 runs)". '' when there's nothing to say. */
-export function hereLine(o: { name?: string | null; freeGB?: number | null; etaSeconds?: number | null; etaSource?: string | null; samples?: number | null }): string {
+export function hereLine(o: { name?: string | null; freeGB?: number | null; etaSeconds?: number | null; etaSource?: string | null; samples?: number | null; untested?: boolean }): string {
   const s = Number(o.etaSeconds); const t = s > 0 ? (s < 90 ? `about ${Math.round(s)} s` : s < 5400 ? `about ${Math.round(s / 60)} min` : `about ${Math.round((s / 3600) * 10) / 10} h`) : '';
   const src = t && o.etaSource === 'learned' && Number(o.samples) > 0 ? ` (your last ${o.samples} run${o.samples === 1 ? '' : 's'})` : '';
-  return [o.name || 'This computer', o.freeGB != null ? `${gbs(o.freeGB)} free now` : '', t ? `${t}${src}` : o.etaSource === 'first_run' ? 'first run: time unknown' : ''].filter(Boolean).join(' · ');
+  return [o.name || 'This computer', o.freeGB != null ? `${gbs(o.freeGB)} free now` : '', t ? `${t}${src}` : o.etaSource === 'first_run' ? 'first run: time unknown' : '', o.untested ? 'should run here (not tested yet)' : ''].filter(Boolean).join(' · ');
 }

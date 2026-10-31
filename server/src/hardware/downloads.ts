@@ -23,7 +23,7 @@ import { env } from '../env.js';
 import { getProvider } from '../providers.js';
 import { listTools } from '../tools/registry.js';
 import { cardName } from '../models.js';
-import { weightsForWorkflows } from '../modelWeights.js';
+import { weightsHere } from './variants.js';
 import { findVariant, manifest, modelsDir, setMissingWeights, clearRequirementsCache, downloadIdFor, parseDownloadId, jobWorkflows, QUALITY_WORKFLOWS } from './requirements.js';
 import { pushRate } from '../etaLearn.js';
 import { hwKeyOf, diskInfo, displayDir } from '../hardware.js';
@@ -87,7 +87,7 @@ const shaOf = (file: string) => manifest().models.find((m) => m.file === file)?.
 // ---- HW2 item 3: model families of a provider (one per distinct workflow set across the tools that list it) ----
 export interface DlFamily { downloadId: string; providerId: string; label: string; toolIds: string[]; toolNames: string[]; workflows: string[]; bytesTotal: number }
 const AUTO = () => new Set(manifest().models.filter((m) => m.auto_downloaded_by_pack).map((m) => m.file));
-const bytesOf = (wfs: string[]) => { const auto = AUTO(); return weightsForWorkflows(wfs).filter((w) => !auto.has(w.file)).reduce((a, w) => a + (w.sizeBytes ?? 0), 0); };
+const bytesOf = (wfs: string[]) => { const auto = AUTO(); return weightsHere(wfs).filter((w) => !auto.has(w.file)).reduce((a, w) => a + (w.sizeBytes ?? 0), 0); };
 export function familiesOf(providerId: string): DlFamily[] {
   const p = getProvider(providerId); if (!p || p.kind !== 'open-weights') return []; const out = new Map<string, DlFamily>();
   // dp30 (n): the same workflows (and so the same downloadId) as the model card's requirements: jobWorkflows(tool, provider, {}), as requirementsFor() uses.
@@ -103,7 +103,7 @@ export type DlSpec = { providerId?: string | null; variantId?: string | null; do
 /** Files for a download id, a provider (all its workflows; pack auto-downloads excluded) or one variant. Already-present files are 'skipped' (dir null: nothing can be checked, every file is 'queued'). */
 export function planFiles(spec: DlSpec, dir: string | null): { label: string; providerId: string | null; downloadId: string | null; files: DlFile[] } {
   let label = ''; let rows: { file: string; folder: string; url: string | null; bytes: number | null }[] = []; let providerId: string | null = spec.providerId ?? null; let downloadId: string | null = null;
-  const auto = AUTO(); const fromWfs = (wfs: string[]) => weightsForWorkflows(wfs).filter((w) => !auto.has(w.file)).map((w) => ({ file: w.file, folder: w.folder, url: w.url ?? null, bytes: w.sizeBytes ?? null }));
+  const auto = AUTO(); const fromWfs = (wfs: string[]) => weightsHere(wfs).filter((w) => !auto.has(w.file)).map((w) => ({ file: w.file, folder: w.folder, url: w.url ?? null, bytes: w.sizeBytes ?? null })); // this computer's picked variant only (item 5)
   const parsed = spec.downloadId ? parseDownloadId(spec.downloadId) : null;
   if (spec.variantId) { const v = findVariant(spec.variantId); if (!v) throw new DlError('not_found', 'No such lighter version.'); label = `${v.file} (${v.precision})`; rows = [{ file: v.file, folder: v.folder, url: v.url, bytes: v.bytes }]; downloadId = null; }
   else if (parsed) { const p = getProvider(parsed.providerId); if (!p || p.kind !== 'open-weights') throw new DlError('not_found', 'No such local model.');
