@@ -10,15 +10,13 @@ export interface LifecycleInfo { status: LifecycleStatus; note: string; /** firs
 
 const VEO: LifecycleInfo = { status: 'retiring', from: '2026-10-22', replacement: 'Gemini Omni Flash (gemini-omni-1.1-flash)',
   note: 'Google is retiring Veo 3.1 previews (from 2026-10-22). It may stop working.', sourceUrl: 'https://ai.google.dev/gemini-api/docs/deprecations', checkedAt: '2026-10-21' };
-const RAY2_REFRAME: LifecycleInfo = { status: 'retiring', from: '2026-10-25', replacement: 'Luma Ray 3.2 Reframe (fal luma/agent/ray/v3.2/reframe)',
-  note: 'fal is retiring Luma Ray 2 Reframe (from 2026-10-25). It may stop working.', sourceUrl: 'https://fal.ai/models/fal-ai/luma-dream-machine/ray-2/reframe', checkedAt: '2026-10-21' };
-
 export const LIFECYCLE: Record<string, LifecycleInfo> = {
   // Veo 3.1 on the Comfy partner node (model id = price ref; route comfy-router:router-veo)
   'router-veo': VEO, 'comfy-router:router-veo': VEO,
-  // Reframe: every route is a fal Ray 2 / Ray 2 Flash reframe endpoint (both models serve only those routes)
-  'auto-reframe': RAY2_REFRAME, 'direct-luma-reframe': RAY2_REFRAME,
-  'fal:fal-ai/luma-dream-machine/ray-2/reframe': RAY2_REFRAME, 'fal:fal-ai/luma-dream-machine/ray-2-flash/reframe': RAY2_REFRAME,
+};
+/** Route ids no longer served: the hosted model each ran, so old jobs keep a readable engine name (fal retires Ray 2 reframe on 2026-11-05). */
+export const RETIRED_ROUTES: Record<string, string> = {
+  'fal:fal-ai/luma-dream-machine/ray-2/reframe': 'Luma Ray 2 Reframe', 'fal:fal-ai/luma-dream-machine/ray-2-flash/reframe': 'Luma Ray 2 Flash Reframe',
 };
 export const lifecycleOf = (id?: string | null): LifecycleInfo | null => (id ? LIFECYCLE[id] ?? null : null);
 export const isRetiring = (id?: string | null) => lifecycleOf(id)?.status === 'retiring';

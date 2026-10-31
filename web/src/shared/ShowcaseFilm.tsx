@@ -12,7 +12,7 @@
  * Used by Explore's hero; any page with one hero clip can use it.
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { PlayIcon } from '../ui/Icons';
+import { FitIcon, PauseIcon, PlayIcon, ResetIcon } from '../ui/Icons';
 import { SoundToggle } from './SoundToggle';
 import { prefersReducedMotion } from './HoverClip';
 import { useDirectedSound, soundRefused } from './soundDirector';
@@ -33,7 +33,7 @@ export function ShowcaseFilm({ takes, take, onTake, children, aside, testId, lab
   /** Opt-in fine-pointer hover / keyboard-control focus sound handoff; never starts a poster or overrides page mute. */ hoverSound?: boolean;
   /** the video actually started, so a page can clear its title overlay */ onStart?: () => void;
 }) {
-  const root = useRef<HTMLElement>(null); const v = useRef<HTMLVideoElement>(null); const bar = useRef<HTMLSpanElement>(null);
+  const root = useRef<HTMLElement>(null); const v = useRef<HTMLVideoElement>(null); const bar = useRef<HTMLSpanElement>(null); const seekBar = useRef<HTMLInputElement>(null);
   const [playing, setPlaying] = useState(false); const [still, setStill] = useState(() => manual || prefersReducedMotion()); const [bad, setBad] = useState('');
   const [paused, setPaused] = useState(true); const [time, setTime] = useState(0); const [duration, setDuration] = useState(0);
   const wanted = useRef(!manual); const onScreen = useRef(false); const [fullscreenError, setFullscreenError] = useState('');
@@ -111,7 +111,7 @@ export function ShowcaseFilm({ takes, take, onTake, children, aside, testId, lab
   /* the progress line, without a re-render per frame */
   useEffect(() => {
     if (still) return; let raf = 0;
-    const step = () => { const el = v.current, b = bar.current; if (el && el.duration) { const f = Math.min(1, el.currentTime / el.duration); if (b) b.style.transform = `scaleX(${f.toFixed(4)})`; tick.current?.(f); } raf = requestAnimationFrame(step); };
+    const step = () => { const el = v.current, b = bar.current; if (el && el.duration) { const f = Math.min(1, el.currentTime / el.duration); if (b) b.style.transform = `scaleX(${f.toFixed(4)})`; seekBar.current?.style.setProperty('--p', `${(f * 100).toFixed(2)}%`); tick.current?.(f); } raf = requestAnimationFrame(step); };
     raf = requestAnimationFrame(step); return () => cancelAnimationFrame(raf);
   }, [still]);
   if (!t) return null;
@@ -135,15 +135,15 @@ export function ShowcaseFilm({ takes, take, onTake, children, aside, testId, lab
     </div>
     {still && !controls && <button type="button" className="sfilm-play" aria-label={`Play: ${label}`} data-testid={testId ? `${testId}-play` : undefined} onClick={() => { setPressed(true); setStill(false); }}><PlayIcon size={26} /></button>}
     {controls && !failed && <div className="sfilm-controls" role="group" aria-label="Film playback">
-      <input className="sfilm-seek" type="range" min="0" max={total || 1} step="0.1" value={Math.min(time, total)} disabled={!duration}
+      <input ref={seekBar} className="sfilm-seek" type="range" min="0" max={total || 1} step="0.1" value={Math.min(time, total)} disabled={!duration}
         aria-label="Seek film" aria-valuetext={`${tc(time)} of ${tc(total)}`} data-testid={testId ? `${testId}-seek` : undefined}
-        onChange={e => { const el = v.current; if (el) { el.currentTime = Number(e.target.value); setTime(el.currentTime); } }} />
-      <div className="sfilm-transport"><button type="button" onClick={togglePlay} data-testid={testId ? `${testId}-play` : undefined}>{paused ? <PlayIcon size={16} /> : <span aria-hidden>Ⅱ</span>}{paused ? 'Play' : 'Pause'}</button>
-        <button type="button" onClick={() => play(true)} data-testid={testId ? `${testId}-replay` : undefined}>Replay</button>
+        onChange={e => { const el = v.current; if (el) { el.currentTime = Number(e.target.value); setTime(el.currentTime); if (el.duration) e.target.style.setProperty('--p', `${(el.currentTime / el.duration) * 100}%`); } }} />
+      <div className="sfilm-transport"><button type="button" className="sfilm-btn sfilm-btn-play" onClick={togglePlay} aria-label={paused ? 'Play' : 'Pause'} title={paused ? 'Play' : 'Pause'} data-testid={testId ? `${testId}-play` : undefined}>{paused ? <PlayIcon size={20} /> : <PauseIcon size={18} />}</button>
+        <button type="button" className="sfilm-btn" onClick={() => play(true)} aria-label="Replay" title="Replay" data-testid={testId ? `${testId}-replay` : undefined}><ResetIcon size={18} strokeWidth={1.8} /></button>
         <span className="sfilm-time">{tc(time)} <span>/ {tc(total)}</span></span>
         <span className="sfilm-control-space" />
         {t.sound === true && !still && <SoundToggle on={snd.lit} waiting={snd.waiting} label={hoverSound && snd.hint} onToggle={toggleSound} testId={testId ? `${testId}-sound` : undefined} />}
-        <button type="button" onClick={full} data-testid={testId ? `${testId}-fullscreen` : undefined}>Full screen</button>
+        <button type="button" className="sfilm-btn" onClick={full} aria-label="Full screen" title="Full screen" data-testid={testId ? `${testId}-fullscreen` : undefined}><FitIcon size={18} strokeWidth={1.8} /></button>
       </div>{fullscreenError && <span className="sfilm-control-error" role="status">{fullscreenError}</span>}
     </div>}
     {!controls && t.sound === true && !still && !failed && <SoundToggle on={snd.lit} waiting={snd.waiting} label={snd.hint} onToggle={toggleSound} testId={testId ? `${testId}-sound` : undefined} />}

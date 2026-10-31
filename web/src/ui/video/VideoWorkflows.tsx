@@ -74,6 +74,6 @@ export function VideoWorkflowPicker({ open, anchor, list, shortcuts = [], curren
   /* the shortcuts sit right after Create Video, so the newest flows are the first thing the picker offers */
   const all: VideoWorkflow[] = [...list.slice(0, 1), ...shortcuts, ...list.slice(1)];
   return <WorkflowPicker open={open} anchor={anchor} watch={watch} list={all} current={current} categories={VIDEO_WORKFLOW_CATEGORIES} onChoose={w => { if (isShortcut(w)) { onClose(); navigate(w.href); } else pickVideoWorkflow(w.id); }} onClose={onClose} placement={placement}
-    label="Video workflows" prefix="vwf" noun="video" icon={w => <WIcon w={w} />} how={w => <HowSteps w={w} />} foot={`${list.length} video workflows and ${shortcuts.length} shortcuts · Create Video is the default`}
+    label="Video workflows" prefix="vwf" noun="video" icon={w => <WIcon w={w} />} how={w => <HowSteps w={w} />} foot={`${list.length} video workflows and ${shortcuts.length} shortcuts`}
     initialTab={new URLSearchParams(location.search).get('workflows') ?? (isEditHub(new URLSearchParams(location.search).get('workflow')) ? 'edit' : 'all')} />;
 }

@@ -2,7 +2,7 @@
 // Run: npx tsx test/edit-video.e2e.ts
 import { testPort } from './_ports.js'; import assert from 'node:assert/strict'; import { spawn, execFileSync } from 'node:child_process'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path';
 let PORT = testPort(8841), B = `http://localhost:${PORT}`; const D = fs.mkdtempSync(path.join(os.tmpdir(), 'ev-'));
-const start = (port: number, fal: string) => spawn('npx', ['tsx', 'src/index.ts'], { cwd: path.resolve(import.meta.dirname, '..'), env: { ...process.env, PORT: String(port), OPENHIGGSFIELD_DATA_DIR: fs.mkdtempSync(path.join(D, 'd-')), OPENHIGGSFIELD_BILLING_MODE: 'team', OPENHIGGSFIELD_BACKEND: 'mock', OPENHIGGSFIELD_DEMO_AUTO: '0' /* keyless = no_provider (real-mode rules) */, OPENHIGGSFIELD_FAL_KEY: fal, FAL_KEY: '', OPENHIGGSFIELD_BFL_API_KEY: '', OPENHIGGSFIELD_MAX_QUEUED: '200', ...(fal ? { OPENHIGGSFIELD_ROUTING_FAIL: 'fal:fal-ai/luma-dream-machine/ray-2-flash/reframe' } : {}) }, stdio: 'ignore', detached: true });
+const start = (port: number, fal: string) => spawn('npx', ['tsx', 'src/index.ts'], { cwd: path.resolve(import.meta.dirname, '..'), env: { ...process.env, PORT: String(port), OPENHIGGSFIELD_DATA_DIR: fs.mkdtempSync(path.join(D, 'd-')), OPENHIGGSFIELD_BILLING_MODE: 'team', OPENHIGGSFIELD_BACKEND: 'mock', OPENHIGGSFIELD_DEMO_AUTO: '0' /* keyless = no_provider (real-mode rules) */, OPENHIGGSFIELD_FAL_KEY: fal, FAL_KEY: '', OPENHIGGSFIELD_BFL_API_KEY: '', OPENHIGGSFIELD_MAX_QUEUED: '200', ...(fal ? { OPENHIGGSFIELD_ROUTING_FAIL: 'fal:luma/agent/ray/v3.2/reframe' } : {}) }, stdio: 'ignore', detached: true });
 const up = async () => { for (let i = 0; i < 60; i++) { try { if ((await fetch(`${B}/api/health`)).ok) return; } catch { /* */ } await new Promise((r) => setTimeout(r, 1000)); } };
 const srv = start(testPort(8841), ''); const srv2 = start(testPort(8842), 'mock-test');
 const get = async (u: string) => (await fetch(B + u)).json();
@@ -18,7 +18,7 @@ try {
   const menu = await get('/api/edit-video/tools?seconds=5');
   assert.deepEqual(menu.tools.map((t: any) => t.id), ['h3-extend', 'reframe', 'upscale', 'remove-bg', 'sdr-hdr', 'fps-boost', 'depth-map', 'reshoot', 'prompt-edit']);
   const by = Object.fromEntries(menu.tools.map((t: any) => [t.id, t])); const rt = (tool: string, id: string) => by[tool].models.flatMap((m: any) => m.routes).find((r: any) => r.routeId === id);
-  assert.equal(rt('reframe', 'fal:fal-ai/luma-dream-machine/ray-2/reframe').listCredits, 100); assert.equal(rt('reframe', 'fal:fal-ai/luma-dream-machine/ray-2-flash/reframe').listCredits, 30); assert.equal(rt('reframe', 'fal:fal-ai/luma-dream-machine/ray-2-flash/reframe').credits, 30); assert.equal(rt('reframe', 'fal:fal-ai/luma-dream-machine/ray-2-flash/reframe').chargeable, false); assert.ok(rt('reframe', 'fal:fal-ai/luma-dream-machine/ray-2-flash/reframe').blockedReason); // Oct 19 #8: Flash can't run a high-quality job = an input block → real price, chargeable:false, blockedReason
+  assert.equal(rt('reframe', 'fal:luma/agent/ray/v3.2/reframe').listCredits, 60); assert.ok(!rt('reframe', 'fal:fal-ai/luma-dream-machine/ray-2-flash/reframe'), 'Ray 2 routes are gone'); // fal Ray 3.2: one route, High = 720p $0.12 per s
   assert.equal(rt('remove-bg', 'fal:bria/video/background-removal').listCredits, 70); assert.equal(rt('remove-bg', 'local:comfy-birefnet-video').listCredits, 0); assert.equal(rt('remove-bg', 'local:comfy-birefnet-video').reasonCode, 'local_off'); assert.equal(rt('remove-bg', 'local:comfy-birefnet-video').runnable, false); /* Oct 19 #3: Use local off → not runnable, credits null */
   assert.ok(rt('fps-boost', 'fal:fal-ai/rife/video').credits > 0, 'RIFE runs on an estimate (run policy D1, 2026-10-28), not unpriced');
   assert.equal(by.upscale.defaultModel, 'cloud-topaz-starlight-fast'); // 2132e53e: cloud-first defaults assert.ok(rt('upscale', 'direct:direct-flux3-upscale')); assert.ok(!by.upscale.models.find((m: any) => m.id === 'comfy-seedvr2').routes.some((r: any) => /bfl|flux-3/.test(r.routeId)), 'FLUX 3 Upscaler is its own card, not a SeedVR2 route'); assert.ok(rt('upscale', 'fal:fal-ai/seedvr/upscale/video'));
@@ -52,8 +52,8 @@ try {
   for (const [q, want] of [['fast', 30], ['high', 60]] as const) { const pr = await get(`/api/tools/reframe/price?provider=direct-luma-reframe&seconds=5&mode=9:16&quality=${q}`); assert.equal(pr.credits, want, JSON.stringify(pr)); }
   { const pr = await get('/api/tools/remove-bg/price?provider=comfy-birefnet-video&seconds=5&mode=green'); assert.equal(pr.credits, 25, JSON.stringify(pr)); }
   console.log('ok quotes = charges (reframe fast 30 / high 60, remove-bg 25)');
-  // refund on failure: the Comfy Router default (Ray 3.2, 30 at 540p fast) forced to fail (simulateRouteFail), its fallback Ray 2 Flash too
-  //  (OPENHIGGSFIELD_ROUTING_FAIL), Ray 2 can't take quality=fast → no more fallback → refund
+  // refund on failure: the Comfy Router default (Ray 3.2, 30 at 540p fast) forced to fail (simulateRouteFail), its fallback Ray 3.2 on fal too
+  //  (OPENHIGGSFIELD_ROUTING_FAIL) → no more fallback → refund
   { const b0 = await bal(); const r = await post('reframe', { types: '["9:16"]', quality: 'fast', rights: '1', simulateRouteFail: 'comfy-router:auto-reframe' }, mp4); assert.equal(r.status, 200, JSON.stringify(r.body)); assert.equal(b0 - (await bal()), 30, 'charged 30 at submit');
     const j = await wait(r.body.id ?? r.body.jobId); assert.equal(j.status, 'failed', j.status); assert.equal(await bal(), b0, 'refunded');
     // credits back live in structured fields only: refund.amount + creditsBack {credits, attempts}; the message has no credits sentence

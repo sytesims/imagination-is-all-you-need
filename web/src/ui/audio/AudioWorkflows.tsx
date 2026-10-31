@@ -85,5 +85,5 @@ export function AudioHowSteps({ w }: { w: AudioRecipe }) {
 export function AudioWorkflowPicker({ open, anchor, list, current, onClose, watch, prompt }: { open: boolean; anchor: RefObject<HTMLElement>; watch?: RefObject<HTMLElement>; list: AudioRecipe[]; current: string; onClose: () => void; prompt?: string }) {
   const rows = useMemo(() => list.map(w => ({ ...w, needs: needsOf(w) })), [list]);
   return <WorkflowPicker open={open} anchor={anchor} watch={watch} list={rows} current={current} categories={AUDIO_WORKFLOW_CATEGORIES} onChoose={w => pickAudioWorkflow(w.id, prompt)} onClose={onClose}
-    label="Audio workflows" prefix="awf" noun="audio" icon={w => <AWIcon w={w} />} how={w => <AudioHowSteps w={w} />} foot={`${list.length} audio workflows · Music is the default`} className="awf-pop" />;
+    label="Audio workflows" prefix="awf" noun="audio" icon={w => <AWIcon w={w} />} how={w => <AudioHowSteps w={w} />} foot={`${list.length} audio workflows`} className="awf-pop" />;
 }

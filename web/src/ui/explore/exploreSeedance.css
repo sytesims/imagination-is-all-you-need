@@ -21,7 +21,7 @@
 .xpsd-watch:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:6px;border-radius:4px}
 .xpsd-error{max-width:36ch;margin-top:18px;font:500 13px/1.5 var(--font-ui);color:#fff}
 /* Dedicated controls below the picture never cover subtitles. */
-.xpsd-film .sfilm-controls{position:absolute;top:100%;left:clamp(24px,5vw,80px);right:clamp(24px,5vw,80px);z-index:4;padding-top:0}
+.xpsd-film .sfilm-controls{position:absolute;top:100%;bottom:auto;left:clamp(24px,5vw,80px);right:clamp(24px,5vw,80px);z-index:4;padding:0;background:none}
 .xpsd-under{margin:68px clamp(24px,5vw,80px) 0}
 .xpsd-cred.xph-cred{flex-wrap:wrap;gap:16px 0}
 .xpsd-cred.xph-cred>div{padding:0 16px}.xpsd-cred.xph-cred>div:first-child{padding-left:0}

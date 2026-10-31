@@ -21,12 +21,6 @@ import type { BrandKit } from '../../../server/src/shared/brandKit';
 
 export const NO_BRAND = 'none';
 
-/** "Instagram & Facebook +2" */
-export function platformSummary(ad: AdCard) {
-  const list = ad.platforms; if (!list.length) return 'Pick where it runs';
-  return `${AD_PLATFORMS[list[0]].label}${list.length > 1 ? ` +${list.length - 1}` : ''}`;
-}
-
 /* ------------------------------------------------------------------ shared controls */
 
 /** Every headline, with "+ Add another headline" and remove. */
@@ -52,12 +46,13 @@ export function OfferButton({ ad, ids = 'ad' }: { ad: AdCard; ids?: string }) {
 
 /** "Brand: <name> ▾": the brand's logo, colours and fonts on the ad. The app's own bar popover (the board switcher's), with "No brand"
  *  and "Add a brand…" (Assets › Brands). */
-function BrandPick({ kits, kit, none, onPick, popClass }: { kits: BrandKit[]; kit: BrandKit | null; none: boolean; onPick: (id: string) => void; popClass?: string }) {
+function BrandPick({ kits, kit, none, onPick, popClass, compact }: { kits: BrandKit[]; kit: BrandKit | null; none: boolean; onPick: (id: string) => void; popClass?: string; compact?: boolean }) {
   const btn = useRef<HTMLButtonElement>(null); const [open, setOpen] = useState(false); const pick = (id: string) => { setOpen(false); onPick(id); };
   const cur = none ? null : kit;
   return <>
-    <button ref={btn} type="button" className="ad-brand" data-testid="ad-brand" aria-haspopup="menu" aria-expanded={open} aria-label={`Brand: ${cur?.name ?? 'No brand'}`} onClick={() => setOpen((o) => !o)}>
-      <span className="ad-brand-l">Brand</span><KitDots colors={cur?.colors ?? []} /><span className="ad-brand-n">{cur?.name ?? 'No brand'}</span><ChevronDownIcon size={14} /></button>
+    <button ref={btn} type="button" className={`ad-brand${compact ? ' ad-brand-s' : ''}`} data-testid="ad-brand" aria-haspopup="menu" aria-expanded={open} aria-label={`Brand: ${cur?.name ?? 'No brand'}`}
+      {...(compact ? tip(`Brand: ${cur?.name ?? 'No brand'}`) : {})} onClick={() => setOpen((o) => !o)}>
+      {!compact && <span className="ad-brand-l">Brand</span>}<KitDots colors={cur?.colors ?? []} /><span className="ad-brand-n">{cur?.name ?? 'No brand'}</span><ChevronDownIcon size={14} /></button>
     <BarPopover open={open} anchor={btn} onClose={() => setOpen(false)} label="Brand" placement="bottom" width={240} className={popClass} testId="ad-brand-pop">
       <PopSection label="Brand">
         <div role="radiogroup" aria-label="Brand">
@@ -71,8 +66,8 @@ function BrandPick({ kits, kit, none, onPick, popClass }: { kits: BrandKit[]; ki
     </BarPopover>
   </>;
 }
-export function Brand({ ad, popClass }: { ad: AdCard; popClass?: string }) {
-  return <BrandPick kits={ad.brand.kits} kit={ad.kit} none={ad.p.brandId === NO_BRAND} onPick={(id) => ad.patch({ brandId: id })} popClass={popClass} />;
+export function Brand({ ad, popClass, compact }: { ad: AdCard; popClass?: string; compact?: boolean }) {
+  return <BrandPick kits={ad.brand.kits} kit={ad.kit} none={ad.p.brandId === NO_BRAND} onPick={(id) => ad.patch({ brandId: id })} popClass={popClass} compact={compact} />;
 }
 
 /** A tiny drawing of each layout: the picture, the words as bars, the button as a dot. */
@@ -86,12 +81,15 @@ function PresetThumb({ id, big }: { id: AdPreset; big?: boolean }) {
 }
 
 const exportTip = (ad: AdCard) => ad.pic ? `Saves ${ad.count} pictures in one zip: a folder for each platform (${ad.folders}) with its sizes, ${ad.variants.length === 1 ? 'your headline' : `${ad.variants.length} headlines`} and text to paste` : 'Choose a picture first';
-export function ExportBtn({ ad }: { ad: AdCard }) {
-  return <button type="button" className="ad-export" data-card-control data-testid="ad-export" disabled={!ad.pic || !ad.art || ad.busy} onClick={() => void ad.exportPack()} {...tip(exportTip(ad))}>{ad.busy ? 'Saving…' : 'Export pack'}</button>;
+/** "Export pack" in the editor; on the card (icon) a small download button, its tooltip saying what the zip holds. */
+export function ExportBtn({ ad, icon }: { ad: AdCard; icon?: boolean }) {
+  const off = !ad.pic || !ad.art || ad.busy; const label = ad.busy ? 'Saving…' : 'Export pack';
+  return icon ? <button type="button" className="ad-export ad-export-i" data-card-control data-testid="ad-export" disabled={off} aria-label={label} onClick={() => void ad.exportPack()} {...tip(ad.pic ? `Export pack · ${exportTip(ad)}` : exportTip(ad))}><DownloadIcon size={15} /></button>
+    : <button type="button" className="ad-export" data-card-control data-testid="ad-export" disabled={off} onClick={() => void ad.exportPack()} {...tip(exportTip(ad))}>{label}</button>;
 }
 export function EditBtn({ ad }: { ad: AdCard }) {
   return <button type="button" className="ad-editbtn" data-testid="ad-edit" disabled={!ad.pic || !ad.art}
-    {...tip(ad.pic ? 'Picture, words, logo, layout and where it runs, with a big preview (or double-click the preview)' : 'Choose a picture first')} onClick={() => ad.setEditing('last')}><PencilIcon size={13} />Edit & style</button>;
+    {...tip(ad.pic ? 'Edit the words, picture, style, layout and where it runs' : 'Choose a picture first')} onClick={() => ad.setEditing('last')}><PencilIcon size={13} />Edit</button>;
 }
 
 /* ------------------------------------------------------------------ the editor's side panel */
@@ -122,6 +120,7 @@ function Section({ ad, id, x }: { ad: AdCard; id: AdSection; x: AdPanelCtx }) {
       <div className="ad-fields adp-fields"><OfferButton ad={ad} ids="ade" /></div>
       <h4 className="adp-sub">How the words look</h4>
       <PartStyle part="headline" style={ad.style} onStyle={ad.setStyle} art={art} />
+      {art.missing.length > 0 && <p className="ad-note adp-pad" data-testid="ad-font-note">This browser doesn’t have {art.missing.map((m) => `“${m}”`).join(' or ')}, so the ad uses Manrope.</p>}
     </>;
     case 'style': return <>
       <h4 className="adp-sub">Logo</h4>
@@ -182,7 +181,7 @@ function Panel({ ad, x }: { ad: AdCard; x: AdPanelCtx }) {
   </div>;
 }
 
-/** The big editor with its sections, opened at a section ("Edit & style", the platforms chip, a double-click on the preview). */
+/** The big editor with its sections, opened at a section ("Edit", a double-click on the preview). */
 export function AdCardEditor({ ad }: { ad: AdCard }) {
   if (!ad.editing || !ad.pic || !ad.art) return null;
   return <AdEditor sizes={ad.sizes} size={ad.size} onSize={(s) => ad.patch({ size: s.shape })} pic={ad.pic} art={ad.art} text={{ headline: ad.view.headline, offer: ad.p.offer, button: ad.p.button }} preset={ad.preset}

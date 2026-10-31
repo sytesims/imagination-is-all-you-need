@@ -445,7 +445,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
       <PreflightNotes open={pfOpen} notes={notes} anchor={genRef} dock={dock} onClose={() => setPfOpen(false)} testId="t3-notes" />
       <WorkflowPicker open={pop === 'wf'} anchor={wfRef} watch={dock} list={THREE_D_WORKFLOWS} current={wf.id} categories={THREE_D_CATEGORIES} onChoose={(w) => pick(w.id)} onClose={() => { setPop(''); clearPickerParam(); }} label="3D workflows" prefix="t3wf" noun="3D"
         icon={(w) => <WfIcon name={w.icon} />} how={(w) => <HowSteps w={{ ...w, inputs: [w.needs] } as any} />} soon={(w) => !(data?.workflows.find((x) => x.id === w.id)?.runnable ?? w.status === 'ready')}
-        foot={`${THREE_D_WORKFLOWS.filter((w) => w.status === 'ready').length} ready · ${THREE_D_WORKFLOWS.filter((w) => w.status === 'soon').length} coming soon · Image to 3D is the default`} />
+        foot={`${THREE_D_WORKFLOWS.filter((w) => w.status === 'ready').length} ready · ${THREE_D_WORKFLOWS.filter((w) => w.status === 'soon').length} coming soon`} />
       {!noModel && <ModelMenu open={pop === 'model'} anchor={mRef} avoid={dock} watch={dock} gap={4} placement="top" onClose={() => setPop('')} items={items} value={provider} testId="t3-model-list" rowTestId={(id) => `t3-model-${id}`} toolId={TOOL} quote={q}
         onPick={(id) => { setDraft((d) => ({ ...d, provider: id, pickedBy: 'user' } as any)); setPop(''); }} defaultId={def?.active?.id ?? defId} defaultWhy={def?.active?.why ?? def?.why?.hosted ?? null} defaultReason={def?.active?.runs === false ? def.active.reason ?? null : null}
         onReset={draft.provider && draft.provider !== defId ? () => { setDraft((d) => ({ ...d, provider: '' })); setPop(''); } : null} />}

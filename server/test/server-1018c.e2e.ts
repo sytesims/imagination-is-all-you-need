@@ -32,7 +32,7 @@ try {
   assert.doesNotMatch(JSON.stringify([nw.reason, nw.priceLine, nw.unavailableReason, nw.noProvider?.error]), /Nothing was charged/);
   const nwS = await post(N, '/api/tools/h3-video/jobs', { provider: 'cloud-h3', route: 'comfy-cloud:cloud-h3', prompt: 'x', types: '["t2v"]', duration: '5' }, {});
   assert.equal(nwS.status, 409, JSON.stringify(nwS.body).slice(0, 300)); assert.equal(nwS.body.code, 'route_not_runnable'); assert.match(nwS.body.error, /isn’t ready yet\..*Nothing was charged\.$/);
-  const km = (await get(N, '/api/tools/reframe/price?route=fal:fal-ai/luma-dream-machine/ray-2/reframe')).body; // needsKey keeps its shape (+ chargeable:false, keyOwner)
+  const km = (await get(N, '/api/tools/reframe/price?route=fal:luma/agent/ray/v3.2/reframe')).body; // needsKey keeps its shape (+ chargeable:false, keyOwner)
   assert.equal(km.needsKey, true); assert.equal(km.credits, km.listCredits); assert.equal(km.priceAvailable, true); assert.equal(km.chargeable, false); assert.equal(km.keyOwner, 'fal');
   const run = (await get(M, '/api/tools/create-image/price')).body; assert.equal(typeof run.chargeable, 'boolean'); if (run.demo) assert.equal(run.chargeable, false);
   ok(`not_wired: credits null, priceAvailable false, listCredits ${nw.listCredits}, priceLine "${nw.priceLine}"; submit 409 keeps "Nothing was charged"; needsKey shape unchanged`);
@@ -79,7 +79,7 @@ try {
   // the Comfy key alone runs Reframe on Comfy Router (cloud first, shared/cloudDefaults.ts); the fal row still names its own key
   const rf = (await get(N, '/api/edit-video/tools')).body.tools.find((t: any) => t.id === 'reframe'); assert.equal(rf.available, true); assert.equal(rf.needsKey, false);
   assert.ok(rf.models[0].routes.some((r: any) => r.routeId.startsWith('comfy-router:') && r.available), JSON.stringify(rf.models[0].routes.map((r: any) => r.routeId)));
-  const rr = rf.models[0].routes.find((r: any) => r.routeId === 'fal:fal-ai/luma-dream-machine/ray-2/reframe'); assert.equal(rr.needsKey, true); assert.equal(rr.keyOwner, 'fal'); assert.match(rr.priceLine, /^Needs a fal key\. Price once it's added/);
+  const rr = rf.models[0].routes.find((r: any) => r.routeId === 'fal:luma/agent/ray/v3.2/reframe'); assert.equal(rr.needsKey, true); assert.equal(rr.keyOwner, 'fal'); assert.match(rr.priceLine, /^Needs a fal key\. Price once it's added/);
   const rfM = (await get(M, '/api/edit-video/tools')).body.tools.find((t: any) => t.id === 'reframe'); assert.equal(rfM.available, true); assert.equal(rfM.demo, true);
   assert.doesNotMatch(JSON.stringify(rf), /Auto picks a fal route/);
   ok('edit video: Reframe runs on Comfy Router with the Comfy key; its fal route says "Needs a fal key." (demo preview on mock)');
@@ -104,8 +104,8 @@ try {
   const all = [...(await get(M, '/api/routes')).body.routes, ...(await get(M, '/api/routes?mode=r2v&refs=11&aspect=2:1&quality=fast')).body.routes]; const reasons = new Set<string>();
   for (const m of all) for (const o of m.routes) if (o.reason && o.reason !== 'local_off') reasons.add(o.reason);
   for (const r of reasons) { assert.doesNotMatch(r, /\b(t2v|i2v|flf|r2v)\b|quality=|OPENHIGGSFIELD_|fal-ai\/|on this route$|^only /, r); }
-  const fl = (await get(N, '/api/edit-video/tools?resolution=high')).body.tools.find((t: any) => t.id === 'reframe').models[0].routes.find((r: any) => /flash/.test(r.routeId));
-  assert.equal(fl.reason, 'High quality runs on Ray 2 instead');
-  ok(`route reasons: ${reasons.size} distinct reasons, none with mode ids / field=value / env names ("High quality runs on Ray 2 instead")`);
+  const fl = (await get(N, '/api/edit-video/tools?seconds=12')).body.tools.find((t: any) => t.id === 'reframe').models[0].routes.find((r: any) => r.routeId === 'fal:luma/agent/ray/v3.2/reframe');
+  assert.equal(fl.reason, 'Luma Ray 3.2 reframes clips up to 10 s');
+  ok(`route reasons: ${reasons.size} distinct reasons, none with mode ids / field=value / env names ("Luma Ray 3.2 reframes clips up to 10 s")`);
   console.log('ALL OK server-1018c');
 } finally { for (const p of procs) { try { process.kill(-p.pid!, 'SIGTERM'); } catch { /* gone */ } } await new Promise((r) => setTimeout(r, 500)); try { fs.rmSync(D, { recursive: true, force: true }); } catch { /* a server still writing */ } }

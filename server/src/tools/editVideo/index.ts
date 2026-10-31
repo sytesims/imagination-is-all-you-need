@@ -30,9 +30,9 @@ const bad = (field: string, message: string, code = 'invalid') => ({ error: mess
 
 // ---------- Prices (official pages read 2026-10-17) ----------
 export const EDIT_VIDEO_PRICES: HostedPrice[] = [
-  // Reframe (provider audit 2026-10-21): fal deprecates both Ray 2 reframe endpoints on 2026-10-25 ("Migrate to Ray v3.2"); marked retiring in shared/lifecycle.ts. Listed in the /api/pricing table (PRICING_TABLE_EXTRA).
-  { providerId: 'fal:fal-ai/luma-dream-machine/ray-2/reframe', model: 'Luma Ray 2 Reframe (fal)', unit: 'second', usd: 0.2, sourceUrl: 'https://fal.ai/models/fal-ai/luma-dream-machine/ray-2/reframe', checkedAt: '2026-10-21', estimated: false, note: '"Your request will cost $0.2 per second." fal deprecates this endpoint on 2026-10-25 (migrate to Ray v3.2).' },
-  { providerId: 'fal:fal-ai/luma-dream-machine/ray-2-flash/reframe', model: 'Luma Ray 2 Flash Reframe (fal)', unit: 'second', usd: 0.06, sourceUrl: 'https://fal.ai/models/fal-ai/luma-dream-machine/ray-2-flash/reframe', checkedAt: '2026-10-21', estimated: false, note: '"Your request will cost $0.06 per second." fal deprecates this endpoint on 2026-10-25 (migrate to Ray v3.2).' },
+  // Reframe on fal (2026-10-31): Luma Ray 3.2 Reframe replaces Ray 2 / Ray 2 Flash, which fal retires on 2026-11-05. Listed in the /api/pricing table (PRICING_TABLE_EXTRA).
+  { providerId: 'fal:luma/agent/ray/v3.2/reframe', model: 'Luma Ray 3.2 Reframe (fal)', unit: 'second', usd: 0.12, usdByQuality: { '540p': 0.06, '720p': 0.12, '1080p': 0.36 }, sourceUrl: 'https://fal.ai/models/luma/agent/ray/v3.2/reframe', checkedAt: '2026-10-31', estimated: false,
+    note: 'fal: $0.06 / $0.12 / $0.36 per started second of source clip at 540p / 720p / 1080p. We send 720p (High) or 540p (Fast).' },
   { providerId: 'fal:bria/video/background-removal', model: 'Bria Video Background Removal (fal)', unit: 'second', usd: 0.14, sourceUrl: 'https://fal.ai/models/bria/video/background-removal', checkedAt: D, estimated: false, note: '"Your request will cost $0.14 per second." Input < 4000×4000 and < 30 s.' },
   { providerId: 'fal:fal-ai/seedvr/upscale/video', model: 'SeedVR2 video upscale (fal)', unit: 'mp_second', usd: 0.024, sourceUrl: 'https://fal.ai/models/fal-ai/seedvr/upscale/video', checkedAt: D, estimated: true, note: '"$0.001 per megapixel of video data (width × height × frames)" = $0.001 × fps per output-MP-second; applied at 24 fps (a 30 fps clip bills 25% more on fal).' },
   { providerId: 'fal:fal-ai/rife/video', model: 'RIFE video interpolation (fal)', unit: 'second', usd: null, estimateUsd: 0.005, estimateNote: 'fal bills $0.0013 per compute second; estimated at under 4 compute seconds per second of clip (an estimate on the safe side).', sourceUrl: 'https://fal.ai/models/fal-ai/rife/video', checkedAt: D, estimated: true, note: '"$0.0013 per compute second": billed by GPU time, no fixed per-clip price, so it runs on an estimate.' },
@@ -56,26 +56,27 @@ registerProvider({ id: 'local-ffmpeg-hdr', name: 'ffmpeg HDR10 conversion (local
 registerProvider({ id: 'comfy-seedvr2', name: 'SeedVR2', kind: 'open-weights', via: 'fal fal-ai/seedvr/upscale/video; local ComfyUI (NVIDIA only) workflows/upscale-seedvr2-native-api.json (SeedVR2 3B, core nodes)', workflows: ['upscale-seedvr2-native-api.json'], docUrl: 'https://github.com/ByteDance-Seed/SeedVR', licenseParts: ['apache-2.0'] } as any);
 registerProvider({ id: 'direct-luma-reframe', name: 'Luma Reframe', kind: 'hosted-direct', apiKeyEnv: 'OPENHIGGSFIELD_LUMA_API_KEY', via: 'Luma API (unpriced: listed only)', docUrl: 'https://docs.lumalabs.ai/' } as any);
 
-// Luma's own API: Reframe price not verified → listed as unavailable (never runs, never charges). The fal routes below carry the job.
-COMING_SOON['direct-luma-reframe'] = "Luma's own API has no confirmed Reframe price yet, so Reframe runs on the fal routes";
+// Luma's own API: Reframe price not verified → listed as unavailable (never runs, never charges). The Ray 3.2 routes below carry the job.
+COMING_SOON['direct-luma-reframe'] = "Luma's own API has no confirmed Reframe price yet, so Reframe runs on the Luma Ray 3.2 routes";
 // ---------- Cloud routes (fal) ----------
 /** The source clip for a fal field (video_url): the shared hand-off (small inline, larger via fal's CDN upload). */
 const dataUri = (file: string) => handOff(file, 'video', 'fal', { mime: 'video/mp4' });
 const falRoute = (modelId: string, slug: string, label: string, sec: number, extra: Partial<RouteDef>): RouteDef => ({
   routeId: `fal:${slug}`, kind: 'fal', modelId, endpoint: slug, priceRef: `fal:${slug}`, sourceUrl: `https://fal.ai/models/${slug}/api`, checkedAt: D, typicalLatencySec: sec, latencyEstimated: true,
   latencySource: 'estimated: fal publishes no per-model latency', envKey: FAL_ENV, envAliases: ['FAL_KEY'], label: `${label} via fal`, output: 'video', ...extra });
-/** Reframe quality: job input.fields.quality; the price endpoint passes ?quality= as input.resolution (routing/http.ts), so read both (quote = charge). */
-const quality = (i: Record<string, any>) => (i.fields?.quality ?? (i.resolution === 'fast' || i.resolution === 'high' ? i.resolution : null) ?? 'high');
-const REFRAME_ASPECTS = ['16:9', '9:16', '1:1', '4:3', '3:4', '21:9', '9:21'];
+/** Sent when the user gives no prompt (fal's Ray 3.2 Reframe requires one). */
+const REFRAME_PROMPT = 'Extend the scene naturally to fill the new frame';
+/** Ray 3.2 on fal: one route for both qualities (High = 720p, Fast = 540p, same as the Comfy Router place), billed per started second of the source. */
 EXTRA_ROUTES['direct-luma-reframe'] = [
-  falRoute('direct-luma-reframe', 'fal-ai/luma-dream-machine/ray-2/reframe', 'Luma Ray 2 Reframe', 120, { caps: { quality: 'high', aspects: REFRAME_ASPECTS }, unavailableFor: (i) => quality(i) === 'fast' ? 'Fast quality runs on Ray 2 Flash instead' : null,
-    request: async (j) => ({ video_url: await dataUri(j.input.videoPath), aspect_ratio: j.input.types?.[0], ...(j.input.prompt ? { prompt: j.input.prompt } : {}) }) }),
-  falRoute('direct-luma-reframe', 'fal-ai/luma-dream-machine/ray-2-flash/reframe', 'Luma Ray 2 Flash Reframe', 60, { caps: { quality: 'fast', aspects: REFRAME_ASPECTS }, unavailableFor: (i) => quality(i) === 'fast' ? null : 'High quality runs on Ray 2 instead',
-    request: async (j) => ({ video_url: await dataUri(j.input.videoPath), aspect_ratio: j.input.types?.[0], ...(j.input.prompt ? { prompt: j.input.prompt } : {}) }) }),
+  falRoute('direct-luma-reframe', 'luma/agent/ray/v3.2/reframe', 'Luma Ray 3.2 Reframe', 120, { checkedAt: '2026-10-31', caps: { aspects: RAY32_ASPECTS, maxSeconds: RAY32_REFRAME_MAX_SEC, qualities: { high: '720p', fast: '540p' } },
+    priceInput: (i) => ({ ...i, resolution: RAY32_REFRAME_RES(i), ...(Number(i.duration) > 0 ? { duration: Math.ceil(Number(i.duration)) } : {}) }),
+    unavailableFor: (i) => (Number(i.duration) > RAY32_REFRAME_MAX_SEC ? `Luma Ray 3.2 reframes clips up to ${RAY32_REFRAME_MAX_SEC} s`
+      : i.types?.[0] && !RAY32_ASPECTS.includes(String(i.types[0])) ? `Luma Ray 3.2 makes ${RAY32_ASPECTS.join(', ')}` : null),
+    request: async (j) => ({ video_url: await dataUri(j.input.videoPath), prompt: String(j.input.prompt || REFRAME_PROMPT), aspect_ratio: j.input.types?.[0], resolution: RAY32_REFRAME_RES(j.input) }) }),
 ];
-// Design Planner: default Reframe model = Auto → the keyed fal Ray 2 route for the asked quality (high → Ray 2, fast → Ray 2 Flash). No fal key → 402 no_provider.
-registerProvider({ id: 'auto-reframe', name: 'Auto (Luma Ray 2 / Ray 2 Flash via fal)', kind: 'hosted-direct', apiKeyEnv: FAL_ENV, via: 'fal: Ray 2 (high) or Ray 2 Flash (fast)', docUrl: 'https://fal.ai/models/fal-ai/luma-dream-machine/ray-2/reframe/api' } as any);
-COMING_SOON['auto-reframe'] = 'Reframe runs on the fal routes (Ray 2 or Ray 2 Flash)'; // the native (direct) route never runs; the fal routes below carry the job
+// Design Planner: default Reframe model = Auto → the keyed fal Ray 3.2 route (high → 720p, fast → 540p). No fal key → 402 no_provider.
+registerProvider({ id: 'auto-reframe', name: 'Auto (Luma Ray 3.2)', kind: 'hosted-direct', apiKeyEnv: FAL_ENV, via: 'fal: Luma Ray 3.2 Reframe (720p high, 540p fast)', docUrl: 'https://fal.ai/models/luma/agent/ray/v3.2/reframe/api' } as any);
+COMING_SOON['auto-reframe'] = 'Reframe runs on the Luma Ray 3.2 routes'; // the native (direct) route never runs; the routes below carry the job
 EXTRA_ROUTES['auto-reframe'] = EXTRA_ROUTES['direct-luma-reframe'].map((r) => ({ ...r, modelId: 'auto-reframe' }));
 EXTRA_ROUTES['comfy-birefnet-video'] = [falRoute('comfy-birefnet-video', 'bria/video/background-removal', 'Bria Background Removal', 60, {
   caps: { maxSeconds: 30, maxSize: '4000x4000', backgrounds: ['Transparent', 'Black', 'White', 'Green'] }, unavailableFor: (i) => Number(i.duration) >= 30 ? 'Bria takes clips under 30 s' : null,
@@ -83,7 +84,7 @@ EXTRA_ROUTES['comfy-birefnet-video'] = [falRoute('comfy-birefnet-video', 'bria/v
 EXTRA_ROUTES['comfy-rife'] = [falRoute('comfy-rife', 'fal-ai/rife/video', 'RIFE', 60, { caps: { estimate: 'GPU-time billed: runs on an estimate' }, request: async (j) => ({ video_url: await dataUri(j.input.videoPath), num_frames: Math.max(1, Number(j.input.fields?.multiplier ?? 2) - 1) }) })];
 // One key runs everything (2026-10-27): Comfy Router places, first in each card (place order Comfy → other API). Bodies: routing/routerModels.ts.
 //  - Remove Background (the Bria card of this engine, shared/modelIds.ts split): bria/video-edit-remove-background, $0.05 per s (fal: $0.14), clips to 60 s.
-//  - Reframe (the Luma Reframe card): luma_2/ray-3.2 type video_reframe, its newer model (fal retired Ray 2 reframe on 2026-10-25): High = 720p $0.12 per s,
+//  - Reframe (the Luma Reframe card): luma_2/ray-3.2 type video_reframe, its newer model (fal retires Ray 2 reframe on 2026-11-05): High = 720p $0.12 per s,
 //    Fast = 540p $0.06 per s, clips to 10 s, shapes 16:9 9:16 1:1 4:3 3:4 21:9.
 EXTRA_ROUTES['comfy-birefnet-video'] = [routerPlace('comfy-birefnet-video', { maxSeconds: BRIA_VIDEO_MAX_SEC, backgrounds: ['Transparent', 'Black', 'White', 'Green'] },
   { tools: ['remove-bg'], checkedAt: '2026-10-27', typicalLatencySec: 90, label: 'Comfy Router' }), ...EXTRA_ROUTES['comfy-birefnet-video']];
@@ -95,7 +96,7 @@ for (const id of ['direct-luma-reframe', 'auto-reframe']) EXTRA_ROUTES[id] = [ro
 export interface EditLimits { minSeconds: number; maxSeconds: number; aspects?: string[]; qualities?: string[]; outputs?: string[]; verified: boolean; source: string }
 export const EDIT_VIDEO_LIMITS: Record<string, EditLimits> = {
   'h3-extend': { minSeconds: 1, maxSeconds: 30, outputs: ['+5 s', '+8 s', '+10 s'], verified: true, source: 'shared upload limits (up to 30 s). The local graph and fal minimax/h3-max/extend-video need 4 s or more and add +5 / +10 s (their routes refuse the rest); H3 Extend · via last frame (Comfy Router) takes any clip and adds +5 / +8 / +10 s' },
-  reframe: { minSeconds: 4, maxSeconds: 30, aspects: REFRAME_ASPECTS, qualities: ['high', 'fast'], verified: false, source: 'fal Luma Ray 2 Reframe aspect enum (2026-10-17); Luma max input length not stated on the fal page; shared upload cap 30 s' },
+  reframe: { minSeconds: 4, maxSeconds: RAY32_REFRAME_MAX_SEC, aspects: RAY32_ASPECTS, qualities: ['high', 'fast'], verified: true, source: 'fal luma/agent/ray/v3.2/reframe and Comfy Router Ray 3.2 (2026-10-31): aspect enum, source 10 s or less' },
   upscale: { minSeconds: 4, maxSeconds: 30, outputs: ['720p', '1080p', '1440p', '4k'], qualities: ['precise', 'creative'], verified: true, source: 'shared/videoUpscale.ts: per-model sizes (Topaz 1080p / 4K; FLUX Video Upscale ≤ 20 s)' },
   'remove-bg': { minSeconds: 4, maxSeconds: 30, outputs: ['transparent: WebM (VP9 + alpha, Opus audio)', 'green / black / white: MP4 (H.264)'], verified: true, source: 'fal bria/video/background-removal (< 30 s, < 4000×4000; webm_vp9 for Transparent)' },
   'sdr-hdr': { minSeconds: 4, maxSeconds: 30, verified: true, source: 'local ffmpeg; shared upload limits' },
@@ -128,8 +129,8 @@ const VIDEO_STAGES: [string, string][] = [['uploading', 'Uploading'], ['analyzin
 
 // ---------- New tools ----------
 export const reframeTool = withLimits(makeApp({ id: 'reframe', name: 'Reframe', category: 'Edit Video', status: 'new', input: 'video', description: 'Change a clip to another aspect ratio; the model fills the new areas.',
-  types: REFRAME_ASPECTS.map((a) => t('Aspect', a, a)), prompt: true, resolutions: ['720p'], workflow: 'reframe-cloud-only', model: 'Luma Ray 2 / Ray 2 Flash Reframe (cloud only: no open local model)',
-  fields: [{ name: 'quality', kind: 'select', options: [{ value: 'high', label: 'High (Ray 2)' }, { value: 'fast', label: 'Fast (Ray 2 Flash)' }], default: 'high' } as any], providers: ['auto-reframe', 'direct-luma-reframe'], stages: VIDEO_STAGES }));
+  types: RAY32_ASPECTS.map((a) => t('Aspect', a, a)), prompt: true, resolutions: ['720p'], workflow: 'reframe-cloud-only', model: 'Luma Ray 3.2 Reframe (cloud only: no open local model)',
+  fields: [{ name: 'quality', kind: 'select', options: [{ value: 'high', label: 'High (720p)' }, { value: 'fast', label: 'Fast (540p)' }], default: 'high' } as any], providers: ['auto-reframe', 'direct-luma-reframe'], stages: VIDEO_STAGES }));
 reframeTool.workflows = [];
 export const removeBgTool = withLimits(makeApp({ id: 'remove-bg', name: 'Remove Background', category: 'Edit Video', status: 'new', input: 'video', description: 'Cut the subject out of a clip: transparent, green, black or white background. Audio kept.',
   types: [t('Background', 'transparent', 'Transparent'), t('Background', 'green', 'Green screen'), t('Background', 'black', 'Black'), t('Background', 'white', 'White')], resolutions: ['720p'],
