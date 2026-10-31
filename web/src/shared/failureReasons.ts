@@ -1,5 +1,5 @@
 import { LOCAL_LABEL, RUN_ON_LABELS } from '../../../server/src/shared/modelIds';
-import { policyRefusalCharge } from '../../../server/src/shared/policyBilling';
+import { policyRefusalCharge, refusalReason } from '../../../server/src/shared/policyBilling';
 import { ledgerUsd } from './billing';
 /**
  * One reason map for every failed, blocked or canceled run (feed tile, result viewer, job page, tool stages).
@@ -35,6 +35,8 @@ export interface FailJob {
   creditsBack?: { credits?: number } | null; refund?: { amount?: number; freeGenReturned?: boolean } | null; refunded?: number;
   cost?: number | null; free?: boolean; demo?: boolean; simulated?: boolean; /** sample run (mock backend or demo route): nothing billed */ isSample?: boolean; spend?: { simulated?: boolean } | null;
   /** server routerRun.ts: 'not_charged' = Comfy refused it at validation (422, not billed); 'unconfirmed' = rejected after it was sent, billing undocumented */ chargeNote?: 'not_charged' | 'unconfirmed' | null;
+  /** server routerRun.ts: what the provider said when it failed (sanitised); a content refusal's reason ("a photo of a real person") comes from here */
+  providerError?: { detail?: string | null; upstreamDetail?: string | null; refusalSubject?: string | null } | null;
   /** where it ran ('local', 'comfy-cloud', 'fal'…): list items carry this but not `route` */ runOn?: string | null; input?: Record<string, any> | null; decision?: { note?: string } | null;
 }
 export interface FailCtx { /** own-accounts billing (no app balance); null = billing not loaded yet (the charge sentence waits, so it never flips) */ ownAccounts?: boolean | null; /** the billing provider's stated rule for a failed run */ providerRule?: 'not-charged' | 'may-charge' | 'unknown' | null; /** its short name ("Comfy", "fal") */ providerName?: string | null }
@@ -174,6 +176,7 @@ export function failView(j: FailJob, ctx: FailCtx = {}): FailView {
   const actions = r.actions.filter(a => a !== 'runLocal' || local);
   const mins = /(\d+) min\b/.exec(String(j.error ?? ''))?.[1];
   const line = r.key === 'cloud_credits' && !local ? 'Top up on comfy.org, then try again.' : r.key === 'no_credits' && !local ? 'Top up your account, then try again.'
+    : r.key === 'declined' && refusalReason(j.providerError) ? refusalReason(j.providerError)! /* the provider said why: "The provider refused a photo of a real person." */
     : r.key === 'local_stalled' && mins ? `Nothing moved for ${mins} minute${mins === '1' ? '' : 's'}, so we stopped it. Try again.` : r.key === 'local_too_long' && mins ? `It ran for over ${mins} minute${mins === '1' ? '' : 's'}, so we stopped it. Try again.` : r.line;
   return { ...r, title: titleFor(j, r.title), line, actions: actions.length ? actions : ['retry'], charge: chargeOf(j, r, ctx), detail: detailOf(j) };
 }

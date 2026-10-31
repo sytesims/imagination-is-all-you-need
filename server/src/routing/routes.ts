@@ -26,6 +26,7 @@ import { LAYOUT_BOXES_LOCAL_ONLY, withFlux3BoxRows } from '../shared/layoutBoxes
 import { DIRECT_ROUTES, NATIVE_DIRECT } from './directRoutes.js';
 import { DEPLOY_ROUTES, isDeployRouteId, deployRoute } from './deployRoutes.js';
 import { charswapCloudIssue } from '../comfy/h3CharSwapCloud.js';
+import { charswapWhoIssue } from '../shared/cloudSwap.js';
 import { LTX_DFR, ltxDfrAdjustNote, ltxDfrPriceInput, ltxDfrResolution } from '../shared/ltxDfr.js';
 import { ltx25CloudIssue, ltx25CloudRenderSeconds } from '../comfy/ltx25Cloud.js';
 import { layoutCloudIssue } from '../comfy/ltx25LayoutCloud.js';
@@ -208,6 +209,7 @@ EXTRA_ROUTES['comfy-h3-camera'] = [...(EXTRA_ROUTES['comfy-h3-camera'] ?? []), r
 EXTRA_ROUTES['comfy-h3-extend'] = [...(EXTRA_ROUTES['comfy-h3-extend'] ?? []), routerPlace('comfy-h3-extend', { audio: true, extendSeconds: [...H3_ROUTER_EXTEND_SECONDS], method: 'last-frame', methodLabel: 'via last frame', returns: 'the clip plus the new footage, joined', note: 'Image to video from the exact last frame, joined; motion is not carried over' },
   { priceRef: 'api-minimax-h3', modes: ['extend'], label: H3_ROUTER_EXTEND_LABEL, checkedAt: '2026-10-26', typicalLatencySec: 150, priceInput: (i) => ({ ...i, duration: h3RouterExtendSeconds(i), resolution: '768p' }) })];
 LOCAL_ROUTE_BLOCK['comfy-h3-extend'] = (i) => h3ClassicExtendIssue('H3 Extend on your computer', i);
+LOCAL_ROUTE_BLOCK['comfy-h3-charswap'] = charswapWhoIssue; // H3 Character Swap needs a click or a side (shared/cloudSwap.ts), on every place
 // H3 Talking Photo on Comfy Router (2026-10-26, H3 map F2): portrait = reference image, speech = reference audio (routerModels.ts 'comfy-h3-lipsync'),
 // billed as MiniMax H3 on Router (priceRef api-minimax-h3) for the clip it makes: the speech length rounded up, 5–15 s. fal / Replicate stay as places.
 EXTRA_ROUTES['comfy-h3-lipsync'] = [routerPlace('comfy-h3-lipsync', { ...H3_LIPSYNC_CAPS, localRecipe: undefined, speechSeconds: [H3_SPEECH_SECONDS.min, H3_SPEECH_SECONDS.max], minSeconds: 5, note: 'reference to video: portrait as Image 1, speech as Audio 1 (no LoRA)' },
@@ -240,7 +242,7 @@ const TWINS: { model: string; twin: string; tools: string[]; /** only the tool i
     return t.length && t.every((x: string) => /^ltx-/.test(x.trim())) ? null : 'This route only runs the LTX camera moves'; } },
   { model: 'comfy-open', twin: 'cloud-reshoot', tools: ['reshoot'] },
   // Oct 26: H3 Character Swap on shared Comfy Cloud with the user's imported LoRA (comfy/h3CharSwapCloud.ts): one pass, 2–15 s, mask-free
-  { model: 'comfy-h3-charswap', twin: 'cloud-h3-charswap', tools: ['object-swap', 'motion-transfer'], unavailableFor: charswapCloudIssue },
+  { model: 'comfy-h3-charswap', twin: 'cloud-h3-charswap', tools: ['object-swap', 'motion-transfer'], unavailableFor: (i) => charswapWhoIssue(i) ?? charswapCloudIssue(i) },
   // Oct 27: LTX-2.5 22B on shared Comfy Cloud (comfy/ltx25Cloud.ts): Generate Video (text, start frame, Loop, first + last) and Transitions' Morph; Extend with the
   // picture-and-sound continuation. Billed per RENDERED second (Extend includes the kept context). 720p runs here only (LOCAL_ROUTE_BLOCK below).
   // DFR (2026-10-29, shared/ltxDfr.ts + comfy/ltx25Dfr.ts): the official DFR template on image to video, priced per second with or without the 48 fps pass

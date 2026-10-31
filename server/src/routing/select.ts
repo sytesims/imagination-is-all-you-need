@@ -298,10 +298,16 @@ export function noProvider(tool: ToolDef, modelId: string, all: RouteOption[], i
     error: deployNeededError(DEPLOY_LEAD[modelKeyOf(tool.id, modelId, input)] ?? name), errorType: 'no_provider', status: 402, needsKey: true, providers, localAvailable: la, localRoute: null, useLocal: getPrefs().global.useLocal, routes: all, setup: setupTarget(tool, modelId, input, all, allow), setupOptions: setupOptions(tool, modelId, input, all, allow) };
   // setups-routing (2026-10-29): a model with no cloud place never asks for a key (YuE2 said "Add a key first"); with no ComfyUI answering it says to set one up
   const localOnly = !providers.length && !!local; const noGpu = localOnly && !la;
+  // the local step, from the same placeAction the setup card and the model row read (2026-10-31: Wan 2.2 Animate's row said "Download 26.6 GB" while
+  // this said "Turn it on": a local-only model runs with Use local off, so its files were the real step). One source: setupTarget.
+  const step = la ? setupTarget(tool, modelId, input, all, allow) : null; const localStep = step?.runOn === 'local' ? step : null;
+  const localDo = localStep?.action === 'download' ? `download its files${gbText(localStep.missingBytes) ? ` (${gbText(localStep.missingBytes)})` : ''}` : localStep?.action === 'install_node' ? 'install its add-on' : 'turn on Your computer';
   return { state: 'needs_provider', options, title: noGpu ? `Set up ComfyUI to run ${name} free` : `Choose where to run ${name}`,
-    message: noGpu ? localOnlyUnreachable(name) : `${name} is ready once it has somewhere to run: ${[providers.length ? `connect ${needs}` : '', la ? 'turn on Your computer' : ''].filter(Boolean).join(', or ') || 'nothing can run it in this setup'}.`,
+    message: noGpu ? localOnlyUnreachable(name) : `${name} is ready once it has somewhere to run: ${[providers.length ? `connect ${needs}` : '', la ? localDo : ''].filter(Boolean).join(', or ') || 'nothing can run it in this setup'}.`,
     /* T6 (copy wave 1): a model that only runs on your computer never gets key advice */
     error: noGpu ? `${localOnlyUnreachable(name)} Nothing was charged.`
+      : localOnly && localStep?.action === 'download' ? `${name} runs on your computer and needs its files first: Download ${gbText(localStep.missingBytes) || 'files'}. Nothing was charged.`
+      : localOnly && localStep?.action === 'install_node' ? `${name} runs on your computer and needs an add-on first. Install it in Settings → Your computer. Nothing was charged.`
       : localOnly ? `${name} runs on your computer. Turn it on in Settings → Your computer. Nothing was charged.`
       : !providers.length ? `Nothing can run ${name} here yet. Pick another model. Nothing was charged.`
       : `${name} needs ${needs}. Add it in Settings → Connections${la ? ', or run it on your computer' : ''}. Nothing was charged.`, errorType: 'no_provider', status: 402, needsKey: providers.length > 0,

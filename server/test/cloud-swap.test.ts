@@ -8,7 +8,7 @@
 //  6. trim: a range is cut from the upload (sound kept); bad ranges are refused with field "trim".
 // Run: npx tsx test/cloud-swap.test.ts
 import assert from 'node:assert/strict'; import { execFileSync } from 'node:child_process'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path'; import { createRequire } from 'node:module';
-import { ROUTER_SCHEMA_DIR } from './_model-health.js';
+import { ROUTER_SCHEMA_DIR, FIXTURE_SCHEMA_DIR } from './_model-health.js';
 const D = fs.mkdtempSync(path.join(os.tmpdir(), 'cloudswap-')); const DATA = fs.mkdtempSync(path.join(D, 'data-'));
 Object.assign(process.env, { OPENHIGGSFIELD_DATA_DIR: DATA, OPENHIGGSFIELD_BACKEND: 'mock', OPENHIGGSFIELD_COMFY_ROUTER_URL: 'https://router.test', COMFY_API_KEY: '', OPENHIGGSFIELD_PUBLIC_BASE_URL: '' });
 const ok = (m: string) => console.log('ok ' + m);
@@ -49,6 +49,20 @@ const CS = await import('../src/shared/cloudSwap.ts'); const M = await import('.
   assert.doesNotMatch(CS.swapPrompt({ mode: 'motion_transfer', video: 'v', image: 'i' }), /exact motion|same camera movement/);
   assert.match(CS.passNote(CS.CLOUD_SWAP_MODELS['router-kling-edit'], 25), /3 passes \(9 s \+ 8 s \+ 8 s\), joined/);
   ok('shared: planPasses (balanced whole seconds, every 4–30 s range in ≤ 10 s passes), clampTrim, prompt template, pass note');
+}
+
+// ---------------- 1b. Seedance 2.5 Edit (2026-10-31): listed with its warning, never the automatic pick ----------------
+{
+  process.env.COMFY_API_KEY = 'test-not-a-real-key';
+  const D = await import('../src/routing/defaults.ts'); const { getTool } = await import('../src/tools/registry.ts'); const { CATALOGUE } = await import('../src/shared/modelRank.ts');
+  assert.equal(CS.swapNeverAuto('router-seedance-25-edit'), true); assert.equal(CS.swapNeverAuto('router-kling-edit'), false);
+  assert.equal(CATALOGUE['seedance-2.5-edit'].bestFor, CS.SEEDANCE_PEOPLE_WARNING, 'the menu row says it');
+  for (const id of ['object-swap', 'motion-transfer']) { const t = getTool(id)!;
+    assert.ok(t.providers.includes('router-seedance-25-edit'), `${id}: still listed`);
+    assert.equal(D.toolDefaults(t, { noFavourite: true }).defaultProvider, 'router-kling-edit', `${id}: Kling is the default`);
+    const without = D.toolDefaults(t, { noFavourite: true, only: (x) => x !== 'router-kling-edit' }).defaultProvider; assert.notEqual(without, 'router-seedance-25-edit', `${id}: with Kling out, never Seedance (${without})`); }
+  process.env.COMFY_API_KEY = '';
+  ok('Seedance 2.5 Edit: listed, its row says "Often refuses photos of real people", never the automatic pick (Kling stays the default)');
 }
 
 // ---------------- 2. bodies vs the official schemas ----------------
@@ -92,13 +106,15 @@ const bodies: { k: any[]; s: any[] } = { k: [], s: [] };
   const SCHEMAS = ROUTER_SCHEMA_DIR; const req = createRequire(import.meta.url); let Ajv: any = null; try { Ajv = req('ajv/dist/2020.js').default ?? req('ajv/dist/2020.js'); } catch { /* none */ }
   let checked = 0;
   for (const [file, bs, bad] of [['kling__kling-v3-omni', bodies.k, { video_list: [{ refer_type: 'other' }] }], ['byteplus__dreamina-seedance-2-5-260628', bodies.s, { content: [], ratio: '5:4' }]] as const) {
-    const f = path.join(SCHEMAS, `${file}.json`); if (!fs.existsSync(f) || !Ajv) { console.log(`skip schema ${file}: ${!Ajv ? 'ajv not installed' : 'cached schema absent'}`); continue; }
+    // the full cached document when present, else the structure-only fixture: these checks never skip (2026-10-31)
+    const f = [path.join(SCHEMAS, `${file}.json`), path.join(FIXTURE_SCHEMA_DIR, `${file}.json`)].find((x) => fs.existsSync(x)); assert.ok(f, `${file}: no schema (the fixture is missing)`); assert.ok(Ajv, 'ajv is needed for the schema checks');
     const doc = JSON.parse(fs.readFileSync(f, 'utf8')); delete doc.openapi; const ajv = new Ajv({ strict: false, validateFormats: false, allErrors: true }); const id = `router-${file}`; ajv.addSchema({ ...doc, $id: id });
     const p = Object.keys(doc.paths).find((x) => doc.paths[x]?.post?.requestBody)!; const esc = p.replace(/~/g, '~0').replace(/\//g, '~1');
     const validate = ajv.compile({ $ref: `${id}#/paths/${esc}/post/requestBody/content/application~1json/schema` });
     assert.equal(validate(bad), false, `${file}: the validator refuses a bad body`);
     for (const b of bs) { assert.ok(validate(b), `${file}: ${JSON.stringify(validate.errors)?.slice(0, 400)}`); checked++; }
   }
+  assert.equal(checked, bodies.k.length + bodies.s.length, 'every Kling and Seedance body checked against its schema');
   ok(`bodies: Kling edit (base + keep_original_sound, one image as raw base64, std / pro, no duration; motion = feature + duration + aspect; passes ≤ 10 s at ≥ 720 px; 9:16 kept), Seedance edit (duration -1, clip as asset://, seed per version); clips via Comfy storage; ${checked} bodies schema-valid`);
 }
 
@@ -106,13 +122,35 @@ const bodies: { k: any[]; s: any[] } = { k: [], s: [] };
 {
   assert.match(K.block!(swapJob({ refPaths: [] }))!, /needs one character image/); assert.match(K.block!(swapJob({ refPaths: [at('char.png'), at('char.png')] }))!, /takes one character image.*remove the 1 extra/);
   assert.match(K.block!(swapJob({ duration: 35 }))!, /swaps 4–30 s.*yours is 35 s/); assert.match(K.block!(swapJob({ refPaths: [at('wide.png')] }))!, /1:2\.5 to 2\.5:1/);
-  assert.match(K.block!(swapJob({ mode: 'restyle' }))!, /runs Video Swap jobs/); assert.match(K.block!(swapJob({ swapType: 'object' }))!, /swaps people/);
+  assert.match(K.block!(swapJob({ mode: 'restyle' }))!, /runs Video Swap jobs/); assert.match(S.block!(swapJob({ swapType: 'object', target: 'the red mug' }))!, /swaps people/, 'Seedance 2.5 Edit: people only');
   assert.match(K.block!(swapJob({ prompt: 'x'.repeat(2600) }))!, /up to 2500 characters/);
   assert.equal(K.block!({ mode: 'object_swap', swapType: 'person', duration: 8, resolution: '720p' }), null, 'a quote (no files yet) is not blocked: the form says what is missing');
   assert.equal(K.block!({ mode: 'motion-transfer', duration: 6, resolution: '720p' }), null, "a quote's ?mode=motion-transfer (the tool id's spelling) is the motion job, not a non-swap job (the Video bar showed no price)");
   process.env.COMFY_API_KEY = 'test-not-a-real-key'; assert.match(S.block!(swapJob({ refPaths: [at('wide.png')] }))!, /0\.4 to 2\.5/); assert.equal(S.block!(swapJob({ width: 1200, height: 400 })), null, 'a 3:1 clip is no longer refused here: Fit to model pads it to 2.5:1 (shared/videoFit.ts)'); assert.equal((await import('../src/shared/videoFit.ts')).videoFitFor('object-swap', 'router-seedance-25-edit', { width: 1200, height: 400, duration: 8 })!.aspect.target, '2.5:1'); assert.equal(S.block!(swapJob()), null, 'with the key: the clip is uploaded'); process.env.COMFY_API_KEY = '';
   assert.match(S.block!(swapJob())!, /uploaded with your Comfy key/); assert.match(K.block!(swapJob())!, /uploaded with your Comfy key/); await assert.rejects(S.body(swapJob(), 0), /Comfy key/, 'the body refuses too (no call made)');
-  ok('blocks: no image, two images, 35 s, wide sheet, non-swap job, object swap, long prompt, no key and no public address (body refuses too)');
+  ok('blocks: no image, two images, 35 s, wide sheet, non-swap job, object swap on Seedance, long prompt, no key and no public address (body refuses too)');
+}
+
+// ---------------- 3a. Object mode (2026-10-31): Kling's edit takes objects; the quote applies the submit's own check ----------------
+{
+  process.env.COMFY_API_KEY = 'test-not-a-real-key';
+  const obj = swapJob({ swapType: 'object', target: 'the red mug' });
+  assert.equal(K.block!(obj), null, 'Kling 3.0 Omni Edit swaps objects (a general video edit: refer_type base + reference image)');
+  assert.match(K.block!(swapJob({ swapType: 'object', target: '' }))!, /Name the object to replace/, 'no name: nothing for the model to find');
+  const kb = await K.body(obj, 0) as any; assert.match(kb.prompt, /^Replace the red mug in <<<video_1>>> with the object from <<<image_1>>>\./); assert.match(kb.prompt, /every person unchanged/); assert.doesNotMatch(kb.prompt, /character/);
+  { const MH = await import('./_model-health.ts'); const V = MH.validatorFor('kling__kling-v3-omni'); assert.ok(V, 'the model-health helper finds the Kling schema (cache or fixture)'); assert.equal(MH.schemaErrors(V!, kb), null, 'the object edit body is schema-valid'); }
+  assert.equal(CS.swapTypesOf('router-kling-edit').join(), 'person,object'); assert.equal(CS.swapTypesOf('router-seedance-25-edit').join(), 'person');
+  // the quote's input carries swapType + target (routing/http.ts swapQuoteFields), so the route refuses the quote exactly as the submit's block does
+  const H = await import('../src/routing/http.ts'); const { findRoute } = await import('../src/routing/routes.ts'); const { getTool } = await import('../src/tools/registry.ts');
+  const t = getTool('object-swap')!; const qi = (q: Record<string, string>) => ({ ...H.routeQuoteInput(t, { duration: '8', resolution: '720p', mode: 'object_swap', ...q }), mode: 'object_swap' });
+  assert.deepEqual(H.swapQuoteFields({ swapType: 'object', target: ' red mug ', point: '0.5,0.25,1.5' }), { swapType: 'object', target: 'red mug', point: { x: 0.5, y: 0.25, t: 1.5 } });
+  const rk = findRoute('comfy-router:router-kling-edit')!; const rs = findRoute('comfy-router:router-seedance-25-edit')!;
+  for (const [r, q] of [[rk, { swapType: 'object', target: 'red mug' }], [rk, { swapType: 'object', target: '' }], [rs, { swapType: 'object', target: 'red mug' }], [rk, { swapType: 'person', target: '' }]] as const) {
+    const quote = r.unavailableFor!(qi(q)); const submit = (r.routeId.endsWith('kling-edit') ? K : S).block!(swapJob({ ...q }));
+    assert.equal(quote, submit, `${r.routeId} ${JSON.stringify(q)}: quote "${quote}" = submit "${submit}"`); }
+  assert.equal(rs.unavailableFor!(qi({ swapType: 'object', target: 'red mug' })) != null, true, 'Seedance on an object quote: refused, as on submit');
+  process.env.COMFY_API_KEY = '';
+  ok('object mode: Kling takes objects (own prompt, a name required), Seedance stays people only; the quote input carries swapType/target so quote = submit');
 }
 
 // ---------------- 3b. motion transfer with several characters (2026-10-26): every image in order, the model's max ----------------
@@ -215,6 +253,37 @@ const bodies: { k: any[]; s: any[] } = { k: [], s: [] };
   await RR.runRouter(job3, r, { n: 1, routeId: r.routeId } as any, 60_000); assert.equal(hasAudio(at(path.basename(job3.outputs[0].url))), false, 'keepAudio=0 → silent');
   RR.setRouterFetch(null); process.env.COMFY_API_KEY = '';
   ok('keyed run (fake Router): 25 s → 3 requests (each estimate checked against its own share), joined into one 25 s clip with the source sound; over-share estimate stops before submit; keepAudio off → silent');
+}
+
+// ---------------- 5b. a refused run (2026-10-31): the provider's words are kept, the card says why, a Seedance refusal counts nothing ----------------
+{
+  process.env.COMFY_API_KEY = 'test-not-a-real-key'; ST.setStorageFetch((async (u: any, i: any) => (await storageFake(u, i)) ?? new Response('nope', { status: 404 })) as typeof fetch, async () => {}); ST.clearStorageCache();
+  const RR = await import('../src/routing/routerRun.ts'); const { findRoute } = await import('../src/routing/routes.ts');
+  const PB = await import('../src/shared/policyBilling.ts'); const FR = await import('../../web/src/shared/failureReasons.ts');
+  const base = 'https://router.test/v2/models/byteplus/dreamina-seedance-2-5-260628'; const json = (o: unknown, status = 200, h: Record<string, string> = {}) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json', ...h } });
+  const fake = (collect: () => Response) => (async (u: any, init: any = {}) => { const url = String(u); const st = await storageFake(u, init); if (st) return st;
+    if (url.endsWith('/estimate')) return json({ source: 'exact', amount: '0.30', credits: 63 });
+    if (url.includes('/requests?') && init.method === 'POST') return json({ request_id: 'rq1', status: 'IN_QUEUE', status_url: `${base}/requests/rq1/status`, response_url: `${base}/requests/rq1`, cancel_url: `${base}/requests/rq1/cancel` }, 201);
+    if (url.endsWith('/status')) return json({ status: 'COMPLETED', error_type: 'content_policy_violation' });
+    if (url.endsWith('/requests/rq1')) return collect();
+    return new Response('nope', { status: 404 }); }) as typeof fetch;
+  const r = findRoute('comfy-router:router-seedance-25-edit')!; const mk = (id: string): any => ({ id, status: 'running', toolId: 'motion-transfer', route: r.routeId, input: swapJob({ mode: 'motion_transfer', target: '' }), routing: { prices: { [r.routeId]: 319 } }, cost: 319, outputs: [] });
+  // with words: BytePlus's own code (Router model page: InputImageSensitiveContentDetected.PrivacyInformation = a real person)
+  RR.setRouterFetch(fake(() => json({ error_type: 'content_policy_violation', detail: 'The provider refused the request.', upstream_detail: 'InputImageSensitiveContentDetected.PrivacyInformation: the input image may contain a real person.' }, 400, { 'x-comfy-error-type': 'content_policy_violation' })), async () => {});
+  const j1 = mk('job_cs_ref1'); await assert.rejects(RR.runRouter(j1, r, { n: 1, routeId: r.routeId } as any, 60_000), /refused a photo of a real person \(content policy\)/);
+  assert.equal(j1.reasonCode, 'content_blocked'); assert.match(j1.providerError.upstreamDetail, /PrivacyInformation/); assert.equal(j1.providerError.requestId, 'rq1'); assert.equal(j1.providerError.model, 'byteplus/dreamina-seedance-2-5-260628');
+  assert.equal(j1.chargeNote, 'not_charged', "Seedance's catalog: a policy refusal isn't billed (shared/policyBilling.ts)");
+  const v = FR.failView({ ...j1, status: 'failed', error: 'Comfy Router failed: x' }, { ownAccounts: true, providerRule: 'may-charge', providerName: 'Comfy' });
+  assert.equal(v.line, 'The provider refused a photo of a real person.'); assert.equal(v.charge, 'Nothing was charged.');
+  // no words (the collect read gives nothing back): the bucket and the request id are still kept
+  RR.setRouterFetch(fake(() => new Response('', { status: 202 })), async () => {});
+  const j2 = mk('job_cs_ref2'); await assert.rejects(RR.runRouter(j2, r, { n: 1, routeId: r.routeId } as any, 60_000), /refused this prompt or image/);
+  assert.equal(j2.providerError.errorType, 'content_policy_violation'); assert.equal(j2.providerError.requestId, 'rq1'); assert.equal(j2.providerError.detail, null);
+  // the real route ids are comfy-router:<id> (the old check only read router:<id>, so a Seedance refusal kept its estimate as spend)
+  assert.equal(PB.policyRefusalCharge({ route: 'comfy-router:router-seedance-25-edit' }), 'no'); assert.equal(PB.policyRefusalCharge({ route: 'comfy-router:router-kling-edit' }), 'unknown');
+  assert.equal(PB.refusalReason({ detail: 'OutputAudioSensitiveContentDetected' }), 'The provider refused the sound it made. Try again with sound off.'); assert.equal(PB.refusalReason({ detail: 'something else' }), null);
+  RR.setRouterFetch(null); ST.setStorageFetch(null); process.env.COMFY_API_KEY = '';
+  ok('refused run: the provider\'s words and request id kept as providerError (also with no words), plain reason "a photo of a real person" on the card, Seedance refusal not charged (comfy-router: route ids)');
 }
 
 // ---------------- 6. trim ----------------
