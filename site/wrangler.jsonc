@@ -1,0 +1,26 @@
+// The iiayn.app website: one Worker with static assets (wrangler 4).
+// Preview: npx wrangler dev --port 8799     Deploy (later, with the owner's OK): npx wrangler deploy
+// No account id here on purpose: wrangler picks the account at deploy time.
+{
+  "name": "iiayn-site",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    // The Worker runs first on every request so it can serve /install, /install.ps1 and the old-domain 301.
+    "run_worker_first": true
+  },
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": { "enabled": false }
+
+  // Custom domains (attached 2026-10-31 with the owner's OK); each needs its zone on the same Cloudflare account.
+  ,"routes": [
+    { "pattern": "iiayn.app", "custom_domain": true },
+    { "pattern": "www.iiayn.app", "custom_domain": true },
+    { "pattern": "imaginationisallyouneed.com", "custom_domain": true },
+    { "pattern": "www.imaginationisallyouneed.com", "custom_domain": true }
+  ]
+}
