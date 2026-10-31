@@ -321,7 +321,7 @@ export default function AudioPage(p: AudioPageProps) {
 
   /* ---- the dock: height for the page padding, and the chip row's fit steps (Image's: words drop → the model name truncates → Enhance, Takes and
    *      Language fold into Settings, each given back when it fits → icon-only last) ---- */
-  const dock = useRef<HTMLDivElement>(null); const prowRef = useRef<HTMLDivElement>(null);
+  const dock = useRef<HTMLDivElement>(null);
   const filePreview = useFilePreview(dock); const replacingSample = useRef<number | null>(null);
   useDockHeight(dock, '.ap');
   /* shared with Image and Video: the prompt and the lyrics box grow 2 → 8 lines with their text, the bar upward */
@@ -364,7 +364,7 @@ export default function AudioPage(p: AudioPageProps) {
       onDragOver={e => { if (hasFiles(e)) e.preventDefault(); }} onDrop={e => { dragDepth.current = 0; setDrag(false); const fs = Array.from(e.dataTransfer.files); if (!fs.length) return; e.preventDefault(); pickFor.current = null; void takeFiles(fs); }}>
       <div className="ic-frame"><div className="ic-panel">
       <div className="ic-main">
-        <div ref={prowRef} className="ic-prow" data-testid="ap-prow">
+        <div className="ic-prow" data-testid="ap-prow">
           <div className="ic-lead" data-testid="ap-lead">
             {needs.map(nd => { const K = nd.id === 'audio' ? AudioIcon : VideoIcon; return <span key={nd.id} className="wf-slot-w ap-need"><span className={`wf-slot req wf-slot-next${drag ? ' over' : ''}`} data-testid={`ap-drop-${nd.id}`}>
               <button type="button" className="wf-slot-hit" aria-label={`Add ${nd.label.toLowerCase()}`} {...tip(`${nd.hint}. Pick, or drop it on the bar`)} onClick={() => openPicker(nd.add)}><K size={16} /><SlotLabel text={nd.label} /></button></span></span>; })}
@@ -409,7 +409,7 @@ export default function AudioPage(p: AudioPageProps) {
         </div>
           {tm && <RunOnChip compact toolId={p.tool.id} model={tm} engine={cur?.id} quote={q} testId="ap-run-on" watch={dock} />}
           <BrandChip toolId={p.tool.id} mode={mode} watch={dock} />{/* Brand Kit: the mood words only, music only (a voiceover's script is read as typed) */}
-          <PromptPeek form={peekForm} place={ro.sub ? `${ro.main} (${ro.sub})` : ro.main} photos={[]} watch={dock} keep={prowRef} />
+          <PromptPeek form={peekForm} place={ro.sub ? `${ro.main} (${ro.sub})` : ro.main} photos={[]} watch={dock} />
         </div>
       </div>
       {noPlace ? <NoPlaceGenerate testId="ap-generate" priceTestId="ap-price" />

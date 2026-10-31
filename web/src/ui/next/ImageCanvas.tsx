@@ -421,7 +421,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
   /* ONE chip row that never wraps (desktop): when the chips don't fit, the low-priority ones fold into the Settings button, lowest first
    * (enhance, resolution, quality, aspect = reverse DOM order; the count chip never folds). Workflow, +, model and Run on always stay. Phones fold them all (CSS)
    * and the row scrolls sideways. Re-fits on resize and on any chip change (React re-renders reset className, so class edits are watched). */
-  const chipsRef = useRef<HTMLDivElement>(null); const prowRef = useRef<HTMLDivElement>(null);
+  const chipsRef = useRef<HTMLDivElement>(null);
   /** which Create settings are folded off the bar ('aspect' | 'quality' | 'res' | 'enh'; the count chip never folds): the shared chip fit
    *  (shared/dockFit useChipFit, also Video's, Audio's and 3D's), with a workflow's chips (.wf-fold) as the second tier that folds into ⋯ */
   const folded = useChipFit(chipsRef, { over: '.wf-fold', observe: true });
@@ -897,7 +897,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
         {maskOpen && isMask && files.image && <MaskSheet photo={files.image.url} photoFile={files.image.file} initial={wfMask?.url ?? null} onCancel={() => setMaskOpen(false)} {...(recipe.id === 'erase' ? { title: 'Paint what to erase', sub: 'Cover the object and its shadow, a little past the edges. It disappears and the background is filled in.' } : {})}
           onDone={m => { setMaskOpen(false); setWfMask(m); if (!m) toast('Nothing painted, so there is no mask yet'); }} />}
         {upEx && <UpscaleExamples model={wfProvider} modelName={upName(wfProviders.find(p => p.id === wfProvider))} onClose={() => setUpEx(false)} onTry={f => { setSlot('image', f, true); if ((upInfo?.factorsByProvider[wfProvider] ?? []).includes(4)) setDraft(d => ({ ...d, vals: { ...d.vals, scale: '4' } })); }} />}
-        <div ref={prowRef} className="ic-prow" data-testid="ic-prow">
+        <div className="ic-prow" data-testid="ic-prow">
         {lead}
         {recipe?.prompt.mode === 'hidden' && <p className="ic-noprompt" data-testid="ic-noprompt">No prompt needed: {recipe.name} works from your photo and its settings.</p>}
         {subjOn && sParts && presetHere && (() => { const det = sParts.details != null; const ph = det ? 'Add details (optional)' : sParts.hint;
@@ -952,7 +952,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
           {/* the place: outside the scrolling chips, next to Generate, one short word that never truncates (a needed step is its dot) */}
           {recipe ? (() => { const m = modelOfEngine(recipe.runner.toolId, wfProvider); return m ? <RunOnChip compact toolId={recipe.runner.toolId} model={m} engine={wfProvider} quote={wq} watch={dock} /> : null; })() : tmCur && <RunOnChip compact toolId={p.tool.id} model={tmCur} engine={cur?.id} quote={qj} watch={dock} />}
           {!recipe && <BrandChip toolId={p.tool.id} watch={dock} /> /* Brand Kit: "Brand: <name>" (Create Image only; a picked workflow composes its own prompt) */}
-          <PromptPeek form={peekForm} place={peekPlace} photos={peekPhotos} watch={dock} keep={prowRef} />
+          <PromptPeek form={peekForm} place={peekPlace} photos={peekPhotos} watch={dock} />
         </div>
       </div>
       {recipe ? <DockGenerate toolId={recipe.runner.toolId} engine={wfProvider} quote={wq} label={isMulti ? anglesLabel(angleIds.length) : recipe.generateLabel} busy={wfBusy} disabled={!runTool} problems={wfPf} missing={wfMissing?.missing ?? null}

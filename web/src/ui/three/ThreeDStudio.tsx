@@ -190,7 +190,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
   const typSec = model?.typicalSec ?? 90; /* estimated: no provider publishes a 3D run time */
   // ---- pre-flight: inputs → model → setup → money (shared list and words) ----
   const pf = preflightProblems({ freeLocal: hasFreeLocal(TOOL), slots: [{ name: 'image', label: 'Image', required: true, filled: !!img, missing: 'Add an image', width: imgSize?.width ?? null, height: imgSize?.height ?? null }], minSide: 128, quote: q, modelName });
-  const [pfOpen, setPfOpen] = useState(false); const genRef = useRef<HTMLButtonElement>(null); const dock = useRef<HTMLDivElement>(null); const prowRef = useRef<HTMLDivElement>(null);
+  const [pfOpen, setPfOpen] = useState(false); const genRef = useRef<HTMLButtonElement>(null); const dock = useRef<HTMLDivElement>(null);
   type Note = { key: string; stage: string; node: ReactNode; hard?: boolean };
   const notes: Note[] = pf.map((p, i) => ({ key: `pf-${i}`, stage: p.stage[0].toUpperCase() + p.stage.slice(1), hard: true, node: <span data-testid={`t3-pf-${p.code}`}>{p.message}</span> }));
   if (gate && !pf.some((p) => p.code === 'needs_key')) notes.push({ key: 'gate', stage: 'Setup', hard: true, node: <KeyNeeded q={q} className="vs-key" toolId={TOOL} /> });
@@ -375,7 +375,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
       <div className="ic-frame"><div className="ic-panel"><div className="ic-main">
         {isPS && takeReady && <p className="ps-finish-note" role="status" data-testid="ps-take-ready"><b>{takeReady.name} saved.</b> Take data, not a video yet. {takeReady.performance ? 'Use its follow camera below, or Shoot it for another angle.' : 'Use this take below to make a free mockup MP4.'}</p>}
         {isPS && saveError && <div className="ps-save-error" role="alert" data-testid="ps-save-error"><span><b>Mockup not saved.</b> {saveError} Your takes are unchanged. Retry saves the original captured mockup; frames stay here until you leave or record again.</span><button type="button" className="fd-link" disabled={psBusy || !!playerBlock} {...tip(playerBlock || 'Save the completed frames again. Free; no provider run.')} onClick={() => void keepMockup()} data-testid="ps-retry-save">Retry save · free</button></div>}
-        <div ref={prowRef} className="ic-prow" data-testid="t3-prow">
+        <div className="ic-prow" data-testid="t3-prow">
           {!isPS && !isSoon && <div className="ic-lead" data-testid="t3-lead">
             {isPS ? null
             : isTT ? <span className="wf-strip wf-inputs"><button ref={ttRef} type="button" className={`wf-slot${ttJob ? ' full' : ' req'}`} data-testid="t3-tt-slot" aria-haspopup="listbox" aria-expanded={pop === 'tt'} onClick={() => setPop(pop === 'tt' ? '' : 'tt')} {...tip(ttJob ? 'Pick another 3D result' : 'Make a 3D model first')} disabled={!done3d.length}>
@@ -416,7 +416,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
           {!noModel && <RowMore watch={dock} testId="t3-row-over" />}
         </div>
           {!noModel && tm && <RunOnChip compact toolId={TOOL} model={tm} engine={provider} quote={q} testId="t3-run-on" watch={dock} />}
-          {!noModel && <PromptPeek form={peekForm} place={ro.sub ? `${ro.main} (${ro.sub})` : ro.main} photos={img ? ['Image'] : []} watch={dock} keep={prowRef} />}
+          {!noModel && <PromptPeek form={peekForm} place={ro.sub ? `${ro.main} (${ro.sub})` : ro.main} photos={img ? ['Image'] : []} watch={dock} />}
         </div>
       </div>
       {isPS ? (takeReady ? <button type="button" className="ic-gen gen-btn gen-dock btn btn-primary ps-use-take" data-testid="pv-use-take" disabled={psBusy} aria-label={`Use ${takeReady.name}${takeReady.performance ? ' with its follow camera' : ''} in Mockup`} onClick={() => player.current?.useTake()} {...tip(`Finish live controls and select ${takeReady.name}. Nothing records until Record mockup.`)}><span className="gen-l">Use this take</span><small className="t3-time">Next: Mockup · free</small></button>

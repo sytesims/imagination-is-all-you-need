@@ -407,7 +407,7 @@ export default function VideoStudio(p: VideoStudioProps) {
 
   /* Enhance: Create Video keeps it in its fields (enhance=1 on the run, off unless turned on); the peek below shows the words it adds */
   const enhOn = p.fv.enhance === '1' || p.fv.enhance === true as any; const setEnh = (b: boolean) => p.setFv('enhance', b ? '1' : '');
-  const enhT = useRef<number>(0); const enhLong = useRef(false); const prowRef = useRef<HTMLDivElement>(null);
+  const enhT = useRef<number>(0); const enhLong = useRef(false);
   const showEnh = (r: EnhanceResult) => { const was = r.original; p.setPrompt(r.prompt); toast(enhanceToastTitle(r), 'info', { sub: [r.added.slice(0, 4).join(', '), r.source].filter(Boolean).join(' · ') || undefined, ms: 10000, action: { label: 'Undo', onClick: () => p.setPrompt(was) } }); };
   /* "See the exact prompt": the fields AppTool's submit sends for this bar (types, prompt, resolution, duration, provider, every field value), the files as counts */
   const peekForm: PeekForm = { toolId: p.tool.id, fields: { types: JSON.stringify([p.mode]), prompt: p.prompt, resolution: p.resolution, duration: String(p.duration), ...(p.provider ? { provider: p.provider } : {}),
@@ -460,7 +460,7 @@ export default function VideoStudio(p: VideoStudioProps) {
           {p.frameHandoff.phase === 'error' ? p.frameHandoff.message : 'Full-resolution clips can take a little longer. You can keep writing your prompt.'}
         </Notice>}
         {viral.strip}
-        <div ref={prowRef} className="ic-prow" data-testid="vs-prow">
+        <div className="ic-prow" data-testid="vs-prow">
           <div className="ic-lead" data-testid="vs-dlead">
             {kfMode ? <KeyframeLead frames={kfFrames} times={kfTimes} seconds={p.duration} caps={kfCaps} onChange={setKf} onAdd={() => kfIn.current?.click()} onOpen={() => pop.setOpen('kf')} /> : <>
             {leadThumbs.slice(0, leadShown.show).map(t => t.el)}
@@ -523,7 +523,7 @@ export default function VideoStudio(p: VideoStudioProps) {
         </div>
           {tm && <RunOnChip compact toolId={p.tool.id} model={tm} engine={cur?.id} quote={q} testId="vs-run-on" watch={dock} />}
           <BrandChip toolId={p.tool.id} mode={p.mode} watch={dock} />{/* Brand Kit: "Brand: <name>" */}
-          <PromptPeek form={peekForm} place={ro.sub ? `${ro.main} (${ro.sub})` : ro.main} photos={[]} watch={dock} keep={prowRef} />
+          <PromptPeek form={peekForm} place={ro.sub ? `${ro.main} (${ro.sub})` : ro.main} photos={[]} watch={dock} />
         </div>
       </div>
       {noPlace ? <NoPlaceGenerate testId="vs-generate" priceTestId="vs-price" />
