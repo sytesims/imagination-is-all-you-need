@@ -87,10 +87,10 @@ for (const [prov, vs] of Object.entries(VARIANTS)) for (const [label, i] of vs) 
   const q = (p: string, o: Record<string, any>) => routeCredits(hv, findRoute(`comfy-router:${p}`)!, job(o));
   assert.deepEqual([q('router-kling', { audio: false }), q('router-kling', { resolution: '1080p', audio: false }), q('router-kling', {}), q('router-kling', { resolution: '1080p' })], [cr(17.72 * 5), cr(23.63 * 5), cr(23.63 * 5), cr(29.54 * 5)]);
   assert.equal(q('router-kling', { mode: 'r2v', refPaths: refs(7), resolution: '1080p', duration: 15 }), cr(29.54 * 15)); // refs cost nothing extra; longest length
-  assert.deepEqual([q('router-wan3', { resolution: '480p', duration: 30 }), q('router-wan3', {}), q('router-wan3', { resolution: '1080p' }), q('router-wan3', { audio: false })], [cr(10.55 * 30), cr(21.1 * 5), cr(42.2 * 5), cr(21.1 * 5)]);
+  assert.deepEqual([q('router-wan3', { resolution: '480p', duration: 30 }), q('router-wan3', {}), q('router-wan3', { resolution: '1080p' }), q('router-wan3', { audio: false })], [cr(15.09 * 30), cr(30.17 * 5), cr(60.35 * 5), cr(30.17 * 5)]); // 2026-10-31: the partner-node rates Router bills (hostedPrices.ts); sound keeps the price
   assert.deepEqual([q('router-ltx-25-pro', { duration: 6 }), q('router-ltx-25-pro', { resolution: '1080p', duration: 10, audio: false })], [cr(36.2076 * 6), cr(51.2941 * 10)]);
   assert.deepEqual([q('router-flux3-video', {}), q('router-flux3-video', { resolution: '1080p', duration: 20 })], [cr(51.29 * 5), cr(87.5 * 20)]);
-  ok('prices: Kling Omni 17.72/23.63 (+sound 23.63/29.54), Wan 10.55/21.1/42.2, LTX 36.2076/51.2941, FLUX 51.29/87.50 credits per s'); }
+  ok('prices: Kling Omni 17.72/23.63 (+sound 23.63/29.54), Wan 15.09/30.17/60.35, LTX 36.2076/51.2941, FLUX 51.29/87.50 credits per s'); }
 
 // ---------------- 4. engines → models ----------------
 { const ms = R.toolModels('h3-video'); const eng = (k: string) => ms.find((m) => m.key === k)!.parts.map((p) => p.engine);
