@@ -15,7 +15,8 @@
  *  - EXPLORE_SHEETS: "One character. Every angle." (four GPT Image 2.5 Flare character sheets, the highlight stepping across each sheet's real
  *    panels; Mossbun also as a Tripo 3.1 model to spin).
  *  - EXPLORE_BOARD: the actual Canvas built-in demo recording (scripted, sample results, no paid runs).
- *  - EXPLORE_IMAGES: the editorial Image section (showcase ids: three big covers, then a rail).
+ *  - EXPLORE_LOOKS: "One idea. Every look." (one prompt in twelve looks, each credited with its model: a big frame and twelve tiles).
+ *  - EXPLORE_YOUR_TURN: "Now it's your turn." (the page's last section: a prompt box over a drifting wall of things made here).
  *  - EXPLORE_MOODS: the Audio dancer showcase (the words that pick SyteSim's dance style, a tempo for the demo beat).
  *  - EXPLORE_FILM: "Mockup to film" (Direct a Shot made real: the mockup, its first frame painted into a photo, the film; replaces the Worlds tiles).
  *  - EXPLORE_VFX: "VFX with LTX-2.5" (Footage Effects: Lightricks' official LTX-2.5 IC-LoRAs on your own clip, free on your computer; plus Layout to Render).
@@ -318,15 +319,46 @@ export const EXPLORE_BOARD = {
   cta: { label: 'Open Canvas', href: '/canvas' },
 };
 
-// ---------------------------------------------------------------- Image · made here
-export const EXPLORE_IMAGES = {
-  eyebrow: 'Image · made here', title: 'Stills with a point of view', line: 'Fashion, street, editorial and character sheets, all made right here. Open one to make it again with the same settings.',
-  /** the three covers (showcase ids, shared/showcase.ts): a split shows its before / after */
-  /** the middle one is a character sheet from "One character. Every angle." (a Comfy Router run: its model and real price show); `pos` = object-position */
-  covers: [{ key: 'sc-032054ec', label: 'Create Image' }, { key: 'sheet-kaito', label: 'Character Sheet', pos: '0% 0%' }, { key: 'sc-0f1a0117', label: 'Relight' }] as { key: string; label: string; pos?: string }[],
-  rail: ['d3c80885', '016bdc27', 'baf606ef', '98ba27ae', 'fcfe713a', '334bb02e', 'f7699cd4', '310cde89', 'd21b44c6', 'b718e875', '5846d360', '7205edb3', '396554e1', '973c88f8'],
-  more: { label: 'All image workflows', href: '/workflows' },
+// ---------------------------------------------------------------- One idea. Every look.
+/** Twelve free FLUX.2 [klein] 4B runs on this computer: one prompt (a red coat on a city street), a different look added each time.
+ *  Each look ships as a 1024 px frame (`look-<id>.webp`) and a 480 px tile (`look-<id>-480.webp`), metadata stripped. */
+const KLEIN_LOOKS: [id: string, name: string][] = [['golden-hour', 'Golden hour'], ['film-noir', 'Film noir'], ['neon-rain', 'Neon rain'], ['teal-orange', 'Teal & orange'],
+  ['35mm', '35mm'], ['documentary', 'Documentary'], ['studio-white', 'Studio white'], ['spotlight', 'Spotlight'], ['pastel', 'Pastel'], ['anime', 'Anime'], ['watercolour', 'Watercolour'], ['clay', 'Clay']];
+/** Looks remade with Qwen Image 2.1 (same prompt and seed; sharper faces); the rest are FLUX.2 [klein] 4B. */
+const QWEN_LOOKS = new Set(['golden-hour', 'neon-rain', 'teal-orange', '35mm', 'studio-white', 'spotlight', 'pastel']);
+export const EXPLORE_LOOKS = {
+  eyebrow: 'Image · one prompt, twelve looks', title: ['One idea.', 'Every look.'],
+  line: 'Write it once. Then change the light, the film, the whole art style. Same scene, same coat, twelve different worlds.',
+  model: 'FLUX.2 [klein] 4B', place: 'Free on your computer', /** the look shown first (Anime) */ start: 9,
+  looks: KLEIN_LOOKS.map(([id, name]) => ({ id, name, url: P(`look-${id}.webp`), thumb: P(`look-${id}-480.webp`), model: QWEN_LOOKS.has(id) ? 'Qwen Image 2.1' : 'FLUX.2 [klein] 4B' })),
+  cta: { label: 'Try your own look', href: '/tools/create-image?model=flux-2-klein-4b' },
 };
+
+// ---------------------------------------------------------------- Now it's your turn.
+/** One tile on the closing wall: a picture made in this app and the model that made it. */
+export interface WallTile { src: string; model: string; star?: boolean }
+const wallOf = (key: string): WallTile | null => { const f = featuredByKey(key); return f?.out.poster ? { src: f.out.poster, model: f.model } : null; };
+const look = (id: string): WallTile => ({ src: P(`look-${id}-480.webp`), model: EXPLORE_LOOKS.looks.find((l) => l.id === id)?.model ?? EXPLORE_LOOKS.model });
+const GPT = 'GPT Image 2.5 Flare', ZIT = 'Z-Image-Turbo', KLEIN = 'FLUX.2 [klein] 4B';
+export const EXPLORE_YOUR_TURN = {
+  eyebrow: 'Everything above was made in this app', title: ['Now it’s', 'your turn.'],
+  line: 'Imagination is all you need. Describe it and make it real: a picture, a film, a song, a world.',
+  placeholder: 'A lighthouse inside a glass jar, in a thunderstorm',
+  make: 'Make it', note: 'Free on your own computer · open source · yours to keep',
+  /** the other places to start */ tabs: [{ label: 'Image', href: '/tools/create-image' }, { label: 'Video', href: VIDEO_PAGE }, { label: 'Audio', href: '/tools/audio' },
+    { label: '3D', href: '/tools/3d' }, { label: 'Canvas', href: '/canvas' }],
+  /** the drifting wall behind it: six columns, top to bottom. The tortoise village sits in the fifth column (right of the words, in view first), spotlit. */
+  wall: ([
+    [wallOf('ltx-pro-painter'), { src: P('wall-ramen-stall.webp'), model: 'Qwen Image 2.1' }, look('neon-rain'), wallOf('sheet-kaito'), { src: P('wall-cherry-dune.webp'), model: ZIT }],
+    [{ src: P('wall-lighthouse-jar.webp'), model: ZIT }, wallOf('h3-koi-take'), { src: P('wall-storm-whale.webp'), model: GPT }, look('anime'), wallOf('ltx-fox-meadow')],
+    [{ src: P('wall-jellyfish-bamboo.webp'), model: GPT }, wallOf('sheet-mossbun'), { src: P('wall-salt-flat.webp'), model: KLEIN }, wallOf('ltx-rain-city'), wallOf('h3-glass-whale')],
+    [{ src: P('wall-orange-jacket.webp'), model: KLEIN }, { src: P('wall-knit-farm.webp'), model: ZIT }, look('clay'), { src: P('wall-rooftop-whale.webp'), model: GPT }, { src: P('x3d-city.webp'), model: '3D city · KayKit & Kenney' }],
+    [{ src: P('wall-glowing-city.webp'), model: GPT }, wallOf('kling-dance-swap'), { src: P('wall-tortoise-village.webp'), model: GPT, star: true }, { src: P('wall-aurora-dome.webp'), model: ZIT }, wallOf('mossbun-golden-hour')],
+    [{ src: P('wall-christmas-village.webp'), model: GPT }, wallOf('ltx-pro-whale-glide'), { src: P('wall-harbour-storm.webp'), model: GPT }, wallOf('sc-98ba27ae'), wallOf('ltx-lighthouse')],
+  ] as (WallTile | null)[][]).map((col) => col.filter((t): t is WallTile => !!t)),
+};
+/** Create Image with this prompt in the bar (shared/usePrefill reads ?prompt=); nothing runs until Generate. */
+export const yourTurnHref = (prompt: string): string => `/tools/create-image?${new URLSearchParams({ prompt: prompt.trim() || EXPLORE_YOUR_TURN.placeholder })}`;
 
 // ---------------------------------------------------------------- Audio: SyteSim dances
 export interface Mood { id: string; label: string; /** the words that pick the dancer's style (beanStyle.ts detectStyle) */ words: string; bpm: number; /** the demo beat's feel */ feel: 'boom' | 'four' | 'rock' | 'lofi' | 'ballad' }
@@ -511,8 +543,8 @@ export const EXPLORE_3D = {
 /** Every link on the showcase sections (the tests check each one opens a real page). */
 export const EXPLORE_SHOWCASE_LINKS = (): string[] => [
   featuredRecreateHref('trend-mic') ?? '', featuredRecreateHref('trend-dance') ?? '',
-  featuredRecreateHref(EXPLORE_HERO.key) ?? '', featuredRecreateHref(EXPLORE_STILL.take.key) ?? '', featuredRecreateHref(EXPLORE_KOI.key) ?? '', EXPLORE_KOI.cta.href, featuredRecreateHref(EXPLORE_SEEDANCE.strip.key) ?? '', EXPLORE_SEEDANCE.make.href, EXPLORE_FILMS.editor.href, EXPLORE_FILMS.make.href, EXPLORE_FILMS.yours.href, EXPLORE_SWAP.cta.href, featuredRecreateHref(EXPLORE_SWAP.key) ?? '', EXPLORE_LAYERS.cta.href, featuredRecreateHref(EXPLORE_LAYERS.key) ?? '', EXPLORE_BOARD.cta.href, EXPLORE_IMAGES.more.href,
-  ...EXPLORE_SHEETS.cast.map((c) => featuredRecreateHref(c.key) ?? ''), featuredRecreateHref(EXPLORE_FILM.key) ?? '', EXPLORE_FILM.cta.href, featuredRecreateHref(EXPLORE_SCRIPT.key) ?? '', ...EXPLORE_IMAGES.covers.map((c) => featuredRecreateHref(c.key) ?? ''),
+  featuredRecreateHref(EXPLORE_HERO.key) ?? '', featuredRecreateHref(EXPLORE_STILL.take.key) ?? '', featuredRecreateHref(EXPLORE_KOI.key) ?? '', EXPLORE_KOI.cta.href, featuredRecreateHref(EXPLORE_SEEDANCE.strip.key) ?? '', EXPLORE_SEEDANCE.make.href, EXPLORE_FILMS.editor.href, EXPLORE_FILMS.make.href, EXPLORE_FILMS.yours.href, EXPLORE_SWAP.cta.href, featuredRecreateHref(EXPLORE_SWAP.key) ?? '', EXPLORE_LAYERS.cta.href, featuredRecreateHref(EXPLORE_LAYERS.key) ?? '', EXPLORE_BOARD.cta.href, EXPLORE_LOOKS.cta.href, ...EXPLORE_YOUR_TURN.tabs.map((t) => t.href), yourTurnHref(''),
+  ...EXPLORE_SHEETS.cast.map((c) => featuredRecreateHref(c.key) ?? ''), featuredRecreateHref(EXPLORE_FILM.key) ?? '', EXPLORE_FILM.cta.href, featuredRecreateHref(EXPLORE_SCRIPT.key) ?? '',
   ...EXPLORE_3D.uses.flatMap((u) => [u.cta.href, u.more?.href ?? '', u.try?.href ?? '']).filter((h) => h && !/\.glb$/.test(h)), EXPLORE_3D.hero.make.href, featuredRecreateHref(EXPLORE_3D.hero.key) ?? '',
   EXPLORE_VFX.cta.href, ...EXPLORE_VFX.effects.map((v) => vfxTile(v)?.href ?? ''), featuredRecreateHref(EXPLORE_VFX.layout.key) ?? '',
 ];
