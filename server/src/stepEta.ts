@@ -31,6 +31,7 @@ import { env } from './env.js';
 import { isSamplerNode } from './comfy/native.js';
 import { checkImageCaps } from './shared/imageCaps.js';
 import type { NativeTiming } from './comfy/native.js';
+import { hwKeyCanon } from './hardware.js';
 
 export type EtaSource = 'learned' | 'scaled' | 'reported' | 'first_run';
 export interface EtaRange { seconds: number | null; low: number | null; high: number | null; source: EtaSource; samples: number; includesLoad: 'cold' | 'warm' | null; calibrating: boolean;
@@ -122,8 +123,9 @@ export function featuresOfPlan(passes: { workflow: string; graph: Record<string,
 }
 
 // ---- storage ----
-let mem: StepSample[] | null = null;
-const rows = () => (mem ??= all<StepSample>('eta_steps'));
+let mem: StepSample[] | null = null; let canonSeen: ((k: string) => string) | null = null;
+/** Old hardware keys of this computer read as its current key (hardware.ts hwKeyCanon: merge on read; the table is not rewritten). */
+const rows = () => { mem ??= all<StepSample>('eta_steps'); const c = hwKeyCanon(); if (c !== canonSeen) { canonSeen = c; for (const r of mem) r.hwKey = c(r.hwKey); } return mem; };
 /** The model files that were last loaded on this hardware (set at a run's first step and at its end), for the warm / cold call. */
 let lastLoaded: { hwKey: string; modelsSig: string; at: number } | null = null;
 export function noteLoaded(hwKey: string, modelsSig: string, at = Date.now()) { lastLoaded = { hwKey, modelsSig, at }; }

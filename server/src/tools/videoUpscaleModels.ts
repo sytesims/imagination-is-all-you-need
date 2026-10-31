@@ -2,7 +2,7 @@
  * Video Upscale engines (2026-10-26, the Upscale wiring fix). The model table (names, targets, fit, modes, local speed, menu copy) is
  * shared/videoUpscale.ts; this file registers the engines, their prices and their routes, and wires the Upscale tool to that table.
  *  - Local: Real-ESRGAN x2 and 4x-UltraSharp on every frame (workflows/upscale-esrgan-api.json, core nodes), SeedVR2 3B native graph
- *    (workflows/upscale-seedvr2-native-api.json) on NVIDIA (CUDA) GPUs only: on Apple Silicon it took over an hour for 2 s.
+ *    (workflows/upscale-seedvr2-native-api.json) on NVIDIA (CUDA) GPUs; on Apple Silicon it runs, but took over an hour for 2 s (a slow verdict).
  *  - fal: SeedVR2 (fal-ai/seedvr/upscale/video), target mode 720p / 1080p / 1440p / 2160p (enum read on the fal API page 2026-10-26).
  *  - Comfy (partner nodes on Comfy Cloud): Topaz Video Enhance (TopazVideoEnhanceV2): Starlight Fast, Starlight Precise 2.5, Astra 2, Starlight
  *    Creative at FullHD (1080p) or 4K (2160p). Priced per SOURCE frame (docs.comfy.org/tutorials/partner-nodes/pricing › Topaz › Video).
@@ -13,7 +13,6 @@
 import path from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { registerProvider } from '../providers.js';
-import { NEEDS_NVIDIA } from '../shared/modelIds.js';
 import { registerWorkflowLicense } from '../licenses.js';
 import { HOSTED_BY_ID, COMFY_CREDITS_PER_USD, type HostedPrice } from '../shared/hostedPrices.js';
 import { EXTRA_ROUTES, FAL_ENV, COMFY_ENV, LOCAL_ROUTE_BLOCK, LOCAL_HW_BLOCK, PARTNER_LABEL } from '../routing/routes.js';
@@ -77,11 +76,13 @@ export const VIDEO_UPSCALE_PRICES: HostedPrice[] = [
 for (const p of VIDEO_UPSCALE_PRICES) HOSTED_BY_ID[p.providerId] = p;
 
 // ---------- local routes: who can run them ----------
-/** SeedVR2 3B runs locally on NVIDIA (CUDA) only; every local engine refuses a size it can't make (shared/videoUpscale.ts vupBlock). */
-export const SEEDVR2_MAC_REASON = 'SeedVR2 needs an NVIDIA graphics card on your computer. Try Real-ESRGAN x2, or SeedVR2 in the cloud';
-export const seedvr2LocalBlock = (gpuType: string | null | undefined) => (gpuType === 'cuda' ? null : gpuType ? SEEDVR2_MAC_REASON : 'SeedVR2 needs an NVIDIA graphics card, and we couldn’t check yours');
+/** SeedVR2 3B runs locally on an NVIDIA card, and on Apple Silicon very slowly (2026-10-31, hardware plan B5: it ran, over an hour for 2 s, so it is a
+ *  "Runs, but slow" verdict, not a block: requirements.ts fitFor → slow/mps with the time). No graphics card, or one we couldn't read: refused.
+ *  Every local engine refuses a size it can't make (shared/videoUpscale.ts vupBlock). */
+export const SEEDVR2_NO_GPU_REASON = 'SeedVR2 needs a graphics card on your computer. Try Real-ESRGAN x2, or SeedVR2 in the cloud';
+export const seedvr2LocalBlock = (gpuType: string | null | undefined) => (gpuType === 'cuda' || gpuType === 'mps' ? null : gpuType ? SEEDVR2_NO_GPU_REASON : 'SeedVR2 needs a graphics card, and we couldn’t check yours');
 for (const id of ['comfy-video-esrgan', 'comfy-video-ultrasharp']) LOCAL_ROUTE_BLOCK[id] = (i) => vupBlock(id, i);
-LOCAL_HW_BLOCK['comfy-seedvr2'] = () => (seedvr2LocalBlock(currentHardware().gpu?.type ?? null) ? NEEDS_NVIDIA : null);
+LOCAL_HW_BLOCK['comfy-seedvr2'] = () => (seedvr2LocalBlock(currentHardware().gpu?.type ?? null) ? 'Needs a graphics card' : null);
 LOCAL_ROUTE_BLOCK['comfy-seedvr2'] = (i) => seedvr2LocalBlock(currentHardware().gpu?.type ?? null) ?? vupBlock('comfy-seedvr2', i);
 
 // ---------- fal SeedVR2 ----------

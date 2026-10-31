@@ -16,7 +16,8 @@ import { Link } from '../../platform/router';
 import { useLastQuote } from '../../shared/quote';
 import { ChevronRightIcon, placeIconFor } from '../Icons';
 import { useBilling, RULE_TEXT, modeOf, priceDetail, type FailureRule } from '../../shared/billing';
-import { setDownloadIntent } from '../../shared/hardware';
+import { setDownloadIntent, useHardware } from '../../shared/hardware';
+import { machineLabel } from '../../../../server/src/shared/thisComputer';
 import { navigate } from '../../platform/router';
 import { setRoute, routeChoiceOf, noteToolModels, type RouteChoice } from '../../shared/models';
 import { requestRequote } from '../../shared/quote';
@@ -109,6 +110,7 @@ const detailOf = (r: RunOnRow) => r.id === 'local' ? 'Free and private' : r.id =
 
 export function RunOnMenu({ open, anchor, avoid, watch, gap, onClose, toolId, model, engine, quote, placement = 'right', own: ownPick, scale }: { open: boolean; anchor: RefObject<HTMLElement | null>; avoid?: RefObject<HTMLElement | null>; watch?: RefObject<HTMLElement | null>; gap?: number; onClose: () => void; toolId: string; model: ToolModel; engine?: string | null; quote?: any; placement?: PopPlacement; own?: RunOnOwn; scale?: RunOnScale }) {
   useToolModels(toolId); const bill = useBilling(); const own = modeOf(bill, quote) !== 'team';
+  const hwName = machineLabel(useHardware()?.profile); // the Local row names this computer ("Apple M1 Max · 64 GB"), the same name as Settings → Your computer
   const [busy, setBusy] = useState(''); const [err, setErr] = useState('');
   const ms = modelsFor(toolId, model, engine); const multi = ms.length > 1;
   const pickOf = (m: ToolModel) => getRunOn(toolId, m.key);
@@ -155,7 +157,7 @@ export function RunOnMenu({ open, anchor, avoid, watch, gap, onClose, toolId, mo
   const opt = ({ m, r, s }: { m: ToolModel; r: RunOnRow; s: ReturnType<typeof rowState> }) => {
     const on = curM.key === m.key && shownPlace === r.id; const price = listPrice(sc(rowCredits(r)), r.id, own); const ps = perShot(r.credits, r.id); const cc = r.id === 'local' ? null : priceDetail(null, { runOn: r.id, credits: sc(rowCredits(r)) }); // the hover: '135 Comfy credits · on your Creator plan'
     const act = actionEl(m, r);
-    const sub = [detailOf(r), ps ? `per shot ${ps}` : '', multi ? `Runs ${shownName(m)}` : '', r.id === 'comfy-cloud' && (r.comfyVariants?.length ?? 0) > 1 && !(r.choices && r.choices.length > 1) ? comfyVariantText(r, m.name, m.family) : '' /* the choices below name each way */, billsText(r), r.id === 'local' ? 'we check it fits your computer first' : rule(ruleOf(r))].filter(Boolean).join(' · ');
+    const sub = [detailOf(r), ps ? `per shot ${ps}` : '', multi ? `Runs ${shownName(m)}` : '', r.id === 'comfy-cloud' && (r.comfyVariants?.length ?? 0) > 1 && !(r.choices && r.choices.length > 1) ? comfyVariantText(r, m.name, m.family) : '' /* the choices below name each way */, billsText(r), r.id === 'local' ? (hwName ? `${hwName}, checked before it runs` : 'we check it fits your computer first') : rule(ruleOf(r))].filter(Boolean).join(' · ');
     const pick = () => { if (!busy) void choose(m, r.id); };
     return <div key={`${m.key}:${r.id}`} role="radio" aria-checked={on} tabIndex={0} data-testid={`run-on-opt-${r.id}`} data-status={r.status} className={`ro-opt${on ? ' on' : ''}${s.dim ? ' dim' : ''}`}
       onClick={pick} onKeyDown={e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); pick(); } }}>

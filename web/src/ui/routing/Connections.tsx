@@ -29,6 +29,8 @@ import { repoDoc } from '../../shared/brand';
 import { LOCAL_LABEL } from '../../../../server/src/shared/modelIds';
 import { runChoice } from '../../shared/runChoices';
 import { planRateText, type ComfyPlanId } from '../../../../server/src/shared/priceText';
+import { countLocalModels, localCountsText, machineLabel, type LocalCounts } from '../../../../server/src/shared/thisComputer';
+import { useHardware } from '../../shared/hardware';
 
 type Prov = { id: string; name: string; envKey?: string; configured: boolean; mockedKey?: boolean; keysUrl?: string; docsUrl?: string; keySetAt?: string | null; keySource?: 'saved' | 'env' | 'mock' | null; keyEnvVar?: string | null; keyFormat?: 'ok' | 'unexpected' | 'unchecked' | null; disabledReason?: string | null };
 type ProvList = { providers: Prov[]; canStoreKeys: boolean; storeKeysNote?: string };
@@ -80,7 +82,7 @@ export function Connections() {
   const after = () => { setTick(n => n + 1); refreshTools(); void refreshAccounts(); requestRequote(); };
   const prov = (id: string) => d?.providers.find(p => p.id === id); const acct = (id: string) => accts?.accounts.find(a => a.provider === id); const info = (id: string) => bill?.providers.find(p => p.id === id);
   const gpu = unlocks(tools, 'local'); const comfyU = unlocks(tools, 'comfy-cloud');
-  const fits = useMemo(() => { let ok = 0, all = 0; for (const t of tools) for (const m of t.models ?? []) { const r = m.runsOn.find(x => x.id === 'local'); if (!r || r.status === 'coming-soon') continue; all++; if (r.reasonCode !== 'too_heavy') ok++; } return { ok, all }; }, [tools]);
+  const fits = useMemo(() => countLocalModels(tools), [tools]);
   const connected = (d?.providers ?? []).filter(p => p.id !== 'local' && p.configured && !p.mockedKey);
   const useLocal = rt ? !!rt.global?.useLocal : !!local?.enabled; const reach = local?.reachable;
   const toggleLocal = () => void putGlobal({ useLocal: !useLocal });
@@ -192,11 +194,11 @@ function Unlocks({ u, where, empty }: { u: { n: number; names: string[] }; where
     <Popover open={open} anchor={ref} onClose={() => setOpen(false)} label={`Models on ${where}`} placement="bottom" closeButton width={300} className="conn-unl-pop">
       <ul className="conn-unl-list">{u.names.map(n => <li key={n}>{n}</li>)}</ul></Popover></>}</span>;
 }
-function HwLine({ fits }: { fits: { ok: number; all: number } }) {
-  const [hw, setHw] = useState<{ tier?: string; tierLabel?: string; gpu?: { name?: string } | null } | null>(null);
-  useEffect(() => { fetch('/api/hardware').then(r => r.ok ? r.json() : null).then(setHw).catch(() => 0); }, []);
-  if (!hw) return null; const unknown = !hw.tier || hw.tier === 'unknown';
-  return <span data-testid="conn-hw" title={hw.tierLabel}>{unknown ? 'Hardware not checked yet, so nothing is blocked' : <>{hw.gpu?.name ? `${hw.gpu.name} · ` : ''}<b>{fits.ok} of {fits.all}</b> GPU models fit</>}</span>;
+/** The machine by its own name, and how many unique local models run on it (shared/thisComputer.ts, the same words as Settings → Your computer). */
+function HwLine({ fits }: { fits: LocalCounts }) {
+  const hw = useHardware();
+  if (!hw) return null; const unknown = !hw.tier || hw.tier === 'unknown'; const name = machineLabel(hw.profile);
+  return <span data-testid="conn-hw" title={hw.tierLabel}>{unknown ? 'Hardware not checked yet, so nothing is blocked' : <>{name ? `${name} · ` : ''}{fits.total ? <b>{localCountsText(fits)}</b> : 'No local models listed yet'}</>}</span>;
 }
 type DeployProbe = { configured: boolean; connected: boolean; code: string; message: string; checkedAt: number; nodes: { checked: boolean; count: number | null; note: string | null }; missing: string[];
   recipes: { id: string; label: string; ready: boolean | null; missingNodes: string[]; missingModels: string[] }[] };
