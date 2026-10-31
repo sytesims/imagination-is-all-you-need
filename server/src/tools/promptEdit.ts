@@ -82,6 +82,8 @@ export const promptEditTool: ToolDef = {
     { name: 'seed', kind: 'number' }],
   app: { kind: 'video', input: 'video', maxSeconds: BERNINI_MAX_SECONDS, minSeconds: BERNINI_MIN_SECONDS, resolutions: [BERNINI_RESOLUTION],
     resolutionsByProvider: Object.fromEntries(Object.entries(EDIT_MODELS).map(([id, m]) => [id, m.resolutions])),
+    /* each model's own default size (Kling 4.0: 720p, not the tool-wide 480p), so the Edit Video menu, the quote and the bar price the same job */
+    defaultResolutionByProvider: Object.fromEntries(Object.entries(EDIT_MODELS).map(([id, m]) => [id, m.resolutions[0]])),
     /* each model's clip limits (the bar's slot note; Bernini-R's stay the tool-wide ones above) */ editModels: EDIT_MODELS },
   workflows: [BERNINI_GRAPH_FILE], model: `${BERNINI_NAME} (Wan 2.2) on Comfy Cloud`, gpuSecPerSec: { [BERNINI_RESOLUTION]: 25 }, providers: [BERNINI_PROVIDER, K4_EDIT_PROVIDER], stages: STAGES,
   /* the size asked when a model makes it (each route bills and checks its own: Bernini-R is always 480p, Kling 4.0 720p unless 1080p is asked) */
