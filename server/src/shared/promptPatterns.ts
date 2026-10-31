@@ -73,8 +73,8 @@ export const PROMPT_PATTERNS: PromptPattern[] = [
     template: 'replace {thing} with the {what} in image 1',
     note: 'Every video-edit model names its reference by slot; "image 1" becomes <<<image_1>>> (Kling), Image 1 (Seedance), <Picture 1> (H3).' },
   { model: 'wan', task: 'video-swap', form: 'caption', keep: 'none', negative: 'inert-at-cfg1', checked: D, sources: [TPL('video_wan2_2_14B_animate')],
-    template: 'The character moves naturally in the scene.',
-    note: 'Wan 2.2 Animate: the text captions the result ("The character is dancing in the room"); identity comes from the image, motion from the pose and face video. umT5 has no "reference image".' },
+    template: '{subject} moves naturally in the scene.',
+    note: 'subject = "Who to replace" (the person on the left…), else "The character". Wan 2.2 Animate: the text captions the result ("The character is dancing in the room"); identity comes from the image, motion from the pose and face video. umT5 has no "reference image".' },
   { model: 'wan', task: 'motion-transfer', form: 'caption', keep: 'none', negative: 'inert-at-cfg1', checked: D, sources: [TPL('video_wan2_2_14B_animate')],
     template: 'The character moves naturally in the scene.', note: 'Same caption form as the swap (Wan 2.2 Animate Move mode).' },
   { model: 'wan', task: 'video-restyle', form: 'caption', keep: 'none', negative: 'inert-at-cfg1', checked: D, sources: [TPL('video_wan_vace_14B_v2v')],
@@ -125,4 +125,6 @@ export const fillPattern = (task: PatternTask, model: string | null | undefined,
   const p = patternFor(task, model); return p ? fillTemplate(p.template, slots) : '';
 };
 /** An exact-LoRA pattern's trained sentence for one of our ids (null = none listed). */
+/** A caption's subject: the user's words with a capital, or the fallback. */
+export const captionSubject = (words: string | null | undefined, fallback = 'The character') => { const w = String(words ?? '').trim().replace(/[.\s]+$/, ''); return w ? `${w[0].toUpperCase()}${w.slice(1)}` : fallback; };
 export const loraSentence = (task: PatternTask, model: string, id: string): string | null => patternFor(task, model)?.exact?.[id] ?? null;

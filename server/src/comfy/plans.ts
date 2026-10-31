@@ -10,6 +10,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { WORKFLOWS_DIR, PLUGINS_DIR, DATA_DIR } from '../config.js';
 import { pickVariant, planObjectSwap, patchGraph, MAX_SWAP_REFS, LENGTH_VARIANTS } from './objectSwap.js';
 import { planChunks, patchRestyle, restylePrompt, swatchPath, VACE_FPS } from './restyle.js';
+import { fillPattern, captionSubject } from '../shared/promptPatterns.js';
 import { angleParams, ltxFrames, patchReshootLtx, reshootEngine } from './reshoot.js';
 import { UPSCALE_WORKFLOWS, patchUpscale60, vupGraph, vupShortSide } from './upscale.js';
 import { VUP_MODELS, VUP_LOCAL } from '../shared/videoUpscale.js';
@@ -106,10 +107,10 @@ const wan4n1 = (frames: number) => Math.max(5, Math.round((frames - 1) / 4) * 4 
 const clampSeed = (s: any) => Math.max(0, Math.floor(Number(s) || 0));
 
 // ---------------- video-swap family ----------------
-function swapPrompt(i: Record<string, any>): string { // same wording as comfyClient.buildPrompt; a user prompt wins
-  if (i.comfyPrompt?.trim()) return i.comfyPrompt; if (i.prompt?.trim()) return i.prompt.trim(); const t = i.target?.trim();
-  return t ? `replace ${t} with the character from the reference image, keep the background, camera, and lighting`
-    : 'replace the main character with the character from the reference image, keep the background, camera, and lighting';
+/** Wan 2.2 Animate reads a caption of the result, not an instruction (shared/promptPatterns.ts video-swap); a user prompt wins; "Who to replace" becomes the caption's subject. */
+function swapPrompt(i: Record<string, any>): string { // same wording as comfyClient.buildPrompt
+  if (i.comfyPrompt?.trim()) return i.comfyPrompt; if (i.prompt?.trim()) return i.prompt.trim();
+  return fillPattern('video-swap', 'wan-2.2-animate-14b', { subject: captionSubject(i.target) });
 }
 function objectSwap(job: Job): Plan {
   const i = job.input; const sp = swapPrompt(i); const prep = planObjectSwap(i as any); const out16 = `${i.videoPath}.${job.id}-16fps.mp4`;
@@ -122,7 +123,7 @@ function objectSwap(job: Job): Plan {
 function motionTransfer(job: Job): Plan {
   const i = job.input; const v = pickVariant(i.duration); const file = path.join(WORKFLOWS_DIR, 'motion-transfer', `ext-${v.ext}.json`);
   const size = planObjectSwap(i as any); const out16 = `${i.videoPath}.${job.id}-16fps.mp4`; const g = wf(file); const seed = clampSeed(i.seed);
-  const prompt = i.prompt?.trim() || 'The character performs the same motion as in the video';
+  const prompt = i.prompt?.trim() || fillPattern('motion-transfer', 'wan-2.2-animate-14b');
   setIn(g, '10', 'image', F(i.refPaths?.[0] ?? i.imagePath)); setIn(g, '145', 'file', F(out16)); setIn(g, '21', 'text', prompt);
   setIn(g, '159', 'value', size.width); setIn(g, '160', 'value', size.height);
   if (g['232:63']) g['232:63'].inputs.seed = seed; for (const k of Object.keys(g)) if (/^ext\d+:91$/.test(k)) g[k].inputs.seed = seed + Number(k.slice(3, k.indexOf(':')));
