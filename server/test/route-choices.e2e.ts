@@ -20,7 +20,7 @@ assert.equal(routeWord({ routeId: 'comfy-router:api-minimax-h3', kind: 'comfy-ro
 assert.equal(routeWord({ routeId: 'comfy-cloud:cloud-ltx25-pro-api', kind: 'comfy-cloud', comfyVariant: 'partner' }, 'Lightricks'), 'Comfy’s node');
 assert.equal(routeWord({ routeId: 'comfy-deploy:x', kind: 'comfy-cloud', comfyVariant: 'deployment' }), 'your deployment');
 assert.equal(routeWord({ routeId: 'local:comfy-x', kind: 'local', label: 'Local ComfyUI · Fast draft' }), 'fast draft');
-assert.equal(routeWord({ routeId: 'fal:fal-ai/luma-dream-machine/ray-2-flash/reframe', kind: 'fal' }), 'ray 2 flash reframe');
+assert.equal(routeWord({ routeId: 'fal:luma/agent/ray/v3.2/reframe', kind: 'fal' }), 'v3.2 reframe');
 { const n = routeChoiceNames('Comfy Cloud', [{ routeId: 'comfy-cloud:a', kind: 'comfy-cloud', comfyVariant: 'partner' }, { routeId: 'comfy-cloud:b', kind: 'comfy-cloud', comfyVariant: 'partner' }], 'X');
   assert.notEqual(n[0].name, n[1].name, 'two routes that would read the same get their own words'); }
 ok('route words: open workflow / <maker>’s service / Comfy’s node / your deployment / a local label / a key place\'s endpoint; duplicates told apart');

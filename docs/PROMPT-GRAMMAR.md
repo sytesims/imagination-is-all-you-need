@@ -159,7 +159,7 @@ This page is the readable view. Step 2 (2026-10-26): one rewrite, [`server/src/s
 | `flux-3-upscaler` | FLUX 3 Upscaler | optional | none | – | none | Prompt only in creative mode | yes | official |
 | `birefnet` | BiRefNet | none | none | – | none | – | n/a | inferred |
 | `bria-video-background-removal` | Bria Video Background Removal | none | none | – | none | – | – | official |
-| `luma-ray-2-reframe` | Luma Reframe | none | none | – | none | – | – | official |
+| `luma-ray-2-reframe` | Luma Reframe | optional | none | – | none | – | yes | official |
 | `rife-4.9` | RIFE 4.9 | none | none | – | none | – | n/a | inferred |
 | `depth-anything-v2-small` | Depth Anything V2 Small | none | none | – | none | – | – | inferred |
 | `ffmpeg-hdr10` | ffmpeg HDR10 conversion | none | none | – | none | – | – | inferred |

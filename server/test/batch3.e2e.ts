@@ -28,9 +28,9 @@ try {
   { assert.equal((await fetch(`${B}/api/ledger/grant`, js('POST', { amount: 5 }))).status, 200); console.log('ok ledger/grant allowed on mock (403 dev_only otherwise)'); }
   // non-H3 videoCaps
   { const r = await get('/api/routes'); const caps: Record<string, any> = {}; for (const g of r.routes) for (const x of g.routes) if (x.caps?.videoCaps) caps[x.routeId] = x.caps.videoCaps;
-    for (const id of ['comfy-router:router-kling', 'comfy-router:router-veo', 'comfy-router:router-seedance', 'fal:fal-ai/seedvr/upscale/video', 'fal:fal-ai/rife/video', 'fal:bria/video/background-removal', 'fal:fal-ai/luma-dream-machine/ray-2/reframe', 'fal:fal-ai/luma-dream-machine/ray-2-flash/reframe', 'direct:direct-flux3-upscale', 'local:comfy-funcamera']) {
+    for (const id of ['comfy-router:router-kling', 'comfy-router:router-veo', 'comfy-router:router-seedance', 'fal:fal-ai/seedvr/upscale/video', 'fal:fal-ai/rife/video', 'fal:bria/video/background-removal', 'fal:luma/agent/ray/v3.2/reframe', 'direct:direct-flux3-upscale', 'local:comfy-funcamera']) {
       const c = caps[id]; assert.ok(c, `videoCaps for ${id}`); for (const k of ['durations', 'aspects', 'resolutions', 'audio', 'refKinds', 'refMax', 'sourceUrl', 'verified']) assert.ok(k in c, `${id}.${k}`); if (c.verified) assert.match(c.sourceUrl, /^https:\/\//); }
-    assert.deepEqual(caps['comfy-router:router-veo'].durations, [4, 6, 8]); assert.equal(caps['fal:bria/video/background-removal'].maxSeconds, 30); assert.equal(caps['local:comfy-funcamera'].verified, false);
+    assert.deepEqual(caps['comfy-router:router-veo'].durations, [4, 6, 8]); assert.equal(caps['fal:bria/video/background-removal'].maxSeconds, 30); assert.equal(caps['fal:luma/agent/ray/v3.2/reframe'].maxSeconds, 10); assert.equal(caps['local:comfy-funcamera'].verified, false);
     assert.ok(!Object.keys(caps).some((k) => /h3/.test(k)), 'H3 routes untouched'); console.log(`ok videoCaps on ${Object.keys(caps).length} non-H3 video routes`); }
   // fal FLUX 3 Klein: request bodies + routes + price
   { assert.deepEqual(kleinImageSize('2K', '1:1'), { width: 2048, height: 2048 }); const k4 = kleinImageSize('4K', '16:9')!; assert.ok(k4.width === 4096 && k4.height <= 4096 && k4.height >= 256);

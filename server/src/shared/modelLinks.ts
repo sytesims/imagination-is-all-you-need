@@ -78,7 +78,7 @@ export const MODEL_LINKS: Record<string, ModelLinks> = {
   'flux-3-upscaler': { announce: FLUX3, docs: 'https://docs.bfl.ai/flux_tools/flux_video_upscale' },
   seedvr2: { ...SEEDVR2, card: 'https://huggingface.co/ByteDance-Seed/SeedVR2-7B' },
   'kling-v3': { site: 'https://kling.ai/release-note/release-notes', docs: 'https://kling.ai/document-api', released: '2026-02' },
-  'luma-ray-2-reframe': { docs: 'https://fal.ai/models/fal-ai/luma-dream-machine/ray-2/reframe/api' },
+  'luma-ray-2-reframe': { docs: 'https://fal.ai/models/luma/agent/ray/v3.2/reframe/api' },
   'bria-video-background-removal': { docs: 'https://fal.ai/models/bria/video/background-removal' },
   birefnet: { paper: 'https://arxiv.org/abs/2401.03407', card: 'https://huggingface.co/ZhengPeng7/BiRefNet', docs: 'https://github.com/ZhengPeng7/BiRefNet', released: '2024-01' },
   'ffmpeg-hdr10': { docs: 'https://ffmpeg.org/ffmpeg-filters.html#zscale' },

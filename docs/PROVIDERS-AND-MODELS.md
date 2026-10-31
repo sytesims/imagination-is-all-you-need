@@ -67,7 +67,6 @@ A model or route the provider is shutting down is marked **Retiring** (an amber 
 | Model | Status | Why (checked 2026-10-21) |
 |---|---|---|
 | Veo 3.1 (Comfy partner node) | Retiring | Google shuts down the Veo 3.1 previews in the Gemini API from 2026-10-22 ([deprecations](https://ai.google.dev/gemini-api/docs/deprecations)); fal deprecates `veo3.1` on 2026-11-17. Priced with sound off ($0.20/s) and on ($0.40/s); the price follows the Sound toggle |
-| Luma Ray 2 / Ray 2 Flash Reframe (fal, the Reframe tool) | Retiring | fal deprecates both endpoints on 2026-10-25 and points to Ray v3.2 ([page](https://fal.ai/models/fal-ai/luma-dream-machine/ray-2/reframe)). $0.20/s and $0.06/s |
 | Reve | Removed | Reve's API wound down on 2026-08-14. Old Reve results still show in Assets under the name Reve; a saved Reve choice falls back to the tool's default |
 
 ## Prices and costs

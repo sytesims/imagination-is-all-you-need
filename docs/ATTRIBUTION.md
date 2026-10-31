@@ -161,7 +161,7 @@ Served live on `GET /api/models/:id` → `attribution {status, lines[], required
 | Luma Ray 3.2 Edit (hosted) (`router-ray32-edit`) | unverified (not fully verified) | — | proprietary → unverified |
 | Runway Aleph 2 (hosted) (`router-aleph2`) | unverified (not fully verified) | — | proprietary → unverified |
 | LTX-2.5 22B + Lightricks IC-LoRA (`comfy-ltx25-iclora`) | unverified (not fully verified) | — | ltx-2x-community → unverified, apache-2.0 → none |
-| Auto (Luma Ray 2 / Ray 2 Flash via fal) (`auto-reframe`) | unverified (not fully verified) | — | proprietary → unverified |
+| Auto (Luma Ray 3.2) (`auto-reframe`) | unverified (not fully verified) | — | proprietary → unverified |
 | Luma Reframe (`direct-luma-reframe`) | unverified (not fully verified) | — | proprietary → unverified |
 | BiRefNet (local, per frame) (`comfy-birefnet-video`) | none | — | birefnet-mit → none |
 | ffmpeg HDR10 conversion (local, not AI) (`local-ffmpeg-hdr`) | none | — | apache-2.0 → none |
