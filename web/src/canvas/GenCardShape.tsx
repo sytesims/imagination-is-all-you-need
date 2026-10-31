@@ -49,6 +49,7 @@ import { setCard, submit, reveal } from './agentApi';
 import { addResultCard, probeSize } from './resultCardUtil';
 import { QuickActions } from './QuickActions';
 import { NodeFrame } from './NodeFrame';
+import { CardName } from './CardName';
 import { CardInputs, chooseForSlot } from './CardInputs';
 import { useClipInfo } from '../shared/clipInfo';
 import { clipIssue, clipRuleFor } from '../../../server/src/shared/clipLimits';
@@ -204,7 +205,7 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
         <button type="button" className="nf-act" aria-label="Make a variation" data-testid="gc-variation" {...tip('Variation: a copy with the same settings beside it, ready to tweak. Nothing runs until you press Generate (⌘D does the same)')} onClick={() => void runVariation()}><Ic.CopyIcon size={14} /></button>
         <button type="button" className="nf-act" aria-label="Recreate: run it again" data-testid="gc-recreate" disabled={busy} {...tip('Recreate: run it again with the same settings. The new version joins the strip')} onClick={() => void recreate()}><Ic.RetryIcon size={14} /></button></> : undefined}
       footer={footer}>
-      {shot ? <h3 className="gc-shot nf-heading" data-testid="gc-shot" title={shot}>{shot}</h3> : <h3 className="gc-shot nf-heading nf-heading-empty" aria-hidden>Untitled</h3>}
+      <CardName id={shape.id} name={shot} shown={shot || 'Untitled'} empty={!shot} className={`gc-shot nf-heading${shot ? '' : ' nf-heading-empty'}`} testId={shot ? 'gc-shot' : 'gc-shot-empty'} />
       <div className={`nf-media gc-media gc-media-${p.status}`} data-testid="gc-media">
         {draft && <div className="gc-stage gc-draft" key="draft">
           {spec && spec.slots.length > 0 && (open || (st?.inputs.length ?? 0) > 0) && <CardInputs cardId={shape.id} slots={spec.slots} bySlot={st?.bySlot ?? {}} showAdd={selected} />}

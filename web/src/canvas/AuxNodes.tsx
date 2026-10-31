@@ -62,7 +62,7 @@ function UploadView({ shape, p, Icon }: { shape: AuxNodeShape; p: AuxNodeProps; 
     catch (e) { toast((e as Error).message || 'Upload failed', 'error'); } finally { setBusy(false); } };
   const pick = () => file.current?.click();
   const kind = p.mediaKind; const label = p.label || 'Untitled upload';
-  return <NodeFrame shapeId={shape.id} type={shape.type} icon={<Icon />} title="Upload" heading={p.url ? label : 'Add a file'} status={<span className="nf-status">{kind ? kind === '3d' ? '3D' : kind : 'Media'}</span>}
+  return <NodeFrame shapeId={shape.id} type={shape.type} icon={<Icon />} title="Upload" heading={p.url ? label : 'Add a file'} renamable={!!p.url} status={<span className="nf-status">{kind ? kind === '3d' ? '3D' : kind : 'Media'}</span>}
     footer={<><span className="nf-model">{kind === 'audio' ? <AudioIcon size={14} /> : kind === 'video' ? <VideoIcon size={14} /> : <ImageIcon size={14} />}<b>{p.url ? `${kind === 'video' ? 'Clip' : kind === 'audio' ? 'Sound' : 'Picture'} · feeds other cards` : 'No file yet'}</b></span>{p.url && <span className="nf-price">Input</span>}</>}>
     <input ref={file} type="file" hidden accept={Object.values(ACCEPT).join(',')} onChange={e => { void take(e.target.files?.[0]); e.currentTarget.value = ''; }} />
     <div className={`ax-upload${over ? ' over' : ''}`} data-card-control onDragOver={e => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)}

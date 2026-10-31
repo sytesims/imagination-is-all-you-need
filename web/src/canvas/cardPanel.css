@@ -16,6 +16,9 @@
 .cp-tile-image{color:var(--media-image,#9ab8ff)}.cp-tile-video{color:var(--media-video,#ff9d5c)}.cp-tile-audio{color:var(--media-audio,#7ddbb4)}
 .cp-name{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .cp-name b{font:600 15px/1.2 var(--font-ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cp-name .cp-title{all:unset;box-sizing:border-box;min-width:0;font:600 15px/1.2 var(--font-ui);color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:text;border-radius:6px}
+.cp-name .cp-title:hover{box-shadow:0 0 0 4px var(--state-hover);background:var(--state-hover)}.cp-name .cp-title:focus-visible{box-shadow:var(--focus)}
+.cp-name input.cp-title{cursor:text;background:var(--surface-2);box-shadow:0 0 0 4px var(--surface-2),0 0 0 5px var(--state-border-on)}
 .cp-name small{display:flex;align-items:center;gap:6px;color:var(--text-2);font-size:12px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cp-dot{flex:none;width:6px;height:6px;border-radius:50%;background:var(--accent);animation:ap-pulse 1.4s ease-in-out infinite}
 .cp-icon{all:unset;box-sizing:border-box;flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:8px;color:var(--text-2);cursor:pointer}

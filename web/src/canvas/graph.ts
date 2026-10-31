@@ -9,6 +9,7 @@ import { createShapeId, type Editor, type TLShape, type TLShapeId, type TLArrowB
 
 import { GEN_TYPE, RESULT_TYPE, UPLOAD_TYPE, PROMPT_TYPE, NOTE_TYPE, isNodeType } from './nodeTypes';
 import type { BoardInput } from './cardModel';
+import { linkArrowsWith } from './links';
 export { GEN_TYPE, type BoardInput };
 export const RESULT_T = RESULT_TYPE;
 
@@ -97,4 +98,20 @@ export function waitingInputsOf(editor: Editor, cardId: TLShapeId): { id: TLShap
     const n = (s.meta as any)?.name; out.push({ id: s.id, name: (typeof n === 'string' && n.trim()) || 'the card before', kind: String((s.props as any).medium ?? 'image') });
   }
   return out;
+}
+
+/** Deleting a card deletes its link arrows with it, in the same undo step (B8). It runs on the editor's "deleted-shapes" event, which
+ *  fires just before the shapes go, while their bindings still say which arrows are links (a shape before-delete side-effect runs after
+ *  tldraw has already unbound them). Returns the cleanup. */
+export function registerLinkCleanup(editor: Editor): () => void {
+  const onDelete = (ids: TLShapeId[]) => {
+    const gone = new Set<TLShapeId>();
+    for (const cardId of ids) { const s = editor.getShape(cardId); if (!s || !isNodeType(s.type)) continue;
+      const arrowIds = [...new Set(editor.getBindingsToShape<TLArrowBinding>(s.id, 'arrow').map(b => b.fromId))];
+      const arrows = arrowIds.map(id => { const bs = editor.getBindingsFromShape<TLArrowBinding>(id, 'arrow');
+        return { id: id as string, from: bs.find(b => b.props.terminal === 'start')?.toId ?? null, to: bs.find(b => b.props.terminal === 'end')?.toId ?? null }; });
+      for (const id of linkArrowsWith(s.id, arrows)) if (!ids.includes(id as TLShapeId) && editor.getShape(id as TLShapeId)) gone.add(id as TLShapeId); }
+    if (gone.size) editor.deleteShapes([...gone]);
+  };
+  editor.on('deleted-shapes', onDelete); return () => { editor.off('deleted-shapes', onDelete); };
 }

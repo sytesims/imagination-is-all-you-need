@@ -35,6 +35,7 @@ import { CopyIcon, RetryIcon, PullOutIcon, NoteIcon, PromptIcon, UploadIcon, AdI
 import { useCatalog, catalogNow } from './catalog';
 import { GEN_TYPE, type GenCardProps, type Take, type MadeFrom as MadeFromT } from './cardModel';
 import { CardInputs } from './CardInputs';
+import { CardName } from './CardName';
 import { RESULT_TYPE, PROMPT_TYPE, NOTE_TYPE, UPLOAD_TYPE, AD_TYPE, COMPARE_TYPE, GROUP_TYPE, isNodeType } from './nodeTypes';
 import { groupGenIds } from './nodeLogic';
 import { AD_PLATFORMS, asPlatforms } from './adPlatforms';
@@ -169,12 +170,12 @@ export function CardPanel({ hidden, onOpen }: { hidden: boolean; onOpen?: (on: b
 const PinIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 17v5M8 3h8l-1 6 3 4H6l3-4z" /></svg>;
 
 /** One header for every state: a tile, the name, and ONE subtitle line ("Create Image · 3 versions", "3 pictures", "5 cards on this board"). */
-type HeadProps = { icon: ReactNode; tint?: string; title: string; sub: ReactNode; live?: boolean };
+type HeadProps = { icon: ReactNode; tint?: string; title: string; sub: ReactNode; live?: boolean; /** a card's header: its name renames it (meta.name) */ rename?: { id: TLShapeId; name: string } };
 type HeadFn = (h: HeadProps) => JSX.Element;
-function Header({ icon, tint = 'none', title, sub, live, pin, onPin, onClose }: HeadProps & { pin: boolean; onPin: () => void; onClose: () => void }) {
+function Header({ icon, tint = 'none', title, sub, live, rename, pin, onPin, onClose }: HeadProps & { pin: boolean; onPin: () => void; onClose: () => void }) {
   return <header className="cp-head">
     <span className={`cp-tile cp-tile-${tint}`}>{icon}</span>
-    <span className="cp-name"><b title={title}>{title}</b><small>{live && <i className="cp-dot" aria-hidden />}{sub}</small></span>
+    <span className="cp-name">{rename ? <CardName id={rename.id} name={rename.name} shown={title} className="cp-title" testId="cp-title" board={false} /> : <b title={title}>{title}</b>}<small>{live && <i className="cp-dot" aria-hidden />}{sub}</small></span>
     <button type="button" className={`cp-icon${pin ? ' on' : ''}`} aria-pressed={pin} aria-label="Keep open" {...tip(pin ? 'Stays open. Click to close it with the selection' : 'Keep this panel open')} onClick={onPin}><PinIcon /></button>
     <button type="button" className="cp-icon" aria-label="Close" {...tip('Close (Esc)')} onClick={onClose}><CloseIcon size={14} /></button>
   </header>;
@@ -196,7 +197,7 @@ function One({ id, head }: { id: TLShapeId; head: HeadFn }) {
   const isText = v.s.type === PROMPT_TYPE || v.s.type === NOTE_TYPE;
   const from: MadeFromT[] = (peek ?? v.takes[v.take])?.from ?? [];
   return <>
-    {head({ icon: <v.Icon size={15} />, tint: v.tint, title: v.title, sub: [v.kindLine, v.statusWord].filter(Boolean).join(' · '), live: v.status === 'running' })}
+    {head({ icon: <v.Icon size={15} />, tint: v.tint, title: v.title, rename: { id: v.s.id, name: String((v.s.meta as any)?.name ?? '') }, sub: [v.kindLine, v.statusWord].filter(Boolean).join(' · '), live: v.status === 'running' })}
     <div className="cp-body">
       {v.explain && <Caption>{v.explain}</Caption>}
       {!isText && v.s.type !== GROUP_TYPE && <Preview v={v} peek={peek} />}
