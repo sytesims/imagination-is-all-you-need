@@ -111,15 +111,20 @@ export function routerErrorFor(status: number, errorType: string | null, body = 
   return mk('cloud_unreachable', true);
 }
 
-export interface RouterEstimate { source: 'exact' | 'estimated' | 'unknown'; usd: number | null; minUsd: number | null; maxUsd: number | null; credits: number | null; reason?: string; pricingAsOf?: string }
+/** source: exact | estimated | free | unknown (docs.comfy.org/development/comfy-router/reference, RouterCostEstimate: "read any other value as unknown").
+ *  free = the rate card prices this request at zero: usd 0 and credits 0, never unknown (2026-10-31). */
+export interface RouterEstimate { source: 'exact' | 'estimated' | 'free' | 'unknown'; usd: number | null; minUsd: number | null; maxUsd: number | null; credits: number | null; reason?: string; pricingAsOf?: string }
 export interface RouterHandle { requestId: string; statusUrl: string; responseUrl: string; cancelUrl: string; estimate: RouterEstimate | null }
 export interface RouterResult { contentType: string; json: any | null; bytes: Buffer | null; creditsUsed: number | null; requestId: string | null; replayed: boolean }
 const num = (s: unknown) => { const n = typeof s === 'number' ? s : Number(s); return s != null && s !== '' && Number.isFinite(n) ? n : null; };
 export function parseEstimate(j: any): RouterEstimate {
-  const src = j?.source === 'exact' || j?.source === 'estimated' ? j.source : 'unknown';
+  const src = j?.source === 'exact' || j?.source === 'estimated' || j?.source === 'free' ? j.source : 'unknown';
+  if (src === 'free') return { source: 'free', usd: 0, minUsd: null, maxUsd: null, credits: 0, ...(j?.pricing_as_of ? { pricingAsOf: String(j.pricing_as_of) } : {}) }; // "$0": the amount reads "0"
   return { source: src, usd: src === 'exact' ? num(j.amount) : null, minUsd: src === 'estimated' ? num(j.min_amount) : null, maxUsd: src === 'estimated' ? num(j.max_amount) : null,
     credits: num(j?.credits), ...(src === 'unknown' ? { reason: String(j?.reason ?? 'not_quotable') } : {}), ...(j?.pricing_as_of ? { pricingAsOf: String(j.pricing_as_of) } : {}) };
 }
+/** The most this call can cost by its estimate (USD): exact / free amount, the estimated range's top, null when unknown. */
+export const estimateHigh = (e: RouterEstimate | null | undefined): number | null => (e?.source === 'exact' || e?.source === 'free' ? e.usd : e?.source === 'estimated' ? e.maxUsd : null);
 /** X-Comfy-Credits-Used → credits (a number), or null when absent / unreadable (absent = not reported, never free). */
 export const creditsUsed = (h: Headers) => num(h.get('x-comfy-credits-used'));
 const sleepDefault = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));

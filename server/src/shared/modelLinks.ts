@@ -71,6 +71,11 @@ export const MODEL_LINKS: Record<string, ModelLinks> = {
   'ltx-2.5-talking-photo': { ...LTX25, card: 'https://huggingface.co/Lightricks/LTX-2.5' },
   'wan-2.2-ti2v-5b': { announce: WAN22_NEWS, paper: WAN22_PAPER, card: 'https://huggingface.co/Wan-AI/Wan2.2-TI2V-5B', docs: WAN22_CODE, released: '2025-07' },
   'wan-3.0': { site: 'https://wan.video/' },
+  // 2026-10-31 (each URL opened, HTTP 200): the maker's own announcement or model page
+  'wan-3.0-prime': { site: 'https://wan.video/' },
+  'veo-3.1-lite': { announce: 'https://blog.google/innovation-and-ai/technology/ai/veo-3-1-lite/', site: 'https://deepmind.google/models/veo/', released: '2026-03' },
+  'p-video-2': { site: 'https://www.pruna.ai/p-video-2', docs: 'https://docs.pruna.ai/en/stable/docs_pruna_endpoints/performance_models/p-video-2.html' },
+  'grok-imagine-video-1.5-lite': { site: 'https://docs.x.ai/docs/models/grok-imagine-video-1.5-lite' },
   'minimax-h3': { announce: 'https://www.minimax.io/news/minimax-h3-open-source', card: H3_CARD, docs: H3_DOCS, released: '2026-07' },
   'minimax-h3-fast': { site: 'https://haoailab.com/blogs/fasth3-preview/', card: 'https://huggingface.co/FastVideo/FastVideo-FastH3-8-Step-V2', docs: 'https://docs.comfy.org/tutorials/video/minimax/minimax-h3-fastvideo' },
   'minimax-h3-camera-motion': { announce: H3_NEWS, card: H3_CARD, docs: H3_DOCS },

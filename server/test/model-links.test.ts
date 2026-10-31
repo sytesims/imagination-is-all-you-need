@@ -39,6 +39,10 @@ const linked = Object.keys(MODEL_LINKS).filter((k) => Object.keys(linksOf(k)).so
 assert.ok(linked.length >= 100, `at least 100 models have a link (${linked.length})`);
 assert.deepEqual(linksOf('local-turntable'), {}, 'our own in-browser tools have no links'); assert.deepEqual(linksOf(null), {});
 assert.equal(releasedText('2025-11'), 'Nov 2025'); assert.equal(releasedText('bad'), null);
+// 2026-10-31: the new Router models each have an About link on the maker's own site (never Comfy or fal)
+for (const k of ['veo-3.1-lite', 'wan-3.0-prime', 'p-video-2', 'grok-imagine-video-1.5-lite', 'heygen-voice']) { const l = linksOf(k); const urls = [l.announce, l.site].filter(Boolean) as string[];
+  assert.ok(urls.length || l.docs, `${k}: an About link`); for (const u of [...urls, l.docs].filter(Boolean) as string[]) assert.ok(!/comfy\.org|fal\.ai/.test(u), `${k}: maker link, not ${u}`); }
+assert.equal(linksOf('veo-3.1-lite').announce, 'https://blog.google/innovation-and-ai/technology/ai/veo-3-1-lite/'); assert.equal(linksOf('p-video-2').site, 'https://www.pruna.ai/p-video-2');
 ok(`${linked.length} models with links, ${urls} URLs, all https and well-formed; papers are arXiv, cards are Hugging Face`);
 // 3. the menus' one "About" link (2026-10-31): the maker's post, else its page, never Comfy docs or fal; the rest in plain words, no repeats
 const about = [...offered].filter((k) => aboutLink(k));

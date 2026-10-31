@@ -2,7 +2,7 @@
  * Camera Moves, Photo FX and Orbit Shot on Comfy Router: the video models that run them and the
  * workflow each feature + model pair is credited with (same shape and wording as the image features' credit, shared/imageFeatures.ts).
  * The job maps to the model's Router body (routing/routerModels.ts): the move / effect / orbit becomes our prompt recipe, the photo the first frame.
- * Kling v3 (Router schema has no image input) and Veo 3.1 (retiring) are not offered on these tools.
+ * Kling v3 (Router schema has no image input) and Veo 3.1 are not offered on these tools.
  */
 import type { WorkflowSource } from './workflowSources.js';
 
