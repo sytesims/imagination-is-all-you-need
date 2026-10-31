@@ -13,6 +13,7 @@
   "scripts": {
     "postinstall": "node scripts/install-mcp.mjs",
     "dev": "concurrently -n api,web,mcp -c magenta,cyan,yellow \"npm:dev -w server\" \"npm:dev -w web\" \"npm:mcp:dev\"",
+    "start": "node scripts/start.mjs",
     "build": "node scripts/build-plugins.mjs && npm run build -w server && npm run build -w web",
     "plugins:build": "node scripts/build-plugins.mjs",
     "demo:reset": "npm run demo:reset -w server",

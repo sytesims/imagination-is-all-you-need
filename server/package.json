@@ -13,6 +13,7 @@
     "openapi": "tsx scripts/gen-openapi.ts",
     "licenses": "tsx scripts/gen-licenses.ts",
     "start:tsx": "tsx src/index.ts",
+    "start:app": "node scripts/dev.mjs --no-watch",
     "test": "node ../scripts/test-all.mjs"
   },
   "dependencies": {
