@@ -217,6 +217,37 @@ const bodies: { k: any[]; s: any[] } = { k: [], s: [] };
   ok('keyed run (fake Router): 25 s → 3 requests (each estimate checked against its own share), joined into one 25 s clip with the source sound; over-share estimate stops before submit; keepAudio off → silent');
 }
 
+// ---------------- 5b. a refused run (2026-10-31): the provider's words are kept, the card says why, a Seedance refusal counts nothing ----------------
+{
+  process.env.COMFY_API_KEY = 'test-not-a-real-key'; ST.setStorageFetch((async (u: any, i: any) => (await storageFake(u, i)) ?? new Response('nope', { status: 404 })) as typeof fetch, async () => {}); ST.clearStorageCache();
+  const RR = await import('../src/routing/routerRun.ts'); const { findRoute } = await import('../src/routing/routes.ts');
+  const PB = await import('../src/shared/policyBilling.ts'); const FR = await import('../../web/src/shared/failureReasons.ts');
+  const base = 'https://router.test/v2/models/byteplus/dreamina-seedance-2-5-260628'; const json = (o: unknown, status = 200, h: Record<string, string> = {}) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json', ...h } });
+  const fake = (collect: () => Response) => (async (u: any, init: any = {}) => { const url = String(u); const st = await storageFake(u, init); if (st) return st;
+    if (url.endsWith('/estimate')) return json({ source: 'exact', amount: '0.30', credits: 63 });
+    if (url.includes('/requests?') && init.method === 'POST') return json({ request_id: 'rq1', status: 'IN_QUEUE', status_url: `${base}/requests/rq1/status`, response_url: `${base}/requests/rq1`, cancel_url: `${base}/requests/rq1/cancel` }, 201);
+    if (url.endsWith('/status')) return json({ status: 'COMPLETED', error_type: 'content_policy_violation' });
+    if (url.endsWith('/requests/rq1')) return collect();
+    return new Response('nope', { status: 404 }); }) as typeof fetch;
+  const r = findRoute('comfy-router:router-seedance-25-edit')!; const mk = (id: string): any => ({ id, status: 'running', toolId: 'motion-transfer', route: r.routeId, input: swapJob({ mode: 'motion_transfer', target: '' }), routing: { prices: { [r.routeId]: 319 } }, cost: 319, outputs: [] });
+  // with words: BytePlus's own code (Router model page: InputImageSensitiveContentDetected.PrivacyInformation = a real person)
+  RR.setRouterFetch(fake(() => json({ error_type: 'content_policy_violation', detail: 'The provider refused the request.', upstream_detail: 'InputImageSensitiveContentDetected.PrivacyInformation: the input image may contain a real person.' }, 400, { 'x-comfy-error-type': 'content_policy_violation' })), async () => {});
+  const j1 = mk('job_cs_ref1'); await assert.rejects(RR.runRouter(j1, r, { n: 1, routeId: r.routeId } as any, 60_000), /refused a photo of a real person \(content policy\)/);
+  assert.equal(j1.reasonCode, 'content_blocked'); assert.match(j1.providerError.upstreamDetail, /PrivacyInformation/); assert.equal(j1.providerError.requestId, 'rq1'); assert.equal(j1.providerError.model, 'byteplus/dreamina-seedance-2-5-260628');
+  assert.equal(j1.chargeNote, 'not_charged', "Seedance's catalog: a policy refusal isn't billed (shared/policyBilling.ts)");
+  const v = FR.failView({ ...j1, status: 'failed', error: 'Comfy Router failed: x' }, { ownAccounts: true, providerRule: 'may-charge', providerName: 'Comfy' });
+  assert.equal(v.line, 'The provider refused a photo of a real person.'); assert.equal(v.charge, 'Nothing was charged.');
+  // no words (the collect read gives nothing back): the bucket and the request id are still kept
+  RR.setRouterFetch(fake(() => new Response('', { status: 202 })), async () => {});
+  const j2 = mk('job_cs_ref2'); await assert.rejects(RR.runRouter(j2, r, { n: 1, routeId: r.routeId } as any, 60_000), /refused this prompt or image/);
+  assert.equal(j2.providerError.errorType, 'content_policy_violation'); assert.equal(j2.providerError.requestId, 'rq1'); assert.equal(j2.providerError.detail, null);
+  // the real route ids are comfy-router:<id> (the old check only read router:<id>, so a Seedance refusal kept its estimate as spend)
+  assert.equal(PB.policyRefusalCharge({ route: 'comfy-router:router-seedance-25-edit' }), 'no'); assert.equal(PB.policyRefusalCharge({ route: 'comfy-router:router-kling-edit' }), 'unknown');
+  assert.equal(PB.refusalReason({ detail: 'OutputAudioSensitiveContentDetected' }), 'The provider refused the sound it made. Try again with sound off.'); assert.equal(PB.refusalReason({ detail: 'something else' }), null);
+  RR.setRouterFetch(null); ST.setStorageFetch(null); process.env.COMFY_API_KEY = '';
+  ok('refused run: the provider\'s words and request id kept as providerError (also with no words), plain reason "a photo of a real person" on the card, Seedance refusal not charged (comfy-router: route ids)');
+}
+
 // ---------------- 6. trim ----------------
 {
   const { applySwapTrim } = await import('../src/tools/videoSwap.ts');

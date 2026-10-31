@@ -14,7 +14,8 @@ import { DATA_DIR } from '../config.js';
 import { probe } from '../media.js';
 import { runFfmpeg } from '../ffmpeg.js';
 import { keyValue } from './keys.js';
-import { ComfyRouter, RouterError, ROUTER_MESSAGES, routerBase, providerSaid, estimateHigh, type RouterEstimate } from '../comfyRouter.js';
+import { ComfyRouter, RouterError, ROUTER_MESSAGES, routerBase, providerSaid, estimateHigh, sanitizeProviderText, type RouterEstimate } from '../comfyRouter.js';
+import { policyRefusalCharge, refusalReason } from '../shared/policyBilling.js';
 import { markRouteOff, clearRouteOff } from './routeOff.js';
 import { COMFY_CREDITS_PER_USD } from '../shared/hostedPrices.js';
 import { refundAttempt, creditsBackNote } from '../ledger.js';
@@ -104,7 +105,8 @@ export async function runRouter(job: Job, r: RouteDef, attempt: RouteAttempt, ti
       job.stage = 'downloading';
       if (res.bytes && res.contentType && !/json/.test(res.contentType)) { outs.push({ label: labels[k], url: await save(job, k, { bytes: res.bytes, mime: res.contentType }, spec.out, f) }); continue; }
       const got = spec.outputs(res.json);
-      if (!Array.isArray(got)) throw new RouterError('content_blocked', ROUTER_MESSAGES.content_blocked, 200, 'content_policy_violation', false, `refused in the result: ${got.refused.slice(0, 200)}`);
+      if (!Array.isArray(got)) { const e = new RouterError('content_blocked', ROUTER_MESSAGES.content_blocked, 200, 'content_policy_violation', false, `refused in the result: ${got.refused.slice(0, 200)}`, res.requestId);
+        e.provider = { errorType: 'content_policy_violation', httpStatus: 200, upstreamStatus: null, detail: sanitizeProviderText(got.refused), upstreamDetail: null, refusalSubject: null, requestId: res.requestId }; throw e; } // the provider's own words (BytePlus error.code), kept
       if (!got.length) throw new RouterError('provider_error', 'the model returned no result.', 200, null, true, `no output in ${JSON.stringify(res.json).slice(0, 300)}`);
       if (spec.allOutputs) { // Image to layers: every file of the one call; a layer with a box goes onto a transparent canvas the base's size (full-canvas layers stack as they are)
         const first = outs.length; for (let m = 0; m < got.length; m++) { const g: any = got[m]; outs.push({ label: String(g.label ?? `${labels[k]} ${m + 1}`), url: await save(job, outs.length, g, spec.out, f), ...(Array.isArray(g.box) ? { box: g.box } : {}), ...(g.description ? { description: String(g.description) } : {}) }); }
@@ -135,12 +137,17 @@ export async function runRouter(job: Job, r: RouteDef, attempt: RouteAttempt, ti
       if (e.httpStatus === 422 && billed === 0 && dispatched === 0) { (job as any).chargeNote = 'not_charged'; note = ` ${NOT_BILLED_NOTE}`; }
       else if (dispatched > billed) { (job as any).chargeNote = 'unconfirmed'; note = ` ${UNCONFIRMED_NOTE}`; }
     }
-    if (e.provider) (job as any).providerError = { ...e.provider, model: rid, at: Date.now() }; // what Comfy / the provider said, sanitised (comfyRouter.ts sanitizeProviderText)
+    // what Comfy / the provider said, sanitised (comfyRouter.ts sanitizeProviderText). A failure with no words (a queued COMPLETED with only its error bucket,
+    // 2026-10-31: two Seedance refusals kept nothing) still keeps its bucket and request id, so the job says what happened and where to look it up
+    if (e.provider || e.detail !== 'blocked before submit') (job as any).providerError = { ...(e.provider ?? { errorType: e.errorType, httpStatus: e.httpStatus, upstreamStatus: null, detail: null, upstreamDetail: null, refusalSubject: null, requestId: e.requestId ?? attempt.requestId ?? null }), model: rid, at: Date.now() };
+    // a content refusal on a model whose Router catalog says policy refusals are not billed (shared/policyBilling.ts), with no reported charge: nothing to count
+    if (e.reasonCode === 'content_blocked' && !reported && policyRefusalCharge(job as any) === 'no') (job as any).chargeNote = 'not_charged';
     console.error(`[openhiggsfield] comfy router ${job.id}: ${e.reasonCode}${e.httpStatus ? ` (${e.httpStatus})` : ''}${e.errorType ? ` ${e.errorType}` : ''}${e.requestId ? ` request ${e.requestId}` : ''} ${e.detail ?? ''}${e.provider ? ` | provider said: ${JSON.stringify(e.provider)}` : ''}`);
     job.queueReason = null;
     // provider_error: the provider's own words go on the card (the bare bucket says nothing); input_invalid already quotes the detail
     const said = e.reasonCode === 'provider_error' ? providerSaid(e.provider) : null;
-    const msg = said ? `${e.message.replace(/\.$/, '')}. Comfy said: ${said.replace(/\.$/, '')}` : e.message.replace(/\.$/, '');
+    const why = e.reasonCode === 'content_blocked' ? refusalReason((job as any).providerError) : null; // "The provider refused a photo of a real person."
+    const msg = said ? `${e.message.replace(/\.$/, '')}. Comfy said: ${said.replace(/\.$/, '')}` : why ? `${why.charAt(0).toLowerCase()}${why.slice(1).replace(/\.$/, '')} (content policy)` : e.message.replace(/\.$/, '');
     const err = new Error((e as any).busy ? stillBusyMessage((e as any).busyTries ?? 1) : note ? `${msg}.${note.replace(/\.$/, '')}` : msg); if (e.reasonCode === 'cloud_timeout') (err as any).timeout = true; throw err;
   }
   clearRouteOff(r.routeId); // it ran: a not_enabled mark from before is over
