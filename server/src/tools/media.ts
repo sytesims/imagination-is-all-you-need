@@ -25,6 +25,7 @@ import { QWEN3_TTS, QWEN3_TTS_WORKFLOW, QWEN3_TTS_SPEAKERS, QWEN3_TTS_LANGUAGES,
 import { TRANSLATE_LANGS } from '../comfy/plans.js';
 import { registerToolProviderDurations, resolveDuration, durationErrorBody } from './h3/videoCaps.js';
 import { addAdjustNote } from '../shared/snap.js';
+import { VIDEO_PAGE } from '../shared/videoWorkflows.js';
 import { UPSCALE_MAX_SIDE, UPSCALE_FACTORS_BY_PROVIDER, UPSCALE_ORDER, UPSCALE_LOCAL, UPSCALE_WORKFLOWS, imageUpscaleInfo, imageUpscaleWorkflowOrDefault, upscaleBlock, upscaleOutSize, upscaleScaleOf } from '../shared/imageUpscale.js';
 import './imageUpscaleModels.js'; // Upscale engines, prices and cloud routes added 2026-10-22
 import './imageFalModels.js'; // fal image pass (2026-10-22): fal edit routes on existing image models, Bria GenFill for Brush Edit
@@ -41,6 +42,7 @@ import './imageLayerApps.js'; // Image to layers (2026-10-24): Seedream 5.0 laye
  */
 interface MediaCfg {
   id: string; name: string; category: string; description: string; status?: string;
+  /** The page's address when it isn't /tools/<id> (Create Video lives at /video). */ route?: string;
   /** Modes that run without a video (Voice Studio voiceover → audio file). */ videoOptionalModes?: string[];
   /** Modes that take an audio file (field `audio`) instead of a video and return audio (Change Voice). */ audioInputModes?: string[];
   /** Batch outputs 1..maxN (priced per output). */ maxN?: number;
@@ -58,7 +60,7 @@ export { structuredPrompt } from '../shared/modePrompt.js'; // moved to the shar
 
 function makeMediaTool(c: MediaCfg): ToolDef {
   return {
-    id: c.id, name: c.name, category: c.category, description: c.description, status: c.status ?? 'new', route: `/tools/${c.id}`, ui: 'app',
+    id: c.id, name: c.name, category: c.category, description: c.description, status: c.status ?? 'new', route: c.route ?? `/tools/${c.id}`, ui: 'app',
     inputs: [
       ...(c.input === 'video' ? [{ name: 'video', kind: 'file' as const, required: !c.videoOptionalModes?.length, accept: 'video/*' }] : []),
       ...(c.maxN ? [{ name: 'n', kind: 'select' as const, options: Array.from({ length: c.maxN }, (_, i) => String(i + 1)), default: '1' }] : []),
@@ -253,7 +255,7 @@ for (const p of createImageTool.presets ?? []) p.posterUrl ??= `/samples/presets
   createImageTool.inputs.splice(at + 1, 0, { name: 'refs', kind: 'files', accept: 'image/png,image/jpeg,image/webp', max: 15, label: 'More reference images' }); } // up to 16 images in total (GPT Image 2)
 
 export const h3VideoTool = makeMediaTool({
-  id: 'h3-video', name: 'Generate Video', category: 'Video', input: 'image-optional', outKind: 'av-video',
+  id: 'h3-video', route: VIDEO_PAGE /* the one Video page (2026-10-31): /video; the tool id stays h3-video */, name: 'Generate Video', category: 'Video', input: 'image-optional', outKind: 'av-video',
   description: 'Text or a photo into a clip with sound. Pick any model; the price shows before you generate.',
   modes: [m('t2v', 'Text to video', ''), m('i2v', 'Image to video', 'animate the image'), m('flf', 'Start + end frame', 'move from the start frame to the end frame'), m('r2v', 'Reference to video', 'keep the referenced subject'), m('keyframes', 'Keyframes', '') /* 2–5 stills at chosen times → one shot (MiniMax H3 Keyframes · Comfy Cloud, 2026-10-27); frames go as field `keyframes` */], imageModes: ['i2v', 'flf', 'r2v'], promptOptionalModes: ['i2v'] /* an image with no prompt sends a plain default (shared/modePrompt.ts) */,
   providers: ['comfy-h3', 'comfy-wan22-5b' /* Wan 2.2 5B: free local, runs on Apple Silicon (2026-10-24) */, 'comfy-ltx25-video' /* LTX-2.5 22B: free local with sound (2026-10-25) */, 'router-seedance', 'router-veo', 'router-kling', 'router-wan3' /* Wan 3.0 on Comfy Router, 2026-10-25 */, 'api-minimax-h3', 'cloud-h3', 'cloud-h3-wf', 'cloud-h3-fast' /* MiniMax H3 Fast · Comfy Cloud (FastH3 templates, 2026-10-27) */, 'cloud-h3-keyframes' /* the H3 card's Keyframes place (hidden twin alias, 2026-10-27) */, 'direct-ltx-25-pro', 'router-ltx-25-pro', 'direct-ltx-25-fast', 'direct-flux3-video', 'router-flux3-video' /* LTX-2.5 Pro / FLUX 3 Video on Comfy Router: another place of the same model */, 'direct-ltx-23-fast', 'direct-seedance-25', 'direct-seedance-20-fast', 'direct-seedance-20-mini', 'router-seedance-25', 'router-seedance-20-fast', 'router-seedance-20-mini', 'router-veo-fast' /* Comfy Router places of the same models (2026-10-25) */, 'router-wan3-prime', 'router-veo-lite', 'router-pvideo2', 'router-grok-video-lite' /* Comfy Router video models (2026-10-31) */] /* official lab APIs (2026-10-23): LTX on the LTX API, FLUX 3 Video on BFL */, // B6: MiniMax H3 stays the default here (its first route is the H3 Comfy Cloud workflow; cloud-h3-wf = hidden alias); Seedance 2.0 / Veo 3.1 / Kling v3 next

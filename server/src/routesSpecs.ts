@@ -1,3 +1,4 @@
+import { toolPage } from './shared/videoWorkflows.js';
 /** Oct 17 page-spec refreshes: result specs + next actions, preset source/prefill, visibility + public shots, model page facts. Registered from index.ts. */
 import { reseedIfDue } from './communitySeed.js';
 import { metaOf as metaOfUrl } from './outputMeta.js';
@@ -33,7 +34,7 @@ export function registerSpecs(app: FastifyInstance) {
     const j = jobs.get(req.params.id); if (!j || lib.metaOf(j.id).deletedAt) return reply.code(404).send({ error: 'not found' });
     const t0 = getTool(j.toolId);
     if (j.status === 'failed' || j.status === 'blocked') return { jobId: j.id, items: [], primary: { action: 'retry', label: 'Retry', method: 'POST', endpoint: `/api/jobs/${j.id}/retry` } };
-    const out = j.outputs?.[0]?.url; if (j.status !== 'done' || !out) return { jobId: j.id, items: [], primary: j.status === 'canceled' ? { action: 'recreate', label: 'Recreate', tool: j.toolId, route: `${t0?.route ?? `/tools/${j.toolId}`}?recreate=${j.id}` } : null };
+    const out = j.outputs?.[0]?.url; if (j.status !== 'done' || !out) return { jobId: j.id, items: [], primary: j.status === 'canceled' ? { action: 'recreate', label: 'Recreate', tool: j.toolId, route: `${t0?.route ?? toolPage(j.toolId)}?recreate=${j.id}` } : null };
     const isVid = /\.(mp4|mov|webm)$/i.test(out); const isImg = /\.(png|jpe?g|webp)$/i.test(out);
     const items = NEXT.map(([tool, label]) => { const t = getTool(tool); if (!t || t.id === j.toolId) return null; const names = t.inputs.map((x) => x.name);
       const slot = isVid && names.includes('video') ? 'video' : isImg && names.includes('image') ? 'image' : isImg && names.includes('refs') ? 'refs' : null;
@@ -44,7 +45,7 @@ export function registerSpecs(app: FastifyInstance) {
     const marked = items.map((x: any) => ({ ...x, primary: x === tv }));
     const primary = tv ? { action: 'turn-to-video', label: tv.label, tool: tv.tool, route: tv.route }
       : isAud ? { action: 'use-as-soundtrack', label: 'Use as soundtrack', tool: 'soundtrack', route: `/tools/soundtrack?from=${j.id}` }
-      : { action: 'recreate', label: 'Recreate', tool: j.toolId, route: `${t0?.route ?? `/tools/${j.toolId}`}?recreate=${j.id}` };
+      : { action: 'recreate', label: 'Recreate', tool: j.toolId, route: `${t0?.route ?? toolPage(j.toolId)}?recreate=${j.id}` };
     return { jobId: j.id, items: marked, primary };
   });
 

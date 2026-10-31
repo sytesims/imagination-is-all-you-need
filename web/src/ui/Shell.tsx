@@ -42,7 +42,7 @@ export const imageFeatureRows = (tools: ToolInfo[], list: readonly (typeof MENU_
   return t ? [{ f, t, to: workflowOpenHref(f.toolId) ?? f.route, icon: f.id === 'camera-lens' || f.id === 'edit-image' ? f.id : t.id }] : []; });
 
 /** Video menu rows (One Video page, 2026-10-23): one row per video workflow, each opening the Video page with it picked
- *  (/tools/h3-video?workflow=<id>), the way the Image menu lists its features; listed video tools that aren't a workflow follow with their own page (Director was removed 2026-10-23). */
+ *  (/video?workflow=<id>), the way the Image menu lists its features; listed video tools that aren't a workflow follow with their own page (Director was removed 2026-10-23). */
 export const videoWorkflowRows = (all: ToolInfo[], vid: ToolInfo[]) => { const covered = new Set([...VIDEO_WORKFLOWS.map(w => w.toolId), 'plan-a-shot', 'make-it-real']);
   return [...availableVideoWorkflows(all).filter(w => w.inMenu).flatMap(w => { const t = all.find(x => x.id === w.toolId); return t || isPanelWorkflow(w) /* Stitch: no registry tool */ ? [{ key: w.id, to: videoWorkflowHref(w.id), name: w.name, line: w.tagline, icon: w.toolId, ui: t?.ui, t: t ?? null }] : []; }),
     /* flow shortcuts (2026-10-26): Direct a Shot, Loop, Morph, Exploded view, New angle (shared/videoWorkflows.ts VIDEO_FLOW_SHORTCUTS) */
@@ -339,7 +339,7 @@ export function TopNav({ tools, path }: { tools: ToolInfo[]; path: string }) {
  *  Drawer: Create CTA, a flat row list, Image / Video / Audio / More accordions (the current route's group opens), a pinned "own GPU" button. */
 const LOCAL_SETUP = GPU_SETTINGS;
 type DrawerGroup = 'image' | 'video' | 'audio' | 'more';
-const VIDEO_PAGES = /^\/tools\/h3-video(\/|$)/; /* the one Video page (every video workflow is ?workflow= on it; the old galleries and hubs redirect here) */
+const VIDEO_PAGES = /^\/video(\/|$)/; /* the one Video page (every video workflow is ?workflow= on it; the old galleries and hubs redirect here) */
 const routeMedia = (tools: ToolInfo[], path: string): Medium | null => (['image', 'video', 'audio'] as Medium[]).find(m => path === `/${m}`) ?? (MENU_FEATURES.some(f => f.route === path) ? 'image' : null) ?? (VIDEO_PAGES.test(path) ? 'video' : null) ?? (() => { const t = tools.find(t => path === t.route || path.startsWith(t.route + '/')); return t ? mediaOf(t) as Medium : null; })();
 export function MobileTop({ title, tools = [], path = '' }: { title: string; tools?: ToolInfo[]; path?: string }) {
   const [open, setOpen] = useState(false); const credits = useCredits(); const own = useOwnAccounts(); const today = useSpendDay()?.totals.spentUsd ?? null; const btn = useRef<HTMLButtonElement>(null); const panel = useRef<HTMLDivElement>(null);

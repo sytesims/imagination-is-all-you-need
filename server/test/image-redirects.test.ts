@@ -55,7 +55,7 @@ ok('non-image paths untouched; edit-image and Upscale redirects unchanged');
 // Send to (#13): hand-offs to Relight / image Upscale go straight to Create Image with the workflow; other tools keep their page
 assert.equal(toolHandoffHref({ id: 'app-relight', route: '/tools/app-relight' }, 'fromJob=j1&out=0'), '/tools/create-image?workflow=relight&fromJob=j1&out=0');
 assert.equal(toolHandoffHref({ id: 'image-upscale' }, 'fromJob=j1&out=0'), '/tools/create-image?workflow=upscale&fromJob=j1&out=0');
-assert.equal(toolHandoffHref({ id: 'h3-video', route: '/tools/h3-video' }, 'fromJob=j1&out=0'), '/tools/h3-video?fromJob=j1&out=0');
+assert.equal(toolHandoffHref({ id: 'h3-video', route: '/video' }, 'fromJob=j1&out=0'), '/video?fromJob=j1&out=0');
 assert.equal(toolOpenHref({ id: 'app-inpaint', route: '/tools/brush-edit' }), '/tools/create-image?workflow=brush-edit');
 ok('send-to links: Relight and image Upscale open Create Image with the workflow and the image hand-off');
 
