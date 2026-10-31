@@ -27,7 +27,9 @@ const versionAt = (rev) => versionIn(git('show', `${rev}:package.json`).out) || 
 
 // 1. a zip install (or git missing): update by hand
 const top = git('rev-parse', '--show-toplevel');
-const same = (a, b) => (WIN ? path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase() : path.resolve(a) === path.resolve(b));
+/* realpath: git prints C:/Users/runneradmin/… while the folder may have been reached as C:\\Users\\RUNNER~1\\… (Windows short names) */
+const real = (p) => { try { return fs.realpathSync.native(path.resolve(p)); } catch { return path.resolve(p); } };
+const same = (a, b) => (WIN ? real(a).toLowerCase() === real(b).toLowerCase() : real(a) === real(b));
 if (!top.ok || !same(top.out, REPO)) {
   const why = spawnSync('git', ['--version']).status === 0 ? 'This folder isn’t a git copy of the app (it was probably downloaded as a zip),' : 'Git isn’t installed on this computer,';
   stop([`${why} so it can’t update itself. To update by hand:`, '',
@@ -107,7 +109,7 @@ const steps = [
 for (const s of steps) {
   if (process.env.OPENHIGGSFIELD_UPDATE_SKIP_INSTALL === '1') { say(`${s.label} skipped (OPENHIGGSFIELD_UPDATE_SKIP_INSTALL=1)`); continue; }
   say(s.label);
-  const r = spawnSync(NPM, s.args, { cwd: s.cwd, stdio: 'inherit', shell: WIN });
+  const r = WIN ? spawnSync(`${NPM} ${s.args.join(' ')}`, { cwd: s.cwd, stdio: 'inherit', shell: true }) /* npm.cmd needs a shell; one command line, not args + shell (Node 24 DEP0190) */ : spawnSync(NPM, s.args, { cwd: s.cwd, stdio: 'inherit' });
   if (r.status !== 0) stop(`\nThe new code is in place, but “npm ${s.args.join(' ')}” failed. Fix the error above, then run it again in ${s.cwd}.\nIf a file is in use, stop the app first (Ctrl+C in its terminal).`);
 }
 

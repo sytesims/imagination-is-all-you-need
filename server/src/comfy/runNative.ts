@@ -58,6 +58,8 @@ async function substitute(g: any, c: ComfyTransport, cache: Map<string, any>): P
   }
   return g;
 }
+/** One ffmpeg concat-list line. Quoted, so spaces and Windows backslashes stay literal; a ' in a folder name (C:\Users\O'Brien) is closed, escaped and reopened. */
+const concatLine = (f: string) => `file '${f.replace(/'/g, "'\\''")}'`;
 const probeFps = async (file: string) => { try { const { execFileSync } = await import('node:child_process'); const r = execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=r_frame_rate', '-of', 'csv=p=0', file]).toString().trim(); const [a, b] = r.split('/').map(Number); return b ? a / b : a; } catch { return 30; } };
 
 /** build: B2, the Comfy Cloud runner passes buildCloudPlan (cloudWorkflows.ts) so each pass runs its workflows/cloud graph. */
@@ -147,14 +149,14 @@ export async function runNative(job: Job, transport?: ComfyTransport, build: (j:
   const out = (i: number, ext: string) => path.join(DATA_DIR, `${job.id}-out${i}${ext}`);
   const ext0 = path.extname(outs[0][0]) || '.mp4';
   if (plan.post.kind === 'each') { const only = plan.post.only; outs.forEach((fs, k) => (only && !only.includes(k) ? undefined : fs.forEach((f, j) => finals.push({ label: outLabels[k][j], file: f })))); }
-  else if (plan.post.kind === 'concat') { const list = path.join(DATA_DIR, `${job.id}-concat.txt`); await writeFile(list, outs.map((f) => `file '${f[0]}'`).join('\n')); const o = out(0, '.concat.mp4'); await ff(['-y', '-f', 'concat', '-safe', '0', '-i', list, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p', ...(plan.post.audio ? ['-c:a', 'aac'] : ['-an']), o], 'concat'); finals.push({ label: plan.labels?.[0] ?? 'Result', file: o }); }
+  else if (plan.post.kind === 'concat') { const list = path.join(DATA_DIR, `${job.id}-concat.txt`); await writeFile(list, outs.map((f) => concatLine(f[0])).join('\n')); const o = out(0, '.concat.mp4'); await ff(['-y', '-f', 'concat', '-safe', '0', '-i', list, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p', ...(plan.post.audio ? ['-c:a', 'aac'] : ['-an']), o], 'concat'); finals.push({ label: plan.labels?.[0] ?? 'Result', file: o }); }
   else if (plan.post.kind === 'concatGroups') {
     const audio = plan.post.audio;
     for (const [gi, grp] of plan.post.groups.entries()) {
       const o = out(gi, '.shot.mp4'); const files = grp.passes.map((k) => outs[k][0]);
       if (files.length === 1 && audio) { await ff(['-y', '-i', files[0], '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'aac', o], 'shot'); }
       else {
-        const list = path.join(DATA_DIR, `${job.id}-g${gi}.txt`); await writeFile(list, files.map((f) => `file '${f}'`).join('\n'));
+        const list = path.join(DATA_DIR, `${job.id}-g${gi}.txt`); await writeFile(list, files.map(concatLine).join('\n'));
         await ff(['-y', '-f', 'concat', '-safe', '0', '-i', list, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p', ...(audio ? ['-c:a', 'aac'] : ['-an']), o], 'shot concat');
       }
       finals.push({ label: grp.label, file: o });
@@ -176,7 +178,7 @@ export async function runNative(job: Job, transport?: ComfyTransport, build: (j:
       const p = out(parts.length, '.seg.mp4'); await ff(['-y', '-i', outs[r.k][0], '-t', String(r.end - r.start), '-vf', norm, '-an', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', p], 'splice seg'); parts.push(p); t = r.end;
     }
     const dur = Number(job.input.duration) || t; if (dur > t + 0.01) { const p = out(parts.length, '.gap.mp4'); await ff(['-y', '-ss', String(t), '-i', src, '-t', String(dur - t), '-vf', norm, '-an', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', p], 'splice tail'); parts.push(p); }
-    const list = path.join(DATA_DIR, `${job.id}-splice.txt`); await writeFile(list, parts.map((f) => `file '${f}'`).join('\n')); const o = out(0, '.splice.mp4');
+    const list = path.join(DATA_DIR, `${job.id}-splice.txt`); await writeFile(list, parts.map(concatLine).join('\n')); const o = out(0, '.splice.mp4');
     await ff(['-y', '-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', o], 'splice concat'); finals.push({ label: plan.labels?.[0] ?? 'Multi-angle cut', file: o });
     for (let e = 0; e < plan.post.extraEach; e++) finals.push({ label: plan.labels?.[1 + e] ?? `Angle ${e + 1}`, file: outs[ranges.length + e][0] });
   }

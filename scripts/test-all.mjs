@@ -109,7 +109,11 @@ const SCRATCH = fs.mkdtempSync(process.env.TEST_SCRATCH || (fs.existsSync('/tmp'
 // a LONG limit is for the default 240 s; a bigger --timeout (slow CI machines) scales it by the same factor
 const limitOf = (file) => Math.max(opt.timeout, Math.round((LONG[file] ?? 0) * Math.max(1, opt.timeout / 240)));
 const CI = !!process.env.CI; // GitHub Actions: print the end of each failed log in the job output, so a failure can be read without the artifact
-const TSX = [path.join(REPO, 'node_modules/.bin/tsx'), path.join(SERVER, 'node_modules/.bin/tsx')].find((p) => fs.existsSync(p)) || die('tsx not found: run npm install first');
+// tsx's own entry run with this node (node_modules/.bin/tsx is a shell script on Windows, which spawn can't start)
+const TSX = [path.join(REPO, 'node_modules/tsx/dist/cli.mjs'), path.join(SERVER, 'node_modules/tsx/dist/cli.mjs')].find((p) => fs.existsSync(p)) || die('tsx not found: run npm install first');
+const WIN = process.platform === 'win32';
+/** Stops a test and everything it started: its process group, or on Windows (no groups, no negative pids) its process tree. */
+const killTree = (p) => { try { if (WIN) execFileSync('taskkill', ['/pid', String(p.pid), '/T', '/F'], { stdio: 'ignore' }); else process.kill(-p.pid, 'SIGKILL'); } catch { /* already gone */ } };
 const KEY_VARS = /^(OPENHIGGSFIELD_|OPENJUTSU_|COMFY_API_KEY$|FAL_KEY$|REPLICATE_API_TOKEN$|.*_API_KEY$|.*_API_TOKEN$|.*_SECRET$)/;
 const baseEnv = Object.fromEntries(Object.entries(process.env).filter(([k]) => !KEY_VARS.test(k)));
 const parallel = files.filter((f) => !SERIAL[f]); const serial = files.filter((f) => SERIAL[f]);
@@ -152,12 +156,12 @@ function runOne(file) {
       OPENHIGGSFIELD_COMFY_DETECT_URLS: '' /* never look for a real ComfyUI on this machine's usual ports */,
       OPENHIGGSFIELD_TOOLS_CACHE_MS: '0' /* GET /api/tools rebuilt on every read (tests drop files and read the change back at once); payload-perf tests the cache */ };
     const log = fs.openSync(path.join(LOGS, file.replace(/\.ts$/, '.log')), 'w'); const start = Date.now();
-    const p = spawn(TSX, [path.join('test', file)], { cwd: SERVER, env, stdio: ['ignore', log, log], detached: true });
+    const p = spawn(process.execPath, [TSX, path.join('test', file)], { cwd: SERVER, env, stdio: ['ignore', log, log], detached: !WIN /* Windows: detached opens a console window per test */ });
     running.set(file, p); progress(); let timedOut = false;
-    const timer = setTimeout(() => { timedOut = true; try { process.kill(-p.pid, 'SIGKILL'); } catch { /* */ } }, limitOf(file) * 1000);
+    const timer = setTimeout(() => { timedOut = true; killTree(p); }, limitOf(file) * 1000);
     p.on('exit', (code, signal) => {
       clearTimeout(timer); running.delete(file); fs.closeSync(log);
-      try { process.kill(-p.pid, 'SIGKILL'); } catch { /* group already gone */ }
+      if (!WIN) killTree(p); /* the group: helpers a test left behind (on Windows the tree is gone with its root) */
       const secs = (Date.now() - start) / 1000; const status = timedOut ? 'timeout' : code === 0 ? 'pass' : 'fail';
       // a test that failed or was stopped may leave servers behind: clear its ports, and retire the slot so the next test gets clean ones
       sweepSlot(slot); if (status === 'pass') freeSlots.unshift(slot); else freeSlots.push(slot);
@@ -172,7 +176,7 @@ function runOne(file) {
 
 async function pool(list, n) { const q = [...list]; await Promise.all(Array.from({ length: Math.min(n, q.length) }, async () => { while (q.length) await runOne(q.shift()); })); }
 
-const stop = () => { for (const p of running.values()) { try { process.kill(-p.pid, 'SIGKILL'); } catch { /* */ } } process.exit(130); };
+const stop = () => { for (const p of running.values()) killTree(p); process.exit(130); };
 process.on('SIGINT', stop); process.on('SIGTERM', stop);
 process.on('uncaughtException', (e) => { console.error(e); stop(); }); // never leave tests running behind a crashed runner
 

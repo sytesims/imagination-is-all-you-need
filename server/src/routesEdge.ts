@@ -10,6 +10,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import { readFileSync, existsSync, rmSync, readdirSync } from 'node:fs';
 import { cleanFileBytes } from './cleanMedia.js';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { jobs, Job } from './jobs.js';
 import { countsAsRun } from './owner.js';
 import { jobSpendView } from './billing.js';
@@ -224,7 +225,7 @@ export function registerEdge(app: FastifyInstance, pub: (j: Job) => any) {
   });
   /** MCP tool list, read from the MCP server's own declarations (mcp/src/server.ts registerTool calls). Permissions (mcp/src/permissions.ts) can hide some at runtime. */
   app.get('/api/mcp/tools', async () => {
-    const src = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../mcp/src/server.ts'); if (!existsSync(src)) return { items: [], total: 0, source: null, note: 'mcp/ not found next to the server' };
+    const src = fileURLToPath(new URL('../../mcp/src/server.ts', import.meta.url)); if (!existsSync(src)) return { items: [], total: 0, source: null, note: 'mcp/ not found next to the server' };
     const text = readFileSync(src, 'utf8');
     // description is a '…' string or a `…` template whose ${NAME} parts are `const NAME = '…'` strings in the same file (get_job / wait_for_job share JOB_DESC)
     const constStr = (name: string) => text.match(new RegExp(`const ${name} = '((?:[^'\\\\]|\\\\.)*)'`))?.[1] ?? '';
