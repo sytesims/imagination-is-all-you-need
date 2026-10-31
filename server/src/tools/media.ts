@@ -110,7 +110,7 @@ function makeMediaTool(c: MediaCfg): ToolDef {
       const enhanced = c.enhance && truthy(fields.enhance) && prompt.trim() ? enhanceRules(prompt, c.outKind === 'image' ? 'image' : c.outKind === 'audio' ? 'audio' : 'video', undefined, engineModelKey(c.id, provider)).prompt /* the model's cap and name (prompt grammar) */ : null;
       const common = { types: [mode.id], mode: mode.id, audioKind: mode.audioKind, outKind: c.outKind, prompt, enhancedPrompt: enhanced, style: style?.id ?? null, styleLora: style?.lora ?? null,
         // the mode's words only when needed, per model, and a default for an image with no prompt (shared/modePrompt.ts, 2026-10-29); `prompt` keeps the typed words (Recreate)
-        finalPrompt: assemblePrompt({ mode: mode.id, modePhrase: mode.prompt, prompt: enhanced ?? prompt, style: style?.prompt, provider }),
+        finalPrompt: assemblePrompt({ mode: mode.id, modePhrase: mode.prompt, prompt: enhanced ?? prompt, style: style?.prompt, provider, model: engineModelKey(c.id, provider) }),
         resolution, duration, draft, seed: seedOf(fields.seed), simulate: mockFailOf(fields), target: '', ...extra };
       if ((fields.n == null || fields.n === '') && (fields.count || fields.batch)) fields.n = String(fields.count || fields.batch); // aliases: count / batch
       let nOut = Number(fields.n || extra.n) || 1; // Create Image: `n` comes from its field list (validated 1–4 above)
