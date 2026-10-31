@@ -1,17 +1,18 @@
 /**
  * LightPanel (2026-10-25, second pass): Relight's light panel, read top to bottom in two steps, inside one frame that never changes size.
  * 1 Pick a look: all ten looks as small cards in a 5 × 2 grid (each a sketch of that light on the user's photo), with Reset back to the look.
- * 2 Adjust: the user's photo is the direction control (drag the glow, or the arrow keys on it). Beside it, two tabs share one fixed box:
- *   "Light" (Direction chips that snap the glow, Strength, Soft / Hard) and "More options" (Key / + Rim light, colour = warm ↔ cool plus
- *   swatches, rim brightness, background). The old 3D ball is gone: the drag-on-photo preview already reaches every angle (front and behind)
+ * 2 Adjust: the user's photo is the direction control (drag the glow, or the arrow keys on it). The light snaps to 26 fixed positions
+ *   (2026-10-31, shared/lightRig.ts lightCell), shown as guide dots while you move it, and the header names the position in the same words
+ *   the prompt uses. Beside it, two tabs share one fixed box: "Light" (six quick picks, Strength, Soft / Hard, Colour swatches) and
+ *   "More options" (Key / + Rim light, warmth = warm ↔ cool, rim brightness, background). The old 3D ball is gone: the drag-on-photo preview already reaches every angle (front and behind)
  *   on the user's own picture, and a second control for the same thing made the panel harder to read.
  * Shared, no page logic: it edits a plain `LightRig` (server/src/shared/lightRig.ts) through the plain-words layer (lightEasy.ts) and calls
  * onChange; the page decides what the rig does. The preview is CSS over the photo: instant, free, and labelled approximate.
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { SPHERE_PRESETS, DEFAULT_RIG, KELVIN_MIN, KELVIN_MAX, kelvinRgb, lightRgb, rgbHex, wrapAz, type LightRig, type RigLight, type SpherePreset } from '../../../server/src/shared/lightRig';
+import { SPHERE_PRESETS, DEFAULT_RIG, KELVIN_MIN, KELVIN_MAX, LIGHT_STEP, kelvinRgb, lightRgb, rgbHex, snapAngles, wrapAz, colourName, type LightRig, type RigLight, type SpherePreset } from '../../../server/src/shared/lightRig';
 import { DIRECTIONS, STRENGTHS, QUALITIES, directionOf, withDirection, plainDir, degTip, strengthOf, withStrength, qualityOf, withQuality, presetEdited, ambientPlain, warmthPlain,
-  handleOf, anglesOfPoint, sketchOf, type DirId, type StrengthId, type QualityId } from '../../../server/src/shared/lightEasy';
+  handleOf, anglesOfPoint, gridPoints, sketchOf, type DirId, type StrengthId, type QualityId } from '../../../server/src/shared/lightEasy';
 import { Segmented } from './BarPop';
 import { PresetTile } from './PresetTile';
 import { Range } from './LightSphere';
@@ -24,6 +25,7 @@ const NEON = ['#FFB347', '#FF3B5C', '#E05AD8', '#8A5CFF', '#33D6FF', '#7CFF6B'];
 const css = (c: [number, number, number]) => `rgb(${c[0]},${c[1]},${c[2]})`;
 const TEMP_TRACK = `linear-gradient(90deg,${[2000, 3000, 4000, 5500, 7000, 10000].map((k, i, a) => `${css(kelvinRgb(k))} ${(i / (a.length - 1)) * 100}%`).join(',')})`;
 const clamp = (n: number, a: number, b: number) => Math.min(b, Math.max(a, n));
+const cap = (w: string) => w.charAt(0).toUpperCase() + w.slice(1);
 
 /** No photo yet: a quiet head-and-shoulders figure (our own drawing) so the looks and the preview still show the light. */
 export const LIGHT_SAMPLE = `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240"><defs><linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a3c41"/><stop offset="1" stop-color="#202125"/></linearGradient><linearGradient id="f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c9c3bb"/><stop offset="1" stop-color="#8d8882"/></linearGradient></defs><rect width="200" height="240" fill="url(#b)"/><g fill="url(#f)"><ellipse cx="100" cy="92" rx="36" ry="44"/><rect x="86" y="128" width="28" height="30"/><path d="M28 240c3-60 34-86 72-88 38 2 69 28 72 88z"/></g></svg>`)}`;
@@ -59,27 +61,30 @@ export function LightPanel({ value: rig, onChange, photo = null, testId = 'light
   const setLight = (patch: Partial<RigLight>, opts?: { dropPreset?: boolean }) => { const next: RigLight = { ...L, ...patch }; if ('color' in patch && !patch.color) delete next.color;
     const { preset: _p, ...rest } = rig; commit({ ...(opts?.dropPreset ? rest : rig), [act]: next }); };
   const pick = (p: SpherePreset) => { setAct('key'); commit({ ...structuredClone(p.rig), preset: p.id }, { preset: p }); };
-  const addRim = () => { commit({ ...rig, rim: { az: rig.key.az <= 0 ? 150 : -150, el: 20, kelvin: 6500, intensity: 60, softness: 30 } }); setAct('rim'); };
+  const addRim = () => { commit({ ...rig, rim: { az: rig.key.az <= 0 ? 135 : -135, el: 0, kelvin: 6500, intensity: 60, softness: 30 } }); setAct('rim'); };
   const dropRim = () => { const { rim: _r, ...r } = rig; commit(r); setAct('key'); };
 
-  const dir = directionOf(L.az, L.el); const words = plainDir(L.az, L.el); const edited = presetEdited(rig); const pr = SPHERE_PRESETS.find((p) => p.id === rig.preset);
+  const edited = presetEdited(rig); const pr = SPHERE_PRESETS.find((p) => p.id === rig.preset);
   const who = act === 'rim' ? 'Rim light' : 'Light';
   /* Reset: back to the picked look as it comes, or to the default light when the light is your own */
   const canReset = pr ? edited : JSON.stringify([rig.key, rig.rim ?? null, rig.ambient]) !== JSON.stringify([DEFAULT_RIG.key, null, DEFAULT_RIG.ambient]);
   const reset = () => { setAct('key'); if (pr) pick(pr); else commit(structuredClone(DEFAULT_RIG)); };
 
-  /* ---- the preview: drag the glow (or click to drop it there); arrows move it (Shift: bigger steps) ---- */
+  /* ---- the preview: drag the glow (or click to drop it there); it snaps to the nearest fixed position, shown as guide dots; arrows step one position ---- */
   const box = useRef<HTMLDivElement>(null); const drag = useRef<{ behind: boolean } | null>(null); const [live, setLive] = useState<LightRig | null>(null); const shown = live ?? rig;
   const shownL = (act === 'rim' ? shown.rim : shown.key) ?? shown.key; const h = handleOf(shownL.az, shownL.el);
+  /* the header and the quick picks follow the light as it moves (live while dragging) */ const dir = directionOf(shownL.az, shownL.el); const words = plainDir(shownL.az, shownL.el);
   const at = (e: React.PointerEvent, behind: boolean) => { const b = box.current!.getBoundingClientRect(); const a = anglesOfPoint((e.clientX - b.left) / b.width, (e.clientY - b.top) / b.height, behind); return { ...rig, [act]: { ...L, ...a } } as LightRig; };
   const down = (e: React.PointerEvent) => { if (e.button !== 0 || (e.target as HTMLElement).closest('.lp-which')) return; e.preventDefault(); (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); const behind = Math.abs(wrapAz(L.az)) > 90; drag.current = { behind }; setLive(at(e, behind));
     (e.currentTarget as HTMLElement).querySelector<HTMLElement>('.lp-handle')?.focus({ preventScroll: true }); };
   const move = (e: React.PointerEvent) => { if (drag.current) setLive(at(e, drag.current.behind)); };
   const up = () => { const d = drag.current; drag.current = null; if (d && live) commit(live); setLive(null); };
   const keys = (e: React.KeyboardEvent) => {
-    const st = e.shiftKey ? 15 : 5; const behind = Math.abs(wrapAz(L.az)) > 90; const sx = behind ? -1 : 1;
-    const m: Record<string, [number, number]> = { ArrowLeft: [-st * sx, 0], ArrowRight: [st * sx, 0], ArrowUp: [0, st], ArrowDown: [0, -st] };
-    if (m[e.key]) { e.preventDefault(); e.stopPropagation(); setLight({ az: Math.round(wrapAz(L.az + m[e.key][0])), el: clamp(L.el + m[e.key][1], -85, 85) }); }
+    /* one fixed position per press: left / right go round the subject (past the side to behind), up / down through high, level, low and the poles */
+    const st = LIGHT_STEP; const cur = snapAngles(L.az, L.el);
+    const m: Record<string, [number, number]> = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, st], ArrowDown: [0, -st] };
+    if (m[e.key]) { e.preventDefault(); e.stopPropagation(); if (Math.abs(cur.el) === 90 && m[e.key][0]) return; /* straight above / below: no sides */
+      setLight(snapAngles(cur.az + m[e.key][0], clamp(cur.el + m[e.key][1], -90, 90))); }
     else if (e.key === 'Home') { e.preventDefault(); setLight(withDirection(L, 'front')); }
   };
   const tabRow = useRef<HTMLDivElement>(null);
@@ -108,9 +113,10 @@ export function LightPanel({ value: rig, onChange, photo = null, testId = 'light
       <div className="lp-prev-w">
         <div className="lp-prev" ref={box} style={{ ['--lp-w' as any]: `${pw}px` }} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} data-testid={`${testId}-preview`}>
           <LightSketch rig={shown} photo={photo} onLoad={(w, hh) => w && hh && setAr(w / hh)}>
+            <span className={`lp-grid${live ? ' on' : ''}`} aria-hidden data-testid={`${testId}-grid`}>{gridPoints(h.behind).map((g) => <i key={g.id} style={{ left: `${g.x * 100}%`, top: `${g.y * 100}%` }} />)}</span>
             {shown.rim && (() => { const o = act === 'key' ? shown.rim : shown.key; const r = handleOf(o.az, o.el); return <span className={`lp-dot${r.behind ? ' lp-behind' : ''}`} style={{ left: `${r.x * 100}%`, top: `${r.y * 100}%`, ['--lp-c' as any]: css(lightRgb(o)) }} aria-hidden />; })()}
             <span className={`lp-handle${h.behind ? ' lp-behind' : ''}${live ? ' lp-drag' : ''}`} style={{ left: `${h.x * 100}%`, top: `${h.y * 100}%`, ['--lp-c' as any]: css(lightRgb(shownL)) }}
-              tabIndex={0} role="slider" aria-label={`${who} position on your photo. Drag it, or use the arrow keys`} aria-valuetext={`${plainDir(shownL.az, shownL.el)} (${degTip(shownL.az, shownL.el)})`}
+              tabIndex={0} role="slider" aria-label={`${who} position on your photo. Drag it, or use the arrow keys to step to the next spot`} aria-valuetext={`${plainDir(shownL.az, shownL.el)} (${degTip(shownL.az, shownL.el)})`}
               aria-valuemin={-180} aria-valuemax={180} aria-valuenow={Math.round(wrapAz(shownL.az))} data-testid={`${testId}-handle`} onKeyDown={keys} />
           </LightSketch>
           {rig.rim && <span className="lp-which" role="group" aria-label="Which light you move">
@@ -132,6 +138,13 @@ export function LightPanel({ value: rig, onChange, photo = null, testId = 'light
           <div className="lp-row"><div className="lp-h"><span>Shadows</span><em>{QUALITIES.find((q) => q.id === qualityOf(rig.key))?.hint}</em></div>
             <Segmented<QualityId> label="Light quality" value={qualityOf(rig.key)} testId={`${testId}-quality`} className="lp-seg-sm" onChange={(q) => commit(withQuality(rig, q))}
               options={QUALITIES.map((q) => ({ value: q.id, label: q.label, title: q.hint, testId: `${testId}-quality-${q.id}` }))} /></div>
+          <div className="lp-row"><div className="lp-h"><span>{act === 'rim' ? 'Rim colour' : 'Colour'}</span><em data-testid={`${testId}-colour-words`}>{L.color ? cap(colourName(L.color)) : warmthPlain(L)}</em></div>
+            <div className="lp-sw" role="radiogroup" aria-label={`${who} colour`}>
+              <button type="button" role="radio" aria-checked={!L.color} className={`lp-sw-n${!L.color ? ' on' : ''}`} style={{ background: css(kelvinRgb(L.kelvin)) }} data-testid={`${testId}-natural`} {...tip('Natural light: set it warmer or cooler in More options')} aria-label="Natural light (warmth in More options)" onClick={() => setLight({ color: undefined }, { dropPreset: true })} />
+              {NEON.map((c) => <button key={c} type="button" role="radio" aria-checked={L.color === c} className={L.color === c ? 'on' : ''} style={{ background: c }} aria-label={cap(colourName(c))} {...tip(cap(colourName(c)))} onClick={() => setLight({ color: c }, { dropPreset: true })} />)}
+              <label className={`lp-sw-any${L.color && !NEON.includes(L.color) ? ' on' : ''}`} {...tip('Any colour')}><input type="color" value={(L.color ?? rgbHex(kelvinRgb(L.kelvin))).toLowerCase()} aria-label="Pick any colour" data-testid={`${testId}-color`} onChange={(e) => setLight({ color: e.target.value.toUpperCase() }, { dropPreset: true })} /></label>
+            </div>
+          </div>
         </> : <>
           <div className="lp-row"><div className="lp-h"><span>Lights</span><em>{rig.rim ? 'Pick one to change it' : 'Add an edge light from behind'}</em></div>
             <div className="lp-lights" role="group" aria-label="Lights">
@@ -141,14 +154,9 @@ export function LightPanel({ value: rig, onChange, photo = null, testId = 'light
                 : <button type="button" className="lp-lchip lp-add" data-testid={`${testId}-add-rim`} onClick={addRim} {...tip('A second light behind the subject draws a bright edge around hair and shoulders')}>+ Rim light</button>}
             </div></div>
           <div className="lp-row">
-            <Range label={act === 'rim' ? 'Rim colour' : 'Colour'} value={L.kelvin} min={KELVIN_MIN} max={KELVIN_MAX} step={100} track={TEMP_TRACK} dim={!!L.color} testId={`${testId}-kelvin`}
+            <Range label={act === 'rim' ? 'Rim warmth' : 'Warmth'} value={L.kelvin} min={KELVIN_MIN} max={KELVIN_MAX} step={100} track={TEMP_TRACK} dim={!!L.color} testId={`${testId}-kelvin`}
               text={warmthPlain(L)} ends={['Warm', 'Cool']} onInput={(v) => setLight({ kelvin: v, color: undefined }, { dropPreset: true })} />
-            <div className="lp-sw" role="radiogroup" aria-label={`${who} colour`}>
-              <button type="button" role="radio" aria-checked={!L.color} className={`lp-sw-n${!L.color ? ' on' : ''}`} style={{ background: css(kelvinRgb(L.kelvin)) }} data-testid={`${testId}-natural`} {...tip('Natural: follows warm ↔ cool')} aria-label="Natural (follows warm or cool)" onClick={() => setLight({ color: undefined }, { dropPreset: true })} />
-              {NEON.map((c) => <button key={c} type="button" role="radio" aria-checked={L.color === c} className={L.color === c ? 'on' : ''} style={{ background: c }} aria-label={`Colour ${c}`} {...tip(c)} onClick={() => setLight({ color: c }, { dropPreset: true })} />)}
-              <label className={`lp-sw-any${L.color && !NEON.includes(L.color) ? ' on' : ''}`} {...tip('Any colour')}><input type="color" value={(L.color ?? rgbHex(kelvinRgb(L.kelvin))).toLowerCase()} aria-label="Pick any colour" data-testid={`${testId}-color`} onChange={(e) => setLight({ color: e.target.value.toUpperCase() }, { dropPreset: true })} /></label>
-            </div>
-            {L.color && <p className="lp-note" data-testid={`${testId}-color-note`}>A colour is on. The first dot goes back to warm ↔ cool.</p>}</div>
+            {L.color && <p className="lp-note" data-testid={`${testId}-color-note`}>A colour is on. Pick the first colour dot on the Light tab to use warmth again.</p>}</div>
           {act === 'rim' && rig.rim && <div className="lp-row"><Range label="Rim brightness" value={rig.rim.intensity} min={0} max={100} step={1} text={rig.rim.intensity < 35 ? 'Faint' : rig.rim.intensity < 70 ? 'Clear' : 'Bright'} testId={`${testId}-rim-intensity`} onInput={(v) => setLight({ intensity: v })} /></div>}
           <div className="lp-row"><Range label="Background" value={rig.ambient} min={0} max={100} step={1} text={ambientPlain(rig.ambient)} ends={['Dark mood', 'Bright and airy']} testId={`${testId}-ambient`} onInput={(v) => commit({ ...rig, ambient: v })} /></div>
         </>}

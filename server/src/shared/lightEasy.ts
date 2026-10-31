@@ -1,49 +1,37 @@
 /**
  * Easy light (2026-10-25): the plain-words layer over the light rig (lightRig.ts) that Relight's compact light panel uses.
  * Isomorphic and pure (no DOM): the web panel (web/src/shared/LightPanel.tsx) and the tests share it.
- * - Direction chips (Front · Left · Right · Top · Behind) snap the key light; any angle reads back as plain words ("From the left, a bit high").
+ * - Six quick picks (Front · Left · Right · Top · Back · Below); the light always sits on one of 26 fixed positions (lightRig.ts lightCell) and
+ *   reads back as that position's plain words ("From the left, high up"), the same position the prompt words.
  * - Strength (Subtle · Balanced · Dramatic) maps to the key's intensity and the ambient fill; Light (Soft · Hard) to the softness extremes.
  * - The preview handle: a point on the photo ↔ the light's angles (front half of the sphere, or the back half while the light is behind).
  * - The approximate preview: CSS layers (shadow side, glow, colour tint, rim edge) drawn over the user's photo. Instant and free; never the result.
  * Nothing here changes the rig's shape, so saved settings, the REST/MCP `light` field and the prompt words stay as they were.
  */
-import { lightRgb, parseLightRig, rigFromLegacy, spherePresetOf, wrapAz, SPHERE_PRESETS, type LightRig, type RigLight } from './lightRig.js';
+import { lightCell, lightRgb, parseLightRig, rigFromLegacy, snapAngles, spherePresetOf, wrapAz, SPHERE_PRESETS, type LightRig, type RigLight } from './lightRig.js';
 
 const clamp = (n: number, a: number, b: number) => Math.min(b, Math.max(a, n));
 
 // ---- direction ----
-export type DirId = 'front' | 'left' | 'right' | 'top' | 'behind';
-/** Where each chip puts the light (seen from the camera): az −90 = frame left, el up positive. */
+export type DirId = 'front' | 'left' | 'right' | 'top' | 'behind' | 'below';
+/** The six quick picks (seen from the camera: az −90 = frame left, el up positive), each one of the fixed positions (lightRig.ts lightCell). */
 export const DIRECTIONS: { id: DirId; label: string; az: number; el: number }[] = [
-  { id: 'front', label: 'Front', az: 0, el: 15 }, { id: 'left', label: 'Left', az: -90, el: 10 }, { id: 'right', label: 'Right', az: 90, el: 10 },
-  { id: 'top', label: 'Top', az: 0, el: 75 }, { id: 'behind', label: 'Behind', az: 180, el: 15 },
+  { id: 'front', label: 'Front', az: 0, el: 0 }, { id: 'left', label: 'Left', az: -90, el: 0 }, { id: 'right', label: 'Right', az: 90, el: 0 },
+  { id: 'top', label: 'Top', az: 0, el: 90 }, { id: 'behind', label: 'Back', az: 180, el: 0 }, { id: 'below', label: 'Below', az: 0, el: -90 },
 ];
-/** The chip that matches a light's angles, or null when it sits in between (the plain label still says where). */
+/** The quick pick at a light's fixed position, or null when it sits on another position (the plain label still says where). */
 export function directionOf(az: number, el: number): DirId | null {
-  const a = wrapAz(az); const A = Math.abs(a);
-  if (el >= 60) return 'top'; if (el <= -60) return null;
-  if (A >= 140) return 'behind'; if (A <= 25) return 'front';
-  if (A >= 65 && A <= 115) return a < 0 ? 'left' : 'right';
-  return null;
+  const s = snapAngles(az, el); return DIRECTIONS.find((d) => d.az === s.az && d.el === s.el)?.id ?? null;
 }
-/** A light moved to a chip: only its angles change (colour, strength and softness stay). */
+/** A light moved to a quick pick: only its angles change (colour, strength and softness stay). */
 export function withDirection(l: RigLight, id: DirId): RigLight { const d = DIRECTIONS.find((x) => x.id === id) ?? DIRECTIONS[0]; return { ...l, az: d.az, el: d.el }; }
 
-/** Where the light comes from, side to side: "the front-left", "behind, on the right"… */
-function sideWords(az: number): string {
-  const a = wrapAz(az); const A = Math.abs(a); const s = a < 0 ? 'left' : 'right';
-  return A <= 15 ? 'the front' : A <= 60 ? `the front-${s}` : A <= 120 ? `the ${s}` : A <= 160 ? `behind, on the ${s}` : 'behind';
-}
-const heightTail = (el: number) => (el >= 40 ? ', high up' : el >= 15 ? ', a bit high' : el > -15 ? '' : el > -40 ? ', a bit low' : ', from low down');
-/** The light's direction in plain words: "From the left, a bit high", "From straight above". */
-export function plainDir(az: number, el: number): string {
-  if (el >= 70) return 'From straight above'; if (el <= -70) return 'From straight below';
-  const w = sideWords(az); return `From ${w}${heightTail(el)}`;
-}
+/** The light's direction in plain words, from its fixed position: "From the left, high up", "From straight above". The prompt words the same position. */
+export const plainDir = (az: number, el: number): string => lightCell(az, el).label;
 /** The short form for the bar chip: "from the left", "from above", "from behind". */
 export function shortDir(az: number, el: number): string {
-  if (el >= 60) return 'from above'; if (el <= -60) return 'from below';
-  const w = sideWords(az); return `from ${w.startsWith('behind') ? 'behind' : w}`;
+  const c = lightCell(az, el); if (c.el === 90) return 'from above'; if (c.el === -90) return 'from below';
+  return Math.abs(c.az) > 90 ? 'from behind' : c.label.replace(/^From /, 'from ').replace(/, (high up|low down)$/, '');
 }
 /** The exact angles, for a tooltip only: "80° left, 10° up". */
 export function degTip(az: number, el: number): string {
@@ -100,11 +88,16 @@ export function handleOf(az: number, el: number): { x: number; y: number; behind
   const a = wrapAz(az); const A = Math.abs(a); const behind = A > 90; const u = ((behind ? 180 - A : A) / 90) * (a < 0 ? -1 : 1);
   return { x: 0.5 + u * SPAN, y: 0.5 - (clamp(el, -90, 90) / 90) * SPAN, behind };
 }
-/** A point on the preview → angles, on the half of the sphere the light is on now (front unless it is behind). */
+/** A point on the preview → the nearest fixed position, on the half of the sphere the light is on now (front unless it is behind). */
 export function anglesOfPoint(x: number, y: number, behind = false): { az: number; el: number } {
   const u = clamp((x - 0.5) / SPAN, -1, 1); const v = clamp((0.5 - y) / SPAN, -1, 1);
   const az = behind ? (u < 0 ? -1 : 1) * (180 - Math.abs(u) * 90) : u * 90;
-  return { az: Math.round(wrapAz(az)), el: Math.round(clamp(v * 90, -85, 85)) };
+  return snapAngles(az, v * 90);
+}
+/** Where the fixed positions sit on the preview for one half (front, or behind): the snap guide drawn while you move the light. */
+export function gridPoints(behind = false): { x: number; y: number; id: string }[] {
+  const azs = behind ? [-135, 180, 135] : [-90, -45, 0, 45, 90];
+  return [{ az: 0, el: 90 }, ...[45, 0, -45].flatMap((el) => azs.map((az) => ({ az, el }))), { az: 0, el: -90 }].map((p) => ({ ...handleOf(p.az, p.el), id: lightCell(p.az, p.el).id }));
 }
 
 // ---- the approximate preview: CSS layers over the photo ----

@@ -710,8 +710,9 @@ export const APP_GALLERY: GalleryApp[] = [
       { name: 'brightness', label: 'Brightness', kind: 'number', control: 'slider', min: 0, max: 100, step: 5, default: '50' },
       { name: 'color', label: 'Light colour', kind: 'color', control: 'swatches', options: RELIGHT_COLOUR_PRESETS, pattern: '^#[0-9a-fA-F]{6}$', default: '#FFFFFF', help: 'Use a hex colour like #FFAA33.' },
       // Light sphere (2026-10-24): the 3D rig as JSON ({ key: { az, el, kelvin, color?, intensity, softness }, rim?, ambient }); when sent it words the light
-      // precisely and the direction / pad / quality / brightness / colour fields above are ignored (they still drive old drafts and links).
-      { name: 'light', label: 'Light sphere', kind: 'json', control: 'sphere', optional: true, help: 'JSON: { key: { az, el, kelvin, color?, intensity, softness }, rim?, ambient }.',
+      // by its nearest fixed position (shared/lightRig.ts lightCell, 2026-10-31) and the direction / pad / quality / brightness / colour fields above are
+      // ignored (they still drive old drafts and links).
+      { name: 'light', label: 'Light sphere', kind: 'json', control: 'sphere', optional: true, help: 'JSON: { key: { az, el, kelvin, color?, intensity, softness }, rim?, ambient }. Each light is worded by its nearest fixed position (every 45°, plus straight above and below).',
         parse: (raw) => { const r = parseLightRig(raw); return !r ? { value: '' } : 'error' in r ? r : { value: rigJson(r.rig) }; } },
     ],
     compose: (v, c) => relightPrompt(v, c.prompt, c.provider) },
