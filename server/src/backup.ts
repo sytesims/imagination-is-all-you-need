@@ -14,6 +14,9 @@ export const EXPORT_VERSION = 1;
 export const STAGE_DIR = path.join(DATA_DIR, '.import-staged');
 export const EXPORT_TMP = path.join(DATA_DIR, '.export-tmp');
 export const BACKUPS_DIR = path.join(DATA_DIR, 'backups');
+/** Windows: the tar that comes with Windows (System32, bsdtar). A GNU tar earlier on PATH (Git for Windows' usr\bin) reads "C:\…" as a remote host. */
+const SYS_TAR = process.platform === 'win32' ? path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe') : '';
+export const TAR = SYS_TAR && existsSync(SYS_TAR) ? SYS_TAR : 'tar';
 /** Not exported: DB files (the snapshot replaces them), caches that are rebuilt on demand, temps and our own work dirs. */
 const SKIP_DIRS = new Set(['thumbs', 'posters', '.export-tmp', '.import-staged', '.import-upload', 'backups']);
 export const isMediaEntry = (name: string, dir: boolean) => dir ? !SKIP_DIRS.has(name) && !name.startsWith('.') : !/\.db(-wal|-shm|-journal)?$/.test(name) && !/^pre-[0-9a-f]{8}\./.test(name) && !name.startsWith('.');
@@ -28,9 +31,11 @@ export function mediaEntries() {
 export const RECENT_MS = 10 * 60_000;
 export function exportSelection(refs: Set<string>, now = Date.now()) {
   const files: { rel: string; bytes: number }[] = []; const orphans: { path: string; bytes: number; reason: 'orphan' }[] = [];
+  // rel uses / on every system: refs come from /files/ URLs (a/b) and stored paths (a\b on Windows), and tar takes / everywhere
+  const want = new Set([...refs].map((r) => r.replace(/\\/g, '/')));
   const visit = (rel: string) => { const p = path.join(DATA_DIR, rel); const st = statSync(p);
-    if (st.isDirectory()) { for (const n of readdirSync(p)) if (!n.startsWith('.')) visit(path.join(rel, n)); return; }
-    if (!st.isFile()) return; if (refs.has(rel) || now - st.mtimeMs < RECENT_MS) files.push({ rel, bytes: st.size }); else orphans.push({ path: rel, bytes: st.size, reason: 'orphan' }); };
+    if (st.isDirectory()) { for (const n of readdirSync(p)) if (!n.startsWith('.')) visit(`${rel}/${n}`); return; }
+    if (!st.isFile()) return; if (want.has(rel) || now - st.mtimeMs < RECENT_MS) files.push({ rel, bytes: st.size }); else orphans.push({ path: rel, bytes: st.size, reason: 'orphan' }); };
   for (const m of mediaEntries()) visit(m.name);
   return { files, orphans };
 }

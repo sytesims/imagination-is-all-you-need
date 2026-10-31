@@ -1,8 +1,8 @@
 // Routing QA (mock backend, own server on :8817 by default, temp data dir). Usage: npm run qa:routing.
 // Covers: route selection (local available / missing / cheapest configured / pinned / saved choice), automatic fallback with
 // per-attempt refunds, needs_decision + POST /fallback (continue and decline), charge = shown for every route, settings key status.
-import { spawn } from 'node:child_process'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path';
-const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../server');
+import { spawn } from 'node:child_process'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
+const ROOT = fileURLToPath(new URL('../../server', import.meta.url));
 const PORT = Number(process.env.ROUTING_QA_PORT ?? 8817); const API = `http://127.0.0.1:${PORT}`;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 let pass = 0, fail = 0; const ok = (name, cond, extra) => { cond ? pass++ : fail++; console.log(`${cond ? 'PASS' : 'FAIL'} ${name}${cond ? '' : ' ' + JSON.stringify(extra ?? '').slice(0, 400)}`); };
