@@ -1,10 +1,15 @@
 /**
  * Keyframes (MiniMax H3 Keyframes · Comfy Cloud, 2026-10-27): the rules the bar, the job parser and the plan share (comfy/h3KeyframesCloud.ts).
  * Isomorphic: no server imports, so the Generate Video bar uses the same times, limits and checks as the server.
+ * The frame limits are per model (KeyframeCaps on the model's video limits): H3's are H3KF_CAPS; Kling 4.0 has its own (comfy/kling4Cloud.ts).
  */
 export const H3KF_MODE = 'keyframes';
 /** 2–5 frames: the template's four, plus one cloned guide block. */
 export const H3KF_MIN_FRAMES = 2; export const H3KF_MAX_FRAMES = 5;
+/** Keyframes as a model capability (videoCaps VideoLimits.keyframes, served to the bar with the model's limits; 2026-10-31): how many frames
+ *  it takes, and whether each frame has its own time (MiniMax H3) or the model spaces them evenly itself (Kling 4.0: no times). */
+export interface KeyframeCaps { min: number; max: number; times: boolean }
+export const H3KF_CAPS: KeyframeCaps = { min: H3KF_MIN_FRAMES, max: H3KF_MAX_FRAMES, times: true };
 /** 5–15 s: H3's trained range (MiniMaxH3ReferenceToVideo length tooltip: "trained range is ~124–362" frames) and the template's "Up to 15s". */
 export const H3KF_SECONDS = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] as const;
 export const H3KF_RESOLUTIONS = ['768p', '480p'] as const;

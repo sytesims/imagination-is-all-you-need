@@ -10,6 +10,7 @@ import path from 'node:path';
 import { DATA_DIR } from '../../config.js';
 import { runFfmpeg } from '../../ffmpeg.js';
 import { nearestNumber, nearestTier, snapNote, addAdjustNote } from '../../shared/snap.js';
+import { H3KF_CAPS, type KeyframeCaps } from '../../shared/h3Keyframes.js';
 import { LTX_DFR, LTX_DFR_LABEL, LTX_DFR_HINT, LTX_DFR_SMOOTH_FIELD, LTX_DFR_SMOOTH_LABEL, LTX_DFR_SMOOTH_HINT } from '../../shared/ltxDfr.js';
 
 export const VIDEO_ASPECTS = ['auto', '16:9', '9:16', '4:3', '3:4', '1:1', '21:9', '9:21'] as const;
@@ -20,6 +21,8 @@ export interface VideoLimits {
   maxResolution: string; resolutions: string[]; /** Default seconds when none is asked (else the first duration ≥ 4). */ defaultSeconds?: number; minSeconds: number; maxSeconds: number; durationStep: number; durations: number[];
   aspects: string[]; audio: { supported: boolean; toggle: boolean; default: boolean; priceAffects: boolean; off: 'strip' | 'provider' };
   refKinds: RefKinds; refVideoSeconds?: { minEach: number; maxEach?: number; maxTotal: number; billed: string; /** frame-rate range a reference clip must have */ fps?: [number, number] };
+  /** Reference video frames (Kling 4.0, 2026-10-31): sides, pixels, shape (width / height) and the lowest frame rate, checked on submit (ffprobe) so nothing is sent or charged. */
+  refVideoFrame?: { minSide?: number; maxSide?: number; maxPixels?: number; aspect?: [number, number]; minFps?: number };
   /** Reference audio clips: per-clip and total length (seconds). */ refAudioSeconds?: { minEach: number; maxEach?: number; maxTotal: number };
   /** File types each reference kind takes (extensions); unset = any the upload takes. */ refFormats?: { video?: string[]; audio?: string[] };
   /** Reference audio needs at least one reference image or video next to it (no audio-only job). */ audioNeedsVisualRef?: boolean;
@@ -30,6 +33,7 @@ export interface VideoLimits {
   /** Loop switch (start frame at both ends, the repeated frame cut): LTX-2.5 22B local. The bar shows it with a start frame and no end frame. */ loop?: boolean;
   /** What the bar shows for a resolution value when the value isn't a pixel tier to the user (Kling v3: 720p / 1080p = Standard / Pro mode). */ resolutionLabels?: Record<string, string>;
   /** One line per quality value, shown under its label in the picker (LTX-2.5 22B DFR). */ resolutionHints?: Record<string, string>;
+  /** Keyframes mode (2026-10-31): how many frames this model takes and whether each has a time (shared/h3Keyframes.ts KeyframeCaps). Unset = no Keyframes mode. */ keyframes?: KeyframeCaps;
   /** A switch shown only at one quality and mode (LTX-2.5 DFR's third stage, Smooth motion 48 fps): sent as `field` = 1 / 0. */ stageToggle?: { field: string; label: string; hint: string; resolution: string; modes: string[]; default: boolean };
 }
 const range = (min: number, max: number, step = 1) => Array.from({ length: Math.floor((max - min) / step) + 1 }, (_, k) => min + k * step);
@@ -43,7 +47,7 @@ const ltx = (o: Partial<VideoLimits>): VideoLimits => h3({ maxResolution: '4K', 
   aspects: ['auto', '16:9', '9:16', '1:1'], refKinds: {}, audio: { supported: true, toggle: true, default: true, priceAffects: false, off: 'provider' }, ...o });
 /** Per model (provider id) on Generate Video = the union over its routes; each route narrows it (ROUTE_LIMITS). */
 export const VIDEO_LIMITS: Record<string, VideoLimits> = {
-  'comfy-h3': h3({}),
+  'comfy-h3': h3({ keyframes: H3KF_CAPS /* its Keyframes mode runs on the Comfy Cloud twin below */ }),
   // Wan 2.2 TI2V 5B, local only (2026-10-24): one graph from the official template video_wan2_2_5B_ti2v (workflows/wan22-ti2v-5b-api.json). 24 fps, frames on
   // Wan's 4n+1 grid (2 s = 49 frames). 704p = the template's 1280×704 (the model's native size), 480p = 832×480 for quicker drafts. Short clips only: on an
   // M1 Max a 2 s clip at 704p takes about 9 min and 5 s over 30 min (research brief, 2026-10-24), so 2–5 s and 2 s by default. No sound track.
@@ -70,7 +74,7 @@ export const VIDEO_LIMITS: Record<string, VideoLimits> = {
     source: 'workflows/cloud/h3-fast-{t2v,i2v}-api.json from the official Comfy templates video_fastvideo_fasth3_t2v / _i2v (https://docs.comfy.org/tutorials/video/minimax/minimax-h3-fastvideo): ComfyMathExpression 17k + 5 frames at 24 fps, ResolutionSelector / ImageScaleToTotalPixels megapixels, 8 fixed steps' }),
   // MiniMax H3 Keyframes · Comfy Cloud (2026-10-27): the official multiframe template (comfy/h3KeyframesCloud.ts), the H3 card's Keyframes place. 5–15 s on H3's
   // 17k + 5 grid at 24 fps (its trained range), 768p (0.98 MP) or 480p (0.4 MP), ResolutionSelector shapes, 2–5 frames, its own sound.
-  'cloud-h3-keyframes': h3({ minSeconds: 5, maxSeconds: 15, durationStep: 1, durations: range(5, 15), defaultSeconds: 5, aspects: ['auto', '16:9', '9:16', '4:3', '3:4', '1:1', '21:9'], refKinds: { image: 5 }, verified: false,
+  'cloud-h3-keyframes': h3({ minSeconds: 5, maxSeconds: 15, durationStep: 1, durations: range(5, 15), defaultSeconds: 5, aspects: ['auto', '16:9', '9:16', '4:3', '3:4', '1:1', '21:9'], refKinds: { image: 5 }, keyframes: H3KF_CAPS, verified: false,
     source: 'workflows/cloud/h3-multiframe-api.json from the official Comfy template video_minimax_h3_multiframe_reference (https://docs.comfy.org/tutorials/video/minimax/minimax-h3-multiframe): ComfyMathExpression 17k + 5 frames at 24 fps, Add Guide frame_idx = round(s × 24)' }),
   'cloud-h3': legacy({ minSeconds: 5, maxSeconds: 15, durationStep: 1, durations: range(5, 15), defaultSeconds: 6, source: 'ComfyCloudMiniMaxH3 nodes: duration_seconds 5–15 (object_info on :8190, 2026-10-18)' }),
   // Read from docs.comfy.org built-in node pages on 2026-10-17. Provider "adaptive" ratio = our 'auto'. Resolutions = the tiers we have a price row for.
@@ -220,7 +224,7 @@ export function resolutionMap(L: VideoLimits, resolution?: string, quality?: str
 export const videoCapsBlock = (l: VideoLimits) => ({ maxResolution: l.maxResolution, resolutions: l.resolutions, minSeconds: l.minSeconds, maxSeconds: l.maxSeconds,
   duration: { min: l.minSeconds, max: l.maxSeconds, step: l.durationStep, values: l.durations } as DurationSpec, durations: l.durations, aspects: l.aspects, audio: l.audio,
   refKinds: Object.keys(l.refKinds), refMax: l.refKinds, ...(l.refVideoSeconds ? { refVideoSeconds: l.refVideoSeconds } : {}), ...(l.refAudioSeconds ? { refAudioSeconds: l.refAudioSeconds } : {}),
-  ...(l.refFormats ? { refFormats: l.refFormats } : {}), ...(l.durationsByResolution ? { durationsByResolution: l.durationsByResolution } : {}), ...(l.resolutionLabels ? { resolutionLabels: l.resolutionLabels } : {}), ...(l.resolutionHints ? { resolutionHints: l.resolutionHints } : {}), ...(l.stageToggle ? { stageToggle: l.stageToggle } : {}), ...(l.qualityOff ? { quality: false } : {}), ...(l.loop ? { loop: true } : {}), ...(l.audioNeedsVisualRef ? { audioNeedsVisualRef: true } : {}), bitrate: l.bitrate, bitratePriceAffects: false, verified: l.verified, source: l.source, ...(l.startShort ? { defaultSeconds: defaultSecondsFor(l), startShort: true } : {}) });
+  ...(l.refFormats ? { refFormats: l.refFormats } : {}), ...(l.durationsByResolution ? { durationsByResolution: l.durationsByResolution } : {}), ...(l.resolutionLabels ? { resolutionLabels: l.resolutionLabels } : {}), ...(l.resolutionHints ? { resolutionHints: l.resolutionHints } : {}), ...(l.stageToggle ? { stageToggle: l.stageToggle } : {}), ...(l.keyframes ? { keyframes: l.keyframes } : {}), ...(l.qualityOff ? { quality: false } : {}), ...(l.loop ? { loop: true } : {}), ...(l.audioNeedsVisualRef ? { audioNeedsVisualRef: true } : {}), bitrate: l.bitrate, bitratePriceAffects: false, verified: l.verified, source: l.source, ...(l.startShort ? { defaultSeconds: defaultSecondsFor(l), startShort: true } : {}) });
 /** Route caps keep `audio` boolean (native audio track, "Audio on" badge); the on/off toggle detail is `audioToggle`. */
 export const routeCaps = (routeId: string, base: VideoLimits) => { const rl = ROUTE_LIMITS[routeId] ?? {}; const c: any = videoCapsBlock({ ...base, ...rl, ...(rl.durations ? { minSeconds: Math.min(...rl.durations), maxSeconds: Math.max(...rl.durations) } : {}) } as VideoLimits); return { ...c, audio: !!c.audio?.supported, audioToggle: c.audio }; };
 /** Why this route can't serve the job's aspect / reference kinds (null = fine). */

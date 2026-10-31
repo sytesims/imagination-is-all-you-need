@@ -11,6 +11,10 @@ import { useBilling, modeOf, priceToken, costTitle, costShort, demoRealText, fmt
 
 /** The tooltip for a price: what it is, where it's billed, that it's an estimate, the failure rule. Shared with the Generate button's title. */
 export function priceTitle(q: any, b: ReturnType<typeof useBilling>, o: { demo?: boolean; free?: boolean; credits?: number | null; calls?: number } = {}): string | undefined {
+  const t = priceTitleOf(q, b, o); /* a bill that is a range (Kling 4.0 with reference clips, quote upTo): the tooltip names it */
+  return t && q?.upTo === true && typeof q.upToNote === 'string' && q.upToNote ? `${t} Up to: ${q.upToNote}.` : t;
+}
+function priceTitleOf(q: any, b: ReturnType<typeof useBilling>, o: { demo?: boolean; free?: boolean; credits?: number | null; calls?: number }): string | undefined {
   const own = modeOf(b, q) === 'own-accounts'; const cost: Cost | null = q?.cost && typeof q.cost === 'object' ? q.cost : null; const calls = o.calls ?? 1;
   if (o.demo) { const n = demoRealCredits(q); if (!own) return demoPriceTitle(n); const real = demoRealText(cost, b?.comfyCreditsPerUsd) ?? (n != null ? `≈ ${fmtUsd(n / 100)}` : null);
     return `Sample output, nothing billed.${real ? ` A real run costs ${real}${cost ? ` on your ${cost.billedToName} account` : ''} once a key is added; an estimate.` : ''}`; }

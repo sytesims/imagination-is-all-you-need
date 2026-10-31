@@ -44,13 +44,14 @@ export const H3KF_REQUIRES = (() => {
   return { nodes: [...nodes].sort(), models: [...models.values()] };
 })();
 
-/** What this route can't take (null = fine). Reads only what the quote also has (mode, duration, resolution, aspect), so quote and charge agree;
+/** What this route can't take (null = fine). Reads only what the quote also has (mode, duration, resolution, aspect, the frame count), so quote and charge agree;
  *  the frames themselves are checked when the job is made (tools/h3/index.ts) and again by the plan. */
 export function h3KeyframesIssue(i: Record<string, any>): string | null {
   const mode = jobModeOf(i);
   if (mode && mode !== H3KF_MODE) return 'This route only makes Keyframes clips';
   const s = Number(i?.duration); if (Number.isFinite(s) && s > 0 && !H3KF_SECONDS.includes(s as any)) return `Keyframes makes ${H3KF_SECONDS[0]}–${H3KF_SECONDS[H3KF_SECONDS.length - 1]} s clips`;
   if (i?.resolution && !Object.keys(H3KF_MP).includes(String(i.resolution))) return 'Keyframes makes 768p or 480p';
+  const n = Array.isArray(i?.keyframePaths) ? i.keyframePaths.length : 0; if (n > H3KF_MAX_FRAMES) return `MiniMax H3 Keyframes takes ${H3KF_MIN_FRAMES} to ${H3KF_MAX_FRAMES} frames; you added ${n}`; // the bar's count (quote) or the files (job)
   return null;
 }
 /** The local H3 card's routes can't make Keyframes: it runs on Comfy Cloud only (routing/routes.ts). */
