@@ -5,6 +5,7 @@ import type { Job } from './jobs.js';
 import { remuxAudio } from './ffmpeg.js';
 import { localReachable } from './hardware.js';
 import { prepareObjectSwap, prepareH3Swap } from './comfy/objectSwap.js';
+import { fillPattern, captionSubject } from './shared/promptPatterns.js';
 
 export type ComfyReady =
   | { ok: true }
@@ -39,18 +40,12 @@ export function checkComfyReady(opts: { probeLocal?: boolean } = {}): ComfyReady
   return { ok: true };
 }
 
-/** Build prompt text from mode + target. */
+/** Prompt text for the Wan 2.2 Animate graph: a caption of the result (shared/promptPatterns.ts), never "replace X with the reference". The target picks
+ *  who is masked; on motion transfer it is the user's extra words. */
 export function buildPrompt(job: Job): string {
   const target = job.input.target?.trim();
-  if (job.input.mode === 'motion_transfer') {
-    return target
-      ? `animate the reference character with the motion from the video. ${target}`
-      : 'animate the reference character with the motion from the video';
-  }
-  // object_swap / Mix
-  return target
-    ? `replace ${target} with the character from the reference image, keep the background, camera, and lighting`
-    : 'replace the main character with the character from the reference image, keep the background, camera, and lighting';
+  if (job.input.mode === 'motion_transfer') { const base = fillPattern('motion-transfer', 'wan-2.2-animate-14b'); return target ? `${base} ${target}` : base; }
+  return fillPattern('video-swap', 'wan-2.2-animate-14b', { subject: captionSubject(target) }); // object_swap / Mix
 }
 
 /**

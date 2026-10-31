@@ -13,6 +13,7 @@ import { resultMedia, type ResultKind, type ResultMedia } from '../shared/result
 import { addResultCard } from './resultCardUtil';
 import { ProjectPicker, useProjectList, type ProjectPick } from '../shared/ProjectPicker';
 import { AudioIcon, CubeIcon, CloseIcon } from '../ui/Icons';
+import { PlayButton, stopPreview, togglePreview, useMediaLength, fmtLength } from '../shared/PreviewPlay';
 
 type Item = { job: JobState; m: ResultMedia };
 const FILTERS: { id: 'all' | ResultKind; label: string }[] = [{ id: 'all', label: 'All' }, { id: 'image', label: 'Image' }, { id: 'video', label: 'Video' }, { id: 'audio', label: 'Audio' }, { id: '3d', label: '3D' }];
@@ -48,6 +49,7 @@ export function AssetsDrawer({ open, onClose, projectId, onProject }: { open: bo
     if (over?.closest('.cv-drawer') || !over?.closest('.cv-board')) return; /* dropped back on the drawer or outside the board */
     place(s.item, { x: e.clientX, y: e.clientY }); };
 
+  useEffect(() => { if (!open) stopPreview(); }, [open]); useEffect(() => stopPreview, []); /* a sound preview stops with the drawer */
   return <>
     <aside className={`cv-drawer${open ? ' open' : ''}`} aria-label="Assets" aria-hidden={!open} data-testid="cv-drawer" {...(!open ? { inert: '' } as any : {})}>
       <header className="cv-dr-head"><h2>Assets</h2><button type="button" className="cv-icon-btn" aria-label="Close Assets" onClick={onClose}><CloseIcon size={16} /></button></header>
@@ -61,15 +63,26 @@ export function AssetsDrawer({ open, onClose, projectId, onProject }: { open: bo
         {err && <p className="cv-dr-empty">{err}</p>}
         {!err && jobs == null && Array.from({ length: 6 }, (_, i) => <span key={i} className="cv-dr-tile sk" />)}
         {!err && jobs != null && !shown.length && <p className="cv-dr-empty">{rank ? `Nothing matches “${q.trim()}”.` : items.length ? 'Nothing of this kind yet.' : pj.current ? `No finished results in ${pj.current.name} yet.` : 'Your finished results show up here.'}</p>}
-        {shown.map(it => <button key={it.job.id} type="button" className="cv-dr-tile" data-kind={it.m.kind} data-testid="cv-dr-item" title={it.m.title}
-          onPointerDown={e => onDown(e, it)} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={() => { start.current = null; setDrag(null); }}
-          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); place(it); } }}>
-          {it.m.poster ? <img src={gridSrc(it.m.poster, 150)} alt="" loading="lazy" draggable={false} /> : <span className="cv-dr-ph">{it.m.kind === '3d' ? <CubeIcon size={26} /> : <AudioIcon size={26} />}</span>}
-          {it.m.kind !== 'image' && <span className="cv-dr-kind">{it.m.kind === '3d' ? '3D' : it.m.kind === 'video' ? 'Video' : 'Audio'}</span>}
-          <FeedCaption title={it.m.caption.model || it.m.title} parts={[it.m.caption.price, it.m.caption.time]} />
-        </button>)}
+        {shown.map(it => <DrawerTile key={it.job.id} it={it} onDown={onDown} onMove={onMove} onUp={onUp} onCancel={() => { start.current = null; setDrag(null); }} onPlace={place} />)}
       </div>
     </aside>
     {drag && <div className="cv-ghost" style={{ left: drag.x, top: drag.y }} aria-hidden>{drag.item.m.poster ? <img src={gridSrc(drag.item.m.poster, 150)} alt="" /> : <span className="cv-dr-ph"><AudioIcon size={22} /></span>}</div>}
   </>;
+}
+
+/** One result in the drawer. A sound shows its short title (what it says, else the feature), the model and length, and the shared play
+ *  button beside the tile (never inside it: the tile is a button that places or drags); Space plays it, Enter places it. */
+function DrawerTile({ it, onDown, onMove, onUp, onCancel, onPlace }: { it: Item; onDown: (e: React.PointerEvent, it: Item) => void; onMove: (e: React.PointerEvent) => void; onUp: (e: React.PointerEvent) => void; onCancel: () => void; onPlace: (it: Item) => void }) {
+  const audio = it.m.kind === 'audio'; const len = fmtLength(useMediaLength(it.m.url, it.m.kind, audio));
+  const title = audio ? it.m.title : it.m.caption.model || it.m.title;
+  return <div className="cv-dr-cell" data-kind={it.m.kind}>
+    <button type="button" className="cv-dr-tile" data-kind={it.m.kind} data-testid="cv-dr-item" title={it.m.title} aria-label={audio ? `Sound: ${title}${len ? `, ${len}` : ''}` : undefined}
+      onPointerDown={e => onDown(e, it)} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onCancel}
+      onKeyDown={e => { if (e.key === ' ' && audio) { e.preventDefault(); if (!e.repeat) togglePreview(it.m.url); } else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPlace(it); } }}>
+      {it.m.poster ? <img src={gridSrc(it.m.poster, 150)} alt="" loading="lazy" draggable={false} /> : <span className="cv-dr-ph">{it.m.kind === '3d' && <CubeIcon size={26} />}</span>}
+      {it.m.kind !== 'image' && <span className="cv-dr-kind">{it.m.kind === '3d' ? '3D' : it.m.kind === 'video' ? 'Video' : 'Audio'}</span>}
+      <FeedCaption title={title} parts={audio ? [it.m.caption.model, len] : [it.m.caption.price, it.m.caption.time]} />
+    </button>
+    {audio && <PlayButton url={it.m.url} label={title} className="cv-dr-pv" testId="cv-dr-play" />}
+  </div>;
 }

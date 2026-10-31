@@ -27,7 +27,8 @@ import { statSync } from 'node:fs';
 import { optionsOf, hexToRgb, fiboStructured } from '../shared/imageOptions.js';
 import { VIDEO_LIMITS, type VideoLimits } from '../tools/h3/videoCaps.js';
 import { publicBase } from '../tools/h3/cloud.js';
-import { H3_CAMERA_MOVES, H3_INTENSITY, type H3Intensity } from '../tools/h3/catalog.js';
+import { H3_CAMERA_MOVES, H3_INTENSITY, H3_BASE_CAMERA, type H3Intensity } from '../tools/h3/catalog.js';
+import { fillPattern } from '../shared/promptPatterns.js';
 import { h3RouterExtendIssue, h3RouterExtendSeconds, h3ExtendLastFrame, joinRouterExtension, H3_ROUTER_EXTEND_LABEL } from '../tools/h3/routerExtend.js';
 import { CLOUD_SWAP_MODELS, planPasses, swapPrompt, swapImagesMax, type SwapMode } from '../shared/cloudSwap.js';
 import { videoInputLimits } from '../shared/videoFit.js';
@@ -108,7 +109,7 @@ const sentences = (...xs: unknown[]) => `${xs.map(clause).filter(Boolean).join('
 export function videoAppPrompt(i: In): string {
   const app = videoAppOf(i); const frame = !!appFrameOf(i); const end = 'One continuous shot, no cuts';
   if (app === 'camera') return sentences(`Camera move: ${clause(i.typePrompt)}`, i.prompt, frame ? 'Start exactly on the first frame and keep its subject, setting and look; only the camera moves' : '',
-    i.enhance ? 'Cinematic, detailed, smooth motion' : '', end);
+    i.enhance ? fillPattern('camera-enhance', null) : '', end);
   if (app === 'photo-fx') return sentences(`Bring this photo to life with one effect: ${clause(i.typePrompt)}`, i.prompt, 'Start exactly on the first frame and keep the subject recognisable', end);
   // Orbit Shot: finalPrompt = subject (or the auto subject) + backdrop, "Camera: <orbit phrase>", emotion and look (cinema/tool.ts)
   return sentences('Orbit shot around the subject', i.finalPrompt ?? i.prompt, 'Start exactly on the first frame (the subject photo) and keep the subject the same from every side', end);
@@ -224,9 +225,11 @@ const noVideoRefs = (name: string, apps = false, av?: AvId) => (i: In) => (!(app
 /** H3 Camera Motion on Router (prompt-directed): the move id → its phrase, the intensity → an adverb (tools/h3/catalog.ts, the LoRA's move set). */
 const h3MoveOf = (i: In) => { const id = Array.isArray(i.types) ? String(i.types[0] ?? '') : modeOf(i); return H3_CAMERA_MOVES.find((m) => m[0] === id) ?? null; };
 const h3IntensityOf = (i: In): H3Intensity => ((i.fields?.intensity ?? i.intensity) === 'aggressive' ? 'aggressive' : 'slow');
-/** The move as words (no LoRA trigger): "Camera move: slow, smooth push-in toward the subject", then the user's words and our first-frame rule. */
-export function h3CameraRouterPrompt(i: In): string { const mv = h3MoveOf(i) ?? H3_CAMERA_MOVES[0];
-  return sentences(`Camera move: ${H3_INTENSITY[h3IntensityOf(i)].adverb} ${mv[2]}`, i.prompt, 'Start exactly on the first frame and keep its subject, setting and look; only the camera moves', 'One continuous shot, no cuts'); }
+/** The move in base H3's camera grammar (no LoRA trigger; shared/promptPatterns.ts camera-move): "The camera pushes in with small amplitude at slow
+ *  speed toward the subject", then the user's words and our first-frame rule. Slow = small amplitude, slow speed; Aggressive = large, fast. */
+export function h3CameraRouterPrompt(i: In): string { const mv = h3MoveOf(i) ?? H3_CAMERA_MOVES[0]; const it = H3_INTENSITY[h3IntensityOf(i)]; const b = H3_BASE_CAMERA[mv[0]];
+  const line = fillPattern('camera-move', 'minimax-h3', { move: b?.move ?? mv[2], amplitude: it.amplitude, speed: it.speed, target: b?.target });
+  return sentences(line, i.prompt, 'Start exactly on the first frame and keep its subject, setting and look; only the camera moves', 'One continuous shot, no cuts'); }
 /** MiniMax H3 lengths on Comfy Router: 4–15 s (comfy-docs pages/development/comfy-router/models/minimax/minimax-h3/code.md, duration). */
 export const H3_ROUTER_SECONDS = { min: 4, max: 15 } as const;
 /** A camera move shorter than 4 s (Camera Moves offers 3 s) is made, and billed, as 4 s; never refused (2026-10-28). Quote and body share it. */

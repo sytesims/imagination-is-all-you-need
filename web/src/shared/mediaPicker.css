@@ -51,31 +51,35 @@ html body .ic-ref.mpk .mpk-pick img{position:absolute;inset:0;display:block;widt
 html body .ic-ref.mpk .mpk-tile:has(.mpk-pick:focus-visible){outline:2px solid var(--accent);outline-offset:-2px}
 html body .ic-ref.mpk .ic-ref-grid>.mpk-tile:has(img):not(.ld){background:linear-gradient(90deg,rgba(255,255,255,.04) 0%,rgba(255,255,255,.09) 40%,rgba(255,255,255,.04) 80%) #2b2c30;background-size:300% 100%;animation:skel-sh 1.4s ease-in-out infinite}
 html body .ic-ref.mpk .ic-ref-grid>.mpk-tile:has(img):not(.ld) img{opacity:0}
-html body .ic-ref.mpk .mpk-pick>.ic-ref-feat{position:absolute;top:6px;left:6px;right:auto;bottom:auto;max-width:calc(100% - 12px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:1px 6px;border-radius:5px;background:rgba(0,0,0,.6);color:#fff;font:600 10px/15px var(--font-ui);pointer-events:none}
 html body .ic-ref.mpk .mpk-more{position:absolute;top:5px;right:5px;z-index:2;display:grid;place-items:center;width:26px;height:26px;padding:0;border:0;border-radius:8px;background:rgba(10,10,12,.66);color:#fff;cursor:pointer;opacity:0;backdrop-filter:blur(6px);transition:opacity var(--t-state,.15s) ease,background-color var(--t-state,.15s) ease}
 html body .ic-ref.mpk .mpk-tile:hover .mpk-more,html body .ic-ref.mpk .mpk-more:focus-visible,html body .ic-ref.mpk .mpk-more[aria-expanded=true]{opacity:1}
 html body .ic-ref.mpk .mpk-more:hover{background:var(--accent);color:var(--on-accent)}
 html body .ic-ref.mpk .mpk-more:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 @media (hover:none){html body .ic-ref.mpk .mpk-more{opacity:1}}
 html body .ic-ref.mpk .mpk-ph{position:absolute;inset:0;background:#2b2c30}
-html body .ic-ref.mpk .mpk-badge{position:absolute;right:5px;bottom:5px;left:auto;display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border-radius:5px;background:rgba(0,0,0,.62);color:#fff;font:600 10px/14px var(--font-ui);pointer-events:none}
-html body .ic-ref.mpk .mpk-badge svg{color:var(--accent)}
-html body .ic-ref.mpk .mpk-t-video .mpk-badge{padding:3px 4px} /* videos: a small play mark; the tooltip / hover says the rest */
-html body .ic-ref.mpk .mpk-tile:has(.mpk-more):hover .ic-ref-feat{max-width:calc(100% - 44px)}
 /* picked (a slot that takes several): an orange ring and its number */
 html body .ic-ref.mpk .mpk-tile.mpk-sel::after{content:"";position:absolute;inset:0;z-index:1;border:2px solid var(--accent);border-radius:inherit;pointer-events:none}
 html body .ic-ref.mpk .mpk-tile.mpk-sel img{opacity:.82}
 html body .ic-ref.mpk .mpk-seln{position:absolute;top:6px;left:6px;right:auto;bottom:auto;display:grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--accent);color:var(--on-accent);font:700 11px/20px var(--font-ui);box-shadow:0 1px 3px rgba(0,0,0,.4);pointer-events:none}
-html body .ic-ref.mpk .mpk-tile.mpk-sel .ic-ref-feat{left:32px;max-width:calc(100% - 70px)}
 /* the selection bar: count, Clear, Add n */
 html body .ic-ref.mpk .mpk-selbar{flex:none;display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--border-strong,rgba(255,255,255,.1))}
 html body .ic-ref.mpk .mpk-selbar-n{margin-right:auto;color:rgba(255,255,255,.7);font:500 13px/18px var(--font-ui)}
 html body .ic-ref.mpk .mpk-selbar-n b{color:var(--accent);font-weight:700;font-variant-numeric:tabular-nums}
 html body .ic-ref.mpk .mpk-btn.mpk-btn-q{background:transparent;color:rgba(255,255,255,.7)}
 html body .ic-ref.mpk .mpk-btn.mpk-btn-q:hover{background:var(--fill,rgba(255,255,255,.05));color:#fff}
-html body .ic-ref.mpk .mpk-audio{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px;background:radial-gradient(120% 90% at 50% 0%,color-mix(in srgb,var(--accent) 22%,#232427) 0%,#232427 70%);color:var(--accent)}
-html body .ic-ref.mpk .mpk-audio .mpk-wave{width:70%;height:auto}
-html body .ic-ref.mpk .mpk-audio .mpk-aname{position:static;max-width:100%;padding:0;background:none;color:rgba(255,255,255,.82);font:500 11px/14px var(--font-ui);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html body .ic-ref.mpk .mpk-audio{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px 12px 26px;background:radial-gradient(120% 90% at 50% 0%,color-mix(in srgb,var(--accent) 22%,#232427) 0%,#232427 70%);color:var(--accent)}
+html body .ic-ref.mpk .mpk-audio .mpk-wave{width:70%;height:auto;opacity:.55}
+/* every tile's one quiet line (2026-10-31, Canvas audit B17): the short name, and a clip's or sound's length at the right */
+html body .ic-ref.mpk .mpk-cap{position:absolute;left:0;right:0;bottom:0;z-index:1;display:flex;align-items:baseline;gap:6px;padding:14px 7px 5px;background:linear-gradient(transparent,rgba(0,0,0,.66));color:rgba(255,255,255,.88);font:500 10.5px/14px var(--font-ui);pointer-events:none}
+html body .ic-ref.mpk .mpk-t-audio .mpk-cap{background:none}
+html body .ic-ref.mpk .mpk-cap-n{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html body .ic-ref.mpk .mpk-cap-d{flex:none;display:inline-flex;align-items:center;gap:3px;color:rgba(255,255,255,.7);font-variant-numeric:tabular-nums}
+html body .ic-ref.mpk .mpk-cap-d svg{color:var(--accent)}
+html body .ic-ref.mpk .mpk-cap-d:empty{display:none}
+/* a sound's play button sits where the wave is; the tile around it still picks */
+html body .ic-ref.mpk .mpk-pv{top:calc(50% - 7px);left:50%;transform:translate(-50%,-50%)}
+html body .ic-ref.mpk .mpk-pv:active{transform:translate(-50%,-50%) scale(.94)}
+html body .ic-ref.mpk .mpk-tile.mpk-sel .pv-prog{bottom:2px;left:2px;right:2px}
 html body .ic-ref.mpk .mpk-empty{color:rgba(255,255,255,.55);font:500 13px/19px var(--font-ui);padding:28px 16px}
 html body .ic-ref.mpk .mpk-sentinel{grid-column:1/-1;height:1px}
 html body .ic-ref.mpk .mpk-busy{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);padding:6px 12px;border-radius:999px;background:#111214;color:#fff;font:500 12px/16px var(--font-ui);box-shadow:0 8px 24px rgba(0,0,0,.5)}
