@@ -45,7 +45,7 @@ ok('who is who: sides, clicks and words');
 // 3 chain
 { const g = plan().passes[0].graph;
   assert.deepEqual(g['420'].inputs['ref_videos.ref_video_0'], ['326', 0]); assert.deepEqual(g['463'].inputs.pixels, ['326', 0]); assert.deepEqual(g['464'].inputs.mask, ['255', 0]);
-  assert.deepEqual(g['364'].inputs.mask, ['155', 0]); assert.deepEqual(g['154'].inputs.source, ['252', 0]); assert.deepEqual(g['254'].inputs.source, ['152', 0]);
+  assert.deepEqual(g['364'].inputs.mask, ['155', 0]); assert.deepEqual(g['154'].inputs.source, ['1117', 0]); assert.deepEqual(g['254'].inputs.source, ['1107', 0]); /* the other person's mask with its head room (block 3d) */
   assert.deepEqual(g['430'].inputs.video, ['428', 0]); assert.deepEqual(g['428'].inputs.images, ['426', 0]); assert.equal(g['421'].inputs.noise_seed, 8);
   assert.deepEqual(g['312'].inputs.image, { __file: '/x/a.png' }); assert.deepEqual(g['412'].inputs.image, { __file: '/x/b.png' }); }
 ok('chain: pass 2 builds on pass 1; masks keep to their own person');
@@ -67,7 +67,7 @@ ok('chain: pass 2 builds on pass 1; masks keep to their own person');
   assert.deepEqual(g['320'].inputs['ref_videos.ref_video_0'], ['11', 0]); assert.deepEqual(g['364'].inputs, { samples: ['63', 0], mask: ['155', 0] });
   assert.deepEqual(g['420'].inputs['ref_videos.ref_video_0'], ['326', 0], 'pass 2 builds on pass 1'); assert.deepEqual(g['463'].inputs.pixels, ['326', 0]); assert.deepEqual(g['326'].inputs.samples, ['325', 0]);
   assert.match(g['313'].inputs.value, /^Replace the man on the left, dark red tie in <Video 1>/); assert.match(g['413'].inputs.value, /^Replace the man on the right, blue tie in <Video 1>/);
-  assert.deepEqual(p.passes[0].extraOutputs!.map((e) => e.node), ['172', '272']); assert.deepEqual(g['180'].inputs.conditioning, ['41', 0], 'the "person" prompt now feeds the body track'); }
+  assert.deepEqual(p.passes[0].extraOutputs!.map((e) => e.node), ['172', '272', '332']); assert.deepEqual(g['180'].inputs.conditioning, ['41', 0], 'the "person" prompt now feeds the body track'); }
 { const g = plan({ cast: [{}, {}] }).passes[0].graph; assert.deepEqual(g['160'].inputs.mask, ['146', 0]); assert.deepEqual(g['161'].inputs.mask, ['246', 0]); assert.equal(g['143'].inputs.negative_coords, undefined); }
 ok('real job 84505322: one joint click track, each click excludes the other, pass 2 on pass 1');
 
@@ -82,14 +82,41 @@ ok('real job 84505322: one joint click track, each click excludes the other, pas
   for (const k of [0, 1]) { let n = sum(k); const seen: string[] = []; while (n !== (k ? '252' : '152')) { seen.push(g[n].inputs.source[0]); n = g[n].inputs.destination[0]; } assert.deepEqual(seen.reverse(), Array.from({ length: B }, (_, j) => `7${k}${j}8`)); }
   assert.deepEqual(g['7008'].inputs.destination, ['504', 0]); assert.deepEqual(g['7000'].inputs, { destination: ['506', 0], source: ['602', 0], x: 0, y: 0, operation: 'multiply' });
   assert.equal(g['7004'].inputs.value, 0.0001); assert.deepEqual([g['7006'].inputs.width, g['7006'].inputs.height], [cw, ch]);
-  assert.deepEqual(g['153'].inputs.mask, [sum(0), 0]); assert.deepEqual(g['253'].inputs.mask, [sum(1), 0]);
-  assert.deepEqual(g['154'].inputs.source, [sum(1), 0]); assert.deepEqual(g['155'].inputs.source, [sum(0), 0]); assert.deepEqual(g['254'].inputs.source, [sum(0), 0]); assert.deepEqual(g['255'].inputs.source, [sum(1), 0]);
+  // since 2026-10-31 the whole body gets head room (block 3d): the head-room nodes read the body; grow, subtraction and adds read the head-room mask
+  for (const k of [0, 1]) for (const n of ['0', '5', '7']) assert.deepEqual(g[`11${k}${n}`].inputs[n === '7' ? 'destination' : 'mask'], [sum(k), 0], `11${k}${n} reads person ${k + 1}'s whole body`);
+  assert.deepEqual(g['153'].inputs.mask, ['1107', 0]); assert.deepEqual(g['253'].inputs.mask, ['1117', 0]);
+  assert.deepEqual(g['154'].inputs.source, ['1117', 0]); assert.deepEqual(g['155'].inputs.source, ['1107', 0]); assert.deepEqual(g['254'].inputs.source, ['1107', 0]); assert.deepEqual(g['255'].inputs.source, ['1117', 0]);
   assert.deepEqual(g['364'].inputs.mask, ['155', 0]); assert.deepEqual(g['464'].inputs.mask, ['255', 0]);
-  assert.deepEqual(g['171'].inputs.images, ['901', 0]); assert.deepEqual(g['900'].inputs.mask, [sum(0), 0]); assert.deepEqual([g['901'].inputs.width, g['901'].inputs.height], [864, 1152]);
+  assert.deepEqual(g['171'].inputs.images, ['901', 0]); assert.deepEqual(g['900'].inputs.mask, ['1107', 0], 'the area output shows the edited area, head room included'); assert.deepEqual([g['901'].inputs.width, g['901'].inputs.height], [864, 1152]);
   assert.deepEqual(g['271'].inputs.images, ['911', 0]);
   for (const [id, n] of Object.entries<any>(g)) { assert.ok(OI[n.class_type], `${id} ${n.class_type}`); for (const v of Object.values<any>(n.inputs)) if (isLink(v)) assert.ok(g[v[0]], `${id} -> ${v[0]}`); } }
-{ const g = plan({ cast: [{}, {}] }).passes[0].graph; assert.equal(g['180'], undefined, 'no clicks: the side split, no body track'); assert.deepEqual(g['153'].inputs.mask, ['152', 0]); }
+{ const g = plan({ cast: [{}, {}] }).passes[0].graph; assert.equal(g['180'], undefined, 'no clicks: the side split, no body track'); assert.deepEqual(g['1100'].inputs.mask, ['152', 0]); assert.deepEqual(g['153'].inputs.mask, ['1107', 0]); }
 ok('whole bodies: the tracked body under each click, read by grow, subtraction and the area outputs');
+
+// 3d head room + pass 1's frames (2026-10-31: fd1a2425's areas covered only the jacket and arms of a chest click, so pass 1 kept the face).
+// Each person's final mask grows up (and down) by HEAD_ROOM of the height inside the columns it fills, so the head above a torso is edited; pass 1's
+// frames are saved as their own output so the next run shows whether pass 1 changed person 1.
+{ const p = plan({ width: 834, height: 1112, duration: 4, cast: [{ point: { x: 0.3545, y: 0.4955 } }, { point: { x: 0.7, y: 0.4818 } }] }); const g = p.passes[0].graph; const cw = 54, ch = 72;
+  for (const k of [0, 1]) { const h = `11${k}`;
+    assert.deepEqual([g[`${h}1`].inputs.width, g[`${h}1`].inputs.height, g[`${h}1`].inputs.upscale_method], [cw, 1, 'area'], 'columns the person fills, per frame');
+    assert.deepEqual([g[`${h}2`].inputs.width, g[`${h}2`].inputs.height], [cw, ch]); assert.equal(g[`${h}4`].inputs.value, 1.5 / ch, 'at least 2 cells of a column');
+    assert.equal(g[`${h}5`].inputs.expand, Math.round(ch * T.HEAD_ROOM), 'head room = 30% of the height'); assert.equal(g[`${h}5`].inputs.tapered_corners, false);
+    assert.deepEqual(g[`${h}6`].inputs, { destination: [`${h}5`, 0], source: [`${h}4`, 0], x: 0, y: 0, operation: 'multiply' }); assert.equal(g[`${h}7`].inputs.operation, 'add');
+    // pass 1 edits person 1's head-room mask minus person 2's: the latent mask chain reads it
+    assert.deepEqual(g[k ? '253' : '153'].inputs.mask, [`${h}7`, 0]); }
+  assert.deepEqual(g['364'].inputs.mask, ['155', 0]); assert.deepEqual(g['155'].inputs.destination, ['154', 0]); assert.deepEqual(g['154'].inputs.destination, ['153', 0]);
+  // pass 1's frames: VAEDecode 326 → CreateVideo 331 → SaveVideo 332, an extra output
+  assert.deepEqual(g['331'].inputs, { fps: 24, images: ['326', 0], bit_depth: 8 }); assert.equal(g['332'].class_type, 'SaveVideo'); assert.deepEqual(g['332'].inputs.video, ['331', 0]);
+  assert.deepEqual(p.passes[0].extraOutputs!.at(-1), { node: '332', label: 'Pass 1 (person 1 only)' }); assert.match(p.notes[0], /head room 30% of the height/);
+  // a simulated frame: a torso-only mask (rows 30–45 of 72, columns 10–20) → the head rows above (8–29) in those columns are now inside the mask
+  const rows = (m: (r: number, c: number) => number) => { let top = ch; for (let r = 0; r < ch; r++) for (let c = 0; c < cw; c++) if (m(r, c) > 0.5) top = Math.min(top, r); return top; };
+  const torso = (r: number, c: number) => (r >= 30 && r <= 45 && c >= 10 && c <= 20 ? 1 : 0); const grow = g['1105'].inputs.expand as number;
+  const colOn = (c: number) => { let n = 0; for (let r = 0; r < ch; r++) n += torso(r, c); return n / ch > g['1104'].inputs.value; };
+  const grown = (r: number, c: number) => { for (let dr = -grow; dr <= grow; dr++) for (let dc = -grow; dc <= grow; dc++) if (torso(r + dr, c + dc)) return 1; return 0; };
+  const withRoom = (r: number, c: number) => Math.min(1, torso(r, c) + grown(r, c) * (colOn(c) ? 1 : 0));
+  assert.equal(rows(torso), 30); assert.equal(rows(withRoom), 30 - grow, 'the mask now reaches 22 rows (30% of the height) above the torso, where the head is');
+  for (let c = 0; c < cw; c++) if (c < 10 || c > 20) assert.equal(withRoom(5, c), 0, 'never outside the person’s own columns'); }
+ok('head room: each person’s mask reaches up over the head inside their own columns (grow, subtraction and the area output read it); pass 1’s frames saved as an extra output');
 
 // 4 limits
 assert.match(String(T.twoSwapIssue({ duration: 16 })), /up to 15 s/); assert.match(String(T.twoSwapIssue({ duration: 1 })), /at least 2 s/);
