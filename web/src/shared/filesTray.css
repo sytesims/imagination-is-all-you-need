@@ -1,0 +1,26 @@
+/* The "+N" tray (shared/FilesTray.tsx): every attached file in one small list above the composer */
+.ft-list{list-style:none;margin:0;padding:0 4px;display:grid;gap:2px;max-height:min(360px,50vh);overflow-y:auto;overscroll-behavior:contain}
+.ft-row{display:flex;align-items:center;gap:10px;min-height:44px;padding:4px 6px;border-radius:8px;outline:none;cursor:default}
+.ft-row[draggable=true]{cursor:grab}
+.ft-row:hover{background:var(--state-hover,rgba(255,255,255,.06))}
+.ft-row:focus-visible{box-shadow:inset 0 0 0 2px var(--accent,#ff7a1a)}
+.ft-row.drop{box-shadow:inset 0 2px 0 var(--accent,#ff7a1a)}
+.ft-th{flex:none;width:36px;height:36px;border-radius:8px;overflow:hidden;display:grid;place-items:center;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);color:var(--text-2,#b4b5b8);font-size:14px}
+.ft-th img,.ft-th video{display:block;width:100%;height:100%;object-fit:cover}
+.ft-row.off .ft-th img,.ft-row.off .ft-th video{opacity:.4;filter:grayscale(1)}
+.ft-t{flex:1;min-width:0;display:grid;line-height:1.2}
+.ft-t b{font:500 13px/17px var(--font-ui,Inter,system-ui,sans-serif);color:var(--text-1,#f7f7f8);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ft-t small{font:400 11px/15px var(--font-ui,Inter,system-ui,sans-serif);color:var(--text-3,#8a8b90);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ft-off{flex:none;padding:1px 6px;border-radius:5px;background:rgba(255,122,26,.12);color:#ffc89e;font:600 10.5px/16px var(--font-ui,Inter,system-ui,sans-serif);font-style:normal;white-space:nowrap}
+.ft-x{all:unset;box-sizing:border-box;flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;color:var(--text-3,#8a8b90);cursor:pointer}
+.ft-x:hover{background:var(--state-hover,rgba(255,255,255,.1));color:#fff}
+.ft-x:focus-visible{box-shadow:inset 0 0 0 2px var(--accent,#ff7a1a)}
+.ft-act{all:unset;box-sizing:border-box;align-self:flex-start;height:28px;margin:4px 8px 2px;padding:0 10px;border-radius:8px;background:var(--state-fill,rgba(255,255,255,.06));color:#ffc89e;font:500 12px/28px var(--font-ui,Inter,system-ui,sans-serif);cursor:pointer;white-space:nowrap}
+.ft-act:hover{background:var(--state-hover,rgba(255,255,255,.1))}
+.ft-act:focus-visible{box-shadow:inset 0 0 0 2px var(--accent,#ff7a1a)}
+.ft-hint{margin:2px 10px 0;color:var(--text-3,#8a8b90);font:400 11px/15px var(--font-ui,Inter,system-ui,sans-serif)}
+/* the "+N" tile when a file it hides isn't used */
+html body .ic.ic2 .ic-dock .ic-lead .ic-th-more.warn{box-shadow:inset 0 0 0 1.5px rgba(255,122,26,.8);color:#ffc89e}
+/* "N not added", inline under the composer's thumbnails */
+.bar-left{display:flex;align-items:center;gap:4px;margin:0;padding:0 2px;color:#ffc89e;font:500 12px/1.4 var(--font-ui,Inter,system-ui,sans-serif)}
+.bar-left .ft-x{width:18px;height:18px}

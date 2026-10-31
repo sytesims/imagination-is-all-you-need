@@ -4,6 +4,7 @@
  * out point), its takes (one starred, older ones tucked away, billed beside quoted) and Generate with its price first (quote = charge).
  * The header reads "Shot 3 · Draft" with one ⋯ menu (move left/right, Split, Hide, Delete); "Add shot after" is a small link under the takes.
  */
+import { VIDEO_PAGE } from '../../../../server/src/shared/videoWorkflows';
 import { useEffect, useRef, useState } from 'react';
 import type { ToolInfo } from '../../api';
 import { Link } from '../../platform/router';
@@ -90,7 +91,7 @@ export default function FilmInspector({ film, shot, srvShot, label, tool, commit
   const move = (by: number) => { const ids = film.shots.map(s => s.id); const order = moveId(ids, shot.id, by); if (order !== ids) void commit([{ op: 'reorder_shots', order }]); };
   const world = worldNotesOf(film.script.markdown);
   const t = activeTake(shot); const still = startUrl(shot); const canPrev = !!prev && playable(activeTake(prev));
-  const openHref = t?.jobId ? `/tools/${FILM_VIDEO_TOOL}?recreate=${encodeURIComponent(t.jobId)}` : withSearch(`/tools/${FILM_VIDEO_TOOL}`, new URLSearchParams({ prompt: text, ...(shot.modelKey ? { model: shot.modelKey } : {}) }).toString());
+  const openHref = t?.jobId ? `${VIDEO_PAGE}?recreate=${encodeURIComponent(t.jobId)}` : withSearch(VIDEO_PAGE, new URLSearchParams({ prompt: text, ...(shot.modelKey ? { model: shot.modelKey } : {}) }).toString());
   const len = shot.durationSec == null ? 'auto' : String(shot.durationSec);
   /* the model's own lengths (the quote names them when the set one doesn't fit) */
   const [allowed, setAllowed] = useState<number[] | null>(null); const qa: number[] | null = q?.allowedDurations ?? q?.durations ?? null;

@@ -16,6 +16,16 @@ import type { PortKind } from './nodeLogic';
 /** One port drag: what travels (kind), the legal targets (computed once at the start), the legal card under the pointer (targetId), any
  *  card under it (overId) and, over a card that can't take it, the line saying what that card takes. */
 export interface PortDrag { fromId: string; fromType: string; kind: PortKind | null; x: number; y: number; targetId: string | null; overId: string | null; legal: string[]; hint: string }
+/** A port drag's window listeners, all in the capture phase: a node's controls stop pointerup from bubbling (keepNodeControls), so a drop
+ *  over Compare's body or a card's fields never reached a bubble listener and the drag stuck, cards dimmed (B3, 2026-10-31). Esc, or the
+ *  window losing focus mid-drag, ends it cleanly. Returns the cleanup. */
+export function listenPortDrag(win: Pick<Window, 'addEventListener' | 'removeEventListener'>, on: { move: (e: PointerEvent) => void; up: (e: PointerEvent) => void; cancel: () => void }): () => void {
+  const key = (e: KeyboardEvent) => { if (e.key === 'Escape') on.cancel(); };
+  const blur = (e: Event) => { if (e.target === win) on.cancel(); }; /* the window itself, not a field inside it losing focus */
+  const all: [string, (e: any) => void][] = [['pointermove', on.move], ['pointerup', on.up], ['pointercancel', on.up], ['keydown', key], ['blur', blur]];
+  for (const [t, f] of all) win.addEventListener(t, f, true);
+  return () => { for (const [t, f] of all) win.removeEventListener(t, f, true); };
+}
 /** One drag at a time, shared by every node so a target can glow while the pointer is over it. */
 export const portDragAtom = atom<PortDrag | null>('ohf-port-drag', null);
 if ((import.meta as any).env?.DEV) (window as any).__ohfPortDragAtom = portDragAtom;

@@ -1,4 +1,4 @@
-import { videoWorkflowOfTool, videoWorkflowHref, videoWorkflowById, VIDEO_PAGE } from '../../../server/src/shared/videoWorkflows';
+import { videoWorkflowOfTool, videoWorkflowHref, videoWorkflowById, VIDEO_PAGE, VIDEO_TOOL, toolPage } from '../../../server/src/shared/videoWorkflows';
 import { audioWorkflowForToolMode, audioRoute, type AudioWorkflowId } from '../../../server/src/shared/audioWorkflows';
 import { threeDRoute } from '../../../server/src/shared/threeD';
 /** Unified Create Image: the workflows Create Image's bar runs today, by the tool that runs them. Recreate on their results reopens
@@ -41,19 +41,19 @@ export const workflowRecreateHref = (job: { id: string; toolId: string; input?: 
  *  (from the tool list when given, else /tools/<id>), with ?recreate=<job>. null without an id. */
 export const recreateHref = (job: { id: string; toolId: string; input?: any }, tools?: { id: string; route?: string | null }[] | null): string | null => {
   if (!job.id) return null; const t = tools?.find(x => x.id === job.toolId);
-  return workflowRecreateHref(job) ?? withSearch(t?.route ?? `/tools/${job.toolId}`, `recreate=${encodeURIComponent(job.id)}`); };
+  return workflowRecreateHref(job) ?? withSearch(t?.route ?? toolPage(job.toolId), `recreate=${encodeURIComponent(job.id)}`); };
 /** "Open in tool" without a finished job (Canvas cards): the workflow's tab, else the tool's page. */
-export const workflowOpenOf = (job: { toolId: string; input?: any }): string => jobWorkflowHref(job) ?? `/tools/${job.toolId}`;
+export const workflowOpenOf = (job: { toolId: string; input?: any }): string => jobWorkflowHref(job) ?? toolPage(job.toolId);
 /** "Make it talk / sing" (2026-10-26): an audio result into Video's Lip Sync, the sound in the Speech slot (a ?fromJob hand-off). */
 export const lipSyncHandoffHref = (jobId: string, out = 0): string => `${videoWorkflowHref('lip-sync')}&fromJob=${encodeURIComponent(jobId)}&out=${out}`;
 /** "Continue from last frame" / "Use this frame" (2026-10-26): a frame of a video result (at = last | first | seconds) into Video → Generate's
  *  start-image slot (?fromJob hand-off with t=; the server grabs the exact frame). cont=1 also prefills "Continue the shot: <prompt>". */
 export const frameHandoffHref = (jobId: string, out = 0, at: 'last' | 'first' | number = 'last', cont = at === 'last'): string =>
-  `/tools/h3-video?fromJob=${encodeURIComponent(jobId)}&as=image&out=${out}&t=${typeof at === 'number' ? Math.max(0, Math.round(at * 1000) / 1000) : at}${cont ? '&cont=1' : ''}`;
+  `${VIDEO_PAGE}?fromJob=${encodeURIComponent(jobId)}&as=image&out=${out}&t=${typeof at === 'number' ? Math.max(0, Math.round(at * 1000) / 1000) : at}${cont ? '&cont=1' : ''}`;
 /** Where a tool opens: Create Image with its workflow picked when the bar runs it, else the tool's own page. */
 /** One Video page (2026-10-23): a video tool opens the Video page with its workflow picked (shared/videoWorkflows.ts). */
 const videoOpenHref = (toolId: string): string | null => { const w = videoWorkflowOfTool(toolId); return w ? videoWorkflowHref(w.id) : null; };
-export const toolOpenHref = (t: { id: string; route?: string | null }): string => workflowOpenHref(t.id) ?? videoOpenHref(t.id) ?? t.route ?? `/tools/${t.id}`;
+export const toolOpenHref = (t: { id: string; route?: string | null }): string => workflowOpenHref(t.id) ?? videoOpenHref(t.id) ?? t.route ?? toolPage(t.id);
 /** A hand-off link (?fromJob=…&out=…) to a tool, straight to its new home (no redirect hop). */
 export const toolHandoffHref = (t: { id: string; route?: string | null }, query: string): string => withSearch(toolOpenHref(t), query);
 
@@ -75,11 +75,11 @@ export function workflowCardTools<T extends { id: string; name: string }>(tools:
     .filter(t => { const n = workflowCardName(t).toLowerCase(); if (names.has(n)) return false; names.add(n); return true; });
 }
 
-/** The tool a page runs: /tools/<id>, or on the one Video page the picked workflow's own tool (/tools/h3-video?workflow=extend → h3-extend),
+/** The tool a page runs: /tools/<id>, or on the one Video page the picked workflow's own tool (/video?workflow=extend → h3-extend; /video alone → h3-video),
  *  so a hand-off (Extend, Upscale, Turn to video…) asks the server for that tool's slot, not Create Video's (shared/usePrefill.ts). */
 export function pageToolId(path = location.pathname, search = location.search): string {
-  const seg = path.split('/')[2] ?? ''; if (`/tools/${seg}` !== VIDEO_PAGE) return seg;
-  const w = videoWorkflowById(new URLSearchParams(search).get('workflow')); return w?.toolId || seg;
+  if ((path.replace(/\/+$/, '') || '/') !== VIDEO_PAGE) return path.split('/')[2] ?? '';
+  const w = videoWorkflowById(new URLSearchParams(search).get('workflow')); return w?.toolId || VIDEO_TOOL;
 }
 /** Use in Direct a Shot (2026-10-27): a finished 3D model (job id) placed in Direct a Shot's set, ready to move, size or make the actor. */
 export const directShotHref = (jobId: string) => `${threeDRoute('plan-a-shot')}&useModel=${encodeURIComponent(jobId)}`;

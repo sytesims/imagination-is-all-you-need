@@ -1,12 +1,12 @@
-/* Reference mention chips (shared/MentionChips.tsx): result viewer, feed cards and the composer layer. */
-.mx-chip{display:inline;padding:0 5px;border-radius:5px;background:var(--accent-soft,rgba(255,122,26,.2));color:#FF9A4D;font-weight:600;box-decoration-break:clone;-webkit-box-decoration-break:clone;white-space:nowrap}
-.mx-chip.mx-missing,.mx-chip.mx-stale{background:rgba(232,180,74,.12);color:var(--warning,#E8B44A);text-decoration:underline dotted rgba(232,180,74,.7);text-underline-offset:3px;font-weight:500;cursor:help}
+/* Reference mentions (shared/MentionChips.tsx): result viewer, feed cards and the composer layer. Coloured text only, no box. */
+.mx-chip{display:inline;color:#FF9A4D;font-weight:600;white-space:nowrap}
+.mx-chip.mx-missing,.mx-chip.mx-stale{color:var(--warning,#E8B44A);text-decoration:underline dotted rgba(232,180,74,.7);text-underline-offset:3px;font-weight:500;cursor:help}
 .mx-other{color:#FF9A4D}
 
 /* Composer: the layer sits over the textarea and paints the same text in the same place. Chips here must keep the field's metrics exactly
-   (no padding, no weight change), or the caret drifts from the glyphs: the tint and a thin inset ring stand in for the pill. */
+   (no padding, no weight change), or the caret drifts from the glyphs: the colour and a hairline stroke stand in for the weight. */
 .mx-layer{position:absolute;z-index:2;box-sizing:border-box;margin:0;border:0;overflow:hidden;white-space:pre-wrap;overflow-wrap:break-word;word-break:normal;pointer-events:none;background:none}
-.mx-layer .mx-chip{padding:0;font-weight:inherit;white-space:pre-wrap;border-radius:4px;color:var(--accent,#FF7A1A);background:rgba(255,122,26,.16);box-shadow:inset 0 0 0 1px rgba(255,122,26,.38);-webkit-text-stroke:.2px var(--accent,#FF7A1A)}
-.mx-layer .mx-chip.mx-missing,.mx-layer .mx-chip.mx-stale{color:var(--warning,#E8B44A);background:rgba(232,180,74,.1);box-shadow:inset 0 0 0 1px rgba(232,180,74,.45);-webkit-text-stroke:0;font-weight:inherit}
+.mx-layer .mx-chip{font-weight:inherit;white-space:pre-wrap;color:var(--accent,#FF7A1A);-webkit-text-stroke:.2px var(--accent,#FF7A1A)}
+.mx-layer .mx-chip.mx-missing,.mx-layer .mx-chip.mx-stale{color:var(--warning,#E8B44A);-webkit-text-stroke:0;font-weight:inherit}
 /* the field keeps its caret, selection and placeholder; only its glyphs hide while the layer is drawn */
 html body textarea.mx-ta{-webkit-text-fill-color:transparent!important}

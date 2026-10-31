@@ -43,3 +43,13 @@ export const PICK_LABEL: Record<'default' | 'yours' | 'favourite', string> = { d
 const PICK_LS = (f: string) => `ohf:wf-pick:${f}`;
 export const savedPick = (f: string): string | null => { try { return localStorage.getItem(PICK_LS(f)); } catch { return null; } };
 export const savePick = (f: string, id: string | null) => { try { if (id) localStorage.setItem(PICK_LS(f), id); else localStorage.removeItem(PICK_LS(f)); } catch { /* storage off: this visit only */ } };
+/**
+ * Switching feature (Create → Edit once a photo is added, Edit → Brush Edit…): the model to move to, or null to stay. It moves off the last
+ * feature's default (or your pick there, when that pick doesn't run here) to `want`; a model you picked that runs here too stays, so adding a
+ * photo never flips Nano Banana 2 back to the default (2026-10-31). A link's model (neither) stays.
+ */
+export function featureSwitchTo(cur: string, prevPick: string | null, offered: string[], was: WfDefault | null, want: string | null): string | null {
+  if (!want || want === cur) return null;
+  if (cur === prevPick && offered.includes(cur)) return null;
+  return cur === was?.start || cur === was?.id || cur === prevPick ? want : null;
+}

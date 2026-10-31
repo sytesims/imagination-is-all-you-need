@@ -1,5 +1,5 @@
 import { IMAGE_REDIRECTS } from '../shared/imageFeatures';
-import { VIDEO_REDIRECTS, videoRedirect } from '../../../server/src/shared/videoWorkflows';
+import { VIDEO_REDIRECTS, VIDEO_PAGE, videoRedirect } from '../../../server/src/shared/videoWorkflows';
 import { audioRedirectTarget } from '../../../server/src/shared/audioWorkflows';
 import { threeDRedirectTarget } from '../../../server/src/shared/threeD';
 import { redirectTarget, withSearch } from '../shared/workflowLinks';
@@ -10,7 +10,7 @@ export function navigate(to: string, o: { replace?: boolean; state?: Record<stri
 /** Alias paths → canonical (replaceState, so Back doesn't bounce). */
 export const REDIRECTS: Record<string, string> = { '/licences': '/licenses', '/licence': '/licenses', '/license': '/licenses', '/apps': '/workflows' /* Apps → Workflows (2026-10-22); /apps/<x> too, see canonPath */, '/presets': '/workflows', '/looks': '/workflows', '/pricing': '/models' /* the Pricing page is gone (user, 2026-10-29): every price is on Models */ /* the Looks page is gone (user, 2026-10-28); looks live inside each workflow */,
   /* Images (2026-10-22): old names → plain names (/soul and /tools/soul → Create Image, /tools/app-shots → Camera Angles, /tools/app-inpaint → Brush Edit, /tools/edit-image → Create Image in edit mode) */ ...IMAGE_REDIRECTS,
-  /* One Video page (2026-10-23): Edit Video, Motion Control and every video tool page → /tools/h3-video?workflow=<id> (shared/videoWorkflows.ts) */ ...VIDEO_REDIRECTS };
+  /* One Video page (2026-10-23): Edit Video, Motion Control and every video tool page → /video?workflow=<id>; the old /tools/h3-video → /video (videoRedirect) (shared/videoWorkflows.ts) */ ...VIDEO_REDIRECTS };
 /** Join a redirect target that may carry its own query (?mode=edit) with the current query (pure; shared/workflowLinks.ts, tested in server/test/image-redirects.test.ts). */
 export { withSearch };
 /** An in-app link to an old path goes straight to its new home (before pushState), so the page listening for that navigation sees the final URL
@@ -27,14 +27,14 @@ export function usePath() {
   useEffect(() => { const f = () => setP(canonPath()); addEventListener('popstate', f); return () => removeEventListener('popstate', f); }, []);
   return p;
 }
-/** The query string, live (re-renders on navigate / back / forward even when the path stays the same, e.g. /tools/h3-video ⇄ ?tab=motion). */
+/** The query string, live (re-renders on navigate / back / forward even when the path stays the same, e.g. /video ⇄ ?workflow=extend). */
 export function useSearch() {
   const [s, setS] = useState(() => location.search);
   useEffect(() => { const f = () => setS(location.search); addEventListener('popstate', f); return () => removeEventListener('popstate', f); }, []);
   return s;
 }
 /** One Video page (2026-10-23): the Video tabs (Create Video · Edit Video · Motion Control) are gone; the workflow picked in the bar is
- *  ?workflow=<id> on /tools/h3-video (shared/videoWorkflows.ts). Old tab URLs redirect (videoRedirect). */
+ *  ?workflow=<id> on /video (shared/videoWorkflows.ts). Old tab URLs redirect (videoRedirect). */
 export const videoWorkflowParam = (search = location.search): string => new URLSearchParams(search).get('workflow') ?? '';
 
 export function Link({ to, children, className, onClick, ...rest }: { to: string; children: React.ReactNode; className?: string } & Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & { [k: `data-${string}`]: string | undefined }) {
@@ -57,7 +57,7 @@ export const PAGES: Record<string, PageRoute> = {
   '/r': ['Make this', RecipeImport as any], // a shared recipe (/r?recipe=…, shared/recipe.ts): check it, then open it in the tool; nothing runs until Generate
   '/learn/ai-ecommerce': ['AI for e-commerce', LearnEcom as any], // the pop-up book (learn/EcomBook.tsx), full screen over the app
   '/workflows': ['Workflows', Workflows], '/models': ['Models', Models],
-  '/image': ['Image', () => <Browse media="image" />], '/video': ['Video', () => <Browse media="video" />], '/audio': ['Audio', () => <Browse media="audio" />],
+  '/image': ['Image', () => <Browse media="image" />], '/audio': ['Audio', () => <Browse media="audio" />],
   '/settings': ['Settings', Settings as any], '/profile': ['Profile', Profile as any], '/licenses': ['Licences', Licenses as any], '/account/usage': ['Spend', SpendOrUsage as any], '/usage': ['Spend', SpendOrUsage as any], '/spend': ['Spend', SpendOrUsage as any], '/terms': ['Usage & licence notes', TermsPage as any], '/usage-notes': ['Usage & licence notes', TermsPage as any],
 };
 /** Page route for a path (trailing slash tolerated), or undefined. */
@@ -67,7 +67,7 @@ export const matchPage = (path: string): PageRoute | undefined => PAGES[path] ??
 export const WF_PATH = /^\/workflows\/([^/]+)(?:\/looks\/([^/]+))?\/?$/;
 /** Film (2026-10-27): one film's editor. */
 export const FILM_ID_PATH = /^\/film\/[^/]+\/?$/;
-export const isKnownPath = (path: string) => path === '/' || !!matchPage(path) || WF_PATH.test(path) || FILM_ID_PATH.test(path) || /^\/(tools|jobs|share|models)\/[^/]+\/?$/.test(path) || isAssetsPath(path);
+export const isKnownPath = (path: string) => path === '/' || path === VIDEO_PAGE /* Create Video (2026-10-31) */ || !!matchPage(path) || WF_PATH.test(path) || FILM_ID_PATH.test(path) || /^\/(tools|jobs|share|models)\/[^/]+\/?$/.test(path) || isAssetsPath(path);
 /** PB-22: Assets and its section / media paths (/assets/trash, /assets/videos…; /history is the old name). */
 /* 'elements' stays a known path so old /assets/elements links open Assets (History rewrites the URL) */
 export const ASSET_SLUGS = ['projects', 'favourites', 'favorites', 'elements', 'brands', 'brand' /* Brands (2026-10-27); /assets/brand is the first name, rewritten to /assets/brands */, 'trash', 'images', 'videos', 'video', 'audio', 'enhanced'];

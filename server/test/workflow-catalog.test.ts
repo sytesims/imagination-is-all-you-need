@@ -19,7 +19,7 @@ for (const e of WF_ENTRIES) {
   assert.ok(cats.has(e.cat), `${e.id}: a known category`);
   assert.ok(!e.tags.some((t) => cats.has(t as any) && t !== e.cat), `${e.id}: tags never name a second category`);
   const plugin = fs.existsSync(path.join(ROOT, 'plugins', e.toolId)); const t: any = getTool(e.toolId); assert.ok(plugin || (t && t.status !== 'soon'), `${e.id}: ${e.toolId} is a real tool (or a shipped plugin)`);
-  assert.match(e.href, /^\/tools\/(create-image|h3-video|audio|3d)(\?|$)/, `${e.id}: opens a tab (${e.href})`);
+  assert.match(e.href, /^\/(tools\/(create-image|audio|3d)|video)(\?|$)/, `${e.id}: opens a tab (${e.href})`);
   const keys = keysOf(e.toolId);
   for (const k of e.models) assert.ok(keys.has(k), `${e.id}: model ${k} offered by ${e.toolId}`);
   if (e.featured) assert.ok(featuredByKey(e.featured), `${e.id}: featured ${e.featured} ships`);

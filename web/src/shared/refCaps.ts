@@ -1,7 +1,8 @@
 /**
  * How many input images a model takes on the place it will run (shared by Create Image's bar and the Canvas bar, 2026-10-24; moved out of
  * ui/next/ImageCanvas.tsx so both read the same rule). The route's own cap wins (Comfy Router: Nano Banana takes 4 there), else the
- * model's registry capability (capabilities.supports.maxRefs), never more than 10.
+ * model's registry capability (capabilities.supports.maxRefs). No blanket cap: GPT Image 2 takes 16, Nano Banana Pro / 2.1 take 14 (2026-10-31;
+ * it was capped at 10 for every model).
  */
 /** The caps of the route a run will use: the picked route (not 'auto'), else the model's default route, else its local route, else the first. */
 export function routeCapsOf(provider: any, pickedRoute?: string | null): any {
@@ -15,5 +16,5 @@ export function routeCapsOf(provider: any, pickedRoute?: string | null): any {
 /** The most images this model takes in one run (refs + the photo). `supports` = registry capabilities.supports. */
 export function maxRefsOf(supports: any, routeCaps: any): number {
   const r: number | null = typeof routeCaps?.maxRefs === 'number' ? routeCaps.maxRefs : null;
-  return Math.max(0, Math.min(10, r ?? Number(supports?.maxRefs ?? 1)));
+  return Math.max(0, Math.floor(r ?? Number(supports?.maxRefs ?? 1)) || 0);
 }

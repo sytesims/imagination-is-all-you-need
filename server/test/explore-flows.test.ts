@@ -44,17 +44,17 @@ for (const f of [...FEATURED_STARTER_VIDEO, ...FEATURED_VIDEO, ...FEATURED_AUDIO
     'sc-016bdc27', 'sc-973c88f8', 'sc-31465e96', 'sc-b718e875', 'sc-f7699cd4', 'sc-7205edb3', 'sc-fa96f109']) { assert.ok(FEATURED.some((f) => f.key === k), `${k}: Explore still shows it`); assert.ok(!STARTER.some((f) => f.key === k), `${k}: out of the starter pack`); }
   for (const k of ['ltx-pro-duet', 'sc-c0ce448f', 'sc-baed513e', 'sc-e774ad5c']) assert.ok(!FEATURED.some((f) => f.key === k), `${k}: removed`);
   for (const f of FEATURED_AUDIO) { assert.match(f.out.url, /^\/examples\/starter\/[\w-]+\.mp3$/); assert.match(featuredRecreateHref(f.key)!, /^\/tools\/audio\?workflow=(music|sfx)&recreate=[0-9a-f]{8}$/, `${f.key}: Recreate opens Audio`); }
-  assert.equal(featuredRecreateHref('presenter-talk'), '/tools/h3-video?workflow=lip-sync&mode=lipsync&recreate=af93a883', 'Lip Sync (its workflow link carries the mode)');
-  assert.equal(featuredRecreateHref('bus-stop-sharp'), '/tools/h3-video?workflow=upscale&recreate=d47db426', 'Video Upscale');
-  assert.equal(featuredRecreateHref('h3-fox-extend'), '/tools/h3-video?workflow=extend&recreate=0f0707ea', 'Extend');
+  assert.equal(featuredRecreateHref('presenter-talk'), '/video?workflow=lip-sync&mode=lipsync&recreate=af93a883', 'Lip Sync (its workflow link carries the mode)');
+  assert.equal(featuredRecreateHref('bus-stop-sharp'), '/video?workflow=upscale&recreate=d47db426', 'Video Upscale');
+  assert.equal(featuredRecreateHref('h3-fox-extend'), '/video?workflow=extend&recreate=0f0707ea', 'Extend');
   assert.match(featuredRecreateHref('mossbun-mockup-film')!, /^\/tools\/3d\?workflow=plan-a-shot&preset=open-city&realPrompt=/, 'Direct a Shot');
   const dir = path.join(PUB, 'examples/starter'); let total = 0; for (const n of fs.readdirSync(dir)) { total += fs.statSync(path.join(dir, n)).size; if (/\.webp$|\.jpg$/.test(n)) assert.ok(!fs.readFileSync(path.join(dir, n)).includes('Exif'), `${n}: no EXIF`); }
   assert.ok(total < 21e6, `starter folder ${total} B (< 21 MB)`); }
 for (const [k, id] of Object.entries(FEATURED_SEED_IDS)) assert.equal(featuredIdOf(k), id, `${k}: seed id`);
-assert.match(featuredRecreateHref('ltx-village-loop', { loop: '1' })!, /^\/tools\/h3-video\?recreate=e29ad72e&loop=1$/);
-assert.match(featuredRecreateHref('ltx-morph')!, /^\/tools\/h3-video\?workflow=transitions&recreate=a3c693af$/);
+assert.match(featuredRecreateHref('ltx-village-loop', { loop: '1' })!, /^\/video\?recreate=e29ad72e&loop=1$/);
+assert.match(featuredRecreateHref('ltx-morph')!, /^\/video\?workflow=transitions&recreate=a3c693af$/);
 for (const [k, id] of [['ltx-fox-meadow', '7964e9db'], ['ltx-fox-meadow-close', '4781fc98']]) { const f = FEATURED.find((x) => x.key === k)!;
-  assert.equal(featuredRecreateHref(k), `/tools/h3-video?recreate=${id}`, `${k}: Try this prompt opens Video`); assert.equal(f.modelKey, 'ltx-2.5-22b'); assert.match(f.prompt, /fox/); }
+  assert.equal(featuredRecreateHref(k), `/video?recreate=${id}`, `${k}: Try this prompt opens Video`); assert.equal(f.modelKey, 'ltx-2.5-22b'); assert.match(f.prompt, /fox/); }
 assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpHero \/>[\s\S]{0,200}<Xp3D \/>/, 'Explore opens on the hero then 3D, without a separate lighthouse section');
 { const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); const hero = xs.slice(xs.indexOf('function heroCredit'), xs.indexOf('/* ===', xs.indexOf('export function XpHero')));
   assert.match(hero, /<ShowcaseFilm\b[\s\S]*xp-headline[\s\S]*<HeroCredit /, 'the header plays the hero clip under its headline, line and credit');
@@ -71,7 +71,7 @@ ok(`${FEATURED.length} featured generations: files ship small, metadata stripped
 // ---- Explore rows ----
 assert.equal(EXPLORE_ROWS[0].id, 'video'); assert.deepEqual(EXPLORE_ROWS.map((r) => r.title), ['Make a video', 'Direct a Shot', 'Swap a character', 'New angle', 'Loop & Morph', 'Exploded view & effects', 'Viral templates', 'Make music & make it talk', '3D', 'Agents']);
 assert.equal(new Set(EXPLORE_CARDS.map((c) => c.id)).size, EXPLORE_CARDS.length, 'unique card ids');
-const PAGES = /^\/(tools\/(h3-video|3d|audio|create-image)|mcp|canvas)\b/;
+const PAGES = /^\/(tools\/(3d|audio|create-image)|video|mcp|canvas)\b/;
 for (const c of EXPLORE_CARDS) {
   assert.match(c.href, PAGES, `${c.id}: opens a real page (${c.href})`); assert.doesNotMatch(`${c.title} ${c.line}`, /coming soon|soon\b/i, `${c.id}: no coming-soon card`);
   if (c.toolId && !['plan-a-shot', 'make-it-real', 'three-d-turntable'].includes(c.toolId)) assert.ok(getTool(c.toolId), `${c.id}: ${c.toolId} is a tool`);
@@ -90,12 +90,12 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
   { const h = FEATURED.find((x) => x.key === 'ltx-pro-painter')!; assert.equal(h.toolId, 'h3-video'); assert.equal(h.provider, 'router-ltx-25-pro'); assert.equal(h.modelKey, 'ltx-2.5-pro'); assert.equal(h.model, 'LTX-2.5 Pro');
     assert.equal(h.runOn, 'comfy-cloud'); assert.equal(h.route, 'comfy-router:router-ltx-25-pro'); assert.equal(h.costUsd!.toFixed(2), '1.72', 'the run\u2019s real cost');
     assert.deepEqual([h.input.mode, h.input.duration, h.input.resolution, h.input.aspect, h.input.audio], ['t2v', 10, '720p', '16:9', true]); assert.match(h.prompt, /whale/);
-    assert.equal(featuredRecreateHref('ltx-pro-painter'), '/tools/h3-video?recreate=8e4d7d98', 'Recreate opens Video › Create Video');
+    assert.equal(featuredRecreateHref('ltx-pro-painter'), '/video?recreate=8e4d7d98', 'Recreate opens Video › Create Video');
     const pr = execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=codec_name,width,height', '-of', 'csv=p=0', path.join(PUB, h.out.url)]).toString();
     assert.match(pr, /h264,1280,720/); assert.match(pr, /aac/); assert.ok(fs.readFileSync(path.join(PUB, h.out.url)).subarray(0, 64).includes('moov'), 'faststart: moov up front'); }
   assert.equal((X as Record<string, unknown>).EXPLORE_REEL, undefined, 'no rotating reel');
   { const d = FEATURED.find((x) => x.key === 'kling-dance-swap')!; assert.equal(d.toolId, 'motion-transfer'); assert.equal(d.modelKey, 'kling-v3-omni-edit'); assert.equal(d.costUsd, 1.01);
-    assert.equal(featuredRecreateHref('kling-dance-swap'), '/tools/h3-video?workflow=motion-control&recreate=487a04e5'); file(String(d.input.videoUrl), 1.5e6); for (const u of d.input.refUrls as string[]) file(u); }
+    assert.equal(featuredRecreateHref('kling-dance-swap'), '/video?workflow=motion-control&recreate=487a04e5'); file(String(d.input.videoUrl), 1.5e6); for (const u of d.input.refUrls as string[]) file(u); }
   { const hero = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); const film = fs.readFileSync(path.join(WEB, 'shared/ShowcaseFilm.tsx'), 'utf8');
     const xp = hero.slice(hero.indexOf('export function XpHero'), hero.indexOf('a prompt as it ran (shared)'));
     assert.match(xp, /<ShowcaseFilm\b[\s\S]*?\bpriority\n/, 'the hero: the page\u2019s first film'); assert.doesNotMatch(xp, /soundOn|soundKey|soundLabel/, 'the hero\u2019s sound is the page-wide choice (shared/soundDirector.ts)');
@@ -122,14 +122,14 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     const latestWhale = FEATURED.find((x) => x.key === W.take.key)!;
     assert.equal(latestWhale.jobId, 'd71d11f6'); assert.equal(latestWhale.input.seed, 303988);
     assert.equal(latestWhale.model, 'MiniMax H3'); assert.equal(latestWhale.costEstimated, true);
-    assert.equal(featuredRecreateHref(W.take.key), '/tools/h3-video?recreate=654bac59');
+    assert.equal(featuredRecreateHref(W.take.key), '/video?recreate=654bac59');
     const still = FEATURED.find((x) => x.key === 'ltx-pro-whale-glide')!.before!;
     for (const [k, id, dur, usd, w, h, sec, words] of [['ltx-pro-whale-glide', 'bc0005d7', 6, 1.46, 1920, 1080, 6.04, /^The whale glides slowly overhead, its tail sweeping once;[\s\S]*Sound: low whale song, soft desert wind\.$/],
       ['ltx-pro-whale-dive', '39346ee1', 10, 2.44, 1280, 720, 7.42, /^The whale zooms past the rider, its tail sweeping beautifully[\s\S]*Sound: slow beautiful matched with the whales speed$/]] as const) {
       const f = FEATURED.find((x) => x.key === k)!; assert.ok(f, `${k}: a featured entry`); assert.equal(featuredIdOf(k), id, `${k}: seed id`);
       assert.deepEqual([f.toolId, f.provider, f.modelKey, f.model, f.runOn, f.route, f.costUsd], ['h3-video', 'router-ltx-25-pro', 'ltx-2.5-pro', 'LTX-2.5 Pro', 'comfy-cloud', 'comfy-cloud:cloud-ltx25-pro-api', usd], `${k}: LTX-2.5 Pro on Comfy Cloud, its real cost`);
       assert.deepEqual([f.input.mode, f.input.duration, f.input.resolution, f.input.aspect, f.input.audio, f.input.seed, f.input.imageUrl], ['i2v', dur, '1080p', '16:9', true, 116459, '/showcase/ltx-pro-whale-in.jpg'], `${k}: settings as they ran, the still attached`);
-      assert.match(f.prompt, words, `${k}: the prompt as it ran`); assert.equal(featuredRecreateHref(k), `/tools/h3-video?recreate=${id}`, `${k}: Recreate opens Video with the still and prompt`);
+      assert.match(f.prompt, words, `${k}: the prompt as it ran`); assert.equal(featuredRecreateHref(k), `/video?recreate=${id}`, `${k}: Recreate opens Video with the still and prompt`);
       assert.equal(f.before!.url, still.url, 'the same still for both takes'); assert.equal(f.out.sec, sec);
       const p = file(f.out.url, 3e6); assert.ok(fs.statSync(p).size <= 3e6, `${k}: ≤ 3 MB`);
       const pr = execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=codec_name,profile,width,height', '-of', 'csv=p=0', p]).toString();
@@ -156,14 +156,14 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
   { const K = X.EXPLORE_KOI; assert.equal(K.key, 'h3-koi-take'); assert.equal(K.title, 'Make your own cartoon.'); assert.match(K.line, /^A boy in the rain, a paper lantern, a wish\. Write the scene the way you'd tell it/); assert.equal(K.eyebrow, 'Made with MiniMax H3');
     assert.doesNotMatch(`${K.eyebrow} ${K.title} ${K.line}`, /higgsfield|kling|seedance|veo|sora/i, 'our own words, no other products named');
     assert.deepEqual(K.first, { model: 'MiniMax H3', place: 'Comfy Cloud', usd: 0.8 }, 'the first 10 s: its model, place and real price'); assert.equal(K.place, 'Comfy Cloud');
-    assert.equal(K.cta.label, 'Start your scene'); assert.equal(K.cta.href, '/tools/h3-video?model=minimax-h3', 'Start your scene opens Video with MiniMax H3 picked');
+    assert.equal(K.cta.label, 'Start your scene'); assert.equal(K.cta.href, '/video?model=minimax-h3', 'Start your scene opens Video with MiniMax H3 picked');
     const f = FEATURED.find((x) => x.key === K.key)!; assert.ok(f?.before, 'the take ships as a featured entry with its first 10 s');
     assert.deepEqual([f.toolId, f.provider, f.modelKey, f.model, f.flow, f.runOn, f.route, f.costUsd], ['h3-extend', 'comfy-h3-extend', 'minimax-h3-extend', 'H3 Extend', 'Extend', 'comfy-cloud', 'comfy-cloud:cloud-h3-extend', 0.52], 'H3 Extend on Comfy Cloud, its real cost');
     assert.deepEqual([f.input.mode, f.input.extendSeconds, f.input.resolution, f.input.seed, f.input.keepAudio, f.input.videoUrl], ['extend', 10, '768p', 1517254433, true, f.before!.url], 'settings as they ran; Recreate loads the first 10 s');
     assert.match(f.prompt, /^Continue the same action at the same pace, same camera: the glowing koi circles once above the rooftops/, 'the extend prompt as it ran');
     assert.equal(f.out.url, '/showcase/h3-koi-take.mp4', 'the plain take lives in the featured entry (Extend page, feeds, Recreate; one line to swap for an upscale)'); assert.equal(f.out.sec, 20.13);
     assert.deepEqual(K.ending, { url: '/showcase/h3-koi-take-ending.mp4', sec: 30.13, label: 'Ending · made here · Free' }, 'Explore only: the take + its 10 s ending (hold, title card, end mark)'); assert.equal(f.before!.sec, 10.125);
-    assert.equal(featuredIdOf(K.key), '2fb5ac80'); assert.equal(featuredRecreateHref(K.key), `/tools/h3-video?workflow=extend&recreate=${FEATURED_SEED_IDS[K.key]}`, 'Recreate opens Video › Extend; the prefill names H3 Extend itself (modelKey), not H3 Max Extend, which shares the engine)');
+    assert.equal(featuredIdOf(K.key), '2fb5ac80'); assert.equal(featuredRecreateHref(K.key), `/video?workflow=extend&recreate=${FEATURED_SEED_IDS[K.key]}`, 'Recreate opens Video › Extend; the prefill names H3 Extend itself (modelKey), not H3 Max Extend, which shares the engine)');
     assert.ok(fs.statSync(file(f.out.url, 4e6)).size <= 4e6, 'the take stays ≤ 4 MB'); assert.ok(fs.statSync(file(K.ending.url, 4e6)).size <= 4e6, 'the ending version stays ≤ 4 MB'); file(f.before.url, 1.2e6); file(FEATURED_BIG_POSTER[K.key], 1.5e5); for (const u of [f.out.poster, f.before.poster, K.newFrame]) file(u, 4e4);
     for (const [u, sec] of [[f.out.url, 20.1], [K.ending.url, 30.1], [f.before.url, 10.1]] as const) { const p = path.join(PUB, u);
       const pr = execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=codec_name,profile,width,height', '-of', 'csv=p=0', p]).toString();
@@ -184,21 +184,21 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
   assert.equal((X as Record<string, unknown>).EXPLORE_QUICK, undefined, 'the hero has no quick links (2026-10-28)');
   assert.equal(X.EXPLORE_TAGLINES.length, 3, 'three tagline options'); assert.ok(X.EXPLORE_TAGLINES.includes(X.EXPLORE_TAGLINE));
   for (const t of X.EXPLORE_TAGLINES) { assert.ok(t.title.length && t.line, 'tagline copy'); assert.doesNotMatch(`${t.title.join(' ')} ${t.line}`, /higgsfield/i, 'no other products named'); }
-  const LINK = /^\/(tools\/(h3-video|3d|audio|create-image)|canvas|workflows|film)\b/;
+  const LINK = /^\/(tools\/(3d|audio|create-image)|video|canvas|workflows|film)\b/;
   for (const u of X.EXPLORE_SHOWCASE_LINKS()) assert.match(u, LINK, `showcase link opens a real page: ${u}`);
   /* chapter 1: swap a character, the dance-off (2026-10-28, the user's pick C): two swaps of one dance, H3 Character Swap (job 1f0cf6a2) and Kling 3.0 Omni Edit (job dc114104) */
   { const S = X.EXPLORE_SWAP; assert.equal((X as Record<string, unknown>).EXPLORE_STAGE, undefined, 'the Direct a Shot chapter is gone'); assert.equal((X as Record<string, unknown>).EXPLORE_SWAP_DUO, undefined, 'one layout, no A / B leftovers');
     assert.deepEqual(S.title, ['Same dance.', 'Two new casts.']); assert.match(S.eyebrow, /^Chapter 1 · Swap a character$/);
     assert.doesNotMatch(`${S.title.join(' ')} ${S.line} ${S.runs.map((r) => `${r.who} ${r.photos} ${r.cta.label}`).join(' ')}`, /higgsfield|seedance|kling|\bmac\b/i, 'our own words (the model names come from the featured entries)');
     assert.deepEqual(S.runs.map((r) => r.key), ['h3-char-swap', 'kling-dance-swap']); assert.equal(S.key, 'h3-char-swap');
-    assert.equal(S.cta.href, '/tools/h3-video?workflow=object-swap&model=minimax-h3-character-swap', 'the first CTA opens Object Swap on H3 Character Swap'); assert.equal(S.runs[0].cta.href, S.cta.href);
-    assert.equal(S.runs[1].cta.href, '/tools/h3-video?workflow=motion-control&model=kling-v3-omni-edit', 'the whole-cast CTA opens Motion Control on Omni Edit');
+    assert.equal(S.cta.href, '/video?workflow=object-swap&model=minimax-h3-character-swap', 'the first CTA opens Object Swap on H3 Character Swap'); assert.equal(S.runs[0].cta.href, S.cta.href);
+    assert.equal(S.runs[1].cta.href, '/video?workflow=motion-control&model=kling-v3-omni-edit', 'the whole-cast CTA opens Motion Control on Omni Edit');
     const f = FEATURED.find((x) => x.key === S.key)!; assert.ok(f, 'the H3 swap ships as a featured entry');
     assert.deepEqual([f.toolId, f.provider, f.modelKey, f.model, f.route, f.costUsd, f.runOn], ['object-swap', 'comfy-h3-charswap', 'minimax-h3-character-swap', 'H3 Character Swap', 'comfy-cloud:cloud-h3-charswap', 0.42, 'comfy-cloud']);
     assert.deepEqual([f.input.mode, f.input.swapType, f.input.preset, f.input.target, f.input.resolution, f.input.seed, f.prompt], ['object_swap', 'person', 'right-person', 'the woman on the right', '1080p', 737688, ''], 'the run’s input, as it ran');
-    assert.equal(featuredRecreateHref(S.key), '/tools/h3-video?workflow=object-swap&recreate=bb7e11f4', 'Recreate opens Video › Object Swap');
+    assert.equal(featuredRecreateHref(S.key), '/video?workflow=object-swap&recreate=bb7e11f4', 'Recreate opens Video › Object Swap');
     const om = FEATURED.find((x) => x.key === 'kling-dance-swap')!; assert.deepEqual([om.model, om.costUsd, om.runOn, om.jobId, FEATURED_SEED_IDS['kling-dance-swap']], ['Kling 3.0 Omni Edit', 1.01, 'comfy-cloud', 'dc114104', '487a04e5'], 'the shipped Omni Edit run (the upscaled one)');
-    assert.equal(featuredRecreateHref(om.key), '/tools/h3-video?workflow=motion-control&recreate=487a04e5');
+    assert.equal(featuredRecreateHref(om.key), '/video?workflow=motion-control&recreate=487a04e5');
     /* the original both runs started from: the same 8 s take, H.264 + AAC, faststart, metadata stripped */
     assert.equal(S.original.url, f.before!.url, 'the original is the clip both runs started from'); assert.equal(f.input.videoUrl, f.before!.url); file(S.original.poster);
     { const p = file(S.original.url); const pr = execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=codec_name,width,height', '-of', 'csv=p=0', p]).toString();
@@ -378,7 +378,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
   { const W = X.EXPLORE_SCRIPT; const f = FEATURED.find((x) => x.key === W.key)!; assert.ok(f, 'the scene ships as a featured entry');
     assert.deepEqual([f.tab, f.toolId, f.provider, f.modelKey, f.model, f.runOn, f.route, f.costUsd], ['video', 'h3-video', 'comfy-h3', 'minimax-h3', 'MiniMax H3', 'comfy-cloud', 'comfy-cloud:cloud-h3-wf', 1.2], 'MiniMax H3 on Comfy Cloud, its real price');
     assert.match(f.prompt, /^Korean drama comedy scene, 15 seconds/); assert.match(f.prompt, /부딪쳤으면 사과는 해야죠\.[\s\S]*내가 왜\?[\s\S]*그래요\?/, 'the prompt as it ran, Korean lines and all');
-    assert.equal(featuredIdOf(W.key), 'a82dd012'); assert.equal(featuredRecreateHref(W.key), '/tools/h3-video?recreate=a82dd012', 'Recreate opens Video with the prompt');
+    assert.equal(featuredIdOf(W.key), 'a82dd012'); assert.equal(featuredRecreateHref(W.key), '/video?recreate=a82dd012', 'Recreate opens Video with the prompt');
     const p = file(f.out.url, 2.5e6); const pr = execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=codec_name,profile,width,height', '-of', 'csv=p=0', p]).toString();
     assert.match(pr, /h264,High,1280,714/, 'H.264 High'); assert.match(pr, /aac/, 'the voices kept'); assert.ok(fs.readFileSync(p).subarray(0, 64).includes('moov'), 'faststart');
     let added = fs.statSync(p).size; for (const [u, max] of [[FEATURED_BIG_POSTER[W.key], 1.5e5], [f.out.poster, 4e4]] as const) { const q = file(u, max); added += fs.statSync(q).size; assert.ok(!fs.readFileSync(q).includes('Exif'), `${u}: no EXIF`); }
@@ -413,7 +413,7 @@ ok('web: Examples shelf and empty-tab Featured feed removed; Filter › From ›
   const V = X.EXPLORE_VFX; const tool = getTool('footage-fx') as any; const presets = new Set((tool.presets ?? []).map((p: any) => p.id));
   for (const v of V.effects) { const t = X.vfxTile(v)!; assert.ok(t, `${v.effect}: a Footage Effects pick`); const e = FOOTAGE_EFFECTS.find((x) => x.id === v.effect)!;
     assert.ok(presets.has(t.id), `${t.id}: the tool offers it`); assert.equal(t.lora, LTX_LORAS[e.lora].label, `${t.id}: names its IC-LoRA`); assert.equal(t.maker, 'Lightricks');
-    assert.match(t.model, /^LTX-2\.5 22B \+ /); assert.match(t.sourceUrl, /^https:\/\/huggingface\.co\/Lightricks\//); assert.equal(t.href, `/tools/h3-video?workflow=footage-fx&preset=${t.id}`, `${t.id}: Try it opens Footage Effects with it picked`);
+    assert.match(t.model, /^LTX-2\.5 22B \+ /); assert.match(t.sourceUrl, /^https:\/\/huggingface\.co\/Lightricks\//); assert.equal(t.href, `/video?workflow=footage-fx&preset=${t.id}`, `${t.id}: Try it opens Footage Effects with it picked`);
     if (t.key) { const f = FEATURED.find((x) => x.key === t.key)!; assert.ok(f?.before, `${t.key}: a shipped before / after`); assert.equal(f.toolId, 'footage-fx'); assert.equal(f.runOn, 'local'); } }
   assert.deepEqual(V.effects.map((v) => v.effect), ['day-to-night', 'vanish', 'flood', 'alpha-matte']);
   const lay = FEATURED.find((x) => x.key === V.layout.key)!; assert.equal(lay.model, 'LTX-2.5 + Layout to Render', 'Layout to Render reuses the Mockup to film clip'); assert.match(V.layout.sourceUrl, /Layout-To-Render/);

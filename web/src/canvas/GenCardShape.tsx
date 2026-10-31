@@ -1,4 +1,3 @@
-import { ACCEPT, kindOfFile, wrongTypeText } from '../../../server/src/shared/mediaAccept';
 /**
  * The generate node's view ('ohf-gen'; the shape util is genCardUtil.tsx, variations are variation.ts): one run, set up and started on the node itself. It uses the shared NodeFrame, so it has the
  * same header / media / footer / ports as every other node:
@@ -12,7 +11,7 @@ import { ACCEPT, kindOfFile, wrongTypeText } from '../../../server/src/shared/me
  * (cardModel.GenCardProps): never media data.
  */
 import { useEffect, useRef, useState } from 'react';
-import { useEditor, useValue, type TLShapeId } from 'tldraw';
+import { useEditor, useValue } from 'tldraw';
 import type { JobState } from '../api';
 import { getJob } from '../api';
 import { ResultCard } from '../shared/ResultCard';
@@ -29,18 +28,17 @@ import { useToolQuote } from '../shared/useToolQuote';
 import { useDownloadIntent } from '../shared/hardware';
 import { intentSize, doSetupPlace } from '../shared/SetupCard';
 import { modelOfEngine, setupPlacesOf } from '../shared/models';
-import { uploadMedia } from '../shared/batch1';
 import { jobCaption } from '../shared/FeedCaption';
 import { useToast } from '../shared/Toast';
 import { tip } from '../shared/Tooltip';
 import { navigate } from '../platform/router';
 import { WfIcon, WorkflowControls } from '../ui/next/WorkflowBar';
 import { PreflightPop } from '../ui/next/PhotoPrep';
-import { ImageIcon, VideoIcon, AudioIcon, CubeIcon, CloseIcon, PlusIcon, SoundIcon } from '../ui/Icons';
+import { ImageIcon, VideoIcon, AudioIcon, CubeIcon, SoundIcon } from '../ui/Icons';
 import { preflightProblems, type PreflightFix } from '../../../server/src/shared/preflight';
-import { MEDIA, availableFlows, flowById, flowInfo, tooManyNote, type GenMedium, type GenSlot, type InputKind } from '../shared/genFlows';
+import { MEDIA, availableFlows, flowById, flowInfo, tooManyNote, type GenMedium } from '../shared/genFlows';
 import { useCatalog, catalogNow } from './catalog';
-import { GEN_TYPE, type BoardInput, type GenCardProps } from './cardModel';
+import { GEN_TYPE, type GenCardProps } from './cardModel';
 import type { GenCardShape } from './genCardUtil';
 import { variationOf } from './variation';
 import { RUN_EVT, OPEN_GROUP_EVT, open3d } from './canvasEvents';
@@ -51,6 +49,7 @@ import { setCard, submit, reveal } from './agentApi';
 import { addResultCard, probeSize } from './resultCardUtil';
 import { QuickActions } from './QuickActions';
 import { NodeFrame } from './NodeFrame';
+import { CardInputs } from './CardInputs';
 import * as Ic from './icons';
 import { placeWord, cardLabel, emptyLine } from './cardLook';
 import { badgeText } from '../../../server/src/shared/takeReview';
@@ -104,27 +103,6 @@ function TakeStrip({ shape }: { shape: GenCardShape }) {
         {t.review?.rec && <span className="gc-v-rec" data-testid={`gc-rec-${k + 1}`} aria-label="The agent would pick this one" />}</button>)}
     </span>
     <button type="button" className="nf-pull" data-testid="gc-pull" aria-label="Pull out" {...tip('Put this version on the board as its own card')} onClick={() => void pull()}><Ic.PullOutIcon size={14} /></button>
-  </div>;
-}
-
-/** Inputs: thumbnails with ✕ (an arrow input deletes its arrow), plus a quiet Add chip while selected (never a dashed box). */
-function Inputs({ shape, slots, bySlot, selected }: { shape: GenCardShape; slots: GenSlot[]; bySlot: Record<string, BoardInput[]>; selected: boolean }) {
-  const editor = useEditor(); const toast = useToast(); const file = useRef<HTMLInputElement>(null); const [upFor, setUpFor] = useState<GenSlot | null>(null);
-  const remove = (i: BoardInput) => { if (i.arrowId) { editor.markHistoryStoppingPoint('remove input'); editor.deleteShapes([i.arrowId as TLShapeId]); return; } setCard(editor, shape.id, { inputs: shape.props.inputs.filter(x => x.key !== i.key) }); };
-  const onFile = async (f: File | undefined) => { const s = upFor; setUpFor(null); if (!f || !s) return; const kind: InputKind | null = kindOfFile(f);
-    if (kind !== s.accept) { toast(wrongTypeText(f.name, [s.accept]), 'warn'); return; }
-    try { const [m] = await uploadMedia([f]); if (!m?.url) throw new Error('Upload failed'); const key = `u:${Date.now().toString(36)}`; const cur = (editor.getShape(shape.id) as GenCardShape).props;
-      const inp: BoardInput = { key, kind, url: m.url, poster: kind === 'image' ? m.url : kind === 'video' ? `/api/media/thumb?url=${encodeURIComponent(m.url)}` : '', jobId: '', label: f.name };
-      setCard(editor, shape.id, { inputs: [...cur.inputs, inp], pins: { ...cur.pins, [key]: s.name } }); }
-    catch (e) { toast((e as Error).message || 'Upload failed', 'error'); } };
-  return <div className="nf-ins" data-testid="gc-inputs">
-    <input ref={file} type="file" hidden accept={ACCEPT[upFor?.accept === 'video' ? 'video' : upFor?.accept === 'audio' ? 'audio' : 'image']} onChange={e => { void onFile(e.target.files?.[0]); e.currentTarget.value = ''; }} />
-    {slots.map(s => { const list = bySlot[s.name] ?? [];
-      return <span key={s.name} className="nf-slot" data-testid={`gc-slot-${s.name}`} data-n={list.length}>
-        {list.map(i => <span key={i.key} className="nf-in-thumb" {...tip(`${s.label}: ${i.label}`)}>{i.poster ? <img src={gridSrc(i.poster, 54)} alt="" draggable={false} /> : i.kind === 'audio' ? <AudioIcon size={16} /> : <VideoIcon size={16} />}
-          <small>{s.label}</small><button type="button" className="nf-in-x" aria-label={`Remove ${s.label.toLowerCase()}`} data-testid={`gc-in-x-${s.name}`} onClick={() => remove(i)}><CloseIcon size={9} strokeWidth={2.4} /></button></span>)}
-        {selected && list.length < s.max && <button type="button" className={`nf-add${s.required && !list.length ? ' req' : ''}`} aria-label={`Add ${s.label.toLowerCase()}${s.required ? '' : ' (optional)'}`} data-card-control {...tip(`${s.hint}. Draw an arrow into the node from a result or upload, or pick a file`)} onClick={() => { setUpFor(s); requestAnimationFrame(() => file.current?.click()); }}><PlusIcon size={12} />{list.length ? `${list.length}/${s.max}` : s.label}</button>}
-      </span>; })}
   </div>;
 }
 
@@ -200,11 +178,12 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
     <span className={`gc-row-price${quoting ? ' gc-quoting' : ''}`} data-testid="gc-price">{quoting ? <i className="gc-shimmer" aria-label="Pricing" /> : <GenPrice q={quote} demo={!key && quote?.demo === true} free={!key && cr === 0} credits={key ? null : cr} text={key ? 'Needs a key' : place === 'Your computer' ? 'Free' : null} />}</span>
   </div>;
 
-  const footer = draft
+  /* while it runs there is no action row: the one status line sits where the model row goes, the bar on the picture's bottom edge */
+  const running = p.status === 'running';
+  const footer = running ? undefined : draft
     ? (spec ? <DockGenerate toolId={spec.tool.id} engine={spec.provider} quote={q} label={spec.generateLabel} busy={busy} problems={problems} missing={missing} pfOpen={pfOpen} genRef={genRef} onClick={() => void generate()}
         intent={intent} dlSize={dlSize} workflowId={spec.flow.id} className="gen-node" variant="node" testId="gc-generate" priceTestId="gc-gen-price" />
       : <button type="button" className="gen-btn gen-node" disabled><span className="gen-l">Generate</span></button>)
-    : p.status === 'running' ? <RunFoot job={job ?? stubJob(p)} />
     : p.status === 'failed' ? <FailFoot shape={shape} job={job ?? stubJob(p, 'failed')} />
     : <TakeStrip shape={shape} />;
 
@@ -218,10 +197,10 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
         <button type="button" className="nf-act" aria-label="Make a variation" data-testid="gc-variation" {...tip('Variation: a copy with the same settings beside it, ready to tweak. Nothing runs until you press Generate (⌘D does the same)')} onClick={() => void runVariation()}><Ic.CopyIcon size={14} /></button>
         <button type="button" className="nf-act" aria-label="Recreate: run it again" data-testid="gc-recreate" disabled={busy} {...tip('Recreate: run it again with the same settings. The new version joins the strip')} onClick={() => void recreate()}><Ic.RetryIcon size={14} /></button></> : undefined}
       footer={footer}>
-      {shot && <h3 className="gc-shot" data-testid="gc-shot" title={shot}>{shot}</h3>}
+      {shot ? <h3 className="gc-shot nf-heading" data-testid="gc-shot" title={shot}>{shot}</h3> : <h3 className="gc-shot nf-heading nf-heading-empty" aria-hidden>Untitled</h3>}
       <div className={`nf-media gc-media gc-media-${p.status}`} data-testid="gc-media">
         {draft && <div className="gc-stage gc-draft" key="draft">
-          {spec && spec.slots.length > 0 && (open || (st?.inputs.length ?? 0) > 0) && <Inputs shape={shape} slots={spec.slots} bySlot={st?.bySlot ?? {}} selected={selected} />}
+          {spec && spec.slots.length > 0 && (open || (st?.inputs.length ?? 0) > 0) && <CardInputs cardId={shape.id} slots={spec.slots} bySlot={st?.bySlot ?? {}} showAdd={selected} />}
           {waiting && <span className="gc-waits" data-testid="gc-waits">{waiting.split('\u0000').map(n => <small key={n}><i aria-hidden />Waits for {n}</small>)}</span>}
           {!(st?.inputs.length) && <span className="gc-empty" data-testid="gc-empty"><Medium size={22} /><small>{emptyLine(p.medium)}</small></span>}
           {note && <p className="nf-note" role="note" data-testid="gc-too-many">{note}</p>}
@@ -229,11 +208,12 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
             files={{ image: st?.bySlot.image?.[0]?.url ? { file: null as any, url: st?.bySlot.image[0].poster || st?.bySlot.image[0].url } : null }} openGroup={openGroup} /></div>}
         </div>}
         {p.status === 'running' && <div className="gc-stage" key="run"><GenTile job={job ?? stubJob(p)} testId="gc-running" /></div>}
+        {running && <MediaBar job={job ?? stubJob(p)} />}
         {p.status === 'done' && take && <div className={`gc-stage${developing === take.url ? ' develop' : ''}`} key={`done-${take.url}`} data-developing={developing === take.url ? '1' : undefined}><ResultCard kind={take.kind} url={take.url} poster={take.poster} title={p.prompt || name} model={model} width={p.w} active={selected || hover} onView3d={take.kind === '3d' ? () => open3d(take.jobId) : undefined} testId="gc-result" />
           {(take.kind === 'image' || take.kind === 'video') && <QuickActions editor={editor} sourceId={shape.id} kind={take.kind} url={take.url} show={selected || hover} />}</div>}
         {p.status === 'failed' && <div className="gc-stage" key="fail"><Failed shape={shape} job={job ?? stubJob(p, 'failed')} /></div>}
       </div>
-      {chips}
+      {running ? <RunLine job={job ?? stubJob(p)} /> : chips}
       {draft && !linked && spec?.promptMode !== 'hidden'
         ? <div className={`gc-prompt${focus ? ' open' : ''}`}>
             <textarea ref={ta} className="nf-text gc-prompt-in" rows={2} data-card-control data-testid="gc-prompt-in" aria-label="Prompt" placeholder={spec?.placeholder ?? 'Describe what you want'} value={p.prompt}
@@ -264,13 +244,14 @@ function PromptText({ text, linked }: { text: string; linked: boolean }) {
   </div>;
 }
 
-/** Running: the stage in one word, a thin bar and the time left (the shared queue words). */
-function RunFoot({ job }: { job: JobState }) {
-  const pr = progressOfJob(job); const fill = overallFill(pr); const eta = etaText(pr.etaSeconds);
-  return <div className="gc-run" data-testid="gc-run-foot" role="status">
-    <span className="gc-run-l"><b>{progressLabel(pr)}</b>{eta && <small>{eta}</small>}</span>
-    <span className={`gc-run-bar${fill == null ? ' ind' : ''}`} aria-hidden><i style={fill == null ? undefined : { width: `${Math.max(3, Math.round(fill * 100))}%` }} /></span>
-  </div>;
+/** The run's one status line ("Loading the model · ~10 min") and the thin bar on the picture's bottom edge. */
+function RunLine({ job }: { job: JobState }) {
+  const pr = progressOfJob(job); const eta = etaText(pr.etaSeconds);
+  return <div className="gc-row gc-row-run" data-testid="gc-run-line" role="status"><i className="nf-dot" aria-hidden /><b>{progressLabel(pr)}</b>{eta && <span className="gc-run-eta">{eta}</span>}</div>;
+}
+function MediaBar({ job }: { job: JobState }) {
+  const fill = overallFill(progressOfJob(job));
+  return <span className={`nf-mbar${fill == null ? ' ind' : ''}`} aria-hidden><i style={fill == null ? undefined : { width: `${Math.max(3, Math.round(fill * 100))}%` }} /></span>;
 }
 
 /** Failed: one calm line and Retry (the reason sits in the picture box). */

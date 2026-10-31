@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import { HTMLContainer, useEditor, useValue, type TLShapeId } from 'tldraw';
 import { useToast } from '../shared/Toast';
 import { uploadMedia } from '../shared/batch1';
+import { mediaPoster } from './fileDrop';
 import ImageCompare from '../shared/ImageCompare';
 import { AudioCard } from '../shared/AudioCard';
 import { tip } from '../shared/Tooltip';
@@ -40,7 +41,7 @@ function TextNode({ shape, p, Icon, note = false }: { shape: AuxNodeShape; p: Au
   const editor = useEditor();
   const set = (text: string) => editor.run(() => editor.updateShape({ id: shape.id, type: shape.type, props: { text } } as any), { history: 'ignore' });
   const words = p.text.trim() ? p.text.trim().split(/\s+/).length : 0;
-  return <NodeFrame shapeId={shape.id} type={shape.type} icon={<Icon />} title={note ? 'Note' : 'Prompt'} status={<span className={`nf-status${note ? '' : ' nf-status-running'}`}>{note ? 'Note' : 'Text'}</span>}
+  return <NodeFrame shapeId={shape.id} type={shape.type} icon={<Icon />} title={note ? 'Note' : 'Prompt'} status={<span className="nf-status">{note ? 'Note' : 'Text'}</span>}
     footer={<><span className="nf-model"><b>{words ? `${words} word${words === 1 ? '' : 's'}` : note ? 'A note for you' : 'Text input'}</b></span><span className="nf-price" {...tip(note ? 'A note never takes an input; its output can feed a prompt' : 'Drag the output onto a generate node to feed its prompt')}>{note ? 'Not an input' : 'Prompt'}</span></>}>
     <div className={`ax-body${note ? ' ax-note' : ''}`}>
       <textarea className="ax-text" data-card-control data-testid={note ? 'note-text' : 'prompt-text'} value={p.text} placeholder={note ? 'Write a note for yourself…' : 'Write a prompt, then drag its output onto a generate node…'}
@@ -56,13 +57,13 @@ function UploadView({ shape, p, Icon }: { shape: AuxNodeShape; p: AuxNodeProps; 
   const patch = (props: Partial<AuxNodeProps>) => editor.run(() => editor.updateShape({ id: shape.id, type: shape.type, props } as any), { history: 'ignore' });
   const take = async (f: File | undefined) => { if (!f || busy) return; const mediaKind = kindOfFile(f);
     if (!mediaKind) { toast(wrongTypeText(f.name, ['image', 'video', 'audio']), 'warn'); return; } setBusy(true);
-    try { const [m] = await uploadMedia([f]); if (!m?.url) throw new Error('Upload failed'); const kind = (m as any).type || mediaKind; const poster = kind === 'image' ? m.url : kind === 'video' ? `/api/media/thumb?url=${encodeURIComponent(m.url)}` : '';
+    try { const [m] = await uploadMedia([f]); if (!m?.url) throw new Error('Upload failed'); const kind = (m as any).type || mediaKind; const poster = mediaPoster(kind, m.url);
       patch({ url: m.url, poster, mediaKind: kind, label: f.name }); }
     catch (e) { toast((e as Error).message || 'Upload failed', 'error'); } finally { setBusy(false); } };
   const pick = () => file.current?.click();
   const kind = p.mediaKind; const label = p.label || 'Untitled upload';
-  return <NodeFrame shapeId={shape.id} type={shape.type} icon={<Icon />} title="Upload" status={<span className="nf-status">{kind ? kind === '3d' ? '3D' : kind : 'Media'}</span>}
-    footer={<><span className="nf-model">{kind === 'audio' ? <AudioIcon size={14} /> : kind === 'video' ? <VideoIcon size={14} /> : <ImageIcon size={14} />}<b>{p.url ? label : 'No file yet'}</b></span>{p.url && <span className="nf-price">Input</span>}</>}>
+  return <NodeFrame shapeId={shape.id} type={shape.type} icon={<Icon />} title="Upload" heading={p.url ? label : 'Add a file'} status={<span className="nf-status">{kind ? kind === '3d' ? '3D' : kind : 'Media'}</span>}
+    footer={<><span className="nf-model">{kind === 'audio' ? <AudioIcon size={14} /> : kind === 'video' ? <VideoIcon size={14} /> : <ImageIcon size={14} />}<b>{p.url ? `${kind === 'video' ? 'Clip' : kind === 'audio' ? 'Sound' : 'Picture'} · feeds other cards` : 'No file yet'}</b></span>{p.url && <span className="nf-price">Input</span>}</>}>
     <input ref={file} type="file" hidden accept={Object.values(ACCEPT).join(',')} onChange={e => { void take(e.target.files?.[0]); e.currentTarget.value = ''; }} />
     <div className={`ax-upload${over ? ' over' : ''}`} data-card-control onDragOver={e => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)}
       onDrop={e => { e.preventDefault(); setOver(false); void take(e.dataTransfer.files?.[0]); }} onDoubleClick={pick}>

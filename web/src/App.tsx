@@ -20,7 +20,7 @@ import { TooltipLayer } from './shared/Tooltip';
 import { GenWhyHost } from './shared/GenWhy';
 import { navigate, usePath, useSearch } from './platform/router';
 import { setVideoWorkflowTools, currentVideoWorkflow, VIDEO_PAGE } from './ui/video/VideoWorkflows';
-import { isPanelWorkflow } from '../../server/src/shared/videoWorkflows';
+import { isPanelWorkflow, VIDEO_TOOL } from '../../server/src/shared/videoWorkflows';
 import { currentAudioWorkflow, AUDIO_PAGE } from './ui/audio/AudioWorkflows';
 import { videoBarOf } from '../../server/src/shared/videoBar';
 import { withSearch } from './shared/workflowLinks';
@@ -37,7 +37,7 @@ import { AnnounceBar, MobileTabs, MobileTop, TopNav, setRoadmap } from './ui/She
 
 /** Platform shell: top nav grouped by registry category (desktop) / top bar + tab bar (mobile). Routes: / Explore, /tools/:toolId, /assets (alias /history). */
 /** Routes rendered only once the tool registry has loaded. */
-const NEEDS_TOOLS = /^\/(?:$|assets$|history$|tools\/|jobs\/)/; /* /camera-moves and /photo-fx redirect to the Video page (2026-10-25) */
+const NEEDS_TOOLS = /^\/(?:$|video$|assets$|history$|tools\/|jobs\/)/; /* /camera-moves and /photo-fx redirect to the Video page (2026-10-25) */
 export default function App() {
   const path = usePath(); const search = useSearch();
   /* the first-paint skeleton takes the shape of the page that's coming: the Audio tab's even grid of cards (UX audit #20), else the generic tiles */
@@ -49,7 +49,7 @@ export default function App() {
   const lastPath = useRef(path); useEffect(() => { const was = lastPath.current; lastPath.current = path; const lib = /^\/(assets|history|jobs\/)/; if (lib.test(was) && lib.test(path)) return; window.scrollTo(0, 0); }, [path]);
 
   const m = path.match(/^\/tools\/([^/]+)/);
-  const toolId = m?.[1];
+  const toolId = m?.[1] ?? (path === VIDEO_PAGE ? VIDEO_TOOL : undefined); /* Create Video lives at /video (2026-10-31); its tool id stays h3-video */
   /* Images: a tool is found by its page URL (plain names: /tools/brush-edit, /tools/camera-angles), else by id (old /tools/app-inpaint URLs, redirected below);
      Camera & Lens (/tools/camera-lens) is Create Image with the camera rig, shown under its own name. */
   const feat = featureForPath(path);
@@ -60,7 +60,7 @@ export default function App() {
   /* Link prefetch (routeChunks): /tools/<x> → the screen chunk it needs, by the same lookup as above */
   useEffect(() => { setToolScreenResolver((p) => { const id = p.match(/^\/tools\/([^/?#]+)/)?.[1]; const f = featureForPath(p);
     const t = tools.find(x => x.route === p) ?? tools.find(x => x.id === id) ?? (f ? tools.find(x => x.id === f.toolId) : undefined); return t ? [t.id, t.ui] : []; }); }, [tools]);
-  /* One Video page (2026-10-23): /tools/h3-video?workflow=<id> renders that workflow's own tool screen (its inputs, models, quote and submit); no workflow = Create Video. */
+  /* One Video page (2026-10-23): /video?workflow=<id> renders that workflow's own tool screen (its inputs, models, quote and submit); no workflow = Create Video. */
   setVideoWorkflowTools(tools);
   const vwf = path === VIDEO_PAGE ? currentVideoWorkflow(search) : null;
   const vwfTool = vwf && vwf.id !== 'create' && vwf.toolId ? tools.find(t => t.id === vwf.toolId) : undefined;
@@ -88,7 +88,7 @@ export default function App() {
     title = 'Swap Two People'; body = <section className="page" data-testid="retired-two-person-swap"><h1>Swap Two People is no longer in the workflow picker</h1>
       <p>This saved run used two replacement photos and a two-pass workflow. Object / Person Swap replaces one selected subject; it cannot recreate this run without losing inputs.</p>
       <p>Your original run, model details and outputs are unchanged. No inputs have been transferred.</p>
-      <a href="/tools/h3-video?workflow=object-swap">Start a new Object / Person Swap</a> · <a href="/assets">View saved runs</a></section>;
+      <a href={`${VIDEO_PAGE}?workflow=object-swap`}>Start a new Object / Person Swap</a> · <a href="/assets">View saved runs</a></section>;
   }
   else if (vwf && isPanelWorkflow(vwf)) { title = vwf.name; body = <VideoPage workflowId={vwf.id} tools={tools}><StitchPanel key={`vbar-${vwf.id}`} wf={vwf} tools={tools} /></VideoPage>; }
   else if (vwf && vwfTool && videoBarOf(vwf.id)) { title = vwf.name; body = <VideoPage workflowId={vwf.id} tools={tools}><VideoWorkflowBar key={`vbar-${vwf.id}`} wf={vwf} bar={videoBarOf(vwf.id)!} tool={vwfTool} tools={tools} /></VideoPage>; }
