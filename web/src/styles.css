@@ -196,13 +196,9 @@ video.preview{display:block;width:100%;max-height:300px;border-radius:var(--r-md
 .result-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
 .result-head h2{margin:0;font-size:var(--fs-lg);text-transform:uppercase}
 .result .seg{margin-bottom:12px}
-.compare{position:relative;width:100%;border-radius:var(--r-md);overflow:hidden;background:#000;user-select:none;touch-action:none}
+.compare{position:relative;width:100%;border-radius:var(--r-md);overflow:hidden;background:#000}
 .compare video{display:block;width:100%;max-height:62vh;object-fit:contain}
 .compare .after{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
-.compare .handle{position:absolute;top:0;bottom:0;width:44px;margin-left:-22px;cursor:ew-resize;display:flex;justify-content:center}
-.compare .handle::before{content:'';width:2px;height:100%;background:var(--accent);box-shadow:0 0 12px var(--accent)}
-.compare .handle::after{content:'⇆';position:absolute;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-weight:700;box-shadow:var(--glow)}
-.compare .tag{position:absolute;top:12px;padding:3px 10px;border-radius:var(--r-pill);background:color-mix(in srgb,var(--bg) 70%,transparent);backdrop-filter:blur(6px);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
 .compare .wm{position:absolute;right:12px;bottom:12px;font-size:var(--fs-xs);background:color-mix(in srgb,var(--bg) 70%,transparent);padding:2px 8px;border-radius:var(--r-sm)}
 .sbs{display:grid;grid-template-columns:1fr 1fr;gap:var(--gutter-media)}
 .sbs video{width:100%;border-radius:var(--r-md);background:#000}
@@ -3548,9 +3544,6 @@ html body .gen-row .helper.gb-demo{white-space:normal;overflow:visible;text-over
 .rv-ph .rv-ph-seg button{pointer-events:none;opacity:.55}
 .rv-ph .rv-ph-note{margin-top:10px}
 .lineage-ph .ln-row{min-height:95px}
-/* The slider handle moves by transform (the auto-sweep no longer counts as layout shift). */
-.compare .handle-track{position:absolute;inset:0;pointer-events:none}
-.compare .handle-track .handle{pointer-events:auto}
 /* Generate Video: Model button grows a third row for the via line. */
 .vs-model:has(.vs-via){height:auto;min-height:48px;grid-template-rows:16px 20px 15px}
 .vs-model .vs-via{grid-column:1;font:500 11px/15px Inter,system-ui,sans-serif;color:var(--vs-g);opacity:1}
@@ -5457,21 +5450,19 @@ html body .loading.loading-audio{display:block;max-width:1272px;box-sizing:borde
 html body .loading.loading-audio .skel-tiles{grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
 html body .loading.loading-audio .skel-tiles .skel-i{aspect-ratio:auto;height:294px;border-radius:12px}
 @media (max-width:600px){html body .loading.loading-audio .skel-tiles{grid-template-columns:1fr;gap:12px}}
-/* Header Models column (2026-10-28): "Open" tag (.hm-kind.k-open) on open-weights models; on hover or focus each row shows its maker's link
-   and, for open models, "Weights" in one chip (the .hm-opens look), beside the row link. A legend line explains "Open" next to See all models. */
+/* Header Models column (2026-10-28; links tidied 2026-10-31): "Open" tag (.hm-kind.k-open) on open-weights models. On hover or focus a row
+   shows one quiet "About ↗" link (the maker's post or page) at the right of the title line only, so the grey description keeps its full width.
+   A legend line explains "Open" next to See all models. */
 html body .hm-mcell{position:relative;min-width:0;display:flex}
 html body .hm-mcell>.hm-row{flex:1;min-width:0}
 html body .hm-mcell:hover>.hm-row{background:#131517}
-html body .hm-ext{position:absolute;right:10px;top:50%;display:inline-flex;align-items:center;gap:6px;margin:0;transform:translateY(-50%);z-index:1;background:#1C1E20;color:rgb(200,201,202);white-space:nowrap;opacity:0;pointer-events:none;box-shadow:-16px 0 12px -4px #131517;transition:opacity .15s cubic-bezier(.4,0,.2,1)}
+html body .hm-ext{position:absolute;right:12px;top:11px;z-index:1;padding:0 2px;border-radius:4px;font:500 12px/20px Inter,system-ui,sans-serif;color:rgb(150,151,152);text-decoration:none;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s cubic-bezier(.4,0,.2,1),color .15s}
 html body .hm-mcell:hover .hm-ext,html body .hm-mcell:focus-within .hm-ext{opacity:1;pointer-events:auto}
-html body .hm-ext a{color:inherit;text-decoration:none;border-radius:3px;transition:color .15s}
-html body .hm-ext a:hover,html body .hm-ext a:focus-visible{color:var(--accent);outline:none}
-html body .hm-ext a:focus-visible{box-shadow:0 0 0 1px rgba(255,122,26,.6)}
-html body .hm-ext-dot{color:rgb(150,151,152)}
-html body .hm-mcell.has-link:hover .hm-txt,html body .hm-mcell.has-link:focus-within .hm-txt{padding-right:120px}
-html body .hm-mcell.has-link.two:hover .hm-txt,html body .hm-mcell.has-link.two:focus-within .hm-txt{padding-right:200px}
+html body .hm-ext:hover,html body .hm-ext:focus-visible{color:var(--accent);outline:none}
+html body .hm-ext:focus-visible{box-shadow:0 0 0 1px rgba(255,122,26,.6)}
+html body .hm-mcell.has-link:hover .hm-txt b,html body .hm-mcell.has-link:focus-within .hm-txt b{padding-right:64px}
 html body .hm-mfoot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:4px}
 html body .hm-mfoot .hm-all{margin-top:0}
 html body .hm-legend{display:flex;align-items:center;gap:6px;padding-left:12px;min-width:0;font:400 12px/16px Inter,system-ui,sans-serif;color:rgb(137,138,139);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 html body .hm-legend .hm-kind{margin:0;flex:none}
-@media (prefers-reduced-motion:reduce){html body .hm-ext,html body .hm-ext a{transition:none}}
+@media (prefers-reduced-motion:reduce){html body .hm-ext{transition:none}}

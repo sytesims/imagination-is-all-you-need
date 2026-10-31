@@ -52,11 +52,19 @@ export function missingOf(f: Pick<FilmProject, 'id' | 'aspect'>, s: FilmShot): s
   const m = shotSubmit(f, s).missing; if (m.includes('image')) return s.kind === 'bridge' ? 'Needs the last frame before it' : 'Add a start still';
   if (m.includes('lastFrame')) return 'Needs the next start still'; return null;
 }
+/** Why a card can't generate yet, in grey on the card and the AI join rows: what it still needs (missingOf, the server's own check), else,
+ *  when the quote says it can't run, "Connect to generate" (nothing connected) or the quote's own setup step ("Add a Comfy Cloud key").
+ *  null = it can run, so the price shows. */
+export function blockReason(missing: string | null, q: any, setup?: string | null): string | null {
+  if (missing) return missing; if (!q || (q.priceAvailable !== false && q.runnable !== false)) return null;
+  if (setup === 'none') return 'Connect to generate';
+  return typeof q.setup?.actionText === 'string' && q.setup.actionText ? q.setup.actionText : 'Change the settings to run';
+}
 /** Where each card's start frame comes from, in words for the card ("Last frame of Shot 2", "Same still as Shot 1", "Text only"). */
 export function startSourceOf(shots: FilmShot[], i: number, labels = shotLabels(shots)): string {
   const s = shots[i]; const u = startUrl(s);
   if (!u) return s.types.includes('t2v') ? 'Text only, no start still' : 'No start still yet';
-  if (s.startFrom.kind === 'last_frame') { const k = shots.findIndex((p, j) => j < i && p.takes.some(t => t.jobId === s.startFrom.jobId)); return `Last frame of ${k >= 0 ? labels[k] : 'the card before'}`; }
+  if (s.startFrom.kind === 'last_frame') { const k = shots.findIndex((p, j) => j < i && p.takes.some(t => t.jobId === s.startFrom.jobId)); return `Last frame of ${k >= 0 ? labels[k] : 'the shot before'}`; }
   const same = shots.findIndex((p, k) => k < i && startUrl(p) === u); return same >= 0 ? `Same still as ${labels[same]}` : 'Start still';
 }
 /** Seam transitions: cut, J-cut / L-cut 0.5–1.5 s (the sound leads or runs on), crossfade 0.4–0.8 s (picture and sound together), fade through black. */
@@ -120,7 +128,7 @@ export function cutPlan(f: FilmProject): { shotIds: string[]; skipped: { shotId:
 export function stitchNote(f: FilmProject): { blocked: string | null; note: string | null } {
   if (!f.shots.length) return { blocked: 'Add a shot first', note: null };
   const { shotIds, skipped } = cutPlan(f); const labels = shotLabels(f.shots); const name = (id: string) => labels[f.shots.findIndex(s => s.id === id)];
-  if (!shotIds.length) return { blocked: inFilm(f.shots).length ? 'No card has a finished clip yet' : 'Every card is hidden', note: null };
+  if (!shotIds.length) return { blocked: inFilm(f.shots).length ? 'No shot has a finished clip yet' : 'Every shot is hidden', note: null };
   const out = skipped.filter(x => x.reason !== 'hidden');
   return { blocked: null, note: out.length ? `Leaves out ${out.map(x => name(x.shotId)).join(', ')} (no clip yet)` : null };
 }
@@ -258,10 +266,10 @@ export function parseBudget(text: string): number | null | undefined {
 export type FilmKey = 'play' | 'prev' | 'next' | 'continue' | 'gap' | 'again' | 'star' | 'help';
 export const SHORTCUTS: { keys: string; what: string; key: FilmKey }[] = [
   { keys: 'Space', what: 'Play or pause the preview', key: 'play' },
-  { keys: '← →', what: 'Previous or next card', key: 'prev' },
-  { keys: 'C', what: 'Continue from this card’s last frame', key: 'continue' },
-  { keys: 'B', what: 'Open the join after this card', key: 'gap' },
-  { keys: 'R', what: 'Generate this card again (price first)', key: 'again' },
+  { keys: '← →', what: 'Previous or next shot', key: 'prev' },
+  { keys: 'C', what: 'Continue from this shot’s last frame', key: 'continue' },
+  { keys: 'B', what: 'Open the join after this shot', key: 'gap' },
+  { keys: 'R', what: 'Generate this shot again (price first)', key: 'again' },
   { keys: 'S', what: 'Use the newest finished take', key: 'star' },
   { keys: '?', what: 'Show these shortcuts', key: 'help' },
 ];

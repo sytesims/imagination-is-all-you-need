@@ -14,16 +14,18 @@ import { pickMedia } from '../../shared/MediaPicker';
 import { libraryUrlOf } from '../../shared/libraryFiles';
 import { uploadMedia } from '../../shared/batch1';
 import { VideoThumb } from '../../shared/VideoThumb';
+import { VideoControls } from '../../shared/VideoControls';
 import { GenPrice } from '../../shared/GenPrice';
 import AudioCard from '../../shared/AudioCard';
 import { MissingMedia } from '../../shared/ResultViewer';
 import { tip } from '../../shared/Tooltip';
+import { useSetupKind, type SetupKind } from '../../shared/ConnectSheet';
 import { modelsOf, modelOfEngine, shownName, RUN_ON_CHIP, useToolModels } from '../../shared/models';
 import { audioRoute } from '../../../../server/src/shared/audioWorkflows';
 import { PlusIcon, ChevronRightIcon, AlertIcon, PlayIcon, MusicIcon, MicIcon, SoundIcon, StitchIcon, LastFrameIcon, TransitionIcon, CloseIcon } from '../Icons';
 import { getFilm, applyOps, stitchFilm, previewFilm, filmOf, listSamples, openSample, deleteFilm, branded } from './filmApi';
 import { FilmStart } from './FilmStart';
-import { activeTake, latestTake, playable, fullLen, playLen, totalLen, clockOf, secText, usdText, shotLabels, STATUS_WORD, isBusy, isTrimmed, newShot, moveId, applyLocal, stitchNote, startUrl, startSourceOf, inFilm, cutLen, FILM_VIDEO_TOOL, MAX_SHOTS, creditText, creditCard, identCard, isAutoCredit, cutModelKeys, IDENT_TEXT, CARD_MAX, worldNotesOf, withWorldNotes, WORLD_MAX, budgetOf, parseBudget, filmKeyOf, newestDoneTake, SHORTCUTS, type BudgetView } from './filmLogic';
+import { activeTake, latestTake, playable, fullLen, playLen, totalLen, clockOf, secText, usdText, shotLabels, STATUS_WORD, isBusy, isTrimmed, newShot, moveId, applyLocal, stitchNote, startUrl, startSourceOf, inFilm, cutLen, FILM_VIDEO_TOOL, MAX_SHOTS, creditText, creditCard, identCard, isAutoCredit, cutModelKeys, IDENT_TEXT, CARD_MAX, worldNotesOf, withWorldNotes, WORLD_MAX, budgetOf, parseBudget, filmKeyOf, newestDoneTake, SHORTCUTS, missingOf, blockReason, type BudgetView } from './filmLogic';
 import { SwitchRow } from '../../shared/SettingChip';
 import { FILM_ASPECTS, type FilmAudio, type FilmCard, type FilmOp, type FilmProject, type FilmShot, type AudioKind, type FilmSample } from './types';
 import FilmInspector, { FILM_AGAIN_EVENT, useShotQuote } from './FilmInspector';
@@ -69,7 +71,7 @@ export default function FilmEditor({ id, tools }: { id: string; tools: ToolInfo[
   const [sel, setSel] = useState<string | null>(null); const [rough, setRough] = useState<Rough | null>(null);
   const [gap, setGap] = useState<string | null>(null); const [help, setHelp] = useState(false);
   useFilmKeys({ film, sel, setSel, setGap, setHelp, commit, adopt, toast });
-  useToolModels(FILM_VIDEO_TOOL);
+  useToolModels(FILM_VIDEO_TOOL); const setup = useSetupKind();
   const tool = tools.find(t => t.id === FILM_VIDEO_TOOL) ?? null; const dm = modelOfEngine(FILM_VIDEO_TOOL, tool?.providers[0]?.id); const defModel = dm ? shownName(dm) : 'Default model';
   useEffect(() => { if (film && (!sel || !film.shots.some(s => s.id === sel))) setSel(film.shots[0]?.id ?? null); }, [film, sel]);
   if (err) return <div className="fm-page"><p className="fm-empty" role="alert">{err?.status === 404 ? 'This film isn’t here any more.' : 'Couldn’t open this film.'} <Link to="/film" className="fm-link">Back to your films</Link>{err?.status !== 404 && <> · <button type="button" className="fm-link" onClick={() => void reload()}>Try again</button></>}</p></div>;
@@ -83,7 +85,7 @@ export default function FilmEditor({ id, tools }: { id: string; tools: ToolInfo[
       <div className="fm-center">
       {rough ? <RoughCut r={rough} film={film} labels={labels} onStop={() => setRough(null)} />
         : <Preview shot={shot} label={shot ? labels[film.shots.findIndex(x => x.id === shot.id)] : ''} aspect={film.aspect} />}
-      <ShotRow defModel={defModel} film={film} srv={srv} sel={sel} setSel={setSel} commit={commit} adopt={adopt} labels={labels} toast={toast} tools={tools} gap={gap} setGap={setGap} />
+      <ShotRow defModel={defModel} setup={setup} film={film} srv={srv} sel={sel} setSel={setSel} commit={commit} adopt={adopt} labels={labels} toast={toast} tools={tools} gap={gap} setGap={setGap} />
       <div className="fm-bottom">
       <details className="fm-sound-panel" name="film-workspace-settings"><summary>Sound <span>Music, voice & sound effects</span></summary><div className="fm-sound-body"><AudioLanes film={film} commit={commit} /></div></details>
       <StitchBar film={film} models={models} commit={commit} adopt={adopt} onRough={setRough} />
@@ -108,8 +110,8 @@ function FilmHeader({ film, commit, onHelp }: { film: FilmProject; commit: (o: F
     <div className="fm-facts" data-testid="film-facts">
       <label className="fm-fact fm-aspect" {...tip('The shape of the film. New takes render at it; Stitch fits every clip to it.')}><span className="sr-only">Shape</span>
         <select value={film.aspect} onChange={e => void commit([{ op: 'set_meta', aspect: e.target.value }])} data-testid="film-aspect">{[...new Set([...FILM_ASPECTS, film.aspect])].map(a => <option key={a} value={a}>{a}</option>)}</select></label>
-      <span className="fm-fact">{n} {n === 1 ? 'card' : 'cards'}{hid ? ` · ${hid} hidden` : ''}</span>
-      <span className="fm-fact" {...tip('The planned length of the cards in the film, after trims and crossfades')}>{clockOf(totalLen(film))}</span>
+      <span className="fm-fact">{n} {n === 1 ? 'shot' : 'shots'}{hid ? ` · ${hid} hidden` : ''}</span>
+      <span className="fm-fact" {...tip('The planned length of the shots in the film, after trims and crossfades')}>{clockOf(totalLen(film))}</span>
       <BudgetMeter film={film} commit={commit} />
       <WorldNotes film={film} commit={commit} />
       <button type="button" className="fm-fact fm-keys-btn" onClick={onHelp} aria-label="Keyboard shortcuts" data-testid="film-keys" {...tip('Keyboard shortcuts (?)')}>?</button>
@@ -130,7 +132,7 @@ function WorldNotes({ film, commit }: { film: FilmProject; commit: (o: FilmOp[])
         <label className="fm-field"><span>World notes</span>
           <textarea value={t} rows={4} maxLength={WORLD_MAX} onChange={e => setT(e.target.value)} data-testid="film-world-text"
             placeholder="Traffic drives on the right. The shelter is on the right-hand pavement. The bus leaves to the left." /></label>
-        <p className="fm-note">Models place things wherever looks nice. Say where things are once, then add it to each prompt from the card.</p>
+        <p className="fm-note">Models place things wherever looks nice. Say where things are once, then add it to each prompt from the shot.</p>
       </div>
     </Popover>
   </>;
@@ -138,17 +140,18 @@ function WorldNotes({ film, commit }: { film: FilmProject; commit: (o: FilmOp[])
 
 /** The picked card's active take, played inside its trim (the stitched film uses the same in and out). */
 function Preview({ shot, label, aspect }: { shot: FilmShot | null; label: string; aspect: string }) {
-  const a = shot ? activeTake(shot) : null; const t = playable(a) ? a : null; const v = useRef<HTMLVideoElement>(null); const [gone, setGone] = useState(false);
+  const a = shot ? activeTake(shot) : null; const t = playable(a) ? a : null; const [v, setV] = useState<HTMLVideoElement | null>(null); const screen = useRef<HTMLDivElement>(null); const [gone, setGone] = useState(false);
   useEffect(() => setGone(false), [t?.url]); const full = shot ? fullLen(shot) : null;
   const inS = shot?.trim.inSec ?? 0; const outS = shot?.trim.outSec ?? null;
   const ar = /^(\d+):(\d+)$/.exec(aspect); const style = ar ? { aspectRatio: `${ar[1]} / ${ar[2]}` } : undefined;
   return <section className="fm-preview" aria-label="Preview">
-    <div className="fm-screen" style={style}>
+    <div className="fm-screen" ref={screen} style={style}>
       {!shot ? <span className="fm-screen-ph">Your film plays here</span>
         : gone || a?.status === 'missing' ? <MissingMedia />
-        : t?.url ? <span className="fm-vwrap" key={t.url}><video ref={v} src={t.url} poster={t.posterUrl ?? undefined} controls playsInline preload="metadata" data-testid="film-preview-video"
+        : t?.url ? <span className="fm-vwrap" key={t.url}><video ref={setV} src={t.url} poster={t.posterUrl ?? undefined} playsInline preload="metadata" data-testid="film-preview-video"
             onLoadedMetadata={e => { if (inS > 0) e.currentTarget.currentTime = inS; }} onError={() => setGone(true)}
-            onTimeUpdate={e => { const el = e.currentTarget; if (outS != null && el.currentTime >= outS) { el.pause(); el.currentTime = outS; } }} onPlay={e => { const el = e.currentTarget; if (el.currentTime < inS - 0.05 || (outS != null && el.currentTime >= outS - 0.05)) el.currentTime = inS; }} /></span>
+            onTimeUpdate={e => { const el = e.currentTarget; if (outS != null && el.currentTime >= outS) { el.pause(); el.currentTime = outS; } }} onPlay={e => { const el = e.currentTarget; if (el.currentTime < inS - 0.05 || (outS != null && el.currentTime >= outS - 0.05)) el.currentTime = inS; }} />
+          <VideoControls video={v} fullscreen={screen} fallbackSec={full ?? undefined} testId="film-preview" label="Preview playback" seekLabel="Seek the shot" /></span>
         : startUrl(shot) ? <span className="fm-vwrap" key={startUrl(shot)!}>{/* keyed: a broken still marks its host, so the next card's still gets a fresh one */}<img src={startUrl(shot)!} alt={`${label} start still`} /></span>
         : <span className="fm-screen-ph">{shot.status === 'failed' ? (latestTake(shot)?.error ?? 'This take didn’t finish. Nothing more is charged for it.') : isBusy(shot) ? 'Generating…' : 'No clip yet'}</span>}
       {shot && isBusy(shot) && <span className="fm-screen-busy" role="status"><i className="as-spin" aria-hidden />Generating {label.toLowerCase()}…</span>}
@@ -157,11 +160,11 @@ function Preview({ shot, label, aspect }: { shot: FilmShot | null; label: string
   </section>;
 }
 
-type RowProps = { defModel: string; film: FilmProject; srv: FilmProject | null; sel: string | null; setSel: (id: string) => void; commit: (o: FilmOp[]) => Promise<unknown>; adopt: (d: any) => void; labels: string[]; toast: ReturnType<typeof useToast>; tools: ToolInfo[]; gap: string | null; setGap: (id: string | null) => void };
-function ShotRow({ defModel, film, srv, sel, setSel, commit, adopt, labels, toast, tools, gap, setGap }: RowProps) {
+type RowProps = { defModel: string; setup: SetupKind | null; film: FilmProject; srv: FilmProject | null; sel: string | null; setSel: (id: string) => void; commit: (o: FilmOp[]) => Promise<unknown>; adopt: (d: any) => void; labels: string[]; toast: ReturnType<typeof useToast>; tools: ToolInfo[]; gap: string | null; setGap: (id: string | null) => void };
+function ShotRow({ defModel, setup, film, srv, sel, setSel, commit, adopt, labels, toast, tools, gap, setGap }: RowProps) {
   const ids = film.shots.map(s => s.id); const row = useRef<HTMLOListElement>(null);
   const move = (id: string, by: number) => { const order = moveId(ids, id, by); if (order !== ids) void commit([{ op: 'reorder_shots', order }]); };
-  const full = film.shots.length >= MAX_SHOTS; const ctx: JoinCtx = { film, commit, adopt, setSel, toast };
+  const full = film.shots.length >= MAX_SHOTS; const ctx: JoinCtx = { film, commit, adopt, setSel, toast, setup };
   useEffect(() => { row.current?.querySelector<HTMLElement>(`[data-shot="${sel}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }, [sel]);
   const onKey = (e: React.KeyboardEvent) => { if (!sel) return; const i = ids.indexOf(sel);
     if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); move(sel, e.key === 'ArrowLeft' ? -1 : 1); return; }
@@ -173,7 +176,7 @@ function ShotRow({ defModel, film, srv, sel, setSel, commit, adopt, labels, toas
       {film.shots.map((s, i) => { const next = film.shots[i + 1];
         return <li key={s.id} className="fm-slot" data-shot={s.id}>
           {i === 0 && <Seam ctx={ctx} after={null} full={full} />}
-          <ShotCard shot={s} srvShot={srv?.shots.find(x => x.id === s.id) ?? null} filmId={film.id} label={labels[i]} source={startSourceOf(film.shots, i, labels)} on={s.id === sel} onPick={() => setSel(s.id)} defModel={defModel} />
+          <ShotCard shot={s} srvShot={srv?.shots.find(x => x.id === s.id) ?? null} filmId={film.id} label={labels[i]} source={startSourceOf(film.shots, i, labels)} on={s.id === sel} onPick={() => setSel(s.id)} defModel={defModel} setup={setup} film={film} />
           {next ? <GapChip ctx={ctx} a={s} b={next} labels={[labels[i], labels[i + 1]]} tools={tools} open={gap === s.id} onOpenChange={v => setGap(v ? s.id : null)} />
             : <Seam ctx={ctx} after={s} full={full} />}
         </li>; })}
@@ -182,12 +185,13 @@ function ShotRow({ defModel, film, srv, sel, setSel, commit, adopt, labels, toas
   </section>;
 }
 
-function ShotCard({ shot, srvShot, filmId, label, source, on, onPick, defModel }: { shot: FilmShot; srvShot: FilmShot | null; filmId: string; label: string; source: string; on: boolean; onPick: () => void; defModel: string }) {
+function ShotCard({ shot, srvShot, filmId, label, source, on, onPick, defModel, setup, film }: { shot: FilmShot; srvShot: FilmShot | null; filmId: string; label: string; source: string; on: boolean; onPick: () => void; defModel: string; setup: SetupKind | null; film: FilmProject }) {
   const a = activeTake(shot); const t = playable(a) ? a : null; const m = modelsOf(FILM_VIDEO_TOOL).find(x => x.key === shot.modelKey); const q = useShotQuote(filmId, srvShot, !shot.takes.length);
   const [gone0, setGone] = useState(false); useEffect(() => setGone(false), [t?.url]); const gone = gone0 || a?.status === 'missing';
   const trimmed = isTrimmed(shot); const len = playLen(shot); const failed = shot.status === 'failed'; const full = fullLen(shot);
   const inPct = full ? (shot.trim.inSec / full) * 100 : 0; const outPct = full ? ((shot.trim.outSec ?? full) / full) * 100 : 100;
-  const spent = shot.takes.reduce((n, x) => n + (x.costUsd ?? 0), 0); const lenText = full == null ? 'Model length' : trimmed ? `${secText(len)} of ${secText(full)}` : secText(full);
+  const why = shot.takes.length ? null : blockReason(missingOf(film, shot), q, setup);
+  const spent = shot.takes.reduce((n, x) => n + (x.costUsd ?? 0), 0); const lenText = full == null ? 'Auto length' : trimmed ? `${secText(len)} of ${secText(full)}` : secText(full);
   return <article className={`fm-card${on ? ' on' : ''}${shot.kind === 'bridge' ? ' fm-bridge' : ''}${failed ? ' fm-failed' : ''}${shot.hidden ? ' fm-hidden' : ''}`} data-testid={`film-card-${shot.id}`} data-status={shot.status} data-kind={shot.kind}>
     <button type="button" className="fm-card-btn" onClick={onPick} aria-pressed={on} aria-label={`${label}${shot.hidden ? ', hidden' : ''}, ${STATUS_WORD[shot.status]}, ${lenText}`}>
       <span className="fm-thumb" {...tip(source)}>
@@ -206,7 +210,7 @@ function ShotCard({ shot, srvShot, filmId, label, source, on, onPick, defModel }
         <span className="fm-card-p" {...tip(shot.prompt.trim() || 'No prompt yet')}>{shot.prompt.trim() || <em>No prompt yet</em>}</span>
         <span className="fm-card-m"><span className="fm-chip" title={m ? shownName(m) : 'The Video page’s default model'}>{m ? shownName(m) : defModel}</span>{shot.runOn && <span className="fm-chip fm-chip-q">{RUN_ON_CHIP[shot.runOn] ?? shot.runOn}</span>}</span>
         <span className="fm-card-f"><span>{lenText}{shot.resolution ? ` · ${shot.resolution}` : ''}</span>
-          <span className="fm-card-price">{shot.takes.length ? <span {...tip('Spent on this card')}>{shot.takes.every(x => x.sample) ? 'Sample' : usdText(spent)}{shot.takes.length > 1 ? ` · ${shot.takes.length} takes` : ''}</span> : q?.priceAvailable === false ? <span className="fm-card-warn" {...tip(q.error ?? null)}>Can’t run as set</span> : <GenPrice q={q} demo={q?.demo === true} credits={typeof q?.credits === 'number' ? q.credits : null} free={q?.credits === 0 && q?.demo !== true} />}</span></span>
+          <span className="fm-card-price">{shot.takes.length ? <span {...tip('Spent on this shot')}>{shot.takes.every(x => x.sample) ? 'Sample' : usdText(spent)}{shot.takes.length > 1 ? ` · ${shot.takes.length} takes` : ''}</span> : why ? <span className="fm-card-why" data-testid="film-card-why" {...tip(q?.error && why !== q.error ? q.error : null)}>{why}</span> : <GenPrice q={q} demo={q?.demo === true} credits={typeof q?.credits === 'number' ? q.credits : null} free={q?.credits === 0 && q?.demo !== true} />}</span></span>
       </span>
     </button>
   </article>;
@@ -222,13 +226,13 @@ function Seam({ ctx, after, full }: { ctx: JoinCtx; after: FilmShot | null; full
   const noClip = after ? joinBlock(film, after).cont : null;
   return <div className={`fm-seam${last1 ? ' fm-seam-end' : ''}${!after ? ' fm-seam-first' : ''}`}>
     <button ref={btn} type="button" className={`fm-seam-btn${open ? ' on' : ''}`} aria-haspopup="menu" aria-expanded={open} disabled={full} onClick={() => setOpen(o => !o)}
-      aria-label={after ? `Add after ${after.kind === 'bridge' ? 'the bridge' : 'this shot'}` : 'Add a shot at the start'} {...tip(full ? `A film holds up to ${MAX_SHOTS} cards` : after ? 'Continue or add a shot' : 'Add a shot at the start')} data-testid={`film-seam-${after?.id ?? 'start'}`}><PlusIcon size={last1 ? 18 : 14} />{last1 && <span>Add</span>}</button>
-    <Popover open={open} anchor={btn} onClose={() => setOpen(false)} label="Add a card" role="menu" placement="top" align="center" width={300} testId="film-seam-menu">
+      aria-label={after ? `Add after ${after.kind === 'bridge' ? 'the bridge' : 'this shot'}` : 'Add a shot at the start'} {...tip(full ? `A film holds up to ${MAX_SHOTS} shots` : after ? 'Continue or add a shot' : 'Add a shot at the start')} data-testid={`film-seam-${after?.id ?? 'start'}`}><PlusIcon size={last1 ? 18 : 14} />{last1 && <span>Add</span>}</button>
+    <Popover open={open} anchor={btn} onClose={() => setOpen(false)} label="Add a shot" role="menu" placement="top" align="center" width={300} testId="film-seam-menu">
       <div className="fm-menu" role="none">
         {after && <button type="button" role="menuitem" className="fm-menu-row" disabled={!!noClip || busy} onClick={() => void cont()} data-testid="film-continue">
           <LastFrameIcon size={18} /><span><b>Continue</b><small>{noClip ?? 'The next shot starts on this clip’s last frame'}</small></span></button>}
         <button type="button" role="menuitem" className="fm-menu-row" disabled={busy} onClick={() => void add(newShot(likeShot(after)))} data-testid="film-add-shot">
-          <PlusIcon size={18} /><span><b>Add shot</b><small>A new card with its own start still</small></span></button>
+          <PlusIcon size={18} /><span><b>Add shot</b><small>A new shot with its own start still</small></span></button>
       </div>
     </Popover>
   </div>;
@@ -247,7 +251,7 @@ function AudioLanes({ film, commit }: { film: FilmProject; commit: (o: FilmOp[])
   const choose = (a: FilmAudio, label: string) => pickMedia({ accept: 'audio/*', title: `Choose ${label.toLowerCase()}`, limits: 'From your Assets or your computer', onFiles: async fs => { if (!fs[0]) return;
     try { const url = await fileUrl(fs[0]); set({ ...a, url, jobId: null }); } catch (e: any) { toast(`Couldn’t add that sound. ${e?.message ?? ''}`.trim(), 'error'); } } });
   return <section className="fm-audio" aria-label="Sound">
-    <div className="fm-sec-h"><h2>Sound</h2><span className="fm-sec-note">Mixed to about −14 LUFS when you stitch</span></div>
+    <div className="fm-sec-h"><h2>Sound</h2><span className="fm-sec-note">Levels are balanced when you stitch</span></div>
     {LANES.map(l => { const a = laneOf(l.kind); return <div key={l.kind} className={`fm-lane${a.url ? ' has' : ''}`} data-testid={`film-lane-${l.kind}`}>
       <span className="fm-lane-l">{l.icon}<b>{l.label}</b></span>
       <div className="fm-lane-body">{a.url ? <AudioCard src={a.url} title={a.jobId ? 'Your result' : (a.url.split('/').pop() ?? 'Your file')} model={a.jobId ? 'From Assets' : 'Your file'} cover={false} kind={l.kind === 'music' ? 'music' : 'voice'} testId={`film-audio-${l.kind}`} />
@@ -285,21 +289,21 @@ function StitchBar({ film, models, commit, adopt, onRough }: { film: FilmProject
     catch (e: any) { toast(`Stitch didn’t start. ${e?.message ?? ''} Nothing was charged.`.trim(), 'error'); } finally { setBusy(false); } };
   const custom = !!P.endCard && !isAutoCredit(P.endCard.text);
   return <section className="fm-stitch" aria-label="Stitch" data-testid="film-stitch">
-    <details className="fm-finish-panel" name="film-workspace-settings"><summary>Finishing <span>Opening ident, credits & fade</span></summary><div className="fm-stitch-f">
+    <details className="fm-finish-panel" name="film-workspace-settings"><summary>Finishing <span>Opening title, credits & fade</span></summary><div className="fm-stitch-f">
       <div className={`fm-cardf${P.titleCard ? '' : ' off'}`} data-testid="film-ident">
-        <SwitchRow label="Opening ident" on={!!P.titleCard} onChange={v => setCard('titleCard', v ? identCard(title.trim() || IDENT_TEXT) : null)} title="A card on black before the first shot" testId="film-ident-on" />
-        <input value={P.titleCard ? title : ''} placeholder="Off. The film starts on the first shot." disabled={!P.titleCard} maxLength={CARD_MAX} aria-label="Opening ident text" onChange={e => setTitle(e.target.value)} onBlur={() => saveText('titleCard', title)} onKeyDown={e => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} data-testid="film-ident-text" />
+        <SwitchRow label="Opening title" on={!!P.titleCard} onChange={v => setCard('titleCard', v ? identCard(title.trim() || IDENT_TEXT) : null)} title="Words on black before the first shot" testId="film-ident-on" />
+        <input value={P.titleCard ? title : ''} placeholder="Off. The film starts on the first shot." disabled={!P.titleCard} maxLength={CARD_MAX} aria-label="Opening title text" onChange={e => setTitle(e.target.value)} onBlur={() => saveText('titleCard', title)} onKeyDown={e => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} data-testid="film-ident-text" />
       </div>
       <div className={`fm-cardf${P.endCard ? '' : ' off'}`} data-testid="film-credit">
-        <SwitchRow label="End credit" on={!!P.endCard} onChange={v => setCard('endCard', v ? creditCard(models) : null)} title="A card on black after the last shot, naming the models the film used" testId="film-credit-on" />
+        <SwitchRow label="End credit" on={!!P.endCard} onChange={v => setCard('endCard', v ? creditCard(models) : null)} title="Words on black after the last shot, naming the models the film used" testId="film-credit-on" />
         <input value={P.endCard ? end : ''} placeholder="Off. The film ends on the last shot." disabled={!P.endCard} maxLength={CARD_MAX} aria-label="End credit text" onChange={e => setEnd(e.target.value)} onBlur={() => saveText('endCard', end)} onKeyDown={e => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} data-testid="film-credit-text" />
         {custom && <button type="button" className="fm-link fm-cardf-reset" onClick={() => setCard('endCard', { ...P.endCard!, text: auto })} {...tip(auto)}>Name the models again</button>}
       </div>
       <label className="fm-check"><input type="checkbox" checked={fade} onChange={e => void commit([{ op: 'set_post', post: { videoFade: e.target.checked } }])} />Fade to black at the end</label>
     </div>
     </details><div className="fm-stitch-go">
-      <button type="button" className="btn btn-ghost" onClick={() => void rough()} disabled={rbusy || !!missing} data-testid="film-rough" {...tip(missing ?? 'A quick, low-quality join of the cards in order with their trims, to check order and timing. Not saved to Assets.')}>{rbusy ? <i className="as-spin" aria-hidden /> : <PlayIcon size={14} />}{rbusy ? 'Joining…' : 'Rough cut'}</button>
-      <span className="fm-stitch-len" {...tip('The length of the stitched film, before the cards')}>{clockOf(len)}{(missing ?? note) && <small>{missing ?? note}</small>}</span>
+      <button type="button" className="btn btn-ghost" onClick={() => void rough()} disabled={rbusy || !!missing} data-testid="film-rough" {...tip(missing ?? 'A quick, low-quality join of the shots in order with their trims, to check order and timing. Not saved to Assets.')}>{rbusy ? <i className="as-spin" aria-hidden /> : <PlayIcon size={14} />}{rbusy ? 'Joining…' : 'Rough cut'}</button>
+      <span className="fm-stitch-len" {...tip('The length of the stitched shots, before the opening title and credit')}>{clockOf(len)}{(missing ?? note) && <small>{missing ?? note}</small>}</span>
       <button type="button" className="btn btn-primary fm-stitch-btn" disabled={busy || !!missing} onClick={() => void go()} data-testid="film-stitch-go" {...tip(missing ?? 'Joins the clips on your computer. Nothing is charged.')}>
         {busy ? <i className="as-spin" aria-hidden /> : <StitchIcon size={16} />}<span>Stitch</span><span className="fm-free">Free</span></button>
       {done && <button type="button" className="fm-link" onClick={() => navigate(`/jobs/${encodeURIComponent(done)}`)}>Open the film</button>}
@@ -310,12 +314,13 @@ function StitchBar({ film, models, commit, adopt, onRough }: { film: FilmProject
 /** Rough cut: the server's quick low-quality join of the cards in the film (their trims and transitions, no music mix), played here with a
  *  strip that shows which card is on screen. Not a job, not in Assets. */
 function RoughCut({ r, film, labels, onStop }: { r: Rough; film: FilmProject; labels: string[]; onStop: () => void }) {
-  const [t, setT] = useState(0); const parts = r.shotIds.map(id => { const k = film.shots.findIndex(s => s.id === id); return { id, label: labels[k] ?? 'Card', len: k >= 0 ? playLen(film.shots[k]) : 0 }; });
+  const [t, setT] = useState(0); const parts = r.shotIds.map(id => { const k = film.shots.findIndex(s => s.id === id); return { id, label: labels[k] ?? 'Shot', len: k >= 0 ? playLen(film.shots[k]) : 0 }; });
   const total = r.durationSec ?? parts.reduce((n, p) => n + p.len, 0); let acc = 0; const on = parts.findIndex(p => { acc += p.len; return t < acc; });
-  const ar = /^(\d+):(\d+)$/.exec(film.aspect);
+  const ar = /^(\d+):(\d+)$/.exec(film.aspect); const [v, setV] = useState<HTMLVideoElement | null>(null); const screen = useRef<HTMLDivElement>(null);
   return <section className="fm-preview fm-rough" aria-label="Rough cut" data-testid="film-rough-player">
-    <div className="fm-screen" style={ar ? { aspectRatio: `${ar[1]} / ${ar[2]}` } : undefined}>
-      <span className="fm-vwrap" key={r.url}><video src={r.url} autoPlay controls playsInline onTimeUpdate={e => setT(e.currentTarget.currentTime)} /></span>
+    <div className="fm-screen" ref={screen} style={ar ? { aspectRatio: `${ar[1]} / ${ar[2]}` } : undefined}>
+      <span className="fm-vwrap" key={r.url}><video ref={setV} src={r.url} autoPlay playsInline onTimeUpdate={e => setT(e.currentTarget.currentTime)} />
+        <VideoControls video={v} fullscreen={screen} fallbackSec={total} testId="film-rough" label="Rough cut playback" seekLabel="Seek the rough cut" /></span>
       <span className="fm-rough-tag">Rough cut{on >= 0 ? ` · ${parts[on].label}` : ''}</span>
     </div>
     <div className="fm-rough-bar">
@@ -354,8 +359,8 @@ function EmptyFilm({ film, onBlank }: { film: FilmProject; onBlank: () => void }
   const sample = async (x: FilmSample) => { setBusy(true);
     try { const f = await branded(await openSample(x.name)); if (!film.shots.length) await deleteFilm(film.id).catch(() => undefined); navigate(`/film/${encodeURIComponent(f.id)}`); }
     catch (e: any) { toast(`Couldn’t open that sample. ${e?.message ?? ''}`.trim(), 'error'); } finally { setBusy(false); } };
-  return <aside className="fm-insp fm-insp-empty" data-testid="film-empty-start"><p><b>Start with a shot.</b> Each card is one clip: a start still, a prompt, then takes until one feels right.</p>
-    <FilmStart samples={samples} busy={busy} onSample={x => void sample(x)} onBlank={onBlank} blankLabel="Add a shot" blankNote="A blank card with its own start still" />
+  return <aside className="fm-insp fm-insp-empty" data-testid="film-empty-start"><p><b>Start with a shot.</b> Each shot is one clip: a start still, a prompt, then takes until one feels right.</p>
+    <FilmStart samples={samples} busy={busy} onSample={x => void sample(x)} onBlank={onBlank} blankLabel="Add a shot" blankNote="A blank shot with its own start still" />
   </aside>;
 }
 
@@ -369,7 +374,7 @@ function ShortcutSheet({ onClose }: { onClose: () => void }) {
     <div className="fm-keys" role="dialog" aria-modal="true" aria-labelledby="fm-keys-h" data-testid="film-shortcuts">
       <div className="fm-keys-h"><h2 id="fm-keys-h">Shortcuts</h2><button ref={close} type="button" className="fm-icon-btn" aria-label="Close" onClick={onClose}><CloseIcon size={14} /></button></div>
       <dl>{rows.map(r => <div key={r.key} className="fm-keys-row"><dt>{r.keys.split(' ').map(k => <kbd key={k}>{k}</kbd>)}</dt><dd>{r.what}</dd></div>)}</dl>
-      <p className="fm-note">Off while you type in a box. Alt + ← → moves the picked card.</p>
+      <p className="fm-note">Off while you type in a box. Alt + ← → moves the picked shot.</p>
     </div>
   </div>;
 }
@@ -382,7 +387,7 @@ function useFilmKeys(o: { film: FilmProject | null; sel: string | null; setSel: 
     const on = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.repeat) return; const k = filmKeyOf(e); if (!k) return; const el = e.target as HTMLElement | null;
       if (el?.closest?.('[role="dialog"],[role="menu"],[role="listbox"],[role="radiogroup"],[role="slider"],[role="tablist"],.pop,.dlg')) return;
-      if (el?.tagName === 'VIDEO' || el?.tagName === 'INPUT') return; /* a focused player keeps its own Space; a slider keeps its arrows */
+      if (el?.tagName === 'VIDEO' || el?.tagName === 'INPUT' || el?.closest?.('.sfilm-controls')) return; /* a focused player control keeps its own Space; a slider keeps its arrows */
       const { film, sel, setSel, setGap, setHelp, commit, adopt, toast } = ref.current; if (!film) return;
       const i = film.shots.findIndex(s => s.id === sel); const shot = i >= 0 ? film.shots[i] : null; const labels = shotLabels(film.shots);
       const done = () => e.preventDefault();
@@ -391,7 +396,7 @@ function useFilmKeys(o: { film: FilmProject | null; sel: string | null; setSel: 
       if (k === 'prev' || k === 'next') { const j = i + (k === 'prev' ? -1 : 1); if (i < 0 || j < 0 || j >= film.shots.length) return; done(); setSel(film.shots[j].id); return; }
       if (!shot) return; done();
       if (k === 'continue') { const why = joinBlock(film, shot).cont; if (why) { toast(`${labels[i]}: ${why.toLowerCase()}.`, 'warn'); return; } void continueAfter({ film, commit, adopt, setSel, toast }, shot); return; }
-      if (k === 'gap') { if (!film.shots[i + 1]) { toast(`${labels[i]} is the last card. Add one after it first.`, 'warn'); return; } setGap(shot.id); return; }
+      if (k === 'gap') { if (!film.shots[i + 1]) { toast(`${labels[i]} is the last shot. Add one after it first.`, 'warn'); return; } setGap(shot.id); return; }
       if (k === 'again') { window.dispatchEvent(new CustomEvent(FILM_AGAIN_EVENT, { detail: { shotId: shot.id } })); return; }
       if (k === 'star') { const t = newestDoneTake(shot); if (!t) { toast(shot.takes.some(x => x.status === 'done') ? 'The newest take is already in the film.' : `${labels[i]} has no finished take yet.`, 'warn'); return; }
         void commit([{ op: 'set_active_take', shotId: shot.id, takeId: t.id }]); toast(`Take ${[...shot.takes].sort((a, b) => a.createdAt - b.createdAt).indexOf(t) + 1} is in the film now.`, 'success'); }

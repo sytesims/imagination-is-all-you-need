@@ -44,6 +44,7 @@ export interface Model3DProps {
   /** where the camera starts (model-viewer camera-orbit). Default: a little off the front, so a model opens on its face, not its side or back */ cameraOrbit?: string;
   /** the file is known to be unreadable (GET /api/3d/meta valid:false): show the failure at once */ invalid?: boolean; /** give up after this long (ms) */ timeoutMs?: number;
   /** play this animation of the file on a loop (a rigged character's Walk); off under reduced motion */ animation?: string | null;
+  /** ms before auto-rotate starts (default 2500: the first look is the start view; a turntable card starts at once) */ rotateDelay?: number;
 }
 const MV = 'model-viewer';
 /** The start view (UX audit #12): 30° off the front, slightly above; auto-rotate waits 2.5 s so the first look is that view. */
@@ -53,7 +54,7 @@ export const START_ORBIT = '-30deg 75deg 120%';
 const ORBIT_BY_PROVIDER: Record<string, string> = { 'cloud-tripo-31': '60deg 75deg 120%' };
 export const startOrbitOf = (j: { provider?: string | null } | null | undefined): string => (j?.provider && ORBIT_BY_PROVIDER[j.provider]) || START_ORBIT;
 /** <model-viewer> with our defaults. Shows the still (or a calm placeholder) while another viewer is live, while loading, and on failure. */
-export const Model3D = forwardRef<Model3DHandle, Model3DProps>(function Model3D({ src, alt, poster, slot, pri = 1, autoRotate = true, look = 'lit', controls = true, className = '', style, downloadName, onLoad, onError, testId, invalid, timeoutMs = 60_000, cameraOrbit = START_ORBIT, animation = null }, ref) {
+export const Model3D = forwardRef<Model3DHandle, Model3DProps>(function Model3D({ src, alt, poster, slot, pri = 1, autoRotate = true, look = 'lit', controls = true, className = '', style, downloadName, onLoad, onError, testId, invalid, timeoutMs = 60_000, cameraOrbit = START_ORBIT, animation = null, rotateDelay = 2500 }, ref) {
   const granted = useLiveViewer(slot, true, pri); const el = useRef<HTMLElement | null>(null);
   const [ready, setReady] = useState(false); const [state, setState] = useState<'loading' | 'ok' | 'error'>('loading'); const [why, setWhy] = useState('');
   useEffect(() => { let on = true; loadModelViewer().then(() => { if (on) setReady(true); }, () => { if (on) { setState('error'); setWhy('The 3D viewer could not start in this browser.'); onError?.('viewer'); } }); return () => { on = false; }; }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -71,7 +72,7 @@ export const Model3D = forwardRef<Model3DHandle, Model3DProps>(function Model3D(
   if (state === 'error') return <div className={`m3d m3d-err ${className}`} style={style} data-testid={testId ? `${testId}-error` : undefined} role="status">{still}<p className="m3d-why"><b>{why || 'This model could not be shown.'}</b>
     <a href={src} download={downloadName ?? true} className="btn btn-sm">Download the GLB</a></p></div>;
   return <div className={`m3d ${className}`} style={style} data-state={granted && ready ? state : 'still'} data-testid={testId}>
-    {granted && ready ? createElement(MV, { ref: (x: HTMLElement | null) => { el.current = x; }, src, alt, poster: poster ?? undefined, 'camera-controls': controls ? '' : undefined, 'auto-rotate': autoRotate ? '' : undefined, 'auto-rotate-delay': '2500', 'rotation-per-second': '24deg', 'camera-orbit': cameraOrbit, 'min-camera-orbit': 'auto auto 40%',
+    {granted && ready ? createElement(MV, { ref: (x: HTMLElement | null) => { el.current = x; }, src, alt, poster: poster ?? undefined, 'camera-controls': controls ? '' : undefined, 'auto-rotate': autoRotate ? '' : undefined, 'auto-rotate-delay': String(rotateDelay), 'rotation-per-second': '24deg', 'camera-orbit': cameraOrbit, 'min-camera-orbit': 'auto auto 40%',
         'shadow-intensity': '0.9', 'shadow-softness': '0.8', exposure: '1', 'environment-image': 'neutral', 'interaction-prompt': 'none', 'touch-action': 'pan-y', ...(animation && !(typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) ? { 'animation-name': animation, autoplay: '' } : {}), tabIndex: 0, 'aria-label': alt, style: { width: '100%', height: '100%', background: 'transparent' } })
       : still}
     {granted && ready && state === 'loading' && <span className="m3d-load" role="status">Loading the model…</span>}

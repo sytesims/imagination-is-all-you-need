@@ -31,10 +31,13 @@ export function useSetupKind(): SetupKind | null {
     void read(); addEventListener(TOOLS_REFRESH, read); return () => { live = false; removeEventListener(TOOLS_REFRESH, read); }; }, []);
   return k;
 }
-/** Generate when nothing is connected (setupKind none): pressing it opens the connect sheet, the same as the server's 402 no_connection. */
+/** Generate when nothing is connected (setupKind none): it says the next step ("Connect to generate") and opens the connect sheet, the same
+ *  as the server's 402 no_connection. Once something is connected, the page's own Generate comes back. */
+export const CONNECT_LABEL = 'Connect to generate';
+export const CONNECT_HINT = 'Add a Comfy key or use your ComfyUI · about 1 min';
 export function ConnectGenerate({ testId, priceTestId, className = 'ic-gen gen-btn gen-dock btn btn-primary' }: { testId: string; priceTestId?: string; className?: string }) {
   return <button type="button" className={className} data-testid={testId} data-needs-connection="1" title={NO_CONNECTION_TITLE} onClick={openConnectSheet}>
-    <span className="gen-l">Generate</span><span className="gen-price" data-testid={priceTestId}>Connect a key or ComfyUI</span></button>;
+    <span className="gen-l">{CONNECT_LABEL}</span><span className="gen-price" data-testid={priceTestId}>{CONNECT_HINT}</span></button>;
 }
 
 type Step = { busy?: boolean; ok?: boolean; text?: string };

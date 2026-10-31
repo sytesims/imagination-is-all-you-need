@@ -2,10 +2,11 @@
  * Brand Kit on the web (2026-10-27): the kits (GET /api/brand-kits), the active one, and whether "Brand: <name>" is on in the Image, Video
  * and Audio bars. One store, so the chip, the submit (tools/app/AppTool), the prompt peek and Assets › Brand always agree.
  * The on / off switch is per media and per browser (localStorage); the kit picked in a bar's chip is the server's active kit (PUT /api/brand-kits/active),
- * so agents and the MCP read the same one. Recreate turns Brand back on with the job's kit (shared/usePrefill → brandFromRecreate).
+ * so agents and the MCP read the same one. Each kit's font files are added to the page as they arrive (brandFonts.ts), so brand fonts work app-wide. Recreate turns Brand back on with the job's kit (shared/usePrefill → brandFromRecreate).
  */
 import { useEffect, useState } from 'react';
-import { brandMediaFor, type BrandKit, type BrandMediaKind } from '../../../server/src/shared/brandKit';
+import { brandMediaFor, normalizeKit, type BrandKit, type BrandMediaKind } from '../../../server/src/shared/brandKit';
+import { registerBrandFonts } from './brandFonts';
 
 export interface BrandState { kits: BrandKit[]; activeId: string; on: Record<BrandMediaKind, boolean>; loaded: boolean; error: string | null; fonts: { name: string; kind: string; inApp?: boolean }[] }
 const LS = (m: BrandMediaKind) => `ohf:brand-on:${m}`;
@@ -20,7 +21,7 @@ let inflight: Promise<void> | null = null;
 export function loadBrandKits(force = false): Promise<void> {
   if (inflight && !force) return inflight;
   inflight = fetch('/api/brand-kits').then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-    .then((b) => set({ kits: b.items ?? [], activeId: b.activeId ?? '', fonts: b.fonts ?? [], loaded: true, error: null }))
+    .then((b) => { const kits = ((b.items ?? []) as BrandKit[]).map(normalizeKit); registerBrandFonts(kits); set({ kits, activeId: b.activeId ?? '', fonts: b.fonts ?? [], loaded: true, error: null }); })
     .catch((e) => set({ loaded: true, error: String(e?.message ?? e) })).finally(() => { inflight = null; });
   return inflight;
 }
@@ -40,6 +41,7 @@ export async function setActiveKit(id: string) {
 }
 /** Replace one kit after a save (or drop it: null). */
 export function putKit(k: BrandKit | null, id?: string, activeId?: string) {
+  if (k) { k = normalizeKit(k); registerBrandFonts([k]); }
   const kits = k ? (st.kits.some((x) => x.id === k.id) ? st.kits.map((x) => (x.id === k.id ? k : x)) : [...st.kits, k]) : st.kits.filter((x) => x.id !== id);
   set({ kits, ...(activeId ? { activeId } : {}) });
 }

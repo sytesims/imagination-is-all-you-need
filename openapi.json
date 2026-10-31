@@ -4486,7 +4486,7 @@
         "tags": [
           "Canvas"
         ],
-        "summary": "What this board's runs cost (jobs submitted with boardId=<id>, not in Trash) → {runs, running, estUsd (estimate at submit, sample runs priced as real), countedUsd (what counts in the Spend totals: sample runs and uncharged failures are $0), simulated, local, recent (up to 6: id, model, status, url, poster, createdAt, demo, local, estUsd, countedUsd), limit (the tightest own-accounts day/month cap: provider, providerName, period, capUsd, spentUsd; null)}; 404 unknown id",
+        "summary": "What this board's runs cost (jobs submitted with boardId=<id>, not in Trash) → {runs, running, estUsd (estimate at submit, sample runs priced as real; failed, blocked or canceled runs add only what was charged), countedUsd (what counts in the Spend totals: sample runs and uncharged failures are $0), simulated, local, recent (up to 6: id, model, status, url, poster, createdAt, demo, local, estUsd, countedUsd), limit (the tightest own-accounts day/month cap: provider, providerName, period, capUsd, spentUsd; null)}; 404 unknown id",
         "responses": {
           "200": {
             "description": "OK",
@@ -5597,7 +5597,7 @@
         "tags": [
           "Brand"
         ],
-        "summary": "Upload the logo (multipart field file: PNG, JPG, WEBP, GIF or SVG without scripts, ≤20 MB) → BrandKit",
+        "summary": "Upload a logo into a slot: ?slot=main (default) | light (for dark backgrounds) | dark (for light backgrounds) | icon. Multipart field file: PNG, JPG, WEBP, GIF or SVG without scripts, ≤20 MB → BrandKit",
         "responses": {
           "200": {
             "description": "OK",
@@ -5620,6 +5620,252 @@
             }
           },
           "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "slot",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Brand"
+        ],
+        "summary": "Empty a logo slot (?slot=…); where it is used, a missing slot falls back to main → BrandKit",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "slot",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/brand-kits/{id}/font": {
+      "post": {
+        "tags": [
+          "Brand"
+        ],
+        "summary": "Upload a font file for ?role=heading|body (&family= to name it). Multipart field file: TTF, OTF, WOFF or WOFF2, ≤10 MB, checked by content → BrandKit",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "family",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Brand"
+        ],
+        "summary": "Remove the font files of ?role=heading|body; the role goes back to the app font → BrandKit",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/brand-kits/{id}/font/google": {
+      "post": {
+        "tags": [
+          "Brand"
+        ],
+        "summary": "Download a Google Font once and keep it with the brand (licence and source recorded). JSON {family, role} → BrandKit; 404 unknown font, 502 offline",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
             "description": "Error",
             "content": {
               "application/json": {
@@ -10279,7 +10525,7 @@
         "tags": [
           "Settings"
         ],
-        "summary": "Connected provider accounts (read-only): [{provider, name, connected (a real key is set), balance?, balanceUnit?, balanceUsd?, monthSpendUsd? (Comfy), fetchedAt, source \"provider\" | \"unavailable\", note, billingUrl, failureRule, failureNote, actualCost, mock? {sample:true, balance, balanceUnit, balanceUsd, note} (mock backend with no key only: a sample for building the UI, never real)}]. Balances come from fal GET /v1/account/billing?expand=credits, BFL GET /v1/credits and Comfy Cloud GET /api/billing/usage/timeseries; cached 5 minutes (?refresh=1 skips the cache). Never calls a billing write, top-up or payment endpoint; keys are never returned.",
+        "summary": "Connected provider accounts (read-only): [{provider, name, connected (a real key is set), balance?, balanceUnit?, balanceUsd?, monthSpendUsd? (Comfy), fetchedAt, source \"provider\" | \"unavailable\", note, keyCheck? \"ok\" | \"rejected\" | \"offline\" (did the provider take the key on the last read; absent when there is no read), billingUrl, failureRule, failureNote, actualCost, mock? {sample:true, balance, balanceUnit, balanceUsd, note} (mock backend with no key only: a sample for building the UI, never real)}]. Balances come from fal GET /v1/account/billing?expand=credits, BFL GET /v1/credits and Comfy Cloud GET /api/billing/usage/timeseries; cached 5 minutes (?refresh=1 skips the cache). Never calls a billing write, top-up or payment endpoint; keys are never returned.",
         "responses": {
           "200": {
             "description": "OK",

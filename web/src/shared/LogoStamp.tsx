@@ -10,7 +10,7 @@ import { activeKit, loadBrandKits, useBrand } from './brandStore';
 import { setStamp, setStampOn, useStamp } from './stampStore';
 import { drawEndCard, drawStamp, loadStampArt, type StampArt } from './logoStampDraw';
 import { SPOT_NAME, STAMP_CORNERS, STAMP_SIZES, STAMP_SPOTS, STAMP_TEXT_MAX, spotAt, type StampSize } from '../../../server/src/shared/logoStamp';
-import type { BrandKit } from '../../../server/src/shared/brandKit';
+import { logoFor, type BrandKit } from '../../../server/src/shared/brandKit';
 import { tip } from './Tooltip';
 import './logoStamp.css';
 
@@ -65,7 +65,7 @@ export function LogoStampLayer({ kind }: { kind: 'image' | 'video' }) {
   useEffect(() => { if (!on) { setCard(false); setShowEnd(false); } }, [on]);
 
   if (!kit) return <div ref={root} className="lst" />;
-  const logo = !!kit.logo?.url;
+  const logo = !!logoFor(kit, 'main');
   const startDrag = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('.lst-tb') || !rect) return; e.preventDefault(); (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId); const x0 = e.clientX, y0 = e.clientY; setDrag({ x: 0, y: 0 });
     const move = (ev: PointerEvent) => setDrag({ x: ev.clientX - x0, y: ev.clientY - y0 });

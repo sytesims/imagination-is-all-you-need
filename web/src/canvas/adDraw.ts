@@ -1,12 +1,15 @@
 /**
  * Ad layout card, drawing (2026-10-30): the layout from adLayout.ts on a canvas, and the "Export pack" zip. Free and in the browser:
  * no AI, no server call. The logo comes from the shared stamp code (loadStampArt / drawLogo / plateFor), so it looks the same as
- * "Add logo and text". Fonts are the brand's own when this browser has them; otherwise the app's Manrope (the card says so). Nothing is downloaded.
+ * "Add logo and text", including the logo set: the light logo on a dark picture, the dark one on a bright picture (pickLogo; main when one is
+ * missing). Fonts are the brand's own: its font files (brandFonts.ensureKitFonts), else fonts this browser already has; otherwise the app's
+ * Manrope (the card says so). Nothing is downloaded here.
  */
 import type { BrandKit } from '../../../server/src/shared/brandKit';
 import { plateFor } from '../../../server/src/shared/logoStamp';
 import { zipStore } from '../../../server/src/shared/zipStore';
-import { brightness, cssFont, drawLogo, loadImg, loadStampArt, type StampArt } from '../shared/logoStampDraw';
+import { brightness, containIn, cssFont, drawLogo, loadImg, loadStampArt, pickLogo, type StampArt } from '../shared/logoStampDraw';
+import { ensureKitFonts } from '../shared/brandFonts';
 import { adColors, adPackFiles, buttonOn, layoutAd, logoSeeThrough, logoToneFor, postCopy, scrimAlpha, slugOf, type AdMeasure, type AdPreset, type AdStyle, type AdText, type LogoTone } from './adLayout';
 import { adExportPlan, type AdPlatform, type AdSizeOption, type Edges } from './adPlatforms';
 import { picCrop, type AdEdit, type AdEdits } from './adEdit';
@@ -25,8 +28,9 @@ function hasFont(name: string): boolean {
 const artCache = new Map<string, Promise<AdArt>>();
 /** The brand's logo and both fonts, ready to draw (null kit: no logo, the app's font). */
 export function loadAdArt(kit: BrandKit | null): Promise<AdArt> {
-  const key = kit ? `${kit.id}|${kit.updatedAt}|${kit.logo?.url ?? ''}|${kit.fonts.heading}|${kit.fonts.body}` : '-'; const hit = artCache.get(key); if (hit) return hit;
+  const key = kit ? `${kit.id}|${kit.updatedAt}|${JSON.stringify(kit.logos ?? kit.logo)}|${kit.fonts.heading}|${kit.fonts.body}|${(kit.fontFiles ?? []).map((f) => f.url).join()}` : '-'; const hit = artCache.get(key); if (hit) return hit;
   const p = (async () => {
+    await ensureKitFonts(kit);
     await Promise.all(['700 40px Manrope', '500 40px Manrope', '400 40px Manrope', ...(kit ? [`700 40px ${cssFont(kit.fonts.body)}`, `500 40px ${cssFont(kit.fonts.body)}`] : [])].map((f) => document.fonts?.load(f).catch(() => undefined)));
     if (!kit) return { kit: null, stamp: null, heading: FALLBACK, body: FALLBACK, missing: [], logoSeeThrough: false };
     const stamp = await loadStampArt(kit); const missing: string[] = [];
@@ -97,11 +101,13 @@ export function drawAd(g: CanvasRenderingContext2D, W: number, H: number, pic: H
     if (!placed) { if (l.align === 'center') plateBox.x -= pad; if (lb.y + plateBox.h > l.area.y + l.area.h) plateBox.y -= 2 * pad; }
     if (!placed && l.align === 'right') plateBox.x -= 2 * pad;
     const behind = l.panel && panel && lb.x >= l.panel.x && lb.y >= l.panel.y ? (col.scrim === 'dark' ? 0.06 : 0.94) : pic ? lumAt(plateBox) : 0.06;
-    /* the logo's style: all white / near black, and the plate auto (as before), always or never */
-    const tone = logoToneFor(st.logoTone, art.logoSeeThrough); const logoLum = tone === 'light' ? 1 : tone === 'dark' ? 0.05 : art.stamp.logoLum;
+    /* the logo's style: all white / near black (the main logo recoloured), and the plate auto (as before), always or never.
+     * As it is: the logo set's light logo on a dark spot, its dark one on a bright spot (pickLogo; main when one is missing) */
+    const tone = logoToneFor(st.logoTone, art.logoSeeThrough); const v = tone === 'original' ? pickLogo(art.stamp, behind)! : { img: art.stamp.logo, size: art.stamp.logoSize ?? lb, lum: art.stamp.logoLum };
+    const logoLum = tone === 'light' ? 1 : tone === 'dark' ? 0.05 : v.lum;
     const kind = st.logoPlate === 'off' ? null : st.logoPlate === 'on' ? (logoLum != null && logoLum >= 0.5 ? 'dark' : 'light') : plateFor('auto', logoLum, behind); const q = placed ? (Math.min(lb.w, lb.h) - 2 * pad) / Math.min(lb.w, lb.h) : 1;
     const inner = placed ? { x: lb.x + (lb.w * (1 - q)) / 2, y: lb.y + (lb.h * (1 - q)) / 2, w: lb.w * q, h: lb.h * q } : { ...lb, x: plateBox.x + pad, y: plateBox.y + pad };
-    drawLogo(g, logoIn(art.stamp.logo, tone), kind ? inner : lb, kind ? { ...plateBox, kind } : null, lb.h);
+    drawLogo(g, logoIn(v.img, tone), containIn(kind ? inner : lb, v.size), kind ? { ...plateBox, kind } : null, lb.h);
   }
   const xAt = (x: number, w: number) => (l.align === 'center' ? x + w / 2 : l.align === 'right' ? x + w : x);
   g.textBaseline = 'alphabetic'; g.textAlign = l.align; g.fillStyle = ink; g.shadowColor = col.shadow;

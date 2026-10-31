@@ -133,5 +133,8 @@
 .sfilm-transport .snd-toggle:hover{background:rgba(255,255,255,.14)}
 .sfilm-transport .snd-toggle.is-on{background:transparent;color:#fff}.sfilm-transport .snd-toggle.is-on:hover{background:rgba(255,255,255,.14)}
 .sfilm-control-error{display:block;margin-top:4px;font-size:12px;line-height:1.4}
+/* compact (shared/VideoControls): Play and the progress line on one row, for small players */
+.sfilm-controls.is-compact{padding:28px 10px 8px}.sfilm-controls.is-compact .sfilm-transport{gap:10px;min-height:0;margin-top:0}
+.sfilm-controls.is-compact .sfilm-btn-play{width:32px;height:32px;margin-right:0}.sfilm-controls.is-compact .sfilm-seek{flex:1;min-width:0}
 @media(pointer:coarse){.sfilm-btn,.sfilm-transport .snd-toggle{width:44px;height:44px}.sfilm-seek{height:24px}}
 @media(prefers-reduced-motion:reduce){.sfilm-btn,.sfilm-seek::-webkit-slider-thumb,.sfilm-seek::-moz-range-thumb,.sfilm-seek::-webkit-slider-runnable-track{transition:none}.sfilm-btn:active{transform:none}}
