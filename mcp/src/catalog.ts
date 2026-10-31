@@ -121,7 +121,8 @@ export async function loadWorkflows(): Promise<Workflow[]> {
   const items = (await Promise.all([pick('image', '/api/image-workflows'), pick('audio', '/api/audio-workflows'), pick('3d', '/api/3d-workflows'), video(), caps()])).flat() as Workflow[];
   // The capabilities entry includes ready run arguments; avoid also listing its raw 3D page row.
   const canonical3d = new Set(items.filter(w => w.area === '3d' && w.id.startsWith('3d/')).map(w => w.id));
-  const unique = items.filter(w => w.area !== '3d' || !canonical3d.has(`3d/${w.id}`));
+  const unique = items.filter(w => w.area !== '3d' || !canonical3d.has(`3d/${w.id}`))
+    .map(w => canonical3d.has(w.id) ? { ...w, aliases: [w.id.slice(3)] } : w); // the raw id still describes it
   wfCache = { at: Date.now(), items: unique }; return unique;
 }
 let capWords: Record<string, string[]> = {};

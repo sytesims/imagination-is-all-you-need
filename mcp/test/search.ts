@@ -45,6 +45,7 @@ try {
     findable(mode === 'text-to-3d' ? 'Text to 3D' : 'Multi-view to 3D', `3d/${mode}`);
   }
   assert.deepEqual(wfs.filter(w => w.name === 'Image to 3D').map(w => w.id), ['3d/image-to-3d'], 'one Image to 3D search entry');
+  assert.deepEqual(wfs.find(w => w.id === '3d/image-to-3d')?.aliases, ['image-to-3d'], 'the raw 3D id still describes the canonical entry');
   // ---- 1. everything by its name ----
   for (const t of tools) { findable(t.name, t.id); findable(t.id, t.id, 3); }
   let modes = 0; for (const t of tools) for (const m of toolModes(t)) { findable(`${t.name} ${m.label}`, `${t.id}/${m.id}`); findable(`${t.id}/${m.id}`, `${t.id}/${m.id}`, 3); modes++; }
