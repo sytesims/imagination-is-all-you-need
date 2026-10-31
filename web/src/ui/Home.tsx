@@ -15,7 +15,7 @@ import { useEffect, useState } from 'react';
 import type { ToolInfo } from '../api';
 import { Link } from '../platform/router';
 import { REPO_URL } from '../shared/brand';
-import { BOOK_PATH } from '../learn/ecomChapters';
+import { footerCols, FOOT_NAME } from '../shared/footerLinks';
 import { MakerTile } from '../shared/MakerTile';
 import { StandInArt } from '../shared/StandInArt';
 import { HoverClip, prefersReducedMotion } from '../shared/HoverClip';
@@ -138,12 +138,6 @@ export default function Home({ tools }: { tools: ToolInfo[] }) {
   const rows = EXPLORE_ROWS.map(r => ({ ...r, cards: r.cards.filter(c => has(c.toolId)) })).filter(r => r.cards.length);
   const chips = tools.filter(x => (x as any).listed !== false).map(x => ({ id: x.id, name: x.name, route: x.route }));
   /* two tools with one name (Upscale for images and for clips): say which */ const dup = new Set(chips.map(c => c.name).filter((n, k, a) => a.indexOf(n) !== k)); chips.forEach(c => { if (dup.has(c.name)) { const m = (tools.find(t => t.id === c.id) as any)?.media ?? (/image|app-remove-bg/.test(c.id) ? 'image' : 'video'); c.name = `${c.name} · ${m === 'image' ? 'image' : 'video'}`; } });
-  const foot: [string, [string, string][]][] = [
-    ['On this page', [['From one still', '#xp-still'], ['Image to layers', '#xp-layers'], ['Character sheets', '#xp-sheets'], ['Every look', '#xp-looks'], ['Canvas', '#xp-board']]],
-    ['Make', [['Video', '/tools/h3-video'], ['Image', '/tools/create-image'], ['Audio', '/tools/audio'], ['3D', '/tools/3d'], ['Canvas', '/canvas'], ['Workflows', '/workflows']]],
-    ['Platform', [['MCP', '/mcp'], ['API docs', '/api-docs'], ['Spend', '/spend'], ['Assets', '/assets'], ['Plugins', '/plugins']]],
-    ['About', [['Models & licences', '/licenses'], ['Usage notes', '/terms'], ['Learn: AI for e-commerce', BOOK_PATH], ['Settings', '/settings'], ...(repoUrl ? [['Source code', repoUrl] as [string, string]] : [])]],
-  ];
   return <div className="home xp" data-testid="explore">
     <h1 className="sr-only-vis">Imagination Is All You Need: an open studio for video, images, sound and 3D</h1>
     <XpHero />
@@ -164,8 +158,9 @@ export default function Home({ tools }: { tools: ToolInfo[] }) {
     </div>
     {/* the closing moment, full width: a prompt box over a wall of things made here */}
     <XpYourTurn />
-    <footer className="xp-footer" data-sec="footer"><div className="xp-foot-in"><h2>IMAGINATION IS ALL YOU NEED</h2>
-      <div className="xp-fcols">{foot.map(([h, ls]) => <div key={h}><span className="xp-fh">{h}</span><span className="xp-flinks">{ls.map(([l, to]) => /^https?:/.test(to) ? <a key={l} href={to} target="_blank" rel="noreferrer">{l}</a> : to.startsWith('#') ? <a key={l} href={to}>{l}</a> : <Link key={l} to={to}>{l}</Link>)}</span></div>)}</div></div>
-      <div className="xp-fbot"><span>© {new Date().getFullYear()} Imagination Is All You Need · AGPL-3.0 · Not affiliated with Higgsfield<br /><small>Everything the tools make is AI-generated.</small></span><span className="xp-fsoc"><Link to="/licenses">Models &amp; licences</Link><Link to="/terms">Usage notes</Link><Link to="/mcp">MCP</Link><a href={repoUrl} target="_blank" rel="noopener noreferrer" data-testid="home-github">GitHub</a></span></div></footer>
+    <footer className="xp-footer" data-sec="footer"><div className="xp-foot-in">
+      <div className="xp-fbrand"><h2>Imagination is<br />all you need</h2><a className="xp-fgh" href={repoUrl} target="_blank" rel="noopener noreferrer" data-testid="home-github">GitHub <span aria-hidden>↗</span></a></div>
+      <div className="xp-fcols">{footerCols(repoUrl).map(([h, ls]) => <nav key={h} aria-label={h}><span className="xp-fh">{h}</span><span className="xp-flinks">{ls.map(([l, to]) => /^https?:/.test(to) ? <a key={l} href={to} target="_blank" rel="noopener noreferrer">{l}</a> : <Link key={l} to={to}>{l}</Link>)}</span></nav>)}</div></div>
+      <p className="xp-fbot">© {new Date().getFullYear()} {FOOT_NAME} · Everything the tools make is <span className="xp-nw">AI-generated</span>.</p></footer>
   </div>;
 }
