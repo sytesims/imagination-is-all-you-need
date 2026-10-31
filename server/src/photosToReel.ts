@@ -7,7 +7,8 @@ import * as lib from './library.js';
 import { jobs, persistJob, type Job } from './jobs.js';
 import { parseReelOptions, reelPlan, reelResumePlan, reelMusicAction, REEL_MOODS, type ReelOptions } from './shared/photosToReel.js';
 import { clipArgs } from './shareExport.js';
-import { cameraDefaultMove } from './tools/apps.js';
+import { cameraDefaultMove, cameraPresetOff } from './tools/apps.js';
+import { fillPattern } from './shared/promptPatterns.js';
 import { jobSpendView } from './billing.js';
 import { runFfmpeg, mediaDuration } from './ffmpeg.js';
 
@@ -26,7 +27,31 @@ const terminal = (j: Job) => !['queued', 'running', 'needs_decision'].includes(j
 const touch = (j: Job) => { j.updatedAt = Date.now(); persistJob(j); };
 const bad = (reply: FastifyReply, error: string, field = '') => reply.code(400).send({ error, errorType: 'validation', issues: [{ code: 'invalid', field, message: error }], charged: false });
 const query = (v: Record<string, unknown>) => new URLSearchParams(Object.entries(v).filter(([,x]) => x != null && x !== '').map(([k,x]) => [k,String(x)])).toString();
-const cameraFields = (v: Record<string, any>) => ({ provider: v.provider, model: v.model, runOn: v.runOn, route: v.route, resolution: v.resolution || '720p', seconds: 5, aspect: '9:16', types: JSON.stringify([cameraDefaultMove(v.model === 'ltx-2-19b' ? 'cloud-ltx-camera' : v.provider || (v.runOn === 'local' ? 'comfy-open' : 'api-minimax-h3'))].filter(Boolean)), image: '1', rights: '1' });
+/** Choose only presets supported by the quoted model, without switching its camera engine. */
+export function reelCameraFields(v: Record<string, any>, photoOrdinal = 0) {
+  const provider = v.model === 'ltx-2-19b' ? 'cloud-ltx-camera' : v.provider || (v.runOn === 'local' ? 'comfy-open' : 'api-minimax-h3');
+  const fallback = cameraDefaultMove(provider);
+  const ltx = provider === 'cloud-ltx-camera' || !!fallback?.startsWith('ltx-');
+  const sequences: Record<string, string[]> = {
+    listing: ['default', 'pan-left', 'crane-up'],
+    event: ['default', 'pan-right', 'pull-out', 'crane-up'],
+    hotel: ['default', 'pan-left', 'pull-out'],
+    trip: ['default', 'crane-up', 'pan-right'],
+    product: ['default', 'pan-left', 'pull-out'],
+  };
+  const sequence = sequences[v.kind] ?? sequences.listing;
+  const chosen = sequence[photoOrdinal % sequence.length];
+  const equivalents: Record<string,string> = { 'pan-left':'ltx-dolly-left', 'pan-right':'ltx-dolly-right', 'crane-up':'ltx-jib-up', 'pull-out':'ltx-dolly-out' };
+  const candidate = chosen === 'default' ? fallback : ltx ? equivalents[chosen] : chosen;
+  const move = candidate && !cameraPresetOff([candidate], provider) ? candidate : fallback;
+  const model = ltx ? 'ltx-2-19b' : provider === 'api-minimax-h3' ? 'minimax-h3' : provider === 'comfy-open' ? 'wan-camera' : v.model;
+  // The normal Camera parser/backend writes the selected move through its model's camera-move pattern.
+  // This supplementary paragraph supplies pace and scene continuity, never a second conflicting move.
+  const pace = v.kind === 'event' ? 'brisk, lively and controlled' : v.kind === 'hotel' ? 'very slow, smooth and steady' : 'slow, smooth and gentle';
+  return { provider:v.provider, model:v.model, runOn:v.runOn, route:v.route, resolution:v.resolution || '720p', seconds:5, aspect:'9:16',
+    types:JSON.stringify([move].filter(Boolean)), image:'1', rights:'1', prompt:fillPattern('camera-scene', model, { pace }) };
+}
+const cameraFields = reelCameraFields;
 const musicFields = (v: Record<string, any>) => ({ provider: v.musicProvider || (v.runOn === 'local' ? 'comfy-acestep' : undefined), runOn: v.runOn === 'local' ? 'local' : undefined, route: v.musicRoute, seconds: v.seconds, types: '["music"]', video: '1', rights: '1', prompt: REEL_MOODS[v.kind as ReelOptions['kind']] });
 
 /** Price every paid step through the same route-aware endpoint used for its submit. */
@@ -101,8 +126,8 @@ async function runReel(app: FastifyInstance, job: Job, headers: Record<string,st
         }
         if (previous?.status === 'done' && previous.resultUrl) { input.clipsByPhoto[i] = previous.resultUrl; clips.push(previous.resultUrl); continue; }
         if (plan.heroes.includes(i)) {
-          const child = await submit(app, job, 'camera', { ...cameraFields(input.fields), '@file:image': input.photoUrls[i], image: undefined,
-            simulate: config.backend === 'mock' && String(input.fields.simulateGroup ?? '').split(',').map(Number).includes(i+1) ? 'temporary' : '', prompt: 'A gentle slow camera push in. Preserve the photographed scene, people, objects and proportions. Do not add or remove anything.' }, headers, `photo-${i}`);
+          const child = await submit(app, job, 'camera', { ...cameraFields(input.fields, plan.heroes.indexOf(i)), '@file:image': input.photoUrls[i], image: undefined,
+            simulate: config.backend === 'mock' && String(input.fields.simulateGroup ?? '').split(',').map(Number).includes(i+1) ? 'temporary' : '' }, headers, `photo-${i}`);
           clips.push(child.resultUrl!); input.clipsByPhoto[i] = child.resultUrl; input.photoJobs[i] = child.id;
         } else {
           const name = `${job.id}-still-${i}.mp4`, out = path.join(DATA_DIR,name);
