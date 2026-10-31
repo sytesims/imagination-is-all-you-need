@@ -7,11 +7,10 @@ import { useBilling, useAccounts, modeOf, priceToken, priceDetail, fmtUsd } from
 import { splitToken, balanceOf, blockOf, reasonShort, reasonBody, COMFY_CR } from './menuPrice';
 import { useRowQuotes, shownCredits, ROW_PENDING, ROW_FAILED, type RowQuote, type PlacePrice, type RowFit } from './quote';
 import type { Need } from '../../../server/src/shared/settingsFit';
-import { groupOf, livePlace, placesIn, matchesQuery, familiesOf, familyFrom, shownOf, localFirst, featuredLocalFirst, type MenuTab, type Family, type Shown } from './modelMenuSort';
+import { groupOf, livePlace, placesIn, matchesQuery, familiesOf, familyFrom, shownOf, localBlocker, localFirst, featuredLocalFirst, type MenuTab, type Family, type Shown } from './modelMenuSort';
 import { familyBlurb } from '../../../server/src/shared/modelRank';
 import { LOCAL_LABEL, LOCAL_FREE } from '../../../server/src/shared/modelIds';
-import { useToolModels, modelOfEngine, engineForModel, enginesModels, setActiveModel, setRunOn, listPrice, modelStateLine, useRunOn, getRunOn, shownName, toolLike, RUN_ON_CHIP, RUN_ON_BILLING, STATUS_WORD, type ToolModel, type RunOnRow } from './models';
-import { fmtBytes } from '../api';
+import { useToolModels, modelOfEngine, engineForModel, enginesModels, setActiveModel, setRunOn, listPrice, modelStateLine, useRunOn, getRunOn, shownName, toolLike, RUN_ON_CHIP, RUN_ON_BILLING, type ToolModel, type RunOnRow } from './models';
 import { CHECK } from './checkGlyph';
 import { RunOnMenu, runOnText } from '../ui/routing/RunOn';
 import { InfoCardBody } from './ModelHoverCard';
@@ -165,16 +164,14 @@ function NeedsKey({ price, place, kind = 'add_key', title, runOn }: { price: str
   return <span className="orb-pr" data-testid="mp-row-status" data-kind={kind} data-setup-price="1" data-run-on={runOn} title={title}><b data-testid="mp-row-price" className="orb-usd orb-est">{usd}</b><small className="orb-cr orb-need">Needs {place} key</small></span>;
 }
 /** A row's right column inside a place tab (Local · Comfy · Your keys): what THIS place charges for this run, or what it still needs.
- *  Local: FREE, or FREE over "Download 17.2 GB" / "turn on". Comfy / Your keys: the batch quote for that place (same token as Generate),
+ *  Local: Free when it runs now, else its blocker over "Free once ready" ("Download 43 GB", "Needs 43 GB space", "Turn on"; modelMenuSort localBlocker). Comfy / Your keys: the batch quote for that place (same token as Generate),
  *  Sample for a sample run, the price over "Needs fal key" when a key is missing; the place's list price until the quote answers. */
 function placeRight({ p, own, off, rq, many }: { p: RunOnRow; own: boolean; /** true, or the page's reason (item.off) */ off?: boolean | string | null; rq?: RowQuote | any | null; /** the tab has several places: name it */ many?: boolean }): Right {
   const short = placeShort(p.id, p.label); void many;
   if (off) { const why = typeof off === 'string' ? off : p.reason ?? null; return R(<Price kind="unavailable" runOn={p.id} top={offWords(why)} status title={why ?? 'Not available here.'} />); }
-  if (p.id === 'local') { const a = p.action;
-    if (p.status === 'ready') return R(<Price kind="ready" runOn="local" top="Free" sub={LOCAL_LABEL} free />, FREE);
-    if (a?.kind === 'download') return R(<Price kind="download" runOn="local" top="Free" free est sub={`Download${a.missingBytes ? ` ${fmtBytes(a.missingBytes)}` : ''}`} need title={p.reason ?? undefined} />, FREE);
-    const need = a?.text ?? STATUS_WORD[p.status] ?? '';
-    return R(<Price kind={a?.kind ?? p.status} runOn="local" top="Free" free est sub={need || LOCAL_LABEL} need={!!need} title={p.reason ?? undefined} />, FREE); }
+  if (p.id === 'local') { const b = localBlocker(p); // Free only when it runs now; else the blocker, and no price (the family isn't Free on it)
+    if (!b) return R(<Price kind="ready" runOn="local" top="Free" sub={LOCAL_LABEL} free />, FREE);
+    return R(<Price kind={p.action?.kind ?? p.reasonCode ?? p.status} runOn="local" top={b.word} status sub={b.sub} title={p.reason ?? undefined} />); }
   const mine = rq && (!rq.runOn || rq.runOn === p.id) ? rq : null;
   const keyPrice = (c: number | null | undefined) => listPrice(c, p.id, own);
   if (mine?.demo === true || (!mine && p.status === 'sample')) return R(sampleRow(p.id));
@@ -370,7 +367,7 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
         <span className="orb-d">{line}</span>
         <span className="orb-g"><span data-testid="mp-family-count">{f.models.length} versions</span>{picked && <span className="orb-g-pick">{shownName(picked)} picked</span>}</span>
       </span>
-      <FamPrice p={fp} wait={wait} />
+      {fp.free || fp.usd != null || wait ? <FamPrice p={fp} wait={wait} /> : rightOf(lead).node /* no version shows a price (all need a download, space, a switch…): what the first one needs */}
       <ChevronRightIcon size={16} className="orb-fam-chev" aria-hidden />
       {picked && <span className="orb-pick" aria-hidden data-testid="mp-picked-in"><LogoMark size={16} /></span>}
     </div>, openF ? <div key={`fam:${f.family}:v`} className="orb-vers" role="group" aria-label={`${f.family} versions`} data-testid="mp-family-versions">{f.models.flatMap(m => row(m, f.family))}</div> : null]; };

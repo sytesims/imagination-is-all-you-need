@@ -1,7 +1,7 @@
 // Model menu filters + sort (web/src/shared/modelMenuSort.ts) and our quality order (server/src/shared/qualityRank.ts).
 // Run: npx tsx test/model-menu-sort.test.ts   (no server, no network)
 import assert from 'node:assert/strict';
-import { chipsFor, matchesChips, cheapestOf, sortModels, newestScore, gpuStateOf, matchesQuery, familiesOf, familyFrom, shownOf, localScore, localFirst, featuredLocalFirst } from '../../web/src/shared/modelMenuSort.ts';
+import { chipsFor, matchesChips, cheapestOf, sortModels, newestScore, gpuStateOf, matchesQuery, familiesOf, familyFrom, shownOf, localBlocker, localScore, localFirst, featuredLocalFirst } from '../../web/src/shared/modelMenuSort.ts';
 import { specOf, priceOf, usdRange, cardFactsOf, cardDetailsOf, listRateOf } from '../../web/src/shared/modelSpec.ts';
 import { QUALITY_ORDER, qualityRank } from '../src/shared/qualityRank.ts';
 import { CATALOGUE, FAMILY_BLURB, THREE_D_BEST_FOR } from '../src/shared/modelRank.ts';
@@ -104,6 +104,25 @@ ok('quality order: real image models, no repeats, edit order differs (Sunburst f
   assert.deepEqual(familyFrom([null, undefined]), { free: false, usd: null }, 'no version shows a price: none');
   for (const [k, v] of [...Object.entries(FAMILY_BLURB), ...Object.entries(THREE_D_BEST_FOR)]) assert.ok(v.length <= 50 && !/\b(free|local|comfy|fal|\$)/i.test(v), `${k}: short, no place or price (${v})`); }
 ok('quiet menu: search matches makers, capabilities, keywords and "free"; families group versions; a family is Free or from the cheapest of its version rows; family lines ≤ 50 chars');
+// Your computer says Free only when it runs now (2026-10-31: LTX-2.5 22B said Free with 42.7 GB to fetch and 42.3 GB free)
+{ const L = (status: string, extra: any = {}) => place('local', status, extra);
+  assert.equal(localBlocker(L('ready')), null, 'ready: Free');
+  const w = (r: any) => { const b = localBlocker(r); return b && `${b.word} / ${b.sub}`; };
+  assert.equal(w(L('not-installed', { action: { kind: 'download', text: 'Download 42.7 GB', missingBytes: 42.7e9 } })), 'Download 43 GB / Free once ready');
+  assert.equal(w(L('not-installed', { action: { kind: 'download', text: 'Download files' } })), 'Download / Free once ready');
+  assert.equal(w(L('not-installed', { reasonCode: 'not_enough_disk', reason: "This model's files need 42.7 GB of disk space; 42.3 GB is free.", missingBytes: 42.7e9 })), 'Needs 43 GB space / Free once ready', 'not enough disk: from the structured bytes, not the sentence');
+  assert.equal(w(L('not-installed', { reasonCode: 'not_enough_disk' })), 'Needs disk space / Free once ready');
+  assert.equal(w(L('not-installed', { reasonCode: 'not_enough_disk', missingBytes: 3.2e9 })), 'Needs 3.2 GB space / Free once ready');
+  assert.equal(w(L('off', { action: { kind: 'turn_on', text: 'Turn on' } })), 'Turn on / Free once ready');
+  assert.equal(w(L('not-installed', { reasonCode: 'nodes_missing', action: { kind: 'install_node', text: 'Install node' } })), 'Install add-on / Free once ready');
+  assert.equal(w(L('not-installed', { reasonCode: 'local_unreachable', action: { kind: 'set_up_gpu', text: 'Set up GPU' } })), 'Set up / Free once ready');
+  assert.equal(w(L('unavailable', { reasonCode: 'unsupported_weights' })), 'Needs NVIDIA / Your computer', 'a blocker the user cannot fix: no "once ready"');
+  assert.equal(w(L('not-installed', { reasonCode: 'too_heavy' })), 'Too big for this GPU / Your computer');
+  for (const r of [L('not-installed', { reasonCode: 'not_enough_disk', missingBytes: 42.7e9 }), L('off'), L('not-installed', { reasonCode: 'too_heavy' })]) { const b = localBlocker(r)!;
+    assert.ok(!/^Free\b/.test(b.word) && !/\bMac\b/.test(b.word + b.sub) && b.word.length <= 20, `short, never Free, never Mac: ${b.word}`);
+    assert.equal(shownOf(b.word), null, `a blocked Local row shows no price: ${b.word}`); }
+  assert.deepEqual(familyFrom([shownOf(localBlocker(L('not-installed', { reasonCode: 'not_enough_disk', missingBytes: 42.7e9 }))!.word), { usd: 0.3, free: false }]), { free: false, usd: 0.3 }, 'a family with only a blocked Local row is never Free'); }
+ok('Your computer: Free only when ready; else the blocker (Download 43 GB, Needs 43 GB space, Turn on, Needs NVIDIA) and no price');
 
 // 6. Local first (2026-10-26, every menu): free local models lead All models and Featured; Featured keeps its cloud highlight after them
 { const cloud = model('cloud', 'google', [place('comfy-cloud')]); const cloud2 = model('cloud2', 'openai', [place('openai')]);

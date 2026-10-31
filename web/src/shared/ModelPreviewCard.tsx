@@ -47,7 +47,7 @@ function localWords(r: RunOnRow, also: boolean): string {
     return `${lead} after a one-time ${size ? `${size} ` : ''}download`; }
   if (a?.kind === 'turn_on' || r.status === 'off') return `${lead} once it’s set up`;
   if (a?.kind === 'install_node') return `${lead} after adding one custom node`;
-  return `${lead} · ${need.text}`;
+  return also ? `Free on your computer once ready · ${need.text}` : `${lead} · ${need.text}`; // "Needs 43 GB space": never plain Free while it can't run
 }
 export interface CardPrice {
   /** 'run' this run's price · 'free' runs free on this computer · 'sample' a free sample run · 'key' the price once a key is added ·
@@ -81,7 +81,9 @@ export function cardPriceOf(m: ToolModel, o: { rq?: any; run?: RunInfo | null; t
     return { kind: 'sample', big: 'Free', what: 'sample run', where: null, est: false, other: typeof real === 'number' && real > 0 ? `A real run ≈ ${usdPrice(real).replace(/^≈\s*/, '')}${at ? ` on ${at}` : ''}, once a key is added` : otherLine(), detail: null }; }
   const so = Array.isArray(rq?.setupOptions) ? rq.setupOptions.find((x: any) => typeof x?.credits === 'number' && x.credits > 0) : null;
   if (so) return { kind: 'key', big: usdPrice(so.credits / 100), what: `for this ${noun}`, where: `once you add a ${keyWord(so.runOn, so.runOnLabel)} key`, est: true, other: localRow ? otherLine() : null, detail: null };
-  if (localRow && places.length === 1) { const need = placeNeed(localRow); return { kind: 'free', big: 'Free', what: 'on your computer', where: need.ready ? null : localWords(localRow, false), est: false, other: null, detail: null }; }
+  if (localRow && places.length === 1) { const need = placeNeed(localRow); // Free only when it runs now; else what it needs, the full reason under it
+    return need.ready ? { kind: 'free', big: 'Free', what: 'on your computer', where: null, est: false, other: null, detail: null }
+      : { kind: 'blocked', big: need.text, what: '', where: localRow.reason ?? localWords(localRow, false), est: false, other: null, detail: null }; }
   if (rq && (rq.runnable === false || rq.ok === false) && !rq.pending && !rq.failed) return { kind: 'blocked', big: 'Can’t run as set', what: '', where: null, est: false, other: localRow ? otherLine() : null, detail: null };
   const rate = listRateOf(m, o.engine); const paid = rate?.text ?? priceOf(m, o.engine)?.replace(/^Free · /, '') ?? null;
   if (paid && paid !== 'Free') { const lo = /^\$([\d.]+)(?:–[\d.]+)?(.*)$/.exec(paid); const from = lo ? `From $${lo[1]}${lo[2] ?? ''}` : paid;

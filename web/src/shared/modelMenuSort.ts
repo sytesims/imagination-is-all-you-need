@@ -12,6 +12,7 @@
  */
 import type { ToolModel, RunOnRow } from './models';
 import { LOCAL_LABEL } from '../../../server/src/shared/modelIds';
+import { gbText } from './fit';
 
 export type MenuTab = 'all' | 'comfy' | 'api' | 'gpu';
 export type MenuSort = 'recommended' | 'price' | 'newest' | 'quality';
@@ -134,6 +135,24 @@ export interface Shown { usd: number; free: boolean }
 export function shownOf(tok: string | null | undefined): Shown | null {
   if (!tok) return null; if (/^Free\b/i.test(tok)) return { usd: 0, free: true };
   const m = /\$\s*([\d,]*\.?\d+)/.exec(tok); return m ? { usd: Number(m[1].replace(/,/g, '')), free: false } : null;
+}
+/** "Your computer" in a place tab (2026-10-31): only a place that runs NOW says Free. Otherwise its blocker is the main word, short and plain
+ *  ("Download 43 GB", "Needs 43 GB space", "Turn on"), with "Free once ready" under it when the user can fix it (else the place's name); the
+ *  row then shows no price, so its family isn't Free either (familyFrom). null = ready: Free. Same words in the place list (placeNeed). */
+export const FREE_ONCE_READY = 'Free once ready';
+export function localBlocker(r: Pick<RunOnRow, 'status' | 'action' | 'reasonCode'> & { missingBytes?: number | null }): { word: string; sub: string; fixable: boolean } | null {
+  if (r.status === 'ready') return null;
+  const a = r.action; const fix = (word: string) => ({ word, sub: FREE_ONCE_READY, fixable: true }); const no = (word: string) => ({ word, sub: LOCAL_LABEL, fixable: false });
+  if (a?.kind === 'download') return fix(a.missingBytes ? `Download ${gbText(a.missingBytes)}` : 'Download');
+  if (r.reasonCode === 'not_enough_disk') return fix(r.missingBytes ? `Needs ${gbText(r.missingBytes)} space` : 'Needs disk space');
+  if (a?.kind === 'turn_on' || r.status === 'off') return fix('Turn on');
+  if (a?.kind === 'install_node' || r.reasonCode === 'nodes_missing') return fix('Install add-on');
+  if (r.reasonCode === 'unsupported_weights') return no('Needs NVIDIA');
+  if (r.reasonCode === 'unsupported_hardware') return no('Needs a graphics card');
+  if (r.reasonCode === 'too_heavy') return no('Too big for this GPU'); // menuPrice reasonShort's words for the same reason
+  if (a?.kind === 'set_up_gpu' || r.reasonCode === 'local_unreachable') return fix('Set up');
+  if (r.status === 'coming-soon') return no('Coming soon');
+  return no('Not available');
 }
 /** A family row's price, from what its version rows show (ModelMenu passes each version row's Shown, so the two never disagree):
  *  "Free" only when a version row itself says Free, else "from" the lowest price a version row shows (null = none shows a price yet). */

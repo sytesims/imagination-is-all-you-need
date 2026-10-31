@@ -3,6 +3,7 @@ import { runPrice, priceToken, priceDetail } from './billing';
 import { blockOf, reasonBody } from './menuPrice';
 import { shownName, RUN_ON_CHIP, rowPlaceLabel, type RunOnRow, type ToolModel } from './models';
 import { gbText } from './fit';
+import { localBlocker } from './modelMenuSort';
 import { placeIconFor } from '../ui/Icons';
 import { LOCAL_LABEL } from '../../../server/src/shared/modelIds';
 /**
@@ -16,7 +17,7 @@ export const keyWord = (runOn: string, label?: string | null) => KEY_WORD[runOn]
 const live = (r: RunOnRow) => r.status !== 'coming-soon' && r.status !== 'unavailable';
 
 /** What a place still needs, in a few words ("Ready", "Download 53 GB", "Add a Comfy key", "Turn on Local"). */
-export function placeNeed(r: Pick<RunOnRow, 'id' | 'label' | 'status' | 'action'>): { text: string; ready: boolean } {
+export function placeNeed(r: Pick<RunOnRow, 'id' | 'label' | 'status' | 'action' | 'reasonCode' | 'missingBytes'>): { text: string; ready: boolean } {
   if (r.status === 'ready') return { text: 'Ready', ready: true };
   if (r.status === 'sample') return { text: 'Sample run', ready: true };
   const a = r.action;
@@ -24,6 +25,7 @@ export function placeNeed(r: Pick<RunOnRow, 'id' | 'label' | 'status' | 'action'
   if (a?.kind === 'add_key' || r.status === 'needs-key') return { text: `Add a ${keyWord(r.id, r.label)} key`, ready: false };
   if (a?.kind === 'turn_on' || r.status === 'off') return { text: `Turn on ${LOCAL_LABEL}`, ready: false };
   if (a?.kind === 'install_node') return { text: 'Needs a custom node', ready: false };
+  if (r.id === 'local') return { text: localBlocker(r)?.word ?? 'Not set up', ready: false }; // "Needs 43 GB space", "Too big for this GPU": the menu row's words
   return { text: a?.text ?? 'Not set up', ready: false };
 }
 
@@ -53,7 +55,7 @@ export function InfoCardBody({ m, own, rq, note }: { m: ToolModel; own: boolean;
   const detailAt = (r: RunOnRow): string | null => { const x = quoteAt(r); if (!x) return null; const { q, so } = x;
     return q?.cost ? priceDetail({ ...q, runOn: r.id }, { credits: q.credits }) : priceDetail(null, { runOn: r.id, credits: q?.credits ?? so?.credits ?? r.credits }); };
   const priceAt = (r: RunOnRow): string | null => {
-    if (r.id === 'local') return 'Free';
+    if (r.id === 'local') return r.status === 'ready' ? 'Free' : null; // Free only when it runs now (its need shows beside it)
     if (blocked || rq?.pending || rq?.failed) return null; // this run can't go anywhere on this model as set: no per-place price (the reason shows below)
     const at = Array.isArray(rq?.priceRange?.places) ? rq.priceRange.places.find((p: any) => p?.runOn === r.id && typeof p.credits === 'number') : null; // this run at this place, as it runs once picked
     const q = at ?? (rq && rq.runOn === r.id && typeof rq.credits === 'number' && rq.demo !== true ? rq : null); // this run, when the menu priced this place
