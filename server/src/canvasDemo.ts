@@ -11,7 +11,11 @@
  */
 
 export interface DemoCard { key: string; name: string; workflow: string; prompt: string; col: number; row: number; from?: string[]; settings?: Record<string, string>; /** the demo media it shows on the sample server (shared/demoMedia.ts) */ ref?: string }
-export interface DemoPhase { frame: string; say: string; cards: DemoCard[]; note: string; done: string; /** after the run: ask the user to pick one of these cards */ pick?: string }
+/** A picture the demo puts on the board as an Upload node (one of the app's own /examples/ files), to wire into its cards. */
+export interface DemoUpload { key: string; name: string; url: string; col: number; row: number }
+export interface DemoPhase { frame: string; say: string; cards: DemoCard[]; note: string; done: string; /** after the run: ask the user to pick one of these cards */ pick?: string;
+  /** pictures placed before the cards (cards name them in `from`) */ uploads?: DemoUpload[];
+  /** after the run: this card's versions side by side, one Result card each, then a Compare card of `compare` (before) and the first (after) */ spread?: { card: string; compare?: string } }
 export interface DemoPlan { id: string; title: string; /** the sticky note the agent starts with: the idea in a few words */ idea: string; intro: string; steps: string[]; phases: DemoPhase[]; outro: string }
 
 /** The dock's starter chips. `prompt` is what the chip sends; the user can also type anything. A chip's own board (chipPlan) shows the
@@ -22,6 +26,7 @@ export const DEMO_STARTERS = [
   { id: 'product', label: 'Product ad', prompt: 'A 15 second ad for a blue glass perfume: four moody shots on black sand at night.' },
   { id: 'animate', label: 'Make a clip longer', prompt: 'A boy cups a paper lantern in a rainy alley and it becomes a glowing koi. Then keep the shot going as the koi swims up to the moon.' },
   { id: 'takes', label: 'One picture, three takes', prompt: 'A glass whale over the desert: one picture, then three video takes from it with different models.' },
+  { id: 'material', label: 'Sofa in every material', prompt: 'One sofa in four materials: leather, velvet, linen and corduroy.' },
   { id: 'free', label: 'Explore an idea', prompt: 'A woman in a red coat walking down a city street, in three looks.' },
 ] as const;
 /** The chip itself (its id and its own words, unedited): only then does the board show the chip's real runs. */
@@ -42,6 +47,7 @@ export function detectStarter(prompt: string, starter?: string | null): DemoStar
   const p = prompt.toLowerCase();
   if (/\bshort film\b|\bfilm from (an |my )?idea\b|\bfrom (an|my) idea\b/.test(p)) return 'short'; /* the flagship (shortFilmPlan) */
   if (/\bextend\b|make (it|the clip|a clip|my clip) longer|keep the shot going/.test(p)) return 'animate';
+  if (/\bmaterials?\b|\bswatch(es)?\b|\bfabrics?\b|upholster/.test(p)) return 'material'; /* Sofa in every material (materialPlan) */
   if (/\bfilm\b|movie|trailer|\bshort\b|\bscene/.test(p)) return 'film';
   if (/product|packshot|bottle|sneaker|e-?commerce/.test(p)) return 'product';
   return 'free';
@@ -76,6 +82,7 @@ const ideaOf = (s: string) => { const t = short(s, 90); return t.charAt(0).toUpp
 export function demoPlan(prompt: string, starter?: string | null): DemoPlan {
   const chip = isChip(starter, prompt) ? chipPlan(starter!) : null; if (chip) return chip;
   const kind = detectStarter(prompt, starter);
+  if (kind === 'material') return materialPlan();
   if (kind === 'film' || kind === 'short') { /* 'short' plays shortFilmPlan (canvasAgent.runShortFilm); this is its classic fallback */
     const subject = subjectOf(prompt, 'a lighthouse keeper finds a glowing bottle on the shore at dawn');
     const frames: DemoCard[] = FILM_SHOTS.map(([name, look], i) => ({ key: `f${i}`, name, workflow: 'create', prompt: `${subject}. ${look}`, col: i, row: 0 }));
@@ -168,6 +175,7 @@ export function chipPlan(starter: string): DemoPlan | null {
       ],
       outro: 'Same picture, three takes. Keep the one you like, or Re-roll any take on another model.' };
   }
+  if (starter === 'material') return materialPlan();
   if (starter === 'free') { const r = R('free'); const base = 'a woman in a red coat walking down a city street, medium shot.';
     const looks: [string, string][] = [['Golden hour', 'golden hour, low warm sun, long shadows, rim light, soft haze'], ['Watercolour', 'loose watercolour painting, paper texture'], ['Anime', 'cel-shaded anime illustration, clean line art']];
     return { id: 'free', title: 'Explore an idea', idea: 'A woman in a red coat on a city street', steps: ['One prompt', 'Three looks of it'],
@@ -178,6 +186,23 @@ export function chipPlan(starter: string): DemoPlan | null {
   return null;
 }
 
+// ---------------------------------------------------------------- "Sofa in every material" (2026-10-31)
+/* A sofa photo and four swatches on top, one Material Swap card under them fed by all five: one run per swatch (shared/swatchBatch.ts),
+   priced as one total and waiting for Go like every other step. On the sample server the runs give samples (nothing is charged); with a
+   key or a GPU they run for real. Then the four results side by side, and a Compare card: the sofa as it was against the first result.
+   The pictures are placeholders drawn from code (scripts/make-material-demo.py) until real photos replace them. */
+const MD = (f: string) => `/examples/demo/material/${f}.webp`;
+export const MATERIAL_SWATCHES: [string, string][] = [['leather', 'Leather'], ['velvet', 'Velvet'], ['linen', 'Linen'], ['corduroy', 'Corduroy']];
+export function materialPlan(): DemoPlan {
+  return { id: 'material', title: 'Sofa in every material', idea: 'One sofa, four materials', steps: ['The sofa and four swatches', 'One run per swatch', 'Side by side'],
+    intro: 'One sofa, four swatches: leather, velvet, linen and corduroy. Material Swap makes one picture per swatch, the same sofa in the same room. It waits for your Go.',
+    phases: [{ frame: 'Sofa in every material', say: 'The sofa and four swatches first, then one Material Swap card fed by all of them.',
+      uploads: [{ key: 'sofa', name: 'Sofa', url: MD('sofa'), col: 0, row: 0 }, ...MATERIAL_SWATCHES.map(([k, name], i) => ({ key: k, name, url: MD(k), col: i + 1, row: 0 }))],
+      cards: [{ key: 'swap', name: 'Material Swap', workflow: 'material-swap', prompt: 'Keep the wooden legs as they are.', col: 2, row: 1, from: ['sofa', ...MATERIAL_SWATCHES.map(([k]) => k)], settings: { object: 'sofa', fromMaterial: 'grey fabric' } }],
+      note: 'One sofa, four swatches: one run each', done: 'Four materials, one sofa. Here they are side by side.', spread: { card: 'swap', compare: 'sofa' } }],
+    outro: 'The same sofa in four materials. Wire in another swatch and Go again, or compare any two.' };
+}
+
 /** Grid → page point (centre of a card). Cards are 340 × 430; frames get `pad` around their cards, and the gap between rows leaves room
  *  for the frame headings and the arrows. The idea note sits in a column left of the grid. */
 export const DEMO_GRID = { colW: 440, rowH: 620, cardW: 340, cardH: 430, pad: 36, noteW: 300 };
@@ -185,8 +210,8 @@ export function demoCardAt(origin: { x: number; y: number }, col: number, row: n
   return { x: Math.round(origin.x + col * DEMO_GRID.colW + DEMO_GRID.cardW / 2), y: Math.round(origin.y + row * DEMO_GRID.rowH + DEMO_GRID.cardH / 2) };
 }
 /** The frame around a phase's cards (top-left + size, page px). */
-export function demoFrameOf(origin: { x: number; y: number }, phase: Pick<DemoPhase, 'cards'>) {
-  const cols = phase.cards.map((c) => c.col); const rows = phase.cards.map((c) => c.row); const { colW, rowH, cardW, cardH, pad } = DEMO_GRID;
+export function demoFrameOf(origin: { x: number; y: number }, phase: Pick<DemoPhase, 'cards' | 'uploads'>) {
+  const all = [...phase.cards, ...(phase.uploads ?? [])]; const cols = all.map((c) => c.col); const rows = all.map((c) => c.row); const { colW, rowH, cardW, cardH, pad } = DEMO_GRID;
   const c0 = Math.min(...cols), c1 = Math.max(...cols), r0 = Math.min(...rows), r1 = Math.max(...rows);
   return { x: Math.round(origin.x + c0 * colW - pad), y: Math.round(origin.y + r0 * rowH - pad), w: (c1 - c0) * colW + cardW + 2 * pad, h: (r1 - r0) * rowH + cardH + 2 * pad };
 }
@@ -194,7 +219,7 @@ export function demoFrameOf(origin: { x: number; y: number }, phase: Pick<DemoPh
 export function demoNoteAt(origin: { x: number; y: number }) { return { x: Math.round(origin.x - DEMO_GRID.pad - 80 - DEMO_GRID.noteW / 2), y: Math.round(origin.y + DEMO_GRID.noteW / 2 - DEMO_GRID.pad) }; }
 /** The whole plan's footprint, the note column included (the page finds a free area this big). */
 export function demoPlanSize(plan: DemoPlan) {
-  const cards = plan.phases.flatMap((p) => p.cards); const cols = Math.max(1, ...cards.map((c) => c.col + 1)); const rows = Math.max(1, ...cards.map((c) => c.row + 1));
+  const cards = plan.phases.flatMap((p) => [...p.cards, ...(p.uploads ?? [])]); const cols = Math.max(1, ...cards.map((c) => c.col + 1)); const rows = Math.max(1, ...cards.map((c) => c.row + 1)) + (plan.phases.some((p) => p.spread) ? 1 : 0); /* the results row */
   return { w: (cols - 1) * DEMO_GRID.colW + DEMO_GRID.cardW + 2 * DEMO_GRID.pad + DEMO_GRID.noteW + 80, h: (rows - 1) * DEMO_GRID.rowH + DEMO_GRID.cardH + 2 * DEMO_GRID.pad };
 }
 /** Left edge of the grid inside a free area of demoPlanSize (the note column comes first). */

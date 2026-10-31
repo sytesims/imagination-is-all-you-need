@@ -136,6 +136,7 @@ export const WF_ENTRIES: WfEntry[] = [
   I('try-on', 'product', { needs: 'A person photo + a garment photo', models: ['bria-virtual-tryon'] /* Comfy Router: one key runs it (FASHN on fal follows) */, art: 'tryon', tags: ['fashion', 'garment', 'outfit', 'bria'],
     example: { before: '/examples/workflows/i-try-on-before.webp', after: '/examples/workflows/i-try-on.webp', beforeLabel: 'Before', afterLabel: 'Try-on',
       run: { jobId: '6123e3ac', model: 'Bria Virtual Try-On', place: 'Comfy Cloud', costUsd: 0.057 } } }),
+  I('material-swap', 'product', { needs: 'An object photo + a material photo', art: 'object', tags: ['material', 'texture', 'fabric', 'leather', 'marble', 'qwen image 2.1', 'local'] }),
   I('remove-bg', 'product', { name: 'Remove Background', art: 'object', tags: ['cutout', 'transparent', 'png'] }),
   V('ugc-ad', 'product', { art: 'talk', tags: ['ad', 'presenter', 'phone', 'social'] }),
   V('orbit-shot', 'product', { art: 'turntable', tags: ['360', 'spin', 'product video'] }),

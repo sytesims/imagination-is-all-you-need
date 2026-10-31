@@ -17,9 +17,13 @@ import { handOf, fx, workArea, boundsOf, animOK } from './agentHand';
 import { freeSpot } from './placement';
 import { CARD_W, CARD_H } from './cardModel';
 import { arrowsInto, linkShapes, withInputs, GEN_TYPE, RESULT_T } from './graph';
+import { createAuxNode } from './auxShapes';
+import { NODE_DEFS } from './nodeTypes';
 import { flowById, flowInfo, type GenFlow } from '../shared/genFlows';
 import { modelsOf, engineForModel } from '../shared/models';
 import { catalogNow } from './catalog';
+import { cardState } from './cardState';
+import { batchIdsOf } from './genRun';
 import { compactQuote } from './genRun';
 import { setAgentBudgetHeader, getJob } from '../api';
 import { ownAccountsNow } from '../shared/billing';
@@ -33,7 +37,7 @@ import { buildBatch } from './batchBuild';
 import { withReviews, type TakeReview } from '../../../server/src/shared/takeReview';
 
 export interface AgentOp {
-  kind: 'say' | 'add_card' | 'update_card' | 'connect' | 'remove_card' | 'propose_run' | 'summary' | 'run_proposal' | 'free_area' | 'add_note' | 'add_frame' | 'move_into' | 'point_at' | 'next_steps' | 'place_result' | 'batch' | 'review_versions' | 'add_from_job';
+  kind: 'say' | 'add_card' | 'update_card' | 'connect' | 'remove_card' | 'propose_run' | 'summary' | 'run_proposal' | 'free_area' | 'add_note' | 'add_frame' | 'move_into' | 'point_at' | 'next_steps' | 'place_result' | 'batch' | 'review_versions' | 'add_from_job' | 'add_upload' | 'spread_versions';
   text?: string; workflow?: string; prompt?: string; name?: string; model?: string; ids?: string[]; frame_id?: string; around?: string[]; color?: string; settings?: Record<string, string>; inputs_from?: string[];
   at?: { x: number; y: number }; card_id?: string; from_id?: string; to_id?: string; card_ids?: string[]; note?: string;
   proposal_id?: string; budget_id?: string | null; out?: number; w?: number; h?: number; version?: number; job_id?: string; url?: string; title?: string; items?: BatchItem[]; cards?: { card_id: string; reviews: { version: number; verdict: 'fits' | 'check'; reason?: string }[]; recommend?: number | null }[]; by?: string;
@@ -158,6 +162,9 @@ async function addCard(editor: Editor, op: AgentOp) {
   const typed = animOK() && !!op.prompt;
   const id = createCard(editor, { flow: flow.id, prompt: typed ? '' : op.prompt, ...(provider ? { provider } : {}), ...(op.settings ? { vals: op.settings } : {}), ...(from.length ? { from } : {}), at, select: false });
   try { checkFeeds(editor, from, id, true); } catch (e) { editor.deleteShapes([id, ...arrowsInto(editor, id).map((a) => a.arrowId)]); throw e; }
+  { /* Material Swap: the first input is the object, the rest are swatches, whatever order the arrows end up in (a frame move reorders them) */
+    const sp = cardState(editor, editor.getShape(id)!, catalogNow()).spec; const many = sp?.slots.find((x) => x.many); const first = sp?.slots.find((x) => !x.many);
+    if (many && first && from.length > 1) setCard(editor, id, { pins: Object.fromEntries(from.map((f, i) => [f, i === 0 ? first.name : many.name])) }); }
   if (name) editor.run(() => editor.updateShape({ id, type: GEN_TYPE, meta: { ...(editor.getShape(id)?.meta ?? {}), name } } as any), { history: 'ignore' });
   fx.enter(id); for (const a of arrowsInto(editor, id)) fx.drawArrow(a.arrowId);
   if (typed) await typePrompt(editor, id, op.prompt!);
@@ -245,6 +252,7 @@ async function runProposal(editor: Editor, op: AgentOp) {
     const r = await submitInOrder(editor, ids, { stop: e => /budget/i.test(e.message),
       onLater: (id, x) => { if (x.error) handOf(editor).say(`${titleOf(editor, id as TLShapeId)} didn’t start: ${x.error}`); } });
     jobIds.push(...r.jobIds); failed.push(...r.failed); if (r.failed.length) firstError = new Error(r.failed[0].error);
+    for (const cid of ids) for (const j of batchIdsOf(editor.getShape(cid as TLShapeId))) if (!jobIds.includes(j)) jobIds.push(j); /* Material Swap: every swatch's run */
   } finally { setAgentBudgetHeader(null); }
   if (firstError && !jobIds.length) { (firstError as any).jobIds = jobIds; throw firstError; }
   return { jobIds, failed };
@@ -271,6 +279,36 @@ async function addFromJob(editor: Editor, op: AgentOp) {
   fx.enter(id); hand.touch([id]); const b = editor.getShapePageBounds(id); if (b) workArea(plainBox(b));
   const p = editor.getShape(id)?.props as any;
   return { id, node: { id, type: 'result', kind: p?.kind ?? m.kind, title: p?.title ?? m.title, model: p?.model ?? null, results: [{ url: m.url, kind: m.kind, poster: m.poster || null }], jobId: job.id } };
+}
+
+/** The demo's own pictures as Upload nodes (Sofa in every material: the sofa and its swatches). Only shipped /examples/ files. */
+async function addUpload(editor: Editor, op: AgentOp) {
+  const url = String(op.url ?? ''); if (!/^\/examples\/[\w/.-]+\.(webp|png|jpe?g)$/i.test(url) || url.includes('..')) throw new Error('An upload node here takes one of the app’s own example pictures.');
+  const d = NODE_DEFS.upload; const at = op.at ?? freeSpot(editor, d.defaultW, d.defaultH); const hand = handOf(editor); const label = String(op.name ?? '').trim().slice(0, 60) || 'Picture';
+  workArea({ x: at.x - d.defaultW / 2 - 40, y: at.y - d.defaultH / 2 - 40, w: d.defaultW + 80, h: d.defaultH + 80 }); await hand.glideTo({ x: at.x - d.defaultW / 2 + 24, y: at.y - d.defaultH / 2 + 20 }, `Adding ${label.toLowerCase()}`);
+  const id = createAuxNode(editor, 'upload', { at, media: { url, poster: url, mediaKind: 'image', label }, title: label, select: false });
+  fx.enter(id); hand.touch([id]); return { id, node: { id, type: 'upload', kind: 'image', title: label, results: [{ url, kind: 'image' }] } };
+}
+/** A card's versions side by side, one Result card each, in the order their inputs sit on the board (Material Swap: the swatches, left to right),
+ *  named after that input ("Leather"). With from_id, a Compare card after them: that node (before) against the first version (after). */
+async function spreadVersions(editor: Editor, op: AgentOp) {
+  const id = String(op.card_id ?? '') as TLShapeId; const s = editor.getShape(id); if (!s || s.type !== GEN_TYPE) throw new Error('No generate card with that id on this board.');
+  const takes: any[] = ((s.props as any).takes ?? []).filter((t: any) => t?.jobId); if (!takes.length) throw new Error('That card has no versions yet.');
+  /* left to right, as the swatches sit on the board (the arrow order can change when a frame takes the cards) */
+  const keyOf = (t: any) => { const sid = (t.from ?? []).at(-1)?.shapeId; const b = sid ? editor.getShapePageBounds(sid as TLShapeId) : null; return b ? b.minX : Number.MAX_SAFE_INTEGER; };
+  const sorted = [...takes].sort((a, b) => keyOf(a) - keyOf(b)); const b = editor.getShapePageBounds(id); const at0 = op.at ?? (b ? { x: b.minX, y: b.maxY + 340 } : { x: 0, y: 0 }); const hand = handOf(editor);
+  const made: string[] = [];
+  for (const [i, t] of sorted.entries()) { const job = await getJob(t.jobId).catch(() => null); if (!job) continue; const m = resultMedia(job, ownAccountsNow()); if (!m) continue;
+    const name = (t.from ?? []).at(-1)?.label || `Version ${i + 1}`; const at = { x: at0.x + 190 + i * 400, y: at0.y };
+    await hand.glideTo({ x: at.x - 160, y: at.y - 140 }, `Placing ${name.toLowerCase()}`);
+    const rid = await addResultCard(editor, job.id, { ...m, title: name }, at); fx.enter(rid); made.push(rid); }
+  if (!made.length) throw new Error('None of the versions could be placed.');
+  let compare: string | null = null;
+  if (op.from_id && editor.getShape(op.from_id as TLShapeId)) { const at = { x: at0.x + 190 + made.length * 400 + 60, y: at0.y };
+    compare = createAuxNode(editor, 'compare', { at, select: false }); linkShapes(editor, op.from_id as TLShapeId, compare as TLShapeId); linkShapes(editor, made[0] as TLShapeId, compare as TLShapeId);
+    fx.enter(compare); for (const a of arrowsInto(editor, compare as TLShapeId)) fx.drawArrow(a.arrowId); }
+  const all = [...made, ...(compare ? [compare] : [])]; editor.selectNone(); /* placing selects each card; the panel stays shut */ hand.touch(all); const bb = boundsOf(editor, all); if (bb) workArea(plainBox(bb));
+  return { ids: made, compare };
 }
 
 // ---------------------------------------------------------------- the board as a plan: notes, frames, move into, point
@@ -413,6 +451,8 @@ export async function applyOp(editor: Editor, op: AgentOp): Promise<any> {
     case 'batch': return applyBatch(editor, op);
     case 'review_versions': return applyReviews(editor, op);
     case 'add_from_job': return addFromJob(editor, op);
+    case 'add_upload': return addUpload(editor, op);
+    case 'spread_versions': return spreadVersions(editor, op);
     case 'place_result': { /* the short film's stitched cut (server: runShortFilm after POST /api/compose) */
       if (!op.job_id || !op.url) throw new Error('Name a job and its file.');
       const id = await addResultCard(editor, op.job_id, { kind: 'video', url: op.url, poster: `/api/media/thumb?url=${encodeURIComponent(op.url)}`, title: op.title || 'Your film', caption: { model: 'Stitch (ffmpeg)', place: 'Your computer', price: 'Free', time: '' } } as any, op.at);

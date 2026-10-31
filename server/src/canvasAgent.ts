@@ -38,7 +38,7 @@ import { jobs } from './jobs.js';
 import { budgetOfRequest, budgetView, type AgentBudget } from './agentBudget.js';
 import { getTool } from './tools/registry.js';
 import { imageWorkflowsPayload } from './shared/workflows.js';
-import { DEMO_STARTERS, isChip, demoPlan, demoCardAt, demoPlanSize, demoFrameOf, demoNoteAt, demoGridOffset, detectStarter, isStarterId, demoReply, type DemoPlan, type DemoCard } from './canvasDemo.js';
+import { DEMO_STARTERS, isChip, demoPlan, demoCardAt, demoPlanSize, demoFrameOf, demoNoteAt, demoGridOffset, detectStarter, isStarterId, demoReply, DEMO_GRID, type DemoPlan, type DemoCard } from './canvasDemo.js';
 import { SHORT_STEPS, shortFilmPlan, shortLayout, beatOfNote, beatNote, keyFramePrompt, clipPrompt, narrationOf, musicPrompt, SHORT_MUSIC, shortFilmVideoOn, stitchBody, type ShortPlan, type ShortBeat } from './canvasDemo.js';
 import { tagDemoCard, demoProviderOf } from './shared/demoMedia.js';
 import { config } from './config.js';
@@ -94,7 +94,9 @@ export type Op =
   /* an existing generation on the board (2026-10-28): the same result card the Assets drawer places, so the agent can wire it into a new card */
   | { kind: 'add_from_job'; job_id: string; out?: number; at?: { x: number; y: number } };
 type InternalOp = Op | { kind: 'run_proposal'; proposal_id: string; card_ids: string[]; budget_id?: string | null } | { kind: 'free_area'; w: number; h: number }
-  | { kind: 'place_result'; job_id: string; url: string; title: string; at: { x: number; y: number } };
+  | { kind: 'place_result'; job_id: string; url: string; title: string; at: { x: number; y: number } }
+  /* Sofa in every material (canvasDemo.materialPlan): the demo's own pictures as Upload nodes, then a card's versions side by side */
+  | { kind: 'add_upload'; url: string; name: string; at: { x: number; y: number } } | { kind: 'spread_versions'; card_id: string; from_id?: string; at: { x: number; y: number } };
 type OpResult = { ok: true; result: any } | { ok: false; error: string; code?: string; result?: any };
 
 export type PriceView = { usd: number | null; credits: number | null; label: string | null; demo: boolean; local: boolean; runnable: boolean };
@@ -393,7 +395,7 @@ const BASE_WORKFLOWS: { id: string; medium: string; name: string; needs: string;
   { id: 'image-to-3d', medium: '3d', name: 'Image to 3D', needs: '1 image', tagline: 'One image into a textured 3D model', toolId: 'three-d' },
 ];
 /** The image recipe flows the canvas offers (the same list as web/src/shared/genFlows.ts; masks/angle sheets stay on their pages). */
-const IMAGE_RECIPE_IDS = new Set(['relight', 'upscale', 'remove-bg', 'image-layers', 'expand', 'product-shot', 'character-sheet', 'face-swap', 'person-swap', 'try-on']);
+const IMAGE_RECIPE_IDS = new Set(['relight', 'upscale', 'remove-bg', 'image-layers', 'expand', 'product-shot', 'character-sheet', 'face-swap', 'person-swap', 'try-on', 'material-swap']);
 export function canvasWorkflows() {
   const out = BASE_WORKFLOWS.filter((f) => !!getTool(f.toolId));
   try {
@@ -654,7 +656,13 @@ async function runDemo(run: DemoRun, plan: DemoPlan) {
       const fb = demoFrameOf(origin, phase);
       const fr = await op({ kind: 'add_frame', name: phase.frame, at: { x: fb.x, y: fb.y }, w: fb.w, h: fb.h }); if (!fr) return;
       const frameId = fr.ok ? String(fr.result?.id ?? '') : '';
-      const phaseIds: string[] = [];
+      const phaseIds: string[] = []; const placed: string[] = [];
+      for (const u of phase.uploads ?? []) { /* the plan's own pictures (Upload nodes): nothing to run, they feed the cards */
+        await wait(Math.round(DEMO_STEP_MS * 0.55)); if (!alive()) return;
+        const r = await sendOp(boardId, { kind: 'add_upload', url: u.url, name: u.name, at: demoCardAt(origin, u.col, u.row) }, OP_TIMEOUT_MS);
+        const id = r.ok ? String(r.result?.id ?? '') : ''; if (!id) { say(`I couldn’t add ${u.name}: ${r.ok ? 'the board didn’t answer' : r.error.replace(/\.$/, '')}. I’ll carry on without it.`, { error: true }); continue; }
+        ids[u.key] = id; placed.push(id); addActivity(boardId, `Added “${u.name}”`, { cardId: id, meta: { tool: 'add_upload', by: 'demo' } });
+      }
       for (const c of phase.cards) {
         if (!alive()) return;
         const from = (c.from ?? []).map((k) => (k === '@pick' ? picked : ids[k])).filter((x): x is string => !!x);
@@ -670,16 +678,17 @@ async function runDemo(run: DemoRun, plan: DemoPlan) {
       }
       if (!alive()) return;
       if (!phaseIds.length) { say('None of these cards made it onto the board, so I’ll stop here. Nothing was charged.', { error: true }); return; }
-      if (frameId) await op({ kind: 'move_into', ids: phaseIds, frame_id: frameId });
+      if (frameId) await op({ kind: 'move_into', ids: [...placed, ...phaseIds], frame_id: frameId });
       if (!alive()) return;
       const pr = await proposeRun(boardId, { card_ids: phaseIds, note: phase.note }, null, 'demo');
       if (!pr.ok) { say(`I couldn’t price these cards: ${pr.error.replace(/\.$/, '')}. They stay on the board as drafts.`, { error: true }); return; }
       const p: Proposal = pr.result.proposal; runProposals.add(p.id);
       if (!p.runCardIds.length) { say(`None of these can run here yet: ${String(p.reason ?? 'no model for them on this server').replace(/\.$/, '')}. They stay on the board as drafts.`, { error: true }); return; }
+      const nRuns = p.items.filter((i) => p.runCardIds.includes(i.cardId)).reduce((a, i) => a + (Number(i.quote?.runs) > 1 ? Number(i.quote.runs) : 1), 0); /* a Material Swap card runs once per swatch */
       /* every paid step is its own decision: a later step says plainly it is a new run, and nothing goes on until its own Go */
       const k = plan.phases.indexOf(phase); const n = plan.phases.length;
-      say(k > 0 ? `Step ${k + 1} of ${n} is a new run: ${plural(p.runCardIds.length, 'run')} (${priceWords(p)}).${skipNote(p)} Nothing runs until you press Go. Cancel stops here.`
-        : `That’s ${plural(p.runCardIds.length, 'run')} (${priceWords(p)}).${skipNote(p)} Press Go when you’re ready, or Cancel.`, { proposalId: p.id, waiting: true });
+      say(k > 0 ? `Step ${k + 1} of ${n} is a new run: ${plural(nRuns, 'run')} (${priceWords(p)}).${skipNote(p)} Nothing runs until you press Go. Cancel stops here.`
+        : `That’s ${plural(nRuns, 'run')} (${priceWords(p)}).${skipNote(p)} Press Go when you’re ready, or Cancel.`, { proposalId: p.id, waiting: true });
       /* the decision route changes this same object (proposalsById holds it) */
       while (p.status === 'pending' && alive()) await wait(250);
       if (!alive()) return; /* Stop says its own one line */
@@ -702,6 +711,13 @@ async function runDemo(run: DemoRun, plan: DemoPlan) {
       if (!alive()) return;
       const failed = states.filter((x) => x === 'failed').length;
       say(phase.done + (failed ? ` ${plural(failed, 'card')} didn’t finish; Re-roll ${failed === 1 ? 'it' : 'them'} from the card.` : ''), { stepsDone: ++steps });
+      if (phase.spread && ids[phase.spread.card]) { /* the versions side by side, then a Compare card (before / after) */
+        await wait(Math.round(DEMO_STEP_MS * 0.8)); if (!alive()) return;
+        const rows = Math.max(...[...phase.cards, ...(phase.uploads ?? [])].map((c) => c.row)) + 1;
+        const sp = await sendOp(boardId, { kind: 'spread_versions', card_id: ids[phase.spread.card], ...(phase.spread.compare && ids[phase.spread.compare] ? { from_id: ids[phase.spread.compare] } : {}), at: { x: origin.x, y: origin.y + rows * DEMO_GRID.rowH + 230 } }, OP_TIMEOUT_MS * 2);
+        if (sp.ok) { const n = Array.isArray(sp.result?.ids) ? sp.result.ids.length : 0; addActivity(boardId, `Placed ${plural(n, 'result')} side by side${sp.result?.compare ? ', and a Compare card' : ''}`, { cardId: sp.result?.ids?.[0], meta: { tool: 'spread_versions', by: 'demo' } }); }
+        else say(`I couldn’t lay the results out: ${sp.error.replace(/\.$/, '')}. They’re all on the card’s version strip.`, { error: true });
+      }
       if (phase.pick) {
         const ready = started.filter((_, i) => states[i] === 'done');
         if (ready.length >= 2) {

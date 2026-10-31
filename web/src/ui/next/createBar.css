@@ -225,3 +225,8 @@ html body .ic.ic2 .ic-dock .ic-main>.ic-prow{position:relative}
 html body .ic.ic2 .ic-dock .ic-prow>.ic-prompt-sugg{all:unset;position:absolute;right:4px;bottom:6px;z-index:2;box-sizing:border-box;max-width:60%;padding:2px 8px;border-radius:6px;color:var(--accent,#ff7a1a);font:500 13px/18px var(--font-ui,Inter,system-ui,sans-serif);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
 html body .ic.ic2 .ic-dock .ic-prow>.ic-prompt-sugg:hover{background:rgba(255,122,26,.1);text-decoration:underline;text-underline-offset:2px}
 html body .ic.ic2 .ic-dock .ic-prow>.ic-prompt-sugg:focus-visible{outline:2px solid var(--accent);outline-offset:0}
+
+/* Material Swap's swatches in the Create bar (shared/swatchBatch.ts): pictures only (each keeps its name for screen readers), a slim add box */
+html body .ic.ic2 .ic-dock .ic-lead .wf-many .wf-slot.full .wf-slot-hit b{display:none}
+html body .ic.ic2 .ic-dock .ic-lead .wf-slot.wf-slot-more{width:28px}
+@media (max-width:700px){html body .ic.ic2 .ic-dock .ic-lead .wf-many .wf-slot{width:38px;height:38px}}

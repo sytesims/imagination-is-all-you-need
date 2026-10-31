@@ -7,7 +7,7 @@ import path from 'node:path';
 import { DEMO_STARTERS, demoReply, isStarterId, demoPlan, chipPlan, isChip, detectStarter, demoCardAt, demoPlanSize, demoFrameOf, demoNoteAt, demoGridOffset, shortFilmPlan, shortLayout, beatOfNote, keyFramePrompt, stitchBody, shortFilmVideoOn, SHORT_STEPS, CHALK_WHALE } from '../src/canvasDemo.ts';
 import { DEMO_MEDIA, demoMediaOf, demoLabel, tagDemoCard, demoRefFor } from '../src/shared/demoMedia.ts';
 const ok = (m: string) => console.log('ok ' + m);
-const WORKFLOWS = new Set(['create', 'video', 'music', 'extend']);
+const WORKFLOWS = new Set(['create', 'video', 'music', 'extend', 'material-swap']);
 
 assert.equal(detectStarter('anything', 'film'), 'film');
 assert.equal(detectStarter('Make a short trailer about owls'), 'film');
@@ -39,6 +39,9 @@ for (const [prompt, starter] of CASES) {
   assert.ok(plan.idea.length > 0 && plan.idea.length <= 90, `${plan.id}: the idea note is short`);
   let picked = false;
   for (const ph of plan.phases) {
+    for (const u of ph.uploads ?? []) { /* the plan's own pictures: shipped /examples/ files, on their own cells, fed into this phase's cards */
+      assert.match(u.url, /^\/examples\/demo\/[\w/-]+\.webp$/); assert.ok(existsSync(path.resolve(import.meta.dirname, '../../web/public', `.${u.url}`)), `${plan.id}: ${u.url} ships`);
+      const cell = `${u.col}:${u.row}`; assert.ok(!cells.has(cell), `${plan.id}: two nodes at ${cell}`); cells.add(cell); seen.add(u.key); }
     const before = new Set(seen); assert.ok(ph.frame.length > 1 && ph.frame.length <= 40, `${plan.id}: every phase has a frame name`);
     for (const c of ph.cards) {
       assert.ok(WORKFLOWS.has(c.workflow), `${plan.id}: ${c.workflow}`); assert.ok(c.prompt.length > 10 && c.prompt.length < 4000); assert.ok(c.name && c.name.length <= 40, `${plan.id}: ${c.key} has a shot name`);
@@ -101,7 +104,16 @@ for (const [recipe, cards] of Object.entries(DEMO_MEDIA)) for (const [key, m] of
   assert.ok(m.model && m.place && m.costUsd >= 0, `${recipe}:${key}: credited`); assert.doesNotMatch(m.url, /[0-9a-f]{8}/, `${recipe}:${key}: no job id in the file name`); }
 assert.equal(demoLabel(DEMO_MEDIA.short.c1), 'Sample · made with LTX-2.5 22B'); assert.equal(demoLabel(DEMO_MEDIA.takes.dive), 'Sample · made with LTX-2.5 Pro');
 assert.equal(demoMediaOf('short:nope'), null); assert.equal(demoMediaOf('x'), null);
-for (const s of DEMO_STARTERS.filter((x) => x.id !== 'short')) { const pl = chipPlan(s.id)!; assert.ok(pl, `${s.id}: a chip plan`); const prompts = new Set<string>();
+/* Sofa in every material (2026-10-31): no real runs yet, so no refs: placeholder pictures drawn from code, and the card gives plain samples
+   on the sample server (with a key or a GPU it runs for real, after Go) */
+{ const m = chipPlan('material')!; assert.equal(m.id, 'material'); assert.equal(detectStarter('my sofa in three fabrics'), 'material'); assert.equal(detectStarter('a leather swatch on a chair'), 'material');
+  const ph = m.phases[0]; assert.deepEqual(ph.uploads!.map((u) => u.name), ['Sofa', 'Leather', 'Velvet', 'Linen', 'Corduroy']);
+  assert.equal(ph.cards.length, 1); assert.equal(ph.cards[0].workflow, 'material-swap'); assert.deepEqual(ph.cards[0].from, ['sofa', 'leather', 'velvet', 'linen', 'corduroy'], 'the object first, then the four swatches');
+  assert.ok(!ph.cards[0].ref, 'no made-up sample media'); assert.deepEqual(ph.spread, { card: 'swap', compare: 'sofa' }, 'the results side by side, then before / after');
+  assert.ok(!/\bMac\b/.test(JSON.stringify(m)), 'no "Mac" in the words');
+  assert.ok(demoPlanSize(m).h >= 2 * 620 + 430, 'the plan leaves room for the results row'); }
+ok('material: a sofa and four swatches (shipped pictures), one Material Swap card fed by all five, results side by side and a Compare');
+for (const s of DEMO_STARTERS.filter((x) => x.id !== 'short' && x.id !== 'material')) { const pl = chipPlan(s.id)!; assert.ok(pl, `${s.id}: a chip plan`); const prompts = new Set<string>();
   for (const c of pl.phases.flatMap((p) => p.cards)) { assert.ok(c.ref && demoMediaOf(c.ref), `${s.id}: ${c.key} shows a real run`); assert.ok(!prompts.has(c.prompt), `${s.id}: prompts tell the cards apart`); prompts.add(c.prompt); } }
 assert.deepEqual(chipPlan('film')!.phases[1].cards.map((c) => c.key), ['c0', 'c1', 'm'], 'the 30s film: only shots 1 and 2 were animated');
 { const t = chipPlan('takes')!; assert.deepEqual(t.phases.flatMap((p) => p.cards).map((c) => c.workflow), ['create', 'video', 'video', 'video'], 'one picture, three takes, no sound card');
@@ -114,7 +126,7 @@ assert.ok(CHALK_WHALE.demo.keys.every((k, i) => demoMediaOf(`short:k${i}`) && k.
 assert.equal(shortFilmPlan(DEMO_STARTERS[0].prompt).demo, undefined, 'typed words: the general plan');
 tagDemoCard('brd_a', ' A  harbour ', 'short:place'); assert.equal(demoRefFor('brd_a', 'A harbour'), 'short:place'); assert.equal(demoRefFor('brd_b', 'A harbour'), null); assert.equal(demoRefFor('brd_a', 'A harbour, edited'), null);
 tagDemoCard('brd_a', 'x', 'short:nope'); assert.equal(demoRefFor('brd_a', 'x'), null);
-assert.ok(isChip('takes', DEMO_STARTERS[4].prompt) && !isChip('takes', 'A glass whale, three takes') && !isChip(null, DEMO_STARTERS[4].prompt), 'only the chip itself, unedited');
+assert.ok(isChip('takes', DEMO_STARTERS.find((x) => x.id === 'takes')!.prompt) && !isChip('takes', 'A glass whale, three takes') && !isChip(null, DEMO_STARTERS.find((x) => x.id === 'takes')!.prompt), 'only the chip itself, unedited');
 assert.equal(demoPlan('Product shots for a red kettle', 'product').id, 'product'); assert.ok(demoPlan('Product shots for a red kettle', 'product').phases[0].pick, 'a chip id with other words: the general plan');
 /* the demo media folder stays small: stills ≤ 400 KB, clips ≤ 3 MB, the folder ≤ 12 MB */
 const DIR = path.join(PUB, 'examples/demo'); let total = 0;

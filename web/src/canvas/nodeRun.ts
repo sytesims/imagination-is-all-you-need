@@ -9,6 +9,8 @@ import { GEN_TYPE } from './nodeTypes';
 import { promptInto, waitingInputsOf } from './graph';
 import { runOrder, type Upstream } from './nodeLogic';
 import { submitCard } from './genRun';
+import { batchOf } from './cardModel';
+import { timesQuote } from '../../../server/src/shared/swatchBatch';
 import { boardCtx } from './boardCtx';
 
 /** The effective prompt: a Prompt / Note node wired in wins over the card's own text. */
@@ -18,7 +20,8 @@ export function effectivePrompt(editor: Editor, id: TLShapeId, own: string): str
 export async function quoteNode(editor: Editor, id: TLShapeId): Promise<any> {
   const s = editor.getShape(id); if (!s) return null; const st = cardState(editor, s, catalogNow()); if (!st.spec) return null; const sp = st.spec;
   const u = new URLSearchParams({ ...quoteParams(), ...(sp.provider ? { provider: sp.provider, ...pinQ(sp.provider) } : {}), ...sp.quote });
-  return fetch(`/api/tools/${sp.tool.id}/price?${u}`).then(readQuoteBody).catch(() => null);
+  const n = batchOf(sp.slots, st.bySlot)?.inputs.length ?? 1; /* Material Swap: one run per swatch, so n × the price */
+  return fetch(`/api/tools/${sp.tool.id}/price?${u}`).then(readQuoteBody).then(q => timesQuote(q, n)).catch(() => null);
 }
 
 /** Run the card: a fresh quote first, then the jobs API. Throws a plain message when something is missing or the server refuses. */

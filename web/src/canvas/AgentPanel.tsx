@@ -15,24 +15,24 @@ import { createPortal } from 'react-dom';
 import type { Editor } from 'tldraw';
 import { useValue } from 'tldraw';
 import { useCanvasEditor } from './agentApi';
-import { useCatalog } from './catalog';
+import { useCatalog, catalogNow } from './catalog';
 import { startAgentBridge, nameOf as cardNameOf, type FeedEntry, type Proposal, type PickAsk } from './agentBridge';
 import { handAtom, handOf, fx, setAgentName, reducedMotion } from './agentHand';
-import { flowById } from '../shared/genFlows';
+import { flowById, flowInfo } from '../shared/genFlows';
 import { LOCAL_FREE } from '../../../server/src/shared/modelIds';
 import { STARTERS, mergeFeed, mergeProposals, planOf, confirmOf, focusAdded, focusCards, setFollow, agentStarterPrompt, dockRoute, dockState, dockStatusLine, dockPill, workingLine, messageStatus, messageStatusText, listenCommand, LISTEN_PHRASE, type StarterId, type MsgStatus } from './agentDockModel';
 import { AgentMediaCard } from './AgentMediaCard';
 import { useCopied, Copied, useToast } from '../shared/Toast';
 import { GenPrice } from '../shared/GenPrice';
 import { tip } from '../shared/Tooltip';
-import { SparkleIcon, CloseIcon, TrashIcon, DirectorIcon, ProductIcon, ExtendIcon, ExploreIcon, VideoIcon, ApiPlugIcon } from '../ui/Icons';
+import { SparkleIcon, CloseIcon, TrashIcon, DirectorIcon, ProductIcon, ExtendIcon, ExploreIcon, VideoIcon, ApiPlugIcon, MaterialIcon } from '../ui/Icons';
 import { CopyIcon, PlusIcon, ArrowIcon, RetryIcon, CoinIcon, ChevronLeftIcon, CheckIcon, StopIcon, SendIcon, NoteIcon, GroupIcon } from './icons';
 import { useProfile, nameOf, UserAvatar } from '../shared/profile';
 import './agentPanel.css';
 
 const AGENT_FRESH_MS = 90_000; /* the server's window: an agent that stopped waiting or polling for 90 s isn't listening any more */
 const time = (t: number) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-const STARTER_ICON: Record<StarterId, (p: { size?: number }) => JSX.Element> = { short: SparkleIcon, film: DirectorIcon, product: ProductIcon, animate: ExtendIcon, takes: VideoIcon, free: ExploreIcon };
+const STARTER_ICON: Record<StarterId, (p: { size?: number }) => JSX.Element> = { short: SparkleIcon, film: DirectorIcon, product: ProductIcon, animate: ExtendIcon, takes: VideoIcon, material: MaterialIcon, free: ExploreIcon };
 type Demo = { running: boolean; runId: string | null; title: string | null };
 
 /** Board.tsx puts the editor in agentApi's context; the dock lives outside <Tldraw>, so wait for a live one (after a board switch the
@@ -179,18 +179,18 @@ function ProposalCard({ p, busy, onDecide, onFocus }: { p: Proposal; busy?: 'go'
   /* rows that can't run here are skipped, not a blocker: Go starts the rest (server: proposal.runCardIds). Older proposals without it: every problem-free row. */
   const runIds = new Set(p.runCardIds ?? p.items.filter((i) => !i.problem).map((i) => i.cardId)); const nRun = runIds.size; const nSkip = p.items.length - nRun;
   const disabled = p.overBudget || !!p.reason || nRun === 0;
-  const runItems = p.items.filter((i) => runIds.has(i.cardId)); const allDemo = runItems.length > 0 && runItems.every((i) => i.quote?.demo === true);
+  const runItems = p.items.filter((i) => runIds.has(i.cardId)); const nRuns = runItems.reduce((a, i) => a + (Number(i.quote?.runs) > 1 ? Number(i.quote.runs) : 1), 0); /* a Material Swap card runs once per swatch */ const allDemo = runItems.length > 0 && runItems.every((i) => i.quote?.demo === true);
   const budget = p.budget;
   return <article className={`ap-prop ${p.status}`} data-testid="agent-proposal" data-status={p.status}>
     <div className="ap-prop-h"><span className="ap-kicker">{pending ? 'Needs your OK' : p.status === 'running' ? 'Starting' : p.status === 'approved' ? 'Approved' : p.status === 'cancelled' ? 'Cancelled' : 'Could not start'}</span>
-      <button type="button" className="ap-prop-n" onClick={() => onFocus(p.cardIds)} {...tip('Show these cards on the board')}>{nRun} run{nRun === 1 ? '' : 's'}{nSkip ? ` · ${nSkip} skipped` : ''}</button></div>
+      <button type="button" className="ap-prop-n" onClick={() => onFocus(p.cardIds)} {...tip('Show these cards on the board')}>{nRuns} run{nRuns === 1 ? '' : 's'}{nSkip ? ` · ${nSkip} skipped` : ''}</button></div>
     {p.note && <p className="ap-prop-note">{p.note}</p>}
     <ul className="ap-items">{p.items.map((it, i) => {
       const q = it.quote; const free = q?.localRun === true || q?.cost?.billedTo === 'local'; const demo = q?.demo === true;
       const skip = !runIds.has(it.cardId);
       return <li key={it.cardId} className={skip ? 'has-problem' : ''} data-testid="agent-proposal-item" data-skipped={skip ? '1' : undefined}>
         <span className="ap-item-n">{i + 1}</span>
-        <div className="ap-item-t"><b>{it.title}</b><small>{flowById(it.workflow)?.name ?? 'Card'}{it.model ? ` · ${it.model}` : ''}</small>{skip && <small className="ap-item-why" title={it.problem ?? undefined}>{it.problem ?? "Can't run here"}</small>}</div>
+        <div className="ap-item-t"><b>{it.title}</b><small>{(() => { const f = flowById(it.workflow); return f ? flowInfo(f, catalogNow()).name : 'Card'; })() /* a workflow card's own name (Material Swap), not its id */}{it.model ? ` · ${it.model}` : ''}{Number(it.quote?.runs) > 1 ? ` · ${it.quote.runs} swatches` : ''}</small>{skip && <small className="ap-item-why" title={it.problem ?? undefined}>{it.problem ?? "Can't run here"}</small>}</div>
         <span className="ap-item-p">{skip ? <em className="ap-item-skip">Skipped</em> : q ? <GenPrice q={q} credits={it.credits} demo={demo} free={free} compact /> : <em>—</em>}</span>
       </li>;
     })}</ul>

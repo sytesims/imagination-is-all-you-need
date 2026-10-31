@@ -42,7 +42,9 @@ import { variationOf } from './variation';
 import { RUN_EVT, OPEN_GROUP_EVT, open3d } from './canvasEvents';
 import { cardState, makerOf, missingOf, modelNameOf } from './cardState';
 import { lineageRole, promptSourcesInto, waitingInputsOf } from './graph';
-import { liveJobs, retryCard } from './genRun';
+import { liveJobs, retryCard, batchIdsOf } from './genRun';
+import { batchOf } from './cardModel';
+import { timesQuote, batchLabel } from '../../../server/src/shared/swatchBatch';
 import { setCard, submit } from './agentApi';
 import { pullOutResult, probeSize } from './resultCardUtil';
 import { QuickActions } from './QuickActions';
@@ -71,7 +73,7 @@ function Failed({ shape, job }: { shape: GenCardShape; job: JobState }) {
   const v = useFailView(job);
   return <div className="nf-fail" data-testid="gc-failed">
     <b className="nf-fail-t">{v.title}</b>
-    <p className="nf-fail-l" data-testid="gc-fail-reason">{v.line || shape.props.error}</p>
+    <p className="nf-fail-l" data-testid="gc-fail-reason">{batchIdsOf(shape).length > 1 && shape.props.error ? shape.props.error /* a set: how many swatches didn't finish */ : v.line || shape.props.error}</p>
   </div>;
 }
 
@@ -114,7 +116,8 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
   const [hover, setHover] = useState(false); const hoverT = useRef(0); const [focus, setFocus] = useState(false);
   const spec = st?.spec ?? null; const draft = p.status === 'draft'; const open = draft && selected;
   const linked = promptNodes.map(x => x.text).join('\n\n'); const prompt = linked || p.prompt;
-  const q = useToolQuote(spec && draft ? spec.tool.id : null, spec?.provider ?? '', spec?.quote ?? {});
+  const q1 = useToolQuote(spec && draft ? spec.tool.id : null, spec?.provider ?? '', spec?.quote ?? {});
+  const nSw = spec ? batchOf(spec.slots, st?.bySlot ?? {})?.inputs.length ?? 1 : 1; const q = nSw > 1 ? timesQuote(q1, nSw) : q1; /* Material Swap: one run per swatch */
   const quote = draft ? q : p.quote; const cr: number | null = quote ? shownCredits(quote) : null; const key = !!quote && quote.needsKey === true && quote.runnable === false;
   const model = draft ? modelNameOf(spec) || p.model : p.model || modelNameOf(spec); const maker = (draft ? makerOf(spec) : p.maker) || makerOf(spec);
   const missing = draft ? missingOf(spec, st?.bySlot ?? {}, prompt) : null; const note = spec && st?.extra.length ? tooManyNote(spec, st.extra.length, model) : null;
@@ -183,7 +186,7 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
   /* while it runs there is no action row: the one status line sits where the model row goes, the bar on the picture's bottom edge */
   const running = p.status === 'running';
   const footer = running ? undefined : draft
-    ? (spec ? <DockGenerate toolId={spec.tool.id} engine={spec.provider} quote={q} label={spec.generateLabel} busy={busy} problems={problems} missing={missing} pfOpen={pfOpen} genRef={genRef} onClick={() => void generate()}
+    ? (spec ? <DockGenerate toolId={spec.tool.id} engine={spec.provider} quote={q} label={batchLabel(spec.generateLabel, nSw)} busy={busy} problems={problems} missing={missing} pfOpen={pfOpen} genRef={genRef} onClick={() => void generate()}
         intent={intent} dlSize={dlSize} workflowId={spec.flow.id} className="gen-node" variant="node" testId="gc-generate" priceTestId="gc-gen-price" />
       : <button type="button" className="gen-btn gen-node" disabled><span className="gen-l">Generate</span></button>)
     : p.status === 'failed' ? <FailFoot shape={shape} job={job ?? stubJob(p, 'failed')} />
