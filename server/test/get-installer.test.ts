@@ -21,7 +21,8 @@ fake('defaults', `case "$1" in read) sed -n 's|.*<string>\\(file:[^<]*\\)</strin
 fake('killall', '');
 fake('brew', '');
 fake('uname', '[ "$1" = -s ] && [ -n "$FAKE_OS" ] && { echo "$FAKE_OS"; exit 0; }; exec /usr/bin/uname "$@"', false);
-const calls = () => (existsSync(log) ? readFileSync(log, 'utf8') : '');
+// (brew shellenv: a runner that has Homebrew asks it for its PATH; that's not a change to this computer)
+const calls = () => (existsSync(log) ? readFileSync(log, 'utf8') : '').split('\n').filter((l) => l !== 'brew shellenv').join('\n');
 const reset = () => rmSync(log, { force: true });
 
 const apps = path.join(home, 'Applications system'); mkdirSync(apps); // stands in for /Applications in every run
@@ -55,7 +56,7 @@ try {
   assert.match(macDry.out, /\+ killall Dock/);
   assert.match(macDry.out, /Imagination is in your Applications folder and Dock\. Click it any time to start it\./);
   assert.doesNotMatch(macDry.out, /Imagination\.command/);
-  assert.equal(calls().split('\n').filter((l) => l && l !== 'brew shellenv').join('\n'), 'defaults read com.apple.dock persistent-apps', 'only reads the Dock in a dry run'); // (brew shellenv: a runner that has Homebrew)
+  assert.equal(calls().trim(), 'defaults read com.apple.dock persistent-apps', 'only reads the Dock in a dry run');
   assert.equal(existsSync(path.join(home, 'Applications')), false);
 
   // the Dock address is a real file URL, also for folder names with accents or # in them
