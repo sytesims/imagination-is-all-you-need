@@ -101,6 +101,8 @@ html body .cp .gen-btn.cp-go{width:100%!important;height:var(--cp-h)!important;m
 .cp-text{box-sizing:border-box;width:100%;resize:vertical;min-height:140px;padding:10px 12px;border-radius:var(--cp-r);border:1px solid var(--hairline);background:var(--surface-2);color:var(--text-1);font:400 13px/1.5 var(--font-ui)}
 .cp-text-s{min-height:76px}
 .cp-text:focus{outline:none;border-color:var(--state-border-on)}
+.cp-fields{display:grid;gap:10px}.cp-field{display:grid;gap:4px}.cp-field small{font-size:11.5px;color:var(--text-3)}
+.cp-input{min-height:0;height:36px;resize:none;padding:0 12px}
 
 /* next steps: equal tiles */
 .cp-tilebtn{all:unset;box-sizing:border-box;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:10px;row-gap:2px;align-items:center;align-content:center;height:52px;padding:0 12px;border-radius:var(--cp-r);cursor:pointer;background:var(--state-fill);box-shadow:inset 0 0 0 1px var(--hairline)}
