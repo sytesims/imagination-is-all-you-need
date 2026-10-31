@@ -1,7 +1,8 @@
 /* LightPanel (shared/LightPanel.tsx): Relight's light panel. Lives in a BarPopover (barPop.css gives the glass and the segmented controls).
  * Two numbered steps, top to bottom, in one frame whose size never changes: the looks grid is fixed, the preview keeps one height and the
  * tab box beside it is exactly that tall (its content scrolls inside when it needs to). The app's UI fonts only, orange for picked states. */
-.lp{display:flex;flex-direction:column;align-items:stretch;gap:8px;min-width:0;padding:2px 2px 4px;--lp-line:var(--border-strong,rgba(255,255,255,.1));--lp-h:236px}
+.lp{display:flex;flex-direction:column;align-items:stretch;gap:8px;min-width:0;padding:2px 2px 4px;--lp-line:var(--border-strong,rgba(255,255,255,.1));--lp-h:300px}
+.lp .lp-step2{min-height:26px}
 
 /* step headers: "1 Pick a look" / "2 Adjust the light" */
 .lp-step{display:flex;align-items:center;gap:8px;min-height:28px;min-width:0}
@@ -23,12 +24,6 @@
 .lp .pt.lp-tile .pt-c{left:7px;right:6px;bottom:6px}
 .lp .pt.lp-tile .pt-c b{font:600 11.5px/14px var(--font-sans,Inter,system-ui,sans-serif);text-transform:none}
 
-/* step 2 tabs: the shared .lk-tabs, sized for a step header */
-.lp-tabs{margin-left:auto}
-.lp .lk-tabs>button{height:28px;font:600 12.5px/16px var(--font-sans,Inter,system-ui,sans-serif)}
-.lp .lk-tabs>button.on{background:var(--fill,rgba(255,255,255,.06))}
-.lp .lk-tabs>button.on::after{bottom:-1px}
-
 /* the approximate sketch: the photo, then CSS light layers masked to the photo's own shape (a transparent PNG stays clean) */
 .lsk{position:absolute;inset:0;display:block;overflow:hidden;isolation:isolate;border-radius:inherit;
   background:repeating-conic-gradient(#232427 0 25%,#1b1c1f 0 50%) 0 0/14px 14px}
@@ -40,7 +35,7 @@
 .lp-prev-w{display:flex;flex-direction:column;gap:6px}
 .lp-prev{position:relative;width:var(--lp-w,190px);height:var(--lp-h);border-radius:12px;overflow:hidden;cursor:crosshair;touch-action:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
 .lp-hint{margin:0;font:500 11.5px/15px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-2,#B4B5B8);text-align:center}
-.lp-tag{position:absolute;left:6px;bottom:6px;z-index:3;padding:2px 7px;border-radius:999px;font:500 10.5px/16px var(--font-sans,Inter,system-ui,sans-serif);color:rgba(255,255,255,.82);
+.lp-tag{position:absolute;right:6px;top:6px;z-index:3;padding:2px 7px;border-radius:999px;font:500 10.5px/16px var(--font-sans,Inter,system-ui,sans-serif);color:rgba(255,255,255,.82);
   background:rgba(15,17,19,.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);pointer-events:none}
 .lp-handle,.lp-dot{position:absolute;z-index:2;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;
   background:radial-gradient(circle,#fff 0 22%,var(--lp-c,#fff) 34%,transparent 72%);box-shadow:0 0 18px 6px color-mix(in srgb,var(--lp-c,#fff) 55%,transparent)}
@@ -50,16 +45,37 @@
 .lp-handle:focus-visible::after{border-color:#fff;box-shadow:0 0 0 3px rgba(255,122,26,.6)}
 .lp-handle.lp-behind::after{border-style:dashed}
 .lp-handle.lp-behind{opacity:.85}
+.lp-grid{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;transition:opacity .2s ease}
+.lp-grid>i{position:absolute;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:rgba(255,255,255,.75);box-shadow:0 0 0 1px rgba(0,0,0,.45)}
+.lp-prev:hover .lp-grid,.lp-prev:focus-within .lp-grid,.lp-grid.on{opacity:1}
 .lp-dot{width:14px;height:14px;margin:-7px 0 0 -7px;opacity:.6;pointer-events:none}
 .lp-dot.lp-behind{opacity:.4}
-/* with a rim light: which light the drag moves, on the photo's top edge */
+/* with a rim light: which light the drag moves, on the photo's top-left edge (the Preview tag sits top-right, clear of the guide dots) */
 .lp-which{position:absolute;top:6px;left:6px;z-index:3;display:flex;gap:2px;padding:2px;border-radius:999px;background:rgba(15,17,19,.62);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .lp-which>button{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;cursor:pointer;font:600 11px/1 var(--font-sans,Inter,system-ui,sans-serif);color:rgba(255,255,255,.75)}
 .lp-which>button.on{color:var(--on-accent);background:var(--accent,#FF7A1A)}
 .lp-which>button:focus-visible{outline:1.5px solid #fff;outline-offset:1px}
+/* with a rim light the Key / Rim switch takes the top edge, so the Preview tag moves to the bottom-right */
+.lp-which~.lp-tag{top:auto;bottom:6px}
 .lp-which i{width:7px;height:7px;border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
 
-.lp-pane{height:calc(var(--lp-h) + 21px);overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:9px;padding:0 4px 0 0;scrollbar-width:thin}
+.lp-pane{height:calc(var(--lp-h) + 21px);overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:10px;padding:0 6px 0 2px;scrollbar-width:thin;scrollbar-gutter:stable}
+/* the live position, as the direction section's title ("From behind, on the left, high up"); the light's name is for screen readers */
+.lp-h.lp-where>em{text-align:left;font:600 13px/18px var(--font-sans,Inter,system-ui,sans-serif);white-space:normal}
+.lp-vh{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* Shadows: label and Soft / Hard on one line */
+.lp-row.lp-inline{flex-direction:row;align-items:center;gap:12px}
+.lp-row.lp-inline>.lp-h{width:auto;flex:none}
+.lp-row.lp-inline>.bp-seg{flex:1;min-width:0}
+/* six quick picks in 3 × 2, each with room to breathe */
+html body .apop.bp.bp .lp-dirs{grid-template-columns:repeat(3,minmax(0,1fr));margin:0}
+html body .apop.bp.bp .lp-dirs .bp-opt{min-height:28px;padding:3px 6px}
+html body .apop.bp.bp .lp-pane .bp-seg{margin:0}
+/* the 3D orbit (shared LightSphere 'ball'), the photo inset and the view switch */
+.lp .ls.ls-v-ball{padding:0;gap:0}
+.lp .ls-v-ball .ls-stage{border-radius:12px;border-color:rgba(255,255,255,.08);background:radial-gradient(circle at 50% 42%,#202227 0,#141518 70%)}
+.lp-inset{position:absolute;top:8px;right:8px;z-index:3;width:46px;height:58px;border-radius:7px;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.18),0 4px 12px rgba(0,0,0,.4)}
+.lp-inset .lsk{border-radius:7px}
 .lp-row{display:flex;flex-direction:column;align-items:stretch;gap:6px;min-width:0}
 .lp-row>*{width:100%;box-sizing:border-box;margin-left:0;margin-right:0}
 .lp-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;min-width:0}
@@ -101,11 +117,11 @@ html body .apop.bp.bp .lp-seg-sm .bp-opt-l{font:600 12px/16px var(--font-sans,In
   .lp{--lp-h:200px}
   .lp .pt.lp-tile{height:56px}
   .lp .pt.lp-tile .pt-c b{font-size:10.5px;line-height:13px}
-  .lp-step2{flex-wrap:wrap}
   .lp-adj{grid-template-columns:1fr}
   .lp-prev{width:100%}
-  .lp-pane{height:236px}
+  .lp-prev-w{align-items:center}
+  .lp-pane{height:auto;overflow:visible}
 }
 @media (prefers-reduced-motion:reduce){
-  .lsk>img,.lsk-l,.lp-handle,.lp-sw>button,.lp-sw-any,.lp-reset{transition:none}
+  .lsk>img,.lsk-l,.lp-grid,.lp-handle,.lp-sw>button,.lp-sw-any,.lp-reset{transition:none}
 }

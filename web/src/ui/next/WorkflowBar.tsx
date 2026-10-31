@@ -207,7 +207,7 @@ export function WorkflowControls({ recipe: r, vals, setVal, provider, watch, mod
     {after && <span className="wf-fold wf-after">{after}</span>}
     {r.fixedNote && <span className="ic-chip ic-static wf-fixed wf-fold" data-testid="wf-fixed" {...tip('Set by this workflow')}>{r.fixedNote}</span>}
     {upscale && r.extras?.includes('upscale-examples') && <button type="button" className="ic-chip wf-exlink wf-fold" data-testid="wf-examples" aria-haspopup="dialog" onClick={upscale.onExamples}>Examples</button>}
-    {r.groups.map(g => g.id === 'light' && panels?.[g.id] == null ? <BarPopover key={g.id} open={open === g.id} anchor={at} avoid={cover ? undefined : watch} watch={cover ? watch : undefined} gap={8} onClose={() => setOpen('')} label={g.label} testId={`wf-pop-${g.id}`} className="wf-gpop wf-light-pop" width={540}>
+    {r.groups.map(g => g.id === 'light' && panels?.[g.id] == null ? <BarPopover key={g.id} open={open === g.id} anchor={at} avoid={cover ? undefined : watch} watch={cover ? watch : undefined} gap={8} onClose={() => setOpen('')} label={g.label} testId={`wf-pop-${g.id}`} className="wf-gpop wf-light-pop" width={580}>
         {open === g.id && <LightPanel vals={vals} set={setVal} photo={files.image?.url ?? null} />}</BarPopover>
       : <Popover key={g.id} open={open === g.id} anchor={at} avoid={cover ? undefined : watch} watch={cover ? watch : undefined} gap={8} onClose={() => setOpen('')} label={g.label} testId={`wf-pop-${g.id}`} className={`wf-gpop${barPanels ? ' bp' : ''}`}>
       {panels?.[g.id] != null ? panels[g.id]

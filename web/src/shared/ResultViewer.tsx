@@ -385,9 +385,11 @@ function placeRows(job: any, ranOn: string, sample?: boolean): ReactNode[] {
   const own = ownAccountsNow(); const back = heldBack(job);
   const after = own && cost && !sample && !isDemoJob(job) ? jobCostLine(job) : null; const amt = own && cost && !sample && !isDemoJob(job) ? jobCostAmount(job) : null; // after the run: "$0.75 (quoted $0.76)" or "≈ $0.76 (estimate)"
   const price = sample || isDemoJob(job) || cost == null ? null : cost === 0 ? 'Free' : amt ?? priceToken({ own, credits: cost, q: { runOn: ro } });
+  /* a sample run: what a real run would cost, never as if it was charged */ const would = !price && job?.isSample && cost && cost > 0 ? `would cost ${priceToken({ own, credits: cost, q: { runOn: ro } })}` : null;
   const actual = typeof job?.actualUsd === 'number' ? job.actualUsd : typeof job?.spend?.actualUsd === 'number' ? job.spend.actualUsd : null;
   const via = ranOn.includes('·') ? ranOn.split('·').slice(1).join('·').trim() : '';
   const out: ReactNode[] = [<div key="place" className="rvx-row" data-row="place"><span className="rvx-row-l rvx-place" data-testid="rvx-run-on" {...tip(via ? `Ran on ${via}` : null)}><Ic size={14} className="rvx-line-ic" /><span className="rvx-place-t">{name}</span></span>
+    {would && <span className="rvx-row-r rvx-dim" data-testid="rvx-cost-would">{would}</span>}
     {price && <span className="rvx-row-r" data-testid={cost ? 'rvx-cost-paid' : 'rvx-cost-free'} {...tip(own && cost ? [`Billed to your ${ro === 'comfy-cloud' ? 'Comfy' : name} account${amt && /quoted/.test(amt) ? '' : ' (estimate)'}.`, after?.detail ?? priceDetail(null, { credits: cost, runOn: ro })].filter(Boolean).join(' ') : null)}>{price}</span>}</div>];
   if (actual != null && own && !amt) out.push(<div key="actual" className="rvx-row" data-row="actual"><span className="rvx-row-l rvx-k">Actual</span><span className="rvx-row-r" data-testid="rvx-actual">{fmtUsd(actual)}</span></div>);
   if (back > 0) out.push(<div key="back" className="rvx-row" data-row="returned"><span className="rvx-row-l rvx-k">Returned</span><span className="rvx-row-r" data-testid="rvx-returned">{own ? fmtUsd(back / 100) : ledgerUsd(back)}</span></div>);
@@ -429,7 +431,7 @@ export function ResultDetails({ job, info, extra, onViewWorkflow }: { job: any; 
   const output = (info.kind === 'image' ? [sizeTxt ? { k: 'size', label: 'Size', v: <span data-testid="rvx-size">{sizeTxt}</span> } : null, seedRow]
     : info.kind === 'video' ? [sizeTxt ? { k: 'res', label: 'Resolution', v: <span data-testid="rvx-size">{sizeTxt}</span> } : null, dur ? { k: 'dur', label: 'Duration', v: dur } : null, info.fps && info.fps > 0 ? { k: 'fps', label: 'Frame rate', v: `${Math.round(info.fps * 100) / 100} fps` } : null, seedRow]
     : [dur ? { k: 'dur', label: 'Duration', v: dur } : null, fmt ? { k: 'fmt', label: 'Format', v: fmt } : null, seedRow]).filter(Boolean) as KV[];
-  const timing = ([render ? { k: 'render', label: 'Render time', v: <span data-testid="rvx-took">{render}</span>, tip: renderTip } : null,
+  const timing = info.sample ? [] /* a sample never really rendered */ : ([render ? { k: 'render', label: 'Render time', v: <span data-testid="rvx-took">{render}</span>, tip: renderTip } : null,
     queue ? { k: 'queue', label: 'Waited in queue', v: <span data-testid="rvx-queue">{queue}</span> } : null]).filter(Boolean) as KV[];
   /* Source (2026-10-29): which workflow ran (the feature credit, else the server's runSource: jobSource.ts), where it ran in the shared place
      words with how it bills, and the prompts the workflow wrote itself, so a result never hides what really ran. */
@@ -441,7 +443,7 @@ export function ResultDetails({ job, info, extra, onViewWorkflow }: { job: any; 
   const createdV = created ? <span data-testid="rvx-created" {...tip(whenText(job?.createdAt))}>{created}</span> : null;
   const source: ReactNode[] = [
     wfLeft ? <div key="wf" className="rvx-row" data-row="wf">{wfLeft}{wfRight}</div> : null,
-    pl ? kvRow({ k: 'ranon', label: 'Ran on', v: <span data-testid="rvx-src-place" {...tip(pl.note)}>{pl.label}<span className="rvx-dim"> · {pl.short}</span></span> }) : null,
+    pl ? kvRow({ k: 'ranon', label: info.sample ? 'Would run on' : 'Ran on', v: <span data-testid="rvx-src-place" {...tip(pl.note)}>{pl.label}<span className="rvx-dim"> · {pl.short}</span></span> }) : null,
     ...appPrompts.map((p, i) => kvRow({ k: `ap${i}`, label: appPrompts.length > 1 ? `Prompt the app wrote (${i + 1})` : 'Prompt the app wrote', v: <span className="rvx-app-prompt" data-testid="rvx-app-prompt" {...tip(p)}>{p.length > 140 ? `${p.slice(0, 139)}…` : p}</span> })),
     ...(Array.isArray(job?.diagnostics) ? job.diagnostics : []).map((d: { node: string; label: string; url: string; note: string }, i: number) => kvRow({ k: `diag${i}`, label: 'Mask diagnostic', v: <a href={d.url} target="_blank" rel="noreferrer noopener" data-testid="rvx-mask-diagnostic" {...tip(d.note)}>{d.label} ↗</a> })),
     createdV ? kvRow({ k: 'created', label: 'Created', v: createdV }) : null,
