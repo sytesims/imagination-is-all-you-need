@@ -14,7 +14,8 @@
 import { createHash } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 
-export const TOOLS_TTL_MS = 5_000;
+/** OPENHIGGSFIELD_TOOLS_CACHE_MS overrides it (the test runner sets 0: tests drop files and read the change back at once). */
+export const TOOLS_TTL_MS = Number(process.env.OPENHIGGSFIELD_TOOLS_CACHE_MS ?? 5_000);
 type Entry = { at: number; list: any[]; json: string; etag: string };
 let build: (() => any[]) | null = null;
 let entry: Entry | null = null;

@@ -3,7 +3,7 @@
 import { testPort } from './_ports.js'; import assert from 'node:assert/strict'; import { spawn } from 'node:child_process'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path'; import http from 'node:http';
 const ROOT = path.resolve(import.meta.dirname, '..'); const PORT = testPort(8897); const B = `http://localhost:${PORT}`;
 const DATA = fs.mkdtempSync(path.join(os.tmpdir(), 'pp-'));
-const srv = spawn('npx', ['tsx', 'src/index.ts'], { cwd: ROOT, env: { ...process.env, PORT: String(PORT), OPENHIGGSFIELD_DATA_DIR: DATA, OPENHIGGSFIELD_BACKEND: 'mock', OPENHIGGSFIELD_MOCK_KEYS: '1' }, stdio: 'ignore', detached: true });
+const srv = spawn('npx', ['tsx', 'src/index.ts'], { cwd: ROOT, env: { ...process.env, PORT: String(PORT), OPENHIGGSFIELD_DATA_DIR: DATA, OPENHIGGSFIELD_BACKEND: 'mock', OPENHIGGSFIELD_MOCK_KEYS: '1', OPENHIGGSFIELD_TOOLS_CACHE_MS: '60000' /* the shared copy, kept: only invalidation may drop it */ }, stdio: 'ignore', detached: true });
 /** Raw GET (no automatic decompression): status, headers, body bytes. */
 const raw = (p: string, headers: Record<string, string> = {}) => new Promise<{ status: number; headers: http.IncomingHttpHeaders; body: Buffer }>((res, rej) => {
   http.get(B + p, { headers }, (r) => { const c: Buffer[] = []; r.on('data', (d) => c.push(d)); r.on('end', () => res({ status: r.statusCode!, headers: r.headers, body: Buffer.concat(c) })); }).on('error', rej); });
