@@ -1,32 +1,85 @@
-/** Existing portrait-and-speech example; no generation starts from this showcase. */
+/** "Give a character a voice": the portrait → the voice → the talking video, in one row. An existing example; nothing generates here.
+ *  The voice card plays only the speech clip; the video's own Play plays the result with its sound. Starting one stops the other. */
+import { useEffect, useRef, useState } from 'react';
+import { Link } from '../../platform/router';
 import { ShowcaseFilm } from '../../shared/ShowcaseFilm';
+import { Waveform, useWaveform, clockText, durClock } from '../../shared/Waveform';
+import { PlayIcon } from '../Icons';
 import { featuredByKey, featuredRecreateHref, placeOfRoute } from '../../../../server/src/shared/featured';
 import { videoWorkflowHref } from '../../../../server/src/shared/videoWorkflows';
-import { ChapterText } from './ExploreShowcase';
-import { AvatarAudioScene } from './AvatarAudioScene';
 import './explorePresenter.css';
+
+const FILM = 'xp-presenter-film';
 
 export function XpPresenter() {
   const f = featuredByKey('presenter-talk');
-  if (!f?.before || !f.input.speechUrl) return null;
-  const href = featuredRecreateHref(f.key);
-  if (!href) return null;
-  return <section className="xv-sec xps xpa" id="xp-presenter" data-testid="xp-presenter" aria-labelledby="xp-h-presenter">
-    <ChapterText id="presenter" title={['Give a character', 'a voice.']}
-      line="A portrait and a speech clip become a talking video. Your character, with something to say."
-      steps={[
-        { n: 1, name: 'Portrait', line: 'Start with a character or a face' },
-        { n: 2, name: 'Voice', line: 'Add the speech you want them to say' },
-        { n: 3, name: 'Talking avatar', line: `${f.model} · ${placeOfRoute(f.route)}` },
-      ]}
-      cta={{ label: 'Make it talk', href: `${videoWorkflowHref('lip-sync')}&model=${encodeURIComponent(f.modelKey)}` }}
-      rec={href} recLabel="Recreate this one" />
-    <figure className="xpa-result">
-      <AvatarAudioScene portrait={f.before.url} speech={String(f.input.speechUrl)}>{manual => <ShowcaseFilm className="xpa-film" testId="xp-presenter-film" label={`Talking avatar · ${f.model}`}
-        takes={[{ key: 'result', url: f.out.url, poster: f.out.poster, label: 'Talking avatar', sec: f.out.sec, sound: f.out.sound === true }]}
-        take="result" onTake={() => 0} controls hoverSound restartOnSound manual={manual} />}</AvatarAudioScene>
-      <figcaption><span>{f.model}</span><span>{placeOfRoute(f.route)} · {f.out.sec} s</span></figcaption>
-      <div className="xpa-input"><img src={f.before.url} alt="The presenter portrait used to make this clip" loading="lazy" decoding="async" /><span>Portrait input · speech included</span></div>
-    </figure>
+  const rec = f ? featuredRecreateHref(f.key) : null;
+  if (!f?.before || !f.input.speechUrl || !rec) return null;
+  return <PresenterRow f={f} speech={String(f.input.speechUrl)} portrait={f.before.url} rec={rec} />;
+}
+
+type F = NonNullable<ReturnType<typeof featuredByKey>>;
+function PresenterRow({ f, speech, portrait, rec }: { f: F; speech: string; portrait: string; rec: string }) {
+  const row = useRef<HTMLDivElement>(null); const audio = useRef<HTMLAudioElement>(null);
+  const [near, setNear] = useState(false); const [playing, setPlaying] = useState(false); const [time, setTime] = useState(0); const [len, setLen] = useState(0);
+  const wave = useWaveform(speech, { bars: 56, enabled: near });
+  const total = len || wave.duration;
+  /* decode the waveform only once the row is close */
+  useEffect(() => {
+    const el = row.current; if (!el || typeof IntersectionObserver === 'undefined') { setNear(true); return; }
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setNear(true); io.disconnect(); } }, { rootMargin: '400px' });
+    io.observe(el); return () => io.disconnect();
+  }, []);
+  /* a smooth played line while the voice plays */
+  useEffect(() => {
+    if (!playing) return; let raf = 0;
+    const step = () => { setTime(audio.current?.currentTime ?? 0); raf = requestAnimationFrame(step); };
+    raf = requestAnimationFrame(step); return () => cancelAnimationFrame(raf);
+  }, [playing]);
+  const toggleVoice = () => {
+    const a = audio.current; if (!a) return;
+    if (!a.paused) { a.pause(); return; }
+    // the voice alone: pause the talking video through its own control
+    const v = row.current?.querySelector('video');
+    if (v && !v.paused) row.current?.querySelector<HTMLButtonElement>(`[data-testid="${FILM}-play"]`)?.click();
+    void a.play().catch(() => setPlaying(false));
+  };
+  const seek = (s: number) => { const a = audio.current; if (a) { a.currentTime = s; setTime(s); } };
+  return <section className="xv-sec xpa" id="xp-presenter" data-testid="xp-presenter" aria-labelledby="xp-h-presenter">
+    <header className="xsdc-head">
+      <h2 id="xp-h-presenter" className="xps-h xsdc-h"><span>Give a character</span><span>a voice.</span></h2>
+      <p className="xps-p xsdc-p">A portrait and a voice become a talking video.</p>
+    </header>
+    {/* media events don't bubble, so the video's play is caught on the way down */}
+    <div ref={row} className="xpa-row" onPlayCapture={e => { if (e.target instanceof HTMLVideoElement) audio.current?.pause(); }}>
+      <figure className="xpa-card xpa-portrait" data-testid="xp-presenter-portrait">
+        <img src={portrait} alt="The portrait the talking video starts from" loading="lazy" decoding="async" draggable={false} />
+        <span className="xv-tag">Portrait</span>
+      </figure>
+      <span className="xpa-link" aria-hidden>+</span>
+      <figure className={`xpa-card xpa-voice${playing ? ' on' : ''}`} data-testid="xp-presenter-voice">
+        <span className="xv-tag">Voice</span>
+        <Waveform className="xpa-wave" bars={wave.bars} state={wave.state} time={time} duration={total} onSeek={seek} label="Seek voice" testId="xp-presenter-voice-wave" />
+        <figcaption className="xpa-voice-bar">
+          <button type="button" className="xpa-voice-play" onClick={toggleVoice} aria-label={playing ? 'Pause the voice' : 'Play the voice'} data-testid="xp-presenter-voice-play">
+            {playing ? <span className="xpa-pause" aria-hidden><i /><i /></span> : <PlayIcon size={16} />}</button>
+          <span className="xpa-voice-time">{playing || time > 0 ? `${clockText(time)} / ` : ''}{total ? durClock(total) : '--:--'}</span>
+        </figcaption>
+        <audio ref={audio} src={speech} preload="metadata" onLoadedMetadata={e => setLen(e.currentTarget.duration || 0)}
+          onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => { setPlaying(false); setTime(0); }} />
+      </figure>
+      <span className="xpa-link" aria-hidden>→</span>
+      <figure className="xpa-card xpa-result" data-testid="xp-presenter-result">
+        <ShowcaseFilm className="xpa-film" testId={FILM} label="Talking video" manual controls restartOnSound
+          takes={[{ key: 'result', url: f.out.url, poster: f.out.poster, label: 'Talking video', sec: f.out.sec, sound: f.out.sound === true }]}
+          take="result" onTake={() => 0} />
+        <figcaption className="xpa-top"><span className="xv-tag xv-tag-on">Talking video</span>
+          <span className="xpa-chip" data-testid="xp-presenter-model">{f.model} · {placeOfRoute(f.route)} · {f.out.sec} s</span></figcaption>
+      </figure>
+    </div>
+    <div className="xpa-ctas xps-ctas">
+      <Link to={`${videoWorkflowHref('lip-sync')}&model=${encodeURIComponent(f.modelKey)}`} className="xv-btn" data-testid="xp-presenter-cta">Make it talk<span className="xv-arrow" aria-hidden>→</span></Link>
+      <Link to={rec} className="xv-quiet" data-testid="xp-presenter-recreate">or recreate this one</Link>
+    </div>
   </section>;
 }
