@@ -320,7 +320,7 @@ export default function AppTool({ tool, tools }: { tool: ToolInfo; tools?: ToolI
   else if (cfg.input === 'video' ? !video && !(cvAny && cvAudio) : needsImage && !hasPicture(mode, !!image, refPics)) missing.push(cfg.input === 'video' ? (cvApp || cvAny ? CV_NEED : 'a valid video') : 'an image');
   if (requireLast && !lastFrame) missing.push('an end frame');
   /* Keyframes (2026-10-27): 2–5 frames, each at its time (the bar keeps the times valid) */
-  if (tool.id === 'h3-video' && mode === 'keyframes') { const n = vrefs.keyframes?.length ?? 0; if (n < 2) missing.push(n ? 'Add one more frame' : 'Add 2 to 5 frames'); }
+  if (tool.id === 'h3-video' && mode === 'keyframes') { const n = vrefs.keyframes?.length ?? 0; if (n < 2) missing.push(n ? 'Add one more frame' : 'Add at least 2 frames'); } /* the most is the model's (videoLimits keyframes): the bar caps it and the quote says so */
   if (isExtend && !prompt.trim()) missing.push('what happens next');
   if (cfg.modes && !prompt.trim() && !cfg.promptOptionalModes?.includes(mode) && (tool.inputs ?? []).find((i: any) => i.name === 'prompt')?.required !== false && !(Array.isArray(gal?.required) && gal.required.length > 0 && !gal.required.flat().includes('prompt'))) missing.push('a prompt'); /* B21 B3: apps whose server required list leaves out the prompt (Transitions: image + end image) run without one (checked: a real mock POST with no prompt is accepted) */ /* B21: the server marks the prompt optional on Relight and UGC Ad */
   if (!picked.length && types.length) missing.push(tool.id === 'photo-fx' ? 'an effect' : tool.id === 'camera' ? 'a camera move' : 'a type');

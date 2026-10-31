@@ -18,7 +18,8 @@ import { mockRun, parseCommon } from '../shared.js';
 import { H3_EXTEND_SECONDS, H3_QUALITY } from './catalog.js';
 import { H3X_SECONDS, H3X_SECONDS_LIST, H3X_PAGE_SECONDS } from '../../shared/h3ExtendCloud.js';
 import { h3Frames } from './rules.js';
-import { H3KF_MODE, H3KF_MIN_FRAMES, H3KF_MAX_FRAMES, keyframeTimesIssue, parseKeyframeTimes, spreadTimes } from '../../comfy/h3KeyframesCloud.js';
+import { H3KF_MODE, keyframeTimesIssue, parseKeyframeTimes, spreadTimes } from '../../comfy/h3KeyframesCloud.js';
+import { H3KF_CAPS } from '../../shared/h3Keyframes.js';
 import { WAN22_5B_STEPS, wanFrames } from '../../comfy/wan22.js';
 import { LTX25_VIDEO, LTX25_FPS, LTX25_LOOP_WORDS, ltxVideoFrames } from '../../comfy/ltx25Video.js';
 import { LTX25_LIPSYNC, lipsyncPrompt } from '../../comfy/ltx25Lipsync.js';
@@ -97,16 +98,18 @@ h3VideoTool.parseInput = async (fields, files) => {
   /* Keyframes (2026-10-27, comfy/h3KeyframesCloud.ts): 2–5 frames (field keyframes, in clip order) with their times (keyframeTimes, seconds, the first 0;
    * none sent = evenly spread). Frame 1 is <Picture 1> and the start; the others are pinned at their times. Checked here, so nothing is sent or charged. */
   if (r.mode === H3KF_MODE) {
-    const kf = files.keyframes ?? [];
-    if (kf.length < H3KF_MIN_FRAMES) return bad('keyframes', `Keyframes needs ${H3KF_MIN_FRAMES} to ${H3KF_MAX_FRAMES} frames (field keyframes, PNG or JPG); you added ${kf.length}.`, 'required');
-    if (kf.length > H3KF_MAX_FRAMES) return bad('keyframes', `Keyframes takes up to ${H3KF_MAX_FRAMES} frames; you added ${kf.length}.`, 'unsupported');
+    /* the frame limits are the model's (videoCaps keyframes, 2026-10-31): H3 2–5 frames at their times; Kling 4.0 up to 10, spaced evenly (no times) */
+    const K = limitsFor(fields.provider || h3VideoTool.providers[0])?.keyframes ?? H3KF_CAPS; const kf = files.keyframes ?? [];
+    if (kf.length < K.min) return bad('keyframes', `Keyframes needs ${K.min} to ${K.max} frames (field keyframes, PNG or JPG); you added ${kf.length}.`, 'required');
+    if (kf.length > K.max) return bad('keyframes', `Keyframes takes up to ${K.max} frames for this model; you added ${kf.length}.`, 'unsupported');
     if (kf.some((f) => !/\.(png|jpe?g)$/i.test(f))) return bad('keyframes', 'Keyframes: use PNG or JPG pictures.', 'format');
     if (files.refVideos?.length || files.refAudios?.length || files.lastFrame?.length) return bad('keyframes', 'Keyframes takes pictures only: remove the reference clips, sound or end frame.', 'unsupported');
-    const secs = Number(r.duration) || 5; const times = parseKeyframeTimes(fields.keyframeTimes) ?? spreadTimes(kf.length, secs);
-    if (times.length !== kf.length) return bad('keyframeTimes', `Give each of the ${kf.length} frames a time (keyframeTimes, seconds); you gave ${times.length}.`);
-    const tw = keyframeTimesIssue(times, secs); if (tw) return bad('keyframeTimes', `${tw}.`);
+    if (!K.times && String(fields.keyframeTimes ?? '').trim()) return bad('keyframeTimes', 'This model spaces the frames evenly through the clip, so it takes no times: leave keyframeTimes out.', 'unsupported');
+    const secs = Number(r.duration) || 5; const times = K.times ? parseKeyframeTimes(fields.keyframeTimes) ?? spreadTimes(kf.length, secs) : null;
+    if (times && times.length !== kf.length) return bad('keyframeTimes', `Give each of the ${kf.length} frames a time (keyframeTimes, seconds); you gave ${times.length}.`);
+    const tw = times && keyframeTimesIssue(times, secs); if (tw) return bad('keyframeTimes', `${tw}.`);
     const paths = kf.map((f) => path.join(DATA_DIR, f)); const urls = kf.map((f) => `/files/${f}`);
-    Object.assign(r, { keyframePaths: paths, keyframeUrls: urls, keyframeTimes: times, imagePath: paths[0], imageUrl: urls[0], refPaths: paths, refUrls: urls,
+    Object.assign(r, { keyframePaths: paths, keyframeUrls: urls, ...(times ? { keyframeTimes: times } : {}), imagePath: paths[0], imageUrl: urls[0], refPaths: paths, refUrls: urls,
       warnings: (r.warnings ?? []).filter((w: string) => !/image was ignored/i.test(w)) });
   }
   const q = r.quality === 'fast' ? 'fast' : 'quality';

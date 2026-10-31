@@ -5,6 +5,7 @@
 //  3 menu: Kling 4.0 on Create Video with its real name and maker, four modes, sound always on (no switch)
 //  4 prices: the price badge per second × resolution; the REAL quote endpoint = the charge (3 s and 30 s, 720p and 1080p)
 //  5 run on a fake Comfy Cloud (3 references): files uploaded, key once in extra_data, the checked graph submitted
+//  6 keyframes (2026-10-31): 2–10 frames, first / evenly spaced middle / last, no times; the bar's caps, the quote and the submit agree; H3 keeps 2–5 at times
 // Run: npx tsx test/kling4.test.ts
 import './fixtures/tmp-cleanup.mjs';
 import assert from 'node:assert/strict'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path'; import { execFileSync } from 'node:child_process';
@@ -66,10 +67,10 @@ try {
 
   // ---- 3. menu ----
   { const m = toolModels('h3-video').find((x: any) => x.key === 'kling-4')!; assert.ok(m, 'Kling 4.0 on Create Video'); assert.equal(m.def.name, 'Kling 4.0'); assert.equal(m.def.maker, 'kling'); assert.deepEqual(m.parts.map((p: any) => p.engine), [K.K4_PROVIDER]);
-    assert.deepEqual((video as any).app.providerModes[K.K4_PROVIDER], ['t2v', 'i2v', 'flf', 'r2v']); const L = VIDEO_LIMITS[K.K4_PROVIDER];
+    assert.deepEqual((video as any).app.providerModes[K.K4_PROVIDER], ['t2v', 'i2v', 'flf', 'r2v', 'keyframes']); const L = VIDEO_LIMITS[K.K4_PROVIDER];
     assert.equal(L.refKinds.image, 10); assert.equal(L.minSeconds, 3); assert.equal(L.maxSeconds, 30); assert.deepEqual(L.audio, { supported: true, toggle: false, default: true, priceAffects: false, off: 'provider' });
     assert.equal(aboutLink('kling-4'), 'https://kling.ai/release-note/release-notes');
-    ok('menu: Kling 4.0 (Kuaishou Kling) on Create Video, four modes, 10 references, 3–30 s, sound always on, About = Kling'); }
+    ok('menu: Kling 4.0 (Kuaishou Kling) on Create Video, five modes, 10 references, 3–30 s, sound always on, About = Kling'); }
 
   // ---- 4. prices ----
   assert.deepEqual(HOSTED_BY_ID[K.K4_PROVIDER].usdByQuality, { '720p': 0.22451, '1080p': 0.33605 });
@@ -86,6 +87,31 @@ try {
       assert.equal(quoted, charge, `${mode} ${s} ${res}: quote ${quoted} = charge ${charge}`); assert.equal(charge, Math.ceil(Math.round(Number(s) * K.K4_RATES[res] * 100 * 1e6) / 1e6));
       seen[`${mode} ${s}s ${res}`] = `$${(quoted / 100).toFixed(2)}`; }
     await app.close(); ok(`quote endpoint = charge: ${JSON.stringify(seen)}`); }
+
+  // ---- 6. keyframes ----
+  { for (const k of [2, 3, 10]) { const g = K.k4Graph({ mode: 'keyframes', prompt: '', resolution: '720p', duration: 6 }, Array(k).fill(ASSET)); clean(`keyframes ${k}`, g);
+      const n = g['1'].inputs; assert.equal(g['1'].class_type, K.K4_I2V_NODE); assert.deepEqual(n['model.first_frame'], ['10', 0]); assert.deepEqual(n['model.last_frame'], [String(9 + k), 0]);
+      assert.deepEqual(Object.keys(n).filter((x) => x.startsWith('model.middle_frames.')), Array.from({ length: k - 2 }, (_, j) => `model.middle_frames.middle_frame_${j + 1}`)); }
+    { const { videoCapsBlock } = await import('../src/tools/h3/videoCaps.ts');
+      assert.deepEqual(videoCapsBlock(VIDEO_LIMITS[K.K4_PROVIDER]).keyframes, { min: 2, max: 10, times: false }, 'the bar reads the model\'s frame limits');
+      assert.deepEqual(VIDEO_LIMITS['comfy-h3'].keyframes, { min: 2, max: 5, times: true }, 'H3 keeps its own rules'); }
+    const frames = (n: number) => ({ keyframes: Array.from({ length: n }, (_, k) => img(`kf${k}.png`, '1024x576')) });
+    const kfJob = (n: number, extra: Record<string, string> = {}, prov = K.K4_PROVIDER) => video.parseInput({ provider: prov, prompt: '@image1 turns around', types: '["keyframes"]', duration: '6', resolution: prov === K.K4_PROVIDER ? '720p' : '768p', ...extra }, frames(n)) as Promise<any>;
+    for (const n of [3, 10]) { const j = await kfJob(n); assert.ok(!j.error, String(j.error)); assert.equal(j.keyframePaths.length, n); assert.equal(j.keyframeTimes, undefined, 'no times for Kling');
+      const plan = K.k4CloudPlan({ id: 'kf', toolId: 'h3-video', provider: K.K4_PROVIDER, input: j }); const g = plan.passes[0].graph; assert.equal(g['1'].class_type, K.K4_I2V_NODE);
+      assert.equal(Object.keys(g['1'].inputs).filter((x) => x.startsWith('model.middle_frames.')).length, n - 2); assert.match(plan.notes[0], new RegExp(`${n} keyframes spaced evenly`)); }
+    assert.match(String((await kfJob(11)).error), /up to 10 frames for this model; you added 11/);
+    assert.match(String((await kfJob(1)).error), /needs 2 to 10 frames/);
+    assert.match(String((await kfJob(3, { keyframeTimes: '[0,2,6]' })).error), /spaces the frames evenly.*no times/);
+    assert.match(String((await kfJob(6, {}, 'comfy-h3')).error), /up to 5 frames for this model; you added 6/, 'H3: 2–5 frames');
+    { const j = await kfJob(3, { keyframeTimes: '[0,2,6]' }, 'comfy-h3'); assert.ok(!j.error, String(j.error)); assert.deepEqual(j.keyframeTimes, [0, 2, 6], 'H3: times kept'); }
+    const Fastify = (await import('fastify')).default; const app = Fastify(); (await import('../src/routesBatch1.ts')).registerBatch1(app); (await import('../src/routing/http.ts')).registerRouting(app); await app.ready();
+    const quote = async (prov: string, n: number, res: string) => (await app.inject({ url: `/api/tools/h3-video/price?${new URLSearchParams({ provider: prov, types: '["keyframes"]', duration: '6', resolution: res, keyframes: String(n) })}` })).json();
+    for (const n of [3, 10]) { const b = await quote(K.K4_PROVIDER, n, '720p'); assert.equal(b.route, K.K4_ROUTE); assert.ok(!b.blockedReason, b.blockedReason); assert.equal(b.listCredits ?? b.credits, Math.ceil(6 * 22.451)); }
+    { const b = await quote(K.K4_PROVIDER, 11, '720p'); assert.equal(b.runnable, false); assert.match(String(b.blockedReason ?? b.reason), /up to 10 keyframes; you added 11/); }
+    { const h3kf = routesFor('comfy-h3', video).find((r) => r.routeId === 'comfy-cloud:cloud-h3-keyframes')!; const at = (n: number) => h3kf.unavailableFor!({ mode: 'keyframes', duration: 6, resolution: '768p', keyframePaths: Array(n).fill('quote:k') });
+      assert.equal(at(5), null); assert.match(String(at(6)), /2 to 5 frames; you added 6/, 'H3 Keyframes: the bar\'s count refused on its route too'); }
+    await app.close(); ok('keyframes: 2 / 3 / 10 frames → first, evenly spaced middle frames, last (graphs pass the node schema); 11 frames and times refused on the quote and the submit; H3 keeps 2–5 at times'); }
 
   // ---- 5. fake Comfy Cloud run ----
   process.env.COMFY_API_KEY = 'comfyui-fake-kling4-key-0000'; process.env.COMFY_CLOUD_URL = 'http://cloud.test';

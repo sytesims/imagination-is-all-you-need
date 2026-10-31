@@ -6,7 +6,7 @@
  *  - Wan Animate 2 · Comfy Cloud (Video › Motion Control): open weights, core nodes (comfy/wanAnimate2Cloud.ts); held until its GPU price is measured.
  *  - FLUX 3 Max (Create Video: text, start frame, start + end, up to 10 keyframes): the Flux3Max partner nodes on Comfy Cloud, and text at 720p on
  *    Comfy Router fal/flux-3-max (comfy/flux3MaxCloud.ts). One card, place "Comfy".
- *  - Kling 4.0 · Comfy Cloud (Create Video: text, start frame, start + end, 1–10 reference images; 3–30 s, sound always on): the Kling4 partner
+ *  - Kling 4.0 · Comfy Cloud (Create Video: text, start frame, start + end, 2–10 keyframes, 1–10 reference images; 3–30 s, sound always on): the Kling4 partner
  *    nodes (comfy/kling4Cloud.ts), official templates api_kling4_t2v / i2v / r2v (2026-10-31).
  *  - Product Advertisement Video: a chain on the Workflows page (shared/workflowCatalog.ts WF_CHAINS 'product-ad-multishot'), not a model.
  * Prices: shared/hostedPrices.ts (block "Official Comfy templates"). Model keys: shared/modelIds.ts (same header). Credits: shared/modelLinks.ts.
@@ -27,7 +27,7 @@ import { OMNI_PROVIDER, OMNI_ROUTE, OMNI_NODE, OMNI_NAME, OMNI_DOC, OMNI_TEMPLAT
 import { BLOOM_PROVIDER, BLOOM_ROUTE, BLOOM_NODE, BLOOM_DOC, bloomCloudPlan } from '../comfy/topazImageCloud.js';
 import { F3M_PROVIDER, F3M_ROUTE, F3M_ROUTER_ROUTE, F3M_ROUTER_ID, F3M_ROUTER_DOC, F3M_NAME, F3M_DOC, F3M_T2V_NODE, F3M_I2V_NODE, F3M_SECONDS, F3M_DEFAULT_SECONDS, F3M_RESOLUTIONS, F3M_ASPECTS, F3M_MAX_KEYFRAMES, F3M_MODES,
   f3mCloudIssue, f3mRouterIssue, f3mCloudPlan, f3mRouterBody, f3mRouterOutputs } from '../comfy/flux3MaxCloud.js';
-import { K4_PROVIDER, K4_ROUTE, K4_NAME, K4_PR, K4_T2V_NODE, K4_I2V_NODE, K4_R2V_NODE, K4_SECONDS, K4_DEFAULT_SECONDS, K4_RESOLUTIONS, K4_ASPECTS, K4_MAX_IMAGES, K4_MODES, k4Issue, k4CloudPlan } from '../comfy/kling4Cloud.js';
+import { K4_PROVIDER, K4_ROUTE, K4_NAME, K4_PR, K4_T2V_NODE, K4_I2V_NODE, K4_R2V_NODE, K4_SECONDS, K4_DEFAULT_SECONDS, K4_RESOLUTIONS, K4_ASPECTS, K4_MAX_IMAGES, K4_MODES, K4_KEYFRAMES, k4Issue, k4CloudPlan } from '../comfy/kling4Cloud.js';
 import { ROUTER_MODELS, ROUTER_RUNNER_ROUTES } from '../routing/routerModels.js';
 import { EXTRA_ROUTES, routerPlace } from '../routing/routes.js';
 import { WA2_PROVIDER, WA2_ROUTE, WA2_NAME, WA2_DOC, WA2_GRAPH_FILE, WA2_REQUIRES, WA2_MIN_SECONDS, WA2_MAX_SECONDS, WA2_WINDOW, WA2_FPS, wa2Issue, wa2Windows, wa2CloudPlan, prepareWa2Cloud } from '../comfy/wanAnimate2Cloud.js';
@@ -142,13 +142,13 @@ MODEL_CATALOG[F3M_PROVIDER] = { name: F3M_NAME, family: 'FLUX', description: 'Bl
   CLOUD_RUNNER_ROUTES.add(K4_ROUTE);
   VIDEO_LIMITS[K4_PROVIDER] = { maxResolution: '1080p', resolutions: [...K4_RESOLUTIONS], defaultSeconds: K4_DEFAULT_SECONDS, minSeconds: 3, maxSeconds: 30, durationStep: 1, durations: [...K4_SECONDS],
     aspects: [...K4_ASPECTS], audio: { supported: true, toggle: false, default: true, priceAffects: false, off: 'provider' }, refKinds: { image: K4_MAX_IMAGES }, bitrate: BITRATES.map((b) => b.value), bitratePriceAffects: false,
-    qualityOff: true /* one model, no Fast / Best */, verified: true, source: `${K4_PR} (Kling4 nodes: 3–30 s, 720p / 1080p, text aspect 16:9 / 9:16 / 1:1 / 21:9, reference adaptive + those, up to 10 images ≥ 300 px at 2:5–5:2, stereo sound in every clip)` } satisfies VideoLimits;
+    keyframes: K4_KEYFRAMES /* first + up to 8 middle + last, spaced evenly by the node */, qualityOff: true /* one model, no Fast / Best */, verified: true, source: `${K4_PR} (Kling4 nodes: 3–30 s, 720p / 1080p, text aspect 16:9 / 9:16 / 1:1 / 21:9, reference adaptive + those, up to 10 images ≥ 300 px at 2:5–5:2, stereo sound in every clip)` } satisfies VideoLimits;
   ROUTE_VIDEO_CAPS[K4_ROUTE] = { durations: [...K4_SECONDS], minSeconds: 3, maxSeconds: 30, aspects: [...K4_ASPECTS], resolutions: [...K4_RESOLUTIONS],
     audio: { supported: true, toggle: false, default: true, passthrough: false }, refKinds: ['image'], refMax: { image: K4_MAX_IMAGES }, sourceUrl: K4_PR, checkedAt: K4D, verified: true,
     note: 'Image to video takes the start frame’s shape; every clip has stereo sound.' };
   NATIVE_DIRECT[K4_PROVIDER] = { label: 'Comfy Cloud', endpoint: `POST https://cloud.comfy.org/api/v2/jobs (graph: ${K4_T2V_NODE} | LoadImage → ${K4_I2V_NODE} | LoadImage × 1–10 → ${K4_R2V_NODE}, then SaveVideo)`, sourceUrl: K4_PR, checkedAt: K4D,
     typicalLatencySec: 240, latencyEstimated: true, latencySource: 'estimated', output: 'video', unavailableFor: k4Issue,
-    caps: { audio: true, firstLastFrame: true, references: K4_MAX_IMAGES, partnerNode: K4_I2V_NODE } } as any;
+    caps: { audio: true, firstLastFrame: true, keyframes: K4_KEYFRAMES.max, references: K4_MAX_IMAGES, partnerNode: K4_I2V_NODE } } as any;
   h3VideoTool.providers.push(K4_PROVIDER);
   (h3VideoTool as any).app.providerModes[K4_PROVIDER] = [...K4_MODES];
   registerModelInfo(K4_PROVIDER, { name: K4_NAME, speed: 'balanced', quality: 'best', hint: 'Text, frames or up to 10 references to video with stereo sound · 3–30 s', badges: ['premium'] } as any);
