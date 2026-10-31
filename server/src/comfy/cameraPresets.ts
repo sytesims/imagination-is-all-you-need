@@ -5,6 +5,7 @@
  * (each segment starts from the previous segment's last frame) plus a prompt hint.
  * LTX presets (camera-ltx-api.json) pick an LTX-2 camera-control LoRA for node 300.
  */
+import { fillPattern } from '../shared/promptPatterns.js';
 export type FunPose = 'Static' | 'Pan Up' | 'Pan Down' | 'Pan Left' | 'Pan Right' | 'Zoom In' | 'Zoom Out' | 'Anti Clockwise (ACW)' | 'ClockWise (CW)';
 export interface FunSegment { pose: FunPose; speed: number; share?: number }
 export interface FunPreset { engine: 'funcamera'; segments: FunSegment[]; hint: string }
@@ -40,6 +41,14 @@ export const LTX_CAMERA_PRESETS: Record<string, LtxPreset> = {
   'ltx-dolly-left': ltx('dolly-left', 'dolly left, parallax'), 'ltx-dolly-right': ltx('dolly-right', 'dolly right, parallax'),
   'ltx-jib-up': ltx('jib-up', 'jib up'), 'ltx-jib-down': ltx('jib-down', 'jib down'), 'ltx-static': ltx('static', 'locked-off static camera'),
 };
+/** The camera sentence a local move sends after the prompt (shared/promptPatterns.ts): LTX-2 = one named move ("The camera performs a single, smooth
+ *  dolly in only, with parallax"), its static move and Wan Fun Camera's Static = the family's still-camera line; other Fun Camera moves keep their hint
+ *  (the camera_pose input drives the move). The hint stays the pass label. */
+export function cameraSentence(p: FunPreset | LtxPreset): string {
+  if (p.engine === 'ltx') return p.lora.endsWith('-static.safetensors') ? fillPattern('camera-static', 'ltx-2-19b')
+    : fillPattern('camera-move', 'ltx-2-19b', { move: p.hint.split(', ')[0], detail: p.hint.split(', ').slice(1).map((d) => `with ${d}`).join(' ') });
+  return p.segments.every((x) => x.pose === 'Static') ? fillPattern('camera-static', 'wan-2.2-fun-camera-14b', { motion: 'subtle natural motion' }) : p.hint;
+}
 export const cameraPreset = (id: string): FunPreset | LtxPreset | undefined => FUN_CAMERA_PRESETS[id] ?? LTX_CAMERA_PRESETS[id];
 
 /** Frames per Fun Camera segment (4n+1, 16 fps) for a total duration, split by segment share. */
@@ -50,5 +59,5 @@ export function funSegments(p: FunPreset, seconds: number) {
 }
 /** Mix of up to 3 picked presets = their segments chained in pick order (LTX presets run as separate LTX passes). */
 export const mixPlan = (ids: string[], seconds: number) => ids.map((id) => cameraPreset(id)).filter(Boolean).map((p) => p!.engine === 'funcamera'
-  ? { engine: 'funcamera' as const, segments: funSegments(p as FunPreset, seconds / ids.length), hint: p!.hint }
-  : { ...(p as LtxPreset), frames: Math.max(9, Math.round((seconds / ids.length) * 24 / 8) * 8 + 1) });
+  ? { engine: 'funcamera' as const, segments: funSegments(p as FunPreset, seconds / ids.length), hint: p!.hint, sentence: cameraSentence(p!) }
+  : { ...(p as LtxPreset), sentence: cameraSentence(p!), frames: Math.max(9, Math.round((seconds / ids.length) * 24 / 8) * 8 + 1) });
