@@ -131,7 +131,7 @@ export function ApiDocsLinks() {
 
 /** Global search overlay: GET /api/search?q= across tools, presets, models, examples, assets. */
 type Hit = { type: string; id: string; title: string; subtitle?: string; route: string; media?: string };
-const TYPES: Record<string, string> = { tool: 'Features', preset: 'Looks', model: 'Models', example: 'Examples', asset: 'Assets' };
+const TYPES: Record<string, string> = { tool: 'Workflows', preset: 'Looks', model: 'Models', example: 'Examples', asset: 'Assets' };
 const CHIP_IC: Record<string, string> = { all: '', tool: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z', preset: 'M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.5 6.7 19.4l1.2-6L3.4 9.3l6-.7z', model: 'M12 3l8 4.5v9L12 21l-8-4.5v-9z', example: 'M4 5h16v14H4zM10 9l5 3-5 3z', asset: 'M3 7h7l2 2h9v10H3z' };
 const Ic = ({ d, s = 16 }: { d: string; s?: number }) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinejoin="round" aria-hidden><path d={d} /></svg>;
 const RKEY = 'ohf:search-recents';
