@@ -1,4 +1,4 @@
-// Light sphere (2026-10-24): the rig → precise Relight wording (directions, heights, colour temperature names, softness, rim, ambient) on all
+// Light sphere (2026-10-24; fixed positions 2026-10-31): the rig → Relight wording (26 fixed positions, colour temperature names, softness, rim, ambient) on all
 // three model families; the `light` field is validated (bad JSON / out of range = 400 format, on the quote too); sphere presets map onto the
 // Relight looks; old drafts (direction / pad / quality / brightness / colour, no `light`) keep their old prompt and open the sphere in the right place.
 // Run: npx tsx test/light-sphere.test.ts   (no server, no network)
@@ -12,16 +12,25 @@ const K = (az: number, el: number, kelvin = 5600, intensity = 60, softness = 60,
 
 // ---- directions (seen from the camera) and heights ----
 {
-  const d = (az: number, el = 0) => R.dirWords(az, el);
-  assert.equal(d(0), 'the front'); assert.equal(d(-25), 'the front, slightly left'); assert.equal(d(45), 'the front-right of the frame'); assert.equal(d(-45), 'the front-left of the frame');
-  assert.equal(d(-90), 'the left side of the frame'); assert.equal(d(90), 'the right side of the frame'); assert.equal(d(135), 'behind the subject on the right'); assert.equal(d(-140), 'behind the subject on the left');
-  assert.equal(d(180), 'directly behind the subject'); assert.equal(d(-179), 'directly behind the subject'); assert.equal(d(30, 80), 'directly overhead'); assert.equal(d(0, -75), 'directly below');
-  assert.equal(R.dirWords(270, 0), 'the left side of the frame', '270° wraps to −90°');
-  assert.equal(R.heightWords(0), 'at eye level'); assert.equal(R.heightWords(20), 'slightly above eye level'); assert.equal(R.heightWords(50), 'high above eye level'); assert.equal(R.heightWords(-20), 'slightly below eye level'); assert.equal(R.heightWords(-50), 'from low below');
-  assert.equal(R.degWords(-45, 30), '45° left, 30° up'); assert.equal(R.degWords(0, 0), '0° (straight on), 0° (level)'); assert.equal(R.degWords(180, -10), '180° (from behind), 10° down');
+  // 26 fixed positions: every angle snaps to one, and each has one label and one prompt phrase with no clashing height or side words
+  assert.equal(R.LIGHT_CELLS.length, 26); assert.equal(new Set(R.LIGHT_CELLS.map((c) => c.id)).size, 26, 'unique ids');
+  assert.equal(new Set(R.LIGHT_CELLS.map((c) => c.phrase)).size, 26, 'one phrase per position'); assert.equal(new Set(R.LIGHT_CELLS.map((c) => c.label)).size, 26, 'one label per position');
+  for (const c of R.LIGHT_CELLS) {
+    assert.deepEqual(R.snapAngles(c.az, c.el), { az: c.az, el: c.el }, `${c.id} is a fixed position`);
+    const heights = ['high above', 'at eye level', 'below eye level', 'overhead', 'directly below'].filter((w) => c.phrase.includes(w)); assert.equal(heights.length, 1, `${c.id}: one height in "${c.phrase}"`);
+    const sides = ['left', 'right'].filter((w) => c.phrase.includes(w)); assert.ok(sides.length <= 1, `${c.id}: one side in "${c.phrase}"`);
+    assert.ok(!/\d|°/.test(c.phrase + c.label), `${c.id}: no numbers`);
+  }
+  const c = (az: number, el = 0) => R.lightCell(az, el).phrase;
+  assert.equal(c(0), 'from the front, at eye level'); assert.equal(c(-25), 'from the front-left of the frame, at eye level'); assert.equal(c(45, 30), 'from the front-right of the frame, high above eye level');
+  assert.equal(c(-90), 'from the left side of the frame, at eye level'); assert.equal(c(135), 'from behind the subject on the right, at eye level'); assert.equal(c(-179), 'from directly behind the subject, at eye level');
+  assert.equal(c(30, 80), 'from directly overhead'); assert.equal(c(0, -75), 'from directly below'); assert.equal(c(270), 'from the left side of the frame, at eye level', '270° wraps to −90°');
+  assert.equal(c(-40, 12), 'from the front-left of the frame, at eye level', '12° up is eye level: no "12° up" next to "at eye level"');
+  assert.deepEqual(R.snapAngles(-40, 12), { az: -45, el: 0 }); assert.deepEqual(R.snapAngles(170, -30), { az: 180, el: -45 }); assert.deepEqual(R.snapAngles(-120, 80), { az: 0, el: 90 }, 'straight above has no side');
+  assert.equal(R.lightCell(-45, 45).label, 'From the front-left, high up'); assert.equal(R.lightCell(135, -45).label, 'From behind, on the right, low down');
   assert.equal(R.setupName(-45, 30), 'Rembrandt-style three-quarter lighting'); assert.equal(R.setupName(0, 40), 'butterfly lighting'); assert.equal(R.setupName(90, 0), 'split side lighting');
   assert.equal(R.setupName(170, 10), 'a backlight'); assert.equal(R.setupName(0, -60), 'under-lighting'); assert.equal(R.setupName(10, 5), '');
-  ok('directions in words + degrees, heights, classic setup names');
+  ok('26 fixed positions: one label and one clash-free phrase each; classic setup names');
 }
 // ---- colour temperature names, creative colours, softness, ambient ----
 {
@@ -38,8 +47,8 @@ const K = (az: number, el: number, kelvin = 5600, intensity = 60, softness = 60,
 const rig = { key: K(-45, 30, 3200, 75, 60), rim: K(150, 20, 7500, 60, 30), ambient: 25 };
 {
   const t = R.rigToText(rig);
-  assert.equal(t, 'key light from the front-left of the frame (45° left, 30° up), slightly above eye level, Rembrandt-style three-quarter lighting, warm 3200K tungsten, bright; '
-    + 'soft diffused light with gentle shadow edges (softness 60%); rim light from behind the subject on the right (150° right, 20° up), cool 7500K shade-blue, medium strength: a bright edge outlining the hair, shoulders and silhouette; '
+  assert.equal(t, 'key light from the front-left of the frame, high above eye level, Rembrandt-style three-quarter lighting, warm 3200K tungsten, bright; '
+    + 'soft diffused light with gentle shadow edges (softness 60%); rim light from behind the subject on the right, at eye level, cool 7500K shade-blue, medium strength: a bright edge outlining the hair, shoulders and silhouette; '
     + 'low ambient fill: rich, dark shadows (ambient 25%)');
   assert.equal(R.lightReadout(rig.key), 'Key · 45° left · 30° up · 3200K · soft 60%');
   assert.equal(R.lightReadout(K(0, 0, 5600, 50, 20), 'Key'), 'Key · front · level · 5600K · hard 80%');
@@ -71,7 +80,7 @@ const rig = { key: K(-45, 30, 3200, 75, 60), rim: K(150, 20, 7500, 60, 30), ambi
   const v = { look: 'custom', direction: 'front', lightQuality: 'soft', brightness: '50', color: '#FFFFFF', lightX: '', lightY: '', light: R.rigJson(rig) };
   const flux = relightPrompt(v, 'calm mood', 'comfy-klein4b'); const qwen = relightPrompt(v, 'calm mood', 'comfy-qwen21-turbo'); const sen = relightPrompt(v, 'calm mood', 'api-nano-banana-21');
   for (const s of [flux, qwen, sen]) {
-    assert.ok(s.includes('45° left, 30° up') && s.includes('warm 3200K tungsten') && s.includes('softness 60%') && s.includes('150° right, 20° up') && s.includes('ambient 25%') && /calm mood/i.test(s), s);
+    assert.ok(s.includes('front-left of the frame, high above eye level') && s.includes('warm 3200K tungsten') && s.includes('softness 60%') && s.includes('behind the subject on the right, at eye level') && !/°/.test(s) && s.includes('ambient 25%') && /calm mood/i.test(s), s);
     assert.ok(!/light from the front, facing the subject|normal-strength neutral white light/.test(s), 'the old controls are ignored once a rig is sent');
   }
   assert.ok(flux.startsWith('relight the scene; key light from the front-left') && flux.endsWith('keep the subject, pose and composition unchanged'), flux);
@@ -93,12 +102,13 @@ const rig = { key: K(-45, 30, 3200, 75, 60), rim: K(150, 20, 7500, 60, 30), ambi
   const looks = new Set(RELIGHT_LOOKS.map((l) => l.value));
   assert.deepEqual(['Golden hour', 'Studio softbox', 'Neon rim', 'Overhead noon', 'Candle', 'Moonlight', 'Window light'].filter((l) => !R.SPHERE_PRESETS.some((p) => p.label === l)), [], 'the seven asked-for presets');
   for (const L of RELIGHT_LOOKS.filter((l) => l.value !== 'custom')) assert.ok(R.SPHERE_PRESETS.some((p) => p.look === L.value), `old look ${L.value} has a preset`);
+  for (const p of R.SPHERE_PRESETS) for (const l of [p.rig.key, p.rig.rim].filter(Boolean)) assert.deepEqual(R.snapAngles(l!.az, l!.el), { az: l!.az, el: l!.el }, `${p.id} sits on fixed positions`);
   for (const p of R.SPHERE_PRESETS) { assert.ok(looks.has(p.look), `${p.id} → a real look`); const r = R.parseLightRig(R.rigJson({ ...p.rig, preset: p.id })); assert.ok(r && 'rig' in r, `${p.id} rig is valid`); assert.ok(p.light, `${p.id} names its setup`); }
   assert.equal(new Set(R.SPHERE_PRESETS.map((p) => p.id)).size, R.SPHERE_PRESETS.length);
   // old fields → where the sphere opens
-  assert.deepEqual(R.rigFromLegacy({ direction: 'left', lightQuality: 'hard', brightness: '80', color: '#FFC98A' }).key, { az: -90, el: 10, kelvin: 3200, intensity: 80, softness: 20 });
-  assert.deepEqual(R.rigFromLegacy({ direction: 'back', color: '#5FD3C6' }).key, { az: 180, el: 15, kelvin: 5600, intensity: 50, softness: 70, color: '#5FD3C6' });
-  assert.deepEqual(R.rigFromLegacy({ direction: 'front', lightX: '-1', lightY: '0.5' }).key.az, -90); assert.equal(R.rigFromLegacy({ lightX: '-1', lightY: '0.5' }).key.el, 30);
+  assert.deepEqual(R.rigFromLegacy({ direction: 'left', lightQuality: 'hard', brightness: '80', color: '#FFC98A' }).key, { az: -90, el: 0, kelvin: 3200, intensity: 80, softness: 20 });
+  assert.deepEqual(R.rigFromLegacy({ direction: 'back', color: '#5FD3C6' }).key, { az: 180, el: 0, kelvin: 5600, intensity: 50, softness: 70, color: '#5FD3C6' });
+  assert.deepEqual(R.rigFromLegacy({ direction: 'front', lightX: '-1', lightY: '0.5' }).key.az, -90); assert.equal(R.rigFromLegacy({ lightX: '-1', lightY: '0.5' }).key.el, 45, 'snapped to a fixed position');
   // an old draft without `light` gives the old prompt (relight-looks.test.ts pins it byte for byte); this one too
   assert.equal(relightPrompt({ look: 'custom', direction: 'front', lightQuality: 'soft', brightness: '50', color: '#FFFFFF', lightX: '', lightY: '' }, '', 'comfy-klein4b'),
     'relight the scene; light from the front, facing the subject; soft diffused light, gentle shadows; normal-strength neutral white light; keep the subject, pose and composition unchanged');
