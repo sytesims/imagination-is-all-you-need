@@ -15,7 +15,8 @@ import { GEN_TYPE } from './nodeTypes';
 import type { TakeReview } from '../../../server/src/shared/takeReview';
 
 export { GEN_TYPE } from './nodeTypes';
-export interface Take { url: string; poster: string; kind: ResultKind; jobId: string; out: number; /** the agent's look at this version (shared/takeReview.ts); never decides which one is active */ review?: TakeReview }
+export interface Take { url: string; poster: string; kind: ResultKind; jobId: string; out: number; /** the agent's look at this version (shared/takeReview.ts); never decides which one is active */ review?: TakeReview;
+  /** a demo sample's own line ("Sample · made with LTX-2.5 22B"): the card shows it instead of the card's model */ made?: string }
 export interface BoardInput { key: string; kind: InputKind; url: string; poster: string; jobId: string; /** the shape it comes from (arrow inputs) */ shapeId?: string; /** the arrow that binds it */ arrowId?: string; label: string }
 export type CardStatus = 'draft' | 'running' | 'done' | 'failed';
 export interface GenCardProps {
@@ -47,7 +48,7 @@ export function takesOf(j: JobState): Take[] {
   const is3d = jobIs3d(j); const outs = (j.outputs ?? []).filter(o => o?.url); const list = outs.length ? outs : j.resultUrl ? [{ label: '', url: j.resultUrl }] : [];
   return list.map((o: any, i) => { const kind: ResultKind | null = is3d ? '3d' : resultKindOfUrl(o.url); if (!kind) return null;
     const poster = kind === 'image' ? o.url : kind === 'video' ? (o.posterUrl ?? videoPoster(o.url, i === 0 ? j : undefined)) : kind === '3d' ? posterOf3d(j) ?? '' : '';
-    return { url: o.url, poster, kind, jobId: j.id, out: i }; }).filter(Boolean) as Take[];
+    return { url: o.url, poster, kind, jobId: j.id, out: i, ...(typeof o.madeWith === 'string' && o.madeWith ? { made: o.madeWith } : {}) }; }).filter(Boolean) as Take[];
 }
 
 /** The form a run sends: fields (types, settings, prompt, model, seed, project, board, parent) and which input goes out as which field.

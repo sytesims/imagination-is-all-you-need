@@ -38,8 +38,10 @@ import { jobs } from './jobs.js';
 import { budgetOfRequest, budgetView, type AgentBudget } from './agentBudget.js';
 import { getTool } from './tools/registry.js';
 import { imageWorkflowsPayload } from './shared/workflows.js';
-import { DEMO_STARTERS, demoPlan, demoCardAt, demoPlanSize, demoFrameOf, demoNoteAt, demoGridOffset, detectStarter, type DemoPlan, type DemoCard } from './canvasDemo.js';
-import { SHORT_STEPS, shortFilmPlan, shortLayout, beatOfNote, keyFramePrompt, clipPrompt, narrationOf, musicPrompt, SHORT_MUSIC, shortFilmVideoOn, stitchBody, type ShortPlan, type ShortBeat } from './canvasDemo.js';
+import { DEMO_STARTERS, isChip, demoPlan, demoCardAt, demoPlanSize, demoFrameOf, demoNoteAt, demoGridOffset, detectStarter, type DemoPlan, type DemoCard } from './canvasDemo.js';
+import { SHORT_STEPS, shortFilmPlan, shortLayout, beatOfNote, beatNote, keyFramePrompt, clipPrompt, narrationOf, musicPrompt, SHORT_MUSIC, shortFilmVideoOn, stitchBody, type ShortPlan, type ShortBeat } from './canvasDemo.js';
+import { tagDemoCard, demoProviderOf } from './shared/demoMedia.js';
+import { config } from './config.js';
 import { LOCAL_FREE } from './shared/modelIds.js';
 import { toolDefaults, toolModes } from './routing/defaults.js';
 import { canvasDefaultModel } from './shared/cloudDefaults.js';
@@ -591,7 +593,10 @@ export function demoDefaultModel(workflow: string, withInputs: boolean): string 
 /** A demo op; an add_card the page can't place with the resolver's model (not on this page's list) goes again with the page's own default. */
 async function demoOp(boardId: string, o: Op): Promise<OpResult> {
   const w = withDefaultModel(o); const r = await executePublicOp(boardId, w, null, 'demo');
-  return !r.ok && w !== o && /unknown model/i.test(r.error) ? executePublicOp(boardId, o, null, 'demo') : r;
+  if (r.ok || !/unknown model/i.test(r.error)) return r;
+  /* a demo card names the model that made its sample (shared/demoMedia.ts); a page without that model gets its own default */
+  const bare: Op = o.kind === 'batch' ? { ...o, items: o.items.map(({ model: _m, ...it }) => it) } : o.kind === 'add_card' ? (({ model: _m, ...x }) => x)(o) : o;
+  return w !== o || bare !== o ? executePublicOp(boardId, withDefaultModel(bare), null, 'demo') : r;
 }
 const withDefaultModel = (o: Op): Op => {
   if (o.kind === 'batch') { let changed = false; const items = o.items.map((it) => { if (it.kind !== 'add_card' || it.model || !it.workflow) return it; const m = demoDefaultModel(it.workflow, !!it.inputs_from?.length); if (!m) return it; changed = true; return { ...it, model: m }; }); return changed ? { ...o, items } : o; }
@@ -655,7 +660,8 @@ async function runDemo(run: DemoRun, plan: DemoPlan) {
         const from = (c.from ?? []).map((k) => (k === '@pick' ? picked : ids[k])).filter((x): x is string => !!x);
         const pickedCard = picked ? cardOf[picked] : null;
         const prompt = c.prompt.replace('{pick}', pickedCard ? firstSentence(pickedCard.prompt) : 'the key moment');
-        const r = await op({ kind: 'add_card', workflow: c.workflow, prompt, name: c.name, at: demoCardAt(origin, c.col, c.row), ...(c.settings ? { settings: c.settings } : {}), ...(from.length ? { inputs_from: from } : {}) });
+        if (c.ref) tagDemoCard(boardId, prompt, c.ref); /* the sample server plays this card's real run (shared/demoMedia.ts) */
+        const r = await op({ kind: 'add_card', workflow: c.workflow, prompt, name: c.name, at: demoCardAt(origin, c.col, c.row), ...(c.settings ? { settings: c.settings } : {}), ...(from.length ? { inputs_from: from } : {}), ...(demoProviderOf(c.ref) ? { model: demoProviderOf(c.ref) } : {}) });
         if (!r) return;
         /* fail kindly: one card that can't go on the board doesn't end the plan */
         const id = r.ok ? String(r.result?.card?.id ?? '') : '';
@@ -729,7 +735,10 @@ const YES = /^\s*(looks good|look good|lgtm|good|great|perfect|nice|yes|yep|yeah
 async function liveNodes(boardId: string): Promise<any[] | null> { const r = await sendOp(boardId, { kind: 'summary' }, SUMMARY_TIMEOUT_MS); return r.ok && Array.isArray(r.result?.nodes) ? r.result.nodes : null; }
 
 async function runShortFilm(run: DemoRun, plan: ShortPlan) {
-  const { boardId } = run; const videoOn = shortFilmVideoOn();
+  /* the chip on the sample server: its clip cards play the real clips, so they run even while video runs are off */
+  const { boardId } = run; const demo = plan.demo ?? null; const videoOn = shortFilmVideoOn() || (!!demo && config.backend === 'mock');
+  /* a card that shows a real run: tagged (board + prompt), and named with the model that made it */
+  const tag = (prompt: string, key: string) => { tagDemoCard(boardId, prompt, `short:${key}`); const m = demoProviderOf(`short:${key}`); return m ? { model: m } : {}; };
   const say = (text: string, meta: Record<string, unknown> = {}) => addMessage(boardId, 'agent', text, { meta: { by: 'demo', runId: run.id, ...meta } });
   const alive = () => !run.stop && hasCanvas(boardId);
   const op = async (o: Op): Promise<OpResult | null> => { await wait(Math.round(DEMO_STEP_MS * 0.55)); if (!alive()) return null; return demoOp(boardId, o); };
@@ -762,6 +771,7 @@ async function runShortFilm(run: DemoRun, plan: ShortPlan) {
    *  badges them, and says which one it would pick per shot. It never picks for you. */
   const reviewed = new Map<string, number>();
   const reviewCards = async (ids: string[], aspect?: string | null) => {
+    if (demo && config.backend === 'mock') return; /* the chip's cards are real runs: no made-up sample verdicts on them */
     const nodes = await liveNodes(boardId); if (!nodes || !alive()) return; const cards: any[] = []; const lines: string[] = []; const mode = reviewMode();
     for (const [k, id] of ids.entries()) {
       const n = nodes.find((x) => x.id === id); const urls: string[] = (n?.results ?? []).filter((r: any) => (r.kind ?? 'image') === 'image').map((r: any) => String(r.url));
@@ -799,9 +809,10 @@ async function runShortFilm(run: DemoRun, plan: ShortPlan) {
   };
   /** Wait until these cards finish (done, failed or never started). Returns their states. */
   const settle = async (ids: string[]): Promise<string[] | null> => {
-    const until = Date.now() + 20 * 60_000; let states: string[] = [];
+    const until = Date.now() + 20 * 60_000; let states: string[] = []; let drafts = 0;
     while (alive() && Date.now() < until) { const nodes = await liveNodes(boardId); await syncBeats(nodes);
-      if (nodes) { states = ids.map((id) => nodes.find((n) => n.id === id)?.status ?? 'gone'); if (states.every(settled)) return states; }
+      /* a draft counts as finished only once it stays a draft: a card wired from another card of this run starts when that one is done */
+      if (nodes) { states = ids.map((id) => nodes.find((n) => n.id === id)?.status ?? 'gone'); if (states.every(settled) && (!states.includes('draft') || ++drafts >= 4)) return states; if (!states.every(settled)) drafts = 0; }
       await wait(1500); }
     return alive() ? states : null;
   };
@@ -839,10 +850,11 @@ async function runShortFilm(run: DemoRun, plan: ShortPlan) {
     say(`Beats locked: ${plural(beats.length, 'shot')}.`, { stepsDone: ++steps });
 
     // ---- 2 Cast: a character sheet and the place ----
-    say('Step 2, the cast: a character sheet, so the same person shows up in every shot, and the place.');
+    say(demo ? 'Step 2, the cast: the harbour and a creature sheet, so the same whale shows up in every shot.' : 'Step 2, the cast: a character sheet, so the same person shows up in every shot, and the place.');
     const fc = L.frames.cast; const frc = await op({ kind: 'add_frame', name: '2 · Cast', at: { x: fc.x, y: fc.y }, w: fc.w, h: fc.h }); if (!frc) return;
-    const castIds: string[] = [];
-    for (const [i, c] of plan.cast.entries()) { const r = await op({ kind: 'add_card', workflow: c.workflow, prompt: c.prompt, name: c.name, at: L.cast(i) }); if (!r) return; const id = idOf(r); if (id) castIds.push(id); else if (!r.ok) say(`I couldn’t add ${c.name}: ${r.error.replace(/\.$/, '')}.`, { error: true }); }
+    const castIds: string[] = []; const castOf: Record<string, string> = {};
+    for (const [i, c] of plan.cast.entries()) { if (c.ref) tagDemoCard(boardId, c.prompt, c.ref);
+      const r = await op({ kind: 'add_card', workflow: c.workflow, prompt: c.prompt, name: c.name, at: L.cast(i), ...(demoProviderOf(c.ref) ? { model: demoProviderOf(c.ref) } : {}) }); if (!r) return; const id = idOf(r); if (id) { castIds.push(id); castOf[c.key] = id; } else if (!r.ok) say(`I couldn’t add ${c.name}: ${r.error.replace(/\.$/, '')}.`, { error: true }); }
     if (!castIds.length) { say('The cast cards didn’t make it onto the board, so I’ll stop here. Nothing was charged.', { error: true }); return; }
     if (idOf(frc)) await op({ kind: 'move_into', ids: castIds, frame_id: idOf(frc) });
     const g1 = await goFor(castIds, 'The cast: a character sheet and the place'); if (!g1) return;
@@ -851,12 +863,17 @@ async function runShortFilm(run: DemoRun, plan: ShortPlan) {
     say(`The cast is in.${s1.includes('failed') ? ' One didn’t finish; Retry it on its card, the key frames still work without it.' : ''}`, { stepsDone: ++steps });
 
     // ---- 3 Key frames: one picture per beat, wired from the cast; then a version per shot ----
-    say(`Step 3, the key frames: one picture per beat, made from the cast.`);
+    say(demo ? 'Step 3, the key frames: one picture per beat. Some start from the cast or an earlier shot, wired in.' : `Step 3, the key frames: one picture per beat, made from the cast.`);
     const fk = L.frames.keys;
     /* the character sheet feeds every shot (one arrow each keeps the board readable; the place is in the prompt's look) */
     const keyIds: string[] = []; const castDone = castIds.filter((_, i) => s1[i] === 'done').slice(0, 1);
-    const rk = await op({ kind: 'batch', note: 'Key frames, one per beat', items: [{ kind: 'add_frame', ref: 'keys', name: '3 · Key frames', at: { x: fk.x, y: fk.y }, w: fk.w, h: fk.h },
-      ...beats.map(({ beat }, i): BatchItem => ({ kind: 'add_card', ref: `k${i}`, workflow: 'create', prompt: keyFramePrompt(plan.subject, beat), name: `Shot ${i + 1} · ${beat.name}`.slice(0, 80), at: L.key(i), frame: 'keys', ...(castDone.length ? { inputs_from: castDone } : {}) }))] });
+    /* the chip: a shot whose beat still reads as written keeps its real run's prompt and inputs (the harbour, the whale sheet, an earlier shot) */
+    const real = (i: number) => (demo && demo.keys[i] && beats[i].beat.text === beatNote({ name: plan.beats[i]?.name ?? '', line: plan.beats[i]?.line ?? '' }) ? demo.keys[i] : null);
+    const wire = (keys: string[]) => keys.map((k) => (castOf[k] && s1[castIds.indexOf(castOf[k])] === 'done' ? castOf[k] : /^k\d+$/.test(k) && real(Number(k.slice(1))) ? k : null));
+    const keyItems = beats.map(({ beat }, i): BatchItem => { const d = real(i); const from = d ? wire(d.from) : null;
+      if (d && from!.every(Boolean)) return { kind: 'add_card', ref: `k${i}`, workflow: 'create', ...tag(d.prompt, `k${i}`), prompt: d.prompt, name: `Shot ${i + 1} · ${beat.name}`.slice(0, 80), at: L.key(i), frame: 'keys', ...(from!.length ? { inputs_from: from as string[] } : {}) };
+      return { kind: 'add_card', ref: `k${i}`, workflow: 'create', prompt: keyFramePrompt(plan.subject, beat), name: `Shot ${i + 1} · ${beat.name}`.slice(0, 80), at: L.key(i), frame: 'keys', ...(castDone.length ? { inputs_from: castDone } : {}) }; });
+    const rk = await op({ kind: 'batch', note: 'Key frames, one per beat', items: [{ kind: 'add_frame', ref: 'keys', name: '3 · Key frames', at: { x: fk.x, y: fk.y }, w: fk.w, h: fk.h }, ...keyItems] });
     if (!rk) return; if (!rk.ok) { say(`I couldn’t add the key frames: ${rk.error.replace(/\.$/, '')}. Nothing was made, and nothing was charged.`, { error: true }); return; }
     beats.forEach(({ id: noteId, beat }, i) => { const id = String(rk.result?.refs?.[`k${i}`] ?? ''); if (!id) return; keyIds.push(id); keyOfBeat.set(noteId, { cardId: id, text: beat.text, i }); });
     if (!keyIds.length) { say('None of the key frames made it onto the board, so I’ll stop here. Nothing was charged.', { error: true }); return; }
@@ -865,18 +882,28 @@ async function runShortFilm(run: DemoRun, plan: ShortPlan) {
     const okKeys = g2.started.filter((_, i) => s2[i] === 'done');
     if (!okKeys.length) { say('None of the key frames finished, so there’s nothing to film yet. Retry them on their cards, then ask me again.', { error: true }); return; }
     await reviewCards(okKeys);
-    const pickAns = await waitConfirm(`Your key frames are in. Pick a version on each shot: click a thumbnail in its strip (Recreate makes another one, and I'll look at it too). The ringed one is what gets filmed. Press Looks good when every shot has the one you want.`, 'Looks good', () => reviewCards(okKeys));
+    const pickAns = await waitConfirm(`Your key frames are in. Pick a version on each shot: click a thumbnail in its strip (Recreate makes another one${demo && config.backend === 'mock' ? '' : ', and I\'ll look at it too'}). The ringed one is what gets filmed. Press Looks good when every shot has the one you want.`, 'Looks good', () => reviewCards(okKeys));
     if (!pickAns) return;
     say('Got your picks.', { stepsDone: ++steps });
 
     // ---- 4 Film: clips from your picks, voice, music; quoted; voice + music run on Go; stitch when the clips exist ----
-    say('Step 4, the film: a clip per shot from your pick, a voice and a music bed.');
-    const ff = L.frames.film; const clipItems: BatchItem[] = [];
-    beats.forEach(({ beat }, i) => { const key = keyOfBeat.get(beats[i].id)?.cardId; if (!key || !okKeys.includes(key)) return;
+    say(demo ? 'Step 4, the film: the clips, each wired from the frames it starts (and ends) on, a voice and a music bed.' : 'Step 4, the film: a clip per shot from your pick, a voice and a music bed.');
+    const ff = L.frames.film; const clipItems: BatchItem[] = []; const keyCard = (i: number) => keyOfBeat.get(beats[i]?.id ?? '')?.cardId;
+    /* the chip's shots that keep their real runs get only the clips that were really made (from the frames they started and ended on);
+       every other shot gets a clip from its own key frame */
+    beats.forEach(({ beat }, i) => { const key = keyCard(i); if (!key || !okKeys.includes(key) || (real(i) && keyItems[i].prompt === real(i)!.prompt)) return;
       clipItems.push({ kind: 'add_card', ref: `c${i}`, workflow: 'video', prompt: clipPrompt(plan.subject, beat), name: `Shot ${i + 1} · clip`, at: L.clip(i), inputs_from: [key], frame: 'film' }); });
+    for (const c of demo?.clips ?? []) {
+      const from = c.from.map((k) => { if (castOf[k]) return s1[castIds.indexOf(castOf[k])] === 'done' ? castOf[k] : null; const i = Number(k.slice(1)); const id = keyCard(i);
+        return id && okKeys.includes(id) && real(i) && keyItems[i].prompt === real(i)!.prompt ? id : null; });
+      if (!from.every(Boolean)) continue;
+      clipItems.push({ kind: 'add_card', ref: c.key, workflow: 'video', ...tag(c.prompt, c.key), prompt: c.prompt, name: c.name, at: L.clip(c.col), inputs_from: from as string[], frame: 'film' }); }
+    clipItems.sort((a, b) => a.at!.x - b.at!.x); /* the film plays the clips left to right */
+    const voiceText = demo?.voice ?? narrationOf(plan.subject); const musicText = demo?.music ?? musicPrompt(plan.subject);
+    const voiceModel = demo ? tag(voiceText, 'voice') : {}; const musicModel = demo ? tag(musicText, 'music') : {};
     const rf = await op({ kind: 'batch', note: 'The film: clips, voice and music', items: [{ kind: 'add_frame', ref: 'film', name: '4 · Film', at: { x: ff.x, y: ff.y }, w: ff.w, h: ff.h }, ...clipItems,
-      { kind: 'add_card', ref: 'voice', workflow: 'voice', prompt: narrationOf(plan.subject), name: 'Narration', at: L.voice, frame: 'film' },
-      { kind: 'add_card', ref: 'music', workflow: 'music', prompt: musicPrompt(plan.subject), name: 'Music bed', at: L.music, settings: SHORT_MUSIC, frame: 'film' }] });
+      { kind: 'add_card', ref: 'voice', workflow: 'voice', ...voiceModel, prompt: voiceText, name: 'Narration', at: L.voice, frame: 'film' },
+      { kind: 'add_card', ref: 'music', workflow: 'music', ...musicModel, prompt: musicText, name: 'Music bed', at: L.music, settings: SHORT_MUSIC, frame: 'film' }] });
     if (!rf) return; if (!rf.ok) { say(`I couldn’t add the film cards: ${rf.error.replace(/\.$/, '')}. Nothing was made, and nothing was charged.`, { error: true }); return; }
     const refOf = (k: string) => String(rf.result?.refs?.[k] ?? '');
     const clipIds = clipItems.map((c) => refOf(c.ref!)).filter(Boolean); const voiceId = refOf('voice'); const musicId = refOf('music');
@@ -977,7 +1004,7 @@ export function registerCanvasAgent(app: FastifyInstance) {
     if (demos.has(b.id)) return bad(reply, 'The agent is already working on this board. Stop it first.', 'demo_running', 409);
     const message = addMessage(b.id, 'user', parsed.data.prompt);
     if (detectStarter(parsed.data.prompt, parsed.data.starter ?? null) === 'short') { /* the flagship: Short film from idea */
-      const sp = shortFilmPlan(parsed.data.prompt); const run: DemoRun = { id: uid('demo'), boardId: b.id, stop: false, title: sp.title };
+      const sp = shortFilmPlan(parsed.data.prompt, isChip(parsed.data.starter, parsed.data.prompt)); const run: DemoRun = { id: uid('demo'), boardId: b.id, stop: false, title: sp.title };
       demos.set(b.id, run); broadcast(b.id, 'demo', demoState(b.id));
       void runShortFilm(run, sp);
       return { ok: true, runId: run.id, plan: { id: sp.id, title: sp.title, steps: [...SHORT_STEPS] }, message };

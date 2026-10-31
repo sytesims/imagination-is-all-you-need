@@ -281,7 +281,7 @@
 .ap-tc-a.on{color:var(--accent)}
 
 /* composer */
-.ap-chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:0 0 8px;-webkit-mask-image:linear-gradient(90deg,#000 85%,transparent);mask-image:linear-gradient(90deg,#000 85%,transparent)}
+.ap-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 0 8px}
 .ap-chip{all:unset;box-sizing:border-box;flex:none;height:26px;padding:0 10px;border-radius:999px;cursor:pointer;background:var(--surface-2);border:1px solid var(--border);color:var(--text-2);font:500 11.5px/24px var(--font-sans,Inter,sans-serif)}
 .ap-chip:hover:not(:disabled){color:var(--text-1);border-color:rgba(255,122,26,.35)}
 .ap-chip:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}

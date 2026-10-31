@@ -649,6 +649,7 @@ async function createJob(toolId: string, req: FastifyRequest, reply: FastifyRepl
   if (typeof fields.variantId === 'string' && fields.variantId.trim()) inp.variantId = fields.variantId.trim().slice(0, 80); // Q7: a lighter GGUF version (local routes)
   if (typeof fields.filmId === 'string' && /^film_[\w]{1,40}$/.test(fields.filmId)) { inp.filmId = fields.filmId; if (/^[\w-]{1,64}$/.test(fields.filmShotId ?? '')) inp.filmShotId = fields.filmShotId; } // Film: the film and shot a render came from (filmProjects.ts)
   if (typeof fields.boardId === 'string' && /^brd_[\w]{1,40}$/.test(fields.boardId)) inp.boardId = fields.boardId; // Canvas: the board the run was started from (its spend chip sums these: canvasBoards.ts boardSpend)
+  if (config.backend === 'mock' && inp.boardId) { const ref = (await import('./shared/demoMedia.js')).demoRefFor(inp.boardId, fields.prompt); if (ref) inp.demoRef = ref; } // the Canvas demo's card: the sample server plays its real run (shared/demoMedia.ts)
   if (brand && !('error' in brand)) inp.brand = brand; // the kit on the job: Recreate turns Brand back on with it (routesPrefill.formFromInput)
   if (typeof fields.lookId === 'string' && /^[\w-]{1,64}$/.test(fields.lookId)) inp.lookId = fields.lookId; // Workflows pages: the run was started from a look (the look's page gathers its results)
   if (/^(1|true|on|yes)$/i.test(fields.downloadWeights || '')) inp.downloadWeights = true; // Q4: the user clicked 'Download and run' (never automatic)
