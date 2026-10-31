@@ -119,6 +119,7 @@ export const BitrateIcon = svg(<><path d="M3 9c3-3 6 3 9 0s6 3 9 0M3 15c3-3 6 3 
 export const LoopIcon = svg(<><path d="M4 12a6 6 0 0 1 10.5-4H12" /><path d="M14.5 4.5V8" /><path d="M20 12a6 6 0 0 1-10.5 4H12" /><path d="M9.5 19.5V16" /></>, 'LoopIcon');
 export const SoundIcon = svg(<><path d="M4 9.5h3l4.5-4v13L7 14.5H4z" /><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" /></>, 'SoundIcon');
 export const PlayIcon = svg(<path d="M8 5.5v13l10.5-6.5z" fill="currentColor" />, 'PlayIcon');
+export const PauseIcon = svg(<><rect x="6.5" y="5" width="3.5" height="14" rx="1" fill="currentColor" stroke="none" /><rect x="14" y="5" width="3.5" height="14" rx="1" fill="currentColor" stroke="none" /></>, 'PauseIcon');
 export const SoundOffIcon = svg(<><path d="M4 9.5h3l4.5-4v13L7 14.5H4z" /><path d="m16 9.5 5 5M21 9.5l-5 5" /></>, 'SoundOffIcon');
 export const GridIcon = svg(<><rect x="4" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" /></>, 'GridIcon');
 /** Images per run (2026-10-24): a photo in front of two more, stacked up and to the right (our own drawing). */

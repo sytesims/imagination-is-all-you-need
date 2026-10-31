@@ -98,7 +98,7 @@ export function WorkflowPicker({ open, anchor, list, current, onPick, onClose, w
                 : <Link key={r.id} to={r.route ?? '/workflows'} role="option" aria-selected={false} data-wf-row={r.id} className={`wf-row wf-page${lit ? ' hi' : ''}`} data-testid={`wf-row-${r.id}`} aria-label={`${r.name}: opens its own page`} {...tip(`${r.name} has its own page. Opens it.`)} onMouseEnter={() => setHi(pickable.indexOf(r))} onClick={onClose}>{body}</Link>; })}</div>; })}
         {!rows.length && <p className="helper wf-empty">No workflows match “{q}”.</p>}
       </div>
-      <div className="wf-foot"><span>{list.length} workflows · plain Create is the default</span><Link to="/workflows" className="wf-all" onClick={onClose} data-testid="wf-browse-all">Browse all workflows <ChevronRightIcon size={12} /></Link></div>
+      <div className="wf-foot"><span>{list.length} workflows</span><Link to="/workflows" className="wf-all" onClick={onClose} data-testid="wf-browse-all">Browse all workflows <ChevronRightIcon size={12} /></Link></div>
     </div>
   </Popover>;
 }

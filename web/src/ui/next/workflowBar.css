@@ -89,8 +89,8 @@ button.wf-soon-h small{font:600 10px/14px Inter,system-ui,sans-serif;letter-spac
 .wf-row.wf-page .wf-needs.wf-opens{color:var(--accent,#ff7a1a)}
 .wf-row.wf-page .wf-opens span{display:inline-block;margin-left:2px}
 .wf-empty{padding:16px 8px}
-.wf-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.06);color:var(--text-3,#8a8b90);font:400 12px/16px Inter,system-ui,sans-serif}
-.wf-foot .wf-all{display:inline-flex;align-items:center;gap:4px;color:#fff;font-weight:600;text-decoration:none;white-space:nowrap}
+.wf-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-top:1px solid var(--hairline);background:none;color:var(--text-3);font:400 12px/16px var(--font-ui)}
+.wf-foot .wf-all{display:inline-flex;align-items:center;gap:4px;color:var(--text-1);font-weight:600;text-decoration:none;white-space:nowrap}
 .wf-foot .wf-all svg{color:var(--accent)}
 .wf-foot .wf-all:hover{text-decoration:underline}
 @media (max-width:640px){.wf-row{grid-template-columns:32px minmax(0,1fr) auto}.wf-row .wf-src{display:none}.wf-foot>span{display:none}.wf-list{height:calc(80vh - 200px);height:calc(80dvh - 200px)}}
