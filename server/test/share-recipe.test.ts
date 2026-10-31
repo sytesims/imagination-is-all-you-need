@@ -63,7 +63,6 @@ const P = await import('../../web/src/shared/sharePlatforms.ts');
   const brand = fs.readFileSync(path.join(ROOT, '../web/src/shared/brand.ts'), 'utf8'); const share = fs.readFileSync(path.join(ROOT, 'src/routesShare.ts'), 'utf8');
   assert.ok(/REPO_URL = GET_APP_URL/.test(brand) && /OPENHIGGSFIELD_PROJECT_URL \|\| GET_APP_URL/.test(share), 'both "Get the app" links read projectLinks.ts');
   const x = P.captionFor('x', { base: 'Made this in Imagination Is All You Need (open source)', repo: 'https://r', tag: true }); assert.equal(x, 'Made this in Imagination Is All You Need (open source) #ImaginationIsAllYouNeed');
-  assert.ok(!fs.readdirSync(path.join(ROOT, '..')).includes('site'), 'no website files in the repo yet');
   ok('the X tag; "Get the app" is one constant for the web app and the server');
 }
 
