@@ -302,7 +302,7 @@ async function renderMediaMock(job: Job, i: number, out: string) {
     const a = mockAudioArgs(job.input.audioKind ?? 'music', dur, seed + i); const two = a.filter((x) => x === '-i').length === 2;
     const blend = k === 'soundtrack' && job.input.mix === 'blend' && job.input.hasAudio;
     const gen = two ? '[1:a][2:a]amix=inputs=2:normalize=0[g]' : '[1:a]anull[g]';
-    const fit = k === 'soundtrack' ? 'setsar=1' : `scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h}`; // a sample clip fills the asked shape
+    const fit = k === 'soundtrack' ? 'pad=ceil(iw/2)*2:ceil(ih/2)*2:0:0,setsar=1' : `scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h}`; // soundtrack keeps the source frame; pad odd edges by at most 1 px for H.264 yuv420p
     const fc = `${gen};${blend ? `[0:a]volume=0.5[o];[o][g]amix=inputs=2:duration=first[aout]` : '[g]anull[aout]'};[0:v]${fit},format=yuv420p[v]`;
     args = ['-y', ...(k === 'soundtrack' ? [] : ['-stream_loop', '-1']), '-i', vid, ...a, '-filter_complex', fc, '-map', '[v]', '-map', '[aout]', '-t', String(dur), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '26', '-c:a', 'aac', '-shortest', '-movflags', '+faststart', out];
   }

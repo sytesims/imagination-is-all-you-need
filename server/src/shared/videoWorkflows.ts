@@ -29,14 +29,14 @@ export interface VideoWorkflow {
 
 const W = (w: VideoWorkflow) => w;
 export const VIDEO_WORKFLOWS: VideoWorkflow[] = [
+  W({ id: 'create', name: 'Create Video', toolId: 'h3-video', category: 'create', tagline: 'Video with sound, from text or an image', needs: 'Prompt · photo optional',
+    inputs: ['Prompt', 'Start frame (optional)', 'End frame (some models)', 'References (some models)'], oldRoutes: [], inMenu: true,
+    how: [['Add an image', 'Drop a photo to set the first frame, or leave it out and write the shot.'], ['Pick a mode or look', 'Text, image, start + end frame or references; add a preset look if you like.'], ['Generate', 'Check the price on the button. Picture and sound arrive together.']] }),
   W({ id: 'photos-to-reel', name: 'Photos → Reel', toolId: 'app-photos-to-reel', category: 'create',
     tagline: 'Photos into a vertical reel with movement, words and music', needs: '8–15 photos + a title',
     inputs: ['Photos in order', 'Title', 'End card (optional)', 'Kind', 'Length', 'Motion', 'Music'],
     oldRoutes: ['/tools/app-photos-to-reel'], inMenu: true,
     how: [['Add your photos', 'Pick 8–15 photos and put them in the order you want.'], ['Set the reel', 'Add a title, choose 15 or 30 seconds, and pick camera moves for every photo or just the heroes.'], ['Generate', 'Check the whole reel price before starting. Music is optional.']] }),
-  W({ id: 'create', name: 'Create Video', toolId: 'h3-video', category: 'create', tagline: 'Video with sound, from text or an image', needs: 'Prompt · photo optional',
-    inputs: ['Prompt', 'Start frame (optional)', 'End frame (some models)', 'References (some models)'], oldRoutes: [], inMenu: true,
-    how: [['Add an image', 'Drop a photo to set the first frame, or leave it out and write the shot.'], ['Pick a mode or look', 'Text, image, start + end frame or references; add a preset look if you like.'], ['Generate', 'Check the price on the button. Picture and sound arrive together.']] }),
   W({ id: 'edit-video', name: 'Edit Video', toolId: '' /* a hub: the list of edits, each its own workflow */, category: 'edit', tagline: 'Every way to change a clip you already have', needs: 'Pick an edit',
     inputs: ['An edit from the list'], oldRoutes: ['/tools/edit-video'], inMenu: false, surface: 'edit-hub',
     how: [['Pick an edit', 'Every edit starts from a clip you already have. Each row shows its price.'], ['Drop in your clip', 'MP4, MOV or WEBM. Each edit shows its length and size limits before you upload.'], ['Tune and generate', 'Set the few options that matter, check the price on the button, then generate.']] }),
