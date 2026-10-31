@@ -46,6 +46,10 @@
   --focus-ring-w:2px;--focus-ring-gap:2px;                     /* outline + offset */
   --disabled-opacity:.45;
   --disabled-fill:#2a2b2e;--disabled-ink:rgba(255,255,255,.55);/* a control that can't act: muted, solid (no opacity on text) */
+  /* Generate waiting (A3, 2026-10-31): ONE look for a Generate that can't run yet (dock, Stitch, Canvas card + panel, Film): a neutral
+     fill, a faint accent ring, a white label and the reason in --text-2. The accent fill means it can run. ui-states.css .gen-wait uses these. */
+  --wait-fill:var(--state-fill);--wait-fill-hover:var(--state-hover);   /* translucent: a step lighter than any dock or panel it sits on */
+  --wait-ring:color-mix(in srgb,var(--accent) 40%,transparent);--wait-ink:var(--text-1,#F7F7F8);--wait-sub:var(--text-2,#898A8B);
   --price-ink:var(--on-accent);                                /* text on the accent: solid, never translucent (Safari) */
   --scrim-title:linear-gradient(180deg,rgba(0,0,0,0) 15%,rgba(0,0,0,.55) 55%,rgba(0,0,0,.85) 100%);
   --hit-desktop:32px;--hit-phone:44px;
