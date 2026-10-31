@@ -327,7 +327,7 @@ const KLEIN_LOOKS: [id: string, name: string][] = [['golden-hour', 'Golden hour'
 export const EXPLORE_LOOKS = {
   eyebrow: 'Image · one prompt, twelve looks', title: ['One idea.', 'Every look.'],
   line: 'Write it once. Then change the light, the film, the whole art style. Same scene, same coat, twelve different worlds.',
-  model: 'FLUX.2 [klein] 4B', place: 'Free on your computer', /** the look shown first (Neon rain) */ start: 2,
+  model: 'FLUX.2 [klein] 4B', place: 'Free on your computer', /** the look shown first (Anime) */ start: 9,
   looks: KLEIN_LOOKS.map(([id, name]) => ({ id, name, url: P(`look-${id}.webp`), thumb: P(`look-${id}-480.webp`) })),
   cta: { label: 'Try your own look', href: '/tools/create-image?model=flux-2-klein-4b' },
 };
