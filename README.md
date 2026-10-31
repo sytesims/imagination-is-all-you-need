@@ -11,6 +11,22 @@
   <a href="docs/MCP.md"><img alt="MCP server" src="https://img.shields.io/badge/agents-MCP-F7F7F8?style=flat-square&labelColor=1C1E20"></a>
 </p>
 
+## Install in one line
+
+On macOS or Linux, paste this into Terminal:
+
+```sh
+curl -fsSL https://iiayn.app/install | bash
+```
+
+On Windows, paste this into PowerShell:
+
+```powershell
+irm https://iiayn.app/install.ps1 | iex
+```
+
+It checks for git, Node.js and ffmpeg and asks before installing any that are missing. Then it puts the app in an `Imagination` folder in your home folder, offers a desktop shortcut and opens the studio in your browser. It doesn't download AI models or ask for keys: you connect those in the app when you want them. Read the scripts first if you like: [get.sh](scripts/get.sh) · [get.ps1](scripts/get.ps1). Options and the manual steps: [Install and run](docs/INSTALL.md#install-in-one-line).
+
 It all started with Comfy's **#OpenSourceHiggsfield** challenge.
 
 An image becomes a character. A character steps into a scene. A camera move becomes a shot, and a few shots become a film.

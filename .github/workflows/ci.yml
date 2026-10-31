@@ -40,3 +40,62 @@ jobs:
       # API + web only: no models, GPU, provider calls or MCP verification.
       - name: Start production API and web (mock, 60-second readiness)
         run: node scripts/ci-smoke.mjs
+
+  # The one-line installer (scripts/get.sh, scripts/get.ps1) from nothing to a built app, the way a new user runs it:
+  # piped into bash / run as a PowerShell script block, with --yes so it installs ffmpeg itself (apt, Homebrew, winget).
+  # It clones this commit from the checkout (IIAYN_REPO) into a temp folder; no shortcut, no start.
+  one-line-install:
+    name: One-line install (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+      HOMEBREW_NO_INSTALL_CLEANUP: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            mcp/package-lock.json
+      - name: Name this commit as a branch to clone
+        run: git branch ci-install HEAD
+
+      - name: Install with get.sh (piped into bash)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          DIR="$RUNNER_TEMP/one line/Imagination"
+          cat scripts/get.sh | IIAYN_REPO="file://$GITHUB_WORKSPACE" bash -s -- --yes --no-start --no-shortcut --branch ci-install --dir "$DIR"
+          test -d "$DIR/node_modules/fastify"; command -v ffmpeg
+          # a second run finds the install and updates it instead of cloning
+          IIAYN_REPO="file://$GITHUB_WORKSPACE" bash scripts/get.sh --yes --no-start --no-shortcut --branch ci-install --dir "$DIR" | tee "$RUNNER_TEMP/second.log"
+          grep -q "Updating the app in" "$RUNNER_TEMP/second.log"
+          bash scripts/get.sh --dry-run --yes --dir "$RUNNER_TEMP/dry" > /dev/null; test ! -e "$RUNNER_TEMP/dry"
+          cd "$DIR" && npm run build
+      - name: Check get.ps1 parses
+        if: runner.os == 'Linux'
+        shell: pwsh
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile("$PWD/scripts/get.ps1", [ref]$null, [ref]$errors) | Out-Null
+          if ($errors) { $errors; exit 1 }
+
+      - name: Install with get.ps1 (Windows PowerShell, as a script block)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP 'one line\Imagination'
+          $env:IIAYN_REPO = 'file:///' + ($env:GITHUB_WORKSPACE -replace '\\', '/')
+          & ([scriptblock]::Create((Get-Content -Raw scripts\get.ps1))) -Yes -NoStart -NoShortcut -Branch ci-install -Dir $dir
+          if (-not (Test-Path (Join-Path $dir 'node_modules\fastify'))) { throw 'setup did not finish' }
+          & ([scriptblock]::Create((Get-Content -Raw scripts\get.ps1))) -Yes -NoStart -NoShortcut -Branch ci-install -Dir $dir
+          Set-Location $dir
+          npm.cmd run build
+          if ($LASTEXITCODE -ne 0) { throw 'build failed' }
