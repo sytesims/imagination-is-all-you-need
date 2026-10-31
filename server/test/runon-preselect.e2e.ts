@@ -46,7 +46,7 @@ try {
     const q = await a.quote('qwen-image'); assert.equal(q.runOn, 'fal'); assert.equal(q.runOnLabel, 'fal'); assert.ok(q.credits > 0);
     const nb = await a.model('nano-banana-2'); assert.equal(nb.preselect.runOn, 'comfy-cloud', 'Comfy before fal when both are ready'); const qn = await a.quote('nano-banana-2'); assert.equal(qn.runOn, 'comfy-cloud'); assert.equal(qn.runOnLabel, 'Comfy Cloud'); assert.equal(qn.demo, false);
     for (const r of nb.runsOn) assert.equal(r.group, r.id === 'local' ? 'gpu' : r.id === 'comfy-cloud' ? 'comfy' : 'api');
-    assert.ok(nb.runsOn.find((r: any) => r.id === 'comfy-cloud').detail, 'the Comfy row says Comfy Cloud or Comfy Router');
+    assert.ok(nb.runsOn.find((r: any) => r.id === 'comfy-cloud').detail, 'the Comfy row says how it runs (open workflow / partner model)');
     // (a) Comfy ready + GPU ready → Comfy (Camera Moves: LTX-2 19B runs locally and on Comfy Cloud)
     const lx = ((await a.get('/api/tools')) as any[]).find((t) => t.id === 'camera').models.find((x: any) => x.key === 'ltx-2-19b');
     assert.equal(lx.runsOn.find((r: any) => r.id === 'local').status, 'ready'); assert.equal(lx.runsOn.find((r: any) => r.id === 'comfy-cloud').status, 'ready');

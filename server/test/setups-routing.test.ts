@@ -13,7 +13,7 @@ const S = await import('../src/routing/select.js');
 const H = await import('../src/hardware.js');
 const { getTool } = await import('../src/tools/registry.js');
 const { savePrefs, DEFAULT_PREFS } = await import('../src/routing/prefs.js');
-const { placeOf } = await import('../src/shared/modelIds.js');
+const { placeOf, comfyHowLine, COMFY_DEPLOY_DETAIL } = await import('../src/shared/modelIds.js');
 const { jobWorkflow, jobAppPrompts, notePlanPrompts } = await import('../src/jobSource.js');
 const { deployNeeds } = await import('../src/comfy/deploy.js');
 config.backend = 'comfy';
@@ -54,11 +54,14 @@ assert.equal(S.needsConnection(), false, 'development mock stays available');
 const places = [
   ['local:comfy-yue2', 'Your computer', 'free'],
   ['comfy-cloud:cloud-h3-two-swap', 'Comfy Cloud', 'gpu-time'],
-  ['comfy-router:api-minimax-h3', 'Comfy Router', 'set-price'],
+  ['comfy-router:api-minimax-h3', 'Comfy Cloud', 'set-price'], // one Comfy key, one place name; the billing word tells them apart
   ['comfy-deploy:cloud-h3-crossview', 'Comfy deployment', 'gpu-time'],
   ['fal:foo', 'fal', 'set-price'], ['replicate:foo', 'Replicate', 'set-price'],
 ];
 for (const [route, label, billing] of places) { const p = placeOf({ route }); assert.equal(p?.label, label); assert.equal(p?.billing, billing); }
+// the Comfy row's how words (Run on sub-line, MCP run_on label): one shared rule, never "Comfy Router" as a place
+assert.equal(comfyHowLine(['workflow']), 'Open workflow'); assert.equal(comfyHowLine(['partner'], 'via last frame'), 'Partner model · via last frame');
+assert.equal(comfyHowLine(['workflow', 'partner']), 'Open workflow or partner model'); assert.equal(comfyHowLine(['deployment']), COMFY_DEPLOY_DETAIL);
 assert.equal(placeOf(null), null);
 const swap = jobWorkflow({ toolId: 'two-person-swap', provider: 'cloud-h3-two-swap', route: 'comfy-cloud:cloud-h3-two-swap' });
 assert.equal(swap?.file, 'cloud/h3-two-person-swap-api.json'); assert.equal(swap?.source, 'ours');
