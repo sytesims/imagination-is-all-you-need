@@ -69,9 +69,15 @@
 
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // Hero clip: no motion for people who asked for less.
+  // Hero clip: the poster is the section's background (instant paint); the clip loads only on wider screens, never for
+  // people who asked for less motion or to save data, and fades in once it is really playing.
   const hero = document.querySelector('[data-hero]');
-  if (hero && still) { hero.removeAttribute('autoplay'); hero.pause(); }
+  const saveData = navigator.connection && navigator.connection.saveData;
+  if (hero && !still && !saveData && matchMedia('(min-width: 821px)').matches) {
+    hero.src = hero.dataset.src;
+    hero.addEventListener('playing', () => hero.classList.add('on'), { once: true });
+    hero.play().catch(() => {});
+  }
 
   // Tile clips: load only when on screen, pause when off.
   const lazy = [...document.querySelectorAll('[data-lazy-video]')];

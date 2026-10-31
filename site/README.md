@@ -61,7 +61,9 @@ Nothing here holds an account id: wrangler asks you to log in and picks the acco
 ## Media
 
 Everything in `public/media/` was made in the app and comes from `web/public/showcase/` and
-`web/public/examples/`, re-encoded smaller and without metadata. The first view on a desktop is about 0.85 MB
-(most of it the hero clip); pictures further down load as you scroll, and the song loads only when played.
+`web/public/examples/`, re-encoded smaller and without metadata; the tortoise spread is the original
+1344×1008 render, saved as WebP. The hero paints its poster at once (a CSS background); the 1920 px clip (about 1 MB)
+loads only on screens wider than 820 px, and never with reduced motion or data saver. The first view on a desktop is
+about 1.5 MB, on a phone about 0.16 MB. Pictures further down load as you scroll; the song loads only when played.
 
 Licence: AGPL-3.0-or-later, like the rest of the repo.
