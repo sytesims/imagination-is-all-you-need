@@ -1,8 +1,7 @@
 /**
- * The calm first-run Welcome (two layouts under review: WelcomeSteps = option A, WelcomeList = option B; pick one with ?welcome=a|b).
- * Both share everything here: the connection state (useWelcome), the small connect forms, the Ready step and the sheet frame.
- * Same APIs as the first RunSetup sheet and the connect sheet, only a calmer UI:
- *  - ComfyUI: looked for on open (POST /api/local/comfy/test), saved and turned on only when the person picks it (PUT /api/local/comfy, PUT /api/me/routing).
+ * The first-run Welcome's parts (WelcomeSteps lays them out: How → Connect → Ready): the connection state (useWelcome), the small connect
+ * forms, the Ready step and the sheet frame. Same APIs as the connect sheet:
+ *  - ComfyUI: looked for on open (POST /api/local/comfy/test), saved and turned on only when picked (PUT /api/local/comfy, PUT /api/me/routing).
  *  - Keys: checked when pasted: saved (POST /api/settings/providers), then read back (GET /api/accounts?refresh=1 → keyCheck). A refused key is removed again.
  *  - The answer: PUT /api/setup {done, choices}. "Look around first" answers with what is already connected, so nothing pretends to be set up.
  */
@@ -25,13 +24,14 @@ import { DIRECT_KEYS, RUN_SETUP_TITLE, RUN_SETUP_TAGLINE, type RunChoice } from 
 import './welcome.css';
 
 const SEEN = 'ohf:setup:seen';
+export const seen = () => { try { return localStorage.getItem(SEEN) === '1'; } catch { return false; } };
 export const markSeen = () => { try { localStorage.setItem(SEEN, '1'); } catch { /* private mode */ } };
 
-/** The card's small picture: a laptop, the Comfy maker tile, a key (shared with the first RunSetup sheet). */
+/** The card's small picture: a laptop, the Comfy maker tile, a key. */
 export function ChoiceVisual({ id }: { id: RunChoice }) {
-  if (id === 'comfy') return <span className="rs-vis"><MakerTile maker="comfy" title={false} /></span>;
+  if (id === 'comfy') return <span className="wl-vis"><MakerTile maker="comfy" title={false} /></span>;
   const G = id === 'gpu' ? LaptopIcon : KeyIcon;
-  return <span className="rs-vis"><span className="rs-glyph"><G size={18} /></span></span>;
+  return <span className="wl-vis"><span className="wl-glyph"><G size={18} /></span></span>;
 }
 
 /** Short, plain names and one line each, for the calm Welcome. */
@@ -118,7 +118,7 @@ export function Status({ kind, children, testId }: { kind: 'busy' | 'ok' | 'bad'
 }
 
 /** Your computer: the automatic look, the result, and the address field only behind "Use a different address". */
-export function ComfyForm({ w, onUse }: { w: Welcome; onUse?: () => void }) {
+export function ComfyForm({ w }: { w: Welcome }) {
   const [other, setOther] = useState(false); const [addr, setAddr] = useState('');
   const c = w.comfy; const busy = c.state === 'looking' || c.state === 'checking';
   return <div className="wl-form" data-testid="wl-gpu">
@@ -126,7 +126,6 @@ export function ComfyForm({ w, onUse }: { w: Welcome; onUse?: () => void }) {
       : c.state === 'found' ? <Status kind="ok" testId="wl-gpu-found">Found ComfyUI{c.version ? ` ${c.version}` : ''}</Status>
       : c.state === 'missing' ? <><Status kind="calm" testId="wl-gpu-missing">ComfyUI isn’t open on this computer.</Status>
         <p className="wl-hint">Open ComfyUI, then <button type="button" className="wl-link" onClick={() => void w.look()} data-testid="wl-look-again">look again</button>. <a className="wl-link" href={SET_UP_COMFYUI} target="_blank" rel="noreferrer">How to get it ↗</a></p></> : null}
-    {c.state === 'found' && onUse && <div><button type="button" className="btn btn-sm" onClick={onUse} data-testid="wl-gpu-use">Use it</button></div>}
     {!other ? (c.state !== 'looking' && <button type="button" className="wl-link wl-other" onClick={() => setOther(true)} data-testid="wl-other-addr">Use a different address</button>)
       : <form className="wl-row" onSubmit={e => { e.preventDefault(); void w.checkAddress(addr); }}>
         <label className="wl-field"><span>ComfyUI address</span><input type="url" value={addr} placeholder="http://127.0.0.1:8188" autoFocus onChange={e => { setAddr(e.target.value); if (c.state === 'bad') w.setComfy({ state: 'missing' }); }} data-testid="wl-addr" /></label>
@@ -164,7 +163,7 @@ export function OwnKeysForm({ w }: { w: Welcome }) {
     {p && <KeyField key={p} w={w} id={p} label={`${name} key`} autoFocus />}</>}
   </div>;
 }
-export const FORMS: Record<RunChoice, (p: { w: Welcome; onUse?: () => void }) => ReactNode> = { gpu: ComfyForm, comfy: CloudForm, direct: OwnKeysForm };
+export const FORMS: Record<RunChoice, (p: { w: Welcome }) => ReactNode> = { gpu: ComfyForm, comfy: CloudForm, direct: OwnKeysForm };
 
 /** The last step: what works now and one thing to try first. */
 export function Ready({ w, ways }: { w: Welcome; ways: RunChoice[] }) {
@@ -180,7 +179,7 @@ export const tryFirst = (close: () => void) => () => { close(); navigate('/image
 /** The sheet frame both layouts use: header, a body that scrolls on its own, and a footer that never covers it. Escape = Look around first. */
 export function Sheet({ w, step, view, body, foot, label, testId }: { w: Welcome; step?: ReactNode; view: string; body: ReactNode; foot: ReactNode; label: string; testId: string }) {
   const box = useRef<HTMLDivElement>(null); const back = useRef<HTMLElement | null>(null); const scroller = useRef<HTMLDivElement>(null);
-  useEffect(() => { scroller.current?.scrollTo({ top: 0 }); }, [view]); /* each step starts at its top */
+  useEffect(() => { scroller.current?.scrollTo({ top: 0 }); if (!box.current?.contains(document.activeElement)) box.current?.focus({ preventScroll: true }); }, [view]); /* each step starts at its top, focus stays in the sheet (Escape, Tab) */
   useEffect(() => { back.current = document.activeElement as HTMLElement; requestAnimationFrame(() => box.current?.focus({ preventScroll: true })); /* the sheet itself, so no card looks picked */ return () => back.current?.focus?.(); }, []);
   const onKey = (e: React.KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); w.skip(); return; }
     if (e.key === 'Tab') { const f = [...(box.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),a[href]') ?? [])]; if (!f.length) return; const i = f.indexOf(document.activeElement as HTMLElement);

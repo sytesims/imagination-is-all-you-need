@@ -1,4 +1,4 @@
-/** Welcome, option A (?welcome=a): three short steps. 1 How → 2 Connect → 3 Ready. Shared parts: WelcomeParts.tsx. */
+/** The first-run Welcome: three short steps, 1 How → 2 Connect → 3 Ready (opened by RunSetupHost). Shared parts: WelcomeParts.tsx. */
 import { useState } from 'react';
 import { CHECK } from '../../shared/checkGlyph';
 import type { RunChoice } from '../../shared/runChoices';
