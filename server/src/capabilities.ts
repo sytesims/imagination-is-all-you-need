@@ -143,7 +143,7 @@ export function capabilities(): Capability[] {
       how: w.how.map(([a,b]) => `${a}: ${b}`), keywords: [w.name.toLowerCase(), '3d model', 'glb', 'mesh'],
       run: { tool_id: w.toolId!, ...(w.mode !== 'image-to-3d' ? { model: 'cloud-tripo-31' } : {}), fields: { types: [w.mode] } }, page: threeDRoute(w.id), status: 'ready' });
   }
-  const seen = new Set(out.filter(c => !c.id.startsWith('3d/')).map((c) => c.id.split('/')[1]));
+  const seen = new Set(out.map((c) => c.id.split('/')[1]));
   for (const row of EXPLORE_ROWS) for (const c of row.cards) {
     if (seen.has(c.id) || c.id.startsWith('vt-')) continue;
     const id = `explore/${c.id}`; const tool = c.toolId ? getTool(c.toolId) : undefined;

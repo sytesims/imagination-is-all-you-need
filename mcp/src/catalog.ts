@@ -119,7 +119,10 @@ export async function loadWorkflows(): Promise<Workflow[]> {
     return (r.items ?? []).map((c: any) => ({ id: c.id, area: c.area, name: c.name, tagline: c.tagline ?? null, toolId: c.toolId ?? null, mode: null, status: c.status ?? 'ready', kind: c.kind, keywords: c.keywords ?? [], run: c.run ?? null,
       modelKey: c.modelKey ?? null, needs: c.needs ?? null, inputs: c.inputs ?? [], how: c.how ?? [], page: c.page, ...(c.note ? { note: c.note } : {}) })); } catch { return []; } };
   const items = (await Promise.all([pick('image', '/api/image-workflows'), pick('audio', '/api/audio-workflows'), pick('3d', '/api/3d-workflows'), video(), caps()])).flat() as Workflow[];
-  wfCache = { at: Date.now(), items }; return items;
+  // The capabilities entry includes ready run arguments; avoid also listing its raw 3D page row.
+  const canonical3d = new Set(items.filter(w => w.area === '3d' && w.id.startsWith('3d/')).map(w => w.id));
+  const unique = items.filter(w => w.area !== '3d' || !canonical3d.has(`3d/${w.id}`));
+  wfCache = { at: Date.now(), items: unique }; return unique;
 }
 let capWords: Record<string, string[]> = {};
 /** Extra search words for tools and tool modes (`<toolId>/<mode>`), from GET /api/capabilities (read by loadWorkflows). */

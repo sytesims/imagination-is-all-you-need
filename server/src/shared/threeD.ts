@@ -51,9 +51,9 @@ export const THREE_D_WORKFLOWS: ThreeDWorkflow[] = [
     how: [['1 · Stage', 'Pick a preset, set the camera move, speed and length, and scrub through it. Free, right in your browser.'], ['2 · Mockup', 'Record mockup: your browser draws every frame exactly and saves an MP4 in your feed. Free, takes seconds.'], ['3 · Render', 'LTX-2.5 22B with Lightricks’ Layout to Render IC-LoRA turns your mockup into real video, keeping the camera path and where things are. Free, on your computer (slow: minutes).']],
     generateLabel: 'Record mockup', source: { kind: 'ours', note: 'Our own scenes, drawn in your browser' } },
   { id: 'text-to-3d', name: 'Text to 3D', tagline: 'Describe an object, get a model', icon: 'type', category: 'create', needs: 'Prompt', status: 'ready', toolId: THREE_D_TOOL, mode: 'text-to-3d',
-    how: [['Describe the object', 'Include its shape, materials and colours.'], ['Get a GLB', 'Orbit it, save it or use it in a shot.']], generateLabel: 'Generate', source: { kind: 'official', note: 'TripoTextToModelNodeV2 on Comfy Cloud' } },
+    how: [['Describe the object', 'Include its shape, materials and colours.'], ['Get a GLB', 'Orbit it, save it or use it in a shot.']], generateLabel: 'Generate', source: { kind: 'official', note: 'Tripo: official Comfy template api_tripo3_1_text_to_model' } },
   { id: 'multiview-to-3d', name: 'Multi-view to 3D', tagline: 'Front, side and back views for a closer match', icon: 'views', category: 'create', needs: '2–4 images', status: 'ready', toolId: THREE_D_TOOL, mode: 'multiview-to-3d',
-    how: [['Add the views', 'Front first, then the sides and back.'], ['Get a GLB', 'The extra views fill in what one picture can’t show.']], generateLabel: 'Generate', source: { kind: 'official', note: 'TripoMultiviewToModelNode on Comfy Cloud' } },
+    how: [['Add the views', 'Front first, then the sides and back.'], ['Get a GLB', 'The extra views fill in what one picture can’t show.']], generateLabel: 'Generate', source: { kind: 'official', note: 'Tripo: official Comfy template api_tripo3_1_multiview_to_model' } },
   { id: 'retexture', name: 'Retexture', tagline: 'New surface, same shape', icon: 'brush', category: 'edit', needs: '1 model', status: 'soon', toolId: null, mode: null,
     how: [['Pick a model', 'Any GLB.'], ['Describe the new look', 'The shape stays; only the texture changes.']], generateLabel: 'Retexture', source: { kind: 'official', note: 'coming soon' } },
   { id: 'rig', name: 'Rig', tagline: 'Add a skeleton so a character can move', icon: 'rig', category: 'edit', needs: '1 model', status: 'soon', soonNote: 'Free for people today: open a model, then Rig', toolId: null, mode: null,
@@ -172,6 +172,12 @@ export const usdByKey = (modelId: string): Record<string, number> => Object.from
   // Tripo v3.1 Text costs 21.1 fewer Comfy credits ($0.10) than Image/Multiview at the same exposed settings.
   return [[k,usd],...(modelId==='cloud-tripo-31' ? [[`text.${k}`,Math.round((usd-.1)*1e5)/1e5]] : [])];
 }));
+/** The model menu describes only the current mode, using the same rates as its quote. */
+export function threeDPriceNote(modelId: string, mode = 'image-to-3d'): string | undefined {
+  const model = threeDModel(modelId); if (!model || modelId !== 'cloud-tripo-31') return model?.priceNote;
+  const prices = Object.entries(usdByKey(modelId)).filter(([key]) => key.startsWith('text.') === (mode === 'text-to-3d')).map(([, usd]) => usd);
+  return `$${Math.min(...prices).toFixed(2)}–$${Math.max(...prices).toFixed(2)} a model on Comfy credits (texture and detail)`;
+}
 /** A huge GLB: warn before loading it in the viewer (bytes). */
 export const BIG_GLB_BYTES = 60 * 1024 * 1024;
 

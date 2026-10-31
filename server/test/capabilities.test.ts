@@ -16,6 +16,7 @@ const { getTool } = await import('../src/tools/registry.ts');
 
 const items = capabilities(); const byId = new Map(items.map((c) => [c.id, c]));
 assert.equal(byId.size, items.length, 'unique ids');
+assert.deepEqual(items.filter(c => c.name === 'Image to 3D').map(c => c.id), ['3d/image-to-3d'], 'one canonical image-to-3d capability');
 for (const mode of ['image-to-3d', 'text-to-3d', 'multiview-to-3d']) {
   const c = byId.get(`3d/${mode}`); assert.ok(c, `${mode} is discoverable through MCP capabilities`);
   assert.equal(c.area, '3d'); assert.equal(c.run?.tool_id, 'three-d'); assert.deepEqual(c.run?.fields.types, [mode]);
@@ -25,7 +26,7 @@ for (const mode of ['image-to-3d', 'text-to-3d', 'multiview-to-3d']) {
 for (const w of VIDEO_WORKFLOWS) assert.ok(byId.has(`video/${w.id}`), `workflow ${w.id} listed`);
 for (const s of VIDEO_FLOW_SHORTCUTS) assert.ok(byId.has(`video/${s.id}`), `shortcut ${s.id} listed`);
 for (const t of VIRAL_TEMPLATES) assert.ok(byId.has(`template/${t.id}`), `template ${t.id} listed`);
-for (const c of EXPLORE_CARDS) if (!c.id.startsWith('vt-')) assert.ok(byId.has(`video/${c.id}`) || byId.has(`explore/${c.id}`), `explore card ${c.id} listed`);
+for (const c of EXPLORE_CARDS) if (!c.id.startsWith('vt-')) assert.ok(byId.has(`video/${c.id}`) || byId.has(`3d/${c.id}`) || byId.has(`explore/${c.id}`), `explore card ${c.id} listed`);
 ok(`${items.length} capabilities: every video workflow, shortcut, template and Explore card`);
 
 for (const c of items) {

@@ -6,8 +6,8 @@
  *    this tool keeps it as a normal MP4 video result, free (ffmpeg on this computer, no provider).
  *
  *  Model                   Place                                   Price (published, read 2026-10-23)                         Licence
- *  Tripo 3.1               Comfy partner node TripoImageToModelNodeV2  42.2–126.6 Comfy credits ($0.20–$0.60) by texture/geometry  Tripo terms (hosted)
- *                          on Comfy Cloud (official template api_tripo3_1_image_to_model), Comfy key
+ *  Tripo 3.1               Comfy Text / Image / Multi-view partner nodes  21.1–126.6 Comfy credits ($0.10–$0.60) by mode/texture/geometry  Tripo terms (hosted)
+ *                          on Comfy Cloud (official Tripo 3.1 templates), Comfy key
  *  TRELLIS.2               fal-ai/trellis-2, fal key                $0.25 / $0.30 / $0.35 at 512 / 1024 / 1536                  MIT (weights + code)
  *  Hunyuan 3D 3.1 Pro      fal-ai/hunyuan-3d/v3.1/pro/image-to-3d   $0.375; PBR +$0.15; a set face count +$0.15                Tencent Hunyuan 3D (hosted on fal; the
  *                                                                                                                              community licence excludes EU, UK, KR)
@@ -50,7 +50,7 @@ registerLicense({ id: 'tencent-hunyuan-3d', name: 'Tencent Hunyuan 3D Community 
 registerLicense({ id: 'dinov3', name: 'DINOv3 License (Meta)', osi: false, url: 'https://ai.meta.com/resources/models-and-libraries/dinov3-license/' });
 for (const file of ['three-d-tripo31-i2m-api.json','three-d-tripo31-t2m-api.json','three-d-tripo31-mv2m-api.json']) registerWorkflowLicense(file, ['proprietary']);
 registerLicenseComponents(THREE_D_TOOL, [
-  { model: 'Tripo 3.1 (Comfy partner node TripoImageToModelNodeV2, hosted)', license: 'Tripo terms of service', commercial: 'see terms', url: 'https://www.tripo3d.ai/terms' },
+  { model: 'Tripo 3.1 Text, Image and Multi-view (Comfy partner nodes, hosted)', license: 'Tripo terms of service', commercial: 'see terms', url: 'https://www.tripo3d.ai/terms' },
   { model: 'TRELLIS.2 (Microsoft, fal-ai/trellis-2)', license: 'MIT', commercial: 'yes', url: 'https://huggingface.co/microsoft/TRELLIS.2-4B' },
   { model: 'Hunyuan 3D 3.1 Pro (Tencent, fal-ai/hunyuan-3d/v3.1/pro/image-to-3d)', license: 'Tencent Hunyuan 3D Community License; not in the EU, UK or South Korea', commercial: 'restricted', url: 'https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1/blob/main/LICENSE' },
   { model: 'Pixal3D + TRELLIS.2 local template (Comfy-Org repack: Pixal3D, TRELLIS.2, MoGe-2, BiRefNet)', license: 'MIT', commercial: 'yes', url: 'https://huggingface.co/Comfy-Org/Pixal3D' },
@@ -125,9 +125,9 @@ async function runTripoCloud(job: Job, r: RouteDef, attempt: RouteAttempt) {
 }
 
 // ---------- model cards and routes ----------
-registerProvider({ id: 'cloud-tripo-31', name: 'Tripo 3.1', kind: 'hosted', via: 'Comfy partner node TripoImageToModelNodeV2 on Comfy Cloud (official template api_tripo3_1_image_to_model), Comfy key; sample output without a key',
+registerProvider({ id: 'cloud-tripo-31', name: 'Tripo 3.1', kind: 'hosted', via: 'Comfy Cloud partner nodes for Text, Image and Multi-view (official templates api_tripo3_1_text_to_model, api_tripo3_1_image_to_model, api_tripo3_1_multiview_to_model); Comfy key',
   docUrl: 'https://docs.comfy.org/tutorials/partner-nodes/tripo/model-generation', workflows: ['three-d-tripo31-i2m-api.json','three-d-tripo31-t2m-api.json','three-d-tripo31-mv2m-api.json'], license: 'tripo-terms', licenseUrl: 'https://www.tripo3d.ai/terms', nodes: ['TripoImageToModelNodeV2','TripoTextToModelNodeV2','TripoMultiviewToModelNode'] } as any);
-NATIVE_DIRECT['cloud-tripo-31'] = { label: 'Comfy Cloud · Tripo partner node', endpoint: 'POST https://cloud.comfy.org/api/v2/jobs (graph: LoadImage → TripoImageToModelNodeV2 → SaveGLB)', sourceUrl: COMFY_PRICING,
+NATIVE_DIRECT['cloud-tripo-31'] = { label: 'Comfy Cloud · Tripo partner node', endpoint: 'POST https://cloud.comfy.org/api/v2/jobs (graphs: TripoTextToModelNodeV2, TripoImageToModelNodeV2 or TripoMultiviewToModelNode → SaveGLB)', sourceUrl: COMFY_PRICING,
   typicalLatencySec: 90, latencyEstimated: true, latencySource: 'estimated: Tripo generations take about 1–2 minutes', output: '3d', cloudRun: runTripoCloud, modes: [...THREE_D_GENERATION_MODES] };
 const falCard = (id: string, name: string, slug: string, docs: string, license: string, licenseUrl: string) => {
   registerProvider({ id, name, kind: 'hosted-direct', apiKeyEnv: FAL_ENV, via: `fal ${slug} (key in ${FAL_ENV}; sample output without a key)`, docUrl: docs, license, licenseUrl } as any);

@@ -48,6 +48,7 @@ assert.match(studio, /data-testid="v3d-use-image"[\s\S]{0,300}Use this image</, 
 assert.match(studio, /t3-ex-notin-/, 'example cards mark models not in this app');
 assert.match(studio, /className=\{`t3-ex-in\$\{inOk\.has\(s\.id\) \? ' ok' : ''\}`\}/, 'the input box shows only once its picture loaded');
 const v3d = web('shared/Viewer3D.tsx');
+assert.match(v3d, /inputLabel: threeDMode\(j\.input \?\? \{\}\) === 'multiview-to-3d' \? 'Front' : 'Image'/, 'multiview input is labelled Front');
 assert.equal((v3d.match(/Download GLB</g) ?? []).length, 0, 'no second Download GLB button (the GLB tile downloads it)');
 assert.equal((v3d.match(/data-testid="v3d-download"/g) ?? []).length, 1, 'one GLB download tile');
 ok('examples: Use this image, not-in-app marks, no duplicate download');
@@ -88,7 +89,7 @@ ok('start view off-front; aria labels; page behind the viewer inert');
   assert.match(studio, /useVariantQuotes\(/, 'option prices come from the shared variant quotes (= Generate once picked)');
   assert.match(web('ui/next/WorkflowBar.tsx'), /<OptPrice text=\{optPrice\(c\.field, o\.value\)\}/, 'the shared panel shows the shared OptPrice');
   assert.match(studio, /const priceFirst = !!inputMissing && !gate && !unpricedWhy && !blockWhy && credits != null/, 'the price shows before required inputs are added in every generation mode');
-  assert.match(studio, /const inputMissing = textMode \? .*multiMode \? viewIssue/, 'price-first readiness covers text, multiview and image inputs');
+  assert.match(studio, /const inputMissing = textMode \? .*multiMode \? .*Add one more view/, 'price-first readiness covers text, multiview and image inputs');
   assert.match(studio, /const isSoon = wf\.status === 'soon'/, 'a coming-soon link is guarded');
   for (const w of T.THREE_D_WORKFLOWS.filter((x) => x.status === 'soon')) assert.match(studio, new RegExp(`'?${w.id}'?: \\{ line: `), `${w.name} points to what works today`);
   assert.match(studio, /noModel = isTT \|\| isPS \|\| isSoon/, 'no Image to 3D controls on a coming-soon workflow');

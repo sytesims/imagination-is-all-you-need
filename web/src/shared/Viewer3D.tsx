@@ -122,7 +122,7 @@ export { posterOf3d };
 export function jobItem3d(j: any): Item3D {
   const rig = j?.input?.rig; if (rig) return rigItem3d(j, rig);
   const price = j?.demo ? 'Sample, nothing billed' : j?.cost ? (ownAccountsNow() ? jobCostText(j.cost, j.runOn) : ledgerUsd(j.cost)) : 'Free';
-  return { key: j.id, jobId: j.id, src: j.resultUrl ?? j.outputs?.[0]?.url, name: j.model ?? '3D model', role: `${threeDWorkflowById(threeDMode(j.input ?? {}))?.name ?? '3D model'}${j.place?.label ? ` · ${j.place.label}` : ''}`, poster: posterOf3d(j), inputUrl: j.input?.imageUrl ?? null, inputLabel: 'Image',
+  return { key: j.id, jobId: j.id, src: j.resultUrl ?? j.outputs?.[0]?.url, name: j.model ?? '3D model', role: `${threeDWorkflowById(threeDMode(j.input ?? {}))?.name ?? '3D model'}${j.place?.label ? ` · ${j.place.label}` : ''}`, poster: posterOf3d(j), inputUrl: j.input?.imageUrl ?? null, inputLabel: threeDMode(j.input ?? {}) === 'multiview-to-3d' ? 'Front' : 'Image',
     rows: jobRows3d(j, price), cameraOrbit: startOrbitOf(j), downloadName: appFileName(j.id, 'glb'), recreateHref: j?.demo || j?.sample || j?.deletedAt ? null : jobRecreateHref(j), badge: j?.demo ? <span className="rvx-badges"><em className="exv-chip">Sample</em></span> : undefined };
 }
 /** A character rigged with Rig as a character (job.input.rig, server shared/previzRig.ts RigMeta): its moves, bones and the time it took. */

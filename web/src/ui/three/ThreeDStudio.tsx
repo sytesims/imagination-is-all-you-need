@@ -44,7 +44,7 @@ import { isOpenWeights, displayNameOf } from '../../shared/OpenWeights';
 import { durationText, jobTiming } from '../../shared/jobTiming';
 import { etaText } from '../../shared/queueActivity';
 import { preflightProblems } from '../../../../server/src/shared/preflight';
-import { THREE_D_WORKFLOWS, THREE_D_CATEGORIES, THREE_D_PAGE, threeDRoute, threeDWorkflowById, currentThreeDWorkflow, threeDModel, normalizeSettings, DETAILS, TEXTURES, FACES, type ThreeDWorkflow, type ThreeDModel, type ShowcaseItem, THREE_D_VIEW_SLOTS, threeDSupportsMode, threeDViewIssue, threeDMode } from '../../../../server/src/shared/threeD';
+import { THREE_D_WORKFLOWS, THREE_D_CATEGORIES, THREE_D_PAGE, threeDRoute, threeDWorkflowById, currentThreeDWorkflow, threeDModel, normalizeSettings, DETAILS, TEXTURES, FACES, type ThreeDWorkflow, type ThreeDModel, type ShowcaseItem, THREE_D_VIEW_SLOTS, threeDSupportsMode, threeDViewIssue, threeDMode, threeDPriceNote } from '../../../../server/src/shared/threeD';
 import { PF_SHORT } from '../../shared/DockGenerate';
 import { recipeFor } from '../../shared/threeDRecipe';
 import { PromptPeek, type PeekForm } from '../next/PromptPeek';
@@ -197,7 +197,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
   const credits: number | null = q ? shownCredits(q) : null; const unpricedWhy = unpricedReason(q); const gate = !!q && q.needsKey === true && q.runnable === false;
   const blockWhy = !gate && !unpricedWhy && q?.runnable === false ? String(runBlock(q) ?? q?.reason ?? '') : '';
   const isDemo = !unpricedWhy && !blockWhy && credits != null && q?.demo === true; const isFree = credits === 0 && q?.routeKind === 'local';
-  const modelName = (tm ? shownName(tm) : null) ?? model?.name ?? provider;
+  const modelName = (tm ? shownName(tm) : null) ?? model?.name ?? provider; const modelPriceNote = threeDPriceNote(provider, wf.mode ?? undefined);
   const typSec = model?.typicalSec ?? 90; /* estimated: no provider publishes a 3D run time */
   // ---- pre-flight: inputs → model → setup → money (shared list and words) ----
   const viewIssue = multiMode ? threeDViewIssue(Object.keys(activeFiles).filter(k => !!activeFiles[k])) : null;
@@ -210,9 +210,9 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
   if (img && busyEdge != null && busyEdge > 0.35) notes.push({ key: 'bg', stage: 'Inputs', node: <span data-testid="t3-bg-note">The background looks busy. A plain one makes a cleaner model: <button type="button" className="fd-link" onClick={() => void removeBg()}>Remove background</button></span> });
   const blocking = notes.some((n) => n.hard);
   useEffect(() => { if (pfOpen && !notes.length) setPfOpen(false); });
-  const inputMissing = textMode ? (!draft.prompt.trim() ? 'Write a prompt' : '') : multiMode ? viewIssue ?? '' : !img ? 'Add an image' : '';
+  const inputMissing = textMode ? (!draft.prompt.trim() ? 'Write a prompt' : '') : multiMode ? (viewIssue ? (img ? 'Add one more view' : 'Add the front view') : '') : !img ? 'Add an image' : '';
   const genWord = inputMissing || (gate ? (q?.setup?.action === 'add_key' && q.setup.actionText ? String(q.setup.actionText) : (q?.keyOwner ? addKeyText(q) : 'Add a key first')) : pf[0] ? (PF_SHORT[pf[0].code]?.(pf[0]) ?? pf[0].message) : unpricedWhy ? 'Price unavailable' : blockWhy ? 'Pick another model' : '');
-  /* no picture yet, nothing else wrong: the button shows what this model costs as set (the same quote: a picture doesn't change it), with "add an image" under it */
+  /* Missing inputs do not change this flat per-model price; show the quote with a short next step. */
   const priceFirst = !!inputMissing && !gate && !unpricedWhy && !blockWhy && credits != null && pf.every((p) => p.stage === 'inputs');
   // ---- run ----
   const [busy, setBusy] = useState(false);
@@ -232,7 +232,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
   // ---- the model menu (shared ModelMenu, Default badge) ----
   const chipsEl = useRef<HTMLDivElement>(null); const folded = useChipFit(chipsEl); const fo = (k: string) => folded.includes(k);
   const [pop, setPop] = useState(() => (wantsPicker() ? 'wf' : '')); usePickerParam((o) => setPop(o ? 'wf' : '')); const mRef = useRef<HTMLButtonElement>(null); const wfRef = useRef<HTMLButtonElement>(null); const setRef = useRef<HTMLButtonElement>(null); const fileIn = useRef<HTMLInputElement>(null);
-  const items: MenuItem[] = providers.map((x) => { const m = threeDModel(x.id); return { id: x.id, name: m?.name ?? x.name, open: x.kind === 'open-weights' || isOpenWeights(x, null), tag: textMode ? undefined : m?.priceNote, off: m?.download ? `it isn’t added yet (${(m.download.bytes / 1e9).toFixed(1)} GB of files).` : null, p: x }; });
+  const items: MenuItem[] = providers.map((x) => { const m = threeDModel(x.id); return { id: x.id, name: m?.name ?? x.name, open: x.kind === 'open-weights' || isOpenWeights(x, null), tag: threeDPriceNote(x.id, wf.mode ?? undefined), off: m?.download ? `it isn’t added yet (${(m.download.bytes / 1e9).toFixed(1)} GB of files).` : null, p: x }; });
   // ---- viewer ----
   const done3d = results.filter((j) => j.status === 'done' && jobIs3d(j));
   /* the open item is ?view=<job id> or ?view=ex-<example id> (the shared useFeedViewer, like Image and Video): Back closes it, a reload reopens it */
@@ -413,7 +413,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
         </div>
         <div className="ic-chiprow"><div ref={chipsEl} className="ic-chips">
           <span className="ic-fixed" data-testid="t3-chips-fixed">{chip}
-            {!noModel && <button ref={mRef} type="button" className={`ic-chip ic-model ${pop === 'model' ? 'on' : ''}`} data-testid="t3-model" aria-label={`Model: ${modelName}. Change model`} aria-haspopup="listbox" aria-expanded={pop === 'model'} {...tip(pop === 'model' ? null : `${modelName}${!textMode && model?.priceNote ? ` · ${model.priceNote}` : ''}`)} onClick={() => setPop(pop === 'model' ? '' : 'model')}>
+            {!noModel && <button ref={mRef} type="button" className={`ic-chip ic-model ${pop === 'model' ? 'on' : ''}`} data-testid="t3-model" aria-label={`Model: ${modelName}. Change model`} aria-haspopup="listbox" aria-expanded={pop === 'model'} {...tip(pop === 'model' ? null : `${modelName}${modelPriceNote ? ` · ${modelPriceNote}` : ''}`)} onClick={() => setPop(pop === 'model' ? '' : 'model')}>
               <MakerTile className="ic-dot" medium="3d" maker={tm?.maker ?? model?.maker} makerName={tm?.makerName ?? model?.makerName} fallback={modelName} /><span className="ic-mname">{displayNameOf(tm as any, null) ?? modelName}</span><svg className="ic-caret" width="16" height="16" viewBox="0 0 16 16" aria-hidden><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></button>}</span>
           {isPS && step === 'stage' && <>
             {!imported && <button ref={camRef} type="button" className={`ic-chip ps-chip${pop === 'camera' ? ' on' : ''}`} data-testid="ps-camera" aria-haspopup="dialog" aria-expanded={pop === 'camera'} onClick={() => setPop(pop === 'camera' ? '' : 'camera')} {...tip(pop === 'camera' ? null : 'The camera move and its speed')}><CameraMoveIcon /><b>{planSummaries.camera}</b></button>}

@@ -5,7 +5,7 @@ import { recipeFor } from '../../web/src/shared/threeDRecipe.ts';
 import { runForm, type BoardInput } from '../../web/src/canvas/cardModel.ts';
 import { missingOf } from '../../web/src/canvas/cardState.ts';
 import { workflowRecreateHref } from '../../web/src/shared/workflowLinks.ts';
-import { THREE_D_WORKFLOWS, threeDModel } from '../src/shared/threeD.ts';
+import { THREE_D_WORKFLOWS, threeDModel, threeDPriceNote } from '../src/shared/threeD.ts';
 
 const cat: GenCatalog = { recipes: [], models: {}, tools: [{ id: 'three-d', defaultProvider: 'fal-trellis2', inputs: [], providers: [
   { id: 'fal-trellis2', name: 'TRELLIS.2' }, { id: 'cloud-tripo-31', name: 'Tripo 3.1' }
@@ -27,6 +27,9 @@ for (const id of ['image-to-3d', 'text-to-3d', 'multiview-to-3d']) {
   assert.deepEqual(recipe.controls.map(c => c.field), ['detail', 'faces', 'texture']);
   assert.equal(workflowRecreateHref({ id: 'result', toolId: 'three-d', input: { types: [id] } }), `/3d?workflow=${id}&recreate=result`);
 }
+assert.equal(threeDPriceNote('cloud-tripo-31', 'text-to-3d'), '$0.10–$0.50 a model on Comfy credits (texture and detail)');
+for (const mode of ['image-to-3d', 'multiview-to-3d']) assert.equal(threeDPriceNote('cloud-tripo-31', mode), '$0.20–$0.60 a model on Comfy credits (texture and detail)');
+assert.equal(threeDPriceNote('fal-trellis2'), threeDModel('fal-trellis2')!.priceNote);
 const text = make('text-to-3d', []);
 assert.equal(text.spec.provider, 'cloud-tripo-31');
 assert.deepEqual(text.spec.providers.map(p => p.id), ['cloud-tripo-31']);

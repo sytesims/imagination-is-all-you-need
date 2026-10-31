@@ -392,7 +392,7 @@ const BASE_WORKFLOWS: { id: string; medium: string; name: string; needs: string;
   { id: 'voice', medium: 'audio', name: 'Text to Speech', needs: 'Script', tagline: 'Your script, read aloud', toolId: 'audio' },
   { id: 'image-to-3d', medium: '3d', name: 'Image to 3D', needs: '1 image', tagline: 'One image into a textured 3D model', toolId: 'three-d' },
   { id: 'text-to-3d', medium: '3d', name: 'Text to 3D', needs: 'Prompt', tagline: 'Describe an object, get a model', toolId: 'three-d' },
-  { id: 'multiview-to-3d', medium: '3d', name: 'Multi-view to 3D', needs: 'Front + 1–3 other views', tagline: 'Photos of the same object into one model', toolId: 'three-d' },
+  { id: 'multiview-to-3d', medium: '3d', name: 'Multi-view to 3D', needs: '2–4 images', tagline: 'Photos of the same object into one model', toolId: 'three-d' },
 ];
 /** The image recipe flows the canvas offers (the same list as web/src/shared/genFlows.ts; masks/angle sheets stay on their pages). */
 const IMAGE_RECIPE_IDS = new Set(['relight', 'upscale', 'remove-bg', 'image-layers', 'expand', 'product-shot', 'character-sheet', 'face-swap', 'person-swap', 'try-on', 'ad-pack']);

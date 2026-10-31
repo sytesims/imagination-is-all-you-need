@@ -15,6 +15,9 @@
       "auto_size": true,
       "prompt": "A small ceramic fox",
       "image_seed": 42
+    },
+    "_meta": {
+      "title": "Tripo: Text to Model"
     }
   },
   "3": {
