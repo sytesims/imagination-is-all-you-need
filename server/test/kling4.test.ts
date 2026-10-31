@@ -5,6 +5,7 @@
 //  3 menu: Kling 4.0 on Create Video with its real name and maker, four modes, sound always on (no switch)
 //  4 prices: the price badge per second × resolution; the REAL quote endpoint = the charge (3 s and 30 s, 720p and 1080p)
 //  5 run on a fake Comfy Cloud (3 references): files uploaded, key once in extra_data, the checked graph submitted
+//  7 reference videos (2026-10-31): up to 5 clips in reference to video; the price is a range, quoted at its top '≈ up to' (quote = charge); refFit sees them
 //  6 keyframes (2026-10-31): 2–10 frames, first / evenly spaced middle / last, no times; the bar's caps, the quote and the submit agree; H3 keeps 2–5 at times
 // Run: npx tsx test/kling4.test.ts
 import './fixtures/tmp-cleanup.mjs';
@@ -56,7 +57,7 @@ try {
     assert.match(String(cloud.unavailableFor!({ mode: 't2v', duration: 31 })), /3 to 30 s/); assert.match(String(cloud.unavailableFor!({ mode: 't2v', duration: 2 })), /3 to 30 s/);
     assert.match(String(cloud.unavailableFor!({ mode: 't2v', resolution: '4K' })), /720p or 1080p/);
     assert.match(String(cloud.unavailableFor!({ mode: 'r2v', refCount: 11 })), /up to 10 reference images; you added 11/); assert.equal(cloud.unavailableFor!({ mode: 'r2v', refCount: 10 }), null);
-    assert.match(String(cloud.unavailableFor!({ mode: 'r2v', refVideoPaths: ['a.mp4'] })), /not wired/);
+    assert.match(String(cloud.unavailableFor!({ mode: 'r2v', refAudioPaths: ['a.mp3'] })), /no reference sound/);
     const plan = (input: any) => { try { K.k4CloudPlan({ id: 'x', toolId: 'h3-video', provider: K.K4_PROVIDER, input }); return null; } catch (e: any) { return String(e.message); } };
     assert.match(String(plan({ mode: 'i2v', prompt: 'p' })), /needs a start frame.*Nothing was sent or charged/);
     assert.match(String(plan({ mode: 'flf', imagePath: path.join(D, img('s.png', '1280x720')) })), /start and an end frame/);
@@ -112,6 +113,44 @@ try {
     { const h3kf = routesFor('comfy-h3', video).find((r) => r.routeId === 'comfy-cloud:cloud-h3-keyframes')!; const at = (n: number) => h3kf.unavailableFor!({ mode: 'keyframes', duration: 6, resolution: '768p', keyframePaths: Array(n).fill('quote:k') });
       assert.equal(at(5), null); assert.match(String(at(6)), /2 to 5 frames; you added 6/, 'H3 Keyframes: the bar\'s count refused on its route too'); }
     await app.close(); ok('keyframes: 2 / 3 / 10 frames → first, evenly spaced middle frames, last (graphs pass the node schema); 11 frames and times refused on the quote and the submit; H3 keeps 2–5 at times'); }
+
+  // ---- 7. reference videos ----
+  { const g = K.k4Graph({ mode: 'r2v', prompt: '@image1 dances like @video1', resolution: '1080p', duration: 10 }, [ASSET, ASSET], [ASSET, ASSET]); clean('r2v 2 images + 2 videos', g);
+    assert.deepEqual(g['1'].inputs['model.reference_videos.video_2'], ['31', 0]); assert.equal(g['30'].class_type, 'LoadVideo'); assert.deepEqual(g['1'].inputs['model.reference_images.image_2'], ['11', 0]);
+    clean('r2v videos only', K.k4Graph({ mode: 'r2v', prompt: 'like @video1', duration: 5 }, [], [ASSET]));
+    const cloud = routesFor(K.K4_PROVIDER, video)[0]; const u = (x: any) => cloud.unavailableFor!({ mode: 'r2v', refPaths: ['a.png'], ...x });
+    assert.equal(u({ refVideoPaths: ['a.mp4', 'b.mp4'], refVideoSecondsEach: [10, 20] }), null);
+    assert.match(String(u({ refVideoPaths: Array(6).fill('a.mp4') })), /up to 5 reference videos; you added 6/);
+    assert.match(String(u({ refVideoPaths: ['a.mp4'], refVideoSecondsEach: [31] })), /at most 30 s; one of yours is 31 s/);
+    assert.match(String(u({ refVideoPaths: ['a.mp4', 'b.mp4'], refVideoSecondsEach: [20, 15] })), /add up to 30 s; yours are 35 s/);
+    assert.match(String(u({ refVideoPaths: ['a.mp4'], refVideoSecondsEach: [2] })), /at least 3 s/);
+    assert.match(String(cloud.unavailableFor!({ mode: 'i2v', refVideoPaths: ['a.mp4'] })), /reference to video only/);
+    const { videoCapsBlock } = await import('../src/tools/h3/videoCaps.ts'); const { refFitOf } = await import('../src/shared/refFit.ts'); const vc = videoCapsBlock(VIDEO_LIMITS[K.K4_PROVIDER]);
+    const caps = { modes: (video as any).app.providerModes[K.K4_PROVIDER], refKinds: vc.refKinds, refMax: vc.refMax };
+    { const f = refFitOf(caps, { start: false, image: 2, video: 2, audio: 0 }, 't2v'); assert.equal(f.mode, 'r2v'); assert.ok(f.all, 'works with your files'); assert.equal(f.caps.refVideos, 5); }
+    { const f = refFitOf(caps, { start: true, image: 1, video: 6, audio: 1 }, 'r2v'); assert.ok(!f.all); assert.deepEqual(f.parts.map((p) => [p.kind, p.used, p.have]), [['image', 2, 2], ['video', 5, 6], ['audio', 0, 1]], '+N: one clip and the sound not used'); }
+    // a real job: the clip is read (ffprobe), its frame checked, and the charge = the quote's top of the range
+    const clip = (name: string, size: string, secs: number, fps = 24) => { ff(['-f', 'lavfi', '-i', `testsrc=size=${size}:rate=${fps}`, '-t', String(secs), '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', path.join(D, name)]); return name; };
+    const job = async (vids: string[], res = '720p', s = '5') => video.parseInput({ provider: K.K4_PROVIDER, prompt: '@image1 moves like @video1', types: '["r2v"]', duration: s, resolution: res }, { refs: [img('rv.png', '1024x576')], refVideos: vids }) as Promise<any>;
+    assert.match(String((await job([clip('small.mp4', '640x360', 4)])).error), /Reference video 1 is 640×360; this model needs at least 700 px a side/);
+    assert.match(String((await job([clip('slow.mp4', '1280x720', 4, 12)])).error), /runs at 12 fps; this model needs at least 24 fps/);
+    assert.match(String((await job([clip('long.mp4', '1280x720', 31)])).error), /at most 30 s/);
+    const Fastify = (await import('fastify')).default; const app = Fastify(); (await import('../src/routesBatch1.ts')).registerBatch1(app); (await import('../src/routing/http.ts')).registerRouting(app); await app.ready();
+    const seen: string[] = [];
+    for (const [res, s, rate] of [['720p', '5', 0.13442], ['1080p', '10', 0.20163]] as const) {
+      const qs = new URLSearchParams({ provider: K.K4_PROVIDER, types: '["r2v"]', duration: s, resolution: res, refs: '1', refVideos: '1', refVideoSeconds: '4', refVideoSecondsEach: '4' });
+      const b = (await app.inject({ url: `/api/tools/h3-video/price?${qs}` })).json(); assert.equal(b.route, K.K4_ROUTE, JSON.stringify(b).slice(0, 300)); assert.ok(!b.blockedReason, b.blockedReason);
+      const top = Math.ceil(Math.round(rate * (30 + Number(s)) * 100 * 1e6) / 1e6); const quoted = b.listCredits ?? b.credits; assert.equal(quoted, top, `${res} ${s} s: the top of the range`);
+      assert.equal(b.upTo, true, '≈ up to'); assert.equal(b.perSecond, null, 'not rate × seconds');
+      const lo = `$${(rate * 2 * Number(s)).toFixed(2)}`, hi = `$${(top / 100).toFixed(2)}`; assert.ok(b.upToNote.includes(`${lo}–${hi}`), b.upToNote);
+      const j = await job([clip(`ok${s}.mp4`, '1280x720', 4)], res, s); assert.ok(!j.error, String(j.error)); const charge = routeCredits(video, findRoute(K.K4_ROUTE)!, routeInput(video, j))!;
+      assert.equal(charge, quoted, 'charge = quote'); seen.push(`${res} ${s} s: ${lo}–${hi}, quoted ≈ up to $${(quoted / 100).toFixed(2)}`);
+      const plan = K.k4CloudPlan({ id: 'rv', toolId: 'h3-video', provider: K.K4_PROVIDER, input: j }); const pg = plan.passes[0].graph; assert.equal(pg['30'].class_type, 'LoadVideo'); assert.match(plan.notes[0], /1 reference image \+ 1 reference video/); }
+    { const qs = new URLSearchParams({ provider: K.K4_PROVIDER, types: '["r2v"]', duration: '5', resolution: '720p', refs: '1' }); const b = (await app.inject({ url: `/api/tools/h3-video/price?${qs}` })).json();
+      assert.ok(!b.upTo, 'no clips: one figure'); assert.equal(b.listCredits ?? b.credits, Math.ceil(5 * 22.451)); }
+    { const qs = new URLSearchParams({ provider: K.K4_PROVIDER, types: '["r2v"]', duration: '5', resolution: '720p', refs: '1', refVideos: '1', refVideoSeconds: '31', refVideoSecondsEach: '31' }); const b = (await app.inject({ url: `/api/tools/h3-video/price?${qs}` })).json();
+      assert.equal(b.runnable, false); assert.match(String(b.blockedReason ?? b.reason), /at most 30 s/); }
+    await app.close(); ok(`reference videos: graph + node schema, 5-clip / 3–30 s / 30 s total / frame / fps refusals, refFit uses them; ${seen.join('; ')}`); }
 
   // ---- 5. fake Comfy Cloud run ----
   process.env.COMFY_API_KEY = 'comfyui-fake-kling4-key-0000'; process.env.COMFY_CLOUD_URL = 'http://cloud.test';

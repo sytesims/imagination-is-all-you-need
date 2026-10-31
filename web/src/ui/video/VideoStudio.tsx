@@ -267,7 +267,7 @@ export default function VideoStudio(p: VideoStudioProps) {
   const sndHint = sndDelta ? `Adds ${sndDelta.replace(/^\+/, '')} on this model` : aud?.priceAffects ? 'Changes the price on this model' : 'Same price either way';
   const refOther = vq.get('norefs'); const refDelta = ((d) => (d?.startsWith('+') ? d : null))(qFresh && refOther ? priceDelta(refOther, q, own) : null); /* what the billed references add */
   const keyNote = qBase && q.needsKey === true ? ' · once a key is added' : '';
-  const durRate: string | null = !qBase || !qpOk ? null : qLocalRun ? localLine(q) : psQ ? `${rateText(q, own)}${keyNote}` : priced ? `${rvTotal > 0 ? 'Reference clips are billed too' : 'Priced per clip'}${keyNote}` : q.demo === true && q.perSecond ? `Sample now · with a key, ${rateText({ ...q, demo: false }, own)}` /* the button says 'Sample': no option prices, the real rate as a note */ : null;
+  const durRate: string | null = !qBase || !qpOk ? null : qLocalRun ? localLine(q) : psQ ? `${rateText(q, own)}${keyNote}` : priced ? `${rvTotal > 0 ? (q?.upTo && q.upToNote ? `Up to: ${q.upToNote}` /* a range (Kling 4.0): the quote is its top */ : 'Reference clips are billed too') : 'Priced per clip'}${keyNote}` : q.demo === true && q.perSecond ? `Sample now · with a key, ${rateText({ ...q, demo: false }, own)}` /* the button says 'Sample': no option prices, the real rate as a note */ : null;
 
   /* Look → Camera: a Camera Moves preset on THIS run (job field cameraMove; the server puts its phrase first in the prompt). Same model, same price. */
   const camOn = String(p.fv.cameraMove ?? ''); const cam = camPresets.find(x => x.id === camOn || x.aliases?.includes(camOn)); /* old ids (aliases) from Recreate still show their move */

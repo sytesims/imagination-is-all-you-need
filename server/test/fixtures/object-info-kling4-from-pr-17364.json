@@ -944,5 +944,22 @@
   ],
   "essentials_category": "Basics",
   "has_intermediate_output": false
+ },
+ "LoadVideo": {
+  "input": {
+   "required": {
+    "file": [
+     "COMBO",
+     {
+      "multiselect": false,
+      "options": [],
+      "video_upload": true
+     }
+    ]
+   }
+  },
+  "output": [
+   "VIDEO"
+  ]
  }
 }

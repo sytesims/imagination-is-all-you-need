@@ -139,6 +139,14 @@ h3VideoTool.parseInput = async (fields, files) => {
       if (RV && refVideoSeconds > RV.maxTotal) return bad('refVideos', `Reference videos total ${refVideoSeconds} s; this model allows ${RV.maxTotal} s in total.`, 'too_long');
       if (RV?.fps) { const fps = await Promise.all(vids.map((v) => frameRate(path.join(DATA_DIR, v)))); r.refVideoFps = fps;
         if (fps.some((x) => x > 0 && (x < RV.fps![0] - 0.01 || x > RV.fps![1] + 0.01))) return bad('refVideos', `Reference videos must run at ${RV.fps[0]}–${RV.fps[1]} frames per second for this model.`, 'unsupported'); } }
+    if (L.refVideoFrame && vids.length) { const F = L.refVideoFrame; // each clip's frame (Kling 4.0: 700–4553 px a side, ≤ 8.3 MP, 2:5 to 5:2, ≥ 24 fps)
+      for (const [k, v] of vids.entries()) { const pr = await probe(path.join(DATA_DIR, v)); if (!pr) return bad('refVideos', `Reference video ${k + 1} could not be read. Re-export it as MP4 (H.264).`, 'unreadable');
+        const { width: w, height: h } = pr; const what = `Reference video ${k + 1} is ${w}×${h}`;
+        if (F.minSide && Math.min(w, h) < F.minSide) return bad('refVideos', `${what}; this model needs at least ${F.minSide} px a side.`, 'too_small');
+        if (F.maxSide && Math.max(w, h) > F.maxSide) return bad('refVideos', `${what}; this model takes up to ${F.maxSide} px a side.`, 'too_large');
+        if (F.maxPixels && w * h > F.maxPixels) return bad('refVideos', `${what}; this model takes up to ${F.maxPixels.toLocaleString('en-US')} pixels a frame (3840×2160).`, 'too_large');
+        if (F.aspect && (w / h < F.aspect[0] - 1e-6 || w / h > F.aspect[1] + 1e-6)) return bad('refVideos', `${what}; this model takes shapes from 2:5 to 5:2. Crop it.`, 'unsupported');
+        if (F.minFps && pr.fps && pr.fps < F.minFps - 1) return bad('refVideos', `Reference video ${k + 1} runs at ${pr.fps} fps; this model needs at least ${F.minFps} fps.`, 'unsupported'); } }
     r.refVideoSeconds = refVideoSeconds;
     if (auds.length) { const secs = await Promise.all(auds.map((a) => audioSeconds(path.join(DATA_DIR, a)))); r.refAudioSecondsEach = secs.map((x) => Math.round(x * 100) / 100); const RA = L.refAudioSeconds;
       if (secs.some((x) => !(x > 0))) return bad('refAudios', 'Could not read a reference audio clip\'s length.', 'unreadable');

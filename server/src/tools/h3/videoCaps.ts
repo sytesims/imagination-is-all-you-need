@@ -21,6 +21,8 @@ export interface VideoLimits {
   maxResolution: string; resolutions: string[]; /** Default seconds when none is asked (else the first duration ≥ 4). */ defaultSeconds?: number; minSeconds: number; maxSeconds: number; durationStep: number; durations: number[];
   aspects: string[]; audio: { supported: boolean; toggle: boolean; default: boolean; priceAffects: boolean; off: 'strip' | 'provider' };
   refKinds: RefKinds; refVideoSeconds?: { minEach: number; maxEach?: number; maxTotal: number; billed: string; /** frame-rate range a reference clip must have */ fps?: [number, number] };
+  /** Reference video frames (Kling 4.0, 2026-10-31): sides, pixels, shape (width / height) and the lowest frame rate, checked on submit (ffprobe) so nothing is sent or charged. */
+  refVideoFrame?: { minSide?: number; maxSide?: number; maxPixels?: number; aspect?: [number, number]; minFps?: number };
   /** Reference audio clips: per-clip and total length (seconds). */ refAudioSeconds?: { minEach: number; maxEach?: number; maxTotal: number };
   /** File types each reference kind takes (extensions); unset = any the upload takes. */ refFormats?: { video?: string[]; audio?: string[] };
   /** Reference audio needs at least one reference image or video next to it (no audio-only job). */ audioNeedsVisualRef?: boolean;
