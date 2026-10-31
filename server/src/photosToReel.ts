@@ -5,7 +5,7 @@ import path from 'node:path';
 import { DATA_DIR, config } from './config.js';
 import * as lib from './library.js';
 import { jobs, persistJob, type Job } from './jobs.js';
-import { parseReelOptions, reelPlan, reelResumePlan, REEL_MOODS, type ReelOptions } from './shared/photosToReel.js';
+import { parseReelOptions, reelPlan, reelResumePlan, reelMusicAction, REEL_MOODS, type ReelOptions } from './shared/photosToReel.js';
 import { clipArgs } from './shareExport.js';
 import { runFfmpeg } from './ffmpeg.js';
 
@@ -136,9 +136,12 @@ async function runReel(app: FastifyInstance, job: Job, headers: Record<string,st
           input.activeChild = null;
         }
         if (previousMusic?.status === 'done' && previousMusic.resultUrl) result = previousMusic.resultUrl;
-        else { const music = await submit(app, job, 'app-music-bed', { ...musicFields({...input.fields,...o}), video:undefined, fromJob:body.id }, headers, 'music'); result = music.resultUrl!; }
+        else {
+          if (reelMusicAction(previousMusic?.status, Number(input.stepQuotes[1]?.count ?? 0)) !== 'submit') throw Object.assign(new Error('The existing music run did not finish. Retry the reel to review the price of a new music run.'), { reelNeedsRetry: true });
+          const music = await submit(app, job, 'app-music-bed', { ...musicFields({...input.fields,...o}), video:undefined, fromJob:body.id }, headers, 'music'); result = music.resultUrl!;
+        }
       }
-      catch (e) { if (canceled(job)) return; job.partial = true; job.warnings.push(`Music was left out: ${(e as Error).message}`); }
+      catch (e) { if (canceled(job)) return; if ((e as any).reelNeedsRetry) throw e; job.partial = true; job.warnings.push(`Music was left out: ${(e as Error).message}`); }
     }
     if (canceled(job)) return;
     job.resultUrl = result; job.outputs = [{ label:o.title,url:result }]; job.status = 'done'; job.progress = 100; job.stage = 'done';

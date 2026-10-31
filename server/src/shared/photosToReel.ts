@@ -40,3 +40,10 @@ export function reelResumePlan(count: number, o: ReelOptions, saved?: { clipsByP
   const reuseMusic = unchangedVisual && ['queued','running','needs_decision','done'].includes(saved?.musicStatus ?? '');
   return { unchangedVisual, pendingCameraCount: plan.heroes.filter(i => !ready(i)).length, pendingMusicCount: o.music === 'on' && !reuseMusic ? 1 : 0 };
 }
+
+/** A reused in-flight soundtrack can fail after a zero-cost resume was approved. A new paid run then needs a fresh retry quote. */
+export function reelMusicAction(status: string | undefined, approvedCount: number): 'wait' | 'reuse' | 'submit' | 'retry' {
+  if (status && ['queued','running','needs_decision'].includes(status)) return 'wait';
+  if (status === 'done') return 'reuse';
+  return approvedCount > 0 ? 'submit' : 'retry';
+}
