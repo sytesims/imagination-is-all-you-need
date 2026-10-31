@@ -4,30 +4,36 @@
  * priced N × the one-image price (routing/select.ts routeCredits reads gallery.perOutput.max). No new weights by default:
  * the camera instruction goes into the edit prompt of an image-edit model (Qwen-Image-Edit-2509, Nano Banana 2, FLUX 3 Klein).
  * The optional local route `comfy-qwen-angles` adds the Apache-2.0 multiple-angles LoRA (dx8152/Qwen-Edit-2509-Multiple-angles),
- * whose documented instructions ("Rotate the camera 45 degrees to the left.", "Turn the camera to a close-up.") lead each prompt below.
+ * whose trained sentences ("Rotate the camera 45 degrees to the left.", "Turn the camera to a close-up.") lead each prompt below, byte for byte.
  */
 import type { AppOption } from './appRows.js';
+import { loraSentence } from '../shared/promptPatterns.js';
 
-export interface ShotAngle extends AppOption { value: string; label: string; description: string; prompt: string; /** Mock render only: an ffmpeg filter that hints at the view (never shown as a real result). */ mockVf: string }
-const shot = (value: string, label: string, description: string, prompt: string, mockVf: string): ShotAngle => ({ value, label, description, prompt, mockVf, poster: null, preview: null });
+export interface ShotAngle extends AppOption { value: string; label: string; description: string; prompt: string; /** what the view shows, after the camera sentence */ detail?: string; /** Mock render only: an ffmpeg filter that hints at the view (never shown as a real result). */ mockVf: string }
+const shot = (value: string, label: string, description: string, prompt: string, mockVf: string, detail?: string): ShotAngle => ({ value, label, description, prompt, mockVf, ...(detail ? { detail } : {}), poster: null, preview: null });
 
-/** The nine default views, in grid order (3 × 3). */
+/** The angles LoRA's trained sentence for a view (shared/promptPatterns.ts camera-angle), sent first and byte for byte; null = our own sentence. */
+const trained = (id: string) => loraSentence('camera-angle', 'qwen-image-edit-2509-angles', id);
+/** The nine default views, in grid order (3 × 3). prompt = the camera sentence (the LoRA's own where it has one); detail = what the view shows. */
 export const SHOT_ANGLES: ShotAngle[] = [
   shot('front', 'Front', 'Straight on, eye level', 'Move the camera to face the subject straight on at eye level: a front view', ''),
-  shot('three-quarter-left', '¾ left', 'Turned 45° to the left', 'Rotate the camera 45 degrees to the left around the subject: a three-quarter view', 'crop=iw*0.82:ih:0:0'),
-  shot('three-quarter-right', '¾ right', 'Turned 45° to the right', 'Rotate the camera 45 degrees to the right around the subject: a three-quarter view', 'crop=iw*0.82:ih:iw*0.18:0'),
-  shot('side', 'Side', 'Profile, 90° round', 'Rotate the camera 90 degrees to the left around the subject: a side profile view', 'hflip'),
+  shot('three-quarter-left', '¾ left', 'Turned 45° to the left', trained('three-quarter-left')!, 'crop=iw*0.82:ih:0:0', 'a three-quarter view'),
+  shot('three-quarter-right', '¾ right', 'Turned 45° to the right', trained('three-quarter-right')!, 'crop=iw*0.82:ih:iw*0.18:0', 'a three-quarter view'),
+  shot('side', 'Side', 'Profile, 90° round', trained('side')!, 'hflip', 'a side profile view'),
   shot('back', 'Back', 'From behind the subject', 'Move the camera behind the subject: a view of the subject from the back', 'hflip,eq=brightness=-0.12'),
-  shot('low', 'Low angle', 'Below, looking up', 'Lower the camera and tilt it up at the subject: a low-angle shot', 'crop=iw:ih*0.84:0:ih*0.16'),
+  shot('low', 'Low angle', 'Below, looking up', trained('low')!, 'crop=iw:ih*0.84:0:ih*0.16', 'looking up at the subject'),
   shot('high', 'High angle', 'Above, looking down', 'Raise the camera and look down at the subject: a high-angle shot', 'crop=iw:ih*0.84:0:0'),
-  shot('close-up', 'Close-up', 'Tight on the face or detail', 'Turn the camera to a close-up of the subject', 'crop=iw*0.5:ih*0.5:iw*0.25:ih*0.25'),
-  shot('wide', 'Wide', 'Whole subject and more scene', 'Turn the camera to a wide-angle lens: a wide shot that shows the whole subject and more of the scene', 'scale=trunc(iw*0.7/2)*2:trunc(ih*0.7/2)*2,pad=trunc(iw/0.7/2)*2:trunc(ih/0.7/2)*2:(ow-iw)/2:(oh-ih)/2:color=0x1d1d1d'),
+  shot('close-up', 'Close-up', 'Tight on the face or detail', trained('close-up')!, 'crop=iw*0.5:ih*0.5:iw*0.25:ih*0.25', 'tight on the subject'),
+  shot('wide', 'Wide', 'Whole subject and more scene', trained('wide')!, 'scale=trunc(iw*0.7/2)*2:trunc(ih*0.7/2)*2,pad=trunc(iw/0.7/2)*2:trunc(ih/0.7/2)*2:(ow-iw)/2:(oh-ih)/2:color=0x1d1d1d', 'a wide shot that shows the whole subject and more of the scene'),
 ];
 export const SHOT_IDS = SHOT_ANGLES.map((s) => s.value);
 /** Keeps every view the same subject in the same scene (appended to each angle). */
 export const SHOT_KEEP = 'same subject and same scene as the photo; keep identity, face, clothing, colours and lighting consistent; photorealistic';
-export const shotPrompt = (angle: ShotAngle, subject: string) =>
-  [angle.prompt, subject.trim() ? `the subject: ${subject.trim().replace(/[.;,]+$/, '')}` : '', SHOT_KEEP].filter(Boolean).join('; ');
+/** The camera sentence first, unchanged (a trained LoRA sentence ends with its own full stop), then the view, the subject and the keep list. */
+export const shotPrompt = (angle: ShotAngle, subject: string) => {
+  const rest = [angle.detail ?? '', subject.trim() ? `the subject: ${subject.trim().replace(/[.;,]+$/, '')}` : '', SHOT_KEEP].filter(Boolean).join('; ');
+  return /\.$/.test(angle.prompt) ? `${angle.prompt} ${rest[0].toUpperCase()}${rest.slice(1)}` : `${angle.prompt}; ${rest}`;
+};
 /** Parse the `shots` field: JSON array or comma list; blank = all nine. Unknown ids → error (never echoed raw). */
 export function parseShots(raw: unknown): { ids: string[] } | { error: string; code: string } {
   const s = String(raw ?? '').trim(); if (!s) return { ids: [...SHOT_IDS] };
