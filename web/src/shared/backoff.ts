@@ -3,13 +3,14 @@
  * signature returned by `tick` changes. `tick` returns a signature string, or null to stop polling.
  */
 export const POLL_MIN_MS = 2000, POLL_MAX_MS = 10_000, POLL_GROWTH = 1.5;
-/** `pauseHidden`: no ticks while the tab is hidden; polling resumes (with a tick at once) when it is shown again. */
-export function pollWithBackoff(tick: () => Promise<string | null>, opts: { minMs?: number; maxMs?: number; pauseHidden?: boolean } = {}): () => void {
+/** `pauseHidden`: no ticks while the tab is hidden (a function: only while it says so); polling resumes (with a tick at once) when the tab is
+ *  shown again. */
+export function pollWithBackoff(tick: () => Promise<string | null>, opts: { minMs?: number; maxMs?: number; pauseHidden?: boolean | (() => boolean) } = {}): () => void {
   const min = opts.minMs ?? POLL_MIN_MS, max = opts.maxMs ?? POLL_MAX_MS;
   let delay = min, last: string | null | undefined, stopped = false, t: ReturnType<typeof setTimeout> | undefined; let onVis: (() => void) | null = null;
   const loop = async () => {
     if (stopped) return;
-    if (opts.pauseHidden && typeof document !== 'undefined' && document.hidden) { if (!onVis) { onVis = () => { if (document.hidden) return; document.removeEventListener('visibilitychange', onVis!); onVis = null; delay = min; void loop(); }; document.addEventListener('visibilitychange', onVis); } return; }
+    if (typeof document !== 'undefined' && document.hidden && (typeof opts.pauseHidden === 'function' ? opts.pauseHidden() : opts.pauseHidden)) { if (!onVis) { onVis = () => { if (document.hidden) return; document.removeEventListener('visibilitychange', onVis!); onVis = null; delay = min; void loop(); }; document.addEventListener('visibilitychange', onVis); } return; }
     let sig: string | null = '';
     try { sig = await tick(); } catch { sig = last ?? ''; }
     if (stopped || sig === null) return;

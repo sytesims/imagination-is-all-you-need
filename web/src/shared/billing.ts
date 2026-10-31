@@ -3,6 +3,7 @@
  *  'own-accounts' (default): prices are the estimated cost on the account that bills it; 'team': the old credits ledger. */
 import { useEffect, useState } from 'react';
 import { requestRequote } from './quote';
+import { pollWithBackoff } from './backoff';
 import { LOCAL_FREE } from '../../../server/src/shared/modelIds';
 import { fmtUsd } from '../../../server/src/shared/runCost';
 import { usdToken, costDetail, unitsDetail, comfyCreditsFor, costLine as costLineOf, ledgerUsd, type ComfyPlan, type ComfyPlanId } from '../../../server/src/shared/priceText';
@@ -16,14 +17,15 @@ export interface Cost { billedTo: string; billedToName: string; estUsd: number; 
 export interface SpendSummary { period: 'day' | 'month'; from: string; to: string; billingMode: BillingMode; providers: { provider: string; name: string; runs: number; demoRuns: number; estUsd: number; actualUsd: number | null; actualRuns: number; spentUsd: number; failureRule: FailureRule }[]; totals: { runs: number; estUsd: number; actualUsd: number; spentUsd: number; /** finished local runs: what the cheapest hosted route would have cost */ savedUsd?: number; savedRuns?: number } }
 export interface Account { provider: string; name: string; connected: boolean; plan?: ComfyPlanId | null; balance?: number | null; balanceUnit?: string | null; balanceUsd?: number | null; monthSpendUsd?: number | null; fetchedAt: string | null; source: 'provider' | 'unavailable'; note: string; keyCheck?: 'ok' | 'rejected' | 'offline'; billingUrl: string | null; failureRule: FailureRule; failureNote: string; actualCost: string; mock?: { sample: true; balance: number; balanceUnit: string; balanceUsd: number; note: string } }
 
-/** A tiny shared store: one fetch, many subscribers; refreshed on focus and on 'ohf:billing'. */
+/** A tiny shared store: one fetch, many subscribers; refreshed on focus and on 'ohf:billing'. Polls every `everyMs`, slowing to 15 s
+ *  (or `everyMs` when longer) while nothing changes, none while the tab is hidden. */
 function store<T>(url: string, everyMs: number) {
   let cur: T | null = null; const subs = new Set<(v: T) => void>(); let timer: any = null; let inflight: Promise<void> | null = null;
   const refresh = () => (inflight ??= fetch(url).then(r => (r.ok ? r.json() : null)).then((v: T | null) => { if (v) { cur = v; subs.forEach(f => f(v)); } }).catch(() => undefined).finally(() => { inflight = null; }));
   const use = (): T | null => {
     const [v, setV] = useState<T | null>(cur);
-    useEffect(() => { subs.add(setV); if (cur) setV(cur); if (!timer) { refresh(); timer = setInterval(() => { if (!document.hidden) refresh(); } /* hidden tab: skip (focus refreshes) */, everyMs); addEventListener('focus', refresh); addEventListener('ohf:billing', refresh); addEventListener('oj:balance', refresh); }
-      return () => { subs.delete(setV); if (!subs.size) { clearInterval(timer); timer = null; removeEventListener('focus', refresh); removeEventListener('ohf:billing', refresh); removeEventListener('oj:balance', refresh); } }; }, []);
+    useEffect(() => { subs.add(setV); if (cur) setV(cur); if (!timer) { refresh(); timer = pollWithBackoff(() => refresh().then(() => JSON.stringify(cur, (k, x) => (k === 'to' ? undefined : x)) /* the window's end is "now": not a change */), { minMs: everyMs, maxMs: Math.max(everyMs, 15_000), pauseHidden: true }); addEventListener('focus', refresh); addEventListener('ohf:billing', refresh); addEventListener('oj:balance', refresh); }
+      return () => { subs.delete(setV); if (!subs.size) { timer(); timer = null; removeEventListener('focus', refresh); removeEventListener('ohf:billing', refresh); removeEventListener('oj:balance', refresh); } }; }, []);
     return v;
   };
   return { use, refresh, get: () => cur };
