@@ -475,7 +475,7 @@ export const EXPLORE_SCRIPT = {
   credit: 'One prompt, written as a timed shot list with the dialogue in Korean. MiniMax H3 (Hailuo) text to video on Comfy Cloud: 768p, 15 s, voices and sound made with the picture. English subtitles added here.',
 };
 
-// ---------------------------------------------------------------- One drawing. A whole film. (Mossbun: sheet → 3D → city → film)
+// ---------------------------------------------------------------- Your character, brought to life. (Mossbun: sheet → 3D → city → film)
 const TRIPO = { model: MOSSBUN_3D_RUN.model, place: MOSSBUN_3D_RUN.place, usd: MOSSBUN_3D_RUN.costUsd } as const;
 const IMAGE_TO_3D = `${threeDRoute('image-to-3d')}&model=cloud-tripo-31`;
 /** One step card under the film: its name, its picture and the run that made it (job id; shared/featured.ts runByJob gives the real model and
@@ -486,8 +486,8 @@ const E3 = (f: string) => `/examples/showcase-3d/${f}`;
 /** The 3D section (rebuilt 2026-10-31): one headline, the finished film (featured 'mossbun-golden-hour'), then the four steps behind it and one
  *  bottom row (the whole chain's price, Recreate, Make your own, Credits). Free media only: Mossbun's GLB (Tripo 3.1, job 092abb03) and stills. */
 export const EXPLORE_3D = {
-  key: 'mossbun-golden-hour', title: ['One drawing.', 'A whole film.'],
-  line: 'Mossbun started as a character sheet, became a 3D model, walked into a city and ended up on film.',
+  key: 'mossbun-golden-hour', title: ['Your character,', 'brought to life.'],
+  line: 'Draw a friend. Watch it hop into 3D, explore a city and star in its very own film.',
   steps: [
     { step: 'Character sheet', job: '9564386e', thumb: P('char-mossbun-480.webp'), alt: 'Mossbun’s character sheet: four views and five faces' },
     { step: '3D model', job: '092abb03', thumb: P('x3d-mossbun.webp'), spin: P('char-mossbun-3d.glb'), alt: 'Mossbun as a 3D model, turning slowly' },

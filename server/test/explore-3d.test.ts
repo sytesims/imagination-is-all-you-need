@@ -1,4 +1,4 @@
-// Explore's 3D section, "One drawing. A whole film." (rebuilt 2026-10-31, web/src/ui/explore/Explore3D.tsx, data EXPLORE_3D in shared/exploreShowcase.ts). Covers:
+// Explore's 3D section, "Your character, brought to life." (rebuilt 2026-10-31, web/src/ui/explore/Explore3D.tsx, data EXPLORE_3D in shared/exploreShowcase.ts). Covers:
 //  - one headline in the chapter style, the finished film big with the shared player (controls, sound) and nothing over it;
 //  - four steps, each one model and one price read from the featured runs; the city shows the frame the film starts from, the capture as a small
 //    "before", the other two tools in a tip; the 3D card turns the shipped GLB with the shared Model3D (lowest priority, on screen only);
@@ -16,7 +16,7 @@ const size = (u: string) => { const p = path.join(PUB, u); assert.ok(fs.existsSy
 
 // ---- the data: one story, four steps, every run real ----
 { const f = featuredByKey(X.key)!; assert.ok(f, 'the film is a featured entry');
-  assert.deepEqual(X.title, ['One drawing.', 'A whole film.']); assert.ok(!('eyebrow' in X) && !('uses' in X) && !('hero' in X), 'one headline, no eyebrow, no leftover data');
+  assert.deepEqual(X.title, ['Your character,', 'brought to life.']); assert.ok(!('eyebrow' in X) && !('uses' in X) && !('hero' in X), 'one headline, no eyebrow, no leftover data');
   assert.doesNotMatch(X.line, /recorded demo|Layout to Render/i, 'the line tells the story, nothing else');
   assert.deepEqual([f.jobId, f.model, f.modelKey, f.provider, f.route, f.costUsd, f.input.mode, f.input.duration, f.input.resolution, f.input.audio], ['a11a0c78', 'LTX-2.5 Pro', 'ltx-2.5-pro', 'router-ltx-25-pro', 'comfy-cloud:cloud-ltx25-pro-api', 1.46, 'i2v', 6, '1080p', true], 'the film as it ran: LTX-2.5 Pro image to video on Comfy Cloud, 6 s, 1080p, sound, $1.46');
   assert.deepEqual(featuredRuns(f).map((r) => r.jobId), ['9564386e', '092abb03', '13aca5cc', 'ea410812', 'b688b9c3', 'a11a0c78'], 'every run behind it, oldest first');
