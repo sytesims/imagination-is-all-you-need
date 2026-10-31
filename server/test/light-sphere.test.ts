@@ -76,7 +76,7 @@ const rig = { key: K(-45, 30, 3200, 75, 60), rim: K(150, 20, 7500, 60, 30), ambi
   }
   assert.ok(flux.startsWith('relight the scene; key light from the front-left') && flux.endsWith('keep the subject, pose and composition unchanged'), flux);
   assert.ok(qwen.startsWith('Relight the scene: key light from the front-left') && qwen.endsWith(RELIGHT_KEEP), qwen);
-  assert.ok(sen.startsWith('Relight this photo. The key light comes from the front-left') && sen.endsWith(RELIGHT_SENTENCE_KEEP), sen);
+  assert.ok(sen.startsWith(`${RELIGHT_SENTENCE_KEEP} Relight this photo. The key light comes from the front-left`) && sen.endsWith('follow the new light.'), sen); // Nano Banana: keep sentence first (shared/promptPatterns.ts relight)
   // a look names the setup and keeps its description, but not its fixed colour temperature (the rig says its own)
   const gh = RELIGHT_LOOKS.find((l) => l.value === 'golden-hour')!;
   const g = relightPrompt({ ...v, look: 'golden-hour' }, '', 'comfy-klein4b');
