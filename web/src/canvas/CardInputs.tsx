@@ -19,8 +19,9 @@ import { uploadedInput } from './fileDrop';
 
 type Toast = (msg: string, tone?: any) => void;
 /** Open the media picker for one slot of a card; the picked or uploaded file fills that slot. The + chip and the pre-flight's "Choose…" both use it. */
-export function chooseForSlot(editor: Editor, cardId: TLShapeId, s: Pick<GenSlot, 'name' | 'label' | 'accept'>, toast: Toast) {
-  pickMedia({ accept: ACCEPT[s.accept === 'video' ? 'video' : s.accept === 'audio' ? 'audio' : 'image'], title: `Choose ${s.label.toLowerCase()}`, onFiles: ([f]) => { void fillSlot(editor, cardId, s, f, toast); } });
+export function chooseForSlot(editor: Editor, cardId: TLShapeId, s: Pick<GenSlot, 'name' | 'label' | 'accept' | 'max'>, toast: Toast, /** files already in the slot: they count toward its max */ used = 0) {
+  const room = Math.max(1, s.max - used);
+  pickMedia({ accept: ACCEPT[s.accept === 'video' ? 'video' : s.accept === 'audio' ? 'audio' : 'image'], title: `Choose ${s.label.toLowerCase()}`, multiple: s.max > 1, max: s.max > 1 ? room : undefined, onFiles: fs => { void (async () => { for (const f of fs.slice(0, room)) await fillSlot(editor, cardId, s, f, toast); })(); } });
 }
 async function fillSlot(editor: Editor, cardId: TLShapeId, s: Pick<GenSlot, 'name' | 'accept'>, f: File | undefined, toast: Toast) {
   if (!f) return; const kind: InputKind | null = kindOfFile(f);
@@ -42,7 +43,7 @@ export function CardInputs({ cardId, slots, bySlot, showAdd, className = '', tes
           <small>{s.label}</small><button type="button" className="nf-in-x" aria-label={`Remove ${s.label.toLowerCase()}`} data-testid={`${testPrefix}-in-x-${s.name}`} onClick={() => remove(i)}><CloseIcon size={9} strokeWidth={2.4} /></button></span>)}
         {showAdd && !list.length && <button type="button" className={`nf-add${s.required ? ' req' : ''}`} aria-label={`Add ${s.label.toLowerCase()}${s.required ? '' : ' (optional)'}`} data-card-control data-testid={`${testPrefix}-add-${s.name}`} {...tip(`${s.hint}. Draw an arrow into the node from a result or upload, or pick a file`)} onClick={() => chooseForSlot(editor, cardId, s, toast)}><PlusIcon size={12} />{s.label}</button>}
         {/* with something in it: the bar's dashed "+" (shared/AddTile: the limit in its tooltip, a badge near it, disabled at it) */}
-        {showAdd && list.length > 0 && s.max > 1 && <AddTile size="card" used={list.length} max={s.max} noun={s.accept === 'video' ? 'clip' : s.accept === 'audio' ? 'sound' : 'picture'} testId={`${testPrefix}-add-${s.name}`} onAdd={() => chooseForSlot(editor, cardId, s, toast)} />}
+        {showAdd && list.length > 0 && s.max > 1 && <AddTile size="card" used={list.length} max={s.max} noun={s.accept === 'video' ? 'clip' : s.accept === 'audio' ? 'sound' : 'picture'} testId={`${testPrefix}-add-${s.name}`} onAdd={() => chooseForSlot(editor, cardId, s, toast, list.length)} />}
       </span>; })}
   </div>;
 }

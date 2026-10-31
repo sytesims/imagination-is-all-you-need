@@ -16,7 +16,7 @@ import { rigJson, lightRgb, rgbHex, type LightRig } from '../../../../server/src
 import { rigOfFields, rigChipPlain, plainDir, degTip, presetEdited } from '../../../../server/src/shared/lightEasy';
 import { Link, navigate } from '../../platform/router';
 import { tip } from '../../shared/Tooltip';
-import { PhoneAdIcon, TextIcon, LightIcon, FaceSwapIcon, UserIcon, CharacterSheetIcon, ProductIcon, ShotsIcon, CameraMovesIcon, BrushIcon, ImageIcon, SearchIcon, CloseIcon, ChevronRightIcon, PlusIcon, UpscaleIcon, AspectIcon, CutoutIcon, ExpandIcon, EraserIcon, GarmentIcon, MaterialIcon, LayerSheetsIcon, CubeIcon, OrbitIcon, PrevizIcon, type IconProps } from '../Icons';
+import { PhoneAdIcon, TextIcon, AudioIcon, LightIcon, FaceSwapIcon, UserIcon, CharacterSheetIcon, ProductIcon, ShotsIcon, CameraMovesIcon, BrushIcon, ImageIcon, SearchIcon, CloseIcon, ChevronRightIcon, PlusIcon, UpscaleIcon, AspectIcon, CutoutIcon, ExpandIcon, EraserIcon, GarmentIcon, MaterialIcon, LayerSheetsIcon, CubeIcon, OrbitIcon, PrevizIcon, type IconProps } from '../Icons';
 import type { ProviderInfo } from '../../api';
 import { ScalePanel, outOf, sizeText, scaleWhy, type UpInfo, type Size } from './UpscaleBar';
 import type { WorkflowRecipe } from '../../../../server/src/shared/workflows';
@@ -36,7 +36,7 @@ export function fitWfVals(r: WfRecipe, provider: string, mode: string | undefine
   if (!c || !ok?.length) return vals; const v = vals.aspect ?? String(c.default ?? 'auto'); if (ok.includes(v)) return vals;
   return { ...vals, aspect: mi?.defaultAspect && ok.includes(mi.defaultAspect) ? mi.defaultAspect : ok.find(x => x !== 'auto') ?? ok[0] };
 }
-const ICONS: Record<string, (p: IconProps) => ReactNode> = { light: LightIcon, 'face-swap': FaceSwapIcon, user: UserIcon, 'character-sheet': CharacterSheetIcon, product: ProductIcon, shots: ShotsIcon, camera: CameraMovesIcon, brush: BrushIcon, create: ImageIcon, upscale: UpscaleIcon, aspect: AspectIcon, cutout: CutoutIcon, expand: ExpandIcon, eraser: EraserIcon, garment: GarmentIcon, material: MaterialIcon, ad: PhoneAdIcon, words: TextIcon, layers: LayerSheetsIcon, cube: CubeIcon, orbit: OrbitIcon, previz: PrevizIcon, texture: BrushIcon, detail: ShotsIcon, rig: UserIcon, views: ShotsIcon, type: ImageIcon };
+const ICONS: Record<string, (p: IconProps) => ReactNode> = { edit: TextIcon, gallery: ImageIcon, music: AudioIcon, clock: CameraMovesIcon, light: LightIcon, 'face-swap': FaceSwapIcon, user: UserIcon, 'character-sheet': CharacterSheetIcon, product: ProductIcon, shots: ShotsIcon, camera: CameraMovesIcon, brush: BrushIcon, create: ImageIcon, upscale: UpscaleIcon, aspect: AspectIcon, cutout: CutoutIcon, expand: ExpandIcon, eraser: EraserIcon, garment: GarmentIcon, material: MaterialIcon, ad: PhoneAdIcon, words: TextIcon, layers: LayerSheetsIcon, cube: CubeIcon, orbit: OrbitIcon, previz: PrevizIcon, texture: BrushIcon, detail: ShotsIcon, rig: UserIcon, views: ShotsIcon, type: ImageIcon };
 export const WfIcon = ({ name, size = 16 }: { name: string; size?: number }) => { const I = ICONS[name] ?? ImageIcon; return <I size={size} />; };
 
 export { READY_WORKFLOW_TOOLS, workflowRecreateHref } from '../../shared/workflowLinks';

@@ -34,19 +34,19 @@ export function EditWith({ jobId, kind, output = 0, exclude }: { jobId: string; 
 }
 
 /** Lineage strip: GET /api/jobs/:id/lineage → {chain[], children[]} (root first). */
-type Node = { id: string; toolId: string; toolName: string; status: string; resultUrl: string | null; prompt?: string | null };
+type Node = { id: string; toolId: string; toolName: string; status: string; resultUrl: string | null; posterUrl?: string | null; prompt?: string | null };
 const Thumb = ({ n, cur }: { n: Node; cur?: boolean }) => {
-  const isVid = /\.(mp4|webm|mov)$/i.test(n.resultUrl ?? '');
-  return <Link to={`/jobs/${n.id}`} className={`ln-node ${cur ? 'cur' : ''} ln-${n.status}`}><span className="ln-thumb">{n.resultUrl ? (isVid ? <video src={n.resultUrl} muted preload="metadata" /> : <img src={n.resultUrl} alt="" loading="lazy" />) : <i>{n.status}</i>}</span><b title={n.toolName}>{n.toolName}</b><small>{n.status}</small></Link>;
+  const isVid = /\.(mp4|webm|mov)(?:[?#]|$)/i.test(n.resultUrl ?? '');
+  return <Link to={`/jobs/${n.id}`} className={`ln-node ${cur ? 'cur' : ''} ln-${n.status}`}><span className="ln-thumb">{n.resultUrl ? (isVid ? <img src={n.posterUrl || `/api/media/thumb?url=${encodeURIComponent(n.resultUrl)}`} alt="" loading="lazy" /> : <img src={n.resultUrl} alt="" loading="lazy" />) : <i>{n.status}</i>}</span><b title={n.toolName}>{n.toolName}</b><small>{n.status}</small></Link>;
 };
-export function LineageStrip({ jobId, reserve }: { jobId: string; reserve?: boolean }) {
+export function LineageStrip({ jobId, reserve, label = 'History' }: { jobId: string; reserve?: boolean; label?: string }) {
   const [d, setD] = useState<{ chain: Node[]; children: Node[] } | null>(null);
   useEffect(() => { fetch(`/api/jobs/${encodeURIComponent(jobId)}/lineage`).then(r => r.ok ? r.json() : null).then(setD).catch(() => 0); }, [jobId]);
   // reserve: the job has a parent, so the strip will show; hold its space while it loads.
-  if (!d) return reserve ? <nav className="lineage lineage-ph" aria-hidden><span className="ln-label helper">History</span><div className="ln-row" /></nav> : null;
+  if (!d) return reserve ? <nav className="lineage lineage-ph" aria-hidden><span className="ln-label helper">{label}</span><div className="ln-row" /></nav> : null;
   if (d.chain.length <= 1 && !d.children.length) return null;
-  return <nav className="lineage" aria-label="Edit history">
-    <span className="ln-label helper">History</span>
+  return <nav className="lineage" aria-label={label === 'Steps' ? 'Reel steps' : 'Edit history'}>
+    <span className="ln-label helper">{label}</span>
     <div className="ln-row">{d.chain.map((n, i) => <span key={n.id} className="ln-step">{i > 0 && <span className="ln-arrow" aria-hidden>→</span>}<Thumb n={n} cur={n.id === jobId} /></span>)}
       {d.children.length > 0 && <span className="ln-step ln-kids"><span className="ln-arrow" aria-hidden>↳</span>{d.children.map(n => <Thumb key={n.id} n={n} />)}</span>}</div>
   </nav>;

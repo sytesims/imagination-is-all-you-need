@@ -27,10 +27,10 @@ for (const w of VIDEO_WORKFLOWS) {
   const kind = w.id === 'create' ? 'create' : isEditHub(w.id) ? 'hub' : isPanelWorkflow(w) ? 'panel' : videoBarOf(w.id) ? 'bar' : 'missing';
   assert.notEqual(kind, 'missing', `${w.id}: runs in the Video bar (has a recipe)`);
 }
-assert.equal(runnable.length, 23, '23 selectable video workflows besides Create and the Edit list (two-person swap retired)');
+assert.equal(runnable.length, 24, '24 selectable video workflows besides Create and the Edit list (two-person swap retired)');
 for (const w of runnable) assert.ok(videoBarOf(w.id), `${w.id}: in the Video bar, the same page as every other workflow`);
 assert.ok(isEditHub('edit-video') && !isEditHub('extend') && !isEditHub(null), 'Edit Video is the only hub');
-const bars = Object.keys(VIDEO_BARS); assert.equal(bars.length, 23, `${bars.length} workflows in the bar`);
+const bars = Object.keys(VIDEO_BARS); assert.equal(bars.length, 24, `${bars.length} workflows in the bar`);
 for (const id of bars) assert.ok(VIDEO_WORKFLOWS.some((w) => w.id === id), `${id}: a known workflow`);
 ok(`${VIDEO_WORKFLOWS.length} entries: all ${runnable.length} workflows in the Video bar, Create, and the Edit list as the picker's Edit tab`);
 

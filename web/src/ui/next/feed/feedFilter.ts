@@ -80,7 +80,7 @@ export function serverParams(f0: FeedFilter, project: string | null, scope0: Fee
 }
 /** The same filter on a job the page already holds (live runs and fresh results join the list without waiting for a reload). */
 export function matches(j: JobState, f0: FeedFilter, project: string | null, scope0: FeedScope = null): boolean {
-  const any = j as any; const f = effectiveFilter(f0);
+  const any = j as any; if (any.input?.reelParentId) return false; const f = effectiveFilter(f0);
   if (f.source === 'featured') return !!any.featured && j.status === 'done';
   const scope = scopeFor(f0, scope0);
   if (scope?.videoFeed && j.id && !inVideoFeed(j as any, scope.videoFeed)) return false;

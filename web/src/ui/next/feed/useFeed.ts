@@ -81,7 +81,7 @@ export function useFeed(live: JobState[], f: FeedFilter, project: string | null,
     const merged = server.map(j => { const l = byId.get(j.id); const lw = l && (LIVE.includes(l.status) || Number((l as any).updatedAt ?? 0) > Number((j as any).updatedAt ?? 0)); const lv = lw ? l : undefined; const p = patch[j.id];
       const c = prev.get(j.id); const out = c && c.s === j && c.l === lv && c.p === p ? c.out : { ...j, ...(lv ?? {}), ...(p ?? {}) } as JobState & { _gone?: boolean };
       kept.set(j.id, { s: j, l: lv, p, out }); return out; })
-      .filter(j => !j._gone && !(j as any).deletedAt && (!(j.id in patch) || matches(j, f, project, scope)));
+      .filter(j => !(j as any).input?.reelParentId && !j._gone && !(j as any).deletedAt && (!(j.id in patch) || matches(j, f, project, scope)));
     mergedRef.current = kept;
     const all = [...extra, ...merged]; const dir: 1 | -1 = f.sort === 'old' ? 1 : -1;
     return { jobs: all.sort(feedCompare(dir)), counted: ex.counted, serverShown: merged.length }; /* running, then queued, then the rest by date */
