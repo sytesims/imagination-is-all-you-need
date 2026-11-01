@@ -24,7 +24,7 @@ const G = (goal: WfGoal, ids: string[]): [string, WfGoal][] => ids.map((id) => [
 export const GOAL_OF: Record<string, WfGoal> = Object.fromEntries([
   ...G('create', ['v-create', 'v-loop', 'v-morph', 'v-transitions', 'v-photo-fx', 'i-create-image', 'i-camera-lens', 'd-image-to-3d', 'd-text-to-3d', 'd-multiview-to-3d', 'd-turntable', 'chain:picture-3d']),
   ...G('shop', ['i-product-shot', 'i-try-on', 'i-material-swap', 'i-remove-bg', 'i-camera-angles', 'v-orbit-shot', 'v-exploded-view']),
-  ...G('ads', ['i-ad-pack', 'v-ugc-ad', 'v-reframe', 'a-translate', 'v-photos-to-reel', 'chain:product-ad', 'chain:product-ad-multishot']),
+  ...G('ads', ['i-ad-pack', 'i-phone-photo', 'v-ugc-ad', 'v-reframe', 'a-translate', 'v-photos-to-reel', 'chain:product-ad', 'chain:product-ad-multishot']),
   ...G('people', ['i-character-sheet', 'i-face-swap', 'i-person-swap', 'v-motion-control', 'v-object-swap', 'v-lip-sync', 'a-voiceover', 'a-change-voice', 'chain:presenter']),
   ...G('film', ['v-direct-a-shot', 'v-reshoot', 'v-new-angle', 'v-camera-moves', 'v-extend', 'v-restyle', 'v-anime-restyle', 'fx-day-to-night', 'fx-rain', 'fx-flood',
     'chain:sketch-film', 'chain:kdrama', 'chain:long-take']),
