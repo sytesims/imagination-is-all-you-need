@@ -17,11 +17,12 @@ for (const provider of ['local-whisper-nllb-chatterbox', 'local-whisper-nllb-f5'
   assert.equal(p.separation, true); assert.equal(p.passes.length, 2, provider);
   assert.equal(p.passes[0].workflow, S.SEPARATION_WORKFLOW); assert.equal(p.passes[0].output, '4'); assert.deepEqual(p.passes[0].extraOutputs, [{ node: '5', label: 'Background' }]);
   assert.equal(p.passes[0].graph['3'].class_type, 'MelBandRoFormerSampler'); assert.deepEqual(p.passes[0].graph['1'].inputs.audio, { __file: '/clip.mp4' });
-  const prep = p.passes[1].prep!; const ref = prep.find((x) => x.kind === 'fileFromPass') as any; const sp = prep.find((x) => x.kind === 'speech') as any;
+  const prep = p.passes[1].prep!; const ref = prep.find((x) => x.kind === 'fileFromPass') as any; const sp = prep.find((x) => x.kind === 'speechLines') as any;
   assert.deepEqual(ref, { kind: 'fileFromPass', from: { pass: 0, index: 0 }, node: '1', field: 'audio' }, `${provider}: clone from the vocals stem`);
   assert.deepEqual(sp.srcPass, { pass: 0, index: 0 }, `${provider}: transcribe the vocals`);
   assert.ok(prep.indexOf(ref) < prep.indexOf(sp));
-  assert.deepEqual(p.post, { kind: 'voiceMix', pass: 1, beds: [{ from: { pass: 0, index: 1 }, volume: 1 }] });
+  assert.deepEqual(p.post, { kind: 'voiceMix', pass: 1, beds: [{ from: { pass: 0, index: 1 }, volume: 1 }], lines: true, maxSpeed: 1.2 });
+  assert.deepEqual([sp.node, sp.save], ['2', '3'], 'every line voiced in the pass (translate-dub.test.ts)');
   assert.deepEqual(p.muxOnto, { video: '/clip.mp4', mix: 'replace' }, 'the mixed track replaces the clip sound');
   assert.deepEqual(p.notes, []);
 }
@@ -35,15 +36,16 @@ ok('translate + separation: template pass, vocals as clone ref and transcript, b
 }
 ok('translate + separation: blend ducks the original voice; an uploaded voice sample stays the clone reference');
 
-// --- Translate, no separation: today's plan + the note
+// --- Translate, no separation: one voice pass (lines placed as usual) + the note; blend keeps today's whole original at 25 % under the voice
 for (const mix of ['replace', 'blend']) {
   const p = buildPlan(job('local-whisper-nllb-chatterbox', { mode: 'translate', mix }) as any, { separation: false });
   assert.equal(p.separation, false); assert.equal(p.passes.length, 1); assert.equal(p.passes[0].workflow, 'voice-chatterbox-ml-api.json');
   assert.equal(p.passes[0].prep!.some((x) => x.kind === 'fileFromPass'), false); assert.equal((p.passes[0].prep![0] as any).srcPass, undefined);
-  assert.equal(p.muxOnto!.mix, mix); assert.deepEqual(p.notes, [S.NO_SEPARATION_NOTE]); assert.equal(S.NO_SEPARATION_NOTE, 'Background music not kept: add the separation model.');
+  assert.deepEqual(p.post, { kind: 'voiceMix', pass: 0, beds: mix === 'blend' ? [{ from: 'source', volume: 0.25 }] : [], lines: true, maxSpeed: 1.2 });
+  assert.equal(p.muxOnto!.mix, 'replace', 'the mixed track replaces the clip sound'); assert.deepEqual(p.notes, [S.NO_SEPARATION_NOTE]); assert.equal(S.NO_SEPARATION_NOTE, 'Background music not kept: add the separation model.');
   assert.ok(!files(p.passes[0].graph).some((f) => f.includes('Roformer')));
 }
-ok('translate without separation: one pass as before, mix as asked, plain note');
+ok('translate without separation: one voice pass, original ducked (blend) or dropped (replace), plain note');
 
 // --- Change Voice: the same shared step
 {

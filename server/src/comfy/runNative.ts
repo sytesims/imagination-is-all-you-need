@@ -5,14 +5,15 @@
  */
 import path from 'node:path';
 import { copyFile, writeFile, mkdir, readFile } from 'node:fs/promises';
-import { translateText } from '../translate.js';
-import { transcribe } from '../voiceRunner.js';
+import { translateText, translateLines } from '../translate.js';
+import { transcribe, transcribeSegments } from '../voiceRunner.js';
+import { lineGraph } from './dubMix.js';
 import type { Job } from '../jobs.js';
 import { config, DATA_DIR } from '../config.js';
 import { env } from '../env.js';
 import { runFfmpeg, remuxAudio, flattenAlpha } from '../ffmpeg.js';
 import { ComfyNative, ComfyTimeoutError } from './native.js';
-import { buildPlan, type Plan, type Prep } from './plans.js';
+import { buildPlan, type Plan, type Prep, type Pass } from './plans.js';
 import { blendArgs } from './restyle.js';
 import { recordSubmittedPass } from '../workflowExport.js';
 import { putPreview, previewMethod } from './preview.js';
@@ -39,7 +40,15 @@ const CAPTURE = env('CAPTURE_GRAPHS') || '';
 /** A free step on this computer before anything is sent (transcribe / translate / ffmpeg) failed: the job fails with its own words, not as a ComfyUI failure. */
 export class PrepError extends Error {}
 async function ff(args: string[], what: string) { const c = await runFfmpeg(args); if (c !== 0) throw new Error(`ffmpeg ${what} failed (exit ${c})`); }
-async function doPrep(p: Prep, outs: string[][], graph: Record<string, any> = {}, job?: Job) {
+async function doPrep(p: Prep, outs: string[][], graph: Record<string, any> = {}, job?: Job, pass?: Pass) {
+  if (p.kind === 'speechLines') { // Translate a video: Whisper's timed lines → translated with their breaks kept → every line voiced in this one pass
+    const src = p.srcPass ? outs[p.srcPass.pass]?.[p.srcPass.index] : p.src; if (!src) throw new Error('the separated voice is missing');
+    const tr = await transcribeSegments(src); if (!tr.segments.length) throw new Error('No speech was found in the clip to translate');
+    const texts = await translateLines(tr.segments.map((x) => x.text), p.translateTo, tr.language || 'en');
+    const extra = lineGraph(graph, p.node, p.save, p.field, texts); if (pass) pass.extraOutputs = extra.map((node, k) => ({ node, label: `Line ${k + 2}` }));
+    if (job) { job.input.translatedText = { text: texts.join(' '), language: p.translateTo }; /* captions.ts: the result's subtitles use these exact words */
+      job.input.dubLines = tr.segments.map((x, k) => ({ start: x.start, end: x.end, text: texts[k] })); }
+    return; }
   if (p.kind === 'fileFromPass') { const f = outs[p.from.pass]?.[p.from.index]; if (!f) throw new Error(`pass ${p.from.pass + 1} produced no output ${p.from.index + 1}`); graph[p.node].inputs[p.field] = { __file: f }; return; }
   if (p.kind === 'speech') { const src = p.srcPass ? outs[p.srcPass.pass]?.[p.srcPass.index] : p.src; if (!src) throw new Error('the separated voice is missing'); const tr = await transcribe(src); if (!tr.text.trim()) throw new Error('No speech was found in the clip to translate'); const t = await translateText(tr.text, p.translateTo, tr.language || 'en'); graph[p.node].inputs[p.field] = t;
     if (job) job.input.translatedText = { text: t, language: p.translateTo }; /* captions.ts: the result's subtitles use these exact words */ return; }
@@ -68,7 +77,8 @@ export async function runNative(job: Job, transport?: ComfyTransport, build: (j:
   const c: ComfyTransport = transport ?? new ComfyNative(config.comfyBaseUrl, config.comfyApiKey ? { Authorization: `Bearer ${config.comfyApiKey}` } : {});
   job.status = 'running'; job.queuePos = 0; job.stage = 'uploading'; job.progress = 0; job.progressKind = 'indeterminate'; job.steps = null; job.liveStage = null;
   const plan: Plan = build(job as any, { srcFps: job.input.videoPath ? await probeFps(job.input.videoPath) : undefined });
-  if (typeof plan.separation === 'boolean') job.input.separation = plan.separation; // Get workflow rebuilds this run's plan, not today's readiness
+  if (typeof plan.separation === 'boolean') { job.input.separation = plan.separation; // Get workflow rebuilds this run's plan, not today's readiness
+    if (!plan.separation) for (const n of plan.notes) if (!(job.warnings ??= []).includes(n)) job.warnings.push(n); } // "Background music not kept: …"
   job.input.comfyPlan = { passes: plan.passes.map((p) => ({ label: p.label, workflow: p.workflow })), post: plan.post.kind, notes: plan.notes }; notePlanPrompts(job, plan);
   const local = !transport && String(job.route ?? '').startsWith('local:'); const S = local ? await import('../hardware/stages.js') : null;
   if (S) await S.prePhase(job, false); // HW-SHAPES Q4: downloadWeights=1 → downloading_model through the shared downloader (never automatic)
@@ -80,7 +90,7 @@ export async function runNative(job: Job, transport?: ComfyTransport, build: (j:
   const timed: import('../stepEta.js').PassTiming[] = []; let est: import('../stepEta.js').EtaRange | null = null; const runT0 = Date.now(); let sig: string | null = null;
   for (const [k, pass] of plan.passes.entries()) {
     if ((job.status as string) === 'canceled') return;
-    for (const p of pass.prep ?? []) await doPrep(p, outs, pass.graph, job).catch((e) => { throw new PrepError(e instanceof Error ? e.message : String(e)); });
+    for (const p of pass.prep ?? []) await doPrep(p, outs, pass.graph, job, pass).catch((e) => { throw new PrepError(e instanceof Error ? e.message : String(e)); });
     const graph = await substitute(pass.graph, c, cache);
     (await import('../stepEta.js')).applyGgufVariant(graph, variant); // Q7 GGUF drop-in
     if (PV) PV.applyFileSwap(graph, PV.swapsFor([pass.workflow], plat));
@@ -174,7 +184,14 @@ export async function runNative(job: Job, transport?: ComfyTransport, build: (j:
   else if (plan.post.kind === 'voiceMix') { // the new voice over the separated background (comfy/dubMix.ts), one track that replaces the clip's sound
     const { voiceMixArgs } = await import('./dubMix.js'); const pp = plan.post; const fileOf = (f: import('./plans.js').PassFile) => { const x = outs[f.pass]?.[f.index]; if (!x) throw new Error(`pass ${f.pass + 1} produced no output ${f.index + 1}`); return x; };
     const beds = pp.beds.map((b) => ({ file: b.from === 'source' ? String(job.input.videoPath ?? job.input.sourceAudioPath) : fileOf(b.from), volume: b.volume }));
-    const o = out(0, '.mix.wav'); await ff(voiceMixArgs(beds, [{ file: outs[pp.pass][0], at: 0, speed: 1 }], o), 'voice mix'); finals.push({ label: plan.labels?.[pp.pass] ?? 'Result', file: o }); }
+    let voices = [{ file: outs[pp.pass][0], at: 0, speed: 1 }];
+    if (pp.lines) { // Translate: each line at its original start, sped up to fit (comfy/dubMix.ts fitLines; the method is described there)
+      const { fitLines, fitNotes } = await import('./dubMix.js'); const { mediaDuration } = await import('../ffmpeg.js');
+      const files = outs[pp.pass]; const lines = (job.input.dubLines ?? []) as { start: number; end: number }[]; if (lines.length !== files.length) throw new Error(`expected ${lines.length} voiced lines, got ${files.length}`);
+      const made = await Promise.all(files.map((f) => mediaDuration(f))); const total = job.input.videoPath ? await mediaDuration(job.input.videoPath) : 0;
+      const fit = fitLines(lines, made, total, pp.maxSpeed); voices = files.map((f, k) => ({ file: f, at: fit[k].at, speed: fit[k].speed }));
+      job.input.dubFit = fit; const notes = fitNotes(fit); if (notes.length) (job.warnings ??= []).push(...notes); }
+    const o = out(0, '.mix.wav'); await ff(voiceMixArgs(beds, voices, o), 'voice mix'); finals.push({ label: plan.labels?.[pp.pass] ?? 'Result', file: o }); }
   else if (plan.post.kind === 'xfade') { const o = out(0, '.xfade.mp4'); await ff(blendArgs(outs.map((f) => f[0]), plan.post.chunks, o), 'crossfade'); finals.push({ label: 'Result', file: o }); }
   else if (plan.post.kind === 'talkJoin') { const o = out(0, '.talk.mp4'); const { talkJoinArgs } = await import('./infiniteTalkCloud.js'); // Talking Video: parts + crossfades + the full speech
     await ff(talkJoinArgs(outs.map((f) => f[0]), plan.post.parts, plan.post.audio, o, plan.post.fade, plan.post.fps), 'talking video join'); finals.push({ label: plan.labels?.[0] ?? 'Talking video', file: o }); }

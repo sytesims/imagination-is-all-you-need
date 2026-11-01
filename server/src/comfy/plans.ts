@@ -34,6 +34,7 @@ import { mmaudioParts, MMAUDIO_CHUNK_SEC, MMAUDIO_FPS } from '../shared/mmaudioP
 import { QWEN3_TTS, QWEN3_TTS_WORKFLOW, patchQwen3Tts } from '../tools/voice/qwen3tts.js';
 import { resolutionSelectorAspect } from './resolutionSelector.js';
 import { SEPARATION_WORKFLOW, SEP_NODES, NO_SEPARATION_NOTE, separationStatus } from './separation.js';
+import { DUB_SPEED } from './dubMix.js';
 
 export type FileRef = { __file: string };
 export const F = (p: string): FileRef => ({ __file: p });
@@ -46,6 +47,9 @@ export type Prep =
   | { kind: 'textFromPass'; pass: number; node: string; field: string; translateTo?: string }
   /** server-side: transcribe `src` (faster-whisper), translate (NLLB-200 / LibreTranslate), write into graph[node].inputs[field] */
   | { kind: 'speech'; src: string; node: string; field: string; translateTo: string; /** transcribe this earlier pass output instead of src (the separated voice) */ srcPass?: PassFile }
+  /** Translate a video, line by line: transcribe `src` (or an earlier pass's output: the separated voice) into Whisper's timed lines, translate them
+   *  keeping the line breaks, and voice every line in this one pass (comfy/dubMix.ts lineGraph: `node` + its save node `save` cloned per line). */
+  | { kind: 'speechLines'; src: string; srcPass?: PassFile; node: string; field: string; save: string; translateTo: string }
   /** an earlier pass's output file → graph input (the separated voice as the clone reference) */
   | { kind: 'fileFromPass'; from: PassFile; node: string; field: string };
 /** One output file of an earlier pass: outs[pass][index] (index follows output, then extraOutputs). */
@@ -68,7 +72,7 @@ export type Post =
   /** LTX-2.5 Extend: join the pass output onto the conformed source (comfy/ltx25Extend.ts joinExtension) */
   | { kind: 'extend'; plan: ExtendPlan; label: string; /** the clip to join onto (default input.videoPath; H3 Extend · Comfy Cloud: its conformed copy) */ source?: string; /** keep at most this many frames of the render (H3's grid rounds up) */ maxGenFrames?: number }
   /** Voice tools (comfy/dubMix.ts): the voice pass's output mixed over beds (separated background, or the ducked original) into one track. */
-  | { kind: 'voiceMix'; pass: number; beds: MixBed[] }
+  | { kind: 'voiceMix'; pass: number; beds: MixBed[]; /** Translate: the pass made one file per line (job.input.dubLines), each placed at its line's start and sped up to fit (comfy/dubMix.ts fitLines) */ lines?: boolean; maxSpeed?: number }
   | { kind: 'splice'; ranges: { start: number; end: number }[]; extraEach: number; fps: number; width: number; height: number };
 export interface Plan { tool: string; passes: Pass[]; post: Post; outKind: 'video' | 'image' | 'audio'; muxSourceAudio: boolean; labels?: string[]; notes: string[]; /** final ffmpeg fps resample */ postFps?: number; /** audio outputs muxed onto this video (replace or duck the original) */ muxOnto?: { video: string; mix: 'replace' | 'blend' };
   /** Voice tools: the plan splits voice from background first (comfy/separation.ts); kept on the job so a rebuild (Get workflow) matches the run. */ separation?: boolean }
@@ -524,7 +528,7 @@ function voice(job: Job, o: { separation?: boolean } = {}): Plan {
   } else if (mode === 'translate') {
     const lang = i.language ?? 'en'; // transcript (faster-whisper) + translation (NLLB-200 or LibreTranslate) run server-side as a prep step
     if (sep) passes.push(sepPass(src)); // pass 0: voice + background; the voice is transcribed and cloned, the background stays under the new voice
-    const speech = (node: string, field: string) => ({ kind: 'speech' as const, src, node, field, translateTo: lang, ...(sep ? { srcPass: VOCALS } : {}) });
+    const speech = (node: string, field: string) => ({ kind: 'speechLines' as const, src, node, field, save: '3', translateTo: lang, ...(sep ? { srcPass: VOCALS } : {}) }); // every line voiced, then placed at its own start
     const ref = (node: string) => (sep && !sample ? [{ kind: 'fileFromPass' as const, from: VOCALS, node, field: 'audio' }] : []); // clone from the voice stem, never from the music
     if (job.provider === 'local-whisper-nllb-f5') {
       const model = F5_LANG[lang]; if (!model) throw new Error(`F5-TTS has no ${LANG_NAME[lang] ?? lang} model; pick Chatterbox for this language`);
@@ -538,10 +542,12 @@ function voice(job: Job, o: { separation?: boolean } = {}): Plan {
   const last = passes.length - 1; const blend = i.mix === 'blend' && i.hasAudio !== false;
   const notes = canSep && !sep ? [NO_SEPARATION_NOTE] : [];
   // With separation: the new voice over the background stem (blend: the original voice ducked under it too), mixed into one track that replaces the clip's sound.
-  const post: Post = sep ? { kind: 'voiceMix', pass: last, beds: [{ from: BACKGROUND, volume: 1 }, ...(blend ? [{ from: VOCALS, volume: 0.25 }] : [])] } : { kind: 'each', only: [last] };
+  // Translate always mixes (its lines are placed on the clip's timeline); without separation its bed is the whole original at 25 % (blend) or nothing (replace).
+  const beds: MixBed[] = sep ? [{ from: BACKGROUND, volume: 1 }, ...(blend ? [{ from: VOCALS, volume: 0.25 }] : [])] : blend ? [{ from: 'source', volume: 0.25 }] : [];
+  const post: Post = mode === 'translate' ? { kind: 'voiceMix', pass: last, beds, lines: true, maxSpeed: DUB_SPEED.default } : sep ? { kind: 'voiceMix', pass: last, beds } : { kind: 'each', only: [last] };
   const base = { tool: job.toolId, post, muxSourceAudio: false, notes, passes, labels: passes.map((p) => p.label), ...(canSep ? { separation: sep } : {}) };
   if (i.audioInput || !src) return { ...base, outKind: 'audio' }; // DP #22: audio in → the changed voice as audio, nothing to mux onto
-  return { ...base, outKind: 'video', muxOnto: { video: src, mix: sep ? 'replace' : blend ? 'blend' : 'replace' } };
+  return { ...base, outKind: 'video', muxOnto: { video: src, mix: post.kind === 'voiceMix' || !blend ? 'replace' : 'blend' } };
 }
 /** Pass 0 of a separated voice job: the official MelBand RoFormer template (comfy/separation.ts) on the source sound → vocals (index 0) + background (index 1). */
 const VOCALS: PassFile = { pass: 0, index: 0 }; const BACKGROUND: PassFile = { pass: 0, index: 1 };
