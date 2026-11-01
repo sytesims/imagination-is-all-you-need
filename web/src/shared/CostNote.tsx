@@ -12,7 +12,9 @@ import { useBilling, modeOf, costShort, costTitle, demoRealText, fmtUsd, RULE_TE
  *  the disabled Generate state and its reason popover. Renders nothing when there's nothing to say. */
 const art = (n: any) => /^(8|11|18)(\D|$)/.test(String(n)) ? 'an' : 'a';
 export function estimateWords(q: any): { short: string; long: string } | null {
-  if (!q?.estimated) return null; const sec = q?.assumedSeconds; const sz = q?.assumedSize, out = q?.assumedOutputSize, sc = q?.assumedScale;
+  if (!q?.estimated) return null; const sec = q?.assumedSeconds;
+  const m0 = typeof q?.estimateMessage === 'string' ? q.estimateMessage.trim() : '';
+  if (q?.estimateReason === 'billed_cap' && Number(q?.capSeconds) > 0) return { short: `Priced at up to ${q.capSeconds}\u00a0s.`, long: m0 || `Priced at up to ${q.capSeconds} s, whatever your clip's length.` }; /* P3-02: a model with no length field (Seed Audio) bills up to its cap; it doesn't follow the clip */ const sz = q?.assumedSize, out = q?.assumedOutputSize, sc = q?.assumedScale;
   const okSz = (x: any) => x && Number(x.width) > 0 && Number(x.height) > 0;
   if (sec) return { short: `Estimated for ${sec}\u00a0s. Updates when your clip loads.`,
     long: `Estimated for ${art(sec)} ${sec} s ${okSz(sz) ? `${Math.min(sz.width, sz.height)}p ` : ''}clip${sc ? ` at ${sc}×` : ''}${okSz(out) ? `, ${out.width}×${out.height} out` : ''}. The price follows your clip's length and updates once it loads.` };
