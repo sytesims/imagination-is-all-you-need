@@ -6,6 +6,9 @@ const { VIDEO_WORKFLOWS, VIDEO_REDIRECTS, VIDEO_PAGE, OLD_VIDEO_PAGE, VIDEO_TOOL
 const { IMAGE_REDIRECTS } = await import('../src/shared/imageFeatures.ts');
 const { redirectTarget, toolHandoffHref, toolOpenHref } = await import('../../web/src/shared/workflowLinks.ts');
 const ok = (m: string) => console.log('ok ' + m);
+/* Cutout is a plugin (plugins/cutout/plugin.json, tab video): placed into VIDEO_WORKFLOWS from its manifest, as the server and app do (shared/pluginPlacement.ts) */
+{ const fs = await import('node:fs'); const m = JSON.parse(fs.readFileSync(new URL('../../plugins/cutout/plugin.json', import.meta.url), 'utf8'));
+  (await import('../src/shared/pluginPlacement.ts')).placeVideoPlugins([{ id: m.id, name: m.name, description: m.description, plugin: { id: m.id, tab: m.tab, category: m.category, input: m.input, author: m.author, handler: !!m.handler, license: { id: m.license.id, name: 'MIT' } } }]); }
 
 // every workflow runs on a registered tool, ids are unique, each has three How it works steps and its inputs
 await import('../src/tools/apps.ts'); const { listTools } = await import('../src/tools/registry.ts');
@@ -28,7 +31,7 @@ ok(`${VIDEO_WORKFLOWS.length} video workflows, each on a registered tool (Lip Sy
 // old pages → the Video page with the workflow, query + hash kept, case and trailing slash tolerated
 const OLD: [old: string, wf: string][] = [['/tools/edit-video', 'edit-video'], ['/tools/motion-transfer', 'motion-control'], ['/tools/reshoot', 'reshoot'], ['/tools/h3-extend', 'extend'],
   ['/tools/object-swap', 'object-swap'], ['/tools/face-swap', 'object-swap'], ['/tools/restyle', 'restyle'], ['/tools/upscale', 'upscale'], ['/tools/reframe', 'reframe'], ['/tools/remove-bg', 'remove-bg'],
-  ['/tools/cutout', 'cutout'], ['/tools/sdr-hdr', 'sdr-hdr'], ['/tools/fps-boost', 'fps-boost'], ['/tools/depth-map', 'depth-map'], ['/tools/camera', 'camera-moves'], ['/tools/photo-fx', 'photo-fx'],
+  ['/tools/sdr-hdr', 'sdr-hdr'], ['/tools/fps-boost', 'fps-boost'], ['/tools/depth-map', 'depth-map'], ['/tools/camera', 'camera-moves'], ['/tools/photo-fx', 'photo-fx'],
   ['/tools/app-orbit-shot', 'orbit-shot'], ['/tools/app-transition', 'transitions'], ['/tools/app-ugc-ad', 'ugc-ad'], ['/tools/app-anime-restyle', 'anime-restyle'], ['/tools/app-video-upscale', 'draft-upscale']];
 for (const [old, wf] of OLD) {
   const want = `${VIDEO_PAGE}?workflow=${wf}`;
@@ -37,6 +40,9 @@ for (const [old, wf] of OLD) {
   assert.equal(redirectTarget(`${old}/`, '?preset=push-slow', '#x', VIDEO_REDIRECTS), `${want}&preset=push-slow#x`, `${old}/: preset + hash kept`);
   assert.equal(redirectTarget(old.toUpperCase(), '', '', VIDEO_REDIRECTS), want, `${old}: case-insensitive`);
 }
+// a plugin's own page (/tools/cutout) opens its workflow too: placed at run time, so videoRedirect (not the static table) says so
+assert.equal(VIDEO_REDIRECTS['/tools/cutout'], undefined, 'Cutout is not hand-written in the table');
+assert.equal(videoRedirect('/tools/cutout', '?fromJob=j1', ''), `${VIDEO_PAGE}?workflow=cutout&fromJob=j1`, '/tools/cutout → its workflow, query kept');
 // no clash with the image table (the image Remove Background is /tools/app-remove-bg)
 for (const k of Object.keys(VIDEO_REDIRECTS)) assert.equal(IMAGE_REDIRECTS[k], undefined, `${k} is not also an image redirect`);
 assert.equal(VIDEO_REDIRECTS['/video'], undefined, 'the Video page itself does not redirect'); ok(`${OLD.length} old video pages redirect to their workflow with query and hash kept`);

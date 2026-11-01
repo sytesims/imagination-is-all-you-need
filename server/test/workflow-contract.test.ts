@@ -22,7 +22,11 @@ for (const k of Object.keys(WF_EXCLUDED)) { assert.ok(keys.has(k), `excluded ${k
 ok(`${WF_SOURCES.length} tab workflows: ${WF_ENTRIES.length} cards, ${Object.keys(WF_EXCLUDED).length} left out on purpose with a reason`);
 
 // 2. server tools ↔ cards
-const tools = listTools().filter((t: any) => t.status !== 'soon'); const used = new Set(WF_ENTRIES.map((e) => e.toolId));
+const tools = listTools().filter((t: any) => t.status !== 'soon');
+/* a plugin with a tab gets its card from its manifest (shared/pluginPlacement.ts pluginWfEntries), not from WF_ENTRIES */
+const { pluginWfEntries } = await import('../src/shared/pluginPlacement.ts'); const plugged = pluginWfEntries(tools as any);
+assert.ok(plugged.some((e) => e.id === 'v-cutout' && e.plugin), 'Cutout gets its card from its manifest');
+const used = new Set([...WF_ENTRIES, ...plugged].map((e) => e.toolId));
 for (const t of tools) assert.ok(used.has(t.id) || WF_TOOLS_EXCLUDED[t.id], `tool ${t.id} (${t.name}): a card or a reason in WF_TOOLS_EXCLUDED`);
 for (const id of Object.keys(WF_TOOLS_EXCLUDED)) { assert.ok(getTool(id), `excluded tool ${id} exists`); assert.ok(!used.has(id), `excluded tool ${id} has no card`); }
 for (const e of WF_ENTRIES) { assert.ok(getTool(e.toolId), `${e.id}: tool ${e.toolId} exists`);

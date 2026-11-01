@@ -16,6 +16,7 @@ import { registerModelInfo, Info } from './models.js';
 import { RESOLUTIONS } from './media.js';
 import type { Job } from './jobs.js';
 import type { ToolDef } from './tools/types.js';
+import { placementErrors, placeVideoPlugins, TAB_LABEL, type PluginTab } from './shared/pluginPlacement.js';
 import { mapGraph, hasFileKey, pluginOutKind, registerPluginSpec, clearPluginSpecs } from './pluginGraph.js';
 export { mapGraph } from './pluginGraph.js';
 
@@ -25,6 +26,13 @@ export interface PluginNodeMap { inputs: Partial<Record<'video' | 'image' | 'pro
 export interface PluginManifest {
   schema: number; id: string; name: string; version?: string; category: string; description: string; status?: string; previewUrl?: string | null;
   input: 'image' | 'video';
+  /** Where it shows up (shared/pluginPlacement.ts): the tab, and `category` is then one of that tab's workflow categories (video: create, edit,
+   *  motion, camera, apps). Without `tab`, `category` is only the tool's group and the plugin is listed on the Plugins page. */
+  tab?: PluginTab;
+  /** The Workflows page goal (create, shop, ads, people, film, music, fix). */
+  goal?: string;
+  /** Who made it, shown on its card. */
+  author?: string;
   /** What the plugin makes (default: read from the node map's output node, SaveImage → image, else video). */
   output?: 'image' | 'video';
   inputs?: { prompt?: boolean; mix?: number; durations?: number[]; enhance?: boolean; steps?: number[]; resolutions?: string[]; fields?: FieldSpec[] };
@@ -66,6 +74,7 @@ export function validateManifest(m: any, dir: string): { errors: string[]; warni
   else if (getTool(m.id)) e.push(`id "${m.id}" is already used by another tool`);
   for (const k of ['name', 'category', 'description'] as const) if (!isStr(m[k], k === 'description' ? 500 : 60)) e.push(`${k} is required (non-empty string)`);
   if (m.input !== 'image' && m.input !== 'video') e.push('input must be "image" or "video"');
+  e.push(...placementErrors(m));
   if (m.output != null && m.output !== 'image' && m.output !== 'video') e.push('output must be "image" or "video"');
   if (!Array.isArray(m.presets) || !m.presets.length) e.push('presets must be a non-empty array (they are the tool\'s type grid)');
   else m.presets.forEach((p: any, i: number) => { if (!isObj(p) || !isStr(p.id, 40) || !isStr(p.label, 60) || typeof p.prompt !== 'string') e.push(`presets[${i}] needs id, label, prompt`); });
@@ -149,7 +158,7 @@ async function loadOne(dir: string): Promise<PluginStatus> {
   const inp = m.inputs ?? {};
   const outKind = pluginOutKind(v.graph, v.nodeMap, m.output);
   const app = makeApp({
-    id: m.id, name: m.name, description: m.description, category: m.category, status: m.status, previewUrl: m.previewUrl ?? null, input: m.input,
+    id: m.id, name: m.name, description: m.description, category: m.tab ? TAB_LABEL[m.tab] : m.category, status: m.status, previewUrl: m.previewUrl ?? null, input: m.input,
     types: m.presets.map((p) => ({ ...p })), mix: inp.mix, durations: inp.durations, enhance: inp.enhance, steps: inp.steps, prompt: inp.prompt, resolutions: inp.resolutions,
     fields: inp.fields, workflow: workflowId, model: m.model ?? m.name, gpuSecPerSec: m.pricing.gpuSecPerSec, stages: m.stages, providers: m.providers ?? ['comfy-open'],
   });
@@ -162,7 +171,7 @@ async function loadOne(dir: string): Promise<PluginStatus> {
   const baseParse = app.parseInput; const baseRun = app.run;
   const tool: ToolDef = {
     ...app, pricing: { optionFactors: m.pricing.optionFactors, providerFactors: m.pricing.providerFactors },
-    plugin: { id: m.id, dir, version: m.version, license: gov, handler: !!st.handler },
+    plugin: { id: m.id, dir, version: m.version, license: gov, handler: !!st.handler, tab: m.tab ?? null, category: m.tab ? m.category : null, goal: m.goal ?? null, author: m.author ?? null, input: m.input, output: outKind },
     parseInput: async (f, fl) => { const r = await (handler.parseInput ? handler.parseInput(f, fl, { ...ctx, base: () => baseParse(f, fl) }) : baseParse(f, fl)); return outKind === 'image' && !('error' in r) ? { ...r, outKind } : r; },
     /* Reached only when the job does not run on your own ComfyUI (providers.ts sends local runs to comfy/runNative.ts with the plan from comfy/plans.ts):
        a sample result, plus the workflow a real run would send (<jobId>-graph.json, shown by workflowExport.ts as a sample). */
@@ -195,5 +204,7 @@ export async function loadPlugins() {
     if (st.ok) console.info(`[openhiggsfield] plugin ${st.id} loaded${st.warnings.length ? ` (warnings: ${st.warnings.join('; ')})` : ''}`);
     else console.warn(`[openhiggsfield] plugin ${st.id} skipped: ${st.errors.join('; ')}`);
   }
+  /* plugins with a tab join that tab's lists (shared/pluginPlacement.ts): video ones into VIDEO_WORKFLOWS, so search (capabilities) and links see them */
+  placeVideoPlugins(status.flatMap((x) => (x.ok && x.toolId ? [getTool(x.toolId)!] : [])).filter(Boolean) as any);
   return status;
 }

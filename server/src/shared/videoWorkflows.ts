@@ -7,6 +7,7 @@
  */
 
 import { VIDEO_PAGE, OLD_VIDEO_PAGE, VIDEO_TOOL, THREE_D_PAGE, toolPage } from './pages.js';
+import type { PluginBadge } from './pluginPlacement.js';
 /** The Video page (/video, shared/pages.ts). Create Video is this page with no workflow picked. Its tool id stays VIDEO_TOOL (jobs, /api/tools/h3-video, MCP).
  *  toolPage(id) gives any tool's page when the tool list isn't at hand. */
 export { VIDEO_PAGE, OLD_VIDEO_PAGE, VIDEO_TOOL, toolPage };
@@ -25,6 +26,7 @@ export interface VideoWorkflow {
   /** Query the tool reads on mount (Lip sync is the voice tool's lipsync mode: ?mode=lipsync). */ params?: Record<string, string>;
   /** Extra render hint: the Motion Control copy on the swap screen, the Edit Video list, Stitch's own timeline panel (no registry tool: it posts
    *  /api/compose, ffmpeg on this computer, so it is always available). */ surface?: 'motion' | 'edit-hub' | 'stitch';
+  /** Set for a plugin placed here from its manifest (shared/pluginPlacement.ts placeVideoPlugins): its badge, author and licence. */ plugin?: PluginBadge;
 }
 
 const W = (w: VideoWorkflow) => w;
@@ -75,9 +77,7 @@ export const VIDEO_WORKFLOWS: VideoWorkflow[] = [
   W({ id: 'remove-bg', name: 'Remove Background', toolId: 'remove-bg', category: 'edit', tagline: 'Lift the subject off the background', needs: '1 clip',
     inputs: ['Clip'], oldRoutes: ['/tools/remove-bg'], inMenu: true,
     how: [['Upload your clip', 'A clear subject works best.'], ['Check the price', 'No settings needed.'], ['Generate', 'The subject on its own, ready to composite.']] }),
-  W({ id: 'cutout', name: 'Cutout', toolId: 'cutout', category: 'edit', tagline: 'Subject on a clean plate, plus alpha matte', needs: '1 clip',
-    inputs: ['Clip', 'Detail', 'Edge softness'], oldRoutes: ['/tools/cutout'], inMenu: true,
-    how: [['Upload your clip', 'A clear subject works best.'], ['Tune the edges', 'More detail for hair, softer edges for motion.'], ['Generate', 'A clean plate and an alpha matte.']] }),
+  /* Cutout is a plugin (plugins/cutout/plugin.json, tab video · edit): placed here at run time by shared/pluginPlacement.ts, after its tool loads. */
   W({ id: 'sdr-hdr', name: 'SDR to HDR', toolId: 'sdr-hdr', category: 'edit', tagline: 'More range in highlights and shadows', needs: '1 clip',
     inputs: ['Clip', 'Strength'], oldRoutes: ['/tools/sdr-hdr'], inMenu: true,
     how: [['Upload your clip', 'Standard dynamic range footage.'], ['Set the strength', 'How far to push highlights and shadows.'], ['Generate', 'An HDR10 version of the same clip.']] }),
@@ -182,6 +182,9 @@ export function videoRedirect(pathname: string, search: string, hash = ''): stri
   const g = /^\/(camera-moves|photo-fx)(?:\/([^/]+))?$/.exec(p);
   if (g) { const wf = g[1] === 'camera-moves' ? 'camera-moves' : 'photo-fx'; const rest = q.toString(); const extra = g[2] ? `&preset=${encodeURIComponent(decodeURIComponent(g[2]))}` : `&pick=${GALLERY_GROUP[wf]}`;
     return `${videoWorkflowHref(wf)}${extra}${rest ? `&${rest}` : ''}${hash}`; }
+  /* a placed plugin's own page (/tools/cutout): its workflow on the Video page (plugins join VIDEO_WORKFLOWS after VIDEO_REDIRECTS was built) */
+  const pl = /^\/tools\/([^/]+)$/.exec(p); const pw = pl && VIDEO_WORKFLOWS.find((x) => x.plugin && x.oldRoutes.includes(p));
+  if (pw) { const rest = q.toString(); return `${videoWorkflowHref(pw.id)}${rest ? `&${rest}` : ''}${hash}`; }
   const m = /^\/tools\/edit-video\/([^/]+)/.exec(p);
   if (m) { const w = VIDEO_WORKFLOWS.find((x) => x.id === m[1] || x.toolId === m[1]); const to = videoWorkflowHref(w?.id ?? 'edit-video'); const s = q.toString(); return `${to}${s ? `${to.includes('?') ? '&' : '?'}${s}` : ''}${hash}`; }
   return null;

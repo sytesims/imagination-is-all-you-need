@@ -32,7 +32,7 @@ ok('flow shortcuts open in the Video tab; only Direct a Shot leaves, marked “3
 
 // 3. every old standalone page of a video workflow tool redirects into the Video page
 for (const w of VIDEO_WORKFLOWS) for (const r of w.oldRoutes) assert.ok(VIDEO_REDIRECTS[r]?.startsWith(VIDEO_PAGE), `${r} redirects in`);
-for (const id of ['object-swap', 'motion-transfer', 'restyle', 'reshoot', 'camera', 'photo-fx', 'upscale', 'h3-extend', 'footage-fx', 'reframe', 'remove-bg', 'sdr-hdr', 'fps-boost', 'depth-map', 'cutout', 'app-transition', 'app-ugc-ad', 'app-orbit-shot', 'app-anime-restyle', 'app-video-upscale'])
+for (const id of ['object-swap', 'motion-transfer', 'restyle', 'reshoot', 'camera', 'photo-fx', 'upscale', 'h3-extend', 'footage-fx', 'reframe', 'remove-bg', 'sdr-hdr', 'fps-boost', 'depth-map', 'app-transition', 'app-ugc-ad', 'app-orbit-shot', 'app-anime-restyle', 'app-video-upscale'])
   assert.ok(VIDEO_REDIRECTS[`/tools/${id}`]?.startsWith(`${VIDEO_PAGE}?workflow=`), `/tools/${id} redirects to its workflow`);
 ok('old /tools/<id> video pages redirect to /video?workflow=<id>');
 

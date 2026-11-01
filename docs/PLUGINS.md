@@ -8,6 +8,15 @@ A plugin adds an app from a ComfyUI workflow, without touching the core. Drop a 
 - **Everywhere else: a sample.** In mock mode, on Comfy Cloud, or without a node map, the job gives a sample result and saves the workflow a real run would send (`data/<jobId>-graph.json`). The result's workflow export shows it labelled "Sample — nothing ran".
 - **Comfy Cloud:** plugins don't run there yet.
 
+## Where a plugin shows up
+
+Give the manifest a `tab` and a `category` and the plugin shows up in the app next to ours, with a small **Plugin** badge, its author and licence (and **Runs code** when the folder ships a handler):
+- **Video** (`"tab": "video"`): in the Video workflow picker under its category and in the header Video menu; `/video?workflow=<id>` opens it, and its old address `/tools/<id>` still works.
+- **Image, Audio, 3D**: a row in that tab's header menu, opening the plugin's own page.
+- **Workflows page and search**: a card under "Your plugins", found by the Workflows search, the header search and agents' `search_capabilities` / `search_workflows`.
+
+`category` is then one of that tab's own groups: image `edit | people | product | camera`, video `create | edit | motion | camera | apps`, audio `create | voice | video`, 3D `create | edit | video`. Without a `tab`, the plugin is listed on the Plugins page and `category` is only its group name.
+
 Plugins register into the same tool registry as the built-in tools, so a plugin tool automatically appears in:
 - the nav, Explore and Assets;
 - the media picker (its outputs show under Generations);
@@ -37,7 +46,10 @@ plugins/<folder>/
 |---|---|---|
 | `schema` | ✓ | `1` |
 | `id` | ✓ | `^[a-z][a-z0-9-]{1,39}$`, unique across tools. Becomes `/tools/<id>` and `/api/tools/<id>/jobs`. |
-| `name`, `category`, `description` | ✓ | Nav label, nav/Explore category, description. |
+| `name`, `category`, `description` | ✓ | Name, category, description. With a `tab`, `category` must be one of that tab's groups (above); the description's first sentence is the plugin's one line in menus. |
+| `tab` | | `image`, `video`, `audio` or `3d`: the tab it shows up in (above). |
+| `goal` | | A Workflows page goal id: `create`, `shop`, `ads`, `people`, `film`, `music` or `fix`. |
+| `author` | | Who made it, shown on its card. |
 | `version`, `status`, `previewUrl` | | `status` is a badge such as `new`. |
 | `input` | ✓ | `"video"` or `"image"`: the source upload. |
 | `output` | | `"image"` or `"video"`: what the plugin makes. Default: read from the node map's output node (`SaveImage` / `PreviewImage` → image, anything else → video). Must agree with that node. |
@@ -99,6 +111,7 @@ export default handler;
 
 ## Example: `plugins/cutout` (background removal)
 
+- **Placement:** `"tab": "video", "category": "edit", "goal": "fix"`: it sits with the Video edits. Remove Background lifts the subject off; Cutout gives the subject plus a black-and-white mask for editing.
 - **Pipeline:** BiRefNet (MIT) through the ComfyUI_BiRefNet_ll node pack (MIT). Video in; the subject comes out on a colour plate (green, blue, white or black presets), plus an alpha-matte video.
 - **Fields:** `detail` sets the processing size; `edgeSoftness` (1–30) sets the edge blur.
 - **Handler:** adds a speed warning for fine detail at 1080p and labels the two sample outputs (cutout and matte). On your own ComfyUI the run returns both from the node map (`output` + `extraOutputs`).
