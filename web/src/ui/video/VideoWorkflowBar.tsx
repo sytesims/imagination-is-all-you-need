@@ -39,7 +39,7 @@ import { useDockHeight, useChipFit } from '../../shared/dockFit';
 import { fitPri } from '../../shared/chipFit';
 import { foldedRow, FoldedRows, type RowOverflowRow } from '../../shared/RowMore';
 import { usePromptGrow } from '../../shared/usePromptGrow';
-import { useToolModels, modelOfEngine, shownName, setupPlacesOf, engineForModelParam, modelParam, useModelParamSync, useRouting } from '../../shared/models';
+import { useToolModels, modelOfEngine, shownName, setupPlacesOf, engineForModelParam, modelParam, useModelParamSync, useRouting, useRunOn, placeOf } from '../../shared/models';
 import { doSetupPlace } from '../../shared/SetupCard';
 import { pinQ } from '../routing/Routes';
 import { RunOnChip } from '../routing/RunOn';
@@ -146,7 +146,9 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
   const provInfo: any = tool.providers.find(p => p.id === prov);
   const pickedFx: any = (() => { const g = bar.controls.find(c => c.kind === 'gallery' && c.from === 'presets'); const v = g ? vals[g.field] : ''; return v ? (tool.presets ?? []).find((p: any) => p.id === v && Array.isArray(p.providers) && p.providers.includes(prov)) : null; })();
   /* the real model: a LoRA effect names its LoRA too (LTX-2.5 22B + XPLDV LoRA) */
-  const modelName = pickedFx?.modelName ?? (tm ? shownName(tm) : null) ?? provInfo?.displayName ?? provInfo?.name ?? prov;
+  /* where it runs changes the model: a Footage Effect on Comfy Cloud runs LTX-2.3 (the preset's cloudModelName, the same name the quote and job card use) */
+  const runPick = useRunOn(tool.id, tm?.key).runOn; const fxName: string | undefined = pickedFx?.cloudModelName && placeOf(tm, runPick) === 'comfy-cloud' /* the saved place, else the listing's pre-selection (the quote comes later in this bar) */ ? pickedFx.cloudModelName : pickedFx?.modelName;
+  const modelName = fxName ?? (tm ? shownName(tm) : null) ?? provInfo?.displayName ?? provInfo?.name ?? prov;
 
   /* ---- options: what this tool and model take ---- */
   const tileOpts = (field: string) => appFieldsOf(tool).find(f => f.name === field)?.options ?? [];
@@ -468,7 +470,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
             {toggles}
             <button ref={overRef} type="button" className={`ic-chip ic-sq ic-over${pop === 'over' ? ' on' : ''}`} aria-haspopup="menu" aria-expanded={pop === 'over'} aria-label="More settings" {...tip(pop === 'over' ? null : 'More settings')} data-testid="vbar-over" onClick={openOver}><MoreIcon size={16} /></button>
           </div>
-            {tm && <RunOnChip compact toolId={tool.id} model={tm} engine={prov} quote={q} testId="vs-run-on" watch={dock} />}
+            {tm && <RunOnChip compact toolId={tool.id} model={fxName ? { ...tm, name: fxName, displayName: fxName } /* Run on names the model this place runs */ : tm} engine={prov} quote={q} testId="vs-run-on" watch={dock} />}
             <BrandChip toolId={tool.id} watch={dock} />{/* Brand Kit: only the brand workflows (UGC Ad: the kit on its set, wardrobe and props) */}
           </div>
         </div>
