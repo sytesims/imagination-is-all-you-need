@@ -1,14 +1,17 @@
 /**
- * Plugins (2026-11-01 redesign): "Bring your own workflow". A plugin is a folder (plugins/<id>/: plugin.json, a ComfyUI workflow in API format,
- * node-map.json); after a restart it shows up in its tab next to the built-in ones (server shared/pluginPlacement.ts), runs for real on your own ComfyUI and
- * gives a sample result everywhere else. The page: a plain-words hero, how it works (folder → app), the installed plugins as cards (what it
- * makes, input → output, where it runs, licence, author, Plugin badge, Runs code, on/off, Open), the real sample files, and the built-in apps.
- * Layout: the user's pick "A" (2026-11-01): hero beside the flow, the cards, the files beside the small print, the built-ins.
+ * Your workflows (2026-11-01, was Plugins): the ComfyUI workflows you added. A big "Add a workflow" button (shared/AddWorkflow.tsx: drop a file,
+ * check the guessed nodes, save; it shows up in its tab at once), then your workflows as cards (on/off, open, remove, licence, "Added by you").
+ * The folder format, sample plugin.json / node-map.json, scripts and the add-ons and built-in apps sit under "For advanced users".
+ * Route stays /plugins (old links keep working). Data: GET /api/plugins (+ user), DELETE /api/workflows/:id, POST /api/plugins/:id.
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { listTools, type ToolInfo } from '../../api';
 import { Link } from '../../platform/router';
 import { Notice } from '../../shared/Notice';
+import { openAddWorkflow } from '../../shared/AddWorkflow';
+import { askConfirm } from '../../shared/Dialog';
+import { refreshTools } from '../../shared/useTools';
+import { useToast } from '../../shared/Toast';
 import { PluginBadge } from '../../shared/PluginBadge';
 import { tip } from '../../shared/Tooltip';
 import { repoDoc } from '../../shared/brand';
@@ -20,8 +23,8 @@ import './plugins.css';
 
 /** GET /api/plugins row (older servers omit the placement fields). */
 type P = { id: string; ok: boolean; errors?: string[]; warnings?: string[]; toolId?: string; name?: string; description?: string | null; version?: string | null; icon?: string | null;
-  homepageUrl?: string | null; enabled?: boolean; tab?: PluginTab | null; category?: string | null; goal?: string | null; author?: string | null; input?: 'image' | 'video' | null;
-  output?: 'image' | 'video' | null; runsCode?: boolean; license?: { id: string; name: string } | null };
+  homepageUrl?: string | null; enabled?: boolean; tab?: PluginTab | null; category?: string | null; goal?: string | null; author?: string | null; input?: 'image' | 'video' | 'none' | null;
+  output?: 'image' | 'video' | null; runsCode?: boolean; license?: { id: string; name: string } | null; /** added in the app (Add a workflow) */ user?: boolean };
 
 const SAMPLE_PLUGIN = `{
   "schema": 1,
@@ -63,7 +66,7 @@ const APP = 'M4 5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-
 const STEPS: { icon: string; title: string; line: ReactNode }[] = [
   { icon: FOLDER, title: 'Drop in a folder', line: <>Your ComfyUI workflow, a <code>node-map.json</code> and a <code>plugin.json</code> in <code>plugins/&lt;id&gt;/</code>.</> },
   { icon: RESTART, title: 'Restart the app', line: 'It checks the folder on start and lists anything to fix right here.' },
-  { icon: APP, title: 'It shows up next to the built-in ones', line: 'In its tab’s menu, on the Workflows page and in search, with a Plugin badge.' },
+  { icon: APP, title: 'It shows up next to the built-in ones', line: 'In its tab’s menu, on the Workflows page and in search, with an Add-on badge.' },
 ];
 /** How it works: folder → app, three steps on a vertical rail. */
 function Flow() {
@@ -76,31 +79,37 @@ function Honest() {
   return <ul className="plx-honest" data-testid="plugins-honest">
     <li><b>Runs on your own ComfyUI.</b> Install the workflow’s custom nodes and models there first.</li>
     <li><b>Anywhere else you get a sample</b> and the exact workflow a real run would send. Nothing is billed.</li>
-    <li><b>Not on Comfy Cloud yet.</b> A plugin’s workflow only runs on your own ComfyUI for now.</li>
+    <li><b>Not on Comfy Cloud yet.</b> These workflows only run on your own ComfyUI for now.</li>
     <li><b>Runs code</b> means the folder ships a handler that runs inside the app. Only add folders you trust.</li>
   </ul>;
 }
-const KIND: Record<string, string> = { image: 'Photo', video: 'Clip' };
+const KIND: Record<string, string> = { image: 'Photo', video: 'Clip', none: 'Prompt' };
 /** "Clip → Clip": what goes in and what comes out. */
-const io = (p: P) => p.input ? `${KIND[p.input]} → ${KIND[p.output ?? p.input]}` : null;
+const io = (p: P) => p.input ? `${KIND[p.input]} → ${p.output === 'image' ? 'Image' : p.output === 'video' ? 'Video' : KIND[p.input]}` : null;
 
 /** One installed plugin: what it makes, in → out, where it runs and where it shows up, licence, author, badge, on/off, Open. */
-function PluginCard({ p, tool }: { p: P; tool?: ToolInfo }) {
+function PluginCard({ p, tool, onRemoved }: { p: P; tool?: ToolInfo; onRemoved?: () => void }) {
+  const toast = useToast(); const [gone, setGone] = useState(false);
+  const remove = async () => { if (!(await askConfirm({ title: `Remove “${p.name || p.id}”?`, body: 'It leaves its tab, the Workflows page and search, and its folder is deleted. Your results stay in Assets.', confirm: 'Remove', danger: true }))) return;
+    try { const r = await fetch(`/api/workflows/${encodeURIComponent(p.id)}`, { method: 'DELETE' }); if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? String(r.status));
+      setGone(true); refreshTools(); toast(`Removed “${p.name || p.id}”`); onRemoved?.(); }
+    catch (e: any) { toast(`Couldn’t remove it: ${e?.message ?? e}`, 'error'); } };
   const name = p.name || p.id; const errs = p.errors ?? []; const warns = p.warnings ?? []; const failed = p.ok === false || errs.length > 0;
   const [on, setOn] = useState(p.enabled !== false); const [busy, setBusy] = useState(false); const [tErr, setTErr] = useState('');
   const toggle = async () => { if (busy) return; const next = !on; setOn(next); setBusy(true); setTErr('');
     try { const r = await fetch(`/api/plugins/${encodeURIComponent(p.id)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: next }) });
-      if (!r.ok) throw new Error(String(r.status)); const j = await r.json().catch(() => ({})); if (typeof j.enabled === 'boolean') setOn(j.enabled); }
+      if (!r.ok) throw new Error(String(r.status)); const j = await r.json().catch(() => ({})); if (typeof j.enabled === 'boolean') setOn(j.enabled); refreshTools(); }
     catch { setOn(!next); setTErr(next ? 'Couldn’t turn it on. Try again.' : 'Couldn’t turn it off. Try again.'); } finally { setBusy(false); } };
   const like = { id: p.toolId ?? p.id, name, description: p.description ?? '', route: tool?.route, plugin: { id: p.id, tab: p.tab, category: p.category, input: p.input ?? undefined } };
   const open = p.toolId ? (p.tab ? pluginHref(like) : tool?.route ?? toolPage(p.toolId)) : null;
-  const where = p.tab ? `${TAB_LABEL[p.tab]}${p.category ? ` › ${p.category[0].toUpperCase()}${p.category.slice(1)}` : ''}` : 'Plugins page only';
+  const where = p.tab ? `${TAB_LABEL[p.tab]}${p.category ? ` › ${p.category[0].toUpperCase()}${p.category.slice(1)}` : ''}` : 'This page only';
+  if (gone) return null;
   const st = failed ? ['err', 'Needs a fix'] : !on ? ['off', 'Off'] : ['ok', 'On'];
   return <article className={`plx-card${failed ? ' is-failed' : ''}${!on ? ' is-off' : ''}`} data-testid={`plugin-${p.id}`}>
     <header className="plx-card-head">
       <span className="plx-card-ic" aria-hidden>{p.icon ? <img src={p.icon} alt="" /> : p.toolId ? <ToolIconFor id={p.toolId} size={22} /> : name.slice(0, 1)}</span>
-      <span className="plx-card-t"><b>{name}<PluginBadge b={{ author: p.author ?? null, licence: p.license?.name ?? 'Unknown licence', runsCode: !!p.runsCode }} /></b>
-        <small>{p.author ? `by ${p.author}` : 'Author not given'}{p.version ? ` · v${p.version}` : ''}</small></span>
+      <span className="plx-card-t"><b>{name}<PluginBadge b={{ author: p.author ?? null, licence: p.license?.name ?? 'Unknown licence', runsCode: !!p.runsCode, user: !!p.user }} /></b>
+        <small>{p.user ? 'Added by you' : p.author ? `by ${p.author}` : 'Author not given'}{p.version && !p.user ? ` · v${p.version}` : ''}</small></span>
       {st[0] !== 'ok' && <span className={`plx-st plx-st-${st[0]}`}>{st[1]}</span>}
     </header>
     <p className="plx-card-line">{p.description ? pluginLine(like) : 'No description in this plugin’s manifest.'}</p>
@@ -112,22 +121,26 @@ function PluginCard({ p, tool }: { p: P; tool?: ToolInfo }) {
       {p.runsCode && <span className="plx-chip plx-chip-code" {...tip('Its folder ships a handler: code that runs inside the app')}>Runs code</span>}
     </div>
     <footer className="plx-card-foot">
-      <label className="plx-switch"><button type="button" role="switch" aria-checked={on} aria-label={`${name} plugin`} className={`plug-sw ${on ? 'on' : ''}`} data-testid={`plugin-toggle-${p.id}`} disabled={busy || failed} onClick={toggle}><i /></button>
-        <span>{failed ? 'Fix it, then restart the app' : on ? 'Shows in the app' : 'Hidden from the app'}</span></label>
-      <span className="plx-card-links">{p.homepageUrl && <a href={p.homepageUrl} target="_blank" rel="noreferrer">Homepage ↗</a>}
+      <label className="plx-switch"><button type="button" role="switch" aria-checked={on} aria-label={`Show ${name} in the app`} className={`plug-sw ${on ? 'on' : ''}`} data-testid={`plugin-toggle-${p.id}`} disabled={busy || failed} onClick={toggle}><i /></button>
+        <span>{failed ? (p.user ? 'Remove it and add it again' : 'Fix it, then restart the app') : on ? 'Shows in the app' : 'Hidden from the app'}</span></label>
+      <span className="plx-card-links">{p.homepageUrl && <a href={p.homepageUrl} target="_blank" rel="noreferrer">{p.user ? 'Source ↗' : 'Homepage ↗'}</a>}
+        {p.user && <button type="button" className="plx-remove" onClick={() => void remove()} data-testid={`plugin-remove-${p.id}`}>Remove</button>}
         {open && on && !failed && <Link className="btn plx-open" to={open} data-testid={`plugin-open-${p.id}`}>Open</Link>}</span>
     </footer>
     {tErr && <Notice as="p" kind="error" tone="line" className="plug-tg-err">{tErr}</Notice>}
     {(errs.length > 0 || warns.length > 0) && <ul className="plug-issues">{errs.map((e, i) => <li key={'e' + i} className="err">{e}</li>)}{warns.map((w, i) => <li key={'w' + i} className="helper">{w}</li>)}</ul>}
   </article>;
 }
-function Installed({ ps, tools }: { ps: P[] | null; tools: ToolInfo[] }) {
-  return <div className="plx-cards" data-testid="plugins-grid" aria-busy={!ps}>
+function Installed({ ps, tools, empty, testId = 'plugins-grid', onRemoved }: { ps: P[] | null; tools: ToolInfo[]; empty?: ReactNode; testId?: string; onRemoved?: () => void }) {
+  return <div className="plx-cards" data-testid={testId} aria-busy={!ps}>
     {!ps && <div className="plx-card plx-ph shimmer" aria-hidden />}
-    {(ps ?? []).map((p) => <PluginCard key={p.id} p={p} tool={tools.find((t) => t.id === p.toolId)} />)}
-    {ps && !ps.length && <div className="plx-card plx-empty"><b>No plugins yet</b><p>Add a folder with the sample files below and restart the app.</p></div>}
+    {(ps ?? []).map((p) => <PluginCard key={p.id} p={p} tool={tools.find((t) => t.id === p.toolId)} onRemoved={onRemoved} />)}
+    {ps && !ps.length && empty}
   </div>;
 }
+/** Nothing added yet: one card that says what to do. */
+const Empty = () => <button type="button" className="plx-card plx-empty plx-add-card" onClick={() => openAddWorkflow()} data-testid="yours-empty">
+  <span className="plx-add-ic" aria-hidden>+</span><b>Nothing added yet</b><p>Add a ComfyUI workflow file. It becomes a workflow in its tab, like the built-in ones.</p></button>;
 /** The real sample files, one at a time, each copyable. */
 function Sample() {
   const [f, setF] = useState<'plugin' | 'map'>('plugin');
@@ -147,17 +160,19 @@ function BuiltIns({ tools, pluginIds }: { tools: ToolInfo[] | null; pluginIds: S
     return MEDIA.map(([m, l]) => { const seen = new Set<string>(); return { m, l, list: bi.filter((t) => mediumOf(t) === m && !seen.has(t.name) && seen.add(t.name)).sort((a, b) => a.name.localeCompare(b.name)) }; }).filter((g) => g.list.length); }, [tools, pluginIds]);
   const n = groups.reduce((a, g) => a + g.list.length, 0);
   return <section className="plx-builtins" data-testid="plugins-builtins" aria-busy={!tools}>
-    <div className="plx-sec-h"><h2>Built-in apps<span>{tools ? ` · ${n}` : ''}</span></h2><p>These come with the app. A plugin joins them the same way.</p></div>
+    <div className="plx-sec-h"><h2>Built-in apps<span>{tools ? ` · ${n}` : ''}</span></h2><p>These come with the app. A workflow you add joins them the same way.</p></div>
     {!tools ? <div className="plx-bi-ph shimmer" aria-hidden /> : <div className="plx-bi">{groups.map((g) => <div key={g.m} className="plx-bi-g"><b>{g.l}<span>{g.list.length}</span></b>
       <div className="plx-bi-list">{g.list.map((t) => <Link key={t.id} to={t.route ?? toolPage(t.id)} className="plx-bi-chip"><ToolIconFor id={t.id} ui={t.ui} size={14} />{t.name}</Link>)}</div></div>)}</div>}
   </section>;
 }
 function Hero() {
-  return <header className="plx-hero">
-    <span className="wn-brand">Plugins</span>
-    <h1 className="plx-h1">Bring your own workflow</h1>
-    <p className="plx-lede">Drop a folder in and your workflow shows up in the app, next to the built-in ones. It runs for real on your own ComfyUI.</p>
-    <div className="plx-tech" aria-label="What a plugin is made of"><span>ComfyUI workflow</span><span>plugin.json</span><span>node-map.json</span><span>optional handler</span></div>
+  return <header className="plx-hero plx-hero-yours">
+    <span className="wn-brand">Your workflows</span>
+    <h1 className="plx-h1">Your workflows</h1>
+    <p className="plx-lede">Bring a ComfyUI workflow. It shows up in its tab, next to the built-in ones. Runs on your own ComfyUI.</p>
+    <div className="plx-cta"><button type="button" className="btn btn-primary btn-lg plx-add" onClick={() => openAddWorkflow()} data-testid="yours-add">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden><path d="M12 5v14M5 12h14" /></svg>Add a workflow</button>
+      <small>A .json file from ComfyUI’s Workflow › Export (API)</small></div>
   </header>;
 }
 const Sec = ({ h, p, children, id }: { h: string; p?: string; children: ReactNode; id?: string }) => <section className="plx-sec" id={id}><div className="plx-sec-h"><h2>{h}</h2>{p && <p>{p}</p>}</div>{children}</section>;
@@ -165,13 +180,22 @@ const Sec = ({ h, p, children, id }: { h: string; p?: string; children: ReactNod
 export function Plugins() {
   const [ps, setPs] = useState<P[] | null>(null); const [tl, setTl] = useState<ToolInfo[] | null>(null);
   useEffect(() => { listTools().then(setTl).catch(() => setTl([])); }, []);
-  useEffect(() => { fetch('/api/plugins').then((r) => (r.ok ? r.json() : [])).then((j) => setPs(Array.isArray(j) ? j : j.plugins ?? [])).catch(() => setPs([])); }, []);
+  const load = () => fetch('/api/plugins', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])).then((j) => setPs(Array.isArray(j) ? j : j.plugins ?? [])).catch(() => setPs([]));
+  useEffect(() => { void load(); }, []);
   const tools = tl ?? []; const pluginIds = useMemo(() => new Set((ps ?? []).map((p) => p.toolId ?? p.id)), [ps]);
-  const installedH = `Installed${ps ? ` · ${ps.length}` : ''}`;
-  /* hero beside the flow, your plugins as cards, the files beside the small print */
+  const yours = ps && ps.filter((p) => p.user); const addons = ps && ps.filter((p) => !p.user);
   return <div className="xpage plx" data-testid="plugins-page">
-    <div className="plx-top"><Hero /><div className="plx-top-flow"><Flow /></div></div>
-    <Sec h={installedH} p="Each one is a workflow in the app, with its own Plugin badge."><Installed ps={ps} tools={tools} /></Sec>
-    <Sec h="Make your own" p="Copy these two files into a new folder, point them at your workflow, then restart."><div className="plx-make"><Sample /><Honest /></div></Sec>
-    <BuiltIns tools={tl} pluginIds={pluginIds} /></div>;
+    <Hero />
+    <Sec h={`Added by you${yours ? ` · ${yours.length}` : ''}`} p="Each one is a workflow in its tab. Turn it off to hide it, or remove it."><Installed ps={yours} tools={tools} empty={<Empty />} testId="yours-grid" onRemoved={() => void load()} /></Sec>
+    <details className="plx-adv" data-testid="plugins-advanced">
+      <summary><span><b>For advanced users</b><small>Workflow folders, the files inside them, add-ons and the built-in apps</small></span></summary>
+      <div className="plx-adv-body">
+        <div className="plx-top"><div className="plx-adv-intro"><h2 className="plx-adv-h">A workflow is a folder</h2><p>Adding a workflow writes three files into the app’s data folder. You can also make the folder by hand and put it in <code>plugins/</code>; only folders there may ship a handler (code that runs inside the app).</p>
+          <div className="plx-tech" aria-label="What a workflow folder holds"><span>workflow.json</span><span>plugin.json</span><span>node-map.json</span><span>optional handler</span></div></div><div className="plx-top-flow"><Flow /></div></div>
+        <Sec h="Make your own" p="Copy these two files into a new folder, point them at your workflow, then restart."><div className="plx-make"><Sample /><Honest /></div></Sec>
+        {addons && addons.length > 0 && <Sec h={`Add-ons · ${addons.length}`} p="Folders that ship with the app in plugins/."><Installed ps={addons} tools={tools} /></Sec>}
+        <BuiltIns tools={tl} pluginIds={pluginIds} />
+      </div>
+    </details>
+  </div>;
 }
