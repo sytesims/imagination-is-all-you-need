@@ -149,6 +149,9 @@ try {
   assert.equal((await j('/api/3d/meta?url=/etc/passwd')).status, 400); assert.equal((await j('/api/3d/meta?url=/files/none.glb')).status, 404);
   const pfd = new FormData(); pfd.append('image', new Blob([fs.readFileSync(img)], { type: 'image/png' }), 'p.png'); const pr = await j(`/api/jobs/${firstId}/3d-poster`, { method: 'POST', body: pfd }); assert.equal(pr.status, 200);
   const after = (await j(`/api/jobs/${firstId}`)).body; assert.equal(after.threeD.posterUrl, pr.body.posterUrl); assert.equal(after.outputs[0].posterUrl, pr.body.posterUrl);
+  assert.equal(after.threeD.posterV, undefined, 'no framing version sent: none kept (the page makes it again)');
+  const vfd = new FormData(); vfd.append('posterV', '2'); vfd.append('image', new Blob([fs.readFileSync(img)], { type: 'image/png' }), 'p.png'); const vr = await j(`/api/jobs/${firstId}/3d-poster`, { method: 'POST', body: vfd });
+  assert.equal(vr.status, 200); assert.match(vr.body.posterUrl, /-poster-v2\.png$/, 'a new name per framing (no stale browser cache)'); assert.equal((await j(`/api/jobs/${firstId}`)).body.threeD.posterV, 2);
   assert.equal((await j('/api/jobs/nope/3d-poster', { method: 'POST', body: pfd })).status, 404);
   ok('3d kind: GLB served as model/gltf-binary, meta, poster saved on the job; bad urls refused');
   // validation: no image, a bad setting, a roadmap mode, a non-3D model → 400, nothing charged

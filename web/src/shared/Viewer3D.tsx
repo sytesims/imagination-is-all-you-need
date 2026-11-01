@@ -13,7 +13,7 @@ import { appFileName } from './brand';
 import { ViewerShell, ViewerDetails, IoStrip, RecreateGlyph, type IoTile } from './ResultViewer';
 import { goClick } from './goToWorkflow';
 import { recreateHref as jobRecreateHref, directShotHref } from './workflowLinks';
-import { Model3D, fmtMB, fmtFaces, posterOf3d, startOrbitOf, START_ORBIT, type Model3DHandle, type Look, type Recording } from './model3d';
+import { Model3D, fmtMB, fmtFaces, posterOf3d, posterStale, startOrbitOf, START_ORBIT, POSTER_V, type Model3DHandle, type Look, type Recording } from './model3d';
 import { threeDMode, threeDWorkflowById } from '../../../server/src/shared/threeD';
 import { RIG_MOVES } from '../../../server/src/shared/previzRig';
 import { tip } from './Tooltip';
@@ -38,9 +38,9 @@ export function useMeta3d(url: string | null | undefined): Meta3D | null { const
 /** "7k faces · textured · 4.2 MB" */
 export const metaLine = (m: Meta3D | null, mb?: number | null) => [m?.faces ? fmtFaces(m.faces) : '', m ? (m.textured ? (m.pbr ? 'PBR textures' : 'textured') : 'no texture') : '', m?.bytes ? fmtMB(m.bytes) : mb ? `${mb} MB` : ''].filter(Boolean).join(' · ');
 
-/** Upload a poster for a 3D job (once, after its viewer loads). */
+/** Upload a poster for a 3D job (once, after its viewer loads), with its framing version (a stale one is made again: front3d posterStale). */
 export async function savePoster(jobId: string, blob: Blob): Promise<string | null> {
-  const fd = new FormData(); fd.append('image', blob, 'poster.png');
+  const fd = new FormData(); fd.append('posterV', String(POSTER_V)); fd.append('image', blob, 'poster.png');
   try { const r = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/3d-poster`, { method: 'POST', body: fd }); return r.ok ? (await r.json()).posterUrl ?? null : null; } catch { return null; }
 }
 /** Keep a recorded orbit as a video result (free). Returns the new job id. */
@@ -55,6 +55,7 @@ export interface Item3D {
   /** the job (null for a showcase example) */ jobId?: string | null; inputUrl?: string | null; inputLabel?: string;
   rows: [string, ReactNode][]; /** Recreate: the job's 3D workflow with its image and settings (shared/workflowLinks recreateHref); null = none (a showcase example, a sample) */ recreateHref?: string | null;
   /** where the camera starts (model3d startOrbitOf); default START_ORBIT */ cameraOrbit?: string;
+  /** the saved poster is from an older framing: save a new one when the model loads */ posterStale?: boolean;
   /** known size (showcase) when there is no meta call */ mb?: number | null; credit?: ReactNode; downloadName: string;
   /** a rigged character: the move the viewer plays (Walk) */ animation?: string | null; /** what the rig sheet calls it (the source's name) */ rigName?: string;
 }
@@ -67,7 +68,7 @@ export function Viewer3D({ item, onClose, onPrev, onNext, pos, bigBytes = BIG_GL
   const [okBig, setOkBig] = useState(false); const big = bytes > bigBytes && !okBig;
   const [rotate, setRotate] = useState(true); const [look, setLook] = useState<Look>('lit'); const [loaded, setLoaded] = useState(false);
   const [rig, setRig] = useState(false); const [rec, setRec] = useState<{ p: number } | null>(null); const [inView, setInView] = useState<number | null>(null); const posterSaved = useRef(false); const autoRec = useRef(recordOnOpen);
-  useEffect(() => { setOkBig(false); setLoaded(false); setLook('lit'); setInView(null); posterSaved.current = !!item.poster; autoRec.current = recordOnOpen; }, [item.key]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setOkBig(false); setLoaded(false); setLook('lit'); setInView(null); posterSaved.current = !!item.poster && !item.posterStale; autoRec.current = recordOnOpen; }, [item.key]); // eslint-disable-line react-hooks/exhaustive-deps
   const onLoad = () => { setLoaded(true);
     if (item.jobId && !posterSaved.current) { posterSaved.current = true; setTimeout(() => { void v.current?.snapshot().then((b) => (b ? savePoster(item.jobId!, b) : null)); }, 600); }
     if (autoRec.current) { autoRec.current = false; setTimeout(() => void record(), 500); } };
@@ -123,7 +124,7 @@ export function jobItem3d(j: any): Item3D {
   const rig = j?.input?.rig; if (rig) return rigItem3d(j, rig);
   const price = j?.demo ? 'Sample, nothing billed' : j?.cost ? (ownAccountsNow() ? jobCostText(j.cost, j.runOn) : ledgerUsd(j.cost)) : 'Free';
   return { key: j.id, jobId: j.id, src: j.resultUrl ?? j.outputs?.[0]?.url, name: j.model ?? '3D model', role: `${threeDWorkflowById(threeDMode(j.input ?? {}))?.name ?? '3D model'}${j.place?.label ? ` · ${j.place.label}` : ''}`, poster: posterOf3d(j), inputUrl: j.input?.imageUrl ?? null, inputLabel: threeDMode(j.input ?? {}) === 'multiview-to-3d' ? 'Front' : 'Image',
-    rows: jobRows3d(j, price), cameraOrbit: startOrbitOf(j), downloadName: appFileName(j.id, 'glb'), recreateHref: j?.demo || j?.sample || j?.deletedAt ? null : jobRecreateHref(j), badge: j?.demo ? <span className="rvx-badges"><em className="exv-chip">Sample</em></span> : undefined };
+    rows: jobRows3d(j, price), cameraOrbit: startOrbitOf(j), posterStale: posterStale(j), downloadName: appFileName(j.id, 'glb'), recreateHref: j?.demo || j?.sample || j?.deletedAt ? null : jobRecreateHref(j), badge: j?.demo ? <span className="rvx-badges"><em className="exv-chip">Sample</em></span> : undefined };
 }
 /** A character rigged with Rig as a character (job.input.rig, server shared/previzRig.ts RigMeta): its moves, bones and the time it took. */
 function rigItem3d(j: any, rig: any): Item3D {

@@ -63,7 +63,7 @@ ok('viewer: ?view=<id>, shared Favourite / Share / More');
 
 // ---- start view + a11y ----
 const m3 = web('shared/model3d.tsx');
-assert.match(m3, /START_ORBIT = '-30deg 75deg 120%'/); assert.match(m3, /'camera-orbit': cameraOrbit/); assert.match(m3, /'cloud-tripo-31': '60deg 75deg 120%'/);
+assert.match(m3, /'camera-orbit': cameraOrbit/); assert.match(m3, /from '\.\/front3d'/, 'start views come from shared/front3d.ts (test/three-d-framing.test.ts)');
 assert.match(studio, /data-testid="t3-model" aria-label=\{`Model: \$\{modelName\}\. Change model`\}/, 'model chip label');
 assert.match(web('shared/ResultViewer.tsx'), /aria-label=\{open \? 'Hide details' : 'Show details'\} data-testid="rvx-details-toggle"/, 'details collapse label');
 assert.match(v3d, /aria-label="Auto-rotate"/, 'rotate button label');

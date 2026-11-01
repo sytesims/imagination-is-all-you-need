@@ -68,7 +68,7 @@ import { captureShot, savePlanShot, type CaptureProgress, type CaptureResult } f
 import type { SceneStatus } from '../../shared/previz/importScene';
 import { PREVIZ_TEMPLATES, PREVIZ_MOVES, PREVIZ_SPEEDS, PREVIZ_ASPECTS, PREVIZ_FPS, PREVIZ_PASSES, PREVIZ_COLOURS, PREVIZ_MIN_SECONDS, PREVIZ_MAX_SECONDS, PREVIZ_TOOL, colourOf, previzTemplate, defaultPlanShot, normalizePlanShot, chosenTake, shotForJob, clampSeconds, buildPromptFor, checkSceneHtml, SCENE_HTML_MAX_BYTES, type PlanShot, type PrevizPass, type PrevizTemplateId } from '../../../../server/src/shared/previzTemplates';
 import { Viewer3D, useMeta3d, type Item3D } from '../../shared/Viewer3D';
-import { Model3D, jobIs3d, posterOf3d, edgeBusyness, startOrbitOf, type Model3DHandle } from '../../shared/model3d';
+import { Model3D, jobIs3d, posterOf3d, posterStale, edgeBusyness, startOrbitOf, liveViewerId, type Model3DHandle } from '../../shared/model3d';
 import { savePoster } from '../../shared/Viewer3D';
 import ResultView from '../../shared/ResultView';
 import { useFeedViewer, FeedH1 } from '../next/feed/ResultFeed';
@@ -562,14 +562,16 @@ function Showcase({ sc, models, onOpen }: { sc: Payload['showcase']; models: Thr
   </section>;
 }
 
-/** The card still for results that have none yet: renders each in a small hidden viewer, one at a time, at the low priority of the one live
+/** The card still for results that have none yet, or one from an older framing (front3d posterStale): renders each in a small hidden viewer, one at a time, at the low priority of the one live
  *  viewer (the open viewer takes over), saves the poster, moves on. Off while the viewer is open. */
 function PosterMaker({ jobs, paused, onSaved }: { jobs: JobState[]; paused: boolean; onSaved: () => void }) {
-  const todo = jobs.filter((j) => !posterOf3d(j) && !(j as any).demo_skip); const [failed, setFailed] = useState<Set<string>>(new Set()); const next = todo.find((j) => !failed.has(j.id));
+  const todo = jobs.filter((j) => posterStale(j) && !(j as any).demo_skip); const [failed, setFailed] = useState<Set<string>>(new Set()); const next = todo.find((j) => !failed.has(j.id));
   const v = useRef<Model3DHandle>(null);
   if (paused || !next) return null;
   return <div className="t3-postermaker" aria-hidden data-testid="t3-postermaker"><Model3D key={next.id} ref={v} slot="poster" pri={1} src={next.resultUrl!} alt="" autoRotate={false} controls={false} cameraOrbit={startOrbitOf(next)}
-    onLoad={() => setTimeout(() => { void v.current?.snapshot().then((b) => (b ? savePoster(next.id, b) : null)).then((u) => { if (u) onSaved(); else setFailed((f) => new Set(f).add(next.id)); }); }, 700)}
+    /* only while this still holds the one live viewer: an opened viewer takes it mid-render and the still would come out cut (it is made again later) */
+    onLoad={() => setTimeout(() => { if (liveViewerId() !== 'poster') return; void v.current?.snapshot().then((b) => { if (liveViewerId() !== 'poster') return 'later';
+      return b ? savePoster(next.id, b) : null; }).then((u) => { if (u === 'later') return; if (u) onSaved(); else setFailed((f) => new Set(f).add(next.id)); }); }, 700)}
     onError={() => setFailed((f) => new Set(f).add(next.id))} /></div>;
 }
 
