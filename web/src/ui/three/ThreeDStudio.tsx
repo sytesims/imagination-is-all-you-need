@@ -505,7 +505,7 @@ function exItem(d: Payload, i: number): Item3D | null {
  *  faces / texture, price · time, the GLB download and Make a video. Running jobs show the shared generating tile; failures the shared failure tile. */
 function Card({ j, own, onOpen, onVideo, onRetry, onMakeReal }: { j: JobState; own: boolean; onOpen: (from: HTMLElement) => void; onVideo: () => void; onRetry: () => void; onMakeReal: (anchor: HTMLElement) => void }) {
   const isTT = j.toolId === 'three-d-turntable'; const meta = useMeta3d(j.status === 'done' && !isTT ? j.resultUrl : null); const poster = posterOf3d(j); const tt: string | null = (j as any).threeD?.turntableUrl ?? null;
-  const t = jobTiming(j as any); const cap = jobCaption(j, own); const price = cap.price || 'Free'; /* the shared caption words (shared/FeedCaption.tsx), Image's too */
+  const t = jobTiming(j as any); const cap = jobCaption(j, own); const price = cap.price /* never a made-up 'Free': empty when the run's price is unknown */; /* the shared caption words (shared/FeedCaption.tsx), Image's too */
   if (j.status === 'queued' || j.status === 'running') return <div className="vs-htile t3-card" data-testid={`t3-card-${j.id}`}><GenTile job={j} testId={`t3-run-${j.id}`} /></div>;
   if (j.status !== 'done') return <div className="vs-htile t3-card fs-host" data-testid={`t3-card-${j.id}`}><span className="vs-hwait fs-host"><FailureState job={j} variant="tile" testId={`t3-fail-${j.id}`} />
     {j.status === 'failed' && <span className="fs-tile-act"><button type="button" className="fs-btn fs-btn-main fs-btn-sm" data-testid={`t3-retry-${j.id}`} onClick={onRetry}>Retry</button></span>}</span></div>;

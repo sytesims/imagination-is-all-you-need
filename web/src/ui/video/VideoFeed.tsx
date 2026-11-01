@@ -9,7 +9,7 @@ import type { JobState, ToolInfo } from '../../api';
 import GenTile from '../../shared/GenTile';
 import ResultView from '../../shared/ResultView';
 import { FailedViewer } from '../../shared/ResultViewer';
-import { FeedCaption, jobCaption } from '../../shared/FeedCaption';
+import { FeedCaption, jobCaption, captionTitle } from '../../shared/FeedCaption';
 import { useOwnAccounts } from '../../shared/billing';
 import { QueueLine } from '../edge/Edge';
 import FeedToolbar from '../next/feed/FeedToolbar';
@@ -50,7 +50,7 @@ export default function VideoFeed({ jobs, onSelect, viewerActions, tools, workfl
   const viewable = shown.filter(j => !isActive(j));
   const v = useFeedViewer(viewable, onSelect, id => `vf-tile-${id}`, !feed.loading);
   const tagOf = (j: JobState) => videoWorkflowNameOf(j as any) ?? videoTag(j); /* every card names the workflow that made it */
-  const card = (j: JobState) => { const out = videoOutOf(j); const ar = out?.ar ?? askedAr(j); const act = isActive(j); const cap = jobCaption(j, own); const prompt = typedPromptOf((j as any).input).trim();
+  const card = (j: JobState) => { const out = videoOutOf(j); const ar = out?.ar ?? askedAr(j); const act = isActive(j); const cap = jobCaption(j, own); const prompt = captionTitle(j) /* the example's title, else yours, else your prompt */;
     return <FeedCard key={j.id || (j as any).clientKey || 'new'} job={j} ar={ar} active={act} idPre="vf" testId={`vf-tile-${j.id}`} className="vf-tile"
       run={<GenTile job={j} tag={tagOf(j)} testId={`vf-run-${j.id}`} />} on={v.viewId === j.id} selecting={selecting} picked={selecting && sel.has(j.id)} noPick={selecting ? unselectable(j) : null}
       tag={tagOf(j)} onOpen={e => v.open(j.id, 0, e.currentTarget)} onTogglePick={() => togglePick(j)}
