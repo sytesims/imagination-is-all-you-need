@@ -69,7 +69,7 @@ function ConnectSheet({ onClose }: { onClose: () => void }) {
       if (savedKey.current !== v) { await setupRequest('/api/settings/providers', setupBody('POST', { id: 'comfy', key: v }, abort.current.signal), 'Couldn’t save the key.'); savedKey.current = v; }
       const a = await json(await fetch('/api/accounts?refresh=1', { signal: abort.current.signal })); const c = (a?.accounts ?? []).find((x: any) => x.provider === 'comfy');
       if (!live.current) return;
-      let text = 'Key saved. We couldn’t read your balance just now; you see the price before every run.';
+      let text = 'Key saved. Your balance couldn’t be read just now; you see the price before every run.';
       if (c && typeof c.balanceUsd === 'number') text = `Key works. Your Comfy account has $${c.balanceUsd.toFixed(2)}.`;
       else if (c?.note && /didn.t accept|refused|401|403/i.test(c.note)) { setK({ ok: false, text: plainCopy(c.note) }); return; }
       await setupRequest('/api/setup', setupBody('PUT', { done: true, choices: ['comfy'] }, abort.current.signal), 'Key saved, but couldn’t save setup.');
@@ -80,7 +80,7 @@ function ConnectSheet({ onClose }: { onClose: () => void }) {
     try {
       const t = await setupRequest('/api/local/comfy/test', setupBody('POST', url ? { url } : {}, abort.current.signal), 'Couldn’t test ComfyUI.');
       if (!live.current) return;
-      if (!t?.reachable) { setAskAddr(true); setG({ ok: false, text: url ? plainCopy(String(t?.error ?? 'ComfyUI didn’t answer at that address.')) : 'We didn’t find ComfyUI on the usual ports. Start ComfyUI, then look again, or type its address.' }); return; }
+      if (!t?.reachable) { setAskAddr(true); setG({ ok: false, text: url ? plainCopy(String(t?.error ?? 'ComfyUI didn’t answer at that address.')) : 'ComfyUI wasn’t found on the usual ports. Start ComfyUI, then look again, or type its address.' }); return; }
       const tested = testedComfyUrl(t.url);
       if (url || t.detected) await setupRequest('/api/local/comfy', setupBody('PUT', { url: tested }, abort.current.signal), 'Couldn’t save the ComfyUI address.');
       const rb = await setupRequest('/api/me/routing', { ...setupBody('PUT', { global: { useLocal: true } }, abort.current.signal), headers: { 'content-type': 'application/json', 'x-openhiggsfield-source': 'web connect sheet' } }, 'Couldn’t enable ComfyUI routing.'); setRouting(rb);
@@ -106,7 +106,7 @@ function ConnectSheet({ onClose }: { onClose: () => void }) {
           {k.text && <p className={`helper cs-st${k.ok ? ' ok' : k.ok === false ? ' bad' : ''}`} role="status" data-testid="cs-key-status">{k.text}</p>}
         </section>
         <section className="cs-path" data-testid="cs-local">
-          <b>Use your own ComfyUI</b><small>Free and private on {LOCAL_LABEL.toLowerCase()}, with the models you have. We look on the usual ports.</small>
+          <b>Use your own ComfyUI</b><small>Free and private on {LOCAL_LABEL.toLowerCase()}, with the models you have. Found on the usual ports.</small>
           <div className="cs-row"><button type="button" className="btn btn-sm" disabled={g.busy} onClick={() => void useComfy()} data-testid="cs-find">{g.busy ? 'Looking…' : 'Find my ComfyUI'}</button></div>
           {askAddr && <form className="cs-row" onSubmit={e => { e.preventDefault(); if (addr.trim()) void useComfy(addr.trim()); }}>
             <input type="url" placeholder="http://127.0.0.1:8188" value={addr} disabled={g.busy} onChange={e => { setAddr(e.target.value); setG({}); }} aria-label="ComfyUI address" data-testid="cs-addr" />

@@ -64,7 +64,7 @@ const APP_SAMPLES = 'Imagination Is All You Need samples';
 /** One of the app's examples (the Examples project, server/src/featuredSeed.ts): $0 for you, but its details keep the real model, place and price.
  *  "Made by the app's authors · MiniMax H3 · Comfy Cloud · $0.80". */
 type ExampleInfo = { model?: string | null; runOn?: string | null; costUsd?: number | null };
-const examplePlace = (ex: ExampleInfo) => (ex.runOn === 'local' ? 'Our computer' : 'Comfy Cloud');
+const examplePlace = (ex: ExampleInfo) => (ex.runOn === 'local' ? LOCAL_LABEL : 'Comfy Cloud');
 const examplePrice = (ex: ExampleInfo) => (ex.costUsd ? fmtUsd(ex.costUsd) : 'Free');
 export const exampleLine = (ex: ExampleInfo) => ['Made by the app’s authors', ex.model, examplePlace(ex), examplePrice(ex)].filter(Boolean).join(' · ');
 /** Someone else's item (a sample or a community result): their own name, and our app mark on our shipped samples. Never your picture. */
@@ -315,8 +315,8 @@ export function RunOnCell({ job, label }: { job: any; label: string }) {
   const ro = runOnOfJob(job); const Ic = placeIconFor(ro); const m = ro === 'local' ? deviceName(job?.machine) : '';
   return <span className="rvx-line" data-testid="rvx-run-on"><Ic size={14} className="rvx-line-ic" /><span>{label}{m && <span className="rvx-dim" data-testid="rvx-machine"> · {m}</span>}</span></span>;
 }
-const WF_BADGE: Record<string, { label: string; Ic: typeof OfficialBadgeIcon; tip: string }> = { official: { label: 'Official', Ic: OfficialBadgeIcon, tip: 'Official Comfy template' }, community: { label: 'Community', Ic: CommunityIcon, tip: 'Community workflow' }, ours: { label: 'Ours', Ic: SparkleIcon, tip: 'Our own workflow (open source)' } };
-/** Workflow source badge (Official Comfy template / Community / Ours), shown before the workflow link. */
+const WF_BADGE: Record<string, { label: string; Ic: typeof OfficialBadgeIcon; tip: string }> = { official: { label: 'Official', Ic: OfficialBadgeIcon, tip: 'Official Comfy template' }, community: { label: 'Community', Ic: CommunityIcon, tip: 'Community workflow' }, ours: { label: 'Built-in', Ic: SparkleIcon, tip: 'Our own workflow (open source)' } };
+/** Workflow source badge (Official Comfy template / Community / Built-in), shown before the workflow link. */
 export function WorkflowBadge({ source }: { source?: string | null }) {
   const b = source ? WF_BADGE[source] : undefined; if (!b) return null;
   return <span className={`rvx-wfb rvx-wfb-${source}`} {...tip(b.tip)} data-testid="rvx-wf-badge"><b.Ic size={12} />{b.label}</span>;
@@ -403,7 +403,7 @@ function SeedValue({ seed }: { seed: string }) {
   return <span className="rvx-seed"><span className="rvx-mono" data-testid="rvx-seed">{seed}</span><button type="button" className="rvx-seed-copy" aria-label="Copy seed" {...tip(copied ? null : 'Copy seed')} data-testid="rvx-seed-copy"
     onClick={() => navigator.clipboard?.writeText(seed).then(() => flash(), () => 0)}>{copied ? <Copied text="" /> : <CopyGlyph />}</button></span>;
 }
-const WF_LINK: Record<string, string> = { official: 'Comfy template', community: 'Community workflow', ours: 'Our graph' };
+const WF_LINK: Record<string, string> = { official: 'Comfy template', community: 'Community workflow', ours: 'Built-in workflow' };
 type KV = { k: string; label: string; v: ReactNode; tip?: string };
 const kvRow = (r: KV) => <div key={r.k} className="rvx-row" data-row={r.k} {...tip(r.tip)}><span className="rvx-row-l rvx-k">{r.label}</span><span className="rvx-row-r">{r.v}</span></div>;
 const group = (id: string, title: string, rows: ReactNode[]) => rows.length ? <div className="rvx-grp" data-testid={`rvx-grp-${id}`} role="group" aria-label={title}><span className="rvx-grp-h" aria-hidden>{title}</span>{rows}</div> : null;

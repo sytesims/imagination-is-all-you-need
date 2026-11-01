@@ -55,7 +55,7 @@ const places = [
   ['local:comfy-yue2', 'Your computer', 'free'],
   ['comfy-cloud:cloud-h3-two-swap', 'Comfy Cloud', 'gpu-time'],
   ['comfy-router:api-minimax-h3', 'Comfy Cloud', 'set-price'], // one Comfy key, one place name; the billing word tells them apart
-  ['comfy-deploy:cloud-h3-crossview', 'Comfy deployment', 'gpu-time'],
+  ['comfy-deploy:cloud-h3-crossview', 'Your Comfy deployment', 'gpu-time'],
   ['fal:foo', 'fal', 'set-price'], ['replicate:foo', 'Replicate', 'set-price'],
 ];
 for (const [route, label, billing] of places) { const p = placeOf({ route }); assert.equal(p?.label, label); assert.equal(p?.billing, billing); }

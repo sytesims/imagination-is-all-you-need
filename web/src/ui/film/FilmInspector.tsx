@@ -29,6 +29,7 @@ import { GenPrice } from '../../shared/GenPrice';
 import { budgetBlock, quoteUsd, activeTake, playable, fullLen, missingOf, isBusy, startUrl, startSourceOf, shotLabels, clampTrim, splitShot, newShot, takesView, secText, usdText, STATUS_WORD, TRIM_STEP, MIN_TRIM_SEC, FILM_VIDEO_TOOL, moveId, worldNotesOf, needsWorld, promptWithWorld, nextShotContext, lastFrameTarget, firstFrameTarget, type NextShotContext } from './filmLogic';
 import type { FilmOp, FilmProject, FilmShot, FilmTake } from './types';
 import { fileUrl } from './FilmEditor';
+import { IMAGE_ACCEPT } from '../../../../server/src/shared/mediaAccept';
 
 const LENGTHS = ['auto', '4', '5', '6', '8', '10', '15'];
 /** The film page's R key: generate the picked card again, price first (FilmEditor useFilmKeys sends it with { shotId }). */
@@ -82,7 +83,7 @@ export default function FilmInspector({ film, shot, srvShot, label, tool, commit
   };
   useEffect(() => { const on = (e: Event) => { if ((e as CustomEvent).detail?.shotId === shot.id) void again.current(); }; window.addEventListener(FILM_AGAIN_EVENT, on); return () => window.removeEventListener(FILM_AGAIN_EVENT, on); }, [shot.id]);
 
-  const pickStill = (which: 'start' | 'end') => pickMedia({ accept: 'image/*', title: which === 'start' ? 'Choose a start still' : 'Choose the end frame', limits: 'An image, or any frame of a clip', onFiles: async fs => { if (!fs[0]) return;
+  const pickStill = (which: 'start' | 'end') => pickMedia({ accept: IMAGE_ACCEPT, title: which === 'start' ? 'Choose a start still' : 'Choose the end frame', limits: 'An image, or any frame of a clip', onFiles: async fs => { if (!fs[0]) return;
     try { const url = await fileUrl(fs[0]); void up(which === 'start' ? { stillUrl: url, stillJobId: null, startFrom: { kind: 'still', url, jobId: null }, continueFromPrev: false, ...(shot.types.includes('t2v') ? { types: ['i2v'] } : {}) } : { endFrame: { url, jobId: null } }); }
     catch (e: any) { toast(`Couldn’t use that image. ${e?.message ?? ''}`.trim(), 'error'); } } });
   const fromPrev = async () => { try { await flush(); adopt(await continueFrame(film.id, shot.id)); } catch (e: any) { toast(`Couldn’t take the last frame. ${e?.message ?? ''}`.trim(), 'error'); } };

@@ -8,11 +8,13 @@ import { compositeCostText, runPrice } from './billing';
 import { plainPrompt } from '../../../server/src/shared/typedPrompt';
 import './feedCaption.css';
 
+import { captionPrice } from './feedCaptionText';
+export { captionTitle, examplePrice } from './feedCaptionText';
 export type JobCaption = { model: string; place: string; price: string; time: string };
-/** model · place · price · time for a job: Sample for a sample run, Free, locally, Not charged for a refunded failure, else the run's price. */
+/** model · place · price · time for a job (the words: shared/feedCaptionText.ts): "Free" only on your computer; an example names where it ran and its real price. */
 export function jobCaption(j: JobState, own: boolean | null): JobCaption {
   const a = j as any; const model = String(a.modelName ?? a.model ?? j.provider ?? ''); const place = String(a.place?.label ?? a.runOnLabel ?? '');
-  const price = compositeCostText(j) ?? (a.demo || a.isSample ? 'Sample' : a.runOn === 'local' ? 'Free' : j.status === 'failed' || j.status === 'blocked' ? (a.refunded > 0 || a.refund?.refunded ? 'Not charged' : runPrice({ own, credits: a.cost, runOn: a.runOn }) ?? '') : runPrice({ own, credits: a.cost, runOn: a.runOn }) ?? '');
+  const price = captionPrice(j, own);
   const s0 = Number(a.startedAt ?? a.createdAt ?? 0), s1 = Number(a.finishedAt ?? 0); const sec = s0 && s1 > s0 ? Math.round((s1 - s0) / 1000) : null;
   return { model, place, price, time: sec == null ? '' : sec < 60 ? `${sec}s` : `${Math.floor(sec / 60)}m ${sec % 60}s` };
 }

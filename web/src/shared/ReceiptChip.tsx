@@ -9,7 +9,7 @@ import { tip } from './Tooltip';
 import './receipt.css';
 
 const TIPS: Partial<Record<Receipt['kind'], string>> = {
-  estimate: 'Our estimate from the list price (≈). The provider’s bill is the real figure.',
+  estimate: 'An estimate from the list price (≈). The provider’s bill is the real figure.',
   actual: 'The cost the provider reported for this run.',
   local: 'Ran on your computer: nothing was billed.',
   sample: 'A sample: nothing was generated or billed.',

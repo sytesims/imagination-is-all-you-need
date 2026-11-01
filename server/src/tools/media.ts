@@ -34,6 +34,7 @@ import './imageFalApps.js'; // photo tools (2026-10-23): Remove Background, Expa
 import { assemblePrompt } from '../shared/modePrompt.js';
 import { LTX_DFR } from '../shared/ltxDfr.js';
 import './imageLayerApps.js'; // Image to layers (2026-10-24): Seedream 5.0 layer separation (Comfy Router), Qwen-Image-Layered listed for Local
+import { LYRICS_MAX } from '../shared/audioWorkflows.js';
 
 /**
  * Media tools (Create Image, Generate Video · H3, Audio, Add soundtrack). Same 'app' screen as makeApp, with:
@@ -481,7 +482,7 @@ for (const t of [audioTool, voiceStudioTool]) Object.assign((t as any).app, { me
 // Lyrics and Cover a song use one job field, `lyrics` (ACE-Step's graph, YuE2,
 // local MiniMax Music 3 and the hosted MiniMax Music 3 node). `text` is still taken as an alias in the music modes (old clients). Cover = a song
 // file in (field `audio`), its melody kept (SheetSage2 → YuE2), new style (prompt) and lyrics.
-export const LYRICS_MAX = 5000;
+export { LYRICS_MAX }; /* one number with the web's boxes: shared/audioWorkflows.ts */
 /** Models that can't make a song without lyrics (YuE2 is lyrics-driven); the others fall back to an instrumental. */
 export const LYRICS_REQUIRED = ['comfy-yue2'];
 const lyricsOf = (fields: Record<string, string>, mode: string) => { const v = fields.lyrics ?? (mode === 'music' || mode === 'cover' ? fields.text : undefined); const t = String(v ?? '').replace(/\r\n?/g, '\n').slice(0, LYRICS_MAX); return t.trim() ? t : undefined; }; // form posts send CRLF line breaks

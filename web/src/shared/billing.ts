@@ -21,20 +21,25 @@ export interface Account { provider: string; name: string; connected: boolean; p
  *  (or `everyMs` when longer) while nothing changes, none while the tab is hidden. */
 function store<T>(url: string, everyMs: number) {
   let cur: T | null = null; const subs = new Set<(v: T) => void>(); let timer: any = null; let inflight: Promise<void> | null = null;
-  const refresh = () => (inflight ??= fetch(url).then(r => (r.ok ? r.json() : null)).then((v: T | null) => { if (v) { cur = v; subs.forEach(f => f(v)); } }).catch(() => undefined).finally(() => { inflight = null; }));
+  /* the last load's failure (server down, an HTTP error), so a page with nothing to show can say so and offer Retry; cleared on the next good load */
+  let err: Error | null = null; const errSubs = new Set<(e: Error | null) => void>(); const setErr = (e: Error | null) => { if (e === err) return; err = e; errSubs.forEach(f => f(e)); };
+  const refresh = () => (inflight ??= fetch(url).then(r => { if (!r.ok) throw Object.assign(new Error(`HTTP ${r.status}`), { status: r.status }); return r.json(); })
+    .then((v: T | null) => { if (v) { cur = v; setErr(null); subs.forEach(f => f(v)); } }).catch((e: unknown) => setErr(e instanceof Error ? e : new Error(String(e)))).finally(() => { inflight = null; }));
+  /** The last load error (null while fine). Mount it beside use(), which starts the polling. */
+  const useError = (): Error | null => { const [e, setE] = useState<Error | null>(err); useEffect(() => { errSubs.add(setE); setE(err); return () => { errSubs.delete(setE); }; }, []); return e; };
   const use = (): T | null => {
     const [v, setV] = useState<T | null>(cur);
     useEffect(() => { subs.add(setV); if (cur) setV(cur); if (!timer) { refresh(); timer = pollWithBackoff(() => refresh().then(() => JSON.stringify(cur, (k, x) => (k === 'to' ? undefined : x)) /* the window's end is "now": not a change */), { minMs: everyMs, maxMs: Math.max(everyMs, 15_000), pauseHidden: true }); addEventListener('focus', refresh); addEventListener('ohf:billing', refresh); addEventListener('oj:balance', refresh); }
       return () => { subs.delete(setV); if (!subs.size) { timer(); timer = null; removeEventListener('focus', refresh); removeEventListener('ohf:billing', refresh); removeEventListener('oj:balance', refresh); } }; }, []);
     return v;
   };
-  return { use, refresh, get: () => cur };
+  return { use, useError, refresh, get: () => cur };
 }
 const B = store<Billing>('/api/settings/billing', 30_000);
 const DAY = store<SpendSummary>('/api/spend/summary?period=day', 8_000);
 const MONTH = store<SpendSummary>('/api/spend/summary?period=month', 20_000);
 const ACC = store<{ accounts: Account[]; mockBackend: boolean }>('/api/accounts', 60_000);
-export const useBilling = B.use; export const useSpendDay = DAY.use; export const useSpendMonth = MONTH.use; export const useAccounts = ACC.use;
+export const useBilling = B.use; export const useBillingError = B.useError; export const retryBilling = () => B.refresh(); export const useSpendDay = DAY.use; export const useSpendMonth = MONTH.use; export const useAccounts = ACC.use;
 export const refreshAccounts = () => fetch('/api/accounts?refresh=1').then(() => ACC.refresh());
 /** The mode for a quote: the quote's own billingMode first, else the store's. null while unknown (never flash a balance). */
 export const modeOf = (b: Billing | null, q?: any): BillingMode | null => (q?.billingMode === 'team' || q?.billingMode === 'own-accounts' ? q.billingMode : b?.mode ?? null);

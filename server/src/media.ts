@@ -35,6 +35,5 @@ export async function trim(src: string, dst: string, seconds: number): Promise<b
   return (await run('ffmpeg', ['-y', '-v', 'error', '-i', src, '-t', String(seconds), '-c', 'copy', dst])).code === 0;
 }
 
-/** Spec limits (CLEANROOM-SPEC P0-1 errors). */
-export const LIMITS = { minSec: 4, maxSec: 30, minPixels: 409_600, maxRefs: 30, refsPerCall: 8, maxPrompt: 10_000 } as const;
-export const RESOLUTIONS = ['480p', '720p', '1080p'] as const;
+/** Spec limits (CLEANROOM-SPEC P0-1 errors): defined once in shared/mediaAccept.ts, so the web's upload checks read the same numbers. */
+export { LIMITS, RESOLUTIONS } from './shared/mediaAccept.js';

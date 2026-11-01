@@ -12,7 +12,7 @@ import type { VideoMeta } from '../../../shared/UploadVideo';
 import { BarPopover, PopSection, PopNote } from '../../../shared/BarPop';
 import { tip } from '../../../shared/Tooltip';
 import { SelectIcon } from '../../Icons';
-import { LIMITS } from '../../../shared/limits';
+import { LIMITS } from '../../../../../server/src/shared/mediaAccept';
 import { useSwapRange } from './SwapRange';
 import { cloudSwapOf, WHO_HINT, CHARACTER_HINT, H3_WHO_HINT, charswapWhoIssue } from '../../../../../server/src/shared/cloudSwap';
 /** H3 Character Swap (local or Comfy Cloud): it needs a click or a side (shared/cloudSwap.ts charswapWhoIssue). */

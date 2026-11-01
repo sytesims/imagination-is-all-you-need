@@ -38,7 +38,7 @@ export const saveMePhoto = async (f: File) => { const fd = new FormData(); fd.ap
   const url = j.items?.[0]?.url; if (!r.ok || typeof url !== 'string') throw new Error(typeof j.error === 'string' && j.error ? j.error : SAVE_FAILED); return saveProfile({ mePhotoUrl: url }); };
 
 /** The name to show: your display name, else your @name, else the plain local label. */
-export const nameOf = (p: ProfileData | null | undefined) => p?.displayName || (p?.handle ? `@${p.handle}` : '') || 'Local account';
+export const nameOf = (p: ProfileData | null | undefined) => p?.displayName || (p?.handle ? `@${p.handle}` : '') || 'You';
 
 /** Picked photos: images the browser can read, up to 20 MB; they are cropped to a centred circle and scaled to 256 px before upload. */
 export const PHOTO_MAX_MB = 20;

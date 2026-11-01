@@ -12,7 +12,7 @@ import { demoMessage, runBlock, shownCredits } from '../../shared/quote';
 import { useDraftField } from '../../shared/batch1';
 import { usePrefill } from '../../shared/usePrefill';
 import { useToolQuery } from '../../shared/useToolQuery';
-import { LIMITS } from '../../shared/limits';
+import { LIMITS } from '../../../../server/src/shared/mediaAccept';
 import { DownloadIcon } from '../../ui/Icons';
 import { cleanHref } from '../../shared/sharePrefs';
 import SendTo from '../../platform/SendTo';

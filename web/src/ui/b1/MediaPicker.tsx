@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { UploadIcon } from '../Icons';
+import { IMAGE_ACCEPT, VIDEO_ACCEPT } from '../../../../server/src/shared/mediaAccept';
 export interface MediaItem { id: string; url: string; poster?: string; kind: 'video' | 'image'; name?: string; ts?: number; liked?: boolean }
 export type PickerTab = 'uploads' | 'presets' | 'generations' | 'liked';
 /** #1 Media picker modal. Pure presentation: caller supplies the item lists (Platform: media API). */
@@ -40,7 +41,7 @@ export default function MediaPicker({ open, kind, sources, onPick, onUpload, onC
           {loading && !items.length && Array.from({ length: 6 }, (_, i) => <span key={i} className="mp-item mp-skel" />)}
           {hasMore && <button className="btn mp-more" disabled={loading} onClick={onMore}>{loading ? 'Loading…' : 'Load more'}</button>}
         </div>
-        <input ref={file} type="file" hidden multiple={kind === 'image'} accept={kind === 'video' ? 'video/mp4,video/quicktime,video/webm' : 'image/png,image/jpeg,image/webp'} onChange={e => { onUpload([...(e.target.files ?? [])]); e.target.value = ''; }} />
+        <input ref={file} type="file" hidden multiple={kind === 'image'} accept={kind === 'video' ? VIDEO_ACCEPT : IMAGE_ACCEPT} onChange={e => { onUpload([...(e.target.files ?? [])]); e.target.value = ''; }} />
       </div>
     </div>, document.body
   );

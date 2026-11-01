@@ -90,7 +90,7 @@ export function useWelcome(onClose: () => void) {
       const acc = (a?.accounts ?? []).find((x: any) => x.provider === id);
       if (acc?.keyCheck === 'rejected') { await fetch(`/api/settings/providers/${encodeURIComponent(id)}`, { method: 'DELETE', signal: sig() }).catch(() => 0);
         set({ state: 'bad', text: 'That key wasn’t accepted. Copy it again, or make a new one.' }); return; }
-      set({ state: 'ok', text: acc?.keyCheck === 'ok' && typeof acc.balanceUsd === 'number' ? `Key works · $${acc.balanceUsd.toFixed(2)} in your account` : acc?.keyCheck === 'offline' ? 'Saved. We’ll check it on your first run.' : 'Key saved' });
+      set({ state: 'ok', text: acc?.keyCheck === 'ok' && typeof acc.balanceUsd === 'number' ? `Key works · $${acc.balanceUsd.toFixed(2)} in your account` : acc?.keyCheck === 'offline' ? 'Saved. It’s checked on your first run.' : 'Key saved' });
       void refreshAccounts();
     } catch (e) { set({ state: 'bad', text: plainCopy((e as Error).message) || 'Couldn’t check that key. Try again.' }); }
   };

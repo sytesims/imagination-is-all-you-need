@@ -207,7 +207,7 @@ export function RunStage({ job, toolName, medium: md, onUpdate, finished = false
         </div>
         <RunSteps job={job} medium={medium} />
         {!finished && <RunMoneyRow job={job} onUpdate={onUpdate} />}
-        {!finished && <p className="rs-leave" data-testid="rs-leave">You can leave this page. We’ll let you know when it’s ready.</p>}
+        {!finished && <p className="rs-leave" data-testid="rs-leave">You can leave this page. You’ll get a note when it’s ready.</p>}
       </aside>
     </div>
     <div className="rs-strip" data-testid="rs-strip">

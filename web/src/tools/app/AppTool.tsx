@@ -1,6 +1,6 @@
 import { toolPage } from '../../../../server/src/shared/pages';
 import { goClick } from '../../shared/goToWorkflow';
-import { IMAGE_ACCEPT, fileFits, wrongTypeText } from '../../../../server/src/shared/mediaAccept';
+import { IMAGE_ACCEPT, fileFits, wrongTypeText, AUDIO_ACCEPT, LIMITS } from '../../../../server/src/shared/mediaAccept';
 import { hasPicture } from '../../../../server/src/shared/refFit';
 import { Notice } from '../../shared/Notice';
 import { continuesInput, withExtendModel } from '../../shared/continuation';
@@ -37,7 +37,6 @@ import { useJobs } from '../../shared/useJobs';
 import { useToast } from '../../shared/Toast';
 import SameSeed from '../../shared/SameSeed';
 import { usePrefill, quoteParams } from '../../shared/usePrefill';
-import { LIMITS } from '../../shared/limits';
 import FailureCard from '../../shared/FailureCard';
 import { useToolQuery, cloneForm } from '../../shared/useToolQuery';
 import MaskPaint from '../../ui/next/MaskPaint';
@@ -65,7 +64,6 @@ import { StylePresets, AudioModeTabs, AudioMode } from '../../ui/next/Gen';
 import { EnhanceButton, EnhanceDiff, EnhanceResult } from '../../ui/next/Enhance';
 import { useRoute, pinQ } from '../../ui/routing/Routes';
 import { TRANSLATE_DOC } from '../../shared/brand';
-
 
 /**
  * Generic small-app screen (server tools/apps.ts makeApp). Upload → pick type(s) → Generate.
@@ -577,7 +575,7 @@ export default function AppTool({ tool, tools }: { tool: ToolInfo; tools?: ToolI
           <FieldIssue issues={issues} field="image" />
           <label className="field mt-12">SPEECH <span className="helper">2–15 s audio · becomes the soundtrack</span></label>
           {speech ? <div className="vs-file"><audio controls src={URL.createObjectURL(speech)} /><span className="vs-name" title={speech.name}>{speech.name}</span><button type="button" className="btn btn-sm" onClick={() => setSpeech(null)}>Remove</button></div>
-            : <label className="vs-drop"><input type="file" accept="audio/*" data-testid="lipsync-speech-input" onChange={e => { setSpeech(e.target.files?.[0] ?? null); e.currentTarget.value = ''; }} /><span>Add speech audio</span><small>WAV, MP3 or M4A, 2–15 seconds.</small></label>}
+            : <label className="vs-drop"><input type="file" accept={AUDIO_ACCEPT} data-testid="lipsync-speech-input" onChange={e => { setSpeech(e.target.files?.[0] ?? null); e.currentTarget.value = ''; }} /><span>Add speech audio</span><small>WAV, MP3 or M4A, 2–15 seconds.</small></label>}
           <FieldIssue issues={issues} field="speech" /></section>
       : cfg.input === 'none' || (cfg.input === 'image-optional' && !showImage) ? null : cfg.input === 'video'
         ? <>{!(cvApp && cvAudio) && <UploadVideo title={inLabel('video') ?? 'Video'} video={video} onChange={setVideo} disabled={!!running} dropLabel={cvApp ? 'Add your clip' : undefined} />}{cvApp && !video && !cvAudio && <RecordClip onDone={setVideo} disabled={!!running} />}<FieldIssue issues={issues} field="video" />{cvApp && !video && (tool.inputs ?? []).some(i => i.name === 'audio') && <AudioClipInput file={cvAudio?.file ?? null} onChange={(f, sec) => setCvAudio(f ? { file: f, sec } : null)} disabled={!!running} />}<FieldIssue issues={issues} field="audio" /></>
@@ -659,7 +657,7 @@ export default function AppTool({ tool, tools }: { tool: ToolInfo; tools?: ToolI
           {fd.name === 'voice' && String(fieldVals.voice) === 'clone' && <div className="voice-sample">
             <label className="field" htmlFor="voice-sample">VOICE SAMPLE <span className="helper">optional · 5–30 s of clean speech</span></label>
             {voiceSample ? <div className="vs-file"><audio controls src={URL.createObjectURL(voiceSample)} /><span className="vs-name" title={voiceSample.name}>{voiceSample.name}</span><button type="button" className="btn btn-sm" onClick={() => setVoiceSample(null)}>Remove</button></div>
-              : <label className="vs-drop"><input id="voice-sample" name="voiceAudio" type="file" accept="audio/*" onChange={e => { setVoiceSample(e.target.files?.[0] ?? null); e.currentTarget.value = ''; }} /><span>Add a voice sample</span><small>WAV, MP3 or M4A. Without one, the voice is taken from the clip.</small></label>}
+              : <label className="vs-drop"><input id="voice-sample" name="voiceAudio" type="file" accept={AUDIO_ACCEPT} onChange={e => { setVoiceSample(e.target.files?.[0] ?? null); e.currentTarget.value = ''; }} /><span>Add a voice sample</span><small>WAV, MP3 or M4A. Without one, the voice is taken from the clip.</small></label>}
             <FieldIssue issues={issues} field="voiceAudio" />
           </div>}
         </div>)}

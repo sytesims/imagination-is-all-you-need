@@ -335,7 +335,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
   const sceneItems: SceneItem[] = [
     ...PREVIZ_TEMPLATES.map((t): SceneItem => ({ id: t.id, name: t.name, line: t.tagline, thumb: thumb(t.id), tint: colourOf(t.defaults.colour).hex, icon: <PrevizIcon size={26} />, group: 'presets', testId: `ps-preset-${t.id}`,
       meta: [PREVIZ_MOVES.find((m) => m.id === t.defaults.move)?.label ?? '', `${t.defaults.seconds} s`, t.defaults.aspect].filter(Boolean) })),
-    { id: 'import', name: 'Import a scene', line: 'An .html scene your coding agent wrote that follows our scene contract', icon: <UploadIcon size={20} />, action: true, group: 'own', testId: 'ps-import' },
+    { id: 'import', name: 'Import a scene', line: 'An .html scene your coding agent wrote that follows the app’s scene contract', icon: <UploadIcon size={20} />, action: true, group: 'own', testId: 'ps-import' },
     { id: 'copy', name: 'Copy build prompt', line: `For your agent: a richer “${tplNow.name}” scene, ready to import`, icon: <DocsIcon size={20} />, action: true, group: 'own', testId: 'ps-copy-prompt' },
     { id: 'sets', name: 'Sets & characters', line: 'Real 3D places and rigged characters to shoot with', icon: <CharacterSheetIcon size={20} />, badge: 'Soon', soon: true, action: true, group: 'own', testId: 'ps-sets-soon' },
   ];
@@ -505,7 +505,7 @@ function exItem(d: Payload, i: number): Item3D | null {
  *  faces / texture, price · time, the GLB download and Make a video. Running jobs show the shared generating tile; failures the shared failure tile. */
 function Card({ j, own, onOpen, onVideo, onRetry, onMakeReal }: { j: JobState; own: boolean; onOpen: (from: HTMLElement) => void; onVideo: () => void; onRetry: () => void; onMakeReal: (anchor: HTMLElement) => void }) {
   const isTT = j.toolId === 'three-d-turntable'; const meta = useMeta3d(j.status === 'done' && !isTT ? j.resultUrl : null); const poster = posterOf3d(j); const tt: string | null = (j as any).threeD?.turntableUrl ?? null;
-  const t = jobTiming(j as any); const cap = jobCaption(j, own); const price = cap.price || 'Free'; /* the shared caption words (shared/FeedCaption.tsx), Image's too */
+  const t = jobTiming(j as any); const cap = jobCaption(j, own); const price = cap.price /* never a made-up 'Free': empty when the run's price is unknown */; /* the shared caption words (shared/FeedCaption.tsx), Image's too */
   if (j.status === 'queued' || j.status === 'running') return <div className="vs-htile t3-card" data-testid={`t3-card-${j.id}`}><GenTile job={j} testId={`t3-run-${j.id}`} /></div>;
   if (j.status !== 'done') return <div className="vs-htile t3-card fs-host" data-testid={`t3-card-${j.id}`}><span className="vs-hwait fs-host"><FailureState job={j} variant="tile" testId={`t3-fail-${j.id}`} />
     {j.status === 'failed' && <span className="fs-tile-act"><button type="button" className="fs-btn fs-btn-main fs-btn-sm" data-testid={`t3-retry-${j.id}`} onClick={onRetry}>Retry</button></span>}</span></div>;

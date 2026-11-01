@@ -87,7 +87,7 @@ Object.assign((RECORDED['image-upscale'] ??= {}), { 'cloud-topaz-bloom2': offici
 // Workflows page picks (2026-10-28, transparency audit): the graphs the README lists for these models, credited where the page showed none.
 /** A hosted model we call with our own request: the model's maker and the service that runs it, under their terms; only our request code is ours. */
 export const hostedRequest = (model: string, service: string, url: string, maker: string): WorkflowSource =>
-  ({ source: 'ours', name: `${model} on ${service}`, url, author: `${maker}, run by ${service}; our request code`, licence: `${maker} terms (hosted model) · our request code: AGPL-3.0 (this repo)` });
+  ({ source: 'ours', name: `${model} on ${service}`, url, author: `${maker}, run by ${service}; the app’s request code`, licence: `${maker} terms (hosted model) · the app’s request code: AGPL-3.0 (this repo)` });
 Object.assign((RECORDED['h3-video'] ??= {}), {
   'comfy-h3': official('video_minimax_h3_t2v', 'MiniMax H3: Text to Video (image to video: video_minimax_h3_i2v)', 'h3-t2v-api.json'),
   'direct-ltx-25-pro': official('api_ltx2_5_i2v', 'LTX-2.5: Image to Video, partner node'), 'router-ltx-25-pro': official('api_ltx2_5_i2v', 'LTX-2.5: Image to Video, partner node'),

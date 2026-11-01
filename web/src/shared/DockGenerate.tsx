@@ -24,13 +24,14 @@ export const PF_SHORT: Record<string, (p: PreflightProblem) => string> = { needs
 export const leadOf = (problems: PreflightProblem[], missing?: string | null): string | null =>
   missing ?? (problems[0] ? PF_SHORT[problems[0].code]?.(problems[0]) ?? problems[0].message : null);
 
-export function DockGenerate({ toolId, engine, quote, setupTarget, label, busy, disabled, problems, missing, pfOpen, genRef, onClick, intent, dlSize, testId = 'ic-generate', priceTestId = 'ic-price', workflowId, className = '', variant = 'dock' }: {
+export function DockGenerate({ toolId, engine, quote, setupTarget, label, busy, disabled, problems, missing, pfOpen, genRef, onClick, intent, dlSize, testId = 'ic-generate', priceTestId = 'ic-price', workflowId, className = '', variant = 'dock', priceWhenMissing = false }: {
   toolId: string; engine: string; quote: any; label: string; setupTarget?: { toolId: string; engine: string };
   /** a submit in flight: spinner, no second click */ busy: boolean; /** nothing can run at all (the tool isn't loaded) */ disabled?: boolean;
   problems: PreflightProblem[]; /** the caller's own first missing step (wins over the list) */ missing?: string | null;
   pfOpen: boolean; genRef: RefObject<HTMLButtonElement>; onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
   /** a download the user already said yes to (shared/hardware useDownloadIntent) and its size line */ intent?: unknown; dlSize?: string | null;
   testId?: string; priceTestId?: string; workflowId?: string; className?: string;
+  /** only an input is missing (a prompt, a photo): show the price, like Image's and 3D's Generate; the missing step stays in the tooltip and the click nudges it */ priceWhenMissing?: boolean;
   /** 'dock': the bar's big two-line button; 'card': a one-line button on a Canvas card; 'node': the Canvas node's slim pill */ variant?: 'dock' | 'card' | 'node' }) {
   const base = variant === 'dock' ? 'ic-gen gen-btn gen-dock btn btn-primary' : variant === 'node' ? 'gen-btn gen-card gen-node' : 'gen-btn gen-card';
   const cr: number | null = quote ? shownCredits(quote) : null; const wKey = !!quote && quote.needsKey === true && quote.runnable === false; const unpriced = !!quote && quote.credits == null && quote.priceAvailable === false;
@@ -39,11 +40,12 @@ export function DockGenerate({ toolId, engine, quote, setupTarget, label, busy, 
   if (!busy && setupNeeded(m, quote, setupEngine, intent) && !problems.some(x => x.stage === 'inputs' || x.stage === 'model'))
     return <SetupGenerate toolId={setupTool} model={m} engine={setupEngine} quote={quote} className={`${base} ${className}`.trim()} testId={testId} priceTestId={priceTestId} />;
   const lead = leadOf(problems, missing);
+  const priceOverLead = priceWhenMissing && !!lead && problems.every(x => x.stage === 'inputs') && cr != null && !unpriced && !wKey;
   /* waiting (A1, 2026-10-31): a pre-flight problem OR the caller's own missing step (Stitch's 'Add clips', the Canvas panel, Film) is the one
      shared waiting look (ui-states.css .gen-wait), never the ready accent; the click still reaches onClick, which says or fixes what's missing */
   const waiting = problems.length > 0 || !!missing;
   return <button ref={genRef} type="button" className={`${base}${waiting ? ' gen-wait' : ''} ${className}`.trim()} data-testid={testId} data-workflow={workflowId} data-problems={problems.length || undefined}
     disabled={busy || !!disabled} aria-disabled={waiting || undefined} aria-haspopup={problems.length ? 'dialog' : undefined} aria-expanded={problems.length ? pfOpen : undefined} onClick={onClick}
     title={pfOpen ? undefined : lead ?? (mem ? `${mem.text} Or pick Comfy Cloud in the run menu.` : undefined)} data-mem-short={mem ? '1' : undefined}><span className="gen-l">{busy ? <i className="as-spin" aria-hidden /> : null}{label}</span>
-    {lead ? <span className="gen-price gen-missing" data-testid={priceTestId}>{lead}</span> : mem ? <span className="gen-price gen-mem" data-testid={priceTestId} data-mem="short">Free · only {gbOf(mem.freeGB * 2 ** 30)} free now, needs ~{Math.round(mem.needGB)} GB</span> : <GenPrice compact testId={priceTestId} q={quote} demo={!wKey && quote?.demo === true} text={unpriced ? (isPlainBlock(quote) ? '' : 'Price unavailable') /* a plain refusal says its own words (the pre-flight list), never 'Price unavailable' */ : dlSize ? intentLine(dlSize) : null} free={!wKey && cr === 0} credits={wKey ? null : cr} />}</button>;
+    {lead && !priceOverLead ? <span className="gen-price gen-missing" data-testid={priceTestId}>{lead}</span> : mem ? <span className="gen-price gen-mem" data-testid={priceTestId} data-mem="short">Free · only {gbOf(mem.freeGB * 2 ** 30)} free now, needs ~{Math.round(mem.needGB)} GB</span> : <GenPrice compact testId={priceTestId} q={quote} demo={!wKey && quote?.demo === true} text={unpriced ? (isPlainBlock(quote) ? '' : 'Price unavailable') /* a plain refusal says its own words (the pre-flight list), never 'Price unavailable' */ : dlSize ? intentLine(dlSize) : null} free={!wKey && cr === 0} credits={wKey ? null : cr} />}</button>;
 }

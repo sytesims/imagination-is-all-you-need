@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, KeyboardEvent } from 'react';
 import PointPicker from '../../shared/PointPicker';
 import type { VideoMeta } from '../../shared/UploadVideo';
 import { WHO_HINT } from '../../../../server/src/shared/cloudSwap';
+import { VIDEO_ACCEPT } from '../../../../server/src/shared/mediaAccept';
 /** Object Swap · Person/Object toggle.
  *  Backend fields (swapType, maskMode, maskPrompt, maskGrow, firstFrameMode) are sent as-is; the server ignores unknown fields today, so
  *  every control has a fallback: object models without `swapTypes` → run on the current provider with the mask; no mask-preview route → "found when you press Generate". */
@@ -111,7 +112,7 @@ export function ObjectMask({ video, provider, maskMode, setMaskMode, maskPrompt,
     {!lucy && maskMode === 'upload' && <div className="sw-field" data-testid="matte-field">
       <label className="field" htmlFor="matte">MASK VIDEO <span className="helper">white = replace · same length and size as your clip</span></label>
       {matte ? <div className="sw-file" data-testid="matte-file"><span>{matte.name}</span><button type="button" className="link-btn" onClick={() => setMatte(null)}>Remove</button></div>
-        : <input id="matte" data-testid="matte-input" type="file" accept="video/mp4,video/quicktime,video/webm" disabled={locked} onChange={e => setMatte(e.target.files?.[0] ?? null)} />}
+        : <input id="matte" data-testid="matte-input" type="file" accept={VIDEO_ACCEPT} disabled={locked} onChange={e => setMatte(e.target.files?.[0] ?? null)} />}
     </div>}
     {canPreview && !locked && <div className="sw-preview" data-testid="mask-preview" aria-live="polite">
       <div className="sw-pv-row"><button type="button" className="btn btn-sm" data-testid="mask-preview-run" disabled={pv.state === 'loading'} onClick={() => void runPreview()}>{pv.state === 'loading' ? 'Finding…' : pv.state === 'found' || pv.state === 'none' ? 'Preview again' : 'Preview mask'}</button><span className="helper">Free · nothing is charged</span></div>

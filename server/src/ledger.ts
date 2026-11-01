@@ -153,7 +153,7 @@ export function plainNote(kind: LedgerEntry['kind'], note: string): string {
   m = /^(\d+)\/(\d+) ref groups failed/i.exec(n); if (m) return creditsBackNote(`${m[1]} of ${m[2]} reference groups failed`, true);
   m = /^Credits back · run (failed|canceled|cancelled|blocked)(?:,\s*(.+))?$/i.exec(n); if (m) return creditsBackNote(runEndedWhat(m[1].toLowerCase(), m[2]));
   m = /^(failed|canceled|cancelled|blocked)\s*(?:\(([^)]+)\))?\s*(?::.*)?$/i.exec(n); if (m) return creditsBackNote(runEndedWhat(m[1].toLowerCase(), m[2] ? m[2].replace(/_/g, ' ') : null));
-  if (/^route\s+\S+\s+failed\b/i.test(n)) return creditsBackNote('A route failed, trying the next one');
+  if (/^route\s+\S+\s+failed\b/i.test(n)) return creditsBackNote('A run failed, trying the next one');
   const t = n.replace(/:\s*(partial )?credits back to (your )?(app )?balance\.?$/i, (_x, p) => `: ${p ?? ''}${CREDITS_BACK}`);
   return cap(t.replace(/\bauto-refund(ed)?\b/gi, 'credits back').replace(/\brefunded\b/gi, 'returned').replace(/\brefunds?\b/gi, 'credits back'));
 }

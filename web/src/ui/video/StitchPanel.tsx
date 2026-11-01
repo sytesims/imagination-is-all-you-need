@@ -44,10 +44,9 @@ import './videoPanel.css';
 import './videoDock.css';
 import './videoWorkflowBar.css';
 import './stitch.css';
+import { AUDIO_ACCEPT, VIDEO_ACCEPT } from '../../../../server/src/shared/mediaAccept';
 
 const DRAFT_KEY = 'ohf:stitch:draft';
-const VIDEO_ACCEPT = 'video/mp4,video/quicktime,video/webm';
-const AUDIO_ACCEPT = 'audio/mpeg,audio/wav,audio/x-wav,audio/mp4,audio/x-m4a,.mp3,.wav,.m4a';
 const QUOTE = { credits: 0, runnable: true, cost: { billedTo: 'local', billedToName: 'Your computer', estUsd: 0 } }; /* ffmpeg here: always free */
 const loadDraft = (): StitchDraft => { try { const s = localStorage.getItem(DRAFT_KEY); return s ? parseDraft(JSON.parse(s)) : EMPTY_DRAFT; } catch { return EMPTY_DRAFT; } };
 const saveDraft = (d: StitchDraft) => { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(d)); } catch { /* storage off: the strip lives for this visit */ } };

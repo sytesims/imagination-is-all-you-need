@@ -21,7 +21,7 @@ export const NEEDS_NVIDIA = 'Needs an NVIDIA graphics card';
 /** The price token of a local run ("Free · on your computer"; prices in dollars, 2026-10-26). */
 export const LOCAL_FREE = 'Free · on your computer';
 /** User-facing labels (MODEL-ROUTE-SPEC §2.1; Run on 2026-10-22: Comfy Cloud and Comfy Router are one place, "Comfy Cloud" in the UI; only the model info card names Router). */
-export const RUN_ON_LABELS: Record<RunOn, string> = { local: LOCAL_LABEL, 'comfy-cloud': 'Comfy Cloud', fal: 'fal', replicate: 'Replicate', bfl: 'Black Forest Labs', minimax: 'MiniMax', ltx: 'LTX', openai: 'OpenAI', google: 'Google', byteplus: 'BytePlus', dashscope: 'Alibaba Cloud', luma: 'Luma AI', direct: 'Direct API' };
+export const RUN_ON_LABELS: Record<RunOn, string> = { local: LOCAL_LABEL, 'comfy-cloud': 'Comfy Cloud', fal: 'fal', replicate: 'Replicate', bfl: 'Black Forest Labs', minimax: 'MiniMax', ltx: 'LTX', openai: 'OpenAI', google: 'Google', byteplus: 'BytePlus', dashscope: 'Alibaba Cloud', luma: 'Luma AI', direct: 'The maker’s API (your key)' /* a lab's own API we can't name: never "Direct API" (audit 2026-11-01) */ };
 /** H3 runner Step 1: the Comfy detail line of a route on the user's own Comfy deployment (route id comfy-deploy:<engine>; Run on stays "Comfy"). */
 export const COMFY_DEPLOY_DETAIL = 'Your Comfy deployment';
 /** How a Comfy Cloud run works, the small secondary words under the one place name (2026-11-01: one Comfy key, one place, "Comfy Cloud"):
@@ -74,7 +74,7 @@ export type PlaceBilling = 'free' | 'gpu-time' | 'set-price';
 export interface Place { id: PlaceId; label: string; billing: PlaceBilling; /** short, for a chip or a price line */ short: string; /** one sentence, for a hover card or details */ note: string }
 /** 2026-11-01: one Comfy key is one place, "Comfy Cloud", whether it runs an open workflow or a partner model (Comfy Router, id kept); the
  *  difference shows as the billing word (placeLine: "set price") and the how words (COMFY_HOW). Your own deployment stays its own place. */
-export const PLACE_LABELS = { local: LOCAL_LABEL, 'comfy-cloud': RUN_ON_LABELS['comfy-cloud'], 'comfy-router': RUN_ON_LABELS['comfy-cloud'], 'comfy-deploy': 'Comfy deployment' } as const;
+export const PLACE_LABELS = { local: LOCAL_LABEL, 'comfy-cloud': RUN_ON_LABELS['comfy-cloud'], 'comfy-router': RUN_ON_LABELS['comfy-cloud'], 'comfy-deploy': COMFY_DEPLOY_DETAIL /* "Your Comfy deployment": yours, never read as Comfy Cloud */ } as const;
 const PLACE_SHORT: Record<PlaceBilling, string> = { free: 'free', 'gpu-time': 'GPU time, estimate', 'set-price': 'set price' };
 /** The place of a route, a route id, or a job/quote that carries one (kind, routeId or route, vendor/envKey; comfyVariant 'partner' | 'workflow' | 'deployment' when known). */
 export function placeOf(x: { kind?: string | null; routeId?: string | null; route?: string | null; runOn?: string | null; envKey?: string | null; vendor?: string | null; comfyVariant?: string | null } | null | undefined): Place | null {
@@ -85,7 +85,8 @@ export function placeOf(x: { kind?: string | null; routeId?: string | null; rout
   if (kind === 'comfy-router') return mk('comfy-router', PLACE_LABELS['comfy-router'], 'set-price', 'A partner model through your Comfy key, at a set price.');
   if (kind === 'comfy-cloud') return x.comfyVariant === 'partner' ? mk('comfy-cloud', PLACE_LABELS['comfy-cloud'], 'set-price', 'A partner node on Comfy Cloud through your Comfy key, at a set price.')
     : mk('comfy-cloud', PLACE_LABELS['comfy-cloud'], 'gpu-time', 'A workflow on Comfy’s GPUs, billed by GPU time, so the price is an estimate.');
-  const ro = kind ? runOnOfRoute({ kind, envKey: x.envKey, vendor: x.vendor }) : x.runOn ? normRunOn(x.runOn) : null;
+  /* a lab's own API: its vendor, else the id's vendor (direct:openai/… → OpenAI), so a run never reads as a bare "direct" */
+  const ro = kind ? (kind === 'direct' && !x.vendor && !x.envKey && rid ? runOnOfRouteId(rid) ?? 'direct' : runOnOfRoute({ kind, envKey: x.envKey, vendor: x.vendor })) : x.runOn ? normRunOn(x.runOn) : null;
   if (!ro || ro === 'auto') return null;
   if (ro === 'local') return mk('local', LOCAL_LABEL, 'free', 'Runs on your computer. Free.');
   if (ro === 'comfy-cloud') return mk('comfy-cloud', PLACE_LABELS['comfy-cloud'], 'gpu-time', 'Through your Comfy key.');

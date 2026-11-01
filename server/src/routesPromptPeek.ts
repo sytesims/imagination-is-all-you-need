@@ -13,7 +13,7 @@
  */
 import { modelKeyOf } from './routing/modelRegistry.js';
 import { routesFor } from './routing/routes.js';
-import { normRunOn, runOnOfRoute, RUN_ON_LABELS } from './shared/modelIds.js';
+import { normRunOn, runOnOfRoute, RUN_ON_LABELS, PLACE_LABELS } from './shared/modelIds.js';
 import { withRefGrammar, appendUnnamed, refCountsOf, APPENDS_UNNAMED } from './shared/promptRefs.js';
 import type { FastifyInstance } from 'fastify';
 import fs from 'node:fs'; import path from 'node:path'; import zlib from 'node:zlib';
@@ -109,7 +109,7 @@ function videoRoutes(tool: ToolDef, provider: string, fields: Record<string, str
 }
 function videoPlace(tool: ToolDef, provider: string, fields: Record<string, string>): string | null {
   const rs = videoRoutes(tool, provider, fields);
-  const names = [...new Set(rs.map(r => r.routeId.startsWith('comfy-deploy:') ? 'Comfy deployment' : r.kind === 'comfy-router' ? 'Comfy Router' : RUN_ON_LABELS[runOnOfRoute(r)]))];
+  const names = [...new Set(rs.map(r => r.routeId.startsWith('comfy-deploy:') ? PLACE_LABELS['comfy-deploy'] : r.kind === 'comfy-router' ? 'Comfy Router' : RUN_ON_LABELS[runOnOfRoute(r)]))];
   return names.length === 1 ? names[0] : null;
 }
 const isVideoTool = (tool: ToolDef) => /video/.test(String((tool.app as any)?.kind ?? ''));

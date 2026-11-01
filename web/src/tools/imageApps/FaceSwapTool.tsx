@@ -12,7 +12,7 @@ import { demoMessage, runBlock, shownCredits } from '../../shared/quote';
 import { useDraftField } from '../../shared/batch1';
 import { usePrefill } from '../../shared/usePrefill';
 import { useToolQuery } from '../../shared/useToolQuery';
-import { LIMITS } from '../../shared/limits';
+import { LIMITS } from '../../../../server/src/shared/mediaAccept';
 import { estimate, jobStages, type ToolInfo } from '../../api';
 import type { Ref } from '../../shared/References';
 import { useAppQuote, useAppSubmit, PhotoSlot, refOf, newSeed } from './shared';

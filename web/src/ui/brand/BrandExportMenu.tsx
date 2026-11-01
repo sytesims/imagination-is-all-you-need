@@ -17,7 +17,7 @@ export type BrandExport = 'tokens' | 'hex' | PaletteKind | 'css' | 'tailwind' | 
 type Row = { id: BrandExport; app: string; hint: string; tag: string; needsColours?: boolean };
 export const EXPORT_GROUPS: { label: string; rows: Row[] }[] = [
   { label: 'Design', rows: [
-    { id: 'tokens', app: 'Figma', hint: 'For our Brand Kit plugin or Tokens Studio', tag: '.json' },
+    { id: 'tokens', app: 'Figma', hint: 'For the Brand Kit plugin or Tokens Studio', tag: '.json' },
     { id: 'hex', app: 'Canva', hint: 'Copies your hex colours for Brand Kit', tag: 'Copy', needsColours: true },
   ] },
   { label: 'Adobe', rows: [{ id: 'ase', app: 'Photoshop and Illustrator', hint: 'Swatches panel › Import Swatches', tag: '.ase', needsColours: true }] },

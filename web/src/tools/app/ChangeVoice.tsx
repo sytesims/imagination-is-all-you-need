@@ -4,6 +4,7 @@ import { registerMedia } from '../../shared/mediaPause';
 import { showsSamplePlay } from '../../shared/voicePick';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { readVideo, type VideoMeta } from '../../shared/UploadVideo';
+import { AUDIO_ACCEPT } from '../../../../server/src/shared/mediaAccept';
 
 export function VoiceCards({ value, onChange, samples, setSamples, max = 3, disabled, sampleUrl, sampleStandIn, sampleKind }: {
   value: string; onChange: (v: string) => void; samples: File[]; setSamples: (fs: File[]) => void; max?: number; disabled?: boolean; sampleUrl?: string | null; sampleStandIn?: boolean; sampleKind?: SampleKind;
@@ -28,7 +29,7 @@ export function VoiceCards({ value, onChange, samples, setSamples, max = 3, disa
       <p className="helper">10–30 s of clear speech each · WAV, MP3 or M4A · {samples.length}/{max}</p>
       {samples.map((f, i) => <div key={i} className="cv-sample"><audio src={urlOf(f)} controls preload="metadata" /><span className="cv-name" title={f.name}>{f.name}</span><button type="button" className="btn btn-sm" disabled={disabled} onClick={() => setSamples(samples.filter((_, j) => j !== i))}>Remove</button></div>)}
       {samples.length < max && <button type="button" className="btn cv-add" data-testid="voice-sample-add" disabled={disabled} onClick={() => inp.current?.click()}>Add a voice sample</button>}
-      <input ref={inp} type="file" accept="audio/*" multiple hidden data-picker-title="Choose voice samples" data-testid="voice-sample-input" onChange={e => { const fs = [...(e.target.files ?? [])]; if (fs.length) setSamples([...samples, ...fs].slice(0, max)); e.target.value = ''; }} />
+      <input ref={inp} type="file" accept={AUDIO_ACCEPT} multiple hidden data-picker-title="Choose voice samples" data-testid="voice-sample-input" onChange={e => { const fs = [...(e.target.files ?? [])]; if (fs.length) setSamples([...samples, ...fs].slice(0, max)); e.target.value = ''; }} />
     </div>}
   </section>;
 }
@@ -101,7 +102,7 @@ export function SamplePlay({ url, standIn, kind }: { url: string; standIn?: bool
 }
 
 /** B27: Change Voice also takes an audio clip instead of a video (server input 'audio'): upload or record one; the result is audio (MP3 by default). */
-export function AudioClipInput({ file, onChange, disabled, accept = 'audio/*', help }: { file: File | null; onChange: (f: File | null, sec?: number) => void; disabled?: boolean; accept?: string; help?: string }) {
+export function AudioClipInput({ file, onChange, disabled, accept = AUDIO_ACCEPT, help }: { file: File | null; onChange: (f: File | null, sec?: number) => void; disabled?: boolean; accept?: string; help?: string }) {
   const url = useMemo(() => file ? URL.createObjectURL(file) : '', [file]); useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
   const pick = (f?: File | null) => { if (!f) return; const a = document.createElement('audio'); a.preload = 'metadata'; a.onloadedmetadata = () => onChange(f, Number.isFinite(a.duration) ? a.duration : undefined); a.onerror = () => onChange(f); a.src = URL.createObjectURL(f); };
   return <section className="card cv-audio" data-testid="cv-audio">

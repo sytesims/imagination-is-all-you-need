@@ -262,7 +262,7 @@ function Sheet({ r, rows, chains, s, onClose, onOpen, mock }: { r: Row; rows: Ro
   const f = r.e.featured ? featuredByKey(r.e.featured) : undefined; const recreate = r.e.recreate ?? (f?.recreateHref ?? null);
   const models = all ? r.models : r.models.slice(0, 5); const SrcIc = r.source?.source === 'official' ? OfficialBadgeIcon : r.source?.source === 'community' ? CommunityIcon : SparkleIcon;
   /* "Ours" with no graph of ours and a link out = our request to a hosted model: say so (Try-On was "Ours · AGPL" while it is Bria's model) */
-  const srcLabel = !r.source ? '' : r.source.source === 'official' ? 'Official Comfy template' : r.source.source === 'community' ? 'Community workflow' : !r.source.file && r.source.url ? 'Hosted model' : 'Ours';  return <Panel label={`${r.e.name}: how it works`} onClose={onClose}>
+  const srcLabel = !r.source ? '' : r.source.source === 'official' ? 'Official Comfy template' : r.source.source === 'community' ? 'Community workflow' : !r.source.file && r.source.url ? 'Hosted model' : 'Built-in';  return <Panel label={`${r.e.name}: how it works`} onClose={onClose}>
     <div className="wv-pmedia wn-pmedia" data-hover-play>
       <span className="wn-pframe" key={r.e.id}><MediaView r={r} mode="view" muted={!sound} label thumb={r.media.kind === 'still' ? r.thumb : null} /></span>
       {r.media.kind === 'clip' && r.media.sound && !prefersReducedMotion() && <SoundToggle on={sound} onToggle={toggleSound} testId="wn-sound" />}

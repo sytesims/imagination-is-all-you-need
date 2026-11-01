@@ -15,7 +15,8 @@ import { useLocalFree, LOCAL_FREE_HEADLINE } from '../ui/next/LocalFree';
 import { isOpenWeights, providerGroupOf, displayNameOf } from './OpenWeights';
 import { DraftToggle } from '../ui/next/Gen';
 import { fmtSec, ProviderInfo } from '../api';
-import { RESOLUTIONS } from './limits';
+import { RESOLUTIONS as SHARED_RESOLUTIONS } from '../../../server/src/shared/mediaAccept';
+const RESOLUTIONS: string[] = [...SHARED_RESOLUTIONS];
 import QualitySelect from '../ui/b1/QualitySelect';
 import GenerateButton from '../ui/b1/GenerateButton';
 import { KeyNeeded, isKeyGate } from './KeyNeeded';
@@ -72,7 +73,7 @@ export default function GenerateBar({ demo, quote, extra, rows, hideGpu, keyGate
   const reg = useModels(cardPicker ? toolId : undefined);
   const comfyV = useComfyVersion();
   const soonOf = (id: string): string | undefined => { const p: any = providers.find(x => x.id === id); const rs: any[] = p?.routes ?? (reg.models.find(m => m.providerId === id || m.id === id) as any)?.routes ?? []; const mv = minComfyOf(p, reg.models.find(m => m.providerId === id || m.id === id)); if (mv && comfyV && olderThan(comfyV, mv)) return minComfyBlock(mv, comfyV); return rs.length && rs.every(r => r.caps?.comingSoon) ? (rs[0].reason ?? 'not available yet') : undefined; };
-  const flagsOf = (id: string): string[] => { const r: any = reg.models.find(m => m.providerId === id || m.id === id); const p: any = providers.find(x => x.id === id); const rs: any[] = r?.routes ?? p?.routes ?? []; const exp = !!(r?.experimental || p?.experimental || rs.some((x: any) => x.caps?.experimental)); const loc = !!(r?.localOnly || p?.localOnly || rs.some((x: any) => x.caps?.localOnly)); const mv = minComfyOf(p, r); return [...(exp ? ['Experimental'] : []), ...(loc ? ['Local only'] : []), ...(mv ? [minComfyHint(mv)] : [])]; }; const regOf = (id: string) => reg.models.find(m => m.providerId === id || m.id === id);
+  const flagsOf = (id: string): string[] => { const r: any = reg.models.find(m => m.providerId === id || m.id === id); const p: any = providers.find(x => x.id === id); const rs: any[] = r?.routes ?? p?.routes ?? []; const exp = !!(r?.experimental || p?.experimental || rs.some((x: any) => x.caps?.experimental)); const loc = !!(r?.localOnly || p?.localOnly || rs.some((x: any) => x.caps?.localOnly)); const mv = minComfyOf(p, r); return [...(exp ? ['Experimental'] : []), ...(loc ? ['Your computer only'] : []), ...(mv ? [minComfyHint(mv)] : [])]; }; const regOf = (id: string) => reg.models.find(m => m.providerId === id || m.id === id);
   /* A provider named only by its kind ('Open weights', 'Hosted API') shows the registry's model name instead (e.g. comfy-open → Wan 2.2 Animate 14B). */
   const nameOf = (p: { id: string; name: string }): string => { const r: any = regOf(p.id); const dn = displayNameOf(p, r); if (dn) return dn; return (!p.name || /^(open[- ]weights|hosted( api)?|local|api)$/i.test(p.name.trim())) && r?.name ? String(r.name) : p.name; };
   const kind = providers.find(p => p.id === provider)?.kind ?? providers[0]?.kind ?? 'open-weights';

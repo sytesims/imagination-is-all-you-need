@@ -8,7 +8,7 @@ import { urlSettings } from './prefillParams';
 import { getJob, listExamples, Example } from '../api';
 import { readVideo, VideoMeta } from './UploadVideo';
 import type { Ref } from './References';
-import { LIMITS } from './limits';
+import { LIMITS } from '../../../server/src/shared/mediaAccept';
 import { useToast } from './Toast';
 import { planJobFiles, prefillGate } from './prefillDelivery';
 import { useFrameHandoff } from './useFrameHandoff';

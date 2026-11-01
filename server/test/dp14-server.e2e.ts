@@ -28,7 +28,7 @@ try {
   assert.equal(L.plainNote('refund', 'Credits back · run failed, temporary problem'), 'Run failed (temporary problem): credits back to your balance');
   assert.equal(L.plainNote('refund', 'failed (temporary): auto-refund'), 'Run failed (temporary): credits back to your balance');
   assert.equal(L.plainNote('refund', 'auto-refund'), 'Run did not finish: credits back to your balance');
-  assert.equal(L.plainNote('refund', 'route fal:x/y failed: credits back to balance'), 'A route failed, trying the next one: credits back to your balance');
+  assert.equal(L.plainNote('refund', 'route fal:x/y failed: credits back to balance'), 'A run failed, trying the next one: credits back to your balance');
   assert.equal(L.plainNote('refund', 'canceled: 2/4 groups not started: partial credits back to balance'), 'Run canceled, 2 of 4 groups not started: partial credits back to your balance');
   assert.equal(L.plainNote('refund', '1/3 ref groups failed: partial credits back to balance'), '1 of 3 reference groups failed: partial credits back to your balance');
   assert.equal(L.plainNote('refund', 'Credits back · run canceled: free gen returned (3 left)'), 'Run canceled: free gen returned (3 left)');

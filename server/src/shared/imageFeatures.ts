@@ -77,7 +77,7 @@ export const MASK_MODELS = ['api-gpt-image', 'api-gpt-image-25-flare', 'api-gpt-
 const TPL_URL = 'https://github.com/Comfy-Org/workflow_templates/blob/main/templates/';
 /** Our request to a fal endpoint, built from its published schema (no ComfyUI template exists for that model). A hosted model (2026-10-28):
  *  credited to fal and the model's maker under their terms; only our request code is AGPL. */
-const falRequest = (slug: string): WorkflowSource => ({ source: 'ours', name: `${slug} on fal`, url: `https://fal.ai/models/${slug}/api`, author: 'Run by fal; our request code', licence: 'fal and model maker terms (hosted model) · our request code: AGPL-3.0 (this repo)' });
+const falRequest = (slug: string): WorkflowSource => ({ source: 'ours', name: `${slug} on fal`, url: `https://fal.ai/models/${slug}/api`, author: 'Run by fal; the app’s request code', licence: 'fal and model maker terms (hosted model) · the app’s request code: AGPL-3.0 (this repo)' });
 /** Photo tools (2026-10-23): fal-only models, one workflow each (quality / default first). */
 export const REMOVE_BG_MODELS = ['fal-bria-rmbg', 'fal-ideogram-rmbg'];
 export const EXPAND_MODELS = ['fal-bria-expand', 'fal-ideogram-reframe'];
@@ -95,7 +95,7 @@ export const TOOL_MODELS: Record<string, { name: string; source: WorkflowSource 
   'fal-object-removal': { name: 'fal Object Removal', source: falRequest('fal-ai/object-removal/mask') },
   'fal-fashn-tryon': { name: 'FASHN Virtual Try-On v1.6', source: falRequest('fal-ai/fashn/tryon/v1.6') },
   /* a hosted model (2026-10-28, transparency audit): Bria's model, run by Comfy Router under Bria's terms; only our request code is AGPL */
-  'router-bria-tryon': { name: 'Bria Virtual Try-On', source: { source: 'ours', name: 'Bria Product Virtual Try-On (bria/image-edit-product-virtual-tryon) on Comfy Router', url: 'https://docs.comfy.org/development/comfy-router/models/bria/image-edit-product-virtual-tryon/code', author: 'Bria, run by Comfy Router; our request code', licence: 'Bria terms (hosted model) · our request code: AGPL-3.0 (this repo)' } },
+  'router-bria-tryon': { name: 'Bria Virtual Try-On', source: { source: 'ours', name: 'Bria Product Virtual Try-On (bria/image-edit-product-virtual-tryon) on Comfy Router', url: 'https://docs.comfy.org/development/comfy-router/models/bria/image-edit-product-virtual-tryon/code', author: 'Bria, run by Comfy Router; the app’s request code', licence: 'Bria terms (hosted model) · the app’s request code: AGPL-3.0 (this repo)' } },
   // Image to layers (2026-10-24, shared/imageLayers.ts): Seedream 5.0 layer separation (the official Comfy partner template, same API on Comfy Router) and the
   // local Qwen-Image-Layered template (listed with its download size; not downloaded)
   [LAYERS_FLASH]: { name: 'Seedream 5.0 Flash', source: { source: 'official', name: 'ByteDance Seedream 5.0: Layer Separation (api_bytedance_seedream_5_0_layer_separation)', url: `${TPL_URL}api_bytedance_seedream_5_0_layer_separation.json`, author: 'Comfy Org', licence: 'MIT (Comfy-Org/workflow_templates)' } },
@@ -226,7 +226,7 @@ export function workflowLine(w: WorkflowSource | null | undefined): string {
   if (!w) return '';
   const nm = w.name.replace(/\s*\([\w.-]+\)\s*$/, '');
   return w.source === 'official' ? `Official Comfy template · ${nm}${w.author && w.author !== 'Comfy Org' ? ` (by ${w.author})` : ''}`
-    : w.source === 'community' ? `Community · ${nm} by ${w.author.replace(/^@/, '')}` : `Ours · ${w.file ?? nm}`;
+    : w.source === 'community' ? `Community · ${nm} by ${w.author.replace(/^@/, '')}` : `Built-in · ${w.file ?? nm}`;
 }
 
 // ---------------- jobs ----------------

@@ -328,7 +328,7 @@ export function ShareSheet({ jobId, out = 0, onClose, onCopy, onError, mediaUrl 
         {/* style */}
         {needsFile && <section className="ss2-sec" data-testid="ss-style"><h4 className="bp-lbl">Style</h4>
           <Segmented label="Clean or branded" value={branded ? 'branded' : 'clean'} onChange={v => canBrand && setMode(v as ShareStyle)} testId="ss-mode" options={[
-            { value: 'clean', label: 'Clean', hint: 'No marks, no hidden data', testId: 'ss-clean' }, { value: 'branded', label: 'Branded', hint: 'Our mark, your handle', disabled: !canBrand || !brandInfo, testId: 'ss-branded' }]} />
+            { value: 'clean', label: 'Clean', hint: 'No marks, no hidden data', testId: 'ss-clean' }, { value: 'branded', label: 'Branded', hint: 'App mark, your handle', disabled: !canBrand || !brandInfo, testId: 'ss-branded' }]} />
           {canBrand && infoErr && <p className="bp-note">Brand details couldn’t load. <button type="button" className="ss2-link" onClick={() => setRetry(n => n + 1)}>Try again</button>, or choose Clean.</p>}
           {!canBrand && <p className="bp-note" data-testid="ss-audio-note">{isAudio ? 'Audio shares clean. A branded waveform video comes later.' : '3D models share clean (.glb).'}</p>}
           <div className={`ss2-brand${brand ? ' is-on' : ''}`} aria-hidden={!brand}>{brand && !fmt.explode && <>

@@ -30,6 +30,7 @@ import { SwitchRow } from '../../shared/SettingChip';
 import { FILM_ASPECTS, type FilmAudio, type FilmCard, type FilmOp, type FilmProject, type FilmShot, type AudioKind, type FilmSample } from './types';
 import FilmInspector, { FILM_AGAIN_EVENT, useShotQuote } from './FilmInspector';
 import { GapChip, continueAfter, joinBlock, likeShot, type JoinCtx } from './GapChip';
+import { AUDIO_ACCEPT } from '../../../../server/src/shared/mediaAccept';
 
 const POLL_MS = 3000;
 
@@ -248,7 +249,7 @@ function AudioLanes({ film, commit }: { film: FilmProject; commit: (o: FilmOp[])
   const laneOf = (k: AudioKind): FilmAudio => film.audio.find(a => a.kind === k) ?? { id: `aud_${k}`, kind: k, jobId: null, url: null, volume: 1, fadeOutSec: null, loop: false };
   /* set_audio replaces the whole list: this lane changed, the others kept */
   const set = (a: FilmAudio) => void commit([{ op: 'set_audio', tracks: [...film.audio.filter(x => x.kind !== a.kind), a] }]);
-  const choose = (a: FilmAudio, label: string) => pickMedia({ accept: 'audio/*', title: `Choose ${label.toLowerCase()}`, limits: 'From your Assets or your computer', onFiles: async fs => { if (!fs[0]) return;
+  const choose = (a: FilmAudio, label: string) => pickMedia({ accept: AUDIO_ACCEPT, title: `Choose ${label.toLowerCase()}`, limits: 'From your Assets or your computer', onFiles: async fs => { if (!fs[0]) return;
     try { const url = await fileUrl(fs[0]); set({ ...a, url, jobId: null }); } catch (e: any) { toast(`Couldn’t add that sound. ${e?.message ?? ''}`.trim(), 'error'); } } });
   return <section className="fm-audio" aria-label="Sound">
     <div className="fm-sec-h"><h2>Sound</h2><span className="fm-sec-note">Levels are balanced when you stitch</span></div>

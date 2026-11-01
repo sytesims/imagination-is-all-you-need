@@ -1,6 +1,7 @@
 /**
  * "AI for e-commerce: from one product photo to a full launch" (2026-10-24): the pop-up book at /learn/ai-ecommerce.
  * Pure data (no DOM, no React), so the page and server/test/learn-ecom-book.test.ts share it. Our own writing.
+ * No dollar figures (audit 2026-11-01): prices change, so the book says to check the price before a run; the Generate button shows the live one.
  *
  * Every "Try it" opens a tool page of this app with the example prompt in the bar (usePrefill reads ?prompt=) and a model
  * picked (?model=). Nothing runs until the person presses Generate there. Local models first (free on your own machine);
@@ -44,7 +45,7 @@ export const CHAPTERS: Chapter[] = [
       'Simple packshot of a kraft paper coffee bag with a folded top, front view, warm white background, soft daylight, no props',
     ],
     why: 'Plain words about light, angle and background give the model the same checklist a photographer uses.',
-    cost: { local: 'Free on your computer', cloud: 'About $0.005 in the cloud', time: 'About 20 s' },
+    cost: { local: 'Free on your computer', cloud: 'See the price before you run', time: 'About 20 s' },
     tryIt: { label: 'Make a clean reference', base: IMAGE_PAGE, model: 'z-image-turbo' },
     more: [{ label: 'Upscale your photo (free on your computer)', to: `${IMAGE_PAGE}?workflow=upscale&model=real-esrgan` }],
     hotspots: [
@@ -74,7 +75,7 @@ export const CHAPTERS: Chapter[] = [
       'Serum bottle on a terracotta orange paper backdrop with a hard sunlight shadow cast at an angle, bold summer ad look',
     ],
     why: 'Backdrop, surface and light are three separate words. Change one at a time and you learn what each does.',
-    cost: { local: 'Free on your computer', cloud: 'About $0.005 per image in the cloud', time: 'About 20 s each' },
+    cost: { local: 'Free on your computer', cloud: 'Priced per image: see the price before you run', time: 'About 20 s each' },
     tryIt: { label: 'Try a studio shot', base: IMAGE_PAGE, model: 'z-image-turbo' },
     more: [{ label: 'Change the background of your photo (local)', to: `${IMAGE_PAGE}?mode=edit&model=flux-2-klein-4b` }],
     hotspots: [
@@ -103,7 +104,7 @@ export const CHAPTERS: Chapter[] = [
       'This coffee bag on a wooden breakfast table with a ceramic mug and croissant, warm sunlight, cosy weekend mood',
     ],
     why: 'Matching light direction is what makes a placed product look photographed, not pasted.',
-    cost: { local: 'Free with FLUX.2 [klein] 4B', cloud: 'About $0.07 with Nano Banana 2.1', time: 'About 40 s' },
+    cost: { local: 'Free with FLUX.2 [klein] 4B', cloud: 'Nano Banana 2.1: see the price before you run', time: 'About 40 s' },
     tryIt: { label: 'Place your product', base: `${IMAGE_PAGE}?mode=edit`, model: 'flux-2-klein-4b' },
     more: [{ label: 'Or use the Product Shot workflow', to: `${IMAGE_PAGE}?workflow=product-shot` }],
     hotspots: [
@@ -154,7 +155,7 @@ export const CHAPTERS: Chapter[] = [
     lesson: [
       'An ad needs room for a headline, the product and a price. Ask for the empty space first; the layout matters more than the style.',
       'Put the exact words in quotes and keep them short. Say where they go: top third, bottom left, on a sticker.',
-      'Qwen Image writes clean text and runs free on your computer. For a tricky layout, GPT Image 2.5 Flare in the cloud costs about $0.03 an image.',
+      'Qwen Image writes clean text and runs free on your computer. For a tricky layout, GPT Image 2.5 Flare in the cloud shows its price before you run.',
     ],
     prompts: [
       'Vertical ad poster: serum bottle on the right on a peach backdrop, big bold headline "GLOW, BOTTLED" in the top left, small text "20% off this week" on an orange sticker bottom left, clean modern layout',
@@ -162,9 +163,9 @@ export const CHAPTERS: Chapter[] = [
       'Banner 3:1: coffee bag on the left, warm beige background, headline "MORNING, SORTED" in the middle, small "Free shipping" line under it',
     ],
     why: 'Quoted words are copied letter by letter; describing where they sit stops them landing on the product.',
-    cost: { local: 'Free with Qwen Image 2.1', cloud: 'About $0.03 with GPT Image 2.5 Flare', time: 'About 45 s' },
+    cost: { local: 'Free with Qwen Image 2.1', cloud: 'GPT Image 2.5 Flare: see the price before you run', time: 'About 45 s' },
     tryIt: { label: 'Lay out a poster', base: IMAGE_PAGE, model: 'qwen-image-2.1' },
-    more: [{ label: 'Cloud option: GPT Image 2.5 Flare (~$0.03)', to: `${IMAGE_PAGE}?model=gpt-image-2.5-flare` }],
+    more: [{ label: 'Cloud option: GPT Image 2.5 Flare', to: `${IMAGE_PAGE}?model=gpt-image-2.5-flare` }],
     hotspots: [
       { id: 'headline', label: 'Headline', text: 'Short words in quotes, with a place: “top left, big bold sans serif”. Three or four words read best.' },
       { id: 'space', label: 'Empty space', text: 'Ask for “lots of empty space” on one side. It keeps the text off the product.' },
@@ -191,7 +192,7 @@ export const CHAPTERS: Chapter[] = [
       'Steam rises from a mug beside the coffee bag, the camera slides gently left to right across the table, morning light',
     ],
     why: 'One named move and one small action give the model a clear plan, so it doesn’t invent extra motion.',
-    cost: { local: 'Direct a Shot is free in your browser', cloud: 'About $0.08 per second (6 s ≈ $0.48)', time: 'A few minutes per clip' },
+    cost: { local: 'Direct a Shot is free in your browser', cloud: 'Priced per second: see the price before you run', time: 'A few minutes per clip' },
     tryIt: { label: 'Write the shot', base: VIDEO_PAGE, model: 'minimax-h3' },
     more: [{ label: 'Direct it free in 3D first', to: `${THREE_D_PAGE}?workflow=plan-a-shot` }],
     hotspots: [
@@ -250,7 +251,7 @@ export const CHAPTERS: Chapter[] = [
       'Flat lay of a product launch kit on a desk: phone showing a shop page, a gift box, a price tag and colour swatches, top-down, soft light',
     ],
     why: 'Changing one thing between A and B tells you which thing made the difference.',
-    cost: { local: 'Whole kit free on your computer', cloud: 'Usually under $2 for a mixed kit', time: 'An afternoon' },
+    cost: { local: 'Whole kit free on your computer', cloud: 'Each step shows its price before you run', time: 'An afternoon' },
     tryIt: { label: 'Make version A', base: IMAGE_PAGE, model: 'z-image-turbo' },
     more: [{ label: 'Lay it out on Canvas', to: '/canvas' }, { label: 'See what it cost', to: '/spend' }],
     hotspots: [

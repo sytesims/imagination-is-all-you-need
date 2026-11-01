@@ -1,4 +1,4 @@
-import { IMAGE_ACCEPT, fileFits, kindOfFile, wrongTypeText, type MediaKind } from '../../../../server/src/shared/mediaAccept';
+import { IMAGE_ACCEPT, fileFits, kindOfFile, wrongTypeText, type MediaKind, AUDIO_ACCEPT, VIDEO_ACCEPT } from '../../../../server/src/shared/mediaAccept';
 import { Words } from '../../shared/Words';
 import { CloseIcon, BrushIcon, AspectIcon, ResolutionIcon } from '../Icons';
 import { EnhanceChip, EnhancePop, showEnhanced, type EnhanceResult } from '../next/Enhance';
@@ -104,8 +104,8 @@ const RK: [string, string][] = [['refs', 'image'], ['refVideos', 'video'], ['ref
 /** File-picker types per reference kind; video / audio follow the model's refFormats (videoCaps) when it lists them. */
 const REF_MIME: Record<string, string> = { mp4: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm', mp3: 'audio/mpeg', wav: 'audio/wav' };
 const refAccept = (kind: string, fmts?: { video?: string[]; audio?: string[] }) => kind === 'image' ? IMAGE_ACCEPT
-  : kind === 'video' ? (fmts?.video ? fmts.video.map(x => `${REF_MIME[x] ?? ''},.${x}`).join(',') : 'video/mp4,video/quicktime,video/webm')
-  : (fmts?.audio ? fmts.audio.map(x => `${REF_MIME[x] ?? ''},.${x}`).join(',') : 'audio/*');
+  : kind === 'video' ? (fmts?.video ? fmts.video.map(x => `${REF_MIME[x] ?? ''},.${x}`).join(',') : VIDEO_ACCEPT)
+  : (fmts?.audio ? fmts.audio.map(x => `${REF_MIME[x] ?? ''},.${x}`).join(',') : AUDIO_ACCEPT);
 
 /** A missing input in Generate's few words (Image says "Write a prompt"; a video's photo is its start frame, or a reference in Reference mode). */
 function missShort(m: string, mode: string): string {
@@ -389,6 +389,8 @@ export default function VideoStudio(p: VideoStudioProps) {
   const routeIssue = (p.issues ?? []).some((i: any) => i?.code === 'route_not_runnable' || i?.code === 'idempotency_conflict');
   if (routeIssue) notes.push({ key: 'route', stage: 'Setup', node: <RouteNotRunnable issues={p.issues} /> });
   const blocking = notes.some(n => n.hard);
+  /* only an input is missing (a prompt, a photo): Generate shows the price like Image's and 3D's; the missing step is the tooltip, a click nudges it (audit P3) */
+  const priceFirst = !qFull && p.missing.length > 0 && !p.conflict && !notes.some(n => n.hard && !n.key.startsWith('miss-')) && !unpriced && !blockWhy && credits != null;
   /* a note that arrives from the last run or an add (not a standing state) opens the list once; a click on Generate opens it too */
   const eventKey = [p.imgErr, refErr, ...['image', 'refs', 'refVideos', 'refAudios', 'prompt', 'resolution'].map(f => issueOf(f)?.message), subDur?.message, routeIssue ? 'route' : ''].filter(Boolean).join('|');
   useEffect(() => { if (eventKey) setPfOpen(true); }, [eventKey]);
@@ -527,7 +529,7 @@ export default function VideoStudio(p: VideoStudioProps) {
         : <button ref={genRef} type="button" className={`ic-gen gen-btn gen-dock btn btn-primary vs-dgen${!p.busy && (p.missing.length > 0 || blocking) ? ' gen-wait' : ''}`} data-testid="vs-generate" data-problems={notes.length || undefined} disabled={p.busy || qFull || !!p.frameHandoff} aria-busy={p.busy || undefined} aria-disabled={p.missing.length > 0 || blocking || !!p.frameHandoff || undefined} data-why={why || undefined} aria-describedby={why ? 'vs-why' : undefined}
           aria-haspopup={blocking ? 'dialog' : undefined} aria-expanded={blocking ? pfOpen : undefined} title={pfOpen ? undefined : genTitle}
           onClick={e => { if (blocking) { setPfOpen(o => !o); return; } if (p.missing.length) { nudgeMissing(e.currentTarget); return; } setPfOpen(false); p.onGenerate(); }}><span className="gen-l">{p.busy ? <i className="as-spin" aria-hidden /> : null}Generate</span>
-          {genWord ? <span className="gen-price gen-missing" data-testid="vs-price">{genWord}</span> : <GenPrice compact testId="vs-price" q={q} demo={isDemo} free={isFree} credits={!unpriced && !blockWhy ? credits : null} />}</button>}
+          {genWord && !(priceFirst) ? <span className="gen-price gen-missing" data-testid="vs-price">{genWord}</span> : <GenPrice compact testId="vs-price" q={q} demo={isDemo} free={isFree} credits={!unpriced && !blockWhy ? credits : null} />}</button>}
       </div></div>
       {p.missing.length > 0 && !gate && <p className="sr-only" id="vs-why">{why}</p>}
       {(() => { const [k, si] = pv.split(':'); const i = Number(si); const isRef = !!si; const it = pv === 'start' ? p.image : pv === 'end' ? p.lastFrame : isRef ? p.vrefs[k]?.[i] ?? null : null;
@@ -560,7 +562,7 @@ export default function VideoStudio(p: VideoStudioProps) {
           options={resSorted.map(r => { const pr = resPrice(r); return { value: r, label: resLbl(r), hint: lim?.resolutionHints?.[r] ?? (resLbl(r) !== r ? r : resTag(resH(r))), aside: pr !== null ? <OptPrice text={pr} testId={`vs-set-res-price-${r}`} /> : undefined, testId: `vs-set-res-${r}` }; })} /></PopSection>}
         {fo('enh') && cfg.enhance && <PopSection label="Prompt enhancer"><PopSwitch rowTestId="vs-set-enhance" label="Enhance when I generate" hint="Adds detail as it runs; your text stays as you wrote it" on={enhOn} onChange={setEnh} /></PopSection>}
         {qOpts.length > 1 && <PopSection label="Quality" aside={qLabel(qOpts.find(o => o.value === p.quality)?.label ?? '')}><Segmented label="Quality" value={p.quality} onChange={p.setQuality} onCommit={closePop}
-          options={[...qOpts].sort((a) => a.value === 'quality' ? -1 : 1).map(o => ({ value: o.value, label: qLabel(o.label), hint: o.value === 'fast' ? 'Quicker preview' : 'Best detail', title: o.value === 'fast' ? 'Fewer steps, quicker preview. Local only.' : 'Full steps, best detail.', testId: `h3-quality-${o.value}` }))} /></PopSection>}
+          options={[...qOpts].sort((a) => a.value === 'quality' ? -1 : 1).map(o => ({ value: o.value, label: qLabel(o.label), hint: o.value === 'fast' ? 'Quicker preview' : 'Best detail', title: o.value === 'fast' ? 'Fewer steps, quicker preview. Your computer only.' : 'Full steps, best detail.', testId: `h3-quality-${o.value}` }))} /></PopSection>}
         {bitrates.length > 1 && <PopSection label="Bitrate" aside={lim?.bitratePriceAffects === false ? 'Same price' : undefined}><Segmented label="Bitrate" value={String(p.fv.bitrate ?? 'standard')} onChange={v => p.setFv('bitrate', v)} onCommit={closePop}
           options={bitrates.map(o => ({ value: o.value, label: o.label, hint: o.value === 'high' ? 'Cleaner motion' : 'Smaller file', title: `${o.value === 'high' ? 'Bigger file, cleaner motion.' : 'Smaller file, fine for previews.'}${lim?.bitratePriceAffects === false ? ' Same price.' : ''}`, testId: `vs-bitrate-${o.value}` }))} /></PopSection>}
       </div></BarPopover>

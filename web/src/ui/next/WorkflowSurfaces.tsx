@@ -136,7 +136,7 @@ export function RigStrip({ recipe, rig, setRig, watch, overRef }: { recipe: WfRe
   </span>;
 }
 /** Camera & Lens's credit line, for the model menu. */
-export const rigCredit = (recipe: WfRecipe) => `Ours · ${recipe.source.note || 'camera recipe'} on your Create Image model`;
+export const rigCredit = (recipe: WfRecipe) => `Built-in · ${recipe.source.note || 'camera recipe'} on your Create Image model`;
 
 /* ---------------- Photo tools (2026-10-23): Remove Background, Expand, Erase Object, Virtual Try-On ---------------- */
 export const PHOTO_TOOLS = ['remove-bg', 'expand', 'erase', 'try-on', 'image-layers' /* 2026-10-24: Image to layers (also needs 512 px a side, shared/imageLayers.ts) */];

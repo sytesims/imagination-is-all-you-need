@@ -143,7 +143,7 @@ function NotifyOptIn() {
   const base = useRef<number | null>(null); if (base.current == null) base.current = finished.length;
   if (hide || finished.length <= base.current || typeof Notification === 'undefined') return null;
   const close = () => { markShown(ONCE_OPTIN); setHide(true); };
-  return createPortal(<div className="notify-opt" role="dialog" aria-label="Notifications"><b>Want a notification when jobs finish?</b><p className="helper">We’ll ping you when a result is ready, even if this tab is in the background.</p>
+  return createPortal(<div className="notify-opt" role="dialog" aria-label="Notifications"><b>Want a notification when jobs finish?</b><p className="helper">Get a ping when a result is ready, even if this tab is in the background.</p>
     <div className="row"><button type="button" className="btn btn-primary btn-sm" onClick={async () => { await setNotifyOnDone(true); close(); }}>Turn on</button><button type="button" className="btn btn-ghost btn-sm" data-testid="notify-opt-dismiss" onClick={close}>No thanks</button></div></div>, document.body);
 }
 

@@ -134,7 +134,10 @@ try {
     const charge = routeCredits(tool, cr, routeInput(tool, job))!; assert.ok(charge > 0);
     const qs = new URLSearchParams({ provider: P, route, seconds: len, duration: len, resolution: res, types: effect });
     const r = await app.inject({ url: `/api/tools/footage-fx/price?${qs}` }); assert.equal(r.statusCode, 200, r.body.slice(0, 300)); const b = r.json();
-    assert.equal(b.route, route, JSON.stringify(b).slice(0, 300)); const quoted = b.listCredits ?? b.credits; assert.equal(quoted, charge, `${effect} ${len} s ${res}: quote ${quoted} = charge ${charge}`); seen[`${effect} ${len}s ${res}`] = quoted; }
+    assert.equal(b.route, route, JSON.stringify(b).slice(0, 300)); const quoted = b.listCredits ?? b.credits; assert.equal(quoted, charge, `${effect} ${len} s ${res}: quote ${quoted} = charge ${charge}`); seen[`${effect} ${len}s ${res}`] = quoted;
+    /* the quote's line names the model this place really runs, in the job card's words (LTX-2.3 on Comfy Cloud, never the card's LTX-2.5) */
+    const card = modelNameForRun('footage-fx', P, job, route)!; assert.match(card, /^LTX-2\.3 22B/, `${effect}: job card name ${card}`);
+    assert.ok(String(b.routeLabel ?? '').startsWith(card), `${effect}: quote line "${b.routeLabel}" names ${card}`); }
   assert.ok(seen['restore 5s 576p'] > seen['restore 2s 448p'], JSON.stringify(seen));
   assert.deepEqual(tool.routeInput!({ types: 'restore' }), { types: ['restore'] }, 'a quote’s text types are read, not replaced by the first effect'); assert.deepEqual(tool.routeInput!({ types: '["extend-frame"]' }), { types: ['extend-frame'] });
   for (const t of ONLY) { const b = (await app.inject({ url: `/api/tools/footage-fx/price?provider=${P}&types=${t}&seconds=2&resolution=448p` })).json(); assert.notEqual(b.route, `local:${P}`, `${t}: never quoted as a free local run`); }

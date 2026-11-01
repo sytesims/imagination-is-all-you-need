@@ -30,6 +30,7 @@ import type { AdSection } from './AdEditor';
 import { AdCardEditor, Brand, EditBtn, ExportBtn, NO_BRAND } from './AdPanel';
 import { drawAd, drawSafeZones, exportAdPack, loadAdArt, loadAdPicture, type AdArt } from './adDraw';
 import type { BrandKit } from '../../../server/src/shared/brandKit';
+import { IMAGE_ACCEPT } from '../../../server/src/shared/mediaAccept';
 
 /** The editor's last open section on each card, for this session. */
 const lastSection = new Map<string, AdSection>();
@@ -105,7 +106,7 @@ function useAdCard(shape: AdShapeRef) {
       editor.run(() => { editor.deleteShapes(arrowsInto(editor, shape.id).map((a) => a.arrowId)); linkShapes(editor, up, shape.id); });
     } catch (e) { toast((e as Error).message || 'Couldn’t add that picture.', 'error'); } finally { setPlacing(false); }
   };
-  const choose = () => pickMedia({ accept: 'image/*', title: input ? 'Change the picture' : 'Choose a picture', onFiles: ([f]) => { if (f) void place(f); } });
+  const choose = () => pickMedia({ accept: IMAGE_ACCEPT, title: input ? 'Change the picture' : 'Choose a picture', onFiles: ([f]) => { if (f) void place(f); } });
 
   const exportPack = async () => {
     if (!art || !pic || busy) return; setBusy(true);

@@ -99,7 +99,7 @@ try {
   // photo tools (2026-10-23): Remove Background, Expand, Erase Object, Virtual Try-On on fal-only models
   const rb = W.find((w) => w.id === 'remove-bg'); assert.deepEqual(rb.models.edit, ['fal-bria-rmbg', 'fal-ideogram-rmbg']); assert.equal(rb.prompt.mode, 'hidden'); assert.equal(rb.generateLabel, 'Cut out');
   assert.equal(rb.modelInfo['fal-bria-rmbg'].name, 'Bria RMBG 2.0'); assert.match(rb.modelInfo['fal-bria-rmbg'].workflow.line, /Official Comfy template · Bria: Remove Image Background/); assert.equal(rb.source.kind, 'official');
-  assert.match(rb.modelInfo['fal-ideogram-rmbg'].workflow.line, /^Ours · fal-ai\/ideogram\/remove-background on fal/);
+  assert.match(rb.modelInfo['fal-ideogram-rmbg'].workflow.line, /^Built-in · fal-ai\/ideogram\/remove-background on fal/);
   const ex = W.find((w) => w.id === 'expand'); assert.deepEqual(ex.models.edit, ['fal-bria-expand', 'fal-ideogram-reframe']); assert.equal(ex.prompt.mode, 'optional');
   assert.deepEqual(ex.controls.map((c: any) => [c.field, c.default]), [['target', '1:1']]); assert.deepEqual(ex.controls[0].options.map((o: any) => o.value), ['1:1', '4:5', '5:4', '3:4', '4:3', '2:3', '3:2', '9:16', '16:9']);
   const er = W.find((w) => w.id === 'erase'); assert.equal(er.surface, 'mask'); assert.deepEqual(er.models.inpaint, ['fal-bria-eraser', 'fal-object-removal']); assert.equal(er.prompt.mode, 'hidden'); assert.equal(er.needs, '1 photo + mask');
