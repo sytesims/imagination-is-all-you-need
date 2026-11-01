@@ -42,7 +42,7 @@ assert.equal(checkImageCaps('api-gpt-image', { refs: 16, mode: 'edit' }).ok, tru
 assert.equal(checkImageCaps('api-nano-banana', { mode: 'inpaint', refs: 1 }).ok, false, 'Nano Banana 2 has no mask route'); assert.equal(checkImageCaps('api-ideogram', { mode: 'edit', refs: 1 }).ok, false, 'Ideogram V4 takes no image here');
 assert.deepEqual(supportsFor('relight', 'api-nano-banana'), { aspects: [], allowAuto: false, resolutions: [], qualityTiers: [], maxImages: 1, minImages: 1, mask: false, strength: false, seed: true, maxCount: 1 });
 assert.equal(supportsFor('face-swap', 'api-gpt-image')!.maxImages, 2); assert.equal(supportsFor('face-swap', 'api-gpt-image')!.seed, false, 'GPT Image 2 Router body sends no seed');
-assert.equal(supportsFor('brush-edit', 'comfy-flux3-klein')!.mask, true); assert.equal(supportsFor('camera-angles', 'comfy-qwen-angles')!.maxCount, 9);
+assert.equal(supportsFor('brush-edit', 'comfy-flux3-klein')!.mask, true); assert.equal(supportsFor('camera-angles', 'comfy-qwen-angles')!.maxCount, 11); // 2026-11-01: nine default views + Over the shoulder and Full body
 assert.equal(supportsFor('brush-edit', 'api-nano-banana'), null, 'not offered: no pair');
 ok('hosted reference caps raised to the Router limits (GPT 16, Seedream 10, FLUX.2 [pro] 9, Luma 9, Kling 4, NB2 4); supports per pair');
 
