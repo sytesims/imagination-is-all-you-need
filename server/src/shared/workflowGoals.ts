@@ -10,13 +10,13 @@
 export type WfGoal = 'create' | 'shop' | 'ads' | 'people' | 'film' | 'music' | 'fix';
 
 export const WF_GOALS: { id: WfGoal; label: string; line: string }[] = [
-  { id: 'create', label: 'Make something new', line: 'From a few words or a photo: a picture, a clip, a 3D model.' },
-  { id: 'shop', label: 'Products & shop', line: 'Clean product photos, try-ons, spins and new materials.' },
-  { id: 'ads', label: 'Ads & social', line: 'Ready-to-post ads, vertical cuts and other languages.' },
-  { id: 'people', label: 'People & voices', line: 'Characters, swaps, a face that talks, a voice that reads.' },
-  { id: 'film', label: 'Stories & film', line: 'Plan a shot, film a script, keep a scene going.' },
-  { id: 'music', label: 'Music & sound', line: 'Songs, sound effects and a score for your clip.' },
-  { id: 'fix', label: 'Fix & finish', line: 'Change, clean up, sharpen and polish what you have.' },
+  { id: 'create', label: 'Make something new', line: 'Pictures, clips and 3D models from a few words.' },
+  { id: 'shop', label: 'Products & shop', line: 'Product photos that sell, try-ons and spins.' },
+  { id: 'ads', label: 'Ads & social', line: 'Ads ready to post, in any shape or language.' },
+  { id: 'people', label: 'People & voices', line: 'Characters that stay themselves, faces that talk.' },
+  { id: 'film', label: 'Stories & film', line: 'Plan the shot, film the script, keep it rolling.' },
+  { id: 'music', label: 'Music & sound', line: 'Songs, sound effects and a score for every clip.' },
+  { id: 'fix', label: 'Fix & finish', line: 'Sharpen, relight and clean up what you already have.' },
 ];
 
 const G = (goal: WfGoal, ids: string[]): [string, WfGoal][] => ids.map((id) => [id, goal]);

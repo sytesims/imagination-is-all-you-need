@@ -88,7 +88,9 @@ ok('search by goal, by tag and with no results');
   const names: [string, string, string][] = [['v-extend', 'Make a clip longer', 'Extend'], ['v-motion-control', 'Copy the moves', 'Motion Control'], ['v-object-swap', 'Swap in a clip', 'Object / Person Swap'],
     ['v-direct-a-shot', 'Plan a shot in 3D', 'Direct a Shot'], ['i-image-layers', 'Split into layers', 'Image to layers'], ['i-upscale', 'Make it sharper', 'Upscale'], ['i-try-on', 'Try clothes on', 'Virtual Try-On'],
     ['a-music', 'Make music', 'Music'], ['a-soundtrack-music', 'Add music to a clip', 'Music for a video'], ['v-lip-sync', 'Make a photo talk', 'Lip Sync'], ['v-reframe', 'Make it vertical', 'Reframe'],
-    ['a-translate', 'Translate a video', 'Translate'], ['v-photos-to-reel', 'Photos into a reel', 'Photos → Reel']];
+    ['a-translate', 'Translate a video', 'Translate'], ['v-photos-to-reel', 'Photos into a reel', 'Photos → Reel'], ['i-erase', 'Erase anything', 'Erase Object']];
+  /* page card lines (2026-11-01 copy pass): short, plain, at most 8 words */
+  for (const id of WF_PAGE_ALL) { const x: any = id.startsWith('chain:') ? WF_CHAINS.find((c) => `chain:${c.id}` === id) : wfEntryById(id); const n = x.line.split(/\s+/).length; assert.ok(n <= 8, `${id}: a short line (${n} words: ${x.line})`); assert.doesNotMatch(x.line, /\bMac\b|ComfyUI|made here/i, `${id}: plain words`); }
   for (const [id, name, tab] of names) { const e = wfEntryById(id)!; assert.equal(e.name, name, id); assert.equal(e.tabName, tab, `${id}: its tab name`); assert.ok(matchesQuery(entryHay(e), tab), `${id}: "${tab}" still finds it`); }
   assert.equal(WF_CHAINS.find((c) => c.id === 'kdrama')!.name, 'Film a scene from a script'); assert.doesNotMatch(WF_CHAINS.find((c) => c.id === 'kdrama')!.line, /MiniMax/, 'the line names no model');
   ok(`page: Start here ${WF_START_HERE.length} + ${Object.entries(WF_PAGE_PICKS).map(([g, x]) => `${g} ${x.length}`).join(', ')} = ${WF_PAGE_ALL.length} cards; ${WF_ENTRIES.length + WF_CHAINS.length - WF_PAGE_ALL.length} others stay in the catalogue; ${names.length} plain names`); }
