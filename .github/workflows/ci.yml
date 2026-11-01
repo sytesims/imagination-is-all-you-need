@@ -1,18 +1,52 @@
 name: CI
 
+# Pull requests: Build and start on all three systems, and the one-line install on Ubuntu only, unless the PR touches
+# the installer, setup/launcher scripts or package files (then all three). main (push, nightly, by hand): everything.
 on:
   push:
+    branches: [main]
   pull_request:
+  schedule:
+    - cron: '0 3 * * *' # nightly full run on main, so there is a complete run even on busy days
   workflow_dispatch:
 
 permissions:
   contents: read
 
+# A newer push to the same PR or to main cancels the older run. The nightly run has its own group, so pushes never cancel it.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'schedule' && 'nightly' || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # Which systems the one-line install runs on. On a PR the checkout is GitHub's merge commit, so HEAD^1 is the base
+  # branch and `HEAD^1...HEAD` is exactly what the PR changes (fetch-depth 2 is enough).
+  scope:
+    name: Scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      install_os: ${{ steps.pick.outputs.install_os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - id: pick
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          all='["ubuntu-latest","macos-latest","windows-latest"]'
+          if [ "$EVENT" != pull_request ]; then echo "install_os=$all" >> "$GITHUB_OUTPUT"; exit 0; fi
+          changed=$(git diff --name-only HEAD^1...HEAD)
+          printf '%s\n' "$changed"
+          # installer, setup/launcher scripts, package files, this workflow
+          if grep -qE '^(scripts/(get|install)\.(sh|ps1)|scripts/(setup|start|update|doctor|app-env|env-merge|install-mcp|web-build|build-plugins)\.mjs|scripts/(make-mac-app\.sh|mac-app/.*)|((server|web|mcp)/)?package(-lock)?\.json|\.github/workflows/ci\.yml)$' <<<"$changed"; then
+            echo "Install or setup files changed: one-line install on all three systems"; echo "install_os=$all" >> "$GITHUB_OUTPUT"
+          else
+            echo "No install or setup files changed: one-line install on Ubuntu only"; echo 'install_os=["ubuntu-latest"]' >> "$GITHUB_OUTPUT"
+          fi
+
   build-start:
     name: Build and start (${{ matrix.os }}, Node 20)
     runs-on: ${{ matrix.os }}
@@ -46,12 +80,13 @@ jobs:
   # It clones this commit from the checkout (IIAYN_REPO) into a temp folder; no shortcut, no start.
   one-line-install:
     name: One-line install (${{ matrix.os }})
+    needs: scope
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: ${{ fromJSON(needs.scope.outputs.install_os) }}
     env:
       HOMEBREW_NO_AUTO_UPDATE: '1'
       HOMEBREW_NO_INSTALL_CLEANUP: '1'

@@ -1,4 +1,8 @@
-# Runs the server test suite, split over 6 machines. Guide: docs/TESTING.md
+# Runs the server tests. Guide: docs/TESTING.md ("What CI does")
+#   main (push, nightly, by hand): the full suite, split over 6 machines.
+#   pull requests: only the tests the PR's changes touch (`--changed`), without the heavy SERIAL ones unless the PR touches what they
+#   check (`--skip-heavy`), on as many machines as that needs (up to 6);
+#   the full suite when the runner maps the change to every test (package files, the runner) or this workflow changed.
 # No secrets: tests use the mock backend, and the runner (scripts/test-all.mjs) strips every provider key from the environment,
 # so nothing here can reach a paid API.
 # Private-repo runners have 2 cores and are several times slower than a recent Mac: 2 tests at a time per machine, longer limits.
@@ -10,28 +14,73 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: '0 3 * * *' # nightly full run on main, so there is a complete run even on busy days
   workflow_dispatch:
 
 permissions:
   contents: read
 
+# A newer push to the same PR or to main cancels the older run. The nightly run has its own group, so pushes never cancel it.
 concurrency:
-  group: tests-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'schedule' && 'nightly' || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # Picks the tests. On a PR the checkout is GitHub's merge commit, so HEAD^1 is the base branch and
+  # `--changed --base HEAD^1` sees exactly what the PR changes (fetch-depth 2 is enough). --list needs no npm install.
+  pick:
+    name: Pick tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      args: ${{ steps.pick.outputs.args }}
+      shards: ${{ steps.pick.outputs.shards }}
+      count: ${{ steps.pick.outputs.count }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - id: pick
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          full() { echo "$1: full suite on 6 machines"; { echo 'args='; echo 'shards=[1,2,3,4,5,6]'; echo 'count=6'; } >> "$GITHUB_OUTPUT"; exit 0; }
+          [ "$EVENT" = pull_request ] || full "$EVENT"
+          git rev-parse -q --verify HEAD^2 > /dev/null || full "No PR merge commit to compare with"
+          git diff --quiet HEAD^1...HEAD -- .github/workflows/test.yml || full "This workflow changed"
+          all=$(node scripts/test-all.mjs --list | grep -c . || true)
+          touched=$(node scripts/test-all.mjs --changed --base HEAD^1 --list | grep -c . || true)
+          [ "$touched" -ge "$all" ] && full "Every test is touched"
+          # the SERIAL heavy tests run on main and nightly, and on a PR only when it touches what they check (HEAVY_ABOUT in the runner)
+          picked=$(node scripts/test-all.mjs --changed --skip-heavy --base HEAD^1 --list | grep -c . || true)
+          echo "The PR's changes touch $touched of $all test files; $picked without the heavy ones it doesn't touch"
+          if [ "$picked" -eq 0 ]; then echo "No tests to run"; { echo 'args='; echo 'shards=[1]'; echo 'count=0'; } >> "$GITHUB_OUTPUT"; exit 0; fi
+          # as many machines as a full run would use for this many files (about a sixth of the suite each)
+          n=$(( (picked * 6 + all - 1) / all ))
+          echo "Running them on $n machine(s)"
+          { echo 'args=--changed --skip-heavy --base HEAD^1'; echo "shards=[$(seq 1 "$n" | paste -sd, -)]"; echo "count=$n"; } >> "$GITHUB_OUTPUT"
+
   test:
-    name: tests (shard ${{ matrix.shard }}/6)
+    name: tests (shard ${{ matrix.shard }}/${{ needs.pick.outputs.count }})
+    needs: pick
+    if: needs.pick.outputs.count != '0'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6]
+        shard: ${{ fromJSON(needs.pick.outputs.shards) }}
     env:
       CI: 'true'
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # --changed compares with HEAD^1 (the PR's base); harmless for full runs
 
       - uses: actions/setup-node@v4
         with:
@@ -55,8 +104,8 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Run tests (shard ${{ matrix.shard }}/6)
-        run: npm test -- --shard ${{ matrix.shard }}/6 --jobs 2 --timeout 600
+      - name: Run tests (shard ${{ matrix.shard }}/${{ needs.pick.outputs.count }})
+        run: npm test -- ${{ needs.pick.outputs.args }} --shard ${{ matrix.shard }}/${{ needs.pick.outputs.count }} --jobs 2 --timeout 600
 
       # .test-logs is a dot folder: upload-artifact skips those unless include-hidden-files is on (run 40201002060 uploaded nothing)
       - name: Upload logs of failed tests
