@@ -56,7 +56,7 @@ export const MODEL_CATALOG: Record<string, CatalogEntry> = {
   'api-heygen-tts': { name: 'HeyGen Voice', family: 'HeyGen', description: 'HeyGen Starfish voices through Comfy Router for presenter-style narration, priced per second of audio.' },
   'direct-minimax-speech': { name: 'MiniMax Speech 2.8 HD', family: 'MiniMax', description: 'MiniMax HD speech with native emotion, speed, pitch and volume, priced per 1,000 characters.' },
   'comfy-qwen3tts': { name: 'Qwen3 TTS 1.7B', family: 'Qwen', description: 'Nine ready-made voices in ten languages, with a Style line in plain words ("warm, excited"). Free on your computer.' },
-  'comfy-chatterbox-vc': { name: 'Chatterbox Voice Changer', family: 'Resemble AI', description: 'Changes the voice in your clip to a library voice or your sample, keeping the original timing and delivery. Free on your computer.' },
+  'comfy-chatterbox-vc': { name: 'Chatterbox Voice Changer', family: 'Resemble AI', description: 'Changes the voice in your clip to its built-in voice or your sample, keeping the original timing and delivery. Free on your computer.' },
   'local-whisper-nllb-chatterbox': { name: 'Translate with Chatterbox', family: 'Resemble AI', description: 'Transcribes the speech, translates it into your target language and re-voices it close to the original timing. Free on your computer.' },
   'local-whisper-nllb-f5': { name: 'Translate with F5-TTS', family: 'F5-TTS', description: 'Transcribes the speech, translates it and re-voices it in the speaker\'s own voice, close to the original timing. Free on your computer.' },
   // Create Image: open weights (run locally)

@@ -59,6 +59,7 @@ import { audioPageWorkflow } from '../../ui/audio/AudioWorkflows';
 import { AUDIO_DEFAULT_WORKFLOW } from '../../../../server/src/shared/audioWorkflows';
 import { shortestLength } from '../../shared/lyricsLength';
 import { VoiceControls, useVoiceControls, CTRL as VOICE_CTRL, MODEL_VOICE_KEYS } from '../../ui/audio/VoiceControls';
+import { takesVoicePick } from '../../shared/voicePick';
 import MetaTagChips, { MetaTag, metaTagsFor } from '../../ui/next/MetaTags';
 import { StylePresets, AudioModeTabs, AudioMode } from '../../ui/next/Gen';
 import { EnhanceButton, EnhanceDiff, EnhanceResult } from '../../ui/next/Enhance';
@@ -461,7 +462,7 @@ export default function AppTool({ tool, tools }: { tool: ToolInfo; tools?: ToolI
       if (isExtend) fd.set('extendSeconds', String(extSec));
       if (cfg.input === 'video' && f.video && !isLip) fd.append('video', f.video.file); else if (cvAny && cvAudio) fd.append('audio', cvAudio.file, cvAudio.file.name); if (cfg.input !== 'video' && (needsImage || !!imgLabel || imgOptional) && f.image) fd.append('image', f.image.file); if (tool.id === 'create-image' && f.image && !(mask && f.picked[0] === 'inpaint')) for (const r of extraRefs.slice(0, Math.max(0, (imageCap.current ?? (extraRefs.length + 1)) - 1))) fd.append('refs', r.file);
       if (hasStyle && style) fd.append('style', style);
-      if (voiceSample && String(f.fieldVals.voice) === 'clone') { fd.append('voiceAudio', voiceSample, voiceSample.name); voiceExtra.forEach(x => fd.append('voiceAudio', x, x.name)); }
+      if (voiceSample && String(f.fieldVals.voice) === 'clone' && takesVoicePick((tool.app as any)?.voiceCaps?.[f.provider ?? ''])) /* a model that takes no voice (Seed Audio) gets no sample */ { fd.append('voiceAudio', voiceSample, voiceSample.name); voiceExtra.forEach(x => fd.append('voiceAudio', x, x.name)); }
       if (mask && ((cfg as any).maskModes ?? []).includes(f.picked[0])) fd.append('mask', dataUrlToBlob(mask), 'mask.png');
       /* Keyframes (2026-10-27): its frames go as `keyframes` (with keyframeTimes) and nothing else; the other modes never send them */
       if (tool.id === 'h3-video') Object.entries(vrefs).forEach(([k, l]) => { if ((k === 'keyframes') !== (f.picked[0] === 'keyframes')) return; l.slice(0, vCaps.current?.[k] ?? l.length /* a model switch to a lower limit keeps the extras on the bar, marked; they aren't sent */).forEach(r => fd.append(k, r.file, r.file.name)); });
