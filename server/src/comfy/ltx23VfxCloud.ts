@@ -1,7 +1,11 @@
 /**
  * Footage Effects · Comfy Cloud (2026-10-27): four official Comfy LTX-2.3 IC-LoRA templates on shared Comfy Cloud, the Comfy Cloud place of
  * Footage Effects (routing/routes.ts TWINS: a twin of comfy-ltx25-iclora on footage-fx; standalone entry in comfy/cloudWorkflows.ts on route
- * comfy-cloud:cloud-ltx23-vfx). They run here only: the local route refuses them, and this place refuses the five local effects.
+ * comfy-cloud:cloud-ltx23-vfx). Those four run here only (the local route refuses them).
+ * 2026-11-01: Vanish, Day to night, Rain and Flood ALSO run here (their local LTX-2.5 place is unchanged): the restore graph below with Lightricks'
+ * LTX-2.3 IC-LoRAs from Comfy Cloud's shared library (Clean-Plate 1.0, Day-To-Night 0.9, Water-Simulation 0.9; HF Lightricks/LTX-2.3-22b-IC-LoRA-*,
+ * LTX-2.x Community License). There is no official Comfy template for these LoRAs; the graph is derived from the restore template (MIT): same
+ * nodes and steps, the effect's own LoRA, strength, prompt and negative. Only Alpha matte (an LTX-2.5 LoRA, not on Comfy Cloud) is refused here.
  * Graphs (workflows/cloud/, from Comfy-Org/workflow_templates, MIT; converted with scripts/ui2api.py, subgraphs flattened, template node ids kept):
  *  - ltx23-restore-footage-api.json   template_ltx2_3_lora_restore_archival_footage           Restore old footage (Dearchive IC-LoRA 1.0)
  *  - ltx23-remove-subtitles-api.json  template_ltx2_3_lora_remove_subtitles_from_video        Remove subtitles (Subtitle Remover IC-LoRA 1.2)
@@ -21,7 +25,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { WORKFLOWS_DIR } from '../config.js';
 import { pruneUnreachable, type Plan } from './plans.js';
-import { footageEffect, isCloudEffect, type FootageFxPlan, type OutpaintPlan } from '../shared/footageFx.js';
+import { FOOTAGE_CLOUD_EFFECTS, footageEffect, isCloudEffect, type FootageFxPlan, type OutpaintPlan } from '../shared/footageFx.js';
 
 export const VFX_CLOUD_PROVIDER = 'cloud-ltx23-vfx';
 export const VFX_CLOUD_ROUTE = `comfy-cloud:${VFX_CLOUD_PROVIDER}`;
@@ -29,27 +33,33 @@ export const VFX_CLOUD_NAME = 'LTX-2.3 22B + IC-LoRA · Comfy Cloud';
 /** Effect → its graph and the nodes the plan sets. */
 type TwoStage = { kind: 'two-stage'; graph: string; p: string; load: string; out: string; audioFrom: string };
 type OneStage = { kind: 'object'; graph: string; load: string; out: string } | { kind: 'outpaint'; graph: string; load: string; out: string };
+const RESTORE_GRAPH: TwoStage = { kind: 'two-stage', graph: 'cloud/ltx23-restore-footage-api.json', p: '5189:', load: '5188', out: '5187', audioFrom: '5190' };
 export const VFX_CLOUD_GRAPHS: Record<string, TwoStage | OneStage> = {
-  restore: { kind: 'two-stage', graph: 'cloud/ltx23-restore-footage-api.json', p: '5189:', load: '5188', out: '5187', audioFrom: '5190' },
+  restore: RESTORE_GRAPH,
+  // derived from the restore template (no official template for these LTX-2.3 LoRAs): the same graph, the effect's LoRA + strength + prompt
+  vanish: RESTORE_GRAPH, 'day-to-night': RESTORE_GRAPH, rain: RESTORE_GRAPH, flood: RESTORE_GRAPH,
   'remove-text': { kind: 'two-stage', graph: 'cloud/ltx23-remove-subtitles-api.json', p: '5161:', load: '5160', out: '5159', audioFrom: '5162' },
   'remove-object': { kind: 'object', graph: 'cloud/ltx23-remove-object-api.json', load: '39', out: '53' },
   'extend-frame': { kind: 'outpaint', graph: 'cloud/ltx23-outpaint-api.json', load: '5060', out: '5171' },
 };
 const load = (f: string) => JSON.parse(readFileSync(path.join(WORKFLOWS_DIR, f), 'utf8')) as Record<string, any>;
 const graphs = () => [...new Set(Object.values(VFX_CLOUD_GRAPHS).map((g) => g.graph))];
-/** What Comfy Cloud must have: every class of the four graphs and every model file a loader widget names (read from the graphs themselves). */
+/** What Comfy Cloud must have: every class of the four graphs and every model file a loader widget names (read from the graphs themselves),
+ *  plus each effect's own LoRA (the derived effects swap it in at plan time). */
 export const VFX_CLOUD_REQUIRES = (() => {
   const nodes = new Set<string>(); const models = new Map<string, { loader: string; field: string; file: string }>();
   for (const f of graphs()) for (const n of Object.values<any>(load(f))) { nodes.add(String(n.class_type));
     for (const [k, v] of Object.entries<any>(n.inputs ?? {})) if (typeof v === 'string' && /\.(safetensors|gguf|pth)$/.test(v)) models.set(`${n.class_type}.${k}=${v}`, { loader: String(n.class_type), field: k, file: v }); }
+  for (const e of FOOTAGE_CLOUD_EFFECTS) models.set(`LTXICLoRALoaderModelOnly.lora_name=${e.cloud!.loraFile}`, { loader: 'LTXICLoRALoaderModelOnly', field: 'lora_name', file: e.cloud!.loraFile });
   return { nodes: [...nodes].sort(), models: [...models.values()] };
 })();
 
 const effectOf = (i: Record<string, any>) => String(i?.footageFx?.effect ?? (Array.isArray(i?.types) ? i.types[0] : (() => { try { const v = JSON.parse(String(i?.types ?? '[]')); return Array.isArray(v) ? v[0] : v; } catch { return String(i?.types ?? '').split(',')[0]; } })()) ?? '').trim();
-/** What this place can't take (null = fine): the five local effects run on your computer. Reads only what the quote also has (types). */
+const CLOUD_LABELS = (() => { const l = FOOTAGE_CLOUD_EFFECTS.map((e) => e.label); return `${l.slice(0, -1).join(', ')} or ${l[l.length - 1]}`; })();
+/** What this place can't take (null = fine): an effect with no Comfy Cloud graph (Alpha matte) runs on your computer. Reads only what the quote also has (types). */
 export function vfxCloudIssue(i: Record<string, any>): string | null {
   const id = effectOf(i); if (!id) return null; const e = footageEffect(id);
-  return e && !e.cloud ? `${e.label} runs on your computer; on Comfy Cloud pick Restore old footage, Remove an object, Remove subtitles or Extend the frame` : null;
+  return e && !e.cloud ? `${e.label} runs on your computer; on Comfy Cloud pick ${CLOUD_LABELS}` : null;
 }
 /** The local route can't take a Comfy Cloud effect (their templates and LoRAs are LTX-2.3 on Comfy Cloud). */
 export function vfxLocalIssue(i: Record<string, any>): string | null {
@@ -64,7 +74,7 @@ export function vfxCloudPlan(j: J): Plan {
   if (!e || !e.cloud || !def) throw bad(vfxCloudIssue(i) ?? 'Pick a Comfy Cloud effect');
   const p = f.plan as FootageFxPlan | undefined; if (!p || !i.videoPath) throw bad('Footage Effects on Comfy Cloud: the clip was not prepared. Add it again and press Apply effect');
   const g = load(def.graph); const prompt = String(i.finalPrompt ?? ''); const negative = String(i.negative ?? e.negative); const seed = seedOf(i.seed); const keepAudio = i.keepAudio !== false && i.hasAudio !== false;
-  g[def.load].inputs.file = { __file: i.videoPath };
+  g[def.load].inputs.file = { __file: i.cloudVideoPath ?? i.videoPath }; // a silent clip of an effect that also runs locally: its Comfy Cloud copy has a silent track
   let size = { width: p.width, height: p.height }; let audioNode: string;
   if (def.kind === 'two-stage') {
     const n = (id: string) => g[`${def.p}${id}`];
@@ -88,6 +98,6 @@ export function vfxCloudPlan(j: J): Plan {
   if (!keepAudio) delete g[audioNode].inputs.audio;
   pruneUnreachable(g, [def.out]);
   return { tool: j.toolId, outKind: 'video', post: { kind: 'each' }, muxSourceAudio: false,
-    notes: [`${e.label} on Comfy Cloud (official template ${e.cloud.template}): ${size.width}×${size.height}, ${p.frames} frames (${p.seconds} s), ${e.cloud.loraLabel} ${e.strength}`],
+    notes: [`${e.label} on Comfy Cloud (${e.cloud.derived ? 'our graph from the official template' : 'official template'} ${e.cloud.template}): ${size.width}×${size.height}, ${p.frames} frames (${p.seconds} s), ${e.cloud.loraLabel} ${e.strength}`],
     passes: [{ label: e.label, workflow: def.graph, graph: g, output: def.out, expect: { width: size.width, height: size.height, frames: p.frames, effect: e.id } }] };
 }

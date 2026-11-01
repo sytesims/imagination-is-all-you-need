@@ -33,44 +33,53 @@ const SIZE_OF: Record<string, keyof typeof MAKE_REAL_SIZES> = { '448p': 'quick',
 
 export interface FootageEffect {
   id: string; label: string; tagline: string;
-  /** shared/ltxLoras.ts entry (local effects); '' for a Comfy Cloud effect (its LoRA is in `cloud`) */ lora: string;
+  /** shared/ltxLoras.ts entry (runs on your computer); '' for a Comfy Cloud-only effect (its LoRA is in `cloud`) */ lora: string;
   /** LoRA strength (the card's advice for this look) */ strength: number;
   /** our prompt; {scene} = the user's one line about the shot (or a neutral fallback) */ prompt: string;
   negative: string;
   /** the one-line scene description helps this effect (Alpha matte takes an empty prompt) */ usesScene: boolean;
-  /** Comfy Cloud only (2026-10-27): an official Comfy LTX-2.3 template on shared Comfy Cloud (comfy/ltx23VfxCloud.ts); local effects have none */
+  /** its Comfy Cloud place (comfy/ltx23VfxCloud.ts): an LTX-2.3 graph on shared Comfy Cloud. With `lora` too, the effect runs in both places
+   *  (Vanish, Day to night, Rain, Flood since 2026-11-01); without, on Comfy Cloud only; Alpha matte has none (your computer only). */
   cloud?: FootageCloudFx;
   /** the line is required (Remove an object: what to remove) */ needsLine?: boolean;
 }
-/** A Comfy Cloud effect: the official Comfy template it runs and the IC-LoRA in Comfy Cloud's shared library (object_info 2026-10-26). */
+/** A Comfy Cloud effect: the official Comfy template it runs (or is derived from) and the IC-LoRA in Comfy Cloud's shared library (object_info 2026-10-26). */
 export interface FootageCloudFx {
   /** Comfy-Org/workflow_templates id and its title in Comfy's template library */ template: string; title: string;
+  /** true = our graph derived from that template (same nodes, another IC-LoRA, our prompt); no official template exists for the effect */ derived?: boolean;
   /** the LoRA file in Comfy Cloud's library */ loraFile: string; loraLabel: string;
   /** where the LoRA comes from (null when the template names no source) */ loraSource: string | null;
 }
 export const FOOTAGE_FX_TEMPLATE_URL = (id: string) => `https://github.com/Comfy-Org/workflow_templates/blob/main/templates/${id}.json`;
 export const FOOTAGE_FX_CLOUD_MODEL = 'LTX-2.3 22B';
 const SCENE_FALLBACK = 'the scene in the source video';
+/** The official Comfy LTX-2.3 restore template: Restore old footage runs it as is; Vanish, Day to night, Rain and Flood run our graph derived from it
+ *  (no official template exists for their LTX-2.3 IC-LoRAs; the same two-stage graph with their LoRA, strength, prompt and negative). */
+const RESTORE_TEMPLATE = 'template_ltx2_3_lora_restore_archival_footage'; const RESTORE_TITLE = 'LTX-2.3: Restore Archival Footage';
 /** The effects, in menu order. Rain and Flood share the water LoRA at two strengths (the card: ~1.0–1.1 natural, 1.25+ replaces surfaces). */
 export const FOOTAGE_EFFECTS: FootageEffect[] = [
   { id: 'vanish', label: 'Vanish', tagline: 'Remove the people and vehicles. Keep the place.', lora: 'clean-plate', strength: 1.0, usesScene: true,
     prompt: 'The same location with nobody in it: the empty background, buildings, ground and sky exactly as in the source, with the same camera motion and light. No people, animals or vehicles anywhere in the frame. {scene}',
-    negative: 'people, person, crowd, pedestrians, figures, hands, limbs, animals, vehicles, cars, bikes, leftover shapes, ghost outlines, see-through remains, blur, flicker' },
+    negative: 'people, person, crowd, pedestrians, figures, hands, limbs, animals, vehicles, cars, bikes, leftover shapes, ghost outlines, see-through remains, blur, flicker',
+    cloud: { template: RESTORE_TEMPLATE, title: RESTORE_TITLE, derived: true, loraFile: 'ltx-2.3-22b-ic-lora-clean-plate-1.0.safetensors', loraLabel: 'Clean Plate IC-LoRA', loraSource: 'https://huggingface.co/Lightricks/LTX-2.3-22b-IC-LoRA-Clean-Plate' } },
   { id: 'day-to-night', label: 'Day to night', tagline: 'Relight the shot as night. Same framing, same motion.', lora: 'day-to-night', strength: 1.0, usesScene: true,
     prompt: 'The same shot at night: a dark blue sky, soft moonlight, deep natural shadows and cool highlights, with street lamps, windows and screens glowing where they exist. Only the time of day changes; the framing, camera motion and every subject stay the same. {scene}',
-    negative: 'daylight, sunshine, bright sky, overexposed, pitch black, crushed shadows, blur' },
+    negative: 'daylight, sunshine, bright sky, overexposed, pitch black, crushed shadows, blur',
+    cloud: { template: RESTORE_TEMPLATE, title: RESTORE_TITLE, derived: true, loraFile: 'ltx-2.3-22b-ic-lora-day-to-night-0.9.safetensors', loraLabel: 'Day to Night IC-LoRA', loraSource: 'https://huggingface.co/Lightricks/LTX-2.3-22b-IC-LoRA-Day-To-Night' } },
   { id: 'rain', label: 'Rain', tagline: 'Wet streets, puddles and light rain. Subtle and real.', lora: 'water-simulation', strength: 1.1, usesScene: true,
     prompt: 'Reference shows {scene}. Edited shows the same scene with water added.\nADD WATER light rain falling, wet ground with shallow puddles and clear reflections, glistening surfaces, small splashes where things move.',
-    negative: '' },
+    negative: '',
+    cloud: { template: RESTORE_TEMPLATE, title: RESTORE_TITLE, derived: true, loraFile: 'ltx-2.3-22b-ic-lora-water-simulation-0.9.safetensors', loraLabel: 'Water Simulation IC-LoRA', loraSource: 'https://huggingface.co/Lightricks/LTX-2.3-22b-IC-LoRA-Water-Simulation' } },
   { id: 'flood', label: 'Flood', tagline: 'Knee-deep water fills the scene and reacts to what moves.', lora: 'water-simulation', strength: 1.3, usesScene: true,
     prompt: 'Reference shows {scene}. Edited shows the same scene with water added.\nADD WATER the ground covered by knee-deep flood water that ripples and parts around people, wheels and objects, foam and splashes with every movement, the surroundings reflected on the surface.',
-    negative: '' },
+    negative: '',
+    cloud: { template: RESTORE_TEMPLATE, title: RESTORE_TITLE, derived: true, loraFile: 'ltx-2.3-22b-ic-lora-water-simulation-0.9.safetensors', loraLabel: 'Water Simulation IC-LoRA', loraSource: 'https://huggingface.co/Lightricks/LTX-2.3-22b-IC-LoRA-Water-Simulation' } },
   { id: 'alpha-matte', label: 'Alpha matte', tagline: 'A clean black-and-white matte of the foreground. No green screen.', lora: 'alpha-gen', strength: 1.0, usesScene: false,
     prompt: '', negative: '' },
   // Comfy Cloud effects (2026-10-27): the official Comfy LTX-2.3 IC-LoRA templates, each with the template's own prompt, LoRA strength and negative.
   { id: 'restore', label: 'Restore old footage', tagline: 'Scratched, faded film made clean, sharp and full of colour.', lora: '', strength: 1.0, usesScene: true,
     prompt: 'A modern, high-resolution video shot in vivid color, sharp detail, contemporary cinematography. {scene}', negative: 'pc game, console game, video game, cartoon, childish, ugly',
-    cloud: { template: 'template_ltx2_3_lora_restore_archival_footage', title: 'LTX-2.3: Restore Archival Footage', loraFile: 'ltx-2.3-dearchive-lora_weights_step_05000.safetensors', loraLabel: 'Dearchive IC-LoRA', loraSource: null } },
+    cloud: { template: RESTORE_TEMPLATE, title: RESTORE_TITLE, loraFile: 'ltx-2.3-dearchive-lora_weights_step_05000.safetensors', loraLabel: 'Dearchive IC-LoRA', loraSource: null } },
   { id: 'remove-object', label: 'Remove an object', tagline: 'Name something in the shot and it’s gone.', lora: '', strength: 2.0, usesScene: true, needsLine: true,
     prompt: 'Remove the {scene} from the foreground.', negative: 'blurry, low resolution, ugly, garbled mess, compression artifacts, glitch, stop motion, still image, pixelated, robotic voice, oversaturated',
     cloud: { template: 'template_ltx2_3_obscura_remova_lora_remove_object_from_video', title: 'LTX-2.3: Remove Object from Video', loraFile: 'ltx23-obscura_remova.safetensors', loraLabel: 'Obscura Remova LoRA', loraSource: 'https://civitai.com/api/download/models/2909707' } },
@@ -82,9 +91,11 @@ export const FOOTAGE_EFFECTS: FootageEffect[] = [
     cloud: { template: 'template_ltx2_3_lora_video_outpainting', title: 'LTX-2.3: Video Outpainting', loraFile: 'ltx-2.3-22b-ic-lora-outpaint.safetensors', loraLabel: 'Outpaint IC-LoRA', loraSource: 'https://huggingface.co/oumoumad/LTX-2.3-22b-IC-LoRA-Outpaint' } },
 ];
 export const footageEffect = (id: string | null | undefined): FootageEffect | undefined => FOOTAGE_EFFECTS.find((e) => e.id === id);
-/** The effects that run on Comfy Cloud only (the local route refuses them, the Comfy Cloud place refuses the local ones). */
+/** The effects that run on Comfy Cloud (the Comfy Cloud place refuses the rest: Alpha matte). */
 export const FOOTAGE_CLOUD_EFFECTS = FOOTAGE_EFFECTS.filter((e) => !!e.cloud);
-export const isCloudEffect = (id: string | null | undefined) => !!footageEffect(id)?.cloud;
+/** Comfy Cloud only: no local LoRA (the local route refuses them). Vanish, Day to night, Rain and Flood run in both places. */
+export const isCloudOnly = (e: FootageEffect | undefined): boolean => !!e?.cloud && !e.lora;
+export const isCloudEffect = (id: string | null | undefined) => isCloudOnly(footageEffect(id));
 /** "LTX-2.3 22B + Dearchive IC-LoRA": the real model a Comfy Cloud effect runs. */
 export const footageCloudModelName = (e: FootageEffect) => `${FOOTAGE_FX_CLOUD_MODEL} + ${e.cloud?.loraLabel ?? 'IC-LoRA'}`;
 

@@ -68,7 +68,7 @@ import { loadPlugins, pluginStatus } from './plugins.js';
 import { modelsFor, cardName } from './models.js';
 import { PROVIDER_FACTORS, OPTION_FACTORS, PRICE_LADDERS } from './shared/pricing.js';
 import { defaultsBlock, defaultProviderFor, defaultFirst, requestMode, SWAP_TYPES, modelFields, withWorkflowDefaults, lyricsFreeDefault, draftOn, draftCapableDefault } from './routing/defaults.js';
-import { isTwinAlias, toolKeys, TWIN_ALIASES } from './routing/routes.js';
+import { isTwinAlias, toolKeys, TWIN_ALIASES, mapTwinAlias } from './routing/routes.js';
 import { jobModelFields, routePlace } from './routing/modelRegistry.js';
 import { findRoute as findRouteDef } from './routing/routes.js';
 import { placeOf } from './shared/modelIds.js';
@@ -503,6 +503,7 @@ async function createJob(toolId: string, req: FastifyRequest, reply: FastifyRepl
   }
   /** Step 2 (MODEL-ROUTE-SPEC): model (a model key, or an old engine id) + runOn → the engine / route fields below, by the SAME
    *  resolveModelRequest the quote's preHandler uses (routing/http.ts), before the app locks apply (as on the quote). */
+  mapTwinAlias(tool, fields); // provider=<twin card> (e.g. cloud-ltx23-vfx on Footage Effects): its model + Comfy Cloud route, as the quote does
   const runOnField = fields.runOn ?? fields.run_on;
   const MR = tool.id === 'motion-transfer' || (fields.model || (runOnField != null && runOnField !== '')) && !(!runOnField && getProvider(fields.model)) ? (await import('./routing/partPick.js')).preferRunnablePart(tool, (await import('./routing/modelRegistry.js')).resolveModelRequest(tool, { model: fields.model, runOn: runOnField, provider: fields.provider, route: fields.route, types: fields.mode ? [fields.mode] : fields.types, mode: fields.mode }), fields) : null; // Motion also checks legacy provider / route-only requests against its scoped availability guard.
   if (MR && !MR.ok) { const { ok: _o, status, ...body } = MR; return reply.code(status).send({ ...body, issues: [{ code: body.code, field: body.field, message: body.error }], charged: false, refund: { refunded: false, amount: 0, charged: false, note: 'Nothing was charged.' } }); }
