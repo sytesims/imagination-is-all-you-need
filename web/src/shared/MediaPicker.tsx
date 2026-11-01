@@ -182,6 +182,12 @@ function FrameGrab({ item, onUse, onBack }: { item: LibItem; onUse: (f: File) =>
 }
 /** one frame at 30 fps: the scrubber's arrow-key step (the server still grabs the exact frame at that time) */
 const FRAME = 1 / 30;
+/** a closing click: eat this press's mousedown and click (capture, before React sees them); gone after it, or after a moment (a drag has no click) */
+function swallowNext() {
+  const eat = (e: Event) => { e.preventDefault(); e.stopPropagation(); if (e.type === 'click') done(); };
+  const done = () => { clearTimeout(t); document.removeEventListener('mousedown', eat, true); document.removeEventListener('click', eat, true); };
+  const t = window.setTimeout(done, 1000); document.addEventListener('mousedown', eat, true); document.addEventListener('click', eat, true);
+}
 const fmtClock = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toFixed(2).padStart(5, '0')}`;
 
 export interface MediaPickerProps {
@@ -208,8 +214,9 @@ export function MediaPicker({ tab, setTab, onClose, title, limits, kinds, frames
   const [projOpen, setProjOpen] = useState(false); const projBtn = useRef<HTMLButtonElement>(null);
   const [moveOf, setMoveOf] = useState<LibItem | null>(null); const moveBtn = useRef<HTMLButtonElement | null>(null);
   /* the ⋯ menu closes on a click anywhere else, the picker included (the shared Popover counts the whole picker as inside, data-apop-keep,
-   * so a sheet under the picker stays open); its own ⋯ toggles it. Esc (Popover's, on the dismiss stack) closes only the menu. */
-  useEffect(() => { if (!moveOf) return; const down = (e: PointerEvent) => { const t = e.target as Element | null; if (t?.closest?.('.mpk-pop') || (t && moveBtn.current?.contains(t))) return; setMoveOf(null); };
+   * so a sheet under the picker stays open); its own ⋯ toggles it. Esc (Popover's, on the dismiss stack) closes only the menu.
+   * That closing click does nothing else: its mousedown and click are swallowed, so it never picks the tile under it or closes the picker. */
+  useEffect(() => { if (!moveOf) return; const down = (e: PointerEvent) => { const t = e.target as Element | null; if (t?.closest?.('.mpk-pop') || (t && moveBtn.current?.contains(t))) return; setMoveOf(null); swallowNext(); };
     document.addEventListener('pointerdown', down, true); return () => document.removeEventListener('pointerdown', down, true); }, [moveOf]);
   /* a slot that takes several: tiles toggle into a selection (kept across tabs), "Add n" hands them over together */
   /* the larger preview (a tile's ⤢, or Space on it): one item at a time, arrows move through the grid */

@@ -69,11 +69,12 @@ ok('larger preview: corner ⤢ or Space (no hover), shared media piece, Space / 
 
 // The ⋯ "Move to project" menu (2026-11-01): a click anywhere else closes it (the picker counts as inside for the shared Popover, so the picker
 // listens itself), its own ⋯ toggles it, Esc closes only it (the Popover's useDismiss, on top of the picker's), and its tooltip goes while it is open
-assert.match(mp, /if \(!moveOf\) return; const down = \(e: PointerEvent\) => \{[^}]*closest\?\.\('\.mpk-pop'\)[^}]*moveBtn\.current\?\.contains\(t\)\)\) return; setMoveOf\(null\); \}/, 'an outside click closes the ⋯ menu');
+assert.match(mp, /if \(!moveOf\) return; const down = \(e: PointerEvent\) => \{[^}]*closest\?\.\('\.mpk-pop'\)[^}]*moveBtn\.current\?\.contains\(t\)\)\) return; setMoveOf\(null\);/, 'an outside click closes the ⋯ menu');
 assert.match(mp, /document\.addEventListener\('pointerdown', down, true\)/, 'listens before the click lands');
+assert.match(mp, /setMoveOf\(null\); swallowNext\(\); \}/, 'the closing click only closes the menu'); assert.match(mp, /function swallowNext\(\) \{[\s\S]*?e\.preventDefault\(\); e\.stopPropagation\(\)[\s\S]*?addEventListener\('mousedown', eat, true\); document\.addEventListener\('click', eat, true\)/, 'its mousedown and click never reach a tile or the scrim');
 assert.match(mp, /setMoveOf\(m => m\?\.id === it\.id \? null : it\)/, 'the ⋯ again closes it');
 assert.match(mp, /<Popover open=\{!!moveOf\} anchor=\{moveBtn\} onClose=\{\(\) => setMoveOf\(null\)\}/, 'Esc: the shared Popover closes only the menu (its useDismiss is on top)');
 assert.match(rd('shared/Popover.tsx'), /useDismiss\(open, onEscape \?\? onClose, anchor\)/);
 assert.match(mp, /aria-expanded=\{!!moreOpen\}[^>]*\{\.\.\.tipAttrs\('Move to project'\)\}/, 'the app tooltip (hidden while aria-expanded), not a native title');
 assert.match(mp, /const move = async \(x: LibItem, pid: string \| null\) => \{\s*setMoveOf\(null\)/, 'picking a project closes it');
-ok('⋯ menu: outside click, ⋯ again, Esc and a pick close it; no tooltip over it');
+ok('⋯ menu: outside click (only closes it), ⋯ again, Esc and a pick close it; no tooltip over it');
