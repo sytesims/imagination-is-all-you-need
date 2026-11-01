@@ -129,14 +129,22 @@ Workflow sources and licences: [workflows/README.md](workflows/README.md) · [wo
 
 ## Claude connector
 
-The built-in **MCP server** has **70 tools** and the repo ships **17 skills** (ad variants, product photo packs, storyboard to video, cost check, free local only and more). Your AI can find workflows, read prices, run jobs and build Canvas boards.
+The built-in **MCP server** has **up to 70 tools** (15 in the default set) and the repo ships **17 skills** (ad variants, product photo packs, storyboard to video, cost check, free local only and more). Your AI can find workflows, read prices, run jobs and build Canvas boards.
 
 - Paid runs need a **price quote** first, and your permission and budget settings decide what may run.
 - On the Canvas, the agent proposes and **you press Go**.
 
 [MCP setup and permissions](docs/MCP.md) · [Skills](docs/MCP-SKILLS.md) · [REST API](docs/API.md)
 
-Coming next: add your own ComfyUI workflow to the app.
+## What's next
+
+It grows with ComfyUI. Today you can bring your own ComfyUI workflow (**Your workflows → Add a workflow**): it shows up in the right tab, and the app lists the model files it needs and downloads the missing ones. Coming next:
+
+- **Add a model:** LoRAs and fine-tunes from one Civitai or Hugging Face link, ready in the tools that can use them.
+- More official Comfy templates as one-click workflows.
+- Pika H3 Flex with reference pictures.
+- Comfy Cloud runs through the official Comfy SDK.
+- Using the app from your phone.
 
 ## Yours to keep, yours to change
 
