@@ -26,9 +26,19 @@ const has = (p: string, w: string) => enhanceRules(p).added.includes(w);
 { // portrait: skin texture + a light
   const r = enhanceRules('portrait of an old fisherman');
   assert.ok(r.added.includes('natural skin texture'), r.prompt); assert.ok(r.added.includes('soft directional light'));
-  for (const p of ['a woman reading', 'two kids playing football', 'a selfie of a man in a cafe', 'a fashion model on a runway']) assert.ok(has(p, 'natural skin texture'), p);
+  for (const p of ['a woman reading', 'two kids playing football', 'a fashion model on a runway']) assert.ok(has(p, 'natural skin texture'), p);
   assert.ok(!has('portrait of a woman, visible skin pores', 'natural skin texture'), 'skin already named → not added twice');
   ok(`portrait → ${r.added.join(', ')}`); }
+{ // phone / selfie / UGC (2026-11-01): one phrase only, no detail / sharp / composition / cinematic / shallow-depth words; image and video
+  const P = 'natural phone-camera look with real room light';
+  for (const p of ['phone selfie of a woman in a café', 'a selfie of a man in a cafe', 'UGC photo of a guy unboxing sneakers', 'mirror selfie in a gym', 'a phone photo of my dog', 'shot on an iPhone, a kid laughing']) {
+    const r = enhanceRules(p); assert.deepEqual(r.added, [P], `${p} → ${r.prompt}`); assert.doesNotMatch(r.prompt, /detail|sharp|composition|cinematic|shallow/i, p); }
+  assert.deepEqual(enhanceRules('a woman filming a selfie video in her car', 'video').added, [P]);
+  assert.deepEqual(enhanceRules(`a selfie, ${P}`).added, [], 'not added twice');
+  assert.deepEqual(enhanceRules('a woman at a desk', 'image', 'phone snapshot').added, [P], 'the look (style) counts too');
+  assert.ok(has('a smartphone on a marble counter', 'crisp product detail'), 'a phone as a product is not a phone photo');
+  assert.deepEqual(enhanceRules('a city at night', 'video').added, ['cinematic', 'smooth natural motion', 'consistent subject identity', 'motivated lighting', 'shallow depth of field'], 'other video unchanged');
+  ok(`phone / selfie / UGC → ${P}`); }
 { // golden hour: a person keeps skin texture but gets no added light
   const r = enhanceRules('a woman walking on the beach at golden hour');
   assert.ok(r.added.includes('natural skin texture')); assert.ok(!r.added.some((w) => /light/.test(w)), r.prompt);

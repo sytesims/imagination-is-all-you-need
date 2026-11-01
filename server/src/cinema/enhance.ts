@@ -17,6 +17,10 @@ const ADD: Record<Exclude<EnhanceKind, 'image'>, string[]> = {
 const PERSON = /\b(person|people|persons|man|men|woman|women|girl|girls|boy|boys|child|children|kid|kids|baby|toddler|teen|teenager|portrait|portraits|face|faces|headshot|selfie|model|models|character|characters|lady|guy|couple|family|bride|groom|actor|actress|athlete|dancer|human|humans|he|she|him|her|his|grandma|grandpa|mother|father|mom|dad|businessman|businesswoman|influencer|presenter)\b/i;
 const LIGHT = /\b(light|lights|lighting|lit|backlit|back-lit|sunlight|sunlit|sunny|sun|sunset|sunrise|golden hour|blue hour|night|nighttime|midnight|neon|dawn|dusk|noon|midday|twilight|evening|moon|moonlight|moonlit|candle|candles|candlelight|candlelit|flash|rim|glow|glowing|spotlight|lamp|lamps|lantern|lanterns|firelight|torch|overcast|shadow|shadows|chiaroscuro|silhouette|silhouetted|starlight|starry|aurora|softbox)\b/i;
 const PRODUCT = /\b(product|products|packshot|pack shot|bottle|bottles|perfume|fragrance|cosmetic|cosmetics|lipstick|skincare|serum|jar|packaging|sneaker|sneakers|shoe|shoes|watch|wristwatch|handbag|headphones|earbuds|smartphone|laptop|gadget|mug|jewellery|jewelry|necklace|e-commerce|ecommerce|catalogue)\b/i;
+/* Phone / selfie / UGC (2026-11-01): detail, sharpness, composition, cinematic and shallow-focus words push a phone photo toward an ad or an
+ * editorial, so those prompts get one phrase only (once), for images and video alike. */
+const PHONE = /\b(selfie|selfies|ugc|user[- ]generated|phone (photo|pic|picture|snap|snapshot|camera|video|footage)|smartphone (photo|picture|snap|snapshot|camera|video|footage)|mirror (selfie|shot)|front camera|shot on (a |an )?(phone|smartphone|iphone))\b/i;
+export const PHONE_ENHANCE = 'natural phone-camera look with real room light';
 /** The image words for this prompt, each only when the prompt doesn't already cover it. */
 function imageWords(text: string): string[] {
   const l = text.toLowerCase(); const out: string[] = [];
@@ -41,7 +45,8 @@ export function enhanceRules(prompt: string, kind: EnhanceKind = 'image', style?
   // The runner turns @image1 into the model's own token (shared/promptRefs.ts), so the enhancer never writes tokens itself.
   const plain = base.replace(/[@#][\w-]+/g, ' ');
   const m = forModel(model); const cap = m?.cap ?? DEFAULT_CAP;
-  let added = kind === 'image' ? imageWords(`${plain} ${style ?? ''}`) : ADD[kind].filter((w) => !lower.includes(w.split(' ')[0]));
+  const phone = kind !== 'audio' && PHONE.test(`${plain} ${style ?? ''}`);
+  let added = phone ? (lower.includes(PHONE_ENHANCE) ? [] : [PHONE_ENHANCE]) : kind === 'image' ? imageWords(`${plain} ${style ?? ''}`) : ADD[kind].filter((w) => !lower.includes(w.split(' ')[0]));
   const head = [base[0].toUpperCase() + base.slice(1), style].filter(Boolean).join(', ');
   // never past the model's cap and never cut: drop added words from the end until it fits; a prompt already over the cap is left as it is
   while (added.length && [head, ...added].join(', ').length > cap) added = added.slice(0, -1);
