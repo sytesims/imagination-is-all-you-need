@@ -12,6 +12,7 @@ import { isOurComputer, type FeaturedItem, type FeaturedRun } from './featured.j
 export interface RunChipData {
   /** the main model, as shown */ model: string;
   /** the other runs behind this result, one short line each ("GPT Image 2.5 Flare · first frame · Comfy Cloud · $0.02"): the chip shows "+N" */ also?: string[];
+  /** what the others are, in a word or two ("music"): shown after "+N" so it reads without hovering */ alsoWhat?: string;
   /** where it ran: "Comfy Cloud", "Your computer", "In your browser" */ place: string;
   /** "$1.72", "≈ $0.30", "Free"; null when unknown (left out) */ price: string | null;
   /** a few extra words after the price ("each", "first 10 s") */ note?: string;
@@ -43,4 +44,4 @@ export function chipOfChain(main: FeaturedRun, others: FeaturedRun[], o: { model
   return { model: o.model ?? main.model, place: chipPlace(main.place), price: chipUsd(usd, all.some((r) => r.est)), ...(others.length ? { also: others.map(runLine) } : {}), ...(o.note ? { note: o.note } : {}) };
 }
 /** The chip as plain words (tests, aria labels, tooltips): "MiniMax H3 +2 · Comfy Cloud · ≈ $4.00". */
-export const chipText = (c: RunChipData): string => [`${c.model}${c.also?.length ? ` +${c.also.length}` : ''}`, c.place, c.price, c.note].filter(Boolean).join(' · ');
+export const chipText = (c: RunChipData): string => [`${c.model}${c.also?.length ? ` +${c.also.length}${c.alsoWhat ? ` ${c.alsoWhat}` : ''}` : ''}`, c.place, c.price, c.note].filter(Boolean).join(' · ');

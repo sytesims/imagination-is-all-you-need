@@ -119,6 +119,8 @@ try {
   for (const id of CLOUD) assert.equal(cr.unavailableFor?.({ types: [id] }) ?? null, null, `${id} on Comfy Cloud`);
   assert.equal(modelNameForRun('footage-fx', P, { types: ['vanish'] }, route), 'LTX-2.3 22B + Clean Plate IC-LoRA', 'the real model on the Comfy Cloud place');
   assert.equal(modelNameForRun('footage-fx', P, { types: ['flood'] }, `local:${P}`), 'LTX-2.5 22B + Water Simulation IC-LoRA', 'and on your computer');
+  for (const id of BOTH) { const pr: any = tool.presets!.find((x) => x.id === id); // the bar's names: local on the preset, the Comfy Cloud one as cloudModelName, both as the job card says
+    assert.equal(pr.cloudModelName, modelNameForRun('footage-fx', P, { types: [id] }, route), `${id}: the bar names LTX-2.3 on Comfy Cloud`); assert.equal(pr.modelName, modelNameForRun('footage-fx', P, { types: [id] }, `local:${P}`) ?? pr.modelName); }
   { const r: any = await parse({ types: '["day-to-night"]' }); assert.equal(r.footageFx.modelName, 'LTX-2.3 22B + Day to Night IC-LoRA'); assert.equal(r.footageFx.cloud, true); clean('parsed day-to-night', plan(r).passes[0].graph); }
   for (const id of ONLY) assert.match(String(loc.unavailableFor?.({ types: [id] })), /runs on Comfy Cloud/);
   for (const id of BOTH) assert.equal(loc.unavailableFor?.({ types: [id] }) ?? null, null, `${id}: still runs on your computer`);

@@ -71,10 +71,11 @@ const FreeDot = ({ children = 'Free on your computer' }: { children?: React.Reac
 
 /* ============================================================== hero ============================================================== */
 /** The hero's run chip, all from the data (EXPLORE_HERO + its featured entry): the model, where it ran and its price, the length, and the
- *  music made here (its model from `after`, "Music · YuE2 · Free") as "+1". */
+ *  music made here (its model from `after`, "Music · YuE2 · Free") as "+1 music". */
 export function heroChip(s: ReelShot, f: FeaturedItem): RunChipData {
   const music = (s.after ?? []).map((x) => /^Music · ([^·]+)/.exec(x)?.[1]?.trim()).find(Boolean);
-  return chipOfFeatured(f, { model: s.model, note: s.facts.join(' · '), also: music ? [{ jobId: '', model: `${music} (music)`, place: OUR_COMPUTER, costUsd: 0 }] : [] });
+  const c = chipOfFeatured(f, { model: s.model, note: s.facts.join(' · '), also: music ? [{ jobId: '', model: `${music} (music)`, place: OUR_COMPUTER, costUsd: 0 }] : [] });
+  return music ? { ...c, alsoWhat: 'music' } : c; /* "+1 music": readable on camera without hovering */
 }
 /** The hero's credit (2026-11-01: the shared run chip, was the MADE WITH · LENGTH · RAN ON block), then its one action, an orange "Make your own →". */
 function HeroCredit({ s, f, rec }: { s: ReelShot; f: FeaturedItem; rec: string | null }) {
