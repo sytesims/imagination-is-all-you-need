@@ -145,10 +145,12 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     for (const u of [still.url, '/showcase/ltx-pro-whale-in.jpg']) { const p = file(u, 250_001); assert.ok(fs.statSync(p).size <= 250_000, `${u}: ≤ 250 KB`); assert.ok(!fs.readFileSync(p).includes('Exif'), `${u}: no EXIF`); }
     file(still.poster, 4e4); assert.match(still.url, /\.webp$/); assert.deepEqual([still.width, still.height], [1344, 756], 'the still, cropped to 16:9 the way the app cropped it');
     const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); const wx = xs.slice(xs.indexOf('export function XpStill'), xs.indexOf('Make your own cartoon (MiniMax H3'));
-    assert.match(wx, /<HeroReel className="xpo-film xpo-bleed"[^\n]*\breveal replay=\{replay\}[^\n]*sound=\{f\.out\.sound === true\} restartOnSound/, 'the shared HeroReel wipe (reveal), the page\u2019s sound');
+    assert.match(wx, /<HeroReel className=\{cls\}[^\n]*\breveal replay=\{replay\}[^\n]*sound=\{f\.out\.sound === true\} restartOnSound/, 'the shared HeroReel wipe (reveal), the page\u2019s sound: one reel for every layout');
+    assert.equal((wx.match(/<HeroReel /g) ?? []).length, 1, 'the layouts only frame the one reel');
     assert.match(wx, /before=\{\{ url: still\.url[\s\S]*after=\{\{ url: f\.out\.url/, 'still → the take’s clip, both from the featured entry');
-    assert.match(wx, /<HeroReel className="xpo-film xpo-bleed"/, 'cinematic: the reel runs to the window edges');
-    assert.match(wx, /<div className="xpo-over">[\s\S]*xp-still-line[\s\S]*<\/HeroReel>\s*<div className="xpo-under">\s*<p className="xpo-run"/, 'the copy once, over the picture; one row under it: the run, then the actions');
+    assert.match(wx, /reel\('xpo-film xpo-bleed', <div className="xpo-over">\{copy\}<\/div>\)\}\s*<div className="xpo-under">\{run\}\{acts\}<\/div>/, 'today (0): the reel to the window edges, the copy once over the picture, one row under it');
+    assert.match(xs, /get\('whalesection'\)[^\n]*v === 'a' \|\| v === 'b' \|\| v === 'c' \? v : '0'/, 'layouts being picked: ?whalesection=a|b|c, today by default');
+    assert.match(wx, /reel\('hreel-framed xpo-film xpo-pair', undefined, 0\.5\)/, 'C parks the reveal half way: the still and the moving shot side by side');
     assert.match(fs.readFileSync(path.join(WEB, 'ui/explore/exploreShowcase.css'), 'utf8'), /\.xpo-bleed \.hreel-shade\{display:none\}/, 'no shade darkens the picture');
     assert.doesNotMatch(xs, /stillsection/, 'one layout, no gate');
     assert.doesNotMatch(wx, /Segmented|xp-still-take|xp-still-next|onTick|setPick/, 'one take: no take switch, no auto-alternation');
