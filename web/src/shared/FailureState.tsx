@@ -52,7 +52,7 @@ export function FailActions({ job, view, max = 3, skip = [], onRetry, onLeave, o
       case 'startComfy': return go('/settings#gpu');
       case 'turnOnGpu': return go('/settings#conn-local');
       case 'spendLimits': return go('/spend');
-      case 'setupCloud': { const r = routeOf(j); const id = /charswap/.test(r) ? 'charswap' : /layout/.test(r) ? 'layout' : /h3-fast/.test(r) ? 'h3fast' : /crossview|deploy/.test(r) ? 'crossview' : '';
+      case 'setupCloud': { const r = routeOf(j); const id = /charswap/.test(r) ? 'charswap' : /layout/.test(r) ? 'layout' : /h3-fast/.test(r) ? 'h3fast' : /h3-pika/.test(r) ? 'pika' : /crossview|deploy/.test(r) ? 'crossview' : '';
         return go(`/settings#${id ? `cloud-setup-${id}` : 'cloud-setup'}`); }
       case 'setupTranslate': window.open(TRANSLATE_DOC, '_blank', 'noopener,noreferrer'); return;
       case 'details': onDetails?.(); return;
