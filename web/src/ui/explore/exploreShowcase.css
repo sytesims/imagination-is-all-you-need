@@ -365,40 +365,37 @@ html body .xyt-box input,html body .xyt-box input:focus,html body .xyt-box input
 .xpo-prompt-b small{display:block;margin-top:10px;font:500 12px/1.3 var(--font-ui);color:rgba(255,255,255,.42)}
 /* the take switch: a thumb of each take, and while it moves on by itself, a quiet "Next take" line that fills over the take's plays (--k, 0–1) */
 @media (max-width:900px){.xpo-cred{flex-direction:column;align-items:flex-start;gap:16px}.xpo-acts{margin-left:0}.hreel.hreel-framed.xpo-film{min-height:0;aspect-ratio:16/9}}
-/* "What if it could move?", cinematic (2026-11-02, layout being picked: ?stillsection=a|b). Both run the reel past the page's gutters to the
-   window's edges (the Explore page clips the sideways overflow). A: the reel is the section, 21:9, the copy over it bottom left on a soft shade.
-   B: a slim text row, then the reel edge to edge at 2.4:1, the credits under it. */
+/* "What if it could move?", cinematic (2026-11-02, the user's pick): the reel runs past the page's gutters to the window's edges (the Explore
+   page clips the sideways overflow), 21:9, with no shade over the picture so the whale in the sand stays clear. Only the headline sits on it,
+   bottom left, legible through a light shadow on the words; the line, credits and actions sit just under the reel. */
 .xp{overflow-x:clip}
-.xpo .hreel.xpo-bleed,.xpo .hreel.hreel-framed.xpo-wide{max-width:none;margin-inline:calc(-1 * (max(0px,(100vw - 1680px) / 2) + var(--xv-gut)))}
-.xpo .hreel.xpo-bleed{height:auto;aspect-ratio:21/9;min-height:560px;max-height:calc(100svh - var(--nav-h) - 24px);border-radius:0}
-.xpo-bleed .hreel-shade{background:linear-gradient(0deg,rgba(5,5,5,.9) 0%,rgba(5,5,5,.62) 26%,rgba(5,5,5,0) 60%),linear-gradient(90deg,rgba(5,5,5,.6) 0%,rgba(5,5,5,0) 50%),linear-gradient(180deg,rgba(5,5,5,.5) 0%,rgba(5,5,5,0) 16%)}
+.xpo .hreel.xpo-bleed{max-width:none;margin-inline:calc(-1 * (max(0px,(100vw - 1680px) / 2) + var(--xv-gut)));height:auto;aspect-ratio:21/9;min-height:520px;max-height:calc(100svh - var(--nav-h) - 120px);border-radius:0}
+.xpo-bleed .hreel-shade{display:none}
 .xpo-bleed .hreel-tag{top:22px;bottom:auto}
-.xpo-bleed .hreel-copy{left:max(0px,calc((100% - 1680px) / 2));width:min(1680px,100%);padding:0 var(--xv-gut) clamp(32px,5.2vh,60px)}
-.xpo-bleed .snd{--snd-right:max(var(--xv-gut),calc((100% - 1680px) / 2 + var(--xv-gut)));--snd-bottom:clamp(32px,5.2vh,60px)}
-.xpo-over{max-width:680px;--xpo-shadow:0 1px 2px rgba(0,0,0,.6),0 0 24px rgba(0,0,0,.5)}
-.xpo-over .xpo-h{margin:12px 0 0;font:700 clamp(40px,4.4vw,72px)/.94 var(--font-display);letter-spacing:-.035em;color:#fff;text-wrap:balance;text-shadow:0 2px 6px rgba(0,0,0,.2),0 6px 40px rgba(0,0,0,.45)}
-.xpo-over .xv-eb{text-shadow:var(--xpo-shadow)}
-.xpo-over .xpo-line{margin:14px 0 0;max-width:540px;font:500 16px/1.55 var(--font-ui);color:rgba(255,255,255,.84);text-shadow:var(--xpo-shadow)}
-.xpo-over .xpo-meta{margin-top:20px;align-items:center;color:rgba(255,255,255,.74);text-shadow:var(--xpo-shadow)}
-.xpo-over .xpo-acts{margin:24px 0 0;display:flex;align-items:center;gap:22px;flex-wrap:wrap}
-.xpo-over .xpo-replay{color:rgba(255,255,255,.82);text-shadow:var(--xpo-shadow)}
-.xpo.is-a .xpo-prompt{margin-top:20px}
-/* B */
-.xpo-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:end;gap:16px 48px;margin-bottom:24px}
-.xpo-row .xpo-h{margin:10px 0 0;font:700 clamp(30px,2.9vw,44px)/1.02 var(--font-display);color:#fff}
-.xpo-row .xpo-line{margin:0 0 4px;max-width:560px;font:500 15.5px/1.55 var(--font-ui);color:rgba(255,255,255,.62)}
-.xpo-row .xpo-acts{margin:0 0 2px}
-.xpo .hreel.hreel-framed.xpo-wide{aspect-ratio:2.4/1;max-height:calc(100svh - var(--nav-h) - 180px);border-radius:0;border:0;box-shadow:none}
+.xpo-bleed .hreel-copy{left:max(0px,calc((100% - 1680px) / 2));width:min(1680px,100%);padding:0 var(--xv-gut) clamp(26px,4.4vh,48px)}
+.xpo-bleed .snd{--snd-right:max(var(--xv-gut),calc((100% - 1680px) / 2 + var(--xv-gut)));--snd-bottom:clamp(26px,4.4vh,48px)}
+.xpo-over{max-width:760px}
+.xpo-over .xpo-h{margin:10px 0 0;font:700 clamp(40px,4.4vw,72px)/.94 var(--font-display);letter-spacing:-.035em;color:#fff;text-wrap:balance;
+  text-shadow:0 1px 2px rgba(0,0,0,.55),0 2px 14px rgba(0,0,0,.45),0 8px 40px rgba(0,0,0,.35)}
+.xpo-over .xv-eb{color:#ffb27a;text-shadow:0 1px 2px rgba(0,0,0,.7),0 0 14px rgba(0,0,0,.5)}
+.xpo-under{display:grid;grid-template-columns:minmax(0,560px) minmax(0,1fr) auto;align-items:center;gap:16px 40px;margin-top:24px;padding-bottom:20px;border-bottom:1px solid var(--xv-line)}
+.xpo-under .xpo-line{margin:0;font:500 15.5px/1.55 var(--font-ui);color:rgba(255,255,255,.7)}
+.xpo-under .xpo-meta{align-items:center}
+.xpo-under .xpo-acts{margin:0}
+@media (max-width:1100px){.xpo-under{grid-template-columns:minmax(0,1fr) auto}.xpo-under .xpo-meta{grid-column:1/-1;grid-row:2}}
 @media (max-width:900px){
-  .xpo .hreel.xpo-bleed{aspect-ratio:auto;min-height:0;max-height:none}
-  .xpo-bleed .hreel-stage{bottom:auto;height:min(68vw,420px)}
-  .xpo-bleed .hreel-shade{background:linear-gradient(0deg,#050505 calc(100% - min(68vw,420px)),rgba(5,5,5,.55) calc(100% - min(68vw,420px) + 40px),rgba(5,5,5,0) calc(100% - min(68vw,420px) + 110px))}
-  .xpo-bleed .hreel-copy{position:relative;left:0;width:100%;padding:calc(min(68vw,420px) + 6px) var(--xv-gut) 28px}
-  .xpo-bleed .snd{--snd-bottom:auto;--snd-right:12px;top:calc(min(68vw,420px) - 52px)}
+  /* a phone: the picture on top (no text over it), the headline right under it */
+  .xpo .hreel.xpo-bleed{aspect-ratio:auto;min-height:0;max-height:none;background:none}
+  .xpo-bleed .hreel-stage{bottom:auto;height:62.5vw;background:#050505;overflow:hidden}
+  .xpo-bleed .hreel-copy{position:relative;left:0;width:100%;padding:calc(62.5vw + 18px) var(--xv-gut) 0}
+  .xpo-bleed .snd{--snd-bottom:auto;--snd-right:12px;top:calc(62.5vw - 52px)}
   .xpo-bleed .hreel-tag{top:14px}
-  .xpo-over .xpo-line{font-size:15px}
-  .xpo-row{grid-template-columns:1fr;gap:12px;margin-bottom:18px}
-  .xpo .hreel.hreel-framed.xpo-wide{aspect-ratio:16/9;max-height:none}
+  .xpo-bleed .hreel-play,.xpo-bleed .hreel-knob{top:31.25vw}
+  .xpo-over .xpo-h{text-shadow:none}
+  .xpo-over .xv-eb{color:var(--accent);text-shadow:none}
+  .xpo-under{margin-top:14px}
+  .xpo-under{grid-template-columns:1fr;gap:14px}
+  .xpo-under .xpo-meta{grid-row:auto}
 }
 /* the shared sound button (SoundToggle): the hero's sits bottom right on the page's gutter, the rest keep its 15 px inset */
 .xph .sfilm-bleed .snd{--snd-right:max(var(--xv-gut),calc((100% - 1680px) / 2 + var(--xv-gut)));--snd-bottom:calc(clamp(60px,9vh,96px) - 2px)}

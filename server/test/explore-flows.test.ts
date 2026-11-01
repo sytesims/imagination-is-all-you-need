@@ -141,10 +141,12 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     for (const u of [still.url, '/showcase/ltx-pro-whale-in.jpg']) { const p = file(u, 250_001); assert.ok(fs.statSync(p).size <= 250_000, `${u}: ≤ 250 KB`); assert.ok(!fs.readFileSync(p).includes('Exif'), `${u}: no EXIF`); }
     file(still.poster, 4e4); assert.match(still.url, /\.webp$/); assert.deepEqual([still.width, still.height], [1344, 756], 'the still, cropped to 16:9 the way the app cropped it');
     const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); const wx = xs.slice(xs.indexOf('export function XpStill'), xs.indexOf('Make your own cartoon (MiniMax H3'));
-    assert.match(wx, /<HeroReel className=\{reelClass\}[^\n]*\breveal replay=\{replay\}[^\n]*sound=\{f\.out\.sound === true\} restartOnSound/, 'the shared HeroReel wipe (reveal), the page\u2019s sound');
+    assert.match(wx, /<HeroReel className="xpo-film xpo-bleed"[^\n]*\breveal replay=\{replay\}[^\n]*sound=\{f\.out\.sound === true\} restartOnSound/, 'the shared HeroReel wipe (reveal), the page\u2019s sound');
     assert.match(wx, /before=\{\{ url: still\.url[\s\S]*after=\{\{ url: f\.out\.url/, 'still → the take’s clip, both from the featured entry');
-    assert.match(wx, /bleed \? 'xpo-film xpo-bleed' : 'hreel-framed xpo-film xpo-wide'/, 'cinematic, two layouts being picked: A full bleed with the copy over the reel, B edge to edge under a slim row');
-    assert.match(xs, /get\('stillsection'\) === 'b' \? 'b' : 'a'/, '?stillsection=b shows B; A is the default');
+    assert.match(wx, /<HeroReel className="xpo-film xpo-bleed"/, 'cinematic: the reel runs to the window edges');
+    assert.match(wx, /<div className="xpo-over">\{head\}<\/div>\s*<\/HeroReel>\s*<div className="xpo-under">\{line\}\{meta\}/, 'only the headline over the picture; the line, credits and actions under it');
+    assert.match(fs.readFileSync(path.join(WEB, 'ui/explore/exploreShowcase.css'), 'utf8'), /\.xpo-bleed \.hreel-shade\{display:none\}/, 'no shade darkens the picture');
+    assert.doesNotMatch(xs, /stillsection/, 'one layout, no gate');
     assert.doesNotMatch(wx, /Segmented|xp-still-take|xp-still-next|onTick|setPick/, 'one take: no take switch, no auto-alternation');
     assert.match(wx, /\$\{ran\} s run, trimmed to \$\{Math\.floor\(t\.trimmedTo\)\} s/, 'the trim said honestly'); assert.match(wx, /<RunChip c=\{chipOfFeatured\(f\)\} testId="xp-still-chip"/, 'the real model, place and price: the shared run chip');
     assert.match(wx, /featuredRecreateHref\(f\.key\)[\s\S]*xp-still-recreate/, 'Recreate from the featured entry'); assert.match(wx, /aria-expanded=\{open\}[\s\S]*<PromptText text=\{f\.prompt\}/, 'the prompt one click away');
