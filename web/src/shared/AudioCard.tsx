@@ -3,6 +3,8 @@
  *    chip, length, model, price), then a real waveform with the progress scrub (click / drag / ←→ to seek) and the time. A status shows only when
  *    it matters (the file is gone). SyteSim is a small accent that dances beside the title while the sound plays (and cheers once when it just
  *    finished generating); the big dance lives in the viewer. About 2.5× more sounds per screen than the old cover card.
+ *    2026-11-01: a short title on one line with the prompt as one dim line under it (full text on hover), the chip row on its own full-width line
+ *    (never cut: the model's short form, full name on hover), and the waveform pinned to the bottom so every card in a row lines up.
  *  - `cover={false}`: the compact row (canvas nodes, Film, Stitch, result cards): play in the waveform row, title and meta under it.
  *  One player at a time (shared/audioPlayer + soundDirector); Space on the focused card plays / pauses. Decodes only once the card scrolls into
  *  view; only the playing card animates. */
@@ -18,10 +20,14 @@ import './audioCard.css';
 
 export type AudioCardProps = {
   src: string | null | undefined;
-  /** Title, or the prompt (clamped to two lines). */
+  /** A short title (shared shortTitle: the job's own title, else a few words of its prompt). The tile shows one line; the compact row two. */
   title: string;
-  /** The real model name, always shown. */
+  /** The tile's one dim line under the title (the prompt); the full text shows on hover. */
+  subtitle?: string | null;
+  /** The real model name, always shown (the tile may pass a short form here and the full name as modelTitle). */
   model: string;
+  /** The model's full name for the tooltip when `model` is a short form. */
+  modelTitle?: string | null;
   /** Price chip or text (e.g. <GenPrice/>); the slot stays empty when absent. */
   price?: ReactNode;
   /** Seconds, when the job already knows it (shown before decoding). */
@@ -76,7 +82,7 @@ const KIND_WORD: Record<AudioKind, string> = { music: 'Music', voice: 'Voice', s
 /** The tile's kind chip: plain words for what the sound is. */
 export const KIND_CHIP: Record<AudioKind, string> = { music: 'Music', voice: 'Voiceover', sfx: 'Sound FX' };
 
-function AudioCardView({ src, title, model, price, duration, onOpen, bars, testId = 'audio-card', kind = 'music', tag, prompt, lyrics, cover = true, jobId, danceStyle, cheer }: AudioCardProps) {
+function AudioCardView({ src, title, subtitle, model, modelTitle, price, duration, onOpen, bars, testId = 'audio-card', kind = 'music', tag, prompt, lyrics, cover = true, jobId, danceStyle, cheer }: AudioCardProps) {
   const [box, seen] = useSeen<HTMLDivElement>();
   const a = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false); const [t, setT] = useState(0); const [md, setMd] = useState(0); const [bad, setBad] = useState(false);
@@ -92,6 +98,7 @@ function AudioCardView({ src, title, model, price, duration, onOpen, bars, testI
   const toggle = () => { const el = a.current; if (!el || missing) return; primeAudio(); if (el.paused) el.play().catch(() => setPlaying(false)); else el.pause(); };
   const seek = (sec: number) => { const el = a.current; if (!el || missing) return; el.currentTime = sec; setT(sec); };
   const name = title.trim() || 'Untitled audio';
+  const sub0 = subtitle?.replace(/\s+/g, ' ').trim() || null; const sub = sub0 && sub0.toLowerCase() !== name.toLowerCase() ? sub0 : null; // never the title twice
   /* Space on the card itself (or its waveform) plays / pauses; buttons and links keep their own Space. */
   const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== ' ' || e.altKey || e.ctrlKey || e.metaKey) return; const tg = e.target as HTMLElement;
@@ -107,20 +114,21 @@ function AudioCardView({ src, title, model, price, duration, onOpen, bars, testI
     onSeek={missing ? undefined : seek} label={`Seek ${name}`} />;
   const titleEl = onOpen ? <button type="button" className="ac-title" data-testid={`${testId}-open`} onClick={e => onOpen(e.currentTarget)} title={name}>{name}</button> : <span className="ac-title" title={name}>{name}</span>;
   return <div ref={box} className={`ac${cover ? ' ac-tile' : ''}${playing ? ' is-playing' : ''}${missing ? ' is-missing' : ''}`} data-testid={testId} data-state={missing ? 'missing' : wave.state} data-kind={kind}
-    tabIndex={missing ? undefined : 0} role="group" aria-label={`${KIND_WORD[kind]}: ${name}${model ? `, ${model}` : ''}${playing ? ', playing' : ''}. Space to ${playing ? 'pause' : 'play'}`} onKeyDown={missing ? undefined : onKey}>
+    tabIndex={missing ? undefined : 0} role="group" aria-label={`${KIND_WORD[kind]}: ${name}${model ? `, ${modelTitle || model}` : ''}${playing ? ', playing' : ''}. Space to ${playing ? 'pause' : 'play'}`} onKeyDown={missing ? undefined : onKey}>
     {cover ? <>
       <div className="ac-top">
         {playBtn}
         <div className="ac-head">
           {titleEl}
-          <div className="ac-meta">
-            <span className="ac-kind" data-testid={`${testId}-kind`} data-kind={kind}><i aria-hidden />{tag || KIND_CHIP[kind]}</span>
-            {missing ? <span className="ac-status" data-testid={`${testId}-status`}>File missing</span> : null}
-            <span className="ac-model" data-testid={`${testId}-model`}>{model}</span>
-            <span className="ac-price" data-testid={`${testId}-price`}>{price}</span>
-          </div>
+          {sub && <span className="ac-sub" data-testid={`${testId}-sub`} title={sub}>{sub}</span>}
         </div>
         {bean && !missing && <span className="ac-bean" data-testid={`${testId}-bean`}><AudioVizLayer kind={kind} playing={playing} chip={false} prompt={prompt ?? title} lyrics={lyrics} jobId={jobId} src={src} saved={danceStyle} listen={playing} cheer={cheer} /></span>}
+      </div>
+      <div className="ac-meta">
+        <span className="ac-kind" data-testid={`${testId}-kind`} data-kind={kind}><i aria-hidden />{tag || KIND_CHIP[kind]}</span>
+        {missing ? <span className="ac-status" data-testid={`${testId}-status`}>File missing</span> : null}
+        <span className="ac-model" data-testid={`${testId}-model`} title={modelTitle && modelTitle !== model ? modelTitle : undefined}>{model}</span>
+        <span className="ac-price" data-testid={`${testId}-price`}>{price}</span>
       </div>
       <div className="ac-row">{waveEl}{timeEl}</div>
     </> : <>
