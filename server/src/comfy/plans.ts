@@ -36,6 +36,7 @@ import { resolutionSelectorAspect } from './resolutionSelector.js';
 import { pluginSpec, mapGraph } from '../pluginGraph.js';
 import { SEPARATION_WORKFLOW, SEP_NODES, NO_SEPARATION_NOTE, separationStatus } from './separation.js';
 import { DUB_SPEED } from './dubMix.js';
+import { songSeconds } from '../shared/audioLengths.js';
 
 export type FileRef = { __file: string };
 export const F = (p: string): FileRef => ({ __file: p });
@@ -78,6 +79,8 @@ export type Post =
   | { kind: 'voiceMix'; pass: number; beds: MixBed[]; /** Translate: the pass made one file per line (job.input.dubLines), each placed at its line's start and sped up to fit (comfy/dubMix.ts fitLines) */ lines?: boolean; maxSpeed?: number }
   | { kind: 'splice'; ranges: { start: number; end: number }[]; extraEach: number; fps: number; width: number; height: number };
 export interface Plan { tool: string; passes: Pass[]; post: Post; outKind: 'video' | 'image' | 'audio'; muxSourceAudio: boolean; labels?: string[]; notes: string[]; /** final ffmpeg fps resample */ postFps?: number; /** audio outputs muxed onto this video (replace or duck the original) */ muxOnto?: { video: string; mix: 'replace' | 'blend' };
+  /** music for a clip (2026-11-02): the clip's seconds. runNative trims the track to it, fades it out and limits peaks under −1 dBTP (shared/audioLengths.ts bedFilter) */
+  musicBed?: number;
   /** Voice tools: the plan splits voice from background first (comfy/separation.ts); kept on the job so a rebuild (Get workflow) matches the run. */ separation?: boolean }
 
 const wf = (f: string) => JSON.parse(readFileSync(path.isAbsolute(f) ? f : path.join(WORKFLOWS_DIR, f), 'utf8'));
@@ -515,8 +518,11 @@ function audio(job: Job, withVideo: boolean): Plan {
   setIn(g, m.inputs.prompt.node, m.inputs.prompt.field, prompt); if (m.inputs.lyrics) setIn(g, m.inputs.lyrics.node, m.inputs.lyrics.field, i.lyrics ?? '[Instrumental]');
   for (const d of m.duration) setIn(g, d.node, d.field, secs); seedTo(g, m.seed, seed);
   if (withVideo) setIn(g, m.inputs.video.node, m.inputs.video.field, F(i.videoPath));
-  return { tool: job.toolId, outKind: withVideo ? 'video' : 'audio', post: { kind: 'each' }, muxSourceAudio: false, notes: [], passes: [{ label: 'Result', workflow: m.workflowFile, graph: g, output: m.output.node, expect: { seed, prompt, seconds: secs } }] };
+  return { tool: job.toolId, outKind: withVideo ? 'video' : 'audio', post: { kind: 'each' }, muxSourceAudio: false, notes: [], ...(withVideo && kind === 'music' ? { musicBed: secs } : {}),
+    passes: [{ label: 'Result', workflow: m.workflowFile, graph: g, output: m.output.node, expect: { seed, prompt, seconds: secs } }] };
 }
+/** The clip's length a music bed is cut to (the length the soundtrack job measured). */
+const clipSeconds = (i: Record<string, any>) => Number(i.outputDuration ?? i.duration) || 0;
 // ---- Local songs (2026-10-23): YuE2 (song from lyrics + style; Cover a song) and MiniMax Music 3 open weights. Graphs from the official Comfy templates
 // audio_yue2_text2music / audio_yue2_music_cover / audio_minimax_music_3 (workflows/audio-yue2-*-api.json, audio-minimax-music3-local-api.json).
 // Patched fields only: style / caption (prompt), lyrics, seed, the length cap (max_duration; not on Cover, which follows the song), the song file (Cover).
@@ -533,11 +539,11 @@ function songPlan(job: Job, withVideo: boolean): Plan {
   for (const s of m.inputs.prompt as Spot[]) setIn(g, s.node, s.field, prompt);
   for (const s of m.inputs.lyrics as Spot[]) setIn(g, s.node, s.field, lyrics);
   setIn(g, m.seed.node, m.seed.field, seed);
-  const secs = Math.min(360, Math.max(1, Number(withVideo ? i.outputDuration ?? i.duration : i.duration) || 60));
+  const secs = songSeconds(job.provider, withVideo ? i : { duration: i.duration }) /* at least the model's shortest song; a clip is trimmed back (musicBed) */;
   if (cover) for (const s of m.inputs.audio as Spot[]) setIn(g, s.node, s.field, F(i.sourceAudioPath)); else for (const d of m.duration as Spot[]) setIn(g, d.node, d.field, secs);
   const expect = { seed, prompt, lyrics, ...(cover ? { cover: true } : { seconds: secs }) };
   return { tool: job.toolId, outKind: withVideo ? 'video' : 'audio', post: { kind: 'each' }, muxSourceAudio: false, notes: [],
-    ...(withVideo ? { muxOnto: { video: i.videoPath, mix: i.mix === 'blend' && i.hasAudio !== false ? 'blend' : 'replace' } } : {}),
+    ...(withVideo ? { muxOnto: { video: i.videoPath, mix: i.mix === 'blend' && i.hasAudio !== false ? 'blend' : 'replace' }, musicBed: clipSeconds(i) } : {}),
     passes: [{ label: cover ? 'Cover' : 'Result', workflow: m.workflowFile, graph: g, output: m.output.node, expect }] };
 }
 // ---- Voice Studio + MMAudio (workflows from scripts/build-voice-workflows.py) ----

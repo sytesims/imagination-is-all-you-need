@@ -35,6 +35,7 @@ import { ltx25CloudIssue, ltx25CloudRenderSeconds } from '../comfy/ltx25Cloud.js
 import { layoutCloudIssue } from '../comfy/ltx25LayoutCloud.js';
 import { vfxCloudIssue, vfxLocalIssue } from '../comfy/ltx23VfxCloud.js';
 import { FOOTAGE_CLOUD_EFFECTS } from '../shared/footageFx.js';
+import { songSeconds } from '../shared/audioLengths.js';
 import { IT_PROVIDER, IT_MAX_SECONDS, itIssue, itBillSeconds } from '../comfy/infiniteTalkCloud.js';
 import { TV_MAX_SECONDS, TV_PART_MAX } from '../shared/talkingVideo.js';
 import { LTX_API_CLOUD, ltxApiCloudIssue } from '../comfy/ltx25ApiCloud.js';
@@ -280,9 +281,10 @@ const TWINS: { model: string; twin: string; tools: string[]; /** only the tool i
   { model: 'comfy-ltx25-iclora', twin: 'cloud-ltx23-vfx', tools: ['footage-fx'], unavailableFor: vfxCloudIssue, heldUntilMeasured: true, aliasOk: true,
     caps: { localOnly: false, slow: false, resolutions: ['448p', '576p'], durations: [2, 3, 4, 5], effects: FOOTAGE_CLOUD_EFFECTS.map((e) => e.id), note: 'LTX-2.3 on Comfy Cloud: remove people, day to night, rain, flood, restore old footage, remove an object or subtitles, or extend the frame. 2–5 s, Draft or Sharper, your sound kept.' } },
 ];
-/** MiniMax Music 3 · Comfy Cloud bills the song length the graph asks for (max_duration): comfy/plans.ts songPlan's rule (the clip's length for a
- *  video, else the picked length; 60 s when none; 1–360 s), so the quote and the charge price the same seconds. */
-export const minimaxSongSeconds = (i: Record<string, any>) => Math.min(360, Math.max(1, Number(i.outputDuration ?? i.duration) || 60));
+/** MiniMax Music 3 · Comfy Cloud bills the song length the graph asks for (max_duration): shared/audioLengths.ts songSeconds, the rule comfy/plans.ts
+ *  songPlan uses (the clip's length for a video, else the picked length; 60 s when none; at least 30 s, the model's shortest; 1–360 s), so the quote
+ *  and the charge price the same seconds. A clip under 30 s is billed for the 30 s song it is cut from. */
+export const minimaxSongSeconds = (i: Record<string, any>) => songSeconds('cloud-minimax-music', i);
 /** The local LTX-2.5 routes render the Mac sizes only: 720p and the picture-and-sound continuation run on Comfy Cloud (2026-10-27). */
 LOCAL_ROUTE_BLOCK['comfy-ltx25-video'] = (i) => (String(ltxDfrResolution(i)) === '720p' ? '720p runs on Comfy Cloud; on your computer pick Draft or Sharper' : null); // DFR that can't run (text, Loop) runs as 720p
 LOCAL_ROUTE_BLOCK['comfy-ltx25-extend'] = (i) => (String(i.resolution) === '720p' ? '720p runs on Comfy Cloud; on your computer pick Draft or Sharper'
