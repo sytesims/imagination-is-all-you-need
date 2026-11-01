@@ -3,6 +3,7 @@
  * Recipes come from GET /api/image-workflows (server/src/shared/workflows.ts); a picked recipe still runs on its own tool
  * (app-relight, app-face-swap…) with today's form fields, and is quoted by that tool's /price (quote = charge).
  */
+import { Words } from '../../shared/Words';
 import { IMAGE_ACCEPT, fileFits, wrongTypeText } from '../../../../server/src/shared/mediaAccept';
 import { SlotPreview, prepUpload } from '../../shared/SlotPreview';
 import { useToast } from '../../shared/Toast';
@@ -236,7 +237,7 @@ export function WorkflowControls({ recipe: r, vals, setVal, provider, watch, mod
         : sum.toLowerCase().includes(g.label.toLowerCase()) ? sum : `${g.label}: ${sum}`; /* "High detail", never "Detail: High detail" */
       return <button key={g.id} ref={el => { refs.current[g.id] = el; }} type="button" className={`ic-chip wf-grp wf-fold${open === g.id && !folded(refs.current[g.id]) ? ' on' : ''}`} aria-haspopup="dialog" aria-expanded={open === g.id} data-testid={`wf-group-${g.id}`} aria-label={named} {...tip(g.id === 'light' && !panels?.light ? `${g.label}: ${lightTip(vals)}` : named)}
       onClick={() => { anchor.current = refs.current[g.id]; setOpen(open === g.id ? '' : g.id); }}>
-      <WfIcon name={g.icon} size={14} />{!sum ? <b>{g.label}</b> : <>{named !== sum && <span className="wf-grp-l">{g.label}</span>}<b>{sum}</b></>}{g.id === 'light' && (vals.light || vals.color) && <i className="wf-grp-dot" style={{ background: vals.light ? rgbHex(lightRgb(rigOfVals(vals).key)) : vals.color }} aria-hidden />}</button>; })}
+      <WfIcon name={g.icon} size={14} />{!sum ? <b>{g.label}</b> : <>{named !== sum && !g.plain && <span className="wf-grp-l">{g.label}</span>}<b><Words text={sum} /></b></>}{g.id === 'light' && (vals.light || vals.color) && <i className="wf-grp-dot" style={{ background: vals.light ? rgbHex(lightRgb(rigOfVals(vals).key)) : vals.color }} aria-hidden />}</button>; })}
     {after && <span className="wf-fold wf-after">{after}</span>}
     {r.fixedNote && <span className="ic-chip ic-static wf-fixed wf-fold" data-testid="wf-fixed" {...tip('Set by this workflow')}>{r.fixedNote}</span>}
     {upscale && r.extras?.includes('upscale-examples') && <button type="button" className="ic-chip wf-exlink wf-fold" data-testid="wf-examples" aria-haspopup="dialog" onClick={upscale.onExamples}>Examples</button>}

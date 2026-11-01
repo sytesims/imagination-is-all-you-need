@@ -5474,3 +5474,5 @@ html body .hm-legend .hm-kind{margin:0;flex:none}
 .ro-here.short{color:var(--warning)}
 .gen-price.gen-mem{color:var(--warning)}
 .gen-btn[data-mem=short] .gen-price,.gen-btn[data-mem=short] .gen-price *{color:var(--warning)}
+/* shared/Words: chip labels truncate at whole words, never "2.…" (2026-11-01) */
+.wd{display:inline-block}.wd-s{font-size:0}.wd-s+.wd{margin-left:.28em}

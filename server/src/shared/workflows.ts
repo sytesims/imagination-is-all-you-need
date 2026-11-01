@@ -23,7 +23,8 @@ export interface WorkflowSlot { name: string; label: string; required: boolean; 
 export interface WorkflowControl { field: string; label: string; kind: ControlKind; group: string; optional?: boolean;
   /** kind 'text': the field's length cap and example words (Material Swap), filled from the tool */ maxLength?: number; placeholder?: string;
   /** filled from the tool (Relight looks also carry a swatch, the controls they set and a credit): */ options?: { value: string; label: string; /** the chip's own words for this option ('' = left off the chip) */ chip?: string; swatch?: string; sets?: Record<string, string>; credit?: string; /** Character Sheet layouts: the tile's small line and the shape it asks for */ description?: string; aspect?: string }[]; default?: string; min?: number; max?: number; step?: number; pattern?: string; help?: string }
-export interface WorkflowGroup { id: string; label: string; icon: string; /** fields whose values make the chip's short summary, in order */ summary: string[] }
+export interface WorkflowGroup { id: string; label: string; icon: string; /** fields whose values make the chip's short summary, in order */ summary: string[];
+  /** the chip shows only the choices ("Selfie · Window"); the label stays its spoken name, tooltip and popover title */ plain?: boolean }
 export interface WorkflowRecipe {
   id: ImageFeatureId; name: string; icon: string; category: WorkflowCategory; tagline: string; /** what it needs, shown in the picker ("1 photo", "2 photos", "Photo optional") */ needs: string;
   source: WorkflowSource;
@@ -88,7 +89,7 @@ const DECLS: Decl[] = [
     output: { aspect: 'fixed', fixedAspect: '4:3', resolution: 'model', count: 'model' }, surface: null, generateLabel: 'Make sheet', source: { note: 'character-sheet prompt' } },
   // Phone Photo (2026-11-01): two chip rows (who holds the phone, the light) in one popover; your words say who is in it.
   { id: 'phone-photo', icon: 'phone-photo', category: 'people', runner: app('app-phone-photo'), status: 'ready',
-    slots: [], groups: [{ id: 'phone', label: 'Phone', icon: 'phone-photo', summary: ['holder', 'light'] }],
+    slots: [], groups: [{ id: 'phone', label: 'Photo', icon: 'user', summary: ['holder', 'light'], plain: true }],
     controls: [{ field: 'holder', label: 'Taken by', kind: 'segmented', group: 'phone' }, { field: 'light', label: 'Light', kind: 'segmented', group: 'phone' }],
     prompt: { mode: 'required', placeholder: 'Who is in the photo, what they are doing and where', composer: 'recipe' }, modes: { default: 'generate', whenSlot: null },
     output: { aspect: 'model', resolution: 'model', count: 'model' }, surface: null, generateLabel: 'Make photo', source: { note: 'phone-photo prompts' } },
