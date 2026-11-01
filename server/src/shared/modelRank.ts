@@ -275,7 +275,7 @@ export const FAMILY_BLURB: Record<string, string> = {
 };
 /** 3D models (shared/threeD.ts ids; they are not MODELS keys, so they have no CATALOGUE entry): the same short best-for line. */
 export const THREE_D_BEST_FOR: Record<string, string> = {
-  'cloud-tripo-31': 'Clean, textured models from a photo, views or a prompt' /* every mode it runs (image, multi-view, text) */,
+  'cloud-tripo-31': 'Textured models from a photo, views or a prompt' /* every mode it runs (image, multi-view, text) */,
   'fal-trellis2': 'Detailed shapes with crisp textures',
   'fal-hunyuan3d-31': 'High-poly models with PBR materials',
   'comfy-pixal3d-trellis2': 'Models that line up with your photo',
