@@ -144,12 +144,12 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.match(wx, /<HeroReel className="xpo-film xpo-bleed"[^\n]*\breveal replay=\{replay\}[^\n]*sound=\{f\.out\.sound === true\} restartOnSound/, 'the shared HeroReel wipe (reveal), the page\u2019s sound');
     assert.match(wx, /before=\{\{ url: still\.url[\s\S]*after=\{\{ url: f\.out\.url/, 'still → the take’s clip, both from the featured entry');
     assert.match(wx, /<HeroReel className="xpo-film xpo-bleed"/, 'cinematic: the reel runs to the window edges');
-    assert.match(wx, /<div className="xpo-over">\{head\}<\/div>\s*<\/HeroReel>\s*<div className="xpo-under">\{line\}\{meta\}/, 'only the headline over the picture; the line, credits and actions under it');
+    assert.match(wx, /<div className="xpo-over">[\s\S]*xp-still-line[\s\S]*<\/HeroReel>\s*<div className="xpo-under">\s*<p className="xpo-run"/, 'the copy once, over the picture; one row under it: the run, then the actions');
     assert.match(fs.readFileSync(path.join(WEB, 'ui/explore/exploreShowcase.css'), 'utf8'), /\.xpo-bleed \.hreel-shade\{display:none\}/, 'no shade darkens the picture');
     assert.doesNotMatch(xs, /stillsection/, 'one layout, no gate');
     assert.doesNotMatch(wx, /Segmented|xp-still-take|xp-still-next|onTick|setPick/, 'one take: no take switch, no auto-alternation');
     assert.match(wx, /\$\{ran\} s run, trimmed to \$\{Math\.floor\(t\.trimmedTo\)\} s/, 'the trim said honestly'); assert.match(wx, /<RunChip c=\{chipOfFeatured\(f\)\} testId="xp-still-chip"/, 'the real model, place and price: the shared run chip');
-    assert.match(wx, /featuredRecreateHref\(f\.key\)[\s\S]*xp-still-recreate/, 'Recreate from the featured entry'); assert.match(wx, /aria-expanded=\{open\}[\s\S]*<PromptText text=\{f\.prompt\}/, 'the prompt one click away');
+    assert.match(wx, /featuredRecreateHref\(f\.key\)[\s\S]*xp-still-recreate/, 'Recreate from the featured entry'); assert.doesNotMatch(wx, /xp-still-read|xp-still-prompt/, 'no prompt reader here: Recreate this shot opens the full prompt'); assert.match(wx, /<Link to=\{rec\} className="xv-btn" data-testid="xp-still-recreate">Recreate this shot/, 'one primary action');
     const hr = fs.readFileSync(path.join(WEB, 'shared/HeroReel.tsx'), 'utf8');
     assert.match(hr, /reveal && \(failed \|\| still\)/, 'a missing clip or reduced motion: the still'); assert.match(hr, /reveal && still && !failed && <button[^>]*className="hreel-play"/, 'reduced motion: the still with a play button');
     assert.match(hr, /useDirectedSound\(\{ root, media: \(\) => b\.current/, 'the shared sound director');
