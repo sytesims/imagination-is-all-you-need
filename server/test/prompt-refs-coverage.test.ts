@@ -195,6 +195,7 @@ const SENDERS: Record<string, { calls?: RegExp; why: string }> = {
   'comfyClient.ts': { why: 'legacy Comfy SDK swap path (remote ComfyUI without the native API): sends our own swap wording built from the target, never the prompt' },
   'routesComfyDeploy.ts': { why: 'deployment smoke test: inverts a sample image, no prompt' },
   'routing/orphans.ts': { why: 'cancels orphaned remote jobs; sends no body' },
+  'routing/reattach.ts': { why: 'cancels a remembered hosted request at its provider (Cancel, restart pick-up); sends no prompt body' },
   'tools/threeD.ts': { calls:/refInputFor\(/, why: 'Tripo text graphs rewrite prompt through refInputFor; image/multiview have no prompt' },
   'tools/videoUpscaleModels.ts': { why: 'Topaz video upscale on Comfy Cloud partner-node graphs: video + size only, no prompt input' },
   'tools/soul/cloud.ts': { why: 'ESRGAN upscale of a finished result: no prompt' },
