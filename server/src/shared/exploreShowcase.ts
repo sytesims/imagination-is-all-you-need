@@ -550,3 +550,16 @@ export const EXPLORE_SHOWCASE_LINKS = (): string[] => [
   EXPLORE_3D.make.href, featuredRecreateHref(EXPLORE_3D.key) ?? '',
   EXPLORE_VFX.cta.href, ...EXPLORE_VFX.effects.map((v) => vfxTile(v)?.href ?? ''), featuredRecreateHref(EXPLORE_VFX.layout.key) ?? '',
 ];
+
+// ---------------------------------------------------------------- made on your computer
+/** "Made on your computer. Free." (2026-11-01): a rail of LTX-2.5 22B clips that ran on the user's own computer (job route local:…, $0).
+ *  Each one was checked by eye: no real people, no brands or on-screen text, no visible artefacts. Left out: the rainy city (garbled shop signs,
+ *  a smeared face), the Christmas street walk-by and the toy-village morph (both show a product name in a shop window).
+ *  The clips live in shared/featured.ts; the rail keeps only local, finished clips (exploreLocalClips), so a cloud run can never slip in. */
+export const EXPLORE_LOCAL = {
+  eyebrow: 'Free video', title: 'Made on your computer. Free.',
+  line: 'LTX-2.5 makes video with sound on your own computer. No credits, no queue. Hover to play, open one to make it again.',
+  keys: ['ltx-fox-meadow', 'ltx-christmas-take', 'ltx-lighthouse', 'ltx-fox-meadow-close', 'ltx-village-loop'],
+};
+/** The rail's clips: featured entries that ran locally and are a video file. */
+export const exploreLocalClips = () => EXPLORE_LOCAL.keys.map((k) => featuredByKey(k)).filter((f): f is NonNullable<typeof f> => !!f && f.runOn === 'local' && /\.mp4$/.test(f.out.url));
