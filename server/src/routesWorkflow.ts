@@ -1,6 +1,7 @@
 /**
  * "Every result is a workflow": GET /api/jobs/:id/workflow (export info) and ?format=api[&pass=N] (the ComfyUI API-format graph as a download;
- * &download=0 for inline). Built in workflowExport.ts. Only the result's owner, or anyone for a result published with its prompt. Registered from index.ts.
+ * &download=0 for inline). Built in workflowExport.ts. Only the result's owner, anyone for a result published with its prompt, or anyone for
+ * one of the app's built-in examples (featuredSeed.ts `featuredExample`; the Explore-only ones are owned by the community account). Registered from index.ts.
  */
 import type { FastifyInstance } from 'fastify';
 import { appFileName } from './shared/fileNames.js';
@@ -14,7 +15,8 @@ export function registerWorkflowExport(app: FastifyInstance) {
   app.get<{ Params: { id: string }; Querystring: { format?: string; pass?: string; download?: string } }>('/api/jobs/:id/workflow', async (req, reply) => {
     const j = jobs.get(req.params.id); if (!j || lib.metaOf(j.id).deletedAt) return reply.code(404).send({ error: 'not found', errorType: 'not_found' });
     const pubPrompt = (lib.metaOf(j.id) as any).published?.showPrompt === true;
-    if (ownerOf(j) !== LOCAL_OWNER && !pubPrompt) return reply.code(403).send({ error: 'Only the person who made this result can export its workflow.', errorType: 'forbidden', code: 'not_owner' });
+    const builtInExample = typeof (j as any).featuredExample === 'string'; // shipped with the app, not anyone's private run
+    if (ownerOf(j) !== LOCAL_OWNER && !pubPrompt && !builtInExample) return reply.code(403).send({ error: 'Only the person who made this result can export its workflow.', errorType: 'forbidden', code: 'not_owner' });
     const ex = await buildWorkflowExport(j); const { graphs, ...info } = ex; const fmt = req.query.format;
     if (!fmt) return info;
     if (fmt === 'ui') return reply.code(404).send({ error: info.formats.uiNote, errorType: 'not_found', code: 'ui_format_unavailable' });
