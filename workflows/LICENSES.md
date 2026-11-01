@@ -124,7 +124,7 @@ Included only if the node is listed at https://docs.comfy.org/_llms/en/built-in-
 | Piece | Used for | Licence | Source |
 |---|---|---|---|
 | `create-image-qwen-edit2509-inpaint-api.json` (built by `scripts/build-inpaint.py` from the Comfy-Org Qwen-Image-Edit-2509 template + core `ImageToMask`/`SetLatentNoiseMask`) | Create Image → Inpaint (mask) | Apache-2.0 (weights), MIT (template) | https://huggingface.co/Qwen/Qwen-Image-Edit-2509 |
-| Director (`cinema`) | reuses `camera-ltx-api.json` (LTX-2 + camera LoRAs, default) and `reshoot-funcamera-api.json` (Wan 2.2 Fun Camera fallback) | LTX-2 Community License + Gemma Terms / Apache-2.0 | https://huggingface.co/Lightricks/LTX-2/blob/main/LICENSE |
+| Director (`cinema`) | reuses `camera-ltx-api.json` (LTX-2 + camera LoRAs, default) and `reshoot-funcamera-api.json` (Wan 2.2 Fun Camera fallback) | LTX-2 Community License + Gemma Terms / Apache-2.0 | https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2 |
 | Whisper large-v3 | Voice Studio → Translate (transcribe) | MIT | https://github.com/openai/whisper/blob/main/LICENSE |
 | NLLB-200 | Voice Studio → Translate (text translation) | CC BY-NC 4.0 (non-commercial) | https://huggingface.co/facebook/nllb-200-distilled-600M |
 | SeamlessM4T v2 | Voice Studio → Translate (speech-to-speech option) | CC BY-NC 4.0 (non-commercial) | https://huggingface.co/facebook/seamless-m4t-v2-large |

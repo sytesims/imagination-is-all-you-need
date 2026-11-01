@@ -16,6 +16,7 @@ import { setRouting } from './models';
 import { plainCopy } from './plainCopy';
 import { setupRequest, setupBody, testedComfyUrl } from './setupConnection';
 import { LOCAL_LABEL } from '../../../server/src/shared/modelIds';
+import { SecretInput } from './SecretInput';
 
 export const NO_CONNECTION_TITLE = 'Connect a Comfy key or your ComfyUI to start';
 const OPEN_EVT = 'ohf:connect-sheet';
@@ -98,9 +99,9 @@ function ConnectSheet({ onClose }: { onClose: () => void }) {
         <section className="cs-path" data-testid="cs-comfy">
           <b>Paste a Comfy key</b><small>One key for most models: workflows on Comfy Cloud and partner models on Comfy Router. Billed to your Comfy account; you see the price before every run.</small>
           {can === false ? <small className="cs-warn">Keys can be saved here only when the app runs on this computer. Add it to the app’s settings file instead.</small>
-            : <form className="cs-row" onSubmit={e => { e.preventDefault(); void saveKey(); }}>
-              <input type="password" autoComplete="off" spellCheck={false} placeholder="Paste your Comfy API key" value={key} onChange={e => setKey(e.target.value)} data-autofocus aria-label="Comfy API key" data-testid="cs-key" />
-              <button type="submit" className="btn btn-sm" disabled={!key.trim() || k.busy} data-testid="cs-key-save">{k.busy ? 'Checking…' : 'Check and save'}</button></form>}
+            : <div className="cs-row">
+              <SecretInput onEnter={() => { if (key.trim() && !k.busy) void saveKey(); }} placeholder="Paste your Comfy API key" value={key} onChange={e => setKey(e.target.value)} data-autofocus aria-label="Comfy API key" data-testid="cs-key" />
+              <button type="button" className="btn btn-sm" onClick={() => void saveKey()} disabled={!key.trim() || k.busy} data-testid="cs-key-save">{k.busy ? 'Checking…' : 'Check and save'}</button></div>}
           <a className="cs-get" href="https://platform.comfy.org/profile/api-keys" target="_blank" rel="noreferrer">Get a key ↗</a>
           {k.text && <p className={`helper cs-st${k.ok ? ' ok' : k.ok === false ? ' bad' : ''}`} role="status" data-testid="cs-key-status">{k.text}</p>}
         </section>
@@ -118,7 +119,7 @@ function ConnectSheet({ onClose }: { onClose: () => void }) {
       <style>{`.cs{width:min(600px,calc(100vw - 32px));max-width:600px;max-height:calc(100dvh - 32px);overflow:auto}.cs-paths{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin:14px 0 4px}.cs-path{min-width:0;overflow-wrap:anywhere}@media (max-width:620px){.cs-paths{grid-template-columns:1fr}}
 .cs-path{box-sizing:border-box;display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:14px;border:1px solid var(--border);background:var(--surface-2)}
 .cs-path b{font:600 14px/18px var(--font-display);color:var(--text)}.cs-path small{font:400 12px/16px var(--font-ui);color:var(--text-2)}.cs-warn{color:var(--text-3)!important}
-.cs-row{display:flex;gap:6px;flex-wrap:wrap}.cs-row input{flex:1 1 140px;min-width:0;height:32px;padding:0 10px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:400 13px/1 var(--font-ui)}
+.cs-row{display:flex;gap:6px;flex-wrap:wrap}.cs-row>input,.cs-row>.secret{flex:1 1 140px;min-width:0}
 .cs-get{font:500 12px/16px var(--font-ui);color:var(--accent)}.cs-st{margin:0}.cs-st.ok{color:var(--ok, #2fb170)}.cs-st.bad{color:var(--danger, #e5484d)}.cs .dlg-a{justify-content:space-between;align-items:center}`}</style>
     </div></div>, document.body);
 }

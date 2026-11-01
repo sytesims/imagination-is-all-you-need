@@ -21,10 +21,29 @@ const { PROMPT_PATTERNS } = await import('../src/shared/promptPatterns.ts');
   // the brand: colours in words (hex for FLUX), its heading font as a type feel, its mood; a story size names its covered edges
   const q = A.adPrompt({ ...base, style: 'studio', provider: 'comfy-qwen21', placement: 'meta-9x16', kit: BUILTIN_KIT, extraPhotos: 2 });
   assert.ok(q.startsWith('Turn the product in image 1 into a vertical 9:16 advertising photo. Images 2 and 3 show the same product from other sides.'), q);
-  assert.match(q, /in a bold display sans-serif, /); assert.match(q, /Colour palette: orange, ink and mint\./); assert.match(q, /with a bold, playful, premium, cinematic feel\./);
-  assert.match(q, /clear of the top 14%, bottom 35% and sides 6% of the frame\.$/);
+  assert.match(q, /in a bold display sans-serif, /); assert.match(q, /Colour palette: orange, ink and mint\./);
+  // the kit mood picks its bucket's concrete scene (bold, the first mood word) and drops the "with a … feel" tail; up to 2 do's and don'ts
+  assert.match(q, /seamless backdrop in one strong, saturated colour/); assert.doesNotMatch(q, / feel\./);
+  assert.match(q, /Brand style: one orange accent, used for the thing to press; image first: let the result fill the frame\. Avoid white text on orange and more than one bright colour per screen\./);
+  assert.match(q, /No other words or logos\.$/, 'Qwen frame: no stray words');
+  assert.match(q, /clear of the top 14%, bottom 35% and sides 6% of the frame\. No other words or logos\.$/);
   const f = A.adPrompt({ ...base, style: 'flatlay', provider: 'api-flux2', kit: BUILTIN_KIT });
-  assert.match(f, /Background and accents in bright orange \(colour #FF7A1A\), deep charcoal \(colour #14151A\) and teal \(colour #3DDC97\)\./); assert.doesNotMatch(f, /No other|no other/, 'FLUX: no negative wording');
+  assert.match(f, /Colours: near black background \(colour #0A0A0A\), orange accents \(colour #FF7A1A\) and ink details \(colour #14151A\)\./, f);
+  assert.doesNotMatch(f, /No other|no other|Avoid|avoids/, 'FLUX: no negative wording (do\'s only)'); assert.match(f, /Brand style: one orange accent/);
+  // a luxury kit (the showcase's): elegant scenes, no "everyday" or "saturated", the kit's own colour names by role for FLUX, rules for GPT
+  const lux = { colors: [{ hex: '#C9A227', name: 'Gold', role: 'primary' }, { hex: '#14110F', name: 'Onyx black', role: 'secondary' }, { hex: '#F7F1E3', name: 'Ivory', role: 'background' }],
+    fonts: { heading: 'Playfair Display', body: 'Lora' }, mood: 'luxurious', dos: ['Gold on black or ivory', 'Lots of calm space around the product', 'Few words, set in a fine serif'], donts: ['Bright or neon colours', 'Busy backgrounds'] } as any;
+  const use = A.adPrompt({ ...base, style: 'lifestyle', provider: 'api-gpt-image', kit: lux });
+  assert.match(use, /Scene: The product rests in an elegant, upscale setting where it belongs, on fine materials such as polished stone, dark wood or brass, soft directional light/);
+  assert.doesNotMatch(use, /everyday|candid| feel\./); assert.match(use, /Brand colours: gold, onyx black and ivory\. Brand rules: gold on black or ivory, lots of calm space around the product\. Avoid bright or neon colours and busy backgrounds\./);
+  const pos = A.adPrompt({ ...base, style: 'poster', provider: 'api-nano-banana', kit: lux }); assert.doesNotMatch(pos, /saturated|strong contrast/); assert.match(pos, /A refined graphic poster/);
+  assert.match(pos, /The design follows the brand's style: gold on black or ivory, lots of calm space around the product\. It avoids bright or neon colours and busy backgrounds\./);
+  assert.match(A.adPrompt({ ...base, style: 'studio', provider: 'api-flux2', kit: lux }), /Colours: ivory background \(colour #F7F1E3\), gold accents \(colour #C9A227\) and onyx black details \(colour #14110F\)\. Brand style: gold on black or ivory, lots of calm space around the product\./);
+  // a mood with no bucket keeps today's scene with the mood words after it; mood buckets by their first word
+  assert.match(A.adPrompt({ ...base, style: 'lifestyle', provider: 'api-gpt-image', kit: { ...lux, mood: 'cinematic, moody' } }), /in a real, everyday setting .*with a cinematic, moody feel\./);
+  const { moodBucket } = await import('../src/shared/brandKit.ts');
+  assert.deepEqual(['luxurious', 'Premium and elegant', 'bold, playful, premium', 'calm, handmade', 'cinematic', ''].map(moodBucket), ['luxury', 'luxury', 'bold', 'natural', null, null]);
+  for (const st of A.AD_STYLES) for (const b of ['luxury', 'bold', 'natural'] as const) assert.ok(st.moods?.[b], `${st.value}: a ${b} scene`);
   // empty parts drop out: no words, no brand, no logo
   const bare = A.adPrompt({ style: 'lifestyle', provider: 'api-gpt-image' });
   assert.doesNotMatch(bare, /Text, verbatim|Brand colours|corner|clear of the/); assert.match(bare, /portrait 4:5/, 'default placement: Instagram & Facebook feed');

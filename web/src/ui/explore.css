@@ -1,4 +1,4 @@
-/* Explore (2026-10-26, editorial redesign): full-bleed HeroReel, numbered jump bar, Made here rail, numbered magazine sections with bento
+/* Explore (2026-10-26, editorial redesign): full-bleed HeroReel, numbered jump bar, Real results rail, numbered magazine sections with bento
    strips of media tiles. Same family as the Workflows page (uppercase display heads, captions on the media). Tokens only (tokens.css). */
 .main:has(> .xp),.main:has(> * > .xp){padding-top:0;padding-left:0;padding-right:0}
 .home.xp{max-width:none;margin:0}
@@ -59,7 +59,7 @@
   transition:border-color var(--t-state),background var(--t-state)}
 .xp-more:hover{border-color:var(--hairline-strong);background:var(--surface-3)}
 
-/* ================= Made here rail ================= */
+/* ================= Real results rail ================= */
 .xp-made-sec .mrail-track{height:clamp(320px,30vw,500px)}
 .xp-shot{position:relative;display:block;height:100%;border-radius:var(--r-tile);overflow:hidden;background:#050505;isolation:isolate}
 .xp-shot::after{content:"";position:absolute;inset:0;z-index:1;background:var(--tile-scrim);opacity:.0;transition:opacity var(--base) var(--ease)}
@@ -91,10 +91,9 @@
 .xp-pip i{position:absolute;left:6px;bottom:6px;z-index:2;font:700 9.5px/16px var(--font-display);font-style:normal;letter-spacing:.12em;text-transform:uppercase;padding:0 6px;border-radius:999px;background:rgba(0,0,0,.6);color:#fff}
 .xp-tile:hover .xp-pip{transform:translateY(-2px) rotate(-1.5deg)}
 .xp-chips-top{position:absolute;left:14px;right:14px;top:14px;z-index:4;display:flex;justify-content:space-between;gap:8px;pointer-events:none}
-.xp-badge,.xp-made{height:22px;padding:0 9px;border-radius:999px;font:700 10px/22px var(--font-display);letter-spacing:.1em;text-transform:uppercase;color:#fff;background:rgba(0,0,0,.5);
+.xp-badge{height:22px;padding:0 9px;border-radius:999px;font:700 10px/22px var(--font-display);letter-spacing:.1em;text-transform:uppercase;color:#fff;background:rgba(0,0,0,.5);
   -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);white-space:nowrap}
 .xp-badge.is-new{background:var(--accent);color:var(--on-accent)}
-.xp-made{margin-left:auto;color:rgba(255,255,255,.86)}
 /* caption on the media */
 .xp-cap{position:absolute;left:0;right:0;bottom:0;z-index:4;display:flex;flex-direction:column;gap:6px;padding:18px 20px 18px}
 .xp-title{font:700 clamp(20px,1.6vw,28px)/1.02 var(--font-display);letter-spacing:-.015em;text-transform:uppercase;color:#fff;text-wrap:balance}

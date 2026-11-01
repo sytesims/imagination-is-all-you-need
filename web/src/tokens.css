@@ -43,6 +43,7 @@
   --state-border-on:rgba(255,255,255,.32);                     /* selected / open */
   --press-scale:.98;                                           /* pressed transform */
   --focus-ring-color:rgba(255,255,255,.9);
+  --field-focus:0 0 0 3px rgba(255,122,26,.22);                /* text fields: orange 1px border + this soft glow (styles.css) */
   --focus-ring-w:2px;--focus-ring-gap:2px;                     /* outline + offset */
   --disabled-opacity:.45;
   --disabled-fill:#2a2b2e;--disabled-ink:rgba(255,255,255,.55);/* a control that can't act: muted, solid (no opacity on text) */

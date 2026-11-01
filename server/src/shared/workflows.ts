@@ -16,7 +16,9 @@ import type { PromptFrame } from './typedPrompt.js';
 import { SWATCH_MAX } from './swatchBatch.js';
 
 export type WorkflowCategory = 'edit' | 'people' | 'product' | 'camera';
-export type ControlKind = 'select' | 'tiles' | 'grid' | 'pad' | 'segmented' | 'slider' | 'toggle' | 'swatches' | 'text' | 'chips-multi' | 'sphere';
+/** 'platforms' = Ad Pack's placement (values from shared/adPack.ts AD_PLACEMENTS: grouped by platform, one icon + short word each);
+ *  'corner' = a logo corner picked on a tiny frame (tl / tr / bl / br). */
+export type ControlKind = 'select' | 'tiles' | 'grid' | 'pad' | 'segmented' | 'slider' | 'toggle' | 'swatches' | 'text' | 'chips-multi' | 'sphere' | 'platforms' | 'corner';
 export interface WorkflowSource { kind: 'ours' | 'official' | 'community'; author: string; url: string | null; licence: string; file: string | null; /** one line, our words */ note: string }
 export interface WorkflowSlot { name: string; label: string; required: boolean; /** the form field the file goes out as (the app maps it on: Face Swap `face` → refs[0]) */ sendsAs: string; order: number; /** empty-slot text */ hint: string; /** Generate's text while it's empty */ missing: string;
   /** several files, one run each (Material Swap's swatches: up to shared/swatchBatch SWATCH_MAX), shown as one set */ many?: number }
@@ -99,10 +101,10 @@ const DECLS: Decl[] = [
     // two chips: the styles (one ad each) and the ad's words + where it runs (one popover, so Brand keeps its place in the row)
     groups: [{ id: 'styles', label: 'Styles', icon: 'ad', summary: ['shots'] }, { id: 'words', label: 'Words & size', icon: 'words', summary: ['offer', 'headline'] }],
     controls: [{ field: 'shots', label: 'Styles', kind: 'chips-multi', group: 'styles' }, { field: 'headline', label: 'Headline', kind: 'text', group: 'words', optional: true },
-      { field: 'offer', label: 'Offer', kind: 'text', group: 'words', optional: true }, { field: 'placement', label: 'Platform', kind: 'segmented', group: 'words' },
-      { field: 'logoCorner', label: 'Logo corner (with Brand on)', kind: 'segmented', group: 'words' }],
+      { field: 'offer', label: 'Offer', kind: 'text', group: 'words', optional: true }, { field: 'placement', label: 'Platform', kind: 'platforms', group: 'words' },
+      { field: 'logoCorner', label: 'Logo corner', kind: 'corner', group: 'words' }],
     prompt: { mode: 'optional', placeholder: 'What the product is (optional)', composer: 'recipe' }, modes: { default: 'edit', whenSlot: null },
-    output: { aspect: 'fixed', resolution: 'model', count: 'perOption' }, surface: 'multi-output', each: { one: 'ad', many: 'ads', note: 'One ad per style. With Brand on, your logo goes in the corner after.' },
+    output: { aspect: 'fixed', resolution: 'model', count: 'perOption' }, surface: 'multi-output', each: { one: 'ad', many: 'ads', note: 'With Brand on, your logo goes in the corner after.' },
     generateLabel: 'Make ads', source: { note: 'ad prompts' } },
   // Upscale (2026-10-22): the image-upscale tool in the bar. Factors and models come from shared/imageUpscale.ts (the same table the page, quote and run use).
   { id: 'upscale', icon: 'upscale', category: 'edit', runner: app('image-upscale'), status: 'ready',
@@ -139,7 +141,7 @@ const DECLS: Decl[] = [
   { id: 'material-swap', icon: 'material', category: 'product', runner: app('app-material-swap'), status: 'ready',
     slots: [slot('image', 'Object', true, 'The object to change: a sofa, bag or shoe', 'Add an object photo'), { ...slot('material', 'Material', true, 'A swatch or photo of the new material: leather, marble, denim. Add up to 6: one result each', 'Add a material photo', 'material', 2), many: SWATCH_MAX }],
     groups: [{ id: 'details', label: 'Details', icon: 'material', summary: ['object', 'fromMaterial'] }],
-    controls: [{ field: 'object', label: 'What the object is', kind: 'text', group: 'details', optional: true }, { field: 'fromMaterial', label: 'Made of now', kind: 'text', group: 'details', optional: true }],
+    controls: [{ field: 'object', label: 'What the object is', kind: 'text', group: 'details', optional: true }, { field: 'fromMaterial', label: 'Current material', kind: 'text', group: 'details', optional: true }],
     prompt: { mode: 'optional', placeholder: 'Touch-ups (optional)', composer: 'recipe' }, modes: { default: 'edit', whenSlot: null },
     output: { aspect: 'follow-photo', resolution: 'follow-photo', count: 1 }, surface: null, generateLabel: 'Swap material', source: { note: 'material prompt' } },
   // Image to layers (2026-10-24): Seedream 5.0 layer separation (official Comfy partner template) on Comfy Router; the result is several transparent PNG layers.
@@ -235,6 +237,14 @@ export function workflowQuoteQueries(r: WorkflowRecipe, mode: string, provider: 
   const fit = photoFitOf(r, mode, provider); /* the photo the bar sends is already that shape (it fitted it) */
   return [{ types: JSON.stringify([mode]), ...ctl, ...(fit ? { photoAspect: fit } : {}), ...Object.fromEntries(sent.map((s) => [s.sendsAs, '1'])), ...(sent.some((s) => s.sendsAs === 'image') ? { image: '1' } : {}),
     ...(sent.length > 1 ? { refs: String(sent.length) } : {}), ...(r.surface === 'mask' ? { mask: '1' } : {}) }];
+}
+/** The uploads a recipe's bar always sends on its runner tool (its required photos, in its default mode), as the quote reads them (image=1,
+ *  refs=<n>): the /api/tools listing judges each model on this job, so its pre-selected place is the place the bar's quote names. null = no recipe
+ *  runs on this tool (Create Image's own page sends a photo only when you add one). */
+export function recipeUploadsOf(toolId: string): { mode: string; image: boolean; refs: number } | null {
+  const d = DECLS.find((x) => x.runner.toolId === toolId); if (!d || toolId === 'create-image') return null;
+  const sent = d.slots.filter((s) => s.required || d.modes.whenSlot?.[s.name] === d.modes.default);
+  return { mode: d.modes.default, image: sent.some((s) => s.sendsAs === 'image'), refs: sent.length > 1 ? sent.length : 0 };
 }
 /** Why a model can't run this recipe, in the menu's words ("Edits keep your photo's shape; Character Sheet needs 4:3"). */
 export function workflowOffReason(r: WorkflowRecipe, mode: string, provider: string, issue: WorkflowQuoteIssue): string {

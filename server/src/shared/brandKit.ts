@@ -134,6 +134,27 @@ export function moodWords(mood: string): string {
   let s = parts.join(', '); if (s.length > 120) { s = s.slice(0, 120); s = s.slice(0, Math.max(s.lastIndexOf(' '), s.lastIndexOf(','))).replace(/[\s,]+$/, ''); }
   return s;
 }
+/** A kit's mood as one of a few scene buckets (2026-11-01): Ad Pack picks concrete scene words for it (shared/adPack.ts AD_STYLES moods), so the
+ *  mood changes the room, the surface and the light instead of being tacked on as "with a … feel". The earliest matching word wins
+ *  ("bold, playful, premium" → bold); null = no bucket (the scene stays as it is, with the mood words after it). */
+export type MoodBucket = 'luxury' | 'bold' | 'natural';
+const MOOD_BUCKETS: [MoodBucket, RegExp][] = [
+  ['luxury', /\b(luxur\w*|premium|elegan\w*|refined|high[- ]end|opulen\w*|sophisticat\w*|upscale|glamo\w*|exclusive)/],
+  ['bold', /\b(bold|playful|energetic|energy|bright|vibrant|fun|loud|punchy|vivid)\b/],
+  ['natural', /\b(calm|natural|handmade|hand-made|organic|cos[yz]|earthy|rustic|botanical|gentle|eco)/],
+];
+export function moodBucket(mood: string | null | undefined): MoodBucket | null {
+  const w = String(mood ?? '').toLowerCase(); let best: [MoodBucket, number] | null = null;
+  for (const [b, re] of MOOD_BUCKETS) { const m = re.exec(w); if (m && (!best || m.index < best[1])) best = [b, m.index]; }
+  return best?.[0] ?? null;
+}
+/** Up to `n` of a kit's do / don't lines as one phrase for a prompt (first letter lowered unless it reads as a name or an acronym, end
+ *  punctuation dropped). `join` 'list' = "bright or neon colours and busy backgrounds"; 'comma' = "gold on black or ivory, lots of calm space". '' = none. */
+export function ruleWords(lines: string[] | null | undefined, n = 2, join: 'list' | 'comma' = 'list'): string {
+  const xs = (lines ?? []).map((x) => String(x ?? '').replace(/\s+/g, ' ').trim().replace(/[.;,:!]+$/, '')).filter(Boolean).slice(0, n)
+    .map((x) => /^[A-Z][a-z]/.test(x) && !/^[A-Z][a-z]+[A-Z]/.test(x) ? x[0].toLowerCase() + x.slice(1) : x);
+  return join === 'comma' ? xs.join(xs.some((x) => /[,:;]/.test(x)) ? '; ' : ', ') : listWords(xs);
+}
 /** The words a kit adds to a prompt. Image / video: the palette in words (roles first, accents last) and the mood; audio: the mood only.
  *  "" when the kit has nothing to add (no colours, no mood): the prompt stays as typed. */
 export function brandPhrase(kit: Pick<BrandKit, 'colors' | 'mood'>, media: BrandMediaKind): string {

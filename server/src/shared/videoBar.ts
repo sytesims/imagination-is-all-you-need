@@ -46,6 +46,7 @@ export interface VideoBar {
   groups: VBarGroup[];
   controls: VBarControl[];
   /** values the old screen always sent (locked by the workflow) */ fixed?: Record<string, string>;
+  /** the Enhance chip (Create Video's sparkle) and how it starts: the job's enhance field follows it ('0' sends the prompt unchanged) */ enhance?: '1' | '0';
   /** the voice tool runs several jobs: only its models that run this mode (app.providerModes) */ mode?: string;
   /** the job's types when one of these slots holds a file (UGC Ad: a product or presenter photo runs as reference video, else text to video) */ typesWhenFile?: Record<string, string>;
   generateLabel: string;
@@ -154,7 +155,7 @@ export const VIDEO_BARS: Record<string, VideoBar> = {
   transitions: { slots: [{ name: 'image', label: 'Start', kind: 'image', required: true, hint: 'Where the clip begins', missing: 'Add the start image' }, { name: 'lastFrame', label: 'End', kind: 'image', required: true, hint: 'Where the clip lands', missing: 'Add the end image' }],
     prompt: { mode: 'optional', placeholder: 'Describe the move between them (optional)' }, groups: [{ id: 'transition', label: 'Transition', icon: 'transition' }, G.length, G.shape, G.quality],
     controls: [{ field: 'transition', label: 'Transition', group: 'transition', kind: 'choice', from: 'input' }, { ...LEN(), from: 'input' }, ASPECT(), RES()],
-    fixed: { types: '["flf"]', enhance: '1' }, generateLabel: 'Generate' },
+    fixed: { types: '["flf"]' }, enhance: '1', generateLabel: 'Generate' },
   'orbit-shot': { slots: [{ name: 'image', label: 'Subject', kind: 'image', required: true, hint: 'One subject, clearly in view', missing: 'Add a photo of your subject' }],
     prompt: { mode: 'optional', placeholder: 'Describe your subject (optional)' }, groups: [{ id: 'orbit', label: 'Orbit', icon: 'orbit' }, G.length, G.shape, G.quality],
     controls: [{ field: 'orbit', label: 'Orbit', group: 'orbit', kind: 'choice', from: 'input' }, { field: 'backdrop', label: 'Backdrop', group: 'orbit', kind: 'choice', options: [opt('keep', 'Keep original'), opt('light', 'Plain light'), opt('dark', 'Plain dark')] },
@@ -165,7 +166,7 @@ export const VIDEO_BARS: Record<string, VideoBar> = {
     controls: [{ field: 'move', label: 'Camera move', group: 'move', kind: 'gallery', from: 'presets', send: 'types' },
       { field: 'intensity', label: 'Intensity', group: 'speed', kind: 'choice', options: [opt('slow', 'Slow'), opt('aggressive', 'Aggressive')], providers: ['comfy-h3-camera'] },
       LEN(), ASPECT(), RES()],
-    fixed: { enhance: '1', steps: '20' }, generateLabel: 'Generate' },
+    fixed: { steps: '20' }, enhance: '1', generateLabel: 'Generate' },
   'photo-fx': { slots: [{ name: 'image', label: 'Photo', kind: 'image', required: true, hint: 'It becomes the first frame', missing: 'Add a photo' }],
     prompt: { mode: 'optional', placeholder: 'Add a twist (optional)' }, groups: [{ id: 'effect', label: 'Effect', icon: 'fx' }, G.length, G.shape, G.quality],
     controls: [{ field: 'effect', label: 'Effect', group: 'effect', kind: 'gallery', from: 'presets', send: 'types' }, LEN(), ASPECT(), RES()],
@@ -175,7 +176,7 @@ export const VIDEO_BARS: Record<string, VideoBar> = {
     prompt: { mode: 'optional', placeholder: 'Who is talking and how they look or move (optional)' }, groups: [G.quality, G.shape], mode: 'lipsync',
     controls: [{ field: 'resolution', label: 'Quality', group: 'quality', kind: 'choice', options: [opt('448p', 'Draft', 'Faster: a few minutes for 2 s'), opt('576p', 'Sharper', 'About twice as slow')], default: '448p', providers: ['comfy-ltx25-lipsync'] },
       /* InfiniteTalk · Comfy Cloud (2026-10-27): 480p in the photo's shape, or a picked one */ { field: 'aspect', label: 'Shape', group: 'shape', kind: 'choice', options: [opt('auto', 'Photo shape', 'Wide, tall or square, from the photo'), opt('16:9', '16:9', '832×480'), opt('9:16', '9:16', '480×832'), opt('1:1', '1:1', '640×640')], default: 'auto', providers: ['cloud-infinitetalk'] }],
-    fixed: { types: '["lipsync"]', voice: 'narrator-warm', language: 'en', mix: 'replace', volume: '100' }, generateLabel: 'Generate' },
+    fixed: { types: '["lipsync"]' } /* voice, language, mix and volume: the server's defaults (lip sync reads none but volume, 100 %) */, generateLabel: 'Generate' },
   /* The last three (2026-10-25, step 3): their old screens' extra steps live in the bar too (ui/video/barExtras/): Object Swap's "what to replace"
    * (name it, click it on a frame, or a mask clip; the person to swap), Re-shoot's angle pad and time ranges, UGC Ad's presenter tiles. */
   'object-swap': { slots: [clip('Clip', 'Add the clip to change', 'The shot to change · MP4, MOV or WEBM, 4–30 s'),
@@ -206,7 +207,7 @@ export const VIDEO_BARS: Record<string, VideoBar> = {
     groups: [{ id: 'presenter', label: 'Presenter', icon: 'person' }, { id: 'hook', label: 'Hook', icon: 'spark' }, G.length, G.quality],
     controls: [{ field: 'presenter', label: 'Presenter', group: 'presenter', kind: 'tiles', from: 'input' }, { field: 'hook', label: 'Hook style', group: 'hook', kind: 'choice', from: 'input' },
       { ...LEN(), default: '15' }, RES()],
-    fixed: { types: '["t2v"]', enhance: '1' }, typesWhenFile: { image: '["r2v"]', presenterImage: '["r2v"]' },
+    fixed: { types: '["t2v"]' }, enhance: '1', typesWhenFile: { image: '["r2v"]', presenterImage: '["r2v"]' },
     generateLabel: 'Generate' },
 };
 export const videoBarOf = (workflowId: string | null | undefined): VideoBar | null => (workflowId ? VIDEO_BARS[workflowId] ?? null : null);

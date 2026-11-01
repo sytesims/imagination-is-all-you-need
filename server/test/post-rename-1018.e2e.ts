@@ -46,8 +46,10 @@ try {
   ok(`3: ${blurbs.length} blurbs plain; api-minimax-h3 hint "${mm.hint}"`);
   // ---- 4. fal demo routes: demo copy + list price ----
   const MISMATCH: string[] = []; const LOCAL_RE = /runs locally|no credits\s*[—·-]/i; let demos = 0;
+  // an Image recipe's tool is quoted with the photos its bar always sends (shared/workflows.ts recipeUploadsOf): the listing judges that job (2026-11-01)
+  const { recipeUploadsOf } = await import('../src/shared/workflows.ts'); const up = (id: string) => { const u = recipeUploadsOf(id); return u ? `&types=${encodeURIComponent(JSON.stringify([u.mode]))}${u.image ? '&image=1' : ''}${u.refs ? `&refs=${u.refs}` : ''}` : ''; };
   for (const t of tools) for (const pr of t.providers ?? []) {
-    const q = await get(`/api/tools/${t.id}/price?provider=${pr.id}`);
+    const q = await get(`/api/tools/${t.id}/price?provider=${pr.id}${up(t.id)}`);
     if (q?.runnable && q.route) { const rv0 = R.get(`${t.id}/${pr.id}`); if (rv0.defaultRoute !== q.route || !!rv0.demo !== !!q.demo) MISMATCH.push(`${t.id}/${pr.id}: routes ${rv0.defaultRoute}${rv0.demo ? "(demo)" : ""} vs quote ${q.route}${q.demo ? "(demo)" : ""}`); }
     if (!q?.demo) continue;
     if (q.routeKind === 'local') { assert.ok(q.priceLine.startsWith('Sample output, nothing billed.'), `${t.id}/${pr.id} ${q.priceLine}`); continue; }
