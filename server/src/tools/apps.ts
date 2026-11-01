@@ -309,7 +309,7 @@ function cameraPresetMeta(x: Preset, i: number): Preset {
   const aspects = [...new Set(providers.flatMap((p) => CAMERA_ASPECTS[p] ?? ['auto']))];
   return { ...x, ...(aliases.length ? { aliases } : {}), category: e?.category ?? OLD_CATEGORY[x.group ?? ''] ?? 'Basic', description: e?.description ?? `${(x.prompt || x.label)[0].toUpperCase()}${(x.prompt || x.label).slice(1)}.`,
     camera: e?.camera ?? null, providers, modelName: cameraEngine(providers[0], x.group === 'LTX camera'), modelNameByProvider: Object.fromEntries(providers.map((p) => [p, cameraEngine(p, x.group === 'LTX camera')])), aspects, aspectsByProvider: Object.fromEntries(providers.map((p) => [p, CAMERA_ASPECTS[p] ?? ['auto']])), order: e?.order ?? 100 + i, loraRecommended: e?.loraRecommended ?? false,
-    // placeholder poster (local procedural pipeline: scripts/gen-example-media.py --tool-presets) for the 65 catalogue presets; posterPlaceholder:true until real footage exists
+    // placeholder poster (local procedural pipeline: scripts/gen-example-media.py --tool-presets) for the catalogue presets; posterPlaceholder:true until real footage exists
     ...(e && !x.posterUrl ? { posterUrl: `/samples/presets/camera-${e.id}.jpg`, posterPlaceholder: true } : {}) } as Preset;
 }
 export const cameraApp = makeApp({
@@ -332,7 +332,7 @@ export const cameraApp = makeApp({
     t('LTX camera', 'ltx-jib-up', 'Jib up · LTX', 'jib up'), t('LTX camera', 'ltx-jib-down', 'Jib down · LTX', 'jib down'), t('LTX camera', 'ltx-static', 'Static · LTX', 'locked-off static camera'),
     // MiniMax H3 camera_motion_h3 LoRA presets (H3 addition 4; provider comfy-h3-camera; intensity field Slow/Aggressive = LoRA strength)
     ...H3_CAMERA_MOVES.map(([id, label, move]) => t('H3 camera', id, `${label} · H3`, `camera motion, ${move}`)),
-    // Page 11 catalogue (65, cinema/cameraCatalog.ts): ids not already above
+    // Page 11 catalogue (cinema/cameraCatalog.ts): the 48 ids not already above and not aliases (82 presets in all)
   ].concat(CAMERA_CATALOG.filter((e) => !CAMERA_OLD_IDS.has(e.id) && !CAMERA_ALIASES[e.id]).map((e) => ({ id: e.id, label: e.label, prompt: e.prompt, group: e.category })) as Preset[])
    .map((x) => (x.group === 'LTX camera' ? { ...x, license: 'ltx-2-community' as const } : x)).map((x) => ({ ...x, addedAt: CAMERA_ADDED_AT[x.group!] ?? CAMERA_LAUNCH })).map(cameraPresetMeta),
   fields: [{ name: 'intensity', label: 'Intensity', kind: 'select', options: [{ value: 'slow', label: 'Slow' }, { value: 'aggressive', label: 'Aggressive' }], default: 'slow', providers: ['comfy-h3-camera'] } as any],

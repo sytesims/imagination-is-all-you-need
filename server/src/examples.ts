@@ -54,7 +54,7 @@ const MORE_EXAMPLES: Example[] = [
   { id: 'ex-music-bed-app', toolId: 'app-music-bed', title: 'Add a music bed', preset: 'music', prompt: 'light acoustic guitar', video: T },
   { id: 'ex-cutout-green', toolId: 'cutout', title: 'Green-screen cutout', preset: 'green', video: T },
   // OpenSoul: poster + 3 s preview made from our own samples (server/samples/examples/ex-soul-*).
-  { id: 'ex-soul-polaroid', toolId: 'soul', title: 'Polaroid afternoon', preset: 'polaroid', prompt: 'friends laughing on a rooftop at sunset', toggles: { aspect: '3:4', n: 1 } },
+  { id: 'ex-soul-polaroid', toolId: 'soul', title: 'Instant film afternoon', preset: 'polaroid', prompt: 'friends laughing on a rooftop at sunset', toggles: { aspect: '3:4', n: 1 } },
   { id: 'ex-soul-character', toolId: 'soul', title: 'Same face, flash editorial', preset: 'flash-editorial', prompt: 'portrait in a red coat on a city street at night', refs: [CH], toggles: { engine: 'auto', colourHex: '#b3202a,#1c1c24', colourStrength: 0.5, aspect: '3:4', n: 4 } },
 ];
 export const EXAMPLES: Example[] = [...BASE_EXAMPLES, ...MORE_EXAMPLES].map((e) => ({

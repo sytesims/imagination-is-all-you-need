@@ -47,11 +47,11 @@ for (const [old, to] of Object.entries(folded)) {
   assert.equal(cameraMovePrompt(old), cameraMovePrompt(to)); assert.ok((cameraApp.presets as any[]).find((x) => x.id === to).aliases.includes(old));
   const r: any = await h3.parseInput({ ...base, cameraMove: old }, {}); assert.ok(!r.error, String(r.error)); assert.equal(r.cameraMove, to, `Look camera ${old} → ${to}`);
 }
-assert.equal(ids.size, 82, 'Camera Moves lists 82 moves');
+assert.equal(ids.size, 82, 'Camera Moves lists 82 presets');
 assert.ok([...ids].some((x) => /^(ltx|h3)-/.test(x)), 'LTX and H3 LoRA moves stay in Camera Moves');
 const vs = fs.readFileSync(path.resolve(import.meta.dirname, '../../web/src/ui/video/VideoStudio.tsx'), 'utf8');
 assert.match(vs, /camPresets\.filter\(x => x\.id !== 'free' && !\/\^\(ltx\|h3\)-\/\.test\(x\.id\)\)/, 'Look › Camera hides the model-specific moves');
-ok('6 camera near-duplicates are aliases (82 moves); Look hides ltx-* / h3-*');
+ok('6 camera near-duplicates are aliases (82 presets); Look hides ltx-* / h3-*');
 
 // ---- size cap: web/public/examples/covers (not showcase, which is at its cap)
 const walk = (d: string): number => fs.readdirSync(d, { withFileTypes: true }).reduce((a, e) => a + (e.isDirectory() ? walk(path.join(d, e.name)) : fs.statSync(path.join(d, e.name)).size), 0);
