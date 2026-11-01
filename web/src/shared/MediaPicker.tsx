@@ -102,18 +102,19 @@ function useInView<T extends Element>(): [React.RefObject<T>, boolean] {
 }
 const Wave = () => <svg className="mpk-wave" viewBox="0 0 64 24" aria-hidden><g fill="currentColor">{[6, 12, 18, 9, 22, 14, 8, 16, 20, 10, 5, 13, 19, 11, 7].map((h, i) => <rect key={i} x={i * 4.3 + 0.5} y={12 - h / 2} width="2.4" height={h} rx="1.2" />)}</g></svg>;
 
-function Tile({ x, tab, onPick, onKeys, onPeek, onMore, moreOpen, frameHint, sel }: { x: LibItem; tab: PickTab; onPick: (x: LibItem, shift?: boolean) => void;
+function Tile({ x, tab, onPick, onKeys, onPeek, onMore, moreOpen, frameHint, sel, off }: { x: LibItem; tab: PickTab; onPick: (x: LibItem, shift?: boolean) => void;
   /** the picker's own keys first (several: Space ticks, Enter adds); true = handled */ onKeys?: (x: LibItem, e: React.KeyboardEvent) => boolean;
   /** the corner ⤢ (or Space): the larger preview */ onPeek?: (x: LibItem) => void; /** an image slot: a video tile gives a frame */ frameHint?: boolean; /** the ⋯ menu (Move to project); absent = no menu */ onMore?: (x: LibItem, el: HTMLButtonElement) => void; moreOpen?: boolean;
-  /** a slot that takes several: this tile's place in the selection (1-based); 0 = not picked; undefined = picks at once */ sel?: number }) {
+  /** a slot that takes several: this tile's place in the selection (1-based); 0 = not picked; undefined = picks at once */ sel?: number;
+  /** several, every place already ticked: this one can't be added (its reason, "All 4 picked. Untick one to swap it."); a click still says so */ off?: string }) {
   const [ref, seen] = useInView<HTMLDivElement>(); const dur = useMediaLength(x.url, x.type, seen);
   /* loaded: React state, so a re-render (picking it) keeps the class */ const [ld, setLd] = useState(false); const loaded = () => setLd(true);
   const kindWord = x.type === 'image' ? 'Image' : x.type === 'video' ? 'Video' : 'Audio';
   const name = tileName(x, tab); const when = day(x.createdAt); const tip = when ? `${name} · ${when}` : name; const len = fmtLength(dur);
   /* a sound: Space plays / pauses it (Enter still picks); the round button does the same with the mouse */
   const space = (e: React.KeyboardEvent) => { if (onKeys?.(x, e)) return; if (x.type !== 'audio' || e.key !== ' ') return; e.preventDefault(); if (e.type === 'keydown' && !e.repeat) togglePreview(x.url); };
-  return <div ref={ref} className={`ic-ref-tile mpk-tile mpk-t-${x.type}${x.type === 'image' ? ' alpha-bg' : ''}${ld ? ' ld' : ''}${sel ? ' mpk-sel' : ''}`}><button type="button" className="mpk-pick" data-item={x.id} onClick={e => onPick(x, e.shiftKey)} onKeyDown={space} onKeyUp={space}
-    aria-label={`${kindWord}: ${tip}${len ? `, ${len}` : ''}${frameHint && x.type === 'video' ? ' · pick a frame' : ''}`} aria-keyshortcuts={x.type === 'audio' ? 'Space' : undefined} title={tip}
+  return <div ref={ref} className={`ic-ref-tile mpk-tile mpk-t-${x.type}${x.type === 'image' ? ' alpha-bg' : ''}${ld ? ' ld' : ''}${sel ? ' mpk-sel' : ''}${off ? ' mpk-off' : ''}`}><button type="button" className="mpk-pick" data-item={x.id} onClick={e => onPick(x, e.shiftKey)} onKeyDown={space} onKeyUp={space}
+    aria-label={`${kindWord}: ${tip}${len ? `, ${len}` : ''}${frameHint && x.type === 'video' ? ' · pick a frame' : ''}${off ? `. ${off}` : ''}`} aria-keyshortcuts={x.type === 'audio' ? 'Space' : undefined} title={off ? `${tip} · ${off}` : tip} aria-disabled={off ? true : undefined}
     aria-pressed={sel === undefined || (frameHint && x.type === 'video') ? undefined : sel > 0}
     data-testid={tab === 'Generations' ? `ic-ref-gen-${x.id}` : tab === 'Liked' ? `ic-ref-liked-${x.id}` : `ic-ref-up-${x.id}`} data-kind={x.type}>
     {x.type === 'audio'
@@ -225,6 +226,8 @@ export function MediaPicker({ tab, setTab, onClose, title, limits, kinds, frames
   const closePeek = () => { const id = peek?.id; setPeek(null); if (id) requestAnimationFrame(() => panel.current?.querySelector<HTMLElement>(`.mpk-pick[data-item="${CSS.escape(id)}"]`)?.focus({ preventScroll: true })); };
   const [sel, setSel] = useState<LibItem[]>([]); const [selNote, setSelNote] = useState<string | null>(null); const lastPick = useRef<string | null>(null);
   const room = max == null ? Infinity : Math.max(0, max);
+  /* several, every place ticked: the other tiles dim, with the reason (ticked ones still untick) */
+  const capped = !!multiple && room !== Infinity && sel.length >= room; const offWhy = `All ${room} picked. Untick one to swap it.`;
   const panel = useRef<HTMLDivElement>(null); const sentinel = useRef<HTMLDivElement>(null); const depth = useRef(0);
   const showKinds = frames && kinds.includes('image') && !kinds.includes('video') ? [...kinds, 'video' as MediaKind] : kinds;
   /* the type filter: starts on what the slot takes (an image slot: Images, even though Videos are there for a frame) */
@@ -361,7 +364,7 @@ export function MediaPicker({ tab, setTab, onClose, title, limits, kinds, frames
         {tab === 'Uploads' && <button type="button" className="ic-ref-tile ic-ref-up mpk-up" data-testid="ic-ref-upload" onClick={onUpload} aria-label="Upload from your computer" title={`Upload from your computer · ${accepts}`}>
           <span className="mpk-up-ic" aria-hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg></span>
           <b>Upload</b><small>or drop files</small></button>}
-        {items.map(x => <Tile key={x.id} x={x} tab={tab} onPick={pick} onKeys={keys} onPeek={openPeek} frameHint={x.type === 'video' && !kinds.includes('video')} sel={multiple ? sel.findIndex(y => y.id === x.id) + 1 : undefined} moreOpen={moveOf?.id === x.id} onMore={hasProjects && (tab === 'Uploads' || x.jobId) ? (it, el) => { moveBtn.current = el; setMoveOf(m => m?.id === it.id ? null : it); } : undefined} />)}
+        {items.map(x => <Tile key={x.id} x={x} tab={tab} onPick={pick} onKeys={keys} onPeek={openPeek} frameHint={x.type === 'video' && !kinds.includes('video')} sel={multiple ? sel.findIndex(y => y.id === x.id) + 1 : undefined} off={capped && !sel.some(y => y.id === x.id) ? offWhy : undefined} moreOpen={moveOf?.id === x.id} onMore={hasProjects && (tab === 'Uploads' || x.jobId) ? (it, el) => { moveBtn.current = el; setMoveOf(m => m?.id === it.id ? null : it); } : undefined} />)}
         {loading && !items.length && Array.from({ length: 5 }, (_, i) => <span key={i} className="ic-ref-tile ic-ref-skel" aria-hidden />)}
         {!loading && !items.length && <p className="helper ic-ref-empty mpk-empty" data-testid="mpk-empty">{failed ? 'Couldn’t load your library. Close and try again.' : empty}
           {!failed && projRow && <button type="button" className="mpk-btn mpk-showall" data-testid="mpk-show-all" onClick={() => setProjByTab(m => ({ ...m, [tab]: 'all' }))}>Show all projects</button>}</p>}
@@ -369,7 +372,7 @@ export function MediaPicker({ tab, setTab, onClose, title, limits, kinds, frames
         {busyId && busyId !== 'sel' && <span className="mpk-busy" role="status">Loading…</span>}
       </div>}
     {multiple && (sel.length > 0 || selNote) && !frameOf && <div className="mpk-selbar" data-testid="mpk-selbar">
-      <span className="mpk-selbar-n" aria-live="polite"><b>{sel.length}</b> selected{room !== Infinity && <> · <span data-testid="mpk-sel-left">{room - sel.length} left</span></>}
+      <span className="mpk-selbar-n" aria-live="polite"><b>{sel.length}</b> selected{room !== Infinity && <> · <span data-testid="mpk-sel-left">{room - sel.length ? `${room - sel.length} left` : 'all places picked'}</span></>}
         {selNote && <em className="mpk-selbar-note" role="status" data-testid="mpk-sel-note">{selNote}</em>}</span>
       <button type="button" className="mpk-btn mpk-btn-q" disabled={!sel.length} onClick={() => { setSel([]); setSelNote(null); }} data-testid="mpk-sel-clear">Clear</button>
       <button type="button" className="mpk-btn mpk-btn-pri" disabled={busyId === 'sel' || !sel.length} onClick={() => void addSel()} data-testid="mpk-sel-add">{busyId === 'sel' ? 'Adding…' : `Add ${sel.length}`}</button></div>}

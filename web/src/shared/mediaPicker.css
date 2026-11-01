@@ -160,3 +160,7 @@ html body .ic-ref.mpk .mpk-peek-t b{color:#fff;font:600 14px/19px var(--font-ui)
 html body .ic-ref.mpk .mpk-peek-t small{color:rgba(255,255,255,.55);font:500 12px/16px var(--font-ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
 html body .ic-ref.mpk .mpk-peek-nav{width:32px;padding:0;font-size:18px;line-height:30px}
 html body .ic-ref.mpk .mpk-peek .mpk-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px;box-shadow:none}
+/* several, every place ticked: the rest dim (still clickable: a click says why), ticked ones stay bright to untick */
+html body .ic-ref.mpk .mpk-tile.mpk-off .mpk-pick{cursor:not-allowed}
+html body .ic-ref.mpk .mpk-tile.mpk-off img,html body .ic-ref.mpk .mpk-tile.mpk-off .mpk-audio{opacity:.35;filter:grayscale(.6)}
+html body .ic-ref.mpk .mpk-tile.mpk-off .mpk-tick{display:none}

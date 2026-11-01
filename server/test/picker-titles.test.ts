@@ -52,10 +52,23 @@ ok('slot labels: words never break inside (shared SlotLabel)');
 // Pick several (2026-10-31): ticks, Shift-click runs, Space / Enter, "n left", never more than fit
 assert.match(mp, /className="mpk-tick"/, 'a tick on hover'); assert.match(mp, /onPick\(x, e\.shiftKey\)/, 'Shift-click ticks a run');
 assert.match(mp, /if \(e\.key === ' '\) \{ e\.preventDefault\(\); if \(e\.type === 'keydown' && !e\.repeat\) toggle\(x\)/, 'Space ticks');
-assert.match(mp, /if \(e\.key === 'Enter'\)/, 'Enter adds'); assert.match(mp, /left<\/span>/, '"n left"'); assert.match(mp, /Only \$\{room\} fit/, 'extra picks refused with a note');
+assert.match(mp, /if \(e\.key === 'Enter'\)/, 'Enter adds'); assert.match(mp, /\$\{room - sel\.length\} left/, '"n left"'); assert.match(mp, /Only \$\{room\} fit/, 'extra picks refused with a note');
 assert.match(mp, /const maxAttr = /, 'data-picker-max read from the slot'); assert.match(rd('ui/video/VideoWorkflowBar.tsx'), /data-picker-max=\{mx && mx > 1 \? Math\.max\(0, mx - fs\.length\)/);
 assert.match(rd('ui/video/StitchPanel.tsx'), /max: MAX_CLIPS - d\.clips\.length/);
 ok('pick several: tick, Shift-click run, Space ticks, Enter adds, "n left", refuses past the limit');
+
+// A workflow slot that takes several (Material Swap's swatches, 2026-11-01): opened on an empty place it ticks up to the free places,
+// the rest dim with the reason once all are ticked, "Add n" fills them in order; a filled swatch (Replace) and one-picture slots pick one
+{ const ip = rd('ui/next/ImagePicker.tsx'); const ic = rd('ui/next/ImageCanvas.tsx');
+  assert.match(ip, /const several = !!target && \(max \?\? 1\) > 1/, 'several only for a slot with room for more than one'); assert.match(ip, /multiple=\{!target \|\| several\} max=\{several \? max : undefined\}/);
+  assert.match(ip, /Choose pictures for \$\{target\}/); assert.match(ip, /Up to \$\{max\} pictures · PNG, JPG or WebP/); assert.match(ic, /Up to \$\{pickFree\} more · PNG, JPG or WebP/, 'the + tile: how many more');
+  assert.match(ic, /const pickMs = pickFor && recipe && !files\[pickFor\] \? manyOf\(recipe, pickFor\) : null/, 'only an empty place (a filled swatch replaces one)');
+  assert.match(ic, /const pickFree = pickMs \? pickMs\.many! - swatchesOf\(files, pickMs\.name, pickMs\.many\)\.length : 0; const pickMany = pickFree > 1/, 'capped at the free places');
+  assert.match(ic, /take\.forEach\(f => addSwatch\(pickMs\.name, f\)\)/, 'in the order ticked, each to the next free place');
+  assert.match(ic, /onFiles=\{fs => pickMany \? addSlotFiles\(fs\) : deliverFiles/); assert.match(ic, /multiple=\{\(maxRefs > 1 && !pickFor \|\| pickMany\)/, 'Upload from the computer takes several too');
+  assert.match(mp, /const capped = !!multiple && room !== Infinity && sel\.length >= room/); assert.match(mp, /All \$\{room\} picked\. Untick one to swap it\./, 'the reason on the dimmed tiles');
+  assert.match(mp, /aria-disabled=\{off \? true : undefined\}/); assert.match(rd('shared/mediaPicker.css'), /\.mpk-tile\.mpk-off img/); }
+ok('slot that takes several: ticks up to the free places, dims the rest with a reason, fills in order; single slots pick one');
 
 // Larger preview (2026-10-31, ⤢ 2026-11-01): the tile's corner ⤢ or Space (never hover alone), the shared PreviewMedia, Space / Esc close, arrows move; the server says the model
 assert.doesNotMatch(mp, /onPointerMove=|setTimeout\(\(\) => \{[^}]*onPeek/, 'no preview on hover alone'); assert.match(mp, /className="mpk-zoom" aria-label="Preview" \{\.\.\.tipAttrs\(.Preview.\)\}[^>]*onClick=\{\(\) => onPeek\(x\)\}/, 'the corner ⤢ opens it'); assert.match(mp, /onClick=\{e => onPick\(x, e\.shiftKey\)\}/, 'a click on the tile still picks');
