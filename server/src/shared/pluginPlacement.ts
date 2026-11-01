@@ -25,10 +25,11 @@ export const TAB_LABEL: Record<PluginTab, string> = { image: 'Image', video: 'Vi
 const GOAL_RE = /^[a-z][a-z-]{1,23}$/;
 
 /** What the badge on every plugin row says. */
-export interface PluginBadge { author: string | null; licence: string; /** the manifest ships a handler (code that runs in the app's server) */ runsCode: boolean }
+export interface PluginBadge { author: string | null; licence: string; /** the manifest ships a handler (code that runs in the app's server) */ runsCode: boolean;
+  /** you added it in the app ("Added by you"); otherwise its folder ships with the app ("Add-on") */ user?: boolean }
 /** What GET /api/tools says about a plugin tool (ToolInfo.plugin), placement included. */
 export interface PluginInfo { id: string; tab?: PluginTab | null; category?: string | null; goal?: string | null; author?: string | null; handler?: boolean;
-  license?: { id: string; name?: string } | null; input?: 'image' | 'video'; output?: 'image' | 'video' }
+  license?: { id: string; name?: string } | null; input?: 'image' | 'video' | 'none'; output?: 'image' | 'video'; user?: boolean }
 export interface PluginToolLike { id: string; name: string; description?: string; route?: string; plugin?: PluginInfo | null; inputs?: { name: string; label?: string }[] }
 
 /** Errors in the placement fields of a manifest (empty = fine). `category` keeps its old free-form meaning (the tool's group) when there is no `tab`. */
@@ -44,18 +45,19 @@ export function placementErrors(m: { tab?: unknown; category?: unknown; goal?: u
 }
 
 export const placedTab = (t: PluginToolLike): PluginTab | null => (t.plugin?.tab && PLUGIN_TABS.includes(t.plugin.tab) ? t.plugin.tab : null);
-export const pluginBadge = (t: PluginToolLike): PluginBadge | null => t.plugin ? { author: t.plugin.author ?? null, licence: t.plugin.license?.name ?? t.plugin.license?.id ?? 'Unknown licence', runsCode: !!t.plugin.handler } : null;
+export const pluginBadge = (t: PluginToolLike): PluginBadge | null => t.plugin ? { author: t.plugin.author ?? null, licence: t.plugin.license?.name ?? t.plugin.license?.id ?? 'Unknown licence', runsCode: !!t.plugin.handler, user: !!t.plugin.user } : null;
 /** The one-line tagline: the description's first sentence. */
 export const pluginLine = (t: PluginToolLike): string => { const d = (t.description ?? '').trim(); const s = d.split(/(?<=[.!?])\s|:\s/)[0].replace(/[.!?]$/, ''); return s || t.name; };
 const RESERVED = new Set(['video', 'image', 'types', 'prompt', 'resolution', 'seed', 'provider', 'rights', 'draft', 'duration', 'steps', 'enhance']);
+const NEEDS = { video: '1 clip', image: '1 photo', none: 'Prompt' } as const;
 const optionLabels = (t: PluginToolLike) => (t.inputs ?? []).filter((i) => !RESERVED.has(i.name) && i.label).map((i) => i.label!);
 
 /** A video-tab plugin as a Video workflow (same id as its tool, so /video?workflow=<id> opens it and /tools/<id> redirects there). */
 export function pluginVideoWorkflow(t: PluginToolLike): VideoWorkflow {
-  const clip = t.plugin?.input !== 'image'; const opts = optionLabels(t); const cat = t.plugin?.category as VideoWorkflowCategory;
-  return { id: t.id, name: t.name, toolId: t.id, category: PLUGIN_CATEGORIES.video.includes(cat) ? cat : 'apps', tagline: pluginLine(t), needs: clip ? '1 clip' : '1 photo',
-    inputs: [clip ? 'Clip' : 'Photo', ...opts], oldRoutes: [`/tools/${t.id}`], inMenu: true, plugin: pluginBadge(t)!,
-    how: [[clip ? 'Add your clip' : 'Add a photo', 'Upload one, pick it from your media, or use a result.'], ['Pick the options', opts.length ? `${opts.join(', ')}, or keep the defaults.` : 'Or keep the defaults.'],
+  const inp = t.plugin?.input ?? 'video'; const opts = optionLabels(t); const cat = t.plugin?.category as VideoWorkflowCategory;
+  return { id: t.id, name: t.name, toolId: t.id, category: PLUGIN_CATEGORIES.video.includes(cat) ? cat : 'apps', tagline: pluginLine(t), needs: NEEDS[inp],
+    inputs: [inp === 'none' ? 'Prompt' : inp === 'image' ? 'Photo' : 'Clip', ...opts], oldRoutes: [`/tools/${t.id}`], inMenu: true, plugin: pluginBadge(t)!,
+    how: [inp === 'none' ? ['Write a prompt', 'Say what you want to see.'] : [inp === 'image' ? 'Add a photo' : 'Add your clip', 'Upload one, pick it from your media, or use a result.'], ['Pick the options', opts.length ? `${opts.join(', ')}, or keep the defaults.` : 'Or keep the defaults.'],
       ['Generate', 'Runs on your own ComfyUI. Without one you get a sample.']] };
 }
 
@@ -88,7 +90,7 @@ export function pluginWfEntries(tools: PluginToolLike[]): WfEntry[] {
   return tools.flatMap((t) => { const tab = placedTab(t); if (!tab) return [];
     const w = tab === 'video' ? pluginVideoWorkflow(t) : null;
     return [{ id: `${PREFIX[tab]}-${t.id}`, source: `plugin:${t.id}`, name: t.name, line: pluginLine(t), cat: WF_CAT[tab][t.plugin?.category ?? ''] ?? (tab === 'video' ? 'clip' : tab === 'image' ? 'photo' : tab === 'audio' ? 'music' : '3d'),
-      tags: ['plugin', ...(t.plugin?.author ? [t.plugin.author] : [])], medium: tab, toolId: t.id, href: pluginHref(t), models: [], needs: w?.needs ?? (t.plugin?.input === 'video' ? '1 clip' : '1 photo'), how: w?.how,
+      tags: ['plugin', ...(t.plugin?.user ? ['added by you', 'your workflow'] : []), ...(t.plugin?.author ? [t.plugin.author] : [])], medium: tab, toolId: t.id, href: pluginHref(t), models: [], needs: w?.needs ?? NEEDS[t.plugin?.input ?? 'image'], how: w?.how,
       art: t.plugin?.input === 'video' ? 'video' : 'object', goal: t.plugin?.goal ?? undefined, plugin: pluginBadge(t)! } satisfies WfEntry];
   });
 }

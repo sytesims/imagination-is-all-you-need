@@ -2,6 +2,7 @@ import { Notice } from '../shared/Notice';
 import { Link } from './router';
 import { useEffect, useMemo, useState } from 'react';
 import { FitTag } from '../shared/FitNote';
+import { DlProgress } from '../shared/DlProgress';
 import { gbText, localFitOf } from '../shared/fit';
 import { repoDoc } from '../shared/brand';
 import { listTools } from '../api';
@@ -185,7 +186,7 @@ function ModelFiles() {
     <ul className="ls-mlist">{shown.map(r => { const x = dls[r.id]; const tot = dlTotal(x) || r.bytes; const done = dlDone(x); const pc = tot ? Math.min(100, Math.floor((done / tot) * 100)) : 0; const ch = choices[r.id]; const er = errs[r.id]; const intr = interrupted(x);
       return <li key={r.id} data-testid={`ls-model-${r.providerId}`} data-download-id={r.id}><span className="ls-mname"><b>{r.name}</b><small>{r.tools.slice(0, 3).join(' · ')}</small></span>
         <span className="ls-msize" data-testid="ls-msize" data-src={r.src ?? undefined}>{r.src === 'checked' && r.bytes === 0 ? 'On this computer' : <>{gbText(r.bytes)}{r.src === 'assumed_all' ? <small className="ls-msrc">full size</small> : r.src === 'checked' ? <small className="ls-msrc">missing</small> : null}</>}</span><FitTag fit={r.fit?.verdict === 'unknown' ? null : r.fit} className="ls-fit" />
-        <span className="ls-mact">{active(x) ? <><span className="ls-prog" data-testid="ls-progress"><span className="bar" role="progressbar" aria-label={`${r.name} download`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pc}><span style={{ width: `${pc}%` }} /></span><small>{pc}%{x?.etaSeconds ? ` · about ${Math.max(1, Math.round(x.etaSeconds / 60))} min left` : ''}</small></span>
+        <span className="ls-mact">{active(x) ? <><DlProgress x={x} label={r.name} bytes={r.bytes} />
             <button type="button" className="btn btn-sm" data-testid="ls-cancel" aria-label={`Cancel ${r.name} download`} onClick={() => cancel(r.id, x!)}>Cancel</button></>
           : x?.status === 'done' ? <span className="ls-done" data-testid="ls-done">Downloaded ✓</span>
           : <button type="button" className="btn btn-sm" data-testid={intr ? 'ls-resume' : 'ls-download'} disabled={noDir || dirWait || busy === r.id} aria-busy={busy === r.id} aria-label={`${intr ? 'Resume' : 'Download'} ${r.name}`} aria-describedby={noDir ? 'ls-no-dir' : undefined} title={noDir ? dirWhy : undefined} onClick={() => start(r.id, r.id)}>{busy === r.id ? 'Checking…' : intr ? 'Resume' : x?.status === 'failed' || x?.status === 'canceled' ? 'Download again' : 'Download'}</button>}</span>

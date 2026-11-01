@@ -12,6 +12,7 @@ import { PageComps } from './platform/routeChunks';
 import { featureForPath } from './shared/imageFeatures';
 import NotFound from './platform/NotFound';
 import { Suspense, useEffect, useRef, useState } from 'react';
+import { AddWorkflowHost } from './shared/AddWorkflow';
 import { listRoadmap, listTools, ToolInfo } from './api';
 import { toolScreens } from './tools';
 import { ToastProvider } from './shared/Toast';
@@ -120,7 +121,7 @@ export default function App() {
       </main>
       <MobileTabs tools={tools} path={path} />
       <EdgeHost />
-      <DialogHost /><MediaPickerHost />{/* the one media picker for every upload slot (shared/MediaPicker.tsx) */}<SaveLookHost /><GenWhyHost /><RunSetupHost /><ConnectSheetHost /><TooltipLayer />
+      <DialogHost /><MediaPickerHost />{/* the one media picker for every upload slot (shared/MediaPicker.tsx) */}<SaveLookHost /><GenWhyHost /><RunSetupHost /><ConnectSheetHost /><AddWorkflowHost />{/* Add a workflow: one sheet for every entry point (shared/AddWorkflow.tsx) */}<TooltipLayer />
     </div></ToastProvider>
   );
 }

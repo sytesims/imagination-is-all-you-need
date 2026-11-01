@@ -88,7 +88,7 @@ export interface ToolInfo {
   pricing?: { optionFactors?: Record<string, number> };
   /** Present for tools loaded from plugins/. */
   plugin?: { id: string; version: string | null; license: LicenseInfo; handler: boolean;
-    /** where it shows up (server shared/pluginPlacement.ts) */ tab?: 'image' | 'video' | 'audio' | '3d' | null; category?: string | null; goal?: string | null; author?: string | null; input?: 'image' | 'video'; output?: 'image' | 'video' } | null;
+    /** where it shows up (server shared/pluginPlacement.ts) */ tab?: 'image' | 'video' | 'audio' | '3d' | null; category?: string | null; goal?: string | null; author?: string | null; input?: 'image' | 'video' | 'none'; output?: 'image' | 'video'; /** added in the app by you */ user?: boolean; /** its main model in plain words, null when unclear */ mainModel?: string | null } | null;
   freeGens?: { left: number; maxRes: string } | null;
   /** DESIGN-NOTES 17–19 registry fields. */
   media?: 'image' | 'video' | 'audio'; badge?: 'new' | 'free' | 'top' | null; posterUrl?: string | null; freeGensCovered?: boolean; addedAt?: string | null;

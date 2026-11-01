@@ -1,4 +1,4 @@
-/* Plugins page (ui/pages/PluginsPage.tsx, 2026-11-01). Scoped to .plx; the on/off switch is the shared .plug-sw (styles.css). */
+/* Your workflows (ui/pages/PluginsPage.tsx, 2026-11-01; was Plugins). Scoped to .plx; the on/off switch is the shared .plug-sw (styles.css). */
 .plx{--plx-card:var(--surface-1);--plx-line:var(--border-strong);max-width:1180px;margin:0 auto;padding:40px 24px 72px;color:var(--text-1)}
 .plx :not(pre)>code{font:500 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--text-1);background:var(--fill);padding:2px 5px;border-radius:5px}
 
@@ -95,6 +95,34 @@
 .plx-top{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:40px;align-items:center}
 .plx-top-flow{padding:12px 22px;border-radius:var(--radius-2xl);background:radial-gradient(120% 100% at 100% 0,rgba(255,122,26,.10),transparent 60%),var(--plx-card);border:1px solid var(--border)}
 
+/* Your workflows: the hero's Add button, the empty card, Remove, and the folded "For advanced users" */
+.plx-hero-yours{max-width:720px}
+.plx-cta{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-top:10px}
+.plx-add{gap:10px;min-height:52px;padding:0 26px;border-radius:14px;font-size:15px}
+.plx-cta small{color:var(--text-3);font:500 12.5px/1.4 var(--font-ui)}
+.plx-add-card{all:unset;box-sizing:border-box;display:grid;justify-items:start;align-content:center;gap:8px;min-height:180px;padding:22px;border-radius:var(--radius-xl);border:1.5px dashed rgba(255,122,26,.45);background:rgba(255,122,26,.04);cursor:pointer;transition:background var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease)}
+.plx-add-card:hover{background:rgba(255,122,26,.09);border-color:var(--accent)}
+.plx-add-card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.plx-add-card b{font:600 16px/1.2 var(--font-ui)}
+.plx-add-ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--accent-faint);color:var(--accent);font:600 24px/1 var(--font-ui)}
+.plx-remove{height:32px;padding:0 12px;border-radius:10px;border:1px solid var(--border-strong);background:none;color:var(--text-2);font:600 13px/1 var(--font-ui);cursor:pointer}
+.plx-remove:hover{color:#ff7d7d;border-color:rgba(255,92,92,.45);background:rgba(255,92,92,.06)}
+.plx-remove:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.plx-adv{margin-top:48px;border-radius:var(--radius-xl);border:1px solid var(--border);background:var(--plx-card)}
+.plx-adv>summary{list-style:none;display:flex;align-items:center;gap:12px;padding:18px 20px;cursor:pointer}
+.plx-adv>summary::-webkit-details-marker{display:none}
+.plx-adv>summary::before{content:'';flex:none;width:8px;height:8px;border-right:2px solid var(--text-2);border-bottom:2px solid var(--text-2);transform:rotate(-45deg);transition:transform var(--dur-fast) var(--ease)}
+.plx-adv[open]>summary::before{transform:rotate(45deg)}
+.plx-adv>summary span{display:flex;flex-direction:column;gap:3px}
+.plx-adv>summary b{font:600 15px/1.2 var(--font-ui)}
+.plx-adv>summary small{color:var(--text-2);font:500 12.5px/1.4 var(--font-ui)}
+.plx-adv>summary:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:var(--radius-xl)}
+.plx-adv-body{padding:4px 20px 24px;border-top:1px solid var(--border)}
+.plx-adv-body .plx-top{margin-top:20px}
+.plx-adv-intro p{margin:8px 0 12px;color:var(--text-2);font:500 14px/1.55 var(--font-ui)}
+.plx-adv-h{margin:0;font:700 19px/1.1 var(--font-display);letter-spacing:-.01em;text-transform:uppercase}
+.plx-adv-body .plx-sec{margin-top:36px}
+
 @media (max-width:900px){
   .plx-top,.plx-make{grid-template-columns:1fr}
   .plx-make .plx-honest{margin-top:0}
@@ -102,7 +130,11 @@
 }
 @media (max-width:560px){
   .plx{padding:24px 16px 56px}
+  .plx-add{width:100%}
+  .plx-adv-body{padding:4px 14px 18px}
+  .plx-adv>summary{padding:16px 14px}
   .plx-cards{grid-template-columns:1fr}
   .plx-card-foot{flex-wrap:wrap}
   .plx-tabs small{margin-left:0;width:100%}
 }
+.plx-cards:has(.plx-add-card){grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}

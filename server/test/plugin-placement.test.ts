@@ -77,4 +77,9 @@ assert.equal(entries.find((e) => e.id === 'i-img-placed')!.cat, 'photo');
 const { capabilities } = await import('../src/capabilities.ts');
 assert.equal(capabilities().filter((c) => c.id === 'video/cutout').length, 1, 'search (capabilities) finds Cutout once');
 ok('image plugin in the Image menu; Workflows page entries and search see placed plugins');
+// Add a workflow (2026-11-01): a prompt-only workflow you added reads "Prompt" and carries "Added by you"; a shipped folder is an Add-on
+const yours = { id: 'yours-t2v', name: 'My Clip', description: 'Makes a video from a prompt.', plugin: { id: 'yours-t2v', tab: 'video' as const, category: 'create', input: 'none' as const, user: true, license: { id: 'own', name: 'Your own' } } };
+const yw = pluginVideoWorkflow(yours); assert.equal(yw.needs, 'Prompt'); assert.equal(yw.inputs[0], 'Prompt'); assert.equal(yw.how[0][0], 'Write a prompt'); assert.equal(yw.plugin?.user, true);
+assert.equal(ve.plugin?.user, false, 'Cutout ships with the app: not "Added by you"'); assert.ok(pluginWfEntries([yours]).find((e) => e.id === 'v-yours-t2v')!.tags.includes('added by you'));
+ok('prompt-only workflows and the Added by you / Add-on badge');
 fs.rmSync(D, { recursive: true, force: true });

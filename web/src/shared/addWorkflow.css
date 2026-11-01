@@ -1,0 +1,72 @@
+/* Add a workflow (shared/AddWorkflow.tsx): the one sheet, on the app's dialog look (styles.css .dlg-scrim / .dlg). */
+.adw{width:min(480px,100%);max-height:calc(100dvh - 32px);overflow:auto;padding:20px}
+.adw.adw-form{width:min(640px,100%)}
+.adw-h{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:4px}
+.adw-h .dlg-t{margin:0;font-size:18px}
+.adw-x{width:30px;height:30px;border-radius:8px;border:0;background:transparent;color:#a9aaae;font-size:20px;line-height:1;cursor:pointer}
+.adw-x:hover{background:rgba(255,255,255,.06);color:#fff}
+.adw-x:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.adw .dlg-b{margin:0 0 14px}
+
+/* step 1: drop */
+.adw-drop{position:relative;border:1.5px dashed rgba(255,122,26,.45);border-radius:14px;background:rgba(255,122,26,.05);transition:background .15s,border-color .15s}
+.adw-drop.over{background:rgba(255,122,26,.12);border-color:var(--accent)}
+.adw-drop.busy{opacity:.7}
+.adw-drop-hit{display:grid;justify-items:center;gap:6px;width:100%;padding:28px 16px;border:0;background:transparent;color:#fff;cursor:pointer;border-radius:14px;text-align:center}
+.adw-drop-hit:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.adw-drop-hit b{font-size:14.5px;font-weight:600}
+.adw-drop-hit small{color:#a9aaae;font-size:12.5px}
+.adw-drop-ic{display:grid;place-items:center;width:44px;height:44px;margin-bottom:2px;border-radius:12px;background:rgba(255,122,26,.14);color:var(--accent)}
+.adw-link{margin-top:10px;padding:2px 0;border:0;background:none;color:var(--accent);font-size:12.5px;font-weight:600;cursor:pointer}
+.adw-link:hover{text-decoration:underline}
+.adw-link:disabled{opacity:.5;cursor:default}
+.adw-paste{display:grid;gap:8px;margin-top:10px}
+.adw-paste textarea{width:100%;box-sizing:border-box;min-height:96px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#fff;font:12px/1.45 var(--font-mono,ui-monospace,Menlo,monospace);resize:vertical;outline:none}
+.adw-paste textarea:focus{border-color:var(--accent)}
+.adw-paste-a{display:flex;justify-content:flex-end}
+.adw-err{margin-top:12px}
+.adw-help{margin:8px 0 0;padding-left:20px;color:#d8d9dc;font-size:13px;line-height:1.6}
+.adw-help b{color:#fff}
+.adw-errs{margin:6px 0 0;padding-left:18px;color:#f0a6a0;font-size:12px;line-height:1.5}
+.adw-fine{display:grid;gap:6px;margin:16px 0 0;padding:12px 0 0;border-top:1px solid rgba(255,255,255,.06);list-style:none;color:#8b8f95;font-size:12px;line-height:1.45}
+.adw-fine li{position:relative;padding-left:14px}
+.adw-fine li::before{content:'';position:absolute;left:2px;top:7px;width:4px;height:4px;border-radius:50%;background:rgba(255,122,26,.7)}
+.adw-fine b{color:#c9cacd;font-weight:600}
+
+/* step 2: the form */
+.adw-body{display:grid;gap:14px;margin-top:8px}
+.adw-src{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06)}
+.adw-src-f{min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:600;color:#fff}
+.adw-src .adw-link{margin:0 0 0 auto}
+.adw-chip{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:999px;background:rgba(255,122,26,.12);color:var(--accent);font-size:11px;font-weight:700}
+.adw-chip-n{background:rgba(255,255,255,.06);color:#a9aaae}
+.adw-note{margin:0}
+.adw-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.adw-f{display:grid;gap:6px;min-width:0;align-content:start;font-size:12px;color:#a9aaae}
+.adw-f>span{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-weight:600}
+.adw-f>span small{font-weight:500;color:#6f7378}
+.adw-wide{grid-column:1/-1}
+.adw-f input,.adw-f select{width:100%;height:38px;box-sizing:border-box;padding:0 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#fff;font-size:13.5px;outline:none;min-width:0}
+.adw-f select{padding-right:28px;text-overflow:ellipsis}
+.adw-f select option{background:#1b1c1f;color:#fff}
+.adw-f input:focus,.adw-f select:focus{border-color:var(--accent)}
+.adw-f input[aria-invalid]{border-color:#e5484d}
+.adw-seg{display:flex;gap:4px;padding:3px;border-radius:11px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)}
+.adw-seg button{flex:1;height:30px;border:0;border-radius:8px;background:transparent;color:#a9aaae;font-size:13px;font-weight:600;cursor:pointer}
+.adw-seg button:hover{color:#fff}
+.adw-seg button.on{background:rgba(255,122,26,.16);color:var(--accent)}
+.adw-seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.adw-extras{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;border:0}
+.adw-extras legend{width:100%;margin-bottom:6px;padding:0;color:#a9aaae;font-size:12px;font-weight:600}
+.adw-check{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:9px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);cursor:pointer;font-size:12.5px;color:#e6e7e9}
+.adw-check:has(input:checked){border-color:rgba(255,122,26,.5);background:rgba(255,122,26,.08)}
+.adw-check input{accent-color:var(--accent);margin:0}
+.adw-check small{margin-left:6px;color:#8b8f95;font-variant-numeric:tabular-nums}
+.adw-honest{margin:0;color:#8b8f95;font-size:12px;line-height:1.45}
+.adw .dlg-a{margin-top:2px}
+@media (max-width:560px){
+  .adw{padding:16px}
+  .adw-grid{grid-template-columns:1fr}
+  .adw-seg button{font-size:12.5px}
+  .adw-scrim{align-items:end;padding:8px}
+}

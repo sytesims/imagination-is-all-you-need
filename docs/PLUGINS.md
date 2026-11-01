@@ -2,6 +2,15 @@
 
 A plugin adds an app from a ComfyUI workflow, without touching the core. Drop a folder into **`plugins/`** at the repo root (override it with `OPENHIGGSFIELD_PLUGINS_DIR`) and restart the app: plugins load once at start, so a new or changed folder shows up after a restart.
 
+## Add a workflow (no folder needed)
+
+The easiest way: **Your workflows › Add a workflow** (also the "Bring your own" card on the Workflows page and "+ Add your own" at the end of every tab's workflow picker). Drop a ComfyUI workflow file (the API format from **Workflow › Export (API)**; a regular saved workflow is converted when its nodes are known), check the guessed nodes (photo or clip, prompt, seed, result, which settings to show), pick the tab and group, and save. It shows up in its tab at once, with no restart, and an **Added by you** badge.
+
+- It is written as a plugin folder (`plugin.json`, `workflow.json`, `node-map.json`, never a handler) into **`<data folder>/plugins/`** (override with `OPENHIGGSFIELD_USER_PLUGINS_DIR`), so app updates never touch it. Folders there may not ship a handler.
+- The same rules as below check it before it is saved: no `"__file"` keys, a name that no built-in workflow uses, files up to 2 MB, JSON only.
+- Turn it off or remove it on Your workflows. API: `POST /api/workflows/import` (preview, nothing saved), `POST /api/workflows` (save), `DELETE /api/workflows/:id`.
+- `input` may be `"none"` for a workflow that only needs its prompt and settings (text to image, text to video).
+
 ## Where a plugin runs
 
 - **On your own ComfyUI: for real.** When the app is connected to your ComfyUI (a local or private address) and the plugin has a node map, a job runs the plugin's workflow there: your file is uploaded, the prompt, seed, resolution, fields and preset are filled in from the node map, and the result comes back like any other app's. Your ComfyUI needs the workflow's custom nodes and models installed first (list them in `components[]` so people know what to install).
@@ -10,12 +19,12 @@ A plugin adds an app from a ComfyUI workflow, without touching the core. Drop a 
 
 ## Where a plugin shows up
 
-Give the manifest a `tab` and a `category` and the plugin shows up in the app next to the built-in ones, with a small **Plugin** badge, its author and licence (and **Runs code** when the folder ships a handler):
+Give the manifest a `tab` and a `category` and the plugin shows up in the app next to the built-in ones, with a small **Add-on** badge (**Added by you** for the ones added in the app), its author and licence (and **Runs code** when the folder ships a handler):
 - **Video** (`"tab": "video"`): in the Video workflow picker under its category and in the header Video menu; `/video?workflow=<id>` opens it, and its old address `/tools/<id>` still works.
 - **Image, Audio, 3D**: a row in that tab's header menu, opening the plugin's own page.
-- **Workflows page and search**: a card under "Your plugins", found by the Workflows search, the header search and agents' `search_capabilities` / `search_workflows`.
+- **Workflows page and search**: a card under "Your workflows", found by the Workflows search, the header search and agents' `search_capabilities` / `search_workflows`.
 
-`category` is then one of that tab's own groups: image `edit | people | product | camera`, video `create | edit | motion | camera | apps`, audio `create | voice | video`, 3D `create | edit | video`. Without a `tab`, the plugin is listed on the Plugins page and `category` is only its group name.
+`category` is then one of that tab's own groups: image `edit | people | product | camera`, video `create | edit | motion | camera | apps`, audio `create | voice | video`, 3D `create | edit | video`. Without a `tab`, the plugin is listed on the Your workflows page and `category` is only its group name.
 
 Plugins register into the same tool registry as the built-in tools, so a plugin tool automatically appears in:
 - the nav, Explore and Assets;

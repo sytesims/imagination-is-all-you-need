@@ -7,11 +7,14 @@ import path from 'node:path';
 import type { PluginNodeMap, NodeRef } from './plugins.js';
 
 /** What the local runner needs to build a plugin's plan. Registered only for loaded plugins that ship a node map. */
-export interface PluginSpec { id: string; workflowId: string; input: 'image' | 'video'; outKind: 'image' | 'video'; graph: Record<string, any>; nodeMap: PluginNodeMap }
+export interface PluginSpec { id: string; workflowId: string; input: 'image' | 'video' | 'none'; outKind: 'image' | 'video'; graph: Record<string, any>; nodeMap: PluginNodeMap }
 const specs = new Map<string, PluginSpec>();
 export const registerPluginSpec = (s: PluginSpec) => { specs.set(s.id, s); };
 export const pluginSpec = (toolId: string): PluginSpec | null => specs.get(toolId) ?? null;
 export const clearPluginSpecs = () => specs.clear();
+export const removePluginSpec = (toolId: string) => specs.delete(toolId);
+/** A loaded plugin's graph by its workflow id (plugins/<folder>/workflow.json), wherever its folder lives (comfyNodes.ts). */
+export const pluginGraphOf = (workflowId: string): Record<string, any> | null => { for (const s of specs.values()) if (s.workflowId === workflowId) return s.graph; return null; };
 
 /** The result kind: the manifest's `output` when set, else read from the output node (SaveImage / PreviewImage → image, anything else → video). */
 export const pluginOutKind = (graph: Record<string, any> | undefined, nm: PluginNodeMap | null | undefined, declared?: 'image' | 'video'): 'image' | 'video' =>
@@ -39,4 +42,13 @@ export function mapGraph(graph: Record<string, any>, nm: PluginNodeMap | null, i
   for (const [k, r] of Object.entries(nm.fields ?? {})) for (const x of Array.isArray(r) ? r : [r]) set(x, input.fields?.[k]);
   for (const t of input.types ?? []) for (const r of nm.presets?.[t] ?? []) put(r.node, r.field, r.value);
   return g;
+}
+
+/** The main model of a graph in plain words ("flux1-dev" from flux1-dev.safetensors): the first diffusion model or checkpoint loader's file
+ *  (unet_name / ckpt_name, the "dit" role in hardware/requirements.ts), without folders or extension. null when there is none. */
+export function mainModelOf(graph: Record<string, any> | undefined): string | null {
+  const ids = Object.keys(graph ?? {}).sort((a, b) => (Number(a) - Number(b)) || a.localeCompare(b));
+  for (const k of ['unet_name', 'ckpt_name']) for (const id of ids) { const v = graph![id]?.inputs?.[k];
+    if (typeof v === 'string' && v.trim()) { const name = v.replace(/\\/g, '/').split('/').pop()!.replace(/\.(safetensors|gguf|ckpt|pt|pth|bin|sft)$/i, '').trim(); if (name) return name.slice(0, 60); } }
+  return null;
 }

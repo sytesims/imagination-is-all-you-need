@@ -10,6 +10,8 @@ import { Popover } from './Popover';
 import { Link, useSearch } from '../platform/router';
 import { tip } from './Tooltip';
 import { InfoIcon, SearchIcon, ChevronRightIcon } from '../ui/Icons';
+import { openAddWorkflow } from './AddWorkflow';
+import type { PluginTab } from '../../../server/src/shared/pluginPlacement';
 import '../ui/next/workflowBar.css';
 import '../ui/video/videoWorkflows.css';
 
@@ -28,11 +30,12 @@ export function clearPickerParam() {
   if (typeof location === 'undefined' || !wantsPicker()) return; const u = new URL(location.href); u.searchParams.delete(PICKER_PARAM); history.replaceState(history.state, '', `${u.pathname}${u.search}${u.hash}`);
 }
 
-export function WorkflowPicker<T extends PickerItem>({ open, anchor, watch, list, current, categories, onChoose, onClose, placement = 'top', label, prefix, noun, icon, how, foot, initialTab = 'all', className = '', soon, badge }: {
+export function WorkflowPicker<T extends PickerItem>({ open, anchor, watch, list, current, categories, onChoose, onClose, placement = 'top', label, prefix, noun, icon, how, foot, initialTab = 'all', className = '', soon, badge, addTab }: {
   open: boolean; anchor: RefObject<HTMLElement>; watch?: RefObject<HTMLElement>; list: T[]; current: string; categories: { id: string; label: string }[];
   onChoose: (w: T) => void; onClose: () => void; placement?: 'top' | 'bottom'; /** "Video workflows" */ label: string; /** testid prefix: "vwf", "awf" */ prefix: string; /** "video" → "Search video workflows" */ noun: string;
   icon: (w: T) => ReactNode; how: (w: T) => ReactNode; /** the footer's left line */ foot: ReactNode; /** the tab to open on */ initialTab?: string; className?: string;
-  /** a roadmap row (3D: Text to 3D, Rig): listed, greyed, says Coming soon, can't be picked */ soon?: (w: T) => boolean; /** a small mark after the name (a plugin's Plugin badge) */ badge?: (w: T) => ReactNode }) {
+  /** a roadmap row (3D: Text to 3D, Rig): listed, greyed, says Coming soon, can't be picked */ soon?: (w: T) => boolean; /** a small mark after the name (a plugin's Plugin badge) */ badge?: (w: T) => ReactNode;
+  /** the tab this picker belongs to: shows "+ Add your own" at the end of the list (opens Add a workflow for that tab) */ addTab?: PluginTab }) {
   const [q, setQ] = useState(''); const [tab, setTab] = useState('all'); const [hi, setHi] = useState(0); const [howId, setHow] = useState(''); const listRef = useRef<HTMLDivElement>(null); const qRef = useRef<HTMLInputElement>(null);
   useEffect(() => { if (!open) { setQ(''); setHow(''); setHi(0); return; } setTab(categories.some(c => c.id === initialTab) ? initialTab : 'all'); const t = setTimeout(() => qRef.current?.focus(), 60); return () => clearTimeout(t); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const ql = q.trim().toLowerCase();
@@ -71,8 +74,16 @@ export function WorkflowPicker<T extends PickerItem>({ open, anchor, watch, list
             <ChevronRightIcon size={12} />Coming soon<small>{later.length}</small></button>
           {showSoon && later.map(row)}</div>}
         {!found.length && <p className="helper wf-empty">No workflows match “{q}”.</p>}
+        {addTab && <AddOwnRow tab={addTab} onClose={onClose} testId={`${prefix}-add-own`} />}
       </div>
       <div className="wf-foot"><span>{foot}</span><Link to="/workflows" className="wf-all" onClick={onClose} data-testid={`${prefix}-browse-all`}>Browse all workflows <ChevronRightIcon size={12} /></Link></div>
     </div>
   </Popover>;
+}
+
+/** "+ Add your own": the last row of every tab's workflow picker. Opens Add a workflow for this tab; once saved, the new workflow opens in it. */
+export function AddOwnRow({ tab, onClose, testId }: { tab: PluginTab; onClose: () => void; testId: string }) {
+  return <button type="button" className="wf-row wf-add-own" data-testid={testId} onClick={() => { onClose(); openAddWorkflow({ tab }); }}>
+    <span className="wf-ic" aria-hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg></span>
+    <span className="wf-t"><b>Add your own</b><small>Bring a ComfyUI workflow</small></span></button>;
 }

@@ -66,9 +66,10 @@ export function registerHardware(app: FastifyInstance) {
   // dryRun always answers 200 with the plan (files, missingBytes, missingBytesSource, canDownload, code); the real POST keeps its 409s.
   const dlFail = (reply: any, e: DlError) => { const code = e.code === 'not_found' ? 404 : e.code === 'bad_request' || e.code === 'ambiguous_download' ? 400 : 409;
     return reply.code(code).send({ error: e.message, code: e.code, errorType: code === 409 ? 'conflict' : code === 404 ? 'not_found' : 'validation', ...e.extra }); };
-  app.post<{ Body: { providerId?: string; variantId?: string; downloadId?: string; dryRun?: boolean } }>('/api/local/downloads', async (req, reply) => {
+  app.post<{ Body: { providerId?: string; variantId?: string; downloadId?: string; files?: string[]; dryRun?: boolean } }>('/api/local/downloads', async (req, reply) => {
     const b = req.body ?? {}; if (!b.providerId && !b.variantId && !b.downloadId) return reply.code(400).send(bad('downloadId', 'Give downloadId (one model’s files), providerId (a local model) or variantId (a lighter version).'));
-    const spec = { providerId: b.providerId ?? null, variantId: b.variantId ?? null, downloadId: b.downloadId ?? null };
+    const spec = { providerId: b.providerId ?? null, variantId: b.variantId ?? null, downloadId: b.downloadId ?? null,
+      ...(/^workflow:/.test(String(b.downloadId ?? '')) && Array.isArray(b.files) && b.files.length ? { files: b.files.filter((f) => typeof f === 'string').slice(0, 50) } : {}) }; // a workflow you added: one file at a time too
     if (b.dryRun === true || String(b.dryRun) === 'true' || String(b.dryRun) === '1') {
       try { const c = downloadCheck(spec);
         return { dryRun: true, label: c.plan.label, providerId: c.plan.providerId, variantId: spec.variantId, downloadId: c.plan.downloadId, bytesTotal: c.plan.files.reduce((a, f) => a + (f.bytesTotal ?? 0), 0), missingBytes: c.need, missingBytesSource: c.missingBytesSource,

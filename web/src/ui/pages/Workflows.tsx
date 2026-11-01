@@ -21,6 +21,7 @@ import { WF_GOALS, WF_START_HERE, goalOf, goalById, isGoal, type WfGoal } from '
 import { fromEntry, fromChain, chainId, wfId, buildWorkflowIndex, type LibWorkflow } from '../../../../server/src/shared/libraryWorkflows';
 import { pluginWfEntries } from '../../../../server/src/shared/pluginPlacement';
 import { PluginBadge, PluginMeta } from '../../shared/PluginBadge';
+import { openAddWorkflow } from '../../shared/AddWorkflow';
 import '../explore.css';
 import './workflowFinder.css';
 /**
@@ -170,6 +171,12 @@ function Badge({ r }: { r: Row }) {
 export const shortModel = (n: string) => n.replace(/\s*·.*$/, '').replace(/\s*\((hosted|local)\)$/i, '').replace(/^ByteDance\s+/, '');
 /** A workflow card, Explore's tile with the caption on a solid band under the picture (xp-tile is-band): name, line, model (no place or price,
  *  those depend on the setup). The whole card opens the sheet. */
+/** The last card of Your workflows: opens Add a workflow (shared/AddWorkflow.tsx). */
+function BringYourOwn() {
+  return <button type="button" className="wn-bring" onClick={() => openAddWorkflow()} data-testid="wn-bring-own">
+    <span className="wn-bring-ic" aria-hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg></span>
+    <b>Bring your own</b><small>Add a ComfyUI workflow. It shows up in its tab, next to the built-in ones.</small></button>;
+}
 function Card({ r, onOpen, s, i = 0 }: { r: Row; onOpen: () => void; s: Saved; i?: number }) {
   /* a click anywhere opens it (the before / after wipe is hover-only on a card); only the Save button keeps its own click */
   const open = (ev: React.MouseEvent) => { if ((ev.target as HTMLElement).closest('a,button')) return; onOpen(); };
@@ -265,7 +272,7 @@ function Sheet({ r, rows, chains, s, onClose, onOpen, mock }: { r: Row; rows: Ro
       <p className="wv-kicker">{r.e.goal ? goalById(r.e.goal)?.label ?? '' : goalLabel(r.e.id)}</p>
       <h2 className="disp wv-ptitle">{r.e.name}{r.e.plugin && <PluginBadge b={r.e.plugin} />}</h2>
       <p className="wn-pline">{r.e.line}</p>
-      {r.e.plugin && <p className="wn-pline" data-testid="wn-plugin-meta"><PluginMeta b={r.e.plugin} /> · <Link to="/plugins">About plugins</Link></p>}
+      {r.e.plugin && <p className="wn-pline" data-testid="wn-plugin-meta"><PluginMeta b={r.e.plugin} /> · <Link to="/plugins">Your workflows</Link></p>}
       {r.e.tabName && <p className="wv-muted wn-tabname" data-testid="wn-tabname">In the {tab} menu: {r.e.tabName}</p>}
       <div className="wv-pills"><span className="wv-pill">Needs: {r.e.needs}</span><RunLine p={r.run} testId="wn-sheet-run" /></div>
       {mock && <p className="wv-muted wn-mocknote">Sample mode: you get a sample and pay nothing. Prices show what a real run costs.</p>}
@@ -281,7 +288,7 @@ function Sheet({ r, rows, chains, s, onClose, onOpen, mock }: { r: Row; rows: Ro
         <span className="wv-wf-n">{r.source.url ? <a href={r.source.url} target="_blank" rel="noreferrer">{r.source.name}<span aria-hidden> ↗</span></a> : r.source.name}</span>
         {(r.source.author || r.source.licence) && <span className="wv-muted">{[r.source.author, r.source.licence].filter(Boolean).join(' · ')}</span>}
         {r.source.file && <a className="wv-dl" href={`/api/workflows/${encodeURIComponent(r.source.file)}`} download={r.source.file}>Download {r.source.file}</a>}</div>
-        : <p className="wv-muted">{r.e.plugin ? `Added as a folder: its ComfyUI workflow ships with it${r.e.plugin.author ? `, made by ${r.e.plugin.author}` : ''}.` : !r.models.length ? 'It runs inside the app, on your computer.' : `No source credit yet for ${r.models[0].name}.`}</p>}
+        : <p className="wv-muted">{r.e.plugin ? `${r.e.plugin.user ? 'You added this ComfyUI workflow' : 'Added as a folder: its ComfyUI workflow ships with it'}${r.e.plugin.author ? `, made by ${r.e.plugin.author}` : ''}. It runs on your own ComfyUI.` : !r.models.length ? 'It runs inside the app, on your computer.' : `No source credit yet for ${r.models[0].name}.`}</p>}
       {partOf.length > 0 && <><h3 className="wv-h">Part of</h3><div className="wn-partof">{partOf.map((c) => { const nx = c.steps.findIndex((x) => x.entry === r.e.id) + 1; const n = c.steps[nx] ? rows.find((x) => x.e.id === c.steps[nx].entry) : null;
         return <span key={c.id}><b>{c.name}</b>{n ? <> · next: <button type="button" className="link-btn" onClick={() => onOpen(n)}>{n.e.name}</button></> : ' · last step'}</span>; })}</div></>}
       <div className="wv-pacts">
@@ -407,9 +414,9 @@ export default function Workflows({ tools }: { tools: ToolInfo[] }) {
           {f.cat === 'all' && goals.filter((x) => x.items.length > 0).map(({ g, items }) => <section key={g.id} className="wn-sec" aria-labelledby={`wn-h-${g.id}`} data-testid={`wn-sec-${g.id}`}>
             <Head id={`wn-h-${g.id}`} title={g.label} line={g.line} count={items.length} />
             <div className="wn-grid">{tiles(items)}</div></section>)}
-          {f.cat === 'all' && plugged.length > 0 && <section className="wn-sec" aria-labelledby="wn-h-plugins" data-testid="wn-sec-plugins">
-            <Head id="wn-h-plugins" title="Your plugins" line="Workflows added as a folder. They run on your own ComfyUI." count={plugged.length} />
-            <div className="wn-grid">{tiles(plugged)}</div></section>}
+          {f.cat === 'all' && (plugged.length > 0 || !f.q) && <section className="wn-sec" aria-labelledby="wn-h-plugins" data-testid="wn-sec-plugins">
+            <Head id="wn-h-plugins" title="Your workflows" line="ComfyUI workflows you added, and add-ons. They run on your own ComfyUI." count={plugged.length} />
+            <div className="wn-grid">{tiles(plugged)}<BringYourOwn /></div></section>}
           {f.cat !== 'all' && f.cat !== 'ideas' && inCat.length > 0 && <section className="wn-sec" aria-labelledby={`wn-h-${f.cat}`} data-testid={`wn-sec-${f.cat}`}>
             <Head id={`wn-h-${f.cat}`}
               title={f.cat === 'chains' ? 'Step by step' : f.cat === 'saved' ? 'Saved' : catInfo?.label ?? f.cat}

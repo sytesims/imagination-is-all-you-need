@@ -12,6 +12,7 @@ import type { Job } from '../jobs.js';
 import { getTool } from '../tools/registry.js';
 import { modelsDir, requirementsFor, setMissingWeights, missingOverrideFor } from './requirements.js';
 import { startDownload, waitDownload, getDownload, DlError, type Download } from './downloads.js';
+import { workflowDownloadRows } from '../workflowModels.js';
 import { hwKeyOf } from '../hardware.js';
 import { rateOf } from '../etaLearn.js';
 
@@ -22,6 +23,8 @@ const mark = (job: Job, stage: string, edge: 'start' | 'end', bytes?: number) =>
 /** Missing weight files of this local job (pack auto-downloads excluded); null = cloud route or unknown. */
 export function jobMissing(job: Job) {
   if (!String(job.route ?? '').startsWith('local:')) return null; const tool = getTool(job.toolId); if (!tool) return null;
+  if (tool.plugin?.user) { const files = workflowDownloadRows(tool).map((f) => ({ ...f, url: f.url ?? '', autoDownloaded: false })); // a workflow you added: its graph's own files (workflowModels.ts)
+    return { req: { downloadBytes: files.reduce((a, f) => a + (f.bytes ?? 0), 0), variants: [] } as unknown as NonNullable<ReturnType<typeof requirementsFor>>, files, downloadId: `workflow:${tool.id}` }; }
   const req = requirementsFor(tool, String(job.route).slice(6), job.input ?? {}); if (!req) return null;
   return { req, files: (req.missingFiles ?? []).filter((f) => !f.autoDownloaded) };
 }
@@ -47,7 +50,7 @@ export async function prePhase(job: Job, mock: boolean, renderSec = 0): Promise<
     const vfile = variantId ? m!.req.variants.find((v) => v.id === variantId)?.file : null;
     try {
       if (vfile && files.some((f) => f.file === vfile)) runs.push(startDownload({ variantId, jobId: job.id }));
-      const rest = files.filter((f) => f.file !== vfile).map((f) => f.file); if (rest.length) runs.push(startDownload({ providerId, files: rest, jobId: job.id }));
+      const rest = files.filter((f) => f.file !== vfile).map((f) => f.file); if (rest.length) runs.push(m && 'downloadId' in m ? startDownload({ downloadId: m.downloadId, jobId: job.id }) : startDownload({ providerId, files: rest, jobId: job.id }));
     } catch (e) { throw new Error(e instanceof DlError ? `${e.message} Credits went back to your balance.` : String(e)); }
     mark(job, 'downloading_model', 'start'); (job as any).downloadIds = runs.map((r) => r.id);
     const tick = setInterval(() => { const ds = runs.map((r) => getDownload(r.id) ?? r); const bt = ds.reduce((a, d) => a + d.bytesTotal, 0); const bd = ds.reduce((a, d) => a + d.bytesDone, 0);

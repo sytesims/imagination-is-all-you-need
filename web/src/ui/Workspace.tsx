@@ -17,6 +17,7 @@ import { categoryOf, previewOf } from './registryFields';
 import ModelButton from './b1/ModelButton';
 import { SubTabs, Slideshow, ViewToggle, HistEmpty, HistSize, HIST_SIZES, HistFilterSelect, histMatch, type HistFilter } from './b1/CanvasBits';
 import AppLibrary, { AppHeroMedia, isGalleryApp } from './AppLibrary';
+import PluginResults, { PluginTile } from './PluginResults';
 /** B21 (Tier 2): tools whose Library is the app library (own hero + own examples, no shared stills). */
 export const ownLib = (t: ToolInfo) => isGalleryApp(t) || t.id === 'photo-fx';
 /** Per-tool extra content above the examples (locked style card, effects gallery, …), registered by the tool page. */
@@ -36,8 +37,8 @@ export default function Workspace({ tool, modes, panel, stage, hero }: { tool: T
       <aside className="ws-panel">
         {/* One Video page (2026-10-23): a video workflow's panel starts with the workflow chip instead of the Create / Edit / Motion Control tabs */}
         {mediaKey(tool) === 'video' || location.pathname === VIDEO_PAGE ? <VideoWorkflowChip /> : mediaKey(tool) === 'image' ? <nav className="ws-texttabs" aria-label="Sections">{SECTIONS.image.map(([to, l]) => { const on = sectionOn(to, SECTIONS.image); return <Link key={to} to={to} className={`wst ${on ? 'on' : ''}`} aria-current={on ? 'page' : undefined}>{l}</Link>; })}</nav> : null /* One Audio page (2026-10-23): no Create / Voice / Soundtrack tabs; the workflows are in the Audio bar */}
-        <div className="ws-tool">
-          {ownLib(tool) ? <AppHeroMedia tool={tool} ratio="16/7" className="ws-tool-media" /> : <MediaArt seed={tool.id} ex={exampleFor(tool.id, previewOf(tool))} ratio="16/7" />}
+        <div className={`ws-tool${tool.plugin ? ' ws-tool-plugin' : ''}`}>
+          {tool.plugin ? <PluginTile tool={tool} /> /* a workflow from a folder: its icon, no stock clip */ : ownLib(tool) ? <AppHeroMedia tool={tool} ratio="16/7" className="ws-tool-media" /> : <MediaArt seed={tool.id} ex={exampleFor(tool.id, previewOf(tool))} ratio="16/7" />}
           <div className="ws-tool-copy"><span className="eyebrow">{categoryOf(tool)}</span><p className="ws-tool-name">{tool.name}</p></div>
         </div>
         {tool.providers.length < 2 && <ModelButton tool={tool} />}{/* tools with 2+ providers pick the model in GenerateBar's card row, so no duplicate MODEL row */}
@@ -47,7 +48,8 @@ export default function Workspace({ tool, modes, panel, stage, hero }: { tool: T
       </aside>
       <section className="ws-canvas">
         {stage}
-        <CanvasTabs tool={tool} hero={hero} mv={mv} setMv={v => { setMv(v); scrollTo({ top: 0 }); }} />
+        {/* a workflow from a folder (one you added, or an add-on): only your own results, like the built-in workflows' feeds */}
+        {tool.plugin ? <PluginResults tool={tool} mv={mv} setMv={v => { setMv(v); scrollTo({ top: 0 }); }} /> : <CanvasTabs tool={tool} hero={hero} mv={mv} setMv={v => { setMv(v); scrollTo({ top: 0 }); }} />}
       </section>
     </div>
   );
@@ -59,7 +61,8 @@ const SECTIONS: Record<'image', [string, string][]> = {
 /** A section link with a query (?mode=edit, ?workflow=upscale) is current when its params match; a plain path when no sibling section with a query matches. */
 const qMatch = (to: string) => { const [p, q] = to.split('?'); if (location.pathname !== p) return false; const cur = new URLSearchParams(location.search); return !q || [...new URLSearchParams(q)].every(([k, v]) => cur.get(k) === v); };
 const sectionOn = (to: string, all: [string, string][]) => qMatch(to) && (to.includes('?') || !all.some(([o]) => o !== to && o.includes('?') && qMatch(o)));
-const mediaKey = (t: ToolInfo): 'video' | 'image' | 'audio' => { const k = (t as any).app?.kind; if (k === 'image' || /image|cutout|product|character|inpaint|relight/.test(t.id)) return 'image'; if (k === 'audio' || k === 'soundtrack' || /audio|voice|music|soundtrack/.test(t.id)) return 'audio'; return 'video'; };
+const mediaKey = (t: ToolInfo): 'video' | 'image' | 'audio' => { const k = (t as any).app?.kind;
+  if (t.plugin?.tab === 'audio') return 'audio'; if (t.plugin && (t.plugin.tab === 'image' || t.plugin.output === 'image')) return 'image'; /* a workflow from a folder: its own tab and result */ if (k === 'image' || /image|cutout|product|character|inpaint|relight/.test(t.id)) return 'image'; if (k === 'audio' || k === 'soundtrack' || /audio|voice|music|soundtrack/.test(t.id)) return 'audio'; return 'video'; };
 /** Library hero uses only bright, readable clips. */
 const BRIGHT = ['burrow', 'dunes', 'giant', 'soar'];
 const heroExample = (id: string) => EXAMPLES.find(e => e.id === BRIGHT[[...id].reduce((a, c) => a + c.charCodeAt(0), 0) % BRIGHT.length])!;
