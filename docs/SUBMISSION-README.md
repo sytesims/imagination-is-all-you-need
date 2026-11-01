@@ -18,6 +18,7 @@ The main [README](../README.md) covers what you can make, the Canvas, where runs
 - **Local ComfyUI** over its HTTP and WebSocket API.
 - **Comfy Cloud API v2 workflow jobs:** our own graphs from [`workflows/cloud/`](../workflows/cloud/README.md), one Comfy key.
 - **Comfy Router** for hosted models, price estimate first, with the cost Comfy reports recorded.
+- **Official templates:** 30 official Comfy templates bundled, over 120 credited with source and licence.
 - **Partner nodes** inside Cloud jobs (LTX-2.5 Pro / Fast, Tripo 3.1, Topaz).
 - **Deployments:** Comfy deployments are supported: connect your own from Settings.
 

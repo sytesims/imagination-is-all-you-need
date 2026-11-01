@@ -65,7 +65,7 @@ Docker, other ports and advanced setups: [Install and run](docs/INSTALL.md) · [
 
 ## What you can make
 
-- **Shoot a product in every material, then turn it into ads.** [Material Swap] shows one product in a new material from a swatch; [Ad Pack] makes a set of finished ads and places your real logo from a brand kit; [Product Shot] and [Phone Photo] for clean studio shots or phone-style photos.
+- **Shoot a product in every material, then turn it into ads.** [Material Swap]: “Give an object the material from another photo”; [Ad Pack] makes a set of finished ads and places your real logo from a brand kit; [Product Shot]: “Studio or lifestyle shots of a product”; [Phone Photo]: “An everyday phone photo of a made-up person”.
 - **Split a picture into layers and keep editing.** [Image to layers] gives you clean, transparent layers; **Download PSD** saves them as one layered Photoshop file, named and in place.
 - **Stage a shot, then film it.** [Direct a Shot] lets you place the camera and actors in simple 3D in your browser, then films it for real with LTX-2.5. Add [Camera Moves] (82 moves), [Lip Sync], [Extend] and [Transitions], then join clips with [Stitch].
 - **Write a song, voice a script, translate a video.** [Music] (YuE2, free on your computer), [Voiceover], [Sound effects], and [Translate], which keeps the background music.
@@ -109,7 +109,7 @@ Labels: **Tested** = used for real generation. **Installs in CI** = the one-line
 
 | Platform | Status |
 |---|---|
-| macOS, Apple Silicon | **Tested** (daily, local and cloud) · **Installs in CI** |
+| macOS, Apple Silicon | **Tested** by the maintainer (local and cloud runs) · **Installs in CI** |
 | Windows x64 | **Installs in CI** |
 | Linux x64 (incl. a fresh Ubuntu 24.04 with no Node) | **Installs in CI** |
 | Linux ARM64 | **Installs in CI** |
@@ -121,7 +121,7 @@ Local generation uses your own ComfyUI, its model files and nodes. A model that 
 ## Made with Comfy
 
 - **Three routes, one key:** your own ComfyUI, Comfy Cloud and Comfy Router, with a single Comfy key for both cloud routes. Setup: [Comfy Cloud](docs/COMFY-CLOUD-SETUP.md).
-- **Official templates first:** about 30 official Comfy templates ship in [`workflows/templates/`](workflows/templates), and about 100 are credited with their source and licence. Community workflows come next, then our own.
+- **Official templates first:** 30 official Comfy templates bundled (in [`workflows/templates/`](workflows/templates)), over 120 credited with their source and licence. Community workflows come next, then our own.
 - **Partner models** inside Comfy: LTX-2.5 Pro and Fast, Tripo 3.1, Topaz and more in Cloud graphs; GPT Image, Nano Banana, Seedance, Kling, Veo and MiniMax H3 through Comfy Router.
 - **Real runs, not mock-ups:** the results on the app's Explore page come from real runs on your computer, Comfy Cloud and Comfy Router, each with its model and price.
 
