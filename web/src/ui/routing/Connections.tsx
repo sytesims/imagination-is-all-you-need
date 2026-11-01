@@ -31,6 +31,7 @@ import { runChoice } from '../../shared/runChoices';
 import { planRateText, type ComfyPlanId } from '../../../../server/src/shared/priceText';
 import { countLocalModels, localCountsText, machineLabel, type LocalCounts } from '../../../../server/src/shared/thisComputer';
 import { useHardware } from '../../shared/hardware';
+import { SecretInput } from '../../shared/SecretInput';
 
 type Prov = { id: string; name: string; envKey?: string; configured: boolean; mockedKey?: boolean; keysUrl?: string; docsUrl?: string; keySetAt?: string | null; keySource?: 'saved' | 'env' | 'mock' | null; keyEnvVar?: string | null; keyFormat?: 'ok' | 'unexpected' | 'unchecked' | null; disabledReason?: string | null };
 type ProvList = { providers: Prov[]; canStoreKeys: boolean; storeKeysNote?: string };
@@ -332,12 +333,12 @@ function KeyCard({ p, info, acct, canStore, unlock, onDone, note, hostedOff, fac
     {!off && !canStore && <p className="conn-why" id={whyId} data-testid={`conn-why-${id}`}>{real
       ? <>{p.envKey ? <>Set as <code>{p.envKey}</code> in <code>.env.local</code>. To change it, edit that line and restart, or </> : 'Set in the server’s settings file. To change it, '}<a href="#conn-keys-off" className="conn-link" onClick={jumpTo('conn-keys-off')}>turn on adding keys here</a>.</>
       : <>Adding keys here is off on this server.{p.envKey ? <> Use <code>{p.envKey}</code> in <code>.env.local</code>, or </> : ' '}<a href="#conn-keys-off" className="conn-link" onClick={jumpTo('conn-keys-off')}>{p.envKey ? 'see how to turn it on' : 'See how to turn it on'}</a>.</>}</p>}
-    {adding && canStore && <form className="conn-key" onSubmit={e => { e.preventDefault(); void save(); }}>
+    {adding && canStore && <div className="conn-key">
       <label className="sr-only" htmlFor={`conn-key-${id}`}>{token ? `${name} read token` : `${name} API key`}</label>
-      <input id={`conn-key-${id}`} className="conn-input" type="password" autoComplete="off" spellCheck={false} placeholder={token ? 'Paste a Hugging Face read token (hf_…)' : `Paste your ${name} API key`} value={key} onChange={e => setKey(e.target.value)} autoFocus data-testid={`conn-key-input-${id}`} />
-      <button type="submit" className="btn btn-sm btn-primary" disabled={!key.trim() || !!busy} aria-busy={busy === 'save'} data-testid={`conn-save-${id}`}>{busy === 'save' ? 'Saving…' : 'Save key'}</button>
+      <SecretInput id={`conn-key-${id}`} onEnter={() => { if (key.trim() && !busy) void save(); }} placeholder={token ? 'Paste a Hugging Face read token (hf_…)' : `Paste your ${name} API key`} value={key} onChange={e => setKey(e.target.value)} autoFocus data-testid={`conn-key-input-${id}`} />
+      <button type="button" className="btn btn-sm btn-primary" onClick={() => void save()} disabled={!key.trim() || !!busy} aria-busy={busy === 'save'} data-testid={`conn-save-${id}`}>{busy === 'save' ? 'Saving…' : 'Save key'}</button>
       <button type="button" className="btn btn-sm btn-ghost" onClick={() => { setAdding(false); setKey(''); }}>Cancel</button>
-      <small className="helper conn-key-help">Stored on this computer in the server’s settings file. It’s never shown again here.</small></form>}
+      <small className="helper conn-key-help">Stored on this computer in the server’s settings file. It’s never shown again here.</small></div>}
     <div className="conn-facts">
       {real && <span data-testid={`conn-key-${id}`}>Key <b>•••• set</b>{p.keySetAt ? ` · added ${dateOf(p.keySetAt)}` : p.keySource === 'env' ? (p.keyEnvVar ? ` · set as ${p.keyEnvVar} in the server’s environment` : ' · in the server’s settings file') : ''}</span>}
       {factsLine ? <span data-testid={`conn-facts-${id}`}>{factsLine}</span> : <Unlocks u={unlock} where={name} empty="Saved keys work, but nothing runs on it on this server yet" />}
