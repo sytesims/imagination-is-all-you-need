@@ -16,7 +16,17 @@ const { imageWorkflowsPayload } = await import('../src/shared/workflows.ts');
 const OLD = 'Character reference sheet of a knight: one image split into three equal vertical panels side by side, separated by thin dark divider lines. Left panel: full-body front view from head to toe with the shoes fully in frame, standing straight, arms relaxed at the sides, facing the camera. Centre panel: full-body back view from head to toe in the same pose, facing away from the camera. Right panel: tight close-up of the face and shoulders, looking straight into the lens. Every panel has the same plain neutral grey seamless studio backdrop and soft, even, almost shadowless light, neutral 5600K white balance, natural skin texture with visible detail, catchlights in the eyes. Keep exactly one identical person in all three views: the same face, hair, skin tone, body proportions and the complete outfit and accessories; feet visible in both full-body panels; no extra people, no text, no props, no cropping of the body; sharp, realistic photo';
 assert.equal(A.characterSheetPrompt('a knight', false), OLD, 'Classic is the Oct 22 sheet word for word');
 assert.equal(A.characterSheetPrompt('a knight', false, 'classic'), OLD);
-assert.ok(A.characterSheetPrompt('the person in the photo', true).includes('accessories from the photo; feet visible in both full-body panels'));
+assert.ok(A.characterSheetPrompt('', true).includes('accessories from image 1; feet visible in both full-body panels'));
+// 2026-11-01: the photo is "image 1" (each model's own token), your words say which person; trailing punctuation tidied; a named style keeps its look
+assert.ok(A.characterSheetPrompt('', true).startsWith('Character reference sheet of the person in image 1: one image'));
+assert.ok(A.characterSheetPrompt('the man on the left.', true).startsWith('Character reference sheet of the person in image 1 (the man on the left): one image'));
+assert.ok(A.characterSheetPrompt('A courier in a raincoat. No watermark.', false).startsWith('Character reference sheet of A courier in a raincoat. No watermark: one image'), 'no ".:" join');
+assert.equal(A.characterSheetWords('Character sheet of the pale figure (not the woman).'), 'the pale figure (not the woman)');
+assert.equal(A.characterSheetWords('character reference sheet'), ''); assert.equal(A.characterSheetWords('  a knight ;'), 'a knight');
+for (const w of ['an anime courier', 'a 3D cartoon fox', 'watercolour painting of a sailor', 'pixel art knight', 'a claymation baker']) { const p = A.characterSheetPrompt(w, false);
+  assert.ok(p.endsWith('in the style described above, the same style in every panel') && !/realistic photo|5600K|skin texture/.test(p), w); }
+for (const w of ['a knight', 'a woman in a red coat']) assert.ok(A.characterSheetPrompt(w, false).endsWith('sharp, realistic photo'), w);
+assert.ok(A.characterSheetPrompt('an anime courier', false, 'classic', 800).endsWith('in the style described above, the same style in every panel'), 'short sheet too');
 assert.deepEqual(CHARACTER_LAYOUTS.map((l) => [l.value, l.aspect]), [['classic', '4:3'], ['turnaround', '16:9'], ['turnaround-face', '21:9'], ['expressions', '3:2'], ['full-sheet', '16:9']]);
 for (const l of CHARACTER_LAYOUTS) { const p = A.characterSheetPrompt('a knight', false, l.value);
   assert.ok(p.startsWith('Character reference sheet of a knight: ') && p.includes('grey seamless studio backdrop') && p.endsWith('sharp, realistic photo'), l.value);
@@ -57,9 +67,9 @@ ok('layout aspect on run and quote; unknown layout → 400');
 ok('Wan 2.5 Image: short sheet fits 800 characters, route offered; too long still refused');
 
 // ---- the doubling: words only, whatever came in
-const twice = A.characterSheetPrompt(`the person in the photo, ${A.characterSheetPrompt('the person in the photo, character sheet', true)}`, true);
+const twice = A.characterSheetPrompt(A.characterSheetPrompt('character sheet', true), true);
 assert.equal(A.appTypedPrompt('character-sheet', twice), 'character sheet', 'a prompt composed twice peels back to the words');
-assert.equal(A.appTypedPrompt('character-sheet', A.characterSheetPrompt('the person in the photo', true)), '', 'photo, no words');
+assert.equal(A.appTypedPrompt('character-sheet', A.characterSheetPrompt('', true)), '', 'photo, no words');
 assert.equal(A.appTypedPrompt('character-sheet', A.characterSheetPrompt('a knight', false, 'expressions')), 'a knight', 'another layout');
 assert.equal(A.appTypedPrompt('character-sheet', 'a knight\nwith a red cape'), 'a knight\nwith a red cape', 'plain words untouched (line breaks kept)');
 const long = 'a tall knight '.repeat(60).trim(); assert.equal(A.appTypedPrompt('character-sheet', A.characterSheetPrompt(long, false, 'full-sheet')), long, 'very long subject');
@@ -70,7 +80,9 @@ const ps: any = getTool('app-product-shot'); { const r = await ps.parseInput({ r
 for (const id of ['relight', 'face-swap', 'person-swap', 'product-shot', 'character-sheet']) { const g = (getTool(`app-${id}`) as any).app.gallery; assert.ok(g.promptFrames.length, `${id} has frames`); }
 assert.equal(JSON.parse(JSON.stringify((getTool('app-character-sheet') as any).app.gallery)).lockedFor, undefined, 'lockedFor never on the wire');
 // older jobs: appPrompt that held a composed prompt; result cards show words only
-const oldJob = { prompt: twice, appPrompt: A.characterSheetPrompt('the person in the photo, character sheet', true), appId: 'character-sheet' };
+// (an Oct 25 job, in that day's photo wording: "the person in the photo, …" and "from the photo")
+const oldSheet = (subj: string) => A.characterSheetPrompt('', true).replace('the person in image 1', subj).replaceAll('from image 1', 'from the photo');
+const oldApp = oldSheet('the person in the photo, character sheet'); const oldJob = { prompt: oldSheet(`the person in the photo, ${oldApp}`), appPrompt: oldApp, appId: 'character-sheet' };
 assert.equal(typedPromptOf(oldJob), 'character sheet'); assert.equal(typedPromptOf({ prompt: 'a cat' }), 'a cat'); assert.equal(typedPromptOf({ prompt: OLD, appPrompt: 'a knight' }), 'a knight');
 assert.equal(typedPromptOf({ prompt: OLD, appPrompt: '' }), ''); assert.ok(composedDiffers({ prompt: OLD, appPrompt: 'a knight' })); assert.ok(!composedDiffers({ prompt: 'a cat' }));
 assert.equal(stripEcho('short', 'short'), 'short'); assert.equal(typedFromFrames('hello', []), 'hello');

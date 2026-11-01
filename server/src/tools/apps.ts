@@ -682,26 +682,39 @@ export function materialSwapPrompt(v: Record<string, string>, userPrompt: string
   return join(`Give the ${obj} in image 1 the material and texture from image 2 instead of ${old}.`, touch, 'Keep everything else in image 1 unchanged.');
 }
 /** Character Sheet (rewritten Oct 22; layouts 2026-10-25, our own wording): the subject, the layout's panels (appRows CHARACTER_LAYOUTS), one grey
- *  studio backdrop and light for every panel, then a "keep" block that fits the layout (feet and no body cropping only where there are full-body panels). */
-const CHARACTER_STUDIO = 'Every panel has the same plain neutral grey seamless studio backdrop and soft, even, almost shadowless light, neutral 5600K white balance, natural skin texture with visible detail, catchlights in the eyes';
+ *  studio backdrop and light for every panel, then a "keep" block that fits the layout (feet and no body cropping only where there are full-body panels).
+ *  2026-11-01: with a photo the subject is "the person in image 1 (your words)" (each model reads its own token, and the words pick the person in a
+ *  group photo); the photo-realism words only when your words name no style (anime, illustration, 3D… keep their style in every panel). */
+const CHARACTER_STUDIO = 'Every panel has the same plain neutral grey seamless studio backdrop and soft, even, almost shadowless light';
+const CHARACTER_PHOTO_LOOK = 'neutral 5600K white balance, natural skin texture with visible detail, catchlights in the eyes';
+const CHARACTER_REAL_TAIL = 'sharp, realistic photo'; const CHARACTER_STYLED_TAIL = 'in the style described above, the same style in every panel';
+/** Words that name a look other than a photo: the sheet keeps it instead of asking for a realistic photo. */
+export const CHARACTER_STYLE_WORDS = /\b(anime|manga|chibi|cartoons?|cartoony|toon|comics?|comic[- ]book|illustrat\w*|drawing|drawn|sketch\w*|line[- ]art|3d|cgi|rendered|render|low[- ]poly|voxel|clay|claymation|stop[- ]motion|paintings?|painterly|watercolou?rs?|oil[- ]paint\w*|gouache|pixel[- ]?art|vector|cel[- ]shaded|stylis\w*|styliz\w*|figurine|plush|lego)\b/i;
+export const characterStyled = (words: string) => CHARACTER_STYLE_WORDS.test(String(words ?? ''));
+/** Your words as the sheet's subject: one line, no trailing . ; , : (the sheet's own colon follows), no leading "character (reference) sheet of". */
+export const characterSheetWords = (words: string) => String(words ?? '').replace(/\s+/g, ' ').trim().replace(/^(?:an?\s+)?character\s+(?:reference\s+)?sheet(?:\s+of\b)?[\s,:;.-]*/i, '').replace(/[\s.;,:]+$/, '');
+const characterSubject = (words: string, fromPhoto: boolean) => { const w = String(words ?? '').trim().replace(/[\s.;,:]+$/, '');
+  return fromPhoto ? `the person in image 1${w ? ` (${w})` : ''}` : w || 'one character'; };
 export const characterLayoutOf = (v?: string) => CHARACTER_LAYOUTS.find((l) => l.value === v) ?? CHARACTER_LAYOUTS[0];
-export function characterKeep(l: CharacterLayout, fromPhoto: boolean): string {
+export function characterKeep(l: CharacterLayout, fromPhoto: boolean, styled = false): string {
   const k = l.keep; const what = k.fullBody ? ', body proportions and the complete outfit and accessories' : ' and the clothing and accessories in view';
-  return [`exactly one identical person in ${k.views}: the same face, hair, skin tone${what}${fromPhoto ? ' from the photo' : ''}`, k.extra, k.fullBody ?? '',
-    `no extra people, no text, no props${k.fullBody ? ', no cropping of the body' : ''}`, 'sharp, realistic photo'].filter(Boolean).join('; ');
+  return [`exactly one identical person in ${k.views}: the same face, hair, skin tone${what}${fromPhoto ? ' from image 1' : ''}`, k.extra, k.fullBody ?? '',
+    `no extra people, no text, no props${k.fullBody ? ', no cropping of the body' : ''}`, styled ? CHARACTER_STYLED_TAIL : CHARACTER_REAL_TAIL].filter(Boolean).join('; ');
 }
 export const CHARACTER_KEEP = characterKeep(CHARACTER_LAYOUTS[0], false);
 /** The short sheet (2026-10-26) for models whose prompt cap the full one overflows (Wan 2.5 Image: 800 characters, the full Classic sheet is ~960):
  *  the same panels, one plain backdrop, the same person and outfit, a neutral pose. */
-export function characterSheetShort(subject: string, fromPhoto: boolean, l: CharacterLayout): string {
-  return `Character reference sheet of ${subject.trim()}: ${l.short}. Plain neutral grey studio backdrop and soft even light in every panel. `
-    + `Keep exactly one identical person: the same face, hair and outfit${fromPhoto ? ' as in the photo' : ''} in every panel${l.keep.fullBody ? ', neutral relaxed standing pose, feet in frame' : ', only the expression changes'}; no extra people, no text; sharp, realistic photo`;
+export function characterSheetShort(words: string, fromPhoto: boolean, l: CharacterLayout): string {
+  const styled = characterStyled(words);
+  return `Character reference sheet of ${characterSubject(words, fromPhoto)}: ${l.short}. Plain neutral grey studio backdrop and soft even light in every panel. `
+    + `Keep exactly one identical person: the same face, hair and outfit${fromPhoto ? ' as in image 1' : ''} in every panel${l.keep.fullBody ? ', neutral relaxed standing pose, feet in frame' : ', only the expression changes'}; no extra people, no text; ${styled ? CHARACTER_STYLED_TAIL : CHARACTER_REAL_TAIL}`;
 }
-/** The sheet prompt. `subject` = "the person in the photo[, extra text]" (photo) or the user's character description (no photo); `layout` = a CHARACTER_LAYOUTS value (Classic by default).
- *  `maxChars` = the model's prompt cap: over it, the short sheet (still too long = the route refuses with the usual message). */
-export const characterSheetPrompt = (subject: string, fromPhoto: boolean, layout?: string, maxChars?: number) => { const L = characterLayoutOf(layout);
-  const full = `Character reference sheet of ${subject.trim()}: ${L.prompt}. ${CHARACTER_STUDIO}. Keep ${characterKeep(L, fromPhoto)}`;
-  return maxChars && full.length > maxChars ? characterSheetShort(subject, fromPhoto, L) : full; };
+/** The sheet prompt. `words` = your words (with a photo they say which person, or add detail; without one they describe the character); `layout` =
+ *  a CHARACTER_LAYOUTS value (Classic by default). `maxChars` = the model's prompt cap: over it, the short sheet (still too long = the route refuses
+ *  with the usual message). */
+export const characterSheetPrompt = (words: string, fromPhoto: boolean, layout?: string, maxChars?: number) => { const L = characterLayoutOf(layout); const styled = characterStyled(words);
+  const full = `Character reference sheet of ${characterSubject(words, fromPhoto)}: ${L.prompt}. ${CHARACTER_STUDIO}${styled ? '' : `, ${CHARACTER_PHOTO_LOOK}`}. Keep ${characterKeep(L, fromPhoto, styled)}`;
+  return maxChars && full.length > maxChars ? characterSheetShort(words, fromPhoto, L) : full; };
 /** A provider id's (or model key's) prompt cap, for compose (the grammar's limit; null = none known). */
 export const providerPromptCap = (provider?: string): number | undefined => { if (!provider) return undefined;
   return (promptGrammarOf(provider) ?? promptGrammarOf(gridModelOf(provider)))?.limits?.maxChars ?? undefined; };
@@ -736,7 +749,7 @@ export const APP_GALLERY: GalleryApp[] = [
     fileOrPrompt: { file: 'image', message: 'Add a photo of the person or describe the character.' },
     fields: [{ name: 'layout', label: 'Layout', kind: 'select', control: 'tiles', options: CHARACTER_LAYOUTS, default: CHARACTER_LAYOUT_DEFAULT }],
     lockedFor: (v, c) => { const a = sheetAspect(characterLayoutOf(v.layout).aspect, c.provider, c.mode); return a ? { aspect: a } : {} as Record<string, string>; },
-    compose: (v, c) => characterSheetPrompt(c.has('image') ? `the person in the photo${c.prompt.trim() ? `, ${c.prompt.trim()}` : ''}` : c.prompt, c.has('image'), v.layout, c.maxChars) },
+    compose: (v, c) => characterSheetPrompt(characterSheetWords(c.prompt), c.has('image'), v.layout, c.maxChars) },
   // T23: a product photo switches to Edit image (keeps the product); no photo = text-to-image. Scene tiles are prompt modifiers.
   { id: 'product-shot', name: 'Product Shot', category: 'Image', base: 'create-image', poster: null, description: 'Turn a product photo into a clean studio or lifestyle shot; the product stays as it is.',
     providers: GENERATE_MODELS, locked: { types: '["generate"]', style: 'product', enhance: '1' }, modeWhenFile: { image: '["edit"]' }, exposed: ['image', 'prompt', 'aspect', 'provider', 'resolution', 'rights', 'seed', 'scene'],

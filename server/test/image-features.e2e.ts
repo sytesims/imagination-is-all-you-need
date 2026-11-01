@@ -115,7 +115,7 @@ try {
   const r6 = await job('create-image', { types: '["edit"]', prompt: 'combine them', provider: 'api-gpt-image', rights: '1' }, { image: 1, refs: 15 }); assert.equal(r6.status, 200, JSON.stringify(r6.body));
   const j6 = await until(r6.body.id); assert.equal(j6.feature.label, 'Edit Image · GPT Image 2');
   const r7 = await job('app-person-swap', { provider: 'api-nano-banana', rights: '1' }, { image: 1, person: 1 }); assert.equal(r7.status, 200, JSON.stringify(r7.body));
-  const j7 = await until(r7.body.id); assert.equal(j7.feature.label, 'Person Swap · Nano Banana 2'); assert.match(j7.input.finalPrompt ?? j7.input.prompt, /Replace the person in image 1 with the person from image 2/);
+  const j7 = await until(r7.body.id); assert.equal(j7.feature.label, 'Person Swap · Nano Banana 2'); assert.match(j7.input.finalPrompt ?? j7.input.prompt, /replace the person in image 1 with the person from image 2/i);
   const r8 = await job('app-person-swap', { provider: 'api-nano-banana', rights: '1' }, { image: 1 }); assert.equal(r8.status, 400); assert.equal(r8.body.issues[0].field, 'person');
   // Character Sheet (Oct 22): an optional photo switches it to Edit image on edit-capable models only (local Qwen Image 2.1 edit and Comfy Router ones); no photo = text-to-image
   const cs = T('app-character-sheet'); assert.ok(cs.inputs.some((i: any) => i.name === 'image' && i.label === 'Your photo' && !i.required), 'optional "Your photo" input');
@@ -124,7 +124,7 @@ try {
   assert.ok(!cs.app.gallery.providersByMode.edit.includes('api-ideogram'));
   assert.deepEqual(cs.app.gallery.preview, { before: '/examples/workflows/character-sheet-before.jpg', after: '/examples/workflows/character-sheet-after.jpg', beforeLabel: 'Your photo', afterLabel: 'Character sheet', model: 'Qwen Image 2.1 · Your computer' });
   const r9 = await job('app-character-sheet', { provider: 'comfy-qwen21', prompt: 'a young explorer', rights: '1' }, { image: 1 }); assert.equal(r9.status, 200, JSON.stringify(r9.body));
-  const j9 = await until(r9.body.id); assert.equal(j9.input.mode, 'edit'); assert.match(j9.input.finalPrompt ?? j9.input.prompt, /Character reference sheet of the person in the photo, a young explorer: one image split into three equal vertical panels.*Keep exactly one identical person in all three views.*accessories from the photo/); assert.equal(j9.input.aspect, '4:3');
+  const j9 = await until(r9.body.id); assert.equal(j9.input.mode, 'edit'); assert.match(j9.input.finalPrompt ?? j9.input.prompt, /Character reference sheet of the person in image 1 \(a young explorer\): one image split into three equal vertical panels.*Keep exactly one identical person in all three views.*accessories from image 1/); assert.equal(j9.input.aspect, '4:3');
   const r10 = await job('app-character-sheet', { provider: 'comfy-zimage-turbo', prompt: 'a knight', rights: '1' }); assert.equal(r10.status, 200, JSON.stringify(r10.body));
   const j10 = await until(r10.body.id); assert.equal(j10.input.mode, 'generate'); assert.match(j10.input.finalPrompt ?? j10.input.prompt, /^Character reference sheet of a knight: one image split into three equal vertical panels.*Keep exactly one identical person/); assert.equal(j10.input.aspect, '4:3'); assert.ok(!j10.input.style, 'no style preset on top of the sheet prompt');
   const r11 = await job('app-character-sheet', { provider: 'api-ideogram', prompt: 'x', rights: '1' }, { image: 1 }); assert.equal(r11.status, 400, 'a text-to-image-only model cannot take the photo');
