@@ -53,6 +53,7 @@ try {
   // ---- 1. graphs ----
   assert.deepEqual(S.FOOTAGE_CLOUD_EFFECTS.map((e) => e.id), CLOUD);
   for (const [id, d] of Object.entries(V.VFX_CLOUD_GRAPHS)) { const g = load(d.graph); clean(`${id} as saved`, g); assert.equal(g[d.out].class_type, 'SaveVideo'); assert.equal(g[d.load].class_type, 'LoadVideo');
+    for (const a of Object.values<any>(g).filter((x) => x.class_type === 'LTXVEmptyLatentAudio')) assert.equal(a.inputs.batch_size, 1, `${id}: one audio latent, like the one video latent (a batch of 25 fails SamplerCustomAdvanced)`);
     const e = S.footageEffect(id)!; if (!e.cloud!.derived) assert.ok(JSON.stringify(g).includes(e.cloud!.loraFile), `${id}: the template's LoRA`); }
   for (const id of BOTH) { const e = S.footageEffect(id)!; assert.equal(e.cloud!.loraFile, LORA23[id]); assert.equal(e.cloud!.derived, true); assert.equal(V.VFX_CLOUD_GRAPHS[id], V.VFX_CLOUD_GRAPHS.restore, `${id}: the one shared restore graph`);
     assert.match(e.cloud!.loraSource!, /^https:\/\/huggingface\.co\/Lightricks\/LTX-2\.3-22b-IC-LoRA-/); assert.ok(V.VFX_CLOUD_REQUIRES.models.some((m) => m.file === LORA23[id] && m.loader === 'LTXICLoRALoaderModelOnly'), `${id}: its LoRA is a requirement`); }
