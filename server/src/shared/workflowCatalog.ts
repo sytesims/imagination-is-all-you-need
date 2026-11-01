@@ -98,6 +98,7 @@ function FX(id: string, o: Partial<WfEntry> = {}): WfEntry {
 export const WF_ENTRIES: WfEntry[] = [
   // Make a video
   V('create', 'video', { name: 'Create Video', featured: 'ltx-pro-painter', tags: ['text to video', 'image to video', 'sound', 'ltx', 'multi-shot', 'dialogue'] }),
+  V('photos-to-reel', 'video', { art: 'move', tags: ['photos', 'reel', 'listing', 'event', 'hotel', 'trip'], needs: '8–15 photos + a title' }),
   V('loop', 'video', { featured: 'ltx-village-loop', model: 'ltx-2.5-22b', tags: ['seamless', 'gif', 'local'] }),
   V('morph', 'video', { featured: 'ltx-morph', model: 'ltx-2.5-22b', tags: ['transition', 'start and end frame'] }),
   V('transitions', 'video', { art: 'viral', tags: ['start and end frame', 'morph'] }),
@@ -221,6 +222,7 @@ export const WF_EXCLUDED: Record<string, string> = {
 };
 /** Server tools no card points at, and why (every other tool on GET /api/tools has a card). */
 export const WF_TOOLS_EXCLUDED: Record<string, string> = {
+  'photos-reel': 'the hidden base tool behind Photos → Reel (app-photos-to-reel), not a separate workflow',
   'make-it-real': 'the Render step inside Direct a Shot (v-direct-a-shot), not a workflow you open on its own',
   cinema: 'Director, retired (2026-10-23): its page opens Create Video',
   soul: 'legacy look LoRAs page: Create Image has the looks now',

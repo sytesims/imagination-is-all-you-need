@@ -226,7 +226,10 @@ html body .ic.ic2 .ic-dock .ic-prow>.ic-prompt-sugg{all:unset;position:absolute;
 html body .ic.ic2 .ic-dock .ic-prow>.ic-prompt-sugg:hover{background:rgba(255,122,26,.1);text-decoration:underline;text-underline-offset:2px}
 html body .ic.ic2 .ic-dock .ic-prow>.ic-prompt-sugg:focus-visible{outline:2px solid var(--accent);outline-offset:0}
 
-/* Material Swap's swatches in the Create bar (shared/swatchBatch.ts): pictures only (each keeps its name for screen readers), a slim add box */
+/* Material Swap's swatches in the Create bar (shared/swatchBatch.ts): pictures only (each keeps its name for screen readers), then the
+ * app's dashed "+" (shared/AddTile, the same tile as plain Create's references): its size, no words on it */
 html body .ic.ic2 .ic-dock .ic-lead .wf-many .wf-slot.full .wf-slot-hit b{display:none}
-html body .ic.ic2 .ic-dock .ic-lead .wf-slot.wf-slot-more{width:28px}
-@media (max-width:700px){html body .ic.ic2 .ic-dock .ic-lead .wf-many .wf-slot{width:38px;height:38px}}
+html body .ic.ic2 .ic-dock .ic-lead .wf-slot.wf-slot-more{width:auto;height:auto;flex-basis:auto}
+@media (max-width:700px){html body .ic.ic2 .ic-dock .ic-lead .wf-many .wf-slot{width:38px;height:38px}
+  html body .ic.ic2 .ic-dock .ic-lead .wf-many .wf-slot.wf-slot-more{width:auto;height:auto}
+  html body .ic.ic2 .ic-dock .ic-lead .wf-many .add-tile{width:38px;height:38px;flex-basis:38px}}

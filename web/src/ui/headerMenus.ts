@@ -100,6 +100,7 @@ export const TOOL_TAGLINE: Record<string, string> = {
   'depth-map': 'Turn a clip into a depth video',
   'footage-fx': 'Vanish, night, rain, flood or a matte on your own clip',
   finish: 'One-click polish: grain, glow, light leak, glitch and more',
+  'app-photos-to-reel': '8–15 photos into a short vertical reel',
   'app-transition': 'Animate from a start to an end image',
   'two-person-swap': 'Swap two people in a clip at once',
   'prompt-edit': 'Describe a change, the rest of the clip stays',

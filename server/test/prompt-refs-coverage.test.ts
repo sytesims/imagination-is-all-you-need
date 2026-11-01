@@ -62,14 +62,15 @@ function attempts(t: any, engine: string, prompt: string): { fields: Record<stri
   const out: { fields: Record<string, string>; files: Record<string, string[]> }[] = [];
   const all = () => { const b = base(true); for (const x of ins) if ((x.kind === 'file' || x.kind === 'files') && !/lastFrame|endImage/.test(x.name)) b.files[x.name] ??= [fileFor(x.name, x.accept)]; return b; }; // optional clip / voice / mask too (Voice Studio over a video, Inpaint)
   for (const mk of [() => base(true), all, () => base(false)]) { if (!modes.length) out.push(mk()); for (const m of modes) { const b = mk(); b.fields.types = JSON.stringify([m]); out.push(b); } }
-  for (const x of EXTRA[t.id] ?? EXTRA[t.app?.gallery?.base] ?? []) { const b = base(false); b.files = Object.fromEntries(x.files.map((n) => [n, [fileFor(n)]])); if (x.types) b.fields.types = JSON.stringify([x.types]); Object.assign(b.fields, x.fields ?? {}); out.push(b); }
+  for (const x of EXTRA[t.id] ?? EXTRA[t.app?.gallery?.base] ?? []) { const b = base(false); b.files = Object.fromEntries(x.files.map((n) => [n, Array(x.count ?? 1).fill(fileFor(n))])); if (x.types) b.fields.types = JSON.stringify([x.types]); Object.assign(b.fields, x.fields ?? {}); out.push(b); }
   return out;
 }
 /** Field sets a tool needs beyond the generic ones (a mode's own files and fields). */
-const EXTRA: Record<string, { types?: string; files: string[]; fields?: Record<string, string> }[]> = {
+const EXTRA: Record<string, { types?: string; files: string[]; count?: number; fields?: Record<string, string> }[]> = {
   voice: [{ types: 'voiceover', files: ['video'] }, { types: 'lipsync', files: ['image', 'speech'] }, { types: 'change-voice', files: ['video', 'voiceAudio'] }, { types: 'translate', files: ['video'], fields: { language: 'es' } }],
   'h3-video': ['r2v', 'i2v', 't2v'].map((m) => ({ types: m, files: m === 't2v' ? [] : ['image'], fields: { duration: '5', aspect: 'auto' } })), // the fal H3 routes start at 5 s
   reshoot: [{ files: ['video'], fields: { yaw: '30', tilt: '10' } }], // H3 CrossView: the take alone and a camera position
+  'photos-reel': [{ files: ['photos'], count: 8, fields: { title: 'Sea view flat' } }], // Photos → Reel: 8–15 photos and a title (the app's gallery base points here)
   soundtrack: [{ types: 'music', files: ['video'], fields: { lyrics: 'la la la' } }], audio: [{ types: 'music', files: [], fields: { lyrics: 'la la la' } }], // YuE2 sings lyrics only
 };
 // Parsing is lazy and memoised per tool × engine × prompt × field set: most places build from the first field set, so the guard stays fast.
@@ -200,6 +201,7 @@ const SENDERS: Record<string, { calls?: RegExp; why: string }> = {
   'translate.ts': { why: 'Voice Studio translate: the transcript, not a prompt' },
   'cinema/story.ts': { why: 'submits each shot as a normal job (app.inject), which takes the usual path' }, 'routesEdit.ts': { why: 'submits a normal job (app.inject)' },
   'filmProjects.ts': { why: 'submits each shot as a normal job and the stitch to /api/compose (app.inject)' }, 'canvasAgent.ts': { why: 'stitches finished clips through /api/compose (app.inject); no prompt' },
+  'photosToReel.ts': { why: 'Photos → Reel: submits each photo as a normal Camera Moves job, the stitch to /api/compose and the music bed as a normal job (app.inject)' },
   'routesGaps.ts': { why: 'job webhooks: posts the finished job, not a model request' },
   'openapi.ts': { why: 'API description text' }, 'routesDiscover.ts': { why: 'API description text' }, 'routesSpecs.ts': { why: 'API description text' },
 };

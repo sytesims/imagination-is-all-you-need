@@ -16,7 +16,7 @@ import { rigJson, lightRgb, rgbHex, type LightRig } from '../../../../server/src
 import { rigOfFields, rigChipPlain, plainDir, degTip, presetEdited } from '../../../../server/src/shared/lightEasy';
 import { Link, navigate } from '../../platform/router';
 import { tip } from '../../shared/Tooltip';
-import { PhoneAdIcon, TextIcon, LightIcon, FaceSwapIcon, UserIcon, CharacterSheetIcon, ProductIcon, ShotsIcon, CameraMovesIcon, BrushIcon, ImageIcon, SearchIcon, CloseIcon, ChevronRightIcon, PlusIcon, UpscaleIcon, AspectIcon, CutoutIcon, ExpandIcon, EraserIcon, GarmentIcon, MaterialIcon, LayerSheetsIcon, CubeIcon, OrbitIcon, PrevizIcon, type IconProps } from '../Icons';
+import { PhoneAdIcon, TextIcon, AudioIcon, LightIcon, FaceSwapIcon, UserIcon, CharacterSheetIcon, ProductIcon, ShotsIcon, CameraMovesIcon, BrushIcon, ImageIcon, SearchIcon, CloseIcon, ChevronRightIcon, PlusIcon, UpscaleIcon, AspectIcon, CutoutIcon, ExpandIcon, EraserIcon, GarmentIcon, MaterialIcon, LayerSheetsIcon, CubeIcon, OrbitIcon, PrevizIcon, type IconProps } from '../Icons';
 import type { ProviderInfo } from '../../api';
 import { ScalePanel, outOf, sizeText, scaleWhy, type UpInfo, type Size } from './UpscaleBar';
 import type { WorkflowRecipe } from '../../../../server/src/shared/workflows';
@@ -26,6 +26,7 @@ import { MoreFiles, type TrayFile } from '../../shared/FilesTray';
 import { useNarrow } from '../../shared/HeroTitle';
 import './workflowBar.css';
 import { SlotLabel } from '../../shared/SlotLabel';
+import { AddTile } from '../../shared/AddTile';
 
 export type WfRecipe = WorkflowRecipe & { modelInfo?: Record<string, { name: string | null; workflow: { line: string; url: string | null; source: string } | null; /** product shot: the aspects this model takes, per mode */ aspects?: Record<string, string[]>; /** the model's own shape when the picked one isn't offered */ defaultAspect?: string; /** the credit when a photo switches the mode */ workflowByMode?: Record<string, { line: string; url: string | null; source: string } | null> }> };
 export type WfSlotFile = { file: File; url: string };
@@ -36,7 +37,7 @@ export function fitWfVals(r: WfRecipe, provider: string, mode: string | undefine
   if (!c || !ok?.length) return vals; const v = vals.aspect ?? String(c.default ?? 'auto'); if (ok.includes(v)) return vals;
   return { ...vals, aspect: mi?.defaultAspect && ok.includes(mi.defaultAspect) ? mi.defaultAspect : ok.find(x => x !== 'auto') ?? ok[0] };
 }
-const ICONS: Record<string, (p: IconProps) => ReactNode> = { light: LightIcon, 'face-swap': FaceSwapIcon, user: UserIcon, 'character-sheet': CharacterSheetIcon, product: ProductIcon, shots: ShotsIcon, camera: CameraMovesIcon, brush: BrushIcon, create: ImageIcon, upscale: UpscaleIcon, aspect: AspectIcon, cutout: CutoutIcon, expand: ExpandIcon, eraser: EraserIcon, garment: GarmentIcon, material: MaterialIcon, ad: PhoneAdIcon, words: TextIcon, layers: LayerSheetsIcon, cube: CubeIcon, orbit: OrbitIcon, previz: PrevizIcon, texture: BrushIcon, detail: ShotsIcon, rig: UserIcon, views: ShotsIcon, type: ImageIcon };
+const ICONS: Record<string, (p: IconProps) => ReactNode> = { edit: TextIcon, gallery: ImageIcon, music: AudioIcon, clock: CameraMovesIcon, light: LightIcon, 'face-swap': FaceSwapIcon, user: UserIcon, 'character-sheet': CharacterSheetIcon, product: ProductIcon, shots: ShotsIcon, camera: CameraMovesIcon, brush: BrushIcon, create: ImageIcon, upscale: UpscaleIcon, aspect: AspectIcon, cutout: CutoutIcon, expand: ExpandIcon, eraser: EraserIcon, garment: GarmentIcon, material: MaterialIcon, ad: PhoneAdIcon, words: TextIcon, layers: LayerSheetsIcon, cube: CubeIcon, orbit: OrbitIcon, previz: PrevizIcon, texture: BrushIcon, detail: ShotsIcon, rig: UserIcon, views: ShotsIcon, type: ImageIcon };
 export const WfIcon = ({ name, size = 16 }: { name: string; size?: number }) => { const I = ICONS[name] ?? ImageIcon; return <I size={size} />; };
 
 export { READY_WORKFLOW_TOOLS, workflowRecreateHref } from '../../shared/workflowLinks';
@@ -111,7 +112,7 @@ export function WorkflowPicker({ open, anchor, list, current, onPick, onClose, w
  *  Click opens the shared picker (Uploads, Generations, Favourites) for this slot; the small ⇪ uploads a file straight away.
  *  Drop a file (or a picture dragged from the feed) on it; paste while it has focus. */
 function SlotBox({ slot, file, onFile, onMore, onUrl, onPick, picking, flash, onClear, disabled, num, next, more }: { slot: WfRecipe['slots'][number]; file: WfSlotFile | null; onFile: (f: File) => void; onUrl: (url: string) => void; onPick: () => void; picking: boolean; flash: number; onClear: () => void; disabled?: boolean;
-  /** a several-file slot (Material Swap's swatches): the files after the first go here, each to the next place */ onMore?: (f: File) => void; /** the small "add another" box after the swatches */ more?: boolean;
+  /** a several-file slot (Material Swap's swatches): the files after the first go here, each to the next place */ onMore?: (f: File) => void; /** the "add another" tile after the swatches: the app's shared dashed "+" (shared/AddTile), with how many are in and the most */ more?: { used: number; max: number };
   /** two-photo workflows: the order to add them (1, 2) */ num?: number; /** the next step: an orange ring that pulses a few times (static with reduced motion) */ next?: boolean }) {
   const toast = useToast(); const hit = useRef<HTMLButtonElement>(null); const [preview, setPreview] = useState(false);
   const inp = useRef<HTMLInputElement>(null); const [over, setOver] = useState(false); const [dims, setDims] = useState(''); const [bad, setBad] = useState(''); /* a photo that won't load: a placeholder, never a broken icon */
@@ -124,7 +125,8 @@ function SlotBox({ slot, file, onFile, onMore, onUrl, onPick, picking, flash, on
       const u = (e.dataTransfer.getData('text/uri-list') || '').split('\n').map(x => x.trim()).find(x => x && !x.startsWith('#')); if (u) onUrl(u); }}>
     {num ? <i className="wf-slot-num" aria-hidden data-testid={`wf-slot-${slot.name}-num`}>{num}</i> : null}
     <input ref={inp} type="file" accept={IMAGE_ACCEPT} multiple={!!onMore} hidden data-testid={`wf-slot-${slot.name}-input`} onChange={e => { take(e.target.files); e.currentTarget.value = ''; }} />
-    {file ? <><button ref={hit} type="button" className={`wf-slot-hit${bad === file.url ? ' bad' : ''}`} data-ref-trigger aria-haspopup="dialog" aria-expanded={preview} aria-label={`${slot.label}: open preview. Delete removes it`} {...tip(preview ? null : `${slot.label} · ${size}. Click to preview`)} onClick={() => setPreview(true)} disabled={disabled}
+    {more ? <AddTile used={more.used} max={more.max} noun={slot.label.toLowerCase()} onAdd={onPick} testId={`wf-slot-${slot.name}-add`} />
+      : file ? <><button ref={hit} type="button" className={`wf-slot-hit${bad === file.url ? ' bad' : ''}`} data-ref-trigger aria-haspopup="dialog" aria-expanded={preview} aria-label={`${slot.label}: open preview. Delete removes it`} {...tip(preview ? null : `${slot.label} · ${size}. Click to preview`)} onClick={() => setPreview(true)} disabled={disabled}
           onKeyDown={e => { if ((e.key === 'Delete' || e.key === 'Backspace') && !disabled) { e.preventDefault(); onClear(); } }}>{bad === file.url ? <ImageIcon size={14} /> : <img src={file.url} alt="" onLoad={e => setDims(`${e.currentTarget.naturalWidth}×${e.currentTarget.naturalHeight}`)} onError={() => setBad(file.url)} />}<b>{slot.label}</b></button>
         <button type="button" className="wf-slot-x" aria-label={`Remove ${slot.label.toLowerCase()}`} onClick={onClear} disabled={disabled}><CloseIcon size={10} strokeWidth={2.2} /></button></>
       : <><button type="button" className="wf-slot-hit" data-ref-trigger aria-haspopup="dialog" aria-expanded={picking} aria-label={`${num ? `${num}. ` : ''}Add ${slot.label.toLowerCase()}${slot.required ? '' : ' (optional)'}`} {...tip(`${slot.hint}. Pick from your images, upload, drop or paste`)} onClick={onPick} disabled={disabled}><PlusIcon size={14} /><SlotLabel text={slot.label} /></button>
@@ -187,7 +189,7 @@ export function WorkflowInputs({ recipe: r, files, setFile, addFile, onPick, pic
     {choose ? <div className="wf-choose" role="group" aria-label="Use this photo as" data-testid="wf-choose"><img src={choose.url} alt="" /><span>Use as</span>
       {choose.slots.map(c => <button key={c.name} type="button" className="ic-chip wf-choose-b" data-testid={`wf-choose-${c.name}`} {...tip(c.full ? `Replaces the current ${c.label.toLowerCase()}` : null)} onClick={() => onChoose(c.name)}>{c.full ? `Replace ${c.label}` : c.label}</button>)}
       <button type="button" className="wf-choose-x" aria-label="Don’t use this photo" data-testid="wf-choose-cancel" onClick={onChooseCancel}><CloseIcon size={10} strokeWidth={2.2} /></button></div>
-      : <><div className="wf-slots">{slots.map((s, i) => { const box = (k: string, label: string, more = false) => <SlotBox key={k} num={slots.length > 1 && k === s.name ? i + 1 : undefined} next={s === firstEmpty && k === s.name} slot={{ ...s, name: k, label }} more={more} file={files[k] ?? null} onFile={f => setFile(k, f)} onMore={s.many && addFile ? f => addFile(s.name, f) : undefined} onUrl={u => onUrl(k, u)} onPick={() => onPick(k)} picking={picking === k} flash={flash?.slot === k ? flash.k : 0} onClear={() => setFile(k, null)} disabled={disabled} />;
+      : <><div className="wf-slots">{slots.map((s, i) => { const box = (k: string, label: string, more?: { used: number; max: number }) => <SlotBox key={k} num={slots.length > 1 && k === s.name ? i + 1 : undefined} next={s === firstEmpty && k === s.name} slot={{ ...s, name: k, label }} more={more} file={files[k] ?? null} onFile={f => setFile(k, f)} onMore={s.many && addFile ? f => addFile(s.name, f) : undefined} onUrl={u => onUrl(k, u)} onPick={() => onPick(k)} picking={picking === k} flash={flash?.slot === k ? flash.k : 0} onClear={() => setFile(k, null)} disabled={disabled} />;
         /* Material Swap: every swatch is a box (Material 1, 2…), then a small one to add another, up to s.many */
         const sw = s.many ? swatchKeys(s.name, s.many).filter(k => files[k]) : []; const nextK = s.many && sw.length ? nextSwatchKey(files, s.name, s.many) : null;
         /* phones: the first swatch, the rest behind the shared "+N" tray (remove from there) */ const show = narrow && sw.length > 2 ? 1 : sw.length;
@@ -195,7 +197,7 @@ export function WorkflowInputs({ recipe: r, files, setFile, addFile, onPick, pic
         return <span key={s.name} className={`wf-slot-w${sw.length > 1 ? ' wf-many' : ''}`} data-testid={s.many ? `wf-many-${s.name}` : undefined} data-count={s.many ? sw.length : undefined}>{i > 0 && <span className="wf-arrow" aria-hidden>←</span>}
           {sw.length ? sw.slice(0, show).map((k, j) => box(k, sw.length > 1 ? `${s.label} ${j + 1}` : s.label)) : box(s.name, s.label)}
           {show < sw.length && <MoreFiles items={tray} hidden={sw.length - show} onRemove={f => setFile(f.key, null)} testId={`wf-many-${s.name}-more`} />}
-          {nextK && box(nextK, `${s.label} ${sw.length + 1}`, true) /* up to s.many; Generate says "Swap 4 materials" */}
+          {nextK && box(nextK, s.label, { used: sw.length, max: s.many! }) /* up to s.many; Generate says "Swap 4 materials" */}
 </span>; })}</div>
       {surface}</>}
   </div>;

@@ -306,6 +306,7 @@ function withResolvedPreselect(tool: ToolDef, models: any[]): any[] {
 }
 /** The job a listing / status check judges a model on (app locks, Camera's first move and length), shared with routing/defaults.ts. */
 export function listingInput(tool: ToolDef, modelId: string, rawInput: Record<string, any> = {}) {
+  if (tool.id === 'app-photos-to-reel' || tool.id === 'photos-reel') { const camera = getTool('camera'); if (camera) return listingInput(camera, modelId, { ...rawInput, duration: 5, aspect: '9:16', types: [cameraDefaultMove(modelId)].filter(Boolean) }); }
   const G = (tool as any).app?.gallery as { locked?: Record<string, string> } | undefined;
   const locked = G?.locked ? routeQuoteInput(tool, Object.fromEntries(Object.entries(G.locked).filter(([k]) => k !== 'provider'))) : {};
   const camDef = tool.id === 'camera' && rawInput.types == null && cameraDefaultMove(modelId) ? { types: [cameraDefaultMove(modelId)], ...(rawInput.duration == null && defaultDurationFor('camera', modelId) ? { duration: defaultDurationFor('camera', modelId) } : {}) } : {};
@@ -372,6 +373,7 @@ export function registerRouting(app: FastifyInstance) {
   app.addHook('preHandler', async (req, reply) => {
     if (req.method !== 'GET') return; const url = req.url.split('?')[0];
     const pm = url.match(/^\/api\/tools\/([^/]+)\/price$/); const isQuote = url === '/api/models/quote'; if (!pm && !isQuote) return;
+    if (pm?.[1] === 'app-photos-to-reel' || (isQuote && (req.query as any)?.toolId === 'app-photos-to-reel')) return; // Composite children resolve their own models and routes.
     const q = (req.query ?? {}) as Record<string, string>; const runOnRaw = q.runOn ?? q.run_on;
     { // Enum case (re-check 6): validate + normalise the user's enum values (aspect=AUTO → auto, quality=HIGH → high) BEFORE the price handler's
       // per-model checks, exactly as the submit does (index.ts enumParamError on the job fields), so quote = submit for the same params. Same 400 body.
@@ -385,7 +387,7 @@ export function registerRouting(app: FastifyInstance) {
     const r = preferRunnablePart(tool, resolveModelRequest(tool, { model: q.model, runOn: runOnRaw, provider: isQuote ? null : q.provider, route: q.route, types: q.mode ? [q.mode] : q.types, mode: q.mode }), q); // H3 map F1: the engine of this model that runs here
     if (!r.ok) { const { ok: _o, status, ...body } = r; return reply.code(status).send({ ...body, issues: [{ code: body.code, field: body.field, message: body.error }], valid: false, credits: null, priceAvailable: false }); }
     if (r.provider) { q.model = r.provider; if (!isQuote) q.provider = r.provider; }
-    if (r.route) q.route = r.route; if (r.types && !q.types && !q.mode) q.types = r.types;
+    if (r.route) q.route = r.route; if (r.types && !q.types && !q.mode && tool.inputs.some((i) => i.name === 'types')) q.types = r.types; // the default LTX move only where moves are a setting (Camera), not on the reel, which picks its own per photo
     (req as any).ohfModel = r;
   });
   /** Step 1: the model registry (static: models, per-tool models with their engines and routes, run-on ids, engine aliases). */
@@ -496,6 +498,7 @@ export function registerRouting(app: FastifyInstance) {
   });
   // Enrich model and tool listings additively (no change to their handlers).
   app.addHook('preSerialization', async (req, reply, payload: any) => {
+    if (payload?.composite === true && payload.toolId === 'app-photos-to-reel') return payload;
     const url = req.url.split('?')[0];
     try {
       if (url === '/api/models' && payload && typeof payload === 'object') {

@@ -12,6 +12,13 @@ export function beginSubmit(toolId: string) { inflight.set(toolId, (inflight.get
 const useTick = (on: boolean) => { const [, f] = useState(0); useEffect(() => { const g = () => f((n) => n + 1); subs.add(g); const t = on ? setInterval(g, 1000) : undefined; return () => { subs.delete(g); if (t) clearInterval(t); }; }, [on]); };
 /** true while a createJob for this tool is in flight. */
 export function useSubmitting(toolId?: string) { useTick(false); return isSubmitting(toolId); }
+/** A set (Material Swap's swatches, Compare models) is sent one request at a time: while it is still being sent, the feed shows all its
+ *  places as waiting cards (feedLayout withSetPlaces). The sender marks it from the first request to the last; the end function clears it. */
+const sending = new Set<string>();
+export function beginSet(id: string) { sending.add(id); emit(); return () => { sending.delete(id); emit(); }; }
+export const isSendingSet = (id: string) => sending.has(id);
+/** Re-renders when a set starts or finishes sending. */
+export function useSendingSets() { useTick(false); return isSendingSet; }
 
 export interface SubmitErrorInfo { status: number; code?: string; limit?: number; queued?: number; retryAfterSec?: number; affordableGroups?: number; totalGroups?: number; partialCost?: number; needed?: number; balance?: number; idemKey?: string }
 /** Clear user message for the structured submit errors (falls back to the server text). */

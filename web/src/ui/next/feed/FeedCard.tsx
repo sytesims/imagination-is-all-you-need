@@ -28,7 +28,7 @@ export interface FeedCardProps {
   className?: string; testId: string; /** test id prefix for the chip and failure state ('ic' on Image, 'vf' on Video) */ idPre?: string;
   /** the small feature / workflow chip (top left) */ tag?: string | null;
   /** extras drawn before the chip (Image: layer count) and after it (angle captions, Download all, a duration badge) */ badges?: ReactNode; children?: ReactNode;
-  /** a caption over the card's foot; default: the prompt on hover */ caption?: ReactNode;
+  /** a caption over the finished card's foot (none while it runs: the running tile has its own); default: the prompt on hover */ caption?: ReactNode;
   onOpen: (e: React.MouseEvent<HTMLButtonElement>) => void; onTogglePick?: () => void;
   /** a finished card whose body has its own controls (Audio: shared/AudioCard with play and seek), drawn instead of the one hit button; it opens
    *  the viewer itself. In Select mode a hit layer over it picks the card. */
@@ -51,7 +51,7 @@ function FeedCard({ job: j, k = 0, of = 1, ar, active, run, media, on, selecting
     {k === 0 && !active && ex && j.status === 'done' && <Link to={ex.recreateHref ?? recreateHref(j)!} className="fd-recreate" data-testid={`${idPre}-recreate-${j.id}`} {...tip('The same prompt and settings in the bar. Nothing runs until you press Generate')}><span aria-hidden>↻</span>Recreate</Link>}
     {children}
     {selecting && k === 0 && onTogglePick && <label className={`fd-check${noPick ? ' off' : ''}`} data-testid={`fd-check-${j.id || 'new'}`} {...tip(noPick ?? (picked ? 'Unselect' : 'Select'))} onClick={e => e.stopPropagation()}><input type="checkbox" checked={!!picked} disabled={!!noPick} aria-label={noPick ? `Can’t select: ${noPick}` : `Select ${prompt || j.id}`} onChange={() => onTogglePick()} /><i aria-hidden /></label>}
-    {caption !== undefined ? caption : !active && prompt && <span className="ic-tile-meta"><span><MentionText text={prompt} /></span></span>}
+    {!active && (caption !== undefined ? caption : prompt && <span className="ic-tile-meta"><span><MentionText text={prompt} /></span></span>) /* a running card's foot is the running tile's own (GenTile): never two captions on top of each other */}
     {!active && <Link to={`/jobs/${j.id}`} className="ic-tile-open" {...tip('Open details')}>↗<span className="sr-only">Open details</span></Link>}
   </div>;
 }

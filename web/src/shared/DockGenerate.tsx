@@ -24,8 +24,8 @@ export const PF_SHORT: Record<string, (p: PreflightProblem) => string> = { needs
 export const leadOf = (problems: PreflightProblem[], missing?: string | null): string | null =>
   missing ?? (problems[0] ? PF_SHORT[problems[0].code]?.(problems[0]) ?? problems[0].message : null);
 
-export function DockGenerate({ toolId, engine, quote, label, busy, disabled, problems, missing, pfOpen, genRef, onClick, intent, dlSize, testId = 'ic-generate', priceTestId = 'ic-price', workflowId, className = '', variant = 'dock' }: {
-  toolId: string; engine: string; quote: any; label: string;
+export function DockGenerate({ toolId, engine, quote, setupTarget, label, busy, disabled, problems, missing, pfOpen, genRef, onClick, intent, dlSize, testId = 'ic-generate', priceTestId = 'ic-price', workflowId, className = '', variant = 'dock' }: {
+  toolId: string; engine: string; quote: any; label: string; setupTarget?: { toolId: string; engine: string };
   /** a submit in flight: spinner, no second click */ busy: boolean; /** nothing can run at all (the tool isn't loaded) */ disabled?: boolean;
   problems: PreflightProblem[]; /** the caller's own first missing step (wins over the list) */ missing?: string | null;
   pfOpen: boolean; genRef: RefObject<HTMLButtonElement>; onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
@@ -34,9 +34,10 @@ export function DockGenerate({ toolId, engine, quote, label, busy, disabled, pro
   /** 'dock': the bar's big two-line button; 'card': a one-line button on a Canvas card; 'node': the Canvas node's slim pill */ variant?: 'dock' | 'card' | 'node' }) {
   const base = variant === 'dock' ? 'ic-gen gen-btn gen-dock btn btn-primary' : variant === 'node' ? 'gen-btn gen-card gen-node' : 'gen-btn gen-card';
   const cr: number | null = quote ? shownCredits(quote) : null; const wKey = !!quote && quote.needsKey === true && quote.runnable === false; const unpriced = !!quote && quote.credits == null && quote.priceAvailable === false;
-  const m = modelOfEngine(toolId, engine); const mem = useMemoryShort(variant === 'dock' ? quote : null); // a heavy local run with memory short right now: said, never blocked
-  if (!busy && setupNeeded(m, quote, engine, intent) && !problems.some(x => x.stage === 'inputs' || x.stage === 'model'))
-    return <SetupGenerate toolId={toolId} model={m} engine={engine} quote={quote} className={`${base} ${className}`.trim()} testId={testId} priceTestId={priceTestId} />;
+  const setupTool = setupTarget?.toolId ?? toolId; const setupEngine = setupTarget?.engine ?? engine;
+  const m = modelOfEngine(setupTool, setupEngine); const mem = useMemoryShort(variant === 'dock' ? quote : null); // a heavy local run with memory short right now: said, never blocked
+  if (!busy && setupNeeded(m, quote, setupEngine, intent) && !problems.some(x => x.stage === 'inputs' || x.stage === 'model'))
+    return <SetupGenerate toolId={setupTool} model={m} engine={setupEngine} quote={quote} className={`${base} ${className}`.trim()} testId={testId} priceTestId={priceTestId} />;
   const lead = leadOf(problems, missing);
   /* waiting (A1, 2026-10-31): a pre-flight problem OR the caller's own missing step (Stitch's 'Add clips', the Canvas panel, Film) is the one
      shared waiting look (ui-states.css .gen-wait), never the ready accent; the click still reaches onClick, which says or fixes what's missing */

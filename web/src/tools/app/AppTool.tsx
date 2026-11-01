@@ -433,8 +433,11 @@ export default function AppTool({ tool, tools }: { tool: ToolInfo; tools?: ToolI
   }, [pcOn, image, video, portrait, slotFiles, voiceSample, voiceExtra, fieldVals.voice]);
   if (pcOn && pcBusy) missing.push('checking your files');
   if (pcOn && pc?.blocking) missing.push(`usable files (${(pc.warnings?.find(w => w.severity === 'warn') ?? pc.warnings?.[0])?.message ?? 'a file can’t be used'})`);
+  /** A run that belongs to a set (Material Swap's swatches, Compare models): its waiting card sits in the set from the first frame, never alone. */
+  const setOfForm = (fd: FormData) => { const id = String(fd.get('compareGroup') ?? ''); const n = Number(fd.get('compareOf')), i = Number(fd.get('compareIndex'));
+    return id && n >= 2 && Number.isInteger(i) ? { compare: { id, n, i, ...(fd.get('compareKind') === 'swatch' ? { kind: 'swatch' } : {}) } } : {}; };
   const submit = async (fd: FormData, runTool: string = tool.id /* Create Image: a picked workflow runs on its own tool (app-relight…) */) => {
-    const ph: JobState = { id: '', toolId: runTool, status: 'queued', stage: 'uploading', progress: 0, queuePos: 0, eta: 0, resultUrl: null, outputs: [], error: null, warnings: [], parentId: (fd.get('parentId') as string) || null };
+    const ph: JobState = { id: '', toolId: runTool, status: 'queued', stage: 'uploading', progress: 0, queuePos: 0, eta: 0, resultUrl: null, outputs: [], error: null, warnings: [], parentId: (fd.get('parentId') as string) || null, ...setOfForm(fd) };
     add(ph); setIssues([]); setTryTool(null);
     addBrandField(runTool, fd); /* Brand Kit: brandKit=<id> when Brand is on for this tool (shared/brandStore); the server adds the words */
     try { const r = await createJob(runTool, fd, { showsIssues: true }); fdById.current.set(r.id, cloneForm(fd)); r.warnings?.forEach(w => toast(w, 'warn')); setJobs(js => js.some(j => j.id === r.id) ? js.filter(j => j !== ph) : js.map(j => j === ph ? { ...ph, id: r.id, provider: r.provider, input: { seed: r.seed } } : j)); setSel(r.id); setTimeout(refresh, 50); return r.id; }

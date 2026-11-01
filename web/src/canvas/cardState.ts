@@ -21,7 +21,8 @@ export const modelNameOf = (spec: FlowSpec | null) => { if (!spec) return ''; co
 export const makerOf = (spec: FlowSpec | null) => (spec ? modelOfEngine(spec.tool.id, spec.provider)?.maker ?? '' : '');
 /** What Generate still waits for, in its words (the first required input left empty, else a prompt it needs). */
 export function missingOf(spec: FlowSpec | null, bySlot: Record<string, BoardInput[]>, prompt: string): string | null {
-  if (!spec) return null; const s = spec.slots.find(x => x.required && !(bySlot[x.name]?.length)); if (s) return s.missing;
+  if (!spec) return null; const s = spec.slots.find(x => x.required && (bySlot[x.name]?.length ?? 0) < (x.min ?? 1)); if (s) return s.missing;
+  const text = spec.recipe.controls.find(c => c.kind === 'text' && !c.optional && !spec.vals[c.field]?.trim()); if (text) return `Add ${text.label.toLowerCase()}`;
   const rw = spec.recipe.prompt.requiredWithout; if (rw && !(bySlot[rw.slot]?.length) && !prompt.trim()) return rw.missing;
   if (spec.promptMode === 'required' && !prompt.trim()) return spec.flow.medium === 'audio' && spec.mode === 'voice' ? 'Write the script' : 'Write a prompt';
   return null;
