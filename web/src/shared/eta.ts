@@ -28,7 +28,7 @@ export function etaLine(r: EtaRange | null | undefined): EtaLine | null {
   }
   if (r.source === 'reported' && r.low != null && r.high != null) return { kind: 'reported', text: `Reported for similar hardware: about ${rangeText(r.low, r.high)}`, short: `Similar hardware: about ${rangeText(r.low, r.high)}`,
     title: 'A published figure for this class of graphics card, not timed on this computer. This run is timed, so the next runs show your own estimate.' };
-  if (r.source === 'first_run') return { kind: 'first_run', text: 'First run on this computer: we’ll time it so next runs show an estimate', short: 'First run: timing it', title: 'No run of this model with these files has been timed on this computer yet.' };
+  if (r.source === 'first_run') return { kind: 'first_run', text: 'The first run is timed, so later runs show an estimate.', short: 'First run: timing it', title: 'No run of this model with these files has been timed on this computer yet.' };
   return null;
 }
 /** Generate's time line for a local run: "≈ 6 min on your computer" (learned / scaled / reported ranges), "First run: timing it", or '' (no range).

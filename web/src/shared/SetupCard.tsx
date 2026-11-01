@@ -118,7 +118,7 @@ export function intentSize(quote: any, intent: { bytes: number | null } | null |
 /** Create bar (2026-10-23): a chosen download, as one row in the model menu with its undo (Generate's second line says "Free · downloads 12 GB first"). */
 export function DownloadIntentRow({ engine, quote }: { engine?: string | null; quote: any }) {
   const intent = useDownloadIntent(engine ?? null); const size = intentSize(quote, intent, engine); if (!size || !engine) return null;
-  return <p className="setup-intent-row" data-testid="setup-intent-row" role="status"><span>Your next run downloads {size} to Local first. The download is free.</span>
+  return <p className="setup-intent-row" data-testid="setup-intent-row" role="status"><span>Your next run downloads {size} to your computer first. The download is free.</span>
     <button type="button" className="link-btn setup-undo" data-testid="setup-undo" onClick={() => setDownloadIntent(engine, null)}>Don’t download</button></p>;
 }
 
@@ -129,7 +129,7 @@ export function SetupStatus({ model, engine, quote, downloading = false, classNa
   if (downloading) return <p className={`setup-status ${className}`.trim()} data-testid="setup-status" data-state="downloading" role="status">Downloading {name}’s files for your run. Generate unlocks when it’s done.</p>;
   if (quote?.setup?.action === 'download' && intent && engine) { const b = Number(intent.bytes || quote.setup.missingBytes) || 0; const size = String(quote.setup.actionText ?? '').replace(/^Download\s*/, '') || (b ? gbText(b) : 'the model files');
     return <p className={`setup-status ${className}`.trim()} data-testid="setup-status" data-state="download-chosen" role="status">
-      <span>Generate downloads {size} to {plain ? 'your computer' : 'Local'} first. The download is free.</span>
+      <span>Generate downloads {size} to your computer first. The download is free.</span>
       <button type="button" className="link-btn setup-undo" data-testid="setup-undo" onClick={() => setDownloadIntent(engine, null)}>Don’t download</button></p>; }
   return null;
 }
