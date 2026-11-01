@@ -208,7 +208,7 @@ For a person (or an agent) driving the app: what went wrong while we made real f
 | **An AI impact warps** (a figure melts through a gate, a face smears on contact) | Models are weak at contact | Cut on the last clean frame before contact, and sell the hit with sound (a crash on the cut) |
 | **A voice from off-screen sounds too close** | It was recorded dry | Lower it, cut highs (low-pass 3–4 kHz) and lows, add a long dark reverb with most of the dry signal removed and a short pre-delay |
 | **A character's voice changes between clips** | Speaker labels like "(S1)" only hold inside one run; every clip invents the voice again, even with the same words | Give the model a sample of the voice (reference audio), or make the lines separately with a cloned voice and lay them in |
-| **Lost in the order** ("which was the first frame?") | Many takes and stills | Keep a running-order table: clip, start still, length, trim, transition (the Film tab shows this per card) |
+| **Lost in the order** ("which was the first frame?") | Many takes and stills | Keep a running-order table: clip, start still, length, trim, transition (Video › Stitch shows this per clip) |
 
 ## Log (newest first)
 

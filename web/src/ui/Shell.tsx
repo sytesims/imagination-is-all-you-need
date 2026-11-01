@@ -14,7 +14,7 @@ import { Link, useSearch } from '../platform/router';
 import { SearchIcon, AssetsIcon, ImageIcon, VideoIcon, AudioIcon, CubeIcon, ToolIconFor, ExploreIcon, MoreIcon, UserIcon, UsageIcon, ProjectsIcon, FavouritesIcon, SettingsIcon, DocsIcon, PriceTagIcon, BrandIcon } from './Icons';
 import { fetchMenuModels, ModelGroup } from '../shared/batch1';
 import { MakerTile } from '../shared/MakerTile';
-import { FEATURED_MODELS, MAX_MODELS, MENU_MODELS_FIRST, TOOL_TAGLINE, CANVAS_NAV, FILM_NAV, menuFeatureRows, type Medium } from './headerMenus';
+import { FEATURED_MODELS, MAX_MODELS, MENU_MODELS_FIRST, TOOL_TAGLINE, CANVAS_NAV, menuFeatureRows, type Medium } from './headerMenus';
 import { MENU_FEATURES, IMAGE_FEATURES } from '../shared/imageFeatures';
 import { workflowOpenHref } from '../shared/workflowLinks';
 import { availableVideoWorkflows, availableFlowShortcuts, videoWorkflowHref, isPanelWorkflow, VIDEO_WORKFLOWS, VIDEO_PAGE } from './video/VideoWorkflows';
@@ -309,7 +309,6 @@ export function TopNav({ tools, path }: { tools: ToolInfo[]; path: string }) {
         <MediaTrigger id="audio" label="Audio" to={AUDIO_PAGE} icon={AudioIcon} hm={hm} on={curMedia === 'audio'} />
         <MediaTrigger id="3d" label="3D" to={THREE_D_PAGE} icon={CubeIcon} hm={hm} on={curMedia === '3d'} />{/* 3D (2026-10-23): after Audio; always shown like Image/Video/Audio (2026-10-31) */}
         {L(CANVAS_NAV.to, CANVAS_NAV.label, undefined, 'hn-canvas')}{/* Canvas (2026-10-24): after 3D, a plain tab */}
-        {L(FILM_NAV.to, FILM_NAV.label, undefined, 'hn-film')}{/* Film (2026-10-27): after Canvas, a plain tab */}
         {(hm.open === 'image' || hm.open === 'video' || hm.open === 'audio' || hm.open === '3d') && (() => { const ts = hm.open === 'image' ? imgTools : hm.open === 'video' ? vidTools : hm.open === '3d' ? d3Tools : audTools; return ts.length ? <MegaPanel media={hm.open} tools={ts} all={tools} groups={groups} path={path} hm={hm} /> : null; })()}
         {(() => { const ti = (id: string, label?: string): NavItem | null => { const t = byId(id); return t ? { to: t.route, label: label ?? t.name, desc: toolLine(t), icon: <ToolIconFor id={t.id} ui={t.ui} size={22} />, badge: bp(id), on: under(t.route) } : null; };
           const folded: NavItem[] = [...(fold >= 3 ? [{ to: '/workflows', label: 'Workflows', desc: 'Every workflow, with where it comes from', icon: glyph('M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z'), on: on('/workflows') }] : [])];
@@ -353,7 +352,7 @@ export function MobileTop({ title, tools = [], path = '' }: { title: string; too
   const on = (to: string) => path === to || path.startsWith(to + '/');
   // One active row: a link with ?query is active only when that query is current; the bare path only when no section query is set.
   const isOn = (to: string) => { const [pth, q] = to.split(/[?#]/); const cur = new URLSearchParams(location.search); if (q && to.includes('?')) { const want = new URLSearchParams(q); return pth === path && [...want].every(([k, v]) => cur.get(k) === v); } return on(pth) && !(pth === '/assets' && cur.get('section')) && !(pth === '/' && path !== '/'); };
-  const more: [string, string][] = [[CANVAS_NAV.to, CANVAS_NAV.label], [FILM_NAV.to, FILM_NAV.label], ['/workflows', 'Workflows'], ['/models', 'Models'], ['/assets/brands', 'Brands'], ['/plugins', 'Plugins'], ['/api-docs', 'API'], ['/licenses', 'Models & licences'], ['/account/usage', own ? 'Spend' : 'Usage'], ['/assets?section=Projects', 'Projects'], ['/assets?section=Favourites', 'Favourites'], ['/settings', 'Settings'], ['/profile', 'View profile']];
+  const more: [string, string][] = [[CANVAS_NAV.to, CANVAS_NAV.label], ['/workflows', 'Workflows'], ['/models', 'Models'], ['/assets/brands', 'Brands'], ['/plugins', 'Plugins'], ['/api-docs', 'API'], ['/licenses', 'Models & licences'], ['/account/usage', own ? 'Spend' : 'Usage'], ['/assets?section=Projects', 'Projects'], ['/assets?section=Favourites', 'Favourites'], ['/settings', 'Settings'], ['/profile', 'View profile']];
   const curGroup: DrawerGroup | null = ((m0) => (m0 === '3d' ? null : m0))(routeMedia(tools, path)) ?? (more.some(([to]) => isOn(to)) ? 'more' : null); /* 3D has no drawer group yet (desktop first) */
   const openMenu = () => { setExp(curGroup); setOpen(true); };
   const A = (to: string, label: React.ReactNode, icon?: React.ReactNode, extra?: React.ReactNode, key?: string) => <Link key={key ?? to} to={to} className={`md-link md-row ${isOn(to) ? 'on' : ''}`} aria-current={isOn(to) ? 'page' : undefined}>{icon && <span className="md-ic" aria-hidden>{icon}</span>}<span className="md-lbl">{label}</span>{extra}</Link>;

@@ -10,7 +10,7 @@
  *  2b. Split: a silent trailer (four cuts) on the left, the title, logline and Play on the right, a row of the film's scenes under it (a scene
  *      plays the film from there and is lit while on screen), then "More from IIAYN FILMS".
  * Every layout: the film the viewer pressed Play on keeps the page's sound while it plays, over scroll-follow (shared/soundDirector.ts), the real
- * models in the credit line, Open in Editor (the Goodbye sample) and How it was made (the steps and the shots, start frame → clip). Previews
+ * models in the credit line, Make your own (Video › Stitch) and How it was made (the steps and the shots, start frame → clip). Previews
  * use separate silent loop files; selecting a film always plays its complete cut from 0:00, ident included. Players mount only near the screen (posters before that); reduced motion:
  * posters with a play button (the shared ShowcaseFilm / HoverClip). A film that can't play keeps its poster.
  * Data: server/src/shared/exploreShowcase.ts EXPLORE_FILMS.
@@ -57,7 +57,7 @@ const Title = ({ as: H = 'h3', id, f = M }: { as?: 'h2' | 'h3'; id?: string; f?:
   <p className="xpfm-meta"><b>{f.episode}</b><span>{f.genre}</span><span>{f.sec} s</span><span>{f.lang}</span></p>
 </div>;
 
-/** the credit line, Open in Editor, How it was made (and its panel, unless the layout shows it elsewhere) */
+/** the credit line, Make your own (Stitch), How it was made (and its panel, unless the layout shows it elsewhere) */
 function Credits({ logline = true, how, lead, f = M }: { logline?: boolean; /** [open, setOpen, panel id] when the layout places the panel */ how?: [boolean, (o: boolean) => void, string]; /** a first action (2b: Play) */ lead?: React.ReactNode; f?: Feature }) {
   const own = useState(false); const ownId = useId(); const [open, setOpen] = how ?? own; const id = how?.[2] ?? ownId; const ed = f.editor ?? X.editor;
   return <div className="xpfm-credits">
@@ -91,8 +91,8 @@ const Next = ({ n, small = false }: { n: FilmsNext; small?: boolean }) => <div c
   <span className="xpfm-soon">Coming soon</span>
 </div>;
 
-/** Your film here: a link to the Editor */
-const Yours = ({ className = '', ghost = false }: { className?: string; /** empty shot cards, as in the Editor (1b, when there's room) */ ghost?: boolean }) => <Link to={X.yours.href} className={`xpfm-yours ${className}`} data-testid="xp-films-yours">
+/** Your film here: a link to Video › Stitch */
+const Yours = ({ className = '', ghost = false }: { className?: string; /** empty shot cards (1b, when there's room) */ ghost?: boolean }) => <Link to={X.yours.href} className={`xpfm-yours ${className}`} data-testid="xp-films-yours">
   {ghost && <span className="xpfm-ghost" aria-hidden>{['01', '02', '03'].map((n) => <span key={n}><small>Shot {n}</small></span>)}</span>}
   <span className="xpfm-yours-ic" aria-hidden><PlusIcon size={20} /></span>
   <b>{X.yours.title}</b><span>{X.yours.line}</span><em>{X.yours.label}<Arrow /></em>

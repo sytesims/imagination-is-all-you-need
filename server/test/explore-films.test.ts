@@ -1,6 +1,6 @@
 // Explore "IIAYN FILMS" (2026-10-29; five displayed films, archived comedy retained). Covers: every file the section uses ships in web/public/examples/iiayn-films (≤ 15.5 MB in all, MUM
 // ≤ 3.2 MB, clips metadata-stripped, the film 1280×720 with sound, the loop silent); the shots run in order inside the film; the credit names the
-// real models; Open in Editor opens the Goodbye sample (a sample that exists); the steps cover the recipe; the copy has no machine / place jargon.
+// real models; Make your own opens Video › Stitch (the Goodbye sample still ships for /film); the steps cover the recipe; the copy has no machine / place jargon.
 // Pure: no server, no network. Run: npx tsx test/explore-films.test.ts
 import assert from 'node:assert/strict'; import fs from 'node:fs'; import path from 'node:path'; import { execFileSync } from 'node:child_process'; import { createHash } from 'node:crypto';
 const ok = (m: string) => console.log('ok ' + m);
@@ -31,14 +31,14 @@ ok('five shots in order, before the title and credits');
 
 // ---- credits, links, steps, copy
 for (const m of ['GPT Image 2.5 Flare', 'MiniMax H3', 'LTX-2.5 22B', 'Whisper']) assert.ok(M.credit.includes(m), `credit names ${m}`);
-assert.equal(new URL(X.editor.href, 'http://x').pathname, '/film'); const sample = new URL(X.editor.href, 'http://x').searchParams.get('sample');
-assert.ok(fs.existsSync(path.join(ROOT, `server/samples/films/${sample}.json`)), `the ${sample} sample exists`);
+const stitch = new URL(X.editor.href, 'http://x'); assert.equal(stitch.pathname, '/video'); assert.equal(stitch.searchParams.get('workflow'), 'stitch', 'Make your own opens Video › Stitch (the Editor tab is hidden, 2026-11-01)');
+assert.ok(fs.existsSync(path.join(ROOT, 'server/samples/films/goodbye.json')), 'the Goodbye sample still ships (/film still opens it)');
 assert.ok(EXPLORE_SHOWCASE_LINKS().includes(X.editor.href), 'the link is checked with the others');
 assert.deepEqual(X.steps.map((s) => s.name), ['Stills', 'Clips', 'Continue', 'Bridge', 'L-cut', 'Sound beds', 'Subtitles', 'Ending']);
-assert.deepEqual(X.next.map((n) => n.key), [], 'no coming-soon card'); assert.equal(X.yours.href, '/film'); assert.equal(X.label, 'IIAYN FILMS');
+assert.deepEqual(X.next.map((n) => n.key), [], 'no coming-soon card'); assert.equal(X.yours.href, X.editor.href); assert.equal(X.label, 'IIAYN FILMS');
 const copy = JSON.stringify([X.title, X.line, M.logline, M.credit, M.cost, X.steps, X.next, X.yours, M.shots.map((s) => [s.name, s.what])]);
 assert.doesNotMatch(copy, /\bMac\b|\blocal\b|Comfy Router|seamless|stunning|unleash/i, 'brand voice');
-ok('credits name the real models; Open in Editor → Goodbye; eight steps; copy on voice');
+ok('credits name the real models; Make your own → Stitch; eight steps; copy on voice');
 
 // ---- the films beside MUM (2026-10-28: 그래요? · IS THAT SO?, The Airport Run, LE SEPTIÈME): files ship, sound kept, small for the web, plain copy
 for (const f of [X.comedy, X.teaser, X.horror, X.counterOffer]) {

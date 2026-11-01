@@ -42,12 +42,12 @@ I wanted a place to follow an idea from the first picture to the finished film, 
 - **A character with a story.** Create a picture, turn it into a 3D model, stage a scene and give it motion.
 - **A shot you've already imagined.** Place the camera and actors in **Direct a Shot**, capture a free browser mockup, then guide a supported video render with it.
 - **A product in a new light.** Make product shots, edit backgrounds, relight images and try supported garment workflows.
-- **A film with its own voice.** Create voiceover, music or sound effects, then bring shots, sound and titles together in the editor.
+- **A film with its own voice.** Create voiceover, music or sound effects, then join your shots, music and voice into one video with Stitch.
 - **A board full of possibilities.** Arrange references and results on the Canvas; optionally bring an agent into the process.
 
 Start with the bundled **Examples project** to see existing results and how they were made. **Recreate** prepares a workflow and its settings; it never starts a paid run on its own.
 
-Tools depend on the model, route and setup you choose. Canvas and the film editor are in beta; [the feature guide below](#explore-the-studio) gives more detail.
+Tools depend on the model, route and setup you choose. Canvas is in beta; [the feature guide below](#explore-the-studio) gives more detail.
 
 ## Start with examples, cloud or your own models
 
@@ -115,12 +115,11 @@ Features depend on the selected model, route and installed prerequisites. Check 
 |---|---|
 | **Image** | Create and edit images, inpaint, use references, upscale, relight, make character sheets and product shots. Try-on accepts separate person and garment images. |
 | **Image to layers** | Separate a supported image into layers, then review or export the results. |
-| **Video** | Generate from text/images, use supported first/last-frame or loop workflows, extend, transition, restyle, transfer motion, swap a subject and upscale. |
+| **Video** | Generate from text/images, use supported first/last-frame or loop workflows, extend, transition, restyle, transfer motion, swap a subject and upscale. Stitch joins your clips into one video, with music and a voice. |
 | **Direct a Shot** | Stage a scene and camera move in browser-based 3D, capture a free mockup, then use it to guide a supported render workflow. [How it works](docs/PLAN-A-SHOT.md). |
 | **Audio** | Voiceover, music, sound effects, soundtrack, voice-change and translation workflows. |
 | **3D** | Image-to-3D generation, turntables and scene staging; supported formats and models are shown in the app. |
 | **Canvas · beta** | Arrange ideas and results on a connected board; an MCP client can read and edit drafts and prepare generation proposals. |
-| **Editor · beta** | Arrange shots, joins, sound and titles into a film. |
 | **Workflows and models** | Browse supported recipes, model capabilities, run locations, setup requirements, sources and licences. |
 | **Assets and brands** | Organize results in projects, reuse them in compatible tools, and apply saved brand settings to supported exports. |
 | **Export and sharing** | Download results and prepare supported sharing files/captions. A link to a locally running app is not automatically a public share link. |

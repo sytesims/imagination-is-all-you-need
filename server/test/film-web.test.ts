@@ -97,7 +97,7 @@ ok('money and clock');
 const { FILM_NAV, CANVAS_NAV } = await import('../../web/src/ui/headerMenus.ts');
 assert.equal(FILM_NAV.to, '/film'); assert.equal(FILM_NAV.label, 'Editor'); assert.equal(CANVAS_NAV.to, '/canvas');
 const { readFileSync, existsSync } = await import('node:fs'); const web = (p: string) => readFileSync(new URL(`../../web/src/${p}`, import.meta.url), 'utf8');
-const shell = web('ui/Shell.tsx'); assert.ok(shell.indexOf('FILM_NAV.to, FILM_NAV.label') > shell.indexOf('CANVAS_NAV.to, CANVAS_NAV.label'), 'Film comes after Canvas');
+const shell = web('ui/Shell.tsx'); assert.ok(!shell.includes('FILM_NAV'), 'the Editor tab is hidden (2026-11-01); /film still opens');
 const chunks = web('platform/routeChunks.ts'); assert.match(chunks, /film: once\(\(\) => import\('\.\.\/ui\/film\/FilmPage'\)\)/); assert.match(chunks, /'\/film': 'film'/);
 const router = web('platform/router.tsx'); assert.match(router, /'\/film': \['Editor'/); assert.match(router, /FILM_ID_PATH = /); assert.match(web('App.tsx'), /FILM_ID_PATH\.test\(path\)/);
 assert.match(web('ui/film/types.ts'), /from '\.\.\/\.\.\/\.\.\/\.\.\/server\/src\/shared\/filmProject'/, 'types come from the shared film document');

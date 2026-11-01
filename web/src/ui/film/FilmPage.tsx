@@ -2,7 +2,7 @@
  * Film (2026-10-27): a top-nav tab after Canvas. /film lists your films; /film/:id is one film as a row of shot cards (start still → clip →
  * takes), Continue / Bridge / Add between cards, a trim per card, audio lanes and a free Stitch at the end (FilmEditor). Data: /api/films
  * (server). The workflow is the film-making and video-pacing skills'. /film?sample=<name> opens that sample once
- * (Explore's IIAYN FILMS "Open in Editor"); a sample that isn't on this computer leaves the plain list. Its own lazy chunk (platform/routeChunks.ts).
+ * (once linked from Explore; the Editor tab is hidden since 2026-11-01, the page still opens by URL); a sample that isn't on this computer leaves the plain list. Its own lazy chunk (platform/routeChunks.ts).
  */
 import { useEffect, useRef, useState } from 'react';
 import type { ToolInfo } from '../../api';
