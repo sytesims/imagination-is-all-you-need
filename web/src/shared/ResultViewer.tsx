@@ -9,7 +9,7 @@ import { navigate } from '../platform/router';
 import { useToast, useCopied, Copied } from './Toast';
 import { copySupport } from '../ui/support';
 import { CloseIcon, ReplaceIcon, AlertIcon, TrashIcon, MusicIcon, OfficialBadgeIcon, CommunityIcon, SparkleIcon, LogoMark, CompareIcon, placeIconFor } from '../ui/Icons';
-import { fmtUsd, ownAccountsNow, priceToken, priceDetail, ledgerUsd, jobCostLine, jobCostAmount } from './billing';
+import { compositeCostText, fmtUsd, ownAccountsNow, priceToken, priceDetail, ledgerUsd, jobCostLine, jobCostAmount } from './billing';
 import { heldBack } from './creditsBack';
 import { TryOnButtons } from './TryOn';
 import { ranOnOf, useToolModels, placeLabelOf, placeOfAny } from './models';
@@ -152,17 +152,17 @@ export function ViewerShell({ label, bg, media, who, badge, tabs, tab, setTab, b
 
 /** PROMPT block: label, Copy, the prompt in a lighter box clamped to about six lines with a fade, then See all. */
 /** onCopy: resolves false when the copy failed, so the button only says Copied when it worked. */
-export function ViewerPrompt({ text, onCopy, extra, full }: { text: string; onCopy: () => Promise<unknown> | void; extra?: ReactNode;
+export function ViewerPrompt({ text, onCopy, extra, full, label = 'Prompt' }: { label?: string; text: string; onCopy: () => Promise<unknown> | void; extra?: ReactNode;
   /** 2026-10-25: a workflow job: `text` is your words, `full` the prompt the workflow composed (behind the eye) */ full?: string | null }) {
   const [copied, flash] = useCopied(); const ref = useRef<HTMLParagraphElement>(null); const [open, setOpen] = useState(false); const [over, setOver] = useState(false); const [showFull, setShowFull] = useState(false);
   const shown = showFull && full ? full : text;
   useEffect(() => { setShowFull(false); }, [text, full]);
   useEffect(() => { setOpen(false); const el = ref.current; if (!el) return; const m = () => setOver(el.scrollHeight > el.clientHeight + 2); requestAnimationFrame(m); }, [shown]);
-  return <section className="rvx-sec" aria-label="Prompt">
-    <div className="rvx-sec-h"><span className="rvx-lbl"><PromptGlyph />{showFull ? 'Full prompt' : full ? 'Your words' : 'Prompt'}</span><span className="rvx-sec-acts">
+  return <section className="rvx-sec" aria-label={label}>
+    <div className="rvx-sec-h"><span className="rvx-lbl"><PromptGlyph />{showFull ? 'Full prompt' : full && label === 'Prompt' ? 'Your words' : label}</span><span className="rvx-sec-acts">
       {full && <button type="button" className={`rvx-copy rvx-peek${showFull ? ' on' : ''}`} data-testid="rvx-full-prompt" aria-pressed={showFull} {...tip(showFull ? 'Back to your words' : 'See the full prompt the workflow sent')} onClick={() => setShowFull(s => !s)}><PeekIcon /></button>}
       {shown && <button type="button" className="rvx-copy" data-testid="rvx-copy" onClick={() => { void Promise.resolve(showFull && full ? navigator.clipboard?.writeText(full) : onCopy()).then(ok => { if (ok !== false) flash(); }); }}>{copied ? <Copied /> : 'Copy'}</button>}</span></div>
-    <div className={`rvx-prompt${open ? ' open' : ''}${over && !open ? ' fade' : ''}`}><p ref={ref} data-testid="rvx-prompt">{shown ? <MentionText text={shown} /> : <span className="rvx-none">{full ? 'None: the workflow wrote the prompt' : 'No prompt'}</span>}</p></div>
+    <div className={`rvx-prompt${open ? ' open' : ''}${over && !open ? ' fade' : ''}`}><p ref={ref} data-testid="rvx-prompt">{shown ? <MentionText text={shown} /> : <span className="rvx-none">{full ? 'None: the workflow wrote the prompt' : `No ${label.toLowerCase()}`}</span>}</p></div>
     {(over || open) && <button type="button" className="rvx-seeall" aria-expanded={open} data-testid="rvx-see-all" onClick={() => setOpen(o => !o)}>{open ? 'Show less' : 'See all'}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d={open ? 'm6 15 6-6 6 6' : 'm6 9 6 6 6-6'} /></svg></button>}
     {extra}
   </section>;
@@ -373,6 +373,8 @@ function placeRows(job: any, ranOn: string, sample?: boolean): ReactNode[] {
   if (ex) { const Ic = placeIconFor(ex.runOn === 'local' ? 'local' : 'comfy-cloud'); /* an example: where it really ran and what it cost the app's authors */
     return [<div key="place" className="rvx-row" data-row="place"><span className="rvx-row-l rvx-place" data-testid="rvx-run-on"><Ic size={14} className="rvx-line-ic" /><span className="rvx-place-t">{examplePlace(ex)}</span></span>
       <span className="rvx-row-r" data-testid="rvx-cost-example" {...tip('What this run cost the app’s authors. Examples cost you nothing and never count in Spend.')}>{examplePrice(ex)}<span className="rvx-dim"> · $0 for you</span></span></div>]; }
+  const composite = compositeCostText(job);
+  if (composite != null) return [<div key="place" className="rvx-row" data-row="place"><span className="rvx-row-l rvx-place" data-testid="rvx-run-on">Workflow steps</span><span className="rvx-row-r" data-testid="rvx-cost-composite">{composite}</span></div>];
   const ro = runOnOfJob(job); const cost = typeof job?.cost === 'number' ? job.cost : null;
   if (ro === 'local' && !(cost && cost > 0)) {
     const dev = deviceName(job?.machine); const saved = Number(job?.savedUsd) > 0 && !job?.isSample && !job?.simulated && !sample ? Number(job.savedUsd) : 0; const vs = String(job?.savedVs?.label ?? '').trim();

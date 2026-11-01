@@ -1,6 +1,6 @@
 import { SlotPreview, fullText, prepUpload, useSlotReorder } from '../../shared/SlotPreview';
 import { MoreFiles, LeftNote, notAddedText, type TrayFile } from '../../shared/FilesTray';
-import { swatchesOf, nextSwatchKey, withoutSwatch, tooManySwatches, timesQuote, batchLabel, runBatch, batchToast } from '../../../../server/src/shared/swatchBatch';
+import { swatchesOf, nextSwatchKey, withoutSwatch, tooManySwatches, timesQuote, batchLabel, runBatch, batchToast, newSetId } from '../../../../server/src/shared/swatchBatch';
 import { cloneForm } from '../../shared/useToolQuery';
 import { AddTile } from '../../shared/AddTile';
 import { IMAGE_ACCEPT, fileFits, wrongTypeText } from '../../../../server/src/shared/mediaAccept';
@@ -94,7 +94,8 @@ import { emptyTextFor, imageScope, type FeedScope } from './feed/feedFilter';
 import { useLiveJobs, UploadsFeed, useUploads } from './feed/FeedScope';
 import { ALL_IMAGE_FEED, IMAGE_FEED_GROUPS, imageWorkflowNameOf } from '../../../../server/src/shared/imageFeed';
 import { libraryFile } from '../../shared/libraryFiles';
-import { feedSections } from './feed/feedLayout';
+import { feedSections, withSetPlaces } from './feed/feedLayout';
+import { beginSet, useSendingSets } from '../../shared/submitGuard';
 import FeedCard, { clampAr, tileMaxH } from './feed/FeedCard';
 import { useFeedState, useFeedViewer, FeedGallery } from './feed/ResultFeed';
 import './createBar.css';
@@ -169,6 +170,8 @@ function featureTag(j: JobState): string { const f = (j as any).feature; const i
 /** Camera Angles: the quote of one image of n (own accounts show the place's dollars / Comfy credits from quote.cost, which is the whole run). */
 const perImageQuote = (q: any, n: number) => q?.cost && typeof q.cost === 'object' && n > 1
   ? { ...q, cost: { ...q.cost, estUsd: Number(q.cost.estUsd) / n, ...(q.cost.estUnits != null ? { estUnits: Math.round(Number(q.cost.estUnits) / n) } : {}) } } : q;
+/** A waiting card for place i of a set that is still being sent (no id yet: it can't be opened, picked or canceled). */
+const waitingCard = (first: JobState, i: number): JobState => ({ id: '', toolId: first.toolId, status: 'queued', stage: 'uploading', progress: 0, queuePos: 0, eta: 0, resultUrl: null, outputs: [], error: null, warnings: [], parentId: null, compare: { ...(first as any).compare, i } } as JobState);
 function RunTile({ j, cap }: { j: JobState; /** Camera Angles: the angle this tile is making */ cap?: string }) { return <GenTile job={j} tag={cap ?? featureTag(j)} testId={j.status === 'canceled' ? `ic-canceled-${j.id}` : `ic-run-${j.id}`} />; }
 
 export { urlToFile } from '../../shared/urlFile'; /* moved to shared (the Canvas bar sends board images with it too) */
@@ -450,11 +453,11 @@ export default function ImageCanvas(p: ImageCanvasProps) {
     /* Material Swap: one run per swatch through the same submit (each its own quote, history, cancel, Retry), shown as one set (shared/swatchBatch.ts) */
     const ms = wfSlots.find(s => s.many); const sw = ms ? swatchesOf(files, ms.name, ms.many) : []; const tid = recipe.runner.toolId; const go = p.onWorkflowGenerate;
     if (sw.length <= 1) { if (ms && sw[0]) fd.append(ms.sendsAs, sw[0].file, sw[0].file.name); setWfBusy(true); setWfErr(''); try { await go(tid, fd); } catch (er: any) { setWfErr(String(er?.message ?? 'That didn’t start.')); } finally { setWfBusy(false); } return; }
-    setWfBusy(true); setWfErr('');
+    setWfBusy(true); setWfErr(''); const setId = newSetId(); const sent = beginSet(setId); /* the feed shows all the swatches' places at once */
     try { const r = await runBatch(sw, async (x, set) => { const f2 = cloneForm(fd); f2.append(ms!.sendsAs, x.file, x.file.name); for (const [k, v] of Object.entries(set)) f2.append(k, v);
-        const id = await go(tid, f2); if (!id) throw new Error('It didn’t start.'); return String(id); });
+        const id = await go(tid, f2); if (!id) throw new Error('It didn’t start.'); return String(id); }, { setId });
       const t = batchToast(r, sw.length); toast(t.text, t.tone); if (!r.started) setWfErr(r.failed[0]?.error ?? 'That didn’t start.'); }
-    finally { setWfBusy(false); } };
+    finally { sent(); setWfBusy(false); } };
   /** Camera & Lens: the rig lives in its workflow draft (localStorage), so it survives switching workflows and a refresh, and presets / Recreate fill it. */
   function setRig(f: (r: Rig) => Rig) { setWfDrafts(m => { const d0 = m[RIG_WORKFLOW] ?? loadDraft(RIG_WORKFLOW) ?? { prompt: '', provider: '', vals: {} }; const nd: WfDraft = { ...d0, vals: { ...d0.vals, ...valsOfRig(f(rigOfVals(d0.vals))) } }; saveDraft(RIG_WORKFLOW, nd); return { ...m, [RIG_WORKFLOW]: nd }; }); }
   const promptNow = recipe && draft ? draft.prompt : p.prompt; const setPromptNow = (v: string) => { if (recipe) setDraft(d => ({ ...d, prompt: v })); else p.setPrompt(v); };
@@ -725,11 +728,14 @@ export default function ImageCanvas(p: ImageCanvasProps) {
   /** Upload → Use in… → Reference: a picked workflow takes it into a slot; plain Create attaches it (sent by reference, no re-upload). */
   const refFromUpload = async (url: string) => { try { const f = await libraryFile(url, 'image'); if (intake([f])) return; addRefs([f]); toast(refN ? `Added as image ${refN + 1}` : 'Added as a reference'); } catch { toast('Couldn’t load that image. Try another one.', 'error'); } };
   const [cmpOpen, setCmpOpen] = useState(false); const cmpRef = useRef<HTMLButtonElement>(null); const [sideBy, setSideBy] = useState<string | null>(null); const ownB = useOwnAccounts();
+  const sendingSet = useSendingSets();
   /* compared runs sit together (in the order picked), so the viewer steps through them */
   const grouped = (() => { const all = feed.jobs.filter(j => j.status !== 'canceled' || lingering(j)); const out: JobState[] = []; const done = new Set<string>();
     /* a retried run in a set: its Retry takes its place (the server puts the retry in the same set) */ const retried = new Set(all.filter(j => (j as any).compare && (j as any).input?.retryOf).map(j => String((j as any).input.retryOf))); const list = all.filter(j => !retried.has(j.id));
     for (const j of list) { const g = (j as any).compare?.id as string | undefined; if (!g) { out.push(j); continue; } if (done.has(g)) continue; done.add(g);
-      out.push(...list.filter(x => (x as any).compare?.id === g).sort((a, b) => Number((a as any).compare?.i ?? 0) - Number((b as any).compare?.i ?? 0))); }
+      const members = list.filter(x => (x as any).compare?.id === g);
+      /* a set still being sent: all its places from the first frame (waiting cards), so the row never grows or jumps */
+      out.push(...(sendingSet(g) ? withSetPlaces(members as any[], i => waitingCard(members[0], i)) : members.sort((a, b) => Number((a as any).compare?.i ?? 0) - Number((b as any).compare?.i ?? 0)))); }
     return out; })();
   const shown = grouped; const nLinger = shown.filter(j => j.status === 'canceled').length;
   useEffect(() => { if (!nLinger) return; const t = setTimeout(() => setLinger(n => n + 1), CANCEL_LINGER_MS); return () => clearTimeout(t); }, [nLinger, p.jobs]);
@@ -796,11 +802,11 @@ export default function ImageCanvas(p: ImageCanvasProps) {
             const pres = multi ? presentationOf(j as any) : null; const mode = pres ? cardModeOf(pres, ar, multi!.length) : null; const feat = imageWorkflowNameOf(j as any) ?? featureTag(j) /* which workflow made it */; const prompt = typedPromptOf(inp); const cap1 = !multi && !cmpCap && !act && j.status === 'done' ? jobCaption(j, ownB) : null;
             const firstOut = multi?.find(x => x.state === 'done')?.out ?? 0; const nDone = multi ? multi.filter(x => x.state === 'done').length : 0;
             const img = url ? <img className={inp.transparent ? 'alpha-bg' : undefined /* Remove Background: checkerboard behind the cut-out */} src={gridSrc(url, tileMaxH() * clampAr(arHint))} alt="" loading="lazy" decoding="async" onLoad={e => { const im = e.currentTarget; if (im.naturalWidth && im.naturalHeight && !ars[url]) setArs(r => ({ ...r, [url]: im.naturalWidth / im.naturalHeight })); }} /> : null;
-            return <FeedCard key={`${j.id}-${k}`} job={j} k={k} of={of} ar={ar} active={act} run={<RunTile j={j} cap={multi && pres ? [feat, badgeText(multi, pres)].filter(Boolean).join(' · ') : undefined /* "Camera Angles · 3 of 9 angles" in the running tile's top row */} />} on={sel} selecting={selecting} picked={picked} noPick={noPick}
+            return <FeedCard key={cmp ? `${cmp.id}:${(cmp as any).i}-${k}` : `${j.id}-${k}` /* a set's card keeps its place while its waiting card becomes the job */} job={j} k={k} of={of} ar={ar} active={act} run={<RunTile j={j} cap={multi && pres ? [feat, badgeText(multi, pres)].filter(Boolean).join(' · ') /* "Camera Angles · 3 of 9 angles" in the running tile's top row */ : (cmp as any)?.kind === 'swatch' ? `Swatch ${Number((cmp as any).i) + 1}` : undefined} />} on={sel} selecting={selecting} picked={picked} noPick={noPick}
               className={multi ? `mr-card mr-${pres!.kind}` : ''} testId={`ic-tile-${j.id}`} tag={multi ? null : feat} onOpen={e => open(j.id, multi ? firstOut : k, e.currentTarget)} onTogglePick={() => togglePick(j)}
               media={multi && mode === 'mosaic' && j.status === 'done' ? <ResultMosaic items={multi} pres={pres!} width={tileMaxH() * clampAr(ar)} testId={`mr-mosaic-${j.id}`} /> : img}
               badges={multi && pres && !act ? <CountBadge items={multi} pres={pres} testId={pres.kind === 'layers' ? `ly-count-${j.id}` : `mr-count-${j.id}`} /> : null}
-              caption={cmp && (cmp as any).kind === 'swatch' && k === 0 ? <SwatchCaption job={j} /> : cmpCap ? <FeedCaption title={cmpCap.model} parts={[cmpCap.place, cmpCap.price, cmpCap.time]} testId={`cmp-cap-${j.id}`} />
+              caption={cmp && (cmp as any).kind === 'swatch' && k === 0 && !act ? <SwatchCaption job={j} /> : cmpCap ? <FeedCaption title={cmpCap.model} parts={[cmpCap.place, cmpCap.price, cmpCap.time]} testId={`cmp-cap-${j.id}`} />
                 : multi && !act ? <span className="ic-tile-meta mr-meta" data-testid={`mr-meta-${j.id}`}><b>{feat || 'Create Image'}</b>{prompt && <span>{prompt}</span>}</span>
                 : cap1 ? <FeedCaption className="ic-cap" title={prompt || cap1.model || feat || 'Image'} parts={[prompt ? cap1.model : null, cap1.price]} testId={`ic-cap-${j.id}`} /> /* the workflow (chip) and the real model, like the Video tab */ : undefined}>
               {multi && !act && j.status === 'done' && nDone > 1 && <a className="mr-dl" href={`/api/jobs/download.zip?ids=${encodeURIComponent(j.id)}`} download data-testid={`ic-dl-all-${j.id}`} aria-label={`Download all ${nDone} (ZIP)`} {...tip(`Download all ${nDone} (ZIP)`)} onClick={e => e.stopPropagation()}><DownloadIcon size={14} /></a>}

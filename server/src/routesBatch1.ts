@@ -146,6 +146,7 @@ export function registerBatch1(app: FastifyInstance) {
   // ---- Live price (same function the web runs locally) ----
   app.get<{ Params: { toolId: string }; Querystring: Record<string, string> }>('/api/tools/:toolId/price', async (req, reply) => {
     const t = getTool(req.params.toolId); if (!t) return reply.code(404).send({ error: 'unknown tool' });
+    if (t.id === 'app-photos-to-reel') { const r = await (await import('./photosToReel.js')).quoteReel(app, req.query); return reply.code(r.status).send(r.body); }
     const q = req.query; const on = (v?: string) => /^(1|true|on)$/i.test(v ?? '');
     if (q.model && !q.provider) (q as any).provider = q.model; // model= is an alias of provider= (the routed-price hook reads the same query)
     // videoPath=/files/… or /samples/… (the MCP quote): a trim-aware video tool (Video Swap family) is billed per second of the clip, so price the
@@ -169,6 +170,7 @@ export function registerBatch1(app: FastifyInstance) {
 
   // ---- Create Image quote: same priceOf + caps check the job endpoint uses (shown = charged) ----
   app.get<{ Querystring: { model?: string; quality?: string; imageResolution?: string; n?: string; aspect?: string; refs?: string; mode?: string } }>('/api/models/quote', async (req, reply) => {
+    if ((req.query as any).toolId === 'app-photos-to-reel') { const r = await (await import('./photosToReel.js')).quoteReel(app, req.query); return reply.code(r.status).send(r.body); }
     { const RES = /^(240|360|480|540|576|720|768|1080|1440|2160)p$|^[124]K$/i; // resolution must be a known tier: 9000p → 400, nothing quoted
       for (const f of ['resolution', 'imageResolution', 'quality'] as const) { const v = String((req.query as any)[f] ?? ''); if (v && /^\d+p$|^\d+K$/i.test(v) && !RES.test(v)) return reply.code(400).send({ error: `${f}: ${v} is not a supported resolution.`, errorType: 'validation', issues: [{ code: 'unsupported', field: f, message: `${v} is not a supported resolution.` }], valid: false }); } }
     if ((req.query as any).toolId && (req.query as any).toolId !== 'create-image') { const qq: any = req.query; const t2 = getTool(qq.toolId); if (!t2) return reply.code(404).send({ error: 'unknown tool' });

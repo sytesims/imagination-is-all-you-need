@@ -2,7 +2,7 @@
 // before a group end their row with a filler (regression: a single result after a Compare run became a full-width cropped banner).
 // Run: npx tsx test/feed-layout.test.ts   (no server, no network)
 import assert from 'node:assert/strict';
-import { feedSections } from '../../web/src/ui/next/feed/feedLayout.ts';
+import { feedSections, withSetPlaces } from '../../web/src/ui/next/feed/feedLayout.ts';
 const ok = (m: string) => console.log('ok ' + m);
 
 type J = { id: string; compare?: { id: string } | null; n?: number };
@@ -25,3 +25,12 @@ ok('only singles: one section, no extra filler; empty feed: nothing');
 assert.deepEqual(shape([c('a1', 'A'), s('m'), c('b1', 'B')]), ['A:1', 'S:1|', 'B:1']);
 assert.deepEqual(feedSections([c('a1', 'A'), c('a2', 'A')], tiles)[0].jobs.map(j => j.id), ['a1', 'a2']);
 ok('a single between two groups ends its row; group sections keep their jobs in order');
+
+// a set still being sent: every place shows from the first frame (no lone card, no row that grows one card at a time)
+{ type S = { id: string; compare: { id: string; n: number; i: number } };
+  const m = (id: string, i: number, n = 4): S => ({ id, compare: { id: 'G', n, i } }); const make = (i: number): S => ({ id: `wait${i}`, compare: { id: 'G', n: 4, i } });
+  assert.deepEqual(withSetPlaces([m('', 0)], make).map(x => x.id), ['', 'wait1', 'wait2', 'wait3']);
+  assert.deepEqual(withSetPlaces([m('c', 2), m('a', 0)], make).map(x => x.id), ['a', 'wait1', 'c', 'wait3']);
+  assert.deepEqual(withSetPlaces([m('a', 0), m('b', 1), m('c', 2), m('d', 3)], make).map(x => x.id), ['a', 'b', 'c', 'd']);
+  assert.deepEqual(withSetPlaces([m('a', 1, 2)], make).map(x => x.id), ['wait0', 'a']); }
+ok('a set being sent shows all its places at once, in order; a full set gets no extra cards');

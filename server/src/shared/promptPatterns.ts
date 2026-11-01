@@ -13,7 +13,7 @@
  * fills {slots} and drops [optional parts] whose slots are empty.
  */
 
-export type PatternTask = 'i2v-default' | 'camera-move' | 'camera-static' | 'camera-enhance' | 'camera-angle' | 'video-swap' | 'video-swap-preset'
+export type PatternTask = 'i2v-default' | 'camera-move' | 'camera-scene' | 'camera-static' | 'camera-enhance' | 'camera-angle' | 'video-swap' | 'video-swap-preset'
   | 'motion-transfer' | 'video-restyle' | 'relight' | 'face-swap' | 'person-swap' | 'ad' | 'ad-text';
 export type PatternFamily = 'minimax-h3' | 'wan' | 'ltx' | 'kling' | 'seedance' | 'qwen-edit' | 'nano-banana' | 'gpt-image' | 'flux' | 'bria' | 'any';
 export interface PromptPattern {
@@ -70,6 +70,16 @@ export const PROMPT_PATTERNS: PromptPattern[] = [
     template: 'Fixed camera[, {motion}].', note: 'Wan uses "fixed camera" for a still shot.' },
   { model: 'any', task: 'camera-enhance', form: 'caption', keep: 'none', negative: 'n/a', checked: D, sources: [],
     template: 'Cinematic, detailed, smooth motion.', note: 'The Enhance switch on Camera Moves: one plain sentence (was a "(enhanced: …)" note sent as prompt text).' },
+
+  // Scene continuity for Photos → Reel; the selected move remains in camera-move above.
+  { model: 'wan', task: 'camera-scene', form: 'caption', keep: 'none', negative: 'inert-at-cfg1', checked: D, sources: [WAN_GUIDE],
+    template: 'The movement is {pace}. The photographed scene, people, objects and proportions remain consistent.' },
+  { model: 'ltx', task: 'camera-scene', form: 'caption', keep: 'none', negative: 'n/a', checked: D, sources: [LTX_GUIDE],
+    template: 'The movement is {pace}. The scene retains the people, objects and proportions visible in the start image.' },
+  { model: 'minimax-h3', task: 'camera-scene', form: 'instruction', keep: 'last', negative: 'none', checked: D, sources: [H3_BASE],
+    template: 'Keep the movement {pace}. Preserve the photographed scene, people, objects and proportions.' },
+  { model: 'any', task: 'camera-scene', form: 'instruction', keep: 'last', negative: 'n/a', checked: D, sources: [],
+    template: 'Keep the movement {pace}. Preserve the scene, people, objects and proportions in the photo.', note: 'Our continuity instruction for other camera models.' },
 
   // ---- video swap ----
   { model: 'any', task: 'video-swap-preset', form: 'instruction', keep: 'none', negative: 'n/a', checked: D,

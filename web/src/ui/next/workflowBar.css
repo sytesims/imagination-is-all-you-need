@@ -225,9 +225,7 @@ html body .ic.ic2 .ic-dock .wf-strip .wf-exlink:focus-visible{box-shadow:var(--f
 /* Material Swap: several swatches, one result each (shared/swatchBatch.ts). The swatches sit closer and smaller; the add box is a slim "+" */
 .wf-many{gap:4px}
 .wf-many .wf-slot{width:44px;height:44px}
-.wf-slot.wf-slot-more{width:30px}
-.wf-slot.wf-slot-more .wf-slot-hit{font-size:0;line-height:0}
-.wf-slot.wf-slot-more .wf-slot-hit svg{width:12px;height:12px}
-.wf-slot.wf-slot-more .wf-slot-up{display:none}
+.wf-slot.wf-slot-more{width:auto;height:auto} /* the shared dashed "+" (shared/AddTile) sizes itself */
+.wf-many .add-tile{width:44px;height:44px}
 .wf-many .wf-slot.full .wf-slot-hit b{display:none}  /* the swatches speak for themselves; each keeps its name for screen readers and its tooltip */
 @media (max-width:640px){.wf-many .wf-slot{width:36px;height:36px}}

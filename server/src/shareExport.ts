@@ -40,11 +40,11 @@ export const FRAMES: Record<string, readonly [number, number]> = { '4:5': [1080,
 export type FrameSpec = { W: number; H: number; fit: 'fit' | 'fill' } | null;
 export const frameOf = (frame?: string, fit?: string): FrameSpec => (frame && FRAMES[frame] ? { W: FRAMES[frame][0], H: FRAMES[frame][1], fit: fit === 'fill' ? 'fill' : 'fit' } : null);
 /** The filter that puts input 0 into a W × H frame as [src]: fit = centred over a blurred, darkened cover copy; fill = cover crop. */
-export function frameFilter(f: NonNullable<FrameSpec>, input = '[0:v]') {
-  const { W, H } = f; if (f.fit === 'fill') return `${input}scale=${W}:${H}:force_original_aspect_ratio=increase:flags=bicubic,crop=${W}:${H},setsar=1[src]`;
+export function frameFilter(f: NonNullable<FrameSpec>, input = '[0:v]', zoomFrames?: number) {
+  const { W, H } = f; const zoom = zoomFrames ? `,scale=w='trunc(iw*(0.88+0.12*min(n/${Math.max(1,zoomFrames)},1))/2)*2':h=-2:eval=frame` : ''; if (f.fit === 'fill') return `${input}scale=${W}:${H}:force_original_aspect_ratio=increase:flags=bicubic,crop=${W}:${H},setsar=1[src]`;
   const bw = Math.round(W / 10 / 2) * 2, bh = Math.round(H / 10 / 2) * 2;
   return `${input}split=2[fa][fb];[fa]scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh},boxblur=6:2,scale=${W}:${H}:flags=bicubic,eq=brightness=-0.13:saturation=0.9,setsar=1[bg];`
-    + `[fb]scale=${W}:${H}:force_original_aspect_ratio=decrease:flags=bicubic,setsar=1[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2[src]`;
+    + `[fb]scale=${W}:${H}:force_original_aspect_ratio=decrease:flags=bicubic${zoom},setsar=1[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2[src]`;
 }
 export interface ExportOpts { overlay: Buffer; endCard: Buffer | null; key: string; frame?: FrameSpec; /** where the MP4 goes (default share-exports/) */ dir?: string; /** end card fill and fade colour, '0xRRGGBB' (default 0x0F1113) */ endColor?: string }
 /** The ffmpeg args for one export (exported for tests and for the encoder fallback). */
@@ -97,13 +97,13 @@ lib.trashHooks.push(dropExports);
 
 /** The ffmpeg args for a short clip: a still (`kind` still, looped for `secs` with a slow push-in) or a recorded clip (re-encoded as is),
  *  both at W × H with silent AAC audio and an optional end card. Exported for tests. */
-export function clipArgs(src: string, kind: 'still' | 'clip', end: string | null, out: string, p: { W: number; H: number; secs: number; fps?: number }, encoder: 'libx264' | 'h264_videotoolbox' = 'libx264') {
+export function clipArgs(src: string, kind: 'still' | 'clip', end: string | null, out: string, p: { W: number; H: number; secs: number; fps?: number; blurFit?: boolean; zoomSeconds?: number; hold?: boolean }, encoder: 'libx264' | 'h264_videotoolbox' = 'libx264') {
   const { W, H } = p; const fps = p.fps ?? 30; const dur = p.secs; const total = dur + (end ? END_CARD_S : 0); const n = Math.max(1, Math.round(dur * fps));
   const inputs = kind === 'still' ? ['-loop', '1', '-framerate', String(fps), '-t', String(dur), '-i', src] : ['-i', src];
   let ix = 1; const endIx = end ? ix++ : -1; if (end) inputs.push('-loop', '1', '-framerate', String(fps), '-t', String(END_CARD_S), '-i', end);
   const fmt = `fps=${fps},format=yuv420p,setsar=1,settb=AVTB`; const aFmt = 'aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo';
   // the push-in: draw at 2× and zoom from 1 to 1.04 around the centre (zoompan at 2× keeps the motion smooth)
-  const v = kind === 'still' ? `[0:v]scale=${W * 2}:${H * 2}:force_original_aspect_ratio=increase:flags=lanczos,crop=${W * 2}:${H * 2},zoompan=z='1+0.04*on/${n}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=${W}x${H}:fps=${fps},${fmt},trim=duration=${dur.toFixed(3)},setpts=PTS-STARTPTS[mv]`
+  const v = p.blurFit ? `${frameFilter({ W, H, fit: 'fit' }, '[0:v]', kind === 'still' ? Math.round((p.zoomSeconds ?? dur)*fps) : undefined)};[src]${fmt}${p.hold ? `,tpad=stop_mode=clone:stop_duration=${dur}` : ''},trim=duration=${dur.toFixed(3)},setpts=PTS-STARTPTS[mv]` : kind === 'still' ? `[0:v]scale=${W * 2}:${H * 2}:force_original_aspect_ratio=increase:flags=lanczos,crop=${W * 2}:${H * 2},zoompan=z='1+0.04*on/${n}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=${W}x${H}:fps=${fps},${fmt},trim=duration=${dur.toFixed(3)},setpts=PTS-STARTPTS[mv]`
     : `[0:v]scale=${W}:${H}:force_original_aspect_ratio=decrease:flags=bicubic,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=0x0F1113,${fmt},trim=duration=${dur.toFixed(3)},setpts=PTS-STARTPTS[mv]`;
   const f = [v, `aevalsrc=0:s=48000:c=stereo:d=${dur.toFixed(3)},${aFmt}[ma]`];
   if (end) { f.push(`[${endIx}:v]scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=0x0F1113,${fmt},fade=t=in:st=0:d=${FADE_S}:color=0x0F1113,trim=duration=${END_CARD_S},setpts=PTS-STARTPTS[ev]`,

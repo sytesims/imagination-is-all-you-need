@@ -4,14 +4,14 @@
  * the parts from a job, the same words everywhere (Compare's side-by-side view uses it too).
  */
 import type { JobState } from '../api';
-import { runPrice } from './billing';
+import { compositeCostText, runPrice } from './billing';
 import './feedCaption.css';
 
 export type JobCaption = { model: string; place: string; price: string; time: string };
 /** model · place · price · time for a job: Sample for a sample run, Free, locally, Not charged for a refunded failure, else the run's price. */
 export function jobCaption(j: JobState, own: boolean | null): JobCaption {
   const a = j as any; const model = String(a.modelName ?? a.model ?? j.provider ?? ''); const place = String(a.place?.label ?? a.runOnLabel ?? '');
-  const price = a.demo || a.isSample ? 'Sample' : a.runOn === 'local' ? 'Free' : j.status === 'failed' || j.status === 'blocked' ? (a.refunded > 0 || a.refund?.refunded ? 'Not charged' : runPrice({ own, credits: a.cost, runOn: a.runOn }) ?? '') : runPrice({ own, credits: a.cost, runOn: a.runOn }) ?? '';
+  const price = compositeCostText(j) ?? (a.demo || a.isSample ? 'Sample' : a.runOn === 'local' ? 'Free' : j.status === 'failed' || j.status === 'blocked' ? (a.refunded > 0 || a.refund?.refunded ? 'Not charged' : runPrice({ own, credits: a.cost, runOn: a.runOn }) ?? '') : runPrice({ own, credits: a.cost, runOn: a.runOn }) ?? '');
   const s0 = Number(a.startedAt ?? a.createdAt ?? 0), s1 = Number(a.finishedAt ?? 0); const sec = s0 && s1 > s0 ? Math.round((s1 - s0) / 1000) : null;
   return { model, place, price, time: sec == null ? '' : sec < 60 ? `${sec}s` : `${Math.floor(sec / 60)}m ${sec % 60}s` };
 }

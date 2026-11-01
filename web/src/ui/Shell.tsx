@@ -231,7 +231,7 @@ function MegaPanel({ media, tools, all, groups, path, hm }: { media: MenuId; too
   const tr = menuFeatureRows(media as Medium, every);
   const mr = mediaModels(media as Medium, tools, groups); const allTo = menuSeeAllHref(media as Medium);
   return hm.panel('hm-mega', `${media[0].toUpperCase()}${media.slice(1)} tools and models`, <div className="hm-cols" data-media={media}>
-    <section className="hm-col hm-col-features"><div className="hm-h-row"><h4 className="hm-h">Features</h4>
+    <section className="hm-col hm-col-features"><div className="hm-h-row"><h4 className="hm-h">Workflows</h4>
       <Link to={allTo} role="menuitem" className="hm-see-all" data-testid="hm-all-tools" aria-current={path === allTo ? 'page' : undefined}>See all {every.length}<span className="sr-only"> {media === 'image' ? 'image features' : `${media === '3d' ? '3D' : media} workflows`}</span><span aria-hidden className="hm-all-chev">›</span></Link></div>
       <div className="hm-scroll">{tr.map(r => <MRow key={r.key} r={r} />)}</div></section>
     <section className="hm-col hm-col-models"><h4 className="hm-h">Models</h4><div className="hm-scroll"><div className="hm-mgrid">{mr.map(r => <ModelCell key={r.key} r={r} />)}</div>{!mr.length && <p className="hm-empty">Models load with the server.</p>}</div>
