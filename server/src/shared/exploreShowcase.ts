@@ -64,18 +64,17 @@ export interface WorkItem {
 const shopSwap: WorkVariant[] = SHOP_SWAP_RUNS.map(([id, label]) => ({ key: `shop-swap-${id}`, label, url: P(`shop-armchair-${id}.webp`), thumb: P(`shop-armchair-${id}-480.webp`), swatch: P(`shop-material-${id}-160.webp`) }));
 const shopAds: WorkVariant[] = SHOP_ADS.map(([id, label]) => ({ key: 'shop-ad-pack', label, url: P(`shop-ad-${id}.webp`), thumb: P(`shop-ad-${id}-480.webp`) }));
 /** "Made for your work" (user pick 2026-11-01: lead with what people and businesses get). Real runs of a made-up brand, nothing staged: every
- *  picture is what the run returned. The section is built as options for the user to pick (?xp=a|b|c on Explore, web/src/ui/explore/ExploreWork.tsx). */
+ *  picture is what the run returned. Shown as audience tabs (web/src/ui/explore/ExploreWork.tsx). */
 export const EXPLORE_WORK = {
   eyebrow: 'Made for your work', title: ['Made for', 'your work.'],
   line: 'Real results for shops and brands, made right here. Pick one, drop in your own photo and make yours.',
-  /** Option B's row title */ rowTitle: ['For shops', 'and brands.'],
   tabs: [{ id: 'shop', label: 'Shop' }, { id: 'ads', label: 'Ads' }, { id: 'design', label: 'Design' }],
   items: [
     { id: 'material-swap', tab: 'shop', flow: 'Material Swap', title: 'One chair. Every material.', line: 'Show a product in every finish before you make a single one. One photo of it, one photo of the material.',
       per: 'each', compare: true, before: { url: P('shop-armchair-in.webp'), label: 'Your photo' }, variants: shopSwap, priceKey: 'shop-swap-velvet' },
     { id: 'ad-pack', tab: 'ads', flow: 'Ad Pack', title: 'One photo. Three ready ads.', line: 'A product photo and your offer become finished ads for the feed, with your headline and offer set in and your logo in the corner.',
       per: 'for 3', compare: false, before: { url: P('shop-perfume-in-480.webp'), label: 'Product photo' }, variants: shopAds, priceKey: 'shop-ad-pack' },
-    { id: 'image-layers', tab: 'design', flow: 'Image to layers', title: 'One poster. Every layer.', line: 'Drop in a finished design and get every part back on its own layer: the dogs, the title, the logo. Ready to edit.',
+    { id: 'image-layers', tab: 'design', flow: 'Image to layers', title: 'One poster. Every layer.', line: 'Drop in a finished design and get every part back on its own layer: the dogs, the title, the logo. Download it as a layered PSD for Photoshop.',
       per: '', compare: false, model: 'Seedream 5.0 Flash', before: { url: P('image-layers-paw-in-480.webp'), label: 'Your design' },
       film: { url: P('image-layers-paw.mp4'), poster: P('image-layers-paw.webp'), label: 'The poster coming apart into its 13 layers' },
       variants: [{ key: 'image-layers-paw', label: '13 layers', url: P('image-layers-paw.webp'), thumb: P('image-layers-paw-480.webp') }], priceKey: 'image-layers-paw' },
@@ -331,7 +330,7 @@ export const EXPLORE_SWAP = {
  *  layers, the input, the model and the price live in the featured entry. */
 export const EXPLORE_LAYERS = {
   key: 'image-layers-paw', eyebrow: 'Chapter 2 · Image to layers', title: ['One picture.', 'Every layer.'],
-  line: 'Drop in a finished design and get each part back on its own transparent layer: the dogs, the title, the logo, the box panels. Ready to move, recolour or animate.',
+  line: 'Drop in a finished design and get each part back on its own transparent layer: the dogs, the title, the logo, the box panels. Ready to move, recolour or animate. Download it as a layered PSD for Photoshop.',
   steps: [
     { n: 1, name: 'Picture', line: 'Any poster, ad or photo' },
     { n: 2, name: 'Split', line: 'Each object and text block becomes a layer' },

@@ -2,10 +2,8 @@
  * "Made for your work" (2026-11-01): real results for shops and brands, each with its model, where it ran, its real price and "Make your own"
  * (the workflow opened as Recreate, the example's photos and words already in). Data: EXPLORE_WORK (server/src/shared/exploreShowcase.ts);
  * files, models and prices: the featured entries (shared/featured.ts, FEATURED_SHOP and 'image-layers-paw').
- * Three layouts for the user to pick from, one shared set of parts (stage, picker, facts, button); Explore picks one with ?xp=a|b|c (default a):
- *  - A (XpWorkTabs): one section, audience tabs (Shop · Ads · Design), one big panel per tab: the result left, its words and looks right.
- *  - B (XpWorkRow): "For shops and brands", three equal cards in a row, each its result, words, chips and button.
- *  - C (XpWorkSpotlight): one big before / after with the four materials, then the ad pack as a strip (photo → three ads).
+ * Layout (user pick, 2026-11-01, option A): audience tabs (Shop · Ads · Design), one big panel per tab: the result left (a before / after slider,
+ * or the look with its "before" in the corner, or the run's clip), its words, looks, chips and "Make your own" right.
  */
 import { useState } from 'react';
 import { Link } from '../../platform/router';
@@ -32,8 +30,8 @@ function Facts({ w }: { w: Work }) {
   </span>;
 }
 /** "Make your own": the workflow with this look's photos and words in (nothing runs until Generate) */
-const MakeOwn = ({ it, v, small }: { it: WorkItem; v: WorkVariant; small?: boolean }) =>
-  <Link to={workHref(v)} className={`xv-btn${small ? ' xv-btn-sm' : ''} xw-make`} data-testid={`xp-work-make-${it.id}`}>{EXPLORE_WORK.cta}<Arrow /></Link>;
+const MakeOwn = ({ it, v }: { it: WorkItem; v: WorkVariant }) =>
+  <Link to={workHref(v)} className="xv-btn xw-make" data-testid={`xp-work-make-${it.id}`}>{EXPLORE_WORK.cta}<Arrow /></Link>;
 
 /** The result: before / after on a slider (same framing), else the look with its "before" as a small picture, or the run's clip. */
 function Stage({ it, v, className = '' }: { it: WorkItem; v: WorkVariant; className?: string }) {
@@ -47,26 +45,25 @@ function Stage({ it, v, className = '' }: { it: WorkItem; v: WorkVariant; classN
   </div>;
 }
 /** The looks a run made, to pick from: a material swatch, or the look's own thumbnail. Hover, focus or click shows it. */
-function Picker({ it, cur, onPick, big }: { it: WorkItem; cur: number; onPick: (k: number) => void; big?: boolean }) {
+function Picker({ it, cur, onPick }: { it: WorkItem; cur: number; onPick: (k: number) => void }) {
   if (it.variants.length < 2) return null;
-  return <div className={`xw-pick${big ? ' is-big' : ''}`} role="group" aria-label={it.compare ? 'Materials' : 'Styles'}>
+  return <div className="xw-pick" data-n={it.variants.length} role="group" aria-label={it.compare ? 'Materials' : 'Styles'}>
     {it.variants.map((x, k) => <button key={x.url} type="button" className={k === cur ? 'on' : undefined} aria-pressed={k === cur} onClick={() => onPick(k)} onMouseEnter={() => onPick(k)} onFocus={() => onPick(k)}
       data-testid={`xp-work-pick-${it.id}-${k}`}><img src={x.swatch ?? x.thumb} alt="" loading="lazy" decoding="async" draggable={false} /><span>{x.label}</span></button>)}
   </div>;
 }
-const Head = ({ title }: { title?: string[] }) => <header className="xw-head">
+const Head = () => <header className="xw-head">
   <span className="xv-eb">{EXPLORE_WORK.eyebrow}</span>
-  <h2 id="xp-h-work" className="xps-h xw-h">{(title ?? EXPLORE_WORK.title).map((l) => <span key={l}>{l}</span>)}</h2>
+  <h2 id="xp-h-work" className="xps-h xw-h">{EXPLORE_WORK.title.map((l) => <span key={l}>{l}</span>)}</h2>
   <p className="xps-p xw-p">{EXPLORE_WORK.line}</p>
 </header>;
 
-/* ---------------------------------------------------------------- A: audience tabs, one big panel */
-export function XpWorkTabs() {
+export function XpWork() {
   const all = works(); const tabs = EXPLORE_WORK.tabs.filter((t) => all.some((w) => w.it.tab === t.id));
   const [tab, setTab] = useState(tabs[0]?.id); const [cur, setCur] = useState(0);
   const w = all.find((x) => x.it.tab === tab) ?? all[0]; if (!w) return null;
   const { it } = w; const v = it.variants[Math.min(cur, it.variants.length - 1)];
-  return <section className="xv-sec xw xw-a" id="xp-work" data-testid="xp-work" data-xp="a" aria-labelledby="xp-h-work">
+  return <section className="xv-sec xw xw-a" id="xp-work" data-testid="xp-work" aria-labelledby="xp-h-work">
     <div className="xw-a-top"><Head />
       <div className="xpc-cast xw-tabs" role="tablist" aria-label="Made for">{tabs.map((t) => <button key={t.id} type="button" role="tab" aria-selected={t.id === tab} className={t.id === tab ? 'on' : ''}
         onClick={() => { setTab(t.id); setCur(0); }} data-testid={`xp-work-tab-${t.id}`}>{t.label}</button>)}</div></div>
@@ -76,69 +73,10 @@ export function XpWorkTabs() {
         <span className="xw-flow">{it.flow}</span>
         <h3 className="xw-t">{it.title}</h3>
         <p className="xw-line">{it.line}</p>
-        <Picker it={it} cur={cur} onPick={setCur} big />
+        <Picker it={it} cur={cur} onPick={setCur} />
         <Facts w={w} />
         <span className="xw-acts"><MakeOwn it={it} v={v} /></span>
       </div>
     </div>
   </section>;
-}
-
-/* ---------------------------------------------------------------- B: one row of equal cards */
-function Card({ w }: { w: Work }) {
-  const { it } = w; const [cur, setCur] = useState(0); const v = it.variants[cur];
-  return <article className="xw-card" data-testid={`xp-work-card-${it.id}`}>
-    <Stage it={it} v={v} className="xw-card-stage" />
-    <div className="xw-card-b">
-      <span className="xw-flow">{it.flow}</span>
-      <h3 className="xw-t">{it.title}</h3>
-      <p className="xw-line">{it.line}</p>
-      <Picker it={it} cur={cur} onPick={setCur} />
-      <Facts w={w} />
-      <span className="xw-acts"><MakeOwn it={it} v={v} small /></span>
-    </div>
-  </article>;
-}
-export function XpWorkRow() {
-  const all = works(); if (!all.length) return null;
-  return <section className="xv-sec xw xw-b" id="xp-work" data-testid="xp-work" data-xp="b" aria-labelledby="xp-h-work">
-    <Head title={EXPLORE_WORK.rowTitle} />
-    <div className="xw-row">{all.map((w) => <Card key={w.it.id} w={w} />)}</div>
-  </section>;
-}
-
-/* ---------------------------------------------------------------- C: one big before / after, then the ads as a strip */
-export function XpWorkSpotlight() {
-  const all = works(); const swap = all.find((w) => w.it.compare); const ads = all.find((w) => w.it.id === 'ad-pack');
-  const [cur, setCur] = useState(0); if (!swap) return null;
-  const v = swap.it.variants[cur];
-  return <section className="xv-sec xw xw-c" id="xp-work" data-testid="xp-work" data-xp="c" aria-labelledby="xp-h-work">
-    <div className="xw-spot">
-      <Stage it={swap.it} v={v} className="xw-c-stage" />
-      <div className="xw-side">
-        <Head />
-        <span className="xw-flow">{swap.it.flow}</span>
-        <h3 className="xw-t">{swap.it.title}</h3>
-        <p className="xw-line">{swap.it.line}</p>
-        <Picker it={swap.it} cur={cur} onPick={setCur} big />
-        <Facts w={swap} />
-        <span className="xw-acts"><MakeOwn it={swap.it} v={v} /></span>
-      </div>
-    </div>
-    {ads && <div className="xw-strip" data-testid={`xp-work-card-${ads.it.id}`}>
-      <div className="xw-strip-text"><span className="xw-flow">{ads.it.flow}</span><h3 className="xw-t">{ads.it.title}</h3><p className="xw-line">{ads.it.line}</p>
-        <Facts w={ads} /><span className="xw-acts"><MakeOwn it={ads.it} v={ads.it.variants[0]} small /></span></div>
-      <ol className="xw-strip-media" aria-label={`${ads.it.before.label} to ${ads.it.variants.length} ads`}>
-        <li className="xw-strip-in"><img src={ads.it.before.url} alt={`${ads.it.before.label}: the original`} loading="lazy" decoding="async" draggable={false} /><span className="xv-tag">{ads.it.before.label}</span></li>
-        <li className="xw-strip-arrow" aria-hidden>→</li>
-        {ads.it.variants.map((x) => <li key={x.url} className="xw-strip-ad"><img src={x.url} alt={`${x.label}: ${ads.it.flow}`} loading="lazy" decoding="async" draggable={false} /><span className="xv-tag">{x.label}</span></li>)}
-      </ol>
-    </div>}
-  </section>;
-}
-
-/** The option on show: ?xp=a|b|c (preview only, until the user picks one); default A. */
-export function XpWork() {
-  const xp = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('xp') : null;
-  return xp === 'b' ? <XpWorkRow /> : xp === 'c' ? <XpWorkSpotlight /> : <XpWorkTabs />;
 }
