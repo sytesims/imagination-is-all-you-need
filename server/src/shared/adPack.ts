@@ -8,7 +8,7 @@
 import { AD_PLATFORMS, AD_PLATFORM_LIST, AD_SHAPES, NO_EDGES, hasSafe, type AdPlatform, type AdShape, type Edges } from './adPlatforms.js';
 import { fillPattern, type PatternFamily } from './promptPatterns.js';
 import { BRAND_FONTS, colourLabel, moodBucket, moodWords, normHex, ruleWords, type BrandKit, type MoodBucket } from './brandKit.js';
-import { STAMP_SIZES } from './logoStamp.js';
+import { STAMP_SIZES, STAMP_DEFAULTS, type StampSettings } from './logoStamp.js';
 
 /** One ad style: the kind of picture, its scene sentence (our words) and where its words go. `font` is the style's own type feel (a brand heading
  *  font replaces it). Style first, brand second (2026-11-01): the kind and scene lead every prompt; the kit's colours and rules come after as
@@ -149,4 +149,11 @@ export function adLogoBox(W: number, H: number, corner: AdCorner, logo: { w: num
   w = Math.max(2, Math.round(w)); h = Math.max(2, Math.round(h));
   const l = Math.max(m, Math.ceil(safe.left * W)), r = Math.max(m, Math.ceil(safe.right * W)), t = Math.max(m, Math.ceil(safe.top * H)), b = Math.max(m, Math.ceil(safe.bottom * H));
   return { x: corner[1] === 'l' ? l : W - r - w, y: corner[0] === 't' ? t : H - b - h, w, h };
+}
+
+/** Adjust logo (2026-11-01): the viewer's logo tool set to where Ad Pack put the logo (job.input.adLogo), so opening it shows no jump: the
+ *  same corner, the medium size (adLogoBox is 12% of the short side = STAMP_SIZES.M), full opacity, no text line, no plate, and the
+ *  platform's safe area kept clear. The light / dark logo is picked by the brightness behind it, by the same rule on both sides. */
+export function adLogoStamp(adLogo: { corner?: unknown; placement?: string } | null | undefined): { settings: StampSettings; inset: Edges } {
+  return { settings: { ...STAMP_DEFAULTS, spot: asCorner(adLogo?.corner), size: 'M', opacity: 1, textOn: false, text: '', backing: 'off' }, inset: placementOf(adLogo?.placement).safe };
 }

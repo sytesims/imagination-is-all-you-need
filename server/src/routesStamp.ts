@@ -5,7 +5,8 @@
  *  - video: the same overlay for the whole clip, the sound kept (shareExport.brandVideo: H.264 + AAC), plus the end card when it's on.
  * Free: no model, no provider, no price. The original is never modified; the copy lives in <DATA_DIR>/stamps/<jobId>-<hash>.<ext>
  * (served at /files/stamps/…), cached by the hash of the inputs, and goes with the job when it is trashed or purged.
- *  POST /api/jobs/:id/stamp  multipart: out (output index, default 0), settings (JSON, StampSettings), overlay (PNG), endcard (PNG, video + endCard)
+ *  POST /api/jobs/:id/stamp  multipart: out (output index, default 0), settings (JSON, StampSettings), overlay (PNG), endcard (PNG, video + endCard),
+ *    base ('plain': an Ad Pack ad's clean copy, for Adjust logo)
  *    → { ok, url, kind, cached, bytes, width, height, duration? }
  */
 import type { FastifyInstance } from 'fastify';
@@ -69,7 +70,9 @@ export function registerStamp(app: FastifyInstance) {
     const ix = fields.out == null || fields.out === '' ? 0 : Number(fields.out);
     const o = Number.isInteger(ix) && ix >= 0 ? outs[ix] : undefined;
     if (!o) return reply.code(400).send({ error: 'out must be the index of one of this result\'s outputs.', errorType: 'validation', issues: [{ code: 'out_of_range', field: 'out', message: 'output index' }] });
-    const clean = o.url.split('?')[0]; const src = dataFileOf(clean); const isVideo = VIDEO_RE.test(clean), isImage = IMAGE_RE.test(clean);
+    // base=plain (Adjust logo on an Ad Pack ad): stamp the clean copy kept before Ad Pack added its logo (adPackLogo.ts), not the shown ad
+    const plain = fields.base === 'plain'; if (plain && !(o as any).plainUrl) return reply.code(409).send({ error: 'This result has no clean copy to adjust.', errorType: 'validation', code: 'no_plain' });
+    const clean = String(plain ? (o as any).plainUrl : o.url).split('?')[0]; const src = dataFileOf(clean); const isVideo = VIDEO_RE.test(clean), isImage = IMAGE_RE.test(clean);
     if (!src || (!isVideo && !isImage)) return reply.code(409).send({ error: 'Only image and video results on this computer can get a logo.', errorType: 'validation', code: 'unsupported_media' });
     let settings; try { settings = normStamp(JSON.parse(fields.settings || '{}')); } catch { return reply.code(400).send({ error: 'settings must be JSON.', errorType: 'validation' }); }
     if (!files.overlay || !pngSize(files.overlay)) return reply.code(400).send({ error: 'overlay must be a PNG at the result\'s size.', errorType: 'validation', issues: [{ code: 'invalid', field: 'overlay', message: 'PNG' }] });
@@ -77,7 +80,7 @@ export function registerStamp(app: FastifyInstance) {
     if (wantEnd && (!files.endcard || !pngSize(files.endcard))) return reply.code(400).send({ error: 'endcard must be a PNG when the end card is on.', errorType: 'validation', issues: [{ code: 'invalid', field: 'endcard', message: 'PNG' }] });
     const endColor = /^#[0-9a-f]{6}$/i.test(fields.endColor ?? '') ? `0x${fields.endColor!.slice(1)}` : undefined;
     try {
-      const r = isVideo ? await brandVideo(j.id, src, { overlay: files.overlay, endCard: wantEnd ? files.endcard : null, key: JSON.stringify({ stamp: settings, out: ix }), dir: STAMP_DIR(), endColor })
+      const r = isVideo ? await brandVideo(j.id, src, { overlay: files.overlay, endCard: wantEnd ? files.endcard : null, key: JSON.stringify({ stamp: settings, out: ix, plain }), dir: STAMP_DIR(), endColor })
         : await stampImage(j.id, src, files.overlay);
       const size = await videoSize(r.file);
       return { ok: true, url: `/files/stamps/${path.basename(r.file)}`, kind: isVideo ? 'video' : 'image', cached: r.cached, bytes: statSync(r.file).size, width: size?.width ?? null, height: size?.height ?? null,

@@ -49,6 +49,8 @@ export function plateFor(backing: StampSettings['backing'], logoLum: number | nu
 }
 
 export interface Box { x: number; y: number; w: number; h: number }
+/** Edges kept clear, as fractions of the picture (a platform's safe area). */
+export interface StampInset { top: number; right: number; bottom: number; left: number }
 export interface StampLayout {
   S: number; margin: number; logoH: number; fontPx: number;
   logo: Box | null; text: (Box & { align: 'left' | 'center' | 'right' }) | null;
@@ -56,16 +58,18 @@ export interface StampLayout {
 }
 /** Where the logo and the text go on a W × H picture. `logo` = the logo file's own size (null: text only); `textWidth(px)` = the text's
  *  width at that font size (the browser measures it with the heading font; 0 = no text). Logo above, text under it, both aligned to the spot's side. */
-export function stampLayout(W: number, H: number, s: Pick<StampSettings, 'spot' | 'size'>, logo: { w: number; h: number } | null, textWidth: (px: number) => number, plate: boolean): StampLayout {
+export function stampLayout(W: number, H: number, s: Pick<StampSettings, 'spot' | 'size'>, logo: { w: number; h: number } | null, textWidth: (px: number) => number, plate: boolean, inset?: StampInset): StampLayout {
   const S = Math.min(W, H); const margin = Math.max(4, Math.round(S * 0.045)); const logoH = S * STAMP_SIZES[s.size];
-  const fontPx = Math.max(10, Math.round(logoH * 0.36)); const gap = logoH * 0.15; const maxW = W * 0.6;
+  // inset = Ad Pack's frame (Adjust logo): each side keeps the margin or the platform's safe edge, whichever is further in, as adLogoBox does
+  const ml = Math.max(margin, Math.ceil((inset?.left ?? 0) * W)), mr = Math.max(margin, Math.ceil((inset?.right ?? 0) * W)), mt = Math.max(margin, Math.ceil((inset?.top ?? 0) * H)), mb = Math.max(margin, Math.ceil((inset?.bottom ?? 0) * H));
+  const fontPx = Math.max(10, Math.round(logoH * 0.36)); const gap = logoH * 0.15; const maxW = W * (inset ? 1 / 3 : 0.6); // Ad Pack's frame: at most a third of the width
   let lw = logo && logo.h > 0 ? logoH * (logo.w / logo.h) : 0, lh = logo ? logoH : 0; if (lw > maxW) { lh *= maxW / lw; lw = maxW; }
   const tw0 = textWidth(fontPx); const tw = Math.min(tw0, maxW), th = tw0 > 0 ? fontPx * 1.25 : 0;
   const bw = Math.max(lw, tw), bh = lh + (lh && th ? gap : 0) + th;
   const pad = plate ? logoH * 0.18 : 0; const ow = bw + 2 * pad, oh = bh + 2 * pad;
   const col = s.spot[1], row = s.spot[0];
-  const ox = col === 'l' ? margin : col === 'r' ? W - margin - ow : (W - ow) / 2;
-  const oy = row === 't' ? margin : row === 'b' ? H - margin - oh : (H - oh) / 2;
+  const ox = col === 'l' ? ml : col === 'r' ? W - mr - ow : (W - ow) / 2;
+  const oy = row === 't' ? mt : row === 'b' ? H - mb - oh : (H - oh) / 2;
   const align = col === 'l' ? 'left' : col === 'r' ? 'right' : 'center';
   const ax = (w: number) => (align === 'left' ? ox + pad : align === 'right' ? ox + pad + bw - w : ox + pad + (bw - w) / 2);
   return {
@@ -81,4 +85,10 @@ export function endCardLayout(W: number, H: number, logo: { w: number; h: number
   const fontPx = Math.max(12, Math.round(S * 0.06)); const tw = Math.min(textWidth(fontPx), W * 0.8), th = tw > 0 ? fontPx * 1.25 : 0; const gap = lh && th ? S * 0.05 : 0;
   const top = (H - (lh + gap + th)) / 2;
   return { logo: lw ? { x: (W - lw) / 2, y: top, w: lw, h: lh } : null, text: th ? { x: (W - tw) / 2, y: top + lh + gap, w: tw, h: th } : null, fontPx };
+}
+
+/** Adjust logo (2026-11-01): what Save and Share give for an Ad Pack ad whose logo was opened in the viewer. Untouched: the ad as made (its
+ *  logo baked in); the logo taken off: the clean copy; moved or resized: a new copy from the clean one. The job's own files never change. */
+export function adjustedSave(a: { touched: boolean; on: boolean } | null | undefined): 'baked' | 'plain' | 'stamp' {
+  return !a || !a.touched ? 'baked' : a.on ? 'stamp' : 'plain';
 }

@@ -35,10 +35,12 @@ import { canAddSound } from './addSoundLogic';
 import { useEffect, useRef, useState } from 'react';
 import { LogoStampLayer, stampAvailable } from './LogoStamp';
 import { MenuBody, MenuRow, ToolsPanel, type MItem, type MSection } from './ResultMenu';
-import { setStampOn } from './stampStore';
+import { endAdjust, setStampOn, startAdjust } from './stampStore';
 import { loadBrandKits } from './brandStore';
 import { useStamp } from './stampStore';
-import { makeStamped } from './logoStampDraw';
+import { loadImg, loadStampArt, makeStamped } from './logoStampDraw';
+import { adLogoStamp } from '../../../server/src/shared/adPack';
+import { adjustedSave } from '../../../server/src/shared/logoStamp';
 import { activeKit, useBrand } from './brandStore';
 import { compositeCostText, ownAccountsNow, jobCostText, fmtUsd, runPrice, placeOfQuote, ledgerUsd, jobCostAmount } from './billing';
 import { fetchModels } from './batch1';
@@ -129,9 +131,22 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
   const [stampForce, setStampForce] = useState(''); 
   const stampKit = activeKit(brandS); const stampKind = kind === 'image' || kind === 'video' ? kind : null;
   const stampOk = viewer && !!stampKind && !!stampKit && !sample && (job as any).isOwner !== false && !(job as any).deletedAt && job.status === 'done' && !showingOriginal && !lys && /^\/files\//.test(cur.url) && (stampAvailable(brandS.on[stampKind], (job as any).input) || stampForce === `${job.id}:${outIx}`);
-  const stamping = stampOk && stampS.on;
-  const stampedUrl = () => makeStamped({ jobId: job.id, out: outIx, url: cur.url, kind: stampKind!, kit: stampKit!, settings: stampS.settings });
-  const openShare = async () => { if (!stamping) { setShareUrl(null); setShare(true); return; }
+  /* Adjust logo (2026-11-01): an Ad Pack ad (its logo baked in by adPackLogo.ts, the clean copy kept as plainUrl) offers Adjust logo instead of
+     Add logo: the same stage tool over the clean copy, set to Ad Pack's corner and size. Each ad keeps its own adjustment for this visit
+     (stampStore adjust, by job + output); Reset logo goes back to the ad as made. Untouched, Save and Share give the ad as made. */
+  const adLogo = (job as any).input?.adLogo; const plainUrl: string | undefined = (cur as any).plainUrl;
+  const adKit = adLogo ? brandS.kits.find((k) => k.id === String(adLogo.kit)) : undefined; const adjKey = `${job.id}:${outIx}`;
+  const adjOk = viewer && kind === 'image' && !!adLogo && typeof plainUrl === 'string' && /^\/files\//.test(plainUrl) && !sample && (job as any).isOwner !== false && !(job as any).deletedAt && job.status === 'done' && !showingOriginal && !lys && /^\/files\//.test(cur.url);
+  const adj = adjOk && adKit ? stampS.adjust[adjKey] : undefined; const adjSave = adjustedSave(adj);
+  const openAdjust = () => { if (!adKit || !plainUrl) return; const go = () => startAdjust(adjKey, adLogoStamp(adLogo));
+    /* the clean copy and the logo load first, so the picture never shows without its logo while it opens */
+    void Promise.all([loadImg(plainUrl), loadStampArt(adKit)]).then(go, go); };
+  const stamping = adjSave === 'stamp' || (!adjOk && stampOk && stampS.on);
+  const stampedUrl = () => (adj ? makeStamped({ jobId: job.id, out: outIx, url: plainUrl!, kind: 'image', kit: adKit!, settings: adj.settings, plain: true, inset: adj.inset })
+    : makeStamped({ jobId: job.id, out: outIx, url: cur.url, kind: stampKind!, kit: stampKit!, settings: stampS.settings }));
+  /* Save / Download: the clean copy when the logo was taken off while adjusting, else the result as shown */
+  const saveHref = cleanHref(adjSave === 'plain' ? plainUrl! : cur.url);
+  const openShare = async () => { if (adjSave === 'plain') { setShareUrl(plainUrl!); setShare(true); return; } if (!stamping) { setShareUrl(null); setShare(true); return; }
     try { toast('Adding your logo…'); setShareUrl(await stampedUrl()); setShare(true); } catch (e: any) { toast(e?.message || 'Couldn’t add the logo.', 'error'); } };
   const saveStamped = async (e: React.MouseEvent) => { e.preventDefault();
     try { toast('Adding your logo…'); const u = await stampedUrl(); const a = document.createElement('a'); a.href = u; a.download = appFileName(`${job.id}-${cur.label || 'result'}-logo`, u.split('.').pop() || ext); document.body.appendChild(a); a.click(); a.remove(); toast('Saved with your logo. The original stays as it is.'); }
@@ -200,6 +215,9 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
   /* Add logo: always findable on your image and video results; with a brand that has a logo it turns on the stage stamp, else it leads to Assets › Brands */
   const logoBase = viewer && (medium === 'image' || medium === 'video') && !sample && owner && !(job as any).deletedAt && job.status === 'done' && !showingOriginal && !lys && /^\/files\//.test(cur.url);
   const logoItem = (): MItem | null => { if (!logoBase) return null; const k = stampKit;
+    if (adjOk && adKit) return adj ? { k: 'logo', label: 'Reset logo', icon: <BrandIcon size={16} />, testid: 'rv-adjust-logo', pressed: true, hint: 'Back to the logo as Ad Pack placed it', onClick: () => endAdjust(adjKey) }
+      : { k: 'logo', label: 'Adjust logo', icon: <BrandIcon size={16} />, testid: 'rv-adjust-logo', hint: 'Move, resize or take off the logo on this ad. The ad as made stays as it is.', onClick: openAdjust };
+    if (adjOk) return null; /* the kit Ad Pack used is gone: no second logo on top of the baked one */
     if (!k?.logo?.url) { const href = k ? `/assets/brands?brand=${encodeURIComponent(k.id)}` : '/assets/brands';
       return { k: 'logo', label: 'Add logo', icon: <BrandIcon size={16} />, testid: 'rv-add-logo', trail: <span className="rm-go">Set up your brand first ›</span>, hint: k ? `${k.name} has no logo yet. Add one in Assets › Brands.` : 'Make a brand with your logo in Assets › Brands, then put it on any result', href, onClick: goClick(href, onClose) }; }
     return stamping ? { k: 'logo', label: 'Remove logo', icon: <BrandIcon size={16} />, testid: 'rv-add-logo', pressed: true, trail: <span className="rm-check">On</span>, hint: 'Take the logo off. Save and Share go back to the original.', onClick: () => setStampOn(false) }
@@ -430,7 +448,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
         : <ViewerImage key={inUrl} className="rvx-img" src={inUrl} before={null} alt={inX.label} />}</>
       : <>{tabs && !lys && !multi && <div className="rvx-outs">{tabs}</div>}{showingOriginal ? <div className="rvx-media">{media}</div>
       : kind === 'image' && lys ? <LayerCanvas layers={lys} view={lyView} ar={fitAr || undefined} label={pr ? `Layers: ${pr.slice(0, 120)}` : 'Layers'} />
-      : kind === 'image' ? <ViewerImage key={cur.url} className={`rvx-img${fitAr ? ' rvx-fit' : ''}${(job as any).input?.transparent ? ' alpha-bg' : ''}` /* Remove Background: a transparent PNG over a checkerboard */} style={fitAr ? { ['--ar' as any]: fitAr } : undefined} src={cur.url} alt={pr ? `Result: ${pr.slice(0, 140)}` : cur.label || 'Result'}
+      : kind === 'image' ? <ViewerImage key={adj ? plainUrl : cur.url} className={`rvx-img${fitAr ? ' rvx-fit' : ''}${(job as any).input?.transparent ? ' alpha-bg' : ''}` /* Remove Background: a transparent PNG over a checkerboard */} style={fitAr ? { ['--ar' as any]: fitAr } : undefined} src={adj ? plainUrl! : cur.url} alt={pr ? `Result: ${pr.slice(0, 140)}` : cur.label || 'Result'}
           before={cmpSrc} compareWhy={cmpWhy} compare={cmpOn} onCompare={setCmp} compareName={cmpYours ? 'your photo' : undefined} afterLabel={job.toolId === 'image-upscale' ? `Upscaled${nat ? ` ${nat}` : ''}` : multi && cur.label ? cur.label : 'Result'} beforeLabel={job.toolId === 'image-upscale' && inp.sourceSize?.width ? `Original ${inp.sourceSize.width}×${inp.sourceSize.height}` : cmpYours ? 'Your photo' : 'Original'}
           onLoad={e => { const im = e.currentTarget; if (im.naturalWidth) setNat(`${im.naturalWidth}×${im.naturalHeight}`); }} />
       : kind === 'video' && typeof inp.compareUrl === 'string' && inp.compareUrl !== cur.url && !mBad && !cont ? <div className="rvx-media rvx-cmp" data-testid="rvx-video-compare"><CompareSlider key={cur.url} before={inp.compareUrl} after={cur.url} watermark={false} aspect={ar} /></div> /* a clip edit with a same-size source (Footage Effects): before / after slider */
@@ -467,7 +485,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
       kind === 'video' && vidLead !== 'upscale' && upUrl ? { k: 'up', label: 'Upscale', icon: <UpscaleIcon size={18} />, testid: 'rv-upscale', tip: 'Sharper, bigger frames', href: upUrl, onClick: go(upUrl) } : null,
     ].filter(Boolean) as Tile[];
     const core: Tile[] = [
-      { k: 'save', label: 'Save', icon: <DownloadIcon size={18} />, testid: 'rv-download', tip: storyShots && !showingOriginal ? 'Download film' : stamping ? 'Download with your logo' : 'Download', href: cleanHref(cur.url), download: appFileName(`${job.id}-${cur.label}`, ext), ...(stamping ? { onClick: (e: React.MouseEvent) => void saveStamped(e) } : {}) },
+      { k: 'save', label: 'Save', icon: <DownloadIcon size={18} />, testid: 'rv-download', tip: storyShots && !showingOriginal ? 'Download film' : stamping ? 'Download with your logo' : 'Download', href: saveHref, download: appFileName(`${job.id}-${cur.label}`, ext), ...(stamping ? { onClick: (e: React.MouseEvent) => void saveStamped(e) } : {}) },
       ...(shareBtn ? [{ k: 'share', label: 'Share', icon: <ShareGlyph />, testid: 'rv-share', tip: stamping ? 'Share with your logo' : 'Share', onClick: () => void openShare() }] : []),
       ...(ccOk && cc.state !== 'nomedia' ? [{ k: 'cc', label: 'Captions', icon: null, testid: 'rv-captions', tip: 'Captions', node: <CaptionsTile key="cc" cc={cc} jobId={job.id} out={outIx} kind={kind as 'video' | 'audio'} src={cur.url} /> }] : []),
     ];
@@ -487,7 +505,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
     /* the filmstrip's toolbar, outside the picture: Download this · Download all · Grid · Use as input (the panel's Reference, same handler) */
     const refT = handoffs.find(t => t.k === 'ref');
     const dock = multi && !(inX && inUrl) ? <div className="mr-dock" data-testid="mr-dock"><ResultStrip items={items} pres={pres} current={curItem} onPick={pickItem} actions={<>
-        <a className="mr-btn mr-one" href={cleanHref(cur.url)} download={appFileName(`${job.id}-${cur.label}`, ext)} data-testid="mr-dl-one" aria-label={`Download ${cur.label || 'this one'}`} {...tip('Download this one')}><DownloadIcon size={15} /><span>Download</span></a>
+        <a className="mr-btn mr-one" href={saveHref} download={appFileName(`${job.id}-${cur.label}`, ext)} onClick={adjSave === 'stamp' ? (e) => void saveStamped(e) : undefined} data-testid="mr-dl-one" aria-label={`Download ${cur.label || 'this one'}`} {...tip('Download this one')}><DownloadIcon size={15} /><span>Download</span></a>
         {job.id && !sample && <a className="mr-btn mr-all" href={`/api/jobs/${encodeURIComponent(job.id)}/download.zip`} download data-testid="mr-dl-all" aria-label={`Download all ${items.filter(x => x.state === 'done').length} as a ZIP`} {...tip('Every result in one ZIP, plus a settings file')}><DownloadIcon size={15} /><span>All (ZIP)</span></a>}
         <button type="button" className={`mr-btn${grid ? ' on' : ''}`} aria-pressed={grid} onClick={() => setGrid(g => !g)} data-testid="mr-grid-toggle" aria-label="Grid view" {...tip(grid ? 'Back to one at a time' : 'See them all as a grid')}><GridIcon size={15} /><span>Grid</span></button>
         {refT && <a className="mr-btn mr-use" href={refT.href} onClick={refT.onClick} data-testid="mr-use" aria-label="Use as input" {...tip(refT.tip)}><RefGlyph /><span>Use as input</span></a>}
@@ -495,7 +513,9 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
     const stageMedia = stage && !(inX && inUrl) && !showingOriginal ? <div className="rvx-media rvx-stage-own">{stage}</div>
       : multi && grid ? <ResultGrid items={items} pres={pres} current={curItem} onPick={pickItem} name={`${job.id}-grid`} onError={m => toast(m, 'error')} onSaved={() => toast('Grid saved as one image')} /> : vMedia;
     /* Add logo and text: the stage layer (pill, the logo you drag, its toolbar and More card) */
-    const stamp = stampOk && stampKind && !(inX && inUrl) && !(multi && grid) && !mBad && !stage ? <LogoStampLayer key={`${job.id}:${outIx}`} kind={stampKind} /> : null;
+    const stampHere = !(inX && inUrl) && !(multi && grid) && !mBad && !stage;
+    const stamp = adj && stampHere ? <LogoStampLayer key={`${adjKey}:adjust`} kind="image" adjust={{ key: adjKey, kitId: adKit!.id }} />
+      : !adjOk && stampOk && stampKind && stampHere ? <LogoStampLayer key={`${job.id}:${outIx}`} kind={stampKind} /> : null;
     return <ViewerShell label={pr ? `Result: ${pr.slice(0, 80)}` : title} bg={bg} media={<>{stageMedia}{dock}{stamp}</>}
       who={owner && !sample && !(job as any).example ? { name: 'You', role: 'Author', self: true } : authorOf(job, sample)}
       badge={trashed ? <TrashChip /> : sampleChip ? <span className="rvx-badges">{sampleChip}</span> : null} headActions={trashed ? null : fav}
