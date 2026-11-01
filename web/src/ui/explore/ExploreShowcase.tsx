@@ -56,32 +56,30 @@ import { AudioCover, AudioVizLayer, useAudioViz } from '../../shared/AudioViz';
 import { Waveform } from '../../shared/Waveform';
 import { primeAudio } from '../../shared/audioGraph';
 import { detectStyle } from '../../shared/beanStyle';
-import { featuredByKey, featuredRecreateHref, placeOfRoute, FEATURED_BIG_POSTER, type FeaturedItem } from '../../../../server/src/shared/featured';
+import { featuredByKey, featuredRecreateHref, placeOfRoute, FEATURED_BIG_POSTER, OUR_COMPUTER, type FeaturedItem } from '../../../../server/src/shared/featured';
 import { EXPLORE_HERO, EXPLORE_STILL, EXPLORE_KOI, EXPLORE_SWAP, EXPLORE_LAYERS, EXPLORE_BOARD, EXPLORE_LOOKS, EXPLORE_YOUR_TURN, yourTurnHref, EXPLORE_MOODS, EXPLORE_DANCE, EXPLORE_SHEETS, EXPLORE_FILM, EXPLORE_VFX, vfxTile, EXPLORE_HEADLINE, type VfxTile, type ReelShot } from '../../../../server/src/shared/exploreShowcase';
 import { CloseIcon, SoundIcon } from '../Icons';
 import { renderBeat } from './beatSynth';
 import '../../shared/audioCard.css';
-import { FilmCredit, type CreditCol } from './FilmCredit';
+import { RunChip } from '../../shared/RunChip';
+import { chipOfFeatured, chipOfRun, chipOfChain, type RunChipData } from '../../../../server/src/shared/runChip';
+import { LOCAL_LABEL } from '../../../../server/src/shared/modelIds';
 import './exploreShowcase.css';
 
 const Arrow = () => <span className="xv-arrow" aria-hidden>→</span>;
 const FreeDot = ({ children = 'Free on your computer' }: { children?: React.ReactNode }) => <span className="xv-free"><i aria-hidden />{children}</span>;
 
 /* ============================================================== hero ============================================================== */
-/** The hero's credit as parts, all from the data (EXPLORE_HERO + its featured entry): model, music model, length, where it ran and its price. */
-function heroCredit(s: ReelShot, f: FeaturedItem) {
-  /* 'Music · YuE2 · Free' → 'YuE2' */
-  const music = (s.after ?? []).map((x) => /^Music · ([^·]+)/.exec(x)?.[1]?.trim()).find(Boolean) ?? null;
-  const local = f.runOn === 'local';
-  return { model: s.model, music, length: s.facts.join(' · '), place: local ? 'Your computer' : 'Comfy Cloud', price: local ? 'Free' : f.costUsd != null ? `$${f.costUsd.toFixed(2)}` : null };
+/** The hero's run chip, all from the data (EXPLORE_HERO + its featured entry): the model, where it ran and its price, the length, and the
+ *  music made here (its model from `after`, "Music · YuE2 · Free") as "+1". */
+export function heroChip(s: ReelShot, f: FeaturedItem): RunChipData {
+  const music = (s.after ?? []).map((x) => /^Music · ([^·]+)/.exec(x)?.[1]?.trim()).find(Boolean);
+  return chipOfFeatured(f, { model: s.model, note: s.facts.join(' · '), also: music ? [{ jobId: '', model: `${music} (music)`, place: OUR_COMPUTER, costUsd: 0 }] : [] });
 }
-/** The hero's credit, a film credit block under the clip's line (user pick, 2026-10-28): spaced-caps labels over their values, in columns
- *  (MADE WITH · LENGTH · RAN ON), then the hero's one action, an orange "Make your own →". */
+/** The hero's credit (2026-11-01: the shared run chip, was the MADE WITH · LENGTH · RAN ON block), then its one action, an orange "Make your own →". */
 function HeroCredit({ s, f, rec }: { s: ReelShot; f: FeaturedItem; rec: string | null }) {
-  const c = heroCredit(s, f);
-  const cols: CreditCol[] = [['Made with', [c.model, c.music]], ['Length', [c.length]], ['Ran on', [c.place, c.price]]];
   return <div className="xph-credit" data-testid="xp-hero-caption">
-    <FilmCredit cols={cols} />
+    <RunChip onMedia c={heroChip(s, f)} testId="xp-hero-chip" />
     {rec && <Link to={rec} className="xph-rec" data-testid="xp-hero-recreate">Make your own <Arrow /></Link>}
   </div>;
 }
@@ -122,12 +120,11 @@ export function XpStill() {
       before={{ url: still.url, poster: still.url, label: W.stillLabel }} after={{ url: f.out.url, poster: FEATURED_BIG_POSTER[f.key] ?? f.out.poster, label: W.clipLabel }} />
     <div className="xpo-cred">
       <p className="xpo-meta" data-testid="xp-still-credits" aria-live="polite">
-        <span><b>{f.model}</b> by {W.maker}</span><span>{W.place}</span>
+        <RunChip c={chipOfFeatured(f)} testId="xp-still-chip" />
         <span data-testid="xp-still-length">{t.trimmedTo ? `${ran} s run, trimmed to ${Math.floor(t.trimmedTo)} s` : `${ran} s`}</span>
         <span>{String(f.input.resolution ?? '')}</span><span>{W.sound}</span>
-        {f.costUsd != null && <span className="xpo-price" data-testid="xp-still-price">{f.costEstimated ? '≈ ' : ''}${f.costUsd.toFixed(2)}</span>}
         {/* the still's own run (featured `from`): its model, place and price */}
-        {f.from?.map((r) => <span key={r.jobId} className="xpo-src" data-testid="xp-still-source">{W.stillLabel}: <b>{r.model}</b> · {r.place} · ${r.costUsd.toFixed(2)}</span>)}
+        {f.from?.map((r) => <RunChip key={r.jobId} c={chipOfRun(r, W.stillLabel.toLowerCase())} testId="xp-still-source" />)}
       </p>
       <span className="xpo-acts">
         <button type="button" className="xv-quiet xpo-replay" onClick={() => setReplay((n) => n + 1)} data-testid="xp-still-replay">Replay the reveal</button>
@@ -171,8 +168,8 @@ export function XpKoi() {
       <span className="xpk-f">one {Math.round(take)} s take</span>
     </p>
     <span className="xpk-meta">
-      <span className="xv-pill" data-testid="xp-koi-paid-first">{K.first.model} · {K.first.place} · ${K.first.usd.toFixed(2)}<small>first {Math.round(first)} s</small></span>
-      <span className="xv-pill" data-testid="xp-koi-paid-extend">{f.model} · {K.place}{f.costUsd != null ? ` · $${f.costUsd.toFixed(2)}` : ''}<small>+{added} s</small></span>
+      <RunChip testId="xp-koi-paid-first" c={chipOfRun({ jobId: '', model: K.first.model, place: K.first.place, costUsd: K.first.usd }, `first ${Math.round(first)} s`)} />
+      <RunChip testId="xp-koi-paid-extend" c={chipOfFeatured(f, { note: `+${added} s` })} />
       {ending > 0 && <span className="xv-pill" data-testid="xp-koi-paid-ending">{K.ending.label}<small>+{ending} s</small></span>}
     </span>
     <span className="xpk-ctas"><Link to={rec} className="xv-quiet" data-testid="xp-koi-recreate">Recreate</Link><Link to={K.cta.href} className="xv-btn" data-testid="xp-koi-cta">{K.cta.label}<Arrow /></Link></span>
@@ -180,7 +177,7 @@ export function XpKoi() {
 }
 
 /* ============================================================== a chapter's copy column (shared by every chapter) ============================================================== */
-interface ChapterStep { n: number; name: string; line: string }
+interface ChapterStep { n: number; name: string; line: React.ReactNode }
 /** The chapter's left column: eyebrow, a stacked headline (capitals via CSS), its line, numbered steps (the last one highlighted: the run itself),
  *  then the CTA and Recreate. Sticky beside the media on a wide screen. */
 export function ChapterText({ id, eyebrow, title, line, steps, cta, rec, recLabel }: { id: string; eyebrow?: string; title: string[]; line: string; steps: ChapterStep[];
@@ -189,7 +186,7 @@ export function ChapterText({ id, eyebrow, title, line, steps, cta, rec, recLabe
     {eyebrow && <span className="xv-eb">{eyebrow}</span>}
     <h2 id={`xp-h-${id}`} className="xps-h">{title.map((l) => <span key={l}>{l}</span>)}</h2>
     <p className="xps-p">{line}</p>
-    <ol className="xps-steps">{steps.map((x, k) => <li key={x.n} className={k === steps.length - 1 ? 'on' : ''} data-testid={`xp-${id}-step-${x.n}`}><b>{x.n}</b><span><strong>{x.name}</strong><small>{x.line}</small></span></li>)}</ol>
+    <ol className="xps-steps">{steps.map((x, k) => <li key={x.n} className={k === steps.length - 1 ? 'on' : ''} data-testid={`xp-${id}-step-${x.n}`}><b>{x.n}</b><span><strong>{x.name}</strong>{typeof x.line === 'string' ? <small>{x.line}</small> : x.line}</span></li>)}</ol>
     <span className="xps-ctas"><Link to={cta.href} className="xv-btn" data-testid={`xp-${id}-cta`}>{cta.label}<Arrow /></Link><Link to={rec} className="xv-quiet" data-testid={`xp-${id}-recreate`}>{recLabel}</Link></span>
   </div>;
 }
@@ -199,7 +196,7 @@ export function ChapterText({ id, eyebrow, title, line, steps, cta, rec, recLabe
 function swapRuns() {
   return EXPLORE_SWAP.runs.map((r) => { const f = featuredByKey(r.key); if (!f) return null; const play = f.sharp ?? f.out;
     return { r, f, url: play.url, poster: FEATURED_BIG_POSTER[f.key] ?? f.out.poster.replace(/-480\.webp$/, '.webp'), rec: featuredRecreateHref(f.key) ?? '/', photos: (f.input.refUrls as string[] | undefined) ?? [],
-      price: `$${(f.costUsd ?? 0).toFixed(2)}`, place: f.runOn === 'comfy-cloud' ? 'Comfy Cloud' : 'Free on your computer' }; }).filter((x): x is NonNullable<typeof x> => !!x);
+      chip: chipOfFeatured(f) }; }).filter((x): x is NonNullable<typeof x> => !!x);
 }
 type SwapRunView = ReturnType<typeof swapRuns>[number];
 /** both results ship as their Topaz upscale: one line that says so, with the upscale's model, place and price */
@@ -226,7 +223,7 @@ export function XpSwap() {
       {runs.map((x, k) => <figure key={x.r.key} className="xsdc-tile" data-testid={`xp-swap-run-${x.r.key}`}>
         <CompareFrame className="xsdc-cmp" intro="nudge" start={65} testId="xp-swap-slider" labels={[S.original.label, x.r.who]}
           before={media(k, S.original.url, x.r.originalPoster ?? S.original.poster)} after={media(k + 2, x.url, x.poster)} />
-        <figcaption className="xsdc-card"><SwapFaces run={x} /><span className="xsdc-meta"><strong>{x.f.model}</strong><small>{x.r.photos} · {x.place} · <b>{x.price}</b></small></span>
+        <figcaption className="xsdc-card"><SwapFaces run={x} /><span className="xsdc-meta"><RunChip c={x.chip} testId={`xp-swap-chip-${x.r.key}`} /><small>{x.r.photos}</small></span>
           <Link to={x.rec} className="xsdc-rec" data-testid={`xp-swap-recreate-${x.r.key}`}>Recreate<Arrow /></Link></figcaption>
       </figure>)}
     </div>
@@ -244,7 +241,7 @@ export function XpLayers() {
   const onSound = () => { if (snd.toggle()) setRestart((n) => n + 1); };
   if (!f?.before || !ls?.length) return null;
   const rec = featuredRecreateHref(f.key) ?? S.cta.href; const size: [number, number] = [f.out.width, f.out.height];
-  const steps = [...S.steps, { n: 3, name: `${ls.length} layers`, line: `${S.model} · ${S.via}${f.costUsd != null ? ` · $${f.costUsd.toFixed(2)}` : ''}` }];
+  const steps = [...S.steps, { n: 3, name: `${ls.length} layers`, line: <RunChip c={chipOfFeatured(f, { model: S.model })} testId="xp-layers-chip" /> }];
   return <section className="xv-sec xps xpy" id="xp-layers" data-testid="xp-layers" aria-labelledby="xp-h-layers">
     <ChapterText id="layers" title={S.title} line={S.line} steps={steps} cta={S.cta} rec={rec} recLabel="Recreate this one" />
     <div ref={box} className="xps-media xpy-media">
@@ -271,7 +268,7 @@ export function XpLooks() {
       <span className="xv-eb">{L.eyebrow}</span>
       <h2 id="xp-h-looks" className="xps-h xlk-h">{L.title.map((l) => <span key={l}>{l}</span>)}</h2>
       <p className="xps-p">{L.line}</p>
-      <span className="xlk-meta" data-testid="xp-looks-model"><span className="xv-pill">{now.model}</span><span className="xv-free"><i />{L.place}</span></span>
+      <span className="xlk-meta" data-testid="xp-looks-model"><RunChip c={{ model: now.model, place: LOCAL_LABEL, price: 'Free' }} testId="xp-looks-chip" /></span>
       <span className="xps-ctas"><Link to={L.cta.href} className="xv-btn" data-testid="xp-looks-cta">{L.cta.label}<Arrow /></Link></span>
     </div>
     <figure className="xlk-frame" data-testid="xp-looks-frame">
@@ -383,8 +380,8 @@ export function XpSheets() {
     </div>
     <div className="xpc-cast" role="tablist" aria-label="Character">{cast.map(({ c: x, f: y }, k) => <button key={x.key} type="button" role="tab" aria-selected={k === cur} className={k === cur ? 'on' : ''} onClick={() => pick(k)}
       title={`${x.style} · $${(y.costUsd ?? 0).toFixed(2)}`} data-testid={`xp-sheets-cast-${x.name.toLowerCase()}`}><img src={x.face} alt="" loading="lazy" decoding="async" />{x.name}<small>{x.style}</small></button>)}</div>
-    <span className="xpk-meta"><span className="xv-pill" data-testid="xp-sheets-price">{S.via} · ${(f.costUsd ?? 0).toFixed(2)}<small>one image, one run</small></span>
-      {td && <span className="xv-pill" data-testid="xp-sheets-3d-credit">3D: {td.model} · {td.place} · ${td.usd.toFixed(2)}</span>}</span>
+    <span className="xpk-meta"><RunChip c={chipOfFeatured(f, { note: 'one image, one run' })} testId="xp-sheets-price" />
+      {td && <RunChip c={chipOfRun({ jobId: td.jobId, model: td.model, place: td.place, costUsd: td.usd, est: true }, '3D model')} testId="xp-sheets-3d-credit" />}</span>
     <span className="xpk-ctas"><Link to={rec} className="xv-btn" data-testid="xp-sheets-recreate">Recreate this sheet<Arrow /></Link>
       {td && <button type="button" className="xv-quiet xpc-q" aria-pressed={spin} onClick={() => setSpin((v) => !v)} data-testid="xp-sheets-spin">{spin ? 'Back to the sheet' : 'Spin him in 3D'}</button>}
       {!still && !on3d && <button type="button" className="xv-quiet xpc-q" aria-pressed={paused} onClick={() => setPaused((v) => !v)} data-testid="xp-sheets-pause">{paused ? 'Play' : 'Pause'}</button>}</span>
@@ -392,6 +389,12 @@ export function XpSheets() {
 }
 
 /* ============================================================== Mockup to film (Direct a Shot made real) ============================================================== */
+/** The film's chip: its own run (LTX-2.5 22B + Layout to Render, the beats' model) as the main model, the painted first frame as "+1" (the
+ *  free mockup drawn in the browser isn't a model), the two runs' price together (the film's is an estimate, so "≈"). */
+export function filmChip(f: FeaturedItem): RunChipData {
+  const b3 = EXPLORE_FILM.beats[2]; const paid = (f.from ?? []).filter((r) => r.costUsd > 0);
+  return chipOfChain({ jobId: f.jobId ?? b3.jobId, model: b3.model, place: b3.place, costUsd: f.costUsd ?? b3.usd, est: true }, paid);
+}
 export function XpFilm() {
   const F = EXPLORE_FILM; const f = featuredByKey(F.key); const [beat, setBeat] = useState<1 | 2 | 3>(1); const [jump, setJump] = useState<{ to: 'wait' | 'hold' | 'play'; n: number } | undefined>();
   if (!f?.before) return null;
@@ -413,6 +416,7 @@ export function XpFilm() {
         <span className="xpf-b1"><i aria-hidden />{two(x.n)} · {x.step}</span><span className="xpf-b2">{x.model}</span>
         <span className="xpf-b3">{x.usd ? <b data-testid={`xp-film-price-${x.n}`}>${x.usd.toFixed(2)}</b> : <em>Free</em>} · {x.place}{x.note ? ` · ${x.note}` : ''}</span></button>)}</div>
     </div>
+    <span className="xpf-chip"><RunChip c={filmChip(f)} testId="xp-film-chip" /></span>
     <span className="xpk-ctas"><Link to={rec} className="xv-btn" data-testid="xp-film-recreate">Recreate this shot<Arrow /></Link><Link to={F.cta.href} className="xv-quiet" data-testid="xp-film-cta">{F.cta.label}</Link></span>
     <p className="xpf-src">{F.credit}</p>
   </section>;

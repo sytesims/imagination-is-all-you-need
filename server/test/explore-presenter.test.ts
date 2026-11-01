@@ -20,6 +20,6 @@ assert.match(source, /useWaveform/, 'the voice card draws the real speech clip')
 assert.match(source, /<ShowcaseFilm[^>]*controls/, 'shared video and sound controls, no custom playback implementation');
 assert.match(source, /videoWorkflowHref\('lip-sync'\)[^>]*>Make it talk/, 'primary action starts the Lip Sync workflow');
 assert.match(source, /to=\{rec\}[^>]*>or recreate this one/, 'the quieter action recreates this exact example');
-assert.match(source, /placeOfRoute\(f\.route\)/, 'run location comes from the featured record');
+assert.match(source, /featuredPlace\(f\)/, 'run location comes from the featured record (the shared run chip)');
 assert.match(css, /\.xpa-film\{[^}]*aspect-ratio:1/, "the square result sits in a square card, so nothing is cropped");
 console.log('ok presenter row: shipped portrait, speech and video, square frame, real model, Lip Sync and recreate links');

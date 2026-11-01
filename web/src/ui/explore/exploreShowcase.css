@@ -483,3 +483,7 @@ html body .xyt-box input,html body .xyt-box input:focus,html body .xyt-box input
 @media (prefers-reduced-motion:reduce){.xpx-card{transition:none}}
 
 @media (max-width:640px){.xph-p{white-space:normal}} /* one line on desktop; wraps only on phones */
+/* the shared run chip (shared/RunChip.tsx) in the showcase sections */
+.xpf-chip{display:flex;justify-content:center;margin-top:16px}
+.xph-credit .runchip{display:flex;width:fit-content}
+.xps-steps .runchip{margin-top:7px}

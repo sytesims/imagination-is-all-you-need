@@ -9,25 +9,23 @@ import { useState } from 'react';
 import { Link } from '../../platform/router';
 import { CompareFrame } from '../../shared/CompareSlider';
 import { HoverClip } from '../../shared/HoverClip';
+import { RunChip } from '../../shared/RunChip';
+import { chipOfFeatured } from '../../../../server/src/shared/runChip';
 import { featuredByKey, type FeaturedItem } from '../../../../server/src/shared/featured';
 import { EXPLORE_WORK, workHref, type WorkItem, type WorkVariant } from '../../../../server/src/shared/exploreShowcase';
 import './exploreWork.css';
 
 const Arrow = () => <span className="xv-arrow" aria-hidden>→</span>;
-const usd = (n: number) => `$${n.toFixed(2)}`;
 
 /** An item with its featured entry (model, place, price); null when its files are not in this build. */
 function resolve(it: WorkItem) { const f = featuredByKey(it.priceKey); return f ? { it, f } : null; }
 type Work = { it: WorkItem; f: FeaturedItem };
 const works = (): Work[] => EXPLORE_WORK.items.map(resolve).filter((x): x is Work => !!x);
 
-/** model · where it ran · real price (one run's, or the whole pack's) */
+/** model · where it ran · real price (one run's, or the whole pack's): the shared run chip */
 function Facts({ w }: { w: Work }) {
-  const { it, f } = w; const place = f.runOn === 'local' ? 'Free on your computer' : 'Comfy Cloud';
-  return <span className="xw-facts" data-testid={`xp-work-facts-${it.id}`}>
-    <span className="xv-pill xv-pill-dark">{it.model ?? f.model}</span><span className="xv-pill xv-pill-dark">{place}</span>
-    {f.costUsd != null && <span className="xv-pill xw-price" data-testid={`xp-work-price-${it.id}`}>{usd(f.costUsd)}{it.per ? <small>{it.per}</small> : null}</span>}
-  </span>;
+  const { it, f } = w;
+  return <span className="xw-facts" data-testid={`xp-work-facts-${it.id}`}><RunChip c={chipOfFeatured(f, { model: it.model, note: it.per || undefined })} testId={`xp-work-price-${it.id}`} /></span>;
 }
 /** "Make your own": the workflow with this look's photos and words in (nothing runs until Generate) */
 const MakeOwn = ({ it, v }: { it: WorkItem; v: WorkVariant }) =>

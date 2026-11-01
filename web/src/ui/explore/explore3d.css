@@ -24,11 +24,9 @@
 .x3 .x3-n{font:700 12px/1 var(--font-display);letter-spacing:.12em;color:var(--text-2)}
 .x3 .x3-name b{font:650 14px/1.2 var(--font-ui);color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .x3 .x3-run{display:flex;align-items:center;gap:8px;padding:0 4px;font:500 13px/1.3 var(--font-ui);color:var(--text-2)}
-.x3 .x3-model{display:flex;align-items:center;gap:8px;min-width:0}
-.x3 .x3-price{margin-left:auto;font:650 13px/1 var(--font-ui);color:#fff;white-space:nowrap}
-.x3 .x3-more,.x3 .x3-credits{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;border:1px solid var(--xv-line2);font:600 11.5px/1 var(--font-ui);color:rgba(255,255,255,.72);white-space:nowrap;cursor:default;transition:border-color .2s ease,color .2s ease}
-.x3 .x3-more:hover,.x3 .x3-credits:hover{border-color:rgba(255,122,26,.5);color:#ffc08f}
-.x3 .x3-more:focus-visible,.x3 .x3-credits:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap)}
+.x3 .x3-credits{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;border:1px solid var(--xv-line2);font:600 11.5px/1 var(--font-ui);color:rgba(255,255,255,.72);white-space:nowrap;cursor:default;transition:border-color .2s ease,color .2s ease}
+.x3 .x3-credits:hover{border-color:rgba(255,122,26,.5);color:#ffc08f}
+.x3 .x3-credits:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap)}
 
 /* ---------- one bottom row ---------- */
 .x3 .x3-foot{display:flex;align-items:center;justify-content:space-between;gap:16px 28px;flex-wrap:wrap;padding-top:22px}
@@ -37,4 +35,5 @@
 .x3 .x3-credits{margin-left:10px}
 .x3 .x3-ctas{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px}
 @media (max-width:760px){.x3 .x3-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.x3 .x3-step:nth-child(odd)::before{display:none}}
-@media (prefers-reduced-motion:reduce){.x3 .x3-step,.x3 .x3-more,.x3 .x3-credits{transition:none}}
+@media (prefers-reduced-motion:reduce){.x3 .x3-step,.x3 .x3-credits{transition:none}}
+.x3 .runchip{gap:3px 5px;padding:5px 9px;font-size:11.5px}

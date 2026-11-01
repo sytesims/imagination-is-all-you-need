@@ -21,7 +21,7 @@
 .xpa .xpa-film .sfilm-copy,.xpa .xpa-film .sfilm-aside{display:none}
 .xpa-top{position:absolute;top:14px;left:14px;right:14px;z-index:5;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;pointer-events:none}
 .xpa-top .xv-tag{position:static}
-.xpa-chip{display:inline-flex;align-items:center;height:26px;padding:0 11px;border-radius:999px;background:rgba(0,0,0,.55);color:rgba(255,255,255,.82);font:500 11.5px/1 var(--font-ui);white-space:nowrap}
+.xpa-top .runchip{pointer-events:auto}
 .xpa-ctas{justify-content:center;margin-top:40px}
 @media(max-width:760px){
   .xpa-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
