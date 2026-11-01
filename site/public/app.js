@@ -1,9 +1,8 @@
-// iiayn.app: install tabs (auto-picked from the visitor's computer), Copy, lazy clips and the song tile. No libraries.
+// iiayn.app: install tabs (auto-picked from the visitor's computer), Copy, the Run on picker, lazy clips and the song tile. No libraries.
 (() => {
-  const REPO = 'https://github.com/sytesims/imagination-is-all-you-need/blob/main/scripts/';
   const OS = {
-    unix: { cmd: 'curl -fsSL https://iiayn.app/install | bash', where: 'Paste this into <b>Terminal</b>:', script: 'get.sh' },
-    win: { cmd: 'irm https://iiayn.app/install.ps1 | iex', where: 'Paste this into <b>PowerShell</b>:', script: 'get.ps1' },
+    unix: { cmd: 'curl -fsSL https://iiayn.app/install | bash', where: 'Paste this into <b>Terminal</b>:' },
+    win: { cmd: 'irm https://iiayn.app/install.ps1 | iex', where: 'Paste this into <b>PowerShell</b>:' },
   };
 
   const box = document.querySelector('[data-install]');
@@ -12,7 +11,6 @@
     const panel = box.querySelector('[role="tabpanel"]');
     const code = box.querySelector('[data-cmd]');
     const where = box.querySelector('[data-where]');
-    const script = box.querySelector('[data-script]');
     const copyBtn = box.querySelector('[data-copy]');
     const copyLabel = box.querySelector('[data-copy-label]');
     let timer;
@@ -26,9 +24,7 @@
       });
       code.textContent = OS[os].cmd;
       where.innerHTML = OS[os].where;
-      script.href = REPO + OS[os].script;
-      box.querySelectorAll('[data-only]').forEach((el) => { el.hidden = el.dataset.only !== os; });
-      copyBtn.setAttribute('aria-label', `Copy the ${os === 'win' ? 'Windows' : 'Mac and Linux'} install command`);
+      copyBtn.setAttribute('aria-label', `Copy the ${os === 'win' ? 'Windows' : 'macOS and Linux'} install command`);
       resetCopy();
     };
 
@@ -69,14 +65,50 @@
 
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // Hero clip: the poster is the section's background (instant paint); the clip loads only on wider screens, never for
-  // people who asked for less motion or to save data, and fades in once it is really playing.
-  const hero = document.querySelector('[data-hero]');
-  const saveData = navigator.connection && navigator.connection.saveData;
-  if (hero && !still && !saveData && matchMedia('(min-width: 821px)').matches) {
-    hero.src = hero.dataset.src;
-    hero.addEventListener('playing', () => hero.classList.add('on'), { once: true });
-    hero.play().catch(() => {});
+  // One app, every way to run: step through the three places (price changes on Generate). Pointing at, focusing or pressing a
+  // place stops it there. Reduced motion: no stepping, the first place stays shown. Steps only while the section is on screen.
+  const run = document.querySelector('[data-run]');
+  if (run) {
+    const PLACES = [
+      { model: 'LTX-2.5 22B', place: 'Your computer', price: 'Free', opts: [0, 1] },
+      { model: 'LTX-2.5 22B', place: 'Comfy Cloud', price: '≈ $0.23', opts: [0, 1] },
+      { model: 'Kling 3.0 Omni', place: 'partner model', price: '≈ $0.68', opts: [2] },
+    ];
+    const btns = [...run.querySelectorAll('[data-place]')];
+    const opts = [...run.querySelectorAll('[data-opt]')];
+    const models = run.querySelectorAll('[data-run-model]');
+    const price = run.querySelector('[data-run-price]');
+    const now = run.querySelector('[data-run-now]');
+    const live = run.querySelector('[data-run-live]');
+    const note = run.querySelector('[data-run-note]');
+    let on = 0; let held = still; let seen = false; let tick;
+
+    const show = (k, said) => {
+      on = k; const p = PLACES[k];
+      btns.forEach((b, i) => { b.classList.toggle('on', i === k); b.setAttribute('aria-pressed', String(i === k)); });
+      opts.forEach((o, i) => { o.hidden = !p.opts.includes(i); o.classList.toggle('on', i === k); });
+      note.hidden = k !== 2;
+      models.forEach((m) => { m.textContent = p.model; });
+      price.textContent = p.price;
+      if (!still) { price.classList.remove('in'); void price.offsetWidth; price.classList.add('in'); }
+      now.textContent = `${p.model} · ${p.place} · ${p.price}`;
+      if (said) live.textContent = `${p.model} on ${p.place === 'partner model' ? 'Comfy Router' : p.place}: ${p.price === 'Free' ? 'free' : `about ${p.price.slice(2)}`}`;
+    };
+    const stop = () => { held = true; clearInterval(tick); };
+    const go = () => { clearInterval(tick); if (!held && seen) tick = setInterval(() => show((on + 1) % PLACES.length, false), 2600); };
+    const pick = (k) => { stop(); if (k !== on) show(k, true); };
+
+    btns.forEach((b, i) => {
+      b.addEventListener('click', () => { stop(); show(i, true); });
+      b.addEventListener('focus', () => pick(i));
+      b.addEventListener('mouseenter', () => pick(i));
+    });
+    run.querySelector('.run-stage').addEventListener('mouseenter', stop);
+    show(0, false);
+    if (!still) {
+      if ('IntersectionObserver' in window) new IntersectionObserver(([e]) => { seen = e.isIntersecting; if (seen) go(); else clearInterval(tick); }, { threshold: 0.25 }).observe(run);
+      else { seen = true; go(); }
+    }
   }
 
   // Tile clips: load only when on screen, pause when off.
