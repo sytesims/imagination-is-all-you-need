@@ -357,7 +357,7 @@ export default function History({ tools, toolId }: { tools: ToolInfo[]; toolId?:
     <div className={`assets-shell pp-assets${selecting ? ' as-selecting' : ''}`}>
       <aside className="assets-side" aria-label="Library sections">
         {SECTIONS.map(([n, I]) => <button key={n} data-testid={`as-sec-${n.toLowerCase()}`} className={`assets-link ${section === n && !media ? 'on' : ''}`} onClick={() => go(n)}><span className="pp-assets-ic" aria-hidden><I size={16} /></span>{n}{n !== 'Trash' && <span className="count">{secCount(n) ?? ''}</span>}</button>)}
-        <span className="side-label as-tools-h">Features</span>
+        <span className="side-label as-tools-h">Workflows</span>
         {(['Images', 'Video', 'Audio', 'Enhanced'] as const).map(g => <button key={g} data-testid={`as-media-${g.toLowerCase()}`} className={`assets-link ${section === 'Assets' && media === g ? 'on' : ''}`} onClick={() => go('Assets', g)}><span className="as-mic pp-assets-ic" aria-hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{MEDIA_GLYPH[g]}</svg></span>{g}<span className="count">{counts ? String(counts.byMedia[g] ?? 0) : ''}</span></button>)}
       </aside>
     {/* BH5 P1 / PB-23: an empty library or section hides search, filters and the credits line (nothing to act on yet) */}
