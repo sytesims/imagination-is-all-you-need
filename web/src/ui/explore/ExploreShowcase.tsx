@@ -109,29 +109,34 @@ function PromptText({ text }: { text: string }) {
     return <p key={k}>{m ? <><b>{m[1]}</b> {para.slice(m[0].length)}</> : para}</p>; })}</>;
 }
 /* ============================================================== From one still (LTX-2.5 Pro image to video) ============================================================== */
+/** The layout being picked (2026-11-02): ?stillsection=a (default), the reel full bleed with the copy over it; b, a slim text row over an edge-to-edge reel. */
+export const stillLayout = (): 'a' | 'b' => (typeof location !== 'undefined' && new URLSearchParams(location.search).get('stillsection') === 'b' ? 'b' : 'a');
 export function XpStill() {
   const W = EXPLORE_STILL; const t = W.take; const f = featuredByKey(t.key);
-  const [replay, setReplay] = useState(0); const [open, setOpen] = useState(false);
+  const [replay, setReplay] = useState(0); const [open, setOpen] = useState(false); const [layout] = useState(stillLayout);
   if (!f?.before) return null;
   const still = f.before; const rec = featuredRecreateHref(f.key) ?? VIDEO_PAGE; const ran = Number(f.input.duration) || Math.round(f.out.sec ?? 0);
-  const words = f.prompt.split(/\s+/).filter(Boolean).length;
-  return <section className="xv-sec xpo" id="xp-still" data-testid="xp-still" aria-labelledby="xp-h-still">
-    <header className="xv-head"><div><span className="xv-eb">{W.eyebrow}</span><h2 id="xp-h-still" className="xpo-h" data-testid="xp-still-title">{W.title}</h2><p data-testid="xp-still-line">{W.line}</p></div></header>
-    <HeroReel className="hreel-framed xpo-film" testId="xp-still-wipe" reveal replay={replay} position={t.pos} sound={f.out.sound === true} restartOnSound label={`${f.title}, made with ${f.model}`}
-      before={{ url: still.url, poster: still.url, label: W.stillLabel }} after={{ url: f.out.url, poster: FEATURED_BIG_POSTER[f.key] ?? f.out.poster, label: W.clipLabel }} />
-    <div className="xpo-cred">
-      <p className="xpo-meta" data-testid="xp-still-credits" aria-live="polite">
-        <RunChip c={chipOfFeatured(f)} testId="xp-still-chip" />
-        <span data-testid="xp-still-length">{t.trimmedTo ? `${ran} s run, trimmed to ${Math.floor(t.trimmedTo)} s` : `${ran} s`}</span>
-        <span>{String(f.input.resolution ?? '')}</span><span>{W.sound}</span>
-        {/* the still's own run (featured `from`): its model, place and price */}
-        {f.from?.map((r) => <RunChip key={r.jobId} c={chipOfRun(r, W.stillLabel.toLowerCase())} testId="xp-still-source" />)}
-      </p>
-      <span className="xpo-acts">
-        <button type="button" className="xv-quiet xpo-replay" onClick={() => setReplay((n) => n + 1)} data-testid="xp-still-replay">Replay the reveal</button>
-        <Link to={rec} className="xv-btn" data-testid="xp-still-recreate">Recreate this shot<Arrow /></Link>
-      </span>
-    </div>
+  const words = f.prompt.split(/\s+/).filter(Boolean).length; const bleed = layout === 'a';
+  const head = <><span className="xv-eb">{W.eyebrow}</span><h2 id="xp-h-still" className="xpo-h" data-testid="xp-still-title">{W.title}</h2></>;
+  const line = <p className="xpo-line" data-testid="xp-still-line">{W.line}</p>;
+  const meta = <p className="xpo-meta" data-testid="xp-still-credits" aria-live="polite">
+    <RunChip c={chipOfFeatured(f)} testId="xp-still-chip" onMedia={bleed} />
+    <span data-testid="xp-still-length">{t.trimmedTo ? `${ran} s run, trimmed to ${Math.floor(t.trimmedTo)} s` : `${ran} s`}</span>
+    <span>{String(f.input.resolution ?? '')}</span><span>{W.sound}</span>
+    {/* the still's own run (featured `from`): its model, place and price */}
+    {f.from?.map((r) => <RunChip key={r.jobId} c={chipOfRun(r, W.stillLabel.toLowerCase())} onMedia={bleed} testId="xp-still-source" />)}
+  </p>;
+  const replayBtn = <button type="button" className="xv-quiet xpo-replay" onClick={() => setReplay((n) => n + 1)} data-testid="xp-still-replay">Replay the reveal</button>;
+  const recBtn = <Link to={rec} className="xv-btn" data-testid="xp-still-recreate">Recreate this shot<Arrow /></Link>;
+  /* A: the copy rides on the reel (bottom left, over its shade); B: a slim row above it, the credits under it */
+  const reelClass = bleed ? 'xpo-film xpo-bleed' : 'hreel-framed xpo-film xpo-wide';
+  return <section className={`xv-sec xpo is-${layout}`} id="xp-still" data-testid="xp-still" data-layout={layout} aria-labelledby="xp-h-still">
+    {!bleed && <header className="xpo-row">{<div>{head}</div>}{line}<span className="xpo-acts">{recBtn}</span></header>}
+    <HeroReel className={reelClass} testId="xp-still-wipe" reveal replay={replay} position={t.pos} sound={f.out.sound === true} restartOnSound label={`${f.title}, made with ${f.model}`}
+      before={{ url: still.url, poster: still.url, label: W.stillLabel }} after={{ url: f.out.url, poster: FEATURED_BIG_POSTER[f.key] ?? f.out.poster, label: W.clipLabel }}>
+      {bleed && <div className="xpo-over">{head}{line}{meta}<span className="xpo-acts">{recBtn}{replayBtn}</span></div>}
+    </HeroReel>
+    {!bleed && <div className="xpo-cred">{meta}<span className="xpo-acts">{replayBtn}</span></div>}
     <div className={`xpo-prompt${open ? ' is-open' : ''}`}>
       <button type="button" className="xpl-read" aria-expanded={open} aria-controls="xp-still-prompt" onClick={() => setOpen((o) => !o)} data-testid="xp-still-read">{open ? 'Hide the prompt' : 'Read the prompt'}<small>{words} words</small></button>
       {open ? <div className="xpo-prompt-b" id="xp-still-prompt" role="region" aria-label="The prompt for this shot" data-testid="xp-still-prompt"><PromptText text={f.prompt} /><small>The exact prompt we used, with the still attached</small></div>
