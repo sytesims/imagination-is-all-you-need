@@ -106,7 +106,7 @@ function ConnectSheet({ onClose }: { onClose: () => void }) {
           {k.text && <p className={`helper cs-st${k.ok ? ' ok' : k.ok === false ? ' bad' : ''}`} role="status" data-testid="cs-key-status">{k.text}</p>}
         </section>
         <section className="cs-path" data-testid="cs-local">
-          <b>Use your own ComfyUI</b><small>Free and private on {LOCAL_LABEL.toLowerCase()}, with the models you have. Found on the usual ports.</small>
+          <b>Use your own ComfyUI</b><small>Free and private on {LOCAL_LABEL.toLowerCase()}, with the models you have. The app looks for it on the usual ports.</small>
           <div className="cs-row"><button type="button" className="btn btn-sm" disabled={g.busy} onClick={() => void useComfy()} data-testid="cs-find">{g.busy ? 'Looking…' : 'Find my ComfyUI'}</button></div>
           {askAddr && <form className="cs-row" onSubmit={e => { e.preventDefault(); if (addr.trim()) void useComfy(addr.trim()); }}>
             <input type="url" placeholder="http://127.0.0.1:8188" value={addr} disabled={g.busy} onChange={e => { setAddr(e.target.value); setG({}); }} aria-label="ComfyUI address" data-testid="cs-addr" />
