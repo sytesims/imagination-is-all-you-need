@@ -128,7 +128,7 @@ export interface VideoFlowShortcut extends VideoWorkflow { href: string; /** a s
   /** the other tab it opens in (Direct a Shot: '3D'); every other shortcut opens inside the Video tab */ opensIn?: string }
 const SC = (w: Omit<VideoFlowShortcut, 'oldRoutes' | 'inMenu'>): VideoFlowShortcut => ({ ...w, oldRoutes: [], inMenu: true });
 export const VIDEO_FLOW_SHORTCUTS: VideoFlowShortcut[] = [
-  SC({ id: 'direct-a-shot', name: 'Direct a Shot', toolId: 'plan-a-shot', category: 'create', tagline: 'Block it in 3D. Film it for real, with sound', needs: 'Opens in 3D',
+  SC({ id: 'direct-a-shot', name: 'Direct a Shot', toolId: 'plan-a-shot', category: 'create', tagline: 'Block it in 3D. Film it for real, with sound', needs: 'Just an idea · set in 3D',
     inputs: ['Preset scene', 'Camera move', 'Render prompt'], href: `${THREE_D_PAGE}?workflow=plan-a-shot`, badge: 'Free', opensIn: '3D' /* the only Video menu row that leaves the Video tab (user, 2026-10-26) */,
     how: [['Stage', 'Pick a scene and a camera move in your browser.'], ['Mockup', 'Record it: free, takes seconds.'], ['Render', 'Get real video with sound back. Free on your computer.']] }),
   SC({ id: 'loop', name: 'Loop', toolId: 'h3-video', category: 'create', tagline: 'A clip that ends where it began', needs: 'Start frame',

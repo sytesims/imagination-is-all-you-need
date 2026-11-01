@@ -103,7 +103,7 @@ export const WF_ENTRIES: WfEntry[] = [
   V('morph', 'video', { featured: 'ltx-morph', model: 'ltx-2.5-22b', tags: ['transition', 'start and end frame'] }),
   V('transitions', 'video', { art: 'viral', tags: ['start and end frame', 'morph'] }),
   V('photo-fx', 'video', { art: 'fx', tags: ['effect', 'animate a photo', 'levitate', 'shatter', 'portal'] }),
-  V('extend', 'video', { featured: 'h3-koi-take', model: 'minimax-h3-extend', tags: ['longer', 'continue', 'long take'] }),
+  V('extend', 'video', { featured: 'h3-fox-extend', model: 'minimax-h3-extend', tags: ['longer', 'continue', 'long take'] }),
   // Voices & talking
   V('lip-sync', 'talk', { name: 'Make it talk', model: 'ltx-2.5-talking-photo' /* free locally; InfiniteTalk and H3 Talking Photo follow */, art: 'talk', tags: ['lip sync', 'talking photo', 'presenter', 'avatar', 'portrait'] }),
   A('voiceover', 'talk', { model: 'chatterbox', art: 'voice', tags: ['text to speech', 'narration', 'script', 'tts'] }),
@@ -116,7 +116,7 @@ export const WF_ENTRIES: WfEntry[] = [
   V('motion-control', 'character', { featured: 'kling-dance-swap', model: 'kling-v3-omni-edit', tags: ['dance', 'motion transfer', 'swap a character'] }),
   V('object-swap', 'character', { featured: 'h3-char-swap', model: 'minimax-h3-character-swap', tags: ['swap', 'replace a person', 'object swap', 'person swap', 'character swap'] }),
   // Sketch → Film
-  V('direct-a-shot', 'film', { featured: 'ltx-mockup-film', tags: ['previz', 'mockup', '3d blocking', 'camera path', 'storyboard', 'local'] }),
+  V('direct-a-shot', 'film', { featured: 'mossbun-mockup-film', tags: ['previz', 'mockup', '3d blocking', 'camera path', 'storyboard', 'local'] }),
   V('reshoot', 'film', { art: 'reshoot', model: 'ltx-2-19b', tags: ['new camera angle', 'coverage'] }),
   V('new-angle', 'film', { art: 'angle', model: 'minimax-h3-crossview', tags: ['camera angle', 'crossview'] }),
   V('camera-moves', 'film', { art: 'move', model: 'ltx-2-19b', tags: ['dolly', 'orbit', 'crane', 'camera move'] }),

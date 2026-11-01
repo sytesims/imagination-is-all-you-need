@@ -75,6 +75,9 @@ ok('search by goal, by tag and with no results');
   for (const id of all) assert.ok(id.startsWith('chain:') ? WF_CHAINS.some((c) => `chain:${c.id}` === id) : wfEntryById(id), `${id}: a real workflow or chain`);
   for (const id of ['chain:presenter', 'chain:product-ad', 'v-loop', 'fx-vanish', 'i-relight', 'd-image-to-3d']) { assert.equal(onWorkflowsPage(id), false, `${id}: off the page`); assert.ok(id.startsWith('chain:') ? WF_CHAINS.some((c) => `chain:${c.id}` === id) : wfEntryById(id), `${id}: still in the catalogue`); }
   assert.ok(isFeaturedOnPage('v-create') && !isFeaturedOnPage('v-extend'));
+  /* no two cards on the page show the same example clip (2026-11-01: Extend and Direct a Shot no longer repeat the long take's and Sketch → Film's) */
+  const clips = all.map((id) => (id.startsWith('chain:') ? WF_CHAINS.find((c) => `chain:${c.id}` === id)!.featured : wfEntryById(id)!.featured)).filter(Boolean);
+  assert.equal(new Set(clips).size, clips.length, `each card its own example: ${clips.join(', ')}`);
   assert.equal(wfEntryById('i-try-on')!.models[0], 'bria-virtual-tryon', 'Try-On leads with Bria on Comfy Router');
   ok(`page picks: ${WF_PAGE_FEATURED.length} featured + ${WF_PAGE_KEEP.length} kept; ${WF_ENTRIES.length + WF_CHAINS.length - all.length} others stay in the catalogue`); }
 // Credits for the picks (2026-10-28 audit): each kept workflow's lead names its graph or its hosted model, never "Ours · AGPL" for someone else's model
