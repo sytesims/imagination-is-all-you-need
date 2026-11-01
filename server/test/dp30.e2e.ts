@@ -66,13 +66,13 @@ try {
     const tools = await get(`${A}/api/tools`); const rs = (Array.isArray(tools) ? tools : tools.tools).find((t: any) => t.id === 'reshoot');
     const inp = rs.inputs.find((i: any) => i.name === 'angleCount'); assert.ok(inp, 'angleCount input'); assert.deepEqual(inp.options, ['1', '4', '8', '12']); assert.equal(inp.default, '1');
     assert.deepEqual(rs.capabilities?.angleCounts, [1, 4, 8, 12], JSON.stringify(rs.capabilities ?? {}).slice(0, 300));
-    for (const prov of ['router-seedance', 'router-veo']) {
+    for (const prov of ['cloud-reshoot']) { // Seedance 2.0 / Veo 3.1 aren't listed on Re-shoot (2026-11-02)
       const q1 = await get(`${A}/api/tools/reshoot/price?provider=${prov}&duration=4&resolution=720p`); const q8 = await get(`${A}/api/tools/reshoot/price?provider=${prov}&duration=4&resolution=720p&angleCount=8`);
       const l1 = q1.demo ? q1.listCredits : q1.credits, l8 = q8.demo ? q8.listCredits : q8.credits; assert.ok(l1 > 0, JSON.stringify(q1).slice(0, 400)); assert.equal(l8, 8 * l1, `${prov}: ${l8} = 8 × ${l1}`);
       assert.equal(q8.angleCount, 8); assert.equal(q1.angleCount, 1);
       assert.equal(q8.perAngleCredits, q1.credits, 'perAngleCredits = the one-angle charge');
     }
-    const bad = await getS(`${A}/api/tools/reshoot/price?provider=router-seedance&duration=4&angleCount=5`); assert.equal(bad.status, 400); assert.equal(bad.j.field, 'angleCount'); assert.deepEqual(bad.j.allowed, [1, 4, 8, 12]);
+    const bad = await getS(`${A}/api/tools/reshoot/price?provider=cloud-reshoot&duration=4&angleCount=5`); assert.equal(bad.status, 400); assert.equal(bad.j.field, 'angleCount'); assert.deepEqual(bad.j.allowed, [1, 4, 8, 12]);
     const bj = await post(`${A}/api/tools/reshoot/jobs`, { rights: '1', provider: 'comfy-open', angleCount: '5' }, [['video', MP4, 'video/mp4']]); assert.equal(bj.status, 400, JSON.stringify(bj.j).slice(0, 300)); assert.equal(bj.j.issues?.[0]?.field, 'angleCount', JSON.stringify(bj.j).slice(0, 400));
     const lq = await get(`${A}/api/tools/reshoot/price?provider=comfy-open&duration=4&angleCount=4`); assert.equal(lq.credits, 0, 'local/mock = 0 credits');
     const r = await post(`${A}/api/tools/reshoot/jobs`, { rights: '1', provider: 'comfy-open', angleCount: '4', angles: JSON.stringify(['low angle']) }, [['video', MP4, 'video/mp4']]);

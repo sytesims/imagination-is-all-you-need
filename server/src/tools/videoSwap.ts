@@ -39,7 +39,7 @@ export async function applySwapTrim(fields: Record<string, string>, files: Recor
 }
 /** Video Swap models in quality order. Cloud person swap first (Kling 3.0 Omni Edit is the default: cheapest serious hosted edit; Seedance 2.5 Edit is the
  *  higher-quality, longer one), then the local models (Wan 2.2 Animate, H3 Character Swap backup), which stay available but are not the default. */
-const SWAP_PROVIDERS = ['router-kling-edit', 'router-seedance-25-edit', 'router-seedance' /* unchanged: listed as before (its Router body isn't wired for swaps) */, 'comfy-open', 'comfy-h3-charswap'];
+const SWAP_PROVIDERS = ['router-kling-edit', 'router-seedance-25-edit', 'comfy-open', 'comfy-h3-charswap']; // plain Seedance 2.0 isn't listed: its Router body isn't wired for swaps and Seedance 2.5 Edit covers it (2026-11-02)
 
 const commonInputs = [
   { name: 'video', kind: 'file' as const, required: true, accept: 'video/mp4,video/quicktime,video/webm' },

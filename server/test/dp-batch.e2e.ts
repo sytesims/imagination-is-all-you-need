@@ -23,7 +23,7 @@ try {
     const c = await fetch(`http://localhost:${testPort(8871)}/api/jobs/${j.body.id}/cancel`, { method: 'POST' }); const cb = await c.json(); assert.equal(c.status, 409); assert.equal(cb.code, 'cannot_cancel_processing');
     const end = await until(a, j.body.id, (x) => ['done', 'failed'].includes(x.status)); assert.equal(end.status, 'done'); console.log('ok cancel while processing → 409 cannot_cancel_processing (job finishes)'); }
   { await b.js('PUT', '/api/me/routing', { global: { mode: 'auto', allowFallback: true, useLocal: false, mockKeys: true } }); await b.js('POST', '/api/dev/balance', { credits: 5000 });
-    const j = await b.post('object-swap', { ...R, prompt: 'x', provider: 'router-seedance' }, [['video', mp4], ['refs', png]]); assert.equal(j.status, 200, JSON.stringify(j.body)); assert.ok(j.body.cost > 0);
+    const j = await b.post('object-swap', { ...R, prompt: 'x', provider: 'router-kling-edit' }, [['video', mp4], ['refs', png]]); assert.equal(j.status, 200, JSON.stringify(j.body)); assert.ok(j.body.cost > 0);
     const bal0 = (await b.get('/api/ledger')).balance; await until(b, j.body.id, (x) => x.status === 'running');
     const c = await fetch(`http://localhost:${testPort(8872)}/api/jobs/${j.body.id}/cancel`, { method: 'POST' }); assert.equal(c.status, 200);
     const end = await until(b, j.body.id, (x) => x.status === 'canceled' && x.refund); await new Promise((r) => setTimeout(r, 6000)); const after = await b.get(`/api/jobs/${j.body.id}`);
@@ -32,8 +32,8 @@ try {
   { const s = await a.js('POST', '/api/dev/balance', { credits: 7 }); assert.equal(s.status, 200); assert.equal(s.body.balance, 7); assert.equal((await a.get('/api/ledger')).balance, 7);
     assert.equal((await a.js('POST', '/api/dev/balance', { credits: -1 })).status, 400);
     await a.js('PUT', '/api/me/routing', { global: { mode: 'auto', allowFallback: true, useLocal: false, mockKeys: true } });
-    const q = await a.get('/api/tools/object-swap/price?provider=router-seedance&seconds=6&resolution=720p'); await a.js('POST', '/api/dev/balance', { credits: q.credits + 1 });
-    const j = await a.post('object-swap', { ...R, prompt: 'x', provider: 'router-seedance', count: '2' }, [['video', mp4], ['refs', png]]); assert.equal(j.status, 402, JSON.stringify(j.body).slice(0, 200)); assert.equal(j.body.affordableGroups, 1);
+    const q = await a.get('/api/tools/object-swap/price?provider=router-kling-edit&seconds=6&resolution=720p'); await a.js('POST', '/api/dev/balance', { credits: q.credits + 1 });
+    const j = await a.post('object-swap', { ...R, prompt: 'x', provider: 'router-kling-edit', count: '2' }, [['video', mp4], ['refs', png]]); assert.equal(j.status, 402, JSON.stringify(j.body).slice(0, 200)); assert.equal(j.body.affordableGroups, 1);
     await a.js('PUT', '/api/me/routing', { global: { mode: 'auto', allowFallback: true, useLocal: true, mockKeys: true } }); await a.js('POST', '/api/dev/balance', { credits: 100000 });
     console.log(`ok POST /api/dev/balance (mock) + 402 affordableGroups=1 at balance ${q.credits + 1}`); }
   // Reframe: default Auto

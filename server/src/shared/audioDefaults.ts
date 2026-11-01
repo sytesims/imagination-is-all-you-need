@@ -20,7 +20,7 @@ import type { WorkflowDefaults } from './imageDefaults.js';
 import type { AudioWorkflowId } from './audioWorkflows.js';
 import { cloudModel } from './cloudDefaults.js';
 
-const VOICE_HOSTED = { hosted: cloudModel('voiceover'), hostedFallback: 'direct-minimax-speech', hostedFirstWhenNeither: true };
+const VOICE_HOSTED = { hosted: cloudModel('voiceover'), hostedFirstWhenNeither: true }; // no MiniMax Speech fallback: it isn't listed on Voice Studio (2026-11-02; it runs on Audio)
 
 export const AUDIO_DEFAULTS: Record<AudioWorkflowId, WorkflowDefaults> = {
   music: { local: 'comfy-yue2', hosted: cloudModel('music'), why: { local: 'Full songs with vocals from your lyrics, free, locally', hosted: 'Music from a prompt on the Comfy key (no lyrics)' } },

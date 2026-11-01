@@ -26,7 +26,7 @@ for (const [id, d] of Object.entries(AUDIO_DEFAULTS)) {
 ok('ids: every default is offered by its tool and mode, with a why line');
 const A = AUDIO_DEFAULTS;
 assert.deepEqual([A.music.local, A.music.hosted, A['soundtrack-music'].hosted], ['comfy-yue2', 'api-seed-audio', 'api-seed-audio'], 'music: YuE2 local; cloud first (2026-10-27): Seed Audio on the Comfy key');
-assert.deepEqual([A.voiceover.hosted, A.voiceover.hostedFallback], ['api-eleven-tts', 'direct-minimax-speech'], 'voice: ElevenLabs, MiniMax Speech fallback');
+assert.deepEqual([A.voiceover.hosted, A.voiceover.hostedFallback], ['api-eleven-tts', undefined], 'voice: ElevenLabs, no MiniMax Speech fallback (not on Voice Studio)');
 assert.deepEqual([A.sfx.local, A.sfx.hosted, A.voiceover.local, A['change-voice'].local, A.translate.local, A['soundtrack-sound'].local, A['soundtrack-sound'].hosted, A.cover.local],
   ['comfy-stable-audio', 'api-eleven-sfx', 'comfy-chatterbox', 'comfy-chatterbox-vc', 'local-whisper-nllb-chatterbox', 'comfy-mmaudio', null /* Sonilo isn't on Comfy Router */, 'comfy-yue2']);
 assert.ok(getTool('audio')!.providers.includes('comfy-minimax-music3'), 'local MiniMax Music 3 is offered');
@@ -37,12 +37,12 @@ const V = A.voiceover; const pk = (s: (id: string) => DefaultModelState | undefi
 const all = st({ 'comfy-chatterbox': { runnable: true, routeKind: 'local' }, 'api-eleven-tts': { runnable: true, routeKind: 'comfy-router' }, 'direct-minimax-speech': { runnable: true, routeKind: 'direct' } });
 assert.deepEqual([pk(all, true).id, pk(all, true).setup], ['comfy-chatterbox', 'local']); assert.deepEqual([pk(all, false).id, pk(all, false).setup], ['api-eleven-tts', 'hosted']);
 const noEleven = st({ 'api-eleven-tts': { reasonCode: 'key_missing', reason: 'Add a Comfy key' }, 'direct-minimax-speech': { runnable: true, routeKind: 'direct' } });
-assert.equal(pk(noEleven, false).id, 'direct-minimax-speech', 'ElevenLabs can not run → MiniMax Speech'); assert.equal(pk(noEleven, false).runs, true);
+assert.equal(pk(noEleven, false).id, 'api-eleven-tts', 'ElevenLabs can not run: still named (MiniMax Speech is not on Voice Studio, 2026-11-02)'); assert.equal(pk(noEleven, false).runs, false);
 const neither = st({ 'api-eleven-tts': { demo: true, routeKind: 'comfy-router', reasonCode: 'key_missing', reason: 'Sample output' }, 'direct-minimax-speech': { demo: true, routeKind: 'direct', reasonCode: 'key_missing', reason: 'Sample output' } });
-assert.equal(pk(neither, false).id, 'api-eleven-tts', 'neither really runs: ElevenLabs (Comfy key) is named, not the MiniMax lab key'); assert.equal(pk(neither, false).runs, false);
+assert.equal(pk(neither, false).id, 'api-eleven-tts', 'neither really runs: ElevenLabs (Comfy key) is named, not the MiniMax lab key'); assert.equal(pk(neither, false).runs, true, 'its sample run (no fallback chain any more)');
 const M = A.music; const mus = st({ 'comfy-yue2': { runnable: true, routeKind: 'local' }, 'cloud-minimax-music': { demo: true, routeKind: 'comfy-cloud' } });
 assert.equal(pickEditorial(M, mus, true).id, 'comfy-yue2'); assert.equal(pickEditorial(M, mus, false).id, 'comfy-yue2', 'no hosted default: the unwired MiniMax Music 3 cloud card is never marked Default');
-ok('order: Use local picks the setup; voice falls back to MiniMax Speech only when ElevenLabs can not run');
+ok('order: Use local picks the setup; voice has no MiniMax Speech fallback');
 
 // ---- 3. the API on a keyless mock server ----
 const env = { ...process.env, ...NOKEYS, PORT: String(PORT), OPENHIGGSFIELD_DATA_DIR: D, OPENHIGGSFIELD_ENV_FILE: path.join(D, 'env'), OPENHIGGSFIELD_BACKEND: 'mock',
@@ -58,7 +58,7 @@ try {
   assert.ok(!/audio-workflows\] \d+ recipe problem/.test(stderr), 'no recipe problems at boot');
   let W = await wfs();
   for (const id of AUDIO_WORKFLOW_IDS) { const d = W[id].defaults; assert.ok(d, `${id}: defaults`); assert.equal(d.local, (A as any)[id].local); assert.equal(d.hosted, (A as any)[id].hosted); assert.ok('active' in d, `${id}: active`); }
-  assert.equal(W.voiceover.defaults.hostedFallback, 'direct-minimax-speech');
+  assert.equal(W.voiceover.defaults.hostedFallback, undefined);
   assert.equal(W.music.defaults.active.id, 'api-seed-audio'); assert.equal(W.music.defaults.active.setup, 'hosted'); assert.notEqual(W.music.defaults.active.id, 'cloud-minimax-music');
   assert.equal(W.voiceover.defaults.active.id, 'api-eleven-tts', 'keyless: ElevenLabs is named'); assert.equal(W.voiceover.defaults.active.defaultProvider, 'api-eleven-tts');
   assert.equal(W.cover.defaults.active.id, 'comfy-yue2', 'Cover has no hosted model: YuE2 even with Use local off'); assert.equal(W.cover.defaults.active.setup, 'local');

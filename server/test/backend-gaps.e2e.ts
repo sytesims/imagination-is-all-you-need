@@ -29,9 +29,9 @@ try {
 
   // 07/08/09 batch: count versions, price × count, per-version refund
   for (const tool of ['object-swap', 'motion-transfer', 'restyle']) {
-    const extra = tool === 'restyle' ? { preset: 'anime-cel' } : {};
-    const q = await get(`/api/tools/${tool}/price?provider=router-seedance&duration=5&resolution=720p&passes=3`);
-    const b0 = await bal(); const j = await post(tool, { ...R, ...extra, prompt: 'x', count: '3', provider: 'router-seedance', simulateGroup: '2' }, [['video', mp4], ['refs', png]]);
+    const extra = tool === 'restyle' ? { preset: 'anime-cel' } : {}; const prov = tool === 'restyle' ? 'router-seedance' : 'router-kling-edit'; // plain Seedance 2.0 isn't on the swaps (2026-11-02)
+    const q = await get(`/api/tools/${tool}/price?provider=${prov}&duration=5&resolution=720p&passes=3`);
+    const b0 = await bal(); const j = await post(tool, { ...R, ...extra, prompt: 'x', count: '3', provider: prov, simulateGroup: '2' }, [['video', mp4], ['refs', png]]);
     assert.equal(j.status, 200, JSON.stringify(j.body)); const charged = b0 - (await bal()); assert.ok(charged > 0); assert.equal(charged, q.credits, `${tool} quote passes=3 = charge`);
     const d = await wait(j.body.id); assert.equal(d.status, 'done'); assert.equal(d.outputs.length, 2); assert.ok(d.partial); assert.deepEqual(d.failedGroups, [2]);
     assert.equal(d.refund.amount, Math.round(charged / 3)); assert.ok(d.outputs[0].label.startsWith('Version 1'));
@@ -47,12 +47,9 @@ try {
   { const po = await post('reshoot', { ...R, prompt: 'left side, then a low angle' }, [['video', mp4]]); assert.equal(po.status, 200, JSON.stringify(po.body)); const d = await get(`/api/jobs/${po.body.id}`); assert.ok(d.input.promptOnly); assert.equal(d.input.angles.length, 1);
     const none = await post('reshoot', { ...R }, [['video', mp4]]); assert.equal(none.status, 400); assert.equal(field(none.body), 'angles');
     const vr = await post('reshoot', { ...R, prompt: 'x', provider: 'comfy-open' }, [['video', mp4], ['videoRefs', ref]]); assert.equal(vr.status, 400); assert.equal(field(vr.body), 'videoRefs');
-    const ga = await post('reshoot', { ...R, prompt: 'x', provider: 'router-veo', generateAudio: '1' }, [['video', mp4]]); assert.equal(ga.status, 400); assert.equal(code(ga.body), 'audio_unsupported');
-    const q0 = await get('/api/tools/reshoot/price?provider=router-seedance&duration=5&resolution=720p'); const q1 = await get('/api/tools/reshoot/price?provider=router-seedance&duration=5&resolution=720p&refVideoSeconds=3');
-    const b0 = await bal(); const ok = await post('reshoot', { ...R, prompt: 'orbit left', provider: 'router-seedance', generateAudio: '1' }, [['video', mp4], ['videoRefs', ref]]); assert.equal(ok.status, 200, JSON.stringify(ok.body));
-    const charged = b0 - (await bal()); const dj = await get(`/api/jobs/${ok.body.id}`); assert.equal(dj.input.refVideoSeconds, 3); assert.ok(dj.input.generateAudio);
-    const q5 = await get('/api/tools/reshoot/price?provider=router-seedance&duration=5&resolution=720p&refVideoSeconds=3'); assert.ok(q1.credits > q0.credits, 'refs must cost more'); assert.equal(charged, q5.credits);
-    console.log(`ok reshoot prompt-only, seedance videoRefs+generateAudio → ${charged} credits (quote ${q0.credits} source only, ${q1.credits} with 3 s refs)`); }
+    const ga = await post('reshoot', { ...R, prompt: 'x', provider: 'comfy-open', generateAudio: '1' }, [['video', mp4]]); assert.equal(ga.status, 400); assert.equal(code(ga.body), 'audio_unsupported');
+    const sd = await post('reshoot', { ...R, prompt: 'x', provider: 'router-seedance' }, [['video', mp4]]); assert.ok(sd.status >= 400, 'Seedance 2.0 is not listed on Re-shoot (2026-11-02)');
+    console.log('ok reshoot prompt-only, videoRefs / generateAudio refused on the listed models, Seedance 2.0 not offered'); }
   // 11 camera New / Trending
   { const j = await post('camera', { ...R, types: '["orbit"]' }, [['image', key]]); assert.equal(j.status, 200, JSON.stringify(j.body)); await wait(j.body.id);
     const c = await get('/api/camera/categories'); assert.equal(c.trending[0].id, 'orbit'); assert.equal(c.trending[0].count, 1); assert.equal(c.trending[0].kind, 'camera-preset'); assert.ok(!('videoPreset' in c.trending[0])); // New = shipped after launch (2026-10-16) and within newDays: the H3 camera moves (2026-10-17) while that window is open, then nothing (clock-independent check)
@@ -121,14 +118,14 @@ try {
     await fetch(`${B}/api/plugins/${pid}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled: true }) }); assert.ok((await get('/api/tools')).some((t: any) => t.id === tid));
     console.log(`ok plugin ${pid} off → tool hidden + submit 404, on → back`); }
   // Design Planner queue: seconds on quote + submit (one resolver), share page (no report form), model releasedAt/badges, zero-filled usage
-  { const q = await get('/api/tools/object-swap/price?seconds=5&resolution=720p&provider=router-seedance'); assert.equal(q.credits, 134, JSON.stringify(q)); assert.equal(q.credits, Math.ceil(q.exactUsd * 100 - 1e-9), 'rounded up from the exact price ($1.3361)');
-    assert.ok((await get('/api/tools/object-swap/price?seconds=10&resolution=720p&provider=router-seedance')).credits > 134);
-    const bad = await fetch(`${B}/api/tools/object-swap/price?seconds=99&provider=router-seedance`); const badB: any = await bad.json(); assert.equal(bad.status, 200, 'D5: an off-list length snaps, never refused'); assert.ok((badB.adjustNotes ?? []).some((n: string) => /closest length/.test(n)), JSON.stringify(badB.adjustNotes));
-    const q4 = await get('/api/tools/object-swap/price?seconds=4&resolution=720p&provider=router-seedance');
-    const b0 = await bal(); const j = await post('object-swap', { ...R, prompt: 'swap', provider: 'router-seedance', resolution: '720p', seconds: '4' }, [['video', mp4], ['refs', png]]); assert.equal(j.status, 200, JSON.stringify(j.body));
+  { const q = await get('/api/tools/object-swap/price?seconds=5&resolution=720p&provider=router-kling-edit'); assert.ok(q.credits > 0, JSON.stringify(q)); assert.equal(q.credits, Math.ceil(q.exactUsd * 100 - 1e-9), 'rounded up from the exact price');
+    assert.ok((await get('/api/tools/object-swap/price?seconds=10&resolution=720p&provider=router-kling-edit')).credits > q.credits);
+    const bad = await fetch(`${B}/api/tools/object-swap/price?seconds=99&provider=router-kling-edit`); const badB: any = await bad.json(); assert.equal(bad.status, 200, 'D5: an off-list length snaps, never refused'); assert.ok((badB.adjustNotes ?? []).some((n: string) => /closest length/.test(n)), JSON.stringify(badB.adjustNotes));
+    const q4 = await get('/api/tools/object-swap/price?seconds=4&resolution=720p&provider=router-kling-edit');
+    const b0 = await bal(); const j = await post('object-swap', { ...R, prompt: 'swap', provider: 'router-kling-edit', resolution: '720p', seconds: '4' }, [['video', mp4], ['refs', png]]); assert.equal(j.status, 200, JSON.stringify(j.body));
     assert.equal(b0 - (await bal()), q4.credits, 'submit with seconds charges the quote'); await wait(j.body.id);
-    const jb = await post('object-swap', { ...R, prompt: 'swap', provider: 'router-seedance', seconds: '99' }, [['video', mp4], ['refs', png]]); assert.equal(jb.status, 200, JSON.stringify(jb.body)); assert.ok((jb.body.warnings ?? []).some((n: string) => /^Made at /.test(n)), JSON.stringify(jb.body.warnings)); await wait(jb.body.id);
-    console.log(`ok seconds: quote 5 s 720p = 134, 4 s quote = charge ${q4.credits}, 99 s → snapped with a note`); }
+    const jb = await post('object-swap', { ...R, prompt: 'swap', provider: 'router-kling-edit', seconds: '99' }, [['video', mp4], ['refs', png]]); assert.equal(jb.status, 200, JSON.stringify(jb.body)); assert.ok((jb.body.warnings ?? []).some((n: string) => /^Made at /.test(n)), JSON.stringify(jb.body.warnings)); await wait(jb.body.id);
+    console.log(`ok seconds: quote 5 s 720p = ${q.credits}, 4 s quote = charge ${q4.credits}, 99 s → snapped with a note`); }
   { const j = await post('object-swap', { ...R, prompt: 'swap' }, [['video', mp4], ['refs', png]]); await wait(j.body.id); const sh = await (await fetch(`${B}/api/jobs/${j.body.id}/share`, { method: 'POST' })).json();
     const html = await (await fetch(`${B}/s/${sh.token}`)).text(); assert.ok(!html.includes('/report') && !html.includes('name="reason"') && !html.includes('mailto:'), 'no report form / abuse contact on /s/:token');
     assert.equal((await fetch(`${B}/s/${sh.token}`)).status, 200); console.log('ok /s/:token has no report form'); }

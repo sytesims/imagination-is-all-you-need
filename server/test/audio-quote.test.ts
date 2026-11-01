@@ -21,7 +21,7 @@ const cases: [string, string, Record<string, any>, string][] = [
   // Seed Audio 1.0 Multilingual (2026-10-24): text to speech in Voice, billed per second of speech returned (estimated from the script)
   ['api-seed-audio', 'voice', { mode: 'voiceover', prompt: 'Welcome back. Today we walk through the old harbour at sunrise.' }, 'second'],
   ['api-eleven-tts', 'voice', { mode: 'voiceover', chars: 2500 }, '1k_chars'],
-  ['direct-minimax-speech', 'voice', { mode: 'voiceover', prompt: 'Hello there, this is a voiceover script read aloud.' }, '1k_chars'],
+  ['direct-minimax-speech', 'audio', { mode: 'voice', prompt: 'Hello there, this is a voiceover script read aloud.' }, '1k_chars'],
   ['api-fish-tts', 'voice', { mode: 'voiceover', prompt: 'Héllo wörld, ünïcode costs more bytes' }, '1k_bytes'],
   ['cloud-minimax-music', 'audio', { mode: 'music', duration: 60 }, 'second'], // 2026-10-27: Comfy Cloud GPU time per second of song (estimate, unmeasured)
   // Seed Audio music / sound effects (2026-10-27): no script, no length field → the 120 s cap whatever the prompt

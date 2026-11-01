@@ -29,10 +29,8 @@ try {
   const ot = (await O.get('/api/tools')); assert.ok((Array.isArray(ot) ? ot : ot.tools).find((x: any) => x.id === 'reshoot').providers.some((p: any) => p.id === 'cloud-reshoot'), 'visible in open-weights-only'); ok('cloud-reshoot open weights, visible in open-weights-only mode');
   const R = await N.get('/api/routes?toolId=reshoot&modelId=cloud-reshoot'); const rt = R.routes[0].routes; assert.equal(rt[0].routeId, 'comfy-cloud:cloud-reshoot'); assert.equal(rt[0].openWeights, true);
   assert.equal(R.routes[0].providerGroup ?? rt[0].providerGroup, 'Comfy Cloud', JSON.stringify(R).slice(0, 600)); ok('route comfy-cloud:cloud-reshoot, providerGroup Comfy Cloud');
-  { // the Video bar quotes Re-shoot with the clip's own length (seconds = 5): Veo 3.1 makes 4 / 6 / 8 s clips, but a 5 s source is still a Re-shoot it takes
-    // (submit takes the clip as it is), so the quote must not refuse it as a model length (model-health-ui: "Generate is blocked: Pick another model")
-    const qv = await N.get('/api/tools/reshoot/price?provider=router-veo&video=1&seconds=5&types=%5B%22left-side%22%5D'); assert.equal(qv.code, undefined, JSON.stringify(qv).slice(0, 300)); assert.equal(qv.runnable, true); assert.equal(qv.route, 'comfy-router:router-veo');
-    ok('Re-shoot on Veo 3.1: a 5 s clip quotes (seconds = the clip length, as submit)'); }
+  // Veo 3.1 isn't listed on Re-shoot any more (2026-11-02: it takes no source video)
+  assert.ok(!rs.providers.some((p: any) => p.id === 'router-veo'), 'no Veo on Re-shoot'); ok('Re-shoot lists no Veo 3.1');
   const q = await N.get('/api/tools/reshoot/price?provider=cloud-reshoot&duration=5&resolution=720p'); const listed = q.demo ? q.listCredits : q.credits; assert.ok(listed > 0, JSON.stringify(q).slice(0, 500));
   const copy = JSON.stringify(q); assert.ok(!/placeholder until|\(placeholder\)|B6|mock|OPENHIGGSFIELD_/i.test(copy), `neutral user copy: ${copy.slice(0, 800)}`);
   // Comfy audit (2026-10-24): an unmeasured GPU-time price says so plainly ("Price not measured yet … The figure shown is a placeholder.") and is flagged

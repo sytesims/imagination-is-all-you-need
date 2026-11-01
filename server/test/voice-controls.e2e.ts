@@ -50,9 +50,10 @@ try {
   assert.equal(b0 - (await bal()), 0, 'local + post-process = 0 credits'); console.log('ok 3 samples + post-process wav/16k, 0 credits');
   // hosted voiceover quote by script length = charge
   const text = 'a'.repeat(2500);
-  const q = await get(`/api/tools/voice/price?provider=direct-minimax-speech&types=voiceover&text=${text}`); const q2 = await get(`/api/tools/voice/price?provider=direct-minimax-speech&types=voiceover&chars=2500`);
-  assert.equal(q.credits, q2.credits); assert.equal(q.credits, 25);
-  const b1 = await bal(); const h = await post({ types: '["voiceover"]', prompt: text, provider: 'direct-minimax-speech' }); assert.equal(h.status, 200, JSON.stringify(h.body));
+  // MiniMax Speech isn't listed on Voice Studio (2026-11-02: it runs on Audio); ElevenLabs is the hosted voiceover here
+  const q = await get(`/api/tools/voice/price?provider=api-eleven-tts&types=voiceover&text=${text}`); const q2 = await get(`/api/tools/voice/price?provider=api-eleven-tts&types=voiceover&chars=2500`);
+  assert.equal(q.credits, q2.credits); assert.ok(q.credits > 0, JSON.stringify(q).slice(0, 300));
+  const b1 = await bal(); const h = await post({ types: '["voiceover"]', prompt: text, provider: 'api-eleven-tts' }); assert.equal(h.status, 200, JSON.stringify(h.body));
   assert.equal(b1 - (await bal()), q.credits); console.log(`ok hosted quote ${q.credits} credits for 2,500 chars = charge`);
   // Fish Audio S2.1 Pro is not on Comfy Router (routerModels.ts NOT_ON_ROUTER → routes.ts COMING_SOON): Coming soon, never priced, never charged.
   // Its per-1k-UTF-8-byte price formula stays covered in pricing-1018 (priceOf).

@@ -83,7 +83,7 @@ export const CLOUD_WORKFLOWS: Record<string, CloudWorkflowEntry> = {
   // H3 runner Step 3 (Oct 26): New angle · H3 CrossView · cloud (Re-shoot), Comfy's Reshoot recipe on the user's deployment (comfy/crossview.ts)
   'comfy-deploy:cloud-h3-crossview': { routeId: 'comfy-deploy:cloud-h3-crossview', provider: 'cloud-h3-crossview', standalone: true, target: 'deploy', label: 'New angle · H3 CrossView',
     graphs: [CROSSVIEW_GRAPH], requires: CROSSVIEW_REQUIRES, plan: crossviewPlan },
-  // Oct 26–27: H3 Character Swap · Comfy Cloud (Object Swap / Motion Transfer), the Openjutsu recipe on shared Comfy Cloud with the user's
+  // Oct 26–27: H3 Character Swap · Comfy Cloud (Object / Person Swap only; not offered on Motion Transfer), the Openjutsu recipe on shared Comfy Cloud with the user's
   // imported Character Swap LoRA and a core-node SAM 3.1 edit mask (comfy/h3CharSwapCloud.ts). A twin route of the H3 Character Swap card (routing/routes.ts TWINS).
   [CHARSWAP_CLOUD_ROUTE]: { routeId: CHARSWAP_CLOUD_ROUTE, provider: CHARSWAP_CLOUD_PROVIDER, standalone: true, target: 'cloud', label: 'H3 Character Swap · Comfy Cloud',
     graphs: [CHARSWAP_CLOUD_GRAPH], requires: CHARSWAP_CLOUD_REQUIRES, plan: charswapCloudPlan,

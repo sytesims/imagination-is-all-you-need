@@ -344,7 +344,7 @@ vlocal('local-whisper-nllb-f5', 'Whisper → NLLB-200 → F5-TTS (translate)', '
 // file comes through the normal download flow (POST /api/local/downloads {downloadId: 'comfy-melband-separation'}) and shows its licence.
 registerWorkflowLicense(SEPARATION_WORKFLOW, ['melband-roformer']);
 vlocal(SEPARATION_PROVIDER, 'MelBand RoFormer (voice and background separation)', 'official Comfy template audio_melbandroformer_audio_separation on kijai/ComfyUI-MelBandRoFormer', 'https://huggingface.co/KimberleyJSN/melbandroformer', ['melband-roformer'], SEPARATION_NODES, [SEPARATION_WORKFLOW]);
-const VO = ['api-eleven-tts', 'api-eleven-v3', 'api-eleven-v4-turbo', 'direct-minimax-speech', 'api-fish-tts', 'api-heygen-tts', 'api-seed-audio', 'comfy-chatterbox', QWEN3_TTS, 'comfy-drama3', 'comfy-f5tts']; // B6 quality order
+const VO = ['api-eleven-tts', 'api-eleven-v3', 'api-eleven-v4-turbo' /* MiniMax Speech isn't listed here: it has no voiceover mux on Voice Studio and runs on Audio (2026-11-02) */, 'api-fish-tts', 'api-heygen-tts', 'api-seed-audio', 'comfy-chatterbox', QWEN3_TTS, 'comfy-drama3', 'comfy-f5tts']; // B6 quality order
 // Removed (not feasible on this CPU stack, 2026-10-16): OpenVoice V2 (requirements pin numpy==1.22 / librosa 0.9 / gradio 3, no wheels for
 // Python 3.13; no maintained ComfyUI pack found), RVC (needs fairseq, which does not build on Python ≥3.11; no maintained ComfyUI pack found),
 // SeamlessM4T v2 (no ComfyUI pack; 2.3B params ≈9 GB fp32, over the CPU smoke budget; CC BY-NC). Translate = faster-whisper + NLLB-200 + TTS instead.
