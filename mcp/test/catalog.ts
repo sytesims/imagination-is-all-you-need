@@ -125,6 +125,18 @@ try {
   const okRun = await call('run', { ...req, quote_id: q1.r.quote_id, budget_id: big.r.budget_id, client_request_id: 'catalog-1', wait_sec: 0 }); assert.equal(okRun.err, false, text(okRun.raw)); assert.ok(okRun.r.id);
   const replay = await call('run', { ...req, quote_id: q1.r.quote_id, budget_id: big.r.budget_id, client_request_id: 'catalog-1', wait_sec: 0 }); assert.equal(replay.r.id, okRun.r.id, 'same client_request_id → same job'); assert.ok(replay.r.replay);
   ok('run with quote_id + budget_id starts the paid job (a sample in mock); the same client_request_id returns that job instead of a second one');
+  const reused = await call('run', { ...req, quote_id: q1.r.quote_id, budget_id: big.r.budget_id, wait_sec: 0 }); assert.equal(reused.r.refused, true, text(reused.raw)); assert.equal(reused.r.charged, false);
+  assert.match(reused.r.reason, /already used to start job .*Get a new quote/); ok('run: a used quote_id (no matching client_request_id) is refused: one quote, one run');
+  { // retry (library): a paid re-run needs a quote too; without quote_id it answers the price and starts nothing
+    const fd = new FormData(); for (const [k, v] of Object.entries({ prompt: 'a lighthouse at dusk', rights: '1', types: '["t2v"]', duration: '5', model: paid.model, runOn: paid.runOn, simulateRouteFail: q1.r.route })) fd.append(k, String(v));
+    const fj = (await (await fetch(`${API}/api/tools/h3-video/jobs`, { method: 'POST', body: fd })).json()) as any; assert.ok(fj.id, JSON.stringify(fj));
+    for (let i = 0; i < 60 && (await getJ(`/api/jobs/${fj.id}`)).status !== 'failed'; i++) await new Promise((r) => setTimeout(r, 250));
+    const before = (await getJ('/api/jobs?limit=500')).length ?? null;
+    const r0 = await call('retry', { id: fj.id, wait_sec: 0 }); assert.equal(r0.r.refused, true, text(r0.raw)); assert.match(r0.r.quote_id, /^q_/); assert.ok(r0.r.price.usd > 0);
+    if (before != null) assert.equal((await getJ('/api/jobs?limit=500')).length, before, 'a retry without quote_id starts nothing');
+    const bad = await call('retry', { id: fj.id, quote_id: 'q_nope', wait_sec: 0 }); assert.equal(bad.r.refused, true);
+    const r1 = await call('retry', { id: fj.id, quote_id: r0.r.quote_id, budget_id: big.r.budget_id, wait_sec: 0 }); assert.equal(r1.err, false, text(r1.raw)); assert.ok(r1.r.id && r1.r.id !== fj.id);
+    ok(`retry: refused without a quote (price $${r0.r.price.usd}, nothing started), runs with its quote_id`); }
   if (okRun.r.poll_after_sec) assert.ok(okRun.r.poll_after_sec >= 2 && /status/.test(okRun.r.next));
   const st = await call('status', { id: okRun.r.id, wait_sec: 60 }); assert.equal(st.r.status, 'done', text(st.raw)); assert.equal(st.r.sample, true);
   const rec = await call('budget', { action: 'receipt', budget_id: big.r.budget_id }); assert.match(text(rec.raw), /Receipt: agent "catalog-test-2"/);

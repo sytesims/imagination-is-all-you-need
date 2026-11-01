@@ -27,6 +27,6 @@ The ad clip · what may change (talent, outfit, setting, product, language) · h
 8. **Deliver**: the variant table with links (`get_outputs`), real model and place per row, `budget {action:"receipt", budget_id}` (estimate vs actual), and `recipe {action:"export", id}` for the winner.
 
 ## Money and retries
-- Free: `run_on:"local"`, `max_usd:0`. Paid: `quote` → price → OK → `run` with `quote_id` (15 min, same request). `refused` (budget, price changed): don't resend; quote again or drop the row.
+- Free: `run_on:"local"`, `max_usd:0`. Paid: `quote` → price → OK → `run` with `quote_id` (one run per quote, 15 min, same request). `refused` (budget, price changed): don't resend; quote again or drop the row.
 - Every `client_request_id` names one job: add a short tag for this session (e.g. `ugc-1026a-line-1`) so an old id never returns an old job.
 - Never call `run` to check on a job. `sample: true` = mock placeholder: say so.

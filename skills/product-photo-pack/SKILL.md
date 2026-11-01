@@ -25,6 +25,6 @@ Product photo · product name (and what must stay exact: label text, colour) · 
 12. **Deliver** a named set as a table (name · aspect · link from `get_outputs`), the real models, `budget {action:"receipt", budget_id}` and `recipe {action:"export", id}` for the hero. No zip or batch export tool yet: list the links.
 
 ## Money and retries
-- Free: `run_on:"local"`, `max_usd:0`. Paid: `quote` → price → OK → `run` with `quote_id` (15 min, same request). `refused`: don't resend.
+- Free: `run_on:"local"`, `max_usd:0`. Paid: `quote` → price → OK → `run` with `quote_id` (one run per quote, 15 min, same request). `refused`: don't resend.
 - Every `client_request_id` names one job: add a short tag for this session (e.g. `ugc-1026a-line-1`) so an old id never returns an old job.
 - Never call `run` to check a job. `sample: true` = mock placeholder: say so.

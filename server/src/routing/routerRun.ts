@@ -8,7 +8,7 @@
  */
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { Job } from '../jobs.js';
+import { persistJob, type Job } from '../jobs.js';
 import type { RouteAttempt, RouteDef } from './types.js';
 import { DATA_DIR } from '../config.js';
 import { probe } from '../media.js';
@@ -25,6 +25,7 @@ import { setStorageFetch } from '../comfy/storage.js';
 import { routerModelOfRoute, routerCalls, ROUTER_RUNNER_ROUTES, type RouterOut } from './routerModels.js';
 import { refInputFor } from './jobRefs.js';
 import { routeRequest } from './routeRequest.js';
+import { withDownloadRetry, httpError } from '../hostedPoll.js';
 
 /** Image to layers: a layer cropped to its box ([left, top, right, bottom] px on the base) → the same layer on a transparent canvas the base's size, in place.
  *  Best effort: if ffmpeg can't, the cropped layer stays (still a valid PNG). */
@@ -59,15 +60,19 @@ export const NO_ESTIMATE_MESSAGE = (name: string) => `Comfy couldn't price this 
 const EXT: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm', 'audio/mpeg': 'mp3', 'audio/mp3': 'mp3', 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/ogg': 'ogg' };
 const extOf = (mime: string | undefined, url: string | undefined, out: string) => EXT[String(mime ?? '').toLowerCase()] ?? url?.split('?')[0].match(/\.(png|jpe?g|webp|mp4|mov|webm|mp3|wav|ogg)$/i)?.[1]?.toLowerCase() ?? (out === 'video' ? 'mp4' : out === 'audio' ? 'mp3' : 'png');
 
-async function save(job: Job, k: number, o: RouterOut | { bytes: Buffer; mime: string }, out: string, f: typeof fetch): Promise<string> {
-  let buf: Buffer; let mime = 'mime' in o ? o.mime : undefined;
+/** refresh = collect the result again from Router (free) for a fresh signed link before the next download try (hostedPoll.ts withDownloadRetry). */
+async function save(job: Job, k: number, o: RouterOut | { bytes: Buffer; mime: string }, out: string, f: typeof fetch, refresh?: () => Promise<string | undefined | null>): Promise<string> {
+  let buf!: Buffer; let mime = 'mime' in o ? o.mime : undefined;
   if ('bytes' in o) buf = o.bytes;
   else if (o.b64) buf = Buffer.from(o.b64.replace(/^data:[^,]*,/, ''), 'base64');
   else if (o.url?.startsWith('data:')) { mime = o.url.slice(5).split(/[;,]/)[0]; buf = Buffer.from(o.url.split(',')[1] ?? '', 'base64'); }
-  else { // result assets are signed links (Comfy storage or the provider's): fetched WITHOUT the key
-    let r: Response; try { r = await f(o.url!); } catch (e) { throw new RouterError('provider_error', 'the result could not be downloaded.', null, null, true, String(e)); }
-    if (!r.ok) throw new RouterError('provider_error', 'the result could not be downloaded (the link may have expired).', r.status, null, true, `download → ${r.status}`);
-    mime = (r.headers.get('content-type') ?? '').split(';')[0].trim() || mime; buf = Buffer.from(await r.arrayBuffer());
+  else { // result assets are signed links (Comfy storage or the provider's): fetched WITHOUT the key, with a few tries (audit 2026-11-01 #10)
+    let url = o.url!;
+    await withDownloadRetry('Comfy', async (fresh) => {
+      if (fresh && refresh) { const u = await refresh().catch(() => null); if (u) url = u; }
+      const r = await f(url); if (!r.ok) throw httpError(`download → ${r.status}`, r.status);
+      mime = (r.headers.get('content-type') ?? '').split(';')[0].trim() || mime; buf = Buffer.from(await r.arrayBuffer());
+    }, { canRefresh: !!refresh });
   }
   if (!buf.length) throw new RouterError('provider_error', 'the result came back empty.', null, null, true, 'empty output');
   const name = `${job.id}-out${k}.${extOf(mime, 'url' in o ? o.url : undefined, out)}`; await fs.writeFile(path.join(DATA_DIR, name), buf); return `/files/${name}`;
@@ -85,20 +90,28 @@ export async function runRouter(job: Job, r: RouteDef, attempt: RouteAttempt, ti
   let credits = 0; let reported = false; let billed = 0; let dispatched = 0; const outs: { label: string; url: string; box?: number[]; description?: string }[] = []; const estimates: RouterEstimate[] = []; const usage: { output: number; usage: unknown }[] = [];
   try {
     const block = spec.block?.(i); if (block) throw new RouterError('input_invalid', `${block}.`, null, null, false, 'blocked before submit');
+    // a pick-up (restart / Retry download, routing/reattach.ts): the queued request from before is only polled; nothing is priced or sent again
+    const rm = job.remote?.resuming && job.remote.kind === 'router' && job.remote.routeId === r.routeId && job.remote.attempt === attempt.n ? job.remote : null;
     for (let k = 0; k < n; k++) {
-      job.stage = 'submitted'; const { body } = await routeRequest(job, r, k); // routing/routeRequest.ts: the same rewrite (refInputFor), then spec.body
-      const est = await c.estimate(rid, body).catch((e) => { if (e instanceof RouterError && !e.temporary) throw e; return null; }); // a key / credits / plan / body problem fails here, before anything runs
+      const rs = rm && rm.output === k && rm.statusUrl && rm.responseUrl && rm.cancelUrl ? { requestId: rm.id, statusUrl: rm.statusUrl, responseUrl: rm.responseUrl, cancelUrl: rm.cancelUrl, estimate: null } : null;
+      if (rm && !rs) throw (await import('./reattach.js')).cannotPickUp('no stored request for this part');
+      job.stage = 'submitted'; const { body } = rs ? { body: {} } : await routeRequest(job, r, k); // routing/routeRequest.ts: the same rewrite (refInputFor), then spec.body
+      const est = rs ? null : await c.estimate(rid, body).catch((e) => { if (e instanceof RouterError && !e.temporary) throw e; return null; }); // a key / credits / plan / body problem fails here, before anything runs
       if (est) estimates.push(est); // null = 403 not_enabled / 503: no estimate (never a failure by itself)
       const hi = estimateHigh(est); // free = $0, a known price (2026-10-31)
       const quoted = quotedAt(k);
-      if (hi != null && quoted > 0 && hi > quoted + OVER_QUOTE_MARGIN_USD) throw new RouterError('price_changed', `${ROUTER_MESSAGES.price_changed.replace(/\.$/, '')} ($${hi.toFixed(4)} now, $${quoted.toFixed(4)} quoted).`, null, null, false, `estimate ${JSON.stringify(est)}`);
-      if (hi == null && TOKEN_BILLED.has(spec.provider) && !QUOTE_HAS_ALLOWANCE.has(spec.provider)) throw new RouterError('price_changed', NO_ESTIMATE_MESSAGE((spec as any).name ?? spec.id), null, null, false, `no usable estimate (${est ? est.source : 'none'}) for a token-billed model without a quote allowance`);
+      if (!rs && hi != null && quoted > 0 && hi > quoted + OVER_QUOTE_MARGIN_USD) throw new RouterError('price_changed', `${ROUTER_MESSAGES.price_changed.replace(/\.$/, '')} ($${hi.toFixed(4)} now, $${quoted.toFixed(4)} quoted).`, null, null, false, `estimate ${JSON.stringify(est)}`);
+      if (!rs && hi == null && TOKEN_BILLED.has(spec.provider) && !QUOTE_HAS_ALLOWANCE.has(spec.provider)) throw new RouterError('price_changed', NO_ESTIMATE_MESSAGE((spec as any).name ?? spec.id), null, null, false, `no usable estimate (${est ? est.source : 'none'}) for a token-billed model without a quote allowance`);
       const idem = `${job.id}-a${attempt.n}-o${k}`;
-      const noteId = (id: string | null, cancelUrl?: string) => { if (!id) return; dispatched++; attempt.requestId = id; (job.requestIds ??= []).push(id); (job as any).routerRequest = { id, model: rid, ...(cancelUrl ? { cancelUrl } : {}) }; };
+      const noteId = (id: string | null, h?: { statusUrl: string; responseUrl: string; cancelUrl: string }) => { if (!id) return; dispatched++; attempt.requestId = id; (job.requestIds ??= []).push(id); (job as any).routerRequest = { id, model: rid, ...(h ? { cancelUrl: h.cancelUrl } : {}) };
+        if (h) job.remote = { kind: 'router', id, statusUrl: h.statusUrl, responseUrl: h.responseUrl, cancelUrl: h.cancelUrl, model: rid, routeId: r.routeId, attempt: attempt.n, output: k, outputs: n, at: Date.now() }; if (h) try { persistJob(job); } catch { /* the 400 ms flush has it */ } }; // stored and written at once: a restart picks it up again (audit 2026-11-01 #5)
+      if (rs) dispatched++;
       const res = spec.queue
-        ? await c.runQueued(rid, body, idem, { timeoutMs, isCanceled: () => (job.status as string) === 'canceled', onSubmitted: (h) => noteId(h.requestId, h.cancelUrl),
+        ? await c.runQueued(rid, body, idem, { timeoutMs, resume: rs, isCanceled: () => (job.status as string) === 'canceled', onSubmitted: (h) => noteId(h.requestId, h),
             onStatus: (s, q) => { job.stage = s === 'IN_QUEUE' ? 'submitted' : 'rendering'; if (q != null) job.queuePos = q; } })
         : await (async () => { job.stage = 'rendering'; const x = await c.run(rid, body, idem, timeoutMs); noteId(x.requestId); return x; })();
+      const hd = (res as any).handle as import('../comfyRouter.js').RouterHandle | undefined; // a fresh signed link for a retried download: collect again (free)
+      const refreshAt = (m: number) => hd ? async () => { const x = await c.collect(hd); const g = x?.json ? spec.outputs(x.json) : null; return Array.isArray(g) ? (g[m] as any)?.url ?? null : null; } : undefined;
       job.queueReason = null; billed++; // Comfy ran this request: it is billed whatever happens next
       if (res.creditsUsed != null) { credits += res.creditsUsed; reported = true; }
       { const j: any = res.json; const u = j?.usage ?? j?.usageMetadata ?? j?.response?.usageMetadata ?? j?.data?.usage; if (u && typeof u === 'object') usage.push({ output: k, usage: u }); } // token counts, kept to calibrate prices
@@ -109,11 +122,11 @@ export async function runRouter(job: Job, r: RouteDef, attempt: RouteAttempt, ti
         e.provider = { errorType: 'content_policy_violation', httpStatus: 200, upstreamStatus: null, detail: sanitizeProviderText(got.refused), upstreamDetail: null, refusalSubject: null, requestId: res.requestId }; throw e; } // the provider's own words (BytePlus error.code), kept
       if (!got.length) throw new RouterError('provider_error', 'the model returned no result.', 200, null, true, `no output in ${JSON.stringify(res.json).slice(0, 300)}`);
       if (spec.allOutputs) { // Image to layers: every file of the one call; a layer with a box goes onto a transparent canvas the base's size (full-canvas layers stack as they are)
-        const first = outs.length; for (let m = 0; m < got.length; m++) { const g: any = got[m]; outs.push({ label: String(g.label ?? `${labels[k]} ${m + 1}`), url: await save(job, outs.length, g, spec.out, f), ...(Array.isArray(g.box) ? { box: g.box } : {}), ...(g.description ? { description: String(g.description) } : {}) }); }
+        const first = outs.length; for (let m = 0; m < got.length; m++) { const g: any = got[m]; outs.push({ label: String(g.label ?? `${labels[k]} ${m + 1}`), url: await save(job, outs.length, g, spec.out, f, refreshAt(m)), ...(Array.isArray(g.box) ? { box: g.box } : {}), ...(g.description ? { description: String(g.description) } : {}) }); }
         const base = await probe(path.join(DATA_DIR, path.basename(outs[first].url)));
         if (base?.width && base?.height) for (let m = 1; m < got.length; m++) { const box = (got[m] as any).box; if (Array.isArray(box)) await layerToCanvas(path.join(DATA_DIR, path.basename(outs[first + m].url)), box, base.width, base.height); }
         continue; }
-      outs.push({ label: labels[k], url: await save(job, k, got[0], spec.out, f) });
+      outs.push({ label: labels[k], url: await save(job, k, got[0], spec.out, f, refreshAt(0)) });
     }
   } catch (e) {
     if ((job.status as string) === 'canceled') return;
@@ -123,7 +136,7 @@ export async function runRouter(job: Job, r: RouteDef, attempt: RouteAttempt, ti
       if (reported) job.actualCost = { usd: Math.round((credits / COMFY_CREDITS_PER_USD) * 1e4) / 1e4, units: credits, unitLabel: 'Comfy credits', source: 'comfy-router:credits-used' };
       if (estimates.length) (job as any).routerEstimates = estimates; return; }
     if (reported) job.actualCost = { usd: Math.round((credits / COMFY_CREDITS_PER_USD) * 1e4) / 1e4, units: credits, unitLabel: 'Comfy credits', source: 'comfy-router:credits-used' };
-    if (!(e instanceof RouterError)) throw e;
+    if (!(e instanceof RouterError)) throw e; // a DownloadError / lost contact (hostedPoll.ts) too: run.ts keeps job.remote so it can be collected later
     if (e.reasonCode === 'canceled') { job.status = 'canceled'; return; }
     job.errorType = e.temporary ? 'temporary' : e.reasonCode === 'content_blocked' ? 'nsfw' : e.reasonCode === 'cloud_credits' ? 'credits' : 'provider_outage'; job.reasonCode = e.reasonCode;
     if (estimates.length) (job as any).routerEstimates = estimates;

@@ -24,6 +24,6 @@ Product photo · product name and 3 benefits · creator photo **or** "make one" 
 11. **Deliver**: links (9:16, square, wide), script, `captions.srt`, real models and places, `budget {action:"receipt", budget_id}`, `recipe {action:"export", id:<stitched job>}`. Label the ad as AI-generated.
 
 ## Money and retries
-- Free steps: `run_on:"local"`, `max_usd:0`. Paid steps: `quote` → price → OK → `run` with `quote_id` (15 min, same request). `refused`: don't resend; quote again or go local.
+- Free steps: `run_on:"local"`, `max_usd:0`. Paid steps: `quote` → price → OK → `run` with `quote_id` (one run per quote, 15 min, same request). `refused`: don't resend; quote again or go local.
 - Every `client_request_id` names one job: add a short tag for this session (e.g. `ugc-1026a-line-1`) so an old id never returns an old job.
 - Start with `wait_sec:0`, then `status`. Never call `run` to check on a job. `sample: true` = mock mode placeholder: say so.

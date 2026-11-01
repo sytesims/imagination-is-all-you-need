@@ -29,7 +29,7 @@ How to work:
 1. search_capabilities {query} to find tools, models and workflows (no query = overview, incl. whether results are real or samples).
 2. describe {id} for the exact fields (JSON Schema), limits, models and prices of a tool.
 3. quote the exact request and tell the user the price. Prefer free local runs (run_on "local") when they are good enough.
-4. run it. A paid run needs the quote_id from step 3 (and the user's OK); max_usd caps it, budget_id ties it to a budget (budget {action:"set"}).
+4. run it. A paid run needs the quote_id from step 3 (and the user's OK); one quote starts one run, so quote again for another; max_usd caps it, budget_id ties it to a budget (budget {action:"set"}).
 5. status {id, wait_sec} until done (never call run again to check: that starts and pays for a second job). get_outputs for the links.
 6. When a budget was set, end with budget {action:"receipt"} and show it.
 If a result says sample:true, tell the user it is a placeholder, not a real render. Prompts named like the skills (make-ad-variants, cost-check…) give step-by-step playbooks.`;

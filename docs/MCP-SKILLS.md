@@ -24,7 +24,7 @@ The [`skills/`](../skills/) folder is a pack of Claude Code skills on top of the
 
 `viral-template` was replaced by `viral-format` (2026-10-26): same idea, with ten formats, the app's own viral templates and a photo mode. If you copied the old folder to `~/.claude/skills/`, delete it and copy `viral-format`.
 
-Every skill follows the same money rules, and the server enforces them: free steps run local with `max_usd: 0`; a paid step needs a `quote` first, the price shown to you, and its `quote_id` on `run`; a failed step is redone on its own, never the whole flow; and the run ends with a receipt (`budget {action:"receipt"}`) and a recipe link. Long prompt banks live next to each skill in `reference.md`.
+Every skill follows the same money rules, and the server enforces them: free steps run local with `max_usd: 0`; a paid step needs a `quote` first, the price shown to you, and its `quote_id` on `run` (one quote starts one run; `retry` is priced the same way); a failed step is redone on its own, never the whole flow; and the run ends with a receipt (`budget {action:"receipt"}`) and a recipe link. Long prompt banks live next to each skill in `reference.md`.
 
 ## Install in Claude Code
 

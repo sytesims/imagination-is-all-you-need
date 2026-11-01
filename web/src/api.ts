@@ -72,7 +72,7 @@ export interface JobState {
   /** 2026-10-25 server run lanes: the lane it waits / runs in, and why a waiting job waits ('Waiting for your Mac: one local run at a time'). */
   runLane?: 'local' | 'cloud' | null; queueReason?: string | null;
   resultUrl: string|null; outputs: Output[]; error: string|null;
-  errorType?: string|null; state?: 'queued'|'processing'|'generating'|'done'|'failed'|'canceled'|'blocked'; cancellable?: boolean; cost?: number; refunded?: number; draft?: boolean; badge?: 'draft'|'final'|null; finalId?: string|null; free?: boolean; favourite?: boolean; /** Audio: the dance style heard from the sound and/or picked by the user (POST /api/jobs/:id/dance-style). */ danceStyle?: { heard?: any; picked?: string | null; at?: number } | null; projectId?: string|null; deletedAt?: number|null; warnings: string[]; parentId: string|null;
+  errorType?: string|null; state?: 'queued'|'processing'|'generating'|'done'|'failed'|'canceled'|'blocked'; cancellable?: boolean; /** Retry download: the paid result can still be fetched (POST /api/jobs/:id/collect) */ canCollect?: boolean; cost?: number; refunded?: number; draft?: boolean; badge?: 'draft'|'final'|null; finalId?: string|null; free?: boolean; favourite?: boolean; /** Audio: the dance style heard from the sound and/or picked by the user (POST /api/jobs/:id/dance-style). */ danceStyle?: { heard?: any; picked?: string | null; at?: number } | null; projectId?: string|null; deletedAt?: number|null; warnings: string[]; parentId: string|null;
   input?: Record<string, any>; createdAt?: number; finishedAt?: number|null;
 }
 export interface LicenseInfo { id: string; name: string; osi: boolean; url: string | null; parts?: LicenseInfo[] }
@@ -305,6 +305,8 @@ export async function retryFailedGroups(id: string, idemKey = newIdemKey()): Pro
 /** Plain retry of a failed job: POST /api/jobs/:id/retry (same inputs, new job, quoted again). Returns the new job id. */
 /** Retry a failed job (same inputs). runOn = "Try on <place>": re-run it there, pinned to that place (Run on, 2026-10-22). */
 /** Retry / Try on. runOn = run this once on that place (pinned for this job only); remember = also save it as the tool + model's choice (S-02). */
+/** Retry download (server routing/reattach.ts): fetch a failed job's paid result again from its provider; nothing new is sent or charged. */
+export async function collectJob(id: string): Promise<void> { const r = await fetch(`/api/jobs/${encodeURIComponent(id)}/collect`, { method: 'POST' }); if (!r.ok) { const b = await r.json().catch(() => ({})); throw new Error(b?.error ?? `Retry download failed (${r.status})`); } }
 export async function retryJob(id: string, idemKey = newIdemKey(), runOn?: string, remember = false): Promise<string> { const r = await fetch(`/api/jobs/${encodeURIComponent(id)}/retry`, { method: 'POST', headers: { 'Idempotency-Key': idemKey, 'X-Client-Id': clientId(), ...(runOn ? { 'content-type': 'application/json' } : {}) }, ...(runOn ? { body: JSON.stringify({ runOn, ...(remember ? { remember: true } : {}) }) } : {}) }); const b = await r.json().catch(() => ({})); if (!r.ok) throw jobPostError(b, r.status, `Retry failed (${r.status})`); return b.id; }
 
 /** One progress number for every surface (job card, canvas tile, Assets). */

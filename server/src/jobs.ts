@@ -113,6 +113,11 @@ export interface Job {
   liveStage?: 'queued' | 'loading' | 'generating' | 'finishing' | null;
   /** Native ComfyUI prompt this job is waiting on (local or remote ComfyUI), stored at submit so a server restart can reconnect and collect the result. */
   comfyPrompt?: { id: string; base: string; pass: number; passes: number; outputs: string[]; labels: string[]; resumable: boolean; submittedAt: number; /** hard cap on running time used for this prompt */ capMs?: number } | null;
+  /** The hosted request in flight (fal, Replicate, a lab API, Comfy Router, Comfy Cloud; audit 2026-11-01 #5, #10), stored as soon as the provider
+   *  gives its id: a server restart polls it again instead of losing a paid result (routing/reattach.ts), Cancel asks the provider to stop it, and a
+   *  result that couldn't be downloaded (or a run we lost contact with) can be collected later (POST /api/jobs/:id/collect). Only a job made of ONE
+   *  request (outputs === 1) can be picked up again; cleared when the job ends any other way. */
+  remote?: RemoteHandle | null;
   /** A local run marked failed (stall / hard cap / server restart) whose prompt ComfyUI may still finish: the late-result sweeper (comfy/lateRescue.ts)
    *  checks /history until `until` and turns the job done ("Finished late") when the result shows up. Cleared once settled either way. */
   lateWatch?: { since: number; until: number; why: 'stall' | 'cap' | 'restart' } | null;
@@ -147,3 +152,11 @@ export function flushJobs() {
 setInterval(flushJobs, 400).unref();
 /** BH4 #7 (G14): write one job row now (used inside the charge transaction so a crash can't leave a charge without its job). */
 export function persistJob(j: Job) { const s = JSON.stringify(j); store(j); lastSaved.set(j.id, s); }
+/** See Job.remote. statusUrl / responseUrl / cancelUrl: fal and Router (as the provider returned them); pollUrl: a lab API; id alone: Replicate, Comfy Cloud. */
+export interface RemoteHandle {
+  kind: 'fal' | 'replicate' | 'direct' | 'router' | 'cloud'; routeId: string; attempt: number; id: string;
+  /** this request's index in the attempt, and how many requests the attempt makes (Cloud: graph passes) */ output: number; outputs: number;
+  statusUrl?: string; responseUrl?: string; cancelUrl?: string; pollUrl?: string; model?: string; at: number;
+  /** set while a restart / Retry download polls it again (runRouted reuses the attempt, nothing is submitted) */ resuming?: boolean;
+  /** why it is kept on a failed job: the result was made but not saved, or we lost contact with the provider */ collectable?: 'download' | 'lost_contact';
+}

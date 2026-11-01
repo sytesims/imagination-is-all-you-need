@@ -3,7 +3,7 @@
  *
  * An agent budget is a small server-side record {id, name, budgetUsd, budgetCredits}. A client (the MCP server, or any REST caller) sends its id
  * in the `X-OHF-Agent-Budget` header on quotes and submits. It reuses the spend log (billing.ts), not a parallel ledger:
- *  - spent = the agent's spend-log rows counted with countedUsd() (the same rule as the provider spending limits: actual cost when reported,
+ *  - spent = the agent's spend-log rows counted with countedUsd() (the spend log's own rule: actual cost when reported,
  *    else the estimate; $0 for local runs, sample runs, never-started and not-charged failed runs) plus submits still being admitted;
  *  - credits (team mode): the credits charged on its rows ($0 for local, demo and failed runs, which the team ledger refunds).
  * Submit (index.ts createJob): a run that would go over is refused with 400 errorType 'limit', code 'agent_budget', BEFORE the job is enqueued,
@@ -138,7 +138,7 @@ export function receiptOf(b: AgentBudget) {
   const est = r4(items.reduce((s, i) => s + (i.demo ? 0 : i.estUsd), 0)); const act = items.filter((i) => i.actualUsd != null);
   return { budget: v, items, refusals: b.refusals.map((x) => ({ ...x, at: new Date(x.at).toISOString() })),
     totals: { runs: items.length, estimatedUsd: est, actualUsd: act.length ? r4(act.reduce((s, i) => s + (i.actualUsd ?? 0), 0)) : null, actualRuns: act.length, spentUsd: v.spentUsd, budgetUsd: v.budgetUsd, remainingUsd: v.remainingUsd, spentCredits: v.spentCredits, budgetCredits: v.budgetCredits },
-    note: 'spentUsd counts the actual cost when the provider reports one, else the estimate (the same rule as the spending limits). Local runs, sample runs and failed runs on providers that don’t charge failures count $0.' };
+    note: 'spentUsd counts the actual cost when the provider reports one, else the estimate (the spend log\'s own rule). Local runs, sample runs and failed runs on providers that don’t charge failures count $0.' };
 }
 
 const r2 = (n: number) => Math.round(n * 100) / 100;

@@ -40,6 +40,7 @@ import { fileURLToPath } from 'node:url';
 import { jobs, Job, flushJobs } from './jobs.js';
 import { db } from './db.js';
 import { enqueue, cancel, history, stateOf, canCancel, inFlight, MAX_PARALLEL, laneSizes } from './queue.js';
+import { collectable as collectableJob } from './routing/reattach.js';
 import { getKv, setKv } from './db.js';
 import * as I from './idempotency.js';
 import { registerJsonErrors } from './jsonErrors.js';
@@ -230,6 +231,10 @@ const pub = (j: Job) => ({
   providerError: (j as any).providerError ?? null, // what Comfy / the provider said when a Router run failed, sanitised (routing/routerRun.ts)
   state: stateOf(j),
   cancellable: canCancel(j),
+  /** Retry download (POST /api/jobs/:id/collect): the paid result can still be fetched from the provider (routing/reattach.ts). */
+  canCollect: collectableJob(j),
+  /** A hosted run canceled at its provider: what that means for the bill (the provider's own rule), shown instead of "Nothing was charged". */
+  cancelNote: (j as any).cancelNote ?? null,
   cost: j.cost ?? 0,
   refunded: j.refunded ?? 0,
   /** Refund outcome (failed/blocked/canceled): { refunded: boolean, amount, freeGenReturned }; null while running/done. */
@@ -699,7 +704,8 @@ async function createJob(toolId: string, req: FastifyRequest, reply: FastifyRepl
       return reply.code(409).send({ error: 'route_changed', code: 'route_changed', message: ROUTE_CHANGED_MSG, userMessage: ROUTE_CHANGED_MSG, detail: 'Review the new price and press Generate again.', charged: false, calm: true, quote, quotedCredits: qc, credits: nowCost, dearer: true,
         refund: { refunded: false, amount: 0, charged: false, note: 'Nothing was charged.' } }); // P2 (BUG-HUNT-8 #6): says nothing was charged; calm = not an error
     } }
-  // Own-accounts mode (billing.ts): a run that would go over a daily / monthly spending cap for its provider is refused before anything is sent. Local runs are never limited.
+  // The spend guard (spendGuard.ts) prices the run and writes its Spend row; it never refuses (spending limits were removed 2026-10-28). What caps spend:
+  // the quote the user saw (quotedCredits above), their OK, and an optional agent budget (admitAgentRun below).
   const sg = await spendGuard(reply, { kind: routed ? routed.first.kind : isLocalFree(prov.kind) ? 'local' : 'direct', routeId: routed?.first.routeId ?? null, credits: routedCost ?? cost, demo: !!routed?.routing.demo, free: wantFree });
   if ('sent' in sg) return sg.sent; const runCost = sg.runCost;
   if (!wantFree && !canAfford(routedCost ?? cost)) {
@@ -970,12 +976,22 @@ app.post<{ Params: { id: string } }>('/api/jobs/:id/cancel', async (req, reply) 
   const r = await cancelRun(j); // local ComfyUI: cancellable at every stage (our queue, ComfyUI's queue, running); hosted: only before dispatch
   if (r.result === 'done') return reply.code(409).send({ error: 'It finished before it could be canceled, so the result is kept.', errorType: 'not_cancellable', code: 'already_done', jobId: j.id, status: j.status, state: stateOf(j), progress: j.progress });
   if (r.result === 'refused') return reply.code(409).send({ error: j.status === 'running' && (j.input.refBatches?.length ?? 0) <= 1 ? processingCancelText(j) : 'Already generating; it can no longer be canceled.', errorType: 'not_cancellable', code: 'cannot_cancel_processing', cancelInProcessing: CANCEL_IN_PROCESSING, charged: (j.cost ?? 0) > 0, jobId: j.id, status: j.status, state: stateOf(j), progress: j.progress }); // error body, not the job (GAP-MATRIX)
-  return { ...pub(j), ...(r.comfy ? { comfyCancel: r.comfy } : {}) };
+  return { ...pub(j), ...(r.comfy ? { comfyCancel: r.comfy } : {}), ...(r.note ? { cancelNote: r.note } : {}) };
+});
+/** Retry download (audit 2026-11-01 #10): a failed hosted job whose result was made (and paid for) but couldn't be saved, or whose provider we
+ *  lost contact with, polls its request at the provider again and saves the result (routing/reattach.ts). Nothing is sent or charged again.
+ *  409 nothing_to_collect when the job has no such request. */
+app.post<{ Params: { id: string } }>('/api/jobs/:id/collect', async (req, reply) => {
+  const j = jobs.get(req.params.id); if (!j) return reply.code(404).send({ error: 'not found' });
+  const { collectAgain } = await import('./queue.js');
+  if (!collectAgain(j)) return reply.code(409).send({ error: 'There is no paid result to fetch again for this job.', code: 'nothing_to_collect', jobId: j.id, status: j.status, state: stateOf(j) });
+  return pub(j);
 });
 
 // ---- Retry ----
 /** Retry: a new job with the same inputs, quoted and charged again (failed or provider-blocked jobs; the original stays refunded once). ?failedOnly=1 re-runs only failed ref groups.
- *  S-01: every re-run (Try again, Try on <place>, failed groups) goes through the submit's guard: quote → spending cap (400 spend_limit) → agent budget → Spend row.
+ *  S-01: every re-run (Try again, Try on <place>, failed groups) goes through the submit's guard: quote → agent budget (when one is set) → Spend row.
+ *  Body quote:true = only the price ({quote:{credits, routeId, runOn, free}}, nothing started); quotedCredits = the price the user OK'd (a dearer re-run → 409 route_changed).
  *  S-02: Try on (runOn) pins THIS job only; remember:true (body or query) also saves that place as the tool + model's choice (Settings › Routing). */
 app.post<{ Params: { id: string }; Querystring: { failedOnly?: string; runOn?: string; remember?: string } }>('/api/jobs/:id/retry', async (req, reply) => {
   const j = jobs.get(req.params.id); if (!j) return reply.code(404).send({ error: 'not found' });
@@ -1002,6 +1018,12 @@ app.post<{ Params: { id: string }; Querystring: { failedOnly?: string; runOn?: s
       : !free && j.route ? (await import('./routing/select.js')).resolveRoute(tool, j.provider, inp, extra, { route: j.route, allowFallback: j.routing?.allowFallback }) : null;
     if (routed && 'error' in routed) { const { status: rs, ...rb } = routed; return { sent: reply.code(rs).send({ ...rb, charged: false, refund: { refunded: false, amount: 0, charged: false, note: 'Nothing was charged.' } }) }; }
     if (routed) cost = routed.routing.prices[routed.first.routeId] ?? 0;
+    // The price before the run (audit 2026-11-01 #6, the MCP retry tool): quote:true answers the price and starts nothing; quotedCredits (the price
+    // the user OK'd) refuses a dearer re-run with 409 route_changed, nothing charged, as a submit does.
+    { const b = (req.body ?? {}) as Record<string, any>; const rerunQuote = { credits: free ? 0 : cost, routeId: routed?.first.routeId ?? null, runOn: routed?.routing.runOn ?? null, free };
+      if (/^(1|true)$/i.test(String(b.quote ?? ''))) return { sent: reply.send({ quote: rerunQuote, retryOf: j.id, charged: false }) };
+      const qc = b.quotedCredits != null && b.quotedCredits !== '' ? Number(b.quotedCredits) : null;
+      if (qc != null && Number.isFinite(qc) && (await import('./shared/priceChange.js')).priceAskAgain({ quotedCredits: qc, credits: rerunQuote.credits })) return { sent: reply.code(409).send({ error: 'route_changed', code: 'route_changed', message: 'The price changed. Nothing was charged.', charged: false, quote: rerunQuote, quotedCredits: qc, credits: rerunQuote.credits, dearer: true }) }; }
     const sg = await spendGuard(reply, { kind: routed ? routed.first.kind : isLocalFree(prov?.kind) ? 'local' : 'direct', routeId: routed?.first.routeId ?? null, credits: cost, demo: !!routed?.routing.demo, free });
     if ('sent' in sg) return { sent: sg.sent };
     if (!free && !canAfford(cost)) return { sent: reply.code(402).send({ error: `Not enough credits: needs ${cost}, balance ${getBalance()}.`, errorType: 'credits', code: 'credits', needed: cost, balance: getBalance(), refund: { refunded: false, amount: 0, charged: false, note: 'Nothing was charged.' } }) };
@@ -1101,8 +1123,8 @@ app.post<{ Params: { id: string }; Body: { output?: number; mode?: string } | un
   const inp = input as Record<string, any>; inp.upscaleOf = j.id; inp.upscaleOutput = idx;
   const prov = getProvider(up.providers[0]); const provId = prov?.id ?? 'comfy-open';
   const est = estimateSeconds(up, inp, 1, provId); const cost = isLocalFree(prov?.kind) ? 0 : est;
-  // S-01: the submit's spend guard (spending cap → 400 spend_limit, agent budget, Spend row). The upscale engines today are local (SeedVR2, $0) and
-  // FLUX 3 Upscaler is coming soon, so this never blocks yet; a hosted upscale route is covered the day it lands.
+  // S-01: the submit's spend guard (the run's cost + Spend row; it never refuses since spending limits were removed 2026-10-28) and the agent budget.
+  // The upscale engines today are local (SeedVR2, $0) and FLUX 3 Upscaler is coming soon; a hosted upscale route is covered the day it lands.
   const sg = await spendGuard(reply, { kind: isLocalFree(prov?.kind) ? 'local' : 'direct', routeId: null, credits: cost, demo: false, free: false }); if ('sent' in sg) return sg.sent;
   if (!canAfford(cost)) return reply.code(402).send({ error: `Not enough credits: needs ${cost}, balance ${getBalance()}.`, errorType: 'credits' });
   const upId = randomUUID().slice(0, 8);

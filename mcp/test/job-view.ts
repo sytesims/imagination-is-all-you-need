@@ -64,7 +64,12 @@ try {
   ok('wait:false reply also carries the sample notice and points at wait_for_job / get_job');
 
   // ---- mock backend with keys: still a sample (nothing real), with the place label and the Comfy estimate ----
-  const c = await keys.call('generate_image', { prompt: 'a ceramic mug', model: 'nano-banana-2', run_on: 'comfy-cloud' });
+  // a paid legacy call is priced first (audit 2026-11-01 #6): the first call answers the price + quote_id and starts nothing, the second runs it
+  const cArgs = { prompt: 'a ceramic mug', model: 'nano-banana-2', run_on: 'comfy-cloud' };
+  const c0 = await keys.call('generate_image', cArgs); assert.equal(c0.r.refused, true, text(c0.raw)); assert.equal(c0.r.charged, false); assert.match(c0.r.quote_id, /^q_/);
+  const c = await keys.call('generate_image', { ...cArgs, quote_id: c0.r.quote_id });
+  const again = await keys.call('generate_image', { ...cArgs, quote_id: c0.r.quote_id }); assert.equal(again.r.refused, true); assert.match(again.r.reason, /already used/);
+  ok('generate_image (paid): priced first with a quote_id, runs with it, and the same quote_id cannot start a second run');
   assert.equal(c.r.status, 'done', text(c.raw)); assert.equal(c.r.sample, true); assert.match(c.r.sampleReason, /sample mode \(mock backend\)/); assert.match(c.r.notice, /run_on "comfy-cloud"/);
   assert.deepEqual(c.r.place, { runOn: 'comfy-cloud', label: 'Comfy · Comfy Router' }); assert.deepEqual(c.r.model, { name: 'Nano Banana 2', id: 'nano-banana-2' });
   assert.ok(c.r.estimate.usd > 0 && c.r.estimate.comfyCredits > 0 && c.r.estimate.billedTo === 'Comfy', JSON.stringify(c.r.estimate));

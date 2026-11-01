@@ -32,7 +32,7 @@ Run `search_capabilities {query:"viral template"}` first: if the app has more te
 6. **Deliver**: `get_outputs {id}` per clip, the real model and where it ran, `recipe {action:"export", id}` ("make your own" link), and `budget {action:"receipt", budget_id}` when a budget was set. Label output as AI-made, and keep people in street interviews fictional.
 
 ## Money and retries
-- Free steps use `run_on:"local"` and `max_usd:0` (no quote_id needed). Every paid step: `quote` → price to the user → OK → `run` with that `quote_id` (15 min, exact same request). A `refused` reply: don't resend; quote again or go local.
+- Free steps use `run_on:"local"` and `max_usd:0` (no quote_id needed). Every paid step: `quote` → price to the user → OK → `run` with that `quote_id` (one run per quote, 15 min, exact same request). A `refused` reply: don't resend; quote again or go local.
 - Every `client_request_id` names one job: add a short tag for this session (e.g. `ugc-1026a-line-1`) so an old id never returns an old job.
 - Never call `run` to check on a job. A failed or bad clip: redo only that clip (`retry {id}`, or a new `run` with a new seed and `client_request_id`); keep the rest.
 - `sample: true` means mock mode: tell the user it's a placeholder, not a real render.

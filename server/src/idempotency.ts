@@ -33,7 +33,9 @@ export const CONFLICT_MESSAGE = 'This request was already sent with different de
 export const conflictBody = () => ({ error: 'idempotency_conflict', code: 'idempotency_conflict', message: CONFLICT_MESSAGE });
 /** Wait for an in-flight request with this key, then hold the key until this reply finishes (no double job when two arrive together). */
 export async function idemLock(key: string, reply: FastifyReply) {
-  const pending = inflight.get(key); if (pending) await pending;
+  // Loop, not one wait: when the holder fails (a 4xx is never stored), every waiter wakes on the same promise; only the first takes the
+  // lock, the others see it held again and keep waiting (audit 2026-11-01 P3 #12: two retries went through and overwrote the lock).
+  while (inflight.has(key)) { await inflight.get(key); if (idemGet(key)) return; }
   if (idemGet(key)) return; let done!: () => void; const p = new Promise<void>((r) => { done = r; }); inflight.set(key, p);
   const fin = () => { if (inflight.get(key) === p) inflight.delete(key); done(); }; reply.raw.once('finish', fin); reply.raw.once('close', fin);
 }
