@@ -32,4 +32,12 @@ try {
   for (const [provider, tok] of [['api-kling-image', '<<<image_1>>>'], ['comfy-qwen21', '<image1>'], ['comfy-flux3-klein', '<ref_image_0>']]) {
     const r: any = await promptPeek(face, { provider }, { image: 1, face: 1 }); assert.ok(String(r.prompt).includes(`background of ${tok} unchanged`), `${provider}: ${r.prompt}`); }
   ok('Kling, Qwen Image 2.1 and FLUX 3 Klein read "the … of <their token>"');
+  // Try-On: FASHN takes no prompt and Bria's instruction is only the user's words (none here), so the job stores none and the peek says so
+  { const t: any = getTool('app-try-on'); const png = fs.readFileSync(path.resolve(import.meta.dirname, '../samples/sample-character.png'));
+    fs.writeFileSync(path.join(D, 'p.png'), png); fs.writeFileSync(path.join(D, 'g.png'), png);
+    for (const provider of providersOf(t)) {
+      const r: any = await t.parseInput({ provider, rights: '1' }, { image: ['p.png'], garment: ['g.png'] }); assert.ok(!r.error, JSON.stringify(r));
+      assert.equal(r.prompt, '', `${provider}: no prompt stored`); assert.equal(r.finalPrompt ?? '', '', provider);
+      const pk: any = await promptPeek(t, { provider }, { image: 1, garment: 1 }); assert.equal(pk.prompt, ''); assert.equal(pk.noPrompt, 'No prompt: the model reads the two photos only'); } }
+  ok('Try-On: no prompt stored or shown (FASHN, Bria)');
 } finally { fs.rmSync(D, { recursive: true, force: true }); }

@@ -557,6 +557,8 @@ export interface GalleryApp {
   durations?: number[];
   /** App-only fields (tiles, sliders, colour). Stored on job.input under the same names (Recreate restores them); composed into the prompt server side. */
   fields?: AppField[];
+  /** The prompt peek's line for an app whose models take no prompt (Try-On). */
+  noPrompt?: string;
   /** Builds the prompt from the user's text + the app fields. */
   compose?: (v: Record<string, string>, ctx: { prompt: string; has: (file: string) => boolean; /** the picked engine (provider id), when the request names one */ provider?: string; /** apps with `brand`: the kit in use */ brandKit?: BrandKit | null;
     /** that engine's prompt cap (shared/promptGrammar.ts limits.maxChars), so a recipe can pick its short wording; the route check still refuses what doesn't fit */ maxChars?: number }) => string;
@@ -931,7 +933,10 @@ export const APP_GALLERY: GalleryApp[] = [
       { name: 'garmentPhoto', label: 'Garment photo', kind: 'select', control: 'segmented', options: TRYON_PHOTO_TYPES.map((o) => ({ ...o })), default: 'auto' }],
     // image 1 = the person, image 2 = the garment
     fileMap: (f) => { const { garment, ...rest } = f; return { ...rest, refs: (garment ?? []).slice(0, 1) }; },
-    compose: () => 'dress the person from the first photo in the garment from the second photo, keep the face, body and pose',
+    // No prompt (2026-11-01): FASHN takes none and Bria's optional `instruction` carries only the user's words (routerModels briaText), which Try-On
+    // doesn't ask for, so nothing is stored or shown as "the prompt". TODO: Bria's docs use `instruction` to steer layering ("worn over the t-shirt");
+    // an optional styling note sent to Bria only could use it.
+    compose: () => '', noPrompt: 'No prompt: the model reads the two photos only',
     prepare: async (r) => { for (const [k, p0] of [['image', r.refPaths?.[0]], ['garment', r.refPaths?.[1]]] as const) { const b = photoBlock(p0 ? await probe(p0) : null); if (b) return { error: { field: k, ...b } }; } return {}; },
     extra: { promptOptional: true, outputLabel: 'Try-on' }, finish: (r) => ({ outputLabel: 'Try-on', mockLook: 'tryon', ...(r.refPaths?.[1] ? { insetPath: r.refPaths[1] } : {}) }),
     notes: ['Tops, bottoms and one-pieces (dresses, jumpsuits). Shoes, bags and jewellery are not supported.', 'Works with a garment worn by someone or laid flat; a clear, front-facing person photo works best. Only use photos of people who agreed to it.'] },
@@ -1090,7 +1095,7 @@ export function makeGalleryApp(a: GalleryApp, base: ToolDef): ToolDef {
     ...base, id: appId, name: a.name, description: a.description, category: 'Apps', status: undefined, listed: undefined /* an app is listed even when its base tool is hidden (Orbit Shot on the retired Director) */, route: a.route ?? `/tools/app-${a.id}`, ...(a.ui ? { ui: a.ui } : {}), ...(a.routeInput ? { routeInput: a.routeInput } : {}),
     inputs: exposedInputs, ...(a.poster && !/^\/(samples\/(?!presets\/)|examples\/)/.test(a.poster) ? { posterUrl: a.poster } : {}) /* BH P2: never a sample / example gradient; /api/posters/<id>.jpg runs the cover fallback order */, providers,
     app: { ...(base.app ?? {}), ...(baseCaps && a.durations ? { capabilities: { ...baseCaps, ...durs } } : {}),
-      gallery: { id: a.id, base: base.id, locked: a.locked, exposed: a.exposed, labels: a.labels ?? {} /* the submit's "Add a garment." names the slot (index.ts required check) */, promptTemplate: a.promptTemplate ?? null, modeWhenFile: a.modeWhenFile ?? null,
+      gallery: { id: a.id, base: base.id, locked: a.locked, exposed: a.exposed, labels: a.labels ?? {} /* the submit's "Add a garment." names the slot (index.ts required check) */, promptTemplate: a.promptTemplate ?? null, ...(a.noPrompt ? { noPrompt: a.noPrompt } : {}), modeWhenFile: a.modeWhenFile ?? null,
         defaults: a.defaults ?? {}, fields: (a.fields ?? []).map((f) => ({ ...f, options: f.options?.map(({ prompt: _p, ...o }) => (OPTION_MEDIA[a.id] === f.name ? wireOptionMedia(a.id, f.name, o) : o)) })), required: a.required ?? [], fileOrPrompt: a.fileOrPrompt ?? null, providersByMode,
         hideControls, modeRow: false, promptBox: shown.has('prompt'), promptFrames: a.compose || a.promptTemplate ? promptFrames(a) : [] /* 2026-10-25: the web keeps recipe text out of the subject box (shared/typedPrompt.ts) */,
         ...(a.previewBefore && a.previewAfter ? { preview: { before: a.previewBefore, after: a.previewAfter, beforeLabel: a.previewLabels?.[0] ?? 'Before', afterLabel: a.previewLabels?.[1] ?? 'After', model: a.previewModel ?? null } } : {}),
@@ -1151,8 +1156,10 @@ export function makeGalleryApp(a: GalleryApp, base: ToolDef): ToolDef {
       if (!f.provider && a.providers) f.provider = providers[0];
       if (a.lockedFor) Object.assign(f, a.lockedFor(vals, { provider: f.provider || providers[0], mode: typesOf(f.types) ?? '' })); // Character Sheet: the layout's aspect, snapped to this model
       const files = a.fileMap ? a.fileMap(files0) : files0;
+      // an app whose models take no prompt (Try-On): the base's "describe it" check gets the label, and the job keeps no prompt (nothing was sent)
+      if (a.noPrompt) f.prompt = a.noPrompt;
       const r: any = await base.parseInput(f, files);
-      if ('error' in r) return r; if (appSnap) addAdjustNote(r, appSnap);
+      if ('error' in r) return r; if (a.noPrompt) for (const k of ['prompt', 'finalPrompt', 'hostedPrompt', 'enhancedPrompt']) if (typeof r[k] === 'string') r[k] = ''; if (appSnap) addAdjustNote(r, appSnap);
       if (a.prepare) { const x = await a.prepare(r, vals); if (x && 'error' in x && x.error && typeof x.error === 'object') return bad(x.error.field, x.error.message, x.error.code); Object.assign(r, x); }
       const extraUrls: Record<string, string> = {};
       for (const x of a.extraInputs ?? []) { const up = files0[x.name]?.[0]; if (up) extraUrls[`${x.name}Url`] = `/files/${up}`; }
