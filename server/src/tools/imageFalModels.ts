@@ -25,6 +25,7 @@ import { EXTRA_ROUTES, COMING_SOON, FAL_ENV } from '../routing/routes.js';
 import { imageRefs } from '../routing/routerModels.js';
 import { GROK_EDIT_ASPECTS, KLING_IMAGE_ASPECTS } from '../shared/hostedAspects.js';
 import type { RouteDef } from '../routing/types.js';
+import { hostedPromptOf } from '../routing/hostedPrompt.js';
 import { imageDataUri } from './imageUpscaleModels.js';
 import { runFfmpeg } from '../ffmpeg.js';
 import { DATA_DIR } from '../config.js';
@@ -35,7 +36,7 @@ type In = Record<string, any>;
 const page = (slug: string) => `https://fal.ai/models/${slug}`;
 
 // ---------- small helpers (same rules as the Comfy Router bodies, routing/routerModels.ts) ----------
-const promptOf = (i: In) => String(i.hostedPrompt ?? i.prompt ?? '');
+const promptOf = hostedPromptOf; // the full composed prompt, as on Comfy Router (routing/hostedPrompt.ts)
 const aspectOf = (i: In): string | null => (typeof i.aspect === 'string' && i.aspect && i.aspect !== 'auto' ? i.aspect : null);
 const resOf = (i: In): '1K' | '2K' | '4K' => (['1K', '2K', '4K'].includes(i.imageResolution) ? i.imageResolution : '1K');
 const tierOf = (i: In): 'low' | 'med' | 'high' => { const q = String(i.tier ?? i.quality ?? 'med'); return /^(high|hd)$/i.test(q) ? 'high' : /^low$/i.test(q) ? 'low' : 'med'; };
