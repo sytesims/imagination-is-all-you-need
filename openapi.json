@@ -351,6 +351,34 @@
             }
           }
         ]
+      },
+      "delete": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Remove a workflow you added (file = its id): out of the app and its folder deleted. 404 unknown, 403 for folders that ship with the app.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "file",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     },
     "/api/tools": {
@@ -476,7 +504,7 @@
         "tags": [
           "Tools"
         ],
-        "summary": "Price for a setup (credits, breakdown). seconds (alias duration) uses the same resolver as job submit; outside the model videoCaps min/maxSeconds → 400 issues[field=seconds] Oct 18 batch 3. Every quote: unit, unitLabel, unitHelp at top level (null on local routes) and hosted for the route that would run (also demo / needsKey); chargeable (true only when runnable, not a demo and credits > 0). runnable:false for any reason other than a missing key (not_wired, coming soon, unreachable, a job the route refuses): credits null, priceAvailable false, chargeable false, listCredits = list price, priceLine (e.g. \"Comfy API (partner node) isn't available on this server yet. List price 212 credits ($2.12).\"), unavailableReason; quote text never says \"Nothing was charged\" (the submit 409/402 does). needsKey quotes also carry keyOwner. Camera Moves: Auto with an H3-only move quotes H3 Camera Motion; no image (no image=1) on an image-only model → 400 image_required also when a model is chosen; a move the chosen model can't run → 400 unsupported (same bodies as submit). Translate (Voice Studio types=translate, Translate Video): language must be voiced by the chosen translate route, Auto picks the first that does; else 400 unsupported_language {languages, languagesByProvider, providers}. Upscale with sourceResolution= (or width/height): sourceSize, sourceResolution, scale, outputSize, estimated false unless seconds are missing (then estimateReason clip_not_loaded). Input prep (2026-10-23): an edit on a model whose edits follow the photo (FLUX 3 Klein, FLUX.2 klein 4B, FLUX.2 dev, Qwen-Image) quotes a picked or locked aspect (Character Sheet 4:3) when photoAspect says the photo already has that shape (1% either way); the submit checks the uploaded photo's real shape the same way. A route that lacks its provider key (asked with ?route= / runOn, or a saved pin) quotes runnable:false, needsKey:true, keyMissing:true, credits = listCredits = the price once the key is added (not a charge) and priceLine \"Needs a <provider> key. Price once it's added: N credits ($x).\" With no place asked for and none ready, nothing is pre-selected: runnable:false, runOn / route / credits null, setup (the first place to set up) and setupOptions [{runOn, runOnLabel, routeId, action, actionText, credits, missingBytes?, downloadId?, slow?}] in the order Comfy → other API → Local (credits = the price per run once set up; Local 0). On the mock backend a keyless route quotes as a sample run instead. ?route= without provider quotes the model that owns that route. Video upscale tools without width/height assume a 720p 16:9 source (sourceResolution= overrides) even when seconds is given: estimated:true, estimateReason source_size_unknown (or clip_not_loaded), assumedSize/assumedScale/assumedOutputSize. Quotes carry `local` (true only when the chosen route is local); on a cloud route free/basis/breakdown describe that route, even for open-weights models. Carries fallback (FallbackNotice | null), same as /api/models/quote. Demo contract: routeId (the route Auto/pin would actually run), runnable (boolean), demo (boolean), demoMessage (string | null, e.g. \"Sample output, nothing billed.\"), demoNotice ({code:\"demo_preview\", routeId, message} | null), listCredits (demo only: the route's real price, for display). A demo preview is FREE: credits 0, charge 0, no ledger debit. Auto picks only runnable, non-demo routes; a demo preview is offered only when none exists (mock backend). Apps (app-*) are quoted with their locked params. Carries demo; noProvider carries state/options/title/message. Real mode with nothing set up: state = \"needs_provider\" with options ⊆ [\"connect_key\",\"enable_local\"], title and message (calm setup copy) next to the existing noProvider fields (error, errorType no_provider, providers, localRoute). state = \"ready\" when a route resolves. MiniMax H3 models (768p/480p tiers, e.g. cloud-h3-wf): resolution=720p is mapped to 768p; the quote then carries resolution \"768p\" and resolutionMapped {from, to, message}, and the job is charged the same (its warnings carry the message). Oct 19 input blocks: when the route can't run THIS job because of its inputs (mode / a missing or extra input; reasonCode \"input_blocked\"), the quote keeps the real price: credits = listCredits = the price, priceAvailable:true, chargeable:false, runnable:false, blockedReason (plain sentence), blockedCode:\"input_blocked\", priceLine = the normal price line; no unavailableReason. Route-level reasons (not_wired, coming soon, unreachable, local_off, no price) keep credits:null, priceAvailable:false, unavailableReason. Edit Video menu routes carry the same blockedReason. Oct 19 enum params: resolution, aspect (alias aspectRatio), quality and scale are checked on quote AND submit against the tool's allowlist (its input options; resolution also every resolution its models list; quality also accepts the resolution values, an existing alias; scale also the app scales; an app also its own app.resolutions / resolutionsByProvider; an app without a list of its own uses its base tool's; case-insensitive and normalised to the listed value; a tool with no list for a field takes no value for it: any value → 400 with allowed [] and \"<Field> isn't a setting for this tool\"; an empty value is not sent; apps check the user's values before their locked params apply. The effective lists are on /api/tools tool.allowed) → 400 {error, errorType:\"validation\", code:\"invalid_<field>\", field, allowed, issues}. Translate: an unknown language code → 400 code \"invalid_language\" (field language, plain message, the code is not echoed). Upscale: width+height of a real clip → sourceSize, sourceResolution (short side), scale, outputSize, sizeEstimated:false (as with ?sourceResolution=); no size → assumedSize…, sizeEstimated:true. Oct 19 b2: a runnable quote on a local route while Use local ComfyUI is off says why it runs: reasonCode \"local_pinned\" (route= or a saved pin) or \"local_only\" (no cloud route), with reason and localNote (same sentences as /api/routes). Camera: a move that needs a start image, quoted without one (image=1 absent), is a priced input block (200: runnable:false, chargeable:false, priceAvailable:true, reasonCode/blockedCode \"input_blocked\", blockedReason, blockedField/missingInput \"image\", submitCode \"image_required\", textProviders); submit still answers 400 image_required. A move the chosen model can't run keeps the 400. Validation on quote AND submit: resolution / aspect / quality / scale outside the tool's list, or sent to a tool with no list for it (allowed: []), → 400 invalid_<field>; an app with no list of its own uses its base tool's; quality errors list labels for the quality values only (\"Pick Low, Medium or High.\", allowed = machine values, allowedLabels; resolution aliases still accepted); types / mode → 400 invalid_type / invalid_mode (allowed = the list; the value is never echoed; a tool without a list accepts plain ids only); width / height → 400 invalid_size unless a whole number 16..16384 ({min, max}). Re-check 6: enum values (types, mode, quality, resolution, aspect, scale; also the upscale result action mode) are matched case-insensitively and normalised to the listed value on quote AND submit (types=GENERATE runs as generate). Quality also takes its labels (Low / Medium / High → low / med / high). A tool with no quality values of its own accepts only its resolution aliases; anything else → 400 invalid_quality, allowed [], \"Quality isn't a setting for this tool. Leave it out.\" Every 4xx from a quote, a submit or a job action carries code (issues[0].code, else from errorType: invalid_input, insufficient_credits, no_provider, route_not_runnable). Re-shoot batch quote. B6: no provider = the tool defaultProvider (mode-aware). Success and error quotes carry preferredProvider, defaultProvider, defaultFallback; success quotes carry routeLabel, routeTier, routeTierLabel. Keyless demo quotes: routeLabel = demoLabel (\"… · sample run · needs a <owner> key for real runs\"), keyNeededForRealRuns, keyOwner, demoReason; needsKey stays false (a demo preview runs). GPT Image: quality low | med | high sets the request quality and the price. DP #27 (Oct 19): a quote with ?provider= (or /api/models/quote?model=) still carries preferredProvider, defaultProvider and defaultFallback (same as the general quote). A well-formed but disallowed aspect → 400 unsupported_aspect {field, allowed, provider} on quote and submit (UGC Ad, Photo FX, Camera); malformed → invalid_aspect. Keyless demo quotes carry demoTag \"Sample\" next to demoLabel/demoReason. HW-SHAPES: a quote on a local route also carries fit {verdict \"fits\" | \"slow\" | \"too_heavy\" | \"unknown\", reasonCode (fits | offload | mps | cpu | no_gpu | not_enough_vram | not_enough_ram | unsupported_weights | comfy_too_old | hardware_unknown | requirements_unknown | no_gpu_needed | not_enough_disk), hardwareReasonCode (the hardware reason when reasonCode is not_enough_disk), reason (plain), tier, enforced (false for unknown: nothing is blocked), lighterVariantAvailable, recommendedVramGB, effectiveVramGB (null when the hardware couldn't be read), etaSeconds (null when no estimate), eta {source \"learned\" | \"estimate\", samples, hwKey, estimateSeconds, learnedSeconds}, missingBytes, missingBytesSource \"checked\" | \"assumed_all\", downloadId (POST /api/local/downloads {downloadId}), diskFreeBytes, blockers[{code not_enough_disk, needBytes, freeBytes}] (only from checked files), vramFreeHint, alternative ({providerId, routeId, name, routeLabel, credits, priceLine, tier, tierLabel, demo, listCredits} = the tool's best cloud/hosted route that really runs, in quality order (a sample run only when quotes would run one: demo:true, credits 0); set when verdict is slow / too_heavy / unknown or files are known missing; else null), alternativeReason (slow | too_heavy | unknown | weights_missing | null), warning? (a pinned too_heavy route: same text as the quote fitWarning, also on route lists, with pinnedAnyway:true), pinWarning? (too_heavy)}, requirements {workflows[], recommendedVramGB, minVramGB (estimate), minVramEstimate:true, downloadBytes, downloadGB, missingBytes (every needed file when no models folder is known), missingBytesSource \"checked\" (looked up in the models folder) | \"assumed_all\" (no models folder: all files assumed missing), missingFiles[{file, folder, bytes, url, autoDownloaded}] | null (null when assumed), ramMinGB, mps \"green\" | \"amber\" | \"red\" | null, mpsNotes[], minComfyVersion, secondsPerTier {all, most, light, mac: {seconds, source \"cited\" | \"estimate\", gpuClass} | null}, variants[{id, file, repoPath, url, folder, bytes, precision, loader \"core\" | \"gguf\", replaces, dropIn, vramEstGB, vramEstimate, verified, wired, runnable, pageUrl, licence, note, providers}], variantId, downloadable, modelsDir, downloadId (this route's files: providerId, or \"<providerId>:<workflow>+<workflow>\")}, localFreeOption (true only when the route fits or the tier is unknown), fitNote + priceLine \"… · slow on this computer\" on a slow route, fitWarning + warnings[] when a pinned too_heavy route runs anyway (Q2). Too heavy and not pinned → runnable:false, reasonCode too_heavy (Auto never picks it). Missing weights on a real run (comfy backend or OPENHIGGSFIELD_ENFORCE_WEIGHTS=1, models folder known) → runnable:false, reasonCode weights_missing | not_enough_disk, missingBytes, missingFiles, diskFreeBytes, downloadable, downloadEndpoint. Shots quote (2026-10-21). Face Swap (app-face-swap) takes image (target photo) + face (file, PNG/JPG); quote with image=1&refs=2. bh12 (4): Re-shoot quotes also carry perAngleListCredits = the real per-angle list price (listCredits / angleCount; on a sample run perAngleCredits is 0 and perAngleListCredits is what a keyed run would charge per angle). Real costs (2026-10-21): every quote also carries billingMode (\"own-accounts\" | \"team\"), cost {billedTo: \"local\" | \"comfy\" | <provider id> (fal, replicate, bfl, minimax, dashscope), billedToName, estUsd (estimated USD for this run on that account; 0 for local and sample runs), estUnits? + unitLabel? (Comfy credits at 211 per USD; BFL credits at 100 per USD), failureRule (\"not-charged\" | \"may-charge\" | \"unknown\", from the provider's docs), failureNote, estimated (true for every hosted pre-run price), demo, realRunUsd (a demo's price once a key is added), actualReported (the provider returns the real cost per job), checkedAt (date the list price was checked), sourceUrl, plan (your Comfy plan on a Comfy run, else null), usdText (the price as the app shows it: \"≈ $0.76\" or \"Free · this computer\"; dollars only), detail (the hover line: \"160 Comfy credits · on your Creator plan · price checked 2026-10-26\")}. No spending limits (removed 2026-10-28). A model with no published price is quoted on an estimate: cost.unconfirmed:true and the breakdown says \"(estimate: no published price yet)\"; the run is allowed. A setting the model doesn't offer (length, size tier, shape, image quality / size) is snapped to the nearest allowed value and said in adjustNotes. The ✦ credits field is unchanged in both modes. Step 2: model = a stable model key (GET /api/models/registry, /api/tools models[].key, e.g. minimax-h3, ltx-2-19b, nano-banana-2) or an old engine id (comfy-h3, api-minimax-h3, comfy-open…, unchanged behaviour). runOn: \"local\" (Local) | \"comfy-cloud\" (\"Comfy\": our open workflow on Comfy Cloud or a hosted model on Comfy Router, one Comfy key) | \"fal\" | \"replicate\" | \"bfl\" | \"minimax\" | \"dashscope\" | \"luma\" | \"direct\" (aliases gpu, comfy, alibaba accepted). Omit it (or send the legacy \"auto\") for the PRE-SELECTED place: the saved choice for this tool + model, else the first ready place in the order Local (Use local ComfyUI on, files and custom nodes present) → Comfy → a connected direct API (cheapest); nothing ready → the mock backend's free sample, else the place to set up (quote: runnable false + setup {runOn, runOnLabel, routeId, action turn_on | download | install_node | add_key | set_up_gpu, actionText, missingBytes?, downloadId?}). The resolved place is always named: runOn + runOnLabel on the quote and on the job.. Precedence: route > runOn > provider/model default. With a model key the server picks the model's engine deterministically from the request fields (quote and submit use the same resolver, so they pick the same route); runOn picks that account's best route for this job (runnable first, then a sample run preview, in Auto's tier/price order). 400 codes: unknown_model, invalid_run_on, run_on_unavailable (allowed = the model's run-ons), route_not_in_model, model_provider_mismatch, preset_model_mismatch (Camera: LTX-2 19B runs ltx-* moves only; Wan 2.2 Fun Camera 14B never). Nothing is charged on a 400. The reply also carries modelKey, runOn, runOnLabel (\"Local\", \"Comfy Cloud\", \"fal\"…) and, on Comfy Cloud, comfyVariant (\"workflow\" = our open graph on Comfy GPUs, \"partner\" = a partner/API node). routeLabel / routeTier* are kept. Agent budgets: with the X-OHF-Agent-Budget header the quote also carries agentBudget {id, name, budgetUsd, spentUsd, remainingUsd, budgetCredits, remainingCredits, thisRunUsd, thisRunCredits, fits}; over budget: runnable false, blockedCode \"agent_budget\", agentBudgetBlock. Step-ETA: a quote on a local route carries etaRange (EtaRange: {seconds, low, high, source learned | scaled | reported | first_run, samples, includesLoad cold | warm | null, calibrating, loadSec, secondsPerStep, steps, postSec, key}; also on fit.etaRange). first_run: no number is shown and the run is timed; fit.etaSeconds = etaRange.seconds (null on a first run). Generate Video (h3-video and its apps, 2026-10-23): perSecond {usd, credits} and perSecondNote (\"billed per second of video\") only on routes whose price row bills per second (fal, Replicate, MiniMax direct, Comfy Cloud H3, Router Kling / Veo / Seedance / MiniMax H3, LTX, FLUX 3 Video); perSecond × seconds = the run's usd within rounding. Flat per-run routes, local (free) routes and token-billed routes with reference video send perSecond null. eta {lowSec, highSec, basis: \"measured\" | \"estimate\"} is the same step-ETA range the local quote shows: learned or scaled from this computer's runs → measured; a published figure for the GPU class → estimate; null when there is none (hosted routes, first run). Image Upscale (image-upscale, 2026-10-22): scale=2|4|8 (alias of types=x<n>) is accepted on the quote and on POST /api/tools/image-upscale/jobs. The quote adds scale, workflow (the file that runs for that model and factor), maxSide (8192, lower for some models: Z-Image-Turbo 2K 2048, SeedVR2 3B local 4096) and, with width+height, sourceSize/outputSize (per-megapixel prices bill that output size: fal SeedVR2 / Crystal per MP, Topaz per started 8 or 24 MP). Hosted models (Comfy Router SeedVR2, Crystal, Topaz Wonder 3.5 / Standard V2, fal SeedVR2) have workflow null. A factor the model cannot do → 400 unsupported_scale {allowed}; an output past 8192 px on the long side → 400 output_too_large (the job refuses it too, on every backend). /api/tools tool.app.imageUpscale {maxSide, maxSideByProvider, factors, factorsByProvider, workflows, modelFiles, models (place, label Best detail / Fast / Classic, blurb, price text, measured local seconds, source credit), order}; job.input.workflow and job.feature.workflow name the file that ran.",
+        "summary": "Price for a setup (credits, breakdown). seconds (alias duration) uses the same resolver as job submit; outside the model videoCaps min/maxSeconds → 400 issues[field=seconds] Oct 18 batch 3. Every quote: unit, unitLabel, unitHelp at top level (null on local routes) and hosted for the route that would run (also demo / needsKey); chargeable (true only when runnable, not a demo and credits > 0). runnable:false for any reason other than a missing key (not_wired, coming soon, unreachable, a job the route refuses): credits null, priceAvailable false, chargeable false, listCredits = list price, priceLine (e.g. \"Comfy API (partner node) isn't available on this server yet. List price 212 credits ($2.12).\"), unavailableReason; quote text never says \"Nothing was charged\" (the submit 409/402 does). needsKey quotes also carry keyOwner. Camera Moves: Auto with an H3-only move quotes H3 Camera Motion; no image (no image=1) on an image-only model → 400 image_required also when a model is chosen; a move the chosen model can't run → 400 unsupported (same bodies as submit). Translate (Voice Studio types=translate, Translate Video): language must be voiced by the chosen translate route, Auto picks the first that does; else 400 unsupported_language {languages, languagesByProvider, providers}. Upscale with sourceResolution= (or width/height): sourceSize, sourceResolution, scale, outputSize, estimated false unless seconds are missing (then estimateReason clip_not_loaded). Input prep (2026-10-23): an edit on a model whose edits follow the photo (FLUX 3 Klein, FLUX.2 klein 4B, FLUX.2 dev, Qwen-Image) quotes a picked or locked aspect (Character Sheet 4:3) when photoAspect says the photo already has that shape (1% either way); the submit checks the uploaded photo's real shape the same way. A route that lacks its provider key (asked with ?route= / runOn, or a saved pin) quotes runnable:false, needsKey:true, keyMissing:true, credits = listCredits = the price once the key is added (not a charge) and priceLine \"Needs a <provider> key. Price once it's added: N credits ($x).\" With no place asked for and none ready, nothing is pre-selected: runnable:false, runOn / route / credits null, setup (the first place to set up) and setupOptions [{runOn, runOnLabel, routeId, action, actionText, credits, missingBytes?, downloadId?, slow?}] in the order Comfy → other API → Local (credits = the price per run once set up; Local 0). On the mock backend a keyless route quotes as a sample run instead. ?route= without provider quotes the model that owns that route. Video upscale tools without width/height assume a 720p 16:9 source (sourceResolution= overrides) even when seconds is given: estimated:true, estimateReason source_size_unknown (or clip_not_loaded), assumedSize/assumedScale/assumedOutputSize. Quotes carry `local` (true only when the chosen route is local); on a cloud route free/basis/breakdown describe that route, even for open-weights models. Carries fallback (FallbackNotice | null), same as /api/models/quote. Demo contract: routeId (the route Auto/pin would actually run), runnable (boolean), demo (boolean), demoMessage (string | null, e.g. \"Sample output, nothing billed.\"), demoNotice ({code:\"demo_preview\", routeId, message} | null), listCredits (demo only: the route's real price, for display). A demo preview is FREE: credits 0, charge 0, no ledger debit. Auto picks only runnable, non-demo routes; a demo preview is offered only when none exists (mock backend). Apps (app-*) are quoted with their locked params. Carries demo; noProvider carries state/options/title/message. Real mode with nothing set up: state = \"needs_provider\" with options ⊆ [\"connect_key\",\"enable_local\"], title and message (calm setup copy) next to the existing noProvider fields (error, errorType no_provider, providers, localRoute). state = \"ready\" when a route resolves. MiniMax H3 models (768p/480p tiers, e.g. cloud-h3-wf): resolution=720p is mapped to 768p; the quote then carries resolution \"768p\" and resolutionMapped {from, to, message}, and the job is charged the same (its warnings carry the message). Oct 19 input blocks: when the route can't run THIS job because of its inputs (mode / a missing or extra input; reasonCode \"input_blocked\"), the quote keeps the real price: credits = listCredits = the price, priceAvailable:true, chargeable:false, runnable:false, blockedReason (plain sentence), blockedCode:\"input_blocked\", priceLine = the normal price line; no unavailableReason. Route-level reasons (not_wired, coming soon, unreachable, local_off, no price) keep credits:null, priceAvailable:false, unavailableReason. Edit Video menu routes carry the same blockedReason. Oct 19 enum params: resolution, aspect (alias aspectRatio), quality and scale are checked on quote AND submit against the tool's allowlist (its input options; resolution also every resolution its models list; quality also accepts the resolution values, an existing alias; scale also the app scales; an app also its own app.resolutions / resolutionsByProvider; an app without a list of its own uses its base tool's; case-insensitive and normalised to the listed value; a tool with no list for a field takes no value for it: any value → 400 with allowed [] and \"<Field> isn't a setting for this tool\"; an empty value is not sent; apps check the user's values before their locked params apply. The effective lists are on /api/tools tool.allowed) → 400 {error, errorType:\"validation\", code:\"invalid_<field>\", field, allowed, issues}. Translate: an unknown language code → 400 code \"invalid_language\" (field language, plain message, the code is not echoed). Upscale: width+height of a real clip → sourceSize, sourceResolution (short side), scale, outputSize, sizeEstimated:false (as with ?sourceResolution=); no size → assumedSize…, sizeEstimated:true. Oct 19 b2: a runnable quote on a local route while Use local ComfyUI is off says why it runs: reasonCode \"local_pinned\" (route= or a saved pin) or \"local_only\" (no cloud route), with reason and localNote (same sentences as /api/routes). Camera: a move that needs a start image, quoted without one (image=1 absent), is a priced input block (200: runnable:false, chargeable:false, priceAvailable:true, reasonCode/blockedCode \"input_blocked\", blockedReason, blockedField/missingInput \"image\", submitCode \"image_required\", textProviders); submit still answers 400 image_required. A move the chosen model can't run keeps the 400. Validation on quote AND submit: resolution / aspect / quality / scale outside the tool's list, or sent to a tool with no list for it (allowed: []), → 400 invalid_<field>; an app with no list of its own uses its base tool's; quality errors list labels for the quality values only (\"Pick Low, Medium or High.\", allowed = machine values, allowedLabels; resolution aliases still accepted); types / mode → 400 invalid_type / invalid_mode (allowed = the list; the value is never echoed; a tool without a list accepts plain ids only); width / height → 400 invalid_size unless a whole number 16..16384 ({min, max}). Re-check 6: enum values (types, mode, quality, resolution, aspect, scale; also the upscale result action mode) are matched case-insensitively and normalised to the listed value on quote AND submit (types=GENERATE runs as generate). Quality also takes its labels (Low / Medium / High → low / med / high). A tool with no quality values of its own accepts only its resolution aliases; anything else → 400 invalid_quality, allowed [], \"Quality isn't a setting for this tool. Leave it out.\" Every 4xx from a quote, a submit or a job action carries code (issues[0].code, else from errorType: invalid_input, insufficient_credits, no_provider, route_not_runnable). Re-shoot batch quote. B6: no provider = the tool defaultProvider (mode-aware). Success and error quotes carry preferredProvider, defaultProvider, defaultFallback; success quotes carry routeLabel, routeTier, routeTierLabel. Keyless demo quotes: routeLabel = demoLabel (\"… · sample run · needs a <owner> key for real runs\"), keyNeededForRealRuns, keyOwner, demoReason; needsKey stays false (a demo preview runs). GPT Image: quality low | med | high sets the request quality and the price. DP #27 (Oct 19): a quote with ?provider= (or /api/models/quote?model=) still carries preferredProvider, defaultProvider and defaultFallback (same as the general quote). A well-formed but disallowed aspect → 400 unsupported_aspect {field, allowed, provider} on quote and submit (UGC Ad, Photo FX, Camera); malformed → invalid_aspect. Keyless demo quotes carry demoTag \"Sample\" next to demoLabel/demoReason. HW-SHAPES: a quote on a local route also carries fit {verdict \"fits\" | \"slow\" | \"too_heavy\" | \"unknown\", reasonCode (fits | offload | mps | cpu | no_gpu | not_enough_vram | not_enough_ram | unsupported_weights | comfy_too_old | hardware_unknown | requirements_unknown | no_gpu_needed | not_enough_disk), hardwareReasonCode (the hardware reason when reasonCode is not_enough_disk), reason (plain), tier, enforced (false for unknown: nothing is blocked), lighterVariantAvailable, recommendedVramGB, effectiveVramGB (null when the hardware couldn't be read), etaSeconds (null when no estimate), eta {source \"learned\" | \"estimate\", samples, hwKey, estimateSeconds, learnedSeconds}, missingBytes, missingBytesSource \"checked\" | \"assumed_all\", downloadId (POST /api/local/downloads {downloadId}), diskFreeBytes, blockers[{code not_enough_disk, needBytes, freeBytes}] (only from checked files), vramFreeHint, variant? ({platform mac-arm64 | nvidia-x64 | nvidia-arm64 | cpu, verified, format, needsNodes, files}: the platform variant this computer picked from readiness/manifest/models.json workflows[].variants, files swapped by role; verified false = \"Should run here (not tested yet)\"), alternative ({providerId, routeId, name, routeLabel, credits, priceLine, tier, tierLabel, demo, listCredits} = the tool's best cloud/hosted route that really runs, in quality order (a sample run only when quotes would run one: demo:true, credits 0); set when verdict is slow / too_heavy / unknown or files are known missing; else null), alternativeReason (slow | too_heavy | unknown | weights_missing | null), warning? (a pinned too_heavy route: same text as the quote fitWarning, also on route lists, with pinnedAnyway:true), pinWarning? (too_heavy)}, requirements {workflows[], recommendedVramGB, minVramGB (estimate), minVramEstimate:true, downloadBytes, downloadGB, missingBytes (every needed file when no models folder is known), missingBytesSource \"checked\" (looked up in the models folder) | \"assumed_all\" (no models folder: all files assumed missing), missingFiles[{file, folder, bytes, url, autoDownloaded}] | null (null when assumed), ramMinGB, mps \"green\" | \"amber\" | \"red\" | null, mpsNotes[], minComfyVersion, secondsPerTier {all, most, light, mac: {seconds, source \"cited\" | \"estimate\", gpuClass} | null}, variants[{id, file, repoPath, url, folder, bytes, precision, loader \"core\" | \"gguf\", replaces, dropIn, vramEstGB, vramEstimate, verified, wired, runnable, pageUrl, licence, note, providers}], variantId, downloadable, modelsDir, downloadId (this route's files: providerId, or \"<providerId>:<workflow>+<workflow>\")}, localFreeOption (true only when the route fits or the tier is unknown), fitNote + priceLine \"… · slow on this computer\" on a slow route, fitWarning + warnings[] when a pinned too_heavy route runs anyway (Q2). Too heavy and not pinned → runnable:false, reasonCode too_heavy (Auto never picks it). Missing weights on a real run (comfy backend or OPENHIGGSFIELD_ENFORCE_WEIGHTS=1, models folder known) → runnable:false, reasonCode weights_missing | not_enough_disk, missingBytes, missingFiles, diskFreeBytes, downloadable, downloadEndpoint. Shots quote (2026-10-21). Face Swap (app-face-swap) takes image (target photo) + face (file, PNG/JPG); quote with image=1&refs=2. bh12 (4): Re-shoot quotes also carry perAngleListCredits = the real per-angle list price (listCredits / angleCount; on a sample run perAngleCredits is 0 and perAngleListCredits is what a keyed run would charge per angle). Real costs (2026-10-21): every quote also carries billingMode (\"own-accounts\" | \"team\"), cost {billedTo: \"local\" | \"comfy\" | <provider id> (fal, replicate, bfl, minimax, dashscope), billedToName, estUsd (estimated USD for this run on that account; 0 for local and sample runs), estUnits? + unitLabel? (Comfy credits at 211 per USD; BFL credits at 100 per USD), failureRule (\"not-charged\" | \"may-charge\" | \"unknown\", from the provider's docs), failureNote, estimated (true for every hosted pre-run price), demo, realRunUsd (a demo's price once a key is added), actualReported (the provider returns the real cost per job), checkedAt (date the list price was checked), sourceUrl, plan (your Comfy plan on a Comfy run, else null), usdText (the price as the app shows it: \"≈ $0.76\" or \"Free · this computer\"; dollars only), detail (the hover line: \"160 Comfy credits · on your Creator plan · price checked 2026-10-26\")}. No spending limits (removed 2026-10-28). A model with no published price is quoted on an estimate: cost.unconfirmed:true and the breakdown says \"(estimate: no published price yet)\"; the run is allowed. A setting the model doesn't offer (length, size tier, shape, image quality / size) is snapped to the nearest allowed value and said in adjustNotes. The ✦ credits field is unchanged in both modes. Step 2: model = a stable model key (GET /api/models/registry, /api/tools models[].key, e.g. minimax-h3, ltx-2-19b, nano-banana-2) or an old engine id (comfy-h3, api-minimax-h3, comfy-open…, unchanged behaviour). runOn: \"local\" (Local) | \"comfy-cloud\" (\"Comfy\": our open workflow on Comfy Cloud or a hosted model on Comfy Router, one Comfy key) | \"fal\" | \"replicate\" | \"bfl\" | \"minimax\" | \"dashscope\" | \"luma\" | \"direct\" (aliases gpu, comfy, alibaba accepted). Omit it (or send the legacy \"auto\") for the PRE-SELECTED place: the saved choice for this tool + model, else the first ready place in the order Local (Use local ComfyUI on, files and custom nodes present) → Comfy → a connected direct API (cheapest); nothing ready → the mock backend's free sample, else the place to set up (quote: runnable false + setup {runOn, runOnLabel, routeId, action turn_on | download | install_node | add_key | set_up_gpu, actionText, missingBytes?, downloadId?}). The resolved place is always named: runOn + runOnLabel on the quote and on the job.. Precedence: route > runOn > provider/model default. With a model key the server picks the model's engine deterministically from the request fields (quote and submit use the same resolver, so they pick the same route); runOn picks that account's best route for this job (runnable first, then a sample run preview, in Auto's tier/price order). 400 codes: unknown_model, invalid_run_on, run_on_unavailable (allowed = the model's run-ons), route_not_in_model, model_provider_mismatch, preset_model_mismatch (Camera: LTX-2 19B runs ltx-* moves only; Wan 2.2 Fun Camera 14B never). Nothing is charged on a 400. The reply also carries modelKey, runOn, runOnLabel (\"Local\", \"Comfy Cloud\", \"fal\"…) and, on Comfy Cloud, comfyVariant (\"workflow\" = our open graph on Comfy GPUs, \"partner\" = a partner/API node). routeLabel / routeTier* are kept. Agent budgets: with the X-OHF-Agent-Budget header the quote also carries agentBudget {id, name, budgetUsd, spentUsd, remainingUsd, budgetCredits, remainingCredits, thisRunUsd, thisRunCredits, fits}; over budget: runnable false, blockedCode \"agent_budget\", agentBudgetBlock. Step-ETA: a quote on a local route carries etaRange (EtaRange: {seconds, low, high, source learned | scaled | reported | first_run, samples, includesLoad cold | warm | null, calibrating, loadSec, secondsPerStep, steps, postSec, key}; also on fit.etaRange). first_run: no number is shown and the run is timed; fit.etaSeconds = etaRange.seconds (null on a first run). Generate Video (h3-video and its apps, 2026-10-23): perSecond {usd, credits} and perSecondNote (\"billed per second of video\") only on routes whose price row bills per second (fal, Replicate, MiniMax direct, Comfy Cloud H3, Router Kling / Veo / Seedance / MiniMax H3, LTX, FLUX 3 Video); perSecond × seconds = the run's usd within rounding. Flat per-run routes, local (free) routes and token-billed routes with reference video send perSecond null. eta {lowSec, highSec, basis: \"measured\" | \"estimate\"} is the same step-ETA range the local quote shows: learned or scaled from this computer's runs → measured; a published figure for the GPU class → estimate; null when there is none (hosted routes, first run). Image Upscale (image-upscale, 2026-10-22): scale=2|4|8 (alias of types=x<n>) is accepted on the quote and on POST /api/tools/image-upscale/jobs. The quote adds scale, workflow (the file that runs for that model and factor), maxSide (8192, lower for some models: Z-Image-Turbo 2K 2048, SeedVR2 3B local 4096) and, with width+height, sourceSize/outputSize (per-megapixel prices bill that output size: fal SeedVR2 / Crystal per MP, Topaz per started 8 or 24 MP). Hosted models (Comfy Router SeedVR2, Crystal, Topaz Wonder 3.5 / Standard V2, fal SeedVR2) have workflow null. A factor the model cannot do → 400 unsupported_scale {allowed}; an output past 8192 px on the long side → 400 output_too_large (the job refuses it too, on every backend). /api/tools tool.app.imageUpscale {maxSide, maxSideByProvider, factors, factorsByProvider, workflows, modelFiles, models (place, label Best detail / Fast / Classic, blurb, price text, measured local seconds, source credit), order}; job.input.workflow and job.feature.workflow name the file that ran.",
         "responses": {
           "200": {
             "description": "OK",
@@ -7511,7 +7539,7 @@
         "tags": [
           "Account"
         ],
-        "summary": "Profile {displayName, handle, avatarUrl, avatar {mood, tint} | null, cover {kind:gradient,id} | {kind:image,url} | null, createdAt}",
+        "summary": "Profile {displayName, handle, avatarUrl, avatar {mood, tint} | null, cover {kind:gradient,id} | {kind:image,url} | null, mePhotoUrl /files/… | null, createdAt}",
         "responses": {
           "200": {
             "description": "OK",
@@ -7529,7 +7557,7 @@
         "tags": [
           "Account"
         ],
-        "summary": "Update profile {displayName ≤60 chars | null, handle 2–30 [a-z0-9._-] | null, avatarUrl /files/… | https URL | null, avatar {mood, tint} | null, cover | null}; replacing an uploaded picture deletes the old file",
+        "summary": "Update profile {displayName ≤60 chars | null, handle 2–30 [a-z0-9._-] | null, avatarUrl /files/… | https URL | null, avatar {mood, tint} | null, cover | null, mePhotoUrl /files/… | null (the \"Me\" photo for Person Swap's Person slot: a library upload from POST /api/media; never deleted here)}; replacing an uploaded picture deletes the old file",
         "responses": {
           "200": {
             "description": "OK",
@@ -9177,6 +9205,104 @@
         "parameters": []
       }
     },
+    "/api/workflows/import": {
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Add a workflow, step 1 (nothing saved): {workflow (a ComfyUI workflow, API or saved format, as JSON or text, ≤ 2 MB), fileName?} → {format: api|ui, convertedWith: comfyui|built-in|null, workflow (API format), guess {input, output, tab, category, name, description, choices {input, prompt, seed, output}, pick, extras[], nodeTypes}, missingNodes (null when your ComfyUI is not reachable), tabs}. 400 {error, help} for a file it cannot read (\"__file\" keys refused). Local app only (403 when hosted).",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workflows/{id}/models": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Add a workflow: the model files a workflow you added loads → {id, comfy: ok|off|not_set, modelsDirSet, files[{file, folder, nodes, state: have|missing|unknown, url, bytes, pageUrl, linkFrom: list|yours|null, nodeMissing?, badPath?}], missing, unknown, downloadId}. Have/missing comes from your ComfyUI's /object_info (and the models folder). Download with POST /api/local/downloads {downloadId}. 404 for anything but a workflow you added.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Save a download link for one file of a workflow you added: {folder, file, url} (https huggingface.co …/resolve/… or civitai.com …/api/download/models/<id> only) → the same view as GET. Saved in the workflow's own folder (models.json). 400 bad link or file name, 404 file not in the workflow.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/workflows": {
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Add a workflow, step 2: {workflow, fileName?, name, description?, tab, category, input?, prompt?, seed?, output, extras?: string[], license?, source?} → 201 {id, toolId, tab}. Writes plugin.json + workflow.json + node-map.json (never a handler) into the data folder's plugins/, checked with the plugin loader's rules, and loads it at once (no restart). 400 {error, field, errors[]}.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/plugins": {
       "get": {
         "tags": [
@@ -10429,6 +10555,24 @@
             "description": "tool id"
           },
           {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "done | failed (failed, blocked or canceled) | any other job status"
+          },
+          {
+            "name": "counted",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "1: only runs that count money in the totals"
+          },
+          {
             "name": "cursor",
             "in": "query",
             "required": false,
@@ -10504,7 +10648,7 @@
         "tags": [
           "Usage"
         ],
-        "summary": "Spend page (Gallery): one period's totals {spentUsd, runs, paidRuns, freeRuns, sampleRuns, savedUsd}, series {unit day|month, points [{t, usd}]}, biggest, accuracy {pct, runs} (actual vs estimate, null when no provider reported a cost), overQuote, failedCharged, tools [{toolId, usd, runs, share}], topRun, paidTiles / freeTiles (up to 60 each: jobId, toolId, modelName, usd, estUsd, actualUsd, local, sample, url, poster, seconds, resolution) and paidMore / freeMore. Read-only; same counting rules as /api/spend/summary.",
+        "summary": "Spend page (Gallery): one period's totals {spentUsd, runs, paidRuns, freeRuns, sampleRuns, savedUsd, chargedUsd (provider-reported), estimatedUsd (the rest: estimates)}, series {unit day|month, points [{t, usd}]}, biggest, accuracy {pct, runs} (actual vs estimate, null when no provider reported a cost), overQuote (the biggest), overQuotes [{jobId, toolId, ratio, count, gapUsd, estUsd, actualUsd, run}] (runs at least 2× and $0.05 over quote, per tool, biggest dollar gap first, up to 3), failedCharged, tools [{toolId, usd, runs, share}], topRun, paidTiles / freeTiles (up to 60 each: jobId, toolId, modelName, usd, estUsd, actualUsd, local, sample, url, poster, seconds, resolution) and paidMore / freeMore. Read-only; same counting rules as /api/spend/summary.",
         "responses": {
           "200": {
             "description": "OK",
@@ -11171,6 +11315,36 @@
         }
       }
     },
+    "/api/workflows/{id}": {
+      "delete": {
+        "tags": [
+          "Other"
+        ],
+        "summary": "DELETE /api/workflows/:id (undocumented)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
     "/api/tools/{toolId}/prompt-peek": {
       "post": {
         "tags": [
@@ -11199,6 +11373,27 @@
             }
           }
         ]
+      }
+    },
+    "/api/hardware/live": {
+      "get": {
+        "tags": [
+          "Other"
+        ],
+        "summary": "GET /api/hardware/live (undocumented)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "parameters": []
       }
     },
     "/api/comfy-cloud/setup": {
