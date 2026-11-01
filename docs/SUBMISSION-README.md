@@ -1,23 +1,25 @@
 # Imagination Is All You Need
 
-**Your ideas, brought to life.** An open-source (AGPL-3.0-or-later) creative studio for images, video, audio and 3D, built around ComfyUI workflows and supported model APIs. Built for ComfyUI's **#OpenSourceHiggsfield** challenge.
+**Imagination is all you need.** One app for pictures, films, music and 3D. Run it on your computer or in the cloud. Open source (AGPL-3.0-or-later), built on ComfyUI workflows, Comfy Cloud and Comfy Router. Built for ComfyUI's **#OpenSourceHiggsfield** challenge.
 
-**Demo:** [Watch the film](https://github.com/user-attachments/assets/12b48171-4171-4cc2-8189-0ae3a03904d8). Contains AI-generated content.
+<!-- DEMO VIDEO: add the link to the new demo post on X here once it is posted. -->
+**Demo:** the new demo video is coming soon. Contains AI-generated content.
 
-The main [README](../README.md) has everything: what it is, how it uses the Comfy Developer Platform, the official template credits, VFX with LTX-2.5, open weights, the MCP server and skills, and setup. This page is the short version for judges.
+The main [README](../README.md) covers what you can make, the Canvas, where runs happen (your computer, Comfy Cloud, Comfy Router), prices, what it runs on, the official Comfy templates, the Claude connector (MCP server and skills) and setup. This page is the short version for judges.
 
 ## In one minute
 - **Direct a Shot:** stage a scene and a camera move in simple 3D in your browser, record a free mockup, then LTX-2.5 22B with Lightricks' Layout to Render IC-LoRA films it with sound, keeping your framing and camera path. Free on your own computer, or as a Comfy Cloud workflow job.
-- **A full studio:** 50 tools in the current `GET /api/tools` catalogue, across image, video, audio and 3D. Generation uses supported ComfyUI workflows or API adapters; browser editing/media finishing are separate operations. Results retain model/run information. Workflow export distinguishes available submitted, rebuilt, equivalent and partner graphs rather than promising an exact graph for every operation.
-- **Footage Effects (LTX-2.5 VFX):** Lightricks' Clean Plate, Day to Night, Water Simulation and Alpha Gen IC-LoRAs on your own clip, locally. Built and validated; example renders are coming soon.
-- **Agents:** 15 tools in the default stdio core toolset (11 catalogue/control tools plus four read-only searches); default HTTP also enables 25 Canvas tools. Optional toolsets expose other operations. Quotes, configured permissions and budgets govern direct runs; Canvas proposals separately wait for Go. See [MCP.md](MCP.md) and the 17 included [skills](MCP-SKILLS.md).
+- **A full studio:** 17 image, 27 video, 8 audio and 5 3D workflows, plus 24 one-click apps and 82 camera moves. Generation uses supported ComfyUI workflows or API adapters; browser editing/media finishing are separate operations. Results retain model/run information. Workflow export distinguishes available submitted, rebuilt, equivalent and partner graphs rather than promising an exact graph for every operation.
+- **Footage Effects (LTX VFX):** Lightricks' Clean Plate, Day to Night and Water Simulation IC-LoRAs on your own clip, on your computer or on Comfy Cloud; Alpha Gen on your computer. Example renders are coming soon.
+- **Canvas:** each card is a whole workflow; connect cards and results flow on. Claude drafts and prices the board, nothing runs until you press Go, and View workflow shows the exact ComfyUI graph behind a finished card (runs on your computer or Comfy Cloud).
+- **Agents:** 70 MCP tools in all; 15 in the default stdio core toolset (11 catalogue/control tools plus four read-only searches); default HTTP also enables 25 Canvas tools. Optional toolsets expose other operations. Quotes, configured permissions and budgets govern direct runs; Canvas proposals separately wait for Go. See [MCP.md](MCP.md) and the 17 included [skills](MCP-SKILLS.md).
 
 ## How it uses the Comfy Developer Platform
 - **Local ComfyUI** over its HTTP and WebSocket API.
 - **Comfy Cloud API v2 workflow jobs:** our own graphs from [`workflows/cloud/`](../workflows/cloud/README.md), one Comfy key.
 - **Comfy Router** for hosted models, price estimate first, with the cost Comfy reports recorded.
 - **Partner nodes** inside Cloud jobs (LTX-2.5 Pro / Fast, Tripo 3.1, Topaz).
-- **Deployments:** your own Comfy API deployment for graphs with custom nodes (H3 CrossView).
+- **Deployments:** Comfy deployments are supported: connect your own from Settings.
 
 ## Run it
 Use Node 22 or 24, npm, and ffmpeg/ffprobe for media operations:
@@ -26,7 +28,7 @@ Use Node 22 or 24, npm, and ffmpeg/ffprobe for media operations:
 npm run setup      # installs app dependencies, checks setup, starts web/API/MCP
 ```
 
-With no GPU or key, users can browse the bundled Examples project. Generate requires a connection; explicit developer mock mode is separate. Setup and real-run requirements: [Open your studio](../README.md#quick-start) and [INSTALL.md](INSTALL.md).
+With no GPU or key, users can browse the bundled Examples project. Generate requires a connection; explicit developer mock mode is separate. Setup and real-run requirements: [Install in one line](../README.md#install-in-one-line) and [INSTALL.md](INSTALL.md).
 
 ## Partner models
 - **LTX:** LTX-2.5 22B is the core video model for Direct a Shot, Footage Effects, Generate Video, Transitions, Loop, Extend and talking photos.
