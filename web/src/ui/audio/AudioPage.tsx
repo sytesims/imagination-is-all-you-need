@@ -60,6 +60,7 @@ import { useToolModels, modelOfEngine, useRunOn, shownName, type ToolModel } fro
 import { HOSTED_BY_ID } from '../../../../server/src/shared/hostedPrices';
 import { etaRangeOf, rangeText } from '../../shared/eta';
 import { VoiceControls, useVoiceControls, voiceCtl, CTRL, MODEL_VOICE_KEYS, modelVoicesOf, realSampleOf } from './VoiceControls';
+import { takesVoicePick, voiceChoicesFor, shownVoiceFor } from '../../shared/voicePick';
 import { AudioWorkflowChip, takeCarriedPrompt, useAudioRecipes, type AudioRecipe } from './AudioWorkflows';
 import '../video/videoDock.css';
 import '../next/workflowBar.css'; /* .wf-slot: the drop tile, as Image's and Video's */
@@ -203,11 +204,13 @@ export default function AudioPage(p: AudioPageProps) {
   /* a model with its own preset voices (Qwen3 TTS: caps.voices) lists those instead of our library; the pick goes in field `speaker`, each with its native language as the hint */
   const mv = isVoice && ctrlMode ? modelVoicesOf(caps) : null; const vKey = mv ? 'speaker' : 'voice';
   /* ▶ only for a REAL clip of the voice (Qwen3 TTS's 9 voices; a library voice whose sample is a recording): a stand-in tone gets no button */
-  const voiceOpts: { value: string; label: string; previewUrl?: string; hint?: string }[] = mv ? mv.voices.map(v => ({ value: v.id, label: v.label, hint: v.hint, previewUrl: v.sampleUrl })) : (apiVoices ? [...apiVoices.map(v => ({ value: v.id, label: v.label, previewUrl: realSampleOf(v) })), ...fOpts('voice').filter(o => o.value === 'clone')] : fOpts('voice'))
+  /* what the model really offers (shared/voicePick.ts): Seed Audio takes no voice (no Voice control); the voice changer has one built-in voice + your sample */
+  const vCaps = cfg.voiceCaps?.[pid] ?? caps;
+  const voiceOpts: { value: string; label: string; previewUrl?: string; hint?: string }[] = (mv ? mv.voices.map(v => ({ value: v.id, label: v.label, hint: v.hint, previewUrl: v.sampleUrl })) : voiceChoicesFor(vCaps, apiVoices ? [...apiVoices.map(v => ({ value: v.id, label: v.label, previewUrl: realSampleOf(v) })), ...fOpts('voice').filter(o => o.value === 'clone')] : fOpts('voice')))
     .filter((o, i, all) => !(o.value === 'clone' && maxS === 0) && all.findIndex(x => x.value === o.value) === i).map(o => o.value === 'clone' ? { ...o, label: p.samples.length ? `Your sample${p.samples.length > 1 ? 's' : ''} (${p.samples.length})` : 'Clone from a sample' } : o);
   const vHasPlay = voiceOpts.some(o => o.previewUrl); // keeps the names in one column when only some voices have a clip
-  const voiceOn = wf.controls.some(c => c.field === 'voice'); const langOn = wf.controls.some(c => c.field === 'language'); const mixOn = wf.controls.some(c => c.field === 'mix') && (mode !== 'voiceover' || !!p.video);
-  const voiceV = mv ? String(p.fieldVals.speaker ?? mv.def) : String(p.fieldVals.voice ?? p.fieldDefaults.voice ?? ''); const voiceL = voiceOpts.find(o => o.value === voiceV)?.label ?? voiceV;
+  const voiceOn = wf.controls.some(c => c.field === 'voice') && takesVoicePick(vCaps); const langOn = wf.controls.some(c => c.field === 'language'); const mixOn = wf.controls.some(c => c.field === 'mix') && (mode !== 'voiceover' || !!p.video);
+  const voiceV = mv ? String(p.fieldVals.speaker ?? mv.def) : shownVoiceFor(vCaps, String(p.fieldVals.voice ?? p.fieldDefaults.voice ?? '')); const voiceL = voiceOpts.find(o => o.value === voiceV)?.label ?? voiceV;
   const langs = fOpts('language'); const langV = String(p.fieldVals.language ?? ''); const langL = langs.find(o => o.value === langV)?.label ?? langV;
   /* the ▶ plays one clip at a time (■ stops it); a clip that can't load loses its button for this visit */
   const playing = useRef<HTMLAudioElement | null>(null); const [vPlay, setVPlay] = useState(''); const [vBad, setVBad] = useState<string[]>([]);
@@ -366,7 +369,7 @@ export default function AudioPage(p: AudioPageProps) {
   /* ---- "See the exact prompt": the fields the submit sends (types, prompt, provider, duration, lyrics, every field value), files as counts ---- */
   const peekForm: PeekForm = { toolId: p.tool.id, fields: { types: JSON.stringify([mode]), prompt: p.prompt, ...(p.provider ? { provider: p.provider } : {}), ...(cfg.durations ? { duration: String(p.duration) } : {}), ...(sendLyrics ? { lyrics } : {}),
       ...Object.fromEntries(Object.entries(p.fieldVals).filter(([, v]) => v !== '' && v != null).map(([k, v]) => [k, typeof v === 'boolean' ? (v ? '1' : '0') : String(v)])) },
-    files: { ...(p.video ? { video: 1 } : {}), ...(p.clip || (wf.id === 'cover' && p.song) ? { audio: 1 } : {}), ...(p.samples.length && voiceV === 'clone' ? { voiceAudio: p.samples.length } : {}) }, photo: null };
+    files: { ...(p.video ? { video: 1 } : {}), ...(p.clip || (wf.id === 'cover' && p.song) ? { audio: 1 } : {}), ...(voiceOn && p.samples.length && voiceV === 'clone' ? { voiceAudio: p.samples.length } : {}) }, photo: null };
 
   return <div className="ap" data-testid="audio-page" data-workflow={wf.id}>
     {filePreview.preview}

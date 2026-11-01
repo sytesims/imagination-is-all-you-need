@@ -35,6 +35,7 @@ import { VoiceControls, useVoiceControls, voiceCtl, CTRL, MODEL_VOICE_KEYS, mode
 import MetaTagChips, { MetaTag, metaTagsFor } from '../next/MetaTags';
 import { DemoText } from '../../shared/DemoText';
 import { SamplePlay, sampleKindOf, sampleLabel, type SampleKind } from '../../tools/app/ChangeVoice';
+import { takesVoicePick, voiceChoicesFor, shownVoiceFor, builtinVoiceOf } from '../../shared/voicePick';
 import { missingText, singleMissing } from '../../shared/missing';
 import { RunOnField } from '../routing/RunOn';
 import { useToolModels, modelOfEngine, shownName } from '../../shared/models';
@@ -115,14 +116,14 @@ export default function AudioStudio(p: AudioStudioProps) {
   const missing = [p.mode === 'voiceover' && !p.prompt.trim() && 'a script', p.mode !== 'lipsync' && !(cfg.videoOptionalModes ?? []).includes(p.mode) && !p.video && !(cvClip && p.clip) && (cvClip ? 'a video or an audio clip' : 'a video'), p.mode === 'lipsync' && !p.portrait && 'a portrait', p.mode === 'lipsync' && !p.speech && 'speech audio'].filter(Boolean) as string[];
   const mt = metaTagsFor(cfg, p.provider); const metaTags: MetaTag[] = mt.tags; /* per model: Drama 3, ElevenLabs v3, MiniMax Speech */
   const [h1, sub] = HERO[p.mode] ?? HERO.voiceover;
-  const showVoice = p.mode !== 'lipsync'; const showLang = p.mode === 'translate'; const showMix = (p.mode === 'change-voice' || p.mode === 'translate') || (p.mode === 'voiceover' && !!p.video);
+  const showVoice = p.mode !== 'lipsync' && takesVoicePick(caps); /* Seed Audio reads in its own voice (shared/voicePick.ts) */ const showLang = p.mode === 'translate'; const showMix = (p.mode === 'change-voice' || p.mode === 'translate') || (p.mode === 'voiceover' && !!p.video);
   const [apiVoices, setApiVoices] = useState<{ id: string; label: string; previewUrl?: string; sampleUrl?: string | null; sampleKind?: string; sampleIsStandIn?: boolean }[] | null>(null);
   useEffect(() => { fetch('/api/voices').then(r => r.ok ? r.json() : null).then(d => { if (d?.voices?.length) setApiVoices(d.voices); }).catch(() => {}); }, []);
   const playing = useRef<HTMLAudioElement | null>(null);
   const preview = (url?: string) => { if (!url) return; playing.current?.pause(); const a = new Audio(url); registerMedia(a); playing.current = a; a.play().catch(() => {}); };
   const mv = ctrlMode ? modelVoicesOf(caps) : null; /* Qwen3 TTS: its own 9 voices (field speaker), each with its native language */
   const optsFor = (name: string): { value: string; label: string; previewUrl?: string; kind?: SampleKind }[] => name === 'speaker' ? (mv?.voices ?? []).map(v => ({ value: v.id, label: v.hint ? `${v.label} · ${v.hint}` : v.label, previewUrl: v.sampleUrl })) : name === 'voice' && apiVoices ? [...apiVoices.map(v => ({ value: v.id, label: v.label, previewUrl: realSampleOf(v), kind: sampleKindOf(v) }) /* ▶ only for a real recording of the voice (2026-10-27): a stand-in tone gets no button */), ...fOpts('voice').filter(o => o.value === 'clone')] : fOpts(name) as { value: string; label: string; previewUrl?: string }[];
-  const sel = (name: string, label: string, testid: string) => { const opts = optsFor(name).filter(o => !(name === 'voice' && o.value === 'clone' && maxS === 0)); const v = String(p.fieldVals[name] ?? (name === 'speaker' ? mv?.def ?? '' : ''));
+  const sel = (name: string, label: string, testid: string) => { const opts = (name === 'voice' ? voiceChoicesFor(caps, optsFor(name)) : optsFor(name)).filter(o => !(name === 'voice' && o.value === 'clone' && maxS === 0)); const raw = String(p.fieldVals[name] ?? (name === 'speaker' ? mv?.def ?? '' : '')); const v = name === 'voice' ? shownVoiceFor(caps, raw) : raw;
     return <PopSelect key={name} label={label} testid={testid} open={vOpen === name} setOpen={o => setVOpen(o ? name : '')} value={v} current={opts.find(o => o.value === v)?.label ?? v}
       opts={opts.map(o => ({ value: o.value, label: o.label, extra: o.previewUrl ? <span role="button" tabIndex={0} className="as-vplay" data-testid={`voice-preview-${o.value}`} aria-label={(o as any).kind === 'standin' ? `${o.label}: ${sampleLabel('standin')}` : `Preview ${o.label}`} title={(o as any).kind === 'standin' ? sampleLabel('standin') : undefined} data-kind={(o as any).kind ?? undefined} onClick={e => { e.stopPropagation(); preview(o.previewUrl); }} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); preview(o.previewUrl); } }}>▶</span> : null }))}
       onPick={val => p.setFieldVals(f => ({ ...f, [name]: val }))} />; };
@@ -165,7 +166,7 @@ export default function AudioStudio(p: AudioStudioProps) {
           <button type="button" className="as-adv-h" data-testid="as-advanced" aria-expanded={adv} onClick={() => setAdv(!adv)}><span aria-hidden>⚙</span>Advanced settings<i aria-hidden>⌄</i></button>
           {adv && <div className="as-adv-b" data-testid="as-advanced-body">
             <div className="as-adv-top"><span title={caps?.note}>{(cur && mOf(cur.id)?.name) ?? cur?.name ?? 'Voice'} settings</span><button type="button" className="as-reset" data-testid="as-reset" onClick={reset}>↺ Reset</button></div>
-            {showVoice && sel(mv ? 'speaker' : 'voice', 'Voice', 'as-voice')}{showVoice && !mv && (() => { const vid = String(p.fieldVals.voice ?? '') || String(((p.tool.inputs ?? []) as any[]).find(i => i.name === 'voice')?.default ?? ''); const sv = apiVoices?.find(x => x.id === vid) ?? null; return sv?.sampleUrl ? <div className="as-sample" data-testid="as-voice-sample"><SamplePlay key={sv.id} url={sv.sampleUrl} kind={sampleKindOf(sv)} /></div> : null; })()}
+            {showVoice && sel(mv ? 'speaker' : 'voice', 'Voice', 'as-voice')}{showVoice && !mv && !builtinVoiceOf(caps) /* a library voice's clip is not the voice changer's own voice */ && (() => { const vid = String(p.fieldVals.voice ?? '') || String(((p.tool.inputs ?? []) as any[]).find(i => i.name === 'voice')?.default ?? ''); const sv = apiVoices?.find(x => x.id === vid) ?? null; return sv?.sampleUrl ? <div className="as-sample" data-testid="as-voice-sample"><SamplePlay key={sv.id} url={sv.sampleUrl} kind={sampleKindOf(sv)} /></div> : null; })()}
             {showLang && sel('language', 'Target language', 'as-language')}
             {showMix && sel('mix', 'Original audio', 'as-mix')}
             <VoiceControls tool={p.tool} provider={p.provider} mode={p.mode} fv={p.fieldVals} setFv={p.setFieldVals} issues={p.issues} videoOut={videoOut} />
