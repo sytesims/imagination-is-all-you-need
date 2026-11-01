@@ -110,7 +110,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.match(dir, /try \{ return localStorage\.getItem\(k\); \} catch/, 'the sound choice is remembered, safely');
     assert.match(film, /\{still && !controls && <button[^>]*className="sfilm-play"/, 'reduced motion: the poster with a play button'); }
   for (const r of [X.EXPLORE_HERO]) { const f = FEATURED.find((x) => x.key === r.key); assert.ok(f, `${r.key}: a featured clip`); assert.match(f!.out.url, /\.mp4$/); file(r.poster, 3e5); assert.ok(featuredRecreateHref(r.key), `${r.key}: Recreate`); }
-    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpHero \/>[\s\S]{0,200}<Xp3D \/>[\s\S]{0,200}<XpFilms \/>[\s\S]{0,180}<XpStill \/>\s*<XpFilm \/>[\s\S]{0,200}<RealResults \/>\s*<XpKoi \/>\s*<XpBoard \/>\s*<XpSwap \/>/, 'Trends is hidden; Canvas sits directly below the cartoon showcase');
+    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpHero \/>[\s\S]{0,200}<Xp3D \/>[\s\S]{0,200}<XpFilms \/>[\s\S]{0,180}<XpStill \/>\s*<XpFilm \/>[\s\S]{0,300}<XpKoi \/>\s*<XpBoard \/>\s*<XpSwap \/>/, 'Trends is hidden; Canvas sits directly below the cartoon showcase');
   /* From one still: one LTX-2.5 Pro image-to-video take on Comfy Cloud (job 530ab5eb, 6 s, $1.46). Take 2 · Dive (33be70a9) left the section on 2026-10-28;
      its featured entry and files stay (featured feed, seeded job), so both are still checked below */
   { const W = X.EXPLORE_STILL; assert.equal(W.eyebrow, 'Bring a picture to life'); assert.equal(W.title, 'What if it could move?');
@@ -372,7 +372,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.match(fx, /before=\{\{ url: f\.before\.url[\s\S]*after=\{\{ url: f\.out\.url/, 'mockup → film, both from the featured entry');
     assert.match(fx, /xp-film-recreate">Recreate this shot<[\s\S]*F\.cta\.label/, 'Recreate this shot and Open Direct a Shot');
     const hr = fs.readFileSync(path.join(WEB, 'shared/HeroReel.tsx'), 'utf8'); assert.match(hr, /holdSweep \? 'hold' : 'park'/, 'HeroReel: the held sweep'); assert.match(hr, /p\.x = p\.from \+ \(parkAt - p\.from\) \* ease\(k\)/, 'then the line eases to parkAt');
-    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpStill \/>\s*<XpFilm \/>[\s\S]{0,200}<RealResults \/>\s*<XpKoi \/>/, '3D mockup-to-film sits directly under the whale section, then the free local rail');
+    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpStill \/>\s*<XpFilm \/>[\s\S]{0,300}<XpKoi \/>/, '3D mockup-to-film sits directly under the whale section (the free local rail is hidden)'); assert.doesNotMatch(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /^\s*<RealResults \/>/m, 'the free local rail stays hidden');
     assert.doesNotMatch(xs + fs.readFileSync(path.join(WEB, 'ui/explore/exploreShowcase.css'), 'utf8'), /XpWorlds|EXPLORE_WORLDS|xpw-/, 'no Worlds leftovers');
     ok('Mockup to film: Direct a Shot (free) → GPT Image 2.5 Flare ($0.02) → LTX-2.5 + Layout to Render (Comfy Cloud, $0.28), first shot in step, shared HeroReel + sound, Recreate into Direct a Shot'); }
   /* The K-drama beat (one MiniMax H3 run, fb0b44ca, Comfy Cloud, $1.20): its script's timings feed the IIAYN FILMS comedy's subtitles */
