@@ -453,6 +453,34 @@ export const FEATURED_LAYERS: FeaturedItem[] = [
     runOn: 'comfy-cloud', route: 'comfy-router:api-seedream-layers-flash', costUsd: 0.3346, jobId: '829b6ef1', recreateHref: `${IMAGE_PAGE}?workflow=image-layers&recreate=3e481a29` },
 ];
 
+/* Explore "Made for your work" (2026-11-01): the Shop examples, real Comfy Cloud runs of a made-up brand (no real people). Material Swap: one grey
+   armchair photo and four material photos, one Nano Banana 2 run each (image 1 = the chair, image 2 = the material; the two short words as typed).
+   Ad Pack: one product photo, headline and offer, three styles in one GPT Image 2 run (the logo was added by the app's brand kit after the run;
+   a fresh install has no kit, so Recreate opens with Brand off). Explore only (starter: false); Recreate opens the workflow with the photos in. */
+export const SHOP_SWAP_RUNS: [id: string, label: string, jobId: string][] = [['velvet', 'Emerald velvet', 'b5c6fcf3'], ['gold', 'Champagne silk', '8921b11d'], ['boucle', 'Cream bouclé', 'c52c6fce'], ['leather', 'Cognac leather', 'd8e55566']];
+const SHOP_SEED: Record<string, string> = { 'shop-swap-velvet': '6448315e', 'shop-swap-gold': '4fcdfc4e', 'shop-swap-boucle': '3b516b1d', 'shop-swap-leather': '8285f348', 'shop-ad-pack': '83ebc9e0' };
+const shopSwap = ([id, label, jobId]: (typeof SHOP_SWAP_RUNS)[number]): FeaturedItem => ({
+  key: `shop-swap-${id}`, tab: 'image', title: `Armchair in ${label.toLowerCase()}`, toolId: 'app-material-swap', provider: 'api-nano-banana', modelKey: 'nano-banana-2', model: 'Nano Banana 2', flow: 'Material Swap', prompt: '',
+  input: { types: ['edit'], mode: 'edit', outKind: 'image', appId: 'material-swap', baseTool: 'create-image', outputLabel: 'Material swap', aspect: '1:1', aspectAuto: true, quality: 'med', imageResolution: '1K', seed: 13814, n: 1,
+    object: 'armchair', fromMaterial: 'grey fabric', appFields: { object: 'armchair', fromMaterial: 'grey fabric' }, appPrompt: '',
+    imageUrl: S('shop-armchair-in.jpg'), materialUrl: S(`shop-material-${id}.jpg`), refUrls: [S('shop-armchair-in.jpg'), S(`shop-material-${id}.jpg`)] },
+  out: still(`shop-armchair-${id}`, 896, 1195), before: { url: S('shop-armchair-in.webp'), poster: S('shop-armchair-in-480.webp'), width: 768, height: 1024, label: 'Your photo' },
+  runOn: 'comfy-cloud', route: 'comfy-router:api-nano-banana', costUsd: 0.0821, jobId, starter: false,
+  recreateHref: `${IMAGE_PAGE}?workflow=material-swap&recreate=${SHOP_SEED[`shop-swap-${id}`]}` });
+/** the three ads, in the run's order (out0 the studio hero, out1 in use (its logo moved after the run), out2 the offer poster) */
+export const SHOP_ADS: [id: string, label: string][] = [['studio', 'Studio hero'], ['in-use', 'In use'], ['poster', 'Offer poster']];
+export const FEATURED_SHOP: FeaturedItem[] = [...SHOP_SWAP_RUNS.map(shopSwap),
+  { key: 'shop-ad-pack', tab: 'image', title: 'Maison Aurelle, three launch ads', toolId: 'app-ad-pack', provider: 'api-gpt-image', modelKey: 'gpt-image', model: 'GPT Image 2', flow: 'Ad Pack', prompt: '',
+    input: { types: ['edit'], mode: 'edit', outKind: 'image', appId: 'ad-pack', baseTool: 'create-image', outputLabel: 'Ad', aspect: '4:5', aspectAuto: false, quality: 'med', tier: 'med', imageResolution: '1K', seed: 723710, n: 3,
+      headline: 'Liquid gold', offer: 'Launch week · 20% off', placement: 'meta-4x5', logoCorner: 'tl',
+      appFields: { headline: 'Liquid gold', offer: 'Launch week · 20% off', placement: 'meta-4x5', logoCorner: 'tl', shots: '["studio","lifestyle","poster"]' },
+      appPrompt: 'A luxury eau de parfum: faceted crystal bottle, heavy gold cap, golden liquid. Styled with polished marble and warm gold reflections, the opulent glamour of a Dubai penthouse',
+      imageUrl: S('shop-perfume-in.jpg'), refUrls: [S('shop-perfume-in.jpg')] },
+    out: still('shop-ad-studio', 1024, 1280), before: { url: S('shop-perfume-in.webp'), poster: S('shop-perfume-in-480.webp'), width: 1024, height: 1024, label: 'Product photo' },
+    runOn: 'comfy-cloud', route: 'comfy-router:api-gpt-image', costUsd: 0.1982, jobId: 'eaa09670', starter: false,
+    recreateHref: `${IMAGE_PAGE}?workflow=ad-pack&recreate=${SHOP_SEED['shop-ad-pack']}` },
+];
+
 /* Explore "One character. Every angle." (2026-10-27): four of the maintainer's own character sheets, GPT Image 2.5 Flare text to image on Comfy
    Router, 1K, seed 397533, each one image from one run; prompts as they ran, costs as billed. Recreate opens Create Image with the prompt and model. */
 const SHEET_SEED: Record<string, string> = { 'sheet-kaito': 'b5b82fcc', 'sheet-mossbun': '7793115c', 'sheet-mechanic': '224bbf14', 'sheet-kip': '8d939956' };
@@ -492,7 +520,7 @@ export const FEATURED_IMAGE: FeaturedItem[] = [...SHOWCASE_GALLERY.map((id) => s
 export const FEATURED_SEED_IDS: Record<string, string> = { 'trend-mic': 'b7057f01', 'trend-dance': '211cf37e', 'ltx-christmas-take': '1c9e4758', 'ltx-street-take': 'f875f804', 'ltx-rain-city': 'de09f0cb', 'ltx-lighthouse': 'c1b41771', 'ltx-village-loop': 'e29ad72e', 'ltx-morph': 'a3c693af',
   'ltx-fox-meadow': '7964e9db', 'ltx-fox-meadow-close': '4781fc98', 'kling-dance-swap': '487a04e5', 'ltx-pro-painter': '8e4d7d98', 'h3-char-swap': 'bb7e11f4',
   'ltx-pro-fox': 'a6a363f1', 'ltx-pro-koi': 'c17b210d', 'image-layers-paw': '3e481a29', 'h3-koi-take': '2fb5ac80',
-  'h3-glass-whale': '654bac59', 'ltx-pro-whale-glide': 'bc0005d7', 'ltx-pro-whale-dive': '39346ee1', 'ltx-mockup-film': '8ec31949', 'h3-kdrama-script': 'a82dd012', 'mossbun-golden-hour': '50c0d92b', 'seedance-lighthouse': '98183e01', 'seedance-fashion': 'eb7a9a47', ...SHEET_SEED,
+  'h3-glass-whale': '654bac59', 'ltx-pro-whale-glide': 'bc0005d7', 'ltx-pro-whale-dive': '39346ee1', 'ltx-mockup-film': '8ec31949', 'h3-kdrama-script': 'a82dd012', 'mossbun-golden-hour': '50c0d92b', 'seedance-lighthouse': '98183e01', 'seedance-fashion': 'eb7a9a47', ...SHEET_SEED, ...SHOP_SEED,
   /* the starter pack's new picks (2026-10-28) */
   'h3-fox-extend': '0f0707ea', 'presenter-talk': 'af93a883', 'bus-stop-sharp': 'd47db426', 'h3-lift-ghost': '68f5f8fe', 'h3-hotel-lounge': '15146f2b', 'ltx-storm-whale': 'f201223c', 'mossbun-mockup-film': 'c1c2746d',
   'img-knit-farm': '60f274ad', 'img-jellyfish-bamboo': '07f63be4', 'img-glass-whale': '98073a1f', 'img-aurora-dome': '01a4a23c', 'img-whale-sheet': 'edb15a7c', 'img-red-bicycle': '0bf11f65', ...STARTER_AUDIO_SEED };
@@ -511,7 +539,7 @@ export const FEATURED_BIG_POSTER: Record<string, string> = { 'h3-glass-whale': S
   'ltx-pro-whale-glide': S('ltx-pro-whale-glide.webp'), 'ltx-pro-whale-dive': S('ltx-pro-whale-dive.webp'), 'ltx-mockup-film': S('ltx-mockup-film.webp'), 'h3-kdrama-script': S('h3-kdrama-script.jpg'),
   'mossbun-golden-hour': E3('mossbun-golden-hour.webp'), 'seedance-lighthouse': SD('lighthouse.webp'), 'seedance-fashion': SD('fashion.webp') };
 /** Every featured generation, video first (the starter pack's new picks lead their tab). Explore-only entries (starter: false) are in it too. */
-export const FEATURED: FeaturedItem[] = [...FEATURED_STARTER_VIDEO, ...FEATURED_VIDEO, ...FEATURED_AUDIO, ...FEATURED_LAYERS, ...FEATURED_SHEETS, ...FEATURED_STARTER_IMAGE, ...FEATURED_IMAGE];
+export const FEATURED: FeaturedItem[] = [...FEATURED_STARTER_VIDEO, ...FEATURED_VIDEO, ...FEATURED_AUDIO, ...FEATURED_LAYERS, ...FEATURED_SHOP, ...FEATURED_SHEETS, ...FEATURED_STARTER_IMAGE, ...FEATURED_IMAGE];
 /** The starter pack: what a fresh install's tabs open with (the seeded jobs marked Featured, tagged "Example", with Recreate). */
 export const STARTER: FeaturedItem[] = FEATURED.filter((f) => f.starter !== false);
 export const isStarter = (f: FeaturedItem) => f.starter !== false;
