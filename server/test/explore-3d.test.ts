@@ -56,7 +56,7 @@ const size = (u: string) => { const p = path.join(PUB, u); assert.ok(fs.existsSy
 
 // ---- the page ----
 const home = fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8');
-assert.match(home, /<XpHero \/>[\s\S]{0,200}<Xp3D \/>[\s\S]{0,200}<XpFilms \/>/, '3D follows the hero; the lighthouse is now in Films (user, 2026-10-29)');
+assert.match(home, /<XpHero \/>[\s\S]{0,200}<XpSong \/>[\s\S]{0,240}<Xp3D \/>[\s\S]{0,200}<XpFilms \/>/, '3D follows the hero; the lighthouse is now in Films (user, 2026-10-29)');
 const sec = fs.readFileSync(path.join(WEB, 'ui/explore/Explore3D.tsx'), 'utf8'); const css = fs.readFileSync(path.join(WEB, 'ui/explore/explore3d.css'), 'utf8');
 assert.match(sec, /<h2 id="xp-h-x3d" className="xps-h xsdc-h">/, 'the headline is the chapter style (#xp-swap\'s classes)');
 assert.match(sec, /<ShowcaseFilm\b[^\n]*controls restartOnSound[\s\S]{0,240}\/>/, 'the film is the shared ShowcaseFilm with its on-brand controls and sound');

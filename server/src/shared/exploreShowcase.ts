@@ -427,9 +427,10 @@ export const EXPLORE_DANCE = {
 // ---------------------------------------------------------------- Our song, and SyteSim dancing to it (2026-11-02)
 /** "Dream It Up": a song made in Audio › Music with YuE2 on the maintainer's own computer through local ComfyUI ($0; seed 12310, our own lyrics,
  *  a 72 min render). The file is the take's first 55.7 s, ending on its own short break with a 1.8 s fade (the raw take stops mid-bar at 68 s),
- *  loudness-normalised, 128 kbps, tags stripped. SyteSim's "happy bounce" (5.17 s loop, 480×864, green keyed out) ships twice with its alpha:
- *  VP9 WebM for Chrome and Firefox, HEVC with alpha for Safari, plus a still (its first frame) for reduced motion and before he moves.
- *  The section's layout is still being picked (?songsection=a: a wide band in the middle, b: a compact card near the end). */
+ *  loudness-normalised, 128 kbps, tags stripped. SyteSim's five dances (5.17 s each, green keyed out, each starting and ending on the same
+ *  standing pose, so a cut on the loop boundary is seamless) ship at 360×648 with their alpha twice: VP9 WebM for Chrome and Firefox, HEVC with
+ *  alpha for Safari; plus a still (the standing pose) for reduced motion and before he moves. Order: the happy bounce first, the one where he
+ *  turns his back never first. */
 const SONG_STYLE = 'English, hip-hop electro-pop, 122 BPM, D major, punchy 808s, bouncy hip-hop groove, shiny electro-pop synths, claps, energetic chant vocal, group chant, upbeat, fun, playful';
 export const EXPLORE_SONG = {
   eyebrow: 'Music',
@@ -438,7 +439,8 @@ export const EXPLORE_SONG = {
   song: { url: '/showcase/song-imagination.mp3', title: 'Dream It Up', about: 'Electro-pop · 122 BPM', sec: 55.7, model: 'YuE2', modelKey: 'yue2',
     style: SONG_STYLE,
     lyric: 'Imagination is all you need. Dream it up and press go.' },
-  dancer: { webm: '/showcase/mascot-dance.webm', mov: '/showcase/mascot-dance.mov', still: '/showcase/mascot-dance-still.webp', width: 480, height: 864, name: 'SyteSim' },
+  dancer: { still: '/showcase/mascot-dance-still.webp', width: 360, height: 648, name: 'SyteSim', /** each dance plays this many times, then the next one */ repeats: 2,
+    dances: ['bounce', 'groove', 'moonwalk', 'turn', 'pika'].map((id) => ({ id, webm: `/showcase/mascot-dance-${id}.webm`, mov: `/showcase/mascot-dance-${id}.mov` })) },
   /** Audio › Music with YuE2 and this song's style in the box (the lyrics are yours to write) */
   cta: { label: 'Make your own', href: `${audioRoute('music')}&${new URLSearchParams({ model: 'yue2', prompt: SONG_STYLE })}` },
 };

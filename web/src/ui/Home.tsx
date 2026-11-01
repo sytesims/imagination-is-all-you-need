@@ -144,6 +144,8 @@ export default function Home({ tools }: { tools: ToolInfo[] }) {
   return <div className="home xp" data-testid="explore">
     <h1 className="sr-only-vis">Imagination Is All You Need: an open studio for video, images, sound and 3D</h1>
     <XpHero />
+    {/* our song, SyteSim dancing (explore/ExploreSong.tsx): the first section under the hero */}
+    <div className="xp-in"><XpSong /></div>
     <div className="xp-in"><XpWork /></div>
     {/* The lighthouse now lives in Films, not in a separate section (user, 2026-10-29). */}
     <div className="xp-in"><Xp3D /></div>
@@ -154,15 +156,12 @@ export default function Home({ tools }: { tools: ToolInfo[] }) {
       <XpFilm />
       {/* "Made on your computer. Free." (RealResults) is hidden: the user never asked for this section (2026-11-02). Kept in code; render <RealResults /> here to bring it back. */}
       <XpKoi />
-      {/* Our song with SyteSim dancing (explore/ExploreSong.tsx). Layout being picked: ?songsection=a (default) shows the band here, b the card near the end. */}
-      <XpSong layout="a" />
       <XpBoard />
       <XpSwap />
       <XpLayers />
       <XpSheets />
       <XpPresenter />
       <XpLooks />
-      <XpSong layout="b" />
     </div>
     {/* the closing moment, full width: a prompt box over a wall of things made here */}
     <XpYourTurn />

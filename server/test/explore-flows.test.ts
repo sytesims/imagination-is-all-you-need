@@ -55,7 +55,7 @@ assert.match(featuredRecreateHref('ltx-village-loop', { loop: '1' })!, /^\/video
 assert.match(featuredRecreateHref('ltx-morph')!, /^\/video\?workflow=transitions&recreate=a3c693af$/);
 for (const [k, id] of [['ltx-fox-meadow', '7964e9db'], ['ltx-fox-meadow-close', '4781fc98']]) { const f = FEATURED.find((x) => x.key === k)!;
   assert.equal(featuredRecreateHref(k), `/video?recreate=${id}`, `${k}: Try this prompt opens Video`); assert.equal(f.modelKey, 'ltx-2.5-22b'); assert.match(f.prompt, /fox/); }
-assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpHero \/>[\s\S]{0,200}<Xp3D \/>/, 'Explore opens on the hero then 3D, without a separate lighthouse section');
+assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpHero \/>[\s\S]{0,200}<XpSong \/>[\s\S]{0,240}<Xp3D \/>/, 'Explore opens on the hero, our song, then 3D, without a separate lighthouse section');
 { const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); const hero = xs.slice(xs.indexOf('export function heroChip'), xs.indexOf('/* ===', xs.indexOf('export function XpHero')));
   assert.match(hero, /<ShowcaseFilm\b[\s\S]*xp-headline[\s\S]*<HeroCredit /, 'the header plays the hero clip under its headline, line and credit');
   assert.doesNotMatch(hero, /xph-quick|xph-make|xp-quick|EXPLORE_QUICK/, 'no quick links on the hero (2026-10-28)');
@@ -110,7 +110,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.match(dir, /try \{ return localStorage\.getItem\(k\); \} catch/, 'the sound choice is remembered, safely');
     assert.match(film, /\{still && !controls && <button[^>]*className="sfilm-play"/, 'reduced motion: the poster with a play button'); }
   for (const r of [X.EXPLORE_HERO]) { const f = FEATURED.find((x) => x.key === r.key); assert.ok(f, `${r.key}: a featured clip`); assert.match(f!.out.url, /\.mp4$/); file(r.poster, 3e5); assert.ok(featuredRecreateHref(r.key), `${r.key}: Recreate`); }
-    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpHero \/>[\s\S]{0,200}<Xp3D \/>[\s\S]{0,200}<XpFilms \/>[\s\S]{0,180}<XpStill \/>\s*<XpFilm \/>[\s\S]{0,300}<XpKoi \/>\s*<XpBoard \/>\s*<XpSwap \/>/, 'Trends is hidden; Canvas sits directly below the cartoon showcase');
+    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpHero \/>[\s\S]{0,200}<XpSong \/>[\s\S]{0,240}<Xp3D \/>[\s\S]{0,200}<XpFilms \/>[\s\S]{0,180}<XpStill \/>\s*<XpFilm \/>[\s\S]{0,300}<XpKoi \/>\s*<XpBoard \/>\s*<XpSwap \/>/, 'Trends is hidden; Canvas sits directly below the cartoon showcase');
   /* From one still: one LTX-2.5 Pro image-to-video take on Comfy Cloud (job 530ab5eb, 6 s, $1.46). Take 2 · Dive (33be70a9) left the section on 2026-10-28;
      its featured entry and files stay (featured feed, seeded job), so both are still checked below */
   { const W = X.EXPLORE_STILL; assert.equal(W.eyebrow, 'Bring a picture to life'); assert.equal(W.title, 'What if it could move?');
