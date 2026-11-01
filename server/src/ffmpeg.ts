@@ -11,6 +11,14 @@ export async function remuxAudio(videoPath: string, audioSourcePath: string, out
   if (withAudio === 0) return;
   return videoOnlyRemux(videoPath, outPath);
 }
+/** A VP9 + alpha WebM with the source's sound as Opus (WebM takes no AAC). The video stream is copied, so the alpha survives. No audio source,
+ *  or a source with no sound: the video alone. */
+export async function remuxAlphaWebm(videoPath: string, audioSourcePath: string | null, outPath: string): Promise<void> {
+  await access(videoPath);
+  if (audioSourcePath && await runFfmpeg(['-y', '-i', videoPath, '-i', audioSourcePath, '-map', '0:v:0', '-map', '1:a:0?', '-c:v', 'copy', '-c:a', 'libopus', '-b:a', '96k', '-shortest', outPath]) === 0) return;
+  const code = await runFfmpeg(['-y', '-i', videoPath, '-map', '0:v:0', '-c:v', 'copy', '-an', outPath]);
+  if (code !== 0) throw new Error(`ffmpeg WebM remux failed (exit ${code})`);
+}
 async function videoOnlyRemux(videoPath: string, outPath: string): Promise<void> {
   const videoOnly = await runFfmpeg(['-y', '-i', videoPath, '-map', '0:v:0', '-c:v', 'copy', '-an', '-movflags', '+faststart', outPath]);
   if (videoOnly !== 0) throw new Error(`ffmpeg remux failed (exit ${videoOnly})`);

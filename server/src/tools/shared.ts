@@ -310,8 +310,14 @@ async function renderMediaMock(job: Job, i: number, out: string) {
   if (code !== 0) throw new Error(`Something went wrong rendering the mock result (ffmpeg ${code}). Credits went back to your balance.`);
 }
 /** Mock alpha clip: the sample result with an ellipse "subject" kept and everything else transparent (VP9 alpha), source audio as Opus. */
+/** Remove Background keeps the clip's own size (BiRefNet returns the mask at the input size), so the sample does too: a portrait clip stays portrait. */
+export function alphaFrame(input: Record<string, any>): [number, number] {
+  const even = (x: number) => Math.max(2, Math.round(x / 2) * 2); const w = Number(input.width), h = Number(input.height);
+  if (w > 0 && h > 0) return [even(w), even(h)];
+  return input.resolution === '480p' ? [854, 480] : input.resolution === '1080p' ? [1920, 1080] : [1280, 720];
+}
 async function renderAlphaMock(job: Job, i: number, out: string) {
-  const [w, h] = job.input.resolution === '480p' ? [854, 480] : job.input.resolution === '1080p' ? [1920, 1080] : [1280, 720];
+  const [w, h] = alphaFrame(job.input);
   const audio = job.input.keepAudio === false ? null : job.input.videoPath;
   const m = `color=c=black:s=${w}x${h}:d=1,format=gray,geq=lum='255*lte(pow((X-${w / 2})/${Math.round(w * 0.24)}\\,2)+pow((Y-${Math.round(h * 0.55)})/${Math.round(h * 0.46)}\\,2)\\,1)'`;
   const args = ['-y', '-v', 'error', '-stream_loop', '-1', '-i', mockResultFor(job.toolId, i), ...(audio ? ['-i', audio] : []), '-f', 'lavfi', '-i', m,

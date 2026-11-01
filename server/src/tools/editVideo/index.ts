@@ -147,6 +147,14 @@ export const fpsBoostTool = withLimits(makeApp({ id: 'fps-boost', name: 'FPS Boo
 export const depthMapTool = withLimits(makeApp({ id: 'depth-map', name: 'Depth Map', category: 'Edit Video', status: 'new', input: 'video', description: 'Turn a clip into a greyscale depth video (near = bright).',
   types: [t('Format', 'grey', 'Greyscale depth (near = bright)'), t('Format', 'inverted', 'Inverted greyscale (near = dark)')], resolutions: ['720p'], workflow: 'depth-map-dav2-api.json', model: 'Depth Anything V2 Small (local)', providers: ['comfy-depth-anything-v2'], stages: VIDEO_STAGES }));
 
+/** Remove Background / Depth Map have local graphs (comfy/plans.ts removeBg, depthMap). With a real backend, reaching tool.run means the local
+ *  graph could not run here (e.g. a remote ComfyUI without the native API): fail plainly, never hand back a sample clip as the result
+ *  (job 44ba4440, 2026-11-01: a cartoon upload came back as a 1280×720 sample clip cut out in a circle). The mock backend keeps its samples. */
+for (const tool of [removeBgTool, depthMapTool]) { const run0 = tool.run.bind(tool); tool.run = async (job: any) => {
+  if (config.backend === 'mock') return run0(job);
+  job.status = 'failed'; job.errorType = 'validation';
+  job.error = `${tool.name} couldn't run its workflow on this ComfyUI, so nothing was made. Point the app at your own ComfyUI in Settings → Your computer, or pick another place to run it.`; }; }
+
 /** SDR→HDR ffmpeg args (verified Oct 18 on CPU). zscale needs the INPUT colour space spelled out (tin/min/pin/rin = BT.709, limited range):
  *  without it, untagged or BT.709-tagged clips fail with "no path between colorspaces". Linearise at SDR white = npl nits, then BT.2020 +
  *  PQ (HDR10) or HLG, 10-bit, HEVC with matching VUI tags. strength 0–1 → SDR white mapped to 100–300 nits. Audio copied. */

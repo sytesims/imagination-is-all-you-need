@@ -12,9 +12,9 @@ import { lineGraph } from './dubMix.js';
 import type { Job } from '../jobs.js';
 import { config, DATA_DIR } from '../config.js';
 import { env } from '../env.js';
-import { runFfmpeg, remuxAudio, flattenAlpha } from '../ffmpeg.js';
+import { runFfmpeg, remuxAudio, remuxAlphaWebm, flattenAlpha } from '../ffmpeg.js';
 import { ComfyNative, ComfyTimeoutError } from './native.js';
-import { buildPlan, type Plan, type Prep, type Pass } from './plans.js';
+import { buildPlan, templateVideoDefaults, type Plan, type Prep, type Pass } from './plans.js';
 import { blendArgs } from './restyle.js';
 import { recordSubmittedPass } from '../workflowExport.js';
 import { putPreview, previewMethod } from './preview.js';
@@ -93,6 +93,8 @@ export async function runNative(job: Job, transport?: ComfyTransport, build: (j:
   for (const [k, pass] of plan.passes.entries()) {
     if ((job.status as string) === 'canceled') return;
     for (const p of pass.prep ?? []) await doPrep(p, outs, pass.graph, job, pass).catch((e) => { throw new PrepError(e instanceof Error ? e.message : String(e)); });
+    { const left = templateVideoDefaults(pass.graph, pass.workflow, [pass.output, ...(pass.extraOutputs ?? []).map((e) => e.node)]); // never process the template's sample clip
+      if (left.length) throw new Error(`The source video was not wired into the workflow (${pass.workflow}: ${left.join(', ')}). Nothing was run.`); }
     const graph = await substitute(pass.graph, c, cache);
     (await import('../stepEta.js')).applyGgufVariant(graph, variant); // Q7 GGUF drop-in
     if (PV) PV.applyFileSwap(graph, PV.swapsFor([pass.workflow], plat));
@@ -223,8 +225,10 @@ export async function runNative(job: Job, transport?: ComfyTransport, build: (j:
   }
   for (const [i, f] of finals.entries()) {
     if (plan.outKind === 'image' && (job.status as string) === 'canceled') return;
-    const isVid = /\.(mp4|webm|mov|mkv)$/i.test(f.file); const ext = isVid ? '.mp4' : path.extname(f.file) || ext0; const dest = out(i, ext);
-    if (isVid && plan.muxSourceAudio && job.input.videoPath && job.input.hasAudio !== false) await remuxAudio(f.file, job.input.videoPath, dest);
+    const isVid = /\.(mp4|webm|mov|mkv)$/i.test(f.file); const alphaWebm = isVid && !!job.input.alpha && /\.webm$/i.test(f.file); // Remove BG transparent: MP4 has no alpha, keep the WebM
+    const ext = alphaWebm ? '.webm' : isVid ? '.mp4' : path.extname(f.file) || ext0; const dest = out(i, ext);
+    if (alphaWebm) await remuxAlphaWebm(f.file, plan.muxSourceAudio && job.input.hasAudio !== false ? job.input.videoPath : null, dest);
+    else if (isVid && plan.muxSourceAudio && job.input.videoPath && job.input.hasAudio !== false) await remuxAudio(f.file, job.input.videoPath, dest);
     else if (isVid && plan.outKind === 'video' && job.input.keepAudio === false) await remuxAudio(f.file, f.file, dest, false);
     else if (isOpaqueImage(job, f.file)) await flattenAlpha(f.file, dest); // Item 11: photo outputs are stored fully opaque (alpha 255)
     else if (f.file !== dest) await copyFile(f.file, dest);

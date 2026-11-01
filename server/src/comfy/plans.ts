@@ -291,9 +291,56 @@ export function fpsBoostGraph(graph: Record<string, any>, srcFps: number, target
 }
 function fpsBoost(job: Job, srcFps = 30): Plan {
   const i = job.input; const target = Number(i.types?.[0] ?? i.fields?.targetFps) === 48 ? 48 : 60;
-  const { g, mult } = fpsBoostGraph(wf('fps-boost-rife-api.json'), srcFps, target); setIn(g, '1', 'file', F(i.videoPath));
+  const { g, mult } = fpsBoostGraph(wf('fps-boost-rife-api.json'), srcFps, target); wireVideo(g, '1', i.videoPath);
   return { tool: job.toolId, outKind: 'video', post: { kind: 'each' }, muxSourceAudio: i.keepAudio !== false, postFps: target, notes: [`RIFE ×${mult} → ${g['4'].inputs.fps} fps, ffmpeg fps=${target}`],
     passes: [{ label: `${target} fps`, workflow: 'fps-boost-rife-api.json', graph: g, output: '5', expect: { fps: g['4'].inputs.fps, multiplier: mult, finalFps: target } }] };
+}
+/** The video load nodes a graph can read a file from, and the input that names the file. */
+const VIDEO_LOADERS: Record<string, string> = { LoadVideo: 'file', VHS_LoadVideo: 'video', VHS_LoadVideoPath: 'video', VHS_LoadVideoFFmpeg: 'video', VHS_LoadVideoFFmpegPath: 'video' };
+/** Point a graph's video load node at the user's clip. Throws when there is no clip or the node isn't a video loader, so a run never
+ *  falls back to the file the template was saved with (job 44ba4440, 2026-11-01: Remove Background showed a sample clip, never the upload). */
+export function wireVideo(g: Record<string, any>, node: string, videoPath: unknown) {
+  if (typeof videoPath !== 'string' || !videoPath) throw new Error('No source video to process: upload a clip and try again.');
+  const field = VIDEO_LOADERS[String(g[node]?.class_type)]; if (!field) throw new Error(`graph node ${node} is not a video loader (${g[node]?.class_type ?? 'missing'})`);
+  setIn(g, node, field, F(videoPath));
+}
+/** Video load nodes an output still reaches that keep the file the template was saved with (its sample video), as "node (file)".
+ *  Empty = every source is the user's file. runNative refuses a pass with any (never silently process a sample). */
+export function templateVideoDefaults(g: Record<string, any>, workflow: string, outputs: string[]): string[] {
+  let tpl: Record<string, any>; try { tpl = wf(workflow); } catch { return []; } // not a file graph (plugin / generated): nothing to compare with
+  const seen = new Set<string>(); const st = [...outputs]; const left: string[] = [];
+  while (st.length) { const id = st.pop()!; if (seen.has(id) || !g[id]) continue; seen.add(id);
+    const field = VIDEO_LOADERS[String(g[id].class_type)]; const v = field ? g[id].inputs?.[field] : undefined; const d = field ? tpl[id]?.inputs?.[field] : undefined;
+    if (typeof v === 'string' && v === d) left.push(`${id} (${v})`);
+    for (const x of Object.values<any>(g[id].inputs ?? {})) if (isLink(x)) st.push(x[0]); }
+  return left;
+}
+/** Remove Background (local BiRefNet, workflows/remove-bg-birefnet-api.json; ComfyUI_BiRefNet_ll). The mask comes back at the clip's own size,
+ *  so the result keeps the input's shape (a portrait clip stays portrait). Transparent = the source frames + BiRefNet alpha as VP9 WebM (node 6);
+ *  green / black / white = BiRefNet's colour fill as an MP4. Source audio is muxed back by the runner. */
+export const REMOVE_BG_WORKFLOW = 'remove-bg-birefnet-api.json';
+const BG_COLOURS: Record<string, number> = { green: 0x00ff00, black: 0x000000, white: 0xffffff };
+function removeBg(job: Job): Plan {
+  const i = job.input; const bg = String(i.types?.[0] ?? 'transparent'); const g = wf(REMOVE_BG_WORKFLOW); wireVideo(g, '1', i.videoPath);
+  let output = '6';
+  if (bg !== 'transparent') {
+    if (!(bg in BG_COLOURS)) throw new Error(`Remove Background has no "${bg}" background`);
+    setIn(g, '4', 'fill_color', true); setIn(g, '4', 'color', BG_COLOURS[bg]);
+    g['12'] = { class_type: 'CreateVideo', inputs: { images: ['4', 0], fps: ['2', 2] }, _meta: { title: 'Filled frames' } };
+    g['13'] = { class_type: 'SaveVideo', inputs: { video: ['12', 0], filename_prefix: 'openhiggsfield/remove-bg', format: 'auto', 'format.codec': 'auto' }, _meta: { title: `Background: ${bg}` } };
+    output = '13';
+  }
+  pruneUnreachable(g, [output]);
+  return { tool: job.toolId, outKind: 'video', post: { kind: 'each' }, muxSourceAudio: i.keepAudio !== false, notes: [],
+    passes: [{ label: bg === 'transparent' ? 'Transparent' : `${bg[0].toUpperCase()}${bg.slice(1)} background`, workflow: REMOVE_BG_WORKFLOW, graph: g, output, expect: { background: bg, alpha: bg === 'transparent', width: i.width ?? null, height: i.height ?? null } }] };
+}
+/** Depth Map (local Depth Anything V2 Small, workflows/depth-map-dav2-api.json; comfyui_controlnet_aux). Inverted = near is dark (ImageInvert). */
+export const DEPTH_MAP_WORKFLOW = 'depth-map-dav2-api.json';
+function depthMap(job: Job): Plan {
+  const i = job.input; const g = wf(DEPTH_MAP_WORKFLOW); wireVideo(g, '1', i.videoPath); const inverted = i.types?.[0] === 'inverted';
+  if (inverted) { g['6'] = { class_type: 'ImageInvert', inputs: { image: ['3', 0] }, _meta: { title: 'Near = dark' } }; g['4'].inputs.images = ['6', 0]; }
+  return { tool: job.toolId, outKind: 'video', post: { kind: 'each' }, muxSourceAudio: i.keepAudio !== false, notes: [],
+    passes: [{ label: inverted ? 'Inverted depth' : 'Depth', workflow: DEPTH_MAP_WORKFLOW, graph: g, output: '5', expect: { inverted } }] };
 }
 /** Edit jobs whose output takes the app's aspect instead of the input photo's shape (where the graph allows it): Character Sheet. */
 const CHARACTER_SHEET_TOOLS = new Set(['app-character-sheet', 'app-ad-pack']); // Ad Pack (2026-10-31): the platform's shape, not the product photo's
@@ -600,6 +647,7 @@ const BUILDERS: Record<string, (j: Job, o: { srcFps?: number; separation?: boole
   upscale: (j, o) => upscale(j, o.srcFps), 'app-video-upscale': (j, o) => upscale(j, o.srcFps), 'create-image': image, 'h3-video': (j) => (j.provider === WAN22_5B ? wan22(j) : j.provider === LTX25_VIDEO ? ltx25Video(j) : h3(j)), audio: (j) => audio(j, false),
   soundtrack: (j) => (j.provider === 'comfy-mmaudio' ? mmaudio(j) : audio(j, true)), 'app-music-bed': (j) => (j.provider === 'comfy-mmaudio' ? mmaudio(j) : audio(j, true)), voice: (j, o) => (j.provider === LTX25_LIPSYNC ? ltx25Lipsync(j) : voice(j, o)), 'image-upscale': imageUpscale, cinema, 'app-orbit-shot': cinema,
   soul: (j) => soulPlan(j), 'fps-boost': (j, o) => fpsBoost(j, o.srcFps), 'make-it-real': makeReal, 'footage-fx': footageFx, 'h3-extend': ltx25Extend /* only reached for comfy-ltx25-extend: h3Owns takes comfy-h3-extend first */,
+  'remove-bg': removeBg, 'depth-map': depthMap,
 };
 const baseOf = (j: Job) => (BUILDERS[j.toolId] ? j.toolId : j.input.baseTool && BUILDERS[j.input.baseTool] ? j.input.baseTool : /^app-(transition|ugc-ad)$/.test(j.toolId) ? 'h3-video' : null);
 /** null = this tool/provider has no local workflow (stays on mock or its hosted provider). */
@@ -622,6 +670,8 @@ export function hasPlan(j: Job) {
   if (b === 'photo-fx' && j.provider === LTX25_VIDEO) return true; // Photo FX on local LTX-2.5 22B (Exploded view's XPLDV LoRA), 2026-10-26
   if (b === 'h3-extend') return j.provider === LTX25_EXTEND && !!j.input?.ltxExtend?.plan && !!j.input?.ltxExtend?.guidePath; // Extend on local LTX-2.5 (2026-10-26)
   if (b === 'upscale' || b === 'app-video-upscale') return VUP_LOCAL.includes(j.provider) || j.provider === 'comfy-open'; // shared/videoUpscale.ts local engines (+ old comfy-open jobs)
+  if (b === 'remove-bg') return j.provider === 'comfy-birefnet-video'; // was missing (job 44ba4440): the local run fell back to a sample clip
+  if (b === 'depth-map') return j.provider === 'comfy-depth-anything-v2'; // same gap as Remove Background
   if (b === 'fps-boost') return j.provider === 'comfy-rife'; // was missing: on OPENHIGGSFIELD_BACKEND=comfy the local RIFE route fell back to a mock render
   return j.provider === 'comfy-open';
 }
