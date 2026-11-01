@@ -7,7 +7,7 @@ import { OPTION_MEDIA, wireOptionMedia, voiceSampleUrl, voiceSampleKind, wireSam
 import { parseLightRig, rigPhrases, rigJson, spherePresetOf, lightUntouched, DEFAULT_RIG, type LightRig } from '../shared/lightRig.js';
 import { PRODUCT_SCENES, PRODUCT_KEEP, TRANSITION_TYPES, UGC_PRESENTERS, UGC_HOOKS, UGC_SETTINGS, UGC_FRAMINGS, ORBIT_TYPES, ORBIT_BACKDROPS, RELIGHT_DIRECTIONS, RELIGHT_QUALITY, RELIGHT_COLOUR_PRESETS, RELIGHT_LOOKS, relightLookOf, brightnessWord, colourName, padPhrase, LANGUAGE_NATIVE, CHARACTER_LAYOUTS, CHARACTER_LAYOUT_DEFAULT, type CharacterLayout, type AppField, type AppOption } from './appRows.js';
 import { TRANSLATE_LANGS } from '../comfy/plans.js';
-import { SHOT_ANGLES, parseShots, shotPrompt, FACE_SWAP_PROMPT, FACE_SWAP_KEEP, PERSON_SWAP_PROMPT, PERSON_SWAP_KEEP, PERSON_SWAP_KEEP_OUTFIT_WHO, PERSON_SWAP_KEEP_OUTFIT, PERSON_SWAP_OUTFITS, type ShotAngle } from './shots.js';
+import { SHOT_ANGLES, parseShots, shotPrompt, PERSON_SWAP_WHO, PERSON_SWAP_KEEP_OUTFIT_WHO, PERSON_SWAP_KEEP_OUTFIT, PERSON_SWAP_OUTFITS, type ShotAngle } from './shots.js';
 import { GENERATE_MODELS, EDIT_MODELS, TWO_IMAGE_MODELS, MATERIAL_SWAP_MODELS, AD_PACK_MODELS, MASK_MODELS, REMOVE_BG_MODELS, EXPAND_MODELS, ERASE_MODELS, TRYON_MODELS, featureById, gridModelOf } from '../shared/imageFeatures.js';
 import { promptGrammarOf } from '../shared/promptGrammar.js';
 import { fillPattern, patternFor } from '../shared/promptPatterns.js';
@@ -666,6 +666,8 @@ export const materialFamilyOf = (provider?: string): MaterialFamily => /^api-nan
 export const MATERIAL_TEXT_MAX = 60;
 const bare = (x?: string) => String(x ?? '').replace(/\s+/g, ' ').trim().replace(/^(a|an|the)\s+/i, '').replace(/[.;,:]+$/, '');
 const sentence = (x?: string) => { const t = String(x ?? '').replace(/\s+/g, ' ').trim().replace(/[.;,\s]+$/, ''); return t ? `${t[0].toUpperCase()}${t.slice(1)}.` : ''; };
+/** The model key a swap's prompt pattern is picked by (shared/promptPatterns.ts: the key, then its family, then the shared row). */
+const swapPatternModel = (provider?: string) => (provider ? gridModelOf(provider, 'edit') ?? provider : null);
 export function materialSwapPrompt(v: Record<string, string>, userPrompt: string, provider?: string): string {
   const obj = bare(v.object) || 'main object'; const was = bare(v.fromMaterial); const old = was ? `its ${was}` : 'its current material'; const touch = sentence(userPrompt);
   const fam = materialFamilyOf(provider); const join = (...xs: string[]) => xs.filter(Boolean).join(' ');
@@ -823,7 +825,8 @@ export const APP_GALLERY: GalleryApp[] = [
     extraInputs: [{ name: 'face', kind: 'file', accept: 'image/png,image/jpeg,image/webp', label: 'Face' }],
     // image 1 = the target photo, image 2 = the face (the edit models read the references in this order)
     fileMap: (f) => { const { face, ...rest } = f; return { ...rest, refs: (face ?? []).slice(0, 1) }; },
-    compose: (_v, c) => joinPrompt(FACE_SWAP_PROMPT, FACE_SWAP_KEEP, c.prompt),
+    // the registry's face-swap row for the picked model's family (GPT Image, Nano Banana, else the shared row); touch-ups as the last sentence
+    compose: (_v, c) => [fillPattern('face-swap', swapPatternModel(c.provider)), sentence(c.prompt)].filter(Boolean).join(' '),
     extra: { promptOptional: true, outputLabel: 'Face swap' },
     finish: (r) => ({ outputLabel: 'Face swap', ...(r.refPaths?.[1] ? { insetPath: r.refPaths[1] } : {}) }),
     notes: ['Works best with a clear, front-facing face photo and a target where the face is visible and not too small.'] },
@@ -845,9 +848,9 @@ export const APP_GALLERY: GalleryApp[] = [
     fields: [{ name: 'outfit', label: 'Outfit', kind: 'select', control: 'segmented', options: PERSON_SWAP_OUTFITS.map((o) => ({ ...o })), default: 'person',
       help: 'Works best with one person. With several, say who in Touch-ups (e.g. the woman on the left).' }],
     fileMap: (f) => { const { person, ...rest } = f; return { ...rest, refs: (person ?? []).slice(0, 1) }; },
-    // keep: the registry's person-swap row (one row for every model today; family rows can follow a real run); touch-ups as the last sentence
-    compose: (v, c) => v.outfit === 'keep' ? [fillPattern('person-swap', c.provider && NANO_BANANA.test(c.provider) ? 'nano-banana' : c.provider && /^api-gpt-image/.test(c.provider) ? 'gpt-image' : null,
-      { who: PERSON_SWAP_KEEP_OUTFIT_WHO, keepOutfit: PERSON_SWAP_KEEP_OUTFIT }), sentence(c.prompt)].filter(Boolean).join(' ') : joinPrompt(PERSON_SWAP_PROMPT, PERSON_SWAP_KEEP, c.prompt),
+    // the registry's person-swap row for the picked model's family (GPT Image, Nano Banana, else the shared row), {who} by the Outfit choice; touch-ups last
+    compose: (v, c) => [fillPattern('person-swap', swapPatternModel(c.provider), v.outfit === 'keep' ? { who: PERSON_SWAP_KEEP_OUTFIT_WHO, keepOutfit: PERSON_SWAP_KEEP_OUTFIT } : { who: PERSON_SWAP_WHO }),
+      sentence(c.prompt)].filter(Boolean).join(' '),
     extra: { promptOptional: true, outputLabel: 'Person swap' },
     finish: (r) => ({ outputLabel: 'Person swap', ...(r.refPaths?.[1] ? { insetPath: r.refPaths[1] } : {}) }),
     notes: ['Works best when both people are fully visible and roughly the same size in frame. Only swap people who agreed to it.',
