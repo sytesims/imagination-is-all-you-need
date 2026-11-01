@@ -77,14 +77,15 @@ export function registerThreeD(app: FastifyInstance) {
   app.post<{ Params: { id: string } }>('/api/jobs/:id/3d-poster', async (req, reply) => {
     const job = jobs.get(req.params.id);
     if (!job || job.status !== 'done' || !/\.glb$/i.test(job.resultUrl ?? '')) return reply.code(404).send({ error: 'No finished 3D result with that id.', errorType: 'not_found' });
-    let buf: Buffer | null = null; let ext = '.png';
+    let buf: Buffer | null = null; let ext = '.png'; let posterV: number | null = null;
     for await (const part of req.parts()) {
-      if (part.type !== 'file') continue; const chunks: Buffer[] = []; for await (const c of part.file) chunks.push(c as Buffer);
+      /* posterV: the framing the still was made with (web shared/front3d POSTER_V); an older one is made again */
+      if (part.type !== 'file') { const n = Number((part as any).value); if (part.fieldname === 'posterV' && Number.isInteger(n) && n > 0 && n < 1000) posterV = n; continue; } const chunks: Buffer[] = []; for await (const c of part.file) chunks.push(c as Buffer);
       if (part.fieldname === 'image' && /^image\/(png|jpeg|webp)$/.test(part.mimetype)) { buf = Buffer.concat(chunks); ext = part.mimetype === 'image/jpeg' ? '.jpg' : part.mimetype === 'image/webp' ? '.webp' : '.png'; }
     }
     if (!buf?.length || buf.length > 8 * 1024 * 1024) return reply.code(400).send({ error: 'Send one PNG, JPEG or WebP image up to 8 MB (field image).', errorType: 'validation' });
-    const name = `${job.id}-poster${ext}`; await writeFile(path.join(DATA_DIR, name), buf);
-    const url = `/files/${name}`; (job as any).threeD = { ...((job as any).threeD ?? {}), posterUrl: url };
+    const name = `${job.id}-poster${posterV ? `-v${posterV}` : ''}${ext}`; /* a new name per framing, so no browser keeps showing the old still */ await writeFile(path.join(DATA_DIR, name), buf);
+    const url = `/files/${name}`; (job as any).threeD = { ...((job as any).threeD ?? {}), posterUrl: url, ...(posterV != null ? { posterV } : {}) };
     if (job.outputs[0]) (job.outputs[0] as any).posterUrl = url;
     return { ok: true, posterUrl: url };
   });

@@ -7,12 +7,12 @@
  *    auto-rotate, a neutral environment light, a clay look (switched in place), keyboard focus, and a calm placeholder + download link when a file won't load.
  *  - snapshotPoster / recordTurntable: a still for the card, and an orbit video recorded from the viewer's canvas (MediaRecorder; no provider).
  */
+import { START_ORBIT } from './front3d';
 import { createElement, forwardRef, useEffect, useImperativeHandle, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
 
 export const is3dUrl = (u?: string | null) => !!u && /\.glb(\?|#|$)/i.test(u);
 export const jobIs3d = (j: { resultUrl?: string | null; outputs?: { url: string }[]; input?: any } | null | undefined) => !!j && (is3dUrl(j.resultUrl) || is3dUrl(j.outputs?.[0]?.url) || j.input?.outKind === '3d');
-/** The card still for a 3D job: the poster the viewer saved (threeD.posterUrl / outputs[0].posterUrl), else null. */
-export const posterOf3d = (j: any): string | null => j?.threeD?.posterUrl ?? j?.outputs?.[0]?.posterUrl ?? null;
+export { posterOf3d, posterStale, startOrbitOf, START_ORBIT, POSTER_V } from './front3d';
 export const fmtMB = (bytes: number) => `${bytes >= 1e7 ? Math.round(bytes / 1e6) : Math.round(bytes / 1e5) / 10} MB`;
 export const fmtFaces = (n?: number | null) => (n == null ? '' : n >= 1e6 ? `${Math.round(n / 1e5) / 10}M faces` : n >= 1000 ? `${Math.round(n / 1000)}k faces` : `${n} faces`);
 
@@ -47,12 +47,7 @@ export interface Model3DProps {
   /** ms before auto-rotate starts (default 2500: the first look is the start view; a turntable card starts at once) */ rotateDelay?: number;
 }
 const MV = 'model-viewer';
-/** The start view (UX audit #12): 30° off the front, slightly above; auto-rotate waits 2.5 s so the first look is that view. */
-export const START_ORBIT = '-30deg 75deg 120%';
-/** Where a job's model faces differs by route: Scenario's examples (and most GLBs) face +Z, but Tripo 3.1 through Comfy returned job 092abb03
- *  facing +X (checked 2026-10-27), so its 3/4 front view is at 60°. Unknown providers use START_ORBIT. */
-const ORBIT_BY_PROVIDER: Record<string, string> = { 'cloud-tripo-31': '60deg 75deg 120%' };
-export const startOrbitOf = (j: { provider?: string | null } | null | undefined): string => (j?.provider && ORBIT_BY_PROVIDER[j.provider]) || START_ORBIT;
+/* The start view (UX audit #12; shared/front3d.ts): 30° off the model's front, slightly above; auto-rotate waits 2.5 s so the first look is that view. */
 /** <model-viewer> with our defaults. Shows the still (or a calm placeholder) while another viewer is live, while loading, and on failure. */
 export const Model3D = forwardRef<Model3DHandle, Model3DProps>(function Model3D({ src, alt, poster, slot, pri = 1, autoRotate = true, look = 'lit', controls = true, className = '', style, downloadName, onLoad, onError, testId, invalid, timeoutMs = 60_000, cameraOrbit = START_ORBIT, animation = null, rotateDelay = 2500 }, ref) {
   const granted = useLiveViewer(slot, true, pri); const el = useRef<HTMLElement | null>(null);
@@ -91,7 +86,12 @@ function applyLook(m: any, look: Look) { try { for (const mat of m.model?.materi
 
 /** A PNG still of what the viewer shows now (the card poster). null when the viewer isn't ready. */
 export async function snapshotPoster(el: HTMLElement | null): Promise<Blob | null> {
-  const m = el as any; if (!m?.toBlob) return null; try { return await m.toBlob({ mimeType: 'image/png', idealAspect: true }); } catch { return null; }
+  const m = el as any; if (!m?.toBlob) return null;
+  /* On a slow GPU model-viewer renders below full size (its render scale), and toBlob then cuts the still (half the model, too small).
+   * Full scale for the few frames of the still, then back to the viewer's own setting. */
+  const Mv: any = customElements.get(MV); const was = Mv?.minimumRenderScale;
+  try { if (Mv) Mv.minimumRenderScale = 1; for (let k = 0; k < 3; k++) await new Promise((r) => requestAnimationFrame(r));
+    return await m.toBlob({ mimeType: 'image/png', idealAspect: true }); } catch { return null; } finally { if (Mv && was != null) Mv.minimumRenderScale = was; }
 }
 export interface RecordOpts { seconds?: number; fps?: number; onProgress?: (p: number) => void; signal?: AbortSignal }
 export interface Recording { blob: Blob; mime: string; ext: 'mp4' | 'webm'; seconds: number; fpsMeasured: number; frames: number }
