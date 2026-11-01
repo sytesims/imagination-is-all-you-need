@@ -150,6 +150,15 @@ export async function buildWorkflowExport(job: Job): Promise<WorkflowExport & { 
   if (job.toolId === 'object-swap' && route === 'comfy-cloud:cloud-h3-charswap') {
     return { ...base, reason: 'This H3 swap has no saved submitted graph. Current prompt composition and mask diagnostics differ; the historical graph cannot be reconstructed exactly.', headline: 'Historical workflow unavailable', graphs: [] };
   }
+  // A plugin's sample run (plugins.ts): nothing ran; the plugin wrote the workflow a real run on your own ComfyUI would send.
+  const sample = path.join(DATA_DIR, `${job.id.replace(/[^\w-]/g, '')}-graph.json`);
+  const pluginTool = job.simulated && existsSync(sample) ? (await import('./tools/registry.js')).getTool(job.toolId) : undefined;
+  if (pluginTool?.plugin) {
+    try { const graph = JSON.parse(readFileSync(sample, 'utf8'));
+      return fin('rebuilt', false, 'Sample — nothing ran. This is the workflow a real run on your own ComfyUI would send, with your settings.', [{ label: 'Result', workflow: pluginTool.workflows?.[0] ?? `plugin ${job.toolId}`, graph }],
+        { notes: ['Your input files are listed by their own names in the Load nodes. Copy them into ComfyUI’s input folder before you run it.', 'The plugin’s custom nodes and models must be installed in your ComfyUI.'] });
+    } catch { /* unreadable: fall through */ }
+  }
   // 2. Rebuild with the runner's own plan builder.
   const media: MediaNote[] = []; const runtime: WorkflowExport['runtime'] = [];
   const { hasPlan, buildPlan } = await import('./comfy/plans.js'); const { CLOUD_WORKFLOWS, buildCloudPlan } = await import('./comfy/cloudWorkflows.js');

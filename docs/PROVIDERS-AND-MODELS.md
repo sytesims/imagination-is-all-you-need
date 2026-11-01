@@ -15,7 +15,7 @@ Two choices, kept apart. The **Model** is what you get ("MiniMax H3", "LTX-2 19B
 | Sharper, larger video and images | Upscale (video), Upscale (image) | SeedVR2, ESRGAN-type upscalers |
 | Voice, music and sound | Voice Studio, Audio, Add soundtrack | Chatterbox, F5-TTS, Fish Audio Drama 3, ACE-Step |
 | Quick edits | Reframe, Remove Background, SDR→HDR, FPS Boost, Depth Map | BiRefNet, RIFE, Depth Anything |
-| One-click apps with presets | 20 apps in the current catalogue (Product Shot, Transitions, UGC Ad, Orbit Shot, …) | the base tool's model |
+| One-click apps with presets | 24 apps in the current catalogue (Product Shot, Transitions, UGC Ad, Orbit Shot, …) | the base tool's model |
 
 The challenge page lists "Cinematic Studio" and "Re-shoot a video" as ideas to rebuild; those map to Camera Moves and Re-shoot.
 

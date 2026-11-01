@@ -16,13 +16,17 @@ import { registerModelInfo, Info } from './models.js';
 import { RESOLUTIONS } from './media.js';
 import type { Job } from './jobs.js';
 import type { ToolDef } from './tools/types.js';
+import { mapGraph, hasFileKey, pluginOutKind, registerPluginSpec, clearPluginSpecs } from './pluginGraph.js';
+export { mapGraph } from './pluginGraph.js';
 
 export const PLUGIN_SCHEMA = 1;
 export interface NodeRef { node: string; field: string; map?: Record<string, unknown> }
-export interface PluginNodeMap { inputs: Partial<Record<'video' | 'image' | 'prompt' | 'seed' | 'resolution', NodeRef>>; fields?: Record<string, NodeRef | NodeRef[]>; presets?: Record<string, { node: string; field: string; value: unknown }[]>; output: { node: string } }
+export interface PluginNodeMap { inputs: Partial<Record<'video' | 'image' | 'prompt' | 'seed' | 'resolution', NodeRef>>; fields?: Record<string, NodeRef | NodeRef[]>; presets?: Record<string, { node: string; field: string; value: unknown }[]>; output: { node: string }; /** more results from the same run (e.g. Cutout's matte) */ extraOutputs?: { node: string; label: string }[] }
 export interface PluginManifest {
   schema: number; id: string; name: string; version?: string; category: string; description: string; status?: string; previewUrl?: string | null;
   input: 'image' | 'video';
+  /** What the plugin makes (default: read from the node map's output node, SaveImage → image, else video). */
+  output?: 'image' | 'video';
   inputs?: { prompt?: boolean; mix?: number; durations?: number[]; enhance?: boolean; steps?: number[]; resolutions?: string[]; fields?: FieldSpec[] };
   presets: { id: string; label: string; prompt: string; group?: string }[];
   providers?: string[];
@@ -62,6 +66,7 @@ export function validateManifest(m: any, dir: string): { errors: string[]; warni
   else if (getTool(m.id)) e.push(`id "${m.id}" is already used by another tool`);
   for (const k of ['name', 'category', 'description'] as const) if (!isStr(m[k], k === 'description' ? 500 : 60)) e.push(`${k} is required (non-empty string)`);
   if (m.input !== 'image' && m.input !== 'video') e.push('input must be "image" or "video"');
+  if (m.output != null && m.output !== 'image' && m.output !== 'video') e.push('output must be "image" or "video"');
   if (!Array.isArray(m.presets) || !m.presets.length) e.push('presets must be a non-empty array (they are the tool\'s type grid)');
   else m.presets.forEach((p: any, i: number) => { if (!isObj(p) || !isStr(p.id, 40) || !isStr(p.label, 60) || typeof p.prompt !== 'string') e.push(`presets[${i}] needs id, label, prompt`); });
   const ids = new Set((m.presets ?? []).map((p: any) => p?.id)); if (ids.size !== (m.presets ?? []).length) e.push('preset ids must be unique');
@@ -94,37 +99,28 @@ export function validateManifest(m: any, dir: string): { errors: string[]; warni
   const file = (k: string, f: unknown) => { if (!isStr(f, 200) || f.includes('..') || path.isAbsolute(f)) { e.push(`${k} must be a relative file name`); return null; } const p = path.join(dir, f); if (!existsSync(p)) { e.push(`${k}: ${f} not found`); return null; } return p; };
   let graph: Record<string, any> | undefined; let nodeMap: PluginNodeMap | null = null;
   const wf = file('workflow', m.workflow);
-  if (wf) try { graph = JSON.parse(readFileSync(wf, 'utf8')); if (!isObj(graph) || !Object.values(graph!).every((n: any) => isObj(n) && isStr(n.class_type) && isObj(n.inputs))) { e.push('workflow must be ComfyUI API format: { "<id>": { class_type, inputs } }'); graph = undefined; } } catch (x: any) { e.push(`workflow is not valid JSON: ${x.message}`); }
+  if (wf) try { graph = JSON.parse(readFileSync(wf, 'utf8')); if (!isObj(graph) || !Object.values(graph!).every((n: any) => isObj(n) && isStr(n.class_type) && isObj(n.inputs))) { e.push('workflow must be ComfyUI API format: { "<id>": { class_type, inputs } }'); graph = undefined; }
+    else if (hasFileKey(graph)) { e.push('workflow must not contain "__file" keys: the app fills in your input files itself'); graph = undefined; } } catch (x: any) { e.push(`workflow is not valid JSON: ${x.message}`); }
   if (m.nodeMap != null) {
     const nm = file('nodeMap', m.nodeMap);
     if (nm) try {
       nodeMap = JSON.parse(readFileSync(nm, 'utf8'));
-      const chk = (k: string, r: any) => { if (!isObj(r) || !isStr(r.node) || (k !== 'output' && !isStr(r.field))) e.push(`nodeMap ${k} needs node${k !== 'output' ? ' + field' : ''}`); else if (graph && !graph[r.node]) e.push(`nodeMap ${k}: node "${r.node}" is not in the workflow`); else if (graph && k !== 'output' && !(r.field in graph[r.node].inputs)) e.push(`nodeMap ${k}: node ${r.node} has no input "${r.field}"`); };
+      if (hasFileKey(nodeMap)) e.push('nodeMap must not contain "__file" keys: the app fills in your input files itself');
+      const chk = (k: string, r: any) => { const out = k === 'output' || k.startsWith('extraOutputs'); if (!isObj(r) || !isStr(r.node) || (!out && !isStr(r.field))) e.push(`nodeMap ${k} needs node${!out ? ' + field' : ''}`); else if (graph && !graph[r.node]) e.push(`nodeMap ${k}: node "${r.node}" is not in the workflow`); else if (graph && !out && !(r.field in graph[r.node].inputs)) e.push(`nodeMap ${k}: node ${r.node} has no input "${r.field}"`); };
       if (!isObj(nodeMap!.inputs) || !nodeMap!.inputs[m.input as 'video']) e.push(`nodeMap.inputs.${m.input} is required`);
       for (const [k, r] of Object.entries(nodeMap!.inputs ?? {})) chk(`inputs.${k}`, r);
       for (const [k, r] of Object.entries(nodeMap!.fields ?? {})) { (Array.isArray(r) ? r : [r]).forEach((x, i) => chk(`fields.${k}${Array.isArray(r) ? `[${i}]` : ''}`, x)); if (!(inp.fields ?? []).some((f: any) => f.name === k)) e.push(`nodeMap.fields.${k} is not an inputs.fields name`); }
       for (const [k, list] of Object.entries(nodeMap!.presets ?? {})) { if (!ids.has(k)) e.push(`nodeMap.presets.${k} is not a preset id`); (list ?? []).forEach((r: any, i: number) => chk(`presets.${k}[${i}]`, r)); }
       chk('output', nodeMap!.output);
+      if ((m.output === 'image' || m.output === 'video') && graph && graph[nodeMap!.output?.node] && pluginOutKind(graph, nodeMap) !== m.output) e.push(`output is "${m.output}" but the output node ${nodeMap!.output.node} (${graph[nodeMap!.output.node].class_type}) saves ${pluginOutKind(graph, nodeMap)}`);
+      const xo = nodeMap!.extraOutputs;
+      if (xo != null) { if (!Array.isArray(xo)) e.push('nodeMap.extraOutputs must be [{ node, label }]'); else xo.forEach((r: any, i: number) => { if (!isObj(r) || !isStr(r.label, 60)) e.push(`nodeMap.extraOutputs[${i}] needs node + label`); else chk(`extraOutputs[${i}]`, { node: r.node }); }); }
     } catch (x: any) { e.push(`nodeMap is not valid JSON: ${x.message}`); }
   } else w.push('no nodeMap: the generic handler cannot map inputs onto the workflow');
   if (m.handler != null) { if (!/^handler\.(ts|js|mjs)$/.test(m.handler)) e.push('handler must be handler.ts, handler.js or handler.mjs'); else file('handler', m.handler); }
   if (m.mock?.result != null) file('mock.result', m.mock.result);
   (m.mock?.results ?? []).forEach((r: unknown, i: number) => file(`mock.results[${i}]`, r));
   return { errors: e, warnings: w, graph, nodeMap };
-}
-
-/** Generic mapping: job input → workflow fields via the node map. */
-export function mapGraph(graph: Record<string, any>, nm: PluginNodeMap | null, input: Record<string, any>) {
-  const g = structuredClone(graph); if (!nm) return g;
-  const set = (r: NodeRef | undefined, v: unknown) => { if (r && g[r.node] && v !== undefined) g[r.node].inputs[r.field] = r.map && String(v) in r.map ? r.map[String(v)] : v; };
-  set(nm.inputs.video, input.videoPath ? path.basename(input.videoPath) : undefined);
-  set(nm.inputs.image, input.imagePath ? path.basename(input.imagePath) : undefined);
-  set(nm.inputs.prompt, input.finalPrompt ?? input.prompt);
-  set(nm.inputs.seed, input.seed);
-  set(nm.inputs.resolution, input.resolution);
-  for (const [k, r] of Object.entries(nm.fields ?? {})) for (const x of Array.isArray(r) ? r : [r]) set(x, input.fields?.[k]);
-  for (const t of input.types ?? []) for (const r of nm.presets?.[t] ?? []) if (g[r.node]) g[r.node].inputs[r.field] = r.value;
-  return g;
 }
 
 async function loadOne(dir: string): Promise<PluginStatus> {
@@ -151,6 +147,7 @@ async function loadOne(dir: string): Promise<PluginStatus> {
   const workflowId = `plugins/${path.basename(dir)}/${m.workflow}`;
   registerWorkflowLicense(workflowId, partIds);
   const inp = m.inputs ?? {};
+  const outKind = pluginOutKind(v.graph, v.nodeMap, m.output);
   const app = makeApp({
     id: m.id, name: m.name, description: m.description, category: m.category, status: m.status, previewUrl: m.previewUrl ?? null, input: m.input,
     types: m.presets.map((p) => ({ ...p })), mix: inp.mix, durations: inp.durations, enhance: inp.enhance, steps: inp.steps, prompt: inp.prompt, resolutions: inp.resolutions,
@@ -166,24 +163,28 @@ async function loadOne(dir: string): Promise<PluginStatus> {
   const tool: ToolDef = {
     ...app, pricing: { optionFactors: m.pricing.optionFactors, providerFactors: m.pricing.providerFactors },
     plugin: { id: m.id, dir, version: m.version, license: gov, handler: !!st.handler },
-    parseInput: handler.parseInput ? (f, fl) => handler.parseInput!(f, fl, { ...ctx, base: () => baseParse(f, fl) }) : baseParse,
+    parseInput: async (f, fl) => { const r = await (handler.parseInput ? handler.parseInput(f, fl, { ...ctx, base: () => baseParse(f, fl) }) : baseParse(f, fl)); return outKind === 'image' && !('error' in r) ? { ...r, outKind } : r; },
+    /* Reached only when the job does not run on your own ComfyUI (providers.ts sends local runs to comfy/runNative.ts with the plan from comfy/plans.ts):
+       a sample result, plus the workflow a real run would send (<jobId>-graph.json, shown by workflowExport.ts as a sample). */
     async run(job) {
       try { writeFileSync(path.join(DATA_DIR, `${job.id}-graph.json`), JSON.stringify(ctx.buildGraph(job.input))); } catch { /* best effort */ }
       if (handler.run) return handler.run(job, ctx);
-      return m.input === 'image' ? baseRun(job) : ctx.mockRun(job);
+      if (m.input === 'image' && outKind === 'video') return baseRun(job);
+      return ctx.mockRun(job);
     },
   };
   const mocks = m.mock?.results ?? (m.mock?.result ? [m.mock.result] : []);
   if (mocks.length) registerMockResult(m.id, mocks.map((r) => path.join(dir, r)));
   if (m.modelInfo) registerModelInfo(`${m.id}:${(m.providers ?? ['comfy-open'])[0]}`, m.modelInfo);
   registerTool(tool);
+  if (v.graph && v.nodeMap) registerPluginSpec({ id: m.id, workflowId, input: m.input, outKind, graph: v.graph, nodeMap: v.nodeMap });
   st.ok = true; st.toolId = m.id;
   return st;
 }
 
 /** Load every plugin folder once at startup. Never throws. */
 export async function loadPlugins() {
-  status.length = 0;
+  status.length = 0; clearPluginSpecs();
   if (!existsSync(PLUGINS_DIR)) return status;
   for (const d of readdirSync(PLUGINS_DIR, { withFileTypes: true }).filter((x) => x.isDirectory() && !x.name.startsWith('.') && !x.name.startsWith('_')).sort((a, b) => a.name.localeCompare(b.name))) {
     const dir = path.join(PLUGINS_DIR, d.name);
