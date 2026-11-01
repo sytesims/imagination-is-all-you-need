@@ -7,7 +7,8 @@ import './fixtures/tmp-cleanup.mjs';
 import assert from 'node:assert/strict'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path';
 const D = fs.mkdtempSync(path.join(os.tmpdir(), 'wanstatus-')); fs.mkdirSync(path.join(D, 'models'));
 Object.assign(process.env, { OPENHIGGSFIELD_DATA_DIR: D, OPENHIGGSFIELD_ENV_FILE: path.join(D, 'x.env'), OPENHIGGSFIELD_BACKEND: 'mock', OPENHIGGSFIELD_FILMING_FILE: path.join(D, 'nofilm.json'),
-  OPENHIGGSFIELD_LOCAL_AVAILABLE: '1', OPENHIGGSFIELD_ENFORCE_WEIGHTS: '1', OPENHIGGSFIELD_COMFY_MODELS_DIR: path.join(D, 'models'), OPENHIGGSFIELD_SEED_COMMUNITY: '0' });
+  OPENHIGGSFIELD_LOCAL_AVAILABLE: '1', OPENHIGGSFIELD_ENFORCE_WEIGHTS: '1', OPENHIGGSFIELD_COMFY_MODELS_DIR: path.join(D, 'models'), OPENHIGGSFIELD_SEED_COMMUNITY: '0',
+  OPENHIGGSFIELD_DISK_FREE_GB: '1000' /* plenty of room, so a nearly full runner disk can't turn weights_missing into not_enough_disk */ });
 for (const k of ['COMFY_API_KEY', 'COMFY_BASE_URL']) delete process.env[k];
 globalThis.fetch = (async (u: unknown) => { throw new Error(`network blocked in this test: ${String(u).slice(0, 80)}`); }) as typeof fetch;
 const Dd = await import('../src/routing/defaults.ts'); const S = await import('../src/routing/select.ts'); const { getTool } = await import('../src/tools/registry.ts'); const { getPrefs } = await import('../src/routing/prefs.ts');
