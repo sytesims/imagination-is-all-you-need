@@ -27,10 +27,10 @@ if (!skip) {
   for (const b of ['open', 'osascript']) { fs.writeFileSync(path.join(bin, b), `#!/bin/bash\necho "${b} $*" >> "${calls}"\n`); fs.chmodSync(path.join(bin, b), 0o755); }
   for (const d of ['scripts', 'node_modules/fastify', 'node_modules/tsx', 'node_modules/concurrently']) fs.mkdirSync(path.join(repo, d), { recursive: true });
   fs.writeFileSync(path.join(root, 'server.cjs'), SERVER);
-  // FAKE_SETUP: serve (after FAKE_DELAY seconds; the web page from a child process, like npm and vite) | doctor (exit 2)
+  // FAKE_SETUP: serve (after FAKE_DELAY seconds; the web page from a child process, like npm and vite) | doctor (setup's exit 1: it can't start)
   fs.writeFileSync(path.join(repo, 'scripts', 'setup.mjs'), `import { spawn } from 'node:child_process';
 console.log('fake setup ' + (process.env.FAKE_SETUP || 'serve'));
-if (process.env.FAKE_SETUP === 'doctor') { console.log('✗ Node.js is too old'); process.exit(2); }
+if (process.env.FAKE_SETUP === 'doctor') { console.log('✗ Node.js is too old'); process.exit(1); }
 setTimeout(() => {
   spawn(process.execPath, [${JSON.stringify(path.join(root, 'server.cjs'))}, process.env.WEB_PORT, process.env.PORT, 'web'], { stdio: 'inherit' });
   spawn(process.execPath, [${JSON.stringify(path.join(root, 'server.cjs'))}, process.env.WEB_PORT, process.env.PORT, 'api'], { stdio: 'inherit' });
@@ -95,7 +95,7 @@ test('a copy that is reloading (its api restarts) is waited for, not doubled', {
   } finally { clearTimeout(later); web.kill(); api?.kill(); await until(() => !listening(WEB) && !listening(API)); }
 });
 
-test('a setup that can\'t start (doctor exit 2) fails fast with only this start\'s log', { skip }, () => {
+test('a setup that can\'t start (setup exit 1) fails fast with only this start\'s log', { skip }, () => {
   fs.mkdirSync(path.dirname(logFile), { recursive: true });
   fs.appendFileSync(logFile, '\n=== an older start\nold line from before\n');
   const t0 = Date.now();

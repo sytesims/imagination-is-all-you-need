@@ -118,7 +118,7 @@ try {
   assert.match(distro22.out, /installs it: sudo apt-get install -y nodejs npm/); assert.doesNotMatch(distro22.out, /nodesource/);
   reset();
   const declined = lin(['--no-shortcut', '--no-start']);
-  assert.equal(declined.code, 0, declined.out); assert.match(declined.out, /NodeSource now\? no/); assert.match(declined.out, /nvm install 24/);
+  assert.equal(declined.code, 1, declined.out); assert.match(declined.out, /NodeSource now\? no/); assert.match(declined.out, /nvm install 24/);
   assert.doesNotMatch(declined.out, /git clone/); assert.equal(calls(), '', 'nothing installed');
   const tooNew = lin(['--dry-run', '--yes', '--no-shortcut', '--no-start'], { FAKE_NODE: 'v27.0.0' });
   assert.equal(tooNew.code, 1, tooNew.out); assert.match(tooNew.out, /v27\.0\.0 is newer than Imagination supports yet/); assert.match(tooNew.out, /nvm install 24 && nvm use 24/);
@@ -146,18 +146,55 @@ try {
   // an existing install is updated, not cloned again
   const app = path.join(home, 'app'); mkdirSync(path.join(app, '.git'), { recursive: true }); mkdirSync(path.join(app, 'scripts'));
   writeFileSync(path.join(app, 'scripts', 'setup.mjs'), '');
+  // (an install from before the updater, like 1.0: git pull --ff-only + npm ci instead of npm run update)
+  const old = run(['--dry-run', '--no-start', '--no-shortcut', '--dir', app]);
+  assert.equal(old.code, 0, old.out); assert.match(old.out, /from before the app could update itself/);
+  assert.ok(old.out.includes(`+ git -C ${app} pull --ff-only`), old.out); assert.match(old.out, /\+ npm ci --no-audit --no-fund/);
+  assert.doesNotMatch(old.out, /npm run update|git clone/);
+  writeFileSync(path.join(app, 'scripts', 'update.mjs'), ''); writeFileSync(path.join(app, 'package.json'), '{ "scripts": { "update": "true" } }');
   const again = run(['--dry-run', '--no-start', '--no-shortcut', '--dir', app]);
-  assert.equal(again.code, 0, again.out); assert.match(again.out, /npm run update/); assert.doesNotMatch(again.out, /git clone/);
+  assert.equal(again.code, 0, again.out); assert.match(again.out, /npm run update/); assert.doesNotMatch(again.out, /git clone|pull --ff-only/);
+
+  // real runs over a stand-in install (a real git copy with npm scripts that only exit): setup's exit code decides
+  // (0 = ready, 2 = something optional missing: carry on, 1 = failed: stop, nothing more), and a failed update stops too
+  const git = (cwd: string, ...a: string[]) => { const r = spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.invalid', '-c', 'init.defaultBranch=main', ...a], { cwd, encoding: 'utf8' }); assert.equal(r.status, 0, r.stderr); return r.stdout; };
+  const origin = path.join(home, 'origin'); mkdirSync(path.join(origin, 'scripts'), { recursive: true }); git(origin, 'init', '-q');
+  writeFileSync(path.join(origin, 'scripts', 'setup.mjs'), '');
+  writeFileSync(path.join(origin, 'package.json'), JSON.stringify({ name: 'stand-in', version: '1.0.0', scripts: { setup: "sh -c 'exit ${FAKE_SETUP_CODE:-0}'" } }));
+  writeFileSync(path.join(origin, 'package-lock.json'), JSON.stringify({ name: 'stand-in', version: '1.0.0', lockfileVersion: 3, requires: true, packages: { '': { name: 'stand-in', version: '1.0.0' } } }));
+  git(origin, 'add', '-A'); git(origin, 'commit', '-qm', 'one');
+  const inst1 = path.join(home, 'old install'); git(home, 'clone', '-q', origin, inst1);
+  writeFileSync(path.join(origin, 'NEW.txt'), 'two'); git(origin, 'add', '-A'); git(origin, 'commit', '-qm', 'two');
+  const real = (code: string) => run(['--no-start', '--no-shortcut', '--dir', inst1], { FAKE_OS: 'Linux', FAKE_SETUP_CODE: code });
+  const upd = real('0');
+  assert.equal(upd.code, 0, upd.out); assert.match(upd.out, /from before the app could update itself/);
+  assert.ok(existsSync(path.join(inst1, 'NEW.txt')), 'the old install got the new commit'); assert.match(upd.out, /Installed\. Start it any time/);
+  const optional = real('2');
+  assert.equal(optional.code, 0, optional.out); assert.match(optional.out, /Something optional is missing/); assert.match(optional.out, /Installed\./);
+  const broken = real('1');
+  assert.equal(broken.code, 1, broken.out); assert.match(broken.out, /didn't install, or the app can't start yet/);
+  assert.doesNotMatch(broken.out, /Installed\.|Starting the app/);
+  writeFileSync(path.join(inst1, 'setup.log'), 'npm error');
+  assert.ok(real('1').out.includes(`The install log: ${inst1}/setup.log`));
+  writeFileSync(path.join(inst1, 'package.json'), '{"changed": "by hand"}');
+  const dirty = real('0');
+  assert.equal(dirty.code, 1, dirty.out); assert.match(dirty.out, /changes to the app's own files/); assert.match(dirty.out, /package\.json/);
+  git(inst1, 'checkout', '--', 'package.json');
+  writeFileSync(path.join(inst1, 'scripts', 'update.mjs'), ''); writeFileSync(path.join(inst1, 'package.json'), JSON.stringify({ scripts: { update: 'false', setup: 'true' } }));
+  const noUpdate = real('0');
+  assert.equal(noUpdate.code, 1, noUpdate.out); assert.match(noUpdate.out, /Couldn't update the app .* so it's still the version you had/);
+  assert.doesNotMatch(noUpdate.out, /carrying on|Installed\./);
 
   // a real Mac build: an older install (with the old desktop .command) gets the app, a Dock pin, and loses the .command
   if (process.platform === 'darwin') {
-    // a stand-in install: just what make-mac-app needs, and npm scripts that don't exist (so update/setup do nothing)
+    // a stand-in install: just what make-mac-app needs, and npm scripts that do nothing (update and setup just succeed)
     const inst = path.join(home, 'Imagination old'); mkdirSync(path.join(inst, '.git'), { recursive: true });
     cpSync(path.join(repo, 'scripts', 'make-mac-app.sh'), path.join(inst, 'scripts', 'make-mac-app.sh'));
     cpSync(path.join(repo, 'scripts', 'mac-app'), path.join(inst, 'scripts', 'mac-app'), { recursive: true });
     cpSync(path.join(repo, 'brand', 'app-icon-512.png'), path.join(inst, 'brand', 'app-icon-512.png'));
     writeFileSync(path.join(inst, 'scripts', 'setup.mjs'), '');
-    writeFileSync(path.join(inst, 'package.json'), '{\n  "name": "stand-in",\n  "version": "9.9.9"\n}\n');
+    writeFileSync(path.join(inst, 'scripts', 'update.mjs'), '');
+    writeFileSync(path.join(inst, 'package.json'), '{\n  "name": "stand-in",\n  "version": "9.9.9",\n  "scripts": { "update": "true", "setup": "true" }\n}\n');
     const desk = path.join(home, 'Desktop'); mkdirSync(desk);
     const oldCommand = `#!/bin/bash\n# Starts Imagination Is All You Need and opens it in your browser. Close this window (or press Ctrl+C) to stop it.\nexport PATH="/opt/old/node/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"\ncd "${inst}" || { echo "The app isn't in ${inst} any more."; exit 1; }\nexec npm run setup -- --open\n`;
     writeFileSync(path.join(desk, 'Imagination.command'), oldCommand);

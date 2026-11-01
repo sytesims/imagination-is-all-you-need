@@ -178,7 +178,7 @@ check_tools() {
     say ""
     if [ -z "$PM" ]; then
       [ "$t" = ffmpeg ] && { say "Skipping ffmpeg for now: you can add it later."; continue; }
-      manual_steps; exit 0
+      manual_steps; exit 1
     fi
     if [ "$t" = node ] && [ "$PM" != brew ]; then add_linux_node; apt_updated=$((apt_updated | NODE_APT_UPDATED)); continue; fi
     local pkg; pkg="$(pkg_for "$t")"
@@ -188,7 +188,7 @@ check_tools() {
     [ "$PM" != brew ] && [ "$(id -u)" != 0 ] && say "It uses sudo, so your computer may ask for your password."
     if ! ask "Install $t now?"; then
       if [ "$t" = ffmpeg ]; then say "Skipping ffmpeg: you can install it later with: $how"; continue; fi
-      manual_steps; exit 0
+      manual_steps; exit 1
     fi
     # shellcheck disable=SC2086 # $pkg can be two package names
     case "$PM" in
@@ -219,7 +219,7 @@ add_linux_node() {
     how="sudo $inst nodejs npm"
     say "$(describe node): this command installs it: $how"
     [ "$(id -u)" != 0 ] && say "It uses sudo, so your computer may ask for your password."
-    ask "Install Node.js now?" || { manual_steps; exit 0; }
+    ask "Install Node.js now?" || { manual_steps; exit 1; }
     # shellcheck disable=SC2086 # $inst is a command and its options
     { [ "$PM" != apt ] || { as_root apt-get update && NODE_APT_UPDATED=1; }; } && as_root $inst nodejs npm \
       || die "Node.js didn't install (see the messages above)." "$(manual_steps)"
@@ -232,7 +232,7 @@ add_linux_node() {
   say "  curl -fsSL $url | sudo bash -"
   say "  sudo $inst nodejs"
   [ "$(id -u)" != 0 ] && say "They use sudo, so your computer may ask for your password."
-  ask "Add Node.js $NODE_PIN from NodeSource now?" || { manual_steps; exit 0; }
+  ask "Add Node.js $NODE_PIN from NodeSource now?" || { manual_steps; exit 1; }
   # shellcheck disable=SC2086 # $inst is a command and its options
   if ! command -v curl >/dev/null 2>&1; then
     { [ "$PM" != apt ] || as_root apt-get update; } && as_root $inst curl ca-certificates || die "curl didn't install (see the messages above)." "$(manual_steps)"
@@ -247,12 +247,35 @@ add_linux_node() {
 # ---- 2. the app folder -------------------------------------------------------------------------
 is_install() { [ -d "$1/.git" ] && [ -f "$1/scripts/setup.mjs" ]; }
 
+# has_updater DIR: the app in DIR has its own updater (npm run update; installs from before it, like 1.0, don't).
+has_updater() { [ -f "$1/scripts/update.mjs" ] && grep -q '"update":' "$1/package.json" 2>/dev/null; }
+
+# An install from before npm run update existed: the same safe steps by hand. Only a fast-forward (never a merge or a reset),
+# never with changes of yours in the app's own files, and server/data and .env.local are never touched.
+update_old_install() {
+  say "This install is from before the app could update itself, so the installer updates it with git."
+  local mine locks
+  mine="$(git -C "$DIR" status --porcelain --untracked-files=no 2>/dev/null | cut -c4- | grep -vxE 'package-lock\.json|mcp/package-lock\.json' || true)"
+  [ -z "$mine" ] || die "You have changes to the app's own files in $DIR, so nothing was updated:
+$(printf '%s\n' "$mine" | head -n 20 | sed 's/^/  /')" "Keep them with git commit (or move them somewhere else), then run the install line again."
+  # npm can rewrite the lockfiles by itself; that's not your work, so put them back first (as npm run update does)
+  locks="$(git -C "$DIR" ls-files package-lock.json mcp/package-lock.json 2>/dev/null || true)"
+  # shellcheck disable=SC2086 # one or two file names, no spaces
+  [ -z "$locks" ] || run git -C "$DIR" checkout -- $locks || die "Couldn't put the lockfiles in $DIR back the way GitHub has them, so nothing was updated." "Run the install line again; if it keeps failing, see docs/INSTALL.md (Updating)."
+  run git -C "$DIR" pull --ff-only || die "Couldn't update the app in $DIR (see the messages above), so it's still the version you had." \
+    "Check your internet connection and run the install line again. Your library and keys are untouched."
+  (cd "$DIR" && run npm ci --no-audit --no-fund) || die "The new version is in place, but its parts didn't install (see the messages above)." \
+    "Check your internet connection and free disk space, then run: cd \"$DIR\" && npm run setup"
+}
+
 get_app() {
   if [ "$MODE" = update ]; then
     bold "2. Updating the app in $DIR"
+    if ! has_updater "$DIR"; then update_old_install; return 0; fi
     local force=(); [ "$BRANCH" != main ] && force=(-- --force-branch)
     # npm run update never touches server/data or .env.local, and refuses when files were changed by hand.
-    (cd "$DIR" && run npm run update ${force[@]+"${force[@]}"}) || say "Couldn't update (see above), so the version you have stays. That's fine: carrying on."
+    (cd "$DIR" && run npm run update ${force[@]+"${force[@]}"}) || die "Couldn't update the app in $DIR (see the messages above), so it's still the version you had." \
+      "Fix what they say and run the install line again. Or keep the version you have and start it with: cd \"$DIR\" && npm run setup"
   else
     bold "2. Downloading the app into $DIR"
     run mkdir -p "$(dirname "$DIR")"
@@ -266,8 +289,14 @@ set_up() {
   local st=0
   if [ "$DRY" = 1 ]; then run cd "$DIR"; run npm run setup -- --no-start; return 0; fi
   (cd "$DIR" && npm run setup -- --no-start) || st=$?
-  # setup's own check: 0 = ready, 1 = something optional is missing (it says what), 2 = the app can't start yet.
-  [ "$st" -ge 2 ] && die "The app isn't ready to start yet." "Fix the lines marked ✗ above, then run: cd \"$DIR\" && npm run setup"
+  # setup's exit code: 0 = ready, 2 = the app works but something optional is missing (it said what), anything else = it failed.
+  case "$st" in
+    0) ;;
+    2) say "Something optional is missing (see the lines above). The app works without it; you can add it later." ;;
+    *) local log=""; [ -f "$DIR/setup.log" ] && log=" The install log: $DIR/setup.log"
+       die "The app's parts didn't install, or the app can't start yet (see the messages above).$log" \
+         "Fix what they say, then run: cd \"$DIR\" && npm run setup";;
+  esac
   return 0
 }
 

@@ -57,3 +57,5 @@ docs/H3-LICENSE-NOTE.draft.md
 screens/
 readiness/graph/captured/
 web/tsconfig.tsbuildinfo
+# npm run setup keeps its install log here only when the install failed
+setup.log
