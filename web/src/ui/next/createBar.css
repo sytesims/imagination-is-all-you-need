@@ -171,10 +171,11 @@ html body .ic.ic2 .ic-dock .ic-panel .ic-chiprow>.ic-folded.ic-folded{display:no
   html body .ic.ic2 .ic-dock .ic-panel .ic-chips[data-squeeze]{--fit-model-min:104px}
   html body .ic.ic2 .ic-dock .ic-panel .ic-chips[data-tight] .ic-chip.ic-model.ic-model{min-width:64px!important}
   /* 2. long labels truncate (their tooltips have them in full): a group's summary below, and an active Brand's name */
-  html body .ic.ic2 .ic-dock .ic-chips[data-trunc] ~ .bk-chip .bk-chip-l{max-width:96px}
+  html body .ic.ic2 .ic-dock .ic-chips[data-trunc] ~ .bk-chip .bk-chip-l{max-width:124px} /* the name only (no "Brand:" word since 2026-11-01): room for "Maison Aurelle" */
   /* …and a long group summary too ("Golden hour · Right · Soft · 70% · Warm"), so the workflow's main control stays on the bar */
   html body .ic.ic2 .ic-dock .ic-chips[data-trunc] .wf-grp b{max-width:170px;min-width:0;overflow:hidden;text-overflow:ellipsis}
   html body .ic.ic2 .ic-dock .ic-chips[data-trunc] .ic-chip.ic-model .ic-mpick{display:none} /* "· Default" / "· Your pick" moves to the tooltip */
+  html body .ic.ic2 .ic-dock .ic-chips .ic-chip.ic-model[data-pick-off] .ic-mpick{display:none} /* never half shown ("· De"): ImageCanvas measures it */
   /* still too wide with everything folded (a very long workflow name): the pinned chips shrink instead of spilling */
   html body .ic.ic2 .ic-dock .ic-panel .ic-chips[data-folded=all] .ic-fixed{flex:0 1 auto!important;min-width:0;overflow:hidden}
   html body .ic.ic2 .ic-dock .ic-chips[data-folded=all] .ic-fixed>.ic-model{flex:0 1 auto!important;min-width:64px}
