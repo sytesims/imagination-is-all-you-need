@@ -29,9 +29,29 @@ try {
   ok(`no possessive on an image reference: ${seen} People prompts across every offered model`);
   // the tag models really get their tokens (so the check above is not vacuous)
   const face: any = getTool('app-face-swap');
-  for (const [provider, tok] of [['api-kling-image', '<<<image_1>>>'], ['comfy-qwen21', '<image1>'], ['comfy-flux3-klein', '<ref_image_0>']]) {
+  for (const [provider, tok] of [['api-kling-image', '<<<image_1>>>'], ['comfy-flux3-klein', '<ref_image_0>']]) {
     const r: any = await promptPeek(face, { provider }, { image: 1, face: 1 }); assert.ok(String(r.prompt).includes(`background of ${tok} unchanged`), `${provider}: ${r.prompt}`); }
-  ok('Kling, Qwen Image 2.1 and FLUX 3 Klein read "the … of <their token>"');
+  ok('Kling and FLUX 3 Klein read "the … of <their token>"');
+  // Qwen Image 2.1 runs the BFS LoRA graphs: the preview shows the trained prompt the graph sends; Person Swap "Keep the photo's outfit" runs the
+  // head swap (the body-swap LoRA takes the clothing from <image2>, which would contradict it)
+  { const { BFS_HEAD_PROMPT, BFS_BODY_PROMPT, bfsSwapFor } = await import('../src/comfy/bfsSwap.ts'); const { buildPlan } = await import('../src/comfy/plans.ts');
+    const { jobWorkflows } = await import('../src/hardware/requirements.ts');
+    const person: any = getTool('app-person-swap');
+    const peek = async (t: any, f: Record<string, string>, files: Record<string, number>) => (await promptPeek(t, { provider: 'comfy-qwen21', ...f }, files)) as any;
+    { const r = await peek(face, { prompt: 'warmer skin' }, { image: 1, face: 1 }); assert.equal(r.prompt, `${BFS_HEAD_PROMPT}. warmer skin`); assert.equal(r.workflowFile, 'create-image-qwen21-faceswap-api.json'); }
+    { const r = await peek(person, {}, { image: 1, person: 1 }); assert.equal(r.prompt, BFS_BODY_PROMPT); assert.equal(r.workflowFile, 'create-image-qwen21-personswap-api.json'); }
+    { const r = await peek(person, { outfit: 'keep', prompt: 'the woman on the left' }, { image: 1, person: 1 }); assert.equal(r.prompt, `${BFS_HEAD_PROMPT}. the woman on the left`);
+      assert.equal(r.workflowFile, 'create-image-qwen21-faceswap-api.json'); assert.doesNotMatch(r.prompt, /clothing/); }
+    // the run: the plan, and the files the job needs, follow the same choice
+    const png = fs.readFileSync(path.resolve(import.meta.dirname, '../samples/sample-character.png')); fs.writeFileSync(path.join(D, 't.png'), png); fs.writeFileSync(path.join(D, 'q.png'), png);
+    for (const [outfit, wf, lora] of [['person', 'create-image-qwen21-personswap-api.json', 'bfs_body_swap_v1.0_qwen_2.1.safetensors'], ['keep', 'create-image-qwen21-faceswap-api.json', 'bfs_head_v1.1_qwen_2.1.safetensors']] as const) {
+      const input: any = await person.parseInput({ provider: 'comfy-qwen21', rights: '1', outfit }, { image: ['t.png'], person: ['q.png'] }); assert.ok(!input.error, JSON.stringify(input));
+      assert.equal(bfsSwapFor('app-person-swap', 'comfy-qwen21', input)?.workflowFile, wf, outfit);
+      const p = buildPlan({ id: `t-${outfit}`, toolId: 'app-person-swap', provider: 'comfy-qwen21', status: 'queued', input } as any);
+      assert.equal(p.passes[0].workflow, wf, outfit); assert.equal((p.passes[0] as any).expect?.lora, lora, outfit);
+      assert.deepEqual(jobWorkflows(person, 'comfy-qwen21', input), [wf], `${outfit}: the job needs that graph's files`); }
+    assert.equal(bfsSwapFor('app-person-swap', 'comfy-qwen21')?.workflowFile, 'create-image-qwen21-personswap-api.json', 'no job: the card keeps its own graph'); }
+  ok('Qwen Image 2.1: preview shows the BFS prompt; keep-outfit runs the head swap (plan, LoRA, needed files)');
   // Try-On: FASHN takes no prompt and Bria's instruction is only the user's words (none here), so the job stores none and the peek says so
   { const t: any = getTool('app-try-on'); const png = fs.readFileSync(path.resolve(import.meta.dirname, '../samples/sample-character.png'));
     fs.writeFileSync(path.join(D, 'p.png'), png); fs.writeFileSync(path.join(D, 'g.png'), png);

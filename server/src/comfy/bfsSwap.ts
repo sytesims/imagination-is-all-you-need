@@ -16,7 +16,13 @@ export const BFS_SWAPS: BfsSwap[] = [
   { toolId: 'app-face-swap', provider: 'comfy-qwen21', graph: 'create-image-qwen21-faceswap', workflowFile: 'create-image-qwen21-faceswap-api.json', lora: 'bfs_head_v1.1_qwen_2.1.safetensors', strength: 1, prompt: BFS_HEAD_PROMPT },
   { toolId: 'app-person-swap', provider: 'comfy-qwen21', graph: 'create-image-qwen21-personswap', workflowFile: 'create-image-qwen21-personswap-api.json', lora: 'bfs_body_swap_v1.0_qwen_2.1.safetensors', strength: 1, prompt: BFS_BODY_PROMPT },
 ];
-export const bfsSwapFor = (toolId: string, provider: string) => BFS_SWAPS.find((s) => s.toolId === toolId && s.provider === provider) ?? null;
+/** The BFS graph a job runs. Person Swap's "Keep the photo's outfit" (2026-11-01) runs the head-swap graph: the body-swap LoRA was trained to take
+ *  the clothing from <image2>, while the head swap keeps the target's body and clothes and brings the head and hair from <image2>. `input` = the job's
+ *  input (outfit is stored on it and in appFields); without one (model cards, downloads) the tool's own graph. */
+export const bfsSwapFor = (toolId: string, provider: string, input?: { outfit?: unknown; appFields?: { outfit?: unknown } } | null): BfsSwap | null => {
+  if (toolId === 'app-person-swap' && (input?.outfit ?? input?.appFields?.outfit) === 'keep') return bfsSwapFor('app-face-swap', provider);
+  return BFS_SWAPS.find((s) => s.toolId === toolId && s.provider === provider) ?? null;
+};
 /** The guide's prompt, then the user's touch-ups ("image 2" → <image2>, the encoder's tags). */
 export const bfsSwapPrompt = (s: BfsSwap, touchUps?: string | null) => {
   const t = String(touchUps ?? '').trim().replace(/(?<![<\w])\bimage\s*([1-9])\b(?!>)/gi, '<image$1>'); // a tag the shared rewrite already wrote stays one tag

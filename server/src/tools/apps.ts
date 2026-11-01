@@ -870,6 +870,7 @@ export const APP_GALLERY: GalleryApp[] = [
     finish: (r) => ({ outputLabel: 'Person swap', ...(r.refPaths?.[1] ? { insetPath: r.refPaths[1] } : {}) }),
     notes: ['Works best when both people are fully visible and roughly the same size in frame. Only swap people who agreed to it.',
       'Outfit: "Use the person\'s outfit" (default) brings the clothes from the person photo; "Keep the photo\'s outfit" keeps the target\'s clothes and accessories.',
+      'On Qwen Image 2.1 (local), "Keep the photo\'s outfit" runs the head swap: the face and hair change, the body and clothes stay.',
       'With several people in the target, say who in Touch-ups (e.g. the woman on the left). Sunglasses on the person photo hide the face, so it won\'t carry over. Crop phone status bars off screenshots first.'] },
   // Material Swap (2026-10-31): object photo + material photo on the two-image edit route (local Qwen Image 2.1 by default: its official edit template's
   // two inputs), plus hosted edit models that take 2+ images. Two optional short words fill our prompt (materialSwapPrompt); no new model.
