@@ -242,7 +242,7 @@ The gallery is the first thing judges see, so it should look curated, not random
 
 | Asset | Files |
 |---|---|
-| GitHub social preview (1280 × 640) | `brand/social/github-social-preview.svg` / `.png` |
+| GitHub social preview (1280 × 640) | `brand/social/github-social-preview.png`, and the site's link preview `site/public/brand/social-preview.jpg` (1200 × 630). Both are rendered from `scripts/brand/social-preview.html` with `scripts/brand/render-social-preview.mjs`. |
 | README hero (1600 × 500) | `brand/social/readme-hero.svg` / `.png` |
 | Demo title and end cards (1920 × 1080) | `brand/video/title-card.svg` / `.png`, `brand/video/end-card.svg` / `.png` |
 | Lower third (1920 × 1080, transparent) | `brand/video/lower-third.svg` / `.png` |
