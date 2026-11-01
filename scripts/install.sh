@@ -82,10 +82,14 @@ case "$NODE_MAJOR" in
      else die "Node.js $NODE_V is too old. It reached its end of life and no longer gets security fixes. Install Node.js 22, 24 or 26 (24 recommended). $NODE_STEPS"; fi;;
 esac
 fi
-PY="${PYTHON:-python3}"; command -v "$PY" >/dev/null || die "Python 3.10+ is required (used by the model/node manifest tools)"
-"$PY" -c 'import sys; sys.exit(0 if sys.version_info>=(3,10) else 1)' || die "Python 3.10+ required, found $("$PY" -V)"
+# Python only for the ComfyUI / custom node / model steps and --list-tools; the app itself doesn't need it.
+PY="${PYTHON:-python3}"; NEED_PY=0; { [ $LIST = 1 ] || [ -n "$COMFY_DIR" ] || [ $MODELS_ONLY = 1 ]; } && NEED_PY=1
+if [ $NEED_PY = 1 ]; then
+  command -v "$PY" >/dev/null || die "Python 3.10+ is required for ComfyUI, custom nodes and model downloads (the model/node manifest tools)"
+  "$PY" -c 'import sys; sys.exit(0 if sys.version_info>=(3,10) else 1)' || die "Python 3.10+ required, found $("$PY" -V)"
+fi
 [ $MODELS_ONLY = 1 ] || command -v ffmpeg >/dev/null || warn "ffmpeg not found: uploads/remux/audio keep need it (apt install ffmpeg / brew install ffmpeg)"
-info "$([ $MODELS_ONLY = 0 ] && echo "Node $(node -v), ")$("$PY" -V)"
+info "$([ $MODELS_ONLY = 0 ] && echo "Node $(node -v)")$([ $NEED_PY = 1 ] && echo "$([ $MODELS_ONLY = 0 ] && echo ', ')$("$PY" -V)")"
 
 # ---- tool table / disk estimate -------------------------------------------------------------------
 estimate() { # args: prefixes...  -> prints table + "TOTAL <need_gb> <have_gb>"
@@ -102,7 +106,7 @@ for f in need:
     x = files.get(f, {}); s = x.get('size') or 0; tot += s
     if comfy and os.path.exists(os.path.join(comfy, 'models', x.get('folder', ''), f)): have += s
 gated = [f for f in need if files.get(f, {}).get('head_status') not in ('ok', None)]
-if gated: print('  gated (accept the licence on Hugging Face, set HF_TOKEN) or unresolved:', ', '.join(sorted(gated)))
+if gated: print('  gated (accept the licence on Hugging Face, set OPENHIGGSFIELD_HF_TOKEN or HF_TOKEN) or unresolved:', ', '.join(sorted(gated)))
 print(f"TOTAL {tot/1e9:.1f} {have/1e9:.1f} {len(wf)}")
 PY
 }
@@ -145,8 +149,9 @@ if [ ${#PLAN[@]} -gt 0 ] && [ $YES = 0 ] && [ $DRY = 0 ]; then
 fi
 
 # ---- app ------------------------------------------------------------------------------------------
-[ $MODELS_ONLY = 1 ] || { info "Installing app dependencies (npm ci)"; run npm ci --no-audit --no-fund; }
-if [ $SKIP_BUILD = 0 ]; then info "Building server + web (npm run build)"; run npm run build; fi
+[ $MODELS_ONLY = 1 ] || { info "Installing app dependencies (npm ci)"; run npm ci --no-audit --no-fund \
+  || die "The app's parts didn't install (npm ci failed; see above). Check your internet connection and free disk space, then run this again."; }
+if [ $SKIP_BUILD = 0 ]; then info "Building server + web (npm run build)"; run npm run build || die "The build failed (see above). Fix what it says, then run this again."; fi
 
 # ---- ComfyUI (optional) ---------------------------------------------------------------------------
 if [ -n "$INSTALL_COMFY" ]; then
@@ -180,22 +185,23 @@ for k,p in json.load(open('readiness/manifest/custom-nodes.json'))['packs'].item
 # Download straight from models.json (sha256-verified, resumable-by-skip). Does not rewrite the manifest.
 import hashlib, json, os, sys, urllib.error, urllib.request
 man, comfy, *pre = sys.argv[1:]; m = json.load(open(man))
+hf = os.environ.get('OPENHIGGSFIELD_HF_TOKEN') or os.environ.get('HF_TOKEN')  # the Settings name first, then the usual one
 need = {f for k, v in m['workflows'].items() if any(k.startswith(p) for p in pre) for f in v['models']}
 for x in m['models']:
     if x['file'] not in need: continue
-    # Gated files (the author asks you to accept its licence on Hugging Face) download like the rest once HF_TOKEN is set; the licence is yours to follow.
+    # Gated files (the author asks you to accept its licence on Hugging Face) download like the rest once a Hugging Face token is set; the licence is yours to follow.
     gated = x.get('head_status') == 'gated' and bool(x.get('url'))
-    if not x.get('url') or (x.get('head_status') != 'ok' and not (gated and os.environ.get('HF_TOKEN'))):
-        print('SKIP (gated: accept its licence on Hugging Face and set HF_TOKEN; unresolved: see README):', x['file']); continue
+    if not x.get('url') or (x.get('head_status') != 'ok' and not (gated and hf)):
+        print('SKIP (gated: accept its licence on Hugging Face and set OPENHIGGSFIELD_HF_TOKEN or HF_TOKEN; unresolved: see README):', x['file']); continue
     fold = x['folder'] if x['folder'].startswith('custom_nodes/') else 'models/' + x['folder']
     dst = os.path.join(comfy, fold, x['file']); os.makedirs(os.path.dirname(dst), exist_ok=True)
     if os.path.exists(dst) and (not x.get('size') or os.path.getsize(dst) == x['size']): print('have', dst); continue
     print(f"get  {x['file']} ({(x.get('size') or 0)/1e9:.2f} GB) -> {dst}", flush=True)
     hdr = {'User-Agent': 'openhiggsfield-install'}
-    if os.environ.get('HF_TOKEN'): hdr['Authorization'] = 'Bearer ' + os.environ['HF_TOKEN']
+    if hf: hdr['Authorization'] = 'Bearer ' + hf
     h = hashlib.sha256()
     try:
-        with urllib.request.urlopen(urllib.request.Request(x['url'], headers=hdr)) as r, open(dst + '.part', 'wb') as o:
+        with urllib.request.urlopen(urllib.request.Request(x['url'], headers=hdr), timeout=60) as r, open(dst + '.part', 'wb') as o:
             while (b := r.read(1 << 20)): h.update(b); o.write(b)
     except urllib.error.HTTPError as e:
         if gated and e.code in (401, 403): print(f"SKIP (gated: accept the licence on {x.get('page_url') or x['url'].split('/resolve/')[0]}, then re-run):", x['file']); continue
@@ -211,9 +217,10 @@ elif [ -n "$TOOLS" ] && [ "$TOOLS" != none ]; then warn "--tools needs --comfy-d
 [ $MODELS_ONLY = 1 ] && { info "Models done."; exit 0; }
 ENVF="${OPENHIGGSFIELD_ENV_FILE:-$ROOT/.env.local}"
 # ---- env-file helpers (merge, never overwrite: re-runs keep keys saved in Settings) ----
-# env_init FILE: create it if missing, mode 600. env_set FILE KEY VALUE: replace KEY's line or append it (temp file next to it, never /tmp).
+# env_init FILE: create it if missing, mode 600. env_set FILE KEY VALUE: replace KEY's line (also "export KEY=", like scripts/env-merge.mjs)
+# or append it (temp file next to it, never /tmp).
 env_init() { [ -f "$1" ] || ( umask 077; echo "# written by scripts/install.sh; re-runs merge into this file and keep your saved keys" > "$1" ); chmod 600 "$1"; }
-env_set() { local f="$1" k="$2" v="$3" t; t="$(mktemp "$f.XXXXXX")"; chmod 600 "$t"; grep -v "^$k=" "$f" > "$t" || true; printf '%s=%s\n' "$k" "$v" >> "$t"; mv -f "$t" "$f"; chmod 600 "$f"; }
+env_set() { local f="$1" k="$2" v="$3" t; t="$(mktemp "$f.XXXXXX")"; chmod 600 "$t"; grep -vE "^[[:space:]]*(export[[:space:]]+)?$k[[:space:]]*=" "$f" > "$t" || true; printf '%s=%s\n' "$k" "$v" >> "$t"; mv -f "$t" "$f"; chmod 600 "$f"; }
 # ---- end env-file helpers ----
 if [ $DRY = 0 ]; then
   env_init "$ENVF"; env_set "$ENVF" OPENHIGGSFIELD_BACKEND "$BACKEND"
