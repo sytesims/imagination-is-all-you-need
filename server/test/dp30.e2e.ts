@@ -107,6 +107,13 @@ try {
     const NOTE = /^(.+ is too heavy for your computer( \([a-z].+\))?, so .+ is the default\.|.+ is the default for .+ but is too heavy for your computer( \([a-z].+\))?, so .+ is used\.)/;
     const t = await get(`${C}/api/tools`); const arr: any[] = Array.isArray(t) ? t : t.tools; const fb = arr.map((x) => x.defaultFallback).filter((f) => f?.reasonCode === 'too_heavy');
     for (const f of fb) { assert.match(f.note, NOTE, f.note); assert.ok(!/needs more graphics memory/.test(f.note), f.note); }
+    // no note carries an empty reason "()" (was "MiniMax H3 can't run here ()" on Transition / UGC ad / Generate Video references)
+    for (const x of arr) if (x.defaultFallback?.note) assert.ok(!/\(\s*\)/.test(x.defaultFallback.note), `${x.id}: ${x.defaultFallback.note}`);
+    for (const id of ['app-transition', 'app-ugc-ad']) { const f = arr.find((x) => x.id === id)?.defaultFallback; assert.equal(f?.reasonCode, 'too_heavy', `${id}: ${JSON.stringify(f)}`); assert.match(f.note, NOTE, f.note); }
+    const r2v = await get(`${C}/api/tools/h3-video/price?provider=comfy-h3&types=${encodeURIComponent('["r2v"]')}`); assert.equal(r2v.defaultFallback?.reasonCode, 'too_heavy', JSON.stringify(r2v.defaultFallback)); assert.match(r2v.defaultFallback.note, NOTE, r2v.defaultFallback.note);
+    // Restyle family (nothing runs on a CPU-only computer): the note names why the local default can't run either, in the fit's own words
+    for (const id of ['restyle', 'app-anime-restyle', 'cinema']) { const f = arr.find((x) => x.id === id)?.defaultFallback; assert.ok(f, id);
+      assert.match(f.note, /^.+ isn’t ready in this app yet\. .+ is too heavy for your computer \(needs a graphics card with about [\d.]+ GB of memory; your computer has none\)\. Nothing can run yet\./, `${id}: ${f.note}`); }
     // the user's own default that is too heavy here: always a too_heavy fallback, with the CPU fit reason in its words
     const set = await send('PUT', `${C}/api/me/defaults`, { toolId: 'voice', model: 'comfy-chatterbox' }); assert.equal(set.status, 200, JSON.stringify(set.j).slice(0, 400));
     try {
