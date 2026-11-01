@@ -2,7 +2,7 @@
  *  prompt = the camera instruction the server puts FIRST in the job prompt ('' for free camera). */
 export interface CameraCatalogEntry { id: string; label: string; category: string; order: number; prompt: string; description: string;
   camera: { verb: string; direction: string | null; speed: string | null; framing: string | null } | null; note: string | null; loraRecommended: boolean }
-export const CAMERA_CATEGORIES = ['General', 'Basic', 'Zoom', 'Close', 'Lens', 'Framing', 'Orbit', 'Crane', 'Aerial', 'Transition', 'Vehicle', 'Rig', 'LTX camera', 'Style', 'Timelapse'] as const;
+export const CAMERA_CATEGORIES = ['General', 'Basic', 'Zoom', 'Close', 'Lens', 'Framing', 'Orbit', 'Crane', 'Aerial', 'Transition', 'Vehicle', 'Rig', 'LTX camera', 'H3 camera', 'Style', 'Timelapse'] as const;
 export const CAMERA_CATALOG: CameraCatalogEntry[] = [
 {
 "id": "free",

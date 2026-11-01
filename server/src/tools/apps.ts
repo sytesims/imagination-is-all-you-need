@@ -314,7 +314,7 @@ function cameraPresetMeta(x: Preset, i: number): Preset {
 }
 export const cameraApp = makeApp({
   id: 'camera', name: 'Camera Moves', category: 'Video', status: 'new', input: 'image',
-  description: 'Turn one start image into a short shot with one preset camera move, 3 or 5 s.',
+  description: 'One preset camera move on a start image, or from a prompt alone on most models. 3–15 s, depending on the model.' /* lengths re-read from durationsFor below */,
   types: [
     t('Basic moves', 'push-in', 'Push in', 'slow dolly push in'), t('Basic moves', 'pull-out', 'Pull out', 'slow dolly pull out'),
     t('Basic moves', 'pan-left', 'Pan left', 'smooth pan to the left'), t('Basic moves', 'pan-right', 'Pan right', 'smooth pan to the right'),
@@ -439,6 +439,9 @@ export function cameraImageCaps() {
     return r;
   }; }
 (cameraApp as any).app = { ...(cameraApp as any).app, moveAliases: CAMERA_ALIASES, capabilities: { ...((cameraApp as any).app?.capabilities ?? {}), ...cameraImageCaps() }, imageOptional: true };
+{ // the description's lengths come from the same per-model lists the quote and the job use (h3/videoCaps.ts durationsFor)
+  const ds = Object.values(durationsByProvider('camera', cameraApp.providers)).flatMap((x) => x ?? []); const lo = Math.min(...ds), hi = Math.max(...ds);
+  cameraApp.description = `One preset camera move on a start image, or from a prompt alone on most models. ${lo}–${hi} s, depending on the model.`; }
 cameraApp.routeInput = () => ({ mode: 'camera' }); // quotes / listings judge routes on the job's own mode (the Router video bodies map Camera Moves jobs)
 (cameraApp as any).imageOptional = true; // top-level: some route runs a move from the prompt alone (app.capabilities.imageRequiredByProvider says which)
 cameraApp.inputs = cameraApp.inputs.map((x: any) => (x.name === 'image' ? { ...x, required: false, requiredByProvider: cameraImageCaps().imageRequiredByProvider, description: 'Start image (the first frame). Optional on LTX moves and on Seedance / MiniMax H3 (text-to-video); required on Wan Fun Camera and H3 camera.' } : x));
