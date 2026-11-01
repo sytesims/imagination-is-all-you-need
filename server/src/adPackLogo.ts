@@ -14,7 +14,7 @@ import { dataFileOf } from './cleanMedia.js';
 import { runFfmpeg, videoSize } from './ffmpeg.js';
 import { getBrandKit } from './brandKits.js';
 import { logoForBackground } from './shared/brandKit.js';
-import { adLogoBox, asCorner, placementOf } from './shared/adPack.js';
+import { adLogoBox, adLogoSafe, adLogoSize, asCorner, type AdLogoRec } from './shared/adPack.js';
 import { addAdjustNote } from './shared/snap.js';
 import type { Job } from './jobs.js';
 
@@ -38,23 +38,23 @@ function areaLum(file: string, b: { x: number; y: number; w: number; h: number }
 }
 
 const stamped = new Set<string>();
-/** Put the logo on every finished ad of the job (job.input.adLogo = { kit, corner, placement }, set by the app's finish). */
+/** Put the logo on every finished ad of the job (job.input.adLogo, set by the app's finish: Ad Pack, and Product Shot / Phone Photo with Brand). */
 export async function stampAdLogos(job: Job): Promise<void> {
-  const a = job.input?.adLogo as { kit: string; corner: string; placement: string } | undefined;
+  const a = job.input?.adLogo as AdLogoRec | undefined;
   if (!a || job.status !== 'done' || stamped.has(job.id)) return; stamped.add(job.id); // once per job (a rerun is a new job; nested route runs call this twice)
   const kit = getBrandKit(String(a.kit)); if (!kit) return;
   job.status = 'running'; job.stage = 'finishing'; job.progress = 99; // hold 'done' until the ads carry the logo
   try {
-    const pl = placementOf(a.placement); const corner = asCorner(a.corner); let missed = 0;
+    const safe = adLogoSafe(a), logoSize = adLogoSize(a); const corner = asCorner(a.corner); let missed = 0;
     for (let k = 0; k < (job.outputs ?? []).length; k++) {
       const o = job.outputs[k]; const src = dataFileOf(o.url); if (!src) { missed++; continue; }
       const size = await videoSize(src); if (!size) { missed++; continue; }
       // the box is laid out with the main logo's shape first, so the brightness behind it picks light / dark
       const main = logoFileOf(kit.logos.main?.url ?? kit.logo?.url); const mainSize = main ? await videoSize(main) : null;
-      const box0 = adLogoBox(size.width, size.height, corner, mainSize ? { w: mainSize.width, h: mainSize.height } : { w: 1, h: 1 }, pl.safe);
+      const box0 = adLogoBox(size.width, size.height, corner, mainSize ? { w: mainSize.width, h: mainSize.height } : { w: 1, h: 1 }, safe, logoSize);
       const lum = await areaLum(src, box0); const pick = logoForBackground(kit, lum ?? 0.5); const file = logoFileOf(pick?.url) ?? main;
       const ls = file ? await videoSize(file) : null; if (!file || !ls) { missed++; continue; }
-      const box = adLogoBox(size.width, size.height, corner, { w: ls.width, h: ls.height }, pl.safe);
+      const box = adLogoBox(size.width, size.height, corner, { w: ls.width, h: ls.height }, safe, logoSize);
       const name = `${job.id}-out${k}-ad.png`; const out = path.join(DATA_DIR, name);
       if (await runFfmpeg(adLogoArgs(src, file, out, box)) !== 0) { missed++; continue; }
       o.plainUrl = o.url; o.url = `/files/${name}`;

@@ -35,7 +35,8 @@ import { canAddSound } from './addSoundLogic';
 import { useEffect, useRef, useState } from 'react';
 import { LogoStampLayer, stampAvailable } from './LogoStamp';
 import { MenuBody, MenuRow, ToolsPanel, type MItem, type MSection } from './ResultMenu';
-import { endAdjust, setStampOn, startAdjust } from './stampStore';
+import { endAdjust, setStampOn, stampSettingsFor, startAdjust } from './stampStore';
+import { brandAccentLead } from '../../../server/src/shared/brandKit';
 import { loadBrandKits } from './brandStore';
 import { useStamp } from './stampStore';
 import { loadImg, loadStampArt, makeStamped } from './logoStampDraw';
@@ -141,9 +142,11 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
   const openAdjust = () => { if (!adKit || !plainUrl) return; const go = () => startAdjust(adjKey, adLogoStamp(adLogo));
     /* the clean copy and the logo load first, so the picture never shows without its logo while it opens */
     void Promise.all([loadImg(plainUrl), loadStampArt(adKit)]).then(go, go); };
+  /* a brand app's video (UGC Ad): Add logo puts the logo only, the text line an option per result (stampStore stampSettingsFor) */
+  const logoOnly = kind === 'video' && !!(job as any).input?.brandKitId && !!brandAccentLead(String((job as any).toolId ?? '')) ? `${job.id}:${outIx}` : null;
   const stamping = adjSave === 'stamp' || (!adjOk && stampOk && stampS.on);
   const stampedUrl = () => (adj ? makeStamped({ jobId: job.id, out: outIx, url: plainUrl!, kind: 'image', kit: adKit!, settings: adj.settings, plain: true, inset: adj.inset })
-    : makeStamped({ jobId: job.id, out: outIx, url: cur.url, kind: stampKind!, kit: stampKit!, settings: stampS.settings }));
+    : makeStamped({ jobId: job.id, out: outIx, url: cur.url, kind: stampKind!, kit: stampKit!, settings: stampSettingsFor(stampS, logoOnly) }));
   /* Save / Download: the clean copy when the logo was taken off while adjusting, else the result as shown */
   const saveHref = cleanHref(adjSave === 'plain' ? plainUrl! : cur.url);
   const openShare = async () => { if (adjSave === 'plain') { setShareUrl(plainUrl!); setShare(true); return; } if (!stamping) { setShareUrl(null); setShare(true); return; }
@@ -215,8 +218,8 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
   /* Add logo: always findable on your image and video results; with a brand that has a logo it turns on the stage stamp, else it leads to Assets › Brands */
   const logoBase = viewer && (medium === 'image' || medium === 'video') && !sample && owner && !(job as any).deletedAt && job.status === 'done' && !showingOriginal && !lys && /^\/files\//.test(cur.url);
   const logoItem = (): MItem | null => { if (!logoBase) return null; const k = stampKit;
-    if (adjOk && adKit) return adj ? { k: 'logo', label: 'Reset logo', icon: <BrandIcon size={16} />, testid: 'rv-adjust-logo', pressed: true, hint: 'Back to the logo as Ad Pack placed it', onClick: () => endAdjust(adjKey) }
-      : { k: 'logo', label: 'Adjust logo', icon: <BrandIcon size={16} />, testid: 'rv-adjust-logo', hint: 'Move, resize or take off the logo on this ad. The ad as made stays as it is.', onClick: openAdjust };
+    if (adjOk && adKit) return adj ? { k: 'logo', label: 'Reset logo', icon: <BrandIcon size={16} />, testid: 'rv-adjust-logo', pressed: true, hint: 'Back to the logo as first placed', onClick: () => endAdjust(adjKey) }
+      : { k: 'logo', label: 'Adjust logo', icon: <BrandIcon size={16} />, testid: 'rv-adjust-logo', hint: 'Move, resize or take off the logo. The picture as made stays as it is.', onClick: openAdjust };
     if (adjOk) return null; /* the kit Ad Pack used is gone: no second logo on top of the baked one */
     if (!k?.logo?.url) { const href = k ? `/assets/brands?brand=${encodeURIComponent(k.id)}` : '/assets/brands';
       return { k: 'logo', label: 'Add logo', icon: <BrandIcon size={16} />, testid: 'rv-add-logo', trail: <span className="rm-go">Set up your brand first ›</span>, hint: k ? `${k.name} has no logo yet. Add one in Assets › Brands.` : 'Make a brand with your logo in Assets › Brands, then put it on any result', href, onClick: goClick(href, onClose) }; }
@@ -515,7 +518,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
     /* Add logo and text: the stage layer (pill, the logo you drag, its toolbar and More card) */
     const stampHere = !(inX && inUrl) && !(multi && grid) && !mBad && !stage;
     const stamp = adj && stampHere ? <LogoStampLayer key={`${adjKey}:adjust`} kind="image" adjust={{ key: adjKey, kitId: adKit!.id }} />
-      : !adjOk && stampOk && stampKind && stampHere ? <LogoStampLayer key={`${job.id}:${outIx}`} kind={stampKind} /> : null;
+      : !adjOk && stampOk && stampKind && stampHere ? <LogoStampLayer key={`${job.id}:${outIx}`} kind={stampKind} logoOnly={logoOnly} /> : null;
     return <ViewerShell label={pr ? `Result: ${pr.slice(0, 80)}` : title} bg={bg} media={<>{stageMedia}{dock}{stamp}</>}
       who={owner && !sample && !(job as any).example ? { name: 'You', role: 'Author', self: true } : authorOf(job, sample)}
       badge={trashed ? <TrashChip /> : sampleChip ? <span className="rvx-badges">{sampleChip}</span> : null} headActions={trashed ? null : fav}

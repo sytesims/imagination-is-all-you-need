@@ -31,7 +31,7 @@ import { RunOnChip, runOnText } from '../routing/RunOn';
 import { PromptPeek, type PeekForm } from './PromptPeek';
 import { BrandChip } from '../../shared/BrandChip';
 import { addBrandField } from '../../shared/brandStore';
-import { BRAND_OWN_WORDS } from '../../../../server/src/shared/brandKit';
+import { brandMediaFor } from '../../../../server/src/shared/brandKit';
 import { rowOverflowRows, foldedRow, FoldedRows, type RowOverflowRow } from '../../shared/RowMore';
 import { fitPri } from '../../shared/chipFit';
 import { ModelMenu, CHECK as check } from '../../shared/ModelMenu';
@@ -450,7 +450,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
     if (recipe.prompt.mode !== 'hidden') { fd.append('prompt', draft.prompt); fd.append('seed', exSeedField().seed ?? String(Math.floor(Math.random() * 1e6))); /* an example's seed when Same seed is on */ } if (wfProvider) { fd.append('provider', wfProvider); const pq = pinQ(wfProvider); if (pq.route) fd.append('route', pq.route); }
     for (const c of recipe.controls) { if (isMulti && c.field === 'shots') continue; const v = wfVals[c.field] ?? (c.optional ? '' : String(c.default ?? '')); if (v !== '' && v != null) fd.append(c.field, v); }
     if (isMask && wfMask) fd.append('mask', wfMask.file, 'mask.png'); if (isMulti) fd.append('shots', JSON.stringify(angleIds));
-    addBrandField(recipe.runner.toolId, fd); /* Ad Pack: Brand's kit (colours, type and logo); no other workflow takes it */
+    addBrandField(recipe.runner.toolId, fd); /* the brand workflows (shared/brandKit BRAND_APPS): Brand's kit; no other workflow takes it */
     if (presetHere) fd.append('lookId', presetHere.p.id); /* the run was started from a look: its page on Workflows shows the result */
     /* Material Swap: one run per swatch through the same submit (each its own quote, history, cancel, Retry), shown as one set (shared/swatchBatch.ts) */
     const ms = wfSlots.find(s => s.many); const sw = ms ? swatchesOf(files, ms.name, ms.many) : []; const tid = recipe.runner.toolId; const go = p.onWorkflowGenerate;
@@ -1018,7 +1018,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
         </div>
           {/* the place: outside the scrolling chips, next to Generate, one short word that never truncates (a needed step is its dot) */}
           {recipe ? (() => { const m = modelOfEngine(recipe.runner.toolId, wfProvider); return m ? <RunOnChip compact toolId={recipe.runner.toolId} model={m} engine={wfProvider} quote={wq} watch={dock} /> : null; })() : tmCur && <RunOnChip compact toolId={p.tool.id} model={tmCur} engine={cur?.id} quote={qj} watch={dock} />}
-          {!recipe ? <BrandChip toolId={p.tool.id} watch={dock} /> : BRAND_OWN_WORDS.has(recipe.runner.toolId) ? <BrandChip toolId={recipe.runner.toolId} watch={dock} /> : null /* Brand Kit: "Brand: <name>" (Create Image; Ad Pack, which words the brand and adds its logo itself; other workflows compose their own prompt) */}
+          {!recipe ? <BrandChip toolId={p.tool.id} watch={dock} /> : brandMediaFor(recipe.runner.toolId) ? <BrandChip toolId={recipe.runner.toolId} watch={dock} /> : null /* Brand Kit: "Brand: <name>" (Create Image; the brand workflows, which word the kit themselves: Ad Pack, Product Shot, Phone Photo) */}
           <PromptPeek form={peekForm} place={peekPlace} photos={peekPhotos} watch={dock} />
         </div>
       </div>

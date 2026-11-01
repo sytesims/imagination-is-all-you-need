@@ -43,6 +43,8 @@ import { useToolModels, modelOfEngine, shownName, setupPlacesOf, engineForModelP
 import { doSetupPlace } from '../../shared/SetupCard';
 import { pinQ } from '../routing/Routes';
 import { RunOnChip } from '../routing/RunOn';
+import { BrandChip } from '../../shared/BrandChip';
+import { addBrandField } from '../../shared/brandStore';
 import { navigate } from '../../platform/router';
 import { readVideo } from '../../shared/UploadVideo';
 import { TextIcon, CloseIcon, PlusIcon, ClockIcon, ResolutionIcon, AspectIcon, QualityIcon, ExtendIcon, HdrIcon, FpsIcon, DepthIcon, CutoutIcon, UpscaleIcon, PaletteIcon, TransitionIcon, OrbitIcon, CameraMovesIcon, PhotoFxIcon, MoreIcon, VideoIcon, ImageIcon, AudioIcon, ObjectSwapIcon, LayersIcon, UserIcon, SparkleIcon, SelectIcon, ReshootIcon, type IconProps } from '../Icons';
@@ -298,7 +300,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
 
   const fdById = useRef(new Map<string, FormData>());
   const submit = async (fd: FormData) => { const ph: JobState = { id: '', toolId: tool.id, status: 'queued', stage: 'uploading', progress: 0, queuePos: 0, eta: 0, resultUrl: null, outputs: [], error: null, warnings: [], parentId: null, input: {} };
-    add(ph); setBusy(true);
+    add(ph); setBusy(true); addBrandField(tool.id, fd); /* Brand Kit: brandKit=<id> for the brand workflows (UGC Ad), shown by the chip below */
     try { const r = await createJob(tool.id, fd, { showsIssues: true }); fdById.current.set(r.id, cloneForm(fd)); r.warnings?.forEach(w => toast(w, 'warn'));
       setJobs(js => js.some(j => j.id === r.id) ? js.filter(j => j !== ph) : js.map(j => j === ph ? { ...ph, id: r.id, provider: r.provider } : j)); setTimeout(refresh, 50); }
     catch (e: any) { setJobs(js => js.filter(j => j !== ph)); const is = issuesOf(e); toast(is[0]?.message || e?.message || 'That didn’t start. Nothing was charged.', 'error'); }
@@ -467,6 +469,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
             <button ref={overRef} type="button" className={`ic-chip ic-sq ic-over${pop === 'over' ? ' on' : ''}`} aria-haspopup="menu" aria-expanded={pop === 'over'} aria-label="More settings" {...tip(pop === 'over' ? null : 'More settings')} data-testid="vbar-over" onClick={openOver}><MoreIcon size={16} /></button>
           </div>
             {tm && <RunOnChip compact toolId={tool.id} model={tm} engine={prov} quote={q} testId="vs-run-on" watch={dock} />}
+            <BrandChip toolId={tool.id} watch={dock} />{/* Brand Kit: only the brand workflows (UGC Ad: the kit on its set, wardrobe and props) */}
           </div>
         </div>
         <DockGenerate toolId={tool.id} engine={prov} quote={q} setupTarget={setupTarget} label={extra.label?.(live()) ?? bar.generateLabel} busy={busy} problems={problems} pfOpen={pfOpen} genRef={genRef} onClick={generate} testId="vs-generate" priceTestId="vs-price" workflowId={wf.id} />
