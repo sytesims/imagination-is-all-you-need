@@ -32,6 +32,7 @@ import { Xp3D } from './explore/Explore3D';
 import { XpFilms } from './explore/ExploreFilms';
 import { XpPresenter } from './explore/ExplorePresenter';
 import { XpWork } from './explore/ExploreWork';
+import { XpSong } from './explore/ExploreSong';
 import { FlowDiagram, hasDiagram } from './exploreArt';
 import './explore.css';
 
@@ -153,12 +154,15 @@ export default function Home({ tools }: { tools: ToolInfo[] }) {
       <XpFilm />
       {/* "Made on your computer. Free." (RealResults) is hidden: the user never asked for this section (2026-11-02). Kept in code; render <RealResults /> here to bring it back. */}
       <XpKoi />
+      {/* Our song with SyteSim dancing (explore/ExploreSong.tsx). Layout being picked: ?songsection=a (default) shows the band here, b the card near the end. */}
+      <XpSong layout="a" />
       <XpBoard />
       <XpSwap />
       <XpLayers />
       <XpSheets />
       <XpPresenter />
       <XpLooks />
+      <XpSong layout="b" />
     </div>
     {/* the closing moment, full width: a prompt box over a wall of things made here */}
     <XpYourTurn />

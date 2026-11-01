@@ -1,0 +1,74 @@
+/* "Write a song. Watch it dance." (ExploreSong.tsx): A, a wide "now playing" band under the shared centred headline; B, a compact card. */
+.xsg{--xsg-r:28px}
+/* SyteSim's stage: a warm glow and a floor shadow; the clip keeps its own size so nothing shifts when it swaps in for the still */
+.xsg-stage{position:relative;display:grid;place-items:end center;overflow:hidden;
+  background:radial-gradient(60% 55% at 50% 58%,rgba(255,122,26,.26),rgba(255,122,26,0) 70%),linear-gradient(180deg,#17110c,#0d0c0c)}
+.xsg-floor{position:absolute;left:50%;bottom:7%;width:56%;height:7%;transform:translateX(-50%);border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.6),rgba(0,0,0,0));pointer-events:none}
+.xsg-dancer{position:absolute;left:50%;bottom:3%;transform:translateX(-50%);display:block;height:92%;width:auto;max-width:none;aspect-ratio:480/864;object-fit:contain;filter:drop-shadow(0 18px 30px rgba(0,0,0,.45))}
+.xsg.is-playing .xsg-stage{background:radial-gradient(62% 58% at 50% 58%,rgba(255,122,26,.38),rgba(255,122,26,0) 72%),linear-gradient(180deg,#1b120a,#0d0c0c)}
+/* the player */
+.xsg-player{display:flex;flex-direction:column;min-width:0}
+.xsg-now{display:flex;align-items:center;gap:10px;font:700 11px/1 var(--font-display);letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.6)}
+.xsg.is-playing .xsg-now{color:var(--accent)}
+.xsg-live{display:inline-flex;align-items:flex-end;gap:2px;height:12px}
+.xsg-live i{width:3px;height:40%;border-radius:1px;background:currentColor}
+.xsg-live i:nth-child(2){height:75%}.xsg-live i:nth-child(3){height:55%}
+.xsg.is-playing .xsg-live i{animation:xsg-eq .9s ease-in-out infinite alternate}
+.xsg.is-playing .xsg-live i:nth-child(2){animation-delay:-.3s}.xsg.is-playing .xsg-live i:nth-child(3){animation-delay:-.6s}
+@keyframes xsg-eq{from{height:25%}to{height:100%}}
+.xsg-title{margin:14px 0 0;font:700 clamp(30px,3vw,46px)/1 var(--font-display);letter-spacing:-.03em;color:#fff}
+.xsg-about{margin:10px 0 0;font:500 14.5px/1.5 var(--font-ui);color:rgba(255,255,255,.6);text-wrap:balance}
+.xsg-wave.wf{height:72px;margin-top:clamp(20px,2.4vw,32px);gap:3px}
+.xsg-bar{display:flex;align-items:center;gap:14px;margin-top:clamp(16px,2vw,24px)}
+.xsg-play{all:unset;box-sizing:border-box;flex:none;display:grid;place-items:center;width:60px;height:60px;border-radius:50%;cursor:pointer;background:var(--accent);color:var(--xv-ink);
+  box-shadow:0 12px 30px rgba(255,122,26,.32);transition:background var(--fast) var(--ease),transform var(--fast) var(--ease)}
+.xsg-play:hover{background:#ff8a33}.xsg-play:active{transform:scale(.96)}
+.xsg-play svg{margin-left:3px}
+.xsg-play:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap)}
+.xsg-pause{display:flex;gap:5px}.xsg-pause i{width:5px;height:18px;border-radius:1.5px;background:currentColor}
+.xsg-time{min-width:7.5ch;font:500 13.5px/1 var(--font-ui);font-variant-numeric:tabular-nums;color:rgba(255,255,255,.72)}
+.xsg-chip{margin-left:auto}
+.xsg-ctas{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+
+/* A: the band, under the centred headline */
+.xsg-band{display:grid;grid-template-columns:minmax(240px,360px) minmax(0,1fr);max-width:1240px;margin:0 auto;border-radius:var(--xsg-r);overflow:hidden;
+  background:#111;border:1px solid rgba(255,255,255,.07);box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.xsg-band .xsg-stage{height:440px}
+.xsg-band .xsg-player{justify-content:center;padding:clamp(28px,3.6vw,56px)}
+.xsg.is-a .xsg-ctas{justify-content:center;margin-top:40px}
+.xsg.is-a .xsdc-head .xv-eb{margin-bottom:2px}
+.xsg.is-a .xsdc-h{flex-direction:column;align-items:center}
+
+/* B: one compact card */
+.xsg-card{display:grid;grid-template-columns:220px minmax(0,1fr);max-width:1040px;margin:0 auto;border-radius:var(--xsg-r);overflow:hidden;
+  background:#111;border:1px solid rgba(255,255,255,.07);box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.xsg-card .xsg-stage{min-height:340px}
+.xsg-side{padding:clamp(24px,2.8vw,40px);min-width:0}
+.xsg-h{margin:12px 0 0;font:700 clamp(26px,2.4vw,36px)/1.04 var(--font-display);letter-spacing:-.025em;color:#fff;text-wrap:balance}
+.xsg-line{margin:10px 0 0;max-width:620px;font:500 15px/1.55 var(--font-ui);color:rgba(255,255,255,.62)}
+.xsg.is-b .xsg-player{margin-top:24px;padding:18px 20px;border-radius:18px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07)}
+.xsg.is-b .xsg-title{margin-top:10px;font-size:22px;letter-spacing:-.015em}
+.xsg.is-b .xsg-about{font-size:13.5px;margin-top:6px}
+.xsg.is-b .xsg-wave.wf{height:44px;margin-top:14px;gap:2px}
+.xsg.is-b .xsg-bar{margin-top:12px}
+.xsg.is-b .xsg-play{width:46px;height:46px;box-shadow:0 8px 20px rgba(255,122,26,.28)}
+.xsg.is-b .xsg-pause i{width:4px;height:15px}
+.xsg.is-b .xsg-ctas{margin-top:22px}
+
+@media(max-width:760px){
+  .xsg{--xsg-r:22px}
+  .xsg-band,.xsg-card{grid-template-columns:1fr}
+  .xsg-band .xsg-stage{min-height:0;height:280px}
+  .xsg-card .xsg-stage{min-height:0;height:240px}
+  .xsg-band .xsg-player{padding:22px 20px 24px}
+  .xsg-side{padding:22px 20px 24px}
+  .xsg-wave.wf{height:56px}
+  .xsg-play{width:54px;height:54px}
+  .xsg-bar{flex-wrap:wrap;row-gap:12px}
+  .xsg-time{margin-right:auto}
+  .xsg-chip{margin-left:0}
+  .xsg.is-a .xsg-ctas{margin-top:28px}
+  .xsg.is-b .xsg-player{padding:16px}
+}
+@media(prefers-reduced-motion:reduce){.xsg .xsg-live i{animation:none!important}.xsg-play{transition:none}}
+.xsg .xsdc-p{text-wrap:pretty}
