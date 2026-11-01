@@ -5,8 +5,9 @@
 #   curl -fsSL https://iiayn.app/install | bash -s -- --dir ~/Apps/Imagination     (with options)
 #
 # What it does, in order (it asks before installing anything on your computer):
-#   1. Checks for git, Node.js 20 or newer (with npm) and ffmpeg, and offers to install what's missing
-#      (Homebrew on macOS, apt or dnf on Linux).
+#   1. Checks for git, Node.js 22 to 25 (with npm) and ffmpeg, and offers to install what's missing
+#      (Homebrew on macOS, apt or dnf on Linux; Node.js 24 from Homebrew's node@24, or NodeSource when the
+#      Linux system's own Node.js is too old).
 #   2. Downloads the app into ~/Imagination, or updates it if it's already there (your library and keys are never touched).
 #   3. Installs the app's own parts (npm run setup -- --no-start). No AI models, no ComfyUI, no keys:
 #      you connect those inside the app when you want them.
@@ -22,6 +23,10 @@ set -euo pipefail
 REPO_URL="${IIAYN_REPO:-https://github.com/sytesims/imagination-is-all-you-need.git}" # IIAYN_REPO: another copy to clone from (tests)
 YES=0; DRY=0; START=1; SHORTCUT=1; MADE_SHORTCUT=0; BRANCH=main; DIR="$HOME/Imagination"
 APPS_DIR="${IIAYN_APPS_DIR:-/Applications}" # IIAYN_APPS_DIR: another folder instead of /Applications (tests)
+# Node.js versions the app runs on: its database part (better-sqlite3) has ready-made builds for these. Newer ones
+# (Node 26+) would have to build it from source, which needs developer tools most computers don't have.
+NODE_MIN=22; NODE_MAX=25; NODE_PIN=24 # NODE_PIN: the version this installer adds
+ORIG_PATH="$PATH"
 
 usage() { cat <<'EOF'
 Install Imagination Is All You Need and open it in your browser.
@@ -72,7 +77,16 @@ has_git() {
   if [ "$OS" = Darwin ] && [ "$(command -v git)" = /usr/bin/git ]; then xcode-select -p >/dev/null 2>&1 || return 1; fi
 }
 node_major() { node --version 2>/dev/null | sed -n 's/^v\([0-9]*\).*/\1/p'; }
-has_node() { command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && [ "$(node_major)" -ge 20 ] 2>/dev/null; }
+node_fits() { local m; m="$(node_major)"; [ -n "$m" ] && [ "$m" -ge "$NODE_MIN" ] && [ "$m" -le "$NODE_MAX" ]; }
+has_node() { command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && node_fits; }
+# Homebrew's node@24 isn't put on PATH by Homebrew ("keg-only"), so this script (and the Dock app) adds it itself.
+node_keg() { local d; for d in /opt/homebrew/opt/node@$NODE_PIN/bin /usr/local/opt/node@$NODE_PIN/bin; do [ -x "$d/node" ] && { echo "$d"; return 0; }; done; return 1; }
+use_node_keg() { local d; d="$(node_keg)" || return 1; PATH="$d:$PATH"; export PATH; hash -r; }
+# The Linux system's own Node.js package: its major version, or nothing when it has none (or doesn't know yet).
+distro_node_major() { case "$PM" in
+  apt) apt-cache policy nodejs 2>/dev/null | sed -n 's/^ *Candidate: *\([0-9]*:\)\{0,1\}\([0-9][0-9]*\).*/\2/p' | head -n 1;;
+  dnf) dnf info -q nodejs 2>/dev/null | sed -n 's/^Version *: *\([0-9][0-9]*\).*/\1/p' | sort -n | tail -n 1;;
+esac; }
 has_ffmpeg() { command -v ffmpeg >/dev/null 2>&1 && command -v ffprobe >/dev/null 2>&1; }
 
 find_brew() {
@@ -83,7 +97,7 @@ find_brew() {
 # The package manager's name for each tool, and how to install it by hand.
 pkg_for() { # pkg_for TOOL
   case "$PM:$1" in
-    brew:node) echo node;; brew:*) echo "$1";;
+    brew:node) echo "node@$NODE_PIN";; brew:*) echo "$1";;
     apt:node) echo "nodejs npm";; apt:*) echo "$1";;
     dnf:node) echo "nodejs npm";; dnf:ffmpeg) echo ffmpeg-free;; dnf:*) echo "$1";;
   esac
@@ -91,27 +105,33 @@ pkg_for() { # pkg_for TOOL
 manual_steps() {
   say ""; say "To install them yourself:"
   case "$OS" in
-    Darwin) say "  1. Install Homebrew: https://brew.sh"; say "  2. In Terminal: brew install git node ffmpeg";;
+    Darwin) say "  1. Install Homebrew: https://brew.sh"; say "  2. In Terminal: brew install git node@$NODE_PIN ffmpeg"
+            say "  (this installer finds Homebrew's node@$NODE_PIN by itself)";;
     *) say "  git and ffmpeg: your system's package manager (for example: sudo apt install git ffmpeg)"
-       say "  Node.js 22 or 24 (with npm): https://nodejs.org/en/download";;
+       say "  Node.js $NODE_PIN (with npm): https://nodejs.org/en/download (for example with nvm: nvm install $NODE_PIN)";;
   esac
   say "Then run the install line again."
 }
 describe() { case "$1" in
   git) echo "git (downloads the app and its updates)";;
-  node) echo "Node.js 20 or newer, with npm (runs the app)";;
+  node) echo "Node.js $NODE_MIN to $NODE_MAX, with npm (runs the app; $NODE_PIN recommended)";;
   ffmpeg) echo "ffmpeg (handles video and audio; optional, browsing works without it)";; esac; }
 
 check_tools() {
   bold "1. Checking your computer"
   local t missing=()
+  # A Homebrew node@24 from an earlier run counts when the Node.js on PATH doesn't fit.
+  [ "$OS" = Darwin ] && ! has_node && use_node_keg || true
   for t in git node ffmpeg; do
     if "has_$t"; then case "$t" in
         git) ok "$(git --version)";; node) ok "Node.js $(node --version), npm $(npm --version)";; ffmpeg) ok "ffmpeg";; esac
     else
-      if [ "$t" = node ] && command -v node >/dev/null 2>&1; then miss "Node.js $(node --version) is too old (or npm is missing): the app needs Node.js 20 or newer"
+      if [ "$t" = node ] && command -v node >/dev/null 2>&1; then
+        if [ "$(node_major)" -gt "$NODE_MAX" ] 2>/dev/null; then miss "Node.js $(node --version) is newer than the app supports yet: it needs Node.js $NODE_MIN to $NODE_MAX"
+        else miss "Node.js $(node --version) is too old (or npm is missing): the app needs Node.js $NODE_MIN to $NODE_MAX"; fi
       else miss "$(describe "$t") is missing"; fi
-      missing+=("$t")
+      # Node.js first, so a Linux system without a usable one stops before anything is installed with sudo.
+      if [ "$t" = node ]; then missing=(node ${missing[@]+"${missing[@]}"}); else missing+=("$t"); fi
     fi
   done
   [ ${#missing[@]} = 0 ] && return 0
@@ -146,6 +166,7 @@ check_tools() {
       [ "$t" = ffmpeg ] && { say "Skipping ffmpeg for now: you can add it later."; continue; }
       manual_steps; exit 0
     fi
+    if [ "$t" = node ] && [ "$PM" != brew ]; then add_linux_node; apt_updated=$((apt_updated | NODE_APT_UPDATED)); continue; fi
     local pkg; pkg="$(pkg_for "$t")"
     local how="brew install $pkg"
     [ "$PM" = apt ] && how="sudo apt-get install -y $pkg"; [ "$PM" = dnf ] && how="sudo dnf install -y $pkg"
@@ -157,7 +178,7 @@ check_tools() {
     fi
     # shellcheck disable=SC2086 # $pkg can be two package names
     case "$PM" in
-      brew) run brew install $pkg;;
+      brew) run brew install $pkg && { [ "$t" != node ] || { say "Homebrew keeps node@$NODE_PIN off your PATH; this installer and the Imagination app find it by themselves."; [ "$DRY" = 1 ] || use_node_keg; }; };;
       apt) [ $apt_updated = 1 ] || { as_root apt-get update; apt_updated=1; }; as_root apt-get install -y $pkg;;
       dnf) as_root dnf install -y $pkg;;
     esac || { [ "$t" = ffmpeg ] && { say "ffmpeg didn't install; you can add it later."; continue; }; die "$t didn't install (see the messages above)." "$(manual_steps)"; }
@@ -166,8 +187,48 @@ check_tools() {
   [ "$DRY" = 1 ] && return 0
   # Check again: the required ones must work now.
   has_git || die "git still isn't available." "$(manual_steps)"
-  has_node || die "Node.js 20 or newer (with npm) still isn't available$(command -v node >/dev/null && echo ": this computer has $(node --version)")." \
-    "Install Node.js 22 or 24 from https://nodejs.org/en/download (it shows a few easy ways), then run the install line again."
+  has_node || die "Node.js $NODE_MIN to $NODE_MAX (with npm) still isn't the one this window finds$(command -v node >/dev/null && echo ": it finds $(node --version) at $(command -v node)")." \
+    "Install Node.js $NODE_PIN from https://nodejs.org/en/download (it shows a few easy ways, for example nvm install $NODE_PIN), then run the install line again."
+}
+
+# Linux: Node.js from the system's packages when they have $NODE_MIN or newer (Ubuntu 22.04/24.04 and Debian 12 have
+# 12 to 18), otherwise Node.js $NODE_PIN from NodeSource. Decided before anything is installed, and only with your yes.
+NODE_APT_UPDATED=0
+add_linux_node() {
+  local how inst="apt-get install -y" cand url tmp
+  [ "$PM" = dnf ] && inst="dnf install -y"
+  if command -v node >/dev/null 2>&1 && [ "$(node_major)" -gt "$NODE_MAX" ] 2>/dev/null; then
+    die "Node.js $(node --version) is newer than the app supports yet (Node.js $NODE_MIN to $NODE_MAX)." \
+      "Switch this computer to Node.js $NODE_PIN (for example with nvm: nvm install $NODE_PIN && nvm use $NODE_PIN), then run the install line again."
+  fi
+  cand="$(distro_node_major)"
+  if [ -n "$cand" ] && [ "$cand" -ge "$NODE_MIN" ] && [ "$cand" -le "$NODE_MAX" ]; then
+    how="sudo $inst nodejs npm"
+    say "$(describe node): this command installs it: $how"
+    [ "$(id -u)" != 0 ] && say "It uses sudo, so your computer may ask for your password."
+    ask "Install Node.js now?" || { manual_steps; exit 0; }
+    # shellcheck disable=SC2086 # $inst is a command and its options
+    { [ "$PM" != apt ] || { as_root apt-get update && NODE_APT_UPDATED=1; }; } && as_root $inst nodejs npm \
+      || die "Node.js didn't install (see the messages above)." "$(manual_steps)"
+    return 0
+  fi
+  url="https://deb.nodesource.com/setup_$NODE_PIN.x"; [ "$PM" = dnf ] && url="https://rpm.nodesource.com/setup_$NODE_PIN.x"
+  if [ -n "$cand" ]; then say "$(describe node): this system's own Node.js package is version $cand, too old for the app."
+  else say "$(describe node): this system has no Node.js package of its own (or hasn't listed one yet)."; fi
+  say "NodeSource (https://github.com/nodesource/distributions) has Node.js $NODE_PIN. These commands add it:"
+  say "  curl -fsSL $url | sudo bash -"
+  say "  sudo $inst nodejs"
+  [ "$(id -u)" != 0 ] && say "They use sudo, so your computer may ask for your password."
+  ask "Add Node.js $NODE_PIN from NodeSource now?" || { manual_steps; exit 0; }
+  # shellcheck disable=SC2086 # $inst is a command and its options
+  if ! command -v curl >/dev/null 2>&1; then
+    { [ "$PM" != apt ] || as_root apt-get update; } && as_root $inst curl ca-certificates || die "curl didn't install (see the messages above)." "$(manual_steps)"
+  fi
+  tmp="$(mktemp)"
+  # shellcheck disable=SC2086
+  run curl -fsSL "$url" -o "$tmp" && as_root bash "$tmp" && as_root $inst nodejs \
+    || { rm -f "$tmp"; die "Node.js $NODE_PIN didn't install (see the messages above)." "$(manual_steps)"; }
+  rm -f "$tmp"; NODE_APT_UPDATED=1 # (NodeSource's script refreshes the package lists itself)
 }
 
 # ---- 2. the app folder -------------------------------------------------------------------------
@@ -295,11 +356,19 @@ EOF
 
 # ---- 5. start ----------------------------------------------------------------------------------
 start_app() {
-  local again="cd \"$DIR\" && npm run setup"
+  local again="cd \"$DIR\" && npm run setup" extra="" d t
+  # A new Terminal window doesn't know folders this script added to PATH (Homebrew on Apple silicon, node@24),
+  # so the "start it again" line brings them along. Your shell's startup files are left as they are.
+  for t in node ffmpeg; do
+    d="$(dirname "$(command -v "$t" 2>/dev/null || echo /)")"
+    case ":$ORIG_PATH:${extra:+$extra:}" in *":$d:"*) ;; *) [ "$d" = / ] || extra="${extra:+$extra:}$d";; esac
+  done
+  [ -n "$extra" ] && again="cd \"$DIR\" && PATH=\"$extra:\$PATH\" npm run setup"
   if [ "$START" = 0 ]; then say ""; bold "Installed. Start it any time with: $again"; return 0; fi
   bold "5. Starting the app"
   say "Your browser opens by itself when it's ready. Keep this window open while you use it; Ctrl+C stops it."
-  say "Start it again later with $([ "$MADE_SHORTCUT" = 1 ] && echo "the Imagination $([ "$OS" = Darwin ] && echo app || echo shortcut), or: " || echo ": ")$again"
+  if [ "$MADE_SHORTCUT" = 1 ]; then say "Start it again later with the Imagination $([ "$OS" = Darwin ] && echo app || echo shortcut), or: $again"
+  else say "Start it again later with: $again"; fi
   say ""
   if [ "$DRY" = 1 ]; then run cd "$DIR"; run npm run setup -- --open; return 0; fi
   cd "$DIR"

@@ -1,7 +1,8 @@
 name: CI
 
 # Pull requests: Build and start on all three systems, and the one-line install on Ubuntu only, unless the PR touches
-# the installer, setup/launcher scripts or package files (then all three). main (push, nightly, by hand): everything.
+# the installer, setup/launcher scripts or package files (then also ARM64 Linux, and get.sh in a fresh Ubuntu container).
+# main (push, nightly, by hand): everything.
 on:
   push:
     branches: [main]
@@ -27,6 +28,8 @@ jobs:
     timeout-minutes: 5
     outputs:
       install_os: ${{ steps.pick.outputs.install_os }}
+      build_os: ${{ steps.pick.outputs.build_os }}
+      full: ${{ steps.pick.outputs.full }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,30 +39,34 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
         run: |
-          all='["ubuntu-latest","macos-latest","windows-latest"]'
-          if [ "$EVENT" != pull_request ]; then echo "install_os=$all" >> "$GITHUB_OUTPUT"; exit 0; fi
+          all='["ubuntu-latest","ubuntu-24.04-arm","macos-latest","windows-latest"]'
+          three='["ubuntu-latest","macos-latest","windows-latest"]'
+          full() { { echo "install_os=$all"; echo "build_os=$all"; echo "full=true"; } >> "$GITHUB_OUTPUT"; }
+          if [ "$EVENT" != pull_request ]; then full; exit 0; fi
           changed=$(git diff --name-only HEAD^1...HEAD)
           printf '%s\n' "$changed"
           # installer, setup/launcher scripts, package files, this workflow
           if grep -qE '^(scripts/(get|install)\.(sh|ps1)|scripts/(setup|start|update|doctor|app-env|env-merge|install-mcp|web-build|build-plugins)\.mjs|scripts/(make-mac-app\.sh|mac-app/.*)|((server|web|mcp)/)?package(-lock)?\.json|\.github/workflows/ci\.yml)$' <<<"$changed"; then
-            echo "Install or setup files changed: one-line install on all three systems"; echo "install_os=$all" >> "$GITHUB_OUTPUT"
+            echo "Install or setup files changed: everything"; full
           else
-            echo "No install or setup files changed: one-line install on Ubuntu only"; echo 'install_os=["ubuntu-latest"]' >> "$GITHUB_OUTPUT"
+            echo "No install or setup files changed: one-line install on Ubuntu only"
+            { echo 'install_os=["ubuntu-latest"]'; echo "build_os=$three"; echo "full=false"; } >> "$GITHUB_OUTPUT"
           fi
 
   build-start:
-    name: Build and start (${{ matrix.os }}, Node 20)
+    name: Build and start (${{ matrix.os }}, Node 24)
+    needs: scope
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: ${{ fromJSON(needs.scope.outputs.build_os) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           check-latest: true
           cache: npm
           cache-dependency-path: |
@@ -79,7 +86,7 @@ jobs:
   # piped into bash / run as a PowerShell script block, with --yes so it installs ffmpeg itself (apt, Homebrew, winget).
   # It clones this commit from the checkout (IIAYN_REPO) into a temp folder; no shortcut, no start.
   one-line-install:
-    name: One-line install (${{ matrix.os }})
+    name: One-line install (${{ matrix.os }}, Node 22)
     needs: scope
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
@@ -115,7 +122,7 @@ jobs:
           bash scripts/get.sh --dry-run --yes --dir "$RUNNER_TEMP/dry" > /dev/null; test ! -e "$RUNNER_TEMP/dry"
           cd "$DIR" && npm run build
       - name: Check get.ps1 parses
-        if: runner.os == 'Linux'
+        if: matrix.os == 'ubuntu-latest'
         shell: pwsh
         run: |
           $errors = $null
@@ -134,3 +141,30 @@ jobs:
           Set-Location $dir
           npm.cmd run build
           if ($LASTEXITCODE -ne 0) { throw 'build failed' }
+
+  # get.sh on a fresh Ubuntu 24.04 with no Node.js at all (no setup-node). Ubuntu's own Node is 18, so this runs the
+  # NodeSource path for real: it installs curl, adds Node 24 and npm ci finds the ready-made database module (the
+  # container has no build tools). Only git is added first, for the checkout get.sh clones from.
+  one-line-install-fresh:
+    name: One-line install (fresh ubuntu:24.04, no Node)
+    needs: scope
+    if: needs.scope.outputs.full == 'true'
+    runs-on: ubuntu-latest
+    container: ubuntu:24.04
+    timeout-minutes: 25
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - name: Add git (for the checkout)
+        run: apt-get update && apt-get install -y --no-install-recommends git ca-certificates
+      - uses: actions/checkout@v4
+      - name: Install with get.sh (Node 24 from NodeSource)
+        shell: bash
+        run: |
+          git config --global --add safe.directory '*'
+          git branch ci-install HEAD
+          if command -v node; then echo "this container should start without Node.js"; exit 1; fi
+          DIR=/tmp/one/Imagination
+          IIAYN_REPO="file://$GITHUB_WORKSPACE" bash scripts/get.sh --yes --no-start --no-shortcut --branch ci-install --dir "$DIR"
+          node --version | grep '^v24\.'
+          test -d "$DIR/node_modules/fastify"

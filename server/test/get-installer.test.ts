@@ -101,6 +101,33 @@ try {
   assert.equal(linux.code, 0, linux.out);
   assert.match(linux.out, /\+ write .*\/applications\/imagination\.desktop/); assert.doesNotMatch(linux.out, /make-mac-app|defaults|Dock/);
 
+  // Node.js on Linux (fake node/apt on PATH, dry runs): too old with a too-old system package → NodeSource 24, asked first;
+  // the system package when it's 22+; nobody to answer → manual steps before any sudo; a too-new Node stops early.
+  const nbin = path.join(home, 'fake node'); mkdirSync(nbin);
+  const nfake = (name: string, body: string) => { writeFileSync(path.join(nbin, name), `#!/bin/bash\n${body}\n`); chmodSync(path.join(nbin, name), 0o755); };
+  nfake('node', 'echo "${FAKE_NODE:-v18.19.1}"'); nfake('npm', 'echo 10.0.0'); nfake('apt-get', 'echo "apt-get $*" >> "' + log + '"');
+  nfake('apt-cache', 'echo "nodejs:"; echo "  Installed: (none)"; echo "  Candidate: ${FAKE_CAND:-18.19.1+dfsg-6ubuntu5}"');
+  const lin = (args: string[], env: Record<string, string> = {}) => run(args, { FAKE_OS: 'Linux', PATH: `${bin}:${nbin}:${process.env.PATH ?? ''}`, ...env });
+  const old18 = lin(['--dry-run', '--yes', '--no-shortcut', '--no-start']);
+  assert.equal(old18.code, 0, old18.out);
+  assert.match(old18.out, /Node\.js v18\.19\.1 is too old/); assert.match(old18.out, /system's own Node\.js package is version 18/);
+  assert.match(old18.out, /Add Node\.js 24 from NodeSource now\? yes/); assert.match(old18.out, /\+ curl -fsSL https:\/\/deb\.nodesource\.com\/setup_24\.x/);
+  assert.match(old18.out, /\+ (sudo )?apt-get install -y nodejs\n/);
+  const distro22 = lin(['--dry-run', '--yes', '--no-shortcut', '--no-start'], { FAKE_CAND: '22.11.0-1' });
+  assert.match(distro22.out, /installs it: sudo apt-get install -y nodejs npm/); assert.doesNotMatch(distro22.out, /nodesource/);
+  reset();
+  const declined = lin(['--no-shortcut', '--no-start']);
+  assert.equal(declined.code, 0, declined.out); assert.match(declined.out, /NodeSource now\? no/); assert.match(declined.out, /nvm install 24/);
+  assert.doesNotMatch(declined.out, /git clone/); assert.equal(calls(), '', 'nothing installed');
+  const tooNew = lin(['--dry-run', '--yes', '--no-shortcut', '--no-start'], { FAKE_NODE: 'v26.1.0' });
+  assert.equal(tooNew.code, 1, tooNew.out); assert.match(tooNew.out, /v26\.1\.0 is newer than the app supports yet/); assert.doesNotMatch(tooNew.out, /\+ (sudo )?apt-get|git clone/);
+  // macOS: Homebrew's node@24, never the newest node
+  // (skipped where a node@24 from Homebrew is already there: the installer uses it instead)
+  if (!['/opt/homebrew/opt/node@24/bin/node', '/usr/local/opt/node@24/bin/node'].some((f) => existsSync(f))) {
+  const macNew = run(['--dry-run', '--yes', '--no-shortcut', '--no-start'], { ...mac, FAKE_NODE: 'v26.1.0', PATH: `${bin}:${nbin}:${process.env.PATH ?? ''}` });
+  assert.equal(macNew.code, 0, macNew.out); assert.match(macNew.out, /\+ brew install node@24\n/); assert.match(macNew.out, /keeps node@24 off your PATH/);
+  }
+
   // a folder that has other files in it is never used
   const busyDir = path.join(home, 'busy'); mkdirSync(busyDir); writeFileSync(path.join(busyDir, 'notes.txt'), 'mine');
   const busy = run(['--dry-run', '--dir', busyDir]);

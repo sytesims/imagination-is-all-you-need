@@ -69,7 +69,7 @@ Try: **“Read AGENTS.md, help me get this running on my computer, and explain e
 
 ## Open your studio
 
-You'll need a current **Node 20, 22 or 24** release and npm; Node 22 or 24 is recommended. Install **ffmpeg and ffprobe** for uploads and media processing. No model connection is needed to browse the included examples.
+You'll need **Node 22 or 24** and npm (Node 26 isn't supported yet: the database module has no ready-made build for it). Install **ffmpeg and ffprobe** for uploads and media processing. No model connection is needed to browse the included examples.
 
 ```text
 git clone https://github.com/sytesims/imagination-is-all-you-need.git
@@ -144,7 +144,7 @@ Film-editor and project-management operations are not all exposed as dedicated M
 
 This is an **early public preview**. The app has been checked locally on macOS with Node 24 and isolated keyless mock data. Native Windows browser/GPU use and every model/provider combination have not been verified.
 
-The [startup CI](https://github.com/sytesims/imagination-is-all-you-need/actions/workflows/ci.yml) has passed installation, build and API/web startup on **Windows, macOS and Linux**, using Node 20. The badge tracks the latest run. Startup checks are not browser, GPU, real-provider or every-workflow verification.
+The [startup CI](https://github.com/sytesims/imagination-is-all-you-need/actions/workflows/ci.yml) has passed installation, build and API/web startup on **Windows, macOS and Linux** (x64 and ARM64), using Node 22 and 24. The badge tracks the latest run. Startup checks are not browser, GPU, real-provider or every-workflow verification.
 
 Local model availability depends on hardware, ComfyUI version, nodes and model files. A successful cloud run does not verify the same model on a local GPU. The workflow documentation distinguishes **Ran** from **Built**; see [models and providers](docs/PROVIDERS-AND-MODELS.md) and [local hardware requirements](docs/LOCAL-MODELS-AND-HARDWARE.md).
 
