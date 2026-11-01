@@ -79,7 +79,7 @@ export const EXPLORE_KOI = {
    *  (the take's own sound fading under it), a 4 s end card ("What will you bring to life?" / Imagination is all you need) and the 3 s end mark; 30.13 s, -15 LUFS, poster = the featured one.
    *  The featured entry's `out` stays the plain 20 s take (Extend page, feeds, Recreate). The readout and line count this file; the
    *  "10 s + 10 s = one 20 s take" sum and the pills stay the generated take. */
-  ending: { url: P('h3-koi-take-ending.mp4'), sec: 30.13, label: 'Ending · made here · Free' },
+  ending: { url: P('h3-koi-take-ending.mp4'), sec: 30.13, label: 'Ending · our own edit · Free' },
   /** Video with MiniMax H3 picked */ cta: { label: 'Start your scene', href: `${VIDEO_PAGE}?model=minimax-h3` },
 };
 
@@ -111,7 +111,7 @@ const IF = (f: string) => `/examples/iiayn-films/${f}`;
  *  Now: 엄마 · MUM, Episode 1 (77 s with the new end card, 2026-10-28; Korean with English subtitles), 그래요? · IS THAT SO? and The Airport Run. The web copy is 1280×720 H.264 with sound; the poster is Mum's close-up; the
  *  loop is 6.5 s of it, silent (card hover). Four layouts for the user (2026-10-27, round 2): ?films=1a|1b|2a|2b. The shots' start frames and cut points are the film's own (research folder shots.json + README). */
 export const EXPLORE_FILMS = {
-  label: 'IIAYN FILMS', title: 'Films, made here.', line: 'Every picture, voice and cut came out of this app. Press play.',
+  label: 'IIAYN FILMS', title: 'Our own films.', line: 'Every picture, voice and cut came out of this app. Press play.',
   feature: {
     key: 'mum-ep1', ko: '엄마', en: 'MUM', episode: 'Episode 1', genre: 'Korean drama', sec: 78, lang: 'Korean · English subtitles',
     logline: 'A snowy bus stop at dawn. A daughter in a hurry, a mother with a lunchbox, and a note she finds on the bus.',
@@ -223,12 +223,12 @@ export const EXPLORE_FILMS = {
     /** No IIAYN FILMS opener was added to this existing cut. Play starts at its actual beginning. */
     identEnd: 0, endAt: EXPLORE_SEEDANCE.strip.cut.sec,
     credit: 'Picture: Seedance 2.0 on Comfy Router. Voice: Qwen3 TTS, free. Music: YuE2, free. Poem: “Sea-Fever”, John Masefield (1902). Quote: Albert Einstein (1929).',
-    cost: 'Original picture run: $3.25 on Comfy Router. Voice, music and finishing were added here for free; no new generation for this move.',
+    cost: 'Original picture run: $3.25 on Comfy Router. Voice, music and finishing were added for free; no new generation for this move.',
     shots: [] as FilmsShot[],
     steps: [
       { name: 'Prompt', what: 'Nine words: “A lighthouse on a cliff at dusk, waves crashing”.' },
       { name: 'Picture', what: 'One 15 s Seedance 2.0 run on Comfy Router, requested at 720p. The original saved run is available through Recreate picture.' },
-      { name: 'Sound', what: 'The existing finished cut adds Qwen3 TTS narration and a YuE2 lullaby, made here for free.' },
+      { name: 'Sound', what: 'The existing finished cut adds Qwen3 TTS narration and a YuE2 lullaby, both free.' },
       { name: 'Words and finish', what: 'Lines from John Masefield’s “Sea-Fever” (1902), a final Albert Einstein quote (1929), captions, letterbox and end cards make the existing 21.3 s cut. Recreate picture opens the original generation, not a saved edit of this finished film.' },
     ] as FilmsStep[],
     editor: { label: 'Recreate picture', href: featuredRecreateHref(EXPLORE_SEEDANCE.strip.key)! },

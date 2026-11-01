@@ -42,7 +42,7 @@ function Strip({ f }: { f: FeaturedItem }) {
         takes={[{ key: f.key, url: S.cut.url, poster, label: f.title, sound: true, sec: S.cut.sec }]} />
         : <img className="xpsd-poster" src={poster} alt="" loading="lazy" decoding="async" />}
       <header className="xpsd-head">
-        <span className="xpsd-eyebrow">A film, made here · {Math.round(S.cut.sec)} sec</span>
+        <span className="xpsd-eyebrow">Our own film · {Math.round(S.cut.sec)} sec</span>
         <h2 id="xp-h-seedance" className="xpsd-h" data-testid="xp-seedance-title">{S.title}</h2><p className="xpsd-p">{S.line}</p>
         {!started && !failed && <button type="button" className="xpsd-watch" onClick={watch} data-testid="xp-seedance-watch"><span><PlayIcon size={18} /></span>{ended ? 'Watch again' : 'Watch from the beginning'}</button>}
         {failed && <p className="xpsd-error" role="status">The film could not load. You can still recreate it or make your own.</p>}
