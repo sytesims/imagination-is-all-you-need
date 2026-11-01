@@ -51,6 +51,13 @@ html body .ic-ref.mpk .mpk-pick img{position:absolute;inset:0;display:block;widt
 html body .ic-ref.mpk .mpk-tile:has(.mpk-pick:focus-visible){outline:2px solid var(--accent);outline-offset:-2px}
 html body .ic-ref.mpk .ic-ref-grid>.mpk-tile:has(img):not(.ld){background:linear-gradient(90deg,rgba(255,255,255,.04) 0%,rgba(255,255,255,.09) 40%,rgba(255,255,255,.04) 80%) #2b2c30;background-size:300% 100%;animation:skel-sh 1.4s ease-in-out infinite}
 html body .ic-ref.mpk .ic-ref-grid>.mpk-tile:has(img):not(.ld) img{opacity:0}
+/* the larger preview's ⤢ (top-right, on hover / focus); the ⋯ sits just left of it */
+html body .ic-ref.mpk .mpk-zoom{position:absolute;top:5px;right:5px;z-index:2;display:grid;place-items:center;width:26px;height:26px;padding:0;border:0;border-radius:8px;background:rgba(10,10,12,.66);color:#fff;cursor:pointer;opacity:0;backdrop-filter:blur(6px);transition:opacity var(--t-state,.12s) ease,background .12s ease}
+html body .ic-ref.mpk .mpk-tile:hover .mpk-zoom,html body .ic-ref.mpk .mpk-tile:has(.mpk-pick:focus-visible) .mpk-zoom,html body .ic-ref.mpk .mpk-zoom:focus-visible{opacity:1}
+html body .ic-ref.mpk .mpk-zoom:hover{background:var(--accent);color:var(--on-accent)}
+html body .ic-ref.mpk .mpk-zoom:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+html body .ic-ref.mpk .mpk-zoom ~ .mpk-more{right:35px}
+@media (hover:none){html body .ic-ref.mpk .mpk-zoom{opacity:1}}
 html body .ic-ref.mpk .mpk-more{position:absolute;top:5px;right:5px;z-index:2;display:grid;place-items:center;width:26px;height:26px;padding:0;border:0;border-radius:8px;background:rgba(10,10,12,.66);color:#fff;cursor:pointer;opacity:0;backdrop-filter:blur(6px);transition:opacity var(--t-state,.15s) ease,background-color var(--t-state,.15s) ease}
 html body .ic-ref.mpk .mpk-tile:hover .mpk-more,html body .ic-ref.mpk .mpk-more:focus-visible,html body .ic-ref.mpk .mpk-more[aria-expanded=true]{opacity:1}
 html body .ic-ref.mpk .mpk-more:hover{background:var(--accent);color:var(--on-accent)}
@@ -124,7 +131,8 @@ html body .ic-ref-scrim.mpk-scrim .ic-ref.mpk-dialog{width:min(960px,calc(100vw 
   html body .ic-ref.mpk .mpk-up small{display:none}
   html body .ic-ref.mpk .mpk-proj{max-width:46vw;height:36px}
   html body .ic-ref.mpk .mpk-proj-k{display:none}
-  html body .ic-ref.mpk .mpk-more{width:30px;height:30px}
+  html body .ic-ref.mpk .mpk-more,html body .ic-ref.mpk .mpk-zoom{width:30px;height:30px}
+  html body .ic-ref.mpk .mpk-zoom ~ .mpk-more{right:39px}
 }
 @media (prefers-reduced-motion:reduce){html body .ic-ref.mpk .mpk-tile{transition:none}}
 .mpk-count { font: 500 12px/18px var(--font-ui, Inter, system-ui, sans-serif); color: rgba(255,255,255,.5); white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -140,7 +148,7 @@ html body .ic-ref.mpk .mpk-tools .ic-ref-sort{white-space:nowrap}
 html body .ic-ref.mpk .mpk-tools .ic-ref-sort{height:30px}
 /* The larger preview (MediaPicker Peek): over the whole panel, the file as large as it fits, one bar under it */
 html body .ic-ref.mpk .mpk-peek{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:inherit;background:#1b1c1f;outline:none}
-html body .ic-ref.mpk .mpk-peek-media{flex:1;min-height:0;display:grid;place-items:center;border-radius:12px;overflow:hidden;background:repeating-conic-gradient(#232427 0 25%,#1b1c1f 0 50%) 0 0/16px 16px}
+html body .ic-ref.mpk .mpk-peek-media{flex:1;min-height:0;display:grid;grid-template:minmax(0,1fr)/minmax(0,1fr);place-items:center;border-radius:12px;overflow:hidden;background:repeating-conic-gradient(#232427 0 25%,#1b1c1f 0 50%) 0 0/16px 16px}
 html body .ic-ref.mpk .mpk-peek-media img,html body .ic-ref.mpk .mpk-peek-media video{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain}
 html body .ic-ref.mpk .mpk-peek-video .mpk-peek-media video{width:100%;height:100%} /* a clip fills the box (contained), its controls along the bottom */
 html body .ic-ref.mpk .mpk-peek-video .mpk-peek-media,html body .ic-ref.mpk .mpk-peek-audio .mpk-peek-media{background:#000}
