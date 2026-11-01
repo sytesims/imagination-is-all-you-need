@@ -5,6 +5,8 @@
  * "Run failed (temporary problem): credits back to your balance" exists only when credits were charged (ledger.refund writes no
  * row for 0). Here, the remote side: a job that had a Comfy Cloud job id gets that job cancelled on Cloud (best effort, no retry loop,
  * never a new submit), so a dead server never leaves a Cloud job running and billing. No key → nothing to cancel remotely.
+ * Since 2026-11-01 (audit #5) a job whose one request can be polled again is NOT an orphan: queue.ts picks it up (routing/reattach.ts) and collects
+ * the paid result. Only the rest come here: a request at fal or Replicate is cancelled there too; the lab APIs have no cancel call.
  */
 import type { Job } from '../jobs.js';
 import { persistJob } from '../jobs.js';
@@ -29,6 +31,11 @@ export function cloudRouteOf(j: Job): string | null {
 export async function cancelOrphan(j: Job, why = 'The server restarted while this was running'): Promise<boolean> {
   const a = j.routeAttempts?.[j.routeAttempts.length - 1];
   if (a && a.status === 'running') { a.status = 'failed'; a.endedAt = Date.now(); a.error = why; }
+  const h = j.remote; j.remote = null;
+  if (h && (h.kind === 'fal' || h.kind === 'replicate' || h.kind === 'direct')) { // fal / Replicate: their own cancel call (best effort); a lab API has none
+    let ok: boolean | null = null; try { ok = testCancel ? await testCancel(h.id) : await (await import('./reattach.js')).cancelRemote(h); } catch { ok = false; }
+    if (a) (a as any).remoteCanceled = ok === true; (j as any).orphanCanceled = { requestId: h.id, kind: h.kind, ok: ok === true, at: Date.now() }; try { persistJob(j); } catch { /* best effort */ }
+    console.log(`[openhiggsfield] orphan ${j.id}: ${h.kind} request ${ok === true ? 'cancelled' : ok === null ? 'has no cancel call' : 'cancel not confirmed'}`); return ok === true; }
   const rr = (j as any).routerRequest as { id: string; cancelUrl?: string } | undefined;
   if (rr?.cancelUrl && a?.routeId?.startsWith('comfy-router:')) { // Comfy Router queued request: ask Router to cancel it (best effort; a completed run may still be billed)
     const key = keyValue({ envKey: COMFY_ENV, envAliases: [] }); if (!key && !testCancel) return false;

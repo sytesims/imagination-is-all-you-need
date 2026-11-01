@@ -23,6 +23,7 @@ export type FailAction =
   | 'spendLimits'  // the Spend page
   | 'setupTranslate'
   | 'setupCloud'   // Settings → Connections → One-time setup (a Comfy Cloud import or your deployment)
+  | 'collect'      // POST /api/jobs/:id/collect: fetch a paid result again from its provider (only when the job says canCollect)
   | 'details';     // open the technical details
 
 export interface FailReason { key: string; mood: FailMood; title: string; line: string; actions: FailAction[] }
@@ -37,12 +38,17 @@ export interface FailJob {
   /** server routerRun.ts: 'not_charged' = Comfy refused it at validation (422, not billed); 'unconfirmed' = rejected after it was sent, billing undocumented */ chargeNote?: 'not_charged' | 'unconfirmed' | null;
   /** server routerRun.ts: what the provider said when it failed (sanitised); a content refusal's reason ("a photo of a real person") comes from here */
   providerError?: { detail?: string | null; upstreamDetail?: string | null; refusalSubject?: string | null } | null;
+  /** server routing/reattach.ts: the paid result can still be fetched from the provider (Retry download) */ canCollect?: boolean;
+  /** server queue.ts: a hosted run canceled at its provider, and what that means for the bill */ cancelNote?: string | null;
   /** where it ran ('local', 'comfy-cloud', 'fal'…): list items carry this but not `route` */ runOn?: string | null; input?: Record<string, any> | null; decision?: { note?: string } | null;
 }
 export interface FailCtx { /** own-accounts billing (no app balance); null = billing not loaded yet (the charge sentence waits, so it never flips) */ ownAccounts?: boolean | null; /** the billing provider's stated rule for a failed run */ providerRule?: 'not-charged' | 'may-charge' | 'unknown' | null; /** its short name ("Comfy", "fal") */ providerName?: string | null }
 
 /** Server reason codes (comfyRouter.ts RouterReason, comfy/cloudV2.ts CloudReason, spendGuard / agentBudget) → entry. */
 export const REASONS: Record<string, FailReason> = {
+  // audit 2026-11-01 #4, #10: the provider made (and billed) the result, or may still: fetch it again rather than paying for a new run
+  download_failed:   { key: 'download_failed', mood: 'offline', title: 'Made, but not saved yet', line: 'The result is ready; fetch it again.', actions: ['collect', 'details'] },
+  lost_contact:      { key: 'lost_contact', mood: 'offline', title: 'Lost contact while it ran', line: 'It may still finish; check again to fetch it.', actions: ['collect', 'details'] },
   // One-time setup (2026-10-27): a run that needs a file imported into your Comfy Cloud library, or your own deployment. The steps are in Details and on the card.
   cloud_import_missing: { key: 'cloud_import_missing', mood: 'needsDownload', title: 'One-time setup in Comfy Cloud', line: 'Add its file to Comfy Cloud once, then try again.', actions: ['setupCloud', 'details'] },
   deploy_missing:    { key: 'deploy_missing', mood: 'needsKey', title: 'Needs your Comfy deployment', line: 'Set it up once in Settings, then try again.', actions: ['setupCloud', 'details'] },
@@ -151,7 +157,7 @@ export function chargeOf(j: FailJob, r: FailReason, ctx: FailCtx = {}): string {
   /* App-balance credits back: team mode only (QA #7: own accounts never shows ✦; there the provider's rule below decides). Mode still
    * loading → say nothing rather than a ✦ sentence that would flip. */
   const back = backOf(j); if (back > 0 && ctx.ownAccounts !== true) { if (ctx.ownAccounts == null && 'ownAccounts' in ctx) return ''; return `${ledgerUsd(back)} went back to your balance.`; }
-  if (r.key === 'canceled') return 'Nothing was charged.';
+  if (r.key === 'canceled') return j.cancelNote || 'Nothing was charged.'; // a hosted run stopped at its provider: its own rule (it may still bill the time it ran)
   /* #11: decide "hosted" from the route OR runOn (list items have no route), so a list item and the full job read the same. */
   const route = routeOf(j); const ran = route ? !/^local:/.test(route) : !!j.runOn && j.runOn !== 'local';
   const hosted = ran && !j.demo && !j.simulated && !j.isSample && !j.spend?.simulated;
@@ -173,7 +179,7 @@ const titleFor = (j: FailJob, t: string) => { if (!t.includes('{provider}')) ret
 /** The whole view: entry + money sentence + details. `runLocal` is dropped unless the server lists Local as ready (job.tryOn). */
 export function failView(j: FailJob, ctx: FailCtx = {}): FailView {
   const r = reasonOf(j); const local = Array.isArray(j.tryOn) && j.tryOn.some(o => o?.runOn === 'local');
-  const actions = r.actions.filter(a => a !== 'runLocal' || local);
+  const actions = [...(j.canCollect && !r.actions.includes('collect') ? ['collect' as const] : []), ...r.actions.filter(a => (a !== 'runLocal' || local) && (a !== 'collect' || !!j.canCollect))];
   const mins = /(\d+) min\b/.exec(String(j.error ?? ''))?.[1];
   const line = r.key === 'cloud_credits' && !local ? 'Top up on comfy.org, then try again.' : r.key === 'no_credits' && !local ? 'Top up your account, then try again.'
     : r.key === 'declined' && refusalReason(j.providerError) ? refusalReason(j.providerError)! /* the provider said why: "The provider refused a photo of a real person." */
@@ -183,5 +189,5 @@ export function failView(j: FailJob, ctx: FailCtx = {}): FailView {
 /** Button words. */
 export const ACTION_LABEL: Record<FailAction, string> = {
   retry: 'Try again', recreate: 'Recreate', changePhoto: 'Change photo', otherModel: 'Try another model', addCredits: 'Top up', runLocal: 'Run on your computer',
-  addKey: 'Add a key', startComfy: 'How to start ComfyUI', turnOnGpu: 'Turn it on', download: 'Download', spendLimits: 'Open Spend', setupTranslate: 'Set up translation', setupCloud: 'Show the steps', details: 'Details',
+  addKey: 'Add a key', startComfy: 'How to start ComfyUI', turnOnGpu: 'Turn it on', download: 'Download', spendLimits: 'Open Spend', setupTranslate: 'Set up translation', setupCloud: 'Show the steps', collect: 'Retry download', details: 'Details',
 };

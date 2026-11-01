@@ -134,8 +134,11 @@ export function runMoneyOf(j: any, ctx: MoneyCtx): RunMoney {
   if (local) note = canCancel ? `Runs ${where}, so stopping costs nothing.` : st === 'running' ? 'This step can’t be stopped. It’s free, so nothing is charged.' : '';
   else if (sample) note = canCancel ? 'Stop any time.' : '';
   else if (j?.free) note = canCancel ? 'Cancel and your free generation comes back.' : '';
-  else if (canCancel) {
-    // the server allows a hosted cancel only before the job is sent, so a cancellable hosted run was never charged
+  else if (canCancel && st === 'running' && ctx.own) {
+    // a hosted run already at its provider (fal, Replicate, Comfy Router, Comfy Cloud): cancel asks the provider to stop it; its own rule says what is billed
+    note = `Cancel asks ${place} to stop it.${ctx.failureRule === 'not-charged' ? ` ${place} doesn’t charge for runs that don’t finish.` : ctx.failureRule === 'may-charge' ? ` ${place} may still bill the time it ran.` : ''}`;
+  } else if (canCancel) {
+    // before it is sent, a hosted cancel charges nothing
     note = ctx.own ? `Not sent to ${place} yet: cancel and nothing is charged.` : credits > 0 ? `Cancel and the ${ledgerUsd(credits)} goes back to your balance.` : 'Cancel and nothing is charged.';
   } else if (live) {
     const ifFails = ctx.own ? (ctx.failureRule === 'not-charged' ? ` If it fails, ${place} doesn’t charge.` : ctx.failureRule === 'may-charge' ? ` If it fails, ${place} may still charge.` : '') : credits > 0 ? ' If it fails, it goes back to your balance.' : '';

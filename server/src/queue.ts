@@ -16,6 +16,7 @@ import { ComfyNative, type CancelOutcome } from './comfy/native.js';
 import { policyRefusalCharge } from './shared/policyBilling.js';
 import { afterSettle } from './routing/state.js';
 import { runWithVideoFit } from './videoFit.js';
+import { pickUpOnBoot, startPickUp, collectable, remoteCancellable } from './routing/reattach.js';
 
 /**
  * Shared job queue for all tools, in two run lanes (2026-10-25):
@@ -85,16 +86,22 @@ export function stateOf(j: Job): JobState {
 }
 /** A single-group run on your own ComfyUI (native API) can be stopped at every stage, and nothing is billed: before submit (upload, prep) the runner
  *  stops at its next check; submitted and still pending in ComfyUI's own queue → removed from that queue; running → interrupted (only when ComfyUI
- *  says the running prompt is this job's). Hosted runs (and sample runs) stay cancellable only before dispatch. */
+ *  says the running prompt is this job's). A hosted run is cancellable before dispatch, and once its request is at fal, Replicate, Comfy Router or
+ *  Comfy Cloud (job.remote: the provider is asked to cancel it; routing/reattach.ts). The lab APIs have no cancel call, so their runs go on. */
 export const localNativeRunning = (j: Job) => j.status === 'running' && (j.input?.refBatches?.length ?? 0) <= 1
   && (!!j.comfyPrompt?.id || (config.backend === 'comfy' && !j.simulated && !j.routing?.demo && nativeMode() && progressSourceOf(j) === 'local-comfy'));
-export const canCancel = (j: Job) => { if (j.toolId === 'app-photos-to-reel') return j.status === 'queued' || j.status === 'running'; const s = stateOf(j); return s === 'queued' || (CANCEL_IN_PROCESSING && s === 'processing') || localNativeRunning(j); };
+const canCancelHere = (j: Job) => { if (j.toolId === 'app-photos-to-reel') return j.status === 'queued' || j.status === 'running'; const s = stateOf(j); return s === 'queued' || (CANCEL_IN_PROCESSING && s === 'processing') || localNativeRunning(j); };
+/** Will a cancel succeed now (the `cancellable` flag the app shows)? Also a running hosted job its provider can cancel (audit 2026-11-01 #9). */
+export const canCancel = (j: Job) => canCancelHere(j) || ((j.input?.refBatches?.length ?? 0) <= 1 && remoteCancellable(j));
 
 const PLAIN_ERR: Record<string, string> = { temporary: 'temporary problem', provider_outage: 'provider problem', validation: 'invalid input', content_filter: 'blocked by the provider', no_provider: 'no route available', timeout: 'took too long', ip_blocked: 'blocked by the provider' };
 function settle(job: Job) {
   job.finishedAt = Date.now(); job.updatedAt = job.finishedAt; dropPreview(job.id); // live preview frames live only while the job runs
   try { settleSpend(job); } catch { /* spend log only */ }
   if (job.status === 'done') void import('./etaLearn.js').then((L) => L.recordJob(job)).catch(() => {}); // HW-SHAPES B5: learned timings (real runs, or OPENHIGGSFIELD_ETA_LEARN_MOCK=1)
+  const ca = (job as any).collectAfterFailure as { refund: number; prev: Pick<Job, 'refund' | 'creditsBack' | 'refunded'> } | undefined; delete (job as any).collectAfterFailure;
+  // Retry download worked: the credits given back at the failure pay for the result again (team mode; own accounts: nothing was held in the app)
+  if (ca && job.status === 'done') { if (ca.refund > 0) charge(`${job.id}#collect`, job.toolId, job.route ?? job.provider, ca.refund); job.refund = undefined; job.creditsBack = undefined; job.refunded = 0; }
   if (job.status === 'failed' || job.status === 'blocked' || job.status === 'canceled') {
     // DP ask #4: "Run failed (temporary problem): credits back to your balance" (free gens: "Run failed (…): free gen returned (N left)")
     const what = runEndedWhat(job.status, job.errorType && job.status !== 'canceled' ? PLAIN_ERR[job.errorType] ?? job.errorType.replace(/_/g, ' ') : null);
@@ -109,6 +116,7 @@ function settle(job: Job) {
     const note = total > 0 ? '' : freeBack ? 'Free gen returned.' : ownNote != null ? ownNote : (job.cost ?? 0) > 0 ? 'Credits were not returned to your balance.' : 'Nothing was charged.';
     if (job.status !== 'canceled' || job.error) job.error = `${(job.error ?? 'Something went wrong.').replace(/\s*(Your )?[Cc]redits (were )?refunded[^.]*\.?(;\s*)?/g, ' ').replace(/\s*[Cc]redits (went |are )?back (to|in) your (app )?balance[^.]*\.?(;\s*)?/g, ' ').replace(/\s*[Cc]redits were not returned to your balance\.?/g, ' ').replace(/\s+/g, ' ').trim()} ${note}`.trim();
   }
+  if (ca && job.status !== 'done') Object.assign(job, ca.prev); // it failed again: the refund from the first failure stands (refund() never pays twice)
   const fix = afterSettle.get(job); if (fix) { afterSettle.delete(job); fix(); } // routing/run.ts: a routed failure's own refund + message win over the plain-failure rewrite above
   const parent = jobs.get(job.input.reelParentId);
   if (parent?.toolId === 'app-photos-to-reel') {
@@ -145,16 +153,21 @@ function pump() {
     while (laneActive[lane] < LANE_LIMIT[lane]) {
       const id = next(lane); if (!id) break;
       const job = jobs.get(id)!;
-      const tool = getTool(job.toolId)!;
-      const isFree = job.lane === 'free';
-      laneActive[lane]++; if (isFree) activeFree++; slots.set(id, { lane, free: isFree });
-      job.runLane = lane; job.queueReason = null; job.queuePos = 0; job.startedAt = Date.now(); job.updatedAt = job.startedAt;
-      runWithVideoFit(job, () => runWithProvider(job, tool)) // Fit to model: the clip fitted before the run, a padded result cropped back after (videoFit.ts)
-        .catch((e) => { job.status = 'failed'; job.errorType = job.errorType ?? 'temporary'; job.error = e instanceof Error ? e.message : String(e); })
-        .finally(() => { if ((job as any).cancelRequested) { job.status = 'canceled'; job.stage = 'canceled'; job.outputs = []; job.resultUrl = null; job.progress = 0; job.error = null; } job.queueReason = null; settle(job); release(id); pump(); });
+      job.startedAt = Date.now(); begin(job, lane, job.lane === 'free');
     }
   }
   refreshPositions();
+}
+/** Run a job in a lane slot: the queue's own start, and a hosted pick-up (restart / Retry download, routing/reattach.ts) the same way. */
+function begin(job: Job, lane: RunLane, isFree: boolean) {
+  const id = job.id; const tool = getTool(job.toolId)!;
+  laneActive[lane]++; if (isFree) activeFree++; slots.set(id, { lane, free: isFree });
+  job.runLane = lane; job.queueReason = null; job.queuePos = 0; job.updatedAt = Date.now();
+  runWithVideoFit(job, () => runWithProvider(job, tool)) // Fit to model: the clip fitted before the run, a padded result cropped back after (videoFit.ts)
+    .catch((e) => { job.status = 'failed'; job.errorType = job.errorType ?? 'temporary'; job.error = e instanceof Error ? e.message : String(e); })
+    .finally(() => { if ((job as any).cancelRequested) { job.status = 'canceled'; job.stage = 'canceled'; job.outputs = []; job.resultUrl = null; job.progress = 0; job.error = null; } job.queueReason = null;
+      if (job.remote?.resuming) job.remote = null; // a pick-up that ended without reaching runRouted's own bookkeeping (it threw early)
+      settle(job); release(id); pump(); });
 }
 /** A running job whose next route runs on the other place (allowFallback, routing/run.ts) moves its slot: the old lane's slot is freed at once;
  *  in the new lane it goes on when a slot is free (moved jobs go before queued ones). No-op for a job without a slot (POST /api/jobs/:id/fallback
@@ -174,7 +187,7 @@ export async function moveLane(job: Job): Promise<void> {
  * OPENHIGGSFIELD_REQUEUE_ON_RESTART=0 restores the old "fail everything" behaviour. Default on (ours).
  */
 export const REQUEUE_ON_RESTART = !/^(0|false|off|no)$/i.test(env('REQUEUE_ON_RESTART') ?? '1');
-const requeue: Job[] = []; const orphans: Job[] = []; const reconnect: Job[] = [];
+const requeue: Job[] = []; const orphans: Job[] = []; const reconnect: Job[] = []; const pickUps: Job[] = [];
 /** Item 10: a job running on a local / remote ComfyUI with a stored prompt id is not lost on restart: it reconnects (comfy/resume.ts).
  *  OPENHIGGSFIELD_RESUME_COMFY=0 restores the old "fail it" behaviour. */
 export const RESUME_COMFY = !/^(0|false|off|no)$/i.test(env('RESUME_COMFY') ?? '1');
@@ -192,15 +205,19 @@ for (const j of jobs.values()) {
   if (j.toolId === 'app-photos-to-reel') { j.status = 'failed'; j.stage = 'failed'; j.errorType = 'temporary'; j.error = 'The server restarted. Retry the reel to continue from finished photos. See individual step jobs for any costs.'; j.finishedAt = Date.now(); persistJob(j); continue; }
   if (j.status === 'queued' && REQUEUE_ON_RESTART) { requeue.push(j); continue; }
   if (resumable(j)) { reconnect.push(j); j.stage = 'reconnecting'; j.progressKind = 'indeterminate'; j.updatedAt = Date.now(); continue; }
+  // audit 2026-11-01 #5: a hosted run (fal, Replicate, a lab API, Comfy Router, Comfy Cloud) keeps running and billing at its provider: poll the SAME
+  // request again and collect the paid result (routing/reattach.ts). Nothing is sent or charged again.
+  if (pickUpOnBoot(j)) { pickUps.push(j); startPickUp(j); j.stage = 'reconnecting'; j.progressKind = 'indeterminate'; j.updatedAt = Date.now(); continue; }
   j.status = 'failed'; j.errorType = 'temporary'; j.stage = 'failed'; j.queuePos = 0; j.eta = 0;
   // B7: settle() adds the accurate outcome (credits back only when something was charged; else "Nothing was charged.")
   j.error = 'The server restarted while this was in progress; try again.';
-  if (j.routeAttempts?.length || j.cloudJobId) orphans.push(j);
+  if (j.routeAttempts?.length || j.cloudJobId || j.remote) orphans.push(j);
   settle(j);
 }
 for (const id of interruptedReels) { const parent=jobs.get(id)!; const children=[...jobs.values()].filter(j=>j.input.reelParentId===id); parent.input.childCost=children.reduce((sum,j)=>sum+Math.max(0,Number(j.cost??0)-Number(j.refunded??0)),0); parent.input.childCostUsd=children.reduce((sum,j)=>sum+Number(jobSpendView(j.id)?.countedUsd??0),0);persistJob(parent); }
-// B7: interrupted Comfy Cloud runs are cancelled on Cloud too (best effort, after boot; lazy import keeps queue.ts free of routing cycles).
+// B7: interrupted hosted runs that can't be picked up again are cancelled at their provider (best effort, after boot; lazy import keeps queue.ts free of routing cycles).
 if (orphans.length) setTimeout(() => { import('./routing/orphans.js').then(({ cancelOrphan }) => Promise.all(orphans.map((j) => cancelOrphan(j)))).catch((e) => console.error('[openhiggsfield] orphan cancel:', e)); }, 0);
+if (pickUps.length) setTimeout(() => { for (const j of pickUps) if (j.status === 'running') begin(j, 'cloud', false); }, 0);
 if (reconnect.length) setTimeout(() => { import('./comfy/resume.js').then(({ resumeNative }) => Promise.all(reconnect.map((j) => resumeNative(j).then(() => settle(j)))))
   .catch((e) => { console.error('[openhiggsfield] comfy reconnect:', e); for (const j of reconnect) if (j.status === 'running') { j.status = 'failed'; j.stage = 'failed'; j.errorType = 'temporary'; j.error = 'The server restarted while this was in progress; try again.'; settle(j); } }); }, 0);
 /** Late-result rescue (comfy/lateRescue.ts): a local run marked failed while ComfyUI kept its prompt (stall / hard cap / restart) turns done when
@@ -249,7 +266,7 @@ export function cancel(job: Job): boolean {
   if (job.status === 'running' && (job.input.refBatches?.length ?? 0) > 1) { job.cancelRemaining = true; return true; }
   if (job.status === 'running' && (CANCEL_IN_PROCESSING || localNativeRunning(job))) { // in-flight cancel (local ComfyUI, or opt-in): the runner's result is discarded and the job is settled ($0 local) when the runner returns
     (job as any).cancelRequested = true; job.status = 'canceled'; job.stage = 'canceled'; job.error = null; job.queuePos = 0; job.eta = 0; job.updatedAt = Date.now(); dropPreview(job.id); return true; }
-  if (!canCancel(job)) return job.status === 'canceled';
+  if (!canCancelHere(job)) return job.status === 'canceled';
   job.status = 'canceled';
   for (const q of [paid, free]) { const i = q.indexOf(job.id); if (i >= 0) { q.splice(i, 1); refreshPositions(); settle(job); } } // queued: instant refund
   return true;
@@ -266,7 +283,22 @@ async function lastPromptFinished(job: Job): Promise<boolean> {
  * interrupted, comfy = what ComfyUI did); done: it finished (or its last prompt finished on ComfyUI) before the cancel landed, so it is kept;
  * refused: past the point where a cancel works (a hosted run already sent to its provider).
  */
-export async function cancelRun(job: Job): Promise<{ result: 'canceled' | 'done' | 'refused'; comfy?: CancelOutcome }> {
+/** What a hosted cancel means for the money, in the provider's own terms (billing.ts failure rule; team mode: the credits come back). */
+function hostedCancelNote(job: Job): string {
+  const kind = job.route ? job.route.split(':')[0] : null; const who = billingInfo(billedToOf(kind, job.route));
+  if (teamMode() && (job.cost ?? 0) > 0) return `Asked ${who.name} to stop this run. Its credits go back to your balance.`;
+  return `Asked ${who.name} to stop this run. ${who.failureRule === 'not-charged' ? `${who.name} doesn’t charge for runs that don’t finish.` : who.failureRule === 'may-charge' ? `${who.name} may still bill your account for the time it ran. ${who.failureNote}` : `Check your ${who.name} account: it doesn’t publish whether stopped runs are billed.`}`.trim();
+}
+/** POST /api/jobs/:id/collect (Retry download): a failed hosted job whose paid result was made but not saved (or whose provider we lost contact
+ *  with) polls its request again and saves the result (routing/reattach.ts). Nothing is sent or charged again. false = nothing to collect. */
+export function collectAgain(job: Job): boolean {
+  if (!collectable(job)) return false;
+  afterSettle.delete(job); // the first failure's own refund note is done; this run settles on its own
+  startPickUp(job); (job as any).collectAfterFailure = { refund: job.refund?.amount ?? 0, prev: { refund: job.refund, creditsBack: job.creditsBack, refunded: job.refunded }, at: Date.now() };
+  job.status = 'running'; job.stage = 'reconnecting'; job.progressKind = 'indeterminate'; job.error = null; job.errorType = null; job.reasonCode = null; job.tryOn = []; job.alternatives = [];
+  job.finishedAt = undefined; job.updatedAt = Date.now(); begin(job, 'cloud', false); return true;
+}
+export async function cancelRun(job: Job): Promise<{ result: 'canceled' | 'done' | 'refused'; comfy?: CancelOutcome; note?: string }> {
   if (job.status === 'canceled') return { result: 'canceled' };
   if (job.status === 'done') return { result: 'done' };
   const local = localNativeRunning(job);
@@ -274,7 +306,13 @@ export async function cancelRun(job: Job): Promise<{ result: 'canceled' | 'done'
   if ((job.status as string) === 'done') return { result: 'done' }; // finished while ComfyUI was asked
   if ((job.status as string) === 'canceled') return { result: 'canceled' };
   const cp = local ? job.comfyPrompt : null; const multi = (job.input.refBatches?.length ?? 0) > 1;
-  if (job.status === 'running' && !multi && !local && !CANCEL_IN_PROCESSING) return { result: 'refused' };
+  if (job.status === 'running' && !multi && !local && !CANCEL_IN_PROCESSING) {
+    // audit 2026-11-01 #9: a hosted request at fal / Replicate / Comfy Router / Comfy Cloud: the runner's poll loop sees the job canceled and asks the
+    // provider to cancel it. The honest outcome: the provider's own rule (it may still bill the time it ran), never "nothing was charged".
+    if (!remoteCancellable(job)) return { result: 'refused' };
+    (job as any).cancelRequested = true; job.status = 'canceled'; job.stage = 'canceled'; job.error = null; job.queuePos = 0; job.eta = 0; job.updatedAt = Date.now(); dropPreview(job.id);
+    const note = hostedCancelNote(job); (job as any).cancelNote = note; job.warnings = [...(job.warnings ?? []), note]; return { result: 'canceled', note };
+  }
   if (!cancel(job)) return { result: 'refused' };
   // Prompt known: stop it on ComfyUI now (the runner's poll loop shares this same call). Not yet submitted: the runner removes it right after submit.
   if (cp?.id && cp.base) return { result: 'canceled', comfy: await comfyFor(cp.base).cancelPrompt(cp.id) };

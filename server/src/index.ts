@@ -39,6 +39,7 @@ import { fileURLToPath } from 'node:url';
 import { jobs, Job, flushJobs } from './jobs.js';
 import { db } from './db.js';
 import { enqueue, cancel, history, stateOf, canCancel, inFlight, MAX_PARALLEL, laneSizes } from './queue.js';
+import { collectable as collectableJob } from './routing/reattach.js';
 import { getKv, setKv } from './db.js';
 import * as I from './idempotency.js';
 import { registerJsonErrors } from './jsonErrors.js';
@@ -228,6 +229,10 @@ const pub = (j: Job) => ({
   providerError: (j as any).providerError ?? null, // what Comfy / the provider said when a Router run failed, sanitised (routing/routerRun.ts)
   state: stateOf(j),
   cancellable: canCancel(j),
+  /** Retry download (POST /api/jobs/:id/collect): the paid result can still be fetched from the provider (routing/reattach.ts). */
+  canCollect: collectableJob(j),
+  /** A hosted run canceled at its provider: what that means for the bill (the provider's own rule), shown instead of "Nothing was charged". */
+  cancelNote: (j as any).cancelNote ?? null,
   cost: j.cost ?? 0,
   refunded: j.refunded ?? 0,
   /** Refund outcome (failed/blocked/canceled): { refunded: boolean, amount, freeGenReturned }; null while running/done. */
@@ -968,7 +973,16 @@ app.post<{ Params: { id: string } }>('/api/jobs/:id/cancel', async (req, reply) 
   const r = await cancelRun(j); // local ComfyUI: cancellable at every stage (our queue, ComfyUI's queue, running); hosted: only before dispatch
   if (r.result === 'done') return reply.code(409).send({ error: 'It finished before it could be canceled, so the result is kept.', errorType: 'not_cancellable', code: 'already_done', jobId: j.id, status: j.status, state: stateOf(j), progress: j.progress });
   if (r.result === 'refused') return reply.code(409).send({ error: j.status === 'running' && (j.input.refBatches?.length ?? 0) <= 1 ? processingCancelText(j) : 'Already generating; it can no longer be canceled.', errorType: 'not_cancellable', code: 'cannot_cancel_processing', cancelInProcessing: CANCEL_IN_PROCESSING, charged: (j.cost ?? 0) > 0, jobId: j.id, status: j.status, state: stateOf(j), progress: j.progress }); // error body, not the job (GAP-MATRIX)
-  return { ...pub(j), ...(r.comfy ? { comfyCancel: r.comfy } : {}) };
+  return { ...pub(j), ...(r.comfy ? { comfyCancel: r.comfy } : {}), ...(r.note ? { cancelNote: r.note } : {}) };
+});
+/** Retry download (audit 2026-11-01 #10): a failed hosted job whose result was made (and paid for) but couldn't be saved, or whose provider we
+ *  lost contact with, polls its request at the provider again and saves the result (routing/reattach.ts). Nothing is sent or charged again.
+ *  409 nothing_to_collect when the job has no such request. */
+app.post<{ Params: { id: string } }>('/api/jobs/:id/collect', async (req, reply) => {
+  const j = jobs.get(req.params.id); if (!j) return reply.code(404).send({ error: 'not found' });
+  const { collectAgain } = await import('./queue.js');
+  if (!collectAgain(j)) return reply.code(409).send({ error: 'There is no paid result to fetch again for this job.', code: 'nothing_to_collect', jobId: j.id, status: j.status, state: stateOf(j) });
+  return pub(j);
 });
 
 // ---- Retry ----

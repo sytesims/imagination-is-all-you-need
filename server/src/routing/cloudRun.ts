@@ -6,7 +6,7 @@
  * Failures throw a plain message; run.ts refunds the attempt (quote = charge, failure = full refund) and job.reasonCode says why
  * (key_invalid for 401/403, cloud_credits, workflow_invalid, queue_full, submit_uncertain, cloud_job_failed, cloud_timeout, cloud_unreachable, content_blocked, cloud_job_gone).
  */
-import type { Job } from '../jobs.js';
+import { persistJob, type Job } from '../jobs.js';
 import type { RouteAttempt, RouteDef } from './types.js';
 import { env } from '../env.js';
 import { keyValue } from './keys.js';
@@ -18,6 +18,7 @@ import { deployTarget, DEPLOY_MISSING_REASON } from '../comfy/deploy.js';
 import { CLOUD_RUNNER_ROUTES, UNMEASURED_PRICE_REASON, allowUnmeasuredCloud } from './runnable.js';
 import { HOSTED_BY_ID } from '../shared/hostedPrices.js';
 import { notePlanPrompts } from '../jobSource.js';
+import { cannotPickUp } from './reattach.js';
 export { CLOUD_RUNNER_ROUTES }; // the set lives in runnable.ts (select.ts gate)
 export const cloudBase = () => env('COMFY_CLOUD_URL')?.trim() || 'https://cloud.comfy.org';
 /** B2: a real Comfy key makes the run real on any backend (a keyed cloud workflow route never renders mock output, so it is never charged for one). */
@@ -39,13 +40,19 @@ export async function runCloudWorkflow(job: Job, r: RouteDef, attempt: RouteAtte
   // Price-first: a row whose price is not measured never runs for real (nothing is sent, so nothing is billed; run.ts gives the credits back).
   if (r.priceRef && HOSTED_BY_ID[r.priceRef]?.priceUnmeasured && !allowUnmeasuredCloud()) { job.reasonCode = 'price_unmeasured' as any; job.errorType = 'validation' as any; throw new Error(UNMEASURED_PRICE_REASON); }
   const tg = cloudTargetFor(r); if (!tg) { job.reasonCode = (isDeployRoute(r.routeId) ? 'deploy_missing' : 'key_missing') as any; job.errorType = 'validation' as any; throw new Error(isDeployRoute(r.routeId) ? DEPLOY_MISSING_REASON : 'No Comfy API key is set'); }
-  const c = new ComfyCloudV2(tg.base, tg.token, `${job.id}-a${attempt.n}`, testFetch ?? undefined, testPollMs ?? (Number(env('COMFY_CLOUD_POLL_MS')) || 3000));
-  const run = c.run.bind(c);
+  // a pick-up (restart / Retry download, routing/reattach.ts): the Cloud job from before is only polled, and only a one-pass graph (an earlier pass's
+  // files are not kept across a restart); its uploads go again under new Idempotency-Keys (free), never the graph
+  const rm = job.remote?.resuming && job.remote.kind === 'cloud' && job.remote.routeId === r.routeId && job.remote.attempt === attempt.n ? job.remote : null;
+  const c = new ComfyCloudV2(tg.base, tg.token, `${job.id}-a${attempt.n}${rm ? `-r${Date.now().toString(36)}` : ''}`, testFetch ?? undefined, testPollMs ?? (Number(env('COMFY_CLOUD_POLL_MS')) || 3000));
+  const run = c.run.bind(c); let passes = 0; let pass = 0;
   const partnerAuth = isStandalone(CLOUD_WORKFLOWS[r.routeId]) && !!(CLOUD_WORKFLOWS[r.routeId] as any).partnerAuth; // partner-node graphs: the key once in extra_data
-  c.run = (g, o = {}) => run(g, { ...o, ...(partnerAuth ? { partnerAuth: true } : {}), onSubmitted: (id) => { attempt.requestId = id; job.cloudJobId = id; o.onSubmitted?.(id); } }); // stored at once; only ever polled
+  c.run = (g, o = {}) => { const k = pass++;
+    if (rm && (passes !== 1 || k !== 0 || rm.output !== 0)) throw cannotPickUp(`a ${passes}-pass workflow`); // its earlier passes' files are gone with the restart
+    return run(g, { ...o, ...(partnerAuth ? { partnerAuth: true } : {}), ...(rm ? { resumeId: rm.id } : {}), onSubmitted: (id) => { attempt.requestId = id; job.cloudJobId = id;
+      job.remote = { kind: 'cloud', id, routeId: r.routeId, attempt: attempt.n, output: k, outputs: passes, at: Date.now() }; try { persistJob(job); } catch { /* the 400 ms flush has it */ } o.onSubmitted?.(id); } }); }; // stored at once; only ever polled
   // B6: a twin route of an open model (job.provider comfy-h3 / comfy-open) runs the Comfy Cloud workflow named by its route, not by the job's provider
   const wf = CLOUD_WORKFLOWS[r.routeId]; let pre: Record<string, any> = {};
-  const build: typeof buildCloudPlan = (j, o) => { const p = buildCloudPlan(wf ? { ...j, provider: wf.provider, input: { ...j.input, ...pre } } : j, o); notePlanPrompts(job, p); return p; }; // the prompts the workflow wrote ride on the job (result details)
+  const build: typeof buildCloudPlan = (j, o) => { const p = buildCloudPlan(wf ? { ...j, provider: wf.provider, input: { ...j.input, ...pre } } : j, o); passes = p.passes.length; notePlanPrompts(job, p); return p; }; // the prompts the workflow wrote ride on the job (result details)
   try {
     // A standalone workflow's free check (GET only) before anything is uploaded or submitted: H3 Character Swap · Comfy Cloud refuses until its LoRA is imported
     if (isStandalone(wf) && wf.preflight) { const f = testFetch ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
