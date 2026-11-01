@@ -390,7 +390,7 @@ export default function VideoStudio(p: VideoStudioProps) {
   if (routeIssue) notes.push({ key: 'route', stage: 'Setup', node: <RouteNotRunnable issues={p.issues} /> });
   const blocking = notes.some(n => n.hard);
   /* only an input is missing (a prompt, a photo): Generate shows the price like Image's and 3D's; the missing step is the tooltip, a click nudges it (audit P3) */
-  const priceFirst = !qFull && p.missing.length > 0 && !p.conflict && !blocking && !unpriced && !blockWhy && credits != null;
+  const priceFirst = !qFull && p.missing.length > 0 && !p.conflict && !notes.some(n => n.hard && !n.key.startsWith('miss-')) && !unpriced && !blockWhy && credits != null;
   /* a note that arrives from the last run or an add (not a standing state) opens the list once; a click on Generate opens it too */
   const eventKey = [p.imgErr, refErr, ...['image', 'refs', 'refVideos', 'refAudios', 'prompt', 'resolution'].map(f => issueOf(f)?.message), subDur?.message, routeIssue ? 'route' : ''].filter(Boolean).join('|');
   useEffect(() => { if (eventKey) setPfOpen(true); }, [eventKey]);
