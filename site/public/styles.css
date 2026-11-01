@@ -34,12 +34,15 @@ p{margin:0}
 .top-nav .gh{display:inline-flex;align-items:center;gap:8px;color:var(--t1);padding:7px 14px;border:1px solid rgba(255,255,255,.22);border-radius:999px;background:rgba(15,17,19,.55)}
 .top-nav .gh:hover{border-color:rgba(255,255,255,.4)}
 
-/* hero: one centred column (headline, one sentence, the install line, a small GitHub link), then one quiet row of real results */
+/* hero: one centred column (headline, the install line, one small line, a GitHub link), then one quiet row of real results */
 .hero{position:relative;overflow:hidden}
 .hero-in{display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:clamp(8px,2vw,28px)}
 .eyebrow{font:600 12px/1.4 var(--display);letter-spacing:.2em;text-transform:uppercase;color:var(--accent-text);margin-bottom:18px}
-h1{max-width:9.5em;font-weight:700;font-size:clamp(44px,5.8vw,84px);line-height:.96;letter-spacing:-.045em;text-wrap:balance}
-.lede{margin-top:18px;max-width:27em;font-size:clamp(18px,1.5vw,21px);line-height:1.5;color:var(--t2);text-wrap:balance}
+h1{font-weight:700;font-size:clamp(44px,5.8vw,84px);line-height:1;letter-spacing:-.045em;text-wrap:balance}
+h1 span{display:block}
+.tagline{margin-top:14px;font-size:14px;color:var(--t3)}
+.tagline span{white-space:nowrap}
+.tagline+.gh-small{margin-top:10px}
 .credit{font:500 12px/1.4 var(--mono);color:var(--t3);letter-spacing:.01em}
 .gh-small{margin-top:14px;font-size:14px;font-weight:500;color:var(--t2);text-underline-offset:4px}
 .gh-small:hover{color:var(--t1)}
@@ -220,9 +223,14 @@ h1{max-width:9.5em;font-weight:700;font-size:clamp(44px,5.8vw,84px);line-height:
   .brand img{height:22px}
   .steps-row,.why-row{grid-template-columns:1fr}
   .hero-in{padding-top:20px}
-  h1 span{display:block}
-  .cmd{flex-wrap:wrap;padding:10px}
-  .cmd code{flex-basis:100%;font-size:13px;white-space:normal;overflow-wrap:anywhere;padding:2px 4px}
+  h1{font-size:clamp(40px,11.6vw,52px)}
+  .tagline{line-height:1.6}
+  .tagline .tl-dot{display:none}
+  .tagline .tl-last{display:block}
+  .install-panel{padding:14px 12px}
+  .cmd{flex-wrap:wrap;padding:10px 8px}
+  /* the command stays on one line; if a very narrow screen can't fit it, it scrolls inside the box, never the page */
+  .cmd code{flex-basis:100%;font-size:12px;letter-spacing:-.01em;padding:2px 4px}
   .copy{width:100%;justify-content:center}
   .foot-in{grid-template-columns:1fr}
   .foot-links{justify-content:flex-start}

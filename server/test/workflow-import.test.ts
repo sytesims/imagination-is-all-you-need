@@ -101,7 +101,16 @@ try {
   assert.equal(hasPlan(job), true); const g = buildPlan(job).passes[0].graph;
   assert.equal(g['57:27'].inputs.text, 'a lighthouse'); assert.equal(g['57:13'].inputs.width, 832); assert.equal(g['57:3'].inputs.steps, 6); assert.equal(g['57:3'].inputs.seed, 5);
   assert.equal(g['57:13'].inputs.height, 1024, 'settings left off keep the workflow\'s own value');
-  console.log('ok save: folder written, loaded at once, placed in its tab, the Workflows page and the menus; text-only run maps prompt + settings');
+  // an empty prompt keeps the workflow's own text (it never blanks it), and that text prefills the prompt box
+  const own = wf('create-image-zimage-turbo-api.json')['57:27'].inputs.text; assert.ok(typeof own === 'string' && own.trim(), 'the sample graph has its own prompt');
+  assert.equal(qp.plugin?.defaultPrompt, own, 'the graph\'s own prompt is offered to prefill the box');
+  assert.equal(qp.plugin?.mainModel, 'Z Image Turbo', 'the main model in plain words, no file name tags'); assert.equal(qp.model, 'Z Image Turbo', 'the tool names its model, not the workflow');
+  for (const empty of ['', '   ']) {
+    const pe: any = await qp.parseInput({ types: '["default"]', prompt: empty }, {}); assert.ok(!pe.error, pe.error);
+    const ge = buildPlan({ id: 'wi-2', toolId: 'quick-picture', provider: 'comfy-open', input: { ...pe, seed: 5 } }).passes[0];
+    assert.equal(ge.graph['57:27'].inputs.text, own, `an empty prompt (${JSON.stringify(empty)}) keeps the workflow's own text`); assert.equal(ge.expect.prompt, undefined, 'and expects no prompt');
+  }
+  console.log('ok save: folder written, loaded at once, placed in its tab, the Workflows page and the menus; text-only run maps prompt + settings; an empty prompt keeps the graph\'s');
 
   // ---- refusals ----
   const bad = async (b: any, re: RegExp, msg: string) => { const x = await saveWorkflow({ ...base, ...b }); assert.ok(!x.ok, msg); assert.match((x as any).error + ' ' + ((x as any).errors ?? []).join(' '), re, msg); };
