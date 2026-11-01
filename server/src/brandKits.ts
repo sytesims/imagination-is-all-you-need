@@ -55,7 +55,7 @@ export function applyBrandToFields(toolId: string, fields: Record<string, string
   const kit = ID_RE.test(id) ? getBrandKit(id) : undefined;
   if (!kit) { const message = 'That brand kit no longer exists. Turn Brand off or pick another kit.'; return { error: message, issue: { code: 'brand_kit_not_found', field: 'brandKit', message } }; }
   let mode: string | null = fields.mode || null; if (!mode && fields.types) { try { const t = JSON.parse(fields.types); mode = Array.isArray(t) ? String(t[0] ?? '') || null : String(t); } catch { mode = String(fields.types); } }
-  const media = BK.brandMediaFor(toolId, mode); if (!media || BK.BRAND_OWN_WORDS.has(toolId)) return { id: kit.id, name: kit.name, media: media ?? 'image', phrase: '', applied: false }; // Ad Pack words the kit itself
+  const media = BK.brandMediaFor(toolId, mode); if (!media || BK.BRAND_OWN_WORDS.has(toolId)) return { id: kit.id, name: kit.name, media: media ?? 'image', phrase: '', applied: false }; // brand apps (BRAND_APPS) word the kit in their own compose
   const phrase = BK.brandPhrase(kit, media); const typed = String(fields.prompt ?? '').trim();
   if (!phrase || !typed) return { id: kit.id, name: kit.name, media, phrase, applied: false };
   fields.prompt = BK.withBrand(typed, phrase); return { id: kit.id, name: kit.name, media, phrase, applied: true };

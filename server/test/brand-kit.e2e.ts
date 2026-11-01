@@ -23,6 +23,7 @@ const ok = (m: string) => console.log('ok ' + m);
   assert.equal(BK.moodWords('a\nb;c'), 'a, b, c', 'one line');
   assert.equal(BK.brandMediaFor('create-image'), 'image'); assert.equal(BK.brandMediaFor('h3-video'), 'video'); assert.equal(BK.brandMediaFor('audio', 'music'), 'audio');
   assert.equal(BK.brandMediaFor('audio', 'voice'), null, 'a voiceover script is never changed'); assert.equal(BK.brandMediaFor('voice'), null); assert.equal(BK.brandMediaFor('image-upscale'), null);
+  assert.equal(BK.brandMediaFor('app-product-shot'), 'image'); assert.equal(BK.brandMediaFor('app-ugc-ad'), 'video'); assert.ok(BK.BRAND_OWN_WORDS.has('app-phone-photo'), 'scene apps word the kit themselves (test/brand-apps.test.ts)');
   ok('phrase helper, media rules');
 
   // tokens: W3C DTCG structure

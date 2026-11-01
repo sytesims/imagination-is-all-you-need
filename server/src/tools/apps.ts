@@ -15,7 +15,7 @@ import { PHONE_HOLDERS, PHONE_LIGHTS, PHONE_DEFAULTS, phonePhotoPrompt } from '.
 import { EXPAND_ASPECTS, EXPAND_ASPECT_LABELS, TRYON_CATEGORIES, TRYON_PHOTO_TYPES, expandBlock, expandCanvas, photoBlock, eraseMaskBlock } from '../shared/imagePhotoTools.js';
 import { maskCover } from './imageFalApps.js';
 import { AD_STYLES, AD_STYLE_DEFAULT, AD_STYLE_IDS, AD_PLACEMENTS, AD_PLACEMENT_DEFAULT, AD_CORNERS, AD_TEXT_MAX, AD_ASPECT, adPrompt, placementOf } from '../shared/adPack.js';
-import { logoFor, type BrandKit } from '../shared/brandKit.js';
+import { BRAND_SCENE, brandSceneWords, logoFor, type BrandKit } from '../shared/brandKit.js';
 import { getBrandKit } from '../brandKits.js';
 import { LAYER_MODELS, LAYER_SIZES, LAYER_SIZE_DEFAULT, LAYERS_NO_PROMPT, layersPhotoBlock, layerLabel } from '../shared/imageLayers.js';
 import { mockLayerNames, mockLayerCount } from './mockLayers.js';
@@ -593,7 +593,7 @@ export interface GalleryApp {
   perOutput?: { field: string; label: string; options: PerOutputOption[]; max: number; parse: (raw: unknown) => { ids: string[] } | { error: string; code: string };
     /** Ad Pack: the options picked when nothing is sent (else every option) */ defaults?: string[];
     prompt: (o: PerOutputOption, userPrompt: string, ctx: { vals: Record<string, string>; provider?: string; has: (file: string) => boolean; brandKit: BrandKit | null }) => string };
-  /** The app words the brand itself (Ad Pack): Brand's kit reaches compose / perOutput as ctx.brandKit and the job as brandKitId; no phrase is added to the prompt. */
+  /** The app words the brand itself (Ad Pack, Product Shot, Phone Photo, UGC Ad; shared/brandKit BRAND_APPS): Brand's kit reaches compose / perOutput as ctx.brandKit and the job as brandKitId; no phrase is added to the prompt. */
   brand?: boolean;
   /** After the base tool parsed the job (files saved, sizes readable): a check that needs the files (Expand: the photo's shape vs the target), or
    *  extra keys for the run. `{ error }` = 400 with that field and code, nothing charged. Runs on submit only (a quote has no files). */
@@ -756,7 +756,8 @@ export const APP_GALLERY: GalleryApp[] = [
     providers: GENERATE_MODELS, locked: { types: '["generate"]', style: 'product', enhance: '1' }, modeWhenFile: { image: '["edit"]' }, exposed: ['image', 'prompt', 'aspect', 'provider', 'resolution', 'rights', 'seed', 'scene'],
     labels: { image: 'Product photo' }, promptTemplate: 'product photo of the uploaded item: {prompt}', fileOrPrompt: { file: 'image', message: 'Add a product photo or describe the product.' },
     fields: [{ name: 'scene', label: 'Scene', kind: 'select', control: 'tiles', options: PRODUCT_SCENES, default: 'studio-white' }],
-    compose: (v, c) => c.has('image') ? joinPrompt(`product photo of the uploaded item: ${c.prompt}`, PRODUCT_KEEP, pick(PRODUCT_SCENES, v.scene)?.prompt) : joinPrompt(`product photo of ${c.prompt}`, pick(PRODUCT_SCENES, v.scene)?.prompt) },
+    brand: true /* Brand: the kit's colours and mood on the backdrop and props, after the scene (PRODUCT_KEEP still leads: the product keeps its own colours) */,
+    compose: (v, c) => joinPrompt(c.has('image') ? `product photo of the uploaded item: ${c.prompt}` : `product photo of ${c.prompt}`, c.has('image') && PRODUCT_KEEP, pick(PRODUCT_SCENES, v.scene)?.prompt, !!c.brandKit && brandSceneWords(c.brandKit, BRAND_SCENE['app-product-shot'])) },
   // Phone Photo (2026-11-01, shared/phonePhoto.ts): a casual phone photo of an AI-made person. Two chip rows (who holds the phone, the light) and
   // your words for who is in it; each model gets its own wording (promptPatterns ugc-photo). Text to image only; style off (no added look words).
   { id: 'phone-photo', name: 'Phone Photo', category: 'Image', base: 'create-image', poster: null, description: 'An everyday phone photo of a made-up person: a selfie, a mirror shot or a friend\'s snap, in real room light.',
@@ -764,7 +765,8 @@ export const APP_GALLERY: GalleryApp[] = [
     labels: { prompt: 'Who is in the photo' },
     fields: [{ name: 'holder', label: 'Taken by', kind: 'select', control: 'segmented', options: PHONE_HOLDERS.map(({ value, label }) => ({ value, label })), default: PHONE_DEFAULTS.holder },
       { name: 'light', label: 'Light', kind: 'select', control: 'segmented', options: PHONE_LIGHTS.map(({ value, label }) => ({ value, label })), default: PHONE_DEFAULTS.light }],
-    compose: (v, c) => phonePhotoPrompt({ who: c.prompt, holder: v.holder, light: v.light }, c.provider),
+    brand: true /* Brand: the kit's colours and mood on clothes and things around them, in the model's own {detail} slot (never in "who") */,
+    compose: (v, c) => phonePhotoPrompt({ who: c.prompt, holder: v.holder, light: v.light, detail: c.brandKit ? brandSceneWords(c.brandKit, BRAND_SCENE['app-phone-photo']) : undefined }, c.provider),
     notes: ['Made-up people only. Results are AI pictures, never real reviews or real customers.'] },
   // Brush Edit (was Inpaint; id kept so saved jobs and the API keep working). Only models whose route takes a mask (image grid finding 2: no Nano Banana 2, no Ideogram V4).
   { id: 'inpaint', name: 'Brush Edit', route: '/tools/brush-edit', category: 'Edit', base: 'create-image', poster: null, description: 'Paint over the area to change and describe it; everything else stays as it was.',
@@ -810,7 +812,9 @@ export const APP_GALLERY: GalleryApp[] = [
     fields: [{ name: 'presenter', label: 'Presenter', kind: 'select', control: 'tiles', options: UGC_PRESENTERS, default: 'home-sofa' },
       { name: 'hook', label: 'Hook style', kind: 'select', control: 'segmented', options: UGC_HOOKS, default: 'question' }],
     compose: (v, c) => joinPrompt('UGC selfie-style vertical ad, handheld phone camera', c.has('presenterImage') ? 'the presenter from the first reference image speaks to camera' : pick(UGC_PRESENTERS, v.presenter)?.prompt,
-      pick(UGC_HOOKS, v.hook)?.prompt, `about ${c.prompt}`, c.has('image') ? `the product from the ${c.has('presenterImage') ? 'second' : ''} reference image appears clearly in hand`.replace('  ', ' ') : ''),
+      pick(UGC_HOOKS, v.hook)?.prompt, `about ${c.prompt}`, c.has('image') ? `the product from the ${c.has('presenterImage') ? 'second' : ''} reference image appears clearly in hand`.replace('  ', ' ') : '',
+      !!c.brandKit && brandSceneWords(c.brandKit, BRAND_SCENE['app-ugc-ad'])),
+    brand: true /* Brand: the kit's colours and mood on the set, wardrobe and props, last (never the presenter's face or skin) */,
     fileMap: (f) => { const pres = f.presenterImage ?? []; const prod = f.image ?? []; if (!pres.length) return f; const { presenterImage: _p, ...rest } = f; return { ...rest, image: pres.slice(0, 1), refs: prod.slice(0, 1) }; },
     extra: { presenterFilters: { setting: UGC_SETTINGS, framing: UGC_FRAMINGS } },
     notes: ['Presenter tiles are descriptions until our own presenter stills exist; upload a presenter photo to use a face as reference 1.'] },
@@ -1167,7 +1171,7 @@ export function makeGalleryApp(a: GalleryApp, base: ToolDef): ToolDef {
       let appSnap: string | null = null; // D5: an off-list length runs at the nearest one, with a note
       if (a.durations) { const rd = resolveDuration(appId, f.provider || providers[0], f.duration ?? f.seconds); if (rd && 'error' in rd) return { ...durationErrorBody(rd, f.duration != null && f.duration !== '' ? 'duration' : 'seconds') } as any;
         if (rd?.snapped) { f.duration = String(rd.seconds); delete f.seconds; appSnap = rd.snapped.note; } }
-      const kit = a.brand && fields.brandKit ? getBrandKit(String(fields.brandKit)) ?? null : null; // Ad Pack: Brand's kit (index.ts already refused an unknown id)
+      const kit = a.brand && fields.brandKit ? getBrandKit(String(fields.brandKit)) ?? null : null; // brand apps: Brand's kit (index.ts already refused an unknown id)
       if (a.compose) { const pv = typeof f.provider === 'string' ? f.provider : undefined; f.prompt = a.compose(vals, { prompt: userPrompt, has: (n) => !!files0[n]?.length, provider: pv, maxChars: providerPromptCap(pv), brandKit: kit }).replace(/\s+([:,.;])/g, '$1').trim(); }
       else if (a.promptTemplate) f.prompt = a.promptTemplate.replace('{prompt}', userPrompt).replace(/\s+([:,.])/g, '$1').trim();
       Object.assign(f, a.locked);

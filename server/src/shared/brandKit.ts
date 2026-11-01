@@ -160,15 +160,29 @@ export function ruleWords(lines: string[] | null | undefined, n = 2, join: 'list
 export function brandPhrase(kit: Pick<BrandKit, 'colors' | 'mood'>, media: BrandMediaKind): string {
   const mood = moodWords(kit.mood);
   if (media === 'audio') return mood ? `mood: ${mood}` : '';
-  const cs = (kit.colors ?? []).filter((c) => normHex(c.hex)).slice(0, BRAND_LIMITS.colors);
-  const order: BrandRole[] = ['primary', 'secondary', 'background', 'text', ''];
-  const main = order.flatMap((r) => cs.filter((c) => c.role === r)).map(colourLabel); const acc = cs.filter((c) => c.role === 'accent').map(colourLabel);
-  const uniq = (xs: string[]) => [...new Set(xs)];
-  const m = uniq(main).slice(0, 4), a = uniq(acc).filter((x) => !m.includes(x)).slice(0, 2);
+  const { main: m, acc: a } = paletteWords(kit);
   const bits: string[] = [];
   if (m.length) bits.push(`colour palette of ${listWords(m)}${a.length ? `, accents of ${listWords(a)}` : ''}`); else if (a.length) bits.push(`accents of ${listWords(a)}`);
   if (mood) bits.push(`mood: ${mood}`);
   return bits.join('; ');
+}
+/** A kit's colours in words: up to 4 main ones (roles first: primary, secondary, background, text, then unnamed) and up to 2 accents. */
+function paletteWords(kit: Pick<BrandKit, 'colors'>): { main: string[]; acc: string[] } {
+  const cs = (kit.colors ?? []).filter((c) => normHex(c.hex)).slice(0, BRAND_LIMITS.colors);
+  const order: BrandRole[] = ['primary', 'secondary', 'background', 'text', ''];
+  const uniq = (xs: string[]) => [...new Set(xs)];
+  const main = uniq(order.flatMap((r) => cs.filter((c) => c.role === r)).map(colourLabel)).slice(0, 4);
+  return { main, acc: uniq(cs.filter((c) => c.role === 'accent').map(colourLabel)).filter((x) => !main.includes(x)).slice(0, 2) };
+}
+/** The brand words for an app that builds its own scene (Product Shot, Phone Photo, UGC Ad; BRAND_APPS): the palette goes on `things`
+ *  (the backdrop and props, a presenter's set and wardrobe), never on the subject, so a product keeps its own colours; then the mood.
+ *  One comma phrase that reads inside a sentence: "backdrop, surfaces and props in sage green and warm sand with rust accents, a calm, cosy mood". "" = nothing to add. */
+export function brandSceneWords(kit: Pick<BrandKit, 'colors' | 'mood'>, things: string): string {
+  const { main, acc } = paletteWords(kit); const mood = moodWords(kit.mood); const cs = main.length ? main : acc;
+  const bits: string[] = [];
+  if (cs.length) bits.push(`${things} in ${listWords(cs)}${main.length && acc.length ? ` with ${listWords(acc)} accents` : ''}`);
+  if (mood) bits.push(`a ${mood} mood`);
+  return bits.join(', ');
 }
 /** Joiner between the typed prompt and the brand words. */
 const JOIN = '. ';
@@ -183,11 +197,19 @@ export function withoutBrand(prompt: string, phrase: string): string {
   return p.endsWith(tail) ? p.slice(0, -tail.length) : p.endsWith(phrase) ? p.slice(0, -phrase.length).replace(/[\s.,;:]+$/, '') : p;
 }
 
-/** Tools that word the brand themselves (Ad Pack: colours and type feel inside its own ad prompt, the logo added after): Brand is on for them, no phrase is appended. */
-export const BRAND_OWN_WORDS = new Set(['app-ad-pack']);
+/** Apps that word the brand into their own prompt (compose gets the kit as ctx.brandKit, tools/apps.ts `brand: true`), as which media.
+ *  Brand is on for them but no phrase is appended. Ad Pack: colours and type feel in its ad prompt, the logo added after (BRAND_LOGO_APPS);
+ *  Product Shot, Phone Photo and UGC Ad: brandSceneWords in their scene (backdrop, props, set, wardrobe), never on the product or the person. */
+export const BRAND_APPS: Readonly<Record<string, BrandMediaKind>> = { 'app-ad-pack': 'image', 'app-product-shot': 'image', 'app-phone-photo': 'image', 'app-ugc-ad': 'video' };
+export const BRAND_OWN_WORDS = new Set(Object.keys(BRAND_APPS));
+/** What each scene app colours with the kit (brandSceneWords `things`): never the product or the person. */
+export const BRAND_SCENE: Readonly<Record<string, string>> = { 'app-product-shot': 'backdrop, surfaces and props', 'app-phone-photo': 'clothes and everyday things around them', 'app-ugc-ad': 'set, wardrobe and props' };
+/** Brand apps that also place the kit's logo (and use its fonts). */
+export const BRAND_LOGO_APPS = new Set(['app-ad-pack']);
 /** Which tools take the brand words, and as which media. Audio only for music (a voiceover's script is read word for word). null = not a brand tool. */
 export function brandMediaFor(toolId: string, mode?: string | null): BrandMediaKind | null {
-  if (toolId === 'create-image' || BRAND_OWN_WORDS.has(toolId)) return 'image';
+  if (toolId === 'create-image') return 'image';
+  if (BRAND_OWN_WORDS.has(toolId)) return BRAND_APPS[toolId];
   if (toolId === 'h3-video') return 'video';
   if (toolId === 'audio' || toolId === 'soundtrack') return !mode || mode === 'music' ? 'audio' : null;
   return null;

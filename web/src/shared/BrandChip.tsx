@@ -1,6 +1,7 @@
 /**
  * The Brand chip (2026-10-27; reworked 2026-11-01) in the Image, Video and Audio bars and on Ad Pack. On, the server adds the active brand's
- * words after your prompt (shared/brandKit brandPhrase; the panel shows the exact text); Ad Pack words the kit itself and adds its logo.
+ * words after your prompt (shared/brandKit brandPhrase; the panel shows the exact text). Brand apps word the kit themselves (BRAND_APPS): Ad Pack
+ * also adds its logo; Product Shot, Phone Photo and UGC Ad put its colours and mood on their scene (BRAND_SCENE + brandSceneWords, shown in the panel).
  * The chip shows the active kit's logo (or its colour dots when it has none) and its name. Its panel says in one line what Brand does here, then lists every kit as a
  * small card (logo, name, colour dots), "None" first, the picked one ticked, and "New brand kit…" / "Manage brands". Arrow keys move between cards.
  * On Ad Pack the chip is always there (never folds into "…", even off or with no kit yet); elsewhere an active Brand never folds and an
@@ -14,7 +15,7 @@ import { fitPri } from './chipFit';
 import { tip } from './Tooltip';
 import { Link } from '../platform/router';
 import { activeKit, setActiveKit, setBrandOn, useBrand } from './brandStore';
-import { BRAND_OWN_WORDS, brandMediaFor, brandPhrase, logoFor, type BrandKit, type BrandMediaKind } from '../../../server/src/shared/brandKit';
+import { BRAND_LOGO_APPS, BRAND_OWN_WORDS, BRAND_SCENE, brandMediaFor, brandPhrase, brandSceneWords, logoFor, type BrandKit, type BrandMediaKind } from '../../../server/src/shared/brandKit';
 import './brandChip.css';
 
 /** A few dots of the kit's colours (the chip's icon). */
@@ -47,10 +48,11 @@ function moveFocus(e: KeyboardEvent<HTMLDivElement>) {
 
 export function BrandChip({ toolId, mode, watch }: { toolId: string; mode?: string | null; watch?: RefObject<HTMLElement | null> }) {
   const s = useBrand(); const [open, setOpen] = useState(false); const [err, setErr] = useState(''); const btn = useRef<HTMLButtonElement>(null);
-  const media = brandMediaFor(toolId, mode ?? null); const kit = activeKit(s); const own = BRAND_OWN_WORDS.has(toolId); /* Ad Pack words the kit itself and adds its logo */
+  const media = brandMediaFor(toolId, mode ?? null); const kit = activeKit(s);
+  const own = BRAND_LOGO_APPS.has(toolId); /* Ad Pack words the kit itself and adds its logo */ const scene = BRAND_OWN_WORDS.has(toolId) ? BRAND_SCENE[toolId] ?? '' : ''; /* Product Shot, Phone Photo, UGC Ad: the kit's words on these things in their own scene */
   if (!media || !s.loaded || (!kit && !own)) return null;
   const on = !!kit && s.on[media];
-  const phrase = kit && !own ? brandPhrase(kit, media) : '';
+  const phrase = !kit || own ? '' : scene ? brandSceneWords(kit, scene) : brandPhrase(kit, media);
   const noLogo = own && on && kit && !logoFor(kit, 'main');
   const pick = (id: string | null) => { setErr(''); if (!id) { setBrandOn(media, false); return; } if (id !== kit?.id) setActiveKit(id).catch(e => setErr(String(e.message))); setBrandOn(media, true); };
   const hint = on ? (own ? `${kit!.name}: ${WHAT.own}` : phrase ? `Adds: ${phrase}` : `${kit!.name} has nothing to add yet`) : own ? WHAT.own : 'Use one of your brands';
@@ -62,17 +64,17 @@ export function BrandChip({ toolId, mode, watch }: { toolId: string; mode?: stri
       <span className="bk-chip-l">{on ? kit!.name : 'Brand'}</span></button>
     <Popover open={open} anchor={rowAnchor(btn)} avoid={watch} watch={watch} gap={8} align="start" onClose={() => setOpen(false)} label="Brand" testId="bk-pop" className="bk-pop">
       <div className="bk-pop-in">
-        <div className="bk-pop-top"><b className="bk-pop-t">Brand</b><p className="bk-pop-what" data-testid="bk-what">{own ? WHAT.own : WHAT[media]}</p></div>
+        <div className="bk-pop-top"><b className="bk-pop-t">Brand</b><p className="bk-pop-what" data-testid="bk-what">{own ? WHAT.own : scene ? `Uses your colours and mood for the ${scene}.` : WHAT[media]}</p></div>
         <div className="bk-kits" role="radiogroup" aria-label="Brand" onKeyDown={moveFocus}>
           <button type="button" role="radio" aria-checked={!on} tabIndex={on ? -1 : 0} className="bk-kit" data-testid="bk-off" onClick={() => pick(null)}>
-            <span className="bk-mark bk-mark-off" aria-hidden style={{ ['--m' as any]: '32px' }} /><span className="bk-kit-t"><span className="bk-kit-n">None</span><small>{own ? 'No logo, the style\'s own colours' : 'Your prompt as typed'}</small></span>
+            <span className="bk-mark bk-mark-off" aria-hidden style={{ ['--m' as any]: '32px' }} /><span className="bk-kit-t"><span className="bk-kit-n">None</span><small>{own ? 'No logo, the style\'s own colours' : scene ? 'The scene as picked' : 'Your prompt as typed'}</small></span>
             <span className="bk-tick" aria-hidden>{!on && <TickIcon />}</span></button>
           {s.kits.map(k => { const sel = on && k.id === kit!.id; return <button key={k.id} type="button" role="radio" aria-checked={sel} tabIndex={sel ? 0 : -1} className="bk-kit" data-testid={`bk-kit-${k.id}`} onClick={() => pick(k.id)}>
             <KitMark kit={k} /><span className="bk-kit-t"><span className="bk-kit-n">{k.name}</span><KitDots colors={k.colors} size={10} /></span>
             <span className="bk-tick" aria-hidden>{sel && <TickIcon />}</span></button>; })}
         </div>
         {noLogo && <p className="bk-note" data-testid="bk-no-logo">{kit!.name} has no logo yet, so only its colours and fonts are used.</p>}
-        {on && !own && <><div className="bk-pop-h">Added to your prompt</div>
+        {on && !own && <><div className="bk-pop-h">{scene ? 'Added to the scene' : 'Added to your prompt'}</div>
           <p className={`bk-phrase${phrase ? '' : ' bk-phrase-none'}`} data-testid="bk-phrase">{phrase || `${kit!.name} has no colours or mood yet, so nothing is added.`}</p></>}
         {err && <p className="bk-err" role="alert">{err}</p>}
         <div className="bk-pop-foot">
