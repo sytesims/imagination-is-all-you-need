@@ -3,7 +3,7 @@
 Start with the [main README](../README.md) for what Imagination Is All You Need is and the quick start.
 
 ## Get started
-- [Install and run](INSTALL.md): requirements, mock mode, Comfy Cloud, your own ComfyUI, the one-command installer, Docker, NVIDIA, Mac and CPU.
+- [Install and run](INSTALL.md): requirements, mock mode, Comfy Cloud, your own ComfyUI, the one-command installer, NVIDIA, Mac and CPU.
 - [API quick start](API-QUICKSTART.md): your first API requests (generated).
 
 ## How-to guides

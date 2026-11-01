@@ -18,7 +18,6 @@
 | `plugins/` | Drop-in tools. See [PLUGINS.md](PLUGINS.md) |
 | `readiness/` | Model manifest (`readiness/manifest/models.json`), custom-node pins and GPU-free readiness checks |
 | `scripts/` | Installer, workflow builders and validators, API-doc generator |
-| `docker/`, `Dockerfile`, `Dockerfile.comfy`, `docker-compose.yml` | Container setup (profiles `mock`, `nvidia`, `cpu`, `models`) |
 | `agent-skills/` | Ready-made instructions and setup for using Imagination Is All You Need from Claude and ChatGPT over MCP |
 
 ## One shell, many tools

@@ -4,7 +4,7 @@ Instructions for AI coding agents installing and running Imagination Is All You 
 
 ## Rules for agents
 
-- **Ask before anything large.** Never download models, install ComfyUI or start Docker GPU builds without the user's OK. Say the size first (model downloads are often 10–75 GB).
+- **Ask before anything large.** Never download models or install ComfyUI without the user's OK. Say the size first (model downloads are often 10–75 GB).
 - **Keys stay secret.** Never print, echo, log or paste API keys or tokens. Never commit `.env.local` (or any `.env*` file except `.env.example`). Check with `git status` before any commit.
 - **Ask, don't guess,** which way the user wants to run it (step 3) and where their ComfyUI `models` folder is.
 - **Don't change routing for the user** (Use local ComfyUI, pins) unless they ask.

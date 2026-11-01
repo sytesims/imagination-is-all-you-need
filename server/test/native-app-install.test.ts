@@ -6,7 +6,6 @@ assert.match(ps, /Need npm\.cmd/, 'require npm command shim instead of relying o
 assert.match(ps, /ffprobe/, 'check ffprobe, not just ffmpeg');
 assert.match(ps, /npm\.cmd run setup/, 'recommended startup includes API, web and MCP via app setup');
 assert.doesNotMatch(ps, /Get-Content \$envFile/, 'do not print a fragile unquoted settings-file parser');
-assert.doesNotMatch(ps, /node docker\/start\.mjs/, 'native users are not sent to the network-exposed Docker entrypoint');
 assert.match(ps, /Replace\("'", "''"\)/, 'quote installation paths for the printed PowerShell command');
 assert.doesNotMatch(ps, /Set-ExecutionPolicy/, 'do not disable user PowerShell policy');
 console.log('ok native app install instructions: app-only setup, Windows npm shim, media prerequisites and quoted paths (source contract only)');

@@ -17,7 +17,7 @@ export function repoInfo() {
   try {
     const u = execFileSync('git', ['remote', 'get-url', 'origin'], { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'], timeout: 2000 }).toString();
     if (u.trim()) return (cached = { repoUrl: scrub(u), repoUrlSource: 'git' });
-  } catch { /* no git / no remote (e.g. Docker image) */ }
+  } catch { /* no git / no remote (e.g. a downloaded zip) */ }
   return (cached = { repoUrl: null, repoUrlSource: null });
 }
 

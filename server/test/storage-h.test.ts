@@ -1,5 +1,5 @@
 // H+ storage: TRASH_DAYS parsing never silently disables cleanup; install.sh merges .env.local (mode 600, keys kept on re-run);
-// Docker reads saved keys from OPENHIGGSFIELD_ENV_FILE on the data volume; the server saves keys there. Run: npx tsx test/storage-h.test.ts
+// the server saves keys to OPENHIGGSFIELD_ENV_FILE when it is set. Run: npx tsx test/storage-h.test.ts
 import assert from 'node:assert/strict'; import { execFileSync } from 'node:child_process'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path';
 const REPO = path.resolve(import.meta.dirname, '../..'); const D = fs.mkdtempSync(path.join(os.tmpdir(), 'storh-')); process.env.OPENHIGGSFIELD_DATA_DIR = path.join(D, 'data');
 const ok = (m: string) => console.log('ok ' + m);
@@ -18,11 +18,7 @@ const ok = (m: string) => console.log('ok ' + m);
   assert.equal(fs.statSync(F).mode & 0o777, 0o600); assert.deepEqual(fs.readdirSync(D).filter((f) => f.startsWith('.env.local.')), [], 'no temp files left');
   const N = path.join(D, 'new.env'); execFileSync('bash', ['-c', `. ${JSON.stringify(H)}; env_init ${JSON.stringify(N)}; env_set ${JSON.stringify(N)} A 1`]); assert.equal(fs.statSync(N).mode & 0o777, 0o600);
   ok('install.sh: re-run merges into .env.local (saved key + comments kept, one line per setting), file mode 600, new file 600'); }
-// 3. Docker: start.mjs reads saved keys from OPENHIGGSFIELD_ENV_FILE; compose/Dockerfile point it at the data volume
-{ const { readEnvFile } = await import(path.join(REPO, 'docker/envfile.mjs')); const F = path.join(D, 'docker.env'); fs.writeFileSync(F, '# c\nexport A=1\nB="two words"\nbad line\nC=\n');
-  assert.deepEqual(readEnvFile(F), { A: '1', B: 'two words', C: '' }); assert.deepEqual(readEnvFile(path.join(D, 'missing')), {});
-  const df = fs.readFileSync(path.join(REPO, 'Dockerfile'), 'utf8'); assert.match(df, /OPENHIGGSFIELD_ENV_FILE=\/data\/\.env\.local/); assert.match(df, /VOLUME \/data/); assert.match(df, /docker\/envfile\.mjs/);
-  assert.match(fs.readFileSync(path.join(REPO, 'docker-compose.yml'), 'utf8'), /ohf-data:\/data/); assert.match(fs.readFileSync(path.join(REPO, 'docker/start.mjs'), 'utf8'), /\.\.\.fromFile, \.\.\.process\.env/);
-  const out = execFileSync(path.join(REPO, 'node_modules/.bin/tsx'), ['-e', "import('./src/routing/settings.ts').then((s) => { console.log('ENVF', s.ENV_LOCAL); process.exit(0); })"], { cwd: path.join(REPO, 'server'), env: { ...process.env, OPENHIGGSFIELD_ENV_FILE: path.join(D, 'vol/.env.local'), OPENHIGGSFIELD_DATA_DIR: path.join(D, 'd3') } }).toString();
-  assert.ok(out.includes(`ENVF ${path.join(D, 'vol/.env.local')}`), out); ok('Docker: saved keys live in /data/.env.local (volume), start.mjs loads them (env vars win), the server saves to OPENHIGGSFIELD_ENV_FILE'); }
+// 3. OPENHIGGSFIELD_ENV_FILE: the server saves keys to that file
+{ const out = execFileSync(path.join(REPO, 'node_modules/.bin/tsx'), ['-e', "import('./src/routing/settings.ts').then((s) => { console.log('ENVF', s.ENV_LOCAL); process.exit(0); })"], { cwd: path.join(REPO, 'server'), env: { ...process.env, OPENHIGGSFIELD_ENV_FILE: path.join(D, 'vol/.env.local'), OPENHIGGSFIELD_DATA_DIR: path.join(D, 'd3') } }).toString();
+  assert.ok(out.includes(`ENVF ${path.join(D, 'vol/.env.local')}`), out); ok('the server saves keys to OPENHIGGSFIELD_ENV_FILE'); }
 console.log('ALL OK storage-h');
