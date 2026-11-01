@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { downloadIntentOf } from './hardware';
+import { scaleText } from './scaleText';
 /** Server quotes (GET /api/tools/:id/price, /api/models/quote). A 400 with priceAvailable:false (credits:null, runnable:false) is a real
  *  answer, "no verified price for this setting", so keep its body instead of dropping it; callers then block Generate with the reason. */
 export const UNPRICED_MSG = 'No verified price for this setting, so it can’t run.';
@@ -109,7 +110,7 @@ export const shownCredits = (q: any): number | null => { if (!q || typeof q.cred
 /** B18: the quote's own unit fields first, then the pricing row's. */
 export const unitOf = (q: any, row?: any): { label: string; help: string } => ({ label: String(q?.unitLabel ?? row?.unitLabel ?? '').trim(), help: String(q?.unitHelp ?? row?.unitHelp ?? '').trim() });
 /** B18: an upscale quote with a given size (estimated:false + sourceSize/outputSize): "1280×720 → 2560×1440 at 2×". */
-export const sizeLine = (q: any): string | null => { const a = q?.sourceSize, b = q?.outputSize; if (!q || (q.sizeEstimated ?? q.estimated) === true || !a?.width || !b?.width) return null; return `${a.width}×${a.height} → ${b.width}×${b.height}${q.scale ? ` at ${q.scale}×` : ''}`; };
+export const sizeLine = (q: any): string | null => { const a = q?.sourceSize, b = q?.outputSize; if (!q || (q.sizeEstimated ?? q.estimated) === true || !a?.width || !b?.width) return null; return `${a.width}×${a.height} → ${b.width}×${b.height}${q.scale ? ` at ${scaleText(q.scale)}` : ''}`; };
 /** B19 (PB 06e0685): an input block keeps the real price (credits = listCredits, chargeable:false) plus blockedReason: show that price muted. */
 export const blockedPrice = (q: any): number | null => { if (!q || q.runnable !== false || typeof q.blockedReason !== 'string' || !q.blockedReason.trim()) return null;
   if (typeof q.credits === 'number' && q.credits > 0) return q.credits; /* B20: a demo route's block (credits 0) shows the list price, muted, like the demo note */
