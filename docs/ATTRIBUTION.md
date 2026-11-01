@@ -9,8 +9,8 @@ Served live on `GET /api/models/:id` → `attribution {status, lines[], required
 
 | Line | Level | Licence requires | Licence (models) | Clause | Source |
 |---|---|---|---|---|---|
-| **Powered by MiniMax H3** | encouraged | “MiniMax H3” in the UI | minimax-community-akatz-charswap (comfy-h3-charswap) | §IV.2 (required): “You shall prominently display “MiniMax H3”on the user interface of commercial product or service that uses MiniMax H3 or MiniMax H3 Works.” §III.3(a) (encouraged, not required): display a notice that the product or service is “Powered by MiniMax H3”. So the name “MiniMax H3” is required in the UI and the “Powered by MiniMax H3” credit is encouraged; we show the credit line, which also displays the required name. (Licence text checked 2026-10-17; same text as the base licence.) | https://huggingface.co/akatz-ai/MiniMax-H3-Character-Swap-LoRA/raw/main/LICENSE |
-| **Powered by MiniMax H3** | encouraged | “MiniMax H3” in the UI | minimax-community (comfy-h3-restyle, comfy-h3-vfx, cloud-h3-crossview, comfy-h3-camera, comfy-h3, cloud-h3, cloud-h3-wf, comfy-h3-extend, comfy-h3-lipsync) | §IV.2 (required): “You shall prominently display “MiniMax H3”on the user interface of commercial product or service that uses MiniMax H3 or MiniMax H3 Works.” §III.3(a) (encouraged, not required): display a notice that the product or service is “Powered by MiniMax H3”. So the name “MiniMax H3” is required in the UI and the “Powered by MiniMax H3” credit is encouraged; we show the credit line, which also displays the required name. (Licence text checked 2026-10-17.) | https://huggingface.co/MiniMaxAI/MiniMax-H3/raw/main/LICENSE |
+| **Powered by MiniMax H3** | encouraged | “MiniMax H3” in the UI | minimax-community-akatz-charswap (comfy-h3-charswap, cloud-h3-two-swap) | §IV.2 (required): “You shall prominently display “MiniMax H3”on the user interface of commercial product or service that uses MiniMax H3 or MiniMax H3 Works.” §III.3(a) (encouraged, not required): display a notice that the product or service is “Powered by MiniMax H3”. So the name “MiniMax H3” is required in the UI and the “Powered by MiniMax H3” credit is encouraged; we show the credit line, which also displays the required name. (Licence text checked 2026-10-17; same text as the base licence.) | https://huggingface.co/akatz-ai/MiniMax-H3-Character-Swap-LoRA/raw/main/LICENSE |
+| **Powered by MiniMax H3** | encouraged | “MiniMax H3” in the UI | minimax-community (comfy-h3-restyle, comfy-h3-vfx, cloud-h3-crossview, comfy-h3-camera, comfy-h3, cloud-h3, cloud-h3-wf, cloud-h3-fast, comfy-h3-pika, cloud-h3-keyframes, comfy-h3-extend, comfy-h3-lipsync) | §IV.2 (required): “You shall prominently display “MiniMax H3”on the user interface of commercial product or service that uses MiniMax H3 or MiniMax H3 Works.” §III.3(a) (encouraged, not required): display a notice that the product or service is “Powered by MiniMax H3”. So the name “MiniMax H3” is required in the UI and the “Powered by MiniMax H3” credit is encouraged; we show the credit line, which also displays the required name. (Licence text checked 2026-10-17.) | https://huggingface.co/MiniMaxAI/MiniMax-H3/raw/main/LICENSE |
 | **Powered by MiniMax-Music3** | encouraged | “MiniMax-Music3” in the UI | minimax-music3-community (comfy-minimax-music3, cloud-minimax-music) | Commercial products credit MiniMax-Music3 in their interface; over US$20M yearly revenue needs written permission; an acceptable use policy applies. The Comfy-Org repack card says apache-2.0, the upstream LICENSE file governs. | https://huggingface.co/MiniMaxAI/MiniMax-Music3/raw/main/LICENSE |
 | **Powered by Stability AI** | required | “Powered by Stability AI” in the UI | stability-community (comfy-stable-audio) | IV(a)(iii): prominently display “Powered by Stability AI” on a related website, user interface, blogpost, about page, or product documentation (when distributing the model or a product using it). | https://stability.ai/community-license-agreement |
 | **Built with Fish Audio** | required | “Built with Fish Audio” in the UI | fish-community (comfy-drama3) | IV(a): a product or service that uses the Fish Audio Materials shall prominently display “Built with Fish Audio”. | https://huggingface.co/fishaudio/drama-3/raw/main/LICENSE |
@@ -24,6 +24,7 @@ Served live on `GET /api/models/:id` → `attribution {status, lines[], required
 | Seedance (hosted) (`router-seedance`) | unverified (not fully verified) | — | proprietary → unverified |
 | Open weights (ComfyUI workflow) (`comfy-open`) | none | — | apache-2.0 → none, ltx-2-community → none, gemma → none, mit → none |
 | H3 Character Swap LoRA v1.5 (`comfy-h3-charswap`) | required | Powered by MiniMax H3 (encouraged; requires “MiniMax H3”) | minimax-community-akatz-charswap → required |
+| Wan Animate 2 · Comfy Cloud (`cloud-wan-animate2`) | none | — | apache-2.0 → none |
 | MiniMax H3 Style Transfer (`comfy-h3-restyle`) | required (not fully verified) | Powered by MiniMax H3 (encouraged; requires “MiniMax H3”) | minimax-community → required, alissonerdx-unspecified → unverified |
 | MiniMax H3 VFX Edit (`comfy-h3-vfx`) | required (not fully verified) | Powered by MiniMax H3 (encouraged; requires “MiniMax H3”) | minimax-community → required, alissonerdx-unspecified → unverified |
 | Veo (hosted) (`router-veo`) | unverified (not fully verified) | — | proprietary → unverified |
@@ -94,6 +95,9 @@ Served live on `GET /api/models/:id` → `attribution {status, lines[], required
 | Wan 3.0 (hosted) (`router-wan3`) | unverified (not fully verified) | — | proprietary → unverified |
 | MiniMax H3 · Comfy Cloud (`cloud-h3`) | required | Powered by MiniMax H3 (encouraged; requires “MiniMax H3”) | minimax-community → required |
 | MiniMax H3 · Comfy Cloud workflow (`cloud-h3-wf`) | required | Powered by MiniMax H3 (encouraged; requires “MiniMax H3”) | minimax-community → required |
+| MiniMax H3 Fast · Comfy Cloud (`cloud-h3-fast`) | required | Powered by MiniMax H3 (encouraged; requires “MiniMax H3”) | minimax-community → required |
+| Pika H3 Flex (`comfy-h3-pika`) | required | Powered by MiniMax H3 (encouraged; requires “MiniMax H3”) | minimax-community → required, apache-2.0 → none |
+| MiniMax H3 Keyframes · Comfy Cloud (`cloud-h3-keyframes`) | required | Powered by MiniMax H3 (encouraged; requires “MiniMax H3”) | minimax-community → required |
 | LTX-2.5 Pro (LTX API) (`direct-ltx-25-pro`) | unverified (not fully verified) | — | proprietary → unverified |
 | LTX-2.5 Pro (hosted) (`router-ltx-25-pro`) | unverified (not fully verified) | — | proprietary → unverified |
 | LTX-2.5 Fast (LTX API) (`direct-ltx-25-fast`) | unverified (not fully verified) | — | proprietary → unverified |
@@ -107,6 +111,13 @@ Served live on `GET /api/models/:id` → `attribution {status, lines[], required
 | Seedance 2.0 Fast (hosted) (`router-seedance-20-fast`) | unverified (not fully verified) | — | proprietary → unverified |
 | Seedance 2.0 Mini (hosted) (`router-seedance-20-mini`) | unverified (not fully verified) | — | proprietary → unverified |
 | Veo 3.1 Fast (hosted) (`router-veo-fast`) | unverified (not fully verified) | — | proprietary → unverified |
+| Wan 3.0 Prime (hosted) (`router-wan3-prime`) | unverified (not fully verified) | — | proprietary → unverified |
+| Veo 3.1 Lite (hosted) (`router-veo-lite`) | unverified (not fully verified) | — | proprietary → unverified |
+| P-Video-2 (hosted) (`router-pvideo2`) | unverified (not fully verified) | — | proprietary → unverified |
+| Grok Imagine Video 1.5 Lite (hosted) (`router-grok-video-lite`) | unverified (not fully verified) | — | proprietary → unverified |
+| Gemini Omni 1.1 Flash · Comfy Cloud (`cloud-gemini-omni`) | unverified (not fully verified) | — | proprietary → unverified |
+| FLUX 3 Max · Comfy (`cloud-flux3-max`) | unverified (not fully verified) | — | proprietary → unverified |
+| Kling 4.0 · Comfy Cloud (`cloud-kling4`) | unverified (not fully verified) | — | proprietary → unverified |
 | LTX-2.5 22B (`comfy-ltx25-extend`) | unverified (not fully verified) | — | ltx-2x-community → unverified, apache-2.0 → none |
 | MiniMax H3 Extend (`comfy-h3-extend`) | required | Powered by MiniMax H3 (encouraged; requires “MiniMax H3”) | minimax-community → required |
 | Sonilo Music (`api-sonilo-music`) | unverified (not fully verified) | — | proprietary → unverified |
@@ -124,7 +135,6 @@ Served live on `GET /api/models/:id` → `attribution {status, lines[], required
 | MiniMax Speech 2.8 Turbo (direct API) (`direct-minimax-speech-turbo`) | unverified (not fully verified) | — | proprietary → unverified |
 | Fish Audio TTS (`api-fish-tts`) | unverified (not fully verified) | — | proprietary → unverified |
 | HeyGen TTS (`api-heygen-tts`) | unverified (not fully verified) | — | proprietary → unverified |
-| Qwen3-TTS (Alibaba Model Studio, direct API) (`direct-qwen3-tts`) | unverified (not fully verified) | — | proprietary → unverified |
 | Chatterbox TTS (`comfy-chatterbox`) | none | — | chatterbox → none |
 | Qwen3 TTS 1.7B (`comfy-qwen3tts`) | none | — | apache-2.0 → none |
 | Fish Audio Drama 3 (`comfy-drama3`) | required | Built with Fish Audio | fish-community → required |
@@ -137,8 +147,8 @@ Served live on `GET /api/models/:id` → `attribution {status, lines[], required
 | MiniMax H3 Talking Photo (`comfy-h3-lipsync`) | required | Powered by MiniMax H3 (encouraged; requires “MiniMax H3”) | minimax-community → required, apache-2.0 → none |
 | LTX-2.5 Talking Photo (`comfy-ltx25-lipsync`) | unverified (not fully verified) | — | ltx-2x-community → unverified, apache-2.0 → none |
 | InfiniteTalk (Wan 2.1) · Comfy Cloud (`cloud-infinitetalk`) | none | — | apache-2.0 → none |
-| Bernini-R · Comfy Cloud (`cloud-bernini-r`) | none | — | apache-2.0 → none |
 | SeedVR2 (WaveSpeed) (`router-seedvr2-upscale`) | unverified (not fully verified) | — | proprietary → unverified |
+| Topaz Bloom 2 · Comfy Cloud (`cloud-topaz-bloom2`) | unverified (not fully verified) | — | proprietary → unverified |
 | Crystal Upscaler (Clarity AI) (`api-crystal-upscale`) | unverified (not fully verified) | — | proprietary → unverified |
 | Topaz Wonder 3.5 (`fal-topaz-wonder`) | unverified (not fully verified) | — | proprietary → unverified |
 | Topaz Bloom 2 (`fal-topaz-bloom`) | unverified (not fully verified) | — | proprietary → unverified |
@@ -155,12 +165,16 @@ Served live on `GET /api/models/:id` → `attribution {status, lines[], required
 | TRELLIS.2 (`fal-trellis2`) | none | — | mit → none |
 | Hunyuan 3D 3.1 (`fal-hunyuan3d-31`) | unverified (not fully verified) | — | tencent-hunyuan-3d → unverified |
 | Pixal3D + TRELLIS.2 (`comfy-pixal3d-trellis2`) | unverified (not fully verified) | — | dinov3 → unverified, mit → none |
-| Turntable (recorded in your browser) (`local-turntable`) | none | — | mit → none |
-| Direct a Shot (drawn in your browser) (`local-previz`) | none | — | mit → none |
+| Turntable (recorded in your browser) (`local-turntable`) | unverified (not fully verified) | — | agpl-3.0-or-later → unverified |
+| Direct a Shot (drawn in your browser) (`local-previz`) | unverified (not fully verified) | — | agpl-3.0-or-later → unverified |
 | LTX-2.5 + Layout to Render (`comfy-ltx25-layout`) | unverified (not fully verified) | — | ltx-2x-community → unverified, apache-2.0 → none |
 | Luma Ray 3.2 Edit (hosted) (`router-ray32-edit`) | unverified (not fully verified) | — | proprietary → unverified |
 | Runway Aleph 2 (hosted) (`router-aleph2`) | unverified (not fully verified) | — | proprietary → unverified |
 | LTX-2.5 22B + Lightricks IC-LoRA (`comfy-ltx25-iclora`) | unverified (not fully verified) | — | ltx-2x-community → unverified, apache-2.0 → none |
+| H3 Character Swap · two people · Comfy Cloud (`cloud-h3-two-swap`) | required | Powered by MiniMax H3 (encouraged; requires “MiniMax H3”) | minimax-community-akatz-charswap → required |
+| Bernini-R · Comfy Cloud (`cloud-bernini-r`) | none | — | apache-2.0 → none |
+| Kling 4.0 Edit · Comfy Cloud (`cloud-kling4-edit`) | unverified (not fully verified) | — | proprietary → unverified |
+| Finish (ffmpeg on this computer) (`local-finish`) | unverified (not fully verified) | — | agpl-3.0-or-later → unverified |
 | Auto (Luma Ray 3.2) (`auto-reframe`) | unverified (not fully verified) | — | proprietary → unverified |
 | Luma Reframe (`direct-luma-reframe`) | unverified (not fully verified) | — | proprietary → unverified |
 | BiRefNet (local, per frame) (`comfy-birefnet-video`) | none | — | birefnet-mit → none |
@@ -176,6 +190,7 @@ Served live on `GET /api/models/:id` → `attribution {status, lines[], required
 | Bria Eraser (`fal-bria-eraser`) | unverified (not fully verified) | — | proprietary → unverified |
 | fal Object Removal (`fal-object-removal`) | unverified (not fully verified) | — | proprietary → unverified |
 | FASHN Virtual Try-On v1.6 (`fal-fashn-tryon`) | unverified (not fully verified) | — | proprietary → unverified |
+| Bria Virtual Try-On (`router-bria-tryon`) | unverified (not fully verified) | — | proprietary → unverified |
 | ByteDance Seedream 5.0 Flash · layers (hosted) (`api-seedream-layers-flash`) | unverified (not fully verified) | — | proprietary → unverified |
 | ByteDance Seedream 5.0 Pro · layers (hosted) (`api-seedream-layers-pro`) | unverified (not fully verified) | — | proprietary → unverified |
 | Qwen-Image-Layered (`comfy-qwen-image-layered`) | none | — | apache-2.0 → none |
@@ -216,6 +231,9 @@ Parts of a tool that carry their own licence (also on `/licenses` and in LICENSE
 | app-person-swap | BFS body swap LoRA v1.0 for Qwen Image 2.1 (bfs_body_swap_v1.0_qwen_2.1, Alissonerdx) | MIT | — | https://huggingface.co/Alissonerdx/BFS-Best-Face-Swap |
 | app-person-swap | Nano Banana 2 (hosted: fal, or the Comfy partner node) | Provider terms | — | https://fal.ai/models/fal-ai/nano-banana-2/edit |
 | app-person-swap | FLUX 3 Klein (local, BFL API) | FLUX Kommunity License v1.0 | — | https://huggingface.co/black-forest-labs/flux-3-image-klein/blob/main/LICENSE.md |
+| h3-video | Official Comfy template · LTX-2.5 DFR: video_ltx2_5_dfr_i2v (Comfy-Org/workflow_templates, bundled unchanged in workflows/templates/ with its licence) | MIT | — | https://github.com/Comfy-Org/workflow_templates/blob/main/templates/video_ltx2_5_dfr_i2v.json |
+| h3-video | LTX-2.5 22B distilled int8 ConvRot, Gemma 4 12B text encoder (bf16), x2 spatial and x2 temporal latent upscalers, VAEs (Lightricks/LTX-2.5) · DFR | LTX-2.x Community License | — | https://huggingface.co/Lightricks/LTX-2.5 |
+| h3-video | Pixel-spatial upscaler x2 detailing IC-LoRA (Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler) · DFR | LTX-2.x Community License | — | https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-Pixel-Spatial-Upscaler |
 | create-image | FLUX.2 [klein] 4B distilled, bf16 (flux-2-klein-4b.safetensors, Comfy-Org repack) | Apache-2.0 | — | https://huggingface.co/black-forest-labs/FLUX.2-klein-4B |
 | create-image | Qwen3 4B text encoder for FLUX.2 [klein] (qwen_3_4b.safetensors) | Apache-2.0 | — | https://huggingface.co/Comfy-Org/vae-text-encorder-for-flux-klein-4b |
 | create-image | FLUX.2 VAE (flux2-vae.safetensors from Comfy-Org/flux2-dev), used by FLUX.2 [klein] 4B and FLUX 3 Klein | Repo card of Comfy-Org/flux2-dev mentions the FLUX.1 [dev] Non-Commercial License; check before commercial use | — | https://huggingface.co/Comfy-Org/flux2-dev |
@@ -225,6 +243,30 @@ Parts of a tool that carry their own licence (also on `/licenses` and in LICENSE
 | app-shots | Nano Banana 2 (hosted: fal, or the Comfy partner node) | Provider terms | — | https://fal.ai/models/fal-ai/nano-banana-2/edit |
 | app-shots | FLUX 3 Klein (local, BFL API) | FLUX Kommunity License v1.0 | — | https://huggingface.co/black-forest-labs/flux-3-image-klein/blob/main/LICENSE.md |
 | object-swap | SAM 3.1 (sam3.1_multiplex_fp16) · mask preview | SAM License | Royalty-free, including commercial use. Include the licence text when you redistribute the weights. Trade-control (ITAR / export) and military-use limits apply. | https://github.com/facebookresearch/sam3/blob/main/LICENSE |
+| object-swap | H3 Character Swap recipe settings, after Comfy's Openjutsu app (Comfy-Org/comfy-openjutsu) | MIT | — | https://github.com/Comfy-Org/comfy-openjutsu |
+| object-swap | H3 Character Swap workflow (Akatz Labs, akatz-labs/h3-character-swap-tool) | MIT | — | https://github.com/akatz-labs/h3-character-swap-tool |
+| two-person-swap | MiniMax H3 Ref2VA int8, Qwen3-VL 32B text encoder NVFP4, H3 video + audio VAEs, H3 fl2v turbo 8-step LoRA (Comfy-Org/MiniMax-H3, lightx2v/Minimax-h3-Turbo) | MiniMax H3 Community License | — | https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE |
+| two-person-swap | H3 Character Swap LoRA v1.5 (Akatz Labs, akatz-ai/MiniMax-H3-Character-Swap-LoRA), imported into your Comfy Cloud library | MiniMax H3 Community License (adapter retains base terms; no extra no-SaaS clause, verified 2026-10-17) | — | https://huggingface.co/akatz-ai/MiniMax-H3-Character-Swap-LoRA/blob/main/LICENSE |
+| two-person-swap | SAM 3.1 (sam3.1_multiplex_fp16) · person masks | SAM License | Royalty-free, including commercial use. Include the licence text when you redistribute the weights. Trade-control (ITAR / export) and military-use limits apply. | https://github.com/facebookresearch/sam3/blob/main/LICENSE |
+| two-person-swap | H3 Character Swap recipe settings, after Comfy's Openjutsu app (Comfy-Org/comfy-openjutsu) | MIT | — | https://github.com/Comfy-Org/comfy-openjutsu |
+| two-person-swap | H3 Character Swap workflow (Akatz Labs, akatz-labs/h3-character-swap-tool) | MIT | — | https://github.com/akatz-labs/h3-character-swap-tool |
+| app-translate-video | Official Comfy template · MelBandRoFormer Audio Separation: audio_melbandroformer_audio_separation (Comfy-Org/workflow_templates), flattened in workflows/audio-separation-melband-api.json · Keep the background | MIT | — | https://github.com/Comfy-Org/workflow_templates/blob/main/templates/audio_melbandroformer_audio_separation.json |
+| app-translate-video | ComfyUI-MelBandRoFormer node pack (kijai) @ 92c86854e6 · Keep the background | None stated (its pyproject.toml names a LICENSE file the repo does not include); check with the author | — | https://github.com/kijai/ComfyUI-MelBandRoFormer |
+| app-translate-video | MelBand RoFormer vocal model (KimberleyJSN/melbandroformer; MelBandRoformer_fp16.safetensors, Kijai/MelBandRoFormer_comfy) · Keep the background | MIT | — | https://huggingface.co/KimberleyJSN/melbandroformer |
+| app-change-voice | Official Comfy template · MelBandRoFormer Audio Separation: audio_melbandroformer_audio_separation (Comfy-Org/workflow_templates), flattened in workflows/audio-separation-melband-api.json · Keep the background | MIT | — | https://github.com/Comfy-Org/workflow_templates/blob/main/templates/audio_melbandroformer_audio_separation.json |
+| app-change-voice | ComfyUI-MelBandRoFormer node pack (kijai) @ 92c86854e6 · Keep the background | None stated (its pyproject.toml names a LICENSE file the repo does not include); check with the author | — | https://github.com/kijai/ComfyUI-MelBandRoFormer |
+| app-change-voice | MelBand RoFormer vocal model (KimberleyJSN/melbandroformer; MelBandRoformer_fp16.safetensors, Kijai/MelBandRoFormer_comfy) · Keep the background | MIT | — | https://huggingface.co/KimberleyJSN/melbandroformer |
+| voice | InfiniteTalk single-speaker patch (MeiGen-AI) · Talking Video | Apache-2.0 | — | https://github.com/MeiGen-AI/InfiniteTalk |
+| voice | Wan 2.1 I2V 14B 480p (Wan-AI; Kijai fp8 repack) + lightx2v step-distill LoRA · Talking Video | Apache-2.0 | — | https://huggingface.co/Wan-AI/Wan2.1-I2V-14B-480P |
+| voice | wav2vec2 chinese base (TencentGameMate) · Talking Video | MIT | — | https://huggingface.co/TencentGameMate/chinese-wav2vec2-base |
+| voice | InfiniteTalk template video_wan2_1_infinitetalk (Comfy-Org/workflow_templates) · Talking Video | MIT | — | https://github.com/Comfy-Org/workflow_templates |
+| voice | LongCat-Video-Avatar 1.5 weights + code (Meituan) · Talking Video, needs your own Comfy deployment (off by default) | MIT | — | https://huggingface.co/meituan-longcat/LongCat-Video-Avatar-1.5 |
+| voice | LongCat-Avatar 1.5 bf16 + DMD distill LoRA repacks (Kijai/WanVideo_comfy) · Talking Video (deployment) | MIT (follows upstream) | — | https://huggingface.co/Kijai/WanVideo_comfy/tree/main/LongCat |
+| voice | Whisper large-v3 (OpenAI) · LongCat 1.5 audio encoder (deployment) | Apache-2.0 | — | https://huggingface.co/openai/whisper-large-v3 |
+| voice | ComfyUI-WanVideoWrapper (kijai) @ 088128b224 or later · LongCat 1.5 nodes (deployment) | Apache-2.0 | — | https://github.com/kijai/ComfyUI-WanVideoWrapper |
+| voice | Official Comfy template · MelBandRoFormer Audio Separation: audio_melbandroformer_audio_separation (Comfy-Org/workflow_templates), flattened in workflows/audio-separation-melband-api.json · Keep the background | MIT | — | https://github.com/Comfy-Org/workflow_templates/blob/main/templates/audio_melbandroformer_audio_separation.json |
+| voice | ComfyUI-MelBandRoFormer node pack (kijai) @ 92c86854e6 · Keep the background | None stated (its pyproject.toml names a LICENSE file the repo does not include); check with the author | — | https://github.com/kijai/ComfyUI-MelBandRoFormer |
+| voice | MelBand RoFormer vocal model (KimberleyJSN/melbandroformer; MelBandRoformer_fp16.safetensors, Kijai/MelBandRoFormer_comfy) · Keep the background | MIT | — | https://huggingface.co/KimberleyJSN/melbandroformer |
 | reshoot | MiniMax H3 Ref2VA int8, Qwen3-VL text encoder int8, H3 video + audio VAEs (Comfy-Org/MiniMax-H3) · H3 CrossView | MiniMax H3 Community License | — | https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE |
 | reshoot | CrossView-Warp v1 LoRA for MiniMax H3 Ref2VA (Cseti) · H3 CrossView | MiniMax H3 Community License | — | https://huggingface.co/Cseti/MiniMax-H3_Ref2VA-LoRA-CrossView-Warp_v1 |
 | reshoot | MiniMax H3 ref2v 8-step turbo LoRA 768p (lightx2v) · H3 CrossView | No licence tag on the model card; the repository licence applies, check it | — | https://huggingface.co/lightx2v/Minimax-h3-Turbo |
@@ -261,7 +303,7 @@ Parts of a tool that carry their own licence (also on `/licenses` and in LICENSE
 | soul | Flux Fashion Editorial (FLUX.1-dev) LoRA | Civitai model licence (base FLUX.1-dev non-commercial); Civitai permissions: Image, RentCivit, Rent | — | https://civitai.com/models/2138223?modelVersionId=2418642 |
 | soul | CoolShot 2000s (Qwen-Image) LoRA | Civitai model licence; Civitai permissions: Image, RentCivit, Rent, Sell, SellMerge | — | https://civitai.com/models/2163880?modelVersionId=2436841 |
 | soul | Siemens CX70 CCD Dreams (Qwen-Image) LoRA | Civitai model licence; Civitai permissions: Image, RentCivit, Rent, Sell, SellMerge | — | https://civitai.com/models/2744351?modelVersionId=3086732 |
-| three-d | Tripo 3.1 (Comfy partner node TripoImageToModelNodeV2, hosted) | Tripo terms of service | — | https://www.tripo3d.ai/terms |
+| three-d | Tripo 3.1 Text, Image and Multi-view (Comfy partner nodes, hosted) | Tripo terms of service | — | https://www.tripo3d.ai/terms |
 | three-d | TRELLIS.2 (Microsoft, fal-ai/trellis-2) | MIT | — | https://huggingface.co/microsoft/TRELLIS.2-4B |
 | three-d | Hunyuan 3D 3.1 Pro (Tencent, fal-ai/hunyuan-3d/v3.1/pro/image-to-3d) | Tencent Hunyuan 3D Community License; not in the EU, UK or South Korea | — | https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1/blob/main/LICENSE |
 | three-d | Pixal3D + TRELLIS.2 local template (Comfy-Org repack: Pixal3D, TRELLIS.2, MoGe-2, BiRefNet) | MIT | — | https://huggingface.co/Comfy-Org/Pixal3D |
@@ -277,6 +319,18 @@ Parts of a tool that carry their own licence (also on `/licenses` and in LICENSE
 | footage-fx | Alpha Gen IC-LoRA (Lightricks/LTX-2.5-22b-IC-LoRA-Alpha-Gen) | LTX-2.x Community License | — | https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-Alpha-Gen |
 | footage-fx | Gemma 4 12B text encoder with LTX projection, VAEs, x2 latent upscaler (Lightricks/LTX-2.5) | LTX-2.x Community License | — | https://huggingface.co/Lightricks/LTX-2.5 |
 | footage-fx | ComfyUI-GGUF custom nodes (city96) | Apache-2.0 | — | https://github.com/city96/ComfyUI-GGUF |
+| footage-fx | LTX-2.3 22B dev, Gemma 3 12B text encoder, x2 latent upscaler (Lightricks/LTX-2.3; Comfy Cloud effects) | LTX-2.x Community License | — | https://huggingface.co/Lightricks/LTX-2.3 |
+| footage-fx | Clean Plate IC-LoRA for LTX-2.3 (Vanish; huggingface.co/Lightricks/LTX-2.3-22b-IC-LoRA-Clean-Plate) | LTX-2.x Community License | — | https://huggingface.co/Lightricks/LTX-2.3-22b-IC-LoRA-Clean-Plate |
+| footage-fx | Day to Night IC-LoRA for LTX-2.3 (Day to night; huggingface.co/Lightricks/LTX-2.3-22b-IC-LoRA-Day-To-Night) | LTX-2.x Community License | — | https://huggingface.co/Lightricks/LTX-2.3-22b-IC-LoRA-Day-To-Night |
+| footage-fx | Water Simulation IC-LoRA for LTX-2.3 (Rain, Flood; huggingface.co/Lightricks/LTX-2.3-22b-IC-LoRA-Water-Simulation) | LTX-2.x Community License | — | https://huggingface.co/Lightricks/LTX-2.3-22b-IC-LoRA-Water-Simulation |
+| footage-fx | Dearchive IC-LoRA (Restore old footage; as shipped in Comfy Cloud’s library) | LTX-2.x Community License | — | https://github.com/Comfy-Org/workflow_templates/blob/main/templates/template_ltx2_3_lora_restore_archival_footage.json |
+| footage-fx | Obscura Remova LoRA (Remove an object; civitai.com/api/download/models/2909707) | LTX-2.x Community License | — | https://civitai.com/api/download/models/2909707 |
+| footage-fx | Subtitle Remover IC-LoRA (Remove subtitles; as shipped in Comfy Cloud’s library) | LTX-2.x Community License | — | https://github.com/Comfy-Org/workflow_templates/blob/main/templates/template_ltx2_3_lora_remove_subtitles_from_video.json |
+| footage-fx | Outpaint IC-LoRA (Extend the frame; huggingface.co/oumoumad/LTX-2.3-22b-IC-LoRA-Outpaint) | LTX-2.x Community License | — | https://huggingface.co/oumoumad/LTX-2.3-22b-IC-LoRA-Outpaint |
+| footage-fx | Official Comfy template · LTX-2.3 · Lightricks: template_ltx2_3_lora_restore_archival_footage (Comfy-Org/workflow_templates); Vanish, Day to night, Rain, Flood on Comfy Cloud use our graph derived from it | MIT | — | https://github.com/Comfy-Org/workflow_templates/blob/main/templates/template_ltx2_3_lora_restore_archival_footage.json |
+| footage-fx | Official Comfy template · LTX-2.3 · Lightricks: template_ltx2_3_obscura_remova_lora_remove_object_from_video (Comfy-Org/workflow_templates) | MIT | — | https://github.com/Comfy-Org/workflow_templates/blob/main/templates/template_ltx2_3_obscura_remova_lora_remove_object_from_video.json |
+| footage-fx | Official Comfy template · LTX-2.3 · Lightricks: template_ltx2_3_lora_remove_subtitles_from_video (Comfy-Org/workflow_templates) | MIT | — | https://github.com/Comfy-Org/workflow_templates/blob/main/templates/template_ltx2_3_lora_remove_subtitles_from_video.json |
+| footage-fx | Official Comfy template · LTX-2.3 · Lightricks: template_ltx2_3_lora_video_outpainting (Comfy-Org/workflow_templates) | MIT | — | https://github.com/Comfy-Org/workflow_templates/blob/main/templates/template_ltx2_3_lora_video_outpainting.json |
 
 ## Licence clauses read
 
@@ -315,6 +369,7 @@ Parts of a tool that carry their own licence (also on `/licenses` and in LICENSE
 | tripo-terms | unverified | Not checked yet. | https://www.tripo3d.ai/terms |
 | tencent-hunyuan-3d | unverified | Not checked yet. | https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1/blob/main/LICENSE |
 | dinov3 | unverified | Not checked yet. | https://ai.meta.com/resources/models-and-libraries/dinov3-license/ |
+| agpl-3.0-or-later | unverified | Not checked yet. | https://www.gnu.org/licenses/agpl-3.0.html |
 | birefnet-mit | none | MIT: keep the copyright and licence notice in copies of the software/weights; nothing is required in the app UI or on outputs. | https://github.com/ZhengPeng7/BiRefNet/blob/main/LICENSE |
 | rife-mit | none | MIT: keep the copyright and licence notice in copies of the software/weights; nothing is required in the app UI or on outputs. | https://github.com/hzwer/Practical-RIFE/blob/main/LICENSE |
 | depth-anything-v2-small-apache | none | Apache-2.0 §4: keep the copyright and licence notice in copies of the software/weights; nothing is required in the app UI or on outputs. | https://huggingface.co/depth-anything/Depth-Anything-V2-Small |

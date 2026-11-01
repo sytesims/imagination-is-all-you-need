@@ -2110,12 +2110,62 @@
         ]
       }
     },
+    "/api/jobs/{id}/collect": {
+      "post": {
+        "tags": [
+          "Jobs"
+        ],
+        "summary": "Retry download. A failed hosted job whose result was made (and paid for) but couldn't be saved, or whose provider stopped answering, polls the same request at its provider again (nothing is sent or charged again) and saves the result; `canCollect` on the job is true exactly then. 200 = the job, running again; 409 {code:nothing_to_collect} otherwise.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
     "/api/jobs/{id}/cancel": {
       "post": {
         "tags": [
           "Jobs"
         ],
-        "summary": "Cancel. Local (local ComfyUI) jobs can be canceled at every stage: waiting in this app's queue; submitted and pending in ComfyUI's own queue (removed from it, POST /queue delete); running (POST /interrupt, only when ComfyUI says the running prompt is this job's; nobody else's prompt is ever touched). 200 = the job, canceled (comfyCancel: removed | interrupted | not_in_queue | unreachable when a ComfyUI prompt was involved); nothing is billed. Finished first (or its last ComfyUI prompt already finished) → 409 {code:already_done}. `cancellable` on a job / queue activity item is true exactly when this call will succeed. Hosted single-group job already sent to its provider → 409 {code:cannot_cancel_processing, errorType:not_cancellable, cancelInProcessing:false, charged (boolean: cost > 0)} (error text mentions credits going back to your balance only when charged; a free gen says the free gen comes back; free / local jobs get plain wording) unless OPENHIGGSFIELD_CANCEL_IN_PROCESSING=1 (then real cancel, outputs discarded, credits back to your balance (team mode; with your own accounts the provider failure rule applies); anything the provider already billed is under its terms). Queued: instant cancel, credits back to your balance (team mode; with your own accounts the provider failure rule applies). Running chunked (multi-group) job: groups not yet started are skipped and their credits go back to your balance (team mode; with your own accounts the provider failure rule applies); finished groups are kept (canceledGroups)",
+        "summary": "Cancel. Local (local ComfyUI) jobs can be canceled at every stage: waiting in this app's queue; submitted and pending in ComfyUI's own queue (removed from it, POST /queue delete); running (POST /interrupt, only when ComfyUI says the running prompt is this job's; nobody else's prompt is ever touched). 200 = the job, canceled (comfyCancel: removed | interrupted | not_in_queue | unreachable when a ComfyUI prompt was involved); nothing is billed. Finished first (or its last ComfyUI prompt already finished) → 409 {code:already_done}. `cancellable` on a job / queue activity item is true exactly when this call will succeed. Hosted single-group job whose request is at fal, Replicate, Comfy Router or Comfy Cloud → 200, the job canceled and the provider asked to cancel it; cancelNote says what that means for the bill (the provider's own rule: it may still bill the time it ran). Hosted single-group job on a lab API (no cancel call) already sent to its provider → 409 {code:cannot_cancel_processing, errorType:not_cancellable, cancelInProcessing:false, charged (boolean: cost > 0)} (error text mentions credits going back to your balance only when charged; a free gen says the free gen comes back; free / local jobs get plain wording) unless OPENHIGGSFIELD_CANCEL_IN_PROCESSING=1 (then real cancel, outputs discarded, credits back to your balance (team mode; with your own accounts the provider failure rule applies); anything the provider already billed is under its terms). Queued: instant cancel, credits back to your balance (team mode; with your own accounts the provider failure rule applies). Running chunked (multi-group) job: groups not yet started are skipped and their credits go back to your balance (team mode; with your own accounts the provider failure rule applies); finished groups are kept (canceledGroups)",
         "responses": {
           "200": {
             "description": "OK",
