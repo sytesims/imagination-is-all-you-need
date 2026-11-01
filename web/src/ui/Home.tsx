@@ -151,8 +151,7 @@ export default function Home({ tools }: { tools: ToolInfo[] }) {
     <div className="xp-in">
       <XpStill />
       <XpFilm />
-      {/* free video on your own computer, right after the cloud-made Mockup to film (user, 2026-11-01) */}
-      <RealResults />
+      {/* "Made on your computer. Free." (RealResults) is hidden: the user never asked for this section (2026-11-02). Kept in code; render <RealResults /> here to bring it back. */}
       <XpKoi />
       <XpBoard />
       <XpSwap />
