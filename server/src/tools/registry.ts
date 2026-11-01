@@ -27,11 +27,19 @@ export function registerTool(t: ToolDef, ...alias: string[]) {
   alias.forEach((a) => aliases.set(a, t.id));
   invalidateTools(); // a plugin tool added after start shows in GET /api/tools at once
 }
+/** Takes a tool out again (a workflow you added and then removed, workflowImport.ts). Built-in tools never call this. */
+export function unregisterTool(id: string) {
+  if (!tools.delete(id)) return false;
+  for (const [a, t] of [...aliases]) if (t === id) aliases.delete(a);
+  hidden.delete(id); invalidateTools(); return true;
+}
 /** Disabled plugin tools (POST /api/plugins/:id {enabled:false}): hidden from lookups and lists without a restart. */
 const hidden = new Set<string>();
 export const setToolHidden = (id: string, on: boolean) => { if (on) hidden.add(id); else hidden.delete(id); };
 export const isToolHidden = (id: string) => hidden.has(id);
 export const getTool = (id: string) => { const t = tools.get(id) ?? tools.get(aliases.get(id) ?? ''); return t && !hidden.has(t.id) ? t : undefined; };
+/** True when a tool (or an alias) already has this id, hidden ones included: a new workflow may never take it. */
+export const toolIdTaken = (id: string) => tools.has(id) || aliases.has(id);
 export const listTools = () => [...tools.values()].filter((t) => !hidden.has(t.id));
 export const DEFAULT_TOOL_ID = 'object-swap';
 

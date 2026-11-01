@@ -52,7 +52,7 @@ import { PageComps, prefetchRoute } from './routeChunks'; // each page is its ow
 const { Canvas, Film, LearnEcom, SpendOrUsage, Licenses, Settings, TermsPage, ApiDocs, Mcp, Plugins, Community, Workflows, Models, Profile, RecipeImport } = PageComps;
 export type PageRoute = [title: string, Comp: React.ComponentType<{ tools: any[] }>];
 export const PAGES: Record<string, PageRoute> = {
-  '/mcp': ['MCP', Mcp], '/api-docs': ['API', ApiDocs], '/plugins': ['Plugins', Plugins], '/community': ['Community', Community],
+  '/mcp': ['MCP', Mcp], '/api-docs': ['API', ApiDocs], '/plugins': ['Your workflows', Plugins], '/community': ['Community', Community],
   '/canvas': ['Canvas', Canvas as any],
   '/film': ['Editor', Film as any], // Film (2026-10-27): the list; /film/:id is FILM_ID_PATH (App.tsx)
   '/r': ['Make this', RecipeImport as any], // a shared recipe (/r?recipe=…, shared/recipe.ts): check it, then open it in the tool; nothing runs until Generate

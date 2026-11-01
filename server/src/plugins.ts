@@ -1,13 +1,14 @@
 /**
- * Plugin loader (docs/PLUGINS.md). Each folder in PLUGINS_DIR (repo-root plugins/) with a plugin.json becomes a tool
- * in the shared registry (nav, Explore, Assets, media picker, pricing, model picker, generic web AppTool).
- * Bad plugins are skipped with clear errors (GET /api/plugins); the server never crashes on a plugin.
+ * Plugin loader (docs/PLUGINS.md). Each folder in PLUGINS_DIR (repo-root plugins/, shipped with the app) and USER_PLUGINS_DIR (<data>/plugins:
+ * the workflows you added in the app, workflowImport.ts) with a plugin.json becomes a tool in the shared registry (nav, Explore, Assets, media
+ * picker, pricing, model picker, generic web AppTool). Bad plugins are skipped with clear errors (GET /api/plugins); the server never crashes on
+ * a plugin. A folder can also be loaded or removed while the app runs (addPluginFolder / removePlugin), with no restart.
  */
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { PLUGINS_DIR, DATA_DIR } from './config.js';
-import { getTool, registerTool } from './tools/registry.js';
+import { PLUGINS_DIR, USER_PLUGINS_DIR, DATA_DIR } from './config.js';
+import { getTool, registerTool, unregisterTool, toolIdTaken } from './tools/registry.js';
 import { makeApp, FieldSpec } from './tools/apps.js';
 import { mockRun, registerMockResult } from './tools/shared.js';
 import { getProvider } from './providers.js';
@@ -17,7 +18,7 @@ import { RESOLUTIONS } from './media.js';
 import type { Job } from './jobs.js';
 import type { ToolDef } from './tools/types.js';
 import { placementErrors, placeVideoPlugins, TAB_LABEL, type PluginTab } from './shared/pluginPlacement.js';
-import { mapGraph, hasFileKey, pluginOutKind, registerPluginSpec, clearPluginSpecs } from './pluginGraph.js';
+import { mapGraph, hasFileKey, pluginOutKind, registerPluginSpec, clearPluginSpecs, removePluginSpec } from './pluginGraph.js';
 export { mapGraph } from './pluginGraph.js';
 
 export const PLUGIN_SCHEMA = 1;
@@ -25,7 +26,8 @@ export interface NodeRef { node: string; field: string; map?: Record<string, unk
 export interface PluginNodeMap { inputs: Partial<Record<'video' | 'image' | 'prompt' | 'seed' | 'resolution', NodeRef>>; fields?: Record<string, NodeRef | NodeRef[]>; presets?: Record<string, { node: string; field: string; value: unknown }[]>; output: { node: string }; /** more results from the same run (e.g. Cutout's matte) */ extraOutputs?: { node: string; label: string }[] }
 export interface PluginManifest {
   schema: number; id: string; name: string; version?: string; category: string; description: string; status?: string; previewUrl?: string | null;
-  input: 'image' | 'video';
+  /** What it takes: a photo, a clip, or nothing but its prompt and settings ("none": text to image, text to video). */
+  input: 'image' | 'video' | 'none';
   /** Where it shows up (shared/pluginPlacement.ts): the tab, and `category` is then one of that tab's workflow categories (video: create, edit,
    *  motion, camera, apps). Without `tab`, `category` is only the tool's group and the plugin is listed on the Plugins page. */
   tab?: PluginTab;
@@ -44,6 +46,8 @@ export interface PluginManifest {
   pricing: { gpuSecPerSec: Record<string, number>; optionFactors?: Record<string, number>; providerFactors?: Record<string, number> };
   workflow: string; nodeMap?: string; handler?: string;
   model?: string; modelInfo?: Info;
+  /** Where the workflow came from (a link), shown on its card. */
+  homepageUrl?: string;
   stages?: [string, string][]; mock?: { result?: string; results?: string[]; ms?: number };
 }
 export interface PluginContext {
@@ -57,7 +61,7 @@ export interface PluginHandler {
   parseInput?: (fields: Record<string, string>, files: Record<string, string[]>, ctx: PluginContext & { base: () => Promise<Record<string, any> | { error: string }> }) => Promise<Record<string, any> | { error: string }>;
   run?: (job: Job, ctx: PluginContext) => Promise<void>;
 }
-export interface PluginStatus { id: string; dir: string; ok: boolean; errors: string[]; warnings: string[]; toolId?: string; license?: LicenseInfo; handler?: boolean }
+export interface PluginStatus { id: string; dir: string; ok: boolean; errors: string[]; warnings: string[]; toolId?: string; license?: LicenseInfo; handler?: boolean; /** a workflow you added (USER_PLUGINS_DIR) */ user?: boolean }
 const status: PluginStatus[] = [];
 export const pluginStatus = () => status;
 
@@ -71,9 +75,9 @@ export function validateManifest(m: any, dir: string): { errors: string[]; warni
   if (!isObj(m)) return { errors: ['plugin.json must be a JSON object'], warnings: w };
   if (m.schema !== PLUGIN_SCHEMA) e.push(`schema must be ${PLUGIN_SCHEMA}`);
   if (!isStr(m.id, 40) || !/^[a-z][a-z0-9-]{1,39}$/.test(m.id)) e.push('id must match ^[a-z][a-z0-9-]{1,39}$');
-  else if (getTool(m.id)) e.push(`id "${m.id}" is already used by another tool`);
+  else if (toolIdTaken(m.id)) e.push(`id "${m.id}" is already used by another tool`);
   for (const k of ['name', 'category', 'description'] as const) if (!isStr(m[k], k === 'description' ? 500 : 60)) e.push(`${k} is required (non-empty string)`);
-  if (m.input !== 'image' && m.input !== 'video') e.push('input must be "image" or "video"');
+  if (m.input !== 'image' && m.input !== 'video' && m.input !== 'none') e.push('input must be "image", "video" or "none"');
   e.push(...placementErrors(m));
   if (m.output != null && m.output !== 'image' && m.output !== 'video') e.push('output must be "image" or "video"');
   if (!Array.isArray(m.presets) || !m.presets.length) e.push('presets must be a non-empty array (they are the tool\'s type grid)');
@@ -116,7 +120,8 @@ export function validateManifest(m: any, dir: string): { errors: string[]; warni
       nodeMap = JSON.parse(readFileSync(nm, 'utf8'));
       if (hasFileKey(nodeMap)) e.push('nodeMap must not contain "__file" keys: the app fills in your input files itself');
       const chk = (k: string, r: any) => { const out = k === 'output' || k.startsWith('extraOutputs'); if (!isObj(r) || !isStr(r.node) || (!out && !isStr(r.field))) e.push(`nodeMap ${k} needs node${!out ? ' + field' : ''}`); else if (graph && !graph[r.node]) e.push(`nodeMap ${k}: node "${r.node}" is not in the workflow`); else if (graph && !out && !(r.field in graph[r.node].inputs)) e.push(`nodeMap ${k}: node ${r.node} has no input "${r.field}"`); };
-      if (!isObj(nodeMap!.inputs) || !nodeMap!.inputs[m.input as 'video']) e.push(`nodeMap.inputs.${m.input} is required`);
+      if (!isObj(nodeMap!.inputs)) e.push('nodeMap.inputs must be an object');
+      else if (m.input !== 'none' && !nodeMap!.inputs[m.input as 'video']) e.push(`nodeMap.inputs.${m.input} is required`);
       for (const [k, r] of Object.entries(nodeMap!.inputs ?? {})) chk(`inputs.${k}`, r);
       for (const [k, r] of Object.entries(nodeMap!.fields ?? {})) { (Array.isArray(r) ? r : [r]).forEach((x, i) => chk(`fields.${k}${Array.isArray(r) ? `[${i}]` : ''}`, x)); if (!(inp.fields ?? []).some((f: any) => f.name === k)) e.push(`nodeMap.fields.${k} is not an inputs.fields name`); }
       for (const [k, list] of Object.entries(nodeMap!.presets ?? {})) { if (!ids.has(k)) e.push(`nodeMap.presets.${k} is not a preset id`); (list ?? []).forEach((r: any, i: number) => chk(`presets.${k}[${i}]`, r)); }
@@ -132,11 +137,12 @@ export function validateManifest(m: any, dir: string): { errors: string[]; warni
   return { errors: e, warnings: w, graph, nodeMap };
 }
 
-async function loadOne(dir: string): Promise<PluginStatus> {
-  const st: PluginStatus = { id: path.basename(dir), dir, ok: false, errors: [], warnings: [] };
+async function loadOne(dir: string, user: boolean): Promise<PluginStatus> {
+  const st: PluginStatus = { id: path.basename(dir), dir, ok: false, errors: [], warnings: [], ...(user ? { user: true } : {}) };
   let m: PluginManifest;
   try { m = JSON.parse(readFileSync(path.join(dir, 'plugin.json'), 'utf8')); } catch (x: any) { st.errors.push(`plugin.json: ${x.message}`); return st; }
   const v = validateManifest(m, dir); st.errors.push(...v.errors); st.warnings.push(...v.warnings); if (isStr((m as any)?.id)) st.id = m.id;
+  if (user && m.handler != null) st.errors.push('a workflow added in the app never runs code: remove "handler" (only folders shipped in plugins/ may have one)');
   if (st.errors.length) return st;
   for (const l of m.licenses ?? []) registerLicense({ id: l.id, name: l.name, osi: l.osi, url: l.url ?? null });
   const partIds = [...new Set([m.license.id, ...(m.components ?? []).map((c) => c.license)])];
@@ -157,11 +163,14 @@ async function loadOne(dir: string): Promise<PluginStatus> {
   registerWorkflowLicense(workflowId, partIds);
   const inp = m.inputs ?? {};
   const outKind = pluginOutKind(v.graph, v.nodeMap, m.output);
-  const app = makeApp({
-    id: m.id, name: m.name, description: m.description, category: m.tab ? TAB_LABEL[m.tab] : m.category, status: m.status, previewUrl: m.previewUrl ?? null, input: m.input,
+  /* "none" (text only): the image app with its photo always optional, then without the photo input at all */
+  const none = m.input === 'none';
+  const app0 = makeApp({
+    id: m.id, name: m.name, description: m.description, category: m.tab ? TAB_LABEL[m.tab] : m.category, status: m.status, previewUrl: m.previewUrl ?? null, input: m.input === 'video' ? 'video' : 'image', ...(none ? { imageOptional: () => true } : {}),
     types: m.presets.map((p) => ({ ...p })), mix: inp.mix, durations: inp.durations, enhance: inp.enhance, steps: inp.steps, prompt: inp.prompt, resolutions: inp.resolutions,
     fields: inp.fields, workflow: workflowId, model: m.model ?? m.name, gpuSecPerSec: m.pricing.gpuSecPerSec, stages: m.stages, providers: m.providers ?? ['comfy-open'],
   });
+  const app: ToolDef = none ? { ...app0, inputs: app0.inputs.filter((i) => i.name !== 'image'), app: { ...app0.app, input: 'none' } as any, stages: m.stages ?? [['queued', 'Queued'], ['rendering', 'Rendering'], ['saving', 'Saving']] } : app0;
   const stages = app.stages;
   const ctx: PluginContext = {
     manifest: m, dir, nodeMap: v.nodeMap ?? null, workflowId,
@@ -171,7 +180,7 @@ async function loadOne(dir: string): Promise<PluginStatus> {
   const baseParse = app.parseInput; const baseRun = app.run;
   const tool: ToolDef = {
     ...app, pricing: { optionFactors: m.pricing.optionFactors, providerFactors: m.pricing.providerFactors },
-    plugin: { id: m.id, dir, version: m.version, license: gov, handler: !!st.handler, tab: m.tab ?? null, category: m.tab ? m.category : null, goal: m.goal ?? null, author: m.author ?? null, input: m.input, output: outKind },
+    plugin: { id: m.id, dir, version: m.version, license: gov, handler: !!st.handler, tab: m.tab ?? null, category: m.tab ? m.category : null, goal: m.goal ?? null, author: m.author ?? null, input: m.input, output: outKind, ...(user ? { user: true } : {}) },
     parseInput: async (f, fl) => { const r = await (handler.parseInput ? handler.parseInput(f, fl, { ...ctx, base: () => baseParse(f, fl) }) : baseParse(f, fl)); return outKind === 'image' && !('error' in r) ? { ...r, outKind } : r; },
     /* Reached only when the job does not run on your own ComfyUI (providers.ts sends local runs to comfy/runNative.ts with the plan from comfy/plans.ts):
        a sample result, plus the workflow a real run would send (<jobId>-graph.json, shown by workflowExport.ts as a sample). */
@@ -191,20 +200,45 @@ async function loadOne(dir: string): Promise<PluginStatus> {
   return st;
 }
 
+/** The two plugin roots: the shipped folders, then the ones you added (the same folder twice counts once, as shipped). */
+const roots = (): [string, boolean][] => (path.resolve(USER_PLUGINS_DIR) === path.resolve(PLUGINS_DIR) ? [[PLUGINS_DIR, false]] : [[PLUGINS_DIR, false], [USER_PLUGINS_DIR, true]]);
+/** True for a folder inside the add-in-the-app root (USER_PLUGINS_DIR), the only ones the app may write or delete. */
+export const isUserPluginDir = (dir: string) => roots().some(([r, u]) => u && path.dirname(path.resolve(dir)) === path.resolve(r));
+
+async function safeLoad(dir: string, user: boolean): Promise<PluginStatus> {
+  let st: PluginStatus;
+  try { st = await loadOne(dir, user); } catch (x: any) { st = { id: path.basename(dir), dir, ok: false, errors: [`unexpected error: ${x.message}`], warnings: [], ...(user ? { user: true } : {}) }; }
+  if (st.ok) console.info(`[openhiggsfield] plugin ${st.id} loaded${st.warnings.length ? ` (warnings: ${st.warnings.join('; ')})` : ''}`);
+  else console.warn(`[openhiggsfield] plugin ${st.id} skipped: ${st.errors.join('; ')}`);
+  return st;
+}
+/* plugins with a tab join that tab's lists (shared/pluginPlacement.ts): video ones into VIDEO_WORKFLOWS, so search (capabilities) and links see them */
+const place = () => placeVideoPlugins(status.flatMap((x) => (x.ok && x.toolId ? [getTool(x.toolId)!] : [])).filter(Boolean) as any);
+
 /** Load every plugin folder once at startup. Never throws. */
 export async function loadPlugins() {
   status.length = 0; clearPluginSpecs();
-  if (!existsSync(PLUGINS_DIR)) return status;
-  for (const d of readdirSync(PLUGINS_DIR, { withFileTypes: true }).filter((x) => x.isDirectory() && !x.name.startsWith('.') && !x.name.startsWith('_')).sort((a, b) => a.name.localeCompare(b.name))) {
-    const dir = path.join(PLUGINS_DIR, d.name);
-    if (!existsSync(path.join(dir, 'plugin.json'))) continue;
-    let st: PluginStatus;
-    try { st = await loadOne(dir); } catch (x: any) { st = { id: d.name, dir, ok: false, errors: [`unexpected error: ${x.message}`], warnings: [] }; }
-    status.push(st);
-    if (st.ok) console.info(`[openhiggsfield] plugin ${st.id} loaded${st.warnings.length ? ` (warnings: ${st.warnings.join('; ')})` : ''}`);
-    else console.warn(`[openhiggsfield] plugin ${st.id} skipped: ${st.errors.join('; ')}`);
+  for (const [root, user] of roots()) {
+    if (!existsSync(root)) continue;
+    for (const d of readdirSync(root, { withFileTypes: true }).filter((x) => x.isDirectory() && !x.name.startsWith('.') && !x.name.startsWith('_')).sort((a, b) => a.name.localeCompare(b.name))) {
+      const dir = path.join(root, d.name);
+      if (existsSync(path.join(dir, 'plugin.json'))) status.push(await safeLoad(dir, user));
+    }
   }
-  /* plugins with a tab join that tab's lists (shared/pluginPlacement.ts): video ones into VIDEO_WORKFLOWS, so search (capabilities) and links see them */
-  placeVideoPlugins(status.flatMap((x) => (x.ok && x.toolId ? [getTool(x.toolId)!] : [])).filter(Boolean) as any);
+  place();
   return status;
+}
+
+/** Load one more folder while the app runs (a workflow you just added): it joins the registry, its tab and search at once. Never throws. */
+export async function addPluginFolder(dir: string, user = true): Promise<PluginStatus> {
+  const st = await safeLoad(dir, user);
+  const at = status.findIndex((x) => path.resolve(x.dir) === path.resolve(dir)); if (at >= 0) status.splice(at, 1, st); else status.push(st);
+  place(); return st;
+}
+/** Take a loaded plugin out of the app (its tool, plan and placement); the caller deletes its folder. Returns its status, or null when unknown. */
+export function removePlugin(id: string): PluginStatus | null {
+  const at = status.findIndex((x) => x.id === id); if (at < 0) return null;
+  const [st] = status.splice(at, 1);
+  if (st.toolId) { unregisterTool(st.toolId); removePluginSpec(st.toolId); }
+  place(); return st;
 }

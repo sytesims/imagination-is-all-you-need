@@ -11,6 +11,9 @@ export const WORKFLOWS_DIR = path.resolve(HERE, '../../workflows');
 export const PLUGINS_DIR = path.resolve(process.env.OPENHIGGSFIELD_PLUGINS_DIR || process.env.OPENJUTSU_PLUGINS_DIR || path.resolve(HERE, '../../plugins'));
 /** Persistent data dir (SQLite db + uploads + outputs). OPENHIGGSFIELD_DATA_DIR, default server/data (gitignored). */
 export const DATA_DIR = path.resolve(env('DATA_DIR') || path.resolve(HERE, '../data'));
+/** Workflows people add in the app ("Add a workflow", workflowImport.ts): one plugin folder each, kept with the library so an app update never
+ *  touches them. OPENHIGGSFIELD_USER_PLUGINS_DIR, default <data>/plugins. The folders in PLUGINS_DIR are the ones that ship with the app. */
+export const USER_PLUGINS_DIR = path.resolve(env('USER_PLUGINS_DIR') || path.join(DATA_DIR, 'plugins'));
 /** Our own demo media (scripts/make-samples.sh); also the source of mock results. */
 /** [R44] Days to keep finished results (0 = keep forever). OPENHIGGSFIELD_RESULT_TTL_DAYS. */
 export const RESULT_TTL_DAYS = Math.max(0, Number(env('RESULT_TTL_DAYS')) || 0);

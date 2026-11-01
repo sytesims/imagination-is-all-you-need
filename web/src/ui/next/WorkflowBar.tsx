@@ -18,7 +18,9 @@ import { rigOfFields, rigChipPlain, plainDir, degTip, presetEdited } from '../..
 import { Link, navigate } from '../../platform/router';
 import { tip } from '../../shared/Tooltip';
 import { PhoneAdIcon, PhonePhotoIcon, TextIcon, AudioIcon, LightIcon, FaceSwapIcon, UserIcon, CharacterSheetIcon, ProductIcon, ShotsIcon, CameraMovesIcon, BrushIcon, ImageIcon, SearchIcon, CloseIcon, ChevronRightIcon, PlusIcon, UpscaleIcon, AspectIcon, CutoutIcon, ExpandIcon, EraserIcon, GarmentIcon, MaterialIcon, LayerSheetsIcon, CubeIcon, OrbitIcon, PrevizIcon, type IconProps } from '../Icons';
-import type { ProviderInfo } from '../../api';
+import { listTools, type ProviderInfo } from '../../api';
+import { AddOwnRow } from '../../shared/WorkflowPicker';
+import { pluginHref, pluginLine, placedTab } from '../../../../server/src/shared/pluginPlacement';
 import { ScalePanel, outOf, sizeText, scaleWhy, type UpInfo, type Size } from './UpscaleBar';
 import type { WorkflowRecipe } from '../../../../server/src/shared/workflows';
 import { draftPromptOk } from '../../shared/batch1';
@@ -65,7 +67,7 @@ export { useToolQuote as useWorkflowQuote } from '../../shared/useToolQuote';
 
 /* The first chip in the bar ("Create" / "<icon> Relight ✕") is the shared WorkflowChip (shared/WorkflowChip.tsx), used by all four pages. */
 
-const SRC_WORD: Record<string, string> = { ours: 'Ours', official: 'Official', community: 'Community' };
+const SRC_WORD: Record<string, string> = { ours: 'Ours', official: 'Official', community: 'Community', yours: 'Added by you', addon: 'Add-on' };
 /** The picker: search, category tabs, one row per recipe (icon, name, one line, what it needs, source). Ready recipes load into this bar
  *  (since 2026-10-23 all of them, Brush Edit, Camera Angles and Camera & Lens included); a recipe marked 'soon' would say "Opens its page ↗" and go there (QA #6).
  *  Every row is reachable with ↑↓ Enter; Esc closes. A popover on desktop, a bottom sheet on phones. */
@@ -75,10 +77,13 @@ export function WorkflowPicker({ open, anchor, list, current, onPick, onClose, w
   useEffect(() => { if (!open) { setQ(''); setTab('all'); setHi(0); return; } const t = setTimeout(() => qRef.current?.focus(), 60); return () => clearTimeout(t); }, [open]);
   const ql = q.trim().toLowerCase();
   type Row = { id: string; name: string; icon: string; line: string; needs: string; src: string; ready: boolean; route?: string; cat: string };
+  /* workflows from a folder placed in the Image tab (yours, or an add-on): rows that open their own page (shared/pluginPlacement.ts) */
+  const [plugs, setPlugs] = useState<Row[]>([]);
+  useEffect(() => { if (!open) return; let live = true; listTools().then(ts => { if (live) setPlugs(ts.filter(t => placedTab(t as any) === 'image').map(t => ({ id: `plugin:${t.id}`, name: t.name, icon: 'create', line: pluginLine(t as any), needs: t.plugin?.input === 'none' ? 'Prompt' : t.plugin?.input === 'video' ? '1 clip' : '1 photo', src: t.plugin?.user ? 'yours' : 'addon', ready: false, route: pluginHref(t as any), cat: ['edit', 'people', 'product', 'camera'].includes(t.plugin?.category ?? '') ? t.plugin!.category! : 'edit' }))); }).catch(() => undefined); return () => { live = false; }; }, [open]);
   const rows: Row[] = useMemo(() => [
     { id: '', name: 'Create', icon: 'create', line: 'Text to image, or edit a photo with a prompt', needs: 'Prompt · photos', src: 'ours', ready: true, cat: 'basics' },
-    ...list.map(r => ({ id: r.id, name: r.name, icon: r.icon, line: r.tagline, needs: r.needs, src: r.source.kind, ready: r.status === 'ready', route: r.route, cat: r.category })),
-  ].filter(r => (tab === 'all' || r.cat === tab) && (!ql || `${r.name} ${r.line} ${r.cat}`.toLowerCase().includes(ql))), [list, tab, ql]);
+    ...list.map(r => ({ id: r.id, name: r.name, icon: r.icon, line: r.tagline, needs: r.needs, src: r.source.kind, ready: r.status === 'ready', route: r.route, cat: r.category })), ...plugs,
+  ].filter(r => (tab === 'all' || r.cat === tab) && (!ql || `${r.name} ${r.line} ${r.cat}`.toLowerCase().includes(ql))), [list, plugs, tab, ql]);
   const pickable = rows; /* every row: ready ones load into the bar, the others open their page */
   useEffect(() => { setHi(0); }, [tab, ql]);
   const choose = (r: Row) => { onClose(); if (r.ready) onPick(r.id); else navigate(r.route ?? '/workflows'); };
@@ -104,8 +109,9 @@ export function WorkflowPicker({ open, anchor, list, current, onPick, onClose, w
                 ? <button key={r.id || 'create'} type="button" role="option" aria-selected={on} data-wf-row={r.id || '-'} data-testid={`wf-row-${r.id || 'create'}`} className={`wf-row${on ? ' on' : ''}${lit ? ' hi' : ''}`} onMouseEnter={() => setHi(pickable.indexOf(r))} onClick={() => choose(r)}>{body}</button>
                 : <Link key={r.id} to={r.route ?? '/workflows'} role="option" aria-selected={false} data-wf-row={r.id} className={`wf-row wf-page${lit ? ' hi' : ''}`} data-testid={`wf-row-${r.id}`} aria-label={`${r.name}: opens its own page`} {...tip(`${r.name} has its own page. Opens it.`)} onMouseEnter={() => setHi(pickable.indexOf(r))} onClick={onClose}>{body}</Link>; })}</div>; })}
         {!rows.length && <p className="helper wf-empty">No workflows match “{q}”.</p>}
+        <AddOwnRow tab="image" onClose={onClose} testId="wf-add-own" />
       </div>
-      <div className="wf-foot"><span>{list.length} workflows</span><Link to="/workflows" className="wf-all" onClick={onClose} data-testid="wf-browse-all">Browse all workflows <ChevronRightIcon size={12} /></Link></div>
+      <div className="wf-foot"><span>{list.length + plugs.length} workflows</span><Link to="/workflows" className="wf-all" onClick={onClose} data-testid="wf-browse-all">Browse all workflows <ChevronRightIcon size={12} /></Link></div>
     </div>
   </Popover>;
 }

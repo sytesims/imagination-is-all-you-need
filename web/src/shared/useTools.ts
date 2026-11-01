@@ -4,6 +4,10 @@ import { registerToolNames } from './activeJobs';
 /** Fire this (window event) after anything that changes where models can run: keys, Local on/off. */
 export const TOOLS_REFRESH = 'ohf:tools-refresh';
 export const refreshTools = () => { try { dispatchEvent(new Event(TOOLS_REFRESH)); } catch { /* ignore */ } };
+/** Fired after a refresh has put the new list into the app (a workflow you just added can be opened now). */
+export const TOOLS_LOADED = 'ohf:tools-loaded';
+/** Refresh the list and wait until the app has it (at most `ms`). */
+export const refreshToolsAndWait = (ms = 4000) => new Promise<void>((res) => { const done = () => { removeEventListener(TOOLS_LOADED, done); clearTimeout(t); res(); }; const t = setTimeout(done, ms); addEventListener(TOOLS_LOADED, done); refreshTools(); });
 
 /**
  * Tool registry loader with an error state: `error` is the server's message, `retry()` reloads now,
@@ -27,6 +31,6 @@ export function useTools(intervalMs = 3000) {
   }, [intervalMs]);
   useEffect(() => { alive.current = true; load(); return () => { alive.current = false; clearTimeout(timer.current); }; }, [load]);
   /* Model vs Run-on: a key added or removed, or Local turned on, changes where each model can run → re-read the list quietly (no skeleton) */
-  useEffect(() => { const f = () => { listTools().then((t) => { if (alive.current) { registerToolNames(t); setTools(t); } }).catch(() => undefined); }; addEventListener(TOOLS_REFRESH, f); return () => removeEventListener(TOOLS_REFRESH, f); }, []);
+  useEffect(() => { const f = () => { listTools().then((t) => { if (alive.current) { registerToolNames(t); setTools(t); setTimeout(() => dispatchEvent(new Event(TOOLS_LOADED)), 0); } }).catch(() => undefined); }; addEventListener(TOOLS_REFRESH, f); return () => removeEventListener(TOOLS_REFRESH, f); }, []);
   return { tools, error, failure, loading, attempts, retry: load, nextRetryMs: error ? intervalMs : null };
 }

@@ -7,11 +7,14 @@ import path from 'node:path';
 import type { PluginNodeMap, NodeRef } from './plugins.js';
 
 /** What the local runner needs to build a plugin's plan. Registered only for loaded plugins that ship a node map. */
-export interface PluginSpec { id: string; workflowId: string; input: 'image' | 'video'; outKind: 'image' | 'video'; graph: Record<string, any>; nodeMap: PluginNodeMap }
+export interface PluginSpec { id: string; workflowId: string; input: 'image' | 'video' | 'none'; outKind: 'image' | 'video'; graph: Record<string, any>; nodeMap: PluginNodeMap }
 const specs = new Map<string, PluginSpec>();
 export const registerPluginSpec = (s: PluginSpec) => { specs.set(s.id, s); };
 export const pluginSpec = (toolId: string): PluginSpec | null => specs.get(toolId) ?? null;
 export const clearPluginSpecs = () => specs.clear();
+export const removePluginSpec = (toolId: string) => specs.delete(toolId);
+/** A loaded plugin's graph by its workflow id (plugins/<folder>/workflow.json), wherever its folder lives (comfyNodes.ts). */
+export const pluginGraphOf = (workflowId: string): Record<string, any> | null => { for (const s of specs.values()) if (s.workflowId === workflowId) return s.graph; return null; };
 
 /** The result kind: the manifest's `output` when set, else read from the output node (SaveImage / PreviewImage → image, anything else → video). */
 export const pluginOutKind = (graph: Record<string, any> | undefined, nm: PluginNodeMap | null | undefined, declared?: 'image' | 'video'): 'image' | 'video' =>

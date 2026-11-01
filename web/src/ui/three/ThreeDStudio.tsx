@@ -460,7 +460,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
             : <span className="t3-pt"><GenPrice compact testId="t3-price" q={q} demo={isDemo} free={isFree} credits={unpricedWhy || blockWhy ? null : credits} /><small className="t3-time" data-testid="t3-time">{etaText(typSec)}</small></span>}</button>}
       </div></div>
       <PreflightNotes open={pfOpen} notes={notes} anchor={genRef} dock={dock} onClose={() => setPfOpen(false)} testId="t3-notes" />
-      <WorkflowPicker open={pop === 'wf'} anchor={wfRef} watch={dock} list={THREE_D_WORKFLOWS} current={wf.id} categories={THREE_D_CATEGORIES} onChoose={(w) => pick(w.id)} onClose={() => { setPop(''); clearPickerParam(); }} label="3D workflows" prefix="t3wf" noun="3D"
+      <WorkflowPicker open={pop === 'wf'} anchor={wfRef} watch={dock} list={THREE_D_WORKFLOWS} current={wf.id} categories={THREE_D_CATEGORIES} onChoose={(w) => pick(w.id)} onClose={() => { setPop(''); clearPickerParam(); }} label="3D workflows" prefix="t3wf" noun="3D" addTab="3d"
         icon={(w) => <WfIcon name={w.icon} />} how={(w) => <HowSteps w={{ ...w, inputs: [w.needs] } as any} />} soon={(w) => !(data?.workflows.find((x) => x.id === w.id)?.runnable ?? w.status === 'ready')}
         foot={`${THREE_D_WORKFLOWS.filter((w) => w.status === 'ready').length} ready · ${THREE_D_WORKFLOWS.filter((w) => w.status === 'soon').length} coming soon`} />
       {!noModel && <ModelMenu open={pop === 'model'} anchor={mRef} avoid={dock} watch={dock} gap={4} placement="top" onClose={() => setPop('')} items={items} value={provider} testId="t3-model-list" rowTestId={(id) => `t3-model-${id}`} toolId={TOOL} quote={q}
