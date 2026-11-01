@@ -15,7 +15,7 @@ import { settingsOnSwitch } from './composerDraft';
 import { maxRefsOf, routeCapsOf } from './refCaps';
 import { recipeFor } from './threeDRecipe';
 import { defaultsOf, pickDefault } from './defaults';
-import { THREE_D_WORKFLOWS, threeDModel, normalizeSettings } from '../../../server/src/shared/threeD';
+import { THREE_D_WORKFLOWS, threeDModel, normalizeSettings, threeDSupportsMode, threeDViewIssue } from '../../../server/src/shared/threeD';
 import { canvasDefaultModel } from '../../../server/src/shared/cloudDefaults';
 import { tooManySwatches } from '../../../server/src/shared/swatchBatch';
 import { audioKindOf, type AudioKind } from './audioVizLogic';
@@ -48,7 +48,7 @@ export const GEN_FLOWS: GenFlow[] = [
   { id: 'music', medium: 'audio', name: 'Music', tagline: 'Songs and beds from a prompt', needs: 'Prompt', icon: 'audio', toolId: 'audio', types: 'music' },
   { id: 'sfx', medium: 'audio', name: 'Sound Effects', tagline: 'A sound from a description', needs: 'Prompt', icon: 'audio', toolId: 'audio', types: 'sfx' },
   { id: 'voice', medium: 'audio', name: 'Text to Speech', tagline: 'Your script, read aloud', needs: 'Script', icon: 'audio', toolId: 'audio', types: 'voice' },
-  { id: 'image-to-3d', medium: '3d', name: 'Image to 3D', tagline: 'One image into a textured 3D model', needs: '1 image', icon: 'cube', toolId: 'three-d' },
+  ...THREE_D_WORKFLOWS.filter(w => w.toolId === 'three-d' && w.status === 'ready').map(w => ({ id: w.id, medium: '3d' as const, name: w.name, tagline: w.tagline, needs: w.needs, icon: w.icon, toolId: 'three-d', types: w.mode! })),
 ];
 export const DEFAULT_FLOW: Record<GenMedium, string> = { image: 'create', video: 'video', audio: 'music', '3d': 'image-to-3d' };
 export const flowById = (id: string | null | undefined) => GEN_FLOWS.find(f => f.id === id) ?? null;
@@ -166,11 +166,13 @@ export function flowSpec(f0: GenFlow, cat: GenCatalog, want: { provider?: string
       quote: { ...q, ...Object.fromEntries(sent.map(s => [s.sendsAs, '1'])), ...(sent.some(s => s.sendsAs === 'image') ? { image: '1' } : {}), ...(sent.length > 1 ? { refs: String(sent.length) } : {}) },
       /* the runner app decides the mode from its files (as Create Image's workflow submit): no types field */ fields: ctlVals });
   }
-  if (f.id === 'image-to-3d') { /* the 3D model table (shared threeDRecipe): detail / faces / texture as group chips */
-    const providers = tool.providers; const provider = pickProvider(want.provider, providers, cardDefault(f, tool, null, providers, tool.defaultProvider ?? 'cloud-tripo-31'));
-    const r = recipeFor(threeDModel(provider), THREE_D_WORKFLOWS[0]); const s = normalizeSettings(provider, wv); const vals = { ...keptVals(tool, provider, wv, ['detail', 'texture', 'faces', 'format']), detail: s.detail, texture: s.texture, faces: s.faces };
-    const slots = [slot('image', 'Image', 'image', true, 'Add an image', 'One object, on a plain background if you can')];
-    return base(r, slots, providers, provider, 'image-to-3d', vals, { promptMode: 'hidden', generateLabel: r.generateLabel || 'Make 3D', fields: { types: JSON.stringify(['image-to-3d']), ...vals, format: 'glb' } });
+  if (f.medium === '3d' && f.toolId === 'three-d') { /* all 3D modes use the page's recipe and model settings */
+    const wf = THREE_D_WORKFLOWS.find(w => w.id === f.id)!;
+    const providers = tool.providers.filter(p => threeDSupportsMode(p.id, wf.mode!)); const provider = pickProvider(want.provider, providers, cardDefault(f, tool, wf.mode, providers, tool.defaultProvider ?? 'cloud-tripo-31'));
+    const r = recipeFor(threeDModel(provider), wf); const s = normalizeSettings(provider, wv); const vals = { ...keptVals(tool, provider, wv, ['detail', 'texture', 'faces', 'format']), detail: s.detail, texture: s.texture, faces: s.faces };
+    const viewIssue = wf.id === 'multiview-to-3d' ? threeDViewIssue(['image', ...Object.keys(filled).filter(k => k !== 'image' && fill(filled, k))]) : null;
+    const slots = r.slots.map(s => slot(s.name, s.label, 'image', s.required || (s.name === 'image_left' && !!viewIssue), s.missing, s.hint));
+    return base(r, slots, providers, provider, wf.mode!, vals, { generateLabel: r.generateLabel || 'Generate', fields: { types: JSON.stringify([wf.mode]), ...vals, format: 'glb' } });
   }
   const cfg: any = tool.app ?? {}; const modesOf = (p: string): string[] | null => cfg.providerModes?.[p] ?? null;
   if (f.id === 'create') { /* Create Image: references (the model's real cap), shape / quality / size / takes from its image caps */

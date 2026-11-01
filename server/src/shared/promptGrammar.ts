@@ -599,7 +599,7 @@ const AUDIO: PromptGrammar[] = [
 
 // 3D and our own tools ----------------------------------------------------------------
 const THREE_D: PromptGrammar[] = [
-  noPrompt('cloud-tripo-31', 'Tripo 3.1', '3d', '3d', 'Image to 3D: one picture, no prompt. (Tripo text-to-model takes a prompt + ≤255-character negative; not offered.)', [{ at: 'server/src/tools/threeD.ts:174', follows: 'n/a' }], [S.tripoImage, S.tripoText]),
+  g({ key:'cloud-tripo-31',name:'Tripo 3.1',medium:'3d',kind:'3d',status:'known',prompt:'optional',refs:{style:'none',note:'Text mode describes the object without attached references. Image and multiview modes use named image inputs and no text.',src:[S.tripoText,S.tripoImage]},negative:'none',structure:'Describe one object, its shape, materials and colours.',example:'A small ceramic fox with a glossy blue glaze.',code:[{at:'server/src/tools/threeD.ts',follows:'yes'}],sources:[S.tripoText,S.tripoImage] }),
   noPrompt('fal-trellis2', 'TRELLIS.2', '3d', '3d', 'Image to 3D: one picture, no prompt.', [{ at: 'server/src/tools/threeD.ts:174', follows: 'n/a' }], [T('https://fal.ai/models/fal-ai/trellis-2')]),
   noPrompt('fal-hunyuan3d-31', 'Hunyuan 3D 3.1', '3d', '3d', 'Image to 3D: one picture, no prompt.', [{ at: 'server/src/tools/threeD.ts:174', follows: 'n/a' }], [NODE('Hunyuan3Dv2Conditioning')]),
   noPrompt('comfy-pixal3d-trellis2', 'Pixal3D + TRELLIS.2', '3d', '3d', 'Image to 3D: one picture, no prompt.', [{ at: 'server/src/tools/threeD.ts:174', follows: 'n/a' }], [I('https://huggingface.co/Comfy-Org/Pixal3D')]),

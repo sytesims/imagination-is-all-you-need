@@ -11,7 +11,7 @@ assert.equal(MAX_FEATURES, 10);
 assert.deepEqual(MENU_FEATURE_ORDER.image, ['create-image', 'edit-image', 'upscale', 'relight', 'character-sheet', 'face-swap', 'product-shot', 'camera-angles']);
 // Explore rework (2026-10-26): the real flows first; Direct a Shot, Loop, Morph, Exploded view and New angle are flow shortcuts (VIDEO_FLOW_SHORTCUTS)
 assert.deepEqual(MENU_FEATURE_ORDER.video, ['create', 'direct-a-shot', 'loop', 'morph', 'exploded-view', 'new-angle', 'motion-control', 'object-swap', 'lip-sync', 'extend']);
-assert.deepEqual(MENU_FEATURE_ORDER['3d'], ['plan-a-shot', 'image-to-3d', 'turntable'], '3D: Direct a Shot first; roadmap rows only in the picker');
+assert.deepEqual(MENU_FEATURE_ORDER['3d'], ['plan-a-shot', 'image-to-3d', 'text-to-3d', 'multiview-to-3d', 'turntable'], '3D: Direct a Shot first; roadmap rows only in the picker');
 assert.equal(MENU_FEATURE_ORDER.audio, null, 'Audio keeps its own order');
 for (const id of MENU_FEATURE_ORDER.image!) assert.ok(IMAGE_FEATURES.some((f) => f.id === id), `image feature ${id} exists`);
 for (const id of MENU_FEATURE_ORDER.video!) assert.ok([...VIDEO_WORKFLOWS, ...VIDEO_FLOW_SHORTCUTS].some((w) => w.id === id), `video workflow or flow shortcut ${id} exists`);

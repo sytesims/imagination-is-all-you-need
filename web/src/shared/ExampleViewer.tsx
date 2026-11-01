@@ -5,6 +5,7 @@ import { ViewerImage } from './ViewerImage';
 import { workflowFor } from './imageFeatures';
 import { durationText } from './jobTiming';
 import { tip } from './Tooltip';
+import { scaleText } from './scaleText';
 import { useToast } from './Toast';
 import { DownloadIcon, HeartIcon, PencilIcon, ImageIcon } from '../ui/Icons';
 import './exampleViewer.css';
@@ -50,7 +51,7 @@ export function ExampleViewer({ ex, onClose, onUse, onUsePhoto }: { ex: ExampleS
     out={{ thumb: bad ? null : ex.image, b: ex.before?.afterLabel ?? '', on: inView == null && !cmp, onShow: () => { setInView(null); setCmp(false); } }} />;
   const wf = ex.provider ? workflowFor(ex.workflow, ex.provider) : null;
   /* the graph file the example really ran (Upscale ×2 records its own), else the model's */ const wfFile = typeof ex.settings.workflow === 'string' && /^[\w.-]+\.json$/.test(ex.settings.workflow) ? ex.settings.workflow : wf?.file ?? null;
-  const sets = Object.entries(ex.settings).filter(([k, v]) => k !== 'workflow' && v != null && v !== '').map(([k, v]) => [SETTING[k] ?? k, k === 'quality' ? QUAL[String(v)] ?? String(v) : k === 'scale' ? `${String(v).replace(/x$/i, '')}×` : String(v)] as [string, string]);
+  const sets = Object.entries(ex.settings).filter(([k, v]) => k !== 'workflow' && v != null && v !== '').map(([k, v]) => [SETTING[k] ?? k, k === 'quality' ? QUAL[String(v)] ?? String(v) : k === 'scale' ? scaleText(v) : String(v)] as [string, string]);
   const rows: [string, React.ReactNode][] = [['Model', <span data-testid="exv-model">{ex.model ?? 'Not recorded'}</span>], ['Workflow', ex.workflowName], ...(ex.look ? [['Preset', ex.look] as [string, string]] : []),
     ['Ran on', LOCAL_LABEL], ['Price', <span data-testid="exv-price">{ex.price ?? 'Not recorded'}</span>], ['Time', <span data-testid="exv-time">{ex.runMs ? durationText(ex.runMs) : 'Not recorded'}</span>],
     ...(nat ? [['Size', nat] as [string, string]] : []), ...sets,

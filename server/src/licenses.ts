@@ -154,12 +154,19 @@ registerLicenseComponents('create-image', [
 ]);
 registerLicenseComponents('app-shots', [...QWEN_EDIT_PARTS,
   { model: 'Qwen-Edit-2509 Multiple-angles LoRA (dx8152), optional route', license: 'Apache-2.0', commercial: 'yes', url: 'https://huggingface.co/dx8152/Qwen-Edit-2509-Multiple-angles' }, ...HOSTED_EDIT_PARTS]);
-registerLicenseComponents('object-swap', [{ model: 'SAM 3.1 (sam3.1_multiplex_fp16) · mask preview', license: 'SAM License', commercial: 'restricted', url: 'https://github.com/facebookresearch/sam3/blob/main/LICENSE', licenseId: 'sam-license', terms: LICENSES['sam-license'].terms } as LicenseComponent]);
+// H3 Character Swap recipe credits (2026-11-01): our graphs follow Comfy's Openjutsu app and Akatz Labs' H3 Character Swap workflow (both MIT,
+// full texts in licenses/). Shown with Person swap and Swap Two People.
+const CHARSWAP_RECIPE_PARTS: LicenseComponent[] = [
+  { model: "H3 Character Swap recipe settings, after Comfy's Openjutsu app (Comfy-Org/comfy-openjutsu)", license: 'MIT', licenseId: 'mit', commercial: 'yes', url: 'https://github.com/Comfy-Org/comfy-openjutsu' },
+  { model: "H3 Character Swap workflow (Akatz Labs, akatz-labs/h3-character-swap-tool)", license: 'MIT', licenseId: 'mit', commercial: 'yes', url: 'https://github.com/akatz-labs/h3-character-swap-tool' },
+];
+registerLicenseComponents('object-swap', [{ model: 'SAM 3.1 (sam3.1_multiplex_fp16) · mask preview', license: 'SAM License', commercial: 'restricted', url: 'https://github.com/facebookresearch/sam3/blob/main/LICENSE', licenseId: 'sam-license', terms: LICENSES['sam-license'].terms } as LicenseComponent, ...CHARSWAP_RECIPE_PARTS]);
 // Swap Two People (2026-10-27, tools/twoPersonSwap.ts): every model in the Comfy Cloud graph, with its licence.
 registerLicenseComponents('two-person-swap', [
   { model: 'MiniMax H3 Ref2VA int8, Qwen3-VL 32B text encoder NVFP4, H3 video + audio VAEs, H3 fl2v turbo 8-step LoRA (Comfy-Org/MiniMax-H3, lightx2v/Minimax-h3-Turbo)', license: 'MiniMax H3 Community License', licenseId: 'minimax-community', commercial: 'restricted', url: 'https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE' },
   { model: 'H3 Character Swap LoRA v1.5 (Akatz Labs, akatz-ai/MiniMax-H3-Character-Swap-LoRA), imported into your Comfy Cloud library', license: LICENSES['minimax-community-akatz-charswap'].name, licenseId: 'minimax-community-akatz-charswap', commercial: 'restricted', url: 'https://huggingface.co/akatz-ai/MiniMax-H3-Character-Swap-LoRA/blob/main/LICENSE' },
   { model: 'SAM 3.1 (sam3.1_multiplex_fp16) · person masks', license: 'SAM License', commercial: 'restricted', url: 'https://github.com/facebookresearch/sam3/blob/main/LICENSE', licenseId: 'sam-license', terms: LICENSES['sam-license'].terms } as LicenseComponent,
+  ...CHARSWAP_RECIPE_PARTS,
 ]);
 // H3 runner Step 3 (Oct 26): New angle · H3 CrossView · cloud (Re-shoot, on your own Comfy deployment). Every part of the Build, with its licence.
 // Talking Video (2026-10-27, Lip Sync): InfiniteTalk on Comfy Cloud (script and long speech in parts), and LongCat-Video-Avatar 1.5 (off by default:

@@ -1,0 +1,56 @@
+{
+  "1": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "input.png"
+    },
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "2": {
+    "class_type": "TripoMultiviewToModelNode",
+    "inputs": {
+      "image": [
+        "1",
+        0
+      ],
+      "model_version": "v3.1-20260211",
+      "texture": true,
+      "pbr": true,
+      "model_seed": 42,
+      "texture_seed": 42,
+      "orientation": "default",
+      "texture_quality": "standard",
+      "texture_alignment": "original_image",
+      "face_limit": -1,
+      "quad": false,
+      "geometry_quality": "standard",
+      "smart_low_poly": false,
+      "auto_size": true,
+      "image_left": [
+        "4",
+        0
+      ]
+    }
+  },
+  "3": {
+    "class_type": "SaveGLB",
+    "inputs": {
+      "mesh": [
+        "2",
+        2
+      ],
+      "filename_prefix": "3d/openhiggsfield"
+    },
+    "_meta": {
+      "title": "Save 3D Model"
+    }
+  },
+  "4": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "left.png"
+    }
+  }
+}

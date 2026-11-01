@@ -36,6 +36,13 @@ const clean = (name: string, g: Record<string, any>, oi = OI) => { const r = che
     assert.equal(g['2'].inputs.upscaler_model, model); assert.equal(g['2'].inputs['upscaler_model.upscaler_resolution'], t === '4k' ? '4K (2160p)' : 'FullHD (1080p)'); n++; }
   assert.ok(n >= 8, 'four Topaz models × two sizes');
   for (const texture of ['off', 'standard', 'hd', 'pbr']) for (const detail of ['standard', 'high']) clean(`tripo ${texture}/${detail}`, tripoGraph({ texture, detail, seed: 7 }, ASSET));
+  const tripoOI=JSON.parse(fs.readFileSync(path.join(ROOT,'readiness/stub/object_info.json'),'utf8'));
+  for(const mode of ['text-to-3d','multiview-to-3d']) for(const texture of ['off','standard','hd','pbr']) for(const detail of ['standard','high']) {
+    const graph=tripoGraph({mode,prompt:'A ceramic fox',texture,detail,seed:7},ASSET,{image:ASSET,image_left:ASSET});
+    clean(`tripo ${mode}/${texture}/${detail}`,graph,tripoOI);
+    assert.equal(graph['3'].inputs.mesh[1],mode==='text-to-3d'?1:2,'GLB output index follows each node schema');
+    if(mode==='text-to-3d'){assert.ok(!('orientation' in graph['2'].inputs));assert.ok(!('image' in graph['2'].inputs));}
+  }
   const files = fs.readdirSync(path.join(ROOT, 'workflows/cloud')).filter((f) => f.endsWith('.json')); assert.ok(files.length >= 5);
   for (const f of files) clean(f, JSON.parse(fs.readFileSync(path.join(ROOT, 'workflows/cloud', f), 'utf8')), oiFor(f));
   ok(`${n} Topaz graphs, 8 Tripo graphs and ${files.length} workflows/cloud graphs pass the object_info check`);
