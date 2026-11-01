@@ -2,7 +2,7 @@
  * MOCKUP (2026-10-31, not committed; the user picked layout A): the card panel on the right of the board. Select one card and it shows
  * the card big, how it was made and what to do next, as one calm column of identical sections:
  *   header (tile · name · one subtitle line) → preview (one fixed frame for every kind) → Versions → Run again / Set it up →
- *   Made with → Next steps → Connections, and one footer row (Download · Open in … · full size) on every finished card.
+ *   Made with → Next steps → Connections, and one footer row (Download · Open in … · View workflow · full size) on every finished card.
  * Every section has the same heading, spacing and hairline (Section); every helper line the same caption style. The pieces inside are
  * the app's own (VideoControls, AudioCard, GenTile, WorkflowControls, DockGenerate, GenPrice, MakerTile, linksFor, QUICK_ACTIONS +
  * actionPrice, variationOf, toolHrefOf, jobCaption). The panel reads the board live (tldraw useValue) and keeps only its pin.
@@ -31,7 +31,8 @@ import { tip } from '../shared/Tooltip';
 import { useToast } from '../shared/Toast';
 import { navigate } from '../platform/router';
 import { WorkflowControls } from '../ui/next/WorkflowBar';
-import { ImageIcon, VideoIcon, AudioIcon, CubeIcon, DownloadIcon, CloseIcon, TextIcon, ChevronRightIcon, ExpandIcon } from '../ui/Icons';
+import { WorkflowDialog, useWorkflowInfo } from '../shared/WorkflowDialog';
+import { ImageIcon, VideoIcon, AudioIcon, CubeIcon, DownloadIcon, CloseIcon, TextIcon, ChevronRightIcon, ExpandIcon, OpenModelIcon } from '../ui/Icons';
 import { CopyIcon, RetryIcon, PullOutIcon, NoteIcon, PromptIcon, UploadIcon, AdIcon, CompareIcon, GroupIcon } from './icons';
 import { useCatalog, catalogNow } from './catalog';
 import { GEN_TYPE, layersLine, type GenCardProps, type Take, type MadeFrom as MadeFromT } from './cardModel';
@@ -426,14 +427,21 @@ function MadeFrom({ list }: { list: MadeFromT[] }) {
   return <div className="cp-rows" data-testid="cp-made-from">{list.map((i, k) => <Row key={`${i.url}-${k}`} poster={i.poster} kind={i.kind} label={i.label} sub={i.slot} onClick={live[k] ? () => jump(editor, i.shapeId as TLShapeId) : undefined} />)}</div>;
 }
 
-/** The footer, the same on every finished card: Download · Open in its page · full size (two equal buttons and one square). */
+/** The footer, the same on every finished card: Download · Open in its page · View workflow · full size (two buttons and two squares).
+ *  View workflow is the result view's (shared WorkflowDialog + useWorkflowInfo) for the active version's job, with the same honest disabled tip. */
 function Actions({ v }: { v: View }) {
-  const m = v.media!; const page = m.kind === 'video' ? 'Video' : m.kind === 'audio' ? 'Audio' : m.kind === '3d' ? '3D' : 'Image';
+  const m = v.media!; const [wf, setWf] = useState(false); const wfInfo = useWorkflowInfo(m.jobId || null); const wfOk = wfInfo.info?.available === true;
+  const wfDis = wfOk ? null : wfInfo.info ? 'Only results made by open models, on your computer or on Comfy Cloud, come with a ComfyUI workflow.'
+    : wfInfo.err ? (wfInfo.err === 'not found' ? 'This result is no longer in your library, so its workflow can’t be shown.' : `The workflow couldn’t be loaded. ${wfInfo.err}`) : 'Checking…';
+  useEffect(() => setWf(false), [m.jobId]);
+  const page = m.kind === 'video' ? 'Video' : m.kind === 'audio' ? 'Audio' : m.kind === '3d' ? '3D' : 'Image';
   const href = v.gen ? toolHrefOf(v.p.flow, m.jobId || v.p.jobId) : v.job ? workflowRecreateHref(v.job as any) : null;
   return <div className="cp-foot-row">
-    <a className="cp-btn" href={m.url} download {...tip('Save the file')}><DownloadIcon size={14} />Download</a>
-    {v.s.type !== UPLOAD_TYPE && <button type="button" className="cp-btn" disabled={!href} onClick={() => href && navigate(href)} {...tip(href ? `Open in ${page} with these settings` : 'Made outside a workflow: nothing to open')}><PullOutIcon size={14} />Open in {page}</button>}
+    <a className="cp-btn" href={m.url} download {...tip('Save the file')}><DownloadIcon size={14} /><span>Download</span></a>
+    {v.s.type !== UPLOAD_TYPE && <button type="button" className="cp-btn" disabled={!href} onClick={() => href && navigate(href)} {...tip(href ? `Open in ${page} with these settings` : 'Made outside a workflow: nothing to open')}><PullOutIcon size={14} /><span>Open in {page}</span></button>}
+    {m.jobId && <button type="button" className="cp-btn cp-sq" disabled={!wfOk} aria-label="View workflow" data-testid="cp-view-workflow" onClick={() => setWf(true)} {...tip(wfDis ?? 'View workflow: the ComfyUI graph that made this, with its settings')}><OpenModelIcon size={14} /></button>}
     <a className="cp-btn cp-sq" href={m.url} target="_blank" rel="noreferrer" aria-label="Full size" {...tip('Full size in a new tab')}><ExpandIcon size={14} /></a>
+    {wf && m.jobId && <WorkflowDialog jobId={m.jobId} onClose={() => setWf(false)} />}
   </div>;
 }
 

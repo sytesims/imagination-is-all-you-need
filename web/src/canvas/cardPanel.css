@@ -121,9 +121,10 @@ html body .cp .gen-btn.cp-go{width:100%!important;height:var(--cp-h)!important;m
 .cp-row-t img{width:100%;height:100%;object-fit:cover}
 .cp-row-n{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.cp-row-n b{font-weight:600;font-size:13px;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cp-row-n small{color:var(--text-3);font-size:12px}
 
-/* footer: two equal buttons and one square, the same on every finished card */
+/* footer: two buttons (labels shorten with … when tight) and the squares (View workflow, full size), the same on every finished card */
 .cp-foot{flex:none;padding:12px var(--cp-pad);border-top:1px solid var(--hairline)}
-.cp-foot-row{display:grid;grid-template-columns:1fr 1fr var(--cp-h);gap:var(--cp-gap)}
+.cp-foot-row{display:grid;grid-template-columns:auto minmax(0,1fr);grid-auto-columns:var(--cp-h);grid-auto-flow:column;gap:var(--cp-gap)}
+.cp-foot-row .cp-btn:not(.cp-sq){padding:0 10px}.cp-foot-row .cp-btn>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .cp-sq{width:var(--cp-h);padding:0}
 
 /* several, none */

@@ -103,7 +103,7 @@ export type PriceView = { usd: number | null; credits: number | null; label: str
 export interface BoardNode {
   id: string; type: 'card' | 'result' | 'picture' | 'clip' | 'note' | 'frame' | 'link'; kind: string | null; name?: string | null; frame?: string | null; children?: string[]; url?: string | null; by?: 'agent' | 'you'; workflow?: string | null; model?: string | null;
   prompt?: string | null; title?: string | null; status?: string | null; inputs?: string[]; results?: { url: string; kind?: string | null; poster?: string | null }[];
-  price?: PriceView | null; jobId?: string | null; missing?: string | null;
+  price?: PriceView | null; jobId?: string | null; missing?: string | null; /** the ComfyUI API graph of jobId's result, when one exists (View workflow) */ workflowGraph?: string;
 }
 export interface ProposalItem { cardId: string; title: string; workflow: string; model: string | null; status: string; usd: number | null; credits: number | null; quote: any; problem: string | null }
 export interface ProposalBudget { id: string; name: string; budgetUsd: number | null; remainingUsd: number | null; spentUsd: number; budgetCredits: number | null; remainingCredits: number | null }
@@ -473,6 +473,14 @@ export function summarizeSnapshot(snapshot: any): BoardNode[] {
       nodes.push({ id: s.id, type: 'frame', kind: 'frame', title: String(p.name || 'Frame'), children: shapes.filter((c) => c.parentId === s.id).map((c) => c.id) });
     }
   }
+  return nodes;
+}
+
+/** Each finished card's ComfyUI graph link (GET /api/jobs/<id>/workflow?format=api), when its result has one: the same check as View workflow. */
+async function withGraphLinks(nodes: BoardNode[]): Promise<BoardNode[]> {
+  const { buildWorkflowExport } = await import('./workflowExport.js'); const lib = await import('./library.js');
+  await Promise.all(nodes.map(async (n) => { const j = n.jobId ? jobs.get(n.jobId) : null; if (!j || j.status !== 'done' || lib.metaOf(j.id).deletedAt) return;
+    try { const ex = await buildWorkflowExport(j); if (ex.available && ex.passes[0]) n.workflowGraph = ex.passes[0].url; } catch { /* no link */ } }));
   return nodes;
 }
 
@@ -1212,7 +1220,7 @@ export function registerCanvasAgent(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>('/api/canvas/boards/:id/agent/summary', async (req, reply) => {
     const b = getBoard(req.params.id); if (!b) return notFound(reply); if (fromAgent(req)) markAgent(req, b.id);
     const live = await liveSummary(b.id);
-    return live ? { board: boardSummary(b), nodes: live.nodes, live: true } : { board: boardSummary(b), nodes: summarizeSnapshot(b.snapshot), live: false, note: 'This is the last saved board. Open it in the app to see live cards.' };
+    return live ? { board: boardSummary(b), nodes: await withGraphLinks(live.nodes), live: true } : { board: boardSummary(b), nodes: await withGraphLinks(summarizeSnapshot(b.snapshot)), live: false, note: 'This is the last saved board. Open it in the app to see live cards.' };
   });
 
   app.get<{ Params: { id: string } }>('/api/canvas/boards/:id/agent/proposals', async (req, reply) => {
