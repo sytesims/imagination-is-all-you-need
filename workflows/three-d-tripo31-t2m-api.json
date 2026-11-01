@@ -1,0 +1,36 @@
+{
+  "2": {
+    "class_type": "TripoTextToModelNodeV2",
+    "inputs": {
+      "model_version": "v3.1-20260211",
+      "texture": true,
+      "pbr": true,
+      "model_seed": 42,
+      "texture_seed": 42,
+      "texture_quality": "standard",
+      "face_limit": -1,
+      "quad": false,
+      "geometry_quality": "standard",
+      "smart_low_poly": false,
+      "auto_size": true,
+      "prompt": "A small ceramic fox",
+      "image_seed": 42
+    },
+    "_meta": {
+      "title": "Tripo: Text to Model"
+    }
+  },
+  "3": {
+    "class_type": "SaveGLB",
+    "inputs": {
+      "mesh": [
+        "2",
+        1
+      ],
+      "filename_prefix": "3d/openhiggsfield"
+    },
+    "_meta": {
+      "title": "Save 3D Model"
+    }
+  }
+}

@@ -46,6 +46,14 @@ export function priceDelta(a: any, b: any, own: boolean | null): string | null {
   if (own === false) { const dc = (optCredits(b) ?? 0) - (optCredits(a) ?? 0); return dc ? `${dc > 0 ? '+' : '−'}${ledgerUsd(Math.abs(dc))}` : null; }
   return `${d > 0 ? '+' : '−'}${fmtUsd(Math.abs(d))}`;
 }
+/** An option's price in a settings popup as what it changes ('+$0.20', '−$0.10'); null when it costs the same (the total stays on Generate).
+ *  A sample run (mock) has no charge: the difference of the list prices, said so in the tooltip. */
+export function optionDelta(cur: any, alt: any, own: boolean | null): string | null {
+  if (cur?.demo !== true && alt?.demo !== true) return priceDelta(cur, alt, own);
+  const list = (x: any): number | null => { const u = x?.cost?.realRunUsd ?? x?.exactUsd; return typeof u === 'number' && u > 0 ? u : null; };
+  const a = list(cur), b = list(alt); if (a == null || b == null) return null; const d = Math.round((b - a) * 1e4) / 1e4; if (Math.abs(d) < 0.0005) return null;
+  return `${d > 0 ? '+' : '−'}${fmtUsd(Math.abs(d))} · list price; sample run here, nothing billed`;
+}
 /** 'about 4 min' / 'about 3–5 min' / 'about 40 s' from a quote's eta {lowSec, highSec}. */
 export function etaText(eta: { lowSec: number; highSec: number } | null | undefined): string | null {
   if (!eta || !(eta.highSec > 0)) return null; const lo = eta.lowSec, hi = eta.highSec;

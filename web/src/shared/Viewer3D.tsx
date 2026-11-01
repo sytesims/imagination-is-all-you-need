@@ -14,6 +14,7 @@ import { ViewerShell, ViewerDetails, IoStrip, RecreateGlyph, type IoTile } from 
 import { goClick } from './goToWorkflow';
 import { recreateHref as jobRecreateHref, directShotHref } from './workflowLinks';
 import { Model3D, fmtMB, fmtFaces, posterOf3d, startOrbitOf, START_ORBIT, type Model3DHandle, type Look, type Recording } from './model3d';
+import { threeDMode, threeDWorkflowById } from '../../../server/src/shared/threeD';
 import { RIG_MOVES } from '../../../server/src/shared/previzRig';
 import { tip } from './Tooltip';
 import { useToast } from './Toast';
@@ -97,7 +98,7 @@ export function Viewer3D({ item, onClose, onPrev, onNext, pos, bigBytes = BIG_GL
   const footer = <>
     <div className="rvx-row1">{item.jobId && !primary ? <button type="button" className="rvx-primary" data-testid="v3d-make-video" disabled={!loaded || !!rec} onClick={() => void record()} {...tip('Records one orbit of the model in your browser and keeps it as a video. Free.')}><VideoIcon size={16} />{rec ? 'Recording…' : 'Make a video'}</button>
       : primary ?? null /* no second Download GLB: the GLB tile below downloads it (UX audit #9) */}
-      {item.recreateHref && <a className="rvx-second" href={item.recreateHref} onClick={goClick(item.recreateHref, onClose)} data-action="recreate" data-testid="rv-recreate" {...tip('The same picture and settings back in Image to 3D, with a new seed')}><RecreateGlyph />Recreate</a>}</div>
+      {item.recreateHref && <a className="rvx-second" href={item.recreateHref} onClick={goClick(item.recreateHref, onClose)} data-action="recreate" data-testid="rv-recreate" {...tip('The same inputs and settings in this workflow, with a new seed')}><RecreateGlyph />Recreate</a>}</div>
     <div className="rvx-tiles" data-testid="rvx-tiles">
       <a className="rvx-tile" href={item.src} download={item.downloadName} data-testid="v3d-download" aria-label="Download the GLB" {...tip('Download the GLB')}><DownloadIcon size={18} /><span>Save</span></a>
       {item.jobId && <a className="rvx-tile" href={directShotHref(item.jobId)} onClick={goClick(directShotHref(item.jobId), onClose)} data-testid="v3d-use-shot" aria-label="Use in Direct a Shot" {...tip('Use in Direct a Shot: put this model in a 3D set as a prop or as the actor, film it, then render it as real video')}><PrevizIcon size={18} /><span>Shot</span></a>}
@@ -111,9 +112,9 @@ export function Viewer3D({ item, onClose, onPrev, onNext, pos, bigBytes = BIG_GL
 }
 /** The details rows for a 3D job: model, where it ran, price and time, and the settings it ran with. */
 export function jobRows3d(j: any, priceText: string | null): [string, ReactNode][] {
-  const i = j?.input ?? {}; const t = jobTiming(j); const L: Record<string, string> = { low: 'Low', standard: 'Standard', high: 'High', off: 'Off', hd: 'HD', pbr: 'PBR', auto: 'Auto' };
+  const i = j?.input ?? {}; const t = jobTiming(j); const L: Record<string, string> = { low: 'Low', standard: 'Standard', high: 'High', off: 'None', hd: 'HD', pbr: 'Realistic (PBR)', auto: 'Auto' }; /* plain words, as in the bar */
   return [['Model', j?.model ?? j?.provider ?? ''], ['Ran on', j?.place?.label ?? j?.runOnLabel ?? ''], ...(priceText ? [['Price', priceText] as [string, ReactNode]] : []), ...(t.renderMs ? [['Time', durationText(t.renderMs)] as [string, ReactNode]] : []),
-    ...(i.detail ? [['Detail', L[i.detail] ?? i.detail] as [string, ReactNode]] : []), ...(i.texture ? [['Texture', L[i.texture] ?? i.texture] as [string, ReactNode]] : []), ...(i.faces ? [['Face count', L[i.faces] ?? i.faces] as [string, ReactNode]] : []),
+    ...(i.detail ? [['Detail', L[i.detail] ?? i.detail] as [string, ReactNode]] : []), ...(i.texture ? [['Texture', L[i.texture] ?? i.texture] as [string, ReactNode]] : []), ...(i.faces ? [['Mesh detail', L[i.faces] ?? i.faces] as [string, ReactNode]] : []),
     ...(i.seed != null ? [['Seed', String(i.seed)] as [string, ReactNode]] : [])].filter(([, v]) => v !== '' && v != null) as [string, ReactNode][];
 }
 export { posterOf3d };
@@ -121,7 +122,7 @@ export { posterOf3d };
 export function jobItem3d(j: any): Item3D {
   const rig = j?.input?.rig; if (rig) return rigItem3d(j, rig);
   const price = j?.demo ? 'Sample, nothing billed' : j?.cost ? (ownAccountsNow() ? jobCostText(j.cost, j.runOn) : ledgerUsd(j.cost)) : 'Free';
-  return { key: j.id, jobId: j.id, src: j.resultUrl ?? j.outputs?.[0]?.url, name: j.model ?? '3D model', role: `Image to 3D${j.place?.label ? ` · ${j.place.label}` : ''}`, poster: posterOf3d(j), inputUrl: j.input?.imageUrl ?? null, inputLabel: 'Image',
+  return { key: j.id, jobId: j.id, src: j.resultUrl ?? j.outputs?.[0]?.url, name: j.model ?? '3D model', role: `${threeDWorkflowById(threeDMode(j.input ?? {}))?.name ?? '3D model'}${j.place?.label ? ` · ${j.place.label}` : ''}`, poster: posterOf3d(j), inputUrl: j.input?.imageUrl ?? null, inputLabel: threeDMode(j.input ?? {}) === 'multiview-to-3d' ? 'Front' : 'Image',
     rows: jobRows3d(j, price), cameraOrbit: startOrbitOf(j), downloadName: appFileName(j.id, 'glb'), recreateHref: j?.demo || j?.sample || j?.deletedAt ? null : jobRecreateHref(j), badge: j?.demo ? <span className="rvx-badges"><em className="exv-chip">Sample</em></span> : undefined };
 }
 /** A character rigged with Rig as a character (job.input.rig, server shared/previzRig.ts RigMeta): its moves, bones and the time it took. */

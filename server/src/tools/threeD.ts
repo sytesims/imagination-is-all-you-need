@@ -1,13 +1,13 @@
 /**
  * The 3D tools (2026-10-23, shared/threeD.ts has the workflows, models and price keys):
- *  - `three-d` (page /3d): Image to 3D. One image in, a GLB out. Output kind '3d' (input.outKind): stored and served like every other
+ *  - `three-d` (page /3d): Text, Image or Multi-view to 3D. A description or images in, a GLB out. Output kind '3d' (input.outKind): stored and served like every other
  *    output (/files/<job>-out0.glb, model/gltf-binary), listed in jobs, history and Assets.
  *  - `three-d-turntable` (hidden; /3d?workflow=turntable): the browser records an orbit of a 3D result from the viewer and uploads it;
  *    this tool keeps it as a normal MP4 video result, free (ffmpeg on this computer, no provider).
  *
  *  Model                   Place                                   Price (published, read 2026-10-23)                         Licence
- *  Tripo 3.1               Comfy partner node TripoImageToModelNodeV2  42.2–126.6 Comfy credits ($0.20–$0.60) by texture/geometry  Tripo terms (hosted)
- *                          on Comfy Cloud (official template api_tripo3_1_image_to_model), Comfy key
+ *  Tripo 3.1               Comfy Text / Image / Multi-view partner nodes  21.1–126.6 Comfy credits ($0.10–$0.60) by mode/texture/geometry  Tripo terms (hosted)
+ *                          on Comfy Cloud (official Tripo 3.1 templates), Comfy key
  *  TRELLIS.2               fal-ai/trellis-2, fal key                $0.25 / $0.30 / $0.35 at 512 / 1024 / 1536                  MIT (weights + code)
  *  Hunyuan 3D 3.1 Pro      fal-ai/hunyuan-3d/v3.1/pro/image-to-3d   $0.375; PBR +$0.15; a set face count +$0.15                Tencent Hunyuan 3D (hosted on fal; the
  *                                                                                                                              community licence excludes EU, UK, KR)
@@ -33,7 +33,7 @@ import { NATIVE_DIRECT } from '../routing/directRoutes.js';
 import { keyValue } from '../routing/keys.js';
 import { mockRun, mockFailOf, seedOf } from './shared.js';
 import { imageDataUri } from './imageUpscaleModels.js';
-import { THREE_D_TOOL, TURNTABLE_TOOL, THREE_D_PAGE, threeDRoute, threeDModel, normalizeSettings, threeDPriceKey, usdByKey, FACE_COUNT, PIXAL3D_FILES, fmtGB, THREE_D_MODEL_IDS, type Faces } from '../shared/threeD.js';
+import { THREE_D_TOOL, TURNTABLE_TOOL, THREE_D_PAGE, threeDRoute, threeDModel, normalizeSettings, threeDPriceKey, usdByKey, FACE_COUNT, PIXAL3D_FILES, fmtGB, THREE_D_MODEL_IDS, type Faces, THREE_D_GENERATION_MODES, THREE_D_VIEW_SLOTS, threeDMode, threeDSupportsMode, threeDViewIssue } from '../shared/threeD.js';
 
 const D = '2026-10-23' as const;
 type In = Record<string, any>;
@@ -48,9 +48,9 @@ registerLicense({ id: 'tripo-terms', name: 'Tripo terms of service (hosted API)'
 registerLicense({ id: 'tencent-hunyuan-3d', name: 'Tencent Hunyuan 3D Community License (does not apply in the EU, UK and South Korea)', osi: false, url: 'https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1/blob/main/LICENSE',
   terms: ['“This license agreement does not apply in the European Union, United Kingdom and South Korea.”', 'Over 1 million monthly active users needs a licence from Tencent.', 'Hosted runs on fal also follow fal’s terms.'] } as any);
 registerLicense({ id: 'dinov3', name: 'DINOv3 License (Meta)', osi: false, url: 'https://ai.meta.com/resources/models-and-libraries/dinov3-license/' });
-registerWorkflowLicense('three-d-tripo31-i2m-api.json', ['proprietary']);
+for (const file of ['three-d-tripo31-i2m-api.json','three-d-tripo31-t2m-api.json','three-d-tripo31-mv2m-api.json']) registerWorkflowLicense(file, ['proprietary']);
 registerLicenseComponents(THREE_D_TOOL, [
-  { model: 'Tripo 3.1 (Comfy partner node TripoImageToModelNodeV2, hosted)', license: 'Tripo terms of service', commercial: 'see terms', url: 'https://www.tripo3d.ai/terms' },
+  { model: 'Tripo 3.1 Text, Image and Multi-view (Comfy partner nodes, hosted)', license: 'Tripo terms of service', commercial: 'see terms', url: 'https://www.tripo3d.ai/terms' },
   { model: 'TRELLIS.2 (Microsoft, fal-ai/trellis-2)', license: 'MIT', commercial: 'yes', url: 'https://huggingface.co/microsoft/TRELLIS.2-4B' },
   { model: 'Hunyuan 3D 3.1 Pro (Tencent, fal-ai/hunyuan-3d/v3.1/pro/image-to-3d)', license: 'Tencent Hunyuan 3D Community License; not in the EU, UK or South Korea', commercial: 'restricted', url: 'https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1/blob/main/LICENSE' },
   { model: 'Pixal3D + TRELLIS.2 local template (Comfy-Org repack: Pixal3D, TRELLIS.2, MoGe-2, BiRefNet)', license: 'MIT', commercial: 'yes', url: 'https://huggingface.co/Comfy-Org/Pixal3D' },
@@ -61,7 +61,7 @@ registerLicenseComponents(THREE_D_TOOL, [
 const price = (providerId: string, model: string, modelId: string, sourceUrl: string, note: string): HostedPrice => {
   const by = usdByKey(modelId); return { providerId, model, unit: 'run', usd: by[threeDPriceKey(threeDModel(modelId)!.defaults)], usdByQuality: by, sourceUrl, checkedAt: D, estimated: false, note } as HostedPrice; };
 export const THREE_D_PRICES: HostedPrice[] = [
-  price('cloud-tripo-31', 'Tripo 3.1 Image to Model (Comfy partner node)', 'cloud-tripo-31', COMFY_PRICING, 'Comfy credits at 211 = $1: texture off / standard / detailed × geometry standard / detailed = 42.2 / 84.4 · 63.3 / 105.5 · 84.4 / 126.6. PBR and face limit are free.'),
+  price('cloud-tripo-31', 'Tripo 3.1 Text / Image / Multiview (Comfy partner nodes)', 'cloud-tripo-31', COMFY_PRICING, 'Comfy credits at 211 = $1: texture off / standard / detailed × geometry standard / detailed = 42.2 / 84.4 · 63.3 / 105.5 · 84.4 / 126.6. Text costs 21.1 fewer credits at the same settings. PBR and face limit are free.'),
   price('fal:fal-ai/trellis-2', 'TRELLIS.2 (fal)', 'fal-trellis2', page('fal-ai/trellis-2'), '"$0.25 for 512p resolution, $0.30 for 1024p resolution and $0.35 for 1536p resolution."'),
   price('fal:fal-ai/hunyuan-3d/v3.1/pro/image-to-3d', 'Hunyuan 3D 3.1 Pro (fal)', 'fal-hunyuan3d-31', page('fal-ai/hunyuan-3d/v3.1/pro/image-to-3d'), '"$0.375 per generation." "Enabling PBR materials adds $0.15." "Custom face count adds $0.15."'),
 ];
@@ -80,24 +80,37 @@ export const THREE_D_BODIES = {
 };
 /** The Tripo 3.1 graph (API format), from the official Comfy template api_tripo3_1_image_to_model: LoadImage → Tripo: Image to Model → Save 3D Model.
  *  Inputs as the node's object_info lists them (TripoImageToModelNodeV2, ComfyUI 0.41.x). `image` is the uploaded asset reference. */
-export function tripoGraph(i: In, image: unknown) {
-  const s = normalizeSettings('cloud-tripo-31', i); const f = facesOf(s.faces);
-  return {
-    '1': { class_type: 'LoadImage', inputs: { image } },
-    '2': { class_type: 'TripoImageToModelNodeV2', inputs: { image: ['1', 0], model_version: 'v3.1-20260211', texture: s.texture !== 'off', pbr: s.texture === 'pbr', model_seed: seed31(i), texture_seed: seed31(i),
-      orientation: 'default', texture_quality: s.texture === 'hd' ? 'detailed' : 'standard', texture_alignment: 'original_image', face_limit: f ?? -1, quad: false /* quad meshes come back as FBX only */,
-      geometry_quality: s.detail === 'high' ? 'detailed' : 'standard', smart_low_poly: false, auto_size: true } },
-    '3': { class_type: 'SaveGLB', inputs: { mesh: ['2', 1], filename_prefix: '3d/openhiggsfield' } },
-  };
+export function tripoGraph(i: In, image?: unknown, views: Record<string,unknown> = {}) {
+  const s = normalizeSettings('cloud-tripo-31', i), mode=threeDMode(i), f=facesOf(s.faces);
+  const inputs:Record<string,unknown> = {model_version:'v3.1-20260211',texture:s.texture!=='off',pbr:s.texture==='pbr',model_seed:seed31(i),texture_seed:seed31(i),
+    texture_quality:s.texture==='hd'?'detailed':'standard',face_limit:f??-1,quad:false,geometry_quality:s.detail==='high'?'detailed':'standard',smart_low_poly:false,auto_size:true};
+  const graph:Record<string,any> = {};
+  if(mode==='text-to-3d') { inputs.prompt=String(i.prompt??'').trim();inputs.image_seed=seed31(i); }
+  else {
+    inputs.orientation='default';inputs.texture_alignment='original_image';
+    const assets=mode==='multiview-to-3d'?{...views,image:views.image??image}:{image};
+    for(const [n,slot] of THREE_D_VIEW_SLOTS.entries()) if(assets[slot.name as keyof typeof assets]!=null) {
+      const id=String(n+10);graph[id]={class_type:'LoadImage',inputs:{image:assets[slot.name as keyof typeof assets]}};inputs[slot.name]=[id,0];
+    }
+    // Preserve the Image graph's existing LoadImage node identity for saved templates/tests.
+    if(mode==='image-to-3d'){graph['1']=graph['10'];delete graph['10'];inputs.image=['1',0];}
+  }
+  graph['2']={class_type:mode==='text-to-3d'?'TripoTextToModelNodeV2':mode==='multiview-to-3d'?'TripoMultiviewToModelNode':'TripoImageToModelNodeV2',inputs};
+  graph['3']={class_type:'SaveGLB',inputs:{mesh:['2',mode==='multiview-to-3d'?2:1],filename_prefix:'3d/openhiggsfield'}};
+  return graph;
 }
 /** Run Tripo on Comfy Cloud (comfy/cloudV2.ts transport): upload the photo, submit the graph once, poll, save the GLB. Real whenever the Comfy key is set. */
 async function runTripoCloud(job: Job, r: RouteDef, attempt: RouteAttempt) {
+  const { refInputFor } = await import('../routing/jobRefs.js');
   const { ComfyCloudV2, CloudError, cloudFailure } = await import('../comfy/cloudV2.js'); const { cloudBase } = await import('../routing/cloudRun.js');
   const c = new ComfyCloudV2(cloudBase(), keyValue(r)!, `${job.id}-a${attempt.n}`);
   try {
-    job.stage = 'uploading'; const asset = await c.upload(photo(job.input));
+    job.stage = 'uploading'; const assets:Record<string,unknown>={};
+    if(threeDMode(job.input)==='multiview-to-3d') { for(const slot of THREE_D_VIEW_SLOTS) if(job.input.viewPaths?.[slot.name]) { if((job.status as string)==='canceled') return;assets[slot.name]=await c.upload(job.input.viewPaths[slot.name]); } }
+    else if(threeDMode(job.input)!=='text-to-3d') assets.image=await c.upload(photo(job.input));
+    if((job.status as string)==='canceled') return;
     job.stage = 'submitted';
-    const res = await c.run(tripoGraph(job.input, asset), { partnerAuth: true, timeoutMs: 20 * 60_000, isCanceled: () => (job.status as string) === 'canceled',
+    const res = await c.run(tripoGraph(refInputFor(job,r), assets.image, assets), { partnerAuth: true, timeoutMs: 20 * 60_000, isCanceled: () => (job.status as string) === 'canceled',
       onSubmitted: (id) => { attempt.requestId = id; job.cloudJobId = id; (job.requestIds ??= []).push(id); }, onProgress: (p) => { job.stage = p.phase === 'queued' ? 'submitted' : 'rendering'; if (p.known) job.progress = p.percent; } });
     const outs = Object.values(res.outputs).flat() as any[];
     const glb = outs.find((o) => /\.glb$/i.test(String(o.filename ?? ''))) ?? outs.find((o) => /gltf/i.test(String(o.content_type ?? ''))) ?? outs.find((o) => /3d|model/i.test(String(o.kind ?? '')));
@@ -112,10 +125,10 @@ async function runTripoCloud(job: Job, r: RouteDef, attempt: RouteAttempt) {
 }
 
 // ---------- model cards and routes ----------
-registerProvider({ id: 'cloud-tripo-31', name: 'Tripo 3.1', kind: 'hosted', via: 'Comfy partner node TripoImageToModelNodeV2 on Comfy Cloud (official template api_tripo3_1_image_to_model), Comfy key; sample output without a key',
-  docUrl: 'https://docs.comfy.org/tutorials/partner-nodes/tripo/model-generation', workflows: ['three-d-tripo31-i2m-api.json'], license: 'tripo-terms', licenseUrl: 'https://www.tripo3d.ai/terms', nodes: ['TripoImageToModelNodeV2'] } as any);
-NATIVE_DIRECT['cloud-tripo-31'] = { label: 'Comfy Cloud · Tripo partner node', endpoint: 'POST https://cloud.comfy.org/api/v2/jobs (graph: LoadImage → TripoImageToModelNodeV2 → SaveGLB)', sourceUrl: COMFY_PRICING,
-  typicalLatencySec: 90, latencyEstimated: true, latencySource: 'estimated: Tripo generations take about 1–2 minutes', output: '3d', cloudRun: runTripoCloud, modes: ['image-to-3d'] };
+registerProvider({ id: 'cloud-tripo-31', name: 'Tripo 3.1', kind: 'hosted', via: 'Comfy Cloud partner nodes for Text, Image and Multi-view (official templates api_tripo3_1_text_to_model, api_tripo3_1_image_to_model, api_tripo3_1_multiview_to_model); Comfy key',
+  docUrl: 'https://docs.comfy.org/tutorials/partner-nodes/tripo/model-generation', workflows: ['three-d-tripo31-i2m-api.json','three-d-tripo31-t2m-api.json','three-d-tripo31-mv2m-api.json'], license: 'tripo-terms', licenseUrl: 'https://www.tripo3d.ai/terms', nodes: ['TripoImageToModelNodeV2','TripoTextToModelNodeV2','TripoMultiviewToModelNode'] } as any);
+NATIVE_DIRECT['cloud-tripo-31'] = { label: 'Comfy Cloud · Tripo partner node', endpoint: 'POST https://cloud.comfy.org/api/v2/jobs (graphs: TripoTextToModelNodeV2, TripoImageToModelNodeV2 or TripoMultiviewToModelNode → SaveGLB)', sourceUrl: COMFY_PRICING,
+  typicalLatencySec: 90, latencyEstimated: true, latencySource: 'estimated: Tripo generations take about 1–2 minutes', output: '3d', cloudRun: runTripoCloud, modes: [...THREE_D_GENERATION_MODES] };
 const falCard = (id: string, name: string, slug: string, docs: string, license: string, licenseUrl: string) => {
   registerProvider({ id, name, kind: 'hosted-direct', apiKeyEnv: FAL_ENV, via: `fal ${slug} (key in ${FAL_ENV}; sample output without a key)`, docUrl: docs, license, licenseUrl } as any);
   COMING_SOON[id] = 'Runs on fal';
@@ -142,37 +155,51 @@ NATIVE_DIRECT['local-turntable'] = { noComfy: true, label: 'Your computer · fre
 const IMAGE_RX = /\.(png|jpe?g|webp)$/i;
 export const threeDTool: ToolDef = {
   id: THREE_D_TOOL, name: '3D', category: '3D', status: 'new', route: THREE_D_PAGE, ui: 'three-d',
-  description: 'Turn one picture into a textured 3D model (GLB). Tripo 3.1 through Comfy by default; TRELLIS.2 and Hunyuan 3D on fal.',
+  description: 'Turn a description, one picture or labelled views into a 3D model (GLB).',
   inputs: [
-    { name: 'image', kind: 'file', required: true, accept: 'image/png,image/jpeg,image/webp', label: 'Image' },
-    { name: 'types', kind: 'list', required: true, options: ['image-to-3d'] },
+    { name: 'image', kind: 'file', required: false, accept: 'image/png,image/jpeg,image/webp', label: 'Image' },
+    ...THREE_D_VIEW_SLOTS.slice(1).map(s=>({name:s.name,kind:'file' as const,required:false,accept:'image/png,image/jpeg,image/webp',label:s.label})),
+    {name:'prompt',kind:'text'},
+    { name: 'types', kind: 'list', required: true, options: [...THREE_D_GENERATION_MODES] },
     { name: 'detail', kind: 'select', options: ['low', 'standard', 'high'], default: 'standard', label: 'Detail' },
     { name: 'texture', kind: 'select', options: ['off', 'standard', 'hd', 'pbr'], default: 'standard', label: 'Texture' },
     { name: 'faces', kind: 'select', options: ['auto', '10k', '50k', '200k'], default: 'auto', label: 'Face count' },
     { name: 'format', kind: 'select', options: ['glb'], default: 'glb', label: 'Format' },
     { name: 'seed', kind: 'number' },
   ],
-  presets: [{ id: 'image-to-3d', label: 'Image to 3D', prompt: '', group: 'Mode' }],
-  app: { kind: '3d', input: 'image', prompt: false, providerModes: Object.fromEntries(THREE_D_MODEL_IDS.map((id) => [id, ['image-to-3d']])), threeD: true },
-  workflows: ['three-d-tripo31-i2m-api.json'], model: 'Tripo 3.1 (Comfy) · TRELLIS.2 · Hunyuan 3D 3.1 (fal) · Pixal3D + TRELLIS.2 (Local)',
+  presets: THREE_D_GENERATION_MODES.map(id=>({id,label:id==='text-to-3d'?'Text to 3D':id==='multiview-to-3d'?'Multi-view to 3D':'Image to 3D',prompt:'',group:'Mode'})),
+  app: { kind: '3d', input: 'image', prompt: true, providerModes: Object.fromEntries(THREE_D_MODEL_IDS.map((id) => [id, id==='cloud-tripo-31'?[...THREE_D_GENERATION_MODES]:['image-to-3d']])), threeD: true },
+  workflows: ['three-d-tripo31-i2m-api.json','three-d-tripo31-t2m-api.json','three-d-tripo31-mv2m-api.json'], model: 'Tripo 3.1 (Comfy) · TRELLIS.2 · Hunyuan 3D 3.1 (fal) · Pixal3D + TRELLIS.2 (Local)',
   gpuSecPerSec: { standard: 60 }, providers: [...THREE_D_MODEL_IDS],
   stages: [['uploading', 'Uploading'], ['shaping', 'Building the shape'], ['texturing', 'Painting the texture'], ['saving', 'Saving the GLB']],
-  routeInput: (i) => ({ resolution: threeDPriceKey(i), outKind: '3d', types: ['image-to-3d'], mode: 'image-to-3d' }),
+  routeInput: (i) => ({ resolution: threeDPriceKey(i,threeDMode(i)), outKind: '3d', types: [threeDMode(i)], mode: threeDMode(i) }),
   async parseInput(fields, files) {
     let types: string[] = []; try { types = JSON.parse(fields.types || '["image-to-3d"]'); } catch { types = (fields.types || 'image-to-3d').split(','); }
-    if (types[0] && types[0] !== 'image-to-3d') { const msg = 'Only Image to 3D runs here for now; the other 3D workflows are coming soon.'; return { error: msg, code: 'invalid_type', issues: [{ code: 'invalid_type', field: 'types', message: msg }] } as any; }
-    const provider = fields.provider || 'cloud-tripo-31';
-    if (!threeDModel(provider)) { const msg = `${provider} isn't a 3D model. Pick Tripo 3.1, TRELLIS.2 or Hunyuan 3D 3.1.`; return { error: msg, code: 'unsupported', issues: [{ code: 'unsupported', field: 'provider', message: msg }] } as any; }
-    const img = files.image?.[0];
-    if (!img) return { error: 'Add an image to turn into 3D.', issues: [{ code: 'required', field: 'image', message: 'Add an image.' }] } as any;
-    if (!IMAGE_RX.test(img) || !(await probe(path.join(DATA_DIR, img)))) return { error: 'Use a PNG, JPG or WebP image.', issues: [{ code: 'format', field: 'image', message: 'Use a PNG, JPG or WebP image.' }] } as any;
+    if(!Array.isArray(types) || types.some(t=>typeof t!=='string')) return {error:'Choose Image, Text or Multi-view to 3D.',code:'invalid_type'} as any;
+    const mode=types[0]||'image-to-3d';
+    if(types.length>1 || !(THREE_D_GENERATION_MODES as readonly string[]).includes(mode)) return {error:'Choose Image, Text or Multi-view to 3D.',code:'invalid_type'} as any;
+    const provider=fields.provider||'cloud-tripo-31';
+    if(!threeDSupportsMode(provider,mode)) return {error:'Choose a model that supports this 3D workflow.',code:'unsupported',issues:[{code:'unsupported',field:'provider',message:'Choose a supported model.'}]} as any;
+    const prompt=String(fields.prompt??'').trim();
+    if(mode==='text-to-3d' && !prompt) return {error:'Describe the object to turn into 3D.',issues:[{code:'required',field:'prompt',message:'Describe the object.'}]} as any;
+    const slots=mode==='multiview-to-3d'?THREE_D_VIEW_SLOTS:mode==='image-to-3d'?THREE_D_VIEW_SLOTS.slice(0,1):[];
+    if(THREE_D_VIEW_SLOTS.some(s=>(files[s.name]?.length??0)>1)) return {error:'Use one photo for each labelled view.'} as any;
+    const present=slots.filter(s=>files[s.name]?.length);
+    const issue=mode==='multiview-to-3d'?threeDViewIssue(present.map(s=>s.name)):mode==='image-to-3d'&&!present.length?'Add an image to turn into 3D.':null;
+    if(issue) return {error:issue,issues:[{code:'required',field:'image',message:issue}]} as any;
+    const viewPaths:Record<string,string>={},viewUrls:Record<string,string>={};
+    for(const slot of present) {
+      const img=files[slot.name][0];
+      if(!IMAGE_RX.test(img)||!(await probe(path.join(DATA_DIR,img)))) return {error:'Use a PNG, JPG or WebP image.',issues:[{code:'format',field:slot.name,message:'Use a PNG, JPG or WebP image.'}]} as any;
+      viewPaths[slot.name]=path.join(DATA_DIR,img);viewUrls[slot.name]=`/files/${img}`;
+    }
     for (const [f, ok] of [['detail', ['low', 'standard', 'high']], ['texture', ['off', 'standard', 'hd', 'pbr']], ['faces', ['auto', '10k', '50k', '200k']], ['format', ['glb']]] as const)
       if (fields[f] && !(ok as readonly string[]).includes(fields[f])) { const msg = `${f[0].toUpperCase()}${f.slice(1)}: pick one of ${ok.join(', ')}.`; return { error: msg, issues: [{ code: 'invalid', field: f, message: msg }] } as any; }
     const s = normalizeSettings(provider, fields); const warnings: string[] = [];
     const asked = { detail: fields.detail, texture: fields.texture, faces: fields.faces };
     for (const k of ['detail', 'texture', 'faces'] as const) if (asked[k] && asked[k] !== s[k]) warnings.push(`${threeDModel(provider)!.name} doesn't offer ${k} "${asked[k]}", so it runs with "${s[k]}".`);
-    return { types: ['image-to-3d'], mode: 'image-to-3d', outKind: '3d', prompt: '', finalPrompt: '', ...s, format: 'glb', resolution: threeDPriceKey(s), duration: 1,
-      seed: seedOf(fields.seed), simulate: mockFailOf(fields), imagePath: path.join(DATA_DIR, img), imageUrl: `/files/${img}`, refPaths: [path.join(DATA_DIR, img)], refUrls: [`/files/${img}`], outputLabel: '3D model', warnings };
+    return { types: [mode], mode, outKind: '3d', prompt:mode==='text-to-3d'?prompt:'', finalPrompt:mode==='text-to-3d'?prompt:'', ...s, format: 'glb', resolution: threeDPriceKey(s,mode), duration: 1,
+      seed: seedOf(fields.seed), simulate: mockFailOf(fields), imagePath:viewPaths.image, imageUrl:viewUrls.image, ...Object.fromEntries(Object.entries(viewUrls).map(([slot,url])=>[`${slot}Url`,url])), viewPaths, viewUrls, refPaths:Object.values(viewPaths), refUrls:Object.values(viewUrls), outputLabel: '3D model', warnings };
   },
   run: (job) => mockRun(job, threeDTool.stages, ['3D model'], 5000),
 };

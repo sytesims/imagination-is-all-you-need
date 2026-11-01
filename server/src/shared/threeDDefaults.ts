@@ -11,6 +11,8 @@ import type { ThreeDWorkflowId } from './threeD.js';
 import { cloudModel } from './cloudDefaults.js';
 
 export const THREE_D_DEFAULTS: Partial<Record<ThreeDWorkflowId, WorkflowDefaults>> = {
+  'text-to-3d': { local: null, hosted: cloudModel('text-to-3d'), hostedFirstWhenNeither: true, why: { hosted: 'A textured model from your description' } },
+  'multiview-to-3d': { local: null, hosted: cloudModel('multiview-to-3d'), hostedFirstWhenNeither: true, why: { hosted: 'One model from front, side and back views' } },
   'image-to-3d': { local: 'comfy-pixal3d-trellis2', hosted: cloudModel('image-to-3d'), hostedFallback: 'fal-trellis2', hostedFirstWhenNeither: true /* no key yet: name Tripo (the Comfy key is the common one) */,
     why: { local: 'Textured models free, locally, once its 15 GB of files are downloaded', hosted: 'Tripo 3.1: clean, textured models with PBR maps' } },
 };

@@ -30,6 +30,16 @@ export const TURNTABLE_TOOL = 'three-d-turntable';
 export const PLAN_SHOT_TOOL = 'plan-a-shot';
 export const threeDRoute = (id: ThreeDWorkflowId | string) => `${THREE_D_PAGE}?workflow=${id}`;
 
+export const THREE_D_GENERATION_MODES = ['image-to-3d', 'text-to-3d', 'multiview-to-3d'] as const;
+export const THREE_D_VIEW_SLOTS = [{name:'image',label:'Front'},{name:'image_left',label:'Left'},{name:'image_back',label:'Back'},{name:'image_right',label:'Right'}] as const;
+export function threeDMode(i: {mode?:unknown;types?:unknown}): string {
+  if (i.mode) return String(i.mode);
+  let types=i.types; if(typeof types==='string') {try {types=JSON.parse(types);} catch {types=String(types).split(',');}}
+  return Array.isArray(types) && types.length ? String(types[0]) : 'image-to-3d';
+}
+export const threeDSupportsMode = (modelId:string, mode:string) => mode==='image-to-3d' ? THREE_D_MODEL_IDS.includes(modelId) : modelId==='cloud-tripo-31' && (THREE_D_GENERATION_MODES as readonly string[]).includes(mode);
+export const threeDViewIssue = (present:readonly string[]):string|null => !present.includes('image') ? 'Add the front view.' : present.length<2 ? 'Add at least one more view: left, back or right.' : present.length>4 ? 'Use two to four views.' : null;
+
 export const THREE_D_WORKFLOWS: ThreeDWorkflow[] = [
   { id: 'image-to-3d', name: 'Image to 3D', tagline: 'One picture in, a textured 3D model out', icon: 'cube', category: 'create', needs: '1 image', status: 'ready', toolId: THREE_D_TOOL, mode: 'image-to-3d',
     how: [['Add one image', 'A single object or character on a plain background works best. Remove the background first if it is busy.'], ['Pick a model and its detail', 'Each model reads its own settings: detail, texture, face count.'], ['Get a GLB', 'Orbit it, download it, or make a turntable video from it.']],
@@ -40,10 +50,10 @@ export const THREE_D_WORKFLOWS: ThreeDWorkflow[] = [
   { id: 'plan-a-shot', name: 'Direct a Shot', tagline: 'Stage the scene and camera in simple 3D, record a mockup, then render real video', icon: 'previz', category: 'video', needs: 'A preset', status: 'ready', toolId: PLAN_SHOT_TOOL, mode: 'plan-a-shot',
     how: [['1 · Stage', 'Pick a preset, set the camera move, speed and length, and scrub through it. Free, right in your browser.'], ['2 · Mockup', 'Record mockup: your browser draws every frame exactly and saves an MP4 in your feed. Free, takes seconds.'], ['3 · Render', 'LTX-2.5 22B with Lightricks’ Layout to Render IC-LoRA turns your mockup into real video, keeping the camera path and where things are. Free, on your computer (slow: minutes).']],
     generateLabel: 'Record mockup', source: { kind: 'ours', note: 'Our own scenes, drawn in your browser' } },
-  { id: 'text-to-3d', name: 'Text to 3D', tagline: 'Describe an object, get a model', icon: 'type', category: 'create', needs: 'Prompt', status: 'soon', toolId: null, mode: null,
-    how: [['Write a prompt', 'Image makes a picture first.'], ['Image to 3D', 'That picture becomes the model.']], generateLabel: 'Generate', source: { kind: 'ours', note: 'coming soon' } },
-  { id: 'multiview-to-3d', name: 'Multi-view to 3D', tagline: 'Front, side and back views for a closer match', icon: 'views', category: 'create', needs: '2–4 images', status: 'soon', toolId: null, mode: null,
-    how: [['Add the views', 'Front first, then the sides and back.'], ['Get a GLB', 'The extra views fill in what one picture can’t show.']], generateLabel: 'Generate', source: { kind: 'official', note: 'coming soon' } },
+  { id: 'text-to-3d', name: 'Text to 3D', tagline: 'Describe an object, get a model', icon: 'type', category: 'create', needs: 'Prompt', status: 'ready', toolId: THREE_D_TOOL, mode: 'text-to-3d',
+    how: [['Describe the object', 'Include its shape, materials and colours.'], ['Get a GLB', 'Orbit it, save it or use it in a shot.']], generateLabel: 'Generate', source: { kind: 'official', note: 'Tripo: official Comfy template api_tripo3_1_text_to_model' } },
+  { id: 'multiview-to-3d', name: 'Multi-view to 3D', tagline: 'Front, side and back views for a closer match', icon: 'views', category: 'create', needs: '2–4 images', status: 'ready', toolId: THREE_D_TOOL, mode: 'multiview-to-3d',
+    how: [['Add the views', 'Front first, then the sides and back.'], ['Get a GLB', 'The extra views fill in what one picture can’t show.']], generateLabel: 'Generate', source: { kind: 'official', note: 'Tripo: official Comfy template api_tripo3_1_multiview_to_model' } },
   { id: 'retexture', name: 'Retexture', tagline: 'New surface, same shape', icon: 'brush', category: 'edit', needs: '1 model', status: 'soon', toolId: null, mode: null,
     how: [['Pick a model', 'Any GLB.'], ['Describe the new look', 'The shape stays; only the texture changes.']], generateLabel: 'Retexture', source: { kind: 'official', note: 'coming soon' } },
   { id: 'rig', name: 'Rig', tagline: 'Add a skeleton so a character can move', icon: 'rig', category: 'edit', needs: '1 model', status: 'soon', soonNote: 'Free for people today: open a model, then Rig', toolId: null, mode: null,
@@ -75,7 +85,8 @@ export const DETAILS: Detail[] = ['low', 'standard', 'high'];
 export const TEXTURES: Texture[] = ['off', 'standard', 'hd', 'pbr'];
 export const FACES: Faces[] = ['auto', '10k', '50k', '200k'];
 export const FACE_COUNT: Record<Exclude<Faces, 'auto'>, number> = { '10k': 10_000, '50k': 50_000, '200k': 200_000 };
-type Opt<T extends string> = { value: T; label: string; note?: string };
+/** note: a short hint under the option (never just the label again); chip: the bar chip's own words for it ('' = left off the chip, for a default) */
+type Opt<T extends string> = { value: T; label: string; note?: string; chip?: string };
 export interface ThreeDModel {
   id: string; name: string; maker: string; makerName: string;
   /** Where it runs: Comfy (partner node, Comfy key), fal (fal key), or this computer. */ place: 'comfy' | 'fal' | 'local';
@@ -97,26 +108,28 @@ export const PIXAL3D_FILES = [
   { file: 'moge_2_vitl_normal_fp16.safetensors', bytes: 662_000_000, url: HF('Comfy-Org/MoGe', 'geometry_estimation/moge_2_vitl_normal_fp16.safetensors') },
   { file: 'birefnet.safetensors', bytes: 444_000_000, url: HF('Comfy-Org/BiRefNet', 'background_removal/birefnet.safetensors') },
 ];
+/** Mesh detail (face count) and Tripo's texture choices, in plain words (the tech term stays in the hint). */
+const FACES_OPTS: Opt<Faces>[] = [{ value: 'auto', label: 'Auto', note: 'Model picks', chip: '' }, { value: '10k', label: '10k', note: 'For games', chip: '10k mesh' }, { value: '50k', label: '50k', note: 'Balanced', chip: '50k mesh' }, { value: '200k', label: '200k', note: 'Most detail', chip: '200k mesh' }];
+const TEX_TRIPO: Opt<Texture>[] = [{ value: 'off', label: 'None', note: 'Shape only', chip: 'No texture' }, { value: 'standard', label: 'Colour', note: 'Standard' }, { value: 'hd', label: 'HD colour', note: 'Sharper' }, { value: 'pbr', label: 'Realistic', note: 'PBR materials' }];
 export const THREE_D_MODELS: ThreeDModel[] = [
   { id: 'cloud-tripo-31', name: 'Tripo 3.1', maker: 'tripo', makerName: 'Tripo AI (VAST)', place: 'comfy',
-    detail: [{ value: 'standard', label: 'Standard', note: 'Standard geometry' }, { value: 'high', label: 'High', note: 'Detailed geometry' }],
-    texture: [{ value: 'off', label: 'Off', note: 'Bare geometry' }, { value: 'standard', label: 'Standard', note: 'Colour textures' }, { value: 'hd', label: 'HD', note: 'Detailed textures' }, { value: 'pbr', label: 'PBR', note: 'Standard textures + PBR maps' }],
-    faces: [{ value: 'auto', label: 'Auto', note: 'Model decides' }, { value: '10k', label: '10k', note: 'Light, for games' }, { value: '50k', label: '50k', note: 'Balanced' }, { value: '200k', label: '200k', note: 'Most detail' }],
+    detail: [{ value: 'standard', label: 'Standard', note: 'Faster, smooth shapes', chip: '' }, { value: 'high', label: 'High', note: 'Sharper edges and fine parts', chip: 'High detail' }],
+    texture: TEX_TRIPO, faces: FACES_OPTS,
     seed: true, symmetry: false, formats: ['glb'], defaults: { detail: 'standard', texture: 'pbr', faces: 'auto' },
-    openWeights: false, licence: { id: 'tripo-terms', name: 'Tripo terms of service (hosted)', url: 'https://www.tripo3d.ai/terms' }, priceNote: '$0.20–$0.60 a model on Comfy credits (texture and detail)', typicalSec: 90 },
+    openWeights: false, licence: { id: 'tripo-terms', name: 'Tripo terms of service (hosted)', url: 'https://www.tripo3d.ai/terms' }, priceNote: 'Text $0.10–$0.50; image or views $0.20–$0.60, by texture and detail', typicalSec: 90 },
   { id: 'fal-trellis2', name: 'TRELLIS.2', maker: 'microsoft', makerName: 'Microsoft', place: 'fal',
-    detail: [{ value: 'low', label: 'Low', note: '512 resolution' }, { value: 'standard', label: 'Standard', note: '1024 resolution' }, { value: 'high', label: 'High', note: '1536 resolution' }],
-    texture: [{ value: 'standard', label: 'Standard', note: '2K texture' }, { value: 'hd', label: 'HD', note: '4K texture' }],
-    faces: [{ value: 'auto', label: 'Auto', note: 'Model decides' }, { value: '10k', label: '10k', note: 'Light, for games' }, { value: '50k', label: '50k', note: 'Balanced' }, { value: '200k', label: '200k', note: 'Most detail' }],
+    detail: [{ value: 'low', label: 'Low', note: 'Draft · 512', chip: 'Low detail' }, { value: 'standard', label: 'Standard', note: 'Balanced · 1024', chip: '' }, { value: 'high', label: 'High', note: 'Finest · 1536', chip: 'High detail' }],
+    texture: [{ value: 'standard', label: '2K', note: 'Lighter file', chip: '2K texture' }, { value: 'hd', label: '4K', note: 'Sharpest', chip: '4K texture' }],
+    faces: FACES_OPTS,
     seed: true, symmetry: false, formats: ['glb'], defaults: { detail: 'standard', texture: 'standard', faces: 'auto' },
-    openWeights: true /* huggingface.co/microsoft/TRELLIS.2-4B, MIT */, licence: { id: 'mit', name: 'MIT (TRELLIS.2 weights and code)', url: 'https://huggingface.co/microsoft/TRELLIS.2-4B' }, priceNote: '$0.25 / $0.30 / $0.35 by resolution on fal', typicalSec: 60 },
+    openWeights: true /* huggingface.co/microsoft/TRELLIS.2-4B, MIT */, licence: { id: 'mit', name: 'MIT (TRELLIS.2 weights and code)', url: 'https://huggingface.co/microsoft/TRELLIS.2-4B' }, priceNote: '$0.25 / $0.30 / $0.35 by shape detail on fal', typicalSec: 60 },
   { id: 'fal-hunyuan3d-31', name: 'Hunyuan 3D 3.1', maker: 'tencent-hunyuan', makerName: 'Tencent Hunyuan', place: 'fal',
     detail: null,
-    texture: [{ value: 'standard', label: 'Standard', note: 'Colour textures' }, { value: 'pbr', label: 'PBR', note: 'Adds PBR maps' }],
-    faces: [{ value: 'auto', label: 'Auto', note: 'About 500k' }, { value: '50k', label: '50k', note: 'Lighter mesh' }, { value: '200k', label: '200k', note: 'Medium mesh' }],
+    texture: [{ value: 'standard', label: 'Colour', note: 'Standard' }, { value: 'pbr', label: 'Realistic', note: 'PBR materials' }],
+    faces: [{ value: 'auto', label: 'Auto', note: 'Most detail · 500k', chip: '' }, { value: '50k', label: '50k', note: 'For games', chip: '50k mesh' }, { value: '200k', label: '200k', note: 'Balanced', chip: '200k mesh' }],
     seed: false, symmetry: false, formats: ['glb'], defaults: { detail: 'standard', texture: 'standard', faces: 'auto' },
     openWeights: false /* 3.x is API-only as far as we could confirm (Comfy docs: partner node); 2.x weights are public */, licence: { id: 'tencent-hunyuan-3d', name: 'Tencent Hunyuan 3D (hosted on fal)', url: 'https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1/blob/main/LICENSE', note: 'Tencent’s Hunyuan 3D community licence does not apply in the EU, the UK or South Korea; hosted runs follow fal’s terms.' },
-    priceNote: '$0.375 a model on fal; PBR or a set face count +$0.15 each', typicalSec: 120 },
+    priceNote: '$0.375 on fal; Realistic or a set mesh +$0.15 each', typicalSec: 120 },
   { id: 'comfy-pixal3d-trellis2', name: 'Pixal3D + TRELLIS.2', maker: 'pixal3d', makerName: 'Pixal3D authors', place: 'local',
     detail: null, texture: null, faces: null, seed: true, symmetry: false, formats: ['glb'], defaults: { detail: 'standard', texture: 'standard', faces: 'auto' },
     openWeights: true, licence: { id: 'mit', name: 'MIT (Pixal3D, TRELLIS.2, MoGe, BiRefNet); DINOv3 under Meta’s DINOv3 licence', url: 'https://huggingface.co/Comfy-Org/Pixal3D' },
@@ -141,8 +154,8 @@ export function normalizeSettings(modelId: string, s: { detail?: unknown; textur
 }
 /** The price key a 3D job carries in `resolution` (routeInput): `<detail>.<texture>.<faces>`, as sent; each price row maps every key to the
  *  rate of the settings that model really runs (normalizeSettings), so an unsupported value quotes what runs. */
-export const threeDPriceKey = (s: { detail?: unknown; texture?: unknown; faces?: unknown }) =>
-  `${DETAILS.includes(s.detail as Detail) ? s.detail : 'standard'}.${TEXTURES.includes(s.texture as Texture) ? s.texture : 'standard'}.${FACES.includes(s.faces as Faces) ? s.faces : 'auto'}`;
+export const threeDPriceKey = (s: { detail?: unknown; texture?: unknown; faces?: unknown }, mode = 'image-to-3d') =>
+  `${mode === 'text-to-3d' ? 'text.' : ''}${DETAILS.includes(s.detail as Detail) ? s.detail : 'standard'}.${TEXTURES.includes(s.texture as Texture) ? s.texture : 'standard'}.${FACES.includes(s.faces as Faces) ? s.faces : 'auto'}`;
 export const ALL_PRICE_KEYS = DETAILS.flatMap((d) => TEXTURES.flatMap((t) => FACES.map((f) => `${d}.${t}.${f}`)));
 const k3 = (k: string) => { const [detail, texture, faces] = k.split('.'); return { detail, texture, faces }; };
 
@@ -157,7 +170,17 @@ export const THREE_D_USD: Record<string, (s: { detail: Detail; texture: Texture;
   'fal-hunyuan3d-31': (s) => 0.375 + (s.texture === 'pbr' ? 0.15 : 0) + (s.faces !== 'auto' ? 0.15 : 0),
 };
 /** One USD rate per price key for a model (the HostedPrice usdByQuality table). */
-export const usdByKey = (modelId: string): Record<string, number> => Object.fromEntries(ALL_PRICE_KEYS.map((k) => [k, Math.round(THREE_D_USD[modelId](normalizeSettings(modelId, k3(k))) * 1e5) / 1e5]));
+export const usdByKey = (modelId: string): Record<string, number> => Object.fromEntries(ALL_PRICE_KEYS.flatMap((k) => {
+  const usd=Math.round(THREE_D_USD[modelId](normalizeSettings(modelId,k3(k)))*1e5)/1e5;
+  // Tripo v3.1 Text costs 21.1 fewer Comfy credits ($0.10) than Image/Multiview at the same exposed settings.
+  return [[k,usd],...(modelId==='cloud-tripo-31' ? [[`text.${k}`,Math.round((usd-.1)*1e5)/1e5]] : [])];
+}));
+/** The model menu describes only the current mode, using the same rates as its quote. */
+export function threeDPriceNote(modelId: string, mode = 'image-to-3d'): string | undefined {
+  const model = threeDModel(modelId); if (!model || modelId !== 'cloud-tripo-31') return model?.priceNote;
+  const prices = Object.entries(usdByKey(modelId)).filter(([key]) => key.startsWith('text.') === (mode === 'text-to-3d')).map(([, usd]) => usd);
+  return `$${Math.min(...prices).toFixed(2)}–$${Math.max(...prices).toFixed(2)} on Comfy credits, by texture and detail`;
+}
 /** A huge GLB: warn before loading it in the viewer (bytes). */
 export const BIG_GLB_BYTES = 60 * 1024 * 1024;
 
