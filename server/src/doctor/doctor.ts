@@ -16,6 +16,7 @@ import fs from 'node:fs';
 import { execFileSync, execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { comfyInstallOf, type ComfyInstall } from '../hardware/comfyInstall.js';
+import { PROVIDER_ACCOUNTS } from '../shared/providerKeys.js';
 import { classifyMachine, inputFromSystemStats, parseNvidiaSmi, type MachineProfile } from '../hardware/machineProfile.js';
 
 export type Status = 'ok' | 'warn' | 'fail' | 'info';
@@ -62,16 +63,9 @@ export function readEnvFile(file: string, f: Pick<typeof fs, 'existsSync' | 'rea
     if (!out.names.includes(name)) out.names.push(name); if (SAFE_VALUES.has(name)) out.values[name] = v; }
   return out;
 }
-/** Provider accounts by env variable (names only), for when the app isn't running. Mirrors routing/settings.ts; the app's own answer wins when it runs. */
-export const ACCOUNT_ENV: { id: string; name: string; vars: string[] }[] = [
-  { id: 'comfy', name: 'Comfy Cloud', vars: ['COMFY_API_KEY'] }, { id: 'hf', name: 'Hugging Face', vars: ['OPENHIGGSFIELD_HF_TOKEN', 'HF_TOKEN'] },
-  { id: 'civitai', name: 'Civitai', vars: ['CIVITAI_TOKEN'] }, { id: 'fal', name: 'fal', vars: ['OPENHIGGSFIELD_FAL_KEY', 'FAL_KEY'] },
-  { id: 'replicate', name: 'Replicate', vars: ['OPENHIGGSFIELD_REPLICATE_API_TOKEN', 'REPLICATE_API_TOKEN'] }, { id: 'openai', name: 'OpenAI', vars: ['OPENHIGGSFIELD_OPENAI_API_KEY'] },
-  { id: 'google', name: 'Google Gemini API', vars: ['OPENHIGGSFIELD_GEMINI_API_KEY'] }, { id: 'bfl', name: 'Black Forest Labs', vars: ['OPENHIGGSFIELD_BFL_API_KEY'] },
-  { id: 'minimax', name: 'MiniMax', vars: ['OPENHIGGSFIELD_MINIMAX_API_KEY'] }, { id: 'ltx', name: 'LTX', vars: ['OPENHIGGSFIELD_LTX_API_KEY'] },
-  { id: 'byteplus', name: 'BytePlus ModelArk', vars: ['OPENHIGGSFIELD_ARK_API_KEY'] }, { id: 'dashscope', name: 'Alibaba Cloud', vars: ['OPENHIGGSFIELD_DASHSCOPE_API_KEY'] },
-  { id: 'luma', name: 'Luma AI', vars: ['OPENHIGGSFIELD_LUMA_API_KEY'] },
-];
+/** Provider accounts by env variable (names only), for when the app isn't running: the one list in shared/providerKeys.ts (filming mode reads it
+ *  too); the app's own answer wins when it runs. */
+export const ACCOUNT_ENV = PROVIDER_ACCOUNTS;
 
 async function getJson(e: DoctorEnv, url: string, ms: number): Promise<{ ok: boolean; status: number; json: any; ms: number }> {
   const t0 = Date.now();
@@ -206,7 +200,7 @@ export async function runDoctor(e: DoctorEnv = realEnv(), o: DoctorOptions = {})
   const nameOf = (id: string) => ACCOUNT_ENV.find((a) => a.id === id)?.name ?? id;
   add({ id: 'accounts', section: 'accounts', status: accounts.connected.length ? 'ok' : 'info', required: false, text: accounts.connected.length ? `Connected: ${accounts.connected.map(nameOf).join(', ')}` : 'No accounts connected (models run as free samples, or on this computer)', fix: accounts.connected.length ? undefined : 'Settings → Connections, or a key line in .env.local' });
   if (backend === 'mock' && accounts.connected.length) add({ id: 'sample-mode', section: 'accounts', status: 'info', required: false, text: 'Sample mode: runs make free samples, even with these accounts connected', fix: 'set OPENHIGGSFIELD_BACKEND=comfy in .env.local, then restart the app (npm start) (every paid run still shows its price first)' });
-  const hfConnected = accounts.connected.includes('hf') || (accounts.source !== 'app' && ACCOUNT_ENV[1].vars.some((v) => !!e.env[v]?.trim() || ef.names.includes(v)));
+  const hfConnected = accounts.connected.includes('hf') || (accounts.source !== 'app' && (ACCOUNT_ENV.find((a) => a.id === 'hf')?.vars ?? []).some((v) => !!e.env[v]?.trim() || ef.names.includes(v)));
   if (!hfConnected) add({ id: 'hf', section: 'accounts', status: 'info', required: false, text: 'Hugging Face not connected: gated models (FLUX.1 Fill dev and a few others) can’t download', fix: 'Settings → Connections → Hugging Face (a free read token), or OPENHIGGSFIELD_HF_TOKEN in .env.local' });
 
   // ---- Local models (the app's own verdicts) ----

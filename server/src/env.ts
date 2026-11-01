@@ -1,4 +1,5 @@
 import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
+import { PROVIDER_KEY_VARS } from './shared/providerKeys.js';
 /** Env lookup: OPENHIGGSFIELD_<NAME>, falling back to the legacy OPENJUTSU_<NAME> alias. Filming mode (below) overrides a few names.
  *  A blank value (`NAME=` in .env.local) counts as unset, so it never turns a default into '' or 0. */
 export function env(name: string): string | undefined {
@@ -21,9 +22,8 @@ export interface FilmingState { on: boolean; dataDir: string; since: string; kee
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 export const FILMING_FILE = path.resolve(process.env.OPENHIGGSFIELD_FILMING_FILE?.trim() || process.env.OPENJUTSU_FILMING_FILE?.trim() || path.join(REPO, '.filming/state.json'));
 export const readFilming = (file = FILMING_FILE): FilmingState | null => { try { const s = JSON.parse(fs.readFileSync(file, 'utf8')); return s && typeof s === 'object' ? s : null; } catch { return null; } };
-/** Every provider key the server reads (envKey + aliases in routing/settings.ts, both prefixes). */
-export const PROVIDER_KEY_VARS = ['COMFY_API_KEY', 'COMFY_RUNNER_TOKEN', 'FAL_KEY', 'REPLICATE_API_TOKEN',
-  ...['FAL_KEY', 'REPLICATE_API_TOKEN', 'MINIMAX_API_KEY', 'DASHSCOPE_API_KEY', 'BFL_API_KEY', 'LTX_API_KEY', 'OPENAI_API_KEY', 'GEMINI_API_KEY', 'ARK_API_KEY'].flatMap((n) => [`OPENHIGGSFIELD_${n}`, `OPENJUTSU_${n}`])];
+/** Every provider key the server reads: one list, shared/providerKeys.ts (the doctor reads the same one). Filming mode ignores these from the shell. */
+export { PROVIDER_KEY_VARS };
 const st = readFilming();
 export const FILMING: { on: boolean; dataDir: string | null; since: string | null; file: string } = st?.on && typeof st.dataDir === 'string' && st.dataDir
   ? { on: true, dataDir: path.resolve(st.dataDir), since: st.since ?? null, file: FILMING_FILE } : { on: false, dataDir: null, since: null, file: FILMING_FILE };
