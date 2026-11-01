@@ -135,7 +135,9 @@ export interface Extra { key: string; label: string; node: string; field: string
 export interface Guess { input: 'image' | 'video' | 'none'; output: 'image' | 'video'; tab: PluginTab; category: string; name: string; description: string;
   choices: Record<Role, NodeChoice[]>; pick: Partial<Record<Role, string>>; extras: Extra[]; nodeTypes: string[] }
 
-const titleOf = (id: string, n: Graph[string]) => `${n._meta?.title && n._meta.title !== n.class_type ? `${n._meta.title} · ` : ''}${n.class_type} #${id}`;
+/** "Save Image #9", or "My prompt (CLIPTextEncode) #6" when the title is the author's own. */
+const titleOf = (id: string, n: Graph[string]) => { const t = (n._meta?.title ?? '').trim(); const plain = (x: string) => x.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return `${!t ? n.class_type : plain(t).startsWith(plain(n.class_type)) || plain(n.class_type).startsWith(plain(t)) ? t : `${t} (${n.class_type})`} #${id}`; };
 const VIDEO_LOADER = /LoadVideo/i; const IMAGE_LOADER = /^LoadImage(?!Mask)/;
 const SAVE = /^(Save|Preview)(Image|Video|AnimatedWEBP|AnimatedPNG|WEBM)|^VHS_VideoCombine$|^Image Save$/;
 const TEXT_FIELDS = ['text', 'prompt', 'text_g', 'positive_prompt', 'string', 'value'];

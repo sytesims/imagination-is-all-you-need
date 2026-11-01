@@ -59,7 +59,8 @@ const SECTIONS: Record<'image', [string, string][]> = {
 /** A section link with a query (?mode=edit, ?workflow=upscale) is current when its params match; a plain path when no sibling section with a query matches. */
 const qMatch = (to: string) => { const [p, q] = to.split('?'); if (location.pathname !== p) return false; const cur = new URLSearchParams(location.search); return !q || [...new URLSearchParams(q)].every(([k, v]) => cur.get(k) === v); };
 const sectionOn = (to: string, all: [string, string][]) => qMatch(to) && (to.includes('?') || !all.some(([o]) => o !== to && o.includes('?') && qMatch(o)));
-const mediaKey = (t: ToolInfo): 'video' | 'image' | 'audio' => { const k = (t as any).app?.kind; if (k === 'image' || /image|cutout|product|character|inpaint|relight/.test(t.id)) return 'image'; if (k === 'audio' || k === 'soundtrack' || /audio|voice|music|soundtrack/.test(t.id)) return 'audio'; return 'video'; };
+const mediaKey = (t: ToolInfo): 'video' | 'image' | 'audio' => { const k = (t as any).app?.kind;
+  if (t.plugin?.tab === 'audio') return 'audio'; if (t.plugin && (t.plugin.tab === 'image' || t.plugin.output === 'image')) return 'image'; /* a workflow from a folder: its own tab and result */ if (k === 'image' || /image|cutout|product|character|inpaint|relight/.test(t.id)) return 'image'; if (k === 'audio' || k === 'soundtrack' || /audio|voice|music|soundtrack/.test(t.id)) return 'audio'; return 'video'; };
 /** Library hero uses only bright, readable clips. */
 const BRIGHT = ['burrow', 'dunes', 'giant', 'soar'];
 const heroExample = (id: string) => EXAMPLES.find(e => e.id === BRIGHT[[...id].reduce((a, c) => a + c.charCodeAt(0), 0) % BRIGHT.length])!;

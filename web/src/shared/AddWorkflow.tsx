@@ -89,7 +89,7 @@ export function AddWorkflowSheet({ tab: fromTab, onSaved, onClose }: AddWorkflow
     return <label className="adw-f"><span>{label}{hint && <small>{hint}</small>}</span>
       <select value={pick[role] ?? ''} onChange={e => setPick(p => ({ ...p, [role]: e.target.value }))} data-testid={`adw-${role}`} disabled={!list.length && !none}>
         {none != null && <option value="">{none}</option>}
-        {list.map(c => <option key={c.ref} value={c.ref}>{role === 'input' && c.kind ? `${KIND_WORD[c.kind]}: ` : ''}{c.label}{c.field && role !== 'input' ? ` · ${c.field}` : ''}</option>)}
+        {list.map(c => <option key={c.ref} value={c.ref}>{role === 'input' && c.kind ? `${KIND_WORD[c.kind]}: ` : ''}{c.label}{c.field && role !== 'input' && !['text', 'seed'].includes(c.field) ? ` · ${c.field}` : ''}</option>)}
         {!list.length && none == null && <option value="">None found</option>}
       </select></label>; };
 

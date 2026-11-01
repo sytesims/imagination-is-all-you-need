@@ -94,7 +94,8 @@ function PluginCard({ p, tool, onRemoved }: { p: P; tool?: ToolInfo; onRemoved?:
     try { const r = await fetch(`/api/workflows/${encodeURIComponent(p.id)}`, { method: 'DELETE' }); if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? String(r.status));
       setGone(true); refreshTools(); toast(`Removed “${p.name || p.id}”`); onRemoved?.(); }
     catch (e: any) { toast(`Couldn’t remove it: ${e?.message ?? e}`, 'error'); } };
-  const name = p.name || p.id; const errs = p.errors ?? []; const warns = p.warnings ?? []; const failed = p.ok === false || errs.length > 0;
+  const name = p.name || p.id; const errs = p.errors ?? []; const failed = p.ok === false || errs.length > 0;
+  const shownWarns = p.user ? [] : (p.warnings ?? []); /* a workflow you added: the folder hints (components…) are not yours to fix */
   const [on, setOn] = useState(p.enabled !== false); const [busy, setBusy] = useState(false); const [tErr, setTErr] = useState('');
   const toggle = async () => { if (busy) return; const next = !on; setOn(next); setBusy(true); setTErr('');
     try { const r = await fetch(`/api/plugins/${encodeURIComponent(p.id)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: next }) });
@@ -128,7 +129,7 @@ function PluginCard({ p, tool, onRemoved }: { p: P; tool?: ToolInfo; onRemoved?:
         {open && on && !failed && <Link className="btn plx-open" to={open} data-testid={`plugin-open-${p.id}`}>Open</Link>}</span>
     </footer>
     {tErr && <Notice as="p" kind="error" tone="line" className="plug-tg-err">{tErr}</Notice>}
-    {(errs.length > 0 || warns.length > 0) && <ul className="plug-issues">{errs.map((e, i) => <li key={'e' + i} className="err">{e}</li>)}{warns.map((w, i) => <li key={'w' + i} className="helper">{w}</li>)}</ul>}
+    {(errs.length > 0 || shownWarns.length > 0) && <ul className="plug-issues">{errs.map((e, i) => <li key={'e' + i} className="err">{e}</li>)}{shownWarns.map((w, i) => <li key={'w' + i} className="helper">{w}</li>)}</ul>}
   </article>;
 }
 function Installed({ ps, tools, empty, testId = 'plugins-grid', onRemoved }: { ps: P[] | null; tools: ToolInfo[]; empty?: ReactNode; testId?: string; onRemoved?: () => void }) {

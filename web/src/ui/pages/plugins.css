@@ -137,3 +137,4 @@
   .plx-card-foot{flex-wrap:wrap}
   .plx-tabs small{margin-left:0;width:100%}
 }
+.plx-cards:has(.plx-add-card){grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}

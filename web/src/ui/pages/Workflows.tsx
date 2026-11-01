@@ -415,7 +415,7 @@ export default function Workflows({ tools }: { tools: ToolInfo[] }) {
             <Head id={`wn-h-${g.id}`} title={g.label} line={g.line} count={items.length} />
             <div className="wn-grid">{tiles(items)}</div></section>)}
           {f.cat === 'all' && (plugged.length > 0 || !f.q) && <section className="wn-sec" aria-labelledby="wn-h-plugins" data-testid="wn-sec-plugins">
-            <Head id="wn-h-plugins" title="Your workflows" line="ComfyUI workflows you added. They run on your own ComfyUI." count={plugged.length} />
+            <Head id="wn-h-plugins" title="Your workflows" line="ComfyUI workflows you added, and add-ons. They run on your own ComfyUI." count={plugged.length} />
             <div className="wn-grid">{tiles(plugged)}<BringYourOwn /></div></section>}
           {f.cat !== 'all' && f.cat !== 'ideas' && inCat.length > 0 && <section className="wn-sec" aria-labelledby={`wn-h-${f.cat}`} data-testid={`wn-sec-${f.cat}`}>
             <Head id={`wn-h-${f.cat}`}
