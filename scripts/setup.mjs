@@ -10,7 +10,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs'; import path from 'node:path';
 import { nodeProblem, NODE_STEPS } from './node-version.mjs';
-import { REPO, webPort, launchEnv, apiUp as up } from './app-env.mjs'; // ports and env file: the same settings the app reads
+import { REPO, webPort, launchEnv, apiUp as up, portClash } from './app-env.mjs'; // ports and env file: the same settings the app reads
 const args = process.argv.slice(2); const has = (f) => args.includes(f);
 if (has('--help') || has('-h')) { console.log('npm run setup [-- --check] [--no-start] [--open]\n  --check     only check (no npm install, no start)\n  --no-start  install + doctor, but don\'t start the app\n  --open      open the app in the browser once it\'s ready'); process.exit(0); }
 const checkOnly = has('--check'); const noStart = has('--no-start') || checkOnly; const openWhenReady = has('--open');
@@ -67,6 +67,7 @@ if (await up()) {
   say(`The app is already running. Open the setup page: ${wizard}`); process.exit(0);
 }
 if (noStart) { say(`Start it with npm start, then open the setup page: ${wizard}`); process.exit(doneCode); }
+{ const clash = await portClash(); if (clash) { console.error(clash); process.exit(1); } } // within seconds, not after the 5-minute wait below
 say(`Starting the app (npm start). Setup page: ${wizard}   (Ctrl+C stops it)`);
 const child = spawn(process.execPath, [path.join(REPO, 'scripts', 'start.mjs')], { cwd: REPO, stdio: 'inherit', env: launchEnv });
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => child.kill(sig));

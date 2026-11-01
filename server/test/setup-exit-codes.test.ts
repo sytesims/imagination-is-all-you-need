@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, existsSync, chmodSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, spawn } from 'node:child_process';
+import http from 'node:http';
 
 if (process.platform === 'win32') { console.log('skip setup exit codes: the fake npm is a shell script (Windows runs setup in CI)'); process.exit(0); }
 const root = mkdtempSync(path.join(tmpdir(), 'setup exit codes '));
@@ -41,7 +42,24 @@ try {
   assert.equal(run({ FAKE_DOCTOR: '1' }).code, 2);
   const cant = run({ FAKE_DOCTOR: '2' });
   assert.equal(cant.code, 1, cant.out); assert.match(cant.out, /can’t start yet/);
-  console.log('ok setup exit codes: failed npm → 1 with setup.log; doctor 0/1/2 → 0/2/1');
+
+  // PORT taken by another program (it answers, but not /api/health): stops within seconds with a plain message, exit 1
+  const other = http.createServer((_q, res) => { res.writeHead(404); res.end(); });
+  await new Promise<void>((r) => other.listen(0, '127.0.0.1', r));
+  try {
+    const port = String((other.address() as import('node:net').AddressInfo).port);
+    const t0 = Date.now();
+    const clash = await new Promise<{ code: number | null; out: string }>((resolve) => {
+      const c = spawn(process.execPath, [path.join(root, 'scripts', 'setup.mjs')], { cwd: root, env: { PATH: `${bin}:${process.env.PATH ?? ''}`, HOME: root, OPENHIGGSFIELD_ENV_FILE: settings, PORT: port } });
+      let out = ''; c.stdout.on('data', (d) => { out += d; }); c.stderr.on('data', (d) => { out += d; }); c.on('exit', (code) => resolve({ code, out }));
+    });
+    assert.equal(clash.code, 1, clash.out); assert.ok(Date.now() - t0 < 15_000, 'no long wait');
+    assert.match(clash.out, new RegExp(`Port ${port} is already used by .*so the app can't start`));
+    assert.ok(clash.out.includes(`PORT=${Number(port) + 3} to ${settings}`), clash.out);
+    if (process.platform !== 'win32' && spawnSync('lsof', ['-v']).status !== null) assert.match(clash.out, /\(process \d+\)/, 'names the program when lsof is there');
+    assert.doesNotMatch(clash.out, /Starting the app/);
+  } finally { await new Promise<void>((r) => other.close(() => r())); }
+  console.log('ok setup exit codes: failed npm → 1 with setup.log; doctor 0/1/2 → 0/2/1; a taken PORT stops at once');
 } finally {
   rmSync(root, { recursive: true, force: true }); // only this test's scratch folder
 }
