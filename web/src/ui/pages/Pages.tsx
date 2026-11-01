@@ -1,11 +1,8 @@
 import { toolPage } from '../../../../server/src/shared/pages';
-import { Notice } from '../../shared/Notice';
 import ScrollFade from '../../shared/ScrollFade';
 import { ApiEndpoints } from './Backlog';
 import { useEffect, useState } from 'react';
 import type { ToolInfo } from '../../api';
-import { listTools } from '../../api';
-import { Link } from '../../platform/router';
 import Page, { Code } from './Page';
 import MediaArt from '../MediaArt';
 import { exampleAt } from '../examples';
@@ -67,86 +64,8 @@ export function ApiDocs() {
 }
 
 
-/** /api/plugins row. name/description/version/icon/homepageUrl/toolId are optional: older manifests omit them, so every field falls back. */
-const titleCase = (id: string) => id.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-function PluginCard({ p }: { p: any }) {
-  const id = String(p.id ?? p.dir?.split('/').pop() ?? 'plugin'); const name = p.name || titleCase(id);
-  const errs: string[] = Array.isArray(p.errors) ? p.errors : []; const warns: string[] = Array.isArray(p.warnings) ? p.warnings : [];
-  // GAP 26: on/off without a restart (POST /api/plugins/:id {enabled}); optimistic, rolled back on failure
-  const [on, setOn] = useState<boolean>(p.enabled !== false); const [busy, setBusy] = useState(false); const [tErr, setTErr] = useState('');
-  const failed = p.ok === false || errs.length > 0;
-  const toggle = async () => { if (busy) return; const next = !on; setOn(next); setBusy(true); setTErr('');
-    try { const r = await fetch(`/api/plugins/${encodeURIComponent(id)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: next }) });
-      if (!r.ok) throw new Error(String(r.status)); const j = await r.json().catch(() => ({})); if (typeof j.enabled === 'boolean') setOn(j.enabled); }
-    catch { setOn(!next); setTErr(next ? 'Couldn’t turn it on. Try again.' : 'Couldn’t turn it off. Try again.'); } finally { setBusy(false); } };
-  const st = failed ? ['err', 'Failed to load'] : !on ? ['off', 'Off'] : ['ok', 'Loaded'];
-  const tool = p.toolId ? toolPage(p.toolId) : null;
-  return <div className="xcard plug-card" data-testid={`plugin-${id}`}>
-    <div className="plug-head">{p.icon ? <img className="plug-ic" src={p.icon} alt="" /> : <span className="plug-ic plug-ic-fb" aria-hidden>{name.slice(0, 1)}</span>}
-      <b>{name}</b><span className={`plug-st plug-${st[0]}`}>{st[1]}</span></div>
-    <p className={p.description ? 'helper' : 'helper plug-fb'}>{p.description || 'No description in this plugin’s manifest.'}</p>
-    <div className="plug-meta"><span className="xpill">{p.version ? `v${p.version}` : 'unversioned'}</span><code>{id}</code>
-      {tool && on && !failed && <Link to={tool}>Open app →</Link>}{p.homepageUrl && <a href={p.homepageUrl} target="_blank" rel="noreferrer">Homepage</a>}</div>
-    <div className={`plug-tg ${on ? 'on' : ''}`}><span id={`plug-tg-${id}`}>{failed ? 'Fix the errors below, then restart the server' : on ? 'On · its app shows in the menus' : 'Off · its app is hidden'}</span>
-      <button type="button" role="switch" aria-checked={on} aria-label={`${name} plugin`} aria-describedby={`plug-tg-${id}`} className={`plug-sw ${on ? 'on' : ''}`} data-testid={`plugin-toggle-${id}`} disabled={busy || failed} onClick={toggle}><i /></button></div>
-    {tErr && <Notice as="p" kind="error" tone="line" className="plug-tg-err">{tErr}</Notice>}
-    {(errs.length > 0 || warns.length > 0) && <ul className="plug-issues">{errs.map((e, i) => <li key={'e' + i} className="err">{e}</li>)}{warns.map((w, i) => <li key={'w' + i} className="helper">{w}</li>)}</ul>}
-  </div>;
-}
-/** Two built-in apps with one name (Upscale, Remove Background): the chip says which medium. */
-const mediumOf = (t: ToolInfo) => { const m = t.media ?? (t.app?.input === 'video' ? 'video' : t.app?.input ? 'image' : null); return m ? m[0].toUpperCase() + m.slice(1) : t.category || 'Other'; };
-const PLUGIN_SAMPLE = `{
-  "schema": 1,
-  "id": "my-look",
-  "name": "My Look",
-  "category": "Image",
-  "description": "Restyle a photo with my own ComfyUI workflow.",
-  "input": "image",
-  "output": "image",
-  "inputs": { "prompt": true, "resolutions": ["720p", "1080p"] },
-  "presets": [{ "id": "default", "label": "My look", "prompt": "soft film look" }],
-  "license": { "id": "mit" },
-  "components": [{ "kind": "model", "name": "My model", "license": "mit", "url": "https://example.com/my-model" }],
-  "pricing": { "gpuSecPerSec": { "720p": 4, "1080p": 8 } },
-  "workflow": "workflow.json",
-  "nodeMap": "node-map.json"
-}`;
-const NODE_MAP_SAMPLE = `{
-  "inputs": {
-    "image": { "node": "1", "field": "image" },
-    "prompt": { "node": "6", "field": "text" },
-    "seed": { "node": "9", "field": "seed" }
-  },
-  "output": { "node": "11" }
-}`;
-export function Plugins() {
-  const [ps, setPs] = useState<any[] | null>(null);
-  const [tl, setTl] = useState<ToolInfo[] | null>(null); useEffect(() => { listTools().then(setTl).catch(() => setTl([])); }, []);
-  useEffect(() => { fetch('/api/plugins').then(r => r.ok ? r.json() : []).then(j => setPs(Array.isArray(j) ? j : j.plugins ?? [])).catch(() => setPs([])); }, []);
-  return <Page eyebrow="Extend" title="Plugins" lede="Add your own apps from a ComfyUI workflow. A plugin runs for real on your own ComfyUI, and gives a sample result everywhere else.">
-    <div className="xgrid3" data-testid="plugins-grid" aria-busy={!ps}>{!ps && <div className="xcard plug-card plug-ph shimmer" aria-hidden />}{(ps ?? []).map((p, i) => <PluginCard key={p.id ?? i} p={p} />)}
-      {ps && !ps.length && <div className="xcard xcard-empty"><b>No plugins installed</b><p className="helper">No plugins yet. The minimal plugin below shows how to add your own.</p></div>}</div>
-    <h2 className="xh2">Add your own</h2>
-    <ol className="pl-steps" data-testid="plugins-howto">
-      <li><b>Make a plugin folder</b> next to the Cutout plugin that ships with the app, and give it a short id.</li>
-      <li><b>Describe the app</b> in <code>plugin.json</code>: name, category, input, presets and licence. Add the ComfyUI workflow (API format) and a <code>node-map.json</code> that says which node gets your file, prompt, seed and settings.</li>
-      <li><b>Restart the app.</b> The plugin is checked on start: it shows here with a Loaded badge, or with the errors to fix.</li>
-      <li><b>Open it like any app.</b> On your own ComfyUI it runs for real (install the workflow’s custom nodes and models first). Without it you get a sample result and the workflow it would send.</li>
-    </ol>
-    <h2 className="xh2">Minimal plugin</h2>
-    <p className="helper"><code>plugins/my-look/plugin.json</code></p>
-    <Code>{PLUGIN_SAMPLE}</Code>
-    <p className="helper"><code>plugins/my-look/node-map.json</code> (node ids from your <code>workflow.json</code>)</p>
-    <Code>{NODE_MAP_SAMPLE}</Code>
-    {/* BH12: the tools that ship with the app, from the live tool list (plugin tools excluded) */}
-    {(() => { const pids = new Set((ps ?? []).map(p => p.toolId ?? p.id)); const bi = (tl ?? []).filter(t => !pids.has(t.id) && (t as any).listed !== false); if (tl && !bi.length) return null;
-      const dup = (n: string) => bi.filter(t => t.name === n).length > 1; const label = (t: ToolInfo) => dup(t.name) ? `${t.name} · ${mediumOf(t)}` : t.name;
-      const cats = [...new Set(bi.map(t => t.category || 'Other'))];
-      return <section className="pl-builtins" data-testid="plugins-builtins" aria-busy={!tl}><h2 className="xh2">Built-in{tl ? <span className="helper"> · {bi.length} apps</span> : null}</h2>
-        <p className="helper">These come with the app. A plugin adds an app to this list the same way.</p>
-        {!tl ? <div className="pl-bi-ph shimmer" aria-hidden /> : cats.map(c => <div key={c} className="pl-bi-row"><b className="pl-bi-c">{c}</b><div className="pl-bi-list">{bi.filter(t => (t.category || 'Other') === c).map(t => <Link key={t.id} to={t.route ?? toolPage(t.id)} className="chip pl-bi-chip">{label(t)}</Link>)}</div></div>)}</section>; })()}
-  </Page>;
-}
+/** Plugins: its own file (2026-11-01 redesign). */
+export { Plugins } from './PluginsPage';
 
 export function Presets({ tools }: { tools: ToolInfo[] }) {
   /* Page 16: GET /api/presets?source=&sort=&toolId=&media=&category=&q=&cursor= → {items[{id,toolId,label,mode,posterUrl,previewWebm,previewUrl,refThumbs[],uses,prefill}], nextCursor, communityAvailable, note, categories[], byTool{}}. Falls back to the tool registry.
