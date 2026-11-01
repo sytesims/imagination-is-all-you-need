@@ -101,11 +101,20 @@ try {
   });
 
   await check('(g) a too-heavy fallback names the fit reason, never a blanket "needs more graphics memory"', async () => {
+    // Since 7204adb (2026-11-01) no tool's recommended default on a CPU-only computer is a too-heavy fallback: Voice opens on its hosted default
+    // (ElevenLabs) once its MiniMax Speech fallback went, like every other workflow whose hosted default runs. Any too_heavy note that does appear
+    // still names the fit reason: the quality pick ("X is too heavy …, so Y is the default.") or a workflow's own default ("X is the default for <area> but is too heavy …, so Y is used.").
+    const NOTE = /^(.+ is too heavy for your computer( \([a-z].+\))?, so .+ is the default\.|.+ is the default for .+ but is too heavy for your computer( \([a-z].+\))?, so .+ is used\.)/;
     const t = await get(`${C}/api/tools`); const arr: any[] = Array.isArray(t) ? t : t.tools; const fb = arr.map((x) => x.defaultFallback).filter((f) => f?.reasonCode === 'too_heavy');
-    assert.ok(fb.length >= 1, 'a too_heavy fallback on a CPU-only computer'); // two shapes, both naming the fit reason: the quality pick ("X is too heavy …, so Y is the default.") or a workflow's own default
-    // (edFallbackNote: "X is the default for <area> but is too heavy …, so Y is used.", e.g. Music → YuE2 since its hosted default is null, 2026-10-25)
-    for (const f of fb) { assert.match(f.note, /^(.+ is too heavy for your computer( \([a-z].+\))?, so .+ is the default\.|.+ is the default for .+ but is too heavy for your computer( \([a-z].+\))?, so .+ is used\.)/, f.note); assert.ok(!/needs more graphics memory/.test(f.note), f.note); }
-    assert.ok(fb.some((f) => / \(needs a graphics card with about [\d.]+ GB of memory; your computer has none\), so /.test(f.note)), fb.map((f) => f.note).join(' | '));
+    for (const f of fb) { assert.match(f.note, NOTE, f.note); assert.ok(!/needs more graphics memory/.test(f.note), f.note); }
+    // the user's own default that is too heavy here: always a too_heavy fallback, with the CPU fit reason in its words
+    const set = await send('PUT', `${C}/api/me/defaults`, { toolId: 'voice', model: 'comfy-chatterbox' }); assert.equal(set.status, 200, JSON.stringify(set.j).slice(0, 400));
+    try {
+      const t2 = await get(`${C}/api/tools`); const v = (Array.isArray(t2) ? t2 : t2.tools).find((x: any) => x.id === 'voice'); const f = v.defaultFallback;
+      assert.equal(f?.reasonCode, 'too_heavy', JSON.stringify(f)); assert.equal(f.from, 'comfy-chatterbox'); assert.notEqual(v.defaultProvider, 'comfy-chatterbox');
+      assert.match(f.note, /^Your default, .+, is too heavy for your computer \(needs a graphics card with about [\d.]+ GB of memory; your computer has none\), so .+ is used\./, f.note);
+      assert.ok(!/needs more graphics memory/.test(f.note), f.note); assert.deepEqual(set.j.defaultFallback, f, 'PUT answers with the same fallback');
+    } finally { await send('PUT', `${C}/api/me/defaults`, { toolId: 'voice', model: null }); }
   });
 
   await check('(h) Re-shoot zoom: no model takes a zoom/distance number → capabilities.zoomSupported false, no zoom input', async () => {
