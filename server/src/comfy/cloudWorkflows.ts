@@ -42,6 +42,7 @@ export interface CloudWorkflowRoute {
  */
 export interface StandaloneCloudWorkflow {
   routeId: string; provider: string; standalone: true; target: 'deploy' | 'cloud';
+  /** the model key whose prompt grammar this graph follows, when the twin provider has none of its own (Footage Effects: the LTX IC-LoRA engine's) */ refModel?: string;
   /** Plain name for the Settings card and docs. */ label: string;
   /** workflows/ relative graphs this entry may submit. */ graphs: string[];
   /** Node classes and model files the deployment needs (model: the loader class + widget whose choice list must contain the file). */
@@ -116,7 +117,7 @@ export const CLOUD_WORKFLOWS: Record<string, CloudWorkflowEntry> = {
   // Oct 27: InfiniteTalk (Wan 2.1) · Comfy Cloud, Lip Sync up to 60 s (comfy/infiniteTalkCloud.ts): the official template video_wan2_1_infinitetalk, one window per 3.24 s.
   // Oct 27: Footage Effects · Comfy Cloud (comfy/ltx23VfxCloud.ts): the official Comfy LTX-2.3 templates Restore old footage, Remove an object, Remove subtitles and
   // Extend the frame, every LoRA in Comfy Cloud's shared library (no import, no preflight). A twin route of the Footage Effects card (routing/routes.ts TWINS).
-  [VFX_CLOUD_ROUTE]: { routeId: VFX_CLOUD_ROUTE, provider: VFX_CLOUD_PROVIDER, standalone: true, target: 'cloud', label: VFX_CLOUD_NAME,
+  [VFX_CLOUD_ROUTE]: { routeId: VFX_CLOUD_ROUTE, provider: VFX_CLOUD_PROVIDER, standalone: true, target: 'cloud', label: VFX_CLOUD_NAME, refModel: 'comfy-ltx25-iclora' /* the Footage Effects model this place serves: '@image1' → plain words, as on your computer */,
     graphs: [...new Set(Object.values(VFX_CLOUD_GRAPHS).map((g) => g.graph))], requires: VFX_CLOUD_REQUIRES, plan: vfxCloudPlan },
   // Oct 27: MiniMax H3 Fast · Comfy Cloud (comfy/h3FastCloud.ts): the official FastVideo FastH3 templates, text / image to video in 8 steps. A free GET-only
   // check for the FastH3 checkpoint first (not in Comfy Cloud's object_info of 2026-10-26): missing → refused with the import steps, nothing sent.
@@ -153,7 +154,7 @@ const cache = new Map<string, { base: any; over: Record<string, Record<string, a
 /** The twin's plan with every pass moved onto its Comfy Cloud graph. Throws (plain message) when a pass has no cloud graph. */
 export function buildCloudPlan(j: { id: string; toolId: string; provider: string; input: Record<string, any> }, o: { srcFps?: number } = {}): Plan {
   const w = cloudWorkflowFor(j.provider); if (!w) throw new Error(`${j.provider} has no Comfy Cloud workflow`);
-  if (isStandalone(w)) { const plan = w.plan({ ...j, input: withRefGrammar(j.input, planModelKeyOf(j), 'local') }); /* prompt grammar: the same rewrite buildPlan applies (H3 CrossView: <Picture 1> / <Video 1>) */ plan.notes = [...plan.notes, w.target === 'cloud' ? `Comfy Cloud workflow (${w.provider})` : `Your Comfy deployment (${w.provider})`]; return plan; }
+  if (isStandalone(w)) { const plan = w.plan({ ...j, input: withRefGrammar(j.input, w.refModel ?? planModelKeyOf(j), 'local') }); /* prompt grammar: the same rewrite buildPlan applies (H3 CrossView: <Picture 1> / <Video 1>) */ plan.notes = [...plan.notes, w.target === 'cloud' ? `Comfy Cloud workflow (${w.provider})` : `Your Comfy deployment (${w.provider})`]; return plan; }
   const plan = buildPlan({ ...j, provider: w.twin }, o);
   for (const p of plan.passes) {
     const cf = w.files[p.workflow];
