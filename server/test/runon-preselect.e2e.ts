@@ -64,9 +64,11 @@ try {
     assert.equal(nb.runsOn.find((r: any) => r.id === 'comfy-cloud').action.text, 'Add a Comfy Cloud key');
     ok(`no Comfy key: Nano Banana 2 → fal (ready) over Comfy (sample, "Add a Comfy key"); agreement on ${await agree(a, 'fal only')} models`); }
 
-  // every tool × model (default job): listing pre-selection = quote place = runOn=auto
-  { let n = 0; for (const t of (await a.get('/api/tools')) as any[]) for (const m of t.models ?? []) { if (!m.preselect) continue;
-      const u = t.id === 'create-image' ? `/api/models/quote?toolId=create-image&model=${m.key}` : `/api/tools/${t.id}/price?model=${m.key}`; const q = await a.get(u); if (!q.runOn) continue;
+  // every tool × model (default job): listing pre-selection = quote place = runOn=auto. An Image recipe's tool is quoted with the photos its bar always
+  // sends (shared/workflows.ts recipeUploadsOf: the listing judges that job, 2026-11-01)
+  { const { recipeUploadsOf } = await import('../src/shared/workflows.ts'); const up = (id: string) => { const u = recipeUploadsOf(id); return u ? `&types=${encodeURIComponent(JSON.stringify([u.mode]))}${u.image ? '&image=1' : ''}${u.refs ? `&refs=${u.refs}` : ''}` : ''; };
+    let n = 0; for (const t of (await a.get('/api/tools')) as any[]) for (const m of t.models ?? []) { if (!m.preselect) continue;
+      const u = t.id === 'create-image' ? `/api/models/quote?toolId=create-image&model=${m.key}` : `/api/tools/${t.id}/price?model=${m.key}${up(t.id)}`; const q = await a.get(u); if (!q.runOn) continue;
       const qa = await a.get(`${u}&runOn=auto`); assert.equal(q.runOn, m.preselect.runOn, `${t.id} ${m.key}: listing ${m.preselect.runOn} vs quote ${q.runOn} (${q.route})`); assert.equal(qa.runOn, q.runOn, `${t.id} ${m.key}: runOn=auto`); n++; }
     assert.ok(n > 150, `checked ${n}`); ok(`every tool: listing pre-selection = quote = runOn=auto on ${n} tool × model pairs`); }
   // ---- 1b. nothing ready (real-mode rules: no samples) → nothing pre-selected; the setup options in the same order ----
@@ -76,8 +78,9 @@ try {
     const q = await b.quote('qwen-image'); assert.equal(q.runnable, false); assert.equal(q.runOn, null, JSON.stringify(q).slice(0, 400)); assert.equal(q.route, null); assert.equal(q.credits, null);
     assert.deepEqual(q.setupOptions.map((x: any) => `${x.runOn}:${x.action}`), ['fal:add_key', 'replicate:add_key', 'local:turn_on']); assert.equal(q.setup.action, 'add_key', 'the first fix follows the order');
     { await b.global({ showOtherProviders: false }); const mh = await b.model('qwen-image'); const qh0 = await b.quote('qwen-image');
-      assert.deepEqual(mh.setup.map((x: any) => `${x.runOn}:${x.action.kind}`), ['local:turn_on'], 'hidden: your computer covers Qwen-Image'); assert.deepEqual(qh0.setupOptions.map((x: any) => `${x.runOn}:${x.action}`), ['local:turn_on'], 'the quote agrees');
-      assert.deepEqual(mh.hiddenRunsOn.map((h: any) => h.id).sort(), ['fal', 'replicate']); await b.global({ showOtherProviders: true }); }
+      // 2026-11-01: your computer switched off covers nothing (it can't run the job), so fal and Replicate stay listed; the quote agrees
+      assert.deepEqual(mh.setup.map((x: any) => `${x.runOn}:${x.action.kind}`), ['fal:add_key', 'replicate:add_key', 'local:turn_on'], 'GPU off covers nothing'); assert.deepEqual(qh0.setupOptions.map((x: any) => `${x.runOn}:${x.action}`), ['fal:add_key', 'replicate:add_key', 'local:turn_on'], 'the quote agrees');
+      assert.equal(mh.hiddenRunsOn, undefined); await b.global({ showOtherProviders: true }); }
     await b.global({ useLocal: true });
     // (c) GPU needs a download + APIs need a key + nothing ready → nothing pre-selected, setup lists Comfy, fal, Replicate, Local (download), submit refused, nothing charged
     const h3 = ((await b.get('/api/tools')) as any[]).find((t) => t.id === 'h3-video').models.find((x: any) => x.key === 'minimax-h3');

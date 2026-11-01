@@ -25,7 +25,9 @@ export const KEEP_PLACES: Record<string, Record<string, string>> = {
   'luma-uni-1-max': { fal: 'Edits that keep your photo’s shape run on fal only' },
 };
 export const DIRECT_RUN_ONS = new Set(['fal', 'replicate', 'bfl', 'minimax', 'ltx', 'openai', 'google', 'byteplus', 'dashscope', 'luma', 'direct']);
-const COVERS = (r: { id: string; status: string }) => (r.id === 'comfy-cloud' || r.id === 'local') && r.status !== 'coming-soon' && r.status !== 'unavailable';
+// a place covers others only when it could run the job: never a coming-soon / unavailable place, nor your computer while Use local is off
+// (2026-11-01: an off GPU hid the fal place the quote ran on)
+const COVERS = (r: { id: string; status: string }) => (r.id === 'comfy-cloud' || r.id === 'local') && r.status !== 'coming-soon' && r.status !== 'unavailable' && !(r.id === 'local' && r.status === 'off');
 export const showOtherProviders = () => getPrefs().global.showOtherProviders === true;
 
 /** The run-on rows a model shows on a tool, and the ones hidden from it (with the place that covers them). */

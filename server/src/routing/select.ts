@@ -263,7 +263,7 @@ export function setupOptions(tool: ToolDef, modelId: string, input: Record<strin
   for (const o of all.filter((x) => x.kind === 'local' && x.available && !soon.has(x.routeId)).sort(byTier(true))) {
     const t = placeAction(tool, modelId, input, o, localOn); if (t && t.action !== 'set_up_gpu') { out.push({ ...t, credits: 0, ...(o.fit?.verdict === 'slow' ? { slow: true } : {}) }); break; } }
   // other providers Comfy (or this computer) covers are not offered as a step, as in the model menu (routing/hiddenPlaces.ts; Show other providers brings them back)
-  const keep = new Set(visiblePlaces(tool.id, modelKeyOf(tool.id, modelId, input), out.map((o) => ({ id: String(o.runOn), status: 'needs-key' }))).shown.map((r) => r.id));
+  const keep = new Set(visiblePlaces(tool.id, modelKeyOf(tool.id, modelId, input), out.map((o) => ({ id: String(o.runOn), status: o.action === 'turn_on' ? 'off' : 'needs-key' /* an off GPU covers nothing, as in the menu */ }))).shown.map((r) => r.id));
   return out.filter((o) => keep.has(String(o.runOn)));
 }
 /** The first place to set up (setupOptions[0]), for callers that show one fix. null = nothing to set up. */
