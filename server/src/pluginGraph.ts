@@ -51,11 +51,21 @@ export function graphPromptOf(graph: Record<string, any> | undefined, nm: Plugin
   return typeof v === 'string' && v.trim() ? v : null;
 }
 
-/** The main model of a graph in plain words ("flux1-dev" from flux1-dev.safetensors): the first diffusion model or checkpoint loader's file
- *  (unet_name / ckpt_name, the "dit" role in hardware/requirements.ts), without folders or extension. null when there is none. */
+/** A model file's stem in plain words: "qwen_image_2.1_int8_convrot" → "Qwen Image 2.1", "flux1-dev" → "Flux1 Dev". Drops the
+ *  precision / quantisation tags (int8, fp8_scaled, bf16, convrot, Q4_K_M…), splits on _ and -, and capitalises each word. */
+const TAG = /^(int\d+|fp\d+|bf\d+|nvfp\d+|mxfp\d+|e\dm\d(fn)?|convrot|scaled|mixed|w\da\d+|q\d+(_\d)?|gguf)$/i;
+export function modelWords(stem: string): string {
+  const parts = stem.split(/[_\-\s]+/).filter(Boolean); const out: string[] = [];
+  for (let k = 0; k < parts.length; k++) { const w = parts[k];
+    if (TAG.test(w)) { while (/^[kmsl0]$/i.test(parts[k + 1] ?? '')) k++; continue; } // Q4_K_M: the K and M go with the Q4
+    out.push(/^[a-z]/.test(w) ? w[0].toUpperCase() + w.slice(1) : w); }
+  return (out.join(' ') || stem).trim();
+}
+/** The main model of a graph in plain words ("Flux1 Dev" from flux1-dev.safetensors): the first diffusion model or checkpoint loader's file
+ *  (unet_name / ckpt_name, the "dit" role in hardware/requirements.ts), without folders, extension or precision tags. null when there is none. */
 export function mainModelOf(graph: Record<string, any> | undefined): string | null {
   const ids = Object.keys(graph ?? {}).sort((a, b) => (Number(a) - Number(b)) || a.localeCompare(b));
   for (const k of ['unet_name', 'ckpt_name']) for (const id of ids) { const v = graph![id]?.inputs?.[k];
-    if (typeof v === 'string' && v.trim()) { const name = v.replace(/\\/g, '/').split('/').pop()!.replace(/\.(safetensors|gguf|ckpt|pt|pth|bin|sft)$/i, '').trim(); if (name) return name.slice(0, 60); } }
+    if (typeof v === 'string' && v.trim()) { const name = v.replace(/\\/g, '/').split('/').pop()!.replace(/\.(safetensors|gguf|ckpt|pt|pth|bin|sft)$/i, '').trim(); if (name) return modelWords(name).slice(0, 60); } }
   return null;
 }

@@ -168,7 +168,7 @@ async function loadOne(dir: string, user: boolean): Promise<PluginStatus> {
   const app0 = makeApp({
     id: m.id, name: m.name, description: m.description, category: m.tab ? TAB_LABEL[m.tab] : m.category, status: m.status, previewUrl: m.previewUrl ?? null, input: m.input === 'video' ? 'video' : 'image', ...(none ? { imageOptional: () => true } : {}),
     types: m.presets.map((p) => ({ ...p })), mix: inp.mix, durations: inp.durations, enhance: inp.enhance, steps: inp.steps, prompt: inp.prompt, resolutions: inp.resolutions,
-    fields: inp.fields, workflow: workflowId, model: m.model ?? m.name, gpuSecPerSec: m.pricing.gpuSecPerSec, stages: m.stages, providers: m.providers ?? ['comfy-open'],
+    fields: inp.fields, workflow: workflowId, model: m.model ?? (user ? mainModelOf(v.graph) : null) ?? m.name /* a workflow you added: its main model, never the workflow's own name */, gpuSecPerSec: m.pricing.gpuSecPerSec, stages: m.stages, providers: m.providers ?? ['comfy-open'],
   });
   const app: ToolDef = none ? { ...app0, inputs: app0.inputs.filter((i) => i.name !== 'image'), app: { ...app0.app, input: 'none' } as any, stages: m.stages ?? [['queued', 'Queued'], ['rendering', 'Rendering'], ['saving', 'Saving']] } : app0;
   const stages = app.stages;

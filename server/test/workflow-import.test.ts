@@ -104,6 +104,7 @@ try {
   // an empty prompt keeps the workflow's own text (it never blanks it), and that text prefills the prompt box
   const own = wf('create-image-zimage-turbo-api.json')['57:27'].inputs.text; assert.ok(typeof own === 'string' && own.trim(), 'the sample graph has its own prompt');
   assert.equal(qp.plugin?.defaultPrompt, own, 'the graph\'s own prompt is offered to prefill the box');
+  assert.equal(qp.plugin?.mainModel, 'Z Image Turbo', 'the main model in plain words, no file name tags'); assert.equal(qp.model, 'Z Image Turbo', 'the tool names its model, not the workflow');
   for (const empty of ['', '   ']) {
     const pe: any = await qp.parseInput({ types: '["default"]', prompt: empty }, {}); assert.ok(!pe.error, pe.error);
     const ge = buildPlan({ id: 'wi-2', toolId: 'quick-picture', provider: 'comfy-open', input: { ...pe, seed: 5 } }).passes[0];
