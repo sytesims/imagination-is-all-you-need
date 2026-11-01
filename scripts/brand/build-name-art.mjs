@@ -11,7 +11,7 @@
 //   brand/wordmark.svg, wordmark-light.svg                    inline lockup: mark, "Imagination", "is all you need" (256.31 x 36.5)
 //   brand/wordmark-stacked.svg, wordmark-stacked-light.svg    stacked lockup, as in the app header (36.5 tall)
 //   brand/preview.svg, brand/social/*.svg, brand/video/*.svg  only the parts between <!--slot:x--> and <!--/slot:x--> markers,
-//                                                             the <title>, and any <g data-shift="x" transform="..."> offsets.
+//                                                             and the <title>.
 // Everything else in those files (background art, chips, links) is left as it is. Rasterise with: sips -s format png in.svg --out out.png
 
 import fs from 'node:fs';
@@ -118,11 +118,6 @@ function setSlot(src, name, content, file) {
   if (!re.test(src)) throw new Error(`${file}: slot "${name}" not found`);
   return src.replace(re, `<!--slot:${name}-->${content}<!--/slot:${name}-->`);
 }
-function setShift(src, name, dy, file) {
-  const re = new RegExp(`(<g data-shift="${name}" transform=")[^"]*(")`);
-  if (!re.test(src)) throw new Error(`${file}: shift "${name}" not found`);
-  return src.replace(re, `$1translate(0 ${r(dy)})$2`);
-}
 const setTitle = (src, t) => src.replace(/<title>[^<]*<\/title>/, `<title>${t}</title>`);
 
 function main() {
@@ -179,23 +174,7 @@ function main() {
     return s;
   });
 
-  // 5. GitHub social preview (1280 x 640): left column. Stacked name, subtitle, then chips and link (shifted to keep the column centred).
-  edit('social/github-social-preview.svg', (s, f) => {
-    s = setTitle(s, NAME);
-    const A = 76, left = 96;
-    const probe = K.lockup({ layout: 'stack', A, x: left, cy: 0 });
-    const subSize = 26, gapA = 44, gapB = 40, chipsH = 40, gapC = 43, linkH = 18;
-    const subCap = 0.727 * subSize, subDesc = 0.24 * subSize;
-    const total = probe.h + gapA + subCap + subDesc + gapB + chipsH + gapC + linkH;
-    const top = 320 - total / 2;
-    const name = K.lockup({ layout: 'stack', A, x: left, cy: top + probe.h / 2 });
-    const subBase = top + probe.h + gapA + subCap;
-    const chipsTop = subBase + subDesc + gapB;
-    s = setSlot(s, 'name', name.svg, f);
-    s = setSlot(s, 'subtitle', K.text(F.body, SUBTITLE, { x: left, y: subBase, size: subSize, fill: C.grey }).svg, f);
-    s = setShift(s, 'info', chipsTop - 486, f);
-    return s;
-  });
+  // 5. The GitHub social preview and the site's link preview are rendered from social-preview.html (render-social-preview.mjs).
 
   // 6. Post templates: small inline lockup where the old one was.
   edit('social/post-square-1080.svg', (s, f) => {

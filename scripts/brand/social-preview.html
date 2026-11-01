@@ -1,0 +1,56 @@
+<!doctype html>
+<!--
+  Source for the link preview images (rendered by render-social-preview.mjs at the viewport size):
+    brand/social/github-social-preview.png   1280 x 640  (GitHub social preview)
+    site/public/brand/social-preview.jpg     1200 x 630  (iiayn.app og:image / X card)
+  The pictures are app results already on the site (site/public/media).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Imagination Is All You Need</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=JetBrains+Mono:wght@500&display=block">
+<style>
+  :root { --bg: #0F1113; --ink: #F7F7F8; --soft: #C4C5C8; --grey: #8E8F93; --orange: #FF7A1A; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: var(--bg); }
+  body {
+    font-family: Inter, system-ui, sans-serif; color: var(--ink);
+    background:
+      radial-gradient(60% 80% at 82% 50%, rgba(255,122,26,.16), rgba(255,122,26,0) 70%),
+      linear-gradient(160deg, #1A1C1F 0%, #0F1113 70%);
+    display: grid; grid-template-columns: 1fr 41%; grid-template-rows: minmax(0, 1fr); gap: 48px; align-items: center;
+    padding: 64px 72px 64px 88px;
+  }
+  .text { display: flex; flex-direction: column; gap: 34px; }
+  .name { width: 100%; max-width: 560px; height: auto; display: block; }
+  .sub { font-size: 29px; line-height: 1.38; color: var(--soft); letter-spacing: -0.005em; max-width: 590px; }
+  .foot { font-family: 'JetBrains Mono', monospace; font-weight: 500; font-size: 18px; color: var(--grey); letter-spacing: .01em; margin-top: 6px; }
+  .foot b { color: var(--orange); font-weight: 500; }
+  .foot i { font-style: normal; opacity: .55; padding: 0 .45em; }
+  .grid {
+    align-self: stretch; min-height: 0; display: grid; gap: 12px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "a a" "b c" "d e";
+  }
+  .grid img {
+    width: 100%; height: 100%; min-height: 0; object-fit: cover; display: block; border-radius: 14px;
+    box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 10px 30px rgba(0,0,0,.35);
+  }
+</style>
+</head>
+<body>
+  <div class="text">
+    <img class="name" src="../../brand/wordmark-stacked.svg" alt="Imagination Is All You Need">
+    <p class="sub">One app for images, video, audio and 3D. Run it on your computer or in the cloud.</p>
+    <p class="foot"><b>iiayn.app</b><i>·</i>Open source (AGPL)<i>·</i>Built on ComfyUI</p>
+  </div>
+  <div class="grid" aria-hidden="true">
+    <img style="grid-area:a; object-position: 50% 8%" src="../../site/public/media/tile-whale.webp" alt="">
+    <img style="grid-area:b" src="../../site/public/media/tile-painter.webp" alt="">
+    <img style="grid-area:c; object-position: 75% 50%" src="../../site/public/media/tile-fox.webp" alt="">
+    <img style="grid-area:d" src="../../site/public/media/tile-tortoise.webp" alt="">
+    <img style="grid-area:e; object-position: 50% 25%" src="../../site/public/media/tile-caveman.webp" alt="">
+  </div>
+</body>
+</html>
