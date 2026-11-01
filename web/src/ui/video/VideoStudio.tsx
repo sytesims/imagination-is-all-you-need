@@ -87,7 +87,7 @@ export interface VideoStudioProps {
   frameHandoff?: { phase: 'loading' | 'error'; message?: string } | null; onFrameImageReady?: (url: string) => void; onCancelFrameHandoff?: () => void; onRetryFrameHandoff?: () => void;
   lastFrame: R | null; setLastFrame: (r: R | null) => void;
   prompt: string; setPrompt: (s: string) => void; promptRef: React.RefObject<HTMLTextAreaElement>;
-  duration: number; setDuration: (n: number) => void; resolution: string; setResolution: (r: string) => void;
+  duration: number; setDuration: (n: number) => void; /** a model switch's length: kept through the switch's snap to the new model's default */ keepDuration?: (n: number) => void; resolution: string; setResolution: (r: string) => void;
   quality: string; setQuality: (q: string) => void;
   missing: string[]; conflict?: string | null; busy: boolean; issues: any[];
   fv: Record<string, any>; setFv: (k: string, v: any) => void; vrefs: Record<string, R[]>; setVrefs: (k: string, list: R[]) => void;
@@ -351,8 +351,8 @@ export default function VideoStudio(p: VideoStudioProps) {
   /* 2026-10-27, a model switch adapts the settings (the menu row's shared/settingsFit.ts answer, priced at exactly these): length, resolution,
    * aspect and sound move to the nearest the model makes, and one calm note says what moved. Recreate and Workflows keep their exact settings. */
   const sw = useSwitchNote();
-  const applyFit = (fit: RowFit | null | undefined) => { const v = fit?.values; sw.show(fit?.note); if (!v) return;
-    if (v.duration && Number(v.duration) > 0) p.setDuration(Number(v.duration)); if (v.resolution) p.setResolution(v.resolution);
+  const applyFit = (fit: RowFit | null | undefined, switching = false) => { const v = fit?.values; sw.show(fit?.note); if (!v) return;
+    if (v.duration && Number(v.duration) > 0) (switching && p.keepDuration ? p.keepDuration : p.setDuration)(Number(v.duration)); /* the note's length is the one the chip shows */ if (v.resolution) p.setResolution(v.resolution);
     if (v.aspect) p.setFv('aspect', v.aspect); if (v.audio === '0' || v.audio === '1') p.setFv('audio', v.audio); };
   const sndNote = aud && !aud.supported ? `${modelName} makes silent clips` : aud?.supported ? `${modelName} always makes sound with the picture` : 'Sound depends on the model';
   const addOpts: { id: string; label: string; testId: string; go: () => void }[] = [];
@@ -499,7 +499,7 @@ export default function VideoStudio(p: VideoStudioProps) {
           {(cam || vp) && <button type="button" className="ic-chip ic-sq vs-look-x" data-testid="vs-look-clear" aria-label={`Remove ${[cam ? 'camera move' : '', vp ? 'style' : ''].filter(Boolean).join(' and ')}`} {...tip(`Remove ${[cam?.label, vp?.label].filter(Boolean).join(' and ')}`)} onClick={() => { p.setFv('cameraMove', ''); p.setFv('videoPreset', ''); p.setFv('intensity', ''); requestAnimationFrame(() => aR.look.current?.focus()); }}><CloseIcon size={12} /></button>}
           {vp?.intensities && <span className="ic-chip ic-static vs-int vs-int-d" role="radiogroup" aria-label="Intensity" data-testid="vs-intensity">{vp.intensities.map((v: string) => <button key={v} type="button" role="radio" aria-checked={p.fv.intensity === v} className={p.fv.intensity === v ? 'on' : ''} onClick={() => p.setFv('intensity', v)}>{v}</button>)}</span>}
           <ModelMenu open={pop.open === 'model'} anchor={aR.model} watch={dock} gap={4} placement="top" onClose={closePop} items={menuItems} value={p.provider} testId="vs-model-list" rowTestId={id => `vs-model-${id}`}
-            onPick={(id, fit) => { p.setProvider(id); const to = anyAdded ? runModeOf(capsOfEngine(id), p.mode, added) : !modeOk(id, p.mode) ? cfg.providerModes[id][0] : p.mode; if (to !== p.mode) p.setMode(to); applyFit(fit); }}
+            onPick={(id, fit) => { const switching = id !== p.provider; p.setProvider(id); const to = anyAdded ? runModeOf(capsOfEngine(id), p.mode, added) : !modeOk(id, p.mode) ? cfg.providerModes[id][0] : p.mode; if (to !== p.mode) p.setMode(to); applyFit(fit, switching); }}
             refFit={refFitFor} toolId={p.tool.id} quote={q}
             onNeed={n => { if (n.action === 'add-image' || n.action === 'add-end-frame') window.setTimeout(() => (p.image && n.action === 'add-end-frame' ? lastIn : fileIn).current?.click(), 0); }} />
           {durs.length > 1 ? <button ref={aR.dur} type="button" className={`ic-chip${pop.open === 'dur' ? ' on' : ''}${durErr ? ' vs-bad' : ''}`} data-testid="vs-duration" aria-haspopup="listbox" aria-expanded={pop.open === 'dur'} aria-invalid={durErr ? true : undefined} {...tip(pop.open === 'dur' ? null : durErr || (lim?.verified === false ? 'Length · not verified on this model yet' : 'Length'))} onClick={() => pop.setOpen(pop.open === 'dur' ? '' : 'dur')}><ChipGlyph icon="clock" />{p.duration} s</button>
