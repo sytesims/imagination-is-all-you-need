@@ -36,7 +36,7 @@ try {
   });
 
   await check('(4) Re-shoot batch quote on a free-demo route: perAngleCredits 0 + perAngleListCredits = the real per-angle list price', async () => {
-    const q1 = await get('/api/tools/reshoot/price?provider=router-seedance&duration=4&resolution=720p'); const q8 = await get('/api/tools/reshoot/price?provider=router-seedance&duration=4&resolution=720p&angleCount=8');
+    const q1 = await get('/api/tools/reshoot/price?provider=cloud-reshoot&duration=4&resolution=720p'); const q8 = await get('/api/tools/reshoot/price?provider=cloud-reshoot&duration=4&resolution=720p&angleCount=8');
     assert.equal(q8.demo, true, JSON.stringify(q8).slice(0, 300)); assert.equal(q8.perAngleCredits, 0); assert.equal(q8.perAngleListCredits, q1.listCredits); assert.equal(q8.listCredits, 8 * q1.listCredits);
     assert.equal(q1.perAngleListCredits, q1.listCredits); assert.equal(q1.angleCount, 1);
     const lq = await get('/api/tools/reshoot/price?provider=comfy-open&duration=4&angleCount=4'); assert.equal(lq.credits, 0); assert.ok('perAngleListCredits' in lq);

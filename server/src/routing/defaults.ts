@@ -24,7 +24,7 @@ import { routesFor, isTwinAlias, toolKeys, tierLabel, tierOf } from './routes.js
 import { option, resolveRoute, keyOwner, byTier, localAvailable, savedPinOf, localOnlyModel } from './select.js';
 import { getPrefs, favouriteOf } from './prefs.js';
 import { config } from '../config.js';
-import { LOCAL_OFF_REASON, LOCAL_UNREACHABLE_REASON, TOO_HEAVY_REASON, OPEN_WEIGHTS_ONLY_REASON, NOT_WIRED_REASON, reasonSentence } from './runnable.js';
+import { LOCAL_OFF_REASON, LOCAL_UNREACHABLE_REASON, TOO_HEAVY_REASON, OPEN_WEIGHTS_ONLY_REASON, NOT_WIRED_REASON, reasonSentence, routeRunnable } from './runnable.js';
 import { cardName } from '../models.js';
 import { cleanName } from '../shared/modelCatalog.js';
 import { isRetiring } from '../shared/lifecycle.js';
@@ -182,10 +182,14 @@ function recommendedDefaults(tool: ToolDef, opts: DefaultsOpts = {}): ToolDefaul
   const ids = qualityOrder(tool, mode).filter((id) => !opts.only || opts.only(id));
   const models = ids.map((id, k) => modelStatus(tool, id, mode, k + 1, opts.extra));
   if (!models.length) return { mode, preferredProvider: null, defaultProvider: null, defaultRoute: null, defaultFallback: null, defaultState: null, models, editorial: null };
-  const explicitLocal = getPrefs().global.useLocal; const anyCloud = models.some((m) => m.hasCloud && m.reasonCode !== 'not_wired'); // cloud routes that aren't built yet (Director) don't hold back a local model that runs
+  // A model that can never run in this tool (coming soon, or only cloud routes with no live executor here: Seedance 2.0 on Restyle / Director) is listed
+  // and greyed but never the default (Auto) or what holds back a local model (2026-11-02 unwired audit). Mock keys don't change this.
+  const neverRuns = (id: string) => { const rs = routesFor(id, tool).filter((r) => !r.comingSoon); return !rs.length || rs.every((r) => r.kind !== 'local' && !routeRunnable(r)); };
+  const explicitLocal = getPrefs().global.useLocal; const anyCloud = models.some((m) => m.hasCloud && m.reasonCode !== 'not_wired' && !neverRuns(m.id)); // cloud routes that aren't built yet (Director) don't hold back a local model that runs
   // Provider audit (2026-10-21): a retiring model (shared/lifecycle.ts, e.g. Veo 3.1) stays listed and pinnable but is never the quality pick or the default.
   // a swap model with a known problem (shared/cloudSwap.ts warning: Seedance 2.5 Edit refuses photos of real people) is listed and pickable the same way
-  const live = models.filter((m) => !isRetiring(m.id) && !(SWAP_TOOL_IDS.has(tool.id) && swapNeverAuto(m.id))); const pref = live[0] ?? models[0];
+  const listedLive = models.filter((m) => !isRetiring(m.id) && !(SWAP_TOOL_IDS.has(tool.id) && swapNeverAuto(m.id))); const pref = listedLive[0] ?? models[0];
+  const live = listedLive.filter((m) => !neverRuns(m.id)); // what Auto may start on (the quality pick above may be one that can't run here: the fallback note says so)
   // Per-workflow defaults (2026-10-23, shared/imageDefaults.ts): after a saved pin, the workflow's chosen model for the active setup (local GPU or a
   // hosted key) when it runs now; else the old rule (the first model that runs). Only models this call lists count (mode, `only`).
   // Image features resolve per feature; Generate Video (h3-video) has its own table (shared/videoDefaults.ts) keyed by the tool id; the Audio
@@ -196,13 +200,13 @@ function recommendedDefaults(tool: ToolDef, opts: DefaultsOpts = {}): ToolDefaul
   const sampleLocal = !!wf?.sampleLocal && config.backend === 'mock' && !(wf.hosted && byId(wf.hosted)?.runnable); // keyless sample server: open on the local pick (a hosted default that really runs keeps its place)
   const ed = wf ? pickEditorial(wf, byId, explicitLocal || sampleLocal, { apple: currentHardware().gpu?.type === 'mps' }) : null; // Apple Silicon: wf.localApple (Generate Video: Wan 2.2 5B)
   const pinnedDef = models.find((m) => m.pinned && (m.runnable || m.demo)); // a saved pin wins when it runs (real, or the sample run on a keyless mock server)
-  const edDef = ed?.runs && ed.id ? byId(ed.id) : undefined;
+  const edDef = ed?.runs && ed.id && !neverRuns(ed.id) ? byId(ed.id) : undefined;
   // nothing runs: among the models a key alone would run, the workflow's default comes first (it needs the same kind of key as the old pick);
   // a hosted fallback on the common key (Generate Video: Seedance 2.0 on the Comfy key) goes before a default that needs a rarer lab key
   const edKey = ed?.id && !ed.runs ? (wf!.hostedFirstWhenNeither ? [ed.id, wf!.hosted, wf!.hostedFallback] : [...(wf!.hostedFallback ? [wf!.hostedFallback] : []), ed.id, wf!.hosted]).map((id) => (id ? byId(id) : undefined)).find((e) => e && e.needsKey && e.wired) : undefined;
   // cloud first (shared/cloudDefaults.ts): the slot's cloud model when it starts now; when it only lacks its key, after any model that really runs
   const cdId = cloudDefaultOf(cloudSlot(tool, feat, mode), tool.id)?.model ?? null; const cdS = cdId ? byId(cdId) : undefined;
-  const cdNow = cdS && (cdS.runnable || cdS.demo || cdS.reasonCode === 'input_blocked') ? cdS : undefined;
+  const cdNow = cdS && !neverRuns(cdS.id) && (cdS.runnable || cdS.demo || cdS.reasonCode === 'input_blocked') ? cdS : undefined;
   const localDef = explicitLocal && edDef && edDef.routeKind === 'local' ? edDef : undefined;
   const runsNow = live.find((m) => m.runnable && (m.routeKind !== 'local' || explicitLocal || m.pinned || !anyCloud));
   const def = pinnedDef ?? localDef ?? cdNow ?? edDef
@@ -210,6 +214,7 @@ function recommendedDefaults(tool: ToolDef, opts: DefaultsOpts = {}): ToolDefaul
     ?? (canStart(cdS) ? cdS : undefined)
     ?? edKey
     ?? live.find((m) => m.needsKey && m.wired)
+    ?? live[0] ?? models.find((m) => !neverRuns(m.id))
     ?? pref;
   const source: DefaultSource = pinnedDef ? 'pin' : def === localDef ? 'local' : def === cdS ? 'cloud' : def === edDef && edDef?.routeKind === 'local' ? 'local' : 'fallback';
   // the cloud default itself: nothing to explain (a missing key shows on Generate). With Use local on, the notes below say why the local default isn't used.
@@ -240,7 +245,7 @@ function recommendedDefaults(tool: ToolDef, opts: DefaultsOpts = {}): ToolDefaul
   if (editorial && !pinnedDef && def.id !== editorial.id) { const fb = edFallbackNote(byId(editorial.id!)!);
     return { mode, preferredProvider: pref.id, defaultProvider: def.id, defaultRoute: def.routeId, defaultFallback: fb, defaultState: def, models, defaultSource: source, editorial };
   }
-  const reasonCode: DefaultFallback['reasonCode'] = def.pinned && def.id !== pref.id && (pref.runnable || pref.demo) ? 'pinned' : (pref.reasonCode ?? (pref.runnable && pref.routeKind === 'local' && !explicitLocal ? 'local_off' : 'not_runnable')); // a local quality pick passed over because Use local ComfyUI is off (was 'not_runnable' with an empty reason)
+  const reasonCode: DefaultFallback['reasonCode'] = def.pinned && def.id !== pref.id && (pref.runnable || pref.demo) ? 'pinned' : (neverRuns(pref.id) ? 'not_wired' : pref.reasonCode ?? (pref.runnable && pref.routeKind === 'local' && !explicitLocal ? 'local_off' : 'not_runnable')); // a local quality pick passed over because Use local ComfyUI is off (was 'not_runnable' with an empty reason)
   const why = reasonCode === 'pinned' ? 'is the best-quality option, but you saved a route for' : WHY[reasonCode]?.(pref) ?? "can't run here";
   const tail = tailOf(def);
   const fb: DefaultFallback | null = def.id === pref.id ? null : {

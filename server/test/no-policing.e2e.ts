@@ -49,9 +49,9 @@ try {
     console.log('ok provider refusals (mock nsfw/ip) end blocked with a provider message; 6 in a row → no cooldown'); }
   // ---- DEMO-QA 33 / 34: provider refusal → honest message, refunded once, plain Retry resubmits (new job, own quote + charge) ----
   for (const [row, sim] of [[33, 'nsfw'], [34, 'ip']] as const) {
-    const PAID = { prompt: 'retry me', provider: 'router-seedance', resolution: '720p', seconds: '4' };
+    const PAID = { prompt: 'retry me', provider: 'router-kling-edit', resolution: '720p', seconds: '4' };
     const bal = async () => (await get('/api/usage')).body.balance ?? (await get('/api/ledger')).body.balance;
-    const q = (await get('/api/tools/object-swap/price?provider=router-seedance&resolution=720p&seconds=4')).body; const b0 = await bal();
+    const q = (await get('/api/tools/object-swap/price?provider=router-kling-edit&resolution=720p&seconds=4')).body; const b0 = await bal();
     const j = await form('/api/tools/object-swap/jobs', { ...PAID, simulate: sim }, [['video', mp4], ['refs', png]]); assert.equal(j.status, 200, `row ${row}: ${JSON.stringify(j.body)}`);
     const e = await done(j.body.id); assert.equal(e.status, 'blocked', `row ${row}`); assert.equal(e.errorType, sim); assert.match(e.error, /provider/i);
     assert.ok(((e.error as string).match(/back to your (app )?balance|Nothing was charged/gi) ?? []).length <= 1, `row ${row} refund text once`);

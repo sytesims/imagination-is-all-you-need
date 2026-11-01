@@ -102,7 +102,7 @@ export const reshootTool: ToolDef = {
   model: 'LTX-2 19B pose IC-LoRA + camera-control LoRA per angle (fallback: Wan 2.2 Fun Camera 14B)',
   gpuSecPerSec: GPU_LTX,
   stages,
-  providers: ['comfy-open', 'router-seedance', 'router-veo', 'comfy-funcamera', 'cloud-reshoot', CROSSVIEW_PROVIDER /* requires your Comfy deployment */], // Cloud-first quality order; choose the first runnable route. cloud-reshoot remains a compatibility alias.
+  providers: ['comfy-open', 'comfy-funcamera', 'cloud-reshoot', CROSSVIEW_PROVIDER /* requires your Comfy deployment */], // Cloud-first quality order; choose the first runnable route. cloud-reshoot remains a compatibility alias. Seedance 2.0 and Veo 3.1 aren't listed (2026-11-02): their Router bodies aren't wired for Re-shoot and Veo takes no source video.
   async parseInput(fields, files) {
     const prov = fields.provider || 'comfy-open';
     const still = !files.video?.length && !!files.sourceImage?.length; // DP ask #1: a still image as the source

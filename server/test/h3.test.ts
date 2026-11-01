@@ -66,7 +66,7 @@ await t('Restyle + VFX (local only)', async () => {
     assert.equal(routesFor(prov).length, 1, 'no cloud route (licence)');
   }
 });
-await t('Motion Transfer excludes H3 Character Swap but keeps Kling, Seedance and Wan', () => { const mt = getTool('motion-transfer')!; assert.ok(!mt.providers.includes('comfy-h3-charswap')); assert.equal(mt.providers[0], 'router-kling-edit'); assert.ok(mt.providers.includes('router-seedance')); assert.ok(mt.providers.includes('router-seedance-25-edit')); assert.ok(mt.providers.includes('comfy-open')); assert.ok(getTool('object-swap')!.providers.includes('comfy-h3-charswap')); });
+await t('Motion Transfer excludes H3 Character Swap and plain Seedance 2.0 but keeps Kling, Seedance 2.5 Edit and Wan', () => { const mt = getTool('motion-transfer')!; assert.ok(!mt.providers.includes('comfy-h3-charswap')); assert.equal(mt.providers[0], 'router-kling-edit'); assert.ok(!mt.providers.includes('router-seedance')); assert.ok(mt.providers.includes('router-seedance-25-edit')); assert.ok(mt.providers.includes('comfy-open')); assert.ok(getTool('object-swap')!.providers.includes('comfy-h3-charswap')); });
 await t('routes, caps and prices (charge = shown)', () => {
   const v = routesFor('comfy-h3'); assert.deepEqual(v.map((r) => r.routeId), ['local:comfy-h3', 'fal:minimax/h3/text-to-video', 'fal:minimax/h3/image-to-video', 'fal:minimax/h3/reference-to-video', 'replicate:minimax/h3', 'direct:minimax/h3' /* MiniMax API, 2026-10-23 */]);
   assert.equal(v[0].priceRef, null); assert.ok(v.every((r) => (r.caps as any)?.audio === true));

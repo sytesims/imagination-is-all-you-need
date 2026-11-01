@@ -37,7 +37,7 @@ assert.deepEqual(old, before, 'reading historical metadata never rewrites the ru
 
 const motion = getTool('motion-transfer')!;
 assert.ok(!motion.providers.includes('comfy-h3-charswap'));
-for (const id of ['router-kling-edit', 'router-seedance-25-edit', 'router-seedance', 'comfy-open', 'cloud-wan-animate2']) assert.ok(motion.providers.includes(id), id);
+for (const id of ['router-kling-edit', 'router-seedance-25-edit', 'comfy-open', 'cloud-wan-animate2']) assert.ok(motion.providers.includes(id), id);
 assert.ok(!toolModels(motion).some(m => m.key === 'minimax-h3-character-swap'), 'model grouping cannot reintroduce H3');
 assert.ok(toolModels('object-swap').some(m => m.key === 'minimax-h3-character-swap'));
 for (const req of [{ provider: 'comfy-h3-charswap' }, { provider: 'cloud-h3-charswap' }, { model: 'comfy-h3-charswap' }, { model: 'minimax-h3-character-swap' }, { route: 'local:comfy-h3-charswap' }, { route: 'comfy-cloud:cloud-h3-charswap' }]) {

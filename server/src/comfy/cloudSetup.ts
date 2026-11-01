@@ -16,7 +16,7 @@ export type SetupState = 'ready' | 'missing' | 'unknown' | 'no_key' | 'not_check
 export interface CloudSetupItem { id: 'charswap' | 'layout' | 'h3fast' | 'pika' | 'crossview'; name: string; unlocks: string; kind: 'import' | 'deployment'; file: string | null; type: string | null;
   size: string | null; link: string; linkLabel: string; steps: string[]; route: string }
 export const CLOUD_SETUP: CloudSetupItem[] = [
-  { id: 'charswap', name: 'Character Swap LoRA', unlocks: 'H3 Character Swap on Comfy Cloud: Object Swap and Motion Transfer with MiniMax H3', kind: 'import', file: CHARSWAP_LORA_HF_FILE, type: 'LoRA', size: '0.16 GB',
+  { id: 'charswap', name: 'Character Swap LoRA', unlocks: 'H3 Character Swap on Comfy Cloud: swap a person or object in your clip on Object / Person Swap', kind: 'import', file: CHARSWAP_LORA_HF_FILE, type: 'LoRA', size: '0.16 GB',
     link: CHARSWAP_LORA_URL, linkLabel: 'Hugging Face', steps: CHARSWAP_LORA_STEPS, route: 'comfy-cloud:cloud-h3-charswap' },
   { id: 'layout', name: 'Layout to Render LoRA', unlocks: 'Direct a Shot’s film on Comfy Cloud (LTX-2.5 + Layout to Render), at 720p and up to 10 s', kind: 'import', file: LAYOUT_LORA_FILE, type: 'LoRA', size: '1.31 GB',
     link: LAYOUT_LORA_REPO, linkLabel: 'Hugging Face (accept the licence)', steps: LAYOUT_LORA_IMPORT_STEPS, route: 'comfy-cloud:cloud-ltx25-layout' },
