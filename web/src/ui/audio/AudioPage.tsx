@@ -182,7 +182,7 @@ export default function AudioPage(p: AudioPageProps) {
   if (oneOfOpen) needs.push({ id: 'clip', label: 'Clip or audio', hint: 'A video or an audio file with speech · MP4, MOV, WEBM, MP3, WAV', accept: 'video/mp4,video/quicktime,video/webm,audio/*' });
   else for (const sl of wf.slots) if (sl.required && !(sl.name === 'video' ? p.video : sl.name === 'audio' ? (wf.id === 'cover' ? p.song : p.clip) : p.samples.length)) {
     const a = addOpts.find(o => (sl.name === 'video' && o.id === 'video') || (sl.name === 'audio' && (o.id === 'song' || o.id === 'clip')));
-    if (a) needs.push({ id: sl.name, label: sl.label, hint: sl.name === 'video' ? `${sl.hint} · MP4, MOV or WEBM` : `${sl.hint}`, accept: sl.name === 'video' ? 'video/mp4,video/quicktime,video/webm' : 'audio/*', add: a }); }
+    if (a) needs.push({ id: sl.name, label: sl.label, hint: sl.name === 'video' ? `${sl.hint} · MP4, MOV or WEBM` : `${sl.hint}`, accept: sl.name === 'video' ? VIDEO_ACCEPT : AUDIO_ACCEPT, add: a }); }
   const [drag, setDrag] = useState(false); const dragDepth = useRef(0);
   const hasFiles = (e: React.DragEvent) => Array.from(e.dataTransfer.types).includes('Files');
 

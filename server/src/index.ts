@@ -97,6 +97,7 @@ import { repoInfo, APP_VERSION } from './repoInfo.js';
 import { checkComfyReady } from './comfyClient.js';
 import './routing/jobRefs.js'; // prompt grammar: local graphs rewrite @image1 with the runners' model key (comfy/plans.ts setPlanModelKey)
 import { SWATCH_MAX } from './shared/swatchBatch.js';
+import { MAX_UPLOAD_MB } from './shared/mediaAccept.js'; /* one number for the server and the web's pickers */
 
 mkdirSync(DATA_DIR, { recursive: true });
 const app = Fastify({ logger: { level: 'info' } });
@@ -117,7 +118,6 @@ app.addHook('onSend', async (req, reply, payload: any) => { if (typeof payload !
 app.addHook('preSerialization', async (_req, reply, payload: any) => { if (reply.statusCode === 404 && payload && typeof payload === 'object' && !Array.isArray(payload) && payload.error && !payload.errorType) return { ...payload, errorType: 'not_found' }; return payload; });
 app.get('/api/openapi.json', async (req) => withDiscovered(buildSpec(`${req.protocol}://${req.headers.host ?? 'localhost:8787'}`), ROUTES));
 app.get('/api/docs', async (_req, reply) => reply.type('text/html').send(DOCS_HTML));
-const MAX_UPLOAD_MB = 200;
 await app.register(multipart, { limits: { fileSize: MAX_UPLOAD_MB * 1024 * 1024, files: 40 } });
 registerUploadSecurity(app);
 (await import('./cleanMedia.js')).registerCleanFiles(app); // GET /files/<name>?clean=1: metadata-free copy (share step 1)

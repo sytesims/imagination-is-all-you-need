@@ -14,7 +14,7 @@ import AngleTimeline from '../../next/AngleTimeline';
 import { BarPopover, PopSection, PopNote } from '../../../shared/BarPop';
 import { tip } from '../../../shared/Tooltip';
 import { CloseIcon, ReshootIcon } from '../../Icons';
-import { LIMITS } from '../../../shared/limits';
+import { LIMITS } from '../../../../../server/src/shared/mediaAccept';
 import { CrossViewPad, CROSSVIEW_DEFAULT_CAM, isCrossView, camWords, zoneLabel, type CrossViewCam } from '../../../tools/reshoot/CrossViewPad';
 import { crossviewZone } from '../../../../../server/src/shared/crossview';
 

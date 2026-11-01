@@ -3,8 +3,17 @@
  * Pictures: PNG, JPEG, WebP (a WebP is turned into a PNG on upload, server/src/imageNormalize.ts, so every model and route gets PNG/JPEG).
  * Clips: MP4, MOV, WebM. Sound: MP3, WAV, M4A, AAC, OGG, FLAC (the submit check in index.ts uploadTypeOk takes the same).
  * AVIF / HEIC are not listed: the bundled ffmpeg can't convert them reliably.
+ * Also the upload limits (2026-11-01, audit): the clip / prompt limits (media.ts re-exports them) and the most one file may weigh (index.ts multipart),
+ * so the web's pickers and checks read the server's own numbers, never a copy.
  */
 export type MediaKind = 'image' | 'video' | 'audio';
+
+/** Spec limits (CLEANROOM-SPEC P0-1 errors): clip length and size, references, prompt length. */
+export const LIMITS = { minSec: 4, maxSec: 30, minPixels: 409_600, maxRefs: 30, refsPerCall: 8, maxPrompt: 10_000 } as const;
+export const RESOLUTIONS = ['480p', '720p', '1080p'] as const;
+/** The most one uploaded file may weigh (the server's multipart limit). */
+export const MAX_UPLOAD_MB = 200;
+export const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
 
 export const IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp';
 export const VIDEO_ACCEPT = 'video/mp4,video/quicktime,video/webm,video/x-m4v,.mp4,.mov,.webm,.m4v';
@@ -23,7 +32,7 @@ export function fileFits(kind: MediaKind, f: { type?: string; name?: string }): 
 export function kindOfFile(f: { type?: string; name?: string }, kinds: MediaKind[] = ['image', 'video', 'audio']): MediaKind | null {
   return kinds.find(k => fileFits(k, f)) ?? null;
 }
-const WORDS: Record<MediaKind, string> = { image: 'PNG, JPG or WebP pictures', video: 'MP4, MOV or WebM clips', audio: 'MP3, WAV, M4A, AAC, OGG or FLAC sound' };
+const WORDS: Record<MediaKind, string> = { image: 'PNG, JPG or WebP pictures', video: 'MP4, MOV, M4V or WebM clips', audio: 'MP3, WAV, M4A, AAC, OGG or FLAC sound' };
 /** The plain message for a refused file: "photo.heic can't be used here. This takes PNG, JPG or WebP pictures." */
 export function wrongTypeText(name: string, kinds: MediaKind[]): string {
   return `${name ? `${name} can’t be used here` : 'That file can’t be used here'}. This takes ${kinds.map(k => WORDS[k]).join(', or ')}.`;

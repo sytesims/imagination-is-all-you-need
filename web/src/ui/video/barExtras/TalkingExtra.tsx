@@ -16,6 +16,7 @@ import { useToolQuote } from '../../../shared/useToolQuote';
 import { shownCredits } from '../../../shared/quote';
 import './talkingExtra.css';
 import { TV_SINGLE_MAX, TV_MAX_SECONDS, TV_SCRIPT_MAX, planTalkChunks, talkSummary, talkPartCount, scriptSeconds, fmtTalkSeconds } from '../../../../../server/src/shared/talkingVideo';
+import { AUDIO_ACCEPT } from '../../../../../server/src/shared/mediaAccept';
 
 const IT = 'cloud-infinitetalk';
 const usd = (credits: number | null | undefined) => credits == null ? '' : credits === 0 ? 'Free' : `≈ $${(credits / 100).toFixed(2)}`;
@@ -97,7 +98,7 @@ export const useTalkingExtra: UseBarExtra = (c0) => {
             <button type="button" className="tv-x" aria-label="Remove the voice sample" onClick={() => setSample(null)}><CloseIcon size={12} /></button></div>
             : <Segmented label="Voice" value={voice} cols={3} testId="vbar-talk-voices" options={voices.map(o => ({ value: o.value, label: o.label, testId: `vbar-talk-voice-${o.value}` }))} onChange={setVoice} />}
           {voiceModels.some((p: any) => clones(p.id)) && !sample && <button type="button" className="tv-add" data-testid="vbar-talk-add-sample" onClick={() => sampleIn.current?.click()}>+ Use a voice sample (5–15 s), so a character speaks in their own voice</button>}
-          <input ref={sampleIn} type="file" hidden accept="audio/*" data-picker-title="Choose a voice sample" onChange={e => { const x = e.target.files?.[0]; if (x) setSample(x); e.currentTarget.value = ''; }} />
+          <input ref={sampleIn} type="file" hidden accept={AUDIO_ACCEPT} data-picker-title="Choose a voice sample" onChange={e => { const x = e.target.files?.[0]; if (x) setSample(x); e.currentTarget.value = ''; }} />
         </PopSection>}
         {!f && pool.length > 1 && <PopSection label="Voice model" testId="vbar-talk-models">
           <Segmented label="Voice model" value={ttsProv} cols={2} options={pool.map((p: any) => ({ value: p.id, label: p.displayName ?? p.name, hint: clones(p.id) ? 'Takes your sample' : 'Its own voices', testId: `vbar-talk-model-${p.id}` }))} onChange={setPickedModel} />

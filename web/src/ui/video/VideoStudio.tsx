@@ -1,4 +1,4 @@
-import { IMAGE_ACCEPT, fileFits, kindOfFile, wrongTypeText, type MediaKind } from '../../../../server/src/shared/mediaAccept';
+import { IMAGE_ACCEPT, fileFits, kindOfFile, wrongTypeText, type MediaKind, AUDIO_ACCEPT, VIDEO_ACCEPT } from '../../../../server/src/shared/mediaAccept';
 import { Words } from '../../shared/Words';
 import { CloseIcon, BrushIcon, AspectIcon, ResolutionIcon } from '../Icons';
 import { EnhanceChip, EnhancePop, showEnhanced, type EnhanceResult } from '../next/Enhance';
@@ -104,8 +104,8 @@ const RK: [string, string][] = [['refs', 'image'], ['refVideos', 'video'], ['ref
 /** File-picker types per reference kind; video / audio follow the model's refFormats (videoCaps) when it lists them. */
 const REF_MIME: Record<string, string> = { mp4: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm', mp3: 'audio/mpeg', wav: 'audio/wav' };
 const refAccept = (kind: string, fmts?: { video?: string[]; audio?: string[] }) => kind === 'image' ? IMAGE_ACCEPT
-  : kind === 'video' ? (fmts?.video ? fmts.video.map(x => `${REF_MIME[x] ?? ''},.${x}`).join(',') : 'video/mp4,video/quicktime,video/webm')
-  : (fmts?.audio ? fmts.audio.map(x => `${REF_MIME[x] ?? ''},.${x}`).join(',') : 'audio/*');
+  : kind === 'video' ? (fmts?.video ? fmts.video.map(x => `${REF_MIME[x] ?? ''},.${x}`).join(',') : VIDEO_ACCEPT)
+  : (fmts?.audio ? fmts.audio.map(x => `${REF_MIME[x] ?? ''},.${x}`).join(',') : AUDIO_ACCEPT);
 
 /** A missing input in Generate's few words (Image says "Write a prompt"; a video's photo is its start frame, or a reference in Reference mode). */
 function missShort(m: string, mode: string): string {

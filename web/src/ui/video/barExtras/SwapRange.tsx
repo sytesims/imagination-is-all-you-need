@@ -10,7 +10,7 @@ import TrimRange, { type Trim } from '../../../shared/TrimRange';
 import { BarPopover, PopSection, PopNote } from '../../../shared/BarPop';
 import { tip } from '../../../shared/Tooltip';
 import { ClockIcon } from '../../Icons';
-import { LIMITS } from '../../../shared/limits';
+import { LIMITS } from '../../../../../server/src/shared/mediaAccept';
 import { cloudSwapOf, clampTrim, passNote, swapRangeSeconds, MOTION_GENERATION_NOTE, MOTION_AUDIO_NOTE, SEEDANCE_TASK_NOTE } from '../../../../../server/src/shared/cloudSwap';
 
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s) % 60).padStart(2, '0')}`;

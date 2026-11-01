@@ -4,7 +4,7 @@ import LibraryButton from '../ui/b1/LibraryButton';
 import FilledMedia from '../ui/b1/FilledMedia';
 import { useState } from 'react';
 import Dropzone from './Dropzone';
-import { LIMITS, VIDEO_TYPES } from './limits';
+import { LIMITS, MAX_UPLOAD_BYTES, MAX_UPLOAD_MB, VIDEO_ACCEPT, fileFits, wrongTypeText } from '../../../server/src/shared/mediaAccept';
 import { useToast } from './Toast';
 
 export interface VideoMeta { file: File; url: string; duration: number; w: number; h: number; audio: boolean | null; trimmed: boolean }
@@ -40,8 +40,8 @@ export default function UploadVideo({ title = 'Video', hint, video, onChange, di
   const fail = (m: string) => { setErr(m); };
   const onFile = async ([f]: File[]) => {
     setErr('');
-    if (!VIDEO_TYPES.includes(f.type) && !(f.type === '' && /\.(mp4|mov|webm)$/i.test(f.name))) return fail('Unsupported format. Use MP4, MOV or WEBM.');
-    if (f.size > LIMITS.maxBytes) return fail('Max 200 MB.');
+    if (!fileFits('video', f)) return fail(wrongTypeText(f.name, ['video'])); /* the server's own types (shared/mediaAccept.ts): .m4v too */
+    if (f.size > MAX_UPLOAD_BYTES) return fail(`Max ${MAX_UPLOAD_MB} MB.`);
     setBusy(true);
     try {
       const m = await readVideo(f);
@@ -56,8 +56,8 @@ export default function UploadVideo({ title = 'Video', hint, video, onChange, di
     <section className="card">
       <h2>{title}</h2>
       {!video ? <>
-        <Dropzone accept="video/mp4,video/quicktime,video/webm" label={dropLabel ?? 'Upload a video'} busy={busy ? 'Checking the clip…' : false} error={err || null}
-          helper={exactHint && hint ? hint : `${hint ?? `MP4, MOV, WEBM · ${LIMITS.minSec}–${LIMITS.maxSec} s · up to 200 MB`} · min 854×480`} onFiles={onFile}
+        <Dropzone accept={VIDEO_ACCEPT} label={dropLabel ?? 'Upload a video'} busy={busy ? 'Checking the clip…' : false} error={err || null}
+          helper={exactHint && hint ? hint : `${hint ?? `MP4, MOV, M4V, WEBM · ${LIMITS.minSec}–${LIMITS.maxSec} s · up to ${MAX_UPLOAD_MB} MB`} · min 854×480`} onFiles={onFile}
           actions={<LibraryButton icon kind="video" onFiles={fs => onFile(fs)} />} />
       </> : <>
         <FilledMedia items={[{ id: video.url, url: video.url, kind: 'video', label: '@Video 1' }]} max={1} onRemove={() => !disabled && onChange(null)} onReplace={disabled ? undefined : () => onChange(null)} onAdd={() => undefined} />
