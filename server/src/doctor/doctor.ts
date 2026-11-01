@@ -105,10 +105,11 @@ export async function runDoctor(e: DoctorEnv = realEnv(), o: DoctorOptions = {})
 
   // ---- This computer ----
   const os0 = osName(e); const cpu = e.cpus()[0]?.model?.trim() || null; const ramGB = r1(e.totalmem() / GiB);
-  const nodeOk = ver(e.nodeVersion)[0] >= 20;
+  // Node.js 22 (from 22.12), 24 or 26: the same rule as scripts/node-version.mjs and package.json engines (>=22.12 <27)
+  const [nM, nm] = ver(e.nodeVersion); const nodeOk = (nM === 22 && nm >= 12) || nM === 24 || nM === 26;
   add({ id: 'os', section: 'computer', status: 'ok', required: false, text: `${os0} · ${e.arch}${cpu ? ` · ${cpu}` : ''} · ${Math.round(ramGB)} GB memory` });
   const npmV = e.exec('npm', ['-v']); const ff = e.exec('ffmpeg', ['-version']); const ffV = ff.ok ? (ff.out.match(/ffmpeg version (\S+)/)?.[1] ?? 'found') : null;
-  add({ id: 'node', section: 'computer', status: nodeOk ? 'ok' : 'fail', required: true, text: `Node ${e.nodeVersion.replace(/^v/, '')}${npmV.ok ? ` · npm ${npmV.out}` : ''}`, fix: nodeOk ? undefined : 'Install Node 22 or 24 (https://nodejs.org), then npm install' });
+  add({ id: 'node', section: 'computer', status: nodeOk ? 'ok' : 'fail', required: true, text: `Node ${e.nodeVersion.replace(/^v/, '')}${npmV.ok ? ` · npm ${npmV.out}` : ''}`, fix: nodeOk ? undefined : `${nM > 26 ? 'This Node.js is newer than Imagination supports yet' : 'This Node.js is too old or past its end of life'}. Install Node.js 22, 24 or 26 (24 recommended). Mac: brew install node@24 · Windows: winget install OpenJS.NodeJS.LTS · or with nvm: nvm install 24 && nvm use 24. Then npm install` });
   const mediaFix = e.platform === 'darwin' ? 'brew install ffmpeg' : e.platform === 'win32' ? 'winget install --id Gyan.FFmpeg -e; reopen PowerShell afterwards' : 'sudo apt install ffmpeg';
   add({ id: 'ffmpeg', section: 'computer', status: ffV ? 'ok' : 'warn', required: false, text: ffV ? `ffmpeg ${ffV}` : 'ffmpeg not found (uploads and media processing need ffmpeg and ffprobe; browsing Examples is still available)', fix: ffV ? undefined : mediaFix });
   const probe = e.exec('ffprobe', ['-version']); const probeV = probe.ok ? (probe.out.match(/ffprobe version (\S+)/)?.[1] ?? 'found') : null;

@@ -13,7 +13,7 @@ const port = (server.address() as import('node:net').AddressInfo).port;
 try {
   mkdirSync(path.join(root, 'scripts'));
   for (const name of ['fastify', 'tsx', 'concurrently']) mkdirSync(path.join(root, 'node_modules', name), { recursive: true });
-  for (const f of ['setup.mjs', 'app-env.mjs']) writeFileSync(path.join(root, 'scripts', f), readFileSync(new URL(`../../scripts/${f}`, import.meta.url)));
+  for (const f of ['setup.mjs', 'app-env.mjs', 'node-version.mjs']) writeFileSync(path.join(root, 'scripts', f), readFileSync(new URL(`../../scripts/${f}`, import.meta.url)));
   writeFileSync(path.join(root, 'scripts', 'doctor.mjs'), 'console.log(JSON.stringify({ports:[process.env.PORT,process.env.WEB_PORT,process.env.MCP_PORT]}));console.log("beforeStart="+(process.env.OPENHIGGSFIELD_DOCTOR_BEFORE_START??""));');
   const settings = path.join(root, 'custom settings.env');
   writeFileSync(settings, `PORT=${port}\nWEB_PORT=5294\nMCP_PORT=8894\n`);

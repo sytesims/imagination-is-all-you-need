@@ -160,13 +160,13 @@ if [ -d "$HOME/.nvm/versions/node" ]; then # newest installed nvm node
   [ -n "$newest" ] && add_path "$HOME/.nvm/versions/node/v$newest/bin"
 fi
 # The installer adds Homebrew's node@24, which Homebrew keeps off PATH: use it when the Node.js found so far is missing or a
-# version the app can't run on (it needs 22 to 25).
-node_fits() { local m; m="$(node --version 2>/dev/null | sed -n 's/^v\([0-9]*\).*/\1/p')"; [ -n "$m" ] && [ "$m" -ge 22 ] && [ "$m" -le 25 ]; }
+# version the app can't run on (it needs 22 from 22.12, 24 or 26).
+node_fits() { local v; v="$(node --version 2>/dev/null)"; case "$v" in v24.*|v26.*) return 0;; v22.*) v="${v#v22.}"; [ "${v%%.*}" -ge 12 ] 2>/dev/null;; *) return 1;; esac; }
 if ! node_fits; then for d in /opt/homebrew/opt/node@24/bin /usr/local/opt/node@24/bin; do [ -x "$d/node" ] && { PATH="$d:$PATH"; break; }; done; fi
 export PATH
 
 [ -n "$REPO" ] && [ -f "$REPO/scripts/setup.mjs" ] || fail "Imagination couldn't find its app folder${REPO:+ at $REPO}. Run npm run mac-app in the app folder to rebuild this launcher."
-command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 || fail "Imagination needs Node.js (22 to 25) and npm. Install Node.js 24 (brew install node@24, or https://nodejs.org), then open Imagination again."
+command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 || fail "Imagination needs Node.js (22, 24 or 26) and npm. Install Node.js 24 (brew install node@24, or https://nodejs.org), then open Imagination again."
 [ -d "$SUPPORT" ] || fail "Imagination couldn't create $SUPPORT."
 
 # 2. one start at a time: a second click while starting waits for the first one instead of starting another copy.

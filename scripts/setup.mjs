@@ -7,6 +7,7 @@
 // Nothing else is installed or downloaded: ComfyUI, custom nodes and models stay your choice (the doctor prints the commands).
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs'; import path from 'node:path';
+import { nodeProblem, NODE_STEPS } from './node-version.mjs';
 import { REPO, webPort, launchEnv, apiUp as up } from './app-env.mjs'; // ports and env file: the same settings the app reads
 const args = process.argv.slice(2); const has = (f) => args.includes(f);
 if (has('--help') || has('-h')) { console.log('npm run setup [-- --check] [--no-start] [--open]\n  --check     only check (no npm install, no start)\n  --no-start  install + doctor, but don\'t start the app\n  --open      open the app in the browser once it\'s ready'); process.exit(0); }
@@ -15,8 +16,8 @@ const say = (s) => console.log(`\x1b[1m==>\x1b[0m ${s}`);
 const WIN = process.platform === 'win32'; const npm = WIN ? 'npm.cmd' : 'npm';
 /** npm.cmd needs a shell on Windows: give it one command line (fixed words only), not args + shell: true, which Node 24 warns about (DEP0190). */
 const npmCall = (a) => (WIN ? [`${npm} ${a.join(' ')}`, [], { shell: true }] : [npm, a, {}]);
-const major = Number(process.versions.node.split('.')[0]);
-if (major < 20) { console.error(`Node ${process.versions.node} is too old: install Node 22 or 24 (https://nodejs.org), then run npm run setup again.`); process.exit(2); }
+const nodeBad = nodeProblem(process.versions.node);
+if (nodeBad) { console.error(`${nodeBad}\n  ${NODE_STEPS}\nThen run npm run setup again.`); process.exit(2); }
 const wizard = `http://localhost:${webPort}/?setup=1`;
 const home = `http://localhost:${webPort}/`; // --open opens the home page: the setup sheet shows by itself on a first visit
 /** Opens a page in the default browser; best effort (a computer without a desktop just keeps the printed address). */

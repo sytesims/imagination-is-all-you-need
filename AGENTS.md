@@ -14,7 +14,7 @@ Instructions for AI coding agents installing and running Imagination Is All You 
 ## 1. Check prerequisites
 
 ```bash
-node -v        # need v20, v22 or v24 (package.json: "engines": {"node": ">=20"}); a current Node 20 release, since the API start uses --env-file-if-exists
+node -v        # need v22 (22.12 or newer), v24 or v26 (package.json: "engines": {"node": ">=22.12 <27"}); 24 recommended
 npm -v
 ffmpeg -version && ffprobe -version     # needed for media steps
 python3 --version                       # 3.10+; only for scripts/install.sh, model downloads and workflow scripts
@@ -23,7 +23,7 @@ git --version
 
 Or run **`npm run doctor`**: a read-only check of the OS, Node, the app, ComfyUI (version, Comfy Desktop or not, models folder), the GPU, free disk, the pinned custom node packs and which accounts are connected (names only). It prints what works, what's missing and the fix; `-- --json` for agents. Exit 0 = works, 1 = something required is missing, 2 = the app can't start yet.
 
-There is no `.nvmrc`. If Node is missing or too old, ask the user before installing it. Node 22+ avoids `EBADENGINE` warnings from the Comfy SDK; Node 20 works for mock mode.
+There is no `.nvmrc`. If Node is missing, too old or too new, ask the user before installing it. Node 20, 23 and 25 are past their end of life and the installers and `npm run doctor` refuse them; dependencies (tldraw, the Comfy SDK, `eventsource-parser`) need 22.12+.
 
 ## 2. Clean install
 
@@ -32,7 +32,7 @@ npm install          # root workspaces (server, web) + the MCP server's deps via
 ```
 
 - If the MCP part fails, the app still works; retry with `npm run mcp:install`. `OPENHIGGSFIELD_SKIP_MCP=1 npm install` skips it.
-- `better-sqlite3` 12.8.0 has prebuilt binaries for Node 20/22/24 on Linux x64, macOS arm64 and Windows x64. Elsewhere it needs build tools (`build-essential python3` on Linux, `xcode-select --install` on a Mac).
+- `better-sqlite3` 12.11.1 has prebuilt binaries for Node 22/24/26 on Linux x64, macOS arm64 and Windows x64. Elsewhere it needs build tools (`build-essential python3` on Linux, `xcode-select --install` on a Mac).
 
 ## 3. Ask the user how to run it
 
@@ -108,7 +108,7 @@ Full guide: [docs/LOCAL-MODELS-AND-HARDWARE.md](docs/LOCAL-MODELS-AND-HARDWARE.m
 | `mcp` exits with `EADDRINUSE` | Something already uses :8788. API and web keep running. Free the port or set `MCP_PORT` |
 | `mcp` won't start after install | `npm run mcp:install`, then `npm start` |
 | Web won't start: port 5174 in use | Vite uses a strict port. Free it or set `WEB_PORT` |
-| Node rejects `--env-file-if-exists` (a "bad option" error) | Node too old; use a current Node 20, 22 or 24 |
+| Node rejects `--env-file-if-exists` (a "bad option" error) | Node too old; use Node 22 (22.12+), 24 or 26 |
 | Generate → "Connect a Comfy key or your ComfyUI to start" (402 `no_connection`) | Nothing is set up: paste a Comfy key, or point the app at your ComfyUI (Settings → Connections) |
 | Generate → 402 `no_provider` | This model can't run on what is connected: add the key it names, or turn on Use local ComfyUI (`OPENHIGGSFIELD_USE_LOCAL=1`) |
 | Still sample results after adding a Comfy key | `OPENHIGGSFIELD_BACKEND=mock` is set (development only): remove it |

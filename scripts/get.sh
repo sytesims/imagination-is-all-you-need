@@ -5,7 +5,7 @@
 #   curl -fsSL https://iiayn.app/install | bash -s -- --dir ~/Apps/Imagination     (with options)
 #
 # What it does, in order (it asks before installing anything on your computer):
-#   1. Checks for git, Node.js 22 to 25 (with npm) and ffmpeg, and offers to install what's missing
+#   1. Checks for git, Node.js 22, 24 or 26 (with npm) and ffmpeg, and offers to install what's missing
 #      (Homebrew on macOS, apt or dnf on Linux; Node.js 24 from Homebrew's node@24, or NodeSource when the
 #      Linux system's own Node.js is too old).
 #   2. Downloads the app into ~/Imagination, or updates it if it's already there (your library and keys are never touched).
@@ -23,9 +23,9 @@ set -euo pipefail
 REPO_URL="${IIAYN_REPO:-https://github.com/sytesims/imagination-is-all-you-need.git}" # IIAYN_REPO: another copy to clone from (tests)
 YES=0; DRY=0; START=1; SHORTCUT=1; MADE_SHORTCUT=0; BRANCH=main; DIR="$HOME/Imagination"
 APPS_DIR="${IIAYN_APPS_DIR:-/Applications}" # IIAYN_APPS_DIR: another folder instead of /Applications (tests)
-# Node.js versions the app runs on: its database part (better-sqlite3) has ready-made builds for these. Newer ones
-# (Node 26+) would have to build it from source, which needs developer tools most computers don't have.
-NODE_MIN=22; NODE_MAX=25; NODE_PIN=24 # NODE_PIN: the version this installer adds
+# Node.js versions the app runs on: the long-term support lines 22 (from 22.12), 24 and 26. Its database part
+# (better-sqlite3) has ready-made builds for these. 20, 23 and 25 are past their end of life; 27+ is untested.
+NODE_MAX=26; NODE_PIN=24 # NODE_PIN: the version this installer adds
 ORIG_PATH="$PATH"
 
 usage() { cat <<'EOF'
@@ -77,7 +77,22 @@ has_git() {
   if [ "$OS" = Darwin ] && [ "$(command -v git)" = /usr/bin/git ]; then xcode-select -p >/dev/null 2>&1 || return 1; fi
 }
 node_major() { node --version 2>/dev/null | sed -n 's/^v\([0-9]*\).*/\1/p'; }
-node_fits() { local m; m="$(node_major)"; [ -n "$m" ] && [ "$m" -ge "$NODE_MIN" ] && [ "$m" -le "$NODE_MAX" ]; }
+node_minor() { node --version 2>/dev/null | sed -n 's/^v[0-9]*\.\([0-9]*\).*/\1/p'; }
+# A supported major: 22, 24 or 26 (the odd lines 23 and 25 are past their end of life).
+major_fits() { case "$1" in 22|24|26) return 0;; *) return 1;; esac; }
+node_fits() { local m; m="$(node_major)"; major_fits "$m" && { [ "$m" != 22 ] || [ "$(node_minor)" -ge 12 ] 2>/dev/null; }; }
+# Why the Node.js on PATH doesn't fit, in one sentence.
+node_why() { local m v; m="$(node_major)"; v="$(node --version 2>/dev/null)"
+  if [ "$m" -gt "$NODE_MAX" ] 2>/dev/null; then echo "Node.js $v is newer than Imagination supports yet. Use Node.js 22, 24 or 26 (24 recommended)."
+  elif [ "$m" = 23 ] || [ "$m" = 25 ]; then echo "Node.js $v reached its end of life and no longer gets security fixes. Install Node.js 22, 24 or 26 (24 recommended)."
+  elif [ "$m" = 22 ] && ! node_fits; then echo "Node.js $v is too old: Imagination needs 22.12 or newer. Install Node.js 22, 24 or 26 (24 recommended)."
+  elif node_fits; then echo "Node.js $v is here, but npm is missing. Install Node.js 22, 24 or 26 (24 recommended) with npm."
+  else echo "Node.js $v is too old. It reached its end of life and no longer gets security fixes. Install Node.js 22, 24 or 26 (24 recommended)."; fi; }
+# How to switch, for this computer.
+node_steps() { case "$OS" in
+  Darwin) echo "  On a Mac: brew install node@$NODE_PIN (this installer finds it). Or with nvm: nvm install $NODE_PIN && nvm use $NODE_PIN";;
+  *) echo "  With nvm: nvm install $NODE_PIN && nvm use $NODE_PIN (or see https://nodejs.org/en/download)";; esac
+  echo "  Then run the install line again."; }
 has_node() { command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && node_fits; }
 # Homebrew's node@24 isn't put on PATH by Homebrew ("keg-only"), so this script (and the Dock app) adds it itself.
 node_keg() { local d; for d in /opt/homebrew/opt/node@$NODE_PIN/bin /usr/local/opt/node@$NODE_PIN/bin; do [ -x "$d/node" ] && { echo "$d"; return 0; }; done; return 1; }
@@ -114,7 +129,7 @@ manual_steps() {
 }
 describe() { case "$1" in
   git) echo "git (downloads the app and its updates)";;
-  node) echo "Node.js $NODE_MIN to $NODE_MAX, with npm (runs the app; $NODE_PIN recommended)";;
+  node) echo "Node.js 22, 24 or 26, with npm (runs the app; $NODE_PIN recommended)";;
   ffmpeg) echo "ffmpeg (handles video and audio; optional, browsing works without it)";; esac; }
 
 check_tools() {
@@ -127,8 +142,7 @@ check_tools() {
         git) ok "$(git --version)";; node) ok "Node.js $(node --version), npm $(npm --version)";; ffmpeg) ok "ffmpeg";; esac
     else
       if [ "$t" = node ] && command -v node >/dev/null 2>&1; then
-        if [ "$(node_major)" -gt "$NODE_MAX" ] 2>/dev/null; then miss "Node.js $(node --version) is newer than the app supports yet: it needs Node.js $NODE_MIN to $NODE_MAX"
-        else miss "Node.js $(node --version) is too old (or npm is missing): the app needs Node.js $NODE_MIN to $NODE_MAX"; fi
+        miss "$(node_why)"
       else miss "$(describe "$t") is missing"; fi
       # Node.js first, so a Linux system without a usable one stops before anything is installed with sudo.
       if [ "$t" = node ]; then missing=(node ${missing[@]+"${missing[@]}"}); else missing+=("$t"); fi
@@ -187,22 +201,21 @@ check_tools() {
   [ "$DRY" = 1 ] && return 0
   # Check again: the required ones must work now.
   has_git || die "git still isn't available." "$(manual_steps)"
-  has_node || die "Node.js $NODE_MIN to $NODE_MAX (with npm) still isn't the one this window finds$(command -v node >/dev/null && echo ": it finds $(node --version) at $(command -v node)")." \
-    "Install Node.js $NODE_PIN from https://nodejs.org/en/download (it shows a few easy ways, for example nvm install $NODE_PIN), then run the install line again."
+  has_node || die "Node.js 22, 24 or 26 (with npm) still isn't the one this window finds$(command -v node >/dev/null && echo ": it finds $(node --version) at $(command -v node)")." \
+    "$(node_steps)"
 }
 
-# Linux: Node.js from the system's packages when they have $NODE_MIN or newer (Ubuntu 22.04/24.04 and Debian 12 have
-# 12 to 18), otherwise Node.js $NODE_PIN from NodeSource. Decided before anything is installed, and only with your yes.
+# Linux: Node.js from the system's packages when they have 22, 24 or 26 (Ubuntu 22.04/24.04 and Debian 12 have
+# 12 to 18, Debian 13 has 20), otherwise Node.js $NODE_PIN from NodeSource. Decided before anything is installed, and only with your yes.
 NODE_APT_UPDATED=0
 add_linux_node() {
   local how inst="apt-get install -y" cand url tmp
   [ "$PM" = dnf ] && inst="dnf install -y"
   if command -v node >/dev/null 2>&1 && [ "$(node_major)" -gt "$NODE_MAX" ] 2>/dev/null; then
-    die "Node.js $(node --version) is newer than the app supports yet (Node.js $NODE_MIN to $NODE_MAX)." \
-      "Switch this computer to Node.js $NODE_PIN (for example with nvm: nvm install $NODE_PIN && nvm use $NODE_PIN), then run the install line again."
+    die "$(node_why)" "$(node_steps)"
   fi
   cand="$(distro_node_major)"
-  if [ -n "$cand" ] && [ "$cand" -ge "$NODE_MIN" ] && [ "$cand" -le "$NODE_MAX" ]; then
+  if [ -n "$cand" ] && major_fits "$cand"; then
     how="sudo $inst nodejs npm"
     say "$(describe node): this command installs it: $how"
     [ "$(id -u)" != 0 ] && say "It uses sudo, so your computer may ask for your password."
