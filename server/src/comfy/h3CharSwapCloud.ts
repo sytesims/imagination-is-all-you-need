@@ -15,6 +15,8 @@
  * SetLatentNoiseMask; LTXVSeparateAVLatent / LTXVConcatAVLatent keep H3's audio latent fully generated. Core ComfyUI (v0.42.5, Cloud's version) pools
  * the mask to H3's 2×2 DiT patches and keeps the unmasked source at the conditioning timestep. A frame where SAM finds nobody is regenerated whole
  * (the mask-free behaviour), so a miss never returns the source unchanged. Motion transfer and maskMode "none" stay mask-free.
+ * Unchanged check (Nov 1): a run can still hand back the prepared source as it was (seen on a masked run); after the run the result is compared with
+ * that source (comfy/unchangedCheck.ts) and a pass-through keeps its file but gets a plain notice ("The swap came back unchanged…"). Not for motion transfer.
  * Before anything is uploaded, a free check (GET only) confirms the LoRA is in the account's model library (a clear refusal otherwise) and looks
  * for the optional 768p turbo import.
  * Credits: LoRA by Akatz Labs (HF akatz-ai/MiniMax-H3-Character-Swap-LoRA); recipe after Comfy's Openjutsu app (github.com/Comfy-Org/comfy-openjutsu, MIT) and Akatz Labs' H3 Character Swap workflow (github.com/akatz-labs/h3-character-swap-tool, MIT);
@@ -226,7 +228,7 @@ export function charswapCloudPlan(j: { id: string; toolId: string; provider: str
   return { tool: j.toolId, outKind: 'video', post: { kind: 'each' }, muxSourceAudio: i.keepAudio !== false, labels: [label],
     notes: [`H3 Character Swap on Comfy Cloud: ${CHARSWAP_PRESETS[preset].label}, ${width}×${height}, ${seconds} s (${length} frames), ${smp.turbo ? `turbo ${turboFile === TURBO_SHARED ? '(shared build)' : '768p build'}` : 'no turbo'} ${smp.steps} steps ${smp.sampler}/${smp.scheduler}, Character Swap LoRA ${smp.loraStrength}, ${maskNote}`,
       ...(diagnostics.length ? ['Two silent mask previews are saved separately; extra Cloud encoding/storage overhead is unmeasured and may add GPU-time cost. They are not effective sampler tensors.'] : [])],
-    passes: [{ label, workflow: CHARSWAP_CLOUD_GRAPH, graph: g, output: N.save, prep, diagnostics,
+    passes: [{ label, workflow: CHARSWAP_CLOUD_GRAPH, graph: g, output: N.save, prep, diagnostics, ...(!motion ? { unchangedVs: src24 } : {}), // a swap that returns its source gets a notice (comfy/unchangedCheck.ts)
       expect: { fps: 24, width, height, length, seconds, tier, preset, seed, prompt, ...(!motion ? { prompts: [prompt] } : {}), lora: g[N.lora].inputs.lora_name, turbo: smp.turbo ? turboFile : null, steps: smp.steps, loraStrength: smp.loraStrength, mask: mask.mode } }] };
 }
 
