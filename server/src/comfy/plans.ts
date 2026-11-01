@@ -48,6 +48,8 @@ export type Prep =
 export interface Pass { label: string; workflow: string; graph: Record<string, any>; output: string; extraOutputs?: { node: string; label: string }[]; prep?: Prep[];
   /** Auxiliary run evidence, never a generated result or input to postprocessing. */
   diagnostics?: { node: string; label: string; stage: string; note: string }[];
+  /** A swap: the prepared source the result is compared with after the run (comfy/unchangedCheck.ts); a pass-through gets a plain notice. */
+  unchangedVs?: string;
   /** What the UI asked for, for graph assertions (readiness/graph). */ expect: Record<string, any> }
 export type Post =
   | { kind: 'each'; /** only these passes become outputs (e.g. skip a transcript pass) */ only?: number[] }
