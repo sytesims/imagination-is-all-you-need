@@ -7,7 +7,7 @@ import { OPTION_MEDIA, wireOptionMedia, voiceSampleUrl, voiceSampleKind, wireSam
 import { parseLightRig, rigPhrases, rigJson, spherePresetOf, lightUntouched, DEFAULT_RIG, type LightRig } from '../shared/lightRig.js';
 import { PRODUCT_SCENES, PRODUCT_KEEP, TRANSITION_TYPES, UGC_PRESENTERS, UGC_HOOKS, UGC_SETTINGS, UGC_FRAMINGS, ORBIT_TYPES, ORBIT_BACKDROPS, RELIGHT_DIRECTIONS, RELIGHT_QUALITY, RELIGHT_COLOUR_PRESETS, RELIGHT_LOOKS, relightLookOf, brightnessWord, colourName, padPhrase, LANGUAGE_NATIVE, CHARACTER_LAYOUTS, CHARACTER_LAYOUT_DEFAULT, type CharacterLayout, type AppField, type AppOption } from './appRows.js';
 import { TRANSLATE_LANGS } from '../comfy/plans.js';
-import { SHOT_ANGLES, parseShots, shotPrompt, FACE_SWAP_PROMPT, FACE_SWAP_KEEP, PERSON_SWAP_PROMPT, PERSON_SWAP_KEEP, type ShotAngle } from './shots.js';
+import { SHOT_ANGLES, SHOT_DEFAULTS, parseShots, shotPrompt, FACE_SWAP_PROMPT, FACE_SWAP_KEEP, PERSON_SWAP_PROMPT, PERSON_SWAP_KEEP, type ShotAngle } from './shots.js';
 import { GENERATE_MODELS, EDIT_MODELS, TWO_IMAGE_MODELS, MATERIAL_SWAP_MODELS, AD_PACK_MODELS, MASK_MODELS, REMOVE_BG_MODELS, EXPAND_MODELS, ERASE_MODELS, TRYON_MODELS, featureById, gridModelOf } from '../shared/imageFeatures.js';
 import { promptGrammarOf } from '../shared/promptGrammar.js';
 import { fillPattern, patternFor } from '../shared/promptPatterns.js';
@@ -828,11 +828,11 @@ export const APP_GALLERY: GalleryApp[] = [
     finish: (r) => ({ outputLabel: 'Face swap', ...(r.refPaths?.[1] ? { insetPath: r.refPaths[1] } : {}) }),
     notes: ['Works best with a clear, front-facing face photo and a target where the face is visible and not too small.'] },
   // Camera Angles (was Shots; id kept).
-  { id: 'shots', name: 'Camera Angles', route: '/tools/camera-angles', category: 'Image', base: 'create-image', poster: null, description: 'One photo becomes up to nine camera angles of the same subject: front, three-quarter, side, back, low, high, close-up and wide.',
+  { id: 'shots', name: 'Camera Angles', route: '/tools/camera-angles', category: 'Image', base: 'create-image', poster: null, description: 'One photo becomes new camera angles of the same subject: front, three-quarter, side, back, low, high, close-up, wide, over the shoulder and full body.',
     locked: { types: '["edit"]' }, providers: featureById('camera-angles')!.providers.filter((p) => p !== 'comfy-qwen-angles'), extraProviders: ['comfy-qwen-angles'],
     exposed: ['image', 'prompt', 'provider', 'rights', 'seed'], labels: { image: 'Photo', prompt: 'Subject (optional)' }, required: ['image'],
-    perOutput: { field: 'shots', label: 'Angles', options: SHOT_ANGLES, max: SHOT_ANGLES.length, parse: parseShots, prompt: (o, u) => shotPrompt(o as ShotAngle, u) },
-    compose: (_v, c) => shotPrompt(SHOT_ANGLES[0], c.prompt),
+    perOutput: { field: 'shots', label: 'Angles', options: SHOT_ANGLES, max: SHOT_ANGLES.length, defaults: SHOT_DEFAULTS, parse: parseShots, prompt: (o, u, x) => shotPrompt(o as ShotAngle, u, x.provider) /* worded for the engine's family */ },
+    compose: (_v, c) => shotPrompt(SHOT_ANGLES[0], c.prompt, c.provider),
     extra: { promptOptional: true },
     notes: ['Each angle is its own image, priced like one image. Views the photo never showed (the back, the far side) are the model\'s best guess.'] },
   // Person Swap (image; 2026-10-22): the whole person from photo 2 replaces the person in photo 1. Same two-image edit as Face Swap (image grid: character swap,

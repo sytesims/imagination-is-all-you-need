@@ -75,7 +75,8 @@ try {
   assert.ok(be.models.inpaint.includes('fal-bria-genfill') && !be.models.inpaint.includes('api-nano-banana'), 'mask models only: Bria GenFill yes, Nano Banana 2 no');
   assert.ok(be.aliases.routes.includes('/tools/brush-edit') && be.aliases.routes.includes('/tools/app-inpaint'), 'old Brush Edit routes are aliases');
   const ca = W.find((w) => w.id === 'camera-angles'); assert.equal(ca.surface, 'multi-output'); assert.equal(ca.output.count, 'perOption');
-  assert.deepEqual(ca.controls[0].options.map((o: any) => o.value), ['front', 'three-quarter-left', 'three-quarter-right', 'side', 'back', 'low', 'high', 'close-up', 'wide'], 'nine angle chips');
+  assert.deepEqual(ca.controls[0].options.map((o: any) => o.value), ['front', 'three-quarter-left', 'three-quarter-right', 'side', 'back', 'low', 'high', 'close-up', 'wide', 'over-shoulder', 'full-body'], 'eleven angle chips');
+  assert.deepEqual(JSON.parse(ca.controls[0].default), ['front', 'three-quarter-left', 'three-quarter-right', 'side', 'back', 'low', 'high', 'close-up', 'wide'], 'the nine by default');
   assert.ok(ca.models.edit.includes('comfy-qwen-angles'), 'the local angles LoRA route stays offered');
   const cl = W.find((w) => w.id === 'camera-lens'); assert.equal(cl.surface, 'rig'); assert.equal(cl.runner.toolId, 'create-image'); assert.deepEqual(cl.slots, []);
   assert.deepEqual(cl.controls.map((c: any) => c.field), ['cameraBody', 'lens', 'focal', 'aperture', 'film', 'lighting', 'era']);

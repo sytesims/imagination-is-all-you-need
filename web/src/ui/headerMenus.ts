@@ -74,7 +74,7 @@ export const TOOL_TAGLINE: Record<string, string> = {
   'app-relight': 'Move and recolour the light in a photo',
   'app-face-swap': 'A face from one photo onto another',
   'app-person-swap': 'Put a whole person into another photo',
-  'app-shots': 'Up to nine new viewpoints from one photo',
+  'app-shots': 'Up to eleven new viewpoints from one photo',
   'app-remove-bg': 'Cut out the subject on a transparent background',
   'app-expand': 'Add room around a photo to fit a new shape',
   'app-erase': 'Paint over something to remove it',
