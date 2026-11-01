@@ -42,7 +42,7 @@ try {
   assert.ok(cps.every((x) => x.modelName && x.modelNameByProvider && Object.keys(x.modelNameByProvider).join() === x.providers.join()));
   ok('camera presets: modelName (LTX-2 19B / Wan 2.2 Fun Camera 14B / H3 Camera Motion) + modelNameByProvider; H3 prefill provider = comfy-h3-camera');
   // (4) camera quote = submit for an H3 move
-  for (const [prov, withImg, code] of [['', false, 'image_required'], ['comfy-h3-camera', false, 'image_required'], ['comfy-open', false, 'image_required'], ['comfy-open', true, 'unsupported'], ['router-seedance', false, 'unsupported'], ['router-seedance', true, 'unsupported'] /* Kling is no longer a Camera Moves model */, ['', true, null], ['comfy-h3-camera', true, null]] as const) {
+  for (const [prov, withImg, code] of [['', false, 'image_required'], ['comfy-h3-camera', false, 'image_required'], ['comfy-open', false, 'unsupported'] /* the move + engine check comes before the image check (presets-fixes) */, ['comfy-open', true, 'unsupported'], ['router-seedance', false, 'unsupported'], ['router-seedance', true, 'unsupported'] /* Kling is no longer a Camera Moves model */, ['', true, null], ['comfy-h3-camera', true, null]] as const) {
     const q = await get(M, `/api/tools/camera/price?types=h3-push-in${prov ? `&provider=${prov}` : ''}${withImg ? '&image=1' : ''}`);
     const s = await post(M, '/api/tools/camera/jobs', { types: '["h3-push-in"]', prompt: 'x', ...(prov ? { provider: prov } : {}) }, withImg ? { image: img } : {});
     if (code === 'image_required' && prov !== 'comfy-open') { // Oct 19 b2 (BH P3 #7): the quote is a priced input block; submit keeps 400 image_required
