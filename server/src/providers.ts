@@ -36,11 +36,11 @@ export interface ProviderDef {
 }
 
 import { OPEN_WEIGHTS_ONLY, openWeightsOnly, LICENSES, workflowLicense } from './licenses.js';
-import { bfsWorkflowsFor } from './comfy/bfsSwap.js';
+import { bfsCardWorkflowsFor } from './comfy/bfsSwap.js';
 export { OPEN_WEIGHTS_ONLY, openWeightsOnly };
 /** Workflow variants a provider runs for a tool (first = primary). Hosted providers run none locally. */
 export function providerWorkflows(tool: ToolDef, p: ProviderDef): string[] {
-  const bfs = bfsWorkflowsFor(tool.id, p.id); if (bfs) return bfs; // Face Swap / Person Swap on Qwen 2.1: base model + BFS LoRA(s) (weights, Ready, downloads; Person Swap: body + head swap)
+  const bfs = bfsCardWorkflowsFor(tool.id, p.id); if (bfs) return bfs; // Face Swap / Person Swap on Qwen 2.1: base model + BFS LoRA (card weights; Person Swap also lists the optional head swap)
   if (p.workflows) return tool.workflows.filter((w) => p.workflows!.includes(w));
   if (p.kind !== 'open-weights') return [];
   if (p.id === 'comfy-funcamera') return tool.workflows.filter((w) => w === 'reshoot-funcamera-api.json');

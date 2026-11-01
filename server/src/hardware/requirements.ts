@@ -36,7 +36,7 @@ import { macBlockedFiles, MAC_WEIGHTS_REASON } from './macWeights.js';
 import { LTX_LORAS, ltxLorasForJob } from '../shared/ltxLoras.js';
 import { comfyFoldersKnown, comfyFileBytes, comfyModelsStamp } from './comfyModels.js';
 import { optionalFileSkipped } from '../comfy/flux3Klein.js';
-import { bfsWorkflowsFor } from '../comfy/bfsSwap.js';
+import { bfsSwapFor } from '../comfy/bfsSwap.js';
 import { IMAGE_FEATURES } from '../shared/imageFeatures.js';
 import { RES_PX } from '../shared/imageCaps.js';
 import { soulWorkflowOf } from '../tools/soul/plan.js';
@@ -158,7 +158,7 @@ export interface Requirements { workflows: string[]; recommendedVramGB: number |
 export const QUALITY_WORKFLOWS: Record<string, { workflow: string; runs: (input: Record<string, any>) => boolean }[]> = { 'comfy-ltx25-video': [{ workflow: 'ltx25-dfr-i2v-api.json', runs: ltxDfrRuns }] };
 export function jobWorkflows(tool: ToolDef, providerId: string, input: Record<string, any> = {}): string[] {
   const qw = QUALITY_WORKFLOWS[providerId]?.find((q) => q.runs(input)); if (qw && tool.id === 'h3-video') return [qw.workflow]; // DFR: its own template and files
-  const bfs = bfsWorkflowsFor(tool.id, providerId, input); if (bfs) return bfs; // Face / Person Swap on Qwen 2.1: the job's own BFS graph (keep-outfit = the head swap); no choice yet = both
+  const bfs = bfsSwapFor(tool.id, providerId, input); if (bfs) return [bfs.workflowFile]; // Face / Person Swap on Qwen 2.1: the job's own BFS graph (keep-outfit = the head swap; no choice = the default body swap, so the card's Ready follows it)
   const p = getProvider(providerId); if (!p) return []; const pw = providerWorkflows(tool, p); const all = pw.length ? pw : p.workflows ?? []; if (all.length <= 1) return all; // charswap: its graph is chosen in comfyClient, not by providerWorkflows
   const t = Array.isArray(input.types) ? String(input.types[0] ?? '') : typeof input.types === 'string' ? String(input.types).replace(/[[\]"]/g, '').split(',')[0] : String(input.mode ?? '');
   if (providerId === 'comfy-soul') { const w = soulWorkflowOf(input); if (w && all.includes(w)) return [w]; } // OpenSoul: the look's (or engine's) own graph
