@@ -65,7 +65,7 @@ import { CloseIcon, ImageIcon } from '../Icons';
 import { useDockHeight, useChipFit } from '../../shared/dockFit';
 import { WorkflowChip } from '../../shared/WorkflowChip';
 import { FeedCaption, jobCaption } from '../../shared/FeedCaption';
-import { typedPromptOf } from '../../../../server/src/shared/typedPrompt';
+import { plainPrompt, typedPromptOf } from '../../../../server/src/shared/typedPrompt';
 import { wantsPicker, usePickerParam, clearPickerParam } from '../../shared/WorkflowPicker';
 import { subjectParts, fillSubject, promptAfterPresetClear, lookParts, thumbsShown, modelDownload, intentLine } from '../../shared/presetBar';
 import { generateFor } from '../../shared/enterSubmit';
@@ -821,7 +821,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
               media={multi && mode === 'mosaic' && j.status === 'done' ? <ResultMosaic items={multi} pres={pres!} width={tileMaxH() * clampAr(ar)} testId={`mr-mosaic-${j.id}`} /> : img}
               badges={multi && pres && !act ? <CountBadge items={multi} pres={pres} testId={pres.kind === 'layers' ? `ly-count-${j.id}` : `mr-count-${j.id}`} /> : null}
               caption={cmp && (cmp as any).kind === 'swatch' && k === 0 && !act ? <SwatchCaption job={j} /> : cmpCap ? <FeedCaption title={cmpCap.model} parts={[cmpCap.place, cmpCap.price, cmpCap.time]} testId={`cmp-cap-${j.id}`} />
-                : multi && !act ? <span className="ic-tile-meta mr-meta" data-testid={`mr-meta-${j.id}`}><b>{feat || 'Create Image'}</b>{prompt && <span>{prompt}</span>}</span>
+                : multi && !act ? <span className="ic-tile-meta mr-meta" data-testid={`mr-meta-${j.id}`}><b>{feat || 'Create Image'}</b>{prompt && <span>{plainPrompt(prompt)}</span>}</span>
                 : cap1 ? <FeedCaption className="ic-cap" title={prompt || cap1.model || feat || 'Image'} parts={[prompt ? cap1.model : null, cap1.price]} testId={`ic-cap-${j.id}`} /> /* the workflow (chip) and the real model, like the Video tab */ : undefined}>
               {multi && !act && j.status === 'done' && nDone > 1 && <a className="mr-dl" href={`/api/jobs/download.zip?ids=${encodeURIComponent(j.id)}`} download data-testid={`ic-dl-all-${j.id}`} aria-label={`Download all ${nDone} (ZIP)`} {...tip(`Download all ${nDone} (ZIP)`)} onClick={e => e.stopPropagation()}><DownloadIcon size={14} /></a>}
             </FeedCard>; };

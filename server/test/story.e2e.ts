@@ -17,7 +17,7 @@ const ff = (...a: string[]) => execFileSync('ffmpeg', ['-y', '-v', 'error', ...a
 const PNG = path.join(os.tmpdir(), `story-cast-${process.pid}.png`); ff('-f', 'lavfi', '-i', 'testsrc2=size=768x768', '-frames:v', '1', PNG);
 const j = async (u: string, init?: RequestInit) => { const r = await fetch(`${B}${u}`, init); let b: any = null; try { b = await r.json(); } catch { /* */ } return { status: r.status, b }; };
 const post = (u: string, body: unknown) => j(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-const until = async (id: string, ok = (s: any) => s.status !== 'running') => { for (let i = 0; i < 400; i++) { const s = (await j(`/api/stories/${id}`)).b; if (ok(s)) return s; await new Promise((r) => setTimeout(r, 250)); } throw new Error(`story ${id} timed out`); };
+const until = async (id: string, ok = (s: any) => s.status !== 'running') => { for (let i = 0; i < 1200; i++) /* ~300 s: a 2-core CI runner timed out at 100 s */ { const s = (await j(`/api/stories/${id}`)).b; if (ok(s)) return s; await new Promise((r) => setTimeout(r, 250)); } throw new Error(`story ${id} timed out`); };
 const fileOf = (u: string) => path.join(D, u.replace(/^\/files\//, ''));
 const ffprobe = (f: string) => JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration:stream=codec_type', '-of', 'json', f]).toString());
 let fail = 0; const t0 = Date.now(); const step = (s: string) => console.log(`  ✓ ${s}`);

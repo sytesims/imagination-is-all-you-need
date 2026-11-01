@@ -47,7 +47,7 @@ ok('short model names');
 const W = path.resolve(import.meta.dirname, '../../web/src'); const rd = (p: string) => fs.readFileSync(path.join(W, p), 'utf8');
 const feed = rd('ui/audio/AudioFeed.tsx'); const card = rd('shared/AudioCard.tsx'); const css = rd('shared/audioCard.css'); const page = rd('ui/audio/audioPage.css');
 assert.match(feed, /resultTitle\(\{ title: \(j as any\)\.title \|\| \(j as any\)\.example\?\.title, prompt/, 'own title, then the example\'s, then the prompt');
-assert.match(feed, /subtitle=\{prompt \|\| null\} model=\{shortModelName\(model\)\} modelTitle=\{model\}/);
+assert.match(feed, /subtitle=\{plainPrompt\(prompt\) \|\| null\} model=\{shortModelName\(model\)\} modelTitle=\{model\}/, 'the prompt line in plain words (no @image2)');
 assert.match(card, /className="ac-sub" data-testid=\{`\$\{testId\}-sub`\} title=\{sub\}/, 'the full prompt on hover');
 assert.match(card, /title=\{modelTitle && modelTitle !== model \? modelTitle : undefined\}/, 'the full model name on hover');
 assert.match(css, /\.ac-tile \.ac-title\{display:block;[^}]*white-space:nowrap/, 'one title line'); assert.match(css, /\.ac-sub\{[^}]*white-space:nowrap;text-overflow:ellipsis/);

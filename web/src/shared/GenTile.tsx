@@ -5,7 +5,7 @@ import { cancelQueued, isCancellable } from './QueueCancel';
 import { YourGpuIcon, ComfyPlaceIcon, ApiPlugIcon, CloseIcon } from '../ui/Icons';
 import Mascot from '../ui/Mascot';
 import { progressOfJob, progressLabel, etaText, stageFill, stepIndex, STEPS, previewBlur, placeOf, useQueueActivity, activityItem, dropFromActivity, overallFill, startsText, type ProgressInfo, type PlaceKind } from './queueActivity';
-import { typedPromptOf } from '../../../server/src/shared/typedPrompt';
+import { plainPrompt, typedPromptOf } from '../../../server/src/shared/typedPrompt';
 import './gentile.css';
 
 /**
@@ -63,7 +63,7 @@ export default function GenTile({ job, inButton = false, testId, className = '',
   const preview = !canceled ? (!queued ? p.previewUrl : null) ?? sourcePhoto : null;
   const label = live && photos.length && /^(Photo \d+ of \d+|Stitching|Adding music|Choose where to continue this step)$/.test(String(j.stage)) ? String(j.stage) : progressLabel(p); const eta = !queued && !canceled ? etaText(p.etaSeconds) : '';
   const model: string = item?.model ?? j.modelName ?? j.model ?? '';
-  const prompt: string = String((j.input ? typedPromptOf(j.input) : null) ?? item?.title ?? '').replace(/\s+/g, ' ').trim(); /* workflow jobs: your words (2026-10-25) */
+  const prompt: string = String((j.input ? plainPrompt(typedPromptOf(j.input)) : null) ?? item?.title ?? '').replace(/\s+/g, ' ').trim(); /* workflow jobs: your words (2026-10-25) */
   const [a, b] = hueOf(String(model || job.toolId || job.id));
   const cancel = () => { dropFromActivity(job.id); void cancelQueued(job, toast).then(ok => { if (ok) onCanceled?.(); }); };
   const chip = [pl.label, pl.price].filter(Boolean).join(' · ');
@@ -109,7 +109,7 @@ export function JobRow({ id, title, model, place, p, onOpen, onCancel, inButton 
 export function JobRowFor({ job, inButton = true, onCanceled }: { job: JobState; inButton?: boolean; onCanceled?: () => void }) {
   const toast = useToast(); const j: any = job; const live = j.status === 'running' || j.status === 'queued'; const waiting = j.status === 'queued';
   const act = useQueueActivity(live); const item = activityItem(act, job.id); const pl = placeOf(j, item); const p = progressOfJob(job);
-  const title = String((j.input ? typedPromptOf(j.input) : null) || item?.title || 'Untitled').replace(/\s+/g, ' ').trim() || 'Untitled';
+  const title = String((j.input ? plainPrompt(typedPromptOf(j.input)) : null) || item?.title || 'Untitled').replace(/\s+/g, ' ').trim() || 'Untitled';
   const ref = useRef(job); ref.current = job;
   return <JobRow waiting={waiting} id={job.id} title={title} model={item?.model ?? j.modelName ?? j.model ?? null} place={pl} p={p} inButton={inButton}
     onCancel={canCancelJob(job) ? () => { dropFromActivity(job.id); void cancelQueued(ref.current, toast).then(ok => { if (ok) onCanceled?.(); }); } : null} />;

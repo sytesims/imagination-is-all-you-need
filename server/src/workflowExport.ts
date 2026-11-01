@@ -25,7 +25,7 @@ import { DATA_DIR, WORKFLOWS_DIR, config } from './config.js';
 import type { Job } from './jobs.js';
 import { getProvider } from './providers.js';
 import { jobModelFields } from './routing/modelRegistry.js';
-import { RUN_ON_LABELS, type RunOn } from './shared/modelIds.js';
+import { PLACE_LABELS, RUN_ON_LABELS, type RunOn } from './shared/modelIds.js';
 import { isApiNode } from './apiNodes.js';
 
 export const GRAPHS_DIR = path.join(DATA_DIR, 'workflow-graphs');
@@ -123,10 +123,13 @@ function partnerGraph(job: Job, providerId: string, media: MediaNote[]): { workf
 
 const partnerOf = (g: Record<string, any>) => [...new Set(Object.values<any>(g).map((n) => n?.class_type).filter((c): c is string => typeof c === 'string' && isApiNode(c)))];
 
+/** A partner model through the Comfy key (Comfy Router): shown as "Comfy Cloud" like every place label, and honest that there is no graph. */
+const ROUTER_REASON = 'This used a hosted partner model through Comfy Cloud, so there is no ComfyUI workflow to open.';
+
 /** Build the export for a job (graphs included, so the route handler can serve one pass). */
 export async function buildWorkflowExport(job: Job): Promise<WorkflowExport & { graphs: Record<string, any>[] }> {
   const mf = jobModelFields(job as any); const route = String(job.route ?? ''); const kind = route ? route.split(':')[0] : null;
-  const ranOnLabel = kind === 'comfy-router' ? 'Comfy Router' : mf.runOnLabel ?? (mf.runOn ? RUN_ON_LABELS[mf.runOn as RunOn] : null);
+  const ranOnLabel = kind === 'comfy-router' ? PLACE_LABELS['comfy-router'] /* "Comfy Cloud", as the result's details say (placeOf) */ : mf.runOnLabel ?? (mf.runOn ? RUN_ON_LABELS[mf.runOn as RunOn] : null);
   const comfyUrl = await localComfyUrl();
   const base: WorkflowExport = { jobId: job.id, toolId: job.toolId, available: false, exact: false, source: null, ranOn: { id: mf.runOn, label: ranOnLabel, kind },
     headline: '', notes: [], passes: [], media: [], runtime: [], formats: { api: true, ui: false, uiNote: UI_NOTE }, comfy: { url: comfyUrl, opensApiFormat: true, howTo: HOW_TO, docs: DOCS } };
@@ -189,7 +192,7 @@ export async function buildWorkflowExport(job: Job): Promise<WorkflowExport & { 
     if (kind === 'comfy-cloud' || kind === 'comfy-router') {
       const pg = partnerGraph(job as Job, route.slice(route.indexOf(':') + 1), media); const via = kind === 'comfy-router' ? 'Comfy’s API' : 'Comfy Cloud';
       if (pg) return fin('partner', false, `This ran through ${via} with a partner node (${partnerOf(pg.graph).join(', ') || 'API node'}). Here is the same call as a ComfyUI workflow.`, [{ label: 'Result', workflow: pg.workflow, graph: pg.graph }], { media, notes: [pg.note, 'Partner nodes run on the provider’s servers: in ComfyUI they need a Comfy account with credits.'] });
-      return { ...base, reason: kind === 'comfy-router' ? 'This ran on Comfy Router, an API, not a ComfyUI workflow.' : 'This ran on Comfy Cloud through a partner API, and there is no workflow file for it yet.', headline: 'Not a ComfyUI workflow', graphs: [] };
+      return { ...base, reason: kind === 'comfy-router' ? ROUTER_REASON : 'This ran on Comfy Cloud through a partner API, and there is no workflow file for it yet.', headline: 'Not a ComfyUI workflow', graphs: [] };
     }
     const local = !kind || kind === 'local';
     if (hasPlan(j as any)) {
@@ -200,7 +203,7 @@ export async function buildWorkflowExport(job: Job): Promise<WorkflowExport & { 
   } catch (e) {
     return { ...base, reason: `The workflow couldn’t be rebuilt for this result: ${(e as Error).message}`, headline: 'No workflow for this one', graphs: [] };
   }
-  if (kind === 'comfy-router') return { ...base, reason: 'This ran on Comfy Router, an API, not a ComfyUI workflow.', headline: 'Not a ComfyUI workflow', graphs: [] };
+  if (kind === 'comfy-router') return { ...base, reason: ROUTER_REASON, headline: 'Not a ComfyUI workflow', graphs: [] };
   return { ...base, reason: `This ran on ${ranOnLabel ?? 'a hosted API'}, not a ComfyUI workflow.`, headline: 'Not a ComfyUI workflow', graphs: [] };
 }
 

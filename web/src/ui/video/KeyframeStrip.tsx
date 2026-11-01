@@ -71,6 +71,6 @@ export function KeyframePanel({ frames, times, seconds, onChange, onAdd, caps = 
       {caps.times && frames.length > 2 && <button type="button" className="vs-kf-btn ghost" data-testid="vs-kf-spread" onClick={() => onChange(frames, spreadTimes(frames.length, seconds))}>Space evenly</button>}
     </div>
     {frames.length > 0 && frames.length < caps.min && <PopNote testId="vs-kf-need" tone="warn">Add at least one more frame.</PopNote>}
-    <p className="vs-kf-tip">Write <code>&lt;Picture 2&gt;</code> (or @image2) in the prompt to say what happens around frame 2.</p>
+    <p className="vs-kf-tip">Type @ in the prompt and pick a frame to say what happens around it.</p>
   </PopSection>;
 }

@@ -32,6 +32,7 @@ import { useToast } from '../shared/Toast';
 import { navigate } from '../platform/router';
 import { WorkflowControls } from '../ui/next/WorkflowBar';
 import { WorkflowDialog, useWorkflowInfo } from '../shared/WorkflowDialog';
+import { workflowTip } from '../shared/workflowTip';
 import { ImageIcon, VideoIcon, AudioIcon, CubeIcon, DownloadIcon, CloseIcon, TextIcon, ChevronRightIcon, ExpandIcon, OpenModelIcon } from '../ui/Icons';
 import { CopyIcon, RetryIcon, PullOutIcon, NoteIcon, PromptIcon, UploadIcon, AdIcon, CompareIcon, GroupIcon } from './icons';
 import { useCatalog, catalogNow } from './catalog';
@@ -431,8 +432,7 @@ function MadeFrom({ list }: { list: MadeFromT[] }) {
  *  View workflow is the result view's (shared WorkflowDialog + useWorkflowInfo) for the active version's job, with the same honest disabled tip. */
 function Actions({ v }: { v: View }) {
   const m = v.media!; const [wf, setWf] = useState(false); const wfInfo = useWorkflowInfo(m.jobId || null); const wfOk = wfInfo.info?.available === true;
-  const wfDis = wfOk ? null : wfInfo.info ? 'Only results made by open models, on your computer or on Comfy Cloud, come with a ComfyUI workflow.'
-    : wfInfo.err ? (wfInfo.err === 'not found' ? 'This result is no longer in your library, so its workflow can’t be shown.' : `The workflow couldn’t be loaded. ${wfInfo.err}`) : 'Checking…';
+  const wfDis = workflowTip(wfInfo.info, wfInfo.err);
   useEffect(() => setWf(false), [m.jobId]);
   const page = m.kind === 'video' ? 'Video' : m.kind === 'audio' ? 'Audio' : m.kind === '3d' ? '3D' : 'Image';
   const href = v.gen ? toolHrefOf(v.p.flow, m.jobId || v.p.jobId) : v.job ? workflowRecreateHref(v.job as any) : null;

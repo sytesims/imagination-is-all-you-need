@@ -3,7 +3,7 @@ import type { JobState } from '../api';
 import { notePoll, isNetworkFail, onReconnect } from './connectivity';
 import { pollWithBackoff, jobSig } from './backoff';
 import { clientId } from './clientId';
-import { typedPromptOf } from '../../../server/src/shared/typedPrompt';
+import { plainPrompt, typedPromptOf } from '../../../server/src/shared/typedPrompt';
 
 /**
  * Server-driven active-job list. One shared poller for all subscribers:
@@ -74,7 +74,7 @@ const toolNames = new Map<string, string>();
 export const registerToolNames = (tools: { id: string; name: string }[]) => tools.forEach((t) => toolNames.set(t.id, t.name));
 /** "Create Image · a red fox in the snow…" (tool name + prompt excerpt, ≤ 60 chars). */
 export function notifyBody(j: JobState) {
-  const prompt = typedPromptOf((j as any).input).replace(/\s+/g, ' ').trim(); // workflow jobs: your words (2026-10-25)
+  const prompt = plainPrompt(typedPromptOf((j as any).input)); // workflow jobs: your words (2026-10-25)
   const ex = prompt.length > 60 ? `${prompt.slice(0, 57)}…` : prompt;
   return [toolNames.get(j.toolId) ?? j.toolId, ex].filter(Boolean).join(' · ');
 }
