@@ -63,5 +63,6 @@ const T2V15 = { duration: '15', resolution: '768p', aspect: 'auto', audio: '1' }
 { const n = needOf("Comfy Cloud can't run this job. This route only does image to video or first and last frame.")!; assert.equal(n.short, 'Needs a start image'); assert.equal(n.action, 'add-image');
   assert.equal(needOf('This route only does first and last frame.')!.short, 'Needs 2 images'); assert.equal(needOf('Needs a video to work on.')!.short, 'Needs a video');
   assert.equal(needOf('This route only does text to video, image to video or first and last frame.'), null); assert.equal(needOf('Price not measured yet'), null); assert.equal(needOf(''), null);
+  assert.equal(needOf('Add a start image: Wan 2.2 Fun Camera is image-to-video only. Without an image, pick an LTX move.')!.action, 'add-image', 'Camera Moves: "Add a start image: …"');
   ok('needOf: start image / 2 images / video; text-capable routes and other reasons are not needs'); }
 console.log('settings-fit: all ok');
