@@ -561,7 +561,7 @@ export function registerRouting(app: FastifyInstance) {
           if (noImage && ty.length && model && AP.cameraImageRequired(model, ty) && !(dr && 'error' in dr)) { const alt = AP.cameraTextProviders(ty, us);
             if (!pinned && alt[0]) model = alt[0];
             else { const body = AP.cameraImageRequiredBody(ty, pinned ? model : null, pinned ? (AP.cameraApp.providers ?? us) : us);
-              if (AP.cameraPresetOff(ty, model)) { reply.code(400); return { ...body, ...quoteDefs(), valid: false, credits: null, priceAvailable: false }; } // the model can't run the move at all: nothing to price (same 400 as submit)
+              { const off0 = AP.cameraPresetOff(ty, model); if (off0) { reply.code(400); return { ...AP.presetUnsupportedBody(AP.cameraApp.presets ?? [], off0, model), ...quoteDefs(), valid: false, credits: null, priceAvailable: false }; } } // the model can't run the move at all: nothing to price (same 400 as submit)
               camBlock = body; q.image = '1'; } } // priced as the job with its image; flagged below
           const off = model && ty.length && !(dr && 'error' in dr) ? AP.cameraPresetOff(ty, model) : null;
           if (off) { reply.code(400); return { ...AP.presetUnsupportedBody(AP.cameraApp.presets ?? [], off, model!), ...quoteDefs(), valid: false, credits: null, priceAvailable: false }; } }

@@ -613,6 +613,8 @@ async function createJob(toolId: string, req: FastifyRequest, reply: FastifyRepl
       return reply.code(400).send({ error: msg, errorType: 'validation', code: 'required', issues: [{ code: 'required', field: any[0], message: msg }], refund: nc }); }
     if (tool.id === 'camera' && !files.image?.length && !files.refs?.length && providerId) {
       const AP = await import('./tools/apps.js'); const ty = AP.parseTypesField(fields.types).map(AP.cameraMoveId);
+      const off = AP.cameraPresetOff(ty, providerId); // a move this model can't run says so first (not "add a start image")
+      if (off) return reply.code(400).send({ ...AP.presetUnsupportedBody(AP.cameraApp.presets ?? [], off, providerId), refund: nc });
       if (ty.length && AP.cameraImageRequired(providerId, ty)) {
         return reply.code(400).send({ ...AP.cameraImageRequiredBody(ty, providerId, usable.map((p) => p.id)), refund: nc });
       }
