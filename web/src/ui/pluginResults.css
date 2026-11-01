@@ -22,3 +22,27 @@
 .ws-tool.ws-tool-plugin{display:flex;align-items:center;gap:12px}
 @media (max-width:560px){.plr{padding:16px}.plr-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}}
 @media (min-width:761px){.plr-tabs,.plr-empty-a .m-only{display:none!important}}
+/* The "Needs" list of a workflow you added (ui/WorkflowNeeds.tsx): quiet rows, the shared download bar (styles.css .ls-prog) */
+.wn{display:grid;gap:8px;padding:12px 14px;border-radius:14px;border:1px solid var(--border,rgba(255,255,255,.06));background:var(--surface-1,rgba(255,255,255,.02))}
+.wn-h{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;min-height:30px}
+.wn-h>b{font:600 13.5px/1.2 var(--font-ui,Inter)}
+.wn-h>small{color:var(--text-2,#b4b5b8);font:500 12.5px/1.2 var(--font-ui,Inter)}
+.wn[data-missing]:not([data-missing="0"]) .wn-h>small{color:var(--accent)}
+.wn-act{display:flex;align-items:center;gap:8px;margin-left:auto}
+.wn-list{list-style:none;margin:0;padding:0;display:grid}
+.wn-list li{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,auto);align-items:center;gap:4px 12px;padding:7px 0;border-top:1px solid var(--hairline,rgba(255,255,255,.05))}
+.wn-file{display:grid;min-width:0}
+.wn-file b{font:500 12.5px/1.35 var(--font-mono,ui-monospace,Menlo,monospace);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wn-file small,.wn-src small{color:var(--text-3,#8b8c90);font:500 11.5px/1.35 var(--font-ui,Inter)}
+.wn-src a{color:inherit}.wn-src a:hover{color:var(--text-1,#fff)}
+.wn-state{display:inline-flex;align-items:center;gap:4px;font:600 11.5px/1 var(--font-ui,Inter);white-space:nowrap}
+.wn-have{color:#7fd69a}.wn-missing{color:var(--accent)}.wn-unknown{color:var(--text-3,#8b8c90)}
+.wn-link{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 8px;align-items:center}
+.wn-link input{min-height:32px;padding:6px 10px;font-size:12.5px}
+.wn-link .wn-err{grid-column:1/-1;margin:0}
+.wn-note{grid-column:1/-1;margin:0}
+.wn-hint{margin:0}
+.wn-more{justify-self:start}
+@media (max-width:560px){.wn-list li{grid-template-columns:minmax(0,1fr) auto}.wn-src{grid-column:1/-1}.wn-act{margin-left:0;width:100%}}
+.wn-none{margin:0;color:var(--text-3,#8b8c90);font:500 12.5px/1.4 var(--font-ui,Inter)}
+.wn-act .ls-prog{width:170px}

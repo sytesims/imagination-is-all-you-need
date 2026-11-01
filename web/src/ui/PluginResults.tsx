@@ -9,6 +9,7 @@ import { Link } from '../platform/router';
 import GenTile from '../shared/GenTile';
 import { PluginBadge } from '../shared/PluginBadge';
 import { ToolIconFor } from './Icons';
+import WorkflowNeeds from './WorkflowNeeds';
 import './pluginResults.css';
 
 const isImg = (u?: string | null) => !!u && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(u);
@@ -30,6 +31,7 @@ export default function PluginResults({ tool, mv = 'canvas', setMv }: { tool: To
     {setMv && <div className="canvas-tabs plr-tabs" role="tablist"><button type="button" role="tab" className={`ctab-create ${mv === 'form' ? 'on m-on' : ''}`} aria-selected={mv === 'form'} data-testid="ctab-create" onClick={() => setMv('form')}>Create</button>
       <button type="button" role="tab" className={mv === 'canvas' ? 'on m-on' : ''} aria-selected={mv === 'canvas'} data-testid="ctab-results" onClick={() => setMv('canvas')}>Results{jobs?.length ? <span className="count">{jobs.length}</span> : null}</button></div>}
     <header className="plr-head"><h2>{tool.name}{b && <PluginBadge b={b} />}</h2><p>{tool.description}</p></header>
+    {p?.user && <WorkflowNeeds toolId={tool.id} />}
     {jobs === null ? <div className="plr-grid" aria-busy="true">{[0, 1, 2].map(i => <span key={i} className="plr-cell shimmer" />)}</div>
       : !jobs.length ? <div className="plr-empty" data-testid="plugin-results-empty">
           <span className="plr-empty-ic" aria-hidden><ToolIconFor id={tool.id} ui={tool.ui} size={26} /></span>

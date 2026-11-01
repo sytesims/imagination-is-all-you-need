@@ -84,3 +84,9 @@ export const choiceText = (c: DlChoice, _all?: DlChoice[]): string => {
   const tools = toolWords(c);
   return [c.label ?? c.downloadId, tools || null].filter(Boolean).join(' · ');
 };
+
+/** Add a workflow: the model files a workflow you added loads, and whether your ComfyUI has them (server workflowModels.ts). */
+export type NeedRow = { file: string; folder: string; nodes: string[]; state: 'have' | 'missing' | 'unknown'; url: string | null; bytes: number | null; pageUrl: string | null; linkFrom: 'list' | 'yours' | null; nodeMissing?: boolean; badPath?: boolean };
+export type Needs = { id: string; comfy: 'ok' | 'off' | 'not_set'; modelsDirSet: boolean; files: NeedRow[]; missing: number; unknown: number; downloadId: string };
+export const getWorkflowNeeds = (id: string) => send<Needs>(`/api/workflows/${encodeURIComponent(id)}/models`, 'GET');
+export const saveWorkflowLink = (id: string, folder: string, file: string, url: string) => send<Needs>(`/api/workflows/${encodeURIComponent(id)}/models`, 'PUT', { folder, file, url });

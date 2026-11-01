@@ -49,7 +49,8 @@ type MWf = { models: string[]; vram_est_gb?: number; mps?: string; mps_notes?: s
 let man: { models: MRow[]; workflows: Record<string, MWf> } | null = null;
 export const manifest = (): { models: MRow[]; workflows: Record<string, MWf> } => (man ??= ((): { models: MRow[]; workflows: Record<string, MWf> } => { try { const j = JSON.parse(readFileSync(MANIFEST, 'utf8')); return { models: j.models ?? [], workflows: j.workflows ?? {} }; } catch { return { models: [], workflows: {} }; } })());
 const sizeGb = (r: MRow) => { const b = r.size ?? HF_SIZES[r.file] ?? null; return b == null ? 0 : Math.round((b / 1e9) * 100) / 100; };
-const ROLE: Record<string, string> = { unet_name: 'dit', ckpt_name: 'dit', model: 'dit', text_encoder: 'te', clip_name: 'te', clip_name1: 'te', clip_name2: 'te', lora_name: 'lora', vae_name: 'vae' };
+/** Model-loading inputs of a ComfyUI graph and their role (also what Add a workflow reads: workflowModels.ts). */
+export const ROLE: Record<string, string> = { unet_name: 'dit', ckpt_name: 'dit', model: 'dit', text_encoder: 'te', clip_name: 'te', clip_name1: 'te', clip_name2: 'te', clip_name3: 'te', clip_name4: 'te', lora_name: 'lora', vae_name: 'vae' };
 const roleOf = (m: MRow) => (['UNETLoader', 'UnetLoaderGGUF', 'CheckpointLoaderSimple', 'SeedVR2LoadDiTModel'].some((n) => m.loaded_by.includes(n)) ? 'dit' : ROLE[m.input[0]] ?? 'aux');
 const r1 = (x: number) => Math.round(x * 10) / 10;
 export interface WfVram { workflow: string; recommendedVramGB: number; minVramGB: number; residentGB: number; teGB: number; largestFileGB: number; video: boolean; mps: 'green' | 'amber' | 'red'; mpsNotes: string[]; files: string[] }
@@ -194,8 +195,18 @@ const FOLDER_ALIASES: Record<string, string[]> = { text_encoders: ['text_encoder
 export const modelFileBytes = (dir: string, folder: string, file: string): number | null => { let best: number | null = null;
   for (const d of FOLDER_ALIASES[folder] ?? [folder]) { try { const st = statSync(path.join(dir, d, file)); if (st.isFile() && (best == null || st.size > best)) best = st.size; } catch { /* not in this folder */ } } return best; };
 /** Core loader inputs → ComfyUI folder. LoRA loaders are left out: their file is swapped per job. */
-const LOADER_FOLDERS: Record<string, Record<string, string>> = { UNETLoader: { unet_name: 'diffusion_models' }, UnetLoaderGGUF: { unet_name: 'diffusion_models' }, LatentUpscaleModelLoader: { model_name: 'latent_upscale_models' }, CLIPLoader: { clip_name: 'text_encoders' }, DualCLIPLoader: { clip_name1: 'text_encoders', clip_name2: 'text_encoders' },
+export const LOADER_FOLDERS: Record<string, Record<string, string>> = { UNETLoader: { unet_name: 'diffusion_models' }, UnetLoaderGGUF: { unet_name: 'diffusion_models' }, LatentUpscaleModelLoader: { model_name: 'latent_upscale_models' }, CLIPLoader: { clip_name: 'text_encoders' }, DualCLIPLoader: { clip_name1: 'text_encoders', clip_name2: 'text_encoders' },
   VAELoader: { vae_name: 'vae' }, CheckpointLoaderSimple: { ckpt_name: 'checkpoints' }, UpscaleModelLoader: { model_name: 'upscale_models' }, CLIPVisionLoader: { clip_name: 'clip_vision' } };
+/** Loaders whose file a workflow you added names as it is (built-in graphs swap LoRAs per job, so loaderFiles leaves these out). */
+const ADDED_LOADER_FOLDERS: Record<string, Record<string, string>> = { LoraLoader: { lora_name: 'loras' }, LoraLoaderModelOnly: { lora_name: 'loras' }, CLIPLoaderGGUF: { clip_name: 'text_encoders' },
+  DualCLIPLoaderGGUF: { clip_name1: 'text_encoders', clip_name2: 'text_encoders' }, TripleCLIPLoader: { clip_name1: 'text_encoders', clip_name2: 'text_encoders', clip_name3: 'text_encoders' },
+  TripleCLIPLoaderGGUF: { clip_name1: 'text_encoders', clip_name2: 'text_encoders', clip_name3: 'text_encoders' }, QuadrupleCLIPLoader: { clip_name1: 'text_encoders', clip_name2: 'text_encoders', clip_name3: 'text_encoders', clip_name4: 'text_encoders' } };
+/** ROLE input → its usual ComfyUI folder, for a loader neither list knows (a custom node with the standard input names). */
+const ROLE_INPUT_FOLDER: Record<string, string> = { unet_name: 'diffusion_models', ckpt_name: 'checkpoints', lora_name: 'loras', vae_name: 'vae', text_encoder: 'text_encoders', clip_name: 'text_encoders', clip_name1: 'text_encoders', clip_name2: 'text_encoders', clip_name3: 'text_encoders', clip_name4: 'text_encoders' };
+/** A weight file name (what the loaders above read). */
+export const MODEL_FILE_RE = /\.(safetensors|gguf|pth|pt|ckpt|bin|sft)$/i;
+/** The models folder a loader input reads from (null = not a model-loading input). */
+export const modelInputFolder = (classType: string, input: string): string | null => LOADER_FOLDERS[classType]?.[input] ?? ADDED_LOADER_FOLDERS[classType]?.[input] ?? (ROLE[input] ? ROLE_INPUT_FOLDER[input] ?? null : null);
 const wfFilesCache = new Map<string, { file: string; folder: string }[]>();
 /** Weight files a workflow's core loader nodes name, read from the workflow JSON, so a model the manifest misses still gets its files checked. */
 function loaderFiles(wfs: string[]): { file: string; folder: string; bytes: number | null; url: string; autoDownloaded: boolean }[] {
@@ -321,6 +332,7 @@ export const UNTESTED_VARIANT = 'Should run here (not tested yet)';
 // ---- Q4 weights gate (real runs need the files; the mock backend only reports unless OPENHIGGSFIELD_ENFORCE_WEIGHTS=1) ----
 import { config as CFG } from '../config.js';
 import { missingNodes } from '../comfyNodes.js';
+import { workflowGate } from '../workflowModels.js';
 export const enforceWeights = () => CFG.backend === 'comfy' || /^(1|true)$/i.test(env('ENFORCE_WEIGHTS') ?? '');
 export interface WeightsGate { code: 'weights_missing' | 'not_enough_disk' | 'nodes_missing'; missingNodes?: string[]; message: string; missingBytes: number; missingFiles: NonNullable<Requirements['missingFiles']>; diskFreeBytes: number | null; downloadable: boolean; downloadEndpoint: string; downloadId: string }
 /** A local job whose weight files are missing (pack auto-downloads don't count): not_enough_disk when they can't fit (also on the mock backend when downloadWeights=1), else weights_missing unless the
@@ -331,7 +343,9 @@ export function weightsGate(tool: ToolDef, providerId: string, input: Record<str
     const vn = (requirementsFor(tool, providerId, input, hw)?.variant?.needsNodes ?? []).filter((n) => n === 'UnetLoaderGGUF' && hw.comfy.ggufNode === false); // the picked variant's .gguf files need ComfyUI-GGUF
     for (const n of vn) if (!nodes.includes(n)) nodes.push(n);
     if (nodes.length) return { code: 'nodes_missing', missingNodes: nodes, message: `Your ComfyUI is missing the custom node${nodes.length > 1 ? 's' : ''} this model needs (${nodes.slice(0, 4).join(', ')}${nodes.length > 4 ? '…' : ''}). Install ${nodes.length > 1 ? 'them' : 'it'} with ComfyUI Manager and restart ComfyUI, or use another route.`,
-      missingBytes: 0, missingFiles: [], diskFreeBytes: hw.disk.freeBytes, downloadable: false, downloadEndpoint: '/api/local/downloads', downloadId: '' }; }
+      missingBytes: 0, missingFiles: [], diskFreeBytes: hw.disk.freeBytes, downloadable: false, downloadEndpoint: '/api/local/downloads', downloadId: '' };
+    const wg = workflowGate(tool as any, hw.disk.freeBytes, wantsDl); if (wg) return wg; // a workflow you added: its own graph's files (workflowModels.ts)
+  }
   const req = requirementsFor(tool, providerId, input, hw); if (!req?.missingFiles) return null;
   const files = req.missingFiles.filter((f) => !f.autoDownloaded); if (!files.length) return null; const need = files.reduce((a, f) => a + (f.bytes ?? 0), 0);
   const free = hw.disk.freeBytes; const gbs = (b: number) => (Math.round(b / 1e8) / 10).toString();

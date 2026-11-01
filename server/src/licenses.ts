@@ -48,6 +48,8 @@ export const LICENSES = {
   'no-license': { id: 'no-license', name: 'No licence declared (ComfyUI_Fill-ChatterBox node pack)', osi: false, url: 'https://github.com/filliptm/ComfyUI_Fill-ChatterBox' },
 } as Record<string, LicenseInfo>;
 export type LicenseId = string;
+/** The licences the app ships with (before any plugin registers its own). */
+export const BUILT_IN_LICENSE_IDS: ReadonlySet<string> = new Set(Object.keys(LICENSES));
 /** Plugins may declare licences beyond the built-ins (must say whether they are OSI-approved). */
 export const registerLicense = (l: LicenseInfo) => { if (!LICENSES[l.id]) LICENSES[l.id] = l; };
 /** Workflow variant → governing licence (the most restrictive part) + every licence involved. */

@@ -12,7 +12,7 @@ import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { USER_PLUGINS_DIR, WORKFLOWS_DIR } from './config.js';
 import { toolIdTaken } from './tools/registry.js';
-import { LICENSES } from './licenses.js';
+import { BUILT_IN_LICENSE_IDS, LICENSES } from './licenses.js';
 import { hasFileKey, pluginOutKind } from './pluginGraph.js';
 import { addPluginFolder, isUserPluginDir, pluginStatus, removePlugin, validateManifest } from './plugins.js';
 import { PLUGIN_CATEGORIES, PLUGIN_TABS, TAB_LABEL, type PluginTab } from './shared/pluginPlacement.js';
@@ -248,7 +248,8 @@ export async function saveWorkflow(b: SaveBody, objectInfo?: Parameters<typeof r
   const extras = guess.extras.filter((x) => (b.extras ?? []).includes(x.key));
   const licName = String(b.license ?? '').replace(/\s+/g, ' ').trim().slice(0, 80) || 'Your own';
   const source = cleanUrl(b.source); if (source === undefined) return { ok: false, error: 'The source link must start with http:// or https://.', field: 'source' };
-  const known = Object.values(LICENSES).find((l) => l.id === licName.toLowerCase() || l.name.toLowerCase() === licName.toLowerCase());
+  /* only a licence the app ships with: another added workflow's own "Your own" licence is registered only once that one loads, so reusing its id broke loading after a restart */
+  const known = Object.values(LICENSES).find((l) => BUILT_IN_LICENSE_IDS.has(l.id) && (l.id === licName.toLowerCase() || l.name.toLowerCase() === licName.toLowerCase()));
   const licId = known?.id ?? `${id}-licence`;
   const ref = (c: NodeChoice | null | 'bad') => (c && c !== 'bad' ? { node: c.node, field: c.field! } : undefined);
   const nodeMap = { inputs: { ...(input !== 'none' ? { [input]: ref(inp) } : {}), ...(prm && prm !== 'bad' ? { prompt: ref(prm) } : {}), ...(sd && sd !== 'bad' ? { seed: ref(sd) } : {}) },

@@ -21,7 +21,9 @@ import { config } from '../config.js';
 import { getKv, setKv } from '../db.js';
 import { env } from '../env.js';
 import { getProvider } from '../providers.js';
-import { listTools } from '../tools/registry.js';
+import { getTool, listTools } from '../tools/registry.js';
+import { workflowDownloadRows } from '../workflowModels.js';
+import { forgetComfyLoaderOptions } from '../comfyNodes.js';
 import { cardName } from '../models.js';
 import { weightsHere } from './variants.js';
 import { findVariant, manifest, modelsDir, setMissingWeights, clearRequirementsCache, downloadIdFor, parseDownloadId, jobWorkflows, QUALITY_WORKFLOWS } from './requirements.js';
@@ -105,7 +107,10 @@ export function planFiles(spec: DlSpec, dir: string | null): { label: string; pr
   let label = ''; let rows: { file: string; folder: string; url: string | null; bytes: number | null }[] = []; let providerId: string | null = spec.providerId ?? null; let downloadId: string | null = null;
   const auto = AUTO(); const fromWfs = (wfs: string[]) => weightsHere(wfs).filter((w) => !auto.has(w.file)).map((w) => ({ file: w.file, folder: w.folder, url: w.url ?? null, bytes: w.sizeBytes ?? null })); // this computer's picked variant only (item 5)
   const parsed = spec.downloadId ? parseDownloadId(spec.downloadId) : null;
-  if (spec.variantId) { const v = findVariant(spec.variantId); if (!v) throw new DlError('not_found', 'No such lighter version.'); label = `${v.file} (${v.precision})`; rows = [{ file: v.file, folder: v.folder, url: v.url, bytes: v.bytes }]; downloadId = null; }
+  const wfId = /^workflow:([a-z][a-z0-9-]{1,39})$/.exec(spec.downloadId ?? '')?.[1];
+  if (wfId) { const t = getTool(wfId) as any; if (!t?.plugin?.user) throw new DlError('not_found', 'No workflow you added has that name.'); // Add a workflow: the files its own graph loads (workflowModels.ts)
+    label = t.name ?? wfId; providerId = null; downloadId = spec.downloadId!; rows = workflowDownloadRows(t); }
+  else if (spec.variantId) { const v = findVariant(spec.variantId); if (!v) throw new DlError('not_found', 'No such lighter version.'); label = `${v.file} (${v.precision})`; rows = [{ file: v.file, folder: v.folder, url: v.url, bytes: v.bytes }]; downloadId = null; }
   else if (parsed) { const p = getProvider(parsed.providerId); if (!p || p.kind !== 'open-weights') throw new DlError('not_found', 'No such local model.');
     const ok = allowedWorkflows(p.id); const bad = parsed.workflows.filter((w) => !ok.has(w)); if (bad.length) throw new DlError('not_found', 'No such model download.', { downloadId: spec.downloadId });
     providerId = p.id; downloadId = downloadIdFor(p.id, parsed.workflows); const fams = familiesOf(p.id); const fam = fams.find((f) => f.downloadId === downloadId) ?? fams.find((f) => parsed.workflows.every((w) => f.workflows.includes(w))); label = fam?.label ?? p.name ?? p.id; rows = fromWfs(parsed.workflows); }
@@ -156,7 +161,7 @@ export function startDownload(spec: DlSpec): Download {
         await tr.fetch(f, safeDest(dir, f.folder, f.file), (n) => { f.bytesDone = n; d.bytesDone = before + n; const el = (Date.now() - d.startedAt!) / 1000; const moved = d.bytesDone - base0;
           d.rateBytesPerSec = el > 0.2 && moved > 0 ? Math.round(moved / el) : null; d.etaSeconds = d.rateBytesPerSec ? Math.max(0, Math.ceil((d.bytesTotal - d.bytesDone) / d.rateBytesPerSec)) : null;
           if (Date.now() - lastSave > 1000) { lastSave = Date.now(); persist(d); } }, ctl.signal);
-        f.status = 'done'; f.bytesDone = f.bytesTotal ?? f.bytesDone; clearRequirementsCache(); }
+        f.status = 'done'; f.bytesDone = f.bytesTotal ?? f.bytesDone; clearRequirementsCache(); forgetComfyLoaderOptions(); }
       d.status = 'done'; d.bytesDone = d.bytesTotal; d.etaSeconds = 0;
       const el = (Date.now() - d.startedAt) / 1000; if (tr.name !== 'mock' && el > 5 && d.bytesDone - base0 > 0) pushRate(hwKeyOf(), 'download', (d.bytesDone - base0) / el); // learned download speed (real only)
       if (d.providerId) setMissingWeights(`local:${d.providerId}`, null);

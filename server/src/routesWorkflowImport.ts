@@ -3,6 +3,9 @@
  *  POST   /api/workflows/import  { workflow, fileName? } → { format, convertedWith?, workflow (API format), guess, missingNodes, tabs }  (nothing is saved)
  *  POST   /api/workflows         { workflow, name, description, tab, category, input, prompt, seed, output, extras[], license, source } → 201 { id, toolId, tab }
  *  DELETE /api/workflows/:id     a workflow you added: out of the app and its folder deleted (shipped ones: 403)
+ *  GET    /api/workflows/:id/models  the model files it loads: { comfy, modelsDirSet, files[{ file, folder, state: have|missing|unknown, url, bytes, pageUrl, linkFrom }], missing, downloadId }
+ *  PUT    /api/workflows/:id/models  { folder, file, url } a Hugging Face / Civitai link for a file the app's model list doesn't know (saved in its folder)
+ *  Download: POST /api/local/downloads { downloadId: 'workflow:<id>' } (routesHardware.ts), progress GET /api/local/downloads/:id.
  * On / off stays POST /api/plugins/:id { enabled }.
  */
 import type { FastifyInstance } from 'fastify';
@@ -10,6 +13,8 @@ import { HOSTED } from './hosted.js';
 import { getKv, setKv } from './db.js';
 import { comfyNodes, localObjectInfo } from './comfyNodes.js';
 import { builtInObjectInfo, guessMapping, MAX_WORKFLOW_BYTES, readWorkflow, removeWorkflow, saveWorkflow, type SaveBody } from './workflowImport.js';
+import { getTool } from './tools/registry.js';
+import { saveModelLink, workflowNeeds } from './workflowModels.js';
 import { PLUGIN_CATEGORIES, PLUGIN_TABS, TAB_LABEL } from './shared/pluginPlacement.js';
 import { WORKFLOW_CATEGORIES } from './shared/workflows.js';
 import { VIDEO_WORKFLOW_CATEGORIES } from './shared/videoWorkflows.js';
@@ -43,6 +48,18 @@ export function registerWorkflowImport(app: FastifyInstance) {
     const r = await saveWorkflow(req.body, await infoFor(req.body.workflow));
     if (!r.ok) return reply.code(400).send({ error: r.error, field: r.field ?? null, errors: r.errors ?? [], errorType: 'validation' });
     return reply.code(201).send({ id: r.id, toolId: r.id, tab: r.tab });
+  });
+  const added = (id: string) => { const t = getTool(String(id)) as any; return t?.plugin?.user ? t : null; };
+  app.get<{ Params: { id: string } }>('/api/workflows/:id/models', async (req, reply) => {
+    const t = added(req.params.id); if (!t) return reply.code(404).send({ error: 'No workflow you added has that name.', errorType: 'not_found' });
+    return workflowNeeds(t);
+  });
+  app.put<{ Params: { id: string }; Body: { folder?: string; file?: string; url?: string } }>('/api/workflows/:id/models', async (req, reply) => {
+    if (HOSTED) return reply.code(403).send(hostedNo);
+    const t = added(req.params.id); if (!t) return reply.code(404).send({ error: 'No workflow you added has that name.', errorType: 'not_found' });
+    const b = req.body ?? {}; const r = saveModelLink(t, String(b.folder ?? ''), String(b.file ?? ''), String(b.url ?? ''));
+    if (!r.ok) return reply.code(r.code).send({ error: r.error, field: 'url', errorType: r.code === 404 ? 'not_found' : r.code === 403 ? 'forbidden' : 'validation' });
+    return workflowNeeds(t);
   });
   app.delete<{ Params: { id: string } }>('/api/workflows/:id', async (req, reply) => {
     if (HOSTED) return reply.code(403).send(hostedNo);

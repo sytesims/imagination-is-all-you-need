@@ -12,7 +12,7 @@ export const FOOT_NOTES: FootLink[] = [['Models & licences', '/licenses'], ['Usa
 export const footerCols = (repoUrl: string): [string, FootLink[]][] => [
   ['Make', [['Image', IMAGE_PAGE], ['Video', VIDEO_PAGE], ['Audio', AUDIO_PAGE], ['3D', THREE_D_PAGE], ['Canvas', '/canvas'], ['Workflows', '/workflows']]],
   ['Learn', [['Guides', '/learn/ai-ecommerce'], ...FOOT_NOTES]],
-  ['Project', [['Source code', repoUrl], ['MCP', '/mcp'], ['API docs', '/api-docs'], ['Plugins', '/plugins']]],
+  ['Project', [['Source code', repoUrl], ['MCP', '/mcp'], ['API docs', '/api-docs'], ['Your workflows', '/plugins']]],
 ];
 
 /** The quiet line under both footers: the name and licence (the grey strip adds its links after them). */
