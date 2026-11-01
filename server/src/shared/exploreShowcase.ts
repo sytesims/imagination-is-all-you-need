@@ -550,3 +550,34 @@ export const EXPLORE_SHOWCASE_LINKS = (): string[] => [
   EXPLORE_3D.make.href, featuredRecreateHref(EXPLORE_3D.key) ?? '',
   EXPLORE_VFX.cta.href, ...EXPLORE_VFX.effects.map((v) => vfxTile(v)?.href ?? ''), featuredRecreateHref(EXPLORE_VFX.layout.key) ?? '',
 ];
+
+/** "One app, every way to run" (2026-11-01, options A / B / C behind ?run= until the user picks; web/src/ui/explore/ExploreRun.tsx).
+ *  Every run picks where it happens; the price shows before Go. Places use the app's own place words (shared/modelIds.ts LOCAL_LABEL,
+ *  Comfy Cloud, Comfy Router). Example prices are read live from the Video tab's models (tools list), never typed here: `example` names the
+ *  tool, model and place. The counts come from the workflow lists themselves (ExploreRun.tsx), except the template line below. */
+export type RunPlaceId = 'local' | 'comfy-cloud' | 'comfy-router';
+export type RunPlace = { id: RunPlaceId; name: string; chip: string; line: string; short: string;
+  /** the price example: this model on this tool, at this place (its Run on row) */ example: { toolId: string; modelKey: string; runOn: 'local' | 'comfy-cloud' };
+  see: { label: string; href: string } };
+export const EXPLORE_RUN = {
+  eyebrow: 'Run it your way',
+  title: ['One app.', 'Every way to run.'],
+  line: 'Pick where each run happens. The price shows before you press Go.',
+  places: [
+    { id: 'local', name: 'Your computer', chip: 'ComfyUI', short: 'Free',
+      line: 'Open models on your own ComfyUI. Free, and your files stay with you.',
+      example: { toolId: 'h3-video', modelKey: 'ltx-2.5-22b', runOn: 'local' }, see: { label: 'See it', href: '/settings#conn-local' } },
+    { id: 'comfy-cloud', name: 'Comfy Cloud', chip: 'Open workflows', short: 'Comfy’s GPUs',
+      line: 'The same open workflows on Comfy’s GPUs, for when your computer needs a hand.',
+      example: { toolId: 'h3-video', modelKey: 'ltx-2.5-22b', runOn: 'comfy-cloud' }, see: { label: 'See it', href: '/video?model=ltx-2.5-22b' } },
+    { id: 'comfy-router', name: 'Comfy Router', chip: 'Partner models', short: 'One Comfy key',
+      line: 'Top partner models like Kling, Veo and Seedance, with one Comfy key, at a set price.',
+      example: { toolId: 'h3-video', modelKey: 'kling-v3', runOn: 'comfy-cloud' }, see: { label: 'See it', href: '/video?model=kling-v3' } },
+  ] as RunPlace[],
+  /** the proof: one model offered in two places (option B) */
+  same: { toolId: 'h3-video', modelKey: 'ltx-2.5-22b', label: 'Same model, two places', href: '/video?model=ltx-2.5-22b' },
+  countsLabel: 'Ready-made workflows',
+  /** official Comfy templates: bundled in workflows/ vs credited in the docs (never one number for both) */
+  templates: 'Built on official Comfy templates: 30 bundled, about 100 credited.',
+  all: { label: 'See all workflows', href: '/workflows' },
+} as const;
