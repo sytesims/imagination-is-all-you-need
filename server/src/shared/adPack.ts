@@ -10,38 +10,51 @@ import { fillPattern, familyOfProvider, type PatternFamily } from './promptPatte
 import { BRAND_FONTS, colourLabel, moodBucket, moodWords, normHex, ruleWords, type BrandKit, type MoodBucket } from './brandKit.js';
 import { STAMP_SIZES } from './logoStamp.js';
 
-/** One ad style: the scene sentence (our words) and where its words go. `font` is the style's own type feel (a brand heading font replaces it). */
-export interface AdStyle { value: string; label: string; description: string; scene: string; font: string; place: string; /** when both lines are there */ pair: string; /** the offer is the big line */ offerFirst?: boolean;
-  /** the scene for a kit mood bucket (brandKit.ts moodBucket, 2026-11-01): concrete room, surface and light for that mood; missing = `scene` */ moods?: Partial<Record<MoodBucket, string>> }
-/** The styles (2026-10-31, our own wording). Scenes follow each guide's product-photo shape: surface, light, angle, what stays sharp. */
+/** One ad style: the kind of picture, its scene sentence (our words) and where its words go. `font` is the style's own type feel (a brand heading
+ *  font replaces it). Style first, brand second (2026-11-01): the kind and scene lead every prompt; the kit's colours and rules come after as
+ *  constraints, and a kit rule that would undo the style (`clash`, e.g. "lots of calm space" on an In use photo) is left out for that style. */
+export interface AdStyle { value: string; label: string; description: string;
+  /** the kind of picture, said first ("a candid lifestyle photo"), so a shared kit can't turn every style into the same product shot */ kind: string;
+  scene: string; font: string; place: string; /** when both lines are there */ pair: string; /** the offer is the big line */ offerFirst?: boolean;
+  /** what this style is not (said after the scene; not for FLUX, whose guide is positive-only) */ unlike?: string;
+  /** how the brand colours are used in this style ("as the poster's flat colour blocks") */ colourUse: string;
+  /** kit do / don't lines this style leaves out because they'd undo it */ clash?: RegExp;
+  /** the scene for a kit mood bucket (brandKit.ts moodBucket, 2026-11-01): the mood tints the style (room, surface, light, palette), never replaces it; missing = `scene` */ moods?: Partial<Record<MoodBucket, string>> }
+/** Kit rules about empty space, and about plain or quiet backgrounds: right for a studio hero, wrong for a lived-in photo or a full poster. */
+const SPACE_RULE = /\b(space|empty|emptiness|minimal\w*|airy|breathing room)\b/i;
+const BUSY_RULE = /\b(busy|clutter\w*|plain|backgrounds?|backdrops?)\b/i;
+/** The styles (2026-10-31, our own wording; reworked 2026-11-01 so each stays its own kind of picture under any kit). */
 export const AD_STYLES: AdStyle[] = [
-  { value: 'studio', label: 'Studio hero', description: 'Clean backdrop, soft light',
+  { value: 'studio', label: 'Studio hero', description: 'Clean backdrop, soft light', kind: 'a clean studio product photo',
     scene: 'The product stands centred on a seamless studio backdrop in a soft, even tone, lit by a large soft key light with a gentle floor shadow, sharp focus on the product, plenty of clean empty space around it',
-    font: 'a bold, clean sans-serif', place: 'in the empty space above the product', pair: 'the second line smaller beneath the first',
+    font: 'a bold, clean sans-serif', place: 'in the empty space above the product', pair: 'the second line smaller beneath the first', colourUse: 'on the backdrop and in the light',
     moods: { luxury: 'The product stands centred on a seamless backdrop in a single rich, quiet tone, lit by one soft key light from the side with a thin rim light tracing its edges and a soft reflection beneath it, sharp focus on the product, generous calm empty space around it',
       bold: 'The product stands centred on a seamless backdrop in one strong, saturated colour, lit by crisp, bright studio light with a clean, defined shadow, sharp focus on the product, plenty of open space around it',
       natural: 'The product stands centred on a soft, warm neutral backdrop such as linen or pale plaster, lit by gentle diffused daylight with a soft shadow, sharp focus on the product, calm empty space around it' } },
-  { value: 'lifestyle', label: 'In use', description: 'A real place, natural light',
-    scene: 'The product is shown in use in a real, everyday setting where it belongs, natural window light, shallow depth of field with a softly blurred background, warm and candid, the product sharp and clearly visible',
-    font: 'a clean, modern sans-serif', place: 'on a calm, uncluttered part of the background', pair: 'the second line smaller beneath the first',
-    moods: { luxury: 'The product rests in an elegant, upscale setting where it belongs, on fine materials such as polished stone, dark wood or brass, soft directional light, shallow depth of field with a quiet, uncluttered background, calm and refined, the product sharp and clearly visible',
-      bold: 'The product is shown in use in a lively, colourful setting where it belongs, bright punchy light, a softly blurred background, energetic and fun, the product sharp and clearly visible',
-      natural: 'The product is shown in use in a calm, natural setting where it belongs, on wood, linen or stone with a few green plants, soft window light, shallow depth of field, relaxed and warm, the product sharp and clearly visible' } },
-  { value: 'poster', label: 'Offer poster', description: 'Bold colour, big offer',
-    scene: 'A bold graphic poster: the product large and crisp against a flat, saturated background colour, strong contrast, simple confident composition with room for big type',
-    font: 'a very large, heavy sans-serif', place: 'as the biggest element, close to the product', pair: 'the other line smaller above it', offerFirst: true,
-    moods: { luxury: 'A refined graphic poster: the product large and crisp against a smooth single-colour background in a deep or neutral tone with a soft gradient of light, quiet contrast, simple balanced composition with room for the words',
-      bold: 'A bold graphic poster: the product large and crisp against a flat, saturated background colour, strong contrast, simple confident composition with room for big type',
-      natural: 'A calm graphic poster: the product large and crisp against a soft, muted earthy background colour, gentle contrast, simple balanced composition with room for the words' } },
-  { value: 'flatlay', label: 'Flat lay', description: 'Top-down, neat props',
+  { value: 'lifestyle', label: 'In use', description: 'A real moment, natural light', kind: 'a candid lifestyle photo of the product in use',
+    scene: 'A real moment of use: a person\'s hand holds, opens or uses the product in the everyday place where it belongs, warm natural window light, shallow depth of field with a softly blurred, lived-in background, the product sharp, clearly visible and filling a good part of the frame',
+    font: 'a clean, modern sans-serif', place: 'on a calm part of the picture', pair: 'the second line smaller beneath the first', colourUse: 'as accents in the setting and the light',
+    unlike: 'a product alone on an empty backdrop', clash: new RegExp(`${SPACE_RULE.source}|${BUSY_RULE.source}`, 'i'),
+    moods: { luxury: 'A real moment of use: a well-groomed hand reaches for or uses the product on an upscale vanity or dressing table where it belongs, polished stone and a few refined personal objects around it, warm golden-hour light through a window, shallow depth of field, warm and intimate, the product sharp, clearly visible and filling a good part of the frame',
+      bold: 'A real moment of use: a person uses the product in a lively, colourful place where it belongs, bright punchy light, energetic and fun, a softly blurred background, the product sharp, clearly visible and filling a good part of the frame',
+      natural: 'A real moment of use: a hand holds or uses the product in a calm home setting where it belongs, wood, linen and a few green plants around it, soft window light, shallow depth of field, relaxed and warm, the product sharp, clearly visible and filling a good part of the frame' } },
+  { value: 'poster', label: 'Offer poster', description: 'Graphic layout, big offer', kind: 'a flat graphic design poster',
+    scene: 'A graphic poster layout: bold flat colour blocks and large simple shapes, the product cut out cleanly and placed as a design element, strong contrast, a confident layout built around big type',
+    font: 'a very large, heavy sans-serif', place: 'as the biggest element of the design, set on a colour block', pair: 'the other line smaller above it', offerFirst: true,
+    colourUse: 'as the poster\'s flat colour blocks and shapes', unlike: 'a photograph of a room or a tabletop', clash: SPACE_RULE,
+    moods: { luxury: 'A refined graphic poster layout: flat fields of deep colour divided by one large, clean geometric shape such as an arch, a circle or a broad band, a few fine thin lines, the product cut out cleanly and placed as a design element, balanced and elegant',
+      bold: 'A loud graphic poster layout: clashing flat colour blocks, oversized shapes and stripes, the product cut out cleanly and placed as a design element, maximum contrast, an energetic layout built around huge type',
+      natural: 'A calm graphic poster layout: soft muted flat colour blocks and gentle organic shapes such as arches and pebbles, a subtle paper texture, the product cut out cleanly and placed as a design element, balanced and quiet' } },
+  { value: 'flatlay', label: 'Flat lay', description: 'Top-down, neat props', kind: 'a top-down flat-lay photo',
     scene: 'A top-down flat lay: the product on a textured surface with a few small complementary props neatly arranged around it, soft even daylight, crisp detail',
-    font: 'a clean sans-serif', place: 'in the open space beside the product', pair: 'the second line smaller beneath the first',
+    font: 'a clean sans-serif', place: 'in the open space beside the product', pair: 'the second line smaller beneath the first', colourUse: 'on the surface and the props',
     moods: { luxury: 'A top-down flat lay: the product on a smooth stone or silk surface with two or three small refined props, soft even light, crisp detail, plenty of empty space',
       bold: 'A top-down flat lay: the product on a bright, solid-colour surface with a few playful props in strong colours arranged around it, crisp even light, crisp detail',
       natural: 'A top-down flat lay: the product on linen, wood or stone with a few natural props such as leaves, dried flowers or raw paper, soft even daylight, crisp detail' } },
-  { value: 'seasonal', label: 'Seasonal', description: 'Festive, gift-ready',
+  { value: 'seasonal', label: 'Seasonal', description: 'Festive, gift-ready', kind: 'a festive product photo',
     scene: 'A warm festive scene: the product with seasonal props such as gift wrap and ribbon, soft fairy-light bokeh behind, cosy warm light, the product sharp in front',
-    font: 'an elegant serif', place: 'in the open space above the product', pair: 'the second line smaller beneath the first',
+    font: 'an elegant serif', place: 'in the open space above the product', pair: 'the second line smaller beneath the first', colourUse: 'in the wrapping and the decorations',
+    clash: SPACE_RULE,
     moods: { luxury: 'An elegant festive scene: the product with a few refined seasonal touches such as satin ribbon and soft candlelight, warm glowing bokeh behind, the product sharp in front',
       bold: 'A bright festive scene: the product with colourful seasonal props such as bold gift wrap, ribbon and confetti, cheerful light, the product sharp in front',
       natural: 'A cosy festive scene: the product with natural seasonal touches such as pine sprigs, kraft-paper wrap and twine, soft candlelight, the product sharp in front' } },
@@ -101,7 +114,7 @@ export interface AdPromptInput {
   /** extra product photos beyond the first (0–2) */ extraPhotos?: number; /** the brand in use (null = Brand off) */ kit?: Pick<BrandKit, 'colors' | 'fonts' | 'mood'> & Partial<Pick<BrandKit, 'dos' | 'donts'>> | null;
   /** a logo will be added: keep its corner empty */ logo?: boolean;
 }
-/** The prompt one ad sends: the family's 'ad' frame with the style's scene, the words line ('ad-text') and the brand. */
+/** The prompt one ad sends: the family's 'ad' frame with the style's kind and scene first, the words line ('ad-text'), then the brand as constraints. */
 export function adPrompt(x: AdPromptInput): string {
   const st = AD_STYLES.find((s) => s.value === x.style) ?? AD_STYLES[0]; const fam = adFamilyOf(x.provider); const pl = placementOf(x.placement);
   const headline = adWords(x.headline), offer = adWords(x.offer);
@@ -113,12 +126,14 @@ export function adPrompt(x: AdPromptInput): string {
   const n = Math.max(0, Math.min(2, Number(x.extraPhotos) || 0));
   const more = n === 1 ? 'Image 2 shows the same product from another side.' : n === 2 ? 'Images 2 and 3 show the same product from other sides.' : '';
   const details = sentence(adWords(x.details, AD_DETAILS_MAX));
-  // a mood bucket picks that mood's concrete scene (the mood is in the scene, so no "with a … feel" tail); no bucket: today's scene + the mood words
+  // a mood bucket tints the style's scene (the mood is in the scene, so no "with a … feel" tail); no bucket: the plain scene + the mood words
   const moodScene = bucket ? st.moods?.[bucket] : undefined;
   const scene = moodScene ? sentence(moodScene) : `${sentence(st.scene)}${mood ? `, with a ${mood} feel` : ''}`;
-  // up to two of the kit's do's and don'ts (FLUX's template only takes the do's: its guide says no negatives)
-  return fillPattern('ad', fam, { shape: SHAPE_WORDS[pl.shape], scene, details, text, colours: col.words, coloursByRole: col.byRole, more,
-    dos: ruleWords(x.kit?.dos, 2, 'comma'), donts: ruleWords(x.kit?.donts),
+  // the kit's rules, minus any that would undo this style; up to two of each (FLUX's template only takes the do's: its guide says no negatives)
+  const fits = (xs?: string[]) => (xs ?? []).filter((r) => !st.clash?.test(r));
+  return fillPattern('ad', fam, { shape: SHAPE_WORDS[pl.shape], kind: st.kind, Kind: st.kind[0].toUpperCase() + st.kind.slice(1), scene, unlike: st.unlike ?? '', details, text,
+    colours: col.words ? `${col.words}, ${st.colourUse}` : '', coloursByRole: col.byRole, more,
+    dos: ruleWords(fits(x.kit?.dos), 2, 'comma'), donts: ruleWords(fits(x.kit?.donts)),
     corner: x.logo ? CORNER_WORDS[asCorner(x.corner)] : '', safe: safeWords(pl.safe) });
 }
 
