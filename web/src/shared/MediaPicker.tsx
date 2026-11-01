@@ -40,6 +40,7 @@ import { setJobProject } from '../api';
 import { ChevronDownIcon, MaximizeIcon, MoreIcon, ProjectsIcon, SearchIcon, CloseIcon } from '../ui/Icons';
 import { PlayButton, togglePreview, stopPreview, useMediaLength, fmtLength } from './PreviewPlay';
 import { PreviewMedia } from './SlotPreview';
+import { tip as tipAttrs } from './Tooltip';
 import { TypeFilter, type TypePick } from './TypeFilter';
 import './mediaPicker.css';
 
@@ -126,8 +127,8 @@ function Tile({ x, tab, onPick, onKeys, onPeek, onMore, moreOpen, frameHint, sel
   </button>
     {x.type === 'audio' && <PlayButton url={x.url} label={name} className="mpk-pv" testId="mpk-play" />}
     {/* the larger preview: only when asked (this corner button, or Space on the tile); a click on the tile still picks it */}
-    {onPeek && <button type="button" className="mpk-zoom" aria-label="Preview" title="Preview" data-testid="mpk-zoom" onClick={() => onPeek(x)}><MaximizeIcon size={14} /></button>}
-    {onMore && <button type="button" className="mpk-more" aria-haspopup="listbox" aria-expanded={!!moreOpen} aria-label={`Move ${name} to a project`} title="Move to project" data-testid="mpk-more" onClick={e => onMore(x, e.currentTarget)}><MoreIcon size={16} /></button>}
+    {onPeek && <button type="button" className="mpk-zoom" aria-label="Preview" {...tipAttrs('Preview')} data-testid="mpk-zoom" onClick={() => onPeek(x)}><MaximizeIcon size={14} /></button>}
+    {onMore && <button type="button" className="mpk-more" aria-haspopup="listbox" aria-expanded={!!moreOpen} aria-label={`Move ${name} to a project`} {...tipAttrs('Move to project')} data-testid="mpk-more" onClick={e => onMore(x, e.currentTarget)}><MoreIcon size={16} /></button>}
   </div>;
 }
 
@@ -206,6 +207,10 @@ export function MediaPicker({ tab, setTab, onClose, title, limits, kinds, frames
   const projRow: ProjectRow | null = projects?.find(p => p.id === proj) ?? null; const hasProjects = !!projects?.length;
   const [projOpen, setProjOpen] = useState(false); const projBtn = useRef<HTMLButtonElement>(null);
   const [moveOf, setMoveOf] = useState<LibItem | null>(null); const moveBtn = useRef<HTMLButtonElement | null>(null);
+  /* the ⋯ menu closes on a click anywhere else, the picker included (the shared Popover counts the whole picker as inside, data-apop-keep,
+   * so a sheet under the picker stays open); its own ⋯ toggles it. Esc (Popover's, on the dismiss stack) closes only the menu. */
+  useEffect(() => { if (!moveOf) return; const down = (e: PointerEvent) => { const t = e.target as Element | null; if (t?.closest?.('.mpk-pop') || (t && moveBtn.current?.contains(t))) return; setMoveOf(null); };
+    document.addEventListener('pointerdown', down, true); return () => document.removeEventListener('pointerdown', down, true); }, [moveOf]);
   /* a slot that takes several: tiles toggle into a selection (kept across tabs), "Add n" hands them over together */
   /* the larger preview (a tile's ⤢, or Space on it): one item at a time, arrows move through the grid */
   const [peek, setPeek] = useState<LibItem | null>(null);
@@ -349,7 +354,7 @@ export function MediaPicker({ tab, setTab, onClose, title, limits, kinds, frames
         {tab === 'Uploads' && <button type="button" className="ic-ref-tile ic-ref-up mpk-up" data-testid="ic-ref-upload" onClick={onUpload} aria-label="Upload from your computer" title={`Upload from your computer · ${accepts}`}>
           <span className="mpk-up-ic" aria-hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg></span>
           <b>Upload</b><small>or drop files</small></button>}
-        {items.map(x => <Tile key={x.id} x={x} tab={tab} onPick={pick} onKeys={keys} onPeek={openPeek} frameHint={x.type === 'video' && !kinds.includes('video')} sel={multiple ? sel.findIndex(y => y.id === x.id) + 1 : undefined} moreOpen={moveOf?.id === x.id} onMore={hasProjects && (tab === 'Uploads' || x.jobId) ? (it, el) => { moveBtn.current = el; setMoveOf(it); } : undefined} />)}
+        {items.map(x => <Tile key={x.id} x={x} tab={tab} onPick={pick} onKeys={keys} onPeek={openPeek} frameHint={x.type === 'video' && !kinds.includes('video')} sel={multiple ? sel.findIndex(y => y.id === x.id) + 1 : undefined} moreOpen={moveOf?.id === x.id} onMore={hasProjects && (tab === 'Uploads' || x.jobId) ? (it, el) => { moveBtn.current = el; setMoveOf(m => m?.id === it.id ? null : it); } : undefined} />)}
         {loading && !items.length && Array.from({ length: 5 }, (_, i) => <span key={i} className="ic-ref-tile ic-ref-skel" aria-hidden />)}
         {!loading && !items.length && <p className="helper ic-ref-empty mpk-empty" data-testid="mpk-empty">{failed ? 'Couldn’t load your library. Close and try again.' : empty}
           {!failed && projRow && <button type="button" className="mpk-btn mpk-showall" data-testid="mpk-show-all" onClick={() => setProjByTab(m => ({ ...m, [tab]: 'all' }))}>Show all projects</button>}</p>}

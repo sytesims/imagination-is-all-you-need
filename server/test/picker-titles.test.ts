@@ -58,7 +58,7 @@ assert.match(rd('ui/video/StitchPanel.tsx'), /max: MAX_CLIPS - d\.clips\.length/
 ok('pick several: tick, Shift-click run, Space ticks, Enter adds, "n left", refuses past the limit');
 
 // Larger preview (2026-10-31, ⤢ 2026-11-01): the tile's corner ⤢ or Space (never hover alone), the shared PreviewMedia, Space / Esc close, arrows move; the server says the model
-assert.doesNotMatch(mp, /onPointerMove=|setTimeout\(\(\) => \{[^}]*onPeek/, 'no preview on hover alone'); assert.match(mp, /className="mpk-zoom" aria-label="Preview" title="Preview"[^>]*onClick=\{\(\) => onPeek\(x\)\}/, 'the corner ⤢ opens it'); assert.match(mp, /onClick=\{e => onPick\(x, e\.shiftKey\)\}/, 'a click on the tile still picks');
+assert.doesNotMatch(mp, /onPointerMove=|setTimeout\(\(\) => \{[^}]*onPeek/, 'no preview on hover alone'); assert.match(mp, /className="mpk-zoom" aria-label="Preview" \{\.\.\.tipAttrs\(.Preview.\)\}[^>]*onClick=\{\(\) => onPeek\(x\)\}/, 'the corner ⤢ opens it'); assert.match(mp, /onClick=\{e => onPick\(x, e\.shiftKey\)\}/, 'a click on the tile still picks');
 assert.match(rd('shared/mediaPicker.css'), /\.mpk-tile:has\(\.mpk-pick:focus-visible\) \.mpk-zoom/, 'the ⤢ shows on keyboard focus too'); assert.match(mp, /<PreviewMedia url=\{x\.url\} kind=\{x\.type\}/, 'the shared preview media (SlotPreview\'s)');
 assert.match(rd('shared/SlotPreview.tsx'), /export function PreviewMedia/); assert.match(rd('shared/SlotPreview.tsx'), /<PreviewMedia url=\{item\.url\}/, 'SlotPreview uses the same piece');
 assert.match(mp, /if \(peek\) closePeek\(\); else if \(frameOf\)/, 'Esc closes the preview first'); assert.match(mp, /useDismiss\(!!peek, closePeek\)/, 'Esc closes only the preview, even in a host that also listens for Esc');
@@ -66,3 +66,14 @@ assert.match(rd('shared/mediaPicker.css'), /\.mpk-peek-media\{[^}]*grid-template
 assert.match(mp, /e\.key === 'ArrowRight' \|\| e\.key === 'ArrowLeft'/, 'arrows move'); assert.match(mp, /e\.key === ' ' && !onMedia\) \{ e\.preventDefault\(\); onClose\(\)/, 'Space closes');
 assert.ok(g.items.every((x: any) => 'model' in x), 'each item says its model');
 ok('larger preview: corner ⤢ or Space (no hover), shared media piece, Space / Esc close, arrows move, model listed');
+
+// The ⋯ "Move to project" menu (2026-11-01): a click anywhere else closes it (the picker counts as inside for the shared Popover, so the picker
+// listens itself), its own ⋯ toggles it, Esc closes only it (the Popover's useDismiss, on top of the picker's), and its tooltip goes while it is open
+assert.match(mp, /if \(!moveOf\) return; const down = \(e: PointerEvent\) => \{[^}]*closest\?\.\('\.mpk-pop'\)[^}]*moveBtn\.current\?\.contains\(t\)\)\) return; setMoveOf\(null\); \}/, 'an outside click closes the ⋯ menu');
+assert.match(mp, /document\.addEventListener\('pointerdown', down, true\)/, 'listens before the click lands');
+assert.match(mp, /setMoveOf\(m => m\?\.id === it\.id \? null : it\)/, 'the ⋯ again closes it');
+assert.match(mp, /<Popover open=\{!!moveOf\} anchor=\{moveBtn\} onClose=\{\(\) => setMoveOf\(null\)\}/, 'Esc: the shared Popover closes only the menu (its useDismiss is on top)');
+assert.match(rd('shared/Popover.tsx'), /useDismiss\(open, onEscape \?\? onClose, anchor\)/);
+assert.match(mp, /aria-expanded=\{!!moreOpen\}[^>]*\{\.\.\.tipAttrs\('Move to project'\)\}/, 'the app tooltip (hidden while aria-expanded), not a native title');
+assert.match(mp, /const move = async \(x: LibItem, pid: string \| null\) => \{\s*setMoveOf\(null\)/, 'picking a project closes it');
+ok('⋯ menu: outside click, ⋯ again, Esc and a pick close it; no tooltip over it');
