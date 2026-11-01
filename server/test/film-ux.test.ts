@@ -44,7 +44,9 @@ ok('J / L cuts in the shared timeline');
   assert.match(stemArgs(l, pl, files)!.args.join(' '), /atrim=start=1:end=3/);
   /* a crossfade film builds exactly as before */
   const c = { ...base, seams: [{ type: 'crossfade', sec: 0.5 }] }; const pc = T.planTimeline([3, 3], { seams: c.seams });
-  assert.match(stemArgs(c, pc, files)!.args.join(' '), /acrossfade=d=0.5:c1=tri:c2=tri/); assert.match(pictureArgs(c, pc, 320, 180, 'v.mp4', null).join(' '), /xfade=transition=fade:duration=0.5:offset=2.5/); }
+  assert.match(stemArgs(c, pc, files)!.args.join(' '), /acrossfade=d=0.5:c1=tri:c2=tri/); assert.match(pictureArgs(c, pc, 320, 180, 'v.mp4', null).join(' '), /xfade=transition=fade:duration=0.5:offset=2.5/);
+  /* every xfade input ends with fps=30 after settb (ffmpeg 7.1's settb drops the frame rate and xfade then fails) */
+  assert.match(pictureArgs(c, pc, 320, 180, 'v.mp4', null).join(' '), /settb=AVTB,fps=30\[s0\].*settb=AVTB,fps=30\[s1\]/); }
 ok('compose: J / L picture cut and placed sound; crossfade unchanged');
 
 // ---- compose seams parser and the film's stitch body ----

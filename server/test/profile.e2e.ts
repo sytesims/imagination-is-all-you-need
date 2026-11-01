@@ -28,9 +28,10 @@ try {
   const del = await (await fetch(`${B}/api/me/avatar`, { method: 'DELETE' })).json(); assert.equal(del.avatarUrl, null); assert.deepEqual(del.avatar, { mood: 'happy', tint: 'mint' }); assert.ok(!fs.existsSync(path.join(D, path.basename(a2.body.avatarUrl))));
   // the "Me" photo (Person Swap): the profile points to a library upload (/files/…) or null; nothing else is taken, and the file is never deleted here
   assert.equal(p0.mePhotoUrl, null);
-  for (const bad of ['https://x/y.png', '/files/../secret.png', 'javascript:alert(1)', 42]) { const r = await put({ mePhotoUrl: bad }); assert.equal(r.status, 400, String(bad)); assert.equal(r.body.issues[0].field, 'mePhotoUrl'); }
+  for (const bad of ['https://x/y.png', '/files/../secret.png', '/files/%2e%2e/secret.png', '/files/%2E%2E%2Fsecret.png', '/files/no-such-photo.png', '/files/', 'javascript:alert(1)', 42]) { const r = await put({ mePhotoUrl: bad }); assert.equal(r.status, 400, String(bad)); assert.equal(r.body.issues[0].field, 'mePhotoUrl'); }
   { const fd = new FormData(); fd.append('file', new Blob([fs.readFileSync(png)], { type: 'image/png' }), 'me.png'); const m = await (await fetch(`${B}/api/media`, { method: 'POST', body: fd })).json();
-    const u = m.items[0].url; assert.equal((await put({ mePhotoUrl: u })).body.mePhotoUrl, u); assert.equal((await get('/api/me/profile')).mePhotoUrl, u);
+    const u = m.items[0].url; assert.equal((await put({ mePhotoUrl: u })).body.mePhotoUrl, u);
+    fs.writeFileSync(path.join(D, 'notes.txt'), 'x'); assert.equal((await put({ mePhotoUrl: '/files/notes.txt' })).status, 400, 'an existing file that is not a picture'); assert.equal((await get('/api/me/profile')).mePhotoUrl, u, 'a refused value leaves the photo as it was'); assert.equal((await get('/api/me/profile')).mePhotoUrl, u);
     assert.equal((await put({ mePhotoUrl: null })).body.mePhotoUrl, null); assert.ok(fs.existsSync(path.join(D, path.basename(u))), 'forgetting it keeps the library file'); }
   // stats on an empty library
   const s = await get('/api/me/stats'); assert.equal(s.generations, 0); assert.equal(s.finished, 0); assert.equal(s.favouriteModel, null); assert.equal(s.savedUsd, 0); assert.ok(s.memberSince > 0);

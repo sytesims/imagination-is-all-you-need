@@ -14,6 +14,8 @@ import { countsAsRun } from './owner.js';
 import * as lib from './library.js';
 import { savedAllTime } from './billing.js';
 import { engineNameOf } from './engineName.js';
+import { kindOfUrl } from './outputMeta.js';
+import { recordedFile } from './routesPrefill.js';
 import { AVATAR_MOODS, AVATAR_TINTS, COVER_GRADIENTS, HANDLE_RE, NAME_MAX, AVATAR_MAX_BYTES, type ProfileData, type AvatarChoice, type Cover } from './shared/avatar.js';
 
 const EMPTY: ProfileData = { displayName: null, handle: null, avatarUrl: null, avatar: null, cover: null, mePhotoUrl: null, createdAt: null };
@@ -26,8 +28,9 @@ export function readProfile(): ProfileData {
 }
 const ownAvatar = (u: string | null | undefined) => !!u && /^\/files\/avatar-[\w-]+\.(png|jpe?g|webp)$/.test(u);
 const dropFile = async (u: string | null | undefined) => { if (ownAvatar(u)) await unlink(path.join(DATA_DIR, path.basename(u!))).catch(() => undefined); };
-/** The "Me" photo: a library file (/files/…, checked like a cover image), never raw bytes in the profile. */
-const mePhotoOk = (u: unknown): u is string => typeof u === 'string' && /^\/files\/[^?#]+$/.test(u) && !u.includes('..');
+/** The "Me" photo: a picture this app serves (an upload, /files/…), checked like a reused job input (routesPrefill recordedFile: the real file,
+ * inside its own folder, that exists); never raw bytes or another site's URL in the profile. */
+const mePhotoOk = async (u: unknown): Promise<boolean> => typeof u === 'string' && kindOfUrl(u) === 'image' && !!(await recordedFile(u));
 
 function avatarOf(v: unknown): AvatarChoice | null | string {
   if (v === null) return null; const a = v as any;
@@ -62,7 +65,7 @@ export function registerProfile(app: FastifyInstance) {
       next.avatarUrl = (b.avatarUrl as string | null) || null; }
     if (b.avatar !== undefined) { const a = avatarOf(b.avatar); if (typeof a === 'string') return reply.code(400).send(bad('avatar', a)); next.avatar = a; }
     if (b.cover !== undefined) { const c = coverOf(b.cover); if (typeof c === 'string') return reply.code(400).send(bad('cover', c)); next.cover = c; }
-    if (b.mePhotoUrl !== undefined) { if (b.mePhotoUrl !== null && !mePhotoOk(b.mePhotoUrl)) return reply.code(400).send(bad('mePhotoUrl', 'mePhotoUrl must be a /files/… path or null.'));
+    if (b.mePhotoUrl !== undefined) { if (b.mePhotoUrl !== null && !(await mePhotoOk(b.mePhotoUrl))) return reply.code(400).send(bad('mePhotoUrl', 'mePhotoUrl must be a picture uploaded to this app (/files/…) or null.'));
       next.mePhotoUrl = (b.mePhotoUrl as string | null) || null; }
     if (cur.avatarUrl !== next.avatarUrl) await dropFile(cur.avatarUrl); // a replaced or removed upload is deleted, so old pictures don't pile up
     setKv('profile', next); return next;

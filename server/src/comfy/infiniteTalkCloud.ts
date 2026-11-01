@@ -166,7 +166,7 @@ function talkingPlan(j: J, parts: { start: number; end: number; seconds: number;
  *  the crossfade shows two in-sync mouths), the original speech as the only sound, cut to its length. Pure (tests read it). */
 export function talkJoinArgs(clips: string[], parts: TalkPart[], audio: string, out: string, fade = TV_FADE, fps = IT_FPS): string[] {
   if (!clips.length || clips.length !== parts.length) throw new Error('talking video join: one clip per part');
-  const total = parts[parts.length - 1].end; const f: string[] = clips.map((_, k) => `[${k}:v]fps=${fps},settb=AVTB,setpts=PTS-STARTPTS,format=yuv420p[v${k}]`);
+  const total = parts[parts.length - 1].end; const f: string[] = clips.map((_, k) => `[${k}:v]fps=${fps},settb=AVTB,setpts=PTS-STARTPTS,format=yuv420p,fps=${fps}[v${k}]`);
   let cur = 'v0';
   for (let k = 1; k < clips.length; k++) { const nx = `x${k}`; f.push(`[${cur}][v${k}]xfade=transition=fade:duration=${fade.toFixed(3)}:offset=${(parts[k].start - parts[0].start).toFixed(3)}[${nx}]`); cur = nx; }
   return ['-y', '-v', 'error', ...clips.flatMap((c) => ['-i', c]), '-i', audio, '-filter_complex', f.join(';'), '-map', `[${cur}]`, '-map', `${clips.length}:a:0`,

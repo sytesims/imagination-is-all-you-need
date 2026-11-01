@@ -31,7 +31,7 @@ const kindOf = (u?: string | null): Kind | null => !u ? null : /\.(mp4|mov|webm|
 const fileOf = (u: string) => u.startsWith('/files/') ? path.join(DATA_DIR, u.slice(7)) : u.startsWith('/samples/') ? path.join(SAMPLES_DIR, u.slice(9)) : u.startsWith('/showcase/') || /^\/examples\/(showcase-(3d|seedance)|starter)\//.test(u) ? path.join(WEB_PUBLIC_DIR, u) /* Featured generations' inputs (shared/featured.ts) */ : null;
 const assetOk = (u: unknown): u is string => typeof u === 'string' && /^\/(files|samples|showcase|examples\/(?:showcase-(?:3d|seedance)|starter))\/[\w\-./]+$/.test(u) && !u.includes('..') && existsSync(fileOf(u)!);
 /** Resolve only a recorded app-media URL, inside its own real root (never a symlink to another root). */
-async function recordedFile(u: unknown): Promise<string | null> {
+export async function recordedFile(u: unknown): Promise<string | null> {
   if (typeof u !== 'string' || !kindOf(u) || u.includes('..')) return null;
   const m = /^\/(files|samples|showcase|examples\/(?:showcase-(?:3d|seedance)|starter))\/([\w./-]+)$/.exec(u);
   if (!m || m[2].split('/').some(s => !s || s === '.')) return null;
