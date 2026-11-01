@@ -31,6 +31,8 @@ Direct a Shot's `streams` input also accepts its existing decoded MJPEG recordin
 | `PORT` | `8787` | API port |
 | `HOST` | `127.0.0.1` (development and production) | API listen address; `HOST` takes precedence over `OPENHIGGSFIELD_HOST` (then the legacy alias). Blank values fall back to loopback. `HOST=0.0.0.0` explicitly opens network access and disables browser key saving / ComfyUI-address changes |
 | `WEB_HOST` | `127.0.0.1` | Vite development and preview listen address. Falls back to `HOST`, `OPENHIGGSFIELD_HOST`, then the legacy alias. Set `WEB_HOST=0.0.0.0` explicitly to expose the UI and its API proxy; this exposes API functionality even if the API itself remains loopback-only. |
+| `OPENHIGGSFIELD_ALLOWED_HOSTS` | unset | Comma list of extra host names the app (API, `/files`, share pages) and the MCP HTTP server answer to, e.g. `mymac.local,studio.example.com` (an entry with `:port` matches only that port). By default they answer only to `localhost`, `*.localhost`, `127.x`, `[::1]` and plain IP addresses, which blocks DNS-rebinding pages. Pages served from a listed host may also call the API. The hosts of `OPENHIGGSFIELD_PUBLIC_URL` and `OPENHIGGSFIELD_PUBLIC_BASE_URL` are allowed automatically. Also widens the ComfyUI address you can set in Settings to these hosts. See [Who can reach the app](#who-can-reach-the-app) |
+| `OPENHIGGSFIELD_ALLOWED_ORIGINS` | unset | Comma list of extra web origins (`https://tools.example.com`) whose pages may call the API and the MCP HTTP server from a browser. By default only the app itself (`http(s)://localhost:<any port>`, `127.x`, `[::1]`, `*.localhost`) may; any other website gets 403 |
 | `OPENHIGGSFIELD_DATA_DIR` | `server/data` | Where the SQLite database, uploads and outputs live (gitignored) |
 | `OPENHIGGSFIELD_OPEN_WEIGHTS_ONLY` | unset | `1` = hide and refuse hosted providers: partner/API nodes and hosted model APIs. Local open weights and our own open-weight workflows run as standard Comfy Cloud jobs (e.g. the H3 graphs in `workflows/cloud/`) stay. The Comfy Cloud H3 API-node route `cloud-h3` is a hosted provider and is hidden in this mode |
 | `OPENHIGGSFIELD_BILLING_MODE` | unset = `own-accounts` | `own-accounts`: you pay providers directly, no in-app balance; runs go to the spend log. `team`: an operator pays providers and gives users credit balances (charges, refunds). When set here, the app can't change it |
@@ -185,6 +187,17 @@ The pattern follows Comfy's own clonable app [Comfy-Org/comfy-reshoot](https://g
 | `OPENHIGGSFIELD_FILMING_FILE` | `<repo>/.filming/state.json` | Filming mode's state file (`npm run filming`) |
 
 The rest (signup grant and free generations in team mode, queue tuning, QA switches such as `OPENHIGGSFIELD_ROUTING_FAIL`, and timings used by tests) are in [`.env.example`](../.env.example) or explained where the code reads them. `OPENHIGGSFIELD_COMMERCIAL` is read but has no effect: no licence setting ever changes a default.
+
+## Who can reach the app
+
+The app is a personal studio: the API, `/files` and the MCP HTTP server answer only the app on your own computer.
+
+- **Websites can't use it.** A request whose `Origin` is not the app itself (`localhost`, `127.x`, `[::1]`, `*.localhost`, any port), or that the browser marks `Sec-Fetch-Site: cross-site`, gets 403. CORS reflects only allowed origins. Clicking a link to the app from another site still opens it.
+- **DNS rebinding is refused.** The `Host` header must be a loopback name, a plain IP address, or a host in `OPENHIGGSFIELD_ALLOWED_HOSTS`.
+- **`/files/` serves media only:** images, video, audio, 3D, captions, brand logos and brand fonts. The database, dotfiles, JSON, logs and anything else answer 404.
+- **Keys go only to their own service.** The Comfy key is sent only to Comfy's hosts (`*.comfy.org`, `*.run.comfy.app`), never to a ComfyUI address. The ComfyUI address set in Settings must be on this computer or your own network (`10.x`, `172.16–31.x`, `192.168.x`, `169.254.x`, Tailscale `100.64–127.x`, `*.local`, `*.lan`, `*.home.arpa`, `*.internal`, a one-word name), Comfy's own hosts, or a host in `OPENHIGGSFIELD_ALLOWED_HOSTS`. A saved address outside that is ignored at start with a warning.
+
+Opening the app from another device on purpose (`WEB_HOST=0.0.0.0`, or `HOST=0.0.0.0`): plain IP addresses (`http://192.168.1.20:5174`) work as they are. For a name (`http://mymac.local:5174`, a tunnel, a reverse proxy) add it: `OPENHIGGSFIELD_ALLOWED_HOSTS=mymac.local`. A different site that should call the API from the browser goes in `OPENHIGGSFIELD_ALLOWED_ORIGINS`. Network access has no login: only open it on a network you trust.
 
 ## Settings you change in the app (or over the API)
 

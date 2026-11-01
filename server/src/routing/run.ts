@@ -10,6 +10,7 @@
  * refused before running, the provider's documented rule is "failed runs are free", or team mode refunded it); otherwise it stops and
  * tells the user (status failed + Try on places), so a run is never paid twice. A place the user picked (pinned) never moves on its own.
  */
+import { replicateAuthFor } from '../security/keyHosts.js';
 import { routeRequest } from './routeRequest.js';
 import { fallbackOffers } from '../env.js';
 import { cloudLive, runCloudWorkflow } from './cloudRun.js';
@@ -111,7 +112,7 @@ async function execute(job: Job, tool: ToolDef, r: RouteDef, attempt: RouteAttem
         if (r.kind === 'fal') { const res = await falRun(r.endpoint, body, key, { ...hooks, onStatus: (s) => { job.stage = s.status === 'IN_QUEUE' ? 'submitted' : 'rendering'; } }); const o: any = res.result; url = r.output === '3d' ? o.model_glb?.url ?? o.model_urls?.glb?.url : o.video?.url ?? o.image?.url ?? (typeof o.images?.[0] === 'string' ? o.images[0] : o.images?.[0]?.url); } // 3D routes (fal TRELLIS.2, Hunyuan 3D): model_glb.url // video routes: video.url; image upscale routes: image.url (Topaz, SeedVR2) or images[0] (Crystal: objects, or plain URLs in its example)
         else { const res = await replicateRun(r.endpoint, body, key, { ...hooks, onStatus: (p) => { job.stage = p.status === 'starting' ? 'submitted' : 'rendering'; } }); url = res.urls[0]; }
         if (!url) throw new Error(`${r.kind} returned no ${r.output === 'image' ? 'image' : r.output === '3d' ? '3D model' : 'video'}`);
-        job.stage = 'downloading'; outs.push({ label: r.eachImage ? labelAt(k, n) : 'Result', url: await download(url, job, k, r.kind === 'replicate' ? `Bearer ${key}` : undefined) });
+        job.stage = 'downloading'; outs.push({ label: r.eachImage ? labelAt(k, n) : 'Result', url: await download(url, job, k, r.kind === 'replicate' ? replicateAuthFor(url, key) : undefined) });
       }
       job.outputs = outs; job.resultUrl = job.outputs[0].url; job.status = 'done'; job.stage = 'done'; job.progress = 100; job.eta = 0; return;
     }
@@ -126,7 +127,7 @@ async function execute(job: Job, tool: ToolDef, r: RouteDef, attempt: RouteAttem
     } else {
       const res = await replicateRun(r.endpoint, (await routeRequest(job, r, i, ex)).body, key, { timeoutMs: TIMEOUT_MS, onSubmit: (id) => { attempt.requestId = id; (job.requestIds ??= []).push(id); job.queueReason = null; }, onBusy: (ms) => { job.queueReason = busyReason(r.kind === 'fal' ? 'fal' : 'Replicate', ms); }, onStatus: (p) => { job.stage = p.status === 'starting' ? 'submitted' : 'rendering'; } });
       job.stage = 'downloading'; if (!res.urls.length) throw new Error('Replicate returned no output');
-      outs.push({ label: labelAt(i, count), url: await download(res.urls[0], job, i, `Bearer ${key}`) });
+      outs.push({ label: labelAt(i, count), url: await download(res.urls[0], job, i, replicateAuthFor(res.urls[0], key)) });
     }
     }
     job.outputs = outs;

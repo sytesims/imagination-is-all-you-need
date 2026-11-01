@@ -19,6 +19,7 @@ import { randomUUID } from 'node:crypto';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { sessionStarted, sessionSeen, sessionEnded, streamOpened, streamClosed, onForget } from './sessions.js';
 import { startChannel } from './channel.js';
+import { refuseReason } from './localOnly.js';
 
 /** HTTP sessions by id: each has its own server + transport for as long as the client stays (sessions.ts says who is live). */
 const httpSessions = new Map<string, { transport: StreamableHTTPServerTransport; server: ReturnType<typeof createServer>; client: string }>();
@@ -49,6 +50,8 @@ if (args[0] === 'setup') {
       res.writeHead(200, { ...cors, 'content-type': 'application/json', 'cache-control': 'no-store' }).end(JSON.stringify({ ok: true, name: PKG.name, version: PKG.version, transport: 'http', endpoint: '/mcp' })); return;
     }
     if (!req.url?.startsWith('/mcp')) { res.writeHead(404).end('MCP endpoint is /mcp'); return; }
+    const refused = refuseReason(req.headers); // security: Host / Origin check (localOnly.ts, MCP spec: validate Origin)
+    if (refused) { res.writeHead(403, { 'content-type': 'application/json' }).end(JSON.stringify({ jsonrpc: '2.0', error: { code: -32000, message: refused }, id: null })); return; }
     // Sessions (2026-10-28): initialize starts a session (its own server + transport, kept by id) so the app knows who is connected from the
     // first moment (sessions.ts). Requests without a session we know (older clients, or ones from before this process started) are served
     // the old stateless way: a fresh server + transport per request.

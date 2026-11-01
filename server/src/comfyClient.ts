@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { isComfyKeyHost } from './security/keyHosts.js';
 import { existsSync } from 'node:fs';
 import { config, comfyNeedsKey, workflowLooksLikeStub } from './config.js';
 import type { Job } from './jobs.js';
@@ -61,7 +62,7 @@ export async function runComfySwap(
   const clientOpts: { apiKey?: string; clientInfo?: string } = {
     clientInfo: 'openhiggsfield/0.1',
   };
-  if (config.comfyApiKey) clientOpts.apiKey = config.comfyApiKey;
+  if (config.comfyApiKey && isComfyKeyHost(config.comfyBaseUrl || 'https://cloud.comfy.org')) clientOpts.apiKey = config.comfyApiKey; // the key only to Comfy's own hosts (security/keyHosts.ts)
   // COMFY_BASE_URL is read by the SDK from the environment.
 
   onProgress({ stage: 'uploading', progress: 5 });

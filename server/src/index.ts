@@ -31,6 +31,7 @@ import { listenHost } from './shared/listenHost.js';
 import { registerUploadSecurity, mediaResponseHeaders, uploadKind, validateUpload, acceptKind } from './uploadSecurity.js';
 import fstatic from '@fastify/static';
 import cors from '@fastify/cors';
+import { registerLocalOnly, corsOrigin } from './security/localOnly.js';
 import { randomUUID, createHash } from 'node:crypto';
 import { createWriteStream, mkdirSync, existsSync, readdirSync, rmSync } from 'node:fs';
 import { pipeline } from 'node:stream/promises';
@@ -101,8 +102,9 @@ import { MAX_UPLOAD_MB } from './shared/mediaAccept.js'; /* one number for the s
 
 mkdirSync(DATA_DIR, { recursive: true });
 const app = Fastify({ logger: { level: 'info' } });
+registerLocalOnly(app); // security/localOnly.ts: first: Host / Origin checks for every route, /files/ serves media only
 I.registerIdempotency(app); registerJsonErrors(app); // every 5xx carries a JSON body (DP #17) // job-creating endpoints: Idempotency-Key / clientJobId, 24 h, replay = original response, mismatch → 409
-await app.register(cors, { exposedHeaders: [I.REPLAY_HEADER] }); // browsers may read Idempotent-Replayed (DP client)
+await app.register(cors, { origin: corsOrigin, exposedHeaders: [I.REPLAY_HEADER] }); // allowed origins only (security/localOnly.ts); browsers may read Idempotent-Replayed (DP client)
 const ROUTES: { method: string; url: string }[] = [];
 app.addHook('onRoute', (r) => { for (const m of [r.method].flat()) ROUTES.push({ method: String(m), url: r.url }); });
 /** Every JSON 404 carries errorType 'not_found' (unknown tool / job / model / plugin …) unless the handler set a more specific one. */
