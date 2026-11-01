@@ -160,7 +160,7 @@ The full, generated list of every model and route is in [LICENSES.md](../LICENSE
 
 ### Cloud person swap (Video Swap)
 
-Replace one described person in a clip with the character from one image, keeping motion, camera, light, background and the clip's own sound. Inspired by Comfy's Openjutsu sample app (MiniMax H3 + Akatz Labs Character Swap LoRA); here it runs on hosted video-edit models through Comfy Router (your Comfy key, billed to your Comfy account):
+Replace one described person in a clip with the character from one image, keeping motion, camera, light, background and the clip's own sound. The idea comes from Comfy's Openjutsu app ([Comfy-Org/comfy-openjutsu](https://github.com/Comfy-Org/comfy-openjutsu), MIT), built on MiniMax H3 and Akatz Labs' H3 Character Swap workflow ([akatz-labs/h3-character-swap-tool](https://github.com/akatz-labs/h3-character-swap-tool), MIT). That H3 recipe is the separate **H3 Character Swap · Comfy Cloud** route (`server/src/comfy/h3CharSwapCloud.ts`, presets Sharper (768p) and Faster and cheaper (480p)). The models in this section are hosted video-edit models through Comfy Router (your Comfy key, billed to your Comfy account):
 
 | Model | Router id | Length | Quality | Price (list) |
 |---|---|---|---|---|

@@ -1,9 +1,9 @@
-// H3 Character Swap · Comfy Cloud (Oct 26): the Openjutsu recipe on shared Comfy Cloud with the user's imported LoRA. FAKE fetches only (no network,
+// H3 Character Swap · Comfy Cloud (Oct 26): the H3 Character Swap recipe (after Comfy's Openjutsu app) on shared Comfy Cloud with the user's imported LoRA. FAKE fetches only (no network,
 // no key, no spend).
 //  - graph: core nodes only, the Cloud model files (NVFP4 text encoder, fp16 video VAE, shared fl2v turbo), sigma shift, comfy kitchen attention,
 //    LoRA chain, audio guide, SAM 3.1 edit mask on the video latent only (Oct 27)
 //  - mask plan: H3 latent grid (16 px), grow, side / click point / uploaded mask / off / motion transfer, empty-frame fallback, every variant passes the
-//    object_info check; presets (Openjutsu 768p default, fast 480p), turbo off (20 steps res_multistep/simple), steps + LoRA strength, form fields
+//    object_info check; presets (Sharper 768p default, key openjutsu; fast 480p), turbo off (20 steps res_multistep/simple), steps + LoRA strength, form fields
 //  - plan: 0.5 MP / 1.0 MP budgets in the source's shape, 17k+5 frames, 24 fps prep with sound padded to the grid, prompt (user words in <Picture 1>/<Video 1> form, else
 //    "Replace <target>…", motion transfer wording), seed, silent clip (no audio refs), 9:16 source, 2–15 s range (16 s refused, 1 s refused)
 //  - route: twin of the H3 Character Swap card on Object Swap + Motion Transfer, priceUnmeasured estimate row, runnable
@@ -74,7 +74,7 @@ try {
   assert.throws(() => plan({ ...base, duration: 16 }), /up to 15 s/); assert.throws(() => plan({ ...base, duration: 1 }), /at least 2 s/); assert.throws(() => plan({ ...base, refPaths: [], imagePath: undefined }), /character image/);
   { const pl = plan({ ...base, charswapLora: 'loras/mine/h3_character_swap_v1.5.safetensors' }); assert.equal(pl.passes[0].graph['2'].inputs.lora_name, 'loras/mine/h3_character_swap_v1.5.safetensors'); }
   process.env.COMFY_CLOUD_CHARSWAP_LORA = 'my_swap.safetensors'; assert.equal(plan(base).passes[0].graph['2'].inputs.lora_name, 'my_swap.safetensors'); delete process.env.COMFY_CLOUD_CHARSWAP_LORA;
-  ok('plan: 0.5/1.0 MP budgets in the source shape (16:9, 9:16, square, unknown; no resolution → Openjutsu 768p), 17k+5 frames, 24 fps prep padded to the grid, prompt forms, silent clip, 2–15 s, LoRA name override');
+  ok('plan: 0.5/1.0 MP budgets in the source shape (16:9, 9:16, square, unknown; no resolution → Sharper 768p), 17k+5 frames, 24 fps prep padded to the grid, prompt forms, silent clip, 2–15 s, LoRA name override');
 
   // ---- edit mask + settings ----
   const IMPORTED = [CS.CHARSWAP_LORA_DEFAULT, CS.TURBO_768_DEFAULT];
@@ -105,6 +105,10 @@ try {
   { const g12 = plan({ ...base, steps: 12, loraStrength: 0.8 }).passes[0].graph; assert.equal(g12['23'].inputs.steps, 12); assert.equal(g12['2'].inputs.strength_model, 0.8);
     const gx = plan({ ...base, steps: 99, loraStrength: 7 }).passes[0].graph; assert.equal(gx['23'].inputs.steps, 8); assert.equal(gx['2'].inputs.strength_model, 1); }
   assert.deepEqual(CS.charswapFields({ charswapPreset: 'fast', turbo: '0', steps: '12', loraStrength: '0.9', charswapMask: 'off' }), { charswapPreset: 'fast', turbo: false, steps: 12, loraStrength: 0.9, charswapMask: 'off' });
+  // Nov 1: the 768p preset shows as "Sharper (768p)"; its key stays "openjutsu" so saved jobs and Recreate keep working.
+  assert.equal(CS.CHARSWAP_PRESETS.openjutsu.label, 'Sharper (768p)'); assert.equal(CS.CHARSWAP_PRESETS.fast.label, 'Faster and cheaper (480p)');
+  assert.equal(CS.charswapPreset({ charswapPreset: 'openjutsu' }), 'openjutsu'); assert.equal(CS.charswapTier({ charswapPreset: 'openjutsu' }), '768p');
+  assert.deepEqual(CS.charswapFields({ charswapPreset: 'openjutsu' }), { charswapPreset: 'openjutsu' }); assert.match(plan({ ...base, resolution: '720p' }).notes[0], /Sharper \(768p\)/);
   assert.deepEqual(CS.charswapFields({}), {}); for (const f of [{ charswapPreset: 'max' }, { steps: '2' }, { steps: '8.5' }, { loraStrength: '3' }, { turbo: 'maybe' }, { charswapMask: 'x' }]) assert.ok('error' in CS.charswapFields(f as any), JSON.stringify(f));
   assert.equal(plan({ ...base, charswapMask: 'off' }).passes[0].expect.mask, 'off');
   assert.deepEqual(['the woman on the right', 'the man', 'a kid', 'the dancer', 'the woman next to the man'].map(CS.samNoun), ['woman', 'man', 'child', 'person', 'woman']);

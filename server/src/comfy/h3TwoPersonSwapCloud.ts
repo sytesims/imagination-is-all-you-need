@@ -21,7 +21,8 @@
  * Cloud check (free, GET only, before any upload): the Character Swap LoRA must be in the account's model library (checkCharswapLora); the
  * optional 768p turbo import is used when found. Every other class and model file is the one-person graph's (object_info 2026-10-26,
  * test/fixtures/object-info-comfy-cloud-2026-10-26.json).
- * Ideas credited: Akatz's H3 Character Swap LoRA v1.5 and H3 Relay edit mask, Comfy's Openjutsu settings (as in h3CharSwapCloud.ts); the chained
+ * Ideas credited: Akatz Labs' H3 Character Swap LoRA v1.5, H3 Character Swap workflow (github.com/akatz-labs/h3-character-swap-tool, MIT) and
+ * H3 Relay edit mask; the recipe settings of Comfy's Openjutsu app (github.com/Comfy-Org/comfy-openjutsu, MIT; as in h3CharSwapCloud.ts); the chained
  * one-person-per-pass layout and the mutual mask subtraction are our own.
  */
 import { readFileSync } from 'node:fs';
