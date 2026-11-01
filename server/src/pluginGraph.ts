@@ -36,12 +36,19 @@ export function mapGraph(graph: Record<string, any>, nm: PluginNodeMap | null, i
   const set = (r: NodeRef | undefined, v: unknown) => { if (r && v !== undefined && v !== null) put(r.node, r.field, r.map && String(v) in r.map ? r.map[String(v)] : v); };
   set(nm.inputs.video, input.videoPath ? file(input.videoPath) : undefined);
   set(nm.inputs.image, input.imagePath ? file(input.imagePath) : undefined);
-  set(nm.inputs.prompt, input.finalPrompt ?? input.prompt);
+  const pr = input.finalPrompt ?? input.prompt; set(nm.inputs.prompt, typeof pr === 'string' && !pr.trim() ? undefined : pr); // an empty prompt keeps the workflow's own text
   set(nm.inputs.seed, input.seed);
   set(nm.inputs.resolution, input.resolution);
   for (const [k, r] of Object.entries(nm.fields ?? {})) for (const x of Array.isArray(r) ? r : [r]) set(x, input.fields?.[k]);
   for (const t of input.types ?? []) for (const r of nm.presets?.[t] ?? []) put(r.node, r.field, r.value);
   return g;
+}
+
+/** The text a workflow's mapped prompt field holds (through a Primitive it links to), or null: the prompt it runs with when you leave yours empty. */
+export function graphPromptOf(graph: Record<string, any> | undefined, nm: PluginNodeMap | null | undefined): string | null {
+  const r = nm?.inputs.prompt; let v = r ? graph?.[r.node]?.inputs?.[r.field] : undefined;
+  if (isLink(v) && /^Primitive/.test(String(graph?.[v[0]]?.class_type))) v = graph![v[0]].inputs?.value;
+  return typeof v === 'string' && v.trim() ? v : null;
 }
 
 /** The main model of a graph in plain words ("flux1-dev" from flux1-dev.safetensors): the first diffusion model or checkpoint loader's file
