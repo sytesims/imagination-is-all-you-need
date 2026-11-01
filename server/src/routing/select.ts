@@ -23,6 +23,7 @@ import { routeRunnable, CLOUD_RUNNER_ROUTES, UNMEASURED_PRICE_REASON, allowUnmea
 import type { RouteDef, RouteOption, JobRouting } from './types.js';
 import { localReachable } from '../hardware.js';
 import { visiblePlaces } from './hiddenPlaces.js';
+import { sizeWords } from '../workflowModels.js';
 import { fitFor, findVariant, variantRunnable, tooHeavyWarning, weightsGate } from '../hardware/requirements.js';
 import { MAC_WEIGHTS_REASON } from '../hardware/macWeights.js';
 import { mediaIssue } from '../mediaHandoff.js';
@@ -278,7 +279,7 @@ export function placeAction(tool: ToolDef, modelId: string, input: Record<string
     if (!o.available) return null; // too heavy / can't take this job / coming soon
     if (!localOn) return mk('turn_on', 'Turn on');
     const g = localSetupGate(tool, modelId, input);
-    if (g?.code === 'weights_missing') return mk('download', `Download ${gbText(g.missingBytes) || 'files'}`.trim(), { missingBytes: g.missingBytes || null, downloadId: g.downloadId || null });
+    if (g?.code === 'weights_missing') return mk('download', (g as any).unknownSizes ? `Download ${sizeWords(g.missingBytes, (g as any).unknownSizes)}` /* a workflow you added, with pasted links */ : `Download ${gbText(g.missingBytes) || 'files'}`.trim(), { missingBytes: g.missingBytes || null, downloadId: g.downloadId || null });
     if (g?.code === 'nodes_missing') return mk('install_node', 'Install node');
     return null;
   }

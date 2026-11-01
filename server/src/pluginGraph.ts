@@ -43,3 +43,12 @@ export function mapGraph(graph: Record<string, any>, nm: PluginNodeMap | null, i
   for (const t of input.types ?? []) for (const r of nm.presets?.[t] ?? []) put(r.node, r.field, r.value);
   return g;
 }
+
+/** The main model of a graph in plain words ("flux1-dev" from flux1-dev.safetensors): the first diffusion model or checkpoint loader's file
+ *  (unet_name / ckpt_name, the "dit" role in hardware/requirements.ts), without folders or extension. null when there is none. */
+export function mainModelOf(graph: Record<string, any> | undefined): string | null {
+  const ids = Object.keys(graph ?? {}).sort((a, b) => (Number(a) - Number(b)) || a.localeCompare(b));
+  for (const k of ['unet_name', 'ckpt_name']) for (const id of ids) { const v = graph![id]?.inputs?.[k];
+    if (typeof v === 'string' && v.trim()) { const name = v.replace(/\\/g, '/').split('/').pop()!.replace(/\.(safetensors|gguf|ckpt|pt|pth|bin|sft)$/i, '').trim(); if (name) return name.slice(0, 60); } }
+  return null;
+}

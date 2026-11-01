@@ -60,6 +60,11 @@ try {
   assert.deepEqual(WM.neededFiles({ '1': { class_type: 'LoadImage', inputs: { image: 'a.png' } }, '2': { class_type: 'SaveImage', inputs: { images: ['1', 0] } } }), [], 'no model loaders: nothing needed');
   assert.deepEqual(WM.neededFiles({ '1': { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: 'sub\\dir\\m.safetensors' } } }).map((f) => f.file), ['sub/dir/m.safetensors'], 'Windows separators become /');
 
+  const { mainModelOf } = await import('../src/pluginGraph.ts');
+  assert.equal(mainModelOf(graph), 'foo-Q4', 'the diffusion model loader first, in plain words'); assert.equal(mainModelOf({ '1': { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: 'sd\\flux1-dev.safetensors' } } }), 'flux1-dev');
+  assert.equal(mainModelOf({ '1': { class_type: 'LoadImage', inputs: { image: 'a.png' } } }), null, 'no main loader: unclear');
+  assert.equal(WM.sizeWords(4e8, 2), '0.4 GB + 2 files of unknown size'); assert.equal(WM.sizeWords(0, 1), '1 file of unknown size'); assert.equal(WM.sizeWords(4e8, 0), '0.4 GB');
+
   // ---- path checks ----
   for (const bad of ['../evil.safetensors', 'a/../../evil.safetensors', '/abs.safetensors', 'C:/x.safetensors', 'a//b.safetensors', './x.safetensors', 'x.txt', 'a\0b.safetensors'])
     assert.equal(WM.safeModelPath('loras', bad), false, `refuses ${JSON.stringify(bad)}`);
@@ -144,17 +149,22 @@ try {
   c = DL.downloadCheck({ downloadId: 'workflow:many-loras' }); assert.equal(c.code, 'no_url', 'with a models folder the custom loader\'s file is known missing, and has no link yet'); assert.deepEqual(c.extra.files, ['custom-thing.safetensors']);
   assert.equal(WM.saveModelLink(tool, 'loras', 'custom-thing.safetensors', 'https://civitai.com/api/download/models/77').ok, true);
   process.env.OPENHIGGSFIELD_DISK_FREE_GB = '0.01'; c = DL.downloadCheck({ downloadId: 'workflow:many-loras' }); assert.equal(c.code, 'not_enough_disk', 'the known LoRA alone is bigger than 10 MB');
+  c = DL.downloadCheck({ downloadId: 'workflow:many-loras' }); assert.equal(c.code, 'not_enough_disk'); assert.match(String(c.message), /^Needs [\d.]+ GB \+ 6 files of unknown size; [\d.]+ GB of disk space is free\.$/, 'pasted links have no size: said, not hidden');
   delete process.env.OPENHIGGSFIELD_DISK_FREE_GB;
+  // one file on its own (same downloader), before the rest
+  const one = DL.startDownload({ downloadId: 'workflow:many-loras', files: ['base.ckpt'] }); assert.equal(one.downloadId, 'workflow:many-loras|checkpoints/base.ckpt'); assert.equal(one.files.length, 1);
+  assert.equal((await DL.waitDownload(one.id))?.status, 'done'); assert.ok(fs.statSync(path.join(MODELS, 'checkpoints/base.ckpt')).isFile());
+  assert.throws(() => DL.downloadCheck({ downloadId: 'workflow:many-loras', files: ['../../evil.safetensors'] }), /doesn’t need that file/);
   c = DL.downloadCheck({ downloadId: 'workflow:many-loras' }); assert.equal(c.code, null, String(c.message));
-  assert.deepEqual(c.plan.files.map((f) => `${f.folder}/${f.file}`).sort(), ['checkpoints/base.ckpt', 'diffusion_models/wan/foo-Q4.gguf', ...['c', 'd', 'e'].map((x) => `loras/style-${x}.safetensors`), `loras/${KNOWN_LORA}`, 'loras/custom-thing.safetensors'].sort(), 'only the missing files');
+  assert.deepEqual(c.plan.files.map((f) => `${f.folder}/${f.file}`).sort(), ['diffusion_models/wan/foo-Q4.gguf', ...['c', 'd', 'e'].map((x) => `loras/style-${x}.safetensors`), `loras/${KNOWN_LORA}`, 'loras/custom-thing.safetensors'].sort(), 'only the missing files');
   assert.equal((weightsGate(tool, 'comfy-open') as any)?.code, 'weights_missing');
   assert.equal(weightsGate(tool, 'comfy-open', { downloadWeights: '1' }), null, '"Download with this run": every file has a link, so the run downloads first (the built-in flow)');
   const jm = (await import('../src/hardware/stages.ts')).jobMissing({ route: 'local:comfy-open', toolId: 'many-loras', input: {} } as any) as any;
-  assert.equal(jm.downloadId, 'workflow:many-loras'); assert.equal(jm.files.length, 7, 'the job\'s download step uses the same files');
+  assert.equal(jm.downloadId, 'workflow:many-loras'); assert.equal(jm.files.length, 6, 'the job\'s download step uses the same files');
   const d = DL.startDownload({ downloadId: 'workflow:many-loras' }); assert.equal(d.downloadId, 'workflow:many-loras'); assert.equal(d.label, 'Many Loras');
   const done = await DL.waitDownload(d.id); assert.equal(done?.status, 'done', done?.error ?? '');
   assert.ok(fs.statSync(path.join(MODELS, 'diffusion_models/wan/foo-Q4.gguf')).isFile(), 'subfolder kept under its folder');
-  assert.ok(fs.statSync(path.join(MODELS, 'loras', KNOWN_LORA)).isFile()); assert.ok(fs.statSync(path.join(MODELS, 'checkpoints/base.ckpt')).isFile());
+  assert.ok(fs.statSync(path.join(MODELS, 'loras', KNOWN_LORA)).isFile());
   assert.ok(!fs.existsSync(path.join(D, 'evil.safetensors')) && !fs.readdirSync(D).some((f) => f.endsWith('.safetensors')), 'nothing outside the models folder');
   v = WM.needsOf(tool, (await import('../src/comfyNodes.ts')).comfyLoaderOptionsNow()); assert.equal(v.missing, 0, 'files on disk in the models folder count as there');
   assert.equal(weightsGate(tool, 'comfy-open'), null, 'nothing missing: Generate runs');

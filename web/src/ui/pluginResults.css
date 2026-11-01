@@ -46,3 +46,15 @@
 @media (max-width:560px){.wn-list li{grid-template-columns:minmax(0,1fr) auto}.wn-src{grid-column:1/-1}.wn-act{margin-left:0;width:100%}}
 .wn-none{margin:0;color:var(--text-3,#8b8c90);font:500 12.5px/1.4 var(--font-ui,Inter)}
 .wn-act .ls-prog{width:170px}
+/* The panel head of a workflow from a folder: its icon beside the kicker and name (the shared head lays its copy over a clip) */
+.ws-tool.ws-tool-plugin{height:auto;overflow:visible;padding:6px 0 2px}
+.ws-tool.ws-tool-plugin .ws-tool-copy{position:static;min-width:0}
+.ws-tool.ws-tool-plugin .ws-tool-name{text-shadow:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ws-tool.ws-tool-plugin .eyebrow{color:var(--text-3,#8b8c90)}
+/* a workflow you added: its model, nothing to pick */
+.model-btn.model-btn-static{cursor:default}.model-btn.model-btn-static:hover{border-color:var(--hairline)}
+.model-btn-static b{font-family:var(--font-mono,ui-monospace,Menlo,monospace);font-weight:500;font-size:12.5px}
+/* one file's own download in the Needs list */
+.wn-src{display:inline-flex;align-items:center;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.wn-get{display:inline-flex;align-items:center;gap:8px}
+.wn-get .ls-prog{width:120px}

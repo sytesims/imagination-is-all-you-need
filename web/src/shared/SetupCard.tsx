@@ -39,7 +39,9 @@ export function setupNeeded(m: ToolModel | undefined, q: any, engine?: string | 
   return setupPlacesOf(m, q).length > 0;
 }
 
-const sizeOf = (p: SetupPlace) => (p.action.missingBytes ? gbText(p.action.missingBytes) : String(p.action.text ?? '').replace(/^Download\s*/i, '').trim());
+const sizeOf = (p: SetupPlace) => (p.action.missingBytes ? gbText(p.action.missingBytes) : unknownOf(p) ? '' : String(p.action.text ?? '').replace(/^Download\s*/i, '').trim());
+/** A workflow you added whose pasted links don't say their size: "2 files of unknown size" (the server's words), shown on the button's second line. */
+const unknownOf = (p: SetupPlace) => /(\d+ files? of unknown size)/.exec(String(p.action.text ?? ''))?.[1] ?? null;
 /** The step a place needs, as a button label ("Download 53 GB", "Add Comfy key", "Turn on Local"). */
 export function stepText(p: SetupPlace): string {
   const a = p.action;
@@ -81,7 +83,8 @@ export function SetupGenerate({ toolId, model, engine, quote, className = 'btn b
   const priceOf = (p: SetupPlace) => (p.runOn === 'local' ? 'Free per run' : (() => { const x = listPrice(p.credits, p.runOn, own); return x ? `${x} per run` : ''; })());
   const go = async (p: SetupPlace) => { if (busy) return; setBusy(p.runOn); setErr('');
     try { await doSetupPlace(toolId, model, engine, p); setOpen(false); } catch (e) { setErr((e as Error).message); } finally { setBusy(''); } };
-  const sub = [lead.runOn === 'local' ? `${LOCAL_LABEL} · free` : `${runOnLabel(lead.runOn) || lead.label}`, places.length > 1 ? `${places.length - 1} more way${places.length > 2 ? 's' : ''}` : ''].filter(Boolean).join(' · ');
+  const unk = lead.action.kind === 'download' ? unknownOf(lead) : null;
+  const sub = [unk ? (lead.action.missingBytes ? `+ ${unk}` : unk) : lead.runOn === 'local' ? `${LOCAL_LABEL} · free` : `${runOnLabel(lead.runOn) || lead.label}`, places.length > 1 ? `${places.length - 1} more way${places.length > 2 ? 's' : ''}` : ''].filter(Boolean).join(' · ');
   return <>
     <button ref={btn} type="button" className={`${className} gen-setup`} data-testid={testId} data-needs-setup="1" data-step={lead.action.kind} data-run-on={lead.runOn} aria-haspopup="dialog" aria-expanded={open}
       title={`${name} needs ${runOnLabel(lead.runOn) || lead.label} set up first`} onClick={() => setOpen(o => !o)}>
@@ -121,12 +124,12 @@ export function DownloadIntentRow({ engine, quote }: { engine?: string | null; q
 
 /** The two quiet states under a bar: a run is downloading this model's files, or the user chose to download (with undo). null otherwise.
  *  Create Image no longer uses it (2026-10-23: the ring on the model chip, Generate's second line and DownloadIntentRow in the model menu). */
-export function SetupStatus({ model, engine, quote, downloading = false, className = '' }: { model: ToolModel | undefined; engine?: string | null; quote: any; downloading?: boolean; className?: string }) {
+export function SetupStatus({ model, engine, quote, downloading = false, className = '', plain = false }: { model: ToolModel | undefined; engine?: string | null; quote: any; downloading?: boolean; className?: string; /** a workflow you added: "your computer", not "Local" */ plain?: boolean }) {
   const intent = useDownloadIntent(engine ?? null); const name = model ? shownName(model) : 'This model';
   if (downloading) return <p className={`setup-status ${className}`.trim()} data-testid="setup-status" data-state="downloading" role="status">Downloading {name}’s files for your run. Generate unlocks when it’s done.</p>;
   if (quote?.setup?.action === 'download' && intent && engine) { const b = Number(intent.bytes || quote.setup.missingBytes) || 0; const size = String(quote.setup.actionText ?? '').replace(/^Download\s*/, '') || (b ? gbText(b) : 'the model files');
     return <p className={`setup-status ${className}`.trim()} data-testid="setup-status" data-state="download-chosen" role="status">
-      <span>Generate downloads {size} to Local first. The download is free.</span>
+      <span>Generate downloads {size} to {plain ? 'your computer' : 'Local'} first. The download is free.</span>
       <button type="button" className="link-btn setup-undo" data-testid="setup-undo" onClick={() => setDownloadIntent(engine, null)}>Don’t download</button></p>; }
   return null;
 }

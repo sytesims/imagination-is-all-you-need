@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { gbText } from './fit';
 /** Batch 28: this computer's hardware, the local ComfyUI address, model downloads and learned timings (server HW endpoints). */
 export type Hardware = { source: 'none' | 'comfyui-system_stats' | 'host' | 'manual' | string; tier: 'none' | 'light' | 'most' | 'all' | 'unknown' | string; tierLabel?: string; note?: string;
   effectiveVramGB?: number | null; gpu?: { name?: string; type?: string; vramTotalGB?: number | null; count?: number } | null; ram?: { totalGB?: number | null; totalBytes?: number | null; freeBytes?: number | null } | null;
@@ -88,5 +89,22 @@ export const choiceText = (c: DlChoice, _all?: DlChoice[]): string => {
 /** Add a workflow: the model files a workflow you added loads, and whether your ComfyUI has them (server workflowModels.ts). */
 export type NeedRow = { file: string; folder: string; nodes: string[]; state: 'have' | 'missing' | 'unknown'; url: string | null; bytes: number | null; pageUrl: string | null; linkFrom: 'list' | 'yours' | null; nodeMissing?: boolean; badPath?: boolean };
 export type Needs = { id: string; comfy: 'ok' | 'off' | 'not_set'; modelsDirSet: boolean; files: NeedRow[]; missing: number; unknown: number; downloadId: string };
-export const getWorkflowNeeds = (id: string) => send<Needs>(`/api/workflows/${encodeURIComponent(id)}/models`, 'GET');
-export const saveWorkflowLink = (id: string, folder: string, file: string, url: string) => send<Needs>(`/api/workflows/${encodeURIComponent(id)}/models`, 'PUT', { folder, file, url });
+/* One shared copy per workflow: the Needs list and Generate read the same answer (a saved link or a finished download updates both). */
+const needsOf = new Map<string, Needs | null>(); const needsSubs = new Set<() => void>(); const tellNeeds = () => needsSubs.forEach(f => f());
+export const publishNeeds = (id: string, n: Needs | null) => { needsOf.set(id, n); tellNeeds(); };
+export const getWorkflowNeeds = async (id: string) => { const r = await send<Needs>(`/api/workflows/${encodeURIComponent(id)}/models`, 'GET'); publishNeeds(id, r.ok ? r.data : null); return r; };
+export const saveWorkflowLink = async (id: string, folder: string, file: string, url: string) => { const r = await send<Needs>(`/api/workflows/${encodeURIComponent(id)}/models`, 'PUT', { folder, file, url }); if (r.ok) publishNeeds(id, r.data); return r; };
+/** The needs of a workflow you added (undefined = not loaded yet, null = none / couldn't load); loads it once. */
+export function useWorkflowNeeds(id: string | null | undefined): Needs | null | undefined {
+  const [, tick] = useState(0); useEffect(() => { const f = () => tick(n => n + 1); needsSubs.add(f); return () => { needsSubs.delete(f); }; }, []);
+  useEffect(() => { if (id && !needsOf.has(id)) void getWorkflowNeeds(id); }, [id]);
+  return id ? (needsOf.has(id) ? needsOf.get(id) : undefined) : null;
+}
+/** Files of a workflow's needs still to fetch (missing, a name the app can save). */
+export const needsTodo = (n: Needs) => n.files.filter(r => r.state !== 'have' && !r.badPath);
+/** "0.4 GB", or "0.4 GB + 2 files of unknown size" (a pasted link doesn't say its size). */
+export const sizeWords = (rows: { bytes: number | null }[]) => { const b = rows.reduce((a, r) => a + (r.bytes ?? 0), 0); const u = rows.filter(r => r.bytes == null).length; const t = gbText(b);
+  return u ? (b ? `${t} + ${u} file${u > 1 ? 's' : ''} of unknown size` : `${u} file${u > 1 ? 's' : ''} of unknown size`) : t; };
+/** One file of a workflow you added (its own download, the same downloader): dry run first, like the rest. */
+export const dryRunFileDownload = (downloadId: string, file: string) => send<DryRun>('/api/local/downloads', 'POST', { downloadId, files: [file], dryRun: true });
+export const startFileDownload = (downloadId: string, file: string) => send<Download>('/api/local/downloads', 'POST', { downloadId, files: [file] });

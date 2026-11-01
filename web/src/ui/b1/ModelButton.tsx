@@ -8,6 +8,8 @@ import { useToolModels, modelOfEngine, shownName } from '../../shared/models';
 export default function ModelButton({ tool }: { tool: ToolInfo }) {
   const m = useModels(tool.id); useToolModels(tool.id); const btn = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(() => new URLSearchParams(location.search).get('picker') === 'models');
+  /* a workflow you added runs its own graph: its main model in plain words, and nothing to change */
+  if (tool.plugin?.user) return <div className="model-btn model-btn-static" data-testid="ws-model-btn"><span className="model-k">Model</span><b title={tool.plugin.mainModel ? undefined : 'The models this workflow loads are listed under Needs'}>{tool.plugin.mainModel || 'Your workflow'}</b></div>;
   if (!m.loaded) return <span className="model-btn model-btn-ph" aria-hidden />;
   if (!m.models.length) return null;
   const value = m.selected?.id ?? tool.providers[0]?.id ?? ''; const tm = modelOfEngine(tool.id, value);

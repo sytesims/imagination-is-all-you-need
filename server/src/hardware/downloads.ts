@@ -109,7 +109,9 @@ export function planFiles(spec: DlSpec, dir: string | null): { label: string; pr
   const parsed = spec.downloadId ? parseDownloadId(spec.downloadId) : null;
   const wfId = /^workflow:([a-z][a-z0-9-]{1,39})$/.exec(spec.downloadId ?? '')?.[1];
   if (wfId) { const t = getTool(wfId) as any; if (!t?.plugin?.user) throw new DlError('not_found', 'No workflow you added has that name.'); // Add a workflow: the files its own graph loads (workflowModels.ts)
-    label = t.name ?? wfId; providerId = null; downloadId = spec.downloadId!; rows = workflowDownloadRows(t); }
+    label = t.name ?? wfId; providerId = null; downloadId = spec.downloadId!; rows = workflowDownloadRows(t);
+    if (spec.files?.length) { rows = rows.filter((r) => spec.files!.includes(r.file)); if (!rows.length) throw new DlError('not_found', 'This workflow doesn’t need that file, or it’s already there.');
+      if (spec.files.length === 1) { label = `${rows[0].file} · ${label}`; downloadId = `${spec.downloadId}|${rows[0].folder}/${rows[0].file}`; } } } // one file: its own download, so several can run side by side
   else if (spec.variantId) { const v = findVariant(spec.variantId); if (!v) throw new DlError('not_found', 'No such lighter version.'); label = `${v.file} (${v.precision})`; rows = [{ file: v.file, folder: v.folder, url: v.url, bytes: v.bytes }]; downloadId = null; }
   else if (parsed) { const p = getProvider(parsed.providerId); if (!p || p.kind !== 'open-weights') throw new DlError('not_found', 'No such local model.');
     const ok = allowedWorkflows(p.id); const bad = parsed.workflows.filter((w) => !ok.has(w)); if (bad.length) throw new DlError('not_found', 'No such model download.', { downloadId: spec.downloadId });
@@ -136,7 +138,8 @@ export function downloadCheck(spec: DlSpec) {
   else if (!dirOk) { code = 'no_models_dir'; message = MODELS_DIR_MISSING_MSG; }
   else if (!plan.files.some((f) => f.status === 'queued')) { code = 'nothing_to_download'; message = 'All the files are already on this computer.'; extra = { files: plan.files }; }
   else if (plan.files.some((f) => f.status === 'queued' && !f.url)) { code = 'no_url'; message = 'One of the files has no download address; get it by hand.'; extra = { files: plan.files.filter((f) => !f.url).map((f) => f.file) }; }
-  else if (free != null && need > free * 0.95) { code = 'not_enough_disk'; message = `Needs ${(need / 1e9).toFixed(1)} GB of disk space; ${(free / 1e9).toFixed(1)} GB is free.`; extra = { missingBytes: need, diskFreeBytes: free }; }
+  else if (free != null && need > free * 0.95) { const unk = plan.files.filter((f) => f.status === 'queued' && f.bytesTotal == null).length; code = 'not_enough_disk';
+    message = unk ? `Needs ${(need / 1e9).toFixed(1)} GB + ${unk} file${unk > 1 ? 's' : ''} of unknown size; ${(free / 1e9).toFixed(1)} GB of disk space is free.` : `Needs ${(need / 1e9).toFixed(1)} GB of disk space; ${(free / 1e9).toFixed(1)} GB is free.`; extra = { missingBytes: need, diskFreeBytes: free, unknownSizes: unk }; }
   return { dir, plan, need, free, missingBytesSource: dir ? 'checked' as const : 'assumed_all' as const, code, message, extra };
 }
 /** Start a download (POST /api/local/downloads, or a job's downloading_model stage). Throws DlError for the 4xx cases. */

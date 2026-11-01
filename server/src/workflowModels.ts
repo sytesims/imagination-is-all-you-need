@@ -123,16 +123,19 @@ export function workflowDownloadRows(tool: ToolLike): { file: string; folder: st
   return needsOf(tool, comfyLoaderOptionsNow()).files.filter((r) => r.state !== 'have' && !r.badPath).map((r) => ({ file: r.file, folder: r.folder, url: r.url, bytes: r.bytes }));
 }
 
+/** "0.4 GB", or "0.4 GB + 2 files of unknown size" when some links don't say their size (a pasted link). */
+export const sizeWords = (bytes: number, unknown: number) => { const g = bytes / 1e9; const t = `${g >= 10 ? Math.round(g) : Math.max(0.1, Math.round(g * 10) / 10)} GB`;
+  return unknown ? (bytes ? `${t} + ${unknown} file${unknown > 1 ? 's' : ''} of unknown size` : `${unknown} file${unknown > 1 ? 's' : ''} of unknown size`) : t; };
 /** The weights gate for a workflow you added (requirements.ts weightsGate). null = nothing known to be missing. */
 export function workflowGate(tool: ToolLike, freeBytes: number | null, /** the run asked to download first (downloadWeights=1, the built-in "Download with this run") */ wantsDl = false) {
   if (!tool.plugin?.user) return null;
   const v = needsOf(tool, comfyLoaderOptionsNow()); const miss = v.files.filter((r) => r.state === 'missing'); if (!miss.length) return null;
-  const need = miss.reduce((a, f) => a + (f.bytes ?? 0), 0); const names = miss.map((f) => f.file);
+  const need = miss.reduce((a, f) => a + (f.bytes ?? 0), 0); const names = miss.map((f) => f.file); const unknownSizes = miss.filter((f) => f.bytes == null).length;
   const list = `${names.slice(0, 4).join(', ')}${names.length > 4 ? ` and ${names.length - 4} more` : ''}`;
   const base = { missingBytes: need, missingFiles: miss.map((f) => ({ file: f.file, folder: f.folder, bytes: f.bytes, url: f.url ?? '', autoDownloaded: false })), diskFreeBytes: freeBytes,
-    downloadable: miss.every((f) => !!f.url), downloadEndpoint: '/api/local/downloads', downloadId: v.downloadId };
+    downloadable: miss.every((f) => !!f.url), downloadEndpoint: '/api/local/downloads', downloadId: v.downloadId, unknownSizes, needsLinks: miss.filter((f) => !f.url).length };
   const gbs = (b: number) => (Math.round(b / 1e8) / 10).toString();
-  if (freeBytes != null && need > freeBytes * 0.95) return { ...base, code: 'not_enough_disk' as const, message: `This workflow's files need ${gbs(need)} GB of disk space; ${gbs(freeBytes)} GB is free. Free up space first.` };
+  if (freeBytes != null && need > freeBytes * 0.95) return { ...base, code: 'not_enough_disk' as const, message: `This workflow's files need ${sizeWords(need, unknownSizes)}; ${gbs(freeBytes)} GB of disk space is free. Free up space first.` };
   if (wantsDl && base.downloadable && modelsDir()) return null; // every file has a link: the run downloads them first (hardware/stages.ts prePhase)
   return { ...base, code: 'weights_missing' as const, message: `${miss.length === 1 ? 'A model file isn’t' : `${miss.length} model files aren’t`} in your ComfyUI yet. Get ${miss.length === 1 ? 'it' : 'them'} under Needs on this page: ${list}.` };
 }

@@ -18,7 +18,7 @@ import { RESOLUTIONS } from './media.js';
 import type { Job } from './jobs.js';
 import type { ToolDef } from './tools/types.js';
 import { placementErrors, placeVideoPlugins, TAB_LABEL, type PluginTab } from './shared/pluginPlacement.js';
-import { mapGraph, hasFileKey, pluginOutKind, registerPluginSpec, clearPluginSpecs, removePluginSpec } from './pluginGraph.js';
+import { mapGraph, hasFileKey, pluginOutKind, registerPluginSpec, clearPluginSpecs, removePluginSpec, mainModelOf } from './pluginGraph.js';
 export { mapGraph } from './pluginGraph.js';
 
 export const PLUGIN_SCHEMA = 1;
@@ -180,7 +180,7 @@ async function loadOne(dir: string, user: boolean): Promise<PluginStatus> {
   const baseParse = app.parseInput; const baseRun = app.run;
   const tool: ToolDef = {
     ...app, pricing: { optionFactors: m.pricing.optionFactors, providerFactors: m.pricing.providerFactors },
-    plugin: { id: m.id, dir, version: m.version, license: gov, handler: !!st.handler, tab: m.tab ?? null, category: m.tab ? m.category : null, goal: m.goal ?? null, author: m.author ?? null, input: m.input, output: outKind, ...(user ? { user: true } : {}) },
+    plugin: { id: m.id, dir, version: m.version, license: gov, handler: !!st.handler, tab: m.tab ?? null, category: m.tab ? m.category : null, goal: m.goal ?? null, author: m.author ?? null, input: m.input, output: outKind, ...(user ? { user: true, mainModel: mainModelOf(v.graph) } : {}) },
     parseInput: async (f, fl) => { const r = await (handler.parseInput ? handler.parseInput(f, fl, { ...ctx, base: () => baseParse(f, fl) }) : baseParse(f, fl)); return outKind === 'image' && !('error' in r) ? { ...r, outKind } : r; },
     /* Reached only when the job does not run on your own ComfyUI (providers.ts sends local runs to comfy/runNative.ts with the plan from comfy/plans.ts):
        a sample result, plus the workflow a real run would send (<jobId>-graph.json, shown by workflowExport.ts as a sample). */
