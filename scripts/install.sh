@@ -93,7 +93,7 @@ for f in need:
     x = files.get(f, {}); s = x.get('size') or 0; tot += s
     if comfy and os.path.exists(os.path.join(comfy, 'models', x.get('folder', ''), f)): have += s
 gated = [f for f in need if files.get(f, {}).get('head_status') not in ('ok', None)]
-if gated: print('  gated/unresolved (manual download):', ', '.join(sorted(gated)))
+if gated: print('  gated (accept the licence on Hugging Face, set HF_TOKEN) or unresolved:', ', '.join(sorted(gated)))
 print(f"TOTAL {tot/1e9:.1f} {have/1e9:.1f} {len(wf)}")
 PY
 }
@@ -169,12 +169,15 @@ for k,p in json.load(open('readiness/manifest/custom-nodes.json'))['packs'].item
     if [ $SKIP_MODELS = 0 ]; then
       run "$PY" - "$MANIFEST" "$COMFY_DIR" $PREFIXES <<'PY'
 # Download straight from models.json (sha256-verified, resumable-by-skip). Does not rewrite the manifest.
-import hashlib, json, os, sys, urllib.request
+import hashlib, json, os, sys, urllib.error, urllib.request
 man, comfy, *pre = sys.argv[1:]; m = json.load(open(man))
 need = {f for k, v in m['workflows'].items() if any(k.startswith(p) for p in pre) for f in v['models']}
 for x in m['models']:
     if x['file'] not in need: continue
-    if x.get('head_status') != 'ok' or not x.get('url'): print('SKIP (gated/unresolved, see README):', x['file']); continue
+    # Gated files (the author asks you to accept its licence on Hugging Face) download like the rest once HF_TOKEN is set; the licence is yours to follow.
+    gated = x.get('head_status') == 'gated' and bool(x.get('url'))
+    if not x.get('url') or (x.get('head_status') != 'ok' and not (gated and os.environ.get('HF_TOKEN'))):
+        print('SKIP (gated: accept its licence on Hugging Face and set HF_TOKEN; unresolved: see README):', x['file']); continue
     fold = x['folder'] if x['folder'].startswith('custom_nodes/') else 'models/' + x['folder']
     dst = os.path.join(comfy, fold, x['file']); os.makedirs(os.path.dirname(dst), exist_ok=True)
     if os.path.exists(dst) and (not x.get('size') or os.path.getsize(dst) == x['size']): print('have', dst); continue
@@ -182,8 +185,12 @@ for x in m['models']:
     hdr = {'User-Agent': 'openhiggsfield-install'}
     if os.environ.get('HF_TOKEN'): hdr['Authorization'] = 'Bearer ' + os.environ['HF_TOKEN']
     h = hashlib.sha256()
-    with urllib.request.urlopen(urllib.request.Request(x['url'], headers=hdr)) as r, open(dst + '.part', 'wb') as o:
-        while (b := r.read(1 << 20)): h.update(b); o.write(b)
+    try:
+        with urllib.request.urlopen(urllib.request.Request(x['url'], headers=hdr)) as r, open(dst + '.part', 'wb') as o:
+            while (b := r.read(1 << 20)): h.update(b); o.write(b)
+    except urllib.error.HTTPError as e:
+        if gated and e.code in (401, 403): print(f"SKIP (gated: accept the licence on {x.get('page_url') or x['url'].split('/resolve/')[0]}, then re-run):", x['file']); continue
+        raise
     if x.get('sha256') and h.hexdigest() != x['sha256']: os.remove(dst + '.part'); sys.exit('sha256 mismatch: ' + x['file'])
     os.replace(dst + '.part', dst)
 PY
