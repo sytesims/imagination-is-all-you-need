@@ -28,6 +28,9 @@
 .wf-detail-body{margin:0;padding:0 0 14px;color:var(--text-2);font-size:var(--fs-xs);line-height:1.65}
 .wf-detail-body p{margin:0 0 8px}.wf-detail-body p:last-child{margin-bottom:0}
 .wf-detail-body ol,.wf-notes{margin:0 0 10px;padding-left:18px;display:grid;gap:6px}
+.wf-nodes section{margin:0 0 10px}.wf-nodes section:last-child{margin-bottom:0} /* View workflow: the graph's nodes, read-only, grouped */
+.wf-nodes h5{margin:0 0 4px;font-size:var(--fs-2xs);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-2)}
+.wf-nodes ol{margin:0;padding-left:22px;gap:2px}.wf-nodes li{min-width:0}.wf-nodes b{font-weight:500;color:var(--text)}.wf-nodes small{margin-left:8px;color:var(--text-2);font-size:var(--fs-2xs)}
 .wf-files ul{list-style:none}.wf-files li{padding:10px 0;border-top:1px solid var(--hairline);min-width:0}.wf-files li:first-child{padding-top:0;border-top:0}
 .wf-files code{color:var(--text)}.wf-files small{font-size:var(--fs-2xs)}.wf-files p{margin:4px 0 8px}
 .wf-dlg .wf-foot{flex:none;padding:16px 24px 12px;border-top:1px solid var(--hairline);background:var(--surface)}

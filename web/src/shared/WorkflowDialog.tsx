@@ -30,6 +30,28 @@ const fileName = (info: WorkflowInfo, k: number) => appFileName(`${info.toolId}-
 function saveText(text: string, name: string) { const a = document.createElement('a'); const u = URL.createObjectURL(new Blob([text], { type: 'application/json' })); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); }
 async function copy(text: string) { try { await navigator.clipboard.writeText(text); return true; } catch { return false; } }
 
+/** The graph's nodes in plain groups, read-only (node id order): what the workflow does, without a canvas. */
+type NodeRow = { id: string; title: string; type: string };
+const GROUPS: [string, RegExp][] = [['Models & inputs', /load|checkpoint|unet|lora|clip(?!text)|vae(?!decode|encode)/i], ['Prompt', /text|prompt|condition/i],
+  ['Sampling', /sampl|schedul|sigma|noise|guider|cfg|latent|vaeencode/i], ['Output', /decode|save|preview|combine/i]];
+export function nodeGroups(graph: Record<string, any>): { name: string; nodes: NodeRow[] }[] {
+  const ids = Object.keys(graph ?? {}).filter((k) => graph[k] && typeof graph[k] === 'object' && typeof graph[k].class_type === 'string')
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  const out = new Map<string, NodeRow[]>([...GROUPS.map(([n]) => [n, []] as [string, NodeRow[]]), ['Other steps', []]]);
+  for (const id of ids) { const n = graph[id]; const type = String(n.class_type); const title = String(n._meta?.title ?? '').trim() || type;
+    out.get(GROUPS.find(([, re]) => re.test(type))?.[0] ?? 'Other steps')!.push({ id, title, type }); }
+  return [...out].filter(([, ns]) => ns.length).map(([name, nodes]) => ({ name, nodes }));
+}
+function NodeList({ url, label }: { url: string; label?: string }) {
+  const [groups, setGroups] = useState<{ name: string; nodes: NodeRow[] }[] | null>(null);
+  useEffect(() => { let on = true; setGroups(null); fetchGraph(url).then((t) => { const g = JSON.parse(t); if (on) setGroups(nodeGroups(g?.prompt && typeof g.prompt === 'object' ? g.prompt : g)); }).catch(() => on && setGroups([])); return () => { on = false; }; }, [url]);
+  if (groups && !groups.length) return null;
+  return <details className="wf-details wf-nodes" open data-testid="wf-nodes"><summary>Nodes{label ? <span>{label}</span> : null}</summary>
+    {!groups ? <div className="wf-skel" aria-busy="true" aria-label="Loading nodes"><i /><i /></div>
+      : <div className="wf-detail-body">{groups.map((g) => <section key={g.name}><h5>{g.name}</h5><ol>{g.nodes.map((n) => <li key={n.id}><b>{n.title}</b>{n.title !== n.type && <small className="wf-mono">{n.type}</small>}</li>)}</ol></section>)}</div>}
+  </details>;
+}
+
 export function useWorkflowInfo(jobId: string | null) {
   const [info, setInfo] = useState<WorkflowInfo | null>(null); const [err, setErr] = useState(''); const [attempt, setAttempt] = useState(0);
   useEffect(() => { setInfo(null); setErr(''); if (!jobId) return; let on = true;
@@ -84,6 +106,7 @@ export function WorkflowDialog({ jobId, onClose, intent = 'get' }: { jobId: stri
           {(info.source === 'partner' || info.passes.some(p => p.partnerNodes.length > 0)) && <p className="wf-notice">Partner nodes need a Comfy account with credits. They run on the provider’s servers.</p>}
           {!info.comfy.url && <p className="wf-hint">To open ComfyUI, add its address in <Link to="/settings#conn-local" onClick={onClose}>Settings → Connections</Link>.</p>}
           {multi && <ol className="wf-passes" aria-label="Workflow passes">{info.passes.map((p, k) => <li key={p.index}><div><b>{p.label}</b><code className="wf-mono wf-file" tabIndex={0}>{p.workflow}</code><small>{p.nodes.toLocaleString()} nodes</small></div><span className="wf-row-acts"><button type="button" className="btn wf-second" disabled={!!busy} onClick={() => download(k)}>Download<span className="wf-sr"> {p.label}</span></button><button type="button" className="btn wf-second" disabled={!!busy} onClick={() => copyJson(k)}>Copy<span className="wf-sr"> {p.label} JSON</span></button></span></li>)}</ol>}
+          <NodeList url={info.passes[0].url} label={multi ? info.passes[0].label : undefined} />
           <details className="wf-details" open={opened} data-testid="wf-steps"><summary>How to use this workflow</summary><div className="wf-detail-body"><ol>{info.comfy.howTo.map(s => <li key={s}>{s}</li>)}</ol><p>{info.formats.uiNote} Loading this file does not install models or custom nodes. <a href={info.comfy.docs} target="_blank" rel="noreferrer">ComfyUI docs ↗</a></p></div></details>
           {(info.media.length > 0 || info.runtime.length > 0) && <details className="wf-details wf-files"><summary>Required inputs <span>{info.media.length} {info.media.length === 1 ? 'file' : 'files'}{info.runtime.length > 0 ? ` · ${info.runtime.length} runtime ${info.runtime.length === 1 ? 'step' : 'steps'}` : ''}</span></summary><ul className="wf-detail-body">
             {info.media.map(m => <li key={`${m.pass}-${m.node}-${m.field}`}><code className="wf-mono wf-file" tabIndex={0}>{m.file}</code><small>Node {m.node} · {m.field}{multi ? ` · run ${m.pass + 1}` : ''}</small><p>{m.what}</p>{m.how && <button type="button" className="btn wf-second" onClick={async () => { const ok = await copy(m.how!); flash(ok ? 'ffmpeg command copied' : 'Clipboard access was blocked. Select and copy the command below.', !ok); }}>Copy ffmpeg command</button>}{m.how && <code className="wf-mono wf-file" tabIndex={0}>{m.how}</code>}</li>)}
