@@ -1,7 +1,7 @@
 import { IMAGE_PAGE, VIDEO_PAGE, VIDEO_TOOL, toolPage, pageTool } from '../../../server/src/shared/pages';
 import { videoWorkflowOfTool, videoWorkflowHref, videoWorkflowById } from '../../../server/src/shared/videoWorkflows';
 import { audioWorkflowForToolMode, audioRoute, type AudioWorkflowId } from '../../../server/src/shared/audioWorkflows';
-import { threeDRoute } from '../../../server/src/shared/threeD';
+import { threeDRoute, threeDMode } from '../../../server/src/shared/threeD';
 /** Unified Create Image: the workflows Create Image's bar runs today, by the tool that runs them. Recreate on their results reopens
  *  Create Image with the workflow picked (a Create Image job with a camera rig reopens Camera & Lens) (/image?workflow=relight&recreate=<job>); every other job keeps its own page. */
 export const READY_WORKFLOW_TOOLS: Record<string, string> = { 'app-relight': 'relight', 'app-face-swap': 'face-swap', 'app-person-swap': 'person-swap', 'app-character-sheet': 'character-sheet', 'app-product-shot': 'product-shot', 'image-upscale': 'upscale',
@@ -34,7 +34,7 @@ export const jobWorkflowHref = (job: { toolId: string; input?: any }): string | 
   const w = workflowOfJob(job); if (w) return `${IMAGE_PAGE}?workflow=${w}`;
   const v = videoWorkflowOfJob(job); if (v) return videoWorkflowHref(v);
   const a = audioWorkflowOfJob(job); if (a) return audioRoute(a);
-  const d = THREE_D_JOB[job.toolId]; if (d) return threeDRoute(d);
+  const d = job.toolId === 'three-d' ? threeDMode(job.input ?? {}) : THREE_D_JOB[job.toolId]; if (d) return threeDRoute(d);
   return null; };
 /** Recreate on a job of a workflow (Image / Video / Audio / 3D): that tab with the workflow picked and ?recreate=<job>. null = the tool's own page. */
 export const workflowRecreateHref = (job: { id: string; toolId: string; input?: any }): string | null => { const h = job.id ? jobWorkflowHref(job) : null; return h ? withSearch(h, `recreate=${encodeURIComponent(job.id)}`) : null; };

@@ -39,6 +39,13 @@ try {
   const ids = (q: string, n = 10) => search(index, q).slice(0, n).map((h) => h.entry.id);
   const findable = (q: string, id: string, n = 10) => assert.ok(ids(q, n).includes(id), `"${q}" should find ${id}; got ${ids(q, n).join(', ')}`);
 
+  for (const mode of ['text-to-3d', 'multiview-to-3d']) {
+    const wf = wfs.find(w => w.id === `3d/${mode}`); assert.ok(wf, `${mode} is available through MCP`);
+    assert.deepEqual(wf.run, { tool_id: 'three-d', model: 'cloud-tripo-31', fields: { types: [mode] } });
+    findable(mode === 'text-to-3d' ? 'Text to 3D' : 'Multi-view to 3D', `3d/${mode}`);
+  }
+  assert.deepEqual(wfs.filter(w => w.name === 'Image to 3D').map(w => w.id), ['3d/image-to-3d'], 'one Image to 3D search entry');
+  assert.deepEqual(wfs.find(w => w.id === '3d/image-to-3d')?.aliases, ['image-to-3d'], 'the raw 3D id still describes the canonical entry');
   // ---- 1. everything by its name ----
   for (const t of tools) { findable(t.name, t.id); findable(t.id, t.id, 3); }
   let modes = 0; for (const t of tools) for (const m of toolModes(t)) { findable(`${t.name} ${m.label}`, `${t.id}/${m.id}`); findable(`${t.id}/${m.id}`, `${t.id}/${m.id}`, 3); modes++; }

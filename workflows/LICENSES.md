@@ -50,6 +50,8 @@ Checked on 2026-10-16 against the Hugging Face API licence tags and the upstream
 | ComfyUI-KJNodes | https://github.com/kijai/ComfyUI-KJNodes | ⚠️ GPL-3.0 (copyleft; it runs inside ComfyUI, not inside our code) |
 | ComfyUI-CrossViewWarp (comfyrob fork @ fbb1e93 of cseti007/ComfyUI-CrossViewWarp), H3 CrossView on your Comfy deployment; installed in your Build, never copied here | https://github.com/comfyrob/ComfyUI-CrossViewWarp | ✅ Apache-2.0 |
 | Comfy-Org/comfy-reshoot (the Reshoot recipe graph that `deploy/h3-crossview-api.json` is adapted from) | https://github.com/Comfy-Org/comfy-reshoot | ✅ MIT |
+| Comfy-Org/comfy-openjutsu (Comfy's Openjutsu app; the H3 Character Swap recipe settings that `cloud/h3-charswap-api.json` and `object-swap-h3-charswap-api.json` follow) | https://github.com/Comfy-Org/comfy-openjutsu | ✅ MIT (licenses/comfy-openjutsu-LICENSE-MIT.md) |
+| akatz-labs/h3-character-swap-tool (Akatz Labs' H3 Character Swap workflow, the recipe Openjutsu builds on) | https://github.com/akatz-labs/h3-character-swap-tool | ✅ MIT (licenses/akatz-h3-character-swap-tool-LICENSE-MIT.md) |
 | ComfyUI-segment-anything-2 | https://github.com/kijai/ComfyUI-segment-anything-2 | ✅ Apache-2.0 |
 | comfyui_controlnet_aux (DWPose, Canny) | https://github.com/Fannovel16/comfyui_controlnet_aux | ✅ Apache-2.0 |
 | ComfyUI-SeedVR2_VideoUpscaler | https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler | ✅ Apache-2.0 |
@@ -122,7 +124,7 @@ Included only if the node is listed at https://docs.comfy.org/_llms/en/built-in-
 | Piece | Used for | Licence | Source |
 |---|---|---|---|
 | `create-image-qwen-edit2509-inpaint-api.json` (built by `scripts/build-inpaint.py` from the Comfy-Org Qwen-Image-Edit-2509 template + core `ImageToMask`/`SetLatentNoiseMask`) | Create Image → Inpaint (mask) | Apache-2.0 (weights), MIT (template) | https://huggingface.co/Qwen/Qwen-Image-Edit-2509 |
-| Director (`cinema`) | reuses `camera-ltx-api.json` (LTX-2 + camera LoRAs, default) and `reshoot-funcamera-api.json` (Wan 2.2 Fun Camera fallback) | LTX-2 Community License + Gemma Terms / Apache-2.0 | https://huggingface.co/Lightricks/LTX-2/blob/main/LICENSE |
+| Director (`cinema`) | reuses `camera-ltx-api.json` (LTX-2 + camera LoRAs, default) and `reshoot-funcamera-api.json` (Wan 2.2 Fun Camera fallback) | LTX-2 Community License + Gemma Terms / Apache-2.0 | https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2 |
 | Whisper large-v3 | Voice Studio → Translate (transcribe) | MIT | https://github.com/openai/whisper/blob/main/LICENSE |
 | NLLB-200 | Voice Studio → Translate (text translation) | CC BY-NC 4.0 (non-commercial) | https://huggingface.co/facebook/nllb-200-distilled-600M |
 | SeamlessM4T v2 | Voice Studio → Translate (speech-to-speech option) | CC BY-NC 4.0 (non-commercial) | https://huggingface.co/facebook/seamless-m4t-v2-large |

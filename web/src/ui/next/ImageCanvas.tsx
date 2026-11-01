@@ -94,7 +94,8 @@ import { emptyTextFor, imageScope, type FeedScope } from './feed/feedFilter';
 import { useLiveJobs, UploadsFeed, useUploads } from './feed/FeedScope';
 import { ALL_IMAGE_FEED, IMAGE_FEED_GROUPS, imageWorkflowNameOf } from '../../../../server/src/shared/imageFeed';
 import { libraryFile } from '../../shared/libraryFiles';
-import { feedSections, withSetPlaces } from './feed/feedLayout';
+import { feedSections, groupSets, withSetPlaces } from './feed/feedLayout';
+import { SetRow, useSetFold } from './feed/SetRow';
 import { beginSet, useSendingSets } from '../../shared/submitGuard';
 import FeedCard, { clampAr, tileMaxH } from './feed/FeedCard';
 import { useFeedState, useFeedViewer, FeedGallery } from './feed/ResultFeed';
@@ -459,12 +460,25 @@ export default function ImageCanvas(p: ImageCanvasProps) {
   const reg = useModels(p.tool.id); const regOf = (id: string) => reg.models.find(m => m.providerId === id || m.id === id) as any;
   /* R1: popovers are the shared anchored Popover (portal); it owns Escape, outside-click and focus return */
   const aR = { model: useRef<HTMLButtonElement>(null), aspect: useRef<HTMLButtonElement>(null), quality: useRef<HTMLButtonElement>(null), res: useRef<HTMLButtonElement>(null), more: useRef<HTMLButtonElement>(null), count: useRef<HTMLButtonElement>(null), card: useRef<HTMLButtonElement>(null), set: useRef<HTMLButtonElement>(null) }; const [moreFrom, setMoreFrom] = useState<'chip' | 'card'>('chip'); const closePop = () => setPop('');
+  /* the model chip's "· Default" / "· Your pick": shown whole or not at all (2026-11-01: "GPT Imag… · Def"); the tooltip always has it */
+  useLayoutEffect(() => { const el = aR.model.current; if (!el || typeof ResizeObserver === 'undefined') return;
+    const fit = () => { const pk = el.querySelector<HTMLElement>('.ic-mpick'); const nm = el.querySelector<HTMLElement>('.ic-mname'); if (!pk || !nm) return;
+      el.removeAttribute('data-pick-off'); const cut = pk.scrollWidth > pk.clientWidth + 1 || nm.scrollWidth > nm.clientWidth + 1; if (cut) el.setAttribute('data-pick-off', ''); };
+    fit(); const ro = new ResizeObserver(fit); ro.observe(el); el.querySelectorAll('.ic-mname').forEach(n => ro.observe(n)); const row = el.closest('.ic-chips'); if (row) ro.observe(row); return () => ro.disconnect(); }, [aR.model.current]); // eslint-disable-line react-hooks/exhaustive-deps
   const moreAt = viaOver(aR.more, overRef); /* Style folded into ⋯: its panel opens from there */
   /* the References panel (ImagePicker) sits above the dock (like the reference): Esc, a click outside it or its trigger again closes it */
   useDismiss(!!refTab, () => setRefTab(null));
   useEffect(() => { if (!refTab) return; const down = (e: PointerEvent) => { const t = e.target as Element | null; if (t?.closest?.('.ic-ref, [data-ref-trigger], .apop')) return; setRefTab(null); }; document.addEventListener('pointerdown', down, true); return () => document.removeEventListener('pointerdown', down, true); }, [!!refTab]);
   /* the shared picker (ImagePicker) fills a workflow slot when pickFor names one; else Create's own photos */
   const [pickFor, setPickFor] = useState<string | null>(null); useEffect(() => { if (!refTab) setPickFor(null); }, [refTab]);
+  /* a slot that takes several (Material Swap's swatches), opened on an empty place (its first box or the "+" tile): the picker ticks up to
+   * the free places and fills them in order; a filled swatch (Replace) still picks one */
+  const pickMs = pickFor && recipe && !files[pickFor] ? manyOf(recipe, pickFor) : null;
+  const pickFree = pickMs ? pickMs.many! - swatchesOf(files, pickMs.name, pickMs.many).length : 0; const pickMany = pickFree > 1;
+  const addSlotFiles = (fs: File[]) => { if (!pickMs || !recipe) return; const take = fs.filter(f => fileFits('image', f)).slice(0, pickFree);
+    take.forEach(f => addSwatch(pickMs.name, f)); setRefTab(null);
+    if (take.length > 1) toast(`Added ${take.length} pictures to ${pickMs.label}`); else if (take.length) toast(`Added as ${slotLabel(recipe, nextSwatchKey(files, pickMs.name, pickMs.many) ?? pickMs.name)}`);
+    if (fs.length > take.length) toast(`Only ${pickFree} fit${pickFree === 1 ? 's' : ''} here: ${fs.length - take.length} not added.`, 'warn'); };
   const openSlotPicker = (slot: string) => { setPop(''); if (refTab && pickFor === slot) { setRefTab(null); return; } setPickFor(slot); setRefTab('Uploads'); };
   useEffect(() => { if (!refTab) return; const k = (e: KeyboardEvent) => e.key === 'Escape' && setRefTab(null); addEventListener('keydown', k); return () => removeEventListener('keydown', k); }, [refTab]);
   const cur = p.providers.find(x => x.id === p.provider) ?? p.providers[0];
@@ -709,13 +723,10 @@ export default function ImageCanvas(p: ImageCanvasProps) {
   const [cmpOpen, setCmpOpen] = useState(false); const cmpRef = useRef<HTMLButtonElement>(null); const [sideBy, setSideBy] = useState<string | null>(null); const ownB = useOwnAccounts();
   const sendingSet = useSendingSets();
   /* compared runs sit together (in the order picked), so the viewer steps through them */
-  const grouped = (() => { const all = feed.jobs.filter(j => j.status !== 'canceled' || lingering(j)); const out: JobState[] = []; const done = new Set<string>();
-    /* a retried run in a set: its Retry takes its place (the server puts the retry in the same set) */ const retried = new Set(all.filter(j => (j as any).compare && (j as any).input?.retryOf).map(j => String((j as any).input.retryOf))); const list = all.filter(j => !retried.has(j.id));
-    for (const j of list) { const g = (j as any).compare?.id as string | undefined; if (!g) { out.push(j); continue; } if (done.has(g)) continue; done.add(g);
-      const members = list.filter(x => (x as any).compare?.id === g);
-      /* a set still being sent: all its places from the first frame (waiting cards), so the row never grows or jumps */
-      out.push(...(sendingSet(g) ? withSetPlaces(members as any[], i => waitingCard(members[0], i)) : members.sort((a, b) => Number((a as any).compare?.i ?? 0) - Number((b as any).compare?.i ?? 0)))); }
-    return out; })();
+  /* a set's runs sit together (in its order), so the viewer steps through them; a set still being sent shows all its places from the first frame
+   * (waiting cards), so the row never grows or jumps (feedLayout groupSets / withSetPlaces) */
+  const grouped = groupSets(feed.jobs.filter(j => j.status !== 'canceled' || lingering(j)) as (JobState & { compare?: any })[],
+    (members, g) => sendingSet(g) ? withSetPlaces(members, i => waitingCard(members[0], i) as JobState & { compare?: any }) : members.sort((a, b) => Number(a.compare?.i ?? 0) - Number(b.compare?.i ?? 0))) as JobState[];
   const shown = grouped; const nLinger = shown.filter(j => j.status === 'canceled').length;
   useEffect(() => { if (!nLinger) return; const t = setTimeout(() => setLinger(n => n + 1), CANCEL_LINGER_MS); return () => clearTimeout(t); }, [nLinger, p.jobs]);
   /* Several results (2026-10-25, shared/MultiResult): one card per run, whatever the workflow (Camera Angles, a Create Image batch, Image to layers,
@@ -776,7 +787,9 @@ export default function ImageCanvas(p: ImageCanvasProps) {
     else { const room = maxRefs - refN; addRefs(fs); if (room > 0) toast(fs.length > room ? `Added ${room} of ${fs.length}: this model takes up to ${maxRefs}` : `Added ${fs.length} reference${fs.length > 1 ? 's' : ''}`); }
     stopSelect(); };
   type Tl = ReturnType<typeof tileOf>[number];
-  const feedItems = feedSections(shown as (JobState & { compare?: { id?: string } | null })[], tileOf); // a singles row before a compare group gets its own filler (no stretched banner tiles)
+  const fold = useSetFold(); /* a set opens or folds into one card (SetRow): open while it runs and for the latest run, else the reader's choice */
+  const feedItems = feedSections(shown as (JobState & { compare?: { id?: string } | null })[], tileOf, fold.isOpen); // a row before an open set ends with its own filler (no stretched banner tiles)
+  const setIds = feedItems.flatMap(it => it.group ? [it.group] : []); const setsOpen = feedItems.filter(it => it.group && !it.folded).length;
   const renderTile = ({ j, url, k, of, multi }: Tl) => { const inp: any = (j as any).input ?? {}; const m = /^(\d+):(\d+)$/.exec(String(inp.aspect ?? inp.aspectRatio ?? '')); const ow: any = url ? ((j as any).outputs ?? []).find((o: any) => o?.url === url) : null; /* the output's own size (server outputs[].width/height) until the image has loaded: no reflow when it lands */ const arHint = (ow?.width > 0 && ow?.height > 0 ? ow.width / ow.height : 0) || (m ? Number(m[1]) / Number(m[2]) : 1); const ar = (url && ars[url]) || arHint; const act = isActive(j) || j.status === 'canceled' /* 4i: the canceled tile is the generating tile, greyed */; const sel = viewId === j.id; const picked = selecting && sel2.has(j.id); const noPick = selecting ? unselectable(j) : null; const cmp = (j as any).compare as { id: string } | undefined; const cmpCap = cmp && k === 0 && !act ? jobCaption(j, ownB) : null;
             const pres = multi ? presentationOf(j as any) : null; const mode = pres ? cardModeOf(pres, ar, multi!.length) : null; const feat = imageWorkflowNameOf(j as any) ?? featureTag(j) /* which workflow made it */; const prompt = typedPromptOf(inp); const cap1 = !multi && !cmpCap && !act && j.status === 'done' ? jobCaption(j, ownB) : null;
             const firstOut = multi?.find(x => x.state === 'done')?.out ?? 0; const nDone = multi ? multi.filter(x => x.state === 'done').length : 0;
@@ -901,9 +914,11 @@ export default function ImageCanvas(p: ImageCanvasProps) {
         <FeedGallery title="Image" st={fs} count={upOn ? up.items.length : shown.length} emptyText={emptyTextFor(filt, pj.pid, SCOPE)} override={upOn ? <UploadsFeed up={up} media="image" size={filt.size} idPre="ic" onReference={u => void refFromUpload(u)} /> : undefined} toolbar={selecting ? <SelectBar sel={sel2} setSel={setSel} total={feed.total} onExit={stopSelect} selectAll={selectAll} allLoading={allBusy} projects={pj.list} currentProject={pj.pid} patch={feed.patch} unpatch={feed.unpatch} refresh={feed.refresh}
               useAsRefs={useAsRefs} refsTarget={recipe ? recipe.name : 'Create'} onTrashed={ids => { if (viewId && ids.includes(viewId)) setViewId(null); }} />
             : <FeedToolbar f={filt} setF={setFilt} groups={IMAGE_FEED_GROUPS} noun="images" total={upOn ? up.total : feed.total} failed={upOn ? null : feed.failed} loading={upOn ? up.loading : feed.loading} pj={pj} selecting={selecting} onSelect={() => selecting ? stopSelect() : setSelecting(true)}
-              compareOff={compareOff} onCompare={() => setCmpOpen(o => !o)} compareRef={cmpRef} live={<QueueLine className="ic-gal-live" />} />}>
+              compareOff={compareOff} onCompare={() => setCmpOpen(o => !o)} compareRef={cmpRef} live={<QueueLine className="ic-gal-live" />}
+              sets={setIds.length ? { n: setIds.length, open: setsOpen, setAll: o => fold.setOpen(setIds, o) } : null} />}>
           {feedItems.map(it => it.group
-            ? <div key={`g-${it.group}`} className="cmp-g" data-testid={`cmp-group-${it.group}`}><CompareGroupHead jobs={it.jobs} onSide={() => setSideBy(it.group!)} /><div className="cmp-g-row">{it.tiles.map(renderTile)}<i className="ic-jfill" aria-hidden /></div></div>
+            ? <SetRow key={`g-${it.group}`} id={it.group} jobs={it.jobs} open={!it.folded} onToggle={o => fold.setOpen([it.group!], o)} thumbOf={j => j.status === 'done' ? (resultItemsOf(j as any).find(x => x.state === 'done')?.url ?? j.resultUrl ?? null) : null}
+                head={f => <CompareGroupHead jobs={it.jobs} onSide={() => setSideBy(it.group!)} fold={f} />}>{it.tiles.map(renderTile)}</SetRow>
             : [...it.tiles.map(renderTile), it.fill && <i key={`f-${it.jobs[0].id}`} className="ic-jfill" aria-hidden />])}</FeedGallery>
         {viewJob && (viewJob.status === 'done' && (viewJob.resultUrl || (viewJob as any).outputs?.length)
           ? <ResultView variant="viewer" job={viewJob} out={viewId === viewJob.id ? viewOut : 0} beforeUrl={viewJob.resultUrl ?? ''} title="Your result" onClose={closeView} {...viewNav}
@@ -952,7 +967,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
           {!recipe && canRef && <span className="ic-pair">
           {canRef && <button type="button" className="ic-chip ic-sq" aria-label="References" {...tip(p.mask ? 'Brush Edit sends the first photo only' : refN ? `${refN} of ${maxRefs} photo${maxRefs > 1 ? 's' : ''}` : 'Add a photo to edit it')} data-ref-trigger aria-expanded={refTab === 'Uploads'} data-testid="ic-ref-count" data-n={refN} onClick={() => { replaceIndex.current = null; setPop(''); setRefTab(refTab === 'Uploads' ? null : 'Uploads'); }}><svg className="ic-pi" width="16" height="16" viewBox="0 0 16 16" aria-hidden><path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg></button>}
           </span>}
-          <input ref={file} type="file" accept={IMAGE_ACCEPT} multiple={maxRefs > 1 && !pickFor && replaceIndex.current == null} hidden data-testid="ic-file" onChange={e => { const f = e.target.files; if (f?.length) { const ri = replaceIndex.current; replaceIndex.current = null; if (ri != null && p.replacePhoto) { if (fileFits('image', f[0])) p.replacePhoto(ri, f[0]); else toast(wrongTypeText(f[0].name, ['image']), 'error'); } else if (pickFor && recipe) setSlot(pickFor, f[0], true); else void addRefs([...f]); setRefTab(null); } e.currentTarget.value = ''; }} />
+          <input ref={file} type="file" accept={IMAGE_ACCEPT} multiple={(maxRefs > 1 && !pickFor || pickMany) && replaceIndex.current == null} hidden data-testid="ic-file" onChange={e => { const f = e.target.files; if (f?.length) { const ri = replaceIndex.current; replaceIndex.current = null; if (ri != null && p.replacePhoto) { if (fileFits('image', f[0])) p.replacePhoto(ri, f[0]); else toast(wrongTypeText(f[0].name, ['image']), 'error'); } else if (pickMany) addSlotFiles([...f]); else if (pickFor && recipe) setSlot(pickFor, f[0], true); else void addRefs([...f]); setRefTab(null); } e.currentTarget.value = ''; }} />
           <button ref={aR.model} type="button" className={`ic-chip ic-model ${pop === 'model' ? 'on' : ''}`} aria-haspopup="listbox" aria-expanded={pop === 'model'} data-testid="ic-model-chip" data-fallback-note={fbNote || undefined} data-downloading={dlNow ? (dlNow.pct ?? 'busy') : undefined} {...tip(pop === 'model' ? null : [mChipName + ((recipe ? wfKind : cKind) ? ` · ${PICK_LABEL[(recipe ? wfKind : cKind)!]}` : ''), modelTip].filter(Boolean).join(' · ') || null)} onClick={() => setPop(pop === 'model' ? '' : 'model')}>{(() => { const tid = recipe ? recipe.runner.toolId : p.tool.id; const eid = recipe ? wfProvider : cur?.id; const mm = modelOfEngine(tid, eid); const pv: any = recipe ? wfProviders.find(x => x.id === wfProvider) : cur;
             return <><MakerTile className="ic-dot" medium="image" maker={mm?.maker ?? (pv as any)?.maker} makerName={mm?.makerName ?? (pv as any)?.makerName} fallback={pv?.family || pv?.name} /><span className="ic-mname">{short(recipe ? (mm ? shownName(mm) : null) ?? recipe.modelInfo?.[wfProvider]?.name ?? pv?.name : curName)}</span>{(() => { const k = recipe ? wfKind : cKind; return k ? <span className="ic-mpick" data-testid="ic-model-pick" data-kind={k}>{` · ${PICK_LABEL[k]}`}</span> : null; })()}</>; })()}{dlNow && <DlRing pct={dlNow.pct} label={dlLabel} />}<svg className="ic-caret" width="16" height="16" viewBox="0 0 16 16" aria-hidden><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
           </span>
@@ -1045,9 +1060,10 @@ export default function ImageCanvas(p: ImageCanvasProps) {
         want={{ aspect: showAspect ? (aspect === 'Auto' ? 'auto' : aspect) : undefined, quality: showQual ? qual2 : undefined, imageResolution: showRes ? imgRes : undefined, n, refs: refN, mode: p.image ? 'edit' : 'generate' }}
         base={params()} prompt={p.prompt} ready={p.ready && !!p.prompt.trim()} notReady={p.prompt.trim() ? missingText(p.missing) || 'Not ready yet' : 'Write a prompt in the bar first'} run={async extra => p.onGenerate({ ...extra, ...lookField() })} />}
       {sideBy && sideJobs.length > 0 && <CompareView jobs={sideJobs} onClose={() => setSideBy(null)} onOpen={id => { setSideBy(null); open(id); }} />}
-      {refTab && <ImagePicker tab={refTab} setTab={setRefTab} onClose={() => setRefTab(null)} target={pickFor && recipe ? slotLabel(recipe, pickFor) : null}
-        limits={pickFor && recipe ? undefined : maxRefs > 0 ? `Up to ${maxRefs} picture${maxRefs > 1 ? 's' : ''} · PNG, JPG or WebP` : undefined}
-        onFile={f => usePicked(f)} onFiles={fs => deliverFiles(file.current, fs)} onUpload={() => file.current?.click()} />}
+      {refTab && <ImagePicker tab={refTab} setTab={setRefTab} onClose={() => setRefTab(null)} target={pickMany && pickMs ? pickMs.label : pickFor && recipe ? slotLabel(recipe, pickFor) : null}
+        limits={pickMany && pickFree < pickMs!.many! ? `Up to ${pickFree} more · PNG, JPG or WebP` : pickFor && recipe ? undefined : maxRefs > 0 ? `Up to ${maxRefs} picture${maxRefs > 1 ? 's' : ''} · PNG, JPG or WebP` : undefined}
+        max={pickMany ? pickFree : undefined}
+        onFile={f => usePicked(f)} onFiles={fs => pickMany ? addSlotFiles(fs) : deliverFiles(file.current, fs)} onUpload={() => file.current?.click()} />}
       {exShown && <ExampleViewer ex={exShown} onClose={closeExample} onUse={useExample} onUsePhoto={exUsePhoto} />}
       <select id="provider" className="sr-only-vis" value={p.provider} onChange={e => p.setProvider(e.target.value)} aria-label="Model">{p.providers.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
     </div>

@@ -72,6 +72,8 @@ function LicTable({ d }: { d: { note: string; models: Row[]; attributions?: stri
   const countU = (u: string) => base.filter(m => (!kind || kindGroup(m.kind) === kind) && (!u || m.commercial === u)).length;
   const filtered = !!(needle || kind || use); const clear = () => { setQ(''); setKind(''); setUse(''); };
   const lines = useMemo(() => d.attributions?.length ? d.attributions : [...new Set(d.models.map(m => m.attribution).filter(Boolean) as string[])], [d]);
+  /* every tool's component credits (recipes, weights, node packs) from the same /api/licenses components; the app's own parts stay under "Built into the app" */
+  const toolParts = useMemo(() => Object.entries(d.components ?? {}).filter(([k, cs]) => cs.length && !BUILT_IN.some(([b]) => b === k)).sort(([a], [b]) => (names[a] ?? a).localeCompare(names[b] ?? b)), [d, names]);
   const Chip = ({ on, n, onClick, children }: { on: boolean; n: number; onClick: () => void; children: string }) => <button type="button" className={`lic-chip${on ? ' on' : ''}`} aria-pressed={on} onClick={onClick} disabled={!on && n === 0}>{children}<small>{n}</small></button>;
   return (
     <div className="licenses-page" data-testid="licenses">
@@ -79,6 +81,7 @@ function LicTable({ d }: { d: { note: string; models: Row[]; attributions?: stri
       <p className="helper">{d.note.replace(/provider-terms/g, 'provider terms')}</p>
       {lines.length > 0 && <section className="lic-credits" data-testid="lic-credits"><h3>Credit lines</h3><p className="helper">We encourage crediting these models wherever their outputs appear.</p><ul>{lines.map(l => <li key={l}><q>{l}</q> <span className="helper">· {d.models.filter(m => m.attribution === l).map(m => m.model).join(', ')}</span></li>)}</ul></section>}
       {BUILT_IN.some(([k]) => d.components?.[k]?.length) && <section className="lic-credits" data-testid="lic-builtin"><h3>Built into the app</h3><p className="helper">Parts of the app itself with their own licence.</p><ul>{BUILT_IN.flatMap(([k, name]) => (d.components?.[k] ?? []).map(c => <li key={k + c.model}><b>{name}:</b> {c.model} · {c.url ? <a href={c.url} target="_blank" rel="noreferrer">{c.license}</a> : c.license}</li>))}</ul></section>}
+      {toolParts.length > 0 && <section className="lic-credits lic-parts" data-testid="lic-tool-parts"><h3>Parts of each tool</h3><p className="helper">The workflow recipes, weights and node packs behind each tool, with their licence.</p>{toolParts.map(([k, cs]) => <details key={k} data-tool={k}><summary><b>{names[k] ?? k}</b> <span className="helper">· {cs.length} {cs.length === 1 ? 'part' : 'parts'}</span></summary><ul>{cs.map(c => <li key={c.model}>{c.model} · {c.url ? <a href={c.url} target="_blank" rel="noreferrer">{c.license}</a> : c.license}</li>)}</ul></details>)}</section>}
       <div className="lic-filters" data-testid="lic-filters">
         <input type="search" className="lic-search" data-testid="lic-search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search models, licences or tools" aria-label="Search models, licences or tools" />
         <div className="lic-chips" role="group" aria-label="Kind"><span className="lic-chips-k">Kind</span>

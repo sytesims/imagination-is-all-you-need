@@ -17,7 +17,7 @@ export const LICENSES = {
   mit: { id: 'mit', name: 'MIT', osi: true, url: 'https://opensource.org/license/mit' },
   /** This app's own code (root LICENSE + NOTICE): our in-browser and ffmpeg tools are credited with it. */
   'agpl-3.0-or-later': { id: 'agpl-3.0-or-later', name: 'AGPL-3.0-or-later', osi: true, url: 'https://www.gnu.org/licenses/agpl-3.0.html' },
-  'ltx-2-community': { id: 'ltx-2-community', name: 'LTX-2 Community License', osi: false, url: 'https://huggingface.co/Lightricks/LTX-2/blob/main/LICENSE', attribution: null, attributionSource: { url: 'https://huggingface.co/Lightricks/LTX-2/raw/main/LICENSE', clause: 'Retain the licence and attribution notices when distributing LTX-2 or derivatives; no in-app credit line.', checkedAt: '2026-10-17', verified: true } },
+  'ltx-2-community': { id: 'ltx-2-community', name: 'LTX-2 Community License', osi: false, url: 'https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2', attribution: null, attributionSource: { url: 'https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2', clause: 'Retain the licence and attribution notices when distributing LTX-2 or derivatives; no in-app credit line.', checkedAt: '2026-10-17', verified: true } },
   gemma: { id: 'gemma', name: 'Gemma Terms of Use', osi: false, url: 'https://ai.google.dev/gemma/terms', attribution: null, attributionSource: { url: 'https://ai.google.dev/gemma/terms', clause: '3.1: the Notice file is required for Distributions other than through a Hosted Service; no in-app credit line.', checkedAt: '2026-10-17', verified: true }, noticeFile: 'Gemma is provided under and subject to the Gemma Terms of Use found at ai.google.dev/gemma/terms' },
   'bsd-3-clause': { id: 'bsd-3-clause', name: 'BSD-3-Clause', osi: true, url: 'https://opensource.org/license/bsd-3-clause' },
   proprietary: { id: 'proprietary', name: 'Proprietary (hosted API)', osi: false, url: null },
@@ -154,12 +154,19 @@ registerLicenseComponents('create-image', [
 ]);
 registerLicenseComponents('app-shots', [...QWEN_EDIT_PARTS,
   { model: 'Qwen-Edit-2509 Multiple-angles LoRA (dx8152), optional route', license: 'Apache-2.0', commercial: 'yes', url: 'https://huggingface.co/dx8152/Qwen-Edit-2509-Multiple-angles' }, ...HOSTED_EDIT_PARTS]);
-registerLicenseComponents('object-swap', [{ model: 'SAM 3.1 (sam3.1_multiplex_fp16) · mask preview', license: 'SAM License', commercial: 'restricted', url: 'https://github.com/facebookresearch/sam3/blob/main/LICENSE', licenseId: 'sam-license', terms: LICENSES['sam-license'].terms } as LicenseComponent]);
+// H3 Character Swap recipe credits (2026-11-01): our graphs follow Comfy's Openjutsu app and Akatz Labs' H3 Character Swap workflow (both MIT,
+// full texts in licenses/). Shown with Person swap and Swap Two People.
+const CHARSWAP_RECIPE_PARTS: LicenseComponent[] = [
+  { model: "H3 Character Swap recipe settings, after Comfy's Openjutsu app (Comfy-Org/comfy-openjutsu)", license: 'MIT', licenseId: 'mit', commercial: 'yes', url: 'https://github.com/Comfy-Org/comfy-openjutsu' },
+  { model: "H3 Character Swap workflow (Akatz Labs, akatz-labs/h3-character-swap-tool)", license: 'MIT', licenseId: 'mit', commercial: 'yes', url: 'https://github.com/akatz-labs/h3-character-swap-tool' },
+];
+registerLicenseComponents('object-swap', [{ model: 'SAM 3.1 (sam3.1_multiplex_fp16) · mask preview', license: 'SAM License', commercial: 'restricted', url: 'https://github.com/facebookresearch/sam3/blob/main/LICENSE', licenseId: 'sam-license', terms: LICENSES['sam-license'].terms } as LicenseComponent, ...CHARSWAP_RECIPE_PARTS]);
 // Swap Two People (2026-10-27, tools/twoPersonSwap.ts): every model in the Comfy Cloud graph, with its licence.
 registerLicenseComponents('two-person-swap', [
   { model: 'MiniMax H3 Ref2VA int8, Qwen3-VL 32B text encoder NVFP4, H3 video + audio VAEs, H3 fl2v turbo 8-step LoRA (Comfy-Org/MiniMax-H3, lightx2v/Minimax-h3-Turbo)', license: 'MiniMax H3 Community License', licenseId: 'minimax-community', commercial: 'restricted', url: 'https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE' },
   { model: 'H3 Character Swap LoRA v1.5 (Akatz Labs, akatz-ai/MiniMax-H3-Character-Swap-LoRA), imported into your Comfy Cloud library', license: LICENSES['minimax-community-akatz-charswap'].name, licenseId: 'minimax-community-akatz-charswap', commercial: 'restricted', url: 'https://huggingface.co/akatz-ai/MiniMax-H3-Character-Swap-LoRA/blob/main/LICENSE' },
   { model: 'SAM 3.1 (sam3.1_multiplex_fp16) · person masks', license: 'SAM License', commercial: 'restricted', url: 'https://github.com/facebookresearch/sam3/blob/main/LICENSE', licenseId: 'sam-license', terms: LICENSES['sam-license'].terms } as LicenseComponent,
+  ...CHARSWAP_RECIPE_PARTS,
 ]);
 // H3 runner Step 3 (Oct 26): New angle · H3 CrossView · cloud (Re-shoot, on your own Comfy deployment). Every part of the Build, with its licence.
 // Talking Video (2026-10-27, Lip Sync): InfiniteTalk on Comfy Cloud (script and long speech in parts), and LongCat-Video-Avatar 1.5 (off by default:

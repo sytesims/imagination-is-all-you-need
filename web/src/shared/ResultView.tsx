@@ -16,9 +16,10 @@ const inputRefHref = (u: string) => `${IMAGE_PAGE}?refUrl=${encodeURIComponent(u
 const COMPARE_TOOLS = new Set(['image-upscale', 'app-relight', 'app-face-swap', 'app-person-swap', 'app-material-swap', 'app-inpaint']);
 /** Results whose viewer opens on the before/after split (Relight: the change is the light, best judged side by side). */
 const COMPARE_FIRST = new Set(['app-relight']);
-export const compareSourceOf = (job: JobState): string | null => { const i: any = job.input ?? {}; const u = typeof i.imageUrl === 'string' && /^\/(files|samples)\//.test(i.imageUrl) ? i.imageUrl : null; if (!u) return null;
+export const compareSourceOf = (job: JobState): string | null => { const i: any = job.input ?? {}; const u = typeof i.imageUrl === 'string' && /^\/(files|samples|showcase)\//.test(i.imageUrl) ? i.imageUrl : null; if (!u) return null;
   const m = String(i.mode ?? (Array.isArray(i.types) ? i.types[0] : '') ?? ''); return COMPARE_TOOLS.has(job.toolId) || (job.toolId === 'create-image' && /^(edit|inpaint)$/.test(m)) ? u : null; };
 import { tip } from './Tooltip';
+import { scaleText } from './scaleText';
 import { askText } from './Dialog';
 import { heldBack, isCreditsNote, shownNote } from './creditsBack';
 import { plainCopy } from './plainCopy';
@@ -309,7 +310,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
   /* The viewer shows the restart-recovery warning (comfy/resume.ts) as a quiet line at the bottom of Details instead. */
   const isRestartNote = (w: string) => /server restarted during this run/i.test(w);
   const recovered = viewer && !!job.warnings?.some(isRestartNote);
-  const extras = <>{(job.input as any)?.scale && <div className="up-meta" data-upscale><span className="up-scale">{(job.input as any).scale}×</span>{(job.input as any).sourceSize && (job.input as any).outputSize && <span className="up-size"><code>{(job.input as any).sourceSize.width}×{(job.input as any).sourceSize.height}</code> → <code>{(job.input as any).outputSize.width}×{(job.input as any).outputSize.height}</code></span>}{((job.input as any).warnings ?? []).map((w: string) => <span key={w} className="helper warn">{w}</span>)}</div>}
+  const extras = <>{(job.input as any)?.scale && <div className="up-meta" data-upscale><span className="up-scale">{scaleText((job.input as any).scale)}</span>{(job.input as any).sourceSize && (job.input as any).outputSize && <span className="up-size"><code>{(job.input as any).sourceSize.width}×{(job.input as any).sourceSize.height}</code> → <code>{(job.input as any).outputSize.width}×{(job.input as any).outputSize.height}</code></span>}{((job.input as any).warnings ?? []).map((w: string) => <span key={w} className="helper warn">{w}</span>)}</div>}
     {job.warnings?.filter(w => !(viewer && isRestartNote(w))).map(w => <div key={w} className={isCreditsNote(w) ? 'helper rv-note' : 'helper warn'} data-testid={isCreditsNote(w) ? 'credits-note' : undefined}>{plainCopy(shownNote(w))}</div>)}</>;
   /* Captions (shared/Captions.tsx): your finished video or sound on this computer; on by default for voiced results */
   const ccOk = viewer && !sample && owner && job.status === 'done' && !showingOriginal && !(job as any).deletedAt && kind !== 'image' && !is3dUrl(cur.url) && /^\/files\//.test(cur.url);

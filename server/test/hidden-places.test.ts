@@ -20,6 +20,7 @@ try {
   { const v = H.visiblePlaces('create-image', 'nano-banana-2', [row('comfy-cloud'), row('fal'), row('replicate'), row('google')], false);
     assert.deepEqual(v.shown.map((r) => r.id), ['comfy-cloud']); assert.deepEqual(v.hidden.map((h) => h.id), ['fal', 'replicate', 'google']); assert.equal(v.hidden[0].coveredBy, 'comfy-cloud');
     assert.deepEqual(H.visiblePlaces('create-image', 'qwen-image', [row('local', 'not-installed'), row('fal')], false).shown.map((r) => r.id), ['local'], 'your computer covers it');
+    assert.deepEqual(H.visiblePlaces('app-relight', 'flux-3-klein', [row('local', 'off'), row('bfl'), row('fal')], false).shown.map((r) => r.id), ['local', 'bfl', 'fal'], 'your computer switched off covers nothing (2026-11-01)');
     assert.deepEqual(H.visiblePlaces('app-remove-bg', 'ideogram-remove-background', [row('fal')], false).shown.map((r) => r.id), ['fal'], 'the only place stays');
     assert.deepEqual(H.visiblePlaces('h3-video', 'flux-3-video', [row('comfy-cloud'), row('bfl')], false).shown.map((r) => r.id), ['comfy-cloud', 'bfl'], 'KEEP: 4K on BFL');
     assert.deepEqual(H.visiblePlaces('x', 'm', [row('comfy-cloud', 'coming-soon'), row('fal')], false).shown.map((r) => r.id), ['comfy-cloud', 'fal'], 'a Comfy place that does not run covers nothing');

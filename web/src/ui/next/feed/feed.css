@@ -79,6 +79,36 @@ html body .ic.ic2 .cmp-gh>b{color:var(--text-1,var(--text));white-space:nowrap}
 html body .cmp-gh-p{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1 1 auto;color:var(--text-3)}
 html body .ic.ic2 .cmp-gh-t{white-space:nowrap}
 html body .ic.ic2 .cmp-gh-b{margin-left:auto}
+/* Collapsible sets (SetRow.tsx): the fold chevron at the end of an open set's header; a folded set is one tile-sized card in the justified rows
+ * (a small fanned stack of its pictures on a warm glow, an orange count badge, its name and progress at the foot). */
+html body .ic.ic2 .cmp-gh .set-fold{flex:0 0 auto;width:28px;height:28px;min-height:28px;color:var(--text-2)}
+html body .ic.ic2 .cmp-gh .set-fold svg{transform:rotate(180deg);transition:transform .18s ease}
+html body .ic.ic2 .cmp-gh .set-fold:hover{color:var(--text-1,var(--text))}
+html body .ic.ic2 .cmp-gh .set-fold:focus-visible,html body .ic.ic2 .set-card-hit:focus-visible{outline:0;box-shadow:var(--focus,0 0 0 2px var(--accent))}
+html body .ic.ic2 .cmp-gh>.cmp-gh-b+.set-fold{margin-left:2px}
+html body .ic.ic2 .cmp-gh>:not(.cmp-gh-b)+.set-fold{margin-left:auto}
+html body .ic.ic2 .ic-jfeed .ic-tile.set-card{background:radial-gradient(120% 90% at 50% 40%,rgba(255,122,26,.16),transparent 62%),var(--surface-2);box-shadow:inset 0 0 0 1px rgba(255,122,26,.28)}
+html body .ic.ic2 .ic-jfeed .ic-tile.set-card:hover{box-shadow:inset 0 0 0 1px rgba(255,122,26,.6)}
+html body .ic.ic2 .set-card-hit{display:block;width:100%;height:100%;padding:0;border:0;background:none;cursor:pointer;border-radius:inherit}
+html body .ic.ic2 .set-fan{position:absolute;left:50%;top:47%;width:0;height:0}
+html body .ic.ic2 .set-fan-i{position:absolute;left:0;top:0;width:min(50cqh,36cqw);aspect-ratio:1;max-width:none;border-radius:10px;overflow:hidden;background:var(--surface-3,rgba(255,255,255,.08));box-shadow:0 0 0 2px rgba(18,18,20,.92),0 8px 22px rgba(0,0,0,.45);
+  transform:translate(-50%,-50%) translateX(calc(var(--k) * 34%)) rotate(calc(var(--k) * 8deg));transition:transform .22s cubic-bezier(.2,.8,.2,1)}
+html body .ic.ic2 .set-fan-i:nth-child(2){z-index:1}
+html body .ic.ic2 .set-fan.n2 .set-fan-i:nth-child(2),html body .ic.ic2 .set-fan.n3 .set-fan-i:nth-child(2){z-index:2}
+html body .ic.ic2 .set-fan-i img{width:100%;height:100%;object-fit:cover;display:block}
+html body .ic.ic2 .set-fan-i.off{background:linear-gradient(110deg,rgba(255,255,255,.05) 30%,rgba(255,255,255,.12) 50%,rgba(255,255,255,.05) 70%) 0 0/200% 100%,var(--surface-3,rgb(38,39,42));animation:set-shim 1.6s linear infinite}
+html body .ic.ic2 .set-card:hover .set-fan-i,html body .ic.ic2 .set-card-hit:focus-visible .set-fan-i{transform:translate(-50%,-50%) translateX(calc(var(--k) * 44%)) rotate(calc(var(--k) * 11deg))}
+@keyframes set-shim{to{background-position:-200% 0,0 0}}
+@media (prefers-reduced-motion:reduce){html body .ic.ic2 .set-fan-i{transition:none}html body .ic.ic2 .set-fan-i.off{animation:none}}
+html body .ic.ic2 .ic-jfeed .ic-tile.set-card{container-type:size}
+html body .ic.ic2 .set-badge{position:absolute;top:8px;left:8px;z-index:3;display:inline-flex;align-items:baseline;gap:4px;padding:2px 8px;border-radius:999px;background:var(--accent);color:var(--on-accent,#111);font:600 11px/16px var(--font-ui,Inter,system-ui,sans-serif);pointer-events:none}
+html body .ic.ic2 .set-badge b{font-weight:700}
+html body .ic.ic2 .set-open{position:absolute;top:8px;right:8px;z-index:3;display:grid;place-items:center;width:24px;height:24px;border-radius:7px;background:rgba(0,0,0,.55);color:#fff;pointer-events:none;backdrop-filter:blur(4px)}
+html body .ic.ic2 .set-card:hover .set-open{background:var(--accent);color:var(--on-accent,#111)}
+html body .ic.ic2 .set-bar{position:absolute;left:10px;right:10px;bottom:5px;z-index:3;height:3px;border-radius:2px;background:rgba(255,255,255,.18);overflow:hidden;pointer-events:none}
+html body .ic.ic2 .set-bar i{display:block;height:100%;background:var(--accent);border-radius:inherit;transition:width .3s ease}
+html body .ic.ic2 .set-card.is-running .set-cap{padding-bottom:12px}
+@media (max-width:700px){html body .ic.ic2 .set-badge{top:4px;left:4px;padding:1px 6px;font-size:10px}html body .ic.ic2 .set-open{top:4px;right:4px;width:20px;height:20px}}
 /* the tile caption is the shared FeedCaption (shared/feedCaption.css) */
 /* popovers (portaled, outside .ic) */
 html body .fd-pop{display:flex;flex-direction:column;gap:6px;padding:12px;min-width:0;font:400 13px/18px var(--font-ui)}
@@ -247,3 +277,9 @@ html body .rvx .up-use-h{margin:0 0 8px;font:600 12px/16px var(--font-ui);color:
 html body .feed-cap.cmp-sw>b{display:inline-flex;align-items:center;gap:6px}
 html body .cmp-sw-th{flex:none;width:22px;height:22px;border-radius:5px;object-fit:cover;box-shadow:0 0 0 1px rgba(255,255,255,.35)}
 html body .feed-cap.cmp-sw.fail{top:40px;bottom:auto;padding:0 10px;background:none}
+html body .fd-sets .fd-seg button:disabled{opacity:.4;cursor:default;background:transparent}
+html body .ic.ic2 .set-card.is-running .set-fan-i.off{background-color:rgba(255,122,26,.05)}
+html body .ic.ic2 .ic-jfeed .ic-tile.set-card.is-running{animation:set-pulse 2.4s ease-in-out infinite}
+@keyframes set-pulse{50%{box-shadow:inset 0 0 0 1px rgba(255,122,26,.7)}}
+@media (prefers-reduced-motion:reduce){html body .ic.ic2 .ic-jfeed .ic-tile.set-card.is-running{animation:none}}
+@media (max-width:700px){html body .ic.ic2 .ic-jfeed .cmp-g{position:relative}html body .ic.ic2 .cmp-gh:has(.set-fold){padding-right:34px}html body .ic.ic2 .cmp-gh .set-fold{position:absolute;top:6px;right:6px;margin:0}}

@@ -104,6 +104,27 @@ export function registerQuotesBatch(app: FastifyInstance) {
     const A = VIDEO_LIMITS[m.primary]?.audio; const want = A?.supported && A.toggle ? (A.default ? '1' : '0') : undefined; if (want !== undefined && out.audio != null && !f.changes.some((c) => c.field === 'audio')) out.audio = want;
     return out;
   };
+  /** Every other tool (Prompt Edit, Photo FX, Extend, Camera Moves…): a resolution or length this model doesn't make is set to its own default,
+   *  as the bar does when the model is picked (VideoWorkflowBar.tsx valOf: the tool's default for this model, else the input's, else the first),
+   *  so the row's price = what Generate shows after picking it (Kling 4.0 in Prompt Edit at 480p → 720p). Only a field with a per-model list
+   *  moves; a length moves only where the tool names each model's default length. */
+  const ownList = (tool: ToolDef, field: 'resolution' | 'duration', prov: string): string[] | null => {
+    const a: any = (tool as any).app ?? {}; const inp: any = tool.inputs?.find((x) => x.name === field);
+    const l = (field === 'resolution' ? a.resolutionsByProvider?.[prov] : a.durationsByProvider?.[prov]) ?? inp?.byProvider?.[prov];
+    return Array.isArray(l) && l.length ? l.map(String) : null;
+  };
+  const fitOwn = (tool: ToolDef, m: ToolModel, base: Record<string, string>) => {
+    const a: any = (tool as any).app ?? {}; const out = { ...base }; const moved = new Set<string>();
+    for (const field of ['resolution', 'duration'] as const) {
+      const cur = base[field]; const list = ownList(tool, field, m.primary); if (cur == null || cur === '' || !list) continue;
+      if (list.some((x) => x.toLowerCase() === cur.toLowerCase())) continue;
+      const own = field === 'resolution' ? a.defaultResolutionByProvider?.[m.primary] : a.defaultDurationByProvider?.[m.primary];
+      if (field === 'duration' && own == null) continue;
+      const inpDef = tool.inputs?.find((x) => x.name === field)?.default; const ok = (v: unknown) => v != null && list.includes(String(v));
+      out[field] = ok(own) ? String(own) : ok(inpDef) ? String(inpDef) : list[0]; moved.add(field);
+    }
+    return { params: out, moved };
+  };
   const movedOf = (base: Record<string, string>, p: Record<string, string>) => { const moved: Record<string, string | null> = {}; for (const k of new Set([...Object.keys(base), ...Object.keys(p)])) if (base[k] !== p[k]) moved[k] = p[k] ?? null; return moved; };
   /** A row as it runs once picked: settings switched for this model (Create Image), then quoted; re-switched once if the route that
    *  answered offers other resolutions than the one guessed. */
@@ -115,7 +136,7 @@ export function registerQuotesBatch(app: FastifyInstance) {
       // only when that place refuses the job as set: a place that takes it (our H3 graph runs 2–15 s) keeps the model's settings
       if (rid && (r.q.status >= 400 || r.q.runnable === false)) { const p2 = pv(rid); if (JSON.stringify(p2) !== JSON.stringify(p)) { const r2 = await quoteRow(tool.id, p2, m.key, runOn, st); if (r2.q.status < 400 && r2.q.runnable !== false) { p = p2; r = r2; } } }
       return { ...r, adjusted: { ...movedOf(base, p), ...r.adjusted } }; }
-    if (!isImage(tool)) return quoteRow(tool.id, base, m.key, runOn, st);
+    if (!isImage(tool)) { const p = fitOwn(tool, m, base).params; const r = await quoteRow(tool.id, p, m.key, runOn, st); return { ...r, adjusted: { ...movedOf(base, p), ...r.adjusted } }; }
     let p = switched(tool, m, base, null, runOn); let r = await quoteRow(tool.id, p, m.key, runOn, st);
     const rid = typeof r.q.routeId === 'string' ? r.q.routeId : null;
     if (rid) { const p2 = switched(tool, m, base, rid, runOn); if (JSON.stringify(p2) !== JSON.stringify(p)) { p = p2; r = await quoteRow(tool.id, p, m.key, runOn, st); } }
@@ -174,7 +195,8 @@ export function registerQuotesBatch(app: FastifyInstance) {
       { // 2026-10-27 (shared/settingsFit.ts): what picking this model changes, in the bar's words, and what a job no setting can fix needs
         const name = String(catalogueFields(m.key).displayName ?? m.def.name ?? model); const rid = typeof q.routeId === 'string' ? q.routeId : null;
         const caps = tool.id === 'h3-video' ? videoCapsAt(tool, m, rid) : isImage(tool) ? { resolutions: (capsFor(m.primary) as any)?.resolutions ?? null } : null;
-        const changes = changesBetween(params, used, caps);
+        const own = tool.id !== 'h3-video' && !isImage(tool) ? fitOwn(tool, m, params) : null; // other tools: set to the model's default, not the nearest
+        const changes = changesBetween(params, used, caps).map((c) => (own?.moved.has(c.field) && used[c.field] === own.params[c.field] ? { ...c, why: 'default' as const } : c));
         if (changes.length) row.fit = { values: Object.fromEntries(changes.map((c) => [c.field, c.to])), changes, note: fitNote(changes, name), hint: fitHint(changes) };
         const blocked = q.status >= 400 || q.runnable === false; const need = blocked && q.needsKey !== true ? needOf(q.blockedReason ?? q.unavailableReason ?? q.reason ?? q.error) : null;
         if (need) row.need = need; }

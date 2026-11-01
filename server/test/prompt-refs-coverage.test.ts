@@ -97,7 +97,6 @@ const offered = (r: any, i: any, t: any) => { const mode = String((Array.isArray
 const sendsBody = (r: any) => r.kind === 'local' || !!r.direct || !!r.request || r.kind === 'fal' || r.kind === 'replicate' || !!r.cloudRun || CLOUD_RUNNER_ROUTES.has(r.routeId) || ROUTER_RUNNER_ROUTES.has(r.routeId);
 /** Places with no body builder of their own, each with its reason (no blanket skips: by route id). */
 const NO_BODY: Record<string, string> = {
-  'comfy-cloud:cloud-tripo-31': 'Tripo 3.1 image-to-3D on a Comfy partner-node graph (tools/threeD.ts runTripoCloud): photo only, the graph has no prompt input',
   'comfy-cloud:cloud-topaz-starlight-fast': 'Topaz video upscale on a Comfy partner-node graph (tools/videoUpscaleModels.ts): video + size only, the graph has no prompt input',
   'comfy-cloud:cloud-topaz-precise': 'Topaz video upscale on a Comfy partner-node graph: video + size only, no prompt input',
   'comfy-cloud:cloud-topaz-astra2': 'Topaz video upscale on a Comfy partner-node graph: video + size only, no prompt input',
@@ -119,7 +118,8 @@ const fails: string[] = []; const log: Record<string, string[]> = { promptOnly: 
 async function bodyFor(t: any, engine: string, r: any, input: any): Promise<string | null> {
   const job: any = { id: 'cov', toolId: t.id, provider: engine, status: 'queued', input, route: r.routeId };
   let body: unknown;
-  if (r.kind === 'local') { if (!hasPlan(job)) return null; body = buildPlan(job).passes.map((p: any) => p.graph); } // null: an engine outside ComfyUI (ffmpeg, Whisper…)
+  if (r.routeId === 'comfy-cloud:cloud-tripo-31') { const {tripoGraph}=await import('../src/tools/threeD.js');const {refInputFor}=await import('../src/routing/jobRefs.js');body=tripoGraph(refInputFor(job,r),'sample.png'); }
+  else if (r.kind === 'local') { if (!hasPlan(job)) return null; body = buildPlan(job).passes.map((p: any) => p.graph); } // null: an engine outside ComfyUI (ffmpeg, Whisper…)
   else if (r.kind === 'comfy-cloud' || r.routeId.startsWith('comfy-deploy:')) { const wf = CLOUD_WORKFLOWS[r.routeId]; if (wf && 'prepare' in wf && wf.prepare) await wf.prepare(job); /* the runner's free local prep first (H3 Extend: the context clip), as routing/cloudRun.ts */ body = buildCloudPlan(wf ? { ...job, provider: wf.provider } : job).passes.map((p: any) => p.graph); }
   else { const ex = t.routedExtras ? await t.routedExtras(job) : {}; body = (await (r.kind === 'comfy-router' ? withComfyKey(() => routeRequest(job, r, 0, ex)) : routeRequest(job, r, 0, ex))).body; }
   return JSON.stringify(body, (_k, v) => (v instanceof FormData ? Object.fromEntries([...v.entries()].filter(([, x]) => typeof x === 'string')) : v)); // multipart bodies (OpenAI image edits): their text fields
@@ -135,11 +135,18 @@ async function firstBody(t: any, engine: string, r: any, prompt: string) {
   return out;
 }
 const PLAIN = `${MARK} waves at the camera`;
+// Explicit text-mode assertion: the broad sweep begins with Image to 3D, which correctly has no prompt.
+{ const {tripoGraph}=await import('../src/tools/threeD.js');const {refInputFor}=await import('../src/routing/jobRefs.js');
+  const input={mode:'text-to-3d',types:['text-to-3d'],prompt:PLAIN};
+  const rewritten=refInputFor({toolId:'three-d',provider:'cloud-tripo-31',input},{routeId:'comfy-cloud:cloud-tripo-31',kind:'comfy-cloud'});
+  assert.equal(tripoGraph(rewritten)['2'].inputs.prompt,PLAIN);assert.ok(promptGrammarOf('cloud-tripo-31'));
+}
+
 await prefetch();
 for (const t of listTools()) for (const m of toolModels(t)) for (const { engine, route: r } of modelRoutes(t, m)) {
   stats.combos++; const id = `${t.id} × ${m.key} × ${r.routeId}`; seen.add(id);
   if (r.comingSoon || r.routerOff || !sendsBody(r)) { stats.notWired++; continue; } // listed, but no runner sends a request there yet (sample output only)
-  if (r.cloudRun) { assert.ok(NO_BODY[r.routeId], `${id}: a cloudRun route needs a body check or a NO_BODY reason`); stats.noBody++; log.noBody.push(`${id}: ${NO_BODY[r.routeId]}`); continue; }
+  if (r.cloudRun && r.routeId !== 'comfy-cloud:cloud-tripo-31') { assert.ok(NO_BODY[r.routeId], `${id}: a cloudRun route needs a body check or a NO_BODY reason`); stats.noBody++; log.noBody.push(`${id}: ${NO_BODY[r.routeId]}`); continue; }
   let res = await firstBody(t, engine, r, PROMPT); let promptOnly = false;
   if (!res.body) { // no job with "@image1" builds here: it must be a prompt-only place (the mention is refused at submit) or one this tool never sends jobs to
     const refused = res.errors.find((e) => /@image1/.test(e)); const tried = res; res = await firstBody(t, engine, r, PLAIN);
@@ -188,7 +195,7 @@ const SENDERS: Record<string, { calls?: RegExp; why: string }> = {
   'comfyClient.ts': { why: 'legacy Comfy SDK swap path (remote ComfyUI without the native API): sends our own swap wording built from the target, never the prompt' },
   'routesComfyDeploy.ts': { why: 'deployment smoke test: inverts a sample image, no prompt' },
   'routing/orphans.ts': { why: 'cancels orphaned remote jobs; sends no body' },
-  'tools/threeD.ts': { why: 'Tripo 3.1 image-to-3D: the job prompt is always empty' },
+  'tools/threeD.ts': { calls:/refInputFor\(/, why: 'Tripo text graphs rewrite prompt through refInputFor; image/multiview have no prompt' },
   'tools/videoUpscaleModels.ts': { why: 'Topaz video upscale on Comfy Cloud partner-node graphs: video + size only, no prompt input' },
   'tools/soul/cloud.ts': { why: 'ESRGAN upscale of a finished result: no prompt' },
   'comfyRouter.ts': { why: 'Comfy Router transport: sends the body it is given' }, 'comfy/cloudV2.ts': { why: 'Comfy Cloud transport: sends the graph it is given' },

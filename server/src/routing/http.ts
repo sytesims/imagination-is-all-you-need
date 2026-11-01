@@ -49,6 +49,7 @@ import { durToolOf, cameraDefaultMove } from '../tools/apps.js';
 import { videoQuoteFields } from './videoQuote.js';
 import { audioQuoteFields, AUDIO_TOOLS } from './audioQuote.js';
 import { enumParamError } from '../shared/enumParams.js';
+import { recipeUploadsOf } from '../shared/workflows.js';
 import type { ToolDef } from '../tools/types.js';
 import { ledgerUsd } from '../shared/priceText.js';
 /** Quote flags follow the route that would actually run: an open-weights model quoted on a cloud route (useLocal off → cloud first) is not "free · runs locally". */
@@ -247,6 +248,11 @@ function fitListing(o: any, pinnedId: string | null, modelId: string) {
 }
 /** The quote's `refs` field as a count: a number ("0" = none), else any other value = one image. */
 const refCount = (v: unknown): number => { if (v == null || v === '') return 0; const n = Number(v); return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 1; };
+/** 2026-11-01: the uploads an Image recipe's bar always sends (its required photos), as the quote turns image=1 / refs=<n> into the job, so a
+ *  listing judges the job the bar quotes (a Relight with no photo made every hosted edit route look blocked: the listing then pre-selected,
+ *  and hid, other places than the quote named). Callers' own fields win. */
+const recipeJob = (toolId: string): Record<string, any> => { const u = recipeUploadsOf(toolId); if (!u) return {};
+  return { ...(u.refs > 0 ? { refPaths: Array.from({ length: u.refs }, (_, k) => `quote:ref${k}`) } : {}), ...(u.image && !/^(generate|t2v|)$/.test(u.mode) ? { imagePath: 'quote:image' } : {}) }; };
 export function routesView(toolId: string, modelId: string, rawInput: Record<string, any> = {}, o: { hw?: boolean } = {}) {
   const tool = getTool(toolId); if (!tool) return null;
   // Item 4 / P0: the listing applies the tool's fixed routing input (routeInput, e.g. h3-extend mode extend) like resolveRoute does, so the
@@ -256,7 +262,7 @@ export function routesView(toolId: string, modelId: string, rawInput: Record<str
   const locked = G?.locked ? routeQuoteInput(tool, Object.fromEntries(Object.entries(G.locked).filter(([k]) => k !== 'provider'))) : {};
   // Oct 19 #2: Camera is judged on the job it starts as (the model's first move, its default length), like the quote and the job, so the route line names the route that runs
   const camDef = toolId === 'camera' && rawInput.types == null && cameraDefaultMove(modelId) ? { types: [cameraDefaultMove(modelId)], ...(rawInput.duration == null && defaultDurationFor('camera', modelId) ? { duration: defaultDurationFor('camera', modelId) } : {}) } : {};
-  const input = routeInput(tool, { ...camDef, ...rawInput, ...locked });
+  const input = routeInput(tool, { ...recipeJob(toolId), ...camDef, ...rawInput, ...locked });
   const labels = { ...providerLabels(toolId, modelId), ...((n) => (n ? { displayName: n } : {}))(modelNameForRun(toolId, modelId, input)), ...lifecycleFields(modelId) }; // BH9 P1-4; audit 2026-10-21: lifecycle (retiring)
   const prefs = getPrefs(); const saved = savedPinOf(tool, modelId, input);
   const choice = saved?.route ?? prefs.global.mode ?? 'auto';
@@ -309,7 +315,7 @@ export function listingInput(tool: ToolDef, modelId: string, rawInput: Record<st
   // quote ran on Comfy).
   const ms = rawInput.types == null && rawInput.mode == null && !(camDef as any).types && !(locked as any).types ? toolModes(tool) : [];
   const modeDef = ms.length && !ms.includes('generate') ? { types: [ms[0]] } : {};
-  return routeInput(tool, { ...camDef, ...modeDef, ...rawInput, ...locked });
+  return routeInput(tool, { ...recipeJob(tool.id), ...camDef, ...modeDef, ...rawInput, ...locked });
 }
 setStatusInput((tool, modelId) => listingInput(tool, modelId));
 /** BH12: a keyless default route says plainly what happens: '<route> · sample output · needs a <owner> key for real runs' (or 'not connected here yet'). */
@@ -629,7 +635,7 @@ export function registerRouting(app: FastifyInstance) {
           const mfOf = (rid: string | null | undefined) => { const rr = rid ? findRoute(rid) : undefined; const ro = rr ? runOnOfRoute(rr) : null; return { modelKey: ('error' in pl ? null : pl.routing.modelKey) ?? (rid && !mreq?.allowRoutes ? routeModelKey(tool.id, model!, rid, input) /* an old engine id: the model of the route quoted (provider=comfy-seedvr2&runOn=local = SeedVR2 3B) */ : null) ?? mreq?.modelKey ?? modelKeyOf(tool.id, model!, input), runOn: ro, runOnLabel: ro ? RUN_ON_LABELS[ro] : null, ...(rr ? routeModelFields(rr) : {}) }; }; // step 2: model + run-on on every quote
           // h3-video quotes: perSecond (per-second routes only) and eta (measured / published range, else null), from the route that runs;
           // audio quotes (audio / voice / soundtrack + apps): perUnit (second / minute / 1k_chars / 1k_bytes / run, from the charge's row) and eta
-          const blockCam = (r0: Record<string, any>) => { const rd = r0.routeId ? findRoute(String(r0.routeId)) : undefined; const r: Record<string, any> = { ...r0, ...(vfPlan ? { videoFit: videoFitQuote(vfPlan) } : {}) /* Fit to model: the bar's note and two-choice preview */, exactUsd: rd ? routeExactUsd(tool!, rd, input, Number(q.passes) || 1) : null /* the routed price before rounding (Comfy credits shown from it) */, ...mfOf(r0.routeId), ...(isH3 ? videoQuoteFields(r0, rd?.priceInput ? rd.priceInput(input) : input) /* the rate of the job as the route bills it (LTX-2.5 DFR: 48 / 24 fps, or 720p) */ : isAudio ? audioQuoteFields(tool!.id, r0, input) : {}), ...(r0.priceRef && HOSTED_BY_ID[String(r0.priceRef)]?.upTo ? { upTo: true, upToNote: HOSTED_BY_ID[String(r0.priceRef)]!.upTo } : {}) /* the bill follows the real output (Image to layers): '≈ up to' */ }; if (!camBlock) return r; const { unavailableReason: _u, ...rest } = r; // same shape as the other input blocks (Oct 19 #8)
+          const blockCam = (r0: Record<string, any>) => { const rd = r0.routeId ? findRoute(String(r0.routeId)) : undefined; const r: Record<string, any> = { ...r0, ...(vfPlan ? { videoFit: videoFitQuote(vfPlan) } : {}) /* Fit to model: the bar's note and two-choice preview */, exactUsd: rd ? routeExactUsd(tool!, rd, routeInput(tool!, input), Number(q.passes) || 1) : null /* the routed price before rounding (Comfy credits shown from it) */, ...mfOf(r0.routeId), ...(isH3 ? videoQuoteFields(r0, rd?.priceInput ? rd.priceInput(input) : input) /* the rate of the job as the route bills it (LTX-2.5 DFR: 48 / 24 fps, or 720p) */ : isAudio ? audioQuoteFields(tool!.id, r0, input) : {}), ...(r0.priceRef && HOSTED_BY_ID[String(r0.priceRef)]?.upTo ? { upTo: true, upToNote: HOSTED_BY_ID[String(r0.priceRef)]!.upTo } : {}) /* the bill follows the real output (Image to layers): '≈ up to' */ }; if (!camBlock) return r; const { unavailableReason: _u, ...rest } = r; // same shape as the other input blocks (Oct 19 #8)
             return { ...rest, runnable: false, chargeable: false, priceAvailable: rest.credits != null, valid: false, reasonCode: 'input_blocked', blockedCode: 'input_blocked', blockedReason: noCharged(camBlock.error), blockedField: 'image', missingInput: 'image', submitCode: 'image_required', textProviders: camBlock.textProviders ?? [] }; };
           if ('error' in pl) { // can't run right now (no key / route refused): still show the asked route's REAL price, flagged, never 0 as the price
             const { status, routes, ...np } = pl as any; const opts: any[] = routes ?? [];

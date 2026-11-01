@@ -41,7 +41,7 @@ function ToolButton({ def }: { def: ToolDef }) {
 
 const GEN: { id: GenMedium; label: string; hint: string; icon: (p: { size?: number }) => JSX.Element }[] = [
   { id: 'image', label: 'Image', hint: 'Create, Relight, Upscale…', icon: ImageIcon }, { id: 'video', label: 'Video', hint: 'Create, Extend, Lip Sync…', icon: VideoIcon },
-  { id: 'audio', label: 'Audio', hint: 'Music, sound, speech', icon: AudioIcon }, { id: '3d', label: '3D', hint: 'Image to 3D', icon: CubeIcon }];
+  { id: 'audio', label: 'Audio', hint: 'Music, sound, speech', icon: AudioIcon }, { id: '3d', label: '3D', hint: 'Text or photos to 3D', icon: CubeIcon }];
 const NODES: { id: 'prompt' | 'upload' | 'note' | 'compare' | 'group' | 'ad'; label: string; hint: string; icon: (p: { size?: number }) => JSX.Element }[] = [
   { id: 'prompt', label: 'Prompt', hint: 'Feeds a generate node', icon: Ic.PromptIcon }, { id: 'upload', label: 'Upload', hint: 'Image, clip or sound', icon: Ic.UploadIcon },
   { id: 'note', label: 'Note', hint: 'Plain text for you', icon: Ic.NoteIcon }, { id: 'compare', label: 'Compare', hint: 'Before / after slider', icon: Ic.CompareIcon },

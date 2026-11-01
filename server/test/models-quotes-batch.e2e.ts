@@ -104,6 +104,21 @@ try {
   assert.equal((await single('h3-video', { types: 't2v' }, 'minimax-h3')).body.runOn, 'comfy-cloud', 'the page quote (t2v) agrees');
   ok('MiniMax H3: listing pre-selection = the page quote = the batch row (Comfy)');
 
+  // ---- 7. other video tools: each row priced at the settings it would send once picked (its own default size, as the bar's valOf) ----
+  { const keyOf = (tool: string, engine: string) => modelsOf(tool).find((m) => JSON.stringify(m).includes(`"${engine}"`))?.key as string;
+    const PE = { types: '["edit"]', resolution: '480p', seconds: '5' }; const pe = await batch('prompt-edit', PE);
+    const k4 = pe[keyOf('prompt-edit', 'cloud-kling4-edit')]; assert.ok(k4, 'Kling 4.0 row');
+    assert.equal(k4.adjusted?.resolution, '720p', `Kling 4.0 at 480p is priced at its own 720p: ${JSON.stringify(k4.adjusted)}`);
+    assert.notEqual(k4.runnable, false, `Kling 4.0 row runs once picked: ${k4.blockedReason ?? k4.reason ?? ''}`);
+    assert.equal(k4.fit?.values?.resolution, '720p'); assert.match(String(k4.fit?.note), /^Resolution set to 720p for .+\.$/, 'the bar\'s note: set to its default, not "the lowest"');
+    await same('prompt-edit', PE, k4);
+    const bern = pe[keyOf('prompt-edit', 'cloud-bernini-r')]; assert.ok(!bern.adjusted?.resolution, 'a model that makes 480p keeps it');
+    const fx = await batch('photo-fx', { types: '["fx-zoom"]', duration: '5', resolution: '720p', aspect: '9:16' }); const ltx = fx[keyOf('photo-fx', 'comfy-ltx25-video')];
+    assert.ok(ltx, 'Photo FX LTX-2.5 row'); { assert.equal(ltx.adjusted?.resolution, '448p', `Photo FX LTX-2.5 at its own Draft size: ${JSON.stringify(ltx.adjusted)}`); assert.equal(ltx.fit?.changes?.find((c: any) => c.field === 'resolution')?.why, 'default'); }
+    const ex = await batch('h3-extend', { resolution: '1080p', seconds: '5' }); const h3x = ex[keyOf('h3-extend', 'comfy-h3-extend')];
+    assert.ok(h3x, 'Extend H3 row'); assert.equal(h3x.adjusted?.resolution, '768p', `Extend H3 at its own 768p: ${JSON.stringify(h3x.adjusted)}`);
+    ok(`other video tools: Kling 4.0 at 480p → priced at 720p (${k4.credits} cr); Photo FX LTX → 448p; Extend H3 → 768p`); }
+
   // validation
   const bad = await fetch(`${B}/api/models/quotes`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ toolId: 'nope' }) }); assert.equal(bad.status, 400);
   const unk = await batch('create-image', {}, ['not-a-model']); assert.equal(unk['not-a-model'].ok, false);

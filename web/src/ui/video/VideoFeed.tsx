@@ -17,6 +17,9 @@ import SelectBar, { unselectable } from '../next/feed/SelectBar';
 import FeedCard, { FeedVideo } from '../next/feed/FeedCard';
 import { videoOutOf, askedAr, clampAr, tileMaxH, videoTag } from '../next/feed/feedMedia';
 import { useFeedState, useFeedViewer, FeedGallery } from '../next/feed/ResultFeed';
+import { feedSections, groupSets, setWords } from '../next/feed/feedLayout';
+import { SetRow, useSetFold } from '../next/feed/SetRow';
+import { CompareIcon } from '../Icons';
 import { emptyTextFor, videoScope, type FeedScope } from '../next/feed/feedFilter';
 import { ALL_VIDEO_FEED, VIDEO_FEED_GROUPS, inVideoFeed, videoWorkflowNameOf } from '../../../../server/src/shared/videoFeed';
 import { useLiveJobs, UploadsFeed, useUploads } from '../next/feed/FeedScope';
@@ -40,7 +43,10 @@ export default function VideoFeed({ jobs, onSelect, viewerActions, tools, workfl
   /* Filter › From › Uploads (2026-10-26): your uploaded clips from the media library, not jobs (ui/next/feed/FeedScope UploadsFeed) */
   const upOn = filt.source === 'uploads'; const up = useUploads('video', pj.pid, filt, upOn);
   const own = useOwnAccounts();
-  const shown = feed.jobs.filter(j => j.status !== 'canceled');
+  /* a set (clips that share a compare id, e.g. video variations) sits together and opens or folds into one card, like the Image feed's (SetRow) */
+  const shown = groupSets(feed.jobs.filter(j => j.status !== 'canceled') as (JobState & { compare?: any })[]) as JobState[];
+  const fold = useSetFold(); const items = feedSections(shown as (JobState & { compare?: any })[], j => [j], fold.isOpen);
+  const setIds = items.flatMap(it => it.group ? [it.group] : []);
   const viewable = shown.filter(j => !isActive(j));
   const v = useFeedViewer(viewable, onSelect, id => `vf-tile-${id}`, !feed.loading);
   const tagOf = (j: JobState) => videoWorkflowNameOf(j as any) ?? videoTag(j); /* every card names the workflow that made it */
@@ -55,8 +61,11 @@ export default function VideoFeed({ jobs, onSelect, viewerActions, tools, workfl
       <FeedGallery title="Video" st={fs} count={upOn ? up.items.length : shown.length} emptyText={emptyTextFor(filt, pj.pid, SCOPE)} testId="vf-feed" override={upOn ? <UploadsFeed up={up} media="video" size={filt.size} idPre="vf" /> : undefined}
         toolbar={selecting ? <SelectBar sel={sel} setSel={setSel} total={feed.total} onExit={stopSelect} selectAll={selectAll} allLoading={allBusy} projects={pj.list} currentProject={pj.pid} patch={feed.patch} unpatch={feed.unpatch} refresh={feed.refresh}
             noun="clip" onTrashed={ids => { if (v.viewId && ids.includes(v.viewId)) v.setViewId(null); }} />
-          : <FeedToolbar f={filt} setF={setFilt} groups={VIDEO_FEED_GROUPS} noun="videos" total={upOn ? up.total : feed.total} failed={upOn ? null : feed.failed} loading={upOn ? up.loading : feed.loading} pj={pj} selecting={selecting} onSelect={() => selecting ? stopSelect() : setSelecting(true)} live={<QueueLine className="ic-gal-live" />} />}>
-        {shown.map(card)}
+          : <FeedToolbar f={filt} setF={setFilt} groups={VIDEO_FEED_GROUPS} noun="videos" sets={setIds.length ? { n: setIds.length, open: items.filter(it => it.group && !it.folded).length, setAll: o => fold.setOpen(setIds, o) } : null} total={upOn ? up.total : feed.total} failed={upOn ? null : feed.failed} loading={upOn ? up.loading : feed.loading} pj={pj} selecting={selecting} onSelect={() => selecting ? stopSelect() : setSelecting(true)} live={<QueueLine className="ic-gal-live" />} />}>
+        {items.map(it => it.group
+          ? <SetRow key={`g-${it.group}`} id={it.group} jobs={it.jobs} open={!it.folded} onToggle={o => fold.setOpen([it.group!], o)} thumbOf={j => videoOutOf(j)?.poster ?? null}
+              head={f => <div className="cmp-gh" data-testid="cmp-group-head"><CompareIcon size={14} /><b>{(w => `${w.title} · ${w.count}`)(setWords(it.jobs as any))}</b>{f}</div>}>{it.jobs.map(card)}</SetRow>
+          : [...it.jobs.map(card), it.fill && <i key={`f-${it.jobs[0].id}`} className="ic-jfill" aria-hidden />])}
       </FeedGallery>
       {v.viewJob && (v.viewJob.status === 'done' && (v.viewJob.resultUrl || (v.viewJob as any).outputs?.length)
         ? <ResultView variant="viewer" job={v.viewJob} out={v.viewOut} beforeUrl={(v.viewJob.input as any)?.compareUrl ?? v.viewJob.resultUrl ?? ''} /* a clip edit that keeps a same-size source (Footage Effects) opens the before / after slider */ title="Your clip" onClose={v.close} {...v.nav} menuTop={inVideoFeed(v.viewJob as any, barWf) /* run-again actions belong to the bar's workflow tool (the feed lists every workflow's) */ ? viewerActions?.(v.viewJob, v.close) : undefined} tools={tools} />

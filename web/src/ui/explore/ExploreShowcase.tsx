@@ -452,7 +452,7 @@ export function XpVfx() {
           {/* the Mockup to film clip, shipped once (shared/featured.ts 'ltx-mockup-film'): its mockup in the corner, the film behind */}
           <Link to={rec} className="xpx-play" aria-label={`${L.label}: ${f.title}, ${f.model}. Recreate`} tabIndex={-1}><HoverClip src={f.out.url} poster={FEATURED_BIG_POSTER[f.key] ?? f.out.poster} label={f.title} /></Link>
           {f.before && <span className="xpx-pip" aria-hidden><HoverClip src={f.before.url} poster={f.before.poster} /><i>Mockup</i></span>}
-          <span className="xv-tag xv-tag-on">Made here</span>
+          <span className="xv-tag xv-tag-on">Made with Imagination</span>
         </div>
         <div className="xpx-body">
           <h3 className="xpx-t">{L.label}</h3>

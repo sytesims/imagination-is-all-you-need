@@ -30,7 +30,7 @@ export function BrandChip({ toolId, mode, watch }: { toolId: string; mode?: stri
   return <>
     <button ref={btn} type="button" className={`ic-chip bk-chip${on ? ' on' : ''}${on && !phrase ? ' bk-chip-empty' : ''}`} data-testid="bk-chip" data-row-fold="brand" {...fitPri(on ? 'keep' : 'low')} data-fit-state={on ? 'On' : 'Off'} aria-haspopup="menu" aria-expanded={open}
       aria-label={on ? `Brand: ${kit.name}` : 'Brand: off'} {...tip(open ? null : on ? (phrase ? `Adds: ${phrase}` : `${kit.name} has nothing to add yet`) : 'Use one of your brands')} onClick={() => setOpen(o => !o)}>
-      {on ? <KitDots colors={kit.colors} /> : <KitDots colors={[]} />}<span className="bk-chip-l">{on ? `Brand: ${kit.name}` : 'Brand'}</span></button>
+      {on ? <KitDots colors={kit.colors} /> : <KitDots colors={[]} />}<span className="bk-chip-l">{on ? kit.name : 'Brand'}</span></button>
     <Popover open={open} anchor={rowAnchor(btn)} avoid={watch} watch={watch} gap={8} align="start" onClose={() => setOpen(false)} label="Brand" testId="bk-pop" className="bk-pop">
       <div className="bk-pop-in">
         <div className="bk-pop-h">{own ? 'Brand (colours, type and logo)' : media === 'audio' ? 'Brand (adds its mood words)' : 'Brand (adds its colours and mood)'}</div>

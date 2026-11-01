@@ -11,6 +11,7 @@ import { getProvider, comfyCloudOpen, type ProviderDef } from '../providers.js';
 import { HOSTED_BY_ID } from '../shared/hostedPrices.js';
 import './routePrices.js';
 import type { RouteDef } from './types.js';
+import { hostedPromptOf } from './hostedPrompt.js';
 import { VIDEO_LIMITS, routeCaps, routeVideoReason } from '../tools/h3/videoCaps.js';
 import { soulCloudRoutes, SOUL_LOCAL_CAPS } from '../tools/soul/cloud.js';
 import { h3VideoRoutes, h3LipsyncRoutes, h3ExtendRoutes, h3CameraRoutes, h3ClassicExtendIssue, H3_VIDEO_CAPS, H3_LIPSYNC_CAPS } from '../tools/h3/cloud.js';
@@ -121,7 +122,7 @@ const klein3Bfl: RouteDef = { routeId: 'direct:bfl/flux-3-image-klein', kind: 'd
   priceRef: 'direct:bfl/flux-3-image-klein', sourceUrl: 'https://docs.bfl.ml/api-reference/utility/generate-an-image-with-flux-3-klein', checkedAt: '2026-10-17', typicalLatencySec: 8, latencyEstimated: true, latencySource: 'estimated',
   envKey: 'OPENHIGGSFIELD_BFL_API_KEY', modes: ['generate', 'edit'], label: 'FLUX 3 Klein via BFL API', caps: { ...KLEIN3_CAPS, resolutions: ['1K', '2K', '4K'], maxRefs: 10 }, output: 'image',
   vendor: 'bfl', direct: bflSpec(async (job) => { const { bflKleinRequest } = await import('../hostedRequests.js'); const i = job.input; const refs: string[] = (i.refPaths ?? (i.imagePath ? [i.imagePath] : [])).slice(0, 10);
-    return bflKleinRequest({ prompt: String(i.hostedPrompt ?? i.prompt ?? ''), aspectRatio: i.aspect, imageRes: i.imageResolution, seed: Number.isInteger(i.seed) ? i.seed : undefined, images: await Promise.all(refs.map(b64)) }); }) };
+    return bflKleinRequest({ prompt: hostedPromptOf(i), aspectRatio: i.aspect, imageRes: i.imageResolution, seed: Number.isInteger(i.seed) ? i.seed : undefined, images: await Promise.all(refs.map(b64)) }); }) };
 const klein3Fal: RouteDef = { ...fal('comfy-flux3-klein', 'blackforestlabs/flux-3/klein/text-to-image', 'FLUX 3 Klein', 6), sourceUrl: 'https://fal.ai/models/blackforestlabs/flux-3/klein/text-to-image', checkedAt: '2026-10-17',
   caps: { native4K: true, layoutBoxes: true, textRendering: true, resolutions: ['1K', '2K', '4K'], maxRefs: 0, maxSide: 4096, minSide: 256, outputFormats: ['jpeg', 'png', 'webp'], promptExpansion: true },
   unavailableFor: (i) => ((i.refPaths ?? []).length || i.imagePath ? 'Jobs with reference images run on the FLUX 3 Klein edit route' : null) };
@@ -137,7 +138,7 @@ const flux3Bfl: RouteDef = { routeId: 'direct:bfl/flux-3-image', kind: 'direct',
   unavailableFor: (i) => { const n = (i.refPaths ?? []).length || (i.imagePath ? 1 : 0); return n > 10 ? `This route takes up to 10 images; you added ${n}` : n && i.imageResolution === '4K' ? 'FLUX 3 Image edits go up to 2K (4 MP with reference images)'
     : i.imageResolution === '0.75K' || i.imageResolution === '1.5K' ? `${i.imageResolution} runs on Comfy Router; the BFL route makes 1K, 2K and 4K` : null; },
   vendor: 'bfl', direct: bflSpec(async (job) => { const { bflFlux3ImageRequest } = await import('../hostedRequests.js'); const i = job.input; const refs: string[] = (i.refPaths ?? (i.imagePath ? [i.imagePath] : [])).slice(0, 10);
-    return bflFlux3ImageRequest({ prompt: withFlux3BoxRows(String(i.hostedPrompt ?? i.prompt ?? ''), i.layoutBoxes) /* layout boxes: the partner node's rows */, aspectRatio: i.aspect, imageRes: i.imageResolution, images: await Promise.all(refs.map(b64)) }); }) };
+    return bflFlux3ImageRequest({ prompt: withFlux3BoxRows(hostedPromptOf(i), i.layoutBoxes) /* layout boxes: the partner node's rows */, aspectRatio: i.aspect, imageRes: i.imageResolution, images: await Promise.all(refs.map(b64)) }); }) };
 /** FLUX.2 [max] on fal, text-to-image only (fal-ai/flux-2-max, https://fal.ai/models/fal-ai/flux-2-max/api, 2026-10-22). The edit endpoint bills the input
  *  images' megapixels too (sizes unknown at quote time), so it is not wired. Our body sends an explicit image_size of ≤1 MP (1K) or ≤4 MP (2K). */
 const flux2MaxFal: RouteDef = { ...fal('api-flux2-max', 'fal-ai/flux-2-max', 'FLUX.2 [max]', 12), sourceUrl: 'https://fal.ai/models/fal-ai/flux-2-max/api', checkedAt: '2026-10-22', caps: { resolutions: ['1K', '2K'], maxRefs: 0 },

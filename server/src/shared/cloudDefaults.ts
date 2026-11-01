@@ -105,6 +105,8 @@ export const CLOUD_DEFAULTS: Record<string, CloudDefault> = {
 
   // ---------------- 3D
   'image-to-3d': { model: 'cloud-tripo-31', comfyKey: true, place: C, cents: 30, typical: '1 model, textured', why: 'Clean, textured models with PBR maps', note: 'No sponsor 3D model' },
+  'text-to-3d': { model: 'cloud-tripo-31', comfyKey: true, place: C, cents: 20, typical: '1 model, textured', why: 'A textured model from your description', note: 'No sponsor 3D model' },
+  'multiview-to-3d': { model: 'cloud-tripo-31', comfyKey: true, place: C, cents: 30, typical: '1 model from 2–4 views, textured', why: 'Combine front, side and back views', note: 'No sponsor 3D model' },
   turntable: none('Free on your computer'),
   'plan-a-shot': none('Free on your computer'),
 };
