@@ -53,7 +53,7 @@ export interface ModelStatus {
   /** Route Auto would use for it now (demo route on a keyless mock server), its kind / tier, and the job's price. */
   routeId: string | null; routeKind: string | null; tier: number | null; tierLabel: string | null; credits: number | null; listCredits: number | null;
   /** The user saved a route for this model (Settings / route picker). */ pinned: boolean;
-  /** HW-SHAPES B3: the local route's fit on this computer (verdict + reasonCode), null for cloud-only models. */ fit?: { verdict: string; reasonCode: string } | null;
+  /** HW-SHAPES B3: the local route's fit on this computer (verdict + reasonCode + its plain reason), null for cloud-only models. */ fit?: { verdict: string; reasonCode: string; reason?: string } | null;
 }
 export interface DefaultFallback { note: string; from: string; to: string; fromName: string; toName: string; reasonCode: DefaultReasonCode | 'pinned' }
 /** The per-workflow default (shared/imageDefaults.ts) as resolved for this tool and mode: which feature, its local / hosted pair, the one for the
@@ -106,7 +106,7 @@ export function modelStatus(tool: ToolDef, modelId: string, mode: string | null 
   const keyable = cloud.filter((o) => o.wired && (o.available || o.reasonCode === 'key_missing')).sort(byTier(false));
   const wired = cloud.some((o) => o.wired && o.reasonCode !== 'input_blocked');
   const name = nameOf(tool, modelId);
-  const lf = opts.find((o) => o.kind === 'local')?.fit; const base = { id: modelId, name, rank, wired, hasCloud, pinned, fit: lf ? { verdict: String(lf.verdict), reasonCode: String(lf.reasonCode) } : null };
+  const lf = opts.find((o) => o.kind === 'local')?.fit; const base = { id: modelId, name, rank, wired, hasCloud, pinned, fit: lf ? { verdict: String(lf.verdict), reasonCode: String(lf.reasonCode), ...(lf.reason ? { reason: String(lf.reason) } : {}) } : null };
   const empty = { routeId: null, routeKind: null, tier: null, tierLabel: null, credits: null, listCredits: null };
   if (!supports(tool, modelId, mode)) return { ...base, ...empty, runnable: false, demo: false, needsKey: false, keyOwner: null, reasonCode: 'mode_unsupported', reason: `${name} doesn't do this mode` };
   if (!rs.length) return { ...base, ...empty, runnable: false, demo: false, needsKey: false, keyOwner: null, reasonCode: 'coming_soon', reason: 'Coming soon' };
@@ -154,7 +154,7 @@ const WHY: Record<string, (s: ModelStatus) => string> = {
   no_price: () => 'has no verified price yet',
   coming_soon: () => 'is coming soon',
   mode_unsupported: () => "doesn't do this mode",
-  not_runnable: (s) => `can't run here (${(s.reason ?? '').replace(/\.$/, '')})`,
+  not_runnable: (s) => { const r = String(s.reason ?? '').trim().replace(/\.$/, ''); return r ? `can't run here (${r})` : "can't run here"; }, // never an empty '()'
 };
 type DefaultsOpts = { mode?: string | null; extra?: Record<string, any>; only?: (id: string) => boolean; /** the image feature or Audio workflow to resolve the per-workflow default for (default: the tool's, for this mode) */ feature?: ImageFeatureId | string | null;
   /** leave the user's own default out (the recommended one) */ noFavourite?: boolean };
@@ -224,7 +224,9 @@ function recommendedDefaults(tool: ToolDef, opts: DefaultsOpts = {}): ToolDefaul
   const editorial: EditorialDefault | null = feat && wf && ed?.id ? { ...ed, feature: feat, local: wf.local, hosted: wf.hosted, source: pinnedDef ? 'pin' : edDef ? 'editorial' : 'fallback' } : null;
   // What to do next when the model in use can't run for real: sample output, the key to add, or (nothing runs) the next key worth adding and where.
   const nextKey = models.find((m) => m.keyOwner && m.needsKey && m.wired) ?? models.find((m) => m.keyOwner && m.needsKey);
-  const tailOf = (m: ModelStatus) => m.runnable ? '' : m.demo ? ' It makes sample output here until its key is added.' : m.needsKey ? ` Add a ${m.keyOwner ?? 'provider'} key in Settings → Connections to run it.` : nextKey ? ` Nothing can run yet. Add ${aKey(String(nextKey.keyOwner))} in Settings → Connections to start.` : ' Nothing can run yet.';
+  // nothing runs: name why the model in use can't either (Restyle on a computer without a graphics card: its local default is too heavy), same words as WHY
+  const ownWhy = (m: ModelStatus) => { const w = m.reasonCode ? WHY[m.reasonCode]?.(m) : null; return w ? ` ${m.name} ${w}.` : ''; };
+  const tailOf = (m: ModelStatus) => m.runnable ? '' : m.demo ? ' It makes sample output here until its key is added.' : m.needsKey ? ` Add a ${m.keyOwner ?? 'provider'} key in Settings → Connections to run it.` : `${ownWhy(m)}${nextKey ? ` Nothing can run yet. Add ${aKey(String(nextKey.keyOwner))} in Settings → Connections to start.` : ' Nothing can run yet.'}`;
   const nothingRuns = !def.runnable && !def.demo && !def.needsKey;
   // Bug 7: the user's saved pick can't run (key missing, local off ...): say so under its own code, then name what is used instead
   const blockedPin = pinnedDef ? undefined : models.find((m) => m.pinned && !(m.runnable || m.demo) && m.id !== def.id);
@@ -245,7 +247,7 @@ function recommendedDefaults(tool: ToolDef, opts: DefaultsOpts = {}): ToolDefaul
   if (editorial && !pinnedDef && def.id !== editorial.id) { const fb = edFallbackNote(byId(editorial.id!)!);
     return { mode, preferredProvider: pref.id, defaultProvider: def.id, defaultRoute: def.routeId, defaultFallback: fb, defaultState: def, models, defaultSource: source, editorial };
   }
-  const reasonCode: DefaultFallback['reasonCode'] = def.pinned && def.id !== pref.id && (pref.runnable || pref.demo) ? 'pinned' : (neverRuns(pref.id) ? 'not_wired' : pref.reasonCode ?? (pref.runnable && pref.routeKind === 'local' && !explicitLocal ? 'local_off' : 'not_runnable')); // a local quality pick passed over because Use local ComfyUI is off (was 'not_runnable' with an empty reason)
+  const reasonCode: DefaultFallback['reasonCode'] = def.pinned && def.id !== pref.id && (pref.runnable || pref.demo) ? 'pinned' : (neverRuns(pref.id) ? 'not_wired' : pref.reasonCode ?? (pref.runnable && pref.routeKind === 'local' && !explicitLocal ? 'local_off' : explicitLocal && pref.fit?.verdict === 'too_heavy' ? 'too_heavy' : 'not_runnable')); // MiniMax H3 with Use local on, no graphics card: its own route here is too heavy (was "can't run here ()") // a local quality pick passed over because Use local ComfyUI is off (was 'not_runnable' with an empty reason)
   const why = reasonCode === 'pinned' ? 'is the best-quality option, but you saved a route for' : WHY[reasonCode]?.(pref) ?? "can't run here";
   const tail = tailOf(def);
   const fb: DefaultFallback | null = def.id === pref.id ? null : {

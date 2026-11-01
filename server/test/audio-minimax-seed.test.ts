@@ -58,11 +58,21 @@ const cloudOf = (tool: any) => routesFor('comfy-minimax-music3', tool).find((r) 
   const inst = buildCloudPlan({ id: 'mm2', toolId: 'audio', provider: 'cloud-minimax-music', input: { mode: 'music', prompt: 'Ambient piano', duration: 10 } });
   assert.equal(inst.passes[0].graph['5'].inputs.lyrics, '[Instrumental]', 'no lyrics → instrumental tag');
   const st = buildCloudPlan({ id: 'mm3', toolId: 'soundtrack', provider: 'cloud-minimax-music', input: { mode: 'music', prompt: 'Synthwave', videoPath: at('clip12.mp4'), duration: 12, outputDuration: 12 } });
-  assert.equal(st.passes[0].graph['5'].inputs.max_duration, 12, 'Music for a video: the clip length'); assert.equal(st.outKind, 'video'); assert.ok(st.muxOnto, 'muxed onto the clip');
+  assert.equal(st.passes[0].graph['5'].inputs.max_duration, 30, 'Music for a video: a 12 s clip asks for the 30 s minimum song (cut mid-phrase otherwise)'); assert.equal(st.outKind, 'video'); assert.ok(st.muxOnto, 'muxed onto the clip');
+  assert.equal(st.musicBed, 12, 'the song is trimmed back to the 12 s clip, faded and limited');
+  const st45 = buildCloudPlan({ id: 'mm4', toolId: 'soundtrack', provider: 'cloud-minimax-music', input: { mode: 'music', prompt: 'Synthwave', videoPath: at('clip12.mp4'), duration: 30, outputDuration: 45 } });
+  assert.equal(st45.passes[0].graph['5'].inputs.max_duration, 45, 'a clip over the minimum: its own length'); assert.equal(st45.musicBed, 45);
+  const { bedFilter, bedFadeSeconds, songMinSeconds } = await import('../src/shared/audioLengths.js');
+  assert.equal(songMinSeconds('cloud-minimax-music'), 30); assert.equal(songMinSeconds('comfy-yue2'), 30); assert.equal(songMinSeconds('comfy-acestep'), 0, 'ACE-Step: no minimum (it takes the clip length)');
+  assert.deepEqual([bedFadeSeconds(10), bedFadeSeconds(30), bedFadeSeconds(2), bedFadeSeconds(1)], [0.8, 1, 0.5, 0.25], 'fade 0.5–1 s, a quarter of a very short clip');
+  assert.match(bedFilter(10), /^atrim=0:10,asetpts=PTS-STARTPTS,afade=t=out:st=9\.2:d=0\.8,.*alimiter=limit=0\.841:.*level=0/);
   // quote = charge: the same seconds as the graph (priceInput), per song second
   const r = cloudOf(audio); const h = HOSTED_BY_ID['cloud-minimax-music']; assert.equal(h.unit, 'second'); assert.equal(h.priceUnmeasured, true);
-  for (const s of [10, 30, 60]) { assert.equal(minimaxSongSeconds({ duration: s }), s); assert.equal(routeCredits(audio, r, { mode: 'music', duration: s }), Math.ceil(h.usd! * s * 100 - 1e-9), `${s} s`); }
-  assert.equal(routeCredits(soundtrack, cloudOf(soundtrack), { mode: 'music', duration: 12, outputDuration: 12 }), Math.ceil(h.usd! * 12 * 100 - 1e-9), 'video: priced on the clip length');
+  for (const s of [30, 60]) { assert.equal(minimaxSongSeconds({ duration: s }), s); assert.equal(routeCredits(audio, r, { mode: 'music', duration: s }), Math.ceil(h.usd! * s * 100 - 1e-9), `${s} s`); }
+  assert.equal(minimaxSongSeconds({ duration: 10 }), 30, 'under the minimum: priced as the 30 s song the graph asks for');
+  assert.equal(routeCredits(soundtrack, cloudOf(soundtrack), { mode: 'music', duration: 12, outputDuration: 12 }), Math.ceil(h.usd! * 30 * 100 - 1e-9), 'video under 30 s: priced on the 30 s song (= max_duration)');
+  assert.equal(routeCredits(soundtrack, cloudOf(soundtrack), { mode: 'music', duration: 30, outputDuration: 45 }), Math.ceil(h.usd! * 45 * 100 - 1e-9), 'video over 30 s: priced on the clip length');
+  for (const id of ['soundtrack', 'app-music-bed']) { const t = getTool(id)!; assert.equal(routeCredits(t, cloudOf(t), { mode: 'music', duration: 10, outputDuration: 10 }), Math.ceil(h.usd! * 30 * 100 - 1e-9), `${id}: quote = the graph's 30 s`); }
   assert.equal(minimaxSongSeconds({}), 60, 'no length → the graph default 60 s'); assert.equal(minimaxSongSeconds({ duration: 999 }), 360);
   // held until a measured run: with a key the route is unavailable with the reason; a run sends nothing
   const o = option(audio, r, { mode: 'music', duration: 10 }); assert.equal(o.available, false); assert.match(String(o.reason), /Off until we can show you its exact price/);
@@ -88,9 +98,9 @@ const cloudOf = (tool: any) => routesFor('comfy-minimax-music3', tool).find((r) 
   assert.equal(job.status, 'done', job.error); assert.equal(job.cloudJobId, 'cj-mm'); assert.ok(job.outputs.length >= 1, 'the song came back');
   const sub = calls.filter((c) => c.method === 'POST' && c.url.endsWith('/api/v2/jobs')); assert.equal(sub.length, 1, 'one submit');
   const wf = JSON.parse(sub[0].body).workflow; assert.equal(wf['5'].class_type, 'MiniMaxMusic3TextEncode'); assert.equal(wf['5'].inputs.caption, 'Warm indie folk, 92 BPM'); assert.equal(wf['5'].inputs.lyrics, '[Chorus]\nCarry me home');
-  assert.equal(wf['5'].inputs.max_duration, 10); assert.equal(wf['10'].class_type, 'SaveAudioAdvanced'); assert.ok(!Object.values<any>(wf).some((n) => /^ComfyCloud|Api$/.test(n.class_type)), 'core nodes only, no partner node');
+  assert.equal(wf['5'].inputs.max_duration, 30, '10 s asked: raised to the model minimum'); assert.equal(wf['10'].class_type, 'SaveAudioAdvanced'); assert.ok(!Object.values<any>(wf).some((n) => /^ComfyCloud|Api$/.test(n.class_type)), 'core nodes only, no partner node');
   setCloudFetch(null); process.env.OPENHIGGSFIELD_ALLOW_UNMEASURED_CLOUD = '0';
-  ok('Comfy Cloud run (fake transport, measuring switch on): one submit with the template graph (caption, lyrics, 10 s), core nodes only, the song downloaded');
+  ok('Comfy Cloud run (fake transport, measuring switch on): one submit with the template graph (caption, lyrics, 10 s raised to 30 s), core nodes only, the song downloaded');
 }
 
 // ---------------- 4. Seed Audio on Comfy Router: Music / Sound effects / Voice ----------------

@@ -33,7 +33,7 @@ try {
 ok('only local, free clips render');
 
 const home = fs.readFileSync(path.join(ROOT, 'web/src/ui/Home.tsx'), 'utf8');
-assert.match(home, /<RealResults \/>/, 'Explore renders the rail'); assert.match(home, /exploreLocalClips\(\)/); assert.match(home, /<RunChip\b/, 'the shared chip');
+assert.doesNotMatch(home, /^\s*<RealResults \/>/m, 'the rail stays hidden on Explore (user, 2026-11-02)'); assert.match(home, /exploreLocalClips\(\)/); assert.match(home, /<RunChip\b/, 'the shared chip');
 const css = fs.readFileSync(path.join(ROOT, 'web/src/ui/explore/exploreShowcase.css'), 'utf8');
 assert.match(css, /\.xph \.sfilm-bleed \.sfilm-stage\{[^}]*aspect-ratio:auto/, 'phone hero: the clip fills the hero');
-ok('Home renders the rail with RunChip; the phone hero fills');
+ok('the rail is hidden on Explore (code kept); the phone hero fills');

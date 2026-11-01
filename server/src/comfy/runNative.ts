@@ -12,7 +12,8 @@ import { lineGraph } from './dubMix.js';
 import type { Job } from '../jobs.js';
 import { config, DATA_DIR } from '../config.js';
 import { env } from '../env.js';
-import { runFfmpeg, remuxAudio, remuxAlphaWebm, flattenAlpha } from '../ffmpeg.js';
+import { runFfmpeg, remuxAudio, remuxAlphaWebm, flattenAlpha, mediaDuration } from '../ffmpeg.js';
+import { bedFilter, BED_LIMITER } from '../shared/audioLengths.js';
 import { ComfyNative, ComfyTimeoutError } from './native.js';
 import { buildPlan, templateVideoDefaults, type Plan, type Prep, type Pass } from './plans.js';
 import { blendArgs } from './restyle.js';
@@ -217,11 +218,18 @@ export async function runNative(job: Job, transport?: ComfyTransport, build: (j:
   if (plan.postFps) for (const f of finals) { // RIFE gives an integer multiple (e.g. 25×3=75); resample to the exact target rate
     const o = f.file.replace(/(\.[a-z0-9]+)?$/i, `.${plan.postFps}fps.mp4`); await ff(['-y', '-i', f.file, '-vf', `fps=${plan.postFps}`, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'copy', o], 'fps resample'); f.file = o;
   }
+  // Music for a clip (2026-11-02): the track is cut to the clip (or its own end, if the song stopped sooner), faded out and peak-limited under −1 dBTP
+  const bed = plan.musicBed ? async (file: string) => bedFilter(Math.min(plan.musicBed!, (await mediaDuration(file).catch(() => 0)) || plan.musicBed!)) : null;
   if (plan.muxOnto) for (const f of finals) { // new voice / sound onto the source video
     if (!/\.(wav|flac|mp3|m4a|ogg|opus|aac)$/i.test(f.file)) continue; const o = f.file.replace(/\.[a-z0-9]+$/i, '.muxed.mp4'); const v = plan.muxOnto.video;
+    const m = bed ? `[1:a]${await bed(f.file)}[m]` : ''; const music = bed ? '[m]' : '[1:a]';
     await ff(plan.muxOnto.mix === 'blend'
-      ? ['-y', '-i', v, '-i', f.file, '-filter_complex', '[0:a]volume=0.25[a0];[a0][1:a]amix=inputs=2:duration=first:dropout_transition=0[a]', '-map', '0:v:0', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', o]
+      ? ['-y', '-i', v, '-i', f.file, '-filter_complex', `${m ? `${m};` : ''}[0:a]volume=0.25[a0];[a0]${music}amix=inputs=2:duration=first:dropout_transition=0${bed ? `,${BED_LIMITER}` : ''}[a]`, '-map', '0:v:0', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', o]
+      : bed ? ['-y', '-i', v, '-i', f.file, '-filter_complex', m, '-map', '0:v:0', '-map', '[m]', '-c:v', 'copy', '-c:a', 'aac', o]
       : ['-y', '-i', v, '-i', f.file, '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac', o], 'audio mux'); f.file = o;
+  } else if (bed) for (const f of finals) { // ACE-Step's graph muxes the music itself: finish its sound track in place
+    if (!/\.(mp4|mov|mkv|webm)$/i.test(f.file)) continue; const o = f.file.replace(/\.[a-z0-9]+$/i, '.bed.mp4');
+    await ff(['-y', '-i', f.file, '-map', '0:v:0', '-map', '0:a:0', '-af', await bed(f.file), '-c:v', 'copy', '-c:a', 'aac', o], 'music bed finish'); f.file = o;
   }
   for (const [i, f] of finals.entries()) {
     if (plan.outKind === 'image' && (job.status as string) === 'canceled') return;

@@ -24,6 +24,7 @@ import { VOICE_CAPS, VOICE_LIMITS, parseVoiceControls, voiceFieldsOf } from './v
 import { QWEN3_TTS, QWEN3_TTS_WORKFLOW, QWEN3_TTS_SPEAKERS, QWEN3_TTS_LANGUAGES, QWEN3_TTS_DEFAULT_SPEAKER } from './voice/qwen3tts.js';
 import { TRANSLATE_LANGS } from '../comfy/plans.js';
 import { SEPARATION_PROVIDER, SEPARATION_WORKFLOW, SEPARATION_NODES } from '../comfy/separation.js';
+import { AUDIO_DURATIONS, AUDIO_LENGTHS, AUDIO_LENGTH_UP_TO } from '../shared/audioLengths.js';
 import { registerToolProviderDurations, resolveDuration, durationErrorBody } from './h3/videoCaps.js';
 import { addAdjustNote } from '../shared/snap.js';
 import { IMAGE_PAGE, VIDEO_PAGE, AUDIO_PAGE } from '../shared/pages.js';
@@ -283,20 +284,8 @@ const SFX = ['api-eleven-sfx', 'api-seed-audio', 'comfy-stable-audio'];
 // 2026-10-27: Qwen3 TTS is ONE card, local open weights (comfy-qwen3tts); the paid direct Alibaba entry (direct-qwen3-tts) is retired (shared/lifecycle.ts).
 const VOICE = ['api-eleven-tts', 'api-eleven-v3', 'api-eleven-v4-turbo', 'direct-minimax-speech', 'direct-minimax-speech-turbo', 'api-fish-tts', 'api-heygen-tts', 'api-seed-audio', 'comfy-chatterbox', QWEN3_TTS, 'comfy-drama3', 'comfy-f5tts'];
 const uniq = (xs: string[]) => [...new Set(xs)];
-// Audio lengths (2026-10-25): music and local sound effects keep 10 / 30 / 60 s; ElevenLabs SFX v2 takes 0.5–30 s on Comfy Router (docs.comfy.org/development/
-// comfy-router/models/elevenlabs/eleven-sfx-v2), so short one-shots are offered there. The tool list is the union (what submit accepts); the per-model
-// list (app.durationsByProvider) is what the Audio page offers. Price: per minute of the length sent (shared/hostedPrices.ts), so the quote follows.
-const AUDIO_DURATIONS = [10, 30, 60]; const ELEVEN_SFX_DURATIONS = [1, 2, 3, 5, 10, 15, 30];
-// Each music / sound model's own lengths (2026-10-27, Audio fixes B), inside what the model really takes (docs.comfy.org node pages, checked 2026-10-27):
-//  Sonilo Text to Music: duration 1–360 s · ACE-Step 1.5: 10 s to 10 min · YuE2: max_duration (our plan caps it at 360 s; the template uses 120)
-//  · MiniMax Music 3: max_duration, the model makes up to ~5 min (local and Comfy Cloud) · Stable Audio Open 1.0: up to 47 s (EmptyLatentAudio 47.6).
-// YuE2 and MiniMax Music 3 treat the length as a cap: the song can end sooner (AUDIO_LENGTH_UP_TO, shown as "up to" on the Audio page).
-export const AUDIO_LENGTHS: Record<string, number[]> = {
-  'api-sonilo-music': [10, 30, 60, 120, 180, 240, 360], 'comfy-acestep': [10, 30, 60, 120, 180, 240, 360, 600],
-  'comfy-yue2': [30, 60, 120, 180, 240, 360], 'comfy-minimax-music3': [30, 60, 120, 180, 240, 300], 'cloud-minimax-music': [30, 60, 120, 180, 240, 300],
-  'comfy-stable-audio': [5, 10, 20, 30, 47], 'api-eleven-sfx': ELEVEN_SFX_DURATIONS, 'api-seed-audio': [] /* no length field: the model decides, up to 2 min */,
-};
-export const AUDIO_LENGTH_UP_TO = ['comfy-yue2', 'comfy-minimax-music3', 'cloud-minimax-music'];
+// Audio lengths per model (AUDIO_LENGTHS, AUDIO_LENGTH_UP_TO): shared/audioLengths.ts, one source for the Audio tool, Music for a video and Music Bed.
+export { AUDIO_LENGTHS, AUDIO_LENGTH_UP_TO };
 /* the price quote and the submit check the same per-model lengths (videoCaps resolveDuration; quote = submit). ElevenLabs SFX v2 keeps its old rule:
  * any length is taken and sent clamped to 30 s (audio-quote.test 1c), so it is left out here. */
 const AUDIO_LENGTHS_CHECKED = Object.fromEntries(Object.entries(AUDIO_LENGTHS).filter(([p, v]) => p !== 'api-eleven-sfx' && v.length));
