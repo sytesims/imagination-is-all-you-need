@@ -60,6 +60,7 @@ import { useToolModels, modelOfEngine, useRunOn, shownName, type ToolModel } fro
 import { HOSTED_BY_ID } from '../../../../server/src/shared/hostedPrices';
 import { etaRangeOf, rangeText } from '../../shared/eta';
 import { VoiceControls, useVoiceControls, voiceCtl, CTRL, MODEL_VOICE_KEYS, modelVoicesOf, realSampleOf } from './VoiceControls';
+import { takesVoicePick, voiceChoicesFor, shownVoiceFor } from '../../shared/voicePick';
 import { AudioWorkflowChip, takeCarriedPrompt, useAudioRecipes, type AudioRecipe } from './AudioWorkflows';
 import '../video/videoDock.css';
 import '../next/workflowBar.css'; /* .wf-slot: the drop tile, as Image's and Video's */
@@ -203,11 +204,13 @@ export default function AudioPage(p: AudioPageProps) {
   /* a model with its own preset voices (Qwen3 TTS: caps.voices) lists those instead of our library; the pick goes in field `speaker`, each with its native language as the hint */
   const mv = isVoice && ctrlMode ? modelVoicesOf(caps) : null; const vKey = mv ? 'speaker' : 'voice';
   /* ▶ only for a REAL clip of the voice (Qwen3 TTS's 9 voices; a library voice whose sample is a recording): a stand-in tone gets no button */
-  const voiceOpts: { value: string; label: string; previewUrl?: string; hint?: string }[] = mv ? mv.voices.map(v => ({ value: v.id, label: v.label, hint: v.hint, previewUrl: v.sampleUrl })) : (apiVoices ? [...apiVoices.map(v => ({ value: v.id, label: v.label, previewUrl: realSampleOf(v) })), ...fOpts('voice').filter(o => o.value === 'clone')] : fOpts('voice'))
+  /* what the model really offers (shared/voicePick.ts): Seed Audio takes no voice (no Voice control); the voice changer has one built-in voice + your sample */
+  const vCaps = cfg.voiceCaps?.[pid] ?? caps;
+  const voiceOpts: { value: string; label: string; previewUrl?: string; hint?: string }[] = (mv ? mv.voices.map(v => ({ value: v.id, label: v.label, hint: v.hint, previewUrl: v.sampleUrl })) : voiceChoicesFor(vCaps, apiVoices ? [...apiVoices.map(v => ({ value: v.id, label: v.label, previewUrl: realSampleOf(v) })), ...fOpts('voice').filter(o => o.value === 'clone')] : fOpts('voice')))
     .filter((o, i, all) => !(o.value === 'clone' && maxS === 0) && all.findIndex(x => x.value === o.value) === i).map(o => o.value === 'clone' ? { ...o, label: p.samples.length ? `Your sample${p.samples.length > 1 ? 's' : ''} (${p.samples.length})` : 'Clone from a sample' } : o);
   const vHasPlay = voiceOpts.some(o => o.previewUrl); // keeps the names in one column when only some voices have a clip
-  const voiceOn = wf.controls.some(c => c.field === 'voice'); const langOn = wf.controls.some(c => c.field === 'language'); const mixOn = wf.controls.some(c => c.field === 'mix') && (mode !== 'voiceover' || !!p.video);
-  const voiceV = mv ? String(p.fieldVals.speaker ?? mv.def) : String(p.fieldVals.voice ?? p.fieldDefaults.voice ?? ''); const voiceL = voiceOpts.find(o => o.value === voiceV)?.label ?? voiceV;
+  const voiceOn = wf.controls.some(c => c.field === 'voice') && takesVoicePick(vCaps); const langOn = wf.controls.some(c => c.field === 'language'); const mixOn = wf.controls.some(c => c.field === 'mix') && (mode !== 'voiceover' || !!p.video);
+  const voiceV = mv ? String(p.fieldVals.speaker ?? mv.def) : shownVoiceFor(vCaps, String(p.fieldVals.voice ?? p.fieldDefaults.voice ?? '')); const voiceL = voiceOpts.find(o => o.value === voiceV)?.label ?? voiceV;
   const langs = fOpts('language'); const langV = String(p.fieldVals.language ?? ''); const langL = langs.find(o => o.value === langV)?.label ?? langV;
   /* the ▶ plays one clip at a time (■ stops it); a clip that can't load loses its button for this visit */
   const playing = useRef<HTMLAudioElement | null>(null); const [vPlay, setVPlay] = useState(''); const [vBad, setVBad] = useState<string[]>([]);
@@ -296,7 +299,7 @@ export default function AudioPage(p: AudioPageProps) {
   for (const f of ['video', 'audio', 'voiceAudio', 'prompt', 'lyrics', 'duration']) if ((p.issues ?? []).some((i: any) => i?.field === f)) notes.push({ key: `f-${f}`, stage: 'Inputs', node: <FieldIssue issues={p.issues} field={f} /> });
   if (langOn && (qLang || p.issues.some((i: any) => i?.field === 'language'))) notes.push({ key: 'lang', stage: 'Inputs', hard: !!qLang, node: <FieldIssue issues={qLang ? [...p.issues, qLang] : p.issues} field="language" /> });
   if (langOn && p.langNote) notes.push({ key: 'langNote', stage: 'Inputs', node: <span data-testid="lang-note">{p.langNote}</span> });
-  if (wf.id === 'translate') notes.push({ key: 'tr', stage: 'Setup', node: <span data-testid="ap-translate-note"><b>Needs a translation server.</b> Translate runs on your own speech-translation server. Without one the job stops with a clear message and nothing is charged. <a href={TRANSLATE_DOC} target="_blank" rel="noopener noreferrer">Set one up ↗</a></span> });
+  if (wf.id === 'translate') notes.push({ key: 'tr', stage: 'Setup', node: <span data-testid="ap-translate-note"><b>Runs on your computer.</b> Whisper writes down the speech line by line, NLLB translates it, and Chatterbox or F5-TTS says it in the new voice, each line at its original moment. Add the separation model to keep the background music. <a href={TRANSLATE_DOC} target="_blank" rel="noopener noreferrer">How it works ↗</a></span> });
   if (gate) notes.push({ key: 'gate', stage: 'Setup', hard: true, node: <KeyNeeded q={q} className="vs-key" toolId={p.tool.id} /> });
   if (unpriced && !gate && !qLang) notes.push({ key: 'unpriced', stage: 'Model', hard: true, node: <span data-testid="ap-price-block" role="status">{unpricedPrefix(q)}{unpricedWhy}</span> });
   if (blockWhy) notes.push({ key: 'blockWhy', stage: 'Model', hard: true, node: <span data-testid="ap-blocked" role="status">{blockWhy}</span> });
@@ -314,7 +317,7 @@ export default function AudioPage(p: AudioPageProps) {
     : unpriced ? (pf0 ? PF_SHORT.price_unavailable(pf0) : 'Price unavailable') : blockWhy ? (pf0 && PF_SHORT[pf0.code] ? PF_SHORT[pf0.code](pf0) : firstWords(blockWhy)) : blocking ? 'See what to fix' : '';
   const eta = !genWord0 ? etaText(q) : ''; /* the tooltip's "Takes about …" */
   const genTitle = qFull ? gq.block : blockWhy ? blockWhy : localGate ? 'Runs free on your computer once ComfyUI is set up' : gate ? 'Needs a provider key' : missing.length ? missing.join(' · ') : unpricedWhy ? `${unpricedPrefix(q)}${unpricedWhy}`
-    : [priceTitle(q, bill, { demo: isDemo, free: isFree, credits: !unpriced && !blockWhy ? credits : null }), q?.perUnit ? `${rateText(q.perUnit)} (${q.perUnitNote ?? q.perUnit.unitLabel}; this run: ${q.upTo ? 'up to ' : ''}${q.perUnit.quantityLabel}).` : '', q?.upTo && q.upToNote ? String(q.upToNote) : '', eta ? `Takes about ${eta.slice(1)}.` : '', wf.id === 'translate' ? 'Needs your own speech-translation server.' : ''].filter(Boolean).join(' ') || undefined;
+    : [priceTitle(q, bill, { demo: isDemo, free: isFree, credits: !unpriced && !blockWhy ? credits : null }), q?.perUnit ? `${rateText(q.perUnit)} (${q.perUnitNote ?? q.perUnit.unitLabel}; this run: ${q.upTo ? 'up to ' : ''}${q.perUnit.quantityLabel}).` : '', q?.upTo && q.upToNote ? String(q.upToNote) : '', eta ? `Takes about ${eta.slice(1)}.` : '', wf.id === 'translate' ? 'Runs on your computer.' : ''].filter(Boolean).join(' ') || undefined;
   /* what DockGenerate reads: the inputs still missing, then the one block (a key, ComfyUI, no price, a refused route) in the setup stage so a
    * place that needs setting up still becomes the shared setup step; its words are genWord0 (the lead), the list says them in full */
   const dgProblems: PreflightProblem[] = [...missing.map(m => ({ code: 'input_problem', stage: 'inputs' as const, message: m, fix: { kind: 'focus-prompt' as const, label: m } })),
@@ -366,7 +369,7 @@ export default function AudioPage(p: AudioPageProps) {
   /* ---- "See the exact prompt": the fields the submit sends (types, prompt, provider, duration, lyrics, every field value), files as counts ---- */
   const peekForm: PeekForm = { toolId: p.tool.id, fields: { types: JSON.stringify([mode]), prompt: p.prompt, ...(p.provider ? { provider: p.provider } : {}), ...(cfg.durations ? { duration: String(p.duration) } : {}), ...(sendLyrics ? { lyrics } : {}),
       ...Object.fromEntries(Object.entries(p.fieldVals).filter(([, v]) => v !== '' && v != null).map(([k, v]) => [k, typeof v === 'boolean' ? (v ? '1' : '0') : String(v)])) },
-    files: { ...(p.video ? { video: 1 } : {}), ...(p.clip || (wf.id === 'cover' && p.song) ? { audio: 1 } : {}), ...(p.samples.length && voiceV === 'clone' ? { voiceAudio: p.samples.length } : {}) }, photo: null };
+    files: { ...(p.video ? { video: 1 } : {}), ...(p.clip || (wf.id === 'cover' && p.song) ? { audio: 1 } : {}), ...(voiceOn && p.samples.length && voiceV === 'clone' ? { voiceAudio: p.samples.length } : {}) }, photo: null };
 
   return <div className="ap" data-testid="audio-page" data-workflow={wf.id}>
     {filePreview.preview}

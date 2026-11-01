@@ -11,6 +11,7 @@
  */
 import { WF_ENTRIES, WF_CHAINS, WF_CATS, wfEntryById, type WfEntry, type WfChain } from './workflowCatalog.js';
 import { featuredByKey, runByJob } from './featured.js';
+import { goalById, goalOf } from './workflowGoals.js';
 import { showcaseById } from './showcase.js';
 import { Bm25Index, keywords, type SearchDoc } from './bm25.js';
 
@@ -67,7 +68,7 @@ export function fromEntry(e: WfEntry): LibWorkflow {
   return { id: wfId(e.id), kind: 'workflow', name: e.name, description: e.line, job: `${catLabel(e.cat)}: ${e.line}`, tags: [...new Set(e.tags)], category: catLabel(e.cat),
     mediaIn: mediaOfNeeds(e.needs), mediaOut: [e.medium], steps: [{ id: wfId(e.id), name: e.name, say: e.line, toolId: e.toolId, model: e.models[0] ?? null, canvas: canvasIdOf(e) }],
     models: [], examples: [...exampleOfFeatured(e.featured), ...exampleOfShowcase(e.showcase)], runs: { where: 'app', href: e.href, toolId: e.toolId, runnable: true }, status: 'ready',
-    source: null, extra: [e.needs, how, e.preset ?? '', e.mode ?? ''].join(' ') };
+    source: null, extra: [e.needs, how, e.preset ?? '', e.mode ?? '', e.tabName ?? '', goalById(goalOf(e.id) ?? '')?.label ?? ''].join(' ') };
 }
 export function fromChain(c: WfChain): LibWorkflow {
   const entries = c.steps.map((s) => wfEntryById(s.entry));
@@ -80,7 +81,7 @@ export function fromChain(c: WfChain): LibWorkflow {
     mediaIn: first ? mediaOfNeeds(first.needs) : ['text'], mediaOut: last ? [last.medium] : [], steps, models: [], examples: ex,
     runs: { where: 'app', href: first?.href ?? null, toolId: first?.toolId ?? null, runnable: true }, status: 'ready',
     source: c.source ? { kind: 'official', name: c.source.name, url: c.source.url, author: c.source.author, licence: c.source.licence } : { kind: 'ours', name: 'Imagination Is All You Need', url: null, author: null, licence: 'AGPL-3.0 (this repo)' },
-    extra: [c.handoff, c.skill ? `skill ${c.skill}` : ''].join(' ') };
+    extra: [c.handoff, c.skill ? `skill ${c.skill}` : '', goalById(goalOf(`chain:${c.id}`) ?? '')?.label ?? ''].join(' ') };
 }
 /** Every workflow and chain the app runs (the server adds skills, saved looks and ideas). */
 export const catalogWorkflows = (): LibWorkflow[] => [...WF_ENTRIES.map(fromEntry), ...WF_CHAINS.map(fromChain)];

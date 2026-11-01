@@ -24,6 +24,11 @@ PACKS = {
  'ComfyUI-PuLID-Flux': {'repo': 'https://github.com/balazik/ComfyUI-PuLID-Flux', 'pin': 'a80912fc3435c358607bf4b43a58dbcbebdb09ff', 'dir': 'ComfyUI-PuLID-Flux', 'license': 'Apache-2.0 (pack); PuLID weights Apache-2.0; insightface antelopev2 non-commercial research; runs on FLUX.1-dev (non-commercial)'},
  'ComfyUI_InfiniteYou': {'repo': 'https://github.com/bytedance/ComfyUI_InfiniteYou', 'pin': '1c979397c5c80f5ac83a2473a2f7d4503104110f', 'dir': 'ComfyUI_InfiniteYou', 'license': 'Apache-2.0 (pack); InfiniteYou weights CC BY-NC 4.0; insightface non-commercial; FLUX.1-dev (non-commercial)'},
  'ComfyUI-F5-TTS': {'repo': 'https://github.com/niknah/ComfyUI-F5-TTS', 'pin': 'a28b6d5ff9185a3383f6e8e9036f786015fc6651', 'dir': 'ComfyUI-F5-TTS', 'license': 'MIT (pack; submodule SWivid/F5-TTS @2f866649 MIT code, weights CC BY-NC 4.0)'},
+ # Separation (2026-11-01): Translate a video and Change Voice keep the background by splitting vocals from the rest (official Comfy template
+ # audio_melbandroformer_audio_separation). Only used when installed: without it those jobs run as before, with a note. Weights: MIT (KimberleyJSN).
+ 'ComfyUI-MelBandRoFormer': {'repo': 'https://github.com/kijai/ComfyUI-MelBandRoFormer', 'pin': '92c86854e6654f4aacc97484471af95c98ea16d4', 'dir': 'ComfyUI-MelBandRoFormer',
+   'license': 'no licence stated (its pyproject.toml names a LICENSE file the repo does not include): check with the author; MelBand RoFormer weights MIT (KimberleyJSN/melbandroformer)',
+   'note': 'Optional for Translate a video and Change Voice: keeps the background music. Model file MelBandRoformer_fp16.safetensors (456 MB) in models/diffusion_models.'},
  # Qwen3 TTS 1.7B (2026-10-27): only sox + tiktoken are installed (`pip` below, read by install-custom-nodes.sh instead of requirements.txt, which pins
  # transformers<5 and onnxruntime-openvino, no macOS wheel). Confirmed working on transformers 5.16.1 (upstream issue #101 / PR #103).
  'ComfyUI-Qwen-TTS': {'repo': 'https://github.com/flybirdxx/ComfyUI-Qwen-TTS', 'pin': '374c2e05dc705231258237a16258d2f8fae8e32a', 'dir': 'ComfyUI-Qwen-TTS', 'license': 'Apache-2.0 (pack); Qwen3-TTS weights Apache-2.0',
@@ -57,6 +62,7 @@ AARCH64 = {
  "ComfyUI_InfiniteYou": "insightface + onnxruntime: insightface builds from source on aarch64 and onnxruntime is the CPU one (no onnxruntime-gpu wheel) (UNVERIFIED).",
  "ComfyUI-F5-TTS": "PyTorch audio stack: expected to work on aarch64 (UNVERIFIED on a Spark).",
  "ComfyUI-Qwen-TTS": "Same as on a Mac: only sox and tiktoken are installed (its requirements pin onnxruntime-openvino); expected to work on aarch64 (UNVERIFIED).",
+ "ComfyUI-MelBandRoFormer": "PyTorch only (rotary_embedding_torch, einops): expected to work on aarch64 (UNVERIFIED on a Spark).",
  "ComfyUI-GGUF": "Python + the gguf package: works on aarch64 (UNVERIFIED on a Spark). Prefer the bf16 / fp8 files there: 128 GB fits them."
 }
 

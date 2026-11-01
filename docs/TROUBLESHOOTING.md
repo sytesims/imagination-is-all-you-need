@@ -6,7 +6,7 @@
 - **The `mcp` process exits with `EADDRINUSE`:** something already listens on :8788. The API and web app keep running. Stop the other process or change `MCP_PORT`.
 - **The `mcp` process doesn't start after `npm install`:** the MCP dependencies didn't install. Run `npm run mcp:install`, then `npm start` again.
 - **Port in use (Docker or `docker/start.mjs`):** `OHF_PORT=8081 docker compose --profile mock up`, or `WEB_PORT=8081 node docker/start.mjs`. The Vite dev server uses a fixed port (`WEB_PORT`, default 5174) and stops if it's taken.
-- **`better-sqlite3` build error during `npm ci`:** install build tools (`xcode-select --install` on a Mac, `build-essential python3` on Linux), or use Node 20, 22 or 24, which have prebuilt binaries.
+- **`better-sqlite3` build error during `npm ci`:** install build tools (`xcode-select --install` on a Mac, `build-essential python3` on Linux), or use Node 22 or 24, which have prebuilt binaries (Node 26 doesn't yet).
 - **`EBADENGINE` warnings on Node 20:** they come from the Comfy SDK and `eventsource-parser`, which ask for Node 22+. Mock mode works; see [INSTALL.md](INSTALL.md#requirements).
 
 ## Generating

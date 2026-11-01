@@ -20,7 +20,8 @@ The same scripts are in this repository, so you can read them before running the
 
 What they do, in order:
 
-1. Check for git, Node.js 20 or newer (with npm) and ffmpeg. For each missing one, they say what it is and ask before installing it with Homebrew (macOS; they offer Homebrew's official installer if it's missing), apt or dnf (Linux, with `sudo`, which asks for your password) or winget (Windows). Say no and they print the manual steps and stop. ffmpeg is optional: without it the app still opens.
+1. Check for git, Node.js 22 to 25 (with npm) and ffmpeg. For each missing one, they say what it is and ask before installing it with Homebrew (macOS; they offer Homebrew's official installer if it's missing), apt or dnf (Linux, with `sudo`, which asks for your password) or winget (Windows). Say no and they print the manual steps and stop. ffmpeg is optional: without it the app still opens.
+   Node.js comes pinned, never as "the newest" (Node 26 has no ready-made build of the app's database module yet): Homebrew's `node@24` on a Mac (Homebrew keeps it off `PATH`; the installer and the Dock app find it, and the "start it again" line it prints brings it along), winget's `OpenJS.NodeJS.22` on Windows, and on Linux the system's own package only when it is Node 22 or newer. Otherwise (Ubuntu 22.04/24.04 and Debian 12 ship Node 12 to 18) they offer Node 24 from [NodeSource](https://github.com/nodesource/distributions), or print the nvm steps and stop before using `sudo`. A Node.js that is too new stops the Windows and Linux installers with the steps to switch to 22 or 24.
 2. Download the app into `~/Imagination` (Windows: `%USERPROFILE%\Imagination`) with `git clone --depth 1`. If the app is already there, they run `npm run update` instead. Your library (`server/data`) and keys (`.env.local`) are never touched.
 3. Run `npm run setup -- --no-start`: app dependencies and the read-only check. No ComfyUI, models or keys.
 4. Ask whether to add a shortcut (Windows: `Imagination.lnk`; Linux: an `imagination.desktop` app entry). On a Mac the installer adds Imagination to Applications and your Dock: it builds the [Mac app](#mac-app-dock) into `/Applications` (or `~/Applications` when `/Applications` needs an administrator; never with `sudo`), pins it to the Dock unless it's already there, and removes the `Imagination.command` desktop shortcut older installers made.
@@ -44,7 +45,7 @@ To do it all by hand instead, follow the steps below.
 
 ## Requirements
 
-- A current Node **20, 22 or 24** release and npm. Node 22 or 24 is recommended; very old Node 20 releases lack flags used by the development server. Some optional provider dependencies require newer Node releases and can warn on Node 20.
+- **Node 22 or 24** and npm. Node 26 isn't supported yet: the server's database module (`better-sqlite3`) has no ready-made build for it, so `npm ci` would need C++ build tools. Node 20 still starts the app but is past its end of life, and some optional provider dependencies warn on it.
 - Git to clone the repository, or an extracted release/source archive.
 - **ffmpeg and ffprobe** on `PATH` for upload validation, audio/video processing and export. The setup check reports missing tools. Browsing included examples is still possible without local generation prerequisites.
 - A browser. Specific browser/OS coverage must be read from actual release test results, not inferred from a successful build.
@@ -236,7 +237,7 @@ When the new version works, you can delete the old folder. Running `npm run upda
 - `npm run build`: builds server/web assets. MCP's compiled stdio entrypoint has a separate `npm run mcp:build` step; see [MCP](MCP.md).
 - `scripts/install.ps1`: optional native Windows app install/build helper. Its printed start command uses app setup; it does not provision ComfyUI or model weights.
 - `scripts/install.sh`: an advanced shell helper with optional local-stack provisioning flags. Those flags can install substantial external software/downloads and are **not** part of the standard app-only setup. Inspect its plan and prerequisites before consenting. Do not point it at an existing ComfyUI installation without understanding potential node/core changes.
-- Docker files are included for advanced use. Docker/native startup, exposed ports, data mounts and GPU support are separate configurations. On macOS, do not assume Docker exposes the Apple GPU to ComfyUI. Windows native app use does not require a GPU Docker image or WSL.
+- Docker files are included for advanced use. The NVIDIA ComfyUI image uses CUDA 12.8 wheels (`cu128`); on DGX Spark (ARM64) use `OHF_TORCH=cu130 docker compose --profile nvidia up`, or `scripts/install.sh --install-comfy`. Docker/native startup, exposed ports, data mounts and GPU support are separate configurations. On macOS, do not assume Docker exposes the Apple GPU to ComfyUI. Windows native app use does not require a GPU Docker image or WSL.
 
 The root CI smoke checks build/start the API and web in isolated mock mode on its configured runners. They do not verify these advanced installation paths, browser interactions, MCP execution or real local/cloud generation.
 

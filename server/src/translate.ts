@@ -18,3 +18,11 @@ export async function translateText(text: string, target: string, source = 'en')
   if (typeof out !== 'string' || !out.trim()) throw new Error('translation backend returned no text');
   return out;
 }
+/** Translate a video, line by line: many lines in one call, line breaks kept (NLLB translates each line on its own: voice_runner.py). A backend that
+ *  merges lines (some LibreTranslate setups) gets one call per line instead, so every line keeps its own timing. */
+export async function translateLines(lines: string[], target: string, source = 'en'): Promise<string[]> {
+  const clean = lines.map((l) => l.replace(/\s+/g, ' ').trim()); if (!clean.length || clean.some((l) => !l)) throw new Error('No speech was found in the clip to translate');
+  const out = (await translateText(clean.join('\n'), target, source)).split('\n').map((l) => l.trim()).filter(Boolean);
+  if (out.length === clean.length) return out;
+  const each: string[] = []; for (const l of clean) each.push((await translateText(l, target, source)).replace(/\s+/g, ' ').trim()); return each;
+}

@@ -17,7 +17,8 @@ const { recreateHref } = await import('../../web/src/shared/workflowLinks.ts');
 assert.equal(VIDEO_WORKFLOWS.find(w => w.id === 'object-swap')?.name, 'Object / Person Swap');
 assert.ok(!VIDEO_WORKFLOWS.some(w => w.id === 'two-person-swap'));
 assert.ok(!WF_ENTRIES.some(w => w.toolId === 'two-person-swap'));
-assert.equal(WF_ENTRIES.find(w => w.toolId === 'object-swap')?.name, 'Object / Person Swap');
+assert.equal(WF_ENTRIES.find(w => w.toolId === 'object-swap')?.name, 'Swap in a clip'); // plain page name (Workflows copy pass)
+assert.equal(WF_ENTRIES.find(w => w.toolId === 'object-swap')?.tabName, 'Object / Person Swap'); // the Video menu name stays
 assert.equal(getTool('two-person-swap')?.listed, false);
 assert.equal(getTool('two-person-swap')?.name, 'Swap Two People');
 assert.equal(videoWorkflowHref('two-person-swap'), `${VIDEO_PAGE}?workflow=object-swap`);

@@ -108,13 +108,15 @@ export function vupTarget(v: unknown): string | null {
   if (s === '2160p' || s === '4k') return '4k'; if (s === '1440p' || s === '2k') return s === '2k' ? '2k' : '1440p';
   return VUP_TARGET_SHORT[s] != null ? s : null;
 }
-/** Output size of an upscale for this model, source and target (+ factor for the scale models). Even numbers. */
-export function vupOutputSize(provider: string, w: number, h: number, target: string, scale = 2): { width: number; height: number; capped: boolean } {
+/** Output size of an upscale for this model, source and target. Even numbers. A scale model asks for the factor that reaches the target's long side,
+ *  up to its largest factor (VUP_MAX_FACTOR; `scale` overrides that cap): reached = false when it can't get there (the job says so, vupSizing). */
+export function vupOutputSize(provider: string, w: number, h: number, target: string, scale?: number): { width: number; height: number; capped: boolean; reached: boolean } {
   const m = VUP_MODELS[provider]; const t = vupTarget(target) ?? VUP_DEFAULT_TARGET; const short = VUP_TARGET_SHORT[t]; const long = VUP_TARGET_LONG[t];
   const fit: VupFit = m?.fit ?? 'scale';
-  if (fit === 'short') { const k = short / Math.min(w, h); return { width: ev(w * k), height: ev(h * k), capped: false }; }
-  if (fit === 'long') { const k = long / Math.max(w, h); return { width: ev(w * k), height: ev(h * k), capped: false }; }
-  const k = Math.min(scale, long / Math.max(w, h)); return { width: ev(w * k), height: ev(h * k), capped: k < scale };
+  if (fit === 'short') { const k = short / Math.min(w, h); return { width: ev(w * k), height: ev(h * k), capped: false, reached: true }; }
+  if (fit === 'long') { const k = long / Math.max(w, h); return { width: ev(w * k), height: ev(h * k), capped: false, reached: true }; }
+  const max = scale ?? VUP_MAX_FACTOR[provider] ?? 2; const need = long / Math.max(w, h); const k = Math.min(max, need);
+  return { width: ev(w * k), height: ev(h * k), capped: k < max, reached: need <= max + 1e-9 };
 }
 /** Plain reason this model can't make this target from this source (null = fine). */
 export function vupBlock(provider: string, i: { inputSize?: { width: number; height: number } | null; maxOutput?: string | null; types?: unknown; mode?: unknown; targetLongEdge?: unknown; target?: unknown }): string | null {
@@ -167,10 +169,11 @@ export function vupSizing(provider: string, input: Record<string, any>, q: Recor
   if (VUP_MODELS[provider]) { const mode = vupMode(provider, input.types); if (mode) input.types = [mode];
     if (w > 0 && h > 0) { input.inputSize = { width: w, height: h };
       const o = tl && VUP_MODELS[provider].fit !== 'scale' ? { width: ev((w * tl) / Math.max(w, h)), height: ev((h * tl) / Math.max(w, h)), capped: false }
-        : vupOutputSize(provider, w, h, input.maxOutput, Number(input.scale) || 2);
+        : vupOutputSize(provider, w, h, input.maxOutput);
       const oc = tl && VUP_MODELS[provider].fit === 'scale' && Math.max(o.width, o.height) > tl ? { width: ev((o.width * tl) / Math.max(o.width, o.height)), height: ev((o.height * tl) / Math.max(o.width, o.height)), capped: true } : o;
       input.outputSize = { width: oc.width, height: oc.height }; input.capped = oc.capped;
-      if (!tl) vupSnapTarget(provider, input, w, h); } }
+      if (!tl) vupSnapTarget(provider, input, w, h);
+      vupShortNote(provider, input, tl); } }
   return input;
 }
 /** 2026-10-28 (never refuse over our own size rule): a picked size that would not make the clip larger moves up to the next size this model makes,
@@ -181,7 +184,7 @@ function vupSnapTarget(provider: string, input: Record<string, any>, w: number, 
   if (!vupSizeIssue(provider, input, asked, null)) return;
   const have = Math.min(w, h); const askedShort = VUP_TARGET_SHORT[asked] ?? 0;
   for (const t of [...m.targets].filter((x) => (VUP_TARGET_SHORT[x] ?? 0) > askedShort).sort((a, b) => VUP_TARGET_SHORT[a] - VUP_TARGET_SHORT[b])) {
-    const o = vupOutputSize(provider, w, h, t, Number(input.scale) || 2); const trial = { ...input, maxOutput: t, outputSize: { width: o.width, height: o.height } };
+    const o = vupOutputSize(provider, w, h, t); const trial = { ...input, maxOutput: t, outputSize: { width: o.width, height: o.height } };
     if (vupSizeIssue(provider, trial, t, null)) continue;
     input.maxOutput = t; input.resolution = vupResolution(t); input.outputSize = trial.outputSize; input.capped = o.capped; input.targetAdjusted = { from: asked, to: t };
     input.adjustNote = `Your clip is already ${have}p, so it is upscaled to ${VUP_TARGET_LABEL[t]} instead of ${VUP_TARGET_LABEL[asked] ?? asked} (the next size ${m.name} makes).`;
@@ -191,6 +194,18 @@ function vupSnapTarget(provider: string, input: Record<string, any>, w: number, 
   input.sameSize = true; input.outputSize = { width: ev(w), height: ev(h) }; input.capped = false;
   input.adjustNote = `Your clip is already ${have}p, as large as ${m.name} makes: it is re-sharpened at the same size.`;
 }
+/** U-07: a scale model whose largest factor can't reach the picked size says what it really makes (note), and the job's resolution is that size,
+ *  so the quote, the price and the result agree (Crystal 4K on a 720p clip asks for 3× and makes 3840×2160; FLUX tops out at 3×). */
+function vupShortNote(provider: string, input: Record<string, any>, tl: number | null) {
+  const m = VUP_MODELS[provider]; const o = input.outputSize, s = input.inputSize; if (m?.fit !== 'scale' || !o || !s || input.sameSize) return;
+  const want = tl ?? VUP_TARGET_LONG[String(input.maxOutput)]; if (!want || Math.max(o.width, o.height) >= want - 2) return;
+  input.resolution = `${Math.min(o.width, o.height)}p`;
+  const note = `${m.name} enlarges ${VUP_MAX_FACTOR[provider] ?? vupFactor(input)}× at most, so it makes ${o.width}×${o.height} (${input.resolution}), not ${tl ? `${tl} px` : VUP_TARGET_LABEL[String(input.maxOutput)] ?? input.maxOutput}.`;
+  input.adjustNote = input.adjustNote ? `${input.adjustNote} ${note}` : note;
+}
+/** Largest factor each scale model takes: FLUX Video Upscale 3× (its body clamps 1.5–3); Crystal 1–200 per its Router schema (output under 5K,
+ *  which every target here is), so 4K is always reachable. */
+export const VUP_MAX_FACTOR: Record<string, number> = { 'direct-flux3-upscale': 3, 'router-crystal-video': 200 };
 /** The factor a scale model is asked for: the output's long side over the source's (so the provider makes exactly the size we quoted), else the job's scale. */
 export const vupFactor = (i: { outputSize?: { width: number; height: number } | null; inputSize?: { width: number; height: number } | null; scale?: unknown }) => {
   const o = i?.outputSize, s = i?.inputSize; if (o && s && s.width > 0 && s.height > 0) return Math.round((Math.max(o.width, o.height) / Math.max(s.width, s.height)) * 100) / 100;
