@@ -68,7 +68,7 @@ export function fromEntry(e: WfEntry): LibWorkflow {
   return { id: wfId(e.id), kind: 'workflow', name: e.name, description: e.line, job: `${catLabel(e.cat)}: ${e.line}`, tags: [...new Set(e.tags)], category: catLabel(e.cat),
     mediaIn: mediaOfNeeds(e.needs), mediaOut: [e.medium], steps: [{ id: wfId(e.id), name: e.name, say: e.line, toolId: e.toolId, model: e.models[0] ?? null, canvas: canvasIdOf(e) }],
     models: [], examples: [...exampleOfFeatured(e.featured), ...exampleOfShowcase(e.showcase)], runs: { where: 'app', href: e.href, toolId: e.toolId, runnable: true }, status: 'ready',
-    source: null, extra: [e.needs, how, e.preset ?? '', e.mode ?? '', goalById(goalOf(e.id) ?? '')?.label ?? ''].join(' ') };
+    source: null, extra: [e.needs, how, e.preset ?? '', e.mode ?? '', e.tabName ?? '', goalById(goalOf(e.id) ?? '')?.label ?? ''].join(' ') };
 }
 export function fromChain(c: WfChain): LibWorkflow {
   const entries = c.steps.map((s) => wfEntryById(s.entry));

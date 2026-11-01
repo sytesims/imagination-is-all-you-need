@@ -16,26 +16,28 @@ import { ToolIconFor, SearchIcon, CloseIcon, OfficialBadgeIcon, CommunityIcon, S
 import { FlowDiagram, hasDiagram } from '../exploreArt';
 import { featuredByKey, runByJob, type FeaturedRun } from '../../../../server/src/shared/featured';
 import { resolveRow, whyHidden, runsPrice, runCost, openHrefOf, type Row, type Hub } from './workflowRows';
-import { WF_ENTRIES, WF_CHAINS, WF_CATS, WF_PAGE_FEATURED, WF_PAGE_KEEP, onWorkflowsPage, cardThumb, entryHay, catCounts, type WfChain, type WfCat } from '../../../../server/src/shared/workflowCatalog';
+import { WF_ENTRIES, WF_CHAINS, WF_PAGE_PICKS, onWorkflowsPage, cardThumb, entryHay, type WfChain } from '../../../../server/src/shared/workflowCatalog';
+import { WF_GOALS, WF_START_HERE, goalOf, goalById, isGoal, type WfGoal } from '../../../../server/src/shared/workflowGoals';
 import { fromEntry, fromChain, chainId, wfId, buildWorkflowIndex, type LibWorkflow } from '../../../../server/src/shared/libraryWorkflows';
 import '../explore.css';
 import './workflowFinder.css';
 /**
- * Workflows (2026-10-27, the Finder): every workflow the app can run here, by the job it does (server/src/shared/workflowCatalog.ts: one
- * category each, plus the multi-step chains), with the real models and, per model, where it runs and its price from GET /api/tools
+ * Workflows (2026-10-27, the Finder; 2026-11-01 by goal): "Start here", then one short section per goal (server/src/shared/workflowGoals.ts,
+ * the picks in workflowCatalog.ts WF_PAGE_PICKS; the rail is the same list), workflows and multi-step chains, with the real models and, per model, where it runs and its price from GET /api/tools
  * (shared/runLabel.ts words, shared/RunLine.tsx), and image examples from GET /api/workflow-hub. A workflow no model can run here is left out
  * (the rail names what was left out and why).
- *  - Left: the brand line, search ("/" focuses it), the categories with their counts (empty ones hidden), Multi-step and Saved, Surprise me.
- *  - Right: goals, "Yours" (saved workflows and chains, this browser only), then the picks in grids that fill the width, in Explore's
- *    banded tile (explore.css .xp-tile.is-band): the picture, then on a solid band the name, one line and the model (where it runs and the price depend on the
+ *  - Left: the brand line, search ("/" focuses it), Start here and the goals with their counts (empty ones hidden), Multi-step and Saved, Surprise me.
+ *  - Right: "Yours" (saved workflows and chains, this browser only), then the sections in grids that fill the width, in Explore's
+ *    banded tile (explore.css .xp-tile.is-band): the picture, then on a solid band the name, one line and a small model chip (where it runs and the price depend on the
  *    user's setup, so they live in the sheet and on the tab's Generate, not on the card).
  * A card opens the workflow sheet: its example, how it works, every model with every place it runs (status and price), the source credit and
  * licence, then "Open in <tab>" (goToWorkflow; the tab's code is fetched as the sheet opens, so the click doesn't wait). A workflow with no
- * example of ours shows our own drawing of the flow, labelled as such. ?q= prefills the search; ?cat= picks a category; both follow the page.
+ * example of ours shows our own drawing of the flow, labelled as such. ?q= prefills the search; ?cat= picks a goal (or start); both follow the page.
  */
 const TAB: [string, string][] = [[IMAGE_PAGE, 'Image'], [VIDEO_PAGE, 'Video'], [AUDIO_PAGE, 'Audio'], [THREE_D_PAGE, '3D']];
 export const tabOf = (href: string) => TAB.find(([p]) => href === p || /^[/?#]/.test(href.slice(p.length)) && href.startsWith(p))?.[1] ?? 'the app';
-const catLabel = (c: WfCat) => WF_CATS.find((x) => x.id === c)?.label ?? c;
+/** the goal's label for a workflow or chain id (the sheet's kicker) */
+const goalLabel = (id: string) => goalById(goalOf(id) ?? '')?.label ?? '';
 const mins = (ms: number) => ms < 60_000 ? `${Math.round(ms / 1000)} s` : `${Math.round(ms / 60_000)} min`;
 export { resolveRow, runsPrice, type Row };
 /** The tab's code, fetched once (a card hover, a sheet opening), so "Open in" doesn't wait for it. */
@@ -78,12 +80,12 @@ function useIdeas() {
   useEffect(() => { let live = true; fetch('/api/library/workflows?kind=idea&limit=200').then((r) => (r.ok ? r.json() : null)).then((d) => { if (live && Array.isArray(d?.items)) setIdeas(d.items); }).catch(() => undefined); return () => { live = false; }; }, []);
   return ideas;
 }
-/** Search + category filter. `cat`: all | chains | saved | ideas | a category. Both follow the address (replaceState: Back leaves the page, not a keystroke).
+/** Search + goal filter. `cat`: all | start | chains | saved | ideas | a goal. Both follow the address (replaceState: Back leaves the page, not a keystroke).
  *  Search ranks with the library index (shared/bm25.ts via shared/libraryWorkflows.ts): the same ranking agents get from search_workflows. */
 function useFilter(allRows: Row[], allChains: WfChain[], ideas: LibWorkflow[]) {
-  /* the page shows the user's picks (WF_PAGE_FEATURED / WF_PAGE_KEEP); a search still looks through every workflow and lists the others under "Also in the tabs" */
+  /* the page shows the user's picks (Start here + WF_PAGE_PICKS); a search still looks through every workflow and lists the others under "Also in the tabs" */
   const rows = useMemo(() => allRows.filter((r) => onWorkflowsPage(r.e.id)), [allRows]); const chainsHere = useMemo(() => allChains.filter((c) => onWorkflowsPage(`chain:${c.id}`)), [allChains]);
-  const [q, setQ] = useState(() => new URLSearchParams(location.search).get('q') ?? ''); const [cat, setCat] = useState<string>(() => { const c = new URLSearchParams(location.search).get('cat'); return c && (c === 'chains' || c === 'saved' || c === 'ideas' || WF_CATS.some((x) => x.id === c)) ? c : 'all'; });
+  const [q, setQ] = useState(() => new URLSearchParams(location.search).get('q') ?? ''); const [cat, setCat] = useState<string>(() => { const c = new URLSearchParams(location.search).get('cat'); return c && (c === 'start' || c === 'chains' || c === 'saved' || c === 'ideas' || isGoal(c)) ? c : 'all'; });
   useEffect(() => { if (location.pathname !== '/workflows') return; const u = new URLSearchParams(location.search); q ? u.set('q', q) : u.delete('q'); cat !== 'all' ? u.set('cat', cat) : u.delete('cat');
     const s = u.toString(); const next = `${location.pathname}${s ? `?${s}` : ''}${location.hash}`; if (next !== `${location.pathname}${location.search}${location.hash}`) history.replaceState(history.state, '', next); }, [q, cat]);
   /* one index over the rows (with their real model names), the chains that run here and the ideas */
@@ -95,8 +97,7 @@ function useFilter(allRows: Row[], allChains: WfChain[], ideas: LibWorkflow[]) {
   const ideaHits = useMemo(() => ideas.filter((w) => score.has(w.id)).sort((a, b) => (q ? rank(a.id) - rank(b.id) : 0)), [ideas, score, q]);
   /* a search that matches workflows this page doesn't show: they still open (their sheet, their tab) */
   const elsewhere = useMemo(() => (q.trim() ? allRows.filter((r) => !onWorkflowsPage(r.e.id) && score.has(wfId(r.e.id))).sort((a, b) => rank(wfId(a.e.id)) - rank(wfId(b.e.id))).slice(0, 8) : []), [allRows, score, q]); // eslint-disable-line react-hooks/exhaustive-deps
-  const counts = useMemo(() => catCounts(hits.map((r) => r.e)), [hits]);
-  return { q, setQ, cat, setCat, rows, chainsHere, hits, chains, ideas: ideaHits, elsewhere, counts, ranked: !!q.trim() };
+  return { q, setQ, cat, setCat, rows, chainsHere, hits, chains, ideas: ideaHits, elsewhere, ranked: !!q.trim() };
 }
 type Filter = ReturnType<typeof useFilter>;
 
@@ -125,16 +126,11 @@ function Panel({ label, onClose, children }: { label: string; onClose: () => voi
     </div></div>, document.body);
 }
 
-/* goals that land on the picks (2026-10-28) */
-const GOALS: [string, string][] = [['Turn a sketch into a film', 'sketch film'], ['Keep a shot going', 'longer'], ['Swap a character', 'swap'], ['Score my clip', 'score'], ['Try on clothes', 'outfit'], ['Fix a blurry photo', 'sharper']];
 function Search({ f, inputRef }: { f: Filter; inputRef: React.RefObject<HTMLInputElement> }) {
   return <label className="wn-search"><SearchIcon size={16} />
     <input ref={inputRef} type="search" value={f.q} onChange={(e) => f.setQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Escape' && f.q) { e.preventDefault(); e.stopPropagation(); f.setQ(''); } }}
       placeholder="Search workflows" aria-label="Search workflows" aria-keyshortcuts="/" data-testid="wn-search" />
     {f.q ? <button type="button" className="wn-clear" aria-label="Clear search" onClick={() => { f.setQ(''); inputRef.current?.focus(); }}><CloseIcon size={14} /></button> : <kbd className="wn-kbd" aria-hidden>/</kbd>}</label>;
-}
-function Goals({ f }: { f: Filter }) {
-  return <div className="wn-goals" aria-label="Try a goal">{GOALS.map(([l, q]) => <button key={l} type="button" className={`xp-chip wn-goal${f.q === q ? ' on' : ''}`} aria-pressed={f.q === q} onClick={() => f.setQ(f.q === q ? '' : q)}>{l}</button>)}</div>;
 }
 /** No example of ours yet: our own drawing of the flow (Explore's art), honestly labelled where there is room (`label`). */
 function Art({ r, label }: { r: Row; label?: boolean }) {
@@ -150,6 +146,11 @@ function MediaView({ r, mode = 'hover', muted = true, label, thumb }: { r: Row; 
   if (thumb) return <HoverClip src={thumb} poster={thumb} label={r.e.name} />;
   if (m.kind === 'still') return <HoverClip src={m.src} poster={m.src} label={r.e.name} />;
   if (m.kind === 'split') return <SplitPreview className="wn-split" before={m.before} after={m.after} beforeLabel={m.bl} afterLabel={m.al} testId="wn-split" />;
+  /* a real sound of ours: our drawing on the card; in the sheet, the sound itself under it */
+  if (m.kind === 'sound') return mode === 'view'
+    ? <span className="wn-art wn-sound" data-testid="wn-sound"><span className="xp-art" aria-hidden>{r.e.art && hasDiagram(r.e.art) ? <FlowDiagram art={r.e.art} /> : <ToolIconFor id={r.e.toolId} size={44} strokeWidth={1.3} />}</span>
+      <audio controls preload="none" src={m.src} aria-label={`${r.e.name}: our example`} /></span>
+    : <Art r={r} />;
   return <Art r={r} label={label} />;
 }
 function SaveBtn({ id, s, label }: { id: string; s: Saved; label: string }) {
@@ -176,7 +177,7 @@ function Card({ r, onOpen, s, i = 0, showMade }: { r: Row; onOpen: () => void; s
     <span className="xp-cap wn-cap">
       <button type="button" className="xp-title wn-title" onClick={onOpen} onFocus={() => warm(r.e.href)} aria-label={`${r.e.name}: ${r.e.line}. Details`}>{r.e.name}</button>
       <span className="xp-line">{r.e.line}</span>
-      <span className="xp-meta wn-meta"><span className="xp-model wn-model" title={r.models.map((m) => m.name).join(', ')}><span>{r.model ? shortModel(r.model) : 'Model on the bar'}</span>{r.models.length > 1 && <small>+{r.models.length - 1}</small>}</span></span>
+      <span className="xp-meta wn-meta"><span className="wn-chip" title={r.models.map((m) => m.name).join(', ')}>{r.model ? shortModel(r.model) : 'Runs in the app'}</span></span>
     </span>
   </div>;
 }
@@ -203,7 +204,7 @@ function ChainTile({ c, rows, onOpen, s, i = 0, showMade }: { c: WfChain; rows: 
     <span className="xp-cap wn-cap">
       <button type="button" className="xp-title wn-title" onClick={onOpen} aria-label={`${c.name}: ${c.line}. ${c.steps.length} steps. Details`}>{c.name}</button>
       <span className="xp-line">{c.line}</span>
-      <span className="xp-meta wn-meta"><span className="xp-model wn-model" title={k.steps.map((x) => x.model).filter(Boolean).join(' → ')}><span>{[...new Set(k.steps.map((x) => x.model).filter(Boolean))].join(' → ')}</span></span></span>
+      <span className="xp-meta wn-meta"><span className="wn-chip" title={k.steps.map((x) => x.model).filter(Boolean).join(' → ')}>{c.steps.length > 1 ? `${c.steps.length} steps` : k.steps[0].model ? shortModel(k.steps[0].model) : '1 step'}</span></span>
     </span>
   </div>;
 }
@@ -259,9 +260,10 @@ function Sheet({ r, rows, chains, s, onClose, onOpen, mock }: { r: Row; rows: Ro
       {r.made && r.runs.length > 0 && <span className="wn-pcap" data-testid="wn-pcap">Made here · {r.runs.map((x) => `${x.model} · ${x.place}, ${runCost(x)}`).join(' → ')}{r.runs.length > 1 ? ` · ${runsPrice(r.runs)?.text} in all` : ''}{r.runMs ? ` · took ${mins(r.runMs)}` : ''}</span>}
     </div>
     <div className="wv-pbody" data-testid="wn-sheet">
-      <p className="wv-kicker">{catLabel(r.e.cat)}</p>
+      <p className="wv-kicker">{goalLabel(r.e.id)}</p>
       <h2 className="disp wv-ptitle">{r.e.name}</h2>
       <p className="wn-pline">{r.e.line}</p>
+      {r.e.tabName && <p className="wv-muted wn-tabname" data-testid="wn-tabname">Called {r.e.tabName} in the {tab} menu.</p>}
       <div className="wv-pills"><span className="wv-pill">Needs: {r.e.needs}</span><RunLine p={r.run} testId="wn-sheet-run" /></div>
       {mock && <p className="wv-muted wn-mocknote">Sample mode: a run here returns a sample and bills nothing; prices are what a real run costs.</p>}
       {r.e.how && <><h3 className="wv-h">How it works</h3><ol className="wn-how">{r.e.how.map(([h, b]) => <li key={h}><b>{h}</b><span>{b}</span></li>)}</ol></>}
@@ -303,7 +305,7 @@ function Empty({ f, rows, open }: { f: Filter; rows: Row[]; open: (r: Row) => vo
   const near = nearMisses(rows, f.q);
   return <div className="wn-empty" data-testid="wn-empty"><b className="disp">Nothing for “{f.q}” yet.</b>
     {near.length ? <><p>Closest we have:</p><div className="wn-near" data-testid="wn-near">{near.map((r) => <button key={r.e.id} type="button" className="wn-pin" onClick={() => open(r)}><ToolIconFor id={r.e.toolId} size={16} />{r.e.name}</button>)}</div></>
-      : <p>Try plainer words or a goal below, or ask your AI agent: it can chain any of these workflows for you.</p>}
+      : <p>Try plainer words, or ask your AI agent: it can chain any of these workflows for you.</p>}
     <div className="wn-empty-acts"><button type="button" className="btn" onClick={() => { f.setQ(''); f.setCat('all'); }}>Show every workflow</button><Link to="/mcp" className="btn">Ask your agent</Link></div></div>;
 }
 function Note({ mode }: { mode: ReturnType<typeof useSampleMode> }) {
@@ -337,9 +339,9 @@ const Loading = () => <div className="wn-page" aria-busy="true" aria-label="Load
   <aside className="wn-side"><span className="wn-brand">Imagination is all you need</span><h1>Workflows</h1><span className="wn-shim wn-shim-search" />{[0, 1, 2, 3, 4, 5, 6].map((n) => <span key={n} className="wn-shim wn-shim-cat" />)}</aside>
   <div className="wn-main"><span className="wn-shim wn-shim-h" /><div className="wn-grid">{[0, 1, 2, 3, 4, 5].map((n) => <span key={n} className="wn-shim wn-shim-card" aria-hidden />)}</div></div></div></div>;
 
-/** One card on the page: a workflow or a multi-step chain (the picks mix them: the featured row starts with two chains). */
+/** One card on the page: a workflow or a multi-step chain (a goal's picks can mix them). */
 type Item = { kind: 'row'; r: Row; id: string } | { kind: 'chain'; c: WfChain; id: string };
-const catOfItem = (x: Item): WfCat | null => (x.kind === 'row' ? x.r.e.cat : null);
+const START_LINE = 'The first things people try. Most run free on your computer.';
 
 export default function Workflows({ tools }: { tools: ToolInfo[] }) {
   const { rows, left } = useRows(tools); const s = useSaved(); const mode = useSampleMode();
@@ -358,18 +360,23 @@ export default function Workflows({ tools }: { tools: ToolInfo[] }) {
   if (!tools.length) return <Loading />;
   /* the user's picks, in their order, as far as the search keeps them */
   const item = (id: string): Item | null => { if (id.startsWith('chain:')) { const c = f.chains.find((x) => `chain:${x.id}` === id); return c ? { kind: 'chain', c, id } : null; } const r = f.hits.find((x) => x.e.id === id); return r ? { kind: 'row', r, id } : null; };
-  const featured = WF_PAGE_FEATURED.map(item).filter((x): x is Item => !!x); const kept = WF_PAGE_KEEP.map(item).filter((x): x is Item => !!x);
-  const picked = [...featured, ...kept];
+  const isItem = (x: Item | null): x is Item => !!x;
+  const start = WF_START_HERE.map(item).filter(isItem);
+  /* each goal's section: its picks; picked alone in the rail, a goal also shows its Start here cards first */
+  const goals = WF_GOALS.map((g) => ({ g, items: WF_PAGE_PICKS[g.id].map(item).filter(isItem), starts: start.filter((x) => goalOf(x.id) === g.id) }));
+  const picked = [...start, ...goals.flatMap((x) => x.items)];
   /** Surprise me: a random workflow on this page that runs here right now, a made one twice as likely */
   const surprise = () => { const pool = f.rows.filter((r) => ['free', 'cloud', 'sample'].includes(r.run.kind)).flatMap((r) => (r.made ? [r, r] : [r])); const pick = pool[Math.floor(Math.random() * pool.length)]; if (pick) openRow(pick); };
-  const savedItems: Item[] = s.saved.map((id): Item | null => { if (id.startsWith('chain:')) { const c = chainsAll.find((x) => `chain:${x.id}` === id); return c ? { kind: 'chain', c, id } : null; } const r = rows.find((x) => x.e.id === id); return r && (!f.ranked || f.hits.includes(r) || f.elsewhere.includes(r)) ? { kind: 'row', r, id } : null; }).filter((x): x is Item => !!x);
-  const opts = [{ value: 'all', label: 'Everything', aside: String(picked.length) }, ...(f.chains.length ? [{ value: 'chains', label: 'Multi-step', aside: String(f.chains.length) }] : []),
-    { value: 'saved', label: 'Saved', aside: String(savedItems.length) }, ...f.counts.map((c) => ({ value: c.id as string, label: c.label, aside: String(c.n) })),
+  const savedItems: Item[] = s.saved.map((id): Item | null => { if (id.startsWith('chain:')) { const c = chainsAll.find((x) => `chain:${x.id}` === id); return c ? { kind: 'chain', c, id } : null; } const r = rows.find((x) => x.e.id === id); return r && (!f.ranked || f.hits.includes(r) || f.elsewhere.includes(r)) ? { kind: 'row', r, id } : null; }).filter(isItem);
+  const goalItems = (g: WfGoal) => { const x = goals.find((y) => y.g.id === g)!; return [...x.starts, ...x.items]; };
+  const opts = [{ value: 'all', label: 'Everything', aside: String(picked.length) }, ...(start.length ? [{ value: 'start', label: 'Start here', aside: String(start.length) }] : []),
+    ...goals.map(({ g }) => ({ value: g.id as string, label: g.label, aside: String(goalItems(g.id).length) })).filter((o) => o.aside !== '0'),
+    ...(f.chains.length ? [{ value: 'chains', label: 'Multi-step', aside: String(f.chains.length) }] : []), { value: 'saved', label: 'Saved', aside: String(savedItems.length) },
     ...(ideas.length ? [{ value: 'ideas', label: 'Ideas, not built yet', aside: String(f.ideas.length) }] : [])];
-  if (!opts.some((o) => o.value === f.cat)) opts.push({ value: f.cat, label: f.cat === 'chains' ? 'Multi-step' : f.cat === 'ideas' ? 'Ideas, not built yet' : WF_CATS.find((c) => c.id === f.cat)?.label ?? f.cat, aside: '0' });
-  const inCat = f.cat === 'chains' ? picked.filter((x) => x.kind === 'chain') : f.cat === 'saved' ? savedItems : picked.filter((x) => catOfItem(x) === f.cat);
-  const catInfo = WF_CATS.find((c) => c.id === f.cat);
-  /* the header counts the cards shown right now (the picks, or the category's); ideas aren't workflows yet */
+  if (!opts.some((o) => o.value === f.cat)) opts.push({ value: f.cat, label: f.cat === 'chains' ? 'Multi-step' : f.cat === 'ideas' ? 'Ideas, not built yet' : f.cat === 'start' ? 'Start here' : goalById(f.cat)?.label ?? f.cat, aside: '0' });
+  const inCat = f.cat === 'chains' ? picked.filter((x) => x.kind === 'chain') : f.cat === 'saved' ? savedItems : f.cat === 'start' ? start : isGoal(f.cat) ? goalItems(f.cat) : [];
+  const catInfo = isGoal(f.cat) ? goalById(f.cat) : f.cat === 'start' ? { label: 'Start here', line: START_LINE } : undefined;
+  /* the header counts the cards shown right now (every section, or the one picked); ideas aren't workflows yet */
   const shown = f.cat === 'all' ? picked.length : f.cat === 'ideas' ? 0 : inCat.length;
   const nothing = f.cat === 'all' ? !picked.length : f.cat === 'ideas' ? !f.ideas.length : !inCat.length;
   /* "Made here" marks the exceptions: when every card on the page is made here, no card carries it */
@@ -387,16 +394,16 @@ export default function Workflows({ tools }: { tools: ToolInfo[] }) {
         <LeftOut left={left.filter((x) => onWorkflowsPage(x.e.id))} />
       </aside>
       <div className="wn-main">
-        <header className="wn-mhead"><h2>What do you want to make?</h2><p>{shown > 0 && `${shown} ${shown === 1 ? 'workflow' : 'workflows'} here. `}Open one to see where it runs and what it costs.</p><Goals f={f} /></header>
+        <header className="wn-mhead"><h2>What do you want to make?</h2><p>{shown > 0 && `${shown} ${shown === 1 ? 'workflow' : 'workflows'} here. `}Open one to see where it runs and what it costs.</p></header>
         <Yours rows={rows} chains={chainsAll} s={s} open={openRow} openChain={openChain} />
         <div className={`wn-results${rise ? ' is-rising' : ''}`} key={f.cat}>
         {nothing && !f.elsewhere.length ? (f.cat === 'saved' && !f.q ? <p className="wn-first wn-first-big">Nothing saved yet. Press <SavedTagIcon size={13} /> on any card.</p> : <Empty f={f} rows={f.rows} open={openRow} />) : <>
-          {f.cat === 'all' && featured.length > 0 && <section className="wn-sec" aria-labelledby="wn-h-featured" data-testid="wn-sec-featured">
-            <Head id="wn-h-featured" title="Start here" line="Our favourites, each with a real result made here." count={featured.length} />
-            <div className="wn-grid">{tiles(featured, false)}</div></section>}
-          {f.cat === 'all' && kept.length > 0 && <section className="wn-sec" aria-labelledby="wn-h-more" data-testid="wn-sec-more">
-            <Head id="wn-h-more" title="More workflows" line="A scene from a script, try-ons, music and sound." count={kept.length} />
-            <div className="wn-grid">{tiles(kept)}</div></section>}
+          {f.cat === 'all' && start.length > 0 && <section className="wn-sec wn-start" aria-labelledby="wn-h-start" data-testid="wn-sec-start">
+            <Head id="wn-h-start" title="Start here" line={START_LINE} count={start.length} />
+            <div className="wn-grid">{tiles(start)}</div></section>}
+          {f.cat === 'all' && goals.filter((x) => x.items.length > 0).map(({ g, items }) => <section key={g.id} className="wn-sec" aria-labelledby={`wn-h-${g.id}`} data-testid={`wn-sec-${g.id}`}>
+            <Head id={`wn-h-${g.id}`} title={g.label} line={g.line} count={items.length} />
+            <div className="wn-grid">{tiles(items)}</div></section>)}
           {f.cat !== 'all' && f.cat !== 'ideas' && inCat.length > 0 && <section className="wn-sec" aria-labelledby={`wn-h-${f.cat}`} data-testid={`wn-sec-${f.cat}`}>
             <Head id={`wn-h-${f.cat}`}
               title={f.cat === 'chains' ? 'Multi-step' : f.cat === 'saved' ? 'Saved' : catInfo?.label ?? f.cat}

@@ -33,6 +33,9 @@ export const GOAL_OF: Record<string, WfGoal> = Object.fromEntries([
   ...G('fix', ['i-edit-image', 'i-relight', 'i-brush-edit', 'i-expand', 'i-erase', 'i-image-layers', 'i-upscale', 'v-upscale', 'v-draft-upscale', 'v-fps-boost', 'v-sdr-hdr',
     'v-prompt-edit', 'v-finish', 'v-remove-bg', 'v-cutout', 'v-depth-map', 'fx-vanish', 'fx-alpha-matte', 'fx-restore', 'fx-remove-object', 'fx-remove-text', 'fx-extend-frame']),
 ]);
+/** "Start here" on the Workflows page, "For you" in the menus (2026-11-01, the user's pick "A", beginner first): the first things people try,
+ *  one job per card, most of them free on your computer. Entry ids (shared/workflowCatalog.ts WF_ENTRIES), in order. */
+export const WF_START_HERE: string[] = ['i-create-image', 'i-edit-image', 'i-product-shot', 'v-create', 'v-lip-sync', 'a-voiceover', 'a-music', 'i-upscale'];
 /** The goal of a workflow or chain id (`chain:<id>` for a chain); undefined for an id it doesn't know. */
 export const goalOf = (id: string): WfGoal | undefined => GOAL_OF[id];
 export const goalById = (g: string) => WF_GOALS.find((x) => x.id === g);

@@ -24,9 +24,6 @@
 .wn-search input:focus,.wn-search input:focus-visible{outline:none!important;box-shadow:none!important;border:0!important;background:none!important}
 .wn-search input::-webkit-search-cancel-button{display:none}
 .wn-clear{display:grid;place-items:center;width:26px;height:26px;min-height:0;padding:0;border-radius:8px;border:0;background:var(--state-fill);color:var(--text-2);cursor:pointer}
-.wn-goals{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
-.wn-goal{cursor:pointer}
-.wn-goal.on{color:var(--text);background:var(--surface-3);border-color:color-mix(in srgb,var(--accent) 55%,transparent)}
 .bp-host .wn-cats{gap:2px;background:none;padding:0;margin:0}
 .bp-host .wn-cats .bp-opt{flex-direction:row;justify-content:space-between;min-height:38px;padding:0 12px;border-radius:9px;color:var(--text-2)}
 .bp-host .wn-cats .bp-opt-l{flex:1;max-width:none;text-align:left;font:600 13.5px var(--font-ui)}
@@ -73,8 +70,10 @@
 .wn-title{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;margin:0;padding:0;border:0;background:none;text-align:left;cursor:pointer}
 .wn-title:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
 .wn-meta{gap:6px 10px}
-.wn-model{max-width:100%}
-.wn-model small{flex:none;font:600 11px/16px var(--font-ui);color:var(--text-3)}
+/* the card's one model chip (2026-11-01): the example's real model, small; the full list stays in the sheet */
+.wn-chip{display:inline-flex;align-items:center;max-width:100%;height:22px;padding:0 9px;border-radius:999px;border:1px solid var(--hairline-strong);background:rgba(255,255,255,.04);
+  color:var(--text-2);font:600 11.5px/1 var(--font-ui);letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wn-card:hover .wn-chip{border-color:color-mix(in srgb,var(--accent) 40%,transparent);color:var(--text)}
 .wn-meta .runl{flex:0 1 auto;max-width:100%}
 .wn-top{position:absolute;top:10px;left:10px;right:52px;z-index:4;display:flex;gap:6px;pointer-events:none}
 .wn-top>*{pointer-events:auto}
@@ -132,7 +131,6 @@
 .wn-empty b{display:block;font:700 26px/1.1 var(--font-display);text-transform:uppercase;overflow-wrap:anywhere}
 .wn-empty p{margin:10px auto 18px;max-width:46ch;color:var(--text-2);font-size:14px;line-height:1.5}
 .wn-empty-acts{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
-.wn-empty .wn-goals{justify-content:center}
 
 /* ---------- the sheet (an opened workflow): the modal panel (moved here from the v2 page's workflowsV2.css) */
 .wv-scrim{padding:28px;z-index:1300}
@@ -173,6 +171,9 @@
 .wn-pframe .wn-split{position:absolute;inset:0;width:100%;height:100%}
 .wn-pmedia .snd{position:absolute;right:16px;bottom:16px;z-index:5}
 .wn-pcap{position:absolute;left:16px;bottom:16px;z-index:4;padding:5px 9px;border-radius:8px;font:600 11.5px var(--font-ui);color:#fff;background:rgba(10,10,10,.6)}
+.wn-tabname{margin:-8px 0 14px;font-size:12.5px}
+/* a sound of ours in the sheet: our drawing, the player across its foot */
+.wn-sound audio{position:absolute;left:16px;right:16px;bottom:58px;z-index:3;width:calc(100% - 32px);height:40px;color-scheme:dark}
 .wn-pline{margin:-6px 0 14px;color:var(--text-2);font-size:14px;line-height:1.5}
 .wn-how{margin:0;padding:0;list-style:none;counter-reset:h;display:flex;flex-direction:column;gap:8px}
 .wn-how li{counter-increment:h;display:grid;grid-template-columns:22px 1fr;column-gap:8px;font-size:13px;line-height:1.45}
