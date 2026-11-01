@@ -20,6 +20,7 @@ import { NEW_DAYS, posterInfo } from '../routesDiscover.js';
 export function registerCinema(app: FastifyInstance) {
   app.post<{ Body: { prompt?: string; kind?: EnhanceKind; style?: string; /** model key (prompt grammar): its structure, syntax and cap shape the rewrite */ model?: string } }>('/api/prompt/enhance', async (req, reply) => {
     const prompt = String(req.body?.prompt ?? ''); const kind = (['image', 'video', 'audio'].includes(String(req.body?.kind)) ? req.body!.kind : 'image') as EnhanceKind;
+    if (!prompt.trim()) return reply.code(400).send({ error: 'Type a prompt first, then enhance it.', errorType: 'validation', issues: [{ code: 'required', field: 'prompt', message: 'Type a prompt first, then enhance it.' }] });
     if (prompt.length > 10_000) return reply.code(400).send({ error: 'Prompt is too long.' });
     const style = STYLE_PRESETS.find((s) => s.id === req.body?.style)?.prompt;
     return { original: prompt, ...(await enhancePrompt(prompt, kind, style, typeof req.body?.model === 'string' ? req.body.model : null)) };
