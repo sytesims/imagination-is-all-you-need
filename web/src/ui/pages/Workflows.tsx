@@ -423,7 +423,7 @@ export default function Workflows({ tools }: { tools: ToolInfo[] }) {
               line={f.cat === 'chains' ? 'Workflows that pass the result along. Each step shows its model and price first.' : f.cat === 'saved' ? 'Kept in this browser.' : catInfo?.line ?? ''} count={inCat.length} />
             <div className="wn-grid">{tiles(inCat)}</div></section>}
           {f.cat === 'ideas' && <section className="wn-sec" aria-labelledby="wn-h-ideas" data-testid="wn-sec-ideas">
-            <Head id="wn-h-ideas" title="Ideas, not built yet" line="Workflows we may add. They don’t run yet; each links its source." count={f.ideas.length} />
+            <Head id="wn-h-ideas" title="Ideas, not built yet" line="Coming later. They don’t run yet; each links its source." count={f.ideas.length} />
             <div className="wn-ideas">{f.ideas.map((w) => <IdeaCard key={w.id} w={w} />)}</div></section>}
           {f.elsewhere.length > 0 && f.cat !== 'ideas' && <section className="wn-sec wn-elsewhere" aria-labelledby="wn-h-else" data-testid="wn-elsewhere">
             <h3 id="wn-h-else" className="wn-else-h">{nothing ? 'Not on this page, but in the app' : 'More in the app'}</h3>
