@@ -6,7 +6,9 @@
  * patcher comfy/ltx25IcLora.ts). An effect only picks the IC-LoRA (shared/ltxLoras.ts), its strength and the prompt. Later variants of the same
  * base (Ripple, Outpaint / Inpaint, CQ Motion) plug in through comfy/ltx25IcLora.ts IC_LORA_VARIANTS; they are not built yet.
  *
- * Recipe (each LoRA's Lightricks model card, plus the conventions the cards give for prompts):
+ * Recipe (each LoRA's Lightricks model card, plus the conventions the cards give for prompts: each prompt follows its card's template, a plain
+ *  description of the edited result; Clean Plate "An empty clean plate of the exact same location: …", Day to Night "A realistic nighttime scene. …",
+ *  Water "Reference shows … Edited shows … ADD WATER …", Alpha Gen an empty prompt):
  *  - the source clip at 24 fps, cover-cropped to the draft size (sides ÷ 64, so stage 1 sits on LTX's 32 grid), frames on the 8k + 1 grid
  *  - two stages like Layout to Render: stage 1 at half size (8 distilled steps), x2 latent upscale, stage 2 at full size (3 steps); the source
  *    clip guides BOTH stages through LTXVAddGuide with the IC-LoRA's parameters, guides cropped before the upscale and before decode
@@ -35,8 +37,10 @@ export interface FootageEffect {
   id: string; label: string; tagline: string;
   /** shared/ltxLoras.ts entry (runs on your computer); '' for a Comfy Cloud-only effect (its LoRA is in `cloud`) */ lora: string;
   /** LoRA strength (the card's advice for this look) */ strength: number;
-  /** our prompt; {scene} = the user's one line about the shot (or a neutral fallback) */ prompt: string;
-  negative: string;
+  /** our prompt, in the form the LoRA was trained on (its card's template: a plain description of the result, trigger first where it has one);
+   *  {scene} = the user's one line about the shot, or `sceneFallback`, or dropped with its separator when neither */ prompt: string;
+  /** the card's negative ('' when the card runs without one) */ negative: string;
+  /** what {scene} becomes without the user's line (Rain / Flood: the card's "Reference shows …" needs a subject) */ sceneFallback?: string;
   /** the one-line scene description helps this effect (Alpha matte takes an empty prompt) */ usesScene: boolean;
   /** its Comfy Cloud place (comfy/ltx23VfxCloud.ts): an LTX-2.3 graph on shared Comfy Cloud. With `lora` too, the effect runs in both places
    *  (Vanish, Day to night, Rain, Flood since 2026-11-01); without, on Comfy Cloud only; Alpha matte has none (your computer only). */
@@ -52,33 +56,32 @@ export interface FootageCloudFx {
 }
 export const FOOTAGE_FX_TEMPLATE_URL = (id: string) => `https://github.com/Comfy-Org/workflow_templates/blob/main/templates/${id}.json`;
 export const FOOTAGE_FX_CLOUD_MODEL = 'LTX-2.3 22B';
-const SCENE_FALLBACK = 'the scene in the source video';
 /** The official Comfy LTX-2.3 restore template: Restore old footage runs it as is; Vanish, Day to night, Rain and Flood run our graph derived from it
  *  (no official template exists for their LTX-2.3 IC-LoRAs; the same two-stage graph with their LoRA, strength, prompt and negative). */
 const RESTORE_TEMPLATE = 'template_ltx2_3_lora_restore_archival_footage'; const RESTORE_TITLE = 'LTX-2.3: Restore Archival Footage';
 /** The effects, in menu order. Rain and Flood share the water LoRA at two strengths (the card: ~1.0–1.1 natural, 1.25+ replaces surfaces). */
 export const FOOTAGE_EFFECTS: FootageEffect[] = [
   { id: 'vanish', label: 'Vanish', tagline: 'Remove the people and vehicles. Keep the place.', lora: 'clean-plate', strength: 1.0, usesScene: true,
-    prompt: 'The same location with nobody in it: the empty background, buildings, ground and sky exactly as in the source, with the same camera motion and light. No people, animals or vehicles anywhere in the frame. {scene}',
-    negative: 'people, person, crowd, pedestrians, figures, hands, limbs, animals, vehicles, cars, bikes, leftover shapes, ghost outlines, see-through remains, blur, flicker',
+    prompt: 'An empty clean plate of the exact same location: {scene}, identical background, environment, structures and lighting as the source video, with no people, no humans, no figures, no animals, no vehicles and no body parts such as arms, hands or legs anywhere in the frame. Photorealistic footage, natural light, high detail.',
+    negative: 'person, people, human, figure, limb, arm, hand, leg, body part, backpack, shadow of a person, animal, vehicle, car, bike, leftover people, leftover figures, ghosting, semi-transparent remnants, blurry, soft, distorted, inconsistent motion, jitter, worst quality, cartoon, video game, ugly',
     cloud: { template: RESTORE_TEMPLATE, title: RESTORE_TITLE, derived: true, loraFile: 'ltx-2.3-22b-ic-lora-clean-plate-1.0.safetensors', loraLabel: 'Clean Plate IC-LoRA', loraSource: 'https://huggingface.co/Lightricks/LTX-2.3-22b-IC-LoRA-Clean-Plate' } },
   { id: 'day-to-night', label: 'Day to night', tagline: 'Relight the shot as night. Same framing, same motion.', lora: 'day-to-night', strength: 1.0, usesScene: true,
-    prompt: 'The same shot at night: a dark blue sky, soft moonlight, deep natural shadows and cool highlights, with street lamps, windows and screens glowing where they exist. Only the time of day changes; the framing, camera motion and every subject stay the same. {scene}',
-    negative: 'daylight, sunshine, bright sky, overexposed, pitch black, crushed shadows, blur',
+    prompt: 'A realistic nighttime scene. {scene}. A dark night sky with soft moonlight, deep natural shadows and cool highlights, street lamps, windows and screens glowing with warm light. Only the lighting changes from day to night; identical composition, framing, camera movement and motion.',
+    negative: 'daytime, bright sunlight, blue sky, overexposed, worst quality, inconsistent motion, blurry, jittery, distorted',
     cloud: { template: RESTORE_TEMPLATE, title: RESTORE_TITLE, derived: true, loraFile: 'ltx-2.3-22b-ic-lora-day-to-night-0.9.safetensors', loraLabel: 'Day to Night IC-LoRA', loraSource: 'https://huggingface.co/Lightricks/LTX-2.3-22b-IC-LoRA-Day-To-Night' } },
   { id: 'rain', label: 'Rain', tagline: 'Wet streets, puddles and light rain. Subtle and real.', lora: 'water-simulation', strength: 1.1, usesScene: true,
-    prompt: 'Reference shows {scene}. Edited shows the same scene with water added.\nADD WATER light rain falling, wet ground with shallow puddles and clear reflections, glistening surfaces, small splashes where things move.',
-    negative: '',
+    prompt: 'Reference shows {scene}. Edited shows the same scene with water added.\nADD WATER light rain falling through the air, wet glistening ground with shallow puddles and clear reflections, small splashes where feet and wheels touch the ground.\nSubject identity, clothing, framing, and background geometry are identical to the reference; only water-related elements differ between reference and edited.',
+    negative: '', sceneFallback: 'the scene in the source video',
     cloud: { template: RESTORE_TEMPLATE, title: RESTORE_TITLE, derived: true, loraFile: 'ltx-2.3-22b-ic-lora-water-simulation-0.9.safetensors', loraLabel: 'Water Simulation IC-LoRA', loraSource: 'https://huggingface.co/Lightricks/LTX-2.3-22b-IC-LoRA-Water-Simulation' } },
   { id: 'flood', label: 'Flood', tagline: 'Knee-deep water fills the scene and reacts to what moves.', lora: 'water-simulation', strength: 1.3, usesScene: true,
-    prompt: 'Reference shows {scene}. Edited shows the same scene with water added.\nADD WATER the ground covered by knee-deep flood water that ripples and parts around people, wheels and objects, foam and splashes with every movement, the surroundings reflected on the surface.',
-    negative: '',
+    prompt: 'Reference shows {scene}. Edited shows the same scene with water added.\nADD WATER murky knee-deep flood water filling the ground, rippling and parting around legs, wheels and objects, splashing with every movement and reflecting the surroundings.\nSubject identity, clothing, framing, and background geometry are identical to the reference; only water-related elements differ between reference and edited.',
+    negative: '', sceneFallback: 'the scene in the source video',
     cloud: { template: RESTORE_TEMPLATE, title: RESTORE_TITLE, derived: true, loraFile: 'ltx-2.3-22b-ic-lora-water-simulation-0.9.safetensors', loraLabel: 'Water Simulation IC-LoRA', loraSource: 'https://huggingface.co/Lightricks/LTX-2.3-22b-IC-LoRA-Water-Simulation' } },
   { id: 'alpha-matte', label: 'Alpha matte', tagline: 'A clean black-and-white matte of the foreground. No green screen.', lora: 'alpha-gen', strength: 1.0, usesScene: false,
     prompt: '', negative: '' },
   // Comfy Cloud effects (2026-10-27): the official Comfy LTX-2.3 IC-LoRA templates, each with the template's own prompt, LoRA strength and negative.
   { id: 'restore', label: 'Restore old footage', tagline: 'Scratched, faded film made clean, sharp and full of colour.', lora: '', strength: 1.0, usesScene: true,
-    prompt: 'A modern, high-resolution video shot in vivid color, sharp detail, contemporary cinematography. {scene}', negative: 'pc game, console game, video game, cartoon, childish, ugly',
+    prompt: 'A modern, high-resolution video shot in vivid color, sharp detail, contemporary cinematography. {scene}.', negative: 'pc game, console game, video game, cartoon, childish, ugly',
     cloud: { template: RESTORE_TEMPLATE, title: RESTORE_TITLE, loraFile: 'ltx-2.3-dearchive-lora_weights_step_05000.safetensors', loraLabel: 'Dearchive IC-LoRA', loraSource: null } },
   { id: 'remove-object', label: 'Remove an object', tagline: 'Name something in the shot and it’s gone.', lora: '', strength: 2.0, usesScene: true, needsLine: true,
     prompt: 'Remove the {scene} from the foreground.', negative: 'blurry, low resolution, ugly, garbled mess, compression artifacts, glitch, stop motion, still image, pixelated, robotic voice, oversaturated',
@@ -87,7 +90,7 @@ export const FOOTAGE_EFFECTS: FootageEffect[] = [
     prompt: 'Remove subtitles, captions, and related text occlusions from the video, restoring a clean and natural underlying image.', negative: 'pc game, console game, video game, cartoon, childish, ugly',
     cloud: { template: 'template_ltx2_3_lora_remove_subtitles_from_video', title: 'LTX-2.3: Remove Subtitles from Video', loraFile: 'ltx2.3-ic-subtitles-remove-general.safetensors', loraLabel: 'Subtitle Remover IC-LoRA', loraSource: null } },
   { id: 'extend-frame', label: 'Extend the frame', tagline: 'Grow the shot past its edges, into a new shape or any direction.', lora: '', strength: 1.0, usesScene: true,
-    prompt: '{scene}', negative: 'pc game, console game, video game, ugly, 3d render, photo, still, static, slow',
+    prompt: '{scene}.', negative: 'pc game, console game, video game, ugly, 3d render, photo, still, static, slow',
     cloud: { template: 'template_ltx2_3_lora_video_outpainting', title: 'LTX-2.3: Video Outpainting', loraFile: 'ltx-2.3-22b-ic-lora-outpaint.safetensors', loraLabel: 'Outpaint IC-LoRA', loraSource: 'https://huggingface.co/oumoumad/LTX-2.3-22b-IC-LoRA-Outpaint' } },
 ];
 export const footageEffect = (id: string | null | undefined): FootageEffect | undefined => FOOTAGE_EFFECTS.find((e) => e.id === id);
@@ -120,14 +123,16 @@ export function outpaintPlan(clip: { width: number; height: number }, canvas: { 
   return { canvas: { ...canvas }, inner, pad: { left, right: fx - left, top, bottom: fy - top }, shape, grow: g, zoomOut };
 }
 
-/** The prompt for an effect: the template with the user's scene line (trimmed, no trailing full stop); empty for Alpha matte. */
+/** The prompt for an effect: its template with the user's scene line (trimmed, no trailing full stop), capitalised where it starts a sentence;
+ *  without a line, the effect's fallback, or the slot is dropped with its ", " / ". " separator. Empty for Alpha matte. */
 export function footageFxPrompt(e: FootageEffect, scene?: string | null): string {
   if (!e.usesScene) return e.prompt;
   const s = String(scene ?? '').trim().replace(/\s+/g, ' ').replace(/[.\s]+$/, '');
   if (e.id === 'remove-object') return e.prompt.replace('{scene}', s.replace(/^(the|a|an)\s+/i, '') || 'object'); // the card's own form: "Remove the {object} from the foreground."
-  if (e.prompt === '{scene}') return s ? `${s[0].toUpperCase()}${s.slice(1)}.` : '';
-  if (e.prompt.startsWith('Reference shows')) return e.prompt.replace('{scene}', s ? s[0].toLowerCase() + s.slice(1) : SCENE_FALLBACK);
-  return e.prompt.replace('{scene}', s ? `${s[0].toUpperCase()}${s.slice(1)}.` : '').trim();
+  const line = s || e.sceneFallback;
+  if (!line) return e.prompt.replace(/\{scene\}[.,]?\s*/, '').trim();
+  const at = e.prompt.indexOf('{scene}'); const starts = at === 0 || /[.!?]\s*$/.test(e.prompt.slice(0, at));
+  return e.prompt.replace('{scene}', starts ? line[0].toUpperCase() + line.slice(1) : line[0].toLowerCase() + line.slice(1));
 }
 
 export interface FootageFxPlan { width: number; height: number; stage1: { width: number; height: number }; frames: number; seconds: number; fps: number; aspect: MakeRealAspect; size: 'quick' | 'standard'; resolution: string; trimmed: boolean }

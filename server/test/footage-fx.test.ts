@@ -86,7 +86,12 @@ ok('plan: Draft / Sharper sizes on the 32 grid, 8k + 1 frames, ≤ 5 s, short an
 const fx = (id: string) => S.footageEffect(id)!;
 assert.match(S.footageFxPrompt(fx('flood'), 'A cyclist on a street.'), /^Reference shows a cyclist on a street\. Edited shows the same scene with water added\.\nADD WATER /);
 assert.match(S.footageFxPrompt(fx('rain'), ''), /^Reference shows the scene in the source video\./); assert.equal(fx('rain').negative, '', 'water: no negative prompt (card)');
-assert.equal(S.footageFxPrompt(fx('alpha-matte'), 'anything'), '', 'Alpha matte: empty prompt'); assert.match(S.footageFxPrompt(fx('vanish'), 'a busy square.'), /No people.*A busy square\.$/);
+assert.equal(S.footageFxPrompt(fx('alpha-matte'), 'anything'), '', 'Alpha matte: empty prompt'); assert.match(S.footageFxPrompt(fx('vanish'), 'a busy square.'), /^An empty clean plate of the exact same location: a busy square, identical background/);
+assert.match(S.footageFxPrompt(fx('vanish'), ''), /^An empty clean plate of the exact same location: identical background.*no people/, 'Clean Plate card: describe the empty result');
+assert.match(S.footageFxPrompt(fx('day-to-night'), ''), /^A realistic nighttime scene\. A dark night sky.*Only the lighting changes from day to night; identical composition, framing, camera movement and motion\.$/);
+assert.match(S.footageFxPrompt(fx('day-to-night'), 'a cafe on a corner'), /^A realistic nighttime scene\. A cafe on a corner\. A dark/);
+assert.match(S.footageFxPrompt(fx('flood'), ''), /\nSubject identity, clothing, framing, and background geometry are identical to the reference; only water-related elements differ between reference and edited\.$/);
+assert.equal(S.footageFxPrompt(fx('extend-frame'), ''), ''); assert.equal(S.footageFxPrompt(fx('extend-frame'), 'a beach'), 'A beach.');
 assert.ok(fx('flood').strength > fx('rain').strength && fx('flood').lora === fx('rain').lora, 'rain and flood: one water LoRA, two strengths');
 for (const id of ['clean-plate', 'day-to-night', 'water-simulation', 'alpha-gen']) { const l = LTX_LORAS[id]; assert.ok(l.ic && l.strengths.v2v && l.bytes > 1e8 && /^ltx-2\.5-22b-ic-lora-/.test(l.file), id); }
 assert.equal(LTX_LORAS['water-simulation'].trigger, 'ADD WATER');
@@ -116,7 +121,7 @@ assert.equal(hasPlan(J(r)), true); assert.equal(hasPlan(J({ ...r, footageFx: und
 const pl = buildPlan(J(r)); const g = pl.passes[0].graph; validate(g, 'job graph');
 assert.equal(pl.muxSourceAudio, true, 'the clip\'s own sound goes back on'); assert.equal(buildPlan(J({ ...r, keepAudio: false })).muxSourceAudio, false);
 assert.deepEqual(g['20'].inputs.file, { __file: r.videoPath }); assert.deepEqual([g['30'].inputs.width, g['30'].inputs.height, g['30'].inputs.length], [384, 224, 49]);
-assert.match(g['10'].inputs.text, /A cyclist on a sunny street\.$/); assert.match(g['11'].inputs.text, /people/); assert.equal(g['22'], undefined, 'no first frame for effects');
+assert.match(g['10'].inputs.text, /location: a cyclist on a sunny street, identical background/); assert.match(g['11'].inputs.text, /people/); assert.equal(g['22'], undefined, 'no first frame for effects');
 const gf = buildPlan(J((await parse({ types: '["flood"]' })))).passes[0].graph; assert.equal(gf['2'].inputs.strength_model, 1.3); assert.match(gf['10'].inputs.text, /ADD WATER/); assert.equal(gf['11'].inputs.text, '');
 ok('parseInput conforms the clip (size, 49 frames, 24 fps, sound), refuses bad input; the plan loads the effect LoRA and muxes the sound back');
 
