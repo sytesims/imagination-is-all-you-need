@@ -44,6 +44,7 @@ Other handy ways to pick tests:
 npm test -- --only queue          # every file whose name contains "queue"
 npm test -- --only '/^router-/'   # a regular expression, between slashes
 npm test -- --list --changed      # just print which files would run
+npm test -- --changed --skip-heavy  # what a pull request runs in CI (leaves out the heavy SERIAL tests it doesn't touch)
 ```
 
 ## Run the full suite
@@ -94,8 +95,8 @@ Two workflows run on GitHub Actions. A newer push to the same pull request (or t
 
 | When | `CI` (`.github/workflows/ci.yml`) | `tests` (`.github/workflows/test.yml`) |
 | --- | --- | --- |
-| Pull request | Build and start on Ubuntu, macOS and Windows; the one-line install on Ubuntu only, or on all three when the PR touches the installer (`scripts/get.*`, `scripts/install.*`), setup or launcher scripts, `package.json` / `package-lock.json` files or `ci.yml` | Only the tests the PR's changes touch (`--changed`, compared with the PR's base), on as many machines as that needs (a sixth of the suite each, up to 6). None for a docs-only PR. The full suite when the runner maps the change to every test (package files, the runner) or `test.yml` changed |
-| Push to `main`, nightly at 03:00 UTC, or by hand (Actions → Run workflow) | Everything: Build and start and the one-line install on all three systems | The full suite on 6 machines |
+| Pull request | Build and start on Ubuntu, macOS and Windows; the one-line install on Ubuntu only, or on all three when the PR touches the installer (`scripts/get.*`, `scripts/install.*`), setup or launcher scripts, `package.json` / `package-lock.json` files or `ci.yml` | Only the tests the PR's changes touch (`--changed`, compared with the PR's base), without the heavy `SERIAL` tests (`model-health`, `model-health-ui`, `model-runon`, `pb-1018b`) unless the PR changes what they check (routing, providers, prices, video model code: `HEAVY_ABOUT` in the runner) or the test itself (`--skip-heavy`), on as many machines as that needs (a sixth of the suite each, up to 6). None for a docs-only PR. The full suite when the runner maps the change to every test (package files, the runner) or `test.yml` changed |
+| Push to `main`, nightly at 03:00 UTC, or by hand (Actions → Run workflow) | Everything: Build and start and the one-line install on all three systems | The full suite on 6 machines, heavy tests included |
 
 `--changed` is a guess (see above), so a pull request can pass with a test it didn't pick still broken; the full run
 on `main` and the nightly run catch that. The nightly run has its own group, so pushes to `main` never cancel it.
@@ -104,7 +105,7 @@ How a `tests` machine runs:
 
 1. Each installs Node 24, the npm packages (cached between runs), and `ffmpeg`, `lsof`, `ss`, and Python 3 with
    Pillow and NumPy (the server's colour match uses them).
-2. Each runs `npm test -- [--changed --base HEAD^1] --shard i/N --jobs 2 --timeout 600`. The machines have 2 cores and
+2. Each runs `npm test -- [--changed --skip-heavy --base HEAD^1] --shard i/N --jobs 2 --timeout 600`. The machines have 2 cores and
    are several times slower than a recent Mac, so it runs 2 at a time with longer limits (a `--timeout` above 240 also
    scales the per-test limits in the runner's `LONG` list by the same factor).
 3. If a test fails, the end of its log is printed in the job output (a collapsible group per test), and the whole

@@ -5,6 +5,7 @@
 //   npm test                         every test, N at a time (N = CPU cores - 2)
 //   npm test -- --only queue         only files whose name contains "queue" (a plain substring or a /regex/)
 //   npm test -- --changed            only tests touched by your changes vs main (see changedTests below)
+//   npm test -- --skip-heavy         leave out the SERIAL tests unless your changes touch what they check (HEAVY_ABOUT; CI pull requests)
 //   npm test -- --jobs 4 | --serial  how many at once (--serial = 1)
 //   npm test -- --shard 2/4          the 2nd quarter of the files (CI splits the suite over machines with this)
 //   npm test -- --timeout 300        seconds before a test is stopped (default 240)
@@ -29,6 +30,17 @@ const SERIAL = {
   'model-health-ui.e2e.ts': 'video model health: its own API + Vite + headless Chromium, ~150 click-throughs',
 };
 
+// What each SERIAL test checks: --skip-heavy (pull requests in CI) keeps it only when a changed file matches (or the test itself
+// changed). Their import graphs reach the whole server, so --changed alone picks them for almost any server change.
+const ROUTES_PRICES = /^server\/src\/(routing\/|providers\/|providers\.ts$|models\.ts$|ledger\.ts$|spendGuard\.ts$|billing(Mode)?\.ts$|hosted(Requests)?\.ts$|comfyRouter\.ts$|shared\/(pricing|hostedPrices|runCost|policyBilling|modelCatalog|modelIds|routeNames|priceText|priceChange)\.ts$)/;
+const VIDEO_MODELS = /^server\/(src\/shared\/(video[A-Za-z]*|clipLimits)\.ts$|test\/_model-health\.ts$)/;
+const HEAVY_ABOUT = {
+  'model-runon.e2e.ts': [ROUTES_PRICES],
+  'pb-1018b.e2e.ts': [ROUTES_PRICES],
+  'model-health.e2e.ts': [ROUTES_PRICES, VIDEO_MODELS],
+  'model-health-ui.e2e.ts': [ROUTES_PRICES, VIDEO_MODELS, /^web\/src\/ui\/video\//, /^server\/test\/_cdp\.ts$/],
+};
+
 // Tests that need longer than --timeout (seconds). Say why.
 const LONG = {
   'model-runon.e2e.ts': 900, // 1301 quote+submit pairs; the server it starts keeps ~7 cores busy (2 min alone on an M1 Max, ~4 min beside other tests)
@@ -46,11 +58,12 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--timeout') opt.timeout = Number(next());
   else if (a === '--only') opt.only = next();
   else if (a === '--changed') opt.changed = true;
+  else if (a === '--skip-heavy') opt.skipHeavy = true;
   else if (a === '--base') opt.base = next();
   else if (a === '--shard') { const m = next().match(/^(\d+)\/(\d+)$/); if (!m || +m[1] < 1 || +m[1] > +m[2]) die('--shard wants i/n, e.g. 1/4'); opt.shard = [+m[1], +m[2]]; }
   else if (a === '--list') opt.list = true;
   else if (a === '--save-times') opt.saveTimes = true;
-  else if (a === '--help' || a === '-h') { console.log(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(1, 17).map((l) => l.replace(/^\/\/ ?/, '')).join('\n')); process.exit(0); }
+  else if (a === '--help' || a === '-h') { console.log(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(1, 16).map((l) => l.replace(/^\/\/ ?/, '')).join('\n')); process.exit(0); }
   else if (!a.startsWith('-')) opt.only = a; // `npm test -- queue` works too
   else die(`unknown option ${a} (try --help)`);
 }
@@ -62,6 +75,8 @@ if (opt.jobs > MAX_SLOTS - 1) opt.jobs = MAX_SLOTS - 1;
 let files = fs.readdirSync(TEST_DIR).filter((f) => /\.(test|e2e)\.ts$/.test(f)).sort();
 if (opt.only) { const re = /^\/.*\/$/.test(opt.only) ? new RegExp(opt.only.slice(1, -1)) : null; files = files.filter((f) => (re ? re.test(f) : f.includes(opt.only))); }
 if (opt.changed) files = changedTests(files);
+if (opt.skipHeavy) { const changed = [...changedFiles()].map((f) => path.relative(REPO, f).split(path.sep).join('/'));
+  files = files.filter((f) => !SERIAL[f] || changed.some((c) => c === `server/test/${f}` || (HEAVY_ABOUT[f] ?? []).some((re) => re.test(c)))); }
 const times = (() => { try { return JSON.parse(fs.readFileSync(TIMES_FILE, 'utf8')); } catch { return {}; } })();
 const est = (f) => times[f] ?? (f.endsWith('.e2e.ts') ? 20 : 5);
 if (opt.shard) { // greedy: biggest first onto the lightest shard, so every machine gets about the same total time
@@ -79,9 +94,12 @@ if (!files.length) { console.log('No test files matched.'); process.exit(0); }
 //  - it starts the server (mentions src/index.ts) and anything the server imports changed.
 // Anything outside those folders (docs, web-only styles, ...) runs nothing. Changes to package.json / package-lock.json /
 // this runner run everything.
-function changedTests(all) {
+function changedFiles() {
   const git = (a) => { try { return execFileSync('git', a, { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] }).toString().split('\n').filter(Boolean); } catch { return []; } };
-  const changed = new Set([...git(['diff', '--name-only', `${opt.base}...HEAD`]), ...git(['diff', '--name-only', 'HEAD']), ...git(['ls-files', '--others', '--exclude-standard'])].map((f) => path.join(REPO, f)));
+  return new Set([...git(['diff', '--name-only', `${opt.base}...HEAD`]), ...git(['diff', '--name-only', 'HEAD']), ...git(['ls-files', '--others', '--exclude-standard'])].map((f) => path.join(REPO, f)));
+}
+function changedTests(all) {
+  const changed = changedFiles();
   if (!changed.size) return [];
   if ([...changed].some((f) => /(^|\/)(package(-lock)?\.json|test-all\.mjs)$/.test(f) && !f.includes('/mcp/'))) return all;
   const deps = new Map();
