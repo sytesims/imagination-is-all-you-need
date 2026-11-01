@@ -1,5 +1,5 @@
 /**
- * Plugin placement (2026-11-01): "Drop a folder in and your workflow shows up in the app, next to ours."
+ * Plugin placement (2026-11-01): "Drop a folder in and your workflow shows up in the app, next to the built-in ones."
  * A plugin's manifest (plugins/<id>/plugin.json, docs/PLUGINS.md) may say where it belongs: `tab` (image | video | audio | 3d), `category`
  * (one of that tab's own workflow categories, e.g. video "edit") and `goal` (a Workflows page goal id). This file turns what GET /api/tools
  * says about a plugin tool (ToolInfo.plugin) into the rows each surface already lists, so a plugin needs no hand-written line anywhere:

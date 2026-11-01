@@ -10,7 +10,7 @@ A plugin adds an app from a ComfyUI workflow, without touching the core. Drop a 
 
 ## Where a plugin shows up
 
-Give the manifest a `tab` and a `category` and the plugin shows up in the app next to ours, with a small **Plugin** badge, its author and licence (and **Runs code** when the folder ships a handler):
+Give the manifest a `tab` and a `category` and the plugin shows up in the app next to the built-in ones, with a small **Plugin** badge, its author and licence (and **Runs code** when the folder ships a handler):
 - **Video** (`"tab": "video"`): in the Video workflow picker under its category and in the header Video menu; `/video?workflow=<id>` opens it, and its old address `/tools/<id>` still works.
 - **Image, Audio, 3D**: a row in that tab's header menu, opening the plugin's own page.
 - **Workflows page and search**: a card under "Your plugins", found by the Workflows search, the header search and agents' `search_capabilities` / `search_workflows`.
@@ -115,7 +115,7 @@ export default handler;
 - **Pipeline:** BiRefNet (MIT) through the ComfyUI_BiRefNet_ll node pack (MIT). Video in; the subject comes out on a colour plate (green, blue, white or black presets), plus an alpha-matte video.
 - **Fields:** `detail` sets the processing size; `edgeSoftness` (1–30) sets the edge blur.
 - **Handler:** adds a speed warning for fine detail at 1080p and labels the two sample outputs (cutout and matte). On your own ComfyUI the run returns both from the node map (`output` + `extraOutputs`).
-- **Mock clips:** `mock-cutout.mp4` and `mock-matte.mp4` are procedural (ffmpeg edge detection on our sample clip), not real segmentation.
+- **Mock clips:** `mock-cutout.mp4` and `mock-matte.mp4` are procedural (ffmpeg edge detection on the app's sample clip), not real segmentation.
 - **Installing for real use:** clone `lldacing/ComfyUI_BiRefNet_ll` into `ComfyUI/custom_nodes`, `pip install timm`, and put the BiRefNet weights from https://huggingface.co/ZhengPeng7/BiRefNet into `ComfyUI/models/BiRefNet/`.
 
 ## Community hub (`/api/hub/*`)

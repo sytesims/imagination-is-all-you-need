@@ -51,7 +51,7 @@ function useRows(tools: ToolInfo[]) {
   const [hub, setHub] = useState<Hub>(null);
   useEffect(() => { let live = true; loadHub().then((h) => live && setHub(h)).catch(() => undefined); return () => { live = false; }; }, []);
   return useMemo(() => { const w = { device: device() };
-    /* plugins with a tab (shared/pluginPlacement.ts) join the catalogue from GET /api/tools: they show and search like ours, with their Plugin badge */
+    /* plugins with a tab (shared/pluginPlacement.ts) join the catalogue from GET /api/tools: they show and search like the built-in ones, with their Plugin badge */
     const entries = [...WF_ENTRIES, ...pluginWfEntries(tools as any)];
     const rows = entries.map((e) => resolveRow(e, tools, hub, w)).filter((r): r is Row => !!r);
     /* left out here, and why (tools still loading: nothing yet) */

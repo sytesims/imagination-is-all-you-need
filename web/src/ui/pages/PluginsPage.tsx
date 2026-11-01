@@ -1,9 +1,9 @@
 /**
  * Plugins (2026-11-01 redesign): "Bring your own workflow". A plugin is a folder (plugins/<id>/: plugin.json, a ComfyUI workflow in API format,
- * node-map.json); after a restart it shows up in its tab next to ours (server shared/pluginPlacement.ts), runs for real on your own ComfyUI and
+ * node-map.json); after a restart it shows up in its tab next to the built-in ones (server shared/pluginPlacement.ts), runs for real on your own ComfyUI and
  * gives a sample result everywhere else. The page: a plain-words hero, how it works (folder → app), the installed plugins as cards (what it
  * makes, input → output, where it runs, licence, author, Plugin badge, Runs code, on/off, Open), the real sample files, and the built-in apps.
- * Layout options for review behind ?pl=a|b|c (preview only; the pick stays, the others go).
+ * Layout: the user's pick "A" (2026-11-01): hero beside the flow, the cards, the files beside the small print, the built-ins.
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { listTools, type ToolInfo } from '../../api';
@@ -63,14 +63,13 @@ const APP = 'M4 5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-
 const STEPS: { icon: string; title: string; line: ReactNode }[] = [
   { icon: FOLDER, title: 'Drop in a folder', line: <>Your ComfyUI workflow, a <code>node-map.json</code> and a <code>plugin.json</code> in <code>plugins/&lt;id&gt;/</code>.</> },
   { icon: RESTART, title: 'Restart the app', line: 'It checks the folder on start and lists anything to fix right here.' },
-  { icon: APP, title: 'It shows up next to ours', line: 'In its tab’s menu, on the Workflows page and in search, with a Plugin badge.' },
+  { icon: APP, title: 'It shows up next to the built-in ones', line: 'In its tab’s menu, on the Workflows page and in search, with a Plugin badge.' },
 ];
-/** How it works: folder → app, three steps. `variant` sets the layout (a row of tiles, or a vertical rail). */
-function Flow({ variant = 'row' }: { variant?: 'row' | 'rail' }) {
-  return <ol className={`plx-flow plx-flow-${variant}`} data-testid="plugins-howto">{STEPS.map((s, i) => <li key={s.title} className="plx-step">
+/** How it works: folder → app, three steps on a vertical rail. */
+function Flow() {
+  return <ol className="plx-flow" data-testid="plugins-howto">{STEPS.map((s, i) => <li key={s.title} className="plx-step">
     <span className="plx-step-ic"><Glyph d={s.icon} /><i>{i + 1}</i></span>
-    <span className="plx-step-t"><b>{s.title}</b><small>{s.line}</small></span>
-    {variant === 'row' && i < STEPS.length - 1 && <span className="plx-step-arrow" aria-hidden>→</span>}</li>)}</ol>;
+    <span className="plx-step-t"><b>{s.title}</b><small>{s.line}</small></span></li>)}</ol>;
 }
 /** The honest small print, said once. */
 function Honest() {
@@ -86,7 +85,7 @@ const KIND: Record<string, string> = { image: 'Photo', video: 'Clip' };
 const io = (p: P) => p.input ? `${KIND[p.input]} → ${KIND[p.output ?? p.input]}` : null;
 
 /** One installed plugin: what it makes, in → out, where it runs and where it shows up, licence, author, badge, on/off, Open. */
-function PluginCard({ p, tool, wide = false }: { p: P; tool?: ToolInfo; wide?: boolean }) {
+function PluginCard({ p, tool }: { p: P; tool?: ToolInfo }) {
   const name = p.name || p.id; const errs = p.errors ?? []; const warns = p.warnings ?? []; const failed = p.ok === false || errs.length > 0;
   const [on, setOn] = useState(p.enabled !== false); const [busy, setBusy] = useState(false); const [tErr, setTErr] = useState('');
   const toggle = async () => { if (busy) return; const next = !on; setOn(next); setBusy(true); setTErr('');
@@ -97,7 +96,7 @@ function PluginCard({ p, tool, wide = false }: { p: P; tool?: ToolInfo; wide?: b
   const open = p.toolId ? (p.tab ? pluginHref(like) : tool?.route ?? toolPage(p.toolId)) : null;
   const where = p.tab ? `${TAB_LABEL[p.tab]}${p.category ? ` › ${p.category[0].toUpperCase()}${p.category.slice(1)}` : ''}` : 'Plugins page only';
   const st = failed ? ['err', 'Needs a fix'] : !on ? ['off', 'Off'] : ['ok', 'On'];
-  return <article className={`plx-card${wide ? ' is-wide' : ''}${failed ? ' is-failed' : ''}${!on ? ' is-off' : ''}`} data-testid={`plugin-${p.id}`}>
+  return <article className={`plx-card${failed ? ' is-failed' : ''}${!on ? ' is-off' : ''}`} data-testid={`plugin-${p.id}`}>
     <header className="plx-card-head">
       <span className="plx-card-ic" aria-hidden>{p.icon ? <img src={p.icon} alt="" /> : p.toolId ? <ToolIconFor id={p.toolId} size={22} /> : name.slice(0, 1)}</span>
       <span className="plx-card-t"><b>{name}<PluginBadge b={{ author: p.author ?? null, licence: p.license?.name ?? 'Unknown licence', runsCode: !!p.runsCode }} /></b>
@@ -122,10 +121,10 @@ function PluginCard({ p, tool, wide = false }: { p: P; tool?: ToolInfo; wide?: b
     {(errs.length > 0 || warns.length > 0) && <ul className="plug-issues">{errs.map((e, i) => <li key={'e' + i} className="err">{e}</li>)}{warns.map((w, i) => <li key={'w' + i} className="helper">{w}</li>)}</ul>}
   </article>;
 }
-function Installed({ ps, tools, wide }: { ps: P[] | null; tools: ToolInfo[]; wide?: boolean }) {
-  return <div className={`plx-cards${wide ? ' is-wide' : ''}`} data-testid="plugins-grid" aria-busy={!ps}>
+function Installed({ ps, tools }: { ps: P[] | null; tools: ToolInfo[] }) {
+  return <div className="plx-cards" data-testid="plugins-grid" aria-busy={!ps}>
     {!ps && <div className="plx-card plx-ph shimmer" aria-hidden />}
-    {(ps ?? []).map((p) => <PluginCard key={p.id} p={p} tool={tools.find((t) => t.id === p.toolId)} wide={wide} />)}
+    {(ps ?? []).map((p) => <PluginCard key={p.id} p={p} tool={tools.find((t) => t.id === p.toolId)} />)}
     {ps && !ps.length && <div className="plx-card plx-empty"><b>No plugins yet</b><p>Add a folder with the sample files below and restart the app.</p></div>}
   </div>;
 }
@@ -148,16 +147,16 @@ function BuiltIns({ tools, pluginIds }: { tools: ToolInfo[] | null; pluginIds: S
     return MEDIA.map(([m, l]) => { const seen = new Set<string>(); return { m, l, list: bi.filter((t) => mediumOf(t) === m && !seen.has(t.name) && seen.add(t.name)).sort((a, b) => a.name.localeCompare(b.name)) }; }).filter((g) => g.list.length); }, [tools, pluginIds]);
   const n = groups.reduce((a, g) => a + g.list.length, 0);
   return <section className="plx-builtins" data-testid="plugins-builtins" aria-busy={!tools}>
-    <div className="plx-sec-h"><h2>Built in<span>{tools ? ` · ${n} apps` : ''}</span></h2><p>These come with the app. A plugin joins them the same way.</p></div>
+    <div className="plx-sec-h"><h2>Built-in apps<span>{tools ? ` · ${n}` : ''}</span></h2><p>These come with the app. A plugin joins them the same way.</p></div>
     {!tools ? <div className="plx-bi-ph shimmer" aria-hidden /> : <div className="plx-bi">{groups.map((g) => <div key={g.m} className="plx-bi-g"><b>{g.l}<span>{g.list.length}</span></b>
       <div className="plx-bi-list">{g.list.map((t) => <Link key={t.id} to={t.route ?? toolPage(t.id)} className="plx-bi-chip"><ToolIconFor id={t.id} ui={t.ui} size={14} />{t.name}</Link>)}</div></div>)}</div>}
   </section>;
 }
-function Hero({ compact = false }: { compact?: boolean }) {
-  return <header className={`plx-hero${compact ? ' is-compact' : ''}`}>
+function Hero() {
+  return <header className="plx-hero">
     <span className="wn-brand">Plugins</span>
     <h1 className="plx-h1">Bring your own workflow</h1>
-    <p className="plx-lede">Drop a folder in and your workflow shows up in the app, next to ours. It runs for real on your own ComfyUI.</p>
+    <p className="plx-lede">Drop a folder in and your workflow shows up in the app, next to the built-in ones. It runs for real on your own ComfyUI.</p>
     <div className="plx-tech" aria-label="What a plugin is made of"><span>ComfyUI workflow</span><span>plugin.json</span><span>node-map.json</span><span>optional handler</span></div>
   </header>;
 }
@@ -168,23 +167,10 @@ export function Plugins() {
   useEffect(() => { listTools().then(setTl).catch(() => setTl([])); }, []);
   useEffect(() => { fetch('/api/plugins').then((r) => (r.ok ? r.json() : [])).then((j) => setPs(Array.isArray(j) ? j : j.plugins ?? [])).catch(() => setPs([])); }, []);
   const tools = tl ?? []; const pluginIds = useMemo(() => new Set((ps ?? []).map((p) => p.toolId ?? p.id)), [ps]);
-  const opt = new URLSearchParams(location.search).get('pl') ?? 'a';
   const installedH = `Installed${ps ? ` · ${ps.length}` : ''}`;
-  if (opt === 'b') /* B · Guide: one calm column, read top to bottom */
-    return <div className="xpage plx plx-b" data-testid="plugins-page" data-option="b"><Hero />
-      <Sec h="How it works"><Flow /></Sec>
-      <Sec h={installedH} p="Each one is a workflow in the app, with its own Plugin badge."><Installed ps={ps} tools={tools} wide /></Sec>
-      <Sec h="Make your own" p="Copy these two files into a new folder, point them at your workflow, then restart."><Sample /><Honest /></Sec>
-      <BuiltIns tools={tl} pluginIds={pluginIds} /></div>;
-  if (opt === 'c') /* C · Workspace: a sticky guide on the left, your plugins and the files on the right */
-    return <div className="xpage plx plx-c" data-testid="plugins-page" data-option="c">
-      <aside className="plx-rail"><Hero compact /><Flow variant="rail" /><Honest /></aside>
-      <main className="plx-main"><Sec h={installedH}><Installed ps={ps} tools={tools} /></Sec>
-        <Sec h="Make your own" p="Copy these two files into a new folder, then restart the app."><Sample /></Sec>
-        <BuiltIns tools={tl} pluginIds={pluginIds} /></main></div>;
-  /* A · Showcase: hero beside the flow, your plugins as cards, the files beside the small print */
-  return <div className="xpage plx plx-a" data-testid="plugins-page" data-option="a">
-    <div className="plx-top"><Hero /><div className="plx-top-flow"><Flow variant="rail" /></div></div>
+  /* hero beside the flow, your plugins as cards, the files beside the small print */
+  return <div className="xpage plx" data-testid="plugins-page">
+    <div className="plx-top"><Hero /><div className="plx-top-flow"><Flow /></div></div>
     <Sec h={installedH} p="Each one is a workflow in the app, with its own Plugin badge."><Installed ps={ps} tools={tools} /></Sec>
     <Sec h="Make your own" p="Copy these two files into a new folder, point them at your workflow, then restart."><div className="plx-make"><Sample /><Honest /></div></Sec>
     <BuiltIns tools={tl} pluginIds={pluginIds} /></div>;
