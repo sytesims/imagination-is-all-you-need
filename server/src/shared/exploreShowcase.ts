@@ -20,11 +20,13 @@
  *  - EXPLORE_MOODS: the Audio dancer showcase (the words that pick SyteSim's dance style, a tempo for the demo beat).
  *  - EXPLORE_FILM: "Mockup to film" (Direct a Shot made real: the mockup, its first frame painted into a photo, the film; replaces the Worlds tiles).
  *  - EXPLORE_VFX: "VFX with LTX-2.5" (Footage Effects: Lightricks' official LTX-2.5 IC-LoRAs on your own clip, free on your computer; plus Layout to Render).
+ *  - EXPLORE_WORK: "Made for your work" (2026-11-01): real results for shops and brands (Material Swap, Ad Pack, Image to layers), each with its
+ *    model, where it ran, its real price and "Make your own" (the workflow opened as Recreate, the example's photos in).
  *  - EXPLORE_SCRIPT: the K-drama beat's script (shots, lines, measured times). Its Explore section left the page on 2026-10-28; the beat is now
  *    a film in IIAYN FILMS (EXPLORE_FILMS.comedy, 그래요? · IS THAT SO?) and its subtitles use these timings.
  */
 import { IMAGE_PAGE, AUDIO_PAGE, THREE_D_PAGE } from './pages.js';
-import { featuredByKey, featuredRecreateHref, MOSSBUN_3D_RUN } from './featured.js';
+import { featuredByKey, featuredRecreateHref, MOSSBUN_3D_RUN, SHOP_SWAP_RUNS, SHOP_ADS } from './featured.js';
 import { threeDRoute } from './threeD.js';
 import { VIDEO_PAGE, videoWorkflowHref } from './videoWorkflows.js';
 import { audioRoute } from './audioWorkflows.js';
@@ -46,6 +48,42 @@ export const EXPLORE_HERO: ReelShot =
   { key: 'ltx-pro-painter', name: 'A drawing comes alive', title: 'Remember being a kid?', line: 'Every drawing you made was alive.', model: 'LTX-2.5 Pro', sub: 'Create Video',
     facts: ['10 s'], poster: P('ltx-pro-painter.webp'),
     /** the score was made here (featured.ts note on 'ltx-pro-painter'): credited after the picture's price */ after: ['Music · YuE2 · Free'] };
+
+// ---------------------------------------------------------------- Made for your work (business value, real runs)
+/** One look a workflow made: its featured key (file, model, price, Recreate), its name, and the small picture that picks it (a material swatch). */
+export interface WorkVariant { key: string; label: string; url: string; thumb: string; swatch?: string }
+export interface WorkItem {
+  id: string; /** the audience tab it sits under */ tab: string; /** the workflow, as the app names it */ flow: string;
+  title: string; line: string; /** how the price reads: "each" (one run per look) or "for 3" (one run, every look) */ per: string;
+  /** before → after on a slider (same framing), or the before as a small "From this photo" picture */ compare: boolean;
+  /** what it started from (shown as "before") */ before: { url: string; label: string };
+  variants: WorkVariant[]; /** a clip instead of stills (Image to layers: the run's animation) */ film?: { url: string; poster: string; label: string };
+  /** the model as the card names it, when the featured entry's name is longer (a hosted route's full name) */ model?: string;
+  /** the price shown is the sum of these runs (one key) or one run's (every variant shares it) */ priceKey: string;
+}
+const shopSwap: WorkVariant[] = SHOP_SWAP_RUNS.map(([id, label]) => ({ key: `shop-swap-${id}`, label, url: P(`shop-armchair-${id}.webp`), thumb: P(`shop-armchair-${id}-480.webp`), swatch: P(`shop-material-${id}-160.webp`) }));
+const shopAds: WorkVariant[] = SHOP_ADS.map(([id, label]) => ({ key: 'shop-ad-pack', label, url: P(`shop-ad-${id}.webp`), thumb: P(`shop-ad-${id}-480.webp`) }));
+/** "Made for your work" (user pick 2026-11-01: lead with what people and businesses get). Real runs of a made-up brand, nothing staged: every
+ *  picture is what the run returned. The section is built as options for the user to pick (?xp=a|b|c on Explore, web/src/ui/explore/ExploreWork.tsx). */
+export const EXPLORE_WORK = {
+  eyebrow: 'Made for your work', title: ['Made for', 'your work.'],
+  line: 'Real results for shops and brands, made right here. Pick one, drop in your own photo and make yours.',
+  /** Option B's row title */ rowTitle: ['For shops', 'and brands.'],
+  tabs: [{ id: 'shop', label: 'Shop' }, { id: 'ads', label: 'Ads' }, { id: 'design', label: 'Design' }],
+  items: [
+    { id: 'material-swap', tab: 'shop', flow: 'Material Swap', title: 'One chair. Every material.', line: 'Show a product in every finish before you make a single one. One photo of it, one photo of the material.',
+      per: 'each', compare: true, before: { url: P('shop-armchair-in.webp'), label: 'Your photo' }, variants: shopSwap, priceKey: 'shop-swap-velvet' },
+    { id: 'ad-pack', tab: 'ads', flow: 'Ad Pack', title: 'One photo. Three ready ads.', line: 'A product photo and your offer become finished ads for the feed, with your headline and offer set in and your logo in the corner.',
+      per: 'for 3', compare: false, before: { url: P('shop-perfume-in-480.webp'), label: 'Product photo' }, variants: shopAds, priceKey: 'shop-ad-pack' },
+    { id: 'image-layers', tab: 'design', flow: 'Image to layers', title: 'One poster. Every layer.', line: 'Drop in a finished design and get every part back on its own layer: the dogs, the title, the logo. Ready to edit.',
+      per: '', compare: false, model: 'Seedream 5.0 Flash', before: { url: P('image-layers-paw-in-480.webp'), label: 'Your design' },
+      film: { url: P('image-layers-paw.mp4'), poster: P('image-layers-paw.webp'), label: 'The poster coming apart into its 13 layers' },
+      variants: [{ key: 'image-layers-paw', label: '13 layers', url: P('image-layers-paw.webp'), thumb: P('image-layers-paw-480.webp') }], priceKey: 'image-layers-paw' },
+  ] as WorkItem[],
+  /** the button on every card: the workflow opened as Recreate, the example's photos and words already in */ cta: 'Make your own',
+};
+/** Where "Make your own" opens for a look: its featured Recreate (the workflow with the example's photos in), else the workflow. */
+export const workHref = (v: WorkVariant) => featuredRecreateHref(v.key) ?? IMAGE_PAGE;
 
 // ---------------------------------------------------------------- From one still (MiniMax H3 image to video on Comfy Cloud)
 export interface StillTake {
