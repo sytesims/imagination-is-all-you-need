@@ -32,10 +32,15 @@ const routeFields: Record<string, RegExp> = {
   '/api/jobs/:id/stamp': /^(overlay|endcard)$/, '/api/jobs/:id/share/export': /^(overlay|endcard)$/,
   '/api/jobs/:id/share/clip': /^(still|clip|endcard)$/, '/api/tools/object-swap/mask-preview': /^(video|matte|firstFrame)$/,
 };
+/** How long one ffprobe / ffmpeg check may take (exported so a test can shorten it). */
+export const mediaCheck = { timeoutMs: 30000 };
+const TIMEOUT_MESSAGE = 'Checking this file took too long. Try again, or try a smaller file.';
+/** A check that ran out of time: its own plain message (status 503), never "damaged media". */
+const tooSlow = (field: string) => Object.assign(new Error(TIMEOUT_MESSAGE), { statusCode: 503, code: 'upload_timeout', field });
 function run(cmd: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
     const p = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] }); let out = '', err = '';
-    const timer = setTimeout(() => { p.kill('SIGKILL'); reject(new Error('Media validation timed out.')); }, 30000);
+    const timer = setTimeout(() => { p.kill('SIGKILL'); reject(Object.assign(new Error('Media validation timed out.'), { code: 'upload_timeout' })); }, mediaCheck.timeoutMs);
     p.stdout.on('data', d => { if (out.length < 200000) out += d; });
     p.stderr.on('data', d => { if (err.length < 200000) err += d; });
     p.on('error', e => { clearTimeout(timer); reject(e); }); p.on('close', code => { clearTimeout(timer); code === 0 && !err.trim() ? resolve(out) : reject(new Error(err)); });
@@ -108,7 +113,7 @@ export async function validateUpload(file: string, filename: string, mime: strin
     // Decode, rather than accepting a readable header. Fail closed on missing tools/timeouts.
     const decoded = await run('ffmpeg', ['-v', 'error', '-xerror', '-nostats', ...(timed && !headerDuration ? ['-progress', 'pipe:1'] : []), ...opts, '-i', file, '-map', '0:v?', '-map', '0:a?', ...(fmt.kind === 'image' ? ['-frames:v', '1'] : []), '-f', 'null', '-']);
     if (timed && !headerDuration && !(Math.max(0, ...[...decoded.matchAll(/^out_time_us=(\d+)$/gm)].map(m => Number(m[1]))) > 0)) throw bad(field);
-  } catch { throw bad(field); }
+  } catch (e: any) { throw e?.code === 'upload_timeout' ? tooSlow(field) : bad(field); }
   return { ext: `.${ext}`, mime: fmt.mime, kind: fmt.kind };
 }
 
@@ -189,6 +194,7 @@ export function registerUploadSecurity(app: FastifyInstance, tempRoot = os.tmpdi
       req.file = (async () => { const part = staged.find(p => p.type === 'file'); return part ? replay(part) : undefined; }) as any;
     } catch (e: any) {
       await cleanup();
+      if (e.code === 'upload_timeout') return reply.code(503).send({ error: e.message, errorType: 'temporary', code: 'upload_timeout', issues: [{ code: 'timeout', field: e.field ?? 'file', message: e.message }] });
       return reply.code(400).send({ error: e.code === 'upload_format' ? e.message : 'The media upload could not be validated.', errorType: 'validation', code: 'upload_format', issues: [{ code: 'format', field: e.field ?? 'file', message: 'Unsupported or damaged media.' }] });
     } finally { req.raw.pipe = originalPipe; }
   });
