@@ -1,6 +1,7 @@
 /**
  * Explore (2026-10-26, v3 from the approved mockups). Top to bottom:
  *  - the full-bleed header (the LTX-2.5 Pro painter clip, looping with sound) with the tagline and the quick links (explore/ExploreShowcase.tsx XpHero),
+ *    then Made for your work (explore/ExploreWork.tsx: real shop and brand results, each with Make your own),
  *    then 3D and IIAYN FILMS (including A Star to Steer By, formerly its own lighthouse section);
  *  - From one still (XpStill): two LTX-2.5 Pro image-to-video takes from one still, a wipe from the still into the clip, a Take 1 / Take 2 switch;
  *  - Make your own cartoon (XpKoi): a MiniMax H3 take extended by H3 Extend into one 20 s take, in a letterbox; it leads into the H3 chapter below;
@@ -27,6 +28,7 @@ import { VideoIcon, MotionTransferIcon, ReshootIcon, LoopIcon, PhotoFxIcon, Musi
 import { Xp3D } from './explore/Explore3D';
 import { XpFilms } from './explore/ExploreFilms';
 import { XpPresenter } from './explore/ExplorePresenter';
+import { XpWork } from './explore/ExploreWork';
 import { FlowDiagram, hasDiagram } from './exploreArt';
 import './explore.css';
 
@@ -140,6 +142,7 @@ export default function Home({ tools }: { tools: ToolInfo[] }) {
   return <div className="home xp" data-testid="explore">
     <h1 className="sr-only-vis">Imagination Is All You Need: an open studio for video, images, sound and 3D</h1>
     <XpHero />
+    <div className="xp-in"><XpWork /></div>
     {/* The lighthouse now lives in Films, not in a separate section (user, 2026-10-29). */}
     <div className="xp-in"><Xp3D /></div>
     {/* IIAYN FILMS: our finished films (explore/ExploreFilms.tsx; the feature layout runs full width) */}

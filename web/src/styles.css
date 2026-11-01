@@ -2219,6 +2219,12 @@ html:has(.ws-panel .gen-row){scroll-padding-bottom:160px}.ws-panel{scroll-paddin
 .as-check{color:var(--accent)}
 @media (max-width:900px){.as{flex-direction:column;height:auto}.as-panel{width:100%}.as-cards{grid-template-columns:1fr}.as-mdlg{left:16px!important;right:16px;width:auto}}
 .as-tr a{color:var(--accent)}
+.as-sep a{color:var(--accent)}
+.as-sep-get{margin-left:2px;padding:0;border:0;background:none;font:inherit;font-weight:600;color:var(--accent);cursor:pointer}
+.as-sep-get:disabled{opacity:.5;cursor:default}
+.as-sep-steps{margin:4px 0 0;padding-left:18px}
+.as-sep-steps li{margin:2px 0}
+.as-sep-steps b{font-weight:600;color:rgba(255,255,255,.7)}
 /* audio page: panel at x16 per spec (offset this page only against the shell's 12px padding) */
 .as{margin-left:-12px}
 .as-samples{display:grid;gap:6px}.as-samples-h{display:flex;justify-content:space-between;font:500 12px/16px Inter,system-ui,sans-serif;color:var(--as-g)}.as-samples-h b{color:#fff;font-weight:600}

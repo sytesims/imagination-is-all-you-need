@@ -126,6 +126,14 @@ export function estimateRate(h: HostedPrice): number | null {
     .filter((x): x is number => typeof x === 'number' && x > 0);
   return all.length ? Math.max(...all) : null;
 }
+/** The breakdown line of a price with no hosted row (an open-weights run on your computer). */
+export const FREE_LOCAL_LINE = 'Free on your computer';
+/** P2-18: a quote that can't run never says it is free on your computer: its breakdown becomes the real reason (setup, key, input). */
+export function honestBreakdown<T extends Record<string, any>>(q: T): T {
+  if (q?.runnable !== false || !Array.isArray(q.breakdown) || !q.breakdown.some((b: any) => b?.label === FREE_LOCAL_LINE)) return q;
+  const why = [q.blockedReason, q.priceLine, q.unavailableReason, q.reason].find((x) => typeof x === 'string' && x.trim()) ?? 'Can’t run here yet';
+  return { ...q, breakdown: [{ label: why, factor: 0 }] };
+}
 export function priceOf(i: PriceInput): Price {
   const quality = i.draft ? '480p' : i.quality;
   const dur0 = i.durationSec && i.durationSec > 0 ? i.durationSec : DEFAULT_DURATION;
@@ -141,7 +149,7 @@ export function priceOf(i: PriceInput): Price {
   // Reference videos billed at the output rate (MiniMax H3): + whole seconds of min(total, cap), rounded up (quote ≥ charge).
   const rvAt = h2?.refVideoAtRate && (i.refVideoSec ?? 0) > 0 ? Math.ceil(Math.min(i.refVideoSec ?? 0, h2.refVideoAtRate.maxTotal) - 1e-9) : 0;
   const h: HostedPrice | undefined = rvAt && h2 ? ({ ...h2, model: `${h2.model}, with ${rvAt} s reference video` } as HostedPrice) : h2;
-  if (!h) return { credits: 0, gpuSec: 0, draftCredits: 0, free: true, quality, breakdown: [{ label: 'Free on your computer', factor: 0 }], basis: 'open-weights', hosted: null };
+  if (!h) return { credits: 0, gpuSec: 0, draftCredits: 0, free: true, quality, breakdown: [{ label: FREE_LOCAL_LINE, factor: 0 }], basis: 'open-weights', hosted: null };
   const dur = dur0 + vin + rvAt; // token formula: (input video s + output s) × W × H × fps ÷ 1024; H3: output s + reference-video s
   const imgRate = h.tokenImage ? gptImageUsd(h.tokenImage.family, i.tier ?? null, i.imageRes ?? '1K', i.aspect ?? null, i.promptBytes ?? null) /* GPT Image: exact size + prompt */
     : h.mpImage ? mpImageUsd(h.mpImage, i.aspect ?? null, i.imageRes ?? '1K') /* FLUX.2 on Comfy Router: started megapixels of the exact size sent for the shape */

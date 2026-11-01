@@ -6,10 +6,10 @@ param([string]$ComfyUrl = $env:OPENHIGGSFIELD_COMFY_URL, [switch]$Mock, [switch]
 $ErrorActionPreference = 'Stop'
 Set-Location (Split-Path $PSScriptRoot -Parent)
 function Need($cmd, $msg) { if (-not (Get-Command $cmd -ErrorAction SilentlyContinue)) { throw $msg } }
-Need node 'Node.js 20+ is required: https://nodejs.org (or winget install OpenJS.NodeJS.LTS)'
-Need npm.cmd 'npm is required. Install Node.js LTS (https://nodejs.org), reopen PowerShell, then retry.'
+Need node 'Node.js 22 to 25 is required: https://nodejs.org (or winget install OpenJS.NodeJS.22)'
+Need npm.cmd 'npm is required. Install Node.js 22 or 24 (https://nodejs.org), reopen PowerShell, then retry.'
 $major = [int]((node -p "process.versions.node.split('.')[0]"))
-if ($major -lt 20) { throw "Node $major found, need 20+" }
+if ($major -lt 20 -or $major -gt 25) { throw "Node $major found, need Node 22 to 25 (Node 24 recommended; Node 26+ has no ready-made build of the app's database module yet)" }
 foreach ($tool in @('ffmpeg', 'ffprobe')) {
   if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
     Write-Warning "$tool not found. Install the FFmpeg tools (winget install --id Gyan.FFmpeg -e), reopen PowerShell, then retry. Examples can be browsed, but uploads and media processing need both ffmpeg and ffprobe."

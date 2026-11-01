@@ -19,6 +19,7 @@ import { FOOTAGE_EFFECTS, FOOTAGE_FX_TOOL, footageEffect, isCloudOnly } from './
 import { LTX_LORAS } from './ltxLoras.js';
 import { featuredRecreateHref, LTX_LAYOUT } from './featured.js';
 import type { FlowArt } from './exploreFlows.js';
+import { goalById, goalOf, WF_START_HERE, type WfGoal } from './workflowGoals.js';
 
 export type WfCat = 'video' | 'talk' | 'character' | 'film' | 'image' | 'photo' | 'product' | 'clip' | 'music' | '3d' | 'fix';
 export type WfMedium = 'image' | 'video' | 'audio' | '3d';
@@ -53,6 +54,10 @@ export interface WfEntry {
   /** the tab workflow it stands for (WF_SOURCES key, e.g. 'video:extend'); set by the helpers */ source: string;
   /** a real run of ours with no featured / showcase record (Try-On): its before / after pictures (shipped) and the run behind them */
   example?: WfExample;
+  /** the name its tab's menu uses, when the page says it plainer (Extend → "Make a clip longer"): the sheet names it, search still finds it */
+  tabName?: string;
+  /** a real sound of ours with no featured record (Voiceover: the presenter's script, read by Qwen3 TTS): the file (shipped) and the run behind it */
+  listen?: { url: string; jobId: string };
 }
 export interface WfExample { before: string; after: string; beforeLabel: string; afterLabel: string; run: { jobId: string; model: string; place: string; costUsd: number } }
 
@@ -63,20 +68,20 @@ const withQ = (href: string, q: Record<string, string>) => { const [p, s = ''] =
 /** A Video tab workflow (or flow shortcut). */
 function V(id: string, cat: WfCat, o: Partial<WfEntry> & { model?: string } = {}): WfEntry {
   const w = vw(id); const href = o.model ? withQ(vhref(id), { model: o.model }) : vhref(id);
-  return { id: `v-${id}`, source: `video:${id}`, name: w.name, line: w.tagline, cat, tags: [], medium: 'video', toolId: w.toolId, href, models: o.model ? [o.model] : [], needs: w.needs, how: w.how,
+  return { id: `v-${id}`, source: `video:${id}`, name: w.name, tabName: o.name && o.name !== w.name ? w.name : undefined, line: w.tagline, cat, tags: [], medium: 'video', toolId: w.toolId, href, models: o.model ? [o.model] : [], needs: w.needs, how: w.how,
     modelsOnly: !!VIDEO_FLOW_SHORTCUTS.find((x) => x.id === id), mode: w.params?.mode,
     recreate: o.featured ? featuredRecreateHref(o.featured) : null, ...o };
 }
 /** An Image tab workflow (Create Image's bar with it picked). */
 function I(id: string, cat: WfCat, o: Partial<WfEntry> = {}): WfEntry {
   const f = featureById(id); if (!f) throw new Error(`image workflow ${id}`);
-  return { id: `i-${id}`, source: `image:${id}`, name: f.name, line: f.tagline, cat, tags: [], medium: 'image', toolId: f.toolId, href: f.route,
+  return { id: `i-${id}`, source: `image:${id}`, name: f.name, tabName: o.name && o.name !== f.name ? f.name : undefined, line: f.tagline, cat, tags: [], medium: 'image', toolId: f.toolId, href: f.route,
     models: [], needs: id === 'create-image' || id === 'camera-lens' ? 'A prompt' : 'A photo', hubId: id, ...o };
 }
 /** An Audio tab workflow. */
 function A(id: AudioWorkflowId, cat: WfCat, o: Partial<WfEntry> & { model?: string } = {}): WfEntry {
   const a = audioWorkflowById(id); if (!a) throw new Error(`audio workflow ${id}`);
-  return { id: `a-${id}`, source: `audio:${id}`, name: a.name, line: a.tagline, cat, tags: [], medium: 'audio', toolId: a.tool, href: o.model ? withQ(audioRoute(id), { model: o.model }) : audioRoute(id),
+  return { id: `a-${id}`, source: `audio:${id}`, name: a.name, tabName: o.name && o.name !== a.name ? a.name : undefined, line: a.tagline, cat, tags: [], medium: 'audio', toolId: a.tool, href: o.model ? withQ(audioRoute(id), { model: o.model }) : audioRoute(id),
     models: o.model ? [o.model] : [], mode: a.mode, needs: a.slots.some((s) => s.required) ? a.slots.filter((s) => s.required).map((s) => s.label).join(' + ') : 'A prompt', ...o };
 }
 /** A 3D tab workflow (ready ones only). */
@@ -99,52 +104,53 @@ function FX(id: string, o: Partial<WfEntry> = {}): WfEntry {
 
 export const WF_ENTRIES: WfEntry[] = [
   // Make a video
-  V('create', 'video', { name: 'Create Video', featured: 'ltx-pro-painter', tags: ['text to video', 'image to video', 'sound', 'ltx', 'multi-shot', 'dialogue'] }),
-  V('photos-to-reel', 'video', { art: 'move', tags: ['photos', 'reel', 'listing', 'event', 'hotel', 'trip'], needs: '8–15 photos + a title' }),
-  V('loop', 'video', { featured: 'ltx-village-loop', model: 'ltx-2.5-22b', tags: ['seamless', 'gif', 'local'] }),
-  V('morph', 'video', { featured: 'ltx-morph', model: 'ltx-2.5-22b', tags: ['transition', 'start and end frame'] }),
+  V('create', 'video', { line: 'Turn words or a photo into video.', name: 'Create Video', featured: 'ltx-pro-painter', tags: ['text to video', 'image to video', 'sound', 'ltx', 'multi-shot', 'dialogue'] }),
+  V('photos-to-reel', 'video', { line: 'Your photos, cut into a vertical reel.', name: 'Photos into a reel', art: 'move', tags: ['photos', 'reel', 'listing', 'event', 'hotel', 'trip'], needs: '8–15 photos + a title' }),
+  V('loop', 'video', { line: 'A clip that plays forever.', featured: 'ltx-village-loop', model: 'ltx-2.5-22b', tags: ['seamless', 'gif', 'local'] }),
+  V('morph', 'video', { line: 'One scene melts into another.', featured: 'ltx-morph', model: 'ltx-2.5-22b', tags: ['transition', 'start and end frame'] }),
   V('transitions', 'video', { art: 'viral', tags: ['start and end frame', 'morph'] }),
   V('photo-fx', 'video', { art: 'fx', tags: ['effect', 'animate a photo', 'levitate', 'shatter', 'portal'] }),
-  V('extend', 'video', { featured: 'h3-fox-extend', model: 'minimax-h3-extend', tags: ['longer', 'continue', 'long take'] }),
+  V('extend', 'video', { line: 'Keep any shot going.', name: 'Make a clip longer', featured: 'h3-fox-extend', model: 'minimax-h3-extend', tags: ['longer', 'continue', 'long take'] }),
   // Voices & talking
-  V('lip-sync', 'talk', { name: 'Make it talk', model: 'ltx-2.5-talking-photo' /* free locally; InfiniteTalk and H3 Talking Photo follow */, art: 'talk', tags: ['lip sync', 'talking photo', 'presenter', 'avatar', 'portrait'] }),
-  A('voiceover', 'talk', { model: 'chatterbox', art: 'voice', tags: ['text to speech', 'narration', 'script', 'tts'] }),
+  V('lip-sync', 'talk', { line: 'Give any portrait your words.', name: 'Make a photo talk', model: 'ltx-2.5-talking-photo' /* free locally; InfiniteTalk and H3 Talking Photo follow */,
+    featured: 'presenter-talk' /* our presenter, InfiniteTalk on Comfy Cloud (job 3f3fa8b8): the sheet names that model under the example */, tags: ['lip sync', 'talking photo', 'presenter', 'avatar', 'portrait'] }),
+  A('voiceover', 'talk', { line: 'A clear voice reads your script.', model: 'chatterbox', art: 'voice', listen: { url: '/examples/starter/presenter-talk-speech.mp3', jobId: '952f0862' } /* the presenter's script, Qwen3 TTS on our computer */, tags: ['text to speech', 'narration', 'script', 'tts'] }),
   A('change-voice', 'talk', { art: 'voice', model: 'chatterbox-voice-changer', tags: ['voice changer', 'speech to speech'] }),
-  A('translate', 'talk', { art: 'voice', model: 'translate-chatterbox', tags: ['dub', 'language', 'subtitles'] }),
+  A('translate', 'talk', { line: 'Hear your clip in another language.', name: 'Translate a video', art: 'voice', model: 'translate-chatterbox', tags: ['dub', 'language', 'subtitles'] }),
   // Characters
-  I('character-sheet', 'character', { showcase: 'fad0bbe6', tags: ['turnaround', 'model sheet', 'consistent character', 'cast'] }),
+  I('character-sheet', 'character', { line: 'One character, the same every time.', showcase: 'fad0bbe6', tags: ['turnaround', 'model sheet', 'consistent character', 'cast'] }),
   I('face-swap', 'character', { tags: ['face', 'portrait'] }),
   I('phone-photo', 'character', { art: 'photo', tags: ['ugc', 'selfie', 'mirror selfie', 'phone', 'social', 'candid', 'portrait', 'influencer'] }),
   I('person-swap', 'character', { tags: ['body', 'outfit'] }),
-  V('motion-control', 'character', { featured: 'kling-dance-swap', model: 'kling-v3-omni-edit', tags: ['dance', 'motion transfer', 'swap a character'] }),
-  V('object-swap', 'character', { featured: 'h3-char-swap', model: 'minimax-h3-character-swap', tags: ['swap', 'replace a person', 'object swap', 'person swap', 'character swap'] }),
+  V('motion-control', 'character', { line: 'Your character moves like any clip.', name: 'Copy the moves', featured: 'kling-dance-swap', model: 'kling-v3-omni-edit', tags: ['dance', 'motion transfer', 'swap a character'] }),
+  V('object-swap', 'character', { line: 'Replace a person, product or place.', name: 'Swap in a clip', featured: 'h3-char-swap', model: 'minimax-h3-character-swap', tags: ['swap', 'replace a person', 'object swap', 'person swap', 'character swap'] }),
   // Sketch → Film
-  V('direct-a-shot', 'film', { featured: 'mossbun-mockup-film', tags: ['previz', 'mockup', '3d blocking', 'camera path', 'storyboard', 'local'] }),
+  V('direct-a-shot', 'film', { line: 'Block it in 3D, film it for real.', name: 'Plan a shot in 3D', featured: 'mossbun-mockup-film', tags: ['previz', 'mockup', '3d blocking', 'camera path', 'storyboard', 'local'] }),
   V('reshoot', 'film', { art: 'reshoot', model: 'ltx-2-19b', tags: ['new camera angle', 'coverage'] }),
   V('new-angle', 'film', { art: 'angle', model: 'minimax-h3-crossview', tags: ['camera angle', 'crossview'] }),
   V('camera-moves', 'film', { art: 'move', model: 'ltx-2-19b', tags: ['dolly', 'orbit', 'crane', 'camera move'] }),
   // Make an image
-  I('create-image', 'image', { showcase: '032054ec', tags: ['text to image', 'edit with a prompt', 'picture'] }),
+  I('create-image', 'image', { line: 'Describe it, get a picture.', showcase: '032054ec', tags: ['text to image', 'edit with a prompt', 'picture'] }),
   I('camera-lens', 'image', { art: 'photo', tags: ['lens', 'film stock', 'aperture', 'cinematic still'] }),
-  I('image-layers', 'image', { featured: 'image-layers-paw', tags: ['psd', 'layers', 'poster', 'split'] }),
+  I('image-layers', 'image', { line: 'Every part on its own layer.', name: 'Split into layers', featured: 'image-layers-paw', tags: ['psd', 'layers', 'poster', 'split'] }),
   // Change a photo
-  I('edit-image', 'photo', { art: 'photo', tags: ['edit with a prompt', 'change a photo', 'retouch', 'flux 3 klein'] }),
-  I('relight', 'photo', { showcase: '0f1a0117', tags: ['light', 'golden hour', 'studio light'] }),
+  I('edit-image', 'photo', { line: 'Change any photo with a few words.', art: 'photo', tags: ['edit with a prompt', 'change a photo', 'retouch', 'flux 3 klein'] }),
+  I('relight', 'photo', { line: 'Move the light, change the mood.', showcase: '0f1a0117', tags: ['light', 'golden hour', 'studio light'] }),
   I('camera-angles', 'photo', { art: 'angle', tags: ['new angle', 'shots', 'coverage'] }),
   I('brush-edit', 'photo', { art: 'photo', tags: ['inpaint', 'paint a change', 'mask'] }),
   I('expand', 'photo', { art: 'photo', tags: ['outpaint', 'reframe', 'bigger canvas'] }),
-  I('erase', 'photo', { art: 'photo', tags: ['remove object', 'clean up'] }),
+  I('erase', 'photo', { name: 'Erase anything', line: 'Paint over it, and it’s gone.', art: 'erase', tags: ['remove object', 'clean up'] }),
   // Product & ads
-  I('product-shot', 'product', { art: 'object', tags: ['packshot', 'ecommerce', 'studio'] }),
+  I('product-shot', 'product', { line: 'Studio-clean photos of anything you sell.', art: 'object', tags: ['packshot', 'ecommerce', 'studio'] }),
   /* our real run (2026-10-28, job 6123e3ac): Bria Virtual Try-On on Comfy Router, $0.057; the jacket made free on our computer (FLUX.2 [klein] 4B) */
-  I('try-on', 'product', { needs: 'A person photo + a garment photo', models: ['bria-virtual-tryon'] /* Comfy Router: one key runs it (FASHN on fal follows) */, art: 'tryon', tags: ['fashion', 'garment', 'outfit', 'bria'],
+  I('try-on', 'product', { line: 'See any outfit on any person.', name: 'Try clothes on', needs: 'A person photo + a garment photo', models: ['bria-virtual-tryon'] /* Comfy Router: one key runs it (FASHN on fal follows) */, art: 'tryon', tags: ['fashion', 'garment', 'outfit', 'bria'],
     example: { before: '/examples/workflows/i-try-on-before.webp', after: '/examples/workflows/i-try-on.webp', beforeLabel: 'Before', afterLabel: 'Try-on',
       run: { jobId: '6123e3ac', model: 'Bria Virtual Try-On', place: 'Comfy Cloud', costUsd: 0.057 } } }),
-  I('material-swap', 'product', { needs: 'An object photo + a material photo', art: 'object', tags: ['material', 'texture', 'fabric', 'leather', 'marble', 'qwen image 2.1', 'local'] }),
-  I('ad-pack', 'product', { needs: 'A product photo + your offer', art: 'object', tags: ['ad', 'ads', 'offer', 'sale', 'brand', 'logo', 'social', 'instagram', 'tiktok', 'marketing'] }),
-  I('remove-bg', 'product', { name: 'Remove Background', art: 'object', tags: ['cutout', 'transparent', 'png'] }),
-  V('ugc-ad', 'product', { art: 'talk', tags: ['ad', 'presenter', 'phone', 'social'] }),
-  V('orbit-shot', 'product', { art: 'turntable', tags: ['360', 'spin', 'product video'] }),
+  I('material-swap', 'product', { line: 'Dress any object in a new material.', needs: 'An object photo + a material photo', art: 'object', tags: ['material', 'texture', 'fabric', 'leather', 'marble', 'qwen image 2.1', 'local'] }),
+  I('ad-pack', 'product', { line: 'Ready-to-post ads from one product photo.', needs: 'A product photo + your offer', art: 'photo' /* its own tool icon */, tags: ['ad', 'ads', 'offer', 'sale', 'brand', 'logo', 'social', 'instagram', 'tiktok', 'marketing'] }),
+  I('remove-bg', 'product', { line: 'Cut out the subject, background gone.', name: 'Remove Background', art: 'photo' /* its own tool icon */, tags: ['cutout', 'transparent', 'png'] }),
+  V('ugc-ad', 'product', { line: 'A presenter sells your product, phone-style.', art: 'talk', tags: ['ad', 'presenter', 'phone', 'social'] }),
+  V('orbit-shot', 'product', { line: 'Spin the camera around your product.', art: 'turntable', tags: ['360', 'spin', 'product video'] }),
   V('exploded-view', 'product', { art: 'fx', model: 'ltx-2.5-22b', tags: ['parts', 'lora', 'local'] }),
   // Change a clip
   V('restyle', 'clip', { art: 'video', tags: ['style transfer', 'look'] }),
@@ -159,23 +165,23 @@ export const WF_ENTRIES: WfEntry[] = [
   FX('remove-object', { art: 'erase', tags: ['remove object', 'erase', 'inpaint', 'clean up', 'footage effects', 'vfx', 'comfy cloud'] }),
   FX('remove-text', { art: 'untext', tags: ['remove subtitles', 'captions', 'watermark', 'text', 'footage effects', 'vfx', 'comfy cloud'] }),
   FX('extend-frame', { art: 'outpaint', tags: ['outpaint', 'extend frame', 'reframe', 'vertical', 'widen', 'zoom out', 'footage effects', 'vfx', 'comfy cloud'] }),
-  V('reframe', 'clip', { art: 'video', tags: ['aspect ratio', 'vertical', 'outpaint'] }),
+  V('reframe', 'clip', { line: 'Fit any clip to any screen.', name: 'Make it vertical', art: 'outpaint', tags: ['aspect ratio', 'vertical', 'outpaint'] }),
   V('remove-bg', 'clip', { name: 'Remove Video Background', art: 'video', tags: ['cutout', 'green screen'] }),
   V('cutout', 'clip', { art: 'video', tags: ['alpha', 'matte', 'compositing'] }),
   V('depth-map', 'clip', { art: 'video', tags: ['depth', 'compositing', 'vfx'] }),
   // Music & sound
-  A('music', 'music', { model: 'yue2' /* installed and run here (job d967cfc3); ACE-Step 1.5 needs setting up */, art: 'music', tags: ['song', 'lyrics', 'track', 'beat'] }),
-  A('cover', 'music', { art: 'cover', tags: ['song', 'remix', 'new style'] }),
-  A('sfx', 'music', { model: 'stable-audio-open-1.0' /* free on your computer; ElevenLabs and Seed Audio follow */, art: 'sfx', tags: ['sound effect', 'foley', 'ambience'] }),
-  A('soundtrack-music', 'music', { model: 'yue2', art: 'score', tags: ['score', 'music bed', 'for a clip'] }),
+  A('music', 'music', { line: 'Write a song from a few words.', name: 'Make music', model: 'yue2' /* installed and run here (job d967cfc3); ACE-Step 1.5 needs setting up */, featured: 'audio-last-train', art: 'music', tags: ['song', 'lyrics', 'track', 'beat'] }),
+  A('cover', 'music', { line: 'Your song, new style, same melody.', art: 'cover', tags: ['song', 'remix', 'new style'] }),
+  A('sfx', 'music', { line: 'Any sound, from a few words.', model: 'stable-audio-open-1.0' /* free on your computer; ElevenLabs and Seed Audio follow */, featured: 'audio-rain-roof', art: 'sfx', tags: ['sound effect', 'foley', 'ambience'] }),
+  A('soundtrack-music', 'music', { line: 'A score made for your clip.', name: 'Add music to a clip', model: 'yue2', art: 'score', tags: ['score', 'music bed', 'for a clip'] }),
   A('soundtrack-sound', 'music', { model: 'mmaudio', art: 'foley', tags: ['foley', 'video to sound', 'mmaudio'] }),
   // 3D & worlds
-  D('image-to-3d', '3d', { models: ['cloud-tripo-31'] /* our real run: Mossbun, job 092abb03 */, art: 'cube', tags: ['glb', 'model', 'mesh', 'tripo', 'trellis', 'hunyuan'] }),
+  D('image-to-3d', '3d', { line: 'Turn one picture into a 3D model.', models: ['cloud-tripo-31'] /* our real run: Mossbun, job 092abb03 */, art: 'cube', tags: ['glb', 'model', 'mesh', 'tripo', 'trellis', 'hunyuan'] }),
   D('text-to-3d', '3d', { models: ['cloud-tripo-31'], modelsOnly: true, art: 'cube', tags: ['text', 'glb', 'mesh', 'tripo'] }),
   D('multiview-to-3d', '3d', { models: ['cloud-tripo-31'], modelsOnly: true, art: 'cube', tags: ['views', 'photos', 'glb', 'tripo'] }),
   D('turntable', '3d', { art: 'turntable', tags: ['spin', 'spin video', 'showcase'] }),
   // Fix & upscale
-  I('upscale', 'fix', { showcase: '1492ccf1', tags: ['sharper', '4x', 'enhance'] }),
+  I('upscale', 'fix', { line: 'Bigger, crisper pictures, up to 8x.', name: 'Make it sharper', showcase: '1492ccf1', tags: ['sharper', '4x', 'enhance'] }),
   V('upscale', 'fix', { art: 'video', tags: ['4k', 'sharper', 'enhance'] }),
   V('draft-upscale', 'fix', { art: 'video', tags: ['1080p', 'draft'] }),
   V('fps-boost', 'fix', { art: 'video', tags: ['60 fps', 'smooth', 'interpolation', 'rife'] }),
@@ -185,27 +191,38 @@ export const WF_ENTRIES: WfEntry[] = [
 ];
 export const wfEntryById = (id: string): WfEntry | undefined => WF_ENTRIES.find((e) => e.id === id);
 
-// ------------------------------------------------------------------ the Workflows page's own selection (user picks, 2026-10-28)
-/** What the Workflows PAGE shows, hand-picked by the user: the featured row first (in this order), then the rest it keeps. Ids are entry ids or
- *  `chain:<id>`. Everything else stays in WF_ENTRIES / WF_CHAINS: its tab, its menus, direct links, search (the page lists matches under "Also in
- *  the tabs"), Explore, Recreate, /workflows/:id and the MCP catalogue all keep it. Only this page's grid leaves it out. To move a card: edit these lists. */
-export const WF_PAGE_FEATURED: string[] = ['chain:sketch-film', 'chain:long-take', 'v-create', 'i-character-sheet', 'v-motion-control', 'v-object-swap', 'i-image-layers', 'i-upscale'];
-export const WF_PAGE_KEEP: string[] = ['chain:kdrama', 'v-extend', 'v-direct-a-shot', 'i-try-on', 'a-music', 'a-cover', 'a-sfx', 'a-soundtrack-music', 'a-soundtrack-sound'];
-/** Shown on the Workflows page (featured or kept). */
-export const onWorkflowsPage = (id: string): boolean => WF_PAGE_FEATURED.includes(id) || WF_PAGE_KEEP.includes(id);
+// ------------------------------------------------------------------ the Workflows page's own selection (user picks, 2026-11-01: "P1")
+/** What the Workflows PAGE shows: "Start here" (shared/workflowGoals.ts WF_START_HERE, the same list the menus will call "For you"), then one
+ *  short section per goal (shared/workflowGoals.ts WF_GOALS), each with the user's picks in order. Ids are entry ids or `chain:<id>`, each in
+ *  its own goal (GOAL_OF) and on the page once. Everything else stays in WF_ENTRIES / WF_CHAINS: its tab, its menus, direct links, search (the
+ *  page lists matches under "Also in the tabs"), Explore, Recreate, /workflows/:id and the MCP catalogue all keep it. To move a card: edit these lists. */
+export const WF_PAGE_PICKS: Record<WfGoal, string[]> = {
+  create: ['v-loop', 'v-morph', 'd-image-to-3d'],
+  shop: ['i-try-on', 'i-material-swap', 'v-orbit-shot', 'i-remove-bg'],
+  ads: ['i-ad-pack', 'v-ugc-ad', 'v-reframe', 'a-translate', 'v-photos-to-reel'],
+  people: ['i-character-sheet', 'v-motion-control', 'v-object-swap', 'chain:presenter'],
+  film: ['chain:kdrama', 'v-direct-a-shot', 'v-extend'],
+  music: ['a-soundtrack-music', 'a-sfx', 'a-cover'],
+  fix: ['i-relight', 'i-erase', 'i-image-layers'],
+};
+/** Every card on the page, Start here first, then the goals in order. */
+export const WF_PAGE_ALL: string[] = [...WF_START_HERE, ...Object.values(WF_PAGE_PICKS).flat()];
+/** Shown on the Workflows page (Start here or a goal's picks). */
+export const onWorkflowsPage = (id: string): boolean => WF_PAGE_ALL.includes(id);
+export const isStartHere = (id: string): boolean => WF_START_HERE.includes(id);
 /** The page cards' own pictures (2026-10-28): one 720×600 WebP per card (2× the card, its 6:5 shape), the strongest frame of the card's shipped
- *  example (Sketch → Film and Upscale: before | after on a diagonal; Image to layers: the picture with its layers fanned out behind it), no
- *  metadata, under web/public/examples/workflows. Keys as in WF_PAGE_FEATURED. A card without one keeps its example's own poster, or our drawing
- *  when there is no example (the five audio cards). The sheet keeps the full example (the clip, the before / after). Every file ships
- *  with the repo, so a fresh install shows them (test: server/test/workflow-catalog.test.ts). */
+ *  example (Upscale: before | after on a diagonal; Split into layers: the picture with its layers fanned out behind it), no metadata, under
+ *  web/public/examples/workflows. A card with no picture to show keeps our drawing: no example yet, or a sound (its sheet plays it). The sheet
+ *  keeps the full example (the clip, the before / after, the sound). Every file ships with the repo, so a fresh install shows them (test:
+ *  server/test/workflow-catalog.test.ts). */
 export const WF_CARD_THUMBS: Record<string, string> = Object.fromEntries(
-  ['chain:sketch-film', 'chain:long-take', 'v-create', 'i-character-sheet', 'v-motion-control', 'v-object-swap', 'i-image-layers', 'i-upscale', 'chain:kdrama', 'v-extend', 'v-direct-a-shot', 'i-try-on']
+  ['i-create-image', 'v-create', 'v-lip-sync', 'i-upscale', 'v-loop', 'v-morph', 'i-try-on', 'i-character-sheet', 'v-motion-control', 'v-object-swap', 'chain:kdrama', 'v-direct-a-shot',
+    'v-extend', 'i-relight', 'i-image-layers']
     .map((id) => [id, `/examples/workflows/${id.replace(':', '-')}.webp`]));
 export const cardThumb = (id: string): string | null => WF_CARD_THUMBS[id] ?? null;
-/** The same picture before the change (Try-On: the person in the pink top), same crop: the card fades from it to its picture on hover. */
-export const WF_CARD_BEFORE: Record<string, string> = { 'i-try-on': '/examples/workflows/i-try-on-before.webp' };
+/** The same picture before the change (Try-On: the person in the pink top; Relight: the room before), same crop: the card fades from it to its picture on hover. */
+export const WF_CARD_BEFORE: Record<string, string> = { 'i-try-on': '/examples/workflows/i-try-on-before.webp', 'i-relight': '/examples/workflows/i-relight-before.webp' };
 export const cardBefore = (id: string): string | null => WF_CARD_BEFORE[id] ?? null;
-export const isFeaturedOnPage = (id: string): boolean => WF_PAGE_FEATURED.includes(id);
 
 // ------------------------------------------------------------------ coverage (the contract: test/workflow-contract.test.ts)
 /** Every workflow the app's tabs offer today, by key (`video:extend`, `image:relight`, `audio:music`, `3d:turntable`, `fx:vanish`): the
@@ -250,18 +267,18 @@ export interface WfChain {
 }
 export const WF_CHAINS: WfChain[] = [
   /* our own presenter (2026-10-27): a GPT Image 2.5 Flare portrait plus a Flare edit adding the logo, the voice on Qwen3 TTS, then InfiniteTalk on Comfy Cloud */
-  { id: 'presenter', name: 'A talking presenter', line: 'A portrait, a voice, then the face speaks your script.', tags: ['avatar', 'talking head', 'explainer'], art: 'talk',
-    steps: [{ entry: 'i-create-image', say: 'Make the presenter’s portrait, then edit in your logo', model: 'gpt-image-2.5-flare', jobs: ['df027961', '160c5f7a'] },
+  { id: 'presenter', name: 'A talking presenter', line: 'Your own presenter, reading your script.', tags: ['avatar', 'talking head', 'explainer'], art: 'talk',
+    steps: [{ entry: 'i-create-image', say: 'Make a portrait, add your logo', model: 'gpt-image-2.5-flare', jobs: ['df027961', '160c5f7a'] },
       { entry: 'a-voiceover', say: 'Read your script aloud', model: 'qwen3-tts', jobs: ['952f0862'] }, { entry: 'v-lip-sync', say: 'Make the portrait say it', model: 'infinitetalk-wan-2.1', jobs: ['3f3fa8b8'] }],
-    handoff: 'On the voice result, “Make it talk” carries the audio into Lip Sync; add the portrait there.' },
+    handoff: 'On the voice, press Make it talk, then add the portrait.' },
   { id: 'sketch-film', name: 'Sketch → Film', line: 'Block the shot in 3D, paint the first frame, film it with the same camera path.', tags: ['previz', 'mockup', 'camera'], featured: 'ltx-mockup-film', skill: 'direct-a-shot',
     steps: [{ entry: 'v-direct-a-shot', say: 'Stage the scene and the camera, record a free mockup', modelName: 'In your browser', jobs: ['a1a50672'] },
       { entry: 'i-create-image', say: 'Paint the mockup’s first frame into a photo', model: 'gpt-image-2.5-flare', jobs: ['645de70d'] }, { entry: 'v-direct-a-shot', say: 'Render the film: LTX-2.5 follows the mockup', modelName: LTX_LAYOUT, jobs: ['1a1a33c6'] }],
     handoff: 'Stage and render on the Direct a Shot page. We painted our first frame in Create Image; the page can paint one for you, free on your computer, or you can skip it.' },
   /* our own scene (Explore "Script → Screen", job fb0b44ca): one 15 s MiniMax H3 take from the script, voiced, on Comfy Cloud ($1.20) */
-  { id: 'kdrama', name: 'Script → K-drama scene', line: 'Paste a script: who speaks, the lines, the shots. MiniMax H3 films and voices it in one take.', tags: ['drama', 'story', 'series', 'dialogue'], featured: 'h3-kdrama-script', skill: 'drama-series',
-    steps: [{ entry: 'v-create', say: 'Paste the script; MiniMax H3 films and voices the scene', model: 'minimax-h3', jobs: ['fb0b44ca'] }],
-    handoff: 'Our scene is one 15 s take. Press Extend on any result to keep it going.' },
+  { id: 'kdrama', name: 'Film a scene from a script', line: 'Paste a script, get a voiced scene.', tags: ['drama', 'story', 'series', 'dialogue', 'k-drama', 'script'], featured: 'h3-kdrama-script', skill: 'drama-series',
+    steps: [{ entry: 'v-create', say: 'Paste the script, get the scene, voiced', model: 'minimax-h3', jobs: ['fb0b44ca'] }],
+    handoff: 'Our scene is one 15-second take. Press Extend on it to keep it going.' },
   { id: 'long-take', name: 'One long take', line: 'A clip, then keep the shot going for 20 seconds and more.', tags: ['extend', 'continue'], featured: 'h3-koi-take',
     steps: [{ entry: 'v-create', say: 'Make the opening shot', model: 'minimax-h3', jobs: ['42ceb1af'] }, { entry: 'v-extend', say: 'Continue the same action and camera', model: 'minimax-h3-extend', jobs: ['50d2a3a0'] }],
     handoff: 'On a video result, Extend picks it up; “Continue from last frame” works on any model.' },
@@ -289,8 +306,10 @@ export function matchesQuery(hay: string, q: string): boolean {
   const words = q.toLowerCase().replace(/[→>]/g, ' ').split(/\s+/).filter(Boolean); if (!words.length) return true;
   const h = hay.toLowerCase(); return words.every((w) => h.includes(w));
 }
-export const entryHay = (e: WfEntry, extra = ''): string => [e.name, e.line, e.needs, WF_CATS.find((c) => c.id === e.cat)?.label, e.medium, ...e.tags, extra].join(' ');
-export const chainHay = (c: WfChain): string => [c.name, c.line, ...c.tags, ...c.steps.map((s) => `${wfEntryById(s.entry)?.name ?? ''} ${s.say}`)].join(' ');
+/** a goal's label as search words (shared/workflowGoals.ts): "shop" or "ads" finds that goal's workflows */
+const goalWords = (id: string) => goalById(goalOf(id) ?? '')?.label ?? '';
+export const entryHay = (e: WfEntry, extra = ''): string => [e.name, e.tabName, e.line, e.needs, WF_CATS.find((c) => c.id === e.cat)?.label, goalWords(e.id), e.medium, ...e.tags, extra].join(' ');
+export const chainHay = (c: WfChain): string => [c.name, c.line, goalWords(`chain:${c.id}`), ...c.tags, ...c.steps.map((s) => `${wfEntryById(s.entry)?.name ?? ''} ${s.say}`)].join(' ');
 /** Category counts for the given entries; empty categories left out (the page hides them). */
 export function catCounts(list: WfEntry[]): { id: WfCat; label: string; line: string; n: number }[] {
   return WF_CATS.map((c) => ({ ...c, n: list.filter((e) => e.cat === c.id).length })).filter((c) => c.n > 0);

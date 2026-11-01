@@ -11,5 +11,5 @@ import { GET_APP_URL } from '../../../server/src/shared/projectLinks';
 export const REPO_URL = GET_APP_URL;
 /** A file in the repo's docs on GitHub (docs/INSTALL.md → …/blob/main/docs/INSTALL.md), with an optional #anchor. */
 export const repoDoc = (path: string, anchor = '') => `${REPO_URL}/blob/main/${path}${anchor ? `#${anchor}` : ''}`;
-/** Where Translate (voice) says to set up its speech-translation server. */
+/** How Translate (voice) works: the Speech translation section of docs/CONFIGURATION.md. */
 export const TRANSLATE_DOC = repoDoc('docs/CONFIGURATION.md', 'speech-translation');

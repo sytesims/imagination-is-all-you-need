@@ -16,26 +16,28 @@ import { ToolIconFor, SearchIcon, CloseIcon, OfficialBadgeIcon, CommunityIcon, S
 import { FlowDiagram, hasDiagram } from '../exploreArt';
 import { featuredByKey, runByJob, type FeaturedRun } from '../../../../server/src/shared/featured';
 import { resolveRow, whyHidden, runsPrice, runCost, openHrefOf, type Row, type Hub } from './workflowRows';
-import { WF_ENTRIES, WF_CHAINS, WF_CATS, WF_PAGE_FEATURED, WF_PAGE_KEEP, onWorkflowsPage, cardThumb, entryHay, catCounts, type WfChain, type WfCat } from '../../../../server/src/shared/workflowCatalog';
+import { WF_ENTRIES, WF_CHAINS, WF_PAGE_PICKS, onWorkflowsPage, cardThumb, entryHay, type WfChain } from '../../../../server/src/shared/workflowCatalog';
+import { WF_GOALS, WF_START_HERE, goalOf, goalById, isGoal, type WfGoal } from '../../../../server/src/shared/workflowGoals';
 import { fromEntry, fromChain, chainId, wfId, buildWorkflowIndex, type LibWorkflow } from '../../../../server/src/shared/libraryWorkflows';
 import '../explore.css';
 import './workflowFinder.css';
 /**
- * Workflows (2026-10-27, the Finder): every workflow the app can run here, by the job it does (server/src/shared/workflowCatalog.ts: one
- * category each, plus the multi-step chains), with the real models and, per model, where it runs and its price from GET /api/tools
+ * Workflows (2026-10-27, the Finder; 2026-11-01 by goal): "Start here", then one short section per goal (server/src/shared/workflowGoals.ts,
+ * the picks in workflowCatalog.ts WF_PAGE_PICKS; the rail is the same list), workflows and multi-step chains, with the real models and, per model, where it runs and its price from GET /api/tools
  * (shared/runLabel.ts words, shared/RunLine.tsx), and image examples from GET /api/workflow-hub. A workflow no model can run here is left out
  * (the rail names what was left out and why).
- *  - Left: the brand line, search ("/" focuses it), the categories with their counts (empty ones hidden), Multi-step and Saved, Surprise me.
- *  - Right: goals, "Yours" (saved workflows and chains, this browser only), then the picks in grids that fill the width, in Explore's
- *    banded tile (explore.css .xp-tile.is-band): the picture, then on a solid band the name, one line and the model (where it runs and the price depend on the
+ *  - Left: the brand line, search ("/" focuses it), Start here and the goals with their counts (empty ones hidden), Step by step and Saved, Surprise me.
+ *  - Right: "Yours" (saved workflows and chains, this browser only), then the sections in grids that fill the width, in Explore's
+ *    banded tile (explore.css .xp-tile.is-band): the picture, then on a solid band the name, one line and a small model chip (where it runs and the price depend on the
  *    user's setup, so they live in the sheet and on the tab's Generate, not on the card).
  * A card opens the workflow sheet: its example, how it works, every model with every place it runs (status and price), the source credit and
  * licence, then "Open in <tab>" (goToWorkflow; the tab's code is fetched as the sheet opens, so the click doesn't wait). A workflow with no
- * example of ours shows our own drawing of the flow, labelled as such. ?q= prefills the search; ?cat= picks a category; both follow the page.
+ * example of ours shows our own drawing of the flow, labelled as such. ?q= prefills the search; ?cat= picks a goal (or start); both follow the page.
  */
 const TAB: [string, string][] = [[IMAGE_PAGE, 'Image'], [VIDEO_PAGE, 'Video'], [AUDIO_PAGE, 'Audio'], [THREE_D_PAGE, '3D']];
 export const tabOf = (href: string) => TAB.find(([p]) => href === p || /^[/?#]/.test(href.slice(p.length)) && href.startsWith(p))?.[1] ?? 'the app';
-const catLabel = (c: WfCat) => WF_CATS.find((x) => x.id === c)?.label ?? c;
+/** the goal's label for a workflow or chain id (the sheet's kicker) */
+const goalLabel = (id: string) => goalById(goalOf(id) ?? '')?.label ?? '';
 const mins = (ms: number) => ms < 60_000 ? `${Math.round(ms / 1000)} s` : `${Math.round(ms / 60_000)} min`;
 export { resolveRow, runsPrice, type Row };
 /** The tab's code, fetched once (a card hover, a sheet opening), so "Open in" doesn't wait for it. */
@@ -78,12 +80,12 @@ function useIdeas() {
   useEffect(() => { let live = true; fetch('/api/library/workflows?kind=idea&limit=200').then((r) => (r.ok ? r.json() : null)).then((d) => { if (live && Array.isArray(d?.items)) setIdeas(d.items); }).catch(() => undefined); return () => { live = false; }; }, []);
   return ideas;
 }
-/** Search + category filter. `cat`: all | chains | saved | ideas | a category. Both follow the address (replaceState: Back leaves the page, not a keystroke).
+/** Search + goal filter. `cat`: all | start | chains | saved | ideas | a goal. Both follow the address (replaceState: Back leaves the page, not a keystroke).
  *  Search ranks with the library index (shared/bm25.ts via shared/libraryWorkflows.ts): the same ranking agents get from search_workflows. */
 function useFilter(allRows: Row[], allChains: WfChain[], ideas: LibWorkflow[]) {
-  /* the page shows the user's picks (WF_PAGE_FEATURED / WF_PAGE_KEEP); a search still looks through every workflow and lists the others under "Also in the tabs" */
+  /* the page shows the user's picks (Start here + WF_PAGE_PICKS); a search still looks through every workflow and lists the others under "Also in the tabs" */
   const rows = useMemo(() => allRows.filter((r) => onWorkflowsPage(r.e.id)), [allRows]); const chainsHere = useMemo(() => allChains.filter((c) => onWorkflowsPage(`chain:${c.id}`)), [allChains]);
-  const [q, setQ] = useState(() => new URLSearchParams(location.search).get('q') ?? ''); const [cat, setCat] = useState<string>(() => { const c = new URLSearchParams(location.search).get('cat'); return c && (c === 'chains' || c === 'saved' || c === 'ideas' || WF_CATS.some((x) => x.id === c)) ? c : 'all'; });
+  const [q, setQ] = useState(() => new URLSearchParams(location.search).get('q') ?? ''); const [cat, setCat] = useState<string>(() => { const c = new URLSearchParams(location.search).get('cat'); return c && (c === 'start' || c === 'chains' || c === 'saved' || c === 'ideas' || isGoal(c)) ? c : 'all'; });
   useEffect(() => { if (location.pathname !== '/workflows') return; const u = new URLSearchParams(location.search); q ? u.set('q', q) : u.delete('q'); cat !== 'all' ? u.set('cat', cat) : u.delete('cat');
     const s = u.toString(); const next = `${location.pathname}${s ? `?${s}` : ''}${location.hash}`; if (next !== `${location.pathname}${location.search}${location.hash}`) history.replaceState(history.state, '', next); }, [q, cat]);
   /* one index over the rows (with their real model names), the chains that run here and the ideas */
@@ -95,8 +97,7 @@ function useFilter(allRows: Row[], allChains: WfChain[], ideas: LibWorkflow[]) {
   const ideaHits = useMemo(() => ideas.filter((w) => score.has(w.id)).sort((a, b) => (q ? rank(a.id) - rank(b.id) : 0)), [ideas, score, q]);
   /* a search that matches workflows this page doesn't show: they still open (their sheet, their tab) */
   const elsewhere = useMemo(() => (q.trim() ? allRows.filter((r) => !onWorkflowsPage(r.e.id) && score.has(wfId(r.e.id))).sort((a, b) => rank(wfId(a.e.id)) - rank(wfId(b.e.id))).slice(0, 8) : []), [allRows, score, q]); // eslint-disable-line react-hooks/exhaustive-deps
-  const counts = useMemo(() => catCounts(hits.map((r) => r.e)), [hits]);
-  return { q, setQ, cat, setCat, rows, chainsHere, hits, chains, ideas: ideaHits, elsewhere, counts, ranked: !!q.trim() };
+  return { q, setQ, cat, setCat, rows, chainsHere, hits, chains, ideas: ideaHits, elsewhere, ranked: !!q.trim() };
 }
 type Filter = ReturnType<typeof useFilter>;
 
@@ -125,21 +126,16 @@ function Panel({ label, onClose, children }: { label: string; onClose: () => voi
     </div></div>, document.body);
 }
 
-/* goals that land on the picks (2026-10-28) */
-const GOALS: [string, string][] = [['Turn a sketch into a film', 'sketch film'], ['Keep a shot going', 'longer'], ['Swap a character', 'swap'], ['Score my clip', 'score'], ['Try on clothes', 'outfit'], ['Fix a blurry photo', 'sharper']];
 function Search({ f, inputRef }: { f: Filter; inputRef: React.RefObject<HTMLInputElement> }) {
   return <label className="wn-search"><SearchIcon size={16} />
     <input ref={inputRef} type="search" value={f.q} onChange={(e) => f.setQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Escape' && f.q) { e.preventDefault(); e.stopPropagation(); f.setQ(''); } }}
       placeholder="Search workflows" aria-label="Search workflows" aria-keyshortcuts="/" data-testid="wn-search" />
     {f.q ? <button type="button" className="wn-clear" aria-label="Clear search" onClick={() => { f.setQ(''); inputRef.current?.focus(); }}><CloseIcon size={14} /></button> : <kbd className="wn-kbd" aria-hidden>/</kbd>}</label>;
 }
-function Goals({ f }: { f: Filter }) {
-  return <div className="wn-goals" aria-label="Try a goal">{GOALS.map(([l, q]) => <button key={l} type="button" className={`xp-chip wn-goal${f.q === q ? ' on' : ''}`} aria-pressed={f.q === q} onClick={() => f.setQ(f.q === q ? '' : q)}>{l}</button>)}</div>;
-}
 /** No example of ours yet: our own drawing of the flow (Explore's art), honestly labelled where there is room (`label`). */
 function Art({ r, label }: { r: Row; label?: boolean }) {
   const a = r.e.art; return <span className="wn-art" data-testid="wn-art"><span className="xp-art" aria-hidden>{a && hasDiagram(a) ? <FlowDiagram art={a} /> : <ToolIconFor id={r.e.toolId} size={44} strokeWidth={1.3} />}</span>
-    {label && <span className="wn-art-t">Our drawing of how it works · no example yet</span>}</span>;
+    {label && <span className="wn-art-t">How it works · no example yet</span>}</span>;
 }
 /** `thumb`: the card's own picture (Row.thumb): a clip's poster, or the picture itself for a still or a before / after (the sheet keeps the wipe). */
 function MediaView({ r, mode = 'hover', muted = true, label, thumb }: { r: Row; mode?: 'hover' | 'view'; muted?: boolean; label?: boolean; thumb?: string | null }) {
@@ -150,33 +146,37 @@ function MediaView({ r, mode = 'hover', muted = true, label, thumb }: { r: Row; 
   if (thumb) return <HoverClip src={thumb} poster={thumb} label={r.e.name} />;
   if (m.kind === 'still') return <HoverClip src={m.src} poster={m.src} label={r.e.name} />;
   if (m.kind === 'split') return <SplitPreview className="wn-split" before={m.before} after={m.after} beforeLabel={m.bl} afterLabel={m.al} testId="wn-split" />;
+  /* a real sound of ours: our drawing on the card; in the sheet, the sound itself under it */
+  if (m.kind === 'sound') return mode === 'view'
+    ? <span className="wn-art wn-sound" data-testid="wn-sound"><span className="xp-art" aria-hidden>{r.e.art && hasDiagram(r.e.art) ? <FlowDiagram art={r.e.art} /> : <ToolIconFor id={r.e.toolId} size={44} strokeWidth={1.3} />}</span>
+      <audio controls preload="none" src={m.src} aria-label={`${r.e.name}: our example`} /></span>
+    : <Art r={r} />;
   return <Art r={r} label={label} />;
 }
 function SaveBtn({ id, s, label }: { id: string; s: Saved; label: string }) {
   const on = s.saved.includes(id);
   return <button type="button" className={`wn-save${on ? ' on' : ''}`} aria-pressed={on} aria-label={on ? `Remove ${label} from saved` : `Save ${label}`} {...tip(on ? 'Saved' : 'Save')} onClick={(e) => { e.stopPropagation(); s.toggle(id); }} data-testid="wn-save"><SavedTagIcon size={15} /></button>;
 }
-/** "Made here" (our own recorded run; left off when every card on the page is made here) or, for a look's picture with no recorded run, "Preview". Nothing on our drawings. */
-function Badge({ r, show }: { r: Row; show: boolean }) {
-  if (r.made) return !show ? null : <span className="xp-badge wn-made" {...tip(`Our own run: ${r.runs.map((x) => `${x.model}, ${runCost(x)}`).join(' → ')}${r.runs.length > 1 ? ` (${runsPrice(r.runs)?.text} in all)` : ''}`)}>Made here</span>;
-  return r.media.kind !== 'art' ? <span className="xp-badge" {...tip('A look’s preview picture; we have no recorded run of it')}>Preview</span> : null;
+/** "Example" on a look's picture with no recorded run of ours (a preset's own picture). Nothing on our runs or our drawings. */
+function Badge({ r }: { r: Row }) {
+  return !r.made && r.media.kind !== 'art' && r.media.kind !== 'sound' ? <span className="xp-badge" {...tip('An example picture, not one of our own runs')}>Example</span> : null;
 }
 
 /** A card's model name, short (the sheet keeps the full one): "ByteDance Seedream 5.0 Flash · layers (hosted)" → "Seedream 5.0 Flash". */
 export const shortModel = (n: string) => n.replace(/\s*·.*$/, '').replace(/\s*\((hosted|local)\)$/i, '').replace(/^ByteDance\s+/, '');
 /** A workflow card, Explore's tile with the caption on a solid band under the picture (xp-tile is-band): name, line, model (no place or price,
- *  those depend on the setup). The whole card opens the sheet. `showMade`: the "Made here" mark (off when every card is made here). */
-function Card({ r, onOpen, s, i = 0, showMade }: { r: Row; onOpen: () => void; s: Saved; i?: number; showMade: boolean }) {
+ *  those depend on the setup). The whole card opens the sheet. */
+function Card({ r, onOpen, s, i = 0 }: { r: Row; onOpen: () => void; s: Saved; i?: number }) {
   /* a click anywhere opens it (the before / after wipe is hover-only on a card); only the Save button keeps its own click */
   const open = (ev: React.MouseEvent) => { if ((ev.target as HTMLElement).closest('a,button')) return; onOpen(); };
   return <div className={`xp-tile is-band wn-card${r.media.kind !== 'art' ? ' is-real' : ''}`} onClick={open} onPointerEnter={() => warm(r.e.href)} data-hover-play data-testid={`wn-card-${r.e.id}`} style={{ ['--i' as string]: Math.min(i, 12) }}>
     <span className="xp-tile-media wn-media"><MediaView r={r} thumb={r.thumb} /></span>
-    <span className="wn-top"><Badge r={r} show={showMade} /></span>
+    <span className="wn-top"><Badge r={r} /></span>
     <SaveBtn id={r.e.id} s={s} label={r.e.name} />
     <span className="xp-cap wn-cap">
       <button type="button" className="xp-title wn-title" onClick={onOpen} onFocus={() => warm(r.e.href)} aria-label={`${r.e.name}: ${r.e.line}. Details`}>{r.e.name}</button>
       <span className="xp-line">{r.e.line}</span>
-      <span className="xp-meta wn-meta"><span className="xp-model wn-model" title={r.models.map((m) => m.name).join(', ')}><span>{r.model ? shortModel(r.model) : 'Model on the bar'}</span>{r.models.length > 1 && <small>+{r.models.length - 1}</small>}</span></span>
+      <span className="xp-meta wn-meta"><span className="wn-chip" title={r.models.map((m) => m.name).join(', ')}>{r.model ? shortModel(r.model) : 'Runs in the app'}</span></span>
     </span>
   </div>;
 }
@@ -194,16 +194,15 @@ function chainFacts(c: WfChain, rows: Row[]) {
 }
 const ChainArt = ({ c }: { c: WfChain }) => <span className="xp-art" aria-hidden>{c.art && hasDiagram(c.art) ? <FlowDiagram art={c.art} /> : <GenerateIcon size={40} />}</span>;
 /** A chain as a card, the same size as a workflow’s: its clip and its steps’ models. Opens the chain’s sheet. */
-function ChainTile({ c, rows, onOpen, s, i = 0, showMade }: { c: WfChain; rows: Row[]; onOpen: () => void; s: Saved; i?: number; showMade: boolean }) {
+function ChainTile({ c, rows, onOpen, s, i = 0 }: { c: WfChain; rows: Row[]; onOpen: () => void; s: Saved; i?: number }) {
   const k = chainFacts(c, rows); const open = (ev: React.MouseEvent) => { if ((ev.target as HTMLElement).closest('a,button')) return; onOpen(); };
   return <div className={`xp-tile is-band wn-card wn-chaintile${k.f ? ' is-real' : ''}`} onClick={open} onPointerEnter={() => k.startHref && warm(k.startHref)} data-hover-play data-testid={`wn-chain-${c.id}`} style={{ ['--i' as string]: Math.min(i, 12) }}>
     <span className="xp-tile-media wn-media">{k.f ? <HoverClip src={k.f.out.url} poster={cardThumb(`chain:${c.id}`) ?? k.f.out.poster} label={c.name} /> : <span className="wn-art"><ChainArt c={c} /></span>}</span>
-    {showMade && k.made && <span className="wn-top"><span className="xp-badge wn-made">Made here</span></span>}
     <SaveBtn id={`chain:${c.id}`} s={s} label={c.name} />
     <span className="xp-cap wn-cap">
       <button type="button" className="xp-title wn-title" onClick={onOpen} aria-label={`${c.name}: ${c.line}. ${c.steps.length} steps. Details`}>{c.name}</button>
       <span className="xp-line">{c.line}</span>
-      <span className="xp-meta wn-meta"><span className="xp-model wn-model" title={k.steps.map((x) => x.model).filter(Boolean).join(' → ')}><span>{[...new Set(k.steps.map((x) => x.model).filter(Boolean))].join(' → ')}</span></span></span>
+      <span className="xp-meta wn-meta"><span className="wn-chip" title={k.steps.map((x) => x.model).filter(Boolean).join(' → ')}>{c.steps.length > 1 ? `${c.steps.length} steps` : k.steps[0].model ? shortModel(k.steps[0].model) : '1 step'}</span></span>
     </span>
   </div>;
 }
@@ -215,18 +214,18 @@ function ChainSheet({ c, rows, s, onClose, onOpen }: { c: WfChain; rows: Row[]; 
   const all = k.steps.flatMap((x) => x.rs); const tab = k.startHref ? tabOf(k.startHref) : '';
   return <Panel label={`${c.name}: how it works`} onClose={onClose}>
     <div className="wv-pmedia wn-pmedia" data-hover-play>
-      <span className="wn-pframe" key={c.id}>{k.f ? <HoverClip src={k.f.out.url} poster={k.f.out.poster} label={c.name} mode="view" /> : <span className="wn-art"><ChainArt c={c} /><span className="wn-art-t">Our drawing of how it works · no example yet</span></span>}</span>
-      {all.length > 0 && <span className="wn-pcap">Made here · {all.map((x) => `${x.model} · ${x.place}, ${runCost(x)}`).join(' → ')}{all.length > 1 ? ` · ${runsPrice(all)?.text} in all` : ''}</span>}
+      <span className="wn-pframe" key={c.id}>{k.f ? <HoverClip src={k.f.out.url} poster={k.f.out.poster} label={c.name} mode="view" /> : <span className="wn-art"><ChainArt c={c} /><span className="wn-art-t">How it works · no example yet</span></span>}</span>
+      {all.length > 0 && <span className="wn-pcap">{all.map((x) => `${x.model} · ${x.place}, ${runCost(x)}`).join(' → ')}{all.length > 1 ? ` · ${runsPrice(all)?.text} in all` : ''}</span>}
     </div>
     <div className="wv-pbody" data-testid="wn-chain-sheet">
-      <p className="wv-kicker">Multi-step · {c.steps.length} {c.steps.length === 1 ? 'step' : 'steps'}</p>
+      <p className="wv-kicker">{c.steps.length} {c.steps.length === 1 ? 'step' : 'steps'}</p>
       <h2 className="disp wv-ptitle">{c.name}</h2>
       <p className="wn-pline">{c.line}</p>
       <h3 className="wv-h">The steps</h3>
       <ol className="wn-steps">{k.steps.map(({ st, r, rs, model }, i) => { if (!r) return null; const cost = runsPrice(rs);
         return <li key={i}><button type="button" onClick={() => onOpen(r)} onPointerEnter={() => warm(r.e.href)}><i>{i + 1}</i><span><b>{r.e.name}</b><small>{st.say}</small><small>{[model, cost?.text.replace(' · on your computer', '')].filter(Boolean).join(' · ')}</small></span>
-          {rs.length > 0 && <em className="wn-ran" {...tip(`Our own run: ${rs.map((x) => `${x.model}, ${x.place}, ${runCost(x)} (job ${x.jobId})`).join(' → ')}`)}>Made here</em>}</button></li>; })}</ol>
-      <h3 className="wv-h">Hand-off</h3><p className="wv-muted">{c.handoff}</p>
+</button></li>; })}</ol>
+      <h3 className="wv-h">Between the steps</h3><p className="wv-muted">{c.handoff}</p>
       {(c.source || c.skill) && <div className="wn-chain-foot">
         {c.source && <a href={c.source.url} target="_blank" rel="noreferrer" className="wn-skill" data-testid={`wn-chain-src-${c.id}`} {...tip(`${c.source.name}, by ${c.source.author}. We run it step by step on our tabs. Licence: ${c.source.licence}.`)}>Official Comfy template</a>}
         {c.skill && <Link to="/mcp" className="wn-skill" {...tip(`A related agent skill (${c.skill}): your AI agent can plan a similar path with it, not exactly these steps. It quotes first.`)}>Agent skill</Link>}</div>}
@@ -256,32 +255,33 @@ function Sheet({ r, rows, chains, s, onClose, onOpen, mock }: { r: Row; rows: Ro
     <div className="wv-pmedia wn-pmedia" data-hover-play>
       <span className="wn-pframe" key={r.e.id}><MediaView r={r} mode="view" muted={!sound} label thumb={r.media.kind === 'still' ? r.thumb : null} /></span>
       {r.media.kind === 'clip' && r.media.sound && !prefersReducedMotion() && <SoundToggle on={sound} onToggle={toggleSound} testId="wn-sound" />}
-      {r.made && r.runs.length > 0 && <span className="wn-pcap" data-testid="wn-pcap">Made here · {r.runs.map((x) => `${x.model} · ${x.place}, ${runCost(x)}`).join(' → ')}{r.runs.length > 1 ? ` · ${runsPrice(r.runs)?.text} in all` : ''}{r.runMs ? ` · took ${mins(r.runMs)}` : ''}</span>}
+      {r.made && r.runs.length > 0 && <span className="wn-pcap" data-testid="wn-pcap">{r.runs.map((x) => `${x.model} · ${x.place}, ${runCost(x)}`).join(' → ')}{r.runs.length > 1 ? ` · ${runsPrice(r.runs)?.text} in all` : ''}{r.runMs ? ` · took ${mins(r.runMs)}` : ''}</span>}
     </div>
     <div className="wv-pbody" data-testid="wn-sheet">
-      <p className="wv-kicker">{catLabel(r.e.cat)}</p>
+      <p className="wv-kicker">{goalLabel(r.e.id)}</p>
       <h2 className="disp wv-ptitle">{r.e.name}</h2>
       <p className="wn-pline">{r.e.line}</p>
+      {r.e.tabName && <p className="wv-muted wn-tabname" data-testid="wn-tabname">In the {tab} menu: {r.e.tabName}</p>}
       <div className="wv-pills"><span className="wv-pill">Needs: {r.e.needs}</span><RunLine p={r.run} testId="wn-sheet-run" /></div>
-      {mock && <p className="wv-muted wn-mocknote">Sample mode: a run here returns a sample and bills nothing; prices are what a real run costs.</p>}
+      {mock && <p className="wv-muted wn-mocknote">Sample mode: you get a sample and pay nothing. Prices show what a real run costs.</p>}
       {r.e.how && <><h3 className="wv-h">How it works</h3><ol className="wn-how">{r.e.how.map(([h, b]) => <li key={h}><b>{h}</b><span>{b}</span></li>)}</ol></>}
       <h3 className="wv-h">Models and where they run <span className="wn-n">{r.models.length}</span></h3>
       {r.models.length ? <ul className="wn-models" data-testid="wn-models">{models.map((m) => <li key={m.key}><b title={m.name}>{m.name}</b>
         <RunPlaces m={m.raw} />
         {m.licence && <small><Link to={`/licenses#${encodeURIComponent(m.licence.id)}`}>{m.licence.name}</Link></small>}</li>)}
         {r.models.length > 5 && <li className="wn-more-m"><button type="button" className="link-btn" onClick={() => setAll(!all)}>{all ? 'Fewer' : `All ${r.models.length} models`}</button></li>}</ul>
-        : <p className="wv-muted">It runs in the app itself, free on {device()}.</p>}
+        : <p className="wv-muted">It runs inside the app, free on {device()}.</p>}
       <h3 className="wv-h">Source</h3>
       {r.source ? <div className="wv-wf" data-testid="wn-source"><span className="wn-src"><span className={`wfp-badge wfp-${r.source.source}`}><SrcIc size={12} />{srcLabel}</span></span>
         <span className="wv-wf-n">{r.source.url ? <a href={r.source.url} target="_blank" rel="noreferrer">{r.source.name}<span aria-hidden> ↗</span></a> : r.source.name}</span>
         {(r.source.author || r.source.licence) && <span className="wv-muted">{[r.source.author, r.source.licence].filter(Boolean).join(' · ')}</span>}
         {r.source.file && <a className="wv-dl" href={`/api/workflows/${encodeURIComponent(r.source.file)}`} download={r.source.file}>Download {r.source.file}</a>}</div>
-        : <p className="wv-muted">{!r.models.length ? 'No ComfyUI graph: it runs in the app itself, on your computer.' : `No graph credit recorded yet for ${r.models[0].name}.`}</p>}
+        : <p className="wv-muted">{!r.models.length ? 'It runs inside the app, on your computer.' : `No source credit yet for ${r.models[0].name}.`}</p>}
       {partOf.length > 0 && <><h3 className="wv-h">Part of</h3><div className="wn-partof">{partOf.map((c) => { const nx = c.steps.findIndex((x) => x.entry === r.e.id) + 1; const n = c.steps[nx] ? rows.find((x) => x.e.id === c.steps[nx].entry) : null;
         return <span key={c.id}><b>{c.name}</b>{n ? <> · next: <button type="button" className="link-btn" onClick={() => onOpen(n)}>{n.e.name}</button></> : ' · last step'}</span>; })}</div></>}
       <div className="wv-pacts">
         <a href={r.openHref} onClick={(e) => { setGoing(true); goClick(r.openHref)(e); }} className="btn wv-pri" aria-busy={going || undefined} data-testid="wn-open" {...tip(r.models[0] ? `Opens ${tab} on ${r.models[0].name}` : null)}>{going ? `Opening ${tab}…` : `Open in ${tab}`}</a>
-        {recreate && <a href={recreate} onClick={goClick(recreate)} className="btn">Make this example again</a>}
+        {recreate && <a href={recreate} onClick={goClick(recreate)} className="btn">Make one like this</a>}
         <SaveRowBtn id={r.e.id} s={s} />
       </div>
     </div>
@@ -303,17 +303,17 @@ function Empty({ f, rows, open }: { f: Filter; rows: Row[]; open: (r: Row) => vo
   const near = nearMisses(rows, f.q);
   return <div className="wn-empty" data-testid="wn-empty"><b className="disp">Nothing for “{f.q}” yet.</b>
     {near.length ? <><p>Closest we have:</p><div className="wn-near" data-testid="wn-near">{near.map((r) => <button key={r.e.id} type="button" className="wn-pin" onClick={() => open(r)}><ToolIconFor id={r.e.toolId} size={16} />{r.e.name}</button>)}</div></>
-      : <p>Try plainer words or a goal below, or ask your AI agent: it can chain any of these workflows for you.</p>}
-    <div className="wn-empty-acts"><button type="button" className="btn" onClick={() => { f.setQ(''); f.setCat('all'); }}>Show every workflow</button><Link to="/mcp" className="btn">Ask your agent</Link></div></div>;
+      : <p>Try simpler words, or ask your AI agent to build it for you.</p>}
+    <div className="wn-empty-acts"><button type="button" className="btn" onClick={() => { f.setQ(''); f.setCat('all'); }}>Show all</button><Link to="/mcp" className="btn">Ask your agent</Link></div></div>;
 }
 function Note({ mode }: { mode: ReturnType<typeof useSampleMode> }) {
   if (!mode?.mock) return null;
-  return <p className="wn-note" data-testid="wn-sample"><span className="wn-dot" aria-hidden />Sample mode: runs return sample results and nothing is billed. <Link to="/settings">Connect a key or ComfyUI</Link></p>;
+  return <p className="wn-note" data-testid="wn-sample"><span className="wn-dot" aria-hidden />Sample mode: you get sample results and pay nothing. <Link to="/settings">Set up real runs</Link></p>;
 }
 /** What this computer can't run, named once (never a card that can't run). */
 function LeftOut({ left }: { left: { e: { name: string }; why: string }[] }) {
   if (!left.length) return null;
-  return <details className="wn-left" data-testid="wn-left"><summary>{left.length} not shown here</summary><ul>{left.map((x) => <li key={x.e.name}><b>{x.e.name}</b>: {x.why}</li>)}</ul></details>;
+  return <details className="wn-left" data-testid="wn-left"><summary>{left.length} can’t run on this computer yet</summary><ul>{left.map((x) => <li key={x.e.name}><b>{x.e.name}</b>: {x.why}</li>)}</ul></details>;
 }
 
 /** A section head: the title with its count beside it, one plain line. On the page background (no plate, no numbers). */
@@ -328,7 +328,7 @@ function Yours({ rows, chains, s, open, openChain }: { rows: Row[]; chains: WfCh
     {items.length ? <div className="wn-yours-row">{items.map((x) => 'e' in x
       ? <button key={x.e.id} type="button" className="wn-pin" onClick={() => open(x)}><ToolIconFor id={x.e.toolId} size={16} />{x.e.name}</button>
       : <button key={x.id} type="button" className="wn-pin is-chain" onClick={() => openChain(x)}><GenerateIcon size={14} />{x.name}<small>{x.steps.length} steps</small></button>)}</div>
-      : <p className="wn-first" data-testid="wn-first">Nothing saved yet. Press <SavedTagIcon size={13} /> on any workflow or chain to keep it here for next time.</p>}
+      : <p className="wn-first" data-testid="wn-first">Nothing saved yet. Press <SavedTagIcon size={13} /> on any card to keep it.</p>}
   </section>;
 }
 
@@ -337,9 +337,9 @@ const Loading = () => <div className="wn-page" aria-busy="true" aria-label="Load
   <aside className="wn-side"><span className="wn-brand">Imagination is all you need</span><h1>Workflows</h1><span className="wn-shim wn-shim-search" />{[0, 1, 2, 3, 4, 5, 6].map((n) => <span key={n} className="wn-shim wn-shim-cat" />)}</aside>
   <div className="wn-main"><span className="wn-shim wn-shim-h" /><div className="wn-grid">{[0, 1, 2, 3, 4, 5].map((n) => <span key={n} className="wn-shim wn-shim-card" aria-hidden />)}</div></div></div></div>;
 
-/** One card on the page: a workflow or a multi-step chain (the picks mix them: the featured row starts with two chains). */
+/** One card on the page: a workflow or a multi-step chain (a goal's picks can mix them). */
 type Item = { kind: 'row'; r: Row; id: string } | { kind: 'chain'; c: WfChain; id: string };
-const catOfItem = (x: Item): WfCat | null => (x.kind === 'row' ? x.r.e.cat : null);
+const START_LINE = 'The easiest first steps. Most are free on your computer.';
 
 export default function Workflows({ tools }: { tools: ToolInfo[] }) {
   const { rows, left } = useRows(tools); const s = useSaved(); const mode = useSampleMode();
@@ -358,24 +358,27 @@ export default function Workflows({ tools }: { tools: ToolInfo[] }) {
   if (!tools.length) return <Loading />;
   /* the user's picks, in their order, as far as the search keeps them */
   const item = (id: string): Item | null => { if (id.startsWith('chain:')) { const c = f.chains.find((x) => `chain:${x.id}` === id); return c ? { kind: 'chain', c, id } : null; } const r = f.hits.find((x) => x.e.id === id); return r ? { kind: 'row', r, id } : null; };
-  const featured = WF_PAGE_FEATURED.map(item).filter((x): x is Item => !!x); const kept = WF_PAGE_KEEP.map(item).filter((x): x is Item => !!x);
-  const picked = [...featured, ...kept];
+  const isItem = (x: Item | null): x is Item => !!x;
+  const start = WF_START_HERE.map(item).filter(isItem);
+  /* each goal's section: its picks; picked alone in the rail, a goal also shows its Start here cards first */
+  const goals = WF_GOALS.map((g) => ({ g, items: WF_PAGE_PICKS[g.id].map(item).filter(isItem), starts: start.filter((x) => goalOf(x.id) === g.id) }));
+  const picked = [...start, ...goals.flatMap((x) => x.items)];
   /** Surprise me: a random workflow on this page that runs here right now, a made one twice as likely */
   const surprise = () => { const pool = f.rows.filter((r) => ['free', 'cloud', 'sample'].includes(r.run.kind)).flatMap((r) => (r.made ? [r, r] : [r])); const pick = pool[Math.floor(Math.random() * pool.length)]; if (pick) openRow(pick); };
-  const savedItems: Item[] = s.saved.map((id): Item | null => { if (id.startsWith('chain:')) { const c = chainsAll.find((x) => `chain:${x.id}` === id); return c ? { kind: 'chain', c, id } : null; } const r = rows.find((x) => x.e.id === id); return r && (!f.ranked || f.hits.includes(r) || f.elsewhere.includes(r)) ? { kind: 'row', r, id } : null; }).filter((x): x is Item => !!x);
-  const opts = [{ value: 'all', label: 'Everything', aside: String(picked.length) }, ...(f.chains.length ? [{ value: 'chains', label: 'Multi-step', aside: String(f.chains.length) }] : []),
-    { value: 'saved', label: 'Saved', aside: String(savedItems.length) }, ...f.counts.map((c) => ({ value: c.id as string, label: c.label, aside: String(c.n) })),
+  const savedItems: Item[] = s.saved.map((id): Item | null => { if (id.startsWith('chain:')) { const c = chainsAll.find((x) => `chain:${x.id}` === id); return c ? { kind: 'chain', c, id } : null; } const r = rows.find((x) => x.e.id === id); return r && (!f.ranked || f.hits.includes(r) || f.elsewhere.includes(r)) ? { kind: 'row', r, id } : null; }).filter(isItem);
+  const goalItems = (g: WfGoal) => { const x = goals.find((y) => y.g.id === g)!; return [...x.starts, ...x.items]; };
+  const opts = [{ value: 'all', label: 'Everything', aside: String(picked.length) }, ...(start.length ? [{ value: 'start', label: 'Start here', aside: String(start.length) }] : []),
+    ...goals.map(({ g }) => ({ value: g.id as string, label: g.label, aside: String(goalItems(g.id).length) })).filter((o) => o.aside !== '0'),
+    ...(f.chains.length ? [{ value: 'chains', label: 'Step by step', aside: String(f.chains.length) }] : []), { value: 'saved', label: 'Saved', aside: String(savedItems.length) },
     ...(ideas.length ? [{ value: 'ideas', label: 'Ideas, not built yet', aside: String(f.ideas.length) }] : [])];
-  if (!opts.some((o) => o.value === f.cat)) opts.push({ value: f.cat, label: f.cat === 'chains' ? 'Multi-step' : f.cat === 'ideas' ? 'Ideas, not built yet' : WF_CATS.find((c) => c.id === f.cat)?.label ?? f.cat, aside: '0' });
-  const inCat = f.cat === 'chains' ? picked.filter((x) => x.kind === 'chain') : f.cat === 'saved' ? savedItems : picked.filter((x) => catOfItem(x) === f.cat);
-  const catInfo = WF_CATS.find((c) => c.id === f.cat);
-  /* the header counts the cards shown right now (the picks, or the category's); ideas aren't workflows yet */
+  if (!opts.some((o) => o.value === f.cat)) opts.push({ value: f.cat, label: f.cat === 'chains' ? 'Step by step' : f.cat === 'ideas' ? 'Ideas, not built yet' : f.cat === 'start' ? 'Start here' : goalById(f.cat)?.label ?? f.cat, aside: '0' });
+  const inCat = f.cat === 'chains' ? picked.filter((x) => x.kind === 'chain') : f.cat === 'saved' ? savedItems : f.cat === 'start' ? start : isGoal(f.cat) ? goalItems(f.cat) : [];
+  const catInfo = isGoal(f.cat) ? goalById(f.cat) : f.cat === 'start' ? { label: 'Start here', line: START_LINE } : undefined;
+  /* the header counts the cards shown right now (every section, or the one picked); ideas aren't workflows yet */
   const shown = f.cat === 'all' ? picked.length : f.cat === 'ideas' ? 0 : inCat.length;
   const nothing = f.cat === 'all' ? !picked.length : f.cat === 'ideas' ? !f.ideas.length : !inCat.length;
-  /* "Made here" marks the exceptions: when every card on the page is made here, no card carries it */
-  const showMade = !picked.every((x) => (x.kind === 'row' ? x.r.made : chainFacts(x.c, rows).made));
   /* `mark`: false where the section's own line already says "made here" (Start here) */
-  const tiles = (list: Item[], mark = showMade) => list.map((x, i) => x.kind === 'row' ? <Card key={x.id} r={x.r} s={s} i={i} showMade={mark} onOpen={() => openRow(x.r)} /> : <ChainTile key={x.id} c={x.c} rows={rows} s={s} i={i} showMade={mark} onOpen={() => openChain(x.c)} />);
+  const tiles = (list: Item[]) => list.map((x, i) => x.kind === 'row' ? <Card key={x.id} r={x.r} s={s} i={i} onOpen={() => openRow(x.r)} /> : <ChainTile key={x.id} c={x.c} rows={rows} s={s} i={i} onOpen={() => openChain(x.c)} />);
   return <div className="wn-page" data-testid="workflows-page">
     <div className="wn wn-b">
       <aside className="wn-side" aria-label="Find a workflow">
@@ -387,26 +390,26 @@ export default function Workflows({ tools }: { tools: ToolInfo[] }) {
         <LeftOut left={left.filter((x) => onWorkflowsPage(x.e.id))} />
       </aside>
       <div className="wn-main">
-        <header className="wn-mhead"><h2>What do you want to make?</h2><p>{shown > 0 && `${shown} ${shown === 1 ? 'workflow' : 'workflows'} here. `}Open one to see where it runs and what it costs.</p><Goals f={f} /></header>
+        <header className="wn-mhead"><h2>Make anything you imagine</h2><p>{shown > 0 && `${shown} ${shown === 1 ? 'way' : 'ways'} to start. `}Open one to see its models and price.</p></header>
         <Yours rows={rows} chains={chainsAll} s={s} open={openRow} openChain={openChain} />
         <div className={`wn-results${rise ? ' is-rising' : ''}`} key={f.cat}>
         {nothing && !f.elsewhere.length ? (f.cat === 'saved' && !f.q ? <p className="wn-first wn-first-big">Nothing saved yet. Press <SavedTagIcon size={13} /> on any card.</p> : <Empty f={f} rows={f.rows} open={openRow} />) : <>
-          {f.cat === 'all' && featured.length > 0 && <section className="wn-sec" aria-labelledby="wn-h-featured" data-testid="wn-sec-featured">
-            <Head id="wn-h-featured" title="Start here" line="Our favourites, each with a real result made here." count={featured.length} />
-            <div className="wn-grid">{tiles(featured, false)}</div></section>}
-          {f.cat === 'all' && kept.length > 0 && <section className="wn-sec" aria-labelledby="wn-h-more" data-testid="wn-sec-more">
-            <Head id="wn-h-more" title="More workflows" line="A scene from a script, try-ons, music and sound." count={kept.length} />
-            <div className="wn-grid">{tiles(kept)}</div></section>}
+          {f.cat === 'all' && start.length > 0 && <section className="wn-sec wn-start" aria-labelledby="wn-h-start" data-testid="wn-sec-start">
+            <Head id="wn-h-start" title="Start here" line={START_LINE} count={start.length} />
+            <div className="wn-grid">{tiles(start)}</div></section>}
+          {f.cat === 'all' && goals.filter((x) => x.items.length > 0).map(({ g, items }) => <section key={g.id} className="wn-sec" aria-labelledby={`wn-h-${g.id}`} data-testid={`wn-sec-${g.id}`}>
+            <Head id={`wn-h-${g.id}`} title={g.label} line={g.line} count={items.length} />
+            <div className="wn-grid">{tiles(items)}</div></section>)}
           {f.cat !== 'all' && f.cat !== 'ideas' && inCat.length > 0 && <section className="wn-sec" aria-labelledby={`wn-h-${f.cat}`} data-testid={`wn-sec-${f.cat}`}>
             <Head id={`wn-h-${f.cat}`}
-              title={f.cat === 'chains' ? 'Multi-step' : f.cat === 'saved' ? 'Saved' : catInfo?.label ?? f.cat}
-              line={f.cat === 'chains' ? 'Workflows that hand off to each other. Each step names its model and is priced before you run it.' : f.cat === 'saved' ? 'Kept in this browser.' : catInfo?.line ?? ''} count={inCat.length} />
+              title={f.cat === 'chains' ? 'Step by step' : f.cat === 'saved' ? 'Saved' : catInfo?.label ?? f.cat}
+              line={f.cat === 'chains' ? 'Workflows that pass the result along. Each step shows its model and price first.' : f.cat === 'saved' ? 'Kept in this browser.' : catInfo?.line ?? ''} count={inCat.length} />
             <div className="wn-grid">{tiles(inCat)}</div></section>}
           {f.cat === 'ideas' && <section className="wn-sec" aria-labelledby="wn-h-ideas" data-testid="wn-sec-ideas">
-            <Head id="wn-h-ideas" title="Ideas, not built yet" line="Workflows we found in the wild and may add. They don't run here yet: each names where it comes from." count={f.ideas.length} />
+            <Head id="wn-h-ideas" title="Ideas, not built yet" line="Workflows we may add. They don’t run yet; each links its source." count={f.ideas.length} />
             <div className="wn-ideas">{f.ideas.map((w) => <IdeaCard key={w.id} w={w} />)}</div></section>}
           {f.elsewhere.length > 0 && f.cat !== 'ideas' && <section className="wn-sec wn-elsewhere" aria-labelledby="wn-h-else" data-testid="wn-elsewhere">
-            <h3 id="wn-h-else" className="wn-else-h">{nothing ? `Not on this page, but in its tab` : 'Also in the tabs'}</h3>
+            <h3 id="wn-h-else" className="wn-else-h">{nothing ? 'Not on this page, but in the app' : 'More in the app'}</h3>
             <div className="wn-near">{f.elsewhere.map((r) => <button key={r.e.id} type="button" className="wn-pin" onClick={() => openRow(r)} onPointerEnter={() => warm(r.e.href)}><ToolIconFor id={r.e.toolId} size={16} />{r.e.name}<small>{tabOf(r.e.href)}</small></button>)}</div></section>}
         </>}
         </div>
