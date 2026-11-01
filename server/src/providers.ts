@@ -176,6 +176,10 @@ local('comfy-qwen-angles', 'Qwen-Image-Edit-2509 + Multiple-angles LoRA (Apache-
 // Object Swap backup (non-default): H3 Character Swap LoRA v1.5 on MiniMax H3 Ref2VA, workflows/object-swap-h3-charswap-api.json
 local('comfy-h3-charswap', 'H3 Character Swap LoRA v1.5', ['object-swap-h3-charswap-api.json'], 'https://huggingface.co/akatz-ai/MiniMax-H3-Character-Swap-LoRA', ['MiniMaxH3ReferenceToVideo', 'LoraLoaderModelOnly'], ['minimax-community-akatz-charswap']);
 local('comfy-h3', 'MiniMax H3', ['h3-t2v-api.json', 'h3-i2v-api.json', 'h3-r2v-api.json'], 'https://huggingface.co/MiniMaxAI/MiniMax-H3');
+// Pika H3 Flex (2026-11-01): the official Pika H3 Flex templates on your own ComfyUI, the template's own files (MiniMax H3 base + Pika's FL2VA LoRA; NVIDIA only:
+// nvfp4 / int8 ConvRot weights). Its Comfy Cloud place is the twin cloud-h3-pika (routing/routes.ts TWINS). Plan: comfy/pikaH3Flex.ts. Credit: Pika.
+local('comfy-h3-pika', 'Pika H3 Flex', ['pika-h3-flex-t2v-api.json', 'pika-h3-flex-fl2va-api.json'], 'https://docs.comfy.org/tutorials/video/pika/pika-h3-flex',
+  ['UNETLoader', 'LoraLoaderModelOnly', 'CLIPLoader', 'VAELoader', 'ManualSigmas', 'KSamplerSelect', 'BasicGuider', 'RandomNoise', 'SamplerCustomAdvanced', 'MiniMaxH3ImageToVideo', 'ComfyMathExpression', 'ResolutionSelector', 'ImageScaleToTotalPixels', 'GetImageSize', 'LoadImage', 'VAEDecode', 'VAEDecodeAudio', 'CreateVideo', 'SaveVideo'], ['minimax-community', 'apache-2.0'], { minComfyVersion: '0.43.2' /* the t2v template's floor (Comfy docs) */ });
 // Wan 2.2 TI2V 5B (2026-10-24): free local text/image to video that runs on Apple Silicon (fp16 files, no fp8). One graph from the official
 // template video_wan2_2_5B_ti2v (workflows/wan22-ti2v-5b-api.json; plan: comfy/plans.ts wan22ti2v). Core nodes only. Apache-2.0.
 // LTX-2.5 22B (2026-10-25): free local text / image / first + last frame to video WITH its own sound, on Apple Silicon (GGUF Q4_K_M, bf16 files; the same

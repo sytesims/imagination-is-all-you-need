@@ -8,6 +8,7 @@ import path from 'node:path';
 import { WORKFLOWS_DIR } from '../../config.js';
 import type { Plan, FileRef } from '../../comfy/plans.js';
 import { h3Size, h3Frames, sizeIssues, loraIssues } from './rules.js';
+import { pikaPlan } from '../../comfy/pikaH3Flex.js';
 import { H3_INTENSITY, H3_CAMERA_MOVES, H3_EXTEND_OVERLAP_FRAMES, cameraPrompt, type H3Intensity } from './catalog.js';
 const F = (p: string): FileRef => ({ __file: p });
 interface Job { id: string; toolId: string; provider: string; input: Record<string, any> }
@@ -33,6 +34,7 @@ export function patchH3Extend(g: any, a: { prompt: string; tail: FileRef; second
 }
 /** Which jobs these builders own (checked before the generic BUILDERS in comfy/plans.ts). */
 export function h3Owns(j: Job): boolean {
+  if (j.toolId === 'h3-video' && j.provider === 'comfy-h3-pika') return true; // Pika H3 Flex on your ComfyUI (comfy/pikaH3Flex.ts)
   if (j.toolId === 'h3-video' && j.provider === 'comfy-h3') return j.input.mode === 'flf' || (j.input.mode === 't2v' && j.input.quality === 'fast');
   if (j.toolId === 'voice') return j.provider === 'comfy-h3-lipsync' && j.input.mode === 'lipsync';
   if (j.toolId === 'camera') return j.provider === 'comfy-h3-camera';
@@ -42,6 +44,7 @@ export function h3Owns(j: Job): boolean {
 }
 export function h3BuildPlan(j: Job): Plan {
   const i = j.input; const prompt = String(i.finalPrompt ?? i.prompt ?? '');
+  if (j.toolId === 'h3-video' && j.provider === 'comfy-h3-pika') return pikaPlan(j, 'local');
   if (j.toolId === 'h3-video') {
     const file = i.mode === 'flf' ? (i.quality === 'fast' ? 'h3-flf-fast-api.json' : 'h3-flf-api.json') : 'h3-t2v-fast-api.json';
     const g = wf(file); const c = common(g, i, Number(i.duration) || 6); g['20'].inputs.prompt = prompt;

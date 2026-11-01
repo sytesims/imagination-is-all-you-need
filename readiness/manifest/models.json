@@ -2219,7 +2219,9 @@
     "workflows/h3-t2v-api.json",
     "workflows/h3-t2v-fast-api.json",
     "workflows/h3-vfx-edit-api.json",
-    "workflows/object-swap-h3-charswap-api.json"
+    "workflows/object-swap-h3-charswap-api.json",
+    "workflows/pika-h3-flex-fl2va-api.json",
+    "workflows/pika-h3-flex-t2v-api.json"
    ]
   },
   {
@@ -2284,7 +2286,9 @@
     "workflows/h3-flf-fast-api.json",
     "workflows/h3-i2v-api.json",
     "workflows/h3-t2v-api.json",
-    "workflows/h3-t2v-fast-api.json"
+    "workflows/h3-t2v-fast-api.json",
+    "workflows/pika-h3-flex-fl2va-api.json",
+    "workflows/pika-h3-flex-t2v-api.json"
    ]
   },
   {
@@ -2440,7 +2444,9 @@
     "workflows/h3-t2v-api.json",
     "workflows/h3-t2v-fast-api.json",
     "workflows/h3-vfx-edit-api.json",
-    "workflows/object-swap-h3-charswap-api.json"
+    "workflows/object-swap-h3-charswap-api.json",
+    "workflows/pika-h3-flex-fl2va-api.json",
+    "workflows/pika-h3-flex-t2v-api.json"
    ]
   },
   {
@@ -2692,6 +2698,30 @@
    "note": "Official file (Comfy docs tutorial lists this URL); size and sha256 from the Hugging Face LFS headers on HEAD, 2026-10-25."
   },
   {
+   "file": "pika_h3_flex_fl2va_v1_bf16.safetensors",
+   "folder": "loras",
+   "hf_repo": "Comfy-Org/MiniMax-H3",
+   "revision": "main",
+   "repo_path": "loras/pika_h3_flex_fl2va_v1_bf16.safetensors",
+   "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/loras/pika_h3_flex_fl2va_v1_bf16.safetensors",
+   "size": 1956172304,
+   "size_gb": 1.96,
+   "sha256": "cc5453aeecd6189468409003fe4cf1b57e52ff3a830a0a154b87decbe07358b7",
+   "renamed_from": null,
+   "head_status": "ok (HF tree API 2026-11-01)",
+   "workflows": [
+    "workflows/pika-h3-flex-fl2va-api.json",
+    "workflows/pika-h3-flex-t2v-api.json"
+   ],
+   "loaded_by": [
+    "LoraLoaderModelOnly"
+   ],
+   "input": [
+    "lora_name"
+   ],
+   "base": "minimax-h3"
+  },
+  {
    "file": "pulid_flux_v0.9.1.safetensors",
    "folder": "pulid",
    "hf_repo": "guozinan/PuLID",
@@ -2891,7 +2921,9 @@
     "workflows/h3-t2v-api.json",
     "workflows/h3-t2v-fast-api.json",
     "workflows/h3-vfx-edit-api.json",
-    "workflows/object-swap-h3-charswap-api.json"
+    "workflows/object-swap-h3-charswap-api.json",
+    "workflows/pika-h3-flex-fl2va-api.json",
+    "workflows/pika-h3-flex-t2v-api.json"
    ]
   },
   {
@@ -8000,6 +8032,86 @@
      "verified": false,
      "source": "hardware plan \u00a71 (2026-10-31); files: Hugging Face API tree listing"
     },
+    "cpu": null
+   }
+  },
+  "workflows/pika-h3-flex-fl2va-api.json": {
+   "models": [
+    "minimax_h3_audio_vae_fp32.safetensors",
+    "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+    "minimax_h3_video_vae_int8_convrot.safetensors",
+    "pika_h3_flex_fl2va_v1_bf16.safetensors",
+    "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"
+   ],
+   "total_gb": 42.04,
+   "vram_est_gb": 30.4,
+   "vram_basis": "max(resident DiT 22.9, text encoder 15.7 offloaded after encode) + VAE 3.4 + aux 0.0 + activations 4.0 GB (video)",
+   "fits": {
+    "24GB": false,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "red",
+   "mps_notes": [
+    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]",
+    "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]",
+    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
+   ],
+   "variants": {
+    "nvidia-x64": {
+     "files": {
+      "vae": "minimax_h3_audio_vae_fp32.safetensors",
+      "dit": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "vae2": "minimax_h3_video_vae_int8_convrot.safetensors",
+      "lora": "pika_h3_flex_fl2va_v1_bf16.safetensors",
+      "te": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"
+     },
+     "default": true
+    },
+    "nvidia-arm64": {
+     "inherit": "nvidia-x64"
+    },
+    "mac-arm64": null,
+    "cpu": null
+   }
+  },
+  "workflows/pika-h3-flex-t2v-api.json": {
+   "models": [
+    "minimax_h3_audio_vae_fp32.safetensors",
+    "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+    "minimax_h3_video_vae_int8_convrot.safetensors",
+    "pika_h3_flex_fl2va_v1_bf16.safetensors",
+    "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"
+   ],
+   "total_gb": 42.04,
+   "vram_est_gb": 30.4,
+   "vram_basis": "max(resident DiT 22.9, text encoder 15.7 offloaded after encode) + VAE 3.4 + aux 0.0 + activations 4.0 GB (video)",
+   "fits": {
+    "24GB": false,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "red",
+   "mps_notes": [
+    "nvfp4 weights: fp4 values with fp8 block scales; MPS has no float8 dtype [nvfp4, mps-fp8]",
+    "int8 ConvRot: CUDA kernels; MPS would hit the eager dequant path (slow, unverified) [int8-convrot]",
+    "bf16 files: MPS bf16 requires macOS 14+ [mps-bf16]"
+   ],
+   "variants": {
+    "nvidia-x64": {
+     "files": {
+      "vae": "minimax_h3_audio_vae_fp32.safetensors",
+      "dit": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "vae2": "minimax_h3_video_vae_int8_convrot.safetensors",
+      "lora": "pika_h3_flex_fl2va_v1_bf16.safetensors",
+      "te": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"
+     },
+     "default": true
+    },
+    "nvidia-arm64": {
+     "inherit": "nvidia-x64"
+    },
+    "mac-arm64": null,
     "cpu": null
    }
   },
