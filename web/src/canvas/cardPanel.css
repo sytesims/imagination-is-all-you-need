@@ -2,7 +2,7 @@
    a 16 px gutter, 40 px controls, 10 px radius on every frame / thumb / button, one heading style, one caption style, one hairline
    between sections, orange only for the one main action. The board gives up its right edge (--cv-panel-w), so nothing hides under it. */
 .cp{--cp-pad:16px;--cp-h:40px;--cp-r:10px;--cp-gap:8px;
-  position:absolute;top:0;right:0;bottom:0;z-index:23;width:var(--cv-dock,380px);display:flex;flex-direction:column;pointer-events:auto;overflow:hidden;
+  position:absolute;top:0;right:0;bottom:0;z-index:23;width:var(--cv-dock,380px);container-type:inline-size;display:flex;flex-direction:column;pointer-events:auto;overflow:hidden;
   background:color-mix(in srgb,var(--surface-1) 97%,transparent);border-left:1px solid var(--border-strong);box-shadow:-16px 0 44px rgba(0,0,0,.32);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
   color:var(--text-1);font:400 13px/1.45 var(--font-ui,Manrope,Inter,sans-serif);transform:translateX(100%);visibility:hidden;
   transition:transform var(--dur-slow,300ms) var(--ease,cubic-bezier(.4,0,.2,1)),visibility 0s linear var(--dur-slow,300ms)}
@@ -19,13 +19,13 @@
 .cp-name .cp-title{all:unset;box-sizing:border-box;min-width:0;font:600 15px/1.2 var(--font-ui);color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:text;border-radius:6px}
 .cp-name .cp-title:hover{box-shadow:0 0 0 4px var(--state-hover);background:var(--state-hover)}.cp-name .cp-title:focus-visible{box-shadow:var(--focus)}
 .cp-name input.cp-title{cursor:text;background:var(--surface-2);box-shadow:0 0 0 4px var(--surface-2),0 0 0 5px var(--state-border-on)}
-.cp-name small{display:flex;align-items:center;gap:6px;color:var(--text-2);font-size:12px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cp-dot{flex:none;width:6px;height:6px;border-radius:50%;background:var(--accent);animation:ap-pulse 1.4s ease-in-out infinite}
+.cp-name small{display:block;color:var(--text-2);font-size:12px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cp-dot{display:inline-block;vertical-align:middle;margin:-2px 6px 0 0;width:6px;height:6px;border-radius:50%;background:var(--accent);animation:ap-pulse 1.4s ease-in-out infinite}
 .cp-icon{all:unset;box-sizing:border-box;flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:8px;color:var(--text-2);cursor:pointer}
 .cp-icon:hover{background:var(--state-hover);color:var(--text-1)}.cp-icon.on{color:var(--text-1);background:var(--state-pressed)}
 
 /* body: the preview, then identical sections */
-.cp-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:14px var(--cp-pad) 8px;display:flex;flex-direction:column;scrollbar-width:thin}
+.cp-body{flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;padding:14px var(--cp-pad) 8px;display:flex;flex-direction:column;scrollbar-width:thin}
 .cp-body>.cp-cap{margin:0 0 12px}
 .cp-sec{display:flex;flex-direction:column;gap:10px;margin-top:16px;padding-top:16px;border-top:1px solid var(--hairline)}
 .cp-body>.cp-sec:last-child{padding-bottom:12px}
@@ -35,8 +35,8 @@
 .cp-cap{margin:0}
 
 /* preview: one frame for every kind */
-.cp-pv{position:relative;flex:none;display:grid;place-items:center;width:100%;height:260px;border-radius:var(--cp-r);overflow:hidden;background:#050505;box-shadow:inset 0 0 0 1px var(--hairline)}
-.cp-pv>img,.cp-pv>video{width:100%;height:100%;object-fit:contain;display:block}
+.cp-pv{position:relative;flex:none;display:grid;place-items:center;width:100%;height:260px;border-radius:var(--cp-r);overflow:hidden;background:transparent;box-shadow:inset 0 0 0 1px var(--hairline)}
+.cp-pv>img,.cp-pv>video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block} /* absolute: a tall picture can't grow the grid row past the frame and get cropped */
 .cp-pv .sfilm-controls{position:absolute;left:0;right:0;bottom:0}
 .cp-pv-run>*{width:100%;height:100%}
 .cp-pv-audio{padding:12px;box-sizing:border-box}.cp-pv-audio>*{width:100%}
@@ -63,23 +63,24 @@
   background:var(--state-fill);box-shadow:inset 0 0 0 1px var(--state-border);color:var(--text-1);font:600 13px/1 var(--font-ui);text-decoration:none;transition:background var(--t-state) ease}
 .cp-btn:hover{background:var(--state-hover)}.cp-btn:disabled{opacity:var(--disabled-opacity);cursor:default}
 .cp-btn svg{flex:none;color:var(--text-2)}
+.cp-btn>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .cp-btn-main{background:var(--accent);box-shadow:none;color:var(--on-accent)}.cp-btn-main:hover{background:color-mix(in srgb,var(--accent) 88%,#fff)}
 .cp-btn-main svg,.cp-btn-main .cp-suffix{color:color-mix(in srgb,var(--on-accent) 70%,transparent)}
-.cp-btn .cp-suffix{margin-left:2px}
+.cp-btn .cp-suffix{flex:none;margin-left:2px}
+.cp-btn .gen-price .gp-sub{display:none} /* the short token ('Free'), as on the cards (node.css); the place is under Made with */
 .cp-btn .cp-suffix *{font:inherit;color:inherit}
 .cp-wide{width:100%}
-.cp-pair{display:grid;grid-template-columns:1fr 1fr;gap:var(--cp-gap)}
-.cp-grid2{display:grid;grid-template-columns:1fr 1fr;gap:var(--cp-gap)}
+.cp-pair,.cp-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--cp-gap)}
 .cp-btn:focus-visible,.cp-icon:focus-visible,.cp-ver:focus-visible,.cp-tilebtn:focus-visible,.cp-row:focus-visible,.cp-link:focus-visible{outline:none;box-shadow:var(--focus)}
 
 /* settings: the workflow's own chips as an even grid of label / value rows */
 .cp-run{display:flex;flex-direction:column;gap:12px}
-.cp-settings .wf-strip{display:grid!important;grid-template-columns:1fr 1fr;gap:var(--cp-gap);width:100%;flex-wrap:nowrap}
+.cp-settings .wf-strip{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--cp-gap);width:100%;flex-wrap:nowrap}
 .cp-settings .ic-chip{all:unset;box-sizing:border-box;display:flex!important;align-items:center;justify-content:space-between;gap:8px;width:100%;height:var(--cp-h);padding:0 12px;border-radius:var(--cp-r);cursor:pointer;
   background:var(--state-fill);box-shadow:inset 0 0 0 1px var(--hairline);font:500 12.5px/1 var(--font-ui);color:var(--text-1)}
-.cp-settings .ic-chip:hover{background:var(--state-hover)}
+.cp-settings .ic-chip:hover{background:var(--state-hover)}.cp-settings .ic-chip:focus-visible{box-shadow:var(--focus)}
 .cp-settings .ic-chip>svg{display:none}
-.cp-settings .wf-grp-l{color:var(--text-2);font-weight:500}
+.cp-settings .wf-grp-l{flex:none;color:var(--text-2);font-weight:500}
 .cp-settings .ic-chip>b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cp-settings .wf-after,.cp-settings .wf-fixed,.cp-settings .wf-exlink{grid-column:1/-1}
 .cp-settings.cp-ro .ic-chip{cursor:default;background:transparent}
@@ -93,14 +94,14 @@ html body .cp .gen-btn.cp-go{width:100%!important;height:var(--cp-h)!important;m
 .cp-quote-copy{position:absolute;top:4px;right:4px;width:28px;height:28px}
 .cp-quote-f{display:flex;align-items:center;gap:12px;margin-top:6px}.cp-quote-f small{flex:1;color:var(--text-3);font-size:12px}
 .cp-link{all:unset;cursor:pointer;color:var(--text-2);font:600 12px/1 var(--font-ui);text-decoration:none;white-space:nowrap}.cp-link:hover{color:var(--text-1)}
-.cp-model{display:flex;align-items:center;gap:10px;height:var(--cp-h)}
+.cp-model{display:flex;align-items:center;gap:10px;min-height:var(--cp-h)}
 .cp-model-tile{flex:none;width:28px;height:28px;border-radius:8px}
-.cp-model-n{flex:1;min-width:0;display:flex;align-items:baseline;gap:8px}
-.cp-model-n b{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cp-model-n small{color:var(--text-2);font-size:12px;white-space:nowrap}
+.cp-model-n{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.cp-model-n b{font-weight:600;font-size:13px;line-height:1.3;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.cp-model-n small{color:var(--text-3);font-size:12px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cp-open{flex:none;padding:3px 6px;border-radius:5px;box-shadow:inset 0 0 0 1px var(--state-border-hover);color:var(--text-2);font:700 9.5px/1 var(--font-ui);letter-spacing:.06em;text-transform:uppercase;font-style:normal}
 .cp-facts{display:flex;flex-direction:column;gap:0;margin:0}
 .cp-facts div{display:grid;grid-template-columns:96px 1fr;align-items:center;height:30px;border-top:1px solid var(--hairline)}
-.cp-facts dt{color:var(--text-2);font-size:12.5px}.cp-facts dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+.cp-facts dt{color:var(--text-2);font-size:12.5px}.cp-facts dd{min-width:0;margin:0;font-weight:600;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cp-text{box-sizing:border-box;width:100%;resize:vertical;min-height:140px;padding:10px 12px;border-radius:var(--cp-r);border:1px solid var(--hairline);background:var(--surface-2);color:var(--text-1);font:400 13px/1.5 var(--font-ui)}
 .cp-text-s{min-height:76px}
 .cp-text:focus{outline:none;border-color:var(--state-border-on)}
@@ -108,7 +109,7 @@ html body .cp .gen-btn.cp-go{width:100%!important;height:var(--cp-h)!important;m
 .cp-input{min-height:0;height:36px;resize:none;padding:0 12px}
 
 /* next steps: equal tiles */
-.cp-tilebtn{all:unset;box-sizing:border-box;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:10px;row-gap:2px;align-items:center;align-content:center;height:52px;padding:0 12px;border-radius:var(--cp-r);cursor:pointer;background:var(--state-fill);box-shadow:inset 0 0 0 1px var(--hairline)}
+.cp-tilebtn{all:unset;box-sizing:border-box;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto;column-gap:8px;row-gap:2px;align-items:center;align-content:center;height:52px;padding:0 10px;border-radius:var(--cp-r);cursor:pointer;background:var(--state-fill);box-shadow:inset 0 0 0 1px var(--hairline)}
 .cp-tilebtn:hover{background:var(--state-hover)}
 .cp-tilebtn svg{grid-row:1/3;color:var(--text-2)}.cp-tilebtn span{font-weight:600;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cp-tilebtn .cp-suffix{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -123,15 +124,18 @@ html body .cp .gen-btn.cp-go{width:100%!important;height:var(--cp-h)!important;m
 
 /* footer: two buttons (labels shorten with … when tight) and the squares (View workflow, full size), the same on every finished card */
 .cp-foot{flex:none;padding:12px var(--cp-pad);border-top:1px solid var(--hairline)}
-.cp-foot-row{display:grid;grid-template-columns:auto minmax(0,1fr);grid-auto-columns:var(--cp-h);grid-auto-flow:column;gap:var(--cp-gap)}
-.cp-foot-row .cp-btn:not(.cp-sq){padding:0 10px}.cp-foot-row .cp-btn>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
-.cp-sq{width:var(--cp-h);padding:0}
+.cp-foot-row{display:flex;gap:var(--cp-gap)}
+.cp-foot-row .cp-btn:not(.cp-sq){flex:1 1 auto;padding:0 10px}
+.cp-sq{flex:none;width:var(--cp-h);padding:0}
+/* the 320 px dock: Download becomes a square, the pair's buttons drop their icons so both labels fit */
+@container (max-width:340px){.cp-foot-row .cp-dl{flex:none;width:var(--cp-h);padding:0}.cp-foot-row .cp-dl>span{display:none}.cp-pair .cp-btn{padding:0 10px}.cp-pair .cp-btn>svg{display:none}}
 
 /* several, none */
 .cp-many{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--cp-gap)}
 .cp-many-t{all:unset;box-sizing:border-box;display:flex;flex-direction:column;gap:6px;cursor:pointer;color:var(--text-2)}
 .cp-many-i{display:grid;place-items:center;aspect-ratio:1;border-radius:var(--cp-r);overflow:hidden;background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--hairline)}
 .cp-many-i img{width:100%;height:100%;object-fit:cover}
+.cp-many-t:focus-visible{outline:none}.cp-many-t:focus-visible .cp-many-i{box-shadow:var(--focus)}
 .cp-many-t small{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cp-empty{align-items:center;justify-content:center;text-align:center;gap:6px;color:var(--text-2)}
 .cp-empty b{color:var(--text-1);font-size:14px}.cp-empty p{margin:0;max-width:240px}

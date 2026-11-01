@@ -263,7 +263,7 @@ function Preview({ v, peek }: { v: View; peek: Take | null }) {
     else { kind = 'empty'; const [t, l] = EMPTY_LINE[v.s.type] ?? ['Nothing made yet', v.draft ? 'Set it up below, then press Generate.' : 'No picture yet.']; inner = <><v.Icon size={22} /><b>{t}</b><small>{l}</small></>; } }
   else if (m.kind === 'video') inner = <PanelClip key={m.url} url={m.url} poster={m.poster} label={v.title} />;
   else if (m.kind === 'audio') { kind = 'audio'; inner = <AudioCard key={m.url} src={m.url} title={v.prompt || v.title} model={v.model} kind={v.audioKind} tag={v.s.type === UPLOAD_TYPE ? 'Your sound' : undefined} />; }
-  else if (m.kind === '3d') inner = <>{m.poster && <img src={gridSrc(m.poster, 760)} alt="" />}<button type="button" className="cp-btn cp-tag-btn" onClick={() => open3d(m.jobId)}><CubeIcon size={14} />View 3D</button></>;
+  else if (m.kind === '3d') inner = <>{m.poster && <img src={gridSrc(m.poster, 760)} alt="" />}<button type="button" className="cp-btn cp-tag-btn" onClick={() => open3d(m.jobId)}><CubeIcon size={14} /><span>View 3D</span></button></>;
   else inner = <img key={m.url} src={gridSrc(m.url, 760)} alt={v.prompt || v.title} />;
   return <div ref={box} className={`cp-pv cp-pv-${kind}`}>{inner}{tag && <span className="cp-tag">{tag}</span>}</div>;
 }
@@ -297,7 +297,7 @@ function Layers({ v }: { v: View }) {
     <div className="cp-layers" role="list" aria-label="Layers">{ls.map((l, k) => ({ l, k })).reverse().map(({ l, k }) => <div key={l.url} role="listitem" className="cp-layer" data-testid={`cp-layer-${k}`}>
       <LayerTile layer={l} className="cp-layer-pic" /><span className="cp-layer-n" title={l.label}>{l.label}</span>
       <button type="button" className="cp-icon" aria-label={`Pull out ${l.label}`} {...tip('Put this layer on the board as its own card')} onClick={() => { void pull(k, {}).then(() => toast(`${l.label} is on the board`)); }}><PullOutIcon size={14} /></button></div>)}</div>
-    <button type="button" className="cp-btn cp-wide" disabled={busy} data-testid="cp-layers-all" onClick={() => void all()}><PullOutIcon size={14} />{busy ? 'Pulling out…' : `Pull out all ${ls.length}`}</button>
+    <button type="button" className="cp-btn cp-wide" disabled={busy} data-testid="cp-layers-all" onClick={() => void all()}><PullOutIcon size={14} /><span>{busy ? 'Pulling out…' : `Pull out all ${ls.length}`}</span></button>
     <Caption>The card keeps them together; it passes the whole picture on.</Caption>
   </>;
 }
@@ -318,7 +318,7 @@ function MadeWith({ v }: { v: View }) {
     </div>}
     {v.model && <div className="cp-model">
       <MakerTile className="cp-model-tile" maker={v.m?.maker ?? v.maker} makerName={v.m?.makerName} fallback={v.model} medium={v.m?.medium ?? v.medium} title={false} />
-      <span className="cp-model-n"><b>{v.m ? shownName(v.m) : v.model}</b>{v.m?.makerName && <small>{v.m.makerName}</small>}</span>
+      <span className="cp-model-n"><b title={v.m ? shownName(v.m) : v.model}>{v.m ? shownName(v.m) : v.model}</b>{v.m?.makerName && <small>{v.m.makerName}</small>}</span>
       {open && <em className="cp-open" title="Open weights: the model files are public">Open</em>}
       {about && <a className="cp-link" href={about.href} target="_blank" rel="noreferrer" {...tip(`${about.label}: ${about.href}`)}>About ↗</a>}
     </div>}
@@ -368,7 +368,7 @@ function TextEdit({ v }: { v: View }) {
 
 /** A price as the same small suffix everywhere. */
 const PriceSuffix = ({ q }: { q: any }) => { const cr = q ? shownCredits(q) : null; const key = !!q && q.needsKey === true && q.runnable === false;
-  return <small className="cp-suffix"><GenPrice q={q} demo={q?.demo === true} credits={key ? null : cr} text={key ? 'Needs a key' : null} /></small>; };
+  return <small className="cp-suffix"><GenPrice compact q={q} demo={q?.demo === true} credits={key ? null : cr} text={key ? 'Needs a key' : null} /></small>; };
 
 /** Set it up (a draft) or run again (a finished card): the settings as an even grid, then the action(s). */
 function RunBlock({ v }: { v: View }) {
@@ -383,8 +383,8 @@ function RunBlock({ v }: { v: View }) {
   if (!v.draft) return <div className="cp-run" ref={box}>
     {settings(true)}
     <div className="cp-pair">
-      <button type="button" className="cp-btn" onClick={tweak} {...tip('A copy beside it with the same settings, ready to change. Nothing runs until you press Generate')}><CopyIcon size={14} />Change settings</button>
-      <button type="button" className="cp-btn cp-btn-main" disabled={busy} onClick={() => void again()} {...tip('Same settings again. The new version joins the strip')}><RetryIcon size={14} />{busy ? 'Starting…' : 'Run again'}<PriceSuffix q={v.q ?? p.quote} /></button>
+      <button type="button" className="cp-btn" onClick={tweak} {...tip('A copy beside it with the same settings, ready to change. Nothing runs until you press Generate')}><CopyIcon size={14} /><span>Change settings</span></button>
+      <button type="button" className="cp-btn cp-btn-main" disabled={busy} onClick={() => void again()} {...tip('Same settings again. The new version joins the strip')}><RetryIcon size={14} /><span>{busy ? 'Starting…' : 'Run again'}</span><PriceSuffix q={v.q ?? p.quote} /></button>
     </div></div>;
   const note = v.st?.extra.length ? tooManyNote(spec, v.st.extra.length, v.model) : null;
   return <div className="cp-run" ref={box}>
@@ -404,7 +404,7 @@ function NextSteps({ v }: { v: View }) {
   const [pr, setPr] = useState<Record<string, string | null>>({});
   useEffect(() => { let on = true; acts.forEach(a => void actionPrice(a.flow, kind as any, v.media!.url).then(t => { if (on) setPr(m => ({ ...m, [a.id]: t })); })); return () => { on = false; }; }, [kind, acts.length]); // eslint-disable-line react-hooks/exhaustive-deps
   return <div className="cp-grid2">{acts.map(a => <button key={a.id} type="button" className="cp-tilebtn" onClick={() => quickCard(editor, v.s.id, a)}>
-    <a.icon size={15} /><span>{a.label}</span><small className="cp-suffix">{pr[a.id] ?? '…'}</small></button>)}</div>;
+    <a.icon size={15} /><span title={a.label}>{a.label}</span><small className="cp-suffix">{pr[a.id]?.split(' · ')[0] ?? '…'}</small></button>)}</div>;
 }
 
 /** What feeds it and what it feeds; a click jumps to that card. */
@@ -437,7 +437,7 @@ function Actions({ v }: { v: View }) {
   const page = m.kind === 'video' ? 'Video' : m.kind === 'audio' ? 'Audio' : m.kind === '3d' ? '3D' : 'Image';
   const href = v.gen ? toolHrefOf(v.p.flow, m.jobId || v.p.jobId) : v.job ? workflowRecreateHref(v.job as any) : null;
   return <div className="cp-foot-row">
-    <a className="cp-btn" href={m.url} download {...tip('Save the file')}><DownloadIcon size={14} /><span>Download</span></a>
+    <a className="cp-btn cp-dl" href={m.url} download aria-label="Download" {...tip('Save the file')}><DownloadIcon size={14} /><span>Download</span></a>
     {v.s.type !== UPLOAD_TYPE && <button type="button" className="cp-btn" disabled={!href} onClick={() => href && navigate(href)} {...tip(href ? `Open in ${page} with these settings` : 'Made outside a workflow: nothing to open')}><PullOutIcon size={14} /><span>Open in {page}</span></button>}
     {m.jobId && <button type="button" className="cp-btn cp-sq" disabled={!wfOk} aria-label="View workflow" data-testid="cp-view-workflow" onClick={() => setWf(true)} {...tip(wfDis ?? 'View workflow: the ComfyUI graph that made this, with its settings')}><OpenModelIcon size={14} /></button>}
     <a className="cp-btn cp-sq" href={m.url} target="_blank" rel="noreferrer" aria-label="Full size" {...tip('Full size in a new tab')}><ExpandIcon size={14} /></a>
@@ -460,8 +460,8 @@ function Many({ ids, head }: { ids: TLShapeId[]; head: HeadFn }) {
         return <button key={s.id} type="button" className="cp-many-t" onClick={() => editor.select(s.id)} {...tip(`Just ${shapeName(s)}`)}><span className="cp-many-i">{m?.poster ? <img src={gridSrc(m.poster, 140)} alt="" /> : <I size={18} />}</span><small>{shapeName(s)}</small></button>; })}</div>
       <RunDrafts shapes={shapes} />
       {done.length > 0 && <Section title="Finished" aside={`${done.length} of ${shapes.length}`}><div className="cp-pair">
-        <button type="button" className="cp-btn" onClick={() => editor.selectNone()}><CloseIcon size={13} />Clear selection</button>
-        <button type="button" className="cp-btn" onClick={downloadAll}><DownloadIcon size={14} />Download all</button></div></Section>}
+        <button type="button" className="cp-btn" onClick={() => editor.selectNone()}><CloseIcon size={13} /><span>Clear selection</span></button>
+        <button type="button" className="cp-btn" onClick={downloadAll}><DownloadIcon size={14} /><span>Download all</span></button></div></Section>}
     </div></>;
 }
 
@@ -477,7 +477,7 @@ function RunDrafts({ shapes }: { shapes: TLShape[] }) {
   return <Section title="Run the drafts" aside={`${drafts.length} of ${shapes.length}`}>
     <Caption>Each one runs with its own settings. You see the total first.</Caption>
     <button type="button" className="cp-btn cp-btn-main cp-wide" disabled={!total} onClick={() => { drafts.forEach(d => runCard(d.id)); toast(`Started ${drafts.length} run${drafts.length === 1 ? '' : 's'}`); }}>
-      Generate {drafts.length}<small className="cp-suffix">{total ? <GenPrice credits={total.credits} demo={total.demo} /> : 'Pricing…'}</small></button></Section>;
+      <span>Generate {drafts.length}</span><small className="cp-suffix">{total ? <GenPrice credits={total.credits} demo={total.demo} /> : 'Pricing…'}</small></button></Section>;
 }
 
 function Empty({ head }: { head: HeadFn }) {
