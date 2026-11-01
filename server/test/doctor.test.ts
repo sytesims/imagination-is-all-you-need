@@ -54,6 +54,9 @@ ok('before start (npm run setup): "The app isn’t started yet: setup starts it 
 
 // ---- Node too old / deps missing → exit 2 ----
 { const r = await D.runDoctor(env({ ...base(), node: 'v18.19.0' })); assert.equal(r.exitCode, 2); assert.equal(r.checks.find((c) => c.id === 'node')!.status, 'fail');
+  // Node.js 22 (from 22.12), 24 or 26: 20, 22.11, 25 and 27 fail
+  for (const [node, ok] of [['v20.19.2', false], ['v22.11.0', false], ['v22.12.0', true], ['v25.2.0', false], ['v26.1.0', true], ['v27.0.0', false]] as const) {
+    const n = (await D.runDoctor(env({ ...base(), node }))).checks.find((c) => c.id === 'node')!; assert.equal(n.status, ok ? 'ok' : 'fail', node); }
   const f = base(); delete f.files[`${REPO}/node_modules/fastify/package.json`]; const r2 = await D.runDoctor(env(f)); assert.equal(r2.exitCode, 2); assert.equal(r2.checks.find((c) => c.id === 'deps')!.fix, 'npm install'); }
 ok('Node 18 or missing dependencies → exit 2');
 

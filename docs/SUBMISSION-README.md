@@ -23,7 +23,7 @@ The main [README](../README.md) covers what you can make, the Canvas, where runs
 - **Deployments:** Comfy deployments are supported: connect your own from Settings.
 
 ## Run it
-Use Node 22 or 24, npm, and ffmpeg/ffprobe for media operations:
+Use Node.js 22, 24 or 26 (24 recommended), npm, and ffmpeg/ffprobe for media operations:
 
 ```bash
 npm run setup      # installs app dependencies, checks setup, starts web/API/MCP

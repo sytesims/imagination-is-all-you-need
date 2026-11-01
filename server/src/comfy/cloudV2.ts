@@ -1,5 +1,5 @@
 /**
- * BH9 (f) / B2-minimal: Comfy Cloud API v2 over plain REST (fetch only; no SDK, works on Node 20). Same shape as ComfyNative
+ * BH9 (f) / B2-minimal: Comfy Cloud API v2 over plain REST (fetch only; no SDK). Same shape as ComfyNative
  * (upload / run / download) so runNative() runs our own workflow graphs on Comfy Cloud unchanged.
  *   POST /api/v2/assets (multipart file, content_type, file_path) → Asset {id}; the graph gets {"__type":"core/ASSET","info":{id}} on the loader widget
  *   POST /api/v2/jobs {workflow} + Idempotency-Key → Job {id}; the id is stored at once (onSubmitted) and only ever POLLED, never resubmitted

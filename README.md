@@ -40,12 +40,12 @@ On Windows, paste this into PowerShell:
 irm https://iiayn.app/install.ps1 | iex
 ```
 
-It checks for git, Node.js (22 to 25) and ffmpeg and asks before installing anything that is missing. Then it puts the app in an `Imagination` folder in your home folder, offers a shortcut and opens the app in your browser. It doesn't download AI models or ask for keys: you connect those in the app when you want them. Read the scripts first if you like: [get.sh](scripts/get.sh) · [get.ps1](scripts/get.ps1).
+It checks for git, Node.js (22, 24 or 26) and ffmpeg and asks before installing anything that is missing. Then it puts the app in an `Imagination` folder in your home folder, offers a shortcut and opens the app in your browser. It doesn't download AI models or ask for keys: you connect those in the app when you want them. Read the scripts first if you like: [get.sh](scripts/get.sh) · [get.ps1](scripts/get.ps1).
 
 <details>
 <summary><b>Other ways to install</b> (git clone, Mac Dock app, updating)</summary>
 
-You'll need **Node 22 or 24** and npm (Node 26 isn't supported yet: the database module has no ready-made build for it), plus **ffmpeg and ffprobe** for media.
+You'll need **Node.js 22, 24 or 26** (24 recommended) and npm, plus **ffmpeg and ffprobe** for media.
 
 ```text
 git clone https://github.com/sytesims/imagination-is-all-you-need.git

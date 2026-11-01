@@ -6,8 +6,8 @@
 - **The `mcp` process exits with `EADDRINUSE`:** something already listens on :8788. The API and web app keep running. Stop the other process or change `MCP_PORT`.
 - **The `mcp` process doesn't start after `npm install`:** the MCP dependencies didn't install. Run `npm run mcp:install`, then `npm start` again.
 - **Port in use:** the web app uses a fixed port (`WEB_PORT`, default 5174) and stops if it's taken. Start it on another one, e.g. `WEB_PORT=5180 npm start`, or change `PORT` (API, default 8787).
-- **`better-sqlite3` build error during `npm ci`:** install build tools (`xcode-select --install` on a Mac, `build-essential python3` on Linux), or use Node 22 or 24, which have prebuilt binaries (Node 26 doesn't yet).
-- **`EBADENGINE` warnings on Node 20:** they come from the Comfy SDK and `eventsource-parser`, which ask for Node 22+. Mock mode works; see [INSTALL.md](INSTALL.md#requirements).
+- **`better-sqlite3` build error during `npm ci`:** install build tools (`xcode-select --install` on a Mac, `build-essential python3` on Linux), or use Node 22, 24 or 26, which have prebuilt binaries.
+- **"Node.js 20 is too old" (or 23, 25):** that version is past its end of life and no longer gets security fixes. Switch to Node 24: `brew install node@24` on a Mac, `winget install OpenJS.NodeJS.LTS` on Windows, or `nvm install 24 && nvm use 24`. See [INSTALL.md](INSTALL.md#requirements).
 
 ## Generating
 

@@ -70,8 +70,17 @@ if [ $DETECT = 1 ]; then echo "OS=$OS ARCH=$ARCH GPU=$GPU UNIFIED=$UNIFIED VRAM_
 
 # ---- prerequisites --------------------------------------------------------------------------------
 if [ $MODELS_ONLY = 0 ]; then
-command -v node >/dev/null || die "Node.js 22 to 25 is required (https://nodejs.org or: brew install node@24 / nvm install 24)"
-NODE_MAJOR=$(node -p 'process.versions.node.split(".")[0]'); [ "$NODE_MAJOR" -ge 20 ] && [ "$NODE_MAJOR" -le 25 ] || die "Node $NODE_MAJOR found, need Node 22 to 25 (Node 24 recommended; Node 26+ has no ready-made build of the app's database module yet)"
+NODE_STEPS="Mac: brew install node@24 (this installer finds it). With nvm: nvm install 24 && nvm use 24. Then run the install line again."
+command -v node >/dev/null || die "Imagination needs Node.js 22, 24 or 26 (24 recommended). $NODE_STEPS"
+# Node.js 22 (from 22.12), 24 or 26, the same rule as scripts/node-version.mjs (20, 23 and 25 are past their end of life)
+NODE_V=$(node -p 'process.versions.node'); NODE_MAJOR=${NODE_V%%.*}; NODE_MINOR=${NODE_V#*.}; NODE_MINOR=${NODE_MINOR%%.*}
+case "$NODE_MAJOR" in
+  24|26) ;;
+  22) [ "$NODE_MINOR" -ge 12 ] || die "Node.js $NODE_V is too old: Imagination needs 22.12 or newer. Install Node.js 22, 24 or 26 (24 recommended). $NODE_STEPS";;
+  23|25) die "Node.js $NODE_V reached its end of life and no longer gets security fixes. Install Node.js 22, 24 or 26 (24 recommended). $NODE_STEPS";;
+  *) if [ "$NODE_MAJOR" -gt 26 ]; then die "Node.js $NODE_V is newer than Imagination supports yet. Use Node.js 22, 24 or 26 (24 recommended). $NODE_STEPS"
+     else die "Node.js $NODE_V is too old. It reached its end of life and no longer gets security fixes. Install Node.js 22, 24 or 26 (24 recommended). $NODE_STEPS"; fi;;
+esac
 fi
 PY="${PYTHON:-python3}"; command -v "$PY" >/dev/null || die "Python 3.10+ is required (used by the model/node manifest tools)"
 "$PY" -c 'import sys; sys.exit(0 if sys.version_info>=(3,10) else 1)' || die "Python 3.10+ required, found $("$PY" -V)"

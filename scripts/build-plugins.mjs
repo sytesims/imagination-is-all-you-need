@@ -8,7 +8,7 @@ if (!fs.existsSync(root)) process.exit(0);
 for (const d of fs.readdirSync(root)) {
   const ts = path.join(root, d, 'handler.ts');
   if (!fs.existsSync(ts)) continue;
-  await build({ entryPoints: [ts], outfile: path.join(root, d, 'handler.mjs'), format: 'esm', platform: 'node', bundle: false, target: 'node20', logLevel: 'warning',
+  await build({ entryPoints: [ts], outfile: path.join(root, d, 'handler.mjs'), format: 'esm', platform: 'node', bundle: false, target: 'node22', logLevel: 'warning',
     banner: { js: '// GENERATED from handler.ts by scripts/build-plugins.mjs. Edit handler.ts.' } });
   console.log(`plugin handler compiled: ${d}/handler.mjs`);
 }

@@ -6,10 +6,15 @@ param([string]$ComfyUrl = $env:OPENHIGGSFIELD_COMFY_URL, [switch]$Mock, [switch]
 $ErrorActionPreference = 'Stop'
 Set-Location (Split-Path $PSScriptRoot -Parent)
 function Need($cmd, $msg) { if (-not (Get-Command $cmd -ErrorAction SilentlyContinue)) { throw $msg } }
-Need node 'Node.js 22 to 25 is required: https://nodejs.org (or winget install OpenJS.NodeJS.22)'
-Need npm.cmd 'npm is required. Install Node.js 22 or 24 (https://nodejs.org), reopen PowerShell, then retry.'
-$major = [int]((node -p "process.versions.node.split('.')[0]"))
-if ($major -lt 20 -or $major -gt 25) { throw "Node $major found, need Node 22 to 25 (Node 24 recommended; Node 26+ has no ready-made build of the app's database module yet)" }
+$nodeSteps = 'Install it with: winget install OpenJS.NodeJS.LTS (or nvm-windows: nvm install 24), reopen PowerShell, then run this again.'
+Need node "Imagination needs Node.js 22, 24 or 26 (24 recommended). $nodeSteps"
+Need npm.cmd "npm is missing. Install Node.js 22, 24 or 26 (24 recommended) with npm. $nodeSteps"
+# Node.js 22 (from 22.12), 24 or 26, the same rule as scripts/node-version.mjs (20, 23 and 25 are past their end of life)
+$nodeV = [string](node -p "process.versions.node"); $parts = $nodeV.Split('.'); $major = [int]$parts[0]; $minor = [int]$parts[1]
+if ($major -gt 26) { throw "Node.js $nodeV is newer than Imagination supports yet. Use Node.js 22, 24 or 26 (24 recommended). $nodeSteps" }
+if ($major -eq 23 -or $major -eq 25) { throw "Node.js $nodeV reached its end of life and no longer gets security fixes. Install Node.js 22, 24 or 26 (24 recommended). $nodeSteps" }
+if ($major -eq 22 -and $minor -lt 12) { throw "Node.js $nodeV is too old: Imagination needs 22.12 or newer. Install Node.js 22, 24 or 26 (24 recommended). $nodeSteps" }
+if ($major -lt 22) { throw "Node.js $nodeV is too old. It reached its end of life and no longer gets security fixes. Install Node.js 22, 24 or 26 (24 recommended). $nodeSteps" }
 foreach ($tool in @('ffmpeg', 'ffprobe')) {
   if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
     Write-Warning "$tool not found. Install the FFmpeg tools (winget install --id Gyan.FFmpeg -e), reopen PowerShell, then retry. Examples can be browsed, but uploads and media processing need both ffmpeg and ffprobe."
