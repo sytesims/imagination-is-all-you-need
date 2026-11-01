@@ -18,7 +18,7 @@ import type { FastifyInstance } from 'fastify';
 import { getTool, listTools } from '../tools/registry.js';
 import { jobs } from '../jobs.js';
 import { getBalance, canAfford } from '../ledger.js';
-import { routesFor, findRoute, isTwinAlias, toolKeys } from './routes.js';
+import { routesFor, findRoute, isTwinAlias, toolKeys, mapTwinAlias } from './routes.js';
 import { requestMode, toolDefaults, setStatusInput, toolModes, lyricsFreeDefault, draftOn, draftCapableDefault } from './defaults.js';
 import { localRunnerName } from './routes.js';
 import { hwBlock, withAlternative } from './fitView.js';
@@ -368,6 +368,7 @@ export function registerRouting(app: FastifyInstance) {
     if (req.method !== 'GET') return; const url = req.url.split('?')[0];
     const pm = url.match(/^\/api\/tools\/([^/]+)\/price$/); const isQuote = url === '/api/models/quote'; if (!pm && !isQuote) return;
     if (pm?.[1] === 'app-photos-to-reel' || (isQuote && (req.query as any)?.toolId === 'app-photos-to-reel')) return; // Composite children resolve their own models and routes.
+    if (pm) mapTwinAlias(getTool(decodeURIComponent(pm[1])), req.query as Record<string, any>); // provider=<twin card>: its model + Comfy Cloud route, as the submit does
     const q = (req.query ?? {}) as Record<string, string>; const runOnRaw = q.runOn ?? q.run_on;
     { // Enum case (re-check 6): validate + normalise the user's enum values (aspect=AUTO → auto, quality=HIGH → high) BEFORE the price handler's
       // per-model checks, exactly as the submit does (index.ts enumParamError on the job fields), so quote = submit for the same params. Same 400 body.

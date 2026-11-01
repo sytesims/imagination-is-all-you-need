@@ -1,4 +1,5 @@
 // Footage Effects · Comfy Cloud (2026-10-27): four official Comfy LTX-2.3 IC-LoRA templates as the Comfy Cloud place of Footage Effects.
+// 2026-11-01: Vanish, Day to night, Rain and Flood also run here (the restore graph with Lightricks' LTX-2.3 LoRAs); their local place is unchanged.
 // FAKE fetches only (no network, no key, no spend).
 //  1 graphs: the four saved graphs pass Comfy Cloud's object_info (fixture cut from the 2026-10-26 copy): every class, input, link, LoRA and model file
 //  2 plan: every Cloud effect × Draft / Sharper × 16:9 / 9:16 / 1:1 (Extend the frame: × shape × direction) passes Cloud, with the job's size, frames,
@@ -41,7 +42,10 @@ const hasAudio = (f: string) => execFileSync('ffprobe', ['-v', 'error', '-select
 const json = (o: any, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json' } });
 const mkClip = (name: string, secs: number, size = '1280x720', audio = true) => { const f = path.join(D, name);
   execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', `testsrc=size=${size}:rate=24:duration=${secs}`, ...(audio ? ['-f', 'lavfi', '-i', `sine=frequency=440:duration=${secs}`, '-c:a', 'aac', '-shortest'] : []), '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', f]); return f; };
-const CLOUD = ['restore', 'remove-object', 'remove-text', 'extend-frame'];
+const BOTH = ['vanish', 'day-to-night', 'rain', 'flood']; // 2026-11-01: also on Comfy Cloud (the restore graph + Lightricks' LTX-2.3 LoRAs); their local place is unchanged
+const ONLY = ['restore', 'remove-object', 'remove-text', 'extend-frame']; const CLOUD = [...BOTH, ...ONLY];
+const LORA23: Record<string, string> = { vanish: 'ltx-2.3-22b-ic-lora-clean-plate-1.0.safetensors', 'day-to-night': 'ltx-2.3-22b-ic-lora-day-to-night-0.9.safetensors',
+  rain: 'ltx-2.3-22b-ic-lora-water-simulation-0.9.safetensors', flood: 'ltx-2.3-22b-ic-lora-water-simulation-0.9.safetensors' };
 const plan = (input: Record<string, any>) => buildCloudPlan({ id: 'j1', toolId: 'footage-fx', provider: V.VFX_CLOUD_PROVIDER, input });
 const jobInput = (effect: string, p: any, extra: Record<string, any> = {}) => { const e = S.footageEffect(effect)!; return { types: [effect], finalPrompt: S.footageFxPrompt(e, 'the red car'), negative: e.negative, seed: 42, duration: p.seconds, resolution: p.resolution,
   videoPath: '/x/clip.mp4', hasAudio: true, keepAudio: true, footageFx: { effect, plan: p, ...extra } }; };
@@ -49,12 +53,14 @@ try {
   // ---- 1. graphs ----
   assert.deepEqual(S.FOOTAGE_CLOUD_EFFECTS.map((e) => e.id), CLOUD);
   for (const [id, d] of Object.entries(V.VFX_CLOUD_GRAPHS)) { const g = load(d.graph); clean(`${id} as saved`, g); assert.equal(g[d.out].class_type, 'SaveVideo'); assert.equal(g[d.load].class_type, 'LoadVideo');
-    const e = S.footageEffect(id)!; assert.ok(JSON.stringify(g).includes(e.cloud!.loraFile), `${id}: the template's LoRA`); }
+    const e = S.footageEffect(id)!; if (!e.cloud!.derived) assert.ok(JSON.stringify(g).includes(e.cloud!.loraFile), `${id}: the template's LoRA`); }
+  for (const id of BOTH) { const e = S.footageEffect(id)!; assert.equal(e.cloud!.loraFile, LORA23[id]); assert.equal(e.cloud!.derived, true); assert.equal(V.VFX_CLOUD_GRAPHS[id], V.VFX_CLOUD_GRAPHS.restore, `${id}: the one shared restore graph`);
+    assert.match(e.cloud!.loraSource!, /^https:\/\/huggingface\.co\/Lightricks\/LTX-2\.3-22b-IC-LoRA-/); assert.ok(V.VFX_CLOUD_REQUIRES.models.some((m) => m.file === LORA23[id] && m.loader === 'LTXICLoRALoaderModelOnly'), `${id}: its LoRA is a requirement`); }
   for (const n of V.VFX_CLOUD_REQUIRES.nodes) assert.ok(OI[n], `${n} on Comfy Cloud`);
   for (const m of V.VFX_CLOUD_REQUIRES.models) { const spec = OI[m.loader].input.required[m.field] ?? OI[m.loader].input.optional[m.field]; const opts = Array.isArray(spec[0]) ? spec[0] : spec[1].options; assert.ok(opts.includes(m.file), `${m.file} (${m.loader}.${m.field}) on Comfy Cloud`); }
   assert.ok(V.VFX_CLOUD_REQUIRES.models.length >= 12, 'every model file listed');
   { const o = load(V.VFX_CLOUD_GRAPHS['extend-frame'].graph); assert.ok(!Object.values<any>(o).some((n) => /^VHS_|LoadImage|LTXVImgToVideoConditionOnly/.test(n.class_type)), 'outpaint: no VHS nodes, no bypassed image step'); }
-  ok(`graphs: 4 official templates pass Comfy Cloud's object_info; ${V.VFX_CLOUD_REQUIRES.nodes.length} classes and ${V.VFX_CLOUD_REQUIRES.models.length} model files (all four LoRAs) in Cloud's library`);
+  ok(`graphs: 4 official templates (+ 4 effects on the restore graph) pass Comfy Cloud's object_info; ${V.VFX_CLOUD_REQUIRES.nodes.length} classes and ${V.VFX_CLOUD_REQUIRES.models.length} model files (all four LoRAs) in Cloud's library`);
 
   // ---- 2. plans ----
   let n = 0;
@@ -66,9 +72,11 @@ try {
       assert.deepEqual(g[V.VFX_CLOUD_GRAPHS[effect].load].inputs.file, { __file: '/x/clip.mp4' }); assert.equal(ps.output, V.VFX_CLOUD_GRAPHS[effect].out); assert.equal(ps.expect.frames, p.frames);
       assert.ok(!Object.values<any>(g).some((q) => q.class_type === 'ImageStitch' || q.class_type === 'ImageConcanate'), `${label}: compare branch pruned`);
       const txt = JSON.stringify(g); assert.ok(txt.includes(S.footageEffect(effect)!.cloud!.loraFile));
-      if (effect === 'restore' || effect === 'remove-text') { const P = V.VFX_CLOUD_GRAPHS[effect] as any; const q = (id: string) => g[`${P.p}${id}`];
+      if (V.VFX_CLOUD_GRAPHS[effect].kind === 'two-stage') { const P = V.VFX_CLOUD_GRAPHS[effect] as any; const q = (id: string) => g[`${P.p}${id}`]; const e = S.footageEffect(effect)!;
         assert.deepEqual([q('5093').inputs.width, q('5093').inputs.height], [p.stage1.width, p.stage1.height]); assert.deepEqual([q('5068').inputs['resize_type.width'], q('5068').inputs['resize_type.height']], [p.width, p.height]);
-        assert.equal(q('5058').inputs.noise_seed, 42); assert.equal(q('5087').inputs.strength_model, effect === 'restore' ? 1 : 1.2); assert.equal(q('5091').inputs.text, jobInput(effect, p).finalPrompt);
+        assert.equal(q('5058').inputs.noise_seed, 42); assert.equal(q('5087').inputs.strength_model, ({ restore: 1, 'remove-text': 1.2, vanish: 1, 'day-to-night': 1, rain: 1.1, flood: 1.3 } as Record<string, number>)[effect]);
+        assert.equal(q('5087').inputs.lora_name, e.cloud!.loraFile); assert.equal(q('5091').inputs.text, jobInput(effect, p).finalPrompt); assert.equal(q('5057').inputs.text, e.negative, `${effect}: the effect's own negative`);
+        assert.equal(q('5087').inputs.strength_model, e.strength, `${effect}: the local strength`);
         assert.equal(p.stage1.width % 32, 0); assert.equal(p.stage1.height % 32, 0); }
       if (effect === 'remove-object') { assert.equal(g['54:9'].inputs.text, 'Remove the red car from the foreground.'); assert.equal(g['54:50'].inputs.value, 24); assert.equal(g['54:19'].inputs.seed, 42); assert.equal(g['54:15'].inputs.strength_model, 2);
         assert.deepEqual([g['54:41'].inputs['resize_type.width'], g['54:41'].inputs['resize_type.height']], [p.width, p.height]); }
@@ -79,11 +87,13 @@ try {
   }
   { const p = S.footageFxPlan({ width: 1280, height: 720, seconds: 4 }, { seconds: 2 })!; const g = plan({ ...jobInput('restore', p), keepAudio: false }).passes[0].graph; assert.equal(g['5189:5062'].inputs.audio, undefined, 'sound off: none on the result');
     assert.deepEqual(plan(jobInput('restore', p)).passes[0].graph['5189:5062'].inputs.audio, ['5190', 1], 'the clip’s own sound kept');
-    assert.throws(() => plan({ ...jobInput('restore', p), footageFx: { effect: 'vanish', plan: p }, types: ['vanish'] }), /Vanish runs on your computer/);
+    assert.throws(() => plan({ ...jobInput('restore', p), footageFx: { effect: 'alpha-matte', plan: p }, types: ['alpha-matte'] }), /Alpha matte runs on your computer/);
+    const gv = plan({ ...jobInput('vanish', p), hasAudio: false, cloudVideoPath: '/x/clip-cloud.mp4' }).passes[0].graph; assert.deepEqual(gv['5188'].inputs.file, { __file: '/x/clip-cloud.mp4' }, 'a silent clip: the Comfy Cloud copy with a silent track');
+    assert.equal(gv['5189:5062'].inputs.audio, undefined, 'and no sound on the result');
     assert.throws(() => plan({ ...jobInput('extend-frame', p) }), /pick a shape/); assert.throws(() => plan({ ...jobInput('restore', p), videoPath: undefined }), /not prepared/); }
   { const o = S.outpaintPlan({ width: 1280, height: 720 }, { width: 448, height: 768 }, '9:16', 'left'); assert.equal(o.grow, 'around', 'no room to grow left in a taller frame'); assert.equal(o.zoomOut, false);
     const z = S.outpaintPlan({ width: 1280, height: 720 }, { width: 768, height: 448 }, '16:9', 'right'); assert.ok(z.zoomOut && z.pad.left === 0 && z.pad.right > 0, 'same shape: zoom out, grow right'); }
-  ok(`plan: ${n} variants (4 effects × Draft / Sharper × 3 clip shapes; Extend the frame × 3 shapes × 5 directions) pass Cloud with the job's sizes, seed, prompt, LoRA; sound kept or off; local effects refused`);
+  ok(`plan: ${n} variants (8 effects × Draft / Sharper × 3 clip shapes; Extend the frame × 3 shapes × 5 directions) pass Cloud with the job's sizes, seed, prompt, LoRA; sound kept or off; local effects refused`);
 
   // ---- 3. parseInput ----
   const tool = getTool('footage-fx')!; const route = V.VFX_CLOUD_ROUTE; const P = S.FOOTAGE_FX_PROVIDER;
@@ -106,15 +116,20 @@ try {
   // ---- 4. routes + price ----
   const rs = routesFor(P, tool); const loc = rs.find((q) => q.kind === 'local')!; const cr = rs.find((q) => q.routeId === route)!; assert.ok(loc && cr, rs.map((q) => q.routeId).join());
   assert.equal(cr.kind, 'comfy-cloud'); assert.equal(cr.label, 'Comfy Cloud'); assert.equal(cr.heldUntilMeasured, true); assert.deepEqual((cr.caps as any).effects, CLOUD);
-  for (const id of CLOUD) { assert.equal(cr.unavailableFor?.({ types: [id] }) ?? null, null); assert.match(String(loc.unavailableFor?.({ types: [id] })), /runs on Comfy Cloud/); }
-  for (const id of ['vanish', 'day-to-night', 'rain', 'flood', 'alpha-matte']) { assert.match(String(cr.unavailableFor?.({ types: [id] })), /runs on your computer/); assert.equal(loc.unavailableFor?.({ types: [id] }) ?? null, null); }
+  for (const id of CLOUD) assert.equal(cr.unavailableFor?.({ types: [id] }) ?? null, null, `${id} on Comfy Cloud`);
+  assert.equal(modelNameForRun('footage-fx', P, { types: ['vanish'] }, route), 'LTX-2.3 22B + Clean Plate IC-LoRA', 'the real model on the Comfy Cloud place');
+  assert.equal(modelNameForRun('footage-fx', P, { types: ['flood'] }, `local:${P}`), 'LTX-2.5 22B + Water Simulation IC-LoRA', 'and on your computer');
+  { const r: any = await parse({ types: '["day-to-night"]' }); assert.equal(r.footageFx.modelName, 'LTX-2.3 22B + Day to Night IC-LoRA'); assert.equal(r.footageFx.cloud, true); clean('parsed day-to-night', plan(r).passes[0].graph); }
+  for (const id of ONLY) assert.match(String(loc.unavailableFor?.({ types: [id] })), /runs on Comfy Cloud/);
+  for (const id of BOTH) assert.equal(loc.unavailableFor?.({ types: [id] }) ?? null, null, `${id}: still runs on your computer`);
+  assert.match(String(cr.unavailableFor?.({ types: ['alpha-matte'] })), /Alpha matte runs on your computer/); assert.equal(loc.unavailableFor?.({ types: ['alpha-matte'] }) ?? null, null);
   assert.ok(!routesFor('comfy-ltx25-video', 'footage-fx').some((q) => q.routeId === route));
   { const pv = getProvider(V.VFX_CLOUD_PROVIDER)!; assert.equal(pv.name, V.VFX_CLOUD_NAME); assert.ok(providerOpenWeights(pv), 'open weights');
     const row = HOSTED_BY_ID[V.VFX_CLOUD_PROVIDER]; assert.ok(row?.priceUnmeasured && row.estimated); assert.ok(row.usdByQuality!['576p'] > row.usdByQuality!['448p']);
     const rt = findRoute(route)!; assert.ok(CLOUD_RUNNER_ROUTES.has(rt.routeId)); assert.ok(routeRunnable(rt)); const w = CLOUD_WORKFLOWS[rt.routeId]; assert.ok(isStandalone(w) && w.target === 'cloud' && !w.preflight); }
   const Fastify = (await import('fastify')).default; const app = Fastify(); (await import('../src/routesBatch1.ts')).registerBatch1(app); (await import('../src/routing/http.ts')).registerRouting(app); await app.ready();
   const seen: Record<string, number> = {};
-  for (const [effect, len, res] of [['restore', '5', '576p'], ['restore', '2', '448p'], ['remove-object', '3', '448p'], ['remove-text', '4', '576p'], ['extend-frame', '2', '448p']] as const) {
+  for (const [effect, len, res] of [['restore', '5', '576p'], ['restore', '2', '448p'], ['remove-object', '3', '448p'], ['remove-text', '4', '576p'], ['extend-frame', '2', '448p'], ['vanish', '2', '448p'], ['day-to-night', '5', '576p'], ['rain', '3', '448p'], ['flood', '4', '576p']] as const) {
     const job: any = await tool.parseInput({ provider: P, route, types: JSON.stringify([effect]), duration: len, resolution: res, prompt: 'the red car', shape: '9:16' }, { video: [path.basename(mkClip(`q${len}.mp4`, 6))] }); assert.ok(!job.error, job.error);
     const charge = routeCredits(tool, cr, routeInput(tool, job))!; assert.ok(charge > 0);
     const qs = new URLSearchParams({ provider: P, route, seconds: len, duration: len, resolution: res, types: effect });
@@ -122,7 +137,17 @@ try {
     assert.equal(b.route, route, JSON.stringify(b).slice(0, 300)); const quoted = b.listCredits ?? b.credits; assert.equal(quoted, charge, `${effect} ${len} s ${res}: quote ${quoted} = charge ${charge}`); seen[`${effect} ${len}s ${res}`] = quoted; }
   assert.ok(seen['restore 5s 576p'] > seen['restore 2s 448p'], JSON.stringify(seen));
   assert.deepEqual(tool.routeInput!({ types: 'restore' }), { types: ['restore'] }, 'a quote’s text types are read, not replaced by the first effect'); assert.deepEqual(tool.routeInput!({ types: '["extend-frame"]' }), { types: ['extend-frame'] });
-  for (const t of CLOUD) { const b = (await app.inject({ url: `/api/tools/footage-fx/price?provider=${P}&types=${t}&seconds=2&resolution=448p` })).json(); assert.notEqual(b.route, `local:${P}`, `${t}: never quoted as a free local run`); }
+  for (const t of ONLY) { const b = (await app.inject({ url: `/api/tools/footage-fx/price?provider=${P}&types=${t}&seconds=2&resolution=448p` })).json(); assert.notEqual(b.route, `local:${P}`, `${t}: never quoted as a free local run`); }
+  // quote runnable == submit allowed, for every effect × every way of pinning a place (the "possible quote bug": provider=cloud-ltx23-vfx quoted
+  // runnable for any effect, skipping the place's rules, while the submit refused that provider). The submit's place check is the same route rule.
+  const { mapTwinAlias } = await import('../src/routing/routes.ts'); const runnableQuotes: string[] = [];
+  for (const e of S.FOOTAGE_EFFECTS) for (const pin of [{ provider: V.VFX_CLOUD_PROVIDER }, { provider: P, route }, { provider: P, route: `local:${P}` }]) {
+    const qs = new URLSearchParams({ ...pin, types: e.id, seconds: '2', duration: '2', resolution: '448p' }); const b = (await app.inject({ url: `/api/tools/footage-fx/price?${qs}` })).json();
+    const f: Record<string, any> = { ...pin }; mapTwinAlias(tool, f); assert.equal(f.provider, P, 'the twin card maps to its open model, as the submit does'); const rt = routesFor(f.provider, tool).find((x) => x.routeId === f.route)!; // the route the submit resolves on the model (index.ts → routing/select.ts)
+    const allowed = tool.providers.includes(f.provider) && !rt.unavailableFor?.({ types: [e.id] }); const label = `${e.id} ${JSON.stringify(pin)}`;
+    assert.equal(b.route, f.route, `${label}: quoted on the place the submit runs`); assert.equal(b.runnable !== false, allowed, `${label}: quote runnable ${b.runnable} vs submit allowed ${allowed}`);
+    if (allowed) runnableQuotes.push(label); }
+  for (const id of BOTH) assert.ok(runnableQuotes.some((l) => l.startsWith(`${id} {"provider":"${V.VFX_CLOUD_PROVIDER}"`)) && runnableQuotes.some((l) => l.startsWith(`${id} {"provider":"${P}","route":"local:`)), `${id}: both places`);
   await app.close();
   const usd = (s: number, q: string) => (s * HOSTED_BY_ID[V.VFX_CLOUD_PROVIDER].usdByQuality![q]).toFixed(3);
   ok(`routes + price: Comfy Cloud place on Footage Effects (held until measured), each place refuses the other's effects; quote = charge ${JSON.stringify(seen)}; 2 s Draft $${usd(2, '448p')}, 5 s Sharper $${usd(5, '576p')}`);
@@ -148,8 +173,13 @@ try {
   ok('run: unmeasured → refused before any call; allowed → the clip uploaded, a valid restore graph submitted, result saved; the mock sample shows the new shape');
 
   // ---- 6. Workflows cards ----
-  for (const id of CLOUD) { const e = WF_ENTRIES.find((x) => x.source === `fx:${id}`)!; assert.ok(e, id); assert.ok(e.tags.includes('comfy cloud')); assert.notEqual(e.art, 'fx', `${id}: its own drawing`);
+  for (const id of ONLY) { const e = WF_ENTRIES.find((x) => x.source === `fx:${id}`)!; assert.ok(e, id); assert.ok(e.tags.includes('comfy cloud')); assert.notEqual(e.art, 'fx', `${id}: its own drawing`);
     assert.match(e.how![1][1], /official Comfy template, on Comfy Cloud/); assert.ok(WF_SOURCES.some((s) => s.key === `fx:${id}`)); }
-  ok('workflows: a card per Comfy Cloud effect, credited to the official template, with its own drawing');
+  for (const id of BOTH) { const e = WF_ENTRIES.find((x) => x.source === `fx:${id}`)!; assert.ok(e.tags.includes('local') && e.tags.includes('comfy cloud'), `${id}: both places`); assert.match(e.how![1][1], /LTX-2\.5 22B, or its LTX-2\.3 version on Comfy Cloud/); }
+  { const rows = (await import('../src/licenses.ts')).LICENSE_COMPONENTS['footage-fx']; const txt = JSON.stringify(rows);
+    for (const f of ['Clean-Plate', 'Day-To-Night', 'Water-Simulation']) { const r = rows.find((x: any) => x.url === `https://huggingface.co/Lightricks/LTX-2.3-22b-IC-LoRA-${f}`)!; assert.ok(r, f); assert.equal(r.licenseId, 'ltx-2x-community'); }
+    assert.match(txt, /Rain, Flood/, 'one Water Simulation row for both'); assert.match(txt, /template_ltx2_3_lora_restore_archival_footage \(Comfy-Org\/workflow_templates\); Vanish, Day to night, Rain, Flood on Comfy Cloud use our graph derived from it/);
+    assert.equal(rows.filter((x: any) => /restore_archival_footage/.test(x.model)).length, 1, 'the restore template credited once'); }
+  ok('workflows: a card per Comfy Cloud effect, credited to the official template, with its own drawing; the four both-place cards name both');
   console.log('ALL OK ltx23-vfx-cloud');
 } finally { setCloudFetch(null); fs.rmSync(D, { recursive: true, force: true }); }

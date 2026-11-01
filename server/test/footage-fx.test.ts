@@ -59,7 +59,7 @@ for (const id of ['32', '52']) { assert.equal(raw[id].class_type, 'LTXVAddGuide'
 assert.deepEqual(raw['3'].inputs.iclora_model, ['2', 0], 'IC-LoRA parameters read the effect LoRA loader'); for (const id of ['38', '56']) assert.deepEqual(raw[id].inputs.model, ['2', 0]);
 assert.deepEqual(raw['50'].inputs.samples, ['41', 2], 'guides cropped before the upscale'); assert.deepEqual(raw['60'].inputs.samples, ['59', 2], 'and before decode');
 const plan = S.footageFxPlan({ width: 1920, height: 1080, seconds: 6 })!;
-for (const e of S.FOOTAGE_EFFECTS.filter((x) => !x.cloud) /* the Comfy Cloud effects: test/ltx23-vfx-cloud.test.ts */) for (const ff of [false, true]) {
+for (const e of S.FOOTAGE_EFFECTS.filter((x) => !!x.lora) /* every effect with a local place (the Comfy Cloud graphs: test/ltx23-vfx-cloud.test.ts) */) for (const ff of [false, true]) {
   const l = LTX_LORAS[e.lora]; const { graph, output, expect } = patchLtx25IcLora(structuredClone(raw), { variant: 'effect', plan, prompt: S.footageFxPrompt(e, 'a street'), negative: e.negative, lora: { file: l.file, strength: e.strength }, source: { __file: '/tmp/s.mp4' }, ...(ff ? { firstFrame: { __file: '/tmp/f.png' } } : {}) });
   validate(graph, `${e.id}${ff ? ' + first frame' : ''}`); assert.equal(output, '63'); assert.equal(graph['2'].inputs.lora_name, l.file); assert.equal(graph['2'].inputs.strength_model, e.strength);
   assert.equal(expect.firstFrame, ff); assert.equal(!!graph['24'], ff, 'first-frame nodes only when asked'); if (!ff) assert.deepEqual(graph['32'].inputs.latent, ['30', 0]); else assert.deepEqual(graph['52'].inputs.latent, ['25', 0]);
@@ -93,7 +93,7 @@ assert.equal(LTX_LORAS['water-simulation'].trigger, 'ADD WATER');
 assert.deepEqual(ltxLorasForJob('footage-fx', P, { types: ['flood'] }), [{ id: 'water-simulation', file: LTX_LORAS['water-simulation'].file, strength: 1.3 }]);
 assert.deepEqual(ltxLorasForJob('footage-fx', P, { types: '["vanish"]' }).map((l) => l.id), ['clean-plate']); assert.deepEqual(ltxLorasForJob('footage-fx', 'comfy-open', { types: ['vanish'] }), []);
 assert.equal(modelNameForRun('footage-fx', P, { types: ['day-to-night'] }), 'LTX-2.5 22B + Day to Night IC-LoRA', 'the real model is named');
-assert.ok((tool.presets ?? []).every((p: any) => p.modelName?.startsWith(S.footageEffect(p.id)?.cloud ? 'LTX-2.3 22B + ' : 'LTX-2.5 22B + ') && p.providers?.includes(P)), 'every effect card names its model');
+assert.ok((tool.presets ?? []).every((p: any) => p.modelName?.startsWith(S.isCloudOnly(S.footageEffect(p.id)) ? 'LTX-2.3 22B + ' : 'LTX-2.5 22B + ') && p.providers?.includes(P)), 'every effect card names its model');
 assert.ok(VIDEO_BARS['footage-fx'] && videoWorkflowById('footage-fx')?.toolId === 'footage-fx', 'a Video page workflow with its bar recipe');
 ok('prompts per the cards, four IC-LoRAs registered, the real model on every card and job');
 
@@ -119,6 +119,24 @@ assert.deepEqual(g['20'].inputs.file, { __file: r.videoPath }); assert.deepEqual
 assert.match(g['10'].inputs.text, /A cyclist on a sunny street\.$/); assert.match(g['11'].inputs.text, /people/); assert.equal(g['22'], undefined, 'no first frame for effects');
 const gf = buildPlan(J((await parse({ types: '["flood"]' })))).passes[0].graph; assert.equal(gf['2'].inputs.strength_model, 1.3); assert.match(gf['10'].inputs.text, /ADD WATER/); assert.equal(gf['11'].inputs.text, '');
 ok('parseInput conforms the clip (size, 49 frames, 24 fps, sound), refuses bad input; the plan loads the effect LoRA and muxes the sound back');
+
+// ---- 4b. local stays as it was for the four effects that also run on Comfy Cloud (2026-11-01: Cloud is an added place, not a replacement) ----
+{ const { routesFor } = await import('../src/routing/routes.js'); const loc = routesFor(P, tool).find((q) => q.kind === 'local')!; assert.ok(loc, 'a local route');
+  const silent = path.join(D, 'silent.mp4'); execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'testsrc2=size=1280x720:rate=24', '-t', '3', '-pix_fmt', 'yuv420p', silent]);
+  const LORA: Record<string, string> = { vanish: 'clean-plate', 'day-to-night': 'day-to-night', rain: 'water-simulation', flood: 'water-simulation' };
+  for (const [id, lid] of Object.entries(LORA)) { const e = fx(id); assert.ok(e.cloud && e.lora === lid && !S.isCloudOnly(e), `${id}: both places`);
+    assert.equal(loc.unavailableFor?.({ types: [id] }) ?? null, null, `${id}: the local route takes it`);
+    const j = await parse({ types: JSON.stringify([id]), prompt: 'a street' }); assert.ok(!j.error, j.error);
+    assert.equal(j.footageFx.lora.file, LTX_LORAS[lid].file, `${id}: the local LTX-2.5 LoRA`); assert.equal(j.footageFx.cloud, undefined); assert.equal(j.cloudVideoPath, undefined, 'a clip with sound: one conformed copy');
+    assert.equal(j.footageFx.modelName, `LTX-2.5 22B + ${LTX_LORAS[lid].label}`); assert.equal(modelNameForRun('footage-fx', P, { types: [id] }), `LTX-2.5 22B + ${LTX_LORAS[lid].label}`);
+    assert.equal(hasPlan(J(j)), true); const gl = buildPlan(J(j)).passes[0].graph; validate(gl, `${id} local job`);
+    assert.equal(gl['2'].inputs.lora_name, LTX_LORAS[lid].file); assert.equal(gl['2'].inputs.strength_model, e.strength); assert.deepEqual(gl['20'].inputs.file, { __file: j.videoPath });
+    const js = await parse({ types: JSON.stringify([id]) }, { video: ['silent.mp4'] }); assert.ok(!js.error, js.error);
+    assert.ok(!probe(js.videoPath).some((x: any) => x.codec_type === 'audio'), `${id}: the local copy of a silent clip is left silent (as before)`);
+    assert.deepEqual(buildPlan(J(js)).passes[0].graph['20'].inputs.file, { __file: js.videoPath }, 'the local graph reads the local copy');
+    assert.ok(js.cloudVideoPath && probe(js.cloudVideoPath).some((x: any) => x.codec_type === 'audio'), `${id}: Comfy Cloud gets its own copy with a silent track`); }
+  assert.match(String(loc.unavailableFor?.({ types: ['restore'] })), /runs on Comfy Cloud/, 'Cloud-only effects stay off the local route'); }
+ok('local unchanged for Vanish, Day to night, Rain and Flood: the local route takes them, LTX-2.5 LoRA + strength in the local graph, a silent clip stays silent locally');
 
 // ---- 5. requirements + mock run ----
 const req = R.requirementsFor(tool, P, { types: ['rain'], resolution: '448p' })!;
