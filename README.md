@@ -1,6 +1,6 @@
 <h1 align="center">Imagination is all you need.</h1>
 
-<p align="center"><b>One app for pictures, films, music and 3D. Run it on your computer or in the cloud.</b></p>
+<p align="center"><b>One app for images, video, audio and 3D. Run it on your computer or in the cloud.</b></p>
 
 <p align="center"><sub>ComfyUI · Comfy Cloud · Comfy Router · LTX-2.5 · MiniMax H3 · FLUX · Qwen-Image · Wan · YuE2 · Tripo · MCP</sub></p>
 

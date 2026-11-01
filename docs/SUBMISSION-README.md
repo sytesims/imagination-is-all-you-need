@@ -1,6 +1,6 @@
 # Imagination Is All You Need
 
-**Imagination is all you need.** One app for pictures, films, music and 3D. Run it on your computer or in the cloud. Open source (AGPL-3.0-or-later), built on ComfyUI workflows, Comfy Cloud and Comfy Router. Built for ComfyUI's **#OpenSourceHiggsfield** challenge.
+**Imagination is all you need.** One app for images, video, audio and 3D. Run it on your computer or in the cloud. Open source (AGPL-3.0-or-later), built on ComfyUI workflows, Comfy Cloud and Comfy Router. Built for ComfyUI's **#OpenSourceHiggsfield** challenge.
 
 <!-- DEMO VIDEO: add the link to the new demo post on X here once it is posted. -->
 **Demo:** the new demo video is coming soon. Contains AI-generated content.
