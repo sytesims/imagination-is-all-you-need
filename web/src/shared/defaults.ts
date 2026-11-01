@@ -9,6 +9,15 @@ export function defaultsOf(tool: any, mode?: string | null, swapType?: string | 
 }
 /** The default to preselect: the mode / type default when it is one of the offered models, else the tool default, else the first. */
 export const pickDefault = (d: Defaults, ids: string[], fallback?: string | null): string => (d.defaultProvider && ids.includes(d.defaultProvider) ? d.defaultProvider : fallback && ids.includes(fallback) ? fallback : ids[0] ?? '');
+/** P3-01: the model a fresh page opens on for `mode`: that mode's default among the models that run the mode (the model menu's "Default"),
+ *  else the tool default. A fresh Sound effects page opened on the tool default (Seed Audio) while the menu marked ElevenLabs as Default. */
+export function initialProviderFor(tool: any, mode?: string | null, workflowId?: string | null): string {
+  const pm: Record<string, string[]> | undefined = tool?.app?.providerModes; const all: string[] = (tool?.providers ?? []).map((p: any) => p.id);
+  const ids = mode && pm ? all.filter(id => pm[id]?.includes(mode)) : all;
+  const wd = workflowId ? tool?.workflowDefaults?.[workflowId] : null; /* an Audio workflow's own block (the bar's start, as GET /api/audio-workflows active.defaultProvider) */
+  const d = wd?.defaultProvider ? { ...defaultsOf(tool, mode), defaultProvider: wd.defaultProvider as string } : defaultsOf(tool, mode);
+  return ids.length ? pickDefault(d, ids, tool?.defaultProvider) : tool?.defaultProvider ?? '';
+}
 /** Display order: qualityOrder, else qualityRank, else the list order. Twin aliases (twinOf) are routes of another model, not cards. */
 export function orderModels<T extends { id: string }>(xs: T[], order?: string[] | null, keep?: string | null): T[] {
   const list = xs.filter((p: any) => !p?.twinOf || p.id === keep);

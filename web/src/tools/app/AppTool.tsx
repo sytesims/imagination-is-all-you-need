@@ -11,7 +11,7 @@ import { engineForModelParam, modelParam, useModelLink, useModelParamSync, getRu
 import { restorableProvider } from '../../shared/lifecycle';
 import { ownAccountsNow } from '../../shared/billing';
 import { useDraftFile, useDraftFileList } from '../../shared/draftFiles';
-import { defaultsOf, pickDefault } from '../../shared/defaults';
+import { defaultsOf, pickDefault, initialProviderFor } from '../../shared/defaults';
 import { useClipSource, setClipSeconds, EstimateHint } from '../../shared/clipEstimate';
 import { readQuoteBody, useRequoteTick, unpricedReason, demoMessage, normalizeQuote, shownCredits, sizeLine, ignoresRes } from '../../shared/quote';
 import MoodPicker from '../../shared/MoodPicker';
@@ -98,7 +98,7 @@ export default function AppTool({ tool, tools }: { tool: ToolInfo; tools?: ToolI
   const hid = (n: string) => galHide.has(n);
   const galDur = galDef.duration != null && cfg.durations?.includes(Number(galDef.duration)) ? Number(galDef.duration) : null; const galRes = galDef.resolution && cfg.resolutions.includes(galDef.resolution) ? galDef.resolution : null;
   const defaults = { picked: [] as string[], prompt: '', enhance: true, duration: galDur ?? (cfg.durations ? (awf ? shortestLength(cfg.durations, 5) /* Audio (audit B1): never a hidden longest length */ : cfg.durations[cfg.durations.length - 1]) : 5), steps: cfg.steps?.[0] ?? 0,
-    resolution: galRes ?? (cfg.resolutions.includes('720p') ? '720p' : cfg.resolutions[0]), provider: tool.defaultProvider ?? '' };
+    resolution: galRes ?? (cfg.resolutions.includes('720p') ? '720p' : cfg.resolutions[0]), provider: awf ? initialProviderFor(tool, awf.mode, awf.id) /* P3-01: the workflow's own default, as the menu marks it */ : tool.defaultProvider ?? '' };
   /** Generic plugin fields (tool.app.fields): name → value; posted as form fields of the same name. */
   type FieldSpec = { name: string; label?: string; kind: 'select' | 'text' | 'number' | 'boolean'; help?: string; options?: { value: string; label?: string }[]; default?: string | number | boolean; min?: number; max?: number; maxLength?: number; providers?: string[]; gallery?: boolean };
   /* Gallery apps: the app's own input (Change Voice voice = built-in / my voice, Translate languages) replaces the base field's options;
@@ -125,7 +125,7 @@ export default function AppTool({ tool, tools }: { tool: ToolInfo; tools?: ToolI
   const [duration, setDuration] = useState(cfg.durations?.includes(fs.duration) ? fs.duration : defaults.duration);
   const [steps, setSteps] = useState(fs.steps);
   const [resolution, setResolution] = useState(cfg.resolutions.includes(fs.resolution) ? fs.resolution : defaults.resolution);
-  const [provider, setProvider] = useState(() => { const m = engineForModelParam(tool, modelParam()); /* ?model= (a model key or an old engine id) from the header menus (as DirectorTool) */ return m ? m : restorableProvider(tool, fs.provider) ? fs.provider : defaults.provider; });
+  const [provider, setProvider] = useState(() => { const m = engineForModelParam(tool, modelParam()); /* ?model= (a model key or an old engine id) from the header menus (as DirectorTool) */ return m ? m : form.restored && restorableProvider(tool, fs.provider) ? fs.provider : !awf && picked[0] && tool.id !== 'create-image' && (tool as any).defaultsByMode?.[picked[0]] ? initialProviderFor(tool, picked[0]) || defaults.provider /* P3-01: a fresh page opens on its first mode's default */ : defaults.provider; });
   /* The Create Video composer stays mounted for a same-page shortcut (Loop, a model link). Apply its model before URL sync can write the old pick back. */
   useEffect(() => { if (tool.id !== 'h3-video') return; const path = location.pathname;
     const apply = () => { if (location.pathname !== path || new URLSearchParams(location.search).get('workflow')) return; const m = engineForModelParam(tool, modelParam()); if (m) setProvider(m); };
