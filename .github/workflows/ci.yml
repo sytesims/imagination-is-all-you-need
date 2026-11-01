@@ -101,6 +101,12 @@ jobs:
             mcp/package-lock.json
       - name: Install dependencies (root, then mcp/ through the postinstall step)
         run: npm ci --no-audit --no-fund
+      # ffmpeg: the mock API renders its sample results with it (catalog's local create-image run fails with "ffmpeg 127" without it)
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends ffmpeg
+          ffmpeg -version | head -1
       - name: Build (tsc)
         run: npm run mcp:build
       - name: Tests
