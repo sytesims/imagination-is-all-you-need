@@ -11,7 +11,7 @@ Everything Imagination Is All You Need saves stays on your own computer. There's
 | **Caches**: video posters and thumbnails (rebuilt when needed) | `server/data/posters/`, `server/data/thumbs/` | (inside the data folder) |
 | **Provider keys** | `.env.local` in the main project folder (next to `package.json`) | `OPENHIGGSFIELD_ENV_FILE` |
 | **Plugins you added** | `plugins/` in the main project folder | `OPENHIGGSFIELD_PLUGINS_DIR` |
-| **Logs** | not saved to a file; they print in the terminal where the app runs | — |
+| **Logs** | printed in the terminal where the app runs. The Mac app (Imagination in the Dock) also writes them to `~/Library/Logs/Imagination/app.log`; a failed `npm run setup` install keeps `setup.log` in the main project folder | — |
 | **ComfyUI models and ComfyUI's own output folder** | your ComfyUI install (e.g. `ComfyUI/models`, `ComfyUI/output`) | your ComfyUI settings |
 
 > **Warning:** `npm run demo:reset` **deletes everything** in the data folder and fills it with demo items. Back up first.

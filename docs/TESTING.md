@@ -1,6 +1,6 @@
 # Testing
 
-The server has about 210 test files in `server/test/`. Each one is a small script: it runs, prints `ok …` lines, and
+The server has about 470 test files in `server/test/`. Each one is a small script: it runs, prints `ok …` lines, and
 exits with an error if something is wrong. There is no test framework to learn.
 
 - `*.test.ts` files check code directly (fast, a second or two).
@@ -97,6 +97,11 @@ Two workflows run on GitHub Actions. A newer push to the same pull request (or t
 | --- | --- | --- |
 | Pull request | Build and start on Ubuntu, macOS and Windows; the one-line install on Ubuntu only, or on all three when the PR touches the installer (`scripts/get.*`, `scripts/install.*`), setup or launcher scripts, `package.json` / `package-lock.json` files or `ci.yml` | Only the tests the PR's changes touch (`--changed`, compared with the PR's base), without the heavy `SERIAL` tests (`model-health`, `model-health-ui`, `model-runon`, `pb-1018b`) unless the PR changes what they check (routing, providers, prices, video model code: `HEAVY_ABOUT` in the runner) or the test itself (`--skip-heavy`), on as many machines as that needs (a sixth of the suite each, up to 6). None for a docs-only PR. The full suite when the runner maps the change to every test (package files, the runner) or `test.yml` changed |
 | Push to `main`, nightly at 03:00 UTC, or by hand (Actions → Run workflow) | Everything: Build and start and the one-line install on all three systems | The full suite on 6 machines, heavy tests included |
+
+`CI` also runs, on every push and pull request: the MCP server's build and its tests that need no running app, plus the
+catalogue drift test with its own mock API (`mcp/test/{toolsets,accounts,parity,dist-fresh,catalog}.ts`), and the script
+tests outside `server/test` (`node --test scripts/*.test.mjs`: Mac launcher, Mac app build, CI smoke) on Ubuntu and macOS.
+`mcp/test/e2e.ts` and the MCP tests that need a sandbox API stay manual.
 
 `--changed` is a guess (see above), so a pull request can pass with a test it didn't pick still broken; the full run
 on `main` and the nightly run catch that. The nightly run has its own group, so pushes to `main` never cancel it.

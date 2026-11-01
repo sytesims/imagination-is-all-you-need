@@ -4,9 +4,9 @@ Imagination Is All You Need is configured with environment variables and a few s
 
 ## Where settings go
 
-- **`.env.local` in the repo root.** `npm start` and `npm run dev` load it into the API server (`tsx --env-file-if-exists=../.env.local`). Put one `NAME=value` per line. `scripts/install.sh` writes this file, and keys you save in **Settings** are stored here.
+- **`.env.local` in the repo root**, or the file `OPENHIGGSFIELD_ENV_FILE` names. `npm start` and `npm run dev` load it into the API server (`server/scripts/dev.mjs`: `tsx --env-file-if-exists=<that file>`). Put one `NAME=value` per line; a blank `NAME=` counts as unset. `scripts/install.sh` writes this file, keys you save in **Settings** are stored here, and setup, the doctor and the Mac app read their ports from it.
 - **Your shell.** A variable you `export` before `npm start` wins over the same name in `.env.local`.
-- **`.env.example`** lists the names the app reads, with empty or default values. Copy it to `.env.local` and fill in what you need, or create `.env.local` with only the lines you need. The Object Swap workflow line is commented out, so the code default (`object-swap-wan-animate-api.json`) applies unless you set it.
+- **`.env.example`** lists the names the app reads. Every line in it is commented out (with the default after `=` where there is one), so copying it to `.env.local` changes nothing until you uncomment a line. Or create `.env.local` with only the lines you need.
 - **Never commit `.env.local` or any real key.** `.gitignore` ignores `.env` and `.env.*` (except `.env.example`).
 
 Older `OPENJUTSU_*` names still work: each `OPENHIGGSFIELD_<NAME>` setting is also read as `OPENJUTSU_<NAME>`, and the new name wins if both are set. `COMFY_API_KEY`, `COMFY_BASE_URL`, `COMFY_DEPLOY_URL`, `COMFY_RUNNER_URL`, `COMFY_RUNNER_TOKEN`, `PORT`, `HOST` and `CIVITAI_TOKEN` have no prefix.
@@ -21,7 +21,7 @@ Direct a Shot's `streams` input also accepts its existing decoded MJPEG recordin
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
-| `OPENHIGGSFIELD_BACKEND` | `mock` | `mock` shows sample results; `comfy` makes real renders through ComfyUI (Comfy Cloud or your own) |
+| `OPENHIGGSFIELD_BACKEND` | `comfy` | `comfy` makes real renders (Comfy Cloud, your own ComfyUI or a provider key); with nothing connected, Generate asks you to connect one. `mock` shows sample results, for development and tests only |
 | `COMFY_API_KEY` | — | Your Comfy Cloud (or Comfy deployment) API key. Not needed for a ComfyUI on your own computer or a keyless local `comfy-api-proxy` |
 | `COMFY_BASE_URL` | unset = Comfy Cloud (`https://cloud.comfy.org`) | The ComfyUI address: your own ComfyUI (e.g. `http://127.0.0.1:8188`), a deployment (`https://<id>.run.comfy.app`) or a local proxy (`http://127.0.0.1:8189`). Can also be changed at runtime, see below |
 | `OPENHIGGSFIELD_USE_LOCAL` | unset (off) | `1` = **Use local ComfyUI** starts on, so **Run on → Local** can run (and is pre-selected when it is the only ready place; Comfy, then your other connected APIs, come first). Off means Local shows "Turn on". When set (`1` or `0`), it is applied again **each time the server starts** and wins over what Settings saved last time; Settings shows "Set by OPENHIGGSFIELD_USE_LOCAL". Leave it unset to keep your Settings choice |
@@ -35,10 +35,16 @@ Direct a Shot's `streams` input also accepts its existing decoded MJPEG recordin
 | `OPENHIGGSFIELD_OPEN_WEIGHTS_ONLY` | unset | `1` = hide and refuse hosted providers: partner/API nodes and hosted model APIs. Local open weights and our own open-weight workflows run as standard Comfy Cloud jobs (e.g. the H3 graphs in `workflows/cloud/`) stay. The Comfy Cloud H3 API-node route `cloud-h3` is a hosted provider and is hidden in this mode |
 | `OPENHIGGSFIELD_BILLING_MODE` | unset = `own-accounts` | `own-accounts`: you pay providers directly, no in-app balance; runs go to the spend log. `team`: an operator pays providers and gives users credit balances (charges, refunds). When set here, the app can't change it |
 | `OPENHIGGSFIELD_GPU_CREDITS` | `36000` | Team mode only: starting credit balance (1 credit = $0.01) |
-| `OPENHIGGSFIELD_CONCURRENCY` | `2` | Shared queue: how many jobs run at once (`concurrency` in `/api/queue` and `/api/config`) |
+| `OPENHIGGSFIELD_LOCAL_CONCURRENCY` | `1` | Runs at once on your own ComfyUI (it runs one prompt at a time per GPU). The older `OPENHIGGSFIELD_CONCURRENCY` still sets this when the new name isn't set |
+| `OPENHIGGSFIELD_CLOUD_CONCURRENCY` | `10` | Cloud runs at once (a safety cap, not a speed limit). A local run never waits for a cloud run, nor the other way round; `/api/queue` and `/api/config` show both (`concurrency` = the two together) |
 | `OPENHIGGSFIELD_COMFY_PREVIEW_METHOD` | `auto` | Live preview frames locally (`auto` / `latent2rgb`, `taesd`, `none`, or `default` = ComfyUI's own setting); see [LOCAL-MODELS-AND-HARDWARE.md](LOCAL-MODELS-AND-HARDWARE.md#live-preview-while-it-renders) |
-| `OPENHIGGSFIELD_MAX_PARALLEL` | `6` | Max jobs queued + running (429 `concurrency` above) |
-| `OPENHIGGSFIELD_COMFY_TIMEOUT_MS` | `1800000` | Max wait for one Comfy job (30 min) |
+| `OPENHIGGSFIELD_MAX_PARALLEL` | `11` (max(6, local + cloud)) | Max jobs queued + running in the legacy admission (`OPENHIGGSFIELD_MAX_QUEUED=0`); 429 `concurrency` above it |
+| `OPENHIGGSFIELD_MAX_QUEUED` | `20` | Jobs that can wait in the queue at once (429 above it); `0` = the legacy `MAX_PARALLEL` rule |
+| `OPENHIGGSFIELD_MAX_PARALLEL_FREE` | `2` | Free generations in flight at once |
+| `OPENHIGGSFIELD_COMFY_TIMEOUT_MS` | unset | Unset: a Comfy Cloud job may take 30 min, and a run on your own ComfyUI max(60 min, 4× its expected time). Set: exactly this many ms for both. Long local video renders need the default |
+| `OPENHIGGSFIELD_COMFY_STALL_MS` | `600000` (10 min) | A run on your own ComfyUI fails only after this long with no progress at all |
+| `OPENHIGGSFIELD_COMFY_DETECT_URLS` | `http://127.0.0.1:8188,http://127.0.0.1:8000` | Where the app looks for a ComfyUI on this computer (comma list; 8000 is Comfy Desktop) |
+| `OPENHIGGSFIELD_COMFY_DIR` | the parent of the models folder | Your ComfyUI folder, for the custom node checks |
 
 ## Provider keys
 
@@ -61,6 +67,10 @@ Leave these empty unless you use that provider. Settings shows which ones are se
 | `OPENHIGGSFIELD_ARK_BASE_URL` | Optional: BytePlus host (default `https://ark.ap-southeast.bytepluses.com/api/v3`; video runs only there) |
 | `OPENHIGGSFIELD_MINIMAX_BASE_URL` | Optional: MiniMax China host (`https://api.minimaxi.com`; China keys only work there) |
 | `OPENHIGGSFIELD_DASHSCOPE_API_KEY` | Alibaba Cloud Model Studio / DashScope (not wired yet) |
+| `OPENHIGGSFIELD_LUMA_API_KEY` | Luma AI (Luma Reframe's direct route) |
+| `OPENHIGGSFIELD_HF_TOKEN` (alias `HF_TOKEN`), `CIVITAI_TOKEN` | Download tokens, not places models run: see [Main settings](#main-settings) |
+
+The list of key variables lives in one place, `server/src/shared/providerKeys.ts`: the doctor reads it to say which accounts are connected, and filming mode ignores these variables from the shell.
 
 Which of these actually run today: [PROVIDERS-AND-MODELS.md](PROVIDERS-AND-MODELS.md#which-providers-run-today).
 
@@ -147,7 +157,34 @@ The pattern follows Comfy's own clonable app [Comfy-Org/comfy-reshoot](https://g
 | `MCP_PORT`, `MCP_HOST` | `8788`, `127.0.0.1` | MCP HTTP transport |
 | `OPENHIGGSFIELD_MCP_PERMISSIONS`, `OPENHIGGSFIELD_MCP_DEFAULT`, `OPENHIGGSFIELD_MCP_ALLOW`, `OPENHIGGSFIELD_MCP_ASK`, `OPENHIGGSFIELD_MCP_BLOCK` | — | MCP tool permissions, see [MCP.md](MCP.md#permissions-allow--ask--block-per-tool) |
 
-Everything else the app reads (share-link base URL, signup grant, result and trash retention, prompt enhance and translate services, and more) is listed in [`.env.example`](../.env.example). `OPENHIGGSFIELD_COMMERCIAL` is read but has no effect: no licence setting ever changes a default.
+| `MCP_TRANSPORT` | `stdio` | `http` = the MCP server listens on `MCP_HOST:MCP_PORT` (what `npm start` runs) |
+| `OPENHIGGSFIELD_MCP_URL` | `http://127.0.0.1:<MCP_PORT>/mcp` | The MCP address the app shows in its connect sheets |
+| `PUBLIC_WEB_URL` (or `OPENHIGGSFIELD_PUBLIC_WEB_URL`) | `http://localhost:<WEB_PORT>` | Where the MCP server's links to results point |
+| `OPENHIGGSFIELD_AGENT_BUDGET_USD`, `OPENHIGGSFIELD_AGENT_BUDGET_CREDITS`, `OPENHIGGSFIELD_AGENT_NAME` | unset | Pin one spending budget (and a name) on an MCP server process; runs over it are refused. See [MCP.md](MCP.md) |
+| `OPENHIGGSFIELD_NO_HMR` | unset | `1` = `npm run dev` never reloads the page by itself |
+
+## Other settings
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `OPENHIGGSFIELD_ENV_FILE` | `<repo>/.env.local` | The settings and keys file (see [Where settings go](#where-settings-go)) |
+| `OPENHIGGSFIELD_PUBLIC_URL` | the request's own host | The public address share pages put in their preview links |
+| `OPENHIGGSFIELD_PUBLIC_BASE_URL` | unset | The server's public address; when set, providers fetch your inputs from `<it>/files/…` instead of an upload |
+| `OPENHIGGSFIELD_OWNER` | `local` | The name your own results are stored under |
+| `OPENHIGGSFIELD_RESULT_TTL_DAYS` | `0` | Days to keep finished results (`0` = forever) |
+| `OPENHIGGSFIELD_TRASH_DAYS` | `30` | Days items stay in Trash (`0` = never emptied) |
+| `OPENHIGGSFIELD_REQUEUE_ON_RESTART` | on | `0` = jobs waiting at shutdown fail instead of going back in the queue |
+| `OPENHIGGSFIELD_RESUME_COMFY` | on | `0` = a run still going in your ComfyUI at shutdown fails instead of being picked up again |
+| `OPENHIGGSFIELD_CANCEL_IN_PROCESSING` | unset | `1` = jobs can also be cancelled while they are being prepared |
+| `OPENHIGGSFIELD_FALLBACK_OFFERS` | on | `0` = a failed run never offers "Use …" alternatives (plain failure) |
+| `OPENHIGGSFIELD_NOTIFICATION_PROMPTS` | on | `0` = the app never asks to show notifications |
+| `OPENHIGGSFIELD_WHISPER_MODEL` | `base` | The faster-whisper model for captions and translation |
+| `OPENHIGGSFIELD_ENHANCE_LLM_URL`, `OPENHIGGSFIELD_ENHANCE_LLM_MODEL` | unset, `local` | Prompt enhance through an OpenAI-compatible `/v1/chat/completions` server (for example llama.cpp or Ollama); without it, enhance uses built-in rules |
+| `OPENHIGGSFIELD_PLUGINS_DIR` | `plugins/` | The plugin folder ([PLUGINS.md](PLUGINS.md)) |
+| `OPENHIGGSFIELD_PYTHON` | `python3` (`python` on Windows) | The Python the server's helper scripts use |
+| `OPENHIGGSFIELD_FILMING_FILE` | `<repo>/.filming/state.json` | Filming mode's state file (`npm run filming`) |
+
+The rest (signup grant and free generations in team mode, queue tuning, QA switches such as `OPENHIGGSFIELD_ROUTING_FAIL`, and timings used by tests) are in [`.env.example`](../.env.example) or explained where the code reads them. `OPENHIGGSFIELD_COMMERCIAL` is read but has no effect: no licence setting ever changes a default.
 
 ## Settings you change in the app (or over the API)
 
@@ -183,7 +220,7 @@ If the translation step fails, the job stops with a clear message and any credit
 ## Data and storage
 
 - Everything persists in SQLite (`better-sqlite3`) at `$OPENHIGGSFIELD_DATA_DIR/openhiggsfield.db` (default `server/data`, gitignored): jobs and history, the spend log, the credit ledger (used in team mode), free generations, favourites, projects, trash and elements. Uploads and outputs live in the same folder. A legacy `openjutsu.db` is renamed on first start.
-- Restart policy: jobs queued or running at shutdown come back as **failed (temporary)**; Retry re-runs them (in team mode their credits go back to the balance).
+- Restart policy: jobs waiting at shutdown go back in the queue (`OPENHIGGSFIELD_REQUEUE_ON_RESTART`); a run still going in your own ComfyUI is picked up again (`OPENHIGGSFIELD_RESUME_COMFY`); any other running job comes back as **failed (temporary)**, and Retry re-runs it (in team mode its credits go back to the balance).
 - `npm run demo:reset` (server stopped) wipes the data folder and seeds a clean demo: 8 done jobs across the tools (including a draft→final pair), 1 failed, 3 favourites, and a project called "Spring campaign".
 - `npm run samples -w server` regenerates our own procedural media in `server/samples` (inputs `sample-*`, mock results `result-*`).
 - Mock outputs are the tool's `result-*` sample clip, cut to the input length and resolution, with the input's audio. Image tools keep the uploaded still as BEFORE.

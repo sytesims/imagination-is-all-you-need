@@ -25,8 +25,8 @@ if (Get-Command nvidia-smi -ErrorAction SilentlyContinue) { $gpu = 'NVIDIA: ' + 
 Write-Host "==> $gpu, Node $(node -v)" -ForegroundColor Cyan
 $backend = if ($Mock) { 'mock' } else { 'comfy' }  # comfy by default (2026-10-29); -Mock = sample results, development only
 Write-Host "==> Backend: $backend $ComfyUrl" -ForegroundColor Cyan
-npm.cmd ci --no-audit --no-fund; if ($LASTEXITCODE) { throw 'npm ci failed' }
-if (-not $SkipBuild) { npm.cmd run build; if ($LASTEXITCODE) { throw 'build failed' } }
+npm.cmd ci --no-audit --no-fund; if ($LASTEXITCODE) { throw "The app's parts didn't install (npm ci failed; see above). Check your internet connection and free disk space, then run this again." }
+if (-not $SkipBuild) { npm.cmd run build; if ($LASTEXITCODE) { throw 'The build failed (see above). Fix what it says, then run this again.' } }
 # Merge, never overwrite: re-runs keep the keys saved in Settings (same rule as install.sh). Only these settings are replaced.
 $envFile = if ($env:OPENHIGGSFIELD_ENV_FILE) { $env:OPENHIGGSFIELD_ENV_FILE } else { '.env.local' }
 $envPairs = @("OPENHIGGSFIELD_BACKEND=$backend")

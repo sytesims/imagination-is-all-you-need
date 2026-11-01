@@ -7,11 +7,13 @@
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { REPO, apiPort, webPort, launchEnv, apiUp } from './app-env.mjs';
+import { REPO, apiPort, webPort, launchEnv, apiUp, portClash } from './app-env.mjs';
 import { ensureWebBuild } from './web-build.mjs';
 
 const say = (s) => console.log(`\x1b[1m==>\x1b[0m ${s}`);
 if (await apiUp()) { say(`The app is already running: http://localhost:${webPort}/  (stop it first to start it again)`); process.exit(0); }
+// a port taken by another program: say so now (the API would stop at once while the rest kept running and setup waited minutes)
+const clash = await portClash(); if (clash) { console.error(clash); process.exit(1); }
 if (!ensureWebBuild({ log: say })) process.exit(1);
 say(`Starting the app: http://localhost:${webPort}/  (API ${apiPort})`);
 const concurrently = path.join(path.dirname(createRequire(path.join(REPO, 'package.json')).resolve('concurrently/package.json')), 'dist', 'bin', 'concurrently.js');

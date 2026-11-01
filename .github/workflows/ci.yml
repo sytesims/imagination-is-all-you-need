@@ -46,7 +46,7 @@ jobs:
           changed=$(git diff --name-only HEAD^1...HEAD)
           printf '%s\n' "$changed"
           # installer, setup/launcher scripts, package files, this workflow
-          if grep -qE '^(scripts/(get|install)\.(sh|ps1)|scripts/(setup|start|update|doctor|app-env|env-merge|install-mcp|web-build|build-plugins)\.mjs|scripts/(make-mac-app\.sh|mac-app/.*)|((server|web|mcp)/)?package(-lock)?\.json|\.github/workflows/ci\.yml)$' <<<"$changed"; then
+          if grep -qE '^(scripts/(get|install)\.(sh|ps1)|scripts/(setup|start|update|doctor|app-env|env-merge|install-mcp|web-build|build-plugins|node-version)\.mjs|server/src/doctor/.*|scripts/(make-mac-app\.sh|mac-app/.*)|((server|web|mcp)/)?package(-lock)?\.json|\.github/workflows/ci\.yml)$' <<<"$changed"; then
             echo "Install or setup files changed: everything"; full
           else
             echo "No install or setup files changed: one-line install on Ubuntu only"
@@ -83,6 +83,55 @@ jobs:
       # API + web only: no models, GPU, provider calls or MCP verification.
       - name: Start production API and web (mock, 60-second readiness)
         run: node scripts/ci-smoke.mjs
+
+  # The MCP server (mcp/, its own package): build it and run its tests that need no running app, plus the catalogue drift test, which starts
+  # its own mock API (no keys, nothing paid). mcp/test/e2e.ts and the tests that need a sandbox API (permissions, library, skills) stay manual.
+  mcp:
+    name: MCP server (build and tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            mcp/package-lock.json
+      - name: Install dependencies (root, then mcp/ through the postinstall step)
+        run: npm ci --no-audit --no-fund
+      - name: Build (tsc)
+        run: npm run mcp:build
+      - name: Tests
+        working-directory: mcp
+        env:
+          CATALOG_PORT: '8842'
+        run: |
+          for t in toolsets accounts parity dist-fresh catalog; do echo "::group::$t"; npx tsx "test/$t.ts"; echo "::endgroup::"; done
+
+  # The script tests outside server/test (the runner there doesn't collect them): Mac launcher, Mac app build, CI smoke fixtures.
+  scripts-tests:
+    name: Script tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            mcp/package-lock.json
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: node --test scripts/*.test.mjs
+        run: node --test --test-concurrency=1 scripts/*.test.mjs
 
   # The one-line installer (scripts/get.sh, scripts/get.ps1) from nothing to a built app, the way a new user runs it:
   # piped into bash / run as a PowerShell script block, with --yes so it installs ffmpeg itself (apt, Homebrew, winget).
@@ -121,6 +170,7 @@ jobs:
           # a second run finds the install and updates it instead of cloning
           IIAYN_REPO="file://$GITHUB_WORKSPACE" bash scripts/get.sh --yes --no-start --no-shortcut --branch ci-install --dir "$DIR" | tee "$RUNNER_TEMP/second.log"
           grep -q "Updating the app in" "$RUNNER_TEMP/second.log"
+          grep -qE "up to date|Updated:" "$RUNNER_TEMP/second.log" # the update itself ran (a failed one stops the installer)
           bash scripts/get.sh --dry-run --yes --dir "$RUNNER_TEMP/dry" > /dev/null; test ! -e "$RUNNER_TEMP/dry"
           cd "$DIR" && npm run build
       - name: Check get.ps1 parses

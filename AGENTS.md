@@ -32,13 +32,13 @@ npm install          # root workspaces (server, web) + the MCP server's deps via
 ```
 
 - If the MCP part fails, the app still works; retry with `npm run mcp:install`. `OPENHIGGSFIELD_SKIP_MCP=1 npm install` skips it.
-- `better-sqlite3` 12.11.1 has prebuilt binaries for Node 22/24/26 on Linux x64, macOS arm64 and Windows x64. Elsewhere it needs build tools (`build-essential python3` on Linux, `xcode-select --install` on a Mac).
+- `better-sqlite3` 12.11.1 has prebuilt binaries for Node 22/24/26 on macOS (arm64, x64), Windows (x64, arm64) and Linux (x64, arm64, arm, and musl/Alpine). Elsewhere it needs build tools (`build-essential python3` on Linux, `xcode-select --install` on a Mac).
 
 ## 3. Ask the user how to run it
 
 > "Do you want to (a) make real renders on Comfy Cloud with your Comfy API key, (b) run models locally with your own ComfyUI, or (c) both?"
 
-Write their answer into **`.env.local`** in the repo root (the API reads it when it starts, with `npm start` or `npm run dev`; shell exports win over it). Either copy `.env.example` to `.env.local` and fill in what's needed, or create `.env.local` with only the lines below. Never echo key values back. The backend is `comfy` by default (real runs); `OPENHIGGSFIELD_BACKEND=mock` gives sample results and is for development and tests only. With nothing set up, Generate opens "Connect a Comfy key or your ComfyUI to start" (nothing runs, nothing is charged); the Examples project shows what the app makes.
+Write their answer into **`.env.local`** in the repo root (the API reads it when it starts, with `npm start` or `npm run dev`; shell exports win over it). Either copy `.env.example` to `.env.local` (every line in it is commented out, so the copy changes nothing until you uncomment a line) and fill in what's needed, or create `.env.local` with only the lines below. Never echo key values back. The backend is `comfy` by default (real runs); `OPENHIGGSFIELD_BACKEND=mock` gives sample results and is for development and tests only. With nothing set up, Generate opens "Connect a Comfy key or your ComfyUI to start" (nothing runs, nothing is charged); the Examples project shows what the app makes.
 
 | Choice | `.env.local` |
 |---|---|
@@ -57,7 +57,7 @@ npm start            # everyday use: builds the web app when it changed (first t
 npm run dev          # only when changing the code: hot reload, and the API restarts on every file change
 ```
 
-`npm run setup` does install + doctor + start (`npm start`) in one go and prints `http://localhost:5174/?setup=1` (the first-run sheet; it also opens by itself on a first visit); `-- --check` only checks, `-- --no-start` doesn't start.
+`npm run setup` does install + doctor + start (`npm start`) in one go and prints `http://localhost:5174/?setup=1` (the first-run sheet; it also opens by itself on a first visit); `-- --check` only checks, `-- --no-start` doesn't start. Exit codes: 0 = ready, 1 = failed (dependencies didn't install, Node doesn't fit, or the app can't start; a failed install keeps npm's output in `setup.log`), 2 = the app works but something optional is missing (the doctor says what). Before starting, it stops within seconds if another program holds `PORT` or `WEB_PORT`.
 
 Both start three processes (`concurrently`): `api` on **:8787**, `web` on **:5174**, `mcp` (HTTP) on **:8788**. `npm start` never restarts while running, so it is the safe choice for a user's app (a restart cancels runs in progress). Ports: `PORT` (API), `WEB_PORT` (web), `MCP_PORT` (MCP).
 

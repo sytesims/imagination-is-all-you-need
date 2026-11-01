@@ -184,7 +184,7 @@ Options:
       Say ''
       if (-not $hasWinget) {
         if ($t -eq 'ffmpeg') { Say 'Skipping ffmpeg for now: you can add it later.'; continue }
-        Say 'winget (the Windows package manager) is not available here.'; Show-ManualSteps; return
+        Say 'winget (the Windows package manager) is not available here.'; Show-ManualSteps; Stop-Install "The app needs $t first." ''
       }
       $wingetArgs = @('install', '--id', $wingetId[$t], '-e', '--source', 'winget')
       # -Yes: also accept winget's source and package agreements, so it doesn't stop to ask. Without it, winget asks you itself.
@@ -192,7 +192,7 @@ Options:
       Say "$($describe[$t]): this command installs it: winget install --id $($wingetId[$t]) -e"
       if (-not (Ask "Install $t now?")) {
         if ($t -eq 'ffmpeg') { Say "Skipping ffmpeg: you can install it later with: winget install --id $($wingetId[$t]) -e"; continue }
-        Show-ManualSteps; return
+        Show-ManualSteps; Stop-Install "The app needs $t first." ''
       }
       if (-not (Run 'winget' $wingetArgs)) {
         if ($t -eq 'ffmpeg') { Say "ffmpeg didn't install; you can add it later."; continue }
@@ -210,11 +210,28 @@ Options:
   # ---- 2. the app folder -------------------------------------------------------------------------
   if ($isInstall) {
     Bold "2. Updating the app in $Dir"
-    # npm run update never touches server\data or .env.local, and refuses when files were changed by hand.
-    $updateArgs = @('run', 'update'); if ($Branch -ne 'main') { $updateArgs += @('--', '--force-branch') }
-    Push-Location $Dir
-    try { $updated = Run 'npm.cmd' $updateArgs } finally { Pop-Location }
-    if (-not $updated) { Say "Couldn't update (see above), so the version you have stays. That's fine: carrying on." }
+    $pkg = Join-Path $Dir 'package.json'
+    $hasUpdater = (Test-Path (Join-Path $Dir 'scripts\update.mjs')) -and (Test-Path $pkg) -and ((Get-Content -Raw $pkg) -match '"update":')
+    if ($hasUpdater) {
+      # npm run update never touches server\data or .env.local, and refuses when files were changed by hand.
+      $updateArgs = @('run', 'update'); if ($Branch -ne 'main') { $updateArgs += @('--', '--force-branch') }
+      Push-Location $Dir
+      try { $updated = Run 'npm.cmd' $updateArgs } finally { Pop-Location }
+      if (-not $updated) { Stop-Install "Couldn't update the app in $Dir (see the messages above), so it's still the version you had." "Fix what they say and run the install line again. Or keep the version you have and start it with: cd `"$Dir`"; npm.cmd run setup" }
+    } else {
+      # An install from before npm run update existed (1.0): the same safe steps by hand. Only a fast-forward, never with changes of yours
+      # in the app's own files; server\data and .env.local are never touched.
+      Say 'This install is from before the app could update itself, so the installer updates it with git.'
+      $mine = @(& git -C $Dir status --porcelain --untracked-files=no 2>$null | ForEach-Object { $_.Substring(3) } | Where-Object { $_ -notin @('package-lock.json', 'mcp/package-lock.json') })
+      if ($mine.Count -gt 0) { Stop-Install "You have changes to the app's own files in $Dir, so nothing was updated: $(($mine | Select-Object -First 20) -join ', ')" 'Keep them with git commit (or move them somewhere else), then run the install line again.' }
+      # npm can rewrite the lockfiles by itself; that's not your work, so put them back first (as npm run update does)
+      $locks = @(& git -C $Dir ls-files package-lock.json mcp/package-lock.json 2>$null)
+      if ($locks.Count -gt 0 -and -not (Run 'git' (@('-C', $Dir, 'checkout', '--') + $locks))) { Stop-Install "Couldn't put the lockfiles in $Dir back the way GitHub has them, so nothing was updated." 'Run the install line again.' }
+      if (-not (Run 'git' @('-C', $Dir, 'pull', '--ff-only'))) { Stop-Install "Couldn't update the app in $Dir (see the messages above), so it's still the version you had." 'Check your internet connection and run the install line again. Your library and keys are untouched.' }
+      Push-Location $Dir
+      try { $installed = Run 'npm.cmd' @('ci', '--no-audit', '--no-fund') } finally { Pop-Location }
+      if (-not $installed) { Stop-Install "The new version is in place, but its parts didn't install (see the messages above)." "Check your internet connection and free disk space, then run: cd `"$Dir`"; npm.cmd run setup" }
+    }
   } else {
     Bold "2. Downloading the app into $Dir"
     $parent = Split-Path -Parent $Dir
@@ -231,8 +248,12 @@ Options:
   else {
     Push-Location $Dir
     try { & { $ErrorActionPreference = 'Continue'; & npm.cmd run setup '--' '--no-start' }; $st = $LASTEXITCODE } finally { Pop-Location }
-    # setup's own check: 0 = ready, 1 = something optional is missing (it says what), 2 = the app can't start yet.
-    if ($st -ge 2) { Stop-Install "The app isn't ready to start yet." "Fix the lines marked with a cross above, then run: cd `"$Dir`"; npm.cmd run setup" }
+    # setup's exit code: 0 = ready, 2 = the app works but something optional is missing (it said what), anything else = it failed.
+    if ($st -eq 2) { Say 'Something optional is missing (see the lines above). The app works without it; you can add it later.' }
+    elseif ($st -ne 0) {
+      $log = Join-Path $Dir 'setup.log'; $logLine = ''; if (Test-Path $log) { $logLine = " The install log: $log" }
+      Stop-Install "The app's parts didn't install, or the app can't start yet (see the messages above).$logLine" "Fix what they say, then run: cd `"$Dir`"; npm.cmd run setup"
+    }
   }
   Say ''
 

@@ -1,7 +1,7 @@
 /**
  * Provider key status for Settings. NEVER returns key values.
- * POST stores a key in <repo>/.env.local (the file scripts/install.sh sources) and in process.env, but ONLY when the server is
- * bound to a loopback address (HOST=127.0.0.1 / ::1 / localhost). The dev server binds 0.0.0.0, so POST answers 403 there.
+ * POST stores a key in the env file (OPENHIGGSFIELD_ENV_FILE, else <repo>/.env.local; the file the API loads at start) and in process.env, but ONLY when the server is
+ * bound to a loopback address (HOST=127.0.0.1 / ::1 / localhost, the default for npm start and npm run dev). With HOST=0.0.0.0, POST answers 403.
  */
 import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';

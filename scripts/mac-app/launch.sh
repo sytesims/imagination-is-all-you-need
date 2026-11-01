@@ -210,7 +210,8 @@ until ready; do
   if ! kill -0 "$pid" 2>/dev/null; then
     [ "$(head -n 1 "$PIDFILE" 2>/dev/null)" = "$pid" ] && rm -f "$PIDFILE"
     code=0; [ "$started" = 1 ] && { wait "$pid"; code=$?; }
-    [ "$code" = 2 ] && fail "Imagination can't start yet: something it needs is missing. The last lines of its log:
+    # setup's exit code 1: it failed (the dependencies didn't install, Node.js doesn't fit, or the app can't start)
+    [ "$code" = 1 ] && fail "Imagination can't start yet: something it needs is missing or didn't install. The last lines of its log:
 
 $(last_lines)
 
