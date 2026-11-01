@@ -33,6 +33,7 @@ import { engineModelKey } from '../shared/modelIds.js';
 import { mmaudioParts, MMAUDIO_CHUNK_SEC, MMAUDIO_FPS } from '../shared/mmaudioParts.js';
 import { QWEN3_TTS, QWEN3_TTS_WORKFLOW, patchQwen3Tts } from '../tools/voice/qwen3tts.js';
 import { resolutionSelectorAspect } from './resolutionSelector.js';
+import { SEPARATION_WORKFLOW, SEP_NODES, NO_SEPARATION_NOTE, separationStatus } from './separation.js';
 
 export type FileRef = { __file: string };
 export const F = (p: string): FileRef => ({ __file: p });
@@ -44,7 +45,13 @@ export type Prep =
   /** text output of an earlier pass → graph input, optionally machine-translated by the server (translate.ts) */
   | { kind: 'textFromPass'; pass: number; node: string; field: string; translateTo?: string }
   /** server-side: transcribe `src` (faster-whisper), translate (NLLB-200 / LibreTranslate), write into graph[node].inputs[field] */
-  | { kind: 'speech'; src: string; node: string; field: string; translateTo: string };
+  | { kind: 'speech'; src: string; node: string; field: string; translateTo: string; /** transcribe this earlier pass output instead of src (the separated voice) */ srcPass?: PassFile }
+  /** an earlier pass's output file → graph input (the separated voice as the clone reference) */
+  | { kind: 'fileFromPass'; from: PassFile; node: string; field: string };
+/** One output file of an earlier pass: outs[pass][index] (index follows output, then extraOutputs). */
+export type PassFile = { pass: number; index: number };
+/** A sound under the new voice (comfy/dubMix.ts): the source clip's own audio, or an earlier pass's output (the separated background), at this volume. */
+export type MixBed = { from: 'source' | PassFile; volume: number };
 export interface Pass { label: string; workflow: string; graph: Record<string, any>; output: string; extraOutputs?: { node: string; label: string }[]; prep?: Prep[];
   /** Auxiliary run evidence, never a generated result or input to postprocessing. */
   diagnostics?: { node: string; label: string; stage: string; note: string }[];
@@ -60,8 +67,11 @@ export type Post =
   | { kind: 'talkJoin'; parts: { start: number; end: number }[]; fade: number; fps: number; audio: string; seconds: number }
   /** LTX-2.5 Extend: join the pass output onto the conformed source (comfy/ltx25Extend.ts joinExtension) */
   | { kind: 'extend'; plan: ExtendPlan; label: string; /** the clip to join onto (default input.videoPath; H3 Extend · Comfy Cloud: its conformed copy) */ source?: string; /** keep at most this many frames of the render (H3's grid rounds up) */ maxGenFrames?: number }
+  /** Voice tools (comfy/dubMix.ts): the voice pass's output mixed over beds (separated background, or the ducked original) into one track. */
+  | { kind: 'voiceMix'; pass: number; beds: MixBed[] }
   | { kind: 'splice'; ranges: { start: number; end: number }[]; extraEach: number; fps: number; width: number; height: number };
-export interface Plan { tool: string; passes: Pass[]; post: Post; outKind: 'video' | 'image' | 'audio'; muxSourceAudio: boolean; labels?: string[]; notes: string[]; /** final ffmpeg fps resample */ postFps?: number; /** audio outputs muxed onto this video (replace or duck the original) */ muxOnto?: { video: string; mix: 'replace' | 'blend' } }
+export interface Plan { tool: string; passes: Pass[]; post: Post; outKind: 'video' | 'image' | 'audio'; muxSourceAudio: boolean; labels?: string[]; notes: string[]; /** final ffmpeg fps resample */ postFps?: number; /** audio outputs muxed onto this video (replace or duck the original) */ muxOnto?: { video: string; mix: 'replace' | 'blend' };
+  /** Voice tools: the plan splits voice from background first (comfy/separation.ts); kept on the job so a rebuild (Get workflow) matches the run. */ separation?: boolean }
 
 const wf = (f: string) => JSON.parse(readFileSync(path.isAbsolute(f) ? f : path.join(WORKFLOWS_DIR, f), 'utf8'));
 const nm = (name: string) => JSON.parse(readFileSync(path.join(WORKFLOWS_DIR, 'node-maps', `${name}.json`), 'utf8'));
@@ -487,10 +497,14 @@ const LANG_NAME: Record<string, string> = { en: 'English', es: 'Spanish', fr: 'F
 /** Target languages each translate route can voice (Translate Video languagesByProvider; the plan refuses the rest). */
 export const TRANSLATE_LANGS: Record<string, string[]> = { 'local-whisper-nllb-chatterbox': Object.keys(CB_LANG), 'local-whisper-nllb-f5': Object.keys(F5_LANG) };
 export const VOICE_PLAN_PROVIDERS: Record<string, string[]> = { voiceover: ['comfy-chatterbox', 'comfy-f5tts', 'comfy-drama3', QWEN3_TTS], 'change-voice': ['comfy-chatterbox-vc'], translate: ['local-whisper-nllb-chatterbox', 'local-whisper-nllb-f5'] };
-function voice(job: Job): Plan {
+function voice(job: Job, o: { separation?: boolean } = {}): Plan {
   const i = job.input; const mode = (i.mode ?? i.types?.[0]) as string; const seed = clampSeed(i.seed) % 4294967295; const d = VOICE_DELIVERY[i.voice] ?? VOICE_DELIVERY['narrator-warm'];
   const sample: string | undefined = i.voiceSamplePath; const src = (i.videoPath || (i.audioInput ? i.sourceAudioPath : '')) as string; const passes: Pass[] = [];
   if (!src && mode !== 'voiceover') throw new Error('Voice Studio needs a video'); // a voiceover runs without one (the Audio page's Voiceover with no clip): audio comes back
+  /** Keep the background (comfy/separation.ts): Change Voice and Translate split the voice from the music first when this computer has the separation
+   *  pack + model. o.separation (tests) or the run's own choice (input.separation, a rebuild) win over reading this computer now. */
+  const canSep = (mode === 'change-voice' || mode === 'translate') && !!src;
+  const sep = canSep && (typeof o.separation === 'boolean' ? o.separation : typeof i.separation === 'boolean' ? i.separation : separationStatus().ready);
   const f5 = (text: string | null, model: string, ref: string) => { const g = wf('voice-f5tts-api.json'); setIn(g, '1', 'audio', F(ref)); Object.assign(g['2'].inputs, { speech: text ?? '', seed, model, model_type: model === 'F5v1' ? 'F5TTS_v1_Base' : 'F5TTS_Base', ...(i.voiceNative?.speed != null ? { speed: i.voiceNative.speed } : {}) }); return g; };
   if (mode === 'voiceover') {
     const text = (i.prompt ?? '').trim(); if (!text) throw new Error('Voiceover needs a script');
@@ -505,20 +519,35 @@ function voice(job: Job): Plan {
   } else if (mode === 'change-voice') {
     const g = wf('voice-chatterbox-vc-api.json'); setIn(g, '1', 'audio', F(src)); // library voices → the pack's built-in voice (no bundled samples); clone → uploaded sample
     if (sample) setIn(g, '2', 'audio', F(sample)); else { delete g['3'].inputs.target_voice_audio; delete g['2']; }
-    passes.push({ label: 'Changed voice', workflow: 'voice-chatterbox-vc-api.json', graph: g, output: '5', expect: { clone: !!sample } });
+    if (sep) passes.push(sepPass(src)); // the converter hears the voice only; the music goes back under it after (post voiceMix)
+    passes.push({ label: 'Changed voice', workflow: 'voice-chatterbox-vc-api.json', graph: g, output: '5', ...(sep ? { prep: [{ kind: 'fileFromPass' as const, from: VOCALS, node: '1', field: 'audio' }] } : {}), expect: { clone: !!sample, separation: sep } });
   } else if (mode === 'translate') {
     const lang = i.language ?? 'en'; // transcript (faster-whisper) + translation (NLLB-200 or LibreTranslate) run server-side as a prep step
+    if (sep) passes.push(sepPass(src)); // pass 0: voice + background; the voice is transcribed and cloned, the background stays under the new voice
+    const speech = (node: string, field: string) => ({ kind: 'speech' as const, src, node, field, translateTo: lang, ...(sep ? { srcPass: VOCALS } : {}) });
+    const ref = (node: string) => (sep && !sample ? [{ kind: 'fileFromPass' as const, from: VOCALS, node, field: 'audio' }] : []); // clone from the voice stem, never from the music
     if (job.provider === 'local-whisper-nllb-f5') {
       const model = F5_LANG[lang]; if (!model) throw new Error(`F5-TTS has no ${LANG_NAME[lang] ?? lang} model; pick Chatterbox for this language`);
-      passes.push({ label: `${LANG_NAME[lang] ?? lang}`, workflow: 'voice-f5tts-api.json', graph: f5(null, model, sample ?? src), output: '3', prep: [{ kind: 'speech', src, node: '2', field: 'speech', translateTo: lang }], expect: { seed, language: lang } });
+      passes.push({ label: `${LANG_NAME[lang] ?? lang}`, workflow: 'voice-f5tts-api.json', graph: f5(null, model, sample ?? src), output: '3', prep: [...ref('1'), speech('2', 'speech')], expect: { seed, language: lang, separation: sep } });
     } else {
       const cl = CB_LANG[lang] ? lang : undefined; if (!cl) throw new Error(`Chatterbox multilingual has no ${LANG_NAME[lang] ?? lang} voice; pick F5-TTS or a hosted voice for this language`);
       const g = wf('voice-chatterbox-ml-api.json'); setIn(g, '1', 'audio', F(sample ?? src)); Object.assign(g['2'].inputs, { language: cl, seed, exaggeration: i.voiceNative?.exaggeration ?? d.exaggeration, cfg_weight: d.cfg_weight, temperature: d.temperature });
-      passes.push({ label: `${LANG_NAME[lang] ?? lang}`, workflow: 'voice-chatterbox-ml-api.json', graph: g, output: '3', prep: [{ kind: 'speech', src, node: '2', field: 'text', translateTo: lang }], expect: { seed, language: cl } });
+      passes.push({ label: `${LANG_NAME[lang] ?? lang}`, workflow: 'voice-chatterbox-ml-api.json', graph: g, output: '3', prep: [...ref('1'), speech('2', 'text')], expect: { seed, language: cl, separation: sep } });
     }
   } else throw new Error(`unknown voice mode ${mode}`);
-  if (i.audioInput || !src) return { tool: job.toolId, outKind: 'audio', post: { kind: 'each', only: [passes.length - 1] }, muxSourceAudio: false, notes: [], passes, labels: passes.map((p) => p.label) }; // DP #22: audio in → the changed voice as audio, nothing to mux onto
-  return { tool: job.toolId, outKind: 'video', post: { kind: 'each', only: [passes.length - 1] }, muxSourceAudio: false, muxOnto: { video: src, mix: i.mix === 'blend' && i.hasAudio !== false ? 'blend' : 'replace' }, notes: [], passes, labels: passes.map((p) => p.label) };
+  const last = passes.length - 1; const blend = i.mix === 'blend' && i.hasAudio !== false;
+  const notes = canSep && !sep ? [NO_SEPARATION_NOTE] : [];
+  // With separation: the new voice over the background stem (blend: the original voice ducked under it too), mixed into one track that replaces the clip's sound.
+  const post: Post = sep ? { kind: 'voiceMix', pass: last, beds: [{ from: BACKGROUND, volume: 1 }, ...(blend ? [{ from: VOCALS, volume: 0.25 }] : [])] } : { kind: 'each', only: [last] };
+  const base = { tool: job.toolId, post, muxSourceAudio: false, notes, passes, labels: passes.map((p) => p.label), ...(canSep ? { separation: sep } : {}) };
+  if (i.audioInput || !src) return { ...base, outKind: 'audio' }; // DP #22: audio in → the changed voice as audio, nothing to mux onto
+  return { ...base, outKind: 'video', muxOnto: { video: src, mix: sep ? 'replace' : blend ? 'blend' : 'replace' } };
+}
+/** Pass 0 of a separated voice job: the official MelBand RoFormer template (comfy/separation.ts) on the source sound → vocals (index 0) + background (index 1). */
+const VOCALS: PassFile = { pass: 0, index: 0 }; const BACKGROUND: PassFile = { pass: 0, index: 1 };
+function sepPass(src: string): Pass {
+  const g = wf(SEPARATION_WORKFLOW); setIn(g, SEP_NODES.input, 'audio', F(src));
+  return { label: 'Voice and background', workflow: SEPARATION_WORKFLOW, graph: g, output: SEP_NODES.vocals, extraOutputs: [{ node: SEP_NODES.background, label: 'Background' }], expect: { separation: true } };
 }
 function mmaudio(job: Job): Plan {
   const i = job.input; const seed = clampSeed(i.seed); const secs = Number(i.outputDuration ?? i.duration) || 8; const prompt = i.enhancedPrompt ?? i.prompt ?? '';
@@ -552,10 +581,10 @@ function plugin(job: Job, id: string): Plan {
 
 interface Job { id: string; toolId: string; provider: string; input: Record<string, any> }
 /** Tools the native runner can drive, keyed by tool id (apps map to their base tool). */
-const BUILDERS: Record<string, (j: Job, o: { srcFps?: number }) => Plan> = {
+const BUILDERS: Record<string, (j: Job, o: { srcFps?: number; separation?: boolean }) => Plan> = {
   'object-swap': objectSwap, 'motion-transfer': motionTransfer, restyle, 'app-anime-restyle': restyle, reshoot, camera, 'photo-fx': (j) => (j.provider === LTX25_VIDEO ? ltx25Video({ ...j, input: { ...j.input, mode: 'i2v', loop: false } }) : photoFx(j)) /* LTX-2.5: start frame + effect (+ its LoRA) */,
   upscale: (j, o) => upscale(j, o.srcFps), 'app-video-upscale': (j, o) => upscale(j, o.srcFps), 'create-image': image, 'h3-video': (j) => (j.provider === WAN22_5B ? wan22(j) : j.provider === LTX25_VIDEO ? ltx25Video(j) : h3(j)), audio: (j) => audio(j, false),
-  soundtrack: (j) => (j.provider === 'comfy-mmaudio' ? mmaudio(j) : audio(j, true)), 'app-music-bed': (j) => (j.provider === 'comfy-mmaudio' ? mmaudio(j) : audio(j, true)), voice: (j) => (j.provider === LTX25_LIPSYNC ? ltx25Lipsync(j) : voice(j)), 'image-upscale': imageUpscale, cinema, 'app-orbit-shot': cinema, cutout: (j) => plugin(j, 'cutout'),
+  soundtrack: (j) => (j.provider === 'comfy-mmaudio' ? mmaudio(j) : audio(j, true)), 'app-music-bed': (j) => (j.provider === 'comfy-mmaudio' ? mmaudio(j) : audio(j, true)), voice: (j, o) => (j.provider === LTX25_LIPSYNC ? ltx25Lipsync(j) : voice(j, o)), 'image-upscale': imageUpscale, cinema, 'app-orbit-shot': cinema, cutout: (j) => plugin(j, 'cutout'),
   soul: (j) => soulPlan(j), 'fps-boost': (j, o) => fpsBoost(j, o.srcFps), 'make-it-real': makeReal, 'footage-fx': footageFx, 'h3-extend': ltx25Extend /* only reached for comfy-ltx25-extend: h3Owns takes comfy-h3-extend first */,
 };
 const baseOf = (j: Job) => (BUILDERS[j.toolId] ? j.toolId : j.input.baseTool && BUILDERS[j.input.baseTool] ? j.input.baseTool : /^app-(transition|ugc-ad)$/.test(j.toolId) ? 'h3-video' : null);
@@ -589,5 +618,5 @@ export function hasPlan(j: Job) {
 let planModelKey = (j: { toolId: string; provider: string; input?: Record<string, any> | null }): string | null => engineModelKey(j.toolId, j.provider, j.input?.baseTool);
 export const setPlanModelKey = (f: typeof planModelKey) => { planModelKey = f; };
 export const planModelKeyOf = (j: Parameters<typeof planModelKey>[0]) => planModelKey(j);
-export function buildPlan(j0: Job, o: { srcFps?: number } = {}): Plan { const j = { ...j0, input: withRefGrammar(j0.input, planModelKey(j0), 'local') } as Job; /* prompt grammar: the model key the runners use (routing/jobRefs.ts) */ if (h3Owns(j)) return h3BuildPlan(j); const b = baseOf(j); if (!b) throw new Error(`no ComfyUI plan for ${j.toolId}`); return BUILDERS[b](j, o); }
+export function buildPlan(j0: Job, o: { srcFps?: number; separation?: boolean } = {}): Plan { const j = { ...j0, input: withRefGrammar(j0.input, planModelKey(j0), 'local') } as Job; /* prompt grammar: the model key the runners use (routing/jobRefs.ts) */ if (h3Owns(j)) return h3BuildPlan(j); const b = baseOf(j); if (!b) throw new Error(`no ComfyUI plan for ${j.toolId}`); return BUILDERS[b](j, o); }
 export { LENGTH_VARIANTS };

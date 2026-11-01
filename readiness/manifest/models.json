@@ -265,6 +265,28 @@
    "base": "flux2-dev"
   },
   {
+   "file": "MelBandRoformer_fp16.safetensors",
+   "folder": "diffusion_models",
+   "hf_repo": "Kijai/MelBandRoFormer_comfy",
+   "revision": "main",
+   "repo_path": "MelBandRoformer_fp16.safetensors",
+   "url": "https://huggingface.co/Kijai/MelBandRoFormer_comfy/resolve/main/MelBandRoformer_fp16.safetensors",
+   "size": 456479072,
+   "size_gb": 0.46,
+   "sha256": "6119aef379a6c7264e0b37db65ae1e6488b8ca4a00baf56d6d244737b8488226",
+   "renamed_from": null,
+   "head_status": "ok (HEAD 2026-11-01)",
+   "workflows": [
+    "workflows/audio-separation-melband-api.json"
+   ],
+   "loaded_by": [
+    "MelBandRoFormerModelLoader"
+   ],
+   "input": [
+    "model_name"
+   ]
+  },
+  {
    "file": "Modeling 101 v1.5.safetensors",
    "folder": "loras",
    "hf_repo": null,
@@ -4526,6 +4548,38 @@
      "inherit": "nvidia-x64"
     },
     "cpu": null
+   }
+  },
+  "workflows/audio-separation-melband-api.json": {
+   "models": [
+    "MelBandRoformer_fp16.safetensors"
+   ],
+   "total_gb": 0.46,
+   "vram_est_gb": 2.0,
+   "vram_basis": "max(resident DiT 0.0, text encoder 0.0 offloaded after encode) + VAE 0.0 + aux 0.5 + activations 1.5 GB (image/audio)",
+   "fits": {
+    "24GB": true,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "green",
+   "mps_notes": [],
+   "variants": {
+    "nvidia-x64": {
+     "files": {
+      "aux": "MelBandRoformer_fp16.safetensors"
+     },
+     "default": true
+    },
+    "nvidia-arm64": {
+     "inherit": "nvidia-x64"
+    },
+    "mac-arm64": {
+     "inherit": "nvidia-x64"
+    },
+    "cpu": {
+     "inherit": "nvidia-x64"
+    }
    }
   },
   "workflows/audio-sfx-api.json": {

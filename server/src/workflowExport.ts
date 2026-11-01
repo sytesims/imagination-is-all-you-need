@@ -77,7 +77,7 @@ function withFileNames(g: Record<string, any>, pass: number, describe: (abs: str
   }
   return out;
 }
-const RUNTIME_WHAT: Record<string, string> = { speech: 'Filled in at run time: the clip’s speech, transcribed and translated by the server', textFromPass: 'Filled in at run time: text written by the previous pass' };
+const RUNTIME_WHAT: Record<string, string> = { speech: 'Filled in at run time: the clip’s speech, transcribed and translated by the server', textFromPass: 'Filled in at run time: text written by the previous pass', fileFromPass: 'Filled in at run time: the voice, separated from the background by the first pass' };
 const PREP_WHAT = (p: any): string => p.kind === 'fps' ? `Your clip, converted with ffmpeg to ${p.fps} fps at ${p.width}×${p.height}${p.seconds ? `, ${Math.round(p.seconds * 10) / 10} s` : ''}${p.start ? ` from ${Math.round(p.start * 10) / 10} s` : ''}${p.frames ? `, held on its last frame to exactly ${p.frames} frames` : ''}`
   : p.kind === 'frame' ? `A frame from your clip (${p.at === 'last' ? 'last frame' : `at ${p.at} s`}), saved as an image` : p.kind === 'frameFromPass' ? `The last frame of pass ${p.pass + 1}` : 'Prepared from your input';
 

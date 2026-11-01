@@ -40,7 +40,8 @@ const CAPTURE = env('CAPTURE_GRAPHS') || '';
 export class PrepError extends Error {}
 async function ff(args: string[], what: string) { const c = await runFfmpeg(args); if (c !== 0) throw new Error(`ffmpeg ${what} failed (exit ${c})`); }
 async function doPrep(p: Prep, outs: string[][], graph: Record<string, any> = {}, job?: Job) {
-  if (p.kind === 'speech') { const tr = await transcribe(p.src); if (!tr.text.trim()) throw new Error('No speech was found in the clip to translate'); const t = await translateText(tr.text, p.translateTo, tr.language || 'en'); graph[p.node].inputs[p.field] = t;
+  if (p.kind === 'fileFromPass') { const f = outs[p.from.pass]?.[p.from.index]; if (!f) throw new Error(`pass ${p.from.pass + 1} produced no output ${p.from.index + 1}`); graph[p.node].inputs[p.field] = { __file: f }; return; }
+  if (p.kind === 'speech') { const src = p.srcPass ? outs[p.srcPass.pass]?.[p.srcPass.index] : p.src; if (!src) throw new Error('the separated voice is missing'); const tr = await transcribe(src); if (!tr.text.trim()) throw new Error('No speech was found in the clip to translate'); const t = await translateText(tr.text, p.translateTo, tr.language || 'en'); graph[p.node].inputs[p.field] = t;
     if (job) job.input.translatedText = { text: t, language: p.translateTo }; /* captions.ts: the result's subtitles use these exact words */ return; }
   if (p.kind === 'textFromPass') { const f = outs[p.pass]?.[0]; if (!f) throw new Error(`pass ${p.pass} produced no text`); let t = (await readFile(f, 'utf8')).trim(); if (p.translateTo) t = await translateText(t, p.translateTo); graph[p.node].inputs[p.field] = t; return; }
   if (p.kind === 'fps' && p.frames) await ff(['-y', ...(p.start ? ['-ss', String(p.start)] : []), ...(p.seconds ? ['-t', String(p.seconds)] : []), '-i', p.src, '-vf', `fps=${p.fps},scale=${p.width}:${p.height}:flags=lanczos,setsar=1,tpad=stop_mode=clone:stop=-1`, '-frames:v', String(p.frames), ...(p.audio ? ['-c:a', 'aac', '-b:a', '192k'] : ['-an']), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '16', '-pix_fmt', 'yuv420p', p.out], 'fps/resize/pad');
@@ -67,6 +68,7 @@ export async function runNative(job: Job, transport?: ComfyTransport, build: (j:
   const c: ComfyTransport = transport ?? new ComfyNative(config.comfyBaseUrl, config.comfyApiKey ? { Authorization: `Bearer ${config.comfyApiKey}` } : {});
   job.status = 'running'; job.queuePos = 0; job.stage = 'uploading'; job.progress = 0; job.progressKind = 'indeterminate'; job.steps = null; job.liveStage = null;
   const plan: Plan = build(job as any, { srcFps: job.input.videoPath ? await probeFps(job.input.videoPath) : undefined });
+  if (typeof plan.separation === 'boolean') job.input.separation = plan.separation; // Get workflow rebuilds this run's plan, not today's readiness
   job.input.comfyPlan = { passes: plan.passes.map((p) => ({ label: p.label, workflow: p.workflow })), post: plan.post.kind, notes: plan.notes }; notePlanPrompts(job, plan);
   const local = !transport && String(job.route ?? '').startsWith('local:'); const S = local ? await import('../hardware/stages.js') : null;
   if (S) await S.prePhase(job, false); // HW-SHAPES Q4: downloadWeights=1 → downloading_model through the shared downloader (never automatic)
@@ -169,6 +171,10 @@ export async function runNative(job: Job, transport?: ComfyTransport, build: (j:
     await joinExtension(plan.post.source ?? job.input.videoPath, outs[0][0], o, plan.post.plan, { audio: job.input.audio !== false, crf: job.input.bitrate === 'high' ? BITRATES[1].crf : 18, maxGenFrames: plan.post.maxGenFrames }); finals.push({ label: plan.post.label, file: o }); }
   else if (plan.post.kind === 'audioConcat') { const o = out(0, '.joined.wav'); const ins = outs.flatMap((f) => ['-i', f[0]]);
     await ff(['-y', ...ins, '-filter_complex', `${outs.map((_, k) => `[${k}:a]`).join('')}concat=n=${outs.length}:v=0:a=1[a]`, '-map', '[a]', o], 'audio join'); finals.push({ label: plan.labels?.[0] ?? 'Result', file: o }); }
+  else if (plan.post.kind === 'voiceMix') { // the new voice over the separated background (comfy/dubMix.ts), one track that replaces the clip's sound
+    const { voiceMixArgs } = await import('./dubMix.js'); const pp = plan.post; const fileOf = (f: import('./plans.js').PassFile) => { const x = outs[f.pass]?.[f.index]; if (!x) throw new Error(`pass ${f.pass + 1} produced no output ${f.index + 1}`); return x; };
+    const beds = pp.beds.map((b) => ({ file: b.from === 'source' ? String(job.input.videoPath ?? job.input.sourceAudioPath) : fileOf(b.from), volume: b.volume }));
+    const o = out(0, '.mix.wav'); await ff(voiceMixArgs(beds, [{ file: outs[pp.pass][0], at: 0, speed: 1 }], o), 'voice mix'); finals.push({ label: plan.labels?.[pp.pass] ?? 'Result', file: o }); }
   else if (plan.post.kind === 'xfade') { const o = out(0, '.xfade.mp4'); await ff(blendArgs(outs.map((f) => f[0]), plan.post.chunks, o), 'crossfade'); finals.push({ label: 'Result', file: o }); }
   else if (plan.post.kind === 'talkJoin') { const o = out(0, '.talk.mp4'); const { talkJoinArgs } = await import('./infiniteTalkCloud.js'); // Talking Video: parts + crossfades + the full speech
     await ff(talkJoinArgs(outs.map((f) => f[0]), plan.post.parts, plan.post.audio, o, plan.post.fade, plan.post.fps), 'talking video join'); finals.push({ label: plan.labels?.[0] ?? 'Talking video', file: o }); }

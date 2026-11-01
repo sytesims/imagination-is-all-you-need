@@ -10173,6 +10173,26 @@
         "parameters": []
       }
     },
+    "/api/local/separation": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Keep the background (Translate a video, Change Voice): is voice and background separation ready on this computer? {ready, nodes (installed | missing | unknown), missingNodes[], model (present | missing | unknown), file, folder, bytes, missingBytes, downloadId (POST /api/local/downloads {downloadId} after the user says yes), pack {name, repo, pin}, note}. Read only; never installs or downloads.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/local/downloads/{id}": {
       "get": {
         "tags": [

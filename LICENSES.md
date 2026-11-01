@@ -10,8 +10,8 @@ Commercial: yes = OSI licence; no = non-commercial; restricted = custom terms (r
 |---|---|---|---|---|---|---|
 | Kling 3.0 Omni Edit (hosted) | Comfy Router (hosted) | [Proprietary (hosted API)](https://docs.comfy.org/development/comfy-router/models/kling/kling-v3-omni/code) | provider-terms | — | [link](https://docs.comfy.org/development/comfy-router/models/kling/kling-v3-omni/code) | object-swap, motion-transfer, make-it-real |
 | Seedance 2.5 Edit (hosted) | Comfy Router (hosted) | [Proprietary (hosted API)](https://docs.comfy.org/development/comfy-router/models/byteplus/dreamina-seedance-2-5-260628/code) | provider-terms | — | [link](https://docs.comfy.org/development/comfy-router/models/byteplus/dreamina-seedance-2-5-260628/code) | object-swap, motion-transfer, make-it-real |
-| Seedance (hosted) | Comfy Router (hosted) | Proprietary (hosted API) | provider-terms | — | — | object-swap, motion-transfer, restyle, reshoot, camera, photo-fx, h3-video, cinema, app-ugc-ad, app-orbit-shot, app-anime-restyle |
-| Open weights (ComfyUI workflow) | Local ComfyUI | [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) | yes | — | — | object-swap, motion-transfer, restyle, camera, photo-fx, app-anime-restyle |
+| Seedance (hosted) | Comfy Router (hosted) | Proprietary (hosted API) | provider-terms | — | — | object-swap, motion-transfer, restyle, reshoot, camera, photo-fx, h3-video, cinema, photos-reel, app-photos-to-reel, app-ugc-ad, app-orbit-shot, app-anime-restyle |
+| Open weights (ComfyUI workflow) | Local ComfyUI | [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) | yes | — | — | object-swap, motion-transfer, restyle, camera, photo-fx, photos-reel, app-photos-to-reel, app-anime-restyle |
 | H3 Character Swap LoRA v1.5 | Local ComfyUI | [MiniMax H3 Community License (adapter retains base terms; no extra no-SaaS clause, verified 2026-10-17)](https://huggingface.co/akatz-ai/MiniMax-H3-Character-Swap-LoRA/blob/main/LICENSE) | restricted | Powered by MiniMax H3 ([clause](https://huggingface.co/akatz-ai/MiniMax-H3-Character-Swap-LoRA/raw/main/LICENSE)) | [link](https://huggingface.co/akatz-ai/MiniMax-H3-Character-Swap-LoRA) | object-swap |
 | Wan Animate 2 · Comfy Cloud | Comfy Cloud · open workflow | [Apache-2.0](https://huggingface.co/Comfy-Org/Wan-Animate-2) | yes | — | [link](https://docs.comfy.org/tutorials/video/wan/wan-animate-2) | motion-transfer |
 | MiniMax H3 Style Transfer | Local ComfyUI | [MiniMax H3 Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE) | restricted | Powered by MiniMax H3 ([clause](https://huggingface.co/MiniMaxAI/MiniMax-H3/raw/main/LICENSE)) | [link](https://huggingface.co/Alissonerdx/Minimax-H3-ComfyUI) | restyle, app-anime-restyle |
@@ -21,9 +21,9 @@ Commercial: yes = OSI licence; no = non-commercial; restricted = custom terms (r
 | Open weights · Wan Fun Camera (fallback) | Local ComfyUI | [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) | yes | — | — | reshoot, cinema, app-orbit-shot |
 | LTX-2 19B re-shoot · Comfy Cloud workflow | Comfy Cloud · open workflow | [LTX-2 Community License](https://huggingface.co/Lightricks/LTX-2/blob/main/LICENSE) | restricted | — | [link](https://huggingface.co/Lightricks/LTX-2) | reshoot |
 | New angle · H3 CrossView · cloud | Comfy Cloud · open workflow | [MiniMax H3 Community License](https://huggingface.co/Cseti/MiniMax-H3_Ref2VA-LoRA-CrossView-Warp_v1) | restricted | Powered by MiniMax H3 ([clause](https://huggingface.co/MiniMaxAI/MiniMax-H3/raw/main/LICENSE)) | [link](https://github.com/Comfy-Org/comfy-reshoot) | reshoot |
-| MiniMax H3 · partner API | Comfy Router (hosted) | [Proprietary (hosted API)](https://www.minimax.io/platform/protocol/terms-of-service) | provider-terms | — | [link](https://docs.comfy.org/built-in-nodes/MinimaxHailuo03TextToVideoNode) | camera, photo-fx, h3-video, app-transition, app-ugc-ad, app-orbit-shot |
+| MiniMax H3 · partner API | Comfy Router (hosted) | [Proprietary (hosted API)](https://www.minimax.io/platform/protocol/terms-of-service) | provider-terms | — | [link](https://docs.comfy.org/built-in-nodes/MinimaxHailuo03TextToVideoNode) | camera, photo-fx, h3-video, photos-reel, app-photos-to-reel, app-transition, app-ugc-ad, app-orbit-shot |
 | MiniMax H3 Camera Motion | Local ComfyUI · or fal, Comfy Router | [MiniMax H3 Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE) | restricted | Powered by MiniMax H3 ([clause](https://huggingface.co/MiniMaxAI/MiniMax-H3/raw/main/LICENSE)) | [link](https://civitai.com/models/2914784/cameramotionh3) | camera |
-| LTX-2 19B camera · Comfy Cloud workflow | Comfy Cloud · open workflow | [LTX-2 Community License](https://huggingface.co/Lightricks/LTX-2/blob/main/LICENSE) | restricted | — | [link](https://huggingface.co/Lightricks/LTX-2) | camera |
+| LTX-2 19B camera · Comfy Cloud workflow | Comfy Cloud · open workflow | [LTX-2 Community License](https://huggingface.co/Lightricks/LTX-2/blob/main/LICENSE) | restricted | — | [link](https://huggingface.co/Lightricks/LTX-2) | camera, photos-reel, app-photos-to-reel |
 | LTX-2.5 22B | Local ComfyUI | [LTX-2.x Community License](https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2_x) | restricted | — | [link](https://docs.comfy.org/tutorials/video/ltx/ltx-2-5) | photo-fx, h3-video, app-transition |
 | Real-ESRGAN x2 | Local ComfyUI | [BSD-3-Clause](https://opensource.org/license/bsd-3-clause) | yes | — | [link](https://github.com/xinntao/Real-ESRGAN) | upscale, app-video-upscale |
 | 4x-UltraSharp | Local ComfyUI | [CC BY-NC-SA 4.0 (4x-UltraSharp)](https://huggingface.co/Kim2091/UltraSharp) | no | — | [link](https://huggingface.co/Kim2091/UltraSharp) | upscale, app-video-upscale |
@@ -285,6 +285,22 @@ Commercial: yes = OSI licence; no = non-commercial; restricted = custom terms (r
 | H3 Character Swap recipe settings, after Comfy's Openjutsu app (Comfy-Org/comfy-openjutsu) | MIT | yes | [link](https://github.com/Comfy-Org/comfy-openjutsu) |
 | H3 Character Swap workflow (Akatz Labs, akatz-labs/h3-character-swap-tool) | MIT | yes | [link](https://github.com/akatz-labs/h3-character-swap-tool) |
 
+## Components: app-translate-video
+
+| Component | Licence | Commercial | Source |
+|---|---|---|---|
+| Official Comfy template · MelBandRoFormer Audio Separation: audio_melbandroformer_audio_separation (Comfy-Org/workflow_templates), flattened in workflows/audio-separation-melband-api.json · Keep the background | MIT | yes | [link](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/audio_melbandroformer_audio_separation.json) |
+| ComfyUI-MelBandRoFormer node pack (kijai) @ 92c86854e6 · Keep the background | None stated (its pyproject.toml names a LICENSE file the repo does not include); check with the author | restricted | [link](https://github.com/kijai/ComfyUI-MelBandRoFormer) |
+| MelBand RoFormer vocal model (KimberleyJSN/melbandroformer; MelBandRoformer_fp16.safetensors, Kijai/MelBandRoFormer_comfy) · Keep the background | MIT | yes | [link](https://huggingface.co/KimberleyJSN/melbandroformer) |
+
+## Components: app-change-voice
+
+| Component | Licence | Commercial | Source |
+|---|---|---|---|
+| Official Comfy template · MelBandRoFormer Audio Separation: audio_melbandroformer_audio_separation (Comfy-Org/workflow_templates), flattened in workflows/audio-separation-melband-api.json · Keep the background | MIT | yes | [link](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/audio_melbandroformer_audio_separation.json) |
+| ComfyUI-MelBandRoFormer node pack (kijai) @ 92c86854e6 · Keep the background | None stated (its pyproject.toml names a LICENSE file the repo does not include); check with the author | restricted | [link](https://github.com/kijai/ComfyUI-MelBandRoFormer) |
+| MelBand RoFormer vocal model (KimberleyJSN/melbandroformer; MelBandRoformer_fp16.safetensors, Kijai/MelBandRoFormer_comfy) · Keep the background | MIT | yes | [link](https://huggingface.co/KimberleyJSN/melbandroformer) |
+
 ## Components: voice
 
 | Component | Licence | Commercial | Source |
@@ -297,6 +313,9 @@ Commercial: yes = OSI licence; no = non-commercial; restricted = custom terms (r
 | LongCat-Avatar 1.5 bf16 + DMD distill LoRA repacks (Kijai/WanVideo_comfy) · Talking Video (deployment) | MIT (follows upstream) | yes | [link](https://huggingface.co/Kijai/WanVideo_comfy/tree/main/LongCat) |
 | Whisper large-v3 (OpenAI) · LongCat 1.5 audio encoder (deployment) | Apache-2.0 | yes | [link](https://huggingface.co/openai/whisper-large-v3) |
 | ComfyUI-WanVideoWrapper (kijai) @ 088128b224 or later · LongCat 1.5 nodes (deployment) | Apache-2.0 | yes | [link](https://github.com/kijai/ComfyUI-WanVideoWrapper) |
+| Official Comfy template · MelBandRoFormer Audio Separation: audio_melbandroformer_audio_separation (Comfy-Org/workflow_templates), flattened in workflows/audio-separation-melband-api.json · Keep the background | MIT | yes | [link](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/audio_melbandroformer_audio_separation.json) |
+| ComfyUI-MelBandRoFormer node pack (kijai) @ 92c86854e6 · Keep the background | None stated (its pyproject.toml names a LICENSE file the repo does not include); check with the author | restricted | [link](https://github.com/kijai/ComfyUI-MelBandRoFormer) |
+| MelBand RoFormer vocal model (KimberleyJSN/melbandroformer; MelBandRoformer_fp16.safetensors, Kijai/MelBandRoFormer_comfy) · Keep the background | MIT | yes | [link](https://huggingface.co/KimberleyJSN/melbandroformer) |
 
 ## Components: reshoot
 
@@ -353,7 +372,7 @@ Commercial: yes = OSI licence; no = non-commercial; restricted = custom terms (r
 
 | Component | Licence | Commercial | Source |
 |---|---|---|---|
-| Tripo 3.1 (Comfy partner node TripoImageToModelNodeV2, hosted) | Tripo terms of service | see terms | [link](https://www.tripo3d.ai/terms) |
+| Tripo 3.1 Text, Image and Multi-view (Comfy partner nodes, hosted) | Tripo terms of service | see terms | [link](https://www.tripo3d.ai/terms) |
 | TRELLIS.2 (Microsoft, fal-ai/trellis-2) | MIT | yes | [link](https://huggingface.co/microsoft/TRELLIS.2-4B) |
 | Hunyuan 3D 3.1 Pro (Tencent, fal-ai/hunyuan-3d/v3.1/pro/image-to-3d) | Tencent Hunyuan 3D Community License; not in the EU, UK or South Korea | restricted | [link](https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1/blob/main/LICENSE) |
 | Pixal3D + TRELLIS.2 local template (Comfy-Org repack: Pixal3D, TRELLIS.2, MoGe-2, BiRefNet) | MIT | yes | [link](https://huggingface.co/Comfy-Org/Pixal3D) |

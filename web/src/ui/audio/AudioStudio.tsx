@@ -19,6 +19,7 @@ import { RouteNotRunnable } from '../../shared/RouteNotRunnable';
 import { useRequoteTick, shownCredits } from '../../shared/quote';
 import { readQuote, unpricedReason, demoMessage, demoList, unpricedPrefix, unpricedTitle, demoTagOf } from '../../shared/quote';
 import { quoteParams } from '../../shared/usePrefill';
+import { SeparationNote } from './SeparationNote';
 /** Voice / Audio (page 5): left panel + main area.
  *  Copy, media, models and prices are ours. Controls exist only where the voice tool accepts the parameter;
  *  other controls follow the tool's published input definitions. */
@@ -149,6 +150,7 @@ export default function AudioStudio(p: AudioStudioProps) {
           <input ref={spIn} type="file" hidden accept={AUDIO_ACCEPT} data-picker-title="Choose the speech" data-picker-limits="One sound · MP3, WAV or M4A" data-testid="lipsync-speech-input" onChange={e => { const f = e.target.files?.[0]; if (f) p.setSpeech(f); e.currentTarget.value = ''; }} />
         </div>
         {p.mode === 'translate' && <p className="as-note as-tr" role="note">Translate runs on your own speech-translation server. Without one the job stops and nothing is charged. <a href={TRANSLATE_DOC} target="_blank" rel="noopener noreferrer">Set one up ↗</a></p>}
+        {(p.mode === 'translate' || p.mode === 'change-voice') && <SeparationNote />}
         {upErr && <Notice as="p" kind="error" tone="line" className="as-err">{upErr}</Notice>}<FieldIssue issues={p.issues} field="video" /><FieldIssue issues={p.issues} field="voiceAudio" />{showLang && <FieldIssue issues={langIss} field="language" />}{showLang && p.langNote && <p className="helper lang-note" role="status" data-testid="lang-note">{p.langNote}</p>}
         <div className="as-script"><label htmlFor="app-prompt">{p.mode === 'voiceover' ? 'Script' : 'Notes'}{p.mode !== 'voiceover' && <span className="as-opt">Optional</span>}</label>
           <textarea data-enter-submits="" ref={p.promptRef} id="app-prompt" data-testid="as-script" maxLength={p.mode === 'voiceover' && Number(caps?.maxChars) > 0 ? Number(caps.maxChars) : 5000} placeholder={p.mode === 'voiceover' ? 'Write exactly what the voice will read out loud.' : 'Anything to keep in mind, e.g. keep the pauses.'} value={p.prompt} onChange={e => p.setPrompt(e.target.value)} />

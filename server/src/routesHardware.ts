@@ -8,6 +8,7 @@ import { isLoopback } from './routing/settings.js';
 import { learnedSummary, resetLearned, rateOf } from './etaLearn.js';
 import { startDownload, listDownloads, getDownload, cancelDownload, downloadView, downloadCheck, DlError } from './hardware/downloads.js';
 import { modelsDir } from './hardware/requirements.js';
+import { separationStatus } from './comfy/separation.js';
 import { config } from './config.js';
 
 const bad = (field: string, message: string) => ({ error: message, errorType: 'validation', issues: [{ code: 'invalid', field, message }] });
@@ -76,6 +77,8 @@ export function registerHardware(app: FastifyInstance) {
     try { const d = startDownload(spec); return reply.code(202).send(downloadView(d)); }
     catch (e) { if (!(e instanceof DlError)) throw e; return dlFail(reply, e); }
   });
+  /** Keep the background (comfy/separation.ts): whether Translate a video / Change Voice can split voice from music here. Read only. */
+  app.get('/api/local/separation', async () => separationStatus());
   app.get('/api/local/downloads', async () => ({ downloads: listDownloads().map(downloadView), modelsDir: displayDir(modelsDir()), modelsDirSet: !!modelsDir() }));
   app.get<{ Params: { id: string } }>('/api/local/downloads/:id', async (req, reply) => { const d = getDownload(req.params.id); return d ? downloadView(d) : reply.code(404).send({ error: 'not found', code: 'not_found' }); });
   app.delete<{ Params: { id: string } }>('/api/local/downloads/:id', async (req, reply) => { const d = cancelDownload(req.params.id); return d ? { ...downloadView(d), cancelRequested: true } : reply.code(404).send({ error: 'not found', code: 'not_found' }); });
