@@ -459,6 +459,11 @@ export default function ImageCanvas(p: ImageCanvasProps) {
   const reg = useModels(p.tool.id); const regOf = (id: string) => reg.models.find(m => m.providerId === id || m.id === id) as any;
   /* R1: popovers are the shared anchored Popover (portal); it owns Escape, outside-click and focus return */
   const aR = { model: useRef<HTMLButtonElement>(null), aspect: useRef<HTMLButtonElement>(null), quality: useRef<HTMLButtonElement>(null), res: useRef<HTMLButtonElement>(null), more: useRef<HTMLButtonElement>(null), count: useRef<HTMLButtonElement>(null), card: useRef<HTMLButtonElement>(null), set: useRef<HTMLButtonElement>(null) }; const [moreFrom, setMoreFrom] = useState<'chip' | 'card'>('chip'); const closePop = () => setPop('');
+  /* the model chip's "· Default" / "· Your pick": shown whole or not at all (2026-11-01: "GPT Imag… · Def"); the tooltip always has it */
+  useLayoutEffect(() => { const el = aR.model.current; if (!el || typeof ResizeObserver === 'undefined') return;
+    const fit = () => { const pk = el.querySelector<HTMLElement>('.ic-mpick'); const nm = el.querySelector<HTMLElement>('.ic-mname'); if (!pk || !nm) return;
+      el.removeAttribute('data-pick-off'); const cut = pk.scrollWidth > pk.clientWidth + 1 || nm.scrollWidth > nm.clientWidth + 1; if (cut) el.setAttribute('data-pick-off', ''); };
+    fit(); const ro = new ResizeObserver(fit); ro.observe(el); el.querySelectorAll('.ic-mname').forEach(n => ro.observe(n)); const row = el.closest('.ic-chips'); if (row) ro.observe(row); return () => ro.disconnect(); }, [aR.model.current]); // eslint-disable-line react-hooks/exhaustive-deps
   const moreAt = viaOver(aR.more, overRef); /* Style folded into ⋯: its panel opens from there */
   /* the References panel (ImagePicker) sits above the dock (like the reference): Esc, a click outside it or its trigger again closes it */
   useDismiss(!!refTab, () => setRefTab(null));

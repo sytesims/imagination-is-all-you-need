@@ -227,3 +227,31 @@ html body .ic.ic2 .ic-dock .wf-strip .wf-exlink:focus-visible{box-shadow:var(--f
 .wf-many .add-tile{width:44px;height:44px}
 .wf-many .wf-slot.full .wf-slot-hit b{display:none}  /* the swatches speak for themselves; each keeps its name for screen readers and its tooltip */
 @media (max-width:640px){.wf-many .wf-slot{width:36px;height:36px}}
+
+/* ---- Ad Pack Words & size (2026-11-01, AdPickers.tsx): platform rows of small shape tiles, the logo corner on a tiny frame ---- */
+.apop.wf-gpop .wf-gen:has(.ad-plat){width:320px;gap:10px}
+html body .wf-gen:has(.ad-plat) .wf-gen-row input.wf-gen-text{min-height:32px;padding:6px 10px}
+.wf-gen:has(.ad-plat) .wf-gen-row{gap:5px}
+.ad-plat{display:grid;gap:3px;padding:3px;border-radius:10px;background:rgba(255,255,255,.04)}
+.ad-plat-row{display:flex;align-items:center;gap:3px}
+.ad-plat-row .ad-plat-i{flex:0 0 26px}
+.ad-plat-i{display:grid;place-items:center;height:28px;color:var(--text-2,#b4b5b8)}
+.ad-plat-row:has(.on) .ad-plat-i{color:#fff}
+.ad-plat-t{all:unset;box-sizing:border-box;flex:0 0 auto;min-width:82px;display:flex;align-items:center;gap:6px;height:28px;padding:0 8px;border-radius:7px;color:var(--text-2,#b4b5b8);font:500 12px/16px Inter,system-ui,sans-serif;white-space:nowrap;cursor:pointer;transition:background-color var(--t-state,.12s) ease,color var(--t-state,.12s) ease}
+.ad-plat-t:hover{background:rgba(255,255,255,.07);color:#fff}
+.ad-plat-t.on{background:rgba(255,255,255,.12);color:#fff} /* the shared option grid's picked look (.wf-seg button.on): one neutral cue */
+.ad-plat-t:focus-visible{box-shadow:var(--focus)}
+.ad-plat-t span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.ad-shape{flex:none;box-sizing:border-box;border:1.5px solid currentColor;border-radius:2px;opacity:.7}
+.ad-plat-t.on .ad-shape{opacity:1}
+.wf-gen-row.wf-gen-row-side{grid-template-columns:1fr auto;column-gap:12px;row-gap:2px}
+.wf-gen-row-side>.wf-pop-h{align-self:end}
+.ad-corner-w{display:contents}
+.ad-corner-w .ad-corner-note{grid-column:1;grid-row:2;align-self:start;color:var(--text-3,#8a8b90);font:400 11px/14px Inter,system-ui,sans-serif}
+.ad-corner{grid-column:2;grid-row:1/span 2;position:relative;display:grid;grid-template:1fr 1fr/1fr 1fr;border-radius:6px;background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.22);overflow:hidden}
+.ad-corner-b{all:unset;position:relative;cursor:pointer}
+.ad-corner-b i{position:absolute;width:11px;height:11px;border-radius:3px;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18);transition:background-color var(--t-state,.12s) ease,box-shadow var(--t-state,.12s) ease}
+.ad-corner-tl i{left:5px;top:5px}.ad-corner-tr i{right:5px;top:5px}.ad-corner-bl i{left:5px;bottom:5px}.ad-corner-br i{right:5px;bottom:5px}
+.ad-corner-b:hover i{box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.6)}
+.ad-corner-b.on i{background:var(--accent);box-shadow:none} /* the picked corner: orange fill only */
+.ad-corner-b:focus-visible i{box-shadow:var(--focus)}

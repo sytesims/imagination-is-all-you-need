@@ -35,7 +35,7 @@ export const AD_SHAPES: Record<AdShape, { label: string; tag: string; w: number;
 };
 export const AD_SHAPE_LIST = Object.keys(AD_SHAPES) as AdShape[];
 
-interface Spot { shape: AdShape; w: number; h: number; name: string; safe?: Edges }
+interface Spot { shape: AdShape; w: number; h: number; name: string; /** one word for a compact picker (Ad Pack's Platform tiles), when `name` is longer */ short?: string; safe?: Edges }
 /**
  * The post text each platform takes, for the Export pack's post-copy.txt (characters; checked 2026-10-31 against each one's own help pages):
  *  - Meta Ads Guide (facebook.com/business/ads-guide): primary text, about 125 characters show before "See more"; headline, about 40
@@ -52,9 +52,9 @@ export const AD_PLATFORMS: Record<AdPlatform, { label: string; /** its folder in
   meta: { label: 'Instagram & Facebook', folder: 'instagram-facebook', post: [{ label: 'Primary text', max: 125, from: 'all' }, { label: 'Headline', max: 40, from: 'headline' }], sizes: [
     { shape: '4x5', w: 1080, h: 1350, name: 'Feed' },
     { shape: '1x1', w: 1080, h: 1080, name: 'Square' },
-    { shape: '9x16', w: 1080, h: 1920, name: 'Stories and Reels', safe: { top: 0.14, bottom: 0.35, left: 0.06, right: 0.06 } }] },
+    { shape: '9x16', w: 1080, h: 1920, name: 'Stories and Reels', short: 'Story', safe: { top: 0.14, bottom: 0.35, left: 0.06, right: 0.06 } }] },
   tiktok: { label: 'TikTok', folder: 'tiktok', post: [{ label: 'Ad text', max: 100, from: 'all' }], sizes: [
-    { shape: '9x16', w: 1080, h: 1920, name: 'For You feed', safe: { top: 0.08, bottom: 0.30, left: 0.04, right: 0.13 } }] },
+    { shape: '9x16', w: 1080, h: 1920, name: 'For You feed', short: 'Feed', safe: { top: 0.08, bottom: 0.30, left: 0.04, right: 0.13 } }] },
   x: { label: 'X', folder: 'x', post: [{ label: 'Post', max: 280, from: 'all', keep: 24 }], sizes: [
     { shape: '1x1', w: 1080, h: 1080, name: 'Square' },
     { shape: '16x9', w: 1920, h: 1080, name: 'Wide' }] },
