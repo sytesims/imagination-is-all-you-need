@@ -13,7 +13,8 @@ import { buildIndex, search, toolModes, type Entry } from './search.js';
 import { parseRecipe, recipeToRun } from './recipe.js';
 
 const text = (o: unknown) => ({ content: [{ type: 'text' as const, text: typeof o === 'string' ? o : JSON.stringify(o, null, 2) }] });
-/** Errors for agents: the plain message; a budget or spending-limit refusal also carries the numbers and what to do next. */
+/** Errors for agents: the plain message; an agent-budget refusal (errorType limit, code agent_budget) also carries the numbers and what to do next.
+ *  There are no app spending limits (removed 2026-10-28): what keeps spend in check is the quote, the user's OK and an optional agent budget. */
 const fail = (e: unknown) => {
   const b: any = e instanceof ApiError ? e.body : null;
   if (b && typeof b === 'object' && b.errorType === 'limit') return { isError: true, content: [{ type: 'text' as const, text: JSON.stringify({ refused: true, code: b.code, reason: b.error, charged: false,
@@ -217,7 +218,7 @@ export function createServer(opts: { http?: boolean; channel?: boolean } = {}) {
     });
   s.registerTool('story_status', { title: 'Story status', description: 'Status of a story from create_story: per-shot status and outputs, the stitched film.', inputSchema: { id: z.string() } },
     async ({ id }) => { try { return text(await get(`/api/stories/${encodeURIComponent(id)}`)); } catch (e) { return fail(e); } });
-  s.registerTool('retry_story', { title: 'Retry story', description: 'Resume a failed story from shot `from` (default the failed one); finished shots are kept. Optionally replace the prompt of the re-run shots. Re-quoted first; spending limits and this session\'s agent budget apply.', inputSchema: {
+  s.registerTool('retry_story', { title: 'Retry story', description: 'Resume a failed story from shot `from` (default the failed one); finished shots are kept. Optionally replace the prompt of the re-run shots. Re-quoted first; this session\'s agent budget applies when one is set.', inputSchema: {
     id: z.string(), from: z.number().int().min(1).optional(), to: z.number().int().min(1).optional().describe('Last shot to re-run (default: to the end)'), prompts: z.record(z.string()).optional().describe('{"2":"new prompt for shot 2"}') } },
     async (a) => { try { return text(await post(`/api/stories/${encodeURIComponent(a.id)}/retry`, { from: a.from, to: a.to, shots: Object.entries(a.prompts ?? {}).map(([k, v]) => ({ index: Number(k), prompt: v })) })); } catch (e) { return fail(e); } });
 
@@ -613,7 +614,7 @@ export function createServer(opts: { http?: boolean; channel?: boolean } = {}) {
     });
 
   // ---- library toolset ----
-  s.registerTool('retry', { title: 'Retry job', description: 'Re-run a FAILED or BLOCKED job with the same inputs, optionally on another place (run_on from the failed job\'s tryOn, with its price). Priced and checked like a new run: spending limits and the agent budget apply. failed_only re-runs only the failed reference groups.', inputSchema: {
+  s.registerTool('retry', { title: 'Retry job', description: 'Re-run a FAILED or BLOCKED job with the same inputs, optionally on another place (run_on from the failed job\'s tryOn, with its price). Priced and checked like a new run: the agent budget applies when one is set. failed_only re-runs only the failed reference groups.', inputSchema: {
     id: z.string(), run_on: z.string().optional(), failed_only: z.boolean().optional(), budget_id: z.string().optional(), wait_sec: z.number().int().min(0).max(1800).default(30) } },
     async ({ id, run_on, failed_only, budget_id, wait_sec }) => withBudget(budget_id, async () => { try { const r: any = await post(`/api/jobs/${encodeURIComponent(id)}/retry`, { ...(run_on ? { runOn: run_on } : {}), ...(failed_only ? { failedOnly: true } : {}) }); return await jobResult(r.id, (wait_sec ?? 30) > 0, wait_sec || 1); } catch (e) { return fail(e); } }));
 

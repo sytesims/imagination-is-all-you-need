@@ -15,8 +15,8 @@
  *    uploads) goes to the shots that do NOT chain (shot 1, a broken chain) as Reference-to-video; chained shots carry the cast in
  *    their first frame. A per-shot start frame (startFrameUrl) overrides the chain.
  *  - Sound: audio on every shot; the stitch keeps each shot's audio with short crossfades (xfade + acrossfade), concat fallback.
- *  - Quote = the sum of the per-shot quotes (GET /api/tools/h3-video/price, same params as the submit) × takes. Spending limits,
- *    team-mode balance and an optional budget (maxUsd, MCP create_story) are checked on the TOTAL before anything runs.
+ *  - Quote = the sum of the per-shot quotes (GET /api/tools/h3-video/price, same params as the submit) × takes. The team-mode
+ *    balance and an optional budget (maxUsd, MCP create_story) are checked on the TOTAL before anything runs.
  *  - Agent budget (X-OHF-Agent-Budget, MCP set_budget): the story's TOTAL must fit what is left BEFORE any shot runs (the submit's 400
  *    agent_budget, nothing charged); then every shot is submitted with the same header, so each one goes through the shared guard (spendGuard
  *    + admitAgentRun) and is tagged with the agent (get_budget / receipt). maxUsd stays an extra cap on this one story. Retry does the same.

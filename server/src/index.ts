@@ -696,7 +696,8 @@ async function createJob(toolId: string, req: FastifyRequest, reply: FastifyRepl
       return reply.code(409).send({ error: 'route_changed', code: 'route_changed', message: ROUTE_CHANGED_MSG, userMessage: ROUTE_CHANGED_MSG, detail: 'Review the new price and press Generate again.', charged: false, calm: true, quote, quotedCredits: qc, credits: nowCost, dearer: true,
         refund: { refunded: false, amount: 0, charged: false, note: 'Nothing was charged.' } }); // P2 (BUG-HUNT-8 #6): says nothing was charged; calm = not an error
     } }
-  // Own-accounts mode (billing.ts): a run that would go over a daily / monthly spending cap for its provider is refused before anything is sent. Local runs are never limited.
+  // The spend guard (spendGuard.ts) prices the run and writes its Spend row; it never refuses (spending limits were removed 2026-10-28). What caps spend:
+  // the quote the user saw (quotedCredits above), their OK, and an optional agent budget (admitAgentRun below).
   const sg = await spendGuard(reply, { kind: routed ? routed.first.kind : isLocalFree(prov.kind) ? 'local' : 'direct', routeId: routed?.first.routeId ?? null, credits: routedCost ?? cost, demo: !!routed?.routing.demo, free: wantFree });
   if ('sent' in sg) return sg.sent; const runCost = sg.runCost;
   if (!wantFree && !canAfford(routedCost ?? cost)) {
@@ -972,7 +973,7 @@ app.post<{ Params: { id: string } }>('/api/jobs/:id/cancel', async (req, reply) 
 
 // ---- Retry ----
 /** Retry: a new job with the same inputs, quoted and charged again (failed or provider-blocked jobs; the original stays refunded once). ?failedOnly=1 re-runs only failed ref groups.
- *  S-01: every re-run (Try again, Try on <place>, failed groups) goes through the submit's guard: quote → spending cap (400 spend_limit) → agent budget → Spend row.
+ *  S-01: every re-run (Try again, Try on <place>, failed groups) goes through the submit's guard: quote → agent budget (when one is set) → Spend row.
  *  S-02: Try on (runOn) pins THIS job only; remember:true (body or query) also saves that place as the tool + model's choice (Settings › Routing). */
 app.post<{ Params: { id: string }; Querystring: { failedOnly?: string; runOn?: string; remember?: string } }>('/api/jobs/:id/retry', async (req, reply) => {
   const j = jobs.get(req.params.id); if (!j) return reply.code(404).send({ error: 'not found' });
@@ -1098,8 +1099,8 @@ app.post<{ Params: { id: string }; Body: { output?: number; mode?: string } | un
   const inp = input as Record<string, any>; inp.upscaleOf = j.id; inp.upscaleOutput = idx;
   const prov = getProvider(up.providers[0]); const provId = prov?.id ?? 'comfy-open';
   const est = estimateSeconds(up, inp, 1, provId); const cost = isLocalFree(prov?.kind) ? 0 : est;
-  // S-01: the submit's spend guard (spending cap → 400 spend_limit, agent budget, Spend row). The upscale engines today are local (SeedVR2, $0) and
-  // FLUX 3 Upscaler is coming soon, so this never blocks yet; a hosted upscale route is covered the day it lands.
+  // S-01: the submit's spend guard (the run's cost + Spend row; it never refuses since spending limits were removed 2026-10-28) and the agent budget.
+  // The upscale engines today are local (SeedVR2, $0) and FLUX 3 Upscaler is coming soon; a hosted upscale route is covered the day it lands.
   const sg = await spendGuard(reply, { kind: isLocalFree(prov?.kind) ? 'local' : 'direct', routeId: null, credits: cost, demo: false, free: false }); if ('sent' in sg) return sg.sent;
   if (!canAfford(cost)) return reply.code(402).send({ error: `Not enough credits: needs ${cost}, balance ${getBalance()}.`, errorType: 'credits' });
   const upId = randomUUID().slice(0, 8);

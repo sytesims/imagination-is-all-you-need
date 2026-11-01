@@ -489,8 +489,8 @@ export function registerRouting(app: FastifyInstance) {
     const price = j.routing?.prices[String(b.route)] ?? 0; if (price > 0 && !canAfford(price)) return reply.code(402).send({ error: `Not enough credits: needs ${price}, balance ${getBalance()}.`, errorType: 'credits' });
     const route = String(b.route ?? ''); const ck = continueCheck(j, tool, route);
     if ('error' in ck) return reply.code(ck.status).send({ error: ck.error, errorType: 'validation', alternatives: j.alternatives ?? [] });
-    // S-01: the move to another (possibly differently billed) route goes through the submit's spend guard: quote it → spending cap (the same
-    // 400 spend_limit body) → agent budget; nothing changes on the job when refused. Passed → its Spend row moves to the new route (estimate, then actual).
+    // S-01: the move to another (possibly differently billed) route goes through the submit's spend guard: quote it → agent budget (when one is set;
+    // there are no spending limits since 2026-10-28); nothing changes on the job when refused. Passed → its Spend row moves to the new route (estimate, then actual).
     const g = (await import('../spendGuard.js')).guardNextRoute(j, route, req); if ('blocked' in g) return reply.code(g.blocked.status).send(g.blocked.body);
     g.commit();
     const r = continueOn(j, tool, route);

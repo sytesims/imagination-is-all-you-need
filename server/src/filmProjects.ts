@@ -3,7 +3,7 @@
  * shared/filmProject.ts FilmProject. Edits are ops on a rev (a stale baseRev → 409 with the current film).
  *
  * Nothing here runs a model or ffmpeg itself. Every step goes through the existing routes (app.inject), so quotes, the quote = charge
- * handshake, spending limits, agent budgets, the spend log and Assets all apply unchanged:
+ * handshake, agent budgets, the spend log and Assets all apply unchanged (there are no spending limits since 2026-10-28):
  *  - quote  → GET  /api/tools/h3-video/price  (the same fields the render sends, image=1 / lastFrame=1 for its stills)
  *  - render → POST /api/tools/h3-video/jobs   (multipart; stills sent as `@file:image` / `@file:lastFrame` library picks; quotedCredits required)
  *  - continue-frame / bridge → GET /api/jobs/:id/prefill?…&t=last&cont=1 (the exact last frame, videoFrame.ts)
