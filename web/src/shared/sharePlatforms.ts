@@ -86,7 +86,7 @@ export const outSize = (sw: number, sh: number, frame: Frame): [number, number] 
 
 /** The model's clean name: never where it ran ("MiniMax Music 3 (Comfy Cloud)" → "MiniMax Music 3"; BRAND-GUIDE glossary, Model). */
 export const modelName = (m: string | null | undefined) => (m ? m.replace(/\s*\((?:Comfy Cloud|Comfy|Local|fal|Replicate|BytePlus|MiniMax API|Black Forest Labs|Alibaba Cloud|Luma)\)\s*$/i, '').trim() || null : null);
-const VERBS: Record<string, string> = { relight: 'Relit this', 'image-upscale': 'Upscaled this', upscale: 'Upscaled this', 'face-swap': 'Swapped a face', 'person-swap': 'Swapped a person', 'material-swap': 'Swapped a material', 'ad-pack': 'Made this ad', 'edit-image': 'Edited this', 'brush-edit': 'Edited this', 'camera-lens': 'Shot this', 'remove-bg': 'Cut this out' };
+const VERBS: Record<string, string> = { relight: 'Relit this', 'image-upscale': 'Upscaled this', upscale: 'Upscaled this', 'face-swap': 'Swapped a face', 'person-swap': 'Swapped a person', 'material-swap': 'Swapped a material', 'phone-photo': 'Made this', 'ad-pack': 'Made this ad', 'edit-image': 'Edited this', 'brush-edit': 'Edited this', 'camera-lens': 'Shot this', 'remove-bg': 'Cut this out' };
 export const APP_LINE = 'Imagination Is All You Need';
 /** The caption's first line, in our own voice: "Relit this with FLUX.2 klein in Imagination Is All You Need (open source)".
  *  Commit 6282812 (2026-10-24) took #OpenSourceHiggsfield out on purpose. The one tag now is #ImaginationIsAllYouNeed (user decision,

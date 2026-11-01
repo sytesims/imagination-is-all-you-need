@@ -3,6 +3,7 @@
  * Recipes come from GET /api/image-workflows (server/src/shared/workflows.ts); a picked recipe still runs on its own tool
  * (app-relight, app-face-swap…) with today's form fields, and is quoted by that tool's /price (quote = charge).
  */
+import { Words } from '../../shared/Words';
 import { IMAGE_ACCEPT, fileFits, wrongTypeText } from '../../../../server/src/shared/mediaAccept';
 import { SlotPreview, prepUpload } from '../../shared/SlotPreview';
 import { useToast } from '../../shared/Toast';
@@ -16,7 +17,7 @@ import { rigJson, lightRgb, rgbHex, type LightRig } from '../../../../server/src
 import { rigOfFields, rigChipPlain, plainDir, degTip, presetEdited } from '../../../../server/src/shared/lightEasy';
 import { Link, navigate } from '../../platform/router';
 import { tip } from '../../shared/Tooltip';
-import { PhoneAdIcon, TextIcon, AudioIcon, LightIcon, FaceSwapIcon, UserIcon, CharacterSheetIcon, ProductIcon, ShotsIcon, CameraMovesIcon, BrushIcon, ImageIcon, SearchIcon, CloseIcon, ChevronRightIcon, PlusIcon, UpscaleIcon, AspectIcon, CutoutIcon, ExpandIcon, EraserIcon, GarmentIcon, MaterialIcon, LayerSheetsIcon, CubeIcon, OrbitIcon, PrevizIcon, type IconProps } from '../Icons';
+import { PhoneAdIcon, PhonePhotoIcon, TextIcon, AudioIcon, LightIcon, FaceSwapIcon, UserIcon, CharacterSheetIcon, ProductIcon, ShotsIcon, CameraMovesIcon, BrushIcon, ImageIcon, SearchIcon, CloseIcon, ChevronRightIcon, PlusIcon, UpscaleIcon, AspectIcon, CutoutIcon, ExpandIcon, EraserIcon, GarmentIcon, MaterialIcon, LayerSheetsIcon, CubeIcon, OrbitIcon, PrevizIcon, type IconProps } from '../Icons';
 import type { ProviderInfo } from '../../api';
 import { ScalePanel, outOf, sizeText, scaleWhy, type UpInfo, type Size } from './UpscaleBar';
 import type { WorkflowRecipe } from '../../../../server/src/shared/workflows';
@@ -38,7 +39,7 @@ export function fitWfVals(r: WfRecipe, provider: string, mode: string | undefine
   if (!c || !ok?.length) return vals; const v = vals.aspect ?? String(c.default ?? 'auto'); if (ok.includes(v)) return vals;
   return { ...vals, aspect: mi?.defaultAspect && ok.includes(mi.defaultAspect) ? mi.defaultAspect : ok.find(x => x !== 'auto') ?? ok[0] };
 }
-const ICONS: Record<string, (p: IconProps) => ReactNode> = { edit: TextIcon, gallery: ImageIcon, music: AudioIcon, clock: CameraMovesIcon, light: LightIcon, 'face-swap': FaceSwapIcon, user: UserIcon, 'character-sheet': CharacterSheetIcon, product: ProductIcon, shots: ShotsIcon, camera: CameraMovesIcon, brush: BrushIcon, create: ImageIcon, upscale: UpscaleIcon, aspect: AspectIcon, cutout: CutoutIcon, expand: ExpandIcon, eraser: EraserIcon, garment: GarmentIcon, material: MaterialIcon, ad: PhoneAdIcon, words: TextIcon, layers: LayerSheetsIcon, cube: CubeIcon, orbit: OrbitIcon, previz: PrevizIcon, texture: BrushIcon, detail: ShotsIcon, rig: UserIcon, views: ShotsIcon, type: ImageIcon };
+const ICONS: Record<string, (p: IconProps) => ReactNode> = { 'phone-photo': PhonePhotoIcon, edit: TextIcon, gallery: ImageIcon, music: AudioIcon, clock: CameraMovesIcon, light: LightIcon, 'face-swap': FaceSwapIcon, user: UserIcon, 'character-sheet': CharacterSheetIcon, product: ProductIcon, shots: ShotsIcon, camera: CameraMovesIcon, brush: BrushIcon, create: ImageIcon, upscale: UpscaleIcon, aspect: AspectIcon, cutout: CutoutIcon, expand: ExpandIcon, eraser: EraserIcon, garment: GarmentIcon, material: MaterialIcon, ad: PhoneAdIcon, words: TextIcon, layers: LayerSheetsIcon, cube: CubeIcon, orbit: OrbitIcon, previz: PrevizIcon, texture: BrushIcon, detail: ShotsIcon, rig: UserIcon, views: ShotsIcon, type: ImageIcon };
 export const WfIcon = ({ name, size = 16 }: { name: string; size?: number }) => { const I = ICONS[name] ?? ImageIcon; return <I size={size} />; };
 
 export { READY_WORKFLOW_TOOLS, workflowRecreateHref } from '../../shared/workflowLinks';
@@ -242,7 +243,7 @@ export function WorkflowControls({ recipe: r, vals, setVal, provider, watch, mod
         : sum.toLowerCase().includes(g.label.toLowerCase()) ? sum : `${g.label}: ${summaries?.[g.id] == null && g.summary.some(f => r.controls.find(x => x.field === f)?.kind === 'text') ? groupSummary(r, g, vals, true) || sum : sum}`; /* "High detail", never "Detail: High detail"; typed words in full */
       return <button key={g.id} ref={el => { refs.current[g.id] = el; }} type="button" className={`ic-chip wf-grp wf-fold${open === g.id && !folded(refs.current[g.id]) ? ' on' : ''}`} aria-haspopup="dialog" aria-expanded={open === g.id} data-testid={`wf-group-${g.id}`} aria-label={named} {...tip(g.id === 'light' && !panels?.light ? `${g.label}: ${lightTip(vals)}` : named)}
       onClick={() => { anchor.current = refs.current[g.id]; setOpen(open === g.id ? '' : g.id); }}>
-      <WfIcon name={g.icon} size={14} />{!sum ? <b>{g.label}</b> : <>{named !== sum && <span className="wf-grp-l">{g.label}</span>}<b>{sum}</b></>}{g.id === 'light' && (vals.light || vals.color) && <i className="wf-grp-dot" style={{ background: vals.light ? rgbHex(lightRgb(rigOfVals(vals).key)) : vals.color }} aria-hidden />}</button>; })}
+      <WfIcon name={g.icon} size={14} />{!sum ? <b>{g.label}</b> : <>{named !== sum && !g.plain && <span className="wf-grp-l">{g.label}</span>}<b><Words text={sum} /></b></>}{g.id === 'light' && (vals.light || vals.color) && <i className="wf-grp-dot" style={{ background: vals.light ? rgbHex(lightRgb(rigOfVals(vals).key)) : vals.color }} aria-hidden />}</button>; })}
     {after && <span className="wf-fold wf-after">{after}</span>}
     {r.fixedNote && <span className="ic-chip ic-static wf-fixed wf-fold" data-testid="wf-fixed" {...tip('Set by this workflow')}>{r.fixedNote}</span>}
     {upscale && r.extras?.includes('upscale-examples') && <button type="button" className="ic-chip wf-exlink wf-fold" data-testid="wf-examples" aria-haspopup="dialog" onClick={upscale.onExamples}>Examples</button>}

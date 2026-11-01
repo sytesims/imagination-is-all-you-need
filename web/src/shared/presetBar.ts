@@ -44,7 +44,8 @@ export const intentLine = (size: string): string => `Free · downloads ${size.tr
  *  A touch-up preset ("…, deep soft shadows, {prompt}": no sample) keeps its template in `details`: what you type is added to the end. */
 export type SubjectParts = { before: string; hint: string; after: string; details?: string };
 export function subjectParts(prompt: string, sel: [number, number] | null | undefined, template?: string): SubjectParts | null {
-  if (sel && sel[1] > sel[0] && sel[1] <= prompt.length) return { before: prompt.slice(0, sel[0]), hint: prompt.slice(sel[0], sel[1]), after: prompt.slice(sel[1]) };
+  /* a template that is only the placeholder ("{subject}"): the whole prompt is yours, so the bar keeps its normal prompt box (the sample selected) */
+  if (sel && sel[1] > sel[0] && sel[1] <= prompt.length) return !prompt.slice(0, sel[0]).trim() && !prompt.slice(sel[1]).trim() ? null : { before: prompt.slice(0, sel[0]), hint: prompt.slice(sel[0], sel[1]), after: prompt.slice(sel[1]) };
   if (!sel && template && /\{(?:subject|prompt)\}/.test(template) && fillPresetPrompt(template, '') === prompt) return { before: prompt, hint: '', after: '', details: template };
   return null;
 }

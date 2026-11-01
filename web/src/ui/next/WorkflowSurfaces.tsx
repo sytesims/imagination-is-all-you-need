@@ -67,10 +67,10 @@ export function AnglesPanel({ r, ids, set, each }: { r: WfRecipe; ids: string[];
 }
 /** Tiny camera-position glyph per angle (our own drawing: subject dot, camera triangle). */
 export function ShotGlyph({ id }: { id: string }) {
-  const cam: Record<string, [number, number, number]> = { front: [12, 20, 0], 'three-quarter-left': [5, 18, 45], 'three-quarter-right': [19, 18, -45], side: [3, 12, 90], back: [12, 4, 180], low: [12, 21, 0], high: [12, 20, 0], 'close-up': [12, 15, 0], wide: [12, 22, 0] };
+  const cam: Record<string, [number, number, number]> = { front: [12, 20, 0], 'three-quarter-left': [5, 18, 45], 'three-quarter-right': [19, 18, -45], side: [3, 12, 90], back: [12, 4, 180], low: [12, 21, 0], high: [12, 20, 0], 'close-up': [12, 15, 0], wide: [12, 22, 0], 'over-shoulder': [8, 5, 150], 'full-body': [12, 22, 0] };
   const [x, y, r] = cam[id] ?? [12, 20, 0];
   return <svg className="sh-glyph" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <circle cx="12" cy="11" r={id === 'close-up' ? 4.5 : id === 'wide' ? 2 : 3} />
+    <circle cx="12" cy="11" r={id === 'close-up' ? 4.5 : id === 'wide' || id === 'full-body' ? 2 : 3} />{id === 'full-body' && <path d="M12 13v5" />}
     {id === 'low' && <path d="M8 20l4-4 4 4" />}{id === 'high' && <path d="M8 3l4 4 4-4" />}
     {id !== 'low' && id !== 'high' && <path transform={`rotate(${r} ${x} ${y})`} d={`M${x - 2.5} ${y + 1.5}l2.5-3 2.5 3z`} />}
   </svg>;

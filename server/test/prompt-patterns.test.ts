@@ -71,15 +71,38 @@ const ok = (m: string) => console.log('ok ' + m);
   ok('Wan Animate: "{who} moves naturally in the scene."; VACE: "{subject}, in {style} style: {traits}." for all 23 styles');
 }
 
-// ---- 4. Camera Angles: the angles LoRA's trained sentence first, byte for byte ----
+// ---- 4. Camera Angles (2026-11-01): each family's camera-angle wording; the angles LoRA's card commands first on its own route ----
 {
-  const { SHOT_ANGLES, shotPrompt } = await import('../src/tools/shots.ts');
+  const { SHOT_ANGLES, SHOT_DEFAULTS, shotPrompt, parseShots } = await import('../src/tools/shots.ts');
   const at = (id: string) => SHOT_ANGLES.find((a) => a.value === id)!;
-  assert.equal(shotPrompt(at('three-quarter-left'), 'a red fox'), 'Rotate the camera 45 degrees to the left. A three-quarter view; the subject: a red fox; same subject and same scene as the photo; keep identity, face, clothing, colours and lighting consistent; photorealistic');
-  assert.equal(shotPrompt(at('close-up'), ''), 'Turn the camera to a close-up. Tight on the subject; same subject and same scene as the photo; keep identity, face, clothing, colours and lighting consistent; photorealistic');
-  for (const [id, sentence] of Object.entries(P.patternFor('camera-angle', 'qwen-image-edit-2509-angles')!.exact!)) assert.ok(shotPrompt(at(id), 'x').startsWith(`${sentence} `), id);
-  assert.match(shotPrompt(at('front'), ''), /^Move the camera to face the subject straight on at eye level: a front view; /, 'no trained sentence: our own, as before');
-  ok('Camera Angles: 6 views lead with the trained sentence; front / back / high keep ours');
+  assert.deepEqual(SHOT_ANGLES.map((a) => a.value).slice(-2), ['over-shoulder', 'full-body']); assert.equal(SHOT_DEFAULTS.length, 9);
+  assert.deepEqual(parseShots(''), { ids: SHOT_DEFAULTS }, 'blank = the nine defaults'); assert.deepEqual(parseShots('["full-body","over-shoulder"]'), { ids: ['over-shoulder', 'full-body'] });
+  assert.equal(shotPrompt(at('three-quarter-left'), 'a woman in a red coat.', 'api-gpt-image-25-flare'),
+    'Image 1: the subject. Keep the subject exactly the same: a woman in a red coat; same face, hair, skin tone, build and clothes. New camera angle: from a camera moved 45° to their left, a three-quarter view. Same place and the same light as image 1, in the same photo style as image 1.');
+  assert.equal(shotPrompt(at('side'), '', 'api-nano-banana'),
+    'Using the provided image of the subject, show the same subject in full side profile, from a camera moved 90° to the side. Their face, hair, skin tone, build and clothes stay exactly as in the image, and the place, the light and the photo style stay the same.');
+  assert.equal(shotPrompt(at('over-shoulder'), 'a red fox', 'comfy-klein4b'),
+    'The subject from image 1, a red fox, seen from just behind their shoulder as they glance back at the camera, in the same place, light and photo style as image 1.');
+  assert.equal(shotPrompt(at('full-body'), '', 'api-seedream'),
+    'Show the subject in image 1 in full body from head to feet, with the outfit and shoes in frame. Keep their face, hair, skin tone, build and clothes, the place, the light and the photo style exactly as in image 1.');
+  for (const a of SHOT_ANGLES) for (const pv of ['api-gpt-image', 'api-nano-banana', 'comfy-flux3-klein', 'api-seedream', 'comfy-qwen-image', 'comfy-qwen-angles', undefined]) {
+    const s = shotPrompt(a, 'x', pv); assert.doesNotMatch(s, /photorealistic|phone photo/i, `${a.value} · ${pv}: style-neutral`); assert.match(s, /\.$/); }
+  // the LoRA route: only the card's commands; low and side get the plain wording; high = top-down
+  const exact = P.patternFor('camera-angle', 'qwen-image-edit-2509-angles')!.exact!;
+  assert.deepEqual(Object.keys(exact).sort(), ['close-up', 'high', 'three-quarter-left', 'three-quarter-right', 'wide']); assert.equal(exact.high, 'Turn the camera to a top-down view.');
+  for (const [id, sentence] of Object.entries(exact)) assert.ok(shotPrompt(at(id), 'x', 'comfy-qwen-angles').startsWith(`${sentence} The subject: x. `), id);
+  assert.equal(shotPrompt(at('close-up'), '', 'comfy-qwen-angles'), 'Turn the camera to a close-up. Keep the subject, the place, the light and the photo style the same.');
+  for (const id of ['low', 'side', 'front']) assert.match(shotPrompt(at(id), '', 'comfy-qwen-angles'), /^Show the subject in image 1 /, `${id}: not on the card, plain wording`);
+  ok('Camera Angles: per-family wording, style-neutral, 11 views (9 by default); LoRA commands only where the card has one');
+}
+
+// ---- 4b. Phone photo (ugc-photo): per-family wording, the chips' sentences, no quality tags ----
+{
+  const fill = (fam: string) => P.fillPattern('ugc-photo', fam, { who: 'a fictional woman', holder: 'Taken in a mirror, the phone visible in their hand', light: 'Flat overhead indoor light' });
+  for (const fam of ['gpt-image', 'nano-banana', 'flux', 'any']) { const s = fill(fam); assert.equal(P.patternFor('ugc-photo', fam)?.model, fam);
+    assert.doesNotMatch(s, /photorealistic|8K|4K|ultra|masterpiece|\{|\[/i, fam); assert.match(s, /mirror/, fam); }
+  assert.equal(P.familyOfProvider('api-gpt-image-25-flare'), 'gpt-image'); assert.equal(P.familyOfProvider('api-nano-banana'), 'nano-banana'); assert.equal(P.familyOfProvider('comfy-klein4b'), 'flux'); assert.equal(P.familyOfProvider('api-seedream'), 'any');
+  ok('ugc-photo: 4 families, chip sentences in, no quality tags');
 }
 
 // ---- 5. camera moves: base H3 grammar on Router, one named move on local LTX, Fixed camera on Wan, plain enhance sentence ----

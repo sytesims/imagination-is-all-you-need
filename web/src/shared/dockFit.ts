@@ -62,7 +62,10 @@ export function useChipFit(chips: RefObject<HTMLElement | null>, opts: ChipFitOp
         /* the room left beside the model at its minimum: it may grow by that much (up to its full name) */
         const m = c.querySelector<HTMLElement>('.ic-model'); if (m) { const end = Math.max(0, ...[...c.querySelectorAll<HTMLElement>(':scope > *, :scope :is(.ic-chip, .wf-chip, .ic-seed, .wf-after)')].filter(e => e.getClientRects().length).map(e => e.getBoundingClientRect().right));
           c.style.setProperty('--fit-model-room', `${Math.max(0, Math.floor(m.getBoundingClientRect().width + c.getBoundingClientRect().right - end - 1))}px`); }
-        c.removeAttribute('data-fit-measure'); }
+        c.removeAttribute('data-fit-measure');
+        /* the model given its room still can't show its name and "· Default" whole: "· Default" moves to the tooltip (data-trunc), never "· D" */
+        const cut = (e: Element | null | undefined) => !!e && e.scrollWidth > e.clientWidth + 1;
+        if (m && (cut(m.querySelector('.ic-mname')) || cut(m.querySelector('.ic-mpick')))) c.setAttribute('data-trunc', '1'); }
       /* the Settings fold: the chips folded off the bar (phones: every .ic-fold chip, which CSS hides there) */
       const keys = [...c.querySelectorAll<HTMLElement>('[data-fold]')].filter(e => innerWidth > 700 ? e.classList.contains('ic-folded') : e.classList.contains('ic-fold')).map(e => e.dataset.fold!).sort();
       setFolded(f => f.join() === keys.join() ? f : keys);

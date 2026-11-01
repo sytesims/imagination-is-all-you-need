@@ -14,6 +14,7 @@
  *    Stage (note; Camera, Colour; the player's Fly it / Play the actor; Next), Mockup (the player's takes, timeline and Edit take; Record mockup),
  *    Render (the newest mockup; model, price; Render video). Preview style, Frame, Record and the seed live in the ⋯ menu on the stage.
  */
+import { Words } from '../../shared/Words';
 import { IMAGE_PAGE } from '../../../../server/src/shared/pages';
 import { IMAGE_ACCEPT, fileFits, wrongTypeText } from '../../../../server/src/shared/mediaAccept';
 import { RowMore } from '../../shared/RowMore';
@@ -413,7 +414,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
         <div className="ic-chiprow"><div ref={chipsEl} className="ic-chips">
           <span className="ic-fixed" data-testid="t3-chips-fixed">{chip}
             {!noModel && <button ref={mRef} type="button" className={`ic-chip ic-model ${pop === 'model' ? 'on' : ''}`} data-testid="t3-model" aria-label={`Model: ${modelName}. Change model`} aria-haspopup="listbox" aria-expanded={pop === 'model'} {...tip(pop === 'model' ? null : `${modelName}${modelPriceNote ? ` · ${modelPriceNote}` : ''}`)} onClick={() => setPop(pop === 'model' ? '' : 'model')}>
-              <MakerTile className="ic-dot" medium="3d" maker={tm?.maker ?? model?.maker} makerName={tm?.makerName ?? model?.makerName} fallback={modelName} /><span className="ic-mname">{displayNameOf(tm as any, null) ?? modelName}</span><svg className="ic-caret" width="16" height="16" viewBox="0 0 16 16" aria-hidden><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></button>}</span>
+              <MakerTile className="ic-dot" medium="3d" maker={tm?.maker ?? model?.maker} makerName={tm?.makerName ?? model?.makerName} fallback={modelName} /><span className="ic-mname"><Words text={displayNameOf(tm as any, null) ?? modelName} /></span><svg className="ic-caret" width="16" height="16" viewBox="0 0 16 16" aria-hidden><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></button>}</span>
           {isPS && step === 'stage' && <>
             {!imported && <button ref={camRef} type="button" className={`ic-chip ps-chip${pop === 'camera' ? ' on' : ''}`} data-testid="ps-camera" aria-haspopup="dialog" aria-expanded={pop === 'camera'} onClick={() => setPop(pop === 'camera' ? '' : 'camera')} {...tip(pop === 'camera' ? null : 'The camera move and its speed')}><CameraMoveIcon /><b>{planSummaries.camera}</b></button>}
             {!imported && <button ref={colRef} type="button" className={`ic-chip ps-chip${pop === 'colour' ? ' on' : ''}`} data-testid="ps-colour" aria-haspopup="dialog" aria-expanded={pop === 'colour'} onClick={() => setPop(pop === 'colour' ? '' : 'colour')} {...tip(pop === 'colour' ? null : `${tplNow.subjectLabel}: ${colourOf(shot.colour).label}`)}><i className="ps-sw" style={{ background: colourOf(shot.colour).hex }} aria-hidden /><b>{colourOf(shot.colour).label}</b></button>}</>}

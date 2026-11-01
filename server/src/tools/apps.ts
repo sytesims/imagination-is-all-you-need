@@ -7,10 +7,11 @@ import { OPTION_MEDIA, wireOptionMedia, voiceSampleUrl, voiceSampleKind, wireSam
 import { parseLightRig, rigPhrases, rigJson, spherePresetOf, lightUntouched, DEFAULT_RIG, type LightRig } from '../shared/lightRig.js';
 import { PRODUCT_SCENES, PRODUCT_KEEP, TRANSITION_TYPES, UGC_PRESENTERS, UGC_HOOKS, UGC_SETTINGS, UGC_FRAMINGS, ORBIT_TYPES, ORBIT_BACKDROPS, RELIGHT_DIRECTIONS, RELIGHT_QUALITY, RELIGHT_COLOUR_PRESETS, RELIGHT_LOOKS, relightLookOf, brightnessWord, colourName, padPhrase, LANGUAGE_NATIVE, CHARACTER_LAYOUTS, CHARACTER_LAYOUT_DEFAULT, type CharacterLayout, type AppField, type AppOption } from './appRows.js';
 import { TRANSLATE_LANGS } from '../comfy/plans.js';
-import { SHOT_ANGLES, parseShots, shotPrompt, FACE_SWAP_PROMPT, FACE_SWAP_KEEP, PERSON_SWAP_PROMPT, PERSON_SWAP_KEEP, type ShotAngle } from './shots.js';
+import { SHOT_ANGLES, SHOT_DEFAULTS, parseShots, shotPrompt, FACE_SWAP_PROMPT, FACE_SWAP_KEEP, PERSON_SWAP_PROMPT, PERSON_SWAP_KEEP, type ShotAngle } from './shots.js';
 import { GENERATE_MODELS, EDIT_MODELS, TWO_IMAGE_MODELS, MATERIAL_SWAP_MODELS, AD_PACK_MODELS, MASK_MODELS, REMOVE_BG_MODELS, EXPAND_MODELS, ERASE_MODELS, TRYON_MODELS, featureById, gridModelOf } from '../shared/imageFeatures.js';
 import { promptGrammarOf } from '../shared/promptGrammar.js';
 import { fillPattern, patternFor } from '../shared/promptPatterns.js';
+import { PHONE_HOLDERS, PHONE_LIGHTS, PHONE_DEFAULTS, phonePhotoPrompt } from '../shared/phonePhoto.js';
 import { EXPAND_ASPECTS, EXPAND_ASPECT_LABELS, TRYON_CATEGORIES, TRYON_PHOTO_TYPES, expandBlock, expandCanvas, photoBlock, eraseMaskBlock } from '../shared/imagePhotoTools.js';
 import { maskCover } from './imageFalApps.js';
 import { AD_STYLES, AD_STYLE_DEFAULT, AD_STYLE_IDS, AD_PLACEMENTS, AD_PLACEMENT_DEFAULT, AD_CORNERS, AD_TEXT_MAX, AD_ASPECT, adPrompt, placementOf } from '../shared/adPack.js';
@@ -739,6 +740,15 @@ export const APP_GALLERY: GalleryApp[] = [
     labels: { image: 'Product photo' }, promptTemplate: 'product photo of the uploaded item: {prompt}', fileOrPrompt: { file: 'image', message: 'Add a product photo or describe the product.' },
     fields: [{ name: 'scene', label: 'Scene', kind: 'select', control: 'tiles', options: PRODUCT_SCENES, default: 'studio-white' }],
     compose: (v, c) => c.has('image') ? joinPrompt(`product photo of the uploaded item: ${c.prompt}`, PRODUCT_KEEP, pick(PRODUCT_SCENES, v.scene)?.prompt) : joinPrompt(`product photo of ${c.prompt}`, pick(PRODUCT_SCENES, v.scene)?.prompt) },
+  // Phone Photo (2026-11-01, shared/phonePhoto.ts): a casual phone photo of an AI-made person. Two chip rows (who holds the phone, the light) and
+  // your words for who is in it; each model gets its own wording (promptPatterns ugc-photo). Text to image only; style off (no added look words).
+  { id: 'phone-photo', name: 'Phone Photo', category: 'Image', base: 'create-image', poster: null, description: 'An everyday phone photo of a made-up person: a selfie, a mirror shot or a friend\'s snap, in real room light.',
+    providers: GENERATE_MODELS, locked: { types: '["generate"]', style: 'none' }, exposed: ['prompt', 'aspect', 'provider', 'resolution', 'rights', 'seed', 'holder', 'light'],
+    labels: { prompt: 'Who is in the photo' },
+    fields: [{ name: 'holder', label: 'Taken by', kind: 'select', control: 'segmented', options: PHONE_HOLDERS.map(({ value, label }) => ({ value, label })), default: PHONE_DEFAULTS.holder },
+      { name: 'light', label: 'Light', kind: 'select', control: 'segmented', options: PHONE_LIGHTS.map(({ value, label }) => ({ value, label })), default: PHONE_DEFAULTS.light }],
+    compose: (v, c) => phonePhotoPrompt({ who: c.prompt, holder: v.holder, light: v.light }, c.provider),
+    notes: ['Made-up people only. Results are AI pictures, never real reviews or real customers.'] },
   // Brush Edit (was Inpaint; id kept so saved jobs and the API keep working). Only models whose route takes a mask (image grid finding 2: no Nano Banana 2, no Ideogram V4).
   { id: 'inpaint', name: 'Brush Edit', route: '/tools/brush-edit', category: 'Edit', base: 'create-image', poster: null, description: 'Paint over the area to change and describe it; everything else stays as it was.',
     locked: { types: '["inpaint"]' }, providers: MASK_MODELS /* quality order: GPT Image 2 (true mask inpaint), FLUX 3 Klein, Qwen-Image-Edit-2509 */, extraProviders: ['fal-bria-genfill'] /* Brush Edit-only engine (fal, tools/imageFalModels.ts) */, exposed: ['image', 'mask', 'prompt', 'provider', 'rights', 'seed'] },
@@ -828,11 +838,11 @@ export const APP_GALLERY: GalleryApp[] = [
     finish: (r) => ({ outputLabel: 'Face swap', ...(r.refPaths?.[1] ? { insetPath: r.refPaths[1] } : {}) }),
     notes: ['Works best with a clear, front-facing face photo and a target where the face is visible and not too small.'] },
   // Camera Angles (was Shots; id kept).
-  { id: 'shots', name: 'Camera Angles', route: '/tools/camera-angles', category: 'Image', base: 'create-image', poster: null, description: 'One photo becomes up to nine camera angles of the same subject: front, three-quarter, side, back, low, high, close-up and wide.',
+  { id: 'shots', name: 'Camera Angles', route: '/tools/camera-angles', category: 'Image', base: 'create-image', poster: null, description: 'One photo becomes new camera angles of the same subject: front, three-quarter, side, back, low, high, close-up, wide, over the shoulder and full body.',
     locked: { types: '["edit"]' }, providers: featureById('camera-angles')!.providers.filter((p) => p !== 'comfy-qwen-angles'), extraProviders: ['comfy-qwen-angles'],
     exposed: ['image', 'prompt', 'provider', 'rights', 'seed'], labels: { image: 'Photo', prompt: 'Subject (optional)' }, required: ['image'],
-    perOutput: { field: 'shots', label: 'Angles', options: SHOT_ANGLES, max: SHOT_ANGLES.length, parse: parseShots, prompt: (o, u) => shotPrompt(o as ShotAngle, u) },
-    compose: (_v, c) => shotPrompt(SHOT_ANGLES[0], c.prompt),
+    perOutput: { field: 'shots', label: 'Angles', options: SHOT_ANGLES, max: SHOT_ANGLES.length, defaults: SHOT_DEFAULTS, parse: parseShots, prompt: (o, u, x) => shotPrompt(o as ShotAngle, u, x.provider) /* worded for the engine's family */ },
+    compose: (_v, c) => shotPrompt(SHOT_ANGLES[0], c.prompt, c.provider),
     extra: { promptOptional: true },
     notes: ['Each angle is its own image, priced like one image. Views the photo never showed (the back, the far side) are the model\'s best guess.'] },
   // Person Swap (image; 2026-10-22): the whole person from photo 2 replaces the person in photo 1. Same two-image edit as Face Swap (image grid: character swap,

@@ -6,7 +6,7 @@
  * Isomorphic, no node imports: the server (app, test) and the web (bar) share it.
  */
 import { AD_PLATFORMS, AD_PLATFORM_LIST, AD_SHAPES, NO_EDGES, hasSafe, type AdPlatform, type AdShape, type Edges } from './adPlatforms.js';
-import { fillPattern, type PatternFamily } from './promptPatterns.js';
+import { fillPattern, familyOfProvider, type PatternFamily } from './promptPatterns.js';
 import { BRAND_FONTS, colourLabel, moodBucket, moodWords, normHex, ruleWords, type BrandKit, type MoodBucket } from './brandKit.js';
 import { STAMP_SIZES } from './logoStamp.js';
 
@@ -67,12 +67,8 @@ export const AD_CORNERS: { value: AdCorner; label: string }[] = [{ value: 'tl', 
 const CORNER_WORDS: Record<AdCorner, string> = { tl: 'top-left', tr: 'top-right', bl: 'bottom-left', br: 'bottom-right' };
 export const asCorner = (v: unknown): AdCorner => (['tl', 'tr', 'bl', 'br'].includes(String(v)) ? v as AdCorner : 'tl');
 
-/** The model family whose wording an engine gets (promptPatterns 'ad'): by the provider id. */
-export function adFamilyOf(provider?: string | null): PatternFamily {
-  const p = String(provider ?? '');
-  return /^(api-gpt-image|direct-openai)/.test(p) ? 'gpt-image' : /^(api-nano-banana|direct-gemini)/.test(p) ? 'nano-banana' : /flux|klein/.test(p) ? 'flux'
-    : /^comfy-qwen|^api-qwen-image/.test(p) ? 'qwen-edit' : 'any';
-}
+/** The model family whose wording an engine gets (promptPatterns 'ad'): by the provider id (shared with Camera Angles and Phone Photo). */
+export const adFamilyOf = (provider?: string | null): PatternFamily => familyOfProvider(provider);
 /** One line of typed words, safe inside double quotes: control characters and spaces collapsed, double quotes turned single. */
 export const adWords = (x: unknown, max = AD_TEXT_MAX) => String(x ?? '').replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/[“”"]/g, "'").replace(/\s+/g, ' ').trim().slice(0, max);
 const sentence = (x: string) => x.replace(/[.\s]+$/, '');

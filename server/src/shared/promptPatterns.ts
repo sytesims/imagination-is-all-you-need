@@ -14,7 +14,7 @@
  */
 
 export type PatternTask = 'i2v-default' | 'camera-move' | 'camera-scene' | 'camera-static' | 'camera-enhance' | 'camera-angle' | 'video-swap' | 'video-swap-preset'
-  | 'motion-transfer' | 'video-restyle' | 'relight' | 'face-swap' | 'person-swap' | 'ad' | 'ad-text';
+  | 'motion-transfer' | 'video-restyle' | 'relight' | 'face-swap' | 'person-swap' | 'ad' | 'ad-text' | 'ugc-photo';
 export type PatternFamily = 'minimax-h3' | 'wan' | 'ltx' | 'kling' | 'seedance' | 'qwen-edit' | 'nano-banana' | 'gpt-image' | 'flux' | 'bria' | 'any';
 export interface PromptPattern {
   /** a PROMPT_GRAMMAR key (shared/promptGrammar.ts), a family, or 'any' (the fallback) */
@@ -96,11 +96,11 @@ export const PROMPT_PATTERNS: PromptPattern[] = [
     note: 'Wan VACE: a caption of the target clip. No "redrawn" or "keep the original motion": the control video carries the motion. The style negative runs at CFG 1.' },
 
   // ---- image edits ----
-  { model: 'qwen-image-edit-2509-angles', task: 'camera-angle', form: 'exact-lora-sentence', keep: 'last', negative: 'n/a', checked: D,
-    sources: [ANGLES_2509, TPL('templates-1_click_multiple_character_angles-v1.0')], template: '{sentence}',
+  { model: 'qwen-image-edit-2509-angles', task: 'camera-angle', form: 'exact-lora-sentence', keep: 'last', negative: 'n/a', checked: '2026-11-01',
+    sources: [ANGLES_2509, TPL('templates-1_click_multiple_character_angles-v1.0')], template: '{sentence}[ The subject: {id}.] Keep the subject, the place, the light and the photo style the same.',
     exact: { 'three-quarter-left': 'Rotate the camera 45 degrees to the left.', 'three-quarter-right': 'Rotate the camera 45 degrees to the right.',
-      side: 'Rotate the camera 90 degrees to the left.', low: 'Turn the camera to a low-angle view.', 'close-up': 'Turn the camera to a close-up.', wide: 'Turn the camera to a wide-angle lens.' },
-    note: '45° and close-up / wide-angle are on the 2509 LoRA card; 90° and low-angle come from the 2511 angles template (worth an A/B on 2509).' },
+      high: 'Turn the camera to a top-down view.', 'close-up': 'Turn the camera to a close-up.', wide: 'Turn the camera to a wide-angle lens.' },
+    note: 'Only the commands on the 2509 LoRA card (its English glosses): 45° left / right, top-down (our High angle), close-up and wide-angle. The card has no low-angle and no 90° command, so those views (and every other one) get the plain camera-angle wording below.' },
   { model: 'qwen-edit', task: 'relight', form: 'instruction', keep: 'last', negative: 'n/a', checked: D, sources: [TPL('image_qwen_image_edit_2509_relight')],
     template: 'Relight the scene: {light}', note: 'New light first. Only identity is locked (a light lock held the old light in our 2026-10-22 runs); the official prompt has no keep clause.' },
   { model: 'nano-banana', task: 'relight', form: 'instruction', keep: 'first', negative: 'n/a', checked: D, sources: [TPL('template_character_portrait_relighting')],
@@ -142,6 +142,36 @@ export const PROMPT_PATTERNS: PromptPattern[] = [
     note: 'Our own default for the other edit models (Seedream, Qwen Image 3.0…): the shared rules, plain order.' },
   { model: 'any', task: 'ad-text', form: 'instruction', keep: 'none', negative: 'n/a', checked: D, sources: [],
     template: 'Add {quoted}, in {type}.', note: 'Quoted words, font feel and place.' },
+  // ---- People, phone photos (2026-11-01): our own wording after each vendor's guide (research: realistic UGC portraits). ----
+  // ugc-photo: one casual phone photo of an AI-made person. {who} = what you typed; {holder} / {light} = the chips' sentences (shared/phonePhoto.ts).
+  // No quality tags ("8K", "ultra-detailed", "photorealistic") and no studio-polish words: they push the picture toward an ad or an editorial.
+  { model: 'gpt-image', task: 'ugc-photo', form: 'instruction', keep: 'none', negative: 'n/a', checked: '2026-11-01', sources: [GPT_GUIDE],
+    template: 'A casual phone photo of {who}[, {action}][ in {setting}].[ {holder}.][ {light}.] Real skin with visible pores, a little shine and small marks, hair slightly out of place[, {detail}]. Everyday background left as it is, framing a little off-centre, phone-camera sharpness with light noise in the shadows. Unposed, no heavy retouching.',
+    note: 'OpenAI: write it as a real in-the-moment photo; name the framing and the light; ask for pores and small marks; "unposed", "no heavy retouching" instead of quality tags.' },
+  { model: 'nano-banana', task: 'ugc-photo', form: 'instruction', keep: 'none', negative: 'n/a', checked: '2026-11-01', sources: [GEMINI_GUIDE],
+    template: 'A casual, unposed phone photo: {who}[ {action}][ in {setting}], with everyday things around them just as they are.[ {holder}.][ {light}.] Their skin shows natural pores, a slight shine and small marks; a few loose strands of hair[; {detail}]. The frame is a little off-centre with the phone camera\'s natural sharpness.',
+    note: 'Google: full sentences, not a keyword list; say what is there (positive phrasing).' },
+  { model: 'flux', task: 'ugc-photo', form: 'instruction', keep: 'none', negative: 'none', checked: '2026-11-01', sources: [FLUX_GUIDE],
+    template: '{who}[, {action}][ in {setting}]. Modern smartphone photo[, {holder}][, {light}]. Natural skin with pores and slight shine, loose hair strands[, {detail}]. Lived-in background, slightly off-centre framing, small-sensor noise, deep focus.',
+    note: 'BFL FLUX.2: subject, action, style, context; 30-80 words; no negatives; real camera words.' },
+  { model: 'any', task: 'ugc-photo', form: 'instruction', keep: 'none', negative: 'n/a', checked: '2026-11-01', sources: [GPT_GUIDE, QWEN_CARD],
+    template: 'A casual phone photo of {who}[, {action}][ in {setting}].[ {holder}.][ {light}.] Real skin with visible pores, a little shine and small marks, hair slightly out of place[, {detail}]. Everyday background left as it is, framing a little off-centre, phone-camera sharpness with light noise in the shadows. Unposed, no heavy retouching.',
+    note: 'The GPT sentences for the other models (Seedream, Qwen Image…), with no "Ultra HD, 4K" suffix.' },
+
+  // camera-angle (2026-11-01): one edit per view of the same photo ({view} = the view's words, shared by every family; [{id}] = the subject as
+  // typed, repeated in every view). Style-neutral: the photo sets the style, so no "photorealistic" and no "phone photo" here.
+  { model: 'gpt-image', task: 'camera-angle', form: 'instruction', keep: 'last', negative: 'n/a', checked: '2026-11-01', sources: [GPT_GUIDE],
+    template: 'Image 1: the subject. Keep the subject exactly the same[: {id}]; same face, hair, skin tone, build and clothes. New camera angle: {view}. Same place and the same light as image 1, in the same photo style as image 1.',
+    note: 'OpenAI: label the input, state the preserve list in full on every edit, then the one change.' },
+  { model: 'nano-banana', task: 'camera-angle', form: 'instruction', keep: 'last', negative: 'n/a', checked: '2026-11-01', sources: [GEMINI_GUIDE],
+    template: 'Using the provided image of the subject, show the same subject {view}.[ The subject: {id}.] Their face, hair, skin tone, build and clothes stay exactly as in the image, and the place, the light and the photo style stay the same.',
+    note: 'Google: "Using the provided image of …", then say what stays.' },
+  { model: 'flux', task: 'camera-angle', form: 'instruction', keep: 'last', negative: 'none', checked: '2026-11-01', sources: [FLUX_GUIDE],
+    template: 'The subject from image 1[, {id},] seen {view}, in the same place, light and photo style as image 1.',
+    note: 'BFL FLUX.2: say what each image gives and repeat the subject; no negatives.' },
+  { model: 'any', task: 'camera-angle', form: 'instruction', keep: 'last', negative: 'n/a', checked: '2026-11-01', sources: [],
+    template: 'Show the subject in image 1 {view}.[ The subject: {id}.] Keep their face, hair, skin tone, build and clothes, the place, the light and the photo style exactly as in image 1.',
+    note: 'Our own default for the other edit models (Seedream, Kling, Qwen Image, Luma…).' },
 ];
 
 /** Which family a PROMPT_GRAMMAR key belongs to (null = none of ours). */
@@ -162,6 +192,12 @@ export function fillTemplate(template: string, slots: Record<string, string | nu
   const val = (s: string) => String(slots[s] ?? '').trim();
   return template.replace(/\[([^\]]*)\]/g, (_m, part: string) => ([...part.matchAll(/\{(\w+)\}/g)].every((x) => val(x[1])) ? part : ''))
     .replace(/\{(\w+)\}/g, (_m, s: string) => val(s)).replace(/\s+([.,;:])/g, '$1').replace(/\s{2,}/g, ' ').trim();
+}
+/** The family whose wording an engine gets, by its provider id (Ad Pack, Camera Angles, Phone Photo). */
+export function familyOfProvider(provider?: string | null): PatternFamily {
+  const p = String(provider ?? '');
+  return /^(api-gpt-image|direct-openai)/.test(p) ? 'gpt-image' : /^(api-nano-banana|direct-gemini)/.test(p) ? 'nano-banana' : /flux|klein/.test(p) ? 'flux'
+    : /^comfy-qwen|^api-qwen-image/.test(p) ? 'qwen-edit' : 'any';
 }
 /** The prompt a preset sends for a task on a model ('' = no pattern). */
 export const fillPattern = (task: PatternTask, model: string | null | undefined, slots: Record<string, string | null | undefined> = {}): string => {

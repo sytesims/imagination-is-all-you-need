@@ -5,6 +5,7 @@
  * Vocabulary: our own. Names of real cameras, lenses and film stocks are facts; every description and prompt phrase is our own wording
  * (no preset list copied from any other project). The film / phone / instant entries carry the prompt part of the former OpenSoul looks
  * (Film 35mm, Disposable, Polaroid, Digital Camera, Old Smartphone, Retro B&W), without their LoRAs, so they work on every model.
+ * Modern phone camera (2026-11-01): today's phone look (deep focus, light shadow noise), the rig counterpart of the Phone Photo workflow.
  * Optional extra: the community custom node film_prompt_styler by Mexes1978 (no licence stated) can be installed from the author's repo and
  * used in ComfyUI; we only link it (FILM_STYLER_NODE), never ship its code or presets.
  */
@@ -39,6 +40,7 @@ export const CAMERA_BODIES: RigOption[] = [
   snap('compact-digital', 'Compact digital (2000s)', 'point-and-shoot digital camera photo, small-sensor look, date-stamp era colours', 'Early-2000s snapshot'),
   snap('disposable', 'Disposable camera', 'disposable camera snapshot, on-camera flash, warm cast, light leaks', 'Flash, warm, imperfect'),
   snap('polaroid-sx70', 'Polaroid SX-70', 'Polaroid SX-70 instant photo, soft dreamy colour, white instant-print frame', 'Dreamy instant print'),
+  snap('modern-phone', 'Modern phone camera', 'modern smartphone photo, small-sensor deep focus, natural phone processing, light noise in the shadows', 'Everyday phone photo'),
   snap('early-phone', 'Early phone camera', 'early phone camera photo, low resolution, muted colours, soft focus', 'Lo-fi phone photo'),
   snap('camcorder', 'DV camcorder still', 'still frame from a 2000s DV camcorder, interlaced softness, video colours', 'Home-video look'),
 ];
