@@ -1,9 +1,8 @@
-// iiayn.app: install tabs (auto-picked from the visitor's computer), Copy, lazy clips and the song tile. No libraries.
+// iiayn.app: install tabs (auto-picked from the visitor's computer), Copy, the Run on picker, lazy clips and the song tile. No libraries.
 (() => {
-  const REPO = 'https://github.com/sytesims/imagination-is-all-you-need/blob/main/scripts/';
   const OS = {
-    unix: { cmd: 'curl -fsSL https://iiayn.app/install | bash', where: 'Paste this into <b>Terminal</b>:', script: 'get.sh' },
-    win: { cmd: 'irm https://iiayn.app/install.ps1 | iex', where: 'Paste this into <b>PowerShell</b>:', script: 'get.ps1' },
+    unix: { cmd: 'curl -fsSL https://iiayn.app/install | bash', where: 'Paste this into <b>Terminal</b>:' },
+    win: { cmd: 'irm https://iiayn.app/install.ps1 | iex', where: 'Paste this into <b>PowerShell</b>:' },
   };
 
   const box = document.querySelector('[data-install]');
@@ -12,7 +11,6 @@
     const panel = box.querySelector('[role="tabpanel"]');
     const code = box.querySelector('[data-cmd]');
     const where = box.querySelector('[data-where]');
-    const script = box.querySelector('[data-script]');
     const copyBtn = box.querySelector('[data-copy]');
     const copyLabel = box.querySelector('[data-copy-label]');
     let timer;
@@ -26,9 +24,7 @@
       });
       code.textContent = OS[os].cmd;
       where.innerHTML = OS[os].where;
-      script.href = REPO + OS[os].script;
-      box.querySelectorAll('[data-only]').forEach((el) => { el.hidden = el.dataset.only !== os; });
-      copyBtn.setAttribute('aria-label', `Copy the ${os === 'win' ? 'Windows' : 'Mac and Linux'} install command`);
+      copyBtn.setAttribute('aria-label', `Copy the ${os === 'win' ? 'Windows' : 'macOS and Linux'} install command`);
       resetCopy();
     };
 
@@ -113,16 +109,6 @@
       if ('IntersectionObserver' in window) new IntersectionObserver(([e]) => { seen = e.isIntersecting; if (seen) go(); else clearInterval(tick); }, { threshold: 0.25 }).observe(run);
       else { seen = true; go(); }
     }
-  }
-
-  // Hero clip: the poster is the section's background (instant paint); the clip loads only on wider screens, never for
-  // people who asked for less motion or to save data, and fades in once it is really playing.
-  const hero = document.querySelector('[data-hero]');
-  const saveData = navigator.connection && navigator.connection.saveData;
-  if (hero && !still && !saveData && matchMedia('(min-width: 821px)').matches) {
-    hero.src = hero.dataset.src;
-    hero.addEventListener('playing', () => hero.classList.add('on'), { once: true });
-    hero.play().catch(() => {});
   }
 
   // Tile clips: load only when on screen, pause when off.
