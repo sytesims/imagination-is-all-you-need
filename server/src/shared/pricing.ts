@@ -8,7 +8,7 @@ export const MIN_PRICE = 5;
 export const DEFAULT_DURATION = 8;
 /** Mock price multipliers per provider (open weights = 1). */
 export const PROVIDER_FACTORS: Record<string, number> = {
-  'comfy-open': 1, 'cloud-infinitetalk': 1, 'cloud-h3-extend': 1, 'comfy-funcamera': 1, 'router-kling': 1.6, 'router-veo': 2.2, 'router-seedance': 1.4, 'cloud-h3': 1.3, 'cloud-h3-wf': 1.3, 'cloud-h3-fast': 1, 'cloud-h3-keyframes': 1, 'cloud-ltx-camera': 1, 'cloud-ltx25-video': 1, 'cloud-ltx25-extend': 1, 'cloud-ltx25-layout': 1, 'cloud-ltx23-vfx': 1, 'cloud-reshoot': 1, 'cloud-h3-crossview': 1.3,
+  'comfy-open': 1, 'cloud-infinitetalk': 1, 'cloud-h3-extend': 1, 'comfy-funcamera': 1, 'router-kling': 1.6, 'router-veo': 2.2, 'router-seedance': 1.4, 'cloud-h3': 1.3, 'cloud-h3-wf': 1.3, 'cloud-h3-fast': 1, 'cloud-h3-pika': 1, 'cloud-h3-keyframes': 1, 'cloud-ltx-camera': 1, 'cloud-ltx25-video': 1, 'cloud-ltx25-extend': 1, 'cloud-ltx25-layout': 1, 'cloud-ltx23-vfx': 1, 'cloud-reshoot': 1, 'cloud-h3-crossview': 1.3,
 };
 /** Per-tool option multipliers keyed by preset/type id (others = 1). */
 export const OPTION_FACTORS: Record<string, Record<string, number>> = {

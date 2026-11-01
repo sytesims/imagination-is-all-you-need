@@ -185,6 +185,7 @@ export const CATALOGUE: Record<string, CatalogueEntry> = {
   'minimax-h3-talking-photo': e('H3 Talking Photo', 56, 'gpu', 'Portrait plus speech into a talking clip', { aliases: ['h3', 'minimax', 'lip sync', 'lipsync'], variantOf: 'minimax-h3' }),
   'minimax-h3-extend': e('H3 Extend', 57, 'gpu', 'Continues a clip by 5 or 10 s', { aliases: ['h3', 'minimax', 'extend'], variantOf: 'minimax-h3' }),
   'minimax-h3-crossview': e('H3 CrossView', 24, 'api', 'Re-shoots a take from a new angle', { aliases: ['h3', 'minimax', 'crossview', 'new angle', 'reshoot'], variantOf: 'minimax-h3' }),
+  'pika-h3-flex': e('Pika H3 Flex', 35, 'api', 'Start and end frames to video, with sound', { aliases: ['pika', 'h3', 'minimax', 'flex', 'fl2va'], variantOf: 'minimax-h3' }),
   'minimax-h3-fast': e('MiniMax H3 Fast', 29, 'api', 'H3 in 8 steps: quick drafts with sound', { aliases: ['h3', 'minimax', 'fasth3', 'fastvideo', 'fast'], variantOf: 'minimax-h3' }),
   'minimax-h3-character-swap': e('H3 Character Swap', 58, 'gpu', 'Character swap, motion kept', { aliases: ['h3', 'minimax', 'swap'], variantOf: 'minimax-h3' }),
   'minimax-h3-style-transfer': e('H3 Style Transfer', 59, 'gpu', 'Restyle from an image or text', { aliases: ['h3', 'minimax', 'restyle'], variantOf: 'minimax-h3' }),

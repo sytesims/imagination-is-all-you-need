@@ -77,6 +77,7 @@ export const MODEL_LINKS: Record<string, ModelLinks> = {
   'p-video-2': { site: 'https://www.pruna.ai/p-video-2', docs: 'https://docs.pruna.ai/en/stable/docs_pruna_endpoints/performance_models/p-video-2.html' },
   'grok-imagine-video-1.5-lite': { site: 'https://docs.x.ai/docs/models/grok-imagine-video-1.5-lite' },
   'minimax-h3': { announce: 'https://www.minimax.io/news/minimax-h3-open-source', card: H3_CARD, docs: H3_DOCS, released: '2026-07' },
+  'pika-h3-flex': { site: 'https://github.com/Pika-Labs/Pika-H3-Flex', card: 'https://huggingface.co/Pika-Labs/Pika-H3-Flex', docs: 'https://docs.comfy.org/tutorials/video/pika/pika-h3-flex' },
   'minimax-h3-fast': { site: 'https://haoailab.com/blogs/fasth3-preview/', card: 'https://huggingface.co/FastVideo/FastVideo-FastH3-8-Step-V2', docs: 'https://docs.comfy.org/tutorials/video/minimax/minimax-h3-fastvideo' },
   'minimax-h3-camera-motion': { announce: H3_NEWS, card: H3_CARD, docs: H3_DOCS },
   'minimax-h3-extend': { announce: H3_NEWS, card: H3_CARD, docs: H3_DOCS },

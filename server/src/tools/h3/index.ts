@@ -171,6 +171,7 @@ h3VideoTool.parseInput = async (fields, files) => {
     if (ltxDfrRuns({ ...r, loop })) { const smooth = ltxDfrSmooth(fields); const frames = ltxDfrFrames(Number(r.duration) || 5);
       return { ...r, quality: q, [LTX_DFR_SMOOTH_FIELD]: smooth, steps: smooth ? 15 : 11 /* 8 + 3 (+ 4) fixed DFR steps */, frames: smooth ? (frames - 1) * 2 + 1 : frames, fps: smooth ? LTX_DFR_FPS * 2 : LTX_DFR_FPS, audio: r.audio ?? true }; }
     const frames = ltxVideoFrames(Number(r.duration) || 3); return { ...r, quality: q, steps: 11 /* 8 + 3 distilled sigmas, fixed */, frames: loop ? frames - 1 : frames, fps: LTX25_FPS, audio: r.audio ?? true }; } // its own sound; never keepAudio:false (runNative would strip it)
+  if (/^(cloud|comfy)-h3-pika$/.test(prov)) return { ...r, quality: q, steps: 6 /* Pika's fixed six-step schedule (comfy/pikaH3Flex.ts) */, frames: h3Frames(Number(r.duration) || 5), fps: 24, audio: r.audio ?? true };
   if (prov === 'comfy-wan22-5b') return { ...r, quality: q, steps: WAN22_5B_STEPS[q], frames: wanFrames(Number(r.duration) || 2), fps: 24, audio: false }; // Wan grid 4n+1 at 24 fps
   return { ...r, quality: q, steps: H3_QUALITY[q].steps, frames: h3Frames(Number(r.duration) || 6), audio: r.audio ?? true };
 };

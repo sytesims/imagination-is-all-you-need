@@ -28,6 +28,7 @@ import { LAYOUT_BOXES_LOCAL_ONLY, withFlux3BoxRows } from '../shared/layoutBoxes
 import { DIRECT_ROUTES, NATIVE_DIRECT } from './directRoutes.js';
 import { DEPLOY_ROUTES, isDeployRouteId, deployRoute } from './deployRoutes.js';
 import { charswapCloudIssue } from '../comfy/h3CharSwapCloud.js';
+import { PIKA_PROVIDER, pikaIssue } from '../comfy/pikaH3Flex.js';
 import { charswapWhoIssue } from '../shared/cloudSwap.js';
 import { LTX_DFR, ltxDfrAdjustNote, ltxDfrPriceInput, ltxDfrResolution } from '../shared/ltxDfr.js';
 import { ltx25CloudIssue, ltx25CloudRenderSeconds } from '../comfy/ltx25Cloud.js';
@@ -245,6 +246,8 @@ const TWINS: { model: string; twin: string; tools: string[]; /** only the tool i
     return t.length && t.every((x: string) => /^ltx-/.test(x.trim())) ? null : 'This route only runs the LTX camera moves'; } },
   { model: 'comfy-open', twin: 'cloud-reshoot', tools: ['reshoot'] },
   // Oct 26: H3 Character Swap on shared Comfy Cloud with the user's imported LoRA (comfy/h3CharSwapCloud.ts): one pass, 2–15 s, mask-free
+  // Nov 1: Pika H3 Flex on Comfy Cloud (comfy/pikaH3Flex.ts): the same official templates as on your computer, fp16 video VAE, a free check for the LoRA first.
+  { model: 'comfy-h3-pika', twin: PIKA_PROVIDER, tools: ['h3-video'], exactTool: true, modes: ['t2v', 'i2v', 'flf'], unavailableFor: pikaIssue },
   { model: 'comfy-h3-charswap', twin: 'cloud-h3-charswap', tools: ['object-swap', 'motion-transfer'], unavailableFor: (i) => charswapWhoIssue(i) ?? charswapCloudIssue(i) },
   // Oct 27: LTX-2.5 22B on shared Comfy Cloud (comfy/ltx25Cloud.ts): Generate Video (text, start frame, Loop, first + last) and Transitions' Morph; Extend with the
   // picture-and-sound continuation. Billed per RENDERED second (Extend includes the kept context). 720p runs here only (LOCAL_ROUTE_BLOCK below).
@@ -321,6 +324,7 @@ export function routesFor(modelId: string, tool?: { id: string; app?: any } | st
   if (modelId === 'comfy-soul') native.caps = SOUL_LOCAL_CAPS; if (LOCAL_CAPS[modelId]) native.caps = LOCAL_CAPS[modelId];
   if (native.kind === 'local' && LOCAL_ROUTE_BLOCK[modelId]) { const prev = native.unavailableFor; native.unavailableFor = (i) => prev?.(i) ?? LOCAL_ROUTE_BLOCK[modelId](i); } // a local graph that can't take this job here (Video Upscale: SeedVR2 3B on CUDA only, a size the model can't make)
   if (modelId === 'comfy-h3') { native.caps = { ...H3_VIDEO_CAPS, ...routeCaps(native.routeId, VIDEO_LIMITS['comfy-h3']) }; native.unavailableFor = (i) => (jobModeOf(i) === H3KF_MODE ? KEYFRAMES_CLOUD_ONLY : routeVideoReason(native.routeId, i)); } // Keyframes: Comfy Cloud only (TWINS)
+  if (modelId === 'comfy-h3-pika') { native.caps = { audio: true, firstLastFrame: true, ...routeCaps(native.routeId, VIDEO_LIMITS['comfy-h3-pika']), audioToggle: VIDEO_LIMITS['comfy-h3-pika'].audio }; native.unavailableFor = (i) => pikaIssue(i) ?? routeVideoReason(native.routeId, i); } // Pika H3 Flex: NVIDIA only (the weights gate says so)
   if (modelId === 'comfy-wan22-5b') { native.caps = { ...WAN22_5B_CAPS, ...routeCaps(native.routeId, VIDEO_LIMITS['comfy-wan22-5b']), audio: false }; native.unavailableFor = (i) => routeVideoReason(native.routeId, i); }
   if (modelId === IT_PROVIDER) { native.unavailableFor = itIssue; native.priceInput = (i) => ({ ...i, duration: itBillSeconds(i), resolution: '480p' }); native.typicalLatencySec = 300; } // InfiniteTalk: refuses > 60 s before any upload; billed per rendered window
   if (modelId === 'cloud-ltx25-video') { native.priceInput = ltxDfrPriceInput; native.adjustNote = ltxDfrAdjustNote; } // the twin's alias route (findRoute by route id): DFR priced the same as on the card

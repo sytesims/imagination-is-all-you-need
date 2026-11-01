@@ -13,7 +13,7 @@ Object.assign(process.env, { OPENHIGGSFIELD_DATA_DIR: D, OPENHIGGSFIELD_BACKEND:
 const HERE = path.dirname(fileURLToPath(import.meta.url)); const ROOT = path.resolve(HERE, '../..');
 const OI = JSON.parse(fs.readFileSync(path.join(HERE, 'fixtures/object-info-comfy-cloud-2026-10-26.json'), 'utf8'));
 /** Graphs added after that cut are checked with the base classes plus their own cut of the same copy (the fixture their own test uses). */
-const OWN_OI: [RegExp, string][] = [[/^bernini-/, 'bernini-cloud-2026-10-26'], [/^ltx23-/, 'ltx23-vfx-cloud-2026-10-26'], [/^ltx25-dfr-/, 'ltx25-dfr'], [/^h3-fast-/, 'h3-fast-cloud-2026-10-26']];
+const OWN_OI: [RegExp, string][] = [[/^bernini-/, 'bernini-cloud-2026-10-26'], [/^ltx23-/, 'ltx23-vfx-cloud-2026-10-26'], [/^ltx25-dfr-/, 'ltx25-dfr'], [/^h3-fast-/, 'h3-fast-cloud-2026-10-26'], [/^pika-h3-flex-/, 'pika-h3-flex-cloud-2026-10-26']];
 const oiFor = (file: string) => { const own = OWN_OI.find(([re]) => re.test(file))?.[1]; return own ? { ...OI, ...JSON.parse(fs.readFileSync(path.join(HERE, `fixtures/object-info-${own}.json`), 'utf8')) } : OI; };
 const { checkCloudGraph } = await import('../src/comfy/cloudGraphCheck.ts');
 const { ComfyCloudV2, CloudError, cloudFailure } = await import('../src/comfy/cloudV2.ts');
@@ -25,7 +25,8 @@ const ok = (m: string) => console.log('ok ' + m);
 const ASSET = { __type: 'core/ASSET', info: { id: 'asset_1', hash: 'blake3:00', file_path: 'clip.mp4' } };
 /** User-imported models are not in the shared list (the run's free preflight checks them instead). */
 const IMPORTED = new Set(['akatz-ai__MiniMax-H3-Character-Swap-LoRA__h3_character_swap_v1.5.safetensors', 'Lightricks__LTX-2.5-22b-IC-LoRA-Layout-To-Render__ltx-2.5-22b-ic-lora-layout-to-render-1.0.safetensors' /* the user's imports (Model Library → Import) */,
-  'fastvideo_fasth3_8step_v2_pruned_int8_convrot.safetensors' /* H3 Fast: newer than the 2026-10-26 list; checked by the run's free preflight (h3-fast-cloud.test.ts) */]);
+  'fastvideo_fasth3_8step_v2_pruned_int8_convrot.safetensors' /* H3 Fast: newer than the 2026-10-26 list; checked by the run's free preflight (h3-fast-cloud.test.ts) */,
+  'pika_h3_flex_fl2va_v1_bf16.safetensors' /* Pika H3 Flex (2026-10-29): newer than the 2026-10-26 list; checked by the run's free preflight (pika-h3-flex.test.ts) */]);
 const clean = (name: string, g: Record<string, any>, oi = OI) => { const r = checkCloudGraph(g, oi); const errs = r.errors.filter((e) => ![...IMPORTED].some((m) => e.includes(JSON.stringify(m))));
   assert.deepEqual(errs, [], `${name}: ${errs.join(' | ')}`); return r; };
 

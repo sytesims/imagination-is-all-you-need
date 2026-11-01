@@ -72,6 +72,12 @@ export const VIDEO_LIMITS: Record<string, VideoLimits> = {
   // 480p (the template's 0.4 MP), text or a start frame (the distilled checkpoint has no reference mode), its own sound.
   'cloud-h3-fast': h3({ minSeconds: 2, maxSeconds: 10, durationStep: 1, durations: range(2, 10), defaultSeconds: 5, aspects: ['auto', '16:9', '9:16', '1:1'], refKinds: { image: 1 }, qualityOff: true, verified: false,
     source: 'workflows/cloud/h3-fast-{t2v,i2v}-api.json from the official Comfy templates video_fastvideo_fasth3_t2v / _i2v (https://docs.comfy.org/tutorials/video/minimax/minimax-h3-fastvideo): ComfyMathExpression 17k + 5 frames at 24 fps, ResolutionSelector / ImageScaleToTotalPixels megapixels, 8 fixed steps' }),
+  // Pika H3 Flex (2026-11-01, comfy/pikaH3Flex.ts): the official Pika H3 Flex templates (FL2VA adapter). 5–15 s on H3's 17k + 5 grid at 24 fps (the docs' range),
+  // 768p (0.98 MP, the template's) or 480p (0.4 MP), text, a start frame or start + end frames, its own sound. Six fixed steps: no Fast / Quality setting.
+  'comfy-h3-pika': h3({ minSeconds: 5, maxSeconds: 15, durationStep: 1, durations: range(5, 15), defaultSeconds: 5, aspects: ['auto', '16:9', '9:16', '1:1'], refKinds: { image: 1 }, qualityOff: true, verified: false,
+    source: 'workflows/pika-h3-flex-{t2v,fl2va}-api.json from the official Comfy templates video_pika_h3_flex_t2v / _fl2va (the template\'s own files): ComfyMathExpression 17k + 5 frames at 24 fps, ManualSigmas 6 steps' }),
+  'cloud-h3-pika': h3({ minSeconds: 5, maxSeconds: 15, durationStep: 1, durations: range(5, 15), defaultSeconds: 5, aspects: ['auto', '16:9', '9:16', '1:1'], refKinds: { image: 1 }, qualityOff: true, verified: false,
+    source: 'workflows/cloud/pika-h3-flex-{t2v,fl2va}-api.json from the official Comfy templates video_pika_h3_flex_t2v / _fl2va (https://docs.comfy.org/tutorials/video/pika/pika-h3-flex): ComfyMathExpression 17k + 5 frames at 24 fps, ResolutionSelector / ImageScaleToTotalPixels megapixels, ManualSigmas 6 steps' }),
   // MiniMax H3 Keyframes · Comfy Cloud (2026-10-27): the official multiframe template (comfy/h3KeyframesCloud.ts), the H3 card's Keyframes place. 5–15 s on H3's
   // 17k + 5 grid at 24 fps (its trained range), 768p (0.98 MP) or 480p (0.4 MP), ResolutionSelector shapes, 2–5 frames, its own sound.
   'cloud-h3-keyframes': h3({ minSeconds: 5, maxSeconds: 15, durationStep: 1, durations: range(5, 15), defaultSeconds: 5, aspects: ['auto', '16:9', '9:16', '4:3', '3:4', '1:1', '21:9'], refKinds: { image: 5 }, keyframes: H3KF_CAPS, verified: false,
