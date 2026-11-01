@@ -31,7 +31,7 @@
 /* ================================================= hero ================================================= */
 .xph{--xph-shadow:0 1px 2px rgba(0,0,0,.65),0 0 22px rgba(0,0,0,.55);position:relative;isolation:isolate;overflow:hidden;background:#050505;min-height:clamp(560px,calc(100svh - var(--nav-h)),1080px);display:flex}
 .xph .sfilm.sfilm-bleed{position:absolute;inset:0;z-index:0;aspect-ratio:auto;max-height:none;border-radius:0;display:block}
-.xph .sfilm-bleed .sfilm-stage{position:absolute;inset:0}
+.xph .sfilm-bleed .sfilm-stage{position:absolute;inset:0;aspect-ratio:auto} /* aspect-ratio:auto beats the shared phone rule (editorial.css, ≤900px: 16/9), which left the clip a 16:9 strip over an empty band */
 .xph .sfilm-bleed .sfilm-media{object-position:50% 38%}
 .xph .sfilm-bleed .sfilm-copy,.xph .sfilm-bleed .sfilm-aside,.xph .sfilm-bleed .sfilm-progress{display:none}
 .xph .sfilm-bleed .sfilm-shade{background:

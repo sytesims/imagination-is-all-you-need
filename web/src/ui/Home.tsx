@@ -6,7 +6,7 @@
  *  - From one still (XpStill): two LTX-2.5 Pro image-to-video takes from one still, a wipe from the still into the clip, a Take 1 / Take 2 switch;
  *  - Make your own cartoon (XpKoi): a MiniMax H3 take extended by H3 Extend into one 20 s take, in a letterbox; it leads into the H3 chapter below;
  *  - chapters: Same dance. Two new casts. (H3 Character Swap and Kling 3.0 Omni Edit on Comfy Cloud), One picture. Every layer. (Image to layers, Seedream 5.0 Flash on Comfy Router), One character. Every angle. (four GPT Image 2.5 Flare character sheets, Mossbun in 3D), Image · made here, Your agent builds the board, then Block it in 3D. Film it for real. (Mockup to film: Direct a Shot, its first frame painted, the LTX film), One drawing. A whole film. (Mossbun: sheet → 3D → city → film, explore/Explore3D.tsx);
- *  - Real results: a shared MediaRail of our own outputs (clips play on hover, stills), each opening as Recreate;
+ *  - Made on your computer. Free. (after Mockup to film): a shared MediaRail of local LTX clips, each with the shared RunChip (model · Your computer · Free), opening as Recreate;
  *  - the flow rows (server/src/shared/exploreFlows.ts): numbered heads, bento strips of media tiles naming the real model and its price;
  *  - Learn / Spend, every tool, the footer.
  * Showcase data: server/src/shared/exploreShowcase.ts; featured media: shared/featured.ts. Every card opens the exact tool with its settings
@@ -23,7 +23,10 @@ import { HoverClip, prefersReducedMotion } from '../shared/HoverClip';
 import { MediaRail } from '../shared/MediaRail';
 import { XpHero, XpStill, XpKoi, XpSwap, XpLayers, XpSheets, XpLooks, XpYourTurn, XpBoard, XpFilm } from './explore/ExploreShowcase';
 import { EXPLORE_ROWS, type ExploreCard, type ExploreRow, type FlowArt } from '../../../server/src/shared/exploreFlows';
-import { featuredByKey, featuredRecreateHref, type FeaturedItem } from '../../../server/src/shared/featured';
+import { featuredByKey, featuredRecreateHref } from '../../../server/src/shared/featured';
+import { EXPLORE_LOCAL, exploreLocalClips } from '../../../server/src/shared/exploreShowcase';
+import { chipOfFeatured, chipText } from '../../../server/src/shared/runChip';
+import { RunChip } from '../shared/RunChip';
 import { VideoIcon, MotionTransferIcon, ReshootIcon, LoopIcon, PhotoFxIcon, MusicIcon, MicIcon, PortraitIcon, CubeIcon, OrbitIcon, GridIcon, GenerateIcon, PrevizIcon, TransitionIcon, PriceTagIcon, ChevronRightIcon } from './Icons';
 import { Xp3D } from './explore/Explore3D';
 import { XpFilms } from './explore/ExploreFilms';
@@ -89,21 +92,19 @@ function Tile({ c, tools, span, tall }: { c: ExploreCard; tools: ToolInfo[]; spa
   </Link>;
 }
 
-/** Real results: our own outputs, clips and stills mixed, in a rail. Each opens as Recreate. */
-const MADE_KEYS = ['ltx-rain-city', 'ltx-fox-meadow-close', 'sc-032054ec', 'sc-016bdc27', 'ltx-street-take', 'sc-baf606ef', 'sc-fad0bbe6', 'ltx-lighthouse', 'sc-0f1a0117', 'sc-31465e96', 'ltx-morph',
-  'sc-98ba27ae', 'sc-b718e875', 'ltx-village-loop', 'sc-334bb02e', 'sc-396554e1', 'sc-f7699cd4', 'sc-5846d360', 'sc-fa96f109'];
+/** Made on your computer. Free.: local LTX clips in a rail (data: shared/exploreShowcase.ts EXPLORE_LOCAL, local runs only). Each opens as Recreate. */
 function RealResults() {
-  const items = MADE_KEYS.map(featuredByKey).filter((x): x is FeaturedItem => !!x);
+  const L = EXPLORE_LOCAL; const items = exploreLocalClips();
   if (!items.length) return null;
-  return <section className="xp-sec xp-made-sec" id="xp-made" data-testid="xp-made" aria-labelledby="xp-h-made">
-    <header className="xp-head"><span className="xp-num" aria-hidden>00</span><div><h2 id="xp-h-made">Made with Imagination</h2><p>Free on your own computer. Hover to play, open one to make it again.</p></div></header>
-    <MediaRail label="Made with Imagination" testId="xp-made-rail">{items.map(f => {
-      const href = (f.tab === 'image' ? f.recreateHref : featuredRecreateHref(f.key)) ?? f.recreateHref ?? '/'; const clip = isClip(f.out.url);
-      const ar = clip ? Math.max(1.2, f.out.width / f.out.height) : Math.min(1.4, Math.max(0.72, f.out.width / f.out.height * 0.8));
-      return <Link key={f.key} to={href} className={`xp-shot${clip ? ' is-clip' : ''}`} style={{ aspectRatio: String(ar) }} data-testid={`xp-made-${f.key}`} data-hover-play>
-        <HoverClip src={clip ? f.out.url : f.out.url} poster={clip ? f.out.poster : f.out.url} label={f.title} position={clip ? undefined : '50% 30%'} />
-        {clip && <span className="xp-shot-play" aria-hidden />}
-        <span className="xp-shot-cap"><small>{f.flow}</small><b>{f.title}</b><span>{f.model} · Free · on your computer</span></span>
+  return <section className="xv-sec xp-made-sec" id="xp-made" data-testid="xp-made" aria-labelledby="xp-h-made">
+    <header className="xv-head"><div><span className="xv-eb">{L.eyebrow}</span><h2 id="xp-h-made">{L.title}</h2><p>{L.line}</p></div></header>
+    <MediaRail label={L.title} testId="xp-made-rail">{items.map(f => {
+      const href = featuredRecreateHref(f.key) ?? f.recreateHref ?? '/';
+      return <Link key={f.key} to={href} className="xp-shot is-clip" style={{ aspectRatio: String(f.out.width / f.out.height) }} data-testid={`xp-made-${f.key}`} data-hover-play aria-label={`${f.title}: ${chipText(chipOfFeatured(f))}`}>
+        <HoverClip src={f.out.url} poster={f.out.poster} label={f.title} />
+        <span className="xp-shot-play" aria-hidden />
+        <span className="xp-shot-cap" aria-hidden><small>{f.flow}</small><b>{f.title}</b></span>
+        <RunChip c={chipOfFeatured(f)} onMedia className="xp-shot-chip" testId={`xp-made-chip-${f.key}`} />
       </Link>;
     })}</MediaRail>
   </section>;
@@ -150,6 +151,8 @@ export default function Home({ tools }: { tools: ToolInfo[] }) {
     <div className="xp-in">
       <XpStill />
       <XpFilm />
+      {/* free video on your own computer, right after the cloud-made Mockup to film (user, 2026-11-01) */}
+      <RealResults />
       <XpKoi />
       <XpBoard />
       <XpSwap />
