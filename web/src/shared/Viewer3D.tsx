@@ -80,7 +80,7 @@ export function Viewer3D({ item, onClose, onPrev, onNext, pos, bigBytes = BIG_GL
   const inX = inView != null ? io[inView] : null;
   const tools = <div className="m3d-tools" role="toolbar" aria-label="3D view">
     <button type="button" className={`m3d-tb${rotate ? ' on' : ''}`} aria-pressed={rotate} aria-label="Auto-rotate" data-testid="v3d-rotate" onClick={() => setRotate((r) => !r)} {...tip('Auto-rotate')}><OrbitIcon size={16} /><span>Rotate</span></button>
-    <div className="m3d-seg" role="radiogroup" aria-label="Look">{(['lit', 'clay'] as const).map((k) => <button key={k} type="button" role="radio" aria-checked={look === k} className={look === k ? 'on' : ''} data-testid={`v3d-look-${k}`} onClick={() => setLook(k)}>{k === 'lit' ? 'Textured' : 'Clay'}</button>)}</div>
+    <div className="m3d-seg" role="radiogroup" aria-label="Look">{(['lit', 'clay'] as const).map((k) => <button key={k} type="button" role="radio" aria-checked={look === k} className={look === k ? 'on' : ''} data-testid={`v3d-look-${k}`} disabled={!!rec} onClick={() => setLook(k)}>{k === 'lit' ? 'Textured' : 'Clay'}</button>)}</div>
     <span className="m3d-hint" aria-hidden>Drag to orbit · scroll to zoom · arrow keys when focused</span></div>;
   const media = inX ? <><div className="rvx-inbar"><b>{inX.label}</b><small>The picture this model was made from</small><button type="button" className="rvx-inbtn" onClick={() => setInView(null)}>Back to the model</button></div>
       <img className="rvx-img m3d-input" src={inX.url} alt={inX.label} /></>
@@ -88,7 +88,7 @@ export function Viewer3D({ item, onClose, onPrev, onNext, pos, bigBytes = BIG_GL
       {big ? <div className="m3d m3d-big" role="alertdialog" aria-label="Large model" data-testid="v3d-big">{item.poster ? <img className="m3d-still" src={item.poster} alt="" /> : null}
         <p className="m3d-why"><b>This model is {fmtMB(bytes)}.</b><span>Large files can be slow to open and use a lot of graphics memory.</span>
           <span className="m3d-big-act"><button type="button" className="btn btn-primary btn-sm" data-testid="v3d-load-big" onClick={() => setOkBig(true)}>Open it anyway</button><a className="btn btn-sm" href={item.src} download={item.downloadName}>Download instead</a></span></p></div>
-        : <Model3D key={`${item.key}-${look}`} ref={v} slot="viewer" pri={2} src={item.src} alt={item.name} poster={item.poster} autoRotate={rotate && !rec} look={look} downloadName={item.downloadName} onLoad={onLoad} testId="v3d-model" cameraOrbit={item.cameraOrbit} invalid={meta?.valid === false} animation={item.animation} />}
+        : <Model3D key={item.key} ref={v} slot="viewer" pri={2} src={item.src} alt={item.name} poster={item.poster} autoRotate={rotate && !rec} look={look} downloadName={item.downloadName} onLoad={onLoad} testId="v3d-model" cameraOrbit={item.cameraOrbit} invalid={meta?.valid === false} animation={item.animation} />}
       {!big && loaded && tools}
       {rec && <div className="m3d-rec" role="status" data-testid="v3d-recording"><i className="m3d-rec-dot" aria-hidden />Recording the turntable… {Math.round(rec.p * 100)}%</div>}
     </div>;

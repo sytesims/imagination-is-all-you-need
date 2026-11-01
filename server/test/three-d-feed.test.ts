@@ -67,6 +67,7 @@ assert.match(m3, /START_ORBIT = '-30deg 75deg 120%'/); assert.match(m3, /'camera
 assert.match(studio, /data-testid="t3-model" aria-label=\{`Model: \$\{modelName\}\. Change model`\}/, 'model chip label');
 assert.match(web('shared/ResultViewer.tsx'), /aria-label=\{open \? 'Hide details' : 'Show details'\} data-testid="rvx-details-toggle"/, 'details collapse label');
 assert.match(v3d, /aria-label="Auto-rotate"/, 'rotate button label');
+assert.match(v3d, /<Model3D key=\{item\.key\} /, 'Textured / Clay keep the same viewer (no remount per look)'); assert.match(m3, /applyLook\(m, look\); \}, \[look, state\]\)/, 'the look is applied in place');
 assert.match(web('shared/ResultViewer.tsx'), /root\.inert = true/, 'the page behind any viewer (3D too) is inert');
 ok('start view off-front; aria labels; page behind the viewer inert');
 
