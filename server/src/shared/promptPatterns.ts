@@ -109,12 +109,26 @@ export const PROMPT_PATTERNS: PromptPattern[] = [
     template: 'Relight this photo: {light}', note: '"Change only X … keep everything else", the preserve list last.' },
   { model: 'any', task: 'relight', form: 'instruction', keep: 'last', negative: 'n/a', checked: D, sources: ['https://docs.x.ai/developers/model-capabilities/images/prompting-guide'],
     template: 'relight the scene: {light}', note: 'FLUX, Seedream, Grok…: change then keep. FIBO 2.0 may prefer no keep clause; A/B before changing.' },
-  { model: 'any', task: 'face-swap', form: 'instruction', keep: 'last', negative: 'n/a', checked: D, sources: ['https://docs.bfl.ai/guides/prompting_guide_flux2'],
-    template: 'Replace the face of the person in image 1 with the face of the person in image 2', note: '"Replace X in image 1 with Y from image 2"; the keep list follows.' },
-  { model: 'any', task: 'person-swap', form: 'instruction', keep: 'last', negative: 'n/a', checked: '2026-11-01', sources: ['https://docs.bfl.ai/guides/prompting_guide_flux2', 'https://developers.openai.com/cookbook/examples/multimodal/image-gen-1.5-prompting_guide'],
+  // ---- People swaps (2026-11-01): Face Swap and Person Swap (tools/apps.ts) send these rows; image 1 = the target photo, image 2 = the face / person.
+  // "of image 1", never a possessive on a reference: tag models would read <image1>'s / <<<image_1>>>'s / <ref_image_0>'s.
+  { model: 'gpt-image', task: 'face-swap', form: 'instruction', keep: 'last', negative: 'n/a', checked: '2026-11-01', sources: [GPT_GUIDE],
+    template: 'Image 1: the photo to edit. Image 2: the face to use. Replace only the face of the person in image 1 with the face of the person in image 2. Do not change the pose, head angle, expression, hair, body, clothing, lighting, colours or background of image 1. Match the skin tone, light and grain of image 1.',
+    note: 'OpenAI: label each input image by its role, "change only X", then the full preserve list.' },
+  { model: 'nano-banana', task: 'face-swap', form: 'instruction', keep: 'last', negative: 'n/a', checked: '2026-11-01', sources: [GEMINI_GUIDE],
+    template: 'Using the provided images, replace only the face of the person in image 1 with the face of the person in image 2. Keep everything else in image 1 exactly the same: the pose, head angle, expression, hair, clothing, lighting and background. Blend the skin tone and light so the face sits naturally in the photo.',
+    note: 'Google: "Using the provided image(s) …, change only …; keep everything else … exactly the same", said positively.' },
+  { model: 'any', task: 'face-swap', form: 'instruction', keep: 'last', negative: 'n/a', checked: '2026-11-01', sources: [FLUX_GUIDE],
+    template: 'Replace the face of the person in image 1 with the face of the person in image 2. Keep the pose, head angle, expression, hair, body, clothing, lighting, colours and background of image 1 unchanged, and match the skin tone and light of image 1.',
+    note: '"Replace X in image 1 with Y from image 2", then what stays (FLUX.2, Seedream, Luma, Kling, Qwen, Klein). Positive only, under 60 words.' },
+  { model: 'gpt-image', task: 'person-swap', form: 'instruction', keep: 'last', negative: 'n/a', checked: '2026-11-01', sources: [GPT_GUIDE],
+    template: 'Image 1: the photo to keep. Image 2: the person to put in it. Replace only the person in image 1 with the person from image 2: their {who}.[ {keepOutfit}] Do not change the pose, framing, camera angle, lighting, colours or background of image 1. Match its light and grain.',
+    note: 'OpenAI: a role per input image, "change only", the preserve list in full; its try-on example fits garments "naturally" to the new body (keepOutfit).' },
+  { model: 'nano-banana', task: 'person-swap', form: 'instruction', keep: 'last', negative: 'n/a', checked: '2026-11-01', sources: [GEMINI_GUIDE],
+    template: 'Using the provided images, replace the person in image 1 with the person from image 2: their {who}.[ {keepOutfit}] Keep everything else in image 1 exactly the same: the pose, framing, camera angle, lighting, colours and background. The new person takes on the light and grain of image 1.',
+    note: 'Google: "Using the provided images …", what stays said positively.' },
+  { model: 'any', task: 'person-swap', form: 'instruction', keep: 'last', negative: 'n/a', checked: '2026-11-01', sources: [FLUX_GUIDE, GPT_GUIDE],
     template: 'Replace the person in image 1 with the person from image 2: their {who}.[ {keepOutfit}] Keep the pose, framing, camera angle, lighting, colours and background of image 1 unchanged, and match its light and grain.',
-    note: 'Same form as the face swap; {who} = what comes from the person, [{keepOutfit}] only for "Keep the photo\'s outfit" (tools/shots.ts PERSON_SWAP_KEEP_OUTFIT*, refitted to the new body, after OpenAI\'s try-on advice). '
-      + '"of image 1", never a possessive on a reference (tag models: <image1>\'s). Used by the keep-outfit choice; the default swap still sends its 2026-10-22 wording (shots.ts PERSON_SWAP_*) until a run compares them. One row for every model until a real run shows a family needs its own.' },
+    note: '{who} = what comes from the person (tools/shots.ts PERSON_SWAP_WHO, or PERSON_SWAP_KEEP_OUTFIT_WHO); [{keepOutfit}] only for "Keep the photo\'s outfit" (refitted to the new body, after OpenAI\'s try-on advice).' },
 
   // ---- Ad Pack (2026-10-31, shared/adPack.ts): one finished ad per style, the model paints the scene and the words; our code adds the logo after.
   // 'ad' is the frame ({scene} = the style's sentence), 'ad-text' the words line. Every guide below agrees on the text rules: exact words in

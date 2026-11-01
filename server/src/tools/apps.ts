@@ -7,7 +7,7 @@ import { OPTION_MEDIA, wireOptionMedia, voiceSampleUrl, voiceSampleKind, wireSam
 import { parseLightRig, rigPhrases, rigJson, spherePresetOf, lightUntouched, DEFAULT_RIG, type LightRig } from '../shared/lightRig.js';
 import { PRODUCT_SCENES, PRODUCT_KEEP, TRANSITION_TYPES, UGC_PRESENTERS, UGC_HOOKS, UGC_SETTINGS, UGC_FRAMINGS, ORBIT_TYPES, ORBIT_BACKDROPS, RELIGHT_DIRECTIONS, RELIGHT_QUALITY, RELIGHT_COLOUR_PRESETS, RELIGHT_LOOKS, relightLookOf, brightnessWord, colourName, padPhrase, LANGUAGE_NATIVE, CHARACTER_LAYOUTS, CHARACTER_LAYOUT_DEFAULT, type CharacterLayout, type AppField, type AppOption } from './appRows.js';
 import { TRANSLATE_LANGS } from '../comfy/plans.js';
-import { SHOT_ANGLES, SHOT_DEFAULTS, parseShots, shotPrompt, FACE_SWAP_PROMPT, FACE_SWAP_KEEP, PERSON_SWAP_PROMPT, PERSON_SWAP_KEEP, PERSON_SWAP_KEEP_OUTFIT_WHO, PERSON_SWAP_KEEP_OUTFIT, PERSON_SWAP_OUTFITS, type ShotAngle } from './shots.js';
+import { SHOT_ANGLES, SHOT_DEFAULTS, parseShots, shotPrompt, PERSON_SWAP_WHO, PERSON_SWAP_KEEP_OUTFIT_WHO, PERSON_SWAP_KEEP_OUTFIT, PERSON_SWAP_OUTFITS, type ShotAngle } from './shots.js';
 import { GENERATE_MODELS, EDIT_MODELS, TWO_IMAGE_MODELS, MATERIAL_SWAP_MODELS, AD_PACK_MODELS, MASK_MODELS, REMOVE_BG_MODELS, EXPAND_MODELS, ERASE_MODELS, TRYON_MODELS, featureById, gridModelOf } from '../shared/imageFeatures.js';
 import { promptGrammarOf } from '../shared/promptGrammar.js';
 import { fillPattern, patternFor } from '../shared/promptPatterns.js';
@@ -558,6 +558,8 @@ export interface GalleryApp {
   durations?: number[];
   /** App-only fields (tiles, sliders, colour). Stored on job.input under the same names (Recreate restores them); composed into the prompt server side. */
   fields?: AppField[];
+  /** The prompt peek's line for an app whose models take no prompt (Try-On). */
+  noPrompt?: string;
   /** Builds the prompt from the user's text + the app fields. */
   compose?: (v: Record<string, string>, ctx: { prompt: string; has: (file: string) => boolean; /** the picked engine (provider id), when the request names one */ provider?: string; /** apps with `brand`: the kit in use */ brandKit?: BrandKit | null;
     /** that engine's prompt cap (shared/promptGrammar.ts limits.maxChars), so a recipe can pick its short wording; the route check still refuses what doesn't fit */ maxChars?: number }) => string;
@@ -667,6 +669,8 @@ export const materialFamilyOf = (provider?: string): MaterialFamily => /^api-nan
 export const MATERIAL_TEXT_MAX = 60;
 const bare = (x?: string) => String(x ?? '').replace(/\s+/g, ' ').trim().replace(/^(a|an|the)\s+/i, '').replace(/[.;,:]+$/, '');
 const sentence = (x?: string) => { const t = String(x ?? '').replace(/\s+/g, ' ').trim().replace(/[.;,\s]+$/, ''); return t ? `${t[0].toUpperCase()}${t.slice(1)}.` : ''; };
+/** The model key a swap's prompt pattern is picked by (shared/promptPatterns.ts: the key, then its family, then the shared row). */
+const swapPatternModel = (provider?: string) => (provider ? gridModelOf(provider, 'edit') ?? provider : null);
 export function materialSwapPrompt(v: Record<string, string>, userPrompt: string, provider?: string): string {
   const obj = bare(v.object) || 'main object'; const was = bare(v.fromMaterial); const old = was ? `its ${was}` : 'its current material'; const touch = sentence(userPrompt);
   const fam = materialFamilyOf(provider); const join = (...xs: string[]) => xs.filter(Boolean).join(' ');
@@ -679,26 +683,39 @@ export function materialSwapPrompt(v: Record<string, string>, userPrompt: string
   return join(`Give the ${obj} in image 1 the material and texture from image 2 instead of ${old}.`, touch, 'Keep everything else in image 1 unchanged.');
 }
 /** Character Sheet (rewritten Oct 22; layouts 2026-10-25, our own wording): the subject, the layout's panels (appRows CHARACTER_LAYOUTS), one grey
- *  studio backdrop and light for every panel, then a "keep" block that fits the layout (feet and no body cropping only where there are full-body panels). */
-const CHARACTER_STUDIO = 'Every panel has the same plain neutral grey seamless studio backdrop and soft, even, almost shadowless light, neutral 5600K white balance, natural skin texture with visible detail, catchlights in the eyes';
+ *  studio backdrop and light for every panel, then a "keep" block that fits the layout (feet and no body cropping only where there are full-body panels).
+ *  2026-11-01: with a photo the subject is "the person in image 1 (your words)" (each model reads its own token, and the words pick the person in a
+ *  group photo); the photo-realism words only when your words name no style (anime, illustration, 3D… keep their style in every panel). */
+const CHARACTER_STUDIO = 'Every panel has the same plain neutral grey seamless studio backdrop and soft, even, almost shadowless light';
+const CHARACTER_PHOTO_LOOK = 'neutral 5600K white balance, natural skin texture with visible detail, catchlights in the eyes';
+const CHARACTER_REAL_TAIL = 'sharp, realistic photo'; const CHARACTER_STYLED_TAIL = 'in the style described above, the same style in every panel';
+/** Words that name a look other than a photo: the sheet keeps it instead of asking for a realistic photo. */
+export const CHARACTER_STYLE_WORDS = /\b(anime|manga|chibi|cartoons?|cartoony|toon|comics?|comic[- ]book|illustrat\w*|drawing|drawn|sketch\w*|line[- ]art|3d|cgi|rendered|render|low[- ]poly|voxel|clay|claymation|stop[- ]motion|paintings?|painterly|watercolou?rs?|oil[- ]paint\w*|gouache|pixel[- ]?art|vector|cel[- ]shaded|stylis\w*|styliz\w*|figurine|plush|lego)\b/i;
+export const characterStyled = (words: string) => CHARACTER_STYLE_WORDS.test(String(words ?? ''));
+/** Your words as the sheet's subject: one line, no trailing . ; , : (the sheet's own colon follows), no leading "character (reference) sheet of". */
+export const characterSheetWords = (words: string) => String(words ?? '').replace(/\s+/g, ' ').trim().replace(/^(?:an?\s+)?character\s+(?:reference\s+)?sheet(?:\s+of\b)?[\s,:;.-]*/i, '').replace(/[\s.;,:]+$/, '');
+const characterSubject = (words: string, fromPhoto: boolean) => { const w = String(words ?? '').trim().replace(/[\s.;,:]+$/, '');
+  return fromPhoto ? `the person in image 1${w ? ` (${w})` : ''}` : w || 'one character'; };
 export const characterLayoutOf = (v?: string) => CHARACTER_LAYOUTS.find((l) => l.value === v) ?? CHARACTER_LAYOUTS[0];
-export function characterKeep(l: CharacterLayout, fromPhoto: boolean): string {
+export function characterKeep(l: CharacterLayout, fromPhoto: boolean, styled = false): string {
   const k = l.keep; const what = k.fullBody ? ', body proportions and the complete outfit and accessories' : ' and the clothing and accessories in view';
-  return [`exactly one identical person in ${k.views}: the same face, hair, skin tone${what}${fromPhoto ? ' from the photo' : ''}`, k.extra, k.fullBody ?? '',
-    `no extra people, no text, no props${k.fullBody ? ', no cropping of the body' : ''}`, 'sharp, realistic photo'].filter(Boolean).join('; ');
+  return [`exactly one identical person in ${k.views}: the same face, hair, skin tone${what}${fromPhoto ? ' from image 1' : ''}`, k.extra, k.fullBody ?? '',
+    `no extra people, no text, no props${k.fullBody ? ', no cropping of the body' : ''}`, styled ? CHARACTER_STYLED_TAIL : CHARACTER_REAL_TAIL].filter(Boolean).join('; ');
 }
 export const CHARACTER_KEEP = characterKeep(CHARACTER_LAYOUTS[0], false);
 /** The short sheet (2026-10-26) for models whose prompt cap the full one overflows (Wan 2.5 Image: 800 characters, the full Classic sheet is ~960):
  *  the same panels, one plain backdrop, the same person and outfit, a neutral pose. */
-export function characterSheetShort(subject: string, fromPhoto: boolean, l: CharacterLayout): string {
-  return `Character reference sheet of ${subject.trim()}: ${l.short}. Plain neutral grey studio backdrop and soft even light in every panel. `
-    + `Keep exactly one identical person: the same face, hair and outfit${fromPhoto ? ' as in the photo' : ''} in every panel${l.keep.fullBody ? ', neutral relaxed standing pose, feet in frame' : ', only the expression changes'}; no extra people, no text; sharp, realistic photo`;
+export function characterSheetShort(words: string, fromPhoto: boolean, l: CharacterLayout): string {
+  const styled = characterStyled(words);
+  return `Character reference sheet of ${characterSubject(words, fromPhoto)}: ${l.short}. Plain neutral grey studio backdrop and soft even light in every panel. `
+    + `Keep exactly one identical person: the same face, hair and outfit${fromPhoto ? ' as in image 1' : ''} in every panel${l.keep.fullBody ? ', neutral relaxed standing pose, feet in frame' : ', only the expression changes'}; no extra people, no text; ${styled ? CHARACTER_STYLED_TAIL : CHARACTER_REAL_TAIL}`;
 }
-/** The sheet prompt. `subject` = "the person in the photo[, extra text]" (photo) or the user's character description (no photo); `layout` = a CHARACTER_LAYOUTS value (Classic by default).
- *  `maxChars` = the model's prompt cap: over it, the short sheet (still too long = the route refuses with the usual message). */
-export const characterSheetPrompt = (subject: string, fromPhoto: boolean, layout?: string, maxChars?: number) => { const L = characterLayoutOf(layout);
-  const full = `Character reference sheet of ${subject.trim()}: ${L.prompt}. ${CHARACTER_STUDIO}. Keep ${characterKeep(L, fromPhoto)}`;
-  return maxChars && full.length > maxChars ? characterSheetShort(subject, fromPhoto, L) : full; };
+/** The sheet prompt. `words` = your words (with a photo they say which person, or add detail; without one they describe the character); `layout` =
+ *  a CHARACTER_LAYOUTS value (Classic by default). `maxChars` = the model's prompt cap: over it, the short sheet (still too long = the route refuses
+ *  with the usual message). */
+export const characterSheetPrompt = (words: string, fromPhoto: boolean, layout?: string, maxChars?: number) => { const L = characterLayoutOf(layout); const styled = characterStyled(words);
+  const full = `Character reference sheet of ${characterSubject(words, fromPhoto)}: ${L.prompt}. ${CHARACTER_STUDIO}${styled ? '' : `, ${CHARACTER_PHOTO_LOOK}`}. Keep ${characterKeep(L, fromPhoto, styled)}`;
+  return maxChars && full.length > maxChars ? characterSheetShort(words, fromPhoto, L) : full; };
 /** A provider id's (or model key's) prompt cap, for compose (the grammar's limit; null = none known). */
 export const providerPromptCap = (provider?: string): number | undefined => { if (!provider) return undefined;
   return (promptGrammarOf(provider) ?? promptGrammarOf(gridModelOf(provider)))?.limits?.maxChars ?? undefined; };
@@ -733,7 +750,7 @@ export const APP_GALLERY: GalleryApp[] = [
     fileOrPrompt: { file: 'image', message: 'Add a photo of the person or describe the character.' },
     fields: [{ name: 'layout', label: 'Layout', kind: 'select', control: 'tiles', options: CHARACTER_LAYOUTS, default: CHARACTER_LAYOUT_DEFAULT }],
     lockedFor: (v, c) => { const a = sheetAspect(characterLayoutOf(v.layout).aspect, c.provider, c.mode); return a ? { aspect: a } : {} as Record<string, string>; },
-    compose: (v, c) => characterSheetPrompt(c.has('image') ? `the person in the photo${c.prompt.trim() ? `, ${c.prompt.trim()}` : ''}` : c.prompt, c.has('image'), v.layout, c.maxChars) },
+    compose: (v, c) => characterSheetPrompt(characterSheetWords(c.prompt), c.has('image'), v.layout, c.maxChars) },
   // T23: a product photo switches to Edit image (keeps the product); no photo = text-to-image. Scene tiles are prompt modifiers.
   { id: 'product-shot', name: 'Product Shot', category: 'Image', base: 'create-image', poster: null, description: 'Turn a product photo into a clean studio or lifestyle shot; the product stays as it is.',
     providers: GENERATE_MODELS, locked: { types: '["generate"]', style: 'product', enhance: '1' }, modeWhenFile: { image: '["edit"]' }, exposed: ['image', 'prompt', 'aspect', 'provider', 'resolution', 'rights', 'seed', 'scene'],
@@ -833,7 +850,8 @@ export const APP_GALLERY: GalleryApp[] = [
     extraInputs: [{ name: 'face', kind: 'file', accept: 'image/png,image/jpeg,image/webp', label: 'Face' }],
     // image 1 = the target photo, image 2 = the face (the edit models read the references in this order)
     fileMap: (f) => { const { face, ...rest } = f; return { ...rest, refs: (face ?? []).slice(0, 1) }; },
-    compose: (_v, c) => joinPrompt(FACE_SWAP_PROMPT, FACE_SWAP_KEEP, c.prompt),
+    // the registry's face-swap row for the picked model's family (GPT Image, Nano Banana, else the shared row); touch-ups as the last sentence
+    compose: (_v, c) => [fillPattern('face-swap', swapPatternModel(c.provider)), sentence(c.prompt)].filter(Boolean).join(' '),
     extra: { promptOptional: true, outputLabel: 'Face swap' },
     finish: (r) => ({ outputLabel: 'Face swap', ...(r.refPaths?.[1] ? { insetPath: r.refPaths[1] } : {}) }),
     notes: ['Works best with a clear, front-facing face photo and a target where the face is visible and not too small.'] },
@@ -855,13 +873,14 @@ export const APP_GALLERY: GalleryApp[] = [
     fields: [{ name: 'outfit', label: 'Outfit', kind: 'select', control: 'segmented', options: PERSON_SWAP_OUTFITS.map((o) => ({ ...o })), default: 'person',
       help: 'Works best with one person. With several, say who in Touch-ups (e.g. the woman on the left).' }],
     fileMap: (f) => { const { person, ...rest } = f; return { ...rest, refs: (person ?? []).slice(0, 1) }; },
-    // keep: the registry's person-swap row (one row for every model today; family rows can follow a real run); touch-ups as the last sentence
-    compose: (v, c) => v.outfit === 'keep' ? [fillPattern('person-swap', c.provider && NANO_BANANA.test(c.provider) ? 'nano-banana' : c.provider && /^api-gpt-image/.test(c.provider) ? 'gpt-image' : null,
-      { who: PERSON_SWAP_KEEP_OUTFIT_WHO, keepOutfit: PERSON_SWAP_KEEP_OUTFIT }), sentence(c.prompt)].filter(Boolean).join(' ') : joinPrompt(PERSON_SWAP_PROMPT, PERSON_SWAP_KEEP, c.prompt),
+    // the registry's person-swap row for the picked model's family (GPT Image, Nano Banana, else the shared row), {who} by the Outfit choice; touch-ups last
+    compose: (v, c) => [fillPattern('person-swap', swapPatternModel(c.provider), v.outfit === 'keep' ? { who: PERSON_SWAP_KEEP_OUTFIT_WHO, keepOutfit: PERSON_SWAP_KEEP_OUTFIT } : { who: PERSON_SWAP_WHO }),
+      sentence(c.prompt)].filter(Boolean).join(' '),
     extra: { promptOptional: true, outputLabel: 'Person swap' },
     finish: (r) => ({ outputLabel: 'Person swap', ...(r.refPaths?.[1] ? { insetPath: r.refPaths[1] } : {}) }),
     notes: ['Works best when both people are fully visible and roughly the same size in frame. Only swap people who agreed to it.',
       'Outfit: "Use the person\'s outfit" (default) brings the clothes from the person photo; "Keep the photo\'s outfit" keeps the target\'s clothes and accessories.',
+      'On Qwen Image 2.1 (local), "Keep the photo\'s outfit" runs the head swap: the face and hair change, the body and clothes stay.',
       'With several people in the target, say who in Touch-ups (e.g. the woman on the left). Sunglasses on the person photo hide the face, so it won\'t carry over. Crop phone status bars off screenshots first.'] },
   // Material Swap (2026-10-31): object photo + material photo on the two-image edit route (local Qwen Image 2.1 by default: its official edit template's
   // two inputs), plus hosted edit models that take 2+ images. Two optional short words fill our prompt (materialSwapPrompt); no new model.
@@ -938,7 +957,10 @@ export const APP_GALLERY: GalleryApp[] = [
       { name: 'garmentPhoto', label: 'Garment photo', kind: 'select', control: 'segmented', options: TRYON_PHOTO_TYPES.map((o) => ({ ...o })), default: 'auto' }],
     // image 1 = the person, image 2 = the garment
     fileMap: (f) => { const { garment, ...rest } = f; return { ...rest, refs: (garment ?? []).slice(0, 1) }; },
-    compose: () => 'dress the person from the first photo in the garment from the second photo, keep the face, body and pose',
+    // No prompt (2026-11-01): FASHN takes none and Bria's optional `instruction` carries only the user's words (routerModels briaText), which Try-On
+    // doesn't ask for, so nothing is stored or shown as "the prompt". TODO: Bria's docs use `instruction` to steer layering ("worn over the t-shirt");
+    // an optional styling note sent to Bria only could use it.
+    compose: () => '', noPrompt: 'No prompt: the model reads the two photos only',
     prepare: async (r) => { for (const [k, p0] of [['image', r.refPaths?.[0]], ['garment', r.refPaths?.[1]]] as const) { const b = photoBlock(p0 ? await probe(p0) : null); if (b) return { error: { field: k, ...b } }; } return {}; },
     extra: { promptOptional: true, outputLabel: 'Try-on' }, finish: (r) => ({ outputLabel: 'Try-on', mockLook: 'tryon', ...(r.refPaths?.[1] ? { insetPath: r.refPaths[1] } : {}) }),
     notes: ['Tops, bottoms and one-pieces (dresses, jumpsuits). Shoes, bags and jewellery are not supported.', 'Works with a garment worn by someone or laid flat; a clear, front-facing person photo works best. Only use photos of people who agreed to it.'] },
@@ -1097,7 +1119,7 @@ export function makeGalleryApp(a: GalleryApp, base: ToolDef): ToolDef {
     ...base, id: appId, name: a.name, description: a.description, category: 'Apps', status: undefined, listed: undefined /* an app is listed even when its base tool is hidden (Orbit Shot on the retired Director) */, route: a.route ?? `/tools/app-${a.id}`, ...(a.ui ? { ui: a.ui } : {}), ...(a.routeInput ? { routeInput: a.routeInput } : {}),
     inputs: exposedInputs, ...(a.poster && !/^\/(samples\/(?!presets\/)|examples\/)/.test(a.poster) ? { posterUrl: a.poster } : {}) /* BH P2: never a sample / example gradient; /api/posters/<id>.jpg runs the cover fallback order */, providers,
     app: { ...(base.app ?? {}), ...(baseCaps && a.durations ? { capabilities: { ...baseCaps, ...durs } } : {}),
-      gallery: { id: a.id, base: base.id, locked: a.locked, exposed: a.exposed, labels: a.labels ?? {} /* the submit's "Add a garment." names the slot (index.ts required check) */, promptTemplate: a.promptTemplate ?? null, modeWhenFile: a.modeWhenFile ?? null,
+      gallery: { id: a.id, base: base.id, locked: a.locked, exposed: a.exposed, labels: a.labels ?? {} /* the submit's "Add a garment." names the slot (index.ts required check) */, promptTemplate: a.promptTemplate ?? null, ...(a.noPrompt ? { noPrompt: a.noPrompt } : {}), modeWhenFile: a.modeWhenFile ?? null,
         defaults: a.defaults ?? {}, fields: (a.fields ?? []).map((f) => ({ ...f, options: f.options?.map(({ prompt: _p, ...o }) => (OPTION_MEDIA[a.id] === f.name ? wireOptionMedia(a.id, f.name, o) : o)) })), required: a.required ?? [], fileOrPrompt: a.fileOrPrompt ?? null, providersByMode,
         hideControls, modeRow: false, promptBox: shown.has('prompt'), promptFrames: a.compose || a.promptTemplate ? promptFrames(a) : [] /* 2026-10-25: the web keeps recipe text out of the subject box (shared/typedPrompt.ts) */,
         ...(a.previewBefore && a.previewAfter ? { preview: { before: a.previewBefore, after: a.previewAfter, beforeLabel: a.previewLabels?.[0] ?? 'Before', afterLabel: a.previewLabels?.[1] ?? 'After', model: a.previewModel ?? null } } : {}),
@@ -1158,8 +1180,10 @@ export function makeGalleryApp(a: GalleryApp, base: ToolDef): ToolDef {
       if (!f.provider && a.providers) f.provider = providers[0];
       if (a.lockedFor) Object.assign(f, a.lockedFor(vals, { provider: f.provider || providers[0], mode: typesOf(f.types) ?? '' })); // Character Sheet: the layout's aspect, snapped to this model
       const files = a.fileMap ? a.fileMap(files0) : files0;
+      // an app whose models take no prompt (Try-On): the base's "describe it" check gets the label, and the job keeps no prompt (nothing was sent)
+      if (a.noPrompt) f.prompt = a.noPrompt;
       const r: any = await base.parseInput(f, files);
-      if ('error' in r) return r; if (appSnap) addAdjustNote(r, appSnap);
+      if ('error' in r) return r; if (a.noPrompt) for (const k of ['prompt', 'finalPrompt', 'hostedPrompt', 'enhancedPrompt']) if (typeof r[k] === 'string') r[k] = ''; if (appSnap) addAdjustNote(r, appSnap);
       if (a.prepare) { const x = await a.prepare(r, vals); if (x && 'error' in x && x.error && typeof x.error === 'object') return bad(x.error.field, x.error.message, x.error.code); Object.assign(r, x); }
       const extraUrls: Record<string, string> = {};
       for (const x of a.extraInputs ?? []) { const up = files0[x.name]?.[0]; if (up) extraUrls[`${x.name}Url`] = `/files/${up}`; }

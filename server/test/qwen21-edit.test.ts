@@ -87,10 +87,10 @@ ok('plain Edit Image on Qwen 2.1: official edit template, no LoRA');
 // ---- Character Sheet with a photo (Oct 22): the same official edit template, one image, our composed prompt untouched, no LoRA ----
 {
   const { characterSheetPrompt } = await import('../src/tools/apps.ts');
-  const pr = characterSheetPrompt('the person in the photo', true);
-  assert.match(pr, /^Character reference sheet of the person in the photo: one image split into three equal vertical panels.*Left panel: full-body front view.*Centre panel: full-body back view.*Right panel: tight close-up of the face and shoulders.*neutral grey seamless studio backdrop.*5600K.*Keep exactly one identical person in all three views.*accessories from the photo; feet visible in both full-body panels; no extra people, no text, no props, no cropping of the body/);
+  const pr = characterSheetPrompt('', true);
+  assert.match(pr, /^Character reference sheet of the person in image 1: one image split into three equal vertical panels.*Left panel: full-body front view.*Centre panel: full-body back view.*Right panel: tight close-up of the face and shoulders.*neutral grey seamless studio backdrop.*5600K.*Keep exactly one identical person in all three views.*accessories from image 1; feet visible in both full-body panels; no extra people, no text, no props, no cropping of the body/);
   const p = plan('app-character-sheet', { prompt: pr, appId: 'character-sheet', imagePath: T, refPaths: [T], aspect: '4:3', imageResolution: '1K' }); const g = p.passes[0].graph; const [eid, e] = enc(g);
-  assert.equal(p.passes[0].workflow, 'create-image-qwen21-edit-api.json'); assert.equal(fileOf(g, '470'), T); assert.ok(!g['475']); assert.equal(e.inputs.prompt, pr);
+  assert.equal(p.passes[0].workflow, 'create-image-qwen21-edit-api.json'); assert.equal(fileOf(g, '470'), T); assert.ok(!g['475']); assert.equal(e.inputs.prompt, pr.replaceAll('image 1', '<image1>') /* 2026-11-01: the photo is named, so Qwen 2.1 reads its own tag */);
   // landscape output: the template's own switch takes the EmptyLatentImage (4:3 at ~1 MP) instead of the photo-sized latent
   const ks = Object.values<any>(g).find((n) => n.class_type === 'KSampler'); const sw = g[ks.inputs.latent_image[0]];
   assert.equal(sw.class_type, 'ComfySwitchNode'); assert.equal(sw.inputs.switch, true); assert.deepEqual(sw.inputs.on_false, [eid, 2]);
