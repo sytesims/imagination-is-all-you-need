@@ -545,7 +545,7 @@ export const EXPLORE_SCRIPT = {
   credit: 'One prompt, written as a timed shot list with the dialogue in Korean. MiniMax H3 (Hailuo) text to video on Comfy Cloud: 768p, 15 s, voices and sound made with the picture. English subtitles added here.',
 };
 
-// ---------------------------------------------------------------- Your character, brought to life. (Mossbun: sheet → 3D → city → film)
+// ---------------------------------------------------------------- Create your character. Bring it to life. (Mossbun: design it → spin it in 3D → place it → film it)
 const TRIPO = { model: MOSSBUN_3D_RUN.model, place: MOSSBUN_3D_RUN.place, usd: MOSSBUN_3D_RUN.costUsd } as const;
 const IMAGE_TO_3D = `${threeDRoute('image-to-3d')}&model=cloud-tripo-31`;
 /** One step card under the film: its name, its picture and the run that made it (job id; shared/featured.ts runByJob gives the real model and
@@ -555,16 +555,18 @@ export interface X3dStep { step: string; job: string; thumb: string; alt: string
 const E3 = (f: string) => `/examples/showcase-3d/${f}`;
 /** The 3D section (rebuilt 2026-10-31): one headline, the finished film (featured 'mossbun-golden-hour'), then the four steps behind it and one
  *  bottom row (the whole chain's price, Recreate, Make your own, Credits). Free media only: Mossbun's GLB (Tripo 3.1, job 092abb03) and stills. */
+/** Copy as what you can do, step by step (user, 2026-11-02): the steps are actions (Design it → Spin it in 3D → Place it → Film it); the runs,
+ *  models and prices behind each step are unchanged. */
 export const EXPLORE_3D = {
-  key: 'mossbun-golden-hour', title: ['Your character,', 'brought to life.'],
-  line: 'Draw a friend. Watch it hop into 3D, explore a city and star in its very own film.',
+  key: 'mossbun-golden-hour', title: ['Create your character.', 'Bring it to life.'],
+  line: 'Dream up a friend once. Get its character sheet, spin it in 3D, drop it into a city street, then film its first scene.',
   steps: [
-    { step: 'Character sheet', job: '9564386e', thumb: P('char-mossbun-480.webp'), alt: 'Mossbun’s character sheet: four views and five faces' },
-    { step: '3D model', job: '092abb03', thumb: P('x3d-mossbun.webp'), spin: P('char-mossbun-3d.glb'), alt: 'Mossbun as a 3D model, turning slowly' },
+    { step: 'Design it', job: '9564386e', thumb: P('char-mossbun-480.webp'), alt: 'Mossbun’s character sheet: four views and five faces' },
+    { step: 'Spin it in 3D', job: '092abb03', thumb: P('x3d-mossbun.webp'), spin: P('char-mossbun-3d.glb'), alt: 'Mossbun as a 3D model, turning slowly' },
     /* the film starts from this frame: the golden-hour edit (job b688b9c3), featured 'mossbun-golden-hour' `before` (its 480 px poster) */
-    { step: 'City frame', job: 'b688b9c3', thumb: E3('mossbun-city-painted-480.webp'), before: E3('mossbun-city-mockup-480.webp'), alt: 'Mossbun on a palm-lined avenue at golden hour: the frame the film starts from',
+    { step: 'Place it', job: 'b688b9c3', thumb: E3('mossbun-city-painted-480.webp'), before: E3('mossbun-city-mockup-480.webp'), alt: 'Mossbun on a palm-lined avenue at golden hour: the frame the film starts from',
       tools: [{ job: '13aca5cc', role: 'staged in the 3D city', tool: 'Direct a Shot' }, { job: 'ea410812', role: 'first-frame paint' }] },
-    { step: 'Film · 6 s with sound', job: 'a11a0c78', thumb: E3('mossbun-golden-hour-480.webp'), alt: 'Mossbun holding up a lantern, a frame from the film', caption: '…and we gave her a lantern.' },
+    { step: 'Film it', job: 'a11a0c78', thumb: E3('mossbun-golden-hour-480.webp'), alt: 'Mossbun holding up a lantern, a frame from the film', caption: '…and we gave her a lantern.' },
   ] as X3dStep[],
   make: { label: 'Make your own', href: IMAGE_TO_3D }, recreate: 'Recreate this shot',
   /** the credits (the Credits tip on the bottom row): the CC0 kits the city is built from, and Mossbun */

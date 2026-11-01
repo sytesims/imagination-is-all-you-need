@@ -1,5 +1,5 @@
 /**
- * Explore: "Your character, brought to life." (rebuilt 2026-10-31). One headline in the chapter style (#xp-swap's classes), the finished film big
+ * Explore: "Create your character. Bring it to life." (rebuilt 2026-10-31; copy as actions 2026-11-02). One headline in the chapter style (#xp-swap's classes), the finished film big
  * (the shared ShowcaseFilm with its on-brand controls and sound, no overlay), then the four steps behind it, one card each (picture, step,
  * one model, one price; runs read from the featured entry, shared/featured.ts runByJob), and one bottom row: the whole chain's price, Recreate,
  * Make your own and a Credits tip. The 3D card turns Mossbun's GLB slowly while on screen (the shared Model3D, at the lowest priority of the

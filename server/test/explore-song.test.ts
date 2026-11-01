@@ -15,7 +15,7 @@ assert.equal(S.song.model, 'YuE2');
 const cta = new URL(S.cta.href, 'http://x'); assert.equal(cta.pathname, '/audio'); assert.equal(cta.searchParams.get('workflow'), 'music');
 assert.equal(cta.searchParams.get('model'), 'yue2'); assert.equal(cta.searchParams.get('prompt'), S.song.style);
 assert.ok(EXPLORE_SHOWCASE_LINKS().includes(S.cta.href), 'Make your own is checked with the other Explore links');
-assert.match(home, /<XpHero \/>\s*(?:\{\/\*[^*]*\*\/\}\s*)?<div className="xp-in"><XpSong \/><\/div>\s*<div className="xp-in"><XpWork \/><\/div>/, 'the first section under the hero'); assert.doesNotMatch(source, /songsection/, 'one layout, no gate');
+assert.match(home, /<XpKoi \/>\s*(?:\{\/\*[^*]*\*\/\}\s*)?<XpSong \/>\s*<\/div>/, 'the song closes the first act, after the cartoon'); assert.doesNotMatch(source, /songsection/, 'one layout, no gate');
 assert.match(source, /place: LOCAL_LABEL, price: chipUsd\(0\)/, 'the shared run chip: YuE2 · Your computer · Free');
 assert.match(source, /<RunChip\b/); assert.match(source, /useWaveform/);
 assert.match(source, /prefersReducedMotion/, 'reduced motion keeps SyteSim a still');
@@ -23,4 +23,4 @@ assert.match(source, /hevc \? d\.mov : d\.webm/, 'HEVC with alpha for Safari, We
 assert.match(source, /S\.dancer\.repeats/, 'each dance repeats, then the next one'); assert.match(source, /load\(k, c\.idx \+ 1\)/, 'the next dance loads behind the one in front');
 assert.match(source, /useDirectedSound\(\{ root: box, media: \(\) => audio\.current, sound: playing, explicit: true \}\)/, 'the page sound director owns the song: explicit while it plays, no sound asked for when paused');
 assert.match(source, /<audio[^>]*\bmuted\b/, 'the song mounts muted; only the director unmutes it');
-console.log('ok explore song: media shipped and small, YuE2 · Your computer · Free, Make your own opens Music with the style, five dances in turn, one band under the hero, the sound director, reduced motion');
+console.log('ok explore song: media shipped and small, YuE2 · Your computer · Free, Make your own opens Music with the style, five dances in turn, the song closes the first act, the sound director, reduced motion');

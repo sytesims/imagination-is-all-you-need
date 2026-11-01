@@ -40,7 +40,7 @@ assert.ok(!('part' in S) && !('stillHref' in S), 'Silver, meet storm. is gone fr
 for (const t of [S.strip.title, S.strip.line]) assert.doesNotMatch(t, /\bMac\b|\blocal\b|Comfy|Qwen|Seedance/i, `no jargon in the words: ${t}`);
 const filmsUi = fs.readFileSync(path.join(ROOT, 'web/src/ui/explore/ExploreFilms.tsx'), 'utf8'); const home = fs.readFileSync(path.join(ROOT, 'web/src/ui/Home.tsx'), 'utf8');
 assert.doesNotMatch(home, /XpSeedance|#xp-seedance/, 'no standalone lighthouse import, mount or dead footer anchor');
-assert.match(home, /<XpHero \/>[\s\S]{0,200}<XpSong \/>[\s\S]{0,240}<Xp3D \/>[\s\S]{0,200}<XpFilms \/>/, 'the existing finished lighthouse is now in Films, not between the hero and 3D');
+assert.match(home, /<XpHero \/>[\s\S]{0,240}<Xp3D \/>[\s\S]*<XpFilms \/>/, 'the existing finished lighthouse is now in Films, not between the hero and 3D');
 const { EXPLORE_FILMS } = await import('../src/shared/exploreShowcase.ts');
 assert.equal(EXPLORE_FILMS.lighthouse.url, S.strip.cut.url, 'the existing finished cut is reused by Films');
 assert.equal(EXPLORE_FILMS.lighthouse.editor.href, F.featuredRecreateHref(lh.key), 'Films Recreate preserves the original run');
