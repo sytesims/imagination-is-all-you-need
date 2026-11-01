@@ -20,10 +20,10 @@ import { registerWorkflowLicense, registerLicenseComponents } from '../licenses.
 import { mockRun } from './shared.js';
 import { LTX_LORAS } from '../shared/ltxLoras.js';
 import { FOOTAGE_FX_TOOL, FOOTAGE_FX_PROVIDER, FOOTAGE_FX_WORKFLOW, FOOTAGE_FX_SEED, FOOTAGE_FX_SECONDS, FOOTAGE_FX_DEFAULT_SECONDS, FOOTAGE_FX_RESOLUTIONS, FOOTAGE_FX_RES_LABELS,
-  FOOTAGE_EFFECTS, FOOTAGE_CLOUD_EFFECTS, FOOTAGE_FX_TEMPLATE_URL, OUTPAINT_SHAPES, OUTPAINT_GROW, footageEffect, footageFxPlan, footageFxPrompt, footageFxModelName, footageCloudModelName, outpaintPlan,
+  FOOTAGE_EFFECTS, FOOTAGE_CLOUD_EFFECTS, FOOTAGE_FX_TEMPLATE_URL, OUTPAINT_SHAPES, OUTPAINT_GROW, footageEffect, footageFxPlan, footageFxPrompt, footageFxModelName, footageCloudModelName, outpaintPlan, isCloudOnly,
   type OutpaintShape, type OutpaintGrow } from '../shared/footageFx.js';
 import { MAKE_REAL_SIZES } from '../shared/makeItReal.js';
-import { VFX_CLOUD_GRAPHS } from '../comfy/ltx23VfxCloud.js';
+import { VFX_CLOUD_GRAPHS, VFX_CLOUD_ROUTE, VFX_CLOUD_PROVIDER } from '../comfy/ltx23VfxCloud.js';
 import { conformSourceArgs } from '../comfy/ltx25IcLora.js';
 import './makeItReal.js'; // registers the LTX-2.x Community licence entry this tool's parts point at
 
@@ -36,8 +36,12 @@ registerLicenseComponents(FOOTAGE_FX_TOOL, [
   { model: 'Gemma 4 12B text encoder with LTX projection, VAEs, x2 latent upscaler (Lightricks/LTX-2.5)', license: 'LTX-2.x Community License', commercial: 'restricted', url: 'https://huggingface.co/Lightricks/LTX-2.5', licenseId: 'ltx-2x-community' },
   { model: 'ComfyUI-GGUF custom nodes (city96)', license: 'Apache-2.0', commercial: 'yes', url: 'https://github.com/city96/ComfyUI-GGUF', licenseId: 'apache-2.0' },
   { model: 'LTX-2.3 22B dev, Gemma 3 12B text encoder, x2 latent upscaler (Lightricks/LTX-2.3; Comfy Cloud effects)', license: 'LTX-2.x Community License', commercial: 'restricted', url: 'https://huggingface.co/Lightricks/LTX-2.3', licenseId: 'ltx-2x-community' },
-  ...FOOTAGE_CLOUD_EFFECTS.map((e) => ({ model: `${e.cloud!.loraLabel} (${e.label}; ${e.cloud!.loraSource ? e.cloud!.loraSource.replace(/^https:\/\/(huggingface\.co|civitai\.com)\//, '$1/') : 'as shipped in Comfy Cloud’s library'})`, license: 'LTX-2.x Community License', commercial: 'restricted', url: e.cloud!.loraSource ?? FOOTAGE_FX_TEMPLATE_URL(e.cloud!.template), licenseId: 'ltx-2x-community' })),
-  ...FOOTAGE_CLOUD_EFFECTS.map((e) => ({ model: `Official Comfy template · LTX-2.3 · Lightricks: ${e.cloud!.template} (Comfy-Org/workflow_templates)`, license: 'MIT', commercial: 'yes', url: FOOTAGE_FX_TEMPLATE_URL(e.cloud!.template), licenseId: 'mit' })),
+  // one row per Comfy Cloud LoRA (Rain and Flood share Water Simulation), named with the effects that use it
+  ...[...new Set(FOOTAGE_CLOUD_EFFECTS.map((e) => e.cloud!.loraFile))].map((f) => { const es = FOOTAGE_CLOUD_EFFECTS.filter((e) => e.cloud!.loraFile === f); const e = es[0];
+    return { model: `${e.cloud!.loraLabel}${e.lora ? ' for LTX-2.3' : ''} (${es.map((x) => x.label).join(', ')}; ${e.cloud!.loraSource ? e.cloud!.loraSource.replace(/^https:\/\/(huggingface\.co|civitai\.com)\//, '$1/') : 'as shipped in Comfy Cloud’s library'})`, license: 'LTX-2.x Community License', commercial: 'restricted', url: e.cloud!.loraSource ?? FOOTAGE_FX_TEMPLATE_URL(e.cloud!.template), licenseId: 'ltx-2x-community' }; }),
+  // one row per official template; Vanish, Day to night, Rain and Flood on Comfy Cloud run our graph derived from the restore template
+  ...[...new Set(FOOTAGE_CLOUD_EFFECTS.map((e) => e.cloud!.template))].map((t) => { const derived = FOOTAGE_CLOUD_EFFECTS.filter((e) => e.cloud!.template === t && e.cloud!.derived).map((e) => e.label);
+    return { model: `Official Comfy template · LTX-2.3 · Lightricks: ${t} (Comfy-Org/workflow_templates)${derived.length ? `; ${derived.join(', ')} on Comfy Cloud use our graph derived from it` : ''}`, license: 'MIT', commercial: 'yes', url: FOOTAGE_FX_TEMPLATE_URL(t), licenseId: 'mit' }; }),
 ] as any);
 registerProvider({ id: FOOTAGE_FX_PROVIDER, name: 'LTX-2.5 22B + Lightricks IC-LoRA', kind: 'open-weights', via: `local ComfyUI, workflows/${FOOTAGE_FX_WORKFLOW} (mock unless OPENHIGGSFIELD_BACKEND=comfy)`,
   workflows: [FOOTAGE_FX_WORKFLOW], docUrl: 'https://huggingface.co/Lightricks/LTX-2.5',
@@ -52,14 +56,15 @@ const MOCK_GRADE: Record<string, string> = {
   'alpha-matte': 'format=gray,eq=contrast=6:brightness=0.08',
   restore: 'eq=contrast=1.12:saturation=1.35,unsharp=5:5:0.8', 'remove-object': 'hue=s=0.7,boxblur=2:1', 'remove-text': 'eq=contrast=1.04,boxblur=1:1', 'extend-frame': 'eq=saturation=1.1',
 };
-const labelOf = (e: (typeof FOOTAGE_EFFECTS)[number]) => (e.cloud ? footageCloudModelName(e) : footageFxModelName(LTX_LORAS[e.lora].label));
+/** The real model: the LTX-2.3 Comfy Cloud graph for a Cloud-only effect (or any effect on the Comfy Cloud place), else LTX-2.5 + the local IC-LoRA. */
+const labelOf = (e: (typeof FOOTAGE_EFFECTS)[number], onCloud = false) => (isCloudOnly(e) || (onCloud && e.cloud) ? footageCloudModelName(e) : footageFxModelName(LTX_LORAS[e.lora].label));
 /** A Comfy Cloud effect's conform: as local, plus a silent track when the clip has none (the LTX-2.3 templates encode the clip's sound). */
 const withSilence = (args: string[], hasAudio: boolean) => { if (hasAudio) return args; const a = [...args];
   a.splice(a.indexOf('-i') + 2, 0, '-f', 'lavfi', '-i', 'anullsrc=r=48000:cl=stereo'); a.splice(a.indexOf('0:a:0?'), 1, '1:a:0'); return a; };
 
 export const footageFxTool: ToolDef = {
   id: FOOTAGE_FX_TOOL, name: 'Footage Effects', category: 'Edit Video', status: 'new', route: `/tools/${FOOTAGE_FX_TOOL}`, ui: 'app',
-  description: 'Remove people, turn day into night, add rain or a flood, or pull a clean matte from your own clip. Free on your computer; takes a few minutes. On Comfy Cloud: restore old footage, remove an object or subtitles, or extend the frame. Your sound is kept.',
+  description: 'Remove people, turn day into night, add rain or a flood, or pull a clean matte from your own clip. Free on your computer (a few minutes), or in seconds on Comfy Cloud. On Comfy Cloud also: restore old footage, remove an object or subtitles, or extend the frame. Your sound is kept.',
   inputs: [{ name: 'video', kind: 'file', required: true, accept: 'video/mp4,video/quicktime,video/webm', label: 'Your clip' },
     { name: 'types', kind: 'list', required: true, max: 1, options: FOOTAGE_EFFECTS.map((e) => e.id) },
     { name: 'prompt', kind: 'text', label: 'What is in the shot (optional, one line)' },
@@ -67,8 +72,8 @@ export const footageFxTool: ToolDef = {
     { name: 'resolution', kind: 'select', options: [...FOOTAGE_FX_RESOLUTIONS], default: '448p', choices: FOOTAGE_FX_RESOLUTIONS.map((r) => ({ value: r, label: FOOTAGE_FX_RES_LABELS[r] })) } as any,
     { name: 'shape', kind: 'select', options: [...OUTPAINT_SHAPES], default: '9:16', label: 'New shape (Extend the frame)' }, { name: 'grow', kind: 'select', options: [...OUTPAINT_GROW], default: 'around', label: 'Which way it grows (Extend the frame)' },
     { name: 'keepAudio', kind: 'select', options: ['1', '0'], default: '1' }, { name: 'seed', kind: 'number' }],
-  presets: FOOTAGE_EFFECTS.map((e) => ({ id: e.id, label: e.label, prompt: e.prompt, description: e.tagline, group: 'Effect', addedAt: '2026-10-26', providers: [FOOTAGE_FX_PROVIDER], modelName: labelOf(e), category: e.cloud ? 'Comfy Cloud · LTX-2.3 template' : 'Lightricks IC-LoRA',
-    ...(e.cloud ? { runOn: 'comfy-cloud', template: e.cloud.template, templateUrl: FOOTAGE_FX_TEMPLATE_URL(e.cloud.template),
+  presets: FOOTAGE_EFFECTS.map((e) => ({ id: e.id, label: e.label, prompt: e.prompt, description: e.tagline, group: 'Effect', addedAt: '2026-10-26', providers: [FOOTAGE_FX_PROVIDER], modelName: labelOf(e), category: isCloudOnly(e) ? 'Comfy Cloud · LTX-2.3 template' : 'Lightricks IC-LoRA',
+    ...(isCloudOnly(e) && e.cloud ? { runOn: 'comfy-cloud', template: e.cloud.template, templateUrl: FOOTAGE_FX_TEMPLATE_URL(e.cloud.template),
       source: { source: 'official', name: `${e.cloud.title} (${e.cloud.template})`, url: FOOTAGE_FX_TEMPLATE_URL(e.cloud.template), author: 'Comfy Org · LTX-2.3 · Lightricks', licence: 'MIT (Comfy-Org/workflow_templates) · weights: LTX-2.x Community License' } } : {}) } as any)),
   app: { kind: 'video', input: 'video', durations: [...FOOTAGE_FX_SECONDS], resolutions: [...FOOTAGE_FX_RESOLUTIONS], maxSeconds: 5 },
   workflows: [FOOTAGE_FX_WORKFLOW], model: 'LTX-2.5 22B distilled (GGUF Q4_K_M) + a Lightricks IC-LoRA', gpuSecPerSec: { source: 0 }, providers: [FOOTAGE_FX_PROVIDER],
@@ -101,21 +106,26 @@ export const footageFxTool: ToolDef = {
     const id = `ffx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`; const name = `${id}-source.mp4`;
     const conform = outpaint ? { ...plan, width: outpaint.inner.width, height: outpaint.inner.height } : plan;
     const args = conformSourceArgs(src, path.join(DATA_DIR, name), conform);
-    if ((await runFfmpeg(effect.cloud ? withSilence(args, p.hasAudio) : args)) !== 0) return bad('video', 'That clip could not be prepared for the model. Try another clip.', 'format');
+    if ((await runFfmpeg(isCloudOnly(effect) ? withSilence(args, p.hasAudio) : args)) !== 0) return bad('video', 'That clip could not be prepared for the model. Try another clip.', 'format');
+    // An effect that runs in both places, on a silent clip: the local copy stays as it is; Comfy Cloud gets its own copy with a silent track (its graph encodes the sound)
+    let cloudName: string | undefined;
+    if (effect.cloud && !isCloudOnly(effect) && !p.hasAudio) { cloudName = `${id}-source-cloud.mp4`;
+      if ((await runFfmpeg(withSilence(conformSourceArgs(src, path.join(DATA_DIR, cloudName), conform), false))) !== 0) return bad('video', 'That clip could not be prepared for the model. Try another clip.', 'format'); }
+    const onCloud = fields.route === VFX_CLOUD_ROUTE || fields.provider === VFX_CLOUD_PROVIDER;
     const warnings: string[] = [];
     const asked = Number(secIn) || FOOTAGE_FX_DEFAULT_SECONDS;
     if (plan.seconds < asked) warnings.push(`Your clip is ${p.duration.toFixed(1)} s, so the effect covers ${plan.seconds} s.`);
     else if (plan.trimmed) warnings.push(`The effect covers the first ${plan.seconds} s of your clip (up to 5 s per run).`);
     if (outpaint && outpaint.grow !== fields.grow && fields.grow) warnings.push(`A ${outpaint.shape} frame has no room to grow ${fields.grow}, so it grows around your clip.`);
     if (scene && !effect.usesScene) warnings.push('Alpha matte takes no description; it mattes everything in the foreground.');
-    const lora = effect.cloud ? { id: effect.id, file: effect.cloud.loraFile, label: effect.cloud.loraLabel } : LTX_LORAS[effect.lora];
+    const lora = isCloudOnly(effect) && effect.cloud ? { id: effect.id, file: effect.cloud.loraFile, label: effect.cloud.loraLabel } : LTX_LORAS[effect.lora];
     const out = outpaint ? outpaint.canvas : plan;
     return { types: [effect.id], mode: 'footage-fx', outKind: 'video', prompt: scene, finalPrompt: footageFxPrompt(effect, scene), negative: effect.negative, seed,
       duration: plan.seconds, resolution: plan.resolution, aspect: outpaint?.shape ?? plan.aspect, width: out.width, height: out.height, fps: plan.fps,
-      videoPath: path.join(DATA_DIR, name), videoUrl: `/files/${name}`, ...(outpaint ? {} : { compareUrl: `/files/${name}` }) /* a new shape has no same-size before */, originalVideoUrl: `/files/${vf}`, hasAudio: p.hasAudio, keepAudio,
+      videoPath: path.join(DATA_DIR, name), ...(cloudName ? { cloudVideoPath: path.join(DATA_DIR, cloudName) } : {}), videoUrl: `/files/${name}`, ...(outpaint ? {} : { compareUrl: `/files/${name}` }) /* a new shape has no same-size before */, originalVideoUrl: `/files/${vf}`, hasAudio: p.hasAudio, keepAudio,
       outputLabel: effect.label, warnings,
-      footageFx: { effect: effect.id, label: effect.label, lora: { id: lora.id, file: lora.file, label: lora.label, strength: effect.strength }, plan, modelName: labelOf(effect),
-        ...(outpaint ? { outpaint } : {}), ...(effect.cloud ? { cloud: true, template: effect.cloud.template } : {}) } };
+      footageFx: { effect: effect.id, label: effect.label, lora: { id: lora.id, file: lora.file, label: lora.label, strength: effect.strength }, plan, modelName: labelOf(effect, onCloud),
+        ...(outpaint ? { outpaint } : {}), ...(isCloudOnly(effect) || (onCloud && effect.cloud) ? { cloud: true, template: effect.cloud!.template } : {}) } };
   },
   async run(job) {
     // Mock backend (or a comfy backend without a native plan): a labelled sample from the conformed clip. Never pretends a model ran.

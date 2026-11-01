@@ -63,7 +63,11 @@ try {
   // ---- Camera Angles: one prompt per angle, the first is finalPrompt ----
   { const f = { prompt: 'a sneaker', shots: '["front","side"]', provider: 'comfy-qwen-image' }; const pk = await peek('app-shots', f, { image: 1 });
     const id = await job('app-shots', { ...f, rights: '1' }, { image: PNG }); const j = await get(`/api/jobs/${id}`);
-    assert.deepEqual(pk.shots.map((s: any) => s.prompt), j.input.shots.map((s: any) => s.prompt)); assert.equal(pk.prompt, j.input.finalPrompt); ok(`Camera Angles: ${pk.shots.length} per-angle prompts match`); }
+    /* the angle wording names "image 1" (2026-11-01): the peek shows it in the model's own word, as the runner sends it (shared/promptRefs) */
+    const { applyRefGrammar } = await import('../src/shared/promptRefs.ts'); const { modelKeyOf } = await import('../src/routing/modelRegistry.ts');
+    const key = modelKeyOf('app-shots', f.provider, j.input); const as = (t: string) => applyRefGrammar(t, key, { image: 1 }); /* one photo */
+    assert.ok(pk.shots.every((s: any) => /Picture 1/.test(s.prompt)), 'Qwen Edit reads Picture 1');
+    assert.deepEqual(pk.shots.map((s: any) => s.prompt), j.input.shots.map((s: any) => as(s.prompt))); assert.equal(pk.prompt, as(j.input.finalPrompt)); ok(`Camera Angles: ${pk.shots.length} per-angle prompts match`); }
 
   // ---- Upscale: no prompt; errors come back as the submit's 400 ----
   { const up = await peek('image-upscale', { scale: '4' }, { image: 1 }); assert.equal(up.prompt, null); assert.match(up.noPrompt, /No prompt/); ok('Upscale: no prompt'); }

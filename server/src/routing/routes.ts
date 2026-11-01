@@ -33,6 +33,7 @@ import { LTX_DFR, ltxDfrAdjustNote, ltxDfrPriceInput, ltxDfrResolution } from '.
 import { ltx25CloudIssue, ltx25CloudRenderSeconds } from '../comfy/ltx25Cloud.js';
 import { layoutCloudIssue } from '../comfy/ltx25LayoutCloud.js';
 import { vfxCloudIssue, vfxLocalIssue } from '../comfy/ltx23VfxCloud.js';
+import { FOOTAGE_CLOUD_EFFECTS } from '../shared/footageFx.js';
 import { IT_PROVIDER, IT_MAX_SECONDS, itIssue, itBillSeconds } from '../comfy/infiniteTalkCloud.js';
 import { TV_MAX_SECONDS, TV_PART_MAX } from '../shared/talkingVideo.js';
 import { LTX_API_CLOUD, ltxApiCloudIssue } from '../comfy/ltx25ApiCloud.js';
@@ -233,7 +234,7 @@ export const tierLabel = (r: { kind: string; routeId: string }) => TIER_LABELS[t
  *  - comfy-open on Camera Moves → comfy-cloud:cloud-ltx-camera (the LTX moves only),
  *  - comfy-open on Re-shoot → comfy-cloud:cloud-reshoot.
  */
-const TWINS: { model: string; twin: string; tools: string[]; /** only the tool itself, never a gallery app built on it (app-transition, app-ugc-ad) */ exactTool?: boolean; /** picked by the mode alone, never a Run-on choice */ notAChoice?: boolean; modes?: string[]; unavailableFor?: (i: Record<string, any>) => string | null; priceInput?: RouteDef['priceInput']; adjustNote?: RouteDef['adjustNote']; caps?: Record<string, unknown>; /** an unmeasured price keeps the model as it was before the twin (select.ts twinHeld) */ heldUntilMeasured?: boolean }[] = [
+const TWINS: { model: string; twin: string; tools: string[]; /** only the tool itself, never a gallery app built on it (app-transition, app-ugc-ad) */ exactTool?: boolean; /** picked by the mode alone, never a Run-on choice */ notAChoice?: boolean; modes?: string[]; unavailableFor?: (i: Record<string, any>) => string | null; priceInput?: RouteDef['priceInput']; adjustNote?: RouteDef['adjustNote']; caps?: Record<string, unknown>; /** an unmeasured price keeps the model as it was before the twin (select.ts twinHeld) */ heldUntilMeasured?: boolean; /** provider=<twin> is read as model + this route on quote and submit (mapTwinAlias) */ aliasOk?: boolean }[] = [
   { model: 'comfy-h3', twin: 'cloud-h3-wf', tools: ['h3-video'], modes: ['t2v', 'i2v'] },
   // Oct 27: MiniMax H3 Keyframes · Comfy Cloud (comfy/h3KeyframesCloud.ts): the official multiframe template, the H3 card's Keyframes mode (2–5 stills at
   // chosen times → one shot). The only place that makes Keyframes; billed per second of clip at the picked size (an estimate until measured).
@@ -271,9 +272,10 @@ const TWINS: { model: string; twin: string; tools: string[]; /** only the tool i
   { model: 'comfy-ltx25-layout', twin: 'cloud-ltx25-layout', tools: ['make-it-real'], unavailableFor: layoutCloudIssue, heldUntilMeasured: true,
     caps: { localOnly: false, slow: false, resolutions: ['448p', '576p', '720p'], minSec: 2, maxSec: 10, importLora: 'layout-lora', note: 'LTX-2.5 22B + Lightricks’ Layout to Render on Comfy Cloud: Draft, Sharper or 720p, 2–10 s, with its own sound. Needs the LoRA imported into your Comfy Cloud model library.' } },
   // Oct 27: Footage Effects on shared Comfy Cloud (comfy/ltx23VfxCloud.ts): four official Comfy LTX-2.3 IC-LoRA templates (Restore old footage, Remove an object,
-  // Remove subtitles, Extend the frame) that run here only; the five local effects stay on this computer (each place refuses the other's). Billed per second of clip.
-  { model: 'comfy-ltx25-iclora', twin: 'cloud-ltx23-vfx', tools: ['footage-fx'], unavailableFor: vfxCloudIssue, heldUntilMeasured: true,
-    caps: { localOnly: false, slow: false, resolutions: ['448p', '576p'], durations: [2, 3, 4, 5], effects: ['restore', 'remove-object', 'remove-text', 'extend-frame'], note: 'Official Comfy LTX-2.3 templates on Comfy Cloud: restore old footage, remove an object, remove subtitles or extend the frame. 2–5 s, Draft or Sharper, your sound kept.' } },
+  // Remove subtitles, Extend the frame) that run here only. Nov 1: Vanish, Day to night, Rain and Flood run here too (LTX-2.3 LoRAs) AND locally (unchanged);
+  // Alpha matte stays on this computer. Billed per second of clip, one price row for every effect (the same two-stage GPU work).
+  { model: 'comfy-ltx25-iclora', twin: 'cloud-ltx23-vfx', tools: ['footage-fx'], unavailableFor: vfxCloudIssue, heldUntilMeasured: true, aliasOk: true,
+    caps: { localOnly: false, slow: false, resolutions: ['448p', '576p'], durations: [2, 3, 4, 5], effects: FOOTAGE_CLOUD_EFFECTS.map((e) => e.id), note: 'LTX-2.3 on Comfy Cloud: remove people, day to night, rain, flood, restore old footage, remove an object or subtitles, or extend the frame. 2–5 s, Draft or Sharper, your sound kept.' } },
 ];
 /** MiniMax Music 3 · Comfy Cloud bills the song length the graph asks for (max_duration): comfy/plans.ts songPlan's rule (the clip's length for a
  *  video, else the picked length; 60 s when none; 1–360 s), so the quote and the charge price the same seconds. */
@@ -289,6 +291,16 @@ LOCAL_ROUTE_BLOCK['comfy-ltx25-layout'] = (i) => (String(i.resolution) === '720p
 /** Routes the job's mode alone picks (Keyframes · Comfy Cloud): never offered as a Run-on choice. */
 export const NOT_A_CHOICE = new Set(TWINS.filter((t) => t.notAChoice).map((t) => `comfy-cloud:${t.twin}`));
 export const TWIN_ALIASES: Record<string, { model: string; route: string; tools: string[] }> = Object.fromEntries(TWINS.map((t) => [t.twin, { model: t.model, route: `comfy-cloud:${t.twin}`, tools: t.tools }]));
+/** provider=<twin card> (an API / MCP caller copying a provider id from /api/tools, e.g. cloud-ltx23-vfx on Footage Effects): the open model plus its
+ *  Comfy Cloud route, so the quote and the submit judge the same route with the same rules (2026-11-01: the quote priced the twin's bare route,
+ *  skipping its unavailableFor, while the submit refused the provider outright). Only twins marked aliasOk, on a tool that doesn't list the twin
+ *  itself (others keep their old behaviour until checked one by one). An explicit route= wins. Fields change in place; true when it mapped. */
+export function mapTwinAlias(tool: { id: string; app?: any; providers?: string[] } | null | undefined, f: Record<string, any>): boolean {
+  const tk = toolKeys(tool ?? null); let hit = false;
+  for (const k of ['provider', 'model'] as const) { const id = f[k]; if (typeof id !== 'string' || !isTwinAlias(id, tk) || tool?.providers?.includes(id) || !TWINS.some((t) => t.twin === id && t.aliasOk && t.tools.some((x) => tk.includes(x)))) continue; const a = TWIN_ALIASES[id];
+    f[k] = a.model; if (!f.route || f.route === 'auto') f.route = a.route; hit = true; }
+  return hit;
+}
 /** True when this provider id is a twin card shown as a route of its open model on this tool (hidden from the tool's model list). */
 export const isTwinAlias = (providerId: string, toolIds: string[]) => !!TWIN_ALIASES[providerId] && TWIN_ALIASES[providerId].tools.some((t) => toolIds.includes(t));
 function twinRoutes(modelId: string, toolIds: string[]): RouteDef[] {

@@ -47,6 +47,7 @@ export const IMAGE_DEFAULTS: Record<ImageFeatureId, WorkflowDefaults> = {
   erase: { local: null, hosted: cloudModel('erase'), why: { hosted: 'Made for removing objects' } },
   'ad-pack': { local: 'comfy-qwen21', hosted: cloudModel('ad-pack'), why: { local: 'Free ads on your computer, clean text', hosted: 'Cleanest words on the picture, keeps the product as it is' } },
   'try-on': { local: null, hosted: cloudModel('try-on'), why: { hosted: 'Made for trying on clothes' } },
+  'phone-photo': { local: 'comfy-klein4b', hosted: cloudModel('phone-photo'), why: { local: 'Free on your computer', hosted: 'Most true-to-life people at a low price' } },
   'material-swap': { local: 'comfy-qwen21', hosted: cloudModel('material-swap'), why: { local: 'Free two-photo edit locally', hosted: 'Keeps the object and the scene while the material changes' } },
   'image-layers': { local: 'comfy-qwen-image-layered', hosted: cloudModel('image-layers'), why: { local: 'Free layers locally once its files are downloaded', hosted: 'Fast, low-cost layer splits' } },
 };

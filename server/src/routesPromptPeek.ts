@@ -30,6 +30,7 @@ import { composeH3SwapPrompt } from './shared/h3SwapPrompt.js';
 import { ROUTER_SIZE_RULES } from './shared/routerImageSizes.js';
 import { applyBrandToFields } from './brandKits.js';
 import { jobWorkflow } from './jobSource.js';
+import { bfsSwapFor, bfsSwapPrompt } from './comfy/bfsSwap.js';
 import type { WorkflowSource } from './shared/workflowSources.js';
 
 const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
@@ -167,13 +168,16 @@ export async function promptPeek(tool: ToolDef, fields0: Record<string, string>,
   const previewRoutes = video ? videoRoutes(tool, provider, fields) : [];
   const sourceJob = { toolId: tool.id, provider, input, route: previewRoutes.length === 1 ? previewRoutes[0].routeId : undefined };
   const vwf = video && !wf ? (jobWorkflow(sourceJob) ?? (base !== tool.id ? jobWorkflow({ ...sourceJob, toolId: base }) : null)) : null;
-  const out: PromptPeek = { ok: true, prompt: upscale ? null : String(input.finalPrompt ?? input.prompt ?? ''), shots, noPrompt: upscale ? 'No prompt: the model upscales the photo' : null,
+  const out: PromptPeek = { ok: true, prompt: upscale ? null : String(input.finalPrompt ?? input.prompt ?? ''), shots, noPrompt: upscale ? 'No prompt: the model upscales the photo' : typeof G?.noPrompt === 'string' ? G.noPrompt : null,
     provider, model: feat?.model ?? (video ? catalogFor(tool.id, provider)?.name : null) /* the bar's model name ("Seedance 2.0") */ ?? getProvider(provider)?.name ?? null, workflowFile: file ?? vwf?.file ?? null, workflowLine: wf ? workflowLine(wf) : null,
     settings: { aspect: input.aspectAuto === true && (!fields.aspect || fields.aspect === 'auto') ? 'auto' /* an edit on Match photo: the photo's shape, not the default the job also carries */ : input.aspect ?? fields.aspect ?? null, resolution: input.imageResolution ?? (video ? input.resolution ?? null : null), quality: input.tier ?? (video ? input.quality ?? null : null), n: video ? null : Number(input.n) || null, seed: seedSent && Number.isFinite(Number(input.seed)) ? Number(input.seed) : null, mode: input.mode ?? null,
       ...(video ? { duration: Number(input.duration) || null, audio: typeof input.audio === 'boolean' ? input.audio : null, bitrate: input.bitrate ?? null } : {}) },
     ...(video ? { inputs: videoInputs(input.mode, filled ?? {}) } : {}) };
   if (video && !wf) { out.workflowLine = videoWorkflowLine({ model: out.model, mode: (tool.presets ?? []).find((x) => x.id === input.mode)?.label ?? null, place: videoPlace(tool, provider, fields), workflow: vwf });
     out.workflowCredit = vwf ? workflowLine({ ...vwf, file: vwf.file ?? undefined, licence: vwf.licence ?? '' }) : null; }
+  /* Face / Person Swap on Qwen Image 2.1: the BFS LoRA graph sends its trained prompt (+ touch-ups), not the composed one (comfy/plans.ts image) */
+  const bfs = (input.refPaths?.length ?? 0) > 1 ? bfsSwapFor(tool.id, provider, input) : null;
+  if (bfs) { out.prompt = bfsSwapPrompt(bfs, input.appPrompt); out.workflowFile = bfs.workflowFile; }
   if (swap) {
     // Pure wrapper used by the request builder itself, after the same reference grammar; never call the video body (it uploads).
     out.prompt = swapPromptOf(provider as 'router-kling-edit' | 'router-seedance-25-edit', input);

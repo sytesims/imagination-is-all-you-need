@@ -316,7 +316,7 @@ export function editSize(g: Record<string, any>, i: { imageResolution?: string; 
 function image(job: Job): Plan {
   const i = job.input; const mode = i.mode === 'inpaint' ? 'inpaint' : i.imagePath ? 'edit' : 'generate';
   const multi = mode === 'edit' && (i.refPaths?.length ?? 0) > 1 && !!IMAGE_WF[job.provider]?.multiref; // FLUX 3 Klein: 2–10 references; Qwen 2.1 / Qwen-Edit-2509: 2 / 2–3
-  const bfs = multi ? bfsSwapFor(job.toolId, job.provider) : null; // Face Swap / Person Swap on Qwen 2.1: the BFS LoRA graph (comfy/bfsSwap.ts)
+  const bfs = multi ? bfsSwapFor(job.toolId, job.provider, i) : null; // Face Swap / Person Swap on Qwen 2.1: the BFS LoRA graph (comfy/bfsSwap.ts)
   const name = bfs ? bfs.graph : multi ? IMAGE_WF[job.provider].multiref : IMAGE_WF[job.provider]?.[mode] ?? IMAGE_WF[job.provider]?.generate; if (!name) throw new Error(`no local workflow for ${job.provider} (${mode})`);
   const m = nm(name); let file = m.workflowFile as string; if (mode === 'inpaint' && job.provider === 'comfy-qwen-image') file = 'create-image-qwen-edit2509-inpaint-api.json';
   const g = wf(file); const seed = clampSeed(i.seed); const prompt0 = i.enhancedPrompt ?? i.finalPrompt ?? i.prompt ?? '';

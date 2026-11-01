@@ -35,7 +35,7 @@ import { clipShortSideText, EXTEND_MAX_SEC, EXTEND_TOO_LONG_TEXT } from '../../s
 export { H3_LORAS, H3_CAMERA_MOVES, H3_INTENSITY } from './catalog.js';
 
 registerLicense({ id: 'h3-camera-motion-civitai', name: 'camera_motion_h3 (Civitai licence, verified 2026-10-17): commercial use allowed incl. selling outputs, selling the model and running it on paid generation services (Image, Rent, RentCivit, Sell, SellMerge); no credit required; derivatives and relicensing allowed. Base MiniMax H3 Community Licence terms still apply.', osi: false, url: 'https://civitai.com/models/2914784/cameramotionh3' });
-registerLicense({ id: 'alissonerdx-unspecified', name: 'Alissonerdx H3 Style Transfer / VFX Edit LoRAs: repo licence "other (mixed-asset-licenses)"; no licence is stated for these two files (the no-SaaS BFS licence covers only the Character Swap LoRAs). Treated as local only until the author states terms.', osi: false, url: 'https://huggingface.co/Alissonerdx/Minimax-H3-ComfyUI/blob/main/LICENSES.md' });
+registerLicense({ id: 'alissonerdx-unspecified', name: 'Alissonerdx H3 Style Transfer / VFX Edit LoRAs: repo licence "other (mixed-asset-licenses)"; no licence is stated for these two files (the no-SaaS BFS licence covers only the Character Swap LoRAs). Check with the author before commercial use.', osi: false, url: 'https://huggingface.co/Alissonerdx/Minimax-H3-ComfyUI/blob/main/LICENSES.md' });
 for (const f of ['h3-t2v-fast-api.json', 'h3-flf-api.json', 'h3-flf-fast-api.json', 'h3-lipsync-api.json', 'h3-extend-api.json']) registerWorkflowLicense(f, ['minimax-community', 'apache-2.0']);
 registerWorkflowLicense('h3-camera-motion-api.json', ['minimax-community', 'h3-camera-motion-civitai']);
 registerWorkflowLicense('h3-style-transfer-api.json', ['minimax-community', 'alissonerdx-unspecified', 'apache-2.0']);
@@ -51,7 +51,7 @@ local('comfy-h3-camera', 'MiniMax H3 Camera Motion', ['h3-camera-motion-api.json
 local('comfy-h3-restyle', 'MiniMax H3 Style Transfer', ['h3-style-transfer-api.json'], 'https://huggingface.co/Alissonerdx/Minimax-H3-ComfyUI', ['minimax-community', 'alissonerdx-unspecified']);
 local('comfy-h3-vfx', 'MiniMax H3 VFX Edit', ['h3-vfx-edit-api.json'], 'https://huggingface.co/Alissonerdx/Minimax-H3-ComfyUI', ['minimax-community', 'alissonerdx-unspecified']);
 
-// Restyle: H3 style transfer + VFX as local-only engines (never the default; licence forbids hosted use).
+// Restyle: H3 style transfer + VFX as extra engines. Local only because no Comfy Cloud route is wired yet (not because of their licence).
 restyleTool.providers = [...restyleTool.providers.filter((p) => !p.startsWith('comfy-h3-')), 'comfy-h3-restyle', 'comfy-h3-vfx'];
 restyleTool.workflows = [...new Set([...restyleTool.workflows, 'h3-style-transfer-api.json', 'h3-vfx-edit-api.json'])];
 

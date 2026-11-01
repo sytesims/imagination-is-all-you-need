@@ -5,6 +5,7 @@
  * Run on and Generate with the price (quote = charge). What the bar shows comes from the recipe (server/src/shared/videoBar.ts); the job
  * runs on the workflow's own tool with the fields its old screen posted, so prices, the API and saved jobs are unchanged.
  */
+import { Words } from '../../shared/Words';
 import { ACCEPT, IMAGE_ACCEPT, fileFits, kindOfFile, wrongTypeText } from '../../../../server/src/shared/mediaAccept';
 import { SlotPreview, prepUpload } from '../../shared/SlotPreview';
 import { hasFreeLocal } from '../../shared/KeyNeeded';
@@ -323,7 +324,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
     const missing = gallery?.group === g.id && !gallery.optional && !valOf(gallery);
     return <button key={g.id} ref={el => { gRefs.current[g.id] = el; }} type="button" className={`ic-chip wf-grp wf-fold${pop === `g:${g.id}` ? ' on' : ''}${missing ? ' vbar-need' : ''}`} aria-haspopup="dialog" aria-expanded={pop === `g:${g.id}`}
       data-testid={`vbar-group-${g.id}`} aria-label={sum === g.label ? g.label : `${g.label}: ${sum}`} {...tip(pop === `g:${g.id}` ? null : sum === g.label ? g.label : `${g.label}: ${sum}`)} onClick={() => setPop(pop === `g:${g.id}` ? '' : `g:${g.id}`)}>
-      {icon}{!(reel && g.id === 'words' && sum === 'End card') && <span className="wf-grp-l">{g.label}</span>}<b>{sum}</b></button>; });
+      {icon}{!(reel && g.id === 'words' && sum === 'End card') && <span className="wf-grp-l">{g.label}</span>}<b><Words text={sum} /></b></button>; });
   /* Sound toggles (Extend's sound, Keep the clip's sound, Re-shoot's new sound) sit in Settings, as on Create Video (SoundSetting.tsx, 2026-10-27);
    * the Settings button wears a speaker badge while one is on. It sits beside ⋯ and never folds (a 32 px square), so the sound state stays in sight. */
   const sndCtl = shown.filter(c => c.kind === 'toggle'); const sndAny = sndCtl.some(c => valOf(c) !== '0');
@@ -456,7 +457,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
             <span className="ic-fixed" data-testid="vs-chips-fixed">
               <VideoWorkflowChip tools={tools} dock watch={dock} />
               <button ref={modelRef} type="button" className={`ic-chip ic-model ${pop === 'model' ? 'on' : ''}`} data-testid="vs-model" aria-haspopup="listbox" aria-expanded={pop === 'model'} {...tip(pop === 'model' ? null : modelName)} onClick={() => setPop(pop === 'model' ? '' : 'model')}>
-                <MakerTile className="ic-dot" medium="video" maker={tm?.maker} makerName={tm?.makerName} fallback={provInfo?.family || provInfo?.name} /><span className="ic-mname">{modelName}</span>
+                <MakerTile className="ic-dot" medium="video" maker={tm?.maker} makerName={tm?.makerName} fallback={provInfo?.family || provInfo?.name} /><span className="ic-mname"><Words text={modelName} /></span>
                 <svg className="ic-caret" width="16" height="16" viewBox="0 0 16 16" aria-hidden><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></button>
             </span>
             <span className="wf-strip wf-ctl" data-testid="vbar-controls" data-workflow={wf.id} data-fit-main="first" /* its first control is the workflow's main one: never folds (shared/chipFit) */>{(() => { const ec = extra.chips?.(live()); const at = extra.chipsAfter ? bar.groups.findIndex(g => g.id === extra.chipsAfter) + 1 : 0; return <>{groupChips.slice(0, at)}{ec}{vfit.chip}{groupChips.slice(at)}</>; })()}

@@ -53,3 +53,21 @@ export function audioQuoteFields(toolId: string, r0: Record<string, any>, input:
   const sp = perUnit ? HOSTED_BY_ID[r0.priceRef]?.speech : undefined; const cap = sp && speechAtCap(HOSTED_BY_ID[r0.priceRef], priceMode(input));
   return { perUnit, perUnitNote: perUnit ? (cap ? 'billed per second of audio returned; quoted at the 2-minute cap' : sp ? 'billed per second of speech returned; estimated from your script' : PER_UNIT_NOTE[perUnit.unit]) : null, eta: videoEta(r0), ...(sp ? { upTo: true as const, upToNote: cap ? sp.capNote ?? sp.note : sp.note } : {}) };
 }
+/** P3-02: the no-clip estimate of a tool that takes a video ("Estimated for 8 s", routing/http.ts clipEstimate) belongs only to a price that follows
+ *  the clip's length (a per-second / per-minute row). A row billed on something else keeps no "8 s" note: a script (1k_chars, a speech row read from
+ *  the script) or one flat run says nothing, and a speech row with no script (Seed Audio music / sound effects: no length field, the model decides)
+ *  is priced at its billing cap, so the note says that instead ("priced at up to 120 s"), the same number the charge uses (pricing.ts hostedQty). */
+export function clipEstimateFor(est: Record<string, any> | null, priceRef: string | null | undefined, toolId: string, input: Record<string, any>, modelName?: string | null): Record<string, any> {
+  if (!est || est.estimateReason !== 'clip_not_loaded' || est.sizeEstimated) return est ?? {};
+  const h = priceRef ? HOSTED_BY_ID[priceRef] : undefined; if (!h?.unit) return est;
+  if (!h.speech && (h.unit === 'second' || h.unit === 'minute' || h.unit === 'mp_second')) return est; // the price follows the clip: the 8 s estimate stands
+  const { estimated: _e, assumedSeconds: _a, estimateReason: _r, estimateMessage: _m, ...rest } = est;
+  if (!h.speech || h.unit !== 'second') return rest;
+  const t = textAmounts(toolId, input); const { chars } = scriptOf(h, priceMode(input), t.chars, t.bytes);
+  if (Number(chars) > 0) return rest; // speech read from the script: priced from the script, not the clip
+  const cap = h.speech.maxSec; const who = modelName || 'This model'; const capWords = cap === 120 ? '2 minutes' : `${cap} s`;
+  return { ...rest, estimated: true, estimateReason: 'billed_cap', capSeconds: cap,
+    estimateMessage: speechAtCap(h, priceMode(input)) ? `Priced at up to ${cap} s: ${who} bills the audio it returns, up to ${capWords}, whatever your clip's length.`
+      : `Priced at up to ${cap} s until you add the script: ${who} bills the speech it returns, up to ${capWords}.` };
+}
+

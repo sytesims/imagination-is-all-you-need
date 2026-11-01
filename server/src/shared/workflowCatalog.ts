@@ -15,7 +15,7 @@ import { audioRoute, audioWorkflowById, AUDIO_WORKFLOW_IDS, type AudioWorkflowId
 import { threeDRoute, threeDWorkflowById } from './threeD.js';
 import { featureById, IMAGE_FEATURES } from './imageFeatures.js';
 import { THREE_D_WORKFLOWS } from './threeD.js';
-import { FOOTAGE_EFFECTS, FOOTAGE_FX_TOOL, footageEffect } from './footageFx.js';
+import { FOOTAGE_EFFECTS, FOOTAGE_FX_TOOL, footageEffect, isCloudOnly } from './footageFx.js';
 import { LTX_LORAS } from './ltxLoras.js';
 import { featuredRecreateHref, LTX_LAYOUT } from './featured.js';
 import type { FlowArt } from './exploreFlows.js';
@@ -88,11 +88,13 @@ function D(id: string, cat: WfCat, o: Partial<WfEntry> = {}): WfEntry {
 /** A Footage Effects effect (shared/footageFx.ts): the Video tab's Footage Effects with that effect picked (?preset=), named after the effect
  *  and credited to the Lightricks IC-LoRA that does it. Each effect is its own card: the effect IS the workflow you came for. */
 function FX(id: string, o: Partial<WfEntry> = {}): WfEntry {
-  const fx = footageEffect(id); const w = vw(FOOTAGE_FX_TOOL); if (!fx) throw new Error(`footage effect ${id}`); const lora = fx.cloud?.loraLabel ?? LTX_LORAS[fx.lora]?.label ?? fx.lora;
-  const made = fx.cloud ? `${lora} on LTX-2.3 22B, official Comfy template, on Comfy Cloud` : `Lightricks ${lora} on LTX-2.5 22B`;
-  return { id: `fx-${id}`, source: `fx:${id}`, name: fx.label, line: fx.tagline, cat: 'clip', tags: ['footage effects', 'vfx', 'ic-lora', 'ltx', fx.cloud ? 'comfy cloud' : 'local', lora.toLowerCase()], medium: 'video', toolId: w.toolId,
+  const fx = footageEffect(id); const w = vw(FOOTAGE_FX_TOOL); if (!fx) throw new Error(`footage effect ${id}`);
+  const cloudOnly = isCloudOnly(fx); const lora = cloudOnly ? fx.cloud!.loraLabel : LTX_LORAS[fx.lora]?.label ?? fx.lora;
+  // both places (Vanish, Day to night, Rain, Flood): LTX-2.5 on your computer, the LTX-2.3 version of the same Lightricks LoRA on Comfy Cloud
+  const made = cloudOnly ? `${lora} on LTX-2.3 22B, official Comfy template, on Comfy Cloud` : `Lightricks ${lora} on LTX-2.5 22B${fx.cloud ? ', or its LTX-2.3 version on Comfy Cloud' : ''}`;
+  return { id: `fx-${id}`, source: `fx:${id}`, name: fx.label, line: fx.tagline, cat: 'clip', tags: ['footage effects', 'vfx', 'ic-lora', 'ltx', ...(cloudOnly ? ['comfy cloud'] : fx.cloud ? ['local', 'comfy cloud'] : ['local']), lora.toLowerCase()], medium: 'video', toolId: w.toolId,
     href: `${videoWorkflowHref(FOOTAGE_FX_TOOL)}&preset=${encodeURIComponent(id)}`, models: [], needs: fx.needsLine ? '1 clip + what to remove' : '1 clip', preset: id, art: 'fx',
-    how: [fx.cloud ? ['Add your clip', 'Upload one, pick it from your media, or use a result. Up to 5 s at a time.'] : w.how[0], ['Pick the effect', `${fx.label} is picked for you: ${fx.tagline.charAt(0).toLowerCase()}${fx.tagline.slice(1)} (${made}).`], fx.cloud ? ['Generate', 'Runs on Comfy Cloud with the price on the button. Your sound is kept.'] : w.how[2]], ...o };
+    how: [cloudOnly ? ['Add your clip', 'Upload one, pick it from your media, or use a result. Up to 5 s at a time.'] : w.how[0], ['Pick the effect', `${fx.label} is picked for you: ${fx.tagline.charAt(0).toLowerCase()}${fx.tagline.slice(1)} (${made}).`], cloudOnly ? ['Generate', 'Runs on Comfy Cloud with the price on the button. Your sound is kept.'] : w.how[2]], ...o };
 }
 
 export const WF_ENTRIES: WfEntry[] = [
@@ -112,6 +114,7 @@ export const WF_ENTRIES: WfEntry[] = [
   // Characters
   I('character-sheet', 'character', { showcase: 'fad0bbe6', tags: ['turnaround', 'model sheet', 'consistent character', 'cast'] }),
   I('face-swap', 'character', { tags: ['face', 'portrait'] }),
+  I('phone-photo', 'character', { art: 'photo', tags: ['ugc', 'selfie', 'mirror selfie', 'phone', 'social', 'candid', 'portrait', 'influencer'] }),
   I('person-swap', 'character', { tags: ['body', 'outfit'] }),
   V('motion-control', 'character', { featured: 'kling-dance-swap', model: 'kling-v3-omni-edit', tags: ['dance', 'motion transfer', 'swap a character'] }),
   V('object-swap', 'character', { featured: 'h3-char-swap', model: 'minimax-h3-character-swap', tags: ['swap', 'replace a person', 'object swap', 'person swap', 'character swap'] }),
@@ -146,10 +149,10 @@ export const WF_ENTRIES: WfEntry[] = [
   // Change a clip
   V('restyle', 'clip', { art: 'video', tags: ['style transfer', 'look'] }),
   V('anime-restyle', 'clip', { art: 'video', tags: ['anime', 'cel shaded', 'cartoon'] }),
-  FX('vanish', { tags: ['remove people', 'clean plate', 'empty street', 'footage effects', 'vfx', 'local'] }),
-  FX('day-to-night', { tags: ['night', 'relight', 'footage effects', 'vfx', 'local'] }),
-  FX('rain', { tags: ['water', 'wet', 'weather', 'water simulation', 'footage effects', 'vfx', 'local'] }),
-  FX('flood', { tags: ['water', 'water simulation', 'footage effects', 'vfx', 'local'] }),
+  FX('vanish', { tags: ['remove people', 'clean plate', 'empty street', 'footage effects', 'vfx', 'local', 'comfy cloud'] }),
+  FX('day-to-night', { tags: ['night', 'relight', 'footage effects', 'vfx', 'local', 'comfy cloud'] }),
+  FX('rain', { tags: ['water', 'wet', 'weather', 'water simulation', 'footage effects', 'vfx', 'local', 'comfy cloud'] }),
+  FX('flood', { tags: ['water', 'water simulation', 'footage effects', 'vfx', 'local', 'comfy cloud'] }),
   FX('alpha-matte', { tags: ['matte', 'alpha', 'alpha gen', 'green screen', 'compositing', 'footage effects', 'vfx', 'local'] }),
   // Comfy Cloud effects (2026-10-27): the official Comfy LTX-2.3 templates
   FX('restore', { art: 'restore', tags: ['restore', 'old film', 'archival', 'colorize', 'remaster', 'footage effects', 'vfx', 'comfy cloud'] }),

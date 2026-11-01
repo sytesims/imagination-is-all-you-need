@@ -14,7 +14,7 @@
  */
 
 export type PatternTask = 'i2v-default' | 'camera-move' | 'camera-scene' | 'camera-static' | 'camera-enhance' | 'camera-angle' | 'video-swap' | 'video-swap-preset'
-  | 'motion-transfer' | 'video-restyle' | 'relight' | 'face-swap' | 'person-swap' | 'ad' | 'ad-text';
+  | 'motion-transfer' | 'video-restyle' | 'relight' | 'face-swap' | 'person-swap' | 'ad' | 'ad-text' | 'ugc-photo';
 export type PatternFamily = 'minimax-h3' | 'wan' | 'ltx' | 'kling' | 'seedance' | 'qwen-edit' | 'nano-banana' | 'gpt-image' | 'flux' | 'bria' | 'any';
 export interface PromptPattern {
   /** a PROMPT_GRAMMAR key (shared/promptGrammar.ts), a family, or 'any' (the fallback) */
@@ -96,11 +96,11 @@ export const PROMPT_PATTERNS: PromptPattern[] = [
     note: 'Wan VACE: a caption of the target clip. No "redrawn" or "keep the original motion": the control video carries the motion. The style negative runs at CFG 1.' },
 
   // ---- image edits ----
-  { model: 'qwen-image-edit-2509-angles', task: 'camera-angle', form: 'exact-lora-sentence', keep: 'last', negative: 'n/a', checked: D,
-    sources: [ANGLES_2509, TPL('templates-1_click_multiple_character_angles-v1.0')], template: '{sentence}',
+  { model: 'qwen-image-edit-2509-angles', task: 'camera-angle', form: 'exact-lora-sentence', keep: 'last', negative: 'n/a', checked: '2026-11-01',
+    sources: [ANGLES_2509, TPL('templates-1_click_multiple_character_angles-v1.0')], template: '{sentence}[ The subject: {id}.] Keep the subject, the place, the light and the photo style the same.',
     exact: { 'three-quarter-left': 'Rotate the camera 45 degrees to the left.', 'three-quarter-right': 'Rotate the camera 45 degrees to the right.',
-      side: 'Rotate the camera 90 degrees to the left.', low: 'Turn the camera to a low-angle view.', 'close-up': 'Turn the camera to a close-up.', wide: 'Turn the camera to a wide-angle lens.' },
-    note: '45° and close-up / wide-angle are on the 2509 LoRA card; 90° and low-angle come from the 2511 angles template (worth an A/B on 2509).' },
+      high: 'Turn the camera to a top-down view.', 'close-up': 'Turn the camera to a close-up.', wide: 'Turn the camera to a wide-angle lens.' },
+    note: 'Only the commands on the 2509 LoRA card (its English glosses): 45° left / right, top-down (our High angle), close-up and wide-angle. The card has no low-angle and no 90° command, so those views (and every other one) get the plain camera-angle wording below.' },
   { model: 'qwen-edit', task: 'relight', form: 'instruction', keep: 'last', negative: 'n/a', checked: D, sources: [TPL('image_qwen_image_edit_2509_relight')],
     template: 'Relight the scene: {light}', note: 'New light first. Only identity is locked (a light lock held the old light in our 2026-10-22 runs); the official prompt has no keep clause.' },
   { model: 'nano-banana', task: 'relight', form: 'instruction', keep: 'first', negative: 'n/a', checked: D, sources: [TPL('template_character_portrait_relighting')],
@@ -109,39 +109,85 @@ export const PROMPT_PATTERNS: PromptPattern[] = [
     template: 'Relight this photo: {light}', note: '"Change only X … keep everything else", the preserve list last.' },
   { model: 'any', task: 'relight', form: 'instruction', keep: 'last', negative: 'n/a', checked: D, sources: ['https://docs.x.ai/developers/model-capabilities/images/prompting-guide'],
     template: 'relight the scene: {light}', note: 'FLUX, Seedream, Grok…: change then keep. FIBO 2.0 may prefer no keep clause; A/B before changing.' },
-  { model: 'any', task: 'face-swap', form: 'instruction', keep: 'last', negative: 'n/a', checked: D, sources: ['https://docs.bfl.ai/guides/prompting_guide_flux2'],
-    template: 'Replace the face of the person in image 1 with the face of the person in image 2', note: '"Replace X in image 1 with Y from image 2"; the keep list follows.' },
-  { model: 'any', task: 'person-swap', form: 'instruction', keep: 'last', negative: 'n/a', checked: D, sources: ['https://docs.bfl.ai/guides/prompting_guide_flux2'],
-    template: 'Replace the person in image 1 with the person from image 2', note: 'Same form as the face swap.' },
+  // ---- People swaps (2026-11-01): Face Swap and Person Swap (tools/apps.ts) send these rows; image 1 = the target photo, image 2 = the face / person.
+  // "of image 1", never a possessive on a reference: tag models would read <image1>'s / <<<image_1>>>'s / <ref_image_0>'s.
+  { model: 'gpt-image', task: 'face-swap', form: 'instruction', keep: 'last', negative: 'n/a', checked: '2026-11-01', sources: [GPT_GUIDE],
+    template: 'Image 1: the photo to edit. Image 2: the face to use. Replace only the face of the person in image 1 with the face of the person in image 2. Do not change the pose, head angle, expression, hair, body, clothing, lighting, colours or background of image 1. Match the skin tone, light and grain of image 1.',
+    note: 'OpenAI: label each input image by its role, "change only X", then the full preserve list.' },
+  { model: 'nano-banana', task: 'face-swap', form: 'instruction', keep: 'last', negative: 'n/a', checked: '2026-11-01', sources: [GEMINI_GUIDE],
+    template: 'Using the provided images, replace only the face of the person in image 1 with the face of the person in image 2. Keep everything else in image 1 exactly the same: the pose, head angle, expression, hair, clothing, lighting and background. Blend the skin tone and light so the face sits naturally in the photo.',
+    note: 'Google: "Using the provided image(s) …, change only …; keep everything else … exactly the same", said positively.' },
+  { model: 'any', task: 'face-swap', form: 'instruction', keep: 'last', negative: 'n/a', checked: '2026-11-01', sources: [FLUX_GUIDE],
+    template: 'Replace the face of the person in image 1 with the face of the person in image 2. Keep the pose, head angle, expression, hair, body, clothing, lighting, colours and background of image 1 unchanged, and match the skin tone and light of image 1.',
+    note: '"Replace X in image 1 with Y from image 2", then what stays (FLUX.2, Seedream, Luma, Kling, Qwen, Klein). Positive only, under 60 words.' },
+  { model: 'gpt-image', task: 'person-swap', form: 'instruction', keep: 'last', negative: 'n/a', checked: '2026-11-01', sources: [GPT_GUIDE],
+    template: 'Image 1: the photo to keep. Image 2: the person to put in it. Replace only the person in image 1 with the person from image 2: their {who}.[ {keepOutfit}] Do not change the pose, framing, camera angle, lighting, colours or background of image 1. Match its light and grain.',
+    note: 'OpenAI: a role per input image, "change only", the preserve list in full; its try-on example fits garments "naturally" to the new body (keepOutfit).' },
+  { model: 'nano-banana', task: 'person-swap', form: 'instruction', keep: 'last', negative: 'n/a', checked: '2026-11-01', sources: [GEMINI_GUIDE],
+    template: 'Using the provided images, replace the person in image 1 with the person from image 2: their {who}.[ {keepOutfit}] Keep everything else in image 1 exactly the same: the pose, framing, camera angle, lighting, colours and background. The new person takes on the light and grain of image 1.',
+    note: 'Google: "Using the provided images …", what stays said positively.' },
+  { model: 'any', task: 'person-swap', form: 'instruction', keep: 'last', negative: 'n/a', checked: '2026-11-01', sources: [FLUX_GUIDE, GPT_GUIDE],
+    template: 'Replace the person in image 1 with the person from image 2: their {who}.[ {keepOutfit}] Keep the pose, framing, camera angle, lighting, colours and background of image 1 unchanged, and match its light and grain.',
+    note: '{who} = what comes from the person (tools/shots.ts PERSON_SWAP_WHO, or PERSON_SWAP_KEEP_OUTFIT_WHO); [{keepOutfit}] only for "Keep the photo\'s outfit" (refitted to the new body, after OpenAI\'s try-on advice).' },
 
   // ---- Ad Pack (2026-10-31, shared/adPack.ts): one finished ad per style, the model paints the scene and the words; our code adds the logo after.
   // 'ad' is the frame ({scene} = the style's sentence), 'ad-text' the words line. Every guide below agrees on the text rules: exact words in
   // double quotes, short, with the font feel and the place named. Our own wording after each vendor's guide; product photos as "image N" words.
   { model: 'gpt-image', task: 'ad', form: 'instruction', keep: 'last', negative: 'n/a', checked: D, sources: [GPT_GUIDE],
-    template: 'Image 1 is the product photo.[ {more}] Create a finished {shape} social media ad for this product. Scene: {scene}.[ About the product: {details}.] Product: keep it exactly as in image 1, with the same shape, colours, label and printed text.[ {text}][ Brand colours: {colours}.][ Brand rules: {dos}.][ Avoid {donts}.][ Layout: keep the {corner} corner as plain background with nothing in it, for a logo added later.][ Keep all text and the product clear of the {safe} of the frame.] No other words, watermarks or logos.',
-    note: 'OpenAI: label each input image by its role, then scene → subject → details → constraints; say what the image is for (an ad); the preserve list stated in full; "no other text" as the last constraint.' },
+    template: 'Image 1 is the product photo.[ {more}] Create a finished {shape} social media ad for this product: {kind}. Scene: {scene}[, not {unlike}].[ About the product: {details}; the scene above still sets the setting.] Product: keep it exactly as in image 1, with the same shape, colours, label and printed text.[ {text}][ Brand colours, within this style: {colours}.][ Brand rules: {dos}.][ Avoid {donts}.][ Layout: keep the {corner} corner as plain background with nothing in it, for a logo added later.][ Keep all text and the product clear of the {safe} of the frame.] No other words, watermarks or logos.',
+    note: 'OpenAI: label each input image by its role, then scene → subject → details → constraints; say what the image is for (an ad) and what kind of picture it is first; the brand comes after the scene as constraints (style first, 2026-11-01); the preserve list stated in full; "no other text" as the last constraint.' },
   { model: 'gpt-image', task: 'ad-text', form: 'instruction', keep: 'none', negative: 'n/a', checked: D, sources: [GPT_GUIDE],
     template: 'Text, verbatim, each once and perfectly legible: {quoted}. Typography: {type}.', note: 'OpenAI: literal text in quotes, "verbatim", appears once, typography as a constraint.' },
   { model: 'nano-banana', task: 'ad', form: 'instruction', keep: 'last', negative: 'n/a', checked: D, sources: [GEMINI_GUIDE],
-    template: 'Using the provided image of the product (image 1), create a high-resolution {shape} advertising photograph of it.[ {more}] {scene}.[ The product: {details}.] The product stays exactly as it is in the image, with its shape, colours and label unchanged.[ {text}][ The colour scheme uses {colours}.][ The design follows the brand\'s style: {dos}.][ It avoids {donts}.][ The {corner} corner is clean, empty background with no text or objects.][ All text and the product stay clear of the {safe} of the frame.] There is no other text or logo in the image.',
-    note: 'Google: "Using the provided image of …" for edits; describe the scene in sentences, not keywords; the product-photography template (surface, light, angle); the shape named in the prompt as well as the request.' },
+    template: 'Using the provided image of the product (image 1), create a high-resolution {shape} ad for it, made as {kind}.[ {more}] {scene}[, not {unlike}].[ The product: {details}; the scene described above still sets the setting.] The product stays exactly as it is in the image, with its shape, colours and label unchanged.[ {text}][ Within this style, the colour scheme uses {colours}.][ The design follows the brand\'s style: {dos}.][ It avoids {donts}.][ The {corner} corner is clean, empty background with no text or objects.][ All text and the product stay clear of the {safe} of the frame.] There is no other text or logo in the image.',
+    note: 'Google: "Using the provided image of …" for edits; describe the scene in sentences, not keywords; the product-photography template (surface, light, angle); the shape named in the prompt as well as the request; the kind of picture said first (a poster is not called a photograph).' },
   { model: 'nano-banana', task: 'ad-text', form: 'instruction', keep: 'none', negative: 'n/a', checked: D, sources: [GEMINI_GUIDE],
     template: 'The ad shows {quoted} in {type}.', note: 'Google text template: the exact words in quotes, then the font style and the design.' },
   { model: 'flux', task: 'ad', form: 'instruction', keep: 'none', negative: 'none', checked: D, sources: [FLUX_GUIDE],
-    template: 'Advertising photograph of the product from image 1. {scene}.[ {more}][ The product: {details}.] The product keeps its exact shape, colours and label from image 1.[ {text}][ Colours: {coloursByRole}.][ Brand style: {dos}.][ The {corner} corner is clean, empty background.][ Text and product sit clear of the {safe} of the frame.] Format: {shape}.',
-    note: 'BFL FLUX.2: most important first (subject, then scene, then style); no negative prompt, so the ad says what it wants; brand colours as hex codes tied to objects ("in colour #…"): each colour on its kit role, by the kit\'s own name; the kit\'s do\'s only (its don\'ts would be negatives).' },
+    template: '{Kind} advertising the product from image 1. {scene}.[ {more}][ The product: {details}.] The product keeps its exact shape, colours and label from image 1.[ {text}][ Colours: {coloursByRole}.][ Brand style: {dos}.][ The {corner} corner is clean, empty background.][ Text and product sit clear of the {safe} of the frame.] Format: {shape}.',
+    note: 'BFL FLUX.2: most important first (subject, then scene, then style); no negative prompt, so the ad says what it wants (no "not …" part); brand colours as hex codes tied to objects ("in colour #…"): each colour on its kit role, by the kit\'s own name; the kit\'s do\'s only (its don\'ts would be negatives).' },
   { model: 'flux', task: 'ad-text', form: 'instruction', keep: 'none', negative: 'none', checked: D, sources: [FLUX_GUIDE],
     template: 'The image shows {quoted}, in {type}.', note: 'BFL: quoted text, its typeface style, size and where it sits.' },
   { model: 'qwen-edit', task: 'ad', form: 'instruction', keep: 'last', negative: 'n/a', checked: D, sources: [QWEN_CARD],
-    template: 'Turn the product in image 1 into a {shape} advertising photo.[ {more}] {scene}.[ The product: {details}.] Keep the product\'s shape, colours and label exactly as in image 1.[ {text}][ Colour palette: {colours}.][ Brand style: {dos}.][ Avoid {donts}.][ Keep the {corner} corner as empty background.][ Keep the text and the product clear of the {safe} of the frame.] No other words or logos.',
+    template: 'Turn the product in image 1 into a {shape} ad, made as {kind}.[ {more}] {scene}[, not {unlike}].[ The product: {details}.] Keep the product\'s shape, colours and label exactly as in image 1.[ {text}][ Colour palette, within this style: {colours}.][ Brand style: {dos}.][ Avoid {donts}.][ Keep the {corner} corner as empty background.][ Keep the text and the product clear of the {safe} of the frame.] No other words or logos.',
     note: 'Qwen Image: short edit instruction on image 1, text in double quotes (the card\'s own examples). Its "Ultra HD, 4K" suffix is for text-to-image, so not added to an edit.' },
   { model: 'qwen-edit', task: 'ad-text', form: 'instruction', keep: 'none', negative: 'n/a', checked: D, sources: [QWEN_CARD],
     template: 'Add {quoted} in {type}.', note: 'Qwen Image: the words in double quotes.' },
   { model: 'any', task: 'ad', form: 'instruction', keep: 'last', negative: 'n/a', checked: D, sources: [],
-    template: 'Create a {shape} advertising photo of the product in image 1.[ {more}] {scene}.[ The product: {details}.] Keep the product exactly as in image 1, with the same shape, colours and label.[ {text}][ Brand colours: {colours}.][ Brand style: {dos}.][ Avoid {donts}.][ Leave the {corner} corner as empty background.][ Keep the text and the product clear of the {safe} of the frame.] No other words or logos.',
+    template: 'Create a {shape} ad for the product in image 1, made as {kind}.[ {more}] {scene}[, not {unlike}].[ The product: {details}.] Keep the product exactly as in image 1, with the same shape, colours and label.[ {text}][ Brand colours: {colours}.][ Brand style: {dos}.][ Avoid {donts}.][ Leave the {corner} corner as empty background.][ Keep the text and the product clear of the {safe} of the frame.] No other words or logos.',
     note: 'Our own default for the other edit models (Seedream, Qwen Image 3.0…): the shared rules, plain order.' },
   { model: 'any', task: 'ad-text', form: 'instruction', keep: 'none', negative: 'n/a', checked: D, sources: [],
     template: 'Add {quoted}, in {type}.', note: 'Quoted words, font feel and place.' },
+  // ---- People, phone photos (2026-11-01): our own wording after each vendor's guide (research: realistic UGC portraits). ----
+  // ugc-photo: one casual phone photo of an AI-made person. {who} = what you typed; {holder} / {light} = the chips' sentences (shared/phonePhoto.ts).
+  // No quality tags ("8K", "ultra-detailed", "photorealistic") and no studio-polish words: they push the picture toward an ad or an editorial.
+  { model: 'gpt-image', task: 'ugc-photo', form: 'instruction', keep: 'none', negative: 'n/a', checked: '2026-11-01', sources: [GPT_GUIDE],
+    template: 'A casual phone photo of {who}[, {action}][ in {setting}].[ {holder}.][ {light}.] Real skin with visible pores, a little shine and small marks, hair slightly out of place[, {detail}]. Everyday background left as it is, framing a little off-centre, phone-camera sharpness with light noise in the shadows. Unposed, no heavy retouching.',
+    note: 'OpenAI: write it as a real in-the-moment photo; name the framing and the light; ask for pores and small marks; "unposed", "no heavy retouching" instead of quality tags.' },
+  { model: 'nano-banana', task: 'ugc-photo', form: 'instruction', keep: 'none', negative: 'n/a', checked: '2026-11-01', sources: [GEMINI_GUIDE],
+    template: 'A casual, unposed phone photo: {who}[ {action}][ in {setting}], with everyday things around them just as they are.[ {holder}.][ {light}.] Their skin shows natural pores, a slight shine and small marks; a few loose strands of hair[; {detail}]. The frame is a little off-centre with the phone camera\'s natural sharpness.',
+    note: 'Google: full sentences, not a keyword list; say what is there (positive phrasing).' },
+  { model: 'flux', task: 'ugc-photo', form: 'instruction', keep: 'none', negative: 'none', checked: '2026-11-01', sources: [FLUX_GUIDE],
+    template: '{who}[, {action}][ in {setting}]. Modern smartphone photo[, {holder}][, {light}]. Natural skin with pores and slight shine, loose hair strands[, {detail}]. Lived-in background, slightly off-centre framing, small-sensor noise, deep focus.',
+    note: 'BFL FLUX.2: subject, action, style, context; 30-80 words; no negatives; real camera words.' },
+  { model: 'any', task: 'ugc-photo', form: 'instruction', keep: 'none', negative: 'n/a', checked: '2026-11-01', sources: [GPT_GUIDE, QWEN_CARD],
+    template: 'A casual phone photo of {who}[, {action}][ in {setting}].[ {holder}.][ {light}.] Real skin with visible pores, a little shine and small marks, hair slightly out of place[, {detail}]. Everyday background left as it is, framing a little off-centre, phone-camera sharpness with light noise in the shadows. Unposed, no heavy retouching.',
+    note: 'The GPT sentences for the other models (Seedream, Qwen Image…), with no "Ultra HD, 4K" suffix.' },
+
+  // camera-angle (2026-11-01): one edit per view of the same photo ({view} = the view's words, shared by every family; [{id}] = the subject as
+  // typed, repeated in every view). Style-neutral: the photo sets the style, so no "photorealistic" and no "phone photo" here.
+  { model: 'gpt-image', task: 'camera-angle', form: 'instruction', keep: 'last', negative: 'n/a', checked: '2026-11-01', sources: [GPT_GUIDE],
+    template: 'Image 1: the subject. Keep the subject exactly the same[: {id}]; same face, hair, skin tone, build and clothes. New camera angle: {view}. Same place and the same light as image 1, in the same photo style as image 1.',
+    note: 'OpenAI: label the input, state the preserve list in full on every edit, then the one change.' },
+  { model: 'nano-banana', task: 'camera-angle', form: 'instruction', keep: 'last', negative: 'n/a', checked: '2026-11-01', sources: [GEMINI_GUIDE],
+    template: 'Using the provided image of the subject, show the same subject {view}.[ The subject: {id}.] Their face, hair, skin tone, build and clothes stay exactly as in the image, and the place, the light and the photo style stay the same.',
+    note: 'Google: "Using the provided image of …", then say what stays.' },
+  { model: 'flux', task: 'camera-angle', form: 'instruction', keep: 'last', negative: 'none', checked: '2026-11-01', sources: [FLUX_GUIDE],
+    template: 'The subject from image 1[, {id},] seen {view}, in the same place, light and photo style as image 1.',
+    note: 'BFL FLUX.2: say what each image gives and repeat the subject; no negatives.' },
+  { model: 'any', task: 'camera-angle', form: 'instruction', keep: 'last', negative: 'n/a', checked: '2026-11-01', sources: [],
+    template: 'Show the subject in image 1 {view}.[ The subject: {id}.] Keep their face, hair, skin tone, build and clothes, the place, the light and the photo style exactly as in image 1.',
+    note: 'Our own default for the other edit models (Seedream, Kling, Qwen Image, Luma…).' },
 ];
 
 /** Which family a PROMPT_GRAMMAR key belongs to (null = none of ours). */
@@ -162,6 +208,12 @@ export function fillTemplate(template: string, slots: Record<string, string | nu
   const val = (s: string) => String(slots[s] ?? '').trim();
   return template.replace(/\[([^\]]*)\]/g, (_m, part: string) => ([...part.matchAll(/\{(\w+)\}/g)].every((x) => val(x[1])) ? part : ''))
     .replace(/\{(\w+)\}/g, (_m, s: string) => val(s)).replace(/\s+([.,;:])/g, '$1').replace(/\s{2,}/g, ' ').trim();
+}
+/** The family whose wording an engine gets, by its provider id (Ad Pack, Camera Angles, Phone Photo). */
+export function familyOfProvider(provider?: string | null): PatternFamily {
+  const p = String(provider ?? '');
+  return /^(api-gpt-image|direct-openai)/.test(p) ? 'gpt-image' : /^(api-nano-banana|direct-gemini)/.test(p) ? 'nano-banana' : /flux|klein/.test(p) ? 'flux'
+    : /^comfy-qwen|^api-qwen-image/.test(p) ? 'qwen-edit' : 'any';
 }
 /** The prompt a preset sends for a task on a model ('' = no pattern). */
 export const fillPattern = (task: PatternTask, model: string | null | undefined, slots: Record<string, string | null | undefined> = {}): string => {
