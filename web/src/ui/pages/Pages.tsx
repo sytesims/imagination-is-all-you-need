@@ -53,7 +53,7 @@ function ApiExposure() {
   if (hosted === undefined) return <div className="api-expo api-expo-hold" aria-hidden />; /* holds the line's height while the config loads, so the links below don't jump */
   if (hosted == null) return null;
   return <div className={`api-expo ${hosted ? 'on' : 'off'}`} role="status" data-testid="api-exposure" data-hosted={String(hosted)}><span className="api-expo-dot" aria-hidden />
-    {hosted ? <><b>Public API exposed</b><span className="helper">This install is hosted, so other people can reach this API. Requests need an API key.</span></> : <><b>Local only</b><span className="helper">This API isn’t exposed publicly. Only this machine (and anything you point at it) can call it.</span></>}</div>;
+    {hosted ? <><b>Public API exposed</b><span className="helper">This install is hosted, so other people can reach this API. Requests need an API key.</span></> : <><b>Only this computer</b><span className="helper">This API isn’t exposed publicly. Only this machine (and anything you point at it) can call it.</span></>}</div>;
 }
 export function ApiDocs() {
   return <Page eyebrow="Developers" title="Local REST API" lede="Everything the app does goes through a plain JSON API on your computer. Script it, batch it, or wire it into your own tools.">
@@ -160,7 +160,7 @@ export function Presets({ tools }: { tools: ToolInfo[] }) {
       <ScrollFade className="pp-presets-chips-wrap"><div className="pp-presets-chips" role="group" aria-label={toolId ? 'Category' : 'Media'}>
         {chips.map(([k, l]) => <button key={k || 'all'} type="button" aria-pressed={chipOn(k)} data-testid={`pre-chip-${k || 'all'}`} className={`pp-presets-chip ${chipOn(k) ? 'on' : ''}`} onClick={() => pickChip(k)}>{l}</button>)}
       </div></ScrollFade>
-      <div className="pp-presets-src" role="tablist" aria-label="Source">{([['ours', 'Ours'], ['trending', 'Community trending'], ['new', 'Community new']] as const).map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={src === k} data-testid={`pre-src-${k}`} className={`pp-presets-seg ${src === k ? 'on' : ''}`} onClick={() => setSrc(k)}>{l}</button>)}</div>
+      <div className="pp-presets-src" role="tablist" aria-label="Source">{([['ours', 'Built-in'], ['trending', 'Community trending'], ['new', 'Community new']] as const).map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={src === k} data-testid={`pre-src-${k}`} className={`pp-presets-seg ${src === k ? 'on' : ''}`} onClick={() => setSrc(k)}>{l}</button>)}</div>
     </div>
     {fallback && <p className="pp-presets-note">Showing the built-in looks while the rest load.</p>}
     {!items ? <div className="pp-presets-grid" aria-busy="true">{Array.from({ length: 10 }, (_, i) => <div key={i} className="pp-presets-shim" />)}</div>

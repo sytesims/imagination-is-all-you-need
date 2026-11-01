@@ -547,7 +547,7 @@ export const PrevizPlayer = forwardRef<PrevizHandle, Props>(function PrevizPlaye
         {imported && scene.state === 'error' && <div className="pv-err" role="alert" data-testid="pv-scene-error">
           <span className="pv-err-ic"><AlertIcon size={18} /></span><b>This scene can’t be used yet</b>
           <ul>{scene.problems.map((p) => <li key={p}>{p}</li>)}{scene.errors.slice(0, 2).map((p) => <li key={p} className="pv-err-js">{p}</li>)}</ul>
-          <p>Send these lines back to the agent that wrote it, or start again from our build prompt.</p>
+          <p>Send these lines back to the agent that wrote it, or start again from the build prompt.</p>
           <span className="pv-err-acts">{errorActions}<button type="button" className="pv-btn" onClick={onCopyPrompt}><DocsIcon size={14} />Copy build prompt</button></span></div>}
         {!imported && !busy && ready && isCityTemplate(shot.template) && <CityMap shot={shot} live={fly ? livePose : null} liveActor={fly ? liveActor : null} onTeleport={teleport} marks={mapMarks} />}
         {!imported && !busy && ready && !isCityTemplate(shot.template) && <PathMap shot={shot} t={t} live={fly ? livePose : null} liveActor={fly ? liveActor : null} onEditShot={onEditShot} marks={mapMarks} />}

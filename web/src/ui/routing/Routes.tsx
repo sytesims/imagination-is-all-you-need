@@ -36,7 +36,7 @@ export function ViaLine({ p, override }: { p: any; override?: string | null }) {
   const rt = useRouting();
   /* B20 (local_only): a model whose only route is local runs here even with Use local ComfyUI off; say so, with the server's reason on hover */
   const one: any = r ?? ((p?.routes ?? []).length === 1 ? p.routes[0] : undefined);
-  if (one?.reasonCode === 'local_only') return <small className="via-line via-local-only" data-testid="via-line" title={one.reason ?? undefined}>{one.status ?? 'Local only · runs on your computer'}</small>;
+  if (one?.reasonCode === 'local_only') return <small className="via-line via-local-only" data-testid="via-line" title={one.reason ?? undefined}>{one.status ?? 'Runs on your computer only'}</small>;
   if (p && 'defaultRoute' in p && p.defaultRoute == null && route === 'auto') return <button type="button" className="via-line via-nokey" data-testid="via-add-key" onClick={e => { e.stopPropagation(); e.preventDefault(); openNeedsKey(p.noProvider ?? { error: `No provider is set up for ${p.name ?? p.id}.`, modelId: p.id }, p.id); }}>Add an API key</button>;
   const txt = r ? `Runs on ${r.label}` /* price from the live quote only */ : rt?.global?.useLocal && (p?.routes ?? []).some((x: Route) => x.kind === 'local') ? 'local · free' : demoTagOf(p) && p?.demoPreview ? demoTagOf(p)! /* B28a */ : p?.via?.text ? viaText(String(p.via.text)) : '';
   /* B27 (A3): a keyless demo shows the server's full demo label ('SeedVR2 via fal · sample … · needs a fal key for real runs'), never a cut tag */
@@ -56,7 +56,7 @@ export function RoutePicker({ p, compact }: { p: any; compact?: boolean }) {
   const offRoutes = routes.filter(offOf); const offIds = new Set(offRoutes.map(r => r.routeId)); const groups = new Map<string, string[]>();
   offRoutes.forEach(r => { const why = plainWhy2(isNotWired(r) && r.runnable !== true ? notWiredLabel(r) : reasonWords(r) ?? 'Not configured') ?? 'Not configured.'; groups.set(why, [...(groups.get(why) ?? []), (r as any).displayName ?? r.label]); });
   const offNotes = [...groups.entries()].map(([why, names]) => <p key={why} className="helper route-off" data-testid="route-off"><b>{names.join(', ')}</b>: {why}</p>);
-  return <div className={`route-pick ${compact ? 'compact' : ''}`} role="radiogroup" aria-label="Route">
+  return <div className={`route-pick ${compact ? 'compact' : ''}`} role="radiogroup" aria-label="Where it runs">
     <span className="field">ROUTE</span>
     {[{ routeId: 'auto', kind: 'auto', label: `Pre-selected${p?.defaultRoute ? ` · ${runOnLabel(runOnOfRoute(p.defaultRoute)) || 'first ready place'}` : ''}`, available: true } as Route, ...routes].filter(r => !offIds.has(r.routeId)).map(r => { const nw = isNotWired(r) && r.runnable !== true; const on = route === r.routeId; const lo = (r as any).reasonCode === 'local_off' || r.reason === 'local_off'; const rwp = (r as any).runsWhenPinned === true; /* B20: local_off + runsWhenPinned = pick it and it runs on this computer */ const dim = nw || (r.available === false && !r.demo && !(lo && rwp && on)); const off = nw || (dim && !r.pinnable && !rwp && r.runnable !== true); const why2 = (x: any) => [reasonWords(x), plainWhy2(x.reasonDetail)].filter(Boolean).join(' ') || null; /* B18: local_off = turned off locally, in plain words */ /* B15: not_wired = shown, greyed, never priced or picked */
       return <button key={r.routeId} data-testid={`route-opt-${r.routeId}`} data-pinnable={r.pinnable ? '1' : undefined} data-status={r.status ?? undefined} type="button" role="radio" aria-checked={on} aria-disabled={dim || undefined} disabled={off} className={`route-opt ${on ? 'on' : ''} ${dim ? 'dim' : ''} ${r.demo ? 'demo' : ''} ${r.pinned ? 'pinned' : ''}`} data-not-wired={nw ? '1' : undefined} title={nw ? notWiredLabel(r) : lo ? (why2(r) ?? LOCAL_OFF_TEXT) /* B20: reason + reasonDetail, the server's two lines */ : /^local_(only|pinned)$/.test(String((r as any).reasonCode ?? '')) && r.reason ? r.reason : dim ? (r.status ?? reasonWords(r) ?? 'Not available') + (r.pinnable ? ' · pick it to pin this model to it' : '') : r.demo && r.reason ? r.reason /* B19: the server's demo wording */ : r.status ?? r.sourceUrl ?? ''} onClick={() => setRoute(p.id, r.routeId)}>
@@ -79,7 +79,7 @@ export function FallbackPrompt({ job, onDone }: { job: any; onDone: () => void }
   if (noOffers) return err ? <p className="inline-err">{err}</p> : null;
   /* B27 (A8): the decision payload: options with their price, the server's note verbatim, then what happened to the failed attempt's credits */
   const opts: any[] = Array.isArray(job.decision?.options) && job.decision.options.length ? job.decision.options : alts;
-  const note = String(job.decision?.note ?? job.error ?? '').trim() || 'The route you picked failed.';
+  const note = String(job.decision?.note ?? job.error ?? '').trim() || 'The place you picked failed.';
   const back = job.creditsBack?.credits ?? (job.refund?.refunded ? job.refund.amount : null);
   const refundLine = job.refund?.freeGenReturned ? 'Your free gen was returned.' : typeof back === 'number' && back > 0 ? `The failed attempt’s ${ledgerUsd(back)} went back to your balance.` : null;
   const saysBack = /back in your balance|back to your balance|returned/i.test(note);

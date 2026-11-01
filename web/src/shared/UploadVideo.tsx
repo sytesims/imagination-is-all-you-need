@@ -62,7 +62,7 @@ export default function UploadVideo({ title = 'Video', hint, video, onChange, di
       </> : <>
         <FilledMedia items={[{ id: video.url, url: video.url, kind: 'video', label: '@Video 1' }]} max={1} onRemove={() => !disabled && onChange(null)} onReplace={disabled ? undefined : () => onChange(null)} onAdd={() => undefined} />
         <div className="row mt-8 fm-meta">
-          <span className="chip">{fmt(Math.min(video.duration, LIMITS.maxSec))}</span>{video.trimmed && <span className="chip info-chip">We'll use the first {LIMITS.maxSec} s (sound included).</span>}
+          <span className="chip">{fmt(Math.min(video.duration, LIMITS.maxSec))}</span>{video.trimmed && <span className="chip info-chip">Only the first {LIMITS.maxSec} s is used (sound included).</span>}
           <span className="chip">{video.w}×{video.h}</span>
           <span className={`chip ${video.audio === false ? '' : 'ok'}`} title={video.audio === false ? 'This clip has no sound' : 'Audio detected: it is kept in the result'}>{video.audio === false ? 'No audio track' : 'Audio kept'}</span>
         </div>

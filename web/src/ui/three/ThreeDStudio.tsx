@@ -335,7 +335,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
   const sceneItems: SceneItem[] = [
     ...PREVIZ_TEMPLATES.map((t): SceneItem => ({ id: t.id, name: t.name, line: t.tagline, thumb: thumb(t.id), tint: colourOf(t.defaults.colour).hex, icon: <PrevizIcon size={26} />, group: 'presets', testId: `ps-preset-${t.id}`,
       meta: [PREVIZ_MOVES.find((m) => m.id === t.defaults.move)?.label ?? '', `${t.defaults.seconds} s`, t.defaults.aspect].filter(Boolean) })),
-    { id: 'import', name: 'Import a scene', line: 'An .html scene your coding agent wrote that follows our scene contract', icon: <UploadIcon size={20} />, action: true, group: 'own', testId: 'ps-import' },
+    { id: 'import', name: 'Import a scene', line: 'An .html scene your coding agent wrote that follows the app’s scene contract', icon: <UploadIcon size={20} />, action: true, group: 'own', testId: 'ps-import' },
     { id: 'copy', name: 'Copy build prompt', line: `For your agent: a richer “${tplNow.name}” scene, ready to import`, icon: <DocsIcon size={20} />, action: true, group: 'own', testId: 'ps-copy-prompt' },
     { id: 'sets', name: 'Sets & characters', line: 'Real 3D places and rigged characters to shoot with', icon: <CharacterSheetIcon size={20} />, badge: 'Soon', soon: true, action: true, group: 'own', testId: 'ps-sets-soon' },
   ];

@@ -172,7 +172,7 @@ export function RunOnMenu({ open, anchor, avoid, watch, gap, onClose, toolId, mo
     const act = actionEl(m, r);
     const sub = [detailOf(r, !!ways), ps ? `per shot ${ps}` : '', multi ? `Runs ${shownName(m)}` : '', r.id === 'comfy-cloud' && (r.comfyVariants?.length ?? 0) > 1 && !ways ? comfyVariantText(r, m.name, m.family) : '' /* the ways below name each one */, billsText(r), r.id === 'local' ? '' : rule(ruleOf(r))].filter(Boolean).join(' · ');
     const here = r.id === 'local' ? hereOf(m) : null; const mem = here ? memoryCheck(here.memGB, hw?.profile, live) : null;
-    const mini = r.id === 'local' ? (here || hwName ? hereLine({ name: hwName || null, freeGB: here && (here.memGB ?? 0) >= HEAVY_GB ? freeForModelsGB(hw?.profile, live) : null, ...here }) : 'we check it fits your computer first') : '';
+    const mini = r.id === 'local' ? (here || hwName ? hereLine({ name: hwName || null, freeGB: here && (here.memGB ?? 0) >= HEAVY_GB ? freeForModelsGB(hw?.profile, live) : null, ...here }) : 'checked against your computer first') : '';
     const pick = () => { if (!busy) void choose(m, r.id); }; const hid = `ro-h-${m.key}-${r.id}`.replace(/[^\w-]/g, '-');
     const isDefault = curM.key === m.key && shownPlace === r.id && !saved && !ownPick;
     const radio = ways ? { id: hid } : { role: 'radio', 'aria-checked': on, tabIndex: 0, onClick: pick, onKeyDown: (e: React.KeyboardEvent) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); pick(); } } };

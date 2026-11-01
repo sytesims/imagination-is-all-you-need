@@ -32,7 +32,7 @@ export function PrecheckWarnings({ warnings, onAction }: { warnings: Warning[]; 
 export const MOCK_WARNINGS: Warning[] = [
   { code: 'static', title: 'Not much movement', message: 'The clip barely moves. Swaps work best with some motion; a still-looking result is likely.' },
   { code: 'prop-size', title: 'Reference doesn’t match the size', message: 'The object in @image1 is much larger than the one in the clip. It may look scaled.', action: 'Show me' },
-  { code: 'start-frame', title: 'Start frame can be used', message: 'Your first frame is clean, so we can lock identity from it for a steadier swap.', action: 'Use start frame' },
+  { code: 'start-frame', title: 'Start frame can be used', message: 'Your first frame is clean, so the swap can lock identity from it and stay steadier.', action: 'Use start frame' },
 ];
 /** (e) Prompt enhance + style presets for image tools. */
 export function PromptEnhance({ value, onChange, enhance }: { value: string; onChange: (s: string) => void; enhance?: (s: string) => Promise<string> }) {

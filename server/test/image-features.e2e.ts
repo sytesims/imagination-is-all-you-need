@@ -53,9 +53,9 @@ for (const f of IMAGE_FEATURES) for (const p of f.providers) { const w = workflo
   if (w!.file) assert.ok(fs.existsSync(path.join(REPO, 'workflows', w!.file)), `${f.id}/${p}: workflows/${w!.file} exists`); }
 assert.equal(workflowLine(workflowFor('relight', 'api-nano-banana')), 'Official Comfy template · Nano Banana 2: Image Edit');
 assert.equal(workflowFor('relight', 'api-nano-banana')!.recipe?.startsWith('Our light recipe'), true, 'Relight credits the edit template it runs + our recipe (not an upgrade we have not wired)');
-assert.equal(workflowLine(workflowFor('brush-edit', 'comfy-flux3-klein')), 'Ours · create-image-flux3klein-inpaint-api.json');
+assert.equal(workflowLine(workflowFor('brush-edit', 'comfy-flux3-klein')), 'Built-in · create-image-flux3klein-inpaint-api.json');
 assert.equal(workflowFor('camera-angles', 'comfy-qwen-angles')!.author, '@hellorob'); assert.equal(workflowFor('camera-angles', 'comfy-qwen-angles')!.file, 'shots-qwen-edit2509-angles-api.json');
-assert.match(workflowLine(workflowFor('face-swap', 'comfy-qwen-image')), /^Ours · create-image-qwen-edit2509-multiref-api\.json$/);
+assert.match(workflowLine(workflowFor('face-swap', 'comfy-qwen-image')), /^Built-in · create-image-qwen-edit2509-multiref-api\.json$/);
 assert.equal(featureOfJob({ toolId: 'app-relight', provider: 'api-nano-banana', input: {} })!.label, 'Relight · Nano Banana 2');
 assert.equal(featureOfJob({ toolId: 'create-image', provider: 'api-gpt-image', input: { types: ['edit'] } })!.label, 'Edit Image · GPT Image 2');
 assert.equal(featureOfJob({ toolId: 'create-image', provider: 'comfy-qwen-image', input: { types: ['inpaint'] } })!.label, 'Brush Edit · Qwen-Image-Edit-2509');

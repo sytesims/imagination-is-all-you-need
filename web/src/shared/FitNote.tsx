@@ -27,7 +27,7 @@ export const useCloudInstead = (providerId: string) => dispatchEvent(new CustomE
 const hwUnknown = (fit: Fit | null | undefined) => { const l = fitLabel(fit); return !!l && l.kind === 'unknown' && fit?.reasonCode !== 'requirements_unknown'; };
 export function HwUnknownLine({ fits, className = '', short = false }: { fits: (Fit | null | undefined)[]; className?: string; /** one short line (model menu footer) */ short?: boolean }) {
   if (!fits.some(hwUnknown)) return null;
-  return <p className={`fit-hw-line ${className}`.trim()} data-testid="fit-hw-line" role="note"><span title={short ? 'We couldn’t check your computer, so we can’t say what fits.' : undefined}>{short ? 'Couldn’t check what fits your computer' : 'We couldn’t check your computer, so we can’t say what fits.'}</span> <Link to={LOCAL_SETUP_HREF} className="fit-setup">Set up your computer</Link></p>;
+  return <p className={`fit-hw-line ${className}`.trim()} data-testid="fit-hw-line" role="note"><span title={short ? 'Your computer couldn’t be checked, so what fits isn’t known yet.' : undefined}>{short ? 'Couldn’t check what fits your computer' : 'Your computer couldn’t be checked, so what fits isn’t known yet.'}</span> <Link to={LOCAL_SETUP_HREF} className="fit-setup">Set up your computer</Link></p>;
 }
 export function FitTag({ fit, className = '', quietUnknown = false }: { fit: Fit | null | undefined; className?: string; quietUnknown?: boolean }) {
   const l = fitLabel(fit); if (!l || !fit) return null; if (quietUnknown && hwUnknown(fit)) return null; const src = l.kind === 'slow' && fit.etaSeconds ? etaSourceNote(fit) : null;

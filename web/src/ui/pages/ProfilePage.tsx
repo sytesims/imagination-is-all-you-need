@@ -187,7 +187,7 @@ function EditProfile({ profile, onClose }: { profile: ProfileData | null; onClos
         <UserAvatar profile={preview} size={96} label="Preview of your picture" />
         <div className="pf2-dlg-fields">
           <label className="dlg-l" htmlFor="pf-name-in">Display name</label>
-          <input id="pf-name-in" data-testid="pf-name-in" value={name} maxLength={NAME_MAX} placeholder="What should we call you?" onChange={e => setName(e.target.value)} aria-invalid={nameBad || err?.field === 'displayName'} />
+          <input id="pf-name-in" data-testid="pf-name-in" value={name} maxLength={NAME_MAX} placeholder="Your name" onChange={e => setName(e.target.value)} aria-invalid={nameBad || err?.field === 'displayName'} />
           <label className="dlg-l" htmlFor="pf-handle-in">Your @name</label>
           <div className="pf2-at"><span aria-hidden>@</span><input id="pf-handle-in" data-testid="pf-handle-in" value={handle} maxLength={31} placeholder="your-name" autoCapitalize="off" spellCheck={false} onChange={e => setHandle(e.target.value)} aria-invalid={handleBad || err?.field === 'handle'} aria-describedby="pf-handle-help" /></div>
           <small id="pf-handle-help" className={`helper${handleBad ? ' warn' : ''}`}>{handleBad ? '2–30 letters, digits, dots, dashes or underscores.' : 'A short local name for your page. Letters, digits, . - _'}</small>

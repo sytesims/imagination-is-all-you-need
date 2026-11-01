@@ -20,7 +20,7 @@ export const RUN_SETUP_TAGLINE = 'If you can imagine it, you can make it here.';
 const where = deviceWhere();
 
 export const RUN_CHOICES: readonly RunChoiceCopy[] = [
-  { id: 'gpu', title: LOCAL_LABEL, line: `Free and private, ${where}.`, meta: 'We’ll look for ComfyUI' },
+  { id: 'gpu', title: LOCAL_LABEL, line: `Free and private, ${where}.`, meta: 'Looks for ComfyUI' },
   { id: 'comfy', title: RUN_ON_LABELS['comfy-cloud'], line: 'One key, most models: open workflows plus partners like Kling and Veo.', meta: 'Billed to your Comfy account' },
   { id: 'direct', title: 'Your own keys', line: 'Official lab keys (Black Forest Labs, MiniMax, LTX), plus fal and Replicate.', meta: 'Each bills you directly' },
 ];

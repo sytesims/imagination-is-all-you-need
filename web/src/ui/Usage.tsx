@@ -51,7 +51,7 @@ export default function Usage({ tools }: { tools: ToolInfo[] }) {
  *  credits-back clause the "Credits back" chip already says ("balance" and "app balance"), and never a raw route id. */
 function usageNote(e: any): string {
   const n = ledgerWords(String(e?.note ?? '').trim()).replace(/(^|[^\d.,$])(\d[\d,]*) credits?\b/g, (_m: string, a: string, x: string) => `${a}${ledgerUsd(Number(x.replace(/,/g, '')))}`); if (e?.kind !== 'refund') return n;
-  if (/^route\s+\S+\s+failed\b/i.test(n)) return 'A route failed, trying the next one';
+  if (/^route\s+\S+\s+failed\b/i.test(n)) return 'A run failed, trying the next one';
   return n.replace(/[:;,·\s-]*\(?\s*credits back to (your )?(app )?balance\s*\)?\.?$/i, '').trim() || 'Run did not finish';
 }
 

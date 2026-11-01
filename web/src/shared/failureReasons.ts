@@ -58,7 +58,7 @@ export const REASONS: Record<string, FailReason> = {
   provider_error:    { key: 'provider_error', mood: 'providerDown', title: '{provider} had a problem', line: 'Not your fault. Try again or pick another model.', actions: ['retry', 'otherModel'] },
   cloud_timeout:     { key: 'cloud_timeout', mood: 'timeout', title: 'It got stuck', line: 'It waited too long, so we stopped it. Try again.', actions: ['retry'] },
   cloud_unreachable: { key: 'cloud_unreachable', mood: 'providerDown', title: 'Couldn’t reach Comfy Cloud', line: 'Check your connection, then try again.', actions: ['retry'] },
-  submit_uncertain:  { key: 'submit_uncertain', mood: 'generic', title: 'Not sure it was sent', line: 'We didn’t send it twice, to be safe.', actions: ['retry'] },
+  submit_uncertain:  { key: 'submit_uncertain', mood: 'generic', title: 'Not sure it was sent', line: 'It wasn’t sent twice, to be safe.', actions: ['retry'] },
   price_changed:     { key: 'price_changed', mood: 'noCredits', title: 'The price went up', line: 'It now costs more than your quote, so it didn’t start.', actions: ['recreate'] },
   upload_failed:     { key: 'upload_failed', mood: 'providerDown', title: 'Upload didn’t go through', line: 'Your file couldn’t reach Comfy Cloud. Try again.', actions: ['retry'] },
   canceled:          { key: 'canceled', mood: 'cancelled', title: 'Canceled', line: 'You stopped it. No harm done.', actions: ['recreate'] },

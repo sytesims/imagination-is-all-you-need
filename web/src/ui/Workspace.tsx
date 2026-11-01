@@ -115,7 +115,7 @@ function CanvasTabs({ tool, hero, mv = 'canvas', setMv }: { tool: ToolInfo; hero
           <div><HeroTitle>{tool.name}</HeroTitle><p className="helper">{tool.description}</p></div>
           <MediaArt seed={tool.id + 'hero'} ex={heroExample(tool.id)} ratio="16/9" />
         </div>}
-        <SubTabs tabs={[['ours', 'Our examples'], ['trending', 'Community trending'], ['new', 'Community new']]} value={lib} onChange={setLib} />
+        <SubTabs tabs={[['ours', 'Built-in examples'], ['trending', 'Community trending'], ['new', 'Community new']]} value={lib} onChange={setLib} />
         {lib === 'ours' ? <div className="lib-section"><Recreate toolId={tool.id} hard minTiles={8} /></div> : <div className="lib-section"><CommunityGrid sort={lib} /></div>}
         <span className="tag">Looks</span>
         <div className="pills" role="tablist">{['Featured', 'Trending', 'Newest'].map((p, i) => <button key={p} className={`pill ${pill === i ? 'on' : ''}`} onClick={() => setPill(i)}>{p}</button>)}</div>

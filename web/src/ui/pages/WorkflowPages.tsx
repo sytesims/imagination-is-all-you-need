@@ -22,7 +22,7 @@ import './workflowHub.css';
  *    run time; the look's own model says "Made for this one"), plus up to 2 compatible models not run yet with their quote. "Test" only opens
  *    the Create bar with that model and the look filled in: nothing runs until you press Generate. A run started from the look shows up here.
  */
-const SRC: Record<string, { label: string; Ic: typeof OfficialBadgeIcon }> = { official: { label: 'Official Comfy template', Ic: OfficialBadgeIcon }, community: { label: 'Community workflow', Ic: CommunityIcon }, ours: { label: 'Our own graph', Ic: SparkleIcon } };
+const SRC: Record<string, { label: string; Ic: typeof OfficialBadgeIcon }> = { official: { label: 'Official Comfy template', Ic: OfficialBadgeIcon }, community: { label: 'Community workflow', Ic: CommunityIcon }, ours: { label: 'Built-in workflow', Ic: SparkleIcon } };
 const dateText = (ms: number | null) => ms ? new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 /** Refetch while the page is open and visible (a run started from a look appears without a reload). */
 function usePoll(ms: number, f: () => void) { const ref = useRef(f); ref.current = f;

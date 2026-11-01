@@ -12,7 +12,7 @@ export const workflowHref = (w: WorkflowSource | null | undefined): string | nul
 /** The workflow credit as a link: "Workflow: Official Comfy template · Nano Banana 2: Image Edit". */
 export function WorkflowCredit({ workflow, recipe, prefix = 'Workflow: ', className = '' }: { workflow: (WorkflowSource & { recipe?: string | null }) | null | undefined; recipe?: string | null; prefix?: string; className?: string }) {
   if (!workflow) return null; const href = workflowHref(workflow); const line = workflowLine(workflow); const r = recipe ?? workflow.recipe ?? null;
-  const tip = [`${workflow.source === 'official' ? 'Official Comfy template' : workflow.source === 'community' ? `Community workflow by ${workflow.author}` : 'Our own workflow (open source)'}`, `Licence: ${workflow.licence}`, r].filter(Boolean).join(' · ');
+  const tip = [`${workflow.source === 'official' ? 'Official Comfy template' : workflow.source === 'community' ? `Community workflow by ${workflow.author}` : 'Built-in workflow (open source)'}`, `Licence: ${workflow.licence}`, r].filter(Boolean).join(' · ');
   return <span className={`wf-credit wf-src-${workflow.source} ${className}`} data-testid="wf-credit" title={tip}>{prefix}{href
     ? <a href={href} target="_blank" rel="noreferrer noopener" data-testid="wf-credit-link">{line}</a> : <span>{line}</span>}{r && <span className="wf-recipe"> + our recipe</span>}</span>;
 }

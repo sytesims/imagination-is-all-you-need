@@ -265,7 +265,7 @@ export function WorkflowControls({ recipe: r, vals, setVal, provider, watch, mod
 export function WorkflowCredit({ recipe: r, provider, mode, scale, upscale }: { recipe: WfRecipe; provider: string; mode?: string; scale?: string; upscale?: WfUpscale | null }) {
   const mi0 = r.modelInfo?.[provider]; const mi = mi0 && mode && mi0.workflowByMode?.[mode] !== undefined ? { ...mi0, workflow: mi0.workflowByMode[mode] } : mi0; const upFile = upscale?.info.workflows[provider]?.[scale ?? '4']; /* Upscale: the graph that runs for this factor */
   const line = mi?.workflow?.line && upFile ? mi.workflow.line.replace(/[\w.-]+-api\.json/, upFile) : mi?.workflow?.line;
-  const credit = [`${r.source.kind === 'ours' ? 'Ours' : SRC_WORD[r.source.kind]}${r.source.note ? ` · ${r.source.note}` : ''}`, line ? `on ${line.replace(/^Ours · /, 'our ')}` : ''].filter(Boolean).join(' ');
+  const credit = [`${r.source.kind === 'ours' ? 'Built-in' : SRC_WORD[r.source.kind]}${r.source.note ? ` · ${r.source.note}` : ''}`, line ? `on ${line.replace(/^Built-in · /, 'the built-in ')}` : ''].filter(Boolean).join(' ');
   return <p className="wf-credit wf-credit-menu" data-testid="wf-credit"><span className="wf-credit-h">Workflow</span>{mi?.workflow?.url ? <a href={mi.workflow.url} target="_blank" rel="noreferrer" {...tip('Where this workflow comes from')}>{credit}</a> : credit}</p>;
 }
 

@@ -451,7 +451,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
           {plan?.tracker && !empty && (demo.running || plan.finished) && <StepTracker steps={plan.steps} done={plan.done} finished={plan.finished} live={demo.running} />}
           {empty ? <div className="ap-hello" data-testid="agent-hello">
             <span className="ap-hello-mark"><SparkleIcon size={22} /></span>
-            <h2>What should we make?</h2>
+            <h2>What would you like to make?</h2>
             {agentConnected ? <p data-testid="agent-hello-connected">{agentListening ? `${agentLabel} is listening.` : `${agentLabel} is connected.`} Tell it what to make; select cards first to point at them. Every paid step waits for your OK.</p>
               : <><p>Pick a demo to watch the board build, or connect Claude to talk about your board. Every paid step waits for your OK.</p>
                 <Starters onPick={pickStarter} disabled={sending || demo.running} />
