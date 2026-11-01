@@ -1,4 +1,6 @@
-import { AUDIO_ACCEPT, VIDEO_ACCEPT, fileFits } from '../../../../server/src/shared/mediaAccept';
+import { SCRIPT_MAX, LYRICS_MAX, audioWorkflowById } from '../../../../server/src/shared/audioWorkflows';
+import { Notice } from '../../shared/Notice';
+import { AUDIO_ACCEPT, VIDEO_ACCEPT, LIMITS, fileFits } from '../../../../server/src/shared/mediaAccept';
 import { Words } from '../../shared/Words';
 import { prepUpload, useFilePreview } from '../../shared/SlotPreview';
 /**
@@ -119,6 +121,8 @@ const durOf = (f: File): Promise<number | undefined> => new Promise(res => { con
 
 export default function AudioPage(p: AudioPageProps) {
   const toast = useToast(); const { wf } = p; const recipes = useAudioRecipes(); const live = recipes[wf.id];
+  const askedWf = new URLSearchParams(location.search).get('workflow'); const [nfGone, setNfGone] = useState(false);
+  const wfNotFound = !!askedWf && !audioWorkflowById(askedWf) && !nfGone;
   const cfg: any = p.tool.app ?? {}; const mode = wf.mode;
   const [pop, setPopRaw] = useState(''); const setPop = (k: string) => setPopRaw(o => o === k ? '' : k); const closePop = () => setPopRaw('');
   const aR = { add: useRef<HTMLButtonElement>(null), model: useRef<HTMLButtonElement>(null), dur: useRef<HTMLButtonElement>(null), n: useRef<HTMLButtonElement>(null), voice: useRef<HTMLButtonElement>(null), lang: useRef<HTMLButtonElement>(null), enh: useRef<HTMLButtonElement>(null), set: useRef<HTMLButtonElement>(null) };
@@ -358,7 +362,7 @@ export default function AudioPage(p: AudioPageProps) {
   const styleChips: HelperChip[] = musicLike ? STARTERS.filter(([k]) => !(k === 'voice' && instrumental)).map(([k, l]) => ({ key: k, label: l, testId: `ap-start-${k}`, tip: `Add “${k}: ” to the style`, onPick: () => insStyle(`${k}: `) })) : [];
   const lyrChips: HelperChip[] = SECTIONS.map(t => ({ key: t, label: <>+ <b>[{t}]</b></>, ariaLabel: `Add a [${t}] tag`, testId: `ap-tag-${t.toLowerCase()}`, onPick: () => insLyr(`[${t}]`, true) }));
   const lyrMissing = lp.missing;
-  const helpHint = tab === 'lyrics' ? (lyrMissing ? lyrNeedWhy : lenHint) : isScript ? (p.prompt.length ? `${p.prompt.length.toLocaleString()}/${(maxChars || 5000).toLocaleString('en-US')}${maxChars && p.prompt.trim().length > maxChars ? ` · ${modelName || 'This model'} reads up to ${maxChars.toLocaleString('en-US')} at a time` : ''}` : '') : lenShort ? lenHint : ''; /* the how-to is the field's placeholder, never a line beside the chips */
+  const helpHint = tab === 'lyrics' ? (lyrMissing ? lyrNeedWhy : lenHint) : isScript ? (p.prompt.length ? `${p.prompt.length.toLocaleString()}/${(maxChars || SCRIPT_MAX).toLocaleString('en-US')}${maxChars && p.prompt.trim().length > maxChars ? ` · ${modelName || 'This model'} reads up to ${maxChars.toLocaleString('en-US')} at a time` : ''}` : '') : lenShort ? lenHint : ''; /* the how-to is the field's placeholder, never a line beside the chips */
   const helpWarn = tab === 'lyrics' ? lyrMissing || lenShort || al.cut && lenAuto : (lenShort && !isScript) || (isScript && !!maxChars && p.prompt.trim().length > maxChars);
   const chipsEl = useRef<HTMLDivElement>(null); const folded = useChipFit(chipsEl); const fo = (k: string) => folded.includes(k);
 
@@ -374,6 +378,8 @@ export default function AudioPage(p: AudioPageProps) {
   return <div className="ap" data-testid="audio-page" data-workflow={wf.id}>
     {filePreview.preview}
     <section className="ap-main" aria-label="Your audio">
+      {wfNotFound && <Notice kind="warn" testId="ap-wf-not-found" className="ap-wf-nf" action={{ label: 'All workflows', to: '/workflows' }} onClose={() => setNfGone(true)}>
+        No Audio workflow is called “{askedWf}”. {wf.name} is open instead.</Notice> /* an unknown ?workflow= id says so (audit P3), never a silent switch */}
       <AudioFeed jobs={p.jobs} />
     </section>
     <div className="ic ic2 vs-icd"><div className={`ic-dock ap-dock${drag ? ' ic-drag' : ''}`} data-testid="ap-dock" data-drag={drag ? '1' : undefined} ref={dock}
@@ -394,8 +400,8 @@ export default function AudioPage(p: AudioPageProps) {
             : <PromptTabs tabs={ptTabs} active={tab} onTab={id => setTab(id as 'style' | 'lyrics')} testId="ap-pt" idBase="ap-pt"
                 aside={instAvail ? <PromptSwitch label="Instrumental" on={instrumental} onChange={setInstrumental} testId="ap-instrumental" tip={instrumental ? 'No vocals: lyrics are kept but not sent' : `${modelName || 'This model'} can make a track with no vocals`} /> : null}>
               <PromptField ref={p.promptRef} hidden={tab !== 'style'} data-enter-submits="" id="app-prompt" data-testid="ap-prompt" boxTestId="ap-prompt-box" rows={2} aria-label={isScript ? 'Script' : musicLike ? 'Style' : 'Prompt'}
-                maxLength={isScript ? 5000 : 10000} placeholder={wf.prompt.placeholder} value={p.prompt} onChange={e => p.setPrompt(e.target.value)} />
-              {lyrOn && <PromptField ref={lyrRef} hidden={tab !== 'lyrics'} data-enter-submits="mod" id="ap-lyrics" data-testid="ap-lyrics" boxTestId="ap-lyrics-box" rows={2} aria-label="Lyrics" maxLength={5000}
+                maxLength={isScript ? SCRIPT_MAX : LIMITS.maxPrompt} placeholder={wf.prompt.placeholder} value={p.prompt} onChange={e => p.setPrompt(e.target.value)} />
+              {lyrOn && <PromptField ref={lyrRef} hidden={tab !== 'lyrics'} data-enter-submits="mod" id="ap-lyrics" data-testid="ap-lyrics" boxTestId="ap-lyrics-box" rows={2} aria-label="Lyrics" maxLength={LYRICS_MAX}
                 placeholder={wf.lyrics.placeholder} value={lyrics} onChange={e => setLyrics(e.target.value)} highlight={SECTION_TAG_HL} />}
               <PromptHelpers chips={tab === 'lyrics' ? lyrChips : isScript ? tagChips : styleChips} hint={helpHint || null} tone={helpWarn ? 'warn' : null} testId="ap-help" />
             </PromptTabs>}
@@ -430,7 +436,7 @@ export default function AudioPage(p: AudioPageProps) {
         </div>
       </div>
       {noPlace ? <NoPlaceGenerate testId="ap-generate" priceTestId="ap-price" />
-        : <DockGenerate toolId={p.tool.id} engine={cur?.id ?? ''} quote={q} label="Generate" busy={p.busy} disabled={qFull} problems={dgProblems} missing={genWord0 || null} pfOpen={pfOpen} genRef={genRef} onClick={generate}
+        : <DockGenerate toolId={p.tool.id} engine={cur?.id ?? ''} quote={q} label="Generate" busy={p.busy} disabled={qFull} problems={dgProblems} missing={genWord0 || null} priceWhenMissing={!qFull && missing.length > 0 /* the price shows like Image's and 3D's (audit P3) */} pfOpen={pfOpen} genRef={genRef} onClick={generate}
             testId="ap-generate" priceTestId="ap-price" workflowId={wf.id} className={gate || blockWhy || unpriced ? 'gen-off' : ''} /* shared/DockGenerate.tsx: Image's and Video's button, size, price token and states */ />}
       </div></div>
       <PreflightNotes open={pfOpen} notes={notes} anchor={genRef} dock={dock} onClose={() => setPfOpen(false)} testId="ap-notes" />

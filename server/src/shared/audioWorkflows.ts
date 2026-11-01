@@ -15,6 +15,10 @@ import { engineModelKey, MODELS } from './modelIds.js';
 import { videoWorkflowHref } from './videoWorkflows.js';
 import { AUDIO_PAGE, OLD_AUDIO_PAGE } from './pages.js';
 
+/** The longest script (Voiceover, Change voice) and lyrics a box takes when the model names no cap of its own (audit 2026-11-01: one number for the
+ *  server's lyrics field and the Audio page's boxes; a model's own cap, e.g. Qwen3 TTS 2000, comes from its caps). */
+export const SCRIPT_MAX = 5000;
+export const LYRICS_MAX = 5000;
 export type AudioWorkflowId = 'music' | 'sfx' | 'voiceover' | 'change-voice' | 'translate' | 'soundtrack-music' | 'soundtrack-sound' | 'cover';
 export type AudioCategory = 'create' | 'voice' | 'video';
 export interface AudioWorkflowRecipe {

@@ -41,6 +41,7 @@ import { RunOnField } from '../routing/RunOn';
 import { useToolModels, modelOfEngine, shownName } from '../../shared/models';
 import { TRANSLATE_DOC } from '../../shared/brand';
 import { VideoThumb } from '../../shared/VideoThumb';
+import { SCRIPT_MAX } from '../../../../server/src/shared/audioWorkflows';
 
 type R = { file: File; url: string };
 export interface AudioStudioProps {
@@ -154,9 +155,9 @@ export default function AudioStudio(p: AudioStudioProps) {
         {(p.mode === 'translate' || p.mode === 'change-voice') && <SeparationNote />}
         {upErr && <Notice as="p" kind="error" tone="line" className="as-err">{upErr}</Notice>}<FieldIssue issues={p.issues} field="video" /><FieldIssue issues={p.issues} field="voiceAudio" />{showLang && <FieldIssue issues={langIss} field="language" />}{showLang && p.langNote && <p className="helper lang-note" role="status" data-testid="lang-note">{p.langNote}</p>}
         <div className="as-script"><label htmlFor="app-prompt">{p.mode === 'voiceover' ? 'Script' : 'Notes'}{p.mode !== 'voiceover' && <span className="as-opt">Optional</span>}</label>
-          <textarea data-enter-submits="" ref={p.promptRef} id="app-prompt" data-testid="as-script" maxLength={p.mode === 'voiceover' && Number(caps?.maxChars) > 0 ? Number(caps.maxChars) : 5000} placeholder={p.mode === 'voiceover' ? 'Write exactly what the voice will read out loud.' : 'Anything to keep in mind, e.g. keep the pauses.'} value={p.prompt} onChange={e => p.setPrompt(e.target.value)} />
+          <textarea data-enter-submits="" ref={p.promptRef} id="app-prompt" data-testid="as-script" maxLength={p.mode === 'voiceover' && Number(caps?.maxChars) > 0 ? Number(caps.maxChars) : SCRIPT_MAX} placeholder={p.mode === 'voiceover' ? 'Write exactly what the voice will read out loud.' : 'Anything to keep in mind, e.g. keep the pauses.'} value={p.prompt} onChange={e => p.setPrompt(e.target.value)} />
           {metaTags.length > 0 && <MetaTagChips style={mt.style} tags={metaTags} target={() => p.promptRef.current} value={p.prompt} onChange={p.setPrompt} provider={p.provider} />}
-          <span className="as-count">{p.prompt.length}/{p.mode === 'voiceover' && Number(caps?.maxChars) > 0 ? Number(caps.maxChars) : 5000}</span><FieldIssue issues={p.issues} field="prompt" /></div>
+          <span className="as-count">{p.prompt.length}/{p.mode === 'voiceover' && Number(caps?.maxChars) > 0 ? Number(caps.maxChars) : SCRIPT_MAX}</span><FieldIssue issues={p.issues} field="prompt" /></div>
         <button ref={mBtn} type="button" className="as-model" data-testid="as-model" aria-haspopup="listbox" aria-expanded={mOpen} onClick={() => setMOpen(o => !o)}><span className="as-cap">Model</span><b>{(tm ? shownName(tm) : null) ?? (cur && mOf(cur.id)?.name) ?? cur?.name ?? 'No model for this mode'}</b><i aria-hidden>›</i></button>
         <div className="as-runon"><RunOnField toolId={p.tool.id} model={tm} engine={cur?.id} quote={q} testId="as-run-on" avoid={panel} /></div>
         <Stepper icon="layers" label="Versions" unit="version" value={n} max={nMax} onChange={v => p.setFieldVals(fv => ({ ...fv, n: String(v) }))} testId="as-batch" className="as-batch" title={`Up to ${nMax} versions`} />

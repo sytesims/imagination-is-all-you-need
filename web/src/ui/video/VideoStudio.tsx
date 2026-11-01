@@ -389,6 +389,8 @@ export default function VideoStudio(p: VideoStudioProps) {
   const routeIssue = (p.issues ?? []).some((i: any) => i?.code === 'route_not_runnable' || i?.code === 'idempotency_conflict');
   if (routeIssue) notes.push({ key: 'route', stage: 'Setup', node: <RouteNotRunnable issues={p.issues} /> });
   const blocking = notes.some(n => n.hard);
+  /* only an input is missing (a prompt, a photo): Generate shows the price like Image's and 3D's; the missing step is the tooltip, a click nudges it (audit P3) */
+  const priceFirst = !qFull && p.missing.length > 0 && !p.conflict && !blocking && !unpriced && !blockWhy && credits != null;
   /* a note that arrives from the last run or an add (not a standing state) opens the list once; a click on Generate opens it too */
   const eventKey = [p.imgErr, refErr, ...['image', 'refs', 'refVideos', 'refAudios', 'prompt', 'resolution'].map(f => issueOf(f)?.message), subDur?.message, routeIssue ? 'route' : ''].filter(Boolean).join('|');
   useEffect(() => { if (eventKey) setPfOpen(true); }, [eventKey]);
@@ -527,7 +529,7 @@ export default function VideoStudio(p: VideoStudioProps) {
         : <button ref={genRef} type="button" className={`ic-gen gen-btn gen-dock btn btn-primary vs-dgen${!p.busy && (p.missing.length > 0 || blocking) ? ' gen-wait' : ''}`} data-testid="vs-generate" data-problems={notes.length || undefined} disabled={p.busy || qFull || !!p.frameHandoff} aria-busy={p.busy || undefined} aria-disabled={p.missing.length > 0 || blocking || !!p.frameHandoff || undefined} data-why={why || undefined} aria-describedby={why ? 'vs-why' : undefined}
           aria-haspopup={blocking ? 'dialog' : undefined} aria-expanded={blocking ? pfOpen : undefined} title={pfOpen ? undefined : genTitle}
           onClick={e => { if (blocking) { setPfOpen(o => !o); return; } if (p.missing.length) { nudgeMissing(e.currentTarget); return; } setPfOpen(false); p.onGenerate(); }}><span className="gen-l">{p.busy ? <i className="as-spin" aria-hidden /> : null}Generate</span>
-          {genWord ? <span className="gen-price gen-missing" data-testid="vs-price">{genWord}</span> : <GenPrice compact testId="vs-price" q={q} demo={isDemo} free={isFree} credits={!unpriced && !blockWhy ? credits : null} />}</button>}
+          {genWord && !(priceFirst) ? <span className="gen-price gen-missing" data-testid="vs-price">{genWord}</span> : <GenPrice compact testId="vs-price" q={q} demo={isDemo} free={isFree} credits={!unpriced && !blockWhy ? credits : null} />}</button>}
       </div></div>
       {p.missing.length > 0 && !gate && <p className="sr-only" id="vs-why">{why}</p>}
       {(() => { const [k, si] = pv.split(':'); const i = Number(si); const isRef = !!si; const it = pv === 'start' ? p.image : pv === 'end' ? p.lastFrame : isRef ? p.vrefs[k]?.[i] ?? null : null;
