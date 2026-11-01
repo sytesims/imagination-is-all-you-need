@@ -147,6 +147,8 @@ html body .ic.ic2 .ic-dock .ic-gen .gen-price.gen-missing{font-weight:500;opacit
 .wf-seg button.on{background:rgba(255,255,255,.12);color:#fff}
 .wf-seg button:focus-visible{box-shadow:var(--focus)}
 .wf-gen-row{display:grid;gap:6px}
+/* a segmented control's one-line tip (Person Swap's Outfit: one person works best) */
+.wf-gen-help{margin:2px 0 0;font-size:12px;line-height:16px;color:var(--text-3,#8a8b90)}
 /* text controls (Material Swap, Ad Pack, 2026-10-31): the popover's own size, not the page's tall inputs */
 .wf-gen:has(.wf-gen-text){min-width:240px}
 html body .wf-gen-row input.wf-gen-text{min-height:34px;padding:7px 10px;border-radius:8px;font-size:13px;background:rgba(255,255,255,.04)}
@@ -171,6 +173,9 @@ html body .wf-gen-row input.wf-gen-text{min-height:34px;padding:7px 10px;border-
 .wf-choose>span{white-space:nowrap}
 html body .ic.ic2 .ic-dock .wf-strip .wf-choose .wf-choose-b{height:26px;min-height:26px;padding:0 10px;border-radius:8px;font-size:12px;white-space:nowrap;background:rgba(255,255,255,.08);color:#fff}
 html body .ic.ic2 .ic-dock .wf-strip .wf-choose .wf-choose-b:hover{background:rgba(255,122,26,.25)}
+/* Person Swap: "Use my photo" next to the empty Person slot (the saved Me photo) */
+html body .ic.ic2 .ic-dock .wf-strip .wf-slot-alt{height:26px;min-height:26px;padding:0 10px;border-radius:8px;font-size:12px;white-space:nowrap;background:rgba(255,255,255,.08);color:#fff;flex:none}
+html body .ic.ic2 .ic-dock .wf-strip .wf-slot-alt:hover{background:rgba(255,122,26,.25)}
 .wf-choose-x{all:unset;display:grid;place-items:center;width:20px;height:20px;border-radius:6px;color:rgba(255,255,255,.7);cursor:pointer}
 .wf-choose-x:hover{background:rgba(255,255,255,.08);color:#fff}
 .wf-choose-x:focus-visible{box-shadow:var(--focus)}

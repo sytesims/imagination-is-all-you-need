@@ -13,7 +13,7 @@ const ROOT = path.resolve(import.meta.dirname, '..'); const REPO = path.resolve(
 const ok = (m: string) => console.log('ok ' + m);
 
 // ---------------- names, menu, redirects ----------------
-assert.deepEqual(MENU_FEATURES.map((f) => f.name), ['Create Image', 'Upscale', 'Relight', 'Face Swap', 'Person Swap', 'Camera Angles', 'Camera & Lens', 'Brush Edit', 'Remove Background', 'Expand', 'Erase Object', 'Virtual Try-On', 'Material Swap', 'Ad Pack', 'Image to layers', 'Character Sheet', 'Product Shot']); // photo tools (2026-10-23) after Brush Edit; Image to layers after them
+assert.deepEqual(MENU_FEATURES.map((f) => f.name), ['Create Image', 'Upscale', 'Relight', 'Face Swap', 'Person Swap', 'Camera Angles', 'Camera & Lens', 'Brush Edit', 'Remove Background', 'Expand', 'Erase Object', 'Virtual Try-On', 'Material Swap', 'Phone Photo', 'Ad Pack', 'Image to layers', 'Character Sheet', 'Product Shot']); // photo tools (2026-10-23) after Brush Edit; Image to layers after them
 assert.ok(!MENU_FEATURES.some((f) => f.id === 'edit-image'), 'Edit Image is not a menu item (it lives inside Create Image, like the reference)');
 assert.equal(IMAGE_FEATURES.find((f) => f.id === 'edit-image')?.name, 'Edit Image');
 assert.ok(!JSON.stringify(IMAGE_FEATURES.map((f) => [f.name, f.tagline, f.description])).includes('OpenSoul'), 'no house name in feature copy');
@@ -42,7 +42,7 @@ assert.equal(checkImageCaps('api-gpt-image', { refs: 16, mode: 'edit' }).ok, tru
 assert.equal(checkImageCaps('api-nano-banana', { mode: 'inpaint', refs: 1 }).ok, false, 'Nano Banana 2 has no mask route'); assert.equal(checkImageCaps('api-ideogram', { mode: 'edit', refs: 1 }).ok, false, 'Ideogram V4 takes no image here');
 assert.deepEqual(supportsFor('relight', 'api-nano-banana'), { aspects: [], allowAuto: false, resolutions: [], qualityTiers: [], maxImages: 1, minImages: 1, mask: false, strength: false, seed: true, maxCount: 1 });
 assert.equal(supportsFor('face-swap', 'api-gpt-image')!.maxImages, 2); assert.equal(supportsFor('face-swap', 'api-gpt-image')!.seed, false, 'GPT Image 2 Router body sends no seed');
-assert.equal(supportsFor('brush-edit', 'comfy-flux3-klein')!.mask, true); assert.equal(supportsFor('camera-angles', 'comfy-qwen-angles')!.maxCount, 9);
+assert.equal(supportsFor('brush-edit', 'comfy-flux3-klein')!.mask, true); assert.equal(supportsFor('camera-angles', 'comfy-qwen-angles')!.maxCount, 11); // 2026-11-01: nine default views + Over the shoulder and Full body
 assert.equal(supportsFor('brush-edit', 'api-nano-banana'), null, 'not offered: no pair');
 ok('hosted reference caps raised to the Router limits (GPT 16, Seedream 10, FLUX.2 [pro] 9, Luma 9, Kling 4, NB2 4); supports per pair');
 
@@ -89,6 +89,7 @@ try {
   assert.equal(T('soul').listed, false); assert.ok(!tools.some((t) => /OpenSoul/.test(t.name)), 'no OpenSoul tool name');
   assert.deepEqual(T('app-inpaint').providers.map((p: any) => p.id), MASK_MODELS);
   assert.deepEqual(T('app-person-swap').providers.map((p: any) => p.id), TWO_IMAGE_MODELS);
+  for (const m of ['api-gpt-image-25-flare', 'api-gpt-image-25-sunburst', 'api-nano-banana-21', 'api-nano-banana-pro', 'api-flux3-image']) assert.ok(TWO_IMAGE_MODELS.includes(m), `${m} takes 2+ images, so Face / Person Swap list it`);
   assert.ok(!T('create-image').app.providerModes['api-nano-banana'].includes('inpaint') && !T('create-image').app.providerModes['api-ideogram'].includes('edit'), 'create-image modes follow the routes');
   assert.equal(T('create-image').providers.find((p: any) => p.id === 'api-gpt-image').name, 'GPT Image 2');
   const br = (await get('/api/browse/image')).body.tools.map((t: any) => t.name); assert.deepEqual(br, MENU_FEATURES.map((f) => f.name), '/image lists the features in menu order');
@@ -114,7 +115,7 @@ try {
   const r6 = await job('create-image', { types: '["edit"]', prompt: 'combine them', provider: 'api-gpt-image', rights: '1' }, { image: 1, refs: 15 }); assert.equal(r6.status, 200, JSON.stringify(r6.body));
   const j6 = await until(r6.body.id); assert.equal(j6.feature.label, 'Edit Image · GPT Image 2');
   const r7 = await job('app-person-swap', { provider: 'api-nano-banana', rights: '1' }, { image: 1, person: 1 }); assert.equal(r7.status, 200, JSON.stringify(r7.body));
-  const j7 = await until(r7.body.id); assert.equal(j7.feature.label, 'Person Swap · Nano Banana 2'); assert.match(j7.input.finalPrompt ?? j7.input.prompt, /Replace the person in image 1 with the person from image 2/);
+  const j7 = await until(r7.body.id); assert.equal(j7.feature.label, 'Person Swap · Nano Banana 2'); assert.match(j7.input.finalPrompt ?? j7.input.prompt, /replace the person in image 1 with the person from image 2/i);
   const r8 = await job('app-person-swap', { provider: 'api-nano-banana', rights: '1' }, { image: 1 }); assert.equal(r8.status, 400); assert.equal(r8.body.issues[0].field, 'person');
   // Character Sheet (Oct 22): an optional photo switches it to Edit image on edit-capable models only (local Qwen Image 2.1 edit and Comfy Router ones); no photo = text-to-image
   const cs = T('app-character-sheet'); assert.ok(cs.inputs.some((i: any) => i.name === 'image' && i.label === 'Your photo' && !i.required), 'optional "Your photo" input');
@@ -123,7 +124,7 @@ try {
   assert.ok(!cs.app.gallery.providersByMode.edit.includes('api-ideogram'));
   assert.deepEqual(cs.app.gallery.preview, { before: '/examples/workflows/character-sheet-before.jpg', after: '/examples/workflows/character-sheet-after.jpg', beforeLabel: 'Your photo', afterLabel: 'Character sheet', model: 'Qwen Image 2.1 · Your computer' });
   const r9 = await job('app-character-sheet', { provider: 'comfy-qwen21', prompt: 'a young explorer', rights: '1' }, { image: 1 }); assert.equal(r9.status, 200, JSON.stringify(r9.body));
-  const j9 = await until(r9.body.id); assert.equal(j9.input.mode, 'edit'); assert.match(j9.input.finalPrompt ?? j9.input.prompt, /Character reference sheet of the person in the photo, a young explorer: one image split into three equal vertical panels.*Keep exactly one identical person in all three views.*accessories from the photo/); assert.equal(j9.input.aspect, '4:3');
+  const j9 = await until(r9.body.id); assert.equal(j9.input.mode, 'edit'); assert.match(j9.input.finalPrompt ?? j9.input.prompt, /Character reference sheet of the person in image 1 \(a young explorer\): one image split into three equal vertical panels.*Keep exactly one identical person in all three views.*accessories from image 1/); assert.equal(j9.input.aspect, '4:3');
   const r10 = await job('app-character-sheet', { provider: 'comfy-zimage-turbo', prompt: 'a knight', rights: '1' }); assert.equal(r10.status, 200, JSON.stringify(r10.body));
   const j10 = await until(r10.body.id); assert.equal(j10.input.mode, 'generate'); assert.match(j10.input.finalPrompt ?? j10.input.prompt, /^Character reference sheet of a knight: one image split into three equal vertical panels.*Keep exactly one identical person/); assert.equal(j10.input.aspect, '4:3'); assert.ok(!j10.input.style, 'no style preset on top of the sheet prompt');
   const r11 = await job('app-character-sheet', { provider: 'api-ideogram', prompt: 'x', rights: '1' }, { image: 1 }); assert.equal(r11.status, 400, 'a text-to-image-only model cannot take the photo');

@@ -102,6 +102,25 @@ ok('image composite: exact stamp and original pixels, 50% blend, JPEG, transpare
 }
 ok('video copy: same length with sound, +1.5 s with the end card, logo burned in, original untouched');
 
+// ---------------------------------------------------------------- Adjust logo (an Ad Pack ad's baked logo, opened in the viewer)
+{
+  const A = await import('../src/shared/adPack.ts');
+  // the preset opens exactly where Ad Pack put the logo: same corner, medium size, full opacity, no text, no plate, safe area kept clear
+  for (const placement of ['meta-9x16', 'meta-4x5', 'youtube-16x9']) for (const corner of ['tl', 'tr', 'bl', 'br'] as const) {
+    const pl = A.placementOf(placement); const W = pl.w, H = pl.h; for (const logo of [{ w: 200, h: 120 }, { w: 800, h: 200 } /* a wide wordmark: a third of the width at most */]) {
+    const p = A.adLogoStamp({ kit: 'k', corner, placement });
+    assert.equal(p.settings.spot, corner); assert.equal(p.settings.size, 'M'); assert.equal(p.settings.opacity, 1); assert.equal(p.settings.textOn, false); assert.equal(p.settings.backing, 'off');
+    assert.deepEqual(L.normStamp(p.settings), p.settings, 'the preset survives the settings clean-up');
+    const l = L.stampLayout(W, H, p.settings, logo, () => 0, false, p.inset); const want = A.adLogoBox(W, H, corner, logo, pl.safe);
+    for (const k of ['x', 'y', 'w', 'h'] as const) assert.ok(Math.abs(l.logo![k] - want[k]) <= 1, `${placement} ${corner} ${k}: ${l.logo![k]} vs ${want[k]}`);
+  } }
+  assert.equal(A.adLogoStamp(null).settings.spot, 'tl', 'a missing corner falls back as Ad Pack does');
+  // Save: untouched = the ad as made; logo taken off = the clean copy; moved or resized = a new copy from the clean one
+  assert.equal(L.adjustedSave(undefined), 'baked'); assert.equal(L.adjustedSave({ touched: false, on: true }), 'baked');
+  assert.equal(L.adjustedSave({ touched: true, on: false }), 'plain'); assert.equal(L.adjustedSave({ touched: true, on: true }), 'stamp');
+}
+ok('Adjust logo: the preset lands on adLogoBox (corner, size, safe area) for every corner; Save picks the ad as made, the clean copy or a new copy');
+
 // ---------------------------------------------------------------- the route
 {
   const Fastify = (await import('fastify')).default; const multipart = (await import('@fastify/multipart')).default;
@@ -119,9 +138,18 @@ ok('video copy: same length with sound, +1.5 s with the end card, logo burned in
   assert.equal((await send({ out: '3' }, { overlay: ov(320, 200, 'ov320.png') })).statusCode, 400, 'bad output index');
   assert.equal((await send({}, {})).statusCode, 400, 'no overlay');
   assert.equal((await send({}, { overlay: ov(320, 200, 'ov320.png') }, 'nope')).statusCode, 404);
+  // Adjust logo: base=plain stamps the clean copy (plainUrl), never the ad with its logo baked in; the job's files stay as they were
+  const baked = path.join(D, 'job9-out0-ad.png'); fs.writeFileSync(baked, png(320, 200, () => [0, 0, 0], true)); const plainBefore = md5(src), bakedBefore = md5(baked);
+  jobs.set('job9', { ...jobs.get('job9')!, outputs: [{ label: 'Result', url: '/files/job9-out0-ad.png', plainUrl: '/files/job9-out0.png' }], resultUrl: '/files/job9-out0-ad.png' } as any);
+  const rp = await send({ out: '0', base: 'plain', settings: JSON.stringify({ spot: 'tl' }) }, { overlay: ov(320, 200, 'ov320.png') }); assert.equal(rp.statusCode, 200, rp.body);
+  const fp = path.join(D, rp.json().url.replace('/files/', '')); assert.deepEqual(px(fp, 100, 100), gradient(100, 100), 'the clean picture outside the logo, not the baked ad'); assert.deepEqual(px(fp, 270, 170), ORANGE, 'the logo on it');
+  const rb = await send({ out: '0', settings: JSON.stringify({ spot: 'tl' }) }, { overlay: ov(320, 200, 'ov320.png') }); assert.deepEqual(px(path.join(D, rb.json().url.replace('/files/', '')), 100, 100), [0, 0, 0], 'no base: the shown ad, as before');
+  assert.equal(md5(src), plainBefore); assert.equal(md5(baked), bakedBefore);
+  jobs.set('job9', { ...jobs.get('job9')!, outputs: [{ label: 'Result', url: '/files/job9-out0.png' }] } as any);
+  assert.equal((await send({ out: '0', base: 'plain' }, { overlay: ov(320, 200, 'ov320.png') })).statusCode, 409, 'no clean copy to adjust');
   // trash takes the stamped copies with it
   S.dropStamps('job9'); assert.ok(!fs.readdirSync(S.STAMP_DIR()).some((f) => f.startsWith('job9-')));
   jobs.delete('job9'); await app.close();
 }
-ok('POST /api/jobs/:id/stamp: image copy at /files/stamps/…, bad index, no overlay, unknown job; dropStamps');
+ok('POST /api/jobs/:id/stamp: image copy at /files/stamps/…, base=plain uses the clean copy, bad index, no overlay, unknown job; dropStamps');
 fs.rmSync(D, { recursive: true, force: true });

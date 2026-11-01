@@ -85,6 +85,7 @@ export async function validateUpload(file: string, filename: string, mime: strin
   const fmt = formats[ext]; const kind = expected ?? uploadKind(field);
   if (!fmt || !kind || (kind !== 'any' && fmt.kind !== kind) || (ext === 'mjpeg' && field !== 'streams')) throw bad(field);
   const aliases: Record<string, string[]> = { wav: ['audio/x-wav', 'audio/wave'], mp3: ['audio/mp3'], m4v: ['video/mp4'], aac: ['audio/x-aac'], flac: ['audio/x-flac'], ogg: ['application/ogg'] };
+  mime = (mime ?? '').split(';')[0].trim().toLowerCase(); // a browser recording declares codecs: video/webm;codecs=vp9
   if (mime && mime !== 'application/octet-stream' && mime !== fmt.mime && !aliases[ext]?.includes(mime)) throw bad(field, 'The declared media type does not match the file.');
   const bytes = await readFile(file);
   if (bytes.length < 12 || !signature(bytes, ext)) throw bad(field);
@@ -101,10 +102,12 @@ export async function validateUpload(file: string, filename: string, mime: strin
     if (fmt.kind === 'video' && video.some((s: any) => !['h264', 'hevc', 'av1', 'vp8', 'vp9', 'mpeg4', 'mjpeg', 'prores'].includes(s.codec_name))) throw bad(field);
     if (audio.some((s: any) => !/^(aac|mp3|flac|vorbis|opus|alac|pcm_\w+)$/.test(s.codec_name))) throw bad(field);
     if (ext === 'webm' && (video.some((s: any) => !['vp8', 'vp9', 'av1'].includes(s.codec_name)) || audio.some((s: any) => !['opus', 'vorbis'].includes(s.codec_name)))) throw bad(field);
-    if (fmt.kind !== 'image' && ext !== 'mjpeg' && !(Number(info.format?.duration) > 0)) throw bad(field);
+    // A browser recording (MediaRecorder WebM) has no duration in its header: then the decode below must measure one.
+    const timed = fmt.kind !== 'image' && ext !== 'mjpeg', headerDuration = Number(info.format?.duration) > 0;
     if (fmt.codec && !fmt.codec.includes(video[0]?.codec_name)) throw bad(field);
     // Decode, rather than accepting a readable header. Fail closed on missing tools/timeouts.
-    await run('ffmpeg', ['-v', 'error', '-xerror', ...opts, '-i', file, '-map', '0:v?', '-map', '0:a?', ...(fmt.kind === 'image' ? ['-frames:v', '1'] : []), '-f', 'null', '-']);
+    const decoded = await run('ffmpeg', ['-v', 'error', '-xerror', '-nostats', ...(timed && !headerDuration ? ['-progress', 'pipe:1'] : []), ...opts, '-i', file, '-map', '0:v?', '-map', '0:a?', ...(fmt.kind === 'image' ? ['-frames:v', '1'] : []), '-f', 'null', '-']);
+    if (timed && !headerDuration && !(Math.max(0, ...[...decoded.matchAll(/^out_time_us=(\d+)$/gm)].map(m => Number(m[1]))) > 0)) throw bad(field);
   } catch { throw bad(field); }
   return { ext: `.${ext}`, mime: fmt.mime, kind: fmt.kind };
 }

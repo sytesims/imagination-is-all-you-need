@@ -107,6 +107,7 @@ export interface FilmsShot { key: string; /** the shot's name */ name: string; /
 export interface FilmsNext { key: string; title: string; genre: string; line: string }
 export interface FilmsStep { name: string; what: string }
 const IF = (f: string) => `/examples/iiayn-films/${f}`;
+/** the films' "Make a film" links: Video › Stitch (the Editor tab is hidden, 2026-11-01) */ const STITCH_HREF = videoWorkflowHref('stitch');
 /** "IIAYN FILMS" (2026-10-27, options behind ?films= for the user to pick from): our own finished films, made start to end in the app.
  *  Now: 엄마 · MUM, Episode 1 (77 s with the new end card, 2026-10-28; Korean with English subtitles), 그래요? · IS THAT SO? and The Airport Run. The web copy is 1280×720 H.264 with sound; the poster is Mum's close-up; the
  *  loop is 6.5 s of it, silent (card hover). Four layouts for the user (2026-10-27, round 2): ?films=1a|1b|2a|2b. The shots' start frames and cut points are the film's own (research folder shots.json + README). */
@@ -149,7 +150,7 @@ export const EXPLORE_FILMS = {
       { name: 'Subtitles', what: 'English lines timed to the Korean voices, as in a cinema release; the whisper in italics.' },
       { name: 'Ending', what: 'A beat on the empty sky, the title card, the credits and the IIAYN FILMS end card.' },
     ] as FilmsStep[],
-    /** no Editor sample for this one: Make a film opens an empty Editor */ editor: { label: 'Make a film', href: '/film' },
+    editor: { label: 'Make a film', href: STITCH_HREF },
   },
   /** a third film (2026-10-28): Mira's teaser for "The Airport Run", episode 1 of a short comedy. One MiniMax H3 clip of the corridor run, a
    *  voice-over by ElevenLabs v3 (Bella), edit and sound by AI: the freeze, the cards, a made-up score and the IIAYN FILMS end card (no rewind since round 2).
@@ -170,7 +171,7 @@ export const EXPLORE_FILMS = {
       { name: 'Voice-over', what: 'Two dry lines from Mira, voiced with ElevenLabs v3, with captions timed to them.' },
       { name: 'Ending', what: 'One “to be continued” card with the IIAYN FILMS mark.' },
     ] as FilmsStep[],
-    editor: { label: 'Make a film', href: '/film' },
+    editor: { label: 'Make a film', href: STITCH_HREF },
   },
   /** a fourth film (2026-10-28): the teaser for LE SEPTIÈME, our French horror short. Cut for free from the film's existing takes (round 5):
    *  Camille on the phone with Maman in the cage lift, the stop at a dark 7, Maman's voice from far down the corridor, the call from home,
@@ -193,7 +194,7 @@ export const EXPLORE_FILMS = {
       { name: 'Sound', what: 'A low drone, a faint heartbeat, creaks and nails on brass, and silence before every scare.' },
       { name: 'Ending', what: 'One “to be continued” card with the IIAYN FILMS mark.' },
     ] as FilmsStep[],
-    editor: { label: 'Make a film', href: '/film' },
+    editor: { label: 'Make a film', href: STITCH_HREF },
   },
   /** Approved TO BE CONTINUED cut (2026-10-29). Original job 415c2ab2; finishing adds no generated footage. */
   counterOffer: {
@@ -211,7 +212,7 @@ export const EXPLORE_FILMS = {
       { name: 'Subtitles', what: 'English translations from the script, timed with cached Whisper small, the audio and mouth movements: “Take this and stay away from my son.” “Then let me have your son.” “How much is in there?”' },
       { name: 'Ending', what: 'A short IIAYN FILMS ident, the full scene and a reaction hold, then three seconds of TO BE CONTINUED and credits. The 720p delivery is resized from 864×480 footage, not newly generated detail.' },
     ] as FilmsStep[],
-    editor: { label: 'Make a film', href: '/film' },
+    editor: { label: 'Make a film', href: STITCH_HREF },
   },
   /** Existing finished lighthouse cut moved into the catalogue, without re-encoding its picture or soundtrack.
    * The silent hover loop and tall poster are small derivatives of the original run, not new generations. */
@@ -236,7 +237,7 @@ export const EXPLORE_FILMS = {
   },
   /** coming next: placeholders, no media yet (none right now) */
   next: [] as FilmsNext[],
-  /** the last card: an invitation to make one */ yours: { title: 'Your film here', line: 'Make one in the Editor, shot by shot.', label: 'Make a film', href: '/film' },
+  /** the last card: an invitation to make one */ yours: { title: 'Your film here', line: 'Join your clips in Stitch, with music and a voice.', label: 'Make a film', href: STITCH_HREF },
   /** "How it was made": the steps, in plain words (the film-making skill has the full recipe) */
   steps: [
     { name: 'Stills', what: 'Four start frames with GPT Image 2.5 Flare, about $0.06 each.' },
@@ -248,8 +249,8 @@ export const EXPLORE_FILMS = {
     { name: 'Subtitles', what: 'Whisper, an open-source model, writes the English lines.' },
     { name: 'Ending', what: 'The credits, then the IIAYN FILMS end card: the ring draws itself.' },
   ] as FilmsStep[],
-  /** the Editor with the Goodbye sample opened (FilmPage reads ?sample=) */ editor: { label: 'Open in Editor', href: '/film?sample=goodbye' },
-  make: { label: 'Make your own', href: '/film' },
+  /** Video › Stitch: join clips, music and a voice into a film (the Editor tab is hidden, 2026-11-01; /film still opens) */ editor: { label: 'Make your own', href: STITCH_HREF },
+  make: { label: 'Make your own', href: STITCH_HREF },
 };
 
 // ---------------------------------------------------------------- the tagline and headline

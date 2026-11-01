@@ -9,6 +9,7 @@ const { pickEditorial } = await import('../src/shared/imageDefaults.ts'); type D
 const { AUDIO_DEFAULTS } = await import('../src/shared/audioDefaults.ts');
 const { audioWorkflowById, AUDIO_WORKFLOW_IDS } = await import('../src/shared/audioWorkflows.ts');
 const { getTool } = await import('../src/tools/registry.ts');
+const { initialProviderFor } = await import('../../web/src/shared/defaults.ts');
 const ROOT = path.resolve(import.meta.dirname, '..'); const PORT = testPort(9211); const B = `http://localhost:${PORT}`;
 const NOKEYS = { OPENHIGGSFIELD_BFL_API_KEY: '', OPENHIGGSFIELD_FAL_KEY: '', FAL_KEY: '', OPENHIGGSFIELD_REPLICATE_API_TOKEN: '', REPLICATE_API_TOKEN: '', COMFY_API_KEY: '', OPENHIGGSFIELD_BILLING_MODE: '', OPENHIGGSFIELD_ARK_API_KEY: '', OPENHIGGSFIELD_MINIMAX_API_KEY: '' };
 const ok = (m: string) => console.log('ok ' + m);
@@ -66,6 +67,12 @@ try {
   const V2 = await tool('voice'); assert.equal(V2.editorialDefault?.feature, 'voiceover'); assert.equal(V2.defaultProvider, 'api-eleven-tts');
   assert.equal(V2.defaultsByMode?.['change-voice']?.defaultProvider, 'comfy-chatterbox-vc'); assert.equal(V2.defaultsByMode?.translate?.defaultProvider, 'local-whisper-nllb-chatterbox');
   ok('API hosted setup: music Seed Audio (cloud first), voiceover ElevenLabs, cover YuE2');
+  // P3-01: a fresh Audio page starts on its workflow's own default (the bar AppTool opens = what the workflow says it starts on), not the tool's
+  const startsOn = async () => { const out: Record<string, string> = {}; for (const id of AUDIO_WORKFLOW_IDS) { const w = audioWorkflowById(id)!; const t = await tool(w.tool); if (!t) continue;
+    out[id] = initialProviderFor(t, w.mode, w.id); const a = W[id].defaults.active; if (a) assert.equal(out[id], a.defaultProvider, `${id}: a fresh page starts on the workflow's default`); } return out; };
+  let S = await startsOn(); assert.equal(S.sfx, W.sfx.defaults.active.id, 'Sound effects: the bar and the menu Default agree on first load');
+  assert.notEqual(S.sfx, 'api-seed-audio', 'Sound effects no longer opens on the tool default (Seed Audio)'); assert.equal(S.voiceover, 'api-eleven-tts'); assert.equal(S['change-voice'], 'comfy-chatterbox-vc');
+  ok('P3-01: every Audio workflow opens on its own default (hosted)');
   // the quote follows the default (no provider named)
   const q = await get('/api/tools/audio/price?mode=music'); assert.equal(q.defaultProvider, T.defaultsByMode?.music?.defaultProvider ?? T.defaultProvider, 'the quote follows the default');
   assert.equal((await get('/api/tools/voice/price?mode=voiceover&chars=200')).defaultProvider, 'api-eleven-tts');
@@ -74,6 +81,7 @@ try {
   assert.equal(W.voiceover.defaults.active.id, 'comfy-chatterbox'); assert.equal(W['soundtrack-music'].defaults.active.id, 'comfy-acestep'); assert.equal(W.sfx.defaults.active.id, 'comfy-stable-audio');
   assert.equal(T.defaultsByMode?.cover?.defaultProvider, 'comfy-yue2');
   const ql = await get('/api/tools/audio/price?mode=music&lyrics=1'); assert.equal(ql.defaultProvider, 'comfy-yue2'); assert.equal(ql.routeId, 'local:comfy-yue2'); assert.equal(ql.credits, 0, 'local = free');
+  S = await startsOn(); assert.equal(S.sfx, 'comfy-stable-audio'); assert.equal(S['soundtrack-music'], 'comfy-acestep');
   ok('API local setup: YuE2 / Chatterbox / ACE-Step / Stable Audio');
   // music with no lyrics: YuE2 only sings lyrics, so the default steps aside (submit and quote alike); with lyrics, YuE2; a named YuE2 without lyrics → 400
   const submit = async (tool: string, form: Record<string, string>, files: Record<string, string> = {}) => { const fd = new FormData(); for (const [k, v] of Object.entries(form)) fd.append(k, v);

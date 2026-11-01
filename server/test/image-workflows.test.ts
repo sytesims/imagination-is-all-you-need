@@ -67,7 +67,7 @@ try {
   const fsw = W.find((w) => w.id === 'face-swap'); assert.equal(fsw.status, 'ready'); assert.deepEqual(fsw.slots.map((s: any) => [s.name, s.required, s.missing]), [['image', true, 'Add a target photo'], ['face', true, 'Add a face']]);
   assert.equal(fsw.generateLabel, 'Swap face');
   // step 3 (2026-10-22): Person Swap, Character Sheet, Product Shot and Upscale join the bar; step 4 (2026-10-23): Brush Edit, Camera Angles, Camera & Lens too
-  assert.deepEqual(W.filter((w) => w.status === 'ready').map((w) => w.id).sort(), ['ad-pack', 'brush-edit', 'camera-angles', 'camera-lens', 'character-sheet', 'erase', 'expand', 'face-swap', 'image-layers', 'material-swap', 'person-swap', 'product-shot', 'relight', 'remove-bg', 'try-on', 'upscale']);
+  assert.deepEqual(W.filter((w) => w.status === 'ready').map((w) => w.id).sort(), ['ad-pack', 'brush-edit', 'camera-angles', 'camera-lens', 'character-sheet', 'erase', 'expand', 'face-swap', 'image-layers', 'material-swap', 'person-swap', 'phone-photo', 'product-shot', 'relight', 'remove-bg', 'try-on', 'upscale']);
   assert.deepEqual(W.filter((w) => w.status !== 'ready').map((w) => w.id), [], 'nothing opens its own page any more');
   const be = W.find((w) => w.id === 'brush-edit'); assert.equal(be.surface, 'mask'); assert.equal(be.runner.toolId, 'app-inpaint'); assert.equal(be.generateLabel, 'Edit area');
   assert.equal(be.prompt.mode, 'required'); assert.equal(be.prompt.placeholder, 'Describe the change in the painted area'); assert.deepEqual(be.slots.map((s: any) => [s.name, s.required]), [['image', true]]);
@@ -75,13 +75,17 @@ try {
   assert.ok(be.models.inpaint.includes('fal-bria-genfill') && !be.models.inpaint.includes('api-nano-banana'), 'mask models only: Bria GenFill yes, Nano Banana 2 no');
   assert.ok(be.aliases.routes.includes('/tools/brush-edit') && be.aliases.routes.includes('/tools/app-inpaint'), 'old Brush Edit routes are aliases');
   const ca = W.find((w) => w.id === 'camera-angles'); assert.equal(ca.surface, 'multi-output'); assert.equal(ca.output.count, 'perOption');
-  assert.deepEqual(ca.controls[0].options.map((o: any) => o.value), ['front', 'three-quarter-left', 'three-quarter-right', 'side', 'back', 'low', 'high', 'close-up', 'wide'], 'nine angle chips');
+  assert.deepEqual(ca.controls[0].options.map((o: any) => o.value), ['front', 'three-quarter-left', 'three-quarter-right', 'side', 'back', 'low', 'high', 'close-up', 'wide', 'over-shoulder', 'full-body'], 'eleven angle chips');
+  assert.deepEqual(JSON.parse(ca.controls[0].default), ['front', 'three-quarter-left', 'three-quarter-right', 'side', 'back', 'low', 'high', 'close-up', 'wide'], 'the nine by default');
   assert.ok(ca.models.edit.includes('comfy-qwen-angles'), 'the local angles LoRA route stays offered');
   const cl = W.find((w) => w.id === 'camera-lens'); assert.equal(cl.surface, 'rig'); assert.equal(cl.runner.toolId, 'create-image'); assert.deepEqual(cl.slots, []);
   assert.deepEqual(cl.controls.map((c: any) => c.field), ['cameraBody', 'lens', 'focal', 'aperture', 'film', 'lighting', 'era']);
   assert.ok(cl.controls.every((c: any) => c.options?.length), 'every rig control lists its options'); assert.deepEqual(cl.controls.filter((c: any) => c.optional).map((c: any) => c.field), ['film', 'lighting', 'era']);
   assert.equal(cl.controls.find((c: any) => c.field === 'focal').default, '35'); assert.equal(cl.controls.find((c: any) => c.field === 'aperture').options[0].label, 'f/0.95');
   const ps = W.find((w) => w.id === 'person-swap'); assert.deepEqual(ps.slots.map((s: any) => [s.label, s.sendsAs, s.required]), [['Target', 'image', true], ['Person', 'person', true]]); assert.equal(ps.generateLabel, 'Swap person');
+  // Outfit (2026-11-01): today's swap by default, "Keep the photo's outfit" opt-in; the newer 2+ image models are listed (Flare first of them)
+  const oc = ps.controls.find((c: any) => c.field === 'outfit'); assert.equal(oc.kind, 'segmented'); assert.equal(oc.default, 'person'); assert.deepEqual(oc.options.map((o: any) => o.value), ['person', 'keep']);
+  assert.deepEqual(ps.groups.map((g: any) => g.id), ['outfit']); assert.ok(ps.models.edit.includes('api-gpt-image-25-flare'), 'Person Swap offers GPT Image 2.5 Flare');
   const cs = W.find((w) => w.id === 'character-sheet'); assert.deepEqual(cs.slots.map((s: any) => [s.label, s.required]), [['Your photo', false]]); assert.equal(cs.generateLabel, 'Make sheet');
   assert.equal(cs.fixedNote, undefined); assert.deepEqual(cs.controls.map((c: any) => c.field), ['layout']); // 2026-10-25: the Layout chip replaced "3 panels · 4:3" assert.deepEqual(cs.prompt.requiredWithout, { slot: 'image', missing: 'Describe the character' }); assert.equal(cs.locked.aspect, '4:3');
   assert.ok(cs.models.edit.length && cs.models.generate.length, 'a photo switches to the edit models');

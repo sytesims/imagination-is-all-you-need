@@ -85,6 +85,17 @@ try {
       const video = ff(['-f', 'lavfi', '-i', 'color=c=blue:s=128x128:r=10:d=0.3', '-c:v', ext === 'webm' ? 'libvpx-vp9' : 'libx264', ...(ext === 'm4v' ? ['-f', 'mp4'] : [])], `good.${ext}`);
       const r = await post('/api/media', [['file', video, `good.${ext}`, 'application/octet-stream']]); assert.equal(r.status, 200, `${ext}: ${JSON.stringify(r)}`);
     }
+    // Browser recordings: MediaRecorder WebM has no header duration (measured by decoding), Safari MP4 is fragmented; a cut WebM still fails.
+    const live = ff(['-f', 'lavfi', '-i', 'testsrc=size=160x120:rate=30', '-t', '1', '-c:v', 'libvpx-vp9', '-live', '1', '-f', 'webm'], 'live.webm');
+    assert.equal(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', path.join(dir, 'live.webm')], { encoding: 'utf8' }).trim(), 'N/A', 'fixture must lack a header duration');
+    const frag = ff(['-f', 'lavfi', '-i', 'testsrc=size=160x120:rate=30', '-t', '1', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', 'frag_keyframe+empty_moov'], 'frag.mp4');
+    for (const [bytes, name, mime] of [[live, 'turntable.webm', 'video/webm;codecs=vp9'], [live, 'turntable.webm', 'video/webm'], [frag, 'turntable.mp4', 'video/mp4']] as const) {
+      const r = await post('/api/tools/three-d-turntable/jobs', [['video', bytes, name, mime]], { types: '["turntable"]', seconds: '1' }); assert.equal(r.status, 200, `${name} ${mime}: ${JSON.stringify(r)}`);
+      let job: any; for (let i = 0; i < 100 && !['done', 'failed'].includes(job?.status); i++) { await new Promise(r => setTimeout(r, 100)); job = await (await fetch(`${B}/api/jobs/${r.body.id}`)).json(); }
+      assert.equal(job.status, 'done', `${name} saved as MP4: ${JSON.stringify(job)}`); assert.match(job.resultUrl, /-out0\.mp4$/);
+    }
+    for (const cut of [live.subarray(0, 3000), live.subarray(0, 600)]) { const before = disk(); const r = await post('/api/tools/three-d-turntable/jobs', [['video', cut, 'turntable.webm', 'video/webm']], { types: '["turntable"]' }); assert.equal(r.status, 400); assert.equal(r.body.code, 'upload_format'); assert.deepEqual(disk(), before); }
+    console.log('upload-security: duration-less WebM + fragmented MP4 turntables accepted; truncated WebM rejected');
     writeFileSync(path.join(dir, 'recording.mjpeg'), Buffer.concat([jpg, jpg])); await validateUpload(path.join(dir, 'recording.mjpeg'), 'clay.mjpeg', 'video/x-motion-jpeg', 'streams');
     const maskSubmit = await post('/api/tools/create-image/jobs', [['refs', png, 'good.png', 'image/png'], ['mask', black, 'mask.png', 'image/png']], { provider: 'not-configured', types: 'inpaint', rights: '1' });
     assert.equal(maskSubmit.status, 400); assert.notEqual(maskSubmit.body.code, 'upload_format'); assert.notEqual(maskSubmit.body.code, 'dark');

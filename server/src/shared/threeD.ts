@@ -152,6 +152,17 @@ export function normalizeSettings(modelId: string, s: { detail?: unknown; textur
   const tex = m.texture && s.texture === 'pbr' && !m.texture.some((o) => o.value === 'pbr') ? 'standard' : s.texture;
   return { detail: near(DETAILS, m.detail, s.detail, m.defaults.detail), texture: near(TEXTURES, m.texture, tex, m.defaults.texture), faces: near(FACES, m.faces, s.faces, m.defaults.faces, true) };
 }
+/** P3-05: the model menu prices each row at the settings picking that model gives. Picking keeps the user's own choices (the draft) and
+ *  gives every untouched field the picked model's default (normalizeSettings), so the page sends its own choices as `picks`
+ *  ("detail:high,texture:pbr", "" = none) beside the current model's detail / texture / faces. */
+export const threeDPicksParam = (vals: Record<string, unknown>): string =>
+  (['detail', 'texture', 'faces'] as const).filter((k) => typeof vals[k] === 'string' && vals[k] !== '').map((k) => `${k}:${vals[k]}`).join(',');
+/** The settings a menu row runs with: `picks` (the user's own choices) on that model's defaults; with no `picks` sent, the request's own values. */
+export function threeDRowSettings(modelId: string, p: Record<string, string | undefined>): { detail: Detail; texture: Texture; faces: Faces } {
+  if (p.picks == null) return normalizeSettings(modelId, p);
+  const own: Record<string, string> = {}; for (const part of String(p.picks).split(',')) { const [k, v] = part.split(':'); if ((k === 'detail' || k === 'texture' || k === 'faces') && v) own[k] = v; }
+  return normalizeSettings(modelId, own);
+}
 /** The price key a 3D job carries in `resolution` (routeInput): `<detail>.<texture>.<faces>`, as sent; each price row maps every key to the
  *  rate of the settings that model really runs (normalizeSettings), so an unsupported value quotes what runs. */
 export const threeDPriceKey = (s: { detail?: unknown; texture?: unknown; faces?: unknown }, mode = 'image-to-3d') =>

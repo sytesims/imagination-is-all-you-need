@@ -117,6 +117,11 @@ export const IMAGE_PRESETS: ImagePreset[] = [
     promptTemplate: '{subject}, dressed as a fantasy traveller in layered leather armour, a hooded travel cloak, a belt with pouches and tall boots, every buckle and strap clearly visible',
     settings: {}, inspiredBy: ['costume design turnarounds'] }),
 
+  // ---- Phone Photo (2026-11-01): the chips set who holds the phone and the light; the template is who is in it, in your words ----
+  P({ id: 'phone-photo-ugc', name: 'Phone photo (UGC)', workflow: 'phone-photo', category: 'People',
+    description: 'A casual selfie in window light: real skin, an everyday room, nothing posed.', subjectHint: 'a fictional woman in her late twenties with curly hair, laughing mid-sentence with an iced coffee in hand',
+    promptTemplate: '{subject}', settings: { holder: 'selfie', light: 'window' }, inspiredBy: ['everyday social posts shot on a phone', 'Phone Photo chips: Selfie, Window'] }),
+
   // ---- Product Shot (the scene tile adds its own setting; the template adds the look) ----
   P({ id: 'cafe-counter', name: 'Café Counter', workflow: 'product-shot', category: 'Product', hero: true, thumbnailModel: QWEN21,
     description: 'A stone café counter in soft morning window light.', subjectHint: 'a glass of iced coffee',

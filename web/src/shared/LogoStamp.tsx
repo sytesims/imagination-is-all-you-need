@@ -7,9 +7,9 @@
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { activeKit, loadBrandKits, useBrand } from './brandStore';
-import { setStamp, setStampOn, useStamp } from './stampStore';
+import { setAdjust, setAdjustOn, setStamp as setStampG, setStampOn as setStampOnG, useStamp } from './stampStore';
 import { drawEndCard, drawStamp, loadStampArt, type StampArt } from './logoStampDraw';
-import { SPOT_NAME, STAMP_CORNERS, STAMP_SIZES, STAMP_SPOTS, STAMP_TEXT_MAX, spotAt, type StampSize } from '../../../server/src/shared/logoStamp';
+import { SPOT_NAME, STAMP_CORNERS, STAMP_SIZES, STAMP_SPOTS, STAMP_TEXT_MAX, spotAt, type StampSettings, type StampSize } from '../../../server/src/shared/logoStamp';
 import { logoFor, type BrandKit } from '../../../server/src/shared/brandKit';
 import { tip } from './Tooltip';
 import './logoStamp.css';
@@ -34,9 +34,13 @@ function mediaRect(stage: HTMLElement, e: HTMLImageElement | HTMLVideoElement): 
 /** Show "Add logo" on this result? A brand is on in this media's bar, or the result was made with a brand. */
 export function stampAvailable(brandOn: boolean, jobInput: any): boolean { return brandOn || !!jobInput?.brand?.applied || !!jobInput?.brandKit; }
 
-export function LogoStampLayer({ kind }: { kind: 'image' | 'video' }) {
-  const b = useBrand(); useEffect(() => { void loadBrandKits(); }, []); const kit = activeKit(b);
-  const { on, settings: s } = useStamp();
+/** adjust: Adjust logo on an Ad Pack ad (the stage shows its clean copy): this ad's own settings and on / off (stampStore adjust), the
+ *  kit Ad Pack used, and its platform's safe area; without it, Add logo with the shared settings and the brand that is on. */
+export function LogoStampLayer({ kind, adjust }: { kind: 'image' | 'video'; adjust?: { key: string; kitId: string } }) {
+  const b = useBrand(); useEffect(() => { void loadBrandKits(); }, []); const kit = (adjust && b.kits.find((k) => k.id === adjust.kitId)) || activeKit(b);
+  const g0 = useStamp(); const a = adjust ? g0.adjust[adjust.key] : undefined;
+  const on = a ? a.on : g0.on; const s = a ? a.settings : g0.settings; const inset = a?.inset;
+  const setStamp = (p: Partial<StampSettings>) => (adjust ? setAdjust(adjust.key, p) : setStampG(p)); const setStampOn = (v: boolean) => (adjust ? setAdjustOn(adjust.key, v) : setStampOnG(v));
   const root = useRef<HTMLDivElement>(null); const cv = useRef<HTMLCanvasElement>(null); const endCv = useRef<HTMLCanvasElement>(null);
   const [rect, setRect] = useState<Rect | null>(null); const [art, setArt] = useState<StampArt | null>(null); const [tick, setTick] = useState(0);
   const [box, setBox] = useState<Box | null>(null); const [card, setCard] = useState(false); const [drag, setDrag] = useState<{ x: number; y: number } | null>(null); const [showEnd, setShowEnd] = useState(false);
@@ -54,7 +58,7 @@ export function LogoStampLayer({ kind }: { kind: 'image' | 'video' }) {
     const dpr = Math.min(2, window.devicePixelRatio || 1); c.width = Math.round(rect.w * dpr); c.height = Math.round(rect.h * dpr); const g = c.getContext('2d')!; g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, rect.w, rect.h);
     const stage = root.current?.closest<HTMLElement>('.rvx-stage'); const e = stage ? mediaEl(stage) : null;
     const ready = e && (!(e instanceof HTMLVideoElement) || e.readyState >= 2) && (!(e instanceof HTMLImageElement) || e.complete) ? e : null;
-    const l = drawStamp(g, rect.w, rect.h, art, s, ready); setBox((p) => (p && ['x', 'y', 'w', 'h'].every((k) => Math.abs((p as any)[k] - (l.box as any)[k]) < 0.5) ? p : l.box)); }, [rect, art, s, tick, on]);
+    const l = drawStamp(g, rect.w, rect.h, art, s, ready, inset); setBox((p) => (p && ['x', 'y', 'w', 'h'].every((k) => Math.abs((p as any)[k] - (l.box as any)[k]) < 0.5) ? p : l.box)); }, [rect, art, s, tick, on, inset]);
   /* the end card preview, and at the end of each loop when it's on */
   useEffect(() => { const c = endCv.current; if (!c || !rect || !art || !showEnd) return; const dpr = Math.min(2, window.devicePixelRatio || 1); c.width = Math.round(rect.w * dpr); c.height = Math.round(rect.h * dpr);
     const g = c.getContext('2d')!; g.setTransform(dpr, 0, 0, dpr, 0, 0); drawEndCard(g, rect.w, rect.h, art, s); }, [showEnd, rect, art, s]);
@@ -98,15 +102,14 @@ export function LogoStampLayer({ kind }: { kind: 'image' | 'video' }) {
     {showEnd && rect && <div className="lst-end" style={{ left: rect.x, top: rect.y, width: rect.w, height: rect.h }} data-testid="lst-end"><canvas ref={endCv} style={{ width: rect.w, height: rect.h }} aria-label="End card preview" />
       <button type="button" className="lst-end-x" onClick={() => setShowEnd(false)}>Back to the clip</button></div>}
     <button type="button" className={`lst-pill${on ? ' on' : ''}`} style={at(0)} onClick={() => { const n = !on; setStampOn(n); if (n && !logo) setCard(true); }} aria-pressed={on} data-testid="lst-pill"
-      {...tip(on ? 'Your logo goes on Save and Share, as a copy. Click to take it off' : `Put ${kit.name}’s logo on this ${kind}. The original stays as it is`)}>
-      <BrandDot kit={kit} />{on ? <>Logo on<small>· drag to place</small></> : 'Add logo'}</button>
-    {on && card && rect && <StampCard kit={kit} kind={kind} cardPos={cardPos} noLogo={logo ? null : noLogo} onPreviewEnd={() => setShowEnd(true)} onClose={() => setCard(false)} />}
+      {...tip(adjust ? (on ? 'Save and Share use a copy with the logo here. Click to take it off' : 'Put the logo back on this ad') : on ? 'Your logo goes on Save and Share, as a copy. Click to take it off' : `Put ${kit.name}’s logo on this ${kind}. The original stays as it is`)}>
+      <BrandDot kit={kit} />{on ? <>Logo on<small>· drag to place</small></> : adjust ? 'Put logo back' : 'Add logo'}</button>
+    {on && card && rect && <StampCard s={s} set={setStamp} kit={kit} kind={kind} cardPos={cardPos} noLogo={logo ? null : noLogo} onPreviewEnd={() => setShowEnd(true)} onClose={() => setCard(false)} />}
   </div>;
 }
 
 /** "More": the full settings (the approved option A card). */
-function StampCard({ kit, kind, cardPos, noLogo, onPreviewEnd, onClose }: { kit: BrandKit; kind: 'image' | 'video'; cardPos: React.CSSProperties; noLogo: React.ReactNode; onPreviewEnd: () => void; onClose: () => void }) {
-  const { settings: s } = useStamp();
+function StampCard({ s, set: setStamp, kit, kind, cardPos, noLogo, onPreviewEnd, onClose }: { s: StampSettings; set: (p: Partial<StampSettings>) => void; kit: BrandKit; kind: 'image' | 'video'; cardPos: React.CSSProperties; noLogo: React.ReactNode; onPreviewEnd: () => void; onClose: () => void }) {
   useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); onClose(); } }; addEventListener('keydown', k, true); return () => removeEventListener('keydown', k, true); }, [onClose]);
   return <div className="lst-card" style={cardPos} role="dialog" aria-label="Logo and text" data-testid="lst-card">
     <div className="lst-head"><span><b>Logo and text</b><small>{kit.name} · placed exactly, never redrawn</small></span><button type="button" className="lst-x" aria-label="Close" onClick={onClose}>✕</button></div>

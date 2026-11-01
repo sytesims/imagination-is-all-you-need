@@ -18,6 +18,7 @@ import { recordSubmittedPass } from '../workflowExport.js';
 import { putPreview, previewMethod } from './preview.js';
 import { notePlanPrompts } from '../jobSource.js';
 import { nativeOutputItems } from './nativeImageOutputs.js';
+import { editUnchanged, unchangedNotice } from './unchangedCheck.js';
 
 /** native when OPENHIGGSFIELD_COMFY_API=native, or (unset) when COMFY_BASE_URL is a local / private host. */
 export function nativeMode() {
@@ -145,6 +146,8 @@ export async function runNative(job: Job, transport?: ComfyTransport, build: (j:
           { ...diagnostic, jobId: job.id, requestId: res.promptId, route: job.route ?? null, pass: k, url: `/files/${path.basename(dest)}` }];
       } catch { (job.warnings ??= []).push(`${diagnostic.label}: diagnostic preview unavailable; generated result is unaffected.`); }
     }
+    // A swap that came back as its own source (the person not replaced): keep the result, say so plainly (fails open: no check, no notice)
+    if (pass.unchangedVs && files[0] && (await editUnchanged(pass.unchangedVs, files[0]))?.unchanged) (job.warnings ??= []).push(unchangedNotice(!!job.diagnostics?.some((d) => d.pass === k)));
   }
   job.stage = 'muxing' as any; job.progress = Math.max(job.progress, 95); job.liveStage = 'finishing';
   const finals: { label: string; file: string }[] = [];

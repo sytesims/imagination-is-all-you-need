@@ -4,7 +4,7 @@
  *  - The ONE live WebGL viewer rule: useLiveViewer(id, want) grants a single slot; a higher-priority claim (the open viewer) takes it from a
  *    lower one (the poster renderer), which then shows its still. Grids never hold a WebGL context: they show posters.
  *  - Model3D: Google's <model-viewer> (Apache-2.0, npm @google/model-viewer, loaded on first use as its own chunk) with orbit / zoom,
- *    auto-rotate, a neutral environment light, a clay look, keyboard focus, and a calm placeholder + download link when a file won't load.
+ *    auto-rotate, a neutral environment light, a clay look (switched in place), keyboard focus, and a calm placeholder + download link when a file won't load.
  *  - snapshotPoster / recordTurntable: a still for the card, and an orbit video recorded from the viewer's canvas (MediaRecorder; no provider).
  */
 import { createElement, forwardRef, useEffect, useImperativeHandle, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
@@ -63,10 +63,12 @@ export const Model3D = forwardRef<Model3DHandle, Model3DProps>(function Model3D(
   /* a file the loader can't parse throws inside three.js without an error event: stop waiting after timeoutMs */
   useEffect(() => { if (!granted || !ready || state !== 'loading') return; const t = setTimeout(() => { setState((s) => (s === 'loading' ? 'error' : s)); setWhy('This model took too long to load or could not be read.'); onError?.('timeout'); }, timeoutMs); return () => clearTimeout(t); }, [granted, ready, state, src, timeoutMs]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { const m = el.current as any; if (!m || !granted || !ready) return;
-    const ok = () => { setState('ok'); if (look === 'clay') clay(m); onLoad?.(m); };
+    const ok = () => { setState('ok'); onLoad?.(m); };
     const bad = (e: any) => { setState('error'); const t = String(e?.detail?.type ?? 'load'); setWhy(t === 'webglcontextlost' ? 'The 3D view stopped (graphics memory). Reopen it.' : 'This model could not be shown here.'); onError?.(t); };
     m.addEventListener('load', ok); m.addEventListener('error', bad); if (m.loaded) ok();
-    return () => { m.removeEventListener('load', ok); m.removeEventListener('error', bad); }; }, [granted, ready, src, look]); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => { m.removeEventListener('load', ok); m.removeEventListener('error', bad); }; }, [granted, ready, src]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* the look changes the loaded materials in place: same element, no reload, the camera and auto-rotate stay put */
+  useEffect(() => { const m = el.current as any; if (m && state === 'ok') applyLook(m, look); }, [look, state]);
   useImperativeHandle(ref, () => ({ get el() { return el.current; }, snapshot: () => snapshotPoster(el.current), record: (o) => recordTurntable(el.current, o) }), []);
   const still = poster ? <img className="m3d-still" src={poster} alt={alt} draggable={false} /> : <span className="m3d-ph" aria-hidden><Cube /></span>;
   if (state === 'error') return <div className={`m3d m3d-err ${className}`} style={style} data-testid={testId ? `${testId}-error` : undefined} role="status">{still}<p className="m3d-why"><b>{why || 'This model could not be shown.'}</b>
@@ -79,8 +81,13 @@ export const Model3D = forwardRef<Model3DHandle, Model3DProps>(function Model3D(
   </div>;
 });
 const Cube = () => <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"><path d="M12 3 20 7.5v9L12 21l-8-4.5v-9z" /><path d="M4 7.5 12 12l8-4.5M12 12v9" /></svg>;
-/** A plain grey clay look: textures off, one matte colour (shape only). The viewer remounts to go back to the textured look. */
-function clay(m: any) { try { for (const mat of m.model?.materials ?? []) { const p = mat.pbrMetallicRoughness; p.baseColorTexture?.setTexture?.(null); p.setBaseColorFactor([0.78, 0.76, 0.73, 1]); p.setMetallicFactor(0); p.setRoughnessFactor(0.85); } } catch { /* the look is cosmetic */ } }
+/** Each material's own colour, kept the first time a look is applied, so Textured can put it back. */
+const orig = new WeakMap<object, { tex: unknown; base: number[]; metal: number; rough: number; glow: number[] }>();
+/** Clay: textures and glow off, one plain grey matte colour (shape only). Textured: each material's own texture and colour back. In place, no reload. */
+function applyLook(m: any, look: Look) { try { for (const mat of m.model?.materials ?? []) { const p = mat.pbrMetallicRoughness; if (!p) continue;
+  let o = orig.get(mat); if (!o) { if (look !== 'clay') continue; o = { tex: p.baseColorTexture?.texture ?? null, base: [...p.baseColorFactor], metal: p.metallicFactor, rough: p.roughnessFactor, glow: [...(mat.emissiveFactor ?? [0, 0, 0])] }; orig.set(mat, o); }
+  if (look === 'clay') { p.baseColorTexture?.setTexture?.(null); p.setBaseColorFactor([0.78, 0.76, 0.73, 1]); p.setMetallicFactor(0); p.setRoughnessFactor(0.85); mat.setEmissiveFactor?.([0, 0, 0]); }
+  else { p.baseColorTexture?.setTexture?.(o.tex); p.setBaseColorFactor(o.base); p.setMetallicFactor(o.metal); p.setRoughnessFactor(o.rough); mat.setEmissiveFactor?.(o.glow); } } } catch { /* the look is cosmetic */ } }
 
 /** A PNG still of what the viewer shows now (the card poster). null when the viewer isn't ready. */
 export async function snapshotPoster(el: HTMLElement | null): Promise<Blob | null> {

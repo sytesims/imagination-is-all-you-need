@@ -71,6 +71,8 @@ export const LightIcon = svg(<><path d="M9.5 18h5M10.5 21h3" /><path d="M12 3a6 
 /** Stitch: three frames joined on one strip (the Video page's timeline workflow). */
 export const StitchIcon = svg(<><rect x="2.5" y="6.5" width="5.5" height="11" rx="1.5" /><rect x="9.25" y="6.5" width="5.5" height="11" rx="1.5" /><rect x="16" y="6.5" width="5.5" height="11" rx="1.5" /><path d="M8 12h1.25M14.75 12H16" strokeDasharray="1.25 1" /></>, 'StitchIcon');
 export const TransitionIcon = svg(<><rect x="3" y="3.5" width="10.5" height="10.5" rx="2" /><rect x="10.5" y="10" width="10.5" height="10.5" rx="2" /><path d="m6.5 17.5 2 2 2-2M8.5 19.5V16" /></>, 'TransitionIcon');
+/* Phone Photo (2026-11-01): our own drawing. A phone with a person on its screen. */
+export const PhonePhotoIcon = svg(<><rect x="6.5" y="2.5" width="11" height="19" rx="2.5" /><circle cx="12" cy="9.5" r="2.25" /><path d="M8.75 16a3.25 3.25 0 0 1 6.5 0" /></>, 'PhonePhotoIcon');
 export const PhoneAdIcon = svg(<><rect x="6.5" y="2.5" width="11" height="19" rx="2.5" /><path d="M10.5 9.5v5l4-2.5z" /><path d="M11 18.5h2" /></>, 'PhoneAdIcon');
 /** Direct a Shot: a small camera on a dotted path (the camera move you plan). */
 export const PrevizIcon = svg(<><rect x="3" y="4" width="10" height="7.5" rx="2" /><path d="m13 6.6 4-2v6.3l-4-2" /><path d="M5 20c3-.2 5-1.5 7-3.5s4-3.3 7.5-3.5" strokeDasharray="1.5 2.5" /><circle cx="19.5" cy="13" r="1.25" /></>, 'PrevizIcon');
@@ -216,7 +218,7 @@ export const ICONS = {
   favourites: FavouritesIcon, elements: ElementsIcon, trash: TrashIcon, download: DownloadIcon, heart: HeartIcon,
   more: MoreIcon, upload: UploadIcon, generate: GenerateIcon,
   extend: ExtendIcon, director: DirectorIcon, portrait: PortraitIcon, reframe: ReframeIcon, hdr: HdrIcon, fps: FpsIcon, depth: DepthIcon,
-  characterSheet: CharacterSheetIcon, product: ProductIcon, brush: BrushIcon, light: LightIcon, transition: TransitionIcon, phoneAd: PhoneAdIcon,
+  characterSheet: CharacterSheetIcon, product: ProductIcon, brush: BrushIcon, light: LightIcon, transition: TransitionIcon, phoneAd: PhoneAdIcon, phonePhoto: PhonePhotoIcon,
   faceSwap: FaceSwapIcon, shots: ShotsIcon, expand: ExpandIcon, garment: GarmentIcon, material: MaterialIcon, eraser: EraserIcon, layerSheets: LayerSheetsIcon,
   yourGpu: YourGpuIcon, comfyPlace: ComfyPlaceIcon, apiPlug: ApiPlugIcon, savedTag: SavedTagIcon, officialBadge: OfficialBadgeIcon, community: CommunityIcon, stopwatch: StopwatchIcon, sparkle: SparkleIcon, finish: FinishIcon,
   cube: CubeIcon, rig: RigIcon, orbit: OrbitIcon, previz: PrevizIcon, loop: LoopIcon, mic: MicIcon, changeVoice: ChangeVoiceIcon, translate: TranslateIcon, music: MusicIcon, musicBed: MusicBedIcon, stitch: StitchIcon,
@@ -235,7 +237,7 @@ export const TOOL_ICONS: Record<string, IconName> = {
   'h3-extend': 'extend', cinema: 'director', voice: 'mic', 'image-upscale': 'upscale', soul: 'portrait', reframe: 'reframe', 'remove-bg': 'cutout',
   'footage-fx': 'sparkle', 'prompt-edit': 'brush' /* Edit Video: Prompt Edit (Bernini-R) */, 'two-person-swap': 'faceSwap' /* Swap Two People (H3 Character Swap ×2) */, finish: 'finish', 'sdr-hdr': 'hdr', 'fps-boost': 'fps', 'depth-map': 'depth', 'app-character-sheet': 'characterSheet', 'app-product-shot': 'product',
   'app-photos-to-reel': 'video', 'app-inpaint': 'brush', 'app-relight': 'light', 'app-transition': 'transition', 'app-ugc-ad': 'phoneAd', 'app-orbit-shot': 'orbit', 'app-face-swap': 'faceSwap', 'app-shots': 'shots',
-  'app-remove-bg': 'cutout', 'app-expand': 'expand', 'app-erase': 'eraser', 'app-try-on': 'garment', 'app-material-swap': 'material', 'app-ad-pack': 'phoneAd', 'app-image-layers': 'layerSheets', 'edit-image': 'brush' /* header Image menu: Edit Image (Create Image in edit mode) */,
+  'app-remove-bg': 'cutout', 'app-expand': 'expand', 'app-erase': 'eraser', 'app-try-on': 'garment', 'app-material-swap': 'material', 'app-phone-photo': 'phonePhoto', 'app-ad-pack': 'phoneAd', 'app-image-layers': 'layerSheets', 'edit-image': 'brush' /* header Image menu: Edit Image (Create Image in edit mode) */,
   'app-anime-restyle': 'restyle', 'app-video-upscale': 'upscale', 'app-change-voice': 'changeVoice', 'app-translate-video': 'translate', 'app-music-bed': 'musicBed',
   'three-d': 'cube', 'three-d-turntable': 'orbit', 'image-to-3d': 'cube', turntable: 'orbit', 'plan-a-shot': 'previz', '3d': 'cube', loop: 'loop' /* Video flow shortcut: Loop */, 'direct-a-shot': 'previz', 'make-it-real': 'previz', compose: 'stitch' /* Video: Stitch (POST /api/compose) */,
 };

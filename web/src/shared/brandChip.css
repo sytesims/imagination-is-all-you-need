@@ -9,6 +9,9 @@ html body button.ic-chip.bk-chip.on{color:var(--text)!important;box-shadow:inset
 html body button.ic-chip.bk-chip.bk-chip-empty{box-shadow:inset 0 0 0 1px var(--state-border-hover)!important}
 .bk-pop{width:min(340px,calc(100vw - 32px))}
 .bk-pop-in{display:flex;flex-direction:column;gap:6px;padding:4px}
+.bk-pop-top{display:flex;flex-direction:column;gap:2px;margin:4px 6px 4px}
+.bk-pop-t{font:600 var(--fs-base)/1.3 var(--font-ui);color:var(--text)}
+.bk-pop-what{margin:0;font:500 var(--fs-sm)/1.4 var(--font-ui);color:var(--text-2)}
 .bk-switch{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:10px;border:0;border-radius:var(--r-md);background:var(--state-fill);color:var(--text);text-align:left;cursor:pointer;transition:background-color var(--t-state) var(--ease-state)}
 .bk-switch:hover{background:var(--state-hover)}
 .bk-switch-t{display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -19,17 +22,29 @@ html body button.ic-chip.bk-chip.bk-chip-empty{box-shadow:inset 0 0 0 1px var(--
 .bk-switch[aria-checked="true"]>i{background:var(--accent);box-shadow:none}
 .bk-switch[aria-checked="true"]>i::after{transform:translateX(14px);background:var(--on-accent)}
 .bk-pop-h{margin:8px 6px 0;font:500 var(--fs-xs)/18px var(--font-ui);color:var(--text-2)}
-.bk-kits{display:flex;flex-direction:column;max-height:260px;overflow:auto}
-.bk-kit{display:flex;align-items:center;gap:10px;min-height:36px;padding:0 10px;border:0;border-radius:var(--r-md);background:none;color:var(--text);font:500 var(--fs-sm)/1.3 var(--font-ui);text-align:left;cursor:pointer}
+.bk-kits{display:flex;flex-direction:column;gap:2px;max-height:300px;overflow:auto;padding:2px}
+.bk-kit{display:flex;align-items:center;gap:12px;min-height:48px;padding:6px 10px 6px 8px;border:0;border-radius:var(--r-md);background:none;color:var(--text);font:500 var(--fs-sm)/1.3 var(--font-ui);text-align:left;cursor:pointer;transition:background-color var(--t-state) var(--ease-state)}
 .bk-kit:hover{background:var(--state-hover)}
-.bk-kit-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bk-tick{color:var(--accent)}
+.bk-kit:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.bk-kit-t{display:flex;flex-direction:column;align-items:flex-start;gap:5px;flex:1;min-width:0}
+.bk-kit-t small{font:500 var(--fs-xs)/1.3 var(--font-ui);color:var(--text-3)}
+.bk-kit-n{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bk-tick{display:inline-flex;width:16px;flex:0 0 16px;color:var(--accent)}
+/* the kit's mark: its logo on a tile in the kit's background colour (or its initial when there's no logo); "None" is an empty dashed tile */
+.bk-mark{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:var(--m,32px);height:var(--m,32px);border-radius:calc(var(--m,32px) * .25);background:var(--mb,var(--surface-3));box-shadow:inset 0 0 0 1px var(--hairline);overflow:hidden}
+.bk-mark img{width:84%;height:84%;object-fit:contain}
+.bk-mark-none b{font:700 calc(var(--m,32px) * .45)/1 var(--font-ui);color:#fff;mix-blend-mode:difference}
+.bk-mark-off{background:none;box-shadow:none;border:1.5px dashed var(--text-3)}
+.bk-note{margin:0 6px;font:500 var(--fs-xs)/1.4 var(--font-ui);color:var(--text-2)}
 .bk-phrase{margin:0 6px;padding:8px 10px;border-radius:var(--r-md);background:var(--surface-2);font:500 var(--fs-sm)/1.45 var(--font-ui);color:var(--text);overflow-wrap:anywhere}
 .bk-phrase-none{color:var(--text-2)}
 .bk-err{margin:0 6px;color:var(--error);font-size:var(--fs-xs)}
-.bk-pop-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 6px 2px}
+.bk-pop-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0 0;padding-top:6px;border-top:1px solid var(--hairline)}
 .bk-pop-note{margin:0 6px 2px;color:var(--text-3);font-size:var(--fs-xs)}
-.bk-edit{color:var(--text);font:600 var(--fs-sm)/1 var(--font-ui);text-decoration:none;padding:8px 10px;border-radius:var(--r-md)}
-.bk-pop-foot .bk-edit:first-child{margin-left:-10px}
+.bk-edit{display:inline-flex;align-items:center;gap:6px;color:var(--text);font:600 var(--fs-sm)/1 var(--font-ui);text-decoration:none;padding:8px 10px;border-radius:var(--r-md)}
 .bk-edit:hover{background:var(--state-hover)}
-@media (prefers-reduced-motion:reduce){.bk-switch,.bk-switch>i,.bk-switch>i::after{transition:none}}
+.bk-edit:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.bk-new{color:var(--accent)}
+/* the chip with a logo: the logo tile, the name, then the colour dots */
+button.ic-chip.bk-chip .bk-mark{border-radius:5px}
+@media (prefers-reduced-motion:reduce){.bk-kit,.bk-switch,.bk-switch>i,.bk-switch>i::after{transition:none}}

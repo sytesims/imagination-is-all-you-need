@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { RangeSlider } from '../shared/RangeSlider';
 import { tip } from '../shared/Tooltip';
-import { KitDots } from '../shared/BrandChip';
+import { KitDots, KitMark } from '../shared/BrandChip';
 import { BarPopover, PopNote, PopRow, PopSection } from '../shared/BarPop';
 import { navigate } from '../platform/router';
 import { ChevronDownIcon, CloseIcon, DownloadIcon, ImageIcon, LayoutIcon, PaletteIcon, PencilIcon, PhoneAdIcon, PlusIcon, TextIcon } from '../ui/Icons';
@@ -45,7 +45,7 @@ export function OfferButton({ ad, ids = 'ad' }: { ad: AdCard; ids?: string }) {
 }
 
 /** "Brand: <name> ▾": the brand's logo, colours and fonts on the ad. The app's own bar popover (the board switcher's), with "No brand"
- *  and "Add a brand…" (Assets › Brands). */
+ *  and "New brand kit…" (Assets › Brands); each kit shows its logo (shared/BrandChip KitMark). */
 function BrandPick({ kits, kit, none, onPick, popClass, compact }: { kits: BrandKit[]; kit: BrandKit | null; none: boolean; onPick: (id: string) => void; popClass?: string; compact?: boolean }) {
   const btn = useRef<HTMLButtonElement>(null); const [open, setOpen] = useState(false); const pick = (id: string) => { setOpen(false); onPick(id); };
   const cur = none ? null : kit;
@@ -56,12 +56,12 @@ function BrandPick({ kits, kit, none, onPick, popClass, compact }: { kits: Brand
     <BarPopover open={open} anchor={btn} onClose={() => setOpen(false)} label="Brand" placement="bottom" width={240} className={popClass} testId="ad-brand-pop">
       <PopSection label="Brand">
         <div role="radiogroup" aria-label="Brand">
-          {kits.map((k) => <PopRow key={k.id} role="radio" selected={k.id === cur?.id} icon={<KitDots colors={k.colors} size={12} />} label={k.name} onClick={() => pick(k.id)} testId={`ad-brand-${k.id}`} />)}
+          {kits.map((k) => <PopRow key={k.id} role="radio" selected={k.id === cur?.id} icon={<KitMark kit={k} size={20} />} label={k.name} onClick={() => pick(k.id)} testId={`ad-brand-${k.id}`} />)}
           <PopRow role="radio" selected={!cur} icon={<KitDots colors={[]} size={12} />} label="No brand" onClick={() => pick(NO_BRAND)} testId="ad-brand-none" />
         </div>
       </PopSection>
       <PopSection>
-        <PopRow role="menuitem" icon={<PlusIcon size={16} />} label="Add a brand…" onClick={() => { setOpen(false); navigate('/assets/brands?new=1'); }} testId="ad-brand-add" />
+        <PopRow role="menuitem" icon={<PlusIcon size={16} />} label="New brand kit…" onClick={() => { setOpen(false); navigate('/assets/brands?new=1'); }} testId="ad-brand-add" />
       </PopSection>
     </BarPopover>
   </>;

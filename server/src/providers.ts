@@ -36,11 +36,11 @@ export interface ProviderDef {
 }
 
 import { OPEN_WEIGHTS_ONLY, openWeightsOnly, LICENSES, workflowLicense } from './licenses.js';
-import { bfsSwapFor } from './comfy/bfsSwap.js';
+import { bfsCardWorkflowsFor } from './comfy/bfsSwap.js';
 export { OPEN_WEIGHTS_ONLY, openWeightsOnly };
 /** Workflow variants a provider runs for a tool (first = primary). Hosted providers run none locally. */
 export function providerWorkflows(tool: ToolDef, p: ProviderDef): string[] {
-  const bfs = bfsSwapFor(tool.id, p.id); if (bfs) return [bfs.workflowFile]; // Face Swap / Person Swap on Qwen 2.1: base model + BFS LoRA (weights, Ready, downloads)
+  const bfs = bfsCardWorkflowsFor(tool.id, p.id); if (bfs) return bfs; // Face Swap / Person Swap on Qwen 2.1: base model + BFS LoRA (card weights; Person Swap also lists the optional head swap)
   if (p.workflows) return tool.workflows.filter((w) => p.workflows!.includes(w));
   if (p.kind !== 'open-weights') return [];
   if (p.id === 'comfy-funcamera') return tool.workflows.filter((w) => w === 'reshoot-funcamera-api.json');
@@ -232,7 +232,7 @@ registerProvider({ id: 'cloud-ltx25-extend', name: 'LTX-2.5 22B · Comfy Cloud',
 registerProvider({ id: 'cloud-ltx25-layout', name: 'LTX-2.5 + Layout to Render · Comfy Cloud', kind: 'hosted', via: 'Comfy Cloud workflow job (API v2): workflows/cloud/ltx25-layout-to-render-api.json, core nodes only (official LTX-2.5 22B int8 ConvRot files) + Lightricks\' Layout to Render IC-LoRA imported into your Comfy Cloud model library', stages: hostedStages('Comfy Cloud'), run: hostedMock('Comfy Cloud'),
   workflows: ['cloud/ltx25-layout-to-render-api.json'], license: 'ltx-2x-community', licenseUrl: 'https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2_x', docUrl: 'https://huggingface.co/Lightricks/LTX-2.5-22b-IC-LoRA-Layout-To-Render' });
 // Oct 27: Footage Effects · Comfy Cloud: four official Comfy LTX-2.3 IC-LoRA templates (restore, remove an object, remove subtitles, extend the frame), comfy/ltx23VfxCloud.ts
-registerProvider({ id: 'cloud-ltx23-vfx', name: 'LTX-2.3 22B + IC-LoRA · Comfy Cloud', kind: 'hosted', via: 'Comfy Cloud workflow job (API v2): the official Comfy templates template_ltx2_3_lora_restore_archival_footage, template_ltx2_3_obscura_remova_lora_remove_object_from_video, template_ltx2_3_lora_remove_subtitles_from_video and template_ltx2_3_lora_video_outpainting as workflows/cloud/ltx23-*-api.json (every LoRA in Comfy Cloud\'s shared library)', stages: hostedStages('Comfy Cloud'), run: hostedMock('Comfy Cloud'),
+registerProvider({ id: 'cloud-ltx23-vfx', name: 'LTX-2.3 22B + IC-LoRA · Comfy Cloud', kind: 'hosted', via: 'Comfy Cloud workflow job (API v2): the official Comfy templates template_ltx2_3_lora_restore_archival_footage, template_ltx2_3_obscura_remova_lora_remove_object_from_video, template_ltx2_3_lora_remove_subtitles_from_video and template_ltx2_3_lora_video_outpainting as workflows/cloud/ltx23-*-api.json; Vanish, Day to night, Rain and Flood run the restore graph with Lightricks\' LTX-2.3 Clean Plate, Day to Night and Water Simulation IC-LoRAs (every LoRA in Comfy Cloud\'s shared library)', stages: hostedStages('Comfy Cloud'), run: hostedMock('Comfy Cloud'),
   workflows: ['cloud/ltx23-restore-footage-api.json', 'cloud/ltx23-remove-object-api.json', 'cloud/ltx23-remove-subtitles-api.json', 'cloud/ltx23-outpaint-api.json'], license: 'ltx-2x-community', licenseUrl: 'https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2_x', docUrl: 'https://docs.comfy.org/tutorials/video/ltx/ltx-2-3' });
 // Oct 27: H3 Extend · Comfy Cloud: the Comfy Cloud twin of the local H3 Extend graph (open MiniMax H3, the last 22 frames of picture and sound as context,
 // joined by the shared Extend join). The Comfy Cloud place of the H3 Extend card (routing/routes.ts TWINS); comfy/h3ExtendCloud.ts.

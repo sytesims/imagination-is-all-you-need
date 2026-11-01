@@ -16,7 +16,8 @@ const job = async (f: Record<string, string>, img: [Buffer, string, string] | nu
   const r = await fetch(`${B}/api/tools/app-shots/jobs`, { method: 'POST', body: fd }); return { status: r.status, body: await r.json() as any }; };
 const until = async (id: string) => { for (let i = 0; i < 300; i++) { const j = await get(`/api/jobs/${id}`); if (['done', 'failed', 'needs_decision', 'blocked', 'canceled'].includes(j.status)) return j; await new Promise((r) => setTimeout(r, 100)); } throw new Error('timeout'); };
 const ok = (m: string) => console.log('ok ' + m);
-const ALL = ['front', 'three-quarter-left', 'three-quarter-right', 'side', 'back', 'low', 'high', 'close-up', 'wide'];
+const ALL = ['front', 'three-quarter-left', 'three-quarter-right', 'side', 'back', 'low', 'high', 'close-up', 'wide']; // the nine defaults
+const EVERY = [...ALL, 'over-shoulder', 'full-body']; // 2026-11-01: two opt-in views
 const FAL = 'fal:fal-ai/nano-banana-2/edit';
 try {
   for (let i = 0; i < 120; i++) { try { if ((await fetch(`${B}/api/health`)).ok) break; } catch { /* */ } await new Promise((r) => setTimeout(r, 500)); }
@@ -24,11 +25,11 @@ try {
   // ---- listing ----
   const t = (await get('/api/tools')).find((x: any) => x.id === 'app-shots'); assert.ok(t, 'app-shots listed');
   assert.equal(t.name, 'Camera Angles'); assert.equal(t.media, 'image'); assert.equal(t.route, '/tools/camera-angles'); // renamed from Shots (2026-10-22); id app-shots kept
-  const shotsIn = t.inputs.find((i: any) => i.name === 'shots'); assert.equal(shotsIn.kind, 'list'); assert.deepEqual(shotsIn.options, ALL); assert.equal(shotsIn.max, 9);
-  assert.deepEqual(JSON.parse(shotsIn.default), ALL, 'default = all nine'); assert.ok(shotsIn.choices.every((c: any) => c.label && c.description && !('prompt' in c)), 'chips carry label + description, not the prompt');
+  const shotsIn = t.inputs.find((i: any) => i.name === 'shots'); assert.equal(shotsIn.kind, 'list'); assert.deepEqual(shotsIn.options, EVERY); assert.equal(shotsIn.max, 11);
+  assert.deepEqual(JSON.parse(shotsIn.default), ALL, 'default = the nine'); assert.ok(shotsIn.choices.every((c: any) => c.label && c.description && !('prompt' in c)), 'chips carry label + description, not the prompt');
   assert.equal(t.inputs.find((i: any) => i.name === 'image').label, 'Photo'); assert.equal(t.inputs.find((i: any) => i.name === 'image').required, true);
   assert.deepEqual(t.providers.map((p: any) => p.id), ['comfy-qwen-image', 'api-nano-banana', 'comfy-flux3-klein', 'api-gpt-image', 'api-seedream', 'api-flux2', 'api-luma-image', 'api-kling-image', 'comfy-qwen21', 'comfy-qwen21-turbo', 'comfy-klein4b', 'comfy-flux2dev', 'comfy-qwen-angles'], 'no-new-weights default first, every edit model whose route sends the image, LoRA route last (2026-10-22)');
-  assert.equal(t.app.gallery.perOutput.max, 9);
+  assert.equal(t.app.gallery.perOutput.max, 11);
   ok(`listing: ${shotsIn.options.length} angle chips, models ${t.providers.map((p: any) => p.id).join(' > ')}`);
 
   // ---- validation ----
@@ -68,7 +69,7 @@ try {
   Object.assign(process.env, { OPENHIGGSFIELD_DATA_DIR: D, OPENHIGGSFIELD_BACKEND: 'mock' }); const P = await import('../src/comfy/plans.ts'); const IMG = path.join(ROOT, 'samples/sample-character.png');
   const plan: any = P.buildPlan({ id: 'sh-plan', toolId: 'app-shots', provider: 'comfy-qwen-image', input: { ...j1.input, baseTool: 'create-image', mode: 'edit', imagePath: IMG, refPaths: [IMG], seed: 100 } } as any);
   assert.equal(plan.passes.length, 3); assert.deepEqual(plan.passes.map((p: any) => p.label), ['Front', 'Close-up', 'Wide']); assert.deepEqual(plan.passes.map((p: any) => p.expect.seed), [100, 101, 102]);
-  for (const [k, p] of plan.passes.entries()) { const ks = Object.values<any>(p.graph).find((n) => n.class_type === 'KSampler'); assert.equal(p.graph[ks.inputs.positive[0]].inputs.prompt, j1.input.shots[k].prompt); assert.equal(ks.inputs.seed, 100 + k); }
+  for (const [k, p] of plan.passes.entries()) { const ks = Object.values<any>(p.graph).find((n) => n.class_type === 'KSampler'); assert.equal(p.graph[ks.inputs.positive[0]].inputs.prompt, j1.input.shots[k].prompt.replace(/\bimage 1\b/g, "Picture 1")) /* the graph gets Qwen Edit's own reference word */; assert.equal(ks.inputs.seed, 100 + k); }
   assert.equal(plan.passes[0].workflow, 'create-image-qwen-edit2509-api.json');
   const lp: any = P.buildPlan({ id: 'sh-lora', toolId: 'app-shots', provider: 'comfy-qwen-angles', input: { ...j1.input, baseTool: 'create-image', mode: 'edit', imagePath: IMG, refPaths: [IMG], seed: 7 } } as any);
   assert.equal(lp.passes[0].workflow, 'shots-qwen-edit2509-angles-api.json'); assert.ok(Object.values<any>(lp.passes[0].graph).some((n) => n.class_type === 'LoraLoaderModelOnly' && n.inputs.lora_name === 'Qwen-Edit-2509-Multiple-angles.safetensors'));

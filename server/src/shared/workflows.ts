@@ -25,7 +25,8 @@ export interface WorkflowSlot { name: string; label: string; required: boolean; 
 export interface WorkflowControl { field: string; label: string; kind: ControlKind; group: string; optional?: boolean;
   /** kind 'text': the field's length cap and example words (Material Swap), filled from the tool */ maxLength?: number; placeholder?: string;
   /** filled from the tool (Relight looks also carry a swatch, the controls they set and a credit): */ options?: { value: string; label: string; /** the chip's own words for this option ('' = left off the chip) */ chip?: string; swatch?: string; sets?: Record<string, string>; credit?: string; /** Character Sheet layouts: the tile's small line and the shape it asks for */ description?: string; aspect?: string }[]; default?: string; min?: number; max?: number; step?: number; pattern?: string; help?: string }
-export interface WorkflowGroup { id: string; label: string; icon: string; /** fields whose values make the chip's short summary, in order */ summary: string[] }
+export interface WorkflowGroup { id: string; label: string; icon: string; /** fields whose values make the chip's short summary, in order */ summary: string[];
+  /** the chip shows only the choices ("Selfie · Window"); the label stays its spoken name, tooltip and popover title */ plain?: boolean }
 export interface WorkflowRecipe {
   id: ImageFeatureId; name: string; icon: string; category: WorkflowCategory; tagline: string; /** what it needs, shown in the picker ("1 photo", "2 photos", "Photo optional") */ needs: string;
   source: WorkflowSource;
@@ -79,8 +80,10 @@ const DECLS: Decl[] = [
     prompt: { mode: 'required', placeholder: 'Describe the change in the painted area', composer: 'plain' }, modes: { default: 'inpaint', whenSlot: null },
     output: { aspect: 'follow-photo', resolution: 'follow-photo', count: 1 }, surface: 'mask', generateLabel: 'Edit area', source: { note: 'mask edit' } },
   { id: 'person-swap', icon: 'user', category: 'people', runner: app('app-person-swap'), status: 'ready',
-    slots: [slot('image', 'Target', true, 'The photo to change', 'Add a target photo'), slot('person', 'Person', true, 'Add a photo of the person', 'Add a person', 'person', 2)],
-    groups: [], controls: [], prompt: { mode: 'optional', placeholder: 'Touch-ups (optional)', composer: 'recipe' }, modes: { default: 'edit', whenSlot: null },
+    // Outfit (2026-11-01): keep the target photo's clothes, or take the person's (default). /image?workflow=person-swap&outfit=keep opens it on Keep.
+    slots: [slot('image', 'Target', true, 'A photo you’re allowed to use', 'Add a target photo'), slot('person', 'Person', true, 'A clear, front-facing photo of you', 'Add a person', 'person', 2)],
+    groups: [{ id: 'outfit', label: 'Outfit', icon: 'garment', summary: ['outfit'] }], controls: [{ field: 'outfit', label: 'Outfit', kind: 'segmented', group: 'outfit' }],
+    prompt: { mode: 'optional', placeholder: 'Touch-ups (optional)', composer: 'recipe' }, modes: { default: 'edit', whenSlot: null },
     output: { aspect: 'follow-photo', resolution: 'follow-photo', count: 1 }, surface: null, generateLabel: 'Swap person', source: { note: 'two-image swap prompt' } },
   { id: 'character-sheet', icon: 'character-sheet', category: 'people', runner: app('app-character-sheet'), status: 'ready',
     // Layout (2026-10-25): tiles with a small panel diagram, the Camera Angles picker's look (web WorkflowSurfaces LayoutPanel); each sets its own shape
@@ -88,6 +91,12 @@ const DECLS: Decl[] = [
     controls: [{ field: 'layout', label: 'Layout', kind: 'tiles', group: 'layout' }],
     prompt: { mode: 'optional', placeholder: 'Describe the character', composer: 'recipe', requiredWithout: { slot: 'image', missing: 'Describe the character' } }, modes: { default: 'generate', whenSlot: { image: 'edit' } },
     output: { aspect: 'fixed', fixedAspect: '4:3', resolution: 'model', count: 'model' }, surface: null, generateLabel: 'Make sheet', source: { note: 'character-sheet prompt' } },
+  // Phone Photo (2026-11-01): two chip rows (who holds the phone, the light) in one popover; your words say who is in it.
+  { id: 'phone-photo', icon: 'phone-photo', category: 'people', runner: app('app-phone-photo'), status: 'ready',
+    slots: [], groups: [{ id: 'phone', label: 'Photo', icon: 'user', summary: ['holder', 'light'], plain: true }],
+    controls: [{ field: 'holder', label: 'Taken by', kind: 'segmented', group: 'phone' }, { field: 'light', label: 'Light', kind: 'segmented', group: 'phone' }],
+    prompt: { mode: 'required', placeholder: 'Who is in the photo, what they are doing and where', composer: 'recipe' }, modes: { default: 'generate', whenSlot: null },
+    output: { aspect: 'model', resolution: 'model', count: 'model' }, surface: null, generateLabel: 'Make photo', source: { note: 'phone-photo prompts' } },
   { id: 'product-shot', icon: 'product', category: 'product', runner: app('app-product-shot'), status: 'ready',
     slots: [slot('image', 'Product photo', false, 'Optional: your product photo', '')],
     groups: [{ id: 'scene', label: 'Scene', icon: 'product', summary: ['scene'] }, { id: 'shape', label: 'Shape', icon: 'aspect', summary: ['aspect'] }],

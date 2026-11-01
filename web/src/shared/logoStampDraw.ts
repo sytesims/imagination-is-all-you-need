@@ -10,7 +10,7 @@
  */
 import { fontStack, logoFor, luminance, normHex, type BrandKit } from '../../../server/src/shared/brandKit';
 import { ensureKitFonts } from './brandFonts';
-import { endCardLayout, plateFor, stampLayout, type Box, type StampLayout, type StampSettings } from '../../../server/src/shared/logoStamp';
+import { endCardLayout, plateFor, stampLayout, type Box, type StampInset, type StampLayout, type StampSettings } from '../../../server/src/shared/logoStamp';
 
 export interface LogoArt { img: HTMLImageElement; size: { w: number; h: number }; lum: number | null }
 /** logo / logoSize / logoLum: the main logo (it sizes the layout); light and dark: the variants for dark and bright backgrounds (null = use main). */
@@ -62,12 +62,12 @@ export const stampText = (kit: BrandKit, s: StampSettings) => (s.textOn ? (s.tex
 function measurer(g: CanvasRenderingContext2D, font: string, text: string) { return (px: number) => { if (!text) return 0; g.font = `700 ${px}px ${font}`; return g.measureText(text).width; }; }
 /** Lay out and draw the stamp on `g` (a W × H canvas, already cleared). `picture` = the result (or the frame on screen): its brightness right
  *  behind the stamp decides the plate and the text ink. */
-export function drawStamp(g: CanvasRenderingContext2D, W: number, H: number, art: StampArt, s: StampSettings, picture: CanvasImageSource | null): StampLayout {
+export function drawStamp(g: CanvasRenderingContext2D, W: number, H: number, art: StampArt, s: StampSettings, picture: CanvasImageSource | null, inset?: StampInset): StampLayout {
   const text = stampText(art.kit, s); const measure = measurer(g, art.font, text);
-  const l0 = stampLayout(W, H, s, art.logoSize, measure, false); const b = l0.box;
+  const l0 = stampLayout(W, H, s, art.logoSize, measure, false, inset); const b = l0.box;
   const areaLum = picture ? brightness(picture, [Math.max(0, b.x / W), Math.max(0, b.y / H), Math.min(1, (b.x + b.w) / W), Math.min(1, (b.y + b.h) / H)]) : null;
   const v = pickLogo(art, areaLum); const plate = v ? plateFor(s.backing, v.lum, areaLum) : null;
-  const l = plate ? stampLayout(W, H, s, art.logoSize, measure, true) : l0;
+  const l = plate ? stampLayout(W, H, s, art.logoSize, measure, true, inset) : l0;
   g.save(); g.globalAlpha = s.opacity;
   if (l.logo && v) drawLogo(g, v.img, containIn(l.logo, v.size), l.plate && plate ? { ...l.plate, kind: plate } : null, l.logoH);
   if (l.text) {
@@ -97,16 +97,17 @@ function loadVideo(url: string): Promise<HTMLVideoElement> {
     v.onloadeddata = () => { v.currentTime = Math.min(0.2, (v.duration || 1) / 2); }; v.onseeked = () => res(v); v.onerror = () => rej(new Error('That video couldn’t be read.')); v.src = url; });
 }
 const made = new Map<string, Promise<string>>();
-/** The stamped copy's URL (/files/stamps/…), made once per result output + settings + brand. */
-export function makeStamped(o: { jobId: string; out: number; url: string; kind: 'image' | 'video'; kit: BrandKit; settings: StampSettings }): Promise<string> {
-  const key = JSON.stringify([o.jobId, o.out, o.url, o.kit.id, o.kit.updatedAt, o.settings]); const hit = made.get(key); if (hit) return hit;
+/** The stamped copy's URL (/files/stamps/…), made once per result output + settings + brand. plain: `url` is an Ad Pack ad's clean copy
+ *  (Adjust logo), so the server stamps that file; inset: the platform's safe area kept clear. */
+export function makeStamped(o: { jobId: string; out: number; url: string; kind: 'image' | 'video'; kit: BrandKit; settings: StampSettings; plain?: boolean; inset?: StampInset }): Promise<string> {
+  const key = JSON.stringify([o.jobId, o.out, o.url, o.kit.id, o.kit.updatedAt, o.settings, !!o.plain, o.inset ?? null]); const hit = made.get(key); if (hit) return hit;
   const p = (async () => {
     const art = await loadStampArt(o.kit);
     const media: HTMLImageElement | HTMLVideoElement = o.kind === 'image' ? await loadImg(o.url) : await loadVideo(o.url);
     const W = media instanceof HTMLVideoElement ? media.videoWidth : media.naturalWidth, H = media instanceof HTMLVideoElement ? media.videoHeight : media.naturalHeight;
     if (!W || !H) throw new Error('Couldn’t read the result’s size.');
-    const ov = canvasOf(W, H); drawStamp(ov.getContext('2d')!, W, H, art, o.settings, media);
-    const fd = new FormData(); fd.append('out', String(o.out)); fd.append('settings', JSON.stringify(o.settings)); fd.append('overlay', await toPng(ov), 'overlay.png');
+    const ov = canvasOf(W, H); drawStamp(ov.getContext('2d')!, W, H, art, o.settings, media, o.inset);
+    const fd = new FormData(); fd.append('out', String(o.out)); if (o.plain) fd.append('base', 'plain'); fd.append('settings', JSON.stringify(o.settings)); fd.append('overlay', await toPng(ov), 'overlay.png');
     if (o.kind === 'video' && o.settings.endCard) { const ec = canvasOf(W, H); drawEndCard(ec.getContext('2d')!, W, H, art, o.settings); fd.append('endcard', await toPng(ec), 'endcard.png'); fd.append('endColor', endColorOf(o.kit)); }
     if (media instanceof HTMLVideoElement) { media.removeAttribute('src'); media.load(); }
     const r = await fetch(`/api/jobs/${encodeURIComponent(o.jobId)}/stamp`, { method: 'POST', body: fd }); const b = await r.json().catch(() => null);

@@ -25,7 +25,8 @@ try {
   const inp = (n: string) => t.inputs.find((i: any) => i.name === n);
   assert.equal(inp('image')?.label, 'Target photo'); assert.equal(inp('image')?.required, true); assert.equal(inp('face')?.label, 'Face'); assert.equal(inp('face')?.required, true); assert.equal(inp('face')?.kind, 'file');
   assert.equal(inp('prompt')?.required, false, 'touch-ups are optional');
-  assert.deepEqual(t.providers.map((p: any) => p.id), ['comfy-qwen-image', 'api-nano-banana', 'comfy-flux3-klein', 'api-gpt-image', 'api-seedream', 'api-flux2', 'api-luma-image', 'api-kling-image', 'comfy-qwen21']); // 2026-10-22: every model whose route takes 2+ images (hosted caps raised to the Router limits) assert.equal(t.preferredProvider ?? t.qualityOrder?.[0], 'comfy-qwen-image', 'open weights are the quality pick');
+  assert.deepEqual(t.providers.map((p: any) => p.id), ['comfy-qwen-image', 'api-nano-banana', 'comfy-flux3-klein', 'api-gpt-image', 'api-seedream', 'api-flux2', 'api-luma-image', 'api-kling-image', 'comfy-qwen21',
+    'api-gpt-image-25-flare', 'api-gpt-image-25-sunburst', 'api-nano-banana-21', 'api-nano-banana-pro', 'api-flux3-image' /* 2026-11-01: the newer 2+ image models (Person Swap PR) */]); // 2026-10-22: every model whose route takes 2+ images (hosted caps raised to the Router limits) assert.equal(t.preferredProvider ?? t.qualityOrder?.[0], 'comfy-qwen-image', 'open weights are the quality pick');
   assert.deepEqual(t.app.gallery.required, ['image', 'face']);
   const lic = await get('/api/licenses'); assert.ok(JSON.stringify(lic).includes('Qwen-Image-Edit-2509'), 'licences list the open default');
   ok(`listing: ${t.inputs.map((i: any) => i.name).join(', ')}; models ${t.providers.map((p: any) => p.id).join(' > ')}`);
@@ -42,7 +43,7 @@ try {
   const r1 = await job({ rights: '1', provider: 'comfy-qwen-image', prompt: 'warmer skin tone' }, both); assert.equal(r1.status, 200, JSON.stringify(r1.body));
   const j1 = await until(r1.body.id); assert.equal(j1.status, 'done', j1.error); assert.equal(j1.route, 'local:comfy-qwen-image');
   assert.equal(j1.input.mode, 'edit'); assert.equal(j1.input.refUrls.length, 2, 'target + face'); assert.ok(/target/.test(j1.input.refUrls[0]) || j1.input.imageUrl === j1.input.refUrls[0], 'image 1 = target');
-  assert.ok(/image 2/.test(j1.input.prompt) && /warmer skin tone/.test(j1.input.prompt), j1.input.prompt);
+  assert.ok(/image 2/.test(j1.input.prompt) && /warmer skin tone/i.test(j1.input.prompt), j1.input.prompt);
   assert.equal(j1.outputs.length, 1); assert.equal(j1.outputs[0].label, 'Face swap'); assert.ok(fs.statSync(path.join(D, path.basename(j1.outputs[0].url))).size > 1000, 'sample image written');
   ok(`mock submit (local): done, output "${j1.outputs[0].label}", prompt starts "${j1.input.prompt.slice(0, 60)}…"`);
 

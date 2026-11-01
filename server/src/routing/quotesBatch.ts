@@ -33,6 +33,7 @@ import { mockKeys } from './keys.js';
 import { billingMode } from '../billingMode.js';
 import { localAvailable } from './select.js';
 import { toolProviders } from '../providers.js';
+import { THREE_D_TOOL, threeDRowSettings } from '../shared/threeD.js';
 
 /** Request fields that pick the model / place: the batch sets them per row, so the page's own values are dropped. */
 const DROP = new Set(['provider', 'model', 'runOn', 'run_on', 'route', 'quotedRouteId', 'quotedCredits', 'toolId', 'allowFallback', 'fields']);
@@ -123,6 +124,10 @@ export function registerQuotesBatch(app: FastifyInstance) {
       const inpDef = tool.inputs?.find((x) => x.name === field)?.default; const ok = (v: unknown) => v != null && list.includes(String(v));
       out[field] = ok(own) ? String(own) : ok(inpDef) ? String(inpDef) : list[0]; moved.add(field);
     }
+    // 3D (P3-05): detail / texture / faces as picking this model sets them: the user's own choices (`picks`) on this model's defaults, not the
+    // current model's (Hunyuan 3D was quoted with Tripo's PBR texture, $0.525, while a run after picking it costs $0.375)
+    if (tool.id === THREE_D_TOOL) { const s = threeDRowSettings(m.primary, base);
+      for (const k of ['detail', 'texture', 'faces'] as const) if (base[k] != null && base[k] !== '' && base[k] !== s[k]) { out[k] = s[k]; moved.add(k); } }
     return { params: out, moved };
   };
   const movedOf = (base: Record<string, string>, p: Record<string, string>) => { const moved: Record<string, string | null> = {}; for (const k of new Set([...Object.keys(base), ...Object.keys(p)])) if (base[k] !== p[k]) moved[k] = p[k] ?? null; return moved; };

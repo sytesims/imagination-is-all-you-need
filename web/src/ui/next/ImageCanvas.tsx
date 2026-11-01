@@ -1,4 +1,5 @@
 import { SlotPreview, fullText, prepUpload, useSlotReorder } from '../../shared/SlotPreview';
+import { Words } from '../../shared/Words';
 import { MoreFiles, LeftNote, notAddedText, type TrayFile } from '../../shared/FilesTray';
 import { swatchesOf, nextSwatchKey, withoutSwatch, tooManySwatches, timesQuote, batchLabel, runBatch, batchToast, newSetId } from '../../../../server/src/shared/swatchBatch';
 import { cloneForm } from '../../shared/useToolQuery';
@@ -177,6 +178,7 @@ function RunTile({ j, cap }: { j: JobState; /** Camera Angles: the angle this ti
 
 export { urlToFile } from '../../shared/urlFile'; /* moved to shared (the Canvas bar sends board images with it too) */
 import { urlToFile } from '../../shared/urlFile';
+import { useProfile, saveMePhoto } from '../../shared/profile';
 import { SwitchNote, useSwitchNote } from '../../shared/SwitchNote';
 /** A drag from the feed (or another tab of the app) carries the image's URL, not a file. */
 const dropUrl = (dt: DataTransfer): string | null => { const u = (dt.getData('text/uri-list') || dt.getData('text/plain') || '').split('\n').map(x => x.trim()).find(x => x && !x.startsWith('#')); if (!u) return null;
@@ -418,8 +420,28 @@ export default function ImageCanvas(p: ImageCanvasProps) {
     const pid = u.searchParams.get('preset'); const want2 = pid && !u.searchParams.has('workflow') ? '' : want; /* a plain Create preset leaves any workflow */
     if (pid) { if (presetHere && presetHere.p.id !== pid) clearPreset(false); /* a new preset replaces the open one (its untouched text and settings go) */ wantPreset.current = pid; setPresetTick(t => t + 1); }
     if (want2 !== wfIdRef.current) setWf(want2, { carryBack: false, silent: !!pid }); else syncUrl(want2);
-    const ex = u.searchParams.get('showcase'); if (ex) { exParam.current = ex; setExTick(t => t + 1); } /* an example opened while this page is open */ };
+    const ex = u.searchParams.get('showcase'); if (ex) { exParam.current = ex; setExTick(t => t + 1); } /* an example opened while this page is open */
+    readLinkVals(); };
   useEffect(() => { const path0 = location.pathname; const f = () => { if (location.pathname === path0) onNav.current(); }; addEventListener('popstate', f); return () => removeEventListener('popstate', f); }, []);
+  /* Person Swap's "Me" photo (2026-11-01, the local profile's mePhotoUrl): "Use my photo" next to the empty Person slot, "Save as my photo" in the
+   * filled slot's preview. Kept on the server (not this browser), so Canvas and MCP see the same photo. Nothing saved = the slot stays empty as before. */
+  const me = useProfile(); const meUrl = me?.mePhotoUrl ?? null;
+  const useMe = async () => { if (!meUrl) return; try { setSlot('person', await urlToFile(meUrl, 'my-photo'), true); } catch { toast('Couldn’t load your saved photo. Add it again.', 'error'); } };
+  const saveMe = async () => { const f = files.person?.file; if (!f) return; try { await saveMePhoto(f); toast('Saved as your photo'); } catch (e) { toast((e as Error).message, 'error'); } };
+  const slotExtras = recipe?.id === 'person-swap' ? {
+    image: { notes: ['A phone screenshot? Crop off the status bar first. With several people, say who in Touch-ups (e.g. the woman on the left).'] },
+    person: { empty: meUrl ? { label: 'Use my photo', testId: 'wf-use-me', tip: 'Put your saved photo here', onClick: () => { void useMe(); } } : null,
+      notes: ['Sunglasses on this photo hide the face, so it won’t carry over.'], actions: [{ label: meUrl ? 'Replace my photo' : 'Save as my photo', testId: 'wf-save-me', onClick: () => { void saveMe(); } }] } } : undefined;
+  /* A link can pick a workflow's choice: /image?workflow=person-swap&outfit=keep opens Person Swap on "Keep the photo's outfit" and, when a Me
+   * photo is saved, puts it in the empty Person slot. The param goes once applied (a refresh keeps your own pick). */
+  const linkVals = useRef<{ wf: string; vals: Record<string, string> } | null>(null); const mePending = useRef(false); const [linkTick, setLinkTick] = useState(0);
+  function readLinkVals() { const u = new URL(location.href); const o = u.searchParams.get('outfit'); if (!o || u.searchParams.get('workflow') !== 'person-swap') return;
+    linkVals.current = { wf: 'person-swap', vals: { outfit: o } }; u.searchParams.delete('outfit'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); setLinkTick(t => t + 1); }
+  useLayoutEffect(() => { readLinkVals(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { const l = linkVals.current; if (!l || !recipe || recipe.id !== l.wf) return; linkVals.current = null;
+    const ok = Object.fromEntries(Object.entries(l.vals).filter(([k, v]) => recipe.controls.find(c => c.field === k)?.options?.some(o => o.value === v)));
+    if (Object.keys(ok).length) setDraft(d => ({ ...d, vals: { ...d.vals, ...ok } })); if (ok.outfit === 'keep') mePending.current = true; }, [recipe?.id, linkTick]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!mePending.current || recipe?.id !== 'person-swap' || !me) return; mePending.current = false; if (meUrl && !files.person) void useMe(); }, [recipe?.id, me, linkTick]); // eslint-disable-line react-hooks/exhaustive-deps
   const wfGenerate = async (e: React.MouseEvent<HTMLButtonElement>) => {
     if (!recipe || !draft) return; if (wfPf.length) { setPfOpen(o => !o); return; } /* pre-flight: every problem with its fix, on the button */
     if (!p.onWorkflowGenerate || wfBusy) return; const fd = new FormData();
@@ -585,8 +607,8 @@ export default function ImageCanvas(p: ImageCanvasProps) {
       if (snap.draft) { const { id, d } = snap.draft; setWfDrafts(m => ({ ...m, [id]: d })); saveDraft(id, d); }
       else { p.setPrompt(snap.prompt); p.setStyle(snap.style); setAspect(snap.aspect); if (snap.rig) { const v = snap.rig; setRig(() => rigOfVals(v)); } }
       setPresetOn({ ...snap.po, k: Date.now() }); } } }); }
-  /* the preset as a tile, first in the context row in every mode: thumbnail, "Preset", its name, ✕ */
-  const presetChip = presetHere ? <span className="ic-pre" data-testid="ic-preset-chip" data-preset={presetHere.p.id} {...tip(`Look: ${presetHere.p.name}${presetLook.length ? ` · ${presetLook.join(' · ')}` : ''}`)}>{presetHere.p.thumbnail ? <img src={presetHere.p.thumbnail} alt="" /> : <i className="ic-pre-ph" aria-hidden />}<span className="ic-pre-t"><small>Look</small><b>{presetHere.p.name}</b></span>
+  /* the preset as a tile, first in the context row on plain Create (a look that opens a workflow or the rig shows as that chip only, 2026-11-01): thumbnail, "Look", its name, ✕ */
+  const presetChip = presetHere ? <span className="ic-pre" data-testid="ic-preset-chip" data-preset={presetHere.p.id} {...tip(`Look: ${presetHere.p.name}${presetLook.length ? ` · ${presetLook.join(' · ')}` : ''}`)}>{presetHere.p.thumbnail ? <img src={presetHere.p.thumbnail} alt="" /> : <i className="ic-pre-ph" aria-hidden />}<span className="ic-pre-t"><small>Look</small><b><Words text={presetHere.p.name} /></b></span>
     <button type="button" className="ic-preset-x" aria-label={`Clear look ${presetHere.p.name}`} data-testid="ic-preset-clear" {...tip('Clear look')} onClick={() => clearPreset()}><CloseIcon size={10} strokeWidth={2.2} /></button></span> : null;
   /* ---- ?showcase=<id> (Workflows, 2026-10-23): a shipped example (server/src/shared/showcase.ts) or a look's cover opens in the result viewer as if you
    * had just made it, and the bar is filled with its workflow, model, prompt and settings (shared exampleLink examplePrefill, tested in
@@ -859,11 +881,11 @@ export default function ImageCanvas(p: ImageCanvasProps) {
       <button type="button" className="ic-x" aria-label={k === 0 ? 'Remove image' : `Remove image ${k + 1}`} onClick={() => removePhoto(k, true)}><CloseIcon size={10} strokeWidth={2.2} /></button></span>; };
   const lead = <div className="ic-lead" data-testid="ic-lead" data-mode={recipe ? 'workflow' : rigRecipe ? 'rig' : 'create'} role="group" aria-label={recipe ? `${recipe.name} inputs` : 'Photos and references'}>
     {recipe && draft ? <WorkflowInputs recipe={recipe} files={files} setFile={(slot, f) => setSlot(slot, f)} addFile={(slot, f) => addSwatch(slot, f)} onPick={openSlotPicker} picking={refTab ? pickFor : null} onUrl={(slot, u) => { urlToFile(u).then(f => setSlot(slot, f, true)).catch(() => undefined); }} flash={flash?.wf === recipe.id ? flash : null}
-        choose={choose ? { url: choose.url, slots: choose.slots.map(n => ({ name: n, label: slotLabel(recipe, n), full: !!files[n] })) } : null} onChoose={n => choose && addSwatch(n, choose.file, true)} onChooseCancel={() => setChoose(null)} disabled={wfBusy} lead={presetChip}
+        choose={choose ? { url: choose.url, slots: choose.slots.map(n => ({ name: n, label: slotLabel(recipe, n), full: !!files[n] })) } : null} onChoose={n => choose && addSwatch(n, choose.file, true)} onChooseCancel={() => setChoose(null)} disabled={wfBusy} lead={null /* one marker: a look that opens a workflow shows as that workflow's chip; the look card is plain Create's */} extras={slotExtras}
         surface={<>{isMask ? <MaskStrip mask={wfMask} hasPhoto={!!files.image} need={!!wfMissing?.mask} onPaint={() => setMaskOpen(true)} onClear={() => setWfMask(null)} disabled={wfBusy} erase={recipe.id === 'erase'} /> : null}
           {wfFit && imgSize && (shapeOff || prepNow) ? <PrepChip chipRef={prepChipRef} prep={shapeOff ? null : prepNow} aspect={wfFit} shape={shapeName(imgSize.width, imgSize.height)} busy={prepBusy || wfBusy} onFit={() => void applyPrep('fit')} onCrop={openCrop} onUndo={undoPrep} />
             : prepNow ? <PrepChip chipRef={prepChipRef} prep={prepNow} aspect={prepNow.aspect} shape="" busy={prepBusy || wfBusy} onFit={() => void applyPrep('fit')} onCrop={openCrop} onUndo={undoPrep} /> : null}</>} />
-    : <>{presetChip}
+    : <>{rigRecipe ? null : presetChip}
       {photos.length > 0 && <div className="ic-attach ic-attach-in" data-testid="ic-attach">{photos.slice(0, ts.show).map(thumb)}
         <MoreFiles hidden={ts.more} watch={dock} testId="ic-thumbs-more" summary={refN > maxRefs ? `${refN - maxRefs} not used` : undefined} action={refN > maxRefs && maxRefs > 0 ? { label: `Remove the ${refN - maxRefs} not used`, onClick: () => { for (let i = photos.length - 1; i >= maxRefs; i--) removePhoto(i); } } : null} onRemove={f => removePhoto(f.idx)} onMove={photos.length > 1 && p.movePhoto ? (_g, a, b) => p.movePhoto!(a, b) : undefined}
           items={photos.map((ph, k): TrayFile => ({ key: ph.url, group: 'photos', idx: k, kind: 'image', url: ph.url, name: (ph as any).file?.name ?? `Image ${k + 1}`, label: refN > 1 ? `Picture ${k + 1} · @image${k + 1}` : 'Picture', off: k >= maxRefs || (!!p.mask && k > 0) }))} />
@@ -954,7 +976,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
           {sParts.before.trim() && <span className="ic-subj-rest ic-subj-pre">{sParts.before.trim()}</span>}
           {field}
           <span className="ic-subj-rest" {...tip(sParts.after.trim() || null)}>{sParts.after.trim()}</span></>}
-          <button type="button" className="ic-subj-edit" data-testid="ic-subject-edit" onClick={() => { setPresetOn(o => o && { ...o, full: true }); requestAnimationFrame(() => { const el = p.promptRef.current; if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }); }}>edit full prompt</button></div>; })()}
+          <button type="button" className="ic-subj-edit" data-testid="ic-subject-edit" onClick={() => { setPresetOn(o => o && { ...o, full: true }); requestAnimationFrame(() => { const el = p.promptRef.current; if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }); }}>Full prompt</button></div>; })()}
         <textarea data-enter-submits="" ref={p.promptRef} id="app-prompt" className="ic-prompt prompt-field" rows={2} style={recipe?.prompt.mode === 'hidden' || subjOn ? { display: 'none' } : undefined} aria-hidden={recipe?.prompt.mode === 'hidden' || subjOn || undefined} aria-label="Prompt" placeholder={promptPh} value={promptNow} onChange={e => { setPromptNow(e.target.value); if (!recipe) at.sync(e.target.value, e.target.selectionStart); }} onKeyDown={at.onKeyDown} onBlur={() => setTimeout(at.close, 120)} aria-autocomplete={recipe ? undefined : 'list'} aria-expanded={recipe ? undefined : at.open} /* Enter generates, Shift+Enter adds a line: shared/enterSubmit (an open @ picker uses Enter first) */ />{at.menu}
         <MentionLayer taRef={p.promptRef} value={promptNow} counts={{ image: p.image ? 1 + (p.refs?.length ?? 0) : 0, video: 0, audio: 0 }} /></div>
         <SwitchNote note={swNote.note} testId="ic-switch-note" />
@@ -969,7 +991,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
           </span>}
           <input ref={file} type="file" accept={IMAGE_ACCEPT} multiple={(maxRefs > 1 && !pickFor || pickMany) && replaceIndex.current == null} hidden data-testid="ic-file" onChange={e => { const f = e.target.files; if (f?.length) { const ri = replaceIndex.current; replaceIndex.current = null; if (ri != null && p.replacePhoto) { if (fileFits('image', f[0])) p.replacePhoto(ri, f[0]); else toast(wrongTypeText(f[0].name, ['image']), 'error'); } else if (pickMany) addSlotFiles([...f]); else if (pickFor && recipe) setSlot(pickFor, f[0], true); else void addRefs([...f]); setRefTab(null); } e.currentTarget.value = ''; }} />
           <button ref={aR.model} type="button" className={`ic-chip ic-model ${pop === 'model' ? 'on' : ''}`} aria-haspopup="listbox" aria-expanded={pop === 'model'} data-testid="ic-model-chip" data-fallback-note={fbNote || undefined} data-downloading={dlNow ? (dlNow.pct ?? 'busy') : undefined} {...tip(pop === 'model' ? null : [mChipName + ((recipe ? wfKind : cKind) ? ` · ${PICK_LABEL[(recipe ? wfKind : cKind)!]}` : ''), modelTip].filter(Boolean).join(' · ') || null)} onClick={() => setPop(pop === 'model' ? '' : 'model')}>{(() => { const tid = recipe ? recipe.runner.toolId : p.tool.id; const eid = recipe ? wfProvider : cur?.id; const mm = modelOfEngine(tid, eid); const pv: any = recipe ? wfProviders.find(x => x.id === wfProvider) : cur;
-            return <><MakerTile className="ic-dot" medium="image" maker={mm?.maker ?? (pv as any)?.maker} makerName={mm?.makerName ?? (pv as any)?.makerName} fallback={pv?.family || pv?.name} /><span className="ic-mname">{short(recipe ? (mm ? shownName(mm) : null) ?? recipe.modelInfo?.[wfProvider]?.name ?? pv?.name : curName)}</span>{(() => { const k = recipe ? wfKind : cKind; return k ? <span className="ic-mpick" data-testid="ic-model-pick" data-kind={k}>{` · ${PICK_LABEL[k]}`}</span> : null; })()}</>; })()}{dlNow && <DlRing pct={dlNow.pct} label={dlLabel} />}<svg className="ic-caret" width="16" height="16" viewBox="0 0 16 16" aria-hidden><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
+            return <><MakerTile className="ic-dot" medium="image" maker={mm?.maker ?? (pv as any)?.maker} makerName={mm?.makerName ?? (pv as any)?.makerName} fallback={pv?.family || pv?.name} /><span className="ic-mname"><Words text={short(recipe ? (mm ? shownName(mm) : null) ?? recipe.modelInfo?.[wfProvider]?.name ?? pv?.name : curName)} /></span>{(() => { const k = recipe ? wfKind : cKind; return k ? <span className="ic-mpick" data-testid="ic-model-pick" data-kind={k}>{` · ${PICK_LABEL[k]}`}</span> : null; })()}</>; })()}{dlNow && <DlRing pct={dlNow.pct} label={dlLabel} />}<svg className="ic-caret" width="16" height="16" viewBox="0 0 16 16" aria-hidden><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
           </span>
           {recipe && draft && <WorkflowControls recipe={recipe} files={files} vals={wfVals} setVal={(k, v) => setDraft(d => ({ ...d, vals: { ...d.vals, [k]: v } }))} provider={wfProvider} watch={dock} mode={wfMode} upscale={upInfo ? { info: upInfo, models: wfProviders, src: wfSrc, onExamples: () => setUpEx(true) } : null}
             overRef={overRef} panels={isMulti ? { [multiG]: <AnglesPanel r={recipe} ids={angleIds} set={ids => setDraft(d => ({ ...d, vals: { ...d.vals, shots: JSON.stringify(ids) } }))} each={angleEach} /> }

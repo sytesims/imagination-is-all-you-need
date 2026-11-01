@@ -3,8 +3,9 @@
  * Recipes come from GET /api/image-workflows (server/src/shared/workflows.ts); a picked recipe still runs on its own tool
  * (app-relight, app-face-swap…) with today's form fields, and is quoted by that tool's /price (quote = charge).
  */
+import { Words } from '../../shared/Words';
 import { IMAGE_ACCEPT, fileFits, wrongTypeText } from '../../../../server/src/shared/mediaAccept';
-import { SlotPreview, prepUpload } from '../../shared/SlotPreview';
+import { SlotPreview, prepUpload, type SlotAction } from '../../shared/SlotPreview';
 import { useToast } from '../../shared/Toast';
 import { withNativePicker } from '../../shared/MediaPicker';
 import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
@@ -16,7 +17,7 @@ import { rigJson, lightRgb, rgbHex, type LightRig } from '../../../../server/src
 import { rigOfFields, rigChipPlain, plainDir, degTip, presetEdited } from '../../../../server/src/shared/lightEasy';
 import { Link, navigate } from '../../platform/router';
 import { tip } from '../../shared/Tooltip';
-import { PhoneAdIcon, TextIcon, AudioIcon, LightIcon, FaceSwapIcon, UserIcon, CharacterSheetIcon, ProductIcon, ShotsIcon, CameraMovesIcon, BrushIcon, ImageIcon, SearchIcon, CloseIcon, ChevronRightIcon, PlusIcon, UpscaleIcon, AspectIcon, CutoutIcon, ExpandIcon, EraserIcon, GarmentIcon, MaterialIcon, LayerSheetsIcon, CubeIcon, OrbitIcon, PrevizIcon, type IconProps } from '../Icons';
+import { PhoneAdIcon, PhonePhotoIcon, TextIcon, AudioIcon, LightIcon, FaceSwapIcon, UserIcon, CharacterSheetIcon, ProductIcon, ShotsIcon, CameraMovesIcon, BrushIcon, ImageIcon, SearchIcon, CloseIcon, ChevronRightIcon, PlusIcon, UpscaleIcon, AspectIcon, CutoutIcon, ExpandIcon, EraserIcon, GarmentIcon, MaterialIcon, LayerSheetsIcon, CubeIcon, OrbitIcon, PrevizIcon, type IconProps } from '../Icons';
 import type { ProviderInfo } from '../../api';
 import { ScalePanel, outOf, sizeText, scaleWhy, type UpInfo, type Size } from './UpscaleBar';
 import type { WorkflowRecipe } from '../../../../server/src/shared/workflows';
@@ -38,7 +39,7 @@ export function fitWfVals(r: WfRecipe, provider: string, mode: string | undefine
   if (!c || !ok?.length) return vals; const v = vals.aspect ?? String(c.default ?? 'auto'); if (ok.includes(v)) return vals;
   return { ...vals, aspect: mi?.defaultAspect && ok.includes(mi.defaultAspect) ? mi.defaultAspect : ok.find(x => x !== 'auto') ?? ok[0] };
 }
-const ICONS: Record<string, (p: IconProps) => ReactNode> = { edit: TextIcon, gallery: ImageIcon, music: AudioIcon, clock: CameraMovesIcon, light: LightIcon, 'face-swap': FaceSwapIcon, user: UserIcon, 'character-sheet': CharacterSheetIcon, product: ProductIcon, shots: ShotsIcon, camera: CameraMovesIcon, brush: BrushIcon, create: ImageIcon, upscale: UpscaleIcon, aspect: AspectIcon, cutout: CutoutIcon, expand: ExpandIcon, eraser: EraserIcon, garment: GarmentIcon, material: MaterialIcon, ad: PhoneAdIcon, words: TextIcon, layers: LayerSheetsIcon, cube: CubeIcon, orbit: OrbitIcon, previz: PrevizIcon, texture: BrushIcon, detail: ShotsIcon, rig: UserIcon, views: ShotsIcon, type: ImageIcon };
+const ICONS: Record<string, (p: IconProps) => ReactNode> = { 'phone-photo': PhonePhotoIcon, edit: TextIcon, gallery: ImageIcon, music: AudioIcon, clock: CameraMovesIcon, light: LightIcon, 'face-swap': FaceSwapIcon, user: UserIcon, 'character-sheet': CharacterSheetIcon, product: ProductIcon, shots: ShotsIcon, camera: CameraMovesIcon, brush: BrushIcon, create: ImageIcon, upscale: UpscaleIcon, aspect: AspectIcon, cutout: CutoutIcon, expand: ExpandIcon, eraser: EraserIcon, garment: GarmentIcon, material: MaterialIcon, ad: PhoneAdIcon, words: TextIcon, layers: LayerSheetsIcon, cube: CubeIcon, orbit: OrbitIcon, previz: PrevizIcon, texture: BrushIcon, detail: ShotsIcon, rig: UserIcon, views: ShotsIcon, type: ImageIcon };
 export const WfIcon = ({ name, size = 16 }: { name: string; size?: number }) => { const I = ICONS[name] ?? ImageIcon; return <I size={size} />; };
 
 export { READY_WORKFLOW_TOOLS, workflowRecreateHref } from '../../shared/workflowLinks';
@@ -112,9 +113,10 @@ export function WorkflowPicker({ open, anchor, list, current, onPick, onClose, w
 /** One labelled photo slot in the strip: dashed when empty (orange = required, grey = optional), the photo with ✕ when filled.
  *  Click opens the shared picker (Uploads, Generations, Favourites) for this slot; the small ⇪ uploads a file straight away.
  *  Drop a file (or a picture dragged from the feed) on it; paste while it has focus. */
-function SlotBox({ slot, file, onFile, onMore, onUrl, onPick, picking, flash, onClear, disabled, num, next, more }: { slot: WfRecipe['slots'][number]; file: WfSlotFile | null; onFile: (f: File) => void; onUrl: (url: string) => void; onPick: () => void; picking: boolean; flash: number; onClear: () => void; disabled?: boolean;
+function SlotBox({ slot, file, onFile, onMore, onUrl, onPick, picking, flash, onClear, disabled, num, next, more, notes, actions }: { slot: WfRecipe['slots'][number]; file: WfSlotFile | null; onFile: (f: File) => void; onUrl: (url: string) => void; onPick: () => void; picking: boolean; flash: number; onClear: () => void; disabled?: boolean;
   /** a several-file slot (Material Swap's swatches): the files after the first go here, each to the next place */ onMore?: (f: File) => void; /** the "add another" tile after the swatches: the app's shared dashed "+" (shared/AddTile), with how many are in and the most */ more?: { used: number; max: number };
-  /** two-photo workflows: the order to add them (1, 2) */ num?: number; /** the next step: an orange ring that pulses a few times (static with reduced motion) */ next?: boolean }) {
+  /** two-photo workflows: the order to add them (1, 2) */ num?: number; /** the next step: an orange ring that pulses a few times (static with reduced motion) */ next?: boolean;
+  /** the filled slot's preview: tips and extra buttons (Person Swap: Save as my photo) */ notes?: ReactNode[]; actions?: SlotAction[] }) {
   const toast = useToast(); const hit = useRef<HTMLButtonElement>(null); const [preview, setPreview] = useState(false);
   const inp = useRef<HTMLInputElement>(null); const [over, setOver] = useState(false); const [dims, setDims] = useState(''); const [bad, setBad] = useState(''); /* a photo that won't load: a placeholder, never a broken icon */
   const take = async (fs: FileList | File[] | null | undefined) => { if (disabled) return; const all = [...(fs ?? [])]; for (let i = 0; i < (onMore ? all.length : Math.min(1, all.length)); i++) { const f = all[i]; if (!fileFits('image', f)) { toast(wrongTypeText(f.name, ['image']), 'error'); continue; } const ready = await prepUpload(f, 'image'); if ('error' in ready) { toast(ready.error, 'error'); continue; } if (ready.note) toast(ready.note); if (i === 0) onFile(ready.file); else onMore!(ready.file); } };
@@ -132,7 +134,7 @@ function SlotBox({ slot, file, onFile, onMore, onUrl, onPick, picking, flash, on
         <button type="button" className="wf-slot-x" aria-label={`Remove ${slot.label.toLowerCase()}`} onClick={onClear} disabled={disabled}><CloseIcon size={10} strokeWidth={2.2} /></button></>
       : <><button type="button" className="wf-slot-hit" data-ref-trigger aria-haspopup="dialog" aria-expanded={picking} aria-label={`${num ? `${num}. ` : ''}Add ${slot.label.toLowerCase()}${slot.required ? '' : ' (optional)'}`} {...tip(`${slot.hint}. Pick from your images, upload, drop or paste`)} onClick={onPick} disabled={disabled}><PlusIcon size={14} /><SlotLabel text={slot.label} /></button>
         <button type="button" className="wf-slot-up" aria-label={`Upload ${slot.label.toLowerCase()} from this computer`} data-testid={`wf-slot-${slot.name}-upload`} {...tip('Upload from this computer')} onClick={() => withNativePicker(() => inp.current?.click())} disabled={disabled}><UploadGlyph /></button></>}
-    <SlotPreview open={preview && !!file} anchor={hit} onClose={() => setPreview(false)} item={file} kind="image" title={slot.label} onReplace={onPick} onRemove={onClear} testId={`wf-slot-${slot.name}-preview`} />
+    <SlotPreview open={preview && !!file} anchor={hit} onClose={() => setPreview(false)} item={file} kind="image" title={slot.label} notes={notes} actions={actions} onReplace={onPick} onRemove={onClear} testId={`wf-slot-${slot.name}-preview`} />
   </span>;
 }
 const UploadGlyph = () => <svg width="10" height="10" viewBox="0 0 16 16" aria-hidden><path d="M8 11V3M4.5 6.5 8 3l3.5 3.5M3 13h10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
@@ -179,7 +181,8 @@ function GenericPanel({ r, g, vals, set, allow, optPrice }: { r: WfRecipe; g: Wf
       : c.kind === 'slider' ? <input type="range" min={c.min} max={c.max} step={c.step} value={vals[c.field] ?? c.default ?? ''} onChange={e => set(c.field, e.target.value)} />
       : c.kind === 'text' /* Material Swap, Ad Pack: short optional words (the server collapses spaces and checks the length too) */ ? <input type="text" className="wf-gen-text" data-testid={`wf-text-${c.field}`} aria-label={c.label} maxLength={c.maxLength} placeholder={c.placeholder ?? (c.optional ? 'Optional' : '')} value={vals[c.field] ?? ''} onChange={e => set(c.field, e.target.value)} />
       : c.kind === 'tiles' ? <div className="wf-tiles" role="radiogroup" aria-label={c.label}>{opts(c).map(o => <button key={o.value} type="button" role="radio" aria-checked={(vals[c.field] ?? c.default) === o.value} className={`wf-tile${(vals[c.field] ?? c.default) === o.value ? ' on' : ''}`} data-testid={`wf-tile-${o.value}`} onClick={() => set(c.field, o.value)}><i aria-hidden className={`wf-tile-sw wf-tile-${o.value}`} /><span>{o.label}</span></button>)}</div>
-      : <div className="wf-seg wf-seg-wrap" role="radiogroup" aria-label={c.label} data-cols={segCols(opts(c).length)}>{opts(c).map(o => <button key={o.value} type="button" role="radio" aria-checked={(vals[c.field] ?? c.default) === o.value} className={(vals[c.field] ?? c.default) === o.value ? 'on' : ''} data-testid={`wf-opt-${c.field}-${o.value}`} title={hint(o) ?? undefined} onClick={() => set(c.field, o.value)}>{o.value === 'auto' ? 'Auto' : o.label}{hint(o) ? <small className="wf-opt-note">{hint(o)}</small> : null}{optPrice && <OptPrice text={optPrice(c.field, o.value)} testId={`wf-opt-price-${c.field}-${o.value}`} />}</button>)}</div>}</div>)}</div>;
+      : <div className="wf-seg wf-seg-wrap" role="radiogroup" aria-label={c.label} data-cols={segCols(opts(c).length)}>{opts(c).map(o => <button key={o.value} type="button" role="radio" aria-checked={(vals[c.field] ?? c.default) === o.value} className={(vals[c.field] ?? c.default) === o.value ? 'on' : ''} data-testid={`wf-opt-${c.field}-${o.value}`} title={hint(o) ?? undefined} onClick={() => set(c.field, o.value)}>{o.value === 'auto' ? 'Auto' : o.label}{hint(o) ? <small className="wf-opt-note">{hint(o)}</small> : null}{optPrice && <OptPrice text={optPrice(c.field, o.value)} testId={`wf-opt-price-${c.field}-${o.value}`} />}</button>)}</div>}
+    {c.help && c.kind === 'segmented' ? <p className="wf-gen-help" data-testid={`wf-help-${c.field}`}>{c.help}</p> : null}</div>)}</div>;
 }
 /** Columns for a group of options, so every row is full (2 → 2 across, 4 → 4, 16 aspect ratios → 4 × 4); long lists fall back to 3. */
 export function segCols(n: number): number { return n <= 4 ? Math.max(1, n) : n % 4 === 0 ? 4 : 3;
@@ -192,18 +195,21 @@ export type WfUpscale = { info: UpInfo; models: ProviderInfo[]; src: Size | null
  *  WorkflowControls: one chip per control group (with its popover), the fixed note and Examples, in the chip row.
  *  The credit ("Ours · light recipe on Official Comfy template") moved to the model menu (WorkflowCredit). */
 export type WfChoose = { url: string; slots: { name: string; label: string; full: boolean }[] };
-export function WorkflowInputs({ recipe: r, files, setFile, addFile, onPick, picking, onUrl, flash, choose, onChoose, onChooseCancel, disabled, lead, surface }: { recipe: WfRecipe; files: Record<string, WfSlotFile | null>; setFile: (slot: string, f: File | null) => void;
+/** Per slot, extra bits the page adds (Person Swap's "Me" photo, 2026-11-01): `empty` = a small button next to the empty slot ("Use my photo"),
+ *  `notes` / `actions` = the filled slot's preview (tips, "Save as my photo"). */
+export type WfSlotExtra = { empty?: { label: string; testId: string; tip?: string; onClick: () => void } | null; notes?: ReactNode[]; actions?: SlotAction[] };
+export function WorkflowInputs({ recipe: r, files, setFile, addFile, onPick, picking, onUrl, flash, choose, onChoose, onChooseCancel, disabled, lead, surface, extras }: { recipe: WfRecipe; files: Record<string, WfSlotFile | null>; setFile: (slot: string, f: File | null) => void;
   /** a several-file slot (Material Swap): one more file in the next place (the caller says "up to 6" when full) */ addFile?: (slot: string, f: File) => void;
   /** open the shared image picker for a slot; the slot it is open for */ onPick: (slot: string) => void; picking: string | null; onUrl: (slot: string, url: string) => void; flash: { slot: string; k: number } | null;
   /** an image waiting for "Use as …" (several slots could take it) */ choose: WfChoose | null; onChoose: (slot: string) => void; onChooseCancel: () => void; disabled?: boolean;
-  /** shown first (the preset tile) */ lead?: ReactNode; /** after the slots (Brush Edit: the mask; the Fit/Crop chip) */ surface?: ReactNode }) {
+  /** shown first (the preset tile) */ lead?: ReactNode; /** after the slots (Brush Edit: the mask; the Fit/Crop chip) */ surface?: ReactNode; extras?: Record<string, WfSlotExtra> }) {
   const slots = [...r.slots].sort((a, b) => a.order - b.order); const firstEmpty = slots.find(s => s.required && !files[s.name]); const narrow = useNarrow();
   return <div className="wf-strip wf-inputs" data-testid="wf-strip" data-workflow={r.id}>
     {lead}
     {choose ? <div className="wf-choose" role="group" aria-label="Use this photo as" data-testid="wf-choose"><img src={choose.url} alt="" /><span>Use as</span>
       {choose.slots.map(c => <button key={c.name} type="button" className="ic-chip wf-choose-b" data-testid={`wf-choose-${c.name}`} {...tip(c.full ? `Replaces the current ${c.label.toLowerCase()}` : null)} onClick={() => onChoose(c.name)}>{c.full ? `Replace ${c.label}` : c.label}</button>)}
       <button type="button" className="wf-choose-x" aria-label="Don’t use this photo" data-testid="wf-choose-cancel" onClick={onChooseCancel}><CloseIcon size={10} strokeWidth={2.2} /></button></div>
-      : <><div className="wf-slots">{slots.map((s, i) => { const box = (k: string, label: string, more?: { used: number; max: number }) => <SlotBox key={k} num={slots.length > 1 && k === s.name ? i + 1 : undefined} next={s === firstEmpty && k === s.name} slot={{ ...s, name: k, label }} more={more} file={files[k] ?? null} onFile={f => setFile(k, f)} onMore={s.many && addFile ? f => addFile(s.name, f) : undefined} onUrl={u => onUrl(k, u)} onPick={() => onPick(k)} picking={picking === k} flash={flash?.slot === k ? flash.k : 0} onClear={() => setFile(k, null)} disabled={disabled} />;
+      : <><div className="wf-slots">{slots.map((s, i) => { const box = (k: string, label: string, more?: { used: number; max: number }) => <SlotBox key={k} num={slots.length > 1 && k === s.name ? i + 1 : undefined} next={s === firstEmpty && k === s.name} slot={{ ...s, name: k, label }} more={more} file={files[k] ?? null} onFile={f => setFile(k, f)} onMore={s.many && addFile ? f => addFile(s.name, f) : undefined} onUrl={u => onUrl(k, u)} onPick={() => onPick(k)} picking={picking === k} flash={flash?.slot === k ? flash.k : 0} onClear={() => setFile(k, null)} disabled={disabled} notes={extras?.[k]?.notes} actions={extras?.[k]?.actions} />;
         /* Material Swap: every swatch is a box (Material 1, 2…), then a small one to add another, up to s.many */
         const sw = s.many ? swatchKeys(s.name, s.many).filter(k => files[k]) : []; const nextK = s.many && sw.length ? nextSwatchKey(files, s.name, s.many) : null;
         /* phones: the first swatch, the rest behind the shared "+N" tray (remove from there) */ const show = narrow && sw.length > 2 ? 1 : sw.length;
@@ -212,6 +218,7 @@ export function WorkflowInputs({ recipe: r, files, setFile, addFile, onPick, pic
           {sw.length ? sw.slice(0, show).map((k, j) => box(k, sw.length > 1 ? `${s.label} ${j + 1}` : s.label)) : box(s.name, s.label)}
           {show < sw.length && <MoreFiles items={tray} hidden={sw.length - show} onRemove={f => setFile(f.key, null)} testId={`wf-many-${s.name}-more`} />}
           {nextK && box(nextK, s.label, { used: sw.length, max: s.many! }) /* up to s.many; Generate says "Swap 4 materials" */}
+          {!files[s.name] && extras?.[s.name]?.empty && (({ label, testId, tip: t, onClick }) => <button type="button" className="ic-chip wf-slot-alt" data-testid={testId} {...tip(t ?? null)} onClick={onClick} disabled={disabled}>{label}</button>)(extras[s.name].empty!)}
 </span>; })}</div>
       {surface}</>}
   </div>;
@@ -242,7 +249,7 @@ export function WorkflowControls({ recipe: r, vals, setVal, provider, watch, mod
         : sum.toLowerCase().includes(g.label.toLowerCase()) ? sum : `${g.label}: ${summaries?.[g.id] == null && g.summary.some(f => r.controls.find(x => x.field === f)?.kind === 'text') ? groupSummary(r, g, vals, true) || sum : sum}`; /* "High detail", never "Detail: High detail"; typed words in full */
       return <button key={g.id} ref={el => { refs.current[g.id] = el; }} type="button" className={`ic-chip wf-grp wf-fold${open === g.id && !folded(refs.current[g.id]) ? ' on' : ''}`} aria-haspopup="dialog" aria-expanded={open === g.id} data-testid={`wf-group-${g.id}`} aria-label={named} {...tip(g.id === 'light' && !panels?.light ? `${g.label}: ${lightTip(vals)}` : named)}
       onClick={() => { anchor.current = refs.current[g.id]; setOpen(open === g.id ? '' : g.id); }}>
-      <WfIcon name={g.icon} size={14} />{!sum ? <b>{g.label}</b> : <>{named !== sum && <span className="wf-grp-l">{g.label}</span>}<b>{sum}</b></>}{g.id === 'light' && (vals.light || vals.color) && <i className="wf-grp-dot" style={{ background: vals.light ? rgbHex(lightRgb(rigOfVals(vals).key)) : vals.color }} aria-hidden />}</button>; })}
+      <WfIcon name={g.icon} size={14} />{!sum ? <b>{g.label}</b> : <>{named !== sum && !g.plain && <span className="wf-grp-l">{g.label}</span>}<b><Words text={sum} /></b></>}{g.id === 'light' && (vals.light || vals.color) && <i className="wf-grp-dot" style={{ background: vals.light ? rgbHex(lightRgb(rigOfVals(vals).key)) : vals.color }} aria-hidden />}</button>; })}
     {after && <span className="wf-fold wf-after">{after}</span>}
     {r.fixedNote && <span className="ic-chip ic-static wf-fixed wf-fold" data-testid="wf-fixed" {...tip('Set by this workflow')}>{r.fixedNote}</span>}
     {upscale && r.extras?.includes('upscale-examples') && <button type="button" className="ic-chip wf-exlink wf-fold" data-testid="wf-examples" aria-haspopup="dialog" onClick={upscale.onExamples}>Examples</button>}

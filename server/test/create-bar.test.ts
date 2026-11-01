@@ -50,8 +50,10 @@ ok('prompt height: 2 → 8 lines, scrolls past that, a short window never under 
   assert.equal(promptAfterPresetClear(fillSubject(s, 'warm candle tone'), s, 'warm candle tone', pf.prompt), 'warm candle tone');
   assert.equal(subjectParts('something else', null, tpl), null, 'a prompt that is no longer the template: plain prompt box');
 }
-/* every shipped preset opens as one line: a subject field or a details field (never a wall of text) */
+/* every shipped preset opens as one line: a subject field or a details field (never a wall of text); a template that is only "{subject}"
+ * (Phone photo, Full Turnaround: the whole prompt is yours) keeps the normal prompt box, with the sample selected (2026-11-01) */
 for (const p of IMAGE_PRESETS) { const pf = presetPrefill(p, Object.keys(p.settings)); const s = subjectParts(pf.prompt, pf.select, p.promptTemplate);
+  if (p.promptTemplate.trim() === '{subject}') { assert.equal(s, null, `${p.id}: plain prompt box`); assert.deepEqual(pf.select, [0, p.subjectHint.length], `${p.id}: the sample is selected`); continue; }
   assert.ok(s, `${p.id}: opens with a subject or details field`); assert.equal(fillSubject(s!, ''), pf.prompt, `${p.id}: an empty field sends the preset's prompt`); }
 ok(`subject / details field: sample used when empty, typed text kept on clear, all ${IMAGE_PRESETS.length} presets open as one line`);
 

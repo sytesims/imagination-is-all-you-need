@@ -45,7 +45,7 @@ function rawEngineName(j: Pick<Job, 'toolId' | 'provider' | 'route' | 'input'>):
   if (j.provider === 'local-rig') return 'Mesh2Motion'; // Rig as a character: Mesh2Motion's human skeleton, weights and moves, run in the browser
   if (j.provider === 'local-ffmpeg') return 'FFmpeg (local)'; // no model: a saved video frame or a Stitch, cut by ffmpeg on this computer
   const t = getTool(j.toolId) as any; const base: string = t?.app?.gallery?.base ?? j.toolId;
-  const special = (base === 'soul' ? soulName(j) : null) ?? hostedRouteModel(j.route) ?? modelNameForRun(base, j.provider, j.input ?? {});
+  const special = (base === 'soul' ? soulName(j) : null) ?? hostedRouteModel(j.route) ?? modelNameForRun(base, j.provider, j.input ?? {}, j.route);
   if (special) return special;
   const card = clean(cardName(j.toolId, j.provider) ?? (base !== j.toolId ? cardName(base, j.provider) : null));
   if (card && !GENERIC.test(card)) return card;

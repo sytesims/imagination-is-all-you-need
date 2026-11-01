@@ -3,7 +3,7 @@
 // Run: npx tsx test/audio-quote.test.ts   (pure part + own mock server :9213, temp data dir, no keys, no network)
 import { testPort } from './_ports.js'; import assert from 'node:assert/strict'; import { spawn } from 'node:child_process'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path';
 const D = fs.mkdtempSync(path.join(os.tmpdir(), 'audq-')); process.env.OPENHIGGSFIELD_DATA_DIR ||= path.join(D, 'pure');
-const { perUnitOf, audioQuoteFields, PER_UNIT_NOTE } = await import('../src/routing/audioQuote.ts');
+const { perUnitOf, audioQuoteFields, PER_UNIT_NOTE, clipEstimateFor } = await import('../src/routing/audioQuote.ts');
 const { HOSTED_BY_ID, usdToCredits, COMFY_CREDITS_PER_USD } = await import('../src/shared/hostedPrices.ts');
 /** The charge's rounding (2026-10-24): rounded UP to whole credits, at least 1 (hostedPrices.ts usdToCredits; was Math.round). */
 const toCredits = (usd: number) => Math.max(1, usdToCredits(usd));
@@ -52,6 +52,15 @@ assert.deepEqual(f, { perUnit: null, perUnitNote: null, eta: { lowSec: 30, highS
 assert.equal(audioQuoteFields('audio', { priceRef: 'api-sonilo-music', etaRange: null }, { duration: 10 }).perUnitNote, PER_UNIT_NOTE.second);
 assert.equal(audioQuoteFields('audio', { priceRef: 'api-sonilo-music', etaRange: { source: 'first_run', low: null, high: null } }, {}).eta, null, 'first run: no ETA');
 ok('local and unpriced → null; bad inputs never give NaN; eta from the step-ETA range');
+{ const est = { estimated: true, assumedSeconds: 8, estimateReason: 'clip_not_loaded', estimateMessage: 'Estimate for an 8 s clip; the exact price shows once your clip is loaded.' };
+  assert.deepEqual(clipEstimateFor(est, 'api-eleven-sfx', 'soundtrack', { mode: 'sfx' }), est, 'per-minute row: the 8 s estimate stands');
+  const cap = clipEstimateFor(est, 'api-seed-audio', 'soundtrack', { mode: 'music' }, 'Seed Audio'); assert.equal(cap.assumedSeconds, undefined); assert.equal(cap.capSeconds, 120);
+  assert.equal(cap.estimateMessage, "Priced at up to 120 s: Seed Audio bills the audio it returns, up to 2 minutes, whatever your clip's length.");
+  assert.deepEqual(clipEstimateFor(est, 'api-seed-audio', 'voice', { mode: 'voiceover', prompt: 'Hello there' }), {}, 'speech from the script: no clip note');
+  assert.match(clipEstimateFor(est, 'api-seed-audio', 'voice', { mode: 'voiceover' }).estimateMessage, /until you add the script/);
+  assert.deepEqual(clipEstimateFor(est, 'api-eleven-tts', 'voice', { mode: 'voiceover' }), {}, 'per 1k characters: no clip note');
+  assert.deepEqual(clipEstimateFor(est, null, 'soundtrack', {}), est, 'local route: unchanged');
+  ok('clipEstimateFor: "8 s" only where the price follows the clip; Seed Audio says its 120 s cap'); }
 
 // ---- 1b. Seed Audio: the quote is never below what Comfy can bill for the script (hard rule: charge ≤ quote) ----
 // Comfy bills original_duration × 0.7543 credits / s, capped at 120 s (docs.comfy.org/development/comfy-router/models/byteplus/seed-audio-1-0-multilingual/code,
@@ -131,6 +140,18 @@ try {
   const seed = await get('/api/tools/voice/price?mode=voiceover&provider=api-seed-audio&chars=80'); assert.equal(seed.perUnit.unit, 'second'); assert.equal(seed.upTo, true, 'Seed Audio quote says up to');
   const seedNone = await get('/api/tools/voice/price?mode=voiceover&provider=api-seed-audio'); assert.ok(seedNone.credits >= seed.credits, 'no script → cap');
   const vid = await get('/api/tools/h3-video/price?mode=t2v&seconds=5'); assert.ok(!('perUnit' in vid), 'Generate Video quote unchanged (perSecond, not perUnit)');
+  // P3-02: a tool that takes a clip, quoted before the clip loads: "8 s" only where the price follows the clip. Seed Audio (no length field) is priced at its
+  // 120 s cap and says so; its price is the same with any clip length (= the charge); ElevenLabs SFX (per minute of the clip, capped at 30 s) keeps the 8 s note.
+  const sa0 = await get('/api/tools/soundtrack/price?mode=music&provider=api-seed-audio&prompt=calm');
+  assert.equal(sa0.assumedSeconds, undefined, 'Seed Audio: no "8 s" assumption'); assert.equal(sa0.estimateReason, 'billed_cap'); assert.equal(sa0.capSeconds, 120);
+  assert.match(sa0.estimateMessage, /up to 120 s/); assert.doesNotMatch(sa0.estimateMessage, /\b8 s\b/);
+  const sa30 = await get('/api/tools/soundtrack/price?mode=music&provider=api-seed-audio&prompt=calm&seconds=30'); assert.equal(sa30.estimated, undefined, 'a loaded clip: no estimate');
+  const lp = (q: any) => q.listCredits ?? q.credits; /* keyless mock = sample runs (credits 0): the list price is the real run's */
+  assert.equal(lp(sa0), lp(sa30), 'Seed Audio: the same price before and after the clip loads'); assert.equal(lp(sa0), chargeOf('api-seed-audio', { mode: 'music' }), 'price = the charge (120 s cap)');
+  assert.equal(sa0.perUnit?.quantity, 120, 'quoted on 120 s');
+  const el0 = await get('/api/tools/soundtrack/price?mode=sfx&provider=api-eleven-sfx&prompt=rain');
+  assert.equal(el0.estimated, true); assert.equal(el0.assumedSeconds, 8, 'ElevenLabs SFX follows the clip: the 8 s estimate stays'); assert.equal(lp(el0), chargeOf('api-eleven-sfx', { mode: 'sfx', duration: 8 }));
+  ok('P3-02: Seed Audio on a clip tool is priced at its 120 s cap and says so (no "8 s"); ElevenLabs SFX keeps the 8 s clip estimate');
   ok('API: ElevenLabs per 1k characters, MiniMax Music 3 per run, YuE2 free, ElevenLabs SFX per minute (capped at 30 s), Seed Audio up to; video quote untouched');
 } finally { try { process.kill(-srv.pid!, 'SIGTERM'); } catch { /* gone */ } fs.rmSync(D, { recursive: true, force: true }); if (process.exitCode) console.error(stderr.slice(-2000)); }
 console.log('audio-quote: all checks passed');
