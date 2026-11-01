@@ -568,7 +568,8 @@
       "support": "native",
       "workflow": {
         "source": "ours",
-        "name": "our request to the BFL API (server/src/hostedRequests.ts bflFlexRequest)",
+        "name": "BFL API request",
+        "note": "built in: server/src/hostedRequests.ts bflFlexRequest",
         "url": "https://docs.bfl.ml/api-reference/models/generate-or-edit-an-image-with-flux2-[flex]",
         "author": "Imagination Is All You Need",
         "license": "AGPL-3.0 (this repo)"
@@ -889,7 +890,8 @@
       "support": "native",
       "workflow": {
         "source": "ours",
-        "name": "our request to the BFL API (server/src/hostedRequests.ts bflKlein2Request)",
+        "name": "BFL API request",
+        "note": "built in: server/src/hostedRequests.ts bflKlein2Request",
         "url": "https://docs.bfl.ml/api-reference/models/generate-or-edit-an-image-with-flux2-[klein]-9b",
         "author": "Imagination Is All You Need",
         "license": "AGPL-3.0 (this repo)"
@@ -901,7 +903,8 @@
       "support": "native",
       "workflow": {
         "source": "ours",
-        "name": "our request to the MiniMax API (server/src/hostedRequests.ts minimaxImageRequest)",
+        "name": "MiniMax API request",
+        "note": "built in: server/src/hostedRequests.ts minimaxImageRequest",
         "url": "https://platform.minimax.io/docs/api-reference/image-generation-t2i",
         "author": "Imagination Is All You Need",
         "license": "AGPL-3.0 (this repo)"
@@ -913,7 +916,8 @@
       "support": "native",
       "workflow": {
         "source": "ours",
-        "name": "our request to Comfy Router openai/gpt-image-1.5 (server/src/routing/routerModels.ts gpt15Body)",
+        "name": "Comfy Router request · openai/gpt-image-1.5",
+        "note": "built in: server/src/routing/routerModels.ts gpt15Body",
         "url": "https://docs.comfy.org/development/comfy-router/models/openai/gpt-image-1-5/code",
         "author": "Imagination Is All You Need",
         "license": "AGPL-3.0 (this repo)"
@@ -925,7 +929,8 @@
       "support": "native",
       "workflow": {
         "source": "ours",
-        "name": "our request to Comfy Router byteplus/seedream-4-5-251128 (server/src/routing/routerModels.ts seedream45Body)",
+        "name": "Comfy Router request · byteplus/seedream-4-5-251128",
+        "note": "built in: server/src/routing/routerModels.ts seedream45Body",
         "url": "https://docs.comfy.org/development/comfy-router/models/byteplus/seedream-4-5-251128/code",
         "author": "Imagination Is All You Need",
         "license": "AGPL-3.0 (this repo)"
@@ -937,7 +942,8 @@
       "support": "native",
       "workflow": {
         "source": "ours",
-        "name": "our request to Comfy Router xai/grok-imagine-image-pro (server/src/routing/routerModels.ts api-grok-image-pro body)",
+        "name": "Comfy Router request · xai/grok-imagine-image-pro",
+        "note": "built in: server/src/routing/routerModels.ts api-grok-image-pro body",
         "url": "https://docs.comfy.org/development/comfy-router/models/xai/grok-imagine-image-pro/code",
         "author": "Imagination Is All You Need",
         "license": "AGPL-3.0 (this repo)"
@@ -1093,7 +1099,8 @@
       "support": "native",
       "workflow": {
         "source": "ours",
-        "name": "our request to the BFL API (server/src/hostedRequests.ts bflFlexRequest)",
+        "name": "BFL API request",
+        "note": "built in: server/src/hostedRequests.ts bflFlexRequest",
         "url": "https://docs.bfl.ml/api-reference/models/generate-or-edit-an-image-with-flux2-[flex]",
         "author": "Imagination Is All You Need",
         "license": "AGPL-3.0 (this repo)"
@@ -1327,7 +1334,8 @@
       "support": "native",
       "workflow": {
         "source": "ours",
-        "name": "our request to the BFL API (server/src/hostedRequests.ts bflKlein2Request)",
+        "name": "BFL API request",
+        "note": "built in: server/src/hostedRequests.ts bflKlein2Request",
         "url": "https://docs.bfl.ml/api-reference/models/generate-or-edit-an-image-with-flux2-[klein]-9b",
         "author": "Imagination Is All You Need",
         "license": "AGPL-3.0 (this repo)"
@@ -1339,7 +1347,8 @@
       "support": "native",
       "workflow": {
         "source": "ours",
-        "name": "our request to Comfy Router openai/gpt-image-1.5 (server/src/routing/routerModels.ts gpt15Body)",
+        "name": "Comfy Router request · openai/gpt-image-1.5",
+        "note": "built in: server/src/routing/routerModels.ts gpt15Body",
         "url": "https://docs.comfy.org/development/comfy-router/models/openai/gpt-image-1-5/code",
         "author": "Imagination Is All You Need",
         "license": "AGPL-3.0 (this repo)"
@@ -1351,7 +1360,8 @@
       "support": "native",
       "workflow": {
         "source": "ours",
-        "name": "our request to Comfy Router byteplus/seedream-4-5-251128 (server/src/routing/routerModels.ts seedream45Body)",
+        "name": "Comfy Router request · byteplus/seedream-4-5-251128",
+        "note": "built in: server/src/routing/routerModels.ts seedream45Body",
         "url": "https://docs.comfy.org/development/comfy-router/models/byteplus/seedream-4-5-251128/code",
         "author": "Imagination Is All You Need",
         "license": "AGPL-3.0 (this repo)"
@@ -1435,7 +1445,8 @@
       "support": "native",
       "workflow": {
         "source": "ours",
-        "name": "our request to Comfy Router openai/gpt-image-1.5 (server/src/routing/routerModels.ts gpt15Body)",
+        "name": "Comfy Router request · openai/gpt-image-1.5",
+        "note": "built in: server/src/routing/routerModels.ts gpt15Body",
         "url": "https://docs.comfy.org/development/comfy-router/models/openai/gpt-image-1-5/code",
         "author": "Imagination Is All You Need",
         "license": "AGPL-3.0 (this repo)"

@@ -9,9 +9,9 @@ const { PROMPT_GRAMMAR } = await import('../src/shared/promptGrammar.js');
 const { getTool } = await import('../src/tools/registry.js');
 const ok = (m: string) => console.log('ok ' + m);
 
-const k = promptTipOf('kling-v3')!; assert.equal(k.refs, 'We send @image1 as <<<image_1>>>.'); assert.equal(k.limit, 'Up to 2,500 characters'); assert.match(k.negative!, /write what to leave out/);
-assert.equal(promptTipOf('seedance-2.0')!.refs, 'We send @image1 as Image 1, @video1 as Video 1, @audio1 as Audio 1.');
-assert.equal(promptTipOf('flux-3-klein')!.refs, 'We send @image1 as <ref_image_0> (counts from 0).');
+const k = promptTipOf('kling-v3')!; assert.equal(k.refs, '@image1 is sent as <<<image_1>>>.'); assert.equal(k.limit, 'Up to 2,500 characters'); assert.match(k.negative!, /write what to leave out/);
+assert.equal(promptTipOf('seedance-2.0')!.refs, '@image1 is sent as Image 1, @video1 as Video 1, @audio1 as Audio 1.');
+assert.equal(promptTipOf('flux-3-klein')!.refs, '@image1 is sent as <ref_image_0> (counts from 0).');
 assert.match(promptTipOf('gpt-image')!.refs, /order you add them/);
 assert.match(promptTipOf('veo-3.1')!.refs, /start frame/);
 assert.equal(promptTipOf('minimax-h3-crossview')!.triggers, 'Starts with: crossview.');

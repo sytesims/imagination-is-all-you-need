@@ -233,6 +233,8 @@ function cinema(job: Job): Plan {
 const DATA_TMP = (job: Job) => path.join(DATA_DIR, job.id);
 function camera(job: Job): Plan {
   const i = job.input; const seed = clampSeed(i.seed); const ids: string[] = i.types ?? []; const plan = mixPlan(ids, i.duration || 5);
+  const off = ids.find((id) => !cameraPreset(id)); // the job check refuses these first (tools/apps.ts cameraMoveProviders); never run an empty or partial plan
+  if (off || !plan.length) throw new Error(`The camera move ${off ?? '(none)'} has no plan on this computer's Wan 2.2 Fun Camera or LTX-2. It runs on Seedance or MiniMax H3.`);
   const passes: Pass[] = []; const prompt = i.finalPrompt ?? i.prompt ?? '';
   const base = i.imagePath ?? DATA_TMP(job); // text-to-video (no start image): chained frames live next to the job's own files
   for (const p of plan) {

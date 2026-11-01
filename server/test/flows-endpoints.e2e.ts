@@ -10,7 +10,9 @@ try {
   await req('PUT', '/api/me/routing', { global: { mode: 'auto', allowFallback: true, useLocal: true } }); // local mock runs (no keys)
   // presets
   const all = await req('GET', '/api/presets'); assert.equal(all.status, 200); assert.ok(all.body.total > 0 && all.body.items.every((p: any) => p.toolId && p.id));
-  const tools = (await req('GET', '/api/tools')).body as any[]; assert.equal(all.body.total, tools.reduce((n, t) => n + (t.presets?.length ?? 0), 0));
+  const tools = (await req('GET', '/api/tools')).body as any[]; const own = (t: any) => (t.app?.gallery?.locked?.types || t.app?.gallery?.locked?.preset ? 0 : t.presets?.length ?? 0); // an app locked to one base mode/style lists no presets of its own
+  assert.equal(all.body.total, tools.reduce((n, t) => n + own(t), 0));
+  for (const id of ['app-transition', 'app-ugc-ad', 'app-change-voice', 'app-product-shot']) assert.equal(all.body.byTool[id] ?? 0, 0, `${id}: its base tool's modes are not presets`);
   const one = tools.find((t) => t.presets?.length); const p1 = await req('GET', `/api/presets?toolId=${one.id}`); assert.equal(p1.body.total, one.presets.length); assert.ok(p1.body.items.every((p: any) => p.toolId === one.id));
   assert.equal((await req('GET', '/api/presets?toolId=nope')).status, 404); console.log(`ok GET /api/presets: ${all.body.total} presets across ${Object.keys(all.body.byTool).length} tools; ?toolId; unknown → 404`);
   // plan choose stub

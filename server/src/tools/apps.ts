@@ -3,6 +3,7 @@ import { upscaleOutputSize } from '../shared/pricing.js';
 import { LTX_LORAS, ltxLoraPrompt, PHOTO_FX_LTX_LORA } from '../shared/ltxLoras.js';
 import { H3_CAMERA_MOVES } from './h3/catalog.js';
 import { CAMERA_CATALOG } from '../cinema/cameraCatalog.js';
+import { cameraEnginesFor } from '../comfy/cameraPresets.js';
 import { OPTION_MEDIA, wireOptionMedia, voiceSampleUrl, voiceSampleKind, wireSamplePresetMedia } from '../interimTiles.js';
 import { parseLightRig, rigPhrases, rigJson, spherePresetOf, lightUntouched, DEFAULT_RIG, type LightRig } from '../shared/lightRig.js';
 import { PRODUCT_SCENES, PRODUCT_KEEP, TRANSITION_TYPES, UGC_PRESENTERS, UGC_HOOKS, UGC_SETTINGS, UGC_FRAMINGS, ORBIT_TYPES, ORBIT_BACKDROPS, RELIGHT_DIRECTIONS, RELIGHT_QUALITY, RELIGHT_COLOUR_PRESETS, RELIGHT_LOOKS, relightLookOf, brightnessWord, colourName, padPhrase, LANGUAGE_NATIVE, CHARACTER_LAYOUTS, CHARACTER_LAYOUT_DEFAULT, type CharacterLayout, type AppField, type AppOption } from './appRows.js';
@@ -293,24 +294,27 @@ export function aspectForProviderError(tool: ToolDef | undefined, provider: stri
   const inp: any = (tool.inputs ?? []).find((i: any) => i?.name === 'aspect' && i.byProvider); if (!inp) return null;
   const ok: string[] = inp.byProvider[provider] ?? ['auto']; return ok.some((x) => x.toLowerCase() === String(aspect).toLowerCase()) ? null : aspectUnsupportedBody(provider, ok);
 }
-const CAMERA_PROMPT_PROVIDERS = [...ROUTER_APP_MODELS, 'comfy-open']; // B6 quality order
-const OLD_CATEGORY: Record<string, string> = { 'Basic moves': 'Basic', 'Epic moves': 'Orbit', Effects: 'Style', Rhythm: 'Style', 'LTX camera': 'LTX camera', /* BH9: own group, was 'Rig' */ 'H3 camera': 'Rig' };
+/** A move's routes: the prompt-only cloud models (Seedance, MiniMax H3; B6 quality order) for every move not tied to one graph (LTX, H3), then the graph
+ *  routes that really run it (comfy/cameraPresets.ts CAMERA_ENGINE_MOVES: the same records the plans read). So the catalogue moves Wan 2.2 Fun Camera
+ *  has no pose plan for are never offered on your own computer, and parseInput / the quote refuse that pair with a plain 400 (presetUnsupportedBody). */
+export const cameraMoveProviders = (x: Pick<Preset, 'id' | 'group'>): string[] => { const graphs = cameraEnginesFor(x.id); return x.group === 'LTX camera' || x.group === 'H3 camera' ? graphs : [...ROUTER_APP_MODELS, ...graphs]; };
+const OLD_CATEGORY: Record<string, string> = { 'Basic moves': 'Basic', 'Epic moves': 'Orbit', Effects: 'Style', Rhythm: 'Style', 'LTX camera': 'LTX camera', /* BH9: own group, was 'Rig' */ 'H3 camera': 'H3 camera' /* own group too, was 'Rig' */ };
 /** Page-11 fields on every camera preset: category, description, camera{verb,direction,speed,framing}, providers, aspects (union over its providers), order. */
 /** Oct 18 #3: the engine a Camera preset runs on, per provider (DP shows modelName instead of matching 'LTX-2 19B' in labels). LTX presets run LTX-2 19B on
  *  comfy-open and cloud-ltx-camera; other comfy-open presets run Wan 2.2 Fun Camera 14B. Same names as /api/models (LTX_CAMERA_MODEL, catalogue names). */
 const CAMERA_ENGINE: Record<string, string> = { 'comfy-open': 'Wan 2.2 Fun Camera 14B', 'cloud-ltx-camera': 'LTX-2 19B', 'comfy-h3-camera': 'H3 Camera Motion', 'router-kling': 'Kling', 'router-veo': 'Veo', 'router-seedance': 'Seedance', 'api-minimax-h3': 'MiniMax H3' };
 const cameraEngine = (provider: string, ltx: boolean) => (ltx && (provider === 'comfy-open' || provider === 'cloud-ltx-camera') ? 'LTX-2 19B' : CAMERA_ENGINE[provider] ?? provider);
 function cameraPresetMeta(x: Preset, i: number): Preset {
-  const e = CAMERA_CATALOG.find((c) => c.id === x.id) ?? CAMERA_CATALOG.find((c) => CAMERA_ALIASES[c.id] === x.id); const aliases = Object.keys(CAMERA_ALIASES).filter((a) => CAMERA_ALIASES[a] === x.id); const providers: string[] = (x as any).providers ?? (x.group === 'LTX camera' ? ['comfy-open', 'cloud-ltx-camera'] : CAMERA_PROMPT_PROVIDERS);
+  const e = CAMERA_CATALOG.find((c) => c.id === x.id) ?? CAMERA_CATALOG.find((c) => CAMERA_ALIASES[c.id] === x.id); const aliases = Object.keys(CAMERA_ALIASES).filter((a) => CAMERA_ALIASES[a] === x.id); const providers: string[] = cameraMoveProviders(x);
   const aspects = [...new Set(providers.flatMap((p) => CAMERA_ASPECTS[p] ?? ['auto']))];
   return { ...x, ...(aliases.length ? { aliases } : {}), category: e?.category ?? OLD_CATEGORY[x.group ?? ''] ?? 'Basic', description: e?.description ?? `${(x.prompt || x.label)[0].toUpperCase()}${(x.prompt || x.label).slice(1)}.`,
     camera: e?.camera ?? null, providers, modelName: cameraEngine(providers[0], x.group === 'LTX camera'), modelNameByProvider: Object.fromEntries(providers.map((p) => [p, cameraEngine(p, x.group === 'LTX camera')])), aspects, aspectsByProvider: Object.fromEntries(providers.map((p) => [p, CAMERA_ASPECTS[p] ?? ['auto']])), order: e?.order ?? 100 + i, loraRecommended: e?.loraRecommended ?? false,
-    // placeholder poster (local procedural pipeline: scripts/gen-example-media.py --tool-presets) for the 65 catalogue presets; posterPlaceholder:true until real footage exists
+    // placeholder poster (local procedural pipeline: scripts/gen-example-media.py --tool-presets) for the catalogue presets; posterPlaceholder:true until real footage exists
     ...(e && !x.posterUrl ? { posterUrl: `/samples/presets/camera-${e.id}.jpg`, posterPlaceholder: true } : {}) } as Preset;
 }
 export const cameraApp = makeApp({
   id: 'camera', name: 'Camera Moves', category: 'Video', status: 'new', input: 'image',
-  description: 'Turn one start image into a short shot with one preset camera move, 3 or 5 s.',
+  description: 'One preset camera move on a start image, or from a prompt alone on most models. 3–15 s, depending on the model.' /* lengths re-read from durationsFor below */,
   types: [
     t('Basic moves', 'push-in', 'Push in', 'slow dolly push in'), t('Basic moves', 'pull-out', 'Pull out', 'slow dolly pull out'),
     t('Basic moves', 'pan-left', 'Pan left', 'smooth pan to the left'), t('Basic moves', 'pan-right', 'Pan right', 'smooth pan to the right'),
@@ -327,8 +331,8 @@ export const cameraApp = makeApp({
     t('LTX camera', 'ltx-dolly-left', 'Dolly left · LTX', 'dolly left'), t('LTX camera', 'ltx-dolly-right', 'Dolly right · LTX', 'dolly right'),
     t('LTX camera', 'ltx-jib-up', 'Jib up · LTX', 'jib up'), t('LTX camera', 'ltx-jib-down', 'Jib down · LTX', 'jib down'), t('LTX camera', 'ltx-static', 'Static · LTX', 'locked-off static camera'),
     // MiniMax H3 camera_motion_h3 LoRA presets (H3 addition 4; provider comfy-h3-camera; intensity field Slow/Aggressive = LoRA strength)
-    ...H3_CAMERA_MOVES.map(([id, label, move]) => ({ ...t('H3 camera', id, `${label} · H3`, `camera motion, ${move}`), providers: ['comfy-h3-camera'] })),
-    // Page 11 catalogue (65, cinema/cameraCatalog.ts): ids not already above
+    ...H3_CAMERA_MOVES.map(([id, label, move]) => t('H3 camera', id, `${label} · H3`, `camera motion, ${move}`)),
+    // Page 11 catalogue (cinema/cameraCatalog.ts): the 48 ids not already above and not aliases (82 presets in all)
   ].concat(CAMERA_CATALOG.filter((e) => !CAMERA_OLD_IDS.has(e.id) && !CAMERA_ALIASES[e.id]).map((e) => ({ id: e.id, label: e.label, prompt: e.prompt, group: e.category })) as Preset[])
    .map((x) => (x.group === 'LTX camera' ? { ...x, license: 'ltx-2-community' as const } : x)).map((x) => ({ ...x, addedAt: CAMERA_ADDED_AT[x.group!] ?? CAMERA_LAUNCH })).map(cameraPresetMeta),
   fields: [{ name: 'intensity', label: 'Intensity', kind: 'select', options: [{ value: 'slow', label: 'Slow' }, { value: 'aggressive', label: 'Aggressive' }], default: 'slow', providers: ['comfy-h3-camera'] } as any],
@@ -375,7 +379,7 @@ export function translateJob(tool: ToolDef, fields: Record<string, any>): string
 }
 /** A preset that runs on other models only (H3 moves → H3 Camera Motion): one plain 400 for quote and submit (code unsupported, field types). */
 export function presetUnsupportedBody(types: Preset[], off: string, provider: string, names: Record<string, string> = CAMERA_ENGINE) {
-  const p: any = types.find((x) => x.id === off); const label = p?.label ?? off; const on = ((p?.providers ?? []) as string[]).map((x) => names[x] ?? x);
+  const p: any = types.find((x) => x.id === off); const label = p?.label ?? off; const on = [...new Set(((p?.providers ?? []) as string[]).map((x) => p?.modelNameByProvider?.[x] ?? names[x] ?? x))]; // a camera move names its own engine per route (LTX moves: LTX-2 19B)
   const msg = `${label} isn't available on ${names[provider] ?? 'this model'}. It runs on ${on.join(' or ')}.`;
   return { error: msg, errorType: 'validation', code: 'unsupported', issues: [{ code: 'unsupported', field: 'types', message: msg }], presetProviders: p?.providers ?? [] };
 }
@@ -421,6 +425,8 @@ export function cameraImageCaps() {
     const f = { ...fields };
     if (f.types) { try { const t = JSON.parse(f.types); if (Array.isArray(t)) f.types = JSON.stringify(t.map((x) => cameraMoveId(String(x)))); } catch { f.types = f.types.split(',').map((x) => cameraMoveId(x.trim())).join(','); } }
     if (f.preset) f.preset = cameraMoveId(f.preset);
+    { const prov = f.provider || cameraApp.providers[0]; const off = cameraPresetOff(parseTypesField(f.types), prov); // a move this model can't run: that 400 first (not "add a start image")
+      if (off) return presetUnsupportedBody(cameraApp.presets ?? [], off, prov) as any; }
     if (!files.image?.length && !files.refs?.length) { const ty = parseTypesField(f.types); const prov = f.provider || cameraApp.providers[0];
       const dr = resolveDuration('camera', prov, f.duration != null && f.duration !== '' ? f.duration : f.seconds); // a bad length reports first (same order as before)
       if (ty.length && cameraImageRequired(prov, ty) && !(dr && 'error' in dr)) return { ...cameraImageRequiredBody(ty, f.provider || null, cameraApp.providers) } as any; }
@@ -433,6 +439,9 @@ export function cameraImageCaps() {
     return r;
   }; }
 (cameraApp as any).app = { ...(cameraApp as any).app, moveAliases: CAMERA_ALIASES, capabilities: { ...((cameraApp as any).app?.capabilities ?? {}), ...cameraImageCaps() }, imageOptional: true };
+{ // the description's lengths come from the same per-model lists the quote and the job use (h3/videoCaps.ts durationsFor)
+  const ds = Object.values(durationsByProvider('camera', cameraApp.providers)).flatMap((x) => x ?? []); const lo = Math.min(...ds), hi = Math.max(...ds);
+  cameraApp.description = `One preset camera move on a start image, or from a prompt alone on most models. ${lo}–${hi} s, depending on the model.`; }
 cameraApp.routeInput = () => ({ mode: 'camera' }); // quotes / listings judge routes on the job's own mode (the Router video bodies map Camera Moves jobs)
 (cameraApp as any).imageOptional = true; // top-level: some route runs a move from the prompt alone (app.capabilities.imageRequiredByProvider says which)
 cameraApp.inputs = cameraApp.inputs.map((x: any) => (x.name === 'image' ? { ...x, required: false, requiredByProvider: cameraImageCaps().imageRequiredByProvider, description: 'Start image (the first frame). Optional on LTX moves and on Seedance / MiniMax H3 (text-to-video); required on Wan Fun Camera and H3 camera.' } : x));
@@ -824,7 +833,7 @@ export const APP_GALLERY: GalleryApp[] = [
     brand: true /* Brand: the viewer's Add logo (a video's logo is stamped from the result); "Use brand colours" adds a few small set details last (never the presenter) */,
     fileMap: (f) => { const pres = f.presenterImage ?? []; const prod = f.image ?? []; if (!pres.length) return f; const { presenterImage: _p, ...rest } = f; return { ...rest, image: pres.slice(0, 1), refs: prod.slice(0, 1) }; },
     extra: { presenterFilters: { setting: UGC_SETTINGS, framing: UGC_FRAMINGS } },
-    notes: ['Presenter tiles are descriptions until our own presenter stills exist; upload a presenter photo to use a face as reference 1.'] },
+    notes: ['Presenter tiles are descriptions until built-in presenter stills exist; upload a presenter photo to use a face as reference 1.'] },
   // T28: its own AppTool page; orbit type = Director prompt tag at the start of the prompt (the move runs the whole clip).
   { id: 'orbit-shot', name: 'Orbit Shot', category: 'Video', base: 'cinema', poster: null, description: 'One photo of your subject becomes a clip where the camera circles it.', ui: 'app',
     providers: [...ROUTER_APP_MODELS, 'comfy-open', 'comfy-funcamera'] /* B6: Seedance first; Router: orbit prompt recipe + subject photo as first frame */, extraProviders: ['api-minimax-h3'], durations: [5, 10], defaults: { aspect: '1:1', resolution: '720p', duration: '5' },

@@ -1,8 +1,9 @@
-/** Page 11 Camera Moves catalogue: our 65 presets (our own names and wording).
+/** Page 11 Camera Moves catalogue: 65 entries (own names and wording). Camera Moves lists 48 of them on their own; the rest are the classic moves or
+ *  aliases of them (tools/apps.ts CAMERA_ALIASES), so Camera Moves has 82 presets in all (20 classic + 7 LTX + 7 H3 + 48 catalogue).
  *  prompt = the camera instruction the server puts FIRST in the job prompt ('' for free camera). */
 export interface CameraCatalogEntry { id: string; label: string; category: string; order: number; prompt: string; description: string;
   camera: { verb: string; direction: string | null; speed: string | null; framing: string | null } | null; note: string | null; loraRecommended: boolean }
-export const CAMERA_CATEGORIES = ['General', 'Basic', 'Zoom', 'Close', 'Lens', 'Framing', 'Orbit', 'Crane', 'Aerial', 'Transition', 'Vehicle', 'Rig', 'LTX camera', 'Style', 'Timelapse'] as const;
+export const CAMERA_CATEGORIES = ['General', 'Basic', 'Zoom', 'Close', 'Lens', 'Framing', 'Orbit', 'Crane', 'Aerial', 'Transition', 'Vehicle', 'Rig', 'LTX camera', 'H3 camera', 'Style', 'Timelapse'] as const;
 export const CAMERA_CATALOG: CameraCatalogEntry[] = [
 {
 "id": "free",

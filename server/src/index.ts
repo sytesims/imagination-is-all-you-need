@@ -621,6 +621,8 @@ async function createJob(toolId: string, req: FastifyRequest, reply: FastifyRepl
       return reply.code(400).send({ error: msg, errorType: 'validation', code: 'required', issues: [{ code: 'required', field: any[0], message: msg }], refund: nc }); }
     if (tool.id === 'camera' && !files.image?.length && !files.refs?.length && providerId) {
       const AP = await import('./tools/apps.js'); const ty = AP.parseTypesField(fields.types).map(AP.cameraMoveId);
+      const off = AP.cameraPresetOff(ty, providerId); // a move this model can't run says so first (not "add a start image")
+      if (off) return reply.code(400).send({ ...AP.presetUnsupportedBody(AP.cameraApp.presets ?? [], off, providerId), refund: nc });
       if (ty.length && AP.cameraImageRequired(providerId, ty)) {
         return reply.code(400).send({ ...AP.cameraImageRequiredBody(ty, providerId, usable.map((p) => p.id)), refund: nc });
       }
@@ -821,7 +823,7 @@ app.get<{ Querystring: { toolId?: string } }>('/api/examples', async (req) => (a
 }))).filter(Boolean));
 registerBatch1(app);
 (await import('./libraryDb.js')).registerLibrary(app, { tools: async () => { try { return toolsList(); } catch { return []; } } }); // workflows + references databases: /api/library/* (search, tags)
-{ const R = await import('./routing/http.js'); R.registerRouting(app); setToolsBuilder(() => stripLicenseLinks(R.enrichTools(toolsPayload())), () => stripLicenseLinks(listTools().map((t) => ({ id: t.id, name: t.name, presets: visiblePresets(t) })))); } // multi-provider routing: settings, /api/me/routing, /api/routes, fallback
+{ const R = await import('./routing/http.js'); R.registerRouting(app); setToolsBuilder(() => stripLicenseLinks(R.enrichTools(toolsPayload())), () => stripLicenseLinks(listTools().map((t) => ({ id: t.id, name: t.name, presets: (t.app as any)?.gallery?.locked?.types || (t.app as any)?.gallery?.locked?.preset ? [] /* an app locked to one base mode or style: the base tool's list isn't its presets */ : visiblePresets(t) })))); } // multi-provider routing: settings, /api/me/routing, /api/routes, fallback
 (await import('./billing.js')).registerBilling(app); (await import('./agentBudget.js')).registerAgentBudgets(app); // agent budgets (after billing's cost hook): /api/agent/budgets, receipts, POST /api/compose // real costs: /api/settings/billing, /api/spend, /api/spend/summary, /api/accounts; cost on every quote (after the routing hook)
 registerDiscover(app);
 (await import('./routesHub.js')).registerHub(app);
