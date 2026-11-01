@@ -253,7 +253,7 @@
         "143:110",
         2
       ],
-      "batch_size": 25,
+      "batch_size": 1,
       "audio_vae": [
         "143:96",
         0

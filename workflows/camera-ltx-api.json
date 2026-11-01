@@ -132,7 +132,7 @@
         "92:62",
         0
       ],
-      "batch_size": 25,
+      "batch_size": 1,
       "audio_vae": [
         "92:48",
         0

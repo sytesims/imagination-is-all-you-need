@@ -5,12 +5,17 @@ import json, sys
 
 WIDGET_TYPES = {"INT", "FLOAT", "STRING", "BOOLEAN", "COMBO"}
 
+def is_widget(t, opts):
+    """A widget input: a combo list, a widget type, or a multi-type input of widget types ("FLOAT,INT" shows a widget too;
+    skipping it shifts every later widget value, e.g. LTXVEmptyLatentAudio's frame rate 25 landing in batch_size)."""
+    return isinstance(t, list) or t in WIDGET_TYPES or (isinstance(t, str) and "," in t and (opts.get("widgetType") in WIDGET_TYPES or all(x in WIDGET_TYPES for x in t.split(","))))
+
 def widget_names(spec):
     names = []
     for sect in ("required", "optional"):
         for name, val in spec["input"].get(sect, {}).items():
             t = val[0]; opts = val[1] if len(val) > 1 and isinstance(val[1], dict) else {}
-            if isinstance(t, list) or t in WIDGET_TYPES or t == "COMFY_DYNAMICCOMBO_V3":
+            if is_widget(t, opts) or t == "COMFY_DYNAMICCOMBO_V3":
                 names.append(name)
                 if t == "INT" and (opts.get("control_after_generate") or name in ("seed", "noise_seed")):
                     names.append("__control__")
@@ -29,7 +34,7 @@ def assign_widgets(inp, vals, out, prefix):
                 for o in opts.get("options", []):
                     if o["key"] == v: assign_widgets(o.get("inputs", {}), vals, out, prefix + name + ".")
                 continue
-            if isinstance(t, list) or t in WIDGET_TYPES:
+            if is_widget(t, opts):
                 if not vals: return
                 out[prefix + name] = vals.pop(0)
                 if t == "INT" and (opts.get("control_after_generate") or name in ("seed", "noise_seed")) and vals and vals[0] in ("fixed","randomize","increment","decrement"):
