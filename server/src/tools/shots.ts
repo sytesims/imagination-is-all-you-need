@@ -56,3 +56,10 @@ export const FACE_SWAP_KEEP = "keep image 1's pose, head angle, expression, hair
 /** Person Swap: the edit instruction (image 1 = target photo, image 2 = the person to put in). The user's touch-ups follow it. */
 export const PERSON_SWAP_PROMPT = 'Replace the person in image 1 with the person from image 2: their face, hair, body and outfit, so the person in image 1 becomes the person from image 2';
 export const PERSON_SWAP_KEEP = "keep image 1's pose, framing, camera angle, lighting, colours and background exactly as they are; match the light and grain of image 1";
+/** Person Swap, "Keep the photo's outfit" (2026-11-01, the Outfit choice): the slot words for the prompt pattern registry's person-swap row
+ *  (shared/promptPatterns.ts): what to take from the person, and the outfit clause. "Refitted naturally to their body" so a new body shape doesn't
+ *  fight "keep the outfit"; "of image 1", never "image 1's" (tag models turn it into "<image1>'s"). No "expression": holding it fights the identity. */
+export const PERSON_SWAP_KEEP_OUTFIT_WHO = 'face, hair, skin tone and body shape';
+export const PERSON_SWAP_KEEP_OUTFIT = 'Keep the outfit and accessories of image 1 (glasses, sunglasses, jewellery, bags), refitted naturally to their body.';
+/** Person Swap's Outfit choice: 'person' (the default, today's swap: the outfit comes from image 2) or 'keep' (image 1's outfit stays). */
+export const PERSON_SWAP_OUTFITS = [{ value: 'person', label: "Use the person's outfit" }, { value: 'keep', label: "Keep the photo's outfit" }];

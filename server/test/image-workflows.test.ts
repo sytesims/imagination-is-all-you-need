@@ -83,6 +83,9 @@ try {
   assert.ok(cl.controls.every((c: any) => c.options?.length), 'every rig control lists its options'); assert.deepEqual(cl.controls.filter((c: any) => c.optional).map((c: any) => c.field), ['film', 'lighting', 'era']);
   assert.equal(cl.controls.find((c: any) => c.field === 'focal').default, '35'); assert.equal(cl.controls.find((c: any) => c.field === 'aperture').options[0].label, 'f/0.95');
   const ps = W.find((w) => w.id === 'person-swap'); assert.deepEqual(ps.slots.map((s: any) => [s.label, s.sendsAs, s.required]), [['Target', 'image', true], ['Person', 'person', true]]); assert.equal(ps.generateLabel, 'Swap person');
+  // Outfit (2026-11-01): today's swap by default, "Keep the photo's outfit" opt-in; the newer 2+ image models are listed (Flare first of them)
+  const oc = ps.controls.find((c: any) => c.field === 'outfit'); assert.equal(oc.kind, 'segmented'); assert.equal(oc.default, 'person'); assert.deepEqual(oc.options.map((o: any) => o.value), ['person', 'keep']);
+  assert.deepEqual(ps.groups.map((g: any) => g.id), ['outfit']); assert.ok(ps.models.edit.includes('api-gpt-image-25-flare'), 'Person Swap offers GPT Image 2.5 Flare');
   const cs = W.find((w) => w.id === 'character-sheet'); assert.deepEqual(cs.slots.map((s: any) => [s.label, s.required]), [['Your photo', false]]); assert.equal(cs.generateLabel, 'Make sheet');
   assert.equal(cs.fixedNote, undefined); assert.deepEqual(cs.controls.map((c: any) => c.field), ['layout']); // 2026-10-25: the Layout chip replaced "3 panels · 4:3" assert.deepEqual(cs.prompt.requiredWithout, { slot: 'image', missing: 'Describe the character' }); assert.equal(cs.locked.aspect, '4:3');
   assert.ok(cs.models.edit.length && cs.models.generate.length, 'a photo switches to the edit models');

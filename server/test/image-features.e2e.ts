@@ -89,6 +89,7 @@ try {
   assert.equal(T('soul').listed, false); assert.ok(!tools.some((t) => /OpenSoul/.test(t.name)), 'no OpenSoul tool name');
   assert.deepEqual(T('app-inpaint').providers.map((p: any) => p.id), MASK_MODELS);
   assert.deepEqual(T('app-person-swap').providers.map((p: any) => p.id), TWO_IMAGE_MODELS);
+  for (const m of ['api-gpt-image-25-flare', 'api-gpt-image-25-sunburst', 'api-nano-banana-21', 'api-nano-banana-pro', 'api-flux3-image']) assert.ok(TWO_IMAGE_MODELS.includes(m), `${m} takes 2+ images, so Face / Person Swap list it`);
   assert.ok(!T('create-image').app.providerModes['api-nano-banana'].includes('inpaint') && !T('create-image').app.providerModes['api-ideogram'].includes('edit'), 'create-image modes follow the routes');
   assert.equal(T('create-image').providers.find((p: any) => p.id === 'api-gpt-image').name, 'GPT Image 2');
   const br = (await get('/api/browse/image')).body.tools.map((t: any) => t.name); assert.deepEqual(br, MENU_FEATURES.map((f) => f.name), '/image lists the features in menu order');

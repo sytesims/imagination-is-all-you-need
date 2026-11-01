@@ -31,6 +31,11 @@ const send = async (url: string, init: RequestInit): Promise<ProfileData> => {
 export const saveProfile = (patch: Partial<ProfileData>) => send('/api/me/profile', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch) });
 export const uploadAvatar = (png: Blob) => { const fd = new FormData(); fd.append('file', png, 'avatar.png'); return send('/api/me/avatar', { method: 'POST', body: fd }); };
 export const removeAvatar = () => send('/api/me/avatar', { method: 'DELETE' });
+/** The "Me" photo (Person Swap's Person slot, 2026-11-01): uploaded to the library (POST /api/media, so it is in Uploads too) and the profile
+ *  points to it (mePhotoUrl), so Canvas and MCP can use the same photo. */
+export const saveMePhoto = async (f: File) => { const fd = new FormData(); fd.append('file', f, f.name);
+  const r = await fetch('/api/media', { method: 'POST', body: fd }).catch(() => null); if (!r) throw new Error(SAVE_FAILED); const j = await r.json().catch(() => ({}));
+  const url = j.items?.[0]?.url; if (!r.ok || typeof url !== 'string') throw new Error(typeof j.error === 'string' && j.error ? j.error : SAVE_FAILED); return saveProfile({ mePhotoUrl: url }); };
 
 /** The name to show: your display name, else your @name, else the plain local label. */
 export const nameOf = (p: ProfileData | null | undefined) => p?.displayName || (p?.handle ? `@${p.handle}` : '') || 'Local account';

@@ -178,6 +178,7 @@ function RunTile({ j, cap }: { j: JobState; /** Camera Angles: the angle this ti
 
 export { urlToFile } from '../../shared/urlFile'; /* moved to shared (the Canvas bar sends board images with it too) */
 import { urlToFile } from '../../shared/urlFile';
+import { useProfile, saveMePhoto } from '../../shared/profile';
 import { SwitchNote, useSwitchNote } from '../../shared/SwitchNote';
 /** A drag from the feed (or another tab of the app) carries the image's URL, not a file. */
 const dropUrl = (dt: DataTransfer): string | null => { const u = (dt.getData('text/uri-list') || dt.getData('text/plain') || '').split('\n').map(x => x.trim()).find(x => x && !x.startsWith('#')); if (!u) return null;
@@ -419,8 +420,28 @@ export default function ImageCanvas(p: ImageCanvasProps) {
     const pid = u.searchParams.get('preset'); const want2 = pid && !u.searchParams.has('workflow') ? '' : want; /* a plain Create preset leaves any workflow */
     if (pid) { if (presetHere && presetHere.p.id !== pid) clearPreset(false); /* a new preset replaces the open one (its untouched text and settings go) */ wantPreset.current = pid; setPresetTick(t => t + 1); }
     if (want2 !== wfIdRef.current) setWf(want2, { carryBack: false, silent: !!pid }); else syncUrl(want2);
-    const ex = u.searchParams.get('showcase'); if (ex) { exParam.current = ex; setExTick(t => t + 1); } /* an example opened while this page is open */ };
+    const ex = u.searchParams.get('showcase'); if (ex) { exParam.current = ex; setExTick(t => t + 1); } /* an example opened while this page is open */
+    readLinkVals(); };
   useEffect(() => { const path0 = location.pathname; const f = () => { if (location.pathname === path0) onNav.current(); }; addEventListener('popstate', f); return () => removeEventListener('popstate', f); }, []);
+  /* Person Swap's "Me" photo (2026-11-01, the local profile's mePhotoUrl): "Use my photo" next to the empty Person slot, "Save as my photo" in the
+   * filled slot's preview. Kept on the server (not this browser), so Canvas and MCP see the same photo. Nothing saved = the slot stays empty as before. */
+  const me = useProfile(); const meUrl = me?.mePhotoUrl ?? null;
+  const useMe = async () => { if (!meUrl) return; try { setSlot('person', await urlToFile(meUrl, 'my-photo'), true); } catch { toast('Couldn’t load your saved photo. Add it again.', 'error'); } };
+  const saveMe = async () => { const f = files.person?.file; if (!f) return; try { await saveMePhoto(f); toast('Saved as your photo'); } catch (e) { toast((e as Error).message, 'error'); } };
+  const slotExtras = recipe?.id === 'person-swap' ? {
+    image: { notes: ['A phone screenshot? Crop off the status bar first. With several people, say who in Touch-ups (e.g. the woman on the left).'] },
+    person: { empty: meUrl ? { label: 'Use my photo', testId: 'wf-use-me', tip: 'Put your saved photo here', onClick: () => { void useMe(); } } : null,
+      notes: ['Sunglasses on this photo hide the face, so it won’t carry over.'], actions: [{ label: meUrl ? 'Replace my photo' : 'Save as my photo', testId: 'wf-save-me', onClick: () => { void saveMe(); } }] } } : undefined;
+  /* A link can pick a workflow's choice: /image?workflow=person-swap&outfit=keep opens Person Swap on "Keep the photo's outfit" and, when a Me
+   * photo is saved, puts it in the empty Person slot. The param goes once applied (a refresh keeps your own pick). */
+  const linkVals = useRef<{ wf: string; vals: Record<string, string> } | null>(null); const mePending = useRef(false); const [linkTick, setLinkTick] = useState(0);
+  function readLinkVals() { const u = new URL(location.href); const o = u.searchParams.get('outfit'); if (!o || u.searchParams.get('workflow') !== 'person-swap') return;
+    linkVals.current = { wf: 'person-swap', vals: { outfit: o } }; u.searchParams.delete('outfit'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); setLinkTick(t => t + 1); }
+  useLayoutEffect(() => { readLinkVals(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { const l = linkVals.current; if (!l || !recipe || recipe.id !== l.wf) return; linkVals.current = null;
+    const ok = Object.fromEntries(Object.entries(l.vals).filter(([k, v]) => recipe.controls.find(c => c.field === k)?.options?.some(o => o.value === v)));
+    if (Object.keys(ok).length) setDraft(d => ({ ...d, vals: { ...d.vals, ...ok } })); if (ok.outfit === 'keep') mePending.current = true; }, [recipe?.id, linkTick]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!mePending.current || recipe?.id !== 'person-swap' || !me) return; mePending.current = false; if (meUrl && !files.person) void useMe(); }, [recipe?.id, me, linkTick]); // eslint-disable-line react-hooks/exhaustive-deps
   const wfGenerate = async (e: React.MouseEvent<HTMLButtonElement>) => {
     if (!recipe || !draft) return; if (wfPf.length) { setPfOpen(o => !o); return; } /* pre-flight: every problem with its fix, on the button */
     if (!p.onWorkflowGenerate || wfBusy) return; const fd = new FormData();
@@ -860,7 +881,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
       <button type="button" className="ic-x" aria-label={k === 0 ? 'Remove image' : `Remove image ${k + 1}`} onClick={() => removePhoto(k, true)}><CloseIcon size={10} strokeWidth={2.2} /></button></span>; };
   const lead = <div className="ic-lead" data-testid="ic-lead" data-mode={recipe ? 'workflow' : rigRecipe ? 'rig' : 'create'} role="group" aria-label={recipe ? `${recipe.name} inputs` : 'Photos and references'}>
     {recipe && draft ? <WorkflowInputs recipe={recipe} files={files} setFile={(slot, f) => setSlot(slot, f)} addFile={(slot, f) => addSwatch(slot, f)} onPick={openSlotPicker} picking={refTab ? pickFor : null} onUrl={(slot, u) => { urlToFile(u).then(f => setSlot(slot, f, true)).catch(() => undefined); }} flash={flash?.wf === recipe.id ? flash : null}
-        choose={choose ? { url: choose.url, slots: choose.slots.map(n => ({ name: n, label: slotLabel(recipe, n), full: !!files[n] })) } : null} onChoose={n => choose && addSwatch(n, choose.file, true)} onChooseCancel={() => setChoose(null)} disabled={wfBusy} lead={null /* one marker: a look that opens a workflow shows as that workflow's chip; the look card is plain Create's */}
+        choose={choose ? { url: choose.url, slots: choose.slots.map(n => ({ name: n, label: slotLabel(recipe, n), full: !!files[n] })) } : null} onChoose={n => choose && addSwatch(n, choose.file, true)} onChooseCancel={() => setChoose(null)} disabled={wfBusy} lead={null /* one marker: a look that opens a workflow shows as that workflow's chip; the look card is plain Create's */} extras={slotExtras}
         surface={<>{isMask ? <MaskStrip mask={wfMask} hasPhoto={!!files.image} need={!!wfMissing?.mask} onPaint={() => setMaskOpen(true)} onClear={() => setWfMask(null)} disabled={wfBusy} erase={recipe.id === 'erase'} /> : null}
           {wfFit && imgSize && (shapeOff || prepNow) ? <PrepChip chipRef={prepChipRef} prep={shapeOff ? null : prepNow} aspect={wfFit} shape={shapeName(imgSize.width, imgSize.height)} busy={prepBusy || wfBusy} onFit={() => void applyPrep('fit')} onCrop={openCrop} onUndo={undoPrep} />
             : prepNow ? <PrepChip chipRef={prepChipRef} prep={prepNow} aspect={prepNow.aspect} shape="" busy={prepBusy || wfBusy} onFit={() => void applyPrep('fit')} onCrop={openCrop} onUndo={undoPrep} /> : null}</>} />
