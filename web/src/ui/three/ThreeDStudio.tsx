@@ -44,7 +44,7 @@ import { isOpenWeights, displayNameOf } from '../../shared/OpenWeights';
 import { durationText, jobTiming } from '../../shared/jobTiming';
 import { etaText } from '../../shared/queueActivity';
 import { preflightProblems } from '../../../../server/src/shared/preflight';
-import { THREE_D_WORKFLOWS, THREE_D_CATEGORIES, THREE_D_PAGE, threeDRoute, threeDWorkflowById, currentThreeDWorkflow, threeDModel, normalizeSettings, DETAILS, TEXTURES, FACES, type ThreeDWorkflow, type ThreeDModel, type ShowcaseItem, THREE_D_VIEW_SLOTS, threeDSupportsMode, threeDViewIssue, threeDMode, threeDPriceNote } from '../../../../server/src/shared/threeD';
+import { THREE_D_WORKFLOWS, THREE_D_CATEGORIES, THREE_D_PAGE, threeDRoute, threeDWorkflowById, currentThreeDWorkflow, threeDModel, normalizeSettings, threeDPicksParam, DETAILS, TEXTURES, FACES, type ThreeDWorkflow, type ThreeDModel, type ShowcaseItem, THREE_D_VIEW_SLOTS, threeDSupportsMode, threeDViewIssue, threeDMode, threeDPriceNote } from '../../../../server/src/shared/threeD';
 import { PF_SHORT } from '../../shared/DockGenerate';
 import { recipeFor } from '../../shared/threeDRecipe';
 import { PromptPeek, type PeekForm } from '../next/PromptPeek';
@@ -191,7 +191,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
   /* the feed's kind filter (All · Models · Mockups · Renders; the default follows the workflow: feed3d.ts) */
   const { kinds, setKinds, counts, shownJobs } = useFeedKinds(results, wf.id);
   // ---- quote (= charge) ----
-  const qParams = { types: wf.mode ?? 'image-to-3d', detail: set.detail, texture: set.texture, faces: set.faces, ...Object.fromEntries(Object.entries(activeFiles).filter(([, f]) => !!f).map(([name]) => [name, '1'])) };
+  const qParams = { types: wf.mode ?? 'image-to-3d', detail: set.detail, texture: set.texture, faces: set.faces, picks: threeDPicksParam(draft.vals) /* P3-05: the menu prices each model at its own defaults plus these */, ...Object.fromEntries(Object.entries(activeFiles).filter(([, f]) => !!f).map(([name]) => [name, '1'])) };
   const q = useWorkflowQuote(generation ? TOOL : null, provider, qParams);
   const tm = modelOfEngine(TOOL, provider); const ro = runOnText(tm, useRunOn(TOOL, tm?.key).runOn, q);
   const credits: number | null = q ? shownCredits(q) : null; const unpricedWhy = unpricedReason(q); const gate = !!q && q.needsKey === true && q.runnable === false;

@@ -108,6 +108,17 @@ try {
     const b = await done(r.body.id); assert.equal(b.status, 'done', b.error); assert.match(b.resultUrl, /\.glb$/); assert.equal(b.outputs[0].kind, '3d'); assert.equal(b.cost, want);
     if (!firstGlb) { firstGlb = b.resultUrl; firstId = b.id; }
   }
+  { // P3-05: the model menu prices each row at the settings picking it gives: the user's own choices (picks) on that model's defaults, not Tripo's
+    const rows = async (picks: string, cur: Record<string, string>) => { const r = await j('/api/models/quotes', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ toolId: 'three-d', params: { types: 'image-to-3d', image: '1', ...cur, picks } }) }); assert.equal(r.status, 200, JSON.stringify(r.body).slice(0, 300));
+      const of = (rx: RegExp) => Object.values(r.body.quotes as Record<string, any>).find((x) => rx.test(String(x.routeId ?? '')))!; return { tripo: of(/tripo/), hunyuan: of(/hunyuan/), trellis: of(/trellis-2/) }; };
+    const fresh = await rows('', { detail: 'standard', texture: 'pbr', faces: 'auto' }); // a fresh page on Tripo: its default texture is PBR
+    assert.equal(fresh.hunyuan.credits, 38, `Hunyuan row = its own run price (standard texture), not Tripo's PBR (${fresh.hunyuan.credits})`); assert.equal(fresh.tripo.credits, 30); assert.equal(fresh.trellis.credits, 30);
+    const pbr = await rows('texture:pbr', { detail: 'standard', texture: 'pbr', faces: 'auto' }); assert.equal(pbr.hunyuan.credits, 53, 'PBR picked by the user: Hunyuan keeps it (+$0.15)');
+    const hi = await rows('detail:high,faces:200k', { detail: 'high', texture: 'pbr', faces: '200k' }); assert.equal(hi.hunyuan.credits, 53, 'Hunyuan: faces 200k (+$0.15), its own standard texture'); assert.equal(hi.trellis.credits, 35);
+    const old = await rows(undefined as any, { detail: 'standard', texture: 'pbr', faces: 'auto' }); assert.equal(old.hunyuan.credits, 53, 'no picks sent (MCP, older page): the request\'s own values');
+    assert.equal((await j(`/api/tools/three-d/price?${new URLSearchParams({ provider: 'fal-hunyuan3d-31', types: 'image-to-3d', detail: 'standard', texture: 'standard', faces: 'auto', picks: '' })}`)).body.credits, 38, 'the page quote takes picks');
+    ok('P3-05: 3D menu rows are priced at each model\'s own settings (Hunyuan 38 = its run, not 53 at Tripo\'s PBR)'); }
   const submitMode=async(mode:string,fields:Record<string,string>={},slots:string[]=[])=>{const fd=new FormData();fd.append('types',JSON.stringify([mode]));fd.append('provider','cloud-tripo-31');for(const [k,v] of Object.entries(fields))fd.append(k,v);for(const slot of slots)fd.append(slot,new Blob([fs.readFileSync(slot==='image'?img:side)],{type:'image/png'}),`${slot}.png`);return j('/api/tools/three-d/jobs',{method:'POST',body:fd});};
   const side=path.join(D,'side.png');execFileSync('ffmpeg',['-v','error','-y','-f','lavfi','-i','color=blue:s=480x640','-frames:v','1',side]);
   for(const mode of ['text-to-3d','multiview-to-3d']) for(const [settings,want] of [[{texture:'off'},mode==='text-to-3d'?10:20],[{texture:'pbr',detail:'standard'},mode==='text-to-3d'?20:30],[{texture:'hd',detail:'high'},mode==='text-to-3d'?50:60]] as [Record<string,string>,number][]) {
