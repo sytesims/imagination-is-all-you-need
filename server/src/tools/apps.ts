@@ -822,7 +822,7 @@ export const APP_GALLERY: GalleryApp[] = [
       pick(UGC_HOOKS, v.hook)?.prompt, `about ${c.prompt}`, c.has('image') ? `the product from the ${c.has('presenterImage') ? 'second' : ''} reference image appears clearly in hand`.replace('  ', ' ') : ''),
     fileMap: (f) => { const pres = f.presenterImage ?? []; const prod = f.image ?? []; if (!pres.length) return f; const { presenterImage: _p, ...rest } = f; return { ...rest, image: pres.slice(0, 1), refs: prod.slice(0, 1) }; },
     extra: { presenterFilters: { setting: UGC_SETTINGS, framing: UGC_FRAMINGS } },
-    notes: ['Presenter tiles are descriptions until our own presenter stills exist; upload a presenter photo to use a face as reference 1.'] },
+    notes: ['Presenter tiles are descriptions until built-in presenter stills exist; upload a presenter photo to use a face as reference 1.'] },
   // T28: its own AppTool page; orbit type = Director prompt tag at the start of the prompt (the move runs the whole clip).
   { id: 'orbit-shot', name: 'Orbit Shot', category: 'Video', base: 'cinema', poster: null, description: 'One photo of your subject becomes a clip where the camera circles it.', ui: 'app',
     providers: [...ROUTER_APP_MODELS, 'comfy-open', 'comfy-funcamera'] /* B6: Seedance first; Router: orbit prompt recipe + subject photo as first frame */, extraProviders: ['api-minimax-h3'], durations: [5, 10], defaults: { aspect: '1:1', resolution: '720p', duration: '5' },

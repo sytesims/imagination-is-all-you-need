@@ -185,7 +185,7 @@ export function audioWorkflowCredit(id: AudioWorkflowId, providerId: string): Gr
   const g = OUR_GRAPHS[id]?.[providerId];
   return CREDITS[id]?.[providerId] ?? (app ? appWorkflowFor(app, providerId) : null) ?? (id === 'soundtrack-music' || id === 'music' ? appWorkflowFor('app-music-bed', providerId) : null) ?? (g ? ours(g) : null);
 }
-const lineOf = (w: GridSource) => `${w.source === 'official' ? 'Official Comfy template' : w.source === 'community' ? `Community workflow by ${w.author}` : 'Our workflow'}: ${w.name}`;
+const lineOf = (w: GridSource) => `${w.source === 'official' ? 'Official Comfy template' : w.source === 'community' ? `Community workflow by ${w.author}` : 'Built-in workflow'}: ${w.name}`;
 
 /** GET /api/audio-workflows: every recipe, plus per model its real name and the workflow it runs (the strip's credit). */
 export function audioWorkflowsPayload(getTool: (id: string) => ToolLike | undefined) {

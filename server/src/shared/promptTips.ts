@@ -27,7 +27,7 @@ export function refsLine(e: PromptGrammar, place?: string): string {
   const toks = (['image', 'video', 'audio'] as const).map((k) => { const t = refToken(e.key, k, 1, place); return t ? `@${k}1 as ${t}` : null; }).filter(Boolean) as string[];
   if (r.style === 'order') return `Reads photos in the order you add them. Say what each is for ("the jacket from image 2").`;
   const zero = r.base === 0 ? ' (counts from 0)' : '';
-  return `We send ${toks.join(', ')}${zero}.`;
+  return `${toks.join(', ').replace(' as ', ' is sent as ')}${zero}.`; // "@image1 is sent as <<<image_1>>>, @video1 as …"
 }
 /** The tip for one model (null for an unknown key). `place` = a route kind ('router', 'fal', 'local', 'direct', 'replicate'). */
 export function promptTipOf(key: string | null | undefined, place?: string): PromptTip | null {
