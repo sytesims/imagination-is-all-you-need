@@ -841,7 +841,7 @@ export const APP_GALLERY: GalleryApp[] = [
     locked: { types: '["translate"]' }, exposed: ['video', 'language', 'voice', 'voiceAudio', 'rights'], required: ['video'],
     inputOptions: { voice: [{ value: 'original', label: 'Keep the original speaker', runsAs: 'narrator-warm' }, { value: 'clone', label: 'My voice (upload 1–3 samples)', runsAs: 'clone' }] }, defaults: { voice: 'original', language: 'es' },
     extra: { languages: VOICE_LANGUAGES.map((l) => { const providers = Object.keys(TRANSLATE_LANGS).filter((p) => TRANSLATE_LANGS[p].includes(l.code)); return { ...l, nativeName: LANGUAGE_NATIVE[l.code] ?? l.label, providers, available: providers.length > 0 }; }), languagesByProvider: TRANSLATE_LANGS },
-    notes: ['Chatterbox voices 15 of the 16 listed languages and F5-TTS 8; Indonesian has no voice yet. A language the chosen engine can\'t voice is refused before anything is charged.'] },
+    notes: ['The language list shows what the chosen engine can voice. A language it can\'t voice is refused before anything is charged.'] },
   // Phase 1 quick wins (2026-10-21): image Face Swap and Shots (tools/shots.ts). Both run Create Image's edit mode; open weights first
   // (Qwen-Image-Edit-2509, Apache-2.0, two images on workflows/create-image-qwen-edit2509-multiref-api.json), then a hosted pay-per-run model.
   { id: 'face-swap', name: 'Face Swap', category: 'Image', base: 'create-image', poster: null, description: 'Put the face from one photo onto the person in another. Pose, light, hair and background stay as they were.',

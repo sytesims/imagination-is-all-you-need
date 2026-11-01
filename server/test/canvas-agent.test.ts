@@ -35,7 +35,7 @@ try {
       if (data) { try { push({ event, data: JSON.parse(data) }); } catch { /* ignore */ } } } } } catch { /* aborted */ } finally { push(null); } })();
   const nextEvent = () => (queue.length ? Promise.resolve(queue.shift()) : new Promise<any>((r) => waiters.push(r)));
 
-  let cardN = 0; const cards = new Map<string, any>(); const seen: any[] = []; const notes: any[] = []; const frames = new Map<string, string>(); const frameKids = new Map<string, string[]>(); const ran: string[] = []; const pageOps: any[] = [];
+  let cardN = 0; const cards = new Map<string, any>(); const placed: any[] = []; const seen: any[] = []; const notes: any[] = []; const frames = new Map<string, string>(); const frameKids = new Map<string, string[]>(); const ran: string[] = []; const pageOps: any[] = [];
   const fakeApply = async (op: any) => {
     pageOps.push(op);
     /* a batch: each item through the same fake page (refs mapped to the ids it made), like agentBridge.applyBatch (all or nothing there) */
@@ -49,7 +49,7 @@ try {
     if (op.kind === 'update_card') { const c = cards.get(op.card_id); if (!c) throw new Error('no card'); if (op.prompt != null) c.prompt = op.prompt; return { card: c }; }
     if (op.kind === 'connect') return { arrowId: 'shape:arrow1', fromId: op.from_id, toId: op.to_id };
     if (op.kind === 'remove_card') { cards.delete(op.card_id); return { removed: op.card_id }; }
-    if (op.kind === 'summary') return { nodes: [...cards.values(), ...notes.map((n) => ({ id: n.id, type: 'note', title: n.text })), ...[...frames.entries()].map(([id, name]) => ({ id, type: 'frame', title: name, children: frameKids.get(id) ?? [] }))] };
+    if (op.kind === 'summary') return { nodes: [...cards.values(), ...placed, ...notes.map((n) => ({ id: n.id, type: 'note', title: n.text })), ...[...frames.entries()].map(([id, name]) => ({ id, type: 'frame', title: name, children: frameKids.get(id) ?? [] }))] };
     if (op.kind === 'propose_run') return { items: (op.card_ids as string[]).map((id) => ({ cardId: id, title: cards.get(id)?.prompt || 'Card', workflow: 'create', model: 'Mock Model', status: 'draft', usd: 0.04, credits: 4, quote: { credits: 4, demo: false, cost: { estUsd: 0.04, billedTo: 'mock' } }, problem: /UNWIRED/.test(cards.get(id)?.prompt ?? '') ? "MiniMax Music 3 isn't available on this server yet." : null })), totalUsd: 0.04 * (op.card_ids as string[]).length, totalCredits: 4 * (op.card_ids as string[]).length };
     /* a card the server refuses (here: the poster look) stays a draft and is reported as failed, like agentBridge.runProposal */
     if (op.kind === 'run_proposal') { const jobIds: string[] = []; const failed: any[] = []; for (const id of op.card_ids as string[]) { const c = cards.get(id); ran.push(id); if (/graphic poster/.test(c?.prompt ?? '')) { failed.push({ cardId: id, error: 'That model is busy. Nothing was charged.' }); continue; } jobIds.push(await submitJob()); if (c) { c.status = 'done'; c.results = [...(c.results ?? []), { url: '/samples/sample-keyframe.png', kind: 'image' }]; } } return { jobIds, failed }; }
@@ -60,7 +60,7 @@ try {
     if (op.kind === 'free_area') return { x: 100, y: 200 };
     if (op.kind === 'review_versions') { for (const c of op.cards) { const card = cards.get(c.card_id); if (!card) throw new Error('no card'); card.reviews = c.reviews; card.recommend = c.recommend; } return { updated: op.cards.length }; }
     if (op.kind === 'next_steps') { if (!cards.has(op.card_id)) throw new Error(`No node with id "${op.card_id}" on this board.`); return { card_id: op.card_id, kind: 'image', steps: [{ workflow: 'video', label: 'Animate' }, { workflow: 'upscale', label: 'Upscale' }] }; }
-    if (op.kind === 'add_from_job') { const id = `shape:result${++cardN}`; return { id, node: { id, type: 'result', kind: 'image', title: 'From a job', jobId: op.job_id } }; }
+    if (op.kind === 'add_from_job') { const id = `shape:result${++cardN}`; const node = { id, type: 'result', kind: 'image', title: 'From a job', jobId: op.job_id }; placed.push(node); return { id, node }; }
     throw new Error(`fake page: unknown op ${op.kind}`);
   };
   loop = (async () => { for (;;) { const ev = await nextEvent(); if (!ev || closed) break; seen.push(ev); if (ev.event !== 'op') continue;
@@ -102,7 +102,11 @@ try {
     assert.equal(placed.body.ok, true); assert.match(placed.body.results[0].result.node.id, /^shape:result/); assert.equal(pageOps.length, before + 1, 'only the valid one reached the page');
     assert.deepEqual(pageOps.at(-1), { kind: 'add_from_job', job_id: jid, at: { x: 10, y: 20 } });
     const feed = await get(`/api/canvas/boards/${board.id}/agent/feed?since=0&limit=240`); assert.ok((feed.items as any[]).some((e: any) => e.meta?.tool === 'add_from_job' && e.meta?.jobId === jid), 'a dock line says it was placed');
-    ok('add_from_job: unknown job / missing output refused before the page; a finished job is placed and returns its node id'); }
+    /* the summary links each finished result's ComfyUI graph (View workflow), the same one GET /api/jobs/:id/workflow serves */
+    const wfInfo = await get(`/api/jobs/${jid}/workflow`); assert.equal(wfInfo.available, true, 'a mock create-image result has a workflow');
+    const placedNode = (await get(`/api/canvas/boards/${board.id}/agent/summary`)).nodes.find((n: any) => n.jobId === jid); assert.equal(placedNode?.workflowGraph, wfInfo.passes[0].url);
+    assert.equal(placedNode.workflowGraph, `/api/jobs/${jid}/workflow?format=api`);
+    ok('add_from_job: unknown job / missing output refused before the page; a finished job is placed and returns its node id; the summary links its workflow graph'); }
 
   /* canvas_batch: all or nothing before the page, refs resolve, one dock line, one quote for every card */
   { const before = pageOps.length;

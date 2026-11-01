@@ -731,7 +731,7 @@ export function createServer(opts: { http?: boolean; channel?: boolean } = {}) {
   s.registerTool('canvas_open_board', { title: 'Open a canvas board', description: 'Read a board by id: its cards with id, kind (image/video/audio/3d), workflow, model, prompt, status, inputs, result URLs and price, plus the board name. Reads the live board when it is open in the app, otherwise the last saved version. Open the board in the app to let the agent change it. Spends nothing.', inputSchema: { board_id: canvasBoard } },
     async ({ board_id }) => { try { const r: any = await canvasRead(board_id); return text({ ...r, note: r.live ? 'Live board from the open canvas page.' : 'This is the last saved version. Open this board in the app to change it.' }); } catch (e) { return fail(e); } });
 
-  s.registerTool('canvas_read_board', { title: 'Read a canvas board', description: 'The same summary as canvas_open_board: cards (id, kind, workflow, model, prompt, status, inputs, result URLs, price) and the board name. Spends nothing.', inputSchema: { board_id: canvasBoard } },
+  s.registerTool('canvas_read_board', { title: 'Read a canvas board', description: 'The same summary as canvas_open_board: cards (id, kind, workflow, model, prompt, status, inputs, result URLs, price) and the board name. A finished card whose result has a ComfyUI graph also has workflowGraph, a link to that graph as JSON. Spends nothing.', inputSchema: { board_id: canvasBoard } },
     async ({ board_id }) => { try { return text(await canvasRead(board_id)); } catch (e) { return fail(e); } });
 
   /* The models a card with no `model` starts on (the app's server/src/shared/cloudDefaults.ts CANVAS_DEFAULTS; keep these words in step). */

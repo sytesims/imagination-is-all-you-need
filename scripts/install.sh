@@ -70,8 +70,8 @@ if [ $DETECT = 1 ]; then echo "OS=$OS ARCH=$ARCH GPU=$GPU UNIFIED=$UNIFIED VRAM_
 
 # ---- prerequisites --------------------------------------------------------------------------------
 if [ $MODELS_ONLY = 0 ]; then
-command -v node >/dev/null || die "Node.js 20+ is required (https://nodejs.org or: brew install node / nvm install 20)"
-NODE_MAJOR=$(node -p 'process.versions.node.split(".")[0]'); [ "$NODE_MAJOR" -ge 20 ] || die "Node $NODE_MAJOR found, need 20+"
+command -v node >/dev/null || die "Node.js 22 to 25 is required (https://nodejs.org or: brew install node@24 / nvm install 24)"
+NODE_MAJOR=$(node -p 'process.versions.node.split(".")[0]'); [ "$NODE_MAJOR" -ge 20 ] && [ "$NODE_MAJOR" -le 25 ] || die "Node $NODE_MAJOR found, need Node 22 to 25 (Node 24 recommended; Node 26+ has no ready-made build of the app's database module yet)"
 fi
 PY="${PYTHON:-python3}"; command -v "$PY" >/dev/null || die "Python 3.10+ is required (used by the model/node manifest tools)"
 "$PY" -c 'import sys; sys.exit(0 if sys.version_info>=(3,10) else 1)' || die "Python 3.10+ required, found $("$PY" -V)"

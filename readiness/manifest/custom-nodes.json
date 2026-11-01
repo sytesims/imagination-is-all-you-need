@@ -284,6 +284,18 @@
    ],
    "aarch64": "Same as on a Mac: only sox and tiktoken are installed (its requirements pin onnxruntime-openvino); expected to work on aarch64 (UNVERIFIED)."
   },
+  "ComfyUI-MelBandRoFormer": {
+   "repo": "https://github.com/kijai/ComfyUI-MelBandRoFormer",
+   "pin": "92c86854e6654f4aacc97484471af95c98ea16d4",
+   "dir": "ComfyUI-MelBandRoFormer",
+   "license": "no licence stated (its pyproject.toml names a LICENSE file the repo does not include): check with the author; MelBand RoFormer weights MIT (KimberleyJSN/melbandroformer)",
+   "note": "Optional for Translate a video and Change Voice: keeps the background music. Model file MelBandRoformer_fp16.safetensors (456 MB) in models/diffusion_models.",
+   "classes": [
+    "MelBandRoFormerModelLoader",
+    "MelBandRoFormerSampler"
+   ],
+   "aarch64": "PyTorch only (rotary_embedding_torch, einops): expected to work on aarch64 (UNVERIFIED on a Spark)."
+  },
   "ComfyUI-GGUF": {
    "repo": "https://github.com/city96/ComfyUI-GGUF",
    "pin": null,
@@ -2065,6 +2077,32 @@
    ],
    "workflows": [
     "plugins/cutout/workflow.json"
+   ]
+  },
+  {
+   "class": "MelBandRoFormerModelLoader",
+   "pack": "ComfyUI-MelBandRoFormer",
+   "python_module": "custom_nodes.ComfyUI-MelBandRoFormer",
+   "in_validator_object_info": false,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/audio-separation-melband-api.json"
+   ]
+  },
+  {
+   "class": "MelBandRoFormerSampler",
+   "pack": "ComfyUI-MelBandRoFormer",
+   "python_module": "custom_nodes.ComfyUI-MelBandRoFormer",
+   "in_validator_object_info": false,
+   "found_in_pin": true,
+   "files": [
+    "nodes.py"
+   ],
+   "workflows": [
+    "workflows/audio-separation-melband-api.json"
    ]
   },
   {

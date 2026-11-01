@@ -285,6 +285,22 @@ Commercial: yes = OSI licence; no = non-commercial; restricted = custom terms (r
 | H3 Character Swap recipe settings, after Comfy's Openjutsu app (Comfy-Org/comfy-openjutsu) | MIT | yes | [link](https://github.com/Comfy-Org/comfy-openjutsu) |
 | H3 Character Swap workflow (Akatz Labs, akatz-labs/h3-character-swap-tool) | MIT | yes | [link](https://github.com/akatz-labs/h3-character-swap-tool) |
 
+## Components: app-translate-video
+
+| Component | Licence | Commercial | Source |
+|---|---|---|---|
+| Official Comfy template · MelBandRoFormer Audio Separation: audio_melbandroformer_audio_separation (Comfy-Org/workflow_templates), flattened in workflows/audio-separation-melband-api.json · Keep the background | MIT | yes | [link](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/audio_melbandroformer_audio_separation.json) |
+| ComfyUI-MelBandRoFormer node pack (kijai) @ 92c86854e6 · Keep the background | None stated (its pyproject.toml names a LICENSE file the repo does not include); check with the author | restricted | [link](https://github.com/kijai/ComfyUI-MelBandRoFormer) |
+| MelBand RoFormer vocal model (KimberleyJSN/melbandroformer; MelBandRoformer_fp16.safetensors, Kijai/MelBandRoFormer_comfy) · Keep the background | MIT | yes | [link](https://huggingface.co/KimberleyJSN/melbandroformer) |
+
+## Components: app-change-voice
+
+| Component | Licence | Commercial | Source |
+|---|---|---|---|
+| Official Comfy template · MelBandRoFormer Audio Separation: audio_melbandroformer_audio_separation (Comfy-Org/workflow_templates), flattened in workflows/audio-separation-melband-api.json · Keep the background | MIT | yes | [link](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/audio_melbandroformer_audio_separation.json) |
+| ComfyUI-MelBandRoFormer node pack (kijai) @ 92c86854e6 · Keep the background | None stated (its pyproject.toml names a LICENSE file the repo does not include); check with the author | restricted | [link](https://github.com/kijai/ComfyUI-MelBandRoFormer) |
+| MelBand RoFormer vocal model (KimberleyJSN/melbandroformer; MelBandRoformer_fp16.safetensors, Kijai/MelBandRoFormer_comfy) · Keep the background | MIT | yes | [link](https://huggingface.co/KimberleyJSN/melbandroformer) |
+
 ## Components: voice
 
 | Component | Licence | Commercial | Source |
@@ -297,6 +313,9 @@ Commercial: yes = OSI licence; no = non-commercial; restricted = custom terms (r
 | LongCat-Avatar 1.5 bf16 + DMD distill LoRA repacks (Kijai/WanVideo_comfy) · Talking Video (deployment) | MIT (follows upstream) | yes | [link](https://huggingface.co/Kijai/WanVideo_comfy/tree/main/LongCat) |
 | Whisper large-v3 (OpenAI) · LongCat 1.5 audio encoder (deployment) | Apache-2.0 | yes | [link](https://huggingface.co/openai/whisper-large-v3) |
 | ComfyUI-WanVideoWrapper (kijai) @ 088128b224 or later · LongCat 1.5 nodes (deployment) | Apache-2.0 | yes | [link](https://github.com/kijai/ComfyUI-WanVideoWrapper) |
+| Official Comfy template · MelBandRoFormer Audio Separation: audio_melbandroformer_audio_separation (Comfy-Org/workflow_templates), flattened in workflows/audio-separation-melband-api.json · Keep the background | MIT | yes | [link](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/audio_melbandroformer_audio_separation.json) |
+| ComfyUI-MelBandRoFormer node pack (kijai) @ 92c86854e6 · Keep the background | None stated (its pyproject.toml names a LICENSE file the repo does not include); check with the author | restricted | [link](https://github.com/kijai/ComfyUI-MelBandRoFormer) |
+| MelBand RoFormer vocal model (KimberleyJSN/melbandroformer; MelBandRoformer_fp16.safetensors, Kijai/MelBandRoFormer_comfy) · Keep the background | MIT | yes | [link](https://huggingface.co/KimberleyJSN/melbandroformer) |
 
 ## Components: reshoot
 

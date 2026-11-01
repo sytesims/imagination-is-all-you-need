@@ -23,6 +23,7 @@ import { DRAMA3_META_TAGS } from './drama3Tags.js';
 import { VOICE_CAPS, VOICE_LIMITS, parseVoiceControls, voiceFieldsOf } from './voice/voiceControls.js';
 import { QWEN3_TTS, QWEN3_TTS_WORKFLOW, QWEN3_TTS_SPEAKERS, QWEN3_TTS_LANGUAGES, QWEN3_TTS_DEFAULT_SPEAKER } from './voice/qwen3tts.js';
 import { TRANSLATE_LANGS } from '../comfy/plans.js';
+import { SEPARATION_PROVIDER, SEPARATION_WORKFLOW, SEPARATION_NODES } from '../comfy/separation.js';
 import { registerToolProviderDurations, resolveDuration, durationErrorBody } from './h3/videoCaps.js';
 import { addAdjustNote } from '../shared/snap.js';
 import { IMAGE_PAGE, VIDEO_PAGE, AUDIO_PAGE } from '../shared/pages.js';
@@ -338,6 +339,10 @@ const vlocal = (id: string, name: string, via: string, docUrl: string, licensePa
 vlocal('comfy-chatterbox-vc', 'Chatterbox VC (voice conversion)', 'wildminder/ComfyUI-Chatterbox (Apache-2.0) ChatterboxVC node', 'https://huggingface.co/ResembleAI/chatterbox', ['chatterbox'], ['ChatterboxVC'], ['voice-chatterbox-vc-api.json']);
 vlocal('local-whisper-nllb-chatterbox', 'Whisper → NLLB-200 → Chatterbox (translate)', 'faster-whisper transcribe + NLLB-200 distilled 600M translate (server/py/voice_runner.py, CPU; or OPENHIGGSFIELD_TRANSLATE_URL LibreTranslate) + Chatterbox multilingual TTS (wildminder/ComfyUI-Chatterbox) + ffmpeg mux', 'https://github.com/SYSTRAN/faster-whisper', ['faster-whisper', 'nllb-nc', 'chatterbox'], ['ChatterboxMTLTTS'], ['voice-chatterbox-ml-api.json']);
 vlocal('local-whisper-nllb-f5', 'Whisper → NLLB-200 → F5-TTS (translate)', 'faster-whisper + NLLB-200 distilled 600M (server/py/voice_runner.py, CPU; or LibreTranslate) + F5-TTS (en/zh/de/es/fr/hi/it/ja models) + ffmpeg mux', 'https://github.com/SYSTRAN/faster-whisper', ['faster-whisper', 'nllb-nc', 'f5-tts-weights'], ['F5TTSAudioInputs'], ['voice-f5tts-api.json']);
+// Keep the background (2026-11-01, comfy/separation.ts): not a model you pick. Translate a video and Change Voice use it when it's installed; registered so its
+// file comes through the normal download flow (POST /api/local/downloads {downloadId: 'comfy-melband-separation'}) and shows its licence.
+registerWorkflowLicense(SEPARATION_WORKFLOW, ['melband-roformer']);
+vlocal(SEPARATION_PROVIDER, 'MelBand RoFormer (voice and background separation)', 'official Comfy template audio_melbandroformer_audio_separation on kijai/ComfyUI-MelBandRoFormer', 'https://huggingface.co/KimberleyJSN/melbandroformer', ['melband-roformer'], SEPARATION_NODES, [SEPARATION_WORKFLOW]);
 const VO = ['api-eleven-tts', 'api-eleven-v3', 'api-eleven-v4-turbo', 'direct-minimax-speech', 'api-fish-tts', 'api-heygen-tts', 'api-seed-audio', 'comfy-chatterbox', QWEN3_TTS, 'comfy-drama3', 'comfy-f5tts']; // B6 quality order
 // Removed (not feasible on this CPU stack, 2026-10-16): OpenVoice V2 (requirements pin numpy==1.22 / librosa 0.9 / gradio 3, no wheels for
 // Python 3.13; no maintained ComfyUI pack found), RVC (needs fairseq, which does not build on Python ≥3.11; no maintained ComfyUI pack found),

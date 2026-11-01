@@ -14,7 +14,8 @@ import { audioWorkflowCredit, type AudioWorkflowId } from '../../../../server/sr
  * whose tool or preset is gone, has no row: the page never shows what can't run. Test: server/test/workflows-page.test.ts.
  */
 type Src = { source: 'official' | 'community' | 'ours'; name: string; url: string | null; author: string; licence?: string; file?: string };
-type Media = { kind: 'clip'; src: string; poster: string; sound: boolean } | { kind: 'still'; src: string } | { kind: 'split'; before: string; after: string; bl: string; al: string } | { kind: 'art' };
+type Media = { kind: 'clip'; src: string; poster: string; sound: boolean } | { kind: 'still'; src: string } | { kind: 'split'; before: string; after: string; bl: string; al: string }
+  /* a real sound of ours: the card keeps our drawing (no picture of a sound ships yet), the sheet plays it */ | { kind: 'sound'; src: string } | { kind: 'art' };
 export interface M { key: string; name: string; /** its best place, in words (the card line) */ run: RunPlace; /** every place, best first (the sheet) */ places: RunPlace[]; licence: { id: string; name: string } | null; raw: any }
 export interface Row { e: WfEntry; /** runnable models (the lead first) */ models: M[]; /** the model the card names: the example's when there is one, else the lead's */ model: string | null;
   /** the card's one where-and-price line: the lead model's best place */ run: RunPlace;
@@ -27,6 +28,7 @@ export interface Row { e: WfEntry; /** runnable models (the lead first) */ model
 export type Hub = { workflows: HubCard[] } | null;
 
 const isClip = (u?: string) => !!u && /\.mp4(\?|$)/.test(u);
+const isSound = (u?: string) => !!u && /\.(mp3|wav|ogg|m4a|flac)(\?|$)/i.test(u);
 /** A file that ships in the repo (web/public): examples and showcase media, never this install's own /files/… results. */
 export const shipped = (u?: string | null) => !!u && /^\/(examples|showcase)\//.test(u);
 const norm = (s: string | null | undefined) => String(s ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '');
@@ -76,7 +78,8 @@ export function resolveRow(e: WfEntry, tools: ToolInfo[], hub: Hub, w: Where = {
   const ex = hx && (hx.kind === 'split' ? [hx.before, hx.after] : [hx.url]).every(shipped) ? hx : null;
   /* "Made here" only with a recorded run (a job id): a featured result's runs, a showcase image (its id is the job id), a hub example's own run */
   if (e.example) { const x = e.example; media = { kind: 'split', before: x.before, after: x.after, bl: x.beforeLabel, al: x.afterLabel }; runs = [x.run]; made = true; exampleModel = x.run.model; }
-  else if (f) { media = isClip(f.out.url) ? { kind: 'clip', src: f.out.url, poster: f.out.poster, sound: !!f.out.sound } : { kind: 'still', src: f.out.url }; runs = featuredRuns(f); made = !!f.jobId; runMs = f.runMs ?? null; exampleModel = f.model; exampleKey = f.modelKey ?? null; }
+  else if (f) { media = isClip(f.out.url) ? { kind: 'clip', src: f.out.url, poster: f.out.poster, sound: !!f.out.sound } : isSound(f.out.url) ? { kind: 'sound', src: f.out.url } : { kind: 'still', src: f.out.url }; runs = featuredRuns(f); made = !!f.jobId; runMs = f.runMs ?? null; exampleModel = f.model; exampleKey = f.modelKey ?? null; }
+  else if (e.listen && runByJob(e.listen.jobId)) { const r = runByJob(e.listen.jobId)!; media = { kind: 'sound', src: e.listen.url }; runs = [r]; made = true; exampleModel = r.model; }
   else if (s) { media = s.before ? { kind: 'split', before: s.before.crop?.before ?? s.before.thumb, after: s.before.crop?.after ?? s.thumb, bl: s.before.label, al: s.before.afterLabel } : { kind: 'still', src: s.thumb }; runs = [runByJob(s.id)].filter((r): r is FeaturedRun => !!r); made = runs.length > 0; runMs = s.runMs ?? null; exampleModel = s.model; }
   else if (ex) { media = ex.kind === 'split' ? { kind: 'split', before: ex.before, after: ex.after, bl: ex.beforeLabel, al: ex.afterLabel } : { kind: 'still', src: ex.url }; exampleModel = ex.model;
     if (ex.jobId && ex.model) { made = true; const local = ex.paid?.runOn === 'local'; runs = [{ jobId: ex.jobId, model: ex.model, place: local ? OUR_COMPUTER : 'cloud', costUsd: local ? 0 : ex.paid?.usd ?? (ex.paid?.credits != null ? ex.paid.credits / 100 : 0) }]; } }
@@ -99,7 +102,7 @@ export function resolveRow(e: WfEntry, tools: ToolInfo[], hub: Hub, w: Where = {
   if (only && models[0]) models.splice(0, 1, { ...models[0], name: pre.modelName ?? models[0].name, run: only, places: [only], raw: { ...models[0].raw, runsOn: (models[0].raw?.runsOn ?? []).filter((x: any) => x.id === pre.runOn) } }); // its own model and its one place, on the card and the sheet
   const run = only ?? models[0]?.run ?? runLabel({}, w);
   /* the card names the model Open runs (the lead); the example's own model, when another, is said under the example in the sheet */
-  const exampleLeads = made && exampleModel && models[0] && ((exampleKey && models[0].key === exampleKey) || norm(models[0].name) === norm(exampleModel) || models[0].name === e.name /* Direct a Shot: the tool's one model is the workflow */);
+  const exampleLeads = made && exampleModel && models[0] && ((exampleKey && models[0].key === exampleKey) || norm(models[0].name) === norm(exampleModel) || models[0].name === e.name || models[0].name === e.tabName /* Direct a Shot: the tool's one model is the workflow (the page calls it Plan a shot in 3D) */);
   const model = exampleLeads ? exampleModel : only && pre.modelName ? pre.modelName : models[0]?.name ?? exampleModel;
   return { e, models, model, run, price: made ? runsPrice(runs) : null, source: (only && pre.source) || wf /* the official template it runs */, licence: models[0]?.licence ?? null, media, made, runMs, exampleModel, runs,
     openHref: openHrefOf(e, models), thumb: cardThumb(e.id), thumbBefore: cardBefore(e.id) };

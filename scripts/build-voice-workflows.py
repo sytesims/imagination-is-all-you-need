@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Voice / video-to-sound API graphs (our own, built from node schemas in object_info; no third-party workflow copied).
 Packs (pinned in readiness/manifest/custom-nodes.json): wildminder/ComfyUI-Chatterbox (Apache-2.0; Chatterbox TTS / multilingual / VC),
-ComfyUI-F5-TTS, ComfyUI-MMAudio. Transcription (faster-whisper) and translation (NLLB-200) run server-side: server/py/voice_runner.py. Node ids are referenced by server/src/comfy/plans.ts (voice*, mmaudio)."""
+ComfyUI-F5-TTS, ComfyUI-MMAudio, kijai/ComfyUI-MelBandRoFormer (separation, from the official Comfy template). Transcription (faster-whisper) and translation (NLLB-200) run server-side: server/py/voice_runner.py. Node ids are referenced by server/src/comfy/plans.ts (voice*, mmaudio)."""
 import json, os
 W = os.path.join(os.path.dirname(__file__), '..', 'workflows')
 def save(name, g): json.dump(g, open(os.path.join(W, name), 'w'), indent=1); print('wrote', name)
 SRC = {'class_type': 'LoadAudio', 'inputs': {'audio': 'source.mp4'}}
 SAMPLE = {'class_type': 'LoadAudio', 'inputs': {'audio': 'voice_sample.wav'}}
 save_audio = lambda src, p: {'class_type': 'SaveAudio', 'inputs': {'audio': [src, 0], 'filename_prefix': f'openhiggsfield/{p}'}}
+save_audio_out = lambda src, k, p: {'class_type': 'SaveAudio', 'inputs': {'audio': [src, k], 'filename_prefix': f'openhiggsfield/{p}'}}
 # 1) Voiceover, Chatterbox TTS (node 1 = optional cloned-voice sample; dropped when a library voice is used)
 save('voice-chatterbox-tts-api.json', {
   '1': SAMPLE,
@@ -43,3 +44,13 @@ save('voice-qwen3tts-api.json', {
   '1': {'class_type': 'FB_Qwen3TTSCustomVoice', 'inputs': {'text': 'Hello.', 'speaker': 'Ryan', 'model_choice': '1.7B', 'device': 'auto', 'precision': 'bf16', 'language': 'Auto',
         'seed': 0, 'instruct': '', 'max_new_tokens': 2048, 'top_p': 1.0, 'top_k': 50, 'temperature': 0.9, 'repetition_penalty': 1.05, 'attention': 'auto', 'unload_model_after_generate': False}},
   '2': save_audio('1', 'voiceover')})
+# 8) Separation (Translate a video / Change Voice): the official Comfy template audio_melbandroformer_audio_separation (Comfy-Org/workflow_templates, MIT),
+#    flattened to an API graph: LoadAudio → MelBandRoFormerModelLoader → MelBandRoFormerSampler → vocals + instruments. Saved as FLAC (SaveAudio) instead
+#    of the template's 128k MP3, so the background stem stays lossless under the new voice. Pack kijai/ComfyUI-MelBandRoFormer; weights
+#    Kijai/MelBandRoFormer_comfy (safetensors copy of KimberleyJSN/melbandroformer, MIT) in models/diffusion_models. comfy/separation.ts reads it.
+save('audio-separation-melband-api.json', {
+  '1': SRC,
+  '2': {'class_type': 'MelBandRoFormerModelLoader', 'inputs': {'model_name': 'MelBandRoformer_fp16.safetensors'}},
+  '3': {'class_type': 'MelBandRoFormerSampler', 'inputs': {'model': ['2', 0], 'audio': ['1', 0]}},
+  '4': save_audio_out('3', 0, 'vocals'),
+  '5': save_audio_out('3', 1, 'background')})

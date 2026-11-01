@@ -1,6 +1,7 @@
 /* B22 T31 Change Voice: two honest voice cards and a browser recorder for the source clip.
  *  The engine has one built-in voice (server note), so there is exactly one stock card and no sample until the server sends one. */
 import { registerMedia } from '../../shared/mediaPause';
+import { showsSamplePlay } from '../../shared/voicePick';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { readVideo, type VideoMeta } from '../../shared/UploadVideo';
 
@@ -93,6 +94,7 @@ export function SamplePlay({ url, standIn, kind }: { url: string; standIn?: bool
   const k: SampleKind = kind ?? (standIn ? 'standin' : null);
   const a = useRef<HTMLAudioElement | null>(null); const [on, setOn] = useState(false);
   useEffect(() => () => { a.current?.pause(); }, []);
+  if (!showsSamplePlay(url, k)) return null; // P3-07: a placeholder tone (no recording of the voice) gets no ▶, as on the Audio page
   const toggle = () => { if (!a.current) { a.current = new Audio(url); registerMedia(a.current); a.current.onended = () => setOn(false); a.current.onpause = () => setOn(false); }
     if (on) { a.current.pause(); a.current.currentTime = 0; setOn(false); } else a.current.play().then(() => setOn(true)).catch(() => setOn(false)); };
   return <button type="button" className="btn btn-sm cv-play" data-testid="voice-sample-play" aria-pressed={on} data-standin={k === 'standin' ? '1' : undefined} data-kind={k ?? undefined} aria-label={on ? (k === 'standin' ? `Stop the placeholder tone` : 'Stop the voice sample') : sampleLabel(k)} title={k === 'standin' ? 'A short test tone stands in until a real voice sample is recorded.' : undefined} onClick={toggle}>{on ? '■ Stop' : `▶ ${sampleLabel(k)}`}</button>;

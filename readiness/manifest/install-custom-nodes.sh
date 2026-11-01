@@ -6,6 +6,7 @@ COMFY="${1:?usage: install-custom-nodes.sh /path/to/ComfyUI}"
 MANIFEST="$(cd "$(dirname "$0")" && pwd)/custom-nodes.json"
 PY="${PYTHON:-python3}"
 [ -d "$COMFY/custom_nodes" ] || { echo "no custom_nodes dir in $COMFY"; exit 1; }
+PIP_FAILED="$(mktemp)"; trap 'rm -f "$PIP_FAILED"' EXIT # packs whose pip step failed (the loop below runs in a subshell)
 core_pin=$("$PY" -c "import json;print(json.load(open('$MANIFEST'))['packs']['ComfyUI (core)']['pin'])")
 have=$(git -C "$COMFY" rev-parse HEAD 2>/dev/null || echo unknown)
 [ "$have" = "$core_pin" ] || echo "WARN: ComfyUI core is $have, manifest validated against $core_pin"
@@ -30,6 +31,12 @@ for k,p in json.load(open('$MANIFEST'))['packs'].items():
   echo "ok $dir @ ${pin:0:10}"
   # a pack may list its own pip set (custom-nodes.json "pip") instead of its requirements.txt (Qwen3 TTS: the file pins packages that break a current ComfyUI)
   pips=$("$PY" -c "import json;print(' '.join(json.load(open('$MANIFEST'))['packs'].get('$dir',{}).get('pip') or []))" 2>/dev/null || true)
-  if [ -n "$pips" ]; then "$PY" -m pip install -q $pips || true
-  else [ -f "$d/requirements.txt" ] && "$PY" -m pip install -q -r "$d/requirements.txt" || true; fi
+  # a failed pip step doesn't stop the other packs, but it's reported here and listed again at the end
+  if [ -n "$pips" ]; then "$PY" -m pip install -q $pips || { echo "WARN: $dir requirements failed" >&2; echo "$dir" >> "$PIP_FAILED"; }
+  elif [ -f "$d/requirements.txt" ]; then "$PY" -m pip install -q -r "$d/requirements.txt" || { echo "WARN: $dir requirements failed" >&2; echo "$dir" >> "$PIP_FAILED"; }; fi
 done
+if [ -s "$PIP_FAILED" ]; then
+  echo "WARN: these packs are installed but their Python requirements failed, so some of their nodes may not load:" >&2
+  sed 's/^/  - /' "$PIP_FAILED" >&2
+  echo "  Run their pip step again by hand (see the messages above), then restart ComfyUI." >&2
+fi

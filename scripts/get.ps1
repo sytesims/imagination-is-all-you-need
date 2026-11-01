@@ -4,7 +4,8 @@
 #   & ([scriptblock]::Create((irm https://iiayn.app/install.ps1))) -Dir D:\Imagination     (with options)
 #
 # What it does, in order (it asks before installing anything on your computer):
-#   1. Checks for git, Node.js 20 or newer (with npm) and ffmpeg, and offers to install what's missing with winget.
+#   1. Checks for git, Node.js 22 to 25 (with npm) and ffmpeg, and offers to install what's missing with winget
+#      (Node.js 22 as winget's OpenJS.NodeJS.22, which stays on 22 when winget updates it).
 #   2. Downloads the app into %USERPROFILE%\Imagination, or updates it if it's already there
 #      (your library and keys are never touched).
 #   3. Installs the app's own parts (npm run setup -- --no-start). No AI models, no ComfyUI, no keys:
@@ -94,19 +95,24 @@ Options:
     $v = (& node --version) 2>$null
     if ($v -match '^v(\d+)') { return [int]$Matches[1] } else { return 0 }
   }
+  # Node.js versions the app runs on: its database part (better-sqlite3) has ready-made builds for these. Newer ones
+  # (Node 26+, which winget's OpenJS.NodeJS.LTS now is) would have to build it, which needs Visual Studio's C++ tools.
+  $nodeMin = 22; $nodeMax = 25
+  function NodeFits { $m = NodeMajor; return (($m -ge $nodeMin) -and ($m -le $nodeMax)) }
   function HasTool([string]$t) {
     switch ($t) {
       'git'    { return (Has 'git') }
-      'node'   { return ((Has 'npm.cmd') -and ((NodeMajor) -ge 20)) }
+      'node'   { return ((Has 'npm.cmd') -and (NodeFits)) }
       'ffmpeg' { return ((Has 'ffmpeg') -and (Has 'ffprobe')) }
     }
   }
   $describe = @{
     git    = 'git (downloads the app and its updates)'
-    node   = 'Node.js 20 or newer, with npm (runs the app)'
+    node   = 'Node.js 22 to 25, with npm (runs the app)'
     ffmpeg = 'ffmpeg (handles video and audio; optional, browsing works without it)'
   }
-  $wingetId = @{ git = 'Git.Git'; node = 'OpenJS.NodeJS.LTS'; ffmpeg = 'Gyan.FFmpeg' }
+  # Node: OpenJS.NodeJS.22 is pinned to Node 22 (winget has no 24-only package; OpenJS.NodeJS.LTS has moved to Node 26).
+  $wingetId = @{ git = 'Git.Git'; node = 'OpenJS.NodeJS.22'; ffmpeg = 'Gyan.FFmpeg' }
   function Show-ManualSteps {
     Say ''
     Say 'To install them yourself:'
@@ -147,8 +153,14 @@ Options:
         'node'   { Ok ("Node.js " + (& node --version) + ", npm " + (& npm.cmd --version)) }
         'ffmpeg' { Ok 'ffmpeg' }
       }
+    } elseif ($t -eq 'node' -and (Has 'node') -and ((NodeMajor) -gt $nodeMax)) {
+      # Node's Windows installer won't put an older Node over a newer one, so say what to do now instead of failing later.
+      Miss ("Node.js " + (& node --version) + " is newer than the app supports yet: it needs Node.js 22 to 25")
+      Say '  Switch to Node.js 22 or 24: uninstall this one (Settings > Apps, or: winget uninstall --id OpenJS.NodeJS.LTS),'
+      Say '  then run the install line again and it adds Node.js 22. Or keep both with a version manager such as nvm-windows.'
+      Stop-Install "Node.js $(& node --version) is newer than the app supports yet." ''
     } elseif ($t -eq 'node' -and (Has 'node')) {
-      Miss ("Node.js " + (& node --version) + " is too old (or npm is missing): the app needs Node.js 20 or newer"); $missing += $t
+      Miss ("Node.js " + (& node --version) + " is too old (or npm is missing): the app needs Node.js 22 to 25"); $missing += $t
     } else { Miss "$($describe[$t]) is missing"; $missing += $t }
   }
   if ($missing.Count -gt 0) {
@@ -175,7 +187,7 @@ Options:
     if (-not $DryRun) {
       Update-Path
       if (-not (HasTool 'git')) { Show-ManualSteps; Stop-Install "git still isn't available." 'If it just installed, open a new PowerShell window and run the install line again.' }
-      if (-not (HasTool 'node')) { Show-ManualSteps; Stop-Install "Node.js 20 or newer (with npm) still isn't available." 'If it just installed, open a new PowerShell window and run the install line again.' }
+      if (-not (HasTool 'node')) { Show-ManualSteps; Stop-Install "Node.js 22 to 25 (with npm) still isn't the one this window finds." 'If it just installed, open a new PowerShell window and run the install line again.' }
     }
   }
   Say ''

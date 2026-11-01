@@ -16,7 +16,9 @@ export interface VoiceModelCaps { controls: Record<ControlName, Support>; maxVoi
   /** 2026-10-27 (Qwen3 TTS): a model with its own preset voices takes job field `speaker` (one of these) instead of our voice library. */ voices?: ModelVoice[]; defaultVoice?: string;
   /** The language it speaks the script in (job field `speechLanguage`; 'auto' = read from the script). */ languages?: { value: string; label: string }[]; defaultLanguage?: string;
   /** What the voiceDetails text is called for this model ("Style" for Qwen's instruct) and its example. */ detailsLabel?: string; detailsPlaceholder?: string;
-  /** Longest script the model reads in one pass (characters); longer → 400 too_long on the prompt. */ maxChars?: number }
+  /** Longest script the model reads in one pass (characters); longer → 400 too_long on the prompt. */ maxChars?: number;
+  /** The model reads in its own voice and takes no voice pick (Seed Audio): the Voice control hides. */ noVoice?: true;
+  /** The engine has one voice of its own (Chatterbox voice changer): the picker offers only it (this library id) and your sample. */ builtinVoice?: string }
 /** Job fields the voice controls read (stored as input.voiceFields, re-checked per attempt in voicePre and given back by Recreate). */
 export const VOICE_FIELD_KEYS = ['voiceDetails', 'expression', 'mood', 'speed', 'pitch', 'volume', 'outputFormat', 'sampleRate', 'speaker', 'speechLanguage'] as const;
 export const voiceFieldsOf = (fields: Record<string, string>) => Object.fromEntries(VOICE_FIELD_KEYS.filter((k) => fields[k] != null).map((k) => [k, fields[k]]));
@@ -58,9 +60,10 @@ export const VOICE_CAPS: Record<string, VoiceModelCaps> = {
   [QWEN3_TTS]: { ...caps({ voiceDetails: N('instruct') }, 0, 'its own 9 voices (no cloning); Style is a plain instruction such as "warm, excited, like a trailer narrator"; speed, pitch and volume are applied after'),
     voices: QWEN3_TTS_SPEAKERS, defaultVoice: QWEN3_TTS_DEFAULT_SPEAKER, languages: QWEN3_TTS_LANGUAGES.map(({ value, label }) => ({ value, label })), defaultLanguage: 'auto',
     detailsLabel: 'Style', detailsPlaceholder: 'e.g. warm and excited, like a friendly trailer narrator', maxChars: QWEN3_TTS_MAX_CHARS },
-  'api-seed-audio': caps({}, 0, 'Seed Audio reads the script in its own voice; the Router body sends no voice or delivery settings'),
+  'api-seed-audio': { ...caps({}, 0, 'Seed Audio reads the script in its own voice; the Router body sends no voice or delivery settings'), noVoice: true },
   // Video-output modes (result muxed onto your clip): post runs on the result's audio track; outputFormat doesn't apply (the file is a video).
-  'comfy-chatterbox-vc': { ...caps({ outputFormat: U }, 3, 'change voice: no delivery controls in the engine; speed is applied after, length padded to the clip'), outputFormats: [] },
+  'comfy-chatterbox-vc': { ...caps({ outputFormat: U }, 3, 'change voice: no delivery controls in the engine; speed is applied after, length padded to the clip'), outputFormats: [],
+    builtinVoice: 'narrator-warm' /* one built-in target voice (comfy/plans.ts change-voice); a library pick runs as it, so the picker offers Built-in + your sample */ },
   'local-whisper-nllb-chatterbox': { ...caps({ expression: N('exaggeration'), outputFormat: U }, 3, 'translate: expression 0–10 → exaggeration 0.25–2.0'), outputFormats: [] },
   'local-whisper-nllb-f5': { ...caps({ speed: N('speed'), outputFormat: U }, 3, 'translate'), outputFormats: [] },
   'cloud-infinitetalk': { ...caps({ speed: U, pitch: U, outputFormat: U }, 0, 'talking photo (InfiniteTalk): speed/pitch would break the lip sync; volume and sample rate apply to the video\'s audio track'), outputFormats: [] },
