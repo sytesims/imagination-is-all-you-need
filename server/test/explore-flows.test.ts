@@ -56,10 +56,10 @@ assert.match(featuredRecreateHref('ltx-morph')!, /^\/video\?workflow=transitions
 for (const [k, id] of [['ltx-fox-meadow', '7964e9db'], ['ltx-fox-meadow-close', '4781fc98']]) { const f = FEATURED.find((x) => x.key === k)!;
   assert.equal(featuredRecreateHref(k), `/video?recreate=${id}`, `${k}: Try this prompt opens Video`); assert.equal(f.modelKey, 'ltx-2.5-22b'); assert.match(f.prompt, /fox/); }
 assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpHero \/>[\s\S]{0,200}<Xp3D \/>/, 'Explore opens on the hero then 3D, without a separate lighthouse section');
-{ const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); const hero = xs.slice(xs.indexOf('function heroCredit'), xs.indexOf('/* ===', xs.indexOf('export function XpHero')));
+{ const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); const hero = xs.slice(xs.indexOf('export function heroChip'), xs.indexOf('/* ===', xs.indexOf('export function XpHero')));
   assert.match(hero, /<ShowcaseFilm\b[\s\S]*xp-headline[\s\S]*<HeroCredit /, 'the header plays the hero clip under its headline, line and credit');
   assert.doesNotMatch(hero, /xph-quick|xph-make|xp-quick|EXPLORE_QUICK/, 'no quick links on the hero (2026-10-28)');
-  assert.match(hero, /\['Made with', \[c\.model, c\.music\]\], \['Length', \[c\.length\]\], \['Ran on', \[c\.place, c\.price\]\]/, 'the film credit block: MADE WITH · LENGTH · RAN ON');
+  assert.match(hero, /<RunChip onMedia c=\{heroChip\(s, f\)\}/, 'the shared run chip: model · where it ran · price (2026-11-01, was the MADE WITH · LENGTH · RAN ON block)');
   assert.match(hero, /data-testid="xp-hero-recreate">Make your own <Arrow \/>/, 'one action: Make your own'); }
 { const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8');
   assert.doesNotMatch(xs, /MakeBox|xp-make|queueGenerate|What do you want to make/, 'no prompt box or Generate in the hero');
@@ -144,7 +144,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.match(wx, /<HeroReel className="hreel-framed xpo-film"[^\n]*\breveal replay=\{replay\}[^\n]*sound=\{f\.out\.sound === true\} restartOnSound/, 'the shared HeroReel wipe (reveal), the page\u2019s sound');
     assert.match(wx, /before=\{\{ url: still\.url[\s\S]*after=\{\{ url: f\.out\.url/, 'still → the take’s clip, both from the featured entry');
     assert.doesNotMatch(wx, /Segmented|xp-still-take|xp-still-next|onTick|setPick/, 'one take: no take switch, no auto-alternation');
-    assert.match(wx, /\$\{ran\} s run, trimmed to \$\{Math\.floor\(t\.trimmedTo\)\} s/, 'the trim said honestly'); assert.match(wx, /xp-still-price[^\n]*f\.costUsd\.toFixed\(2\)/, 'the real price');
+    assert.match(wx, /\$\{ran\} s run, trimmed to \$\{Math\.floor\(t\.trimmedTo\)\} s/, 'the trim said honestly'); assert.match(wx, /<RunChip c=\{chipOfFeatured\(f\)\} testId="xp-still-chip"/, 'the real model, place and price: the shared run chip');
     assert.match(wx, /featuredRecreateHref\(f\.key\)[\s\S]*xp-still-recreate/, 'Recreate from the featured entry'); assert.match(wx, /aria-expanded=\{open\}[\s\S]*<PromptText text=\{f\.prompt\}/, 'the prompt one click away');
     const hr = fs.readFileSync(path.join(WEB, 'shared/HeroReel.tsx'), 'utf8');
     assert.match(hr, /reveal && \(failed \|\| still\)/, 'a missing clip or reduced motion: the still'); assert.match(hr, /reveal && still && !failed && <button[^>]*className="hreel-play"/, 'reduced motion: the still with a play button');
@@ -178,7 +178,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.match(kx, /\{K\.first\.model\}<i>·<\/i>\{f\.model\}<i>·<\/i>\{K\.place\}/, 'the bar names both models and the place');
     assert.match(kx, /data-testid="xp-koi-eq"[\s\S]*f\.before\.poster[\s\S]*K\.newFrame[\s\S]*one \{Math\.round\(take\)\} s take/, '[frame] 10 s + [frame] 10 s = one 20 s take (the generated take, not the ending)');
     assert.match(kx, /const take = f\.out\.sec[^\n]*const total = K\.ending\.sec/, 'the sum and pills use the plain take, the readout the ending version'); assert.match(kx, /url: K\.ending\.url/, 'Explore plays the ending version'); assert.match(kx, /xp-koi-ending[\s\S]*xp-koi-paid-ending/, 'the ending marked on the progress line and credited as made here');
-    assert.match(kx, /xp-koi-paid-first[\s\S]*first \{Math\.round\(first\)\} s[\s\S]*xp-koi-paid-extend[\s\S]*f\.costUsd[\s\S]*\+\{added\} s/, 'two price pills');
+    assert.match(kx, /xp-koi-paid-first[^\n]*K\.first\.usd[^\n]*first \$\{Math\.round\(first\)\} s[\s\S]*xp-koi-paid-extend[^\n]*chipOfFeatured\(f, \{ note: `\+\$\{added\} s`/, 'two run chips: each run\u2019s model, place and price');
     assert.match(kx, /featuredRecreateHref\(f\.key\)[\s\S]*xp-koi-recreate">Recreate<[\s\S]*K\.cta\.href/, 'Recreate and Start your scene');
     assert.match(fs.readFileSync(path.join(WEB, 'shared/ShowcaseFilm.tsx'), 'utf8'), /onError=\{\(\) => \{ setBad\(t\.url\); onFail\?\.\(\); \}\}/, 'ShowcaseFilm: a clip that fails keeps its poster');
     ok('Make your own cartoon: MiniMax H3 + H3 Extend (Comfy Cloud), 20 s take ≤ 4 MB, its first 10 s, posters, prices, Recreate into Extend'); }
@@ -218,7 +218,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.doesNotMatch(xs, /xsdc-mid|xsdc-orig/, 'no small original between the cards');
     for (const r of S.runs) if (r.originalPoster) file(r.originalPoster); assert.match(sw, /<SoundToggle on=\{g\.sound\.lit\} waiting=\{g\.sound\.waiting\} label=\{g\.sound\.hint\}/, 'the shared sound toggle');
     assert.match(sw, /g\.still \? <img className="xsdc-media" src=\{poster\}/, 'reduced motion: posters'); assert.match(sw, /featuredRecreateHref\(f\.key\)/, 'Recreate from each featured entry');
-    assert.match(sw, /\{x\.f\.model\}[\s\S]*\{x\.price\}/, 'each card names the real model and price'); assert.doesNotMatch(xs, /\?swap=|SWAP_DEV|XpSwapNow|XpSwapThree|XpSwapPick|XpStage|EXPLORE_STAGE/, 'no leftover layouts');
+    assert.match(sw, /chip: chipOfFeatured\(f\)[\s\S]*<RunChip c=\{x\.chip\}/, 'each card names the real model, place and price (the shared run chip)'); assert.doesNotMatch(xs, /\?swap=|SWAP_DEV|XpSwapNow|XpSwapThree|XpSwapPick|XpStage|EXPLORE_STAGE/, 'no leftover layouts');
     assert.match(fs.readFileSync(path.join(WEB, 'shared/SyncClips.ts'), 'utf8'), /export function useSyncClips/);
     assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /chapters: Same dance\. Two new casts\.[\s\S]*<XpSwap \/>/, 'Home names and mounts the chapter'); }
   /* chapter 2: image to layers (Seedream 5.0 Flash on Comfy Router, job 829b6ef1) */
@@ -346,7 +346,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
       assert.ok(gj.nodes.some((n: any) => n.name === 'mossbun-front' && n.rotation), 'turned so its front faces the camera at 0°'); }
     const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); const sx = xs.slice(xs.indexOf('export function XpSheets'), xs.indexOf('Mockup to film (Direct a Shot made real)'));
     assert.match(sx, /<Model3D src=\{td!\.url\}[^>]*autoRotate=\{!still\}/, 'the shared Model3D viewer; reduced motion: no auto-rotate');
-    assert.match(sx, /Spin him in 3D/, 'the 3D toggle'); assert.match(sx, /3D: \{td\.model\} · \{td\.place\} · \$\{td\.usd\.toFixed\(2\)\}/, 'the 3D credit');
+    assert.match(sx, /Spin him in 3D/, 'the 3D toggle'); assert.match(sx, /<RunChip c=\{chipOfRun\(\{ jobId: td\.jobId, model: td\.model, place: td\.place, costUsd: td\.usd/, 'the 3D credit (the shared run chip)');
     assert.match(sx, /className="xpk-frame xpc-frame"/, 'the koi’s letterbox frame (shared look)'); assert.match(sx, /featuredRecreateHref\(f\.key\)[\s\S]*xp-sheets-recreate/, 'Recreate from the featured entry');
     assert.match(sx, /if \(!now \|\| paused \|\| still \|\| spin \|\| !seen\) return/, 'steps only on screen; Pause, reduced motion and 3D stop it');
     assert.match(fs.readFileSync(path.join(WEB, 'ui/explore/exploreShowcase.css'), 'utf8'), /\.xpc-sheet\{[^}]*width:min\(100cqw,calc\(100cqh \* var\(--ar\)\)\)/, 'the whole sheet fitted, never cropped');

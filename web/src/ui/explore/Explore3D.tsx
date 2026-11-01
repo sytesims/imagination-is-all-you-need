@@ -11,15 +11,14 @@ import { prefersReducedMotion } from '../../shared/HoverClip';
 import { Model3D } from '../../shared/model3d';
 import { tip } from '../../shared/Tooltip';
 import { InfoIcon } from '../Icons';
-import { featuredByKey, featuredRecreateHref, featuredRuns, runByJob, OUR_COMPUTER, FEATURED_BIG_POSTER, type FeaturedRun } from '../../../../server/src/shared/featured';
+import { RunChip } from '../../shared/RunChip';
+import { chipOfChain, chipPlace, chipUsd } from '../../../../server/src/shared/runChip';
+import { featuredByKey, featuredRecreateHref, featuredRuns, runByJob, FEATURED_BIG_POSTER, type FeaturedRun } from '../../../../server/src/shared/featured';
 import { ShowcaseFilm } from '../../shared/ShowcaseFilm';
 import { EXPLORE_3D, type X3dStep } from '../../../../server/src/shared/exploreShowcase';
 import './explore3d.css';
 
 const X = EXPLORE_3D;
-const usd = (n: number, est?: boolean) => (n ? `${est ? '≈ ' : ''}$${n.toFixed(2)}` : 'Free');
-/** where a historical run happened, in plain words (a local run is not a promise about this computer) */
-const where = (r: FeaturedRun) => (r.place === OUR_COMPUTER ? 'created locally' : r.place);
 
 /** WebGL here at all? (without it the viewer loads a blank canvas: keep the still) */
 const hasWebGL = () => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') ?? c.getContext('webgl')); } catch { return false; } };
@@ -37,15 +36,14 @@ function Spin({ s }: { s: X3dStep }) {
 function Step({ s, n }: { s: X3dStep; n: number }) {
   const r = runByJob(s.job); if (!r) return null;
   const tools = (s.tools ?? []).map((t) => ({ t, r: runByJob(t.job) })).filter((x): x is { t: typeof x.t; r: FeaturedRun } => !!x.r);
-  const tipText = tools.map(({ t, r: x }) => `${t.tool ?? x.model}: ${t.role}, ${where(x)}, ${usd(x.costUsd, x.est).toLowerCase()}`).join(' · ');
+  /* the shared run chip: the step's model, place and the step's whole price; its other tools (with their role) as "+N" */
+  const chip = { ...chipOfChain(r, tools.map((x) => x.r)), ...(tools.length ? { also: tools.map(({ t, r: x }) => `${t.tool ?? x.model} (${t.role}) · ${chipPlace(x.place)} · ${chipUsd(x.costUsd, x.est)}`) } : {}) };
   return <li className="x3-step" data-testid={`x3-step-${n}`}>
     {s.spin ? <Spin s={s} /> : <span className="x3-pic"><img src={s.thumb} alt={s.alt} loading="lazy" decoding="async" draggable={false} />
       {s.before && <span className="x3-before" data-testid={`x3-step-${n}-before`}><img src={s.before} alt="Before: the grey Direct a Shot capture" loading="lazy" decoding="async" draggable={false} /><small>Before</small></span>}
       {s.caption && <span className="x3-cap">{s.caption}</span>}</span>}
     <span className="x3-name"><span className="x3-n" aria-hidden>{String(n).padStart(2, '0')}</span><b>{s.step}</b></span>
-    <span className="x3-run"><span className="x3-model" data-testid={`x3-step-${n}-model`}>{r.model}
-      {tools.length > 0 && <span className="x3-more" tabIndex={0} {...tip(`Also used: ${tipText}`)} aria-label={`Also used: ${tipText}`} data-testid={`x3-step-${n}-tools`}>+{tools.length} tools</span>}</span>
-      <b className="x3-price" data-testid={`x3-step-${n}-price`}>{usd(r.costUsd + tools.reduce((m, x) => m + x.r.costUsd, 0), r.est)}</b></span>
+    <span className="x3-run"><RunChip c={chip} testId={`x3-step-${n}-model`} /></span>
   </li>;
 }
 

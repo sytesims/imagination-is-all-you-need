@@ -1,0 +1,12 @@
+/* RunChip (shared/RunChip.tsx): model · where it ran · price, one quiet pill. Built on Explore's .xv-pill look; .on-media adds glass for a corner of a picture. */
+.runchip{display:inline-flex;flex-wrap:wrap;align-items:center;gap:3px 6px;max-width:100%;min-width:0;min-height:28px;padding:6px 11px;border-radius:14px;box-sizing:border-box;font:600 12px/1.15 var(--font-ui);white-space:nowrap;
+  color:rgba(255,255,255,.72);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)}
+.runchip-dot{opacity:.45}
+.runchip-model{flex:0 1 auto;color:#fff;font-weight:600;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.runchip-more{flex:none;padding:2px 6px;border-radius:999px;font:700 10.5px/1 var(--font-ui);color:#fff;background:rgba(255,255,255,.12);cursor:help}
+.runchip-place{flex:none}
+.runchip-price{flex:none;color:#ffc08f;font-weight:700}
+.runchip-note{flex:none;font:500 11.5px/1 var(--font-ui);opacity:.75}
+.runchip.on-media{color:rgba(255,255,255,.82);background:rgba(10,10,10,.55);border-color:rgba(255,255,255,.14);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+@media (max-width:520px){.runchip{min-height:26px;padding:5px 9px;gap:3px 5px;font-size:11.5px}.runchip-note{display:none}}
+.runchip:focus-visible{outline:var(--focus-ring-w,2px) solid var(--focus-ring-color,var(--accent));outline-offset:2px}

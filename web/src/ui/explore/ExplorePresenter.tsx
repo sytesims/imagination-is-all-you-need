@@ -5,7 +5,9 @@ import { Link } from '../../platform/router';
 import { ShowcaseFilm } from '../../shared/ShowcaseFilm';
 import { Waveform, useWaveform, clockText, durClock } from '../../shared/Waveform';
 import { PlayIcon } from '../Icons';
-import { featuredByKey, featuredRecreateHref, placeOfRoute } from '../../../../server/src/shared/featured';
+import { RunChip } from '../../shared/RunChip';
+import { chipOfChain, featuredPlace } from '../../../../server/src/shared/runChip';
+import { featuredByKey, featuredRecreateHref } from '../../../../server/src/shared/featured';
 import { videoWorkflowHref } from '../../../../server/src/shared/videoWorkflows';
 import './explorePresenter.css';
 
@@ -74,7 +76,7 @@ function PresenterRow({ f, speech, portrait, rec }: { f: F; speech: string; port
           takes={[{ key: 'result', url: f.out.url, poster: f.out.poster, label: 'Talking video', sec: f.out.sec, sound: f.out.sound === true }]}
           take="result" onTake={() => 0} />
         <figcaption className="xpa-top"><span className="xv-tag xv-tag-on">Talking video</span>
-          <span className="xpa-chip" data-testid="xp-presenter-model">{f.model} · {placeOfRoute(f.route)} · {f.out.sec} s</span></figcaption>
+          <RunChip onMedia c={chipOfChain({ jobId: f.jobId ?? '', model: f.model, place: featuredPlace(f), costUsd: f.costUsd ?? 0 }, f.from ?? [], { note: `${f.out.sec} s` })} testId="xp-presenter-model" /></figcaption>
       </figure>
     </div>
     <div className="xpa-ctas xps-ctas">

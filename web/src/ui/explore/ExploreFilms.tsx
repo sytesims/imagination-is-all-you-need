@@ -23,6 +23,7 @@ import { HoverClip } from '../../shared/HoverClip';
 import { Segmented } from '../../shared/BarPop';
 import { useNearView } from '../../shared/useNearView';
 import { PlayIcon, CloseIcon, PlusIcon } from '../Icons';
+import { RunChip } from '../../shared/RunChip';
 import { EXPLORE_FILMS, type FilmsNext, type FilmsShot, type FilmsStep } from '../../../../server/src/shared/exploreShowcase';
 import './exploreFilms.css';
 
@@ -62,6 +63,7 @@ function Credits({ logline = true, how, lead, f = M }: { logline?: boolean; /** 
   const own = useState(false); const ownId = useId(); const [open, setOpen] = how ?? own; const id = how?.[2] ?? ownId; const ed = f.editor ?? X.editor;
   return <div className="xpfm-credits">
     {logline && <p className="xpfm-log">{f.logline}</p>}
+    <RunChip c={f.chip} className="xpfm-chip" testId="xp-films-chip" />
     <p className="xpfm-credit" data-testid="xp-films-credit">{f.credit}</p>
     <span className="xpfm-acts">
       {lead}
@@ -159,7 +161,7 @@ function Catalogue() {
           <span className="xpfm-pc-shade" aria-hidden />
           <span className="xpfm-pc-top" aria-hidden><Mark small /></span>
           <span className={`xpfm-pc-title${f.en.length > 6 ? ' is-long' : ''}${f.ko ? '' : ' is-en'}`} aria-hidden>{f.ko ? <><b lang="ko">{f.ko}</b><i /><span className="en">{f.en}</span></> : <><b>{f.en}</b><i /></>}<small>{f.episode}</small></span>
-          <span className="xpfm-pc-more" aria-hidden><span>{f.genre} · {f.sec} s · {f.lang}</span><span className="xpfm-pc-play"><PlayIcon size={16} />Play</span></span>
+          <span className="xpfm-pc-more" aria-hidden><span><RunChip onMedia c={f.chip} testId={`xp-films-chip-${f.key}`} /></span><span className="xpfm-pc-play"><PlayIcon size={16} />Play</span></span>
         </button>
       </li>; })}
       {X.next.map((n) => <li key={n.key} className="xpfm-pc is-soon" data-testid={`xp-films-next-${n.key}`} role="group" aria-label={`${n.title}, ${n.genre}, coming soon`}>
