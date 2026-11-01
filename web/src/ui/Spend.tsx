@@ -7,6 +7,7 @@
  *  GET /api/spend/overview, /api/spend, /api/spend/summary, /api/accounts, GET/PUT /api/settings/billing. Team mode shows the credits
  *  Usage page instead (SpendOrUsage). The maths (accuracy, tile sizes, tips) lives in server/src/shared/spendInsights.ts. */
 import { Notice } from '../shared/Notice';
+import { InlineError } from '../shared/InlineError';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ToolInfo } from '../api';
 import UsagePage from './Usage';
@@ -19,7 +20,7 @@ import { tip } from '../shared/Tooltip';
 import { gridSrc } from '../shared/thumbs';
 import { resultKindOfUrl, videoPoster, type ResultKind } from '../shared/mediaKind';
 import { useNearView } from '../shared/useNearView';
-import { useBilling, useSpendDay, useSpendMonth, useAccounts, fmtUsd, RULE_TEXT, knownBalanceUsd, ago, balanceText, balanceDetail, comfyPlanNow, type Account, type FailureRule } from '../shared/billing';
+import { useBilling, useBillingError, retryBilling, useSpendDay, useSpendMonth, useAccounts, fmtUsd, RULE_TEXT, knownBalanceUsd, ago, balanceText, balanceDetail, comfyPlanNow, type Account, type FailureRule } from '../shared/billing';
 import { cumulative, quoteHint, tileSpans, tipLines, type SpendPeriod } from '../../../server/src/shared/spendInsights';
 import { LOCAL_LABEL } from '../../../server/src/shared/modelIds';
 import './spend.css';
@@ -302,7 +303,8 @@ function RunThumb({ m, toolId }: { m: ReturnType<typeof mediaOf>; toolId: string
 
 /** /account/usage, /usage, /spend: Spend in own-accounts mode (default), the credits Usage page in team mode. */
 export function SpendOrUsage({ tools }: { tools: ToolInfo[] }) {
-  const b = useBilling();
-  if (!b) return <div className="spg" aria-busy="true"><header className="spg-head"><div className="mh"><Link to="/settings" className="back-link spg-back" data-testid="spend-back">‹ Back to Settings</Link><span className="eyebrow">Account</span><h1>&nbsp;</h1></div></header></div>;
+  const b = useBilling(); const err = useBillingError();
+  if (!b) return <div className="spg" aria-busy={err ? undefined : true}><header className="spg-head"><div className="mh"><Link to="/settings" className="back-link spg-back" data-testid="spend-back">‹ Back to Settings</Link><span className="eyebrow">Account</span><h1>{err ? 'Spend' : '\u00a0'}</h1></div></header>
+    {err && <InlineError what="your spending" error={err} onRetry={() => void retryBilling()} testId="spend-error" /> /* server down: say so with Retry, never a blank page (audit 2026-11-01) */}</div>;
   return b.mode === 'team' ? <UsagePage tools={tools} /> : <Spend tools={tools} />;
 }
