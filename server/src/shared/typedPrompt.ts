@@ -62,3 +62,19 @@ export function chipsFromModelTokens(text: string): string {
 }
 /** True when the text holds a model's own reference tokens: it was rewritten for a model, never typed in the box (a saved draft like that is dropped). */
 export const hasModelTokens = (text: unknown): boolean => typeof text === 'string' && new RegExp(MODEL_TOKEN.source).test(text);
+
+/**
+ * A prompt as plain words for a title, a tooltip or a screen reader (2026-11-01): reference chips (@image2, @Video 1, @audio1, a removed
+ * photo's @image?) and a model's own tokens (<Picture 2>, <<<image_1>>>) read as "picture 2", "video 1", "audio 1". Display only: the
+ * stored prompt is never changed. The same mention grammar as web/src/shared/mentionTokens.ts (a bare "@image" is no reference).
+ */
+const PLAIN_REF = /@(image|img|video|audio)(?: ?(\d+)|(\?))?(?![\w?])/gi;
+const PLAIN_NOUN: Record<string, string> = { image: 'picture', img: 'picture', video: 'video', audio: 'audio' };
+export function plainPrompt(text: unknown): string {
+  return chipsFromModelTokens(typeof text === 'string' ? text : '').replace(PLAIN_REF, (m, w: string, n?: string, gone?: string) => {
+    const k = w.toLowerCase(); const noun = PLAIN_NOUN[k];
+    if (gone) return `the removed ${noun}`;
+    if (!n) return k === 'image' || k === 'img' ? m : `the ${noun}`; // bare "@image" is a word, not a reference
+    return `${noun} ${Number(n)}`;
+  }).replace(/\s+/g, ' ').trim();
+}

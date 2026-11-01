@@ -62,6 +62,7 @@ import { LinkIcon, CopyIcon, StarIcon, ProjectsIcon, AssetsIcon, TrashIcon, Pale
 import type { ToolInfo } from '../api';
 import { refTarget, sendUrl } from '../platform/SendTo';
 import { WorkflowDialog, useWorkflowInfo } from './WorkflowDialog';
+import { workflowTip } from './workflowTip';
 import { LikeButton } from './LikeButton';
 import { ShareSheet } from './ShareSheet';
 import { cleanHref } from './sharePrefs';
@@ -246,7 +247,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
       job.id && owner ? { k: 'move', label: '', icon: <ProjectsIcon size={16} />, testid: 'rv-move-to', node: <MoveToItem job={job} /> } : null,
       viewer && job.id && !/^\/(assets|history|jobs\/)/.test(location.pathname) ? { k: 'assets', label: 'Open in Assets', icon: <AssetsIcon size={16} />, testid: 'rv-open-assets', href: `/assets?job=${encodeURIComponent(job.id)}`, onClick: goClick(`/assets?job=${encodeURIComponent(job.id)}`, onClose) } : null,
     ].filter(Boolean) as MItem[];
-    const wfDis = wfOk ? null : wfInfo.info ? 'Only results made by open models, on your computer or on Comfy Cloud, come with a ComfyUI workflow.' : wfInfo.err || 'Checking…';
+    const wfDis = workflowTip(wfInfo.info, wfInfo.err);
     const adv: MItem[] = [
       ...(done ? [{ k: 'wf', label: 'View workflow', icon: <OpenModelIcon size={16} />, testid: 'rv-get-workflow', dis: wfDis, hint: 'The ComfyUI graph that made this, with its settings', onClick: () => setWf('get') },
         { k: 'comfy', label: 'Open in ComfyUI', icon: <ComfyPlaceIcon size={16} />, testid: 'rv-open-comfy', dis: wfDis, hint: 'Load this workflow in your ComfyUI', onClick: () => setWf('open') }] : []),

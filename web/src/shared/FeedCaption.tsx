@@ -5,6 +5,7 @@
  */
 import type { JobState } from '../api';
 import { compositeCostText, runPrice } from './billing';
+import { plainPrompt } from '../../../server/src/shared/typedPrompt';
 import './feedCaption.css';
 
 export type JobCaption = { model: string; place: string; price: string; time: string };
@@ -16,8 +17,9 @@ export function jobCaption(j: JobState, own: boolean | null): JobCaption {
   return { model, place, price, time: sec == null ? '' : sec < 60 ? `${sec}s` : `${Math.floor(sec / 60)}m ${sec % 60}s` };
 }
 
-/** The caption itself. `parts` are joined with " · " (empty ones dropped); a long model name ends in "…" (full name in the title). */
+/** The caption itself. `parts` are joined with " · " (empty ones dropped); a long model name ends in "…" (full name in the title).
+ *  The title reads as plain words: a prompt's @image2 is "picture 2" (plainPrompt); the stored prompt is untouched. */
 export function FeedCaption({ title, parts, testId, className = '' }: { title: string; parts: (string | null | undefined | false)[]; testId?: string; className?: string }) {
-  const line = parts.filter(Boolean).join(' · ');
-  return <span className={`feed-cap${className ? ` ${className}` : ''}`} data-testid={testId}><b title={title}>{title}</b>{line && <span>{line}</span>}</span>;
+  const line = parts.filter(Boolean).join(' · '); const t = plainPrompt(title);
+  return <span className={`feed-cap${className ? ` ${className}` : ''}`} data-testid={testId}><b title={t}>{t}</b>{line && <span>{line}</span>}</span>;
 }

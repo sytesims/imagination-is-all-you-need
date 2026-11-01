@@ -40,13 +40,13 @@ import { AssetsIcon, ProjectsIcon, HeartIcon, BrandIcon, TrashIcon, DownloadIcon
 import { heldBack, nothingHeld, stripCreditSentences } from '../shared/creditsBack';
 import { demoTag } from '../shared/quote';
 import { aspectOf, dayKey, dayLabel, daysAgo, groupByDay, justify, masonry, rangeBounds } from './assetsLayout';
-import { typedPromptOf } from '../../../server/src/shared/typedPrompt';
+import { plainPrompt, typedPromptOf } from '../../../server/src/shared/typedPrompt';
 import { favOf, saveFavourite, toggleFavourite, useFavourites } from '../shared/favourites';
 import '../ui/pages/assets.css'; /* PP: Assets page styles (scoped to .pp-assets) */
 /** Failed-tile error line: the server's message minus its balance sentences. Money held → the tile status ($N back to your balance) is the only such text; nothing held → one "Nothing was charged". */
 const errLine = (j: any): string => { const m = stripCreditSentences(String(j?.error ?? '')); if (heldBack(j) > 0) return m; return nothingHeld(j) ? `${m ? `${m.replace(/\.?$/, '.')} ` : ''}Nothing was charged.` : m; };
 /** Deep-link pin: the prompt in quotes when there is one; else the model or tool name; else "this result". Never empty quotes. */
-const pinLabel = (j: any, toolName?: string): string => { const t = typedPromptOf(j?.input).trim(); if (t) return `Open “${t.length > 60 ? `${t.slice(0, 59)}…` : t}”`; const n = String(j?.modelName ?? toolName ?? j?.model ?? '').trim(); return n ? `Open this ${n} result` : 'Open this result'; };
+const pinLabel = (j: any, toolName?: string): string => { const t = plainPrompt(typedPromptOf(j?.input)); if (t) return `Open “${t.length > 60 ? `${t.slice(0, 59)}…` : t}”`; const n = String(j?.modelName ?? toolName ?? j?.model ?? '').trim(); return n ? `Open this ${n} result` : 'Open this result'; };
 
 const SECTIONS: [string, typeof AssetsIcon][] = [['Assets', AssetsIcon], ['Projects', ProjectsIcon], ['Favourites', HeartIcon], ['Brands', BrandIcon], ['Trash', TrashIcon]];
 /* Brands (2026-10-27): your brand profiles (ui/brand/BrandKitPage.tsx, its own chunk), next to your other saved things; /assets/brands (/assets/brand redirects) */

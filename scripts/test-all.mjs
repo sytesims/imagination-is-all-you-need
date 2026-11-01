@@ -47,6 +47,7 @@ const LONG = {
   'pb-1018b.e2e.ts': 600, // ~1.5 min alone, ~4 min beside other tests (timed out at 240 s in a parallel run, 2026-10-25)
   'model-health.e2e.ts': 1200, // ~8 min alone on an M1 Max (every video model × mode × option)
   'model-health-ui.e2e.ts': 1500, // ~15 min alone (one headless click-through per video model × mode)
+  'story.e2e.ts': 600, // several stories, each polled up to ~300 s (timed out at 100 s per story on a 2-core CI runner, 2026-11-01)
 };
 
 // ---------- options ----------

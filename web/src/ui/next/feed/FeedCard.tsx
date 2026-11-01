@@ -15,7 +15,7 @@ import { gridSrc } from '../../../shared/thumbs';
 import { durText } from '../../../shared/ResultViewer';
 import { clampAr } from './feedMedia';
 import { feedPropsEqual } from './feedMemo';
-import { typedPromptOf } from '../../../../../server/src/shared/typedPrompt';
+import { plainPrompt, typedPromptOf } from '../../../../../server/src/shared/typedPrompt';
 export { clampAr, tileMaxH, videoOutOf, askedAr } from './feedMedia';
 
 
@@ -36,11 +36,11 @@ export interface FeedCardProps {
 }
 
 function FeedCard({ job: j, k = 0, of = 1, ar, active, run, media, on, selecting, picked, noPick, className = '', testId, idPre = 'ic', tag, badges, children, caption, onOpen, onTogglePick, body }: FeedCardProps) {
-  const inp: any = (j as any).input ?? {}; const prompt: string = typedPromptOf(inp); const ex: { model?: string; flow?: string; recreateHref?: string | null } | null = (j as any).example ?? null; /* one of the app's examples (the Examples project) */ /* a workflow job: your words, never its composed recipe (2026-10-25) */
+  const inp: any = (j as any).input ?? {}; const prompt: string = typedPromptOf(inp); const said = plainPrompt(prompt) /* aria labels: plain words, no @image2 */; const ex: { model?: string; flow?: string; recreateHref?: string | null } | null = (j as any).example ?? null; /* one of the app's examples (the Examples project) */ /* a workflow job: your words, never its composed recipe (2026-10-25) */
   return <div className={`ic-tile st-${j.status}${body ? ' has-body' : ''}${on ? ' on' : ''}${picked ? ' picked' : ''}${selecting ? ' selecting' : ''}${className ? ` ${className}` : ''}${!active && j.status !== 'done' ? ' fs-host' : ''}`}
     style={{ ['--ar' as any]: String(clampAr(ar)) }} data-testid={testId} data-batch={of > 1 ? `${k + 1}/${of}` : undefined}>
-    {!active && body && j.status === 'done' ? <>{body}{selecting && <button type="button" className="ic-tile-hit fd-pick-hit" aria-label={`Select ${prompt || j.id}`} aria-pressed={!!picked} onClick={() => { if (!noPick) onTogglePick?.(); }} />}</>
-      : active ? run : <button type="button" className="ic-tile-hit" aria-label={j.status === 'done' ? `Open result: ${prompt || j.id}` : `Failed: ${prompt || j.id}. Show details`} aria-pressed={selecting ? !!picked : undefined}
+    {!active && body && j.status === 'done' ? <>{body}{selecting && <button type="button" className="ic-tile-hit fd-pick-hit" aria-label={`Select ${said || j.id}`} aria-pressed={!!picked} onClick={() => { if (!noPick) onTogglePick?.(); }} />}</>
+      : active ? run : <button type="button" className="ic-tile-hit" aria-label={j.status === 'done' ? `Open result: ${said || j.id}` : `Failed: ${said || j.id}. Show details`} aria-pressed={selecting ? !!picked : undefined}
       onClick={e => { if (selecting) { if (!noPick) onTogglePick?.(); return; } onOpen(e); }}>
       {j.status === 'done' && media ? media : <FailureState job={j} variant="tile" testId={`${idPre}-fail-${j.id}`} /* the bean, a friendly title and what happened to the money; the full reason is in the viewer */ />}</button>}
     {k === 0 && !active && j.status !== 'done' && <span className="fs-tile-act"><FailActions job={j} max={1} compact skip={['details']} prefer="runLocal" /></span> /* the one fix; Run locally first when the server lists it (never automatic) */}
@@ -50,7 +50,7 @@ function FeedCard({ job: j, k = 0, of = 1, ar, active, run, media, on, selecting
     {k === 0 && !active && !ex && (j as any).featured && <span className="fd-star" data-testid={`${idPre}-featured-${j.id}`} {...tip('Featured')}><svg aria-hidden width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.8z" /></svg></span>}
     {k === 0 && !active && ex && j.status === 'done' && <Link to={ex.recreateHref ?? recreateHref(j)!} className="fd-recreate" data-testid={`${idPre}-recreate-${j.id}`} {...tip('The same prompt and settings in the bar. Nothing runs until you press Generate')}><span aria-hidden>↻</span>Recreate</Link>}
     {children}
-    {selecting && k === 0 && onTogglePick && <label className={`fd-check${noPick ? ' off' : ''}`} data-testid={`fd-check-${j.id || 'new'}`} {...tip(noPick ?? (picked ? 'Unselect' : 'Select'))} onClick={e => e.stopPropagation()}><input type="checkbox" checked={!!picked} disabled={!!noPick} aria-label={noPick ? `Can’t select: ${noPick}` : `Select ${prompt || j.id}`} onChange={() => onTogglePick()} /><i aria-hidden /></label>}
+    {selecting && k === 0 && onTogglePick && <label className={`fd-check${noPick ? ' off' : ''}`} data-testid={`fd-check-${j.id || 'new'}`} {...tip(noPick ?? (picked ? 'Unselect' : 'Select'))} onClick={e => e.stopPropagation()}><input type="checkbox" checked={!!picked} disabled={!!noPick} aria-label={noPick ? `Can’t select: ${noPick}` : `Select ${said || j.id}`} onChange={() => onTogglePick()} /><i aria-hidden /></label>}
     {!active && (caption !== undefined ? caption : prompt && <span className="ic-tile-meta"><span><MentionText text={prompt} /></span></span>) /* a running card's foot is the running tile's own (GenTile): never two captions on top of each other */}
     {!active && <Link to={`/jobs/${j.id}`} className="ic-tile-open" {...tip('Open details')}>↗<span className="sr-only">Open details</span></Link>}
   </div>;
