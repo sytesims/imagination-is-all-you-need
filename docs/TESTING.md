@@ -90,17 +90,24 @@ Run the full suite locally (`npm test`) before every push. That is the check we 
 
 ## What CI does
 
-`.github/workflows/test.yml` runs **only when started by hand** (Actions → tests → Run workflow) until the repo is
-public, because Actions minutes on a private repo are limited. At launch we add back the runs on every push and pull
-request to `main`. When started:
+Two workflows run on GitHub Actions. A newer push to the same pull request (or to `main`) cancels the older run.
 
-1. Six Ubuntu machines start at the same time; each takes a sixth of the test files (`--shard 1/6` … `6/6`).
-2. Each installs Node 24, the npm packages (cached between runs), and `ffmpeg`, `lsof`, `ss`, and Python 3 with
+| When | `CI` (`.github/workflows/ci.yml`) | `tests` (`.github/workflows/test.yml`) |
+| --- | --- | --- |
+| Pull request | Build and start on Ubuntu, macOS and Windows; the one-line install on Ubuntu only, or on all three when the PR touches the installer (`scripts/get.*`, `scripts/install.*`), setup or launcher scripts, `package.json` / `package-lock.json` files or `ci.yml` | Only the tests the PR's changes touch (`--changed`, compared with the PR's base), on as many machines as that needs (a sixth of the suite each, up to 6). None for a docs-only PR. The full suite when the runner maps the change to every test (package files, the runner) or `test.yml` changed |
+| Push to `main`, nightly at 03:00 UTC, or by hand (Actions → Run workflow) | Everything: Build and start and the one-line install on all three systems | The full suite on 6 machines |
+
+`--changed` is a guess (see above), so a pull request can pass with a test it didn't pick still broken; the full run
+on `main` and the nightly run catch that. The nightly run has its own group, so pushes to `main` never cancel it.
+
+How a `tests` machine runs:
+
+1. Each installs Node 24, the npm packages (cached between runs), and `ffmpeg`, `lsof`, `ss`, and Python 3 with
    Pillow and NumPy (the server's colour match uses them).
-3. Each runs `npm test -- --shard i/6 --jobs 2 --timeout 600`. The machines have 2 cores and are several times slower
-   than a recent Mac, so it runs 2 at a time with longer limits (a `--timeout` above 240 also scales the per-test limits
-   in the runner's `LONG` list by the same factor).
-4. If a test fails, the end of its log is printed in the job output (a collapsible group per test), and the whole
+2. Each runs `npm test -- [--changed --base HEAD^1] --shard i/N --jobs 2 --timeout 600`. The machines have 2 cores and
+   are several times slower than a recent Mac, so it runs 2 at a time with longer limits (a `--timeout` above 240 also
+   scales the per-test limits in the runner's `LONG` list by the same factor).
+3. If a test fails, the end of its log is printed in the job output (a collapsible group per test), and the whole
    `.test-logs/` folder is attached to the run as a download (`test-logs-shard-N`).
 
 CI has no secrets and no keys, so nothing in it can call a paid API.
