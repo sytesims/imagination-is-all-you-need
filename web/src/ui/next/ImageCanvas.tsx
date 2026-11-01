@@ -64,7 +64,7 @@ import { tip } from '../../shared/Tooltip';
 import { CloseIcon, ImageIcon } from '../Icons';
 import { useDockHeight, useChipFit } from '../../shared/dockFit';
 import { WorkflowChip } from '../../shared/WorkflowChip';
-import { FeedCaption, jobCaption, captionTitle } from '../../shared/FeedCaption';
+import { FeedCaption, jobCaption } from '../../shared/FeedCaption';
 import { typedPromptOf } from '../../../../server/src/shared/typedPrompt';
 import { wantsPicker, usePickerParam, clearPickerParam } from '../../shared/WorkflowPicker';
 import { subjectParts, fillSubject, promptAfterPresetClear, lookParts, thumbsShown, modelDownload, intentLine } from '../../shared/presetBar';
@@ -122,6 +122,7 @@ import { wfDefaultOf, startModel, pickKindOf, PICK_LABEL, savedPick, savePick, f
 import { LOCAL_LABEL } from '../../../../server/src/shared/modelIds';
 import { routeCapsOf, maxRefsOf } from '../../shared/refCaps';
 import { DockGenerate, PF_SHORT } from '../../shared/DockGenerate';
+import { captionTitle } from '../../shared/feedCaptionText';
 
 /** Create Image as a canvas: centred empty hero or results feed, plus a bottom-docked composer (prompt, +, model, aspect, quality, style, count, Generate). */
 export interface ImageCanvasProps { /** Images: the feature page this composer serves ('camera-lens' adds the camera rig); undefined = Create Image. */ featureId?: string; /** An old edit URL: Create Image opened in edit mode. */ editIntent?: boolean; sameSeed?: import('react').ReactNode; issues?: any[]; initial?: Record<string, string> | null;
