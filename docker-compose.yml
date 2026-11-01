@@ -48,8 +48,8 @@ services:
   comfy-nvidia:
     <<: *comfy
     profiles: [nvidia]
-    build: { context: ., dockerfile: Dockerfile.comfy, args: { TORCH: cu128 } }
-    image: openhiggsfield-comfy:cu128
+    build: { context: ., dockerfile: Dockerfile.comfy, args: { TORCH: "${OHF_TORCH:-cu128}" } } # OHF_TORCH=cu130 on DGX Spark (ARM64)
+    image: openhiggsfield-comfy:${OHF_TORCH:-cu128}
     deploy:
       resources:
         reservations:

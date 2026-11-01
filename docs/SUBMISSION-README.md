@@ -20,7 +20,7 @@ The main [README](../README.md) has everything: what it is, how it uses the Comf
 - **Deployments:** your own Comfy API deployment for graphs with custom nodes (H3 CrossView).
 
 ## Run it
-Use a current Node 20, 22 or 24 release, npm, and ffmpeg/ffprobe for media operations:
+Use Node 22 or 24, npm, and ffmpeg/ffprobe for media operations:
 
 ```bash
 npm run setup      # installs app dependencies, checks setup, starts web/API/MCP
