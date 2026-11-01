@@ -28,6 +28,7 @@ import { useNarrow } from '../../shared/HeroTitle';
 import './workflowBar.css';
 import { SlotLabel } from '../../shared/SlotLabel';
 import { AddTile } from '../../shared/AddTile';
+import { PlatformPicker, CornerPicker } from './AdPickers';
 
 export type WfRecipe = WorkflowRecipe & { modelInfo?: Record<string, { name: string | null; workflow: { line: string; url: string | null; source: string } | null; /** product shot: the aspects this model takes, per mode */ aspects?: Record<string, string[]>; /** the model's own shape when the picked one isn't offered */ defaultAspect?: string; /** the credit when a photo switches the mode */ workflowByMode?: Record<string, { line: string; url: string | null; source: string } | null> }> };
 export type WfSlotFile = { file: File; url: string };
@@ -141,16 +142,19 @@ const UploadGlyph = () => <svg width="10" height="10" viewBox="0 0 16 16" aria-h
  *  `short`: its label (several parts on one chip: "High · 50k", not "High detail · 50k mesh"), still left off when its chip text is '' */
 const pickLabel = (r: WfRecipe, field: string, v: string, short = false) => { const o = r.controls.find(c => c.field === field)?.options?.find(o => o.value === v); return !o ? v : o.chip === '' ? '' : short ? o.label : o.chip ?? o.label; };
 /** A control group's chip text: "Left · Soft · 50% · Warm". */
-export function groupSummary(r: WfRecipe, g: WfRecipe['groups'][number], vals: Record<string, string>): string {
+/** `full`: every part, never cut (the chip's tooltip and spoken name when the chip shows less). */
+export function groupSummary(r: WfRecipe, g: WfRecipe['groups'][number], vals: Record<string, string>, full = false): string {
   if (g.id === 'light' && (vals.light || r.controls.some(c => c.field === 'light'))) return rigChipPlain(rigOfVals(vals));
   const parts = (short: boolean) => g.summary.map(f => { const c = r.controls.find(x => x.field === f); const v = vals[f] ?? c?.default ?? ''; if (!c || v === '' || (f === 'look' && v === 'custom')) return '';
     if (c.kind === 'slider') return `${v}%`; if (f === 'direction' && vals.lightX && vals.lightY) return 'Custom'; if (c.kind === 'text') return v;
     if (c.kind === 'chips-multi') { let ids: string[] = []; try { const x = JSON.parse(v); ids = (Array.isArray(x) ? x : [x]).map(String); } catch { ids = v.split(','); } /* Ad Pack styles on a Canvas card: "3 ads", never the raw list */
-      ids = ids.filter(i => c.options?.some(o => o.value === i)); return ids.length === 1 ? pickLabel(r, f, ids[0], short) : `${ids.length} ${r.each?.many ?? 'picked'}`; }
+      ids = ids.filter(i => c.options?.some(o => o.value === i)); return ids.length === 1 ? pickLabel(r, f, ids[0], short) : `${ids.length} ${g.label.toLowerCase()}`; }
     return c.kind === 'swatches' ? (c.options?.find(o => o.value.toUpperCase() === v.toUpperCase())?.label ?? v.toUpperCase()) : pickLabel(r, f, v, short); }).filter(Boolean);
-  const out = (parts(false).length > 1 ? parts(true) : parts(false)).join(' · ');
-  // typed words (Material Swap, Ad Pack) can be long: the chip keeps a short start so it stays in the row (the popover shows them in full)
-  return g.summary.some(f => r.controls.find(x => x.field === f)?.kind === 'text') && out.length > 18 ? `${out.slice(0, 17).trim()}…` : out;
+  const out = (parts(false).length > 1 ? parts(true) : parts(false)).join(' · '); if (full) return parts(false).join(' · ');
+  // typed words (Material Swap, Ad Pack) can be long: the chip shows only the first one ("armchair"), cut short if it is long; the tooltip and
+  // the popover have them all (2026-11-01: "armchair · grey f…" was cut off)
+  if (!g.summary.some(f => r.controls.find(x => x.field === f)?.kind === 'text')) return out;
+  const first = parts(false)[0] ?? ''; return first.length > 18 ? `${first.slice(0, 17).trim()}…` : first;
 }
 
 /** Light group (Relight, 2026-10-24): the shared 3D light sphere. Its rig goes out as the `light` field (the server words it precisely);
@@ -170,8 +174,10 @@ function GenericPanel({ r, g, vals, set, allow, optPrice }: { r: WfRecipe; g: Wf
   const opts = (c: WfRecipe['controls'][number]) => { const a = allow?.[c.field]; const os = c.options ?? []; const f = a ? os.filter(o => a.includes(o.value)) : os; return f.length ? f : os; };
   /* an option's hint, unless it only says its label again ("Standard" / "Standard geometry") */
   const hint = (o: { label: string; credit?: string }) => { const h = o.credit?.trim(); return h && !h.toLowerCase().startsWith(o.label.toLowerCase()) ? h : null; };
-  return <div className="wf-gen">{r.controls.filter(c => c.group === g.id).map(c => <div key={c.field} className="wf-gen-row"><span className="wf-pop-h">{c.label}</span>
-    {c.kind === 'slider' ? <input type="range" min={c.min} max={c.max} step={c.step} value={vals[c.field] ?? c.default ?? ''} onChange={e => set(c.field, e.target.value)} />
+  return <div className="wf-gen">{r.controls.filter(c => c.group === g.id).map(c => <div key={c.field} className={`wf-gen-row${c.kind === 'corner' ? ' wf-gen-row-side' : ''}`} data-kind={c.kind}><span className="wf-pop-h">{c.label}</span>
+    {c.kind === 'platforms' /* Ad Pack: grouped platform icons + one word per size (AdPickers.tsx) */ ? <PlatformPicker value={vals[c.field] ?? c.default ?? ''} set={v => set(c.field, v)} label={c.label} />
+      : c.kind === 'corner' /* Ad Pack's logo corner on a tiny frame of the picked size */ ? <CornerPicker value={vals[c.field] ?? c.default ?? ''} set={v => set(c.field, v)} label={c.label} placement={vals.placement} help={c.help} />
+      : c.kind === 'slider' ? <input type="range" min={c.min} max={c.max} step={c.step} value={vals[c.field] ?? c.default ?? ''} onChange={e => set(c.field, e.target.value)} />
       : c.kind === 'text' /* Material Swap, Ad Pack: short optional words (the server collapses spaces and checks the length too) */ ? <input type="text" className="wf-gen-text" data-testid={`wf-text-${c.field}`} aria-label={c.label} maxLength={c.maxLength} placeholder={c.placeholder ?? (c.optional ? 'Optional' : '')} value={vals[c.field] ?? ''} onChange={e => set(c.field, e.target.value)} />
       : c.kind === 'tiles' ? <div className="wf-tiles" role="radiogroup" aria-label={c.label}>{opts(c).map(o => <button key={o.value} type="button" role="radio" aria-checked={(vals[c.field] ?? c.default) === o.value} className={`wf-tile${(vals[c.field] ?? c.default) === o.value ? ' on' : ''}`} data-testid={`wf-tile-${o.value}`} onClick={() => set(c.field, o.value)}><i aria-hidden className={`wf-tile-sw wf-tile-${o.value}`} /><span>{o.label}</span></button>)}</div>
       : <div className="wf-seg wf-seg-wrap" role="radiogroup" aria-label={c.label} data-cols={segCols(opts(c).length)}>{opts(c).map(o => <button key={o.value} type="button" role="radio" aria-checked={(vals[c.field] ?? c.default) === o.value} className={(vals[c.field] ?? c.default) === o.value ? 'on' : ''} data-testid={`wf-opt-${c.field}-${o.value}`} title={hint(o) ?? undefined} onClick={() => set(c.field, o.value)}>{o.value === 'auto' ? 'Auto' : o.label}{hint(o) ? <small className="wf-opt-note">{hint(o)}</small> : null}{optPrice && <OptPrice text={optPrice(c.field, o.value)} testId={`wf-opt-price-${c.field}-${o.value}`} />}</button>)}</div>}</div>)}</div>;
@@ -234,7 +240,7 @@ export function WorkflowControls({ recipe: r, vals, setVal, provider, watch, mod
       /* a tight bar drops the group word ("Clean studio"); the full "Scene: Clean studio" stays as the spoken name and the tooltip */
       /* every choice at its default and left off the chip (3D Detail): the chip says the group word, the tooltip what is picked ("Standard shape · Auto mesh detail") */
       const named = !sum ? `${g.label}: ${g.summary.map(f => { const c = r.controls.find(x => x.field === f); const o = c?.options?.find(x => x.value === (vals[f] ?? c?.default)); return o && c ? `${o.label} ${c.label.toLowerCase()}` : ''; }).filter(Boolean).join(' · ')}`
-        : sum.toLowerCase().includes(g.label.toLowerCase()) ? sum : `${g.label}: ${sum}`; /* "High detail", never "Detail: High detail" */
+        : sum.toLowerCase().includes(g.label.toLowerCase()) ? sum : `${g.label}: ${summaries?.[g.id] == null && g.summary.some(f => r.controls.find(x => x.field === f)?.kind === 'text') ? groupSummary(r, g, vals, true) || sum : sum}`; /* "High detail", never "Detail: High detail"; typed words in full */
       return <button key={g.id} ref={el => { refs.current[g.id] = el; }} type="button" className={`ic-chip wf-grp wf-fold${open === g.id && !folded(refs.current[g.id]) ? ' on' : ''}`} aria-haspopup="dialog" aria-expanded={open === g.id} data-testid={`wf-group-${g.id}`} aria-label={named} {...tip(g.id === 'light' && !panels?.light ? `${g.label}: ${lightTip(vals)}` : named)}
       onClick={() => { anchor.current = refs.current[g.id]; setOpen(open === g.id ? '' : g.id); }}>
       <WfIcon name={g.icon} size={14} />{!sum ? <b>{g.label}</b> : <>{named !== sum && !g.plain && <span className="wf-grp-l">{g.label}</span>}<b><Words text={sum} /></b></>}{g.id === 'light' && (vals.light || vals.color) && <i className="wf-grp-dot" style={{ background: vals.light ? rgbHex(lightRgb(rigOfVals(vals).key)) : vals.color }} aria-hidden />}</button>; })}

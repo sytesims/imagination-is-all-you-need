@@ -864,7 +864,7 @@ export const APP_GALLERY: GalleryApp[] = [
     labels: { image: 'Object', material: 'Material', prompt: 'Touch-ups (optional)' }, required: ['image', 'material'],
     extraInputs: [{ name: 'material', kind: 'file', accept: 'image/png,image/jpeg,image/webp', label: 'Material' }],
     fields: [{ name: 'object', label: 'What the object is', kind: 'text', optional: true, maxLength: MATERIAL_TEXT_MAX, placeholder: 'Optional, e.g. sofa' },
-      { name: 'fromMaterial', label: 'Made of now', kind: 'text', optional: true, maxLength: MATERIAL_TEXT_MAX, placeholder: 'Optional, e.g. grey fabric' }],
+      { name: 'fromMaterial', label: 'Current material', kind: 'text', optional: true, maxLength: MATERIAL_TEXT_MAX, placeholder: 'Optional, e.g. grey fabric' }],
     // image 1 = the object, image 2 = the material
     fileMap: (f) => { const { material, ...rest } = f; return { ...rest, refs: (material ?? []).slice(0, 1) }; },
     compose: (v, c) => materialSwapPrompt(v, c.prompt, c.provider),
@@ -882,7 +882,7 @@ export const APP_GALLERY: GalleryApp[] = [
     fields: [{ name: 'headline', label: 'Headline', kind: 'text', optional: true, maxLength: AD_TEXT_MAX, placeholder: 'Optional, e.g. Run lighter' },
       { name: 'offer', label: 'Offer', kind: 'text', optional: true, maxLength: AD_TEXT_MAX, placeholder: 'e.g. 20% off this weekend' },
       { name: 'placement', label: 'Platform', kind: 'select', control: 'segmented', options: AD_PLACEMENTS.map((p) => ({ value: p.value, label: p.label })), default: AD_PLACEMENT_DEFAULT },
-      { name: 'logoCorner', label: 'Logo corner', kind: 'select', control: 'segmented', options: AD_CORNERS.map((c) => ({ ...c })), default: 'tl' }],
+      { name: 'logoCorner', label: 'Logo corner', kind: 'select', control: 'segmented', options: AD_CORNERS.map((c) => ({ ...c })), default: 'tl', help: 'Used with Brand on' }],
     // image 1 = the main product photo, images 2–3 = other sides of it
     fileMap: (f) => { const { product2, product3, ...rest } = f; return { ...rest, refs: [...(product2 ?? []), ...(product3 ?? [])].slice(0, 2) }; },
     // the platform's shape, snapped to what the model makes (null = this edit route keeps the photo's shape; the logo still follows the result's size)

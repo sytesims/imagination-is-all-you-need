@@ -41,8 +41,11 @@ export function anglesOf(r: WfRecipe, v: string | undefined): string[] {
   const read = (s: string | undefined): string[] | null => { if (s == null || s.trim() === '') return null; try { const x = JSON.parse(s); const ids = (Array.isArray(x) ? x : [x]).map(String); return all.filter(a => ids.includes(a)); } catch { return null; } };
   return read(v) ?? read(c?.default) ?? all;
 }
+/** The chip's words, named by the group's own noun (2026-11-01: "None" said nothing): "No style", "Studio hero", "3 styles", "All 5 styles";
+ *  Camera Angles: "No angle", "3 angles", "All 9 angles". */
 export const anglesSummary = (r: WfRecipe, ids: string[]): string => { const os = r.controls.find(c => c.field === 'shots')?.options ?? [];
-  return !ids.length ? 'None' : ids.length === os.length ? `All ${os.length}` : ids.length === 1 ? (os.find(o => o.value === ids[0])?.label ?? ids[0]) : `${ids.length} ${eachOf(r).many}`; };
+  const many = (r.groups.find(g => g.summary.includes('shots'))?.label ?? eachOf(r).many).toLowerCase(); const one = many.replace(/s$/, '');
+  return !ids.length ? `No ${one}` : ids.length === os.length ? `All ${os.length} ${many}` : ids.length === 1 ? (os.find(o => o.value === ids[0])?.label ?? ids[0]) : `${ids.length} ${many}`; };
 export const anglesLabel = (n: number, r?: WfRecipe | null) => { const e = r ? eachOf(r) : { one: 'angle', many: 'angles' }; return n === 0 ? `Make ${e.many}` : n === 1 ? `Make 1 ${e.one}` : `Make ${n} ${e.many}`; };
 /** "Pick at least one angle" / "… style" (the group's own word). */
 export const pickOneLabel = (r: WfRecipe) => `Pick at least one ${r.id === 'camera-angles' ? 'angle' : (r.groups.find(g => g.summary.includes('shots'))?.label ?? 'option').toLowerCase().replace(/s$/, '')}`;
@@ -51,11 +54,15 @@ export function AnglesPanel({ r, ids, set, each }: { r: WfRecipe; ids: string[];
   const os: Opt[] = r.controls.find(c => c.field === 'shots')?.options ?? []; const all = os.map(o => o.value); const e = eachOf(r); const glyph = r.id === 'camera-angles';
   const head = r.groups.find(g => g.summary.includes('shots'))?.label ?? 'Angles';
   const toggle = (id: string) => set(ids.includes(id) ? ids.filter(x => x !== id) : all.filter(a => [...ids, id].includes(a)));
-  return <div className={`wf-angles${glyph ? '' : ' wf-layouts'}`} data-testid="wf-angles-panel">
+  /* Ad Pack styles (2026-11-01): one even list, a small drawing per style, the name in clear type and its line under it; orange when picked */
+  const list = !glyph;
+  return <div className={`wf-angles${list ? ' wf-styles' : ''}`} data-testid="wf-angles-panel">
     <div className="wf-pop-h"><span>{head} · {ids.length} of {all.length}</span><span className="wf-ang-bulk"><button type="button" onClick={() => set(all)} disabled={ids.length === all.length} data-testid="wf-angles-all">All</button><button type="button" onClick={() => set([])} disabled={!ids.length} data-testid="wf-angles-none">None</button></span></div>
-    <div className="wf-ang-grid" role="group" aria-label={head}>{os.map(o => { const on = ids.includes(o.value);
-      return <button key={o.value} type="button" role="checkbox" aria-checked={on} className={`wf-ang${glyph ? '' : ' wf-lay'}${on ? ' on' : ''}`} data-testid={`wf-angle-${o.value}`} onClick={() => toggle(o.value)}>{glyph ? <ShotGlyph id={o.value} /> : null}<span>{o.label}</span>{!glyph && o.description ? <small>{o.description}</small> : null}</button>; })}</div>
-    <p className={`wf-ang-note${ids.length ? '' : ' warn'}`} data-testid="wf-angles-note">{ids.length ? <>{`${ids.length} image${ids.length > 1 ? 's' : ''}, one per ${e.one === 'ad' ? 'style' : e.one}`}{each ? <> · {each}</> : null}. {e.note}</> : `${pickOneLabel(r)}.`}</p>
+    <div className={list ? 'wf-sty-list' : 'wf-ang-grid'} role="group" aria-label={head}>{os.map(o => { const on = ids.includes(o.value);
+      return list ? <button key={o.value} type="button" role="checkbox" aria-checked={on} className={`wf-sty${on ? ' on' : ''}`} data-testid={`wf-angle-${o.value}`} onClick={() => toggle(o.value)}>
+          <StyleGlyph id={o.value} /><span className="wf-sty-t"><b>{o.label}</b>{o.description ? <small>{o.description}</small> : null}</span><i className="wf-sty-tick" aria-hidden /></button>
+        : <button key={o.value} type="button" role="checkbox" aria-checked={on} className={`wf-ang${on ? ' on' : ''}`} data-testid={`wf-angle-${o.value}`} onClick={() => toggle(o.value)}><ShotGlyph id={o.value} /><span>{o.label}</span></button>; })}</div>
+    <p className={`wf-ang-note${ids.length ? '' : ' warn'}`} data-testid="wf-angles-note">{ids.length ? <>{e.one === 'angle' ? `${ids.length} image${ids.length > 1 ? 's' : ''}, one per angle` : `${ids.length} ${ids.length > 1 ? e.many : e.one}`}{each ? <> · {each}</> : null}. {e.note}</> : `${pickOneLabel(r)}.`}</p>
   </div>;
 }
 /** Tiny camera-position glyph per angle (our own drawing: subject dot, camera triangle). */
@@ -67,6 +74,19 @@ export function ShotGlyph({ id }: { id: string }) {
     {id === 'low' && <path d="M8 20l4-4 4 4" />}{id === 'high' && <path d="M8 3l4 4 4-4" />}
     {id !== 'low' && id !== 'high' && <path transform={`rotate(${r} ${x} ${y})`} d={`M${x - 2.5} ${y + 1.5}l2.5-3 2.5 3z`} />}
   </svg>;
+}
+
+/** A tiny drawing per Ad Pack style (our own, 2026-11-01): the product as a small bottle in each style's scene. Unknown ids: none. */
+export function StyleGlyph({ id }: { id: string }) {
+  const bottle = (x: number, y: number, s = 1) => <g transform={`translate(${x} ${y}) scale(${s})`}><rect x="-2.2" y="0" width="4.4" height="6.5" rx="1.1" /><path d="M-1 0v-1.6h2V0" /></g>;
+  const art: Record<string, JSX.Element> = {
+    studio: <><path d="M3 4v8.5a6.5 6.5 0 0 0 6.5 6.5H21" />{bottle(13, 9.5)}<path d="M10 18.2h6" opacity=".6" /><path d="M18.5 4.5l-2 2" opacity=".6" /></>,
+    lifestyle: <><rect x="3.5" y="4" width="7" height="8" rx="1" /><path d="M7 4v8M3.5 8h7" opacity=".6" /><path d="M2.5 19h19" />{bottle(16, 12.5)}</>,
+    poster: <><rect x="4" y="3" width="16" height="18" rx="1.5" /><path d="M7.5 6.5h9" strokeWidth="2.2" />{bottle(12, 11.5, 1.15)}</>,
+    flatlay: <><circle cx="12" cy="12" r="3.2" /><rect x="3.5" y="4" width="4.5" height="4.5" rx="1" /><circle cx="18" cy="6" r="1.8" /><path d="M5 18.5c2-3 4.5-3 6-1.5-2 1.8-4 2.4-6 1.5z" /><path d="M16 17h4.5" /></>,
+    seasonal: <><rect x="6" y="11" width="12" height="9" rx="1" /><rect x="5" y="8" width="14" height="3" rx="1" /><path d="M12 8v12" /><path d="M12 8c-1.5-3-4.5-3-4.5-1S10 8 12 8c1.5-3 4.5-3 4.5-1S14 8 12 8" /><path d="M20 3.5v3M18.5 5h3" opacity=".7" /></>,
+  };
+  return art[id] ? <svg className="wf-sty-g" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>{art[id]}</svg> : null;
 }
 
 /* ---------------- Character Sheet layouts (2026-10-25) ---------------- */

@@ -49,7 +49,8 @@ export function reelCameraFields(v: Record<string, any>, photoOrdinal = 0) {
   // This supplementary paragraph supplies pace and scene continuity, never a second conflicting move.
   const pace = v.kind === 'event' ? 'brisk, lively and controlled' : v.kind === 'hotel' ? 'very slow, smooth and steady' : 'slow, smooth and gentle';
   return { provider:v.provider, model:v.model, runOn:v.runOn, route:v.route, resolution:v.resolution || '720p', seconds:5, aspect:'9:16',
-    types:JSON.stringify([move].filter(Boolean)), image:'1', rights:'1', prompt:fillPattern('camera-scene', model, { pace }) };
+    types:JSON.stringify([move].filter(Boolean)), image:'1', rights:'1', prompt:fillPattern('camera-scene', model, { pace }),
+    enhance:'0' /* the scene sentence already sets the look; Camera Moves' own Enhance words would stack on top */ };
 }
 const cameraFields = reelCameraFields;
 const musicFields = (v: Record<string, any>) => ({ provider: v.musicProvider || (v.runOn === 'local' ? 'comfy-acestep' : undefined), runOn: v.runOn === 'local' ? 'local' : undefined, route: v.musicRoute, seconds: v.seconds, types: '["music"]', video: '1', rights: '1', prompt: REEL_MOODS[v.kind as ReelOptions['kind']] });

@@ -64,7 +64,7 @@ html body .apop .ap-set-pop .ap-vc-b .as-tile:disabled,html body .apop .ap-set-p
    The shared toolbar and the FeedCard tile; the justified rows of imageCanvas.css become even columns here (a sound has no picture shape).
    Grid › S / M / L picks the column width. Every tile is one card height, so running and failed tiles line up with finished ones.
    2026-10-29 polish: compact tiles (no cover art), 4 across at 1440 and ~6 rows: about 24 sounds per screen instead of 8. */
-html body .ap .ic.ic2.apf{display:block;min-height:0;padding:0;max-width:1240px;margin:0 auto;--ap-card-h:142px}
+html body .ap .ic.ic2.apf{display:block;min-height:0;padding:0;max-width:1240px;margin:0 auto;--ap-card-h:154px}
 html body .ic.ic2.apf .ap-gal .ic-feed.ic-jfeed{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--ap-col,280px),1fr));gap:12px;margin-top:4px}
 html body .ic.ic2.apf .ap-gal .ic-feed.ic-jfeed[data-size="small"]{--ap-col:232px;gap:10px}
 html body .ic.ic2.apf .ap-gal .ic-feed.ic-jfeed[data-size="large"]{--ap-col:380px;gap:16px}
@@ -78,8 +78,8 @@ html body .ic.ic2.apf .ic-jfeed .ic-tile.ap-tile.on>.ac{box-shadow:inset 0 0 0 2
    for the dancing SyteSim while the sound plays */
 html body .ic.ic2.apf .ic-jfeed .ic-tile.ap-tile.has-body .ic-tile-feat{top:12px;right:12px;left:auto;max-width:96px;padding:1px 6px;font-size:10.5px;background:rgba(255,255,255,.06)!important;-webkit-backdrop-filter:none;backdrop-filter:none;color:var(--text-2,#a3a4a9);transition:opacity var(--t-state,150ms) var(--ease-state,ease)}
 html body .ic.ic2.apf .ic-jfeed .ic-tile.ap-tile.has-body .ic-tile-feat i{display:none} /* "· Music": the kind chip already says it */
-html body .ic.ic2.apf .ic-jfeed .ic-tile.ap-tile.has-body:has(.ic-tile-feat) .ac-head{padding-right:64px}
-html body .ic.ic2.apf .ic-jfeed .ic-tile.ap-tile.has-body:has(.ac-bean) .ac-head{padding-right:0}
+html body .ic.ic2.apf .ic-jfeed .ic-tile.ap-tile.has-body:has(.ic-tile-feat) .ac-title{padding-right:64px} /* the title line only: the prompt line runs under the badge */
+html body .ic.ic2.apf .ic-jfeed .ic-tile.ap-tile.has-body:has(.ac-bean) .ac-title{padding-right:0}
 html body .ic.ic2.apf .ic-jfeed .ic-tile.ap-tile:has(.ac-bean) .ic-tile-feat,html body .ic.ic2.apf .ic-jfeed .ic-tile.ap-tile:has(.ac-bean) .fd-recreate{opacity:0;pointer-events:none}
 html body .ic.ic2.apf .ic-tile.ap-tile.has-body .fd-recreate{top:8px;right:8px;bottom:auto;height:26px;padding:0 10px;font-size:12px}
 html body .ic.ic2.apf .ic-tile.ap-tile.has-body:is(:hover,:focus-within) .ic-tile-feat{opacity:0}
@@ -99,11 +99,11 @@ html body .ic.ic2.apf .ic-tile.ap-tile .fs-tile-act{bottom:14px}
 
 /* loading: cells shaped like the grid's tiles (play + two lines, the waveform), faded in after a beat so a fast answer shows nothing */
 .ap-skel{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:4px;animation:ap-skel-in .3s ease .25s both}
-.ap-skel-i{box-sizing:border-box;height:var(--ap-card-h,142px);padding:14px;border-radius:var(--radius-lg,12px);background:var(--surface-2,#1C1E20);display:grid;grid-template-columns:44px 1fr;grid-template-rows:44px 1fr;gap:12px}
+.ap-skel-i{box-sizing:border-box;height:var(--ap-card-h,154px);padding:14px;border-radius:var(--radius-lg,12px);background:var(--surface-2,#1C1E20);display:grid;grid-template-columns:44px 1fr;grid-template-rows:44px 1fr;gap:12px}
 .ap-skel-i i,.ap-skel-i b,.ap-skel-i em{display:block;border-radius:8px;background:rgba(255,255,255,.05)}
 .ap-skel-i i{border-radius:50%}
 .ap-skel-i b{height:14px;width:70%;margin-top:6px}
-.ap-skel-i em{grid-column:1/-1;height:36px}
+.ap-skel-i em{grid-column:1/-1;align-self:end;height:40px}
 @keyframes ap-skel-in{from{opacity:0}to{opacity:1}}
 @media (prefers-reduced-motion:reduce){html body .ic.ic2.apf .ic-tile.ap-tile.st-running::after,html body .ic.ic2.apf .ic-tile.ap-tile.st-queued::after{animation:none;opacity:.7}.ap-skel{animation:none}}
 @media (max-width:600px){html body .ic.ic2.apf .ap-gal .ic-feed.ic-jfeed,.ap-skel{grid-template-columns:1fr;gap:10px}}

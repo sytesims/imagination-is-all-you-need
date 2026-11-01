@@ -95,7 +95,8 @@ import { emptyTextFor, imageScope, type FeedScope } from './feed/feedFilter';
 import { useLiveJobs, UploadsFeed, useUploads } from './feed/FeedScope';
 import { ALL_IMAGE_FEED, IMAGE_FEED_GROUPS, imageWorkflowNameOf } from '../../../../server/src/shared/imageFeed';
 import { libraryFile } from '../../shared/libraryFiles';
-import { feedSections, withSetPlaces } from './feed/feedLayout';
+import { feedSections, groupSets, withSetPlaces } from './feed/feedLayout';
+import { SetRow, useSetFold } from './feed/SetRow';
 import { beginSet, useSendingSets } from '../../shared/submitGuard';
 import FeedCard, { clampAr, tileMaxH } from './feed/FeedCard';
 import { useFeedState, useFeedViewer, FeedGallery } from './feed/ResultFeed';
@@ -460,6 +461,11 @@ export default function ImageCanvas(p: ImageCanvasProps) {
   const reg = useModels(p.tool.id); const regOf = (id: string) => reg.models.find(m => m.providerId === id || m.id === id) as any;
   /* R1: popovers are the shared anchored Popover (portal); it owns Escape, outside-click and focus return */
   const aR = { model: useRef<HTMLButtonElement>(null), aspect: useRef<HTMLButtonElement>(null), quality: useRef<HTMLButtonElement>(null), res: useRef<HTMLButtonElement>(null), more: useRef<HTMLButtonElement>(null), count: useRef<HTMLButtonElement>(null), card: useRef<HTMLButtonElement>(null), set: useRef<HTMLButtonElement>(null) }; const [moreFrom, setMoreFrom] = useState<'chip' | 'card'>('chip'); const closePop = () => setPop('');
+  /* the model chip's "· Default" / "· Your pick": shown whole or not at all (2026-11-01: "GPT Imag… · Def"); the tooltip always has it */
+  useLayoutEffect(() => { const el = aR.model.current; if (!el || typeof ResizeObserver === 'undefined') return;
+    const fit = () => { const pk = el.querySelector<HTMLElement>('.ic-mpick'); const nm = el.querySelector<HTMLElement>('.ic-mname'); if (!pk || !nm) return;
+      el.removeAttribute('data-pick-off'); const cut = pk.scrollWidth > pk.clientWidth + 1 || nm.scrollWidth > nm.clientWidth + 1; if (cut) el.setAttribute('data-pick-off', ''); };
+    fit(); const ro = new ResizeObserver(fit); ro.observe(el); el.querySelectorAll('.ic-mname').forEach(n => ro.observe(n)); const row = el.closest('.ic-chips'); if (row) ro.observe(row); return () => ro.disconnect(); }, [aR.model.current]); // eslint-disable-line react-hooks/exhaustive-deps
   const moreAt = viaOver(aR.more, overRef); /* Style folded into ⋯: its panel opens from there */
   /* the References panel (ImagePicker) sits above the dock (like the reference): Esc, a click outside it or its trigger again closes it */
   useDismiss(!!refTab, () => setRefTab(null));
@@ -710,13 +716,10 @@ export default function ImageCanvas(p: ImageCanvasProps) {
   const [cmpOpen, setCmpOpen] = useState(false); const cmpRef = useRef<HTMLButtonElement>(null); const [sideBy, setSideBy] = useState<string | null>(null); const ownB = useOwnAccounts();
   const sendingSet = useSendingSets();
   /* compared runs sit together (in the order picked), so the viewer steps through them */
-  const grouped = (() => { const all = feed.jobs.filter(j => j.status !== 'canceled' || lingering(j)); const out: JobState[] = []; const done = new Set<string>();
-    /* a retried run in a set: its Retry takes its place (the server puts the retry in the same set) */ const retried = new Set(all.filter(j => (j as any).compare && (j as any).input?.retryOf).map(j => String((j as any).input.retryOf))); const list = all.filter(j => !retried.has(j.id));
-    for (const j of list) { const g = (j as any).compare?.id as string | undefined; if (!g) { out.push(j); continue; } if (done.has(g)) continue; done.add(g);
-      const members = list.filter(x => (x as any).compare?.id === g);
-      /* a set still being sent: all its places from the first frame (waiting cards), so the row never grows or jumps */
-      out.push(...(sendingSet(g) ? withSetPlaces(members as any[], i => waitingCard(members[0], i)) : members.sort((a, b) => Number((a as any).compare?.i ?? 0) - Number((b as any).compare?.i ?? 0)))); }
-    return out; })();
+  /* a set's runs sit together (in its order), so the viewer steps through them; a set still being sent shows all its places from the first frame
+   * (waiting cards), so the row never grows or jumps (feedLayout groupSets / withSetPlaces) */
+  const grouped = groupSets(feed.jobs.filter(j => j.status !== 'canceled' || lingering(j)) as (JobState & { compare?: any })[],
+    (members, g) => sendingSet(g) ? withSetPlaces(members, i => waitingCard(members[0], i) as JobState & { compare?: any }) : members.sort((a, b) => Number(a.compare?.i ?? 0) - Number(b.compare?.i ?? 0))) as JobState[];
   const shown = grouped; const nLinger = shown.filter(j => j.status === 'canceled').length;
   useEffect(() => { if (!nLinger) return; const t = setTimeout(() => setLinger(n => n + 1), CANCEL_LINGER_MS); return () => clearTimeout(t); }, [nLinger, p.jobs]);
   /* Several results (2026-10-25, shared/MultiResult): one card per run, whatever the workflow (Camera Angles, a Create Image batch, Image to layers,
@@ -777,7 +780,9 @@ export default function ImageCanvas(p: ImageCanvasProps) {
     else { const room = maxRefs - refN; addRefs(fs); if (room > 0) toast(fs.length > room ? `Added ${room} of ${fs.length}: this model takes up to ${maxRefs}` : `Added ${fs.length} reference${fs.length > 1 ? 's' : ''}`); }
     stopSelect(); };
   type Tl = ReturnType<typeof tileOf>[number];
-  const feedItems = feedSections(shown as (JobState & { compare?: { id?: string } | null })[], tileOf); // a singles row before a compare group gets its own filler (no stretched banner tiles)
+  const fold = useSetFold(); /* a set opens or folds into one card (SetRow): open while it runs and for the latest run, else the reader's choice */
+  const feedItems = feedSections(shown as (JobState & { compare?: { id?: string } | null })[], tileOf, fold.isOpen); // a row before an open set ends with its own filler (no stretched banner tiles)
+  const setIds = feedItems.flatMap(it => it.group ? [it.group] : []); const setsOpen = feedItems.filter(it => it.group && !it.folded).length;
   const renderTile = ({ j, url, k, of, multi }: Tl) => { const inp: any = (j as any).input ?? {}; const m = /^(\d+):(\d+)$/.exec(String(inp.aspect ?? inp.aspectRatio ?? '')); const ow: any = url ? ((j as any).outputs ?? []).find((o: any) => o?.url === url) : null; /* the output's own size (server outputs[].width/height) until the image has loaded: no reflow when it lands */ const arHint = (ow?.width > 0 && ow?.height > 0 ? ow.width / ow.height : 0) || (m ? Number(m[1]) / Number(m[2]) : 1); const ar = (url && ars[url]) || arHint; const act = isActive(j) || j.status === 'canceled' /* 4i: the canceled tile is the generating tile, greyed */; const sel = viewId === j.id; const picked = selecting && sel2.has(j.id); const noPick = selecting ? unselectable(j) : null; const cmp = (j as any).compare as { id: string } | undefined; const cmpCap = cmp && k === 0 && !act ? jobCaption(j, ownB) : null;
             const pres = multi ? presentationOf(j as any) : null; const mode = pres ? cardModeOf(pres, ar, multi!.length) : null; const feat = imageWorkflowNameOf(j as any) ?? featureTag(j) /* which workflow made it */; const prompt = typedPromptOf(inp); const cap1 = !multi && !cmpCap && !act && j.status === 'done' ? jobCaption(j, ownB) : null;
             const firstOut = multi?.find(x => x.state === 'done')?.out ?? 0; const nDone = multi ? multi.filter(x => x.state === 'done').length : 0;
@@ -902,9 +907,11 @@ export default function ImageCanvas(p: ImageCanvasProps) {
         <FeedGallery title="Image" st={fs} count={upOn ? up.items.length : shown.length} emptyText={emptyTextFor(filt, pj.pid, SCOPE)} override={upOn ? <UploadsFeed up={up} media="image" size={filt.size} idPre="ic" onReference={u => void refFromUpload(u)} /> : undefined} toolbar={selecting ? <SelectBar sel={sel2} setSel={setSel} total={feed.total} onExit={stopSelect} selectAll={selectAll} allLoading={allBusy} projects={pj.list} currentProject={pj.pid} patch={feed.patch} unpatch={feed.unpatch} refresh={feed.refresh}
               useAsRefs={useAsRefs} refsTarget={recipe ? recipe.name : 'Create'} onTrashed={ids => { if (viewId && ids.includes(viewId)) setViewId(null); }} />
             : <FeedToolbar f={filt} setF={setFilt} groups={IMAGE_FEED_GROUPS} noun="images" total={upOn ? up.total : feed.total} failed={upOn ? null : feed.failed} loading={upOn ? up.loading : feed.loading} pj={pj} selecting={selecting} onSelect={() => selecting ? stopSelect() : setSelecting(true)}
-              compareOff={compareOff} onCompare={() => setCmpOpen(o => !o)} compareRef={cmpRef} live={<QueueLine className="ic-gal-live" />} />}>
+              compareOff={compareOff} onCompare={() => setCmpOpen(o => !o)} compareRef={cmpRef} live={<QueueLine className="ic-gal-live" />}
+              sets={setIds.length ? { n: setIds.length, open: setsOpen, setAll: o => fold.setOpen(setIds, o) } : null} />}>
           {feedItems.map(it => it.group
-            ? <div key={`g-${it.group}`} className="cmp-g" data-testid={`cmp-group-${it.group}`}><CompareGroupHead jobs={it.jobs} onSide={() => setSideBy(it.group!)} /><div className="cmp-g-row">{it.tiles.map(renderTile)}<i className="ic-jfill" aria-hidden /></div></div>
+            ? <SetRow key={`g-${it.group}`} id={it.group} jobs={it.jobs} open={!it.folded} onToggle={o => fold.setOpen([it.group!], o)} thumbOf={j => j.status === 'done' ? (resultItemsOf(j as any).find(x => x.state === 'done')?.url ?? j.resultUrl ?? null) : null}
+                head={f => <CompareGroupHead jobs={it.jobs} onSide={() => setSideBy(it.group!)} fold={f} />}>{it.tiles.map(renderTile)}</SetRow>
             : [...it.tiles.map(renderTile), it.fill && <i key={`f-${it.jobs[0].id}`} className="ic-jfill" aria-hidden />])}</FeedGallery>
         {viewJob && (viewJob.status === 'done' && (viewJob.resultUrl || (viewJob as any).outputs?.length)
           ? <ResultView variant="viewer" job={viewJob} out={viewId === viewJob.id ? viewOut : 0} beforeUrl={viewJob.resultUrl ?? ''} title="Your result" onClose={closeView} {...viewNav}

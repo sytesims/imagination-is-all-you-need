@@ -2,7 +2,7 @@
  * The Audio tab's results (2026-10-27, UX audit fix batch A): the same shared feed as Create Image and Generate Video (ui/next/feed: the
  * toolbar with Filter / Select / grid size, the server-paged list, live runs from anywhere, Show more, the shared result viewer), listing every
  * Audio workflow's results (server/src/shared/audioFeed.ts, GET /api/jobs?audioFeed=). A finished sound is the shared FeedCard with the shared
- * AudioCard tile as its body (play, title, kind chip, length, model, price, seekable waveform; 2026-10-29: no cover art, ~2.5x more per screen); a run still going is the shared GenTile with SyteSim warming up; a
+ * AudioCard tile as its body (play, a short title over the prompt's one dim line, kind chip, length, model, price, seekable waveform; 2026-10-29: no cover art, ~2.5x more per screen); a run still going is the shared GenTile with SyteSim warming up; a
  * failed one is the shared failure tile with its one fix (Try again stays on this page). Opening a sound shows it in the shared viewer over the
  * page (?view=<id>: Back closes it, ← / → stay within these results), never the /jobs/<id> page.
  * Loading: skeleton cells shaped like the grid (they fade in only if the first page is slow), never "No sounds yet" before the list arrives.
@@ -27,6 +27,7 @@ import { audioScope, emptyTextFor, type FeedScope } from '../next/feed/feedFilte
 import { AUDIO_FEED_GROUPS, audioWorkflowOfJob } from '../../../../server/src/shared/audioFeed';
 import { audioWorkflowById } from '../../../../server/src/shared/audioWorkflows';
 import { typedPromptOf } from '../../../../server/src/shared/typedPrompt';
+import { resultTitle, shortModelName } from '../../../../server/src/shared/shortTitle';
 import '../next/imageCanvas.css';
 import '../next/feed/feed.css';
 import './audioPage.css';
@@ -73,13 +74,15 @@ export default function AudioFeed({ jobs }: { jobs: JobState[] }) {
   const v = useFeedViewer(viewable, undefined, audioTileId, !feed.loading);
   const cheer = useJustFinished(shown);
   const card = (j: JobState, i: number) => { const w0 = audioWorkflowOfJob(j as any); const w = w0 ? audioWorkflowById(w0) : null; const m = modelOfEngine(j.toolId, j.provider);
-    const model = (m ? shownName(m) : null) ?? j.provider ?? ''; const prompt = typedPromptOf((j as any).input).trim(); const title = prompt || w?.name || 'Audio';
+    const model = (m ? shownName(m) : null) ?? j.provider ?? ''; const prompt = typedPromptOf((j as any).input).trim();
+    /* a short title (shared/shortTitle: its own title or the example's, else a few words of the prompt), the prompt as one dim line under it */
+    const title = resultTitle({ title: (j as any).title || (j as any).example?.title, prompt, feature: w?.name ?? 'Audio' }, 24 /* fits the card's one title line beside "Example" */);
     const kind = audioKindOf({ toolId: j.toolId, workflow: w0 }); const src = j.resultUrl ?? (j as any).outputs?.[0]?.url ?? null; const act = isActive(j) || !j.id;
     return <FeedCard key={j.id || (j as any).clientKey || `new-${i}`} job={j} ar={1} active={act} idPre="ap" testId={audioTileId(j.id)} className="ap-tile"
       run={<GenTile job={j} testId={`ap-run-${j.id || 'new'}`} art={warmUp} note={WARM_NOTE[kind]} tag={w?.name} />} on={v.viewId === j.id}
       selecting={selecting} picked={selecting && sel.has(j.id)} noPick={selecting ? unselectable(j) : null} tag={j.status === 'done' && src ? null /* the card's own kind chip says it */ : w?.name ?? null} caption={null}
       onOpen={e => v.open(j.id, 0, e.currentTarget)} onTogglePick={() => togglePick(j)} media={null}
-      body={j.status === 'done' && src ? <AudioCard src={src} title={title} model={model} price={price(j)} duration={Number((j as any).input?.outputDuration) || null /* the output's real length only (audit B2): input.duration is what was asked (a cap, or a server default for a model with none); the card reads the file's own length */}
+      body={j.status === 'done' && src ? <AudioCard src={src} title={title} subtitle={prompt || null} model={shortModelName(model)} modelTitle={model} price={price(j)} duration={Number((j as any).input?.outputDuration) || null /* the output's real length only (audit B2): input.duration is what was asked (a cap, or a server default for a model with none); the card reads the file's own length */}
         onOpen={from => v.open(j.id, 0, from)} testId={`ap-card-${j.id}`} kind={kind} tag={w && !PLAIN_KIND.has(w.id) ? w.name : null} seed={j.id} prompt={prompt || w?.name} lyrics={typeof (j as any).input?.lyrics === 'string' ? (j as any).input.lyrics : null}
         jobId={j.id} danceStyle={(j as any).danceStyle} cheer={cheer.has(j.id)} /> : undefined} />; };
   const emptyText = fs.isDefault ? 'No sounds yet. Describe a song, a voice or a sound effect below and press Generate.' : emptyTextFor(filt, pj.pid, SCOPE);
