@@ -52,6 +52,26 @@ try {
       assert.deepEqual(jobWorkflows(person, 'comfy-qwen21', input), [wf], `${outfit}: the job needs that graph's files`); }
     assert.equal(bfsSwapFor('app-person-swap', 'comfy-qwen21')?.workflowFile, 'create-image-qwen21-personswap-api.json', 'no job: the card keeps its own graph'); }
   ok('Qwen Image 2.1: preview shows the BFS prompt; keep-outfit runs the head swap (plan, LoRA, needed files)');
+  // the Person Swap card offers the head-swap LoRA too (the same Face Swap file, listed once); a keep-outfit run without it gets the usual
+  // "download first" gate with Face Swap's download, never a raw missing-file error
+  { const { getProvider, providerWorkflows } = await import('../src/providers.ts'); const { weightsHere } = await import('../src/hardware/variants.ts');
+    const { familiesOf, planFiles } = await import('../src/hardware/downloads.ts'); const R = await import('../src/hardware/requirements.ts');
+    const person: any = getTool('app-person-swap'); const qwen = getProvider('comfy-qwen21')!;
+    const HEAD = 'bfs_head_v1.1_qwen_2.1.safetensors', BODY = 'bfs_body_swap_v1.0_qwen_2.1.safetensors';
+    const card = weightsHere(providerWorkflows(person, qwen)).map((w: any) => w.file);
+    assert.ok(card.includes(BODY) && card.includes(HEAD), card.join(', ')); assert.equal(new Set(card).size, card.length, 'each file once');
+    assert.ok(!weightsHere(providerWorkflows(face, qwen)).some((w: any) => w.file === BODY), 'Face Swap still needs only the head swap');
+    const fams = familiesOf('comfy-qwen21'); const pf = fams.find((f: any) => f.toolIds.includes('app-person-swap'))!; const ff = fams.find((f: any) => f.toolIds.includes('app-face-swap'))!;
+    assert.deepEqual(pf.workflows, ['create-image-qwen21-personswap-api.json', 'create-image-qwen21-faceswap-api.json']); assert.deepEqual(ff.workflows, ['create-image-qwen21-faceswap-api.json']);
+    const job = async (outfit: string) => person.parseInput({ provider: 'comfy-qwen21', rights: '1', outfit }, { image: ['t.png'], person: ['q.png'] });
+    const keep = await job('keep'), def = await job('person'); const prev = process.env.OPENHIGGSFIELD_ENFORCE_WEIGHTS; process.env.OPENHIGGSFIELD_ENFORCE_WEIGHTS = '1';
+    try { R.setMissingWeights('local:comfy-qwen21', [HEAD]);
+      const g = R.weightsGate(person, 'comfy-qwen21', keep)!; assert.equal(g?.code, 'weights_missing', JSON.stringify(g)); assert.ok(g.downloadable);
+      assert.deepEqual(g.missingFiles.map((f: any) => f.file), [HEAD]); assert.equal(g.downloadId, ff.downloadId, 'the Face Swap download, reused');
+      assert.ok(planFiles({ downloadId: g.downloadId }, null).files.some((f: any) => f.file === HEAD), 'that download fetches the head-swap LoRA');
+      assert.equal(R.weightsGate(person, 'comfy-qwen21', def), null, 'the default swap runs without the head-swap LoRA'); }
+    finally { R.setMissingWeights('local:comfy-qwen21', null); if (prev == null) delete process.env.OPENHIGGSFIELD_ENFORCE_WEIGHTS; else process.env.OPENHIGGSFIELD_ENFORCE_WEIGHTS = prev; } }
+  ok('Person Swap card offers the head-swap LoRA (Face Swap\'s file, once); keep-outfit without it = the usual download gate');
   // Try-On: FASHN takes no prompt and Bria's instruction is only the user's words (none here), so the job stores none and the peek says so
   { const t: any = getTool('app-try-on'); const png = fs.readFileSync(path.resolve(import.meta.dirname, '../samples/sample-character.png'));
     fs.writeFileSync(path.join(D, 'p.png'), png); fs.writeFileSync(path.join(D, 'g.png'), png);

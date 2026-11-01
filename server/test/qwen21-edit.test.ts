@@ -121,11 +121,11 @@ ok('plain Edit Image on Qwen 2.1: official edit template, no LoRA');
   const standIn = (p: string) => { fs.writeFileSync(p, ''); fs.truncateSync(p, sizes.get(path.basename(p)) ?? 0); };
   for (const [d, f] of [['diffusion_models', 'qwen_image_2.1_int8_convrot.safetensors'], ['text_encoders', 'qwen3vl_8b_int8_convrot.safetensors'], ['vae', 'qwen_image_2.1_vae_bf16.safetensors']]) { fs.mkdirSync(path.join(md, d), { recursive: true }); standIn(path.join(md, d, f)); }
   const miss = (t: string) => { clearRequirementsCache(); return requirementsFor(getTool(t)! as any, 'comfy-qwen21', { types: ['edit'] })!.missingFiles!.map((f) => f.file); };
-  assert.deepEqual(miss('app-face-swap'), ['bfs_head_v1.1_qwen_2.1.safetensors']); assert.deepEqual(miss('app-person-swap'), ['bfs_body_swap_v1.0_qwen_2.1.safetensors']);
+  assert.deepEqual(miss('app-face-swap'), ['bfs_head_v1.1_qwen_2.1.safetensors']); assert.deepEqual(miss('app-person-swap'), ['bfs_body_swap_v1.0_qwen_2.1.safetensors', 'bfs_head_v1.1_qwen_2.1.safetensors'] /* 2026-11-01: the card also offers the head swap "Keep the photo's outfit" runs */);
   fs.mkdirSync(path.join(md, 'loras')); standIn(path.join(md, 'loras', 'bfs_head_v1.1_qwen_2.1.safetensors'));
   assert.deepEqual(miss('app-face-swap'), []); assert.deepEqual(miss('app-person-swap'), ['bfs_body_swap_v1.0_qwen_2.1.safetensors']);
   delete process.env.OPENHIGGSFIELD_COMFY_MODELS_DIR; clearRequirementsCache();
-  ok('weights: Face Swap needs the BFS head LoRA (260,096,144 B), Person Swap the body LoRA (209,753,576 B); Edit Image neither; missing until the file is on disk');
+  ok('weights: Face Swap needs the BFS head LoRA (260,096,144 B), Person Swap the body LoRA (209,753,576 B) plus the head one for keep-outfit; Edit Image neither; missing until the file is on disk');
 }
 // ---- caps and listings ----
 assert.equal(IMAGE_CAPS['comfy-qwen21'].supports.maxRefs, 2);

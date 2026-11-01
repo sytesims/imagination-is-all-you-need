@@ -28,3 +28,12 @@ export const bfsSwapPrompt = (s: BfsSwap, touchUps?: string | null) => {
   const t = String(touchUps ?? '').trim().replace(/(?<![<\w])\bimage\s*([1-9])\b(?!>)/gi, '<image$1>'); // a tag the shared rewrite already wrote stays one tag
   return t ? `${s.prompt}. ${t}` : s.prompt;
 };
+/** The BFS graphs a route needs, for its files (Files needed, downloads, the Ready check). A job: the graph it runs. No job or no outfit choice yet
+ *  (a model card, the downloads list): Person Swap needs both, its body swap and the head swap "Keep the photo's outfit" runs (the same Face Swap
+ *  files, never a second copy). null = not a BFS route. */
+export const bfsWorkflowsFor = (toolId: string, provider: string, input?: { outfit?: unknown; appFields?: { outfit?: unknown } } | null): string[] | null => {
+  const own = bfsSwapFor(toolId, provider, input); if (!own) return null;
+  const outfit = input?.outfit ?? input?.appFields?.outfit;
+  if (toolId === 'app-person-swap' && outfit !== 'keep' && outfit !== 'person') { const head = bfsSwapFor('app-face-swap', provider); if (head) return [own.workflowFile, head.workflowFile]; }
+  return [own.workflowFile];
+};
