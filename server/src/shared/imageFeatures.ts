@@ -17,7 +17,7 @@ import { defaultsOfFeature } from './imageDefaults.js';
 import { LAYER_MODELS, LAYERS_FLASH, LAYERS_PRO, LAYERS_LOCAL, QWEN_LAYERED_TEMPLATE } from './imageLayers.js';
 
 export type { WorkflowSource } from './workflowSources.js';
-export type ImageFeatureId = 'create-image' | 'edit-image' | 'upscale' | 'relight' | 'face-swap' | 'person-swap' | 'camera-angles' | 'camera-lens' | 'brush-edit' | 'character-sheet' | 'product-shot' | 'remove-bg' | 'expand' | 'erase' | 'try-on' | 'image-layers' | 'material-swap' | 'ad-pack';
+export type ImageFeatureId = 'create-image' | 'edit-image' | 'upscale' | 'relight' | 'face-swap' | 'person-swap' | 'camera-angles' | 'camera-lens' | 'brush-edit' | 'character-sheet' | 'product-shot' | 'remove-bg' | 'expand' | 'erase' | 'try-on' | 'image-layers' | 'material-swap' | 'ad-pack' | 'phone-photo';
 type Mode = 'generate' | 'edit' | 'inpaint' | 'upscale';
 
 export interface ImageFeature {
@@ -134,6 +134,9 @@ export const IMAGE_FEATURES: ImageFeature[] = [
   { id: 'material-swap', name: 'Material Swap', toolId: 'app-material-swap', route: `${IMAGE_PAGE}?workflow=material-swap`, inMenu: true, mode: 'edit', images: [2, 2], aspects: false, resolutions: false, count: 1, grid: 'edit-image',
     recipe: 'Our material prompt: the object in image 1 takes the material and texture of image 2, everything else kept; worded for each model.', tagline: 'Give an object the material from another photo',
     description: 'A photo of an object and a photo of a material: the object takes that material, its shape, light and scene kept.', was: 'new', oldRoutes: ['/tools/material-swap', '/tools/app-material-swap'], providers: MATERIAL_SWAP_MODELS },
+  { id: 'phone-photo', name: 'Phone Photo', toolId: 'app-phone-photo', route: `${IMAGE_PAGE}?workflow=phone-photo`, inMenu: true, mode: 'generate', images: [0, 0], aspects: true, resolutions: true, count: 'model', grid: 'create-image',
+    recipe: 'Our phone-photo prompt: who holds the phone and the light become plain sentences, worded for each model, with no quality tags.', tagline: 'An everyday phone photo of a made-up person',
+    description: 'An everyday phone photo of a made-up person: a selfie, a mirror shot or a friend\'s snap, in real room light.', was: 'new', oldRoutes: ['/tools/phone-photo', '/tools/app-phone-photo'], providers: GENERATE_MODELS },
   { id: 'ad-pack', name: 'Ad Pack', toolId: 'app-ad-pack', route: `${IMAGE_PAGE}?workflow=ad-pack`, inMenu: true, mode: 'edit', images: [1, 3], aspects: false, resolutions: false, count: 5, grid: 'edit-image',
     recipe: 'Our ad prompts: one per style, worded for each model, with your headline, offer and brand colours; your logo added after by code.', tagline: 'Finished ads from one product photo',
     description: 'A product photo and your offer: finished ads in several styles, sized for the platform, with your logo added.', was: 'new', oldRoutes: ['/tools/ad-pack', '/tools/app-ad-pack'], providers: AD_PACK_MODELS },

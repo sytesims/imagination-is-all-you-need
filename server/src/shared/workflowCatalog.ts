@@ -112,6 +112,7 @@ export const WF_ENTRIES: WfEntry[] = [
   // Characters
   I('character-sheet', 'character', { showcase: 'fad0bbe6', tags: ['turnaround', 'model sheet', 'consistent character', 'cast'] }),
   I('face-swap', 'character', { tags: ['face', 'portrait'] }),
+  I('phone-photo', 'character', { art: 'photo', tags: ['ugc', 'selfie', 'mirror selfie', 'phone', 'social', 'candid', 'portrait', 'influencer'] }),
   I('person-swap', 'character', { tags: ['body', 'outfit'] }),
   V('motion-control', 'character', { featured: 'kling-dance-swap', model: 'kling-v3-omni-edit', tags: ['dance', 'motion transfer', 'swap a character'] }),
   V('object-swap', 'character', { featured: 'h3-char-swap', model: 'minimax-h3-character-swap', tags: ['swap', 'replace a person', 'object swap', 'person swap', 'character swap'] }),

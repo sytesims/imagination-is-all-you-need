@@ -67,7 +67,7 @@ try {
   const fsw = W.find((w) => w.id === 'face-swap'); assert.equal(fsw.status, 'ready'); assert.deepEqual(fsw.slots.map((s: any) => [s.name, s.required, s.missing]), [['image', true, 'Add a target photo'], ['face', true, 'Add a face']]);
   assert.equal(fsw.generateLabel, 'Swap face');
   // step 3 (2026-10-22): Person Swap, Character Sheet, Product Shot and Upscale join the bar; step 4 (2026-10-23): Brush Edit, Camera Angles, Camera & Lens too
-  assert.deepEqual(W.filter((w) => w.status === 'ready').map((w) => w.id).sort(), ['ad-pack', 'brush-edit', 'camera-angles', 'camera-lens', 'character-sheet', 'erase', 'expand', 'face-swap', 'image-layers', 'material-swap', 'person-swap', 'product-shot', 'relight', 'remove-bg', 'try-on', 'upscale']);
+  assert.deepEqual(W.filter((w) => w.status === 'ready').map((w) => w.id).sort(), ['ad-pack', 'brush-edit', 'camera-angles', 'camera-lens', 'character-sheet', 'erase', 'expand', 'face-swap', 'image-layers', 'material-swap', 'person-swap', 'phone-photo', 'product-shot', 'relight', 'remove-bg', 'try-on', 'upscale']);
   assert.deepEqual(W.filter((w) => w.status !== 'ready').map((w) => w.id), [], 'nothing opens its own page any more');
   const be = W.find((w) => w.id === 'brush-edit'); assert.equal(be.surface, 'mask'); assert.equal(be.runner.toolId, 'app-inpaint'); assert.equal(be.generateLabel, 'Edit area');
   assert.equal(be.prompt.mode, 'required'); assert.equal(be.prompt.placeholder, 'Describe the change in the painted area'); assert.deepEqual(be.slots.map((s: any) => [s.name, s.required]), [['image', true]]);

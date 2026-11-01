@@ -11,6 +11,7 @@ import { SHOT_ANGLES, SHOT_DEFAULTS, parseShots, shotPrompt, FACE_SWAP_PROMPT, F
 import { GENERATE_MODELS, EDIT_MODELS, TWO_IMAGE_MODELS, MATERIAL_SWAP_MODELS, AD_PACK_MODELS, MASK_MODELS, REMOVE_BG_MODELS, EXPAND_MODELS, ERASE_MODELS, TRYON_MODELS, featureById, gridModelOf } from '../shared/imageFeatures.js';
 import { promptGrammarOf } from '../shared/promptGrammar.js';
 import { fillPattern, patternFor } from '../shared/promptPatterns.js';
+import { PHONE_HOLDERS, PHONE_LIGHTS, PHONE_DEFAULTS, phonePhotoPrompt } from '../shared/phonePhoto.js';
 import { EXPAND_ASPECTS, EXPAND_ASPECT_LABELS, TRYON_CATEGORIES, TRYON_PHOTO_TYPES, expandBlock, expandCanvas, photoBlock, eraseMaskBlock } from '../shared/imagePhotoTools.js';
 import { maskCover } from './imageFalApps.js';
 import { AD_STYLES, AD_STYLE_DEFAULT, AD_STYLE_IDS, AD_PLACEMENTS, AD_PLACEMENT_DEFAULT, AD_CORNERS, AD_TEXT_MAX, AD_ASPECT, adPrompt, placementOf } from '../shared/adPack.js';
@@ -739,6 +740,15 @@ export const APP_GALLERY: GalleryApp[] = [
     labels: { image: 'Product photo' }, promptTemplate: 'product photo of the uploaded item: {prompt}', fileOrPrompt: { file: 'image', message: 'Add a product photo or describe the product.' },
     fields: [{ name: 'scene', label: 'Scene', kind: 'select', control: 'tiles', options: PRODUCT_SCENES, default: 'studio-white' }],
     compose: (v, c) => c.has('image') ? joinPrompt(`product photo of the uploaded item: ${c.prompt}`, PRODUCT_KEEP, pick(PRODUCT_SCENES, v.scene)?.prompt) : joinPrompt(`product photo of ${c.prompt}`, pick(PRODUCT_SCENES, v.scene)?.prompt) },
+  // Phone Photo (2026-11-01, shared/phonePhoto.ts): a casual phone photo of an AI-made person. Two chip rows (who holds the phone, the light) and
+  // your words for who is in it; each model gets its own wording (promptPatterns ugc-photo). Text to image only; style off (no added look words).
+  { id: 'phone-photo', name: 'Phone Photo', category: 'Image', base: 'create-image', poster: null, description: 'An everyday phone photo of a made-up person: a selfie, a mirror shot or a friend\'s snap, in real room light.',
+    providers: GENERATE_MODELS, locked: { types: '["generate"]', style: 'none' }, exposed: ['prompt', 'aspect', 'provider', 'resolution', 'rights', 'seed', 'holder', 'light'],
+    labels: { prompt: 'Who is in the photo' },
+    fields: [{ name: 'holder', label: 'Taken by', kind: 'select', control: 'segmented', options: PHONE_HOLDERS.map(({ value, label }) => ({ value, label })), default: PHONE_DEFAULTS.holder },
+      { name: 'light', label: 'Light', kind: 'select', control: 'segmented', options: PHONE_LIGHTS.map(({ value, label }) => ({ value, label })), default: PHONE_DEFAULTS.light }],
+    compose: (v, c) => phonePhotoPrompt({ who: c.prompt, holder: v.holder, light: v.light }, c.provider),
+    notes: ['Made-up people only. Results are AI pictures, never real reviews or real customers.'] },
   // Brush Edit (was Inpaint; id kept so saved jobs and the API keep working). Only models whose route takes a mask (image grid finding 2: no Nano Banana 2, no Ideogram V4).
   { id: 'inpaint', name: 'Brush Edit', route: '/tools/brush-edit', category: 'Edit', base: 'create-image', poster: null, description: 'Paint over the area to change and describe it; everything else stays as it was.',
     locked: { types: '["inpaint"]' }, providers: MASK_MODELS /* quality order: GPT Image 2 (true mask inpaint), FLUX 3 Klein, Qwen-Image-Edit-2509 */, extraProviders: ['fal-bria-genfill'] /* Brush Edit-only engine (fal, tools/imageFalModels.ts) */, exposed: ['image', 'mask', 'prompt', 'provider', 'rights', 'seed'] },

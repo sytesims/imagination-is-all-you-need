@@ -86,6 +86,12 @@ const DECLS: Decl[] = [
     controls: [{ field: 'layout', label: 'Layout', kind: 'tiles', group: 'layout' }],
     prompt: { mode: 'optional', placeholder: 'Describe the character', composer: 'recipe', requiredWithout: { slot: 'image', missing: 'Describe the character' } }, modes: { default: 'generate', whenSlot: { image: 'edit' } },
     output: { aspect: 'fixed', fixedAspect: '4:3', resolution: 'model', count: 'model' }, surface: null, generateLabel: 'Make sheet', source: { note: 'character-sheet prompt' } },
+  // Phone Photo (2026-11-01): two chip rows (who holds the phone, the light) in one popover; your words say who is in it.
+  { id: 'phone-photo', icon: 'phone-photo', category: 'people', runner: app('app-phone-photo'), status: 'ready',
+    slots: [], groups: [{ id: 'phone', label: 'Phone', icon: 'phone-photo', summary: ['holder', 'light'] }],
+    controls: [{ field: 'holder', label: 'Taken by', kind: 'segmented', group: 'phone' }, { field: 'light', label: 'Light', kind: 'segmented', group: 'phone' }],
+    prompt: { mode: 'required', placeholder: 'Who is in the photo, what they are doing and where', composer: 'recipe' }, modes: { default: 'generate', whenSlot: null },
+    output: { aspect: 'model', resolution: 'model', count: 'model' }, surface: null, generateLabel: 'Make photo', source: { note: 'phone-photo prompts' } },
   { id: 'product-shot', icon: 'product', category: 'product', runner: app('app-product-shot'), status: 'ready',
     slots: [slot('image', 'Product photo', false, 'Optional: your product photo', '')],
     groups: [{ id: 'scene', label: 'Scene', icon: 'product', summary: ['scene'] }, { id: 'shape', label: 'Shape', icon: 'aspect', summary: ['aspect'] }],

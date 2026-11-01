@@ -398,7 +398,7 @@ const BASE_WORKFLOWS: { id: string; medium: string; name: string; needs: string;
   { id: 'multiview-to-3d', medium: '3d', name: 'Multi-view to 3D', needs: '2–4 images', tagline: 'Photos of the same object into one model', toolId: 'three-d' },
 ];
 /** The image recipe flows the canvas offers (the same list as web/src/shared/genFlows.ts; masks/angle sheets stay on their pages). */
-const IMAGE_RECIPE_IDS = new Set(['relight', 'upscale', 'remove-bg', 'image-layers', 'expand', 'product-shot', 'character-sheet', 'face-swap', 'person-swap', 'try-on', 'material-swap', 'ad-pack']);
+const IMAGE_RECIPE_IDS = new Set(['relight', 'upscale', 'remove-bg', 'image-layers', 'expand', 'product-shot', 'character-sheet', 'face-swap', 'person-swap', 'try-on', 'material-swap', 'ad-pack', 'phone-photo']);
 export function canvasWorkflows() {
   const out = BASE_WORKFLOWS.filter((f) => !!getTool(f.toolId));
   try {
