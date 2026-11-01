@@ -2,6 +2,7 @@
  * HW-SHAPES endpoints (Oct 19 2026): this computer's hardware (B1, DP 5), the runtime ComfyUI address (DP 6), learned timings (B5, DP 7)
  * and one-click model downloads (Q4). Registered from index.ts.
  */
+import { comfyAddressAllowed, COMFY_ADDRESS_MESSAGE } from './security/keyHosts.js';
 import type { FastifyInstance } from 'fastify';
 import { getHardware, setManual, getManual, lastRefreshAt, REFRESH_MIN_SEC, comfyUrlState, comfyUrlError, setComfyUrl, checkComfy, safeUrl, refreshReachability, parseSystemStats, hwKeyOf, displayDir, liveReading } from './hardware.js';
 import { isLoopback } from './routing/settings.js';
@@ -41,14 +42,14 @@ export function registerHardware(app: FastifyInstance) {
   app.put<{ Body: { url?: unknown } }>('/api/local/comfy', async (req, reply) => {
     if (!isLoopback(process.env.HOST)) return reply.code(403).send({ error: LOOPBACK_ONLY, errorType: 'forbidden', code: 'not_loopback' });
     const u = req.body?.url; if (u === null || u === '') return { ...setComfyUrl(null), canChange: true, cleared: true };
-    const e = comfyUrlError(u); if (e) return reply.code(400).send(bad('url', e));
+    const e = comfyUrlError(u) ?? (comfyAddressAllowed(String(u).trim()) ? null : COMFY_ADDRESS_MESSAGE); if (e) return reply.code(400).send(bad('url', e));
     const st = setComfyUrl(String(u)); void refreshReachability().catch(() => undefined); return { ...st, canChange: true };
   });
   app.delete('/api/local/comfy', async (_req, reply) => { if (!isLoopback(process.env.HOST)) return reply.code(403).send({ error: LOOPBACK_ONLY, errorType: 'forbidden', code: 'not_loopback' }); return { ...setComfyUrl(null), canChange: true, cleared: true }; });
   app.post<{ Body: { url?: unknown } }>('/api/local/comfy/test', async (req, reply) => {
     const given = req.body?.url != null && req.body.url !== '';
     if (given && !isLoopback(process.env.HOST)) return reply.code(403).send({ error: 'Testing another address from the browser is off because the server isn’t running on this computer.', errorType: 'forbidden', code: 'not_loopback' });
-    if (given) { const e = comfyUrlError(req.body!.url); if (e) return reply.code(400).send(bad('url', e)); }
+    if (given) { const e = comfyUrlError(req.body!.url) ?? (comfyAddressAllowed(String(req.body!.url).trim()) ? null : COMFY_ADDRESS_MESSAGE); if (e) return reply.code(400).send(bad('url', e)); }
     let url = given ? String(req.body!.url).trim() : config.comfyBaseUrl; let detected = false;
     // no address yet: look on the usual ports of this computer (ComfyUI 8188, Comfy Desktop 8000); the caller saves what it finds (PUT /api/local/comfy)
     if (!given && (!url || /cloud\.comfy\.org|\.run\.comfy\.app/i.test(url))) for (const u of COMFY_USUAL_URLS) { const c = await checkComfy(u, { timeoutMs: 1500, gguf: false }); if (c.reachable) { url = u; detected = true; break; } }

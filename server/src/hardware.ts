@@ -10,6 +10,7 @@
  *  - DP 6: the ComfyUI address can be set at runtime (kv 'local.comfyUrl', overrides COMFY_BASE_URL until cleared).
  * No GPU work, nothing installed: the probe only reads /system_stats, /object_info/<node>, nvidia-smi or sysctl.
  */
+import { comfyAddressAllowed } from './security/keyHosts.js';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -334,6 +335,7 @@ export function setComfyUrl(u: string | null) {
   config.comfyBaseUrl = next ?? ENV_URL; if (next) process.env.COMFY_BASE_URL = next; else if (ENV_URL) process.env.COMFY_BASE_URL = ENV_URL; else delete process.env.COMFY_BASE_URL;
   reach = null; cache = null; return comfyUrlState();
 }
-{ const saved = getKv<string | null>('local.comfyUrl', null); if (saved) { config.comfyBaseUrl = saved; process.env.COMFY_BASE_URL = saved; } }
+{ const saved = getKv<string | null>('local.comfyUrl', null); if (saved && !comfyAddressAllowed(saved)) console.warn(`[hardware] Ignoring the saved ComfyUI address ${safeUrl(saved) ?? '(invalid)'}: it isn't on this computer or your own network. Set it again in Settings, or add the host to OPENHIGGSFIELD_ALLOWED_HOSTS.`);
+  else if (saved) { config.comfyBaseUrl = saved; process.env.COMFY_BASE_URL = saved; } }
 /** Boot: first reachability check + probe in the background (never blocks start-up). */
 export function warmHardware() { if (config.backend === 'comfy' && config.comfyBaseUrl && !cloudUrl(config.comfyBaseUrl)) void refreshReachability().catch(() => undefined); if (!mockNow()) void reprobe().catch(() => undefined); }

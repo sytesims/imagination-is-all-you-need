@@ -4,6 +4,7 @@
  * Failures fail the job (auto-refund via the queue); no silent mock fallback on this path.
  */
 import path from 'node:path';
+import { comfyAuthFor } from '../security/keyHosts.js';
 import { copyFile, writeFile, mkdir, readFile } from 'node:fs/promises';
 import { translateText, translateLines } from '../translate.js';
 import { transcribe, transcribeSegments } from '../voiceRunner.js';
@@ -75,7 +76,7 @@ const probeFps = async (file: string) => { try { const { execFileSync } = await 
 
 /** build: B2, the Comfy Cloud runner passes buildCloudPlan (cloudWorkflows.ts) so each pass runs its workflows/cloud graph. */
 export async function runNative(job: Job, transport?: ComfyTransport, build: (j: any, o: { srcFps?: number }) => Plan = buildPlan) {
-  const c: ComfyTransport = transport ?? new ComfyNative(config.comfyBaseUrl, config.comfyApiKey ? { Authorization: `Bearer ${config.comfyApiKey}` } : {});
+  const c: ComfyTransport = transport ?? new ComfyNative(config.comfyBaseUrl, comfyAuthFor(config.comfyBaseUrl, config.comfyApiKey));
   job.status = 'running'; job.queuePos = 0; job.stage = 'uploading'; job.progress = 0; job.progressKind = 'indeterminate'; job.steps = null; job.liveStage = null;
   const plan: Plan = build(job as any, { srcFps: job.input.videoPath ? await probeFps(job.input.videoPath) : undefined });
   if (typeof plan.separation === 'boolean') { job.input.separation = plan.separation; // Get workflow rebuilds this run's plan, not today's readiness

@@ -11,6 +11,7 @@
  * with an ffmpeg post step fail as before (their earlier passes' files are not tracked across restarts).
  */
 import path from 'node:path';
+import { comfyAuthFor } from '../security/keyHosts.js';
 import type { Job } from '../jobs.js';
 import { DATA_DIR, config } from '../config.js';
 import { ComfyNative, type NativeOutput } from './native.js';
@@ -26,7 +27,7 @@ const imageJob = (j: Job) => j.input.outKind === 'image' || featureIdOfJob(j) !=
 const UNREACHABLE_MS = Number(env('RESUME_UNREACHABLE_MS')) || 2 * 60_000;
 const POLL_MS = Number(env('RESUME_POLL_MS')) || 2000;
 
-export const comfyFor = (base: string) => new ComfyNative(base, config.comfyApiKey ? { Authorization: `Bearer ${config.comfyApiKey}` } : {});
+export const comfyFor = (base: string) => new ComfyNative(base, comfyAuthFor(base, config.comfyApiKey));
 /** Outputs of one /history entry, per node (same shape ComfyNative.run returns). */
 export function outputsOf(h: any): Record<string, NativeOutput[]> {
   const outputs: Record<string, NativeOutput[]> = {};

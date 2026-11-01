@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { comfyAuthFor } from './security/keyHosts.js';
 import { modelNameForRun } from './models.js';
 import { jobs, Job, persistJob } from './jobs.js';
 import { db } from './db.js';
@@ -255,7 +256,7 @@ export function cancel(job: Job): boolean {
   return true;
 }
 
-const comfyFor = (base: string) => new ComfyNative(base, config.comfyApiKey ? { Authorization: `Bearer ${config.comfyApiKey}` } : {});
+const comfyFor = (base: string) => new ComfyNative(base, comfyAuthFor(base, config.comfyApiKey));
 /** The job's last ComfyUI prompt already finished on ComfyUI (the runner is only saving the result): a cancel now reports done. */
 async function lastPromptFinished(job: Job): Promise<boolean> {
   const cp = job.comfyPrompt; if (!cp?.id || !cp.base || cp.pass < cp.passes - 1) return false;

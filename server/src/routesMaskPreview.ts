@@ -11,6 +11,7 @@
  * (the UI hides the preview and the mask is computed inside the job). Rate-limited per caller.
  */
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { comfyAuthFor } from './security/keyHosts.js';
 import { createWriteStream, existsSync } from 'node:fs';
 import { unlink } from 'node:fs/promises';
 import { pipeline } from 'node:stream/promises';
@@ -70,14 +71,14 @@ async function samStatus(): Promise<{ available: boolean; engine: 'mock' | 'sam3
   if (config.backend === 'mock') return { available: true, engine: 'mock', reason: null };
   try {
     const { nativeMode } = await import('./comfy/runNative.js'); if (!nativeMode()) return { available: false, engine: 'sam3.1', reason: 'Mask preview needs a local ComfyUI (Comfy Cloud preview is not wired yet). The mask is found when you press Generate.' };
-    const { ComfyNative } = await import('./comfy/native.js'); const c = new ComfyNative(config.comfyBaseUrl, config.comfyApiKey ? { Authorization: `Bearer ${config.comfyApiKey}` } : {});
+    const { ComfyNative } = await import('./comfy/native.js'); const c = new ComfyNative(config.comfyBaseUrl, comfyAuthFor(config.comfyBaseUrl, config.comfyApiKey));
     const info = await c.objectInfo(); if (!info.SAM3_Detect) return { available: false, engine: 'sam3.1', reason: 'This ComfyUI has no SAM3_Detect node (update ComfyUI and add sam3.1_multiplex_fp16.safetensors). The mask is found when you press Generate.' };
     return { available: true, engine: 'sam3.1', reason: null };
   } catch { return { available: false, engine: 'sam3.1', reason: 'ComfyUI isn’t running on your computer. The mask is found when you press Generate.' }; }
 }
 /** One-frame SAM 3.1 on the local ComfyUI (node inputs per the built-in docs, NOT yet run on a real install). */
 async function samMask(frame: string, out: string, o: { prompt: string; point: { x: number; y: number } | null; w: number; h: number }) {
-  const { ComfyNative } = await import('./comfy/native.js'); const c = new ComfyNative(config.comfyBaseUrl, config.comfyApiKey ? { Authorization: `Bearer ${config.comfyApiKey}` } : {});
+  const { ComfyNative } = await import('./comfy/native.js'); const c = new ComfyNative(config.comfyBaseUrl, comfyAuthFor(config.comfyBaseUrl, config.comfyApiKey));
   const img = await c.upload(frame);
   const g: Record<string, any> = {
     1: { class_type: 'LoadImage', inputs: { image: img } },
