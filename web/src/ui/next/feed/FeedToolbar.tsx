@@ -46,7 +46,7 @@ const keyOf = (id: string) => id.replace('group:', '');
 /** "1 video", "40 videos" (phones show the number only) */
 const countWords = (n: number, noun: string) => `${n.toLocaleString()} ${n === 1 ? noun.replace(/s$/, '') : noun}`;
 
-function FilterMenu({ f, setF, groups, noun, total, failed, from }: { f: FeedFilter; setF: (f: FeedFilter) => void; groups: FeedGroup[]; noun: string; total: number; failed?: number | null; from?: FeedSource[] }) {
+function FilterMenu({ f, setF, groups, noun, total, failed, from, sets }: { f: FeedFilter; setF: (f: FeedFilter) => void; groups: FeedGroup[]; noun: string; total: number; failed?: number | null; from?: FeedSource[]; sets?: FeedSets | null }) {
   const [open, setOpen] = useState(false); const ref = useRef<HTMLButtonElement>(null);
   const n = activeCount(f); const set = (p: Partial<FeedFilter>) => setF({ ...f, ...p });
   const off = f.source !== 'mine' ? `Type and Show apply to your ${noun}. Pick Your ${noun} under From.` : null;
@@ -69,6 +69,10 @@ function FilterMenu({ f, setF, groups, noun, total, failed, from }: { f: FeedFil
           <Seg label="Sort" value={f.sort} opts={[['new', 'Newest'], ['old', 'Oldest']] as const} onPick={k => set({ sort: k })} testPre="sort" wide />
           <Seg label="Grid" value={f.size} opts={[['small', 'S', 'Small tiles'], ['medium', 'M', 'Medium tiles'], ['large', 'L', 'Large tiles']] as const} onPick={k => set({ size: k })} testPre="size" wide />
         </div>
+        {sets && sets.n > 0 && <div className="fd-sec fd-sets" data-testid="fd-sets"><span className="fd-pop-h" id="fd-h-sets">Sets</span>
+          <div className="fd-seg fd-seg-wide" role="group" aria-labelledby="fd-h-sets">
+            <button type="button" data-testid="fd-sets-fold" disabled={sets.open === 0} onClick={() => sets.setAll(false)}>Collapse all sets</button>
+            <button type="button" data-testid="fd-sets-open" disabled={sets.open === sets.n} onClick={() => sets.setAll(true)}>Expand all</button></div></div>}
         <SpendToday className="fd-spend-sheet" />
         <div className="fd-pop-foot"><span className="fd-showing" data-testid="fd-showing" aria-live="polite">Showing <b>{total.toLocaleString()}</b> {f.source === 'uploads' ? (total === 1 ? 'upload' : 'uploads') : total === 1 ? noun.replace(/s$/, '') : noun}</span>
           <button type="button" className="fd-clear" data-testid="fd-reset" disabled={!n} onClick={() => setF(clearedFilter(f))}>Clear all</button></div>
@@ -90,13 +94,16 @@ function FilterPills({ f, setF }: { f: FeedFilter; setF: (f: FeedFilter) => void
 export interface FeedToolbarProps { f: FeedFilter; setF: (f: FeedFilter) => void; /** the tab's Type list (IMAGE_FEED_GROUPS / VIDEO_FEED_GROUPS) */ groups: FeedGroup[]; /** "videos" / "images" */ noun: string;
   total: number; /** failed runs the same filters hold (the "N failed" link; null = unknown) */ failed?: number | null; loading: boolean; pj: ReturnType<typeof useProjects>; selecting: boolean; onSelect: () => void;
   /** Compare models: null = available; a string = why it isn't here (tooltip on the disabled button). Leave onCompare out for no button (Video). */ compareOff?: string | null; onCompare?: () => void; compareRef?: React.RefObject<HTMLButtonElement>; /** the queue activity pill */ live?: React.ReactNode;
-  /** the From choices this tab has (default all three; Audio has no Uploads) */ from?: FeedSource[] }
+  /** the From choices this tab has (default all three; Audio has no Uploads) */ from?: FeedSource[];
+  /** the feed's sets (SetRow): Collapse all sets / Expand all in Filter; null or left out when it has none */ sets?: FeedSets | null }
+/** How many sets the feed shows, how many are open, and fold or open them all. */
+export interface FeedSets { n: number; open: number; setAll: (open: boolean) => void }
 export default function FeedToolbar(p: FeedToolbarProps) {
   const { f } = p; const words = countWords(p.total, f.source === 'uploads' ? 'uploads' : p.noun); const unit = words.slice(words.indexOf(' '));
   return <div className="fd-bar" data-testid="feed-toolbar" role="toolbar" aria-label="Your generations">
     <div className="fd-l">
       <ProjectPicker pj={p.pj} />
-      <FilterMenu f={f} setF={p.setF} groups={p.groups} noun={p.noun} total={p.total} failed={p.failed} from={p.from} />
+      <FilterMenu f={f} setF={p.setF} groups={p.groups} noun={p.noun} total={p.total} failed={p.failed} from={p.from} sets={p.sets} />
       <FilterPills f={f} setF={p.setF} />
       <span className="fd-sep" aria-hidden />
       <span className="fd-count" data-testid="ic-gal-n" data-n={p.total} aria-live="polite" aria-label={words}><b>{p.total.toLocaleString()}</b><span className="fd-count-l">{unit}</span></span>

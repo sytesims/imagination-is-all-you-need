@@ -335,7 +335,7 @@ function Yours({ rows, chains, s, open, openChain }: { rows: Row[]; chains: WfCh
 /** Loading: the same frame as the page (rail + grid), so nothing jumps when the tools arrive. */
 const Loading = () => <div className="wn-page" aria-busy="true" aria-label="Loading workflows" data-testid="workflows-page"><div className="wn wn-b">
   <aside className="wn-side"><span className="wn-brand">Imagination is all you need</span><h1>Workflows</h1><span className="wn-shim wn-shim-search" />{[0, 1, 2, 3, 4, 5, 6].map((n) => <span key={n} className="wn-shim wn-shim-cat" />)}</aside>
-  <main className="wn-main"><span className="wn-shim wn-shim-h" /><div className="wn-grid">{[0, 1, 2, 3, 4, 5].map((n) => <span key={n} className="wn-shim wn-shim-card" aria-hidden />)}</div></main></div></div>;
+  <div className="wn-main"><span className="wn-shim wn-shim-h" /><div className="wn-grid">{[0, 1, 2, 3, 4, 5].map((n) => <span key={n} className="wn-shim wn-shim-card" aria-hidden />)}</div></div></div></div>;
 
 /** One card on the page: a workflow or a multi-step chain (the picks mix them: the featured row starts with two chains). */
 type Item = { kind: 'row'; r: Row; id: string } | { kind: 'chain'; c: WfChain; id: string };
@@ -359,7 +359,7 @@ export default function Workflows({ tools }: { tools: ToolInfo[] }) {
   /* the user's picks, in their order, as far as the search keeps them */
   const item = (id: string): Item | null => { if (id.startsWith('chain:')) { const c = f.chains.find((x) => `chain:${x.id}` === id); return c ? { kind: 'chain', c, id } : null; } const r = f.hits.find((x) => x.e.id === id); return r ? { kind: 'row', r, id } : null; };
   const featured = WF_PAGE_FEATURED.map(item).filter((x): x is Item => !!x); const kept = WF_PAGE_KEEP.map(item).filter((x): x is Item => !!x);
-  const picked = [...featured, ...kept]; const total = f.rows.length + f.chainsHere.length;
+  const picked = [...featured, ...kept];
   /** Surprise me: a random workflow on this page that runs here right now, a made one twice as likely */
   const surprise = () => { const pool = f.rows.filter((r) => ['free', 'cloud', 'sample'].includes(r.run.kind)).flatMap((r) => (r.made ? [r, r] : [r])); const pick = pool[Math.floor(Math.random() * pool.length)]; if (pick) openRow(pick); };
   const savedItems: Item[] = s.saved.map((id): Item | null => { if (id.startsWith('chain:')) { const c = chainsAll.find((x) => `chain:${x.id}` === id); return c ? { kind: 'chain', c, id } : null; } const r = rows.find((x) => x.e.id === id); return r && (!f.ranked || f.hits.includes(r) || f.elsewhere.includes(r)) ? { kind: 'row', r, id } : null; }).filter((x): x is Item => !!x);
@@ -369,6 +369,8 @@ export default function Workflows({ tools }: { tools: ToolInfo[] }) {
   if (!opts.some((o) => o.value === f.cat)) opts.push({ value: f.cat, label: f.cat === 'chains' ? 'Multi-step' : f.cat === 'ideas' ? 'Ideas, not built yet' : WF_CATS.find((c) => c.id === f.cat)?.label ?? f.cat, aside: '0' });
   const inCat = f.cat === 'chains' ? picked.filter((x) => x.kind === 'chain') : f.cat === 'saved' ? savedItems : picked.filter((x) => catOfItem(x) === f.cat);
   const catInfo = WF_CATS.find((c) => c.id === f.cat);
+  /* the header counts the cards shown right now (the picks, or the category's); ideas aren't workflows yet */
+  const shown = f.cat === 'all' ? picked.length : f.cat === 'ideas' ? 0 : inCat.length;
   const nothing = f.cat === 'all' ? !picked.length : f.cat === 'ideas' ? !f.ideas.length : !inCat.length;
   /* "Made here" marks the exceptions: when every card on the page is made here, no card carries it */
   const showMade = !picked.every((x) => (x.kind === 'row' ? x.r.made : chainFacts(x.c, rows).made));
@@ -384,8 +386,8 @@ export default function Workflows({ tools }: { tools: ToolInfo[] }) {
         <Note mode={mode} />
         <LeftOut left={left.filter((x) => onWorkflowsPage(x.e.id))} />
       </aside>
-      <main className="wn-main">
-        <header className="wn-mhead"><h2>What do you want to make?</h2><p>{total} workflows, each with its real model. Open one to see where it runs and what it costs.</p><Goals f={f} /></header>
+      <div className="wn-main">
+        <header className="wn-mhead"><h2>What do you want to make?</h2><p>{shown > 0 && `${shown} ${shown === 1 ? 'workflow' : 'workflows'} here. `}Open one to see where it runs and what it costs.</p><Goals f={f} /></header>
         <Yours rows={rows} chains={chainsAll} s={s} open={openRow} openChain={openChain} />
         <div className={`wn-results${rise ? ' is-rising' : ''}`} key={f.cat}>
         {nothing && !f.elsewhere.length ? (f.cat === 'saved' && !f.q ? <p className="wn-first wn-first-big">Nothing saved yet. Press <SavedTagIcon size={13} /> on any card.</p> : <Empty f={f} rows={f.rows} open={openRow} />) : <>
@@ -393,7 +395,7 @@ export default function Workflows({ tools }: { tools: ToolInfo[] }) {
             <Head id="wn-h-featured" title="Start here" line="Our favourites, each with a real result made here." count={featured.length} />
             <div className="wn-grid">{tiles(featured, false)}</div></section>}
           {f.cat === 'all' && kept.length > 0 && <section className="wn-sec" aria-labelledby="wn-h-more" data-testid="wn-sec-more">
-            <Head id="wn-h-more" title="More workflows" line="Longer takes, a shot from a 3D sketch, try-ons, music and sound." count={kept.length} />
+            <Head id="wn-h-more" title="More workflows" line="A scene from a script, try-ons, music and sound." count={kept.length} />
             <div className="wn-grid">{tiles(kept)}</div></section>}
           {f.cat !== 'all' && f.cat !== 'ideas' && inCat.length > 0 && <section className="wn-sec" aria-labelledby={`wn-h-${f.cat}`} data-testid={`wn-sec-${f.cat}`}>
             <Head id={`wn-h-${f.cat}`}
@@ -408,7 +410,7 @@ export default function Workflows({ tools }: { tools: ToolInfo[] }) {
             <div className="wn-near">{f.elsewhere.map((r) => <button key={r.e.id} type="button" className="wn-pin" onClick={() => openRow(r)} onPointerEnter={() => warm(r.e.href)}><ToolIconFor id={r.e.toolId} size={16} />{r.e.name}<small>{tabOf(r.e.href)}</small></button>)}</div></section>}
         </>}
         </div>
-      </main>
+      </div>
     </div>
     {sheet && <Sheet r={sheet} rows={rows} chains={chainsAll} s={s} onClose={() => setSheet(null)} onOpen={openRow} mock={!!mode?.mock} />}
     {chainSheet && <ChainSheet c={chainSheet} rows={rows} s={s} onClose={() => setChainSheet(null)} onOpen={openRow} />}

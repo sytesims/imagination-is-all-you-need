@@ -101,7 +101,8 @@ function tokenPrice(tok: string, place: string, o: { kind: string; title?: strin
   return R(<Price {...po} top={usd} sub={sub} title={[o.title ?? (tok.startsWith('≈') ? `${usd}, an estimate.` : null), detail].filter(Boolean).join(' ') || tok} />, shown);
 }
 /** A row that can't run (as set, or here at all): the reason in a few words, the full sentence on hover. */
-const offWords = (s: string | null | undefined) => { const r = reasonShort(s); return r === 'Not for these settings' ? 'Not available' : r; };
+const offWords = (s: string | null | undefined) => { const r = reasonShort(s); if (r !== 'Not for these settings') return r;
+  const t = String(s ?? '').trim().replace(/\.$/, ''); return t && t.length <= 22 ? t : 'Not available'; }; // a reason short enough is shown as sent
 /** The page's handler for a row's need action ("Add image" opens the start-image slot); absent = the reason only. */
 const NeedAct = createContext<((n: Need) => void) | null>(null);
 const NEED_WORDS: Record<NonNullable<Need['action']>, string> = { 'add-image': 'Add image', 'add-end-frame': 'Add images', 'add-video': 'Add video', 'add-audio': 'Add audio' };

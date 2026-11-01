@@ -115,7 +115,7 @@ export function fitNote(changes: FitChange[], model: string): string {
 export interface Need { code: 'start_image' | 'two_images' | 'end_frame' | 'video' | 'audio' | 'mask' | 'reference'; short: string; full: string; action: 'add-image' | 'add-end-frame' | 'add-video' | 'add-audio' | null }
 const NEEDS: { re: RegExp; need: Omit<Need, 'full'> }[] = [
   { re: /needs (the |a |an )?(last|end) frame/i, need: { code: 'end_frame', short: 'Needs an end frame', action: 'add-end-frame' } },
-  { re: /only (does|takes|runs) (image to video|first and last frame)(,? or (image to video|first and last frame))?\b(?! or text)|needs (a |an |the )?(start|first) (frame|image)|needs (a |an )?(photo|image|picture)\b/i, need: { code: 'start_image', short: 'Needs a start image', action: 'add-image' } },
+  { re: /only (does|takes|runs) (image to video|first and last frame)(,? or (image to video|first and last frame))?\b(?! or text)|needs (a |an |the )?(start|first) (frame|image)|needs (a |an )?(photo|image|picture)\b|^add a (start|first) (image|frame)\b/i, need: { code: 'start_image', short: 'Needs a start image', action: 'add-image' } },
   { re: /needs (two|2) (images|frames)/i, need: { code: 'two_images', short: 'Needs 2 images', action: 'add-end-frame' } },
   { re: /needs (a |an |the )?(video|clip)\b|only (does|takes) (a )?video/i, need: { code: 'video', short: 'Needs a video', action: 'add-video' } },
   { re: /needs (a |an |the )?(audio|voice|song|track)\b/i, need: { code: 'audio', short: 'Needs audio', action: 'add-audio' } },

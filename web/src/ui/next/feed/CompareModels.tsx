@@ -1,7 +1,7 @@
 /** Compare models: pick 2–4 models, see each one's price and what it adapts, one Generate runs the SAME prompt + settings on each
  *  (POST /api/compare/quote first: quote = charge, spending caps and the agent budget checked for the whole set). Results land in the
  *  feed as one labelled group (CompareGroupHead) with a side-by-side view (CompareView). */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { cancelJob, type JobState, type ProviderInfo } from '../../../api';
 import { Popover } from '../../../shared/Popover';
@@ -102,8 +102,8 @@ export default function CompareModels(p: CompareModelsProps) {
 }
 
 /** A compared job's caption: model · place · price · time. */
-/** The header over a comparison group in the feed. */
-export function CompareGroupHead({ jobs, onSide }: { jobs: JobState[]; onSide: () => void }) {
+/** The header over an open set in the feed (Compare models, Material Swap), drawn by SetRow; `fold` is its chevron. */
+export function CompareGroupHead({ jobs, onSide, fold }: { jobs: JobState[]; onSide: () => void; /** SetRow's fold chevron, last */ fold?: ReactNode }) {
   const own = useOwnAccounts(); const n = (jobs[0] as any)?.compare?.n ?? jobs.length; const prompt = String((jobs[0] as any)?.input?.prompt ?? '');
   const sent = jobs.filter(j => j.id); /* the set's jobs so far (a set still being sent also has waiting cards, no id yet) */
   const sample = sent.length > 0 && sent.every(j => (j as any).demo || (j as any).isSample); const charged = jobs.filter(j => !(j as any).demo && !(j as any).isSample && (j as any).runOn !== 'local' && !(j.status === 'failed' && ((j as any).refunded > 0 || (j as any).refund?.refunded))).reduce((s, j) => s + Number((j as any).cost ?? 0), 0);
@@ -114,7 +114,7 @@ export function CompareGroupHead({ jobs, onSide }: { jobs: JobState[]; onSide: (
     {sw ? <span className="cmp-gh-p">Same object, one result per swatch</span> : prompt && <span className="cmp-gh-p" title={prompt}>“<MentionText text={prompt} />”</span>}
     <span className="cmp-gh-t" data-testid="cmp-group-total">{charged > 0 ? `${runPrice({ own, credits: charged }) ?? ''} total` : sample ? 'Samples · nothing billed' : !sent.length ? 'Starting…' : 'Free'}{failed ? ` · ${failed} failed` : ''}{jobs.length < n ? ` · ${n - jobs.length} not shown` : ''}</span>
     {sw && live.length > 0 && <button type="button" className="fd-link cmp-gh-b" data-testid="cmp-stop" onClick={() => void stop()} {...tip('Cancel the swatches that haven’t finished. What’s done stays.')}>Stop the rest</button>}
-    <button type="button" className="fd-link cmp-gh-b" data-testid="cmp-side" onClick={onSide} disabled={!jobs.some(j => j.status === 'done')}>Side by side</button></div>;
+    <button type="button" className="fd-link cmp-gh-b" data-testid="cmp-side" onClick={onSide} disabled={!jobs.some(j => j.status === 'done')}>Side by side</button>{fold}</div>;
 }
 /** Side by side: every model's first image with its caption; a click opens it in the viewer. */
 export function CompareView({ jobs, onClose, onOpen }: { jobs: JobState[]; onClose: () => void; onOpen: (id: string) => void }) {

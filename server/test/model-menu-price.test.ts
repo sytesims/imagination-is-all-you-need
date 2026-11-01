@@ -46,6 +46,11 @@ const cases: [string, string][] = [
   ['Kling takes at most 4 reference images.', 'Max 4 refs'],
   ['This route doesn\'t do 1080p.', 'No 1080p'],
   ['Wan needs the end frame.', 'Needs an end frame'],
+  ['Comfy Cloud can\'t run this job. Kling 4.0 edits at 720p or 1080p.', 'Only 720p / 1080p'], // comfy/kling4Cloud.ts k4EditIssue
+  ['Runs at 480p, 720p or 1080p.', 'Only 480p to 1080p'],
+  ['SeedVR2 needs a graphics card on your computer. Try Real-ESRGAN x2, or SeedVR2 in the cloud', 'Needs a graphics card'], // videoUpscaleModels.ts
+  ['Needs a graphics card', 'Needs a graphics card'], // the local row's own status words
+  ['Comfy Cloud can\'t run this job. This route only does new images from a prompt.', 'Text only'], // Relight: FLUX.2 flex / klein 9B
   ['Something we have no words for.', 'Not for these settings'],
 ];
 for (const [full, short] of cases) assert.equal(reasonShort(full), short, full);

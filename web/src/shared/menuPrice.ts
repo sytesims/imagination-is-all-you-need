@@ -52,6 +52,7 @@ export function reasonShort(full: string | null | undefined): string {
   if (/(too old|update comfyui|newer comfyui)/i.test(body)) return 'Update ComfyUI';
   if (/(only does|only takes|only runs) text to video or image to video/i.test(body)) return 'Text or photo only';
   if (/(only does|only takes|text only|only runs) text\b/i.test(body)) return 'Text only';
+  if (/only (does|makes) new images from a prompt/i.test(body)) return 'Text only'; // routing/runnable.ts modesReason(['generate'])
   if (/needs (the |a |an )?(last|end) frame/i.test(body)) return 'Needs an end frame';
   if (/needs (the |a |an )?(first|start) frame|needs (a |an )?(photo|image|picture)\b/i.test(body)) return 'Needs a photo';
   if (/needs (a |an |the )?(video|clip)\b/i.test(body)) return 'Needs a video';
@@ -69,7 +70,11 @@ export function reasonShort(full: string | null | undefined): string {
   const res = /(?:no|doesn[’']t (?:do|support)|not (?:at|in)|isn[’']t (?:available|supported) (?:at|in))\s+(\d{3,4}p|[248]K)\b/i.exec(body)?.[1] ?? (/(not supported|not available|isn[’']t)/i.test(body) ? RES.exec(body)?.[1] : null);
   if (res) return `No ${res}`;
   if (/aspect|ratio/i.test(body) && /(not|only|doesn)/i.test(body)) return 'Other aspect only';
+  /* the sizes it does make: "Kling 4.0 edits at 720p or 1080p." → "Only 720p / 1080p" (three or more: "Only 480p to 1080p") */
+  const only = /\b(?:edits|runs|makes|renders|works|takes)(?: only)? at ((?:\d{3,4}p|[248]K)(?:(?:,\s*|,?\s+or\s+)(?:\d{3,4}p|[248]K))*)\b/i.exec(body)?.[1];
+  if (only) { const rs = only.split(/,\s*|,?\s+or\s+/i); return rs.length > 2 ? `Only ${rs[0]} to ${rs[rs.length - 1]}` : `Only ${rs.join(' / ')}`; } // fits the row
   if (/too (big|heavy|large)|not enough (vram|memory)|doesn[’']t fit/i.test(body)) return 'Too big for this GPU';
+  if (/needs a (graphics card|gpu)\b/i.test(body)) return 'Needs a graphics card';
   if (/download/i.test(body)) return 'Needs a download';
   if (/custom node|install/i.test(body)) return 'Needs a custom node';
   return 'Not for these settings';

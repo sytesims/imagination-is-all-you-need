@@ -91,9 +91,22 @@ button.chip:focus-visible,.seg button:focus-visible,.drop:focus-visible,.compare
 .count{color:var(--text-3);font-size:var(--fs-xs);margin-left:4px}
 label.field{display:block;font-size:11px;letter-spacing:.12em;color:var(--text-3);margin:18px 0 8px;font-weight:700;text-transform:uppercase}
 label.field .helper{text-transform:none;letter-spacing:0;font-weight:500;font-size:var(--fs-xs)}
-input[type=text],input[type=number],select,textarea{width:100%;min-height:42px;padding:10px 12px;border-radius:var(--r-md);border:1px solid var(--border);background:var(--bg);color:var(--text);font:inherit;font-size:var(--fs-sm);transition:border-color var(--fast) var(--ease),box-shadow var(--fast) var(--ease)}
+/* Text fields: ONE look for every typed field (keys, addresses, numbers, selects, notes). Focus = a 1px orange border + a soft orange glow,
+   never a second white outline on top. Places with their own field look keep it, but share this focus. */
+input[type=text],input[type=password],input[type=url],input[type=email],input[type=number],input.conn-input,select,textarea{box-sizing:border-box;width:100%;min-height:40px;padding:9px 12px;border-radius:var(--r-md);border:1px solid var(--border-strong);background:var(--bg);color:var(--text);font:inherit;font-size:var(--fs-sm);line-height:20px;transition:border-color var(--fast) var(--ease),box-shadow var(--fast) var(--ease)}
+:is(input[type=text],input[type=password],input[type=url],input[type=email],input[type=number],input.conn-input,select,textarea):hover:not(:focus,:disabled){border-color:var(--state-border-hover)}
+input::placeholder,textarea::placeholder{color:var(--text-3);opacity:1}
 textarea{resize:vertical;line-height:22px}
-input:focus,select:focus,textarea:focus{outline:none;box-shadow:var(--glow);border-color:var(--accent)}
+input:focus,select:focus,textarea:focus{outline:none}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;border-color:var(--accent);box-shadow:var(--field-focus)}
+/* Safari's own key / contacts button inside a field: API keys are not logins (shared/SecretInput.tsx) */
+input::-webkit-credentials-auto-fill-button,input::-webkit-contacts-auto-fill-button,input::-webkit-strong-password-auto-fill-button{visibility:hidden;display:none!important;pointer-events:none;width:0;margin:0}
+.secret{position:relative;display:flex;width:100%;min-width:0}
+.secret>input{flex:1;min-width:0;padding-right:60px!important}
+.secret-eye{all:unset;box-sizing:border-box;position:absolute;top:50%;right:6px;transform:translateY(-50%);height:26px;padding:0 8px;border-radius:var(--r-sm);font:500 12px/26px var(--font-sans);color:var(--text-2);cursor:pointer}
+.secret-eye:hover{color:var(--text);background:var(--state-hover)}
+.secret-eye:focus-visible{color:var(--text);box-shadow:inset 0 0 0 1px var(--accent)}
+.secret-eye:disabled,.secret>input:placeholder-shown+.secret-eye{display:none}
 input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
 input[type=range]{accent-color:var(--accent)}
 details summary{cursor:pointer;color:var(--text-2);font-size:var(--fs-sm);font-weight:600;border-radius:var(--r-sm)}
@@ -768,7 +781,6 @@ h1,h2,h3{letter-spacing:var(--tracking-display)}
 /* one accent: neutralise everything except Generate + badges */
 .mode-tabs button.on,.mode-seg button.on{background:var(--surface-3);color:var(--text);box-shadow:inset 0 0 0 1px var(--hairline-strong)}
 .chip.on{background:var(--surface-3);border-color:var(--hairline-strong);color:var(--text)}
-input:focus,select:focus,textarea:focus{border-color:var(--hairline-strong);box-shadow:var(--focus)}
 *:focus-visible{outline:none;box-shadow:var(--focus)}
 .version.on{border-color:var(--text);box-shadow:none}
 .m-tab.on{color:var(--text)}
@@ -2924,6 +2936,7 @@ html body .assets-shell .assets-top h1{font-size:18px;font-family:inherit;text-t
 /* /licenses: required credit lines (from /api/licenses attribution) */
 .lic-credits{margin:16px 0 20px;padding:14px 16px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
 .lic-credits h3{margin:0 0 4px;font-size:15px}.lic-credits ul{margin:8px 0 0;padding-left:18px;display:grid;gap:4px}
+.lic-parts details{border-top:1px solid var(--border);padding:8px 0}.lic-parts details:first-of-type{margin-top:8px}.lic-parts summary{cursor:pointer}.lic-parts li{overflow-wrap:anywhere}
 .lic-credit q{font-weight:600;color:var(--text)}.lic-credit a{font-size:12px;margin-left:4px}.lic-none{color:var(--text-3);font-size:12px}
 /* /plugins cards with fallbacks */
 .plug-card{display:flex;flex-direction:column;gap:8px}.plug-head{display:flex;align-items:center;gap:10px}.plug-head b{flex:1;min-width:0}
