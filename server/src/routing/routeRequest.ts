@@ -11,6 +11,7 @@ import { routerModelOfRoute } from './routerModels.js';
 import { falImageInput } from '../providers/fal.js';
 import { replicateImageInput } from '../providers/replicate.js';
 import { handOff } from '../mediaHandoff.js';
+import { hostedPromptOf } from './hostedPrompt.js';
 
 type J = { id: string; toolId: string; provider: string; input: Record<string, any> };
 export type RouteExtras = { imageUrls?: string[]; imageSize?: { width: number; height: number }; aspect?: string };
@@ -25,7 +26,7 @@ const kleinRefUris = async (i: Record<string, any>) => { const ps: string[] = (i
 export async function routeRequest(job: J, r: RouteDef, k = 0, extras: RouteExtras = {}): Promise<{ body: any; input: Record<string, any> }> {
   const gi = refInputFor(job, r); // prompt grammar: every prompt field in this model's own reference syntax; the job keeps what was typed
   const shots: { label: string; prompt: string }[] | null = Array.isArray(gi.shots) && gi.shots.length ? gi.shots : null; // Shots: one request per angle, each with its own prompt
-  const promptAt = (n: number) => shots?.[n]?.prompt ?? String(gi.hostedPrompt ?? gi.prompt ?? '');
+  const promptAt = (n: number) => shots?.[n]?.prompt ?? hostedPromptOf(gi);
   const seed = Number.isInteger(job.input.seed) ? job.input.seed + k : undefined;
   if (r.direct) { // official lab APIs (providers/direct.ts): one request per output image, one per video / audio job
     const input = { ...gi, ...(shots ? { prompt: promptAt(k), hostedPrompt: promptAt(k) } : {}), seed };

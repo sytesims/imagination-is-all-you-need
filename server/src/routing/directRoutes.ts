@@ -6,6 +6,7 @@
  * Batch 2 adds a lab with: a DIRECT_PROVIDERS entry (providers/direct.ts), a DirectSpec per route (providers/directSpecs.ts), a row here and a price row.
  */
 import type { RouteDef } from './types.js';
+import { hostedPromptOf } from './hostedPrompt.js';
 import { bflSpec, b64, minimaxVideoSpec, minimaxImageSpec, minimaxSpeechSpec, ltxSpec, bflVideoSpec, minimaxRefImages } from '../providers/directSpecs.js';
 import { bflFlexRequest, bflKlein2Request, oneMp } from '../hostedRequests.js';
 import { VIDEO_LIMITS, routeCaps, routeVideoReason, videoCapsBlock } from '../tools/h3/videoCaps.js';
@@ -18,7 +19,7 @@ const MINIMAX_ENV = 'OPENHIGGSFIELD_MINIMAX_API_KEY'; const LTX_ENV = 'OPENHIGGS
 const base = (o: Pick<RouteDef, 'routeId' | 'modelId' | 'endpoint' | 'sourceUrl' | 'label' | 'envKey' | 'vendor'> & Partial<RouteDef>): RouteDef => ({ kind: 'direct', priceRef: o.routeId, checkedAt: D,
   typicalLatencySec: 60, latencyEstimated: true, latencySource: 'estimated: the lab publishes no latency; recorded per run', ...o });
 const refsOf = (i: Record<string, any>): string[] => (i.refPaths ?? (i.imagePath ? [i.imagePath] : []));
-const promptOf = (i: Record<string, any>) => String(i.hostedPrompt ?? i.prompt ?? '');
+const promptOf = hostedPromptOf; // the full composed prompt, as on Comfy Router (routing/hostedPrompt.ts)
 const seedOf = (i: Record<string, any>) => (Number.isInteger(i.seed) ? i.seed : undefined);
 const noDraft = (name: string) => (i: Record<string, any>) => (i.draft ? `${name} has no draft mode` : null);
 
