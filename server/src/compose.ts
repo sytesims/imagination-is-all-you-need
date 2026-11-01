@@ -59,7 +59,7 @@ export function pictureArgs(p: ComposeInput, plan: TimelinePlan, W: number, H: n
   const inputs: string[] = []; const f: string[] = []; let n = 0;
   const durs = p.clips.map((c) => (c.cut ? r3(c.cut.out - c.cut.in) : c.full));
   for (const c of p.clips) { inputs.push(...(c.cut ? ['-ss', String(c.cut.in), '-t', String(r3(c.cut.out - c.cut.in))] : []), '-i', c.file); n++; }
-  const tail = (d: number, k: string) => `,fps=30,format=yuv420p,setsar=1,tpad=stop_mode=clone:stop_duration=2,trim=duration=${d},setpts=PTS-STARTPTS,settb=AVTB[${k}]`;
+  const tail = (d: number, k: string) => `,fps=30,format=yuv420p,setsar=1,tpad=stop_mode=clone:stop_duration=2,trim=duration=${d},setpts=PTS-STARTPTS,settb=AVTB,fps=30[${k}]`; /* fps again last: ffmpeg 7.1's settb drops the frame rate and xfade then refuses */
   let joined: string;
   if (p.layout === 'side-by-side') {
     const L = legacy ?? { W0: W, H0: H }; const t = plan.total;
