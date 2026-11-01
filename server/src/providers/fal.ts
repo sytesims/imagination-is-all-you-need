@@ -8,6 +8,7 @@
  * We follow the status_url / response_url returned by submit (fal's own guidance) and only build URLs when they are missing.
  */
 import { BusyError, retryAfterMs, withBusyRetry } from '../busyRetry.js';
+import { PollTolerance, MISS, httpError, HOSTED_POLL_MS } from '../hostedPoll.js';
 export const FAL_QUEUE = 'https://queue.fal.run';
 export interface FalSubmit { request_id: string; status_url?: string; response_url?: string; cancel_url?: string; queue_position?: number }
 export interface FalStatus { status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED'; request_id?: string; queue_position?: number; response_url?: string; error?: string; error_type?: string; metrics?: { inference_time?: number } }
@@ -61,24 +62,36 @@ export async function falSubmit(slug: string, input: Record<string, unknown>, ke
   return r.json() as Promise<FalSubmit>;
 }
 export async function falStatus(statusUrl: string, key: string, f: Fetch = fetch): Promise<FalStatus> {
-  const r = await f(statusUrl, { headers: headers(key) }); if (!r.ok) throw new Error(`fal status ${r.status}`); return r.json() as Promise<FalStatus>;
+  const r = await f(statusUrl, { headers: headers(key) }); if (!r.ok) throw httpError(`fal status ${r.status}`, r.status); return r.json() as Promise<FalStatus>;
 }
 export async function falResult<T = FalImageResult>(responseUrl: string, key: string, f: Fetch = fetch): Promise<T> {
-  const r = await f(responseUrl, { headers: headers(key) }); if (!r.ok) throw new Error(`fal result ${r.status}: ${(await r.text()).slice(0, 300)}`); return r.json() as Promise<T>;
+  const r = await f(responseUrl, { headers: headers(key) }); if (!r.ok) throw httpError(`fal result ${r.status}: ${(await r.text()).slice(0, 300)}`, r.status); return r.json() as Promise<T>;
 }
-export async function falCancel(cancelUrl: string, key: string, f: Fetch = fetch) { await f(cancelUrl, { method: 'PUT', headers: headers(key) }).catch(() => {}); }
+/** Ask fal to cancel (best effort, never throws): true when fal accepted it (202) or the request is already finished / gone. */
+export async function falCancel(cancelUrl: string, key: string, f: Fetch = fetch) { try { const r = await f(cancelUrl, { method: 'PUT', headers: headers(key) }); return r.ok || r.status === 400 || r.status === 404; } catch { return false; } }
+/** Where a submitted fal request lives: stored on the job at once (job.remote), so a restart or Retry download can poll it again. */
+export interface FalHandle { requestId: string; statusUrl: string; responseUrl: string; cancelUrl: string }
 /** submit → poll status until COMPLETED (error/error_type = failure) → fetch result. */
-/** A busy submit (429) is sent again later (busyRetry.ts): fal never queued it, so nothing runs twice. onBusy(ms) = waiting that long. */
-export async function falRun(slug: string, input: Record<string, unknown>, key: string, o: { timeoutMs: number; pollMs?: number; f?: Fetch; onStatus?: (s: FalStatus) => void; onSubmit?: (id: string) => void; onBusy?: (ms: number) => void }) {
-  const f = o.f ?? fetch;
-  const sub = await withBusyRetry(() => falSubmit(slug, input, key, { startTimeoutSec: Math.ceil(o.timeoutMs / 1000), f }), { busyOf: (e) => (e instanceof BusyError ? e : null), onWait: (ms) => o.onBusy?.(ms), deadline: Date.now() + o.timeoutMs });
-  o.onSubmit?.(sub.request_id);
-  const u = falUrls(slug, sub.request_id); const statusUrl = sub.status_url ?? u.status; const responseUrl = sub.response_url ?? u.result;
-  const end = Date.now() + o.timeoutMs;
+/** A busy submit (429) is sent again later (busyRetry.ts): fal never queued it, so nothing runs twice. onBusy(ms) = waiting that long.
+ *  Polling keeps the SAME request through network blips (hostedPoll.ts); resume = a handle from before (restart / Retry download): no submit,
+ *  only polling. isCanceled → fal is asked to cancel and the run throws 'canceled'. */
+export async function falRun(slug: string, input: Record<string, unknown>, key: string, o: { timeoutMs: number; pollMs?: number; f?: Fetch; onStatus?: (s: FalStatus) => void; onSubmit?: (id: string, h: FalHandle) => void; onBusy?: (ms: number) => void; resume?: FalHandle | null; isCanceled?: () => boolean; sleep?: (ms: number) => Promise<void> }) {
+  const f = o.f ?? fetch; const sleep = o.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  let h = o.resume ?? null;
+  if (!h) {
+    const sub = await withBusyRetry(() => falSubmit(slug, input, key, { startTimeoutSec: Math.ceil(o.timeoutMs / 1000), f }), { busyOf: (e) => (e instanceof BusyError ? e : null), onWait: (ms) => o.onBusy?.(ms), deadline: Date.now() + o.timeoutMs });
+    const u = falUrls(slug, sub.request_id); h = { requestId: sub.request_id, statusUrl: sub.status_url ?? u.status, responseUrl: sub.response_url ?? u.result, cancelUrl: sub.cancel_url ?? u.cancel };
+    o.onSubmit?.(sub.request_id, h);
+  }
+  const end = Date.now() + o.timeoutMs; const tol = new PollTolerance('fal'); const pollMs = o.pollMs ?? HOSTED_POLL_MS();
   for (;;) {
-    const s = await falStatus(statusUrl, key, f); o.onStatus?.(s);
-    if (s.status === 'COMPLETED') { if (s.error || s.error_type) throw new Error(`fal ${s.error_type ?? 'error'}: ${s.error ?? ''}`.trim()); return { requestId: sub.request_id, status: s, result: await falResult(s.response_url ?? responseUrl, key, f) }; }
-    if (Date.now() >= end) { await falCancel(sub.cancel_url ?? u.cancel, key, f); const e = new Error('fal timeout'); (e as any).timeout = true; throw e; }
-    await new Promise((r) => setTimeout(r, o.pollMs ?? 1500));
+    if (o.isCanceled?.()) { await falCancel(h.cancelUrl, key, f); throw new Error('canceled'); }
+    const s = await tol.read(() => falStatus(h!.statusUrl, key, f));
+    if (s !== MISS) { o.onStatus?.(s);
+      if (s.status === 'COMPLETED') { if (s.error || s.error_type) throw new Error(`fal ${s.error_type ?? 'error'}: ${s.error ?? ''}`.trim());
+        const res = await tol.read(() => falResult(s.response_url ?? h!.responseUrl, key, f)); // a blip on the result read: poll again (it stays COMPLETED)
+        if (res !== MISS) return { requestId: h.requestId, status: s, result: res, handle: h }; } }
+    if (Date.now() >= end) { await falCancel(h.cancelUrl, key, f); const e = new Error('fal timeout'); (e as any).timeout = true; throw e; }
+    await sleep(tol.wait(pollMs));
   }
 }

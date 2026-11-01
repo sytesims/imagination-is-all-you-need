@@ -16,6 +16,7 @@
 import type { HttpRequest } from '../hostedRequests.js';
 import { env } from '../env.js';
 import { BUSY_RETRIES, busyWaitMs } from '../busyRetry.js';
+import { PollTolerance, MISS } from '../hostedPoll.js';
 
 type Fetch = typeof fetch;
 export type DirectReason = 'key_invalid' | 'provider_credits' | 'content_blocked' | 'input_invalid' | 'queue_full' | 'provider_error';
@@ -58,7 +59,9 @@ export interface DirectSpec {
   /** Real cost from the finished job (e.g. MiniMax usage.output_seconds × the rate); called with the final poll / sync JSON. */
   cost?: (json: any, job: { input: Record<string, any> }) => DirectCost | null;
 }
-export interface DirectHooks { timeoutMs?: number; pollMs?: number; onSubmit?: (id: string) => void; onStatus?: (status: string) => void; onCost?: (c: DirectCost) => void; f?: Fetch; sleep?: (ms: number) => Promise<void>; job?: { input: Record<string, any> } }
+/** resume: a poll-mode request from before (restart / Retry download): no submit, only polling its pollUrl. isCanceled: stop polling (the labs
+ *  publish no cancel call, so the provider may still finish and bill it). */
+export interface DirectHooks { timeoutMs?: number; pollMs?: number; resume?: { id: string; pollUrl: string } | null; isCanceled?: () => boolean; onSubmit?: (id: string, pollUrl?: string) => void; onStatus?: (status: string) => void; onCost?: (c: DirectCost) => void; f?: Fetch; sleep?: (ms: number) => Promise<void>; job?: { input: Record<string, any> } }
 
 const bearer = (key: string) => ({ Authorization: `Bearer ${key}` });
 const retryAfter = (h: Headers | undefined) => { const v = Number(h?.get?.('retry-after')); return Number.isFinite(v) && v > 0 ? v * 1000 : undefined; };
@@ -108,6 +111,7 @@ export async function directRun(spec: DirectSpec, req0: HttpRequest, key: string
   const timeout = () => Object.assign(new DirectError(`${p.tag}: timed out waiting for the result`, 'provider_error'), { timeout: true });
   const release = await acquire(p, o.onStatus);
   try {
+    if (o.resume && spec.mode === 'poll') return await pollDirect(spec, p, o.resume, key, o, deadline, sleep, f, timeout);
     // submit, retrying busy answers (2026-10-25, busyRetry.ts): every provider's queue_full (HTTP 429, MiniMax 1002 in a 200) and the
     // provider's own retryOn statuses. A refused submit never started, so sending it again can't run (or bill) it twice. At most
     // BUSY_RETRIES more tries, then the error is thrown with .busy = true.
@@ -127,19 +131,30 @@ export async function directRun(spec: DirectSpec, req0: HttpRequest, key: string
       if (!s.outputs.length) throw new DirectError(`${p.tag}: returned no output`, 'provider_error');
       return { id: s.id ?? null, outputs: s.outputs };
     }
-    const h = spec.submit!(sub.j, req, directBase(p.id)); o.onSubmit?.(h.id); if (h.cost) o.onCost?.(h.cost);
-    while (Date.now() < deadline) {
-      await sleep(o.pollMs ?? p.pollMs);
+    const h = spec.submit!(sub.j, req, directBase(p.id)); o.onSubmit?.(h.id, h.pollUrl); if (h.cost) o.onCost?.(h.cost);
+    return await pollDirect(spec, p, h, key, o, deadline, sleep, f, timeout);
+  } finally { release(); }
+}
+/** Poll one submitted request until it is done. A blip (network error, 5xx, 408, 429, a temporary lab error) polls the SAME id again with
+ *  back-off (hostedPoll.ts); a definite lab answer (bad key, refused, input invalid, gone) ends it at once. */
+async function pollDirect(spec: DirectSpec, p: DirectProviderDef, h: { id: string; pollUrl: string }, key: string, o: DirectHooks, deadline: number, sleep: (ms: number) => Promise<void>, f: Fetch, timeout: () => Error): Promise<{ id: string | null; outputs: DirectOutput[] }> {
+  const tol = new PollTolerance(p.name); const pace = o.pollMs ?? p.pollMs;
+  while (Date.now() < deadline) {
+    await sleep(tol.wait(pace));
+    if (o.isCanceled?.()) throw new Error('canceled');
+    const got = await tol.read(async () => {
       const r = await f(h.pollUrl, { headers: { ...p.auth(key), accept: 'application/json' } }); const { j, t } = await readJson(r);
       if (!r.ok) { const e = p.httpError(r.status, j, t); e.message = e.message.replace(' submit ', ' poll '); throw e; }
       const be2 = p.bodyError?.(j); if (be2) throw be2;
-      const s = spec.poll!(j); if (s.status) o.onStatus?.(s.status);
-      if (!s.done) continue;
-      if (s.error) throw s.error;
-      const c = spec.cost?.(j, o.job ?? { input: {} }) ?? s.cost; if (c) o.onCost?.(c);
-      if (!s.outputs?.length) throw new DirectError(`${p.tag}: finished without an output`, 'provider_error');
-      return { id: h.id, outputs: s.outputs };
-    }
-    throw timeout();
-  } finally { release(); }
+      return j;
+    });
+    if (got === MISS) continue;
+    const j = got; const s = spec.poll!(j); if (s.status) o.onStatus?.(s.status);
+    if (!s.done) continue;
+    if (s.error) throw s.error;
+    const c = spec.cost?.(j, o.job ?? { input: {} }) ?? s.cost; if (c) o.onCost?.(c);
+    if (!s.outputs?.length) throw new DirectError(`${p.tag}: finished without an output`, 'provider_error');
+    return { id: h.id, outputs: s.outputs };
+  }
+  throw timeout();
 }

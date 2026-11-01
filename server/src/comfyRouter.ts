@@ -14,12 +14,14 @@
  *    (spec, submit estimate: "fallback_provider never changes the leg that runs"), so there it is inert; it is sent anyway so no route can
  *    ever re-run a job elsewhere. Estimate / status / result / cancel calls carry nothing.
  *  - actual cost: X-Comfy-Credits-Used on the result (Comfy credits, $1 = 211). Absent = not reported (never "free").
- *  - errors: X-Comfy-Error-Type bucket + status → our reason code and one plain sentence (routerErrorFor). No retry loops here:
- *    the run fails fast and routing/run.ts puts the credits back.
+ *  - errors: X-Comfy-Error-Type bucket + status → our reason code and one plain sentence (routerErrorFor). A submit is never retried (only a
+ *    busy refusal, busyRetry.ts); once queued, a status / collect read that fails for a moment (network, 5xx, 504) polls the SAME request again
+ *    with back-off (hostedPoll.ts), so a blip never fails a run Comfy keeps running and billing.
  * The key is never logged and never sent to a host other than the Router base.
  */
 import { env } from './env.js';
 import { retryAfterMs, withBusyRetry } from './busyRetry.js';
+import { PollTolerance, MISS } from './hostedPoll.js';
 export const routerBase = () => (env('COMFY_ROUTER_URL') || 'https://api.comfy.org').replace(/\/+$/, '');
 /** @deprecated kept for readiness/contracts (the base at import time). */
 export const ROUTER_BASE = routerBase();
@@ -212,21 +214,24 @@ export class ComfyRouter {
     if (!r.ok) return this.fail(r, 'collect');
     return this.result(r);
   }
-  /** Submit → poll (Retry-After) → collect. onSubmitted gets the request id at once; a timeout or our own cancel asks Router to cancel. */
-  async runQueued(model: string, body: Record<string, unknown>, idem: string, o: { onSubmitted?: (h: RouterHandle) => void; onStatus?: (s: string, queuePosition: number | null) => void; isCanceled?: () => boolean; timeoutMs?: number; defaultPollMs?: number } = {}): Promise<RouterResult & { handle: RouterHandle }> {
-    const h = await this.submit(model, body, idem); o.onSubmitted?.(h);
-    const t0 = Date.now(); const limit = o.timeoutMs ?? 15 * 60_000;
+  /** Submit → poll (Retry-After) → collect. onSubmitted gets the request id at once; a timeout or our own cancel asks Router to cancel.
+   *  resume = a handle from before (restart / Retry download): no submit, only polling it. */
+  async runQueued(model: string, body: Record<string, unknown>, idem: string, o: { onSubmitted?: (h: RouterHandle) => void; onStatus?: (s: string, queuePosition: number | null) => void; isCanceled?: () => boolean; timeoutMs?: number; defaultPollMs?: number; resume?: RouterHandle | null } = {}): Promise<RouterResult & { handle: RouterHandle }> {
+    const h = o.resume ?? await this.submit(model, body, idem); if (!o.resume) o.onSubmitted?.(h);
+    const t0 = Date.now(); const limit = o.timeoutMs ?? 15 * 60_000; const tol = new PollTolerance('Comfy Router'); const pace = o.defaultPollMs ?? 3000;
     for (;;) {
       if (o.isCanceled?.()) { await this.cancel(h); throw new RouterError('canceled', ROUTER_MESSAGES.canceled, null, 'cancelled', false, `request ${h.requestId} cancelled by the user`); }
       if (Date.now() - t0 > limit) { await this.cancel(h); const e = new RouterError('cloud_timeout', ROUTER_MESSAGES.cloud_timeout, null, null, true, `request ${h.requestId}: no result after ${Math.round(limit / 1000)} s`); (e as any).timeout = true; throw e; }
-      const s = await this.busy(() => this.status(h), false); o.onStatus?.(s.status, s.queuePosition); // a busy status read (429) waits and reads again: the request keeps running
+      const s = await tol.read(() => this.busy(() => this.status(h), false)); // a busy status read (429) waits and reads again; a blip polls again: the request keeps running
+      if (s === MISS) { await this.sleep(Math.max(50, tol.wait(pace) * this.retryScale)); continue; }
+      o.onStatus?.(s.status, s.queuePosition);
       if (s.status === 'COMPLETED') {
         if (s.errorType) throw await this.failedRequest(h, s.errorType);
         // the charge: the collect response's X-Comfy-Credits-Used, else the COMPLETED status read's (Router may send it on either; 2026-10-31: P-Video-2 /
         // HeyGen Starfish jobs recorded no cost when only the collect header was read)
-        const res = await this.busy(() => this.collect(h), false); if (res) return { ...res, creditsUsed: res.creditsUsed ?? s.creditsUsed, handle: h };
+        const res = await tol.read(() => this.busy(() => this.collect(h), false)); if (res !== MISS && res) return { ...res, creditsUsed: res.creditsUsed ?? s.creditsUsed, handle: h };
       }
-      await this.sleep(Math.max(50, (s.retryAfterMs ?? o.defaultPollMs ?? 3000) * this.retryScale));
+      await this.sleep(Math.max(50, (s.retryAfterMs ?? tol.wait(pace)) * this.retryScale));
     }
   }
 }

@@ -7,6 +7,7 @@
  * Output files are HTTPS URLs on replicate.delivery; data is removed after an hour, so we download right away.
  */
 import { BusyError, retryAfterMs, withBusyRetry } from '../busyRetry.js';
+import { PollTolerance, MISS, httpError, HOSTED_POLL_MS } from '../hostedPoll.js';
 export const REPLICATE_API = 'https://api.replicate.com/v1';
 export interface Prediction { id: string; model?: string; version?: string; status: 'starting' | 'processing' | 'succeeded' | 'failed' | 'canceled'; output: unknown; error: string | null; metrics?: { predict_time?: number; total_time?: number }; urls?: { get?: string; cancel?: string; web?: string } }
 type Fetch = typeof fetch;
@@ -33,23 +34,29 @@ export async function replicateSubmit(slug: string, input: Record<string, unknow
   return r.json() as Promise<Prediction>;
 }
 export async function replicateGet(id: string, key: string, f: Fetch = fetch): Promise<Prediction> {
-  const r = await f(`${REPLICATE_API}/predictions/${id}`, { headers: headers(key) }); if (!r.ok) throw new Error(`replicate get ${r.status}`); return r.json() as Promise<Prediction>;
+  const r = await f(`${REPLICATE_API}/predictions/${id}`, { headers: headers(key) }); if (!r.ok) throw httpError(`replicate get ${r.status}`, r.status); return r.json() as Promise<Prediction>;
 }
-export async function replicateCancel(id: string, key: string, f: Fetch = fetch) { await f(`${REPLICATE_API}/predictions/${id}/cancel`, { method: 'POST', headers: headers(key) }).catch(() => {}); }
+/** Ask Replicate to cancel (best effort, never throws): true when it was accepted (or the prediction is already finished). */
+export async function replicateCancel(id: string, key: string, f: Fetch = fetch) { try { const r = await f(`${REPLICATE_API}/predictions/${id}/cancel`, { method: 'POST', headers: headers(key) }); return r.ok; } catch { return false; } }
 /** First output URL (string or string[] outputs). */
 export const outputUrls = (p: Prediction): string[] => (typeof p.output === 'string' ? [p.output] : Array.isArray(p.output) ? p.output.filter((x): x is string => typeof x === 'string') : []);
-/** A busy submit (429) is sent again later (busyRetry.ts): Replicate never created the prediction, so nothing runs twice. */
-export async function replicateRun(slug: string, input: Record<string, unknown>, key: string, o: { timeoutMs: number; pollMs?: number; f?: Fetch; onSubmit?: (id: string) => void; onStatus?: (p: Prediction) => void; onBusy?: (ms: number) => void }) {
-  const f = o.f ?? fetch;
-  let p = await withBusyRetry(() => replicateSubmit(slug, input, key, { cancelAfterSec: o.timeoutMs / 1000, f }), { busyOf: (e) => (e instanceof BusyError ? e : null), onWait: (ms) => o.onBusy?.(ms), deadline: Date.now() + o.timeoutMs });
-  o.onSubmit?.(p.id);
+/** A busy submit (429) is sent again later (busyRetry.ts): Replicate never created the prediction, so nothing runs twice.
+ *  Polling keeps the SAME prediction through network blips (hostedPoll.ts); resume = a prediction id from before (restart / Retry download):
+ *  no submit, only polling. isCanceled → Replicate is asked to cancel and the run throws 'canceled'. */
+export async function replicateRun(slug: string, input: Record<string, unknown>, key: string, o: { timeoutMs: number; pollMs?: number; f?: Fetch; onSubmit?: (id: string) => void; onStatus?: (p: Prediction) => void; onBusy?: (ms: number) => void; resume?: string | null; isCanceled?: () => boolean; sleep?: (ms: number) => Promise<void> }) {
+  const f = o.f ?? fetch; const sleep = o.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  const tol = new PollTolerance('Replicate'); const pollMs = o.pollMs ?? HOSTED_POLL_MS();
+  let p: Prediction | null = null; let id = o.resume ?? '';
+  if (!id) { p = await withBusyRetry(() => replicateSubmit(slug, input, key, { cancelAfterSec: o.timeoutMs / 1000, f }), { busyOf: (e) => (e instanceof BusyError ? e : null), onWait: (ms) => o.onBusy?.(ms), deadline: Date.now() + o.timeoutMs });
+    id = p.id; o.onSubmit?.(p.id); }
   const end = Date.now() + o.timeoutMs;
   for (;;) {
-    o.onStatus?.(p);
-    if (p.status === 'succeeded') return { requestId: p.id, prediction: p, urls: outputUrls(p) };
-    if (p.status === 'failed' || p.status === 'canceled') throw new Error(`replicate ${p.status}: ${p.error ?? ''}`.trim());
-    if (Date.now() >= end) { await replicateCancel(p.id, key, f); const e = new Error('replicate timeout'); (e as any).timeout = true; throw e; }
-    await new Promise((r) => setTimeout(r, o.pollMs ?? 1500));
-    p = await replicateGet(p.id, key, f);
+    if (o.isCanceled?.()) { await replicateCancel(id, key, f); throw new Error('canceled'); }
+    if (p) { o.onStatus?.(p);
+      if (p.status === 'succeeded') return { requestId: p.id, prediction: p, urls: outputUrls(p) };
+      if (p.status === 'failed' || p.status === 'canceled') throw new Error(`replicate ${p.status}: ${p.error ?? ''}`.trim()); }
+    if (Date.now() >= end) { await replicateCancel(id, key, f); const e = new Error('replicate timeout'); (e as any).timeout = true; throw e; }
+    if (p) await sleep(tol.wait(pollMs));
+    const g = await tol.read(() => replicateGet(id, key, f)); if (g === MISS) { p = null; await sleep(tol.wait(pollMs)); continue; } p = g;
   }
 }

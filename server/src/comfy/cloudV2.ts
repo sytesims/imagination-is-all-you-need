@@ -15,6 +15,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { NativeOutput, NativeProgress } from './native.js';
 import { sanitizeProviderText } from '../comfyRouter.js';
+import { PollTolerance, MISS, withDownloadRetry } from '../hostedPoll.js';
 
 export type CloudReason = 'key_invalid' | 'cloud_credits' | 'workflow_invalid' | 'queue_full' | 'submit_uncertain' | 'cloud_job_failed' | 'cloud_timeout' | 'cloud_unreachable' | 'content_blocked' | 'cloud_job_gone' | 'upload_failed';
 /** A Comfy Cloud failure with a plain message (no key, no URL; it follows "Comfy Cloud failed: ") and our reason code. temporary = retrying the same route may work. */
@@ -109,9 +110,11 @@ export class ComfyCloudV2 {
   /** Submit once, store the id (onSubmitted), then poll. An ambiguous submit (network error / 5xx / timeout) is NOT resent. */
   /** partnerAuth: the graph has partner (API) nodes (Topaz, Tripo…): the Comfy key goes once in extra_data.api_key_comfy_org, as the official SDK sends it
    *  (docs: Cloud API reference › Using Partner Nodes). Only to this same Comfy host, never logged; without it a partner node has no credential. */
-  async run(workflow: Record<string, any>, o: { onProgress?: (p: NativeProgress) => void; onSubmitted?: (id: string) => void; isCanceled?: () => boolean; timeoutMs?: number; partnerAuth?: boolean } = {}) {
+  /** resumeId: a Cloud job from before (restart / Retry download): no submit, only polling it (the graph is not sent again). */
+  async run(workflow: Record<string, any>, o: { onProgress?: (p: NativeProgress) => void; onSubmitted?: (id: string) => void; isCanceled?: () => boolean; timeoutMs?: number; partnerAuth?: boolean; resumeId?: string | null } = {}) {
     let id: string;
-    try {
+    if (o.resumeId) id = o.resumeId;
+    else try {
       const body = { workflow, ...(o.partnerAuth && this.key ? { extra_data: { api_key_comfy_org: this.key } } : {}) };
       const r = await this.call('/api/v2/jobs', { method: 'POST', headers: { 'content-type': 'application/json', 'Idempotency-Key': `${this.idemPrefix}-p${this.n++}` }, body: JSON.stringify(body) }, 'submit');
       id = String(((await r.json()) as any)?.id ?? '');
@@ -120,16 +123,16 @@ export class ComfyCloudV2 {
       throw e;
     }
     if (!id) throw new CloudError('submit_uncertain', 'no job id came back, so the job was not sent again.', null, true, 'submit: no id');
-    o.onSubmitted?.(id);
-    const t0 = Date.now(); const total = Object.keys(workflow).length; let misses = 0;
+    if (!o.resumeId) o.onSubmitted?.(id);
+    const t0 = Date.now(); const total = Object.keys(workflow).length; const tol = new PollTolerance('Comfy Cloud');
     for (;;) {
       if (o.isCanceled?.()) { await this.cancel(id); throw new Error('canceled'); }
       if (Date.now() - t0 > (o.timeoutMs ?? 30 * 60_000)) { await this.cancel(id); const e = new CloudError('cloud_timeout', 'it took too long; the job was cancelled.', null, true, `job ${id} timeout`); (e as any).timeout = true; throw e; }
-      let j: any = null;
-      try { j = await (await this.call(`/api/v2/jobs/${encodeURIComponent(id)}`, { method: 'GET' }, 'status')).json(); misses = 0; }
-      catch (e) {
-        if (e instanceof CloudError && e.httpStatus === 404) throw new CloudError('cloud_job_gone', 'the job is no longer there, so it was stopped.', 404, false, `job ${id} → 404`); // B7: remote prompt gone
-        if (e instanceof CloudError && !e.temporary) throw e; if (++misses > 20) throw e; } // poll errors: keep polling the SAME id
+      // poll errors: keep polling the SAME id with back-off (hostedPoll.ts, shared with every hosted runner); a definite answer ends it
+      const got = await tol.read(() => this.status(id));
+      if (got === null) throw new CloudError('cloud_job_gone', 'the job is no longer there, so it was stopped.', 404, false, `job ${id} → 404`); // B7: remote prompt gone
+      if (got === MISS) { await new Promise((r) => setTimeout(r, tol.wait(this.pollMs))); continue; }
+      const j: any = got;
       const s = String(j?.status ?? '');
       if (s === 'queued' || s === 'running' || s === 'canceling') { const v = Number(j?.progress?.value) || 0; o.onProgress?.({ node: j?.progress?.current_node ?? null, value: v, max: 1, done: Number(j?.progress?.nodes_done) || 0, total, percent: Math.min(99, Math.round(v * 100)), known: v > 0 /* Comfy Cloud's own progress value; 0 = nothing reported yet */, phase: s === 'queued' ? 'queued' : 'generating' }); }
       else if (s === 'succeeded') {
@@ -144,13 +147,16 @@ export class ComfyCloudV2 {
       await new Promise((r) => setTimeout(r, this.pollMs));
     }
   }
-  /** Output url (auth) → 302 signed URL → fetched WITHOUT the key → dest. */
+  /** Output url (auth) → 302 signed URL → fetched WITHOUT the key → dest. A few tries with back-off (audit 2026-11-01 #10); every try asks Cloud
+   *  again, so it gets a fresh signed link. The last failure is a DownloadError (the job keeps job.remote, so Retry download can fetch it later). */
   async download(o: NativeOutput & { url?: string }, dest: string) {
     if (!o.url) throw new CloudError('cloud_job_failed', 'a result came back without a download link.', null, true, 'output: no url');
     const u = /^https?:/.test(o.url) ? o.url : this.base + o.url;
-    let r: Response; try { r = await this.f(u, { headers: this.auth(), redirect: 'manual' }); } catch (e) { throw new CloudError('cloud_unreachable', 'the result could not be downloaded.', null, true, String(e)); }
-    if (r.status >= 300 && r.status < 400 && r.headers.get('location')) r = await this.f(new URL(r.headers.get('location')!, u).toString());
-    if (!r.ok) throw cloudErrorFor(r.status, 'download');
-    await writeFile(dest, Buffer.from(await r.arrayBuffer())); return dest;
+    return withDownloadRetry('Comfy Cloud', async () => {
+      let r: Response; try { r = await this.f(u, { headers: this.auth(), redirect: 'manual' }); } catch (e) { throw new CloudError('cloud_unreachable', 'the result could not be downloaded.', null, true, String(e)); }
+      if (r.status >= 300 && r.status < 400 && r.headers.get('location')) r = await this.f(new URL(r.headers.get('location')!, u).toString());
+      if (!r.ok) throw cloudErrorFor(r.status, 'download');
+      await writeFile(dest, Buffer.from(await r.arrayBuffer())); return dest;
+    }, { canRefresh: true });
   }
 }
