@@ -18,6 +18,7 @@ assert.equal(chipUsd(0), 'Free'); assert.equal(chipUsd(1.716), '$1.72'); assert.
 const local = { ...featuredByKey('ltx-rain-city')! }; assert.equal(local.runOn, 'local'); assert.deepEqual([chipOfFeatured(local).place, chipOfFeatured(local).price], [LOCAL_LABEL, 'Free'], 'a local run: Your computer · Free');
 assert.equal(chipOfFeatured({ ...featuredByKey('ltx-pro-painter')!, costUsd: undefined } as FeaturedItem).price, null, 'unknown price: left out, never guessed');
 assert.equal(chipText(chipOfChain(MOSSBUN_3D_RUN, [{ jobId: 'x', model: 'GPT Image 2.5 Flare', place: 'Comfy Router', costUsd: 0.02 }])), 'Tripo 3.1 +1 · Comfy Cloud · ≈ $0.32');
+assert.equal(chipText({ model: 'LTX-2.5 Pro', also: ['YuE2 (music) · Your computer · Free'], alsoWhat: 'music', place: 'Comfy Cloud', price: '$1.72' }), 'LTX-2.5 Pro +1 music · Comfy Cloud · $1.72', 'the extra says what it is');
 ok('helper: place words, Free, ≈, two decimals, unknown left out, +N');
 
 // ---- every Explore example: a model label and a route ----

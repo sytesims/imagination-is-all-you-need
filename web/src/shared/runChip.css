@@ -4,6 +4,7 @@
 .runchip-dot{opacity:.45}
 .runchip-model{flex:0 1 auto;color:#fff;font-weight:600;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .runchip-more{flex:none;padding:2px 6px;border-radius:999px;font:700 10.5px/1 var(--font-ui);color:#fff;background:rgba(255,255,255,.12);cursor:help}
+.runchip-more small{margin-left:4px;font:600 10.5px/1 var(--font-ui);opacity:.8} /* "+1 music": what the extra is, without hovering */
 .runchip-place{flex:none}
 .runchip-price{flex:none;color:#ffc08f;font-weight:700}
 .runchip-note{flex:none;font:500 11.5px/1 var(--font-ui);opacity:.75}

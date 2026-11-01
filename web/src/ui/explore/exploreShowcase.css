@@ -386,7 +386,7 @@ html body .xyt-box input,html body .xyt-box input:focus,html body .xyt-box input
 .xpc-hl b{position:absolute;left:0;bottom:calc(100% + 6px);font:600 10px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--xv-ink);background:var(--accent);padding:4px 6px;border-radius:3px;opacity:0;transition:opacity .4s ease;white-space:nowrap}
 .xpc-hl.on b{opacity:1}
 .xpc-hl.low b{bottom:auto;top:6px;left:6px}
-.xpc-3d{position:absolute;inset:0;background:radial-gradient(70% 80% at 50% 55%,#1a1c1f 0%,#0b0c0e 70%)}
+.xpc-3d{position:absolute;inset:0;background:radial-gradient(70% 80% at 50% 55%,#1a1c1f 0%,#0b0c0e 70%);-webkit-user-select:none;user-select:none} /* dragging to orbit never selects the text around it */
 .xpc-3d .m3d{position:absolute;inset:0;width:100%;height:100%}
 .xpc-foot{height:52px;gap:10px;justify-content:stretch}
 .xpc-seg{all:unset;flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:9px;height:100%;font:600 10px/1 var(--font-mono);letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3);transition:color .4s ease;cursor:pointer;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

@@ -51,7 +51,7 @@ export interface ToolDef {
   /** Set for tools loaded from plugins/. */
   plugin?: { id: string; dir: string; version?: string; license: { id: string; name: string; osi: boolean; url: string | null }; handler: boolean;
     /** placement from the manifest (shared/pluginPlacement.ts) */ tab?: 'image' | 'video' | 'audio' | '3d' | null; category?: string | null; goal?: string | null; author?: string | null; input?: 'image' | 'video' | 'none'; output?: 'image' | 'video';
-    /** added in the app by you ("Add a workflow": a folder in USER_PLUGINS_DIR), not shipped in plugins/ */ user?: boolean; /** a workflow you added: its main model in plain words (pluginGraph.ts mainModelOf), null when unclear */ mainModel?: string | null };
+    /** added in the app by you ("Add a workflow": a folder in USER_PLUGINS_DIR), not shipped in plugins/ */ user?: boolean; /** a workflow you added: its main model in plain words (pluginGraph.ts mainModelOf), null when unclear */ mainModel?: string | null; /** a workflow you added: the prompt its graph holds (prefills the prompt box; an empty prompt keeps it) */ defaultPrompt?: string | null };
   /** Provider ids this tool supports; the first is the default (open weights). */
   providers: string[];
   /** Mock pipeline stages, in order: [key, label]. */

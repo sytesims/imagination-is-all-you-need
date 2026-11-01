@@ -61,7 +61,8 @@ try {
   assert.deepEqual(WM.neededFiles({ '1': { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: 'sub\\dir\\m.safetensors' } } }).map((f) => f.file), ['sub/dir/m.safetensors'], 'Windows separators become /');
 
   const { mainModelOf } = await import('../src/pluginGraph.ts');
-  assert.equal(mainModelOf(graph), 'foo-Q4', 'the diffusion model loader first, in plain words'); assert.equal(mainModelOf({ '1': { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: 'sd\\flux1-dev.safetensors' } } }), 'flux1-dev');
+  assert.equal(mainModelOf(graph), 'Foo', 'the diffusion model loader first, in plain words'); assert.equal(mainModelOf({ '1': { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: 'sd\\flux1-dev.safetensors' } } }), 'Flux1 Dev');
+  assert.equal(mainModelOf({ '1': { class_type: 'UNETLoader', inputs: { unet_name: 'qwen_image_2.1_int8_convrot.safetensors' } } }), 'Qwen Image 2.1', 'precision tags dropped, no raw file name');
   assert.equal(mainModelOf({ '1': { class_type: 'LoadImage', inputs: { image: 'a.png' } } }), null, 'no main loader: unclear');
   assert.equal(WM.sizeWords(4e8, 2), '0.4 GB + 2 files of unknown size'); assert.equal(WM.sizeWords(0, 1), '1 file of unknown size'); assert.equal(WM.sizeWords(4e8, 0), '0.4 GB');
 

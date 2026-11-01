@@ -588,7 +588,7 @@ function pluginPlan(job: Job): Plan {
   const s = pluginSpec(job.toolId)!; const i = job.input; const nm = s.nodeMap;
   const graph = mapGraph(s.graph, nm, i, F);
   const expect: Record<string, any> = { fields: i.fields ?? {}, preset: i.types?.[0] };
-  if (nm.inputs.prompt) expect.prompt = i.finalPrompt ?? i.prompt; if (nm.inputs.seed) expect.seed = i.seed;
+  if (nm.inputs.prompt && String(i.finalPrompt ?? i.prompt ?? '').trim()) expect.prompt = i.finalPrompt ?? i.prompt; /* empty: the graph keeps its own text (mapGraph) */ if (nm.inputs.seed) expect.seed = i.seed;
   return { tool: job.toolId, outKind: s.outKind, post: { kind: 'each' }, muxSourceAudio: s.input === 'video' && s.outKind === 'video' && i.keepAudio !== false, notes: [],
     passes: [{ label: 'Result', workflow: s.workflowId, graph, output: nm.output.node, extraOutputs: nm.extraOutputs, expect }] };
 }

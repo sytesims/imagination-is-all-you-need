@@ -583,7 +583,8 @@ export function creditOf(job: any, modelName: string, routeLabel: string, localW
     /* own accounts (QA #7): never ✦; app-balance refunds don't exist there (the failure line says what the provider bills) */
     : ownAccountsNow() ? (refunded >= cost ? '' : `${(refunded === 0 ? jobCostAmount(job) : null) ?? jobCostText(cost - refunded, job?.runOn ?? (/^comfy-(router|cloud):/.test(String(job?.route ?? '')) ? 'comfy-cloud' : null))} · billed to your ${where.replace(/\s*(\(.*\)|·.*)$/, '')} account`)
     : refunded >= cost ? `${ledgerUsd(cost)} returned to balance` : refunded ? `${ledgerUsd(cost - refunded)} (${ledgerUsd(refunded)} returned to balance)` : ledgerUsd(cost);
-  const via = [where && `ran on ${where.replace(/\s*·.*$/, '')}`, price].filter(Boolean).join(' · ');
+  /* on your computer: "Your computer · Free", the place said once (never "ran on Your computer · Free · on your computer") */
+  const via = loc && where ? [where.replace(/\s*·.*$/, ''), price === LOCAL_FREE ? 'Free' : price].filter(Boolean).join(' · ') : [where && `ran on ${where.replace(/\s*·.*$/, '')}`, price].filter(Boolean).join(' · ');
   return { model, powered, via, ranOn: where, cost: price };
 }
 export function ResultCredit({ job, credit }: { job: any; credit: Credit }) {
