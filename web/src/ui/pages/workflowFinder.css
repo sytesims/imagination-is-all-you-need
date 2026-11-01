@@ -56,6 +56,8 @@
    The grid fills the width: 4 cards a row at 1440, 5 at 1920. */
 .wn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(242px,1fr));gap:16px}
 .wn-card{cursor:pointer}
+/* the same tile colour as the Image, Video and Audio feeds (--surface-2), not Explore's darker band (2026-11-01) */
+.xp-tile.is-band.wn-card{background:var(--surface-2)}
 .wn-card:hover{transform:translateY(-2px);box-shadow:0 16px 36px -24px rgba(0,0,0,.9)}
 .wn-card:focus-within::after{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 55%,transparent)}
 .wn-media .hclip img{transition:transform var(--t-media) var(--ease-out)}
@@ -89,7 +91,7 @@
 
 /* ---------- the blueprint tile (no example of ours yet) */
 .wn-art{position:absolute;inset:0;overflow:hidden}
-.wn-art .xp-art{padding-bottom:0;background:radial-gradient(60% 50% at 50% 34%,rgba(255,122,26,.16),rgba(255,122,26,0) 70%),linear-gradient(180deg,#141414 0%,#0d0d0d 62%,#090909 100%)}
+.wn-art .xp-art{padding-bottom:0;background:radial-gradient(60% 50% at 50% 34%,rgba(255,122,26,.16),rgba(255,122,26,0) 70%),linear-gradient(180deg,var(--surface-2) 0%,var(--surface-1) 100%)}
 .wn-art .xp-art::before{background-image:radial-gradient(rgba(255,255,255,.11) 1px,transparent 1.2px);background-size:18px 18px}
 .wn-art::before{content:"";position:absolute;inset:12px;z-index:1;border-radius:10px;border:1px dashed rgba(255,255,255,.08);pointer-events:none;transition:border-color var(--base)}
 .wn-art .xp-diagram{width:min(78%,340px)}
@@ -106,7 +108,7 @@
 .wn-chain{position:relative;display:grid;grid-template-rows:168px auto;min-width:0;border-radius:var(--r-tile);overflow:hidden;background:var(--surface);border:1px solid var(--hairline);
   transition:border-color var(--base),box-shadow var(--slow) var(--ease-out),transform var(--slow) var(--ease-out)}
 .wn-chain:hover{transform:translateY(-3px);border-color:var(--hairline-strong);box-shadow:0 22px 48px -26px rgba(0,0,0,.9)}
-.wn-chain-media{position:relative;overflow:hidden;background:#0b0b0b}
+.wn-chain-media{position:relative;overflow:hidden;background:var(--bg)}
 .wn-chain-media .xp-art{padding-bottom:0}
 .wn-chain-top{position:absolute;top:12px;left:12px;right:52px;z-index:3;display:flex;gap:6px}
 .wn-chain-body{display:flex;flex-direction:column;gap:8px;padding:16px 16px 14px;min-width:0}
@@ -137,7 +139,7 @@
 .wv-panel{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 400px;width:min(1180px,100%);height:min(820px,calc(100vh - 56px));border-radius:18px;overflow:hidden;background:var(--surface-2);border:1px solid var(--hairline-strong);box-shadow:0 30px 80px rgba(0,0,0,.6);animation:dlg-pop .22s cubic-bezier(.2,.7,.3,1) both}
 .wv-x{position:absolute;top:12px;right:12px;z-index:5;display:grid;place-items:center;width:34px;height:34px;min-height:0;padding:0;border-radius:10px;border:1px solid var(--hairline);background:var(--surface-3);color:var(--text);cursor:pointer}
 .wv-x:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.wv-pmedia{position:relative;display:grid;place-items:center;min-height:0;background:#050505;padding:18px}
+.wv-pmedia{position:relative;display:grid;place-items:center;min-height:0;background:var(--bg);padding:18px}
 .wv-pimg{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;display:block}
 .wv-pmedia .wfh-ph{width:100%;height:100%;border-radius:8px}
 .wv-pmedia .splitp-img{object-position:50% 50%}
