@@ -144,7 +144,6 @@ It grows with ComfyUI. Today you can bring your own ComfyUI workflow (**Your wor
 - More official Comfy templates as one-click workflows.
 - Pika H3 Flex with reference pictures.
 - Comfy Cloud runs through the official Comfy SDK.
-- Using the app from your phone.
 
 ## Yours to keep, yours to change
 
