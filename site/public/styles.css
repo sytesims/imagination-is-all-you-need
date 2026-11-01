@@ -48,6 +48,7 @@ p{margin:0}
 .eyebrow{font:600 12px/1.4 var(--display);letter-spacing:.2em;text-transform:uppercase;color:var(--accent-text);margin-bottom:18px}
 h1{font-weight:700;font-size:clamp(52px,6.6vw,104px);line-height:.9;letter-spacing:-.04em;text-transform:uppercase;text-wrap:balance;text-shadow:0 2px 30px rgba(0,0,0,.35)}
 .lede{margin-top:22px;max-width:30em;font-size:clamp(17px,1.4vw,20px);line-height:1.5;color:#C9CACC}
+.tech{margin-top:14px;max-width:36em;font:500 12px/1.6 var(--mono);color:rgba(255,255,255,.6);letter-spacing:.01em}
 .credit{font:500 12px/1.4 var(--mono);color:var(--t3);letter-spacing:.01em}
 .hero-credit{position:absolute;right:var(--gutter);bottom:28px;color:rgba(255,255,255,.62);font:500 12px/1.4 var(--ui);display:flex;gap:10px;align-items:baseline}
 .hero-credit span{font-family:var(--mono);color:rgba(255,255,255,.5)}

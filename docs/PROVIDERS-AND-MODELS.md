@@ -7,7 +7,7 @@ Two choices, kept apart. The **Model** is what you get ("MiniMax H3", "LTX-2 19B
 | What you want to do | Our tool(s) | Example models |
 |---|---|---|
 | Swap a person or object in a video; copy motion from one clip to another | Object Swap, Motion Transfer | Kling 3.0 Omni Edit and Seedance 2.5 Edit (cloud), Wan 2.2 Animate (local) |
-| Cinematic camera moves from a still, or from a prompt alone on supported routes | Camera Moves (82 moves in the current tool catalogue) | Wan 2.2 Fun Camera, LTX-2 19B |
+| Cinematic camera moves from a still, or from a prompt alone on supported routes | Camera Moves (82 camera presets in the current tool catalogue) | Wan 2.2 Fun Camera, LTX-2 19B |
 | Film the same scene again from a new angle | Re-shoot / Angles | LTX-2 19B, Wan 2.2 Fun Camera |
 | Text or image to video, with sound | Generate Video, Extend | MiniMax H3 |
 | Change the look of a clip | Restyle | open ComfyUI workflow, MiniMax H3 style adapters |
