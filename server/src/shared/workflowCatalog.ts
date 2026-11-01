@@ -19,6 +19,7 @@ import { FOOTAGE_EFFECTS, FOOTAGE_FX_TOOL, footageEffect } from './footageFx.js'
 import { LTX_LORAS } from './ltxLoras.js';
 import { featuredRecreateHref, LTX_LAYOUT } from './featured.js';
 import type { FlowArt } from './exploreFlows.js';
+import { goalById, goalOf } from './workflowGoals.js';
 
 export type WfCat = 'video' | 'talk' | 'character' | 'film' | 'image' | 'photo' | 'product' | 'clip' | 'music' | '3d' | 'fix';
 export type WfMedium = 'image' | 'video' | 'audio' | '3d';
@@ -284,8 +285,10 @@ export function matchesQuery(hay: string, q: string): boolean {
   const words = q.toLowerCase().replace(/[→>]/g, ' ').split(/\s+/).filter(Boolean); if (!words.length) return true;
   const h = hay.toLowerCase(); return words.every((w) => h.includes(w));
 }
-export const entryHay = (e: WfEntry, extra = ''): string => [e.name, e.line, e.needs, WF_CATS.find((c) => c.id === e.cat)?.label, e.medium, ...e.tags, extra].join(' ');
-export const chainHay = (c: WfChain): string => [c.name, c.line, ...c.tags, ...c.steps.map((s) => `${wfEntryById(s.entry)?.name ?? ''} ${s.say}`)].join(' ');
+/** a goal's label as search words (shared/workflowGoals.ts): "shop" or "ads" finds that goal's workflows */
+const goalWords = (id: string) => goalById(goalOf(id) ?? '')?.label ?? '';
+export const entryHay = (e: WfEntry, extra = ''): string => [e.name, e.line, e.needs, WF_CATS.find((c) => c.id === e.cat)?.label, goalWords(e.id), e.medium, ...e.tags, extra].join(' ');
+export const chainHay = (c: WfChain): string => [c.name, c.line, goalWords(`chain:${c.id}`), ...c.tags, ...c.steps.map((s) => `${wfEntryById(s.entry)?.name ?? ''} ${s.say}`)].join(' ');
 /** Category counts for the given entries; empty categories left out (the page hides them). */
 export function catCounts(list: WfEntry[]): { id: WfCat; label: string; line: string; n: number }[] {
   return WF_CATS.map((c) => ({ ...c, n: list.filter((e) => e.cat === c.id).length })).filter((c) => c.n > 0);
