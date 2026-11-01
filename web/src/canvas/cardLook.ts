@@ -11,19 +11,21 @@
  *  - panelSlide: how far the board slides so a card clears the card panel.
  */
 import { placeOfQuote } from '../shared/billing';
+import { placeOf as sharedPlaceOf } from '../../../server/src/shared/modelIds';
 
 export const FAR_ZOOM = 0.4;
 export const TINY_ZOOM = 0.2;
 export const OVERVIEW_ZOOM = 0.6;
-const PLACES: Record<string, string> = { local: 'Your computer', 'comfy-cloud': 'Comfy Cloud', 'comfy-router': 'Comfy Cloud', comfy: 'Comfy Cloud', fal: 'fal', replicate: 'Replicate' };
-
-/** Where the run goes, in the board's words. */
+/** Where the run goes, in the app's one set of place words (server/src/shared/modelIds.ts placeOf; the server's own place first): "Your computer",
+ *  "Comfy Cloud", "Your Comfy deployment", "fal"… A lab's own API reads its billing name ("OpenAI"). */
 export function placeWord(q: any): string | null {
   if (!q || typeof q !== 'object' || q.demo === true) return null;
   const id = placeOfQuote(q); if (!id) return null;
-  if (PLACES[id]) return PLACES[id];
+  const own = q.place && typeof q.place === 'object' ? String(q.place.label ?? '') : ''; if (own) return own;
   const name = q.cost && typeof q.cost === 'object' ? String(q.cost.billedToName ?? '') : '';
-  return name || null;
+  if (id === 'direct' && name) return name;
+  const rid = String(q.routeId ?? q.route ?? '');
+  return sharedPlaceOf({ kind: q.routeKind ?? null, routeId: rid || null, runOn: id, comfyVariant: q.comfyVariant ?? null })?.label || name || null;
 }
 
 /** The label of a card when the board is zoomed out. */

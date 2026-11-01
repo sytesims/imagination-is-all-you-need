@@ -9,6 +9,7 @@
  *   hosted places   Sending to <place> → Generating → Downloading the result (status only; percent when the place reports one).
  */
 import { ledgerUsd } from './billing';
+import { placeOf as sharedPlaceOf } from '../../../server/src/shared/modelIds';
 export type Medium = 'image' | 'video' | 'audio' | '3d';
 export type RunStage = 'queued' | 'loading' | 'generating' | 'finishing' | 'done' | 'failed' | 'canceled';
 export interface RunStep { key: string; label: string }
@@ -107,14 +108,17 @@ export function runTimeOf(j: any, now = Date.now(), locale?: string): RunTime {
 export const runTimeLine = (t: RunTime) => [t.left || t.note, t.started ? `started ${t.started}` : ''].filter(Boolean).join(' · ');
 
 /* ------------------------------------------------------------------ place, cost, cancel */
-const PLACE: Record<string, string> = { 'comfy-cloud': 'Comfy Cloud', 'comfy-router': 'Comfy Cloud', fal: 'fal', replicate: 'Replicate', direct: 'the provider' };
-/** "On your computer" for a local run, "On Comfy Cloud", "On fal"… */
+/** A hosted run's place name in the app's one set of words (server/src/shared/modelIds.ts placeOf): the server's own place first, so a run on your
+ *  own deployment reads "Your Comfy deployment" (not "Comfy Cloud"); else from its route and run-on. '' when unknown. */
+const hostedPlace = (j: any): string => String(j?.place?.label ?? '').split(' · ')[0]
+  || sharedPlaceOf({ routeId: j?.route ?? j?.routeId ?? null, runOn: runOnOf(j) || null, comfyVariant: j?.comfyVariant ?? null })?.label || '';
+/** "On your computer" for a local run, "On Comfy Cloud", "On Comfy deployment", "On fal"… */
 export function placeLine(j: any, where = 'on your computer'): string {
   if (isLocalRun(j)) return where.charAt(0).toUpperCase() + where.slice(1);
-  const ro = runOnOf(j); const name = PLACE[ro] ?? (String(j?.place?.label ?? '').split(' · ')[0] || ro);
+  const name = hostedPlace(j).replace(/^Your /, 'your ');
   return name ? `On ${name}` : '';
 }
-export const placeName = (j: any) => (isLocalRun(j) ? 'your computer' : PLACE[runOnOf(j)] ?? (String(j?.place?.label ?? '').split(' · ')[0] || 'the provider'));
+export const placeName = (j: any) => (isLocalRun(j) ? 'your computer' : hostedPlace(j).replace(/^Your /, 'your ') || 'the provider');
 
 export type FailureRule = 'not-charged' | 'may-charge' | 'unknown';
 export interface MoneyCtx { /** own-accounts billing (no app balance) */ own: boolean; /** the billing provider's rule for failed / canceled runs */ failureRule?: FailureRule | null; /** "where" for local runs */ where?: string }

@@ -12,7 +12,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { requestRequote } from './quote';
 import { runPrice } from './billing';
-import { LOCAL_LABEL, COMFY_DEPLOY_DETAIL, placeOf as sharedPlaceOf, PLACE_LABELS, type Place } from '../../../server/src/shared/modelIds';
+import { LOCAL_LABEL, COMFY_DEPLOY_DETAIL, placeOf as sharedPlaceOf, PLACE_LABELS, RUN_ON_LABELS, type Place } from '../../../server/src/shared/modelIds';
 
 export type RunOnStatus = 'ready' | 'sample' | 'needs-key' | 'off' | 'not-installed' | 'coming-soon' | 'unavailable';
 /** The one action a place that isn't ready needs (server: routing/modelRegistry.ts rowAction / routing/select.ts placeAction). */
@@ -53,8 +53,8 @@ export const shownName = (m: Pick<ToolModel, 'displayName' | 'name'>) => m.displ
 export const searchText = (m: Partial<ToolModel>) => [m.displayName, m.name, m.makerName, m.family, m.bestFor, ...(m.aliases ?? [])].filter(Boolean).join(' ').toLowerCase();
 type ToolLike = { id: string; name?: string; providers?: { id: string }[]; models?: ToolModel[] };
 
-/** User-facing labels (spec §2.1), for ids that arrive without a label (old jobs, spend rows). */
-export const RUN_ON_LABEL: Record<string, string> = { local: LOCAL_LABEL, 'comfy-cloud': 'Comfy Cloud', fal: 'fal', replicate: 'Replicate', bfl: 'Black Forest Labs', minimax: 'MiniMax', ltx: 'LTX', openai: 'OpenAI', google: 'Google', byteplus: 'BytePlus', dashscope: 'Alibaba Cloud', luma: 'Luma AI', direct: 'Direct API' };
+/** User-facing labels (spec §2.1), for ids that arrive without a label (old jobs, spend rows): the server's one table (shared/modelIds.ts), never a copy. */
+export const RUN_ON_LABEL: Record<string, string> = RUN_ON_LABELS;
 /** Short chip text in the model menu. */
 export const RUN_ON_CHIP: Record<string, string> = { local: LOCAL_LABEL, 'comfy-cloud': 'Comfy Cloud', fal: 'fal', replicate: 'Replicate', bfl: 'BFL', minimax: 'MiniMax', ltx: 'LTX', openai: 'OpenAI', google: 'Google', byteplus: 'BytePlus', dashscope: 'Alibaba', luma: 'Luma', direct: 'API' };
 /** Settings → Connections card for a run-on (billing ids, as /api/settings/billing and /api/accounts use). */
@@ -64,7 +64,7 @@ export const runOnLabel = (id?: string | null) => (id ? RUN_ON_LABEL[id] ?? id :
  *  Comfy Cloud, Comfy deployment, fal… The server's own place wins; then the route id; then the run-on. */
 export const placeOfAny = (x: any): Place | null => (x?.place && typeof x.place === 'object' && x.place.label && x.place.billing ? x.place as Place : sharedPlaceOf({ kind: x?.routeKind ?? x?.kind ?? null, routeId: x?.routeId ?? x?.route ?? null, runOn: x?.runOn ?? null, comfyVariant: x?.comfyVariant ?? null }));
 export const placeLabelOf = (x: any): string => String(x?.placeLabel ?? '') || placeOfAny(x)?.label || runOnLabel(x?.runOn);
-/** A model's Run on row in the place words: the Comfy row is "Comfy Cloud" (one key, open workflow or partner model alike), or "Comfy deployment" for your own. */
+/** A model's Run on row in the place words: the Comfy row is "Comfy Cloud" (one key, open workflow or partner model alike), or "Your Comfy deployment" for your own. */
 export const rowPlaceLabel = (r: { id: string; label: string; detail?: string | null }): string => r.id === 'local' ? LOCAL_LABEL : r.id !== 'comfy-cloud' ? r.label : r.detail === COMFY_DEPLOY_DETAIL ? PLACE_LABELS['comfy-deploy'] : PLACE_LABELS['comfy-cloud'];
 /** Route id → run-on, learned from the server's listings (each route's explicit vendor: models[].runsOn[].routes). */
 const ROUTE_RUN_ON = new Map<string, string>();

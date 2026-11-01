@@ -68,7 +68,7 @@ import { cleanHref } from './sharePrefs';
 import { openSaveLook } from './SaveLookDialog';
 import { canSaveLook } from './looks';
 import { ViewerShell, authorOf, ViewerPrompt, ResultDetails, ViewerAudio, ViewerVideo, IoStrip, type IoTile, TrashActions, TrashChip, VideoGlyph, RefGlyph, ArrowGlyph, RecreateGlyph, runOnOfJob, type DetailsInfo } from './ResultViewer';
-import { LOCAL_LABEL, LOCAL_FREE } from '../../../server/src/shared/modelIds';
+import { LOCAL_LABEL, LOCAL_FREE, placeOf as sharedPlaceOf } from '../../../server/src/shared/modelIds';
 import { typedPromptOf, composedDiffers } from '../../../server/src/shared/typedPrompt';
 import { MentionText } from './MentionChips';
 import { useCaptions, CaptionsTile } from './Captions';
@@ -80,9 +80,8 @@ const agentLine = (a?: { name?: string; budgetUsd?: number | null; spentUsd?: nu
  *  video on images), then Download + icon row (Favourite, Share, ⋯); everything else lives in the ⋯ menu. */
 /** Job panel Route row: a readable name, never the raw route id (UI copy rule 3). Server displayName/label first, then the model's
  *  displayName with where it ran; never the raw id. */
-const KIND_NAME: Record<string, string> = { local: LOCAL_LABEL, fal: 'fal', replicate: 'Replicate', 'comfy-cloud': 'Comfy Cloud', 'comfy-router': 'Comfy Cloud', direct: 'Direct API' };
 export function friendlyRoute(id: string, rt?: any, model?: any): string {
-  const where = KIND_NAME[id.split(':')[0]] ?? '';
+  const where = sharedPlaceOf({ routeId: id })?.label ?? ''; /* the one set of place words (shared/modelIds.ts) */
   const loc = /^local:/.test(id); const withLocal = (n: string) => loc && !/local|this computer|your computer/i.test(n) ? `${LOCAL_LABEL} · ${n}` : n;
   // A route's own displayName first (e.g. "Local ComfyUI · Wan 2.2 Animate"); for local runs the model's displayName beats the generic route label.
   const own = String(rt?.displayName ?? '').trim(); if (own) return withLocal(own);
