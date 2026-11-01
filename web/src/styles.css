@@ -2930,6 +2930,7 @@ html body .assets-shell .assets-top h1{font-size:18px;font-family:inherit;text-t
 /* /licenses: required credit lines (from /api/licenses attribution) */
 .lic-credits{margin:16px 0 20px;padding:14px 16px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
 .lic-credits h3{margin:0 0 4px;font-size:15px}.lic-credits ul{margin:8px 0 0;padding-left:18px;display:grid;gap:4px}
+.lic-parts details{border-top:1px solid var(--border);padding:8px 0}.lic-parts details:first-of-type{margin-top:8px}.lic-parts summary{cursor:pointer}.lic-parts li{overflow-wrap:anywhere}
 .lic-credit q{font-weight:600;color:var(--text)}.lic-credit a{font-size:12px;margin-left:4px}.lic-none{color:var(--text-3);font-size:12px}
 /* /plugins cards with fallbacks */
 .plug-card{display:flex;flex-direction:column;gap:8px}.plug-head{display:flex;align-items:center;gap:10px}.plug-head b{flex:1;min-width:0}

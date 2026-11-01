@@ -408,8 +408,8 @@ type KV = { k: string; label: string; v: ReactNode; tip?: string };
 const kvRow = (r: KV) => <div key={r.k} className="rvx-row" data-row={r.k} {...tip(r.tip)}><span className="rvx-row-l rvx-k">{r.label}</span><span className="rvx-row-r">{r.v}</span></div>;
 const group = (id: string, title: string, rows: ReactNode[]) => rows.length ? <div className="rvx-grp" data-testid={`rvx-grp-${id}`} role="group" aria-label={title}><span className="rvx-grp-h" aria-hidden>{title}</span>{rows}</div> : null;
 /** DETAILS for a finished result (every medium, every place): Model, Output, Timing and Source rows. */
-/** "Cloud/h3-two-person-swap" / "LTX-2.5: Image to Video (also …)" → a short workflow name for the row (the full one is on hover). */
-const shortWf = (n: string) => { const s = n.replace(/^cloud\//, '').replace(/\s*\((?:also|[a-z_]+\d?[a-z_0-9]*)\b[^)]*\)\s*$/i, '').trim(); return s.length > 48 ? `${s.slice(0, 47)}…` : s; };
+/** "Cloud/h3-two-person-swap" / "LTX-2.5: Image to Video (also …)" → a short workflow name for the row (up to two lines; the full one is on hover). */
+const shortWf = (n: string) => { const s = n.replace(/^cloud\//, '').replace(/\s*\((?:also|[a-z_]+\d?[a-z_0-9]*)\b[^)]*\)\s*$/i, '').trim(); return s.length > 90 ? `${s.slice(0, 89)}…` : s; };
 export function ResultDetails({ job, info, extra, onViewWorkflow }: { job: any; info: DetailsInfo; extra?: ReactNode; /** the result menu's View workflow (one dialog) */ onViewWorkflow?: () => void }) {
   const [open, setOpen] = useState(true);
   const models = useCatalogue(job?.toolId);
