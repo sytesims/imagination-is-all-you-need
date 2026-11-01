@@ -26,7 +26,7 @@ html body .apop.bp.bp.apop-sheet{border-radius:20px 20px 0 0}
   border-radius:9px;cursor:pointer;color:var(--text-2,#898A8B);text-align:center;transition:background .12s ease,color .12s ease}
 :is(.apop.bp,.bp-host) .bp-opt-l{font:600 14px/18px var(--bp-disp);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 :is(.apop.bp,.bp-host) .bp-opt-h{font:400 11px/14px var(--font-sans,Inter,system-ui,sans-serif);color:var(--text-3,rgba(255,255,255,.5));white-space:normal}
-:is(.apop.bp,.bp-host) .bp-opt-a{font:500 11px/14px var(--bp-mono);font-style:normal;font-variant-numeric:tabular-nums;color:var(--text-3,rgba(255,255,255,.5));white-space:nowrap}
+:is(.apop.bp,.bp-host) .bp-opt-a{font:500 11px/14px var(--bp-mono);font-style:normal;font-variant-numeric:tabular-nums;color:var(--text-2,#B4B5B8);white-space:nowrap}
 :is(.apop.bp,.bp-host) .bp-opt-ic{display:grid;place-items:center;height:18px;color:currentColor;opacity:.85}
 :is(.apop.bp,.bp-host) .bp-seg-rich .bp-opt{padding:8px 6px 9px;justify-content:flex-start}
 :is(.apop.bp,.bp-host) .bp-opt:hover:not(:disabled){color:var(--text-1,#F7F7F8);background:rgba(255,255,255,.04)}
