@@ -22,4 +22,5 @@ assert.equal(event.prompt,fillPattern('camera-scene','minimax-h3',{pace:'brisk, 
 const hotel=reelCameraFields({provider:'cloud-ltx-camera',kind:'hotel'},1);
 assert.equal(hotel.prompt,fillPattern('camera-scene','ltx-2-19b',{pace:'very slow, smooth and steady'}));
 assert.notEqual(event.prompt,hotel.prompt);
+assert.equal(hotel.enhance,'0'); assert.equal(event.enhance,'0'); // the scene sentence sets the look; Camera Moves' Enhance words must not stack on it
 console.log('PASS: reel moves alternate by kind, stay on supported camera engine and use registry scene wording');
