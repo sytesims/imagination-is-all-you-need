@@ -94,8 +94,8 @@ function RealResults() {
   const items = MADE_KEYS.map(featuredByKey).filter((x): x is FeaturedItem => !!x);
   if (!items.length) return null;
   return <section className="xp-sec xp-made-sec" id="xp-made" data-testid="xp-made" aria-labelledby="xp-h-made">
-    <header className="xp-head"><span className="xp-num" aria-hidden>00</span><div><h2 id="xp-h-made">Real results</h2><p>Made with the app, free on your own computer. Hover to play, open one to make it again.</p></div></header>
-    <MediaRail label="Real results" testId="xp-made-rail">{items.map(f => {
+    <header className="xp-head"><span className="xp-num" aria-hidden>00</span><div><h2 id="xp-h-made">Made with Imagination</h2><p>Free on your own computer. Hover to play, open one to make it again.</p></div></header>
+    <MediaRail label="Made with Imagination" testId="xp-made-rail">{items.map(f => {
       const href = (f.tab === 'image' ? f.recreateHref : featuredRecreateHref(f.key)) ?? f.recreateHref ?? '/'; const clip = isClip(f.out.url);
       const ar = clip ? Math.max(1.2, f.out.width / f.out.height) : Math.min(1.4, Math.max(0.72, f.out.width / f.out.height * 0.8));
       return <Link key={f.key} to={href} className={`xp-shot${clip ? ' is-clip' : ''}`} style={{ aspectRatio: String(ar) }} data-testid={`xp-made-${f.key}`} data-hover-play>

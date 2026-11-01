@@ -79,7 +79,7 @@ export const EXPLORE_KOI = {
    *  (the take's own sound fading under it), a 4 s end card ("What will you bring to life?" / Imagination is all you need) and the 3 s end mark; 30.13 s, -15 LUFS, poster = the featured one.
    *  The featured entry's `out` stays the plain 20 s take (Extend page, feeds, Recreate). The readout and line count this file; the
    *  "10 s + 10 s = one 20 s take" sum and the pills stay the generated take. */
-  ending: { url: P('h3-koi-take-ending.mp4'), sec: 30.13, label: 'Ending · our own edit · Free' },
+  ending: { url: P('h3-koi-take-ending.mp4'), sec: 30.13, label: 'Ending · made with Imagination · Free' },
   /** Video with MiniMax H3 picked */ cta: { label: 'Start your scene', href: `${VIDEO_PAGE}?model=minimax-h3` },
 };
 
@@ -111,7 +111,7 @@ const IF = (f: string) => `/examples/iiayn-films/${f}`;
  *  Now: 엄마 · MUM, Episode 1 (77 s with the new end card, 2026-10-28; Korean with English subtitles), 그래요? · IS THAT SO? and The Airport Run. The web copy is 1280×720 H.264 with sound; the poster is Mum's close-up; the
  *  loop is 6.5 s of it, silent (card hover). Four layouts for the user (2026-10-27, round 2): ?films=1a|1b|2a|2b. The shots' start frames and cut points are the film's own (research folder shots.json + README). */
 export const EXPLORE_FILMS = {
-  label: 'IIAYN FILMS', title: 'Our own films.', line: 'Every picture, voice and cut came out of this app. Press play.',
+  label: 'IIAYN FILMS', title: 'Made with Imagination.', line: 'Short films where every picture, voice and cut came out of this app. Press play, then make your own.',
   feature: {
     key: 'mum-ep1', ko: '엄마', en: 'MUM', episode: 'Episode 1', genre: 'Korean drama', sec: 78, lang: 'Korean · English subtitles',
     logline: 'A snowy bus stop at dawn. A daughter in a hurry, a mother with a lunchbox, and a note she finds on the bus.',
@@ -446,7 +446,7 @@ export function vfxTile(v: VfxEffect): VfxTile | null {
 export const EXPLORE_VFX = {
   eyebrow: 'VFX with LTX-2.5', title: 'Shoot it once. Change everything else.',
   line: 'Turn day into night, empty a street, flood it, or pull a clean matte from your own clip. The framing and the motion stay; only the world changes. Free on your computer.',
-  place: 'Free · on your computer', pending: 'Example coming', pendingLine: 'Our own before / after lands here soon. Try it on your clip now.',
+  place: 'Free · on your computer', pending: 'Example coming', pendingLine: 'A before / after is coming soon. Try it on your clip now.',
   effects: [{ effect: 'day-to-night' }, { effect: 'vanish' }, { effect: 'flood' }, { effect: 'alpha-matte' }] as VfxEffect[],
   /** Layout to Render: the Mockup to film run (shared/featured.ts 'ltx-mockup-film'); its model, place and price are the featured entry's */
   layout: { key: 'ltx-mockup-film', label: 'Layout to Render', tagline: 'A grey 3D blockout, filmed as a real shot: the same walk, the same camera move.', lora: 'Layout to Render IC-LoRA', maker: 'Lightricks', sourceUrl: LAYOUT_LORA_REPO,
