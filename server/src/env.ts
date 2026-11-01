@@ -1,8 +1,10 @@
 import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
-/** Env lookup: OPENHIGGSFIELD_<NAME>, falling back to the legacy OPENJUTSU_<NAME> alias. Filming mode (below) overrides a few names. */
+/** Env lookup: OPENHIGGSFIELD_<NAME>, falling back to the legacy OPENJUTSU_<NAME> alias. Filming mode (below) overrides a few names.
+ *  A blank value (`NAME=` in .env.local) counts as unset, so it never turns a default into '' or 0. */
 export function env(name: string): string | undefined {
   if (FILMING.on && name in FILMING_ENV) return FILMING_ENV[name];
-  return process.env[`OPENHIGGSFIELD_${name}`] ?? process.env[`OPENJUTSU_${name}`];
+  const set = (v: string | undefined) => (v != null && v.trim() !== '' ? v : undefined);
+  return set(process.env[`OPENHIGGSFIELD_${name}`]) ?? set(process.env[`OPENJUTSU_${name}`]);
 }
 
 /**

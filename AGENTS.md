@@ -38,7 +38,7 @@ npm install          # root workspaces (server, web) + the MCP server's deps via
 
 > "Do you want to (a) make real renders on Comfy Cloud with your Comfy API key, (b) run models locally with your own ComfyUI, or (c) both?"
 
-Write their answer into **`.env.local`** in the repo root (the API reads it when it starts, with `npm start` or `npm run dev`; shell exports win over it). Either copy `.env.example` to `.env.local` and fill in what's needed, or create `.env.local` with only the lines below. Never echo key values back. The backend is `comfy` by default (real runs); `OPENHIGGSFIELD_BACKEND=mock` gives sample results and is for development and tests only. With nothing set up, Generate opens "Connect a Comfy key or your ComfyUI to start" (nothing runs, nothing is charged); the Examples project shows what the app makes.
+Write their answer into **`.env.local`** in the repo root (the API reads it when it starts, with `npm start` or `npm run dev`; shell exports win over it). Either copy `.env.example` to `.env.local` (every line in it is commented out, so the copy changes nothing until you uncomment a line) and fill in what's needed, or create `.env.local` with only the lines below. Never echo key values back. The backend is `comfy` by default (real runs); `OPENHIGGSFIELD_BACKEND=mock` gives sample results and is for development and tests only. With nothing set up, Generate opens "Connect a Comfy key or your ComfyUI to start" (nothing runs, nothing is charged); the Examples project shows what the app makes.
 
 | Choice | `.env.local` |
 |---|---|
