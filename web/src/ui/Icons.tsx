@@ -104,6 +104,8 @@ export const DownloadIcon = svg(<><path d="M12 3v12M7 10l5 5 5-5" /><path d="M4 
 /** Brand Kit (2026-10-27): a palette with three paint wells. */
 export const BrandIcon = svg(<><path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.2 0 1.8-.8 1.8-1.7 0-1.3-1.2-1.6-1.2-2.8 0-1 .8-1.6 1.9-1.6h2.1a3.9 3.9 0 0 0 3.9-3.9C20.5 6.8 16.7 3.5 12 3.5z" /><circle cx="7.6" cy="11.2" r="1.2" /><circle cx="10.4" cy="7.4" r="1.2" /><circle cx="15" cy="7.8" r="1.2" /></>, 'BrandIcon');
 export const HeartIcon = svg(<><path d="M12 20s-7.5-4.4-7.5-10A4.3 4.3 0 0 1 12 7.2 4.3 4.3 0 0 1 19.5 10c0 5.6-7.5 10-7.5 10z" /></>, 'HeartIcon');
+/** Preview larger (2026-11-01): two corner arrows pointing out (the media picker's tile ⤢) */
+export const MaximizeIcon = svg(<><path d="M14 4h6v6M10 20H4v-6M20 4l-6.5 6.5M4 20l6.5-6.5" /></>, 'MaximizeIcon');
 export const MoreIcon = svg(<><circle cx="5.5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="18.5" cy="12" r="1" /></>, 'MoreIcon');
 export const UploadIcon = svg(<><path d="M12 15V3M7 8l5-5 5 5" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></>, 'UploadIcon');
 export const GenerateIcon = svg(<><path d="M10 3.5 11.8 8.2 16.5 10l-4.7 1.8L10 16.5l-1.8-4.7L3.5 10l4.7-1.8z" /><path d="M18 14v6M15 17h6" /></>, 'GenerateIcon');

@@ -22,7 +22,7 @@
  * use and that exist; it starts on what the slot takes (an image slot: Images; Videos is there for a frame). Tiles show a short title
  * (server shared/shortTitle.ts: the job's title, else its prompt's first words, else the feature; "Layer N · …" for layers) on a checkerboard
  * (transparent layers read), with a clip's or sound's length in its own slot.
- * Larger preview (2026-10-31): rest the mouse on a tile ~500 ms, or Space on it: the whole picture fitted in the panel, a clip playing muted with its scrubber, a
+ * Larger preview (2026-10-31): its corner ⤢ button, or Space on a tile (never on hover alone): the whole picture fitted in the panel, a clip playing muted with its scrubber, a
  * sound playing (shared PreviewMedia, SlotPreview's), with its short title, model and size; Space / Esc closes, ← → move, "Use this" picks.
  * Pick several (2026-10-31): a slot that takes several shows a tick on hover; click ticks, Shift-click ticks the run, Space ticks the focused
  * tile and Enter adds (Shift+Space previews there). The bar says "3 selected · 2 left" and refuses picks past what fits (data-picker-max on the input, or pickMedia's max).
@@ -37,7 +37,7 @@ import { useDismiss } from './useDismiss';
 import { useFeedProject, type ProjectRow } from './feedProject';
 import { ProjectCover, ProjectRows, useProjectList } from './ProjectPicker';
 import { setJobProject } from '../api';
-import { ChevronDownIcon, MoreIcon, ProjectsIcon, SearchIcon, CloseIcon } from '../ui/Icons';
+import { ChevronDownIcon, MaximizeIcon, MoreIcon, ProjectsIcon, SearchIcon, CloseIcon } from '../ui/Icons';
 import { PlayButton, togglePreview, stopPreview, useMediaLength, fmtLength } from './PreviewPlay';
 import { PreviewMedia } from './SlotPreview';
 import { TypeFilter, type TypePick } from './TypeFilter';
@@ -101,27 +101,17 @@ function useInView<T extends Element>(): [React.RefObject<T>, boolean] {
 }
 const Wave = () => <svg className="mpk-wave" viewBox="0 0 64 24" aria-hidden><g fill="currentColor">{[6, 12, 18, 9, 22, 14, 8, 16, 20, 10, 5, 13, 19, 11, 7].map((h, i) => <rect key={i} x={i * 4.3 + 0.5} y={12 - h / 2} width="2.4" height={h} rx="1.2" />)}</g></svg>;
 
-function Tile({ x, tab, onPick, onKeys, onPeek, calm, onMore, moreOpen, frameHint, sel }: { x: LibItem; tab: PickTab; onPick: (x: LibItem, shift?: boolean) => void;
-  /** the tile under the mouse when a preview closed: no hover-hold until the mouse leaves it */ calm?: { current: string | null };
+function Tile({ x, tab, onPick, onKeys, onPeek, onMore, moreOpen, frameHint, sel }: { x: LibItem; tab: PickTab; onPick: (x: LibItem, shift?: boolean) => void;
   /** the picker's own keys first (several: Space ticks, Enter adds); true = handled */ onKeys?: (x: LibItem, e: React.KeyboardEvent) => boolean;
-  /** rest the mouse on it (HOLD ms): the larger preview */ onPeek?: (x: LibItem) => void; /** an image slot: a video tile gives a frame */ frameHint?: boolean; /** the ⋯ menu (Move to project); absent = no menu */ onMore?: (x: LibItem, el: HTMLButtonElement) => void; moreOpen?: boolean;
+  /** the corner ⤢ (or Space): the larger preview */ onPeek?: (x: LibItem) => void; /** an image slot: a video tile gives a frame */ frameHint?: boolean; /** the ⋯ menu (Move to project); absent = no menu */ onMore?: (x: LibItem, el: HTMLButtonElement) => void; moreOpen?: boolean;
   /** a slot that takes several: this tile's place in the selection (1-based); 0 = not picked; undefined = picks at once */ sel?: number }) {
   const [ref, seen] = useInView<HTMLDivElement>(); const dur = useMediaLength(x.url, x.type, seen);
   /* loaded: React state, so a re-render (picking it) keeps the class */ const [ld, setLd] = useState(false); const loaded = () => setLd(true);
   const kindWord = x.type === 'image' ? 'Image' : x.type === 'video' ? 'Video' : 'Audio';
-  /* hover-hold: the mouse rests on the tile for HOLD ms (small moves allowed) → the larger preview; passing over tiles never opens one.
-   * After a preview closes, the tile under the mouse waits until the mouse leaves it (`calm`). */
-  const hold = useRef<{ t: number; x: number; y: number } | null>(null);
-  const unhold = () => { if (hold.current) clearTimeout(hold.current.t); hold.current = null; };
-  const rest = (e: React.PointerEvent) => { if (!onPeek || e.pointerType !== 'mouse' || e.buttons) return;
-    if (calm?.current === x.id) return; const h = hold.current;
-    if (h && Math.hypot(e.clientX - h.x, e.clientY - h.y) < 6) return; unhold(); hold.current = { x: e.clientX, y: e.clientY, t: window.setTimeout(() => { hold.current = null; onPeek(x); }, HOLD) }; };
-  const leave = () => { unhold(); if (calm?.current === x.id) calm.current = null; };
-  useEffect(() => unhold, []);
   const name = tileName(x, tab); const when = day(x.createdAt); const tip = when ? `${name} · ${when}` : name; const len = fmtLength(dur);
   /* a sound: Space plays / pauses it (Enter still picks); the round button does the same with the mouse */
   const space = (e: React.KeyboardEvent) => { if (onKeys?.(x, e)) return; if (x.type !== 'audio' || e.key !== ' ') return; e.preventDefault(); if (e.type === 'keydown' && !e.repeat) togglePreview(x.url); };
-  return <div ref={ref} className={`ic-ref-tile mpk-tile mpk-t-${x.type}${x.type === 'image' ? ' alpha-bg' : ''}${ld ? ' ld' : ''}${sel ? ' mpk-sel' : ''}`} onPointerMove={rest} onPointerLeave={leave} onPointerDown={unhold}><button type="button" className="mpk-pick" data-item={x.id} onClick={e => onPick(x, e.shiftKey)} onKeyDown={space} onKeyUp={space}
+  return <div ref={ref} className={`ic-ref-tile mpk-tile mpk-t-${x.type}${x.type === 'image' ? ' alpha-bg' : ''}${ld ? ' ld' : ''}${sel ? ' mpk-sel' : ''}`}><button type="button" className="mpk-pick" data-item={x.id} onClick={e => onPick(x, e.shiftKey)} onKeyDown={space} onKeyUp={space}
     aria-label={`${kindWord}: ${tip}${len ? `, ${len}` : ''}${frameHint && x.type === 'video' ? ' · pick a frame' : ''}`} aria-keyshortcuts={x.type === 'audio' ? 'Space' : undefined} title={tip}
     aria-pressed={sel === undefined || (frameHint && x.type === 'video') ? undefined : sel > 0}
     data-testid={tab === 'Generations' ? `ic-ref-gen-${x.id}` : tab === 'Liked' ? `ic-ref-liked-${x.id}` : `ic-ref-up-${x.id}`} data-kind={x.type}>
@@ -135,6 +125,8 @@ function Tile({ x, tab, onPick, onKeys, onPeek, calm, onMore, moreOpen, frameHin
     {sel !== undefined && !(frameHint && x.type === 'video') && (sel ? <span className="mpk-seln" aria-hidden>{sel}</span> : <span className="mpk-tick" aria-hidden />)}
   </button>
     {x.type === 'audio' && <PlayButton url={x.url} label={name} className="mpk-pv" testId="mpk-play" />}
+    {/* the larger preview: only when asked (this corner button, or Space on the tile); a click on the tile still picks it */}
+    {onPeek && <button type="button" className="mpk-zoom" aria-label="Preview" title="Preview" data-testid="mpk-zoom" onClick={() => onPeek(x)}><MaximizeIcon size={14} /></button>}
     {onMore && <button type="button" className="mpk-more" aria-haspopup="listbox" aria-expanded={!!moreOpen} aria-label={`Move ${name} to a project`} title="Move to project" data-testid="mpk-more" onClick={e => onMore(x, e.currentTarget)}><MoreIcon size={16} /></button>}
   </div>;
 }
@@ -189,8 +181,6 @@ function FrameGrab({ item, onUse, onBack }: { item: LibItem; onUse: (f: File) =>
 }
 /** one frame at 30 fps: the scrubber's arrow-key step (the server still grabs the exact frame at that time) */
 const FRAME = 1 / 30;
-/** hover-hold before the larger preview opens */
-const HOLD = 500;
 const fmtClock = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toFixed(2).padStart(5, '0')}`;
 
 export interface MediaPickerProps {
@@ -217,15 +207,10 @@ export function MediaPicker({ tab, setTab, onClose, title, limits, kinds, frames
   const [projOpen, setProjOpen] = useState(false); const projBtn = useRef<HTMLButtonElement>(null);
   const [moveOf, setMoveOf] = useState<LibItem | null>(null); const moveBtn = useRef<HTMLButtonElement | null>(null);
   /* a slot that takes several: tiles toggle into a selection (kept across tabs), "Add n" hands them over together */
-  /* the larger preview (hover-hold, or Space on a tile): one item at a time, arrows move through the grid */
+  /* the larger preview (a tile's ⤢, or Space on it): one item at a time, arrows move through the grid */
   const [peek, setPeek] = useState<LibItem | null>(null);
   const openPeek = (x: LibItem) => { stopPreview(); setPeek(x); };
-  /* closing it: the tile now under the mouse (if any) stays calm until the mouse leaves it, so the next nudge doesn't reopen a preview */
-  const ptr = useRef<[number, number] | null>(null); const calm = useRef<string | null>(null);
-  const closePeek = () => { const id = peek?.id; setPeek(null); const p = ptr.current;
-    const under = p && [...(panel.current?.querySelectorAll<HTMLElement>('.mpk-tile') ?? [])].find(t => { const r = t.getBoundingClientRect(); return p[0] >= r.left && p[0] <= r.right && p[1] >= r.top && p[1] <= r.bottom; });
-    calm.current = under?.querySelector('.mpk-pick')?.getAttribute('data-item') ?? null;
-    if (id) requestAnimationFrame(() => panel.current?.querySelector<HTMLElement>(`.mpk-pick[data-item="${CSS.escape(id)}"]`)?.focus({ preventScroll: true })); };
+  const closePeek = () => { const id = peek?.id; setPeek(null); if (id) requestAnimationFrame(() => panel.current?.querySelector<HTMLElement>(`.mpk-pick[data-item="${CSS.escape(id)}"]`)?.focus({ preventScroll: true })); };
   const [sel, setSel] = useState<LibItem[]>([]); const [selNote, setSelNote] = useState<string | null>(null); const lastPick = useRef<string | null>(null);
   const room = max == null ? Infinity : Math.max(0, max);
   const panel = useRef<HTMLDivElement>(null); const sentinel = useRef<HTMLDivElement>(null); const depth = useRef(0);
@@ -326,7 +311,7 @@ export function MediaPicker({ tab, setTab, onClose, title, limits, kinds, frames
   const countNoun = (n: number) => shownKinds.length > 1 ? (n === 1 ? 'item' : 'items') : n === 1 ? NOUN[shownKinds[0] ?? 'image'][0].replace(/^an? /, '') : NOUN[shownKinds[0] ?? 'image'][1];
   const empty = qd ? `Nothing matches “${qd}” here. Try other words or another tab.` : projRow ? `Nothing in ${projRow.name} here yet.` : tab === 'Uploads' ? `Nothing uploaded yet. Drop ${noun} here, paste with ⌘V, or upload from your computer.` : tab === 'Liked' ? 'No favourites yet. Tap the heart on any result to keep it here.' : `Your ${noun} will show up here once you make some.`;
   const accepts = acceptsProp ?? (kinds.length > 1 ? list(kinds.map(k => NOUN[k][1])).replace(/^./, c => c.toUpperCase()) : null) ?? kinds.map(k => k === 'image' ? 'PNG, JPG, WEBP' : k === 'video' ? 'MP4, MOV, WEBM' : 'MP3, WAV, M4A').join(' · ');
-  const body = <div ref={panel} className={`ic-ref mpk${over ? ' mpk-over' : ''}${host ? ' mpk-dialog' : ''}`} onPointerMoveCapture={e => { ptr.current = [e.clientX, e.clientY]; }} onPointerLeave={() => { ptr.current = null; }} role="dialog" aria-modal={host ? true : undefined} aria-label={title} data-testid="ic-ref" data-target={target ?? undefined} data-kinds={kinds.join(',')}
+  const body = <div ref={panel} className={`ic-ref mpk${over ? ' mpk-over' : ''}${host ? ' mpk-dialog' : ''}`} role="dialog" aria-modal={host ? true : undefined} aria-label={title} data-testid="ic-ref" data-target={target ?? undefined} data-kinds={kinds.join(',')}
     onDragEnter={e => { if (![...e.dataTransfer.types].includes('Files')) return; e.preventDefault(); depth.current++; setOver(true); }} onDragOver={e => { if ([...e.dataTransfer.types].includes('Files')) e.preventDefault(); }}
     onDragLeave={() => { depth.current = Math.max(0, depth.current - 1); if (!depth.current) setOver(false); }}
     onDrop={e => { e.preventDefault(); depth.current = 0; setOver(false); take([...e.dataTransfer.files]); }}>
@@ -364,7 +349,7 @@ export function MediaPicker({ tab, setTab, onClose, title, limits, kinds, frames
         {tab === 'Uploads' && <button type="button" className="ic-ref-tile ic-ref-up mpk-up" data-testid="ic-ref-upload" onClick={onUpload} aria-label="Upload from your computer" title={`Upload from your computer · ${accepts}`}>
           <span className="mpk-up-ic" aria-hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg></span>
           <b>Upload</b><small>or drop files</small></button>}
-        {items.map(x => <Tile key={x.id} x={x} tab={tab} onPick={pick} onKeys={keys} onPeek={openPeek} calm={calm} frameHint={x.type === 'video' && !kinds.includes('video')} sel={multiple ? sel.findIndex(y => y.id === x.id) + 1 : undefined} moreOpen={moveOf?.id === x.id} onMore={hasProjects && (tab === 'Uploads' || x.jobId) ? (it, el) => { moveBtn.current = el; setMoveOf(it); } : undefined} />)}
+        {items.map(x => <Tile key={x.id} x={x} tab={tab} onPick={pick} onKeys={keys} onPeek={openPeek} frameHint={x.type === 'video' && !kinds.includes('video')} sel={multiple ? sel.findIndex(y => y.id === x.id) + 1 : undefined} moreOpen={moveOf?.id === x.id} onMore={hasProjects && (tab === 'Uploads' || x.jobId) ? (it, el) => { moveBtn.current = el; setMoveOf(it); } : undefined} />)}
         {loading && !items.length && Array.from({ length: 5 }, (_, i) => <span key={i} className="ic-ref-tile ic-ref-skel" aria-hidden />)}
         {!loading && !items.length && <p className="helper ic-ref-empty mpk-empty" data-testid="mpk-empty">{failed ? 'Couldn’t load your library. Close and try again.' : empty}
           {!failed && projRow && <button type="button" className="mpk-btn mpk-showall" data-testid="mpk-show-all" onClick={() => setProjByTab(m => ({ ...m, [tab]: 'all' }))}>Show all projects</button>}</p>}
