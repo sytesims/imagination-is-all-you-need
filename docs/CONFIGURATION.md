@@ -68,7 +68,7 @@ Which of these actually run today: [PROVIDERS-AND-MODELS.md](PROVIDERS-AND-MODEL
 
 ## Your Comfy deployment
 
-Run heavy workflows on your own Comfy deployment. Some workflows need custom node packs and LoRAs that shared Comfy Cloud doesn't have, for example MiniMax H3 Character Swap (the `h3-relay` nodes) and H3 CrossView (the `ComfyUI-CrossViewWarp` nodes). A Comfy API deployment is your own ComfyUI environment on Comfy's GPUs. It speaks the same Comfy API v2 as Comfy Cloud and takes the same key, so the app only needs its address. Routes that run there say **Your Comfy deployment** and bill your Comfy account.
+Run heavy workflows on your own Comfy deployment. Some workflows need custom node packs and LoRAs that shared Comfy Cloud doesn't have, for example H3 CrossView (the `ComfyUI-CrossViewWarp` nodes). A Comfy API deployment is your own ComfyUI environment on Comfy's GPUs. It speaks the same Comfy API v2 as Comfy Cloud and takes the same key, so the app only needs its address. Routes that run there say **Your Comfy deployment** and bill your Comfy account.
 
 **Set it up (once, on platform.comfy.org):**
 
@@ -106,7 +106,7 @@ Add this to the Build on platform.comfy.org (drag in `workflows/deploy/h3-crossv
 | `MiniMax-H3_Ref2VA-LoRA-CrossView-Warp_v1_3500.safetensors` | `loras/` | 0.60 GB | [Cseti/MiniMax-H3_Ref2VA-LoRA-CrossView-Warp_v1](https://huggingface.co/Cseti/MiniMax-H3_Ref2VA-LoRA-CrossView-Warp_v1) | MiniMax H3 Community License |
 | `moge_2_vitl_normal_fp16.safetensors` | `geometry_estimation/` | 0.66 GB | [Comfy-Org/MoGe](https://huggingface.co/Comfy-Org/MoGe/blob/main/geometry_estimation/moge_2_vitl_normal_fp16.safetensors) | MIT |
 
-Pick a 96 GB GPU (RTX PRO 6000): that's what Comfy showed the recipe on, and smaller cards are untested. After deploying, **Check** in Settings → Connections lists any node class or file the Build still misses for "New angle · H3 CrossView". While something is missing, the app refuses the run before it uploads anything. The price stays an estimate (about 25 GPU-seconds per second of video at 480p and 50 at 768p, plus any cold start) until a measured run. Until then real runs need `OPENHIGGSFIELD_ALLOW_UNMEASURED_CLOUD=1`.
+Pick a 96 GB GPU (RTX PRO 6000): that's what Comfy showed the recipe on, and smaller cards are untested. After deploying, **Check** in Settings → Connections lists any node class or file the Build still misses for "New angle · H3 CrossView". When the last Check could read the node list and found something missing, the app refuses the run before it uploads anything. If the deployment doesn't share its node list, nothing is checked, so a missing node or file only shows up as a failed (paid) job. The price stays an estimate (about 25 GPU-seconds per second of video at 480p and 50 at 768p, plus any cold start) until a measured run. Until then real runs need `OPENHIGGSFIELD_ALLOW_UNMEASURED_CLOUD=1`.
 
 **Camera:** azimuth −90° to 90° (negative = to the left), elevation −45° to 45° (positive = above), distance 0.5 to 2. **Green** (up to ±45°, +30° / −20°) is where the LoRA was checked. **Yellow** (up to ±90°, +45° / −35°) is trained but less reliable. **Red** means the camera sees what the take never showed, so that side is invented. Distance isn't followed closely by the current LoRA.
 
