@@ -551,7 +551,7 @@ export const EXPLORE_SHOWCASE_LINKS = (): string[] => [
   EXPLORE_VFX.cta.href, ...EXPLORE_VFX.effects.map((v) => vfxTile(v)?.href ?? ''), featuredRecreateHref(EXPLORE_VFX.layout.key) ?? '',
 ];
 
-/** "One app, every way to run" (2026-11-01, options A / B / C behind ?run= until the user picks; web/src/ui/explore/ExploreRun.tsx).
+/** "One app, every way to run" (2026-11-01, user pick: option B, the places beside the Run on picker; web/src/ui/explore/ExploreRun.tsx).
  *  Every run picks where it happens; the price shows before Go. Places use the app's own place words (shared/modelIds.ts LOCAL_LABEL,
  *  Comfy Cloud, Comfy Router). Example prices are read live from the Video tab's models (tools list), never typed here: `example` names the
  *  tool, model and place. The counts come from the workflow lists themselves (ExploreRun.tsx), except the template line below. */
@@ -574,10 +574,10 @@ export const EXPLORE_RUN = {
       line: 'Top partner models like Kling, Veo and Seedance, with one Comfy key, at a set price.',
       example: { toolId: 'h3-video', modelKey: 'kling-v3', runOn: 'comfy-cloud' }, see: { label: 'See it', href: '/video?model=kling-v3' } },
   ] as RunPlace[],
-  /** the proof: one model offered in two places (option B) */
+  /** the proof: one model offered in two places (the picker's caption) */
   same: { toolId: 'h3-video', modelKey: 'ltx-2.5-22b', label: 'Same model, two places', href: '/video?model=ltx-2.5-22b' },
   countsLabel: 'Ready-made workflows',
   /** official Comfy templates: bundled in workflows/ vs credited in the docs (never one number for both) */
-  templates: 'Built on official Comfy templates: 30 bundled, about 100 credited.',
+  templates: 'Built on official Comfy templates: 30 bundled, over 120 credited.',
   all: { label: 'See all workflows', href: '/workflows' },
 } as const;

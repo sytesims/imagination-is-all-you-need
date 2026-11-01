@@ -2,11 +2,8 @@
  * "One app, every way to run" (2026-11-01): right under the hero. Every run picks where it happens (Your computer · Comfy Cloud · Comfy Router)
  * and shows its price before Go, plus honest workflow counts. Copy and links: EXPLORE_RUN (server/src/shared/exploreShowcase.ts).
  * Prices are the Video tab's real Run on rows (the tools list), in the picker's own words (shared/models.ts listPrice); counts are the
- * workflow lists' own lengths. Three layouts until the user picks one (preview only, ?run=a|b|c):
- *  A: three place tiles (icon, tech chip, one line, a price example, See it) over a counts strip;
- *  B: the places as a list beside the real Run on picker look (runon.css .ro-*), stepping through the places with the price changing on Go;
- *  C: one quiet band, three place chips and the counts.
- * Reduced motion: B stays on the place you pick (no stepping).
+ * workflow lists' own lengths. Layout (user pick, 2026-11-01, option B): the places as a list beside the real Run on picker look
+ * (runon.css .ro-*), stepping through the places with the price changing on Generate. Reduced motion: it stays on the place you pick.
  */
 import { useEffect, useState } from 'react';
 import type { ToolInfo } from '../../api';
@@ -50,11 +47,9 @@ const Head = ({ id }: { id: string }) => <header className="xr-head">
   <p className="xps-p xr-p">{R.line}</p>
 </header>;
 
-/** The counts strip: big numbers (A, B) or one quiet line (C). */
-function Counts({ tools, quiet }: { tools: ToolInfo[]; quiet?: boolean }) {
+/** The counts strip: big numbers, the template line and See all workflows. */
+function Counts({ tools }: { tools: ToolInfo[] }) {
   const cs = useCounts(tools);
-  if (quiet) return <div className="xr-cline" data-testid="xp-run-counts"><p><span className="xr-cline-h">{R.countsLabel}</span>{cs.map((c, k) => <span key={c.l}>{k ? <i aria-hidden> · </i> : null}<b>{c.n}</b> {c.l}</span>)}</p>
-    <Link to={R.all.href} className="xr-lnk" data-testid="xp-run-all">{R.all.label}<Arrow /></Link></div>;
   return <div className="xr-counts" data-testid="xp-run-counts">
     <span className="xr-counts-h">{R.countsLabel}</span>
     <ul className="xr-nums">{cs.map((c) => <li key={c.l}><b>{c.n}</b><span>{c.l}</span></li>)}</ul>
@@ -62,23 +57,7 @@ function Counts({ tools, quiet }: { tools: ToolInfo[]; quiet?: boolean }) {
   </div>;
 }
 
-/* ---------------------------------------------------------------- A: three tiles */
-function RunA({ tools }: { tools: ToolInfo[] }) {
-  return <>
-    <div className="xr-a-top"><Head id="xp-h-run" /></div>
-    <div className="xr-tiles">{R.places.map((p) => { const ex = priceAt(tools, p.example);
-      return <Link key={p.id} to={p.see.href} className="xr-tile" data-place={p.id} data-testid={`xp-run-see-${p.id}`}>
-        <span className="xr-tile-top"><PlaceIcon id={p.id} size={22} /><span className="xr-chip">{p.chip}</span></span>
-        <b className="xr-name">{p.name}</b>
-        <span className="xr-line">{p.line}</span>
-        <span className="xr-ex">{ex ? <><span className="xr-ex-m">Video · {ex.model}</span><span className={`xr-price${p.id === 'local' ? ' is-free' : ''}`} data-testid={`xp-run-price-${p.id}`}>{ex.price}</span></> : <span className="xr-ex-m">{p.short}</span>}</span>
-        <span className="xr-see">{p.see.label}<Arrow /></span>
-      </Link>; })}</div>
-    <Counts tools={tools} />
-  </>;
-}
-
-/* ---------------------------------------------------------------- B: the places beside the Run on picker */
+/* ---------------------------------------------------------------- the places beside the Run on picker */
 const STEP_MS = 2600;
 function RunB({ tools }: { tools: ToolInfo[] }) {
   const [on, setOn] = useState(0); const [held, setHeld] = useState(false);
@@ -117,23 +96,6 @@ function RunB({ tools }: { tools: ToolInfo[] }) {
   </div>;
 }
 
-/* ---------------------------------------------------------------- C: one quiet band */
-function RunC({ tools }: { tools: ToolInfo[] }) {
-  return <div className="xr-band">
-    <div className="xr-band-t"><h2 id="xp-h-run" className="xr-band-h">{R.title.join(' ')}</h2><p>{R.line}</p></div>
-    <div className="xr-band-chips">{R.places.map((p) => { const ex = priceAt(tools, p.example);
-      return <Link key={p.id} to={p.see.href} className="xr-bchip" data-place={p.id} data-testid={`xp-run-see-${p.id}`} title={`${p.name}: ${p.line}`}>
-        <PlaceIcon id={p.id} size={16} /><b>{p.name}</b><span className={p.id === 'local' ? 'is-free' : ''}>{p.id === 'local' ? ex?.price ?? p.short : p.chip}</span></Link>; })}</div>
-    <Counts tools={tools} quiet />
-  </div>;
-}
-
-export type RunVariant = 'a' | 'b' | 'c';
-/** Preview only (until the user picks): ?run=a|b|c. */
-export const runVariant = (search = typeof location === 'undefined' ? '' : location.search): RunVariant => { const v = new URLSearchParams(search).get('run'); return v === 'a' || v === 'c' ? v : 'b'; };
-
-export function XpRun({ tools, variant = runVariant() }: { tools: ToolInfo[]; variant?: RunVariant }) {
-  return <section className={`xv-sec xr xr-v-${variant}`} id="xp-run" data-testid="xp-run" data-variant={variant} aria-labelledby="xp-h-run">
-    {variant === 'a' ? <RunA tools={tools} /> : variant === 'c' ? <RunC tools={tools} /> : <RunB tools={tools} />}
-  </section>;
+export function XpRun({ tools }: { tools: ToolInfo[] }) {
+  return <section className="xv-sec xr" id="xp-run" data-testid="xp-run" aria-labelledby="xp-h-run"><RunB tools={tools} /></section>;
 }

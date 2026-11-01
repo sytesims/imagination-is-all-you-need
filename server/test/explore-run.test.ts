@@ -18,8 +18,8 @@ for (const p of EXPLORE_RUN.places) {
 ok('three places, each with a See it link and a price example');
 
 const copy = JSON.stringify(EXPLORE_RUN);
-assert.doesNotMatch(copy, /\b(our|ours|we|us)\b/i, 'users install this app: no our / we'); assert.doesNotMatch(copy, /\bMac\b|any model|every model|104/, 'never Mac, any model or 104');
-assert.match(EXPLORE_RUN.templates, /30 bundled, about 100 credited/);
+assert.doesNotMatch(copy, /\b(our|ours|we|us)\b/i, 'users install this app: no our / we'); assert.doesNotMatch(copy, /\bMac\b|any model|every model|\b10[0-9]\b|125/, 'never Mac, any model or an exact template number');
+assert.match(EXPLORE_RUN.templates, /30 bundled, over 120 credited/);
 ok('plain copy; the template line says bundled and credited apart');
 
 const ui = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreRun.tsx'), 'utf8');
@@ -30,3 +30,7 @@ ok('counts and prices are read, never typed');
 const home = fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8');
 assert.match(home, /<XpHero \/>\s*<div className="xp-in"><XpRun tools=\{tools\} \/><XpWork \/><\/div>/, 'right under the hero, before Made for your work');
 ok('mounted under the hero');
+assert.doesNotMatch(ui, /\?run=|runVariant|RunA|RunC|xr-tile|xr-band/, 'one layout (option B): no preview switch left');
+assert.match(ui, /tablist[\s\S]*apop bp apop-runon xr-pop[\s\S]*xr-go/, 'the places beside the real Run on picker look, the price on Generate');
+const css = fs.readFileSync(path.join(WEB, 'ui/explore/exploreRun.css'), 'utf8'); assert.doesNotMatch(css, /xr-tile|xr-band|xr-bchip|xr-cline|xr-v-/, 'no CSS left from options A or C');
+ok('option B only');
