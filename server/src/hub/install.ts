@@ -1,7 +1,8 @@
 /**
  * One-click install. LoRA → ComfyUI models/loras (mock: recorded in the db and shown as installed).
  * Workflow → a style preset (db) or a new tool: a plugin folder plugins/hub-<slug>/ that passes plugins:check
- * (loaded on the next server start, like every plugin).
+ * (loaded on the next server start, like every plugin). The tool runs our Z-Image Turbo template with the item's name as the style,
+ * not the community workflow itself (that is not downloaded).
  */
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -53,7 +54,7 @@ function writePlugin(item: HubItem): { pluginId: string; dir: string } | { error
   const prompt = `${item.name}, ${item.tags.join(', ')}`;
   const manifest = {
     schema: 1, id: pluginId, name: item.name.slice(0, 60), version: '0.1.0', category: 'Community', status: 'new',
-    description: `Imported from the Community hub (${item.sample ? 'sample entry' : `${item.source} #${item.sourceId}`}). Image-to-image restyle on Z-Image Turbo.`.slice(0, 500),
+    description: `Imported from the Community hub (${item.sample ? 'sample entry' : `${item.source} #${item.sourceId}`}). Runs the app's own Z-Image Turbo image-to-image template with this item's name as the style, not the original workflow.`.slice(0, 500),
     input: 'image',
     inputs: { prompt: true, resolutions: ['720p', '1080p'], fields: [{ name: 'strength', label: 'Strength', kind: 'select', default: 'medium', options: [{ value: 'light', label: 'Light' }, { value: 'medium', label: 'Medium' }, { value: 'strong', label: 'Strong' }] }] },
     presets: [{ id: 'default', label: item.name.slice(0, 60), prompt, group: 'Style' }],

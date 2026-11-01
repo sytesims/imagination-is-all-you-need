@@ -49,7 +49,8 @@ export interface ToolDef {
   /** Per-tool price overrides (plugins): factors by preset/type id and by provider id. */
   pricing?: { optionFactors?: Record<string, number>; providerFactors?: Record<string, number> };
   /** Set for tools loaded from plugins/. */
-  plugin?: { id: string; dir: string; version?: string; license: { id: string; name: string; osi: boolean; url: string | null }; handler: boolean };
+  plugin?: { id: string; dir: string; version?: string; license: { id: string; name: string; osi: boolean; url: string | null }; handler: boolean;
+    /** placement from the manifest (shared/pluginPlacement.ts) */ tab?: 'image' | 'video' | 'audio' | '3d' | null; category?: string | null; goal?: string | null; author?: string | null; input?: 'image' | 'video'; output?: 'image' | 'video' };
   /** Provider ids this tool supports; the first is the default (open weights). */
   providers: string[];
   /** Mock pipeline stages, in order: [key, label]. */

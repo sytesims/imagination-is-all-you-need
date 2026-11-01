@@ -1,6 +1,21 @@
 # Plugins
 
-A plugin adds a tool without touching the core. Drop a folder into **`plugins/`** at the repo root (override it with `OPENHIGGSFIELD_PLUGINS_DIR`) and restart the server.
+A plugin adds an app from a ComfyUI workflow, without touching the core. Drop a folder into **`plugins/`** at the repo root (override it with `OPENHIGGSFIELD_PLUGINS_DIR`) and restart the app: plugins load once at start, so a new or changed folder shows up after a restart.
+
+## Where a plugin runs
+
+- **On your own ComfyUI: for real.** When the app is connected to your ComfyUI (a local or private address) and the plugin has a node map, a job runs the plugin's workflow there: your file is uploaded, the prompt, seed, resolution, fields and preset are filled in from the node map, and the result comes back like any other app's. Your ComfyUI needs the workflow's custom nodes and models installed first (list them in `components[]` so people know what to install).
+- **Everywhere else: a sample.** In mock mode, on Comfy Cloud, or without a node map, the job gives a sample result and saves the workflow a real run would send (`data/<jobId>-graph.json`). The result's workflow export shows it labelled "Sample — nothing ran".
+- **Comfy Cloud:** plugins don't run there yet.
+
+## Where a plugin shows up
+
+Give the manifest a `tab` and a `category` and the plugin shows up in the app next to the built-in ones, with a small **Plugin** badge, its author and licence (and **Runs code** when the folder ships a handler):
+- **Video** (`"tab": "video"`): in the Video workflow picker under its category and in the header Video menu; `/video?workflow=<id>` opens it, and its old address `/tools/<id>` still works.
+- **Image, Audio, 3D**: a row in that tab's header menu, opening the plugin's own page.
+- **Workflows page and search**: a card under "Your plugins", found by the Workflows search, the header search and agents' `search_capabilities` / `search_workflows`.
+
+`category` is then one of that tab's own groups: image `edit | people | product | camera`, video `create | edit | motion | camera | apps`, audio `create | voice | video`, 3D `create | edit | video`. Without a `tab`, the plugin is listed on the Plugins page and `category` is only its group name.
 
 Plugins register into the same tool registry as the built-in tools, so a plugin tool automatically appears in:
 - the nav, Explore and Assets;
@@ -31,9 +46,13 @@ plugins/<folder>/
 |---|---|---|
 | `schema` | ✓ | `1` |
 | `id` | ✓ | `^[a-z][a-z0-9-]{1,39}$`, unique across tools. Becomes `/tools/<id>` and `/api/tools/<id>/jobs`. |
-| `name`, `category`, `description` | ✓ | Nav label, nav/Explore category, description. |
+| `name`, `category`, `description` | ✓ | Name, category, description. With a `tab`, `category` must be one of that tab's groups (above); the description's first sentence is the plugin's one line in menus. |
+| `tab` | | `image`, `video`, `audio` or `3d`: the tab it shows up in (above). |
+| `goal` | | A Workflows page goal id: `create`, `shop`, `ads`, `people`, `film`, `music` or `fix`. |
+| `author` | | Who made it, shown on its card. |
 | `version`, `status`, `previewUrl` | | `status` is a badge such as `new`. |
 | `input` | ✓ | `"video"` or `"image"`: the source upload. |
+| `output` | | `"image"` or `"video"`: what the plugin makes. Default: read from the node map's output node (`SaveImage` / `PreviewImage` → image, anything else → video). Must agree with that node. |
 | `inputs` | | `{ prompt?, mix? (1–4), durations?, enhance?, steps?, resolutions? (subset of 480p/720p/1080p), fields?[] }`. |
 | `inputs.fields[]` | | Generic controls: `{ name, label?, kind: select \| text \| number \| boolean, help?, options?[{value,label?}], default?, min?, max?, maxLength?, required? }`. Validated on the server and posted under `name`. Reserved names are rejected. |
 | `presets[]` | ✓ | `{ id, label, prompt, group? }`. The type grid; at least one, ids unique. |
@@ -64,13 +83,17 @@ plugins/<folder>/
   "inputs":  { "video": { "node": "1", "field": "file" }, "prompt": { "node": "5", "field": "text" }, "seed": { "node": "7", "field": "seed" } },
   "fields":  { "detail": [{ "node": "4", "field": "width", "map": { "fast": 768, "fine": 2048 } }], "edgeSoftness": { "node": "4", "field": "blur_size_two" } },
   "presets": { "white": [{ "node": "4", "field": "color", "value": 16777215 }] },
-  "output":  { "node": "6" }
+  "output":  { "node": "6" },
+  "extraOutputs": [{ "node": "9", "label": "Matte" }]
 }
 ```
 
 - **Mapped inputs:** `inputs` accepts `video`, `image`, `prompt` (the final prompt), `seed` and `resolution`. `fields` maps manifest field names to one or more node inputs, with an optional value `map`. `presets` sets fixed node values for each picked preset.
+- **Extra outputs:** `extraOutputs` lists more save nodes from the same run, each with a label; each becomes its own result.
 - **Load-time checks:** every node and field must exist in the workflow.
-- **Generic handler:** it applies the map and writes the graph to `data/<jobId>-graph.json`. In mock mode it then runs the generic mock (progress stages plus a mock clip, with the input's audio).
+- **Files:** the app fills in the input file itself, and only the job's own upload. A workflow or node map that contains a `"__file"` key is refused at load (it would let a shared plugin upload any file from your computer).
+- **Real runs:** on your own ComfyUI the same mapping runs through the app's local runner (`server/src/comfy/plans.ts`), and the submitted graph is kept for the workflow export. A handler's `run` is not called there.
+- **Sample runs:** the generic handler applies the map and writes the graph to `data/<jobId>-graph.json`, then runs the generic mock (progress stages plus a sample result).
 
 ## Optional handler
 
@@ -78,7 +101,7 @@ plugins/<folder>/
 import type { PluginHandler } from '../../server/src/plugins.js';
 const handler: PluginHandler = {
   async parseInput(fields, files, ctx) { const input = await ctx.base(); /* generic validation */ return input; },
-  run(job, ctx) { return ctx.mockRun(job, ['Output A', 'Output B']); },   // ctx.buildGraph(job.input) → mapped workflow
+  run(job, ctx) { return ctx.mockRun(job, ['Output A', 'Output B']); },   // sample runs only; ctx.buildGraph(job.input) → mapped workflow
 };
 export default handler;
 ```
@@ -88,10 +111,11 @@ export default handler;
 
 ## Example: `plugins/cutout` (background removal)
 
+- **Placement:** `"tab": "video", "category": "edit", "goal": "fix"`: it sits with the Video edits. Remove Background lifts the subject off; Cutout gives the subject plus a black-and-white mask for editing.
 - **Pipeline:** BiRefNet (MIT) through the ComfyUI_BiRefNet_ll node pack (MIT). Video in; the subject comes out on a colour plate (green, blue, white or black presets), plus an alpha-matte video.
 - **Fields:** `detail` sets the processing size; `edgeSoftness` (1–30) sets the edge blur.
-- **Handler:** adds a speed warning for fine detail at 1080p and returns two outputs (cutout and matte).
-- **Mock clips:** `mock-cutout.mp4` and `mock-matte.mp4` are procedural (ffmpeg edge detection on our sample clip), not real segmentation.
+- **Handler:** adds a speed warning for fine detail at 1080p and labels the two sample outputs (cutout and matte). On your own ComfyUI the run returns both from the node map (`output` + `extraOutputs`).
+- **Mock clips:** `mock-cutout.mp4` and `mock-matte.mp4` are procedural (ffmpeg edge detection on the app's sample clip), not real segmentation.
 - **Installing for real use:** clone `lldacing/ComfyUI_BiRefNet_ll` into `ComfyUI/custom_nodes`, `pip install timm`, and put the BiRefNet weights from https://huggingface.co/ZhengPeng7/BiRefNet into `ComfyUI/models/BiRefNet/`.
 
 ## Community hub (`/api/hub/*`)
@@ -104,6 +128,6 @@ Browse community LoRAs and ComfyUI workflows, curated by business use case, and 
 - **Endpoints.**
   - `GET /api/hub/items?type=lora|workflow&useCase=product-shots|ads|fashion|real-estate|thumbnails&sort=popular|trending|new|rated&q=&limit=&offset=`
   - `GET /api/hub/items/:id` (adds `installAs`)
-  - `POST /api/hub/install` `{ id, as? }`: LoRA → `as: "lora"` (recorded as installed under `ComfyUI/models/loras/<file>`, `mock: true`; no download yet). Workflow → `as: "style"` (default; a style preset `{ id, label, prompt }`) or `as: "tool"` (writes `plugins/hub-<slug>/` with plugin.json, a Z-Image Turbo img2img workflow and node-map.json, validated with the plugin schema; it loads on the next server start, `requiresRestart: true`). 409 if already installed.
+  - `POST /api/hub/install` `{ id, as? }`: LoRA → `as: "lora"` (recorded as installed under `ComfyUI/models/loras/<file>`, `mock: true`; no download yet). Workflow → `as: "style"` (default; a style preset `{ id, label, prompt }`) or `as: "tool"` (writes `plugins/hub-<slug>/` with plugin.json, the app's own Z-Image Turbo img2img workflow and node-map.json, validated with the plugin schema; it loads on the next server start, `requiresRestart: true`). The tool uses the item's name as its style; it does not download or run the community workflow itself. 409 if already installed.
   - `GET /api/hub/installed`, `DELETE /api/hub/installed/:id` (id is `<itemId>:<as>`; removing a tool deletes its `plugins/hub-*` folder).
 - Installs are stored in the `hub_installed` SQLite table.

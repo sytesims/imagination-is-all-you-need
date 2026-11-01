@@ -22,6 +22,8 @@ import { availableAudioWorkflows, AWIcon } from './audio/AudioWorkflows';
 import { AUDIO_DEFAULT_WORKFLOW, audioRoute } from '../../../server/src/shared/audioWorkflows';
 import { IMAGE_PAGE, AUDIO_PAGE } from '../../../server/src/shared/pages';
 import { pickerHref } from '../shared/WorkflowPicker';
+import { PluginBadge } from '../shared/PluginBadge';
+import { pluginMenuRows, type PluginBadge as PluginBadgeInfo } from '../../../server/src/shared/pluginPlacement';
 import { useProfile, nameOf, UserAvatar, type ProfileData } from '../shared/profile';
 import { REPO_URL } from '../shared/brand';
 import { GPU_SETTINGS } from '../shared/legacyRoutes';
@@ -45,7 +47,7 @@ export const imageFeatureRows = (tools: ToolInfo[], list: readonly (typeof MENU_
 /** Video menu rows (One Video page, 2026-10-23): one row per video workflow, each opening the Video page with it picked
  *  (/video?workflow=<id>), the way the Image menu lists its features; listed video tools that aren't a workflow follow with their own page (Director was removed 2026-10-23). */
 export const videoWorkflowRows = (all: ToolInfo[], vid: ToolInfo[]) => { const covered = new Set([...VIDEO_WORKFLOWS.map(w => w.toolId), 'plan-a-shot', 'make-it-real']);
-  return [...availableVideoWorkflows(all).filter(w => w.inMenu).flatMap(w => { const t = all.find(x => x.id === w.toolId); return t || isPanelWorkflow(w) /* Stitch: no registry tool */ ? [{ key: w.id, to: videoWorkflowHref(w.id), name: w.name, line: w.tagline, icon: w.toolId, ui: t?.ui, t: t ?? null }] : []; }),
+  return [...availableVideoWorkflows(all).filter(w => w.inMenu).flatMap(w => { const t = all.find(x => x.id === w.toolId); return t || isPanelWorkflow(w) /* Stitch: no registry tool */ ? [{ key: w.id, to: videoWorkflowHref(w.id), name: w.name, line: w.tagline, icon: w.toolId, ui: t?.ui, t: t ?? null, plugin: w.plugin ?? null }] : []; }),
     /* flow shortcuts (2026-10-26): Direct a Shot, Loop, Morph, Exploded view, New angle (shared/videoWorkflows.ts VIDEO_FLOW_SHORTCUTS) */
     ...availableFlowShortcuts(all).map(w => { const t = all.find(x => x.id === w.toolId)!; return { key: w.id, to: w.href, name: w.name, line: w.tagline, icon: w.toolId, ui: t.ui, t: w.badge === 'New' ? { ...t, badge: 'new' } as ToolInfo : t, opensIn: w.opensIn }; }),
     ...vid.filter(t => !covered.has(t.id)).map(t => ({ key: t.id, to: t.route, name: t.name, line: toolLine(t), icon: t.id, ui: t.ui, t }))]; };
@@ -56,11 +58,15 @@ export const audioWorkflowRows = (all: ToolInfo[]) => availableAudioWorkflows(al
 /** ONE builder for the Features rows of all four header menus (mega panel and phone drawer): Image features, Video, Audio and 3D workflows,
  *  each with where it opens, its line, its icon, the tool its New/Top badge comes from (once per tool) and, for a page's default workflow, the
  *  page's own path (current when no workflow is picked). The mega panel then keeps MENU_FEATURE_ORDER's 8 (headerMenus menuFeatureRows). */
-export type MenuFeature = { key: string; to: string; name: string; line: string; tile: (size: number) => React.ReactNode; badgeTool?: ToolInfo | null; home?: string; /** opens in another tab (Direct a Shot: '3D') */ opensIn?: string };
+export type MenuFeature = { key: string; to: string; name: string; line: string; tile: (size: number) => React.ReactNode; badgeTool?: ToolInfo | null; home?: string; /** a plugin's row (shared/pluginPlacement.ts) */ plugin?: PluginBadgeInfo | null; /** opens in another tab (Direct a Shot: '3D') */ opensIn?: string };
 export function menuFeatures(media: Medium, all: ToolInfo[], mediaTools: ToolInfo[], imageList: readonly (typeof MENU_FEATURES)[number][] = MENU_FEATURES): MenuFeature[] {
+  if (media === 'video') return videoWorkflowRows(all, mediaTools).map(r => ({ key: r.key, to: r.to, name: r.name, line: r.line, tile: (n: number) => <ToolIconFor id={r.icon} ui={r.ui} size={n} />, badgeTool: r.t, home: r.key === 'create' ? VIDEO_PAGE : undefined, opensIn: (r as { opensIn?: string }).opensIn, plugin: (r as { plugin?: PluginBadgeInfo | null }).plugin ?? null }));
+  return [...tabFeatures(media, all, imageList), ...pluginMenuRows(all, media).map(p => ({ key: p.key, to: p.to, name: p.name, line: p.line, tile: (n: number) => <ToolIconFor id={p.toolId} size={n} />, badgeTool: null, plugin: p.plugin }))];
+}
+/** Image, Audio and 3D rows before their plugins (a plugin with tab image | audio | 3d follows them; Video's sit inside its workflow list). */
+function tabFeatures(media: Exclude<Medium, 'video'>, all: ToolInfo[], imageList: readonly (typeof MENU_FEATURES)[number][]): MenuFeature[] {
   if (media === 'image') return imageFeatureRows(all, imageList).map(({ f, t, to, icon }) => ({ key: f.id, to, name: f.name, line: f.tagline, tile: (n: number) => <ToolIconFor id={icon} ui={t.ui} size={n} />,
     badgeTool: f.toolId !== 'create-image' || f.id === 'create-image' ? t : null /* Camera & Lens shares Create Image's tool: no second badge */ }));
-  if (media === 'video') return videoWorkflowRows(all, mediaTools).map(r => ({ key: r.key, to: r.to, name: r.name, line: r.line, tile: (n: number) => <ToolIconFor id={r.icon} ui={r.ui} size={n} />, badgeTool: r.t, home: r.key === 'create' ? VIDEO_PAGE : undefined, opensIn: (r as { opensIn?: string }).opensIn }));
   if (media === 'audio') { const seen = new Set<string>();
     return audioWorkflowRows(all).map(({ w, t }) => { const first = !seen.has(w.tool); seen.add(w.tool);
       return { key: w.id, to: audioRoute(w.id), name: w.name, line: w.tagline, tile: (n: number) => <AWIcon w={w} size={n} />, badgeTool: first ? t : null, home: w.id === AUDIO_DEFAULT_WORKFLOW ? AUDIO_PAGE : undefined }; }); }
@@ -157,12 +163,12 @@ function useHeaderMenus(path: string, search: string) {
 type HM = ReturnType<typeof useHeaderMenus>;
 
 /** One menu row: 48px icon tile (badge on its corner), title, one-line description. */
-type Row = { key: string; to: string; title: string; desc: string; tile: React.ReactNode; badge?: Badge | null; kind?: string; on?: boolean; /** another tab it opens in ('3D') */ opensIn?: string;
+type Row = { key: string; to: string; title: string; desc: string; tile: React.ReactNode; badge?: Badge | null; kind?: string; on?: boolean; /** a plugin's row: the Plugin badge */ plugin?: PluginBadgeInfo | null; /** another tab it opens in ('3D') */ opensIn?: string;
   /** Models column: the maker's announcement or model page (shared/modelLinks.ts aboutLink) */ about?: string | null };
 const KIND: Record<string, string> = { 'open-weights': 'Open', hosted: 'Hosted', 'hosted-direct': 'Direct' };
 const MRow = ({ r }: { r: Row }) => <Link to={r.to} role="menuitem" className={`hm-row${r.on ? ' on' : ''}`} aria-current={r.on ? 'page' : undefined}>
   <span className="hm-tile" aria-hidden>{r.tile}{r.badge && <Pill b={r.badge} />}</span>
-  <span className="hm-txt"><b>{r.title}{r.badge && <span className="sr-only"> ({r.badge})</span>}{r.opensIn && <span className="hm-opens" data-testid={`hm-opens-${r.key}`}><span aria-hidden>↗ </span>{r.opensIn}<span className="sr-only"> (opens the {r.opensIn} tab)</span></span>}</b><small>{r.kind && <em className={`hm-kind k-${r.kind.split(' ')[0].toLowerCase()}`}>{r.kind}</em>}{r.desc}</small></span></Link>;
+  <span className="hm-txt"><b>{r.title}{r.plugin && <PluginBadge b={r.plugin} />}{r.badge && <span className="sr-only"> ({r.badge})</span>}{r.opensIn && <span className="hm-opens" data-testid={`hm-opens-${r.key}`}><span aria-hidden>↗ </span>{r.opensIn}<span className="sr-only"> (opens the {r.opensIn} tab)</span></span>}</b><small>{r.kind && <em className={`hm-kind k-${r.kind.split(' ')[0].toLowerCase()}`}>{r.kind}</em>}{r.desc}</small></span></Link>;
 const firstSentence = (d?: string) => { const m = /^.*?[.!?](?=\s|$)/.exec((d ?? '').trim()); return (m ? m[0] : d ?? '').replace(/\.$/, ''); };
 
 /** The curated Models column for one medium, one row per MODEL (GET /api/tools → models[], keyed by a stable model key, so "MiniMax H3"
@@ -227,7 +233,7 @@ function MediaTrigger({ id, label, to, icon: I, on, hm }: { id: MenuId; label: s
 /** Image / Video / Audio panel: Features (at most MAX_FEATURES rows, headerMenus MENU_FEATURE_ORDER; "See all N" counts every one) | Models.
  *  Each column scrolls on its own when the window is too short, so the panel never runs off the bottom. */
 function MegaPanel({ media, tools, all, groups, path, hm }: { media: MenuId; tools: ToolInfo[]; all: ToolInfo[]; groups: ModelGroup[]; path: string; hm: HM }) {
-  const every: Row[] = menuFeatures(media as Medium, all, tools, IMAGE_FEATURES).map(r => ({ key: r.key, to: r.to, title: r.name, desc: r.line, badge: r.badgeTool ? badgeOf(r.badgeTool) : null, on: routeOn(r.to, path) || (!!r.home && routeOn(r.home, path)), tile: r.tile(22), opensIn: r.opensIn }));
+  const every: Row[] = menuFeatures(media as Medium, all, tools, IMAGE_FEATURES).map(r => ({ key: r.key, to: r.to, title: r.name, desc: r.line, badge: r.badgeTool ? badgeOf(r.badgeTool) : null, plugin: r.plugin ?? null, on: routeOn(r.to, path) || (!!r.home && routeOn(r.home, path)), tile: r.tile(22), opensIn: r.opensIn }));
   const tr = menuFeatureRows(media as Medium, every);
   const mr = mediaModels(media as Medium, tools, groups); const allTo = menuSeeAllHref(media as Medium);
   return hm.panel('hm-mega', `${media[0].toUpperCase()}${media.slice(1)} tools and models`, <div className="hm-cols" data-media={media}>

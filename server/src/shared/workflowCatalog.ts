@@ -19,6 +19,7 @@ import { FOOTAGE_EFFECTS, FOOTAGE_FX_TOOL, footageEffect, isCloudOnly } from './
 import { LTX_LORAS } from './ltxLoras.js';
 import { featuredRecreateHref, LTX_LAYOUT } from './featured.js';
 import type { FlowArt } from './exploreFlows.js';
+import type { PluginBadge } from './pluginPlacement.js';
 import { goalById, goalOf, WF_START_HERE, type WfGoal } from './workflowGoals.js';
 
 export type WfCat = 'video' | 'talk' | 'character' | 'film' | 'image' | 'photo' | 'product' | 'clip' | 'music' | '3d' | 'fix';
@@ -54,6 +55,8 @@ export interface WfEntry {
   /** the tab workflow it stands for (WF_SOURCES key, e.g. 'video:extend'); set by the helpers */ source: string;
   /** a real run of ours with no featured / showcase record (Try-On): its before / after pictures (shipped) and the run behind them */
   example?: WfExample;
+  /** a plugin's entry (shared/pluginPlacement.ts pluginWfEntries): its badge, author, licence */ plugin?: PluginBadge;
+  /** a plugin's goal from its manifest (Workflows page goals) */ goal?: string;
   /** the name its tab's menu uses, when the page says it plainer (Extend → "Make a clip longer"): the sheet names it, search still finds it */
   tabName?: string;
   /** a real sound of ours with no featured record (Voiceover: the presenter's script, read by Qwen3 TTS): the file (shipped) and the run behind it */
@@ -167,7 +170,6 @@ export const WF_ENTRIES: WfEntry[] = [
   FX('extend-frame', { art: 'outpaint', tags: ['outpaint', 'extend frame', 'reframe', 'vertical', 'widen', 'zoom out', 'footage effects', 'vfx', 'comfy cloud'] }),
   V('reframe', 'clip', { line: 'Fit any clip to any screen.', name: 'Make it vertical', art: 'outpaint', tags: ['aspect ratio', 'vertical', 'outpaint'] }),
   V('remove-bg', 'clip', { name: 'Remove Video Background', art: 'video', tags: ['cutout', 'green screen'] }),
-  V('cutout', 'clip', { art: 'video', tags: ['alpha', 'matte', 'compositing'] }),
   V('depth-map', 'clip', { art: 'video', tags: ['depth', 'compositing', 'vfx'] }),
   // Music & sound
   A('music', 'music', { line: 'Write a song from a few words.', name: 'Make music', model: 'yue2' /* installed and run here (job d967cfc3); ACE-Step 1.5 needs setting up */, featured: 'audio-last-train', art: 'music', tags: ['song', 'lyrics', 'track', 'beat'] }),

@@ -1,0 +1,108 @@
+/* Plugins page (ui/pages/PluginsPage.tsx, 2026-11-01). Scoped to .plx; the on/off switch is the shared .plug-sw (styles.css). */
+.plx{--plx-card:var(--surface-1);--plx-line:var(--border-strong);max-width:1180px;margin:0 auto;padding:40px 24px 72px;color:var(--text-1)}
+.plx :not(pre)>code{font:500 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--text-1);background:var(--fill);padding:2px 5px;border-radius:5px}
+
+/* hero */
+.plx-hero{display:flex;flex-direction:column;gap:12px;max-width:640px}
+.plx-h1{margin:0;font:700 clamp(32px,4.4vw,52px)/1 var(--font-display);letter-spacing:-.02em;text-transform:uppercase}
+.plx-lede{margin:0;color:var(--text-2);font:500 16px/1.55 var(--font-ui);max-width:560px}
+.plx-tech{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.plx-tech span{height:24px;display:inline-flex;align-items:center;padding:0 10px;border-radius:999px;border:1px solid var(--plx-line);color:var(--text-2);font:500 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace}
+
+/* sections */
+.plx-sec{margin-top:48px}
+.plx-sec-h{margin:0 0 16px}
+.plx-sec-h h2{margin:0;font:700 19px/1.1 var(--font-display);letter-spacing:-.01em;text-transform:uppercase}
+.plx-sec-h h2 span{color:var(--text-2);font:600 13px/1 var(--font-ui);text-transform:none;letter-spacing:0}
+.plx-sec-h p{margin:6px 0 0;color:var(--text-2);font:500 13px/1.5 var(--font-ui)}
+
+/* how it works: folder → app */
+.plx-flow{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.plx-step{position:relative;display:flex;gap:14px;align-items:flex-start;padding:18px;border-radius:var(--radius-xl);background:var(--plx-card);border:1px solid var(--border)}
+.plx-step-ic{position:relative;flex:none;width:44px;height:44px;border-radius:12px;display:grid;place-items:center;color:var(--accent);background:var(--accent-faint);border:1px solid rgba(255,122,26,.25)}
+.plx-step-ic i{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:999px;display:grid;place-items:center;background:var(--accent);color:var(--on-accent,#111);font:800 10px/1 var(--font-ui);font-style:normal;box-shadow:0 0 0 3px var(--bg)}
+.plx-step-t{display:flex;flex-direction:column;gap:4px;min-width:0}
+.plx-step-t b{font:600 15px/1.25 var(--font-ui)}
+.plx-step-t small{color:var(--text-2);font:500 13px/1.5 var(--font-ui)}
+.plx-flow{grid-template-columns:1fr;gap:0;position:relative}
+.plx-flow .plx-step{background:none;border:0;padding:12px 0}
+.plx-flow .plx-step+.plx-step::before{content:'';position:absolute;left:21px;top:-12px;height:22px;width:2px;background:linear-gradient(var(--accent-soft),transparent)}
+
+/* the honest small print */
+.plx-honest{list-style:none;margin:0;padding:16px 18px;display:grid;gap:10px;border-radius:var(--radius-xl);border:1px dashed var(--plx-line);color:var(--text-2);font:500 13px/1.5 var(--font-ui)}
+.plx-honest li{padding-left:16px;position:relative}
+.plx-honest li::before{content:'';position:absolute;left:0;top:8px;width:6px;height:6px;border-radius:999px;background:var(--accent)}
+.plx-honest b{color:var(--text-1);font-weight:600}
+
+/* installed plugins */
+.plx-st{flex:none;height:22px;display:inline-flex;align-items:center;gap:6px;padding:0 9px;border-radius:999px;font:600 11.5px/1 var(--font-ui);background:var(--fill);color:var(--text-2)}
+.plx-st::before{content:'';width:6px;height:6px;border-radius:999px;background:currentColor}
+.plx-st-ok{color:#5fd38a;background:rgba(95,211,138,.1)}
+.plx-st-err{color:#ff7d7d;background:rgba(255,92,92,.1)}
+.plx-switch{display:inline-flex;align-items:center;gap:10px;color:var(--text-2);font:500 12.5px/1.3 var(--font-ui)}
+.plx-open{height:32px;padding:0 16px;display:inline-flex;align-items:center;border-radius:10px;background:var(--accent);color:var(--on-accent,#111);font:600 13px/1 var(--font-ui);text-decoration:none}
+.plx-open:hover{background:var(--accent-hover)}
+.plx-ph{min-height:200px}
+.plx-empty p{margin:0;color:var(--text-2);font:500 13px/1.5 var(--font-ui)}
+
+.plx-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}
+.plx-card{display:flex;flex-direction:column;gap:12px;padding:18px;border-radius:var(--radius-xl);background:var(--plx-card);border:1px solid var(--border);transition:border-color var(--dur-fast) var(--ease)}
+.plx-card:hover{border-color:var(--plx-line)}
+.plx-card.is-off{opacity:.72}
+.plx-card.is-failed{border-color:rgba(255,92,92,.35)}
+.plx-card-head{display:flex;gap:12px;align-items:center}
+.plx-card-ic{flex:none;width:44px;height:44px;border-radius:12px;display:grid;place-items:center;overflow:hidden;background:var(--surface-3);color:var(--text-1);font:700 18px/1 var(--font-display)}
+.plx-card-ic img{width:100%;height:100%;object-fit:cover}
+.plx-card-t{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.plx-card-t b{font:600 16px/1.2 var(--font-ui);display:flex;align-items:center;flex-wrap:wrap}
+.plx-card-t small{color:var(--text-2);font:500 12px/1.3 var(--font-ui)}
+.plx-card-line{margin:0;color:var(--text-1);font:500 14px/1.5 var(--font-ui)}
+.plx-chips{display:flex;flex-wrap:wrap;gap:6px}
+.plx-chip{height:26px;display:inline-flex;align-items:center;gap:5px;padding:0 10px;border-radius:999px;background:var(--fill);border:1px solid var(--border);color:var(--text-2);font:500 12px/1 var(--font-ui);text-decoration:none;white-space:nowrap}
+.plx-chip-io{color:var(--text-1)}
+.plx-chip-here{color:#5fd38a;border-color:rgba(95,211,138,.25);background:rgba(95,211,138,.07)}
+.plx-chip-lic:hover{color:var(--text-1)}
+.plx-chip-code{color:#f2c46d;border-color:rgba(242,196,109,.3);background:rgba(242,196,109,.07)}
+.plx-card-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:12px;margin-top:auto;border-top:1px solid var(--border)}
+.plx-card-links{display:inline-flex;align-items:center;gap:12px;font:500 13px/1 var(--font-ui)}
+.plx-card-links a:not(.btn){color:var(--text-2)}
+/* sample files */
+.plx-sample{min-width:0}
+.plx-tabs{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:8px}
+.plx-tabs button{height:30px;padding:0 12px;border-radius:8px;border:1px solid transparent;background:none;color:var(--text-2);font:500 12.5px/1 ui-monospace,SFMono-Regular,Menlo,monospace;cursor:pointer}
+.plx-tabs button.on{background:var(--fill);border-color:var(--plx-line);color:var(--text-1)}
+.plx-tabs small{margin-left:auto;color:var(--text-3);font:500 12px/1.3 var(--font-ui)}
+.plx-sample .xcode-wrap{margin:0}
+.plx-sample .xcode{overflow-x:auto}
+.plx-fine{margin:10px 0 0;color:var(--text-2);font:500 12.5px/1.6 var(--font-ui)}
+.plx-fine a{color:var(--text-1)}
+.plx-make{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:20px;align-items:start}
+.plx-make .plx-honest{margin-top:38px}
+
+/* built-in apps */
+.plx-builtins{margin-top:56px}
+.plx-bi{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.plx-bi-g{padding:16px;border-radius:var(--radius-xl);border:1px solid var(--border);background:var(--plx-card)}
+.plx-bi-g>b{display:flex;align-items:center;gap:8px;margin-bottom:12px;font:700 12px/1 var(--font-ui);letter-spacing:.08em;text-transform:uppercase;color:var(--text-2)}
+.plx-bi-g>b span{color:var(--text-3);letter-spacing:0}
+.plx-bi-list{display:flex;flex-wrap:wrap;gap:6px}
+.plx-bi-chip{height:28px;display:inline-flex;align-items:center;gap:6px;padding:0 10px;border-radius:8px;background:var(--fill);color:var(--text-1);font:500 12.5px/1 var(--font-ui);text-decoration:none;transition:background var(--dur-fast) var(--ease)}
+.plx-bi-chip:hover{background:var(--surface-hover)}
+.plx-bi-chip svg{color:var(--text-2)}
+.plx-bi-ph{height:200px;border-radius:var(--radius-xl)}
+
+/* hero beside the flow */
+.plx-top{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:40px;align-items:center}
+.plx-top-flow{padding:12px 22px;border-radius:var(--radius-2xl);background:radial-gradient(120% 100% at 100% 0,rgba(255,122,26,.10),transparent 60%),var(--plx-card);border:1px solid var(--border)}
+
+@media (max-width:900px){
+  .plx-top,.plx-make{grid-template-columns:1fr}
+  .plx-make .plx-honest{margin-top:0}
+  .plx-bi{grid-template-columns:1fr}
+}
+@media (max-width:560px){
+  .plx{padding:24px 16px 56px}
+  .plx-cards{grid-template-columns:1fr}
+  .plx-card-foot{flex-wrap:wrap}
+  .plx-tabs small{margin-left:0;width:100%}
+}

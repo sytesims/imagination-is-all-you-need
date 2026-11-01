@@ -12,6 +12,7 @@ import { ToolIconFor } from '../Icons';
 import type { ToolInfo } from '../../api';
 import { VIDEO_PAGE, VIDEO_WORKFLOWS, VIDEO_WORKFLOW_CATEGORIES, VIDEO_FLOW_SHORTCUTS, videoWorkflowById, videoWorkflowHref, isEditHub, isPanelWorkflow, type VideoWorkflow, type VideoFlowShortcut } from '../../../../server/src/shared/videoWorkflows';
 import { useToast } from '../../shared/Toast';
+import { PluginBadge, PluginMeta } from '../../shared/PluginBadge';
 import '../next/workflowBar.css';
 import './videoWorkflows.css';
 
@@ -66,7 +67,7 @@ export function VideoWorkflowChip({ tools: given, dock = false, watch }: { tools
 export function HowSteps({ w }: { w: VideoWorkflow }) {
   return <div className="vwf-how" data-testid={`vwf-how-${w.id}`}><p className="vwf-how-h"><b>How {w.name} works</b><small>{w.tagline}</small></p>
     <ol>{w.how.map(([h, p], i) => <li key={i}><span className="vwf-how-n" aria-hidden>{i + 1}</span><span><b>{h}</b><small>{p}</small></span></li>)}</ol>
-    <p className="vwf-how-in"><small>Takes</small> {w.inputs.join(' · ')}</p></div>;
+    <p className="vwf-how-in"><small>Takes</small> {w.inputs.join(' · ')}</p>{w.plugin && <p className="vwf-how-in"><small>Plugin</small> <PluginMeta b={w.plugin} /></p>}</div>;
 }
 
 /** The picker: the shared WorkflowPicker (shared/WorkflowPicker.tsx, also the Audio bar's) with the video list, categories and How it works. */
@@ -74,6 +75,6 @@ export function VideoWorkflowPicker({ open, anchor, list, shortcuts = [], curren
   /* the shortcuts sit right after Create Video, so the newest flows are the first thing the picker offers */
   const all: VideoWorkflow[] = [...list.slice(0, 1), ...shortcuts, ...list.slice(1)];
   return <WorkflowPicker open={open} anchor={anchor} watch={watch} list={all} current={current} categories={VIDEO_WORKFLOW_CATEGORIES} onChoose={w => { if (isShortcut(w)) { onClose(); navigate(w.href); } else pickVideoWorkflow(w.id); }} onClose={onClose} placement={placement}
-    label="Video workflows" prefix="vwf" noun="video" icon={w => <WIcon w={w} />} how={w => <HowSteps w={w} />} foot={`${list.length} video workflows and ${shortcuts.length} shortcuts`}
+    label="Video workflows" prefix="vwf" noun="video" icon={w => <WIcon w={w} />} badge={w => w.plugin ? <PluginBadge b={w.plugin} /> : null} how={w => <HowSteps w={w} />} foot={`${list.length} video workflows and ${shortcuts.length} shortcuts`}
     initialTab={new URLSearchParams(location.search).get('workflows') ?? (isEditHub(new URLSearchParams(location.search).get('workflow')) ? 'edit' : 'all')} />;
 }

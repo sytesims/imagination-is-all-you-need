@@ -6,8 +6,8 @@
  */
 import { imageUpscaleWorkflowOrDefault, zimageWorkingMegapixels, UPSCALE_LOCAL } from '../shared/imageUpscale.js';
 import path from 'node:path';
-import { readFileSync, existsSync } from 'node:fs';
-import { WORKFLOWS_DIR, PLUGINS_DIR, DATA_DIR } from '../config.js';
+import { readFileSync } from 'node:fs';
+import { WORKFLOWS_DIR, DATA_DIR } from '../config.js';
 import { pickVariant, planObjectSwap, patchGraph, MAX_SWAP_REFS, LENGTH_VARIANTS } from './objectSwap.js';
 import { planChunks, patchRestyle, restylePrompt, swatchPath, VACE_FPS } from './restyle.js';
 import { fillPattern, captionSubject } from '../shared/promptPatterns.js';
@@ -33,6 +33,7 @@ import { engineModelKey } from '../shared/modelIds.js';
 import { mmaudioParts, MMAUDIO_CHUNK_SEC, MMAUDIO_FPS } from '../shared/mmaudioParts.js';
 import { QWEN3_TTS, QWEN3_TTS_WORKFLOW, patchQwen3Tts } from '../tools/voice/qwen3tts.js';
 import { resolutionSelectorAspect } from './resolutionSelector.js';
+import { pluginSpec, mapGraph } from '../pluginGraph.js';
 import { SEPARATION_WORKFLOW, SEP_NODES, NO_SEPARATION_NOTE, separationStatus } from './separation.js';
 import { DUB_SPEED } from './dubMix.js';
 
@@ -579,12 +580,15 @@ function imageUpscale(job: Job): Plan {
     const s = i.sourceSize as { width: number; height: number } | null; const mp = s?.width ? zimageWorkingMegapixels(s, k) : 1; setIn(g, '20', 'megapixels', mp); setIn(g, '31', 'seed', clampSeed(i.seed)); expect.megapixels = mp; }
   return { tool: job.toolId, outKind: 'image', post: { kind: 'each' }, muxSourceAudio: false, notes: [], passes: [{ label: 'Result', workflow: file, graph: g, output: '8', expect }] };
 }
-function plugin(job: Job, id: string): Plan {
-  const dir = path.join(PLUGINS_DIR, id); const m = JSON.parse(readFileSync(path.join(dir, 'node-map.json'), 'utf8')); const g = wf(path.join(dir, 'workflow.json')); const i = job.input;
-  setIn(g, m.inputs.video.node, m.inputs.video.field, F(i.videoPath));
-  for (const [k, spec] of Object.entries<any>(m.fields ?? {})) { const v = i.fields?.[k]; if (v == null) continue; for (const s of [spec].flat()) setIn(g, s.node, s.field, s.map ? s.map[v] : Number(v)); }
-  for (const s of m.presets?.[i.types?.[0]] ?? []) setIn(g, s.node, s.field, s.value);
-  return { tool: job.toolId, outKind: 'video', post: { kind: 'each' }, muxSourceAudio: i.keepAudio !== false, notes: [], passes: [{ label: 'Result', workflow: `plugins/${id}/workflow.json`, graph: g, output: m.output.node, extraOutputs: m.extraOutputs, expect: { fields: i.fields ?? {}, preset: i.types?.[0] } }] };
+/** Any loaded plugin with a node map (docs/PLUGINS.md), on your own ComfyUI. The shared mapping (pluginGraph.ts mapGraph) with upload placeholders:
+ *  the only files uploaded are the job's own imagePath / videoPath (plugins with a "__file" key are refused at load, plugins.ts). */
+function pluginPlan(job: Job): Plan {
+  const s = pluginSpec(job.toolId)!; const i = job.input; const nm = s.nodeMap;
+  const graph = mapGraph(s.graph, nm, i, F);
+  const expect: Record<string, any> = { fields: i.fields ?? {}, preset: i.types?.[0] };
+  if (nm.inputs.prompt) expect.prompt = i.finalPrompt ?? i.prompt; if (nm.inputs.seed) expect.seed = i.seed;
+  return { tool: job.toolId, outKind: s.outKind, post: { kind: 'each' }, muxSourceAudio: s.input === 'video' && s.outKind === 'video' && i.keepAudio !== false, notes: [],
+    passes: [{ label: 'Result', workflow: s.workflowId, graph, output: nm.output.node, extraOutputs: nm.extraOutputs, expect }] };
 }
 
 interface Job { id: string; toolId: string; provider: string; input: Record<string, any> }
@@ -592,13 +596,14 @@ interface Job { id: string; toolId: string; provider: string; input: Record<stri
 const BUILDERS: Record<string, (j: Job, o: { srcFps?: number; separation?: boolean }) => Plan> = {
   'object-swap': objectSwap, 'motion-transfer': motionTransfer, restyle, 'app-anime-restyle': restyle, reshoot, camera, 'photo-fx': (j) => (j.provider === LTX25_VIDEO ? ltx25Video({ ...j, input: { ...j.input, mode: 'i2v', loop: false } }) : photoFx(j)) /* LTX-2.5: start frame + effect (+ its LoRA) */,
   upscale: (j, o) => upscale(j, o.srcFps), 'app-video-upscale': (j, o) => upscale(j, o.srcFps), 'create-image': image, 'h3-video': (j) => (j.provider === WAN22_5B ? wan22(j) : j.provider === LTX25_VIDEO ? ltx25Video(j) : h3(j)), audio: (j) => audio(j, false),
-  soundtrack: (j) => (j.provider === 'comfy-mmaudio' ? mmaudio(j) : audio(j, true)), 'app-music-bed': (j) => (j.provider === 'comfy-mmaudio' ? mmaudio(j) : audio(j, true)), voice: (j, o) => (j.provider === LTX25_LIPSYNC ? ltx25Lipsync(j) : voice(j, o)), 'image-upscale': imageUpscale, cinema, 'app-orbit-shot': cinema, cutout: (j) => plugin(j, 'cutout'),
+  soundtrack: (j) => (j.provider === 'comfy-mmaudio' ? mmaudio(j) : audio(j, true)), 'app-music-bed': (j) => (j.provider === 'comfy-mmaudio' ? mmaudio(j) : audio(j, true)), voice: (j, o) => (j.provider === LTX25_LIPSYNC ? ltx25Lipsync(j) : voice(j, o)), 'image-upscale': imageUpscale, cinema, 'app-orbit-shot': cinema,
   soul: (j) => soulPlan(j), 'fps-boost': (j, o) => fpsBoost(j, o.srcFps), 'make-it-real': makeReal, 'footage-fx': footageFx, 'h3-extend': ltx25Extend /* only reached for comfy-ltx25-extend: h3Owns takes comfy-h3-extend first */,
 };
 const baseOf = (j: Job) => (BUILDERS[j.toolId] ? j.toolId : j.input.baseTool && BUILDERS[j.input.baseTool] ? j.input.baseTool : /^app-(transition|ugc-ad)$/.test(j.toolId) ? 'h3-video' : null);
 /** null = this tool/provider has no local workflow (stays on mock or its hosted provider). */
 export function hasPlan(j: Job) {
   if (h3Owns(j)) return true; // H3 additions (tools/h3/plan.ts)
+  if (pluginSpec(j.toolId)) return j.provider === 'comfy-open'; // plugins with a node map run on your own ComfyUI (Comfy Cloud: not yet)
   const b = baseOf(j); if (!b) return false;
   if (b === 'create-image') return !!IMAGE_WF[j.provider];
   if (b === 'voice' && j.provider === LTX25_LIPSYNC) return (j.input.mode ?? j.input.types?.[0]) === 'lipsync' && !!j.input.lipDriverPath; // Talking photo on LTX-2.5
@@ -616,7 +621,6 @@ export function hasPlan(j: Job) {
   if (b === 'h3-extend') return j.provider === LTX25_EXTEND && !!j.input?.ltxExtend?.plan && !!j.input?.ltxExtend?.guidePath; // Extend on local LTX-2.5 (2026-10-26)
   if (b === 'upscale' || b === 'app-video-upscale') return VUP_LOCAL.includes(j.provider) || j.provider === 'comfy-open'; // shared/videoUpscale.ts local engines (+ old comfy-open jobs)
   if (b === 'fps-boost') return j.provider === 'comfy-rife'; // was missing: on OPENHIGGSFIELD_BACKEND=comfy the local RIFE route fell back to a mock render
-  if (b === 'cutout') return existsSync(path.join(PLUGINS_DIR, 'cutout', 'node-map.json'));
   return j.provider === 'comfy-open';
 }
 /** Prompt grammar (2026-10-26): local and Comfy Cloud graphs read the job with every prompt field in the model's own syntax (<Picture 1> on H3,
@@ -626,5 +630,5 @@ export function hasPlan(j: Job) {
 let planModelKey = (j: { toolId: string; provider: string; input?: Record<string, any> | null }): string | null => engineModelKey(j.toolId, j.provider, j.input?.baseTool);
 export const setPlanModelKey = (f: typeof planModelKey) => { planModelKey = f; };
 export const planModelKeyOf = (j: Parameters<typeof planModelKey>[0]) => planModelKey(j);
-export function buildPlan(j0: Job, o: { srcFps?: number; separation?: boolean } = {}): Plan { const j = { ...j0, input: withRefGrammar(j0.input, planModelKey(j0), 'local') } as Job; /* prompt grammar: the model key the runners use (routing/jobRefs.ts) */ if (h3Owns(j)) return h3BuildPlan(j); const b = baseOf(j); if (!b) throw new Error(`no ComfyUI plan for ${j.toolId}`); return BUILDERS[b](j, o); }
+export function buildPlan(j0: Job, o: { srcFps?: number; separation?: boolean } = {}): Plan { const j = { ...j0, input: withRefGrammar(j0.input, planModelKey(j0), 'local') } as Job; /* prompt grammar: the model key the runners use (routing/jobRefs.ts) */ if (h3Owns(j)) return h3BuildPlan(j); if (pluginSpec(j.toolId)) return pluginPlan(j); const b = baseOf(j); if (!b) throw new Error(`no ComfyUI plan for ${j.toolId}`); return BUILDERS[b](j, o); }
 export { LENGTH_VARIANTS };

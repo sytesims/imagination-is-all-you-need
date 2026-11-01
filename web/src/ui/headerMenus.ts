@@ -93,7 +93,7 @@ export const TOOL_TAGLINE: Record<string, string> = {
   camera: 'One still into a shot with a camera move',
   'photo-fx': 'Animate a photo with an effect',
   upscale: 'Sharper, larger clips, audio kept',
-  cutout: 'Subject on a clean plate, plus alpha matte',
+  cutout: 'Subject + black-and-white mask for editing',
   reframe: 'Change aspect ratio, fill the new edges',
   'remove-bg': 'Cut the subject out of a clip',
   'sdr-hdr': 'Convert SDR footage to HDR10',
@@ -133,8 +133,10 @@ export const MENU_FEATURE_ORDER: Record<Medium, string[] | null> = {
   '3d': ['plan-a-shot', 'image-to-3d', 'text-to-3d', 'multiview-to-3d', 'turntable'], // 3D workflows (server shared/threeD.ts); Direct a Shot first; roadmap rows stay in the picker (flagged Coming soon), not the menu
 };
 /** The rows the Features column shows: the medium's order (unknown ids skipped), else the list as given; capped at MAX_FEATURES. */
-export function menuFeatureRows<T extends { key: string }>(medium: Medium, rows: T[]): T[] {
+export function menuFeatureRows<T extends { key: string; plugin?: unknown }>(medium: Medium, rows: T[]): T[] {
   const order = MENU_FEATURE_ORDER[medium];
   const picked = order ? order.flatMap(id => rows.filter(r => r.key === id).slice(0, 1)) : rows;
-  return picked.slice(0, MAX_FEATURES);
+  /* plugins (2026-11-01, "shows up next to ours"): up to two of them keep a place at the end of the column, inside the cap */
+  const plugins = rows.filter(r => r.plugin && !picked.includes(r)).slice(0, 2);
+  return [...picked.filter(r => !plugins.includes(r)).slice(0, MAX_FEATURES - plugins.length), ...plugins];
 }

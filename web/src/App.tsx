@@ -93,6 +93,8 @@ export default function App() {
   }
   else if (vwf && isPanelWorkflow(vwf)) { title = vwf.name; body = <VideoPage workflowId={vwf.id} tools={tools}><StitchPanel key={`vbar-${vwf.id}`} wf={vwf} tools={tools} /></VideoPage>; }
   else if (vwf && vwfTool && videoBarOf(vwf.id)) { title = vwf.name; body = <VideoPage workflowId={vwf.id} tools={tools}><VideoWorkflowBar key={`vbar-${vwf.id}`} wf={vwf} bar={videoBarOf(vwf.id)!} tool={vwfTool} tools={tools} /></VideoPage>; }
+  /* a video plugin with no bar recipe (shared/pluginPlacement.ts): its own generic screen, the same one /tools/<id> shows */
+  else if (vwf && vwfTool && vwf.plugin) { const PC = toolScreens[vwfTool.id] ?? toolScreens[vwfTool.ui]; title = vwf.name; body = PC ? <PC key={`plugin-${vwf.id}`} tool={vwfTool} tools={tools} /> : <ToolPending tool={vwfTool} />; }
   else if (awf && awfTool) { title = 'Audio'; body = AwfComp ? <AwfComp key={`awf-${awf.id}`} tool={awfTool} tools={tools} /> : <ToolPending tool={awfTool} />; }
   else if (vwf && toolId && Comp && tool) { title = tool.name; body = <VideoPage workflowId="create" tools={tools}><Comp key={path} tool={tool} tools={tools} /></VideoPage>; } /* Create Video: the same Video page, its bar is Create's */
   else if (toolId && Comp && tool) { title = tool.name; body = <Comp key={path} tool={tool} tools={tools} />; }

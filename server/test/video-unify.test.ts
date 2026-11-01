@@ -10,6 +10,9 @@ const { VIDEO_WORKFLOWS, VIDEO_REDIRECTS, VIDEO_PAGE, videoRedirect, videoWorkfl
 const { VIDEO_BARS, videoBarOf, typesOf } = await import('../src/shared/videoBar.ts');
 const { redirectTarget, toolOpenHref, toolHandoffHref, workflowRecreateHref, videoWorkflowOfJob, pageToolId, withSearch } = await import('../../web/src/shared/workflowLinks.ts');
 const ok = (m: string) => console.log('ok ' + m);
+/* Cutout is a plugin (plugins/cutout/plugin.json, tab video): placed into VIDEO_WORKFLOWS from its manifest, as the server and app do (shared/pluginPlacement.ts) */
+{ const fs = await import('node:fs'); const m = JSON.parse(fs.readFileSync(new URL('../../plugins/cutout/plugin.json', import.meta.url), 'utf8'));
+  (await import('../src/shared/pluginPlacement.ts')).placeVideoPlugins([{ id: m.id, name: m.name, description: m.description, plugin: { id: m.id, tab: m.tab, category: m.category, input: m.input, author: m.author, handler: !!m.handler, license: { id: m.license.id, name: 'MIT' } } }]); }
 const WEB = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../web/src');
 
 await import('../src/tools/apps.ts'); const { listTools } = await import('../src/tools/registry.ts');
@@ -62,7 +65,7 @@ ok('every bar recipe matches its tool: file slots, option values, fixed fields')
 
 // 3. old URLs land on the Video page with the workflow, query and hash kept
 for (const w of VIDEO_WORKFLOWS) for (const old of w.oldRoutes) {
-  const to = redirectTarget(old, '?fromJob=j1&out=0', '#h', VIDEO_REDIRECTS); assert.ok(to?.startsWith(`${VIDEO_PAGE}?workflow=${w.id}`) && to.endsWith('&fromJob=j1&out=0#h'), `${old} → ${to}`);
+  const to = redirectTarget(old, '?fromJob=j1&out=0', '#h', VIDEO_REDIRECTS) ?? (w.plugin ? videoRedirect(old, '?fromJob=j1&out=0', '#h') /* a placed plugin: the run-time check */ : null); assert.ok(to?.startsWith(`${VIDEO_PAGE}?workflow=${w.id}`) && to.endsWith('&fromJob=j1&out=0#h'), `${old} → ${to}`);
 }
 assert.equal(videoRedirect('/camera-moves', ''), `${VIDEO_PAGE}?workflow=camera-moves&pick=move`, 'the Camera Moves gallery opens the move picker');
 assert.equal(videoRedirect('/camera-moves/', '?x=1', '#h'), `${VIDEO_PAGE}?workflow=camera-moves&pick=move&x=1#h`);

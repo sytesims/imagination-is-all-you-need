@@ -19,6 +19,8 @@ import { resolveRow, whyHidden, runsPrice, runCost, openHrefOf, type Row, type H
 import { WF_ENTRIES, WF_CHAINS, WF_PAGE_PICKS, onWorkflowsPage, cardThumb, entryHay, type WfChain } from '../../../../server/src/shared/workflowCatalog';
 import { WF_GOALS, WF_START_HERE, goalOf, goalById, isGoal, type WfGoal } from '../../../../server/src/shared/workflowGoals';
 import { fromEntry, fromChain, chainId, wfId, buildWorkflowIndex, type LibWorkflow } from '../../../../server/src/shared/libraryWorkflows';
+import { pluginWfEntries } from '../../../../server/src/shared/pluginPlacement';
+import { PluginBadge, PluginMeta } from '../../shared/PluginBadge';
 import '../explore.css';
 import './workflowFinder.css';
 /**
@@ -51,9 +53,11 @@ function useRows(tools: ToolInfo[]) {
   const [hub, setHub] = useState<Hub>(null);
   useEffect(() => { let live = true; loadHub().then((h) => live && setHub(h)).catch(() => undefined); return () => { live = false; }; }, []);
   return useMemo(() => { const w = { device: device() };
-    const rows = WF_ENTRIES.map((e) => resolveRow(e, tools, hub, w)).filter((r): r is Row => !!r);
+    /* plugins with a tab (shared/pluginPlacement.ts) join the catalogue from GET /api/tools: they show and search like the built-in ones, with their Plugin badge */
+    const entries = [...WF_ENTRIES, ...pluginWfEntries(tools as any)];
+    const rows = entries.map((e) => resolveRow(e, tools, hub, w)).filter((r): r is Row => !!r);
     /* left out here, and why (tools still loading: nothing yet) */
-    const left = tools.length ? WF_ENTRIES.map((e) => ({ e, why: whyHidden(e, tools, hub) })).filter((x): x is { e: typeof x.e; why: string } => !!x.why) : [];
+    const left = tools.length ? entries.map((e) => ({ e, why: whyHidden(e, tools, hub) })).filter((x): x is { e: typeof x.e; why: string } => !!x.why) : [];
     return { rows, left }; }, [tools, hub]);
 }
 /** Sample mode (no keys, mock server): said once, plainly. */
@@ -83,8 +87,8 @@ function useIdeas() {
 /** Search + goal filter. `cat`: all | start | chains | saved | ideas | a goal. Both follow the address (replaceState: Back leaves the page, not a keystroke).
  *  Search ranks with the library index (shared/bm25.ts via shared/libraryWorkflows.ts): the same ranking agents get from search_workflows. */
 function useFilter(allRows: Row[], allChains: WfChain[], ideas: LibWorkflow[]) {
-  /* the page shows the user's picks (Start here + WF_PAGE_PICKS); a search still looks through every workflow and lists the others under "Also in the tabs" */
-  const rows = useMemo(() => allRows.filter((r) => onWorkflowsPage(r.e.id)), [allRows]); const chainsHere = useMemo(() => allChains.filter((c) => onWorkflowsPage(`chain:${c.id}`)), [allChains]);
+  /* the page shows the user's picks (Start here + WF_PAGE_PICKS; plugins in their own section); a search still looks through every workflow and lists the others under "Also in the tabs" */
+  const rows = useMemo(() => allRows.filter((r) => onWorkflowsPage(r.e.id) || !!r.e.plugin), [allRows]); const chainsHere = useMemo(() => allChains.filter((c) => onWorkflowsPage(`chain:${c.id}`)), [allChains]);
   const [q, setQ] = useState(() => new URLSearchParams(location.search).get('q') ?? ''); const [cat, setCat] = useState<string>(() => { const c = new URLSearchParams(location.search).get('cat'); return c && (c === 'start' || c === 'chains' || c === 'saved' || c === 'ideas' || isGoal(c)) ? c : 'all'; });
   useEffect(() => { if (location.pathname !== '/workflows') return; const u = new URLSearchParams(location.search); q ? u.set('q', q) : u.delete('q'); cat !== 'all' ? u.set('cat', cat) : u.delete('cat');
     const s = u.toString(); const next = `${location.pathname}${s ? `?${s}` : ''}${location.hash}`; if (next !== `${location.pathname}${location.search}${location.hash}`) history.replaceState(history.state, '', next); }, [q, cat]);
@@ -96,7 +100,7 @@ function useFilter(allRows: Row[], allChains: WfChain[], ideas: LibWorkflow[]) {
   const chains = useMemo(() => chainsHere.filter((c) => score.has(chainId(c.id))).sort((a, b) => (q ? rank(chainId(a.id)) - rank(chainId(b.id)) : 0)), [chainsHere, score, q]);
   const ideaHits = useMemo(() => ideas.filter((w) => score.has(w.id)).sort((a, b) => (q ? rank(a.id) - rank(b.id) : 0)), [ideas, score, q]);
   /* a search that matches workflows this page doesn't show: they still open (their sheet, their tab) */
-  const elsewhere = useMemo(() => (q.trim() ? allRows.filter((r) => !onWorkflowsPage(r.e.id) && score.has(wfId(r.e.id))).sort((a, b) => rank(wfId(a.e.id)) - rank(wfId(b.e.id))).slice(0, 8) : []), [allRows, score, q]); // eslint-disable-line react-hooks/exhaustive-deps
+  const elsewhere = useMemo(() => (q.trim() ? allRows.filter((r) => !onWorkflowsPage(r.e.id) && !r.e.plugin && score.has(wfId(r.e.id))).sort((a, b) => rank(wfId(a.e.id)) - rank(wfId(b.e.id))).slice(0, 8) : []), [allRows, score, q]); // eslint-disable-line react-hooks/exhaustive-deps
   return { q, setQ, cat, setCat, rows, chainsHere, hits, chains, ideas: ideaHits, elsewhere, ranked: !!q.trim() };
 }
 type Filter = ReturnType<typeof useFilter>;
@@ -174,7 +178,7 @@ function Card({ r, onOpen, s, i = 0 }: { r: Row; onOpen: () => void; s: Saved; i
     <span className="wn-top"><Badge r={r} /></span>
     <SaveBtn id={r.e.id} s={s} label={r.e.name} />
     <span className="xp-cap wn-cap">
-      <button type="button" className="xp-title wn-title" onClick={onOpen} onFocus={() => warm(r.e.href)} aria-label={`${r.e.name}: ${r.e.line}. Details`}>{r.e.name}</button>
+      <button type="button" className="xp-title wn-title" onClick={onOpen} onFocus={() => warm(r.e.href)} aria-label={`${r.e.name}: ${r.e.line}. Details`}>{r.e.name}{r.e.plugin && <PluginBadge b={r.e.plugin} />}</button>
       <span className="xp-line">{r.e.line}</span>
       <span className="xp-meta wn-meta"><span className="wn-chip" title={r.models.map((m) => m.name).join(', ')}>{r.model ? shortModel(r.model) : 'Runs in the app'}</span></span>
     </span>
@@ -258,9 +262,10 @@ function Sheet({ r, rows, chains, s, onClose, onOpen, mock }: { r: Row; rows: Ro
       {r.made && r.runs.length > 0 && <span className="wn-pcap" data-testid="wn-pcap">{r.runs.map((x) => `${x.model} · ${x.place}, ${runCost(x)}`).join(' → ')}{r.runs.length > 1 ? ` · ${runsPrice(r.runs)?.text} in all` : ''}{r.runMs ? ` · took ${mins(r.runMs)}` : ''}</span>}
     </div>
     <div className="wv-pbody" data-testid="wn-sheet">
-      <p className="wv-kicker">{goalLabel(r.e.id)}</p>
-      <h2 className="disp wv-ptitle">{r.e.name}</h2>
+      <p className="wv-kicker">{r.e.goal ? goalById(r.e.goal)?.label ?? '' : goalLabel(r.e.id)}</p>
+      <h2 className="disp wv-ptitle">{r.e.name}{r.e.plugin && <PluginBadge b={r.e.plugin} />}</h2>
       <p className="wn-pline">{r.e.line}</p>
+      {r.e.plugin && <p className="wn-pline" data-testid="wn-plugin-meta"><PluginMeta b={r.e.plugin} /> · <Link to="/plugins">About plugins</Link></p>}
       {r.e.tabName && <p className="wv-muted wn-tabname" data-testid="wn-tabname">In the {tab} menu: {r.e.tabName}</p>}
       <div className="wv-pills"><span className="wv-pill">Needs: {r.e.needs}</span><RunLine p={r.run} testId="wn-sheet-run" /></div>
       {mock && <p className="wv-muted wn-mocknote">Sample mode: you get a sample and pay nothing. Prices show what a real run costs.</p>}
@@ -276,7 +281,7 @@ function Sheet({ r, rows, chains, s, onClose, onOpen, mock }: { r: Row; rows: Ro
         <span className="wv-wf-n">{r.source.url ? <a href={r.source.url} target="_blank" rel="noreferrer">{r.source.name}<span aria-hidden> ↗</span></a> : r.source.name}</span>
         {(r.source.author || r.source.licence) && <span className="wv-muted">{[r.source.author, r.source.licence].filter(Boolean).join(' · ')}</span>}
         {r.source.file && <a className="wv-dl" href={`/api/workflows/${encodeURIComponent(r.source.file)}`} download={r.source.file}>Download {r.source.file}</a>}</div>
-        : <p className="wv-muted">{!r.models.length ? 'It runs inside the app, on your computer.' : `No source credit yet for ${r.models[0].name}.`}</p>}
+        : <p className="wv-muted">{r.e.plugin ? `Added as a folder: its ComfyUI workflow ships with it${r.e.plugin.author ? `, made by ${r.e.plugin.author}` : ''}.` : !r.models.length ? 'It runs inside the app, on your computer.' : `No source credit yet for ${r.models[0].name}.`}</p>}
       {partOf.length > 0 && <><h3 className="wv-h">Part of</h3><div className="wn-partof">{partOf.map((c) => { const nx = c.steps.findIndex((x) => x.entry === r.e.id) + 1; const n = c.steps[nx] ? rows.find((x) => x.e.id === c.steps[nx].entry) : null;
         return <span key={c.id}><b>{c.name}</b>{n ? <> · next: <button type="button" className="link-btn" onClick={() => onOpen(n)}>{n.e.name}</button></> : ' · last step'}</span>; })}</div></>}
       <div className="wv-pacts">
@@ -362,7 +367,9 @@ export default function Workflows({ tools }: { tools: ToolInfo[] }) {
   const start = WF_START_HERE.map(item).filter(isItem);
   /* each goal's section: its picks; picked alone in the rail, a goal also shows its Start here cards first */
   const goals = WF_GOALS.map((g) => ({ g, items: WF_PAGE_PICKS[g.id].map(item).filter(isItem), starts: start.filter((x) => goalOf(x.id) === g.id) }));
-  const picked = [...start, ...goals.flatMap((x) => x.items)];
+  /* plugins (2026-11-01): every placed plugin the search keeps, in their own section after the goals (shared/pluginPlacement.ts) */
+  const plugged: Item[] = f.hits.filter((r) => r.e.plugin).map((r) => ({ kind: 'row', r, id: r.e.id }));
+  const picked = [...start, ...goals.flatMap((x) => x.items), ...plugged];
   /** Surprise me: a random workflow on this page that runs here right now, a made one twice as likely */
   const surprise = () => { const pool = f.rows.filter((r) => ['free', 'cloud', 'sample'].includes(r.run.kind)).flatMap((r) => (r.made ? [r, r] : [r])); const pick = pool[Math.floor(Math.random() * pool.length)]; if (pick) openRow(pick); };
   const savedItems: Item[] = s.saved.map((id): Item | null => { if (id.startsWith('chain:')) { const c = chainsAll.find((x) => `chain:${x.id}` === id); return c ? { kind: 'chain', c, id } : null; } const r = rows.find((x) => x.e.id === id); return r && (!f.ranked || f.hits.includes(r) || f.elsewhere.includes(r)) ? { kind: 'row', r, id } : null; }).filter(isItem);
@@ -400,6 +407,9 @@ export default function Workflows({ tools }: { tools: ToolInfo[] }) {
           {f.cat === 'all' && goals.filter((x) => x.items.length > 0).map(({ g, items }) => <section key={g.id} className="wn-sec" aria-labelledby={`wn-h-${g.id}`} data-testid={`wn-sec-${g.id}`}>
             <Head id={`wn-h-${g.id}`} title={g.label} line={g.line} count={items.length} />
             <div className="wn-grid">{tiles(items)}</div></section>)}
+          {f.cat === 'all' && plugged.length > 0 && <section className="wn-sec" aria-labelledby="wn-h-plugins" data-testid="wn-sec-plugins">
+            <Head id="wn-h-plugins" title="Your plugins" line="Workflows added as a folder. They run on your own ComfyUI." count={plugged.length} />
+            <div className="wn-grid">{tiles(plugged)}</div></section>}
           {f.cat !== 'all' && f.cat !== 'ideas' && inCat.length > 0 && <section className="wn-sec" aria-labelledby={`wn-h-${f.cat}`} data-testid={`wn-sec-${f.cat}`}>
             <Head id={`wn-h-${f.cat}`}
               title={f.cat === 'chains' ? 'Step by step' : f.cat === 'saved' ? 'Saved' : catInfo?.label ?? f.cat}

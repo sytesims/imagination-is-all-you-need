@@ -28,11 +28,11 @@ export function clearPickerParam() {
   if (typeof location === 'undefined' || !wantsPicker()) return; const u = new URL(location.href); u.searchParams.delete(PICKER_PARAM); history.replaceState(history.state, '', `${u.pathname}${u.search}${u.hash}`);
 }
 
-export function WorkflowPicker<T extends PickerItem>({ open, anchor, watch, list, current, categories, onChoose, onClose, placement = 'top', label, prefix, noun, icon, how, foot, initialTab = 'all', className = '', soon }: {
+export function WorkflowPicker<T extends PickerItem>({ open, anchor, watch, list, current, categories, onChoose, onClose, placement = 'top', label, prefix, noun, icon, how, foot, initialTab = 'all', className = '', soon, badge }: {
   open: boolean; anchor: RefObject<HTMLElement>; watch?: RefObject<HTMLElement>; list: T[]; current: string; categories: { id: string; label: string }[];
   onChoose: (w: T) => void; onClose: () => void; placement?: 'top' | 'bottom'; /** "Video workflows" */ label: string; /** testid prefix: "vwf", "awf" */ prefix: string; /** "video" → "Search video workflows" */ noun: string;
   icon: (w: T) => ReactNode; how: (w: T) => ReactNode; /** the footer's left line */ foot: ReactNode; /** the tab to open on */ initialTab?: string; className?: string;
-  /** a roadmap row (3D: Text to 3D, Rig): listed, greyed, says Coming soon, can't be picked */ soon?: (w: T) => boolean }) {
+  /** a roadmap row (3D: Text to 3D, Rig): listed, greyed, says Coming soon, can't be picked */ soon?: (w: T) => boolean; /** a small mark after the name (a plugin's Plugin badge) */ badge?: (w: T) => ReactNode }) {
   const [q, setQ] = useState(''); const [tab, setTab] = useState('all'); const [hi, setHi] = useState(0); const [howId, setHow] = useState(''); const listRef = useRef<HTMLDivElement>(null); const qRef = useRef<HTMLInputElement>(null);
   useEffect(() => { if (!open) { setQ(''); setHow(''); setHi(0); return; } setTab(categories.some(c => c.id === initialTab) ? initialTab : 'all'); const t = setTimeout(() => qRef.current?.focus(), 60); return () => clearTimeout(t); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const ql = q.trim().toLowerCase();
@@ -54,7 +54,7 @@ export function WorkflowPicker<T extends PickerItem>({ open, anchor, watch, list
     return <div key={w.id} className="vwf-rowwrap">
       <div className="vwf-rowline">
         <button type="button" role="option" aria-selected={on} data-wf-pick-row={w.id} {...{ [`data-${prefix}-row`]: w.id }} data-testid={`${prefix}-row-${w.id}`} className={`wf-row${on ? ' on' : ''}${lit ? ' hi' : ''}${off ? ' wf-soon' : ''}`} aria-disabled={off || undefined} {...(off ? tip(`${w.name} is coming soon`) : {})} onMouseEnter={() => setHi(rows.indexOf(w))} onClick={() => choose(w)}>
-          <span className="wf-ic" aria-hidden>{icon(w)}</span><span className="wf-t"><b>{w.name}</b><small>{w.tagline}</small></span><span className="wf-needs">{off ? 'Coming soon' : w.needs}</span></button>
+          <span className="wf-ic" aria-hidden>{icon(w)}</span><span className="wf-t"><b>{w.name}{badge?.(w)}</b><small>{w.tagline}</small></span><span className="wf-needs">{off ? 'Coming soon' : w.needs}</span></button>
         <button type="button" className={`vwf-row-info${howId === w.id ? ' on' : ''}`} aria-label={`How ${w.name} works`} aria-expanded={howId === w.id} data-testid={`${prefix}-row-info-${w.id}`} {...tip('How it works')} onClick={() => setHow(h => h === w.id ? '' : w.id)}><InfoIcon size={14} /></button>
       </div>
       {howId === w.id && how(w)}

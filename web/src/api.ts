@@ -1,4 +1,5 @@
-import { videoWorkflowOfTool, videoWorkflowHref } from '../../server/src/shared/videoWorkflows';
+import { videoWorkflowOfTool, videoWorkflowHref, videoRedirect } from '../../server/src/shared/videoWorkflows';
+import { placeVideoPlugins } from '../../server/src/shared/pluginPlacement';
 import { applyHandoff } from './shared/handoffFiles';
 import { applyLibraryRefs } from './shared/libraryFiles';
 import { feedProjectId } from './shared/feedProject';
@@ -86,7 +87,8 @@ export interface ToolInfo {
   /** Price overrides from the registry (plugins): per-type factors. Provider factors are on providers[].priceFactor. */
   pricing?: { optionFactors?: Record<string, number> };
   /** Present for tools loaded from plugins/. */
-  plugin?: { id: string; version: string | null; license: LicenseInfo; handler: boolean } | null;
+  plugin?: { id: string; version: string | null; license: LicenseInfo; handler: boolean;
+    /** where it shows up (server shared/pluginPlacement.ts) */ tab?: 'image' | 'video' | 'audio' | '3d' | null; category?: string | null; goal?: string | null; author?: string | null; input?: 'image' | 'video'; output?: 'image' | 'video' } | null;
   freeGens?: { left: number; maxRes: string } | null;
   /** DESIGN-NOTES 17–19 registry fields. */
   media?: 'image' | 'video' | 'audio'; badge?: 'new' | 'free' | 'top' | null; posterUrl?: string | null; freeGensCovered?: boolean; addedAt?: string | null;
@@ -103,7 +105,11 @@ export async function listTools(): Promise<ToolInfo[]> {
   let r: Response;
   try { r = await fetch('/api/tools'); } catch (e: any) { throw new ToolsLoadError(e?.kind === 'server_restarting' || e?.errorType === 'server_restarting' ? SERVER_RESTARTING : 'Can’t reach the server. Retrying in 3 s.', 0); }
   if (!r.ok) { const b = await r.json().catch(() => ({} as any)); throw new ToolsLoadError(httpErrorText(b, r.status, `Failed to load tools (HTTP ${r.status}).`), r.status, b.retryable ?? r.status >= 500, b.retryAfterMs ?? 3000); }
-  const tools: ToolInfo[] = (await r.json() as ToolInfo[]).map(homeRoute); registerAllowTools(tools as any); noteToolModels(tools as any); return tools;
+  const raw = await r.json() as ToolInfo[]; placeVideoPlugins(raw as any); /* plugins with tab "video" join the Video workflows before routes are set (shared/pluginPlacement.ts) */
+  /* a link to a video plugin's own page (/tools/cutout) that loaded before the list did: open its workflow now, like the built-ins' old links */
+  if (typeof location !== 'undefined' && location.pathname.startsWith('/tools/')) { const to = videoRedirect(location.pathname, location.search, location.hash);
+    if (to) { history.replaceState(history.state, '', to); dispatchEvent(new PopStateEvent('popstate')); } }
+  const tools: ToolInfo[] = raw.map(homeRoute); registerAllowTools(tools as any); noteToolModels(tools as any); return tools;
 }
 /** One submit problem from the server (400 `issues`, R39). */
 export interface SubmitIssue { code: string; field?: string; message: string; /** B27: unsupported_aspect: the values this model takes */ allowed?: string[] }

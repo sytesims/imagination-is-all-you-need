@@ -42,7 +42,8 @@ import { featureById } from './shared/imageFeatures.js';
 import { Bm25Index, keywords, type SearchDoc } from './shared/bm25.js';
 import { resultTitle } from './shared/shortTitle.js';
 import { isLayerJob } from './shared/imageLayers.js';
-import { catalogWorkflows, fromSkill, fromIdea, buildWorkflowIndex, searchWorkflows, type LibWorkflow, type LibModel, type LibStep } from './shared/libraryWorkflows.js';
+import { pluginWfEntries } from './shared/pluginPlacement.js';
+import { catalogWorkflows, fromEntry, fromSkill, fromIdea, buildWorkflowIndex, searchWorkflows, type LibWorkflow, type LibModel, type LibStep } from './shared/libraryWorkflows.js';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const SKILLS_DIR = path.join(REPO, 'skills');
@@ -119,7 +120,7 @@ export async function workflowsDb(tools: ToolsFn, now = Date.now()) {
   const sig = `${toolsSig}|${tableRev.user_looks}|${mtime(ideasFile())}|${ideasFile()}|${hash(skillsM)}`;
   if (wfCache?.sig === sig) return wfCache;
   t ??= await tools();
-  const list = [...catalogWorkflows().map((w) => enrich(w, t!)), ...readSkills().map((w) => enrich(w, t!)), ...savedLooks(), ...readIdeas()];
+  const list = [...catalogWorkflows().map((w) => enrich(w, t!)), ...pluginWfEntries(t!).map((e) => enrich(fromEntry(e), t!)) /* placed plugins (shared/pluginPlacement.ts) */, ...readSkills().map((w) => enrich(w, t!)), ...savedLooks(), ...readIdeas()];
   wfCache = { sig, list, index: buildWorkflowIndex(list), at: now }; return wfCache;
 }
 /** How an agent puts a recipe on the Canvas: one canvas_batch (or canvas_add_card per step), cards wired in order. Drafts only. */
