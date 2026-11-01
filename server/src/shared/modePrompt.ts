@@ -39,7 +39,8 @@ const H3_LINE: Words = { text: H3_I2V_LINE, sep: '\n\n' };
 /** provider → mode → the words in front (null = none: the model uses the image on its own). Missing = the generic phrase. */
 export const MODEL_WORDS: Record<string, Partial<Record<string, Words>>> = {
   'comfy-h3': { i2v: H3_LINE }, 'cloud-h3': { i2v: H3_LINE }, 'cloud-h3-wf': { i2v: H3_LINE }, // the H3 weights (MiniMaxH3ImageToVideo / Comfy Cloud's H3 node)
-  'cloud-h3-fast': { i2v: null }, // FastH3: the start frame sets the look, never named in the prompt (shared/promptGrammar.ts minimax-h3-fast)
+  'cloud-h3-fast': { i2v: null },
+  'cloud-h3-pika': { i2v: H3_LINE, flf: null }, // Pika H3 Flex: the H3 first-frame line; start + end gets the fl2va template's own line in the plan (comfy/pikaH3Flex.ts) // FastH3: the start frame sets the look, never named in the prompt (shared/promptGrammar.ts minimax-h3-fast)
 };
 
 /** The prompt a run sends: the mode's words (when needed), the prompt (or the model's default), the look's words. `model` = the PROMPT_GRAMMAR key. */

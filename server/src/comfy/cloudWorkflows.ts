@@ -19,6 +19,7 @@ import { LAYOUT_CLOUD_PROVIDER, LAYOUT_CLOUD_ROUTE, LAYOUT_CLOUD_GRAPH, LAYOUT_C
 import { H3X_CLOUD_GRAPH, H3X_CLOUD_LABEL, H3X_CLOUD_PROVIDER, H3X_CLOUD_REQUIRES, H3X_CLOUD_ROUTE, h3xCloudPlan, prepareH3xCloud } from './h3ExtendCloud.js';
 import { VFX_CLOUD_PROVIDER, VFX_CLOUD_ROUTE, VFX_CLOUD_GRAPHS, VFX_CLOUD_REQUIRES, VFX_CLOUD_NAME, vfxCloudPlan } from './ltx23VfxCloud.js';
 import { H3F_PROVIDER, H3F_ROUTE, H3F_GRAPHS, H3F_REQUIRES, H3F_NAME, H3F_MISSING, h3FastPlan, checkH3FastModel } from './h3FastCloud.js';
+import { PIKA_PROVIDER, PIKA_ROUTE, PIKA_GRAPHS, PIKA_REQUIRES, PIKA_NAME, pikaPlan, pikaPreflight } from './pikaH3Flex.js';
 import { H3KF_PROVIDER, H3KF_ROUTE, H3KF_GRAPH, H3KF_REQUIRES, H3KF_NAME, h3KeyframesPlan } from './h3KeyframesCloud.js';
 import { IT_ROUTE, IT_PROVIDER, IT_GRAPH, IT_REQUIRES, infiniteTalkPlan } from './infiniteTalkCloud.js';
 import { LTX_API_CLOUD, LTX_API_TEMPLATES, LTX_API_NODE, ltxApiCloudPlan, prepareLtxApiCloud } from './ltx25ApiCloud.js';
@@ -125,6 +126,10 @@ export const CLOUD_WORKFLOWS: Record<string, CloudWorkflowEntry> = {
     preflight: async (get) => { const c = await checkH3FastModel(get);
       if (c.state === 'missing') throw Object.assign(new Error(H3F_MISSING), { reasonCode: 'cloud_import_missing', errorType: 'validation' });
       return c.loaderPath ? { h3FastUnet: c.loaderPath } : {}; } },
+  // Nov 1: Pika H3 Flex · Comfy Cloud (comfy/pikaH3Flex.ts): the official Pika H3 Flex templates (FL2VA adapter: text, start frame, start + end frame),
+  // six steps. A free GET-only check for the Pika LoRA first (newer than Comfy Cloud's object_info of 2026-10-26): missing → refused, nothing sent.
+  [PIKA_ROUTE]: { routeId: PIKA_ROUTE, provider: PIKA_PROVIDER, standalone: true, target: 'cloud', label: PIKA_NAME, graphs: Object.values(PIKA_GRAPHS), requires: PIKA_REQUIRES,
+    plan: (j) => pikaPlan(j, 'cloud'), preflight: pikaPreflight },
   // Oct 27: MiniMax H3 Keyframes · Comfy Cloud (comfy/h3KeyframesCloud.ts): the official template video_minimax_h3_multiframe_reference, 2–5 stills at
   // chosen times into one shot. The Keyframes mode of the MiniMax H3 card (routing/routes.ts TWINS). Every file is in Comfy Cloud's shared library: no preflight.
   [H3KF_ROUTE]: { routeId: H3KF_ROUTE, provider: H3KF_PROVIDER, standalone: true, target: 'cloud', label: H3KF_NAME, graphs: [H3KF_GRAPH], requires: H3KF_REQUIRES, plan: h3KeyframesPlan },
