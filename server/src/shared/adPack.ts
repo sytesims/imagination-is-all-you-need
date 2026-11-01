@@ -139,17 +139,22 @@ export function adPrompt(x: AdPromptInput): string {
 
 /** Where the logo goes on a W × H ad: a corner, the logo 12% of the short side tall (at most a third of the width), kept inside the stamp
  *  margin (shared/logoStamp.ts, 4.5% of the short side) and inside the platform's safe area, whichever is further in. Whole pixels. */
-export function adLogoBox(W: number, H: number, corner: AdCorner, logo: { w: number; h: number }, safe: Edges = NO_EDGES): { x: number; y: number; w: number; h: number } {
+export function adLogoBox(W: number, H: number, corner: AdCorner, logo: { w: number; h: number }, safe: Edges = NO_EDGES, size: 'S' | 'M' = 'M'): { x: number; y: number; w: number; h: number } {
   const S = Math.min(W, H); const m = Math.max(4, Math.round(S * 0.045));
-  let h = S * STAMP_SIZES.M, w = logo.h > 0 ? h * (logo.w / logo.h) : h; if (w > W / 3) { h *= (W / 3) / w; w = W / 3; }
+  let h = S * STAMP_SIZES[size], w = logo.h > 0 ? h * (logo.w / logo.h) : h; if (w > W / 3) { h *= (W / 3) / w; w = W / 3; }
   w = Math.max(2, Math.round(w)); h = Math.max(2, Math.round(h));
   const l = Math.max(m, Math.ceil(safe.left * W)), r = Math.max(m, Math.ceil(safe.right * W)), t = Math.max(m, Math.ceil(safe.top * H)), b = Math.max(m, Math.ceil(safe.bottom * H));
   return { x: corner[1] === 'l' ? l : W - r - w, y: corner[0] === 't' ? t : H - b - h, w, h };
 }
 
-/** Adjust logo (2026-11-01): the viewer's logo tool set to where Ad Pack put the logo (job.input.adLogo), so opening it shows no jump: the
- *  same corner, the medium size (adLogoBox is 12% of the short side = STAMP_SIZES.M), full opacity, no text line, no plate, and the
- *  platform's safe area kept clear. The light / dark logo is picked by the brightness behind it, by the same rule on both sides. */
-export function adLogoStamp(adLogo: { corner?: unknown; placement?: string } | null | undefined): { settings: StampSettings; inset: Edges } {
-  return { settings: { ...STAMP_DEFAULTS, spot: asCorner(adLogo?.corner), size: 'M', opacity: 1, textOn: false, text: '', backing: 'off' }, inset: placementOf(adLogo?.placement).safe };
+/** The logo record a job carries (job.input.adLogo): Ad Pack's { kit, corner, placement } (medium, inside the platform's safe area), or a logo
+ *  app's { kit, corner, size } (shared/brandKit BRAND_LOGO_SPOT: small, no platform frame). */
+export interface AdLogoRec { kit?: unknown; corner?: unknown; placement?: string; size?: unknown }
+export const adLogoSize = (a: AdLogoRec | null | undefined): 'S' | 'M' => (a?.size === 'S' ? 'S' : 'M');
+export const adLogoSafe = (a: AdLogoRec | null | undefined): Edges => (a?.size ? NO_EDGES : placementOf(a?.placement).safe);
+/** Adjust logo (2026-11-01): the viewer's logo tool set to where the logo was put (job.input.adLogo), so opening it shows no jump: the
+ *  same corner and size (adLogoBox: STAMP_SIZES), full opacity, no text line, no plate, and Ad Pack's platform safe area kept clear.
+ *  The light / dark logo is picked by the brightness behind it, by the same rule on both sides. */
+export function adLogoStamp(adLogo: AdLogoRec | null | undefined): { settings: StampSettings; inset: Edges } {
+  return { settings: { ...STAMP_DEFAULTS, spot: asCorner(adLogo?.corner), size: adLogoSize(adLogo), opacity: 1, textOn: false, text: '', backing: 'off' }, inset: adLogoSafe(adLogo) };
 }

@@ -133,6 +133,7 @@ export function formFromInput(t: ToolDef, j: Job, opts: { sameSeed: boolean }) {
     if (s.name === 'prompt' || sv !== '') form[s.name] = sv;
   }
   if (!('prompt' in form) && t.inputs.some((s) => s.name === 'prompt') && !('prompt' in locked)) form.prompt = '';
+  if (i.brand?.id && i.brandColours === true) form.brandColours = '1'; // the logo apps' "Use brand colours" comes back with the kit
   if (i.brand?.id) { form.brandKit = String(i.brand.id); if (i.brand.applied && typeof form.prompt === 'string') form.prompt = withoutBrand(form.prompt, String(i.brand.phrase ?? '')); } // Brand Kit: Recreate turns Brand back on (the chip adds the words again), so the box shows only the typed words
   if ((i.fit === 'crop' || i.fit === 'pad') && i.videoUrl && !('fit' in form)) form.fit = i.fit; // Fit to model (shared/videoFit.ts): the clip's Keep everything / Crop choice comes back too
   if (i.cinemaMode && i.duration != null && !('duration' in form) && t.inputs.some((s) => s.name === 'duration') && !('duration' in locked)) form.duration = String(i.duration); // Director image mode stores duration 1 (not a select option; the tool keeps 1 for stills)

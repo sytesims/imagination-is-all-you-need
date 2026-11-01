@@ -5,13 +5,14 @@
  * so agents and the MCP read the same one. Each kit's font files are added to the page as they arrive (brandFonts.ts), so brand fonts work app-wide. Recreate turns Brand back on with the job's kit (shared/usePrefill → brandFromRecreate).
  */
 import { useEffect, useState } from 'react';
-import { brandMediaFor, normalizeKit, type BrandKit, type BrandMediaKind } from '../../../server/src/shared/brandKit';
+import { brandAccentLead, brandMediaFor, normalizeKit, type BrandKit, type BrandMediaKind } from '../../../server/src/shared/brandKit';
 import { registerBrandFonts } from './brandFonts';
 
-export interface BrandState { kits: BrandKit[]; activeId: string; on: Record<BrandMediaKind, boolean>; loaded: boolean; error: string | null; fonts: { name: string; kind: string; inApp?: boolean }[] }
+export interface BrandState { kits: BrandKit[]; activeId: string; on: Record<BrandMediaKind, boolean>; /** the logo apps' "Use brand colours" (off by default) */ colours: boolean; loaded: boolean; error: string | null; fonts: { name: string; kind: string; inApp?: boolean }[] }
 const LS = (m: BrandMediaKind) => `ohf:brand-on:${m}`;
 const readOn = (m: BrandMediaKind) => { try { return localStorage.getItem(LS(m)) === '1'; } catch { return false; } };
-let st: BrandState = { kits: [], activeId: '', on: { image: readOn('image'), video: readOn('video'), audio: readOn('audio') }, loaded: false, error: null, fonts: [] };
+const LS_COLOURS = 'ohf:brand-colours';
+let st: BrandState = { kits: [], activeId: '', on: { image: readOn('image'), video: readOn('video'), audio: readOn('audio') }, colours: (() => { try { return localStorage.getItem(LS_COLOURS) === '1'; } catch { return false; } })(), loaded: false, error: null, fonts: [] };
 const subs = new Set<() => void>();
 const emit = () => subs.forEach((f) => f());
 const set = (p: Partial<BrandState>) => { st = { ...st, ...p }; emit(); };
@@ -34,6 +35,8 @@ export function useBrand(): BrandState {
 }
 export const activeKit = (s: BrandState = st): BrandKit | undefined => s.kits.find((k) => k.id === s.activeId) ?? s.kits[0];
 export function setBrandOn(m: BrandMediaKind, on: boolean) { try { localStorage.setItem(LS(m), on ? '1' : '0'); } catch { /* storage off */ } set({ on: { ...st.on, [m]: on } }); }
+/** The logo apps' "Use brand colours" switch (per browser, shared by Product Shot, Phone Photo and UGC Ad). */
+export function setBrandColours(on: boolean) { try { localStorage.setItem(LS_COLOURS, on ? '1' : '0'); } catch { /* storage off */ } set({ colours: on }); }
 export async function setActiveKit(id: string) {
   const prev = st.activeId; set({ activeId: id });
   const r = await fetch('/api/brand-kits/active', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }) }).catch(() => null);
@@ -54,10 +57,12 @@ export function brandKitFor(toolId: string, mode?: string | null): string | null
 /** Add brandKit to a submit form (FormData) when Brand is on for its tool; one call in every submit path. */
 export function addBrandField(toolId: string, fd: FormData) {
   if (fd.has('brandKit')) return; const id = brandKitFor(toolId, String(fd.get('mode') ?? '') || modeOfTypes(fd.get('types'))); if (id) fd.append('brandKit', id);
+  if (id && st.colours && brandAccentLead(toolId) && !fd.has('brandColours')) fd.append('brandColours', '1');
 }
 /** The same for the prompt peek's JSON fields. */
 export function withBrandFields(toolId: string, fields: Record<string, string>): Record<string, string> {
-  if (fields.brandKit) return fields; const id = brandKitFor(toolId, fields.mode || modeOfTypes(fields.types)); return id ? { ...fields, brandKit: id } : fields;
+  if (fields.brandKit) return fields; const id = brandKitFor(toolId, fields.mode || modeOfTypes(fields.types)); if (!id) return fields;
+  return { ...fields, brandKit: id, ...(st.colours && brandAccentLead(toolId) ? { brandColours: '1' } : {}) };
 }
 /** Recreate: the job ran with a kit → Brand on with that kit (if it still exists); without one → Brand off for that tool's media. → a note to show, or null. */
 export async function brandFromRecreate(toolId: string, form: Record<string, string>): Promise<string | null> {
@@ -67,5 +72,5 @@ export async function brandFromRecreate(toolId: string, form: Record<string, str
   const k = st.kits.find((x) => x.id === form.brandKit);
   if (!k) { setBrandOn(m, false); return 'That run used a brand you’ve since deleted, so Brand is off.'; }
   if (st.activeId !== k.id) await setActiveKit(k.id).catch(() => undefined);
-  setBrandOn(m, true); return null;
+  if (brandAccentLead(toolId)) setBrandColours(form.brandColours === '1'); setBrandOn(m, true); return null;
 }

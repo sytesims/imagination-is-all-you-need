@@ -215,8 +215,8 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
   /* Add logo: always findable on your image and video results; with a brand that has a logo it turns on the stage stamp, else it leads to Assets › Brands */
   const logoBase = viewer && (medium === 'image' || medium === 'video') && !sample && owner && !(job as any).deletedAt && job.status === 'done' && !showingOriginal && !lys && /^\/files\//.test(cur.url);
   const logoItem = (): MItem | null => { if (!logoBase) return null; const k = stampKit;
-    if (adjOk && adKit) return adj ? { k: 'logo', label: 'Reset logo', icon: <BrandIcon size={16} />, testid: 'rv-adjust-logo', pressed: true, hint: 'Back to the logo as Ad Pack placed it', onClick: () => endAdjust(adjKey) }
-      : { k: 'logo', label: 'Adjust logo', icon: <BrandIcon size={16} />, testid: 'rv-adjust-logo', hint: 'Move, resize or take off the logo on this ad. The ad as made stays as it is.', onClick: openAdjust };
+    if (adjOk && adKit) return adj ? { k: 'logo', label: 'Reset logo', icon: <BrandIcon size={16} />, testid: 'rv-adjust-logo', pressed: true, hint: 'Back to the logo as first placed', onClick: () => endAdjust(adjKey) }
+      : { k: 'logo', label: 'Adjust logo', icon: <BrandIcon size={16} />, testid: 'rv-adjust-logo', hint: 'Move, resize or take off the logo. The picture as made stays as it is.', onClick: openAdjust };
     if (adjOk) return null; /* the kit Ad Pack used is gone: no second logo on top of the baked one */
     if (!k?.logo?.url) { const href = k ? `/assets/brands?brand=${encodeURIComponent(k.id)}` : '/assets/brands';
       return { k: 'logo', label: 'Add logo', icon: <BrandIcon size={16} />, testid: 'rv-add-logo', trail: <span className="rm-go">Set up your brand first ›</span>, hint: k ? `${k.name} has no logo yet. Add one in Assets › Brands.` : 'Make a brand with your logo in Assets › Brands, then put it on any result', href, onClick: goClick(href, onClose) }; }

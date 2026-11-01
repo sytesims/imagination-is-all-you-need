@@ -32,7 +32,7 @@ function mediaRect(stage: HTMLElement, e: HTMLImageElement | HTMLVideoElement): 
   return { x: x - s.left, y: y - s.top, w, h };
 }
 /** Show "Add logo" on this result? A brand is on in this media's bar, or the result was made with a brand. */
-export function stampAvailable(brandOn: boolean, jobInput: any): boolean { return brandOn || !!jobInput?.brand?.applied || !!jobInput?.brandKit; }
+export function stampAvailable(brandOn: boolean, jobInput: any): boolean { return brandOn || !!jobInput?.brand?.applied || !!jobInput?.brandKit || !!jobInput?.brandKitId; /* a brand app's run (UGC Ad: Add logo on the video) */ }
 
 /** adjust: Adjust logo on an Ad Pack ad (the stage shows its clean copy): this ad's own settings and on / off (stampStore adjust), the
  *  kit Ad Pack used, and its platform's safe area; without it, Add logo with the shared settings and the brand that is on. */
