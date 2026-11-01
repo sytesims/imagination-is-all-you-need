@@ -2,6 +2,19 @@
 
 Newest first. To update a git install, run `npm run update` (see [Updating](docs/INSTALL.md#updating)). Every release is also on the [Releases page](https://github.com/sytesims/imagination-is-all-you-need/releases).
 
+## Unreleased
+
+### New
+- **Install in one line.** `curl -fsSL https://iiayn.app/install | bash` on macOS and Linux, `irm https://iiayn.app/install.ps1 | iex` on Windows. It checks for git, Node.js and ffmpeg, asks before installing anything, and opens the app in your browser. Running it again updates the app, also an install from 1.0.
+
+### Better
+- **A failed install says so.** When the app's parts don't install, setup and the installers stop with the next step and keep npm's output in `setup.log`, instead of carrying on.
+- **A busy port is named at once.** If another program uses the app's port, the start stops within seconds and says which program and how to pick another port.
+- **Copying `.env.example` changes nothing** until you uncomment a line.
+
+### Fixed
+- Keys saved in Settings are loaded again after a restart when `OPENHIGGSFIELD_ENV_FILE` points somewhere else.
+
 ## 1.1.0 — 2026-10-30
 
 ### New

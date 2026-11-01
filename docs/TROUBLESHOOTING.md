@@ -5,7 +5,8 @@
 - **`/api/health` says `"backend":"mock"` with a `comfyReason`:** ComfyUI isn't reachable at `COMFY_BASE_URL`, the key is missing, or a workflow is missing. The app falls back to mock instead of crashing. Check `curl $COMFY_BASE_URL/system_stats`.
 - **The `mcp` process exits with `EADDRINUSE`:** something already listens on :8788. The API and web app keep running. Stop the other process or change `MCP_PORT`.
 - **The `mcp` process doesn't start after `npm install`:** the MCP dependencies didn't install. Run `npm run mcp:install`, then `npm start` again.
-- **Port in use:** the web app uses a fixed port (`WEB_PORT`, default 5174) and stops if it's taken. Start it on another one, e.g. `WEB_PORT=5180 npm start`, or change `PORT` (API, default 8787).
+- **"Port 8787 is already used by …, so the app can't start":** another program holds the API port (`PORT`, default 8787) or the web port (`WEB_PORT`, default 5174). `npm start` and `npm run setup` check both before starting and name the program when they can. Close it, or give the app another port: add `PORT=8790` (or `WEB_PORT=5180`) to `.env.local`, or start with `WEB_PORT=5180 npm start`.
+- **"The app's parts didn't install":** `npm run setup` (and the one-line installers) stop here when `npm ci` fails. The full npm output is in `setup.log` in the app folder. The usual causes are no internet connection, a full disk, or a missing build tool (next line). Fix it and run `npm run setup` again.
 - **`better-sqlite3` build error during `npm ci`:** install build tools (`xcode-select --install` on a Mac, `build-essential python3` on Linux), or use Node 22, 24 or 26, which have prebuilt binaries.
 - **"Node.js 20 is too old" (or 23, 25):** that version is past its end of life and no longer gets security fixes. Switch to Node 24: `brew install node@24` on a Mac, `winget install OpenJS.NodeJS.LTS` on Windows, or `nvm install 24 && nvm use 24`. See [INSTALL.md](INSTALL.md#requirements).
 
@@ -19,7 +20,7 @@
 - **"Too heavy for this computer":** it is never pre-selected. Pick it yourself to try anyway (it runs with a warning), use a lighter model or a cloud route. If the app got your hardware wrong, see [LOCAL-MODELS-AND-HARDWARE.md](LOCAL-MODELS-AND-HARDWARE.md#if-your-hardware-cant-be-detected).
 - **A job stopped and asks you to choose (`needs_decision`):** the route failed and the next one costs more than your quote. Pick a route (or cancel); nothing extra was charged.
 - **`400 invalid_duration`:** that model doesn't take that clip length. The error lists the allowed lengths.
-- **Can't save a key or change the ComfyUI address from the browser:** the server listens on the network (`HOST=0.0.0.0` or `NODE_ENV=production`). Start it with plain `npm start`, or put the values in `.env.local`.
+- **Can't save a key or change the ComfyUI address from the browser:** the server listens on the network (`HOST=0.0.0.0`; `NODE_ENV` never changes this). Start it with plain `npm start`, or put the values in `.env.local`.
 
 ## Local ComfyUI and models
 

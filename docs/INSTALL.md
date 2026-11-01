@@ -22,8 +22,8 @@ What they do, in order:
 
 1. Check for git, Node.js 22, 24 or 26 (with npm) and ffmpeg. For each missing one, they say what it is and ask before installing it with Homebrew (macOS; they offer Homebrew's official installer if it's missing), apt or dnf (Linux, with `sudo`, which asks for your password) or winget (Windows). Say no and they print the manual steps and stop. ffmpeg is optional: without it the app still opens.
    Node.js comes pinned, never as "the newest": Homebrew's `node@24` on a Mac (Homebrew keeps it off `PATH`; the installer and the Dock app find it, and the "start it again" line it prints brings it along), winget's `OpenJS.NodeJS.LTS` (the current long-term support line, 26 today) on Windows, and on Linux the system's own package only when it is Node 22, 24 or 26. Otherwise (Ubuntu 22.04/24.04 and Debian 12 ship Node 12 to 18, Debian 13 ships 20) they offer Node 24 from [NodeSource](https://github.com/nodesource/distributions), or print the nvm steps and stop before using `sudo`. Node 20, 23 and 25 are past their end of life and count as too old. A Node.js that is too new (27 or later) stops the Windows and Linux installers with the steps to switch to 22, 24 or 26.
-2. Download the app into `~/Imagination` (Windows: `%USERPROFILE%\Imagination`) with `git clone --depth 1`. If the app is already there, they run `npm run update` instead. Your library (`server/data`) and keys (`.env.local`) are never touched.
-3. Run `npm run setup -- --no-start`: app dependencies and the read-only check. No ComfyUI, models or keys.
+2. Download the app into `~/Imagination` (Windows: `%USERPROFILE%\Imagination`) with `git clone --depth 1`. If the app is already there, they run `npm run update` instead (an install from before `npm run update` existed, like 1.0, is updated with `git pull --ff-only` and `npm ci`). If the update can't go through, they stop and say why, and the version you have stays as it was. Your library (`server/data`) and keys (`.env.local`) are never touched.
+3. Run `npm run setup -- --no-start`: app dependencies and the read-only check. No ComfyUI, models or keys. If the dependencies don't install or the app can't start, they stop here with the next step (npm's full output is in `setup.log` in the app folder), and add no shortcut. Something optional missing (for example ComfyUI) doesn't stop them.
 4. Ask whether to add a shortcut (Windows: `Imagination.lnk`; Linux: an `imagination.desktop` app entry). On a Mac the installer adds Imagination to Applications and your Dock: it builds the [Mac app](#mac-app-dock) into `/Applications` (or `~/Applications` when `/Applications` needs an administrator; never with `sudo`), pins it to the Dock unless it's already there, and removes the `Imagination.command` desktop shortcut older installers made.
 5. Start the app with `npm run setup` and open it in your browser. Keep the window open; Ctrl+C stops it.
 
@@ -52,7 +52,7 @@ To do it all by hand instead, follow the steps below.
 
 Python, a local GPU, ComfyUI and model weights are **not prerequisites for the app-only/cloud path**. Individual optional local tools can have additional requirements.
 
-Install prerequisites yourself using their official instructions or your package manager. The app does not silently install system software or request administrator rights.
+Install prerequisites yourself using their official instructions or your package manager. The app itself never installs system software or asks for administrator rights. The one-line installers ask before they install anything, and those installs can need an administrator: `sudo` for apt or dnf on Linux, and on Windows winget's Git and Node.js installers may show a Windows administrator prompt. Without administrator rights on Windows, install Node.js with [nvm-windows](https://github.com/coreybutler/nvm-windows) or the Node.js zip from nodejs.org, and Git with its portable build, then run `npm run setup` in a `git clone` of the app.
 
 ### macOS
 
@@ -186,7 +186,7 @@ Your library, boards and settings live in `server/data`, and your keys in `.env.
 
 ### If you installed with git clone
 
-**Coming from version 1.0?** It doesn't have `npm run update` yet. Update once by hand, in the app folder: `git checkout package-lock.json` (npm may have changed it; this puts it back), then `git pull`, then `npm ci`. After that, use `npm run update`.
+**Coming from version 1.0?** It doesn't have `npm run update` yet. Run the [one-line installer](#install-in-one-line) again with the same folder (it updates a 1.0 install for you), or update once by hand, in the app folder: `git checkout package-lock.json` (npm may have changed it; this puts it back), then `git pull`, then `npm ci`. After that, use `npm run update`.
 
 Stop the app first (**Ctrl+C** in its terminal), then in the app folder run:
 
@@ -228,6 +228,17 @@ When the new version works, you can delete the old folder. Running `npm run upda
 - Stop the app before you update. Windows locks files that are in use, so an install step can fail while the app runs. If it does, stop the app and run `npm ci` again.
 - Folders with spaces in their names are fine.
 - If PowerShell blocks `npm.ps1`, use `npm.cmd run update`.
+
+## Remove the app
+
+Stop it first (**Ctrl+C** in its terminal, or quit Imagination and choose **Stop** on a Mac). Then delete what you no longer want:
+
+- **The app folder** (`~/Imagination`, Windows: `%USERPROFILE%\Imagination`, or where you installed it). Your library (`server/data`) and keys (`.env.local`) are inside it: copy them out first if you want to keep them ([BACKUP-RESTORE.md](BACKUP-RESTORE.md)).
+- **Mac:** `Imagination.app` in `/Applications` or `~/Applications` (drag it to the Trash and off the Dock), and optionally `~/Library/Logs/Imagination` and `~/Library/Application Support/Imagination`.
+- **Linux:** `imagination.desktop` in `~/.local/share/applications` and on your desktop.
+- **Windows:** `Imagination.lnk` on your desktop.
+
+Git, Node.js and ffmpeg stay installed; remove them with the tool that installed them (Homebrew, apt or dnf, winget) if nothing else uses them. ComfyUI and model files are separate and stay where they are.
 
 ## Other startup and advanced installation paths
 

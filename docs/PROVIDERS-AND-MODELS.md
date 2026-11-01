@@ -58,7 +58,7 @@ If nothing is ready, the mock backend runs a free, labelled sample ("Sample outp
 | DashScope direct | Connection configuration exists, but no direct executor was identified in this review. Do not assume a saved key enables a route. |
 | Your own ComfyUI and this-computer tools | Registered local workflows and media-processing steps are implemented where their runner exists. Hardware/model/node readiness and per-route verification vary. A cloud result or cross-platform startup CI does not prove local GPU execution. |
 
-Under the hood, Comfy Cloud jobs go through the Comfy SDK (`@comfyorg/sdk`, API v2) or plain HTTPS, and a local ComfyUI is driven through its HTTP and WebSocket API.
+Under the hood, Comfy Cloud jobs use Comfy Cloud's official API v2 (jobs and assets over HTTPS), and a local ComfyUI is driven through its HTTP and WebSocket API.
 
 ### Retiring and removed models
 
