@@ -433,6 +433,7 @@ const spendGuard: typeof import('./spendGuard.js').spendGuard = async (reply, o)
 async function createJob(toolId: string, req: FastifyRequest, reply: FastifyReply) {
   const tool = getTool(toolId);
   if (!tool) return reply.code(404).send({ error: `unknown tool ${toolId}` });
+  if (tool.id === 'photos-reel') return reply.code(400).send({ error: 'Use the Photos → Reel workflow (app-photos-to-reel).' });
   const id = randomUUID().slice(0, 8); (req as any).uploadJobId = id; // BH4 #2: safeCreateJob removes this request's files unless the job is created
   const fields: Record<string, string> = {};
   const files: Record<string, string[]> = {};
@@ -495,13 +496,18 @@ async function createJob(toolId: string, req: FastifyRequest, reply: FastifyRepl
     }
     I.idemTrack(req, idemKey, fieldsHash);
   }
+  if (tool.id === 'app-photos-to-reel') {
+    const result = await (await import('./photosToReel.js')).startReel(app, req, reply, id, fields, files);
+    if (jobs.has(id) && idemKey) I.idemPut(idemKey, { fieldsHash, jobId: id, ts: Date.now() });
+    return result;
+  }
   /** Step 2 (MODEL-ROUTE-SPEC): model (a model key, or an old engine id) + runOn → the engine / route fields below, by the SAME
    *  resolveModelRequest the quote's preHandler uses (routing/http.ts), before the app locks apply (as on the quote). */
   const runOnField = fields.runOn ?? fields.run_on;
   const MR = tool.id === 'motion-transfer' || (fields.model || (runOnField != null && runOnField !== '')) && !(!runOnField && getProvider(fields.model)) ? (await import('./routing/partPick.js')).preferRunnablePart(tool, (await import('./routing/modelRegistry.js')).resolveModelRequest(tool, { model: fields.model, runOn: runOnField, provider: fields.provider, route: fields.route, types: fields.mode ? [fields.mode] : fields.types, mode: fields.mode }), fields) : null; // Motion also checks legacy provider / route-only requests against its scoped availability guard.
   if (MR && !MR.ok) { const { ok: _o, status, ...body } = MR; return reply.code(status).send({ ...body, issues: [{ code: body.code, field: body.field, message: body.error }], charged: false, refund: { refunded: false, amount: 0, charged: false, note: 'Nothing was charged.' } }); }
   if (!MR && fields.model && !fields.provider && getProvider(fields.model)) fields.provider = fields.model; // an old engine id alone (model= alias of provider=), as the quote reads it
-  if (MR?.ok) { if (MR.provider) { fields.provider = MR.provider; fields.model = MR.provider; } if (MR.route) fields.route = MR.route; if (MR.types && !fields.types && !fields.mode) fields.types = MR.types; }
+  if (MR?.ok) { if (MR.provider) { fields.provider = MR.provider; fields.model = MR.provider; } if (MR.route) fields.route = MR.route; if (MR.types && !fields.types && !fields.mode && tool.inputs.some((i) => i.name === 'types')) fields.types = MR.types; }
   const routeReq = (extraReq: Record<string, any> = {}) => ({ route: fields.route, allowFallback: fields.allowFallback, ...(MR?.ok ? { runOn: MR.runOn && MR.runOn !== 'auto' ? MR.runOn : undefined, allowRoutes: MR.allowRoutes, modelKey: MR.modelKey } : {}), ...extraReq });
   /** Apps gallery: a locked provider always wins over the client's choice. */
   const lockedProvider = (tool.app as any)?.gallery?.locked?.provider as string | undefined;
@@ -715,6 +721,7 @@ async function createJob(toolId: string, req: FastifyRequest, reply: FastifyRepl
   // Agent budgets (agentBudget.ts): a run started with X-OHF-Agent-Budget that would go over that budget is refused here, before the job is enqueued (nothing reaches a provider). Local / free runs cost $0.
   const AB = await import('./agentBudget.js'); const ag = AB.admitAgentRun(req, reply, { jobId: id, toolId: tool.id, model: MR?.modelKey ?? prov.id, estUsd: wantFree ? 0 : runCost.estUsd, credits: wantFree || runCost.demo ? 0 : routedCost ?? cost });
   if (!('agent' in ag)) return ag;
+  if (fields.reelParentId && jobs.get(fields.reelParentId)?.toolId === 'app-photos-to-reel') { inp.reelParentId = fields.reelParentId; fields.parentId = fields.reelParentId; }
   const job = enqueue(tool.id, inp, est, id, fields.parentId || null, prov.id, routedCost ?? cost, wantFree);
   if (ag.agent) job.agent = ag.agent;
   if (inp.videoFit?.changed) job.videoFit = (await import('./shared/videoFit.js')).videoFitSummary(inp.videoFit, null); // Fit to model: shown in the viewer's details from the start
@@ -838,7 +845,7 @@ app.delete<{ Params: { id: string } }>('/api/jobs/:id', async (req, reply) => { 
 app.post<{ Params: { id: string } }>('/api/jobs/:id/restore', async (req, reply) => { const j = need(jobs.get(req.params.id), reply); if (!j) return; lib.restore(j.id); return pub(j); });
 // count = live (not trashed) items; coverUrl = the newest finished image (the Project picker's cover; null → the initial tile)
 app.get('/api/projects', async () => { const n = new Map<string, number>(); const cover = new Map<string, { at: number; url: string }>(); const IMG = /\.(png|jpe?g|webp|gif)(\?|$)/i;
-  for (const j of jobs.values()) { const m = lib.metaOf(j.id); if (!m.projectId || m.deletedAt) continue; n.set(m.projectId, (n.get(m.projectId) ?? 0) + 1);
+  for (const j of jobs.values()) { const m = lib.metaOf(j.id); if (!m.projectId || m.deletedAt || j.input.reelParentId) continue; n.set(m.projectId, (n.get(m.projectId) ?? 0) + 1);
     if (j.status !== 'done') continue; const url = j.outputs?.find((o) => IMG.test(o.url))?.url; const c = cover.get(m.projectId); if (url && (!c || j.createdAt > c.at)) cover.set(m.projectId, { at: j.createdAt, url }); }
   return lib.listProjects().map((p) => ({ ...p, parentId: p.parentId ?? null, count: n.get(p.id) ?? 0, coverUrl: cover.get(p.id)?.url ?? null })); });
 app.post<{ Body: { name?: string; parentId?: string | null } }>('/api/projects', async (req, reply) => { const p = lib.createProject(req.body?.name ?? ''); if (req.body?.parentId) { const m = lib.moveProject(p.id, req.body.parentId); if ('error' in m) { lib.deleteProject(p.id); return reply.code(400).send({ error: m.error, errorType: 'validation', issues: [{ code: 'invalid', field: 'parentId', message: m.error }] }); } return m; } return { ...p, parentId: null }; });
@@ -900,9 +907,10 @@ app.get<{ Querystring: { toolId?: string; limit?: string; section?: string; incl
   if (req.query.job) { const fj = jobs.get(req.query.job); if (!fj || (lib.metaOf(fj.id).deletedAt && sec !== 'trash')) return reply.code(404).send({ error: `job ${req.query.job} not found`, errorType: 'not_found' });
     const shape = (j: Job) => ({ ...(j.status === 'done' ? pub(j) : { ...pub(j), state: j.status, refund: refundOf(j.id) }), highlighted: j.id === fj.id });
     if (req.query.focus !== 'highlight') { const xs = [fj, ...[...jobs.values()].filter((x) => x.parentId === fj.id && !lib.metaOf(x.id).deletedAt).sort((a, b) => b.createdAt - a.createdAt)]; reply.header('x-focus-index', '0'); return xs.map(shape); }
-    const lim = Number(req.query.limit) || 100; const all = history(req.query.toolId).filter((j) => { const m = lib.metaOf(j.id); return sec === 'trash' ? !!m.deletedAt : !m.deletedAt && ((j.status === 'done' && j.outputs.length) || (ended && ENDED.has(j.status))); });
+    const lim = Number(req.query.limit) || 100; const all = history(req.query.toolId).filter((j) => { if (j.input.reelParentId) return false; const m = lib.metaOf(j.id); return sec === 'trash' ? !!m.deletedAt : !m.deletedAt && ((j.status === 'done' && j.outputs.length) || (ended && ENDED.has(j.status))); });
     let page = all.slice(0, lim); if (!page.some((j) => j.id === fj.id)) page = [...page, fj]; reply.header('x-focus-index', String(page.findIndex((j) => j.id === fj.id))); return page.map(shape); }
   return history(req.query.toolId).filter((j) => {
+    if (j.input.reelParentId) return false;
     const m = lib.metaOf(j.id);
     if (sec === 'trash') return !!m.deletedAt;
     if (m.deletedAt) return false;
@@ -931,7 +939,7 @@ app.get<{ Params: { id: string } }>('/api/jobs/:id/preview', async (req, reply) 
 /** Queue activity pill (TRANSPARENCY-PLAN 4i, D1): running and waiting jobs, compact, for one poll every 1–2 s. Only active jobs are built (one pass over the
  *  job map, one spend-row read per active job). items: running first (oldest start first), then waiting in queue order. */
 app.get('/api/queue/activity', async () => {
-  const act = [...jobs.values()].filter((j) => (j.status === 'running' || j.status === 'queued') && !(j as any).seed && !lib.metaOf(j.id).deletedAt)
+  const act = [...jobs.values()].filter((j) => (j.status === 'running' || j.status === 'queued') && !(j as any).seed && !j.input.reelParentId && !lib.metaOf(j.id).deletedAt)
     .sort((a, b) => (a.status === b.status ? (a.status === 'running' ? (a.startedAt ?? a.createdAt) - (b.startedAt ?? b.createdAt) : (a.queuePos || 1e9) - (b.queuePos || 1e9) || a.createdAt - b.createdAt) : a.status === 'running' ? -1 : 1));
   const items = act.map((j) => {
     const prompt = String(j.input?.prompt ?? '').replace(/\s+/g, ' ').trim(); const sp = jobSpendView(j.id); const place = placeOfJob(j); const free = sp ? sp.billedTo === 'local' : place.runOn === 'local';
@@ -953,6 +961,7 @@ const processingCancelText = (j: { cost?: number; input?: Record<string, any> })
 app.post<{ Params: { id: string } }>('/api/jobs/:id/cancel', async (req, reply) => {
   const j = jobs.get(req.params.id);
   if (!j) return reply.code(404).send({ error: 'not found' });
+  if (j.toolId === 'app-photos-to-reel') { const ok = await (await import('./photosToReel.js')).cancelReel(app, j); return ok ? pub(j) : reply.code(409).send({ error: 'This reel has already finished.' }); }
   const { cancelRun, CANCEL_IN_PROCESSING } = await import('./queue.js');
   const r = await cancelRun(j); // local ComfyUI: cancellable at every stage (our queue, ComfyUI's queue, running); hosted: only before dispatch
   if (r.result === 'done') return reply.code(409).send({ error: 'It finished before it could be canceled, so the result is kept.', errorType: 'not_cancellable', code: 'already_done', jobId: j.id, status: j.status, state: stateOf(j), progress: j.progress });
@@ -966,6 +975,17 @@ app.post<{ Params: { id: string } }>('/api/jobs/:id/cancel', async (req, reply) 
  *  S-02: Try on (runOn) pins THIS job only; remember:true (body or query) also saves that place as the tool + model's choice (Settings › Routing). */
 app.post<{ Params: { id: string }; Querystring: { failedOnly?: string; runOn?: string; remember?: string } }>('/api/jobs/:id/retry', async (req, reply) => {
   const j = jobs.get(req.params.id); if (!j) return reply.code(404).send({ error: 'not found' });
+  if (j.toolId === 'app-photos-to-reel') {
+    const partialRetry = j.status === 'done' && /^(1|true)$/.test(req.query.failedOnly ?? '') && !!j.partial && ((j.input.failedPhotos?.length ?? 0) > 0 || !!j.input.failedMusic);
+    if (j.status !== 'failed' && j.status !== 'blocked' && !partialRetry) return reply.code(409).send({ error: 'Only failed reels or failed photos can be retried.' });
+    const reel = await import('./photosToReel.js');
+    return reel.withReelRetryLock(j.id, async () => {
+      const previous = [...jobs.values()].find(x => x.parentId === j.id && x.input.retryOf === j.id && !['failed','blocked','canceled'].includes(x.status));
+      if (previous) return { id: previous.id, toolId: previous.toolId, idempotentReplay: true };
+      const id = randomUUID().slice(0, 8);
+      return reel.startReel(app, req, reply, id, { ...j.input.fields, simulateGroup: '0', simulateMusic: '', quotedCredits: '', fromJob: j.id, reuseInputs: 'photos' }, {}, j);
+    });
+  }
   // Run on (2026-10-22): "Try on <place>": runOn (body or query) re-runs the job there, pinned to that place (no fallback). Without it, the same route as before.
   const retryRunOn = String((req.body as any)?.runOn ?? (req.body as any)?.run_on ?? req.query.runOn ?? '').trim();
   if (retryRunOn) { const { normRunOn } = await import('./shared/modelIds.js'); if (!normRunOn(retryRunOn)) return reply.code(400).send({ error: 'runOn must be a place id (local, comfy-cloud, fal, replicate, bfl…). Nothing was charged.', errorType: 'validation', code: 'invalid_run_on', issues: [{ code: 'invalid_run_on', field: 'runOn', message: 'unknown place' }], charged: false }); }

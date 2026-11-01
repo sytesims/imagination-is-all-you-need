@@ -136,7 +136,7 @@ export function filterJobList(q: JobListQuery): { all: any[]; defaultLimit: numb
   const inSet = (j: Job) => !!want?.includes('done') && want.includes('running') && (j.status === 'failed' || j.status === 'blocked') && lib.metaOf(j.id).compare?.kind === 'swatch';
   const asc = q.order === 'asc' || (want != null && q.order !== 'desc');
   const defaultLimit = Math.min(500, Number(q.limit) || (want ? 200 : 50));
-  const all = [...jobs.values()].filter((j) => !(j as any).seed && (!featured || !!lib.metaOf(j.id).featured) && (!tool || j.toolId === tool) && (!want || want.includes(j.status) || inSet(j)) && !lib.metaOf(j.id).deletedAt // community seed jobs aren't yours
+  const all = [...jobs.values()].filter((j) => !j.input.reelParentId && !(j as any).seed && (!featured || !!lib.metaOf(j.id).featured) && (!tool || j.toolId === tool) && (!want || want.includes(j.status) || inSet(j)) && !lib.metaOf(j.id).deletedAt // community seed jobs aren't yours
       && (from == null || j.createdAt >= from) && (to == null || j.createdAt <= to) && (!q.media || mediaOf(j) === q.media) && (enh == null || isEnhanced(j as any) === enh)
       && (!vfeed || inVideoFeed(j as any, vfeed)) && (!ifeed || inImageFeed(j as any, ifeed)) && (!afeed || inAudioFeed(j as any, afeed.id)) && (!feats || ((f) => !!f && (feats === '*' || feats.has(f)))(featureIdOfJob(j as any)))
       && (!needle || `${j.id} ${j.toolId} ${String((j.input as any)?.prompt ?? '')}`.toLowerCase().includes(needle)) && metaOk(j.id))
@@ -276,7 +276,7 @@ export function registerEdge(app: FastifyInstance, pub: (j: Job) => any) {
     if (!['image', 'video', 'audio', 'all'].includes(kind)) return reply.code(400).send({ error: 'kind must be image, video, audio or all', errorType: 'validation', issues: [{ code: 'invalid', field: 'kind', message: 'kind must be image, video, audio or all' }] });
     const limit = Math.min(100, Math.max(1, Number(q.limit) || 30)); const off = Math.max(0, Number(q.cursor) || 0); const liked = /^(1|true|on|yes)$/i.test(q.liked ?? '');
     const kindOf = (url: string) => (/\.(png|jpe?g|webp|gif)(\?|$)/i.test(url) ? 'image' : /\.(mp4|mov|webm)(\?|$)/i.test(url) ? 'video' : /\.(mp3|wav|m4a|flac|ogg)(\?|$)/i.test(url) ? 'audio' : 'other');
-    const all = [...jobs.values()].filter((j) => !(j as any).seed && st.includes(j.status) && (j.status !== 'done' || j.outputs?.length) && !lib.metaOf(j.id).deletedAt && (!q.toolId || j.toolId === q.toolId) && (!liked || lib.metaOf(j.id).favourite))
+    const all = [...jobs.values()].filter((j) => !j.input.reelParentId && !(j as any).seed && st.includes(j.status) && (j.status !== 'done' || j.outputs?.length) && !lib.metaOf(j.id).deletedAt && (!q.toolId || j.toolId === q.toolId) && (!liked || lib.metaOf(j.id).favourite))
       .sort((a, b) => b.createdAt - a.createdAt)
       .flatMap((j): Record<string, any>[] => j.status !== 'done' || !j.outputs?.length ? [{ id: j.id, jobId: j.id, index: null, toolId: j.toolId, status: j.status, kind: 'other', url: null, label: null, prompt: String(j.input?.prompt ?? ''), liked: !!lib.metaOf(j.id).favourite, createdAt: j.createdAt, error: (j as any).error ?? null }]
         : j.outputs.map((o, k) => ({ id: `${j.id}:${k}`, jobId: j.id, index: k, toolId: j.toolId, status: j.status, kind: kindOf(o.url), url: o.url, label: o.label, prompt: String(j.input?.prompt ?? ''), liked: !!lib.metaOf(j.id).favourite, createdAt: j.createdAt })))

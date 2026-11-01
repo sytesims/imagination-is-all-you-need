@@ -178,11 +178,13 @@ export function ZipLink({ job }: { job: any }) {
 export function GroupStatus({ job }: { job: any }) {
   const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
   const failed: number[] = job.failedGroups ?? []; const canceled = job.canceledGroups ?? 0;
-  if (!failed.length && !canceled) return null;
+  const reel = job.toolId === 'app-photos-to-reel'; const noun = reel ? 'photo' : 'group'; const failedMusic = reel && !!job.input?.failedMusic;
+  if (!failed.length && !canceled && !failedMusic) return null;
   return <div className="group-status" data-testid="group-status">
     {canceled > 0 && <p className="helper gs-canceled">{canceled} group{canceled > 1 ? 's' : ''} canceled{(Number(job.cost) || 0) > 0 && !ownAccountsNow() ? ' · the rest went back to your balance' : ''}. Finished groups are kept.</p>}
-    {failed.length > 0 && <><p className="helper gs-failed">{failed.length} group{failed.length > 1 ? 's' : ''} failed (group {failed.map(i => i + 1).join(', ')}). {(Number(job.cost) || 0) > 0 ? 'What they held went back to your balance.' : 'Nothing was charged for them.'}</p>
-      <button type="button" className="btn btn-primary retry-failed" disabled={busy} onClick={async () => { setBusy(true); setErr(''); try { const { retryFailedGroups } = await import('../../api'); const r = await retryFailedGroups(job.id); navigate(`/jobs/${r.id}`); } catch (e) { setErr((e as Error).message); } finally { setBusy(false); } }}>{busy ? 'Starting…' : 'Retry failed groups'}</button></>}
+    {failed.length > 0 && <p className="helper gs-failed">{failed.length} {noun}{failed.length > 1 ? 's' : ''} failed ({noun} {failed.map(i => i + 1).join(', ')}). {reel ? 'Your reel kept the other photos. Retry keeps the finished clips.' : (Number(job.cost) || 0) > 0 ? 'What they held went back to your balance.' : 'Nothing was charged for them.'}</p>}
+    {failedMusic && <p className="helper gs-failed">Music failed. Your reel kept the finished video.</p>}
+    {(failed.length > 0 || failedMusic) && <button type="button" className="btn btn-primary retry-failed" disabled={busy || (reel && !['done', 'failed'].includes(job.status))} onClick={async () => { setBusy(true); setErr(''); try { const { retryFailedGroups } = await import('../../api'); const r = await retryFailedGroups(job.id); navigate(`/jobs/${r.id}`); } catch (e) { setErr((e as Error).message); } finally { setBusy(false); } }}>{busy ? 'Starting…' : reel && !['done', 'failed'].includes(job.status) ? 'Finishing reel…' : failedMusic ? (failed.length ? 'Retry failed photos and music' : 'Retry the music') : `Retry failed ${noun}s`}</button>}
     {err && <p className="inline-err">{err}</p>}
   </div>;
 }

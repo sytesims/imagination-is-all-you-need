@@ -14,6 +14,8 @@ import type { WorkflowDefaults } from './imageDefaults.js';
 import { cloudModel } from './cloudDefaults.js';
 
 export const VIDEO_DEFAULTS: Record<string, WorkflowDefaults> = {
+  'app-photos-to-reel': { local: 'comfy-open', localApple: 'comfy-open', hosted: cloudModel('app-photos-to-reel'),
+    why: { local: 'Camera moves and music run one at a time on your computer', hosted: 'Camera moves with the whole reel priced before Generate' } },
   'h3-video': {
     local: 'comfy-ltx25-video',
     localApple: 'comfy-ltx25-video',

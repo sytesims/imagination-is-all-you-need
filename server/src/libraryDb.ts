@@ -150,7 +150,7 @@ const mk = (r: Omit<RefItem, 'tags' | 'autoTags' | 'userTags'>): RefItem => { co
 function generations(): RefItem[] {
   const out: RefItem[] = [];
   for (const j of jobs.values() as IterableIterator<Job & { seed?: boolean }>) {
-    const m = lib.metaOf(j.id); if (j.seed || m.deletedAt || j.status !== 'done') continue;
+    const m = lib.metaOf(j.id); if (j.seed || j.input.reelParentId || m.deletedAt || j.status !== 'done') continue;
     const outs = j.outputs?.length ? j.outputs : j.resultUrl ? [{ label: 'Result', url: j.resultUrl }] : [];
     const urls = outs.map((o) => publicUrl(o.url)); const still = urls.find((u) => u && kindOfUrl(u) === 'image') ?? null;
     const prompt = cleanText(j.input?.prompt) || null; const tool = getTool(j.toolId); let model: string | null = null; try { model = engineNameOf(j); } catch { model = null; }

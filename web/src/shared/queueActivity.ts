@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { JobState } from '../api';
-import { runPrice, ownAccountsNow } from './billing';
+import { compositeCostText, runPrice, ownAccountsNow } from './billing';
 import { runOnLabel, runOnOfRoute } from './models';
 
 /**
@@ -84,7 +84,7 @@ export function placeOf(j: any, item?: ActivityItem | null): { kind: PlaceKind; 
   const runOn: string | null = item?.place?.runOn ?? j?.place?.runOn ?? j?.runOn ?? runOnOfRoute(j?.route ?? null);
   const label = runOnLabel(runOn) || String(item?.place?.label ?? j?.place?.label ?? '').split(' · ')[0] || '';
   const pr: ActivityPrice | null = item?.price ?? (j ? { free: runOn === 'local' || (!(Number(j.cost) > 0) && !!j.free), usd: null, credits: Number(j.cost) || 0, estimated: true, sample: !!j.isSample } : null);
-  return { kind: placeKind(runOn), label, price: priceText(pr, ownAccountsNow(), runOn), sample: !!pr?.sample };
+  return { kind: placeKind(runOn), label, price: compositeCostText(j ?? { toolId: item?.toolId, simulated: item?.price.sample }) ?? priceText(pr, ownAccountsNow(), runOn), sample: !!pr?.sample };
 }
 
 /* ------------------------------------------------------------------ one shared poll of /api/queue/activity */

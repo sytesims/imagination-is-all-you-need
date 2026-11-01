@@ -155,3 +155,16 @@ export function jobCostLine(j: any): { text: string; detail: string | null } | n
 /** The after-run amount alone ("$0.75 (quoted $0.76)", "≈ $0.76 (estimate)") for a sentence that names the account itself; null for samples
  *  and local runs (their own words say it). */
 export const jobCostAmount = (j: any): string | null => { const t = jobCostLine(j)?.text ?? ''; return /^Cost /.test(t) ? t.slice(5) : null; };
+
+/** A composite reel bills its child jobs. Its zero ledger cost is never the reel's displayed price. */
+export function compositeCostText(j: any): string | null {
+  if (j?.toolId !== 'app-photos-to-reel') return null;
+  if (j.demo || j.isSample || j.simulated || j.input?.demo) return 'Sample';
+  if (['done', 'failed', 'canceled', 'blocked'].includes(j.status)) {
+    const usd = typeof j.input?.childCostUsd === 'number' ? j.input.childCostUsd : typeof j.input?.childCost === 'number' ? j.input.childCost / 100 : null;
+    return usd != null && Number.isFinite(usd) ? usd > 0 ? `${fmtUsd(usd)} spent` : 'Free' : 'See step costs';
+  }
+  const steps = j.input?.stepQuotes;
+  if (Array.isArray(steps) && steps.length && steps.every((s: any) => s.quote?.localRun || s.quote?.local || s.quote?.cost?.billedTo === 'local')) return 'Free';
+  return typeof j.input?.reelCostText === 'string' && j.input.reelCostText.trim() ? j.input.reelCostText : 'See step costs';
+}

@@ -130,8 +130,9 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
   const clipRule = spec ? clipRuleFor(spec.tool.id, spec.provider) : null;
   const clips = useClipInfo(clipRule && draft && spec ? spec.slots.filter(s => s.accept === 'video').flatMap(s => (st?.bySlot[s.name] ?? []).map(i => i.url)) : []);
   const clipProblem = (name: string) => { const u = st?.bySlot[name]?.find(i => i.kind === 'video')?.url; return u ? clipIssue(clipRule, clips[u])?.message ?? null : null; };
-  const problems = spec && draft ? preflightProblems({ slots: spec.slots.map(s => ({ name: s.name, label: s.label, required: s.required, filled: !!st?.bySlot[s.name]?.length, missing: s.missing, issue: s.accept === 'video' ? clipProblem(s.name) : null })),
-    prompt: missing && !spec.slots.some(s => s.required && !st?.bySlot[s.name]?.length) ? { missing } : null, quote: q, modelName: model }) : [];
+  const problems = spec && draft ? preflightProblems({ slots: spec.slots.map(s => ({ name: s.name, label: s.label, required: s.required, filled: (st?.bySlot[s.name]?.length ?? 0) >= (s.min ?? 1), missing: s.missing, issue: s.accept === 'video' ? clipProblem(s.name) : null })),
+    prompt: missing && spec.promptMode !== 'hidden' && !spec.slots.some(s => s.required && (st?.bySlot[s.name]?.length ?? 0) < (s.min ?? 1)) ? { missing } : null, quote: q, modelName: model }) : [];
+  if (spec && draft) for (const c of spec.recipe.controls) if (c.kind === 'text' && !c.optional && !spec.vals[c.field]?.trim()) problems.splice(problems.filter(p => p.stage === 'inputs').length, 0, { code: 'pick_missing', stage: 'inputs', message: `Add ${c.label.toLowerCase()}`, fix: { kind: 'open-group', label: 'Choose…', args: { group: c.group } } });
 
   /* prompt field fills the node body; keys stay in the field; Enter generates, Shift+Enter is a new line, Esc leaves */
   const ta = useRef<HTMLTextAreaElement>(null);
@@ -153,11 +154,12 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
   const runVariation = () => { const nid = variationOf(editor, shape.id); if (nid) editor.select(nid); };
   const runFix = async (f: PreflightFix) => { if (!spec) return; const a = f.args ?? {}; const m = modelOfEngine(spec.tool.id, spec.provider);
     switch (f.kind) {
+      case 'open-group': setPfOpen(false); setHover(true); setOpenGroup({ g: String(a.group ?? ''), k: Date.now() }); return;
       case 'pick-model': setPfOpen(false); setPop('model'); return;
       case 'focus-prompt': setPfOpen(false); requestAnimationFrame(() => ta.current?.focus()); return;
       case 'add-key': case 'download': case 'turn-on': case 'install-node': case 'set-up': { const ps = setupPlacesOf(m, q); const pl = ps.find(x => x.runOn === a.runOn) ?? ps[0]; if (!pl) return;
         try { await doSetupPlace(spec.tool.id, m, spec.provider, pl); } catch (er) { toast((er as Error).message || 'That didn’t work. Try again.', 'error'); } if (f.kind !== 'download') setPfOpen(false); return; }
-      case 'choose-photo': { const sl = spec.slots.find(x => x.name === a.slot) ?? spec.slots.find(x => x.required) ?? spec.slots[0]; setPfOpen(false); if (sl) chooseForSlot(editor, shape.id, sl, toast); return; }
+      case 'choose-photo': { const sl = spec.slots.find(x => x.name === a.slot) ?? spec.slots.find(x => x.required) ?? spec.slots[0]; setPfOpen(false); if (sl) chooseForSlot(editor, shape.id, sl, toast, st?.bySlot[sl.name]?.length ?? 0); return; }
       default: setPfOpen(false); toast('Draw an arrow into the node from a result, or use Add to pick a file.');
     } };
   useEffect(() => { const f = (e: Event) => { if ((e as CustomEvent).detail?.cardId === shape.id) void generate(); }; addEventListener(RUN_EVT, f); return () => removeEventListener(RUN_EVT, f); });

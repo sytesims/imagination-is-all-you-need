@@ -39,6 +39,7 @@ import { optionalFileSkipped } from '../comfy/flux3Klein.js';
 import { IMAGE_FEATURES } from '../shared/imageFeatures.js';
 import { RES_PX } from '../shared/imageCaps.js';
 import { soulWorkflowOf } from '../tools/soul/plan.js';
+import { REEL_TOOL_IDS } from '../shared/photosToReel.js';
 
 const MANIFEST = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../readiness/manifest/models.json');
 const WF_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../workflows');
@@ -159,7 +160,7 @@ export function jobWorkflows(tool: ToolDef, providerId: string, input: Record<st
   const p = getProvider(providerId); if (!p) return []; const pw = providerWorkflows(tool, p); const all = pw.length ? pw : p.workflows ?? []; if (all.length <= 1) return all; // charswap: its graph is chosen in comfyClient, not by providerWorkflows
   const t = Array.isArray(input.types) ? String(input.types[0] ?? '') : typeof input.types === 'string' ? String(input.types).replace(/[[\]"]/g, '').split(',')[0] : String(input.mode ?? '');
   if (providerId === 'comfy-soul') { const w = soulWorkflowOf(input); if (w && all.includes(w)) return [w]; } // OpenSoul: the look's (or engine's) own graph
-  if (tool.id === 'camera') { const ltx = all.filter((w) => /camera-ltx/.test(w)); return /^ltx-/.test(t) ? (ltx.length ? ltx : all) : all.filter((w) => !/camera-ltx/.test(w)).length ? all.filter((w) => !/camera-ltx/.test(w)) : all; }
+  if (tool.id === 'camera' || REEL_TOOL_IDS.includes(tool.id)) { const ltx = all.filter((w) => /camera-ltx/.test(w)); return /^ltx-/.test(t) ? (ltx.length ? ltx : all) : all.filter((w) => !/camera-ltx/.test(w)).length ? all.filter((w) => !/camera-ltx/.test(w)) : all; }
   if (t) { const hit = all.filter((w) => new RegExp(`[-_]${t.replace(/[^\w-]/g, '')}[-_.]`).test(w)); if (hit.length) return hit; }
   return all;
 }

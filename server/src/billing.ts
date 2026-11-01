@@ -405,6 +405,7 @@ export function registerBilling(app: FastifyInstance) {
   // Every quote (GET /api/tools/:id/price, /api/models/quote; POST /price re-enters as a GET) gets `cost` + `billingMode` (no spending limits since 2026-10-28).
   // Registered after the routing hook, so it sees the final route and credits.
   app.addHook('preSerialization', async (req, reply, payload: any) => {
+    if (payload?.composite === true && payload.toolId === 'app-photos-to-reel') return payload; // Already summed from the child quotes, including their billing modes.
     const url = req.url.split('?')[0];
     if (req.method !== 'GET' || !(url === '/api/models/quote' || /^\/api\/tools\/[^/]+\/price$/.test(url)) || !payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
     if (!('credits' in payload) && !('routeKind' in payload)) return payload;

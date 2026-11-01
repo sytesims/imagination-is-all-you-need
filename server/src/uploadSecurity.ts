@@ -89,7 +89,8 @@ export async function validateUpload(file: string, filename: string, mime: strin
   const bytes = await readFile(file);
   if (bytes.length < 12 || !signature(bytes, ext)) throw bad(field);
   try {
-    const opts = ['-protocol_whitelist', 'file,pipe', ...(ext === 'mjpeg' ? ['-f', 'mjpeg'] : [])];
+    // A saved .jpg otherwise probes as image2, while the same quarantined bytes probe as jpeg_pipe. Keep both validation passes identical.
+    const opts = ['-protocol_whitelist', 'file,pipe', ...(ext === 'mjpeg' ? ['-f', 'mjpeg'] : ext === 'jpg' ? ['-f', 'jpeg_pipe'] : [])];
     const info = JSON.parse(await run('ffprobe', ['-v', 'error', ...opts, '-show_streams', '-show_format', '-of', 'json', file]));
     const containers: Record<string, string> = { png: 'png_pipe', jpg: 'jpeg_pipe', webp: 'webp_pipe', wav: 'wav', mp3: 'mp3', aac: 'aac', ogg: 'ogg', flac: 'flac', webm: 'matroska,webm', mp4: 'mov,mp4,m4a,3gp,3g2,mj2', mov: 'mov,mp4,m4a,3gp,3g2,mj2', m4v: 'mov,mp4,m4a,3gp,3g2,mj2', m4a: 'mov,mp4,m4a,3gp,3g2,mj2', mjpeg: 'mjpeg' };
     if (info.format?.format_name !== containers[ext]) throw bad(field);
