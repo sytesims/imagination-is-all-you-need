@@ -47,10 +47,10 @@ try {
   // Extend without prompt
   { const j = await a.post('h3-extend', { ...R, extendSeconds: '5' }, [['video', mp4]]); assert.equal(j.status, 200, JSON.stringify(j.body).slice(0, 200)); const jj = await a.get(`/api/jobs/${j.body.id}`); assert.equal(jj.input.promptDefaulted, true); assert.ok(jj.input.prompt.length > 10); console.log('ok extend: prompt optional (neutral default sent; fal requires prompt)'); }
   // Camera trending = camera presets
-  { const j = await a.post('camera', { ...R, types: '["eye-push"]', route: 'local:comfy-open' }, [['image', key]]); assert.equal(j.status, 200, JSON.stringify(j.body).slice(0, 300)); await until(a, j.body.id, (x) => x.status === 'done');
-    const t = await a.get('/api/presets?toolId=camera&category=trending'); assert.ok(t.items.length >= 1 && t.items[0].id === 'eye-push' && t.items[0].uses >= 1 && t.items[0].providers);
+  { const j = await a.post('camera', { ...R, types: '["push-in"]', route: 'local:comfy-open' }, [['image', key]]); assert.equal(j.status, 200, JSON.stringify(j.body).slice(0, 300)); await until(a, j.body.id, (x) => x.status === 'done');
+    const t = await a.get('/api/presets?toolId=camera&category=trending'); assert.ok(t.items.length >= 1 && t.items[0].id === 'push-in' && t.items[0].uses >= 1 && t.items[0].providers);
     assert.ok(t.categories.includes('trending') && t.categories.includes('new'));
-    const c = await a.get('/api/camera/categories'); assert.equal(c.trending[0].kind, 'camera-preset'); assert.equal(c.trending[0].presetId, 'eye-push'); assert.ok(!('videoPreset' in c.trending[0]));
+    const c = await a.get('/api/camera/categories'); assert.equal(c.trending[0].kind, 'camera-preset'); assert.equal(c.trending[0].presetId, 'push-in'); assert.ok(!('videoPreset' in c.trending[0]));
     console.log('ok camera trending: real camera presets (category=trending, kind camera-preset, no videoPreset)'); }
   // Photo FX previews
   { const fx = (await a.get('/api/tools')).find((x: any) => x.id === 'photo-fx'); for (const p of fx.presets) assert.ok(p.standIn ? p.previewWebm === null : p.previewWebm && fs.existsSync(path.join(ROOT, 'samples', p.previewWebm.split('/samples/')[1])), p.id); /* stand-in effects: no loop yet (never a 404) */ console.log(`ok photo-fx previewWebm on ${fx.presets.length} presets`); }

@@ -37,11 +37,11 @@ try {
     const d = await get('/api/presets/eye-push?toolId=camera'); assert.equal(d.preset.camera.verb, 'dolly'); assert.ok(Array.isArray(d.examples));
     assert.equal((await fetch(`${B}/api/presets/nope?toolId=camera`)).status, 404);
     const t = (await get('/api/tools')).find((x: any) => x.id === 'camera'); assert.ok(t.inputs.some((i: any) => i.name === 'aspect' && i.byProvider));
-    const okJ = await post('camera', { ...R, types: '["eye-push"]', prompt: 'a woman in the rain', aspect: '9:16' }, [['image', key]]); assert.equal(okJ.status, 200, JSON.stringify(okJ.body));
-    const jj = await get(`/api/jobs/${okJ.body.id}`); assert.ok(String(jj.input.finalPrompt).startsWith("camera slowly pushes into the character's eyes"), jj.input.finalPrompt); assert.ok(jj.input.finalPrompt.indexOf('a woman in the rain') > 0); assert.equal(jj.input.aspect, '9:16');
-    const badA = await post('camera', { ...R, types: '["eye-push"]', aspect: '21:9' }, [['image', key]]); assert.equal(badA.status, 400); assert.equal(badA.body.issues?.[0]?.field, 'aspect');
+    /* push-in: a move Wan 2.2 Fun Camera runs on your computer (eye-push runs only on Seedance / MiniMax H3 since #124) */ const okJ = await post('camera', { ...R, types: '["push-in"]', prompt: 'a woman in the rain', aspect: '9:16' }, [['image', key]]); assert.equal(okJ.status, 200, JSON.stringify(okJ.body));
+    const jj = await get(`/api/jobs/${okJ.body.id}`); assert.ok(String(jj.input.finalPrompt).startsWith('slow dolly push in'), jj.input.finalPrompt); assert.ok(jj.input.finalPrompt.indexOf('a woman in the rain') > 0); assert.equal(jj.input.aspect, '9:16');
+    const badA = await post('camera', { ...R, types: '["push-in"]', aspect: '21:9' }, [['image', key]]); assert.equal(badA.status, 400); assert.equal(badA.body.issues?.[0]?.field, 'aspect');
     const badP = await post('camera', { rights: '1', route: 'local:comfy-open', provider: 'comfy-open', types: `["${h3.items[0].id}"]` }, [['image', key]]); assert.equal(badP.status, 400); assert.equal(badP.body.issues?.[0]?.field, 'types');
-    await wait(okJ.body.id); assert.ok((await get('/api/presets/eye-push?toolId=camera')).examples.some((e: any) => e.jobId === okJ.body.id));
+    await wait(okJ.body.id); assert.ok((await get('/api/presets/push-in?toolId=camera')).examples.some((e: any) => e.jobId === okJ.body.id));
     console.log(`ok page 11: ${l.total} camera presets in ${l.categories.length} categories, paging, provider/category filters, detail + examples, aspect per provider, preset prompt first`); }
   console.log('ALL OK p11-defects');
 } finally { try { process.kill(-srv.pid!); } catch { /* */ } }
