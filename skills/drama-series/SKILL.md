@@ -23,6 +23,6 @@ Logline · 2–4 characters (fictional only) · look (glossy 3D cartoon, live ac
 10. **Deliver**: episode link, the bible and beat sheet, updated `series.json` (episode N, job ids), `budget {action:"receipt", budget_id}`, `recipe {action:"export", id:<a key shot>}`. Label it AI-made.
 
 ## Money and retries
-- Free: `run_on:"local"`, `max_usd:0`. Paid: `quote` → price → OK → `run` with `quote_id` (15 min, same request). `refused`: don't resend.
+- Free: `run_on:"local"`, `max_usd:0`. Paid: `quote` → price → OK → `run` with `quote_id` (one run per quote, 15 min, same request). `refused`: don't resend.
 - Every `client_request_id` names one job: add a short tag for this session (e.g. `ugc-1026a-line-1`) so an old id never returns an old job.
 - Never call `run` to check a job. `sample: true` = mock placeholder: say so.

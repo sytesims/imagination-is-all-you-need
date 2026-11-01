@@ -974,6 +974,7 @@ app.post<{ Params: { id: string } }>('/api/jobs/:id/cancel', async (req, reply) 
 // ---- Retry ----
 /** Retry: a new job with the same inputs, quoted and charged again (failed or provider-blocked jobs; the original stays refunded once). ?failedOnly=1 re-runs only failed ref groups.
  *  S-01: every re-run (Try again, Try on <place>, failed groups) goes through the submit's guard: quote → agent budget (when one is set) → Spend row.
+ *  Body quote:true = only the price ({quote:{credits, routeId, runOn, free}}, nothing started); quotedCredits = the price the user OK'd (a dearer re-run → 409 route_changed).
  *  S-02: Try on (runOn) pins THIS job only; remember:true (body or query) also saves that place as the tool + model's choice (Settings › Routing). */
 app.post<{ Params: { id: string }; Querystring: { failedOnly?: string; runOn?: string; remember?: string } }>('/api/jobs/:id/retry', async (req, reply) => {
   const j = jobs.get(req.params.id); if (!j) return reply.code(404).send({ error: 'not found' });
@@ -1000,6 +1001,12 @@ app.post<{ Params: { id: string }; Querystring: { failedOnly?: string; runOn?: s
       : !free && j.route ? (await import('./routing/select.js')).resolveRoute(tool, j.provider, inp, extra, { route: j.route, allowFallback: j.routing?.allowFallback }) : null;
     if (routed && 'error' in routed) { const { status: rs, ...rb } = routed; return { sent: reply.code(rs).send({ ...rb, charged: false, refund: { refunded: false, amount: 0, charged: false, note: 'Nothing was charged.' } }) }; }
     if (routed) cost = routed.routing.prices[routed.first.routeId] ?? 0;
+    // The price before the run (audit 2026-11-01 #6, the MCP retry tool): quote:true answers the price and starts nothing; quotedCredits (the price
+    // the user OK'd) refuses a dearer re-run with 409 route_changed, nothing charged, as a submit does.
+    { const b = (req.body ?? {}) as Record<string, any>; const rerunQuote = { credits: free ? 0 : cost, routeId: routed?.first.routeId ?? null, runOn: routed?.routing.runOn ?? null, free };
+      if (/^(1|true)$/i.test(String(b.quote ?? ''))) return { sent: reply.send({ quote: rerunQuote, retryOf: j.id, charged: false }) };
+      const qc = b.quotedCredits != null && b.quotedCredits !== '' ? Number(b.quotedCredits) : null;
+      if (qc != null && Number.isFinite(qc) && (await import('./shared/priceChange.js')).priceAskAgain({ quotedCredits: qc, credits: rerunQuote.credits })) return { sent: reply.code(409).send({ error: 'route_changed', code: 'route_changed', message: 'The price changed. Nothing was charged.', charged: false, quote: rerunQuote, quotedCredits: qc, credits: rerunQuote.credits, dearer: true }) }; }
     const sg = await spendGuard(reply, { kind: routed ? routed.first.kind : isLocalFree(prov?.kind) ? 'local' : 'direct', routeId: routed?.first.routeId ?? null, credits: cost, demo: !!routed?.routing.demo, free });
     if ('sent' in sg) return { sent: sg.sent };
     if (!free && !canAfford(cost)) return { sent: reply.code(402).send({ error: `Not enough credits: needs ${cost}, balance ${getBalance()}.`, errorType: 'credits', code: 'credits', needed: cost, balance: getBalance(), refund: { refunded: false, amount: 0, charged: false, note: 'Nothing was charged.' } }) };

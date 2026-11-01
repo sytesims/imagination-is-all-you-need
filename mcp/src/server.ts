@@ -7,7 +7,7 @@ import { registerResources } from './resources.js';
 import { registerPrompts, instructionsFor, LISTEN_PHRASE } from './prompts.js';
 import { annotateTools } from './meta.js';
 import { WEB, abs, webLink, get, post, patch, del, submit, waitFor, uploadMedia, currentBudgetId, setBudgetId, budgetLocked, withBudget, sharedBudgetEnabled, ApiError, type Fields } from './api.js';
-import { issueQuote, checkQuote, requestHash } from './quotes.js';
+import { issueQuote, useQuote, requestHash } from './quotes.js';
 import { loadTools, findTool, knownToolIds, catalogSource, fieldSchema, isFileInput, modelCard, limitsOf, runOnPlaces, loadWorkflows, loadSearchWords, COMMON_JOB_FIELDS } from './catalog.js';
 import { buildIndex, search, toolModes, type Entry } from './search.js';
 import { parseRecipe, recipeToRun } from './recipe.js';
@@ -119,18 +119,36 @@ const common = {
   seed: z.number().int().min(0).max(2147483647).optional().describe('Omit for a random seed (returned)'),
   draft: z.boolean().optional().describe('480p draft at ~30% price'),
   use_free: z.boolean().optional().describe('Spend a free gen (≤720p, slower lane)'),
+  quote_id: z.string().optional().describe('A paid run needs one: call this tool without it first, show the user the price it returns, then call again with the same arguments and its quote_id (one run per quote, valid 15 min)'),
   wait: z.boolean().default(true).describe('Wait for the result (default) or return the job id immediately'),
   timeout_sec: z.number().int().min(1).max(1800).default(180),
 };
 /** MiniMax H3 resolutions (server videoCaps: 768p default, 480p). Omit for the default. */
 export const H3_RESOLUTIONS = ['768p', '720p', '480p'] as const;
 const H3_RESOLUTION = z.enum(H3_RESOLUTIONS).optional().describe('MiniMax H3 (incl. cloud-h3-wf): 768p (default) or 480p. 720p is accepted and mapped to 768p (quoted and charged as 768p; the job warnings and quote resolutionMapped say so). Omit to use the default.');
-type Common = { model?: string; run_on?: string; provider?: string; resolution?: string; seed?: number; draft?: boolean; use_free?: boolean; wait: boolean; timeout_sec: number };
+type Common = { model?: string; run_on?: string; provider?: string; resolution?: string; seed?: number; draft?: boolean; use_free?: boolean; quote_id?: string; wait: boolean; timeout_sec: number };
 const media = z.string().describe('Local file path, http(s) URL, or a server path such as /samples/sample-pattern.mp4');
 
+/** The legacy tools (generate_*, object_swap, motion_transfer, restyle) price the request first, like run (audit 2026-11-01 #6): a paid run needs a
+ *  quote_id for this exact call, so the first call without one answers the price and a quote_id (nothing sent), the second starts it. Free runs go
+ *  straight through, still carrying quotedCredits 0 so the app refuses (409 route_changed) if the place flipped to a paid one in between. */
+const refusal = (o: Record<string, unknown>) => ({ isError: true, content: [{ type: 'text' as const, text: JSON.stringify({ refused: true, charged: false, ...o }, null, 2) }] });
 async function run(toolId: string, c: Common, fields: Fields, files: Record<string, string[] | undefined>, extra: Record<string, unknown> = {}) {
   try {
-    const s = await submit(toolId, { model: c.model, runOn: c.run_on, provider: c.provider, resolution: c.resolution, seed: c.seed, draft: c.draft, useFree: c.use_free, ...fields }, files);
+    const all: Fields = { model: c.model, runOn: c.run_on, provider: c.provider, resolution: c.resolution, seed: c.seed, draft: c.draft, useFree: c.use_free, ...fields };
+    const params: Record<string, string> = {}; for (const [k, v] of Object.entries(all)) if (v != null && v !== '' && k !== 'seed') params[k] = typeof v === 'boolean' ? (v ? '1' : '0') : String(v);
+    for (const [k, list] of Object.entries(files)) if (list?.length) params[k] = String(list.length);
+    const q: any = await quoteOne(toolId, params); const usd = Number(q.priceUsd ?? q.usd ?? 0); const credits = Number(q.credits ?? 0);
+    const hash = requestHash({ toolId, form: { ...params, legacy: '1' }, media: Object.fromEntries(Object.entries(files).map(([k, v]) => [k, v ?? []])) });
+    let quote: ReturnType<typeof useQuote> | null = null;
+    if (credits > 0 && !c.use_free) {
+      if (!c.quote_id) return refusal({ reason: `This run costs about $${usd.toFixed(2)}${q.billedTo ? ` (billed to ${q.billedTo})` : ''}, so it was not started. Tell the user the price; with their OK, call this tool again with the same arguments and quote_id.`, price: { usd, credits }, ...issueQuote({ toolId, hash, credits, usd, routeId: q.route ?? null }) });
+      quote = useQuote(c.quote_id, toolId, hash); if (!quote.ok) return refusal({ reason: `${quote.reason} Nothing was sent or charged.`, price: { usd, credits } });
+    }
+    let s: any;
+    try { s = await submit(toolId, { ...all, ...(c.use_free ? {} : { quotedCredits: quote?.ok ? quote.q.credits : credits, ...(q.route ? { quotedRouteId: quote?.ok ? quote.q.routeId ?? q.route : q.route } : {}) }) }, files, c.quote_id); }
+    catch (e) { if (quote?.ok && e instanceof ApiError && e.status < 500) quote.release(); throw e; } // the app refused it (nothing started): the quote can be used again
+    if (quote?.ok) quote.done(String(s.id ?? ''));
     const j = c.wait ? await waitFor(s.id, c.timeout_sec) : await get(`/api/jobs/${encodeURIComponent(s.id)}`);
     const v: any = view(j);
     // Never silent: a requested place that can't run for real (no key, sample mode) became a sample. Say it first.
@@ -520,11 +538,16 @@ export function createServer(opts: { http?: boolean; channel?: boolean } = {}) {
         if (!q) return refuse({ reason: `Could not price this run (${quoteError}), so it was not started. Nothing was charged.` });
         if (!q.runnable) return refuse({ reason: q.blockedReason ?? 'This request is not runnable. Fix the inputs or setup and quote again.', quote: q });
         if (a.max_usd != null && q.runnable && q.usd > a.max_usd + 1e-9) return refuse({ reason: `The price is $${q.usd.toFixed(2)}, over max_usd $${a.max_usd.toFixed(2)}. Nothing was sent or charged.`, quote: q, next: 'Ask the user to approve this price, or pick a cheaper model / run_on ("local" is free).' });
-        const paid = q.runnable && q.usd > 0; let quoted: { credits: number; routeId: string | null } | null = null;
-        if (paid) { const c = checkQuote(a.quote_id, t.id, r0.hash); if (!c.ok) return refuse({ reason: `${c.reason} Nothing was sent or charged.`, price: { usd: q.usd, credits: q.credits, billedTo: q.billedTo } }); quoted = c.q;
-          if (typeof extra?.approve === 'function') { const no = await extra.approve(`run ${t.name}${q.modelKey ? ` on ${q.modelKey}` : ''}${q.billedTo ? ` (billed to ${q.billedTo})` : ''} for about $${Number(q.usd).toFixed(2)}${q.estimated ? ' (estimate)' : ''}`); if (no) return refuse({ reason: no }); } }
-        const sub = await submit(t.id, { ...formOf(r0.form), ...(a.model ? { model: a.model } : {}), ...(a.run_on ? { runOn: a.run_on } : {}), ...(a.route ? { route: a.route } : {}), ...(a.seed !== undefined ? { seed: a.seed } : {}), ...(a.draft !== undefined ? { draft: a.draft } : {}), fromJob: a.from_job, output: a.from_output, reuseInputs: a.reuse_inputs,
-          ...(quoted ? { quotedCredits: quoted.credits, ...(quoted.routeId ? { quotedRouteId: quoted.routeId } : {}) } : {}) }, r0.media, a.client_request_id);
+        const paid = q.runnable && q.usd > 0; let quoted: { credits: number; routeId: string | null } | null = null; let taken: ReturnType<typeof useQuote> | null = null;
+        // a quote starts ONE run (audit 2026-11-01 #6): taken here, before the submit; the same client_request_id again is a replay of that run
+        if (paid) { const c = useQuote(a.quote_id, t.id, r0.hash, a.client_request_id); if (!c.ok) return refuse({ reason: `${c.reason} Nothing was sent or charged.`, price: { usd: q.usd, credits: q.credits, billedTo: q.billedTo } }); quoted = c.q; taken = c;
+          if (typeof extra?.approve === 'function') { const no = await extra.approve(`run ${t.name}${q.modelKey ? ` on ${q.modelKey}` : ''}${q.billedTo ? ` (billed to ${q.billedTo})` : ''} for about $${Number(q.usd).toFixed(2)}${q.estimated ? ' (estimate)' : ''}`); if (no) { c.release(); return refuse({ reason: no }); } } }
+        // free runs carry their price too (0): if the place flips to a paid one between quote and submit, the app refuses (409 route_changed, audit P3 #18)
+        const priced = quoted ?? { credits: q.credits ?? 0, routeId: q.route ?? null };
+        let sub: any; try { sub = await submit(t.id, { ...formOf(r0.form), ...(a.model ? { model: a.model } : {}), ...(a.run_on ? { runOn: a.run_on } : {}), ...(a.route ? { route: a.route } : {}), ...(a.seed !== undefined ? { seed: a.seed } : {}), ...(a.draft !== undefined ? { draft: a.draft } : {}), fromJob: a.from_job, output: a.from_output, reuseInputs: a.reuse_inputs,
+          quotedCredits: priced.credits, ...(priced.routeId ? { quotedRouteId: priced.routeId } : {}) }, r0.media, a.client_request_id || (paid ? a.quote_id : undefined));
+        } catch (e) { if (taken?.ok && e instanceof ApiError && e.status < 500) taken.release(); throw e; } // refused by the app (nothing started): the quote stays usable
+        if (taken?.ok) taken.done(String(sub.id ?? ''));
         const j = a.wait_sec > 0 ? await waitFor(sub.id, a.wait_sec, undefined, progressFor(extra)) : await get(`/api/jobs/${encodeURIComponent(sub.id)}`);
         const v: any = view(j); const done = TERMINAL.has(j.status);
         const notice = v.sample ? `${a.run_on ? `You asked for run_on "${a.run_on}", but this ran as a sample. ` : 'This ran as a sample. '}${v.sampleReason} Tell the user this is a placeholder, not a real result.` : null;
@@ -614,9 +637,23 @@ export function createServer(opts: { http?: boolean; channel?: boolean } = {}) {
     });
 
   // ---- library toolset ----
-  s.registerTool('retry', { title: 'Retry job', description: 'Re-run a FAILED or BLOCKED job with the same inputs, optionally on another place (run_on from the failed job\'s tryOn, with its price). Priced and checked like a new run: the agent budget applies when one is set. failed_only re-runs only the failed reference groups.', inputSchema: {
-    id: z.string(), run_on: z.string().optional(), failed_only: z.boolean().optional(), budget_id: z.string().optional(), wait_sec: z.number().int().min(0).max(1800).default(30) } },
-    async ({ id, run_on, failed_only, budget_id, wait_sec }) => withBudget(budget_id, async () => { try { const r: any = await post(`/api/jobs/${encodeURIComponent(id)}/retry`, { ...(run_on ? { runOn: run_on } : {}), ...(failed_only ? { failedOnly: true } : {}) }); return await jobResult(r.id, (wait_sec ?? 30) > 0, wait_sec || 1); } catch (e) { return fail(e); } }));
+  s.registerTool('retry', { title: 'Retry job', description: 'Re-run a FAILED or BLOCKED job with the same inputs, optionally on another place (run_on from the failed job\'s tryOn, with its price). Priced like a new run: called without quote_id it answers the price and a quote_id and starts nothing (a free re-run starts at once); tell the user the price, then call again with the same arguments and that quote_id (one run per quote, 15 min). The agent budget applies when one is set. failed_only re-runs only the failed reference groups.', inputSchema: {
+    id: z.string(), run_on: z.string().optional(), failed_only: z.boolean().optional(), quote_id: z.string().optional().describe('From the first retry call (the price the user OK\'d). Required when the re-run costs money'),
+    budget_id: z.string().optional(), wait_sec: z.number().int().min(0).max(1800).default(30) } },
+    async ({ id, run_on, failed_only, quote_id, budget_id, wait_sec }) => withBudget(budget_id, async () => { try {
+      // a paid re-run needs a quote like run (audit 2026-11-01 #6): the server prices it first (quote:true starts nothing), the quote is single use
+      const path = `/api/jobs/${encodeURIComponent(id)}/retry${failed_only ? '?failedOnly=1' : ''}`; const body = { ...(run_on ? { runOn: run_on } : {}) };
+      const p: any = await post(path, { ...body, quote: true });
+      if (p?.id) return await jobResult(p.id, (wait_sec ?? 30) > 0, wait_sec || 1); // this failure was already retried: that job, nothing new started
+      const credits = Number(p?.quote?.credits ?? 0); const hash = requestHash({ toolId: `retry:${id}`, form: { ...body, failedOnly: !!failed_only }, media: {} });
+      let taken: ReturnType<typeof useQuote> | null = null;
+      if (credits > 0) {
+        if (!quote_id) return { isError: true, content: [{ type: 'text' as const, text: JSON.stringify({ refused: true, charged: false, reason: `This re-run costs about $${(credits / 100).toFixed(2)}, so it was not started. Tell the user the price; with their OK, call retry again with the same arguments and quote_id.`, price: { usd: credits / 100, credits, routeId: p.quote.routeId ?? null, runOn: p.quote.runOn ?? null }, ...issueQuote({ toolId: `retry:${id}`, hash, credits, usd: credits / 100, routeId: p.quote.routeId ?? null }) }, null, 2) }] };
+        taken = useQuote(quote_id, `retry:${id}`, hash); if (!taken.ok) return { isError: true, content: [{ type: 'text' as const, text: JSON.stringify({ refused: true, charged: false, reason: `${taken.reason} Nothing was sent or charged.` }, null, 2) }] };
+      }
+      let r: any; try { r = await post(path, { ...body, quotedCredits: taken?.ok ? taken.q.credits : credits }); } catch (e) { if (taken?.ok && e instanceof ApiError && e.status < 500) taken.release(); throw e; }
+      if (taken?.ok) taken.done(String(r.id ?? ''));
+      return await jobResult(r.id, (wait_sec ?? 30) > 0, wait_sec || 1); } catch (e) { return fail(e); } }));
 
   s.registerTool('list_workflows', { title: 'List workflows', description: 'The workflows and presets behind each page, with the tool that runs them: image (Relight, Face Swap, Product Shot…), audio (music, sound effects, voiceover, change voice, translate, soundtrack), 3d (Image to 3D, Turntable, Direct a Shot), video (Generate Video camera/style presets: send the id as videoPreset), edit-video (Extend, Reframe, Upscale, Remove Background, SDR to HDR, FPS Boost, Depth Map, Re-shoot, with limits and prices). Spends nothing.', inputSchema: { area: z.enum(['image', 'audio', '3d', 'video', 'edit-video']) } },
     async ({ area }) => {
