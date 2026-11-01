@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { dryRunDownload, startDownload } from '../../shared/hardware';
-/** Keep the background (Translate a video, Change Voice): says whether the music stays under the new voice, and offers the separation model's
- *  download (size on the button: pressing it is the yes). The node pack can't be installed from here: the note says where to get it.
+/** Keep the background (Translate a video, Change Voice): says whether the music stays under the new voice and, when not, the two parts it needs:
+ *  the separation pack in ComfyUI (part of the app's node install; linked at its pinned source) and the model file, whose download the button
+ *  starts (size on the button: pressing it is the yes). Nothing installs or downloads by itself.
  *  Server: GET /api/local/separation (comfy/separation.ts). */
-type Sep = { ready: boolean; nodes: 'installed' | 'missing' | 'unknown'; model: 'present' | 'missing' | 'unknown'; bytes: number; downloadId: string; pack: { name: string; repo: string } };
+type Sep = { ready: boolean; nodes: 'installed' | 'missing' | 'unknown'; model: 'present' | 'missing' | 'unknown'; bytes: number; downloadId: string; pack: { name: string; repo: string; source?: string } };
 export function SeparationNote() {
   const [s, setS] = useState<Sep | null>(null); const [msg, setMsg] = useState(''); const [busy, setBusy] = useState(false);
   useEffect(() => { let live = true; fetch('/api/local/separation').then(r => (r.ok ? r.json() : null)).then(d => { if (live && d) setS(d); }).catch(() => {}); return () => { live = false; }; }, []);
@@ -19,10 +20,14 @@ export function SeparationNote() {
     else { const r = await startDownload(s.downloadId); setMsg(r.ok ? 'Downloading the separation model. It works on your next run.' : r.error); }
     setBusy(false);
   };
-  return <p className="as-note as-sep" role="note" data-testid="as-sep-note" data-ready="false">
-    Background music not kept: add the separation model.{' '}
-    {s.model !== 'present' && <button type="button" className="as-sep-get" data-testid="as-sep-get" disabled={busy} onClick={get}>Get it ({mb} MB)</button>}
-    {s.nodes === 'missing' && <> It also needs the <a href={s.pack.repo} target="_blank" rel="noopener noreferrer">MelBandRoFormer node pack ↗</a> in ComfyUI.</>}
-    {msg && <span className="as-sep-msg" role="status"> {msg}</span>}
-  </p>;
+  return <div className="as-note as-sep" role="note" data-testid="as-sep-note" data-ready="false">
+    <span>Background music not kept. To keep it, add two things once:</span>
+    <ol className="as-sep-steps">
+      <li data-testid="as-sep-pack" data-done={String(s.nodes === 'installed')}>Separation pack for ComfyUI: {s.nodes === 'installed' ? <b>installed ✓</b>
+        : <><a href={s.pack.source ?? s.pack.repo} target="_blank" rel="noopener noreferrer">install the separation pack ↗</a> (it comes with the app’s node install), then restart ComfyUI.{s.nodes === 'unknown' ? ' Not checked yet: ComfyUI isn’t connected.' : ''}</>}</li>
+      <li data-testid="as-sep-model" data-done={String(s.model === 'present')}>Separation model: {s.model === 'present' ? <b>on this computer ✓</b>
+        : <button type="button" className="as-sep-get" data-testid="as-sep-get" disabled={busy} onClick={get}>Get it ({mb} MB)</button>}</li>
+    </ol>
+    {msg && <span className="as-sep-msg" role="status">{msg}</span>}
+  </div>;
 }

@@ -27,7 +27,7 @@ PACKS = {
  # Separation (2026-11-01): Translate a video and Change Voice keep the background by splitting vocals from the rest (official Comfy template
  # audio_melbandroformer_audio_separation). Only used when installed: without it those jobs run as before, with a note. Weights: MIT (KimberleyJSN).
  'ComfyUI-MelBandRoFormer': {'repo': 'https://github.com/kijai/ComfyUI-MelBandRoFormer', 'pin': '92c86854e6654f4aacc97484471af95c98ea16d4', 'dir': 'ComfyUI-MelBandRoFormer',
-   'license': 'none stated (its pyproject.toml names a LICENSE file the repo does not include); MelBand RoFormer weights MIT (KimberleyJSN/melbandroformer)',
+   'license': 'no licence stated (its pyproject.toml names a LICENSE file the repo does not include): check with the author; MelBand RoFormer weights MIT (KimberleyJSN/melbandroformer)',
    'note': 'Optional for Translate a video and Change Voice: keeps the background music. Model file MelBandRoformer_fp16.safetensors (456 MB) in models/diffusion_models.'},
  # Qwen3 TTS 1.7B (2026-10-27): only sox + tiktoken are installed (`pip` below, read by install-custom-nodes.sh instead of requirements.txt, which pins
  # transformers<5 and onnxruntime-openvino, no macOS wheel). Confirmed working on transformers 5.16.1 (upstream issue #101 / PR #103).

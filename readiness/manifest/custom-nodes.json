@@ -288,7 +288,7 @@
    "repo": "https://github.com/kijai/ComfyUI-MelBandRoFormer",
    "pin": "92c86854e6654f4aacc97484471af95c98ea16d4",
    "dir": "ComfyUI-MelBandRoFormer",
-   "license": "none stated (its pyproject.toml names a LICENSE file the repo does not include); MelBand RoFormer weights MIT (KimberleyJSN/melbandroformer)",
+   "license": "no licence stated (its pyproject.toml names a LICENSE file the repo does not include): check with the author; MelBand RoFormer weights MIT (KimberleyJSN/melbandroformer)",
    "note": "Optional for Translate a video and Change Voice: keeps the background music. Model file MelBandRoformer_fp16.safetensors (456 MB) in models/diffusion_models.",
    "classes": [
     "MelBandRoFormerModelLoader",

@@ -3,9 +3,11 @@
  * with MelBand RoFormer, from the official Comfy template audio_melbandroformer_audio_separation (Comfy-Org/workflow_templates, MIT), flattened in
  * workflows/audio-separation-melband-api.json (scripts/build-voice-workflows.py). The new voice is cloned from the voice stem only and mixed over the
  * background stem, so the original speech is gone and the music stays.
- *  - Optional: it needs the kijai/ComfyUI-MelBandRoFormer node pack and MelBandRoformer_fp16.safetensors (456 MB, models/diffusion_models). Without
- *    them the job runs as before (no separation) with a plain note. Nothing is installed or downloaded here: the file comes through the normal
- *    download flow (POST /api/local/downloads {downloadId: SEPARATION_PROVIDER}), after the user says yes.
+ *  - Two parts: (1) the kijai/ComfyUI-MelBandRoFormer node pack, a normal pinned pack (npm run nodes:install / install.sh install it from the
+ *    author's source at the pin; never copied into this repo; its repo states no licence, shown as such in the credits), and (2)
+ *    MelBandRoformer_fp16.safetensors (456 MB, models/diffusion_models), only through the normal download flow after the user presses
+ *    "Get it (456 MB)" (POST /api/local/downloads {downloadId: SEPARATION_PROVIDER}). Without them the job runs as before (no separation) with a
+ *    plain note. Nothing is installed or downloaded here.
  *  - Ready = the connected ComfyUI lists both node classes AND the model file is on this computer. Unknown (no ComfyUI answer yet) counts as not ready,
  *    so a job never fails on a guess.
  */
@@ -17,7 +19,9 @@ export const SEPARATION_WORKFLOW = 'audio-separation-melband-api.json';
 /** The download id (and open-weights provider) for the separation files: POST /api/local/downloads {downloadId}. */
 export const SEPARATION_PROVIDER = 'comfy-melband-separation';
 export const SEPARATION_NODES = ['MelBandRoFormerModelLoader', 'MelBandRoFormerSampler'];
-export const SEPARATION_PACK = { name: 'ComfyUI-MelBandRoFormer', repo: 'https://github.com/kijai/ComfyUI-MelBandRoFormer', pin: '92c86854e6654f4aacc97484471af95c98ea16d4' };
+export const SEPARATION_PACK = { name: 'ComfyUI-MelBandRoFormer', repo: 'https://github.com/kijai/ComfyUI-MelBandRoFormer', pin: '92c86854e6654f4aacc97484471af95c98ea16d4',
+  /** the pinned source the "Install the separation pack" step links to */ source: 'https://github.com/kijai/ComfyUI-MelBandRoFormer/tree/92c86854e6654f4aacc97484471af95c98ea16d4',
+  install: 'npm run nodes:install -- "<your ComfyUI folder>"' };
 export const SEPARATION_MODEL = { file: 'MelBandRoformer_fp16.safetensors', folder: 'diffusion_models', bytes: 456_479_072,
   url: 'https://huggingface.co/Kijai/MelBandRoFormer_comfy/resolve/main/MelBandRoformer_fp16.safetensors' };
 /** Graph nodes (workflows/audio-separation-melband-api.json): the input, and the two stems' save nodes (output order on the pass: vocals, background). */
@@ -43,8 +47,10 @@ export function separationStatus(): SeparationStatus {
   const model: SeparationStatus['model'] = forced != null ? (forced ? 'present' : 'missing') : ov ? 'missing' : dir ? (onDisk(modelFileBytes(dir, folder, file)) ? 'present' : 'missing')
     : comfyFoldersKnown([folder]) ? (onDisk(comfyFileBytes(folder, file)) ? 'present' : 'missing') : 'unknown';
   const ready = nodes === 'installed' && model === 'present';
-  const note = ready ? null : nodes === 'missing' && model !== 'present' ? `${NO_SEPARATION_NOTE} It needs the MelBandRoFormer node pack in ComfyUI and its model file (456 MB).`
-    : nodes === 'missing' ? `${NO_SEPARATION_NOTE} It needs the MelBandRoFormer node pack in ComfyUI.` : model !== 'present' ? `${NO_SEPARATION_NOTE} Its model file is 456 MB.` : NO_SEPARATION_NOTE;
+  // Two parts: the node pack in ComfyUI (nodes:install), then the model file (Get it).
+  const packLeft = nodes !== 'installed'; const fileLeft = model !== 'present';
+  const note = ready ? null : packLeft && fileLeft ? `${NO_SEPARATION_NOTE} It takes two steps: the MelBandRoFormer node pack in ComfyUI, and its model file (456 MB).`
+    : packLeft ? `${NO_SEPARATION_NOTE} One step left: the MelBandRoFormer node pack in ComfyUI.` : `${NO_SEPARATION_NOTE} One step left: its model file (456 MB).`;
   return { ready, nodes, missingNodes: nodes === 'installed' ? [] : nodes === 'missing' && forced == null ? miss : [...SEPARATION_NODES], model, file, folder, bytes, missingBytes: model === 'present' ? 0 : bytes,
     downloadId: SEPARATION_PROVIDER, pack: SEPARATION_PACK, note };
 }
