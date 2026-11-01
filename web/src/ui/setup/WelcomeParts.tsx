@@ -10,6 +10,7 @@ import { createPortal } from 'react-dom';
 import { navigate } from '../../platform/router';
 import { setupRequest, setupBody, testedComfyUrl } from '../../shared/setupConnection';
 import { plainCopy } from '../../shared/plainCopy';
+import { SecretInput } from '../../shared/SecretInput';
 import { refreshTools } from '../../shared/useTools';
 import { refreshAccounts } from '../../shared/billing';
 import { requestRequote } from '../../shared/quote';
@@ -141,7 +142,7 @@ export function KeyField({ w, id, label, getUrl, autoFocus }: { w: Welcome; id: 
   useEffect(() => { if (st && st.state !== 'checking') ref.current?.scrollIntoView({ block: 'nearest' }); }, [st?.state]); /* a short window: keep the answer in view */
   return <div className="wl-key" ref={ref}>
     <label className="wl-field"><span className="wl-label">{label}{getUrl && <a className="wl-link" href={getUrl} target="_blank" rel="noreferrer">Get a key ↗</a>}</span>
-      <input type="password" autoComplete="off" spellCheck={false} placeholder={st?.state === 'ok' ? 'Paste a new key to replace it' : 'Paste your key'} value={v} autoFocus={autoFocus} disabled={w.can === false}
+      <SecretInput placeholder={st?.state === 'ok' ? 'Paste a new key to replace it' : 'Paste your key'} value={v} autoFocus={autoFocus} disabled={w.can === false}
         aria-invalid={st?.state === 'bad' || undefined} className={st?.state === 'bad' ? 'bad' : st?.state === 'ok' ? 'ok' : ''}
         onChange={e => setV(e.target.value)} onPaste={e => { const t = e.clipboardData.getData('text'); if (t.trim()) { e.preventDefault(); setV(t.trim()); void w.checkKey(id, t); } }}
         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void w.checkKey(id, v, true); } }} onBlur={() => void w.checkKey(id, v)} data-testid={`wl-key-${id}`} /></label>

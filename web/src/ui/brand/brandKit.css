@@ -5,7 +5,6 @@
 .bk-page h3 small{font-weight:500}
 .bk-input{box-sizing:border-box;min-width:0;height:34px;padding:0 10px;border:1px solid var(--state-border);border-radius:var(--r-md);background:var(--surface-2);color:var(--text);font:500 var(--fs-sm)/1.3 var(--font-ui);transition:border-color var(--t-state) var(--ease-state)}
 .bk-input:hover{border-color:var(--state-border-hover)}
-.bk-input:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:1px}
 textarea.bk-input{height:auto;padding:8px 10px;resize:vertical;line-height:1.45}
 .bk-input[readonly],.bk-input:disabled{opacity:1;color:var(--text-2);background:var(--surface)}
 .bk-err{color:var(--error);font-size:var(--fs-xs);margin:0}

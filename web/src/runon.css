@@ -109,8 +109,8 @@ html body .ro-lnk:disabled{opacity:.6;cursor:default}
 .conn-pill{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 8px;border-radius:999px;font:600 11px/20px var(--font-sans,Inter,system-ui,sans-serif);white-space:nowrap;background:rgba(255,255,255,.06);color:#b5b6b7}
 .conn-pill.cp-ok{background:rgba(74,222,128,.12);color:#86efac}.conn-pill.cp-warn{background:rgba(232,180,74,.14);color:#f2c46b}.conn-pill.cp-calm{background:rgba(255,255,255,.08);color:#d6d6d8}
 .conn-test,.conn-key{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
-.conn-input{flex:1 1 220px;min-width:0;height:34px;box-sizing:border-box;padding:0 10px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:var(--text);font:500 13px/20px var(--font-sans,Inter,system-ui,sans-serif)}
-.conn-input:focus-visible{outline:2px solid var(--focus-ring-color);outline-offset:1px}
+.conn-input,.conn-key>.secret{flex:1 1 220px;min-width:0}
+.conn-key>.btn-sm{height:40px;min-height:40px}
 .conn-key-help{flex-basis:100%}
 .conn-ok{color:#86efac}
 .conn-pref{grid-column:1/-1;display:flex;align-items:flex-start;gap:12px;padding:10px 0 0;border-top:1px solid rgba(255,255,255,.06);margin-top:4px}

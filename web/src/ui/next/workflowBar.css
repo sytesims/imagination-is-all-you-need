@@ -150,7 +150,6 @@ html body .ic.ic2 .ic-dock .ic-gen .gen-price.gen-missing{font-weight:500;opacit
 /* text controls (Material Swap, Ad Pack, 2026-10-31): the popover's own size, not the page's tall inputs */
 .wf-gen:has(.wf-gen-text){min-width:240px}
 html body .wf-gen-row input.wf-gen-text{min-height:34px;padding:7px 10px;border-radius:8px;font-size:13px;background:rgba(255,255,255,.04)}
-html body .wf-gen-row input.wf-gen-text:focus{border-color:rgba(255,122,26,.6);outline:none}
 /* phones: the Workflow chip leads the chip row (the row is re-ordered there: + and model -3, run-on -2, settings -1) */
 @media (max-width:700px){
   html body .ic.ic2 .ic-dock .ic-chips .wf-chip:not(.wf-chip-picked),html body .ic.ic2 .ic-dock .ic-chips .wf-chip-on{order:-4}
