@@ -7,7 +7,7 @@
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { activeKit, loadBrandKits, useBrand } from './brandStore';
-import { setAdjust, setAdjustOn, setStamp as setStampG, setStampOn as setStampOnG, useStamp } from './stampStore';
+import { setAdjust, setAdjustOn, setStamp as setStampG, setStampOn as setStampOnG, setTextFor, stampSettingsFor, useStamp } from './stampStore';
 import { drawEndCard, drawStamp, loadStampArt, type StampArt } from './logoStampDraw';
 import { SPOT_NAME, STAMP_CORNERS, STAMP_SIZES, STAMP_SPOTS, STAMP_TEXT_MAX, spotAt, type StampSettings, type StampSize } from '../../../server/src/shared/logoStamp';
 import { logoFor, type BrandKit } from '../../../server/src/shared/brandKit';
@@ -36,11 +36,12 @@ export function stampAvailable(brandOn: boolean, jobInput: any): boolean { retur
 
 /** adjust: Adjust logo on an Ad Pack ad (the stage shows its clean copy): this ad's own settings and on / off (stampStore adjust), the
  *  kit Ad Pack used, and its platform's safe area; without it, Add logo with the shared settings and the brand that is on. */
-export function LogoStampLayer({ kind, adjust }: { kind: 'image' | 'video'; adjust?: { key: string; kitId: string } }) {
+/** logoOnly: a brand app's video (UGC Ad): the logo without the text line unless asked for on this result (stampStore stampSettingsFor). */
+export function LogoStampLayer({ kind, adjust, logoOnly }: { kind: 'image' | 'video'; adjust?: { key: string; kitId: string }; logoOnly?: string | null }) {
   const b = useBrand(); useEffect(() => { void loadBrandKits(); }, []); const kit = (adjust && b.kits.find((k) => k.id === adjust.kitId)) || activeKit(b);
   const g0 = useStamp(); const a = adjust ? g0.adjust[adjust.key] : undefined;
-  const on = a ? a.on : g0.on; const s = a ? a.settings : g0.settings; const inset = a?.inset;
-  const setStamp = (p: Partial<StampSettings>) => (adjust ? setAdjust(adjust.key, p) : setStampG(p)); const setStampOn = (v: boolean) => (adjust ? setAdjustOn(adjust.key, v) : setStampOnG(v));
+  const on = a ? a.on : g0.on; const s = a ? a.settings : stampSettingsFor(g0, logoOnly); const inset = a?.inset;
+  const setStamp = (p: Partial<StampSettings>) => { if (adjust) return setAdjust(adjust.key, p); const { textOn, ...rest } = p; if (logoOnly && textOn !== undefined) setTextFor(logoOnly, textOn); if (Object.keys(logoOnly ? rest : p).length) setStampG(logoOnly ? rest : p); }; const setStampOn = (v: boolean) => (adjust ? setAdjustOn(adjust.key, v) : setStampOnG(v));
   const root = useRef<HTMLDivElement>(null); const cv = useRef<HTMLCanvasElement>(null); const endCv = useRef<HTMLCanvasElement>(null);
   const [rect, setRect] = useState<Rect | null>(null); const [art, setArt] = useState<StampArt | null>(null); const [tick, setTick] = useState(0);
   const [box, setBox] = useState<Box | null>(null); const [card, setCard] = useState(false); const [drag, setDrag] = useState<{ x: number; y: number } | null>(null); const [showEnd, setShowEnd] = useState(false);
