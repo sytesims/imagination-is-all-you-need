@@ -91,7 +91,7 @@ export const providerSettings = (): ProviderSetting[] => P.map((p) => { const re
  *  switched off (open-weights-only). Empty → every enabled route is local / open weights → 'No credits, local' (localFree) is true. */
 export const cloudProvidersEnabled = (): string[] => providerSettings().filter((p) => p.id !== 'local' && !ACCOUNT_ONLY.has(p.id) && p.configured && !p.disabledReason).map((p) => p.id);
 export const localFreeNow = () => cloudProvidersEnabled().length === 0;
-/** Where saved keys live: OPENHIGGSFIELD_ENV_FILE (filming mode: <scratch data>/.env.local; Docker: /data/.env.local on the data volume, so keys survive recreating the container), else <repo>/.env.local. */
+/** Where saved keys live: OPENHIGGSFIELD_ENV_FILE (filming mode: <scratch data>/.env.local), else <repo>/.env.local. */
 export const ENV_LOCAL = env('ENV_FILE')?.trim() ? path.resolve(env('ENV_FILE')!.trim()) : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../.env.local');
 export const isLoopback = (host: string | undefined | null) => !!host && /^(127\.\d+\.\d+\.\d+|::1|localhost|::ffff:127\.0\.0\.1)$/.test(host);
 /** Write/replace one KEY=value line. Value must be a single printable line. */

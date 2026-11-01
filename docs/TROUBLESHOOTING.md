@@ -5,7 +5,7 @@
 - **`/api/health` says `"backend":"mock"` with a `comfyReason`:** ComfyUI isn't reachable at `COMFY_BASE_URL`, the key is missing, or a workflow is missing. The app falls back to mock instead of crashing. Check `curl $COMFY_BASE_URL/system_stats`.
 - **The `mcp` process exits with `EADDRINUSE`:** something already listens on :8788. The API and web app keep running. Stop the other process or change `MCP_PORT`.
 - **The `mcp` process doesn't start after `npm install`:** the MCP dependencies didn't install. Run `npm run mcp:install`, then `npm start` again.
-- **Port in use (Docker or `docker/start.mjs`):** `OHF_PORT=8081 docker compose --profile mock up`, or `WEB_PORT=8081 node docker/start.mjs`. The Vite dev server uses a fixed port (`WEB_PORT`, default 5174) and stops if it's taken.
+- **Port in use:** the web app uses a fixed port (`WEB_PORT`, default 5174) and stops if it's taken. Start it on another one, e.g. `WEB_PORT=5180 npm start`, or change `PORT` (API, default 8787).
 - **`better-sqlite3` build error during `npm ci`:** install build tools (`xcode-select --install` on a Mac, `build-essential python3` on Linux), or use Node 22 or 24, which have prebuilt binaries (Node 26 doesn't yet).
 - **`EBADENGINE` warnings on Node 20:** they come from the Comfy SDK and `eventsource-parser`, which ask for Node 22+. Mock mode works; see [INSTALL.md](INSTALL.md#requirements).
 
@@ -32,4 +32,3 @@
 - **CUDA out of memory:** pick a smaller model (Qwen Image 2.1 or Klein 4B), use the 480p draft, or start ComfyUI with `--lowvram`.
 - **"Needs ComfyUI ≥ 0.41.3":** update ComfyUI to use MOSS-Image.
 - **GGUF versions can't be selected:** your ComfyUI doesn't have the ComfyUI-GGUF nodes (`UnetLoaderGGUF`). It's an optional pack that the installer doesn't add; install it in ComfyUI (for example with ComfyUI Manager) and restart ComfyUI.
-- **Docker `could not select device driver "nvidia"`:** install the NVIDIA Container Toolkit, then run `sudo nvidia-ctk runtime configure --runtime=docker` and restart Docker.

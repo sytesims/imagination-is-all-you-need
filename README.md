@@ -59,7 +59,7 @@ Open the link printed in the terminal, normally **http://localhost:5174**. Keep 
 
 **Updating:** stop the app, then run `npm run update` in the app folder. Your library, boards and keys stay as they are. `npm run update -- --check` only tells you if an update is ready. More in [Updating](docs/INSTALL.md#updating).
 
-Docker, other ports and advanced setups: [Install and run](docs/INSTALL.md) · [Configuration](docs/CONFIGURATION.md).
+Other ports and advanced setups: [Install and run](docs/INSTALL.md) · [Configuration](docs/CONFIGURATION.md).
 
 </details>
 

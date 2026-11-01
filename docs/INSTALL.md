@@ -50,7 +50,7 @@ To do it all by hand instead, follow the steps below.
 - **ffmpeg and ffprobe** on `PATH` for upload validation, audio/video processing and export. The setup check reports missing tools. Browsing included examples is still possible without local generation prerequisites.
 - A browser. Specific browser/OS coverage must be read from actual release test results, not inferred from a successful build.
 
-Python, a local GPU, ComfyUI, Docker and model weights are **not prerequisites for the app-only/cloud path**. Individual optional local tools can have additional requirements.
+Python, a local GPU, ComfyUI and model weights are **not prerequisites for the app-only/cloud path**. Individual optional local tools can have additional requirements.
 
 Install prerequisites yourself using their official instructions or your package manager. The app does not silently install system software or request administrator rights.
 
@@ -237,7 +237,7 @@ When the new version works, you can delete the old folder. Running `npm run upda
 - `npm run build`: builds server/web assets. MCP's compiled stdio entrypoint has a separate `npm run mcp:build` step; see [MCP](MCP.md).
 - `scripts/install.ps1`: optional native Windows app install/build helper. Its printed start command uses app setup; it does not provision ComfyUI or model weights.
 - `scripts/install.sh`: an advanced shell helper with optional local-stack provisioning flags. Those flags can install substantial external software/downloads and are **not** part of the standard app-only setup. Inspect its plan and prerequisites before consenting. Do not point it at an existing ComfyUI installation without understanding potential node/core changes.
-- Docker files are included for advanced use. The NVIDIA ComfyUI image uses CUDA 12.8 wheels (`cu128`); on DGX Spark (ARM64) use `OHF_TORCH=cu130 docker compose --profile nvidia up`, or `scripts/install.sh --install-comfy`. Docker/native startup, exposed ports, data mounts and GPU support are separate configurations. On macOS, do not assume Docker exposes the Apple GPU to ComfyUI. Windows native app use does not require a GPU Docker image or WSL.
+- Local ComfyUI on NVIDIA: `scripts/install.sh --install-comfy` installs PyTorch with CUDA 12.8 wheels (`cu128`) on x86_64 and CUDA 13.0 wheels (`cu130`) on ARM64 Linux such as DGX Spark. Windows native app use does not require WSL.
 
 The root CI smoke checks build/start the API and web in isolated mock mode on its configured runners. They do not verify these advanced installation paths, browser interactions, MCP execution or real local/cloud generation.
 

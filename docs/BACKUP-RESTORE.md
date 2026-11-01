@@ -1,6 +1,6 @@
 # Back up and restore Imagination Is All You Need
 
-Everything Imagination Is All You Need saves stays on your own computer (or in your own Docker volume). There's no account and no cloud copy, so **a backup is your only copy**. This page covers where your data lives, the one-file export and import, backing up by hand, and the settings that clean things up automatically.
+Everything Imagination Is All You Need saves stays on your own computer. There's no account and no cloud copy, so **a backup is your only copy**. This page covers where your data lives, the one-file export and import, backing up by hand, and the settings that clean things up automatically.
 
 ## 1. Where your data lives
 
@@ -11,10 +11,8 @@ Everything Imagination Is All You Need saves stays on your own computer (or in y
 | **Caches**: video posters and thumbnails (rebuilt when needed) | `server/data/posters/`, `server/data/thumbs/` | (inside the data folder) |
 | **Provider keys** | `.env.local` in the main project folder (next to `package.json`) | `OPENHIGGSFIELD_ENV_FILE` |
 | **Plugins you added** | `plugins/` in the main project folder | `OPENHIGGSFIELD_PLUGINS_DIR` |
-| **Logs** | not saved to a file; they print in the terminal where the app runs (Docker: `docker compose logs`) | — |
+| **Logs** | not saved to a file; they print in the terminal where the app runs | — |
 | **ComfyUI models and ComfyUI's own output folder** | your ComfyUI install (e.g. `ComfyUI/models`, `ComfyUI/output`) | your ComfyUI settings |
-
-**With Docker**, the app keeps everything in `/data` inside the container, which is stored in the `openhiggsfield_ohf-data` volume. That includes the database, your files **and your saved keys** (`/data/.env.local`), so `docker compose down` / `up` and rebuilding the image keep all of them. Keys you set under `environment:` in the compose file take priority over the saved file. ComfyUI models and output are in separate volumes (`openhiggsfield_comfy-models`, `openhiggsfield_comfy-output`); models can be downloaded again instead of backed up.
 
 > **Warning:** `npm run demo:reset` **deletes everything** in the data folder and fills it with demo items. Back up first.
 
@@ -31,7 +29,7 @@ The same works from a terminal, as shown next.
 One `.tar.gz` file with your whole library: the database (history, credit ledger, projects, favourites, elements, settings) and your media files.
 
 ```bash
-APP=http://localhost:8080      # where you open the app (dev mode: http://localhost:5174)
+APP=http://localhost:5174      # where you open the app
 curl -OJ "$APP/api/export"           # → openhiggsfield-export-YYYY-MM-DD.tar.gz
 curl -OJ "$APP/api/export?media=0"   # database only, without media files (much smaller)
 ```
@@ -50,7 +48,7 @@ curl -X POST "$APP/api/import" \
 
 1. The app checks the file: it must be an Imagination Is All You Need export, contain no unsafe paths, and have a healthy database. If the file isn't valid, nothing changes and you get an error explaining why. If no file is sent, it answers "Send the export file (.tar.gz) as the request body."
 2. If the check passes, the backup is **staged** and the answer says `"restartRequired": true`. **Nothing switches over yet.**
-3. **Restart the app yourself** (Ctrl+C and start it again, or `docker compose restart`). It doesn't restart on its own.
+3. **Restart the app yourself** (Ctrl+C and start it again). It doesn't restart on its own.
 4. On that start, before the database opens:
    - your current database is moved to `server/data/backups/pre-import-<date and time>/`, so you can go back;
    - the backup's database takes its place;
@@ -64,7 +62,7 @@ curl -X POST "$APP/api/import" \
 ## 3. Back up by hand
 
 ### Option A, simplest: stop the app, then copy
-1. Stop Imagination Is All You Need (press Ctrl+C in its terminal, or `docker compose stop`).
+1. Stop Imagination Is All You Need (press Ctrl+C in its terminal).
 2. Copy these to a safe place:
    - the whole data folder (`server/data/`, or wherever `OPENHIGGSFIELD_DATA_DIR` points), **including** `openhiggsfield.db`, `openhiggsfield.db-wal` and `openhiggsfield.db-shm`;
    - `.env.local` (your keys; see section 5);
@@ -85,15 +83,6 @@ node -e "require('better-sqlite3')('data/openhiggsfield.db').backup('../openhigg
 
 Then copy the rest of the data folder as usual.
 
-### Docker
-Stop the app, then pack the data volume into a `.tar.gz` file in your current folder:
-```bash
-docker compose stop
-docker run --rm -v openhiggsfield_ohf-data:/data -v "$PWD":/backup alpine tar czf /backup/ohf-data.tar.gz -C /data .
-docker compose start
-```
-This copy **includes your saved keys** (`/data/.env.local`).
-
 ## 4. Restore a hand-made backup
 
 1. Stop Imagination Is All You Need.
@@ -103,27 +92,20 @@ This copy **includes your saved keys** (`/data/.env.local`).
    - put `.env.local` back in the main project folder, and `plugins/` if you backed it up.
 3. Start the app. Your history, Assets and credit ledger should be back.
 
-**Docker:**
-```bash
-docker compose stop
-docker run --rm -v openhiggsfield_ohf-data:/data -v "$PWD":/backup alpine sh -c "rm -rf /data/* && tar xzf /backup/ohf-data.tar.gz -C /data"
-docker compose start
-```
-
 **Moving to a new folder or a fresh copy?** Copy `server/data/` and `.env.local` across, or point the new copy at the old data with `OPENHIGGSFIELD_DATA_DIR=/path/to/old/server/data`.
 
 **Upgrading an older install (from before the rename)?** Nothing to do: an old `openjutsu.db` is renamed to `openhiggsfield.db` the first time the app starts, and old `OPENJUTSU_…` settings still work.
 
 ## 5. Your keys: keep them private
 
-- Provider keys (Comfy, fal, Replicate and others) are stored as plain text in **`.env.local`** (Docker: `/data/.env.local` on the data volume). The Settings page never shows a key, only whether it's set.
+- Provider keys (Comfy, fal, Replicate and others) are stored as plain text in **`.env.local`**. The Settings page never shows a key, only whether it's set.
 - The install script makes `.env.local` readable only by your user account. Re-running it **merges** into the file: it updates only the settings it writes, so keys you saved stay.
-- **The export (section 2) never contains your keys.** A hand-made copy that includes `.env.local`, or a Docker volume backup, **does**. Store those somewhere private, don't upload them anywhere public, and if one leaks, revoke the keys with the provider and create new ones.
+- **The export (section 2) never contains your keys.** A hand-made copy that includes `.env.local` **does**. Store those somewhere private, don't upload them anywhere public, and if one leaks, revoke the keys with the provider and create new ones.
 - Result ZIPs from Assets don't contain keys.
 
 ## 6. Automatic cleanup
 
-Two settings can delete things on their own. Set them in `.env.local` (or your Docker environment), then restart the app.
+Two settings can delete things on their own. Set them in `.env.local`, then restart the app.
 
 | Setting | Default | What it does |
 |---|---|---|

@@ -5,7 +5,7 @@
  *  - designed card: the browser draws it on a <canvas> (brand fonts, result, model, Run on, repo link; web/src/shared/shareCard.ts) when
  *    the owner opens Share, and uploads the PNG (PUT /api/jobs/:id/share/card). Only accepted while the result has a share link.
  *  - server card (fallback, e.g. a link made over REST or MCP): composed here. ffmpeg decodes and scales the result to raw RGBA (the
- *    Homebrew/Docker ffmpeg has no drawtext or SVG decoder), then this file draws the Orbit mark (analytic arcs) and the name (a
+ *    Homebrew ffmpeg and some Linux builds have no drawtext or SVG decoder), then this file draws the Orbit mark (analytic arcs) and the name (a
  *    pre-drawn PNG, server/samples/card-name.png) and writes the PNG with node:zlib. No text beyond the wordmark.
  * Files: <DATA_DIR>/share-cards/<jobId>.png (uploaded) and <jobId>.auto.png (server card cache).
  */

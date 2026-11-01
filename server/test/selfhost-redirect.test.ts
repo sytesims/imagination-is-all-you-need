@@ -64,6 +64,6 @@ assert.ok(/^## Will it run on my machine\?$/m.test(hw) && /^## Graphics memory p
 const cfg = readFileSync(new URL('../../docs/CONFIGURATION.md', import.meta.url), 'utf8');
 assert.ok(/^## Speech translation$/m.test(cfg), 'speech translation section in docs');
 const inst = readFileSync(new URL('../../docs/INSTALL.md', import.meta.url), 'utf8');
-assert.ok(/^## Requirements$/m.test(inst) && /^### macOS$/m.test(inst) && /^### Windows$/m.test(inst) && /^## Start the app$/m.test(inst) && /^### Real renders on Comfy Cloud$/m.test(inst) && /Docker files are included/.test(inst), 'install steps in docs');
+assert.ok(/^## Requirements$/m.test(inst) && /^### macOS$/m.test(inst) && /^### Windows$/m.test(inst) && /^## Start the app$/m.test(inst) && /^### Real renders on Comfy Cloud$/m.test(inst) && /install\.sh --install-comfy/.test(inst), 'install steps in docs');
 ok('REPO_URL constant, GitHub → promo, new-tab links, docs hold the install steps and the fit / memory tables');
 console.log('ALL OK selfhost-redirect');

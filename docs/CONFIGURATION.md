@@ -30,7 +30,7 @@ Direct a Shot's `streams` input also accepts its existing decoded MJPEG recordin
 | `OPENHIGGSFIELD_HF_TOKEN` (alias `HF_TOKEN`) | unset | Optional Hugging Face **read** token (Settings → Connections → Hugging Face). Sent only to huggingface.co, for gated models such as FLUX.1 Fill dev (accept the licence on the model page first). Never logged or returned |
 | `PORT` | `8787` | API port |
 | `HOST` | `127.0.0.1` (development and production) | API listen address; `HOST` takes precedence over `OPENHIGGSFIELD_HOST` (then the legacy alias). Blank values fall back to loopback. `HOST=0.0.0.0` explicitly opens network access and disables browser key saving / ComfyUI-address changes |
-| `WEB_HOST` | `127.0.0.1` | Vite development and preview listen address. Falls back to `HOST`, `OPENHIGGSFIELD_HOST`, then the legacy alias. Set `WEB_HOST=0.0.0.0` explicitly to expose the UI and its API proxy; this exposes API functionality even if the API itself remains loopback-only. The Docker entrypoint separately binds its web proxy explicitly to `0.0.0.0` for container publishing |
+| `WEB_HOST` | `127.0.0.1` | Vite development and preview listen address. Falls back to `HOST`, `OPENHIGGSFIELD_HOST`, then the legacy alias. Set `WEB_HOST=0.0.0.0` explicitly to expose the UI and its API proxy; this exposes API functionality even if the API itself remains loopback-only. |
 | `OPENHIGGSFIELD_DATA_DIR` | `server/data` | Where the SQLite database, uploads and outputs live (gitignored) |
 | `OPENHIGGSFIELD_OPEN_WEIGHTS_ONLY` | unset | `1` = hide and refuse hosted providers: partner/API nodes and hosted model APIs. Local open weights and our own open-weight workflows run as standard Comfy Cloud jobs (e.g. the H3 graphs in `workflows/cloud/`) stay. The Comfy Cloud H3 API-node route `cloud-h3` is a hosted provider and is hidden in this mode |
 | `OPENHIGGSFIELD_BILLING_MODE` | unset = `own-accounts` | `own-accounts`: you pay providers directly, no in-app balance; runs go to the spend log. `team`: an operator pays providers and gives users credit balances (charges, refunds). When set here, the app can't change it |
@@ -141,7 +141,7 @@ The pattern follows Comfy's own clonable app [Comfy-Org/comfy-reshoot](https://g
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `WEB_PORT` | `5174` (Vite) / `8080` (`docker/start.mjs`) | Web app port |
+| `WEB_PORT` | `5174` | Web app port |
 | `OPENHIGGSFIELD_API_PROXY` | `http://localhost:8787` | Where the Vite dev server sends `/api`, `/files`, `/samples`, `/s` |
 | `OPENHIGGSFIELD_API` | `http://localhost:8787` | The API the MCP server talks to |
 | `MCP_PORT`, `MCP_HOST` | `8788`, `127.0.0.1` | MCP HTTP transport |

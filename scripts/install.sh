@@ -13,7 +13,7 @@
 #   --tools LIST               comma list of tool ids, or a preset: starter | audio | image | video | all | none
 #   --list-tools               print tools with download size / VRAM / Mac status and exit
 #   --detect                   print what this computer is (OS, arch, GPU, memory, PyTorch wheel index) and exit; changes nothing
-#   --models-only              only download models for --tools into --comfy-dir (no Node needed; used by docker compose)
+#   --models-only              only download models for --tools into --comfy-dir (no Node needed)
 #   --yes | -y                 download without asking (ComfyUI clone, custom nodes, models). Required when not in a terminal:
 #                              without --yes and without a terminal to ask in, the script prints what it would download and exits 0
 #   --dry-run                  print every command instead of running it
@@ -219,7 +219,7 @@ fi
 [ "$BACKEND" = comfy ] && [ -z "$COMFY_URL" ] && info "No ComfyUI given: open the app and paste a Comfy key, or point it at your ComfyUI (the app asks on the first Generate)"; true
 c 32 "
 Installed. Start it:
-  set -a; . ./.env.local; set +a; node docker/start.mjs     # one port: http://localhost:8080
-  # or dev mode with hot reload:  set -a; . ./.env.local; set +a; npm run dev   (web :5174, API :8787)
-  # check: curl -s localhost:8080/api/health"
+  npm start                     # http://localhost:5174 (API :8787)
+  # or dev mode with hot reload:  npm run dev
+  # check: curl -s localhost:8787/api/health"
 if [ -n "$COMFY_DIR" ]; then c 32 "  Start ComfyUI: cd $COMFY_DIR && ${PYTHON:-python3} main.py --listen 127.0.0.1 --port 8188$([ "$GPU" = cpu ] && echo ' --cpu')"; fi
