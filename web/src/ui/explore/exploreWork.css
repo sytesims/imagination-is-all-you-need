@@ -1,53 +1,149 @@
-/* "Made for your work" (ExploreWork.tsx): the parts (stage, picker, facts), then the tabs and the panel.
-   Built on the page's own pieces: .xv-sec / .xv-eb / .xps-h / .xps-p / .xv-pill / .xv-tag / .xv-btn and the .xpc-cast tab bar. */
+/* "Made for your work" (ExploreWork.tsx): the shared parts (head, frame + stage, picker, words, actions), then layouts A (tab rail), B (bento), C (focused).
+   Built on the page's own pieces: .xv-sec / .xv-eb / .xps-h / .xps-p / .xv-btn, the .xpc-cast tab bar and CompareFrame's .cmpf-tag chips. */
 .xw-head{min-width:0}
-.xw-h{margin:14px 0 14px;font-size:clamp(40px,4.4vw,68px)}
+.xw-h{margin:14px 0 16px;font-size:clamp(40px,4.2vw,68px)}
 .xw-h span:last-child{color:var(--accent)}
-.xw-p{max-width:560px;margin:0}
+.xw-p{max-width:520px;margin:0;text-wrap:pretty}
+.xw-head.is-center{text-align:center;display:flex;flex-direction:column;align-items:center}
+.xw-head.is-center .xw-h{flex-direction:row;flex-wrap:wrap;justify-content:center;column-gap:.28em}
 
-/* the stage: one frame, 4:5, the result filling it */
-.xw-stage{position:relative;aspect-ratio:4/5;border-radius:22px;overflow:hidden;background:#111;border:1px solid rgba(255,255,255,.06);box-shadow:0 30px 80px rgba(0,0,0,.45);isolation:isolate}
-.xw-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 60%;display:block}
-.xw-looks > img.xw-img{opacity:0;transition:opacity .35s ease}
-.xw-looks > img.xw-img.on{opacity:1}
-/* the layers clip's own top-left label is cut by the 4:5 frame: fade the top band into the clip's black */
-.xw-film::after{content:"";position:absolute;inset:0 0 auto;height:24%;z-index:1;pointer-events:none;background:linear-gradient(#050505 58%,rgba(5,5,5,0))}
-/* "before" as a small picture in the corner, when the frames don't line up for a slider */
-.xw-from{position:absolute;right:14px;bottom:14px;z-index:3;width:28%;aspect-ratio:1;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.3);box-shadow:0 12px 28px rgba(0,0,0,.55);background:#111}
+/* ---------------------------------------------------------------- the frame: a fixed-height box (no jump between tabs), the picked look glowing behind */
+.xw-frame{--h:clamp(540px,80vh,820px);position:relative;height:var(--h);display:grid;place-items:center;border-radius:30px;overflow:hidden;isolation:isolate;
+  background:radial-gradient(120% 90% at 50% 40%,#1b1b1f,#0c0c0e);border:1px solid rgba(255,255,255,.07)}
+.xw-glow{position:absolute;inset:-12%;width:124%;height:124%;object-fit:cover;filter:blur(70px) saturate(1.35);opacity:.42;z-index:-1;pointer-events:none;transition:opacity .5s ease}
+.xw-frame::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(70% 60% at 50% 50%,transparent,rgba(8,8,10,.55))}
+
+/* the stage: the media at its own shape, as tall as the frame allows */
+.xw-stage{position:relative;aspect-ratio:var(--ar,3/4);height:calc(var(--h) - 48px);max-width:calc(100% - 48px);border-radius:20px;overflow:hidden;background:#111;
+  box-shadow:0 40px 90px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.08);isolation:isolate}
+.xw-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 60%;display:block;opacity:0;transition:opacity .4s ease}
+.xw-img.on{opacity:1}
+.xw-stage .cmpf-tag{top:14px;padding:7px 12px;font-size:11px;max-width:calc(50% - 24px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.xw-stage .cmpf-tag-l{left:14px}.xw-stage .cmpf-tag-r{right:14px}
+/* "before", small in the corner, when the frames don't line up for a slider */
+.xw-from{position:absolute;left:14px;bottom:14px;z-index:3;width:clamp(96px,26%,180px);aspect-ratio:1;border-radius:14px;overflow:hidden;border:2px solid rgba(255,255,255,.85);box-shadow:0 14px 34px rgba(0,0,0,.6);background:#111}
 .xw-from img{width:100%;height:100%;object-fit:cover;display:block}
-.xw-from i{position:absolute;left:0;right:0;bottom:0;padding:14px 8px 6px;font:700 9.5px/1 var(--font-display);letter-spacing:.12em;text-transform:uppercase;font-style:normal;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.72))}
+.xw-from i{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;gap:3px;padding:22px 9px 8px;font:600 11.5px/1.15 var(--font-ui);font-style:normal;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.6) 35%,rgba(0,0,0,.88))}
+.xw-from b{font:700 9.5px/1 var(--font-display);letter-spacing:.12em;text-transform:uppercase;color:#fff;opacity:.9}
 
-/* the looks a run made */
-.xw-pick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.xw-pick button{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:12px;height:60px;padding:0 14px 0 8px;border-radius:16px;font:600 14px/1.2 var(--font-ui);color:rgba(255,255,255,.72);
-  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);transition:background .2s ease,border-color .2s ease,color .2s ease}
-.xw-pick button img{width:44px;height:44px;border-radius:11px;object-fit:cover;flex:none;background:#222}
-.xw-pick[data-n="3"]{grid-template-columns:repeat(3,minmax(0,1fr))}
-.xw-pick button:hover{color:#fff;border-color:rgba(255,255,255,.28)}
-.xw-pick button.on{color:#fff;border-color:var(--accent);background:rgba(255,122,26,.14)}
-.xw-pick button:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap)}
+/* ---------------------------------------------------------------- words and actions */
+.xw-flow{display:block;font:700 11px/1 var(--font-display);letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+.xw-t{margin:0;font:700 clamp(26px,2.4vw,40px)/1.06 var(--font-display);letter-spacing:-.025em;color:#fff;text-wrap:balance;overflow-wrap:anywhere}
+.xw-line{margin:0;font:500 16px/1.55 var(--font-ui);color:rgba(255,255,255,.7);text-wrap:pretty;overflow-wrap:anywhere}
+.xw-acts{display:flex;align-items:center;gap:12px 18px;flex-wrap:wrap}
+.xw-make{height:54px;padding:0 26px;font-size:16px}
+.xw-facts{display:inline-flex;min-width:0;max-width:100%}
 
-.xw-flow{display:block;font:700 11px/1 var(--font-display);letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.5)}
-.xw-t{margin:0;font:700 clamp(24px,2.1vw,32px)/1.08 var(--font-display);letter-spacing:-.02em;color:#fff;text-wrap:balance}
-.xw-line{margin:0;font:500 15px/1.55 var(--font-ui);color:rgba(255,255,255,.66);text-wrap:pretty}
-.xw-facts{display:flex;flex-wrap:wrap;gap:6px}
-.xw-facts .xv-pill{height:30px;font-size:12.5px}
-.xw-price{background:rgba(255,122,26,.16);border-color:rgba(255,122,26,.34);color:#ffc08f}
-.xw-price small{font:500 12px/1 var(--font-ui);opacity:.8}
-.xw-acts{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+/* ---------------------------------------------------------------- the picker */
+.xw-pick-row{display:grid;gap:10px}
+.xw-pick button{all:unset;box-sizing:border-box;cursor:pointer;position:relative;min-width:0;transition:border-color .2s ease,background .2s ease,color .2s ease,transform .2s ease}
+.xw-pick button:focus-visible{outline:var(--focus-ring-w,2px) solid var(--focus-ring-color,var(--accent));outline-offset:var(--focus-ring-gap,2px)}
+.xw-pick button span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* chips (A): swatch + name */
+.xw-pick-chips .xw-pick-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+.xw-pick-chips[data-n="3"] .xw-pick-row{grid-template-columns:repeat(3,minmax(0,1fr))}
+.xw-pick-chips button{display:flex;align-items:center;gap:10px;height:58px;padding:0 12px 0 7px;border-radius:16px;font:600 14px/1.2 var(--font-ui);color:rgba(255,255,255,.74);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1)}
+.xw-pick-chips button img{width:42px;height:42px;border-radius:11px;object-fit:cover;flex:none;background:#222}
+.xw-pick-chips button:hover{color:#fff;border-color:rgba(255,255,255,.3)}
+.xw-pick-chips button.on{color:#fff;border-color:var(--accent);background:rgba(255,122,26,.14)}
+.xw-pick-chips[data-n="3"] .xw-pick-row{grid-template-columns:minmax(0,1fr)}
+.xw-pick-chips[data-n="3"] button img{width:40px;height:50px;border-radius:9px}
+.xw-pick-chips[data-n="3"] button{height:64px}
+/* tiles (B): the results themselves, big, the material in the corner */
+.xw-pick-tiles .xw-pick-row{grid-template-columns:repeat(var(--n,4),minmax(0,1fr))}
+.xw-pick-tiles[data-n="3"]{--n:3}
+.xw-pick-tiles button{display:flex;flex-direction:column;gap:8px;font:600 13px/1.2 var(--font-ui);color:rgba(255,255,255,.66)}
+.xw-pick-tiles button > img:first-child{width:100%;aspect-ratio:3/4;object-fit:cover;object-position:50% 62%;border-radius:14px;background:#1a1a1d;border:2px solid transparent;box-sizing:border-box;transition:border-color .2s ease,transform .25s ease}
+.xw-pick-tiles[data-n="3"] button > img:first-child{aspect-ratio:4/5}
+.xw-pick-tiles .xw-sw{position:absolute;right:8px;top:8px;width:30px;height:30px;border-radius:50%;object-fit:cover;border:2px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.5)}
+.xw-pick-tiles button:hover{color:#fff}.xw-pick-tiles button:hover > img:first-child{transform:translateY(-2px)}
+.xw-pick-tiles button.on{color:#fff}.xw-pick-tiles button.on > img:first-child{border-color:var(--accent)}
+/* dots (C): round swatches, the picked name above */
+.xw-pick-dots{display:flex;flex-direction:column;align-items:center;gap:14px}
+.xw-pick-name{font:600 15px/1 var(--font-ui);color:#fff;min-height:15px}
+.xw-pick-dots .xw-pick-row{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+.xw-pick-dots button{width:52px;height:52px;border-radius:50%;padding:3px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.14)}
+.xw-pick-dots button img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block}
+.xw-pick-dots button:hover{box-shadow:inset 0 0 0 2px rgba(255,255,255,.5)}
+.xw-pick-dots button.on{box-shadow:inset 0 0 0 2px var(--accent)}
+.xw-pick-dots[data-n="3"] button{width:60px;height:60px}
 
-/* ---------------------------------------------------------------- A: tabs over one panel */
-.xw-a-top{display:flex;align-items:flex-end;justify-content:space-between;gap:24px 40px;flex-wrap:wrap;margin-bottom:clamp(24px,2.6vw,36px)}
-.xw-tabs{margin-top:0}
-.xw-tabs button{padding:0 20px}
-.xw-panel{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(20px,3vw,56px);align-items:center;padding:clamp(14px,1.4vw,20px);border-radius:28px;background:rgba(255,255,255,.025);border:1px solid var(--xv-line)}
-.xw-a-stage{width:min(100%,calc(min(720px,78vh) * .8));margin:0 auto}
-.xw-side{display:flex;flex-direction:column;gap:18px;min-width:0;padding-right:clamp(0px,2vw,28px)}
-.xw-a .xw-t{font-size:clamp(28px,2.8vw,44px)}
-.xw-side .xw-acts{margin-top:6px}
+/* ---------------------------------------------------------------- A: tab rail beside one big stage */
+.xw-a-grid{display:grid;grid-template-columns:minmax(330px,420px) minmax(0,1fr);gap:clamp(28px,3.4vw,64px);align-items:start}
+.xw-a-side{display:flex;flex-direction:column;gap:26px;min-width:0}
+.xw-a .xw-h{margin-bottom:14px}
+.xw-rail{display:flex;flex-direction:column;border-top:1px solid var(--xv-line,rgba(255,255,255,.1))}
+.xw-rail [role=tab]{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:34px minmax(0,1fr);column-gap:6px;row-gap:6px;padding:16px 4px 16px 0;border-bottom:1px solid var(--xv-line,rgba(255,255,255,.1));position:relative;color:rgba(255,255,255,.55);transition:color .2s ease}
+.xw-rail [role=tab]::before{content:"";position:absolute;left:-14px;top:14px;bottom:14px;width:3px;border-radius:3px;background:var(--accent);opacity:0;transition:opacity .2s ease}
+.xw-rail [role=tab]:hover{color:#fff}
+.xw-rail [role=tab].on{color:#fff}.xw-rail [role=tab].on::before{opacity:1}
+.xw-rail [role=tab]:focus-visible{outline:var(--focus-ring-w,2px) solid var(--focus-ring-color,var(--accent));outline-offset:2px;border-radius:8px}
+.xw-rail-n{font:700 12px/22px var(--font-display);letter-spacing:.08em;color:rgba(255,255,255,.35)}
+.xw-rail [role=tab].on .xw-rail-n{color:var(--accent)}
+.xw-rail-l{display:flex;align-items:baseline;gap:10px;font:700 20px/22px var(--font-display);letter-spacing:-.01em;min-width:0}
+.xw-rail-l small{font:700 10.5px/1 var(--font-display);letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.xw-rail-t{grid-column:2;font:600 15px/1.35 var(--font-ui);color:rgba(255,255,255,.5);text-wrap:balance;overflow-wrap:anywhere}
+.xw-rail [role=tab].on .xw-rail-t{font:700 clamp(22px,1.8vw,28px)/1.1 var(--font-display);letter-spacing:-.02em;color:#fff}
+.xw-a-panel{display:flex;flex-direction:column;gap:20px;min-width:0}
+.xw-a .xw-frame{--h:clamp(600px,88vh,900px);position:sticky;top:84px}
+.xw-a-mt{display:none}
+
+/* ---------------------------------------------------------------- B: bento (stage anchor, words tile, looks tile) */
+.xw-b-top{display:flex;align-items:flex-end;justify-content:space-between;gap:24px 40px;flex-wrap:wrap;margin-bottom:clamp(24px,2.6vw,36px)}
+.xw-b .xw-h{flex-direction:row;flex-wrap:wrap;column-gap:.26em;max-width:900px}
+.xw-b .xw-tabs{margin-top:0}
+.xw-tabs button{padding:0 22px;height:42px;font-size:14.5px}
+.xw-tabs button:focus-visible{outline:var(--focus-ring-w,2px) solid var(--focus-ring-color,var(--accent));outline-offset:2px}
+.xw-bento{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;gap:14px}
+.xw-tile{border-radius:30px;background:rgba(255,255,255,.03);border:1px solid var(--xv-line,rgba(255,255,255,.08));min-width:0}
+.xw-tile-stage{grid-row:1 / span 2;border:0;background:none}
+.xw-tile-words{display:flex;flex-direction:column;justify-content:center;gap:16px;padding:clamp(24px,2.4vw,40px)}
+.xw-tile-words .xw-acts{margin-top:10px}
+.xw-tile-words .xw-t{font-size:clamp(30px,2.7vw,46px)}
+.xw-tile-looks{display:flex;flex-direction:column;gap:16px;padding:clamp(20px,2vw,28px)}
+.xw-tile-looks > .xw-flow{color:rgba(255,255,255,.5)}
+/* ---------------------------------------------------------------- C: one focused stage, swatches under it */
+.xw-c .xw-head{margin:0 auto}
+.xw-c .xw-p{text-align:center}
+.xw-c-tabs{display:flex;justify-content:center;margin:clamp(22px,2.4vw,32px) 0 clamp(22px,2.4vw,32px)}
+.xw-c-tabs .xw-tabs{margin:0}
+.xw-c-body{display:flex;flex-direction:column;align-items:center;gap:26px}
+.xw-c .xw-frame{width:min(100%,1320px);--h:clamp(560px,82vh,860px);border-radius:36px}
+.xw-c-words{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;max-width:680px}
+.xw-c-words .xw-t{font-size:clamp(30px,3vw,48px)}
+.xw-c-words .xw-acts{justify-content:center;margin-top:8px}
 
 /* ---------------------------------------------------------------- narrower screens */
-@media (max-width:900px){.xw-panel{grid-template-columns:minmax(0,1fr)}.xw-a-stage{width:min(100%,560px)}.xw-side{padding-right:0}}
-@media (max-width:640px){.xw-pick button{height:52px;gap:8px;padding:0 10px 0 6px;font-size:13px}.xw-pick button img{width:32px;height:32px;border-radius:9px}
-  .xw-pick[data-n="3"]{grid-template-columns:minmax(0,1fr)}.xw-pick[data-n="3"] button{height:48px}.xw-panel{padding:10px;border-radius:22px}}
-@media (prefers-reduced-motion:reduce){.xw-looks > img.xw-img,.xw-pick button{transition:none}}
+@media (max-width:1100px){.xw-a-grid{grid-template-columns:minmax(300px,360px) minmax(0,1fr)}}
+@media (max-width:900px){
+  .xw-frame{--h:auto;height:auto;padding:14px;border-radius:24px}
+  .xw-stage{height:auto;width:100%;max-width:100%;max-height:none}
+  .xw-a-grid{grid-template-columns:minmax(0,1fr)}
+  .xw-a-side{display:contents}
+  .xw-a .xw-head{order:1}.xw-rail{order:2}.xw-a .xw-frame{order:3;position:static}.xw-a-panel{order:4}
+  .xw-rail{flex-direction:row;border:0;gap:8px}
+  .xw-rail [role=tab]{flex:1 1 0;display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:12px 12px;border:1px solid rgba(255,255,255,.1);border-radius:16px;min-width:0}
+  .xw-rail [role=tab]::before{display:none}.xw-rail [role=tab].on{border-color:var(--accent);background:rgba(255,122,26,.12)}
+  .xw-rail-n,.xw-rail-t{display:none}.xw-a-mt{display:block}
+  .xw-rail-l{flex-direction:column;align-items:flex-start;gap:6px;font-size:17px;line-height:1;max-width:100%}
+  .xw-rail-l small{max-width:100%}
+  .xw-a-panel{gap:16px}
+  .xw-bento{grid-template-columns:minmax(0,1fr);grid-template-rows:none}
+  .xw-tile-stage{grid-row:auto}.xw-tile-looks{order:2}.xw-tile-words{order:3}
+  .xw-c .xw-frame{--h:auto}
+}
+@media (max-width:640px){
+  .xw-frame{padding:0;border:0;background:none;border-radius:18px}.xw-frame::after,.xw-glow{display:none}.xw-stage{border-radius:18px}
+  .xw-stage .cmpf-tag{top:10px;padding:6px 8px;font-size:9px;letter-spacing:.06em;max-width:calc(50% - 14px)}
+  .xw-stage .cmpf-tag-l{left:10px}.xw-stage .cmpf-tag-r{right:10px}
+  .xw-from{left:10px;bottom:10px;width:30%;border-radius:11px}.xw-from i{padding:16px 7px 6px;font-size:10.5px}.xw-from b{font-size:8.5px}
+  .xw-pick-chips button{height:52px;gap:8px;padding:0 10px 0 6px;font-size:13px}.xw-pick-chips button img{width:36px;height:36px;border-radius:9px}
+  .xw-pick-tiles .xw-pick-row{gap:8px}.xw-pick-tiles[data-n="4"] button span{display:none}.xw-pick-tiles button{font-size:11.5px;gap:6px}.xw-pick-tiles .xw-sw{width:22px;height:22px;right:5px;top:5px}
+  .xw-tile{border-radius:22px}
+  .xw-b-top{flex-direction:column;align-items:stretch}.xw-b .xw-tabs{align-self:flex-start}
+  .xw-tabs button{padding:0 18px}
+  .xw-make{width:100%;justify-content:center}
+  .xw-c-words .xw-acts{flex-direction:column}
+  .xw-pick-dots button{width:46px;height:46px}.xw-pick-dots[data-n="3"] button{width:54px;height:54px}
+}
+@media (prefers-reduced-motion:reduce){.xw-img,.xw-glow,.xw-pick button,.xw-pick-tiles button > img:first-child,.xw-rail [role=tab],.xw-rail [role=tab]::before{transition:none}}

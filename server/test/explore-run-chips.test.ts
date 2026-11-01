@@ -33,7 +33,7 @@ for (const l of EXPLORE_LOOKS.looks) assert.ok(l.model, `${l.id}: a model label`
 for (const r of EXPLORE_3D.steps) assert.ok(chipOfRun({ jobId: r.job, model: 'x', place: 'Comfy Cloud', costUsd: 0 }).place, `${r.step}: a place`);
 /* the "Made for your work" prices stay as they were */
 const work = Object.fromEntries(EXPLORE_WORK.items.map((i) => [i.id, chipText(chipOfFeatured(featuredByKey(i.priceKey)!, { model: i.model, note: i.per || undefined }))]));
-assert.deepEqual(work, { 'material-swap': 'Nano Banana 2 · Comfy Cloud · $0.08 · each', 'ad-pack': 'GPT Image 2 · Comfy Cloud · $0.20 · for 3', 'image-layers': 'Seedream 5.0 Flash · Comfy Cloud · $0.33' });
+assert.deepEqual(work, { 'material-swap': 'Nano Banana 2 · Comfy Cloud · $0.08 · each', 'ad-pack': 'GPT Image 2 · Comfy Cloud · $0.20 · for 3' });
 ok(`${keys.length} featured examples + ${6} films + ${EXPLORE_LOOKS.looks.length} looks: each has a model label and a route`);
 
 // ---- one shared component on every section ----
