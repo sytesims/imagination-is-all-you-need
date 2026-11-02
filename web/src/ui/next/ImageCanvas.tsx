@@ -74,6 +74,7 @@ import { presetPrefill, CREATE_PRESET_FIELDS } from '../../../../server/src/shar
 import { AspectIcon, QualityIcon, ResolutionIcon, MoreIcon, SparkleIcon, DownloadIcon, ImageStackIcon } from '../Icons';
 import { useLayoutEffect } from 'react';
 import { listTools } from '../../api';
+import { ADDED_IMAGE_WORKFLOWS } from '../../../../server/src/shared/mediaFeed';
 import { WfIcon, WorkflowPicker, WorkflowInputs, WorkflowControls, WorkflowCredit, useImageWorkflows, useWorkflowQuote, loadDraft, saveDraft, defaultVals, fitWfVals, READY_WORKFLOW_TOOLS, viaOver, type WfDraft, type WfSlotFile, type WfRecipe } from './WorkflowBar';
 import { RIG_WORKFLOW } from '../../shared/workflowLinks';
 import MaskSheet, { maskFromFile, photoSig, type WfMask } from './MaskSheet';
@@ -199,7 +200,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
   /* Camera & Lens (surface 'rig', 2026-10-23) is plain Create (prompt, photos, aspect, model) plus the Camera group: it never takes the slot path below */
   const rigWf = wfPicked?.surface === 'rig' ? wfPicked : null; const recipe = rigWf ? null : wfPicked;
   /** Workflows the bar can Recreate into: every ready tool's workflow, plus Camera & Lens (a Create Image job with a camera rig). */
-  const RECREATABLE = [...Object.values(READY_WORKFLOW_TOOLS), RIG_WORKFLOW];
+  const RECREATABLE = [...Object.values(READY_WORKFLOW_TOOLS), RIG_WORKFLOW, ...ADDED_IMAGE_WORKFLOWS.keys()]; /* + the workflows you added (shared/pluginPlacement.ts) */
   const [wfFiles, setWfFiles] = useState<Record<string, Record<string, WfSlotFile | null>>>({}); const [wfDrafts, setWfDrafts] = useState<Record<string, WfDraft>>({});
   const [runTools, setRunTools] = useState<ToolInfo[] | null>(null); const [wfBusy, setWfBusy] = useState(false); const [wfErr, setWfErr] = useState('');
   useEffect(() => { if (wfId && !runTools) listTools().then(setRunTools).catch(() => undefined); }, [wfId, !!runTools]);
@@ -847,7 +848,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
   const curMinNote = !recipe && cur ? minNote(cur) : '';
   /** the model chip's full name: the chip may truncate it, the tooltip never does */
   const mChipName = (() => { const tid = recipe ? recipe.runner.toolId : p.tool.id; const eid = recipe ? wfProvider : cur?.id; const mm = modelOfEngine(tid, eid); const pv: any = recipe ? wfProviders.find(x => x.id === wfProvider) : cur;
-    return short(recipe ? (mm ? shownName(mm) : null) ?? recipe.modelInfo?.[wfProvider]?.name ?? pv?.name : curName); })();
+    return short(recipe ? (recipe.added ? recipe.modelInfo?.[wfProvider]?.name : null) /* a workflow you added: the model its graph loads */ ?? (mm ? shownName(mm) : null) ?? recipe.modelInfo?.[wfProvider]?.name ?? pv?.name : curName); })();
   /* ---- "See the exact prompt": the same form the run sends (wfGenerate for a workflow, go → AppTool's submit for Create), photos as counts.
    * The server builds the prompt with the job's own code (POST /api/tools/:id/prompt-peek). ---- */
   const cMode = p.image ? (p.mask && p.canMask ? 'inpaint' : 'edit') : p.editIntent ? 'edit' : 'generate';
@@ -992,7 +993,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
           </span>}
           <input ref={file} type="file" accept={IMAGE_ACCEPT} multiple={(maxRefs > 1 && !pickFor || pickMany) && replaceIndex.current == null} hidden data-testid="ic-file" onChange={e => { const f = e.target.files; if (f?.length) { const ri = replaceIndex.current; replaceIndex.current = null; if (ri != null && p.replacePhoto) { if (fileFits('image', f[0])) p.replacePhoto(ri, f[0]); else toast(wrongTypeText(f[0].name, ['image']), 'error'); } else if (pickMany) addSlotFiles([...f]); else if (pickFor && recipe) setSlot(pickFor, f[0], true); else void addRefs([...f]); setRefTab(null); } e.currentTarget.value = ''; }} />
           <button ref={aR.model} type="button" className={`ic-chip ic-model ${pop === 'model' ? 'on' : ''}`} aria-haspopup="listbox" aria-expanded={pop === 'model'} data-testid="ic-model-chip" data-fallback-note={fbNote || undefined} data-downloading={dlNow ? (dlNow.pct ?? 'busy') : undefined} {...tip(pop === 'model' ? null : [mChipName + ((recipe ? wfKind : cKind) ? ` · ${PICK_LABEL[(recipe ? wfKind : cKind)!]}` : ''), modelTip].filter(Boolean).join(' · ') || null)} onClick={() => setPop(pop === 'model' ? '' : 'model')}>{(() => { const tid = recipe ? recipe.runner.toolId : p.tool.id; const eid = recipe ? wfProvider : cur?.id; const mm = modelOfEngine(tid, eid); const pv: any = recipe ? wfProviders.find(x => x.id === wfProvider) : cur;
-            return <><MakerTile className="ic-dot" medium="image" maker={mm?.maker ?? (pv as any)?.maker} makerName={mm?.makerName ?? (pv as any)?.makerName} fallback={pv?.family || pv?.name} /><span className="ic-mname"><Words text={short(recipe ? (mm ? shownName(mm) : null) ?? recipe.modelInfo?.[wfProvider]?.name ?? pv?.name : curName)} /></span>{(() => { const k = recipe ? wfKind : cKind; return k ? <span className="ic-mpick" data-testid="ic-model-pick" data-kind={k}>{` · ${PICK_LABEL[k]}`}</span> : null; })()}</>; })()}{dlNow && <DlRing pct={dlNow.pct} label={dlLabel} />}<svg className="ic-caret" width="16" height="16" viewBox="0 0 16 16" aria-hidden><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
+            return <><MakerTile className="ic-dot" medium="image" maker={mm?.maker ?? (pv as any)?.maker} makerName={mm?.makerName ?? (pv as any)?.makerName} fallback={pv?.family || pv?.name} /><span className="ic-mname"><Words text={short(recipe ? (recipe.added ? recipe.modelInfo?.[wfProvider]?.name : null) /* a workflow you added: the model its graph loads */ ?? (mm ? shownName(mm) : null) ?? recipe.modelInfo?.[wfProvider]?.name ?? pv?.name : curName)} /></span>{(() => { const k = recipe ? wfKind : cKind; return k ? <span className="ic-mpick" data-testid="ic-model-pick" data-kind={k}>{` · ${PICK_LABEL[k]}`}</span> : null; })()}</>; })()}{dlNow && <DlRing pct={dlNow.pct} label={dlLabel} />}<svg className="ic-caret" width="16" height="16" viewBox="0 0 16 16" aria-hidden><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
           </span>
           {recipe && draft && <WorkflowControls recipe={recipe} files={files} vals={wfVals} setVal={(k, v) => setDraft(d => ({ ...d, vals: { ...d.vals, [k]: v } }))} provider={wfProvider} watch={dock} mode={wfMode} upscale={upInfo ? { info: upInfo, models: wfProviders, src: wfSrc, onExamples: () => setUpEx(true) } : null}
             overRef={overRef} panels={isMulti ? { [multiG]: <AnglesPanel r={recipe} ids={angleIds} set={ids => setDraft(d => ({ ...d, vals: { ...d.vals, shots: JSON.stringify(ids) } }))} each={angleEach} /> }

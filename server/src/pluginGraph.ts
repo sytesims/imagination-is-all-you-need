@@ -67,5 +67,7 @@ export function mainModelOf(graph: Record<string, any> | undefined): string | nu
   const ids = Object.keys(graph ?? {}).sort((a, b) => (Number(a) - Number(b)) || a.localeCompare(b));
   for (const k of ['unet_name', 'ckpt_name']) for (const id of ids) { const v = graph![id]?.inputs?.[k];
     if (typeof v === 'string' && v.trim()) { const name = v.replace(/\\/g, '/').split('/').pop()!.replace(/\.(safetensors|gguf|ckpt|pt|pth|bin|sft)$/i, '').trim(); if (name) return modelWords(name).slice(0, 60); } }
+  /* no diffusion model: a restore / upscale workflow names its upscale model (Real-ESRGAN, 4x-UltraSharp…) */
+  for (const id of ids) { const n = graph![id]; const v = n?.inputs?.model_name; if (/UpscaleModelLoader/.test(String(n?.class_type ?? '')) && typeof v === 'string' && v.trim()) { const name = v.replace(/\\/g, '/').split('/').pop()!.replace(/\.(safetensors|ckpt|pt|pth|bin)$/i, '').trim(); if (name) return modelWords(name).slice(0, 60); } }
   return null;
 }

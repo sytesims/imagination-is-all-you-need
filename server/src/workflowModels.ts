@@ -91,7 +91,11 @@ const known = (folder: string, file: string) => { const w = weightFileOf(file); 
 
 /** Have / missing per file. `opts` = your ComfyUI's loader lists (null = not running / not set). */
 export function needsOf(tool: ToolLike, opts: ReturnType<typeof comfyLoaderOptionsNow>): NeedsView {
-  const spec = pluginSpec(tool.id); const files = spec ? neededFiles(spec.graph) : []; const dir = modelsDir(); const links = savedLinks(tool.plugin?.dir);
+  const spec = pluginSpec(tool.id); return graphNeeds(tool.id, spec ? spec.graph : {}, opts, savedLinks(tool.plugin?.dir));
+}
+/** The same have / missing view for a graph that isn't saved yet (Add a workflow's summary checks the models up front, before you add it). */
+export function graphNeeds(id: string, graph: Graph, opts: ReturnType<typeof comfyLoaderOptionsNow>, links: Saved = { files: {} }): NeedsView {
+  const files = neededFiles(graph); const dir = modelsDir();
   const rows: NeedRow[] = files.map((f) => {
     const bad = !safeModelPath(f.folder, f.file);
     const lists = opts ? f.loaders.map((l) => opts.options[l.classType]?.[l.input]).filter((x): x is string[] => Array.isArray(x)) : [];
@@ -102,7 +106,7 @@ export function needsOf(tool: ToolLike, opts: ReturnType<typeof comfyLoaderOptio
     return { file: f.file, folder: f.folder, nodes: f.nodes, state, url: w?.url || mine || null, bytes: w?.url ? w.sizeBytes : null, pageUrl: w?.url ? w.pageUrl : null, linkFrom: w?.url ? 'list' : mine ? 'yours' : null,
       ...(nodeMissing ? { nodeMissing: true } : {}), ...(bad ? { badPath: true } : {}) };
   });
-  return { id: tool.id, comfy: opts ? 'ok' : localComfySet() ? 'off' : 'not_set', modelsDirSet: !!dir, files: rows, missing: rows.filter((r) => r.state === 'missing').length, unknown: rows.filter((r) => r.state === 'unknown').length, downloadId: `workflow:${tool.id}` };
+  return { id, comfy: opts ? 'ok' : localComfySet() ? 'off' : 'not_set', modelsDirSet: !!dir, files: rows, missing: rows.filter((r) => r.state === 'missing').length, unknown: rows.filter((r) => r.state === 'unknown').length, downloadId: `workflow:${id}` };
 }
 /** The page's view: asks ComfyUI (waits up to 3 s for a fresh list). */
 export const workflowNeeds = async (tool: ToolLike) => needsOf(tool, await comfyLoaderOptions());
