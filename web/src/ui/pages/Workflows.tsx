@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { ToolInfo } from '../../api';
 import { IMAGE_PAGE, VIDEO_PAGE, AUDIO_PAGE, THREE_D_PAGE } from '../../../../server/src/shared/pages';
@@ -31,10 +31,8 @@ import './workflowFinder.css';
  * (shared/runLabel.ts words, shared/RunLine.tsx), and image examples from GET /api/workflow-hub. A workflow no model can run here is left out
  * (the rail names what was left out and why). Since 2026-11-02 it lists EVERY workflow and chain (workflowCatalog.ts workflowPageSections), and
  * its header and "Everything" count come from shared/workflowCount.ts, the same count the README uses.
- * Layout options for the cards (?wflayout=a|b|c, the user picks one; none = the plain grid):
- *  a  gallery: sections show the cards with a real example first, and a sound plays on its card (SoundTile);
- *  b  shelves: one horizontal row per section, with "See all" to that goal;
- *  c  compact: a denser grid, each card with its model and where it runs and the price (RunLine).
+ * Layout (2026-11-02, the user's pick "B", shelves): on Everything each section is one row that scrolls sideways, with "See all" to that
+ * section; a picked category shows its cards in a grid. A sound of ours plays on its card (SoundTile).
  *  - Left: the brand line, search ("/" focuses it), Start here and the goals with their counts (empty ones hidden), Step by step and Saved, Surprise me.
  *  - Right: "Yours" (saved workflows and chains, this browser only), then the sections in grids that fill the width, in Explore's
  *    banded tile (explore.css .xp-tile.is-band): the picture, then on a solid band the name, one line and a small model chip (where it runs and the price depend on the
@@ -148,7 +146,7 @@ function Art({ r, label }: { r: Row; label?: boolean }) {
 }
 /** `thumb`: the card's own picture (Row.thumb): a clip's poster, or the picture itself for a still or a before / after (the sheet keeps the wipe). */
 function MediaView({ r, mode = 'hover', muted = true, label, thumb }: { r: Row; mode?: 'hover' | 'view'; muted?: boolean; label?: boolean; thumb?: string | null }) {
-  const m = r.media; const lay = useContext(LayoutCtx);
+  const m = r.media;
   if (m.kind === 'clip') return <HoverClip src={m.src} poster={thumb ?? m.poster} label={r.e.name} mode={mode} muted={muted} />;
   /* a before picture too (Try-On): the change plays as a soft wipe while the card is hovered; still, the result shows */
   if (thumb && r.thumbBefore) return <span className="wn-ba" data-testid="wn-ba"><img src={r.thumbBefore} alt="" loading="lazy" decoding="async" draggable={false} /><img className="wn-ba-after" src={thumb} alt={r.e.name} loading="lazy" decoding="async" draggable={false} /></span>;
@@ -156,11 +154,10 @@ function MediaView({ r, mode = 'hover', muted = true, label, thumb }: { r: Row; 
   if (m.kind === 'still') return <HoverClip src={m.src} poster={m.src} label={r.e.name} />;
   if (m.kind === 'split') return <SplitPreview className="wn-split" before={m.before} after={m.after} beforeLabel={m.bl} afterLabel={m.al} testId="wn-split" />;
   /* a real sound of ours: our drawing on the card; in the sheet, the sound itself under it */
-  if (m.kind === 'sound' && mode !== 'view' && lay) return <SoundTile src={m.src} label={r.e.name} />;
-  if (m.kind === 'sound') return mode === 'view'
-    ? <span className="wn-art wn-sound" data-testid="wn-sound"><span className="xp-art" aria-hidden>{r.e.art && hasDiagram(r.e.art) ? <FlowDiagram art={r.e.art} /> : <ToolIconFor id={r.e.toolId} size={44} strokeWidth={1.3} />}</span>
-      <audio controls preload="none" src={m.src} aria-label={`${r.e.name}: our example`} /></span>
-    : <Art r={r} />;
+  /* a real sound of ours: on the card its bars and a play button; in the sheet our drawing with the player under it */
+  if (m.kind === 'sound') return mode !== 'view' ? <SoundTile src={m.src} label={r.e.name} />
+    : <span className="wn-art wn-sound" data-testid="wn-sound"><span className="xp-art" aria-hidden>{r.e.art && hasDiagram(r.e.art) ? <FlowDiagram art={r.e.art} /> : <ToolIconFor id={r.e.toolId} size={44} strokeWidth={1.3} />}</span>
+      <audio controls preload="none" src={m.src} aria-label={`${r.e.name}: our example`} /></span>;
   return <Art r={r} label={label} />;
 }
 function SaveBtn({ id, s, label }: { id: string; s: Saved; label: string }) {
@@ -184,7 +181,7 @@ function BringYourOwn() {
 }
 function Card({ r, onOpen, s, i = 0 }: { r: Row; onOpen: () => void; s: Saved; i?: number }) {
   /* a click anywhere opens it (the before / after wipe is hover-only on a card); only the Save button keeps its own click */
-  const open = (ev: React.MouseEvent) => { if ((ev.target as HTMLElement).closest('a,button')) return; onOpen(); }; const lay = useContext(LayoutCtx);
+  const open = (ev: React.MouseEvent) => { if ((ev.target as HTMLElement).closest('a,button')) return; onOpen(); }; 
   return <div className={`xp-tile is-band wn-card${r.media.kind !== 'art' ? ' is-real' : ''}`} onClick={open} onPointerEnter={() => warm(r.e.href)} data-hover-play data-testid={`wn-card-${r.e.id}`} style={{ ['--i' as string]: Math.min(i, 12) }}>
     <span className="xp-tile-media wn-media"><MediaView r={r} thumb={r.thumb} /></span>
     {/* the Added by you / Add-on badge sits on the picture, so a long name that clamps never hides it */}
@@ -194,14 +191,9 @@ function Card({ r, onOpen, s, i = 0 }: { r: Row; onOpen: () => void; s: Saved; i
       <button type="button" className="xp-title wn-title" onClick={onOpen} onFocus={() => warm(r.e.href)} aria-label={`${r.e.name}${r.e.plugin ? ` (${r.e.plugin.user ? 'added by you' : 'add-on'})` : ''}: ${r.e.line}. Details`}>{r.e.name}</button>
       <span className="xp-line">{r.e.line}</span>
       <span className="xp-meta wn-meta"><span className="wn-chip" title={r.models.map((m) => m.name).join(', ')}>{r.model ? shortModel(r.model) : 'Runs in the app'}</span></span>
-      {lay === 'c' && <RunLine p={r.run} className="wn-runl" />}
     </span>
   </div>;
 }
-/** The card layout picked with ?wflayout=a|b|c ('' = the plain grid). */
-type Layout = '' | 'a' | 'b' | 'c';
-const LayoutCtx = createContext<Layout>('');
-const layoutOf = (): Layout => { const v = new URLSearchParams(location.search).get('wflayout'); return v === 'a' || v === 'b' || v === 'c' ? v : ''; };
 /** A sound of ours on its card (Make music, Sound effects, Voiceover): its own bars and a play button; the rest of the card still opens the sheet. */
 function SoundTile({ src, label }: { src: string; label: string }) {
   const a = useRef<HTMLAudioElement>(null); const [on, setOn] = useState(false);
@@ -230,7 +222,7 @@ function chainFacts(c: WfChain, rows: Row[]) {
 const ChainArt = ({ c }: { c: WfChain }) => <span className="xp-art" aria-hidden>{c.art && hasDiagram(c.art) ? <FlowDiagram art={c.art} /> : <GenerateIcon size={40} />}</span>;
 /** A chain as a card, the same size as a workflow’s: its clip and its steps’ models. Opens the chain’s sheet. */
 function ChainTile({ c, rows, onOpen, s, i = 0 }: { c: WfChain; rows: Row[]; onOpen: () => void; s: Saved; i?: number }) {
-  const k = chainFacts(c, rows); const open = (ev: React.MouseEvent) => { if ((ev.target as HTMLElement).closest('a,button')) return; onOpen(); }; const lay = useContext(LayoutCtx);
+  const k = chainFacts(c, rows); const open = (ev: React.MouseEvent) => { if ((ev.target as HTMLElement).closest('a,button')) return; onOpen(); };
   return <div className={`xp-tile is-band wn-card wn-chaintile${k.f ? ' is-real' : ''}`} onClick={open} onPointerEnter={() => k.startHref && warm(k.startHref)} data-hover-play data-testid={`wn-chain-${c.id}`} style={{ ['--i' as string]: Math.min(i, 12) }}>
     <span className="xp-tile-media wn-media">{k.f ? <HoverClip src={k.f.out.url} poster={cardThumb(`chain:${c.id}`) ?? k.f.out.poster} label={c.name} /> : <span className="wn-art"><ChainArt c={c} /></span>}</span>
     <SaveBtn id={`chain:${c.id}`} s={s} label={c.name} />
@@ -238,7 +230,6 @@ function ChainTile({ c, rows, onOpen, s, i = 0 }: { c: WfChain; rows: Row[]; onO
       <button type="button" className="xp-title wn-title" onClick={onOpen} aria-label={`${c.name}: ${c.line}. ${c.steps.length} steps. Details`}>{c.name}</button>
       <span className="xp-line">{c.line}</span>
       <span className="xp-meta wn-meta"><span className="wn-chip" title={k.steps.map((x) => x.model).filter(Boolean).join(' → ')}>{c.steps.length > 1 ? `${c.steps.length} steps` : k.steps[0].model ? shortModel(k.steps[0].model) : '1 step'}</span></span>
-      {lay === 'c' && k.run && <RunLine p={k.run} className="wn-runl" />}
     </span>
   </div>;
 }
@@ -379,7 +370,7 @@ type Item = { kind: 'row'; r: Row; id: string } | { kind: 'chain'; c: WfChain; i
 const START_LINE = 'The easiest first steps. Most are free on your computer.';
 
 export default function Workflows({ tools }: { tools: ToolInfo[] }) {
-  const { rows, left } = useRows(tools); const s = useSaved(); const mode = useSampleMode(); const [layout] = useState(layoutOf);
+  const { rows, left } = useRows(tools); const s = useSaved(); const mode = useSampleMode();
   /* a chain shows only when every step can run here */
   const chainsAll = useMemo(() => WF_CHAINS.filter((c) => c.steps.every((st) => rows.some((r) => r.e.id === st.entry))), [rows]);
   const ideas = useIdeas(); const f = useFilter(rows, chainsAll, ideas);
@@ -419,16 +410,13 @@ export default function Workflows({ tools }: { tools: ToolInfo[] }) {
   const shownList = f.cat === 'all' ? picked : f.cat === 'ideas' ? [] : inCat;
   const headLine = countLine(shownList.filter((x) => x.kind === 'row').length, shownList.filter((x) => x.kind === 'chain').length);
   const nothing = f.cat === 'all' ? !picked.length : f.cat === 'ideas' ? !f.ideas.length : !inCat.length;
-  /* Option A: the cards with a real example of ours lead each section (stable: the page's order otherwise) */
-  const real = (x: Item) => x.kind === 'row' ? x.r.media.kind !== 'art' : !!x.c.featured;
-  const arrange = (list: Item[]) => layout === 'a' && !f.ranked ? [...list.filter(real), ...list.filter((x) => !real(x))] : list;
-  const tiles = (list: Item[]) => arrange(list).map((x, i) => x.kind === 'row' ? <Card key={x.id} r={x.r} s={s} i={i} onOpen={() => openRow(x.r)} /> : <ChainTile key={x.id} c={x.c} rows={rows} s={s} i={i} onOpen={() => openChain(x.c)} />);
-  /** One section: its head, then its cards (a grid; Option B: a row that scrolls sideways, with "See all" for a goal) */
+  const tiles = (list: Item[]) => list.map((x, i) => x.kind === 'row' ? <Card key={x.id} r={x.r} s={s} i={i} onOpen={() => openRow(x.r)} /> : <ChainTile key={x.id} c={x.c} rows={rows} s={s} i={i} onOpen={() => openChain(x.c)} />);
+  /** One section: its head, then its cards (on Everything a row that scrolls sideways, with "See all" to that section; else a grid) */
   const section = (id: string, title: string, line: string, list: Item[], extra?: ReactNode, cls = '', all?: string) => <section key={id} className={`wn-sec ${cls}`} aria-labelledby={`wn-h-${id}`} data-testid={`wn-sec-${id}`}>
     <div className="wn-head-row"><Head id={`wn-h-${id}`} title={title} line={line} count={list.length} />
-      {layout === 'b' && all && f.cat === 'all' && <button type="button" className="link-btn wn-seeall" onClick={() => { f.setCat(all); scrollTo({ top: 0 }); }} data-testid={`wn-seeall-${id}`}>See all {list.length}</button>}</div>
-    <div className={`wn-grid${layout === 'b' && f.cat === 'all' ? ' is-shelf' : ''}${layout === 'c' ? ' is-dense' : ''}`}>{tiles(list)}{extra}</div></section>;
-  return <LayoutCtx.Provider value={layout}><div className={`wn-page${layout ? ` wn-l-${layout}` : ''}`} data-testid="workflows-page" data-layout={layout || 'grid'}>
+      {all && f.cat === 'all' && <button type="button" className="link-btn wn-seeall" onClick={() => { f.setCat(all); scrollTo({ top: 0 }); }} data-testid={`wn-seeall-${id}`}>See all {list.length}</button>}</div>
+    <div className={`wn-grid${f.cat === 'all' ? ' is-shelf' : ''}`}>{tiles(list)}{extra}</div></section>;
+  return <div className="wn-page" data-testid="workflows-page">
     <div className="wn wn-b">
       <aside className="wn-side" aria-label="Find a workflow">
         <span className="wn-brand">Imagination is all you need</span><h1>Workflows</h1>
@@ -458,5 +446,5 @@ export default function Workflows({ tools }: { tools: ToolInfo[] }) {
     </div>
     {sheet && <Sheet r={sheet} rows={rows} chains={chainsAll} s={s} onClose={() => setSheet(null)} onOpen={openRow} mock={!!mode?.mock} />}
     {chainSheet && <ChainSheet c={chainSheet} rows={rows} s={s} onClose={() => setChainSheet(null)} onOpen={openRow} />}
-  </div></LayoutCtx.Provider>;
+  </div>;
 }
