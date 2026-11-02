@@ -6,7 +6,7 @@ import { NODE_DEFS, NODE_KINDS, NODE_TYPES, GEN_TYPE, RESULT_TYPE, PROMPT_TYPE, 
 import { canConnectTo, pickPortTarget, groupGenIds, runAllConfirm, runAllCommit, runAllTotal, runAllPriceLabel } from '../../web/src/canvas/nodeLogic.ts';
 import { linkShapes, inputOfShape, withInputs } from '../../web/src/canvas/graph.ts';
 import { addVersions, MAX_VERSIONS } from '../../web/src/canvas/cardModel.ts';
-import { runOrder } from '../../web/src/canvas/nodeLogic.ts';
+import { runOrder, settleProposal, type ProposalCard } from '../../web/src/canvas/nodeLogic.ts';
 import { outKindOf, genIns, canFeed, legalTargets, pickTypedTarget, takesLine, type PortInfo } from '../../web/src/canvas/nodeLogic.ts';
 const ok = (m: string) => console.log('ok ' + m);
 
@@ -148,6 +148,29 @@ ok('Run all: first press only prices (no run list), second fresh press runs, sta
   const r = runOrder(['hero', 'clip', 'lone', 'orphan', 'chained'], id => ups[id] ?? []);
   assert.deepEqual(r.now, ['hero', 'lone']); assert.deepEqual(r.later, ['clip', 'chained']); assert.deepEqual(r.blocked, [{ id: 'orphan', name: 'Other' }]);
   ok('run order: upstream first, downstream waits, a card whose input will never come is not started'); }
+// ---- run proposal (2026-11-02): a chain of any length is proposed whole; only an input with no source at all is skipped ----
+{ const card = (id: string, usd: number, o: Partial<ProposalCard> = {}): ProposalCard => ({ id, title: id, usd, credits: usd * 100, missing: null, missingFed: null, ups: [], other: null, ...o });
+  const up = (id: string, status = 'draft') => ({ id, name: id, status });
+  /* Picture → Character sheet → Image to 3D: the sheet's image is optional, the 3D card's isn't ("Add an image" until the sheet has run) */
+  const chain = [card('pic', 0.04), card('sheet', 0.08, { ups: [up('pic')] }), card('to3d', 0.3, { missing: 'Add an image', ups: [up('sheet')] })];
+  const r = settleProposal(chain);
+  assert.deepEqual(r.problems, { pic: null, sheet: null, to3d: null }, 'every card of a 3-card chain runs'); assert.equal(r.totalUsd, 0.42); assert.equal(r.totalCredits, 42);
+  const o = runOrder(chain.map(c => c.id), id => chain.find(c => c.id === id)!.ups);
+  assert.deepEqual(o.now, ['pic']); assert.deepEqual(o.later, ['sheet', 'to3d']); assert.deepEqual(o.blocked, []);
+  /* branch and merge: A feeds B and C, both feed D (two images) */
+  const bm = [card('a', 0.1), card('b', 0.1, { missing: 'Add an image', ups: [up('a')] }), card('c', 0.1, { missing: 'Add an image', ups: [up('a')] }), card('d', 0.2, { missing: 'Add an image', ups: [up('b'), up('c')] })];
+  const rb = settleProposal(bm); assert.ok(Object.values(rb.problems).every(p => p === null), 'branch + merge: all four run'); assert.equal(rb.totalUsd, 0.5);
+  /* fed by a card already running: waits for it */
+  assert.equal(settleProposal([card('clip', 0.5, { missing: 'Add a first frame', ups: [up('busy', 'running')] })]).problems.clip, null);
+  /* truly missing: no arrow at all → skipped with its reason, and so is the card after it; still missing something else once fed → that reason */
+  const miss = settleProposal([card('lone', 0.3, { missing: 'Add an image' }), card('next', 0.2, { missing: 'Add an image', ups: [up('lone')] }), card('ok', 0.1),
+    card('noPrompt', 0.1, { missing: 'Add an image', missingFed: 'Write a prompt', ups: [up('ok')] })]);
+  assert.equal(miss.problems.lone, 'Add an image'); assert.equal(miss.problems.next, 'Waits on “lone”, which can’t run here'); assert.equal(miss.problems.noPrompt, 'Write a prompt');
+  assert.equal(miss.problems.ok, null); assert.equal(miss.totalUsd, 0.1, 'only what Go starts is priced');
+  /* fed by a draft left out of the run → skipped (Go would never get its input); a quote problem still skips */
+  const out = settleProposal([card('clip', 0.5, { missing: 'Add a first frame', ups: [up('elsewhere')] }), card('x', 0.2, { other: 'No price for these settings' })]);
+  assert.equal(out.problems.clip, 'Waits for “elsewhere”, which isn’t in this run'); assert.equal(out.problems.x, 'No price for these settings'); assert.equal(out.totalUsd, 0);
+  ok('run proposal: 3-card chain and branch/merge proposed whole (total = every quote), truly missing inputs still skipped with their reason'); }
 /* the Ad layout card is compact (2026-10-31): old default sizes take the new one, a too-short card grows, others stay */
 // the ad card is mostly its preview: its height follows the ad's shape at the card's width
 assert.deepEqual([NODE_DEFS.ad.defaultW, NODE_DEFS.ad.defaultH], [360, adCardHeight(360, 4 / 5)], 'the default fits a 4:5 ad');
