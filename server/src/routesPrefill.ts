@@ -232,9 +232,9 @@ async function priceFor(app: FastifyInstance, t: ToolDef, form: Record<string, s
   } catch { return null; }
 }
 
-const ACTIONS = ['recreate', 'turn-to-video', 'send-to', 'director', 'upscale', 'relight', 'translate', 'change-voice', 'reshoot', 'camera', 'photo-fx', 'edit-image', 'finish'] as const;
+const ACTIONS = ['recreate', 'turn-to-video', 'send-to', 'director', 'upscale', 'relight', 'translate', 'change-voice', 'reshoot', 'camera', 'photo-fx', 'edit-image', 'finish', 'vector'] as const;
 /** Menu shortcuts → send-to <tool> (upscale picks video or image upscale by media). */
-const SHORTCUT: Record<string, (k: Kind) => string> = { upscale: (k) => (k === 'image' ? 'image-upscale' : 'upscale'), relight: () => 'app-relight', translate: () => 'app-translate-video', 'change-voice': () => 'app-change-voice', reshoot: () => 'reshoot', camera: () => 'camera', 'photo-fx': () => 'photo-fx', 'edit-image': () => 'create-image', finish: () => 'finish' /* Finish (2026-10-27): a video result into the one-click looks */ };
+const SHORTCUT: Record<string, (k: Kind) => string> = { upscale: (k) => (k === 'image' ? 'image-upscale' : 'upscale'), relight: () => 'app-relight', translate: () => 'app-translate-video', 'change-voice': () => 'app-change-voice', reshoot: () => 'reshoot', camera: () => 'camera', 'photo-fx': () => 'photo-fx', 'edit-image': () => 'create-image', vector: () => 'app-image-vector' /* Image to vector (2026-11-03): "Make it a vector" on an image result */, finish: () => 'finish' /* Finish (2026-10-27): a video result into the one-click looks */ };
 /** Turn to video (action turn-to-video): Generate Video; its model is that tool's default provider (cloud-first routing picks the route at submit; licence settings never change it). */
 const VIDEO_TOOL = 'h3-video';
 

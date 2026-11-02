@@ -83,6 +83,7 @@ export const TOOL_TAGLINE: Record<string, string> = {
   'app-phone-photo': 'An everyday phone photo of a made-up person',
   'app-ad-pack': 'Finished ads from one product photo',
   'app-image-layers': 'Split a photo into separate transparent layers',
+  'app-image-vector': 'Turn a picture into an editable SVG',
   // Video
   'h3-video': 'Video with sound, from text or an image',
   'h3-extend': 'Continue a clip from its last frame',

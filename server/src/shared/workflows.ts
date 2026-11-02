@@ -160,6 +160,13 @@ const DECLS: Decl[] = [
     prompt: { mode: 'optional', placeholder: 'Name the layers to pull out (optional)', composer: 'plain' }, modes: { default: 'edit', whenSlot: null }, fixedNote: 'Transparent PNG layers',
     output: { aspect: 'follow-photo', resolution: 'model', count: 'model' }, surface: null, generateLabel: 'Split into layers',
     source: { kind: 'official', author: 'Comfy Org', url: `${TPL}api_bytedance_seedream_5_0_layer_separation.json`, licence: 'MIT (Comfy-Org/workflow_templates)', note: 'Seedream 5.0 layer separation' } },
+  // Image to vector (SVG) (2026-11-03): VTracer on this computer (free) or Ideogram Vector 1 on Comfy Cloud; one SVG out, no prompt.
+  { id: 'image-vector', icon: 'vector', category: 'edit', runner: app('app-image-vector'), status: 'ready',
+    slots: [slot('image', 'Picture', true, 'A PNG, JPG or WebP: logos, icons and flat art trace best', 'Add a picture')], groups: [{ id: 'style', label: 'Style', icon: 'vector', summary: ['style'] }],
+    controls: [{ field: 'style', label: 'Style', kind: 'segmented', group: 'style' }],
+    prompt: { mode: 'hidden', placeholder: '', composer: 'plain' }, modes: { default: 'edit', whenSlot: null }, fixedNote: 'Editable SVG',
+    output: { aspect: 'follow-photo', resolution: 'follow-photo', count: 1 }, surface: null, generateLabel: 'Make it a vector',
+    source: { kind: 'ours', author: 'visioncortex VTracer (MIT) · Ideogram Vector 1 (official Comfy template)', url: 'https://github.com/visioncortex/vtracer', licence: 'MIT', note: 'VTracer runs from our code: no ComfyUI graph' } },
   // Camera & Lens (surface 'rig'): plain Create Image (prompt, refs, aspect…) plus the Camera group; the rig fields go to create-image as today.
   { id: 'camera-lens', icon: 'camera', category: 'camera', runner: app('create-image'), status: 'ready',
     slots: [], groups: [{ id: 'camera', label: 'Camera', icon: 'camera', summary: ['focal', 'aperture', 'film', 'lighting', 'era'] }],

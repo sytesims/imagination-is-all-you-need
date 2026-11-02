@@ -293,6 +293,9 @@ export const MODELS: Record<string, ModelDef> = Object.fromEntries([
   m('bria-increase-resolution', 'Bria Increase Resolution', 'Bria', 'image', false, P, 'fal-bria-upscale', { sourceUrl: 'https://fal.ai/models/bria/increase-resolution' }),
   m('bria-genfill', 'Bria GenFill', 'Bria', 'image', false, P, 'fal-bria-genfill', { note: 'Fills a painted mask from a prompt (Brush Edit).', sourceUrl: 'https://fal.ai/models/fal-ai/bria/genfill' }),
   // photo tools (2026-10-23, tools/imageFalApps.ts): fal-only models, one workflow each
+  // Image to vector (SVG) (2026-11-03, shared/imageVector.ts)
+  m('vtracer', 'VTracer', 'VTracer', 'image', true, 'mit', 'local-vtracer', { note: 'Raster-to-vector tracer (visioncortex) run by the app through @neplex/vectorizer: no ComfyUI.', sourceUrl: 'https://github.com/visioncortex/vtracer' }),
+  m('ideogram-vector-1', 'Ideogram Vector 1', 'Ideogram', 'image', false, P, 'cloud-ideogram-vector', { note: 'IdeogramVectorImageToSVGApi partner node on Comfy Cloud (Image to vector).', sourceUrl: 'https://docs.comfy.org/built-in-nodes/IdeogramVectorImageToSVGApi' }),
   m('bria-rmbg-2.0', 'Bria RMBG 2.0', 'Bria', 'image', false, P, 'fal-bria-rmbg', { note: 'Background removal (Remove Background).', sourceUrl: 'https://fal.ai/models/fal-ai/bria/background/remove' }),
   m('ideogram-remove-background', 'Ideogram Remove Background', 'Ideogram', 'image', false, P, 'fal-ideogram-rmbg', { note: 'Background removal (Remove Background).', sourceUrl: 'https://fal.ai/models/fal-ai/ideogram/remove-background' }),
   m('bria-expand', 'Bria Expand', 'Bria', 'image', false, P, 'fal-bria-expand', { note: 'Outpainting to a new shape (Expand).', sourceUrl: 'https://fal.ai/models/fal-ai/bria/expand' }),
@@ -363,6 +366,7 @@ export const ENGINE_MODEL: Record<string, string | Record<string, string>> = {
   'comfy-seedvr2-image': 'seedvr2-3b-image', 'comfy-zimage-upscale': 'z-image-turbo-2k-upscaler', 'comfy-nomos2': '4x-nomos2',
   'fal-topaz-bloom': 'topaz-bloom-2', 'fal-bria-upscale': 'bria-increase-resolution', 'fal-bria-genfill': 'bria-genfill',
   'api-seedream-layers-flash': 'seedream-5.0-flash-layers', 'api-seedream-layers-pro': 'seedream-5.0-pro-layers', 'comfy-qwen-image-layered': 'qwen-image-layered', // Image to layers (2026-10-24)
+  'local-vtracer': 'vtracer', 'cloud-ideogram-vector': 'ideogram-vector-1', // Image to vector (2026-11-03)
   'fal-bria-rmbg': 'bria-rmbg-2.0', 'fal-ideogram-rmbg': 'ideogram-remove-background', 'fal-bria-expand': 'bria-expand', 'fal-ideogram-reframe': 'ideogram-3-reframe', 'fal-bria-eraser': 'bria-eraser', 'fal-object-removal': 'fal-object-removal', 'fal-fashn-tryon': 'fashn-tryon-1.6',
   'cloud-minimax-music': 'minimax-music-3', 'api-sonilo-music': 'sonilo-music', 'api-sonilo-v2m': 'sonilo-video-to-music', 'api-seed-audio': 'seed-audio', 'comfy-acestep': 'ace-step-1.5', 'comfy-yue2': 'yue2', 'comfy-minimax-music3': 'minimax-music-3' /* one card: Local + Comfy Cloud (2026-10-27) */,
   'comfy-stable-audio': 'stable-audio-open-1.0', 'comfy-mmaudio': 'mmaudio', 'api-eleven-sfx': 'elevenlabs-sound-effects', 'api-eleven-tts': 'elevenlabs-v4', 'api-eleven-v3': 'elevenlabs-v3', 'api-eleven-v4-turbo': 'elevenlabs-v4-turbo', 'direct-minimax-speech': 'minimax-speech-2.8-hd', 'direct-minimax-speech-turbo': 'minimax-speech-2.8-turbo', 'direct-minimax-image': 'minimax-image-01',

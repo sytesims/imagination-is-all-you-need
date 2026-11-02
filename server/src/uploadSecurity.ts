@@ -6,6 +6,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { spawn } from 'node:child_process';
+import { VECTOR_FILE_RE } from './shared/imageVector.js';
+import { DATA_DIR } from './config.js';
 
 type Kind = 'image' | 'video' | 'audio';
 export const acceptKind = (accept = ''): Kind | null => /audio\//.test(accept) ? 'audio' : /video\//.test(accept) ? 'video' : /image\//.test(accept) ? 'image' : null;
@@ -23,6 +25,8 @@ export function uploadKind(field: string): Kind | null {
   if (/^(refs?|refImages|images?|imageOriginal|style|mask|frame|start|end|sourceImage|keyframes?|firstFrame|startFrame|lastFrame|endImage|colourRef|personA|personB|presenterImage|faces?|person|garment|characters?|photos|reference|location|poster|titleCard|endCard|endcard|still|products|cue\d{1,3}|overlay|foreground|background)$/.test(field)) return 'image';
   return null;
 }
+/** Image to vector results (<job>-out<n>.svg at the top of /files): served as image/svg+xml, still under the sandbox CSP (no script runs). */
+const isVectorOutput = (file: string) => { const f = String(file).split('?')[0]; const top = f.startsWith('/files/') ? f.slice(7) : path.dirname(path.resolve(f)) === path.resolve(DATA_DIR) ? path.basename(f) : null; return !!top && !top.includes('/') && VECTOR_FILE_RE.test(top); }; // the static route passes the file's path in the data folder, the onSend hook its URL
 const bad = (field: string, message = 'Unsupported or damaged media. Use a supported raster image, video or audio file.') => Object.assign(new Error(message), { statusCode: 400, code: 'upload_format', field });
 const routeFields: Record<string, RegExp> = {
   '/api/media': /^file$/, '/api/me/avatar': /^file$/, '/api/elements': /^image$/, '/api/elements/:id/images': /^image$/,
@@ -87,6 +91,7 @@ function signature(b: Buffer, ext: string): boolean {
 }
 export async function validateUpload(file: string, filename: string, mime: string, field: string, expected?: Kind | 'any') {
   const base = path.basename(filename); let ext = path.extname(base).slice(1).toLowerCase(); if (ext === 'jpeg') ext = 'jpg';
+  if (ext === 'svg') throw bad(field, 'That file is already a vector (SVG). Pick a PNG, JPG or WebP picture.'); // Image to vector: a plain reason, not "damaged media"
   const fmt = formats[ext]; const kind = expected ?? uploadKind(field);
   if (!fmt || !kind || (kind !== 'any' && fmt.kind !== kind) || (ext === 'mjpeg' && field !== 'streams')) throw bad(field);
   const aliases: Record<string, string[]> = { wav: ['audio/x-wav', 'audio/wave'], mp3: ['audio/mp3'], m4v: ['video/mp4'], aac: ['audio/x-aac'], flac: ['audio/x-flac'], ogg: ['application/ogg'] };
@@ -213,7 +218,7 @@ export function registerUploadSecurity(app: FastifyInstance, tempRoot = os.tmpdi
 export function mediaResponseHeaders(res: { setHeader(name: string, value: string): unknown }, file: string) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'; media-src 'self'; img-src 'self' data:; style-src 'unsafe-inline'");
-  if (!/\.(png|jpe?g|webp|mp4|mov|webm|m4v|wav|mp3|m4a|aac|ogg|flac|glb|vtt|srt)$/i.test(file) && !/\/brand-[^/]*\.(svg|gif)$/i.test(file) && !/\/brand-fonts\/[\w-]+\/[^/]+\.(ttf|otf|woff2?)$/i.test(file)) {
+  if (!/\.(png|jpe?g|webp|mp4|mov|webm|m4v|wav|mp3|m4a|aac|ogg|flac|glb|vtt|srt)$/i.test(file) && !/\/brand-[^/]*\.(svg|gif)$/i.test(file) && !isVectorOutput(file) && !/\/brand-fonts\/[\w-]+\/[^/]+\.(ttf|otf|woff2?)$/i.test(file)) {
     res.setHeader('Content-Type', 'application/octet-stream'); res.setHeader('Content-Disposition', 'attachment');
   }
 }

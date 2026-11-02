@@ -34,7 +34,8 @@ import './imageFalModels.js'; // fal image pass (2026-10-22): fal edit routes on
 import './imageFalApps.js'; // photo tools (2026-10-23): Remove Background, Expand, Erase Object, Virtual Try-On on fal
 import { assemblePrompt } from '../shared/modePrompt.js';
 import { LTX_DFR } from '../shared/ltxDfr.js';
-import './imageLayerApps.js'; // Image to layers (2026-10-24): Seedream 5.0 layer separation (Comfy Router), Qwen-Image-Layered listed for Local
+import './imageLayerApps.js';
+import './imageVectorApps.js'; // Image to vector (SVG) (2026-11-03): VTracer on this computer (free), Ideogram Vector 1 on Comfy Cloud // Image to layers (2026-10-24): Seedream 5.0 layer separation (Comfy Router), Qwen-Image-Layered listed for Local
 import { LYRICS_MAX } from '../shared/audioWorkflows.js';
 
 /**

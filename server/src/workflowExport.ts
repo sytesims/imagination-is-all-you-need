@@ -27,6 +27,7 @@ import { getProvider } from './providers.js';
 import { jobModelFields } from './routing/modelRegistry.js';
 import { PLACE_LABELS, RUN_ON_LABELS, type RunOn } from './shared/modelIds.js';
 import { isApiNode } from './apiNodes.js';
+import { VECTOR_LOCAL, VTRACER_SETTINGS, vectorStyleOf, vectorStyleLabel } from './shared/imageVector.js';
 
 export const GRAPHS_DIR = path.join(DATA_DIR, 'workflow-graphs');
 const graphFile = (jobId: string) => path.join(GRAPHS_DIR, `${jobId.replace(/[^\w-]/g, '')}.json`);
@@ -141,6 +142,9 @@ export async function buildWorkflowExport(job: Job): Promise<WorkflowExport & { 
   };
   if (job.status !== 'done') return { ...base, reason: 'The workflow is ready once the result is.', headline: 'Not finished yet', graphs: [] };
 
+  // Image to vector on this computer (2026-11-03): VTracer runs from the app's own code, not ComfyUI. Say so, with the settings it used.
+  if (job.provider === VECTOR_LOCAL) { const st = vectorStyleOf(job.input?.style); const v = VTRACER_SETTINGS[st];
+    return { ...base, reason: `VTracer ran on your computer from the app’s own code, so there is no ComfyUI workflow to open. Style ${vectorStyleLabel(st)}: colour precision ${v.colorPrecision}, gradient step ${v.layerDifference}, filter speckle ${v.filterSpeckle}, corner threshold ${v.cornerThreshold}°, segment length ${v.lengthThreshold}, splice threshold ${v.spliceThreshold}° (VTracer’s own names).`, headline: 'No ComfyUI workflow: VTracer on your computer', graphs: [] }; }
   // 1. What the runner sent.
   const st = storedGraphs(job.id);
   if (st?.passes.length && (st.route ?? '') === route) {

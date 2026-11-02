@@ -238,6 +238,7 @@ export async function runNative(job: Job, transport?: ComfyTransport, build: (j:
     if (alphaWebm) await remuxAlphaWebm(f.file, plan.muxSourceAudio && job.input.hasAudio !== false ? job.input.videoPath : null, dest);
     else if (isVid && plan.muxSourceAudio && job.input.videoPath && job.input.hasAudio !== false) await remuxAudio(f.file, job.input.videoPath, dest);
     else if (isVid && plan.outKind === 'video' && job.input.keepAudio === false) await remuxAudio(f.file, f.file, dest, false);
+    else if (/\.svg$/i.test(f.file)) await (await import('../vectorTrace.js')).copySanitizedSvg(f.file, dest); // Image to vector: a partner node's SVG is kept sanitized (no script, no external links)
     else if (isOpaqueImage(job, f.file)) await flattenAlpha(f.file, dest); // Item 11: photo outputs are stored fully opaque (alpha 255)
     else if (f.file !== dest) await copyFile(f.file, dest);
     job.outputs.push({ label: job.input.draft ? `${f.label} (draft 480p)` : f.label, url: `/files/${path.basename(dest)}` });

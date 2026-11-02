@@ -21,13 +21,12 @@ Served live on `GET /api/models/:id` → `attribution {status, lines[], required
 |---|---|---|---|
 | Kling 3.0 Omni Edit (hosted) (`router-kling-edit`) | unverified (not fully verified) | — | proprietary → unverified |
 | Seedance 2.5 Edit (hosted) (`router-seedance-25-edit`) | unverified (not fully verified) | — | proprietary → unverified |
-| Seedance (hosted) (`router-seedance`) | unverified (not fully verified) | — | proprietary → unverified |
 | Open weights (ComfyUI workflow) (`comfy-open`) | none | — | apache-2.0 → none, ltx-2-community → none, gemma → none, mit → none |
 | H3 Character Swap LoRA v1.5 (`comfy-h3-charswap`) | required | Powered by MiniMax H3 (encouraged; requires “MiniMax H3”) | minimax-community-akatz-charswap → required |
 | Wan Animate 2 · Comfy Cloud (`cloud-wan-animate2`) | none | — | apache-2.0 → none |
+| Seedance (hosted) (`router-seedance`) | unverified (not fully verified) | — | proprietary → unverified |
 | MiniMax H3 Style Transfer (`comfy-h3-restyle`) | required (not fully verified) | Powered by MiniMax H3 (encouraged; requires “MiniMax H3”) | minimax-community → required, alissonerdx-unspecified → unverified |
 | MiniMax H3 VFX Edit (`comfy-h3-vfx`) | required (not fully verified) | Powered by MiniMax H3 (encouraged; requires “MiniMax H3”) | minimax-community → required, alissonerdx-unspecified → unverified |
-| Veo (hosted) (`router-veo`) | unverified (not fully verified) | — | proprietary → unverified |
 | Open weights · Wan Fun Camera (fallback) (`comfy-funcamera`) | none | — | apache-2.0 → none |
 | LTX-2 19B re-shoot · Comfy Cloud workflow (`cloud-reshoot`) | none | — | ltx-2-community → none |
 | New angle · H3 CrossView · cloud (`cloud-h3-crossview`) | required | Powered by MiniMax H3 (encouraged; requires “MiniMax H3”) | minimax-community → required |
@@ -91,6 +90,7 @@ Served live on `GET /api/models/:id` → `attribution {status, lines[], required
 | MOSS-Image Base (`comfy-moss-image-base`) | none | — | apache-2.0 → none |
 | MiniMax H3 (`comfy-h3`) | required | Powered by MiniMax H3 (encouraged; requires “MiniMax H3”) | minimax-community → required |
 | Wan 2.2 5B (`comfy-wan22-5b`) | none | — | apache-2.0 → none |
+| Veo (hosted) (`router-veo`) | unverified (not fully verified) | — | proprietary → unverified |
 | Kling (hosted) (`router-kling`) | unverified (not fully verified) | — | proprietary → unverified |
 | Wan 3.0 (hosted) (`router-wan3`) | unverified (not fully verified) | — | proprietary → unverified |
 | MiniMax H3 · Comfy Cloud (`cloud-h3`) | required | Powered by MiniMax H3 (encouraged; requires “MiniMax H3”) | minimax-community → required |
@@ -194,6 +194,8 @@ Served live on `GET /api/models/:id` → `attribution {status, lines[], required
 | ByteDance Seedream 5.0 Flash · layers (hosted) (`api-seedream-layers-flash`) | unverified (not fully verified) | — | proprietary → unverified |
 | ByteDance Seedream 5.0 Pro · layers (hosted) (`api-seedream-layers-pro`) | unverified (not fully verified) | — | proprietary → unverified |
 | Qwen-Image-Layered (`comfy-qwen-image-layered`) | none | — | apache-2.0 → none |
+| VTracer (`local-vtracer`) | none | — | mit → none |
+| Ideogram Vector 1 · Comfy Cloud (`cloud-ideogram-vector`) | unverified (not fully verified) | — | proprietary → unverified |
 
 ## Components (not model cards)
 
@@ -276,6 +278,10 @@ Parts of a tool that carry their own licence (also on `/licenses` and in LICENSE
 | app-image-layers | ag-psd 31.0.3 (Download PSD: writes the layered .psd in the browser) | MIT | — | https://github.com/Agamnentzar/ag-psd/blob/master/LICENSE |
 | app-image-layers | pako 2.1.0 (zlib for ag-psd) | MIT AND Zlib | — | https://github.com/nodeca/pako/blob/master/LICENSE |
 | app-image-layers | base64-js 1.5.1 (used by ag-psd) | MIT | — | https://github.com/beatgammit/base64-js/blob/master/LICENSE |
+| app-image-vector | VTracer (visioncortex; traces on your computer) | MIT | — | https://github.com/visioncortex/vtracer/blob/master/LICENSE |
+| app-image-vector | @neplex/vectorizer 0.1.0 (Node binding of VTracer, prebuilt binaries) | MIT | — | https://github.com/neplextech/vectorizer/blob/main/LICENSE |
+| app-image-vector | Official Comfy template api_ideogram_vector_1_image_to_svg (Comfy-Org/workflow_templates) | MIT | — | https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_ideogram_vector_1_image_to_svg.json |
+| app-image-vector | Ideogram Vector 1 (hosted, Comfy partner node) | Ideogram API terms | — | https://ideogram.ai/legal/api-tos |
 | soul | Z-Image-Turbo (Tongyi-MAI) | Apache-2.0 | — | https://huggingface.co/Tongyi-MAI/Z-Image-Turbo |
 | soul | Qwen-Image-2512 | Apache-2.0 | — | https://huggingface.co/Qwen/Qwen-Image-2512 |
 | soul | Qwen-Image-Edit-2511 | Apache-2.0 | — | https://huggingface.co/Qwen/Qwen-Image-Edit-2511 |

@@ -1,3 +1,4 @@
+import { isVectorUrl } from '../../../server/src/shared/imageVector';
 import { recreateHref, toolHandoffHref, withSearch } from '../shared/workflowLinks';
 import type { JobState, ToolInfo } from '../api';
 import { navigate } from './router';
@@ -6,7 +7,7 @@ export type Medium = 'image' | 'video' | 'audio';
 const MEDIA_RX: [Medium, RegExp][] = [['image', /\.(png|jpe?g|webp|gif|avif)(\?|$)/i], ['video', /\.(mp4|webm|mov|m4v)(\?|$)/i], ['audio', /\.(m4a|wav|mp3|ogg|flac|aac|opus)(\?|$)/i]];
 /** What an output is: the server's `kind`, else its file extension, else the tool's own medium. */
 export function outputMedium(job: JobState, tools: ToolInfo[] = [], out = 0): Medium | null {
-  const o: any = job.outputs[out] ?? job.outputs[0]; const k = o?.kind; if (k === 'image' || k === 'video' || k === 'audio') return k;
+  const o: any = job.outputs[out] ?? job.outputs[0]; if (isVectorUrl(o?.url ?? job.resultUrl)) return null; /* an SVG (Image to vector): no model here takes SVG, so no Send to / Use as reference; Download PNG makes a picture of it */ const k = o?.kind; if (k === 'image' || k === 'video' || k === 'audio') return k;
   const url = o?.url ?? job.resultUrl ?? ''; const hit = MEDIA_RX.find(([, rx]) => rx.test(url)); if (hit) return hit[0];
   return tools.find(t => t.id === job.toolId)?.media ?? null;
 }

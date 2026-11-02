@@ -49,6 +49,7 @@ export const IMAGE_DEFAULTS: Record<ImageFeatureId, WorkflowDefaults> = {
   'try-on': { local: null, hosted: cloudModel('try-on'), why: { hosted: 'Made for trying on clothes' } },
   'phone-photo': { local: 'comfy-klein4b', hosted: cloudModel('phone-photo'), why: { local: 'Free on your computer', hosted: 'Most true-to-life people at a low price' } },
   'material-swap': { local: 'comfy-qwen21', hosted: cloudModel('material-swap'), why: { local: 'Free two-photo edit locally', hosted: 'Keeps the object and the scene while the material changes' } },
+  'image-vector': { local: 'local-vtracer', hosted: null, why: { local: 'Free on your computer, no setup: Ideogram Vector on Comfy Cloud is one pick away' } }, // VTracer needs no ComfyUI and no key: the default everywhere (no hosted default, so a cloud key never takes over)
   'image-layers': { local: 'comfy-qwen-image-layered', hosted: cloudModel('image-layers'), why: { local: 'Free layers locally once its files are downloaded', hosted: 'Fast, low-cost layer splits' } },
 };
 

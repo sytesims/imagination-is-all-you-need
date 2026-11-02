@@ -56,6 +56,8 @@ Checked on 2026-10-16 against the Hugging Face API licence tags and the upstream
 | comfyui_controlnet_aux (DWPose, Canny) | https://github.com/Fannovel16/comfyui_controlnet_aux | ✅ Apache-2.0 |
 | ComfyUI-SeedVR2_VideoUpscaler | https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler | ✅ Apache-2.0 |
 | ComfyUI-Frame-Interpolation (RIFE VFI) | https://github.com/Fannovel16/ComfyUI-Frame-Interpolation | ✅ MIT |
+| VTracer (visioncortex), Image to vector (SVG) on your computer: run by the app's own code through the npm package @neplex/vectorizer 0.1.0 (prebuilt binaries); no ComfyUI graph | https://github.com/visioncortex/vtracer · https://github.com/neplextech/vectorizer | ✅ MIT (both) |
+| Ideogram Vector 1, Image to vector (SVG) on Comfy Cloud: partner node IdeogramVectorImageToSVGApi, graph from the official template api_ideogram_vector_1_image_to_svg | https://docs.comfy.org/built-in-nodes/IdeogramVectorImageToSVGApi · https://github.com/Comfy-Org/workflow_templates | hosted model under Ideogram's API terms · template ✅ MIT |
 
 No InsightFace anywhere.
 
