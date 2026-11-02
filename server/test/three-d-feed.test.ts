@@ -89,9 +89,9 @@ ok('start view off-front; aria labels; page behind the viewer inert');
   assert.match(studio, /optPrice=\{optPrice\}/, 'the 3D bar passes option prices to the shared group panels');
   assert.match(studio, /useVariantQuotes\(/, 'option prices come from the shared variant quotes (= Generate once picked)');
   assert.match(web('ui/next/WorkflowBar.tsx'), /<OptPrice text=\{optPrice\(c\.field, o\.value\)\}/, 'the shared panel shows the shared OptPrice');
-  assert.match(studio, /const priceFirst = !!inputMissing && !gate && !unpricedWhy && !blockWhy && credits != null/, 'the price shows before required inputs are added in every generation mode');
+  /* Generate area option A (2026-11-02): Generate always shows the price; why it can't run is the shared reason line above it */
+  assert.match(studio, /<GenStatus r=\{gr\} \/><button ref=\{genRef\}[^]*?<span className="t3-pt"><GenPrice compact testId="t3-price"/, 'the price shows before required inputs are added in every generation mode; the reason line sits above Generate');
   assert.match(studio, /const inputMissing = textMode \? .*multiMode \? .*Add one more view/, 'price-first readiness covers text, multiview and image inputs');
-  assert.match(studio, /priceFirst \? <><GenPrice/, 'missing-input price and next step use the existing button column, so neither clips');
   assert.match(studio, /const isSoon = wf\.status === 'soon'/, 'a coming-soon link is guarded');
   for (const w of T.THREE_D_WORKFLOWS.filter((x) => x.status === 'soon')) assert.match(studio, new RegExp(`'?${w.id}'?: \\{ line: `), `${w.name} points to what works today`);
   assert.match(studio, /noModel = isTT \|\| isPS \|\| isSoon/, 'no Image to 3D controls on a coming-soon workflow');

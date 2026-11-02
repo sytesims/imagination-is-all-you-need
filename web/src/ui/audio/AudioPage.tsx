@@ -36,12 +36,11 @@ import { lyricsPlan, autoLength, lengthFor, recreateAudio, tooShortFor, lengthTe
 import { EnhanceButton, enhanceToastTitle, type EnhanceResult } from '../next/Enhance';
 import { PromptPeek, type PeekForm } from '../next/PromptPeek';
 import { BrandChip } from '../../shared/BrandChip';
-import { PF_SHORT, DockGenerate } from '../../shared/DockGenerate';
+import { DockGenerate } from '../../shared/DockGenerate';
 import type { PreflightProblem } from '../../../../server/src/shared/preflight';
 import { preflightProblems, localOnlyGate, LOCAL_SETUP_TEXT } from '../../../../server/src/shared/preflight';
 import { tip } from '../../shared/Tooltip';
 import { MakerTile } from '../../shared/MakerTile';
-import { setupNeeded, NoPlaceGenerate } from '../../shared/SetupCard';
 import { useGenState, GenHint } from '../edge/Edge';
 import { nudgeMissing } from '../../shared/genNudge';
 import { ChipGlyph } from '../../shared/SettingChip';
@@ -294,8 +293,7 @@ export default function AudioPage(p: AudioPageProps) {
   const maxChars = mode === 'voiceover' && Number(caps?.maxChars) > 0 ? Number(caps.maxChars) : 0; /* a model that reads a shorter script in one go (Qwen3 TTS: 2,000) */
   if (maxChars && p.prompt.trim().length > maxChars) missing.push(`Shorten the script to ${maxChars.toLocaleString('en-US')} characters`);
   missing.push(...p.checks.map(c => /^checking/.test(c) ? 'Checking your files…' : 'A file can’t be used'));
-  const setupGen = setupNeeded(tm, q, cur?.id) && !missing.length;
-  const noPlace = !setupGen && !q && !!cur && 'defaultRoute' in (cur as any) && (cur as any).defaultRoute == null;
+  const noPlace = !q && !!cur && 'defaultRoute' in (cur as any) && (cur as any).defaultRoute == null;
   type Note = PreflightNote;
   const notes: Note[] = [];
   const nChecks = p.checks.length; const checkLine = (c: string) => { const t = c.replace(/^usable files \((.*)\)$/, '$1'); return t[0].toUpperCase() + t.slice(1); };
@@ -318,8 +316,8 @@ export default function AudioPage(p: AudioPageProps) {
   useEffect(() => { if (pfOpen && !notes.length) setPfOpen(false); });
   const pf0 = preflightProblems({ freeLocal: hasFreeLocal(p.tool.id), quote: q, modelName })[0];
   const genWord0 = qFull ? 'Queue full' : missing.length ? missing[0].replace(/ or an? [\w ]+$/, '') /* "Add a clip or an audio file" → "Add a clip" (the list says both) */ : qLang ? 'Pick another language'
-    : localGate ? LOCAL_SETUP_TEXT : gate ? (q?.setup?.action === 'add_key' && q.setup.actionText ? String(q.setup.actionText) : (q?.keyOwner || q?.noProvider?.keyOwner) ? addKeyText(q) : pf0 ? PF_SHORT.needs_key(pf0) : 'Add a key first')
-    : unpriced ? (pf0 ? PF_SHORT.price_unavailable(pf0) : 'Price unavailable') : blockWhy ? (pf0 && PF_SHORT[pf0.code] ? PF_SHORT[pf0.code](pf0) : firstWords(blockWhy)) : blocking ? 'See what to fix' : '';
+    : localGate ? LOCAL_SETUP_TEXT : gate ? (q?.setup?.action === 'add_key' && q.setup.actionText ? String(q.setup.actionText) : (q?.keyOwner || q?.noProvider?.keyOwner) ? addKeyText(q) : pf0 ? pf0.message : 'Add a key first')
+    : unpriced ? 'Price unavailable' : blockWhy ? (pf0 ? pf0.message : firstWords(blockWhy)) : blocking ? 'See what to fix' : '';
   const eta = !genWord0 ? etaText(q) : ''; /* the tooltip's "Takes about …" */
   const genTitle = qFull ? gq.block : blockWhy ? blockWhy : localGate ? 'Runs free on your computer once ComfyUI is set up' : gate ? 'Needs a provider key' : missing.length ? missing.join(' · ') : unpricedWhy ? `${unpricedPrefix(q)}${unpricedWhy}`
     : [priceTitle(q, bill, { demo: isDemo, free: isFree, credits: !unpriced && !blockWhy ? credits : null }), q?.perUnit ? `${rateText(q.perUnit)} (${q.perUnitNote ?? q.perUnit.unitLabel}; this run: ${q.upTo ? 'up to ' : ''}${q.perUnit.quantityLabel}).` : '', q?.upTo && q.upToNote ? String(q.upToNote) : '', eta ? `Takes about ${eta.slice(1)}.` : '', wf.id === 'translate' ? 'Runs on your computer.' : ''].filter(Boolean).join(' ') || undefined;
@@ -439,9 +437,8 @@ export default function AudioPage(p: AudioPageProps) {
           <PromptPeek form={peekForm} place={ro.sub ? `${ro.main} (${ro.sub})` : ro.main} photos={[]} watch={dock} />
         </div>
       </div>
-      {noPlace ? <NoPlaceGenerate testId="ap-generate" priceTestId="ap-price" />
-        : <DockGenerate toolId={p.tool.id} engine={cur?.id ?? ''} quote={q} label="Generate" busy={p.busy} disabled={qFull} problems={dgProblems} missing={genWord0 || null} priceWhenMissing={!qFull && missing.length > 0 /* the price shows like Image's and 3D's (audit P3) */} pfOpen={pfOpen} genRef={genRef} onClick={generate}
-            testId="ap-generate" priceTestId="ap-price" workflowId={wf.id} className={gate || blockWhy || unpriced ? 'gen-off' : ''} /* shared/DockGenerate.tsx: Image's and Video's button, size, price token and states */ />}
+      <DockGenerate toolId={p.tool.id} engine={cur?.id ?? ''} quote={q} label="Generate" busy={p.busy} disabled={qFull} problems={dgProblems} missing={genWord0 || null} noPlace={noPlace} onDetails={() => setPfOpen(true)} pfOpen={pfOpen} genRef={genRef} onClick={generate}
+            testId="ap-generate" priceTestId="ap-price" workflowId={wf.id} className={gate || blockWhy || unpriced ? 'gen-off' : ''} /* shared/DockGenerate.tsx: Image's and Video's button, size, price token and states */ />
       </div></div>
       <PreflightNotes open={pfOpen} notes={notes} anchor={genRef} dock={dock} onClose={() => setPfOpen(false)} testId="ap-notes" />
       <BarPopover open={pop === 'add' && addOpts.length > 0} anchor={aR.add} avoid={dock} watch={dock} placement="top" gap={8} onClose={closePop} label="Add to your audio" role="menu" testId="ap-add-menu" width={260}><PopSection label="Add"><PopList label="Add" role="group">{addOpts.map(o => <PopRow key={o.id} role="menuitem" testId={o.testId} label={o.label} hint={(o.id === 'sample' ? slotOf('voiceAudio') : o.id === 'video' ? slotOf('video') : slotOf('audio'))?.hint} onClick={() => { closePop(); openPicker(o); }} />)}</PopList></PopSection></BarPopover>

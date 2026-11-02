@@ -5,7 +5,8 @@ import { EtaLine } from './EtaLine';
 import { GenHint } from '../ui/edge/Edge';
 import { RoutePicker, ViaLine, openNeedsKey } from '../ui/routing/Routes';
 import { RunOnField } from '../ui/routing/RunOn';
-import { SetupGenerate, SetupStatus, setupNeeded } from './SetupCard';
+import { SetupStatus, setupNeeded } from './SetupCard';
+import { GenStatus, useGenReason } from './GenStatus';
 import { useDownloadIntent } from './hardware';
 import { useToolModels, modelOfEngine, runOnLabel, runOnOfRoute, enginesModels, setActiveModel, shownName } from './models';
 import { orderModels, qualityPickOf, modelStatus, tierChipsOf, fallbackNoteOf, withQuoteDefaults, type Defaults } from './defaults';
@@ -49,9 +50,11 @@ export default function GenerateBar({ demo, quote, extra, rows, hideGpu, keyGate
   const locked = (fn: () => unknown) => () => { if (clickLock.current || inFlight) return; clickLock.current = true; setClicking(true);
     Promise.resolve().then(fn).catch(() => 0).finally(() => { clickLock.current = false; setClicking(false); }); };
   const busy = clicking || inFlight;
-  /* nothing ready (or the chosen place needs setup) → Generate becomes the next setup step (SetupGenerate) */
+  /* nothing ready (or the chosen place needs setup) → the reason line above Generate says the step (shared GenStatus) */
   const dlIntent = useDownloadIntent(cardProvider ?? provider); const setupM = toolId ? modelOfEngine(toolId, cardProvider ?? provider, modelName) : undefined;
   const needSetup = setupNeeded(setupM, quote, cardProvider ?? provider, dlIntent) && !hold;
+  /* a place to set up: the shared reason line above Generate says it (its own lines below cover keys, local off and blocked routes) */
+  const gr = useGenReason({ toolId: toolId ?? '', engine: cardProvider ?? provider, quote }); const setupR = needSetup && toolId ? gr : null;
   const kg = (!!keyGate || isKeyGate(quote)) && !needSetup; // B15 PB c1e28ff: a missing key is never a charge
   /* B19: any runnable:false quote blocks here too (callers that pass only an unpriced reason), in the server's words; local_off is a 'turn it on' state. */
   if (!priceUnavailable && !kg && !needSetup && quote?.runnable === false && !(quote?.missingInput && missing.length) /* B20: a missing input the caller already lists */) priceUnavailable = runBlock(quote); const localOff = !kg && quote?.runnable === false && isLocalOff(quote);
@@ -98,7 +101,7 @@ export default function GenerateBar({ demo, quote, extra, rows, hideGpu, keyGate
     </div>; })()}
     {soloM && (soloPlaces.size > 1 || soloMs.length > 1) && <div className="gb-runon"><RunOnField toolId={toolId!} model={soloM} engine={soloE} quote={quote} testId="ws-run-on" avoid={panelRef} /></div>}
     {!needSetup && quote?.runnable !== false && isFit(quote?.fit) && <FitNote fit={quoteFitOf(quote)} onUseCloud={id => { if (setProvider && providers.some(x => x.id === id)) setProvider(id); }} className="gb-fit" /> /* Batch 28: the picked local route on this computer, when it runs */}
-    <SetupStatus model={setupM} engine={cardProvider ?? provider} quote={quote} className="gb-setup-status" plain={plain} /> {/* setup is on Generate (SetupGenerate); only the quiet download-chosen line sits here */}
+    <SetupStatus model={setupM} engine={cardProvider ?? provider} quote={quote} className="gb-setup-status" plain={plain} /> {/* setup is the reason line above Generate (GenStatus); only the quiet download-chosen line sits here */}
     {(fbNote || (curSt.keyCue && !needSetup)) && <div className="gb-defaults">{fbNote && <p className="helper default-fb" role="note" data-testid="default-fallback">{fbNote}</p>}{curSt.keyCue && !needSetup && <button type="button" className="link-btn gb-key-cue" data-testid="model-key-cue" title={curSt.note ?? undefined} onClick={() => openNeedsKey({ error: curSt.note ?? undefined, modelId: provider }, provider)}>{curSt.keyCue}</button>}</div>}
     {providers.length > 1 && setProvider && <>
       <label className={`field ${cardPicker ? 'sr-only-vis' : ''}`} htmlFor="provider">PROVIDER</label>
@@ -123,9 +126,10 @@ export default function GenerateBar({ demo, quote, extra, rows, hideGpu, keyGate
     {free && setUseFree && !(hidePrice && !useFree) && !rows && <label className="row helper"><input type="checkbox" checked={useFree} disabled={!free.left} onChange={e => setUseFree(e.target.checked)} /> Use free gens (Free gens: {free.left} remaining · up to {free.maxRes})</label>}
     <RouteNotRunnable issues={issues} /><IssueList issues={allIss.filter((i: any) => i?.code !== 'route_not_runnable' && i?.code !== 'idempotency_conflict' && !(isQ(i) && !hideQuality))} />
     {!rows && draftable && <DraftToggle on={draftOn} onChange={(v: boolean) => { if (!subBusy) setDraftOn(v); }} hint={hidePrice ? 'Quick 480p preview. Upscale or render the one you like.' : 'Quick 480p preview at about 30% of the cost.'} />}
+    <GenStatus r={setupR} className="gb-status" />
     <div className="row gen-row mt-16">
       {hold ? <GenerateButton label={label} ready={false} missing={[hold]} price={null} why={hold} onClick={() => {}} />
-      : needSetup && toolId ? <SetupGenerate toolId={toolId} model={setupM} engine={cardProvider ?? provider} quote={quote} /> /* Generate is the next setup step; its popover lists every place */
+      : setupR ? <GenerateButton label={label} ready={false} missing={[]} price={null} why={setupR.reason} onClick={() => {}} /> /* the reason line above says the step */
       : kg ? <GenerateButton label={label} ready={false} missing={[]} price={null} why="Add a provider key to run this model." onClick={() => {}} /> : <GenerateButton why={localOff && blocking.length === 1 ? String(quote?.reasonText || 'Use local ComfyUI is off in Settings.') /* B20: short, not the note again */ : blockedPrice(quote) != null ? String(quote.blockedReason) : null} calls={calls} label={useDraft ? `${label} draft` : label} ready={blocking.length === 0} soft={blocking.length > 0 && !priceUnavailable && !localOff && blockedPrice(quote) == null} missing={blocking} busy={busy} free={useFree || (hidePrice && !quotePending && !priceUnavailable && !localOff && !!quote) /* a quote that runs locally: 'Generate · Free' */} quote={quote} demoQ={quote?.demo === true && !priceUnavailable && !localOff && blockedPrice(quote) == null ? quote : null} price={quote?.demo === true ? null : blockedPrice(quote) != null ? blockedPrice(quote) /* B19: input block: real price, muted (Generate is off) */ : hidePrice || priceUnavailable || quote?.chargeable === false ? null : useDraft ? (draftSec ?? Math.max(5, Math.round(estSec * 0.3))) : estSec > 0 ? estSec : null} onClick={locked(guard(useDraft ? onDraft! : onGenerate))} />}<GenHint toolId={toolId} />
       {onDraft && !draftable && !imageOut && <button className="btn" disabled={kg || blocking.length > 0 || busy || subBusy} aria-busy={busy || subBusy} onClick={locked(guard(onDraft))} title="Quick 480p preview. Make the final version later with the same settings.">Draft 480p{estSec > 0 && !kg && <span className="cost cost-soft">{runPrice({ own: ownAccountsNow(), credits: draftSec ?? Math.max(5, Math.round(estSec * 0.3)), runOn: placeOfQuote(quote) })}</span>}</button>}
       {kg && <KeyNeeded q={quote} toolId={toolId} />}{hold ? <span className="helper gen-missing" data-testid="gen-hold" role="status">{hold}</span> : localOff && blocking.length === 1 ? <LocalOffNote q={quote} /> : !needSetup && (!kg || blocking.length > 0) && <span className={`helper ${blocking.length ? 'gen-missing' : ''}${blocking.length > 0 && !(priceUnavailable && (blocking.length === 1 || plainBlk)) ? ' sr-only' : ''}`} id={blocking.length ? `gb-why-${toolId ?? 'tool'}` : undefined} data-testid={blocking.length ? 'gen-missing' : undefined} title={localOff && blocking.length === 1 ? String(reasonWords(quote) ?? LOCAL_OFF_TEXT) : blocking.length ? (priceUnavailable && (blocking.length === 1 || plainBlk) ? (plainBlk ? priceUnavailable : `Price unavailable: ${priceUnavailable}`) : fmtMissing(blocking)) : undefined}>{quotePending && !blocking.length ? <span className="gb-price-ph shimmer" data-testid="gen-price-pending" aria-label="Checking the price" /> : priceUnavailable && (blocking.length === 1 || plainBlk) ? (plainBlk ? priceUnavailable : `Price unavailable: ${priceUnavailable}`) : blocking.length ? fmtMissing(blocking) : hidePrice ? LOCAL_FREE_HEADLINE : demoLine ? '' : priceLine ? priceLine : estSec > 0 && !hideGpu ? `≈ ${fmtSec(estSec)} GPU time${backend === 'mock' ? ' · mock backend runs in ~8s' : ''}` : ''}</span>}
