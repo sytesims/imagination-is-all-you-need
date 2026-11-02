@@ -12,19 +12,38 @@
   <a href="https://iiayn.app"><img alt="Website: iiayn.app" src="https://img.shields.io/badge/website-iiayn.app-F7F7F8?style=flat-square&labelColor=1C1E20"></a>
 </p>
 
-<!-- DEMO VIDEO: add the link to the new demo post on X here once it is posted (the old film link is gone). -->
+<!-- Demo video: replace DEMO_VIDEO_URL on the next line with the link to the demo. -->
+**Watch the demo (under 2 minutes):** DEMO_VIDEO_URL
+
+<p align="center"><img src="docs/screenshots/explore.webp" alt="The Explore page: a short film, runs from your computer and the cloud, each with its model and price" width="900"></p>
+
+## Why it's new
+
+- **You pick where each run happens, and see the real price before you press Generate.** One **Run on** control on every run: **your computer** (free, on your own ComfyUI), **Comfy Cloud** (the same open workflow on Comfy's GPUs) or **Comfy Router** (partner models such as Kling, Veo and MiniMax H3). The button shows the price for that place before anything starts.
+- **A Canvas where Claude drafts with whole ComfyUI workflows.** Every card on the board is a complete workflow. Claude, over MCP, lays out the board and prices each card, and nothing runs until you press **Go**. A finished card opens the exact graph it ran in ComfyUI.
+- **Block a shot in 3D, and LTX films it.** In **Direct a Shot** you place actors and a camera move in simple 3D in your browser and record a free grey mockup. LTX-2.5 22B with Lightricks' Layout to Render IC-LoRA turns it into a real shot with sound, keeping your framing and camera path. Free on your computer, or on Comfy Cloud.
+
+## Try it in 5 minutes, no GPU
+
+Install with the one line below. You don't need a GPU, a key or an account for this tour, and nothing is charged.
+
+1. **Open the Examples project.** It holds real results made in the app, each with its model, where it ran and its price.
+2. **Press View workflow** on a result. You see the ComfyUI graph behind it: the nodes, the model and the settings.
+3. **Press Open in ComfyUI.** The same graph opens in your own ComfyUI, ready to run or change.
+4. **Open the Canvas and pick a starter** in the AI panel, such as **Product ad**. The board builds itself, card by card, and stops at a priced proposal. Nothing runs until you press Go.
+
+Want to see it run? Connect your ComfyUI or a Comfy key in **Settings → Connections**.
 
 <table align="center">
   <tr>
-    <td width="50%"><img src="site/public/media/hero-whale-800.jpg" alt="A glass whale floating over desert dunes, a video still"><br><sub>A glass whale over the dunes · LTX-2.5 Pro</sub></td>
-    <td width="50%"><img src="site/public/media/spread-tortoise-960.webp" alt="A colossal mossy tortoise carrying a village of wooden huts through a misty pine valley"><br><sub>A village on a tortoise's back · GPT Image 2.5 Flare</sub></td>
+    <td width="50%"><img src="docs/screenshots/image-run-on.webp" alt="The Image tab with the Run on menu open, showing your computer, Comfy Cloud and Comfy Router with a price for each"><br><sub>Run on: pick the place, see the price</sub></td>
+    <td width="50%"><img src="docs/screenshots/canvas.webp" alt="A Canvas board with workflow cards and a priced proposal waiting for Go"><br><sub>Canvas: a priced plan that waits for Go</sub></td>
   </tr>
   <tr>
-    <td width="50%"><img src="site/public/media/video-fox.webp" alt="A boy and a fox in a golden meadow, a video still"><br><sub>A boy and a fox, with its own sound · LTX-2.5 22B, free on your computer</sub></td>
-    <td width="50%"><img src="site/public/media/3d-mossbun.webp" alt="Mossbun, a small mossy rabbit character, as a 3D model"><br><sub>Mossbun, one picture turned into a 3D model · Tripo 3.1</sub></td>
+    <td width="50%"><img src="docs/screenshots/workflows.webp" alt="The Workflows tab listing ready-made workflows by goal"><br><sub>Workflows: every way to start, in one place</sub></td>
+    <td width="50%"><img src="docs/screenshots/direct-a-shot.webp" alt="Direct a Shot: actors and a camera placed in a simple 3D scene"><br><sub>Direct a Shot: block it in 3D, then film it</sub></td>
   </tr>
 </table>
-<p align="center"><sub>Every picture above was made in the app.</sub></p>
 
 ## Install in one line
 
@@ -73,6 +92,18 @@ Other ports and advanced setups: [Install and run](docs/INSTALL.md) · [Configur
 
 Ready to use today: **69 ready-made workflows** (19 image · 38 video · 8 audio · 4 3D), including the **24 one-click apps**, plus **8 step-by-step chains**. The Workflows tab lists every one of them. Open the bundled **Examples project** to see results and how each was made; **Recreate** loads the workflow and settings, and never starts a paid run on its own.
 
+<table align="center">
+  <tr>
+    <td width="50%"><img src="site/public/media/hero-whale-800.jpg" alt="A glass whale floating over desert dunes, a video still"><br><sub>A glass whale over the dunes · LTX-2.5 Pro</sub></td>
+    <td width="50%"><img src="site/public/media/spread-tortoise-960.webp" alt="A colossal mossy tortoise carrying a village of wooden huts through a misty pine valley"><br><sub>A village on a tortoise's back · GPT Image 2.5 Flare</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="site/public/media/video-fox.webp" alt="A boy and a fox in a golden meadow, a video still"><br><sub>A boy and a fox, with its own sound · LTX-2.5 22B, free on your computer</sub></td>
+    <td width="50%"><img src="site/public/media/3d-mossbun.webp" alt="Mossbun, a small mossy rabbit character, as a 3D model"><br><sub>Mossbun, one picture turned into a 3D model · Tripo 3.1</sub></td>
+  </tr>
+</table>
+<p align="center"><sub>Every picture above was made in the app.</sub></p>
+
 ## Canvas: think in ideas, run in Comfy
 
 On the Canvas each card is a whole workflow. Connect cards and a result flows into the next one: a portrait, then a character sheet of the same person, then a shot.
@@ -118,12 +149,14 @@ Labels: **Tested** = used for real generation. **Installs in CI** = the one-line
 
 Local generation uses your own ComfyUI, its model files and nodes. A model that runs in the cloud may still need more memory than your computer has. Reports from other hardware are welcome. More: [local models and hardware](docs/LOCAL-MODELS-AND-HARDWARE.md) · [models and providers](docs/PROVIDERS-AND-MODELS.md).
 
-## Made with Comfy
+## How it's built
 
 - **Three routes, one key:** your own ComfyUI, Comfy Cloud and Comfy Router, with a single Comfy key for both cloud routes. Setup: [Comfy Cloud](docs/COMFY-CLOUD-SETUP.md).
 - **Official templates first:** 30 official Comfy templates bundled (in [`workflows/templates/`](workflows/templates)), over 120 credited with their source and licence. Community workflows come next, then our own.
 - **Partner models** inside Comfy: LTX-2.5 Pro and Fast, Tripo 3.1, Topaz and more in Cloud graphs; GPT Image, Nano Banana, Seedance, Kling, Veo and MiniMax H3 through Comfy Router.
 - **Real runs, not mock-ups:** the results on the app's Explore page come from real runs on your computer, Comfy Cloud and Comfy Router, each with its model and price.
+
+- **Every graph is in the repo:** the ComfyUI API graphs the app runs are in [`workflows/`](workflows), the Comfy Cloud ones in [`workflows/cloud/`](workflows/cloud/README.md).
 
 Workflow sources and licences: [workflows/README.md](workflows/README.md) · [workflows/LICENSES.md](workflows/LICENSES.md).
 
@@ -143,7 +176,6 @@ It grows with ComfyUI. Today you can bring your own ComfyUI workflow (**Your wor
 - **Add a model:** LoRAs and fine-tunes from one Civitai or Hugging Face link, ready in the tools that can use them.
 - More official Comfy templates as one-click workflows.
 - Pika H3 Flex with reference pictures.
-- Comfy Cloud runs through the official Comfy SDK.
 
 ## Yours to keep, yours to change
 
