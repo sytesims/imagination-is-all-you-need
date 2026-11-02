@@ -6,6 +6,7 @@ import { progressOf } from './progress.js';
 import { getPreview, putPreview } from './comfy/preview.js';
 import { featureOfJob, imageFeaturesPayload, IMAGE_FEATURES } from './shared/imageFeatures.js';
 import { imageWorkflowsPayload, validateImageWorkflows } from './shared/workflows.js';
+import { IMAGE_RECIPES } from './shared/pluginPlacement.js';
 import { audioWorkflowsPayload, validateAudioWorkflows } from './shared/audioWorkflows.js';
 import { audioDefaultsOf } from './shared/audioDefaults.js';
 import { workflowModelCheck } from './workflowCompat.js';
@@ -332,7 +333,9 @@ app.get('/api/image-features', async () => ({ features: imageFeaturesPayload(), 
  *  everyone until the tool registry changes, so it is cache-friendly: ETag + a short max-age; If-None-Match answers 304. */
 { const wfErrs = validateImageWorkflows(getTool as any); if (wfErrs.length) console.error(`[image-workflows] ${wfErrs.length} recipe problem(s):\n  ${wfErrs.join('\n  ')}`); }
 app.get('/api/image-workflows', async (req, reply) => {
-  const body = JSON.stringify(withWorkflowDefaults(imageWorkflowsPayload(getTool as any, workflowModelCheck(getTool)), getTool)); const etag = `"${createHash('sha1').update(body).digest('base64url').slice(0, 20)}"`;
+  /* + the Image-tab plugins (a workflow you added, an add-on folder): the same recipe shape, so the bar runs them like the built-ins (shared/pluginPlacement.ts) */
+  const pl = imageWorkflowsPayload(getTool as any, workflowModelCheck(getTool));
+  const body = JSON.stringify(withWorkflowDefaults({ ...pl, workflows: [...pl.workflows, ...IMAGE_RECIPES] as typeof pl.workflows }, getTool)); const etag = `"${createHash('sha1').update(body).digest('base64url').slice(0, 20)}"`;
   reply.header('cache-control', 'public, max-age=60, stale-while-revalidate=600').header('etag', etag);
   if (req.headers['if-none-match'] === etag) return reply.code(304).send();
   return reply.type('application/json; charset=utf-8').send(body);
