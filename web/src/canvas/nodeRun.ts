@@ -7,7 +7,7 @@ import { catalogNow } from './catalog';
 import { cardState, makerOf, missingOf, modelNameOf } from './cardState';
 import { GEN_TYPE } from './nodeTypes';
 import { promptInto, waitingInputsOf } from './graph';
-import { runOrder, type Upstream } from './nodeLogic';
+import { runInOrder, type OrderedRun, type RunDeps, type Upstream } from './nodeLogic';
 import { submitCard } from './genRun';
 import { batchOf } from './cardModel';
 import { timesQuote } from '../../../server/src/shared/swatchBatch';
@@ -40,24 +40,13 @@ export async function submitNode(editor: Editor, id: TLShapeId): Promise<string>
 
 /** The cards a card still waits on, with their state (for runOrder). */
 const waitsOf = (editor: Editor) => (id: string): Upstream[] => waitingInputsOf(editor, id as TLShapeId).map(w => ({ id: w.id, name: w.name, status: String((editor.getShape(w.id)?.props as any)?.status ?? '') }));
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
-export interface OrderedRun { jobIds: string[]; failed: { cardId: string; error: string }[]; /** start by themselves once the cards before them are done */ later: string[] }
-/** Run several cards (Go on a proposal, a group's Run all) in graph order (2026-10-28): cards with nothing to wait for start now; a card fed
- *  by another card in the same run starts when that card has its result, so a clip gets its first frame instead of running without it.
- *  `stop` ends the immediate loop on an error nothing after may ignore (a budget). `onLater` hears how each waiting card went. */
-export async function submitInOrder(editor: Editor, ids: string[], o: { stop?: (e: Error) => boolean; onLater?: (id: string, r: { jobId?: string; error?: string }) => void; timeoutMs?: number } = {}): Promise<OrderedRun> {
-  const w = waitsOf(editor); const plan = runOrder(ids, w); const out: OrderedRun = { jobIds: [], failed: [], later: [] };
-  for (const b of plan.blocked) out.failed.push({ cardId: b.id, error: `Waits for ${b.name}, which isn’t running. Generate it first.` });
-  for (const id of plan.now) { try { out.jobIds.push(await submitNode(editor, id as TLShapeId)); } catch (e) { out.failed.push({ cardId: id, error: (e as Error).message }); if (o.stop?.(e as Error)) return out; } }
-  out.later = plan.later;
-  /* chains of any length (A → B → C): C waits on B while B waits on A; a card in this run that didn't start (or gave up) ends the wait after it */
-  const gaveUp = new Set(out.failed.map(f => f.cardId)); const later = (id: string, r: { jobId?: string; error?: string }) => { if (r.error) gaveUp.add(id); o.onLater?.(id, r); };
-  for (const id of plan.later) void (async () => { const end = Date.now() + (o.timeoutMs ?? 3_600_000);
-    while (Date.now() < end) { const up = w(id); if (!editor.getShape(id as TLShapeId)) return;
-      if (!up.length) { try { later(id, { jobId: await submitNode(editor, id as TLShapeId) }); } catch (e) { later(id, { error: (e as Error).message }); } return; }
-      const dead = up.find(u => (u.status !== 'running' && u.status !== 'draft') || gaveUp.has(u.id)); /* failed (a done card is an input, so it's no longer listed) */
-      if (dead || up.every(u => u.status === 'draft' && !ids.includes(u.id))) { later(id, { error: `${dead?.name ?? up[0].name} didn’t finish, so this card didn’t run.` }); return; }
-      await sleep(1500); }
-    later(id, { error: 'Waited too long for the card before it.' }); })();
-  return out;
+/** A card in a run that didn't start says so on itself (2026-11-02): the server's words (or why it waited) as a failed card, so a Go that
+ *  started only some cards never leaves one silently back as a draft. A card that is running (another click started it) is left alone. */
+export function markNotStarted(editor: Editor, id: string, error: string) {
+  const s = editor.getShape(id as TLShapeId); if (!s || s.type !== GEN_TYPE || (s.props as any).status === 'running') return;
+  editor.run(() => editor.updateShape({ id: s.id, type: GEN_TYPE, props: { status: 'failed', jobId: '', error: String(error || 'This card didn’t start.').slice(0, 400) } } as any), { history: 'ignore' });
 }
+export type { OrderedRun } from './nodeLogic';
+/** Run several cards in graph order on this board (nodeLogic.runInOrder): Go on a proposal, a group's Run all. */
+export const submitInOrder = (editor: Editor, ids: string[], o: Pick<RunDeps, 'stop' | 'onLater' | 'timeoutMs'> = {}): Promise<OrderedRun> =>
+  runInOrder(ids, { ...o, waits: waitsOf(editor), submit: id => submitNode(editor, id as TLShapeId), exists: id => !!editor.getShape(id as TLShapeId), notStarted: (id, e) => markNotStarted(editor, id, e) });

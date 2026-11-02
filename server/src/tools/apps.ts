@@ -1060,6 +1060,19 @@ export function appQuoteParams(t: ToolDef | undefined, q: Record<string, string>
     Object.assign(out, G.lockedFor(vals, { provider: out.provider || out.model || (t?.providers?.[0] as any)?.id || (t?.providers?.[0] as any), mode: m ?? '' })); } // Character Sheet: the layout's aspect on this model
   return out;
 }
+/** Quote = charge for token-billed models (GPT Image bills prompt text): the UTF-8 bytes of the prompt an app really sends, i.e. its recipe
+ *  text composed around the typed words, as parseInput does. The typed words are q.prompt when sent, else a typed prompt of q.promptBytes
+ *  (or the quote's usual short prompt, 500 bytes). undefined for an app with no recipe text (the plain prompt rule applies).
+ *  2026-11-02: the Character Sheet recipe (~1 KB) was priced as a 500-byte prompt, so the submit came out dearer (409 route_changed). */
+export function appQuotePromptBytes(t: ToolDef | undefined, q: Record<string, string | undefined>): number | undefined {
+  const a = t ? APP_GALLERY.find((x) => `app-${x.id}` === t.id) : undefined; if (!a || a.noPrompt || !(a.compose || a.promptTemplate?.includes('{prompt}'))) return undefined;
+  const typed = typeof q.prompt === 'string' && q.prompt.trim() ? appTypedPrompt(a.id, q.prompt) : null; const nb = Number(q.promptBytes);
+  const words = typed ?? 'x'.repeat(q.promptBytes != null && q.promptBytes !== '' && Number.isFinite(nb) && nb >= 0 ? Math.min(nb, 100_000) : 500);
+  const vals: Record<string, string> = Object.fromEntries((a.fields ?? []).map((f) => [f.name, String(q[f.name] ?? '') || (f.default ?? '')]));
+  const pv = q.provider || q.model || undefined; const has = (n: string) => !!q[n] && q[n] !== '0';
+  try { const s = a.compose ? a.compose(vals, { prompt: words, has, provider: pv, maxChars: providerPromptCap(pv) }) : a.promptTemplate!.replace('{prompt}', words);
+    return new TextEncoder().encode(s.replace(/\s+([:,.;])/g, '$1').trim()).length; } catch { return undefined; }
+}
 /**
  * The recipe text around the user's words, per app (2026-10-25, shared/typedPrompt.ts): compose a marker with and without each photo, for every
  * option of the app's first tile field (Character Sheet layouts, Product Shot scenes) and the other fields at their defaults. A template app
