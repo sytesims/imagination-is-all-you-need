@@ -27,6 +27,7 @@ import { TRANSLATE_DOC } from '../../shared/brand';
 import { useDockHeight, useChipFit } from '../../shared/dockFit';
 import { fitPri } from '../../shared/chipFit';
 import { usePromptGrow } from '../../shared/usePromptGrow';
+import { PROMPT_LINE, PROMPT_MIN, PROMPT_MAX } from '../../shared/presetBar';
 import { PreflightNotes, type PreflightNote } from '../../shared/PreflightNotes';
 import { CloseIcon, SparkleIcon, MicIcon, TranslateIcon, MusicIcon, PlayIcon, AudioIcon, VideoIcon } from '../Icons';
 import { PromptTabs, PromptField, PromptHelpers, PromptSwitch, type PromptTab, type HelperChip } from '../../shared/PromptTabs';
@@ -347,11 +348,13 @@ export default function AudioPage(p: AudioPageProps) {
   useDockHeight(dock, '.ap');
   /* shared with Image and Video: the prompt and the lyrics box grow 2 → 8 lines with their text, the bar upward */
   /* each tab's field re-fits the moment it shows (its text is the hook's trigger only while its tab is open; a hidden field isn't measured) */
-  const lyrRef = useRef<HTMLTextAreaElement>(null); usePromptGrow(p.promptRef, tab === 'style' ? p.prompt : '\u0000'); usePromptGrow(lyrRef, tab === 'lyrics' ? lyrics : '\u0000');
+  /* with a tab row (Style | Lyrics, Script) the field starts at one line, so the bar is as tall as Image's, Video's and 3D's: one bar, it never jumps between tabs */
+  const headed = wf.lyrics.mode !== 'hidden' || mode === 'voiceover'; const minH = headed ? PROMPT_LINE : PROMPT_MIN;
+  const lyrRef = useRef<HTMLTextAreaElement>(null); usePromptGrow(p.promptRef, tab === 'style' ? p.prompt : '\u0000', PROMPT_MAX, minH); usePromptGrow(lyrRef, tab === 'lyrics' ? lyrics : '\u0000', PROMPT_MAX, minH);
   const insStyle = useInsertAtCursor(p.promptRef, p.prompt, p.setPrompt); const insLyr = useInsertAtCursor(lyrRef, lyrics, setLyrics);
 
   /* ---- the prompt area (shared/PromptTabs): Style | Lyrics where the model sings; "Script" for a voiceover; the bare prompt otherwise ---- */
-  const musicLike = wf.lyrics.mode !== 'hidden'; const isScript = mode === 'voiceover';
+  const musicLike = wf.lyrics.mode !== 'hidden'; const isScript = mode === 'voiceover'; /* headed = musicLike || isScript */
   const ptTabs: PromptTab[] = musicLike ? [{ id: 'style', label: 'Style', icon: <MusicIcon size={14} /> }, ...(lyrOn ? [{ id: 'lyrics', label: 'Lyrics', icon: <LinesIcon />, disabled: instrumental,
       tip: instrumental ? 'Instrumental is on, so no lyrics are sent' : undefined,
       pill: instrumental ? null : lp.lines > 0 ? { text: `✓ ${lp.lines} line${lp.lines === 1 ? '' : 's'}`, tone: 'ok' as const } : lyrNeeded ? { text: 'needed', tone: 'need' as const } : null }] : [])]
@@ -361,7 +364,7 @@ export default function AudioPage(p: AudioPageProps) {
   const tagChips: HelperChip[] = [...vt.tags.filter(t => t.category === 'point').slice(0, 4), ...vt.tags.filter(t => t.category === 'style' || t.category === 'scoped').slice(0, 2), ...vt.tags.filter(t => t.category === 'pause').slice(0, 2)].map(t => ({ key: t.tag, label: <b>{t.tag.trim().replace('…', '')}</b>, ariaLabel: `Add ${t.label}`, testId: `ap-vtag-${t.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, tip: vt.style?.help ?? t.label, onPick: () => insertTag(p.promptRef.current, p.prompt, t.tag, p.setPrompt) }));
   const styleChips: HelperChip[] = musicLike ? STARTERS.filter(([k]) => !(k === 'voice' && instrumental)).map(([k, l]) => ({ key: k, label: l, testId: `ap-start-${k}`, tip: `Add “${k}: ” to the style`, onPick: () => insStyle(`${k}: `) })) : [];
   const lyrChips: HelperChip[] = SECTIONS.map(t => ({ key: t, label: <>+ <b>[{t}]</b></>, ariaLabel: `Add a [${t}] tag`, testId: `ap-tag-${t.toLowerCase()}`, onPick: () => insLyr(`[${t}]`, true) }));
-  const lyrMissing = lp.missing;
+  const helpChips = tab === 'lyrics' ? lyrChips : isScript ? tagChips : styleChips; const lyrMissing = lp.missing;
   const helpHint = tab === 'lyrics' ? (lyrMissing ? lyrNeedWhy : lenHint) : isScript ? (p.prompt.length ? `${p.prompt.length.toLocaleString()}/${(maxChars || SCRIPT_MAX).toLocaleString('en-US')}${maxChars && p.prompt.trim().length > maxChars ? ` · ${modelName || 'This model'} reads up to ${maxChars.toLocaleString('en-US')} at a time` : ''}` : '') : lenShort ? lenHint : ''; /* the how-to is the field's placeholder, never a line beside the chips */
   const helpWarn = tab === 'lyrics' ? lyrMissing || lenShort || al.cut && lenAuto : (lenShort && !isScript) || (isScript && !!maxChars && p.prompt.trim().length > maxChars);
   const chipsEl = useRef<HTMLDivElement>(null); const folded = useChipFit(chipsEl); const fo = (k: string) => folded.includes(k);
@@ -398,12 +401,13 @@ export default function AudioPage(p: AudioPageProps) {
           </div>
           {wf.prompt.mode === 'hidden' ? <p className="ic-noprompt" data-testid="ap-noprompt">No prompt needed: {wf.name} works from your {wf.oneOf?.length ? 'clip or audio file' : 'clip'}{voiceOn ? ' and the voice you pick' : ''}{langOn ? ' and language' : ''}.</p>
             : <PromptTabs tabs={ptTabs} active={tab} onTab={id => setTab(id as 'style' | 'lyrics')} testId="ap-pt" idBase="ap-pt"
+                helpers={helpChips.length ? <PromptHelpers chips={helpChips} testId="ap-help" /> : null}
                 aside={instAvail ? <PromptSwitch label="Instrumental" on={instrumental} onChange={setInstrumental} testId="ap-instrumental" tip={instrumental ? 'No vocals: lyrics are kept but not sent' : `${modelName || 'This model'} can make a track with no vocals`} /> : null}>
-              <PromptField ref={p.promptRef} hidden={tab !== 'style'} data-enter-submits="" id="app-prompt" data-testid="ap-prompt" boxTestId="ap-prompt-box" rows={2} aria-label={isScript ? 'Script' : musicLike ? 'Style' : 'Prompt'}
+              <PromptField ref={p.promptRef} hidden={tab !== 'style'} data-enter-submits="" id="app-prompt" data-testid="ap-prompt" boxTestId="ap-prompt-box" rows={headed ? 1 : 2} aria-label={isScript ? 'Script' : musicLike ? 'Style' : 'Prompt'}
                 maxLength={isScript ? SCRIPT_MAX : LIMITS.maxPrompt} placeholder={wf.prompt.placeholder} value={p.prompt} onChange={e => p.setPrompt(e.target.value)} />
-              {lyrOn && <PromptField ref={lyrRef} hidden={tab !== 'lyrics'} data-enter-submits="mod" id="ap-lyrics" data-testid="ap-lyrics" boxTestId="ap-lyrics-box" rows={2} aria-label="Lyrics" maxLength={LYRICS_MAX}
+              {lyrOn && <PromptField ref={lyrRef} hidden={tab !== 'lyrics'} data-enter-submits="mod" id="ap-lyrics" data-testid="ap-lyrics" boxTestId="ap-lyrics-box" rows={headed ? 1 : 2} aria-label="Lyrics" maxLength={LYRICS_MAX}
                 placeholder={wf.lyrics.placeholder} value={lyrics} onChange={e => setLyrics(e.target.value)} highlight={SECTION_TAG_HL} />}
-              <PromptHelpers chips={tab === 'lyrics' ? lyrChips : isScript ? tagChips : styleChips} hint={helpHint || null} tone={helpWarn ? 'warn' : null} testId="ap-help" />
+              <PromptHelpers chips={[]} hint={helpHint || null} tone={helpWarn ? 'warn' : null} testId="ap-note" />
             </PromptTabs>}
         </div>
         <SwitchNote note={swNote.note} testId="ap-switch-note" />

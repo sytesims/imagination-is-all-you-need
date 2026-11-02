@@ -44,9 +44,9 @@ function FeedCard({ job: j, k = 0, of = 1, ar, active, run, media, on, selecting
       onClick={e => { if (selecting) { if (!noPick) onTogglePick?.(); return; } onOpen(e); }}>
       {j.status === 'done' && media ? media : <FailureState job={j} variant="tile" testId={`${idPre}-fail-${j.id}`} /* the bean, a friendly title and what happened to the money; the full reason is in the viewer */ />}</button>}
     {k === 0 && !active && j.status !== 'done' && <span className="fs-tile-act"><FailActions job={j} max={1} compact skip={['details']} prefer="runLocal" /></span> /* the one fix; Run locally first when the server lists it (never automatic) */}
-    {badges}
-    {k === 0 && !active && (ex ? <span className="ic-tile-feat fd-ex-tag" data-testid={`${idPre}-example-${j.id}`} {...tip(`An example made by the app’s authors with ${ex.model ?? 'a local model'}. It cost you nothing.`)}>Example{ex.flow ? <i> · {ex.flow}</i> : null}</span>
-      : tag ? <span className="ic-tile-feat" data-testid={`${idPre}-feat-${j.id}`}>{tag}</span> : null)}
+    {((label) => badges && label ? <span className="fd-tl" /* the count badge ("13 layers") and the tag share one row: side by side, the tag ellipsised, never on top of each other */>{badges}{label}</span> : <>{badges}{label}</>)(
+      k === 0 && !active ? (ex ? <span className="ic-tile-feat fd-ex-tag" data-testid={`${idPre}-example-${j.id}`} {...tip(`An example made by the app’s authors with ${ex.model ?? 'a local model'}. It cost you nothing.`)}>Example{ex.flow ? <i> · {ex.flow}</i> : null}</span>
+      : tag ? <span className="ic-tile-feat" data-testid={`${idPre}-feat-${j.id}`}>{tag}</span> : null) : null)}
     {k === 0 && !active && !ex && (j as any).featured && <span className="fd-star" data-testid={`${idPre}-featured-${j.id}`} {...tip('Featured')}><svg aria-hidden width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.8z" /></svg></span>}
     {k === 0 && !active && ex && j.status === 'done' && <Link to={ex.recreateHref ?? recreateHref(j)!} className="fd-recreate" data-testid={`${idPre}-recreate-${j.id}`} {...tip('The same prompt and settings in the bar. Nothing runs until you press Generate')}><span aria-hidden>↻</span>Recreate</Link>}
     {children}

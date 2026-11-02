@@ -160,18 +160,26 @@ html body .ic.ic2 .ic-dock .ic-panel .ic-chiprow>.ic-folded.ic-folded{display:no
   html body .ic.ic2 .ic-dock .ic-chips[data-over] .ic-over,html body .ic.ic2 .ic-dock .ic-chips[data-row-over] .ic-over{display:inline-flex!important}
   /* 1. the group word goes: "Clean studio" (the chip's aria-label and tooltip keep "Scene: Clean studio") */
   html body .ic.ic2 .ic-dock .ic-chips[data-short] .wf-grp .wf-grp-l{display:none}
-  /* the model chip: one stable minimum (logo + a short name, --fit-model-min) and no hard cap: it takes the room the row has left
-   * (--fit-model-room, set by the fit), up to its full name, and truncates first. The fit measures it at that minimum (data-fit-measure),
-   * so switching models changes its text, never what folds. */
+  /* the model chip: a minimum (logo + a short name, --fit-model-min) and no hard cap: it takes the room the row has left
+   * (--fit-model-room, set by the fit), up to its full name. The fit measures it at its full name (data-fit-measure, --fit-model-need),
+   * so other chips compact and fold before the name is cut (2026-11-02). */
   html body .ic.ic2 .ic-dock{--fit-model-min:152px;--fit-model-max:340px}
-  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-model.ic-model{flex:none!important;min-width:var(--fit-model-min)!important;max-width:min(var(--fit-model-max),var(--fit-model-room,var(--fit-model-max)))!important}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-model.ic-model{flex:none!important;min-width:min(var(--fit-model-min),var(--fit-model-need,var(--fit-model-min)))!important;max-width:min(var(--fit-model-max),var(--fit-model-room,var(--fit-model-max)))!important}
   html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-model .ic-mname{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   html body .ic.ic2 .ic-dock .ic-panel .ic-chips .ic-chip.ic-model .ic-mpick{flex:0 1000 auto;min-width:0;overflow:hidden} /* "· Default" gives way before the name */
-  html body .ic.ic2 .ic-dock .ic-panel .ic-chips[data-fit-measure] .ic-chip.ic-model.ic-model{flex:0 0 var(--fit-model-min)!important;width:var(--fit-model-min)!important;max-width:none!important}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips[data-fit-measure] .ic-chip.ic-model.ic-model{--fit-w:min(var(--fit-model-need,var(--fit-model-min)),var(--fit-model-max));flex:0 0 var(--fit-w)!important;width:var(--fit-w)!important;max-width:none!important}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips[data-fit-natural] .ic-chip.ic-model.ic-model{flex:none!important;width:max-content!important;min-width:0!important;max-width:none!important} /* the full name's width, measured once per fit ("· Default" gives way, so it isn't counted) */
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips[data-fit-natural] .ic-chip.ic-model .ic-mpick{display:none!important}
+  html body .ic.ic2 .ic-dock .ic-panel .ic-chips[data-fit-measure][data-squeeze] .ic-chip.ic-model.ic-model{--fit-w:min(var(--fit-model-min),var(--fit-model-need,var(--fit-model-min)))} /* squeezed: back to the short minimum */
   html body .ic.ic2 .ic-dock .ic-panel .ic-chips[data-squeeze]{--fit-model-min:104px}
   html body .ic.ic2 .ic-dock .ic-panel .ic-chips[data-tight] .ic-chip.ic-model.ic-model{min-width:64px!important}
   /* 2. long labels truncate (their tooltips have them in full): a group's summary below, and an active Brand's name */
   html body .ic.ic2 .ic-dock .ic-chips[data-trunc] ~ .bk-chip .bk-chip-l{max-width:124px} /* the name only (no "Brand:" word since 2026-11-01): room for "Maison Aurelle" */
+  /* 6. the model's full name first (shared/dockFit): the active Brand shortens, then shows its logo only; then Run on says one word */
+  html body .ic.ic2 .ic-dock .ic-chiprow[data-bk-compact] .bk-chip .bk-chip-l{max-width:64px}
+  html body .ic.ic2 .ic-dock .ic-chiprow[data-bk-compact=icon] .bk-chip .bk-chip-l{display:none}
+  html body .ic.ic2 .ic-dock .ic-chiprow[data-bk-compact=icon] .ic-chip.bk-chip{padding-left:8px!important;padding-right:8px!important}
+  html body .ic.ic2 .ic-dock .ic-chiprow[data-ro-compact] .ro-chip .ro-full{display:none}
   /* …and a long group summary too ("Golden hour · Right · Soft · 70% · Warm"), so the workflow's main control stays on the bar */
   html body .ic.ic2 .ic-dock .ic-chips[data-trunc] .wf-grp b{max-width:170px;min-width:0;overflow:hidden;text-overflow:ellipsis}
   html body .ic.ic2 .ic-dock .ic-chips[data-trunc] .ic-chip.ic-model .ic-mpick{display:none} /* "· Default" / "· Your pick" moves to the tooltip */
@@ -186,6 +194,8 @@ html body .ic.ic2 .ic-dock .ic-panel .ic-chiprow>.ic-folded.ic-folded{display:no
   html body .ic.ic2 .ic-dock .ic-chips[data-folded=all] .wf-chip-x{flex:none}
   html body .ic.ic2 .ic-dock .ic-chips[data-folded=all] .wf-chip-picked>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 }
+html body .ro-chip .ro-tiny{display:none}
+@media (min-width:701px){html body .ic.ic2 .ic-dock .ic-chiprow[data-ro-compact] .ro-chip .ro-tiny{display:inline}}
 /* the ⋯ menu: one row per folded chip (its full label); notes that aren't controls read as plain lines */
 .apop .ic-over-pop{min-width:220px;max-width:320px}
 .apop .ic-over-pop .ic-opt b{font-weight:500;white-space:normal;text-align:left}

@@ -9,7 +9,7 @@
 import { testPort } from './_ports.js'; import assert from 'node:assert/strict'; import { spawn, execFileSync } from 'node:child_process'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path';
 const ok = (m: string) => console.log('ok ' + m);
 const ROOT = path.resolve(import.meta.dirname, '../..'); const PUB = path.join(ROOT, 'web/public'); const WEB = path.join(ROOT, 'web/src');
-const { FEATURED, FEATURED_VIDEO, FEATURED_STARTER_VIDEO, FEATURED_AUDIO, FEATURED_SEED_IDS, FEATURED_BIG_POSTER, STARTER, featuredRecreateHref, SAMPLE_CLIPS, SAMPLE_STILLS } = await import('../src/shared/featured.ts');
+const { FEATURED, FEATURED_VIDEO, FEATURED_STARTER_VIDEO, FEATURED_STARTER_VIDEO_LATE, FEATURED_AUDIO, FEATURED_SEED_IDS, FEATURED_BIG_POSTER, STARTER, featuredRecreateHref, SAMPLE_CLIPS, SAMPLE_STILLS } = await import('../src/shared/featured.ts');
 const { EXPLORE_ROWS, EXPLORE_CARDS, EXPLORE_HERO } = await import('../src/shared/exploreFlows.ts');
 const { featuredIdOf } = await import('../src/featuredSeed.ts');
 const { getTool } = await import('../src/tools/registry.ts');
@@ -31,7 +31,7 @@ for (const f of FEATURED) { file(f.out.url, maxOf(f.key)); if (f.tab === 'audio'
   for (const k of ['imageUrl', 'lastFrameUrl']) if (f.tab !== 'image' && typeof f.input[k] === 'string') { assert.match(String(f.input[k]), /\.(jpe?g|png)$/, `${f.key}.${k}: a JPG/PNG the bar accepts`); file(String(f.input[k])); }
   assert.ok(getTool(f.toolId), `${f.key}: ${f.toolId} is a real tool`); assert.ok(['local', 'comfy-cloud'].includes(f.runOn), `${f.key}: runOn`);
   if (f.runOn !== 'local') { assert.ok((f.costUsd ?? 0) > 0, `${f.key}: a cloud run names its real cost`); assert.match(f.route ?? '', /^comfy-(router|cloud):/, `${f.key}: its cloud route`); } }
-for (const f of [...FEATURED_STARTER_VIDEO, ...FEATURED_VIDEO, ...FEATURED_AUDIO]) { const p = file(f.out.url, maxOf(f.key)); const tags = execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format_tags', '-of', 'json', p]).toString();
+for (const f of [...FEATURED_STARTER_VIDEO, ...FEATURED_VIDEO, ...FEATURED_STARTER_VIDEO_LATE, ...FEATURED_AUDIO]) { const p = file(f.out.url, maxOf(f.key)); const tags = execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format_tags', '-of', 'json', p]).toString();
   assert.doesNotMatch(tags, /creation_time|location|com\.apple/i, `${f.key}: metadata stripped`); assert.equal(f.out.sound, true, `${f.key}: LTX-2.5 clips carry sound`); }
 { // the starter pack (user's picks, 2026-10-28): what each tab opens with; Explore-only entries stay for Explore but no tab lists them
   const keys = (t: string) => STARTER.filter((f) => f.tab === t || f.alsoOn?.includes(t as any)).map((f) => f.key);
@@ -456,7 +456,8 @@ try {
   const starterOf = (re: RegExp) => STARTER.filter((f) => re.test(f.out.url)).length;
   assert.equal(vid.total, starterOf(/\.mp4$/), 'every starter clip is in Examples (Explore-only ones are not)');
   for (const j of vid.items) { assert.equal(j.featured, false); assert.ok(j.example?.key, 'tagged as the app’s example'); assert.equal(j.isOwner, true, 'an ordinary result'); assert.equal(j.cost, 0, '$0'); assert.equal(j.projectId, proj.id); assert.equal(j.status, 'done'); }
-  assert.equal(vid.items[0].example.key, 'h3-fox-extend', 'newest first: the starter pack\u2019s new picks lead');
+  assert.equal(vid.items[0].example.key, 'ltx-storm-whale', 'newest first: a calm, made-up pick leads (2026-11-02)');
+  assert.ok(vid.items.findIndex((j: any) => j.example.key === 'h3-lift-ghost') >= vid.items.length - 2, 'the lift scare sits at the end of the Video examples');
   const img = await get(`/api/jobs?media=image&status=done&cursor=&project=${proj.id}`); assert.equal(img.total, starterOf(/\.webp$/), 'the Image examples too');
   const snd = await get(`/api/jobs?media=audio&status=done&cursor=&project=${proj.id}`); assert.equal(snd.total, 6, 'the Audio examples');
   for (const j of snd.items) { assert.ok(j.example?.key, 'tagged as an example'); assert.equal(j.isOwner, true); }

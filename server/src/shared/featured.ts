@@ -344,38 +344,6 @@ const MOSSBUN_MOCKUP_PROMPT = 'A real sunny coastal city, palm-lined avenue and 
 const I2V = (seed: number, duration: number, resolution: string, imageUrl: string) => ({ types: ['i2v'], mode: 'i2v', outKind: 'av-video', duration, resolution, aspect: '16:9', audio: true, quality: 'quality', bitrate: 'standard', seed, n: 1, imageUrl, refUrls: [imageUrl] });
 /** Video and Direct a Shot (3D) picks. */
 export const FEATURED_STARTER_VIDEO: FeaturedItem[] = [
-  /* Extend (job 3d6090c8, H3 Extend on Comfy Router, est. 138 credits = $0.65): +5 s from the exact last frame of a 5 s boy-and-fox clip, one 10.17 s take.
-     `before` (and the clip Recreate loads into Extend) is that first 5 s. */
-  { key: 'h3-fox-extend', tab: 'video', title: 'The fox comes closer, five seconds more', toolId: 'h3-extend', provider: 'comfy-h3-extend', modelKey: 'minimax-h3-extend', model: 'H3 Extend', flow: 'Extend',
-    prompt: FOX_EXTEND_PROMPT, input: { mode: 'extend', types: ['extend'], outKind: 'av-video', extendSeconds: 5, direction: 'forward', resolution: '768p', seed: 278642976, keepAudio: true, audio: true, audioOff: 'strip',
-      bitrate: 'standard', fit: 'pad', preset: '', target: '', mentions: [], duration: 5, sourceSeconds: 5.041667, width: 1024, height: 576, hasAudio: true, fps: 24, videoFormat: 'mp4',
-      videoUrl: ST('fox-extend-in.mp4'), refUrls: [], refBatches: [[]] },
-    out: stClip('fox-extend', 1024, 576, 10.17), before: { ...stClip('fox-extend-in', 1024, 576, 5.04), label: 'First 5 s' },
-    runOn: 'comfy-cloud', route: 'comfy-router:comfy-h3-extend', costUsd: 0.65, jobId: '3d6090c8' },
-  /* Lip Sync (job 3f3fa8b8, InfiniteTalk (Wan 2.1) on Comfy Cloud, est. 79 credits = $0.37): our AI presenter (in the app's own hoodie) speaks a 10.6 s
-     line. Recreate opens Video › Lip Sync with the portrait and the speech attached. */
-  { key: 'presenter-talk', tab: 'video', title: 'A presenter, talking to camera', toolId: 'voice', provider: 'cloud-infinitetalk', modelKey: 'infinitetalk-wan-2.1', model: 'InfiniteTalk (Wan 2.1)', flow: 'Lip Sync',
-    prompt: PRESENTER_PROMPT, input: { types: ['lipsync'], mode: 'lipsync', outKind: 'av-video', aspect: '1:1', resolution: '480p', duration: 10.6, width: 640, height: 640, fps: 25, n: 1,
-      imageUrl: ST('presenter-talk-in.jpg'), refUrls: [ST('presenter-talk-in.jpg')], speechUrl: ST('presenter-talk-speech.mp3') },
-    out: stClip('presenter-talk', 640, 640, 10.6), before: stFrame('presenter-talk-in', 1024, 1024, 'Portrait'),
-    runOn: 'comfy-cloud', route: 'comfy-cloud:cloud-infinitetalk', costUsd: 0.37, jobId: '3f3fa8b8', from: PRESENTER_RUNS, recreateHref: `${videoWorkflowHref('lip-sync')}&recreate=af93a883` },
-  /* Video Upscale (job 000435b6, Topaz Starlight Fast on Comfy Cloud, est. 157 credits = $0.74): a 480p MiniMax H3 take (job 11fb5eb1, Comfy Cloud,
-     est. $1.20) to 1918×1066, sound kept. Ships at 1920×1068; `before` is the 480p original (the clip Recreate loads). */
-  { key: 'bus-stop-sharp', tab: 'video', title: 'A snowy bus stop, made sharper', toolId: 'upscale', provider: 'cloud-topaz-starlight-fast', modelKey: 'topaz-starlight-fast', model: 'Topaz Starlight Fast', flow: 'Video Upscale',
-    prompt: '', input: { mode: 'upscale', types: ['precise'], typePrompt: 'faithful upscale', resolution: '1080p', maxOutput: '1080p', scale: 2, scene: 'auto', seed: 270862, keepAudio: true, fit: 'pad', mentions: [],
-      duration: 15.083333, width: 864, height: 480, hasAudio: true, fps: 24, videoFormat: 'mp4', videoUrl: ST('bus-stop-in.mp4'), refUrls: [], refBatches: [[]] },
-    out: stClip('bus-stop-sharp', 1920, 1068, 15.08), before: { ...stClip('bus-stop-in', 864, 480, 15.08), label: 'Original · 480p' },
-    runOn: 'comfy-cloud', route: 'comfy-cloud:cloud-topaz-starlight-fast', costUsd: 0.74, jobId: '000435b6', rendered: { width: 1918, height: 1066 },
-    from: [{ jobId: '11fb5eb1', model: 'MiniMax H3', place: 'Comfy Cloud', costUsd: 1.2, est: true }] },
-  /* Shots from three films, shipped as plain generations (not in Explore's Films row): MiniMax H3 image to video (job 66efae75, est. $0.48), MiniMax H3
-     text to video (job 415c2ab2, est. $1.20) and LTX-2.5 22B image to video on Comfy Cloud (job 9a79ed7a, est. $0.14). `before` is the start frame Recreate attaches. */
-  { key: 'h3-lift-ghost', tab: 'video', title: 'Something in the lift', toolId: 'h3-video', provider: 'comfy-h3', modelKey: 'minimax-h3', model: 'MiniMax H3', flow: 'Create Video',
-    prompt: LIFT_GHOST_PROMPT, input: I2V(1444537043, 6, '768p', ST('lift-ghost-in.jpg')),
-    out: stClip('lift-ghost', 1280, 714, 6.58), before: stFrame('lift-ghost-in', 1536, 864, 'Start frame'),
-    runOn: 'comfy-cloud', route: 'comfy-cloud:cloud-h3-wf', costUsd: 0.48, jobId: '66efae75', rendered: { width: 1376, height: 768 } },
-  { key: 'h3-hotel-lounge', tab: 'video', title: 'The counter-offer, a K-drama scene', toolId: 'h3-video', provider: 'comfy-h3', modelKey: 'minimax-h3', model: 'MiniMax H3', flow: 'Create Video',
-    prompt: HOTEL_LOUNGE_PROMPT, input: { types: ['t2v'], mode: 't2v', outKind: 'av-video', duration: 15, resolution: '480p', aspect: '16:9', audio: true, quality: 'quality', bitrate: 'high', seed: 744799, n: 1 },
-    out: stClip('hotel-lounge', 864, 480, 15.08), runOn: 'comfy-cloud', route: 'comfy-cloud:cloud-h3-wf', costUsd: 1.2, jobId: '415c2ab2' },
   { key: 'ltx-storm-whale', tab: 'video', title: 'Eye to eye with the whale', toolId: 'h3-video', provider: 'comfy-ltx25-video', modelKey: 'ltx-2.5-22b', model: 'LTX-2.5 22B', flow: 'Create Video',
     prompt: STORM_WHALE_PROMPT, input: { ...I2V(776205211, 5, '720p', ST('storm-whale-in.jpg')), steps: 11, frames: 121, fps: 24 },
     out: stClip('storm-whale', 1280, 704, 5.04), before: stFrame('storm-whale-in', 1536, 864, 'Start frame'),
@@ -388,6 +356,42 @@ export const FEATURED_STARTER_VIDEO: FeaturedItem[] = [
         plan: { width: 1280, height: 704, frames: 193, seconds: 8, fps: 24, aspect: '16:9', size: 'hd', tier: '720p' } } },
     out: stClip('mossbun-mockup-film', 1280, 720, 8.04), before: { ...stClip('mossbun-mockup-plan', 1280, 720, 8, false), label: 'Mockup · Open city' },
     runOn: 'comfy-cloud', route: 'comfy-cloud:cloud-ltx25-layout', costUsd: 0.28, jobId: '27fbd25c', from: MOSSBUN_CITY_RUNS.slice(0, 2), recreateHref: directHref('open-city', MOSSBUN_MOCKUP_PROMPT) },
+  /* Extend (job 3d6090c8, H3 Extend on Comfy Router, est. 138 credits = $0.65): +5 s from the exact last frame of a 5 s boy-and-fox clip, one 10.17 s take.
+     `before` (and the clip Recreate loads into Extend) is that first 5 s. */
+  { key: 'h3-fox-extend', tab: 'video', title: 'The fox comes closer, five seconds more', toolId: 'h3-extend', provider: 'comfy-h3-extend', modelKey: 'minimax-h3-extend', model: 'H3 Extend', flow: 'Extend',
+    prompt: FOX_EXTEND_PROMPT, input: { mode: 'extend', types: ['extend'], outKind: 'av-video', extendSeconds: 5, direction: 'forward', resolution: '768p', seed: 278642976, keepAudio: true, audio: true, audioOff: 'strip',
+      bitrate: 'standard', fit: 'pad', preset: '', target: '', mentions: [], duration: 5, sourceSeconds: 5.041667, width: 1024, height: 576, hasAudio: true, fps: 24, videoFormat: 'mp4',
+      videoUrl: ST('fox-extend-in.mp4'), refUrls: [], refBatches: [[]] },
+    out: stClip('fox-extend', 1024, 576, 10.17), before: { ...stClip('fox-extend-in', 1024, 576, 5.04), label: 'First 5 s' },
+    runOn: 'comfy-cloud', route: 'comfy-router:comfy-h3-extend', costUsd: 0.65, jobId: '3d6090c8' },
+  /* Video Upscale (job 000435b6, Topaz Starlight Fast on Comfy Cloud, est. 157 credits = $0.74): a 480p MiniMax H3 take (job 11fb5eb1, Comfy Cloud,
+     est. $1.20) to 1918×1066, sound kept. Ships at 1920×1068; `before` is the 480p original (the clip Recreate loads). */
+  { key: 'bus-stop-sharp', tab: 'video', title: 'A snowy bus stop, made sharper', toolId: 'upscale', provider: 'cloud-topaz-starlight-fast', modelKey: 'topaz-starlight-fast', model: 'Topaz Starlight Fast', flow: 'Video Upscale',
+    prompt: '', input: { mode: 'upscale', types: ['precise'], typePrompt: 'faithful upscale', resolution: '1080p', maxOutput: '1080p', scale: 2, scene: 'auto', seed: 270862, keepAudio: true, fit: 'pad', mentions: [],
+      duration: 15.083333, width: 864, height: 480, hasAudio: true, fps: 24, videoFormat: 'mp4', videoUrl: ST('bus-stop-in.mp4'), refUrls: [], refBatches: [[]] },
+    out: stClip('bus-stop-sharp', 1920, 1068, 15.08), before: { ...stClip('bus-stop-in', 864, 480, 15.08), label: 'Original · 480p' },
+    runOn: 'comfy-cloud', route: 'comfy-cloud:cloud-topaz-starlight-fast', costUsd: 0.74, jobId: '000435b6', rendered: { width: 1918, height: 1066 },
+    from: [{ jobId: '11fb5eb1', model: 'MiniMax H3', place: 'Comfy Cloud', costUsd: 1.2, est: true }] },
+  /* Lip Sync (job 3f3fa8b8, InfiniteTalk (Wan 2.1) on Comfy Cloud, est. 79 credits = $0.37): our AI presenter (in the app's own hoodie) speaks a 10.6 s
+     line. Recreate opens Video › Lip Sync with the portrait and the speech attached. */
+  { key: 'presenter-talk', tab: 'video', title: 'A presenter, talking to camera', toolId: 'voice', provider: 'cloud-infinitetalk', modelKey: 'infinitetalk-wan-2.1', model: 'InfiniteTalk (Wan 2.1)', flow: 'Lip Sync',
+    prompt: PRESENTER_PROMPT, input: { types: ['lipsync'], mode: 'lipsync', outKind: 'av-video', aspect: '1:1', resolution: '480p', duration: 10.6, width: 640, height: 640, fps: 25, n: 1,
+      imageUrl: ST('presenter-talk-in.jpg'), refUrls: [ST('presenter-talk-in.jpg')], speechUrl: ST('presenter-talk-speech.mp3') },
+    out: stClip('presenter-talk', 640, 640, 10.6), before: stFrame('presenter-talk-in', 1024, 1024, 'Portrait'),
+    runOn: 'comfy-cloud', route: 'comfy-cloud:cloud-infinitetalk', costUsd: 0.37, jobId: '3f3fa8b8', from: PRESENTER_RUNS, recreateHref: `${videoWorkflowHref('lip-sync')}&recreate=af93a883` }
+];
+/** Shown after every other Video example on a fresh install (2026-11-02): the K-drama scene and the lift scare stay, further down, so the
+ *  Video tab opens on calm, made-up scenes (the whale, Mossbun, the fox). */
+export const FEATURED_STARTER_VIDEO_LATE: FeaturedItem[] = [
+  /* Shots from three films, shipped as plain generations (not in Explore's Films row): MiniMax H3 image to video (job 66efae75, est. $0.48), MiniMax H3
+     text to video (job 415c2ab2, est. $1.20) and LTX-2.5 22B image to video on Comfy Cloud (job 9a79ed7a, est. $0.14). `before` is the start frame Recreate attaches. */
+  { key: 'h3-hotel-lounge', tab: 'video', title: 'The counter-offer, a K-drama scene', toolId: 'h3-video', provider: 'comfy-h3', modelKey: 'minimax-h3', model: 'MiniMax H3', flow: 'Create Video',
+    prompt: HOTEL_LOUNGE_PROMPT, input: { types: ['t2v'], mode: 't2v', outKind: 'av-video', duration: 15, resolution: '480p', aspect: '16:9', audio: true, quality: 'quality', bitrate: 'high', seed: 744799, n: 1 },
+    out: stClip('hotel-lounge', 864, 480, 15.08), runOn: 'comfy-cloud', route: 'comfy-cloud:cloud-h3-wf', costUsd: 1.2, jobId: '415c2ab2' },
+  { key: 'h3-lift-ghost', tab: 'video', title: 'Something in the lift', toolId: 'h3-video', provider: 'comfy-h3', modelKey: 'minimax-h3', model: 'MiniMax H3', flow: 'Create Video',
+    prompt: LIFT_GHOST_PROMPT, input: I2V(1444537043, 6, '768p', ST('lift-ghost-in.jpg')),
+    out: stClip('lift-ghost', 1280, 714, 6.58), before: stFrame('lift-ghost-in', 1536, 864, 'Start frame'),
+    runOn: 'comfy-cloud', route: 'comfy-cloud:cloud-h3-wf', costUsd: 0.48, jobId: '66efae75', rendered: { width: 1376, height: 768 } }
 ];
 /** Image picks: Create Image runs, free on our computer or on Comfy Router (billed). */
 const stImage = (key: string, title: string, jobId: string, provider: string, modelKey: string, model: string, prompt: string, settings: Record<string, unknown>, out: FeaturedMedia,
@@ -539,7 +543,7 @@ export const FEATURED_BIG_POSTER: Record<string, string> = { 'h3-glass-whale': S
   'ltx-pro-whale-glide': S('ltx-pro-whale-glide.webp'), 'ltx-pro-whale-dive': S('ltx-pro-whale-dive.webp'), 'ltx-mockup-film': S('ltx-mockup-film.webp'), 'h3-kdrama-script': S('h3-kdrama-script.jpg'),
   'mossbun-golden-hour': E3('mossbun-golden-hour.webp'), 'seedance-lighthouse': SD('lighthouse.webp'), 'seedance-fashion': SD('fashion.webp') };
 /** Every featured generation, video first (the starter pack's new picks lead their tab). Explore-only entries (starter: false) are in it too. */
-export const FEATURED: FeaturedItem[] = [...FEATURED_STARTER_VIDEO, ...FEATURED_VIDEO, ...FEATURED_AUDIO, ...FEATURED_LAYERS, ...FEATURED_SHOP, ...FEATURED_SHEETS, ...FEATURED_STARTER_IMAGE, ...FEATURED_IMAGE];
+export const FEATURED: FeaturedItem[] = [...FEATURED_STARTER_VIDEO, ...FEATURED_VIDEO, ...FEATURED_STARTER_VIDEO_LATE, ...FEATURED_AUDIO, ...FEATURED_LAYERS, ...FEATURED_SHOP, ...FEATURED_SHEETS, ...FEATURED_STARTER_IMAGE, ...FEATURED_IMAGE];
 /** The starter pack: what a fresh install's tabs open with (the seeded jobs marked Featured, tagged "Example", with Recreate). */
 export const STARTER: FeaturedItem[] = FEATURED.filter((f) => f.starter !== false);
 export const isStarter = (f: FeaturedItem) => f.starter !== false;

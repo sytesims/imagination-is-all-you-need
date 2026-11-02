@@ -436,7 +436,8 @@ function AccountCover({ cover }: { cover: ProfileData['cover'] | undefined }) {
   const grad = cover?.kind === 'gradient' ? cover.id : 'sunrise';
   return <span className={`am-cover pf2-cover-${grad}`} aria-hidden data-testid="hm-cover" data-cover={img ? 'image' : grad}>{img && <span className="am-cover-img" /* own host: App's missing-media marker lands here, not on the gradient */><img src={img} alt="" onError={() => setBroken(img)} /></span>}</span>;
 }
-/** Account menu (PARITY-A H-2, decision 4). Opens on hover with a mouse (200 ms intent, 300 ms grace on leave so the pointer can cross the
+/** Account menu (PARITY-A H-2, decision 4). Opens on hover with a mouse (200 ms intent once the pointer moves over it: a sheet closing under a
+ *  resting pointer, like the Welcome's "Look around first", never opens it; 300 ms grace on leave so the pointer can cross the
  *  gap onto the panel; the spec's Radix-style delays) and on click; a mouse click never closes it (PB-29), a tap toggles. Keyboard: Enter/Space
  *  toggle, ArrowDown opens on the first item, arrows / Home / End move, Escape closes and returns focus, Tab out closes. */
 const AV_OPEN_MS = 200, AV_CLOSE_MS = 300;
@@ -451,26 +452,28 @@ function AvatarRing({ pct, children }: { pct: number; children: React.ReactNode 
 function AvatarMenu({ credits, own }: { credits: number | null; own?: boolean | null }) {
   const prof = useProfile(); const name = nameOf(prof); const icon = <UserAvatar profile={prof} size="100%" />;
   const [open, setOpen] = useState(false); const start = useLedger()?.start ?? null;
-  const btn = useRef<HTMLButtonElement>(null); const menu = useRef<HTMLDivElement>(null); const tIn = useRef<number>(); const tOut = useRef<number>(); const at = useRef(0); const cur = useRef(false); cur.current = open; const ptr = useRef('');
-  const clear = () => { clearTimeout(tIn.current); clearTimeout(tOut.current); };
+  const btn = useRef<HTMLButtonElement>(null); const menu = useRef<HTMLDivElement>(null); const tIn = useRef<number>(); const tOut = useRef<number>(); const at = useRef(0); const cur = useRef(false); cur.current = open; const ptr = useRef(''); const armed = useRef(false);
+  const clear = () => { clearTimeout(tIn.current); clearTimeout(tOut.current); tIn.current = undefined; };
   const set = (v: boolean) => { clear(); if (v && !cur.current) at.current = Date.now(); setOpen(v); };
   const items0 = () => [...(menu.current?.querySelectorAll<HTMLElement>('[role=menuitem]') ?? [])];
   const openAt = (i: number) => { set(true); requestAnimationFrame(() => { const xs = items0(); xs[(i + xs.length) % xs.length]?.focus(); }); };
   useEffect(() => () => clear(), []);
-  useEffect(() => { if (!open) return; const d = (e: MouseEvent) => { if (!(e.target as HTMLElement).closest('.tn-menu-wrap')) setOpen(false); }; const k = (e: KeyboardEvent) => { if (e.key === 'Escape') { const inside = !!(document.activeElement as HTMLElement | null)?.closest?.('.tn-menu-wrap'); setOpen(false); if (inside) btn.current?.focus(); } }; addEventListener('mousedown', d); addEventListener('keydown', k); return () => { removeEventListener('mousedown', d); removeEventListener('keydown', k); }; }, [open]);
+  useEffect(() => { if (!open) return; const d = (e: MouseEvent) => { if (!(e.target as HTMLElement).closest('.tn-menu-wrap')) setOpen(false); }; const k = (e: KeyboardEvent) => { if (e.key === 'Escape') { const inside = !!(document.activeElement as HTMLElement | null)?.closest?.('.tn-menu-wrap'); armed.current = false; setOpen(false); if (inside) btn.current?.focus(); } }; addEventListener('mousedown', d); addEventListener('keydown', k); return () => { removeEventListener('mousedown', d); removeEventListener('keydown', k); }; }, [open]);
   /** Two groups (account, then help), split by a divider. Profile is the header's link; Spend and Pricing are the stat card's. */
   const groups: [string, string, typeof UserIcon][][] = [[['/assets?section=Projects', 'Projects', ProjectsIcon], ['/assets?section=Favourites', 'Favourites', FavouritesIcon]], [['/settings', 'Settings', SettingsIcon], [REPO_URL, 'Docs (GitHub)', DocsIcon]]];
   const pct = credits != null && start ? Math.max(0, Math.min(1, credits / start)) : 1; const segs = 24; const ring = own ? 1 : pct;
   const mouse = (e: React.PointerEvent) => e.pointerType === 'mouse';
   /** Picking a row (click, middle / cmd-click, Enter, Space via onKeyDown) closes the menu at once (shared/hoverMenuLock.ts); hover reopens
    *  it only after the pointer leaves the wrap and comes back (pointerenter). Keyboard picks put focus back on the avatar. */
-  const pickAv = (e: React.MouseEvent) => { if (!(e.target as HTMLElement).closest('a[href]') || !isMenuActivation(e)) return; set(false); if (e.type === 'click' && e.detail === 0) btn.current?.focus(); };
+  const pickAv = (e: React.MouseEvent) => { if (!(e.target as HTMLElement).closest('a[href]') || !isMenuActivation(e)) return; armed.current = false; set(false); if (e.type === 'click' && e.detail === 0) btn.current?.focus(); };
   const onMenuKey = (e: React.KeyboardEvent) => { const xs = items0(); const i = xs.indexOf(document.activeElement as HTMLElement);
     const j = e.key === 'ArrowDown' ? i + 1 : e.key === 'ArrowUp' ? i - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? xs.length - 1 : null;
     if (j != null && xs.length) { e.preventDefault(); xs[(j + xs.length) % xs.length]?.focus(); } };
   return <div className="tn-menu-wrap" data-testid="account-menu-wrap"
-    onPointerEnter={e => { if (!mouse(e)) return; clear(); if (!cur.current) tIn.current = window.setTimeout(() => set(true), AV_OPEN_MS); }}
-    onPointerLeave={e => { if (!mouse(e)) return; clear(); if (cur.current) tOut.current = window.setTimeout(() => setOpen(false), AV_CLOSE_MS); }}
+    /* entering only arms the hover; a real move over it starts the 200 ms intent (a layout change under a still pointer fires pointerenter alone) */
+    onPointerEnter={e => { if (!mouse(e)) return; clear(); armed.current = true; }}
+    onPointerMove={e => { if (!mouse(e) || !armed.current || cur.current || tIn.current) return; tIn.current = window.setTimeout(() => set(true), AV_OPEN_MS); }}
+    onPointerLeave={e => { if (!mouse(e)) return; clear(); armed.current = false; if (cur.current) tOut.current = window.setTimeout(() => setOpen(false), AV_CLOSE_MS); }}
     onBlur={e => { const r = e.relatedTarget as HTMLElement | null; if (r && !e.currentTarget.contains(r)) setOpen(false); }}>
     <button ref={btn} type="button" className="tn-avatar" aria-label={`Account menu, ${name}`} aria-haspopup="menu" data-testid="account-avatar" aria-expanded={open} aria-controls={open ? 'tn-account-menu' : undefined}
       onPointerDown={e => { ptr.current = e.pointerType; }}
