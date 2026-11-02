@@ -46,7 +46,19 @@ export function charswapAnchorUsd(i: In = {}) {
 /** Credits the anchor adds to this job's quote and charge (0 when it isn't made). */
 export const charswapAnchorCredits = (i: In = {}) => (charswapAnchorOn(i) ? usdToCredits(charswapAnchorUsd(i)) : 0);
 export const charswapAnchorLine = (i: In = {}) => (charswapAnchorOn(i) ? `First frame: GPT Image 2.5 Sunburst edit, low (Comfy Router, estimated) · $${(charswapAnchorCredits(i) / 100).toFixed(2)}` : null);
-export const anchorFailNote = (why: string) => `The first frame couldn't be made (${why.replace(/[.\s]+$/, '')}), so the swap ran without it.`;
+export const anchorFailNote = (why: string, credits = 0) => `The first frame couldn't be made (${why.replace(/[.\s]+$/, '')}), so the swap ran without it${credits > 0 ? `; its $${(credits / 100).toFixed(2)} is taken off this job's price` : ''}.`;
+/** A first frame that wasn't made isn't charged (Nov 3): its credits come off the job's price (job.cost, the route's price, the Spend row's estimate)
+ *  and, in team mode, go back to the balance (ledger refundPartial on the job's first charge). The provider's own reported cost is never touched.
+ *  Returns the credits taken off (0 when there was nothing to take). */
+export async function dropAnchorPrice(job: { id: string; input: In; cost?: number; route?: string | null; routing?: { prices?: Record<string, number> } | null; routeAttempts?: unknown[] }): Promise<number> {
+  const i = job.input; if (i.charswapAnchorDropped) return 0;
+  const credits = Math.min(charswapAnchorCredits(i), Math.max(0, Number(job.cost) || 0)); i.charswapAnchorDropped = true; if (!credits) return 0;
+  job.cost = Math.max(0, Number(job.cost) - credits);
+  if (job.route && job.routing?.prices?.[job.route] != null) job.routing.prices[job.route] = Math.max(0, job.routing.prices[job.route] - credits);
+  try { if ((job.routeAttempts?.length ?? 1) <= 1) (await import('../ledger.js')).refundPartial(job.id, credits, (await import('../ledger.js')).creditsBackNote('First frame not made', true)); } catch { /* the price line still drops */ }
+  try { (await import('../billing.js')).recordSpend(job as any, job.cost); } catch { /* the Spend row keeps its estimate */ }
+  return credits;
+}
 
 /** Prep before any upload (comfy/cloudWorkflows.ts prepare, routing/cloudRun.ts): grabs the range's first frame,
  *  makes the anchor, writes input.charswapAnchorPath; on failure input.charswapAnchorError + a plain warning. Runs once per job (a retry or a
@@ -70,6 +82,6 @@ export async function prepareCharswapAnchor(job: { id: string; input: In; warnin
     i.charswapAnchorPath = out; i.charswapAnchorCost = r.creditsUsed ?? null; // Comfy credits Router reported for it (null = not reported)
   } catch (e) {
     const why = e instanceof Error ? e.message : String(e); i.charswapAnchorError = why.slice(0, 300);
-    const note = anchorFailNote(why); if (!(job.warnings ??= []).includes(note)) job.warnings.push(note);
+    const off = await dropAnchorPrice(job as any); const note = anchorFailNote(why, off); if (!(job.warnings ??= []).includes(note)) job.warnings.push(note);
   }
 }
