@@ -76,11 +76,11 @@ export function heroChip(s: ReelShot, f: FeaturedItem): RunChipData {
   const music = (s.after ?? []).map((x) => /^Music · ([^·]+)/.exec(x)?.[1]?.trim()).find(Boolean);
   return chipOfFeatured(f, { model: s.model, role: 'Video', also: music ? [{ jobId: '', model: music, place: OUR_COMPUTER, costUsd: 0, role: 'Music' }] : [] });
 }
-/** The hero's credit (2026-11-01: the shared run chip, was the MADE WITH · LENGTH · RAN ON block), then its one action, an orange "Make your own →". */
+/** The hero's credit (2026-11-01: the shared run chip, was the MADE WITH · LENGTH · RAN ON block), then its one action, "Make your own →" as the shared orange button (2026-11-02, was a text link). */
 function HeroCredit({ s, f, rec }: { s: ReelShot; f: FeaturedItem; rec: string | null }) {
   return <div className="xph-credit" data-testid="xp-hero-caption">
     <RunChip onMedia c={heroChip(s, f)} testId="xp-hero-chip" />
-    {rec && <Link to={rec} className="xph-rec" data-testid="xp-hero-recreate">Make your own <Arrow /></Link>}
+    {rec && <Link to={rec} className="xv-btn xph-rec" data-testid="xp-hero-recreate">Make your own <Arrow /></Link>}
   </div>;
 }
 export function XpHero() {
