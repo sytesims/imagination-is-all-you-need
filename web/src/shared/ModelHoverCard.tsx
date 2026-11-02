@@ -1,7 +1,7 @@
 import { MakerTile } from './MakerTile';
 import { runPrice, priceToken, priceDetail } from './billing';
 import { blockOf, reasonBody } from './menuPrice';
-import { shownName, RUN_ON_CHIP, rowPlaceLabel, type RunOnRow, type ToolModel } from './models';
+import { shownName, RUN_ON_CHIP, rowPlaceLabel, SLOW_HERE, type RunOnRow, type ToolModel } from './models';
 import { gbText } from './fit';
 import { localBlocker } from './modelMenuSort';
 import { placeIconFor } from '../ui/Icons';
@@ -17,8 +17,8 @@ export const keyWord = (runOn: string, label?: string | null) => KEY_WORD[runOn]
 const live = (r: RunOnRow) => r.status !== 'coming-soon' && r.status !== 'unavailable';
 
 /** What a place still needs, in a few words ("Ready", "Download 53 GB", "Add a Comfy key", "Turn on Local"). */
-export function placeNeed(r: Pick<RunOnRow, 'id' | 'label' | 'status' | 'action' | 'reasonCode' | 'missingBytes'>): { text: string; ready: boolean } {
-  if (r.status === 'ready') return { text: 'Ready', ready: true };
+export function placeNeed(r: Pick<RunOnRow, 'id' | 'label' | 'status' | 'action' | 'reasonCode' | 'missingBytes' | 'here'>): { text: string; ready: boolean } {
+  if (r.status === 'ready') return { text: r.here?.slow ? SLOW_HERE : 'Ready', ready: true };
   if (r.status === 'sample') return { text: 'Sample run', ready: true };
   const a = r.action;
   if (a?.kind === 'download') return { text: a.missingBytes ? `Download ${gbText(a.missingBytes)}` : 'One-time download', ready: false };

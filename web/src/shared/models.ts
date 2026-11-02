@@ -20,7 +20,7 @@ export interface PlaceAction { kind: 'turn_on' | 'download' | 'install_node' | '
 export interface RunOnRow { id: string; label: string; billedTo: string; status: RunOnStatus; credits: number | null; reason: string | null; reasonCode: string | null; routes: string[]; engines: string[]; comfyVariants?: ('workflow' | 'partner')[];
   /** Run on groups: gpu (Local), comfy (Comfy Cloud / Comfy Router), api (direct providers). */ group?: 'gpu' | 'comfy' | 'api'; /** How the Comfy row runs ("Open workflow", "Partner model", shared/modelIds.ts comfyHowLine), or "Your Comfy deployment". */ detail?: string | null; action?: PlaceAction | null;
   /** Local row: its files need an NVIDIA graphics card (fp8 / nvfp4 weights a Mac can't load), whatever this computer is. */ needsNvidia?: boolean;
-  /** Local row (hardware plan §3.5): the memory the model needs and its time on this computer, for the run menu's mini line. */ here?: { memGB: number | null; etaSeconds: number | null; etaSource: string | null; samples: number; untested?: boolean } | null;
+  /** Local row (hardware plan §3.5): the memory the model needs and its time on this computer, for the run menu's mini line. */ here?: { memGB: number | null; etaSeconds: number | null; etaSource: string | null; samples: number; untested?: boolean; /** fit verdict slow on this computer (MiniMax Music 3 on Apple chips) */ slow?: boolean } | null;
   /** Local, files that don't fit on the disk (reasonCode not_enough_disk): the bytes they need ("Needs 43 GB space") */ missingBytes?: number | null;
   /** 2026-10-27: the model's ways to run at this place when there are two or more (server shared/routeNames.ts): each by name, with its price and limits. */ choices?: RouteChoice[] }
 export interface RouteChoice { routeId: string; engine: string; name: string; word: string; why: string; status: RunOnStatus; credits: number | null; reason: string | null; /** route_not_enabled: Comfy Router refused it before running; "Check again" clears it */ reasonCode?: string | null; limits: { resolutions: string[] | null; durations: number[] | null; aspects: string[] | null } | null; /** the jobs it takes (null = every job the model does) */ modes?: string[] | null }
@@ -67,6 +67,10 @@ export const placeOfAny = (x: any): Place | null => (x?.place && typeof x.place 
 export const placeLabelOf = (x: any): string => String(x?.placeLabel ?? '') || placeOfAny(x)?.label || runOnLabel(x?.runOn);
 /** A model's Run on row in the place words: the Comfy row is "Comfy Cloud" (one key, open workflow or partner model alike), or "Your Comfy deployment" for your own. */
 export const rowPlaceLabel = (r: { id: string; label: string; detail?: string | null }): string => r.id === 'local' ? LOCAL_LABEL : r.id !== 'comfy-cloud' ? r.label : r.detail === COMFY_DEPLOY_DETAIL ? PLACE_LABELS['comfy-deploy'] : PLACE_LABELS['comfy-cloud'];
+/** A group whose only row has the group's own name ("COMFY CLOUD › Comfy Cloud") shows no heading: the row says it once (UI audit 2026-11-03). */
+/** A local place that runs, but slowly on this computer (fit verdict slow): its word instead of Ready (Run on, the model card). */
+export const SLOW_HERE = 'Slow here';
+export const soloGroup = (label: string, rowLabels: string[]) => rowLabels.length === 1 && rowLabels[0].trim().toLowerCase() === label.trim().toLowerCase();
 /** Route id → run-on, learned from the server's listings (each route's explicit vendor: models[].runsOn[].routes). */
 const ROUTE_RUN_ON = new Map<string, string>();
 type RouteLike = { routeId?: string | null; kind?: string | null; runOn?: string | null; vendor?: string | null };
@@ -285,7 +289,8 @@ export function modelStateLine(m: ToolModel): { k: 'ok' | 'demo' | 'off'; s: str
   const rs = m.rowStatus; // one status from one source (server rowStatus): the pre-selected place, else what setting it up takes
   if (rs) {
     const ways = (m.setup ?? []).map(x => `${x.label}: ${x.action.text}`).join(' · ');
-    if (rs.kind === 'ready') return { k: 'ok', s: 'Ready', t: rs.runOn === 'local' ? 'Runs locally, free.' : `Runs on ${rs.text}.`, off: false };
+    if (rs.kind === 'ready') { const slow = rs.runOn === 'local' && !!m.runsOn.find(r => r.id === 'local')?.here?.slow; /* runs, but slowly on this computer */
+      return { k: slow ? 'demo' : 'ok', s: slow ? SLOW_HERE : 'Ready', t: rs.runOn === 'local' ? (slow ? 'Runs locally, free, but slowly on this computer. Best on an NVIDIA graphics card or in the cloud.' : 'Runs locally, free.') : `Runs on ${rs.text}.`, off: false }; }
     if (rs.kind === 'sample') return { k: 'demo', s: 'Sample', t: 'Free sample output until you add a key.', off: false };
     if (rs.kind === 'coming_soon') return { k: 'off', s: 'Coming soon', t: 'Not connected on this server yet.', off: true };
     /* a local-only model before ComfyUI is set up (server NEEDS_COMFYUI_TEXT) stays pickable: the composer then says "Set up ComfyUI to run … free" */

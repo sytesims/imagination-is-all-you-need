@@ -234,7 +234,11 @@ export const setFavourite = (id: string, on: boolean): Promise<JobState> => post
 /** Feature this (2026-10-26): star a finished result (Featured chip, empty tabs). */
 export const setFeatured = (id: string, on: boolean): Promise<JobState> => post(`/api/jobs/${id}/feature`, { on });
 /** The audio player's dance style for a result (job meta danceStyle): what the sound was heard as, and/or the user's pick (null clears it). */
-export const saveDanceStyle = (id: string, body: { heard?: unknown; picked?: string | null }): Promise<{ danceStyle: unknown }> => post(`/api/jobs/${id}/dance-style`, body);
+/** Best effort, in the background (listenStyle.ts keeps it in localStorage either way): one plain request, no retries and never the global
+ *  "Can't reach the server" banner, which a failed save raised on the voiceover viewer (recorder notes 2026-11-02). */
+export const saveDanceStyle = async (id: string, body: { heard?: unknown; picked?: string | null }): Promise<{ danceStyle: unknown }> => {
+  const r = await globalThis.fetch(`/api/jobs/${encodeURIComponent(id)}/dance-style`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error(`dance-style ${r.status}`); return r.json(); };
 export const setJobProject = (id: string, projectId: string | null): Promise<JobState> => post(`/api/jobs/${id}/project`, { projectId });
 export const trashJob = (id: string): Promise<JobState> => post(`/api/jobs/${id}`, undefined, 'DELETE');
 /** Delete forever (Trash only): {ok, purged, removed: {files, bytes, keptShared}}. */

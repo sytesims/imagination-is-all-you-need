@@ -23,3 +23,8 @@ export function durationText(ms: number | null | undefined): string {
   const t = Math.round(s); if (t < 3600) return `${Math.floor(t / 60)} min${t % 60 ? ` ${t % 60} s` : ''}`;
   const m = Math.round(t / 60); return `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}`;
 }
+/** A clip's length in seconds as "6 s" / "4.5 s" (a result's own length, never its render time). '' for no value. */
+export function clipLengthText(sec: unknown): string {
+  const s = Number(sec); if (!(s > 0) || !isFinite(s)) return '';
+  return s < 60 ? `${Math.round(s * 10) / 10} s` : durationText(s * 1000);
+}

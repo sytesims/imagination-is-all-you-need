@@ -68,7 +68,7 @@ assert.equal(swap?.file, 'cloud/h3-two-person-swap-api.json'); assert.equal(swap
 const h3 = jobWorkflow({ toolId: 'h3-video', provider: 'comfy-h3', route: 'comfy-cloud:cloud-h3-wf', input: { imagePath: 'fake.png', mode: 'i2v' } });
 assert.equal(h3?.file, 'cloud/h3-i2v-api.json'); assert.match(h3!.url!, /video_minimax_h3_i2v/);
 const hosted = jobWorkflow({ toolId: 'h3-video', provider: 'comfy-h3', route: 'comfy-router:api-minimax-h3' });
-assert.equal(hosted?.file, null); assert.match(hosted!.name, /request on Comfy Router/);
+assert.equal(hosted?.file, null); assert.equal(hosted!.name, 'Direct request to the model', 'plain words, never the Router id (UI audit 2026-11-03)'); assert.doesNotMatch(hosted!.name, /Comfy Router|api-minimax|\//);
 assert.equal(jobWorkflow({ toolId: 'unknown', input: { comfyPlan: { passes: [{ workflow: 'uncredited-community.json' }] } } }), null, 'never invent a missing workflow');
 const j = { toolId: 'two-person-swap', input: { comfyPlan: { post: 'each' } } as Record<string, any> };
 notePlanPrompts(j, { passes: [{ workflow: 'cloud/h3-two-person-swap-api.json', expect: { prompts: ['Replace the first person', 'Replace the second person'] } }] });

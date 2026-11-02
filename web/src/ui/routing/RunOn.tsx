@@ -22,7 +22,7 @@ import { navigate } from '../../platform/router';
 import { setRoute, routeChoiceOf, noteToolModels, type RouteChoice } from '../../shared/models';
 import { requestRequote } from '../../shared/quote';
 import { RUN_ON_BILLING, billsText, comfyVariantText, enginesModels, listPrice, runOnLabel, setActiveModel, setRunOn, setRouting, statusDot, STATUS_WORD, CHIP_ACTION_WORD,
-  placeOf, toolLike, useRunOn, useToolModels, getRunOn, type RunOnRow, type ToolModel, type PlaceAction, shownName, RUN_ON_CHIP, rowPlaceLabel } from '../../shared/models';
+  placeOf, toolLike, useRunOn, useToolModels, getRunOn, type RunOnRow, type ToolModel, type PlaceAction, shownName, RUN_ON_CHIP, rowPlaceLabel, soloGroup, SLOW_HERE } from '../../shared/models';
 import { LOCAL_LABEL, COMFY_DEPLOY_DETAIL } from '../../../../server/src/shared/modelIds';
 
 /** Kept for callers: the place the pre-selection resolved for this job (the live quote's place, else the listing's). */
@@ -96,7 +96,7 @@ const rule = (r: FailureRule | undefined) => (r ? RULE_TEXT[r].replace(/^./, c =
 /** One row's state word and tone. A row that isn't ready stays pickable (the chip then shows the fix); greyed by tone 'off'/'warn'. */
 function rowState(r: RunOnRow): { word: string; tone: 'ok' | 'warn' | 'off'; dim: boolean } {
   switch (r.status) {
-    case 'ready': return r.here?.untested ? { word: 'Not tested here yet', tone: 'warn', dim: false } /* item 5: a platform variant nobody has run on this kind of computer */ : { word: 'Ready', tone: 'ok', dim: false };
+    case 'ready': return r.here?.untested ? { word: 'Not tested here yet', tone: 'warn', dim: false } /* item 5: a platform variant nobody has run on this kind of computer */ : r.here?.slow ? { word: SLOW_HERE, tone: 'warn', dim: false } /* runs, but slowly on this computer (the mini line says how long) */ : { word: 'Ready', tone: 'ok', dim: false };
     case 'sample': return { word: 'Sample', tone: 'warn', dim: false };
     case 'needs-key': return { word: 'Needs a key', tone: 'warn', dim: true };
     case 'off': return { word: 'Off', tone: 'off', dim: true };
@@ -185,7 +185,7 @@ export function RunOnMenu({ open, anchor, avoid, watch, gap, onClose, toolId, mo
     <div className="ro-pop" role="radiogroup" aria-label={`Where ${shownName(model)} runs`} aria-busy={!!busy || undefined}>
       <div className="ro-h">Run {multi ? toolName : shownName(model)} on<small>{scale ? `Prices are for the whole ${scale.unit}. ` : ''}{saved || ownPick ? `Remembered for ${ownPick?.rememberedFor ?? toolName}.` : rows.some(x => x.r.id === shownPlace && x.m.key === curM.key && (x.r.status === 'ready' || x.r.status === 'sample')) ? `The default is the first option that’s ready: Comfy Cloud, then your other keys, then your computer. Your pick is remembered for ${toolName}.` : `Nothing is ready yet, so the first one to set up is the default. Your pick is remembered for ${toolName}.`}</small></div>
       {GROUPS.map(g => { const rs = rows.filter(x => groupOf(x.r) === g.id); if (!rs.length) return null;
-        return <div key={g.id} className="ro-g" role="group" aria-label={g.label} data-testid={`run-on-group-${g.id}`}><span className="ro-grp">{(() => { const Ic = placeIconFor(g.id); return <Ic size={12} className="ro-grp-ic" />; })()}{g.label}</span>{rs.map(x => { const ways = waysOf(x.r, ownPick); return ways ? <div key={`${x.m.key}:${x.r.id}`} className="ro-nest" role="group" aria-labelledby={`ro-h-${x.m.key}-${x.r.id}`.replace(/[^\w-]/g, '-')} data-testid={`run-on-ways-${x.r.id}`}>{opt(x)}{ways.map(c => choiceRow(x.m, x.r, c))}</div> : opt(x); })}</div>; })}
+        return <div key={g.id} className="ro-g" role="group" aria-label={g.label} data-testid={`run-on-group-${g.id}`}>{!soloGroup(g.label, rs.map(x => rowPlaceLabel(x.r))) && <span className="ro-grp">{(() => { const Ic = placeIconFor(g.id); return <Ic size={12} className="ro-grp-ic" />; })()}{g.label}</span>}{rs.map(x => { const ways = waysOf(x.r, ownPick); return ways ? <div key={`${x.m.key}:${x.r.id}`} className="ro-nest" role="group" aria-labelledby={`ro-h-${x.m.key}-${x.r.id}`.replace(/[^\w-]/g, '-')} data-testid={`run-on-ways-${x.r.id}`}>{opt(x)}{ways.map(c => choiceRow(x.m, x.r, c))}</div> : opt(x); })}</div>; })}
       {!rows.length && <p className="ro-off" data-testid="run-on-none">Nothing can run {shownName(model)} on this server yet.</p>}
       {err && <Notice as="p" kind="error" tone="line" className="ro-err" testId="run-on-error">{err}</Notice>}
       {saved && !ownPick && <button type="button" className="ro-reset" data-testid="run-on-reset" disabled={!!busy} onClick={() => void save('reset', async () => { await setRunOn(toolId, curM.key, ''); onClose(); })}>Use the default</button>}

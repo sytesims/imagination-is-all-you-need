@@ -319,7 +319,7 @@ export function fitFor(tool: ToolDef, providerId: string, input: Record<string, 
     if (R <= 2 && image) return done('slow', 'cpu', 'Runs on the processor without a graphics card, slowly.');
     return done('too_heavy', 'no_gpu', `Needs a graphics card with about ${fmt(R)} GB of memory; your computer has none.`); }
   if (hw.gpu.type === 'mps' && req.mps === 'red') return done('too_heavy', 'unsupported_weights', `${MAC_WEIGHTS_REASON}.`);
-  if (R <= E - 1) return done(hw.gpu.type === 'mps' && req.mps === 'amber' ? 'slow' : 'fits', hw.gpu.type === 'mps' && req.mps === 'amber' ? 'mps' : 'fits', hw.gpu.type === 'mps' && req.mps === 'amber' ? `Runs, but slow${aboutTime(base.etaSeconds)}: these weights are slow or untested on Apple graphics.` : `Fits in your ${fmt(E)} GB of graphics memory.`);
+  if (R <= E - 1) return done(hw.gpu.type === 'mps' && req.mps === 'amber' ? 'slow' : 'fits', hw.gpu.type === 'mps' && req.mps === 'amber' ? 'mps' : 'fits', hw.gpu.type === 'mps' && req.mps === 'amber' ? `Runs, but slow${aboutTime(base.etaSeconds)}: these weights are slow or untested on Apple graphics. Best on an NVIDIA graphics card or in the cloud.` : `Fits in your ${fmt(E)} GB of graphics memory.`);
   const ramOk = ramGB == null || req.ramMinGB == null || ramGB >= req.ramMinGB;
   /* M1 (2026-11-02): shared memory (Apple Silicon, DGX Spark) has no separate system memory to move part of it to: it swaps and can freeze. Said plainly here;
      the verdict rule itself is PR 3's (the reason line already asks before such a run) */

@@ -42,7 +42,7 @@ import { MIR_PROMPT_KEY } from '../../shared/MakeItReal';
 import FailureState from '../../shared/FailureState';
 import { useToolModels, modelOfEngine, useRunOn, shownName } from '../../shared/models';
 import { isOpenWeights, displayNameOf } from '../../shared/OpenWeights';
-import { durationText, jobTiming } from '../../shared/jobTiming';
+import { clipLengthText, durationText, jobTiming } from '../../shared/jobTiming';
 import { etaText } from '../../shared/queueActivity';
 import { preflightProblems } from '../../../../server/src/shared/preflight';
 import { THREE_D_WORKFLOWS, THREE_D_CATEGORIES, THREE_D_PAGE, threeDRoute, threeDWorkflowById, currentThreeDWorkflow, threeDModel, normalizeSettings, threeDPicksParam, DETAILS, TEXTURES, FACES, type ThreeDWorkflow, type ThreeDModel, type ShowcaseItem, THREE_D_VIEW_SLOTS, threeDSupportsMode, threeDViewIssue, threeDMode, threeDPriceNote } from '../../../../server/src/shared/threeD';
@@ -526,7 +526,7 @@ function Card({ j, own, onOpen, onVideo, onRetry, onMakeReal }: { j: JobState; o
         <a className="t3-act" href={`/jobs/${j.id}`} onClick={(e) => { if (e.metaKey || e.ctrlKey) return; e.preventDefault(); navigate(`/jobs/${j.id}`); }} aria-label="Mockup vs Render" {...tip('Open: Mockup vs Render')}><MoreIcon size={14} /></a></span></div>; }
   if (isTT) return <div className="vs-htile t3-card" data-testid={`t3-card-${j.id}`}><button type="button" className="t3-hit" onClick={() => navigate(`/jobs/${j.id}`)} aria-label="Open turntable video">
       <video src={j.resultUrl ?? undefined} poster={videoCardPoster(j)} muted loop playsInline preload="metadata" onLoadedMetadata={vidReady} onError={retryVideo} onMouseEnter={(e) => e.currentTarget.play().catch(() => 0)} onMouseLeave={(e) => e.currentTarget.pause()} /></button>
-    <FeedCaption title="Turntable video" parts={['Free', durationText(t.renderMs) || 'recorded in your browser']} testId={`t3-cap-${j.id}`} /><em className="t3-kind"><VideoIcon size={12} />Video</em></div>;
+    <FeedCaption title="Turntable video" parts={['Free', clipLengthText((j.input as any)?.duration) || 'recorded in your browser'] /* the clip's length, never the render time ("0.4 s" read as a 0.4 s video, UI audit 2026-11-03) */} testId={`t3-cap-${j.id}`} /><em className="t3-kind"><VideoIcon size={12} />Video</em></div>;
   return <div className="vs-htile t3-card" data-testid={`t3-card-${j.id}`}>
     <button type="button" className="t3-hit" onClick={(e) => onOpen(e.currentTarget)} aria-label={`Open 3D model: ${(j as any).model ?? ''}`}>
       {poster ? <img src={poster} alt="" loading="lazy" draggable={false} /> : j.input?.imageUrl ? <img className="t3-in" src={j.input.imageUrl} alt="" loading="lazy" draggable={false} /> : <CubeIcon size={28} />}

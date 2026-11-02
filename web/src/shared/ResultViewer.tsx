@@ -16,7 +16,7 @@ import { ranOnOf, useToolModels, placeLabelOf, placeOfAny } from './models';
 import { LOCAL_LABEL } from '../../../server/src/shared/modelIds';
 import { isDemoJob } from './quote';
 import { workflowHref } from './FeatureCredit';
-import type { WorkflowSource } from './imageFeatures';
+import { workflowName, type WorkflowSource } from './imageFeatures';
 import { jobTiming, durationText } from './jobTiming';
 import FailureState from './FailureState';
 import { Waveform, useWaveform } from './Waveform';
@@ -409,7 +409,7 @@ const kvRow = (r: KV) => <div key={r.k} className="rvx-row" data-row={r.k} {...t
 const group = (id: string, title: string, rows: ReactNode[]) => rows.length ? <div className="rvx-grp" data-testid={`rvx-grp-${id}`} role="group" aria-label={title}><span className="rvx-grp-h" aria-hidden>{title}</span>{rows}</div> : null;
 /** DETAILS for a finished result (every medium, every place): Model, Output, Timing and Source rows. */
 /** "Cloud/h3-two-person-swap" / "LTX-2.5: Image to Video (also …)" → a short workflow name for the row (up to two lines; the full one is on hover). */
-const shortWf = (n: string) => { const s = n.replace(/^cloud\//, '').replace(/\s*\((?:also|[a-z_]+\d?[a-z_0-9]*)\b[^)]*\)\s*$/i, '').trim(); return s.length > 90 ? `${s.slice(0, 89)}…` : s; };
+const shortWf = (n: string) => { const s = workflowName(n); return s.length > 90 ? `${s.slice(0, 89)}…` : s; }; /* the shared rule (imageFeatures.ts workflowName) */
 export function ResultDetails({ job, info, extra, onViewWorkflow }: { job: any; info: DetailsInfo; extra?: ReactNode; /** the result menu's View workflow (one dialog) */ onViewWorkflow?: () => void }) {
   const [open, setOpen] = useState(true);
   const models = useCatalogue(job?.toolId);
@@ -442,11 +442,13 @@ export function ResultDetails({ job, info, extra, onViewWorkflow }: { job: any; 
   const wfLeft = wf ? <span className="rvx-row-l rvx-how-wf"><WorkflowBadge source={wf.source} /><span className="rvx-wf-name" data-testid="rvx-wf-name" {...tip([wf.name, wf.author, wf.licence ? `Licence: ${wf.licence}` : ''].filter(Boolean).join(' · '))}>{shortWf(wf.name)}</span>{wf.recipe && <span className="rvx-dim">+ our recipe</span>}</span> : null;
   const wfRight = onViewWorkflow ? <button type="button" className="link-btn rvx-row-r" data-testid="rvx-view-workflow" onClick={onViewWorkflow}>View workflow</button>
     : href ? <a className="rvx-row-r" href={href} target="_blank" rel="noreferrer noopener" data-testid="wf-credit-link">{WF_LINK[wf!.source] ?? 'Workflow'} ↗</a> : null;
-  const pl = job?.example ? null : placeOfAny(job); const appPrompts: string[] = Array.isArray(job?.runSource?.appPrompts) ? job.runSource.appPrompts : [];
+  const placeR = placeRows(job, info.ranOn, info.sample); const pl = job?.example ? null : placeOfAny(job); const appPrompts: string[] = Array.isArray(job?.runSource?.appPrompts) ? job.runSource.appPrompts : [];
   const createdV = created ? <span data-testid="rvx-created" {...tip(whenText(job?.createdAt))}>{created}</span> : null;
   const source: ReactNode[] = [
     wfLeft ? <div key="wf" className="rvx-row" data-row="wf">{wfLeft}{wfRight}</div> : null,
-    pl ? kvRow({ k: 'ranon', label: info.sample ? 'Would run on' : 'Ran on', v: <span data-testid="rvx-src-place" {...tip(pl.note)}>{pl.label}<span className="rvx-dim"> · {pl.short}</span></span> }) : null,
+    pl ? kvRow(placeR.length && compositeCostText(job) == null /* the Model group already names the place: say only how it bills, never "Comfy Cloud" twice (UI audit 2026-11-03) */
+      ? { k: 'ranon', label: 'Billing', v: <span data-testid="rvx-src-place" {...tip(pl.note)}>{pl.short.charAt(0).toUpperCase() + pl.short.slice(1)}</span> }
+      : { k: 'ranon', label: info.sample ? 'Would run on' : 'Ran on', v: <span data-testid="rvx-src-place" {...tip(pl.note)}>{pl.label}<span className="rvx-dim"> · {pl.short}</span></span> }) : null,
     ...appPrompts.map((p, i) => kvRow({ k: `ap${i}`, label: appPrompts.length > 1 ? `Prompt the app wrote (${i + 1})` : 'Prompt the app wrote', v: <span className="rvx-app-prompt" data-testid="rvx-app-prompt" {...tip(p)}>{p.length > 140 ? `${p.slice(0, 139)}…` : p}</span> })),
     ...(Array.isArray(job?.diagnostics) ? job.diagnostics : []).map((d: { node: string; label: string; url: string; note: string }, i: number) => kvRow({ k: `diag${i}`, label: 'Mask diagnostic', v: <a href={d.url} target="_blank" rel="noreferrer noopener" data-testid="rvx-mask-diagnostic" {...tip(d.note)}>{d.label} ↗</a> })),
     createdV ? kvRow({ k: 'created', label: 'Created', v: createdV }) : null,
@@ -457,7 +459,7 @@ export function ResultDetails({ job, info, extra, onViewWorkflow }: { job: any; 
   const modelRows: ReactNode[] = [
     modelName || info.feature ? <div key="model" className="rvx-row" data-row="model"><b className="rvx-row-l rvx-model-name" data-testid="rvx-model" {...tip(bestFor || null)}>{modelName || info.feature}</b>
       {modelName && info.feature && <span className="rvx-row-r rvx-dim" data-testid="rvx-feature">{info.feature}</span>}</div> : null,
-    ...placeRows(job, info.ranOn, info.sample),
+    ...placeR,
   ].filter(Boolean);
   return <section className="rvx-sec" aria-label="Details">
     <button type="button" className="rvx-sec-h rvx-sec-btn" aria-expanded={open} aria-label={open ? 'Hide details' : 'Show details'} data-testid="rvx-details-toggle" onClick={() => setOpen(o => !o)}><span className="rvx-lbl"><DetailsGlyph />Details</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d={open ? 'm6 15 6-6 6 6' : 'm6 9 6 6 6-6'} /></svg></button>

@@ -222,9 +222,12 @@ export function workflowFor(featureId: string, providerId: string): FeatureWorkf
   return { ...rest, ...(file ? { file } : {}), recipe: f.recipe };
 }
 /** One line: "Official Comfy template · Nano Banana 2: Image Edit" / "Community · BFS Best Face Swap by Alissonerdx" / "Ours · create-image-flux3klein-inpaint-api.json". */
+/** A workflow's name as words: "Nano Banana 2: Image Edit", never its template id "(api_google_nano_banana2_image_edit)" or a "cloud/" folder.
+ *  One rule for the credit line, the viewer's Source row and the Workflows dialog (UI audit 2026-11-03); the link still opens the template. */
+export const workflowName = (n: string | null | undefined): string => String(n ?? '').replace(/^cloud\//, '').replace(/\s*\((?:also\b[^)]*|[\w.-]+)\)\s*$/i, '').trim();
 export function workflowLine(w: WorkflowSource | null | undefined): string {
   if (!w) return '';
-  const nm = w.name.replace(/\s*\([\w.-]+\)\s*$/, '');
+  const nm = workflowName(w.name);
   return w.source === 'official' ? `Official Comfy template · ${nm}${w.author && w.author !== 'Comfy Org' ? ` (by ${w.author})` : ''}`
     : w.source === 'community' ? `Community · ${nm} by ${w.author.replace(/^@/, '')}` : `Built-in · ${w.file ?? nm}`;
 }

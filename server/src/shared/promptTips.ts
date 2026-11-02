@@ -29,13 +29,16 @@ export function refsLine(e: PromptGrammar, place?: string): string {
   const zero = r.base === 0 ? ' (counts from 0)' : '';
   return `${toks.join(', ').replace(' as ', ' is sent as ')}${zero}.`; // "@image1 is sent as <<<image_1>>>, @video1 as …"
 }
+/** A note in plain words: one that names a raw API field ("optimize_prompt_options / thinking rewrite the prompt", "prompt_extend (off)") is
+ *  for the docs (docs/PROMPT-GRAMMAR.md), never a hover card (UI audit 2026-11-03). */
+export const plainNote = (s: string) => !/\b[a-z0-9]+_[a-z0-9_]+\b/.test(s);
 /** The tip for one model (null for an unknown key). `place` = a route kind ('router', 'fal', 'local', 'direct', 'replicate'). */
 export function promptTipOf(key: string | null | undefined, place?: string): PromptTip | null {
   const e = promptGrammarOf(key); if (!e) return null;
   const max = e.limits?.maxChars; const limit = max ? `Up to ${fmt(max)} characters` : null;
   const negative = e.prompt === 'none' ? null : e.negative === 'field' ? 'Has a separate "avoid" box' : e.negative === 'in-prompt' ? 'No avoid box: write what to leave out in the prompt' : e.negative === 'none' ? 'No avoid box: describe what you want instead' : null;
   const triggers = e.triggers?.length ? `Starts with: ${e.triggers.join(' / ')}` : null;
-  return { key: e.key, refs: refsLine(e, place), limit, negative, triggers, extras: (e.special ?? []).slice(0, 2), structure: e.structure, example: e.example, noPrompt: e.prompt === 'none' };
+  return { key: e.key, refs: refsLine(e, place), limit, negative, triggers, extras: (e.special ?? []).filter(plainNote).slice(0, 2), structure: e.structure, example: e.example, noPrompt: e.prompt === 'none' };
 }
 /** A reference chip's tooltip on this model: "Photo 2 · sent as <<<image_2>>>", or how the model uses it when it can't be named. */
 export function refChipTip(key: string | null | undefined, kind: 'image' | 'video' | 'audio', n: number, place?: string): string {

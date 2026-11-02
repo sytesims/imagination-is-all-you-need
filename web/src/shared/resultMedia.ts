@@ -6,6 +6,7 @@
 import type { JobState } from '../api';
 import { jobCaption, type JobCaption } from './FeedCaption';
 import { jobIs3d, posterOf3d } from './model3d';
+import { plainPrompt } from '../../../server/src/shared/typedPrompt';
 
 export type { ResultKind } from './mediaKind';
 import type { ResultKind } from './mediaKind';
@@ -13,7 +14,7 @@ export interface ResultMedia { kind: ResultKind; url: string; /** a still to sho
 
 export { resultKindOfUrl, videoPoster } from './mediaKind'; /* moved to a React-free module (the Canvas run code and its node test read them) */
 import { resultKindOfUrl, videoPoster } from './mediaKind';
-const promptOf = (j: JobState) => String((j.input as any)?.prompt ?? (j.input as any)?.text ?? (j.input as any)?.lyrics ?? '').replace(/\s+/g, ' ').trim();
+const promptOf = (j: JobState) => plainPrompt(String((j.input as any)?.prompt ?? (j.input as any)?.text ?? (j.input as any)?.lyrics ?? '')); /* plain words: a structured H3 prompt reads as its first sentence */
 
 /** The card for a finished job, or null when it has nothing to show (failed, running, or a file type we don't place). */
 export function resultMedia(j: JobState, own: boolean | null): ResultMedia | null {
