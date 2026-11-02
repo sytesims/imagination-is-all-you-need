@@ -6,6 +6,8 @@
  *  - POST /api/jobs/:id/3d-poster: the still the viewer rendered once (multipart `image`, PNG/JPEG/WebP ≤ 8 MB), kept as the card's poster.
  *  - POST /api/3d/upload: a GLB of your own for Direct a Shot (multipart `model`, ≤ MODEL_MAX_BYTES, glTF 2.0 binary with at least one mesh),
  *    kept as /files/up-<hash>.glb with its name beside it; GET /api/3d/uploads lists them, newest first (shared/previzModels.ts).
+ *  - POST /api/3d/light {src: /files/<x>.glb}: the copy Direct a Shot plays (glbLight.ts): src itself when it is within MODEL_MAX_BYTES, else
+ *    its light copy /files/<x>-light.glb, made once and reused (2026-11-03). Uploads take up to MODEL_SOURCE_MAX_BYTES for the same reason.
  */
 import type { FastifyInstance } from 'fastify';
 import { createHash } from 'node:crypto';
@@ -17,7 +19,8 @@ import { getTool } from './tools/registry.js';
 import { glbInfo } from './glbInfo.js';
 import { withWorkflowDefaults } from './routing/defaults.js';
 import { threeDDefaultsOf } from './shared/threeDDefaults.js';
-import { MODEL_MAX_BYTES, cleanWords, MODEL_NAME_MAX } from './shared/previzModels.js';
+import { MODEL_MAX_BYTES, MODEL_SOURCE_MAX_BYTES, cleanWords, MODEL_NAME_MAX } from './shared/previzModels.js';
+import { lightCopyOf, LightError } from './glbLight.js';
 import { THREE_D_WORKFLOWS, THREE_D_CATEGORIES, THREE_D_DEFAULT_WORKFLOW, THREE_D_REDIRECTS, THREE_D_MODELS, THREE_D_SHOWCASE, SCENARIO_DATASET, BIG_GLB_BYTES, threeDRoute, threeDSupportsMode } from './shared/threeD.js';
 
 export function threeDWorkflowsPayload() {
@@ -55,10 +58,10 @@ export function registerThreeD(app: FastifyInstance) {
     let buf: Buffer | null = null; let name = ''; let tooBig = false;
     try { for await (const part of req.parts()) {
       if (part.type !== 'file') continue; const chunks: Buffer[] = []; let n = 0;
-      for await (const c of part.file) { n += (c as Buffer).length; if (n > MODEL_MAX_BYTES) { tooBig = true; continue; } chunks.push(c as Buffer); }
+      for await (const c of part.file) { n += (c as Buffer).length; if (n > MODEL_SOURCE_MAX_BYTES) { tooBig = true; continue; } chunks.push(c as Buffer); }
       if (part.fieldname === 'model' && !buf) { buf = Buffer.concat(chunks); name = part.filename ?? ''; if ((part.file as any).truncated) tooBig = true; } } }
     catch { return reply.code(400).send({ error: 'The upload could not be read. Try again.', errorType: 'validation' }); }
-    const mb = Math.round(MODEL_MAX_BYTES / 1048576);
+    const mb = Math.round(MODEL_SOURCE_MAX_BYTES / 1048576);
     if (tooBig) return reply.code(413).send({ error: `That GLB is larger than ${mb} MB. Make a lighter copy (fewer faces, smaller textures) and try again.`, errorType: 'validation', code: 'too_large' });
     if (!buf?.length) return reply.code(400).send({ error: 'Send one .glb file (field model).', errorType: 'validation' });
     const bad = glbProblem(buf); if (bad) return reply.code(400).send({ error: bad, errorType: 'validation', code: 'bad_glb' });
@@ -66,6 +69,14 @@ export function registerThreeD(app: FastifyInstance) {
     const label = cleanWords(name.replace(/\.glb$/i, '').replace(/[-_]+/g, ' '), MODEL_NAME_MAX) || 'Your model';
     await writeFile(path.join(DATA_DIR, file), buf); await writeFile(path.join(DATA_DIR, `up-${id}.json`), JSON.stringify({ name: label, bytes: buf.length, at: Date.now() }));
     return { ok: true, url: `/files/${file}`, name: label, bytes: buf.length };
+  });
+  app.post<{ Body: { src?: unknown } }>('/api/3d/light', async (req, reply) => {
+    const src = String(req.body?.src ?? ''); const f = fileOf(src); if (!f || src.includes('..')) return reply.code(400).send({ error: 'src must be a /files/<name>.glb model.', errorType: 'validation' });
+    const st = await stat(f).catch(() => null); if (!st) return reply.code(404).send({ error: 'That model’s file is no longer on this computer.', errorType: 'not_found' });
+    if (st.size <= MODEL_MAX_BYTES) return { ok: true, url: src, bytes: st.size, light: false, srcBytes: st.size };
+    try { const r = await lightCopyOf(f); return { ok: true, url: `/files/${encodeURIComponent(path.basename(r.file))}`, bytes: r.bytes, light: true, reused: r.reused, srcBytes: st.size }; }
+    catch (e) { if (e instanceof LightError) return reply.code(e.code === 'too_large' ? 413 : 422).send({ error: e.message, errorType: 'validation', code: e.code });
+      req.log.warn({ err: e }, 'light copy failed'); return reply.code(500).send({ error: 'A lighter copy of that model could not be made. Try again.', errorType: 'internal' }); }
   });
   app.get('/api/3d/uploads', async () => {
     const names = (await readdir(DATA_DIR).catch(() => [] as string[])).filter((f) => /^up-[0-9a-f]{16}\.glb$/.test(f));

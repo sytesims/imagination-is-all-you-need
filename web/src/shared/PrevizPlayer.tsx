@@ -53,7 +53,7 @@ import { CityMap, type MapMark } from './previz/world/CityMap';
 import { PropsDrawer, saveThumbs, MINE_TAB } from './previz/PropsDrawer';
 import { choiceById, describeChoice, uploadModel, type ModelChoice } from './previz/myModels';
 import { MODELS_MAX, startHeight, starOf, type PlacedModel } from '../../../server/src/shared/previzModels';
-import type { ModelStatus } from './previz/userModels';
+import { LIGHT_NOTE, type ModelStatus } from './previz/userModels';
 import { rebakeTake } from '../../../server/src/shared/previzCamera';
 import { useBuildMode, BuildHints, BuildToolbar, labelOfSel } from './previz/BuildMode';
 import { PROPS_MAX, groundAt, type PlacedProp } from '../../../server/src/shared/previzTemplates';
@@ -425,7 +425,7 @@ export const PrevizPlayer = forwardRef<PrevizHandle, Props>(function PrevizPlaye
     const { props: _p, ...rest } = s; void _p; return withModels(n.props.length ? { ...rest, props: n.props } : rest, n.models); });
   /** one of your models, ready to place: loaded and checked, its words for the Render, a real-world start height (null: it can't be used; the note says why) */
   const prepModel = async (c: ModelChoice) => { const e = engine.current; if (!e) return null; setModelBusy(c.key); setModelNote(null);
-    try { const [{ fw }, desc] = await Promise.all([e.probeModel(c.src), describeChoice(c)]); if (!e.alive) return null; return { fw, desc, h: startHeight(fw, latest.current.shot.template) }; }
+    try { const [{ fw, light }, desc] = await Promise.all([e.probeModel(c.src), describeChoice(c)]); if (!e.alive) return null; if (light) setModelNote(LIGHT_NOTE); return { fw, desc, h: startHeight(fw, latest.current.shot.template) }; }
     catch (err) { setModelNote((err as Error).message || 'That model could not be loaded.'); return null; } finally { setModelBusy(null); } };
   const modelOf = (c: ModelChoice, p: { fw: number; desc: string; h: number }, x: number, z: number, r: number, list: PlacedModel[]): PlacedModel => { let n = list.length + 1; while (list.some((m) => m.id === `m${n}`)) n++;
     return { id: `m${n}`, src: c.src, ...(c.job ? { job: c.job } : {}), name: c.name, desc: p.desc, x: Math.round(x * 1000) / 1000, z: Math.round(z * 1000) / 1000, r, h: p.h, front: c.front, fw: p.fw }; };
