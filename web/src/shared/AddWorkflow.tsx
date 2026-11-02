@@ -5,7 +5,7 @@
  *     the model files it loads against your ComfyUI up front (server workflowImport.ts, workflowModels.ts graphNeeds).
  *  2. A summary card: name, that line, the tab it lands in, the models, one orange "Add to my workflows". "Customize" (folded) holds the rest in
  *     plain words, node names small and grey underneath. POST /api/workflows saves it; you land in its tab with it picked in the tab's own bar.
- * Two looks for the summary while the user picks one: ?addwf=a (one column) | ?addwf=b (with a preview of the bar it gets). Nothing runs here and no
+ * Beside the summary, a live preview of the bar it gets in its tab (only the inputs it needs; hidden on a phone). Nothing runs here and no
  * code is ever saved: a workflow folder is three JSON files.
  */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -33,8 +33,6 @@ export type AddWorkflowOpts = { /** the tab it was opened from: preselected when
 const MAX = 2 * 1024 * 1024;
 /** Where a workflow you added opens: its tab with it picked in the tab's own bar (Image: Create Image's bar; Video: the Video page's). */
 export const addedHref = (id: string, tab: PluginTab) => (tab === 'video' ? videoWorkflowHref(id) : `/image?workflow=${encodeURIComponent(id)}`);
-/** The summary's look while the user picks one (?addwf=a | b). */
-const lookOf = (): 'a' | 'b' => (typeof location !== 'undefined' && new URLSearchParams(location.search).get('addwf') === 'b' ? 'b' : 'a');
 
 /** One host in App, so any picker or page can open the sheet. */
 let push: ((o: AddWorkflowOpts | null) => void) | null = null;
@@ -70,7 +68,6 @@ const Down = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" s
 
 export function AddWorkflowSheet({ tab: fromTab, onSaved, onClose }: AddWorkflowOpts & { onClose: () => void }) {
   const toast = useToast(); const box = useRef<HTMLDivElement>(null); const back = useRef<HTMLElement | null>(null); const fileIn = useRef<HTMLInputElement>(null);
-  const look = useMemo(lookOf, []);
   const [pv, setPv] = useState<Preview | null>(null); const [fileName, setFileName] = useState('');
   const [busy, setBusy] = useState<'' | 'read' | 'save'>(''); const [err, setErr] = useState<{ error: string; help?: string | null; errors?: string[]; field?: string | null } | null>(null);
   const [over, setOver] = useState(false); const [paste, setPaste] = useState(false); const [text, setText] = useState('');
@@ -174,7 +171,7 @@ export function AddWorkflowSheet({ tab: fromTab, onSaved, onClose }: AddWorkflow
     </div>
   </details>;
 
-  /** Option B's left side: the bar this workflow gets in its tab, only the inputs it needs. */
+  /** The left side: the bar this workflow gets in its tab, only the inputs it needs. */
   const barPreview = g && <div className="adw-bar" aria-hidden data-testid="adw-bar-preview">
     <span className="adw-bar-cap">{TAB_ICON[tab]}In the {tabInfo?.label ?? ''} tab</span>
     <div className="adw-bar-box">
@@ -191,7 +188,7 @@ export function AddWorkflowSheet({ tab: fromTab, onSaved, onClose }: AddWorkflow
   </div>;
 
   return createPortal(<div className="dlg-scrim adw-scrim" onMouseDown={e => e.target === e.currentTarget && !busy && onClose()} onKeyDown={onKey}>
-    <div ref={box} className={`dlg adw${pv ? ` adw-sum adw-look-${look}` : ''}`} role="dialog" aria-modal="true" aria-labelledby="adw-t" data-testid="add-workflow" data-look={look}>
+    <div ref={box} className={`dlg adw${pv ? ' adw-sum' : ''}`} role="dialog" aria-modal="true" aria-labelledby="adw-t" data-testid="add-workflow">
       <header className="adw-h"><h2 id="adw-t" className="dlg-t">Add a workflow</h2>
         <button type="button" className="adw-x" aria-label="Close" onClick={onClose} disabled={!!busy}>×</button></header>
       {!pv ? <>
@@ -212,11 +209,10 @@ export function AddWorkflowSheet({ tab: fromTab, onSaved, onClose }: AddWorkflow
         {err && <div className="adw-err" role="alert" data-testid="adw-error"><Notice as="p" kind="error" tone="line">{err.error}</Notice>
           {err.help && <ol className="adw-help" data-testid="adw-help"><li>Open the workflow in ComfyUI.</li><li>Use <b>Workflow › Export (API)</b>.</li><li>Add the file it saves here.</li></ol>}</div>}
         <p className="adw-warm">Works best with <b>Workflow › Export (API)</b> from ComfyUI. Only the workflow is saved, never code.</p>
-      </> : <form className={`adw-body adw-body-${look}`} onSubmit={e => { e.preventDefault(); void save(); }}>
-        {look === 'b' && barPreview}
+      </> : <form className="adw-body" onSubmit={e => { e.preventDefault(); void save(); }}>
+        {barPreview}
         <div className="adw-main">
           <div className="adw-card" data-testid="adw-summary">
-            {look === 'a' && <span className="adw-ic" aria-hidden><Spark /></span>}
             {nameField}{descField}
             <div className="adw-chips">{tabChip}{priceChip}</div>
           </div>
