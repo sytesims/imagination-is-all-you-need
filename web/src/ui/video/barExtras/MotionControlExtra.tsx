@@ -8,7 +8,7 @@ import { cloudSwapOf, CHARACTER_HINT, CHARACTERS_HINT } from '../../../../../ser
 
 export const useMotionControlExtra: UseBarExtra = () => {
   const maxOf = (prov: string) => cloudSwapOf(prov)?.maxCharacterImages ?? 1;
-  return { trimNote: swapTrimNote({ motion: true }),
+  return { trimNote: swapTrimNote({ motion: true }), trimShots: true,
     slotInfo: (s, c) => { if (s.name !== 'refs') return undefined; const n = maxOf(c.prov); const p: any = c.providers.find(x => x.id === c.prov); const name = cloudSwapOf(c.prov)?.name ?? p?.displayName ?? p?.name ?? 'This model';
       return n > 1 ? { hint: `${CHARACTERS_HINT} ${name} takes up to ${n}.` } : { hint: `${CHARACTER_HINT.replace(/\.$/, '')}. ${name} takes one image` }; },
     slotMax: (s, c) => (s.name === 'refs' ? maxOf(c.prov) : undefined) };

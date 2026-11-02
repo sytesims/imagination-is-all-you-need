@@ -36,6 +36,7 @@ export interface BarExtra {
   /** the price on Generate when this run is more than one job (Talking Video: the voice made from the script + the talking video) */ wrapQuote?: (q: any, c: BarLive) => any;
   /** a step before the submit (Talking Video: make the voice from the script first, then send it as the speech); null = stop, nothing sent */ beforeSubmit?: (fd: FormData, c: BarLive) => Promise<FormData | null>;
   /** the Trim sheet's words on this workflow (Person swap: Who to swap follows the start; cloud swaps: passes) */ trimNote?: (c: BarLive, r: Trim) => { note?: string | null; more?: string[] };
+  /** a range across a shot cut breaks this workflow (it tracks a person or object through the clip): the Trim sheet says so */ trimShots?: boolean;
   /** fields to leave out (the old screen didn't send them in this state) */ omit?: (c: BarLive) => string[];
   files?: (c: BarLive) => [string, File][];
   /** quote fields set on top of the bar's own (null drops one) */ quote?: (c: BarLive) => Record<string, string | null>;

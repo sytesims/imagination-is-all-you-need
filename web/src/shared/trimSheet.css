@@ -70,3 +70,7 @@
 }
 .tsh-more{display:flex;flex-direction:column;gap:2px;color:var(--text-3)}
 .tsh-more p{margin:0}
+/* shot cuts (server clipCuts.ts): a thin tick through the filmstrip; inside the chosen part on a swap, a little brighter */
+.tsh-cut{position:absolute;top:-5px;bottom:-5px;width:2px;margin-left:-1px;background:var(--text-1);opacity:.55;border-radius:1px;pointer-events:none;box-shadow:0 0 0 1px rgba(0,0,0,.45)}
+.tsh-cut.in{opacity:.9}
+.tsh-fit{margin-left:6px;white-space:nowrap}

@@ -525,7 +525,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
         prompt={prompt} kind="video" model={tm?.key} onApply={r => showEnhanced(r, setPrompt, toast)} />}
       {extra.pops?.(live())}
       {trimSlot && trimClip && !trimClip.photo && trimLim && (() => { const tn = trim ? extra.trimNote?.(live(), trim) : undefined; const cr = shownCredits(q);
-        return <TrimSheet open={trimOpen} onClose={() => { setTrimOpen(false); previewAnchor.current?.focus?.(); }} clip={{ url: trimClip.url, name: trimClip.file.name, sec: trimSec, w: trimClip.w, h: trimClip.h }} value={trim}
+        return <TrimSheet open={trimOpen} onClose={() => { setTrimOpen(false); previewAnchor.current?.focus?.(); }} clip={{ url: trimClip.url, name: trimClip.file.name, sec: trimSec, w: trimClip.w, h: trimClip.h, file: trimClip.file }} shotNote={!!extra.trimShots} value={trim}
           onChange={t => setTrimWant({ clip: trimClip.url, t })} min={trimLim.min} max={trimLim.max} model={trimShort} verb={/swap/.test(wf.id) ? 'swaps' : 'takes'} anchor={dock}
           price={q ? <GenPrice q={q} credits={cr} free={cr === 0} demo={q?.demo === true} testId="trim-sheet-price" /> : null} note={tn?.note ?? null} more={tn?.more}
           onPreview={() => { setTrimOpen(false); setPreview({ slot: trimSlot, index: 0 }); }} onReplace={() => { setTrimOpen(false); openSlot(trimSlot.name, 0); }} />; })()}

@@ -89,7 +89,7 @@ export const useObjectSwapExtra: UseBarExtra = ({ tool, vals, setVal }) => {
     files: () => isObj && maskMode === 'upload' && matte ? [['matte', matte]] : [],
     /* the old screen's quote: one pass per version and per 8 photos */
     quote: c => ({ passes: String(Math.max(1, Number(c.valOf('count')) || 1) * Math.max(1, Math.ceil((c.files.refs?.length ?? 0) / 8))) }),
-    trimNote: (c, r) => swapTrimNote({ who: !isObj })(c, r),
+    trimNote: (c, r) => swapTrimNote({ who: !isObj })(c, r), trimShots: true /* the swap tracks one person or object: a cut loses them */,
     onRecreate: f => { if (typeof f.target === 'string' && f.swapType !== 'object') setTarget(f.target); if (typeof f.maskPrompt === 'string') setMaskPrompt(f.maskPrompt);
       if (f.maskMode && ['text', 'point', 'upload', 'none'].includes(f.maskMode)) setMaskMode(f.maskMode as MaskMode); if (f.maskGrow && ['tight', 'normal', 'loose', 'box'].includes(f.maskGrow)) setGrow(f.maskGrow as MaskGrow);
       const m = /^([\d.]+),([\d.]+),([\d.]+)$/.exec(String(f.point ?? '')); if (m) setPoint({ x: Number(m[1]), y: Number(m[2]), t: Number(m[3]) }); },

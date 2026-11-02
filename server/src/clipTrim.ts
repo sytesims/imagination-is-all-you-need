@@ -19,16 +19,27 @@ import { CHARSWAP_CLOUD_SECONDS } from './comfy/h3CharSwapCloud.js';
 import { TWO_SWAP_SECONDS } from './comfy/h3TwoPersonSwapCloud.js';
 import { WA2_PROVIDER, WA2_MIN_SECONDS, WA2_MAX_SECONDS } from './comfy/wanAnimate2Cloud.js';
 import { EDIT_VIDEO_LIMITS } from './tools/editVideo/index.js';
+import { EDIT_MODELS } from './tools/promptEdit.js';
+import { FINISH_TOOL, FINISH_MIN_SECONDS, FINISH_MAX_SECONDS } from './shared/finishPresets.js';
+import { FOOTAGE_FX_TOOL, FOOTAGE_FX_MAX_SECONDS } from './shared/footageFx.js';
+import { CROSSVIEW_PROVIDER, CROSSVIEW_SECONDS } from './shared/crossview.js';
 
 export interface ClipTrimLimits { min: number; max: number }
 type Span = { min?: number; max?: number };
 
 /** Models whose range rule lives in their own module (not in shared/videoFit.ts VIDEO_INPUT_LIMITS). */
-const byProvider = (id: string): Span | null =>
-  id === 'comfy-h3-charswap' ? CHARSWAP_CLOUD_SECONDS : id === WA2_PROVIDER ? { min: WA2_MIN_SECONDS, max: WA2_MAX_SECONDS } : null;
+const byProvider = (id: string): Span | null => {
+  if (id === 'comfy-h3-charswap') return CHARSWAP_CLOUD_SECONDS;
+  if (id === WA2_PROVIDER) return { min: WA2_MIN_SECONDS, max: WA2_MAX_SECONDS };
+  if (id === CROSSVIEW_PROVIDER) return { min: CROSSVIEW_SECONDS.padFrom /* a 4 s take is padded to 5 s */, max: CROSSVIEW_SECONDS.max }; // Re-shoot · H3 CrossView: 5–15 s
+  const em = EDIT_MODELS[id]; if (em) return { min: em.minSec, max: em.maxSec }; // Prompt Edit: Bernini-R 1–5 s (a longer clip used its first 5 s), Kling 4.0 3–30 s
+  return null;
+};
 /** Tools with a rule of their own. */
 const byTool = (toolId: string, providerId: string): Span | null => {
   if (toolId === 'two-person-swap') return TWO_SWAP_SECONDS;
+  if (toolId === FINISH_TOOL) return { min: FINISH_MIN_SECONDS, max: FINISH_MAX_SECONDS }; // Finish: up to 20 s (a longer clip used its start)
+  if (toolId === FOOTAGE_FX_TOOL) return { min: 1, max: FOOTAGE_FX_MAX_SECONDS }; // Footage Effects: 5 s a run (a longer clip used its start; parse takes ≥ 0.7 s)
   if (toolId === 'h3-extend' && providerId === LTX25_EXTEND_ID) return { min: 1, max: EXTEND_MAX_SEC }; // LTX-2.5 Extend checks its own source rule (ownLimits)
   const ev = EDIT_VIDEO_LIMITS[toolId]; return ev ? { min: ev.minSeconds, max: ev.maxSeconds } : null;
 };

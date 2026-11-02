@@ -23,6 +23,9 @@ const R = await import('../src/tools/registry.ts'); const C = await import('../s
   assert.deepEqual(C.clipTrimLimits('two-person-swap', 'cloud-h3-two-swap'), { min: 2, max: 15 });
   assert.deepEqual(C.clipTrimLimits('upscale', 'direct-flux3-upscale'), { min: 4, max: 20 });
   assert.deepEqual(C.clipTrimLimits('object-swap'), { min: 4, max: 30 }, 'no model: the shared upload limits');
+  assert.deepEqual(C.clipTrimLimits('prompt-edit', 'cloud-bernini-r'), { min: 1, max: 5 }); assert.deepEqual(C.clipTrimLimits('prompt-edit', 'cloud-kling4-edit'), { min: 3, max: 30 });
+  assert.deepEqual(C.clipTrimLimits('finish', 'local-finish'), { min: 1, max: 20 }); assert.deepEqual(C.clipTrimLimits('footage-fx', 'comfy-ltx25-iclora'), { min: 1, max: 5 });
+  assert.deepEqual(C.clipTrimLimits('reshoot', 'cloud-h3-crossview'), { min: 4, max: 15 });
   const app = R.getTool('app-video-upscale')!; assert.equal(C.trimToolId(app as any), 'upscale'); assert.deepEqual(C.clipTrimLimits(C.trimToolId(app as any), 'cloud-topaz-astra2'), { min: 4, max: 30 }, 'an app takes its base tool\'s rule');
   ok('limits: H3 2–15, Kling 4–30, Reframe 4–10, LTX Extend 1–60, Swap Two People 2–15, FLUX upscale ≤ 20, default 4–30, apps follow their base');
 }
@@ -56,6 +59,21 @@ const R = await import('../src/tools/registry.ts'); const C = await import('../s
   const over: any = await t.parseInput({ trimStart: '0', trimEnd: '12', provider: 'auto-reframe', aspect: '9:16' }, { video: ['b.mp4'] }); assert.match(over.error, /at most 10 s/);
   const whole: any = await t.parseInput({ provider: 'auto-reframe', aspect: '9:16' }, { video: ['b.mp4'] }); assert.ok('error' in whole, 'no range: a 16 s clip is still refused by Reframe (4–10 s), as before');
   ok('wrapped tool: Reframe cuts 3–10 s, bills 7 s; 12 s refused on its 10 s rule; no range → unchanged');
+}
+// ---------------- 5. shot cuts ----------------
+{
+  const K = await import('../src/clipCuts.ts');
+  // the rule: a lone high score is a cut; a busy stretch (every frame high) is not; the frame right after a cut is not a second one
+  const rows = (o: Record<number, number>, base = 0.03, n = 96) => Array.from({ length: n }, (_, i) => ({ t: i / 24, s: o[i] ?? base }));
+  assert.deepEqual(K.cutsFromScores(rows({ 40: 0.45, 41: 0.14 })), [40 / 24].map((t) => Math.round(t * 1000) / 1000));
+  assert.deepEqual(K.cutsFromScores(rows({ 40: 0.2 }, 0.09)), [], 'a camera move: the neighbours score high too');
+  assert.deepEqual(K.cutsFromScores(rows({ 40: 0.13 })), [], 'under the floor');
+  // a real clip: three shots (two colour test patterns and a moving one), cut at 2 s and 4 s
+  execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'testsrc=size=640x360:rate=24:duration=2', '-f', 'lavfi', '-i', 'smptebars=size=640x360:rate=24:duration=2', '-f', 'lavfi', '-i', 'mandelbrot=size=640x360:rate=24', '-filter_complex', '[2:v]trim=duration=2,setpts=PTS-STARTPTS[m];[0:v][1:v][m]concat=n=3:v=1[v]', '-map', '[v]', '-pix_fmt', 'yuv420p', at('shots.mp4')]);
+  const cuts = await K.clipCuts(at('shots.mp4')); assert.equal(cuts.length, 2, JSON.stringify(cuts)); assert.ok(Math.abs(cuts[0] - 2) < 0.1 && Math.abs(cuts[1] - 4) < 0.1, JSON.stringify(cuts));
+  assert.equal(await K.clipCuts(at('shots.mp4')), await K.clipCuts(at('shots.mp4')), 'cached per file');
+  assert.deepEqual(await K.clipCuts(at('clip16.mp4')), [], 'one continuous shot: no cuts');
+  ok('shot cuts: score rule (lone peak, camera move, floor), a three-shot clip cut at 2 s and 4 s, cached, a continuous clip has none');
 }
 console.log('clip-trim: all ok');
 process.exit(0);

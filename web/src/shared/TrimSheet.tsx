@@ -43,19 +43,37 @@ function waveOf(url: string, bins: number): Promise<number[] | 'none'> {
   WAVES.set(k, p); return p;
 }
 
+const CUTS = new Map<string, Promise<number[]>>();
+/** The shot cuts in the clip (server clipCuts.ts: free, local ffmpeg scene detection), once per clip; [] when unknown. */
+function cutsOf(url: string, file?: File): Promise<number[]> {
+  const hit = CUTS.get(url); if (hit) return hit;
+  const fd = new FormData(); if (/^\/(files|samples)\//.test(url) || !file) fd.append('videoUrl', url); else fd.append('video', file);
+  const p = fetch('/api/clip-cuts', { method: 'POST', body: fd }).then(r => r.ok ? r.json() : null).then(j => (Array.isArray(j?.cuts) ? j.cuts.filter((n: unknown) => Number.isFinite(n)) as number[] : [])).catch(() => []);
+  CUTS.set(url, p); return p;
+}
+/** The shot the window sits in most, as whole seconds inside it (null: no shot is long enough). */
+export function shotFit(r: Trim, cuts: number[], D: number, min: number, max: number): Trim | null {
+  const edges = [0, ...cuts.filter(c => c > 0 && c < D), D]; let best: Trim | null = null; let bestOver = -1;
+  for (let i = 0; i < edges.length - 1; i++) { const a = Math.ceil(edges[i] - 0.001), b = Math.floor(edges[i + 1] + 0.001); if (b - a < min) continue;
+    const over = Math.max(0, Math.min(r.end, b) - Math.max(r.start, a)); const s = Math.max(a, Math.min(r.start, b - min)); const t = { start: s, end: Math.min(b, s + max) };
+    if (over > bestOver) { bestOver = over; best = t; } }
+  return best;
+}
+
 export interface TrimSheetProps {
   open: boolean; onClose: () => void;
-  clip: { url: string; name: string; sec: number; /** frame size: a wide clip gets a wide preview */ w?: number; h?: number };
+  clip: { url: string; name: string; sec: number; /** the clip itself, when it isn't on the server yet (the cut check sends it) */ file?: File; /** frame size: a wide clip gets a wide preview */ w?: number; h?: number };
   /** null: the clip is shorter than the model's minimum */ value: Trim | null; onChange: (t: Trim) => void;
   min: number; max: number; /** short model name for the notes ("H3") */ model: string; /** "swaps", "takes" */ verb?: string;
   /** the live price (the same quote Generate shows) */ price?: ReactNode;
   /** one line from the tool when nothing else is said (Person swap: "Who to swap … start at 0:03") */ note?: string | null;
   /** smaller lines under it (how a cloud model runs the range) */ more?: string[];
+  /** a range across a shot cut is a problem for this tool (person / object swap, motion transfer): say so and offer Fit to this shot */ shotNote?: boolean;
   /** the dock the sheet sits above */ anchor: RefObject<HTMLElement>;
   onPreview?: () => void; onReplace?: () => void; testId?: string;
 }
 
-export default function TrimSheet({ open, onClose, clip, value, onChange, min, max, model, verb = 'takes', price, note, more, anchor, onPreview, onReplace, testId = 'trim-sheet' }: TrimSheetProps) {
+export default function TrimSheet({ open, onClose, clip, value, onChange, min, max, model, verb = 'takes', price, note, more, shotNote, anchor, onPreview, onReplace, testId = 'trim-sheet' }: TrimSheetProps) {
   const D = Math.max(1, Math.floor(clip.sec + 0.05)); const pct = (s: number) => `${(s / D) * 100}%`;
   const [pos, setPos] = useState<{ left: number; width: number; bottom: number } | null>(null);
   const [frames, setFrames] = useState<string[]>([]); const [wave, setWave] = useState<number[] | 'none' | null>(null);
@@ -72,6 +90,8 @@ export default function TrimSheet({ open, onClose, clip, value, onChange, min, m
     place(); const ro = new ResizeObserver(place); if (anchor.current) ro.observe(anchor.current); window.addEventListener('resize', place);
     return () => { ro.disconnect(); window.removeEventListener('resize', place); }; }, [open, anchor]);
   /* filmstrip and wave, once per clip */
+  const [cuts, setCuts] = useState<number[]>([]);
+  useEffect(() => { if (!open) return; let live = true; setCuts([]); void cutsOf(clip.url, clip.file).then(c => { if (live) setCuts(c); }); return () => { live = false; }; }, [open, clip.url]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (!open) return; let live = true; setFrames([]); setWave(null);
     void framesOf(clip.url, clip.sec, 12).then(f => { if (live) setFrames(f); }); void waveOf(clip.url, 96).then(w => { if (live) setWave(w); });
     return () => { live = false; }; }, [open, clip.url]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -104,10 +124,13 @@ export default function TrimSheet({ open, onClose, clip, value, onChange, min, m
 
   if (!open || !pos) return null;
   const over = Math.floor(clip.sec + 0.05) > max; const short = !r;
+  const inside = r ? cuts.filter(c => c > r.start + 0.05 && c < r.end - 0.05) : []; const fit = r && inside.length ? shotFit(r, cuts, D, min, max) : null;
   const line: { text: ReactNode; warn?: boolean } | null = short ? { text: <>This clip is {Math.round(clip.sec * 10) / 10} s. {model} needs at least <b>{min} s</b>: pick a longer clip.</>, warn: true }
     : hit === 'min' ? { text: <>{model} needs at least <b>{min} s</b>. The handle stops here.</>, warn: true }
     : hit === 'max' ? { text: <>{model} {verb} up to <b>{max} s</b>. The handle stops here.</>, warn: true }
     : playing && head != null ? { text: <>Playing {clock(head)} of the chosen part · loops</> }
+    : inside.length && shotNote ? { text: <>This part has {inside.length} cut{inside.length === 1 ? '' : 's'}. Swaps work best on one continuous shot — drag the window inside one shot.
+        {fit && <button type="button" className="link-btn tsh-fit" data-testid={`${testId}-fit-shot`} onClick={() => { setHit(null); onChange(fit); }}>Fit to this shot</button>}</>, warn: false }
     : note ? { text: note }
     : over ? { text: <><span className="tsh-dot" aria-hidden />{model} {verb} up to <b>{max} s</b>, so the window slides. Drag it to pick the part.</> } : null;
   const ticks = [...new Set([0, 0.25, 0.5, 0.75, 1].map(f => Math.round(f * D)))];
@@ -137,6 +160,9 @@ export default function TrimSheet({ open, onClose, clip, value, onChange, min, m
           </div>
           {drag && drag !== 'move' && <span className="tsh-tip" style={{ left: pct(drag === 'start' ? r.start : r.end) }} aria-hidden>{hit === 'min' ? `min ${min} s` : hit === 'max' ? `max ${max} s` : clock(drag === 'start' ? r.start : r.end)}</span>}
           {playing && head != null && <span className="tsh-head" style={{ left: pct(head) }} aria-hidden />}
+        </>}
+        {cuts.length > 0 && <>
+          {cuts.filter(c => c > 0 && c < D).map(c => <i key={c} className={`tsh-cut${r && c > r.start + 0.05 && c < r.end - 0.05 ? ' in' : ''}`} style={{ left: pct(c) }} title={`Shot cut at ${clock(c)}`} data-testid={`${testId}-cut`} aria-hidden />)}
         </>}
       </div>
       <div className={`tsh-wave${wave === 'none' ? ' none' : ''}`} data-testid={`${testId}-wave`} aria-hidden={wave !== 'none'}>

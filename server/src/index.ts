@@ -841,6 +841,7 @@ registerDiscover(app);
 (await import('./routesEdit.js')).registerEdit(app);
 (await import('./routesEditVideo.js')).registerEditVideo(app); // Edit Video menu + routes/prices
 (await import('./routesOverlay.js')).registerOverlay(app); // result overlay: B1/B2 elements from outputs, B4 neighbours, B5 output metadata, Community seed
+(await import('./clipCuts.js')).registerClipCuts(app); // Trim sheet: the shot cuts in a clip (free, local ffmpeg scene detection)
 (await import('./routesMaskPreview.js')).registerMaskPreview(app); // Object Swap mask preview (free; mock ellipse, local SAM 3.1 when ComfyUI has SAM3_Detect)
 (await import('./routesFrame.js')).registerFrame(app); // POST /api/media/frame: a video's first / last / any frame as a library image (videoFrame.ts)
 (await import('./routesPrefill.js')).registerPrefill(app); // B3 GET /api/jobs/:id/prefill + B7 job owner/isOwner
