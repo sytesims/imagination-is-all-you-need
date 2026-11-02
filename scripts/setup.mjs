@@ -60,7 +60,8 @@ if (doc.status !== 0 && doc.status !== 1) { console.error('\nThe app can’t sta
 const doneCode = doc.status === 1 ? 2 : 0;
 
 // 3. start (or say where it runs)
-const webUp = async () => { try { return (await fetch(home, { signal: AbortSignal.timeout(1500) })).ok; } catch { return false; } };
+/* the page and its tab icon both answer before the browser opens: a browser that loads the page before the icon is served remembers "no icon" */
+const webUp = async () => { try { const ok = async (u) => (await fetch(u, { signal: AbortSignal.timeout(1500) })).ok; return await ok(home) && await ok(`${home}favicon.ico`); } catch { return false; } };
 console.log('');
 if (await up()) {
   if (openWhenReady) { openBrowser(home); say(`The app is already running: opened ${home} in your browser.`); process.exit(0); }
