@@ -118,6 +118,9 @@
 .xsw-name b{font:650 17px/1.25 var(--font-ui);color:#fff;letter-spacing:-.005em}
 .xsw-name small{font:500 13px/1.3 var(--font-ui);color:rgba(255,255,255,.55)}
 .xsw-run{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;min-width:0;max-width:100%}
+.xsw-act{display:inline-flex;align-items:center;flex-wrap:wrap;gap:8px 14px;min-width:0}
+.xsw-trio .xsw-run{flex-direction:column;align-items:flex-start}
+.xsw-trio .xsw-name{min-height:40px;align-items:center}
 .xsw-from{display:inline-flex;align-items:center;gap:8px;flex:none}
 .xsw-from .xsd-faces img{width:24px;height:24px;border-width:1.5px}
 .xsw-from .xsd-faces img+img{margin-left:-8px}
@@ -127,22 +130,24 @@
 .xsw-rec:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap)}
 .xsw-snd{position:relative;flex:none;display:block;width:40px;height:40px;--snd-right:0px;--snd-bottom:0px}
 .xsw-switch{display:flex;justify-content:center;margin:0 0 18px}
-.xsw-switch .bp-seg{width:min(100%,440px);margin:0;padding:3px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12)}
-.xsw-switch .bp-opt{min-height:38px;padding:6px 10px;border-radius:11px;color:rgba(255,255,255,.66);cursor:pointer;transition:background .2s ease,color .2s ease}
-.xsw-switch .bp-opt:hover{color:#fff}
-.xsw-switch .bp-opt-l{font:600 13.5px/18px var(--font-ui)}
-.xsw-switch .bp-opt.on{color:#fff;background:rgba(255,122,26,.24);box-shadow:inset 0 0 0 1px rgba(255,122,26,.55)}
-.xsw-switch .bp-opt:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:1px}
+.xsw .xsw-switch.bp-host .bp-seg{width:min(100%,440px);margin:0;padding:3px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12)}
+.xsw .xsw-switch.bp-host .bp-opt{min-height:38px;padding:6px 10px;border-radius:11px;color:rgba(255,255,255,.66);cursor:pointer;transition:background .2s ease,color .2s ease}
+.xsw .xsw-switch.bp-host .bp-opt:hover{color:#fff}
+.xsw .xsw-switch.bp-host .bp-opt-l{font:600 13.5px/18px var(--font-ui)}
+.xsw .xsw-switch.bp-host .bp-opt.on{color:#fff;background:rgba(255,122,26,.24);box-shadow:inset 0 0 0 1px rgba(255,122,26,.55)}
+.xsw .xsw-switch.bp-host .bp-opt.on::after{display:none}
+.xsw .xsw-switch.bp-host .bp-opt:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:1px}
 .xsw-stage,.xsw-under{width:100%;max-width:1180px;margin-left:auto;margin-right:auto}
 .xsw-stage{border-radius:22px;overflow:hidden;background:#111;border:1px solid rgba(255,255,255,.07);box-shadow:0 30px 80px rgba(0,0,0,.45)}
 .xsw-cmp{position:relative;aspect-ratio:16/9;width:100%}
 .xsw-layer{position:absolute;inset:0;opacity:0;transition:opacity .35s ease}.xsw-layer.on{opacity:1}
 .xsw-cmp.is-orig{cursor:default}.xsw-cmp.is-orig .cmpf-after,.xsw-cmp.is-orig .cmpf-track,.xsw-cmp.is-orig .cmpf-tag-r{display:none}
-.xsw-under{display:flex;align-items:center;justify-content:space-between;gap:12px 20px;flex-wrap:wrap;margin-top:16px;min-height:40px}
+.xsw-under{display:flex;align-items:center;justify-content:space-between;gap:12px 20px;margin-top:16px;min-height:40px}
+.xsw-under>.xsw-run,.xsw-under>.xsw-name{flex:1;min-width:0}
 .xsw .xsw-foot{margin-top:clamp(28px,3vw,40px)}
-@media (max-width:860px){.xsw-trio{grid-template-columns:1fr;gap:26px}.xsw-frame{border-radius:16px}.xsw-stage{border-radius:16px}}
-@media (max-width:520px){.xsw-cap{padding-top:12px;gap:8px}.xsw-name b{font-size:16px}.xsw-switch .bp-opt{padding:6px 4px}.xsw-switch .bp-opt-l{font-size:12.5px}.xsw-under{margin-top:12px}}
-@media (prefers-reduced-motion:reduce){.xsw-layer,.xsw-switch .bp-opt{transition:none}}
+@media (max-width:860px){.xsw-trio{grid-template-columns:1fr;gap:26px}.xsw-trio .xsw-name{min-height:0}.xsw-trio .is-orig .xsw-name{min-height:40px}.xsw-cmp .cmpf-tag{display:none}.xsw-frame{border-radius:16px}.xsw-stage{border-radius:16px}}
+@media (max-width:520px){.xsw-cap{padding-top:12px;gap:8px}.xsw-name b{font-size:16px}.xsw .xsw-switch.bp-host .bp-opt{padding:6px 4px}.xsw .xsw-switch.bp-host .bp-opt-l{font-size:12.5px}.xsw-under{margin-top:12px}}
+@media (prefers-reduced-motion:reduce){.xsw-layer,.xsw .xsw-switch.bp-host .bp-opt{transition:none}}
 
 /* ================================================= One idea. Every look. (XpLooks) ================================================= */
 .xlk{display:grid;grid-template-columns:minmax(300px,440px) minmax(0,1fr);gap:clamp(28px,3.4vw,56px) clamp(32px,4vw,64px);align-items:center}

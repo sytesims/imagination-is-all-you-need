@@ -240,8 +240,8 @@ function SwapPair() {
 const SwapFrom = ({ run }: { run: SwapRunView }) => <span className="xsw-from"><SwapFaces run={run} /><small>from {run.photos.length} photo{run.photos.length === 1 ? '' : 's'}</small></span>;
 /** a result's run line, under its media (the Explore rule): the photos, model · where it ran · price, Recreate */
 const SwapRunLine = ({ run }: { run: SwapRunView }) => <div className="xsw-run">
-  <RunChip c={run.chip} testId={`xp-swap-chip-${run.r.key}`} /><SwapFrom run={run} />
-  <Link to={run.rec} className="xsw-rec" data-testid={`xp-swap-recreate-${run.r.key}`}>Recreate<Arrow /></Link></div>;
+  <RunChip c={run.chip} testId={`xp-swap-chip-${run.r.key}`} />
+  <span className="xsw-act"><SwapFrom run={run} /><Link to={run.rec} className="xsw-rec" data-testid={`xp-swap-recreate-${run.r.key}`}>Recreate<Arrow /></Link></span></div>;
 const SwapHead = () => <header className="xsdc-head xsw-head">
   <h2 id="xp-h-swap" className="xps-h xsdc-h">{EXPLORE_SWAP.title.map((l) => <span key={l}>{l}</span>)}</h2>
   <p className="xps-p xsdc-p">{EXPLORE_SWAP.line}</p></header>;
