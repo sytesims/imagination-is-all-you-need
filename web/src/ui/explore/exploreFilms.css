@@ -284,3 +284,24 @@
 @media (max-width:860px){.xpfm-split-grid{grid-template-columns:minmax(0,1fr)}.xpfm-scenes{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:520px){.xpfm-scenes{grid-template-columns:repeat(2,minmax(0,1fr))}.xpfm-scene small{display:none}}
 .xpfm-chip{align-self:flex-start;width:fit-content}
+
+/* ---- the run line under each poster (2026-11-02, one rule for Explore): the poster's look moves to .xpfm-pc-card, the line sits under it */
+.xpfm-posters:has(.is-film){height:auto;align-items:flex-start}
+.xpfm-pc.is-film{display:flex;flex-direction:column;gap:10px;height:auto;overflow:visible;border:0;border-radius:0;background:none;box-shadow:none!important}
+.xpfm-pc-card{position:relative;flex:none;height:var(--ph);border-radius:16px;overflow:hidden;background:#070708;border:1px solid var(--xv-line);transition:border-color .2s ease,box-shadow .4s ease}
+.xpfm-pc.is-film:hover .xpfm-pc-card,.xpfm-pc.is-film:focus-within .xpfm-pc-card,.xpfm-pc.is-film.is-on .xpfm-pc-card{box-shadow:0 30px 80px rgba(0,0,0,.55)}
+.xpfm-pc.is-film:hover .xpfm-pc-card{border-color:rgba(255,122,26,.55)}
+.xpfm-pc.is-film.is-on .xpfm-pc-card{border-color:var(--accent)}
+.xpfm-pc.is-film .xpfm-pc-more{justify-content:flex-end!important}
+.xpfm-pc-run{display:flex;min-width:0;padding-left:2px}
+.xpfm-pc:not(:hover):not(.is-on) .xpfm-pc-run .runchip{opacity:.85}
+@media (prefers-reduced-motion:reduce){.xpfm-pc-card{transition:none}}
+@media (max-width:760px){
+  /* phone: a swipeable strip of posters (the next one peeks), wide enough that each run line stays one line */
+  .xpfm-posters:has(.is-film){display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin-inline:-16px;padding:0 16px 6px;scroll-padding-inline:16px;gap:12px}
+  .xpfm-posters:has(.is-film)::-webkit-scrollbar{display:none}
+  .xpfm-pc.is-film{flex:0 0 min(78%,320px);aspect-ratio:auto;scroll-snap-align:start}
+  .xpfm-pc.is-film .xpfm-pc-card{height:auto;aspect-ratio:2/3}
+  .xpfm-pc.is-film .xpfm-pc-more{justify-content:center!important}
+}
+.xpfm-posters .xpfm-pc.is-film .xpfm-pc-more>span.xpfm-pc-play{display:inline-flex!important}

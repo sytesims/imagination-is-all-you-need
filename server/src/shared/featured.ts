@@ -48,7 +48,7 @@ export interface FeaturedItem {
 /** `inOut`: `out` already IS this upscale (the original isn't shipped), so its run is part of what the example cost */
 export interface FeaturedSharp extends FeaturedMedia { model: string; place: string; route: string; costUsd: number; jobId: string; inOut?: boolean }
 /** One real run of ours: its job id, the model as shown, where it ran and what it cost (USD; `est`: the estimate, no receipt recorded). */
-export interface FeaturedRun { jobId: string; model: string; place: string; costUsd: number; est?: boolean }
+export interface FeaturedRun { jobId: string; model: string; place: string; costUsd: number; est?: boolean; /** what this run made, a word or two ("Portrait", "Voice"): the Explore run line's "+N steps" list */ role?: string }
 export interface FeaturedLayer { url: string; label: string; box: [number, number, number, number] }
 
 const S = (f: string) => `/showcase/${f}`;
@@ -106,11 +106,11 @@ export const H3_KDRAMA_PROMPT = 'Korean drama comedy scene, 15 seconds, cinemati
  *  image to video on Comfy Cloud from that painted frame, 6 s, 1080p, sound, seed 1200080632, recorded estimate 146 credits = $1.46). Prompt as it ran (the app adds
  *  "animate the image." in front when it sends it). The film is image to video: it does not follow the mockup's camera (that is Layout to Render). */
 export const MOSSBUN_FILM_PROMPT = 'Golden hour on a palm-lined city avenue, sunlight flaring through the palms. The small mossy forest creature hops toward the camera along the centre line, its long leaf-ears bouncing, the lantern on the tip of its tail flickering warm orange. The camera glides low and backward in a smooth tracking shot, keeping it centred, as cars pass in soft motion blur on both sides. It stops, looks up into the lens with wide shining eyes, and the lantern blooms brighter, bathing its fur in warm golden light. Sound: soft city ambience, distant traffic, light padded footsteps, then a gentle magical chime as the lantern glows.';
-export const MOSSBUN_SHEET_RUN: FeaturedRun = { jobId: '9564386e', model: 'GPT Image 2.5 Flare', place: 'Comfy Router', costUsd: 0.0087 };
-export const MOSSBUN_3D_RUN: FeaturedRun = { jobId: '092abb03', model: 'Tripo 3.1', place: 'Comfy Cloud', costUsd: 0.3, est: true };
+export const MOSSBUN_SHEET_RUN: FeaturedRun = { jobId: '9564386e', model: 'GPT Image 2.5 Flare', place: 'Comfy Router', costUsd: 0.0087, role: 'Character sheet' };
+export const MOSSBUN_3D_RUN: FeaturedRun = { jobId: '092abb03', model: 'Tripo 3.1', place: 'Comfy Cloud', costUsd: 0.3, est: true, role: '3D model' };
 /** the city step: the mockup, the free paint, the golden-hour edit */
-export const MOSSBUN_CITY_RUNS: FeaturedRun[] = [{ jobId: '13aca5cc', model: 'Mockup', place: 'in your browser', costUsd: 0 }, { jobId: 'ea410812', model: 'FLUX.2 [klein] 4B', place: OUR_COMPUTER, costUsd: 0 },
-  { jobId: 'b688b9c3', model: 'GPT Image 2.5 Flare', place: 'Comfy Router', costUsd: 0.0245 }];
+export const MOSSBUN_CITY_RUNS: FeaturedRun[] = [{ jobId: '13aca5cc', model: 'Direct a Shot', place: 'in your browser', costUsd: 0, role: 'Mockup' }, { jobId: 'ea410812', model: 'FLUX.2 [klein] 4B', place: OUR_COMPUTER, costUsd: 0, role: 'First frame' },
+  { jobId: 'b688b9c3', model: 'GPT Image 2.5 Flare', place: 'Comfy Router', costUsd: 0.0245, role: 'Golden-hour edit' }];
 /** Explore "Made with Seedance 2.0" (2026-10-27, the approved cinema strip): two of the maintainer's own Seedance 2.0 runs on Comfy Router.
  *  Lighthouse (job 5b612365, route comfy-router:router-seedance): text to video from nine words, 15 s, 720p (1280×720), sound, seed 222982; the model
  *  cut it into four shots by itself. Billed 690 Comfy credits = $3.2522 (quoted $3.27). Fashion (job 4bb53e5b): image to video from a still, 5 s, 720p,
@@ -281,7 +281,7 @@ export const FEATURED_VIDEO: FeaturedItem[] = [
       videoUrl: S('h3-koi-take-in.mp4'), refUrls: [], refBatches: [[]] },
     out: clip('h3-koi-take', 1280, 714, 20.13), before: { ...clip('h3-koi-take-in', 1280, 714, 10.125), label: 'First 10 s · MiniMax H3' },
     runOn: 'comfy-cloud', route: 'comfy-cloud:cloud-h3-extend', costUsd: 0.52, jobId: '50d2a3a0',
-    from: [{ jobId: '42ceb1af', model: 'MiniMax H3', place: 'Comfy Cloud', costUsd: 0.8 }],
+    from: [{ jobId: '42ceb1af', model: 'MiniMax H3', place: 'Comfy Cloud', costUsd: 0.8, role: 'Start, the first 10 s' }],
     recreateHref: `${VIDEO_PAGE}?workflow=extend&recreate=2fb5ac80` },
   /* Explore "Mockup to film": the film (job 1a1a33c6), its mockup as `before` (job a1a50672). Both ship trimmed, in step, to the first shot (frames
      0–94, 3.96 s: they end two frames before the mockup's camera jump at 4.04 s), the film's sound faded out over its last 0.3 s. Recreate opens Direct a Shot on Open city with the
@@ -292,7 +292,7 @@ export const FEATURED_VIDEO: FeaturedItem[] = [
         plan: { width: 1280, height: 704, frames: 193, seconds: 8, fps: 24, aspect: '16:9', size: 'hd', tier: '720p' } } },
     out: clip('ltx-mockup-film', 1280, 720, 3.96), before: { ...clip('ltx-mockup-film-plan', 1280, 720, 3.96), sound: false, label: 'Mockup · Open city' },
     runOn: 'comfy-cloud', route: 'comfy-cloud:cloud-ltx25-layout', costUsd: 0.28, jobId: '1a1a33c6',
-    from: [{ jobId: 'a1a50672', model: 'Mockup', place: 'in your browser', costUsd: 0 }, { jobId: '645de70d', model: 'GPT Image 2.5 Flare', place: 'Comfy Cloud', costUsd: 0.0238 }], recreateHref: directHref('open-city', MOCKUP_FILM_PROMPT) },
+    from: [{ jobId: 'a1a50672', model: 'Direct a Shot', place: 'in your browser', costUsd: 0, role: 'Mockup' }, { jobId: '645de70d', model: 'GPT Image 2.5 Flare', place: 'Comfy Cloud', costUsd: 0.0238, role: 'First frame' }], recreateHref: directHref('open-city', MOCKUP_FILM_PROMPT) },
   /* Explore "Script → Screen": the K-drama scene (job fb0b44ca, H3_KDRAMA_PROMPT above). Ships re-encoded to 2.1 MB (H.264 High 1280×714, AAC, faststart), JPG posters. */
   { key: 'h3-kdrama-script', tab: 'video', title: 'Sorry, not sorry: a K-drama scene from a script', toolId: 'h3-video', provider: 'comfy-h3', modelKey: 'minimax-h3', model: 'MiniMax H3', flow: 'Create Video',
     prompt: H3_KDRAMA_PROMPT, input: { types: ['t2v'], mode: 't2v', outKind: 'av-video', duration: 15, resolution: '768p', aspect: '16:9', audio: true, quality: 'quality', bitrate: 'high', seed: 856385, n: 1 },
@@ -333,8 +333,8 @@ const stSound = (name: string, sec: number): FeaturedMedia => ({ url: ST(`${name
 /** a start frame (or portrait) Recreate attaches: the JPG the bar accepts, its 480 px poster */
 const stFrame = (name: string, width: number, height: number, label: string) => ({ url: ST(`${name}.jpg`), poster: ST(`${name}-480.webp`), width, height, label });
 /** The talking presenter's earlier steps: the portrait, its logo edit, the voice (jobs df027961, 160c5f7a, 952f0862). */
-export const PRESENTER_RUNS: FeaturedRun[] = [{ jobId: 'df027961', model: 'GPT Image 2.5 Flare', place: 'Comfy Cloud', costUsd: 0.0127 },
-  { jobId: '160c5f7a', model: 'GPT Image 2.5 Flare', place: 'Comfy Cloud', costUsd: 0.0461 }, { jobId: '952f0862', model: 'Qwen3 TTS 1.7B', place: OUR_COMPUTER, costUsd: 0 }];
+export const PRESENTER_RUNS: FeaturedRun[] = [{ jobId: 'df027961', model: 'GPT Image 2.5 Flare', place: 'Comfy Cloud', costUsd: 0.0127, role: 'Portrait' },
+  { jobId: '160c5f7a', model: 'GPT Image 2.5 Flare', place: 'Comfy Cloud', costUsd: 0.0461, role: 'Portrait edit' }, { jobId: '952f0862', model: 'Qwen3 TTS 1.7B', place: OUR_COMPUTER, costUsd: 0, role: 'Voice' }];
 const FOX_EXTEND_PROMPT = "Continue the same action at the same pace, same camera: the fox nuzzles the boy's open hand as he laughs, then it hops playfully around him in the golden meadow. continue the action naturally";
 const PRESENTER_PROMPT = 'A friendly presenter talking warmly to camera, natural small head movements and blinks';
 const LIFT_GHOST_PROMPT = 'For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.\n\nintegrated_multimodal_description: [Shot 1] Live-action French horror film, photorealistic, the view from a phone lying face-up on the floor of a dark iron cage lift, its torch lighting the ceiling. Static wide-angle view looking straight up. The face of the gaunt pale woman with grey-white skin, wide dead eyes, long straight dark wet hair and a faded grey nightgown, upside down at the top of the frame, slowly leans closer and closer to the lens until it fills the frame';

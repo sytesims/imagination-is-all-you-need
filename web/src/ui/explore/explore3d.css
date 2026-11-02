@@ -34,9 +34,11 @@
 .x3 .x3-total b{color:#fff;font-weight:650}
 .x3 .x3-credits{margin-left:10px}
 .x3 .x3-ctas{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px}
-@media (max-width:760px){.x3 .x3-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.x3 .x3-step:nth-child(odd)::before{display:none}}
+/* phone: one step per view in a swipeable strip (the next card peeks), so each run line stays on one line */
+@media (max-width:760px){.x3 .x3-steps{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin-inline:-16px;padding:0 16px 4px;scroll-padding-inline:16px}
+  .x3 .x3-steps::-webkit-scrollbar{display:none}.x3 .x3-step{flex:0 0 min(80%,340px);scroll-snap-align:start}}
 @media (prefers-reduced-motion:reduce){.x3 .x3-step,.x3 .x3-credits{transition:none}}
-.x3 .runchip{gap:3px 5px;padding:5px 9px;font-size:11.5px}
+.x3 .x3-run .runchip{font-size:11.5px}
 
 /* ---------- media first (the user's pick, 2026-11-02): a framed band, its own height, the headline small on it; the step strip under it ---------- */
 .x3 .x3-band{position:relative;border-radius:22px;overflow:hidden;border:1px solid var(--xv-line);box-shadow:0 30px 90px rgba(0,0,0,.45)}
