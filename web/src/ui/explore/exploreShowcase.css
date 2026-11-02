@@ -55,10 +55,8 @@
 .xph-cred dt{margin:0 0 8px;font:700 10px/1 var(--font-display);letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.52);text-shadow:var(--xph-shadow)}
 .xph-cred dd{margin:0;font:600 14.5px/1.2 var(--font-ui);color:#fff;white-space:nowrap;text-shadow:var(--xph-shadow)}
 .xph-cred i{font-style:normal;margin:0 7px;color:rgba(255,255,255,.38)}
-.xph-rec{display:inline-flex;align-items:center;gap:4px;margin-top:24px;font:700 14.5px/1 var(--font-ui);color:var(--accent)!important;text-shadow:var(--xph-shadow);transition:color .2s ease}
-.xph-rec:hover{color:#ff9a4d!important}
-.xph-rec:hover .xv-arrow{transform:translateX(3px)}
-.xph-rec:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap);border-radius:4px}
+.xph-rec{margin-top:24px} /* the shared .xv-btn, like every other section's main action */
+.xph-rec:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap)}
 @media (max-width:640px){.xph-cred{flex-wrap:nowrap}.xph-cred>div{padding:0 12px}.xph-cred dd{font-size:13px}.xph-cred i{margin:0 5px}}
 /* playing: the clip's own time drives --p (0 → 1), set every frame by XpHero */
 @keyframes xv-rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
