@@ -8,7 +8,7 @@ import { testPort } from './_ports.js'; import assert from 'node:assert/strict';
 import { workflowQuoteQueries } from '../src/shared/workflows.js';
 const ROOT = path.resolve(import.meta.dirname, '..');
 const NOKEYS = { OPENHIGGSFIELD_BFL_API_KEY: '', OPENHIGGSFIELD_FAL_KEY: '', FAL_KEY: '', OPENHIGGSFIELD_REPLICATE_API_TOKEN: '', REPLICATE_API_TOKEN: '', COMFY_API_KEY: '', OPENHIGGSFIELD_COMFY_API_KEY: '', OPENHIGGSFIELD_MOCK_KEYS: '', OPENHIGGSFIELD_USE_LOCAL: '', OPENHIGGSFIELD_MINIMAX_API_KEY: '', OPENHIGGSFIELD_DASHSCOPE_API_KEY: '', OPENHIGGSFIELD_LUMA_API_KEY: '' };
-const PORT = testPort(9701); const B = `http://localhost:${PORT}`;
+const PORT = testPort(9690); /* home ports stay in 8700-9699: 9701 + a worker's offset fell in the next worker's block, whose port sweep killed this server mid-test (CI, 2026-11-02) */ const B = `http://localhost:${PORT}`;
 const srv = spawn('npx', ['tsx', 'src/index.ts'], { cwd: ROOT, env: { ...process.env, ...NOKEYS, PATH: `/opt/homebrew/bin:${process.env.PATH}`, PORT: String(PORT), OPENHIGGSFIELD_DATA_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'lrj-')),
   OPENHIGGSFIELD_ENV_FILE: path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'lrje-')), 'x.env'), OPENHIGGSFIELD_BACKEND: 'mock', OPENHIGGSFIELD_COMFY_DETECT_URLS: 'http://127.0.0.1:9' }, stdio: 'ignore', detached: true });
 const get = async (u: string) => (await (await fetch(B + u)).json()) as any;
