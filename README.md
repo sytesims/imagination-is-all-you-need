@@ -37,7 +37,7 @@ Want to see it run? Connect your ComfyUI or a Comfy key in **Settings → Connec
 <table align="center">
   <tr>
     <td width="50%"><img src="docs/screenshots/run-on.webp" alt="The Video tab with the Run on menu open for LTX-2.5 22B: free on your computer, or about $0.23 on Comfy Cloud"><br><sub>Run on: pick the place, see the price first</sub></td>
-    <td width="50%"><img src="site/public/media/canvas.jpg" alt="A Canvas board: the agent has priced a video card at about $0.32 and waits for Go"><br><sub>Canvas: a priced plan that waits for Go</sub></td>
+    <td width="50%"><img src="site/public/media/canvas.jpg" alt="A Canvas board: one chair photo and four fabric swatches feed four Material Swap cards and a three-ad card"><br><sub>Canvas: whole workflows chained card to card</sub></td>
   </tr>
   <tr>
     <td width="50%"><img src="docs/screenshots/workflows.webp" alt="The Workflows tab listing ready-made workflows by goal"><br><sub>Workflows: every way to start, in one place</sub></td>
