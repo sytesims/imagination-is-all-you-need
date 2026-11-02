@@ -138,3 +138,22 @@ export function runOrder(ids: string[], waitsOf: (id: string) => Upstream[]): { 
     if (stuck) blocked.push({ id, name: stuck.name }); else if (w.length) later.push(id); else now.push(id); }
   return { now, later, blocked };
 }
+
+/** One card of a run proposal, as settleProposal reads it. `missing`: what it lacks as the board is now; `missingFed`: what it would still lack
+ *  once the cards upstream that haven't run yet have passed on their result; `ups`: those cards (graph.waitingInputsOf); `other`: a quote
+ *  problem (a model that can't run here, no price). */
+export interface ProposalCard { id: string; title: string; usd: number | null; credits: number | null; missing: string | null; missingFed: string | null; ups: Upstream[]; other: string | null }
+/** Which cards of a proposal Go starts, and its total (2026-11-02). A card fed by a card in this same proposal (at any depth) or by one already
+ *  running counts its input as there: it waits for it, in runOrder's graph order. Only an input with no source at all is missing; a card fed
+ *  by a draft left out of the run, or by a card in the run that can't run, is skipped with the reason. The total is every card Go starts. */
+export function settleProposal(cards: ProposalCard[]): { problems: Record<string, string | null>; totalUsd: number; totalCredits: number } {
+  const set = new Set(cards.map(c => c.id)); const problems: Record<string, string | null> = {};
+  for (const c of cards) { const stuck = c.ups.find(u => !set.has(u.id) && u.status !== 'running');
+    problems[c.id] = (stuck ? `Waits for “${stuck.name.slice(0, 40)}”, which isn’t in this run` : c.ups.length ? c.missingFed : c.missing) ?? c.other; }
+  /* a card that can't run can't feed one after it: that one is skipped too (repeat until nothing changes, for chains) */
+  for (let changed = true; changed;) { changed = false;
+    for (const c of cards) { if (problems[c.id]) continue; const src = c.ups.map(u => cards.find(x => x.id === u.id && problems[x.id])).find(Boolean);
+      if (src) { problems[c.id] = `Waits on “${src.title.slice(0, 40)}”, which can’t run here`; changed = true; } } }
+  let usd = 0; let credits = 0; for (const c of cards) if (!problems[c.id]) { usd += c.usd ?? 0; credits += c.credits ?? 0; }
+  return { problems, totalUsd: Math.round(usd * 1e4) / 1e4, totalCredits: credits };
+}

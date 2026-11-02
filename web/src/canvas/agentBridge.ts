@@ -16,20 +16,20 @@ import { submitInOrder } from './nodeRun';
 import { handOf, fx, workArea, boundsOf, animOK } from './agentHand';
 import { freeSpot } from './placement';
 import { CARD_W, CARD_H } from './cardModel';
-import { arrowsInto, linkShapes, withInputs, GEN_TYPE, RESULT_T } from './graph';
+import { arrowsInto, linkShapes, withInputs, waitingInputsOf, GEN_TYPE, RESULT_T } from './graph';
 import { createAuxNode } from './auxShapes';
 import { NODE_DEFS } from './nodeTypes';
 import { flowById, flowInfo, type GenFlow } from '../shared/genFlows';
 import { modelsOf, engineForModel } from '../shared/models';
 import { catalogNow } from './catalog';
-import { cardState } from './cardState';
+import { cardState, missingOf } from './cardState';
 import { batchIdsOf } from './genRun';
 import { compactQuote } from './genRun';
 import { setAgentBudgetHeader, getJob } from '../api';
 import { ownAccountsNow } from '../shared/billing';
 import { resultMedia } from '../shared/resultMedia';
 import { portInfoOf, outKindOfShape } from './ports';
-import { canFeed, takesLine, PORT_WORDS } from './nodeLogic';
+import { canFeed, takesLine, PORT_WORDS, settleProposal, type ProposalCard } from './nodeLogic';
 import { NEXT_STEPS } from './quickActionsModel';
 import { addResultCard } from './resultCardUtil';
 import { validateBatch, batchLayout, batchLine, type BatchItem } from '../../../server/src/shared/canvasBatch';
@@ -202,22 +202,21 @@ async function updateCard(editor: Editor, op: AgentOp) {
 export const unpriced = (q: any) => !q || (typeof q === 'object' && !!q.error && typeof q.credits !== 'number' && !q.cost && q.demo !== true);
 async function propose(editor: Editor, op: AgentOp) {
   const ids = op.card_ids ?? []; if (!ids.length) throw new Error('Name at least one card id.');
-  const items: ProposalItem[] = []; let totalUsd = 0; let totalCredits = 0;
+  const items: ProposalItem[] = []; const cards: ProposalCard[] = [];
   for (const cardId of ids) {
     const id = cardId as TLShapeId; const s = editor.getShape(id); if (!s || s.type !== GEN_TYPE) throw new Error(`No generate card with id "${cardId}" on this board.`);
     const d = describeCard(editor, id); if (!d) throw new Error(`Card "${cardId}" is still loading.`);
-    let qErr = ''; const q = await quoteCard(editor, id).catch((e) => { qErr = String((e as Error)?.message ?? ''); return null; }); const pv = priceView(q);
-    const usd = pv?.usd ?? null; const credits = pv?.credits ?? null;
-    const problem = d.missing ?? (q?.runnable === false ? String(q.reasonText ?? q.blockedReason ?? q.reason ?? 'This card cannot run right now.') : unpriced(q) ? `No price for these settings${q?.error || qErr ? `: ${String(q?.error || qErr).replace(/\.$/, '')}` : ''}` : null);
-    items.push({ cardId, title: String(nameOf(editor, id) || d.prompt || d.flow || 'Card').slice(0, 140), workflow: d.flow, model: d.model || null, status: d.status, usd, credits, quote: compactQuote(q), problem });
+    /* priced as it will run: an input from a card upstream that hasn't run yet counts as there (it waits for it, in graph order) */
+    const fed = cardState(editor, s, catalogNow(), { pending: true }); const missingFed = missingOf(fed.spec, fed.bySlot, d.prompt);
+    const ups = waitingInputsOf(editor, id).map((w) => ({ id: w.id as string, name: w.name, status: String((editor.getShape(w.id)?.props as any)?.status ?? '') }));
+    let qErr = ''; const q = await quoteCard(editor, id, { pending: true }).catch((e) => { qErr = String((e as Error)?.message ?? ''); return null; }); const pv = priceView(q);
+    const usd = pv?.usd ?? null; const credits = pv?.credits ?? null; const title = String(nameOf(editor, id) || d.prompt || d.flow || 'Card').slice(0, 140);
+    const other = q?.runnable === false ? String(q.reasonText ?? q.blockedReason ?? q.reason ?? 'This card cannot run right now.') : unpriced(q) ? `No price for these settings${q?.error || qErr ? `: ${String(q?.error || qErr).replace(/\.$/, '')}` : ''}` : null;
+    cards.push({ id: cardId, title, usd, credits, missing: d.missing, missingFed, ups, other });
+    items.push({ cardId, title, workflow: d.flow, model: d.model || null, status: d.status, usd, credits, quote: compactQuote(q), problem: null });
   }
-  /* a skipped card can't feed a card in the same batch: that one waits too (repeat until nothing changes, for chains) */
-  for (let changed = true; changed;) { changed = false;
-    for (const it of items) { if (it.problem) continue;
-      const src = arrowsInto(editor, it.cardId as TLShapeId).map((a) => items.find((x) => x.cardId === a.fromId && x.problem)).find(Boolean);
-      if (src) { it.problem = `Waits on “${src.title.slice(0, 40)}”, which can’t run here`; changed = true; } } }
-  for (const it of items) if (!it.problem) { totalUsd += it.usd ?? 0; totalCredits += it.credits ?? 0; } // only what Go starts (the server skips the rest)
-  return { items, totalUsd: r4(totalUsd), totalCredits };
+  const r = settleProposal(cards); for (const it of items) it.problem = r.problems[it.cardId] ?? null; // only what Go starts counts (the server skips the rest)
+  return { items, totalUsd: r4(r.totalUsd), totalCredits: r.totalCredits };
 }
 
 async function summarize(editor: Editor) {

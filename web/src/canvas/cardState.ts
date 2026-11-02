@@ -9,8 +9,9 @@ import { cardInputs } from './graph';
 import type { BoardInput, GenCardProps } from './cardModel';
 
 export interface CardState { spec: FlowSpec | null; inputs: BoardInput[]; bySlot: Record<string, BoardInput[]>; extra: BoardInput[] }
-export function cardState(editor: Editor, card: TLShape, cat: GenCatalog | null): CardState {
-  const inputs = cardInputs(editor, card); const p = card.props as GenCardProps; const f = flowById(p.flow) ?? flowById(DEFAULT_FLOW[p.medium])!;
+/** `pending`: count inputs from cards upstream that haven't run yet as filled (graph.cardInputs), for pricing a run in graph order. */
+export function cardState(editor: Editor, card: TLShape, cat: GenCatalog | null, o: { pending?: boolean } = {}): CardState {
+  const inputs = cardInputs(editor, card, o); const p = card.props as GenCardProps; const f = flowById(p.flow) ?? flowById(DEFAULT_FLOW[p.medium])!;
   if (!cat) return { spec: null, inputs, bySlot: {}, extra: [] };
   /* two passes: the slots can depend on what's filled (a first frame makes it image to video) */
   const first = flowSpec(f, cat, { provider: p.provider, vals: p.vals, filled: {} }); if (!first) return { spec: null, inputs, bySlot: {}, extra: inputs };

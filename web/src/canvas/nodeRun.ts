@@ -17,8 +17,8 @@ import { boardCtx } from './boardCtx';
 export function effectivePrompt(editor: Editor, id: TLShapeId, own: string): string { return promptInto(editor, id) || own; }
 
 /** A fresh quote for the card as it is now (the same GET /price the run is checked against: quote = charge). */
-export async function quoteNode(editor: Editor, id: TLShapeId): Promise<any> {
-  const s = editor.getShape(id); if (!s) return null; const st = cardState(editor, s, catalogNow()); if (!st.spec) return null; const sp = st.spec;
+export async function quoteNode(editor: Editor, id: TLShapeId, o: { pending?: boolean } = {}): Promise<any> {
+  const s = editor.getShape(id); if (!s) return null; const st = cardState(editor, s, catalogNow(), o); if (!st.spec) return null; const sp = st.spec;
   const u = new URLSearchParams({ ...quoteParams(), ...(sp.provider ? { provider: sp.provider, ...pinQ(sp.provider) } : {}), ...sp.quote });
   const n = batchOf(sp.slots, st.bySlot)?.inputs.length ?? 1; /* Material Swap: one run per swatch, so n × the price */
   return fetch(`/api/tools/${sp.tool.id}/price?${u}`).then(readQuoteBody).then(q => timesQuote(q, n)).catch(() => null);
@@ -50,12 +50,14 @@ export async function submitInOrder(editor: Editor, ids: string[], o: { stop?: (
   for (const b of plan.blocked) out.failed.push({ cardId: b.id, error: `Waits for ${b.name}, which isn’t running. Generate it first.` });
   for (const id of plan.now) { try { out.jobIds.push(await submitNode(editor, id as TLShapeId)); } catch (e) { out.failed.push({ cardId: id, error: (e as Error).message }); if (o.stop?.(e as Error)) return out; } }
   out.later = plan.later;
+  /* chains of any length (A → B → C): C waits on B while B waits on A; a card in this run that didn't start (or gave up) ends the wait after it */
+  const gaveUp = new Set(out.failed.map(f => f.cardId)); const later = (id: string, r: { jobId?: string; error?: string }) => { if (r.error) gaveUp.add(id); o.onLater?.(id, r); };
   for (const id of plan.later) void (async () => { const end = Date.now() + (o.timeoutMs ?? 3_600_000);
     while (Date.now() < end) { const up = w(id); if (!editor.getShape(id as TLShapeId)) return;
-      if (!up.length) { try { o.onLater?.(id, { jobId: await submitNode(editor, id as TLShapeId) }); } catch (e) { o.onLater?.(id, { error: (e as Error).message }); } return; }
-      const dead = up.find(u => u.status !== 'running' && u.status !== 'draft'); /* failed (a done card is an input, so it's no longer listed) */
-      if (dead || up.every(u => u.status === 'draft' && !ids.includes(u.id))) { o.onLater?.(id, { error: `${dead?.name ?? up[0].name} didn’t finish, so this card didn’t run.` }); return; }
+      if (!up.length) { try { later(id, { jobId: await submitNode(editor, id as TLShapeId) }); } catch (e) { later(id, { error: (e as Error).message }); } return; }
+      const dead = up.find(u => (u.status !== 'running' && u.status !== 'draft') || gaveUp.has(u.id)); /* failed (a done card is an input, so it's no longer listed) */
+      if (dead || up.every(u => u.status === 'draft' && !ids.includes(u.id))) { later(id, { error: `${dead?.name ?? up[0].name} didn’t finish, so this card didn’t run.` }); return; }
       await sleep(1500); }
-    o.onLater?.(id, { error: 'Waited too long for the card before it.' }); })();
+    later(id, { error: 'Waited too long for the card before it.' }); })();
   return out;
 }
