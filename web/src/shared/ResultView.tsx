@@ -476,7 +476,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
     const vidLead = kind === 'video' && !recreate ? (extendUrl ? 'extend' : upUrl ? 'upscale' : '') : '';
     const extA = (primary: boolean) => extendUrl && <a key="ext" className={primary ? 'rvx-primary' : 'rvx-second'} href={extendUrl} onClick={go(extendUrl)} data-action="extend" data-testid="rv-extend" {...tip('Keep the shot going from its last frame')}><ExtendIcon size={16} />Extend</a>;
     const upA = (primary: boolean) => upUrl && <a key="up" className={primary ? 'rvx-primary' : 'rvx-second'} href={upUrl} onClick={go(upUrl)} data-action="upscale" data-testid={primary ? 'rv-upscale-primary' : 'rv-upscale'}><UpscaleIcon size={16} />Upscale</a>;
-    const primary = trashed ? null : kind === 'image' ? (toVideo ? <a className="rvx-primary" href={toVideo} onClick={go(toVideo)} data-action="turn-to-video" data-testid="rv-turn-to-video"><VideoGlyph />Turn to video</a> : recreateA(true))
+    const primary = trashed ? null : kind === 'image' ? (toVideo ? <a key="tv" className="rvx-primary" href={toVideo} onClick={go(toVideo)} data-action="turn-to-video" data-testid="rv-turn-to-video"><VideoGlyph />Turn to video</a> : recreateA(true))
       : kind === 'video' ? (vidLead === 'extend' ? extA(true) : vidLead === 'upscale' ? upA(true) : recreateA(true)) : null;
     const usedRecreate = !!primary && (kind === 'image' ? !toVideo : kind === 'video' ? !vidLead : false);
     /* Layout B footer. Row 1: the primary next step + Recreate beside it (Recreate alone when it is the next step).

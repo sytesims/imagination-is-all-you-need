@@ -298,13 +298,17 @@ function setupOf(runsOn: any[]): { runOn: string; label: string; action: any; cr
     .map((r) => ({ runOn: r.id, label: r.label, action: r.action, credits: r.id === 'local' ? 0 : r.credits ?? null }));
 }
 /** One status per model row (MODEL-PICKER-REVIEW §5b.4), from one source: the model's state at the pre-selected place, else what setting it up takes. */
+/** A local-only model's row while ComfyUI isn't set up or running (rowStatusOf): what it needs, in plain words. */
+export const NEEDS_COMFYUI_TEXT = 'Needs ComfyUI on this computer';
 export type RowStatus = { kind: 'ready' | 'sample' | 'add_key' | 'download' | 'turn_on' | 'install_node' | 'set_up' | 'coming_soon' | 'unavailable'; text: string; runOn: string | null; credits: number | null; missingBytes?: number | null };
 export function rowStatusOf(m: { preselect?: any; runsOn: any[]; setup?: any[] }): RowStatus {
   const p = m.preselect; const row = p ? m.runsOn.find((r) => r.id === p.runOn) : null;
   if (p && p.status === 'ready') return { kind: 'ready', text: p.label, runOn: p.runOn, credits: p.runOn === 'local' ? 0 : row?.credits ?? null };
   if (p && p.status === 'sample') return { kind: 'sample', text: 'Sample · free', runOn: p.runOn, credits: 0 };
   if (m.runsOn.length && m.runsOn.every((r) => r.status === 'coming-soon')) return { kind: 'coming_soon', text: 'Coming soon', runOn: null, credits: null };
-  const s = m.setup ?? []; if (!s.length) return { kind: 'unavailable', text: m.runsOn.some((r) => r.id === 'local' && r.reasonCode === 'unsupported_weights') ? MAC_WEIGHTS_REASON : 'Not available here', runOn: null, credits: null };
+  const s = m.setup ?? []; if (!s.length) return { kind: 'unavailable', text: m.runsOn.some((r) => r.id === 'local' && r.reasonCode === 'unsupported_weights') ? MAC_WEIGHTS_REASON
+    /* a local-only model while no ComfyUI answers (a fresh install): say what it needs, not "Not available here" */
+    : m.runsOn.some((r) => r.id === 'local' && (r.reasonCode === 'local_unreachable' || r.action?.kind === 'set_up_gpu')) ? NEEDS_COMFYUI_TEXT : 'Not available here', runOn: null, credits: null };
   if (s.length > 1) return { kind: 'set_up', text: 'Set up', runOn: null, credits: null };
   const a = s[0].action; const k = a.kind as RowStatus['kind'];
   return { kind: k, runOn: s[0].runOn, credits: null, text: k === 'add_key' ? `Add key · ${KEY_SHORT_L[s[0].runOn] ?? s[0].label}` : k === 'download' ? `Download · ${gbT(a.missingBytes) || 'files'}` : k === 'turn_on' ? 'Turn on · Your computer' : 'Install add-on · Your computer', ...(k === 'download' ? { missingBytes: a.missingBytes ?? null } : {}) };

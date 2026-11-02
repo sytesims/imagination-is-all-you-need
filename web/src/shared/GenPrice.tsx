@@ -8,6 +8,7 @@
  *  no fade-in (Safari composited the old translucent, animated price into a muddy orange). data-est / data-billed say what it is. */
 import { demoRealCredits, demoPriceTitle } from './DemoPrice';
 import { useBilling, modeOf, priceToken, costTitle, costShort, demoRealText, fmtUsd, ledgerUsd, type Cost } from './billing';
+import { keyGated, keyGatePrice } from './quote';
 
 /** The tooltip for a price: what it is, where it's billed, that it's an estimate, the failure rule. Shared with the Generate button's title. */
 export function priceTitle(q: any, b: ReturnType<typeof useBilling>, o: { demo?: boolean; free?: boolean; credits?: number | null; calls?: number } = {}): string | undefined {
@@ -28,6 +29,10 @@ export function GenPrice({ q, demo, free, credits, calls = 1, text, muted, compa
   const b = useBilling(); const own = modeOf(b, q) === 'own-accounts'; const cost: Cost | null = q?.cost && typeof q.cost === 'object' ? q.cost : null;
   let tip = title ?? priceTitle(q, b, { demo, free, credits, calls }); const attrs: Record<string, string> = {};
   let body: React.ReactNode = null;
+  /* a cloud model with no key: every Generate says the same as the Run on menu, "Needs a key · ≈ $0.03" (never "Price unavailable" or "Free") */
+  const kc = !demo && keyGated(q) && (text == null || text === 'Price unavailable' || text === 'Needs a key') ? keyGatePrice(q) : undefined;
+  if (kc !== undefined) { const tok = kc != null ? priceToken({ own, credits: kc, q: null }) : null; text = `Needs a key${tok ? ` · ${tok}` : ''}`;
+    tip = `Add a key to run it${tok ? `: about ${tok.replace(/^≈ /, '')} a run once it’s added, an estimate` : ''}.`; }
   if (text) body = text;
   else if (demo) body = <span className="demo-price" data-testid="demo-price">Sample</span>; /* Model vs Run-on copy: one word for a free sample run (the server's demoTag stays in the tooltip) */
   else if (own && cost && cost.billedTo === 'local') body = priceToken({ q, own, credits });

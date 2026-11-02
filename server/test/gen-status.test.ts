@@ -6,7 +6,7 @@
 // 4 source: every studio mounts the shared GenStatus (directly or through DockGenerate); the old crammed button variants are gone
 // Run: npx tsx test/gen-status.test.ts   (no server, no network)
 import assert from 'node:assert/strict'; import fs from 'node:fs'; import path from 'node:path';
-import { reasonOf, COMFY_DOWN } from '../../web/src/shared/genReason.ts';
+import { reasonOf, COMFY_DOWN, ADD_COMFY_KEY } from '../../web/src/shared/genReason.ts';
 import { preflightProblems } from '../src/shared/preflight.ts';
 import { memoryCheck, TOO_BIG_TEXT } from '../src/shared/thisComputer.ts';
 import { reasonOf as failReasonOf, ACTION_LABEL } from '../../web/src/shared/failureReasons.ts';
@@ -28,12 +28,24 @@ const acts = (r: any) => [r?.primary, r?.alt].filter(Boolean).map((a: any) => `$
 { const node = reasonOf({ setupKind: 'local', problems: pf({ runnable: false, setup: { action: 'install_node', runOn: 'local' } }), places: [place('local', 'install_node')] });
   assert.equal(node?.code, 'needs_node'); assert.deepEqual(acts(node), ['fix:How to install']);
   const key = reasonOf({ setupKind: 'local', problems: pf({ runnable: false, setup: { action: 'add_key', runOn: 'comfy-cloud', runOnLabel: 'Comfy Cloud' } }), places: [place('comfy-cloud', 'add_key')] });
-  assert.equal(key?.code, 'needs_key'); assert.match(key!.reason, /Comfy Cloud key/); assert.deepEqual(acts(key), ['fix:Add key'], 'no "Use Comfy Cloud" next to the Comfy key step itself');
+  assert.equal(key?.code, 'needs_key'); assert.equal(key!.reason, ADD_COMFY_KEY); assert.deepEqual(acts(key), ['fix:Add key'], 'no "Use Comfy Cloud" next to the Comfy key step itself');
   const down = reasonOf({ setupKind: 'cloud', problems: pf({ runnable: false, reasonCode: 'local_only_unreachable', unavailableReason: 'Set up ComfyUI to run YuE free' }), places: [] });
   assert.equal(down?.code, 'needs_comfyui'); assert.deepEqual(acts(down), ['connect:Set up ComfyUI']);
   const more = reasonOf({ setupKind: 'local', problems: pf({ runnable: false, setupOptions: [{ action: 'download', runOn: 'local' }, { action: 'add_key', runOn: 'fal' }], runOn: 'local' }), places: [place('local', 'download'), place('fal', 'add_key')] });
   assert.deepEqual(acts(more).slice(1), ['more:More ways'], 'another place that isn’t Comfy Cloud: every place, in the setup popover');
   ok('node missing → How to install; key missing → Add key; ComfyUI down for a local-only model → Set up ComfyUI; several places → More ways'); }
+// first-run polish (2026-11-02): with nothing connected, the quote's own reason wins when ComfyUI can't help
+{ const flare = { valid: false, credits: null, priceAvailable: false, runnable: false, needsKey: true, local: false, setup: { runOn: 'comfy-cloud', runOnLabel: 'Comfy Cloud', action: 'add_key' },
+    setupOptions: [{ runOn: 'comfy-cloud', runOnLabel: 'Comfy Cloud', action: 'add_key', credits: 3 }] };
+  const k = reasonOf({ setupKind: 'none', problems: pf(flare, { freeLocal: true }), places: [place('comfy-cloud', 'add_key')] });
+  assert.equal(k?.code, 'needs_key'); assert.equal(k!.reason, ADD_COMFY_KEY, 'a cloud-only model with no key: never "ComfyUI isn’t open", no free-local tail while nothing is set up'); assert.deepEqual(acts(k), ['fix:Add key']);
+  const yue = { valid: false, credits: null, priceAvailable: false, runnable: false, needsKey: false, setup: null, setupOptions: [], reasonCode: 'local_only_unreachable', unavailableReason: 'Set up ComfyUI to run YuE2 free: it runs only on your computer.' };
+  const yp = pf(yue); assert.ok(!yp.some((x) => x.code === 'price_unavailable'), 'a free local-only model waiting for ComfyUI is never "No verified price"');
+  const y = reasonOf({ setupKind: 'none', problems: yp, places: [] });
+  assert.equal(y?.code, 'needs_comfyui'); assert.equal(y!.reason, 'Set up ComfyUI to run YuE2 free'); assert.deepEqual(acts(y), ['connect:Set up ComfyUI'], 'no "Use Comfy Cloud" for a model with no cloud place');
+  const both = reasonOf({ setupKind: 'none', problems: pf({ runnable: false, setupOptions: [{ action: 'download', runOn: 'local' }, { action: 'add_key', runOn: 'comfy-cloud' }], runOn: 'comfy-cloud' }), places: [place('local', 'download'), place('comfy-cloud', 'add_key')] });
+  assert.equal(both?.reason, COMFY_DOWN, 'a model that also runs on this computer keeps the Welcome’s line');
+  ok('nothing connected: cloud-only → "Add a Comfy key to run this in the cloud" · Add key; YuE2 → "Set up ComfyUI to run YuE2 free" · Set up ComfyUI'); }
 { const refused = pf({ valid: false, error: 'This model can’t take a 4K image.' });
   const r = reasonOf({ setupKind: 'both', problems: refused, places: [], canDetails: true });
   assert.equal(r?.code, 'model_cant_run'); assert.ok(r!.blocks); assert.deepEqual(acts(r), ['details:See what to fix']);

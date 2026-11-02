@@ -29,8 +29,12 @@ try {
     if (q.runnable === true && q.routeKind && q.routeKind !== 'local') { assert.ok(q.cost?.estUsd > 0 && !w.local, `${tag}: cloud run without its real price (${JSON.stringify(q.cost)})`); assert.match(w.price!, /^≈ \$/, tag); }
     if (!s.key && !s.local) assert.equal(q.runnable, false, `${tag}: nothing connected, yet it runs on ${q.routeKind}`);
     const cloudOnly = prov === 'router-kling' || prov === 'api-gpt-image-25-flare';
-    if (cloudOnly) { assert.equal(w.local, false, `${tag}: a cloud-only model is never local`); assert.equal(q.runnable, s.key, `${tag}: runs exactly when the Comfy key is set`); if (!s.key) assert.equal(w.price, 'Needs a key', tag); }
+    if (cloudOnly) { assert.equal(w.local, false, `${tag}: a cloud-only model is never local`); assert.equal(q.runnable, s.key, `${tag}: runs exactly when the Comfy key is set`); if (!s.key) { assert.equal(w.price, 'Needs a key', tag); assert.ok(q.setupOptions?.some((o: any) => o.runOn === 'comfy-cloud' && o.credits > 0), `${tag}: the price once a key is added (Generate's "Needs a key · ≈ $…", the Run on menu's)`); } }
     if (prov === 'comfy-zimage-turbo' && s.local) assert.equal(w.price, 'Free · Your computer', `${tag}: a local model on a connected ComfyUI is free here`);
   }
+  /* a local-only model's picker row on a fresh install says what it needs (routing/modelRegistry.ts rowStatusOf), never "Not available here" */
+  { const rows: any[] = []; const walk = (x: any): void => { if (Array.isArray(x)) x.forEach(walk); else if (x && typeof x === 'object') { if (x.key === 'yue2' && x.rowStatus) rows.push(x.rowStatus); Object.values(x).forEach(walk); } };
+    walk(await (await fetch(`${Bs[0]}/api/tools`)).json()); assert.ok(rows.length, 'yue2 listed');
+    for (const r of rows) assert.equal(r.text, 'Needs ComfyUI on this computer', `no key, no ComfyUI · yue2 row: ${JSON.stringify(r)}`); }
   ok(`${STATES.length} first-run states × ${MODELS.length} models: Free · Your computer only when this computer runs it; Needs a key / the reason when nothing can; the real price on the cloud`);
 } finally { for (const p of procs) try { process.kill(-p.pid!, 'SIGTERM'); } catch { /* gone */ } fs.rmSync(D, { recursive: true, force: true }); }
