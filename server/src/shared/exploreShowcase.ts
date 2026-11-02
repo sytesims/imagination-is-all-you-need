@@ -20,7 +20,7 @@
  *  - EXPLORE_MOODS: the Audio dancer showcase (the words that pick SyteSim's dance style, a tempo for the demo beat).
  *  - EXPLORE_FILM: "Mockup to film" (Direct a Shot made real: the mockup, its first frame painted into a photo, the film; replaces the Worlds tiles).
  *  - EXPLORE_VFX: "VFX with LTX-2.5" (Footage Effects: Lightricks' official LTX-2.5 IC-LoRAs on your own clip, free on your computer; plus Layout to Render).
- *  - EXPLORE_WORK: "Made for your work" (2026-11-01): real results for shops and brands (Material Swap, Ad Pack, Image to layers), each with its
+ *  - EXPLORE_WORK: "Made for your work" (2026-11-01): real results for shops and brands (Material Swap, Ad Pack; Image to layers has its own chapter), each with its
  *    model, where it ran, its real price and "Make your own" (the workflow opened as Recreate, the example's photos in).
  *  - EXPLORE_SCRIPT: the K-drama beat's script (shots, lines, measured times). Its Explore section left the page on 2026-10-28; the beat is now
  *    a film in IIAYN FILMS (EXPLORE_FILMS.comedy, 그래요? · IS THAT SO?) and its subtitles use these timings.
@@ -56,10 +56,10 @@ export const EXPLORE_HERO: ReelShot =
 export interface WorkVariant { key: string; label: string; url: string; thumb: string; swatch?: string }
 export interface WorkItem {
   id: string; /** the audience tab it sits under */ tab: string; /** the workflow, as the app names it */ flow: string;
-  title: string; line: string; /** how the price reads: "each" (one run per look) or "for 3" (one run, every look) */ per: string;
+  title: string; line: string; /** the button on its panel (opens the workflow as Recreate) */ cta: string; /** how the price reads: "each" (one run per look) or "for 3" (one run, every look) */ per: string;
   /** before → after on a slider (same framing), or the before as a small "From this photo" picture */ compare: boolean;
   /** what it started from (shown as "before") */ before: { url: string; label: string };
-  variants: WorkVariant[]; /** a clip instead of stills (Image to layers: the run's animation) */ film?: { url: string; poster: string; label: string };
+  variants: WorkVariant[];
   /** the model as the card names it, when the featured entry's name is longer (a hosted route's full name) */ model?: string;
   /** the price shown is the sum of these runs (one key) or one run's (every variant shares it) */ priceKey: string;
 }
@@ -68,20 +68,17 @@ const shopAds: WorkVariant[] = SHOP_ADS.map(([id, label]) => ({ key: 'shop-ad-pa
 /** "Made for your work" (user pick 2026-11-01: lead with what people and businesses get). Real runs of a made-up brand, nothing staged: every
  *  picture is what the run returned. Shown as audience tabs (web/src/ui/explore/ExploreWork.tsx). */
 export const EXPLORE_WORK = {
-  eyebrow: 'Made for your work', title: ['Made for', 'your work.'],
-  line: 'Real results for shops and brands, made right here. Pick one, drop in your own photo and make yours.',
-  tabs: [{ id: 'shop', label: 'Shop' }, { id: 'ads', label: 'Ads' }, { id: 'design', label: 'Design' }],
+  eyebrow: 'Made for your work', title: ['Every finish.', 'Every ad.'],
+  line: 'Start from the photos you already have. Every result here is a real run, shown with what it cost.',
+  tabs: [{ id: 'shop', label: 'Shop' }, { id: 'ads', label: 'Ads' }],
   items: [
-    { id: 'material-swap', tab: 'shop', flow: 'Material Swap', title: 'One chair. Every material.', line: 'Show a product in every finish before you make a single one. One photo of it, one photo of the material.',
+    { id: 'material-swap', tab: 'shop', flow: 'Material Swap', title: 'Show every finish before you make one.', line: 'One photo of your product, one of the fabric. It comes back in that material, in the same room and the same light.', cta: 'Try your own material',
       per: 'each', compare: true, before: { url: P('shop-armchair-in.webp'), label: 'Your photo' }, variants: shopSwap, priceKey: 'shop-swap-velvet' },
-    { id: 'ad-pack', tab: 'ads', flow: 'Ad Pack', title: 'One photo. Three ready ads.', line: 'A product photo and your offer become finished ads for the feed, with your headline and offer set in and your logo in the corner.',
+    { id: 'ad-pack', tab: 'ads', flow: 'Ad Pack', title: 'One photo. Three ads ready to post.', line: 'Add a product photo, a headline and your offer. Back come three finished feed ads: a studio shot, one in use and an offer poster.', cta: 'Make your ads',
       per: 'for 3', compare: false, before: { url: P('shop-perfume-in-480.webp'), label: 'Product photo' }, variants: shopAds, priceKey: 'shop-ad-pack' },
-    { id: 'image-layers', tab: 'design', flow: 'Image to layers', title: 'One poster. Every layer.', line: 'Drop in a finished design and get every part back on its own layer: the dogs, the title, the logo. Download it as a layered PSD for Photoshop.',
-      per: '', compare: false, model: 'Seedream 5.0 Flash', before: { url: P('image-layers-paw-in-480.webp'), label: 'Your design' },
-      film: { url: P('image-layers-paw.mp4'), poster: P('image-layers-paw.webp'), label: 'The poster coming apart into its 13 layers' },
-      variants: [{ key: 'image-layers-paw', label: '13 layers', url: P('image-layers-paw.webp'), thumb: P('image-layers-paw-480.webp') }], priceKey: 'image-layers-paw' },
   ] as WorkItem[],
-  /** the button on every card: the workflow opened as Recreate, the example's photos and words already in */ cta: 'Make your own',
+  /** the short form of each panel's button (the workflow opened as Recreate, the example's photos and words already in) */ cta: 'Make your own',
+  /** the before / after corner chips on every stage */ beforeTag: 'Before', afterTag: 'After',
 };
 /** Where "Make your own" opens for a look: its featured Recreate (the workflow with the example's photos in), else the workflow. */
 export const workHref = (v: WorkVariant) => featuredRecreateHref(v.key) ?? IMAGE_PAGE;
