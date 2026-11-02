@@ -33,7 +33,7 @@ import { shownCredits, unpricedReason, unpricedPrefix, runBlock } from '../../sh
 import { useBilling, ownAccountsNow, modeOf } from '../../shared/billing';
 import { useVariantQuotes, optionDelta, type Overrides } from '../../shared/optionPrice';
 import { KeyNeeded, hasFreeLocal } from '../../shared/KeyNeeded';
-import { GenStatus, useGenReason, blockedProps, genBlocked } from '../../shared/GenStatus';
+import { GenStatus, useGenReason, useOwnReason, blockedProps, genBlocked } from '../../shared/GenStatus';
 import { nudgeMissing } from '../../shared/genNudge';
 import GenTile from '../../shared/GenTile';
 import { SceneGrid, type SceneItem } from '../../shared/SceneGrid';
@@ -248,6 +248,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
   const [ttPick, setTtPick] = useState(''); const ttJob = done3d.find((j) => j.id === ttPick) ?? done3d[0] ?? null; const ttRef = useRef<HTMLButtonElement>(null);
   const isTT = wf.id === 'turntable'; const isPS = wf.id === 'plan-a-shot';
   /* a coming-soon workflow opened by a link (?workflow=text-to-3d): the bar says so and offers what works today, never Image to 3D's controls (2026-10-27) */
+  const ttR = useOwnReason(isTT && !ttJob, 'needs_model', 'Make a 3D model first', { label: 'Image to 3D', run: () => navigate(THREE_D_PAGE) }); /* Turntable: the shared reason line, never a reason on the button */
   const isSoon = wf.status === 'soon'; const soonAlt = isSoon ? SOON_TODAY[wf.id] ?? SOON_TODAY.default : null; const noModel = isTT || isPS || isSoon;
   /* each Shape / Mesh detail / Texture option shows only what it changes ('+$0.20'; nothing when it costs the same, nothing on the picked one): the
      total stays on Generate (2026-11-01). One variant request (shared/optionPrice.ts); a sample run (mock) compares list prices, said in the tooltip. */
@@ -446,8 +447,8 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
           {psBlock ? <span className="gen-price gen-missing" data-testid="ps-price">{psBlock}</span> : <span className="t3-pt"><GenPrice compact testId="ps-price" free text="Free" /><small className="t3-time">{effShot.seconds} s · {recMode === 'clay-depth' ? '2 videos' : '1 video'}</small></span>}</button>)
         : isSoon && soonAlt ? <button type="button" className="ic-gen gen-btn gen-dock btn btn-primary" data-testid="t3-soon-go" onClick={() => pick(soonAlt.go)} {...tip(`${wf.name} is coming soon. ${threeDWorkflowById(soonAlt.go)?.name}: ${threeDWorkflowById(soonAlt.go)?.tagline}`)}>
           <span className="gen-l">Use {threeDWorkflowById(soonAlt.go)?.name}</span><small className="t3-time">works today</small></button>
-        : isTT ? <button type="button" className={`ic-gen gen-btn gen-dock btn btn-primary${!ttJob ? ' gen-wait' : ''}`} data-testid="t3-generate" aria-disabled={!ttJob || undefined} onClick={(e) => { if (!ttJob) { nudgeMissing(e.currentTarget); return; } setView({ kind: 'job', id: ttJob.id, record: true }); }}>
-          <span className="gen-l">Record turntable</span>{ttJob ? <GenPrice compact testId="t3-price" free text="Free" /> : <span className="gen-price gen-missing" data-testid="t3-price">Make a 3D model first</span>}</button>
+        : isTT ? <><GenStatus r={ttR} /><button type="button" className="ic-gen gen-btn gen-dock btn btn-primary" data-testid="t3-generate" {...blockedProps(ttR)} onClick={() => { if (genBlocked(ttR)) return; setView({ kind: 'job', id: ttJob.id, record: true }); }}>
+          <span className="gen-l">Generate</span><GenPrice compact testId="t3-price" free text="Free" /></button></>
         : <><GenStatus r={gr} /><button ref={genRef} type="button" className={`ic-gen gen-btn gen-dock btn btn-primary${blocking ? ' gen-wait' : ''}`} data-testid="t3-generate" data-problems={notes.length || undefined} disabled={busy} aria-busy={busy || undefined} aria-disabled={blocking || undefined}
           aria-haspopup={notes.length ? 'dialog' : undefined} aria-expanded={notes.length ? pfOpen : undefined} title={pfOpen ? undefined : (genWord || priceTitle(q, bill, { demo: isDemo, free: isFree, credits }) || undefined)} {...blockedProps(gr)}
           onClick={(e) => { if (genBlocked(gr)) return; if (blocking) { if (inputMissing) nudgeMissing(e.currentTarget); setPfOpen((o) => !o); return; } void generate(); }}>

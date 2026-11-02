@@ -24,7 +24,7 @@ export function DockGenerate({ toolId, engine, quote, setupTarget, label, busy, 
   /** 'dock': the bar's big two-line button; 'card': a one-line button (Film); 'node': the Canvas node's slim pill */ variant?: 'dock' | 'card' | 'node' }) {
   const base = variant === 'dock' ? 'ic-gen gen-btn gen-dock btn btn-primary' : variant === 'node' ? 'gen-btn gen-card gen-node' : 'gen-btn gen-card';
   const cr: number | null = quote ? shownCredits(quote) : null; const wKey = !!quote && quote.needsKey === true && quote.runnable === false; const unpriced = !!quote && quote.credits == null && quote.priceAvailable === false;
-  const r = useGenReason({ toolId: setupTarget?.toolId ?? toolId, engine: setupTarget?.engine ?? engine, quote, onDetails, noPlace, mem: variant === 'dock' });
+  const r = useGenReason({ toolId: setupTarget?.toolId ?? toolId, engine: setupTarget?.engine ?? engine, quote, onDetails, noPlace, mem: variant !== 'node' });
   const blocked = !busy && !!r?.blocks;
   const lead = missing ?? problems[0]?.message ?? null;
   /* waiting (A1, 2026-10-31): a pre-flight problem OR the caller's own missing step is the one shared waiting look (ui-states.css .gen-wait) */

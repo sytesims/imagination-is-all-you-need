@@ -54,8 +54,8 @@ html body .gen-row>.cost-note{order:4}
 /* ---------- Why a run can't start (GenStatus, shared/GenStatus.tsx): ONE line right before every Generate ----------
    A dot, a short plain reason (one line on desktop, ellipsis + tooltip; wraps on a phone) and at most two actions. Generate keeps its size. */
 .gen-status{box-sizing:border-box;display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;min-width:0;max-width:100%;margin:0 0 8px;padding:8px 10px 8px 12px;border-radius:12px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);font:500 13px/18px var(--font-ui,Inter,system-ui,sans-serif);color:var(--text,#f4f4f5)}
-.gen-status .gs-t{display:flex;align-items:center;gap:8px;flex:1 1 200px;min-width:0;margin:0}
-.gen-status .gs-dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--warning,#f5a524)}
+.gen-status .gs-t{display:flex;align-items:flex-start;gap:8px;flex:1 1 200px;min-width:0;margin:0}
+.gen-status .gs-dot{flex:none;width:8px;height:8px;margin-top:5px;border-radius:50%;background:var(--warning,#f5a524)}
 .gen-status.gen-status-note .gs-dot{background:var(--text-3,#8b8b92)}
 .gen-status .gs-why{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gen-status .gs-acts{display:flex;align-items:center;gap:14px;flex:0 1 auto;min-width:0;margin-left:auto}

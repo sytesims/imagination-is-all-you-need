@@ -49,6 +49,11 @@ export function useGenReason({ toolId, engine, quote, onDetails, noPlace, proble
   return spec ? { ...spec, id, toolId, model, engine: engine ?? null, quote, places, onDetails } : null;
 }
 
+/** A studio's own can't-run reason with its one step, in the same line (3D Turntable: "Make a 3D model first" · Image to 3D). */
+export function useOwnReason(on: boolean, code: string, reason: string, act: { label: string; run: () => void }): GenReason | null {
+  const id = `gs${useId().replace(/:/g, '')}`;
+  return on ? { code, reason, blocks: true, primary: { kind: 'details', label: act.label }, alt: null, id, toolId: '', model: undefined, engine: null, quote: null, places: [], onDetails: act.run } : null;
+}
 /** Generate's props while a reason blocks it: greyed, still focusable, described by the line; a click moves focus to the line's first action. */
 export function blockedProps(r: GenReason | null) {
   if (!r?.blocks) return {};

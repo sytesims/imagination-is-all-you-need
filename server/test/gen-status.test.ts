@@ -82,6 +82,7 @@ for (const [f, s] of all) {
   assert.ok(!/\b(SetupGenerate|NoPlaceGenerate|ConnectGenerate|SETUP_FIRST|CONNECT_HINT|CONNECT_LABEL|PF_SHORT)\b/.test(s), `${f}: the old crammed Generate variants are gone`);
   assert.ok(!/gen-setup-why|gen-setup-sub/.test(s), `${f}: no setup sentence styles left on Generate`);
 }
+assert.match(read('ui/three/ThreeDStudio.tsx'), /useOwnReason\(isTT && !ttJob, 'needs_model', 'Make a 3D model first'/, '3D Turntable: its own reason in the same line, never on the button');
 const dg = read('shared/DockGenerate.tsx'); const btn = dg.slice(dg.indexOf('const btn = <button'), dg.indexOf('</button>;'));
 assert.doesNotMatch(btn, /gen-missing|\{lead\}|mem\.text/, 'DockGenerate: the second line is the price token only');
 for (const [f, s] of all.filter(([f]) => f.endsWith('.tsx'))) for (const m of s.matchAll(/<span className="gen-l">([^<{]*)</g))
