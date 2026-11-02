@@ -47,5 +47,5 @@
 .runline-box{container:runline / inline-size}
 @container runline (max-width:300px){.runchip-place-t,.runchip-spec{display:none}.runchip{gap:5px;padding-left:10px}}
 /* narrow (a poster in a row of five, a phone strip card): the model keeps its name; "total" waits in the steps list, which ends with it */
-@container runline (max-width:300px){.runchip-price small{display:none}}
+@container runline (max-width:300px){.runchip.has-steps .runchip-price small{display:none}}
 @container runline (max-width:270px){.runchip{gap:4px;padding-left:9px;font-size:11px}.runchip-model{min-width:4.5em}}

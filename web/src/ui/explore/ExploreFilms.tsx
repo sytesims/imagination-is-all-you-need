@@ -63,7 +63,7 @@ function Credits({ logline = true, how, lead, f = M }: { logline?: boolean; /** 
   const own = useState(false); const ownId = useId(); const [open, setOpen] = how ?? own; const id = how?.[2] ?? ownId; const ed = f.editor ?? X.editor;
   return <div className="xpfm-credits">
     {logline && <p className="xpfm-log">{f.logline}</p>}
-    <RunChip c={f.chip} className="xpfm-chip" testId="xp-films-chip" />
+    <RunChip c={f.chip} noSteps className="xpfm-chip" testId="xp-films-chip" />
     <p className="xpfm-credit" data-testid="xp-films-credit">{f.credit}</p>
     <span className="xpfm-acts">
       {lead}
@@ -163,8 +163,8 @@ function Catalogue() {
           <span className={`xpfm-pc-title${f.en.length > 6 ? ' is-long' : ''}${f.ko ? '' : ' is-en'}`} aria-hidden>{f.ko ? <><b lang="ko">{f.ko}</b><i /><span className="en">{f.en}</span></> : <><b>{f.en}</b><i /></>}<small>{f.episode}</small></span>
           <span className="xpfm-pc-more" aria-hidden><span className="xpfm-pc-play"><PlayIcon size={16} />Play</span></span>
         </button></div>
-        {/* the run line, always visible under the poster (touch included); "+N steps" opens how the film was made */}
-        <span className="xpfm-pc-run runline-box"><RunChip c={f.chip} testId={`xp-films-chip-${f.key}`} /></span>
+        {/* the run line, always visible under the poster (touch included): model, where, the film's total; its steps live in its own How it was made */}
+        <span className="xpfm-pc-run runline-box"><RunChip c={f.chip} noSteps testId={`xp-films-chip-${f.key}`} /></span>
       </li>; })}
       {X.next.map((n) => <li key={n.key} className="xpfm-pc is-soon" data-testid={`xp-films-next-${n.key}`} role="group" aria-label={`${n.title}, ${n.genre}, coming soon`}>
         <span className="xpfm-pc-seven" aria-hidden>7</span>

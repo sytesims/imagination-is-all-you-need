@@ -27,8 +27,9 @@ export function RunSteps({ steps, total, testId }: { steps: RunStep[]; total?: s
   </div>;
 }
 
-export function RunChip({ c, onMedia = false, className = '', testId }: { c: RunChipData; onMedia?: boolean; className?: string; testId?: string }) {
-  const n = moreSteps(c); const price = chipPrice(c);
+/** `noSteps`: a result with its own "How it was made" (the films): the line still says "total", without the steps button. */
+export function RunChip({ c, onMedia = false, className = '', testId, noSteps = false }: { c: RunChipData; onMedia?: boolean; className?: string; testId?: string; noSteps?: boolean }) {
+  const n = noSteps ? 0 : moreSteps(c); const price = chipPrice(c);
   const btn = useRef<HTMLButtonElement>(null); const [open, setOpen] = useState(false); const pinned = useRef(false); const timer = useRef(0);
   useEffect(() => () => window.clearTimeout(timer.current), []);
   /* a mouse: hover opens it, leaving (the button and the list) closes it unless a click pinned it; touch and keyboard: a tap / Enter toggles */
