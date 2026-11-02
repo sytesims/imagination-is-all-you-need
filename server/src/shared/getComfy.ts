@@ -14,7 +14,7 @@ const LOCAL = 'When it asks, choose Local, let it finish installing, then press 
 
 export function getComfyFor(h: HostInfo | null | undefined): GetComfy {
   const p = h?.platform ?? ''; const a = h?.arch ?? '';
-  if (p === 'darwin' && a !== 'arm64') return { url: null, label: 'Use Comfy Cloud', note: 'ComfyUI doesn’t run on Intel Macs any more. Use Comfy Cloud to make things from this computer.', help: [] };
+  if (p === 'darwin' && a !== 'arm64') return { url: null, label: 'Use Comfy Cloud', note: 'ComfyUI Desktop doesn’t run on this computer. Use Comfy Cloud to make things from here.', help: [] };
   if (p === 'darwin') return { url: COMFY_DOWNLOAD_URL, label: 'Get ComfyUI Desktop ↗', note: null,
     help: [LOCAL, 'If macOS says it can’t be opened: System Settings → Privacy & Security → Open Anyway.'] };
   if (p === 'linux' && h?.headless) return { url: COMFY_MANUAL_INSTALL_URL, label: 'How to install ComfyUI ↗', note: 'This computer has no screen attached, so use the manual install (ComfyUI Desktop needs a desktop).', help: [] };

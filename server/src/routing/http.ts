@@ -52,8 +52,10 @@ import { enumParamError } from '../shared/enumParams.js';
 import { recipeUploadsOf } from '../shared/workflows.js';
 import type { ToolDef } from '../tools/types.js';
 import { ledgerUsd } from '../shared/priceText.js';
-/** Quote flags follow the route that would actually run: an open-weights model quoted on a cloud route (useLocal off → cloud first) is not "free · runs locally". */
-const routeFlags = (kind: string | null | undefined, credits: number | null, label?: string) => (!kind || kind === 'local' ? { local: true } : { local: false, free: false, basis: 'hosted',
+/** Quote flags follow the route that would actually run: an open-weights model quoted on a cloud route (useLocal off → cloud first) is not "free · runs locally".
+ *  No route at all (nothing ready, no place picked: a cloud-only model with no key) is no place either, never "local" (the billing hook would read it as
+ *  "Free · on your computer"; the Canvas card said so for GPT Image 2.5 Flare on a fresh install). */
+const routeFlags = (kind: string | null | undefined, credits: number | null, label?: string) => (!kind ? { local: false, localRun: false } : kind === 'local' ? { local: true } : { local: false, free: false, basis: 'hosted',
   breakdown: [{ label: `${label ?? kind} · ${credits != null ? usd(credits) : '?'}`, factor: 1 }] });
 /** Item 4: a demo preview on a cloud route (e.g. fal) is never "No credits · runs locally": the line is the demo copy plus the real list price
  *  (1 credit = $0.01). priceLine is the one display string for the quote / route; localRun says whether it runs on your ComfyUI. */
