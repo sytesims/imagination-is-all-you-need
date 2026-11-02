@@ -24,6 +24,15 @@ try {
   for (const h of pr.hosted) for (const k of ['unitLabel', 'unitHelp', 'exampleLabel', 'note', 'name', 'model'] as const) if (h[k]) humanBits.push(String(h[k]));
   const fq = (await get(N, '/api/tools/upscale/price?provider=direct-flux3-upscale&duration=8&route=direct:direct-flux3-upscale')).body; // the place asked for: nothing ready → nothing pre-selected, no price (4k 5b-1) assert.equal(fq.hosted?.unitLabel, 'per megapixel-second'); assert.equal(fq.hosted?.unit, 'mp_second');
   assert.match(String(pr.hosted.find((h: any) => h.unit === 'mp_second')?.exampleLabel), /megapixel-second/);
+  // A cloud-only model with no key and nothing ready: no place, so never "Free · on your computer" (the Canvas card and the Generate bar said so on a fresh install, 2026-11-02)
+  for (const [tool, prov] of [['create-image', 'api-gpt-image-25-flare'], ['h3-video', 'router-kling'], ['h3-video', 'comfy-h3']] as const) {
+    const q = (await get(N, `/api/tools/${tool}/price?provider=${prov}&prompt=x`)).body;
+    assert.equal(q.runnable, false, prov); assert.equal(q.needsKey, true, prov); assert.equal(q.local, false, `${prov}: no route is not local`); assert.notEqual(q.localRun, true, prov);
+    assert.notEqual(q.cost?.billedTo, 'local', `${prov}: billed to ${q.cost?.billedTo}`); assert.doesNotMatch(JSON.stringify([q.cost?.usdText, q.priceLine]), /Free/, prov);
+  }
+  { const lq = (await get(N, '/api/tools/create-image/price?provider=comfy-zimage-turbo&runOn=local&prompt=x')).body; // a local place asked for keeps its free local price
+    assert.equal(lq.routeKind, 'local', JSON.stringify({ k: lq.routeKind, r: lq.reason })); assert.equal(lq.cost?.billedTo, 'local'); }
+  ok('cloud-only model, no key: no place, never "Free · on your computer"; a local place stays Free · Your computer');
   assert.match(String(pr.hosted.find((h: any) => h.unit === '1k_bytes')?.exampleLabel), /bytes of text/);
   for (const [prov, extra, want] of [['direct-flux3-upscale', { megapixels: 2 }, /per megapixel-second.*× 16 megapixel-seconds/], ['api-fish-tts', { bytes: 2000, chars: 2000 }, /per 1,000 bytes of text.*× 2 thousand bytes of text/]] as const) {
     const p = priceOf({ toolId: prov === 'api-fish-tts' ? 'voice' : 'upscale', provider: prov, durationSec: 8, quality: '720p', ...extra } as any); const bl = p.breakdown.map((x) => x.label).join(' | ');
