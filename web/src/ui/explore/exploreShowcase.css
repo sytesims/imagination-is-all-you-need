@@ -322,6 +322,21 @@ html body .xyt-box input,html body .xyt-box input:focus,html body .xyt-box input
 .xpk-meta .xv-pill small::before{content:'·';margin-right:6px}
 .xpk-ctas{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:22px;margin-top:26px}
 .xpk-ctas .xv-quiet:focus-visible,.xpk-ctas .xv-btn:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap)}
+/* Keep the shot going: the letterbox's foot is the timeline: the progress line with a seam at each join, each segment named under it
+   (start and extend lit as they play; the end card added in the edit is quiet, dashed, never styled as a model) */
+.xpk-time{padding:18px 22px 16px}
+.xpk-time .xpk-line{display:block}
+.xpk-segs{list-style:none;display:flex;margin:12px 0 0;padding:0}
+.xpk-seg{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:5px;padding:0 10px 0 12px;border-left:1px solid rgba(255,255,255,.14);text-align:left;transition:opacity .25s ease}
+.xpk-seg b{font:650 12.5px/1.2 var(--font-ui);color:rgba(255,255,255,.62);transition:color .25s ease}
+.xpk-seg span{font:500 12px/1.2 var(--font-ui);color:rgba(255,255,255,.42)}
+.xpk-seg.on b{color:#fff}.xpk-seg.on span{color:#ffc08f}
+.xpk-seg.on{border-left-color:var(--accent)}
+.xpk-seg.is-end{border-left-style:dashed}
+.xpk-seg.is-end b{font-weight:500;font-style:italic;color:rgba(255,255,255,.42)}
+.xpk-frame.is-failed .xpk-seg.on b{color:rgba(255,255,255,.62)}
+@media (max-width:640px){.xpk-time{padding:14px 14px 12px}.xpk-seg{padding:0 6px 0 8px}.xpk-seg b{font-size:11.5px}.xpk-seg span{font-size:11px}}
+@media (prefers-reduced-motion:reduce){.xpk-seg,.xpk-seg b{transition:none}}
 @media (max-width:640px){.xpk .sfilm.sfilm-letterbox{aspect-ratio:16/9}.xpk-bar{padding:0 14px}.xpk-models{font-size:10.5px}.xpk-frame{border-radius:14px}}
 
 /* Chapter 1's Original / Sharper switch (shared Segmented in a bp-host, on glass over the wipe's after side) and the upscale's line under the wipe */

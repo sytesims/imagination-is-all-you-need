@@ -144,7 +144,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
       file(FEATURED_BIG_POSTER[k], 1.5e5); file(f.out.poster, 4e4); }
     for (const u of [still.url, '/showcase/ltx-pro-whale-in.jpg']) { const p = file(u, 250_001); assert.ok(fs.statSync(p).size <= 250_000, `${u}: ≤ 250 KB`); assert.ok(!fs.readFileSync(p).includes('Exif'), `${u}: no EXIF`); }
     file(still.poster, 4e4); assert.match(still.url, /\.webp$/); assert.deepEqual([still.width, still.height], [1344, 756], 'the still, cropped to 16:9 the way the app cropped it');
-    const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); const wx = xs.slice(xs.indexOf('export function XpStill'), xs.indexOf('Make your own cartoon (MiniMax H3'));
+    const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); const wx = xs.slice(xs.indexOf('export function XpStill'), xs.indexOf('Keep the shot going (MiniMax H3'));
     assert.match(wx, /<HeroReel className="hreel-framed xpo-film xpo-front"[^\n]*\breveal replay=\{replay\}[^\n]*sound=\{f\.out\.sound === true\} restartOnSound/, 'the shared HeroReel wipe (reveal), the page\u2019s sound');
     assert.equal((wx.match(/<HeroReel /g) ?? []).length, 1, 'one reel');
     assert.match(wx, /before=\{\{ url: still\.url[\s\S]*after=\{\{ url: f\.out\.url/, 'still → the take’s clip, both from the featured entry');
@@ -162,17 +162,17 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.match(hr, /played\.current !== after\.url \|\| retries\.current >= RETRIES\) \{ if \(reveal\) \{? ?setBad/, 'an error after the clip played reloads it; only a clip that never played is broken');
     assert.match(hr, /onEnded=\{/, 'a missed loop restarts from 0');
     ok('From one still: one LTX-2.5 Pro take (Comfy Cloud, $1.46, 6 s) ≤ 3 MB, one still, the shared wipe, no switch, Recreate into Video'); }
-  /* Make your own cartoon (letterbox): MiniMax H3 (job 42ceb1af, 10 s, $0.80) + H3 Extend on Comfy Cloud (job 50d2a3a0, +10 s, $0.52) */
-  { const K = X.EXPLORE_KOI; assert.equal(K.key, 'h3-koi-take'); assert.equal(K.title, 'Make your own cartoon.'); assert.match(K.line, /^A boy in the rain, a paper lantern, a wish\. Write the scene the way you'd tell it/); assert.equal(K.eyebrow, 'Made with MiniMax H3');
+  /* Keep the shot going (letterbox, shows off Extend): MiniMax H3 (job 42ceb1af, 10 s, $0.80) + H3 Extend on Comfy Cloud (job 50d2a3a0, +10 s, $0.52) */
+  { const K = X.EXPLORE_KOI; assert.equal(K.key, 'h3-koi-take'); assert.equal(K.title, 'Keep the shot going.'); assert.match(K.line, /^A boy in the rain, a paper lantern, a wish\. Start with one 10 s clip, then Extend/); assert.equal(K.eyebrow, 'Extend');
     assert.doesNotMatch(`${K.eyebrow} ${K.title} ${K.line}`, /higgsfield|kling|seedance|veo|sora/i, 'our own words, no other products named');
     assert.deepEqual(K.first, { model: 'MiniMax H3', place: 'Comfy Cloud', usd: 0.8 }, 'the first 10 s: its model, place and real price'); assert.equal(K.place, 'Comfy Cloud');
-    assert.equal(K.cta.label, 'Start your scene'); assert.equal(K.cta.href, '/video?model=minimax-h3', 'Start your scene opens Video with MiniMax H3 picked');
+    assert.equal(K.cta.label, 'Extend a clip'); assert.equal(K.cta.href, '/video?workflow=extend', 'Extend a clip opens Video › Extend');
     const f = FEATURED.find((x) => x.key === K.key)!; assert.ok(f?.before, 'the take ships as a featured entry with its first 10 s');
     assert.deepEqual([f.toolId, f.provider, f.modelKey, f.model, f.flow, f.runOn, f.route, f.costUsd], ['h3-extend', 'comfy-h3-extend', 'minimax-h3-extend', 'H3 Extend', 'Extend', 'comfy-cloud', 'comfy-cloud:cloud-h3-extend', 0.52], 'H3 Extend on Comfy Cloud, its real cost');
     assert.deepEqual([f.input.mode, f.input.extendSeconds, f.input.resolution, f.input.seed, f.input.keepAudio, f.input.videoUrl], ['extend', 10, '768p', 1517254433, true, f.before!.url], 'settings as they ran; Recreate loads the first 10 s');
     assert.match(f.prompt, /^Continue the same action at the same pace, same camera: the glowing koi circles once above the rooftops/, 'the extend prompt as it ran');
     assert.equal(f.out.url, '/showcase/h3-koi-take.mp4', 'the plain take lives in the featured entry (Extend page, feeds, Recreate; one line to swap for an upscale)'); assert.equal(f.out.sec, 20.13);
-    assert.deepEqual(K.ending, { url: '/showcase/h3-koi-take-ending.mp4', sec: 30.13, label: 'Ending · made with Imagination · Free' }, 'Explore only: the take + its 10 s ending (hold, title card, end mark)'); assert.equal(f.before!.sec, 10.125);
+    assert.deepEqual(K.ending, { url: '/showcase/h3-koi-take-ending.mp4', sec: 30.13, label: 'End card · added in the edit' }, 'Explore only: the take + its 10 s ending (hold, title card, end mark), never named like a model'); assert.equal(f.before!.sec, 10.125);
     assert.equal(featuredIdOf(K.key), '2fb5ac80'); assert.equal(featuredRecreateHref(K.key), `/video?workflow=extend&recreate=${FEATURED_SEED_IDS[K.key]}`, 'Recreate opens Video › Extend; the prefill names H3 Extend itself (modelKey), not H3 Max Extend, which shares the engine)');
     assert.ok(fs.statSync(file(f.out.url, 4e6)).size <= 4e6, 'the take stays ≤ 4 MB'); assert.ok(fs.statSync(file(K.ending.url, 4e6)).size <= 4e6, 'the ending version stays ≤ 4 MB'); file(f.before.url, 1.2e6); file(FEATURED_BIG_POSTER[K.key], 1.5e5); for (const u of [f.out.poster, f.before.poster, K.newFrame]) file(u, 4e4);
     for (const [u, sec] of [[f.out.url, 20.1], [K.ending.url, 30.1], [f.before.url, 10.1]] as const) { const p = path.join(PUB, u);
@@ -184,13 +184,13 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.match(kx, /<ShowcaseFilm className="sfilm-letterbox"[^\n]*restartOnSound onTick=\{onTick\}[^\n]*onFail=/, 'the shared film: page sound and progress from onTick; a missing clip keeps its poster');
     assert.doesNotMatch(kx, /\{K\.line\}|xp-koi-time/, 'the descriptive paragraph and elapsed/total time are removed only from Explore');
     assert.match(kx, /url: K\.ending\.url/, 'Explore plays the cut with its title-card ending (the featured entry keeps the plain take for Extend)'); assert.match(kx, /left: `\$\{\(first \/ total\) \* 100\}%`/, 'the join notch sits at 0:10 of 0:20');
-    assert.match(kx, /\{K\.first\.model\}<i>·<\/i>\{f\.model\}<i>·<\/i>\{K\.place\}/, 'the bar names both models and the place');
+    assert.match(kx, /xp-koi-track[\s\S]*xpk-segs[\s\S]*xp-koi-seg-/, 'the timeline names each segment (Start · MiniMax H3, Extend · +10 s · H3 Extend, the end card) under the line');
     assert.match(kx, /data-testid="xp-koi-eq"[\s\S]*f\.before\.poster[\s\S]*K\.newFrame[\s\S]*one \{Math\.round\(take\)\} s take/, '[frame] 10 s + [frame] 10 s = one 20 s take (the generated take, not the ending)');
-    assert.match(kx, /const take = f\.out\.sec[^\n]*const total = K\.ending\.sec/, 'the sum and pills use the plain take, the readout the ending version'); assert.match(kx, /url: K\.ending\.url/, 'Explore plays the ending version'); assert.match(kx, /xp-koi-ending[\s\S]*xp-koi-paid-ending/, 'the ending marked on the progress line and credited as made here');
-    assert.match(kx, /xp-koi-paid-first[^\n]*K\.first\.usd[^\n]*first \$\{Math\.round\(first\)\} s[\s\S]*xp-koi-paid-extend[^\n]*chipOfFeatured\(f, \{ note: `\+\$\{added\} s`/, 'two run chips: each run\u2019s model, place and price');
-    assert.match(kx, /featuredRecreateHref\(f\.key\)[\s\S]*xp-koi-recreate">Recreate<[\s\S]*K\.cta\.href/, 'Recreate and Start your scene');
+    assert.match(kx, /const take = f\.out\.sec[^\n]*const total = K\.ending\.sec/, 'the sum and the run line use the plain take, the readout the ending version'); assert.match(kx, /url: K\.ending\.url/, 'Explore plays the ending version'); assert.match(kx, /xp-koi-ending[\s\S]*is-\$\{x\.k\}/, 'the end card marked on the progress line and named as added in the edit');
+    assert.match(kx, /xp-koi-run[^\n]*chipOfFeatured\(f, \{ role: `Extend, \+\$\{added\} s`, also: f\.from/, 'one run line: H3 Extend, the whole price as a total, "+1 step" opens start → extend');
+    assert.match(kx, /to=\{K\.cta\.href\}[^\n]*xp-koi-cta[\s\S]*to=\{rec\}[^\n]*xp-koi-recreate">Recreate this take</, 'Extend a clip, then Recreate this take');
     assert.match(fs.readFileSync(path.join(WEB, 'shared/ShowcaseFilm.tsx'), 'utf8'), /onError=\{\(\) => \{ setBad\(t\.url\); onFail\?\.\(\); \}\}/, 'ShowcaseFilm: a clip that fails keeps its poster');
-    ok('Make your own cartoon: MiniMax H3 + H3 Extend (Comfy Cloud), 20 s take ≤ 4 MB, its first 10 s, posters, prices, Recreate into Extend'); }
+    ok('Keep the shot going: MiniMax H3 + H3 Extend (Comfy Cloud), 20 s take ≤ 4 MB, its first 10 s, posters, prices, Recreate into Extend'); }
   assert.equal((X as Record<string, unknown>).EXPLORE_QUICK, undefined, 'the hero has no quick links (2026-10-28)');
   assert.equal(X.EXPLORE_TAGLINES.length, 3, 'three tagline options'); assert.ok(X.EXPLORE_TAGLINES.includes(X.EXPLORE_TAGLINE));
   for (const t of X.EXPLORE_TAGLINES) { assert.ok(t.title.length && t.line, 'tagline copy'); assert.doesNotMatch(`${t.title.join(' ')} ${t.line}`, /higgsfield/i, 'no other products named'); }
@@ -268,7 +268,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.match(reel, /import \{ SoundToggle \} from '\.\/SoundToggle'/); assert.match(reel, /sound = false,/, 'HeroReel: no sound button unless the clip has sound'); assert.match(reel, /\{sound && !still && !failed && <SoundToggle on=\{snd\.lit\} waiting=\{snd\.waiting\} label=\{snd\.hint\}/, 'HeroReel: the shared toggle');
     /* each section: its sound flag comes from the clip's data; the sound itself is the page's one choice (shared/soundDirector.ts) */
     const hero = part('export function XpHero', 'a prompt as it ran (shared)'); assert.match(hero, /sound: f\.out\.sound/);
-    const still = part('export function XpStill', 'Make your own cartoon (MiniMax H3'); assert.match(still, /<HeroReel [^\n]*sound=\{f\.out\.sound === true\} restartOnSound/, 'From one still: the shared toggle, from 0 when sound goes on');
+    const still = part('export function XpStill', 'Keep the shot going (MiniMax H3'); assert.match(still, /<HeroReel [^\n]*sound=\{f\.out\.sound === true\} restartOnSound/, 'From one still: the shared toggle, from 0 when sound goes on');
     const koi = part('export function XpKoi', "a chapter's copy column"); assert.match(koi, /restartOnSound/, 'the koi take: from 0 when sound goes on'); assert.match(koi, /sound: f\.out\.sound/);
     const swap = part('export function XpSwap', 'Chapter 2: image to layers'); assert.match(swap, /useSyncClips\(4\)[\s\S]*\{!g\.still && <SoundToggle on=\{g\.sound\.lit\}/, 'the swap: the shared toggle (the original leads and carries the sound; not under reduced motion)');
     assert.doesNotMatch(xs, /_SOUND_KEY|soundKey|soundGroup|useClipSound/, 'no per-section sound keys or groups left');
@@ -355,7 +355,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
       assert.ok(gj.nodes.some((n: any) => n.name === 'mossbun-front' && n.rotation), 'turned so its front faces the camera at 0°'); }
     const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); const sx = xs.slice(xs.indexOf('export function XpSheets'), xs.indexOf('Mockup to film (Direct a Shot made real)'));
     assert.match(sx, /<Model3D src=\{td!\.url\}[^>]*autoRotate=\{!still\}/, 'the shared Model3D viewer; reduced motion: no auto-rotate');
-    assert.match(sx, /Spin him in 3D/, 'the 3D toggle'); assert.match(sx, /<RunChip c=\{chipOfRun\(\{ jobId: td\.jobId, model: td\.model, place: td\.place, costUsd: td\.usd/, 'the 3D credit (the shared run chip)');
+    assert.match(sx, /Spin him in 3D/, 'the 3D toggle'); assert.match(sx, /<RunChip c=\{\{ \.\.\.chipOfRun\(\{ jobId: td\.jobId, model: td\.model, place: td\.place, costUsd: td\.usd/, 'the 3D credit (the shared run chip)');
     assert.match(sx, /className="xpk-frame xpc-frame"/, 'the koi’s letterbox frame (shared look)'); assert.match(sx, /featuredRecreateHref\(f\.key\)[\s\S]*xp-sheets-recreate/, 'Recreate from the featured entry');
     assert.match(sx, /if \(!now \|\| paused \|\| still \|\| spin \|\| !seen\) return/, 'steps only on screen; Pause, reduced motion and 3D stop it');
     assert.match(fs.readFileSync(path.join(WEB, 'ui/explore/exploreShowcase.css'), 'utf8'), /\.xpc-sheet\{[^}]*width:min\(100cqw,calc\(100cqh \* var\(--ar\)\)\)/, 'the whole sheet fitted, never cropped');

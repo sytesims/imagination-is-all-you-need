@@ -106,8 +106,10 @@ export const EXPLORE_STILL = {
  *  timecode, the models and a progress line with a notch at the join. The take, its first 10 s, the extend's price and Recreate come from the
  *  featured entry (key 'h3-koi-take'); the first 10 s' own run (job 42ceb1af: MiniMax H3 text to video, 10 s, 768p, Comfy Cloud, 80 credits) is here. */
 export const EXPLORE_KOI = {
-  key: 'h3-koi-take', eyebrow: 'Made with MiniMax H3', title: 'Make your own cartoon.',
-  line: "A boy in the rain, a paper lantern, a wish. Write the scene the way you'd tell it, and watch it come alive, then let it keep going for as long as your story needs.",
+  /* headline options (2026-11-02, the section shows off Extend): "Keep the shot going." (picked: the Extend workflow's own tagline) ·
+     "Ten seconds was only the start." · "Your story, as long as it needs." */
+  key: 'h3-koi-take', eyebrow: 'Extend', title: 'Keep the shot going.',
+  line: "A boy in the rain, a paper lantern, a wish. Start with one 10 s clip, then Extend picks up from its last frame: the same scene, the same sound, ten more seconds.",
   /** the first 10 s: its model, where it ran and what it cost */ first: { model: 'MiniMax H3', place: 'Comfy Cloud', usd: 0.8 },
   /** the extend: where it ran (its model and price are the featured entry's) */ place: 'Comfy Cloud',
   /** a frame from the new 10 s (the first 10 s' frame is the featured entry's `before` poster) */ newFrame: P('h3-koi-take-new-480.webp'),
@@ -115,8 +117,9 @@ export const EXPLORE_KOI = {
    *  (the take's own sound fading under it), a 4 s end card ("What will you bring to life?" / Imagination is all you need) and the 3 s end mark; 30.13 s, -15 LUFS, poster = the featured one.
    *  The featured entry's `out` stays the plain 20 s take (Extend page, feeds, Recreate). The readout and line count this file; the
    *  "10 s + 10 s = one 20 s take" sum and the pills stay the generated take. */
-  ending: { url: P('h3-koi-take-ending.mp4'), sec: 30.13, label: 'Ending · made with Imagination · Free' },
-  /** Video with MiniMax H3 picked */ cta: { label: 'Start your scene', href: `${VIDEO_PAGE}?model=minimax-h3` },
+  ending: { url: P('h3-koi-take-ending.mp4'), sec: 30.13, label: 'End card · added in the edit' },
+  /** the timeline's segment labels: the generated take's two runs (their models from the data), then the end card added after (not a model) */ segments: { start: 'Start', extend: 'Extend' },
+  /** Video › Extend */ cta: { label: 'Extend a clip', href: videoWorkflowHref('extend') },
 };
 
 // ---------------------------------------------------------------- Made with Seedance 2.0 (Comfy Router)
