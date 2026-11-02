@@ -26,13 +26,14 @@ ok('filter: Models first, default follows the workflow, falls back to All');
 
 // ---- video card posters ----
 assert.equal(F.videoCardPoster({ resultUrl: '/files/a-out0.mp4', outputs: [{ url: '/files/a-out0.mp4', posterUrl: '/api/media/poster?url=%2Ffiles%2Fa-out0.mp4' }] }, 320)?.startsWith('/api/media/thumb?url='), true, 'the server poster, as a grid thumb');
-assert.match(F.videoCardPoster({ resultUrl: '/files/b-out0.mp4', outputs: [{ url: '/files/b-out0.mp4' }] })!, /^\/api\/media\/thumb\?url=%2Fapi%2Fmedia%2Fposter%3Furl%3D%252Ffiles%252Fb-out0\.mp4&w=\d+$/, 'no posterUrl yet: the poster route');
+assert.match(F.videoCardPoster({ resultUrl: '/files/b-out0.mp4', outputs: [{ url: '/files/b-out0.mp4' }] })!, /^\/api\/media\/thumb\?url=%2Fapi%2Fmedia%2Fposter%3Furl%3D%252Ffiles%252Fb-out0\.mp4%26v%3D\d+&w=\d+$/, 'no posterUrl yet: the poster route');
 assert.equal(F.videoCardPoster({ resultUrl: null, outputs: [] }), undefined); assert.equal(F.videoCardPoster({ resultUrl: 'https://x.test/v.mp4' }), undefined, 'remote clips: no poster route');
 const cardSrc = studio.slice(studio.indexOf('function Card('), studio.indexOf('function Showcase(')); const videos = cardSrc.match(/<video\b[^>]*>/g) ?? [];
 const cardVideos = videos.filter((v) => !/t3-tt/.test(v)); /* the 3D card's hover turntable sits over the model's still */
-assert.ok(cardVideos.length >= 4, 'mockup, render (+ its plan inset) and turntable cards'); for (const v of cardVideos) assert.match(v, /\bposter=\{/, `every card video has a poster: ${v.slice(0, 80)}`);
+assert.ok(cardVideos.length >= 4, 'mockup, render (+ its plan inset) and turntable cards'); for (const v of videos) assert.match(v, /\bposter=\{/, `every card video has a poster: ${v.slice(0, 80)}`);
 assert.match(web('ui/three/threeD.css'), /video:not\(\[data-ready\]\)[^{]*\{[^}]*animation: t3-shimmer/, 'a shimmer until the video is ready');
-ok('video cards: first-frame poster + shimmer');
+assert.match(cardSrc, /const poster = posterOf3d\(j\) \?\? ttPoster/, 'a model with a turntable but no saved still shows the turntable frame');
+ok('video cards (the hover turntable too): a poster + shimmer');
 
 // ---- card caption ----
 assert.equal(F.metaShort({ faces: 1_400_000, bytes: 44e6 }), '1.4M faces'); assert.equal(F.metaShort({ faces: 7200, bytes: 1 }), '7k faces');

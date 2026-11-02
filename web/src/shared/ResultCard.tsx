@@ -12,6 +12,7 @@ import { useRef, useState } from 'react';
 import { FeedCaption } from './FeedCaption';
 import { AudioCard } from './AudioCard';
 import { gridSrc } from './thumbs';
+import { videoPoster } from '../../../server/src/shared/videoPoster';
 import { useExclusivePlayback } from './audioPlayer';
 import type { ResultKind } from './resultMedia';
 import './resultCard.css';
@@ -33,10 +34,10 @@ const CUBE = 'M12 3 20 7.5v9L12 21l-8-4.5v-9zM4 7.5 12 12l8-4.5M12 12v9';
 
 function VideoBody({ url, poster, width, title }: { url: string; poster?: string; width: number; title: string }) {
   const v = useRef<HTMLVideoElement>(null); const [playing, setPlaying] = useState(false); const [pct, setPct] = useState(0); const [started, setStarted] = useState(false);
-  useExclusivePlayback(v);
+  useExclusivePlayback(v); const still = videoPoster(url, poster); /* never a blank black tile: the poster route when no poster was passed */
   const toggle = () => { const el = v.current; if (!el) return; setStarted(true); if (el.paused) el.play().catch(() => setPlaying(false)); else el.pause(); };
   return <>
-    <video ref={v} className="rc-media" src={url} poster={poster ? gridSrc(poster, width) : undefined} playsInline loop preload="none" aria-label={title}
+    <video ref={v} className="rc-media" src={url} poster={still ? gridSrc(still, width) : undefined} playsInline loop preload="none" aria-label={title}
       onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onTimeUpdate={e => { const el = e.currentTarget; setPct(el.duration ? el.currentTime / el.duration : 0); }} />
     <button type="button" className={`rc-play${playing ? ' on' : ''}`} data-card-control data-testid="rc-play" aria-label={playing ? 'Pause video' : 'Play video'} onClick={toggle}>{playing ? <Pause /> : <Play />}</button>
     {started && <span className="rc-progress" aria-hidden><i style={{ width: `${Math.round(pct * 1000) / 10}%` }} /></span>}

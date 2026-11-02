@@ -38,7 +38,7 @@ ok('the Video feed lists only its own clips, with the same filters (liked, faile
 // ---- clip cards: shape, poster, length, chip ----
 const out = videoOutOf(job({ outputs: [{ kind: 'video', url: '/files/a.mp4', width: 720, height: 1280, durationSec: 5, posterUrl: '/api/media/poster?url=%2Ffiles%2Fa.mp4' }] }))!;
 assert.equal(out.url, '/files/a.mp4'); assert.equal(out.ar, 720 / 1280); assert.equal(out.sec, 5); assert.match(out.poster, /^\/api\/media\/poster/);
-const bare = videoOutOf(job({ resultUrl: '/files/b.mp4', input: { aspect: '1:1', duration: 10 } }))!; assert.equal(bare.ar, 1); assert.equal(bare.sec, 10); assert.equal(bare.poster, '/api/media/poster?url=%2Ffiles%2Fb.mp4');
+const bare = videoOutOf(job({ resultUrl: '/files/b.mp4', input: { aspect: '1:1', duration: 10 } }))!; assert.equal(bare.ar, 1); assert.equal(bare.sec, 10); assert.match(bare.poster, /^\/api\/media\/poster\?url=%2Ffiles%2Fb\.mp4&v=\d+$/);
 assert.equal(videoOutOf(job({ status: 'running' })), null); assert.equal(askedAr(job({ input: { aspect: '9:16' } })), 9 / 16); assert.equal(askedAr(job({ input: {} })), 16 / 9);
 assert.equal(videoTag(job({ input: { mode: 't2v' } })), '', 'plain text to video: no chip'); assert.equal(videoTag(job({ input: { mode: 'i2v' } })), 'Image to video');
 assert.equal(videoTag(job({ input: { mode: 't2v', cameraMove: 'dolly-in' } })), 'Dolly in');

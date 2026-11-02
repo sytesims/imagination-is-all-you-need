@@ -2,12 +2,13 @@
  * The 3D page's feed rules (2026-10-27, UX audit batch A), kept free of React so the tests can read them:
  *  - the kind filter: Models first (renamed from "3D"), then Mockups and Renders; the default follows the workflow
  *    (Image to 3D / Turntable → Models; Direct a Shot → Mockups + Renders), and falls back to All when that shows nothing;
- *  - the card still of a video card (Mockup, Render, Turntable): the server's first-frame poster (outputs[0].posterUrl, else
+ *  - the card still of a video card (Mockup, Render, Turntable, a model's hover turntable): the server's poster (a non-black frame) (outputs[0].posterUrl, else
  *    GET /api/media/poster?url=), scaled for the grid, so a card is never black while its video loads;
  *  - the card caption's short 3D line ("1.4M faces"); the viewer keeps the full detail;
  *  - which "Made with these models" examples ran on a model this app has.
  */
 import { gridSrc } from '../../shared/thumbs';
+import { videoPoster } from '../../../../server/src/shared/videoPoster';
 import { normalizePlanShot, shotForJob, type PlanShot } from '../../../../server/src/shared/previzTemplates';
 
 export type FeedKind = 'preview' | 'real' | '3d';
@@ -24,14 +25,12 @@ export function shownKinds(picked: FeedKind[] | null, workflowId: string, counts
 }
 export function countKinds(jobs: { toolId?: string | null }[]): Record<FeedKind, number> { const c: Record<FeedKind, number> = { preview: 0, real: 0, '3d': 0 }; for (const j of jobs) c[kindOfJob(j)]++; return c; }
 
-/** A video card's still: the job's own poster (the server's first frame), else the poster route, as a grid-sized thumb. */
+/** A video card's still: the job's own poster, else the poster route, as a grid-sized thumb. */
 export function videoCardPoster(j: { resultUrl?: string | null; outputs?: { url?: string; posterUrl?: string | null }[] | null }, cssWidth = 320): string | undefined {
-  const url = j.outputs?.[0]?.url ?? j.resultUrl; if (!url || !/^\/files\//.test(url)) return undefined;
-  const p = j.outputs?.[0]?.posterUrl || `/api/media/poster?url=${encodeURIComponent(url)}`;
-  return gridSrc(p, cssWidth) ?? undefined;
+  const p = videoPoster(j.outputs?.[0]?.url ?? j.resultUrl, j.outputs?.[0]?.posterUrl); return p ? gridSrc(p, cssWidth) : undefined;
 }
 /** The plan (mockup) clip shown small on a Render card. */
-export const planPoster = (url?: string | null, cssWidth = 160): string | undefined => (url && /^\/files\//.test(url) ? gridSrc(`/api/media/poster?url=${encodeURIComponent(url)}`, cssWidth) ?? undefined : undefined);
+export const planPoster = (url?: string | null, cssWidth = 160): string | undefined => { const p = videoPoster(url); return p ? gridSrc(p, cssWidth) : undefined; };
 
 /** The card caption's 3D line: the face count only ("1.4M faces"), else the size; texture and size stay in the viewer. */
 export function metaShort(m: { faces?: number | null; bytes?: number | null } | null): string {

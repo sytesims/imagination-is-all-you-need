@@ -4,24 +4,25 @@ import { sampleFor, type SampleCredit } from './sampleMedia.js';
  * blurred video backdrop). Each output keeps {label, url} and gains {kind, width, height, durationSec, posterUrl}.
  * - Probed once per file with ffprobe and cached by URL in SQLite kv (`outputMeta`); local files only (/files, /samples, /examples).
  * - Video posters: the sibling `<name>.jpg` when it exists (our example media ships one), else `/api/media/poster?url=<url>`,
- *   which extracts the first frame with ffmpeg on first request (DATA_DIR/posters/, cached). Images use their own URL; audio has none.
+ *   which extracts a representative frame (~1 s in, skipping black frames) with ffmpeg on first request (DATA_DIR/posters/, cached). Images use their own URL; audio has none.
  * - At most 4 ffprobe processes run at once.
  * - Until a file is probed the output carries only `kind` (and nulls); the probe runs in the background, and GET /api/jobs/:id
  *   and GET /api/share/:token wait for it (warmOutputs) so a single result always has full metadata.
  */
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, renameSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DATA_DIR, SAMPLES_DIR } from './config.js';
 import { del, getKv, setKv } from './db.js';
-import { runFfmpeg } from './ffmpeg.js';
+import { meanLuma, mediaDuration, runFfmpeg } from './ffmpeg.js';
 
 export type MediaKind = 'image' | 'video' | 'audio' | '3d'; // 3d: a GLB (3D page, 2026-10-23): no probe; its poster is the still the viewer saved
 export interface OutputMeta { kind: MediaKind | null; width: number | null; height: number | null; durationSec: number | null; posterUrl: string | null; /** video: has a sound track (Add sound asks Replace or Mix only then); absent on older cache rows */ hasAudio?: boolean | null }
 
 import { examplesFileOf } from './interimTiles.js';
+import { posterRoute, upgradePoster } from './shared/videoPoster.js';
 const WEB_PUBLIC = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../web/public');
 export const kindOfUrl = (u?: string | null): MediaKind | null => !u ? null : /\.(mp4|mov|webm|m4v)(\?|$)/i.test(u) ? 'video' : /\.(png|jpe?g|webp|gif)(\?|$)/i.test(u) ? 'image' : /\.(m4a|mp3|wav|ogg|flac|aac|opus)(\?|$)/i.test(u) ? 'audio' : /\.glb(\?|$)/i.test(u) ? '3d' : null;
 /** Local file behind an output URL (/files → DATA_DIR, /samples → server/samples, /examples → web/public/examples), or null. */
@@ -33,7 +34,7 @@ export function localFileOf(u?: string | null): string | null {
 
 const KV = 'outputMeta.v2';
 del('kv', 'outputMeta'); // pre-release cache format (eager posters), dropped
-const cache = new Map<string, OutputMeta>(Object.entries(getKv<Record<string, OutputMeta>>(KV, {})));
+const cache = new Map<string, OutputMeta>(Object.entries(getKv<Record<string, OutputMeta>>(KV, {})).map(([u, m]) => [u, m.posterUrl ? { ...m, posterUrl: upgradePoster(m.posterUrl) } : m])); // rows cached under an older poster rule point at the current one
 let saveTimer: NodeJS.Timeout | null = null;
 const save = () => { if (saveTimer) return; saveTimer = setTimeout(() => { saveTimer = null; setKv(KV, Object.fromEntries(cache)); }, 300); saveTimer.unref?.(); };
 const pending = new Map<string, Promise<OutputMeta>>();
@@ -51,14 +52,35 @@ function ffprobe(file: string): Promise<{ width: number | null; height: number |
 /** Poster URL for a video output (no work done here; the poster route renders lazily). */
 function posterFor(url: string): string {
   const sib = url.split('?')[0].replace(/\.(mp4|mov|webm|m4v)$/i, '.jpg'); if (sib !== url && localFileOf(sib)) return sib;
-  return `/api/media/poster?url=${encodeURIComponent(url)}`;
+  return posterRoute(url);
 }
-/** Full-size first-frame JPEG for a local video URL (DATA_DIR/posters, cached). Returns the file path, or null. */
+/** Poster cache version: v2 picks a representative frame (v1 took frame 0, often black). Bumping it re-renders every poster once. */
+const POSTER_V = 'v2';
+/** Mean luma (0–255) below which a frame counts as black (a fade-in, a turntable starting dark). */
+export const POSTER_MIN_LUMA = 24;
+/** The times tried for a poster: ~min(1 s, 25%) first, then later in the clip when that frame is dark. */
+export const posterTimes = (dur: number): number[] => !(dur > 0) ? [0] : [...new Set([Math.min(1, dur * 0.25), dur * 0.5, dur * 0.75].map((t) => Math.round(t * 100) / 100))];
+const inflightPoster = new Map<string, Promise<string | null>>();
+/** Full-size poster JPEG for a local video URL (DATA_DIR/posters, cached): a frame ~1 s in (25% of a short clip), else the
+ *  brightest of 50% / 75% when that one is near black. Returns the file path, or null. */
 export async function renderPoster(url: string): Promise<string | null> {
   const file = localFileOf(url); if (!file || kindOfUrl(url) !== 'video') return null;
-  const dir = path.join(DATA_DIR, 'posters'); const dst = path.join(dir, `${createHash('sha1').update(url).digest('hex').slice(0, 16)}.jpg`);
-  if (!existsSync(dst)) { mkdirSync(dir, { recursive: true }); const code = await runFfmpeg(['-y', '-v', 'error', '-ss', '0', '-i', file, '-frames:v', '1', '-q:v', '3', dst]); if (code !== 0 || !existsSync(dst)) return null; }
-  return dst;
+  const dir = path.join(DATA_DIR, 'posters'); const dst = path.join(dir, `${POSTER_V}-${createHash('sha1').update(url).digest('hex').slice(0, 16)}.jpg`);
+  if (existsSync(dst)) return dst;
+  const had = inflightPoster.get(dst); if (had) return had;
+  const run = (async () => {
+    mkdirSync(dir, { recursive: true }); const tmp = dst.replace(/\.jpg$/, '.tmp.jpg'); let best = { y: -1, t: 0 };
+    const grab = (t: number) => runFfmpeg(['-y', '-v', 'error', '-ss', String(t), '-i', file, '-frames:v', '1', '-q:v', '3', tmp]);
+    for (const t of posterTimes(await mediaDuration(file))) {
+      if (await grab(t) !== 0 || !existsSync(tmp)) continue;
+      const y = await meanLuma(tmp); if (y >= POSTER_MIN_LUMA) { best = { y, t }; break; }
+      if (y > best.y) best = { y, t };
+    }
+    if (best.y < 0 && await grab(0) !== 0) return null; // too short to seek: the first frame
+    if (best.y >= 0 && best.y < POSTER_MIN_LUMA && await grab(best.t) !== 0) return null; // all dark: the brightest one
+    if (!existsSync(tmp)) return null; renameSync(tmp, dst); return dst;
+  })().finally(() => inflightPoster.delete(dst));
+  inflightPoster.set(dst, run); return run;
 }
 /** a video row cached before hasAudio was probed: probed again once (in the background; GET /api/jobs/:id waits) */
 const stale = (m: OutputMeta) => m.kind === 'video' && m.hasAudio === undefined;
