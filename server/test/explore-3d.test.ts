@@ -58,8 +58,9 @@ const size = (u: string) => { const p = path.join(PUB, u); assert.ok(fs.existsSy
 const home = fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8');
 assert.match(home, /<XpHero \/>\s*(?:\{\/\*[^*]*\*\/\}\s*)?<div className="xp-in">\s*<Xp3D \/>\s*<XpStill \/>[\s\S]*<XpFilms \/>/, '3D is the first section under the hero (user, 2026-11-02); the lighthouse is now in Films (user, 2026-10-29)');
 const sec = fs.readFileSync(path.join(WEB, 'ui/explore/Explore3D.tsx'), 'utf8'); const css = fs.readFileSync(path.join(WEB, 'ui/explore/explore3d.css'), 'utf8');
-assert.match(sec, /<h2 id="xp-h-x3d" className=\{`xps-h\$\{centred \? ' xsdc-h' : ''\}`\}>/, 'the headline is the chapter style (#xp-swap\'s classes), centred in today\'s layout');
-assert.match(sec, /get\('charsection'\)[^\n]*v === 'a' \|\| v === 'b' \|\| v === 'c' \? v : '0'/, 'layouts being picked: ?charsection=a|b|c, today by default');
+assert.match(sec, /<div className="x3-band">[\s\S]*<ShowcaseFilm [\s\S]*<header className="x3-head">\s*<h2 id="xp-h-x3d" className="xps-h">/, 'media first: the film in a framed band, the chapter headline small on it');
+assert.doesNotMatch(sec, /charsection/, 'one layout, no gate');
+assert.match(css, /\.x3 \.x3-band\{[^}]*border-radius:22px/, 'a framed band, not another full-screen video under the hero');
 assert.equal((sec.match(/<ShowcaseFilm /g) ?? []).length, 1, 'one film for every layout (the shared player)');
 assert.match(sec, /<ShowcaseFilm\b[^\n]*controls restartOnSound[\s\S]{0,240}\/>/, 'the film is the shared ShowcaseFilm with its on-brand controls and sound');
 assert.doesNotMatch(sec, /<ShowcaseFilm[^>]*>\s*<(h3|p|span)/, 'nothing over the film (no overlay, no chips)');
