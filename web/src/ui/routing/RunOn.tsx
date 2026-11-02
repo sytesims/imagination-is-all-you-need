@@ -79,6 +79,8 @@ const RunOnButton = forwardRef<HTMLButtonElement, { open: boolean; onClick: () =
  *  whole story: `scale.factor` turns one clip's price into the story's total; `scale.shots` gives the per-shot line. */
 export type RunOnOwn = { runOn: string; set: (runOn: string) => void; rememberedFor: string };
 export type RunOnScale = { factor: number | null; shots: number; unit: string };
+/** The Run on chip's tiniest words, for a crowded bar (shared/dockFit: the model's full name wins; the label and tooltip keep the place in full). */
+const RUN_ON_TINY: Record<string, string> = { local: 'Local', 'comfy-cloud': 'Cloud' };
 /** Create Image dock: a chip in the scroll track ('Comfy ›', 'Local · Download ›'). */
 export function RunOnChip({ toolId, model, engine, quote: q0, testId = 'run-on-chip', avoid, own, scale, watch, compact }: FieldProps & { own?: RunOnOwn; scale?: RunOnScale; /** a composer dock: the menu opens 4px above the chip, over the dock, and re-places when the dock resizes */ watch?: RefObject<HTMLElement | null>;
   /** Create bar: one short word (GPU, Comfy, fal) that never truncates; a needed step shows as the dot, said in full in the label and tooltip */ compact?: boolean }) {
@@ -86,7 +88,7 @@ export function RunOnChip({ toolId, model, engine, quote: q0, testId = 'run-on-c
   const shared = useRunOn(toolId, model?.key).runOn; const pick = own ? own.runOn : shared; const t = runOnText(model, pick, quote);
   if (!model) return null;
   return <><button ref={ref} type="button" className={`ic-chip ro-chip${compact ? ' ro-compact' : ''}${open ? ' on' : ''}`} data-testid={testId} data-place={t.place ?? undefined} data-saved={t.saved ? '1' : undefined} aria-haspopup="dialog" aria-expanded={open} aria-label={`Run on: ${t.main}${t.sub ? `, ${t.sub}` : ''}`} {...tip(t.tip)} onClick={() => setOpen(o => !o)}>
-      {t.dot && <i className={`mp-st mp-st-${t.dot}`} aria-hidden />}{compact ? <span className="ro-chip-t ro-chip-c">{t.place ? RUN_ON_CHIP[t.place] ?? t.main : 'Set up'}</span> : <span className="ro-chip-t">{t.main}{t.sub ? <span className="ro-sub"> · {t.sub}</span> : null}</span>}<ChevronRightIcon size={16} /></button>
+      {t.dot && <i className={`mp-st mp-st-${t.dot}`} aria-hidden />}{compact ? <span className="ro-chip-t ro-chip-c">{((w: string) => { const tiny = t.place ? RUN_ON_TINY[t.place] : null; return tiny && tiny !== w ? <><span className="ro-full">{w}</span><span className="ro-tiny" aria-hidden>{tiny}</span></> : w; })(t.place ? RUN_ON_CHIP[t.place] ?? t.main : 'Set up')}</span> : <span className="ro-chip-t">{t.main}{t.sub ? <span className="ro-sub"> · {t.sub}</span> : null}</span>}<ChevronRightIcon size={16} /></button>
     <RunOnMenu open={open} anchor={ref} avoid={avoid} watch={watch} gap={watch ? 4 : undefined} placement="top" onClose={() => setOpen(false)} toolId={toolId} model={model} engine={engine} quote={quote} own={own} scale={scale} /></>;
 }
 

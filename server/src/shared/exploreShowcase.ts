@@ -148,7 +148,7 @@ const IF = (f: string) => `/examples/iiayn-films/${f}`;
  *  Now: 엄마 · MUM, Episode 1 (77 s with the new end card, 2026-10-28; Korean with English subtitles), 그래요? · IS THAT SO? and The Airport Run. The web copy is 1280×720 H.264 with sound; the poster is Mum's close-up; the
  *  loop is 6.5 s of it, silent (card hover). Four layouts for the user (2026-10-27, round 2): ?films=1a|1b|2a|2b. The shots' start frames and cut points are the film's own (research folder shots.json + README). */
 export const EXPLORE_FILMS = {
-  label: 'IIAYN FILMS', title: 'Made with Imagination.', line: 'Short films where every picture, voice and cut came out of this app. Press play, then make your own.',
+  label: 'IIAYN FILMS', title: 'Made here, start to finish.', line: 'Short films where every picture, voice and cut came out of this app. Press play, then make your own.',
   feature: {
     key: 'mum-ep1', ko: '엄마', en: 'MUM', episode: 'Episode 1', genre: 'Korean drama', sec: 78, lang: 'Korean · English subtitles',
     logline: 'A snowy bus stop at dawn. A daughter in a hurry, a mother with a lunchbox, and a note she finds on the bus.',

@@ -5,12 +5,14 @@
  *  - useChipFit: the chip row never clips a chip, by the shared fold rules (shared/chipFit.ts: priority, shrink before hide, stable widths).
  *    Pages only declare priorities: fitPri('keep' | 'high' | 'low') on a control, data-rank within a priority, data-fit-main="first" on a
  *    workflow's control strip (its first control is the main one and never folds). Steps, each only while the row is still too wide, with
- *    the model measured at its fixed width (data-fit-measure, --fit-model-min), so a model switch never changes what folds:
- *    1. group words drop (data-short), 2. long labels truncate (data-trunc: a group's summary, the Brand name), 3. controls fold by priority
+ *    the model measured at its full name (data-fit-measure, --fit-model-need within --fit-model-min…max; 2026-11-02, the name always reads):
+ *    1. group words drop (data-short), 2. long labels truncate (data-trunc: a group's summary, the Brand name), 2b. an active Brand
+ *    compacts (its name shorter, then its logo only: data-bk-compact on the row), 3. controls fold by priority
  *    (data-fold chips into Settings: data-folded; a workflow's chips (opts.over) into ⋯: data-over; the row extras beside the chips, Brand
  *    and the eye ([data-row-fold]), into ⋯: data-row-over; shared/RowMore), then whatever fits again comes back, 4. the model's minimum
  *    gets smaller (data-squeeze), 5. last resort
- *    data-folded=all + data-tight (names truncate, chips go icon-only). Then the model takes whatever room is left, up to its full name.
+ *    data-folded=all + data-tight (names truncate, chips go icon-only). Then the model takes whatever room is left, up to its full name;
+ *    6. while its name is still cut: Brand compacts further, then Run on says one word (data-ro-compact on the row).
  *    Every fit starts from nothing folded. Returns the folded data-fold keys for the Settings fold.
  */
 import { useLayoutEffect, useState, type RefObject } from 'react';
@@ -28,6 +30,9 @@ export function useDockHeight(dock: RefObject<HTMLElement | null>, rootSelector:
     return () => { ro?.disconnect(); removeEventListener('resize', set); }; }, []); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
+/** Row extras that compact (never fold) so the model keeps its full name: [attribute on the chip row, value, the chip it needs]. */
+const ROW_COMPACT: [string, string, string][] = [['data-bk-compact', '1', '.bk-chip.on'], ['data-bk-compact', 'icon', '.bk-chip.on'], ['data-ro-compact', '1', '.ro-chip .ro-tiny']];
+
 export type ChipFitOptions = {
   /** a second fold tier (Image: a workflow's chips, '.wf-fold'), folded into the ⋯ menu after every [data-fold] chip; sets data-over */
   over?: string;
@@ -39,12 +44,18 @@ export function useChipFit(chips: RefObject<HTMLElement | null>, opts: ChipFitOp
   const [folded, setFolded] = useState<string[]>([]);
   useLayoutEffect(() => { const c = chips.current; if (!c) return; let mo: MutationObserver | null = null; let ro: ResizeObserver | null = null;
     const fit = () => { for (const a of ['data-short', 'data-trunc', 'data-squeeze', 'data-tight', 'data-folded', 'data-over', 'data-row-over']) c.removeAttribute(a);
-      const row = c.parentElement; const extras = [...(row?.querySelectorAll<HTMLElement>(':scope > [data-row-fold]') ?? [])];
+      const row = c.parentElement; for (const a of ROW_COMPACT) row?.removeAttribute(a[0]); const extras = [...(row?.querySelectorAll<HTMLElement>(':scope > [data-row-fold]') ?? [])];
       const setChips = [...c.querySelectorAll<HTMLElement>('[data-fold]')]; const tier2 = opts.over ? [...c.querySelectorAll<HTMLElement>(opts.over)].filter(e => !setChips.includes(e)) : [];
       const els = [...setChips, ...tier2, ...extras]; els.forEach(e => e.classList.remove('ic-folded'));
-      if (innerWidth > 700) { const over = () => c.scrollWidth > c.clientWidth + 1; c.setAttribute('data-fit-measure', '1');
+      if (innerWidth > 700) { const over = () => c.scrollWidth > c.clientWidth + 1;
+        /* the model is measured at its full name (2026-11-02: the name always reads; --fit-model-need, kept within --fit-model-min…max by CSS) */
+        { const m0 = c.querySelector<HTMLElement>('.ic-model'); if (m0) { c.setAttribute('data-fit-natural', '1');
+          c.style.setProperty('--fit-model-need', `${Math.ceil(m0.getBoundingClientRect().width)}px`); c.removeAttribute('data-fit-natural'); } }
+        c.setAttribute('data-fit-measure', '1');
         if (over()) c.setAttribute('data-short', '1');
         if (over()) c.setAttribute('data-trunc', '1');
+        /* an active Brand compacts before anything folds or the model shrinks (2026-11-02): its name shorter, then its logo only */
+        for (const [a, v, sel] of ROW_COMPACT) { if (!row || !over()) break; if (a === 'data-bk-compact' && row.querySelector(sel)) row.setAttribute(a, v); }
         if (over()) { const all = [...(row ?? c).querySelectorAll('*')];
           /* each control's kind: Settings (data-fold), the workflow's ⋯ tier, or a row extra (⋯ too) */
           type It = FitItem & { el: HTMLElement; kind: 'set' | 'over' | 'row' };
@@ -60,11 +71,17 @@ export function useChipFit(chips: RefObject<HTMLElement | null>, opts: ChipFitOp
         if (over()) c.setAttribute('data-squeeze', '1');
         if (over()) { c.setAttribute('data-folded', 'all'); c.setAttribute('data-tight', '1'); }
         /* the room left beside the model at its minimum: it may grow by that much (up to its full name) */
-        const m = c.querySelector<HTMLElement>('.ic-model'); if (m) { const end = Math.max(0, ...[...c.querySelectorAll<HTMLElement>(':scope > *, :scope :is(.ic-chip, .wf-chip, .ic-seed, .wf-after)')].filter(e => e.getClientRects().length).map(e => e.getBoundingClientRect().right));
-          c.style.setProperty('--fit-model-room', `${Math.max(0, Math.floor(m.getBoundingClientRect().width + c.getBoundingClientRect().right - end - 1))}px`); }
-        c.removeAttribute('data-fit-measure');
-        /* the model given its room still can't show its name and "· Default" whole: "· Default" moves to the tooltip (data-trunc), never "· D" */
+        const m = c.querySelector<HTMLElement>('.ic-model'); const room = () => { if (!m) return; const end = Math.max(0, ...[...c.querySelectorAll<HTMLElement>(':scope > *, :scope :is(.ic-chip, .wf-chip, .ic-seed, .wf-after)')].filter(e => e.getClientRects().length).map(e => e.getBoundingClientRect().right));
+          c.style.setProperty('--fit-model-room', `${Math.max(0, Math.floor(m.getBoundingClientRect().width + c.getBoundingClientRect().right - end - 1))}px`); };
+        /* the folds made room: an early-compacted Brand gets its name back when the row (model at its full name) still fits */
+        for (const v of ['1', null]) { const cur = row?.getAttribute('data-bk-compact'); if (!row || !cur || cur === v) break;
+          if (v) row.setAttribute('data-bk-compact', v); else row.removeAttribute('data-bk-compact'); if (over()) { row.setAttribute('data-bk-compact', cur); break; } }
+        room(); c.removeAttribute('data-fit-measure');
         const cut = (e: Element | null | undefined) => !!e && e.scrollWidth > e.clientWidth + 1;
+        /* 6. the model's full name wins over the row extras (2026-11-02): while it is still cut, Brand compacts further, then Run on says one word */
+        for (const [a, v, sel] of ROW_COMPACT) { if (!m || !row || !cut(m.querySelector('.ic-mname'))) break; if (!row.querySelector(sel)) continue;
+          c.setAttribute('data-fit-measure', '1'); row.setAttribute(a, v); room(); c.removeAttribute('data-fit-measure'); }
+        /* the model given its room still can't show its name and "· Default" whole: "· Default" moves to the tooltip (data-trunc), never "· D" */
         if (m && (cut(m.querySelector('.ic-mname')) || cut(m.querySelector('.ic-mpick')))) c.setAttribute('data-trunc', '1'); }
       /* the Settings fold: the chips folded off the bar (phones: every .ic-fold chip, which CSS hides there) */
       const keys = [...c.querySelectorAll<HTMLElement>('[data-fold]')].filter(e => innerWidth > 700 ? e.classList.contains('ic-folded') : e.classList.contains('ic-fold')).map(e => e.dataset.fold!).sort();
