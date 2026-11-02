@@ -5,6 +5,7 @@
  */
 import type { FastifyInstance } from 'fastify';
 import { modelsDir, modelFileBytes } from './hardware/requirements.js';
+import { canDownloadHere } from './hardware/modelsTarget.js';
 import { LTX_LORAS, ltxLoraState } from './shared/ltxLoras.js';
 
 export function ltxLoraList(dir: string | null = modelsDir()) {
@@ -15,5 +16,5 @@ export function ltxLoraList(dir: string | null = modelsDir()) {
   });
 }
 export function registerLtxLoras(app: FastifyInstance) {
-  app.get('/api/ltx-loras', async () => ({ modelsDirSet: !!modelsDir(), loras: ltxLoraList() }));
+  app.get('/api/ltx-loras', async () => ({ modelsDirSet: canDownloadHere(), loras: ltxLoraList() }));
 }

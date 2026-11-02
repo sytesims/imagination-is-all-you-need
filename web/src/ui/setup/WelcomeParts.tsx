@@ -8,7 +8,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { navigate } from '../../platform/router';
-import { setupRequest, setupBody, testedComfyUrl } from '../../shared/setupConnection';
+import { setupRequest, setupBody } from '../../shared/setupConnection';
+import { ComfyConnect, useComfyConnect, type ComfyLook } from '../../shared/ComfyConnect';
 import { plainCopy } from '../../shared/plainCopy';
 import { SecretInput } from '../../shared/SecretInput';
 import { refreshTools } from '../../shared/useTools';
@@ -42,43 +43,29 @@ export const WELCOME_CHOICES: readonly { id: RunChoice; name: string; line: stri
   { id: 'direct', name: 'Your own keys', line: 'Use accounts you already have.' },
 ];
 export const COMFY_KEYS_URL = 'https://platform.comfy.org/profile/api-keys';
-/** "How to get it": the official ComfyUI Desktop download (Mac, Windows, Linux), not our own docs */
-const SET_UP_COMFYUI = 'https://www.comfy.org/download';
 
-export type Comfy = { state: 'looking' | 'found' | 'missing' | 'checking' | 'bad'; url?: string; version?: string | null; save?: boolean; text?: string };
+export type Comfy = ComfyLook;
 export type KeyState = { state: 'checking' | 'ok' | 'bad'; text: string };
 const okKey = (k?: KeyState) => k?.state === 'ok';
 
 /** All the connection state both layouts share. Nothing is picked or saved until the person acts. */
 export function useWelcome(onClose: () => void) {
-  const live = useRef(true); const abort = useRef(new AbortController()); const probe = useRef(0);
+  const live = useRef(true); const abort = useRef(new AbortController());
   const [can, setCan] = useState<boolean | null>(null);
-  const [comfy, setComfy] = useState<Comfy>({ state: 'looking' });
+  /* the shared ComfyUI look (shared/ComfyConnect): looks on open, then every few seconds until ComfyUI answers */
+  const cc = useComfyConnect(); const comfy = cc.look;
   const [keys, setKeys] = useState<Record<string, KeyState>>({});
   const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
   const backend = useBackend();
   const sig = () => abort.current.signal;
 
-  const look = async () => { const id = ++probe.current; setComfy({ state: 'looking' });
-    try { const t = await setupRequest('/api/local/comfy/test', setupBody('POST', {}, sig()), 'Couldn’t look for ComfyUI.');
-      if (!live.current || id !== probe.current) return;
-      if (!t.reachable) { setComfy({ state: 'missing' }); return; }
-      setComfy({ state: 'found', url: testedComfyUrl(t.url), version: t.version ?? null, save: !!t.detected });
-    } catch { if (live.current && id === probe.current) setComfy({ state: 'missing' }); } };
-  const checkAddress = async (raw: string) => { const url = raw.trim(); if (!url) return; const id = ++probe.current; setComfy({ state: 'checking' });
-    try { const t = await setupRequest('/api/local/comfy/test', setupBody('POST', { url }, sig()), 'Couldn’t check that address.');
-      if (!live.current || id !== probe.current) return;
-      if (!t.reachable) { setComfy({ state: 'bad', text: 'No answer there. Is ComfyUI open?' }); return; }
-      setComfy({ state: 'found', url: testedComfyUrl(t.url), version: t.version ?? null, save: true });
-    } catch (e) { if (live.current && id === probe.current) setComfy({ state: 'bad', text: (e as Error).message }); } };
 
   useEffect(() => {
     fetch('/api/settings/providers', { signal: sig() }).then(r => r.ok ? r.json() : null).then(d => { if (live.current) setCan(!!d?.canStoreKeys); }).catch(() => { if (live.current) setCan(false); });
     /* keys added before (Settings → Run setup again) show as added, never as a fresh check */
     fetch('/api/setup', { signal: sig() }).then(r => r.ok ? r.json() : null).then(v => { if (!live.current || !Array.isArray(v?.keys)) return;
       setKeys(k => ({ ...Object.fromEntries(v.keys.map((id: string) => [id, { state: 'ok', text: 'Added before' } as KeyState])), ...k })); }).catch(() => 0);
-    void look();
-    return () => { live.current = false; probe.current++; abort.current.abort(); };
+    return () => { live.current = false; abort.current.abort(); };
   }, []);
 
   const lastChecked = useRef<Record<string, string>>({});
@@ -110,7 +97,7 @@ export function useWelcome(onClose: () => void) {
   /** "Look around first": keys pasted so far are already saved, so say so; ComfyUI stays off until picked. */
   const skip = () => { markSeen(); const ways = (['comfy', 'direct'] as RunChoice[]).filter(connected);
     void fetch('/api/setup', setupBody('PUT', { done: true, choices: ways })).catch(() => undefined); if (ways.length) { refreshTools(); requestRequote(); } onClose(); };
-  return { can, comfy, setComfy, look, checkAddress, keys, checkKey, connected, finish, skip, busy, err, backend };
+  return { can, comfy, cc, keys, checkKey, connected, finish, skip, busy, err, backend };
 }
 export type Welcome = ReturnType<typeof useWelcome>;
 
@@ -119,22 +106,9 @@ export function Status({ kind, children, testId }: { kind: 'busy' | 'ok' | 'bad'
   return <p className={`wl-status wl-${kind}`} role="status" data-testid={testId}>{kind === 'busy' ? <span className="as-spin" aria-hidden /> : kind === 'ok' ? <span className="wl-tick" aria-hidden>{CHECK}</span> : null}<span>{children}</span></p>;
 }
 
-/** Your computer: the automatic look, the result, and the address field only behind "Use a different address". */
-export function ComfyForm({ w }: { w: Welcome }) {
-  const [other, setOther] = useState(false); const [addr, setAddr] = useState('');
-  const c = w.comfy; const busy = c.state === 'looking' || c.state === 'checking';
-  return <div className="wl-form" data-testid="wl-gpu">
-    {c.state === 'looking' ? <Status kind="busy">Looking for ComfyUI on this computer…</Status>
-      : c.state === 'found' ? <Status kind="ok" testId="wl-gpu-found">Found ComfyUI{c.version ? ` ${c.version}` : ''}</Status>
-      : c.state === 'missing' ? <><Status kind="calm" testId="wl-gpu-missing">ComfyUI isn’t open on this computer.</Status>
-        <p className="wl-hint">Open ComfyUI, then <button type="button" className="wl-link" onClick={() => void w.look()} data-testid="wl-look-again">look again</button>. <a className="wl-link" href={SET_UP_COMFYUI} target="_blank" rel="noreferrer">How to get it ↗</a></p></> : null}
-    {!other ? (c.state !== 'looking' && <button type="button" className="wl-link wl-other" onClick={() => setOther(true)} data-testid="wl-other-addr">Use a different address</button>)
-      : <form className="wl-row" onSubmit={e => { e.preventDefault(); void w.checkAddress(addr); }}>
-        <label className="wl-field"><span>ComfyUI address</span><input type="url" value={addr} placeholder="http://127.0.0.1:8188" autoFocus onChange={e => { setAddr(e.target.value); if (c.state === 'bad') w.setComfy({ state: 'missing' }); }} data-testid="wl-addr" /></label>
-        <button type="submit" className="btn btn-sm" disabled={!addr.trim() || busy}>{c.state === 'checking' ? 'Checking…' : 'Check'}</button></form>}
-    {c.state === 'checking' && <Status kind="busy">Checking that address…</Status>}
-    {c.state === 'bad' && <Status kind="bad" testId="wl-gpu-bad">{c.text}</Status>}
-  </div>;
+/** Your computer: the shared ComfyUI form. Not found is never a dead end: check again, get ComfyUI, another address, or Comfy Cloud instead. */
+export function ComfyForm({ w, onCloud }: FormProps) {
+  return <div className="wl-form" data-testid="wl-gpu"><ComfyConnect c={w.cc} onCloud={onCloud} /></div>;
 }
 
 /** One key field that checks itself when a key is pasted (or on Enter / leaving the field). */
@@ -152,11 +126,12 @@ export function KeyField({ w, id, label, getUrl, autoFocus }: { w: Welcome; id: 
 }
 const NoStore = () => <Status kind="calm">Keys can be added here only when the app runs on this computer. Add them in the app’s settings file instead.</Status>;
 
-export function CloudForm({ w }: { w: Welcome }) {
+type FormProps = { w: Welcome; /** Your computer only: switch the pick to Comfy Cloud */ onCloud?: () => void };
+export function CloudForm({ w }: FormProps) {
   return <div className="wl-form" data-testid="wl-comfy">{w.can === false ? <NoStore /> : <KeyField w={w} id="comfy" label="Comfy API key" getUrl={COMFY_KEYS_URL} />}</div>;
 }
 /** Your own keys: one provider at a time (chips), so eight empty boxes never show at once. */
-export function OwnKeysForm({ w }: { w: Welcome }) {
+export function OwnKeysForm({ w }: FormProps) {
   const [p, setP] = useState<string | null>(null); const name = DIRECT_KEYS.find(([id]) => id === p)?.[1];
   return <div className="wl-form" data-testid="wl-direct">{w.can === false ? <NoStore /> : <>
     <p className="wl-hint">Pick an account to add its key.</p>
@@ -165,7 +140,7 @@ export function OwnKeysForm({ w }: { w: Welcome }) {
     {p && <KeyField key={p} w={w} id={p} label={`${name} key`} autoFocus />}</>}
   </div>;
 }
-export const FORMS: Record<RunChoice, (p: { w: Welcome }) => ReactNode> = { gpu: ComfyForm, comfy: CloudForm, direct: OwnKeysForm };
+export const FORMS: Record<RunChoice, (p: FormProps) => ReactNode> = { gpu: ComfyForm, comfy: CloudForm, direct: OwnKeysForm };
 
 /** The last step: what works now and one thing to try first. */
 export function Ready({ w, ways }: { w: Welcome; ways: RunChoice[] }) {

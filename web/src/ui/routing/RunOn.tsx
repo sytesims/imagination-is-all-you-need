@@ -51,7 +51,7 @@ export async function placeActionGo(setup: { action: string; runOn: string; miss
   if (setup.action === 'download') { if (engine) setDownloadIntent(engine, { variantId: null, bytes: setup.missingBytes ?? null }); return 'run'; }
   if (setup.action === 'turn_on') { const r = await fetch('/api/me/routing', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ global: { useLocal: true } }) });
     const b = await r.json().catch(() => null); if (!r.ok) throw new Error(String(b?.error ?? `Couldn’t turn it on (HTTP ${r.status}).`)); setRouting(b); return 'done'; }
-  navigate(setup.connection === 'deploy' ? '/settings#conn-deploy' /* the deployment is missing, not the key */ : setup.action === 'add_key' ? `/settings#conn-${RUN_ON_BILLING[setup.runOn] ?? setup.runOn}` : '/settings#gpu'); return 'done';
+  navigate(setup.connection === 'deploy' ? '/settings#conn-deploy' /* the deployment is missing, not the key */ : setup.action === 'add_key' ? `/settings#conn-${RUN_ON_BILLING[setup.runOn] ?? setup.runOn}` : setup.action === 'install_node' ? '/settings#nodes' /* which add-on, and how to add it */ : '/settings#gpu'); return 'done';
 }
 
 /** The models the Run-on menu offers for this pick. Usually one; an engine that builds several models on this tool (H3 Extend: the open H3
@@ -167,7 +167,7 @@ export function RunOnMenu({ open, anchor, avoid, watch, gap, onClose, toolId, mo
     const stop = (e: React.MouseEvent) => e.stopPropagation();
     if (a.kind === 'turn_on') return <button type="button" className="ro-lnk" data-testid={`run-on-act-${r.id}`} disabled={!!busy} onClick={e => { stop(e); void turnOnGpu(); }}>{busy === 'gpu' ? 'Turning on…' : a.text}</button>;
     if (a.kind === 'download') return <button type="button" className="ro-lnk" data-testid={`run-on-act-${r.id}`} disabled={!!busy} onClick={e => { stop(e); download(m, r, a); }}>{a.text}</button>;
-    const to = a.connection === 'deploy' ? '/settings#conn-deploy' : a.kind === 'add_key' ? `/settings#conn-${RUN_ON_BILLING[r.id] ?? r.id}` : '/settings#gpu';
+    const to = a.connection === 'deploy' ? '/settings#conn-deploy' : a.kind === 'add_key' ? `/settings#conn-${RUN_ON_BILLING[r.id] ?? r.id}` : a.kind === 'install_node' ? '/settings#nodes' : '/settings#gpu';
     return <Link to={to} className="ro-lnk" data-testid={`run-on-act-${r.id}`} onClick={(e: any) => { stop(e); onClose(); }}>{a.text}</Link>; };
   const opt = ({ m, r, s }: { m: ToolModel; r: RunOnRow; s: ReturnType<typeof rowState> }) => {
     const ways = waysOf(r, ownPick); const on = !ways && isOn(m, r); const price = ways ? null /* each way has its own */ : listPrice(sc(rowCredits(r)), r.id, own); const ps = perShot(r.credits, r.id); const cc = r.id === 'local' ? null : priceDetail(null, { runOn: r.id, credits: sc(rowCredits(r)) }); // the hover: '135 Comfy credits · on your Creator plan'

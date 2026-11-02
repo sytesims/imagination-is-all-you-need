@@ -183,12 +183,12 @@ export async function runDoctor(e: DoctorEnv = realEnv(), o: DoctorOptions = {})
     const missing = packs.filter((x) => x.installed === false); const off = packs.filter((x) => x.installed && x.pinned === false); const unpatched = packs.filter((x) => x.installed && x.patched === false);
     const known = packs.filter((x) => x.installed != null);
     const cmd = comfyDir ? `npm run nodes:install -- "${comfyDir}"` : 'npm run nodes:install -- "<your ComfyUI folder>"';
-    const winNote = e.platform === 'win32' ? ' (needs Git Bash or WSL2 on Windows; or install them from ComfyUI Manager)' : '';
+    const viaManager = 'In ComfyUI: Manager → Custom Nodes Manager → search the pack’s name → Install, then restart ComfyUI'; // every platform: Manager first (the script needs bash, and ComfyUI's own Python)
     if (!known.length) add({ id: 'packs', section: 'comfy', status: 'info', required: false, text: `Custom node packs not checked (${packs.length} pinned)`, detail: ['Couldn’t find the ComfyUI folder or ComfyUI Manager’s list.'], fix: 'npm run doctor -- --comfy-dir "<your ComfyUI folder>"' });
     else if (!missing.length && !off.length && !unpatched.length) add({ id: 'packs', section: 'comfy', status: 'ok', required: false, text: `All ${known.length} pinned custom node packs installed${known.every((x) => x.pinned) ? ' at their pins' : ''}` });
     else add({ id: 'packs', section: 'comfy', status: 'warn', required: false, text: [missing.length ? `${missing.length} of ${packs.length} custom node packs missing` : '', off.length ? `${off.length} not at the tested pin` : '', unpatched.length ? `${unpatched.length} without our patch` : ''].filter(Boolean).join(' · '),
       detail: [...missing.map((x) => `missing ${x.name} (used by ${x.workflows} workflow${x.workflows === 1 ? '' : 's'})`), ...off.map((x) => `${x.name}: another version than the tested ${x.pin.slice(0, 10)}`), ...unpatched.map((x) => `${x.name}: patch not applied`)],
-      fix: `${cmd}${winNote}, then restart ComfyUI` });
+      fix: `${viaManager}. Or from a terminal${e.platform === 'win32' ? ' (Git Bash or WSL2)' : ''}: ${cmd}` }); // Manager first on every platform
   }
 
   // ---- Accounts (names only) ----

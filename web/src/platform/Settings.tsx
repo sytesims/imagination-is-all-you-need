@@ -40,7 +40,7 @@ function tabOf(hash: string): Tab | null {
   const h = hash.replace(/^#/, ''); if (!h) return null;
   if (h === 'profile' || h === 'help') return 'profile';
   if (h === 'routing') return 'routing';
-  if (h === 'gpu' || h === 'local' || h === 'local-setup' || h === 'comfy-address' || h === 'model-files') return 'gpu'; /* the old /self-host#local-setup lands here */
+  if (h === 'gpu' || h === 'local' || h === 'local-setup' || h === 'comfy-address' || h === 'model-files' || h === 'nodes') return 'gpu'; /* the old /self-host#local-setup lands here */
   if (h === 'preferences' || h === 'notifications' || h === 'sharing') return 'preferences';
   if (h === 'data' || h === 'backup' || h === 'learned-timings') return 'data';
   if (h === 'connections' || h === 'providers' || h === 'use-local' || h === 'open-models' || h.startsWith('conn-') || h.startsWith('cloud-setup')) return 'connections'; /* #cloud-setup-<id>: One-time setup (a run's "Show the steps") */
