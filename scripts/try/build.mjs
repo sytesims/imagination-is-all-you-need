@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// Try it (sample mode): build iiayn.app/try/ in one command.  npm run try:build   (needs Playwright, see below)
+// Try it (sample mode): build try.iiayn.app in one command.  npm run try:build   (needs Playwright, see below)
 //  1. starts a MOCK server (backend=mock, mock keys, a fresh empty data folder, an empty keys file, no ComfyUI) and the web UI on spare ports;
 //  2. clicks through the app and records what it reads (scripts/try/record.mjs);
 //  3. copies the media those pages loaded, removes anything about this computer, and checks nothing private is left;
-//  4. builds the app for /try/ (web/vite.try.config.ts) and writes everything to site/public/try/ (gitignored: built at deploy time).
-// Options: --api-port 8796 --web-port 5177 --out site/public/try --from <recording folder> --scratch <folder for the temporary data> (default: the system temp folder).  Playwright: PLAYWRIGHT_MODULE=file:///…/playwright/index.mjs, else `playwright`.
+//  4. builds the app in sample mode (web/vite.try.config.ts) and writes everything to site-try/public/ (gitignored: built at deploy time).
+// Options: --api-port 8796 --web-port 5177 --out site-try/public --from <recording folder> --scratch <folder for the temporary data> (default: the system temp folder).  Playwright: PLAYWRIGHT_MODULE=file:///…/playwright/index.mjs, else `playwright`.
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { spawn, spawnSync } from 'node:child_process'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path'; import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -12,7 +12,8 @@ import { fileURLToPath } from 'node:url';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const arg = (n, d) => { const i = process.argv.indexOf(`--${n}`); return i > 0 ? process.argv[i + 1] : d; };
 const API_PORT = Number(arg('api-port', 8796)), WEB_PORT = Number(arg('web-port', 5177));
-const OUT = path.resolve(REPO, arg('out', 'site/public/try'));
+const MCP_PORT = Number(arg('mcp-port', 8797)); // nothing listens there: the recording never meets an MCP server running on this computer
+const OUT = path.resolve(REPO, arg('out', 'site-try/public'));
 const TMP = fs.mkdtempSync(path.join(arg('scratch', os.tmpdir()), 'iiayn-try-'));
 const DATA = path.join(TMP, 'data'), ENV = path.join(TMP, 'empty.env'), REC = path.join(TMP, 'rec'), BUILD = path.join(TMP, 'build');
 fs.mkdirSync(DATA); fs.writeFileSync(ENV, '');
@@ -23,7 +24,7 @@ const say = (m) => console.log(`[try] ${m}`);
 const KEY_VARS = Object.keys(process.env).filter(k => /(_KEY|_TOKEN|_SECRET)$/.test(k) || /^OPENHIGGSFIELD_|^OPENJUTSU_/.test(k));
 const env = { ...process.env }; for (const k of KEY_VARS) delete env[k];
 Object.assign(env, { OPENHIGGSFIELD_BACKEND: 'mock', OPENHIGGSFIELD_MOCK_KEYS: '1', OPENHIGGSFIELD_DATA_DIR: DATA, OPENHIGGSFIELD_ENV_FILE: ENV,
-  OPENHIGGSFIELD_FILMING_FILE: path.join(TMP, 'no-filming.json'), COMFY_DETECT_URLS: 'http://127.0.0.1:9', PORT: String(API_PORT),
+  OPENHIGGSFIELD_FILMING_FILE: path.join(TMP, 'no-filming.json'), OPENHIGGSFIELD_COMFY_DETECT_URLS: 'http://127.0.0.1:9' /* no ComfyUI: never probes one running on this computer */, MCP_PORT: String(MCP_PORT) /* a port nothing listens on */, PORT: String(API_PORT),
   OPENHIGGSFIELD_API_PROXY: API, WEB_PORT: String(WEB_PORT), OPENHIGGSFIELD_NO_HMR: '1' });
 const procs = [];
 const run = (cmd, args, cwd) => { const p = spawn(cmd, args, { cwd, env, stdio: ['ignore', fs.openSync(path.join(TMP, `${path.basename(cwd)}.log`), 'a'), fs.openSync(path.join(TMP, `${path.basename(cwd)}.log`), 'a')] }); procs.push(p); return p; };
@@ -73,13 +74,7 @@ const MEDIA_URL = /"((?:\/(?:files|samples|examples|showcase)\/|\/api\/(?:media|
 // every picture, clip and poster any recorded answer points at (job lists, examples, workflow pages), and a poster for each video
 for (const m of JSON.stringify([snap.templates, Object.values(snap.routes).map(r => r.b)]).replace(/\\"/g, '"').matchAll(MEDIA_URL)) urls.add(m[1].replace(/\\+$/, ''));
 // files the app's code names itself (Explore, workflow cards, film posters…)
-for (const f of fs.readdirSync(path.join(BUILD, 'assets')).filter(f => f.endsWith('.js'))) for (const m of fs.readFileSync(path.join(BUILD, 'assets', f), 'utf8').matchAll(/["'`](\/(?:examples|showcase|samples)\/[^"'`\s?#$]+\.[a-z0-9]{2,5})["'`]/gi)) urls.add(m[1]);
-// the app's own example files the pages build a path to (Explore's looks, films, wall…): every picture and subtitle file, and any clip or
-// sound whose name the app's code or a recorded answer mentions
-{ const said = JSON.stringify(Object.values(snap.routes).map(r => r.b)) + fs.readdirSync(path.join(BUILD, 'assets')).filter(f => f.endsWith('.js')).map(f => fs.readFileSync(path.join(BUILD, 'assets', f), 'utf8')).join('');
-  const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]);
-  for (const top of ['showcase', 'examples']) for (const f of walk(path.join(REPO, 'web/public', top))) { const u = '/' + path.relative(path.join(REPO, 'web/public'), f).split(path.sep).join('/');
-    if (/\.(webp|jpe?g|png|srt|vtt)$/i.test(f) || said.includes(path.basename(f).replace(/\.[a-z0-9]+$/i, ''))) urls.add(u); } }
+for (const f of fs.readdirSync(path.join(BUILD, '_app')).filter(f => f.endsWith('.js'))) for (const m of fs.readFileSync(path.join(BUILD, '_app', f), 'utf8').matchAll(/["'`](\/(?:examples|showcase|samples)\/[^"'`\s?#$]+\.[a-z0-9]{2,5})["'`]/gi)) urls.add(m[1]);
 // the example results a sample run shows (web/try/samples.json, read by the service worker from the snapshot)
 snap.samples = JSON.parse(fs.readFileSync(path.join(REPO, 'web/try/samples.json'), 'utf8')); delete snap.samples._;
 for (const x of Object.values(snap.samples).flat()) for (const u of [x.url, x.poster]) if (u) urls.add(u);
@@ -87,14 +82,16 @@ for (const u of [...urls]) if (/^\/(files|examples|showcase|samples)\/.*\.(mp4|w
 // Image to layers: each layered example's composite poster (the mock makes it on first ask), under the address the feed asks for
 for (const r of Object.values(snap.routes)) for (const m of r.b.matchAll(/\/api\/jobs\/([A-Za-z0-9_-]+)\/layers-poster\.png/g)) urls.add(m[0]);
 for (const r of Object.values(snap.routes)) for (const m of r.b.matchAll(/"id":"([A-Za-z0-9_-]+)"[^{}]*?"layersPosterUrl":"[^"]+"/g)) urls.add(`/api/jobs/${m[1]}/layers-poster.png`);
-urls.add('/fonts/fonts.css'); for (const f of fs.readdirSync(path.join(REPO, 'web/public/fonts'))) urls.add(`/fonts/${f}`);
-fs.rmSync(OUT, { recursive: true, force: true }); fs.mkdirSync(path.join(OUT, 'm'), { recursive: true });
+fs.rmSync(OUT, { recursive: true, force: true }); const MEDIA_DIR = path.join(OUT, '_try', 'm'); fs.mkdirSync(MEDIA_DIR, { recursive: true });
+/** The app's own public files (web/public) are on the site as they are (the build copies them): the snapshot points at them, no copy. */
+const isPublic = (u) => { const p = decodeURIComponent(u.split(/[?#]/)[0]); return !/^\/(api|files|samples|s)\//.test(p) && !!fs.statSync(path.join(REPO, 'web/public', p), { throwIfNoEntry: false })?.isFile(); };
 snap.media = {}; let bytes = 0, missing = 0;
 for (const u of urls) {
+  if (isPublic(u)) { snap.media[u] = u.split(/[?#]/)[0]; continue; }
   const r = await fetch(UI + u).catch((e) => { if (process.env.TRY_DEBUG) console.log('fetch failed', u, e.message); return null; }); if (!r?.ok) { if (process.env.TRY_DEBUG) console.log('missing', r?.status, u); missing++; continue; }
   const ct = r.headers.get('content-type') || ''; if (/text\/html/.test(ct)) { if (process.env.TRY_DEBUG) console.log('html', u); missing++; continue; } // a page, not a file
   const buf = Buffer.from(await r.arrayBuffer()); const ext = (path.extname(new URL(u, UI).pathname) || '.' + (ct.split('/')[1] || 'bin').split(/[;+]/)[0]).slice(0, 6);
-  const name = crypto.createHash('sha1').update(buf).digest('hex').slice(0, 16) + ext; /* by content: a changed file gets a new name (m/ is cached for a week) */ fs.writeFileSync(path.join(OUT, 'm', name), buf); snap.media[u] = name; bytes += buf.length;
+  const name = crypto.createHash('sha1').update(buf).digest('hex').slice(0, 16) + ext; /* by content: a changed file gets a new name (m/ is cached for a week) */ fs.writeFileSync(path.join(MEDIA_DIR, name), buf); snap.media[u] = name; bytes += buf.length;
 }
 if (!Object.keys(snap.media).length) { stop(); throw new Error(`no media could be fetched from ${UI} (logs in ${TMP})`); }
 say(`media: ${Object.keys(snap.media).length} files, ${(bytes / 1e6).toFixed(1)} MB (${missing} not files or not found)`);
@@ -103,7 +100,7 @@ stop();
 /** Anything about this computer becomes "sample computer"; hardware numbers become a plain 16 GB machine. */
 /** Where this build ran → where an installed app lives (scripts/get.sh puts it in ~/Imagination; the app serves on 8787 / 5174). */
 const PLACES = [[fs.realpathSync(REPO), '~/Imagination'], [REPO, '~/Imagination'], [path.join(os.homedir(), '.local/node/bin/node'), 'node'],
-  [`127.0.0.1:${API_PORT}`, 'localhost:8787'], [`localhost:${API_PORT}`, 'localhost:8787'], [`127.0.0.1:${WEB_PORT}`, 'localhost:5174'], [`localhost:${WEB_PORT}`, 'localhost:5174']];
+  [`127.0.0.1:${API_PORT}`, 'localhost:8787'], [`localhost:${API_PORT}`, 'localhost:8787'], [`127.0.0.1:${WEB_PORT}`, 'localhost:5174'], [`localhost:${WEB_PORT}`, 'localhost:5174'], [`127.0.0.1:${MCP_PORT}`, '127.0.0.1:8788'], [`localhost:${MCP_PORT}`, 'localhost:8788']];
 const PRIVATE = [os.homedir(), DATA, TMP, fs.realpathSync(TMP), os.userInfo().username, os.hostname(), os.hostname().split('.')[0]].filter(s => s && s.length > 2);
 const GB = 2 ** 30;
 const HW = { totalBytes: 16 * GB, freeBytes: 8 * GB, totalGB: 16, ramGB: 16 };
@@ -138,15 +135,21 @@ for (const [k, r] of Object.entries(snap.routes)) {
   for (const p of PRIVATE) r.b = r.b.split(p).join('sample-computer');
 }
 const all = JSON.stringify(snap);
-const leaks = PRIVATE.filter(p => all.includes(p)).concat(/\/Desktop\/|\.claude\/worktrees|sample-computer\//.test(all) ? ['a folder path of this computer'] : []).concat(/[\w.+-]+@(gmail|icloud|outlook|hotmail)\.com/i.test(all) ? ['an email address'] : []).concat(/sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}/.test(all) ? ['something like a key'] : []);
+const leaks = PRIVATE.filter(p => all.includes(p)).concat(/\/Desktop\/|\.claude\/worktrees|sample-computer\//.test(all) ? ['a folder path of this computer'] : []).concat(/[\w.+-]+@(gmail|icloud|outlook|hotmail)\.com/i.test(all) ? ['an email address'] : []).concat(/sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}/.test(all) ? ['something like a key'] : []).concat(/\\?"localReachable\\?":true|\\?"detected\\?":true/.test(all) ? ['a ComfyUI running on this computer'] : []);
 if (leaks.length) throw new Error(`privacy check failed: the snapshot still has ${leaks.length} private item(s); nothing written`);
-fs.writeFileSync(path.join(OUT, 'snap.json'), all);
+fs.writeFileSync(path.join(OUT, '_try', 'snap.json'), all);
 say(`snapshot: ${Object.keys(snap.routes).length} answers, ${(all.length / 1e6).toFixed(1)} MB, privacy check passed`);
 
-fs.cpSync(path.join(BUILD, 'assets'), path.join(OUT, 'assets'), { recursive: true });
-fs.copyFileSync(path.join(BUILD, 'try/index.html'), path.join(OUT, 'index.html'));
+// ---- 5. the site: the built app (with web/public), the service worker, cache rules, and no search engines ----
+fs.cpSync(BUILD, OUT, { recursive: true });
 fs.copyFileSync(path.join(REPO, 'web/try/sw.js'), path.join(OUT, 'sw.js'));
-fs.copyFileSync(path.join(REPO, 'web/public/favicon.svg'), path.join(OUT, 'favicon.svg'));
-const du = (d) => fs.readdirSync(d, { withFileTypes: true }).reduce((s, e) => s + (e.isDirectory() ? du(path.join(d, e.name)) : fs.statSync(path.join(d, e.name)).size), 0);
-say(`done: ${path.relative(REPO, OUT)} = ${(du(OUT) / 1e6).toFixed(1)} MB (app ${(du(path.join(OUT, 'assets')) / 1e6).toFixed(1)} MB, media ${(du(path.join(OUT, 'm')) / 1e6).toFixed(1)} MB)`);
+fs.writeFileSync(path.join(OUT, 'robots.txt'), 'User-agent: *\nDisallow: /\n');
+fs.writeFileSync(path.join(OUT, '_headers'), [
+  '/*', '  X-Robots-Tag: noindex', '  X-Content-Type-Options: nosniff', '  Referrer-Policy: strict-origin-when-cross-origin', '  Permissions-Policy: camera=(), microphone=(), geolocation=()', '  X-Frame-Options: DENY', '',
+  '# the service worker and the snapshot are checked on every visit; the hashed app files and the media keep a week', '/sw.js', '  Cache-Control: no-cache', '', '/_try/snap.json', '  Cache-Control: no-cache', '',
+  '/_app/*', '  Cache-Control: public, max-age=604800, immutable', '', '/_try/m/*', '  Cache-Control: public, max-age=604800', ''].join('\n'));
+const big = []; let files = 0; const du = (d) => fs.readdirSync(d, { withFileTypes: true }).reduce((s, e) => { const f = path.join(d, e.name); if (e.isDirectory()) return s + du(f); const n = fs.statSync(f).size; files++; if (n > 25 * 2 ** 20) big.push(path.relative(OUT, f)); return s + n; }, 0);
+const total = du(OUT); const recorded = files; // Cloudflare static assets: at most 20,000 files and 25 MiB a file
+if (big.length || recorded > 20000) throw new Error(`too big for Cloudflare: ${recorded} files${big.length ? `; over 25 MiB: ${big.join(', ')}` : ''}`);
+say(`done: ${path.relative(REPO, OUT)} = ${(total / 1e6).toFixed(1)} MB in ${recorded} files`);
 fs.rmSync(TMP, { recursive: true, force: true });

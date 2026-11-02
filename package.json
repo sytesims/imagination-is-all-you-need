@@ -37,6 +37,7 @@
     "check:proxy": "node scripts/check-dev-proxy.mjs",
     "check": "npm run check:proxy",
     "try:build": "node scripts/try/build.mjs",
+    "try:deploy": "npm run try:build && npx wrangler deploy --config site-try/wrangler.jsonc",
     "doctor": "node scripts/doctor.mjs",
     "setup": "node scripts/setup.mjs",
     "update": "node scripts/update.mjs",

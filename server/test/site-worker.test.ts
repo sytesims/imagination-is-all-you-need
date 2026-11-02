@@ -55,15 +55,3 @@ ok('old domains 301 to https://iiayn.app with the same path');
 
 const page = await handle(new Request('https://iiayn.app/'), assets, (async () => { throw new Error('GitHub must not be called'); }) as typeof fetch);
 assert.equal(page.headers.get('content-type'), 'text/html; charset=utf-8'); ok('/ goes to the static files');
-
-// Try it (sample mode): a deep link or reload inside the app gets the app's page; files are served as they are.
-{ const asked: string[] = []; const spy = { fetch: async (req: Request) => { asked.push(new URL(req.url).pathname); return new Response('ok'); } };
-  const noGitHub = (async () => { throw new Error('GitHub must not be called'); }) as typeof fetch;
-  await handle(new Request('https://iiayn.app/try/video?workflow=create'), spy, noGitHub);
-  await handle(new Request('https://iiayn.app/try/workflows/create-image'), spy, noGitHub);
-  await handle(new Request('https://iiayn.app/try/assets/index-abc.js'), spy, noGitHub);
-  await handle(new Request('https://iiayn.app/try/sw.js'), spy, noGitHub);
-  assert.deepEqual(asked, ['/try/', '/try/', '/try/assets/index-abc.js', '/try/sw.js']);
-  const bare = await handle(new Request('https://iiayn.app/try'), spy, noGitHub);
-  assert.equal(bare.status, 301); assert.equal(bare.headers.get('location'), 'https://iiayn.app/try/');
-  ok('/try/* app paths get the app page, files pass through, /try → /try/'); }

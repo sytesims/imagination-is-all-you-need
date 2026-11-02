@@ -71,11 +71,5 @@ export async function handle(request, assets, fetchImpl = fetch) {
     return request.method === 'HEAD' ? new Response(null, res) : res;
   }
 
-  // Try it (sample mode, built by `npm run try:build`): the app's own paths under /try/ (a deep link or a reload of /try/video) get its page.
-  if (url.pathname === '/try') return Response.redirect(`${url.origin}/try/${url.search}`, 301);
-  if (url.pathname.startsWith('/try/') && !/\.[a-z0-9]+$/i.test(url.pathname) && (request.method === 'GET' || request.method === 'HEAD')) {
-    return assets.fetch(new Request(new URL('/try/', url), request));
-  }
-
   return assets.fetch(request);
 }

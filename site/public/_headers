@@ -9,16 +9,3 @@
 
 /brand/*
   Cache-Control: public, max-age=604800
-
-# Try it (sample mode): the service worker and the snapshot are checked on every visit; the app's hashed files and media keep a week
-/try/sw.js
-  Cache-Control: no-cache
-
-/try/snap.json
-  Cache-Control: no-cache
-
-/try/assets/*
-  Cache-Control: public, max-age=604800, immutable
-
-/try/m/*
-  Cache-Control: public, max-age=604800

@@ -60,5 +60,5 @@ web/tsconfig.tsbuildinfo
 # npm run setup keeps its install log here only when the install failed
 setup.log
 
-# Try it (sample mode): built by npm run try:build at deploy time
-site/public/try/
+# Try it (try.iiayn.app): built by npm run try:build at deploy time
+site-try/public/

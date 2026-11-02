@@ -13,23 +13,6 @@ site/
   public/brand/      logo, wordmark, favicons and the social preview, from the repo's brand/ folder
 ```
 
-## Try it (sample mode) at /try/
-
-`/try/` is the real web app in sample mode: every page, menu, model picker, Run on choice and price, with no server and
-no keys. A service worker (`web/try/sw.js`) answers the app's requests in the browser from a snapshot recorded from a mock
-server; Generate makes a clearly labelled sample from an example result. Nothing is generated and nothing leaves the browser.
-
-It is built, not committed (`public/try/` is gitignored). Build it before a deploy, and again when the app changes:
-
-```sh
-PLAYWRIGHT_MODULE=file:///path/to/playwright/index.mjs npm run try:build   # about 10 minutes
-```
-
-That starts a mock server on spare ports (8796/5177) with a fresh empty data folder and no keys, clicks through the app
-with headless Chromium (`scripts/try/record.mjs`), copies the media the pages use, removes anything about the computer it
-ran on (and stops if anything private is left), and builds the app for `/try/` (`web/vite.try.config.ts`).
-The Worker sends any `/try/<app path>` (a deep link or a reload) to the app's page.
-
 ## Routes
 
 | Path | What it returns |

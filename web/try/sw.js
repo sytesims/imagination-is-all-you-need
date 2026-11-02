@@ -1,13 +1,14 @@
-// Try it (sample mode): the app's server, played back inside the browser. This service worker answers every request the real
-// web app makes to its own server: GET /api/* from snap.json (recorded from a MOCK server by scripts/try/record.mjs), media from
-// m/ (copied by scripts/try/build.mjs), and the few writes a visitor makes with small fakes (a Generate becomes a sample job that
-// goes queued -> running -> done with an example result). Nothing leaves the browser and nothing is generated.
+// Try it (try.iiayn.app): the app's server, played back inside the browser. This service worker answers every request the real
+// web app makes to its own server: GET /api/* from _try/snap.json (recorded from a MOCK server by scripts/try/record.mjs), media from
+// _try/m/ (copied by scripts/try/build.mjs) or the app's own public files, and the few writes a visitor makes with small fakes (a Generate
+// becomes a sample job that goes queued -> running -> done with an example result; an upload stays in this browser). Nothing leaves the
+// browser and nothing is generated.
 // SPDX-License-Identifier: AGPL-3.0-or-later
-const BASE = new URL('./', self.location).pathname; // '/try/'
+const DATA = '/_try/'; // snap.json, m/ (media) and the visitor's own state
 const VOLATILE = new Set(['_', 't', 'ts', 'now', 'cb', 'v', 'since', 'after', 'nonce']); // same list as scripts/try/record.mjs
-const APP_PATHS = /^\/(api|files|samples|s|examples|showcase|fonts|models|learn)\/|^\/(favicon|apple-touch|app-icon|manifest)/;
-const SAMPLE_REASON = 'Sample mode: install the app to make this for real.';
-const NOT_HERE = 'Sample mode: this part needs the app on your computer. Install it to use it for real.';
+const APP_PATHS = /^\/(api|files|samples|s)\//; // the app's server; everything else is a static file (web/public, the built app)
+const SAMPLE_REASON = 'Sample · real runs need the app on your computer.'; // = SAMPLE_OUTPUT in web/src/shared/sampleSite.ts
+const NOT_HERE = 'This needs the app on your computer. Here you can click through it and make samples.'; // = NEEDS_APP in sampleSite.ts
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
@@ -15,7 +16,7 @@ self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 let snapP = null;
 /** snap.json once per worker: routes {key: {s, t, b}}, templates {toolId: job}, media {url: file}, plus indexes built here. */
 function snap() {
-  if (!snapP) snapP = fetch(BASE + 'snap.json').then(r => r.json()).then(s => {
+  if (!snapP) snapP = fetch(DATA + 'snap.json').then(r => r.json()).then(s => {
     s.byPath = {}; for (const k of Object.keys(s.routes)) { const p = k.split('?')[0]; (s.byPath[p] ??= []).push(k); }
     s.jobs = {}; // every job seen in a recorded list, by id (for /api/jobs/:id and ?ids=)
     for (const k of s.byPath['GET /api/jobs'] ?? []) { try { const b = JSON.parse(s.routes[k].b); for (const j of (Array.isArray(b) ? b : b.items ?? [])) if (j?.id) s.jobs[j.id] ??= j; } catch { /* not a list */ } }
@@ -25,11 +26,11 @@ function snap() {
 }
 
 // ---- the visitor's own sample runs: kept in memory and in Cache Storage, so a reload or a sleeping worker keeps them ----
-const STATE = BASE + '__state.json'; let mine = null, routing = null, boards = null; // routing: the visitor's Run on choices ({tool: {model: {runOn, route}}}); boards: their Canvas boards
-async function load() { if (mine) return; try { const r = await (await caches.open('try-state')).match(STATE); const st = r ? await r.json() : {}; mine = st.jobs ?? []; routing = st.routing ?? {}; boards = st.boards ?? []; } catch { mine = []; routing = {}; boards = []; } }
+const STATE = DATA + '__state.json'; let mine = null, routing = null, boards = null, uploads = null; // routing: the visitor's Run on choices ({tool: {model: {runOn, route}}}); boards: their Canvas boards
+async function load() { if (mine) return; try { const r = await (await caches.open('try-state')).match(STATE); const st = r ? await r.json() : {}; mine = st.jobs ?? []; routing = st.routing ?? {}; boards = st.boards ?? []; uploads = st.uploads ?? []; } catch { mine = []; routing = {}; boards = []; uploads = []; } }
 async function myJobs() { await load(); return mine; }
-async function save() { try { await (await caches.open('try-state')).put(STATE, new Response(JSON.stringify({ jobs: mine, routing, boards }), { headers: { 'content-type': 'application/json' } })); } catch { /* private window */ } }
-const QUEUED_MS = 1200, RUN_MS = 6000;
+async function save() { try { await (await caches.open('try-state')).put(STATE, new Response(JSON.stringify({ jobs: mine, routing, boards, uploads }), { headers: { 'content-type': 'application/json' } })); } catch { /* private window */ } }
+const QUEUED_MS = 400, RUN_MS = 2200; // quick, but long enough to see the queue and the progress the app shows
 /** A sample job's state follows the clock: queued, then running with progress, then done. */
 function live(j) {
   const age = Date.now() - j.startedAt; if (j.status === 'canceled') return j;
@@ -291,13 +292,15 @@ async function api(req, url) {
   return json({ error: NOT_HERE, code: 'sample_mode', errorType: 'sample_mode', sample: true }, 400);
 }
 
-/** Media the pages load (web/public, the mock's /files and /samples, posters): the copy in m/, by full URL, then by path. */
+/** Media the pages load (the mock's /files and /samples, posters, thumbnails): the copy in _try/m/, by full URL, then by path. A value that
+ *  starts with '/' is one of the app's own public files (web/public), served as it is. */
 /** A thumbnail or poster we never recorded at this size: the same picture at another size, else the picture it was made from. */
 /** A layered job's composite poster (GET /api/jobs/:id/layers-poster.png redirects there in the app): /files/<id>-layers.png. */
 const alias = (p) => { const m = p.match(/^\/api\/jobs\/([^/]+)\/layers-poster\.png$/); return m ? `/files/${m[1]}-layers.png` : p; };
 function findMedia(s, url, depth = 0) {
-  const p = alias(url.pathname); const plain = [...url.searchParams.keys()].every(k => k === 'clean' || VOLATILE.has(k)); // ?clean=1 (downloads): the same file
+  const p = alias(url.pathname); const plain = [...url.searchParams.keys()].every(k => k === 'clean' || VOLATILE.has(k)); // ?clean=1: the same file
   const f = s.media[url.pathname + url.search] ?? (plain ? s.media[p] : null); if (f) return f;
+  if (depth > 0 && !APP_PATHS.test(p)) return p; // a public file the recording never loaded: it is on the site all the same
   if (!/^\/api\/media\/(thumb|poster)$/.test(url.pathname) || depth > 3) return s.media[p] ?? null;
   const inner = url.searchParams.get('url'); if (!inner) return null;
   const same = Object.keys(s.media).find(k => k.startsWith(url.pathname + '?') && new URL(k, url).searchParams.get('url') === inner); if (same) return s.media[same];
@@ -305,45 +308,45 @@ function findMedia(s, url, depth = 0) {
   return findMedia(s, iu, depth + 1);
 }
 async function media(req, url) {
+  if (url.pathname.startsWith('/files/tryup')) { const hit = await (await caches.open('try-uploads')).match(url.pathname); return hit ?? new Response('', { status: 404 }); }
   const s = await snap(); const f = findMedia(s, url);
   if (!f) return new Response('', { status: 404, headers: { 'x-sample-mode': '1' } });
   const h = new Headers(); const range = req.headers.get('range'); if (range) h.set('range', range);
-  return fetch(BASE + 'm/' + f, { headers: h });
+  return fetch(f.startsWith('/') ? f : DATA + 'm/' + f, { headers: h });
 }
 
-// ---- Download all (.zip): every output of a job (the layers of Image to layers) plus settings.json, built here (stored, no compression) ----
-const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
-const crc32 = (b) => { let c = 0xffffffff; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
-function zipBytes(files) { // [{name, data: Uint8Array}]
-  const enc = new TextEncoder(); const parts = []; const dir = []; let off = 0;
-  for (const f of files) { const nm = enc.encode(f.name); const crc = crc32(f.data); const h = new DataView(new ArrayBuffer(30));
-    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(8, 0, true); h.setUint32(14, crc, true); h.setUint32(18, f.data.length, true); h.setUint32(22, f.data.length, true); h.setUint16(26, nm.length, true);
-    parts.push(new Uint8Array(h.buffer), nm, f.data);
-    const d = new DataView(new ArrayBuffer(46)); d.setUint32(0, 0x02014b50, true); d.setUint16(4, 20, true); d.setUint16(6, 20, true); d.setUint32(16, crc, true); d.setUint32(20, f.data.length, true); d.setUint32(24, f.data.length, true); d.setUint16(28, nm.length, true); d.setUint32(42, off, true);
-    dir.push(new Uint8Array(d.buffer), nm); off += 30 + nm.length + f.data.length; }
-  const size = dir.reduce((n, p) => n + p.length, 0); const e = new DataView(new ArrayBuffer(22)); e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, size, true); e.setUint32(16, off, true);
-  return new Blob([...parts, ...dir, new Uint8Array(e.buffer)], { type: 'application/zip' });
+// ---- uploads: kept in this browser only (Cache Storage), listed under Uploads, never sent anywhere ----
+async function upload(req) {
+  let fd; try { fd = await req.formData(); } catch { return json({ error: 'Upload failed', code: 'bad_upload' }, 400); }
+  await load(); const c = await caches.open('try-uploads'); const items = []; const projectId = fd.get('projectId');
+  for (const [, v] of fd) { if (typeof v === 'string') continue;
+    const id = 'tryup' + Math.random().toString(36).slice(2, 10); const ext = (String(v.name).match(/\.[a-z0-9]{2,5}$/i)?.[0] ?? '').toLowerCase(); const url = `/files/${id}${ext}`;
+    await c.put(url, new Response(v, { headers: { 'content-type': v.type || 'application/octet-stream' } }));
+    const type = /^video\//.test(v.type) ? 'video' : /^audio\//.test(v.type) ? 'audio' : 'image';
+    items.push({ id, tab: 'uploads', type, url, thumbUrl: url, name: v.name, createdAt: Date.now(), projectIds: projectId ? [String(projectId)] : [], warnings: [], sample: true }); }
+  uploads.unshift(...items); await save();
+  return json({ items, sample: true });
 }
-async function zipOf(s, id) {
-  await load(); const j = mine.find(x => x.id === id) ?? s.jobs[id]; if (!j?.outputs?.length) return json({ error: NOT_HERE, code: 'sample_mode' }, 404);
-  const files = []; let k = 0;
-  for (const o of j.outputs) { k++; const f = findMedia(s, new URL(o.url, self.location.origin)); if (!f) continue; const r = await fetch(BASE + 'm/' + f); if (!r.ok) continue;
-    const ext = (o.url.split('?')[0].match(/\.[a-z0-9]+$/i)?.[0] ?? '').toLowerCase(); const name = (o.label && j.outputs.length > 1 ? `${String(k).padStart(2, '0')}-${String(o.label).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}` : `${id}-${k}`) + ext;
-    files.push({ name, data: new Uint8Array(await r.arrayBuffer()) }); }
-  files.push({ name: 'settings.json', data: new TextEncoder().encode(JSON.stringify({ id, tool: j.toolId, model: j.modelName ?? j.model ?? null, prompt: j.input?.prompt ?? j.prompt ?? null, note: j.isSample ? SAMPLE_REASON : 'An example result from Imagination Is All You Need.' }, null, 2)) });
-  return new Response(zipBytes(files), { headers: { 'content-type': 'application/zip', 'content-disposition': `attachment; filename="imagination-${id}.zip"`, 'x-sample-mode': '1' } });
+/** GET /api/media: the visitor's uploads on top of the recorded page (Uploads and All tabs, same kind). */
+async function withUploads(s, r, url) {
+  await load(); const q = url.searchParams; const tab = q.get('tab') ?? q.get('source'); const type = q.get('type') || q.get('kind');
+  const extra = (!tab || tab === 'uploads') && !q.get('page') ? uploads.filter(u => !type || u.type === type) : [];
+  if (!extra.length) return r ? answer(r) : json({ items: [], total: 0, hasMore: false });
+  let b = {}; try { b = r ? JSON.parse(r.b) : {}; } catch { /* not json */ }
+  return json({ ...b, items: [...extra, ...(b.items ?? [])], total: (b.total ?? 0) + extra.length, counts: { ...(b.counts ?? {}), uploads: (b.counts?.uploads ?? 0) + extra.length } });
 }
 
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url); if (url.origin !== self.location.origin) return;
-  if (url.pathname.startsWith(BASE)) {
-    // a reload or deep link inside the app (/try/video): the app's page, whatever the path
-    if (e.request.mode === 'navigate' && !/\.[a-z0-9]+$/i.test(url.pathname)) e.respondWith(fetch(BASE + 'index.html'));
+  if (!APP_PATHS.test(url.pathname)) {
+    // a reload or deep link inside the app (/video, /workflows/x): the app's page; files (the built app, web/public) as they are
+    if (e.request.mode === 'navigate' && !/\.[a-z0-9]+$/i.test(url.pathname)) e.respondWith(fetch('/'));
     return;
   }
-  if (!APP_PATHS.test(url.pathname) || e.request.mode === 'navigate') return;
-  e.respondWith(snap().then(s => { const p = alias(url.pathname); const zip = p.match(/^\/api\/jobs\/([^/]+)\/download\.zip$/);
-    if (zip) return zipOf(s, decodeURIComponent(zip[1]));
-    return p.startsWith('/api/') && !s.media[url.pathname + url.search] && !s.media[p] && !p.startsWith('/api/media/') ? api(e.request, url) : media(e.request, url); })
+  const m = e.request.method; const p = url.pathname;
+  if (m === 'POST' && p === '/api/media') { e.respondWith(upload(e.request)); return; }
+  e.respondWith(snap().then(s => {
+    if (m === 'GET' && p === '/api/media') return withUploads(s, lookup(s, 'GET', url), url);
+    return p.startsWith('/api/') && !s.media[p + url.search] && !s.media[alias(p)] && !p.startsWith('/api/media/') ? api(e.request, url) : media(e.request, url); })
     .catch(() => json({ error: NOT_HERE, code: 'sample_mode' }, 500)));
 });
