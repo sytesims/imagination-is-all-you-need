@@ -17,6 +17,7 @@ Start with the [main README](../README.md) for what Imagination Is All You Need 
 - [Troubleshooting](TROUBLESHOOTING.md).
 
 ## Reference
+- [Every workflow](WORKFLOWS.md): each way to start, with its link, models, where they run, inputs, ComfyUI graph and credits (generated).
 - [REST API](API.md), plus the generated [models and prices](API-MODELS.md) and [errors and limits](API-ERRORS.md).
 - [Providers, models and routes](PROVIDERS-AND-MODELS.md): how Run on pre-selects a place, what runs today, prices, video lengths, licences.
 - [LICENSES.md](../LICENSES.md) (every model and route, generated), [workflows/LICENSES.md](../workflows/LICENSES.md), [ATTRIBUTION.md](ATTRIBUTION.md).

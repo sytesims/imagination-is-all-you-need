@@ -279,7 +279,7 @@ export const WF_CHAINS: WfChain[] = [
     handoff: 'Our scene is one 15-second take. Press Extend on it to keep it going.' },
   { id: 'long-take', name: 'One long take', line: 'One clip, kept going past 20 seconds.', tags: ['extend', 'continue'], featured: 'h3-koi-take',
     steps: [{ entry: 'v-create', say: 'Make the opening shot', model: 'minimax-h3', jobs: ['42ceb1af'] }, { entry: 'v-extend', say: 'Continue the same action and camera', model: 'minimax-h3-extend', jobs: ['50d2a3a0'] }],
-    handoff: 'On a video result, Extend picks it up; “Continue from last frame” works on any model.' },
+    handoff: 'On a video result, Extend picks it up; “Continue from last frame” starts a new clip from its last frame.' },
   { id: 'product-ad', name: 'Product photo → ad', line: 'A product shot, then a presenter ad.', tags: ['ecommerce', 'ugc', 'social'], art: 'object', skill: 'ugc-ad',
     steps: [{ entry: 'i-product-shot', say: 'Make the product shot' }, { entry: 'v-orbit-shot', say: 'Spin the camera around it' }, { entry: 'v-ugc-ad', say: 'A phone-style ad with a presenter' }],
     handoff: 'On the product shot, “Turn to video” starts the next step; each step shows its price before you run it.' },
