@@ -19,13 +19,23 @@
  * segment 4, splice 45°):
  *  Logo / flat    colorPrecision 4 · layerDifference 48 · filterSpeckle 10 · cornerThreshold 60 · lengthThreshold 4   few colours, small specks dropped, smooth
  *  Illustration   colorPrecision 6 · layerDifference 24 · filterSpeckle 4  · cornerThreshold 60 · lengthThreshold 4   more colours, VTracer's defaults otherwise
- *  Detailed       colorPrecision 8 · layerDifference 8  · filterSpeckle 2  · cornerThreshold 45 · lengthThreshold 3.5 every colour step kept, finer curves
+ *  Detailed       colorPrecision 7 · layerDifference 16 · filterSpeckle 6  · cornerThreshold 60 · lengthThreshold 4   more shades kept, still smooth
+ * Retuned 2026-11-03 on a real flat cartoon sheet (1536×1024, rendered and compared by eye): Logo / flat 78 shapes 101 KB (drops eye highlights),
+ * Illustration 242 shapes 156 KB (clean, shading kept: the default), Detailed 355 shapes 217 KB (soft skin and hood shades kept, edges smooth).
+ * The first Detailed (precision 8, step 8, speckle 2, corner 45°, segment 3.5) made 6,121 shapes / 1.4 MB with jagged, noisy edges: tiny
+ * specks of compression noise each became a shape. Speckle 6 drops them; step 16 keeps real shades without splitting gradients into bands.
  * Ideogram Vector picks its own detail: it always runs the template's mode "default" (the style applies to VTracer only).
  */
 export const VECTOR_LOCAL = 'local-vtracer';
 export const VECTOR_IDEOGRAM = 'cloud-ideogram-vector';
-/** The workflow's models: VTracer first (free, on this computer), then Ideogram Vector on Comfy Cloud. */
-export const VECTOR_MODELS = [VECTOR_LOCAL, VECTOR_IDEOGRAM];
+/** The tool's one engine card (a built-in tool, not a model): VTracer. Ideogram Vector is its Comfy Cloud place (a twin route, routing/routes.ts
+ *  TWINS), so the bar offers only where it runs: Your computer (VTracer, free) or Comfy Cloud (Ideogram Vector). */
+export const VECTOR_MODELS = [VECTOR_LOCAL];
+/** The engine a place really runs when it differs from the card (Image to vector's Comfy Cloud place runs Ideogram Vector 1, not VTracer): results,
+ *  feed captions and the job's model key name it (engineName.ts, routing/modelRegistry.ts jobModelFields). The real model is always shown. */
+export const PLACE_ENGINE: Record<string, { name: string; key: string }> = { 'comfy-cloud:cloud-ideogram-vector': { name: 'Ideogram Vector 1', key: 'ideogram-vector-1' } };
+/** Run on rows name the engine each place runs (routing/modelRegistry.ts detail). */
+export const VECTOR_PLACE_DETAIL: Record<string, string> = { 'local:local-vtracer': 'VTracer, built into the app', 'comfy-cloud:cloud-ideogram-vector': 'Ideogram Vector 1 · partner model' };
 export const VECTOR_TOOL = 'app-image-vector';
 export const VECTOR_NODE = 'IdeogramVectorImageToSVGApi';
 export const VECTOR_TEMPLATE = 'api_ideogram_vector_1_image_to_svg';
@@ -37,17 +47,17 @@ export const VECTORIZER_URL = 'https://github.com/neplextech/vectorizer';
 export const IDEOGRAM_VECTOR_CREDITS = 30.17;
 
 export type VectorStyle = 'logo' | 'illustration' | 'detailed';
-export const VECTOR_STYLE_DEFAULT: VectorStyle = 'logo';
+export const VECTOR_STYLE_DEFAULT: VectorStyle = 'illustration'; // the best all-round result on drawings (2026-11-03 test); Logo / flat for logos
 export const VECTOR_STYLES: { value: VectorStyle; label: string; line: string }[] = [
-  { value: 'logo', label: 'Logo / flat', line: 'Few colours, smooth shapes' },
-  { value: 'illustration', label: 'Illustration', line: 'More colours' },
-  { value: 'detailed', label: 'Detailed', line: 'Keeps the most' },
+  { value: 'illustration', label: 'Illustration', line: 'Clean shapes, shading kept' },
+  { value: 'logo', label: 'Logo / flat', line: 'Fewest colours, smoothest shapes' },
+  { value: 'detailed', label: 'Detailed', line: 'More shades, bigger file' },
 ];
 /** VTracer settings per style (@neplex/vectorizer Config: colorMode 0 = colour, hierarchical 0 = stacked, mode 2 = spline). */
 export const VTRACER_SETTINGS: Record<VectorStyle, { colorPrecision: number; layerDifference: number; filterSpeckle: number; cornerThreshold: number; lengthThreshold: number; spliceThreshold: number; maxIterations: number; pathPrecision: number }> = {
   logo: { colorPrecision: 4, layerDifference: 48, filterSpeckle: 10, cornerThreshold: 60, lengthThreshold: 4, spliceThreshold: 45, maxIterations: 10, pathPrecision: 2 },
   illustration: { colorPrecision: 6, layerDifference: 24, filterSpeckle: 4, cornerThreshold: 60, lengthThreshold: 4, spliceThreshold: 45, maxIterations: 10, pathPrecision: 2 },
-  detailed: { colorPrecision: 8, layerDifference: 8, filterSpeckle: 2, cornerThreshold: 45, lengthThreshold: 3.5, spliceThreshold: 45, maxIterations: 10, pathPrecision: 2 },
+  detailed: { colorPrecision: 7, layerDifference: 16, filterSpeckle: 6, cornerThreshold: 60, lengthThreshold: 4, spliceThreshold: 45, maxIterations: 10, pathPrecision: 2 },
 };
 export const vectorStyleOf = (v: unknown): VectorStyle => (VECTOR_STYLES.some((s) => s.value === v) ? v as VectorStyle : VECTOR_STYLE_DEFAULT);
 export const vectorStyleLabel = (v: unknown) => VECTOR_STYLES.find((s) => s.value === vectorStyleOf(v))!.label;

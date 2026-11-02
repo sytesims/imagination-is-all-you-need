@@ -49,6 +49,7 @@ export interface WorkflowRecipe {
   /** A special surface the bar needs (later steps): mask sheet, multi-output picker, camera rig. */ surface: 'mask' | 'multi-output' | 'rig' | null;
   /** multi-output: what one output is called and the line under the picker (Camera Angles: angle / angles; Ad Pack: ad / ads). */ each?: { one: string; many: string; note: string };
   generateLabel: string;
+  /** A built-in tool runs it, not a model (Image to vector: VTracer): the bar shows no model picker, only Run on (where it runs). */ builtInTool?: string;
   aliases: { toolId: string; routes: string[] };
   /** 'ready' = pickable in Create Image's bar (all of them since 2026-10-23); 'soon' = listed, opens its own page. */ status: 'ready' | 'soon';
   /** The page it has today (used while status is 'soon'). */ route: string;
@@ -165,7 +166,7 @@ const DECLS: Decl[] = [
     slots: [slot('image', 'Picture', true, 'A PNG, JPG or WebP: logos, icons and flat art trace best', 'Add a picture')], groups: [{ id: 'style', label: 'Style', icon: 'vector', summary: ['style'] }],
     controls: [{ field: 'style', label: 'Style', kind: 'segmented', group: 'style' }],
     prompt: { mode: 'hidden', placeholder: '', composer: 'plain' }, modes: { default: 'edit', whenSlot: null }, fixedNote: 'Editable SVG',
-    output: { aspect: 'follow-photo', resolution: 'follow-photo', count: 1 }, surface: null, generateLabel: 'Make it a vector',
+    output: { aspect: 'follow-photo', resolution: 'follow-photo', count: 1 }, surface: null, generateLabel: 'Make it a vector', builtInTool: 'VTracer',
     source: { kind: 'ours', author: 'visioncortex VTracer (MIT) · Ideogram Vector 1 (official Comfy template)', url: 'https://github.com/visioncortex/vtracer', licence: 'MIT', note: 'VTracer runs from our code: no ComfyUI graph' } },
   // Camera & Lens (surface 'rig'): plain Create Image (prompt, refs, aspect…) plus the Camera group; the rig fields go to create-image as today.
   { id: 'camera-lens', icon: 'camera', category: 'camera', runner: app('create-image'), status: 'ready',

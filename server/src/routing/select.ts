@@ -173,9 +173,9 @@ export function autoOrder(tool: ToolDef, modelId: string, input: Record<string, 
   const all = routesIn(modelId, tool, allow).map((r) => option(tool, r, input, passes));
   // Run-on pre-selection (2026-10-22, replaces Auto): the first READY place in the order Comfy → a connected other API → Local (on, weights
   // and nodes present). A demo preview (mock backend, no key) only when nothing is ready. Nothing else: never a place that needs setup.
-  const gpuReady = (o: RouteOption) => o.kind !== 'local' || (useLocal && !localSetupGate(tool, modelId, input));
+  const gpuReady = (o: RouteOption) => o.kind !== 'local' || builtInLocal(o.routeId) || (useLocal && !localSetupGate(tool, modelId, input));
   const tk = takesRank(modelId, input); // inside a place: the route that takes your settings first, then the old tier / price rule
-  const real = all.filter((o) => o.available && !o.demo && (o.kind !== 'local' || useLocal) && gpuReady(o)).sort((a, b) => (placeRank(a) - placeRank(b)) || (tk(a) - tk(b)) || byTier(true)(a, b));
+  const real = all.filter((o) => o.available && !o.demo && (o.kind !== 'local' || useLocal || builtInLocal(o.routeId)) && gpuReady(o)).sort((a, b) => (placeRank(a) - placeRank(b)) || (tk(a) - tk(b)) || byTier(true)(a, b));
   if (real.length) return real;
   // a local route in the demo order runs locally (free); it still needs its files and nodes, else it is a download, never pre-selected
   const held = new Set(routesIn(modelId, tool, allow).filter(twinHeld).map((r) => r.routeId)); // an unmeasured Cloud twin is never pre-selected as a sample place (the model behaves as before the twin)
@@ -190,7 +190,10 @@ export const takesRank = (engine: string, input: Record<string, any>) => (o: { r
   return Number.isFinite(d) && d > 0 && L.durations?.length && !L.durations.includes(d) ? 1 : 0;
 };
 /** Run-on place order (user decision 2026-10-22: Comfy → other APIs → Local): 0, 1, 2. */
-export const placeRank = (o: { kind: string; envKey?: string | null; vendor?: string | null }) => { const ro = runOnOfRoute(o); return ro === 'comfy-cloud' ? 0 : ro === 'local' ? 2 : 1; };
+/** A tool built into the app that runs on your computer with no ComfyUI and no graphics card (provider noGpu: Image to vector's VTracer). Its local
+ *  route is always on (Settings → Your computer is about ComfyUI) and comes first: it is free and needs nothing (2026-11-03). */
+export const builtInLocal = (routeId: string | null | undefined) => /^local:/.test(String(routeId ?? '')) && !!getProvider(String(routeId).slice(6))?.noGpu;
+export const placeRank = (o: { kind: string; envKey?: string | null; vendor?: string | null; routeId?: string }) => { if (builtInLocal(o.routeId)) return -1; const ro = runOnOfRoute(o); return ro === 'comfy-cloud' ? 0 : ro === 'local' ? 2 : 1; };
 /** Pre-selection comparator: place, then (inside a place) the old tier / price / latency rule (a GPU route that fits before a slow one). */
 export const byPlace = (a: RouteOption, b: RouteOption) => (placeRank(a) - placeRank(b)) || byTier(true)(a, b);
 /** Local isn't ready when the model's files or custom nodes are missing (only checked where the weights gate is enforced: comfy backend). */

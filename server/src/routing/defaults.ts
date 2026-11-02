@@ -21,7 +21,7 @@ const SWAP_TOOL_IDS = new Set(['object-swap', 'motion-transfer']);
 import type { ToolDef } from '../tools/types.js';
 import { toolProviders, getProvider } from '../providers.js';
 import { routesFor, isTwinAlias, toolKeys, tierLabel, tierOf } from './routes.js';
-import { option, resolveRoute, keyOwner, byTier, localAvailable, savedPinOf, localOnlyModel } from './select.js';
+import { option, resolveRoute, keyOwner, byTier, localAvailable, savedPinOf, localOnlyModel, builtInLocal } from './select.js';
 import { getPrefs, favouriteOf } from './prefs.js';
 import { config } from '../config.js';
 import { LOCAL_OFF_REASON, LOCAL_UNREACHABLE_REASON, TOO_HEAVY_REASON, OPEN_WEIGHTS_ONLY_REASON, NOT_WIRED_REASON, reasonSentence, routeRunnable } from './runnable.js';
@@ -134,7 +134,7 @@ export function modelStatus(tool: ToolDef, modelId: string, mode: string | null 
   { const locals = routes.filter((o) => o.kind === 'local'); if (locals.length && locals.every((o) => o.reasonCode === 'too_heavy')) return { ...fail('too_heavy', locals.every((o) => o.fit?.reasonCode === 'unsupported_weights') ? MAC_WEIGHTS_REASON : TOO_HEAVY_REASON), fit: locals[0].fit ?? null } as ModelStatus; }
   // a model that runs only on your computer runs with Use local off too (select.ts autoOrder), so "turn it on" isn't its step: the plan's own
   // reason below says what is (its files, an add-on), the same step its menu row and setup card show (2026-10-31: Wan 2.2 Animate)
-  if (local && !prefs.global.useLocal && !localOnlyModel(modelId, tool, input)) return fail('local_off', LOCAL_OFF_REASON);
+  if (local && !prefs.global.useLocal && !localOnlyModel(modelId, tool, input) && !builtInLocal(local.routeId)) return fail('local_off', LOCAL_OFF_REASON);
   const blocked = routes.find((o) => o.reasonCode === 'input_blocked');
   if (blocked) return fail('input_blocked', String(blocked.reason ?? 'This job does not fit this model'));
   if (routes.some((o) => o.reason === NOT_WIRED_REASON)) return fail('not_wired', `${name} isn’t ready yet. Pick another model`);
@@ -208,7 +208,7 @@ function recommendedDefaults(tool: ToolDef, opts: DefaultsOpts = {}): ToolDefaul
   const cdId = cloudDefaultOf(cloudSlot(tool, feat, mode), tool.id)?.model ?? null; const cdS = cdId ? byId(cdId) : undefined;
   const cdNow = cdS && !neverRuns(cdS.id) && (cdS.runnable || cdS.demo || cdS.reasonCode === 'input_blocked') ? cdS : undefined;
   const localDef = explicitLocal && edDef && edDef.routeKind === 'local' ? edDef : undefined;
-  const runsNow = live.find((m) => m.runnable && (m.routeKind !== 'local' || explicitLocal || m.pinned || !anyCloud));
+  const runsNow = live.find((m) => m.runnable && (m.routeKind !== 'local' || explicitLocal || m.pinned || !anyCloud || builtInLocal(m.routeId)));
   const def = pinnedDef ?? localDef ?? cdNow ?? edDef
     ?? runsNow
     ?? (canStart(cdS) ? cdS : undefined)

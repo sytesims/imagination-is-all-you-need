@@ -248,7 +248,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
     ].filter(Boolean) as MItem[];
     const editTab = viewer && owner && !standIn && (medium === 'image' || medium === 'video') && !(job as any).deletedAt && !isVectorUrl(cur.url); /* an SVG goes to no other tool (Download PNG first) */
     /* the viewer: frame / Make it talk shortcuts that didn't fit the tiles, then "Use it in…" (the Edit tab). The card: its tool rows. */
-    let use: MItem[] = editTab ? [...overflow.filter(t => ['useframe', 'saveframe', 'talk'].includes(t.k)),
+    let use: MItem[] = editTab ? [...overflow.filter(t => ['useframe', 'saveframe', 'talk'].includes(t.k)), ...(medium === 'image' && asIs ? [rmTool('vector', 'Make it a vector', 'rv-vector', <VectorIcon size={16} />)] /* Image to vector: in More (user 2026-11-03), free on your computer */ : []),
       { k: 'useit', label: 'Use it in…', icon: <ToolIcon size={16} />, testid: 'rm-use-it', trail: '›', hint: 'Relight, upscale, make a video and more, in the Edit tab', onClick: () => { setVTab('edit'); loadRows(); } }]
       : viewer ? overflow : !asIs || isVectorUrl(cur.url) /* an SVG goes to no other tool */ ? [] : medium === 'image' ? [rmTool('relight', 'Relight', 'rv-relight', <LightIcon size={16} />), rmTool('upscale', 'Upscale', 'rv-upscale', <UpscaleIcon size={16} />), rmTool('vector', 'Make it a vector', 'rv-vector', <VectorIcon size={16} />),
         ...(job.id && !sample ? [{ k: 'to3d', label: 'Make it 3D', icon: <CubeIcon size={16} />, testid: 'rv-send-3d', hint: 'Turn this picture into a 3D model', href: sendTo3dHref(job.id, outIx), onClick: goClick(sendTo3dHref(job.id, outIx), onClose) }] : [])]
@@ -437,13 +437,12 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
           {canSound && <button type="button" className="rvx-edit" onClick={() => setAddSound(true)} data-testid="rvx-edit-add-sound"><SoundIcon size={18} /><span><b>Add sound</b><small>One click: music and sound effects timed to the clip</small></span><span className="rvx-chev" aria-hidden>›</span></button>}
           {job.toolId !== 'soundtrack' && editRow('soundtrack', 'Add soundtrack', 'Music that fits the clip', <MusicBedIcon size={18} />, `/tools/soundtrack?from=${encodeURIComponent(job.id)}&out=${outIx}`)}
           {others}</section>; })()
-      : (() => { const rl = hr('relight'), up = hr('upscale'), vec = hr('vector');
+      : (() => { const rl = hr('relight'), up = hr('upscale');
         return <section className="rvx-sec" aria-label="Edit this image"><p className="rvx-hint">Opens the tool with this image already loaded. Nothing runs until you press Generate there.</p>
           {editRow('prompt', 'Edit with a prompt', 'Describe the change in Create Image', <PencilIcon size={18} />, canHand ? `${IMAGE_PAGE}?${qs}` : null, 'Not for this result')}
           {editRow('inpaint', 'Inpaint', 'Paint over an area and redo just that part', <BrushIcon size={18} />, canHand ? `/tools/app-inpaint?${qs}` : null, 'Not for this result')}
           {editRow('relight', 'Relight', 'Change the light, keep the subject', <LightIcon size={18} />, rl.url, rl.why)}
           {editRow('upscale', 'Upscale', 'More pixels, sharper detail', <UpscaleIcon size={18} />, up.url, up.why)}
-          {editRow('vector', 'Make it a vector', 'An editable SVG. Free on your computer', <VectorIcon size={18} />, vec.url, vec.why)}
           {editRow('to-3d', 'Send to 3D', 'Turn this picture into a 3D model', <CubeIcon size={18} />, canHand ? sendTo3dHref(job.id, outIx) : null, 'Not for this result')}
           {canHand && others}</section>; })();
     const setTab = (t: string) => { setVTab(t); if (t === 'edit') loadRows(); };

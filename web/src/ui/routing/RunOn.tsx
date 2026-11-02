@@ -112,7 +112,7 @@ const groupOf = (r: RunOnRow) => r.group ?? (r.id === 'local' ? 'gpu' : r.id ===
 const waysOf = (r: RunOnRow, ownPick?: RunOnOwn) => (!ownPick && r.choices && r.choices.length > 1 ? r.choices : null);
 /** The sub-line's how words (server comfyHowLine: "Partner model · via last frame"). Not when the ways are listed under it, nor when
  *  comfyVariantText says it in full, nor the deployment line (the row's name already says Comfy deployment). */
-const detailOf = (r: RunOnRow, ways: boolean) => r.id === 'local' ? 'Free and private' : r.id === 'comfy-cloud' && !ways && (r.comfyVariants?.length ?? 0) < 2 && r.detail !== COMFY_DEPLOY_DETAIL ? String(r.detail ?? '') : '';
+const detailOf = (r: RunOnRow, ways: boolean) => r.id === 'local' ? (r.detail ? `${r.detail} · free and private` /* Image to vector: names the built-in tool */ : 'Free and private') : r.id === 'comfy-cloud' && !ways && (r.comfyVariants?.length ?? 0) < 2 && r.detail !== COMFY_DEPLOY_DETAIL ? String(r.detail ?? '') : '';
 
 export function RunOnMenu({ open, anchor, avoid, watch, gap, onClose, toolId, model, engine, quote, placement = 'right', own: ownPick, scale }: { open: boolean; anchor: RefObject<HTMLElement | null>; avoid?: RefObject<HTMLElement | null>; watch?: RefObject<HTMLElement | null>; gap?: number; onClose: () => void; toolId: string; model: ToolModel; engine?: string | null; quote?: any; placement?: PopPlacement; own?: RunOnOwn; scale?: RunOnScale }) {
   useToolModels(toolId); const bill = useBilling(); const own = modeOf(bill, quote) !== 'team';

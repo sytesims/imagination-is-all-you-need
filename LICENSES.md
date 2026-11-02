@@ -184,8 +184,7 @@ Commercial: yes = OSI licence; no = non-commercial; restricted = custom terms (r
 | ByteDance Seedream 5.0 Flash · layers (hosted) | Comfy Router (hosted) | [Proprietary (hosted API)](https://docs.comfy.org/built-in-nodes/ByteDanceSeedreamLayerSeparationNodeV2) | provider-terms | — | [link](https://docs.comfy.org/built-in-nodes/ByteDanceSeedreamLayerSeparationNodeV2) | app-image-layers |
 | ByteDance Seedream 5.0 Pro · layers (hosted) | Comfy Router (hosted) | [Proprietary (hosted API)](https://docs.comfy.org/built-in-nodes/ByteDanceSeedreamLayerSeparationNodeV2) | provider-terms | — | [link](https://docs.comfy.org/built-in-nodes/ByteDanceSeedreamLayerSeparationNodeV2) | app-image-layers |
 | Qwen-Image-Layered | Local ComfyUI | [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) | yes | — | [link](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_qwen_image_layered.json) | app-image-layers |
-| VTracer | Local ComfyUI | [MIT](https://opensource.org/license/mit) | yes | — | [link](https://github.com/visioncortex/vtracer) | app-image-vector |
-| Ideogram Vector 1 · Comfy Cloud | Comfy Cloud · API nodes | [Proprietary (hosted API)](https://ideogram.ai/legal/api-tos) | provider-terms | — | [link](https://docs.comfy.org/built-in-nodes/IdeogramVectorImageToSVGApi) | app-image-vector |
+| VTracer | Your computer, in the app (no ComfyUI) · or Ideogram Vector 1 · Comfy Cloud | [MIT](https://opensource.org/license/mit) | yes | — | [link](https://github.com/visioncortex/vtracer) | app-image-vector |
 
 "Runs on" says where the model runs (your ComfyUI, Comfy Cloud, a partner or provider API), not its licence: "Comfy Cloud · open workflow" is an open-weights workflow (no API nodes) run on Comfy Cloud, and its terms are in the Licence column.
 

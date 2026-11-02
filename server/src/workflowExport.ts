@@ -143,7 +143,8 @@ export async function buildWorkflowExport(job: Job): Promise<WorkflowExport & { 
   if (job.status !== 'done') return { ...base, reason: 'The workflow is ready once the result is.', headline: 'Not finished yet', graphs: [] };
 
   // Image to vector on this computer (2026-11-03): VTracer runs from the app's own code, not ComfyUI. Say so, with the settings it used.
-  if (job.provider === VECTOR_LOCAL) { const st = vectorStyleOf(job.input?.style); const v = VTRACER_SETTINGS[st];
+  // (its Comfy Cloud place, Ideogram Vector, has a graph: rebuilt below)
+  if (job.provider === VECTOR_LOCAL && !/^comfy-cloud:/.test(route)) { const st = vectorStyleOf(job.input?.style); const v = VTRACER_SETTINGS[st];
     return { ...base, reason: `VTracer ran on your computer from the app’s own code, so there is no ComfyUI workflow to open. Style ${vectorStyleLabel(st)}: colour precision ${v.colorPrecision}, gradient step ${v.layerDifference}, filter speckle ${v.filterSpeckle}, corner threshold ${v.cornerThreshold}°, segment length ${v.lengthThreshold}, splice threshold ${v.spliceThreshold}° (VTracer’s own names).`, headline: 'No ComfyUI workflow: VTracer on your computer', graphs: [] }; }
   // 1. What the runner sent.
   const st = storedGraphs(job.id);

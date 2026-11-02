@@ -27,7 +27,7 @@ import { hwBlock, withAlternative } from './fitView.js';
 import { tooHeavyWarning, weightsGate } from '../hardware/requirements.js';
 import { LOCAL_UNREACHABLE_REASON, NOT_WIRED_REASON, SLOW_LOCAL_NOTE, LOCAL_OFF_REASON, LOCAL_OFF_DETAIL, LOCAL_PINNED_REASON, LOCAL_ONLY_REASON, LOCAL_AUTO_REASON, demoReason, reasonSentence, notWiredSentence } from './runnable.js';
 import { HOSTED_BY_ID, unitInfo, type HostedPrice } from '../shared/hostedPrices.js';
-import { routeExactUsd } from './select.js';
+import { routeExactUsd, builtInLocal } from './select.js';
 import { adjustNotesById, option, autoOrder, plan, resolveRoute, routeInput, noProvider, placeAction, localAvailable, demoNotice, demoKeyless, DEMO_MESSAGE, localState, localOnlyModel, keyOwner as keyOwnerOf, savedPinOf, setupKind } from './select.js';
 import { mockKeys } from './keys.js';
 import { getPrefs, savePrefs, livePerModel, envUseLocal, setFavourite } from './prefs.js';
@@ -74,9 +74,11 @@ export const priceLine = (kind: string | null | undefined, credits: number | nul
 const unitFields = (priceRef: string | null | undefined, hosted: any) => { const h = (!priceRef ? null : hosted && hosted.unit && hosted.providerId === priceRef ? hosted : HOSTED_BY_ID[priceRef] ?? (hosted && hosted.unit ? hosted : null)) as HostedPrice | null; const u = h ? unitInfo(h.unit) : null;
   return { unit: h?.unit ?? null, unitLabel: u?.unitLabel ?? null, unitHelp: u?.unitHelp ?? null, hosted: h ? { ...h, unitLabel: u!.unitLabel, unitHelp: u!.unitHelp } : null }; };
 /** Oct 19 b2 (DP #1/#2): a runnable quote on a local route while Use local ComfyUI is off says why it runs (same codes as the route lists). */
-const localNote = (_tool: ToolDef, model: string, pl: { first: { kind: string }; routing: { mode: string; demo?: unknown } }) =>
-  pl.first.kind !== 'local' || pl.routing.demo || getPrefs().global.useLocal ? {} : localOnlyModel(model) ? { reasonCode: 'local_only', reason: LOCAL_ONLY_REASON, localNote: LOCAL_ONLY_REASON }
+const localNote = (_tool: ToolDef, model: string, pl: { first: { kind: string; routeId?: string }; routing: { mode: string; demo?: unknown } }) =>
+  pl.first.kind !== 'local' || pl.routing.demo || getPrefs().global.useLocal ? {} : builtInLocal(pl.first.routeId) ? { reasonCode: 'built_in', reason: BUILT_IN_REASON, localNote: BUILT_IN_REASON } /* VTracer: a tool in the app, with a Comfy Cloud place too */ : localOnlyModel(model) ? { reasonCode: 'local_only', reason: LOCAL_ONLY_REASON, localNote: LOCAL_ONLY_REASON }
     : pl.routing.mode === 'pinned' ? { reasonCode: 'local_pinned', reason: LOCAL_PINNED_REASON, localNote: LOCAL_PINNED_REASON } : { reasonCode: 'local_auto', reason: LOCAL_AUTO_REASON, localNote: LOCAL_AUTO_REASON };
+/** A built-in tool's local route (Image to vector: VTracer): why it runs here with Settings → Your computer off. */
+export const BUILT_IN_REASON = 'Built into the app: runs on your computer, free, with no ComfyUI or graphics card needed';
 const noCharged = (t: unknown) => (typeof t === 'string' ? t.replace(/\s*Nothing was charged\.?/g, '').trim() : t) as string;
 const demoFlags = (kind: string | null | undefined, list: number | null | undefined) => ({ local: false, localRun: false, free: false, basis: 'hosted',
   breakdown: [{ label: demoPriceLine(list), factor: 1 }], priceLine: demoPriceLine(list), routeKind: kind ?? null });
@@ -217,7 +219,7 @@ export function listedRoutes(tool: ToolDef, modelId: string, input: Record<strin
   const localOnly = localOnlyModel(modelId, tool, input); const lOn = prefs.global.useLocal || localOnly; const auto = autoOrder(tool, modelId, input); const demoId = auto[0]?.demo ? auto[0].routeId : null;
   const autoLocalId = !lOn && auto[0] && auto[0].kind === 'local' && !auto[0].demo && auto[0].routeId !== pinnedId ? auto[0].routeId : null; // re-check 6: Auto's local pick (never a demo)
   return routesFor(modelId, tool).map((r) => option(tool, r, input)).map((o): any => o.kind === 'local' && o.available && o.routeId === autoLocalId ? { ...o, status: 'Runs locally · free', reason: LOCAL_AUTO_REASON, reasonCode: 'local_auto', runsWhenPinned: true }
-    : o.kind === 'local' && o.available && !lOn && o.routeId !== pinnedId && o.routeId !== demoId
+    : o.kind === 'local' && o.available && !lOn && !builtInLocal(o.routeId) /* a built-in tool (VTracer) is always on */ && o.routeId !== pinnedId && o.routeId !== demoId
     // Oct 19 b2 (DP #1/#4): Auto skips it; a pin (saved or route= on the request) still runs it locally → runsWhenPinned, plus a secondary line
     ? { ...o, available: false, reason: LOCAL_OFF_REASON, reasonDetail: LOCAL_OFF_DETAIL, reasonCode: 'local_off', reasonText: 'Running on your computer is off in Settings.', status: 'Reachable, but off', pinnable: true, runsWhenPinned: true }
     // BH #5: a local pin runs locally even with Use local off (plan() pinned path), so the listing says so: available, pinned, 'Pinned · runs locally' (+ local_pinned when Use local is off)

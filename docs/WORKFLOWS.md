@@ -124,11 +124,11 @@ Any picture, as an editable SVG.
 |---|---|
 | Open | `/image?workflow=image-vector` |
 | Takes | A picture |
-| Models | **VTracer**: Your computer (free)<br>**Ideogram Vector 1**: Comfy Cloud ($0.14 per image) |
+| Models | **VTracer**: Your computer (free) · Comfy Cloud ($0.14 per image) |
 | Files in | Picture (image, required) |
-| Settings | Style (logo, illustration, detailed) |
-| ComfyUI graph | Runs the official Comfy template under “Comes from” on Comfy Cloud (no file in this repo) |
-| Comes from | Our own: [VTracer through @neplex/vectorizer (no ComfyUI graph: the app calls the library)](https://github.com/visioncortex/vtracer) (MIT (VTracer, @neplex/vectorizer) · the app’s code: AGPL-3.0 (this repo))<br>Official Comfy template: [Ideogram Vector 1: Image to SVG](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_ideogram_vector_1_image_to_svg.json) by Comfy Org (MIT (Comfy-Org/workflow_templates)) |
+| Settings | Style (illustration, logo, detailed) |
+| ComfyUI graph | Runs through a partner model’s API (no ComfyUI file) |
+| Comes from | Our own: [VTracer through @neplex/vectorizer (no ComfyUI graph: the app calls the library)](https://github.com/visioncortex/vtracer) (MIT (VTracer, @neplex/vectorizer) · the app’s code: AGPL-3.0 (this repo)) |
 
 <a id="i-image-layers"></a>
 ### Split into layers

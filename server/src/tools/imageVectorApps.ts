@@ -1,5 +1,7 @@
 /**
  * Image to vector (SVG) (2026-11-03): the model cards. Ids, styles and rules: shared/imageVector.ts. The app: tools/apps.ts (app-image-vector).
+ *  One card on the tool (2026-11-03, user: VTracer is a tool, not a model): you pick only WHERE it runs. Your computer = VTracer (free); Comfy Cloud =
+ *  Ideogram Vector 1, a twin route of the same card (routing/routes.ts TWINS), so the bar shows no model picker and Run on names the engine.
  *  - VTracer · your computer (free): our own code calls VTracer through @neplex/vectorizer (vectorTrace.ts). No ComfyUI, no graph, the same on every
  *    backend (like Finish). The job's "View workflow" says there is no ComfyUI graph.
  *  - Ideogram Vector 1 · Comfy Cloud: the IdeogramVectorImageToSVGApi partner node (comfy/ideogramVectorCloud.ts), real whenever the Comfy key is set;
@@ -21,7 +23,7 @@ import type { Job } from '../jobs.js';
 const D = '2026-11-03';
 const canceled = (job: Job) => (job.status as string) === 'canceled';
 /** Trace the job's picture on this computer and keep the SVG as the job's result. `sample` = a stand-in for a cloud model (mock / no key): said plainly. */
-export async function runLocalTrace(job: Job, sample = false) {
+export async function runLocalTrace(job: Job, sample = /^comfy-cloud:/.test(String(job.route ?? '')) /* the Comfy Cloud place without a live run (no key, mock): a stand-in */) {
   const i: any = job.input; job.status = 'running'; job.stage = 'rendering' as any; job.progress = 10;
   const ac = new AbortController(); const watch = setInterval(() => { if (canceled(job)) ac.abort(); }, 150);
   try {
@@ -40,21 +42,21 @@ export async function runLocalTrace(job: Job, sample = false) {
 }
 
 const stages: [string, string][] = [['rendering', 'Tracing your picture'], ['saving', 'Saving the SVG']];
-registerProvider({ id: VECTOR_LOCAL, name: 'VTracer', kind: 'open-weights', via: 'This computer: VTracer (visioncortex, MIT) through @neplex/vectorizer (MIT); no ComfyUI, no provider', workflows: [],
+registerProvider({ id: VECTOR_LOCAL, name: 'VTracer', kind: 'open-weights', noGpu: true, via: 'This computer: VTracer (visioncortex, MIT) through @neplex/vectorizer (MIT); no ComfyUI, no provider', workflows: [],
   licenseParts: ['mit'], docUrl: VTRACER_URL, stages, run: (job: Job) => runLocalTrace(job) } as any);
-NATIVE_DIRECT[VECTOR_LOCAL] = { noComfy: true, label: 'Your computer · free' };
-registerModelInfo(VECTOR_LOCAL, { name: 'VTracer', speed: 'fast', quality: 'good', hint: 'Free on your computer · best on logos, icons and flat art' } as any);
+NATIVE_DIRECT[VECTOR_LOCAL] = { noComfy: true, label: 'Your computer · free (VTracer)' };
+registerModelInfo(VECTOR_LOCAL, { name: 'VTracer', speed: 'fast', quality: 'good', hint: 'A built-in tool, not an AI model: your computer (VTracer, free) or Comfy Cloud (Ideogram Vector)' } as any);
 MODEL_CATALOG[VECTOR_LOCAL] = { name: 'VTracer', family: 'VTracer', description: 'Open-source raster-to-vector tracer by visioncortex: colour shapes become smooth SVG paths, on your computer, free.',
   tech: `VTracer (${VTRACER_URL}, MIT) through @neplex/vectorizer 0.1.0 (${VECTORIZER_URL}, MIT). Our code calls the library directly: no ComfyUI graph.` } as any;
 
 registerProvider({ id: VECTOR_IDEOGRAM, name: 'Ideogram Vector 1 · Comfy Cloud', kind: 'hosted', license: 'proprietary', licenseUrl: 'https://ideogram.ai/legal/api-tos', docUrl: VECTOR_NODE_DOC,
   via: `Comfy partner node ${VECTOR_NODE} (model "ideogram-vector-1") on Comfy Cloud, Comfy key in extra_data; graph from the official template ${VECTOR_TEMPLATE} (comfy/ideogramVectorCloud.ts); sample traced on this computer without a key`,
   stages: [['uploading', 'Uploading'], ['submitted', 'Submitted to Comfy Cloud'], ['rendering', 'Ideogram Vector tracing'], ['downloading', 'Downloading the SVG']], nodes: [VECTOR_NODE],
-  run: (job: Job) => runLocalTrace(job, true) } as any);
+  run: (job: Job) => runLocalTrace(job, true) } as any); // reached by its old id only (provider=cloud-ideogram-vector maps to the place below)
 CLOUD_WORKFLOWS[IDEOGRAM_VECTOR_ROUTE] = { routeId: IDEOGRAM_VECTOR_ROUTE, provider: VECTOR_IDEOGRAM, standalone: true, target: 'cloud', label: 'Ideogram Vector 1 · Comfy Cloud (partner node)',
   graphs: [], requires: { nodes: ['LoadImage', VECTOR_NODE, 'SaveSVGNode'], models: [] }, plan: ideogramVectorCloudPlan, partnerAuth: true } as any;
 CLOUD_RUNNER_ROUTES.add(IDEOGRAM_VECTOR_ROUTE);
-NATIVE_DIRECT[VECTOR_IDEOGRAM] = { label: 'Comfy Cloud', endpoint: `POST https://cloud.comfy.org/api/v2/jobs (graph: LoadImage → ${VECTOR_NODE} → SaveSVGNode)`, sourceUrl: VECTOR_NODE_DOC, checkedAt: D,
+NATIVE_DIRECT[VECTOR_IDEOGRAM] = { label: 'Comfy Cloud (Ideogram Vector)', endpoint: `POST https://cloud.comfy.org/api/v2/jobs (graph: LoadImage → ${VECTOR_NODE} → SaveSVGNode)`, sourceUrl: VECTOR_NODE_DOC, checkedAt: D,
   typicalLatencySec: 40, latencyEstimated: true, latencySource: 'estimated', output: 'image' } as any;
 registerModelInfo(VECTOR_IDEOGRAM, { name: 'Ideogram Vector 1', speed: 'balanced', quality: 'best', hint: 'Comfy Cloud · cleaner shapes on busy pictures', badges: ['premium'] } as any);
 MODEL_CATALOG[VECTOR_IDEOGRAM] = { name: 'Ideogram Vector 1', family: 'Ideogram', description: 'Ideogram’s vectorizer on Comfy Cloud: traces a picture into an editable SVG, transparency kept. Pictures over 2048 px are scaled down first.',

@@ -24,11 +24,13 @@ const TXT = path.join(D, 'notes.png'); fs.writeFileSync(TXT, 'not a picture at a
 // ---------------- unit ----------------
 const V = await import('../src/shared/imageVector.ts'); const T = await import('../src/vectorTrace.ts'); const G = await import('../src/comfy/ideogramVectorCloud.ts');
 {
-  assert.deepEqual(V.VECTOR_MODELS, ['local-vtracer', 'cloud-ideogram-vector'], 'VTracer (free) first, then Ideogram Vector');
-  assert.deepEqual(V.VECTOR_STYLES.map((s) => s.label), ['Logo / flat', 'Illustration', 'Detailed']);
+  assert.deepEqual(V.VECTOR_MODELS, ['local-vtracer'], 'one card: VTracer is a built-in tool; Ideogram Vector is its Comfy Cloud place');
+  assert.equal(V.VECTOR_STYLE_DEFAULT, 'illustration', 'Illustration is the default (best on drawings, 2026-11-03 test)');
+  assert.deepEqual(V.VECTOR_STYLES.map((s) => s.label), ['Illustration', 'Logo / flat', 'Detailed']);
   const S = V.VTRACER_SETTINGS; assert.ok(S.logo.colorPrecision < S.illustration.colorPrecision && S.illustration.colorPrecision < S.detailed.colorPrecision, 'more colours as the style keeps more');
-  assert.ok(S.logo.filterSpeckle > S.illustration.filterSpeckle && S.illustration.filterSpeckle > S.detailed.filterSpeckle, 'fewer specks dropped as the style keeps more');
-  assert.ok(S.logo.layerDifference > S.detailed.layerDifference); assert.equal(V.vectorStyleOf('nope'), 'logo');
+  assert.ok(S.detailed.colorPrecision > S.illustration.colorPrecision && S.detailed.layerDifference < S.illustration.layerDifference, 'Detailed keeps more shades than Illustration');
+  assert.ok(S.detailed.filterSpeckle > S.illustration.filterSpeckle && S.detailed.cornerThreshold >= 60 && S.detailed.lengthThreshold >= 4, 'Detailed drops noise specks and keeps smooth curves (the first Detailed was jagged: 6,121 shapes, 1.4 MB)');
+  assert.ok(S.logo.layerDifference > S.detailed.layerDifference); assert.equal(V.vectorStyleOf('nope'), 'illustration');
   assert.deepEqual(V.vectorTraceSize(3000, 1000), { width: 2048, height: 683, scaled: true }); assert.deepEqual(V.vectorTraceSize(800, 600), { width: 800, height: 600, scaled: false });
   assert.equal(V.vectorPhotoBlock({ width: 8, height: 400 })?.code, 'photo_too_small'); assert.equal(V.vectorPhotoBlock({ width: 16, height: 16 }), null);
   ok('styles → VTracer settings (Logo / flat fewest colours, Detailed most), 2048 px trace cap, 16 px floor');
@@ -82,11 +84,17 @@ try {
   assert.ok(!/\[image-workflows\]/.test(stderr), `boot validation is clean: ${stderr.match(/\[image-workflows\][\s\S]*/)?.[0]}`);
   const w = (await get('/api/image-workflows')).body.workflows.find((x: any) => x.id === 'image-vector');
   assert.equal(w.name, 'Image to vector (SVG)'); assert.equal(w.runner.toolId, 'app-image-vector'); assert.deepEqual(w.slots.map((s: any) => [s.name, s.required]), [['image', true]]);
-  assert.deepEqual(w.controls.map((c: any) => [c.field, c.options.map((o: any) => o.value), c.default]), [['style', ['logo', 'illustration', 'detailed'], 'logo']]);
-  assert.deepEqual(w.models.edit, V.VECTOR_MODELS, JSON.stringify(w.unavailable)); assert.equal(w.prompt.mode, 'hidden');
+  assert.deepEqual(w.controls.map((c: any) => [c.field, c.options.map((o: any) => o.value), c.default]), [['style', ['illustration', 'logo', 'detailed'], 'illustration']]);
+  assert.deepEqual(w.models.edit, V.VECTOR_MODELS, JSON.stringify(w.unavailable)); assert.equal(w.prompt.mode, 'hidden'); assert.equal(w.builtInTool, 'VTracer', 'the bar shows no model picker, only Run on');
+  { const t = (await get('/api/tools')).body.find((x: any) => x.id === 'app-image-vector'); assert.equal(t.models.length, 1); const m = t.models[0];
+    assert.equal(m.openWeights, false, 'a built-in tool, not open weights'); assert.equal(m.autoRunOn, 'local', 'free on your computer first');
+    assert.deepEqual(m.runsOn.map((r: any) => [r.id, r.status, r.credits, r.detail]), [['local', 'ready', 0, 'VTracer, built into the app'], ['comfy-cloud', 'ready', 15, 'Ideogram Vector 1 · partner model']]);
+    ok('one card, two places: Your computer (VTracer, free, always on) · Comfy Cloud (Ideogram Vector 1, ✦15)'); }
   ok('workflow: Image to vector (SVG): one picture slot, Style Logo / flat · Illustration · Detailed, VTracer then Ideogram Vector, no prompt');
   const lq = (await get('/api/tools/app-image-vector/price?provider=local-vtracer&image=1&types=edit&style=logo')).body; assert.equal(lq.credits ?? lq.listCredits ?? 0, 0); assert.notEqual(lq.runnable, false, JSON.stringify(lq).slice(0, 300));
-  const iq = (await get('/api/tools/app-image-vector/price?provider=cloud-ideogram-vector&image=1&types=edit')).body; assert.equal(iq.credits ?? iq.listCredits, 15, JSON.stringify(iq).slice(0, 300));
+  const iq = (await get('/api/tools/app-image-vector/price?route=comfy-cloud:cloud-ideogram-vector&image=1&types=edit')).body; assert.equal(iq.credits ?? iq.listCredits, 15, JSON.stringify(iq).slice(0, 300));
+  const aq = (await get('/api/tools/app-image-vector/price?provider=cloud-ideogram-vector&image=1&types=edit')).body; assert.equal(aq.route, 'comfy-cloud:cloud-ideogram-vector', 'the old provider id still prices the Comfy Cloud place');
+  assert.equal(lq.route, 'local:local-vtracer', 'Auto: free on your computer'); assert.equal(lq.fit?.reasonCode, 'no_gpu_needed', 'no "couldn’t check what fits": needs no ComfyUI or graphics card'); assert.equal(lq.reasonCode, 'built_in');
   ok(`quotes: VTracer ✦0 (${lq.route}), Ideogram Vector ✦${iq.credits ?? iq.listCredits} (${iq.route})`);
   const s = await submit({ provider: 'local-vtracer', style: 'illustration', rights: '1' }, LOGO); assert.equal(s.status, 200, JSON.stringify(s.body).slice(0, 300)); assert.equal(s.body.cost ?? 0, 0);
   const job = await wait(s.body.id); assert.equal(job.status, 'done', job.error); assert.match(job.outputs[0].url, /^\/files\/[0-9a-z]+-out0\.svg$/); assert.equal(job.input.style, 'illustration'); assert.equal(job.input.vector, true);
@@ -106,7 +114,8 @@ try {
   const ph = await submit({ provider: 'local-vtracer', rights: '1' }, PHOTO, 'image/jpeg'); const pj = await wait(ph.body.id); assert.equal(pj.status, 'done'); assert.ok(pj.warnings.some((x: string) => /looks like a photo/.test(x)));
   const hj = await wait((await submit({ provider: 'local-vtracer', rights: '1' }, HUGE)).body.id); assert.equal(hj.status, 'done'); assert.ok(hj.warnings.some((x: string) => /traced at 2048×683/.test(x)));
   ok('a photo and a 3000×1000 picture trace, each with a calm note');
-  const ij = await wait((await submit({ provider: 'cloud-ideogram-vector', rights: '1' }, LOGO)).body.id); assert.equal(ij.status, 'done', ij.error); assert.match(ij.outputs[0].label, /^Sample/); assert.match(ij.outputs[0].url, /\.svg$/);
+  const ij = await wait((await submit({ route: 'comfy-cloud:cloud-ideogram-vector', rights: '1' }, LOGO)).body.id); assert.equal(ij.status, 'done', ij.error); assert.match(ij.outputs[0].label, /^Sample/);
+  assert.equal(ij.route, 'comfy-cloud:cloud-ideogram-vector'); assert.equal(ij.modelName, 'Ideogram Vector 1', 'the real engine is named, not VTracer'); assert.equal(ij.isSample, true); assert.match(ij.outputs[0].url, /\.svg$/);
   ok(`Ideogram Vector without a key: a labelled sample (${ij.outputs[0].label}), traced on this computer`);
   console.log('PASS image-vector');
 } finally { try { process.kill(-srv.pid!, 'SIGTERM'); } catch { /* gone */ } fs.rmSync(D, { recursive: true, force: true }); }

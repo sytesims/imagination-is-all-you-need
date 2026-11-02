@@ -195,7 +195,6 @@ Served live on `GET /api/models/:id` → `attribution {status, lines[], required
 | ByteDance Seedream 5.0 Pro · layers (hosted) (`api-seedream-layers-pro`) | unverified (not fully verified) | — | proprietary → unverified |
 | Qwen-Image-Layered (`comfy-qwen-image-layered`) | none | — | apache-2.0 → none |
 | VTracer (`local-vtracer`) | none | — | mit → none |
-| Ideogram Vector 1 · Comfy Cloud (`cloud-ideogram-vector`) | unverified (not fully verified) | — | proprietary → unverified |
 
 ## Components (not model cards)
 

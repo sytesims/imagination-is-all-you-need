@@ -294,7 +294,7 @@ export const MODELS: Record<string, ModelDef> = Object.fromEntries([
   m('bria-genfill', 'Bria GenFill', 'Bria', 'image', false, P, 'fal-bria-genfill', { note: 'Fills a painted mask from a prompt (Brush Edit).', sourceUrl: 'https://fal.ai/models/fal-ai/bria/genfill' }),
   // photo tools (2026-10-23, tools/imageFalApps.ts): fal-only models, one workflow each
   // Image to vector (SVG) (2026-11-03, shared/imageVector.ts)
-  m('vtracer', 'VTracer', 'VTracer', 'image', true, 'mit', 'local-vtracer', { note: 'Raster-to-vector tracer (visioncortex) run by the app through @neplex/vectorizer: no ComfyUI.', sourceUrl: 'https://github.com/visioncortex/vtracer' }),
+  m('vtracer', 'VTracer', 'VTracer', 'image', false /* a built-in tool, not open weights (user 2026-11-03) */, 'mit', 'local-vtracer', { note: 'Not an AI model: a raster-to-vector tracer (visioncortex, MIT) built into the app through @neplex/vectorizer (MIT). No ComfyUI, no graphics card.', sourceUrl: 'https://github.com/visioncortex/vtracer' }),
   m('ideogram-vector-1', 'Ideogram Vector 1', 'Ideogram', 'image', false, P, 'cloud-ideogram-vector', { note: 'IdeogramVectorImageToSVGApi partner node on Comfy Cloud (Image to vector).', sourceUrl: 'https://docs.comfy.org/built-in-nodes/IdeogramVectorImageToSVGApi' }),
   m('bria-rmbg-2.0', 'Bria RMBG 2.0', 'Bria', 'image', false, P, 'fal-bria-rmbg', { note: 'Background removal (Remove Background).', sourceUrl: 'https://fal.ai/models/fal-ai/bria/background/remove' }),
   m('ideogram-remove-background', 'Ideogram Remove Background', 'Ideogram', 'image', false, P, 'fal-ideogram-rmbg', { note: 'Background removal (Remove Background).', sourceUrl: 'https://fal.ai/models/fal-ai/ideogram/remove-background' }),

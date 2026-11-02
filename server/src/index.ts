@@ -155,7 +155,7 @@ const sampleTruth = (j: Job): { isSample: boolean; sampleReason: string | null }
   if (j.actualCost) return { isSample: false, sampleReason: null };
   if ((j as any).featuredExample) return { isSample: false, sampleReason: null }; // the app's own real renders (shared/featured.ts, the Examples project), on any server
   if (j.toolId === 'compose' && j.provider === 'local-ffmpeg') return { isSample: false, sampleReason: null };
-  if (j.provider === 'local-vtracer' && j.status === 'done') return { isSample: false, sampleReason: null }; // Image to vector: VTracer really traced the picture, even on the mock backend // Stitch: ffmpeg really joined the files, even on the mock backend
+  if (j.provider === 'local-vtracer' && String(j.route ?? '').startsWith('local:') && j.status === 'done') return { isSample: false, sampleReason: null }; // Image to vector: VTracer really traced the picture, even on the mock backend // Stitch: ffmpeg really joined the files, even on the mock backend
   const { runOn, label } = placeOfJob(j);
   if (j.routing?.demo) return { isSample: true, sampleReason: runOn === 'local' || !label
     ? 'This is a sample: the server is in sample mode, so nothing was generated and nothing was billed.'
