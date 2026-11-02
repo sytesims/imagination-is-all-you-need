@@ -46,6 +46,23 @@ else { const rec = spawnSync(process.execPath, [path.join(REPO, 'scripts/try/rec
   fs.cpSync(REC, path.join(arg('scratch', os.tmpdir()), 'iiayn-try-last-recording'), { recursive: true }); }
 const snap = JSON.parse(fs.readFileSync(path.join(REC, 'snap.json'), 'utf8'));
 
+// ---- 2a. what Recreate and "See the workflow" read for each example (the recorder opens a few; every example gets them here) ----
+{ const ids = new Set(); const tools = new Set(['create-image', 'h3-video', 'audio', 'three-d']);
+  for (const [k, r] of Object.entries(snap.routes)) if (/^GET \/api\/jobs(\?|$)/.test(k)) { try { const b = JSON.parse(r.b); for (const j of (Array.isArray(b) ? b : b.items ?? [])) if (j?.id && j.status === 'done') { ids.add(j.id); if (j.toolId) tools.add(j.toolId); } } catch { /* not a list */ } }
+  let n = 0; const keep = async (u) => { const k = `GET ${u}`; if (snap.routes[k]) return; const r = await fetch(API + u).catch(() => null); if (r?.ok) { snap.routes[k] = { s: r.status, t: 'application/json', b: await r.text() }; n++; } };
+  for (const id of ids) for (const u of [`/api/jobs/${id}/prefill?action=recreate`, `/api/jobs/${id}/workflow`]) await keep(u);
+  for (const t of tools) await keep(`/api/routes?toolId=${encodeURIComponent(t)}`);
+  say(`examples: ${n} more answers (Recreate, workflows, routes) for ${ids.size} examples`); }
+
+// ---- 2b. the price grid: every studio's price for each model, place and setting, asked from the mock (scripts/try/priceGrid.mjs) ----
+{ for (let i = 0; i < 5; i++) { // no saved places: the server's own picks
+    try { const r = await fetch(`${API}/api/me/routing`, { method: 'PUT', headers: { 'content-type': 'application/json', 'x-openhiggsfield-source': 'try build' }, body: JSON.stringify({ perTool: {}, perModel: {} }) }); if (r.ok) break; say(`routing reset: HTTP ${r.status}`); }
+    catch (e) { say(`routing reset: ${e.cause?.code ?? e.message}, trying again`); } await new Promise(r => setTimeout(r, 2000)); }
+  let tools = await (await fetch(`${API}/api/tools`)).json(); tools = Array.isArray(tools) ? tools : tools.tools;
+  const { harvestGrid } = await import('./priceGrid.mjs'); const t0 = Date.now();
+  snap.grid = await harvestGrid(API, snap.routes, tools, say);
+  say(`price grid: ${Object.keys(snap.grid.cells).length} prices in ${Math.round((Date.now() - t0) / 1000)} s`); }
+
 // ---- 3. build the app for /try/ (first, so the media step sees which files the code itself names) ----
 const b = spawnSync(process.execPath, [path.join(REPO, 'node_modules/vite/bin/vite.js'), 'build', '--config', 'vite.try.config.ts', '--outDir', BUILD, '--logLevel', 'error'], { cwd: path.join(REPO, 'web'), stdio: 'inherit' });
 if (b.status !== 0) throw new Error('vite build failed');
@@ -57,7 +74,19 @@ const MEDIA_URL = /"((?:\/(?:files|samples|examples|showcase)\/|\/api\/(?:media|
 for (const m of JSON.stringify([snap.templates, Object.values(snap.routes).map(r => r.b)]).replace(/\\"/g, '"').matchAll(MEDIA_URL)) urls.add(m[1].replace(/\\+$/, ''));
 // files the app's code names itself (Explore, workflow cards, film posters…)
 for (const f of fs.readdirSync(path.join(BUILD, 'assets')).filter(f => f.endsWith('.js'))) for (const m of fs.readFileSync(path.join(BUILD, 'assets', f), 'utf8').matchAll(/["'`](\/(?:examples|showcase|samples)\/[^"'`\s?#$]+\.[a-z0-9]{2,5})["'`]/gi)) urls.add(m[1]);
+// the app's own example files the pages build a path to (Explore's looks, films, wall…): every picture and subtitle file, and any clip or
+// sound whose name the app's code or a recorded answer mentions
+{ const said = JSON.stringify(Object.values(snap.routes).map(r => r.b)) + fs.readdirSync(path.join(BUILD, 'assets')).filter(f => f.endsWith('.js')).map(f => fs.readFileSync(path.join(BUILD, 'assets', f), 'utf8')).join('');
+  const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]);
+  for (const top of ['showcase', 'examples']) for (const f of walk(path.join(REPO, 'web/public', top))) { const u = '/' + path.relative(path.join(REPO, 'web/public'), f).split(path.sep).join('/');
+    if (/\.(webp|jpe?g|png|srt|vtt)$/i.test(f) || said.includes(path.basename(f).replace(/\.[a-z0-9]+$/i, ''))) urls.add(u); } }
+// the example results a sample run shows (web/try/samples.json, read by the service worker from the snapshot)
+snap.samples = JSON.parse(fs.readFileSync(path.join(REPO, 'web/try/samples.json'), 'utf8')); delete snap.samples._;
+for (const x of Object.values(snap.samples).flat()) for (const u of [x.url, x.poster]) if (u) urls.add(u);
 for (const u of [...urls]) if (/^\/(files|examples|showcase|samples)\/.*\.(mp4|webm|mov)$/i.test(u)) urls.add(`/api/media/poster?url=${encodeURIComponent(u)}`);
+// Image to layers: each layered example's composite poster (the mock makes it on first ask), under the address the feed asks for
+for (const r of Object.values(snap.routes)) for (const m of r.b.matchAll(/\/api\/jobs\/([A-Za-z0-9_-]+)\/layers-poster\.png/g)) urls.add(m[0]);
+for (const r of Object.values(snap.routes)) for (const m of r.b.matchAll(/"id":"([A-Za-z0-9_-]+)"[^{}]*?"layersPosterUrl":"[^"]+"/g)) urls.add(`/api/jobs/${m[1]}/layers-poster.png`);
 urls.add('/fonts/fonts.css'); for (const f of fs.readdirSync(path.join(REPO, 'web/public/fonts'))) urls.add(`/fonts/${f}`);
 fs.rmSync(OUT, { recursive: true, force: true }); fs.mkdirSync(path.join(OUT, 'm'), { recursive: true });
 snap.media = {}; let bytes = 0, missing = 0;
@@ -72,6 +101,9 @@ say(`media: ${Object.keys(snap.media).length} files, ${(bytes / 1e6).toFixed(1)}
 stop();
 
 /** Anything about this computer becomes "sample computer"; hardware numbers become a plain 16 GB machine. */
+/** Where this build ran → where an installed app lives (scripts/get.sh puts it in ~/Imagination; the app serves on 8787 / 5174). */
+const PLACES = [[fs.realpathSync(REPO), '~/Imagination'], [REPO, '~/Imagination'], [path.join(os.homedir(), '.local/node/bin/node'), 'node'],
+  [`127.0.0.1:${API_PORT}`, 'localhost:8787'], [`localhost:${API_PORT}`, 'localhost:8787'], [`127.0.0.1:${WEB_PORT}`, 'localhost:5174'], [`localhost:${WEB_PORT}`, 'localhost:5174']];
 const PRIVATE = [os.homedir(), DATA, TMP, fs.realpathSync(TMP), os.userInfo().username, os.hostname(), os.hostname().split('.')[0]].filter(s => s && s.length > 2);
 const GB = 2 ** 30;
 const HW = { totalBytes: 16 * GB, freeBytes: 8 * GB, totalGB: 16, ramGB: 16 };
@@ -82,12 +114,31 @@ const scrubValue = (v, k) => {
   if (typeof v === 'string' && /^(hostname|machine|computerName|user|username|serial|serialNumber|path)$/.test(k ?? '') && v) return 'sample computer';
   return v;
 };
+// the recorder's own Generate presses (they only made the job shapes in snap.templates) never show as someone's runs
+const RECORDER_RUNS = new Set(Object.values(snap.templates).map(j => j.id));
+const notRecorders = (j) => !(j && typeof j === 'object' && (RECORDER_RUNS.has(j.id) || (j.isSample && /mock backend/.test(String(j.sampleReason ?? '')))));
+for (const [k, r] of Object.entries(snap.routes)) {
+  const id = k.match(/^GET \/api\/jobs\/([^/?]+)/)?.[1]; if (id && RECORDER_RUNS.has(id)) { delete snap.routes[k]; continue; }
+  if (!/^GET \/api\/(jobs|assets|library|projects|spend)/.test(k)) continue;
+  try { const b = JSON.parse(r.b); let n = 0;
+    if (Array.isArray(b)) { const f = b.filter(notRecorders); n = b.length - f.length; if (n) r.b = JSON.stringify(f); }
+    else if (b && Array.isArray(b.items)) { const f = b.items.filter(notRecorders); n = b.items.length - f.length; if (n) { b.items = f; if (typeof b.total === 'number') b.total -= n; r.b = JSON.stringify(b); } }
+  } catch { /* not json */ }
+}
+/** Words written for a developer running the mock server, said the way a visitor of sample mode should read them. */
+const WORDS = [
+  [' (mock unless OPENHIGGSFIELD_BACKEND=comfy)', ''],
+  ['Mock key only (test mode): no real account to read.', 'Sample mode: connect your own account in the app.'],
+  ['Sample figure (mock mode, no key): shows how a connected balance looks. Not your account.', 'Sample figure: shows how a connected balance looks. Not a real account.'],
+];
+for (const r of Object.values(snap.routes)) for (const [a, b] of WORDS) if (r.b.includes(a)) r.b = r.b.split(a).join(JSON.stringify(b).slice(1, -1));
 for (const [k, r] of Object.entries(snap.routes)) {
   if (/^GET \/api\/(hardware|local|health|setup|doctor|me\/)/.test(k)) { try { r.b = JSON.stringify(scrubValue(JSON.parse(r.b))); } catch { /* not json */ } }
+  for (const [a, b] of PLACES) r.b = r.b.split(a).join(b);
   for (const p of PRIVATE) r.b = r.b.split(p).join('sample-computer');
 }
 const all = JSON.stringify(snap);
-const leaks = PRIVATE.filter(p => all.includes(p)).concat(/[\w.+-]+@(gmail|icloud|outlook|hotmail)\.com/i.test(all) ? ['an email address'] : []).concat(/sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}/.test(all) ? ['something like a key'] : []);
+const leaks = PRIVATE.filter(p => all.includes(p)).concat(/\/Desktop\/|\.claude\/worktrees|sample-computer\//.test(all) ? ['a folder path of this computer'] : []).concat(/[\w.+-]+@(gmail|icloud|outlook|hotmail)\.com/i.test(all) ? ['an email address'] : []).concat(/sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}/.test(all) ? ['something like a key'] : []);
 if (leaks.length) throw new Error(`privacy check failed: the snapshot still has ${leaks.length} private item(s); nothing written`);
 fs.writeFileSync(path.join(OUT, 'snap.json'), all);
 say(`snapshot: ${Object.keys(snap.routes).length} answers, ${(all.length / 1e6).toFixed(1)} MB, privacy check passed`);

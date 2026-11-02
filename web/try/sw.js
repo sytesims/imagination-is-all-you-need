@@ -6,7 +6,7 @@
 const BASE = new URL('./', self.location).pathname; // '/try/'
 const VOLATILE = new Set(['_', 't', 'ts', 'now', 'cb', 'v', 'since', 'after', 'nonce']); // same list as scripts/try/record.mjs
 const APP_PATHS = /^\/(api|files|samples|s|examples|showcase|fonts|models|learn)\/|^\/(favicon|apple-touch|app-icon|manifest)/;
-const SAMPLE_REASON = 'Sample mode: nothing was generated and nothing was paid. This is an example result. Install the app to make your own.';
+const SAMPLE_REASON = 'Sample mode: install the app to make this for real.';
 const NOT_HERE = 'Sample mode: this part needs the app on your computer. Install it to use it for real.';
 
 self.addEventListener('install', () => self.skipWaiting());
@@ -84,23 +84,65 @@ async function canvas(s, req, url) {
   return null;
 }
 
-/** Each tool's kind of result (image, video, audio, 3d), from the recorded tool registry. */
-function mediaOf(s) { if (s.mediaOf) return; s.mediaOf = {}; try { const t = JSON.parse(s.routes['GET /api/tools']?.b ?? '[]'); for (const x of (Array.isArray(t) ? t : t.tools ?? [])) s.mediaOf[x.id] = x.media; } catch { /* no registry */ } }
+/** Each tool's kind of result (image, video, audio, 3d) and its models, from the recorded tool registry. */
+function mediaOf(s) { if (s.mediaOf) return; s.mediaOf = {}; s.toolOf = {}; try { const t = JSON.parse(s.routes['GET /api/tools']?.b ?? '[]'); for (const x of (Array.isArray(t) ? t : t.tools ?? [])) { s.mediaOf[x.id] = x.media; s.toolOf[x.id] = x; } } catch { /* no registry */ } }
 
-/** A Generate: a sample job built from a recorded finished job of the same tool (its example output), marked as a sample. */
+// ---- which example a sample run shows: one of the app's own example results that looks like an answer to the prompt ----
+/** Tools that make anything from a prompt: their sample is picked from samples.json by the prompt's words. Every other tool (a workflow:
+ *  Relight, Upscale, Extend…) shows its own recorded example result, which is what that workflow makes. */
+const GENERIC = new Set(['create-image', 'h3-video', 'audio', 'three-d']);
+const PERSON = /\b(wom[ae]n|m[ae]n|girls?|boys?|guys?|lady|ladies|person|people|portrait|selfie|face|faces|actor|actress|kid|kids|child|children|grandpa|grandma|grandfather|grandmother|fisherman|sailor|painter|artist|friends?|couple|family|ghost|horror)\b/i;
+const words = (t) => String(t ?? '').toLowerCase().replace(/colou?r/g, 'colour').split(/[^a-z0-9]+/).filter(w => w.length > 2)
+  .flatMap(w => [w, w.replace(/(ies)$/, 'y').replace(/(es|s)$/, '')]);
+/** The best example of this kind for the prompt: most shared words (the prompt counts 3, the workflow's name 1); a person only for a prompt
+ *  that asks for one; no match → one of the kind's defaults, the same one for the same prompt. */
+function pickSample(s, kind, prompt, extra, types) {
+  let list = s.samples?.[kind] ?? []; if (types?.length) { const t = list.filter(x => !x.types || x.types.some(y => types.includes(y))); if (t.length) list = t; }
+  if (!PERSON.test(prompt ?? '')) list = list.filter(x => !x.person) ;
+  if (!list.length) return null;
+  const pw = new Set(words(prompt)), ew = new Set(words(extra)); let best = null, bestScore = 0;
+  for (const x of list) { const tw = new Set(words(x.tags)); let sc = 0; for (const w of tw) sc += (pw.has(w) ? 3 : 0) + (ew.has(w) ? 1 : 0); if (sc > bestScore) { best = x; bestScore = sc; } }
+  if (best) return best;
+  const defs = list.filter(x => x.default); const pool = defs.length ? defs : list; let h = 0; for (const c of String(prompt ?? '')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return pool[h % pool.length];
+}
+const outputOf = (x, kind) => kind === 'video' ? { kind: 'video', url: x.url, posterUrl: x.poster ?? null, width: x.w, height: x.h, durationSec: x.sec, hasAudio: !!x.audio, label: 'Result', sample: null }
+  : kind === 'audio' ? { kind: 'audio', url: x.url, posterUrl: null, width: null, height: null, durationSec: x.sec, label: 'Result', sample: null }
+  : kind === '3d' ? { kind: '3d', url: x.url, posterUrl: x.poster ?? null, width: null, height: null, durationSec: null, label: '3D model', sample: null }
+  : { kind: 'image', url: x.url, posterUrl: x.url, width: x.w, height: x.h, durationSec: null, label: 'Result', sample: null };
+/** The model the visitor picked (its engine id, else its key) on this tool: {key, name, runOn label}. */
+function modelOf(s, toolId, fields) { const t = s.toolOf?.[toolId]; const ms = t?.models ?? [];
+  const m = ms.find(x => x.key === fields.model) ?? ms.find(x => (x.engines ?? []).includes(fields.provider)) ?? null; if (!m) return null;
+  const runOn = fields.runOn || routing?.[toolId]?.[m.key]?.runOn || m.preselect?.runOn || m.autoRunOn || null; const row = (m.runsOn ?? []).find(r => r.id === runOn);
+  return { key: m.key, name: m.displayName || m.name, engine: (fields.provider && (m.engines ?? []).includes(fields.provider)) ? fields.provider : m.primaryEngine ?? m.engines?.[0], runOn, runOnLabel: row?.label ?? null }; }
+
+const prompt0 = (f) => String(f.prompt ?? '').trim();
+/** A Generate: a sample job that shows an example result (see pickSample), with the model, prompt and settings the visitor chose, marked as a sample. */
 async function createJob(s, toolId, req) {
   let fields = {}; try { const fd = await req.formData(); for (const [k, v] of fd) if (typeof v === 'string') fields[k] = v; } catch { /* no form */ }
   mediaOf(s);
-  const same = (j) => j?.status === 'done' && j.outputs?.length; const kind = s.mediaOf[toolId];
-  // this tool's own finished run, else a finished run of the same kind (video, image, audio, 3D), else any
-  const tpl = s.templates[toolId] ?? Object.values(s.jobs).find(j => j.toolId === toolId && same(j))
-    ?? Object.values(s.templates).find(j => kind && s.mediaOf[j.toolId] === kind) ?? Object.values(s.jobs).find(j => kind && s.mediaOf[j.toolId] === kind && same(j))
-    ?? s.templates['create-image'] ?? Object.values(s.templates)[0];
-  if (!tpl) return json({ error: NOT_HERE, code: 'sample_mode' }, 400);
-  const id = 'try' + Math.random().toString(36).slice(2, 10); const now = Date.now();
-  const job = { ...tpl, id, toolId, startedAt: now, createdAt: new Date(now).toISOString(), updatedAt: new Date(now).toISOString(), finishedAt: new Date(now + QUEUED_MS + RUN_MS).toISOString(),
-    prompt: fields.prompt ?? tpl.prompt, params: { ...(tpl.params ?? {}), ...fields }, status: 'done', state: 'done', stage: 'done', progress: 100, percent: 100,
-    isSample: true, sampleReason: SAMPLE_REASON, sampleLabel: 'Sample', demo: true, demoMessage: SAMPLE_REASON, featuredExample: false, cost: 0, actualCost: null, free: true, favourite: false, trashed: false, projectId: null };
+  const done = (j) => j?.status === 'done' && j.outputs?.length && !/^\/files\//.test(j.outputs[0].url ?? '/files/');
+  const kind = s.mediaOf[toolId] ?? 'image';
+  let types = []; try { const t = JSON.parse(fields.types ?? '[]'); types = Array.isArray(t) ? t.map(String) : [String(t)]; } catch { types = String(fields.types ?? '').split(',').filter(Boolean); }
+  // the shape of a finished job (fields the viewer reads) from a recorded one; the example and everything the visitor chose go on top
+  // Recreate (the same prompt as an example of this kind): that example's own result; else a workflow's own example
+  const again = prompt0(fields) && Object.values(s.jobs).find(j => done(j) && s.mediaOf[j.toolId] === kind && String(j.input?.prompt ?? '').trim() === prompt0(fields));
+  const own = again || (!GENERIC.has(toolId) ? Object.values(s.jobs).find(j => j.toolId === toolId && done(j)) : null);
+  const shape = own ?? s.templates[toolId] ?? Object.values(s.templates).find(j => s.mediaOf[j.toolId] === kind) ?? Object.values(s.jobs).find(j => s.mediaOf[j.toolId] === kind && done(j)) ?? s.templates['create-image'] ?? Object.values(s.templates)[0];
+  if (!shape) return json({ error: NOT_HERE, code: 'sample_mode' }, 400);
+  const t = s.toolOf?.[toolId]; const prompt = fields.prompt ?? '';
+  const pick = own ? null : pickSample(s, kind === 'audio' && toolId !== 'audio' && toolId !== 'soundtrack' ? 'audio' : kind, prompt, `${t?.name ?? ''} ${toolId.replace(/^app-/, '').replace(/-/g, ' ')}`, types);
+  const outputs = own ? own.outputs : pick ? [outputOf(pick, kind)] : shape.outputs;
+  const m = modelOf(s, toolId, fields);
+  const id = 'try' + Math.random().toString(36).slice(2, 10); const now = Date.now(); const iso = (ms) => new Date(ms).toISOString();
+  const job = { ...shape, id, toolId, startedAt: now, createdAt: iso(now), updatedAt: iso(now), finishedAt: iso(now + QUEUED_MS + RUN_MS),
+    ...(m ? { provider: m.engine, modelKey: m.key, model: m.name, modelName: m.name, runOn: m.runOn, runOnLabel: m.runOnLabel,
+      feature: { ...(shape.feature ?? {}), id: toolId, name: t?.name ?? shape.feature?.name, model: m.name, label: `${t?.name ?? shape.feature?.name ?? ''} · ${m.name}` } } : {}),
+    prompt, input: { ...(own?.input ?? {}), ...fields, prompt, types }, params: { ...fields }, caption: null,
+    outputs, resultUrl: outputs[0]?.url ?? null, posterUrl: outputs[0]?.posterUrl ?? null, layersPosterUrl: own?.layersPosterUrl ?? null,
+    threeD: kind === '3d' && outputs[0]?.posterUrl ? { posterUrl: outputs[0].posterUrl, posterV: 2 } : own?.threeD ?? null,
+    status: 'done', state: 'done', stage: 'done', progress: 100, percent: 100, progressInfo: { stage: 'done', percent: 100, source: 'sample' }, error: null, errorType: null,
+    isSample: true, sampleReason: SAMPLE_REASON, sampleLabel: 'Sample', sample: null, demo: true, demoMessage: SAMPLE_REASON, demoNotice: null, featured: false, featuredExample: false, example: false,
+    cost: 0, actualCost: null, actualUsd: null, free: true, favourite: false, trashed: false, deletedAt: null, projectId: null, warnings: [], diagnostics: [], fallback: null };
   const list = await myJobs(); list.unshift(job); await save();
   return json({ id, provider: job.provider, warnings: [SAMPLE_REASON], cost: 0, free: true, balance: 0, seed: job.seed ?? 1, sample: true });
 }
@@ -123,10 +165,91 @@ async function withMine(s, r, url) {
   return answer(r);
 }
 
+
+// ---- prices: the grid (scripts/try/priceGrid.mjs) answers the studios' price queries for any model, place, length and size ----
+/** The same function as cellKey in scripts/try/priceGrid.mjs (spec.dims is the list of its dims here). */
+const cellKey = (tool, model, runOn, route, spec, q) => [tool, model, runOn ?? '', route ?? '', ...spec.dims.map(d => q[d] ?? spec.base[d] ?? '')].join('|');
+const usd = (c) => `$${(c / 100).toFixed(2)}`;
+/** A price answer at other credits: every price field scaled to them (credits, list price, the cost card, the $ in the words). */
+function rescale(b, c1) {
+  const c0 = b.credits; if (typeof c0 !== 'number' || c0 === c1) return b; const k = c0 > 0 ? c1 / c0 : null;
+  const sc = (v, d = 0) => typeof v === 'number' && k != null ? Number((v * k).toFixed(d)) : v;
+  const words = (t) => typeof t === 'string' ? t.replace(/\$\d[\d,]*(\.\d+)?/g, usd(c1)) : t;
+  const out = { ...b, credits: c1, listCredits: typeof b.listCredits === 'number' ? (b.listCredits === c0 ? c1 : sc(b.listCredits)) : b.listCredits, gpuSec: sc(b.gpuSec), draftCredits: sc(b.draftCredits), exactUsd: sc(b.exactUsd, 4), priceLine: words(b.priceLine),
+    breakdown: Array.isArray(b.breakdown) ? b.breakdown.map(x => ({ ...x, label: words(x.label) })) : b.breakdown };
+  if (b.cost && typeof b.cost === 'object') { const units = sc(b.cost.estUnits);
+    out.cost = { ...b.cost, estUsd: typeof b.cost.estUsd === 'number' && b.cost.estUsd > 0 ? Number((c1 / 100).toFixed(2)) : b.cost.estUsd, realRunUsd: typeof b.cost.realRunUsd === 'number' ? Number((c1 / 100).toFixed(2)) : b.cost.realRunUsd, estUnits: units,
+      usdText: words(b.cost.usdText), detail: typeof b.cost.detail === 'string' && typeof units === 'number' ? b.cost.detail.replace(/^\d[\d,]*/, String(units)) : b.cost.detail }; }
+  return out;
+}
+/** A place that only answers samples here (a mock key): shown at its list price, what the app charges with a real key. */
+function priced(b) {
+  if (!b?.demo || typeof b.listCredits !== 'number' || b.listCredits <= 0) return b;
+  const c = b.listCredits; const out = { ...b, credits: c, demo: false, chargeable: true, demoMessage: null, demoNotice: null, priceLine: `≈ ${usd(c)}` }; delete out.demoTag;
+  if (b.cost) out.cost = { ...b.cost, demo: false, estUsd: Number((c / 100).toFixed(2)), realRunUsd: Number((c / 100).toFixed(2)), usdText: `≈ ${usd(c)}` };
+  return out;
+}
+/** The price of one setup on a studio from the grid: {s, b} (b parsed), or null when the grid doesn't cover it (then the recorded answers do). */
+function priceFor(s, toolId, q) {
+  const g = s.grid; const sp = g?.spec?.[toolId]; if (!sp) return null; mediaOf(s);
+  const ms = s.toolOf?.[toolId]?.models ?? []; const engine = sp.engineParam === 'model' ? q.model : q.provider;
+  const m = ms.find(x => x.key === q.model) ?? ms.find(x => (x.engines ?? []).includes(engine)) ?? (sp.engineParam === 'model' ? null : ms.find(x => x.isDefault)); if (!m) return null;
+  const saved = routing?.[toolId]?.[m.key];
+  const byEngine = (m.runsOn ?? []).filter(r => (r.engines ?? []).includes(engine)); // an engine that runs in one place only names the place (the server routes it there)
+  const own = engine === (m.primaryEngine ?? m.engines?.[0]); // no place asked or saved: the server's own pick for these settings ('' in the grid)
+  const runOn = q.runOn || (saved?.runOn && saved.runOn !== 'auto' ? saved.runOn : null) || (!own && byEngine.length === 1 ? byEngine[0].id : '');
+  const want = q.route || (runOn && saved?.runOn === runOn ? saved.route : null) || '';
+  const combo = [want, ''].map(r => `${toolId}|${m.key}|${runOn}|${r}`).find(k => g.tpl[k]); if (!combo) return null; const route = combo.split('|')[3];
+  let key = cellKey(toolId, m.key, runOn, route, sp, q);
+  if (!(key in g.cells)) { const q2 = { ...q }; // a length the model doesn't make: the nearest it does (the server snaps the same way)
+    for (const d of sp.dims) { const v = String(q2[d] ?? ''); if (!/^\d+(\.\d+)?$/.test(v) || cellKey(toolId, m.key, runOn, route, sp, q2) in g.cells) continue; const n = Math.round(Number(v));
+      for (let o = 0; o <= 600; o++) { const hit = [n - o, n + o].find(x => x > 0 && cellKey(toolId, m.key, runOn, route, sp, { ...q2, [d]: String(x) }) in g.cells); if (hit) { q2[d] = String(hit); break; } } }
+    key = cellKey(toolId, m.key, runOn, route, sp, q2);
+    for (const d of sp.dims) if (!(key in g.cells)) { delete q2[d]; key = cellKey(toolId, m.key, runOn, route, sp, q2); } }
+  const cell = g.cells[key]; if (cell == null) return null;
+  if (typeof cell === 'string') { const e = g.errs[Number(cell.slice(1))]; let b = {}; try { b = JSON.parse(e.b); } catch { /* text */ } return { s: e.s, b }; }
+  let c = cell; const f = g.factors[combo] ?? {};
+  for (const [p, vs] of Object.entries(sp.factors ?? {})) { const v = q[p]; if (v != null && vs.includes(String(v)) && f[`${p}=${v}`] != null) c *= f[`${p}=${v}`]; }
+  for (const p of sp.linear ?? []) { const n = Number(q[p]); if (n > 1) c *= n; }
+  c = Math.round(c); let b = priced(JSON.parse(g.tpl[combo]));
+  return { s: 200, b: rescale(b, c) };
+}
+const ROW_FIELDS = ['status', 'credits', 'listCredits', 'chargeable', 'free', 'local', 'demo', 'runnable', 'needsKey', 'priceAvailable', 'cost', 'billingMode', 'runOn', 'runOnLabel', 'place', 'placeLabel', 'routeId', 'routeKind', 'modelKey', 'perSecond', 'eta', 'localRun', 'priceRef', 'upTo'];
+const rowOf = (r) => r.s < 400 ? Object.fromEntries([['status', r.s], ...ROW_FIELDS.slice(1).filter(k => k in r.b).map(k => [k, r.b[k]])]) : { status: r.s, code: r.b.code ?? r.b.errorType ?? null, issues: r.b.issues ?? null, error: r.b.error ?? null };
+const toolOfPath = (p, url) => { const m = p.match(/^\/api\/tools\/([^/]+)\/price(-variants)?$/); return m ? decodeURIComponent(m[1]) : p === '/api/models/quote' || p === '/api/models/quotes' ? (url.searchParams.get('toolId') || 'create-image') : null; };
+/** POST /api/tools/:id/price-variants: each option's price (the bar's popups). */
+function variantsFor(s, toolId, body) {
+  const base = body.params ?? {}; const out = {};
+  for (const [id, ov] of Object.entries(body.variants ?? {})) { const q = { ...base }; for (const [k, v] of Object.entries(ov ?? {})) { if (v == null) delete q[k]; else q[k] = String(v); }
+    const r = priceFor(s, toolId, q); out[id] = r ? rowOf(r) : null; }
+  return { toolId, base, variants: out };
+}
+/** POST /api/models/quotes: every model's price at these settings (the model picker), with the range over the places that can run it. */
+function quotesFor(s, body) {
+  const toolId = body.toolId || 'create-image'; const sp = s.grid?.spec?.[toolId]; if (!sp) return null; mediaOf(s);
+  const ms = s.toolOf?.[toolId]?.models ?? []; const asked = (body.models?.length ? body.models : ms.map(m => ({ model: m.key }))).map(x => typeof x === 'string' ? { model: x } : x);
+  const quotes = {};
+  for (const a of asked) { const m = ms.find(x => x.key === a.model); if (!m) continue; const ident = sp.engineParam === 'model' ? { model: m.primaryEngine ?? m.engines?.[0] } : { model: m.key, provider: m.primaryEngine ?? m.engines?.[0] };
+    const q = { ...(body.params ?? {}), ...ident, ...(a.runOn && a.runOn !== 'auto' ? { runOn: a.runOn } : {}) }; const r = priceFor(s, toolId, q);
+    if (!r) continue; const places = []; for (const row of m.runsOn ?? []) { if (row.status !== 'ready' && row.status !== 'sample') continue; const x = priceFor(s, toolId, { ...q, runOn: row.id, model: sp.engineParam === 'model' ? (row.engines?.[0] ?? ident.model) : m.key, provider: row.engines?.[0] ?? ident.provider });
+      if (x && x.s < 400 && typeof x.b.credits === 'number') places.push({ runOn: row.id, runOnLabel: row.label, placeLabel: x.b.placeLabel ?? row.label, credits: x.b.credits, cost: x.b.cost ?? null, routeId: x.b.routeId ?? null }); }
+    const cs = places.map(p => p.credits); const range = cs.length ? { min: Math.min(...cs), max: Math.max(...cs), minUsd: Math.min(...cs) / 100, maxUsd: Math.max(...cs) / 100, places } : null;
+    quotes[m.key] = { model: m.key, ok: r.s < 400, ...rowOf(r), priceRange: range }; }
+  return { toolId, params: body.params ?? {}, quotes };
+}
+
 /** Same rule as scripts/try/record.mjs withRoute: a price is looked up with the saved Run on route of its tool + model first. */
 function withRoute(url) { const m = url.pathname.match(/^\/api\/tools\/([^/]+)\/price$/); const r = m && routing?.[decodeURIComponent(m[1])]?.[url.searchParams.get('model') ?? '']?.route;
   if (!r) return null; const u = new URL(url); u.searchParams.set('__route', r); return u; }
 
+/** A live-updates stream (SSE) that stays open and says nothing new: closing it would make the page reconnect and say the connection
+ *  dropped. A Canvas board's stream first says hello (no agent connected, no demo running), as the app's server does. */
+function quietStream(p) {
+  const board = p.match(/^\/api\/canvas\/boards\/([^/]+)\/agent\/stream$/); const enc = new TextEncoder(); let t = null;
+  const body = new ReadableStream({ start(c) { c.enqueue(enc.encode(board ? `event: hello\ndata: ${JSON.stringify({ boardId: decodeURIComponent(board[1]), canvasOpen: true, agent: null, demo: null, pick: null, lastSeq: 0, proposals: [] })}\n\n` : ': sample mode\n\n'));
+    t = setInterval(() => { try { c.enqueue(enc.encode(': ping\n\n')); } catch { clearInterval(t); } }, 25000); }, cancel() { clearInterval(t); } });
+  return new Response(body, { headers: { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', 'x-sample-mode': '1' } });
+}
 async function api(req, url) {
   const s = await snap(); await load(); const m = req.method; const p = url.pathname;
   let mm;
@@ -135,9 +258,18 @@ async function api(req, url) {
     let base = {}; try { base = JSON.parse(s.routes['GET /api/me/routing']?.b ?? '{}'); } catch { /* none */ }
     return json({ ...base, perTool: { ...(base.perTool ?? {}), ...routing } }); }
   if (p.startsWith('/api/canvas/boards')) { const r = await canvas(s, req, url); if (r) return r; }
-  if (m === 'POST' && /^\/api\/(models\/quotes|tools\/[^/]+\/price-variants)$/.test(p)) { let tool = ''; try { tool = (await req.clone().json()).toolId ?? ''; } catch { /* not json */ }
+  if (m === 'POST' && /^\/api\/(models\/quotes|tools\/[^/]+\/price-variants)$/.test(p)) { let body = {}; try { body = await req.clone().json(); } catch { /* not json */ }
+    const g = p === '/api/models/quotes' ? quotesFor(s, body) : s.grid?.spec?.[toolOfPath(p, url)] ? variantsFor(s, toolOfPath(p, url), body) : null; if (g) return json(g);
+    let tool = body.toolId ?? '';
     const r = lookup(s, 'POST', new URL(`${p}?toolId=${encodeURIComponent(tool || p.split('/')[3])}`, url)); if (r) return answer(r); }
   if (m === 'POST' && (mm = p.match(/^\/api\/tools\/([^/]+)\/jobs$/))) return createJob(s, decodeURIComponent(mm[1]), req);
+  // Recreate / See the workflow on a visitor's sample run: the same answer as an example of that tool, with this run's id and settings
+  if (m === 'GET' && (mm = p.match(/^\/api\/jobs\/(try[^/]+)\/(prefill|workflow)$/))) { const j = (await myJobs()).find(x => x.id === mm[1]);
+    const rec = j && Object.keys(s.routes).find(k => k.startsWith(`GET /api/jobs/`) && k.split('?')[0].endsWith(`/${mm[2]}`) && (() => { try { return JSON.parse(s.routes[k].b).tool === j.toolId || JSON.parse(s.routes[k].b).toolId === j.toolId; } catch { return false; } })());
+    if (j && rec) { const old = rec.split('/')[3]; const b = JSON.parse(s.routes[rec].b.split(old).join(j.id));
+      if (mm[2] === 'prefill') { const f = Object.fromEntries(Object.entries(j.params ?? {}).filter(([k]) => !/^(quoted|origin|client)/.test(k))); Object.assign(b, { model: j.provider ?? b.model, modelKey: j.modelKey ?? b.modelKey, fields: f, form: f, files: {}, missingFiles: [], seed: null, sameSeed: false, originalSeed: j.seed ?? null }); if (b.output) b.output = { ...b.output, url: j.outputs?.[0]?.url ?? b.output.url }; }
+      else { b.notes = ['This result is a sample, so nothing ran yet. Install the app to run it.']; }
+      return json(b); } }
   if ((mm = p.match(/^\/api\/jobs\/([^/]+)$/)) && m === 'GET') { const j = (await myJobs()).find(x => x.id === mm[1]); if (j) return json(live(j)); if (s.jobs[mm[1]]) return json(s.jobs[mm[1]]); }
   if (p === '/api/jobs' && m === 'GET' && url.searchParams.has('ids')) { const ids = url.searchParams.get('ids').split(','); const my = await myJobs();
     return json(ids.map(id => { const j = my.find(x => x.id === id); return j ? live(j) : s.jobs[id]; }).filter(Boolean)); }
@@ -145,10 +277,11 @@ async function api(req, url) {
     if (j && mm[2] === 'cancel') { j.status = j.state = 'canceled'; await save(); } if (j && mm[2] === 'favourite') { j.favourite = !j.favourite; await save(); }
     return json({ ok: true, sample: true, ...(j ? live(j) : {}) }); }
   if ((mm = p.match(/^\/api\/jobs\/([^/]+)$/)) && m === 'DELETE') { mine = (await myJobs()).filter(x => x.id !== mm[1]); await save(); return json({ ok: true, sample: true }); }
+  if (m === 'GET' && /^\/api\/(tools\/[^/]+\/price|models\/quote)$/.test(p)) { const r = priceFor(s, toolOfPath(p, url), Object.fromEntries(url.searchParams)); if (r) return json(r.b, r.s); }
   if (m === 'GET') {
     const ru = withRoute(url); const r = (ru && s.routes[keyOf('GET', ru)]) || lookup(s, 'GET', url);
     if (r) return (p === '/api/jobs' || p === '/api/assets') ? withMine(s, r, url) : answer(r);
-    if (/\/(stream|events)$/.test(p)) return new Response(': sample mode, no live updates\n\n', { headers: { 'content-type': 'text/event-stream' } });
+    if (/\/(stream|events)$/.test(p)) return quietStream(p);
     return json({ error: NOT_HERE, errorType: 'not_found', code: 'sample_mode', sample: true }, 404);
   }
   // writes: a recorded answer for the same route (prices for every model, a new board), else a friendly "needs the app"
@@ -160,9 +293,12 @@ async function api(req, url) {
 
 /** Media the pages load (web/public, the mock's /files and /samples, posters): the copy in m/, by full URL, then by path. */
 /** A thumbnail or poster we never recorded at this size: the same picture at another size, else the picture it was made from. */
+/** A layered job's composite poster (GET /api/jobs/:id/layers-poster.png redirects there in the app): /files/<id>-layers.png. */
+const alias = (p) => { const m = p.match(/^\/api\/jobs\/([^/]+)\/layers-poster\.png$/); return m ? `/files/${m[1]}-layers.png` : p; };
 function findMedia(s, url, depth = 0) {
-  const f = s.media[url.pathname + url.search] ?? (url.search ? null : s.media[url.pathname]); if (f) return f;
-  if (!/^\/api\/media\/(thumb|poster)$/.test(url.pathname) || depth > 3) return s.media[url.pathname] ?? null;
+  const p = alias(url.pathname); const plain = [...url.searchParams.keys()].every(k => k === 'clean' || VOLATILE.has(k)); // ?clean=1 (downloads): the same file
+  const f = s.media[url.pathname + url.search] ?? (plain ? s.media[p] : null); if (f) return f;
+  if (!/^\/api\/media\/(thumb|poster)$/.test(url.pathname) || depth > 3) return s.media[p] ?? null;
   const inner = url.searchParams.get('url'); if (!inner) return null;
   const same = Object.keys(s.media).find(k => k.startsWith(url.pathname + '?') && new URL(k, url).searchParams.get('url') === inner); if (same) return s.media[same];
   const iu = new URL(inner, url); if (/\.(mp4|webm|mov|mp3|wav|glb)$/i.test(iu.pathname)) return null; // a video's poster we don't have: the app shows its own fallback
@@ -175,6 +311,29 @@ async function media(req, url) {
   return fetch(BASE + 'm/' + f, { headers: h });
 }
 
+// ---- Download all (.zip): every output of a job (the layers of Image to layers) plus settings.json, built here (stored, no compression) ----
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = (b) => { let c = 0xffffffff; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+function zipBytes(files) { // [{name, data: Uint8Array}]
+  const enc = new TextEncoder(); const parts = []; const dir = []; let off = 0;
+  for (const f of files) { const nm = enc.encode(f.name); const crc = crc32(f.data); const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(8, 0, true); h.setUint32(14, crc, true); h.setUint32(18, f.data.length, true); h.setUint32(22, f.data.length, true); h.setUint16(26, nm.length, true);
+    parts.push(new Uint8Array(h.buffer), nm, f.data);
+    const d = new DataView(new ArrayBuffer(46)); d.setUint32(0, 0x02014b50, true); d.setUint16(4, 20, true); d.setUint16(6, 20, true); d.setUint32(16, crc, true); d.setUint32(20, f.data.length, true); d.setUint32(24, f.data.length, true); d.setUint16(28, nm.length, true); d.setUint32(42, off, true);
+    dir.push(new Uint8Array(d.buffer), nm); off += 30 + nm.length + f.data.length; }
+  const size = dir.reduce((n, p) => n + p.length, 0); const e = new DataView(new ArrayBuffer(22)); e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, size, true); e.setUint32(16, off, true);
+  return new Blob([...parts, ...dir, new Uint8Array(e.buffer)], { type: 'application/zip' });
+}
+async function zipOf(s, id) {
+  await load(); const j = mine.find(x => x.id === id) ?? s.jobs[id]; if (!j?.outputs?.length) return json({ error: NOT_HERE, code: 'sample_mode' }, 404);
+  const files = []; let k = 0;
+  for (const o of j.outputs) { k++; const f = findMedia(s, new URL(o.url, self.location.origin)); if (!f) continue; const r = await fetch(BASE + 'm/' + f); if (!r.ok) continue;
+    const ext = (o.url.split('?')[0].match(/\.[a-z0-9]+$/i)?.[0] ?? '').toLowerCase(); const name = (o.label && j.outputs.length > 1 ? `${String(k).padStart(2, '0')}-${String(o.label).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}` : `${id}-${k}`) + ext;
+    files.push({ name, data: new Uint8Array(await r.arrayBuffer()) }); }
+  files.push({ name: 'settings.json', data: new TextEncoder().encode(JSON.stringify({ id, tool: j.toolId, model: j.modelName ?? j.model ?? null, prompt: j.input?.prompt ?? j.prompt ?? null, note: j.isSample ? SAMPLE_REASON : 'An example result from Imagination Is All You Need.' }, null, 2)) });
+  return new Response(zipBytes(files), { headers: { 'content-type': 'application/zip', 'content-disposition': `attachment; filename="imagination-${id}.zip"`, 'x-sample-mode': '1' } });
+}
+
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url); if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith(BASE)) {
@@ -183,6 +342,8 @@ self.addEventListener('fetch', (e) => {
     return;
   }
   if (!APP_PATHS.test(url.pathname) || e.request.mode === 'navigate') return;
-  e.respondWith(snap().then(s => url.pathname.startsWith('/api/') && !s.media[url.pathname + url.search] && !s.media[url.pathname] && !url.pathname.startsWith('/api/media/') ? api(e.request, url) : media(e.request, url))
+  e.respondWith(snap().then(s => { const p = alias(url.pathname); const zip = p.match(/^\/api\/jobs\/([^/]+)\/download\.zip$/);
+    if (zip) return zipOf(s, decodeURIComponent(zip[1]));
+    return p.startsWith('/api/') && !s.media[url.pathname + url.search] && !s.media[p] && !p.startsWith('/api/media/') ? api(e.request, url) : media(e.request, url); })
     .catch(() => json({ error: NOT_HERE, code: 'sample_mode' }, 500)));
 });

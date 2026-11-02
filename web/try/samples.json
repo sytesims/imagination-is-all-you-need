@@ -1,0 +1,55 @@
+{
+  "_": "Try it (sample mode): the example results a sample run shows, by kind. web/try/sw.js picks the one whose tags share the most words with the visitor's prompt (and the workflow's name); with no match, one of the 'default' ones. 'person' ones only answer a prompt that asks for a person. Every file is one of the app's own shipped example results (web/public).",
+  "image": [
+    { "url": "/showcase/ltx-lighthouse.webp", "w": 768, "h": 448, "tags": "lighthouse lighthouses sea ocean coast coastal cliff cliffs rock rocks dusk sunset evening waves shore seascape landscape lonely calm", "default": true },
+    { "url": "/showcase/wall-lighthouse-jar.webp", "w": 560, "h": 560, "tags": "lighthouse jar bottle glass storm lightning thunder rain window miniature tiny surreal waves sea" },
+    { "url": "/showcase/wall-tortoise-village.webp", "w": 800, "h": 600, "tags": "tortoise turtle giant village castle mountain mountains waterfall forest fantasy epic landscape painterly painting painted matte oil concept art world island valley", "default": true },
+    { "url": "/showcase/wall-salt-flat.webp", "w": 560, "h": 560, "tags": "salt flat desert reflection mirror horizon sunset sunrise dusk dawn sky minimal calm lone figure silhouette golden hour orange" },
+    { "url": "/showcase/wall-cherry-dune.webp", "w": 560, "h": 560, "tags": "cherry fruit pink pastel surreal dune dunes minimal giant tiny dreamy soft" },
+    { "url": "/showcase/wall-glowing-city.webp", "w": 560, "h": 315, "tags": "city skyline night lights glowing harbour harbor bay urban skyscrapers metropolis aerial lightning" },
+    { "url": "/showcase/wall-harbour-storm.webp", "w": 560, "h": 315, "tags": "storm stormy harbour harbor city night lightning thunder skyscrapers dramatic weather clouds" },
+    { "url": "/showcase/wall-ramen-stall.webp", "w": 560, "h": 560, "tags": "ramen noodle noodles food bowl stall restaurant street night neon rain tokyo japan japanese cafe kitchen dinner" },
+    { "url": "/showcase/wall-orange-jacket.webp", "w": 560, "h": 560, "tags": "jacket bomber coat clothing clothes fashion product apparel orange garment shop ecommerce flat lay" },
+    { "url": "/showcase/wall-storm-whale.webp", "w": 560, "h": 315, "tags": "whale whales ocean sea storm city waves breach giant surreal" },
+    { "url": "/showcase/wall-rooftop-whale.webp", "w": 560, "h": 315, "tags": "whale rooftop roof city raincoat yellow giant surreal ocean eye" },
+    { "url": "/showcase/wall-christmas-village.webp", "w": 560, "h": 315, "tags": "christmas xmas village snow snowy winter miniature diorama toy tiny lights holiday cozy festive" },
+    { "url": "/examples/starter/aurora-dome.webp", "w": 1024, "h": 1024, "tags": "aurora borealis northern lights night stars snow snowy winter mountain mountains valley dome greenhouse cabin cinematic cold arctic", "default": true },
+    { "url": "/examples/starter/glass-whale.webp", "w": 1344, "h": 1008, "tags": "whale glass crystal desert dunes sand golden hour sunset surreal fantasy rainbow flying floating", "default": true },
+    { "url": "/examples/starter/jellyfish-bamboo.webp", "w": 1600, "h": 1200, "tags": "jellyfish bamboo forest lantern magical blue hour mist misty glowing night fantasy dreamy" },
+    { "url": "/examples/starter/knit-farm.webp", "w": 1024, "h": 1024, "tags": "knit knitted wool yarn fabric farm farmers fields terraces tiny miniature green craft surreal" },
+    { "url": "/examples/starter/red-bicycle.webp", "w": 1024, "h": 1024, "tags": "bicycle bike red wall street mediterranean flowers bougainvillea summer sunny photograph photo vintage" },
+    { "url": "/showcase/char-mossbun.webp", "w": 1456, "h": 624, "tags": "creature monster cute mascot animal bunny rabbit critter character sheet model sheet turnaround 3d pixar cartoon fluffy moss" },
+    { "url": "/showcase/char-kip.webp", "w": 1344, "h": 1008, "tags": "toy vinyl figure collectible skater character sheet turnaround designer figurine" },
+    { "url": "/showcase/char-kaito.webp", "w": 1536, "h": 1024, "tags": "anime manga character sheet design hero courier illustration cel" },
+    { "url": "/showcase/shop-ad-poster.webp", "w": 1024, "h": 1280, "tags": "perfume fragrance bottle product ad advert advertisement poster launch luxury gold brand packshot cosmetics" },
+    { "url": "/showcase/shop-armchair-velvet.webp", "w": 896, "h": 1195, "tags": "armchair chair furniture interior room sofa velvet green design home living" },
+    { "url": "/showcase/look-watercolour.webp", "w": 1024, "h": 576, "tags": "watercolour watercolor illustration painted painting sketch drawing street town city coat storybook" },
+    { "url": "/showcase/f7699cd4.webp", "w": 1024, "h": 1024, "tags": "woman girl lady portrait person model face jacket bomber dusk city street fashion editorial", "person": true },
+    { "url": "/showcase/7205edb3.webp", "w": 1024, "h": 1024, "tags": "old man elderly grandpa grandfather fisherman sailor portrait person raincoat lighthouse harbour waving", "person": true },
+    { "url": "/showcase/1492ccf1.webp", "w": 1536, "h": 1536, "tags": "man guy portrait person coat fashion low angle sky editorial menswear", "person": true }
+  ],
+  "video": [
+    { "url": "/examples/showcase-seedance/lighthouse.mp4", "poster": "/examples/showcase-seedance/lighthouse.webp", "w": 1280, "h": 720, "sec": 15, "audio": true, "tags": "lighthouse sea ocean waves crashing cliff cliffs rock rocks coast storm stormy dusk night beach shore spray water", "default": true },
+    { "url": "/showcase/ltx-pro-whale-glide.mp4", "poster": "/showcase/ltx-pro-whale-glide.webp", "w": 1920, "h": 1080, "sec": 6, "audio": true, "tags": "whale glass desert dunes sand golden hour sunset flying floating surreal fantasy rainbow rider", "default": true },
+    { "url": "/showcase/ltx-pro-fox.mp4", "poster": "/showcase/ltx-pro-fox.webp", "w": 1280, "h": 720, "sec": 10, "audio": true, "tags": "fox animal meadow grass field sunset golden mountains animated animation pixar cartoon 3d boy cute", "default": true },
+    { "url": "/showcase/ltx-pro-koi.mp4", "poster": "/showcase/ltx-pro-koi.webp", "w": 1280, "h": 720, "sec": 10, "audio": true, "tags": "koi fish lantern paper rain night alley glowing magic magical boy animated fantasy", "default": true },
+    { "url": "/examples/starter/storm-whale.mp4", "poster": "/examples/starter/storm-whale-480.webp", "w": 1280, "h": 704, "sec": 5, "audio": true, "tags": "whale storm ocean sea waves breach city stormy giant splash" },
+    { "url": "/showcase/ltx-rain-city.mp4", "poster": "/showcase/ltx-rain-city.webp", "w": 1024, "h": 576, "sec": 5, "audio": true, "tags": "city street rain rainy night traffic cars urban downtown wet reflections crossing" },
+    { "url": "/showcase/ltx-village-loop.mp4", "poster": "/showcase/ltx-village-loop-480.webp", "w": 768, "h": 448, "sec": 2, "audio": true, "tags": "christmas xmas village snow winter miniature diorama toy train lights holiday festive cozy loop" },
+    { "url": "/examples/showcase-3d/mossbun-golden-hour.mp4", "poster": "/examples/showcase-3d/mossbun-golden-hour.webp", "w": 1920, "h": 1080, "sec": 6, "audio": true, "tags": "creature monster cute mascot bunny rabbit critter hopping palm trees avenue city golden hour sunny" },
+    { "url": "/showcase/ltx-pro-painter.mp4", "poster": "/showcase/ltx-pro-painter.webp", "w": 1280, "h": 720, "sec": 10, "audio": true, "tags": "painter painting artist studio canvas girl woman whale magic animated art paint", "person": true },
+    { "url": "/examples/starter/lift-ghost.mp4", "poster": "/examples/starter/lift-ghost-480.webp", "w": 1280, "h": 714, "sec": 6.6, "audio": true, "tags": "ghost horror scary creepy haunted spooky lift elevator dark thriller", "person": true }
+  ],
+  "audio": [
+    { "url": "/examples/starter/lofi-piano.mp3", "sec": 10, "types": ["music"], "tags": "lofi lo-fi hip hop hiphop beat beats chill relaxing calm study piano chords vinyl mellow jazz", "default": true },
+    { "url": "/examples/starter/music-box.mp3", "sec": 30, "types": ["music"], "tags": "music box celesta lullaby whimsical dreamy childlike gentle wonder magical soft cute", "default": true },
+    { "url": "/examples/starter/choir-score.mp3", "sec": 30, "types": ["music"], "tags": "cinematic film score soundtrack orchestra orchestral strings choir epic grand uplifting emotional trailer" },
+    { "url": "/examples/starter/sea-lullaby.mp3", "sec": 30, "types": ["music"], "tags": "haunting eerie dark lullaby siren sea ambient minor sad spooky horror reverb" },
+    { "url": "/examples/starter/last-train.mp3", "sec": 10, "types": ["music", "cover"], "tags": "folk indie song singer vocals voice guitar acoustic tenor ballad singing lyrics" },
+    { "url": "/examples/starter/rain-roof.mp3", "sec": 21.6, "types": ["sfx", "music"], "tags": "rain rainy thunder storm roof weather ambience ambient nature sound effect sfx water", "default": true },
+    { "url": "/examples/starter/presenter-talk-speech.mp3", "sec": 10.6, "types": ["voice"], "tags": "voice voiceover speech talk talking narration narrator speaker presenter hello welcome read", "default": true }
+  ],
+  "3d": [
+    { "url": "/showcase/char-mossbun-3d.glb", "poster": "/showcase/x3d-mossbun.webp", "w": 720, "h": 740, "tags": "creature monster cute mascot character bunny rabbit toy figure model", "default": true }
+  ]
+}
