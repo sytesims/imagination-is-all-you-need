@@ -7,6 +7,7 @@ import * as lib from './library.js';
 import { jobs, persistJob, type Job } from './jobs.js';
 import { parseReelOptions, reelPlan, reelResumePlan, reelMusicAction, REEL_MOODS, type ReelOptions } from './shared/photosToReel.js';
 import { clipArgs } from './shareExport.js';
+import { demoPriceLine } from './routing/http.js';
 import { cameraDefaultMove, cameraPresetOff } from './tools/apps.js';
 import { fillPattern } from './shared/promptPatterns.js';
 import { jobSpendView } from './billing.js';
@@ -56,11 +57,12 @@ const cameraFields = reelCameraFields;
 const musicFields = (v: Record<string, any>) => ({ provider: v.musicProvider || (v.runOn === 'local' ? 'comfy-acestep' : undefined), runOn: v.runOn === 'local' ? 'local' : undefined, route: v.musicRoute, seconds: v.seconds, types: '["music"]', video: '1', rights: '1', prompt: REEL_MOODS[v.kind as ReelOptions['kind']] });
 
 /** Price every paid step through the same route-aware endpoint used for its submit. */
-/** `price` = the price endpoint (the composer, agents), not the submit: before the photos are in (0–7) it quotes the smallest reel (8 photos,
+/** `price` = the price endpoint (the composer, agents), not the submit: before the photos are in (photoCount 0–7) it quotes the smallest reel (8 photos,
  *  assumedPhotoCount) instead of a 400, and a step that can't run yet (no key, no ComfyUI) comes back as that step's own 200 quote, so the
  *  composer says the same "Needs a key · ≈ $x" / "Set up ComfyUI…" as every other tool. The submit still refuses both. */
 export async function quoteReel(app: FastifyInstance, v: Record<string, any>, pendingCameraCount?: number, pendingMusicCount = 1, price = false) {
-  const given = Number(v.photoCount), assumed = price && !(given >= 8 && given <= 15) ? (given > 15 ? 15 : 8) : null;
+  /* only when the composer says how many photos it has (photoCount=0 before any are added); a quote with no photoCount at all keeps the plain refusal */
+  const given = Number(v.photoCount), told = v.photoCount != null && v.photoCount !== '', assumed = price && told && !(given >= 8 && given <= 15) ? (given > 15 ? 15 : 8) : null;
   const count = assumed ?? given, o = parseReelOptions(v, count, true);
   if ('error' in o) return { status: 400, body: { ...o, valid: false, priceAvailable: false } };
   const plan = reelPlan(count, o);
@@ -89,6 +91,8 @@ export async function quoteReel(app: FastifyInstance, v: Record<string, any>, pe
   const mixedAccounts = accounts.length > 1;
   return { status: 200, body: { ...camera.body, ...est, composite: true, toolId: REEL_TOOL, routeId: camera.body.routeId ?? camera.body.route, route: camera.body.routeId ?? camera.body.route, credits, listCredits, exactUsd: realRunUsd, photoCount: count, cameraCount: pendingCameraCount ?? plan.cameraCount, seconds: o.seconds,
     cost: { ...(activeSteps[0]?.quote.cost ?? { billedTo:'local',billedToName:'This computer',estimated:false,demo:config.backend==='mock' }), ...(mixedAccounts ? { billedTo: null, billedToName: 'Multiple accounts', estUnits: undefined, unitLabel: undefined, sourceUrl: null, plan: null, failureRule: 'varies', failureNote: 'Each step follows its account’s billing rules.' } : {}), estUsd, credits, realRunUsd, estUnits: mixedAccounts ? undefined : estUnits, accounts: activeSteps.map(x => ({ toolId:x.toolId, count:x.count, ...x.quote.cost, estUnits:x.quote.cost?.estUnits==null?undefined:Number(x.quote.cost.estUnits)*x.count, usdText:`~$${(Number(x.quote.cost?.realRunUsd ?? x.quote.cost?.estUsd ?? 0)*x.count).toFixed(2)}`, estUsd:Number(x.quote.cost?.estUsd ?? 0)*x.count, realRunUsd:Number(x.quote.cost?.realRunUsd ?? x.quote.cost?.estUsd ?? 0)*x.count })), usdText: realRunUsd > 0 ? `~$${realRunUsd.toFixed(2)}` : 'Free', detail: 'Total for the reel; individual steps use their own billing accounts.' }, priceText: realRunUsd > 0 ? `~$${realRunUsd.toFixed(2)}` : 'Free', breakdown: steps.map(x => ({ label: `${x.count} × ${x.toolId === 'camera' ? 'Camera Moves' : 'Music Bed'}`, factor: x.count, credits: Number(x.quote.credits ?? 0) * x.count })), steps,
+    /* a sample run: the line names the whole reel's list price, not one clip's (routing/http.ts demoPriceLine, as every other tool) */
+    ...(camera.body.demo ? { priceLine: demoPriceLine(listCredits), breakdown: [{ label: demoPriceLine(listCredits), factor: 1, credits: 0 }, ...steps.map(x => ({ label: `${x.count} × ${x.toolId === 'camera' ? 'Camera Moves' : 'Music Bed'}`, factor: x.count, credits: Number(x.quote.credits ?? 0) * x.count }))] } : {}),
     local: steps.every(x => x.quote.local), localRun: steps.every(x => x.quote.localRun), priceAvailable: true, valid: true } };
 }
 
