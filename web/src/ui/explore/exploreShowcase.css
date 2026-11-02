@@ -167,7 +167,8 @@ html body .xyt-box input,html body .xyt-box input:focus,html body .xyt-box input
   transition:border-color var(--t-state) var(--ease-state),background var(--t-state) var(--ease-state)}
 .xyt-tabs a:hover{border-color:var(--accent);background:rgba(255,122,26,.14)}
 .xyt-note{margin-top:22px;font:500 13px/1.4 var(--font-ui);color:rgba(255,255,255,.6)}
-.xyt-credit{position:absolute;left:0;right:0;bottom:18px;margin:0;padding:0 clamp(16px,2.2vw,32px);text-align:center;font:500 11.5px/1.5 var(--font-ui);color:rgba(255,255,255,.42)}
+.xyt-credit{position:absolute;left:0;right:0;bottom:18px;margin:0;padding:0 clamp(16px,2.2vw,32px);text-align:center;font:500 12px/1.5 var(--font-ui);color:rgba(255,255,255,.62);text-shadow:0 1px 8px rgba(0,0,0,.8)}
+.xyt-credit span{color:rgba(255,255,255,.48)}
 /* fewer columns on narrow screens; the tortoise's column (the fifth) always stays */
 @media (max-width:900px){.xyt-tilt{grid-template-columns:repeat(4,minmax(0,1fr));left:-24%;right:-24%}.xyt-col:nth-child(2),.xyt-col:nth-child(3){display:none}}
 @media (max-width:640px){.xyt{min-height:760px;padding-top:72px;padding-bottom:84px}.xyt-tilt{--g:12px;grid-template-columns:repeat(3,minmax(0,1fr));left:-30%;right:-30%}.xyt-col:nth-child(6){display:none}

@@ -356,7 +356,7 @@ export const EXPLORE_LAYERS = {
 export const EXPLORE_BOARD = {
   eyebrow: 'Canvas', title: 'Your idea. Your agent. One canvas.', line: 'Describe what you want to make. Your agent builds the workflow—you review, choose and give the go-ahead.',
   /** User-selected Option A v3 replacement, 2026-10-30: product-shots Canvas workflow.
-   * The encoded 1440×900 picture is unchanged; only the soundtrack differs, so the poster stays.
+   * The encoded 1440×900 picture is unchanged; only the soundtrack differs. The poster is its frame at 24 s (the finished board, 2026-11-02).
    * Supplied media is copied without retiming or re-encoding. Voice-model provenance is not encoded in the file.
    * Recorded model labels and prices describe the walkthrough, not new runs started by playback. */
   recording: {

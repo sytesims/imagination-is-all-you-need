@@ -482,7 +482,8 @@ export function XpYourTurn() {
   const Y = EXPLORE_YOUR_TURN; const root = useRef<HTMLElement>(null); const [on, setOn] = useState(false); const [text, setText] = useState('');
   useEffect(() => { const el = root.current; if (!el || typeof IntersectionObserver === 'undefined') return;
     const io = new IntersectionObserver(([e]) => setOn(e.isIntersecting)); io.observe(el); return () => io.disconnect(); }, []);
-  const models = [...new Set(Y.wall.flat().map((t) => t.model))];
+  /* the credit names the models, then the 3D city's kits apart from them (they are assets, not models) */
+  const all = [...new Set(Y.wall.flat().map((t) => t.model))]; const kits = all.filter((m) => /^3D city · /.test(m)).map((m) => m.replace(/^3D city · /, '')); const models = all.filter((m) => !/^3D city · /.test(m));
   return <section ref={root} className={`xyt${on ? ' on' : ''}`} id="xp-your-turn" data-testid="xp-your-turn" aria-labelledby="xp-h-your-turn">
     <div className="xyt-wall" aria-hidden><div className="xyt-tilt">{Y.wall.map((col, c) => <div key={c} className="xyt-col"><div className="xyt-track">
       {[...col, ...col].map((t, k) => <img key={k} src={t.src} alt="" loading="lazy" decoding="async" draggable={false} className={t.star ? 'is-star' : undefined} />)}</div></div>)}</div></div>
@@ -498,6 +499,6 @@ export function XpYourTurn() {
       <nav className="xyt-tabs" aria-label="Or start in">{Y.tabs.map((t) => <Link key={t.label} to={t.href} data-testid={`xp-your-turn-tab-${t.label.toLowerCase()}`}>{t.label}</Link>)}</nav>
       <small className="xyt-note">{Y.note}</small>
     </div>
-    <p className="xyt-credit" data-testid="xp-your-turn-credit">On the wall: {models.join(' · ')}</p>
+    <p className="xyt-credit" data-testid="xp-your-turn-credit">On the wall: {models.join(' · ')}{kits.length > 0 && <span> · 3D city kits by {kits.join(', ')}</span>}</p>
   </section>;
 }
