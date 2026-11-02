@@ -210,7 +210,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
   /* Director was removed (2026-10-23): its old jobs (and stories) still open and play here, with no Recreate (its page now opens Create Video). */
   const retired = job.toolId === 'cinema' || job.toolId === 'director';
   const recreate = sample || recreateHref === null || retired ? null : recreateHref ?? (job as any).example?.recreateHref ?? jobRecreateHref(job, tools);
-  const toVideo = kind === 'image' && job.id && !sample ? `${VIDEO_PAGE}?fromJob=${encodeURIComponent(job.id)}&as=image&out=${outIx}` : null;
+  const toVideo = kind === 'image' && !isVectorUrl(cur.url) /* an SVG goes to no model: Download PNG first */ && job.id && !sample ? `${VIDEO_PAGE}?fromJob=${encodeURIComponent(job.id)}&as=image&out=${outIx}` : null;
   const download = <a className="btn rv-dl" data-testid="rv-download" href={cleanHref(cur.url)} download={appFileName(`${job.id}-${cur.label}`, ext)}><DownloadIcon size={15} />{storyShots && !showingOriginal ? 'Download film' : 'Download'}</a>;
   const rcCost = rcPrice ? (rcPrice.needsKey && rcPrice.runnable === false ? 'Needs a key' : (rcPrice as any).demo ? 'Sample' : shownCredits(rcPrice) === 0 ? 'Free' : runPrice({ own: ownAccountsNow(), credits: shownCredits(rcPrice), runOn: placeOfQuote(rcPrice) }) ?? '') : ''; /* QA #7: the Generate button's words */
   const recreateBtn = (primary: boolean) => recreate && <a href={recreate} onClick={goClick(recreate, onClose)} className={`btn ${primary ? 'rv-primary' : 'rv-second'} recreate-btn`} data-action="recreate" data-testid="rv-recreate"><span aria-hidden>↻</span>Recreate{rcCost && <span className="rv-cost" data-testid="rv-recreate-cost">{rcCost}</span>}</a>;
@@ -226,7 +226,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
     return r === undefined ? { k: a, label, icon, testid, dis: 'Checking…' } : !r || r.available === false || !r.url ? { k: a, label, icon, testid, dis: r?.reason ?? 'Not available for this result' }
       : { k: a, label, icon, testid, href: handoffHome(r.url), onClick: goClick(handoffHome(r.url), onClose) }; };
   /* Add logo: always findable on your image and video results; with a brand that has a logo it turns on the stage stamp, else it leads to Assets › Brands */
-  const logoBase = viewer && (medium === 'image' || medium === 'video') && !sample && owner && !(job as any).deletedAt && job.status === 'done' && !showingOriginal && !lys && /^\/files\//.test(cur.url);
+  const logoBase = viewer && (medium === 'image' || medium === 'video') && !sample && owner && !(job as any).deletedAt && job.status === 'done' && !showingOriginal && !lys && /^\/files\//.test(cur.url) && !isVectorUrl(cur.url) /* an SVG takes no logo stamp */;
   const logoItem = (): MItem | null => { if (!logoBase) return null; const k = stampKit;
     if (adjOk && adKit) return adj ? { k: 'logo', label: 'Reset logo', icon: <BrandIcon size={16} />, testid: 'rv-adjust-logo', pressed: true, hint: 'Back to the logo as first placed', onClick: () => endAdjust(adjKey) }
       : { k: 'logo', label: 'Adjust logo', icon: <BrandIcon size={16} />, testid: 'rv-adjust-logo', hint: 'Move, resize or take off the logo. The picture as made stays as it is.', onClick: openAdjust };
@@ -246,11 +246,11 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
       asIs && medium === 'video' && job.id ? { k: 'gif', label: '', icon: null, testid: 'rv-gif', node: <GifButton key={cur.url} jobId={job.id} url={cur.url} name={appFileName(`${job.id}-${cur.label}`, 'gif')} /> } : null,
       asIs && job.id && owner && !sample && medium === 'image' && canSaveLook(job) ? { k: 'look', label: 'Save as look', icon: <PaletteIcon size={16} />, testid: 'rv-save-look', hint: 'Keep this prompt, model and settings as a look you can reuse', onClick: () => openSaveLook({ job, output: outIx }) } : null,
     ].filter(Boolean) as MItem[];
-    const editTab = viewer && owner && !standIn && (medium === 'image' || medium === 'video') && !(job as any).deletedAt;
+    const editTab = viewer && owner && !standIn && (medium === 'image' || medium === 'video') && !(job as any).deletedAt && !isVectorUrl(cur.url); /* an SVG goes to no other tool (Download PNG first) */
     /* the viewer: frame / Make it talk shortcuts that didn't fit the tiles, then "Use it in…" (the Edit tab). The card: its tool rows. */
     let use: MItem[] = editTab ? [...overflow.filter(t => ['useframe', 'saveframe', 'talk'].includes(t.k)),
       { k: 'useit', label: 'Use it in…', icon: <ToolIcon size={16} />, testid: 'rm-use-it', trail: '›', hint: 'Relight, upscale, make a video and more, in the Edit tab', onClick: () => { setVTab('edit'); loadRows(); } }]
-      : viewer ? overflow : !asIs ? [] : medium === 'image' ? [rmTool('relight', 'Relight', 'rv-relight', <LightIcon size={16} />), rmTool('upscale', 'Upscale', 'rv-upscale', <UpscaleIcon size={16} />), rmTool('vector', 'Make it a vector', 'rv-vector', <VectorIcon size={16} />),
+      : viewer ? overflow : !asIs || isVectorUrl(cur.url) /* an SVG goes to no other tool */ ? [] : medium === 'image' ? [rmTool('relight', 'Relight', 'rv-relight', <LightIcon size={16} />), rmTool('upscale', 'Upscale', 'rv-upscale', <UpscaleIcon size={16} />), rmTool('vector', 'Make it a vector', 'rv-vector', <VectorIcon size={16} />),
         ...(job.id && !sample ? [{ k: 'to3d', label: 'Make it 3D', icon: <CubeIcon size={16} />, testid: 'rv-send-3d', hint: 'Turn this picture into a 3D model', href: sendTo3dHref(job.id, outIx), onClick: goClick(sendTo3dHref(job.id, outIx), onClose) }] : [])]
       : medium === 'video' ? [rmTool('upscale', 'Upscale', 'rv-upscale', <UpscaleIcon size={16} />), rmTool('finish', 'Finish', 'rv-finish', <FinishIcon size={16} />), rmTool('reshoot', 'Re-shoot', 'rv-reshoot', <ReshootIcon size={16} />),
         ...(silent ? [] : [rmTool('translate', 'Translate', 'rv-translate', <TranslateIcon size={16} />), rmTool('change-voice', 'Change voice', 'rv-change-voice', <ChangeVoiceIcon size={16} />)])] : [];
@@ -358,7 +358,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
     const qs = `fromJob=${encodeURIComponent(job.id)}&out=${outIx}`;
     const trashed = !!(job as any).deletedAt;
     const live = !standIn && !showingOriginal && !!job.id && !trashed;
-    const canHand = live && kind === 'image';
+    const canHand = live && kind === 'image' && !isVectorUrl(cur.url); /* an SVG (Image to vector) is never handed to a model as an input */
     const refUrl = canHand ? (tools?.length ? refTarget(job, tools, outIx)?.url : null) ?? `${IMAGE_PAGE}?${qs}&as=ref` : null;
     const S = Object.fromEntries(sets) as Record<string, any>;
     const mk = modelOfEngine(job.toolId, (job as any).provider, (job as any).modelKey);

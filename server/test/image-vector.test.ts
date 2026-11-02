@@ -94,6 +94,10 @@ try {
   assert.equal(f.headers.get('content-disposition'), null); assert.match(await f.text(), /<svg[\s\S]*<path/);
   ok(`local trace: ${job.outputs[0].url} served as image/svg+xml under a sandbox CSP, style kept on the job`);
   const pre = (await get(`/api/jobs/${job.id}/prefill?action=recreate`)); assert.equal(pre.status, 200); assert.equal(JSON.stringify(pre.body).includes('illustration'), true, 'Recreate keeps the style');
+  { const fd = new FormData(); fd.append('prompt', 'a flat fox logo'); fd.append('types', '["generate"]'); fd.append('rights', '1');
+    const cj = await wait(((await (await fetch(`${B}/api/tools/create-image/jobs`, { method: 'POST', body: fd })).json()) as any).id); assert.equal(cj.status, 'done');
+    const hv = (await get(`/api/jobs/${cj.id}/prefill?action=vector`)).body; assert.equal(hv.available, true); assert.equal(hv.url, `/image?workflow=image-vector&fromJob=${cj.id}&as=image&out=0`);
+    const hs = (await get(`/api/jobs/${job.id}/prefill?action=vector`)).body; assert.notEqual(hs.available, true, 'an SVG result is not offered again'); }
   ok('Recreate prefills the style');
   const sv = await submit({ provider: 'local-vtracer', rights: '1' }, SVG, 'image/svg+xml'); assert.equal(sv.status, 400); assert.match(sv.body.error, /already a vector/);
   const tx = await submit({ provider: 'local-vtracer', rights: '1' }, TXT); assert.equal(tx.status, 400);

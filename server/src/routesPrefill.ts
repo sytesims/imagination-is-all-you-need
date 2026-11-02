@@ -351,7 +351,7 @@ export async function buildPrefill(app: FastifyInstance, j: Job, q: Q): Promise<
   }
   if (pm.reason) notes.push(pm.reason); if (needs.length) notes.push(`Still to fill before submitting: ${needs.join(', ')}.`);
   const asParam = slot === 'refs' ? 'ref' : slot;
-  const url = `${t.route}?fromJob=${j.id}&as=${asParam}&out=${outIdx}${frame ? `&t=${frameAt}` : ''}${cont ? '&cont=1' : ''}${action === 'director' ? `&mode=${extraForm.mode}&focus=${focus}` : ''}`;
+  const url = `${t.route}${t.route.includes('?') ? '&' : '?'}fromJob=${j.id}&as=${asParam}&out=${outIdx}${frame ? `&t=${frameAt}` : ''}${cont ? '&cont=1' : ''}${action === 'director' ? `&mode=${extraForm.mode}&focus=${focus}` : ''}`;
   const qp = kind === 'video' ? await sizeQuote(t, null, assetUrl) : {}; // Upscale hand-off: the result clip's own size + length
   const fields = schemaFields(t, form, { ...files, [slot]: [assetUrl!] }); // the result shows in its slot; submit sends it via fromJob (or files when re-uploaded)
   return { status: 200, body: { ...base, available: true, reason: pm.reason, providerAvailable: pm.providerAvailable, tool: t.id, toolName: t.name, path: t.route, url, slot, as: asParam, model: pm.model, ...(kind === 'image' && slot !== 'refs' ? { startFrame: assetUrl } : {}), fields, form, files, submit, needs,
