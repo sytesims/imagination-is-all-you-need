@@ -20,26 +20,33 @@ import { cutRange } from '../swapClips.js';
 import { CLOUD_SWAP_MODELS, isCloudSwap, swapRangeSeconds } from '../shared/cloudSwap.js';
 import type { Issue } from './shared.js';
 
-/** Swap range (Video Swap Trim, shared by Person swap and Motion transfer on every model): trimStart / trimEnd in seconds of the uploaded clip. A range is
- *  cut from the upload before anything else reads it (frame-accurate, sound kept), so the job, its price and every route see only that range. Whole
- *  seconds, LIMITS.minSec–LIMITS.maxSec long, anywhere in the clip (a long upload is no longer cut to its first 30 s when a range is given). */
-export async function applySwapTrim(fields: Record<string, string>, files: Record<string, string[]>): Promise<{ trim: { start: number; end: number } | null } | { error: string; issues: Issue[] }> {
+/** Swap range (Video Swap Trim, shared by Person swap and Motion transfer on every model, and since 2026-11-03 by every tool with a clip: clipTrim.ts
+ *  withClipTrim): trimStart / trimEnd in seconds of the uploaded clip. A range is cut from the upload before anything else reads it (frame-accurate,
+ *  sound kept), so the job, its price and every route see only that range. Whole seconds, lim.min–lim.max long (the tool's and model's own rule:
+ *  clipTrim.ts clipTrimLimits; default the shared upload limits), anywhere in the clip. Cutting twice is a no-op (an app wrapping a base tool). */
+const CUT = new WeakMap<object, { start: number; end: number } | null>();
+export async function applySwapTrim(fields: Record<string, string>, files: Record<string, string[]>, lim: { min: number; max: number } = { min: LIMITS.minSec, max: LIMITS.maxSec }): Promise<{ trim: { start: number; end: number } | null } | { error: string; issues: Issue[] }> {
+  if (CUT.has(files)) return { trim: CUT.get(files) ?? null };
   const has = (k: string) => fields[k] != null && String(fields[k]).trim() !== '';
   if (!has('trimStart') && !has('trimEnd')) return { trim: null };
-  const video = files.video?.[0]; if (!video) return { trim: null }; // parseCommon reports the missing video
+  const video = files.video?.[0]; if (!video || /\.(png|jpe?g|webp|gif)$/i.test(video)) return { trim: null }; // parseCommon reports the missing video (Re-shoot: a photo has no range)
+  { const m = /-range-(\d+)-(\d+)\.mp4$/.exec(video); const s0 = Math.round(Number(fields.trimStart || 0) * 100), e0 = Math.round(Number(fields.trimEnd) * 100);
+    if (m && Number(m[1]) === s0 && Number(m[2]) === e0) return { trim: { start: s0 / 100, end: e0 / 100 } }; } // already this range (an app handing its files on to its base tool)
   const p = await probe(path.join(DATA_DIR, video)); if (!p || !(p.duration > 0)) return { trim: null }; // parseCommon reports an unreadable clip
   const bad = (message: string) => ({ error: message, issues: [{ code: 'invalid_trim', field: 'trim', message }] });
-  const start = has('trimStart') ? Number(fields.trimStart) : 0; const end = has('trimEnd') ? Number(fields.trimEnd) : Math.min(p.duration, start + LIMITS.maxSec);
+  const start = has('trimStart') ? Number(fields.trimStart) : 0; const end = has('trimEnd') ? Number(fields.trimEnd) : Math.min(p.duration, start + lim.max);
   if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start) return bad('The swap range must start before it ends, inside your clip.');
   if (end > p.duration + 0.05) return bad(`The swap range ends at ${end} s, after your clip ends (${Math.round(p.duration * 10) / 10} s).`);
   const len = Math.round((end - start) * 100) / 100;
-  if (len < LIMITS.minSec - 0.01) return bad(`The swap range must be at least ${LIMITS.minSec} s; yours is ${len} s.`);
-  if (len > LIMITS.maxSec + 0.01) return bad(`The swap range can be at most ${LIMITS.maxSec} s; yours is ${len} s. Trim it or split the clip.`);
-  if (start < 0.05 && Math.abs(end - p.duration) < 0.05) return { trim: { start: 0, end: Math.round(end * 100) / 100 } }; // the whole clip: nothing to cut (the range stays what was asked: 0–8 on an 8.04 s file bills 8 s, as quoted)
+  if (len < lim.min - 0.01) return bad(`The swap range must be at least ${lim.min} s; yours is ${len} s.`);
+  if (len > lim.max + 0.01) return bad(`The swap range can be at most ${lim.max} s; yours is ${len} s. Trim it or split the clip.`);
+  if (start < 0.05 && Math.abs(end - p.duration) < 0.05) { const t = { start: 0, end: Math.round(end * 100) / 100 }; CUT.set(files, t); return { trim: t }; } // the whole clip: nothing to cut (the range stays what was asked: 0–8 on an 8.04 s file bills 8 s, as quoted)
   const cut = video.replace(/(\.[^.]+)?$/, `-range-${Math.round(start * 100)}-${Math.round(end * 100)}.mp4`);
   try { await cutRange(path.join(DATA_DIR, video), path.join(DATA_DIR, cut), start, len); } catch (e) { return bad(`Couldn't cut the swap range: ${e instanceof Error ? e.message : String(e)}.`); }
-  files.video = [cut]; return { trim: { start, end } };
+  files.video = [cut]; CUT.set(files, { start, end }); return { trim: { start, end } };
 }
+/** The range rule of a swap tool on the picked model (clipTrim.ts, loaded late: it reads the Edit Video tools, which load after this file). */
+const swapLimits = async (toolId: string, provider?: string) => (await import('../clipTrim.js')).clipTrimLimits(toolId, provider);
 /** Video Swap models in quality order. Cloud person swap first (Kling 3.0 Omni Edit is the default: cheapest serious hosted edit; Seedance 2.5 Edit is the
  *  higher-quality, longer one), then the local models (Wan 2.2 Animate, H3 Character Swap backup), which stay available but are not the default. */
 const SWAP_PROVIDERS = ['router-kling-edit', 'router-seedance-25-edit', 'comfy-open', 'comfy-h3-charswap']; // plain Seedance 2.0 isn't listed: its Router body isn't wired for swaps and Seedance 2.5 Edit covers it (2026-11-02)
@@ -146,8 +153,9 @@ export const objectSwapTool: ToolDef = {
   // 2026-10-25), so it is the default cloud swap.
   providers: SWAP_PROVIDERS,
   async parseInput(fields, files) {
-    const t = await applySwapTrim(fields, files); if ('error' in t) return t;
-    const c = await parseCommon(fields, files, { refsRequired: true });
+    const lim = await swapLimits('object-swap', fields.provider);
+    const t = await applySwapTrim(fields, files, lim); if ('error' in t) return t;
+    const c = await parseCommon(fields, files, { refsRequired: true, minSec: Math.min(LIMITS.minSec, lim.min) /* H3 takes 2 s ranges */ });
     if ('error' in c) return c;
     // [R6] prompt is optional when refs are given; only "no refs and no prompt" is an error (refs are required here anyway).
     if (!c.refPaths.length && !fields.prompt?.trim()) return { error: 'Add a reference image or describe the change.', issues: [{ code: 'required', field: 'prompt', message: 'Add a reference image or describe the change.' }] };
@@ -197,8 +205,9 @@ export const motionTransferTool: ToolDef = {
   gpuSecPerSec: GPU_DEFAULT, stages: motionStages,
   providers: SWAP_PROVIDERS.filter((id) => id !== 'comfy-h3-charswap'), // H3 remains on Object / Person Swap, not Motion Control.
   async parseInput(fields, files) {
-    const t = await applySwapTrim(fields, files); if ('error' in t) return t;
-    const c = await parseCommon(fields, files, { refsRequired: true });
+    const lim = await swapLimits('motion-transfer', fields.provider);
+    const t = await applySwapTrim(fields, files, lim); if ('error' in t) return t;
+    const c = await parseCommon(fields, files, { refsRequired: true, minSec: Math.min(LIMITS.minSec, lim.min) });
     if ('error' in c) return c;
     /* a cloud model takes every character image in ONE request (Image 1, Image 2…: several people in one clip), never split into ref groups */
     const one = isCloudSwap(fields.provider) ? { refBatches: [c.refPaths], refGroupLabels: ['Result'], warnings: c.warnings.filter((w) => !/ references are split into /.test(w)) } : {};

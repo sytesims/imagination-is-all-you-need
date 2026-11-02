@@ -5,6 +5,7 @@
  * It renders as one more chip with a popover in the same bar, adds its fields to the same form and its words to the same Generate checks.
  */
 import type { ReactNode, RefObject } from 'react';
+import type { Trim } from '../../../shared/TrimRange';
 import type { JobState, ToolInfo } from '../../../api';
 import type { VideoBar, VBarControl, VBarSlot } from '../../../../../server/src/shared/videoBar';
 import type { VideoWorkflow } from '../../../../../server/src/shared/videoWorkflows';
@@ -20,6 +21,7 @@ export interface BarLive extends BarCtx {
   prov: string; setProvider: (id: string) => void; providers: Provider[]; files: Record<string, SlotFile[]>; prompt: string; /** Extend: pre-fill the next segment's words */ setPrompt: (p: string) => void; busy: boolean;
   pop: string; setPop: (p: string) => void; anchorOf: (gid: string) => { readonly current: HTMLButtonElement | null }; chipRef: (gid: string) => (el: HTMLButtonElement | null) => void;
   dock: RefObject<HTMLDivElement>; valOf: (field: string) => string; slotShown: (s: VBarSlot) => boolean;
+  /** the part of the clip this run uses (the Trim sheet; null: no clip, or a tool without a range) */ trim: Trim | null;
 }
 /** A reason Generate can't run yet, opening the extra's own popover (group) or a slot's picker (slot). */
 export interface ExtraNeed { missing: string; group?: string; slot?: string; /** the fix is another model */ model?: boolean }
@@ -33,6 +35,7 @@ export interface BarExtra {
   /** fields set on top of the recipe's (wins over them) */ form?: (c: BarLive) => Record<string, string>;
   /** the price on Generate when this run is more than one job (Talking Video: the voice made from the script + the talking video) */ wrapQuote?: (q: any, c: BarLive) => any;
   /** a step before the submit (Talking Video: make the voice from the script first, then send it as the speech); null = stop, nothing sent */ beforeSubmit?: (fd: FormData, c: BarLive) => Promise<FormData | null>;
+  /** the Trim sheet's words on this workflow (Person swap: Who to swap follows the start; cloud swaps: passes) */ trimNote?: (c: BarLive, r: Trim) => { note?: string | null; more?: string[] };
   /** fields to leave out (the old screen didn't send them in this state) */ omit?: (c: BarLive) => string[];
   files?: (c: BarLive) => [string, File][];
   /** quote fields set on top of the bar's own (null drops one) */ quote?: (c: BarLive) => Record<string, string | null>;

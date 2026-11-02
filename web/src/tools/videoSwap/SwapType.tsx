@@ -86,6 +86,7 @@ export function ObjectMask({ video, provider, maskMode, setMaskMode, maskPrompt,
     const fd = new FormData(); fd.append('video', video.file); fd.append('swapType', swapType); fd.append('maskMode', mode); fd.append('maskGrow', g); // the preview always honours grow; the job only on Wan Animate
     if (mode === 'text') fd.append('maskPrompt', maskPrompt.trim());
     if (mode === 'point' && pt) { fd.append('point', `${pt.x.toFixed(4)},${pt.y.toFixed(4)},${pt.t.toFixed(2)}`); fd.append('t', pt.t.toFixed(2)); }
+    else if (video.start) fd.append('t', video.start.toFixed(2)); /* the range's first frame (the Trim sheet), as the run sees it */
     if (mode === 'upload' && matte) fd.append('matte', matte);
     let r: Response | null = null; try { r = await fetch('/api/tools/object-swap/mask-preview', { method: 'POST', body: fd }); } catch { r = null; }
     const j: any = r ? await r.json().catch(() => null) : null;
@@ -96,7 +97,7 @@ export function ObjectMask({ video, provider, maskMode, setMaskMode, maskPrompt,
     setPv(j?.maskUrl && Number(j.count) > 0 ? { state: 'found', url: j.maskUrl, frameUrl: j.frameUrl, count: Number(j.count), mock: !!j.mock } : { state: 'none', frameUrl: j?.frameUrl, msg: j?.message ?? (mode === 'text' ? `Couldn't find '${maskPrompt.trim()}'. Try another word or click it.` : "Couldn't find anything there. Try another spot.") });
   };
   /** Click on the previewed frame: switch to Click it at that spot and preview again. */
-  const clickFrame = (e: React.MouseEvent<HTMLImageElement>) => { const b = e.currentTarget.getBoundingClientRect(); const p: Pt = { x: Math.min(1, Math.max(0, (e.clientX - b.left) / b.width)), y: Math.min(1, Math.max(0, (e.clientY - b.top) / b.height)), t: point?.t ?? 0 }; setPoint(p); setMaskMode('point'); void runPreview({ mode: 'point', point: p }); };
+  const clickFrame = (e: React.MouseEvent<HTMLImageElement>) => { const b = e.currentTarget.getBoundingClientRect(); const p: Pt = { x: Math.min(1, Math.max(0, (e.clientX - b.left) / b.width)), y: Math.min(1, Math.max(0, (e.clientY - b.top) / b.height)), t: point?.t ?? video?.start ?? 0 }; setPoint(p); setMaskMode('point'); void runPreview({ mode: 'point', point: p }); };
   const long = maskPromptTooLong(maskPrompt);
   const methods = (lucy ? [['none', 'None']] : [['text', 'Describe it'], ['point', 'Click it'], ['upload', 'Upload mask']]) as readonly (readonly [MaskMode, string])[];
   return <div className={`sw-mask ${locked ? 'locked' : ''}`} data-testid="swap-mask">
