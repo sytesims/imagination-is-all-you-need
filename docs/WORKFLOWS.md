@@ -1130,7 +1130,7 @@ One clip, kept going past 20 seconds.
 | | |
 |---|---|
 | Steps | 1. Make the opening shot: [Create Video](#v-create) · MiniMax H3<br>2. Continue the same action and camera: [Make a clip longer](#v-extend) · H3 Extend |
-| Hand-off | On a video result, Extend picks it up; “Continue from last frame” works on any model. |
+| Hand-off | On a video result, Extend picks it up; “Continue from last frame” starts a new clip from its last frame. |
 | Example | [h3-koi-take.mp4](../web/public/showcase/h3-koi-take.mp4) |
 
 <a id="chain-product-ad"></a>
