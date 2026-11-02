@@ -1,5 +1,5 @@
 import { videoWorkflowOfTool, videoWorkflowHref, videoRedirect } from '../../server/src/shared/videoWorkflows';
-import { placeVideoPlugins } from '../../server/src/shared/pluginPlacement';
+import { placePlugins } from '../../server/src/shared/pluginPlacement';
 import { applyHandoff } from './shared/handoffFiles';
 import { applyLibraryRefs } from './shared/libraryFiles';
 import { feedProjectId } from './shared/feedProject';
@@ -105,7 +105,7 @@ export async function listTools(): Promise<ToolInfo[]> {
   let r: Response;
   try { r = await fetch('/api/tools'); } catch (e: any) { throw new ToolsLoadError(e?.kind === 'server_restarting' || e?.errorType === 'server_restarting' ? SERVER_RESTARTING : 'Can’t reach the server. Retrying in 3 s.', 0); }
   if (!r.ok) { const b = await r.json().catch(() => ({} as any)); throw new ToolsLoadError(httpErrorText(b, r.status, `Failed to load tools (HTTP ${r.status}).`), r.status, b.retryable ?? r.status >= 500, b.retryAfterMs ?? 3000); }
-  const raw = await r.json() as ToolInfo[]; placeVideoPlugins(raw as any); /* plugins with tab "video" join the Video workflows before routes are set (shared/pluginPlacement.ts) */
+  const raw = await r.json() as ToolInfo[]; placePlugins(raw as any); /* plugins with a tab join that tab's workflows (Video list + bar, Image feeds and links) before routes are set (shared/pluginPlacement.ts) */
   /* a link to a video plugin's own page (/tools/cutout) that loaded before the list did: open its workflow now, like the built-ins' old links */
   if (typeof location !== 'undefined' && location.pathname.startsWith('/tools/')) { const to = videoRedirect(location.pathname, location.search, location.hash);
     if (to) { history.replaceState(history.state, '', to); dispatchEvent(new PopStateEvent('popstate')); } }

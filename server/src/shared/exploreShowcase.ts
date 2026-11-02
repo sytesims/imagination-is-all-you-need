@@ -68,13 +68,13 @@ const shopAds: WorkVariant[] = SHOP_ADS.map(([id, label]) => ({ key: 'shop-ad-pa
 /** "Made for your work" (user pick 2026-11-01: lead with what people and businesses get). Real runs of a made-up brand, nothing staged: every
  *  picture is what the run returned. Shown as audience tabs (web/src/ui/explore/ExploreWork.tsx). */
 export const EXPLORE_WORK = {
-  eyebrow: 'Made for your work', title: ['Every finish.', 'Every ad.'],
-  line: 'Start from the photos you already have. Every result here is a real run, shown with what it cost.',
+  eyebrow: 'Made for your work', title: ['Shoot every product.', 'Skip the studio.'],
+  line: 'Got a shop or a brand? Turn one product photo into every finish and ads ready to post.',
   tabs: [{ id: 'shop', label: 'Shop' }, { id: 'ads', label: 'Ads' }],
   items: [
-    { id: 'material-swap', tab: 'shop', flow: 'Material Swap', title: 'Show every finish before you make one.', line: 'One photo of your product, one of the fabric. It comes back in that material, in the same room and the same light.', cta: 'Try your own material',
+    { id: 'material-swap', tab: 'shop', flow: 'Material Swap', title: 'Show your product in every fabric.', line: 'Snap your product once, add a photo of the fabric, and see it in that material, in the same room and the same light. Ready for your store page.', cta: 'Try it on your product',
       per: 'each', compare: true, before: { url: P('shop-armchair-in.webp'), label: 'Your photo' }, variants: shopSwap, priceKey: 'shop-swap-velvet' },
-    { id: 'ad-pack', tab: 'ads', flow: 'Ad Pack', title: 'One photo. Three ads ready to post.', line: 'Add a product photo, a headline and your offer. Back come three finished feed ads: a studio shot, one in use and an offer poster.', cta: 'Make your ads',
+    { id: 'ad-pack', tab: 'ads', flow: 'Ad Pack', title: 'Turn one photo into three ads.', line: 'Add your product, a headline and an offer. Get a studio shot, one in use, and an offer poster, ready for your feed.', cta: 'Make your ads',
       per: 'for 3', compare: false, before: { url: P('shop-perfume-in-480.webp'), label: 'Product photo' }, variants: shopAds, priceKey: 'shop-ad-pack' },
   ] as WorkItem[],
   /** the short form of each panel's button (the workflow opened as Recreate, the example's photos and words already in) */ cta: 'Make your own',
@@ -429,6 +429,27 @@ export const EXPLORE_DANCE = {
  *  alpha for Safari; plus a still (the standing pose) for reduced motion and before he moves. Order: the happy bounce first, the one where he
  *  turns his back never first. */
 const SONG_STYLE = 'English, hip-hop electro-pop, 122 BPM, D major, punchy 808s, bouncy hip-hop groove, shiny electro-pop synths, claps, energetic chant vocal, group chant, upbeat, fun, playful';
+/** One step of the song's making-of: a real run (its job, model, place and billed price) or a plain manual step (`manual`: no model, no app). */
+export interface SongMakingStep {
+  role: string; /** the app page it ran on ("Create Image") */ tool?: string; model?: string; place: string;
+  /** USD for one run (0 = free); `est`: only Comfy's GPU-time estimate was recorded; `runs`: how many runs at that price */ usd: number; est?: boolean; runs?: number;
+  /** the job ids (read-only look-ups, for tests and credits) */ jobs: string[]; /** a few plain words under the line */ note?: string; manual?: boolean;
+  /** a still (WebP, ≤ 640 px) and, when it moves, a short looping clip (≤ 1 MB, no sound); `keyed`: the keyed dance clips (webm / HEVC with alpha) */
+  img?: string; clip?: string; keyed?: boolean; w?: number; h?: number;
+}
+/** "See how we made it" (2026-11-02): SyteSim and his song, step by step, from the real runs (prices as billed; the dances as Comfy's GPU-time
+ *  estimate). It starts at the finished design: the reference picture behind step 1 is never shown. Nothing here was generated for Explore. */
+const SONG_MAKING: SongMakingStep[] = [
+  { role: 'Design the character', tool: 'Create Image', model: 'GPT Image 2.5 Flare', place: 'Comfy Cloud', usd: 0.0214, jobs: ['f4a2e4f5'], img: P('song-making-design.webp'), w: 480, h: 640 },
+  { role: 'Character sheet', tool: 'Character Sheet', model: 'GPT Image 2.5 Flare', place: 'Comfy Cloud', usd: 0.0298, jobs: ['c93e3bfb'], img: P('song-making-sheet.webp'), w: 640, h: 360 },
+  { role: 'Pose on a green screen', tool: 'Create Image', model: 'GPT Image 2.5 Flare', place: 'Comfy Cloud', usd: 0.0279, jobs: ['f29b13cb'], img: P('song-making-green.webp'), w: 360, h: 640 },
+  { role: 'Five dances', model: 'Pika H3 Flex', place: 'Comfy Cloud', usd: 0.1, est: true, runs: 5, jobs: ['010377b4', 'ed10d1bd', 'c6525d78', '51c3c7ae', 'a29b84b2'],
+    img: P('song-making-dances.webp'), clip: P('song-making-dances.mp4'), w: 270, h: 486 },
+  { role: 'Green removed', place: 'Done in the edit', usd: 0, manual: true, jobs: [], note: 'Not an app step: we keyed the green out in a video editor.', keyed: true },
+  { role: 'The song', tool: 'Audio › Music', model: 'YuE2', place: LOCAL_LABEL, usd: 0, jobs: [], note: 'Our own lyrics' },
+];
+/** The whole chain's price: each run as billed, ≈ because the dances are an estimate. */
+const songMakingUsd = SONG_MAKING.reduce((n, s) => n + s.usd * (s.runs ?? 1), 0);
 export const EXPLORE_SONG = {
   eyebrow: 'Music',
   title: ['Write a song.', 'Watch it dance.'],
@@ -438,6 +459,7 @@ export const EXPLORE_SONG = {
     lyric: 'Imagination is all you need. Dream it up and press go.' },
   dancer: { still: '/showcase/mascot-dance-still.webp', width: 360, height: 648, name: 'SyteSim', /** each dance plays this many times, then the next one */ repeats: 2,
     dances: ['bounce', 'groove', 'moonwalk', 'turn', 'pika'].map((id) => ({ id, webm: `/showcase/mascot-dance-${id}.webm`, mov: `/showcase/mascot-dance-${id}.mov` })) },
+  making: { label: 'How we made it', steps: SONG_MAKING, usd: songMakingUsd, total: chipUsd(songMakingUsd, SONG_MAKING.some((s) => s.est)) },
   /** Audio › Music with YuE2 and this song's style in the box (the lyrics are yours to write) */
   cta: { label: 'Make your own', href: `${audioRoute('music')}&${new URLSearchParams({ model: 'yue2', prompt: SONG_STYLE })}` },
 };

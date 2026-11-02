@@ -6,6 +6,7 @@ export interface ToolInputSpec {
   required?: boolean;
   accept?: string;
   options?: string[];
+  /** number fields (a plugin's settings): the range the bar's slider offers */ min?: number;
   max?: number;
   /** Per-file byte cap (e.g. Restyle character refs: 64 MiB). */
   maxBytes?: number;
