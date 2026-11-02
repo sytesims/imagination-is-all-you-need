@@ -5381,15 +5381,16 @@ html body .mk-tile.ic-dot .mk-svg{width:16px;height:16px}
 /* Imagination Is All You Need wordmark (2026-10-23): Orbit mark + two-tier name. Tier 1 "Imagination" in the display font,
    tier 2 "is all you need" smaller and quieter under it (wm-stack) or beside it (wm-inline). Fits the 52px header; the scrolled 36px bar keeps tier 1 only. */
 .wm-name{display:inline-flex;flex-direction:column;justify-content:center;gap:1px;min-width:0;white-space:nowrap;text-align:left}
-.wm-t1{font:700 15px/16px var(--font-display);letter-spacing:-.01em;color:#F7F7F8}
-.wm-t2{font:700 15px/16px var(--font-display);letter-spacing:-.01em;color:var(--accent)}
+.wm-t1{font:700 17px/18px var(--font-display);letter-spacing:-.02em;color:#F7F7F8}
+.wm-t2{font:500 10.5px/12px Inter,system-ui,sans-serif;letter-spacing:.06em;color:var(--accent)}
 .wm-inline .wm-name{flex-direction:row;align-items:baseline;gap:6px}
 .wm-inline .wm-t2{font-size:13px;line-height:18px;letter-spacing:0;color:rgb(168,168,168)}
 .hn .hn-logo{width:auto!important;justify-content:flex-start!important;gap:0;margin-right:8px!important}
 .hn .hn-logo .wm{gap:8px}
 .hn-scrolled .hn-logo{width:auto!important}
-.hn-scrolled .hn-logo :is(.wm-t1,.wm-t2){font-size:13px;line-height:14px} /* the full name stays: both lines, a little smaller */
-.md-wm .wm{gap:10px}.md-wm :is(.wm-t1,.wm-t2){font-size:16px;line-height:18px}
+.hn-scrolled .hn-logo .wm-t2{display:none}
+.hn-scrolled .hn-logo .wm-t1{font-size:15px;line-height:16px}
+.md-wm .wm{gap:10px}.md-wm .wm-t1{font-size:18px;line-height:20px}
 
 /* One header for the account-menu pages (Spend / Usage, Pricing, Assets sections, Settings, Docs): a small grey eyebrow, a 28px Space Grotesk title in
    sentence case, a grey lede. Added with className "mh" on each page's header block. */
