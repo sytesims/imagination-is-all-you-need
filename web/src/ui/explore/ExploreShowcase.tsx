@@ -9,9 +9,8 @@
  *  - XpKoi: "Make your own cartoon." (letterbox presentation): a MiniMax H3 take extended by H3 Extend (Comfy Cloud) into one 20 s take, shown
  *    wide (shared ShowcaseFilm, letterbox variant) between bars that carry the timecode, the models and a progress line notched at the join; then
  *    "[frame] 10 s + [frame] 10 s = one 20 s take", the two runs' prices, Recreate (Extend with the first 10 s and the prompt) and Start your scene (Video with MiniMax H3).
- *  - XpSwap: chapter 1, "Same dance. Two new casts." Two swaps of one dance side by side, each a before / after slider over the original (shared
- *    CompareFrame), all in step (shared useSyncClips): H3 Character Swap (her, one photo) and Kling 3.0 Omni Edit (both, two photos), each with its
- *    model, price and Recreate; both upscaled.
+ *  - XpSwap: chapter 1, "Same dance. Two new casts." Three in a row, all in step (shared useSyncClips): the original, H3 Character Swap (her, one
+ *    photo) and Kling 3.0 Omni Edit (both, two photos); under each its label and run line (model, place, price, the photos, Recreate); both upscaled.
  *  - XpLayers: chapter 2, "One picture. Every layer." An Image to layers run (Seedream 5.0 Flash, Comfy Router): copy and steps (shared ChapterText),
  *    the run's animation on a loop (shared HoverClip, on screen only; reduced motion: its poster) with the shared SoundToggle (the sound director;
  *    turning it on from its button restarts the clip so the sound lines up with each layer), then the input → its 13 layers (shared
@@ -47,11 +46,9 @@ import { HeroReel, type ReelPhase } from '../../shared/HeroReel';
 import { Model3D } from '../../shared/model3d';
 import { SoundToggle } from '../../shared/SoundToggle';
 import { useSyncClips } from '../../shared/SyncClips';
-import { CompareFrame } from '../../shared/CompareSlider';
 import { HoverClip, prefersReducedMotion } from '../../shared/HoverClip';
 import { useDirectedSound } from '../../shared/soundDirector';
 import { LayerTile } from '../../shared/LayerStack';
-import { Segmented } from '../../shared/BarPop';
 import { AudioCover, AudioVizLayer, useAudioViz } from '../../shared/AudioViz';
 import { Waveform } from '../../shared/Waveform';
 import { primeAudio } from '../../shared/audioGraph';
@@ -206,28 +203,33 @@ type SwapRunView = ReturnType<typeof swapRuns>[number];
 const SwapUpscaled = ({ runs }: { runs: SwapRunView[] }) => { const h = runs.map((x) => x.f.sharp); const s = h[0]; if (!s) return null;
   const both = runs.length > 1 && h.every((x) => x && x.model === s.model && x.costUsd === s.costUsd);
   return <p className="xps-upscaled on" data-testid="xp-swap-upscaled"><i aria-hidden />{both ? 'Both upscaled' : 'Upscaled'}<span>·</span>{s.model}<span>·</span>{s.place}<span>·</span><b>+${s.costUsd.toFixed(2)}{both ? ' each' : ''}</b></p>; };
-/** the photos a run started from, as small round faces */
-const SwapFaces = ({ run }: { run: SwapRunView }) => <span className="xsd-faces" role="img" aria-label={`${run.r.photos}: who they become`}>{run.photos.map((u) => <img key={u} src={u} alt="" loading="lazy" decoding="async" draggable={false} />)}</span>;
+/** a result's run line, under its media (the Explore rule): model · where it ran · price, then the photos it started from ("from 2 photos") and Recreate */
+const SwapRunLine = ({ run }: { run: SwapRunView }) => { const n = run.photos.length; return <div className="xsw-run">
+  <RunChip c={run.chip} testId={`xp-swap-chip-${run.r.key}`} />
+  <span className="xsw-act"><span className="xsw-from"><span className="xsd-faces" role="img" aria-label={`${run.r.photos}: who they become`}>{run.photos.map((u) => <img key={u} src={u} alt="" loading="lazy" decoding="async" draggable={false} />)}</span>
+    <small>from {n} photo{n === 1 ? '' : 's'}</small></span>
+    <Link to={run.rec} className="xsw-rec" data-testid={`xp-swap-recreate-${run.r.key}`}>Recreate<Arrow /></Link></span></div>; };
 
-/** Chapter 1, "Same dance. Two new casts." (layout A, 2026-10-31): two big cards side by side, each a before / after slider (shared CompareFrame):
- *  the original left of the line, that card's swap right of it (H3 Character Swap: her; Kling 3.0 Omni Edit: both of them). All four clips (the
- *  original under each slider and the two swaps) play in step (shared useSyncClips: the first original leads and carries the sound, one shared
- *  SoundToggle under the headline). Each card keeps its bar: the photos, the model, place and price, and Recreate. Reduced motion: the posters. */
+/** Chapter 1, "Same dance. Two new casts." (2026-11-02, the user's pick A): three in a row, all in step (shared useSyncClips: the original leads and
+ *  carries the sound): Original | she changes (H3 Character Swap) | they both change (Kling 3.0 Omni Edit). Nothing sits on the clips: a short label
+ *  and the run line under each, the one sound button (shared SoundToggle) under the original. Reduced motion: the three frames at 5 s, so they match. */
 export function XpSwap() {
-  const S = EXPLORE_SWAP; const runs = swapRuns(); const g = useSyncClips(4); if (runs.length < 2) return null;
-  const media = (i: number, url: string, poster: string) => g.still ? <img className="xsdc-media" src={poster} alt="" draggable={false} /> : <video {...g.clip(i)} className="xsdc-media" src={url} poster={poster} />;
-  return <section className="xv-sec xsdc" id="xp-swap" data-testid="xp-swap" aria-labelledby="xp-h-swap">
+  const S = EXPLORE_SWAP; const runs = swapRuns(); const g = useSyncClips(3); if (runs.length < 2) return null;
+  const media = (i: number, url: string, poster: string, alt: string) => g.still ? <img className="xsw-media" src={poster} alt={alt} draggable={false} /> : <video {...g.clip(i)} className="xsw-media" src={url} poster={poster} aria-label={alt} />;
+  return <section className="xv-sec xsdc xsw" id="xp-swap" data-testid="xp-swap" aria-labelledby="xp-h-swap">
     <header className="xsdc-head">
       <h2 id="xp-h-swap" className="xps-h xsdc-h">{S.title.map((l) => <span key={l}>{l}</span>)}</h2>
       <p className="xps-p xsdc-p">{S.line}</p>
-      <span className="xsdc-snd">{!g.still && <SoundToggle on={g.sound.lit} waiting={g.sound.waiting} label={g.sound.hint} onToggle={g.toggleSound} testId="xp-swap-sound" />}</span>
     </header>
-    <div ref={g.root} className="xsdc-stage" data-testid="xp-swap-danceoff">
-      {runs.map((x, k) => <figure key={x.r.key} className="xsdc-tile" data-testid={`xp-swap-run-${x.r.key}`}>
-        <CompareFrame className="xsdc-cmp" intro="nudge" start={65} testId="xp-swap-slider" labels={[S.original.label, x.r.who]}
-          before={media(k, S.original.url, x.r.originalPoster ?? S.original.poster)} after={media(k + 2, x.url, x.poster)} />
-        <figcaption className="xsdc-card"><SwapFaces run={x} /><span className="xsdc-meta"><RunChip c={x.chip} testId={`xp-swap-chip-${x.r.key}`} /><small>{x.r.photos}</small></span>
-          <Link to={x.rec} className="xsdc-rec" data-testid={`xp-swap-recreate-${x.r.key}`}>Recreate<Arrow /></Link></figcaption>
+    <div ref={g.root} className="xsw-trio" data-testid="xp-swap-trio">
+      <figure className="xsw-cell is-orig" data-testid="xp-swap-original">
+        <div className="xsw-frame">{media(0, S.original.url, S.original.poster5, 'The original dance: two dancers')}</div>
+        <figcaption className="xsw-cap"><span className="xsw-name"><b>{S.original.label}</b><small>{S.original.sub}</small></span>
+          {!g.still && <span className="xsw-snd"><SoundToggle on={g.sound.lit} waiting={g.sound.waiting} label={g.sound.hint} onToggle={g.toggleSound} testId="xp-swap-sound" /></span>}</figcaption>
+      </figure>
+      {runs.map((x, k) => <figure key={x.r.key} className="xsw-cell" data-testid={`xp-swap-run-${x.r.key}`}>
+        <div className="xsw-frame">{media(k + 1, x.url, x.r.poster5 ?? x.poster, `${x.r.who}: the same dance, ${x.f.model}`)}</div>
+        <figcaption className="xsw-cap"><span className="xsw-name"><b>{x.r.who}</b></span><SwapRunLine run={x} /></figcaption>
       </figure>)}
     </div>
     <div className="xsdc-foot"><SwapUpscaled runs={runs} /><span className="xps-ctas">{runs.map((x, k) => <Link key={x.r.key} to={x.r.cta.href} className={k ? 'xv-quiet' : 'xv-btn'} data-testid={`xp-swap-cta-${x.r.key}`}>{x.r.cta.label}{!k && <Arrow />}</Link>)}</span></div>

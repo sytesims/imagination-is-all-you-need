@@ -55,6 +55,6 @@ const xs = read('ui/explore/ExploreShowcase.tsx');
 { const at = xs.indexOf('export function XpFilm()'); const body = xs.slice(at, xs.indexOf('\n}\n', at)); assert.match(body, /xp-film-total/); assert.doesNotMatch(body, /<RunChip\b/, 'one pipeline view, not a chip too'); }
 for (const fn of ['XpHero', 'XpStill', 'XpKoi', 'XpSwap', 'XpLayers', 'XpSheets', 'XpLooks']) {
   const at = xs.indexOf(`export function ${fn}()`); assert.ok(at > 0, fn); const body = xs.slice(at, xs.indexOf('\n}\n', at));
-  assert.ok(/<RunChip\b/.test(body) || /HeroCredit/.test(body), `${fn}: draws the shared chip`); }
+  assert.ok(/<RunChip\b/.test(body) || /HeroCredit|SwapRunLine/.test(body), `${fn}: draws the shared chip`); }
 assert.doesNotMatch(read('ui/explore/ExploreWork.tsx'), /xv-pill/, 'Made for your work: no look-alike pills left');
 ok('one shared RunChip in every section');
