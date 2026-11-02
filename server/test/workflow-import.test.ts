@@ -13,7 +13,7 @@ const REPO = path.resolve(import.meta.dirname, '../..');
 const wf = (f: string) => JSON.parse(fs.readFileSync(path.join(REPO, 'workflows', f), 'utf8'));
 fs.cpSync(path.join(REPO, 'plugins/cutout'), path.join(P, 'cutout'), { recursive: true });
 
-const { guessMapping, readWorkflow, builtInObjectInfo, saveWorkflow, removeWorkflow, slugId, MAX_WORKFLOW_BYTES, EXPORT_HELP } = await import('../src/workflowImport.ts');
+const { plainLine, guessMapping, readWorkflow, builtInObjectInfo, saveWorkflow, removeWorkflow, slugId, MAX_WORKFLOW_BYTES, EXPORT_HELP } = await import('../src/workflowImport.ts');
 const { loadPlugins, pluginStatus } = await import('../src/plugins.ts');
 const { getTool } = await import('../src/tools/registry.ts');
 const { USER_PLUGINS_DIR } = await import('../src/config.ts');
@@ -57,7 +57,7 @@ try {
     '8': { class_type: 'PrimitiveInt', inputs: { value: 12 } }, '9': { class_type: 'CLIPLoader', inputs: {} }, '10': { class_type: 'SaveImage', inputs: { images: ['4', 0] } } });
   assert.deepEqual(prim.pick, { input: '', prompt: '3.text', seed: '4.seed', output: '10' }, 'Primitive seed and prompt: mapped on the sampler / encoder, written through to the Primitive');
   assert.ok(!prim.choices.prompt.some((c) => c.node === '2'), 'the Primitive a text node reads is not listed twice');
-  assert.deepEqual(prim.extras.find((x) => x.key === 'sampleSteps'), { key: 'sampleSteps', label: 'Steps', node: '4', field: 'steps', kind: 'number', value: 12, on: true, min: 1, max: 200 });
+  assert.deepEqual(prim.extras.find((x) => x.key === 'sampleSteps'), { key: 'sampleSteps', label: 'Quality (steps)', node: '4', field: 'steps', kind: 'number', value: 12, on: true, min: 1, max: 200 });
   console.log('ok guesses: text to image, image edit, LoadVideo, VHS, Primitive seed');
 
   // ---- reading files ----
@@ -158,3 +158,11 @@ try {
   const again = await loadPlugins(); assert.ok(again.find((s) => s.id === 'quick-picture')?.ok, 'still there after a restart'); assert.equal(again.find((s) => s.id === 'quick-picture')?.user, true);
   console.log('ok routes + remove: import preview, 413 cap, save, 403 for shipped, delete, reload after restart');
 } finally { fs.rmSync(D, { recursive: true, force: true }); }
+
+// the summary's plain line (2026-11-02): our words from the nodes and the file name, never node names
+{ const up = { 1: { class_type: 'LoadImage', inputs: { image: 'a.png' } }, 2: { class_type: 'UpscaleModelLoader', inputs: { model_name: 'RealESRGAN_x2plus.pth' } }, 3: { class_type: 'ImageUpscaleWithModel', inputs: { upscale_model: ['2', 0], image: ['1', 0] } }, 4: { class_type: 'SaveImage', inputs: { images: ['3', 0] } } } as any;
+  assert.equal(plainLine(up, 'old-photo-restore-light.json', 'image', 'image', false), 'Restores old photos');
+  assert.equal(plainLine(up, 'sharpen.json', 'image', 'image', false), 'Sharpens and enlarges your photo');
+  assert.equal(guessMapping(up, 'old-photo-restore-light.json').description, 'Restores old photos');
+  assert.equal(plainLine({} as any, 'x.json', 'none', 'image', true), 'Makes a picture from your words'); assert.equal(plainLine({} as any, 'x.json', 'image', 'video', true), 'Turns your photo into a video');
+  console.log('ok plain line: restore, sharpen, words, photo to video'); }

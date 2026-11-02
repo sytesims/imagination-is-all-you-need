@@ -40,7 +40,7 @@ import './modelMenu.css';
  *    model that can't run as set keeps the mark but loses the orange (grey bar) and shows its reason.
  *  - No duplicates: a model shown in Featured or For this workflow isn't repeated as the same plain row in All models (a family row with
  *    several versions still lists it).
- *  - Footer (the only one): Orbit mark · "Runs on <place>" (or why the pick can't run) · the live balance there ("$8.50 left on Comfy";
+ *  - Footer (the only one): Orbit mark · "<picked model> runs on <place>" (or why the pick can't run) · the live balance there ("$8.50 left on Comfy";
  *    its Comfy credits and plan on hover; GET /api/accounts, hidden when unknown) · Change.
  *  - Desktop: hovering or focusing a row opens the preview card beside the menu (shared/ModelPreviewCard.tsx). Phones: the row's "i".
  *  - Keys: up / down move (Popover), Enter picks (or opens a family), right / left open and close a family, Esc closes, / focuses the search.
@@ -442,7 +442,7 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
     </div>
     {supports}
     {curModel && t && <div className="orb-foot" data-testid="mp-foot"><HwUnknownLine fits={[localFitOf(curItem?.p)]} className="mp-hw" short />
-      <div className="orb-foot-row"><span className="orb-runs" title={curBlk ? `${shownName(curModel)} can’t run as set: ${curBlk.full}` : t.tip}><LogoMark size={16} />Runs on <b>{t.main.replace(/^Your GPU\b/, LOCAL_LABEL)}</b>{curBlk ? <small className="orb-why" data-testid="mp-foot-why">{` · ${curBlk.short}`}</small> : t.sub ? <small>{` · ${t.sub}`}</small> : null}</span>
+      <div className="orb-foot-row"><span className="orb-runs" title={curBlk ? `${shownName(curModel)} can’t run as set: ${curBlk.full}` : t.tip}><LogoMark size={16} /><span className="orb-runs-t" /* names the picked model: a hovered row's card or a search can show another model above it */><b data-testid="mp-foot-model">{shownName(curModel)}</b> runs on <b>{t.main.replace(/^Your GPU\b/, LOCAL_LABEL)}</b>{curBlk ? <small className="orb-why" data-testid="mp-foot-why">{` · ${curBlk.short}`}</small> : t.sub ? <small>{` · ${t.sub}`}</small> : null}</span></span>
         <span className="orb-bal">{bal && <span data-testid="mp-balance" data-sample={bal.sample || undefined} title={bal.title}><span className="orb-mono">{fmtUsd(bal.usd)}</span>{bal.text.slice(fmtUsd(bal.usd).length)}{bal.sample ? <small> · sample</small> : null}<span className="orb-dot"> · </span></span>}
           <button ref={roRef} type="button" className="orb-chg" aria-expanded={roOpen} data-testid="mp-route-toggle" onClick={() => setRoOpen(o => !o)}>Change</button></span></div>
       <RunOnMenu open={roOpen} anchor={roRef} placement="top" onClose={() => setRoOpen(false)} toolId={toolId} model={curModel} engine={value} quote={quote} /></div>}

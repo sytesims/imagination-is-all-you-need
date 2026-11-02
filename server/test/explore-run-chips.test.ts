@@ -1,11 +1,12 @@
-// Explore run chips (2026-11-01): every result on Explore shows one shared chip, "model · where it ran · price", built from real runs.
+// Explore run lines (2026-11-01; one rule 2026-11-02): every result on Explore shows one shared line under its media, "model · where it ran · price", built from real runs.
+//  - a chain says "total" and "+N steps" (a button listing role · model · where · price); no durations in the line;
 //  - shared/runChip.ts: the place words come from modelIds.ts (Router and Comfy Cloud runs read "Comfy Cloud", a local run "Your computer"),
 //    a local run is Free, an estimate gets "≈", an unknown price is left out, extra runs show as "+N";
 //  - every Explore example (the featured entries the page shows, the films, the looks) has a model label and a route;
 //  - every section draws it with the one shared component (web/src/shared/RunChip.tsx), no look-alike copies.
 // Run: npx tsx test/explore-run-chips.test.ts
 import assert from 'node:assert/strict'; import fs from 'node:fs'; import path from 'node:path';
-import { chipOfFeatured, chipOfRun, chipOfChain, chipText, chipPlace, chipUsd } from '../src/shared/runChip.ts';
+import { chipOfFeatured, chipOfRun, chipOfChain, chipText, chipPlace, chipUsd, stepText } from '../src/shared/runChip.ts';
 import { featuredByKey, MOSSBUN_3D_RUN, OUR_COMPUTER, type FeaturedItem } from '../src/shared/featured.ts';
 import { LOCAL_LABEL } from '../src/shared/modelIds.ts';
 import { EXPLORE_HERO, EXPLORE_STILL, EXPLORE_KOI, EXPLORE_SWAP, EXPLORE_LAYERS, EXPLORE_SHEETS, EXPLORE_FILM, EXPLORE_WORK, EXPLORE_FILMS, EXPLORE_3D, EXPLORE_LOOKS } from '../src/shared/exploreShowcase.ts';
@@ -17,9 +18,15 @@ assert.equal(chipPlace(OUR_COMPUTER), LOCAL_LABEL); assert.equal(chipPlace('Comf
 assert.equal(chipUsd(0), 'Free'); assert.equal(chipUsd(1.716), '$1.72'); assert.equal(chipUsd(0.28, true), '≈ $0.28'); assert.equal(chipUsd(0.0821), '$0.08', 'Explore’s two decimals ($0.08 each stays)');
 const local = { ...featuredByKey('ltx-rain-city')! }; assert.equal(local.runOn, 'local'); assert.deepEqual([chipOfFeatured(local).place, chipOfFeatured(local).price], [LOCAL_LABEL, 'Free'], 'a local run: Your computer · Free');
 assert.equal(chipOfFeatured({ ...featuredByKey('ltx-pro-painter')!, costUsd: undefined } as FeaturedItem).price, null, 'unknown price: left out, never guessed');
-assert.equal(chipText(chipOfChain(MOSSBUN_3D_RUN, [{ jobId: 'x', model: 'GPT Image 2.5 Flare', place: 'Comfy Router', costUsd: 0.02 }])), 'Tripo 3.1 +1 · Comfy Cloud · ≈ $0.32');
-assert.equal(chipText({ model: 'LTX-2.5 Pro', also: ['YuE2 (music) · Your computer · Free'], alsoWhat: 'music', place: 'Comfy Cloud', price: '$1.72' }), 'LTX-2.5 Pro +1 music · Comfy Cloud · $1.72', 'the extra says what it is');
-ok('helper: place words, Free, ≈, two decimals, unknown left out, +N');
+const chain = chipOfChain(MOSSBUN_3D_RUN, [{ jobId: 'x', model: 'GPT Image 2.5 Flare', place: 'Comfy Router', costUsd: 0.02, role: 'Sheet' }]);
+assert.equal(chipText(chain), 'Tripo 3.1 +1 step · Comfy Cloud · ≈ $0.32 total', 'a chain: "+N steps" and the whole price, said as a total');
+assert.deepEqual(chain.steps?.map(stepText), ['Sheet · GPT Image 2.5 Flare · Comfy Cloud · $0.02', '3D model · Tripo 3.1 · Comfy Cloud · ≈ $0.30'], 'each step: role · model · where · price, the result last');
+assert.equal(chipText(chipOfChain({ jobId: 'a', model: 'A', place: OUR_COMPUTER, costUsd: 0 }, [{ jobId: 'b', model: 'B', place: OUR_COMPUTER, costUsd: 0 }])), 'A +1 step · Your computer · Free', 'all local: Free, no "total"');
+/* the Talking video card: four runs, each with its role, so the two GPT Image runs never look like duplicates */
+const talk = featuredByKey('presenter-talk')!; const tc = chipOfFeatured(talk, { role: 'Talking video', also: talk.from });
+assert.equal(chipText(tc), 'InfiniteTalk (Wan 2.1) +3 steps · Comfy Cloud · $0.43 total');
+assert.deepEqual(tc.steps?.map((s) => s.role), ['Portrait', 'Portrait edit', 'Voice', 'Talking video']);
+ok('helper: place words, Free, ≈, two decimals, unknown left out, total, +N steps with roles');
 
 // ---- every Explore example: a model label and a route ----
 const keys = [EXPLORE_HERO.key, EXPLORE_STILL.take.key, EXPLORE_KOI.key, ...EXPLORE_SWAP.runs.map((r) => r.key), EXPLORE_LAYERS.key, ...EXPLORE_SHEETS.cast.map((c) => c.key),
@@ -34,6 +41,9 @@ for (const r of EXPLORE_3D.steps) assert.ok(chipOfRun({ jobId: r.job, model: 'x'
 /* the "Made for your work" prices stay as they were */
 const work = Object.fromEntries(EXPLORE_WORK.items.map((i) => [i.id, chipText(chipOfFeatured(featuredByKey(i.priceKey)!, { model: i.model, note: i.per || undefined }))]));
 assert.deepEqual(work, { 'material-swap': 'Nano Banana 2 · Comfy Cloud · $0.08 · each', 'ad-pack': 'GPT Image 2 · Comfy Cloud · $0.20 · for 3' });
+/* no durations in any line on the page (lengths live in the players); a step list always names each run's role */
+const lines = [...EXPLORE_WORK.items.map((i) => chipOfFeatured(featuredByKey(i.priceKey)!, { model: i.model, note: i.per || undefined })), ...[EXPLORE_FILMS.feature, EXPLORE_FILMS.teaser, EXPLORE_FILMS.horror, EXPLORE_FILMS.counterOffer, EXPLORE_FILMS.lighthouse].map((f) => f.chip)];
+for (const c of lines) { assert.doesNotMatch(chipText(c), /\d s\b|first \d/, `${chipText(c)}: no length in the line`); for (const st of c.steps ?? []) assert.ok(st.role, `${c.model}: every step has a role`); }
 ok(`${keys.length} featured examples + ${6} films + ${EXPLORE_LOOKS.looks.length} looks: each has a model label and a route`);
 
 // ---- one shared component on every section ----
@@ -41,7 +51,9 @@ const read = (f: string) => fs.readFileSync(path.join(WEB, f), 'utf8');
 for (const f of ['ui/explore/ExploreShowcase.tsx', 'ui/explore/ExploreWork.tsx', 'ui/explore/Explore3D.tsx', 'ui/explore/ExploreFilms.tsx', 'ui/explore/ExplorePresenter.tsx'])
   assert.match(read(f), /import \{ RunChip \} from '\.\.\/\.\.\/shared\/RunChip'/, `${f}: the shared RunChip`);
 const xs = read('ui/explore/ExploreShowcase.tsx');
-for (const fn of ['XpHero', 'XpStill', 'XpKoi', 'XpSwap', 'XpLayers', 'XpSheets', 'XpFilm', 'XpLooks']) {
+/* Block it in 3D shows its pipeline as the step strip with the total as its last cell (no second chip) */
+{ const at = xs.indexOf('export function XpFilm()'); const body = xs.slice(at, xs.indexOf('\n}\n', at)); assert.match(body, /xp-film-total/); assert.doesNotMatch(body, /<RunChip\b/, 'one pipeline view, not a chip too'); }
+for (const fn of ['XpHero', 'XpStill', 'XpKoi', 'XpSwap', 'XpLayers', 'XpSheets', 'XpLooks']) {
   const at = xs.indexOf(`export function ${fn}()`); assert.ok(at > 0, fn); const body = xs.slice(at, xs.indexOf('\n}\n', at));
   assert.ok(/<RunChip\b/.test(body) || /HeroCredit/.test(body), `${fn}: draws the shared chip`); }
 assert.doesNotMatch(read('ui/explore/ExploreWork.tsx'), /xv-pill/, 'Made for your work: no look-alike pills left');

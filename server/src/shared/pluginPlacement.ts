@@ -3,14 +3,20 @@
  * A plugin's manifest (plugins/<id>/plugin.json, docs/PLUGINS.md) may say where it belongs: `tab` (image | video | audio | 3d), `category`
  * (one of that tab's own workflow categories, e.g. video "edit") and `goal` (a Workflows page goal id). This file turns what GET /api/tools
  * says about a plugin tool (ToolInfo.plugin) into the rows each surface already lists, so a plugin needs no hand-written line anywhere:
- *  - Video: a VideoWorkflow placed into VIDEO_WORKFLOWS (the picker, the header Video menu, ?workflow=<id>, old /tools/<id> links, search).
- *  - Image, Audio, 3D: a header menu row that opens the plugin's own page.
+ *  - Video: a VideoWorkflow placed into VIDEO_WORKFLOWS (the picker, the header Video menu, ?workflow=<id>, old /tools/<id> links, search) and a
+ *    bar recipe in VIDEO_BARS, so it runs in the Video page's own bar like the built-ins.
+ *  - Image (2026-11-02, "an added workflow shows up in its tab as a workflow, never a page of its own"): a recipe in GET /api/image-workflows
+ *    (pluginImageRecipe), so Create Image's picker lists it next to the built-ins and its bar grows only the inputs it needs; its jobs join the
+ *    Image feeds (mediaFeed ADDED_IMAGE_WORKFLOWS). /image?workflow=<id> opens it; old /tools/<id> links redirect there.
+ *  - Audio, 3D: a header menu row that opens the plugin's own page (an added ComfyUI workflow saves images or videos, so it lands in Image or Video).
  *  - Workflows page: a catalogue entry (WfEntry) with its Plugin badge, author and licence.
  * Isomorphic (no server imports): the web app places plugins from GET /api/tools, the server from its registry (capabilities search). One
  * mapping for both. Test: server/test/plugin-placement.test.ts.
  */
 import { VIDEO_WORKFLOWS, VIDEO_WORKFLOW_CATEGORIES, videoWorkflowHref, type VideoWorkflow, type VideoWorkflowCategory } from './videoWorkflows.js';
-import { WORKFLOW_CATEGORIES } from './workflows.js';
+import { WORKFLOW_CATEGORIES, type WorkflowRecipe, type WorkflowControl, type WorkflowCategory } from './workflows.js';
+import { VIDEO_BARS, type VideoBar, type VBarControl } from './videoBar.js';
+import { ADDED_IMAGE_WORKFLOWS } from './mediaFeed.js';
 import { AUDIO_WORKFLOW_CATEGORIES } from './audioWorkflows.js';
 import { THREE_D_CATEGORIES } from './threeD.js';
 import type { WfEntry, WfCat } from './workflowCatalog.js';
@@ -29,8 +35,9 @@ export interface PluginBadge { author: string | null; licence: string; /** the m
   /** you added it in the app ("Added by you"); otherwise its folder ships with the app ("Add-on") */ user?: boolean }
 /** What GET /api/tools says about a plugin tool (ToolInfo.plugin), placement included. */
 export interface PluginInfo { id: string; tab?: PluginTab | null; category?: string | null; goal?: string | null; author?: string | null; handler?: boolean;
-  license?: { id: string; name?: string } | null; input?: 'image' | 'video' | 'none'; output?: 'image' | 'video'; user?: boolean }
-export interface PluginToolLike { id: string; name: string; description?: string; route?: string; plugin?: PluginInfo | null; inputs?: { name: string; label?: string }[] }
+  license?: { id: string; name?: string } | null; input?: 'image' | 'video' | 'none'; output?: 'image' | 'video'; user?: boolean; /** a workflow you added: the model its graph loads */ mainModel?: string | null }
+export interface PluginToolLike { id: string; name: string; description?: string; route?: string; plugin?: PluginInfo | null; homepageUrl?: string | null;
+  inputs?: { name: string; label?: string; kind?: string; options?: string[]; default?: string; min?: number; max?: number }[]; providers?: (string | { id: string })[] }
 
 /** Errors in the placement fields of a manifest (empty = fine). `category` keeps its old free-form meaning (the tool's group) when there is no `tab`. */
 export function placementErrors(m: { tab?: unknown; category?: unknown; goal?: unknown; author?: unknown }): string[] {
@@ -62,18 +69,70 @@ export function pluginVideoWorkflow(t: PluginToolLike): VideoWorkflow {
 }
 
 /** Puts the video-tab plugins into VIDEO_WORKFLOWS (in place, next to the built-ins of the same category), replacing the ones placed before.
- *  Every Video surface reads that list, so the picker, the header menu, links and search see them with no other change. A built-in id wins. */
+ *  Every Video surface reads that list, so the picker, the header menu, links and search see them with no other change. A built-in id wins.
+ *  Each also gets a bar recipe (VIDEO_BARS), so it runs in the Video page's own bar. */
 export function placeVideoPlugins(tools: PluginToolLike[]): void {
-  for (let i = VIDEO_WORKFLOWS.length - 1; i >= 0; i--) if (VIDEO_WORKFLOWS[i].plugin) VIDEO_WORKFLOWS.splice(i, 1);
+  for (let i = VIDEO_WORKFLOWS.length - 1; i >= 0; i--) if (VIDEO_WORKFLOWS[i].plugin) { delete VIDEO_BARS[VIDEO_WORKFLOWS[i].id]; VIDEO_WORKFLOWS.splice(i, 1); }
   for (const t of tools) {
     if (placedTab(t) !== 'video' || VIDEO_WORKFLOWS.some((w) => w.id === t.id)) continue;
     const w = pluginVideoWorkflow(t); let at = -1; VIDEO_WORKFLOWS.forEach((x, i) => { if (x.category === w.category) at = i; });
     VIDEO_WORKFLOWS.splice(at < 0 ? VIDEO_WORKFLOWS.length : at + 1, 0, w);
+    if (!VIDEO_BARS[t.id]) VIDEO_BARS[t.id] = pluginVideoBar(t);
   }
 }
+/** Every tab at once: Video (above) and Image (ADDED_IMAGE_WORKFLOWS + the recipes GET /api/image-workflows adds). The server calls it after
+ *  loading or adding a plugin, the web app after each GET /api/tools. */
+export function placePlugins(tools: PluginToolLike[]): void {
+  placeVideoPlugins(tools);
+  ADDED_IMAGE_WORKFLOWS.clear(); IMAGE_RECIPES.length = 0;
+  for (const t of tools) { if (placedTab(t) !== 'image') continue; const r = pluginImageRecipe(t); IMAGE_RECIPES.push(r); ADDED_IMAGE_WORKFLOWS.set(t.id, { name: t.name, category: r.category }); }
+}
 
-/** Where a placed plugin opens: its Video workflow, else its own page. */
-export const pluginHref = (t: PluginToolLike): string => (placedTab(t) === 'video' ? videoWorkflowHref(t.id) : t.route ?? `/tools/${t.id}`);
+/* ---- the settings a plugin shows (its manifest's inputs.fields), as bar controls ---- */
+type FieldIn = NonNullable<PluginToolLike['inputs']>[number];
+const settingFields = (t: PluginToolLike): FieldIn[] => (t.inputs ?? []).filter((i) => !RESERVED.has(i.name) && !['image', 'video', 'types'].includes(i.name) && i.kind !== 'file' && i.kind !== 'files');
+/** A slider's step from its range and default: whole numbers for steps and sizes, hundredths for a 0–1 strength. */
+const stepOf = (f: FieldIn) => ((f.max ?? 100) <= 1 ? 0.01 : Number.isInteger(Number(f.default ?? 0)) ? 1 : 0.1);
+const hasPrompt = (t: PluginToolLike) => (t.inputs ?? []).some((i) => i.name === 'prompt');
+const providersOf = (t: PluginToolLike) => (t.providers ?? ['comfy-open']).map((p) => (typeof p === 'string' ? p : p.id));
+const IMAGE_CATS: WorkflowCategory[] = ['edit', 'people', 'product', 'camera'];
+
+/** The recipes GET /api/image-workflows adds for the Image-tab plugins (filled by placePlugins, server side). */
+export const IMAGE_RECIPES: (Omit<WorkflowRecipe, 'id'> & { id: string; modelInfo: Record<string, { name: string | null; workflow: null }>; prep: Record<string, never>; added: true })[] = [];
+/** An Image-tab plugin as a Create Image recipe: its photo slot (when it takes one), its prompt (when it has one), its settings in one chip,
+ *  its main model on the model chip, and Generate. It runs on its own tool (id = the workflow id), like every built-in recipe. */
+export function pluginImageRecipe(t: PluginToolLike): (typeof IMAGE_RECIPES)[number] {
+  const inp = t.plugin?.input ?? 'image'; const fields = settingFields(t); const provs = providersOf(t); const cat = t.plugin?.category as WorkflowCategory;
+  const controls: WorkflowControl[] = fields.map((f) => f.kind === 'number'
+    ? { field: f.name, label: f.label ?? f.name, kind: 'slider', group: 'settings', ...(f.default != null ? { default: String(f.default) } : {}), ...(f.min != null ? { min: f.min } : {}), ...(f.max != null ? { max: f.max } : {}), step: stepOf(f), unit: '' }
+    : f.kind === 'select' ? { field: f.name, label: f.label ?? f.name, kind: 'select', group: 'settings', options: (f.options ?? []).map((o) => ({ value: o, label: o })), ...(f.default != null ? { default: String(f.default) } : {}) }
+    : { field: f.name, label: f.label ?? f.name, kind: 'text', group: 'settings', optional: true, maxLength: 2000, ...(f.default ? { placeholder: String(f.default).slice(0, 60) } : {}) });
+  const badge = pluginBadge(t)!;
+  return { id: t.id, name: t.name, icon: 'create', category: IMAGE_CATS.includes(cat) ? cat : 'edit', tagline: pluginLine(t), needs: NEEDS[inp === 'video' ? 'video' : inp],
+    source: { kind: t.plugin?.user ? 'yours' : 'addon', author: badge.author ?? (t.plugin?.user ? 'You' : ''), url: t.homepageUrl ?? null, licence: badge.licence, file: null, note: t.plugin?.user ? 'a workflow you added' : 'an add-on folder' },
+    runner: { kind: 'create-image', toolId: t.id },
+    slots: inp === 'none' ? [] : [{ name: 'image', label: 'Photo', required: true, sendsAs: inp === 'video' ? 'video' : 'image', order: 1, hint: 'Add the photo to use', missing: 'Add a photo' }],
+    groups: controls.length ? [{ id: 'settings', label: 'Settings', icon: 'detail', summary: controls.filter((c) => c.kind !== 'text').slice(0, 2).map((c) => c.field) }] : [],
+    controls, prompt: hasPrompt(t) ? { mode: inp === 'none' ? 'required' : 'optional', placeholder: inp === 'none' ? 'Describe what you want to see' : 'Describe the change (optional)', composer: 'plain', frames: [] } : { mode: 'hidden', placeholder: '', composer: 'plain', frames: [] },
+    modes: { default: 'default', whenSlot: null }, models: { default: provs }, locked: {}, output: { aspect: inp === 'none' ? 'model' : 'follow-photo', resolution: inp === 'none' ? 'model' : 'follow-photo', count: 1 },
+    surface: null, generateLabel: 'Generate', aliases: { toolId: t.id, routes: [`/tools/${t.id}`] }, status: 'ready', route: `/image?workflow=${encodeURIComponent(t.id)}`,
+    modelInfo: Object.fromEntries(provs.map((p) => [p, { name: t.plugin?.mainModel ?? null, workflow: null }])), prep: {}, added: true };
+}
+
+/** A Video-tab plugin as a Video bar recipe: its clip or photo slot, its prompt (when it has one), its settings in one chip, Generate. */
+export function pluginVideoBar(t: PluginToolLike): VideoBar {
+  const inp = t.plugin?.input ?? 'video'; const fields = settingFields(t).filter((f) => f.name !== 'resolution');
+  const controls: VBarControl[] = fields.map((f) => f.kind === 'number'
+    ? { field: f.name, label: f.label ?? f.name, group: 'settings', kind: 'slider', ...(f.default != null ? { default: String(f.default) } : {}), ...(f.min != null ? { min: f.min } : {}), ...(f.max != null ? { max: f.max } : {}), step: stepOf(f) }
+    : f.kind === 'select' ? { field: f.name, label: f.label ?? f.name, group: 'settings', kind: 'choice', options: (f.options ?? []).map((o) => ({ value: o, label: o })), ...(f.default != null ? { default: String(f.default) } : {}) }
+    : { field: f.name, label: f.label ?? f.name, group: 'settings', kind: 'text', maxLength: 2000 });
+  return { slots: inp === 'none' ? [] : [inp === 'image' ? { name: 'image', label: 'Photo', kind: 'image', required: true, hint: 'The photo to start from', missing: 'Add a photo' } : { name: 'video', label: 'Clip', kind: 'video', required: true, hint: 'The clip to work on', missing: 'Add a clip' }],
+    prompt: hasPrompt(t) ? { mode: inp === 'none' ? 'required' : 'optional', placeholder: inp === 'none' ? 'Describe what you want to see' : 'Describe the change (optional)' } : { mode: 'hidden', placeholder: '' },
+    groups: controls.length ? [{ id: 'settings', label: 'Settings', icon: 'resolution' }] : [], controls, generateLabel: 'Generate' };
+}
+
+/** Where a placed plugin opens: its tab with it picked (Video: its Video workflow; Image: Create Image's bar), else its own page. */
+export const pluginHref = (t: PluginToolLike): string => (placedTab(t) === 'video' ? videoWorkflowHref(t.id) : placedTab(t) === 'image' ? `/image?workflow=${encodeURIComponent(t.id)}` : t.route ?? `/tools/${t.id}`);
 /** Header menu rows for a tab other than Video (Video's come from VIDEO_WORKFLOWS). */
 export const pluginMenuRows = (tools: PluginToolLike[], tab: PluginTab) => tools.filter((t) => placedTab(t) === tab).map((t) => ({ key: t.id, to: pluginHref(t), name: t.name, line: pluginLine(t), toolId: t.id, plugin: pluginBadge(t)! }));
 

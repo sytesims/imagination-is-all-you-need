@@ -39,10 +39,11 @@ function nounOf(m: ToolModel, tool: any): string {
 const live = (r: RunOnRow) => r.status !== 'coming-soon' && r.status !== 'unavailable';
 const usdOfPlace = (p: any): number | null => (p?.cost && typeof p.cost.estUsd === 'number' ? p.cost.estUsd : typeof p?.credits === 'number' ? p.credits / 100 : null);
 
-/** The free-on-this-computer line in plain words, with what it still needs ("after a one-time 21.4 GB download"). `also`: under another price. */
+/** The free-on-this-computer line in plain words, with what it still needs ("after a one-time 21.4 GB download"). `also`: under another price.
+ *  A model whose files need an NVIDIA card says so ("Also free on an NVIDIA PC"), never plain "your computer". */
 function localWords(r: RunOnRow, also: boolean): string {
-  const need = placeNeed(r); const a = r.action; const lead = also ? 'Free on your computer' : 'Runs';
-  if (need.ready) return also ? 'Also free on your computer' : 'Ready to run';
+  const need = placeNeed(r); const a = r.action; const nv = r.needsNvidia; const lead = also ? (nv ? 'Free on an NVIDIA PC' : 'Free on your computer') : 'Runs';
+  if (need.ready) return also ? (nv ? 'Also free on an NVIDIA PC' : 'Also free on your computer') : nv ? 'Ready to run · NVIDIA only' : 'Ready to run';
   if (a?.kind === 'download') { const size = /(\d[\d.,]*\s?[GM]B)/.exec(a.text ?? '')?.[1] ?? (a.missingBytes ? gbText(a.missingBytes) : null); // the row's own figure ("21.4 GB")
     return `${lead} after a one-time ${size ? `${size} ` : ''}download`; }
   if (a?.kind === 'turn_on' || r.status === 'off') return `${lead} once it’s set up`;
@@ -71,7 +72,7 @@ export function cardPriceOf(m: ToolModel, o: { rq?: any; run?: RunInfo | null; t
     return cur != null && Math.abs(lo - cur) < 0.005 ? null : `Other places from ${usdPrice(lo, { approx: true })}`;
   };
   if (run?.price) {
-    if (/^Free\b/.test(run.price)) return { kind: 'free', big: 'Free', what: 'on your computer', where: localRow && !placeNeed(localRow).ready ? localWords(localRow, false) : null, est: false, other: otherLine(), detail: null };
+    if (/^Free\b/.test(run.price)) return { kind: 'free', big: 'Free', what: localRow?.needsNvidia ? 'on an NVIDIA PC' : 'on your computer', where: localRow && !placeNeed(localRow).ready ? localWords(localRow, false) : null, est: false, other: otherLine(), detail: null };
     const est = run.price.startsWith('≈') || rq?.cost?.estimated === true;
     return { kind: 'run', big: run.price.replace(/^≈\s*/, ''), what: `for this ${noun}`, where: run.place ? `on ${run.place}` : null, est, other: otherLine(), detail: run.detail };
   }
@@ -82,7 +83,7 @@ export function cardPriceOf(m: ToolModel, o: { rq?: any; run?: RunInfo | null; t
   const so = Array.isArray(rq?.setupOptions) ? rq.setupOptions.find((x: any) => typeof x?.credits === 'number' && x.credits > 0) : null;
   if (so) return { kind: 'key', big: usdPrice(so.credits / 100), what: `for this ${noun}`, where: `once you add a ${keyWord(so.runOn, so.runOnLabel)} key`, est: true, other: localRow ? otherLine() : null, detail: null };
   if (localRow && places.length === 1) { const need = placeNeed(localRow); // Free only when it runs now; else what it needs, the full reason under it
-    return need.ready ? { kind: 'free', big: 'Free', what: 'on your computer', where: null, est: false, other: null, detail: null }
+    return need.ready ? { kind: 'free', big: 'Free', what: localRow.needsNvidia ? 'on an NVIDIA PC' : 'on your computer', where: null, est: false, other: null, detail: null }
       : { kind: 'blocked', big: need.text, what: '', where: localRow.reason ?? localWords(localRow, false), est: false, other: null, detail: null }; }
   if (rq && (rq.runnable === false || rq.ok === false) && !rq.pending && !rq.failed) return { kind: 'blocked', big: 'Can’t run as set', what: '', where: null, est: false, other: localRow ? otherLine() : null, detail: null };
   const rate = listRateOf(m, o.engine); const paid = rate?.text ?? priceOf(m, o.engine)?.replace(/^Free · /, '') ?? null;

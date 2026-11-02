@@ -1,15 +1,17 @@
 /** "Write a song. Watch it dance." (2026-11-02): our song from Audio › Music (YuE2, free on our own computer) with one play button and its real
  *  waveform, and SyteSim dancing beside it in a wide "now playing" band, in the middle of Explore. While the song plays he goes through his five
  *  dances (each twice, then the next); paused or at the end he stands still. Reduced motion: he stays a still and no video loads.
- *  Data: shared/exploreShowcase.ts EXPLORE_SONG. Shared parts: the Waveform, the RunChip, Explore's headline and buttons. */
-import { useEffect, useRef, useState } from 'react';
+ *  "See how we made it" opens the chain (the shared Popover: a panel on desktop, a bottom sheet on a phone) as small step cards from the real runs.
+ *  Data: shared/exploreShowcase.ts EXPLORE_SONG. Shared parts: the Waveform, the RunChip, the Popover, Explore's headline and buttons. */
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from '../../platform/router';
 import { Waveform, useWaveform, clockText, durClock } from '../../shared/Waveform';
 import { prefersReducedMotion } from '../../shared/HoverClip';
 import { RunChip } from '../../shared/RunChip';
+import { Popover } from '../../shared/Popover';
 import { turnSoundOn, useDirectedSound } from '../../shared/soundDirector';
-import { PlayIcon } from '../Icons';
-import { EXPLORE_SONG } from '../../../../server/src/shared/exploreShowcase';
+import { LayersIcon, MusicIcon, PlayIcon } from '../Icons';
+import { EXPLORE_SONG, type SongMakingStep } from '../../../../server/src/shared/exploreShowcase';
 import { LOCAL_LABEL } from '../../../../server/src/shared/modelIds';
 import { chipUsd, type RunChipData } from '../../../../server/src/shared/runChip';
 import './exploreSong.css';
@@ -23,6 +25,7 @@ export function XpSong() {
   const box = useRef<HTMLElement>(null); const audio = useRef<HTMLAudioElement>(null);
   const [near, setNear] = useState(false); const [playing, setPlaying] = useState(false); const [time, setTime] = useState(0); const [len, setLen] = useState(0);
   const [still] = useState(prefersReducedMotion);
+  const how = useMaking(); /* one making-of panel, opened from the pill or from the run line's "+5 steps" */
   const [narrow] = useState(() => typeof matchMedia === 'function' && matchMedia('(max-width: 760px)').matches); /* fewer, wider bars on a phone */
   const wave = useWaveform(S.song.url, { bars: narrow ? 44 : 96, enabled: near });
   const total = len || wave.duration || S.song.sec;
@@ -49,9 +52,13 @@ export function XpSong() {
       <h2 id="xp-h-song" className="xps-h xsdc-h">{S.title.map(l => <span key={l}>{l}</span>)}</h2>
       <p className="xps-p xsdc-p">{S.line}</p>
     </header>
+    <div className="xsg-cardwrap">
+    <button type="button" className="xsg-how" aria-haspopup="dialog" aria-expanded={how.who === 'pill'} onClick={how.toggle('pill')} data-testid="xp-song-how">
+      <span className="xsg-how-ic" aria-hidden><LayersIcon size={15} /></span>{S.making.label}<span className="xsg-how-n">· {S.making.steps.length} steps</span></button>
     <div className="xsg-band">
       <div className="xsg-stage" aria-hidden>
         <span className="xsg-floor" />
+        {DANCES?.model && <span className="xsg-credit">Dances · {DANCES.model}</span>}
         {still || !near ? <img className="xsg-dancer is-front" src={S.dancer.still} alt="" width={S.dancer.width} height={S.dancer.height} decoding="async" loading="lazy" draggable={false} />
           : <Dancer playing={playing} />}
       </div>
@@ -64,12 +71,17 @@ export function XpSong() {
           <button type="button" className="xsg-play" onClick={toggle} aria-label={playing ? `Pause ${S.song.title}` : `Play ${S.song.title}`} aria-pressed={playing} data-testid="xp-song-play">
             {playing ? <span className="xsg-pause" aria-hidden><i /><i /></span> : <PlayIcon size={20} />}</button>
           <span className="xsg-time" data-testid="xp-song-time">{clockText(time)} / {durClock(total)}</span>
-          <RunChip c={CHIP} className="xsg-chip" testId="xp-song-chip" />
+          <span className="xsg-runline"><RunChip c={CHIP} className="xsg-chip" testId="xp-song-chip" />
+            <button type="button" className="xsg-steps" aria-haspopup="dialog" aria-expanded={how.who === 'line'} onClick={how.toggle('line')} data-testid="xp-song-steps"
+              aria-label={`How we made it: ${MORE} more steps, ${S.making.total} in all`}>+{MORE} steps<span aria-hidden>·</span><b>{S.making.total} total</b></button></span>
         </div>
+        <p className="xsg-with" data-testid="xp-song-with">With {WITH} on Comfy Cloud for SyteSim and his dances.</p>
         <audio ref={audio} src={S.song.url} preload="metadata" muted data-testid="xp-song-audio" onLoadedMetadata={e => setLen(e.currentTarget.duration || 0)}
           onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => { setPlaying(false); setTime(0); }} />
       </div>
     </div>
+    </div>
+    <Making still={still} open={how.who != null} anchor={how.anchor} onClose={how.close} />
     <div className="xsg-ctas"><Link to={S.cta.href} className="xv-btn" data-testid="xp-song-cta">{S.cta.label}<span className="xv-arrow" aria-hidden>→</span></Link></div>
   </section>;
 }
@@ -107,4 +119,50 @@ function Dancer({ playing }: { playing: boolean }) {
   const onError = (k: number) => { const v = vid(k); if (v && hevc && /\.mov$/.test(v.src)) { const i = D.findIndex(d => d.id === v.dataset.dance); v.src = D[Math.max(0, i)].webm; v.load(); } };
   return <>{[a, b].map((r, k) => <video key={k} ref={r} className={`xsg-dancer${k === 0 ? ' is-front' : ''}`} poster={k === 0 ? S.dancer.still : undefined} width={S.dancer.width} height={S.dancer.height}
     muted playsInline preload="auto" disablePictureInPicture tabIndex={-1} data-testid={`xp-song-dance-${k}`} onEnded={() => onEnded(k)} onError={() => onError(k)} />)}</>;
+}
+
+/** A step's run line, "model · where · price" (the RunChip's words); a manual step says where it was done and that it was free, no model. */
+const stepPrice = (x: SongMakingStep) => `${chipUsd(x.usd, x.est)}${x.runs && x.runs > 1 ? ' each' : ''}`;
+const stepLine = (x: SongMakingStep) => [x.model, x.place, stepPrice(x)].filter(Boolean).join(' · ');
+
+/** One making-of panel for two triggers: `who` says which one opened it (its aria-expanded), `anchor` is that button. */
+function useMaking() {
+  const anchor = useRef<HTMLElement | null>(null); const [who, setWho] = useState<'pill' | 'line' | null>(null);
+  const close = useCallback(() => setWho(null), []);
+  const toggle = (k: 'pill' | 'line') => (e: React.MouseEvent<HTMLElement>) => { if (who === k) { setWho(null); return; } anchor.current = e.currentTarget; setWho(k); };
+  return { who, anchor, close, toggle };
+}
+/** The other runs behind the song (the song itself is the line's own run), the models they used, and the dances' credit. */
+const MORE = S.making.steps.length - 1;
+const WITH = [...new Set(S.making.steps.filter((x) => x.model && x.model !== S.song.model).map((x) => x.model))].join(' and ');
+const DANCES = S.making.steps.find((x) => x.jobs.length > 1);
+
+/** "How we made it": the panel of step cards. Clips loop only while it is open, never with reduced motion. */
+function Making({ still, open, anchor, onClose }: { still: boolean; open: boolean; anchor: React.RefObject<HTMLElement | null>; onClose: () => void }) {
+  const M = S.making;
+  return <>
+    <Popover open={open} anchor={anchor} onClose={onClose} label="How we made it" placement="bottom" align="end" closeButton className="xsgm-pop" testId="xp-song-making">
+      <ol className="xsgm-list">{M.steps.map((x, k) => <li key={x.role} className={`xsgm-step${x.manual ? ' is-manual' : ''}`} tabIndex={0} data-apop-item
+        aria-label={`Step ${k + 1}: ${x.role}. ${x.manual ? `${x.place}, free. ${x.note ?? ''}` : `${x.tool ? `${x.tool}, ` : ''}${stepLine(x)}.${x.note ? ` ${x.note}.` : ''}`}`} data-testid={`xp-song-step-${k + 1}`}>
+        <div className="xsgm-media" aria-hidden><StepMedia x={x} still={still} /></div>
+        <div className="xsgm-text" aria-hidden>
+          <b className="xsgm-role"><span className="xsgm-n">{k + 1}</span>{x.role}</b>
+          {x.manual ? <span className="xsgm-run is-manual">{x.place} · <em>Free</em></span>
+            : <><span className="xsgm-tool">{x.tool}</span><span className="xsgm-run">{x.model} · {x.place} · <em className={x.usd === 0 ? 'is-free' : ''}>{stepPrice(x)}</em></span></>}
+          {x.note && <span className="xsgm-note">{x.note}</span>}
+        </div>
+      </li>)}</ol>
+      <p className="xsgm-total" data-testid="xp-song-making-total"><span>Total</span><b>{M.total}</b>
+        <small>Each picture as billed. The dances are Comfy’s GPU-time estimate. The song and the edit were free.</small></p>
+    </Popover>
+  </>;
+}
+function StepMedia({ x, still }: { x: SongMakingStep; still: boolean }) {
+  const [hevc] = useState(webkitOnly);
+  if (x.keyed) { const d = D[1]; return <span className="xsgm-keyed">{still ? <img src={S.dancer.still} alt="" width={S.dancer.width} height={S.dancer.height} decoding="async" draggable={false} />
+    : <video src={hevc ? d.mov : d.webm} poster={S.dancer.still} width={S.dancer.width} height={S.dancer.height} muted playsInline autoPlay loop disablePictureInPicture tabIndex={-1}
+      onError={(e) => { if (hevc && /\.mov$/.test(e.currentTarget.src)) e.currentTarget.src = d.webm; }} />}</span>; }
+  if (x.clip && !still) return <video src={x.clip} poster={x.img} width={x.w} height={x.h} muted playsInline autoPlay loop disablePictureInPicture tabIndex={-1} />;
+  if (x.img) return <img src={x.img} alt="" width={x.w} height={x.h} decoding="async" draggable={false} />;
+  return <span className="xsgm-song"><MusicIcon size={26} /><small>{S.song.title}</small></span>;
 }

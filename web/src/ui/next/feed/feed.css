@@ -283,3 +283,10 @@ html body .ic.ic2 .ic-jfeed .ic-tile.set-card.is-running{animation:set-pulse 2.4
 @keyframes set-pulse{50%{box-shadow:inset 0 0 0 1px rgba(255,122,26,.7)}}
 @media (prefers-reduced-motion:reduce){html body .ic.ic2 .ic-jfeed .ic-tile.set-card.is-running{animation:none}}
 @media (max-width:700px){html body .ic.ic2 .ic-jfeed .cmp-g{position:relative}html body .ic.ic2 .cmp-gh:has(.set-fold){padding-right:34px}html body .ic.ic2 .cmp-gh .set-fold{position:absolute;top:6px;right:6px;margin:0}}
+
+/* a count badge ("13 layers") with the Example tag (2026-11-02): one row at the top left, the tag shrinks with an ellipsis at its end */
+html body .ic.ic2 .ic-jfeed .ic-tile .fd-tl{position:absolute;top:8px;left:8px;z-index:3;display:flex;align-items:center;gap:4px;min-width:0;max-width:calc(100% - 52px)}
+html body .ic.ic2 .ic-jfeed .ic-tile .fd-tl>.mr-badge,html body .ic.ic2 .ic-jfeed .ic-tile .fd-tl>.ic-tile-feat{position:static;top:auto;left:auto}
+html body .ic.ic2 .ic-jfeed .ic-tile .fd-tl>.mr-badge{flex:none}
+html body .ic.ic2 .ic-jfeed .ic-tile .fd-tl>.ic-tile-feat{flex:0 1 auto;min-width:0;max-width:none}
+@media (max-width:700px){html body .ic.ic2 .ic-jfeed .ic-tile .fd-tl{top:6px;left:6px}}
