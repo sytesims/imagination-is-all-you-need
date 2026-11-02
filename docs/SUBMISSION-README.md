@@ -4,8 +4,6 @@
 
 **Watch the demo (under 2 minutes):** [https://x.com/SyteSim/status/2117116408698134830](https://x.com/SyteSim/status/2117116408698134830)
 
-**Challenge entry:** Comfy's Open Source Higgsfield challenge, in **Most Innovative** and the **LTX VFX bonus** (LTX is the core video model of Direct a Shot, Layout to Render and Footage Effects).
-
 Contains AI-generated content. This page is the short version for judges; the main [README](../README.md) has everything else.
 
 <p align="center"><img src="screenshots/explore.webp" alt="The Explore page: a film made in the app, with its model, where it ran and its price" width="900"></p>
