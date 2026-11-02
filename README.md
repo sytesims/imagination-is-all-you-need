@@ -71,7 +71,7 @@ Other ports and advanced setups: [Install and run](docs/INSTALL.md) · [Configur
 - **Write a song, voice a script, translate a video.** [Music] (YuE2, free on your computer), [Voiceover], [Sound effects], and [Translate], which keeps the background music.
 - **Turn one picture into a 3D model.** [Image to 3D], [Text to 3D] and [Multi-view to 3D], then a [Turntable video] of the model spinning.
 
-Ready to use today: **18 image · 31 video · 8 audio · 5 3D workflows**, including the **24 one-click apps**. Open the bundled **Examples project** to see results and how each was made; **Recreate** loads the workflow and settings, and never starts a paid run on its own.
+Ready to use today: **69 ready-made workflows** (19 image · 38 video · 8 audio · 4 3D), including the **24 one-click apps**, plus **8 step-by-step chains**. The Workflows tab lists every one of them. Open the bundled **Examples project** to see results and how each was made; **Recreate** loads the workflow and settings, and never starts a paid run on its own.
 
 ## Canvas: think in ideas, run in Comfy
 
