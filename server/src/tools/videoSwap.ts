@@ -13,6 +13,9 @@ import path from 'node:path';
 import { DATA_DIR } from '../config.js';
 import { MASK_GROW_PX } from '../comfy/objectSwap.js';
 import { charswapFields } from '../comfy/h3CharSwapCloud.js';
+/** H3 Character Swap renders two sizes (comfy/h3CharSwapCloud.ts tiers): 480p and 768p. The stored values stay 480p / 720p (720p and 1080p have
+ *  always rendered at 768p, priced alike), so old jobs and Recreate keep working; the bar names them for what they make (2026-11-03). */
+export const H3_SWAP_RES = { byProvider: { 'comfy-h3-charswap': ['480p', '720p'] }, labelsByProvider: { 'comfy-h3-charswap': { '480p': '480p · faster', '720p': '768p · sharpest' } } } as const;
 import { cutRange } from '../swapClips.js';
 import { CLOUD_SWAP_MODELS, isCloudSwap, swapRangeSeconds } from '../shared/cloudSwap.js';
 import type { Issue } from './shared.js';
@@ -46,7 +49,8 @@ const commonInputs = [
   { name: 'refs', kind: 'files' as const, accept: 'image/png,image/jpeg,image/webp,image/gif', max: LIMITS.maxRefs },
   { name: 'prompt', kind: 'text' as const, max: LIMITS.maxPrompt },
   { name: 'preset', kind: 'select' as const },
-  { name: 'resolution', kind: 'select' as const, options: [...RESOLUTIONS], default: '720p', byProvider: Object.fromEntries(Object.values(CLOUD_SWAP_MODELS).map((m) => [m.id, m.qualities])) /* cloud swaps: the qualities each renders (shared/cloudSwap.ts) */,
+  { name: 'resolution', kind: 'select' as const, options: [...RESOLUTIONS], default: '720p', byProvider: { ...Object.fromEntries(Object.values(CLOUD_SWAP_MODELS).map((m) => [m.id, m.qualities])) /* cloud swaps: the qualities each renders (shared/cloudSwap.ts) */, ...H3_SWAP_RES.byProvider },
+    labelsByProvider: H3_SWAP_RES.labelsByProvider,
     choices: [{ value: '480p', label: '480p · faster' }, { value: '720p', label: '720p · sharper' }, { value: '1080p', label: '1080p · sharpest' }] } as any,
   { name: 'seed', kind: 'number' as const },
   { name: 'keepAudio', kind: 'select' as const, options: ['1', '0'], default: '1' },

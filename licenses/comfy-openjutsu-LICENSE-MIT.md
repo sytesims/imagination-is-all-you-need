@@ -1,4 +1,4 @@
-Comfy-Org/comfy-openjutsu (https://github.com/Comfy-Org/comfy-openjutsu), commit 70ec62d. The H3 Character Swap recipe settings follow it.
+Comfy-Org/comfy-openjutsu (https://github.com/Comfy-Org/comfy-openjutsu), commit 70ec62d. The H3 Character Swap recipe settings follow it; its swap prompt (lib/swap.ts swapPrompt) and first-frame prompt (lib/anchor.ts ANCHOR_PROMPT) are used verbatim.
 
 MIT License
 

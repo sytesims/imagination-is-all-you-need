@@ -161,10 +161,11 @@ registerLicenseComponents('app-shots', [...QWEN_EDIT_PARTS,
 // H3 Character Swap recipe credits (2026-11-01): our graphs follow Comfy's Openjutsu app and Akatz Labs' H3 Character Swap workflow (both MIT,
 // full texts in licenses/). Shown with Person swap and Swap Two People.
 const CHARSWAP_RECIPE_PARTS: LicenseComponent[] = [
-  { model: "H3 Character Swap recipe settings, after Comfy's Openjutsu app (Comfy-Org/comfy-openjutsu)", license: 'MIT', licenseId: 'mit', commercial: 'yes', url: 'https://github.com/Comfy-Org/comfy-openjutsu' },
+  { model: "H3 Character Swap recipe settings and prompts, after Comfy's Openjutsu app (Comfy-Org/comfy-openjutsu)", license: 'MIT', licenseId: 'mit', commercial: 'yes', url: 'https://github.com/Comfy-Org/comfy-openjutsu' },
   { model: "H3 Character Swap workflow (Akatz Labs, akatz-labs/h3-character-swap-tool)", license: 'MIT', licenseId: 'mit', commercial: 'yes', url: 'https://github.com/akatz-labs/h3-character-swap-tool' },
 ];
-registerLicenseComponents('object-swap', [{ model: 'SAM 3.1 (sam3.1_multiplex_fp16) · mask preview', license: 'SAM License', commercial: 'restricted', url: 'https://github.com/facebookresearch/sam3/blob/main/LICENSE', licenseId: 'sam-license', terms: LICENSES['sam-license'].terms } as LicenseComponent, ...CHARSWAP_RECIPE_PARTS]);
+registerLicenseComponents('object-swap', [{ model: 'SAM 3.1 (sam3.1_multiplex_fp16) · mask preview', license: 'SAM License', commercial: 'restricted', url: 'https://github.com/facebookresearch/sam3/blob/main/LICENSE', licenseId: 'sam-license', terms: LICENSES['sam-license'].terms } as LicenseComponent, ...CHARSWAP_RECIPE_PARTS,
+  { model: 'GPT Image 2.5 Sunburst (hosted: Comfy Router) · H3 Character Swap first frame', license: 'Provider terms', commercial: 'provider-terms', url: 'https://docs.comfy.org/development/comfy-router/models/openai/gpt-image-2-5-sunburst' }]);
 // Swap Two People (2026-10-27, tools/twoPersonSwap.ts): every model in the Comfy Cloud graph, with its licence.
 registerLicenseComponents('two-person-swap', [
   { model: 'MiniMax H3 Ref2VA int8, Qwen3-VL 32B text encoder NVFP4, H3 video + audio VAEs, H3 fl2v turbo 8-step LoRA (Comfy-Org/MiniMax-H3, lightx2v/Minimax-h3-Turbo)', license: 'MiniMax H3 Community License', licenseId: 'minimax-community', commercial: 'restricted', url: 'https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE' },

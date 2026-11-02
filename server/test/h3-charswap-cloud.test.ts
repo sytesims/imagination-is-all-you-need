@@ -194,9 +194,11 @@ try {
     assert.equal(CS.samSide('the man on the left'), 'left', 'the mask uses the same side rule');
     // both places, quote and submit: the route refuses the job and the quote (its input carries target / point, routing/http.ts swapQuoteFields)
     const t = getTool('object-swap')!; const rs = routesFor('comfy-h3-charswap', t); const cloud = rs.find((r) => r.routeId === CS.CHARSWAP_CLOUD_ROUTE)!; const local = rs.find((r) => r.kind === 'local')!;
-    for (const r of [cloud, local]) { assert.match(r.unavailableFor!(j({ target: 'main person' }))!, /left\/right/, r.routeId); assert.equal(r.unavailableFor!(j({ target: 'the woman on the right' })), null, r.routeId);
+    for (const r of [cloud, local]) { const who = (r === cloud ? r.needsInput : r.unavailableFor)!; // Comfy Cloud: an input step (priced, the place stays; Nov 3); your computer: a block
+      assert.match(who(j({ target: 'main person' }))!, /left\/right/, r.routeId); assert.equal(who(j({ target: 'the woman on the right' })), null, r.routeId);
       const q = (x: Record<string, string>) => ({ ...H.routeQuoteInput(t, { duration: '5', mode: 'object_swap', swapType: 'person', ...x }), mode: 'object_swap' });
-      assert.match(r.unavailableFor!(q({ target: '' }))!, /left\/right/, `${r.routeId}: quote refuses`); assert.equal(r.unavailableFor!(q({ target: '', point: '0.7,0.4,0' })), null, `${r.routeId}: a click runs`); }
+      assert.match(who(q({ target: '' }))!, /left\/right/, `${r.routeId}: quote waits for who`); assert.equal(who(q({ target: '', point: '0.7,0.4,0' })), null, `${r.routeId}: a click runs`); }
+    assert.equal(cloud.unavailableFor!(j({ target: 'main person' })), null, 'on Comfy Cloud who to swap is a step, not a block');
     const cat = (await import('../src/shared/modelCatalog.ts')).MODEL_CATALOG['object-swap:comfy-h3-charswap']; assert.equal(cat.experimental, true, 'labelled Experimental in the menu');
     ok('who: H3 needs a click, a side or a mask clip ("main person" / empty refused) on both places, quote and submit; motion transfer exempt; Experimental');
   }

@@ -273,8 +273,9 @@ Commercial: yes = OSI licence; no = non-commercial; restricted = custom terms (r
 | Component | Licence | Commercial | Source |
 |---|---|---|---|
 | SAM 3.1 (sam3.1_multiplex_fp16) · mask preview | SAM License (Royalty-free, including commercial use. Include the licence text when you redistribute the weights. Trade-control (ITAR / export) and military-use limits apply.) | restricted | [link](https://github.com/facebookresearch/sam3/blob/main/LICENSE) |
-| H3 Character Swap recipe settings, after Comfy's Openjutsu app (Comfy-Org/comfy-openjutsu) | MIT | yes | [link](https://github.com/Comfy-Org/comfy-openjutsu) |
+| H3 Character Swap recipe settings and prompts, after Comfy's Openjutsu app (Comfy-Org/comfy-openjutsu) | MIT | yes | [link](https://github.com/Comfy-Org/comfy-openjutsu) |
 | H3 Character Swap workflow (Akatz Labs, akatz-labs/h3-character-swap-tool) | MIT | yes | [link](https://github.com/akatz-labs/h3-character-swap-tool) |
+| GPT Image 2.5 Sunburst (hosted: Comfy Router) · H3 Character Swap first frame | Provider terms | provider-terms | [link](https://docs.comfy.org/development/comfy-router/models/openai/gpt-image-2-5-sunburst) |
 
 ## Components: two-person-swap
 
@@ -283,7 +284,7 @@ Commercial: yes = OSI licence; no = non-commercial; restricted = custom terms (r
 | MiniMax H3 Ref2VA int8, Qwen3-VL 32B text encoder NVFP4, H3 video + audio VAEs, H3 fl2v turbo 8-step LoRA (Comfy-Org/MiniMax-H3, lightx2v/Minimax-h3-Turbo) | MiniMax H3 Community License | restricted | [link](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE) |
 | H3 Character Swap LoRA v1.5 (Akatz Labs, akatz-ai/MiniMax-H3-Character-Swap-LoRA), imported into your Comfy Cloud library | MiniMax H3 Community License (adapter retains base terms; no extra no-SaaS clause, verified 2026-10-17) | restricted | [link](https://huggingface.co/akatz-ai/MiniMax-H3-Character-Swap-LoRA/blob/main/LICENSE) |
 | SAM 3.1 (sam3.1_multiplex_fp16) · person masks | SAM License (Royalty-free, including commercial use. Include the licence text when you redistribute the weights. Trade-control (ITAR / export) and military-use limits apply.) | restricted | [link](https://github.com/facebookresearch/sam3/blob/main/LICENSE) |
-| H3 Character Swap recipe settings, after Comfy's Openjutsu app (Comfy-Org/comfy-openjutsu) | MIT | yes | [link](https://github.com/Comfy-Org/comfy-openjutsu) |
+| H3 Character Swap recipe settings and prompts, after Comfy's Openjutsu app (Comfy-Org/comfy-openjutsu) | MIT | yes | [link](https://github.com/Comfy-Org/comfy-openjutsu) |
 | H3 Character Swap workflow (Akatz Labs, akatz-labs/h3-character-swap-tool) | MIT | yes | [link](https://github.com/akatz-labs/h3-character-swap-tool) |
 
 ## Components: app-translate-video

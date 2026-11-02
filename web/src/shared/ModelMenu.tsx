@@ -119,14 +119,18 @@ function wordStatus(kind: string, text: string, o: { title?: string; runOn?: str
 
 /** The row's price of THIS run (task 7): the live quote for the selected model (the one Generate shows), else the picker's batch quote
  *  (POST /api/models/quotes at the page's current settings and the place that would run it). Same token as Generate (priceToken). */
+/** A quote waiting for a step the user adds (inputStep: H3's who to swap): "Next: click the person to swap…", calm, never "can't run". */
+export const nextStepText = (rq: any): string => { const t = String(rq?.reason ?? rq?.blockedReason ?? '').replace(/^.*?can['’]t run this job\.\s*/, '').replace(/^[^:]{2,60}:\s*/, '').replace(/\.$/, '').trim();
+  return t ? `Next: ${t.charAt(0).toLowerCase()}${t.slice(1)}.` : 'Next: add what this model needs.'; };
 export function rowPrice(rq: RowQuote | any | null | undefined, own: boolean): { price: string | null; place: string; sample: boolean; title?: string } | null {
-  if (!rq || rq.ok === false || (typeof rq.status === 'number' && rq.status >= 400) || rq.runnable === false || !rq.runOn) return null;
+  if (!rq || rq.ok === false || (typeof rq.status === 'number' && rq.status >= 400) || (rq.runnable === false && rq.inputStep !== true) /* a step still to add (H3: who to swap) keeps its price */ || !rq.runOn) return null;
   const demo = rq.demo === true; const credits = shownCredits(rq); const local = rq.runOn === 'local' || rq.routeKind === 'local';
   const tok = priceToken({ q: rq, own, demo, free: credits === 0 && local, credits }); if (!tok) return null;
   const place = rq.placeLabel || placeShort(rq.runOn, rq.runOnLabel ?? ''); const placeTok = (p: PlacePrice) => priceToken({ q: p, own, credits: p.credits, free: p.credits === 0 && p.runOn === 'local' });
   const rng = rq.priceRange?.places?.length > 1 ? `At these settings: ${rq.priceRange.places.map((p: PlacePrice) => `${(p as any).placeLabel || placeShort(p.runOn, p.runOnLabel ?? '')} ${placeTok(p) ?? ''}`.trim()).join(' · ')}.` : '';
+  const next = rq.inputStep === true ? nextStepText(rq) : '';
   const adj = rq.fit?.hint ? `${rq.fit.hint}: picking it sets this.` : rq.adjusted && Object.keys(rq.adjusted).length ? `Priced at ${adjustedWords(rq.adjusted) || 'its own settings'}: what this model runs when you pick it.` : '';
-  return { price: demo ? null : (tok === LOCAL_FREE || /^Free · your GPU$/i.test(tok) ? 'Free' : tok), place, sample: demo, title: [rng, adj].filter(Boolean).join(' ') || undefined };
+  return { price: demo ? null : (tok === LOCAL_FREE || /^Free · your GPU$/i.test(tok) ? 'Free' : tok), place, sample: demo, title: [next, rng, adj].filter(Boolean).join(' ') || undefined };
 }
 /** The settings a row was priced at once picked, in plain words ("1:1, 1K, 2 images"); fields that don't change what it runs are left out. */
 const ADJ_WORDS: Record<string, (v: string) => string> = { aspect: v => (v === 'auto' ? 'Auto aspect' : v), imageResolution: v => v, resolution: v => v, quality: v => `${v === 'med' ? 'medium' : v} quality`,
@@ -355,7 +359,7 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
     </div>; };
   /** The preview's extra line: why it's the default, and why this run can't go on it as set (too many images, a mask). */
   const noteOf = (m: ToolModel) => { const rq = liveQ(m); const b = rq && !rq.priceRange?.places?.length ? blockOf(rq) : null; const it = itemOf(m);
-    const why = b ? `Can’t run as set: ${reasonBody(b.full).replace(/^Not for these settings\.?\s*/, '') || 'try other settings.'}` : typeof it?.off === 'string' && it.off ? `Can’t run here: ${it.off}` : null;
+    const why = rq?.inputStep === true ? nextStepText(rq) : b ? `Can’t run as set: ${reasonBody(b.full).replace(/^Not for these settings\.?\s*/, '') || 'try other settings.'}` : typeof it?.off === 'string' && it.off ? `Can’t run here: ${it.off}` : null;
     return [isDef(m) ? defaultLine(defaultWhy, defaultReason) : null, why].filter(Boolean).join(' ') || null; };
   const row = (m: ToolModel, parent?: string) => info === m.key ? [mrow(m, parent), <div key={`${m.key}-info`} className="mhc mhc-inline" data-testid="model-info-card" data-model-key={m.key}><InfoCardBody m={{ ...m, medium: shownMedium(m) }} own={own} rq={liveQ(m)} note={noteOf(m)} /></div>] : mrow(m, parent);
   /** A family with several versions: one row (logo, name, versions, its line, "from $0.04" or Free) whose › opens the versions in place. */

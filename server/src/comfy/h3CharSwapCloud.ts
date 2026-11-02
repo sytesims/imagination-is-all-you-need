@@ -17,6 +17,9 @@
  * (the mask-free behaviour), so a miss never returns the source unchanged. Motion transfer and maskMode "none" stay mask-free.
  * Unchanged check (Nov 1): a run can still hand back the prepared source as it was (seen on a masked run); after the run the result is compared with
  * that source (comfy/unchangedCheck.ts) and a pass-through keeps its file but gets a plain notice ("The swap came back unchanged…"). Not for motion transfer.
+ * Prompt and first frame (Nov 2): Openjutsu's swap prompt (shared/h3SwapPrompt.ts) and, for Person swap unless charswapAnchor=off, its first-frame anchor
+ * (comfy/h3CharSwapAnchor.ts: GPT Image 2.5 Sunburst on Comfy Router, made after the LoRA check) → LoadImage + ImageScale (center crop to the video's
+ * size, as their anchor_fit) → <Picture 2> (ref_image_1) and the frame-0 guide image of MiniMaxH3AddGuide. No anchor (off, failed, motion) = the graph as before.
  * Before anything is uploaded, a free check (GET only) confirms the LoRA is in the account's model library (a clear refusal otherwise) and looks
  * for the optional 768p turbo import.
  * Credits: LoRA by Akatz Labs (HF akatz-ai/MiniMax-H3-Character-Swap-LoRA); recipe after Comfy's Openjutsu app (github.com/Comfy-Org/comfy-openjutsu, MIT) and Akatz Labs' H3 Character Swap workflow (github.com/akatz-labs/h3-character-swap-tool, MIT);
@@ -30,13 +33,14 @@ import { env } from '../env.js';
 import { setIn, type Plan } from './plans.js';
 import { h3MotionPrompt } from './objectSwap.js';
 import { composeH3SwapPrompt } from '../shared/h3SwapPrompt.js';
+import { charswapAnchorOn } from './h3CharSwapAnchor.js';
 import { findInAssets, checkImportedLora, importTodo, importSteps, importMissing } from './cloudImports.js';
 
 export const CHARSWAP_CLOUD_PROVIDER = 'cloud-h3-charswap';
 export const CHARSWAP_CLOUD_ROUTE = `comfy-cloud:${CHARSWAP_CLOUD_PROVIDER}`;
 export const CHARSWAP_CLOUD_GRAPH = 'cloud/h3-charswap-api.json';
 export const CHARSWAP_CLOUD_NODES = { unet: '1', shift: '7', attention: '8', turbo: '3', lora: '2', text: '4', video: '10', audioOut: '11', image: '12', prompt: '13', guide: '19', cond: '20', seed: '21',
-  sampler: '22', scheduler: '23', guider: '24', sample: '25', save: '30' } as const;
+  sampler: '22', scheduler: '23', guider: '24', sample: '25', save: '30', anchor: '14', anchorFit: '15' } as const;
 /** The LoRA file as Comfy Cloud names it after Model Library → Import from Hugging Face (<owner>__<repo>__<file>, seen 2026-10-26).
  *  Env COMFY_CLOUD_CHARSWAP_LORA when the import has another name (e.g. a Civitai import or a rename). */
 export const CHARSWAP_LORA_DEFAULT = 'akatz-ai__MiniMax-H3-Character-Swap-LoRA__h3_character_swap_v1.5.safetensors';
@@ -166,7 +170,8 @@ export function charswapCloudPlan(j: { id: string; toolId: string; provider: str
   const preset = charswapPreset(i); const tier = CHARSWAP_PRESETS[preset].tier; const { width, height } = charswapSize(Number(i.width), Number(i.height), tier); const length = charswapFrames(seconds);
   const motion = i.mode === 'motion_transfer' || j.toolId === 'motion-transfer';
   const own = typeof i.prompt === 'string' ? i.prompt.trim() : ''; // the user's words, already in H3's <Picture 1> / <Video 1> form (buildCloudPlan → withRefGrammar)
-  const prompt = motion ? (own || h3MotionPrompt()).slice(0, 4000) : composeH3SwapPrompt(i);
+  const anchor = !motion && charswapAnchorOn(i) && typeof i.charswapAnchorPath === 'string' && i.charswapAnchorPath ? String(i.charswapAnchorPath) : null; // made by prepareCharswapAnchor
+  const prompt = motion ? (own || h3MotionPrompt()).slice(0, 4000) : composeH3SwapPrompt({ ...i, anchor: !!anchor });
   const seed = Math.max(0, Math.floor(Number(i.seed) || 0)) || Math.floor(Math.random() * 2 ** 32);
   const smp = charswapSampling(i); const mask = charswapMask(i, motion);
   const g = load(); const N = CHARSWAP_CLOUD_NODES; const src24 = `${i.videoPath}.${j.id}-charswap24.mp4`;
@@ -222,14 +227,21 @@ export function charswapCloudPlan(j: { id: string; toolId: string; provider: str
     }
   }
   if (i.hasAudio === false) { // a silent clip: no reference audio, no audio guide (H3 still makes its own sound; keepAudio decides what is kept)
-    delete g[N.cond].inputs['ref_audios.ref_audio_0']; g[N.guider].inputs.conditioning = [N.cond, 0]; delete g[N.guide];
+    delete g[N.cond].inputs['ref_audios.ref_audio_0'];
+    if (anchor) { delete g[N.guide].inputs.audio; delete g[N.guide].inputs.audio_vae; } else { g[N.guider].inputs.conditioning = [N.cond, 0]; delete g[N.guide]; }
+  }
+  if (anchor) { // first-frame anchor, as Openjutsu's anchor_image → anchor_fit (ImageScale lanczos, center crop to the video's size) → <Picture 2> + frame 0
+    g[N.anchor] = { class_type: 'LoadImage', inputs: { image: { __file: anchor } }, _meta: { title: 'First frame (Picture 2), made with GPT Image 2.5 Sunburst' } };
+    g[N.anchorFit] = { class_type: 'ImageScale', inputs: { image: [N.anchor, 0], upscale_method: 'lanczos', width, height, crop: 'center' }, _meta: { title: "First frame at the video's exact size" } };
+    g[N.cond].inputs['ref_images.ref_image_1'] = [N.anchorFit, 0];
+    Object.assign(g[N.guide].inputs, { image: [N.anchorFit, 0], vae: ['5', 0] }); g[N.guide]._meta = { title: i.hasAudio === false ? 'First frame guide' : 'First frame + source audio guide' };
   }
   const label = motion ? 'Motion transfer' : 'Character swap';
   return { tool: j.toolId, outKind: 'video', post: { kind: 'each' }, muxSourceAudio: i.keepAudio !== false, labels: [label],
-    notes: [`H3 Character Swap on Comfy Cloud: ${CHARSWAP_PRESETS[preset].label}, ${width}×${height}, ${seconds} s (${length} frames), ${smp.turbo ? `turbo ${turboFile === TURBO_SHARED ? '(shared build)' : '768p build'}` : 'no turbo'} ${smp.steps} steps ${smp.sampler}/${smp.scheduler}, Character Swap LoRA ${smp.loraStrength}, ${maskNote}`,
+    notes: [`H3 Character Swap on Comfy Cloud: ${CHARSWAP_PRESETS[preset].label}, ${width}×${height}, ${seconds} s (${length} frames), ${smp.turbo ? `turbo ${turboFile === TURBO_SHARED ? '(shared build)' : '768p build'}` : 'no turbo'} ${smp.steps} steps ${smp.sampler}/${smp.scheduler}, Character Swap LoRA ${smp.loraStrength}, ${maskNote}${anchor ? ', first frame from GPT Image 2.5 Sunburst as <Picture 2> and the frame-0 guide' : ''}`,
       ...(diagnostics.length ? ['Two silent mask previews are saved separately; extra Cloud encoding/storage overhead is unmeasured and may add GPU-time cost. They are not effective sampler tensors.'] : [])],
     passes: [{ label, workflow: CHARSWAP_CLOUD_GRAPH, graph: g, output: N.save, prep, diagnostics, ...(!motion ? { unchangedVs: src24 } : {}), // a swap that returns its source gets a notice (comfy/unchangedCheck.ts)
-      expect: { fps: 24, width, height, length, seconds, tier, preset, seed, prompt, ...(!motion ? { prompts: [prompt] } : {}), lora: g[N.lora].inputs.lora_name, turbo: smp.turbo ? turboFile : null, steps: smp.steps, loraStrength: smp.loraStrength, mask: mask.mode } }] };
+      expect: { fps: 24, width, height, length, seconds, tier, preset, seed, prompt, ...(!motion ? { prompts: [prompt] } : {}), lora: g[N.lora].inputs.lora_name, turbo: smp.turbo ? turboFile : null, steps: smp.steps, loraStrength: smp.loraStrength, mask: mask.mode, anchor: !!anchor } }] };
 }
 
 /** Free check (GET only, before any upload or submit): is the LoRA in this account's Comfy Cloud model library? (comfy/cloudImports.ts: the Model
@@ -248,13 +260,14 @@ export const charswapRecommendedReport = (lora: { state: string; loaderPath: str
   CHARSWAP_RECOMMENDED.map((m) => { const c = m.id === 'charswap-lora' ? lora : turbo;
     return { ...m, state: c.state, loaderPath: c.loaderPath, ...(c.state === 'missing' ? { todo: importTodo(m) } : {}) }; });
 /** Form fields for this route's settings (Person swap / Motion transfer): charswapPreset openjutsu|fast, turbo 0|1, steps 4–40, loraStrength 0–1.5,
- *  charswapMask off. Only the fields that are set; other routes ignore them. */
+ *  charswapMask off, charswapAnchor off (no first frame from GPT Image). Only the fields that are set; other routes ignore them. */
 export function charswapFields(f: Record<string, string>): Record<string, any> | { error: string } {
   const o: Record<string, any> = {}; const has = (k: string) => f[k] != null && String(f[k]).trim() !== '';
   if (has('charswapPreset')) { if (!(f.charswapPreset in CHARSWAP_PRESETS)) return { error: 'charswapPreset must be openjutsu (Sharper, 768p) or fast (Faster and cheaper, 480p).' }; o.charswapPreset = f.charswapPreset; }
   if (has('turbo')) { if (!/^(0|1|true|false|on|off)$/i.test(f.turbo)) return { error: 'turbo must be 1 or 0.' }; o.turbo = /^(1|true|on)$/i.test(f.turbo); }
   if (has('steps')) { const n = Number(f.steps); if (!Number.isInteger(n) || n < 4 || n > 40) return { error: 'steps must be a whole number from 4 to 40.' }; o.steps = n; }
   if (has('loraStrength')) { const n = Number(f.loraStrength); if (!Number.isFinite(n) || n < 0 || n > 1.5) return { error: 'loraStrength must be from 0 to 1.5.' }; o.loraStrength = n; }
+  if (has('charswapAnchor')) { if (!/^(auto|off)$/.test(f.charswapAnchor)) return { error: 'charswapAnchor must be auto or off.' }; if (f.charswapAnchor === 'off') o.charswapAnchor = 'off'; }
   if (has('charswapMask')) { if (!/^(auto|off)$/.test(f.charswapMask)) return { error: 'charswapMask must be auto or off.' }; if (f.charswapMask === 'off') o.charswapMask = 'off'; }
   return o;
 }
