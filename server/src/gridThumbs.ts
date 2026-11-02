@@ -3,7 +3,7 @@
  * Grids (Create Image, Assets, Community, pickers) show results a few hundred pixels wide; real outputs are often 2–4K PNGs.
  * With `w`, the thumb route answers a copy scaled down to `w` px wide (cached in DATA_DIR/thumbs, rendered once, 4 at a time):
  *  - images under /files, /samples, /examples (png/jpg/webp): JPEG, or PNG when the source has an alpha channel (cut-outs stay transparent);
- *  - video posters (/api/media/poster?url=<video>): the same first frame as the full-size poster, scaled.
+ *  - video posters (/api/media/poster?url=<video>): the same frame as the full-size poster, scaled.
  * A source already ≤ w wide is served as is. Anything else (or an ffmpeg failure) → null, and the route redirects to the original,
  * so a thumb URL always shows the picture. Without `w` the route behaves exactly as before (video frame thumbnails).
  */
@@ -36,7 +36,7 @@ const inflight = new Map<string, Promise<string | null>>();
 
 /** The source file a thumb URL points at: a local image, or a video's full-size poster. */
 async function sourceOf(url: string): Promise<string | null> {
-  const pm = /^\/api\/media\/poster\?url=([^&]+)$/.exec(url);
+  const pm = /^\/api\/media\/poster\?url=([^&]+)(?:&v=\w+)?$/.exec(url);
   if (pm) { const v = decodeURIComponent(pm[1]); return kindOfUrl(v) === 'video' ? renderPoster(v) : null; }
   if (kindOfUrl(url) !== 'image' || /\.gif(\?|$)/i.test(url)) return null; // GIFs keep their animation
   return localFileOf(url);

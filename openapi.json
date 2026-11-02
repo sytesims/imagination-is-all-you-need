@@ -3530,7 +3530,7 @@
         "tags": [
           "Assets"
         ],
-        "summary": "B5: full-size first-frame JPEG of a local video output (rendered on first request, cached). 404 for anything else.",
+        "summary": "B5: full-size poster JPEG of a local video output: a frame ~1 s in (25% of a short clip), skipping near-black frames (rendered on first request, cached; v= is a cache version). 404 for anything else.",
         "responses": {
           "200": {
             "description": "OK",

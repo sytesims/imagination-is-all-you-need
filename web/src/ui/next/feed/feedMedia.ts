@@ -1,15 +1,16 @@
 /** Feed card media helpers, shared by the result feeds (FeedCard.tsx, Create Image and Generate Video). Pure, no React, so tests import them. */
 import type { JobState } from '../../../api';
+import { posterRoute, videoPoster } from '../../../../../server/src/shared/videoPoster';
 
 export const clampAr = (ar: number) => Math.max(0.4, Math.min(2.6, ar || 1));
 /** A card's tallest height in CSS px (imageCanvas.css --h × 1.5): the thumbnail size to ask for. */
 export const tileMaxH = () => 1.5 * (typeof innerWidth === 'number' && innerWidth >= 1600 ? 300 : innerWidth <= 700 ? 100 : 240);
 
-/** The output a video card shows: url, first-frame poster, shape and length (server outputs[], else the job's resultUrl and specs). */
+/** The output a video card shows: url, poster (shared/videoPoster.ts), shape and length (server outputs[], else the job's resultUrl and specs). */
 export function videoOutOf(j: JobState): { url: string; poster: string; ar: number; sec: number } | null {
   const a = j as any; const o = ((a.outputs ?? []) as any[]).find(x => x?.url && (x.kind === 'video' || /\.(mp4|webm|mov)(\?|$)/i.test(String(x.url)))) ?? null;
   const url: string = o?.url ?? j.resultUrl ?? ''; if (!url) return null;
-  return { url, poster: o?.posterUrl ?? `/api/media/poster?url=${encodeURIComponent(url)}`, ar: o?.width > 0 && o?.height > 0 ? o.width / o.height : askedAr(j), sec: Number(o?.durationSec ?? a.specs?.durationSec ?? a.input?.duration ?? 0) || 0 };
+  return { url, poster: videoPoster(url, o?.posterUrl) ?? posterRoute(url) /* a remote clip too: the route 404s and the tile shows its backdrop, never a bare black video */, ar: o?.width > 0 && o?.height > 0 ? o.width / o.height : askedAr(j), sec: Number(o?.durationSec ?? a.specs?.durationSec ?? a.input?.duration ?? 0) || 0 };
 }
 /** The shape the run asked for (a running or failed clip's card keeps it): input aspect "9:16", else 16:9. */
 export function askedAr(j: JobState): number { if (j.toolId === 'app-photos-to-reel') return 9 / 16; const a = j as any; const m = /^(\d+):(\d+)$/.exec(String(a.input?.aspect ?? a.specs?.aspect ?? '')); return m ? Number(m[1]) / Number(m[2]) : 16 / 9; }

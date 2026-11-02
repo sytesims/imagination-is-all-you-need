@@ -28,6 +28,7 @@ import { navigate } from '../platform/router';
 import { useCopied, Copied } from './Toast';
 import { tip } from './Tooltip';
 import { cleanModelName } from './models';
+import { posterRoute } from '../../../server/src/shared/videoPoster';
 import { renderShareCard, cardBlob, uploadCard, isPrivateHost, loadImg, REPO_URL } from './shareCard';
 import { shareTagDefault, setShareTagDefault } from './sharePrefs';
 import { recipeText, recipePath, type Recipe } from '../../../server/src/shared/recipe';
@@ -125,7 +126,7 @@ export function ShareSheet({ jobId, out = 0, onClose, onCopy, onError, mediaUrl 
   const poster3d = is3d ? (posterOf3d(job) ?? (typeof job?.input?.imageUrl === 'string' ? job.input.imageUrl : null)) : null;
   useEffect(() => { if (!cur || isAudio) return; let on = true; setSrc(null); setSrcErr('');
     (async () => { if (is3d) { if (!poster3d) return; const img = await loadImg(poster3d); if (on) setSrc({ img, w: img.naturalWidth, h: img.naturalHeight }); return; }
-      if (isVideo) { const [sz, img] = await Promise.all([loadVideoSize(cur.url), loadImg(`/api/media/poster?url=${encodeURIComponent(cur.url)}`).catch(() => null)]); if (!img) throw new Error('poster');
+      if (isVideo) { const [sz, img] = await Promise.all([loadVideoSize(cur.url), loadImg(posterRoute(cur.url)).catch(() => null)]); if (!img) throw new Error('poster');
         if (on) setSrc({ img, w: sz.w, h: sz.h }); } else { const img = await loadImg(cur.url); if (on) setSrc({ img, w: img.naturalWidth, h: img.naturalHeight }); } })().catch(() => on && setSrcErr('Couldn’t load the result for the preview.'));
     return () => { on = false; }; }, [cur?.url, isAudio, isVideo, is3d, poster3d, retry]);
   /* the layers themselves, for the layers video */

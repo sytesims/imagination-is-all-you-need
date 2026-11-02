@@ -7,11 +7,12 @@
 
 export const CARD_W = 1200, CARD_H = 630;
 import { REPO_URL } from './brand';
+import { posterRoute } from '../../../server/src/shared/videoPoster';
 export { REPO_URL };
 export interface CardInput { mediaUrl: string | null; kind: 'image' | 'video' | 'audio' | null; toolName: string; model: string | null; runOn: string | null; /** cost receipt without the model (shared/shareReceipt.ts receiptFacts): shown as RECEIPT in place of RUN ON when set */ receipt?: string | null; /** a pill on the picture, e.g. "13 layers" (Image to layers) */ badge?: string | null }
 
 export const loadImg = (src: string) => new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.decoding = 'async'; i.onload = () => res(i); i.onerror = () => rej(new Error('image')); i.src = src; });
-const posterOf = (url: string) => `/api/media/poster?url=${encodeURIComponent(url)}`;
+const posterOf = (url: string) => posterRoute(url);
 export function roundRect(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
 /** Wrap to at most `lines` lines; the last one gets an ellipsis when cut. */
 export function wrap(c: CanvasRenderingContext2D, text: string, maxW: number, lines: number): string[] {
