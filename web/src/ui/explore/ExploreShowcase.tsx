@@ -211,6 +211,11 @@ const SwapFaces = ({ run }: { run: SwapRunView }) => <span className="xsd-faces"
  *  original under each slider and the two swaps) play in step (shared useSyncClips: the first original leads and carries the sound, one shared
  *  SoundToggle under the headline). Each card keeps its bar: the photos, the model, place and price, and Recreate. Reduced motion: the posters. */
 export function XpSwap() {
+  /* two redesigns to compare (2026-11-02): ?swapsection=a (three in sync) | b (one stage, a 3-way switch); anything else: the two sliders */
+  const [v] = useState(() => (typeof location === 'undefined' ? '' : new URLSearchParams(location.search).get('swapsection') ?? '').toLowerCase());
+  return v === 'a' ? <SwapTrio /> : v === 'b' ? <SwapStage /> : <SwapPair />;
+}
+function SwapPair() {
   const S = EXPLORE_SWAP; const runs = swapRuns(); const g = useSyncClips(4); if (runs.length < 2) return null;
   const media = (i: number, url: string, poster: string) => g.still ? <img className="xsdc-media" src={poster} alt="" draggable={false} /> : <video {...g.clip(i)} className="xsdc-media" src={url} poster={poster} />;
   return <section className="xv-sec xsdc" id="xp-swap" data-testid="xp-swap" aria-labelledby="xp-h-swap">
@@ -228,6 +233,65 @@ export function XpSwap() {
       </figure>)}
     </div>
     <div className="xsdc-foot"><SwapUpscaled runs={runs} /><span className="xps-ctas">{runs.map((x, k) => <Link key={x.r.key} to={x.r.cta.href} className={k ? 'xv-quiet' : 'xv-btn'} data-testid={`xp-swap-cta-${x.r.key}`}>{x.r.cta.label}{!k && <Arrow />}</Link>)}</span></div>
+  </section>;
+}
+
+/** "from 2 photos": the photos a run started from, as small round faces, then the words */
+const SwapFrom = ({ run }: { run: SwapRunView }) => <span className="xsw-from"><SwapFaces run={run} /><small>from {run.photos.length} photo{run.photos.length === 1 ? '' : 's'}</small></span>;
+/** a result's run line, under its media (the Explore rule): the photos, model · where it ran · price, Recreate */
+const SwapRunLine = ({ run }: { run: SwapRunView }) => <div className="xsw-run">
+  <RunChip c={run.chip} testId={`xp-swap-chip-${run.r.key}`} /><SwapFrom run={run} />
+  <Link to={run.rec} className="xsw-rec" data-testid={`xp-swap-recreate-${run.r.key}`}>Recreate<Arrow /></Link></div>;
+const SwapHead = () => <header className="xsdc-head xsw-head">
+  <h2 id="xp-h-swap" className="xps-h xsdc-h">{EXPLORE_SWAP.title.map((l) => <span key={l}>{l}</span>)}</h2>
+  <p className="xps-p xsdc-p">{EXPLORE_SWAP.line}</p></header>;
+type SyncGroup = ReturnType<typeof useSyncClips>;
+const SwapSound = ({ g }: { g: SyncGroup }) => g.still ? null : <span className="xsw-snd"><SoundToggle on={g.sound.lit} waiting={g.sound.waiting} label={g.sound.hint} onToggle={g.toggleSound} testId="xp-swap-sound" /></span>;
+const SwapFoot = ({ runs }: { runs: SwapRunView[] }) => <div className="xsdc-foot xsw-foot"><SwapUpscaled runs={runs} /><span className="xps-ctas">{runs.map((x, k) => <Link key={x.r.key} to={x.r.cta.href} className={k ? 'xv-quiet' : 'xv-btn'} data-testid={`xp-swap-cta-${x.r.key}`}>{x.r.cta.label}{!k && <Arrow />}</Link>)}</span></div>;
+
+/** Option A (?swapsection=a): three in a row, all in step (shared useSyncClips: the original leads and carries the sound): Original | she changes
+ *  (H3 Character Swap) | they both change (Kling 3.0 Omni Edit). Nothing sits on the clips: a short label and the run line under each, the sound
+ *  button under the original. Reduced motion: the three frames at 5 s, so they match. */
+function SwapTrio() {
+  const S = EXPLORE_SWAP; const runs = swapRuns(); const g = useSyncClips(3); if (runs.length < 2) return null;
+  const media = (i: number, url: string, poster: string, alt: string) => g.still ? <img className="xsw-media" src={poster} alt={alt} draggable={false} /> : <video {...g.clip(i)} className="xsw-media" src={url} poster={poster} aria-label={alt} />;
+  return <section className="xv-sec xsdc xsw" id="xp-swap" data-testid="xp-swap" aria-labelledby="xp-h-swap" data-layout="a">
+    <SwapHead />
+    <div ref={g.root} className="xsw-trio" data-testid="xp-swap-trio">
+      <figure className="xsw-cell is-orig" data-testid="xp-swap-original">
+        <div className="xsw-frame">{media(0, S.original.url, S.original.poster5, 'The original dance: two dancers')}</div>
+        <figcaption className="xsw-cap"><span className="xsw-name"><b>{S.original.label}</b><small>{S.original.sub}</small></span><SwapSound g={g} /></figcaption>
+      </figure>
+      {runs.map((x, k) => <figure key={x.r.key} className="xsw-cell" data-testid={`xp-swap-run-${x.r.key}`}>
+        <div className="xsw-frame">{media(k + 1, x.url, x.r.poster5 ?? x.poster, `${x.r.who}: the same dance, ${x.f.model}`)}</div>
+        <figcaption className="xsw-cap"><span className="xsw-name"><b>{x.r.who}</b></span><SwapRunLine run={x} /></figcaption>
+      </figure>)}
+    </div>
+    <SwapFoot runs={runs} />
+  </section>;
+}
+
+/** Option B (?swapsection=b): one big stage. A 3-way switch (Original · One swapped · Both swapped; shared Segmented) picks what it shows; on a
+ *  result it is the shared before / after slider (CompareFrame) over the original, resting mostly on the result. All three clips stay mounted and
+ *  in step (shared useSyncClips: the original leads and carries the sound), so switching never restarts the dance. The run line sits under it. */
+function SwapStage() {
+  const S = EXPLORE_SWAP; const runs = swapRuns(); const g = useSyncClips(3); const [pick, setPick] = useState(1); if (runs.length < 2) return null;
+  const cur = pick ? runs[pick - 1] : null;
+  const media = (i: number, url: string, poster: string) => g.still ? <img className="xsw-media" src={poster} alt="" draggable={false} /> : <video {...g.clip(i)} className="xsw-media" src={url} poster={poster} />;
+  const opts = [{ value: 0, label: S.original.label, testId: 'xp-swap-pick-original' }, ...runs.map((x, k) => ({ value: k + 1, label: x.r.short, testId: `xp-swap-pick-${x.r.key}` }))];
+  return <section className="xv-sec xsdc xsw" id="xp-swap" data-testid="xp-swap" aria-labelledby="xp-h-swap" data-layout="b">
+    <SwapHead />
+    <div className="xsw-switch bp-host"><Segmented label="Show" value={pick} options={opts} onChange={setPick} testId="xp-swap-switch" /></div>
+    <div ref={g.root} className="xsw-stage" data-testid="xp-swap-stage">
+      <CompareFrame className={`xsw-cmp${cur ? '' : ' is-orig'}`} intro="nudge" start={24} testId="xp-swap-slider" labels={[S.original.label, cur?.r.who ?? '']}
+        before={media(0, S.original.url, cur?.r.originalPoster ?? S.original.poster)}
+        after={runs.map((x, k) => <div key={x.r.key} className={`xsw-layer${pick === k + 1 ? ' on' : ''}`} aria-hidden={pick !== k + 1}>{media(k + 1, x.url, x.poster)}</div>)} />
+    </div>
+    <div className="xsw-under" aria-live="polite">
+      {cur ? <SwapRunLine run={cur} /> : <span className="xsw-name"><b>{S.original.label}</b><small>{S.original.sub}</small></span>}
+      <SwapSound g={g} />
+    </div>
+    <SwapFoot runs={runs} />
   </section>;
 }
 

@@ -317,15 +317,17 @@ export const EXPLORE_HEADLINE = 'Bring your ideas to life';
  *  plus his). Both play their Topaz upscale (`sharp`); the two source clips are the same 8 s take frame for frame, so all four clips play in step.
  *  Models, places and prices on screen come from the featured entries. */
 export interface SwapRun { key: string; who: string; photos: string; cta: { label: string; href: string };
-  /** the original's poster at the same moment as this run's poster (default: the original's own), so the two sides match before the clips play and under reduced motion */ originalPoster?: string }
+  /** the original's poster at the same moment as this run's poster (default: the original's own), so the two sides match before the clips play and under reduced motion */ originalPoster?: string;
+  /** the result's frame at 5 s, the moment of the Omni Edit poster (default: its own poster), so three stills side by side match (?swapsection=a) */ poster5?: string;
+  /** its name in the 3-way switch (?swapsection=b) */ short: string }
 /** Object Swap with H3 Character Swap picked */ const SWAP_H3_CTA = { label: 'Swap a character', href: `${videoWorkflowHref('object-swap')}&model=minimax-h3-character-swap` };
 export const EXPLORE_SWAP = {
   key: 'h3-char-swap', eyebrow: 'Chapter 1 · Swap a character', title: ['Same dance.', 'Two new casts.'],
   line: 'One clip went in. One model swapped her, the other swapped them both. Not a step out of time.',
-  /** the original: the clip both runs started from (H3’s copy of it; Omni Edit’s is the same take), left of each slider’s line */ original: { label: 'Original', url: P('h3-char-swap-in.mp4'), poster: P('h3-char-swap-in.webp') },
+  /** the original: the clip both runs started from (H3’s copy of it; Omni Edit’s is the same take), left of each slider’s line */ original: { label: 'Original', url: P('h3-char-swap-in.mp4'), poster: P('h3-char-swap-in.webp'), /** its frame at 5 s (see SwapRun.poster5) */ poster5: P('h3-char-swap-in-5s.webp'), sub: 'The clip that went in' },
   runs: [
-    { key: 'h3-char-swap', who: 'She changes', photos: 'One photo', cta: SWAP_H3_CTA },
-    { key: 'kling-dance-swap', who: 'They both change', photos: 'Two photos', originalPoster: P('h3-char-swap-in-5s.webp'), cta: { label: 'Swap the whole cast', href: `${videoWorkflowHref('motion-control')}&model=kling-v3-omni-edit` } },
+    { key: 'h3-char-swap', who: 'She changes', short: 'One swapped', photos: 'One photo', poster5: P('h3-char-swap-5s.webp'), cta: SWAP_H3_CTA },
+    { key: 'kling-dance-swap', who: 'They both change', short: 'Both swapped', photos: 'Two photos', originalPoster: P('h3-char-swap-in-5s.webp'), cta: { label: 'Swap the whole cast', href: `${videoWorkflowHref('motion-control')}&model=kling-v3-omni-edit` } },
   ] as SwapRun[],
   cta: SWAP_H3_CTA,
 };
