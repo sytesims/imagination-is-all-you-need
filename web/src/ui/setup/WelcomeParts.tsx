@@ -42,7 +42,8 @@ export const WELCOME_CHOICES: readonly { id: RunChoice; name: string; line: stri
   { id: 'direct', name: 'Your own keys', line: 'Use accounts you already have.' },
 ];
 export const COMFY_KEYS_URL = 'https://platform.comfy.org/profile/api-keys';
-const SET_UP_COMFYUI = repoDoc('docs/LOCAL-MODELS-AND-HARDWARE.md');
+/** "How to get it": the official ComfyUI Desktop download (Mac, Windows, Linux), not our own docs */
+const SET_UP_COMFYUI = 'https://www.comfy.org/download';
 
 export type Comfy = { state: 'looking' | 'found' | 'missing' | 'checking' | 'bad'; url?: string; version?: string | null; save?: boolean; text?: string };
 export type KeyState = { state: 'checking' | 'ok' | 'bad'; text: string };
