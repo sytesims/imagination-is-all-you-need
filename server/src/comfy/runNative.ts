@@ -22,6 +22,7 @@ import { putPreview, previewMethod } from './preview.js';
 import { notePlanPrompts } from '../jobSource.js';
 import { nativeOutputItems } from './nativeImageOutputs.js';
 import { editUnchanged, unchangedNotice } from './unchangedCheck.js';
+import { holdAwake } from '../keepAwake.js';
 
 /** native when OPENHIGGSFIELD_COMFY_API=native, or (unset) when COMFY_BASE_URL is a local / private host. */
 export function nativeMode() {
@@ -248,6 +249,7 @@ export const isOpaqueImage = (job: Job, file: string) => /\.(png|webp)$/i.test(f
 export const LATE_WATCH_MS = () => Number(env('LATE_WATCH_MS')) || 2 * 3600_000;
 /** runNative with failures mapped onto the job (the queue then auto-refunds). */
 export async function runNativeSafe(job: Job) {
+  const release = holdAwake(); // the user's own ComfyUI: keep the computer awake until this job ends (keepAwake.ts)
   try { await runNative(job); }
   catch (e) {
     if ((job.status as string) === 'canceled') return;
@@ -273,5 +275,5 @@ export async function runNativeSafe(job: Job) {
     job.status = 'failed'; job.errorType = outage ? 'provider_outage' : 'temporary';
     job.error = outage ? `Local ComfyUI is unreachable (${config.comfyBaseUrl}).` : `ComfyUI run failed: ${msg}`;
     console.error(`[openhiggsfield] native comfy failed for ${job.id}: ${msg}`);
-  }
+  } finally { release(); }
 }

@@ -22,6 +22,7 @@ import { isOpaqueImage, LATE_WATCH_MS } from './runNative.js';
 import { env } from '../env.js';
 import { nativeOutputItems } from './nativeImageOutputs.js';
 import { featureIdOfJob } from '../shared/imageFeatures.js';
+import { holdAwake } from '../keepAwake.js';
 
 export const canResume = (j: Job) => j.status === 'running' && !!j.comfyPrompt?.id && j.comfyPrompt.resumable === true && !!j.comfyPrompt.base;
 const imageJob = (j: Job) => j.input.outKind === 'image' || featureIdOfJob(j) != null;
@@ -66,6 +67,10 @@ export async function storeOutputs(job: Job, c: ComfyNative, h: any): Promise<st
 
 /** Poll until the prompt finishes (or is gone). Resolves with the job finished (done or failed); never throws. */
 export async function resumeNative(job: Job, o: { sleep?: (ms: number) => Promise<void> } = {}): Promise<void> {
+  const release = holdAwake(); // a reconnected run on the user's own ComfyUI keeps the computer awake too (keepAwake.ts)
+  try { await resumeLoop(job, o); } finally { release(); }
+}
+async function resumeLoop(job: Job, o: { sleep?: (ms: number) => Promise<void> }): Promise<void> {
   const cp = job.comfyPrompt!; const sleep = o.sleep ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
   const c = comfyFor(cp.base);
   job.stage = 'reconnecting'; job.progressKind = 'indeterminate'; job.steps = null; job.updatedAt = Date.now();
