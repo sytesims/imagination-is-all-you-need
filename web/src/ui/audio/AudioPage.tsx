@@ -53,6 +53,7 @@ import { isOpenWeights, providerGroupOf, displayNameOf } from '../../shared/Open
 import { BarPopover, PopSection, PopList, PopRow, PopSwitch, PopAction, Segmented } from '../../shared/BarPop';
 import { countWord } from '../../shared/barPopText';
 import { ModelMenu, type MenuItem } from '../../shared/ModelMenu';
+import { wfDefaultOf } from '../../shared/workflowDefaults';
 import { claimPlayback } from '../../shared/audioPlayer';
 import { useToast } from '../../shared/Toast';
 import { KeyNeeded, addKeyText, hasFreeLocal } from '../../shared/KeyNeeded';
@@ -333,8 +334,11 @@ export default function AudioPage(p: AudioPageProps) {
   const enhOn = wf.id === 'music' || wf.id === 'sfx';
   const showEnh = (r: EnhanceResult) => { const was = r.original; p.setPrompt(r.prompt); toast(enhanceToastTitle(r), 'info', { sub: [r.added.slice(0, 4).join(', '), r.source].filter(Boolean).join(' · ') || undefined, ms: 10000, action: { label: 'Undo', onClick: () => p.setPrompt(was) } }); };
 
-  /* ---- the model menu (the workflow's Default marked) ---- */
-  const def = live?.defaults?.active ?? null;
+  /* ---- the model menu (the workflow's Default marked) ----
+   * The default comes from the tool list (tool.workflowDefaults, shared/workflowDefaults.ts), the one source Image's bar and the start model
+   * (initialProviderFor) read. It was GET /api/audio-workflows, fetched once per page load: until it came back (or when it failed) a picked workflow's
+   * menu had no Default row and Auto named the tool's default (Sound effects: "Picks Seed Audio" while ElevenLabs ran), and a ★ default never showed. */
+  const def = wfDefaultOf(p.tool, wf.id);
   const metaOf = (m: any) => [providerGroupOf(provs.find(x => x.id === m?.id), m), live?.modelInfo?.[m?.id]?.workflow?.line].filter(Boolean) as string[];
   const menuItems: MenuItem[] = provs.map(x => { const m = models.find(y => y.id === x.id); const name = live?.modelInfo?.[x.id]?.name ?? displayNameOf(m, x) ?? m?.name ?? x.name;
     return { id: x.id, name, family: m?.family ?? (x as any).family ?? undefined, badge: (m?.badges ?? []).includes('new') ? 'New' : undefined, open: x.kind === 'open-weights' || isOpenWeights(x, m), tip: metaOf(m ?? x).join(' · '), p: { ...m, ...x, routes: (x as any).routes ?? m?.routes } }; });
@@ -419,7 +423,8 @@ export default function AudioPage(p: AudioPageProps) {
             <button ref={aR.model} type="button" className={`ic-chip ic-model ${pop === 'model' ? 'on' : ''}`} data-testid="ap-model" aria-haspopup="listbox" aria-expanded={pop === 'model'} {...tip(pop === 'model' ? null : [modelName, live?.modelInfo?.[cur?.id ?? '']?.workflow?.line].filter(Boolean).join(' · '))} onClick={() => setPop('model')}><MakerTile className="ic-dot" medium="audio" maker={tm?.maker} makerName={tm?.makerName} fallback={(cur as any)?.family || cur?.name} /><span className="ic-mname"><Words text={modelName || 'No model'} /></span><svg className="ic-caret" width="16" height="16" viewBox="0 0 16 16" aria-hidden><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></button>
           </span>
           <ModelMenu open={pop === 'model'} anchor={aR.model} watch={dock} gap={4} placement="top" onClose={closePop} items={menuItems} value={p.provider} testId="ap-model-list" rowTestId={id => `ap-model-${id}`} onPick={(id, fit) => { p.setProvider(id); closePop(); const d = Number(fit?.values.duration); if (lenOn && d > 0 && !lenAuto) p.setDuration(d); swNote.show(lenAuto ? null : fit?.note); }} toolId={p.tool.id} quote={q}
-            defaultId={def?.id ?? undefined} defaultWhy={def?.why ?? undefined} defaultReason={def && !def.runs ? def.reason : null} rateOf={m => unitRateOf(m, provs.map(x => x.id))} />
+            defaultId={def?.id ?? undefined} defaultWhy={def?.why ?? undefined} defaultReason={def && !def.runs ? def.reason : null}
+            onReset={def?.start && p.provider !== def.start && provs.some(x => x.id === def.start) ? () => p.setProvider(def.start!) : null /* as Image: your own pick shows Reset back to the workflow's start */} rateOf={m => unitRateOf(m, provs.map(x => x.id))} />
           {lenOn && (durs.length > 1 ? <button ref={aR.dur} type="button" className={`ic-chip ap-len${pop === 'dur' ? ' on' : ''}${lenShort ? ' ap-len-warn' : ''}`} data-testid="ap-length" data-auto={lenAuto ? '1' : undefined} aria-haspopup="listbox" aria-expanded={pop === 'dur'}
               aria-label={`Length: ${lenAuto ? 'Auto, ' : ''}${lengthText(p.duration)}. Change`} {...tip(pop === 'dur' ? null : lenHint || (lenAuto ? `Length: Auto. ${autoHint}` : upTo ? `Length: up to ${lengthText(p.duration)}; ${modelName || 'the model'} can end the song sooner` : 'Length'))} onClick={() => setPop('dur')}><ChipGlyph icon="clock" />{lenAuto ? <><span className="ap-auto-w">Auto</span><span className="gp-dot"> · </span>{lengthText(p.duration)}</> : lengthText(p.duration)}</button>
             : <span className="ic-chip ic-static" data-testid="ap-length" {...tip('The only length this model makes')}><ChipGlyph icon="clock" />{lengthText(p.duration)}</span>)}
