@@ -36,4 +36,6 @@ assert.ok(M.steps.slice(0, 3).every((x) => x.usd > 0.02 && x.usd < 0.04), 'the p
 assert.equal(M.total, `≈ $${M.usd.toFixed(2)}`); assert.equal(M.total, '≈ $0.58');
 assert.match(source, /<Popover\b[^>]*testId="xp-song-making"/, 'the shared Popover: a panel on desktop, a bottom sheet on a phone');
 assert.match(source, /x\.clip && !still/, 'reduced motion: stills only');
+assert.match(source, /testid="xp-song-how"/, 'the glowing pill on the song card opens it'); assert.match(source, /testid="xp-song-steps"[\s\S]*\+\{MORE\} steps[\s\S]*\{S\.making\.total\} total/, 'the run line: the song\'s own run, then "+5 steps · ≈ $0.58 total"');
+assert.match(source, /Dances · \{DANCES\.model\}/, 'the dancer credits the dances\' model'); assert.match(source, /className="xsgm-role"><span className="xsgm-n">/, 'step numbers sit with the title, never on the picture');
 console.log('ok explore song: media shipped and small, YuE2 · Your computer · Free, Make your own opens Music with the style, five dances in turn, the song closes the first act, the sound director, reduced motion, the six-step making-of');

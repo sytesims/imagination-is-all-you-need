@@ -10,7 +10,7 @@ import { prefersReducedMotion } from '../../shared/HoverClip';
 import { RunChip } from '../../shared/RunChip';
 import { Popover } from '../../shared/Popover';
 import { turnSoundOn, useDirectedSound } from '../../shared/soundDirector';
-import { MusicIcon, PlayIcon } from '../Icons';
+import { LayersIcon, MusicIcon, PlayIcon } from '../Icons';
 import { EXPLORE_SONG, type SongMakingStep } from '../../../../server/src/shared/exploreShowcase';
 import { LOCAL_LABEL } from '../../../../server/src/shared/modelIds';
 import { chipUsd, type RunChipData } from '../../../../server/src/shared/runChip';
@@ -25,6 +25,7 @@ export function XpSong() {
   const box = useRef<HTMLElement>(null); const audio = useRef<HTMLAudioElement>(null);
   const [near, setNear] = useState(false); const [playing, setPlaying] = useState(false); const [time, setTime] = useState(0); const [len, setLen] = useState(0);
   const [still] = useState(prefersReducedMotion);
+  const how = useMaking(); /* one making-of panel, opened from the pill or from the run line's "+5 steps" */
   const [narrow] = useState(() => typeof matchMedia === 'function' && matchMedia('(max-width: 760px)').matches); /* fewer, wider bars on a phone */
   const wave = useWaveform(S.song.url, { bars: narrow ? 44 : 96, enabled: near });
   const total = len || wave.duration || S.song.sec;
@@ -51,9 +52,13 @@ export function XpSong() {
       <h2 id="xp-h-song" className="xps-h xsdc-h">{S.title.map(l => <span key={l}>{l}</span>)}</h2>
       <p className="xps-p xsdc-p">{S.line}</p>
     </header>
+    <div className="xsg-cardwrap">
+    <button type="button" className="xsg-how" aria-haspopup="dialog" aria-expanded={how.who === 'pill'} onClick={how.toggle('pill')} data-testid="xp-song-how">
+      <span className="xsg-how-ic" aria-hidden><LayersIcon size={15} /></span>{S.making.label}<span className="xsg-how-n">· {S.making.steps.length} steps</span></button>
     <div className="xsg-band">
       <div className="xsg-stage" aria-hidden>
         <span className="xsg-floor" />
+        {DANCES?.model && <span className="xsg-credit">Dances · {DANCES.model}</span>}
         {still || !near ? <img className="xsg-dancer is-front" src={S.dancer.still} alt="" width={S.dancer.width} height={S.dancer.height} decoding="async" loading="lazy" draggable={false} />
           : <Dancer playing={playing} />}
       </div>
@@ -66,14 +71,18 @@ export function XpSong() {
           <button type="button" className="xsg-play" onClick={toggle} aria-label={playing ? `Pause ${S.song.title}` : `Play ${S.song.title}`} aria-pressed={playing} data-testid="xp-song-play">
             {playing ? <span className="xsg-pause" aria-hidden><i /><i /></span> : <PlayIcon size={20} />}</button>
           <span className="xsg-time" data-testid="xp-song-time">{clockText(time)} / {durClock(total)}</span>
-          <RunChip c={CHIP} className="xsg-chip" testId="xp-song-chip" />
+          <span className="xsg-runline"><RunChip c={CHIP} className="xsg-chip" testId="xp-song-chip" />
+            <button type="button" className="xsg-steps" aria-haspopup="dialog" aria-expanded={how.who === 'line'} onClick={how.toggle('line')} data-testid="xp-song-steps"
+              aria-label={`How we made it: ${MORE} more steps, ${S.making.total} in all`}>+{MORE} steps<span aria-hidden>·</span><b>{S.making.total} total</b></button></span>
         </div>
+        <p className="xsg-with" data-testid="xp-song-with">With {WITH} on Comfy Cloud for SyteSim and his dances.</p>
         <audio ref={audio} src={S.song.url} preload="metadata" muted data-testid="xp-song-audio" onLoadedMetadata={e => setLen(e.currentTarget.duration || 0)}
           onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => { setPlaying(false); setTime(0); }} />
       </div>
     </div>
-    <div className="xsg-ctas"><Link to={S.cta.href} className="xv-btn" data-testid="xp-song-cta">{S.cta.label}<span className="xv-arrow" aria-hidden>→</span></Link>
-      <Making still={still} /></div>
+    </div>
+    <Making still={still} open={how.who != null} anchor={how.anchor} onClose={how.close} />
+    <div className="xsg-ctas"><Link to={S.cta.href} className="xv-btn" data-testid="xp-song-cta">{S.cta.label}<span className="xv-arrow" aria-hidden>→</span></Link></div>
   </section>;
 }
 
@@ -116,19 +125,28 @@ function Dancer({ playing }: { playing: boolean }) {
 const stepPrice = (x: SongMakingStep) => `${chipUsd(x.usd, x.est)}${x.runs && x.runs > 1 ? ' each' : ''}`;
 const stepLine = (x: SongMakingStep) => [x.model, x.place, stepPrice(x)].filter(Boolean).join(' · ');
 
-/** "See how we made it · 6 steps": the button and its panel of step cards. Clips loop only while it is open, never with reduced motion. */
-function Making({ still }: { still: boolean }) {
-  const M = S.making; const btn = useRef<HTMLButtonElement>(null); const [open, setOpen] = useState(false);
-  const close = useCallback(() => setOpen(false), []);
+/** One making-of panel for two triggers: `who` says which one opened it (its aria-expanded), `anchor` is that button. */
+function useMaking() {
+  const anchor = useRef<HTMLElement | null>(null); const [who, setWho] = useState<'pill' | 'line' | null>(null);
+  const close = useCallback(() => setWho(null), []);
+  const toggle = (k: 'pill' | 'line') => (e: React.MouseEvent<HTMLElement>) => { if (who === k) { setWho(null); return; } anchor.current = e.currentTarget; setWho(k); };
+  return { who, anchor, close, toggle };
+}
+/** The other runs behind the song (the song itself is the line's own run), the models they used, and the dances' credit. */
+const MORE = S.making.steps.length - 1;
+const WITH = [...new Set(S.making.steps.filter((x) => x.model && x.model !== S.song.model).map((x) => x.model))].join(' and ');
+const DANCES = S.making.steps.find((x) => x.jobs.length > 1);
+
+/** "How we made it": the panel of step cards. Clips loop only while it is open, never with reduced motion. */
+function Making({ still, open, anchor, onClose }: { still: boolean; open: boolean; anchor: React.RefObject<HTMLElement | null>; onClose: () => void }) {
+  const M = S.making;
   return <>
-    <button ref={btn} type="button" className="xv-quiet xsg-how" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((o) => !o)} data-testid="xp-song-how">
-      {M.label} · {M.steps.length} steps</button>
-    <Popover open={open} anchor={btn} onClose={close} label="How we made it" placement="top" align="center" closeButton className="xsgm-pop" testId="xp-song-making">
+    <Popover open={open} anchor={anchor} onClose={onClose} label="How we made it" placement="bottom" align="end" closeButton className="xsgm-pop" testId="xp-song-making">
       <ol className="xsgm-list">{M.steps.map((x, k) => <li key={x.role} className={`xsgm-step${x.manual ? ' is-manual' : ''}`} tabIndex={0} data-apop-item
         aria-label={`Step ${k + 1}: ${x.role}. ${x.manual ? `${x.place}, free. ${x.note ?? ''}` : `${x.tool ? `${x.tool}, ` : ''}${stepLine(x)}.${x.note ? ` ${x.note}.` : ''}`}`} data-testid={`xp-song-step-${k + 1}`}>
-        <div className="xsgm-media" aria-hidden><StepMedia x={x} still={still} /><span className="xsgm-n">{k + 1}</span></div>
+        <div className="xsgm-media" aria-hidden><StepMedia x={x} still={still} /></div>
         <div className="xsgm-text" aria-hidden>
-          <b className="xsgm-role">{x.role}</b>
+          <b className="xsgm-role"><span className="xsgm-n">{k + 1}</span>{x.role}</b>
           {x.manual ? <span className="xsgm-run is-manual">{x.place} · <em>Free</em></span>
             : <><span className="xsgm-tool">{x.tool}</span><span className="xsgm-run">{x.model} · {x.place} · <em className={x.usd === 0 ? 'is-free' : ''}>{stepPrice(x)}</em></span></>}
           {x.note && <span className="xsgm-note">{x.note}</span>}

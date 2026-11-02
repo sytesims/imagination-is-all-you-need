@@ -459,7 +459,7 @@ export const EXPLORE_SONG = {
     lyric: 'Imagination is all you need. Dream it up and press go.' },
   dancer: { still: '/showcase/mascot-dance-still.webp', width: 360, height: 648, name: 'SyteSim', /** each dance plays this many times, then the next one */ repeats: 2,
     dances: ['bounce', 'groove', 'moonwalk', 'turn', 'pika'].map((id) => ({ id, webm: `/showcase/mascot-dance-${id}.webm`, mov: `/showcase/mascot-dance-${id}.mov` })) },
-  making: { label: 'See how we made it', steps: SONG_MAKING, usd: songMakingUsd, total: chipUsd(songMakingUsd, SONG_MAKING.some((s) => s.est)) },
+  making: { label: 'How we made it', steps: SONG_MAKING, usd: songMakingUsd, total: chipUsd(songMakingUsd, SONG_MAKING.some((s) => s.est)) },
   /** Audio › Music with YuE2 and this song's style in the box (the lyrics are yours to write) */
   cta: { label: 'Make your own', href: `${audioRoute('music')}&${new URLSearchParams({ model: 'yue2', prompt: SONG_STYLE })}` },
 };

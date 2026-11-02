@@ -56,43 +56,79 @@
 @media(prefers-reduced-motion:reduce){.xsg .xsg-live i{animation:none!important}.xsg-play{transition:none}}
 .xsg .xsdc-p{text-wrap:pretty}
 
-/* "See how we made it" (2026-11-02): the button beside Make your own, and its step cards in the shared Popover (a bottom sheet on a phone) */
-.xsg-how{all:unset;box-sizing:border-box;cursor:pointer;font:600 14px/1 var(--font-ui);color:rgba(255,255,255,.72);border-bottom:1px solid rgba(255,255,255,.25);padding:14px 0 3px;transition:color .2s ease,border-color .2s ease}
-.xsg-how:hover,.xsg-how[aria-expanded=true]{color:#fff;border-color:var(--accent)}
-.xsg-how:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap);border-radius:4px}
-.apop.xsgm-pop{width:min(780px,calc(100vw - 32px));background:#161616;border-color:rgba(255,255,255,.09);border-radius:20px}
-.apop.xsgm-pop>.apop-top{padding:10px 10px 0 20px}
-.apop.xsgm-pop .apop-title{font:700 11px/18px var(--font-display);letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.6)}
-.xsgm-pop .apop-body{padding:10px 14px 16px;scrollbar-gutter:auto}
-.xsgm-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-.xsgm-step{display:flex;flex-direction:column;min-width:0;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06);overflow:hidden;outline:none}
-.xsgm-step:focus-visible{box-shadow:0 0 0 2px rgba(255,122,26,.75)}
-.xsgm-media{position:relative;display:grid;place-items:center;height:132px;background:radial-gradient(70% 70% at 50% 60%,rgba(255,122,26,.14),rgba(255,122,26,0) 72%),#0e0d0d;overflow:hidden}
+/* "How we made it" (2026-11-02): a glowing pill at the song card's top-right (above the card on a phone), and its step cards in the shared
+   Popover (a bottom sheet on a phone): a raised panel with a soft orange edge, cards that sit on a second card behind and lift on hover */
+.xsg-cardwrap{position:relative;max-width:1240px;margin:0 auto}
+.xsg-how{all:unset;box-sizing:border-box;position:absolute;z-index:3;top:18px;right:18px;display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px 0 6px;border-radius:999px;cursor:pointer;
+  font:600 13.5px/1 var(--font-ui);color:#fff;white-space:nowrap;
+  background:linear-gradient(180deg,rgba(255,122,26,.2),rgba(255,122,26,.08)),rgba(18,14,11,.82);border:1px solid rgba(255,122,26,.5);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 0 0 0 rgba(255,122,26,.35),0 8px 26px rgba(255,122,26,.22);
+  animation:xsg-how-glow 2.8s ease-in-out infinite;transition:background .2s ease,border-color .2s ease,transform .15s ease}
+.xsg-how-ic{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--xv-ink)}
+.xsg-how-n{color:rgba(255,255,255,.62);font-weight:500}
+.xsg-how:hover,.xsg-how[aria-expanded=true]{background:linear-gradient(180deg,rgba(255,122,26,.32),rgba(255,122,26,.14)),rgba(18,14,11,.86);border-color:rgba(255,140,60,.85)}
+.xsg-how:active{transform:scale(.97)}
+.xsg-how[aria-expanded=true]{animation:none;box-shadow:0 0 0 4px rgba(255,122,26,.16),0 8px 26px rgba(255,122,26,.3)}
+.xsg-how:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap)}
+@keyframes xsg-how-glow{0%,100%{box-shadow:0 0 0 0 rgba(255,122,26,.3),0 8px 26px rgba(255,122,26,.2)}50%{box-shadow:0 0 0 6px rgba(255,122,26,0),0 10px 34px rgba(255,122,26,.42)}}
+.apop.xsgm-pop{width:min(800px,calc(100vw - 32px));background:linear-gradient(180deg,#1d1a18,#141313 40%);border:1px solid rgba(255,122,26,.22);border-radius:22px;
+  box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 0 0 1px rgba(0,0,0,.4),0 0 48px rgba(255,122,26,.13),0 34px 90px rgba(0,0,0,.65)}
+.apop.xsgm-pop>.apop-top{padding:12px 12px 0 22px}
+.apop.xsgm-pop .apop-title{font:700 11px/18px var(--font-display);letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.62)}
+.xsgm-pop .apop-body{padding:12px 18px 20px;scrollbar-gutter:auto}
+.xsgm-list{list-style:none;margin:0;padding:0 0 4px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px 14px}
+.xsgm-step{position:relative;display:flex;flex-direction:column;min-width:0;border-radius:16px;outline:none;
+  background:linear-gradient(180deg,#262321,#1b1a19);border:1px solid rgba(255,255,255,.08);
+  box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 10px 24px rgba(0,0,0,.4);transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s ease,border-color .2s ease}
+/* a second card peeking out under each one: the stack */
+.xsgm-step::before{content:"";position:absolute;z-index:-1;left:10px;right:10px;bottom:-6px;height:24px;border-radius:0 0 14px 14px;background:#1a1817;border:1px solid rgba(255,255,255,.05);border-top:0;box-shadow:0 8px 16px rgba(0,0,0,.35)}
+.xsgm-list{isolation:isolate}
+.xsgm-step:hover{transform:translateY(-3px);border-color:rgba(255,122,26,.3);box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 18px 34px rgba(0,0,0,.5),0 0 24px rgba(255,122,26,.1)}
+.xsgm-step:focus-visible{box-shadow:0 0 0 2px rgba(255,122,26,.8),0 10px 24px rgba(0,0,0,.4)}
+.xsgm-media{position:relative;display:grid;place-items:center;height:136px;margin:6px 6px 0;border-radius:11px;background:radial-gradient(70% 70% at 50% 60%,rgba(255,122,26,.14),rgba(255,122,26,0) 72%),#0e0d0d;overflow:hidden}
 .xsgm-media>img,.xsgm-media>video,.xsgm-keyed>img,.xsgm-keyed>video{position:absolute;inset:0;display:block;width:100%!important;height:100%!important;max-width:none;object-fit:contain}
 .xsgm-keyed{position:absolute;inset:6px 0 0}.xsgm-keyed>img,.xsgm-keyed>video{filter:drop-shadow(0 8px 14px rgba(0,0,0,.5))}
 .xsgm-song{display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--accent)}
 .xsgm-song small{font:600 12px/1 var(--font-ui);color:rgba(255,255,255,.7)}
-.xsgm-n{position:absolute;top:8px;left:8px;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.62);color:#fff;font:700 11px/1 var(--font-display);font-variant-numeric:tabular-nums}
-.xsgm-text{display:flex;flex-direction:column;gap:3px;padding:10px 12px 12px;min-width:0}
-.xsgm-role{font:700 14px/1.25 var(--font-display);color:#fff;letter-spacing:-.01em}
+.xsgm-text{display:flex;flex-direction:column;gap:3px;padding:10px 12px 13px;min-width:0}
+/* the step number sits with the title, never on the picture */
+.xsgm-role{display:flex;align-items:center;gap:8px;font:700 14px/1.25 var(--font-display);color:#fff;letter-spacing:-.01em}
+.xsgm-n{flex:none;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:rgba(255,122,26,.16);border:1px solid rgba(255,122,26,.4);color:#ffb27a;font:700 10.5px/1 var(--font-display);font-variant-numeric:tabular-nums;letter-spacing:0}
 .xsgm-tool{font:500 12px/1.3 var(--font-ui);color:rgba(255,255,255,.55);min-height:1.3em}
 .xsgm-run{font:500 12px/1.4 var(--font-ui);color:rgba(255,255,255,.78);font-variant-numeric:tabular-nums}
 .xsgm-run em{font-style:normal;font-weight:700;color:#fff;white-space:nowrap}.xsgm-run em.is-free,.xsgm-run.is-manual em{color:#9fe0a8}
-.xsgm-step.is-manual{background:transparent;border-style:dashed;border-color:rgba(255,255,255,.14)}
+.xsgm-step.is-manual{background:linear-gradient(180deg,#1d1c1b,#171615);border-style:dashed;border-color:rgba(255,255,255,.16)}
 .xsgm-step.is-manual .xsgm-run{color:rgba(255,255,255,.62)}
 .xsgm-note{font:400 11.5px/1.4 var(--font-ui);color:rgba(255,255,255,.5)}
-.xsgm-total{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin:14px 2px 0;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)}
+.xsgm-total{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin:18px 2px 0;padding-top:14px;border-top:1px solid rgba(255,255,255,.08)}
 .xsgm-total span{font:700 11px/1 var(--font-display);letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.6)}
 .xsgm-total b{font:700 18px/1 var(--font-display);color:#fff;font-variant-numeric:tabular-nums}
 .xsgm-total small{flex-basis:100%;font:400 11.5px/1.45 var(--font-ui);color:rgba(255,255,255,.5)}
-/* the phone sheet: one card per row, the picture on the left */
+/* phone: the pill sits above the card, the sheet lists one card per row with the picture on the left */
+@media(max-width:760px){
+  .xsg-cardwrap{display:flex;flex-direction:column;align-items:flex-end;gap:14px}
+  .xsg-cardwrap>.xsg-band{align-self:stretch}
+  .xsg-how{position:static;height:44px}
+}
 @media(max-width:639px){
-  .xsgm-pop .apop-body{padding:6px 12px 18px}
-  .xsgm-list{grid-template-columns:1fr;gap:8px}
+  .xsgm-pop .apop-body{padding:8px 14px 20px}
+  .xsgm-list{grid-template-columns:1fr;gap:14px}
   .xsgm-step{flex-direction:row;align-items:stretch}
-  .xsgm-media{flex:none;width:84px;height:auto;min-height:96px}
+  .xsgm-media{flex:none;width:84px;height:auto;min-height:96px;margin:6px 0 6px 6px}
   .xsgm-text{justify-content:center;padding:10px 12px}
   .xsgm-tool:empty{display:none}
 }
-@media(max-width:760px){.xsg-how{padding-top:22px;min-height:44px}
-}
+@media(prefers-reduced-motion:reduce){.xsg-how{animation:none;transition:none}.xsg-how:active{transform:none}.xsgm-step{transition:none}.xsgm-step:hover{transform:none}}
+/* the run line: the song's own run, then the chain as "+5 steps · ≈ $0.58 total" (opens the making-of), and a quiet line naming the other models */
+.xsg-runline{display:inline-flex;align-items:center;flex-wrap:wrap;gap:8px;margin-left:auto;min-width:0}
+.xsg-runline .xsg-chip{margin-left:0}
+.xsg-steps{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:999px;cursor:pointer;white-space:nowrap;
+  font:600 12.5px/1 var(--font-ui);color:#ffc08f;background:rgba(255,122,26,.12);border:1px solid rgba(255,122,26,.34);transition:background .2s ease,border-color .2s ease}
+.xsg-steps b{font-weight:700;color:#fff;font-variant-numeric:tabular-nums}
+.xsg-steps span{color:rgba(255,255,255,.4)}
+.xsg-steps:hover,.xsg-steps[aria-expanded=true]{background:rgba(255,122,26,.22);border-color:rgba(255,140,60,.75)}
+.xsg-steps:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap)}
+.xsg-with{margin:10px 0 0;text-align:right;font:400 12.5px/1.45 var(--font-ui);color:rgba(255,255,255,.5)}
+/* the dances' credit: a quiet caption in the stage's top-left corner, clear of SyteSim */
+.xsg-credit{position:absolute;z-index:2;top:14px;left:14px;padding:5px 9px;border-radius:999px;font:600 10.5px/1 var(--font-ui);letter-spacing:.02em;color:rgba(255,255,255,.66);background:rgba(0,0,0,.42);border:1px solid rgba(255,255,255,.08);white-space:nowrap}
+@media(max-width:760px){.xsg-runline{margin-left:0}.xsg-with{text-align:left}.xsg-steps{height:36px}}
