@@ -1,6 +1,6 @@
 /**
- * Explore: "Your character, brought to life." (rebuilt 2026-10-31). One headline in the chapter style (#xp-swap's classes), the finished film big
- * (the shared ShowcaseFilm with its on-brand controls and sound, no overlay), then the four steps behind it, one card each (picture, step,
+ * Explore: "Create your character. Bring it to life." (rebuilt 2026-10-31; copy as actions and media first 2026-11-02). The finished film in a framed
+ * band (the shared ShowcaseFilm with its on-brand controls and sound) with the headline in the chapter style small on it, then the four steps, one card each (picture, step,
  * one model, one price; runs read from the featured entry, shared/featured.ts runByJob), and one bottom row: the whole chain's price, Recreate,
  * Make your own and a Credits tip. The 3D card turns Mossbun's GLB slowly while on screen (the shared Model3D, at the lowest priority of the
  * one-live-viewer slot, so any other viewer takes it). Data: EXPLORE_3D in server/src/shared/exploreShowcase.ts.
@@ -47,17 +47,21 @@ function Step({ s, n }: { s: X3dStep; n: number }) {
   </li>;
 }
 
+/* Media first (the user's pick, 2026-11-02): the film in a framed band of its own height (not another full screen like the hero above it), the
+   headline small on it, then the four step cards as a strip, the section's anchor, then the price row. */
 export function Xp3D() {
   const f = featuredByKey(X.key); if (!f) return null;
   const rec = featuredRecreateHref(f.key); const all = featuredRuns(f); const total = all.reduce((n, r) => n + r.costUsd, 0);
   return <section className="xv-sec x3" id="xp-x3d" data-testid="xp-x3d" aria-labelledby="xp-h-x3d">
-    <header className="xsdc-head">
-      <h2 id="xp-h-x3d" className="xps-h xsdc-h">{X.title.map((l) => <span key={l}>{l}</span>)}</h2>
-      <p className="xps-p xsdc-p">{X.line}</p>
-    </header>
-    {/* the film lives in one place: the featured entry's `out` (shared/featured.ts 'mossbun-golden-hour') */}
-    <ShowcaseFilm className="x3-film" testId="x3-film" label={`${f.title}, made with ${f.model}`} take={f.key} onTake={() => 0} controls restartOnSound
-      takes={[{ key: f.key, url: f.out.url, poster: FEATURED_BIG_POSTER[f.key] ?? f.out.poster, label: f.title, sec: f.out.sec, sound: f.out.sound }]} />
+    <div className="x3-band">
+      {/* the film lives in one place: the featured entry's `out` (shared/featured.ts 'mossbun-golden-hour') */}
+      <ShowcaseFilm className="x3-film" testId="x3-film" label={`${f.title}, made with ${f.model}`} take={f.key} onTake={() => 0} controls restartOnSound
+        takes={[{ key: f.key, url: f.out.url, poster: FEATURED_BIG_POSTER[f.key] ?? f.out.poster, label: f.title, sec: f.out.sec, sound: f.out.sound }]} />
+      <header className="x3-head">
+        <h2 id="xp-h-x3d" className="xps-h">{X.title.map((l) => <span key={l}>{l}</span>)}</h2>
+        <p className="xps-p">{X.line}</p>
+      </header>
+    </div>
     <ol className="x3-steps" aria-label={`How it was made: ${X.steps.map((s) => s.step).join(', then ')}`} data-testid="x3-steps">
       {X.steps.map((s, k) => <Step key={s.job} s={s} n={k + 1} />)}
     </ol>

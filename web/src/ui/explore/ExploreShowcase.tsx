@@ -58,7 +58,7 @@ import { primeAudio } from '../../shared/audioGraph';
 import { detectStyle } from '../../shared/beanStyle';
 import { featuredByKey, featuredRecreateHref, placeOfRoute, FEATURED_BIG_POSTER, OUR_COMPUTER, type FeaturedItem } from '../../../../server/src/shared/featured';
 import { EXPLORE_HERO, EXPLORE_STILL, EXPLORE_KOI, EXPLORE_SWAP, EXPLORE_LAYERS, EXPLORE_BOARD, EXPLORE_LOOKS, EXPLORE_YOUR_TURN, yourTurnHref, EXPLORE_MOODS, EXPLORE_DANCE, EXPLORE_SHEETS, EXPLORE_FILM, EXPLORE_VFX, vfxTile, EXPLORE_HEADLINE, type VfxTile, type ReelShot } from '../../../../server/src/shared/exploreShowcase';
-import { CloseIcon, SoundIcon } from '../Icons';
+import { CloseIcon, ResetIcon, SoundIcon } from '../Icons';
 import { renderBeat } from './beatSynth';
 import '../../shared/audioCard.css';
 import { RunChip } from '../../shared/RunChip';
@@ -103,39 +103,38 @@ export function XpHero() {
 }
 
 /* ============================================================== a prompt as it ran (shared) ============================================================== */
-/** A prompt as it ran, in its own paragraphs; a leading "Shot 2, medium shot:" / "Sound:" label is set in bold. */
-function PromptText({ text }: { text: string }) {
-  return <>{text.split(/\n{2,}/).map((para, k) => { const m = /^((?:Shot \d+|Sound)[^:\n]{0,48}:)\s*/.exec(para);
-    return <p key={k}>{m ? <><b>{m[1]}</b> {para.slice(m[0].length)}</> : para}</p>; })}</>;
-}
+/* (the prompt reader left From one still on 2026-11-02: Recreate this shot opens the full prompt) */
 /* ============================================================== From one still (LTX-2.5 Pro image to video) ============================================================== */
+/* From one still, with depth (the user's pick, 2026-11-02): the copy on the left; on the right the still as a tilted card behind the moving reel
+   (the shared HeroReel: reveal, drag, replay, sound, reduced motion), the still drifting a little on scroll where the browser can. Under the copy,
+   the run (model · where · price) with its specs in a quiet line, then Recreate this shot (it opens the full prompt) and a small Replay. */
 export function XpStill() {
   const W = EXPLORE_STILL; const t = W.take; const f = featuredByKey(t.key);
-  const [replay, setReplay] = useState(0); const [open, setOpen] = useState(false);
+  const [replay, setReplay] = useState(0);
   if (!f?.before) return null;
   const still = f.before; const rec = featuredRecreateHref(f.key) ?? VIDEO_PAGE; const ran = Number(f.input.duration) || Math.round(f.out.sec ?? 0);
-  const words = f.prompt.split(/\s+/).filter(Boolean).length;
+  const specs = [t.trimmedTo ? `${ran} s run, trimmed to ${Math.floor(t.trimmedTo)} s` : `${ran} s`, String(f.input.resolution ?? ''), f.out.sound ? 'with sound' : ''].filter(Boolean).join(' · ');
   return <section className="xv-sec xpo" id="xp-still" data-testid="xp-still" aria-labelledby="xp-h-still">
-    <header className="xv-head"><div><span className="xv-eb">{W.eyebrow}</span><h2 id="xp-h-still" className="xpo-h" data-testid="xp-still-title">{W.title}</h2><p data-testid="xp-still-line">{W.line}</p></div></header>
-    <HeroReel className="hreel-framed xpo-film" testId="xp-still-wipe" reveal replay={replay} position={t.pos} sound={f.out.sound === true} restartOnSound label={`${f.title}, made with ${f.model}`}
-      before={{ url: still.url, poster: still.url, label: W.stillLabel }} after={{ url: f.out.url, poster: FEATURED_BIG_POSTER[f.key] ?? f.out.poster, label: W.clipLabel }} />
-    <div className="xpo-cred">
-      <p className="xpo-meta" data-testid="xp-still-credits" aria-live="polite">
-        <RunChip c={chipOfFeatured(f)} testId="xp-still-chip" />
-        <span data-testid="xp-still-length">{t.trimmedTo ? `${ran} s run, trimmed to ${Math.floor(t.trimmedTo)} s` : `${ran} s`}</span>
-        <span>{String(f.input.resolution ?? '')}</span><span>{W.sound}</span>
-        {/* the still's own run (featured `from`): its model, place and price */}
-        {f.from?.map((r) => <RunChip key={r.jobId} c={chipOfRun(r, W.stillLabel.toLowerCase())} testId="xp-still-source" />)}
-      </p>
-      <span className="xpo-acts">
-        <button type="button" className="xv-quiet xpo-replay" onClick={() => setReplay((n) => n + 1)} data-testid="xp-still-replay">Replay the reveal</button>
-        <Link to={rec} className="xv-btn" data-testid="xp-still-recreate">Recreate this shot<Arrow /></Link>
-      </span>
-    </div>
-    <div className={`xpo-prompt${open ? ' is-open' : ''}`}>
-      <button type="button" className="xpl-read" aria-expanded={open} aria-controls="xp-still-prompt" onClick={() => setOpen((o) => !o)} data-testid="xp-still-read">{open ? 'Hide the prompt' : 'Read the prompt'}<small>{words} words</small></button>
-      {open ? <div className="xpo-prompt-b" id="xp-still-prompt" role="region" aria-label="The prompt for this shot" data-testid="xp-still-prompt"><PromptText text={f.prompt} /><small>The exact prompt we used, with the still attached</small></div>
-        : <p className="xpo-peek" aria-hidden>{t.line}</p>}
+    <div className="xpo-depth">
+      <div className="xpo-copy">
+        <span className="xv-eb">{W.eyebrow}</span><h2 id="xp-h-still" className="xpo-h" data-testid="xp-still-title">{W.title}</h2>
+        <p className="xpo-line" data-testid="xp-still-line">{W.line}</p>
+        <p className="xpo-run" data-testid="xp-still-credits">
+          <RunChip c={chipOfFeatured(f)} testId="xp-still-chip" />
+          {/* the still's own run, when it has one (featured `from`) */}
+          {f.from?.map((r) => <RunChip key={r.jobId} c={chipOfRun(r, W.stillLabel.toLowerCase())} testId="xp-still-source" />)}
+          <small className="xpo-specs" data-testid="xp-still-length">{specs}</small>
+        </p>
+        <span className="xpo-acts">
+          <button type="button" className="xpo-replay" onClick={() => setReplay((n) => n + 1)} data-testid="xp-still-replay" aria-label="Replay the reveal" title="Replay the reveal"><ResetIcon size={16} /><span>Replay</span></button>
+          <Link to={rec} className="xv-btn" data-testid="xp-still-recreate">Recreate this shot<Arrow /></Link>
+        </span>
+      </div>
+      <div className="xpo-stack">
+        <figure className="xpo-back" aria-hidden><img src={still.url} alt="" loading="lazy" decoding="async" draggable={false} /><figcaption>{W.stillLabel}</figcaption></figure>
+        <HeroReel className="hreel-framed xpo-film xpo-front" testId="xp-still-wipe" reveal replay={replay} position={t.pos} sound={f.out.sound === true} restartOnSound label={`${f.title}, made with ${f.model}`}
+          before={{ url: still.url, poster: still.url, label: W.stillLabel }} after={{ url: f.out.url, poster: FEATURED_BIG_POSTER[f.key] ?? f.out.poster, label: W.clipLabel }} />
+      </div>
     </div>
   </section>;
 }

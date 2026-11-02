@@ -55,7 +55,11 @@ assert.match(featuredRecreateHref('ltx-village-loop', { loop: '1' })!, /^\/video
 assert.match(featuredRecreateHref('ltx-morph')!, /^\/video\?workflow=transitions&recreate=a3c693af$/);
 for (const [k, id] of [['ltx-fox-meadow', '7964e9db'], ['ltx-fox-meadow-close', '4781fc98']]) { const f = FEATURED.find((x) => x.key === k)!;
   assert.equal(featuredRecreateHref(k), `/video?recreate=${id}`, `${k}: Try this prompt opens Video`); assert.equal(f.modelKey, 'ltx-2.5-22b'); assert.match(f.prompt, /fox/); }
-assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpHero \/>[\s\S]{0,200}<Xp3D \/>/, 'Explore opens on the hero then 3D, without a separate lighthouse section');
+/* Explore's four acts (user, 2026-11-02): each section mounted once, in this order */
+const EXPLORE_ORDER = ['XpHero', 'Xp3D', 'XpStill', 'XpSheets', 'XpKoi', 'XpSong', /* act 2 */ 'XpFilm', 'XpSwap', 'XpLooks', 'XpPresenter', /* act 3 */ 'XpWork', 'XpLayers', /* act 4 */ 'XpBoard', 'XpFilms', 'XpYourTurn'];
+{ const home = fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'); const at = EXPLORE_ORDER.map((n) => { const m = [...home.matchAll(new RegExp(`<${n} />`, 'g'))]; assert.equal(m.length, 1, `${n} is mounted once`); return m[0].index!; });
+  at.forEach((x, k) => k && assert.ok(x > at[k - 1], `${EXPLORE_ORDER[k]} follows ${EXPLORE_ORDER[k - 1]}`));
+  assert.match(home, /<\/footer>\s*<\/div>;\s*\}\s*$/, 'the footer closes the page'); assert.doesNotMatch(home, /XpTrending|XpSeedance/, 'no Trends, no standalone lighthouse'); }
 { const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); const hero = xs.slice(xs.indexOf('export function heroChip'), xs.indexOf('/* ===', xs.indexOf('export function XpHero')));
   assert.match(hero, /<ShowcaseFilm\b[\s\S]*xp-headline[\s\S]*<HeroCredit /, 'the header plays the hero clip under its headline, line and credit');
   assert.doesNotMatch(hero, /xph-quick|xph-make|xp-quick|EXPLORE_QUICK/, 'no quick links on the hero (2026-10-28)');
@@ -110,7 +114,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.match(dir, /try \{ return localStorage\.getItem\(k\); \} catch/, 'the sound choice is remembered, safely');
     assert.match(film, /\{still && !controls && <button[^>]*className="sfilm-play"/, 'reduced motion: the poster with a play button'); }
   for (const r of [X.EXPLORE_HERO]) { const f = FEATURED.find((x) => x.key === r.key); assert.ok(f, `${r.key}: a featured clip`); assert.match(f!.out.url, /\.mp4$/); file(r.poster, 3e5); assert.ok(featuredRecreateHref(r.key), `${r.key}: Recreate`); }
-    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpHero \/>[\s\S]{0,200}<Xp3D \/>[\s\S]{0,200}<XpFilms \/>[\s\S]{0,180}<XpStill \/>\s*<XpFilm \/>[\s\S]{0,200}<RealResults \/>\s*<XpKoi \/>\s*<XpBoard \/>\s*<XpSwap \/>/, 'Trends is hidden; Canvas sits directly below the cartoon showcase');
+    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<div className="xp-in"><XpBoard \/><\/div>\s*<XpFilms \/>/, 'Trends is hidden; Canvas opens the last act, right before the films');
   /* From one still: one LTX-2.5 Pro image-to-video take on Comfy Cloud (job 530ab5eb, 6 s, $1.46). Take 2 · Dive (33be70a9) left the section on 2026-10-28;
      its featured entry and files stay (featured feed, seeded job), so both are still checked below */
   { const W = X.EXPLORE_STILL; assert.equal(W.eyebrow, 'Bring a picture to life'); assert.equal(W.title, 'What if it could move?');
@@ -141,11 +145,16 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     for (const u of [still.url, '/showcase/ltx-pro-whale-in.jpg']) { const p = file(u, 250_001); assert.ok(fs.statSync(p).size <= 250_000, `${u}: ≤ 250 KB`); assert.ok(!fs.readFileSync(p).includes('Exif'), `${u}: no EXIF`); }
     file(still.poster, 4e4); assert.match(still.url, /\.webp$/); assert.deepEqual([still.width, still.height], [1344, 756], 'the still, cropped to 16:9 the way the app cropped it');
     const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); const wx = xs.slice(xs.indexOf('export function XpStill'), xs.indexOf('Make your own cartoon (MiniMax H3'));
-    assert.match(wx, /<HeroReel className="hreel-framed xpo-film"[^\n]*\breveal replay=\{replay\}[^\n]*sound=\{f\.out\.sound === true\} restartOnSound/, 'the shared HeroReel wipe (reveal), the page\u2019s sound');
+    assert.match(wx, /<HeroReel className="hreel-framed xpo-film xpo-front"[^\n]*\breveal replay=\{replay\}[^\n]*sound=\{f\.out\.sound === true\} restartOnSound/, 'the shared HeroReel wipe (reveal), the page\u2019s sound');
+    assert.equal((wx.match(/<HeroReel /g) ?? []).length, 1, 'one reel');
     assert.match(wx, /before=\{\{ url: still\.url[\s\S]*after=\{\{ url: f\.out\.url/, 'still → the take’s clip, both from the featured entry');
+    assert.match(wx, /<div className="xpo-copy">[\s\S]*xp-still-line[\s\S]*<p className="xpo-run"[\s\S]*xp-still-recreate[\s\S]*<div className="xpo-stack">\s*<figure className="xpo-back"/, 'depth: the copy, run and actions beside the stack; the still as a card behind the reel');
+    assert.doesNotMatch(xs, /whalesection/, 'one layout, no gate');
+    assert.match(fs.readFileSync(path.join(WEB, 'ui/explore/exploreShowcase.css'), 'utf8'), /prefers-reduced-motion:reduce\)\{\.xpo-back\{animation:none/, 'the still card never drifts under reduced motion');
+    assert.doesNotMatch(xs, /stillsection/, 'one layout, no gate');
     assert.doesNotMatch(wx, /Segmented|xp-still-take|xp-still-next|onTick|setPick/, 'one take: no take switch, no auto-alternation');
     assert.match(wx, /\$\{ran\} s run, trimmed to \$\{Math\.floor\(t\.trimmedTo\)\} s/, 'the trim said honestly'); assert.match(wx, /<RunChip c=\{chipOfFeatured\(f\)\} testId="xp-still-chip"/, 'the real model, place and price: the shared run chip');
-    assert.match(wx, /featuredRecreateHref\(f\.key\)[\s\S]*xp-still-recreate/, 'Recreate from the featured entry'); assert.match(wx, /aria-expanded=\{open\}[\s\S]*<PromptText text=\{f\.prompt\}/, 'the prompt one click away');
+    assert.match(wx, /featuredRecreateHref\(f\.key\)[\s\S]*xp-still-recreate/, 'Recreate from the featured entry'); assert.doesNotMatch(wx, /xp-still-read|xp-still-prompt/, 'no prompt reader here: Recreate this shot opens the full prompt'); assert.match(wx, /<Link to=\{rec\} className="xv-btn" data-testid="xp-still-recreate">Recreate this shot/, 'one primary action');
     const hr = fs.readFileSync(path.join(WEB, 'shared/HeroReel.tsx'), 'utf8');
     assert.match(hr, /reveal && \(failed \|\| still\)/, 'a missing clip or reduced motion: the still'); assert.match(hr, /reveal && still && !failed && <button[^>]*className="hreel-play"/, 'reduced motion: the still with a play button');
     assert.match(hr, /useDirectedSound\(\{ root, media: \(\) => b\.current/, 'the shared sound director');
@@ -220,7 +229,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.match(sw, /g\.still \? <img className="xsdc-media" src=\{poster\}/, 'reduced motion: posters'); assert.match(sw, /featuredRecreateHref\(f\.key\)/, 'Recreate from each featured entry');
     assert.match(sw, /chip: chipOfFeatured\(f\)[\s\S]*<RunChip c=\{x\.chip\}/, 'each card names the real model, place and price (the shared run chip)'); assert.doesNotMatch(xs, /\?swap=|SWAP_DEV|XpSwapNow|XpSwapThree|XpSwapPick|XpStage|EXPLORE_STAGE/, 'no leftover layouts');
     assert.match(fs.readFileSync(path.join(WEB, 'shared/SyncClips.ts'), 'utf8'), /export function useSyncClips/);
-    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /chapters: Same dance\. Two new casts\.[\s\S]*<XpSwap \/>/, 'Home names and mounts the chapter'); }
+    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /Same dance\. Two new casts\.[\s\S]*<XpSwap \/>/, 'Home names and mounts the chapter'); }
   /* chapter 2: image to layers (Seedream 5.0 Flash on Comfy Router, job 829b6ef1) */
   { const L = X.EXPLORE_LAYERS; assert.match(L.eyebrow, /^Chapter 2 · Image to layers$/); assert.deepEqual(L.title, ['One picture.', 'Every layer.']);
     assert.deepEqual(L.steps.map((x) => x.name), ['Picture', 'Split'], 'two steps from the data, the third is the run itself');
@@ -248,7 +257,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.match(ly, /if \(snd\.toggle\(\)\) setRestart\(/, 'turning sound on restarts the clip from 0 so the sound lines up with the layers');
     assert.match(fs.readFileSync(path.join(WEB, 'shared/HoverClip.tsx'), 'utf8'), /restart\?: number[\s\S]*el\.currentTime = 0/, 'HoverClip: a new restart value plays from 0');
     assert.match(ly, /<LayerTile\b/, 'the shared LayerTile'); assert.doesNotMatch(ly, /xv-tag[^"]*"[^>]*>\{S\.film|xpy-badge/, 'no badge over the animation');
-    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpSwap \/>\s*<XpLayers \/>/, 'chapter 2 sits right after chapter 1'); }
+    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpWork \/>\s*<XpLayers \/>/, 'Image to layers closes the work act, right after Made for your work'); }
   /* one sound button (2026-10-27): every Explore clip with sound uses the shared SoundToggle; silent clips get none; no per-section look-alikes */
   { const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); const film = fs.readFileSync(path.join(WEB, 'shared/ShowcaseFilm.tsx'), 'utf8');
     const reel = fs.readFileSync(path.join(WEB, 'shared/HeroReel.tsx'), 'utf8'); const tog = fs.readFileSync(path.join(WEB, 'shared/SoundToggle.tsx'), 'utf8');
@@ -350,7 +359,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.match(sx, /className="xpk-frame xpc-frame"/, 'the koi’s letterbox frame (shared look)'); assert.match(sx, /featuredRecreateHref\(f\.key\)[\s\S]*xp-sheets-recreate/, 'Recreate from the featured entry');
     assert.match(sx, /if \(!now \|\| paused \|\| still \|\| spin \|\| !seen\) return/, 'steps only on screen; Pause, reduced motion and 3D stop it');
     assert.match(fs.readFileSync(path.join(WEB, 'ui/explore/exploreShowcase.css'), 'utf8'), /\.xpc-sheet\{[^}]*width:min\(100cqw,calc\(100cqh \* var\(--ar\)\)\)/, 'the whole sheet fitted, never cropped');
-    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpLayers \/>\s*<XpSheets \/>\s*<XpPresenter \/>\s*<XpLooks \/>/, 'character sheets follow Image to layers, then the talking-avatar example');
+    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpStill \/>\s*<XpSheets \/>\s*<XpKoi \/>/, 'character sheets follow What if it could move?, then the cartoon');
     ok('One character. Every angle.: 4 GPT Image 2.5 Flare sheets (Comfy Router, billed prices), real panels, Recreate into Create Image; Mossbun GLB ≤ 4 MB, no decoder'); }
   /* Mockup to film (replaces Build a world): Direct a Shot mockup (a1a50672, free) → first frame (645de70d, GPT Image 2.5 Flare, $0.02 billed) → film (1a1a33c6, LTX-2.5 22B + Layout to Render, Comfy Cloud, $0.28) */
   { const F = X.EXPLORE_FILM; assert.equal((X as Record<string, unknown>).EXPLORE_WORLDS, undefined, 'the Worlds tiles are gone'); assert.ok(!fs.existsSync(path.join(PUB, 'explore/worlds')), 'their images are gone');
@@ -372,7 +381,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.match(fx, /before=\{\{ url: f\.before\.url[\s\S]*after=\{\{ url: f\.out\.url/, 'mockup → film, both from the featured entry');
     assert.match(fx, /xp-film-recreate">Recreate this shot<[\s\S]*F\.cta\.label/, 'Recreate this shot and Open Direct a Shot');
     const hr = fs.readFileSync(path.join(WEB, 'shared/HeroReel.tsx'), 'utf8'); assert.match(hr, /holdSweep \? 'hold' : 'park'/, 'HeroReel: the held sweep'); assert.match(hr, /p\.x = p\.from \+ \(parkAt - p\.from\) \* ease\(k\)/, 'then the line eases to parkAt');
-    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpStill \/>\s*<XpFilm \/>[\s\S]{0,200}<RealResults \/>\s*<XpKoi \/>/, '3D mockup-to-film sits directly under the whale section, then the free local rail');
+    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<div className="xp-in">\s*<XpFilm \/>[\s\S]{0,300}<XpSwap \/>/, '3D mockup-to-film opens the control act (the free local rail stays hidden there)'); assert.doesNotMatch(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /^\s*<RealResults \/>/m, 'the free local rail stays hidden');
     assert.doesNotMatch(xs + fs.readFileSync(path.join(WEB, 'ui/explore/exploreShowcase.css'), 'utf8'), /XpWorlds|EXPLORE_WORLDS|xpw-/, 'no Worlds leftovers');
     ok('Mockup to film: Direct a Shot (free) → GPT Image 2.5 Flare ($0.02) → LTX-2.5 + Layout to Render (Comfy Cloud, $0.28), first shot in step, shared HeroReel + sound, Recreate into Direct a Shot'); }
   /* The K-drama beat (one MiniMax H3 run, fb0b44ca, Comfy Cloud, $1.20): its script's timings feed the IIAYN FILMS comedy's subtitles */
@@ -419,7 +428,7 @@ ok('web: Examples shelf and empty-tab Featured feed removed; Filter › From ›
   assert.deepEqual(V.effects.map((v) => v.effect), ['day-to-night', 'vanish', 'flood', 'alpha-matte']);
   const lay = FEATURED.find((x) => x.key === V.layout.key)!; assert.equal(lay.model, 'LTX-2.5 + Layout to Render', 'Layout to Render reuses the Mockup to film clip'); assert.match(V.layout.sourceUrl, /Layout-To-Render/);
   assert.ok(X.EXPLORE_SHOWCASE_LINKS().includes(V.cta.href), 'the section\'s links are checked');
-  const home = fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'); assert.match(home, /<XpLooks \/>\s*<\/div>[\s\S]*?<XpYourTurn \/>\s*<footer/, 'Explore ends with One idea. Every look., then Now it\u2019s your turn. full width, then the footer'); assert.doesNotMatch(home, /<XpVfx/);
+  const home = fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'); assert.match(home, /<XpFilms \/>[\s\S]*?<XpYourTurn \/>\s*<footer/, 'Explore ends with the films, then Now it\u2019s your turn. full width, then the footer'); assert.doesNotMatch(home, /<XpVfx/);
   assert.doesNotMatch(home, /<MadeHere\s*\/>|<Jump\b|<Row\b|className="xp-flows-gap"|data-testid="xp-(learn|all)"/, 'the approved shorter page omits the shared bottom rows, jump links, Learn/Spend cards and workflow chip shelf');
   const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); assert.match(xs, /EXPLORE_VFX\.pending/, 'an effect without a shipped example says so');
   // #14: the swap's featured entry keeps the size the run rendered at

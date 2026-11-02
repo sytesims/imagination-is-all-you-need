@@ -424,6 +424,27 @@ export const EXPLORE_DANCE = {
   cta: { label: 'Make music', href: audioRoute('music') },
 };
 
+// ---------------------------------------------------------------- Our song, and SyteSim dancing to it (2026-11-02)
+/** "Dream It Up": a song made in Audio › Music with YuE2 on the maintainer's own computer through local ComfyUI ($0; seed 12310, our own lyrics,
+ *  a 72 min render). The file is the take's first 55.7 s, ending on its own short break with a 1.8 s fade (the raw take stops mid-bar at 68 s),
+ *  loudness-normalised, 128 kbps, tags stripped. SyteSim's five dances (5.17 s each, green keyed out, each starting and ending on the same
+ *  standing pose, so a cut on the loop boundary is seamless) ship at 360×648 with their alpha twice: VP9 WebM for Chrome and Firefox, HEVC with
+ *  alpha for Safari; plus a still (the standing pose) for reduced motion and before he moves. Order: the happy bounce first, the one where he
+ *  turns his back never first. */
+const SONG_STYLE = 'English, hip-hop electro-pop, 122 BPM, D major, punchy 808s, bouncy hip-hop groove, shiny electro-pop synths, claps, energetic chant vocal, group chant, upbeat, fun, playful';
+export const EXPLORE_SONG = {
+  eyebrow: 'Music',
+  title: ['Write a song.', 'Watch it dance.'],
+  line: 'We wrote the words, picked a style and pressed go. Audio made the whole song, free on our own computer. Press play and SyteSim dances along.',
+  song: { url: '/showcase/song-imagination.mp3', title: 'Dream It Up', about: 'Electro-pop · 122 BPM', sec: 55.7, model: 'YuE2', modelKey: 'yue2',
+    style: SONG_STYLE,
+    lyric: 'Imagination is all you need. Dream it up and press go.' },
+  dancer: { still: '/showcase/mascot-dance-still.webp', width: 360, height: 648, name: 'SyteSim', /** each dance plays this many times, then the next one */ repeats: 2,
+    dances: ['bounce', 'groove', 'moonwalk', 'turn', 'pika'].map((id) => ({ id, webm: `/showcase/mascot-dance-${id}.webm`, mov: `/showcase/mascot-dance-${id}.mov` })) },
+  /** Audio › Music with YuE2 and this song's style in the box (the lyrics are yours to write) */
+  cta: { label: 'Make your own', href: `${audioRoute('music')}&${new URLSearchParams({ model: 'yue2', prompt: SONG_STYLE })}` },
+};
+
 // ---------------------------------------------------------------- One character. Every angle. (GPT Image 2.5 Flare on Comfy Router)
 /** A sheet's panels in the image's own pixels: [label, x, y, w, h] (measured from each sheet; the highlight steps across them). */
 export type SheetPanel = [string, number, number, number, number];
@@ -524,7 +545,7 @@ export const EXPLORE_SCRIPT = {
   credit: 'One prompt, written as a timed shot list with the dialogue in Korean. MiniMax H3 (Hailuo) text to video on Comfy Cloud: 768p, 15 s, voices and sound made with the picture. English subtitles added here.',
 };
 
-// ---------------------------------------------------------------- Your character, brought to life. (Mossbun: sheet → 3D → city → film)
+// ---------------------------------------------------------------- Create your character. Bring it to life. (Mossbun: design it → spin it in 3D → place it → film it)
 const TRIPO = { model: MOSSBUN_3D_RUN.model, place: MOSSBUN_3D_RUN.place, usd: MOSSBUN_3D_RUN.costUsd } as const;
 const IMAGE_TO_3D = `${threeDRoute('image-to-3d')}&model=cloud-tripo-31`;
 /** One step card under the film: its name, its picture and the run that made it (job id; shared/featured.ts runByJob gives the real model and
@@ -534,16 +555,18 @@ export interface X3dStep { step: string; job: string; thumb: string; alt: string
 const E3 = (f: string) => `/examples/showcase-3d/${f}`;
 /** The 3D section (rebuilt 2026-10-31): one headline, the finished film (featured 'mossbun-golden-hour'), then the four steps behind it and one
  *  bottom row (the whole chain's price, Recreate, Make your own, Credits). Free media only: Mossbun's GLB (Tripo 3.1, job 092abb03) and stills. */
+/** Copy as what you can do, step by step (user, 2026-11-02): the steps are actions (Design it → Spin it in 3D → Place it → Film it); the runs,
+ *  models and prices behind each step are unchanged. */
 export const EXPLORE_3D = {
-  key: 'mossbun-golden-hour', title: ['Your character,', 'brought to life.'],
-  line: 'Draw a friend. Watch it hop into 3D, explore a city and star in its very own film.',
+  key: 'mossbun-golden-hour', title: ['Create your character.', 'Bring it to life.'],
+  line: 'Dream up a friend once. Get its character sheet, spin it in 3D, drop it into a city street, then film its first scene.',
   steps: [
-    { step: 'Character sheet', job: '9564386e', thumb: P('char-mossbun-480.webp'), alt: 'Mossbun’s character sheet: four views and five faces' },
-    { step: '3D model', job: '092abb03', thumb: P('x3d-mossbun.webp'), spin: P('char-mossbun-3d.glb'), alt: 'Mossbun as a 3D model, turning slowly' },
+    { step: 'Design it', job: '9564386e', thumb: P('char-mossbun-480.webp'), alt: 'Mossbun’s character sheet: four views and five faces' },
+    { step: 'Spin it in 3D', job: '092abb03', thumb: P('x3d-mossbun.webp'), spin: P('char-mossbun-3d.glb'), alt: 'Mossbun as a 3D model, turning slowly' },
     /* the film starts from this frame: the golden-hour edit (job b688b9c3), featured 'mossbun-golden-hour' `before` (its 480 px poster) */
-    { step: 'City frame', job: 'b688b9c3', thumb: E3('mossbun-city-painted-480.webp'), before: E3('mossbun-city-mockup-480.webp'), alt: 'Mossbun on a palm-lined avenue at golden hour: the frame the film starts from',
+    { step: 'Place it', job: 'b688b9c3', thumb: E3('mossbun-city-painted-480.webp'), before: E3('mossbun-city-mockup-480.webp'), alt: 'Mossbun on a palm-lined avenue at golden hour: the frame the film starts from',
       tools: [{ job: '13aca5cc', role: 'staged in the 3D city', tool: 'Direct a Shot' }, { job: 'ea410812', role: 'first-frame paint' }] },
-    { step: 'Film · 6 s with sound', job: 'a11a0c78', thumb: E3('mossbun-golden-hour-480.webp'), alt: 'Mossbun holding up a lantern, a frame from the film', caption: '…and we gave her a lantern.' },
+    { step: 'Film it', job: 'a11a0c78', thumb: E3('mossbun-golden-hour-480.webp'), alt: 'Mossbun holding up a lantern, a frame from the film', caption: '…and we gave her a lantern.' },
   ] as X3dStep[],
   make: { label: 'Make your own', href: IMAGE_TO_3D }, recreate: 'Recreate this shot',
   /** the credits (the Credits tip on the bottom row): the CC0 kits the city is built from, and Mossbun */
@@ -556,7 +579,7 @@ export const EXPLORE_SHOWCASE_LINKS = (): string[] => [
   featuredRecreateHref('trend-mic') ?? '', featuredRecreateHref('trend-dance') ?? '',
   featuredRecreateHref(EXPLORE_HERO.key) ?? '', featuredRecreateHref(EXPLORE_STILL.take.key) ?? '', featuredRecreateHref(EXPLORE_KOI.key) ?? '', EXPLORE_KOI.cta.href, featuredRecreateHref(EXPLORE_SEEDANCE.strip.key) ?? '', EXPLORE_SEEDANCE.make.href, EXPLORE_FILMS.editor.href, EXPLORE_FILMS.make.href, EXPLORE_FILMS.yours.href, EXPLORE_SWAP.cta.href, featuredRecreateHref(EXPLORE_SWAP.key) ?? '', EXPLORE_LAYERS.cta.href, featuredRecreateHref(EXPLORE_LAYERS.key) ?? '', EXPLORE_BOARD.cta.href, EXPLORE_LOOKS.cta.href, ...EXPLORE_YOUR_TURN.tabs.map((t) => t.href), yourTurnHref(''),
   ...EXPLORE_SHEETS.cast.map((c) => featuredRecreateHref(c.key) ?? ''), featuredRecreateHref(EXPLORE_FILM.key) ?? '', EXPLORE_FILM.cta.href, featuredRecreateHref(EXPLORE_SCRIPT.key) ?? '',
-  EXPLORE_3D.make.href, featuredRecreateHref(EXPLORE_3D.key) ?? '',
+  EXPLORE_3D.make.href, featuredRecreateHref(EXPLORE_3D.key) ?? '', EXPLORE_SONG.cta.href,
   EXPLORE_VFX.cta.href, ...EXPLORE_VFX.effects.map((v) => vfxTile(v)?.href ?? ''), featuredRecreateHref(EXPLORE_VFX.layout.key) ?? '',
 ];
 

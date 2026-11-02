@@ -1,14 +1,15 @@
 /**
- * Explore (2026-10-26, v3 from the approved mockups). Top to bottom:
- *  - the full-bleed header (the LTX-2.5 Pro painter clip, looping with sound) with the tagline and the quick links (explore/ExploreShowcase.tsx XpHero),
- *    then Made for your work (explore/ExploreWork.tsx: real shop and brand results, each with Make your own),
- *    then 3D and IIAYN FILMS (including A Star to Steer By, formerly its own lighthouse section);
- *  - From one still (XpStill): two LTX-2.5 Pro image-to-video takes from one still, a wipe from the still into the clip, a Take 1 / Take 2 switch;
- *  - Make your own cartoon (XpKoi): a MiniMax H3 take extended by H3 Extend into one 20 s take, in a letterbox; it leads into the H3 chapter below;
- *  - chapters: Same dance. Two new casts. (H3 Character Swap and Kling 3.0 Omni Edit on Comfy Cloud), One picture. Every layer. (Image to layers, Seedream 5.0 Flash on Comfy Router), One character. Every angle. (four GPT Image 2.5 Flare character sheets, Mossbun in 3D), Image · made here, Your agent builds the board, then Block it in 3D. Film it for real. (Mockup to film: Direct a Shot, its first frame painted, the LTX film), One drawing. A whole film. (Mossbun: sheet → 3D → city → film, explore/Explore3D.tsx);
- *  - Made on your computer. Free. (after Mockup to film): a shared MediaRail of local LTX clips, each with the shared RunChip (model · Your computer · Free), opening as Recreate;
- *  - the flow rows (server/src/shared/exploreFlows.ts): numbered heads, bento strips of media tiles naming the real model and its price;
- *  - Learn / Spend, every tool, the footer.
+ * Explore (2026-10-26, v3 from the approved mockups; reordered into four acts on 2026-11-02, the plan in the Explore journey notes). Top to bottom:
+ *  - Act 1, Wonder: the full-bleed header (XpHero, the LTX-2.5 Pro painter clip with sound), Create your character. Bring it to life. (Xp3D,
+ *    Mossbun: design it → spin it in 3D → place it → film it), What if it could move? (XpStill: a still becomes a moving shot, full bleed),
+ *    One character. Every angle. (XpSheets),
+ *    Make your own cartoon (XpKoi: MiniMax H3 + H3 Extend), then our song with SyteSim dancing (XpSong, explore/ExploreSong.tsx);
+ *  - Act 2, Control: Block it in 3D. Film it for real. (XpFilm, Mockup to film), Same dance. Two new casts. (XpSwap), One idea. Every look.
+ *    (XpLooks), Give a character a voice (XpPresenter);
+ *  - Act 3, Work: Made for your work (XpWork, explore/ExploreWork.tsx), One picture. Every layer. (XpLayers);
+ *  - Act 4, Trust and you: Your agent builds the board (XpBoard, Canvas), IIAYN FILMS (XpFilms, full width), Now it's your turn (XpYourTurn), the footer.
+ *  - Hidden: Made on your computer. Free. (RealResults, a shared MediaRail of local LTX clips), kept in code. The flow rows (Row, EXPLORE_ROWS)
+ *    and the jump bar are not mounted.
  * Showcase data: server/src/shared/exploreShowcase.ts; featured media: shared/featured.ts. Every card opens the exact tool with its settings
  * filled in. Posters first; clips mount on hover / on screen; reduced motion gets posters only. Our own copy, accent and icons.
  */
@@ -32,6 +33,7 @@ import { Xp3D } from './explore/Explore3D';
 import { XpFilms } from './explore/ExploreFilms';
 import { XpPresenter } from './explore/ExplorePresenter';
 import { XpWork } from './explore/ExploreWork';
+import { XpSong } from './explore/ExploreSong';
 import { FlowDiagram, hasDiagram } from './exploreArt';
 import './explore.css';
 
@@ -142,24 +144,32 @@ export default function Home({ tools }: { tools: ToolInfo[] }) {
   /* two tools with one name (Upscale for images and for clips): say which */ const dup = new Set(chips.map(c => c.name).filter((n, k, a) => a.indexOf(n) !== k)); chips.forEach(c => { if (dup.has(c.name)) { const m = (tools.find(t => t.id === c.id) as any)?.media ?? (/image|app-remove-bg/.test(c.id) ? 'image' : 'video'); c.name = `${c.name} · ${m === 'image' ? 'image' : 'video'}`; } });
   return <div className="home xp" data-testid="explore">
     <h1 className="sr-only-vis">Imagination Is All You Need: an open studio for video, images, sound and 3D</h1>
+    {/* Act 1, Wonder: the hero, then what a character, a picture and a song can become */}
     <XpHero />
-    <div className="xp-in"><XpWork /></div>
-    {/* The lighthouse now lives in Films, not in a separate section (user, 2026-10-29). */}
-    <div className="xp-in"><Xp3D /></div>
-    {/* IIAYN FILMS: our finished films (explore/ExploreFilms.tsx; the feature layout runs full width) */}
-    <XpFilms />
     <div className="xp-in">
+      <Xp3D />
       <XpStill />
+      <XpSheets />
+      <XpKoi />
+      {/* our song, SyteSim dancing (explore/ExploreSong.tsx) */}
+      <XpSong />
+    </div>
+    {/* Act 2, Control: direct the shot, swap the cast, pick the look, give it a voice */}
+    <div className="xp-in">
       <XpFilm />
       {/* "Made on your computer. Free." (RealResults) is hidden: the user never asked for this section (2026-11-02). Kept in code; render <RealResults /> here to bring it back. */}
-      <XpKoi />
-      <XpBoard />
       <XpSwap />
-      <XpLayers />
-      <XpSheets />
-      <XpPresenter />
       <XpLooks />
+      <XpPresenter />
     </div>
+    {/* Act 3, Work: real results for shops and brands, then a poster split into layers */}
+    <div className="xp-in">
+      <XpWork />
+      <XpLayers />
+    </div>
+    {/* Act 4, Trust and you: your agent on the Canvas, our finished films (IIAYN FILMS, full width), then your turn */}
+    <div className="xp-in"><XpBoard /></div>
+    <XpFilms />
     {/* the closing moment, full width: a prompt box over a wall of things made here */}
     <XpYourTurn />
     <footer className="xp-footer" data-sec="footer"><div className="xp-foot-in">

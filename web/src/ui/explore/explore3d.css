@@ -1,4 +1,4 @@
-/* Explore: "One drawing. A whole film." (Explore3D.tsx). The headline is the chapter style (exploreShowcase.css .xps-h / .xsdc-*); scoped under .x3. */
+/* Explore: "Create your character. Bring it to life." (Explore3D.tsx). The headline is the chapter style (exploreShowcase.css .xps-h); scoped under .x3. */
 .x3 .x3-film{border:1px solid var(--xv-line);max-height:min(78vh,820px)}
 .x3 .x3-film .sfilm-media{object-position:50% 46%}
 
@@ -37,3 +37,19 @@
 @media (max-width:760px){.x3 .x3-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.x3 .x3-step:nth-child(odd)::before{display:none}}
 @media (prefers-reduced-motion:reduce){.x3 .x3-step,.x3 .x3-credits{transition:none}}
 .x3 .runchip{gap:3px 5px;padding:5px 9px;font-size:11.5px}
+
+/* ---------- media first (the user's pick, 2026-11-02): a framed band, its own height, the headline small on it; the step strip under it ---------- */
+.x3 .x3-band{position:relative;border-radius:22px;overflow:hidden;border:1px solid var(--xv-line);box-shadow:0 30px 90px rgba(0,0,0,.45)}
+.x3 .x3-band .x3-film{border:0;border-radius:0;max-height:min(68vh,660px)}
+.x3 .x3-head{position:absolute;left:clamp(20px,2.6vw,40px);top:clamp(20px,3.2vh,36px);max-width:480px;pointer-events:none;z-index:4}
+.x3 .x3-head .xps-h{margin:0 0 12px;font-size:clamp(30px,3vw,46px);text-shadow:0 1px 2px rgba(0,0,0,.55),0 2px 14px rgba(0,0,0,.45),0 8px 40px rgba(0,0,0,.35)}
+.x3 .x3-head .xps-h span:last-child{color:var(--accent)}
+.x3 .x3-head .xps-p{margin:0;font-size:15px;color:rgba(255,255,255,.92);text-shadow:0 1px 2px rgba(0,0,0,.6),0 1px 12px rgba(0,0,0,.5)}
+.x3 .x3-steps{margin-top:18px}
+@media (max-width:900px){
+  .x3 .x3-band{display:flex;flex-direction:column-reverse;overflow:visible;border:0;border-radius:0;box-shadow:none}
+  .x3 .x3-band .x3-film{border:1px solid var(--xv-line);border-radius:18px}
+  .x3 .x3-head{position:static;max-width:none;padding:0 0 18px}
+  .x3 .x3-head .xps-h,.x3 .x3-head .xps-p{text-shadow:none}
+  .x3 .x3-total{flex-wrap:wrap}.x3 .x3-total b{white-space:nowrap}
+}
