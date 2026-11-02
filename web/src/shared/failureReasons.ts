@@ -71,6 +71,8 @@ export const REASONS: Record<string, FailReason> = {
   canceled:          { key: 'canceled', mood: 'cancelled', title: 'Canceled', line: 'You stopped it. No harm done.', actions: ['recreate'] },
   workflow_invalid:  { key: 'workflow_invalid', mood: 'needsDownload', title: 'Comfy Cloud can’t run this yet', line: 'Try another model, or run it on your computer.', actions: ['otherModel', 'runLocal'] },
   cloud_job_failed:  { key: 'cloud_job_failed', mood: 'providerDown', title: '{provider} had a problem', line: 'Not your fault. Try again or pick another model.', actions: ['retry', 'otherModel'] },
+  /* Comfy Cloud ended the run at its plan's maximum runtime (server/src/shared/cloudLimits.ts) */
+  cloud_run_limit:   { key: 'cloud_run_limit', mood: 'timeout', title: 'Reached Comfy Cloud’s time limit', line: 'Cloud stops runs at 30 min (1 h on Pro). Try a shorter run.', actions: ['runLocal', 'retry'] },
   cloud_job_gone:    { key: 'cloud_job_gone', mood: 'generic', title: 'The run went missing', line: 'Comfy Cloud lost track of it, so we stopped it. Try again.', actions: ['retry'] },
   /* an old run stopped by a spending limit (limits were removed 2026-10-28): nothing stops it now */
   spend_limit:       { key: 'spend_limit', mood: 'generic', title: 'Stopped by an old spending limit', line: 'Spending limits are gone now. Try again.', actions: ['retry'] },
@@ -78,9 +80,12 @@ export const REASONS: Record<string, FailReason> = {
   // Official lab APIs (server/src/providers/direct.ts DirectReason): key_invalid, content_blocked, input_invalid, queue_full, provider_error above, plus:
   provider_credits:  { key: 'provider_credits', mood: 'noCredits', title: 'That account is out of funds', line: 'Top up that account, or pick another model.', actions: ['otherModel', 'runLocal'] },
   agent_budget_unknown: { key: 'agent_budget_unknown', mood: 'noCredits', title: 'Agent budget unclear', line: 'The price was unknown, so it didn’t start.', actions: ['spendLimits'] },
-  // Local (server/src/comfy/runNative.ts): a local run we gave up on. The line carries the real minutes from the server's message (failView).
+  // Local (server/src/comfy/runNative.ts). No clock stops a local run since 3 Nov 2026; local_stalled stays for older jobs. The line carries the real
+  // minutes from the server's message (failView).
   local_stalled:     { key: 'local_stalled', mood: 'timeout', title: 'It got stuck', line: 'Nothing moved for 10 minutes, so we stopped it. Try again.', actions: ['retry'] },
-  local_too_long:    { key: 'local_too_long', mood: 'timeout', title: 'It got stuck', line: 'It ran far longer than usual, so we stopped it. Try again.', actions: ['retry'] },
+  local_too_long:    { key: 'local_too_long', mood: 'timeout', title: 'Reached the time limit', line: 'It hit the time limit set for this computer. Try again.', actions: ['retry'] },
+  local_lost:        { key: 'local_lost', mood: 'offline', title: 'ComfyUI stopped', line: 'ComfyUI closed or stopped answering. Start it, try again.', actions: ['startComfy', 'retry'] },
+  local_gone:        { key: 'local_gone', mood: 'generic', title: 'ComfyUI lost this run', line: 'It may have restarted. Try again.', actions: ['retry'] },
 };
 /** Reasons read from errorType or the message (no reasonCode on the job). */
 export const EXTRA: Record<string, FailReason> = {
@@ -189,7 +194,7 @@ export function failView(j: FailJob, ctx: FailCtx = {}): FailView {
   const mins = /(\d+) min\b/.exec(String(j.error ?? ''))?.[1];
   const line = r.key === 'cloud_credits' && !local ? 'Top up on comfy.org, then try again.' : r.key === 'no_credits' && !local ? 'Top up your account, then try again.'
     : r.key === 'declined' && refusalReason(j.providerError) ? refusalReason(j.providerError)! /* the provider said why: "The provider refused a photo of a real person." */
-    : r.key === 'local_stalled' && mins ? `Nothing moved for ${mins} minute${mins === '1' ? '' : 's'}, so we stopped it. Try again.` : r.key === 'local_too_long' && mins ? `It ran for over ${mins} minute${mins === '1' ? '' : 's'}, so we stopped it. Try again.` : r.line;
+    : r.key === 'local_stalled' && mins ? `Nothing moved for ${mins} minute${mins === '1' ? '' : 's'}, so we stopped it. Try again.` : r.key === 'local_too_long' && mins ? `It hit the ${mins} min limit set for this computer. Try again.` : r.line;
   return { ...r, title: titleFor(j, r.title), line, actions: actions.length ? actions : ['retry'], charge: chargeOf(j, r, ctx), detail: detailOf(j) };
 }
 /** Button words. */

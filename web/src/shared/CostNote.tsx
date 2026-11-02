@@ -4,7 +4,11 @@ import { InfoIcon } from '../ui/Icons';
 import { demoMessage } from './quote';
 import { etaLine, etaRangeOf } from './eta';
 import { demoRealCredits } from './DemoPrice';
-import { useBilling, modeOf, costShort, costTitle, demoRealText, fmtUsd, RULE_TEXT, ledgerUsd, type Cost } from './billing';
+import { useBilling, modeOf, costShort, costTitle, demoRealText, fmtUsd, RULE_TEXT, ledgerUsd, placeOfQuote, type Cost } from './billing';
+import { cloudLimitNote } from '../../../server/src/shared/cloudLimits';
+/** A Comfy Cloud workflow run (not Comfy Router, whose models have no Cloud runtime limit): its estimate, when it nears Cloud's maximum, gets a calm note. */
+export const cloudLimitOfQuote = (q: any): string | null => !q || q.demo === true || placeOfQuote(q) !== 'comfy-cloud' || /router/.test(String(q.routeId ?? q.route ?? q.routeKind ?? '')) ? null
+  : cloudLimitNote(etaRangeOf(q)?.high ?? (Number(q.eta?.high) || null));
 /** CostNote: the one calm line under every Generate button. The main fact (demo / local / where it's billed) and, for a clip that isn't
  *  loaded yet, what the estimate assumes ('Estimated for 8 s. Updates when your clip loads.'), so a later 447 → 335 isn't a surprise.
  *  The button already shows the price token, so the number is NOT repeated here; the details (real-run price, where it's billed, the
@@ -30,15 +34,17 @@ export function CostNote({ q, className = '', testId }: { q: any; className?: st
   const real = demo ? (own ? demoRealText(cost, b?.comfyCreditsPerUsd) ?? (n != null ? `≈ ${fmtUsd(n / 100)}` : null) : n != null ? ledgerUsd(n) : null) : null;
   const eta = local ? etaLine(etaRangeOf(q)) : null; // step-ETA: this computer's range for a local run
   const main = demo ? 'Sample output, nothing billed.' : local ? `Runs locally, nothing billed.${eta ? ` ${eta.short.replace(/ · Local$/, '')}.` : ''}` : own && cost ? (cost.unconfirmed ? `About ${fmtUsd(cost.estUsd)} (estimate): no published price yet. The real cost is recorded after the run.` : `Estimate, billed to your ${cost.billedToName} account.`) : null;
-  if (!main && !est) return null;
+  const limit = local ? null : cloudLimitOfQuote(q);
+  if (!main && !est && !limit) return null;
   const details: { k: string; v: string; tid?: string }[] = [];
   if (demo) details.push({ k: 'Sample', v: demoMessage(q) ?? 'Sample output, nothing billed.' });
   if (demo && real) details.push({ k: 'Real run', v: `${real}${own && cost?.billedToName ? ` on ${cost.billedToName}` : ''} once a key is added.`, tid: 'demo-list' });
   if (!demo && own && cost && !local) details.push({ k: 'Cost', v: `${costShort(cost)}. ${costTitle(cost)}` });
   if (!demo && own && cost && !local && cost.failureRule) details.push({ k: 'If it fails', v: RULE_TEXT[cost.failureRule] ?? cost.failureNote });
   if (est) details.push({ k: 'Estimate', v: est.long });
+  if (limit) details.push({ k: 'Time limit', v: limit });
   return <div className={`cost-note demo-note${className ? ' ' + className : ''}`} role="status" data-testid={testId ?? (demo ? 'demo-note' : 'cost-note')}>
-    <span className="cn-t">{main && <span data-testid={demo ? 'demo-price' : undefined}>{main}</span>}{est && <> <span data-testid="price-estimate">{est.short}</span></>}</span>
+    <span className="cn-t">{main && <span data-testid={demo ? 'demo-price' : undefined}>{main}</span>}{est && <> <span data-testid="price-estimate">{est.short}</span></>}{limit && <> <span data-testid="cloud-limit-note">{limit}</span></>}</span>
     {details.length > 0 && <button ref={iRef} type="button" className="cn-i" aria-label="Price details" aria-expanded={open} title="Price details" onClick={() => setOpen(o => !o)}><InfoIcon size={16} /></button>}
     <Popover open={open} anchor={iRef} onClose={() => setOpen(false)} label="Price details" role="dialog" placement="top" align="end" className="cn-pop" closeButton={false}>
       <dl className="cn-dl">{details.map(d => <div key={d.k} data-testid={d.tid}><dt>{d.k}</dt><dd>{d.v}</dd></div>)}</dl>

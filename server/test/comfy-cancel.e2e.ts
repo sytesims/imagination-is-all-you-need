@@ -168,7 +168,7 @@ try {
   assert.equal(cc({ status: 'running', route: 'local:comfy-flux2-klein', simulated: true }), false, 'a sample run stays as before');
   assert.equal(cc({ status: 'running', route: 'local:comfy-flux2-klein', input: { refBatches: [[1], [2]] } }), false, 'chunked: Cancel remaining groups instead');
   for (const s of ['done', 'failed', 'canceled']) assert.equal(cc({ status: s, route: 'local:comfy-flux2-klein' }), false, s);
-  const R = await import('../src/comfy/runNative.ts'); assert.equal(R.execTimeoutMs(null), 30 * 60_000, 'floor 30 min'); assert.equal(R.execTimeoutMs({ seconds: 60, high: 90 }), 30 * 60_000);
-  assert.equal(R.execTimeoutMs({ seconds: 900, high: 1200 }), 1200 * 4 * 1000, 'a long video model: 4 × the high estimate'); ok('execTimeoutMs: 4 × the step-ETA estimate, never under 30 min');
+  const R = await import('../src/comfy/runNative.ts'); assert.equal(R.execTimeoutMs(), 2 * 3600_000, 'Comfy Cloud: our net is 2 h of running (Cloud stops runs at its own maximum first)');
+  ok('execTimeoutMs: a 2 h net on Cloud running time');
   fs.rmSync(D2, { recursive: true, force: true }); ok('canCancel: local at every stage (before submit, submitted); hosted only before dispatch; never once ended'); }
 console.log('ALL OK comfy-cancel'); process.exit(0);
