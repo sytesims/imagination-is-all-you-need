@@ -7,7 +7,7 @@ import { continuesInput, withExtendModel } from '../../shared/continuation';
 import { promptLimitIssue } from '../../../../server/src/shared/promptRefs';
 import { engineModelKey } from '../../../../server/src/shared/modelIds';
 import { continuePrompt, continueModel, continueBeat } from '../../../../server/src/shared/continueFrame';
-import { engineForModelParam, modelParam, useModelLink, useModelParamSync, getRunOn, setRoute as saveRunRoute } from '../../shared/models';
+import { engineForModelParam, modelParam, useModelLink, useModelParamSync, getRunOn, setSessionRoute } from '../../shared/models';
 import { restorableProvider } from '../../shared/lifecycle';
 import { useDraftFile, useDraftFileList } from '../../shared/draftFiles';
 import { defaultsOf, pickDefault, initialProviderFor } from '../../shared/defaults';
@@ -213,7 +213,7 @@ export default function AppTool({ tool, tools }: { tool: ToolInfo; tools?: ToolI
         const d = Number(f.duration); if (cfg.durations?.includes(d)) { setDuration(d); keepDur.current = d; }
         if (f.resolution && cfg.resolutions.includes(f.resolution)) setResolution(f.resolution);
         if (f.aspect) setFieldVals(v => ({ ...v, aspect: String(f.aspect) }));
-        const cr = h.continueRoute; if (cr?.modelKey && cr.runOn && cr.routeId && getRunOn(tool.id, cr.modelKey).route !== cr.routeId) void saveRunRoute(tool.id, cr.modelKey, cr.runOn, cr.routeId).catch(() => undefined);
+        const cr = h.continueRoute; if (cr?.modelKey && cr.runOn && cr.routeId && getRunOn(tool.id, cr.modelKey).route !== cr.routeId) setSessionRoute(tool.id, cr.modelKey, cr.runOn, cr.routeId); /* this composer visit only: the saved Run on stays as the user set it */
       }
       const beat = continueBeat(f.duration), at = p.indexOf(beat); /* the caret waits in the empty beat */
       if (!edited && at >= 0) setTimeout(() => { const el = promptRef.current; if (el) { el.focus(); el.setSelectionRange(at + beat.length, at + beat.length); } }, 60);

@@ -1,6 +1,6 @@
-import { IMAGE_PAGE, VIDEO_PAGE, VIDEO_TOOL, toolPage, pageTool } from '../../../server/src/shared/pages';
+import { IMAGE_PAGE, VIDEO_PAGE, VIDEO_TOOL, AUDIO_PAGE, toolPage, pageTool } from '../../../server/src/shared/pages';
 import { videoWorkflowOfTool, videoWorkflowHref, videoWorkflowById } from '../../../server/src/shared/videoWorkflows';
-import { audioWorkflowForToolMode, audioRoute, type AudioWorkflowId } from '../../../server/src/shared/audioWorkflows';
+import { audioWorkflowForToolMode, audioRoute, audioWorkflowById, AUDIO_DEFAULT_WORKFLOW, type AudioWorkflowId } from '../../../server/src/shared/audioWorkflows';
 import { threeDRoute, threeDMode } from '../../../server/src/shared/threeD';
 import { ADDED_IMAGE_WORKFLOWS } from '../../../server/src/shared/mediaFeed';
 /** Unified Create Image: the workflows Create Image's bar runs today, by the tool that runs them. Recreate on their results reopens
@@ -55,7 +55,13 @@ export const frameHandoffHref = (jobId: string, out = 0, at: 'last' | 'first' | 
 /** Where a tool opens: Create Image with its workflow picked when the bar runs it, else the tool's own page. */
 /** One Video page (2026-10-23): a video tool opens the Video page with its workflow picked (shared/videoWorkflows.ts). */
 const videoOpenHref = (toolId: string): string | null => { const w = videoWorkflowOfTool(toolId); return w ? videoWorkflowHref(w.id) : null; };
-export const toolOpenHref = (t: { id: string; route?: string | null }): string => workflowOpenHref(t.id) ?? videoOpenHref(t.id) ?? t.route ?? toolPage(t.id);
+/** One Audio page: Translate, Change voice and Music Bed run in the Audio composer (shared/audioWorkflows.ts); a hand-off opens it there with the
+ *  workflow picked, like every other button (their old /tools/app-… pages stay for direct links and old Recreates). */
+const AUDIO_OPEN: Record<string, AudioWorkflowId> = { 'app-translate-video': 'translate', 'app-change-voice': 'change-voice', 'app-music-bed': 'soundtrack-music' };
+const audioOpenHref = (toolId: string): string | null => AUDIO_OPEN[toolId] ? audioRoute(AUDIO_OPEN[toolId]) : null;
+export const toolOpenHref = (t: { id: string; route?: string | null }): string => workflowOpenHref(t.id) ?? videoOpenHref(t.id) ?? audioOpenHref(t.id) ?? t.route ?? toolPage(t.id);
+/** A server hand-off link (GET /api/jobs/:id/prefill `url`, /tools/<id>?fromJob=…) → where that tool opens now, the query kept. */
+export const handoffHome = (url: string): string => { const m = /^\/tools\/([\w-]+)(?:\?(.*))?$/.exec(url); return m ? toolHandoffHref({ id: m[1], route: `/tools/${m[1]}` }, m[2] ?? '') : url; };
 /** A hand-off link (?fromJob=…&out=…) to a tool, straight to its new home (no redirect hop). */
 export const toolHandoffHref = (t: { id: string; route?: string | null }, query: string): string => withSearch(toolOpenHref(t), query);
 
@@ -80,7 +86,10 @@ export function workflowCardTools<T extends { id: string; name: string }>(tools:
 /** The tool a page runs: /tools/<id>, Image / Audio / 3D's own tool at /image, /audio, /3d (shared/pages.ts), or on the one Video page the picked workflow's own tool (/video?workflow=extend → h3-extend; /video alone → h3-video),
  *  so a hand-off (Extend, Upscale, Turn to video…) asks the server for that tool's slot, not Create Video's (shared/usePrefill.ts). */
 export function pageToolId(path = location.pathname, search = location.search): string {
-  if ((path.replace(/\/+$/, '') || '/') !== VIDEO_PAGE) return pageTool(path) ?? path.split('/')[2] ?? '';
+  const p = path.replace(/\/+$/, '') || '/';
+  /* the Audio page runs the picked workflow's own tool (Translate → voice, Music for a video → soundtrack) */
+  if (p === AUDIO_PAGE) return audioWorkflowById(new URLSearchParams(search).get('workflow') ?? AUDIO_DEFAULT_WORKFLOW)?.tool ?? pageTool(p) ?? '';
+  if (p !== VIDEO_PAGE) return pageTool(path) ?? path.split('/')[2] ?? '';
   const w = videoWorkflowById(new URLSearchParams(search).get('workflow')); return w?.toolId || VIDEO_TOOL;
 }
 /** Use in Direct a Shot (2026-10-27): a finished 3D model (job id) placed in Direct a Shot's set, ready to move, size or make the actor. */
