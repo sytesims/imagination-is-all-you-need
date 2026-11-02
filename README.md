@@ -26,10 +26,11 @@
 
 Install with the one line below. You don't need a GPU, a key or an account for this tour, and nothing is charged.
 
-1. **Open the Examples project** (Assets → Projects → Examples). Real results made in the app, each with its model, where it ran and its price.
-2. **Open a result and press View workflow** (on some results it's under **More → Advanced**). You see the ComfyUI workflow behind it: where it ran, the workflow file, and its nodes with their models and settings. It's a list, not a node canvas.
-3. **Press Download workflow** (or **Copy JSON**) to keep the ComfyUI API graph. With your ComfyUI connected in **Settings → Connections**, **Open in ComfyUI** loads it there; without ComfyUI that button stays off.
-4. **Open the Canvas and pick a starter** in the agent panel, such as **Short film from idea**. The built-in demo agent lays out the board step by step, with a whole workflow on each card. Every run waits for your Go, and with nothing connected nothing can run.
+1. **Pick Look around first** on the welcome sheet that opens the app. It skips setup; you can connect later in **Settings → Connections**.
+2. **Open the Examples project** (Assets → Projects → Examples). Real results made in the app, each with its model, where it ran and its price.
+3. **Open a result and press View workflow** (on some results it's under **More → Advanced**). You see the ComfyUI workflow behind it: where it ran, the workflow file and its node count, and each node by name and type, grouped into models and inputs, sampling and output. It's a list, not a node canvas.
+4. **Press Download workflow** (or **Copy JSON**) to keep the ComfyUI API graph. With your ComfyUI connected in **Settings → Connections**, **Open in ComfyUI** loads it there; without ComfyUI that button stays off.
+5. **Open the Canvas and pick a starter** in the agent panel, such as **Short film from idea**. The built-in demo agent lays out the board step by step, with a whole workflow on each card. Every run waits for your Go, and with nothing connected nothing can run.
 
 Want to see it run? Connect your ComfyUI or a Comfy key in **Settings → Connections**.
 

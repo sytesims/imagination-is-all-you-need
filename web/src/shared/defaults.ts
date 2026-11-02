@@ -32,8 +32,8 @@ const sentence = (t: unknown): string | null => { const s = typeof t === 'string
 export function modelStatus(p: any): ModelStatus {
   if (!p || p.runnable !== false) return { dim: false, note: null, keyCue: null };
   const note = sentence(p.reason); const keyCue = p.needsKey === true && p.keyOwner ? `Add a ${p.keyOwner} key` : null;
-  // a model that only needs a key, or is heavy for this computer (it still runs when picked, with a warning), stays pickable: the composer then offers Add key instead of hiding the model
-  return { dim: true, off: p.demoPreview === true || p.needsKey === true || p.reasonCode === 'too_heavy' ? undefined : note ?? 'Not available here.', note, keyCue };
+  // a model that only needs a key or ComfyUI set up, or is heavy for this computer (it still runs when picked, with a warning), stays pickable: the composer then offers Add key instead of hiding the model
+  return { dim: true, off: p.demoPreview === true || p.needsKey === true || p.reasonCode === 'too_heavy' || p.reasonCode === 'local_unreachable' || p.reasonCode === 'local_only_unreachable' ? undefined : note ?? 'Not available here.', note, keyCue };
 }
 /** Route chips for a model with a twin (cloud workflow) route: each route's tier label, in tier order ('Comfy Cloud', 'API', 'Local'…). */
 export const tierChipsOf = (p: any): string[] | null => { const rs: any[] = Array.isArray(p?.routes) ? p.routes : []; if (!rs.some(r => r?.twinOf)) return null;

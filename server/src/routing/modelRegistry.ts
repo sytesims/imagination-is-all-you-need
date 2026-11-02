@@ -28,7 +28,7 @@ import { lifecycleFields } from '../shared/lifecycle.js';
 import { weightsGate, requirementsFor } from '../hardware/requirements.js';
 import { MAC_WEIGHTS_REASON } from '../hardware/macWeights.js';
 import { LOCAL_UNREACHABLE_REASON } from './runnable.js';
-import { MODELS, MAKERS, makerOf, RUN_ON_IDS, RUN_ON_LABELS, RUN_ON_BILLED_TO, engineModelKey, ENGINE_MODEL, TOOL_SPLITS, engineSplits, isLtxMove, normRunOn, runOnOfRoute, runOnOfRouteId, aKey, comfyHowLine, placeOf, type ModelDef, type RunOn, type InputRule } from '../shared/modelIds.js';
+import { NEEDS_COMFYUI_TEXT, MODELS, MAKERS, makerOf, RUN_ON_IDS, RUN_ON_LABELS, RUN_ON_BILLED_TO, engineModelKey, ENGINE_MODEL, TOOL_SPLITS, engineSplits, isLtxMove, normRunOn, runOnOfRoute, runOnOfRouteId, aKey, comfyHowLine, placeOf, type ModelDef, type RunOn, type InputRule } from '../shared/modelIds.js';
 import { CATALOGUE, THREE_D_BEST_FOR, variantsOf, type AudioKind } from '../shared/modelRank.js';
 import { IMAGE_CAPS } from '../shared/imageCaps.js';
 import { VIDEO_LIMITS, ROUTE_LIMITS } from '../tools/h3/videoCaps.js';
@@ -299,7 +299,9 @@ function setupOf(runsOn: any[]): { runOn: string; label: string; action: any; cr
 }
 /** One status per model row (MODEL-PICKER-REVIEW §5b.4), from one source: the model's state at the pre-selected place, else what setting it up takes. */
 /** A local-only model's row while ComfyUI isn't set up or running (rowStatusOf): what it needs, in plain words. */
-export const NEEDS_COMFYUI_TEXT = 'Needs ComfyUI on this computer';
+export { NEEDS_COMFYUI_TEXT };
+/** A model none of whose places this app runs yet (rowStatusOf). */
+export const NOT_WIRED_ROW_TEXT = 'Not ready in this app yet';
 export type RowStatus = { kind: 'ready' | 'sample' | 'add_key' | 'download' | 'turn_on' | 'install_node' | 'set_up' | 'coming_soon' | 'unavailable'; text: string; runOn: string | null; credits: number | null; missingBytes?: number | null };
 export function rowStatusOf(m: { preselect?: any; runsOn: any[]; setup?: any[] }): RowStatus {
   const p = m.preselect; const row = p ? m.runsOn.find((r) => r.id === p.runOn) : null;
@@ -308,7 +310,9 @@ export function rowStatusOf(m: { preselect?: any; runsOn: any[]; setup?: any[] }
   if (m.runsOn.length && m.runsOn.every((r) => r.status === 'coming-soon')) return { kind: 'coming_soon', text: 'Coming soon', runOn: null, credits: null };
   const s = m.setup ?? []; if (!s.length) return { kind: 'unavailable', text: m.runsOn.some((r) => r.id === 'local' && r.reasonCode === 'unsupported_weights') ? MAC_WEIGHTS_REASON
     /* a local-only model while no ComfyUI answers (a fresh install): say what it needs, not "Not available here" */
-    : m.runsOn.some((r) => r.id === 'local' && (r.reasonCode === 'local_unreachable' || r.action?.kind === 'set_up_gpu')) ? NEEDS_COMFYUI_TEXT : 'Not available here', runOn: null, credits: null };
+    : m.runsOn.some((r) => r.id === 'local' && (r.reasonCode === 'local_unreachable' || r.action?.kind === 'set_up_gpu')) ? NEEDS_COMFYUI_TEXT
+    /* a cloud model this app doesn't run yet (wired: false, e.g. Seedance on Restyle): a key wouldn't help, so say that plainly */
+    : m.runsOn.length && m.runsOn.every((r) => r.wired === false) ? NOT_WIRED_ROW_TEXT : 'Not available here', runOn: null, credits: null };
   if (s.length > 1) return { kind: 'set_up', text: 'Set up', runOn: null, credits: null };
   const a = s[0].action; const k = a.kind as RowStatus['kind'];
   return { kind: k, runOn: s[0].runOn, credits: null, text: k === 'add_key' ? `Add key · ${KEY_SHORT_L[s[0].runOn] ?? s[0].label}` : k === 'download' ? `Download · ${gbT(a.missingBytes) || 'files'}` : k === 'turn_on' ? 'Turn on · Your computer' : 'Install add-on · Your computer', ...(k === 'download' ? { missingBytes: a.missingBytes ?? null } : {}) };

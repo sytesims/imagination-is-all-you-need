@@ -56,12 +56,25 @@ const cameraFields = reelCameraFields;
 const musicFields = (v: Record<string, any>) => ({ provider: v.musicProvider || (v.runOn === 'local' ? 'comfy-acestep' : undefined), runOn: v.runOn === 'local' ? 'local' : undefined, route: v.musicRoute, seconds: v.seconds, types: '["music"]', video: '1', rights: '1', prompt: REEL_MOODS[v.kind as ReelOptions['kind']] });
 
 /** Price every paid step through the same route-aware endpoint used for its submit. */
-export async function quoteReel(app: FastifyInstance, v: Record<string, any>, pendingCameraCount?: number, pendingMusicCount = 1) {
-  const count = Number(v.photoCount), o = parseReelOptions(v, count, true);
+/** `price` = the price endpoint (the composer, agents), not the submit: before the photos are in (0–7) it quotes the smallest reel (8 photos,
+ *  assumedPhotoCount) instead of a 400, and a step that can't run yet (no key, no ComfyUI) comes back as that step's own 200 quote, so the
+ *  composer says the same "Needs a key · ≈ $x" / "Set up ComfyUI…" as every other tool. The submit still refuses both. */
+export async function quoteReel(app: FastifyInstance, v: Record<string, any>, pendingCameraCount?: number, pendingMusicCount = 1, price = false) {
+  const given = Number(v.photoCount), assumed = price && !(given >= 8 && given <= 15) ? (given > 15 ? 15 : 8) : null;
+  const count = assumed ?? given, o = parseReelOptions(v, count, true);
   if ('error' in o) return { status: 400, body: { ...o, valid: false, priceAvailable: false } };
   const plan = reelPlan(count, o);
   const request = async (tool: string, fields: Record<string, unknown>) => { const r = await app.inject({ method: 'GET', url: `/api/tools/${tool}/price?${query(fields)}` }); return { status: r.statusCode, body: r.json() }; };
   const camera = await request('camera', cameraFields(v));
+  const est = assumed != null ? { estimated: true, assumedPhotoCount: assumed } : {};
+  if (price && camera.status === 200 && camera.body.runnable === false && (camera.body.needsKey === true || camera.body.setup || camera.body.setupOptions?.length || camera.body.reasonCode === 'local_only_unreachable')) {
+    /* the whole reel's price once the step's place is set up: N camera moves (+ the music bed at that same place, when it quotes one) */
+    const music = o.music === 'on' ? await request('app-music-bed', musicFields({ ...v, ...o })) : null; const n = pendingCameraCount ?? plan.cameraCount;
+    const musicAt = (runOn: string) => { const x = (music?.body?.setupOptions ?? []).find((m: any) => m.runOn === runOn); return typeof x?.credits === 'number' ? x.credits : Number.isFinite(music?.body?.credits) && music?.body?.runOn === runOn ? music!.body.credits : 0; };
+    const scale = (os: any) => Array.isArray(os) ? os.map((x: any) => typeof x?.credits === 'number' ? { ...x, credits: Math.round((x.credits * n + musicAt(x.runOn)) * 100) / 100 } : x) : os;
+    const setupOptions = scale(camera.body.setupOptions);
+    return { status: 200, body: { ...camera.body, ...est, composite: true, toolId: REEL_TOOL, photoCount: count, cameraCount: n, seconds: o.seconds, setupOptions, ...(camera.body.noProvider ? { noProvider: { ...camera.body.noProvider, setupOptions } } : {}), reelStep: 'Camera Moves' } };
+  }
   if (camera.status !== 200 || camera.body.valid === false || camera.body.priceAvailable === false || camera.body.runnable === false || !Number.isFinite(camera.body.credits)) return { status: camera.status === 200 ? 400 : camera.status, body: { ...camera.body,reelStep:'Camera Moves' } };
   const music = o.music === 'on' ? await request('app-music-bed', musicFields({ ...v, ...o })) : null;
   if (music && (music.status !== 200 || music.body.valid === false || music.body.priceAvailable === false || music.body.runnable === false || !Number.isFinite(music.body.credits))) return { status: music.status === 200 ? 400 : music.status, body: { ...music.body,reelStep:'Music Bed' } };
@@ -74,7 +87,7 @@ export async function quoteReel(app: FastifyInstance, v: Record<string, any>, pe
   const activeSteps = steps.filter(x => x.count > 0);
   const accounts = [...new Set(activeSteps.map(x => x.quote.cost?.billedTo).filter(Boolean))];
   const mixedAccounts = accounts.length > 1;
-  return { status: 200, body: { ...camera.body, composite: true, toolId: REEL_TOOL, routeId: camera.body.routeId ?? camera.body.route, route: camera.body.routeId ?? camera.body.route, credits, listCredits, exactUsd: realRunUsd, photoCount: count, cameraCount: pendingCameraCount ?? plan.cameraCount, seconds: o.seconds,
+  return { status: 200, body: { ...camera.body, ...est, composite: true, toolId: REEL_TOOL, routeId: camera.body.routeId ?? camera.body.route, route: camera.body.routeId ?? camera.body.route, credits, listCredits, exactUsd: realRunUsd, photoCount: count, cameraCount: pendingCameraCount ?? plan.cameraCount, seconds: o.seconds,
     cost: { ...(activeSteps[0]?.quote.cost ?? { billedTo:'local',billedToName:'This computer',estimated:false,demo:config.backend==='mock' }), ...(mixedAccounts ? { billedTo: null, billedToName: 'Multiple accounts', estUnits: undefined, unitLabel: undefined, sourceUrl: null, plan: null, failureRule: 'varies', failureNote: 'Each step follows its account’s billing rules.' } : {}), estUsd, credits, realRunUsd, estUnits: mixedAccounts ? undefined : estUnits, accounts: activeSteps.map(x => ({ toolId:x.toolId, count:x.count, ...x.quote.cost, estUnits:x.quote.cost?.estUnits==null?undefined:Number(x.quote.cost.estUnits)*x.count, usdText:`~$${(Number(x.quote.cost?.realRunUsd ?? x.quote.cost?.estUsd ?? 0)*x.count).toFixed(2)}`, estUsd:Number(x.quote.cost?.estUsd ?? 0)*x.count, realRunUsd:Number(x.quote.cost?.realRunUsd ?? x.quote.cost?.estUsd ?? 0)*x.count })), usdText: realRunUsd > 0 ? `~$${realRunUsd.toFixed(2)}` : 'Free', detail: 'Total for the reel; individual steps use their own billing accounts.' }, priceText: realRunUsd > 0 ? `~$${realRunUsd.toFixed(2)}` : 'Free', breakdown: steps.map(x => ({ label: `${x.count} × ${x.toolId === 'camera' ? 'Camera Moves' : 'Music Bed'}`, factor: x.count, credits: Number(x.quote.credits ?? 0) * x.count })), steps,
     local: steps.every(x => x.quote.local), localRun: steps.every(x => x.quote.localRun), priceAvailable: true, valid: true } };
 }

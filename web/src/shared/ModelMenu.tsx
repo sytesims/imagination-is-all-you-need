@@ -220,7 +220,7 @@ function RefNote({ f }: { f: RefFit }) {
 /** The live balance at the place that runs the pick: shared/menuPrice.ts ("$8.50 left on Comfy"; units and plan on hover). */
 export { balanceOf };
 
-export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, value, onPick, placement = 'right', testId = 'model-menu', rowTestId, toolId, modelHint, quote, supports, lastLabel, defaultId, defaultWhy, defaultReason, onReset, rateOf, onNeed, refFit }: {
+export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, value, onPick, placement = 'right', testId = 'model-menu', rowTestId, toolId, modelHint, quote, supports, lastLabel, defaultId, defaultWhy, defaultReason, onReset, rateOf, onNeed, refFit, place }: {
   open: boolean; anchor: RefObject<HTMLElement | null>; avoid?: RefObject<HTMLElement | null>; /** re-place when it resizes (Popover watch) */ watch?: RefObject<HTMLElement | null>; gap?: number; onClose: () => void; items: MenuItem[]; value: string;
   /** fit: what picking this model changes (the batch row's shared/settingsFit.ts answer); the page applies its values and shows its note. */ onPick: (id: string, fit?: RowFit | null) => void;
   /** A row that needs an input no setting can give (a start image): the page opens that slot. Absent = the reason only. */ onNeed?: (n: Need) => void;
@@ -235,6 +235,8 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
   /** Set while the user's own pick is selected: Auto (and "Reset") goes back to the workflow's default. */ onReset?: (() => void) | null;
   /** A model's published per-unit rate ("$0.10/1k chars", "$0.005/s"), shown in its capability line. Pages that price per unit pass it
    *  (Audio, 2026-10-27); others leave it out and nothing changes. */ rateOf?: (m: ToolModel) => string | null;
+  /** The picked recipe runs at ONE place with its own model (a Comfy Cloud-only Footage Effect: Extend the frame = LTX-2.3 22B + Outpaint
+   *  IC-LoRA, the preset's runOn + modelName from server/src/tools/footageFx.ts): rows keep only that place and show that name. */ place?: { runOn: string; name?: string | null } | null;
   /** Reference-aware rows (Generate Video, 2026-10-31): what each engine would use of the files on the bar (shared/refFit.ts); null when
    *  nothing is attached. The list is then two sections, "Works with your files" and "Skips some of your files", and Auto picks the best
    *  model that works with them all (bestRefPick). */ refFit?: ((engine: string) => RefFit | null) | null;
@@ -254,7 +256,8 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
   const models = useToolModels(toolId); const bill = useBilling(); const own = modeOf(bill, quote) !== 'team'; const acc = useAccounts();
   const listed = items.map(x => x.id);
   // one row per model (MODEL-ROUTE-SPEC §2.2): the models one of this page's engines builds, in the server's order (section, rank)
-  const ms = models.filter(m => m.engines.some(e => listed.includes(e)));
+  const atPlace = (m: ToolModel): ToolModel => (place ? { ...m, displayName: place.name || m.displayName, runsOn: m.runsOn.filter(r => r.id === place.runOn) } : m);
+  const ms = models.filter(m => m.engines.some(e => listed.includes(e))).map(atPlace);
   const isDef = (m: ToolModel) => !!defaultId && m.engines.includes(defaultId);
   const toast = useToast(); const { favourite, recommended } = useDefaultModel(toolId);
   const isFav = (m: ToolModel) => !!favourite && m.engines.includes(favourite);
@@ -266,7 +269,7 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
     void setDefaultModel(toolId, on ? null : id).then(() => toast(on ? 'Back to the recommended default' : `${shownName(m)} is now your default here`, 'success'))
       .catch((e: any) => toast(`Couldn’t save your default: ${e?.message || 'try again'}`, 'error')); };
   const defModel = defaultId ? ms.find(isDef) ?? null : null;
-  const curModel = modelOfEngine(toolId, value, modelHint); const pick = useRunOn(toolId, curModel?.key);
+  const curModel0 = modelOfEngine(toolId, value, modelHint); const curModel = curModel0 ? atPlace(curModel0) : curModel0; const pick = useRunOn(toolId, curModel?.key);
   // the quiet row: All · Local · Comfy · Your keys (a place with no model is left out; the row only shows when a place narrows the list)
   const [tabPick, setTabPick] = useState<MenuTab>(readTab); const listRef = useRef<HTMLDivElement>(null); const tabsRef = useRef<HTMLDivElement>(null);
   useEffect(() => { if (open) setTabPick(readTab()); }, [open]); // another menu may have changed the remembered tab

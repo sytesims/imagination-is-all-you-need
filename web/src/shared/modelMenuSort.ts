@@ -11,7 +11,7 @@
  *    Ties keep the recommended order; unknown prices / undated / unranked models go last in the recommended order.
  */
 import type { ToolModel, RunOnRow } from './models';
-import { LOCAL_LABEL } from '../../../server/src/shared/modelIds';
+import { LOCAL_LABEL, NEEDS_COMFYUI_SHORT } from '../../../server/src/shared/modelIds';
 import { gbText } from './fit';
 
 export type MenuTab = 'all' | 'comfy' | 'api' | 'gpu';
@@ -150,7 +150,8 @@ export function localBlocker(r: Pick<RunOnRow, 'status' | 'action' | 'reasonCode
   if (r.reasonCode === 'unsupported_weights') return no('Needs NVIDIA');
   if (r.reasonCode === 'unsupported_hardware') return no('Needs a graphics card');
   if (r.reasonCode === 'too_heavy') return no('Too big for this GPU'); // menuPrice reasonShort's words for the same reason
-  if (a?.kind === 'set_up_gpu' || r.reasonCode === 'local_unreachable') return fix('Set up');
+  /* no ComfyUI answering here (a brand-new install too): the one wording, "Needs ComfyUI on this computer" (modelIds NEEDS_COMFYUI_TEXT); picking it shows Set up ComfyUI */
+  if (a?.kind === 'set_up_gpu' || r.reasonCode === 'local_unreachable') return { word: NEEDS_COMFYUI_SHORT, sub: 'on this computer', fixable: true };
   if (r.status === 'coming-soon') return no('Coming soon');
   return no('Not available');
 }

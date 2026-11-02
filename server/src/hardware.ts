@@ -198,7 +198,8 @@ async function probe(): Promise<Omit<Hardware, 'cached' | 'manual' | 'manualInUs
   if (c?.reachable && c.stats) { const s = parseSystemStats(c.stats); const same = comfySameHost(); const inst = comfyInstallOf(same ? c.stats : { system: { ...c.stats.system, argv: [] } }); // another computer's paths mean nothing here
     detectedModelsDir = same ? inst.modelsDir : null; detectedKind = inst.kind; if (same) void refreshModelRoots(); // where downloads go (hardware/modelsTarget.ts)
     return build('comfyui-system_stats', s.gpu, s.ramTotal, s.ramFree, true, { reachable: true, version: s.version, pytorch: s.pytorch, cloud: false, ggufNode: c.ggufNode, kind: inst.kind, label: inst.label, modelsDir: displayDir(inst.modelsDir), modelsDirSource: inst.modelsDirSource }, null); }
-  if (comfySameHost()) { const h = hostProbe(); return build('host', h.gpu, h.ramTotal, h.ramFree, true, { reachable: c?.reachable ?? null, version: c?.version ?? null, cloud: false, ggufNode: c?.ggufNode ?? null }, h.gpu ? null : 'No graphics card was found on this computer.'); }
+  /* no ComfyUI address yet (a fresh install): a local ComfyUI would run on this computer, so read it here (os + sysctl / nvidia-smi), never "can't read" */
+  if (comfySameHost() || (!config.comfyBaseUrl.trim() && config.backend !== 'mock' /* mock runs stay hermetic */)) { const h = hostProbe(); return build('host', h.gpu, h.ramTotal, h.ramFree, true, { reachable: c?.reachable ?? null, version: c?.version ?? null, cloud: false, ggufNode: c?.ggufNode ?? null }, h.gpu ? null : 'No graphics card was found on this computer.'); }
   return build('none', null, null, null, false, { reachable: c ? c.reachable : null, version: null, cloud: false, ggufNode: null }, c ? "ComfyUI isn't answering, so this computer's hardware couldn't be read." : "No local ComfyUI is connected, so this computer's hardware couldn't be read.");
 }
 // ---- DP 5 manual override ----

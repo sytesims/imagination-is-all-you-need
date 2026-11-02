@@ -17,7 +17,7 @@ import { jobs, type Job } from './jobs.js';
 import * as lib from './library.js';
 import { localFileOf } from './outputMeta.js';
 import { LOCAL_OWNER, SEED_OWNER } from './owner.js';
-import { FEATURED, isStarter, type FeaturedItem } from './shared/featured.js';
+import { FEATURED, FEATURED_BIG_POSTER, isStarter, type FeaturedItem } from './shared/featured.js';
 
 export const featuredSeedEnabled = () => env('SEED_FEATURED') !== '0';
 export const featuredIdOf = (key: string) => createHash('sha1').update(`openhiggsfield-featured:${key}`).digest('hex').slice(0, 8);
@@ -32,7 +32,7 @@ const DAY = 86400_000;
 
 function jobOf(f: FeaturedItem, id: string, createdAt: number, example: boolean): Job {
   return { id, toolId: f.toolId, provider: f.provider, status: 'done', stage: 'done', progress: 100, queuePos: 0, eta: 0, resultUrl: f.out.url,
-    outputs: f.layers ? f.layers.map((l) => ({ kind: 'image', label: l.label, url: l.url, box: l.box, width: f.out.width, height: f.out.height })) /* an Image to layers run: every layer */ : [{ label: f.flow === 'Direct a Shot' ? 'Render' : 'Result', url: f.out.url }], error: null, errorType: null, cost: 0, refunded: 0, warnings: [],
+    outputs: f.layers ? f.layers.map((l) => ({ kind: 'image', label: l.label, url: l.url, box: l.box, width: f.out.width, height: f.out.height })) /* an Image to layers run: every layer */ : [{ label: f.flow === 'Direct a Shot' ? 'Render' : 'Result', url: f.out.url, ...(FEATURED_BIG_POSTER[f.key] && localFileOf(FEATURED_BIG_POSTER[f.key]) ? { posterUrl: FEATURED_BIG_POSTER[f.key] } : {}) /* the shipped poster, as Explore shows it: a clip's first frame can be black (ltx-pro-painter) */ }], error: null, errorType: null, cost: 0, refunded: 0, warnings: [],
     input: { ...f.input, prompt: f.prompt, finalPrompt: f.prompt }, parentId: null, route: f.route ?? `local:${f.provider}`,
     createdAt, finishedAt: createdAt + (f.runMs ?? 60_000), updatedAt: createdAt + (f.runMs ?? 60_000), featuredExample: f.key,
     ...(example ? { owner: LOCAL_OWNER } : { owner: SEED_OWNER, seed: true }) } as any;

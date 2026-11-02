@@ -115,7 +115,7 @@ ok('quiet menu: search matches makers, capabilities, keywords and "free"; famili
   assert.equal(w(L('not-installed', { reasonCode: 'not_enough_disk', missingBytes: 3.2e9 })), 'Needs 3.2 GB space / Free once ready');
   assert.equal(w(L('off', { action: { kind: 'turn_on', text: 'Turn on' } })), 'Turn on / Free once ready');
   assert.equal(w(L('not-installed', { reasonCode: 'nodes_missing', action: { kind: 'install_node', text: 'Install node' } })), 'Install add-on / Free once ready');
-  assert.equal(w(L('not-installed', { reasonCode: 'local_unreachable', action: { kind: 'set_up_gpu', text: 'Set up GPU' } })), 'Set up / Free once ready');
+  assert.equal(w(L('not-installed', { reasonCode: 'local_unreachable', action: { kind: 'set_up_gpu', text: 'Set up GPU' } })), 'Needs ComfyUI / on this computer', 'no ComfyUI answering: the one wording (modelIds NEEDS_COMFYUI_TEXT), never "ComfyUI is off" for a new install');
   assert.equal(w(L('unavailable', { reasonCode: 'unsupported_weights' })), 'Needs NVIDIA / Your computer', 'a blocker the user cannot fix: no "once ready"');
   assert.equal(w(L('not-installed', { reasonCode: 'too_heavy' })), 'Too big for this GPU / Your computer');
   for (const r of [L('not-installed', { reasonCode: 'not_enough_disk', missingBytes: 42.7e9 }), L('off'), L('not-installed', { reasonCode: 'too_heavy' })]) { const b = localBlocker(r)!;
