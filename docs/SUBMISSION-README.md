@@ -7,7 +7,7 @@
 
 Contains AI-generated content. This page is the short version for judges; the main [README](../README.md) has everything else.
 
-<p align="center"><img src="screenshots/explore.webp" alt="The Explore page: a short film, runs from your computer and the cloud, each with its model and price" width="900"></p>
+<p align="center"><img src="screenshots/explore.webp" alt="The Explore page: a film made in the app, with its model, where it ran and its price" width="900"></p>
 
 ## Why it's new
 - **You pick where each run happens, and see the real price before you press Generate.** One **Run on** control on every run: your computer (free, on your own ComfyUI), Comfy Cloud (the same open workflow on Comfy's GPUs) or Comfy Router (partner models such as Kling, Veo and MiniMax H3). The button shows the price for that place before anything starts.

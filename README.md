@@ -15,7 +15,7 @@
 <!-- Demo video: replace DEMO_VIDEO_URL on the next line with the link to the demo. -->
 **Watch the demo (under 2 minutes):** DEMO_VIDEO_URL
 
-<p align="center"><img src="docs/screenshots/explore.webp" alt="The Explore page: a short film, runs from your computer and the cloud, each with its model and price" width="900"></p>
+<p align="center"><img src="docs/screenshots/explore.webp" alt="The Explore page: a film made in the app, with its model, where it ran and its price" width="900"></p>
 
 ## Why it's new
 
@@ -36,8 +36,8 @@ Want to see it run? Connect your ComfyUI or a Comfy key in **Settings → Connec
 
 <table align="center">
   <tr>
-    <td width="50%"><img src="docs/screenshots/image-run-on.webp" alt="The Image tab with the Run on menu open, showing your computer, Comfy Cloud and Comfy Router with a price for each"><br><sub>Run on: pick the place, see the price</sub></td>
-    <td width="50%"><img src="docs/screenshots/canvas.webp" alt="A Canvas board with workflow cards and a priced proposal waiting for Go"><br><sub>Canvas: a priced plan that waits for Go</sub></td>
+    <td width="50%"><img src="docs/screenshots/run-on.webp" alt="The Video tab with the Run on menu open for LTX-2.5 22B: free on your computer, or about $0.23 on Comfy Cloud"><br><sub>Run on: pick the place, see the price first</sub></td>
+    <td width="50%"><img src="site/public/media/canvas.jpg" alt="A Canvas board: the agent has priced a video card at about $0.32 and waits for Go"><br><sub>Canvas: a priced plan that waits for Go</sub></td>
   </tr>
   <tr>
     <td width="50%"><img src="docs/screenshots/workflows.webp" alt="The Workflows tab listing ready-made workflows by goal"><br><sub>Workflows: every way to start, in one place</sub></td>
