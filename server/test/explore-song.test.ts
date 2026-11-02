@@ -23,4 +23,17 @@ assert.match(source, /hevc \? d\.mov : d\.webm/, 'HEVC with alpha for Safari, We
 assert.match(source, /S\.dancer\.repeats/, 'each dance repeats, then the next one'); assert.match(source, /load\(k, c\.idx \+ 1\)/, 'the next dance loads behind the one in front');
 assert.match(source, /useDirectedSound\(\{ root: box, media: \(\) => audio\.current, sound: playing, explicit: true \}\)/, 'the page sound director owns the song: explicit while it plays, no sound asked for when paused');
 assert.match(source, /<audio[^>]*\bmuted\b/, 'the song mounts muted; only the director unmutes it');
-console.log('ok explore song: media shipped and small, YuE2 · Your computer · Free, Make your own opens Music with the style, five dances in turn, the song closes the first act, the sound director, reduced motion');
+// See how we made it: six steps from the real runs, small files with no metadata, honest prices, the edit plainly not a model, no reference picture
+const M = S.making;
+assert.deepEqual(M.steps.map((x) => x.role), ['Design the character', 'Character sheet', 'Pose on a green screen', 'Five dances', 'Green removed', 'The song']);
+assert.deepEqual(M.steps.flatMap((x) => x.jobs), ['f4a2e4f5', 'c93e3bfb', 'f29b13cb', '010377b4', 'ed10d1bd', 'c6525d78', '51c3c7ae', 'a29b84b2'], 'every paid run named by its job');
+for (const x of M.steps) for (const [u, max] of [[x.img, 60_000], [x.clip, 1_000_000]] as const) if (u) {
+  const f = new URL(`../../web/public${u}`, import.meta.url); assert.ok(existsSync(f), `missing ${u}`); assert.ok(statSync(f).size < max, `${u} stays small`);
+  const b = readFileSync(f); assert.ok(!b.includes('Exif') && !b.includes('XMP ') && !b.includes('Lavf'), `${u}: no metadata`); }
+const edit = M.steps[4]; assert.ok(edit.manual && !edit.model && edit.usd === 0 && /not an app step/i.test(edit.note ?? ''), 'the green removal says it was done in the edit, no model');
+assert.equal(M.steps[3].runs, 5); assert.ok(M.steps[3].est, 'the dances are an estimate'); assert.equal(M.steps[5].model, 'YuE2'); assert.equal(M.steps[5].usd, 0);
+assert.ok(M.steps.slice(0, 3).every((x) => x.usd > 0.02 && x.usd < 0.04), 'the pictures as billed');
+assert.equal(M.total, `≈ $${M.usd.toFixed(2)}`); assert.equal(M.total, '≈ $0.58');
+assert.match(source, /<Popover\b[^>]*testId="xp-song-making"/, 'the shared Popover: a panel on desktop, a bottom sheet on a phone');
+assert.match(source, /x\.clip && !still/, 'reduced motion: stills only');
+console.log('ok explore song: media shipped and small, YuE2 · Your computer · Free, Make your own opens Music with the style, five dances in turn, the song closes the first act, the sound director, reduced motion, the six-step making-of');
