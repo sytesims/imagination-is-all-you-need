@@ -76,7 +76,7 @@ export interface JobState {
   input?: Record<string, any>; createdAt?: number; finishedAt?: number|null;
 }
 export interface LicenseInfo { id: string; name: string; osi: boolean; url: string | null; parts?: LicenseInfo[] }
-export interface ProviderInfo { id: string; name: string; kind: 'open-weights' | 'hosted' | 'hosted-direct'; via: string; stages: [string, string][]; license?: LicenseInfo; workflows?: string[]; priceFactor?: number; docUrl?: string | null; nodes?: string[]; modes?: string[] | null }
+export interface ProviderInfo { id: string; /** the clip range this model takes on this tool (server clipTrim.ts; tools with a clip) */ clipSec?: { min: number; max: number }; name: string; kind: 'open-weights' | 'hosted' | 'hosted-direct'; via: string; stages: [string, string][]; license?: LicenseInfo; workflows?: string[]; priceFactor?: number; docUrl?: string | null; nodes?: string[]; modes?: string[] | null }
 export interface Preset { id: string; label: string; prompt: string; group?: string; previewUrl?: string | null; license?: LicenseInfo }
 export interface ToolInfo {
   id: string; name: string; description?: string; category?: string; status?: string; previewUrl?: string | null; group?: string; route: string; ui: string;
