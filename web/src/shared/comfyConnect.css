@@ -1,0 +1,22 @@
+/* The shared "find your ComfyUI" form (ComfyConnect.tsx): Welcome, connect sheet, Settings, Connections. */
+.cc{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0;width:100%}
+.cc>*{max-width:100%}
+.cc-line{display:flex;align-items:flex-start;gap:6px;margin:0;font:400 13px/18px var(--font-ui);color:var(--text-2);overflow-wrap:anywhere}
+.cc-line>.as-spin{width:12px;height:12px;border-width:1.5px;flex:none;margin-top:3px}
+.cc-ok{color:var(--success)}.cc-bad{color:var(--danger,#e5484d)}.cc-calm{color:var(--text)}
+.cc-tick{display:inline-grid;place-items:center;margin-top:2px;color:var(--success)}.cc-tick svg{width:14px;height:14px}
+.cc-hint{margin:0;font:400 12px/18px var(--font-ui);color:var(--text-2);overflow-wrap:anywhere}
+.cc-hint strong{color:var(--text);font-weight:600}
+.cc-acts,.cc-also{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.cc-acts a.btn{text-decoration:none}
+.cc-link{all:unset;cursor:pointer;color:var(--accent);font:500 12px/16px var(--font-ui)}
+.cc-link:hover{text-decoration:underline}
+.cc-link:focus-visible{outline:2px solid var(--focus-ring-color);outline-offset:2px;border-radius:2px}
+.cc-row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px;width:100%}
+.cc-field{display:flex;flex-direction:column;gap:6px;flex:1 1 220px;min-width:0;font:400 12px/16px var(--font-ui);color:var(--text-2)}
+.cc-field input{box-sizing:border-box;width:100%;height:36px;padding:0 12px;border-radius:var(--r-md,10px);border:1px solid var(--hairline-strong,var(--border));background:rgba(0,0,0,.28);color:var(--text);font:400 13.5px/20px var(--font-ui)}
+.cc-field input:focus-visible{outline:var(--focus-ring-w,2px) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap,2px)}
+.cc-row .btn-sm{height:36px;min-height:36px}
+.cc-row .cc-hint{flex-basis:100%}
+@media (max-width:520px){.cc-acts>.btn,.cc-acts>a.btn{flex:1 1 100%;justify-content:center;text-align:center}}
+.cc-new{display:flex;flex-direction:column;gap:2px}.cc-new>span:first-child{color:var(--text);font-weight:600}

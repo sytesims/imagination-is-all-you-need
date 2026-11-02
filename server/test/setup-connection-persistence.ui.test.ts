@@ -67,8 +67,8 @@ try {
   for(const id of ['gpu','comfy','direct'])assert.equal(await f.page.getByTestId('wl-opt-'+id).getAttribute('aria-pressed'),'false','Nothing pre-picked');
   assert.ok(await f.page.getByTestId('wl-next').isDisabled(),'Continue waits for a pick');
   assert.equal(await f.page.getByTestId('wl-opt-gpu').getByTestId('wl-rec').count(),1,'ComfyUI found: your computer is recommended');
-  assert.equal(await f.page.getByTestId('wl-gpu-bad').count(),0,'No error before anything was tried');
-  await click(f.page,'wl-opt-gpu');await click(f.page,'wl-next');await wait(f.page,'wl-gpu-found','Found ComfyUI');
+  assert.equal(await f.page.getByTestId('cc-bad').count(),0,'No error before anything was tried');
+  await click(f.page,'wl-opt-gpu');await click(f.page,'wl-next');await wait(f.page,'cc-found','Found ComfyUI');
   assert.deepEqual(paths(f),['/api/local/comfy/test'],'The look alone saves nothing');
   await click(f.page,'wl-next');await f.page.getByTestId('wl-ready').waitFor();
   assert.deepEqual(paths(f),['/api/local/comfy/test','/api/local/comfy','/api/me/routing','/api/setup']);assert.equal(f.writes[1].body.url,'http://127.0.0.1:8000');assert.deepEqual(f.writes[3].body.choices,['gpu']);
@@ -77,15 +77,15 @@ try {
   results.push({case:'pick → connect → ready (found)',writes:f.writes});await f.context.close();
  }
  {
-  const f=await fixture({existing:true,url:'http://127.0.0.1:9191/custom'});await toConnect(f,['gpu']);await wait(f.page,'wl-gpu-found','Found');await click(f.page,'wl-next');await f.page.getByTestId('wl-ready').waitFor();
+  const f=await fixture({existing:true,url:'http://127.0.0.1:9191/custom'});await toConnect(f,['gpu']);await wait(f.page,'cc-found','Found');await click(f.page,'wl-next');await f.page.getByTestId('wl-ready').waitFor();
   assert.ok(!paths(f).includes('/api/local/comfy'),'An address already in use is not saved again');results.push({case:'existing address unchanged',writes:f.writes});await f.context.close();
  }
  {
   const f=await fixture({unreachable:true});await toConnect(f,['gpu']);
-  assert.equal(await f.page.getByTestId('wl-opt-comfy').count(),0);await f.page.getByTestId('wl-gpu-missing').waitFor();assert.equal(await f.page.getByTestId('wl-addr').count(),0,'Address only behind the link');
+  assert.equal(await f.page.getByTestId('wl-opt-comfy').count(),0);await f.page.getByTestId('cc-missing').waitFor();assert.equal(await f.page.getByTestId('cc-addr').count(),0,'Address only behind the link');
   assert.ok(await f.page.getByTestId('wl-next').isDisabled());
-  await click(f.page,'wl-other-addr');await f.page.getByTestId('wl-addr').fill('http://localhost:9191/nope');await f.page.getByTestId('wl-addr').press('Enter');await wait(f.page,'wl-gpu-bad','No answer');
-  f.state.unreachable=false;await f.page.getByTestId('wl-addr').fill('http://localhost:9191/custom-path');await f.page.getByTestId('wl-addr').press('Enter');await wait(f.page,'wl-gpu-found','Found');
+  await click(f.page,'cc-other-addr');await f.page.getByTestId('cc-addr').fill('http://localhost:9191/nope');await f.page.getByTestId('cc-addr').press('Enter');await wait(f.page,'cc-bad','No answer');
+  f.state.unreachable=false;await f.page.getByTestId('cc-addr').fill('http://localhost:9191/custom-path');await f.page.getByTestId('cc-addr').press('Enter');await wait(f.page,'cc-found','Found');
   await click(f.page,'wl-next');await f.page.getByTestId('wl-ready').waitFor();assert.equal(f.writes.find((w:any)=>w.path==='/api/local/comfy').body.url,'http://localhost:9191/custom-path');
   results.push({case:'not found → different address',writes:f.writes});await f.context.close();
  }
@@ -99,7 +99,7 @@ try {
   results.push({case:'key check on paste: wrong format, refused, works',writes:f.writes});await f.context.close();
  }
  {
-  const f=await fixture();await toConnect(f,['gpu','comfy']);await wait(f.page,'wl-gpu-found','Found');await click(f.page,'wl-back');assert.equal(await f.page.getByTestId('wl-opt-comfy').getAttribute('aria-pressed'),'true','Back keeps the picks');
+  const f=await fixture();await toConnect(f,['gpu','comfy']);await wait(f.page,'cc-found','Found');await click(f.page,'wl-back');assert.equal(await f.page.getByTestId('wl-opt-comfy').getAttribute('aria-pressed'),'true','Back keeps the picks');
   await click(f.page,'wl-next');await paste(f.page,'wl-key-comfy','comfyui-good-fixture');await wait(f.page,'wl-key-comfy-status','Key works');await click(f.page,'wl-next');await f.page.getByTestId('wl-ready').waitFor();
   assert.deepEqual([...f.writes.find((w:any)=>w.path==='/api/setup').body.choices].sort(),['comfy','gpu']);results.push({case:'two ways + back',writes:f.writes});await f.context.close();
  }
@@ -113,12 +113,12 @@ try {
   await f.page.click('#wizard');await f.page.getByTestId('welcome-a').waitFor();assert.equal(await f.page.getByTestId('wl-ready').count(),0,'Reopens at the start');results.push({case:'escape and reopen',writes:f.writes});await f.context.close();
  }
  for(const endpoint of ['/api/local/comfy','/api/me/routing','/api/setup'])for(const mode of ['500','badJSON','network']){
-  const f=await fixture({fail:endpoint,status:mode==='badJSON'?200:500,badJson:mode==='badJSON',network:mode==='network'});await toConnect(f,['gpu']);await wait(f.page,'wl-gpu-found','Found');await click(f.page,'wl-next');await f.page.getByTestId('wl-error').waitFor();
+  const f=await fixture({fail:endpoint,status:mode==='badJSON'?200:500,badJson:mode==='badJSON',network:mode==='network'});await toConnect(f,['gpu']);await wait(f.page,'cc-found','Found');await click(f.page,'wl-next');await f.page.getByTestId('wl-error').waitFor();
   assert.equal(await seen(f.page),null);assert.equal(await f.page.getByTestId('wl-ready').count(),0);f.state.fail='';await click(f.page,'wl-next');await f.page.getByTestId('wl-ready').waitFor();assert.equal(await seen(f.page),'1');
   results.push({case:'save '+endpoint+' '+mode+' then retry',writes:f.writes});await f.context.close();
  }
  {
-  const f=await fixture({unreachable:true});await toConnect(f,['gpu','comfy','direct']);await f.page.getByTestId('wl-gpu-missing').waitFor();await f.page.getByTestId('wl-chip-ltx').click();
+  const f=await fixture({unreachable:true});await toConnect(f,['gpu','comfy','direct']);await f.page.getByTestId('cc-missing').waitFor();await f.page.getByTestId('wl-chip-ltx').click();
   const measurements=[];
   for(const [width,height] of [[1440,900],[1280,720],[390,844],[1280,520]]){
    await f.page.setViewportSize({width,height});await f.page.waitForTimeout(100);
@@ -131,17 +131,17 @@ try {
 
  // ---------- Connect sheet (Generate with nothing connected) ----------
  {
-  const f=await fixture({fail:'/api/me/routing'});await f.page.click('#connect');await click(f.page,'cs-find');await wait(f.page,'cs-local-status','routing');assert.equal(await f.page.getByTestId('cs-close').innerText(),'Not now');assert.ok(!f.writes.some((w:any)=>w.path==='/api/setup'));
+  const f=await fixture({fail:'/api/me/routing'});await f.page.click('#connect');await click(f.page,'cc-use');await wait(f.page,'cs-local-status','routing');assert.equal(await f.page.getByTestId('cs-close').innerText(),'Not now');assert.ok(!f.writes.some((w:any)=>w.path==='/api/setup'));
   results.push({case:'connect routing failure',writes:f.writes});await f.context.close();
  }
  for(const endpoint of ['/api/local/comfy','/api/me/routing','/api/setup'])for(const mode of ['403','500','badJSON','nullJSON','network']){
-  const f=await fixture({fail:endpoint,status:mode==='403'?403:mode.endsWith('JSON')?200:500,badJson:mode==='badJSON',nullJson:mode==='nullJSON',network:mode==='network'});await f.page.click('#connect');await click(f.page,'cs-find');await wait(f.page,'cs-local-status','Couldn’t');assert.equal(await f.page.getByTestId('cs-close').innerText(),'Not now');f.state.fail='';await click(f.page,'cs-find');await wait(f.page,'cs-local-status','Found ComfyUI');results.push({case:'connect '+endpoint+' '+mode+' retry',writes:f.writes});await f.context.close();
+  const f=await fixture({fail:endpoint,status:mode==='403'?403:mode.endsWith('JSON')?200:500,badJson:mode==='badJSON',nullJson:mode==='nullJSON',network:mode==='network'});await f.page.click('#connect');await click(f.page,'cc-use');await wait(f.page,'cs-local-status','Couldn’t');assert.equal(await f.page.getByTestId('cs-close').innerText(),'Not now');f.state.fail='';await click(f.page,'cc-use');await wait(f.page,'cs-local-status','Connected');results.push({case:'connect '+endpoint+' '+mode+' retry',writes:f.writes});await f.context.close();
  }
  for(const opts of [{unreachable:true},{fail:'/api/local/comfy/test',status:403},{fail:'/api/local/comfy/test',badJson:true,status:200},{fail:'/api/local/comfy/test',network:true}]){
-  const f=await fixture(opts);await f.page.click('#connect');await click(f.page,'cs-find');await wait(f.page,'cs-local-status',opts.unreachable?'wasn’t found':'Couldn’t test');assert.equal(f.writes.length,1);await f.context.close();results.push({case:'connect probe failure',opts});
+  const f=await fixture(opts);await f.page.click('#connect');await f.page.getByTestId('cc-missing').waitFor();assert.equal(await f.page.getByTestId('cc-use').count(),0,'nothing to use');assert.ok(f.writes.every((w:any)=>w.path==='/api/local/comfy/test'),'only looked');await f.context.close();results.push({case:'connect probe failure',opts});
  }
  {
-  const f=await fixture({unreachable:true});await f.page.click('#connect');await click(f.page,'cs-find');await wait(f.page,'cs-local-status','wasn’t found');f.state.unreachable=false;await f.page.getByTestId('cs-addr').fill('http://localhost:9191/custom-path');await f.page.getByRole('button',{name:'Use this address',exact:true}).click();await wait(f.page,'cs-local-status','Found');assert.equal(f.writes.find((w:any)=>w.path==='/api/local/comfy').body.url,'http://localhost:9191/custom-path');results.push({case:'connect custom URL',writes:f.writes});await f.context.close();
+  const f=await fixture({unreachable:true});await f.page.click('#connect');await f.page.getByTestId('cc-missing').waitFor();f.state.unreachable=false;await click(f.page,'cc-other-addr');await f.page.getByTestId('cc-addr').fill('http://localhost:9191/custom-path');await f.page.getByTestId('cc-addr').press('Enter');await wait(f.page,'cc-found','Found');await click(f.page,'cc-use');await wait(f.page,'cs-local-status','Connected');assert.equal(f.writes.find((w:any)=>w.path==='/api/local/comfy').body.url,'http://localhost:9191/custom-path');results.push({case:'connect custom URL',writes:f.writes});await f.context.close();
  }
  {
   const f=await fixture({fail:'/api/setup'});await f.page.click('#connect');await f.page.getByTestId('cs-key').fill('synthetic-fixture-only');await click(f.page,'cs-key-save');await wait(f.page,'cs-key-status','couldn’t save setup');assert.equal(await f.page.getByTestId('cs-close').innerText(),'Not now');f.state.fail='';await click(f.page,'cs-key-save');await wait(f.page,'cs-key-status','$0.00');assert.equal(f.writes.filter((w:any)=>w.path==='/api/settings/providers').length,1);results.push({case:'connect zero balance accepted + key setup retry',writes:f.writes});await f.context.close();

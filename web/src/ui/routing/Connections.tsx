@@ -30,7 +30,8 @@ import { LOCAL_LABEL } from '../../../../server/src/shared/modelIds';
 import { runChoice } from '../../shared/runChoices';
 import { planRateText, type ComfyPlanId } from '../../../../server/src/shared/priceText';
 import { countLocalModels, localCountsText, machineLabel, type LocalCounts } from '../../../../server/src/shared/thisComputer';
-import { useHardware } from '../../shared/hardware';
+import { useHardware, setComfy } from '../../shared/hardware';
+import { ComfyConnect, useComfyConnect, type ComfyLook } from '../../shared/ComfyConnect';
 import { SecretInput } from '../../shared/SecretInput';
 
 type Prov = { id: string; name: string; envKey?: string; configured: boolean; mockedKey?: boolean; keysUrl?: string; docsUrl?: string; keySetAt?: string | null; keySource?: 'saved' | 'env' | 'mock' | null; keyEnvVar?: string | null; keyFormat?: 'ok' | 'unexpected' | 'unchecked' | null; disabledReason?: string | null };
@@ -279,17 +280,11 @@ function DeployCard() {
     {err && <Notice as="span" kind="error" tone="line" testId="deploy-err">{err}</Notice>}
   </div>;
 }
-/** Test a ComfyUI address (POST /api/local/comfy/test). Saving the address lives in Self-host → Local setup. */
+/** Your ComfyUI: the shared form (shared/ComfyConnect). A new address it finds or you type is saved with "Use this ComfyUI". */
 function GpuTest() {
-  const [url, setUrl] = useState(''); const [busy, setBusy] = useState(false); const [res, setRes] = useState<{ ok: boolean; t: string } | null>(null);
-  useEffect(() => { fetch('/api/local/comfy').then(r => r.ok ? r.json() : null).then(j => { if (j?.url) setUrl(String(j.url)); }).catch(() => 0); }, []);
-  const test = async () => { setBusy(true); setRes(null); try { const r = await fetch('/api/local/comfy/test', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(url.trim() ? { url: url.trim() } : {}) });
-    const j = await r.json().catch(() => null); setRes(j?.reachable ? { ok: true, t: `Found ComfyUI${j.version ? ` ${j.version}` : ''}${j.latencyMs != null ? ` · ${j.latencyMs} ms` : ''}.` } : { ok: false, t: plainCopy(String(j?.error ?? 'Couldn’t reach ComfyUI at that address.')) }); }
-    catch { setRes({ ok: false, t: 'Couldn’t reach the server.' }); } finally { setBusy(false); } };
-  return <div className="conn-test"><label className="sr-only" htmlFor="conn-gpu-url">ComfyUI address</label>
-    <input id="conn-gpu-url" className="conn-input" type="url" inputMode="url" placeholder="http://127.0.0.1:8188" value={url} onChange={e => setUrl(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void test(); }} data-testid="conn-gpu-url" />
-    <button type="button" className="btn btn-sm btn-ghost" disabled={busy} aria-busy={busy} onClick={() => void test()} data-testid="conn-gpu-test">{busy ? 'Testing…' : 'Test'}</button>
-    {res && <Notice as="span" kind={res.ok ? 'success' : 'error'} tone="line" className="conn-gpu-res" testId="conn-gpu-result">{res.t}</Notice>}</div>;
+  const cc = useComfyConnect(); const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
+  const use = async (l: ComfyLook) => { if (!l.url) return; setBusy(true); setErr(''); const r = await setComfy(l.url); setBusy(false); if (r.ok) { cc.set({ ...l, save: false }); refreshTools(); requestRequote(); } else setErr(r.error); };
+  return <div className="conn-test" data-testid="conn-gpu"><ComfyConnect c={cc} onUse={use} useOnlyIfNew useBusy={busy} />{err && <Notice as="span" kind="error" tone="line" className="conn-gpu-res">{err}</Notice>}</div>;
 }
 
 /** C6: balance on its own two rows: value (warn chip when empty), then "Checked … · Refresh" in muted text. A skeleton while loading. */

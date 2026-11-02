@@ -3,7 +3,7 @@
  * sample: the server answers 402 code no_connection (routing/select.ts needsConnection) and api.ts createJob opens this sheet. Nothing ran,
  * nothing was charged, the prompt stays in the bar. Two paths, each finished here:
  *  - Paste a Comfy key: saved (POST /api/settings/providers), then checked on the spot by reading the Comfy balance (GET /api/accounts?refresh=1).
- *  - Your ComfyUI: looked for on the usual ports of this computer (POST /api/local/comfy/test), saved (PUT /api/local/comfy) and turned on.
+ *  - Your ComfyUI: the shared form (ComfyConnect: looks on the usual ports, and again every few seconds), then saved (PUT /api/local/comfy) and turned on.
  * The Examples project is what a fresh app shows; this sheet only answers a Generate press.
  */
 import { useEffect, useRef, useState } from 'react';
@@ -14,7 +14,8 @@ import { refreshAccounts } from './billing';
 import { requestRequote } from './quote';
 import { setRouting } from './models';
 import { plainCopy } from './plainCopy';
-import { setupRequest, setupBody, testedComfyUrl } from './setupConnection';
+import { setupRequest, setupBody } from './setupConnection';
+import { ComfyConnect, useComfyConnect, type ComfyLook } from './ComfyConnect';
 import { LOCAL_LABEL } from '../../../server/src/shared/modelIds';
 import { SecretInput } from './SecretInput';
 
@@ -54,7 +55,7 @@ export function ConnectSheetHost() {
 
 function ConnectSheet({ onClose }: { onClose: () => void }) {
   const [key, setKey] = useState(''); const [can, setCan] = useState<boolean | null>(null);
-  const [k, setK] = useState<Step>({}); const [g, setG] = useState<Step>({}); const [addr, setAddr] = useState(''); const [askAddr, setAskAddr] = useState(false);
+  const [k, setK] = useState<Step>({}); const [g, setG] = useState<Step>({}); const cc = useComfyConnect();
   const back = useRef<HTMLElement | null>(null); const box = useRef<HTMLDivElement>(null);
   const live = useRef(true); const abort = useRef(new AbortController()); const localBusy = useRef(false);
   const savedKey = useRef(''); const keyBusy = useRef(false);
@@ -76,19 +77,16 @@ function ConnectSheet({ onClose }: { onClose: () => void }) {
       if (!live.current) return; setK({ ok: true, text }); setKey(''); await after();
     } catch (e) { if (live.current) setK({ ok: false, text: (e as Error).message }); } finally { keyBusy.current = false; } };
 
-  const useComfy = async (url?: string) => { if (localBusy.current) return; localBusy.current = true; setG({ busy: true, text: url ? 'Checking that address…' : 'Looking for ComfyUI on this computer…' });
+  /* the shared form found it (or the person typed it): save a new address, turn on local runs, mark setup done */
+  const useComfy = async (l: ComfyLook) => { if (localBusy.current || !l.url) return; localBusy.current = true; setG({ busy: true });
     try {
-      const t = await setupRequest('/api/local/comfy/test', setupBody('POST', url ? { url } : {}, abort.current.signal), 'Couldn’t test ComfyUI.');
-      if (!live.current) return;
-      if (!t?.reachable) { setAskAddr(true); setG({ ok: false, text: url ? plainCopy(String(t?.error ?? 'ComfyUI didn’t answer at that address.')) : 'ComfyUI wasn’t found on the usual ports. Start ComfyUI, then look again, or type its address.' }); return; }
-      const tested = testedComfyUrl(t.url);
-      if (url || t.detected) await setupRequest('/api/local/comfy', setupBody('PUT', { url: tested }, abort.current.signal), 'Couldn’t save the ComfyUI address.');
+      if (l.save) await setupRequest('/api/local/comfy', setupBody('PUT', { url: l.url }, abort.current.signal), 'Couldn’t save the ComfyUI address.');
       const rb = await setupRequest('/api/me/routing', { ...setupBody('PUT', { global: { useLocal: true } }, abort.current.signal), headers: { 'content-type': 'application/json', 'x-openhiggsfield-source': 'web connect sheet' } }, 'Couldn’t enable ComfyUI routing.'); setRouting(rb);
       await setupRequest('/api/setup', setupBody('PUT', { done: true, choices: ['gpu'] }, abort.current.signal), 'ComfyUI connected, but couldn’t save setup.');
       if (!live.current) return;
-      setG({ ok: true, text: `Found ComfyUI${t.version ? ` ${t.version}` : ''} at ${t.url}. Models you have run here for free.` });
+      setG({ ok: true, text: 'Connected. Models you have run here for free.' }); cc.set({ ...l, save: false });
       await after();
-    } catch (e) { if (live.current) { setAskAddr(true); setG({ ok: false, text: (e as Error).message }); } } finally { localBusy.current = false; } };
+    } catch (e) { if (live.current) setG({ ok: false, text: (e as Error).message }); } finally { localBusy.current = false; } };
 
   const go = (to: string) => () => { close(); navigate(to); };
   return createPortal(<div className="dlg-scrim" onMouseDown={e => e.target === e.currentTarget && close()} onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); close(); } }}>
@@ -106,11 +104,8 @@ function ConnectSheet({ onClose }: { onClose: () => void }) {
           {k.text && <p className={`helper cs-st${k.ok ? ' ok' : k.ok === false ? ' bad' : ''}`} role="status" data-testid="cs-key-status">{k.text}</p>}
         </section>
         <section className="cs-path" data-testid="cs-local">
-          <b>Use your own ComfyUI</b><small>Free and private on {LOCAL_LABEL.toLowerCase()}, with the models you have. The app looks for it on the usual ports.</small>
-          <div className="cs-row"><button type="button" className="btn btn-sm" disabled={g.busy} onClick={() => void useComfy()} data-testid="cs-find">{g.busy ? 'Looking…' : 'Find my ComfyUI'}</button></div>
-          {askAddr && <form className="cs-row" onSubmit={e => { e.preventDefault(); if (addr.trim()) void useComfy(addr.trim()); }}>
-            <input type="url" placeholder="http://127.0.0.1:8188" value={addr} disabled={g.busy} onChange={e => { setAddr(e.target.value); setG({}); }} aria-label="ComfyUI address" data-testid="cs-addr" />
-            <button type="submit" className="btn btn-sm btn-ghost" disabled={!addr.trim() || g.busy}>Use this address</button></form>}
+          <b>Use your own ComfyUI</b><small>Free and private on {LOCAL_LABEL.toLowerCase()}, with the models you have.</small>
+          {g.ok ? null : <ComfyConnect c={cc} onUse={useComfy} useBusy={g.busy} />}
           {g.text && <p className={`helper cs-st${g.ok ? ' ok' : g.ok === false ? ' bad' : ''}`} role="status" data-testid="cs-local-status">{g.text}</p>}
         </section>
       </div>

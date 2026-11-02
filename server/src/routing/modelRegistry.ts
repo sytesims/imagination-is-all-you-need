@@ -36,6 +36,7 @@ import { getPrefs, toolPinOf } from './prefs.js';
 import { routeChoiceNames } from '../shared/routeNames.js';
 import { RELEASES } from '../releaseDates.js';
 import { REEL_TOOL_IDS } from '../shared/photosToReel.js';
+import { canDownloadHere } from '../hardware/modelsTarget.js';
 
 export { normRunOn, runOnOfRoute, RUN_ON_LABELS, type RunOn };
 export const baseToolOf = (tool?: { id: string; app?: any } | null): string | null => tool && REEL_TOOL_IDS.includes(tool.id) ? 'camera' : (tool as any)?.app?.gallery?.base ?? null;
@@ -267,6 +268,7 @@ function rowAction(ro: RunOn, b: any): { kind: string; text: string; missingByte
   if (b.status === 'ready' || b.status === 'coming-soon' || b.status === 'unavailable') return null;
   if (ro === 'local') {
     if (b.status === 'off') return { kind: 'turn_on', text: 'Turn on' };
+    if (b.reasonCode === 'weights_missing' && !canDownloadHere()) return { kind: 'set_up_gpu', text: 'Files needed', missingBytes: b.missingBytes ?? null }; // the app can't learn ComfyUI's models folder: never offer a download it can't do (Settings → Your computer says where the files go)
     if (b.reasonCode === 'weights_missing') return { kind: 'download', text: `Download ${gbT(b.missingBytes) || 'files'}`.trim(), missingBytes: b.missingBytes ?? null, downloadId: b.downloadId ?? null };
     if (b.reasonCode === 'nodes_missing') return { kind: 'install_node', text: 'Install node' };
     if (b.reasonCode === 'too_heavy' || b.reasonCode === 'not_enough_disk') return null;

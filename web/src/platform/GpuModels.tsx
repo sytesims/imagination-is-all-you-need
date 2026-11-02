@@ -7,8 +7,10 @@ import { gbText, localFitOf } from '../shared/fit';
 import { repoDoc } from '../shared/brand';
 import { listTools } from '../api';
 import { countLocalModels, localCountsText, localReadyText, machineLabel, usableText, gbOf, type ToolsLike } from '../../../server/src/shared/thisComputer';
-import { getHardware, getLiveHardware, type LiveHardware, refreshHardware, setManualHardware, clearManualHardware, publishHardware, getComfy, setComfy, clearComfy, testComfy, startDownload, dryRunDownload, listDownloads, getDownload, cancelDownload, dlDone, dlTotal,
-  type Hardware, type ComfyAddr, type ComfyTest, type Download, type DlChoice, choiceText } from '../shared/hardware';
+import { ComfyConnect, useComfyConnect, GET_COMFYUI_URL } from '../shared/ComfyConnect';
+import { NodePacks } from './NodePacks';
+import { getHardware, getLiveHardware, type LiveHardware, refreshHardware, setManualHardware, clearManualHardware, publishHardware, getComfy, setComfy, clearComfy, startDownload, dryRunDownload, listDownloads, getDownload, cancelDownload, dlDone, dlTotal,
+  type Hardware, type ComfyAddr, type Download, type DlChoice, choiceText } from '../shared/hardware';
 
 /** Settings → Local models (#gpu; was the Self-host page's Local setup until 2026-10-23): what this computer has, the ComfyUI address,
  *  and the model files. Install steps and the speed table live in the repo docs on GitHub. Downloads only start on a click. */
@@ -31,6 +33,8 @@ export default function GpuModels() {
     <MachineCheck hw={hw} h={h} onHw={put} onRecheck={() => setN(x => x + 1)} />
     <h3 className="st-sub" id="comfy-address">ComfyUI address</h3>
     <ComfyCard addr={comfy} onAddr={setC} onTested={() => { setN(x => x + 1); return refreshHardware().then(r => { if (r.ok) put(r.data); }); }} />
+    <h3 className="st-sub" id="nodes">ComfyUI add-ons</h3>
+    <NodePacks />
     <h3 className="st-sub" id="model-files">Model files</h3>
     <ModelFiles />
     <p className="helper st-gpu-docs">Install steps and speed per GPU: <a href={INSTALL_DOC} target="_blank" rel="noopener noreferrer" data-testid="gpu-doc-install">Install guide ↗</a> · <a href={HW_DOC} target="_blank" rel="noopener noreferrer" data-testid="gpu-doc-hw">Will it run? ↗</a></p>
@@ -81,7 +85,7 @@ function MachineCheck({ hw, h, onHw, onRecheck }: { hw: Hardware | null | undefi
       <div><dt>GGUF loader</dt><dd data-testid="tc-gguf">{loading ? '…' : gguf}</dd></div>
     </dl>
     {counts && counts.total > 0 && seen && <p className="tc-runs" data-testid="tc-counts"><b>{localCountsText(counts)}</b>{localReadyText(counts) && <span className="helper"> ({localReadyText(counts)})</span>}</p>}
-    {!loading && state === 'bad' && <p className="helper st-mc-hint" data-testid="gpu-not-connected">Start ComfyUI, then test its address below. New to it? <a href={INSTALL_DOC} target="_blank" rel="noopener noreferrer">Install guide ↗</a></p>}
+    {!loading && state === 'bad' && <p className="helper st-mc-hint" data-testid="gpu-not-connected">Open ComfyUI and the app finds it on its own. New to it? <a href={GET_COMFYUI_URL} target="_blank" rel="noopener noreferrer">Get ComfyUI Desktop ↗</a></p>}
     {err && <Notice as="p" kind="error" tone="line">{err}</Notice>}
     {src === 'manual' && <p className="helper" data-testid="ls-manual">Using what you entered{hw?.manual?.vramGB != null ? `: ${hw.manual.vramGB} GB graphics memory` : ''}{hw?.manual?.ramGB != null ? `, ${hw.manual.ramGB} GB memory` : ''}. <button type="button" className="link-btn" data-testid="ls-clear" onClick={async () => { setErr(''); const r = await clearManualHardware(); if (r.ok) { onHw(r.data); setNote(''); } else setErr(r.error); }}>Clear</button></p>}
     {showForm && <ManualForm onSaved={(x, t) => { onHw(x); setNote(t); }} />}
@@ -122,38 +126,54 @@ function ManualForm({ onSaved }: { onSaved: (h: Hardware, note: string) => void 
   </form>;
 }
 
+/** The ComfyUI address: the shared form (shared/ComfyConnect: looks on its own, and again every few seconds while it isn't found). A new address
+ *  it finds or you type is saved with "Use this ComfyUI"; a saved one that answers needs nothing. */
 function ComfyCard({ addr, onAddr, onTested }: { addr: ComfyAddr | null; onAddr: (a: ComfyAddr) => void; onTested: () => void }) {
-  const [url, setUrl] = useState(''); const [t, setT] = useState<ComfyTest | null>(null); const [busy, setBusy] = useState(''); const [err, setErr] = useState('');
-  useEffect(() => { setUrl(addr?.url ?? ''); }, [addr?.url]);
-  const ro = addr ? !addr.canChange : true; const dirty = (addr?.url ?? '') !== url.trim();
-  const test = async () => { setBusy('test'); setErr(''); setT(null); const r = await testComfy(url.trim() || undefined); setBusy(''); if (r.ok) { setT(r.data); if (r.data.reachable) onTested(); } else setErr(r.error); };
-  const save = async (v: string | null) => { setBusy('save'); setErr(''); const r = v == null ? await clearComfy() : await setComfy(v); setBusy(''); if (r.ok) onAddr(r.data); else setErr(r.error); };
+  const cc = useComfyConnect(); const [busy, setBusy] = useState(''); const [err, setErr] = useState('');
+  const ro = addr ? !addr.canChange : false;
+  useEffect(() => { if (cc.look.state === 'found') onTested(); }, [cc.look.state, cc.look.url]);
+  const save = async (v: string | null) => { setBusy('save'); setErr(''); const r = v == null ? await clearComfy() : await setComfy(v); setBusy('');
+    if (r.ok) { onAddr(r.data); if (v == null) void cc.find(); else cc.set(l => ({ ...l, save: false })); } else setErr(r.error); };
   return <div className="st-pcard ls-card ls-comfy" data-testid="ls-comfy">
-    {/* Enter tests the address (no save) */}
-    <form className="ls-comfy-row" onSubmit={e => { e.preventDefault(); if (!busy && (url.trim() || addr?.url)) void test(); }}>
-      <input type="url" className="conn-input" aria-labelledby="comfy-address" data-testid="ls-comfy-url" value={url} readOnly={ro} aria-readonly={ro} placeholder={ro ? '' : 'http://127.0.0.1:8188'} onChange={e => setUrl(e.target.value)} />
-      <button type="submit" className="btn btn-sm" data-testid="ls-comfy-test" disabled={!!busy || (!url.trim() && !addr?.url)} aria-busy={busy === 'test'}>{busy === 'test' ? 'Testing…' : 'Test'}</button>
-      {!ro && <button type="button" className="btn btn-sm btn-ghost" data-testid="ls-comfy-save" disabled={!!busy || !dirty || !url.trim()} onClick={() => save(url.trim())}>Save</button>}
-    </form>
-    {!ro && addr?.savedUrl && <button type="button" className="link-btn" data-testid="ls-comfy-clear" disabled={!!busy} onClick={() => save(null)}>Use the default</button>}
+    <ComfyConnect c={cc} onUse={l => save(l.url ?? null)} useLabel="Use this ComfyUI" useOnlyIfNew useBusy={busy === 'save'} canChange={!ro} />
+    {!ro && addr?.savedUrl && <button type="button" className="link-btn" data-testid="ls-comfy-clear" disabled={!!busy} onClick={() => save(null)}>Forget the saved address</button>}
     {ro && addr && <p className="helper" data-testid="ls-comfy-ro">{addr.url ? 'Set on the server, so it can’t be changed here.' : 'Not set. It can only be set on the server.'}</p>}
-    {t && <div className={`ls-test ${t.reachable ? 'ok' : 'bad'}`} role="status" data-testid="ls-comfy-result">
-      {t.reachable ? <><b>Connected</b>{[t.version ? `ComfyUI ${t.version}` : '', t.gpu?.name ? (t.gpu.type === 'mps' ? 'Apple graphics (shared memory)' /* ComfyUI names it "mps" (hardware plan B2) */ : `${card(t.gpu.name)}${t.gpu.vramTotalGB != null ? ` · ${gb(t.gpu.vramTotalGB)}` : ''}`) : '', t.ggufNode == null ? '' : t.ggufNode ? 'GGUF loader installed' : 'GGUF loader not installed', t.latencyMs != null ? `${t.latencyMs} ms` : ''].filter(Boolean).map(x => <span key={x}>{x}</span>)}</>
-        : t.error ? <b data-testid="ls-comfy-err" data-code={t.errorCode ?? undefined}>{t.error /* B31: the server's sentence for its errorCode, word for word */}</b> : <b>Not reachable</b>}
-    </div>}
     {err && <Notice as="p" kind="error" tone="line">{err}</Notice>}
   </div>;
 }
 
-/* B31: the server's sentence for a missing models folder (dry run code no_models_dir), shown until the live one arrives. */
-const NO_DIR = 'No ComfyUI models folder is set, so there is nowhere to put the files.';
+/** Where model files go (GET /api/local/models-dir): the folder ComfyUI itself reads, learned from it, with Open and Copy. When the app can't
+ *  learn it, no download is offered: it says where the files go inside ComfyUI's own folder instead. */
+type ModelsDir = { source: 'env' | 'comfyui' | null; dir: string | null; writable: boolean; why: string | null; putIn: string; separator: string; canOpen: boolean };
+function ModelsFolder({ onState }: { onState: (d: ModelsDir | null) => void }) {
+  const [d, setD] = useState<ModelsDir | null | undefined>(undefined); const [msg, setMsg] = useState('');
+  useEffect(() => { let live = true; const read = () => fetch('/api/local/models-dir').then(r => (r.ok ? r.json() : null)).catch(() => null).then((x: ModelsDir | null) => { if (live) { setD(x); onState(x); } });
+    void read(); const t = setInterval(() => { if (document.visibilityState !== 'hidden') void read(); }, 10000); return () => { live = false; clearInterval(t); }; }, []);
+  if (d === undefined) return null;
+  const copy = async (text: string) => { try { await navigator.clipboard.writeText(text); setMsg('Copied.'); } catch { setMsg('Couldn’t copy. Select the path and copy it yourself.'); } };
+  const open = async () => { const r = await fetch('/api/local/models-dir/open', { method: 'POST' }).then(x => x.json()).catch(() => null); setMsg(r?.opened ? 'Opened in a new window.' : r?.sample ? 'Sample mode: no window opens.' : String(r?.error ?? 'Couldn’t open the folder.')); };
+  if (d?.dir && d.writable) return <div className="ls-dir" data-testid="ls-models-dir" data-source={d.source ?? undefined}>
+    <span className="helper">Model files go to</span> <code className="ls-dir-path" data-testid="ls-models-dir-path">{d.dir}</code>
+    <span className="ls-dir-acts">{d.canOpen && <button type="button" className="link-btn" onClick={() => void open()} data-testid="ls-models-dir-open">Open folder</button>}
+      <button type="button" className="link-btn" onClick={() => void copy(d.dir!)} data-testid="ls-models-dir-copy">Copy path</button></span>
+    <small className="helper">{d.source === 'env' ? 'Set in the app’s settings file.' : 'The folder your ComfyUI reads, so it finds new files at once.'}</small>
+    {msg && <small className="helper" role="status">{msg}</small>}</div>;
+  const where = d?.dir ? `${d.dir}${d.separator}checkpoints` : d?.putIn ?? 'ComfyUI/models/checkpoints';
+  return <div className="ls-dir ls-dir-unknown" data-testid="ls-models-dir-unknown" data-why={d?.why ?? undefined}>
+    <p className="helper"><b>{d?.why === 'remote' ? 'ComfyUI runs on another computer, so model files go there.' : d?.why === 'not_writable' ? 'The app can’t write to ComfyUI’s models folder.' : d?.why === 'env_missing' ? 'The models folder in the app’s settings file doesn’t exist.' : 'The app couldn’t find ComfyUI’s models folder.'}</b>  You can still add model files yourself:
+      put each one in your ComfyUI folder under <code data-testid="ls-models-put-in">{where}</code> (text encoders and other kinds go in their own folder next to it), then restart ComfyUI.</p>
+    <span className="ls-dir-acts"><button type="button" className="link-btn" onClick={() => void copy(where)} data-testid="ls-models-dir-copy">Copy path</button>
+      {d?.canOpen && d.dir && <button type="button" className="link-btn" onClick={() => void open()} data-testid="ls-models-dir-open">Open folder</button>}</span>
+    {msg && <small className="helper" role="status">{msg}</small>}</div>;
+}
+
 type Row = { id: string; providerId: string; name: string; bytes: number; src: string | null; fit: ReturnType<typeof localFitOf>; tools: string[] };
 /** A server restart stops a running download and marks it failed; its .part file stays, so the next start resumes it. */
 const interrupted = (x?: Download) => !!x && x.status === 'failed' && (/interrupt|resume/i.test(String(x.error ?? '')) || dlDone(x) > 0);
 /** B31 (pb/hw2): one row per download the server names (requirements.downloadId), so the shared open-weights card shows as its model families. */
 function ModelFiles() {
   const [d, setD] = useState<any>(undefined); const [dls, setDls] = useState<Record<string, Download>>({}); const [errs, setErrs] = useState<Record<string, { code?: string; text: string }>>({}); const [all, setAll] = useState(false);
-  const [dirSet, setDirSet] = useState<boolean | null>(null); const [dirWhy, setDirWhy] = useState(NO_DIR); const [busy, setBusy] = useState(''); const [choices, setChoices] = useState<Record<string, DlChoice[]>>({});
+  const [dirSet, setDirSet] = useState<boolean | null>(null); const [busy, setBusy] = useState(''); const [choices, setChoices] = useState<Record<string, DlChoice[]>>({});
   useEffect(() => { fetch('/api/models').then(r => (r.ok ? r.json() : null)).then(setD).catch(() => setD(null));
     listDownloads().then(r => { if (!r.ok) return; setDirSet(r.data.modelsDirSet ?? !!r.data.modelsDir); const m: Record<string, Download> = {}; for (const x of r.data.downloads ?? []) { const k = x.downloadId ?? x.providerId; if (k) m[k] = x; } setDls(m); }); }, []);
   const rows = useMemo(() => { const u = new Map<string, Row>();
@@ -162,8 +182,6 @@ function ModelFiles() {
       const x = u.get(id) ?? { id, providerId: String(m.providerId), name: String(m.displayName ?? m.name), bytes: Number(req.missingBytes ?? req.downloadBytes) || 0, src: req.missingBytesSource ?? null, fit: localFitOf(m), tools: [] as string[] };
       if (g.toolName && !x.tools.includes(g.toolName)) x.tools.push(g.toolName); u.set(id, x); }
     return [...u.values()].sort((a, b) => a.bytes - b.bytes); }, [d]);
-  /* No folder: the server's own sentence from one dry run (nothing is fetched). */
-  useEffect(() => { if (dirSet !== false || !rows.length) return; dryRunDownload(rows[0].id).then(r => { if (r.ok && r.data.code === 'no_models_dir' && r.data.error) setDirWhy(r.data.error); }); }, [dirSet, rows.length]);
   const noDir = dirSet === false; const dirWait = dirSet === null; // until the folder state is known, don't offer a download
   const active = (x?: Download) => !!x && (x.status === 'queued' || x.status === 'downloading');
   useEffect(() => { const live = Object.entries(dls).filter(([, x]) => active(x)); if (!live.length) return;
@@ -181,7 +199,7 @@ function ModelFiles() {
   if (!rows.length) return <div className="st-pcard ls-card ls-models" data-testid="ls-models"><span className="helper">No local model files to get.</span></div>;
   const shown = all ? rows : rows.slice(0, 12); const nLive = Object.values(dls).filter(active).length;
   return <div className="st-pcard ls-card ls-models" data-testid="ls-models">
-    {noDir && <p className="helper" id="ls-no-dir" data-testid="ls-no-dir">{dirWhy}</p>}
+    <ModelsFolder onState={x => { if (x) setDirSet(x.writable); }} />
     {nLive > 0 && <p className="helper" role="status" data-testid="ls-live">{nLive === 1 ? '1 download running' : `${nLive} downloads running`}. It keeps going if you leave this page.</p>}
     <ul className="ls-mlist">{shown.map(r => { const x = dls[r.id]; const tot = dlTotal(x) || r.bytes; const done = dlDone(x); const pc = tot ? Math.min(100, Math.floor((done / tot) * 100)) : 0; const ch = choices[r.id]; const er = errs[r.id]; const intr = interrupted(x);
       return <li key={r.id} data-testid={`ls-model-${r.providerId}`} data-download-id={r.id}><span className="ls-mname"><b>{r.name}</b><small>{r.tools.slice(0, 3).join(' · ')}</small></span>
@@ -189,7 +207,8 @@ function ModelFiles() {
         <span className="ls-mact">{active(x) ? <><DlProgress x={x} label={r.name} bytes={r.bytes} />
             <button type="button" className="btn btn-sm" data-testid="ls-cancel" aria-label={`Cancel ${r.name} download`} onClick={() => cancel(r.id, x!)}>Cancel</button></>
           : x?.status === 'done' ? <span className="ls-done" data-testid="ls-done">Downloaded ✓</span>
-          : <button type="button" className="btn btn-sm" data-testid={intr ? 'ls-resume' : 'ls-download'} disabled={noDir || dirWait || busy === r.id} aria-busy={busy === r.id} aria-label={`${intr ? 'Resume' : 'Download'} ${r.name}`} aria-describedby={noDir ? 'ls-no-dir' : undefined} title={noDir ? dirWhy : undefined} onClick={() => start(r.id, r.id)}>{busy === r.id ? 'Checking…' : intr ? 'Resume' : x?.status === 'failed' || x?.status === 'canceled' ? 'Download again' : 'Download'}</button>}</span>
+          : noDir ? null /* no folder to write into: no Download offer (the row above says where files go) */
+          : <button type="button" className="btn btn-sm" data-testid={intr ? 'ls-resume' : 'ls-download'} disabled={dirWait || busy === r.id} aria-busy={busy === r.id} aria-label={`${intr ? 'Resume' : 'Download'} ${r.name}`} onClick={() => start(r.id, r.id)}>{busy === r.id ? 'Checking…' : intr ? 'Resume' : x?.status === 'failed' || x?.status === 'canceled' ? 'Download again' : 'Download'}</button>}</span>
         {ch && ch.length > 0 && <div className="ls-choices" role="group" aria-label={`Pick what to download for ${r.name}`} data-testid="ls-choices">{ch.map(c => <button key={c.downloadId} type="button" className="btn btn-sm" data-testid="ls-choice" disabled={!!busy} onClick={() => start(r.id, c.downloadId)}>{choiceText(c, ch)}{typeof c.bytesTotal === 'number' && c.bytesTotal > 0 ? ` · ${gbText(c.bytesTotal)}` : ''}</button>)}</div>}
         {intr ? <small className="helper" data-testid="ls-interrupted">Stopped by a restart{pc > 0 ? ` at ${pc}%` : ''}. Resume picks up where it left off.</small>
           : x?.status === 'failed' && x.error && <Notice as="p" kind="error" tone="line" className="inline-err" testId={x.errorCode === 'hf_gated' ? 'ls-gated' : undefined}>{x.errorCode === 'hf_gated' && x.helpUrl
