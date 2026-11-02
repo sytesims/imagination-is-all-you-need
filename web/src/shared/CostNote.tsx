@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { SAMPLE_OUTPUT } from './sampleSite';
 import { Popover } from './Popover';
 import { InfoIcon } from '../ui/Icons';
 import { demoMessage } from './quote';
@@ -29,10 +30,10 @@ export function CostNote({ q, className = '', testId }: { q: any; className?: st
   const n = demo ? demoRealCredits(q) : null;
   const real = demo ? (own ? demoRealText(cost, b?.comfyCreditsPerUsd) ?? (n != null ? `≈ ${fmtUsd(n / 100)}` : null) : n != null ? ledgerUsd(n) : null) : null;
   const eta = local ? etaLine(etaRangeOf(q)) : null; // step-ETA: this computer's range for a local run
-  const main = demo ? 'Sample output, nothing billed.' : local ? `Runs locally, nothing billed.${eta ? ` ${eta.short.replace(/ · Local$/, '')}.` : ''}` : own && cost ? (cost.unconfirmed ? `About ${fmtUsd(cost.estUsd)} (estimate): no published price yet. The real cost is recorded after the run.` : `Estimate, billed to your ${cost.billedToName} account.`) : null;
+  const main = demo ? SAMPLE_OUTPUT : local ? `Runs locally, nothing billed.${eta ? ` ${eta.short.replace(/ · Local$/, '')}.` : ''}` : own && cost ? (cost.unconfirmed ? `About ${fmtUsd(cost.estUsd)} (estimate): no published price yet. The real cost is recorded after the run.` : `Estimate, billed to your ${cost.billedToName} account.`) : null;
   if (!main && !est) return null;
   const details: { k: string; v: string; tid?: string }[] = [];
-  if (demo) details.push({ k: 'Sample', v: demoMessage(q) ?? 'Sample output, nothing billed.' });
+  if (demo) details.push({ k: 'Sample', v: demoMessage(q) ?? SAMPLE_OUTPUT });
   if (demo && real) details.push({ k: 'Real run', v: `${real}${own && cost?.billedToName ? ` on ${cost.billedToName}` : ''} once a key is added.`, tid: 'demo-list' });
   if (!demo && own && cost && !local) details.push({ k: 'Cost', v: `${costShort(cost)}. ${costTitle(cost)}` });
   if (!demo && own && cost && !local && cost.failureRule) details.push({ k: 'If it fails', v: RULE_TEXT[cost.failureRule] ?? cost.failureNote });

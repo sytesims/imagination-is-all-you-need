@@ -8,6 +8,7 @@
  *  - "Make a video": records one orbit in the browser (free) and keeps it as a normal video result (tool three-d-turntable).
  */
 import { WorksWith } from './WorksWith';
+import { SAMPLE_SITE, SAMPLE_OUTPUT } from './sampleSite';
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { appFileName } from './brand';
 import { ViewerShell, ViewerDetails, IoStrip, RecreateGlyph, type IoTile } from './ResultViewer';
@@ -122,7 +123,7 @@ export { posterOf3d };
 /** A 3D job as a viewer item (the 3D page and ResultView, so Assets and /jobs/:id open GLB results the same way). */
 export function jobItem3d(j: any): Item3D {
   const rig = j?.input?.rig; if (rig) return rigItem3d(j, rig);
-  const price = j?.demo ? 'Sample, nothing billed' : j?.cost ? (ownAccountsNow() ? jobCostText(j.cost, j.runOn) : ledgerUsd(j.cost)) : 'Free';
+  const price = j?.demo ? (SAMPLE_SITE ? SAMPLE_OUTPUT.replace(/\.$/, '') : 'Sample, nothing billed') : j?.cost ? (ownAccountsNow() ? jobCostText(j.cost, j.runOn) : ledgerUsd(j.cost)) : 'Free';
   return { key: j.id, jobId: j.id, src: j.resultUrl ?? j.outputs?.[0]?.url, name: j.model ?? '3D model', role: `${threeDWorkflowById(threeDMode(j.input ?? {}))?.name ?? '3D model'}${j.place?.label ? ` · ${j.place.label}` : ''}`, poster: posterOf3d(j), inputUrl: j.input?.imageUrl ?? null, inputLabel: threeDMode(j.input ?? {}) === 'multiview-to-3d' ? 'Front' : 'Image',
     rows: jobRows3d(j, price), cameraOrbit: startOrbitOf(j), posterStale: posterStale(j), downloadName: appFileName(j.id, 'glb'), recreateHref: j?.demo || j?.sample || j?.deletedAt ? null : jobRecreateHref(j), badge: j?.demo ? <span className="rvx-badges"><em className="exv-chip">Sample</em></span> : undefined };
 }

@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { SAMPLE_SITE, DOWNLOAD_NOTE } from './sampleSite';
 import { createPortal } from 'react-dom';
 import { errorMeta } from './errorMeta';
 import { Link } from '../platform/router';
@@ -57,6 +58,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     });
   }, [arm]);
   useEffect(() => () => { timers.current.forEach(tm => clearTimeout(tm.t)); }, []);
+  /* The Try it site (sampleSite.ts): no file leaves it, so every download link says where downloads work instead */
+  useEffect(() => { if (!SAMPLE_SITE) return;
+    const stop = (e: MouseEvent) => { if (!(e.target as Element | null)?.closest?.('a[download]')) return; e.preventDefault(); e.stopPropagation(); show(DOWNLOAD_NOTE); };
+    document.addEventListener('click', stop, true); return () => document.removeEventListener('click', stop, true); }, [show]);
 
   const live = items.filter(x => !x.out);
   useEffect(() => { if (live.length <= 3 && expanded) setExpanded(false); if (!live.length && pausedRef.current) pause(false); }, [live.length, expanded, pause]);

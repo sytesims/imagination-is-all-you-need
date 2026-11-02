@@ -28,6 +28,8 @@ import { tip } from '../shared/Tooltip';
 import { SparkleIcon, CloseIcon, TrashIcon, DirectorIcon, ProductIcon, ExtendIcon, ExploreIcon, VideoIcon, ApiPlugIcon, MaterialIcon } from '../ui/Icons';
 import { CopyIcon, PlusIcon, ArrowIcon, RetryIcon, CoinIcon, ChevronLeftIcon, CheckIcon, StopIcon, SendIcon, NoteIcon, GroupIcon } from './icons';
 import { useProfile, nameOf, UserAvatar } from '../shared/profile';
+import { SAMPLE_SITE, AGENT_NOTE } from '../shared/sampleSite';
+import { SampleSiteNote } from '../shared/SampleMode';
 import './agentPanel.css';
 
 const AGENT_FRESH_MS = 90_000; /* the server's window: an agent that stopped waiting or polling for 90 s isn't listening any more */
@@ -455,6 +457,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
             <span className="ap-hello-mark"><SparkleIcon size={22} /></span>
             <h2>What would you like to make?</h2>
             {agentConnected ? <p data-testid="agent-hello-connected">{agentListening ? `${agentLabel} is listening.` : `${agentLabel} is connected.`} Tell it what to make; select cards first to point at them. Every paid step waits for your OK.</p>
+              : SAMPLE_SITE ? <SampleSiteNote testId="agent-sample-note">{AGENT_NOTE}</SampleSiteNote>
               : <><p>Pick a demo to watch the board build, or connect Claude to talk about your board. Every paid step waits for your OK.</p>
                 <Starters onPick={pickStarter} disabled={sending || demo.running} />
                 <button type="button" className="ap-connect" data-testid="agent-connect-offer" onClick={() => setSheet(true)}><ApiPlugIcon size={15} /><span><b>Connect your agent</b><small>Claude Code, Claude Desktop or any MCP client becomes the brain here</small></span></button></>}
@@ -475,22 +478,22 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
           })}
           {thinking && <div className="ap-typing" data-testid="agent-working" aria-live="polite"><i /><i /><i /><span>{agentPlanning && !hand.working ? `${agentStatus!.name} is planning…` : hand.working && hand.label ? `${hand.label}…` : runningN ? `Waiting for ${runningN === 1 ? 'the result' : `${runningN} results`}…` : 'Thinking…'}</span></div>}
           {pickWaiting && <div className="ap-typing wait" data-testid="agent-waiting-pick" aria-live="polite"><span>Waiting for your pick</span></div>}
-          {!connection && <p className="ap-conn-note">The canvas connection dropped. Reconnecting…</p>}
+          {!connection && !SAMPLE_SITE && <p className="ap-conn-note">The canvas connection dropped. Reconnecting…</p>}
           </div>
         </div>
         <form className="ap-compose" onSubmit={(ev) => { ev.preventDefault(); void send(text); }}>
           {state === 'connected' && <ListenHint boardId={boardId} name={agentLabel} onSetup={() => setSheet(true)} />}
           {state === 'working' && <p className="ap-working" data-testid="agent-working-note" aria-live="polite"><i aria-hidden /><span><b>{workingLine(agentLabel)}.</b> What you type waits until it listens.</span></p>}
-          {!empty && !demo.running && !agentConnected && <div className="ap-chips" aria-label="Starters">{STARTERS.map((s) => <button key={s.id} type="button" className="ap-chip" disabled={sending} onClick={() => pickStarter(s.id)} data-testid={`agent-chip-${s.id}`}>{s.label}</button>)}</div>}
+          {!SAMPLE_SITE && !empty && !demo.running && !agentConnected && <div className="ap-chips" aria-label="Starters">{STARTERS.map((s) => <button key={s.id} type="button" className="ap-chip" disabled={sending} onClick={() => pickStarter(s.id)} data-testid={`agent-chip-${s.id}`}>{s.label}</button>)}</div>}
           <div className="ap-box">
-            <textarea ref={ta} value={text} onChange={(e) => setText(e.target.value)} rows={2} maxLength={4000}
-              placeholder={confirm ? 'What should change? Or press Looks good.' : agentConnected ? `Message ${agent.agentName || 'your AI'}…` : 'Pick a demo, or connect Claude to chat'} aria-label="Message the agent" data-testid="agent-reply"
+            <textarea ref={ta} value={text} onChange={(e) => setText(e.target.value)} rows={2} maxLength={4000} disabled={SAMPLE_SITE}
+              placeholder={confirm ? 'What should change? Or press Looks good.' : agentConnected ? `Message ${agent.agentName || 'your AI'}…` : SAMPLE_SITE ? 'The agent runs in the app on your computer' : 'Pick a demo, or connect Claude to chat'} aria-label="Message the agent" data-testid="agent-reply"
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(text); } }} />
             {demo.running && !agentConnected && !text.trim()
               ? <button type="button" className="ap-send stop" onClick={() => void stop()} aria-label="Stop the agent" {...tip('Stop. Cards already on the board stay')} data-testid="agent-stop"><StopIcon size={15} /></button>
               : <button type="submit" className="ap-send" disabled={!text.trim() || sending} aria-label="Send" data-testid="agent-send"><SendIcon size={16} /></button>}
           </div>
-          <p className="ap-hint">{agentListening ? `Goes straight to ${agentLabel}. Canvas proposals wait for your Go.` : agentConnected ? `Waits here until ${agentLabel} reads it. Canvas proposals wait for your Go.` : 'Demos build drafts on this board. Every run waits for your Go.'}</p>
+          <p className="ap-hint">{agentListening ? `Goes straight to ${agentLabel}. Canvas proposals wait for your Go.` : agentConnected ? `Waits here until ${agentLabel} reads it. Canvas proposals wait for your Go.` : SAMPLE_SITE ? 'Add cards by hand and press Go for a sample.' : 'Demos build drafts on this board. Every run waits for your Go.'}</p>
         </form>
       </div>
       {sheet && <ConnectSheet config={config} mcpUrl={mcpUrl} onClose={() => setSheet(false)} boardId={boardId} />}

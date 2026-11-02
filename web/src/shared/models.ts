@@ -12,6 +12,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { requestRequote } from './quote';
 import { runPrice } from './billing';
+import { READY_WORD } from './sampleSite';
 import { LOCAL_LABEL, COMFY_DEPLOY_DETAIL, placeOf as sharedPlaceOf, PLACE_LABELS, RUN_ON_LABELS, type Place } from '../../../server/src/shared/modelIds';
 
 export type RunOnStatus = 'ready' | 'sample' | 'needs-key' | 'off' | 'not-installed' | 'coming-soon' | 'unavailable';
@@ -268,7 +269,7 @@ export function listPrice(credits: number | null | undefined, runOn: string | nu
 }
 
 // ---------------------------------------------------------------- status words
-export const STATUS_WORD: Record<string, string> = { ready: 'Ready', sample: 'Sample', 'needs-key': 'Needs a key', off: 'Off', 'not-installed': 'Not on your computer yet', 'coming-soon': 'Coming soon', unavailable: 'Not available', retiring: 'Retiring' };
+export const STATUS_WORD: Record<string, string> = { ready: READY_WORD, sample: 'Sample', 'needs-key': 'Needs a key', off: 'Off', 'not-installed': 'Not on your computer yet', 'coming-soon': 'Coming soon', unavailable: 'Not available', retiring: 'Retiring' };
 /** Dot colour class for a status. */
 export const statusDot = (s: string) => (s === 'ready' ? 'ok' : s === 'sample' || s === 'needs-key' ? 'demo' : 'off');
 /** "Needs Comfy Cloud or a fal key" for a model's needs-key tooltip. */
@@ -281,14 +282,14 @@ export function modelStateLine(m: ToolModel): { k: 'ok' | 'demo' | 'off'; s: str
   const rs = m.rowStatus; // one status from one source (server rowStatus): the pre-selected place, else what setting it up takes
   if (rs) {
     const ways = (m.setup ?? []).map(x => `${x.label}: ${x.action.text}`).join(' · ');
-    if (rs.kind === 'ready') return { k: 'ok', s: 'Ready', t: rs.runOn === 'local' ? 'Runs locally, free.' : `Runs on ${rs.text}.`, off: false };
+    if (rs.kind === 'ready') return { k: 'ok', s: READY_WORD, t: rs.runOn === 'local' ? 'Runs locally, free.' : `Runs on ${rs.text}.`, off: false };
     if (rs.kind === 'sample') return { k: 'demo', s: 'Sample', t: 'Free sample output until you add a key.', off: false };
     if (rs.kind === 'coming_soon') return { k: 'off', s: 'Coming soon', t: 'Not connected on this server yet.', off: true };
     if (rs.kind === 'unavailable') return { k: 'off', s: 'Not available', t: 'Not available here.', off: true };
     return { k: rs.kind === 'add_key' || rs.kind === 'set_up' ? 'demo' : 'off', s: rs.text, t: `Not set up yet. ${ways || rs.text}.`, off: false };
   }
   const st = m.state; const why = (r?: RunOnRow) => r?.reason ? String(r.reason).replace(/\.?$/, '.') : '';
-  if (st === 'ready') { const gpu = m.runsOn.find(r => r.id === 'local' && r.status === 'ready'); return { k: 'ok', s: 'Ready', t: gpu ? 'Runs locally, free.' : `Runs on ${m.runsOn.filter(r => r.status === 'ready').map(r => r.label).join(', ')}.`, off: false }; }
+  if (st === 'ready') { const gpu = m.runsOn.find(r => r.id === 'local' && r.status === 'ready'); return { k: 'ok', s: READY_WORD, t: gpu ? 'Runs locally, free.' : `Runs on ${m.runsOn.filter(r => r.status === 'ready').map(r => r.label).join(', ')}.`, off: false }; }
   if (st === 'sample') return { k: 'demo', s: 'Sample', t: `Free sample output until you add a key.${needsWhat(m) ? ` Real runs: ${needsWhat(m).replace(/^Needs /, '')}.` : ''}`, off: false };
   if (st === 'needs-key') return { k: 'demo', s: 'Needs a key', t: `${needsWhat(m)}. Add one in Settings → Connections.`, off: false };
   if (st === 'not-installed') return { k: 'off', s: 'Not on your computer yet', t: why(m.runsOn.find(r => r.id === 'local')) || 'Runs only on your computer, which isn’t set up yet.', off: false };

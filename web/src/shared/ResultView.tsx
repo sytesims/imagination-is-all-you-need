@@ -1,4 +1,5 @@
 import { IMAGE_PAGE } from '../../../server/src/shared/pages';
+import { SAMPLE_OUTPUT } from './sampleSite';
 import { VIDEO_PAGE } from '../../../server/src/shared/videoWorkflows';
 import { recreateHref as jobRecreateHref, toolHandoffHref, lipSyncHandoffHref, frameHandoffHref, handoffHome } from './workflowLinks';
 import { goClick } from './goToWorkflow';
@@ -285,9 +286,9 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
   const aiBadge = (job as any).aiGenerated ? <span className="ai-badge" data-testid="rv-ai" title="Made by an AI model">AI-generated</span> : null;
   /* a sample run (mockRun, above): the picture is a stand-in, so the viewer says so at the top of Info, and the details show what it would cost
      instead of a price, render time or place as if it ran. */
-  const sampleChip = demo ? <em className="demo-badge rv-sample-chip" data-testid="rv-sample-chip" title="Sample output, nothing billed.">Sample</em> : null;
+  const sampleChip = demo ? <em className="demo-badge rv-sample-chip" data-testid="rv-sample-chip" title={SAMPLE_OUTPUT}>Sample</em> : null;
   const mockNote = mockRun ? <div className="rv-demo rv-mock" data-testid="rv-sample-run"><em className="comm-badge comm-badge-sample">Sample</em><p className="helper">Nothing was generated or charged. This picture is a stand-in, not a real result.</p></div> : null;
-  const demoNote = demo ? <div className="rv-demo" data-testid="rv-demo"><p className="helper">Sample output, nothing billed.</p></div> : null;
+  const demoNote = demo ? <div className="rv-demo" data-testid="rv-demo"><p className="helper">{SAMPLE_OUTPUT}</p></div> : null;
   const sampleNote = sample ? <div className="rv-sample" data-testid="rv-sample"><em className="comm-badge comm-badge-sample">{sampleLabel(job)}</em>{(job as any).sample?.credit && <p className="helper">{(job as any).sample.credit}{(job as any).sample.license ? <> · {(job as any).sample.licenseUrl ? <a href={(job as any).sample.licenseUrl} target="_blank" rel="noreferrer">{(job as any).sample.license}</a> : (job as any).sample.license}</> : null}{(job as any).sample.sourceUrl ? <> · <a href={(job as any).sample.sourceUrl} target="_blank" rel="noreferrer">Source</a></> : null}</p>}</div> : null; // the AI-generated pill is aiBadge (one per header)
   /* Add sound (one-click soundtrack, MMAudio): on your own finished video results; a soundtrack result can be scored again */
   const canSound = kind === 'video' && !standIn && !showingOriginal && canAddSound(job as any, cur.url);
@@ -583,7 +584,7 @@ export function creditOf(job: any, modelName: string, routeLabel: string, localW
   const loc = /^local:/.test(String(job?.route ?? '')) || job?.runOn === 'local';
   const where = ranOnOf(job, localWhere);
   const cost = typeof job?.cost === 'number' ? job.cost : null; const refunded = heldBack(job);
-  const price = isDemoJob(job) ? '' /* the Sample chip and 'Sample output, nothing billed.' say it once */
+  const price = isDemoJob(job) ? '' /* the Sample chip and the sample line say it once */
     : compositeCostText(job) != null ? compositeCostText(job)!
     : cost == null ? (loc ? 'Free' : '')
     : cost === 0 ? (loc ? LOCAL_FREE : 'Free')

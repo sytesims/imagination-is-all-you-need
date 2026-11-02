@@ -5,7 +5,8 @@
  * (HOST=127.0.0.1). A saved key is never shown: only "•••• set". When the server can't store keys, every card says so in place (a visible,
  * disabled Add key with the reason) and one banner explains the two ways to turn it on (PAGES-ROUND2 C1).
  */
-import { SampleModeNote, useBackend } from '../../shared/SampleMode';
+import { SampleModeNote, SampleSiteNote, useBackend } from '../../shared/SampleMode';
+import { SAMPLE_SITE, KEYS_NOTE } from '../../shared/sampleSite';
 import { Notice } from '../../shared/Notice';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from '../../platform/router';
@@ -92,13 +93,13 @@ export function Connections() {
   // a saved key keeps its card (and keeps working). The server hides the same places from the model menus (server routing/hiddenPlaces.ts).
   const showOther = !!rt?.global?.showOtherProviders; const needed = (id: string) => showOther || unlocks(tools, RUN_ON_OF[id]).n > 0 || (!!prov(id)?.configured && !prov(id)?.mockedKey);
   const hiddenDirect = tools.length ? [...MAIN_DIRECT, ...MORE_DIRECT].filter(id => prov(id) && !needed(id)) : [];
-  const card = (id: string) => <KeyCard key={id} p={prov(id)} info={info(id)} acct={acct(id)} canStore={!!d?.canStoreKeys} unlock={unlocks(tools, RUN_ON_OF[id])} onDone={after} hostedOff={owOnly} />;
+  const card = (id: string) => <KeyCard key={id} p={prov(id)} info={info(id)} acct={acct(id)} canStore={!!d?.canStoreKeys && !SAMPLE_SITE} unlock={unlocks(tools, RUN_ON_OF[id])} onDone={after} hostedOff={owOnly} />;
   return <section className="prov-settings conn set-sec" id="connections" data-testid="providers-settings" aria-labelledby="conn-h" aria-busy={!d || !rt}>
     <span id="providers" className="conn-anchor" aria-hidden />
     <h2 id="conn-h">Connections</h2>
     <p className="conn-lede">Choose where your models run and who bills you. You always see the price first.</p>
     {d && <p className="prov-sum" data-testid="prov-summary">{connected.length ? <><b>{connected.length} connected</b>: {connected.map(p => NAME[p.id] ?? p.name).join(', ')}.</> : <><b>Nothing connected yet.</b> {sample ? 'For now every run is a free sample.' : 'Until you add a key or set up your computer, you’ll get free samples.'}</>}</p>}
-    {d && sample && (connected.length > 0 || useLocal) && <SampleModeNote />}
+    {d && sample && !SAMPLE_SITE && (connected.length > 0 || useLocal) && <SampleModeNote />}
     <TechDetails summary="Details" className="conn-details" testId="conn-limits-details"><p className="helper conn-limits" data-testid="conn-limits"><b>Queue:</b> {concurrencyLine(lim)} The same on every connection.</p></TechDetails>
     {err && !d && <InlineError what="connections" error={/^HTTP 5/.test(err) ? Object.assign(new Error(err), { status: 500 }) : new Error(err)} onRetry={() => setTick(n => n + 1)} />}
     {!d && !err && <Skeleton variant="rows" count={5} label="Loading connections" />}
@@ -118,21 +119,21 @@ export function Connections() {
             : useLocal ? 'On: open models run here first, for free. A model you set to run somewhere else keeps that choice.'
             : 'ComfyUI is running, but models go to other places. Turn it on to run them here for free.'}{saved && <span role="status"> {saved}</span>}</p>
           {(sample || rt?.envUseLocal != null) && <TechDetails summary="Details" className="conn-help conn-details" testId="local-details">
-            {sample && <p className="helper" data-testid="local-real-runs">Real runs start once the app runs with <code>OPENHIGGSFIELD_BACKEND=comfy</code>.</p>}
+            {sample && !SAMPLE_SITE && <p className="helper" data-testid="local-real-runs">Real runs start once the app runs with <code>OPENHIGGSFIELD_BACKEND=comfy</code>.</p>}
             {rt?.envUseLocal != null && <p className="helper" data-testid="use-local-env">Set by <code>OPENHIGGSFIELD_USE_LOCAL={rt.envUseLocal ? '1' : '0'}</code> in your env file each time the server starts. Changing it here lasts until the server restarts.</p>}
           </TechDetails>}
           <GpuTest />
         </div>
         {/* Setup step 3: a read token for gated model downloads (huggingface.co only) */}
-        {prov('hf') && <KeyCard p={prov('hf')} canStore={d.canStoreKeys} unlock={{ n: 0, names: [] }} onDone={after}
+        {prov('hf') && <KeyCard p={prov('hf')} canStore={d.canStoreKeys && !SAMPLE_SITE} unlock={{ n: 0, names: [] }} onDone={after}
           factsLine="Downloads gated models (such as FLUX.1 Fill dev) from Hugging Face. A read token is enough; it’s sent to huggingface.co only."
           note="Accept each gated model’s licence on its Hugging Face page first." />}</div>
 
-      {!d.canStoreKeys && <KeysOffBanner example={prov('comfy')?.envKey ?? 'COMFY_API_KEY'} />}
+      {SAMPLE_SITE ? <SampleSiteNote testId="prov-note">{KEYS_NOTE}</SampleSiteNote> : !d.canStoreKeys && <KeysOffBanner example={prov('comfy')?.envKey ?? 'COMFY_API_KEY'} />}
 
       {/* ---- Comfy ---- */}
       <div className="conn-sec" id="conn-comfy"><SecHead id="comfy" />
-        <KeyCard p={prov('comfy')} info={info('comfy')} acct={acct('comfy')} canStore={d.canStoreKeys} unlock={comfyU} onDone={after}
+        <KeyCard p={prov('comfy')} info={info('comfy')} acct={acct('comfy')} canStore={d.canStoreKeys && !SAMPLE_SITE} unlock={comfyU} onDone={after}
           note="Billed to your Comfy account. Prices here are in dollars; Comfy’s own credits show on hover." />
         <DeployCard />
         <CloudSetupCard /></div>

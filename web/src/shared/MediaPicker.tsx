@@ -28,6 +28,7 @@
  * tile and Enter adds (Shift+Space previews there). The bar says "3 selected · 2 left" and refuses picks past what fits (data-picker-max on the input, or pickMedia's max).
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { SAMPLE_SITE } from './sampleSite';
 import { gridSrc } from './thumbs';
 import { libraryFile } from './libraryFiles';
 import { saveVideoFrame, type FrameAt } from './videoFrame';
@@ -363,7 +364,7 @@ export function MediaPicker({ tab, setTab, onClose, title, limits, kinds, frames
       : <div className="ic-ref-grid mpk-grid" aria-busy={loading || undefined}>
         {tab === 'Uploads' && <button type="button" className="ic-ref-tile ic-ref-up mpk-up" data-testid="ic-ref-upload" onClick={onUpload} aria-label="Upload from your computer" title={`Upload from your computer · ${accepts}`}>
           <span className="mpk-up-ic" aria-hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg></span>
-          <b>Upload</b><small>or drop files</small></button>}
+          <b>Upload</b><small>{SAMPLE_SITE ? "Kept in this tab only" : "or drop files"}</small></button>}
         {items.map(x => <Tile key={x.id} x={x} tab={tab} onPick={pick} onKeys={keys} onPeek={openPeek} frameHint={x.type === 'video' && !kinds.includes('video')} sel={multiple ? sel.findIndex(y => y.id === x.id) + 1 : undefined} off={capped && !sel.some(y => y.id === x.id) ? offWhy : undefined} moreOpen={moveOf?.id === x.id} onMore={hasProjects && (tab === 'Uploads' || x.jobId) ? (it, el) => { moveBtn.current = el; setMoveOf(m => m?.id === it.id ? null : it); } : undefined} />)}
         {loading && !items.length && Array.from({ length: 5 }, (_, i) => <span key={i} className="ic-ref-tile ic-ref-skel" aria-hidden />)}
         {!loading && !items.length && <p className="helper ic-ref-empty mpk-empty" data-testid="mpk-empty">{failed ? 'Couldn’t load your library. Close and try again.' : empty}

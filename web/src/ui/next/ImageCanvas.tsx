@@ -1,4 +1,5 @@
 import { SlotPreview, fullText, prepUpload, useSlotReorder } from '../../shared/SlotPreview';
+import { SAMPLE_OUTPUT } from '../../shared/sampleSite';
 import { Words } from '../../shared/Words';
 import { MoreFiles, LeftNote, notAddedText, type TrayFile } from '../../shared/FilesTray';
 import { swatchesOf, nextSwatchKey, withoutSwatch, tooManySwatches, timesQuote, batchLabel, runBatch, batchToast, newSetId } from '../../../../server/src/shared/swatchBatch';
@@ -789,7 +790,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
   const cntPrice: string | null = !qj ? null : qj.demo === true ? 'Sample' : keyGated(qj) ? 'Needs a key' : unpriced ? 'Price unavailable' : optionPrice(qj, ownBill, total != null ? Math.round((total * n) / (qN.current || n)) : null);
   const cntNote = batchNote({ n, local: !qj || (qLocal && p.image) ? null : qLocal }); /* local batching is for text-to-image graphs only (comfy/plans.ts) */
   const demoReal = qj?.demo === true ? demoRealCredits(qj) : null; /* a sample run: what a real one would cost (list price), scaled to the picked count */
-  const cntDemo = qj?.demo === true ? `Sample output, nothing billed${demoReal ? `. A real run ≈ ${fmtUsd((demoReal * n) / (qN.current || n) / 100)}` : ''}` : null;
+  const cntDemo = qj?.demo === true ? `${SAMPLE_OUTPUT.replace(/\.$/, '')}${demoReal ? `. A real run ≈ ${fmtUsd((demoReal * n) / (qN.current || n) / 100)}` : ''}` : null;
   /* nothing ready (or the chosen place needs setup) → the reason line above Generate says the step (shared GenStatus; More ways lists every place) */
   const needSetup = setupNeeded(modelOfEngine(p.tool.id, cur?.id), qj, cur?.id, dlIntent); const routeless = !qj && !!cur && 'defaultRoute' in (cur as any) && (cur as any).defaultRoute == null; const noPlace = needSetup || routeless;
   const keyGate = !!qj && qj.needsKey === true && qj.runnable === false && !needSetup; const pinBlock: string = qj?.pinnedUnavailable === true && qj?.runnable === false ? String(qj.reason ?? qj.unavailableReason ?? qj.error ?? qj.message ?? 'This model is set to run on your computer, which isn’t available right now. Pick another place in Run on.') : ''; const unpricedBlock: string = unpriced && qj?.runnable === false && !needSetup ? String(qj?.error ?? 'No verified price for this model at this setting, so it can’t run (the quote must equal the charge). Pick another quality or model.') : '';
