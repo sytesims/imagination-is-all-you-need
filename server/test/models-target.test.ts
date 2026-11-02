@@ -103,7 +103,7 @@ ok('4 plain error words (full disk, long path, read-only, permission, macOS priv
 // ---- 5. Get ComfyUI per platform ----
 { assert.match(getComfyFor({ platform: 'win32', arch: 'x64' }).url!, /comfy\.org\/download/);
   const mac = getComfyFor({ platform: 'darwin', arch: 'arm64' }); assert.match(mac.url!, /comfy\.org\/download/); assert.ok(mac.help.some((h) => /Open Anyway/.test(h)));
-  const intel = getComfyFor({ platform: 'darwin', arch: 'x64' }); assert.equal(intel.url, null); assert.match(intel.note!, /Intel Macs/);
+  const intel = getComfyFor({ platform: 'darwin', arch: 'x64' }); assert.equal(intel.url, null); assert.match(intel.note!, /doesn’t run on this computer/);
   const lin = getComfyFor({ platform: 'linux', arch: 'x64' }); assert.match(lin.url!, /desktop\/linux/); assert.ok(lin.help.some((h) => /libfuse2/.test(h)));
   assert.match(getComfyFor({ platform: 'linux', arch: 'x64', headless: true }).url!, /manual_install/); assert.match(getComfyFor(null).url!, /comfy\.org\/download/); }
 ok('5 Get ComfyUI: Windows / Apple Silicon → Desktop, Intel Mac → Comfy Cloud, Linux → Desktop for Linux, headless → manual install');
