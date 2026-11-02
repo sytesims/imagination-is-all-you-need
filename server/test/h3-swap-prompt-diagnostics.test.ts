@@ -21,15 +21,15 @@ const make = (extra: Record<string, any> = {}) => buildCloudPlan({ id: 'test-h3'
 try {
   assert.equal(composeH3SwapPrompt({ target: base.target }), h3SwapPrompt(base.target), 'empty prompt unchanged');
   const core = h3SwapPrompt('the woman on the right');
-  for (const prompt of [core, `${core}\n\nAdditional direction: softer lighting`, `${core} Keep her glasses.`]) {
-    assert.equal(composeH3SwapPrompt({ target: 'the woman on the right', prompt }), prompt, 'known structured prompt is not duplicated');
+  for (const [prompt, want] of [[core, core], [`${core}\n\nAdditional direction: softer lighting`, `${core} softer lighting`], [`${core} Keep her glasses.`, `${core} Keep her glasses.`]]) {
+    assert.equal(composeH3SwapPrompt({ target: 'the woman on the right', prompt }), want, 'known structured prompt is not duplicated');
   }
   assert.match(composeH3SwapPrompt({ target: 'person on the left', prompt: core }), /^Replace person on the left/, 'different explicit target is never silently accepted as the selected target');
   assert.ok(composeH3SwapPrompt({ target: base.target, prompt: 'x'.repeat(5000) }).length <= 4000);
   const input = { ...base, prompt: typed }; const snapshot = structuredClone(input);
   const p = buildCloudPlan({ id: 'test-h3', toolId: 'object-swap', provider: 'cloud-h3-charswap', input }); const g = p.passes[0].graph;
   assert.deepEqual(input, snapshot, 'builder preserves exact typed input for history/Recreate');
-  assert.equal(g['13'].inputs.value, `${h3SwapPrompt(base.target)}\n\nAdditional direction: switch the person in <Video 1> with the person in <Picture 1>`);
+  assert.equal(g['13'].inputs.value, `${h3SwapPrompt(base.target)} switch the person in <Video 1> with the person in <Picture 1>`);
   const job: any = { input }; notePlanPrompts(job, p);
   assert.equal(input.prompt, typed); assert.equal(jobAppPrompts(job)[0], g['13'].inputs.value);
   const recreated = formFromInput(objectSwapTool, { ...job, provider: 'comfy-h3-charswap' }, { sameSeed: true });
@@ -41,7 +41,7 @@ try {
   recordSubmittedPass(old, 0, { label: 'Character swap', workflow: CS.CHARSWAP_CLOUD_GRAPH }, oldGraph, 'comfy-cloud');
   const saved = await buildWorkflowExport(old); assert.equal(saved.exact, true); assert.equal(saved.graphs[0]['13'].inputs.value, 'historical exact words');
   const pk: any = await promptPeek(objectSwapTool, { provider: 'comfy-h3-charswap', runOn: 'comfy-cloud', target: base.target, prompt: typed, trimStart: '0', trimEnd: '4', resolution: '720p', keepAudio: '1' }, { video: 1, refs: 1 });
-  assert.equal(pk.error, undefined, JSON.stringify(pk)); assert.equal(pk.prompt, g['13'].inputs.value, 'preview exactly matches submitted graph');
+  assert.equal(pk.error, undefined, JSON.stringify(pk)); assert.equal(pk.prompt, make({ prompt: typed, charswapAnchorPath: '/fake/anchor.png' }).passes[0].graph['13'].inputs.value, 'preview exactly matches submitted graph (first frame on by default)');
   assert.match(pk.promptNote, /original words.*Recreate/); assert.match(pk.promptNote, /overhead.*unmeasured/);
   assert.equal(pk.settings.duration, 4);
   console.log('ok core instructions + extra direction, structured idempotence, target, typed/history preservation, exact Cloud peek');

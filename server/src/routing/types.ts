@@ -30,6 +30,8 @@ export interface RouteDef {
   caps?: Record<string, unknown>;
   /** Extra credits on top of the route price for this job (e.g. OpenSoul cloud upscale via fal-ai/esrgan). */
   extraCredits?: (input: Record<string, any>) => number;
+  /** The add-on's own line in the quote breakdown (null = none for this job), e.g. H3 Character Swap's first frame on Comfy Router. */
+  extraLine?: (input: Record<string, any>) => string | null;
   /** The job as the route bills it, when that differs from what was asked (H3 Talking Photo on Router: the clip is at least 5 s). Quote and charge both use it. */
   priceInput?: (input: Record<string, any>) => Record<string, any>;
   /** A short note when this route adjusts the job instead of refusing it (a length rounded, speech trimmed): shown on the quote and the job. */
