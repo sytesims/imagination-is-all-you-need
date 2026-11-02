@@ -71,7 +71,7 @@ Other ports and advanced setups: [Install and run](docs/INSTALL.md) · [Configur
 - **Write a song, voice a script, translate a video.** [Music] (YuE2, free on your computer), [Voiceover], [Sound effects], and [Translate], which keeps the background music.
 - **Turn one picture into a 3D model.** [Image to 3D], [Text to 3D] and [Multi-view to 3D], then a [Turntable video] of the model spinning.
 
-Ready to use today: **69 ready-made workflows** (19 image · 38 video · 8 audio · 4 3D), including the **24 one-click apps**, plus **8 step-by-step chains**. The Workflows tab lists every one of them. Open the bundled **Examples project** to see results and how each was made; **Recreate** loads the workflow and settings, and never starts a paid run on its own.
+Ready to use today: **69 ready-made workflows** (19 image · 38 video · 8 audio · 4 3D), including the **24 one-click apps**, plus **8 step-by-step chains**. The Workflows tab lists every one of them. [Every workflow](docs/WORKFLOWS.md) documents each one: models, where they run, inputs, graph and credits. Open the bundled **Examples project** to see results and how each was made; **Recreate** loads the workflow and settings, and never starts a paid run on its own.
 
 ## Canvas: think in ideas, run in Comfy
 
@@ -155,7 +155,7 @@ I wanted a place to follow an idea from the first picture to the finished film, 
 
 ## Docs, credits and licence
 
-- **Docs:** [Install and run](docs/INSTALL.md) · [How it works](docs/HOW-IT-WORKS.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Contributing](docs/CONTRIBUTING.md) · [Security](SECURITY.md)
+- **Docs:** [Install and run](docs/INSTALL.md) · [Every workflow](docs/WORKFLOWS.md) · [How it works](docs/HOW-IT-WORKS.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Contributing](docs/CONTRIBUTING.md) · [Security](SECURITY.md)
 - **Licence:** our code is **[AGPL-3.0-or-later](LICENSE)**, with the tldraw extra permission in [NOTICE](NOTICE); tldraw keeps its [own licence](licenses/tldraw-LICENSE.md).
 - **Credits:** model weights are not bundled. Models, workflows, nodes and sample assets keep their own terms: [LICENSES.md](LICENSES.md) · [workflow licences](workflows/LICENSES.md) · [attribution](docs/ATTRIBUTION.md) · [asset credits](ASSETS-CREDITS.md). Check each model's own licence before you share what you make.
 

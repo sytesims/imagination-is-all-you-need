@@ -41,6 +41,7 @@
     "update": "node scripts/update.mjs",
     "mac-app": "bash scripts/make-mac-app.sh",
     "docs:api": "node scripts/gen-api-docs.mjs",
+    "docs:workflows": "npm run docs:workflows -w server",
     "start:demo": "concurrently -n api,web,mcp -c magenta,cyan,yellow \"npm run start:tsx -w server\" \"npm run build:demo -w web && npm run preview -w web\" \"npm:mcp:dev\"",
     "test": "node scripts/test-all.mjs",
     "test:changed": "node scripts/test-all.mjs --changed"
