@@ -20,6 +20,8 @@ export function effectivePrompt(editor: Editor, id: TLShapeId, own: string): str
 export async function quoteNode(editor: Editor, id: TLShapeId, o: { pending?: boolean } = {}): Promise<any> {
   const s = editor.getShape(id); if (!s) return null; const st = cardState(editor, s, catalogNow(), o); if (!st.spec) return null; const sp = st.spec;
   const u = new URLSearchParams({ ...quoteParams(), ...(sp.provider ? { provider: sp.provider, ...pinQ(sp.provider) } : {}), ...sp.quote });
+  /* GPT Image bills prompt text (an app's recipe around it too): the quote counts the card's words as the run will send them (quote = charge) */
+  const words = sp.promptMode === 'hidden' ? '' : effectivePrompt(editor, id, String((s.props as any).prompt ?? '')).trim(); if (words) u.set('promptBytes', String(new TextEncoder().encode(words).length));
   const n = batchOf(sp.slots, st.bySlot)?.inputs.length ?? 1; /* Material Swap: one run per swatch, so n × the price */
   return fetch(`/api/tools/${sp.tool.id}/price?${u}`).then(readQuoteBody).then(q => timesQuote(q, n)).catch(() => null);
 }
