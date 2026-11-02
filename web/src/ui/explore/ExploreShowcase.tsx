@@ -271,15 +271,16 @@ export function XpLooks() {
       <span className="xv-eb">{L.eyebrow}</span>
       <h2 id="xp-h-looks" className="xps-h xlk-h">{L.title.map((l) => <span key={l}>{l}</span>)}</h2>
       <p className="xps-p">{L.line}</p>
-      <span className="xlk-meta" data-testid="xp-looks-model"><RunChip c={{ model: now.model, place: LOCAL_LABEL, price: 'Free' }} testId="xp-looks-chip" /></span>
       <span className="xps-ctas"><Link to={L.cta.href} className="xv-btn" data-testid="xp-looks-cta">{L.cta.label}<Arrow /></Link></span>
     </div>
-    <figure className="xlk-frame" data-testid="xp-looks-frame">
+    <div className="xlk-media"><figure className="xlk-frame" data-testid="xp-looks-frame">
       {L.looks.map((l, k) => <img key={l.id} src={l.url} alt={k === cur ? `${l.name}: a woman in a red coat on a city street, ${L.model}` : ''} aria-hidden={k !== cur || undefined}
         className={k === cur ? 'on' : undefined} loading="lazy" decoding="async" draggable={false} />)}
       <figcaption className="xlk-cap" aria-live="polite" data-testid="xp-looks-name">{now.name}</figcaption>
-      <span className="xv-pill xv-pill-dark xlk-count" data-testid="xp-looks-count">{cur + 1} / {L.looks.length}</span>
     </figure>
+    {/* the run line under the frame; it changes with the look (FLUX.2 [klein] 4B or Qwen Image 2.1) and glows once when the model does */}
+    <div className="xlk-run"><span key={now.model} className="xlk-meta" data-testid="xp-looks-model"><RunChip c={{ model: now.model, place: LOCAL_LABEL, price: 'Free' }} testId="xp-looks-chip" /></span>
+      <span className="xlk-count" data-testid="xp-looks-count">{cur + 1} / {L.looks.length}</span></div></div>
     <div className="xlk-tiles" role="group" aria-label="Looks">{L.looks.map((l, k) => <button key={l.id} type="button" className={k === cur ? 'on' : undefined} aria-pressed={k === cur}
       onMouseEnter={() => setCur(k)} onFocus={() => setCur(k)} onClick={() => setCur(k)} data-testid={`xp-looks-tile-${l.id}`}>
       <img src={l.thumb} alt="" loading="lazy" decoding="async" draggable={false} /><span>{l.name}</span></button>)}</div>
