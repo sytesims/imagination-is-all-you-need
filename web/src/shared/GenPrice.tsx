@@ -41,9 +41,9 @@ export function GenPrice({ q, demo, free, credits, calls = 1, text, muted, compa
   }
   else if (free) body = priceToken({ own, free });
   else if (credits != null) body = own ? priceToken({ own, credits, calls }) : <><i className="gp-g" aria-hidden>✦</i>{' '}{credits.toLocaleString()}{calls > 1 ? <small>{' '}×{calls}</small> : null}</>;
-  /* compact (the 120px dock buttons): 'Free · this computer' keeps the same text, but the part after the first ' · ' sits in .gp-sub so the
+  /* compact (the 120px dock buttons): 'Free · this computer' keeps the same text, but the part after the first ' · ' sits in .gp-sub (.gp-place) so the
    * dock CSS can drop it to a smaller second line instead of cramming one line edge to edge */
-  if (compact && typeof body === 'string' && body.includes(' · ')) { const i = body.indexOf(' · '); body = <>{body.slice(0, i)}<span className="gp-sub"><span className="gp-dot"> · </span>{body.slice(i + 3)}</span></>; }
+  if (compact && typeof body === 'string' && body.includes(' · ')) { const i = body.indexOf(' · '); body = <>{body.slice(0, i)}<span className="gp-sub gp-place"><span className="gp-dot"> · </span>{body.slice(i + 3)}</span></>; }
   /* 2026-10-28: the server ran the job adjusted instead of refusing it (a length rounded, a size moved up, speech trimmed, a long prompt cut): say so
    * up front, next to the price, with the server's own sentences in the tooltip (the same notes come back on the job after Generate). */
   /* D1 (2026-10-28): a model with no published price runs on an estimate: the same small tag says so up front ("≈ $1.78 · estimate"),
