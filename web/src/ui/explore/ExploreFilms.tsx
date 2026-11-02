@@ -155,14 +155,16 @@ function Catalogue() {
     {/* two films fill the row as wide cards (is-duo); three or more fill it as posters (is-trio) */}
     <ul className={`xpfm-posters${n === 2 ? ' is-duo' : ''}${n >= 3 ? ' is-trio' : ''}${n >= 6 ? ' is-six' : ''}`}>
       {FILMS.map((f) => { const isOn = p.open === f.key; return <li key={f.key} className={`xpfm-pc is-film${isOn ? ' is-on' : ''}`} data-hover-play="" data-film={f.key}>
-        <button type="button" className="xpfm-pc-btn" onClick={() => p.select(f.key)} aria-expanded={isOn} aria-controls="xp-films-player" data-testid={f === M ? 'xp-films-poster-mum' : `xp-films-poster-${f.key}`} aria-label={`${isOn ? 'Watch' : 'Play'} ${nameOf(f)} from the beginning, ${f.episode}`}>
+        <div className="xpfm-pc-card"><button type="button" className="xpfm-pc-btn" onClick={() => p.select(f.key)} aria-expanded={isOn} aria-controls="xp-films-player" data-testid={f === M ? 'xp-films-poster-mum' : `xp-films-poster-${f.key}`} aria-label={`${isOn ? 'Watch' : 'Play'} ${nameOf(f)} from the beginning, ${f.episode}`}>
           <img className="xpfm-pc-tall" src={f.tall} alt="" loading="lazy" decoding="async" />
           <HoverClip src={f.loop} poster={f.poster} className="xpfm-pc-wide" />
           <span className="xpfm-pc-shade" aria-hidden />
           <span className="xpfm-pc-top" aria-hidden><Mark small /></span>
           <span className={`xpfm-pc-title${f.en.length > 6 ? ' is-long' : ''}${f.ko ? '' : ' is-en'}`} aria-hidden>{f.ko ? <><b lang="ko">{f.ko}</b><i /><span className="en">{f.en}</span></> : <><b>{f.en}</b><i /></>}<small>{f.episode}</small></span>
-          <span className="xpfm-pc-more" aria-hidden><span><RunChip onMedia c={f.chip} testId={`xp-films-chip-${f.key}`} /></span><span className="xpfm-pc-play"><PlayIcon size={16} />Play</span></span>
-        </button>
+          <span className="xpfm-pc-more" aria-hidden><span className="xpfm-pc-play"><PlayIcon size={16} />Play</span></span>
+        </button></div>
+        {/* the run line, always visible under the poster (touch included); "+N steps" opens how the film was made */}
+        <span className="xpfm-pc-run runline-box"><RunChip c={f.chip} testId={`xp-films-chip-${f.key}`} /></span>
       </li>; })}
       {X.next.map((n) => <li key={n.key} className="xpfm-pc is-soon" data-testid={`xp-films-next-${n.key}`} role="group" aria-label={`${n.title}, ${n.genre}, coming soon`}>
         <span className="xpfm-pc-seven" aria-hidden>7</span>
