@@ -5,7 +5,7 @@ import { featuredByKey, featuredRecreateHref } from '../src/shared/featured.js';
 const home = readFileSync(new URL('../../web/src/ui/Home.tsx', import.meta.url), 'utf8');
 const source = readFileSync(new URL('../../web/src/ui/explore/ExplorePresenter.tsx', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../../web/src/ui/explore/explorePresenter.css', import.meta.url), 'utf8');
-assert.match(home, /<XpSheets\s*\/>\s*<XpPresenter\s*\/>\s*<XpLooks\s*\/>/, 'portrait-to-speech follows character creation');
+assert.match(home, /<XpLooks\s*\/>\s*<XpPresenter\s*\/>\s*<\/div>/, 'the talking video closes the control act, after the looks');
 assert.doesNotMatch(home, /<XpTrending\b/, 'the retired Trends section stays hidden');
 const f = featuredByKey('presenter-talk')!;
 assert.equal(f.model, 'InfiniteTalk (Wan 2.1)');

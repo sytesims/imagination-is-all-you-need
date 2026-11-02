@@ -48,6 +48,7 @@ export function reasonShort(full: string | null | undefined): string {
   const need = needOf(body); if (need) return need.short; // a job no setting can fix: what it needs (shared/settingsFit.ts)
   const n = (re: RegExp) => { const m = re.exec(body); return m ? m[1] : null; };
   if (/price not measured/i.test(body)) return 'Price not set yet';
+  if (/^needs comfyui\b/i.test(body)) return 'Needs ComfyUI'; // a local-only model before ComfyUI is set up (routing/modelRegistry.ts NEEDS_COMFYUI_TEXT)
   if (/comfyui[^.]*(not reachable|isn[’']t running|is off|offline|not running|down)/i.test(body)) return 'ComfyUI is off';
   if (/(too old|update comfyui|newer comfyui)/i.test(body)) return 'Update ComfyUI';
   if (/(only does|only takes|only runs) text to video or image to video/i.test(body)) return 'Text or photo only';

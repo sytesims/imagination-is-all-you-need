@@ -16,6 +16,7 @@
 import { readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { MODEL_FILE_RE, modelInputFolder, modelsDir, modelFileBytes } from './hardware/requirements.js';
+import { canDownloadHere } from './hardware/modelsTarget.js';
 import { weightFileOf } from './modelWeights.js';
 import { comfyLoaderOptions, comfyLoaderOptionsNow, localComfySet } from './comfyNodes.js';
 import { pluginSpec } from './pluginGraph.js';
@@ -91,7 +92,11 @@ const known = (folder: string, file: string) => { const w = weightFileOf(file); 
 
 /** Have / missing per file. `opts` = your ComfyUI's loader lists (null = not running / not set). */
 export function needsOf(tool: ToolLike, opts: ReturnType<typeof comfyLoaderOptionsNow>): NeedsView {
-  const spec = pluginSpec(tool.id); const files = spec ? neededFiles(spec.graph) : []; const dir = modelsDir(); const links = savedLinks(tool.plugin?.dir);
+  const spec = pluginSpec(tool.id); return graphNeeds(tool.id, spec ? spec.graph : {}, opts, savedLinks(tool.plugin?.dir));
+}
+/** The same have / missing view for a graph that isn't saved yet (Add a workflow's summary checks the models up front, before you add it). */
+export function graphNeeds(id: string, graph: Graph, opts: ReturnType<typeof comfyLoaderOptionsNow>, links: Saved = { files: {} }): NeedsView {
+  const files = neededFiles(graph); const dir = modelsDir();
   const rows: NeedRow[] = files.map((f) => {
     const bad = !safeModelPath(f.folder, f.file);
     const lists = opts ? f.loaders.map((l) => opts.options[l.classType]?.[l.input]).filter((x): x is string[] => Array.isArray(x)) : [];
@@ -102,7 +107,7 @@ export function needsOf(tool: ToolLike, opts: ReturnType<typeof comfyLoaderOptio
     return { file: f.file, folder: f.folder, nodes: f.nodes, state, url: w?.url || mine || null, bytes: w?.url ? w.sizeBytes : null, pageUrl: w?.url ? w.pageUrl : null, linkFrom: w?.url ? 'list' : mine ? 'yours' : null,
       ...(nodeMissing ? { nodeMissing: true } : {}), ...(bad ? { badPath: true } : {}) };
   });
-  return { id: tool.id, comfy: opts ? 'ok' : localComfySet() ? 'off' : 'not_set', modelsDirSet: !!dir, files: rows, missing: rows.filter((r) => r.state === 'missing').length, unknown: rows.filter((r) => r.state === 'unknown').length, downloadId: `workflow:${tool.id}` };
+  return { id, comfy: opts ? 'ok' : localComfySet() ? 'off' : 'not_set', modelsDirSet: !!dir || canDownloadHere(), files: rows, missing: rows.filter((r) => r.state === 'missing').length, unknown: rows.filter((r) => r.state === 'unknown').length, downloadId: `workflow:${id}` };
 }
 /** The page's view: asks ComfyUI (waits up to 3 s for a fresh list). */
 export const workflowNeeds = async (tool: ToolLike) => needsOf(tool, await comfyLoaderOptions());
@@ -136,6 +141,6 @@ export function workflowGate(tool: ToolLike, freeBytes: number | null, /** the r
     downloadable: miss.every((f) => !!f.url), downloadEndpoint: '/api/local/downloads', downloadId: v.downloadId, unknownSizes, needsLinks: miss.filter((f) => !f.url).length };
   const gbs = (b: number) => (Math.round(b / 1e8) / 10).toString();
   if (freeBytes != null && need > freeBytes * 0.95) return { ...base, code: 'not_enough_disk' as const, message: `This workflow's files need ${sizeWords(need, unknownSizes)}; ${gbs(freeBytes)} GB of disk space is free. Free up space first.` };
-  if (wantsDl && base.downloadable && modelsDir()) return null; // every file has a link: the run downloads them first (hardware/stages.ts prePhase)
+  if (wantsDl && base.downloadable && canDownloadHere()) return null; // every file has a link: the run downloads them first (hardware/stages.ts prePhase)
   return { ...base, code: 'weights_missing' as const, message: `${miss.length === 1 ? 'A model file isn’t' : `${miss.length} model files aren’t`} in your ComfyUI yet. Get ${miss.length === 1 ? 'it' : 'them'} under Needs on this page: ${list}.` };
 }

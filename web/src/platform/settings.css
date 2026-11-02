@@ -293,3 +293,20 @@ html body .settings-page.st .st-mc.tc .st-mc-facts{grid-template-columns:repeat(
 .st-mc.tc .st-mc-facts .st-mc-dot.ok,.st-mc.tc .st-mc-facts .st-mc-dot.bad{box-shadow:none}
 .tc-runs{margin:0;font:500 13.5px/20px var(--font-ui);color:var(--text)}.tc-runs b{font-weight:600}
 @media (max-width:760px){.tc-bars{grid-template-columns:minmax(0,1fr)}.st-mc.tc .st-mc-facts>div{padding:10px}}
+/* Windows setup PR 1: where model files go (ModelsFolder) and ComfyUI add-ons (NodePacks) */
+html body .settings-page.st .st-gpu .ls-dir{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;padding:10px 12px;margin-bottom:10px;border-radius:var(--r-md);background:rgba(255,255,255,.03);box-shadow:inset 0 0 0 1px var(--hairline)}
+html body .settings-page.st .st-gpu .ls-dir>p{margin:0;flex-basis:100%}
+html body .settings-page.st .st-gpu .ls-dir small{flex-basis:100%}
+html body .settings-page.st .st-gpu .ls-dir-path,html body .settings-page.st .st-gpu .ls-dir code{font:500 12.5px/18px var(--font-mono,ui-monospace,monospace);color:var(--text);overflow-wrap:anywhere;word-break:break-all}
+html body .settings-page.st .st-gpu .ls-dir-acts{display:inline-flex;gap:12px}
+html body .settings-page.st .st-gpu .ls-nodes{display:flex;flex-direction:column;gap:8px}
+html body .settings-page.st .st-gpu .ls-nodes>p{margin:0}
+html body .settings-page.st .st-gpu .ls-nodes .btn-sm{margin-left:6px;vertical-align:middle}
+html body .settings-page.st .st-gpu .ls-packs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+html body .settings-page.st .st-gpu .ls-pack{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:var(--r-md);box-shadow:inset 0 0 0 1px var(--hairline);min-width:0}
+html body .settings-page.st .st-gpu .ls-pack-t{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px}
+html body .settings-page.st .st-gpu .ls-pack-steps{margin:0;padding-left:20px;font:400 13px/20px var(--font-ui);color:var(--text-2)}
+html body .settings-page.st .st-gpu .ls-pack-steps b{color:var(--text);font-weight:600}
+html body .settings-page.st .st-gpu .ls-pack-steps code{font:500 12px/18px var(--font-mono,ui-monospace,monospace);color:var(--text);overflow-wrap:anywhere;word-break:break-all}
+html body .settings-page.st .st-gpu .ls-pack-manual summary{cursor:pointer;font:500 12.5px/18px var(--font-ui);color:var(--accent)}
+html body .settings-page.st .st-gpu .ls-pack-manual[open] summary{margin-bottom:6px}

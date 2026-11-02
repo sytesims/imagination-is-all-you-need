@@ -17,6 +17,7 @@
  *    its workflows and the job needs all of them, else '<providerId>:<workflow slugs joined by +>' (slug = file name without '-api.json').
  */
 import { ltxDfrRuns } from '../shared/ltxDfr.js';
+import { TOO_BIG_TEXT } from '../shared/thisComputer.js';
 import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -35,6 +36,7 @@ import type { ToolDef } from '../tools/types.js';
 import { macBlockedFiles, MAC_WEIGHTS_REASON } from './macWeights.js';
 import { LTX_LORAS, ltxLorasForJob } from '../shared/ltxLoras.js';
 import { comfyFoldersKnown, comfyFileBytes, comfyModelsStamp } from './comfyModels.js';
+import { modelsTarget, canDownloadHere } from './modelsTarget.js';
 import { optionalFileSkipped } from '../comfy/flux3Klein.js';
 import { bfsSwapFor } from '../comfy/bfsSwap.js';
 import { IMAGE_FEATURES } from '../shared/imageFeatures.js';
@@ -270,7 +272,7 @@ export function requirementsFor(tool: ToolDef, providerId: string, input: Record
     ramMinGB: worst ? Math.ceil(Math.max(worst.residentGB, worst.teGB) + 8) : null, mps: macBlocked.length ? 'red' : macSafeMps ?? worst?.mps ?? null,
     mpsNotes: macBlocked.length && !(worst?.mpsNotes ?? []).some((n) => /fp8|nvfp4|w4a8/i.test(n)) ? [...(worst?.mpsNotes ?? []), `${MAC_WEIGHTS_REASON} (${macBlocked.join(', ')})`] : worst?.mpsNotes ?? [], minComfyVersion: p.minComfyVersion ?? null,
     secondsPerTier: { all: cell('rtx4090') ?? cell('rtx5090'), most: null, light: null, mac: cell('mseries') }, variants: vv, variantId: chosen?.id ?? null, macBlockedFiles: macBlocked,
-    downloadable: files.some((f) => !!f.url), modelsDir: HW.displayDir(dir), modelsDirSet: !!dir, downloadId: downloadIdFor(providerId, wfs), presenceSource: ov ? null : dir ? 'models_dir' : viaComfy ? 'comfyui' : null, platform: plat,
+    downloadable: files.some((f) => !!f.url), modelsDir: HW.displayDir(dir ?? modelsTarget().root), modelsDirSet: !!dir || canDownloadHere(), downloadId: downloadIdFor(providerId, wfs), presenceSource: ov ? null : dir ? 'models_dir' : viaComfy ? 'comfyui' : null, platform: plat,
     variant: picks.length && !wfs.some((w, i) => !wfBlocked[i].length && !picks.some((p) => p.workflow === w)) /* a graph that runs here as it is: the job needs no untested variant (OpenSoul: soul-zit) */ ? { platform: plat!, verified: picks.every((p) => p.verified), format: picks[0].variant?.format ?? null, needsNodes: [...new Set(picks.flatMap((p) => p.variant?.needsNodes ?? []))], files: Object.values(swaps) } : null };
   reqCache.set(ck, { at: Date.now(), r }); return r;
 }
@@ -319,7 +321,9 @@ export function fitFor(tool: ToolDef, providerId: string, input: Record<string, 
   if (hw.gpu.type === 'mps' && req.mps === 'red') return done('too_heavy', 'unsupported_weights', `${MAC_WEIGHTS_REASON}.`);
   if (R <= E - 1) return done(hw.gpu.type === 'mps' && req.mps === 'amber' ? 'slow' : 'fits', hw.gpu.type === 'mps' && req.mps === 'amber' ? 'mps' : 'fits', hw.gpu.type === 'mps' && req.mps === 'amber' ? `Runs, but slow${aboutTime(base.etaSeconds)}: these weights are slow or untested on Apple graphics.` : `Fits in your ${fmt(E)} GB of graphics memory.`);
   const ramOk = ramGB == null || req.ramMinGB == null || ramGB >= req.ramMinGB;
-  if (M != null && M <= E && ramOk) return done('slow', hw.gpu.type === 'mps' ? 'mps' : 'offload', `Needs about ${fmt(R)} GB of graphics memory; your ${fmt(E)} GB computer will run it more slowly by moving part of it to system memory.`);
+  /* M1 (2026-11-02): shared memory (Apple Silicon, DGX Spark) has no separate system memory to move part of it to: it swaps and can freeze. Said plainly here;
+     the verdict rule itself is PR 3's (the reason line already asks before such a run) */
+  if (M != null && M <= E && ramOk) return done('slow', hw.gpu.type === 'mps' ? 'mps' : 'offload', hw.gpu.type === 'mps' || hw.gpu.unifiedMemory ? `${TOO_BIG_TEXT}: it needs about ${fmt(R)} GB and your computer can give models about ${fmt(E)} GB. Running it can freeze your computer.` : `Needs about ${fmt(R)} GB of graphics memory; your ${fmt(E)} GB computer will run it more slowly by moving part of it to system memory.`);
   if (M != null && M <= E && !ramOk) return done('too_heavy', 'not_enough_ram', `Needs at least ${req.ramMinGB} GB of system memory to run on your ${fmt(E)} GB card; your computer has ${fmt(ramGB!)} GB.`);
   return done('too_heavy', 'not_enough_vram', `Needs about ${fmt(R)} GB of graphics memory; your computer has ${fmt(E)} GB.`);
 }

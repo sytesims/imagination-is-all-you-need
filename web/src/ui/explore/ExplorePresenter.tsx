@@ -75,8 +75,9 @@ function PresenterRow({ f, speech, portrait, rec }: { f: F; speech: string; port
         <ShowcaseFilm className="xpa-film" testId={FILM} label="Talking video" manual controls restartOnSound
           takes={[{ key: 'result', url: f.out.url, poster: f.out.poster, label: 'Talking video', sec: f.out.sec, sound: f.out.sound === true }]}
           take="result" onTake={() => 0} />
-        <figcaption className="xpa-top"><span className="xv-tag xv-tag-on">Talking video</span>
-          <RunChip onMedia c={chipOfChain({ jobId: f.jobId ?? '', model: f.model, place: featuredPlace(f), costUsd: f.costUsd ?? 0 }, f.from ?? [], { note: `${f.out.sec} s` })} testId="xp-presenter-model" /></figcaption>
+        <span className="xpa-top"><span className="xv-tag xv-tag-on">Talking video</span></span>
+        {/* the run line, under the video (never over the face): the whole chain's price, "+3 steps" opens portrait → edit → voice → video */}
+        <figcaption className="xpa-run"><RunChip c={chipOfChain({ jobId: f.jobId ?? '', model: f.model, place: featuredPlace(f), costUsd: f.costUsd ?? 0 }, f.from ?? [], { role: 'Talking video' })} testId="xp-presenter-model" /></figcaption>
       </figure>
     </div>
     <div className="xpa-ctas xps-ctas">

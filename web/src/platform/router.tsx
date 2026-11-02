@@ -3,11 +3,12 @@ import { VIDEO_REDIRECTS, videoRedirect } from '../../../server/src/shared/video
 import { pageTool } from '../../../server/src/shared/pages';
 import { audioRedirectTarget } from '../../../server/src/shared/audioWorkflows';
 import { threeDRedirectTarget } from '../../../server/src/shared/threeD';
-import { redirectTarget, withSearch } from '../shared/workflowLinks';
+import { redirectTarget, withSearch, addedImageRedirect } from '../shared/workflowLinks';
 import { selfHostRedirect } from '../shared/legacyRoutes';
 import { useEffect, useState } from 'react';
 /** Minimal pushState router (no dependency). */
-export function navigate(to: string, o: { replace?: boolean; state?: Record<string, unknown> } = {}) { to = canonTo(to); const st = { ...(o.replace ? history.state : {}), inApp: true, ...(o.state ?? {}) }; if (o.replace) history.replaceState(st, '', to); else history.pushState(st, '', to); dispatchEvent(new PopStateEvent('popstate')); }
+export function navigate(to: string, o: { replace?: boolean; state?: Record<string, unknown> } = {}) { to = canonTo(to); /* inApp: this entry was reached by a click in the app (✕ can go back to it). A replace keeps the entry's own flag: a direct link stays a direct link, so ✕ closes to the page's list, as Esc does */
+  const st = { ...(o.replace ? history.state : {}), inApp: o.replace ? !!(history.state as any)?.inApp : true, ...(o.state ?? {}) }; if (o.replace) history.replaceState(st, '', to); else history.pushState(st, '', to); dispatchEvent(new PopStateEvent('popstate')); }
 /** Alias paths → canonical (replaceState, so Back doesn't bounce). */
 export const REDIRECTS: Record<string, string> = { '/licences': '/licenses', '/licence': '/licenses', '/license': '/licenses', '/apps': '/workflows' /* Apps → Workflows (2026-10-22); /apps/<x> too, see canonPath */, '/presets': '/workflows', '/looks': '/workflows', '/pricing': '/models' /* the Pricing page is gone (user, 2026-10-29): every price is on Models */ /* the Looks page is gone (user, 2026-10-28); looks live inside each workflow */,
   /* Images (2026-10-22): old names → plain names (/soul and /tools/soul → Create Image, /tools/app-shots → Camera Angles, /tools/app-inpaint → Brush Edit, /tools/edit-image → Create Image in edit mode) */ ...IMAGE_REDIRECTS,
@@ -16,10 +17,10 @@ export const REDIRECTS: Record<string, string> = { '/licences': '/licenses', '/l
 export { withSearch };
 /** An in-app link to an old path goes straight to its new home (before pushState), so the page listening for that navigation sees the final URL
  *  (/tools/image-upscale?fromJob=… → /image?workflow=upscale&fromJob=…). */
-function canonTo(to: string): string { try { const u = new URL(to, location.origin); if (u.origin !== location.origin) return to; return selfHostRedirect(u.pathname) ?? redirectTarget(u.pathname, u.search, u.hash, REDIRECTS) ?? videoRedirect(u.pathname, u.search, u.hash) ?? audioRedirectTarget(u.pathname, u.search, u.hash) ?? threeDRedirectTarget(u.pathname, u.search, u.hash) ?? to; } catch { return to; } }
+function canonTo(to: string): string { try { const u = new URL(to, location.origin); if (u.origin !== location.origin) return to; return selfHostRedirect(u.pathname) ?? redirectTarget(u.pathname, u.search, u.hash, REDIRECTS) ?? addedImageRedirect(u.pathname, u.search, u.hash) ?? videoRedirect(u.pathname, u.search, u.hash) ?? audioRedirectTarget(u.pathname, u.search, u.hash) ?? threeDRedirectTarget(u.pathname, u.search, u.hash) ?? to; } catch { return to; } }
 function canonPath(): string {
   const k = (location.pathname.replace(/\/+$/, '') || '/').toLowerCase();
-  const to = selfHostRedirect(location.pathname) ?? redirectTarget(location.pathname, location.search, location.hash, REDIRECTS) ?? videoRedirect(location.pathname, location.search, location.hash) ?? audioRedirectTarget(location.pathname, location.search, location.hash) /* One Audio page (2026-10-23): /tools/voice, /tools/soundtrack and their modes → /audio?workflow=<id> (shared/audioWorkflows.ts) */ ?? threeDRedirectTarget(location.pathname, location.search, location.hash) /* 3D (2026-10-23): /3d, /tools/three-d, /tools/image-to-3d, /tools/turntable */ ?? (k.startsWith('/apps/') ? withSearch('/workflows', location.search) + location.hash : null);
+  const to = selfHostRedirect(location.pathname) ?? redirectTarget(location.pathname, location.search, location.hash, REDIRECTS) ?? addedImageRedirect(location.pathname, location.search, location.hash) /* a workflow you added: its old page → the Image tab with it picked */ ?? videoRedirect(location.pathname, location.search, location.hash) ?? audioRedirectTarget(location.pathname, location.search, location.hash) /* One Audio page (2026-10-23): /tools/voice, /tools/soundtrack and their modes → /audio?workflow=<id> (shared/audioWorkflows.ts) */ ?? threeDRedirectTarget(location.pathname, location.search, location.hash) /* 3D (2026-10-23): /3d, /tools/three-d, /tools/image-to-3d, /tools/turntable */ ?? (k.startsWith('/apps/') ? withSearch('/workflows', location.search) + location.hash : null);
   if (to) history.replaceState(history.state, '', to);
   return location.pathname;
 }

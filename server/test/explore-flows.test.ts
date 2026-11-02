@@ -9,7 +9,7 @@
 import { testPort } from './_ports.js'; import assert from 'node:assert/strict'; import { spawn, execFileSync } from 'node:child_process'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path';
 const ok = (m: string) => console.log('ok ' + m);
 const ROOT = path.resolve(import.meta.dirname, '../..'); const PUB = path.join(ROOT, 'web/public'); const WEB = path.join(ROOT, 'web/src');
-const { FEATURED, FEATURED_VIDEO, FEATURED_STARTER_VIDEO, FEATURED_AUDIO, FEATURED_SEED_IDS, FEATURED_BIG_POSTER, STARTER, featuredRecreateHref, SAMPLE_CLIPS, SAMPLE_STILLS } = await import('../src/shared/featured.ts');
+const { FEATURED, FEATURED_VIDEO, FEATURED_STARTER_VIDEO, FEATURED_STARTER_VIDEO_LATE, FEATURED_AUDIO, FEATURED_SEED_IDS, FEATURED_BIG_POSTER, STARTER, featuredRecreateHref, SAMPLE_CLIPS, SAMPLE_STILLS } = await import('../src/shared/featured.ts');
 const { EXPLORE_ROWS, EXPLORE_CARDS, EXPLORE_HERO } = await import('../src/shared/exploreFlows.ts');
 const { featuredIdOf } = await import('../src/featuredSeed.ts');
 const { getTool } = await import('../src/tools/registry.ts');
@@ -31,7 +31,7 @@ for (const f of FEATURED) { file(f.out.url, maxOf(f.key)); if (f.tab === 'audio'
   for (const k of ['imageUrl', 'lastFrameUrl']) if (f.tab !== 'image' && typeof f.input[k] === 'string') { assert.match(String(f.input[k]), /\.(jpe?g|png)$/, `${f.key}.${k}: a JPG/PNG the bar accepts`); file(String(f.input[k])); }
   assert.ok(getTool(f.toolId), `${f.key}: ${f.toolId} is a real tool`); assert.ok(['local', 'comfy-cloud'].includes(f.runOn), `${f.key}: runOn`);
   if (f.runOn !== 'local') { assert.ok((f.costUsd ?? 0) > 0, `${f.key}: a cloud run names its real cost`); assert.match(f.route ?? '', /^comfy-(router|cloud):/, `${f.key}: its cloud route`); } }
-for (const f of [...FEATURED_STARTER_VIDEO, ...FEATURED_VIDEO, ...FEATURED_AUDIO]) { const p = file(f.out.url, maxOf(f.key)); const tags = execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format_tags', '-of', 'json', p]).toString();
+for (const f of [...FEATURED_STARTER_VIDEO, ...FEATURED_VIDEO, ...FEATURED_STARTER_VIDEO_LATE, ...FEATURED_AUDIO]) { const p = file(f.out.url, maxOf(f.key)); const tags = execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format_tags', '-of', 'json', p]).toString();
   assert.doesNotMatch(tags, /creation_time|location|com\.apple/i, `${f.key}: metadata stripped`); assert.equal(f.out.sound, true, `${f.key}: LTX-2.5 clips carry sound`); }
 { // the starter pack (user's picks, 2026-10-28): what each tab opens with; Explore-only entries stay for Explore but no tab lists them
   const keys = (t: string) => STARTER.filter((f) => f.tab === t || f.alsoOn?.includes(t as any)).map((f) => f.key);
@@ -55,7 +55,11 @@ assert.match(featuredRecreateHref('ltx-village-loop', { loop: '1' })!, /^\/video
 assert.match(featuredRecreateHref('ltx-morph')!, /^\/video\?workflow=transitions&recreate=a3c693af$/);
 for (const [k, id] of [['ltx-fox-meadow', '7964e9db'], ['ltx-fox-meadow-close', '4781fc98']]) { const f = FEATURED.find((x) => x.key === k)!;
   assert.equal(featuredRecreateHref(k), `/video?recreate=${id}`, `${k}: Try this prompt opens Video`); assert.equal(f.modelKey, 'ltx-2.5-22b'); assert.match(f.prompt, /fox/); }
-assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpHero \/>[\s\S]{0,200}<Xp3D \/>/, 'Explore opens on the hero then 3D, without a separate lighthouse section');
+/* Explore's four acts (user, 2026-11-02): each section mounted once, in this order */
+const EXPLORE_ORDER = ['XpHero', 'Xp3D', 'XpStill', 'XpSheets', 'XpKoi', 'XpSong', /* act 2 */ 'XpFilm', 'XpSwap', 'XpLooks', 'XpPresenter', /* act 3 */ 'XpWork', 'XpLayers', /* act 4 */ 'XpBoard', 'XpFilms', 'XpYourTurn'];
+{ const home = fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'); const at = EXPLORE_ORDER.map((n) => { const m = [...home.matchAll(new RegExp(`<${n} />`, 'g'))]; assert.equal(m.length, 1, `${n} is mounted once`); return m[0].index!; });
+  at.forEach((x, k) => k && assert.ok(x > at[k - 1], `${EXPLORE_ORDER[k]} follows ${EXPLORE_ORDER[k - 1]}`));
+  assert.match(home, /<\/footer>\s*<\/div>;\s*\}\s*$/, 'the footer closes the page'); assert.doesNotMatch(home, /XpTrending|XpSeedance/, 'no Trends, no standalone lighthouse'); }
 { const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); const hero = xs.slice(xs.indexOf('export function heroChip'), xs.indexOf('/* ===', xs.indexOf('export function XpHero')));
   assert.match(hero, /<ShowcaseFilm\b[\s\S]*xp-headline[\s\S]*<HeroCredit /, 'the header plays the hero clip under its headline, line and credit');
   assert.doesNotMatch(hero, /xph-quick|xph-make|xp-quick|EXPLORE_QUICK/, 'no quick links on the hero (2026-10-28)');
@@ -110,7 +114,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.match(dir, /try \{ return localStorage\.getItem\(k\); \} catch/, 'the sound choice is remembered, safely');
     assert.match(film, /\{still && !controls && <button[^>]*className="sfilm-play"/, 'reduced motion: the poster with a play button'); }
   for (const r of [X.EXPLORE_HERO]) { const f = FEATURED.find((x) => x.key === r.key); assert.ok(f, `${r.key}: a featured clip`); assert.match(f!.out.url, /\.mp4$/); file(r.poster, 3e5); assert.ok(featuredRecreateHref(r.key), `${r.key}: Recreate`); }
-    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpHero \/>[\s\S]{0,200}<Xp3D \/>[\s\S]{0,200}<XpFilms \/>[\s\S]{0,180}<XpStill \/>\s*<XpFilm \/>[\s\S]{0,200}<RealResults \/>\s*<XpKoi \/>\s*<XpBoard \/>\s*<XpSwap \/>/, 'Trends is hidden; Canvas sits directly below the cartoon showcase');
+    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<div className="xp-in"><XpBoard \/><\/div>\s*<XpFilms \/>/, 'Trends is hidden; Canvas opens the last act, right before the films');
   /* From one still: one LTX-2.5 Pro image-to-video take on Comfy Cloud (job 530ab5eb, 6 s, $1.46). Take 2 · Dive (33be70a9) left the section on 2026-10-28;
      its featured entry and files stay (featured feed, seeded job), so both are still checked below */
   { const W = X.EXPLORE_STILL; assert.equal(W.eyebrow, 'Bring a picture to life'); assert.equal(W.title, 'What if it could move?');
@@ -140,12 +144,17 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
       file(FEATURED_BIG_POSTER[k], 1.5e5); file(f.out.poster, 4e4); }
     for (const u of [still.url, '/showcase/ltx-pro-whale-in.jpg']) { const p = file(u, 250_001); assert.ok(fs.statSync(p).size <= 250_000, `${u}: ≤ 250 KB`); assert.ok(!fs.readFileSync(p).includes('Exif'), `${u}: no EXIF`); }
     file(still.poster, 4e4); assert.match(still.url, /\.webp$/); assert.deepEqual([still.width, still.height], [1344, 756], 'the still, cropped to 16:9 the way the app cropped it');
-    const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); const wx = xs.slice(xs.indexOf('export function XpStill'), xs.indexOf('Make your own cartoon (MiniMax H3'));
-    assert.match(wx, /<HeroReel className="hreel-framed xpo-film"[^\n]*\breveal replay=\{replay\}[^\n]*sound=\{f\.out\.sound === true\} restartOnSound/, 'the shared HeroReel wipe (reveal), the page\u2019s sound');
+    const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); const wx = xs.slice(xs.indexOf('export function XpStill'), xs.indexOf('Keep the shot going (MiniMax H3'));
+    assert.match(wx, /<HeroReel className="hreel-framed xpo-film xpo-front"[^\n]*\breveal replay=\{replay\}[^\n]*sound=\{f\.out\.sound === true\} restartOnSound/, 'the shared HeroReel wipe (reveal), the page\u2019s sound');
+    assert.equal((wx.match(/<HeroReel /g) ?? []).length, 1, 'one reel');
     assert.match(wx, /before=\{\{ url: still\.url[\s\S]*after=\{\{ url: f\.out\.url/, 'still → the take’s clip, both from the featured entry');
+    assert.match(wx, /<div className="xpo-copy">[\s\S]*xp-still-line[\s\S]*<p className="xpo-run"[\s\S]*xp-still-recreate[\s\S]*<div className="xpo-stack">\s*<figure className="xpo-back"/, 'depth: the copy, run and actions beside the stack; the still as a card behind the reel');
+    assert.doesNotMatch(xs, /whalesection/, 'one layout, no gate');
+    assert.match(fs.readFileSync(path.join(WEB, 'ui/explore/exploreShowcase.css'), 'utf8'), /prefers-reduced-motion:reduce\)\{\.xpo-back\{animation:none/, 'the still card never drifts under reduced motion');
+    assert.doesNotMatch(xs, /stillsection/, 'one layout, no gate');
     assert.doesNotMatch(wx, /Segmented|xp-still-take|xp-still-next|onTick|setPick/, 'one take: no take switch, no auto-alternation');
     assert.match(wx, /\$\{ran\} s run, trimmed to \$\{Math\.floor\(t\.trimmedTo\)\} s/, 'the trim said honestly'); assert.match(wx, /<RunChip c=\{chipOfFeatured\(f\)\} testId="xp-still-chip"/, 'the real model, place and price: the shared run chip');
-    assert.match(wx, /featuredRecreateHref\(f\.key\)[\s\S]*xp-still-recreate/, 'Recreate from the featured entry'); assert.match(wx, /aria-expanded=\{open\}[\s\S]*<PromptText text=\{f\.prompt\}/, 'the prompt one click away');
+    assert.match(wx, /featuredRecreateHref\(f\.key\)[\s\S]*xp-still-recreate/, 'Recreate from the featured entry'); assert.doesNotMatch(wx, /xp-still-read|xp-still-prompt/, 'no prompt reader here: Recreate this shot opens the full prompt'); assert.match(wx, /<Link to=\{rec\} className="xv-btn" data-testid="xp-still-recreate">Recreate this shot/, 'one primary action');
     const hr = fs.readFileSync(path.join(WEB, 'shared/HeroReel.tsx'), 'utf8');
     assert.match(hr, /reveal && \(failed \|\| still\)/, 'a missing clip or reduced motion: the still'); assert.match(hr, /reveal && still && !failed && <button[^>]*className="hreel-play"/, 'reduced motion: the still with a play button');
     assert.match(hr, /useDirectedSound\(\{ root, media: \(\) => b\.current/, 'the shared sound director');
@@ -153,17 +162,17 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.match(hr, /played\.current !== after\.url \|\| retries\.current >= RETRIES\) \{ if \(reveal\) \{? ?setBad/, 'an error after the clip played reloads it; only a clip that never played is broken');
     assert.match(hr, /onEnded=\{/, 'a missed loop restarts from 0');
     ok('From one still: one LTX-2.5 Pro take (Comfy Cloud, $1.46, 6 s) ≤ 3 MB, one still, the shared wipe, no switch, Recreate into Video'); }
-  /* Make your own cartoon (letterbox): MiniMax H3 (job 42ceb1af, 10 s, $0.80) + H3 Extend on Comfy Cloud (job 50d2a3a0, +10 s, $0.52) */
-  { const K = X.EXPLORE_KOI; assert.equal(K.key, 'h3-koi-take'); assert.equal(K.title, 'Make your own cartoon.'); assert.match(K.line, /^A boy in the rain, a paper lantern, a wish\. Write the scene the way you'd tell it/); assert.equal(K.eyebrow, 'Made with MiniMax H3');
+  /* Keep the shot going (letterbox, shows off Extend): MiniMax H3 (job 42ceb1af, 10 s, $0.80) + H3 Extend on Comfy Cloud (job 50d2a3a0, +10 s, $0.52) */
+  { const K = X.EXPLORE_KOI; assert.equal(K.key, 'h3-koi-take'); assert.equal(K.title, 'Keep the shot going.'); assert.match(K.line, /^A boy in the rain, a paper lantern, a wish\. Start with one 10 s clip, then Extend/); assert.equal(K.eyebrow, 'Extend');
     assert.doesNotMatch(`${K.eyebrow} ${K.title} ${K.line}`, /higgsfield|kling|seedance|veo|sora/i, 'our own words, no other products named');
     assert.deepEqual(K.first, { model: 'MiniMax H3', place: 'Comfy Cloud', usd: 0.8 }, 'the first 10 s: its model, place and real price'); assert.equal(K.place, 'Comfy Cloud');
-    assert.equal(K.cta.label, 'Start your scene'); assert.equal(K.cta.href, '/video?model=minimax-h3', 'Start your scene opens Video with MiniMax H3 picked');
+    assert.equal(K.cta.label, 'Extend a clip'); assert.equal(K.cta.href, '/video?workflow=extend', 'Extend a clip opens Video › Extend');
     const f = FEATURED.find((x) => x.key === K.key)!; assert.ok(f?.before, 'the take ships as a featured entry with its first 10 s');
     assert.deepEqual([f.toolId, f.provider, f.modelKey, f.model, f.flow, f.runOn, f.route, f.costUsd], ['h3-extend', 'comfy-h3-extend', 'minimax-h3-extend', 'H3 Extend', 'Extend', 'comfy-cloud', 'comfy-cloud:cloud-h3-extend', 0.52], 'H3 Extend on Comfy Cloud, its real cost');
     assert.deepEqual([f.input.mode, f.input.extendSeconds, f.input.resolution, f.input.seed, f.input.keepAudio, f.input.videoUrl], ['extend', 10, '768p', 1517254433, true, f.before!.url], 'settings as they ran; Recreate loads the first 10 s');
     assert.match(f.prompt, /^Continue the same action at the same pace, same camera: the glowing koi circles once above the rooftops/, 'the extend prompt as it ran');
     assert.equal(f.out.url, '/showcase/h3-koi-take.mp4', 'the plain take lives in the featured entry (Extend page, feeds, Recreate; one line to swap for an upscale)'); assert.equal(f.out.sec, 20.13);
-    assert.deepEqual(K.ending, { url: '/showcase/h3-koi-take-ending.mp4', sec: 30.13, label: 'Ending · made with Imagination · Free' }, 'Explore only: the take + its 10 s ending (hold, title card, end mark)'); assert.equal(f.before!.sec, 10.125);
+    assert.deepEqual(K.ending, { url: '/showcase/h3-koi-take-ending.mp4', sec: 30.13, label: 'End card · added in the edit' }, 'Explore only: the take + its 10 s ending (hold, title card, end mark), never named like a model'); assert.equal(f.before!.sec, 10.125);
     assert.equal(featuredIdOf(K.key), '2fb5ac80'); assert.equal(featuredRecreateHref(K.key), `/video?workflow=extend&recreate=${FEATURED_SEED_IDS[K.key]}`, 'Recreate opens Video › Extend; the prefill names H3 Extend itself (modelKey), not H3 Max Extend, which shares the engine)');
     assert.ok(fs.statSync(file(f.out.url, 4e6)).size <= 4e6, 'the take stays ≤ 4 MB'); assert.ok(fs.statSync(file(K.ending.url, 4e6)).size <= 4e6, 'the ending version stays ≤ 4 MB'); file(f.before.url, 1.2e6); file(FEATURED_BIG_POSTER[K.key], 1.5e5); for (const u of [f.out.poster, f.before.poster, K.newFrame]) file(u, 4e4);
     for (const [u, sec] of [[f.out.url, 20.1], [K.ending.url, 30.1], [f.before.url, 10.1]] as const) { const p = path.join(PUB, u);
@@ -175,13 +184,13 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.match(kx, /<ShowcaseFilm className="sfilm-letterbox"[^\n]*restartOnSound onTick=\{onTick\}[^\n]*onFail=/, 'the shared film: page sound and progress from onTick; a missing clip keeps its poster');
     assert.doesNotMatch(kx, /\{K\.line\}|xp-koi-time/, 'the descriptive paragraph and elapsed/total time are removed only from Explore');
     assert.match(kx, /url: K\.ending\.url/, 'Explore plays the cut with its title-card ending (the featured entry keeps the plain take for Extend)'); assert.match(kx, /left: `\$\{\(first \/ total\) \* 100\}%`/, 'the join notch sits at 0:10 of 0:20');
-    assert.match(kx, /\{K\.first\.model\}<i>·<\/i>\{f\.model\}<i>·<\/i>\{K\.place\}/, 'the bar names both models and the place');
+    assert.match(kx, /xp-koi-track[\s\S]*xpk-segs[\s\S]*xp-koi-seg-/, 'the timeline names each segment (Start · MiniMax H3, Extend · +10 s · H3 Extend, the end card) under the line');
     assert.match(kx, /data-testid="xp-koi-eq"[\s\S]*f\.before\.poster[\s\S]*K\.newFrame[\s\S]*one \{Math\.round\(take\)\} s take/, '[frame] 10 s + [frame] 10 s = one 20 s take (the generated take, not the ending)');
-    assert.match(kx, /const take = f\.out\.sec[^\n]*const total = K\.ending\.sec/, 'the sum and pills use the plain take, the readout the ending version'); assert.match(kx, /url: K\.ending\.url/, 'Explore plays the ending version'); assert.match(kx, /xp-koi-ending[\s\S]*xp-koi-paid-ending/, 'the ending marked on the progress line and credited as made here');
-    assert.match(kx, /xp-koi-paid-first[^\n]*K\.first\.usd[^\n]*first \$\{Math\.round\(first\)\} s[\s\S]*xp-koi-paid-extend[^\n]*chipOfFeatured\(f, \{ note: `\+\$\{added\} s`/, 'two run chips: each run\u2019s model, place and price');
-    assert.match(kx, /featuredRecreateHref\(f\.key\)[\s\S]*xp-koi-recreate">Recreate<[\s\S]*K\.cta\.href/, 'Recreate and Start your scene');
+    assert.match(kx, /const take = f\.out\.sec[^\n]*const total = K\.ending\.sec/, 'the sum and the run line use the plain take, the readout the ending version'); assert.match(kx, /url: K\.ending\.url/, 'Explore plays the ending version'); assert.match(kx, /xp-koi-ending[\s\S]*is-\$\{x\.k\}/, 'the end card marked on the progress line and named as added in the edit');
+    assert.match(kx, /xp-koi-run[^\n]*chipOfFeatured\(f, \{ role: `Extend, \+\$\{added\} s`, also: f\.from/, 'one run line: H3 Extend, the whole price as a total, "+1 step" opens start → extend');
+    assert.match(kx, /to=\{K\.cta\.href\}[^\n]*xp-koi-cta[\s\S]*to=\{rec\}[^\n]*xp-koi-recreate">Recreate this take</, 'Extend a clip, then Recreate this take');
     assert.match(fs.readFileSync(path.join(WEB, 'shared/ShowcaseFilm.tsx'), 'utf8'), /onError=\{\(\) => \{ setBad\(t\.url\); onFail\?\.\(\); \}\}/, 'ShowcaseFilm: a clip that fails keeps its poster');
-    ok('Make your own cartoon: MiniMax H3 + H3 Extend (Comfy Cloud), 20 s take ≤ 4 MB, its first 10 s, posters, prices, Recreate into Extend'); }
+    ok('Keep the shot going: MiniMax H3 + H3 Extend (Comfy Cloud), 20 s take ≤ 4 MB, its first 10 s, posters, prices, Recreate into Extend'); }
   assert.equal((X as Record<string, unknown>).EXPLORE_QUICK, undefined, 'the hero has no quick links (2026-10-28)');
   assert.equal(X.EXPLORE_TAGLINES.length, 3, 'three tagline options'); assert.ok(X.EXPLORE_TAGLINES.includes(X.EXPLORE_TAGLINE));
   for (const t of X.EXPLORE_TAGLINES) { assert.ok(t.title.length && t.line, 'tagline copy'); assert.doesNotMatch(`${t.title.join(' ')} ${t.line}`, /higgsfield/i, 'no other products named'); }
@@ -213,14 +222,14 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
       for (const u of e.input.refUrls as string[]) file(u, 2e5); file(FEATURED_BIG_POSTER[r.key] ?? e.out.poster.replace(/-480\.webp$/, '.webp')); }
     assert.equal(f.sharp!.url, '/showcase/h3-char-swap-sharp.mp4'); assert.equal(f.out.url, '/showcase/h3-char-swap.mp4', 'the original H3 result stays the featured result (Recreate, feeds)');
     const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); const sw = xs.slice(xs.indexOf('function swapRuns'), xs.indexOf('export function XpLayers')); /* the runs helper (Recreate links) sits just above XpSwap */
-    assert.match(sw, /useSyncClips\(4\)/, 'the original under each slider and both swaps play in step (shared useSyncClips)');
-    assert.match(sw, /<CompareFrame [^>]*intro="nudge"/, 'each card is the shared before / after slider (CompareFrame), nudged once');
+    assert.match(sw, /useSyncClips\(3\)/, 'the original and both swaps play in step, three in a row (shared useSyncClips)');
+    assert.doesNotMatch(sw, /CompareFrame|swapsection/, 'one layout: no slider over the dancers, no layout switch');
     assert.doesNotMatch(xs, /xsdc-mid|xsdc-orig/, 'no small original between the cards');
-    for (const r of S.runs) if (r.originalPoster) file(r.originalPoster); assert.match(sw, /<SoundToggle on=\{g\.sound\.lit\} waiting=\{g\.sound\.waiting\} label=\{g\.sound\.hint\}/, 'the shared sound toggle');
-    assert.match(sw, /g\.still \? <img className="xsdc-media" src=\{poster\}/, 'reduced motion: posters'); assert.match(sw, /featuredRecreateHref\(f\.key\)/, 'Recreate from each featured entry');
-    assert.match(sw, /chip: chipOfFeatured\(f\)[\s\S]*<RunChip c=\{x\.chip\}/, 'each card names the real model, place and price (the shared run chip)'); assert.doesNotMatch(xs, /\?swap=|SWAP_DEV|XpSwapNow|XpSwapThree|XpSwapPick|XpStage|EXPLORE_STAGE/, 'no leftover layouts');
+    file(S.original.poster5); for (const r of S.runs) if (r.poster5) file(r.poster5); assert.match(sw, /<SoundToggle on=\{g\.sound\.lit\} waiting=\{g\.sound\.waiting\} label=\{g\.sound\.hint\}/, 'the shared sound toggle');
+    assert.match(sw, /g\.still \? <img className="xsw-media" src=\{poster\}/, 'reduced motion: posters (the three at 5 s)'); assert.match(sw, /featuredRecreateHref\(f\.key\)/, 'Recreate from each featured entry');
+    assert.match(sw, /chip: chipOfFeatured\(f\)[\s\S]*<RunChip c=\{run\.chip\}/, 'each card names the real model, place and price (the shared run chip)'); assert.doesNotMatch(xs, /\?swap=|SWAP_DEV|XpSwapNow|XpSwapThree|XpSwapPick|XpStage|EXPLORE_STAGE/, 'no leftover layouts');
     assert.match(fs.readFileSync(path.join(WEB, 'shared/SyncClips.ts'), 'utf8'), /export function useSyncClips/);
-    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /chapters: Same dance\. Two new casts\.[\s\S]*<XpSwap \/>/, 'Home names and mounts the chapter'); }
+    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /Same dance\. Two new casts\.[\s\S]*<XpSwap \/>/, 'Home names and mounts the chapter'); }
   /* chapter 2: image to layers (Seedream 5.0 Flash on Comfy Router, job 829b6ef1) */
   { const L = X.EXPLORE_LAYERS; assert.match(L.eyebrow, /^Chapter 2 · Image to layers$/); assert.deepEqual(L.title, ['One picture.', 'Every layer.']);
     assert.deepEqual(L.steps.map((x) => x.name), ['Picture', 'Split'], 'two steps from the data, the third is the run itself');
@@ -248,7 +257,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.match(ly, /if \(snd\.toggle\(\)\) setRestart\(/, 'turning sound on restarts the clip from 0 so the sound lines up with the layers');
     assert.match(fs.readFileSync(path.join(WEB, 'shared/HoverClip.tsx'), 'utf8'), /restart\?: number[\s\S]*el\.currentTime = 0/, 'HoverClip: a new restart value plays from 0');
     assert.match(ly, /<LayerTile\b/, 'the shared LayerTile'); assert.doesNotMatch(ly, /xv-tag[^"]*"[^>]*>\{S\.film|xpy-badge/, 'no badge over the animation');
-    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpSwap \/>\s*<XpLayers \/>/, 'chapter 2 sits right after chapter 1'); }
+    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpWork \/>\s*<XpLayers \/>/, 'Image to layers closes the work act, right after Made for your work'); }
   /* one sound button (2026-10-27): every Explore clip with sound uses the shared SoundToggle; silent clips get none; no per-section look-alikes */
   { const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); const film = fs.readFileSync(path.join(WEB, 'shared/ShowcaseFilm.tsx'), 'utf8');
     const reel = fs.readFileSync(path.join(WEB, 'shared/HeroReel.tsx'), 'utf8'); const tog = fs.readFileSync(path.join(WEB, 'shared/SoundToggle.tsx'), 'utf8');
@@ -259,9 +268,9 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.match(reel, /import \{ SoundToggle \} from '\.\/SoundToggle'/); assert.match(reel, /sound = false,/, 'HeroReel: no sound button unless the clip has sound'); assert.match(reel, /\{sound && !still && !failed && <SoundToggle on=\{snd\.lit\} waiting=\{snd\.waiting\} label=\{snd\.hint\}/, 'HeroReel: the shared toggle');
     /* each section: its sound flag comes from the clip's data; the sound itself is the page's one choice (shared/soundDirector.ts) */
     const hero = part('export function XpHero', 'a prompt as it ran (shared)'); assert.match(hero, /sound: f\.out\.sound/);
-    const still = part('export function XpStill', 'Make your own cartoon (MiniMax H3'); assert.match(still, /<HeroReel [^\n]*sound=\{f\.out\.sound === true\} restartOnSound/, 'From one still: the shared toggle, from 0 when sound goes on');
+    const still = part('export function XpStill', 'Keep the shot going (MiniMax H3'); assert.match(still, /<HeroReel [^\n]*sound=\{f\.out\.sound === true\} restartOnSound/, 'From one still: the shared toggle, from 0 when sound goes on');
     const koi = part('export function XpKoi', "a chapter's copy column"); assert.match(koi, /restartOnSound/, 'the koi take: from 0 when sound goes on'); assert.match(koi, /sound: f\.out\.sound/);
-    const swap = part('export function XpSwap', 'Chapter 2: image to layers'); assert.match(swap, /useSyncClips\(4\)[\s\S]*\{!g\.still && <SoundToggle on=\{g\.sound\.lit\}/, 'the swap: the shared toggle (the original leads and carries the sound; not under reduced motion)');
+    const swap = part('export function XpSwap', 'Chapter 2: image to layers'); assert.match(swap, /useSyncClips\(3\)[\s\S]*\{!g\.still && <span className="xsw-snd"><SoundToggle on=\{g\.sound\.lit\}/, 'the swap: the shared toggle (the original leads and carries the sound; not under reduced motion)');
     assert.doesNotMatch(xs, /_SOUND_KEY|soundKey|soundGroup|useClipSound/, 'no per-section sound keys or groups left');
     for (const src of [film, reel, fs.readFileSync(path.join(WEB, 'shared/SyncClips.ts'), 'utf8')]) { assert.match(src, /useDirectedSound\(/, 'every Explore player registers with the sound director'); assert.doesNotMatch(src, /soundKey|soundGroup|useClipSound|setBlocked/, 'no per-player sound state'); }
     assert.ok(!fs.existsSync(path.join(WEB, 'shared/soundGroup.ts')), 'sound groups folded into the director');
@@ -327,7 +336,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.match(xs, /goToWorkflow\(yourTurnHref\(text\)\)/, 'Make it goes in-app');
     assert.match(fs.readFileSync(path.join(WEB, 'ui/explore/exploreShowcase.css'), 'utf8'), /prefers-reduced-motion:reduce\)\{\.xyt-track\{animation:none\}/, 'reduced motion: the wall stays still'); }
   /* One character. Every angle. (four GPT Image 2.5 Flare sheets on Comfy Router; Mossbun as a Tripo 3.1 model) */
-  { const S = X.EXPLORE_SHEETS; assert.equal(S.title, 'One character. Every angle.'); assert.equal(S.eyebrow, 'Made with GPT Image 2.5 Flare'); assert.equal(S.via, 'Comfy Cloud');
+  { const S = X.EXPLORE_SHEETS; assert.equal(S.title, 'One character. Every angle.'); assert.equal(S.eyebrow, 'Character sheets', 'the model is named once, in the run line'); assert.equal(S.via, 'Comfy Cloud');
     assert.doesNotMatch(`${S.title} ${S.line} ${S.cast.map((c) => `${c.name} ${c.style}`).join(' ')}`, /higgsfield|kling|seedance/i, 'our own words, no other products named');
     const want = [['sheet-kaito', 'b5b82fcc', '492ddf3d', 1536, 1024, 0.0159, /KAITO VEY/], ['sheet-mossbun', '7793115c', '9564386e', 1456, 624, 0.0087, /MOSSBUN/], ['sheet-mechanic', '224bbf14', 'd5c4b1a5', 1536, 1024, 0.0159, /harbour mechanic/], ['sheet-kip', '8d939956', 'a4084c61', 1344, 1008, 0.0166, /KIP RALLY/]] as const;
     assert.deepEqual(S.cast.map((c) => c.key), want.map((w) => w[0]), 'Kaito, Mossbun, the mechanic, Kip');
@@ -346,11 +355,11 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
       assert.ok(gj.nodes.some((n: any) => n.name === 'mossbun-front' && n.rotation), 'turned so its front faces the camera at 0°'); }
     const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); const sx = xs.slice(xs.indexOf('export function XpSheets'), xs.indexOf('Mockup to film (Direct a Shot made real)'));
     assert.match(sx, /<Model3D src=\{td!\.url\}[^>]*autoRotate=\{!still\}/, 'the shared Model3D viewer; reduced motion: no auto-rotate');
-    assert.match(sx, /Spin him in 3D/, 'the 3D toggle'); assert.match(sx, /<RunChip c=\{chipOfRun\(\{ jobId: td\.jobId, model: td\.model, place: td\.place, costUsd: td\.usd/, 'the 3D credit (the shared run chip)');
+    assert.match(sx, /Spin him in 3D/, 'the 3D toggle'); assert.match(sx, /<RunChip c=\{\{ \.\.\.chipOfRun\(\{ jobId: td\.jobId, model: td\.model, place: td\.place, costUsd: td\.usd/, 'the 3D credit (the shared run chip)');
     assert.match(sx, /className="xpk-frame xpc-frame"/, 'the koi’s letterbox frame (shared look)'); assert.match(sx, /featuredRecreateHref\(f\.key\)[\s\S]*xp-sheets-recreate/, 'Recreate from the featured entry');
     assert.match(sx, /if \(!now \|\| paused \|\| still \|\| spin \|\| !seen\) return/, 'steps only on screen; Pause, reduced motion and 3D stop it');
     assert.match(fs.readFileSync(path.join(WEB, 'ui/explore/exploreShowcase.css'), 'utf8'), /\.xpc-sheet\{[^}]*width:min\(100cqw,calc\(100cqh \* var\(--ar\)\)\)/, 'the whole sheet fitted, never cropped');
-    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpLayers \/>\s*<XpSheets \/>\s*<XpPresenter \/>\s*<XpLooks \/>/, 'character sheets follow Image to layers, then the talking-avatar example');
+    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpStill \/>\s*<XpSheets \/>\s*<XpKoi \/>/, 'character sheets follow What if it could move?, then the cartoon');
     ok('One character. Every angle.: 4 GPT Image 2.5 Flare sheets (Comfy Router, billed prices), real panels, Recreate into Create Image; Mossbun GLB ≤ 4 MB, no decoder'); }
   /* Mockup to film (replaces Build a world): Direct a Shot mockup (a1a50672, free) → first frame (645de70d, GPT Image 2.5 Flare, $0.02 billed) → film (1a1a33c6, LTX-2.5 22B + Layout to Render, Comfy Cloud, $0.28) */
   { const F = X.EXPLORE_FILM; assert.equal((X as Record<string, unknown>).EXPLORE_WORLDS, undefined, 'the Worlds tiles are gone'); assert.ok(!fs.existsSync(path.join(PUB, 'explore/worlds')), 'their images are gone');
@@ -372,7 +381,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.match(fx, /before=\{\{ url: f\.before\.url[\s\S]*after=\{\{ url: f\.out\.url/, 'mockup → film, both from the featured entry');
     assert.match(fx, /xp-film-recreate">Recreate this shot<[\s\S]*F\.cta\.label/, 'Recreate this shot and Open Direct a Shot');
     const hr = fs.readFileSync(path.join(WEB, 'shared/HeroReel.tsx'), 'utf8'); assert.match(hr, /holdSweep \? 'hold' : 'park'/, 'HeroReel: the held sweep'); assert.match(hr, /p\.x = p\.from \+ \(parkAt - p\.from\) \* ease\(k\)/, 'then the line eases to parkAt');
-    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<XpStill \/>\s*<XpFilm \/>[\s\S]{0,200}<RealResults \/>\s*<XpKoi \/>/, '3D mockup-to-film sits directly under the whale section, then the free local rail');
+    assert.match(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /<div className="xp-in">\s*<XpFilm \/>[\s\S]{0,300}<XpSwap \/>/, '3D mockup-to-film opens the control act (the free local rail stays hidden there)'); assert.doesNotMatch(fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'), /^\s*<RealResults \/>/m, 'the free local rail stays hidden');
     assert.doesNotMatch(xs + fs.readFileSync(path.join(WEB, 'ui/explore/exploreShowcase.css'), 'utf8'), /XpWorlds|EXPLORE_WORLDS|xpw-/, 'no Worlds leftovers');
     ok('Mockup to film: Direct a Shot (free) → GPT Image 2.5 Flare ($0.02) → LTX-2.5 + Layout to Render (Comfy Cloud, $0.28), first shot in step, shared HeroReel + sound, Recreate into Direct a Shot'); }
   /* The K-drama beat (one MiniMax H3 run, fb0b44ca, Comfy Cloud, $1.20): its script's timings feed the IIAYN FILMS comedy's subtitles */
@@ -419,7 +428,7 @@ ok('web: Examples shelf and empty-tab Featured feed removed; Filter › From ›
   assert.deepEqual(V.effects.map((v) => v.effect), ['day-to-night', 'vanish', 'flood', 'alpha-matte']);
   const lay = FEATURED.find((x) => x.key === V.layout.key)!; assert.equal(lay.model, 'LTX-2.5 + Layout to Render', 'Layout to Render reuses the Mockup to film clip'); assert.match(V.layout.sourceUrl, /Layout-To-Render/);
   assert.ok(X.EXPLORE_SHOWCASE_LINKS().includes(V.cta.href), 'the section\'s links are checked');
-  const home = fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'); assert.match(home, /<XpLooks \/>\s*<\/div>[\s\S]*?<XpYourTurn \/>\s*<footer/, 'Explore ends with One idea. Every look., then Now it\u2019s your turn. full width, then the footer'); assert.doesNotMatch(home, /<XpVfx/);
+  const home = fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8'); assert.match(home, /<XpFilms \/>[\s\S]*?<XpYourTurn \/>\s*<footer/, 'Explore ends with the films, then Now it\u2019s your turn. full width, then the footer'); assert.doesNotMatch(home, /<XpVfx/);
   assert.doesNotMatch(home, /<MadeHere\s*\/>|<Jump\b|<Row\b|className="xp-flows-gap"|data-testid="xp-(learn|all)"/, 'the approved shorter page omits the shared bottom rows, jump links, Learn/Spend cards and workflow chip shelf');
   const xs = fs.readFileSync(path.join(WEB, 'ui/explore/ExploreShowcase.tsx'), 'utf8'); assert.match(xs, /EXPLORE_VFX\.pending/, 'an effect without a shipped example says so');
   // #14: the swap's featured entry keeps the size the run rendered at
@@ -447,7 +456,8 @@ try {
   const starterOf = (re: RegExp) => STARTER.filter((f) => re.test(f.out.url)).length;
   assert.equal(vid.total, starterOf(/\.mp4$/), 'every starter clip is in Examples (Explore-only ones are not)');
   for (const j of vid.items) { assert.equal(j.featured, false); assert.ok(j.example?.key, 'tagged as the app’s example'); assert.equal(j.isOwner, true, 'an ordinary result'); assert.equal(j.cost, 0, '$0'); assert.equal(j.projectId, proj.id); assert.equal(j.status, 'done'); }
-  assert.equal(vid.items[0].example.key, 'h3-fox-extend', 'newest first: the starter pack\u2019s new picks lead');
+  assert.equal(vid.items[0].example.key, 'ltx-storm-whale', 'newest first: a calm, made-up pick leads (2026-11-02)');
+  assert.ok(vid.items.findIndex((j: any) => j.example.key === 'h3-lift-ghost') >= vid.items.length - 2, 'the lift scare sits at the end of the Video examples');
   const img = await get(`/api/jobs?media=image&status=done&cursor=&project=${proj.id}`); assert.equal(img.total, starterOf(/\.webp$/), 'the Image examples too');
   const snd = await get(`/api/jobs?media=audio&status=done&cursor=&project=${proj.id}`); assert.equal(snd.total, 6, 'the Audio examples');
   for (const j of snd.items) { assert.ok(j.example?.key, 'tagged as an example'); assert.equal(j.isOwner, true); }

@@ -46,6 +46,9 @@ export const IMAGE_APPS = new Set(['app-character-sheet', 'app-product-shot', 'a
 export const SOUND_APPS = new Set(['app-music-bed', 'app-change-voice']);
 /** A frame saved from a video (Save frame, server pages.ts FRAME_TOOL): a finished job whose output is the PNG. */
 export const FRAME_TOOL_ID = 'video-frame';
+/** Workflows placed in the Image tab from a folder (one you added, or an add-on): tool id = workflow id → its name and picker category.
+ *  Filled by shared/pluginPlacement.ts placePlugins (server: from its registry; web: from GET /api/tools). Their runs are images and have their own feed. */
+export const ADDED_IMAGE_WORKFLOWS = new Map<string, { name: string; category: string }>();
 /** Tools whose run makes a picture: while it runs (no output yet), it already belongs to the Image tab. Create Image (Canvas and MCP image runs
  *  go through it too), the legacy Soul page, Upscale, the image apps and saved frames. */
 export const IMAGE_TOOL_IDS = new Set(['create-image', 'soul', 'image-upscale', FRAME_TOOL_ID, ...IMAGE_APPS]);
@@ -54,5 +57,5 @@ export const IMAGE_TOOL_IDS = new Set(['create-image', 'soul', 'image-upscale', 
  *  its tool lives in: a Photo FX still, a 3D poster, a saved video frame, a Canvas or MCP run. A job with no output yet counts by what its tool makes. */
 export function isImageJob(j: FeedJob): boolean {
   const k = outputKindOf(j); if (k) return k === 'image';
-  return IMAGE_TOOL_IDS.has(String(j.toolId ?? ''));
+  return IMAGE_TOOL_IDS.has(String(j.toolId ?? '')) || ADDED_IMAGE_WORKFLOWS.has(String(j.toolId ?? ''));
 }

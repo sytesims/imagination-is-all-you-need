@@ -125,6 +125,7 @@ html body .orb .mk-tile.orb-tile .mk-med svg,html body .orb .mk-tile.orb-mk-tile
 /* the place never gets squeezed out: a long balance ("$21.10 left on Comfy") wraps under it instead */
 .orb-runs{display:flex;align-items:center;gap:8px;min-width:0;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .orb-runs small{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.orb-runs-t{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .orb-bal{margin-left:auto}
 .orb-runs svg{flex:none}
 .orb-runs b{color:var(--text-1,#F7F7F8);font-weight:600}

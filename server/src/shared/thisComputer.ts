@@ -55,19 +55,26 @@ export const gbOf = (bytes: number | null | undefined): string => (bytes == null
 /** A model this big (GB) or bigger gets the free-memory check: smaller ones fit beside other apps. */
 export const HEAVY_GB = 8;
 export interface LiveLike { ram: { totalBytes: number; freeBytes: number }; vram: { totalBytes: number; freeBytes: number } | null }
-export interface MemoryCheck { needGB: number; freeGB: number; short: boolean; text: string }
+export interface MemoryCheck { needGB: number; freeGB: number; short: boolean; /** shared memory (Apple Silicon, DGX Spark) and short: running it now can freeze the computer, so it waits for a yes */ block: boolean; text: string }
+/** The plain words for a local model that doesn't fit memory (Mac/Linux audit M1, 2026-11-02): the one source the reason line, the run menu and the fit note read. */
+export const TOO_BIG_TEXT = 'Too big for this computer’s memory';
+export const unifiedOf = (p: ProfileLike | null | undefined): boolean => !!p && (!!p.unifiedMemory || p.id === 'apple-silicon' || p.id === 'dgx-spark');
 /** Free memory the model can use right now: shared memory on Apple Silicon and DGX Spark (the system's free RAM; on Spark that is MemAvailable, never
  *  cudaMemGetInfo, which under-reports there: NVIDIA DGX Spark known issues), else the card's free graphics memory. null when there's no reading. */
 export function freeForModelsGB(p: ProfileLike | null | undefined, live: LiveLike | null | undefined): number | null {
-  if (!p || !live) return null; const bytes = p.unifiedMemory || p.id === 'apple-silicon' || p.id === 'dgx-spark' ? live.ram?.freeBytes : live.vram?.freeBytes;
+  if (!p || !live) return null; const bytes = unifiedOf(p) ? live.ram?.freeBytes : live.vram?.freeBytes;
   return bytes == null || !Number.isFinite(bytes) ? null : bytes / 2 ** 30;
 }
-/** Compare what the model needs with what's free now. Never blocks (ComfyUI moves part of the model to system memory or disk, so it runs, slower):
- *  short = say "close other apps" and offer the cloud route. null for small models, unknown needs or no reading. */
+/** Compare what the model needs with what's free now. short = say so and offer the cloud route. On shared memory (Apple Silicon, DGX Spark) there is
+ *  no separate system memory to move the model to: the computer swaps and can freeze (a Mac froze twice, 2026-11-02), so short there = block
+ *  (Generate waits for Use Comfy Cloud, or Run anyway after a warning). A graphics card moves part of the model to system memory: it can still be
+ *  very slow or stop. null for small models, unknown needs or no reading. */
 export function memoryCheck(needGB: number | null | undefined, p: ProfileLike | null | undefined, live: LiveLike | null | undefined): MemoryCheck | null {
   if (needGB == null || !(needGB >= HEAVY_GB)) return null; const free = freeForModelsGB(p, live); if (free == null) return null;
-  const short = free < needGB; const n = `${Math.round(needGB)} GB`; const f = gbs(free);
-  return { needGB, freeGB: free, short, text: short ? `Close other apps first: this model needs about ${n} and ${f} is free now. It still runs, more slowly.` : `${f} free now, about ${n} needed` };
+  const short = free < needGB; const n = `${Math.round(needGB)} GB`; const f = gbs(free); const block = short && unifiedOf(p);
+  return { needGB, freeGB: free, short, block, text: !short ? `${f} free now, about ${n} needed`
+    : block ? `${TOO_BIG_TEXT} now: this model needs about ${n} and ${f} is free. Running it can freeze your computer.`
+    : `Close other apps first: this model needs about ${n} and ${f} is free now. It can run very slowly or stop.` };
 }
 /** The run menu's line under Local: "This computer · 13 GB free now · about 4 min (your last 5 runs)". '' when there's nothing to say. */
 export function hereLine(o: { name?: string | null; freeGB?: number | null; etaSeconds?: number | null; etaSource?: string | null; samples?: number | null; untested?: boolean }): string {

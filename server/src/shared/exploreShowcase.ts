@@ -10,7 +10,7 @@
  *  - EXPLORE_SEEDANCE: retained lighthouse run / finished-cut metadata; the film now lives in EXPLORE_FILMS, not a standalone section.
  *  - EXPLORE_FILMS: "IIAYN FILMS" (our film label): 엄마 · MUM, Episode 1 and the films coming next, with how each was made.
  *  - EXPLORE_TAGLINE: the hero's centre line and subline (EXPLORE_TAGLINES holds the copy options; pick one by index).
- *  - EXPLORE_SWAP: chapter 1, "Same dance. Two new casts." (two swaps of one dance, H3 Character Swap and Kling 3.0 Omni Edit, side by side in step).
+ *  - EXPLORE_SWAP: chapter 1, "Same dance. Two new casts." (the original and two swaps of one dance, H3 Character Swap and Kling 3.0 Omni Edit, three in a row in step).
  *  - EXPLORE_LAYERS: chapter 2, "One picture. Every layer." (an Image to layers run: the animation, three steps, input → its 13 layers).
  *  - EXPLORE_SHEETS: "One character. Every angle." (four GPT Image 2.5 Flare character sheets, the highlight stepping across each sheet's real
  *    panels; Mossbun also as a Tripo 3.1 model to spin).
@@ -20,7 +20,7 @@
  *  - EXPLORE_MOODS: the Audio dancer showcase (the words that pick SyteSim's dance style, a tempo for the demo beat).
  *  - EXPLORE_FILM: "Mockup to film" (Direct a Shot made real: the mockup, its first frame painted into a photo, the film; replaces the Worlds tiles).
  *  - EXPLORE_VFX: "VFX with LTX-2.5" (Footage Effects: Lightricks' official LTX-2.5 IC-LoRAs on your own clip, free on your computer; plus Layout to Render).
- *  - EXPLORE_WORK: "Made for your work" (2026-11-01): real results for shops and brands (Material Swap, Ad Pack, Image to layers), each with its
+ *  - EXPLORE_WORK: "Made for your work" (2026-11-01): real results for shops and brands (Material Swap, Ad Pack; Image to layers has its own chapter), each with its
  *    model, where it ran, its real price and "Make your own" (the workflow opened as Recreate, the example's photos in).
  *  - EXPLORE_SCRIPT: the K-drama beat's script (shots, lines, measured times). Its Explore section left the page on 2026-10-28; the beat is now
  *    a film in IIAYN FILMS (EXPLORE_FILMS.comedy, 그래요? · IS THAT SO?) and its subtitles use these timings.
@@ -56,10 +56,10 @@ export const EXPLORE_HERO: ReelShot =
 export interface WorkVariant { key: string; label: string; url: string; thumb: string; swatch?: string }
 export interface WorkItem {
   id: string; /** the audience tab it sits under */ tab: string; /** the workflow, as the app names it */ flow: string;
-  title: string; line: string; /** how the price reads: "each" (one run per look) or "for 3" (one run, every look) */ per: string;
+  title: string; line: string; /** the button on its panel (opens the workflow as Recreate) */ cta: string; /** how the price reads: "each" (one run per look) or "for 3" (one run, every look) */ per: string;
   /** before → after on a slider (same framing), or the before as a small "From this photo" picture */ compare: boolean;
   /** what it started from (shown as "before") */ before: { url: string; label: string };
-  variants: WorkVariant[]; /** a clip instead of stills (Image to layers: the run's animation) */ film?: { url: string; poster: string; label: string };
+  variants: WorkVariant[];
   /** the model as the card names it, when the featured entry's name is longer (a hosted route's full name) */ model?: string;
   /** the price shown is the sum of these runs (one key) or one run's (every variant shares it) */ priceKey: string;
 }
@@ -68,20 +68,17 @@ const shopAds: WorkVariant[] = SHOP_ADS.map(([id, label]) => ({ key: 'shop-ad-pa
 /** "Made for your work" (user pick 2026-11-01: lead with what people and businesses get). Real runs of a made-up brand, nothing staged: every
  *  picture is what the run returned. Shown as audience tabs (web/src/ui/explore/ExploreWork.tsx). */
 export const EXPLORE_WORK = {
-  eyebrow: 'Made for your work', title: ['Made for', 'your work.'],
-  line: 'Real results for shops and brands, made right here. Pick one, drop in your own photo and make yours.',
-  tabs: [{ id: 'shop', label: 'Shop' }, { id: 'ads', label: 'Ads' }, { id: 'design', label: 'Design' }],
+  eyebrow: 'Made for your work', title: ['Shoot every product.', 'Skip the studio.'],
+  line: 'Got a shop or a brand? Turn one product photo into every finish and ads ready to post.',
+  tabs: [{ id: 'shop', label: 'Shop' }, { id: 'ads', label: 'Ads' }],
   items: [
-    { id: 'material-swap', tab: 'shop', flow: 'Material Swap', title: 'One chair. Every material.', line: 'Show a product in every finish before you make a single one. One photo of it, one photo of the material.',
+    { id: 'material-swap', tab: 'shop', flow: 'Material Swap', title: 'Show your product in every fabric.', line: 'Snap your product once, add a photo of the fabric, and see it in that material, in the same room and the same light. Ready for your store page.', cta: 'Try it on your product',
       per: 'each', compare: true, before: { url: P('shop-armchair-in.webp'), label: 'Your photo' }, variants: shopSwap, priceKey: 'shop-swap-velvet' },
-    { id: 'ad-pack', tab: 'ads', flow: 'Ad Pack', title: 'One photo. Three ready ads.', line: 'A product photo and your offer become finished ads for the feed, with your headline and offer set in and your logo in the corner.',
+    { id: 'ad-pack', tab: 'ads', flow: 'Ad Pack', title: 'Turn one photo into three ads.', line: 'Add your product, a headline and an offer. Get a studio shot, one in use, and an offer poster, ready for your feed.', cta: 'Make your ads',
       per: 'for 3', compare: false, before: { url: P('shop-perfume-in-480.webp'), label: 'Product photo' }, variants: shopAds, priceKey: 'shop-ad-pack' },
-    { id: 'image-layers', tab: 'design', flow: 'Image to layers', title: 'One poster. Every layer.', line: 'Drop in a finished design and get every part back on its own layer: the dogs, the title, the logo. Download it as a layered PSD for Photoshop.',
-      per: '', compare: false, model: 'Seedream 5.0 Flash', before: { url: P('image-layers-paw-in-480.webp'), label: 'Your design' },
-      film: { url: P('image-layers-paw.mp4'), poster: P('image-layers-paw.webp'), label: 'The poster coming apart into its 13 layers' },
-      variants: [{ key: 'image-layers-paw', label: '13 layers', url: P('image-layers-paw.webp'), thumb: P('image-layers-paw-480.webp') }], priceKey: 'image-layers-paw' },
   ] as WorkItem[],
-  /** the button on every card: the workflow opened as Recreate, the example's photos and words already in */ cta: 'Make your own',
+  /** the short form of each panel's button (the workflow opened as Recreate, the example's photos and words already in) */ cta: 'Make your own',
+  /** the before / after corner chips on every stage */ beforeTag: 'Before', afterTag: 'After',
 };
 /** Where "Make your own" opens for a look: its featured Recreate (the workflow with the example's photos in), else the workflow. */
 export const workHref = (v: WorkVariant) => featuredRecreateHref(v.key) ?? IMAGE_PAGE;
@@ -109,8 +106,10 @@ export const EXPLORE_STILL = {
  *  timecode, the models and a progress line with a notch at the join. The take, its first 10 s, the extend's price and Recreate come from the
  *  featured entry (key 'h3-koi-take'); the first 10 s' own run (job 42ceb1af: MiniMax H3 text to video, 10 s, 768p, Comfy Cloud, 80 credits) is here. */
 export const EXPLORE_KOI = {
-  key: 'h3-koi-take', eyebrow: 'Made with MiniMax H3', title: 'Make your own cartoon.',
-  line: "A boy in the rain, a paper lantern, a wish. Write the scene the way you'd tell it, and watch it come alive, then let it keep going for as long as your story needs.",
+  /* headline options (2026-11-02, the section shows off Extend): "Keep the shot going." (picked: the Extend workflow's own tagline) ·
+     "Ten seconds was only the start." · "Your story, as long as it needs." */
+  key: 'h3-koi-take', eyebrow: 'Extend', title: 'Keep the shot going.',
+  line: "A boy in the rain, a paper lantern, a wish. Start with one 10 s clip, then Extend picks up from its last frame: the same scene, the same sound, ten more seconds.",
   /** the first 10 s: its model, where it ran and what it cost */ first: { model: 'MiniMax H3', place: 'Comfy Cloud', usd: 0.8 },
   /** the extend: where it ran (its model and price are the featured entry's) */ place: 'Comfy Cloud',
   /** a frame from the new 10 s (the first 10 s' frame is the featured entry's `before` poster) */ newFrame: P('h3-koi-take-new-480.webp'),
@@ -118,8 +117,9 @@ export const EXPLORE_KOI = {
    *  (the take's own sound fading under it), a 4 s end card ("What will you bring to life?" / Imagination is all you need) and the 3 s end mark; 30.13 s, -15 LUFS, poster = the featured one.
    *  The featured entry's `out` stays the plain 20 s take (Extend page, feeds, Recreate). The readout and line count this file; the
    *  "10 s + 10 s = one 20 s take" sum and the pills stay the generated take. */
-  ending: { url: P('h3-koi-take-ending.mp4'), sec: 30.13, label: 'Ending · made with Imagination · Free' },
-  /** Video with MiniMax H3 picked */ cta: { label: 'Start your scene', href: `${VIDEO_PAGE}?model=minimax-h3` },
+  ending: { url: P('h3-koi-take-ending.mp4'), sec: 30.13, label: 'End card · added in the edit' },
+  /** the timeline's segment labels: the generated take's two runs (their models from the data), then the end card added after (not a model) */ segments: { start: 'Start', extend: 'Extend' },
+  /** Video › Extend */ cta: { label: 'Extend a clip', href: videoWorkflowHref('extend') },
 };
 
 // ---------------------------------------------------------------- Made with Seedance 2.0 (Comfy Router)
@@ -151,7 +151,7 @@ const IF = (f: string) => `/examples/iiayn-films/${f}`;
  *  Now: 엄마 · MUM, Episode 1 (77 s with the new end card, 2026-10-28; Korean with English subtitles), 그래요? · IS THAT SO? and The Airport Run. The web copy is 1280×720 H.264 with sound; the poster is Mum's close-up; the
  *  loop is 6.5 s of it, silent (card hover). Four layouts for the user (2026-10-27, round 2): ?films=1a|1b|2a|2b. The shots' start frames and cut points are the film's own (research folder shots.json + README). */
 export const EXPLORE_FILMS = {
-  label: 'IIAYN FILMS', title: 'Made with Imagination.', line: 'Short films where every picture, voice and cut came out of this app. Press play, then make your own.',
+  label: 'IIAYN FILMS', title: 'Made here, start to finish.', line: 'Short films where every picture, voice and cut came out of this app. Press play, then make your own.',
   feature: {
     key: 'mum-ep1', ko: '엄마', en: 'MUM', episode: 'Episode 1', genre: 'Korean drama', sec: 78, lang: 'Korean · English subtitles',
     logline: 'A snowy bus stop at dawn. A daughter in a hurry, a mother with a lunchbox, and a note she finds on the bus.',
@@ -162,7 +162,7 @@ export const EXPLORE_FILMS = {
     credit: 'Pictures: GPT Image 2.5 Flare. Video: MiniMax H3, open weights, on Comfy Cloud. Camera move: LTX-2.5 22B, open weights, on Comfy Cloud. Subtitles: Whisper, open source. Directed by SyteSim × AI. Edit and sound: AI.',
     cost: 'About $4 of Comfy Cloud credit, unused takes included.',
     /** the run chip (shared/runChip.ts): the clips' model, the other models as "+N", the cost line's total */
-    chip: { model: 'MiniMax H3', also: ['GPT Image 2.5 Flare (stills) · Comfy Cloud', 'LTX-2.5 22B (camera move) · Comfy Cloud'], place: 'Comfy Cloud', price: chipUsd(4, true) } as RunChipData,
+    chip: { model: 'MiniMax H3', place: 'Comfy Cloud', price: chipUsd(4, true), steps: [{ role: 'Stills', model: 'GPT Image 2.5 Flare', place: 'Comfy Cloud', price: null }, { role: 'Clips', model: 'MiniMax H3', place: 'Comfy Cloud', price: null }, { role: 'Camera move', model: 'LTX-2.5 22B', place: 'Comfy Cloud', price: null }] } as RunChipData,
     shots: [
       { key: 'argument', name: 'The argument', what: 'Kimbap, a scarf, and a fight', t0: 5.6, sec: 15, model: 'MiniMax H3', start: IF('still-01.jpg'), frame: IF('shot-argument.jpg') },
       { key: 'bridge', name: 'The pull-back', what: 'From Mum’s face back to the two of them', t0: 20.6, sec: 2, model: 'LTX-2.5 22B', start: IF('still-bridge.jpg'), frame: IF('shot-bridge.jpg') },
@@ -206,7 +206,7 @@ export const EXPLORE_FILMS = {
     /** the IIAYN FILMS opener (open-A, 2026-10-28) ends here: previews start on the run */ identEnd: 5.58,
     credit: 'Video: MiniMax H3, open weights, on Comfy Cloud. Voice-over: ElevenLabs v3. Directed by SyteSim × AI. Edit and sound: AI.',
     /** job e28e7eba (H3, 4 s 480p, $0.12) + three ElevenLabs v3 takes (Rachel, Elli, Bella; $0.0218 each) */ cost: 'About $0.19 of Comfy Cloud credit: one 4 s clip and three voice takes.',
-    chip: { model: 'MiniMax H3', also: ['ElevenLabs v3 (voice-over, three takes) · Comfy Cloud · $0.07'], place: 'Comfy Cloud', price: chipUsd(0.12 + 3 * 0.0218) } as RunChipData,
+    chip: { model: 'MiniMax H3', place: 'Comfy Cloud', price: chipUsd(0.12 + 3 * 0.0218), steps: [{ role: 'Clip', model: 'MiniMax H3', place: 'Comfy Cloud', price: chipUsd(0.12) }, { role: 'Voice-over, three takes', model: 'ElevenLabs v3', place: 'Comfy Cloud', price: chipUsd(3 * 0.0218) }] } as RunChipData,
     shots: [] as FilmsShot[], endAt: 13.4,
     steps: [
       { name: 'Clip', what: 'One MiniMax H3 take: Mira looks round, runs down the corridor, arms out, and faceplants.' },
@@ -229,7 +229,7 @@ export const EXPLORE_FILMS = {
     /** the IIAYN FILMS opener (open-A) ends here: previews start in the lift */ identEnd: 5.58,
     credit: 'Video: MiniMax H3 on Comfy Cloud. Stills: GPT Image 2.5 Flare. Maman’s voice: Qwen3 TTS, free on your computer. Directed by SyteSim × AI. Edit and sound: AI.',
     cost: 'About $6.70 of Comfy Cloud credit, unused takes included.',
-    chip: { model: 'MiniMax H3', also: ['GPT Image 2.5 Flare (stills) · Comfy Cloud', `Qwen3 TTS (voice) · ${LOCAL_LABEL} · Free`], place: 'Comfy Cloud', price: chipUsd(6.7, true) } as RunChipData,
+    chip: { model: 'MiniMax H3', place: 'Comfy Cloud', price: chipUsd(6.7, true), steps: [{ role: 'Stills', model: 'GPT Image 2.5 Flare', place: 'Comfy Cloud', price: null }, { role: 'Clips', model: 'MiniMax H3', place: 'Comfy Cloud', price: null }, { role: 'Maman’s voice', model: 'Qwen3 TTS', place: LOCAL_LABEL, price: chipUsd(0) }] } as RunChipData,
     shots: [] as FilmsShot[], endAt: 30.58,
     steps: [
       { name: 'Stills', what: 'Start frames and inserts with GPT Image 2.5 Flare: the lift, the gate, the dark seventh floor.' },
@@ -270,7 +270,7 @@ export const EXPLORE_FILMS = {
     identEnd: 0, endAt: EXPLORE_SEEDANCE.strip.cut.sec,
     credit: 'Picture: Seedance 2.0 on Comfy Router. Voice: Qwen3 TTS, free. Music: YuE2, free. Poem: “Sea-Fever”, John Masefield (1902). Quote: Albert Einstein (1929).',
     cost: 'Original picture run: $3.25 on Comfy Router. Voice, music and finishing were added for free; no new generation for this move.',
-    chip: { ...chipOfFeatured(featuredByKey('seedance-lighthouse')!), also: [`Qwen3 TTS (voice) · ${LOCAL_LABEL} · Free`, `YuE2 (music) · ${LOCAL_LABEL} · Free`] } as RunChipData,
+    chip: (() => { const c = chipOfFeatured(featuredByKey('seedance-lighthouse')!); return { ...c, steps: [{ role: 'Picture', model: c.model, place: c.place, price: c.price }, { role: 'Voice', model: 'Qwen3 TTS', place: LOCAL_LABEL, price: chipUsd(0) }, { role: 'Music', model: 'YuE2', place: LOCAL_LABEL, price: chipUsd(0) }] }; })() as RunChipData,
     shots: [] as FilmsShot[],
     steps: [
       { name: 'Prompt', what: 'Nine words: “A lighthouse on a cliff at dusk, waves crashing”.' },
@@ -315,20 +315,20 @@ export const EXPLORE_HEADLINE = 'Bring your ideas to life';
 
 // ---------------------------------------------------------------- Chapter 1: swap a character (two models, one dance, on Comfy Cloud)
 /** Chapter 1 (2026-10-28, the user's pick "C · Dance-off"; before it: one H3 run in a clip → result wipe): the same pink-stage dance swapped twice,
- *  side by side in step, each a before / after slider over the original. H3 Character Swap (featured 'h3-char-swap', job 1f0cf6a2): the girl, from one photo.
+ *  shown three in a row in step with the original (2026-11-02, the user's pick A; the two before / after sliders before it). H3 Character Swap (featured 'h3-char-swap', job 1f0cf6a2): the girl, from one photo.
  *  Kling 3.0 Omni Edit (featured 'kling-dance-swap', Motion Control, job dc114104): both dancers, from two photos (the same girl's photo as H3's,
- *  plus his). Both play their Topaz upscale (`sharp`); the two source clips are the same 8 s take frame for frame, so all four clips play in step.
+ *  plus his). Both play their Topaz upscale (`sharp`); the two source clips are the same 8 s take frame for frame, so all three clips play in step.
  *  Models, places and prices on screen come from the featured entries. */
 export interface SwapRun { key: string; who: string; photos: string; cta: { label: string; href: string };
-  /** the original's poster at the same moment as this run's poster (default: the original's own), so the two sides match before the clips play and under reduced motion */ originalPoster?: string }
+  /** the result's frame at 5 s, the moment of the Omni Edit poster (default: its own poster), so the three stills side by side match */ poster5?: string }
 /** Object Swap with H3 Character Swap picked */ const SWAP_H3_CTA = { label: 'Swap a character', href: `${videoWorkflowHref('object-swap')}&model=minimax-h3-character-swap` };
 export const EXPLORE_SWAP = {
   key: 'h3-char-swap', eyebrow: 'Chapter 1 · Swap a character', title: ['Same dance.', 'Two new casts.'],
   line: 'One clip went in. One model swapped her, the other swapped them both. Not a step out of time.',
-  /** the original: the clip both runs started from (H3’s copy of it; Omni Edit’s is the same take), left of each slider’s line */ original: { label: 'Original', url: P('h3-char-swap-in.mp4'), poster: P('h3-char-swap-in.webp') },
+  /** the original: the clip both runs started from (H3’s copy of it; Omni Edit’s is the same take), first of the three */ original: { label: 'Original', url: P('h3-char-swap-in.mp4'), poster: P('h3-char-swap-in.webp'), /** its frame at 5 s (see SwapRun.poster5) */ poster5: P('h3-char-swap-in-5s.webp'), sub: 'The clip that went in' },
   runs: [
-    { key: 'h3-char-swap', who: 'She changes', photos: 'One photo', cta: SWAP_H3_CTA },
-    { key: 'kling-dance-swap', who: 'They both change', photos: 'Two photos', originalPoster: P('h3-char-swap-in-5s.webp'), cta: { label: 'Swap the whole cast', href: `${videoWorkflowHref('motion-control')}&model=kling-v3-omni-edit` } },
+    { key: 'h3-char-swap', who: 'She changes', photos: 'One photo', poster5: P('h3-char-swap-5s.webp'), cta: SWAP_H3_CTA },
+    { key: 'kling-dance-swap', who: 'They both change', photos: 'Two photos', cta: { label: 'Swap the whole cast', href: `${videoWorkflowHref('motion-control')}&model=kling-v3-omni-edit` } },
   ] as SwapRun[],
   cta: SWAP_H3_CTA,
 };
@@ -356,7 +356,7 @@ export const EXPLORE_LAYERS = {
 export const EXPLORE_BOARD = {
   eyebrow: 'Canvas', title: 'Your idea. Your agent. One canvas.', line: 'Describe what you want to make. Your agent builds the workflow—you review, choose and give the go-ahead.',
   /** User-selected Option A v3 replacement, 2026-10-30: product-shots Canvas workflow.
-   * The encoded 1440×900 picture is unchanged; only the soundtrack differs, so the poster stays.
+   * The encoded 1440×900 picture is unchanged; only the soundtrack differs. The poster is its frame at 24 s (the finished board, 2026-11-02).
    * Supplied media is copied without retiming or re-encoding. Voice-model provenance is not encoded in the file.
    * Recorded model labels and prices describe the walkthrough, not new runs started by playback. */
   recording: {
@@ -424,6 +424,49 @@ export const EXPLORE_DANCE = {
   cta: { label: 'Make music', href: audioRoute('music') },
 };
 
+// ---------------------------------------------------------------- Our song, and SyteSim dancing to it (2026-11-02)
+/** "Dream It Up": a song made in Audio › Music with YuE2 on the maintainer's own computer through local ComfyUI ($0; seed 12310, our own lyrics,
+ *  a 72 min render). The file is the take's first 55.7 s, ending on its own short break with a 1.8 s fade (the raw take stops mid-bar at 68 s),
+ *  loudness-normalised, 128 kbps, tags stripped. SyteSim's five dances (5.17 s each, green keyed out, each starting and ending on the same
+ *  standing pose, so a cut on the loop boundary is seamless) ship at 360×648 with their alpha twice: VP9 WebM for Chrome and Firefox, HEVC with
+ *  alpha for Safari; plus a still (the standing pose) for reduced motion and before he moves. Order: the happy bounce first, the one where he
+ *  turns his back never first. */
+const SONG_STYLE = 'English, hip-hop electro-pop, 122 BPM, D major, punchy 808s, bouncy hip-hop groove, shiny electro-pop synths, claps, energetic chant vocal, group chant, upbeat, fun, playful';
+/** One step of the song's making-of: a real run (its job, model, place and billed price) or a plain manual step (`manual`: no model, no app). */
+export interface SongMakingStep {
+  role: string; /** the app page it ran on ("Create Image") */ tool?: string; model?: string; place: string;
+  /** USD for one run (0 = free); `est`: only Comfy's GPU-time estimate was recorded; `runs`: how many runs at that price */ usd: number; est?: boolean; runs?: number;
+  /** the job ids (read-only look-ups, for tests and credits) */ jobs: string[]; /** a few plain words under the line */ note?: string; manual?: boolean;
+  /** a still (WebP, ≤ 640 px) and, when it moves, a short looping clip (≤ 1 MB, no sound); `keyed`: the keyed dance clips (webm / HEVC with alpha) */
+  img?: string; clip?: string; keyed?: boolean; w?: number; h?: number;
+}
+/** "See how we made it" (2026-11-02): SyteSim and his song, step by step, from the real runs (prices as billed; the dances as Comfy's GPU-time
+ *  estimate). It starts at the finished design: the reference picture behind step 1 is never shown. Nothing here was generated for Explore. */
+const SONG_MAKING: SongMakingStep[] = [
+  { role: 'Design the character', tool: 'Create Image', model: 'GPT Image 2.5 Flare', place: 'Comfy Cloud', usd: 0.0214, jobs: ['f4a2e4f5'], img: P('song-making-design.webp'), w: 480, h: 640 },
+  { role: 'Character sheet', tool: 'Character Sheet', model: 'GPT Image 2.5 Flare', place: 'Comfy Cloud', usd: 0.0298, jobs: ['c93e3bfb'], img: P('song-making-sheet.webp'), w: 640, h: 360 },
+  { role: 'Pose on a green screen', tool: 'Create Image', model: 'GPT Image 2.5 Flare', place: 'Comfy Cloud', usd: 0.0279, jobs: ['f29b13cb'], img: P('song-making-green.webp'), w: 360, h: 640 },
+  { role: 'Five dances', model: 'Pika H3 Flex', place: 'Comfy Cloud', usd: 0.1, est: true, runs: 5, jobs: ['010377b4', 'ed10d1bd', 'c6525d78', '51c3c7ae', 'a29b84b2'],
+    img: P('song-making-dances.webp'), clip: P('song-making-dances.mp4'), w: 270, h: 486 },
+  { role: 'Green removed', place: 'Done in the edit', usd: 0, manual: true, jobs: [], note: 'Not an app step: we keyed the green out in a video editor.', keyed: true },
+  { role: 'The song', tool: 'Audio › Music', model: 'YuE2', place: LOCAL_LABEL, usd: 0, jobs: [], note: 'Our own lyrics' },
+];
+/** The whole chain's price: each run as billed, ≈ because the dances are an estimate. */
+const songMakingUsd = SONG_MAKING.reduce((n, s) => n + s.usd * (s.runs ?? 1), 0);
+export const EXPLORE_SONG = {
+  eyebrow: 'Music',
+  title: ['Write a song.', 'Watch it dance.'],
+  line: 'We wrote the words, picked a style and pressed go. Audio made the whole song, free on our own computer. Press play and SyteSim dances along.',
+  song: { url: '/showcase/song-imagination.mp3', title: 'Dream It Up', about: 'Electro-pop · 122 BPM', sec: 55.7, model: 'YuE2', modelKey: 'yue2',
+    style: SONG_STYLE,
+    lyric: 'Imagination is all you need. Dream it up and press go.' },
+  dancer: { still: '/showcase/mascot-dance-still.webp', width: 360, height: 648, name: 'SyteSim', /** each dance plays this many times, then the next one */ repeats: 2,
+    dances: ['bounce', 'groove', 'moonwalk', 'turn', 'pika'].map((id) => ({ id, webm: `/showcase/mascot-dance-${id}.webm`, mov: `/showcase/mascot-dance-${id}.mov` })) },
+  making: { label: 'How we made it', steps: SONG_MAKING, usd: songMakingUsd, total: chipUsd(songMakingUsd, SONG_MAKING.some((s) => s.est)) },
+  /** Audio › Music with YuE2 and this song's style in the box (the lyrics are yours to write) */
+  cta: { label: 'Make your own', href: `${audioRoute('music')}&${new URLSearchParams({ model: 'yue2', prompt: SONG_STYLE })}` },
+};
+
 // ---------------------------------------------------------------- One character. Every angle. (GPT Image 2.5 Flare on Comfy Router)
 /** A sheet's panels in the image's own pixels: [label, x, y, w, h] (measured from each sheet; the highlight steps across them). */
 export type SheetPanel = [string, number, number, number, number];
@@ -436,7 +479,7 @@ export interface SheetCast {
 /** "One character. Every angle." (2026-10-27, the approved mockup v2): the whole sheet, never cropped, in a letterbox frame; a highlight steps across
  *  its real panels (Whole sheet first), a cast switch, Recreate (Create Image with the prompt and model) and Pause. Mossbun also spins in 3D. */
 export const EXPLORE_SHEETS = {
-  eyebrow: 'Made with GPT Image 2.5 Flare', title: 'One character. Every angle.',
+  /* the model is named once, in the run line under the sheet (2026-11-02) */ eyebrow: 'Character sheets', title: 'One character. Every angle.',
   line: 'Describe someone once and get the whole model sheet in one image: every view, the faces, the colours. The same character in every panel, ready to hand to Video as a reference.',
   model: 'GPT Image 2.5 Flare', via: 'Comfy Cloud', /** ms per panel */ dwell: 1800,
   cast: [
@@ -457,7 +500,7 @@ export const EXPLORE_SHEETS = {
 };
 
 // ---------------------------------------------------------------- Mockup to film (Direct a Shot made real; replaces the Worlds tiles)
-export interface FilmBeat { n: 1 | 2 | 3; step: string; model: string; place: string; /** USD, 0 = free */ usd: number; note: string; /** the price's detail (a tooltip) */ tip: string; /** the run */ jobId: string }
+export interface FilmBeat { n: 1 | 2 | 3; step: string; model: string; place: string; /** USD, 0 = free */ usd: number; /** only an estimate was recorded ("≈") */ est?: boolean; note: string; /** the price's detail (a tooltip) */ tip: string; /** the run */ jobId: string }
 /** "Mockup to film" (2026-10-27, the approved mockup, option A "synced wipe"): the mockup clip, the line sweeps it into the painted first frame,
  *  then the film and the mockup play in step under the line (shared HeroReel, reveal with a before clip). Its clips are the featured entry's
  *  (shared/featured.ts 'ltx-mockup-film', trimmed to the first shot, looping); the three passes, their models and real prices are here. */
@@ -467,12 +510,12 @@ export const EXPLORE_FILM = {
   beats: [
     { n: 1, step: 'Mockup', model: 'Direct a Shot', place: 'drawn in your browser', usd: 0, note: '', tip: 'Recorded in your browser, nothing billed', jobId: 'a1a50672' },
     { n: 2, step: 'First frame', model: 'GPT Image 2.5 Flare', place: 'Comfy Cloud', usd: 0.0238, note: '', tip: 'Billed $0.024 (quoted $0.04)', jobId: '645de70d' },
-    { n: 3, step: 'Film', model: 'LTX-2.5 22B + Layout to Render', place: 'Comfy Cloud', usd: 0.28, note: '8 s run · first shot shown', tip: 'Estimate: 60 Comfy credits for the 8 s run. The first shot (4 s, with sound) plays here.', jobId: '1a1a33c6' },
+    { n: 3, step: 'Film', model: 'LTX-2.5 22B + Layout to Render', place: 'Comfy Cloud', usd: 0.28, est: true, note: '8 s run · first shot shown', tip: 'Estimate: 60 Comfy credits for the 8 s run. The first shot (4 s, with sound) plays here.', jobId: '1a1a33c6' },
   ] as FilmBeat[],
   /** the painted first frame (job 645de70d, 1536×864, shown at 1280×720) */ first: { url: P('ltx-mockup-film-first.webp'), thumb: P('ltx-mockup-film-first-480.webp') },
   /** where the line rests while the film plays (the mockup's share) */ parkAt: 0.42,
   /** the wipe's labels */ labels: { mockup: 'Mockup', first: 'First frame', film: 'Film' },
-  credit: 'Mockup: Direct a Shot, in your browser. First frame: GPT Image 2.5 Flare edit, Comfy Cloud. Film: LTX-2.5 22B with Lightricks’ Layout to Render LoRA, Comfy Cloud.',
+  /** the one credit the strip doesn't carry: whose LoRA the film used */ credit: 'Layout to Render is a LoRA for LTX-2.5 by Lightricks.',
   /** Direct a Shot on the same Open city preset */ cta: { label: 'Open Direct a Shot', href: `${threeDRoute('plan-a-shot')}&preset=open-city` },
 };
 
@@ -524,7 +567,7 @@ export const EXPLORE_SCRIPT = {
   credit: 'One prompt, written as a timed shot list with the dialogue in Korean. MiniMax H3 (Hailuo) text to video on Comfy Cloud: 768p, 15 s, voices and sound made with the picture. English subtitles added here.',
 };
 
-// ---------------------------------------------------------------- Your character, brought to life. (Mossbun: sheet → 3D → city → film)
+// ---------------------------------------------------------------- Create your character. Bring it to life. (Mossbun: design it → spin it in 3D → place it → film it)
 const TRIPO = { model: MOSSBUN_3D_RUN.model, place: MOSSBUN_3D_RUN.place, usd: MOSSBUN_3D_RUN.costUsd } as const;
 const IMAGE_TO_3D = `${threeDRoute('image-to-3d')}&model=cloud-tripo-31`;
 /** One step card under the film: its name, its picture and the run that made it (job id; shared/featured.ts runByJob gives the real model and
@@ -534,16 +577,18 @@ export interface X3dStep { step: string; job: string; thumb: string; alt: string
 const E3 = (f: string) => `/examples/showcase-3d/${f}`;
 /** The 3D section (rebuilt 2026-10-31): one headline, the finished film (featured 'mossbun-golden-hour'), then the four steps behind it and one
  *  bottom row (the whole chain's price, Recreate, Make your own, Credits). Free media only: Mossbun's GLB (Tripo 3.1, job 092abb03) and stills. */
+/** Copy as what you can do, step by step (user, 2026-11-02): the steps are actions (Design it → Spin it in 3D → Place it → Film it); the runs,
+ *  models and prices behind each step are unchanged. */
 export const EXPLORE_3D = {
-  key: 'mossbun-golden-hour', title: ['Your character,', 'brought to life.'],
-  line: 'Draw a friend. Watch it hop into 3D, explore a city and star in its very own film.',
+  key: 'mossbun-golden-hour', title: ['Create your character.', 'Bring it to life.'],
+  line: 'Dream up a friend once. Get its character sheet, spin it in 3D, drop it into a city street, then film its first scene.',
   steps: [
-    { step: 'Character sheet', job: '9564386e', thumb: P('char-mossbun-480.webp'), alt: 'Mossbun’s character sheet: four views and five faces' },
-    { step: '3D model', job: '092abb03', thumb: P('x3d-mossbun.webp'), spin: P('char-mossbun-3d.glb'), alt: 'Mossbun as a 3D model, turning slowly' },
+    { step: 'Design it', job: '9564386e', thumb: P('char-mossbun-480.webp'), alt: 'Mossbun’s character sheet: four views and five faces' },
+    { step: 'Spin it in 3D', job: '092abb03', thumb: P('x3d-mossbun.webp'), spin: P('char-mossbun-3d.glb'), alt: 'Mossbun as a 3D model, turning slowly' },
     /* the film starts from this frame: the golden-hour edit (job b688b9c3), featured 'mossbun-golden-hour' `before` (its 480 px poster) */
-    { step: 'City frame', job: 'b688b9c3', thumb: E3('mossbun-city-painted-480.webp'), before: E3('mossbun-city-mockup-480.webp'), alt: 'Mossbun on a palm-lined avenue at golden hour: the frame the film starts from',
+    { step: 'Place it', job: 'b688b9c3', thumb: E3('mossbun-city-painted-480.webp'), before: E3('mossbun-city-mockup-480.webp'), alt: 'Mossbun on a palm-lined avenue at golden hour: the frame the film starts from',
       tools: [{ job: '13aca5cc', role: 'staged in the 3D city', tool: 'Direct a Shot' }, { job: 'ea410812', role: 'first-frame paint' }] },
-    { step: 'Film · 6 s with sound', job: 'a11a0c78', thumb: E3('mossbun-golden-hour-480.webp'), alt: 'Mossbun holding up a lantern, a frame from the film', caption: '…and we gave her a lantern.' },
+    { step: 'Film it', job: 'a11a0c78', thumb: E3('mossbun-golden-hour-480.webp'), alt: 'Mossbun holding up a lantern, a frame from the film', caption: '…and we gave her a lantern.' },
   ] as X3dStep[],
   make: { label: 'Make your own', href: IMAGE_TO_3D }, recreate: 'Recreate this shot',
   /** the credits (the Credits tip on the bottom row): the CC0 kits the city is built from, and Mossbun */
@@ -556,7 +601,7 @@ export const EXPLORE_SHOWCASE_LINKS = (): string[] => [
   featuredRecreateHref('trend-mic') ?? '', featuredRecreateHref('trend-dance') ?? '',
   featuredRecreateHref(EXPLORE_HERO.key) ?? '', featuredRecreateHref(EXPLORE_STILL.take.key) ?? '', featuredRecreateHref(EXPLORE_KOI.key) ?? '', EXPLORE_KOI.cta.href, featuredRecreateHref(EXPLORE_SEEDANCE.strip.key) ?? '', EXPLORE_SEEDANCE.make.href, EXPLORE_FILMS.editor.href, EXPLORE_FILMS.make.href, EXPLORE_FILMS.yours.href, EXPLORE_SWAP.cta.href, featuredRecreateHref(EXPLORE_SWAP.key) ?? '', EXPLORE_LAYERS.cta.href, featuredRecreateHref(EXPLORE_LAYERS.key) ?? '', EXPLORE_BOARD.cta.href, EXPLORE_LOOKS.cta.href, ...EXPLORE_YOUR_TURN.tabs.map((t) => t.href), yourTurnHref(''),
   ...EXPLORE_SHEETS.cast.map((c) => featuredRecreateHref(c.key) ?? ''), featuredRecreateHref(EXPLORE_FILM.key) ?? '', EXPLORE_FILM.cta.href, featuredRecreateHref(EXPLORE_SCRIPT.key) ?? '',
-  EXPLORE_3D.make.href, featuredRecreateHref(EXPLORE_3D.key) ?? '',
+  EXPLORE_3D.make.href, featuredRecreateHref(EXPLORE_3D.key) ?? '', EXPLORE_SONG.cta.href,
   EXPLORE_VFX.cta.href, ...EXPLORE_VFX.effects.map((v) => vfxTile(v)?.href ?? ''), featuredRecreateHref(EXPLORE_VFX.layout.key) ?? '',
 ];
 

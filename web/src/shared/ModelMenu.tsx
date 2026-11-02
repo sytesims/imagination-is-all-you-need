@@ -40,7 +40,7 @@ import './modelMenu.css';
  *    model that can't run as set keeps the mark but loses the orange (grey bar) and shows its reason.
  *  - No duplicates: a model shown in Featured or For this workflow isn't repeated as the same plain row in All models (a family row with
  *    several versions still lists it).
- *  - Footer (the only one): Orbit mark · "Runs on <place>" (or why the pick can't run) · the live balance there ("$8.50 left on Comfy";
+ *  - Footer (the only one): Orbit mark · "<picked model> runs on <place>" (or why the pick can't run) · the live balance there ("$8.50 left on Comfy";
  *    its Comfy credits and plan on hover; GET /api/accounts, hidden when unknown) · Change.
  *  - Desktop: hovering or focusing a row opens the preview card beside the menu (shared/ModelPreviewCard.tsx). Phones: the row's "i".
  *  - Keys: up / down move (Popover), Enter picks (or opens a family), right / left open and close a family, Esc closes, / focuses the search.
@@ -258,8 +258,10 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
   const isDef = (m: ToolModel) => !!defaultId && m.engines.includes(defaultId);
   const toast = useToast(); const { favourite, recommended } = useDefaultModel(toolId);
   const isFav = (m: ToolModel) => !!favourite && m.engines.includes(favourite);
+  /** your ★ default counts only where this menu lists it: a ★ Music model made Sound effects' Default read "Recommended" with no "Your default" above it */
+  const favHere = ms.some(isFav);
   /** the recommended row: the page's workflow default, else the tool's recommended default (what it starts on without your pick) */
-  const isRec = (m: ToolModel) => (defaultId ? isDef(m) : !!recommended && m.engines.includes(recommended) && !!favourite);
+  const isRec = (m: ToolModel) => (defaultId ? isDef(m) : !!recommended && m.engines.includes(recommended) && favHere);
   const makeDefault = (m: ToolModel, id: string) => { const on = isFav(m);
     void setDefaultModel(toolId, on ? null : id).then(() => toast(on ? 'Back to the recommended default' : `${shownName(m)} is now your default here`, 'success'))
       .catch((e: any) => toast(`Couldn’t save your default: ${e?.message || 'try again'}`, 'error')); };
@@ -336,12 +338,12 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
       <MakerTile className="orb-tile" maker={m.maker} makerName={m.makerName} fallback={m.family || m.name} medium={shownMedium(m)} title={false} />
       <span className="orb-t">
         <span className="orb-n"><span className="orb-name">{shownName(m)}</span>{isFav(m) ? <em className="orb-tag orb-tag-y" data-testid="mp-your-default" title="You made this the default here. The filled star resets it.">Your default</em>
-          : isRec(m) || isDef(m) ? <em className={`orb-tag ${favourite ? 'orb-tag-rec' : 'orb-tag-d'}`} data-testid="mp-default" title={defaultLine(defaultWhy, defaultReason) ?? undefined}>{favourite ? 'Recommended' : 'Default'}</em> : null}{m.isNew && !retiring && <em className="orb-tag orb-tag-n" data-testid="mp-new">New</em>}{retiring && <em className="orb-tag orb-tag-r" data-testid="lifecycle-pill">Retiring</em>}{!retiring && items.some(x => m.engines.includes(x.id) && x.p?.experimental === true) && <em className="orb-tag orb-tag-r" data-testid="mp-experimental" title="Works on some clips, not all yet">Experimental</em>}
+          : isRec(m) || isDef(m) ? <em className={`orb-tag ${favHere ? 'orb-tag-rec' : 'orb-tag-d'}`} data-testid="mp-default" title={defaultLine(defaultWhy, defaultReason) ?? undefined}>{favHere ? 'Recommended' : 'Default'}</em> : null}{m.isNew && !retiring && <em className="orb-tag orb-tag-n" data-testid="mp-new">New</em>}{retiring && <em className="orb-tag orb-tag-r" data-testid="lifecycle-pill">Retiring</em>}{!retiring && items.some(x => m.engines.includes(x.id) && x.p?.experimental === true) && <em className="orb-tag orb-tag-r" data-testid="mp-experimental" title="Works on some clips, not all yet">Experimental</em>}
           {!off && sectionOf(m) !== 'soon' && !it?.last && <button type="button" className={`orb-star${isFav(m) ? ' on' : ''}`} data-testid="mp-make-default" aria-pressed={isFav(m)}
         aria-label={isFav(m) ? `${shownName(m)} is your default. Reset to recommended` : `Make ${shownName(m)} your default`} title={isFav(m) ? 'Your default · click to reset to recommended' : 'Make default'}
         onClick={e => { e.stopPropagation(); makeDefault(m, id); }} onKeyDown={e => e.stopPropagation()}><StarIcon size={14} /></button>}</span>
         <span className="orb-d" data-testid="mp-desc">{m.bestFor ?? sentence1(m.blurb)}</span>
-        {rf ? <RefNote f={rf} /> : <CapLine m={m} it={it} rate={!off ? rateOf?.(m) : null} />}
+        {rf ? <RefNote f={rf} /> : <CapLine m={m} it={it} rate={!off && !((liveQ(m) as any)?.failed && (tab !== 'all' || m.rowStatus?.kind === 'ready')) ? rateOf?.(m) : null /* never a rate beside "Price unknown" (rightOf's RowWait) */} />}
       </span>
       {rightOf(m).node}
       {on && <span className="orb-pick" aria-hidden data-testid="mp-picked"><LogoMark size={16} /></span>}
@@ -442,7 +444,7 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
     </div>
     {supports}
     {curModel && t && <div className="orb-foot" data-testid="mp-foot"><HwUnknownLine fits={[localFitOf(curItem?.p)]} className="mp-hw" short />
-      <div className="orb-foot-row"><span className="orb-runs" title={curBlk ? `${shownName(curModel)} can’t run as set: ${curBlk.full}` : t.tip}><LogoMark size={16} />Runs on <b>{t.main.replace(/^Your GPU\b/, LOCAL_LABEL)}</b>{curBlk ? <small className="orb-why" data-testid="mp-foot-why">{` · ${curBlk.short}`}</small> : t.sub ? <small>{` · ${t.sub}`}</small> : null}</span>
+      <div className="orb-foot-row"><span className="orb-runs" title={curBlk ? `${shownName(curModel)} can’t run as set: ${curBlk.full}` : t.tip}><LogoMark size={16} /><span className="orb-runs-t" /* names the picked model: a hovered row's card or a search can show another model above it */><b data-testid="mp-foot-model">{shownName(curModel)}</b> runs on <b>{t.main.replace(/^Your GPU\b/, LOCAL_LABEL)}</b>{curBlk ? <small className="orb-why" data-testid="mp-foot-why">{` · ${curBlk.short}`}</small> : t.sub ? <small>{` · ${t.sub}`}</small> : null}</span></span>
         <span className="orb-bal">{bal && <span data-testid="mp-balance" data-sample={bal.sample || undefined} title={bal.title}><span className="orb-mono">{fmtUsd(bal.usd)}</span>{bal.text.slice(fmtUsd(bal.usd).length)}{bal.sample ? <small> · sample</small> : null}<span className="orb-dot"> · </span></span>}
           <button ref={roRef} type="button" className="orb-chg" aria-expanded={roOpen} data-testid="mp-route-toggle" onClick={() => setRoOpen(o => !o)}>Change</button></span></div>
       <RunOnMenu open={roOpen} anchor={roRef} placement="top" onClose={() => setRoOpen(false)} toolId={toolId} model={curModel} engine={value} quote={quote} /></div>}

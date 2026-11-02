@@ -58,6 +58,8 @@ export default function App() {
   const tool0 = tools.find(t => t.route === path) ?? tools.find(t => t.id === toolId) ?? (feat ? tools.find(t => t.id === feat.toolId) : undefined);
   const tool = tool0 && feat && feat.toolId === tool0.id && tool0.route !== feat.route ? { ...tool0, name: feat.name, featureId: feat.id } as ToolInfo : tool0;
   useEffect(() => { if (tool0 && toolId === tool0.id && tool0.route && tool0.route !== path && tool0.route.startsWith('/tools/')) navigate(withSearch(tool0.route, location.search), { replace: true }); }, [tool0?.id, path]);
+  /* a workflow placed in the Image tab (one you added, an add-on): its old /tools/<id> page → the Image tab with it picked (the tool list just arrived) */
+  useEffect(() => { if (tool0?.plugin?.tab === 'image' && path.startsWith('/tools/')) navigate(withSearch(`/image?workflow=${encodeURIComponent(tool0.id)}`, location.search), { replace: true }); }, [tool0?.id, path]);
   const Comp = tool ? (toolScreens[tool.id] ?? toolScreens[tool.ui]) : undefined;
   /* Link prefetch (routeChunks): /tools/<x> → the screen chunk it needs, by the same lookup as above */
   useEffect(() => { setToolScreenResolver((p) => { const id = p.match(/^\/tools\/([^/?#]+)/)?.[1] ?? pageTool(p); const f = featureForPath(p);

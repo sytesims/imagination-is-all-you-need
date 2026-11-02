@@ -57,6 +57,10 @@ try {
   // ---- plain Create: text, Enhance on, a fixed seed; and a photo edit ----
   const t = await same('Create, Enhance on', 'create-image', { types: '["generate"]', prompt: 'a red fox in snow', enhance: '1', seed: '1234', n: '2' });
   assert.equal(t.settings.seed, 1234); assert.equal(t.settings.n, 2);
+  /* install test 2026-11-02: the job says whether the enhancer's prompt ran (promptEnhanced); `enhanced` stays the Assets group (upscale / edit) */
+  { const on = await get(`/api/jobs/${await job('create-image', { types: '["generate"]', prompt: 'a red fox in snow', enhance: '1' })}`); const off = await get(`/api/jobs/${await job('create-image', { types: '["generate"]', prompt: 'a red fox in snow', enhance: '0' })}`);
+    assert.equal(on.promptEnhanced, true, 'Enhance on: promptEnhanced'); assert.ok(on.input.enhancedPrompt); assert.equal(off.promptEnhanced, false, 'Enhance off: not promptEnhanced'); assert.equal(on.enhanced, false, 'a plain Create is not in Assets → Enhanced');
+    ok('Create: promptEnhanced follows the enhancer'); }
   await same('Create, photo edit', 'create-image', { types: '["edit"]', prompt: 'make @image1 look like winter', provider: 'comfy-klein4b' }, true);
   await same('Create, empty-ish prompt', 'create-image', { types: '["generate"]', prompt: 'x' });
 
@@ -133,6 +137,6 @@ try {
 
   // ---- nothing ran for the peeks: only the submits above made jobs ----
   { const n = (await get('/api/jobs?cursor=')).total - jobsBefore; const vpN = ((await get('/api/video-presets')).items ?? []).some((x: any) => x.kind === 'style') ? 5 : 4;
-    assert.equal(n, 11 + vpN + audioJobs, `only the ${11 + vpN + audioJobs} submits made jobs (got ${n})`); ok('peeks create no job'); }
+    assert.equal(n, 13 + vpN + audioJobs, `only the ${13 + vpN + audioJobs} submits made jobs (got ${n})`); ok('peeks create no job'); }
   console.log('PASS prompt-peek');
 } finally { try { process.kill(-srv.pid!); } catch { /* gone */ } }

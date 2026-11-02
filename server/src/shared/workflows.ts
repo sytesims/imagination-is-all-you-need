@@ -19,10 +19,10 @@ export type WorkflowCategory = 'edit' | 'people' | 'product' | 'camera';
 /** 'platforms' = Ad Pack's placement (values from shared/adPack.ts AD_PLACEMENTS: grouped by platform, one icon + short word each);
  *  'corner' = a logo corner picked on a tiny frame (tl / tr / bl / br). */
 export type ControlKind = 'select' | 'tiles' | 'grid' | 'pad' | 'segmented' | 'slider' | 'toggle' | 'swatches' | 'text' | 'chips-multi' | 'sphere' | 'platforms' | 'corner';
-export interface WorkflowSource { kind: 'ours' | 'official' | 'community'; author: string; url: string | null; licence: string; file: string | null; /** one line, our words */ note: string }
+export interface WorkflowSource { /** 'yours' / 'addon': a workflow you added, or an add-on folder (shared/pluginPlacement.ts pluginImageRecipe) */ kind: 'ours' | 'official' | 'community' | 'yours' | 'addon'; author: string; url: string | null; licence: string; file: string | null; /** one line, our words */ note: string }
 export interface WorkflowSlot { name: string; label: string; required: boolean; /** the form field the file goes out as (the app maps it on: Face Swap `face` → refs[0]) */ sendsAs: string; order: number; /** empty-slot text */ hint: string; /** Generate's text while it's empty */ missing: string;
   /** several files, one run each (Material Swap's swatches: up to shared/swatchBatch SWATCH_MAX), shown as one set */ many?: number }
-export interface WorkflowControl { field: string; label: string; kind: ControlKind; group: string; optional?: boolean;
+export interface WorkflowControl { field: string; label: string; kind: ControlKind; group: string; optional?: boolean; /** a slider's unit on the chip (default '%') */ unit?: string;
   /** kind 'text': the field's length cap and example words (Material Swap), filled from the tool */ maxLength?: number; placeholder?: string;
   /** filled from the tool (Relight looks also carry a swatch, the controls they set and a credit): */ options?: { value: string; label: string; /** the chip's own words for this option ('' = left off the chip) */ chip?: string; swatch?: string; sets?: Record<string, string>; credit?: string; /** Character Sheet layouts: the tile's small line and the shape it asks for */ description?: string; aspect?: string }[]; default?: string; min?: number; max?: number; step?: number; pattern?: string; help?: string }
 export interface WorkflowGroup { id: string; label: string; icon: string; /** fields whose values make the chip's short summary, in order */ summary: string[];

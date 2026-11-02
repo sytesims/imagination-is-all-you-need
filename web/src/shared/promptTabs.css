@@ -1,9 +1,18 @@
 /* The tabbed prompt (shared/PromptTabs.tsx). The field itself is the Image prompt (.ic-prompt.prompt-field: createBar.css sizes it inside
    .pt-ed, usePromptGrow sets its height); this file only adds the tab row, the highlight layer and the chips + hint row. */
 html body .ic.ic2 .ic-dock .ic-main>.ic-prow>.pt-box{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:2px;align-self:stretch;justify-content:flex-start}
-.pt-head{display:flex;align-items:center;gap:4px;min-height:28px;min-width:0}
+.pt-head{display:flex;align-items:center;gap:8px;min-height:24px;min-width:0}
+/* one bar on every tab (2026-11-02): the tab row (24px) + a one-line field (20px + 2px margins) = Image's 48px prompt line, so the bar never jumps */
+html body .ic.ic2 .ic-dock .ic-main>.ic-prow>.pt-box:has(>.pt-head){gap:0}
+html body .ic.ic2 .ic-dock.ic-dock .ic-main>.ic-prow>.pt-box>.pt-head~.pt-panel .pt-ed>.ic-prompt.prompt-field{min-height:20px!important;margin:2px 0!important}
+.pt-head>.pt-tabs,.pt-head>.pt-one,.pt-head>.pt-aside{flex:none}
+.pt-head>.pt-help{flex:1 1 0;padding-top:0}
+@media (max-width:700px){.pt-head{flex-wrap:wrap;row-gap:4px}.pt-head>.pt-help{order:3;flex-basis:100%}} /* a phone: the chips get their own row */
+.pt-head .pt-chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain}
+.pt-head .pt-chips::-webkit-scrollbar{display:none}
+.pt-head .pt-chip{height:24px;flex:none}
 .pt-tabs{display:flex;align-items:center;gap:4px;min-width:0}
-.pt-tab{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:8px;font:600 13px/16px var(--font-ui,Inter,system-ui,sans-serif);color:var(--text-2,#898a8b);cursor:pointer;white-space:nowrap}
+.pt-tab{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:8px;font:600 13px/16px var(--font-ui,Inter,system-ui,sans-serif);color:var(--text-2,#898a8b);cursor:pointer;white-space:nowrap}
 .pt-tab svg{flex:none;width:14px;height:14px}
 .pt-tab:hover{color:var(--text-1,#f7f7f8)}
 .pt-tab{position:relative}
@@ -42,7 +51,7 @@ html body .ic.ic2 .ic-dock.ic-dock .ic-main>.ic-prow .pt-ed.pt-hl-on>.ic-prompt.
 .pt-hint.warn{color:var(--warning,#e8b44a)}
 
 /* the tab row's switch (Instrumental) */
-.pt-sw{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:8px;height:28px;padding:0 4px 0 8px;border-radius:8px;font:600 12px/16px var(--font-ui,Inter,system-ui,sans-serif);color:var(--text-2,#898a8b);cursor:pointer}
+.pt-sw{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:8px;height:24px;padding:0 4px 0 8px;border-radius:8px;font:600 12px/16px var(--font-ui,Inter,system-ui,sans-serif);color:var(--text-2,#898a8b);cursor:pointer}
 .pt-sw:hover{color:var(--text-1,#f7f7f8)}
 .pt-sw:focus-visible{box-shadow:var(--focus,0 0 0 2px rgba(255,122,26,.6))}
 .pt-sw i{position:relative;width:30px;height:18px;border-radius:99px;background:rgba(255,255,255,.14);transition:background .15s}

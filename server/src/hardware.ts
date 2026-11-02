@@ -21,6 +21,8 @@ import { env } from './env.js';
 import { getKv, setKv } from './db.js';
 import { classifyMachine, cleanGpuName, type MachineProfile } from './hardware/machineProfile.js';
 import { comfyInstallOf, type ComfyKind } from './hardware/comfyInstall.js';
+import { modelsTarget } from './hardware/modelsTarget.js';
+import { refreshModelRoots } from './hardware/comfyModels.js';
 
 export type Tier = 'none' | 'light' | 'most' | 'all' | 'unknown';
 export type HwSource = 'comfyui-system_stats' | 'host' | 'mock' | 'manual' | 'none';
@@ -99,7 +101,10 @@ export const publicDisk = () => { const d = diskInfo(); return { ...d, path: dis
  *  measured there when no OPENHIGGSFIELD_COMFY_MODELS_DIR is set. Downloads still need the explicit setting. */
 let detectedModelsDir: string | null = null;
 export const comfyModelsDirDetected = () => detectedModelsDir;
-export function diskInfo() { const dir = env('COMFY_MODELS_DIR')?.trim() || detectedModelsDir || DATA_DIR; const mockGb = config.backend === 'mock' ? Number(env('DISK_FREE_GB')) : NaN;
+/** What kind of ComfyUI answered last (desktop / portable / docker / manual), from /system_stats; null = none yet. */
+let detectedKind: ComfyKind | null = null;
+export const comfyKindDetected = () => detectedKind;
+export function diskInfo() { const dir = env('COMFY_MODELS_DIR')?.trim() || modelsTarget().root || detectedModelsDir || DATA_DIR; /* where downloads go (hardware/modelsTarget.ts), else Desktop's YAML folder */ const mockGb = config.backend === 'mock' ? Number(env('DISK_FREE_GB')) : NaN;
   try { const s = statfsSync(dir); return { path: dir, freeBytes: Number.isFinite(mockGb) && env('DISK_FREE_GB') ? Math.round(mockGb * 1e9) : Number(s.bavail) * Number(s.bsize), totalBytes: Number(s.blocks) * Number(s.bsize) }; } catch { return { path: dir, freeBytes: null, totalBytes: null }; } }
 const isCloudBase = () => !!config.comfyBaseUrl && comfyNeedsKey();
 /** The machine class for a reading (the host's own OS/arch only when the reading is the host's, or ComfyUI is on this machine). */
@@ -191,7 +196,7 @@ async function probe(): Promise<Omit<Hardware, 'cached' | 'manual' | 'manualInUs
   const c = config.comfyBaseUrl ? await checkComfy(config.comfyBaseUrl) : null;
   if (c) noteReach(c.reachable);
   if (c?.reachable && c.stats) { const s = parseSystemStats(c.stats); const same = comfySameHost(); const inst = comfyInstallOf(same ? c.stats : { system: { ...c.stats.system, argv: [] } }); // another computer's paths mean nothing here
-    detectedModelsDir = same ? inst.modelsDir : null;
+    detectedModelsDir = same ? inst.modelsDir : null; detectedKind = inst.kind; if (same) void refreshModelRoots(); // where downloads go (hardware/modelsTarget.ts)
     return build('comfyui-system_stats', s.gpu, s.ramTotal, s.ramFree, true, { reachable: true, version: s.version, pytorch: s.pytorch, cloud: false, ggufNode: c.ggufNode, kind: inst.kind, label: inst.label, modelsDir: displayDir(inst.modelsDir), modelsDirSource: inst.modelsDirSource }, null); }
   if (comfySameHost()) { const h = hostProbe(); return build('host', h.gpu, h.ramTotal, h.ramFree, true, { reachable: c?.reachable ?? null, version: c?.version ?? null, cloud: false, ggufNode: c?.ggufNode ?? null }, h.gpu ? null : 'No graphics card was found on this computer.'); }
   return build('none', null, null, null, false, { reachable: c ? c.reachable : null, version: null, cloud: false, ggufNode: null }, c ? "ComfyUI isn't answering, so this computer's hardware couldn't be read." : "No local ComfyUI is connected, so this computer's hardware couldn't be read.");

@@ -25,7 +25,7 @@ import { cardName } from '../models.js';
 import { catalogFor, cleanName, MODEL_CATALOG } from '../shared/modelCatalog.js';
 import { LICENSES } from '../licenses.js';
 import { lifecycleFields } from '../shared/lifecycle.js';
-import { weightsGate } from '../hardware/requirements.js';
+import { weightsGate, requirementsFor } from '../hardware/requirements.js';
 import { MAC_WEIGHTS_REASON } from '../hardware/macWeights.js';
 import { LOCAL_UNREACHABLE_REASON } from './runnable.js';
 import { MODELS, MAKERS, makerOf, RUN_ON_IDS, RUN_ON_LABELS, RUN_ON_BILLED_TO, engineModelKey, ENGINE_MODEL, TOOL_SPLITS, engineSplits, isLtxMove, normRunOn, runOnOfRoute, runOnOfRouteId, aKey, comfyHowLine, placeOf, type ModelDef, type RunOn, type InputRule } from '../shared/modelIds.js';
@@ -36,6 +36,7 @@ import { getPrefs, toolPinOf } from './prefs.js';
 import { routeChoiceNames } from '../shared/routeNames.js';
 import { RELEASES } from '../releaseDates.js';
 import { REEL_TOOL_IDS } from '../shared/photosToReel.js';
+import { canDownloadHere } from '../hardware/modelsTarget.js';
 
 export { normRunOn, runOnOfRoute, RUN_ON_LABELS, type RunOn };
 export const baseToolOf = (tool?: { id: string; app?: any } | null): string | null => tool && REEL_TOOL_IDS.includes(tool.id) ? 'camera' : (tool as any)?.app?.gallery?.base ?? null;
@@ -267,6 +268,7 @@ function rowAction(ro: RunOn, b: any): { kind: string; text: string; missingByte
   if (b.status === 'ready' || b.status === 'coming-soon' || b.status === 'unavailable') return null;
   if (ro === 'local') {
     if (b.status === 'off') return { kind: 'turn_on', text: 'Turn on' };
+    if (b.reasonCode === 'weights_missing' && !canDownloadHere()) return { kind: 'set_up_gpu', text: 'Files needed', missingBytes: b.missingBytes ?? null }; // the app can't learn ComfyUI's models folder: never offer a download it can't do (Settings → Your computer says where the files go)
     if (b.reasonCode === 'weights_missing') return { kind: 'download', text: `Download ${gbT(b.missingBytes) || 'files'}`.trim(), missingBytes: b.missingBytes ?? null, downloadId: b.downloadId ?? null };
     if (b.reasonCode === 'nodes_missing') return { kind: 'install_node', text: 'Install node' };
     if (b.reasonCode === 'too_heavy' || b.reasonCode === 'not_enough_disk') return null;
@@ -296,13 +298,17 @@ function setupOf(runsOn: any[]): { runOn: string; label: string; action: any; cr
     .map((r) => ({ runOn: r.id, label: r.label, action: r.action, credits: r.id === 'local' ? 0 : r.credits ?? null }));
 }
 /** One status per model row (MODEL-PICKER-REVIEW §5b.4), from one source: the model's state at the pre-selected place, else what setting it up takes. */
+/** A local-only model's row while ComfyUI isn't set up or running (rowStatusOf): what it needs, in plain words. */
+export const NEEDS_COMFYUI_TEXT = 'Needs ComfyUI on this computer';
 export type RowStatus = { kind: 'ready' | 'sample' | 'add_key' | 'download' | 'turn_on' | 'install_node' | 'set_up' | 'coming_soon' | 'unavailable'; text: string; runOn: string | null; credits: number | null; missingBytes?: number | null };
 export function rowStatusOf(m: { preselect?: any; runsOn: any[]; setup?: any[] }): RowStatus {
   const p = m.preselect; const row = p ? m.runsOn.find((r) => r.id === p.runOn) : null;
   if (p && p.status === 'ready') return { kind: 'ready', text: p.label, runOn: p.runOn, credits: p.runOn === 'local' ? 0 : row?.credits ?? null };
   if (p && p.status === 'sample') return { kind: 'sample', text: 'Sample · free', runOn: p.runOn, credits: 0 };
   if (m.runsOn.length && m.runsOn.every((r) => r.status === 'coming-soon')) return { kind: 'coming_soon', text: 'Coming soon', runOn: null, credits: null };
-  const s = m.setup ?? []; if (!s.length) return { kind: 'unavailable', text: m.runsOn.some((r) => r.id === 'local' && r.reasonCode === 'unsupported_weights') ? MAC_WEIGHTS_REASON : 'Not available here', runOn: null, credits: null };
+  const s = m.setup ?? []; if (!s.length) return { kind: 'unavailable', text: m.runsOn.some((r) => r.id === 'local' && r.reasonCode === 'unsupported_weights') ? MAC_WEIGHTS_REASON
+    /* a local-only model while no ComfyUI answers (a fresh install): say what it needs, not "Not available here" */
+    : m.runsOn.some((r) => r.id === 'local' && (r.reasonCode === 'local_unreachable' || r.action?.kind === 'set_up_gpu')) ? NEEDS_COMFYUI_TEXT : 'Not available here', runOn: null, credits: null };
   if (s.length > 1) return { kind: 'set_up', text: 'Set up', runOn: null, credits: null };
   const a = s[0].action; const k = a.kind as RowStatus['kind'];
   return { kind: k, runOn: s[0].runOn, credits: null, text: k === 'add_key' ? `Add key · ${KEY_SHORT_L[s[0].runOn] ?? s[0].label}` : k === 'download' ? `Download · ${gbT(a.missingBytes) || 'files'}` : k === 'turn_on' ? 'Turn on · Your computer' : 'Install add-on · Your computer', ...(k === 'download' ? { missingBytes: a.missingBytes ?? null } : {}) };
@@ -358,13 +364,15 @@ export function modelsBlock(tool: ToolDef, providers: any[]): any[] {
         if (macBlockedOpt(o)) { o.reasonCode = 'unsupported_weights'; o.reason = MAC_WEIGHTS_REASON; }
         { const hw = r.kind === 'local' ? LOCAL_HW_BLOCK[part.engine]?.() : null; if (hw) { st = 'unavailable'; o.reasonCode = 'unsupported_hardware'; o.reason = hw; } } // Video Upscale: SeedVR2 3B locally on NVIDIA only
         rows.push({ engine: part.engine, routeId: r.routeId, runOn: runOnOfRoute(r), kind: r.kind, comfyVariant: comfyVariantOf(r) ?? null, status: st, credits: soon ? null : o.credits ?? null, listCredits: soon ? null : o.demo ? o.listCredits ?? null : o.credits ?? null, reason: o.reason ?? null, reasonCode: o.reasonCode ?? null,
-          wired: o.wired !== false, tier: typeof o.tier === 'number' ? o.tier : null, latency: Number(o.typicalLatencySec) || 0, missingBytes: wg?.missingBytes ?? (o.reasonCode === 'not_enough_disk' ? o.fit?.missingBytes ?? null : null), downloadId: wg?.downloadId ?? null, here: r.kind === 'local' ? hereOf(o.fit) : null }); } }
+          wired: o.wired !== false, tier: typeof o.tier === 'number' ? o.tier : null, latency: Number(o.typicalLatencySec) || 0, missingBytes: wg?.missingBytes ?? (o.reasonCode === 'not_enough_disk' ? o.fit?.missingBytes ?? null : null), downloadId: wg?.downloadId ?? null, here: r.kind === 'local' ? hereOf(o.fit) : null,
+          /* its files need an NVIDIA card (fp8 / nvfp4 / wNaM, hardware/macWeights.ts; or an NVIDIA-only route): the card never says plain "free on your computer" */
+          needsNvidia: r.kind === 'local' && (!!LOCAL_HW_BLOCK[part.engine] || !!requirementsFor(tool, part.engine)?.macBlockedFiles?.length) }); } }
     const runsOn = RUN_ON_IDS.filter((ro) => rows.some((x) => x.runOn === ro)).map((ro) => { const rs = rows.filter((x) => x.runOn === ro).sort((a, b) => RANK[a.status as RunOnStatus] - RANK[b.status as RunOnStatus] || (a.listCredits ?? 1e9) - (b.listCredits ?? 1e9));
       const best = rs[0]; const priced = rs.map((x) => x.listCredits).filter((c): c is number => typeof c === 'number');
       return { id: ro, label: RUN_ON_LABELS[ro], billedTo: RUN_ON_BILLED_TO[ro], status: best.status, credits: ro === 'local' ? (best.status === 'ready' ? 0 : null) /* free only once it runs here: an uninstalled / off GPU is never "Free" */ : priced.length ? Math.min(...priced) : null, reason: best.status === 'ready' || best.status === 'sample' ? null : best.reason, reasonCode: best.reasonCode,
         routes: rs.map((x) => x.routeId), engines: [...new Set(rs.map((x) => x.engine))], ...(rs.some((x) => x.comfyVariant) ? { comfyVariants: [...new Set(rs.map((x) => x.comfyVariant).filter(Boolean))] } : {}),
         group: ro === 'local' ? 'gpu' as const : ro === 'comfy-cloud' ? 'comfy' as const : 'api' as const, detail: ro === 'comfy-cloud' ? comfyHowLine(rs.map((x) => x.comfyVariant), methodOf(rs.map((x) => x.routeId))) || null /* the place is "Comfy Cloud"; this says how ("Partner model · via last frame", "Open workflow or partner model") */ : null,
-        wired: rs.some((x) => x.wired), action: rowAction(ro, best), ...(ro === 'local' && best.here ? { here: best.here } : {}), ...(ro === 'local' && best.reasonCode === 'not_enough_disk' && best.missingBytes ? { missingBytes: best.missingBytes } /* "Needs 43 GB space": the files don't fit */ : {}), ...((c) => (c ? { choices: c } : {}))(choicesOf(ro, rs, makerOf(m.key)?.name ?? null)), _best: best }; });
+        wired: rs.some((x) => x.wired), action: rowAction(ro, best), ...(ro === 'local' && best.here ? { here: best.here } : {}), ...(ro === 'local' && rs.every((x) => x.needsNvidia) ? { needsNvidia: true } : {}), ...(ro === 'local' && best.reasonCode === 'not_enough_disk' && best.missingBytes ? { missingBytes: best.missingBytes } /* "Needs 43 GB space": the files don't fit */ : {}), ...((c) => (c ? { choices: c } : {}))(choicesOf(ro, rs, makerOf(m.key)?.name ?? null)), _best: best }; });
     // Other providers the Comfy place (or your computer) covers are hidden unless Settings → Routing → Show other providers is on (routing/hiddenPlaces.ts)
     const vis = visiblePlaces(tool.id, m.key, runsOn, undefined, preselectOf(runsOn)?.runOn ?? null); const hiddenRows: any[] = [];
     if (vis.hidden.length) { const keepIds = new Set(vis.shown.map((r) => r.id)); for (let k = runsOn.length - 1; k >= 0; k--) if (!keepIds.has(runsOn[k].id)) hiddenRows.unshift(...runsOn.splice(k, 1)); }

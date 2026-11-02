@@ -48,7 +48,7 @@ export function FailActions({ job, view, max = 3, skip = [], onRetry, onLeave, o
       case 'retry': if (onRetry) { onRetry(); return; } setBusy(a); try { const id = await retryJob(job.id); toast('Trying again with the same settings'); window.dispatchEvent(new Event('ohf:jobs-changed')); onLeave?.(id); } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(''); } return;
       case 'collect': setBusy(a); try { await collectJob(job.id); toast('Fetching the result again'); window.dispatchEvent(new Event('ohf:jobs-changed')); } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(''); } return;
       case 'runLocal': setBusy(a); try { const id = await retryJob(job.id, newIdemKey(), 'local', false); toast('Running locally'); window.dispatchEvent(new Event('ohf:jobs-changed')); onLeave?.(id); } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(''); } return;
-      case 'recreate': case 'changePhoto': case 'otherModel': case 'download': return go(recreate);
+      case 'recreate': case 'changePhoto': case 'otherModel': case 'download': case 'useCloud': return go(recreate);
       case 'addKey': return go(`/settings#${keyOwnerOf(routeOf(j)).anchor}`);
       case 'startComfy': return go('/settings#gpu');
       case 'turnOnGpu': return go('/settings#conn-local');

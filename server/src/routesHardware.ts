@@ -9,15 +9,33 @@ import { isLoopback } from './routing/settings.js';
 import { learnedSummary, resetLearned, rateOf } from './etaLearn.js';
 import { startDownload, listDownloads, getDownload, cancelDownload, downloadView, downloadCheck, DlError } from './hardware/downloads.js';
 import { modelsDir } from './hardware/requirements.js';
+import { modelsTarget, canDownloadHere, whereToPut } from './hardware/modelsTarget.js';
 import { separationStatus } from './comfy/separation.js';
 import { config } from './config.js';
+import { spawn } from 'node:child_process';
+import { nodePackStates } from './hardware/nodePacks.js';
+import { refreshComfyNodes } from './comfyNodes.js';
+import { localComfyBase } from './hardware/comfyModels.js';
 
 const bad = (field: string, message: string) => ({ error: message, errorType: 'validation', issues: [{ code: 'invalid', field, message }] });
 const LOOPBACK_ONLY = 'Changing the ComfyUI address from the browser is off because the server isn’t running on this computer. Set it in the server’s settings file instead.';
 /** HW2 item 5: POST /api/local/comfy/test waits this long (the timeout sentence names it). */
 export const COMFY_TEST_TIMEOUT_MS = 3000;
-/** Where a ComfyUI usually answers on this computer (ComfyUI's own default, then Comfy Desktop). Env OPENHIGGSFIELD_COMFY_DETECT_URLS (comma list) replaces it (tests, odd setups). */
-export const COMFY_USUAL_URLS = (process.env.OPENHIGGSFIELD_COMFY_DETECT_URLS ?? 'http://127.0.0.1:8188,http://127.0.0.1:8000').split(',').map((x) => x.trim()).filter(Boolean);
+/** Where a ComfyUI usually answers on this computer: ComfyUI's own default 8188, the old Comfy Desktop's 8000, then 8189-8191 (Comfy Desktop
+ *  takes the next free port when 8188 is busy, or for a second install). Env OPENHIGGSFIELD_COMFY_DETECT_URLS (comma list) replaces it (tests, odd setups). */
+export const COMFY_USUAL_URLS = (process.env.OPENHIGGSFIELD_COMFY_DETECT_URLS ?? 'http://127.0.0.1:8188,http://127.0.0.1:8000,http://127.0.0.1:8189,http://127.0.0.1:8190,http://127.0.0.1:8191').split(',').map((x) => x.trim()).filter(Boolean);
+/** This computer, for the "Get ComfyUI" link (shared/getComfy.ts): Linux without a screen gets the manual install. */
+export const hostInfo = () => ({ platform: process.platform, arch: process.arch, headless: process.platform === 'linux' && !process.env.DISPLAY && !process.env.WAYLAND_DISPLAY });
+const isCloud = (u: string) => /cloud\.comfy\.org|\.run\.comfy\.app/i.test(u);
+const sameUrl = (a: string, b: string) => { try { const x = new URL(a); const y = new URL(b); return x.host === y.host && x.pathname.replace(/\/+$/, '') === y.pathname.replace(/\/+$/, ''); } catch { return a === b; } };
+/** Every usual port that answers, in order (looked at side by side: a closed port answers at once on this computer). */
+export async function scanUsual(skip: string | null = null, timeoutMs = 1500): Promise<{ url: string; version: string | null }[]> {
+  const urls = COMFY_USUAL_URLS.filter((u) => !skip || !sameUrl(u, skip)); const cs = await Promise.all(urls.map((u) => checkComfy(u, { timeoutMs, gguf: false })));
+  return urls.map((u, i) => ({ url: u, version: cs[i].reachable ? cs[i].version ?? null : null, ok: cs[i].reachable })).filter((x) => x.ok).map(({ url, version }) => ({ url, version }));
+}
+/** Opens a folder in the computer's file manager (Explorer, Finder, the Linux default). Only server-known paths, never one from a request. */
+function openFolder(dir: string) { const [cmd, args] = process.platform === 'win32' ? ['explorer.exe', [dir]] : process.platform === 'darwin' ? ['open', [dir]] : ['xdg-open', [dir]];
+  const c = spawn(cmd, args as string[], { detached: true, stdio: 'ignore', windowsHide: true }); c.on('error', () => undefined); c.unref(); }
 const num = (v: unknown) => (typeof v === 'number' ? v : typeof v === 'string' && v.trim() ? Number(v) : NaN);
 
 export function registerHardware(app: FastifyInstance) {
@@ -50,13 +68,26 @@ export function registerHardware(app: FastifyInstance) {
     const given = req.body?.url != null && req.body.url !== '';
     if (given && !isLoopback(process.env.HOST)) return reply.code(403).send({ error: 'Testing another address from the browser is off because the server isn’t running on this computer.', errorType: 'forbidden', code: 'not_loopback' });
     if (given) { const e = comfyUrlError(req.body!.url) ?? (comfyAddressAllowed(String(req.body!.url).trim()) ? null : COMFY_ADDRESS_MESSAGE); if (e) return reply.code(400).send(bad('url', e)); }
-    let url = given ? String(req.body!.url).trim() : config.comfyBaseUrl; let detected = false;
-    // no address yet: look on the usual ports of this computer (ComfyUI 8188, Comfy Desktop 8000); the caller saves what it finds (PUT /api/local/comfy)
-    if (!given && (!url || /cloud\.comfy\.org|\.run\.comfy\.app/i.test(url))) for (const u of COMFY_USUAL_URLS) { const c = await checkComfy(u, { timeoutMs: 1500, gguf: false }); if (c.reachable) { url = u; detected = true; break; } }
-    const c = await checkComfy(url, { timeoutMs: COMFY_TEST_TIMEOUT_MS }); const s = c.stats ? parseSystemStats(c.stats) : null;
-    return { url: url ? safeUrl(url) : null, detected, reachable: c.reachable, version: c.version, latencyMs: c.latencyMs, ggufNode: c.ggufNode, cloud: c.cloud, error: c.error, errorCode: c.errorCode, timeoutSec: COMFY_TEST_TIMEOUT_MS / 1000,
+    let url = given ? String(req.body!.url).trim() : config.comfyBaseUrl; let detected = false; let movedFrom: string | null = null; let alsoFound: { url: string; version: string | null }[] = [];
+    // No address typed: the saved one when it answers; else look on the usual ports of this computer (also when the saved one stopped answering,
+    // e.g. Comfy Desktop moved to 8189). Never switches by itself: the caller saves what it picks (PUT /api/local/comfy). alsoFound = other ComfyUIs that answer.
+    let c = given || !url || isCloud(url) ? null : await checkComfy(url, { timeoutMs: COMFY_TEST_TIMEOUT_MS });
+    if (!given && !c?.reachable) { const hits = await scanUsual(url && !isCloud(url) ? url : null);
+      if (hits.length) { movedFrom = url && !isCloud(url) ? safeUrl(url) : null; url = hits[0].url; detected = true; alsoFound = hits.slice(1).map((h) => ({ url: safeUrl(h.url)!, version: h.version })); c = null; } }
+    c ??= await checkComfy(url, { timeoutMs: COMFY_TEST_TIMEOUT_MS }); const s = c.stats ? parseSystemStats(c.stats) : null;
+    return { url: url ? safeUrl(url) : null, detected, movedFrom, alsoFound, host: hostInfo(), reachable: c.reachable, version: c.version, latencyMs: c.latencyMs, ggufNode: c.ggufNode, cloud: c.cloud, error: c.error, errorCode: c.errorCode, timeoutSec: COMFY_TEST_TIMEOUT_MS / 1000,
       gpu: s?.gpu ? { name: s.gpu.name, type: s.gpu.type, vramTotalGB: s.gpu.vramTotalGB } : null };
   });
+
+  // ---- Windows setup PR 1: where model files go (hardware/modelsTarget.ts) and the ComfyUI add-ons (hardware/nodePacks.ts) ----
+  /** The full path only when the server runs on this computer (it is the person's own folder); else the folder name, like every other answer. */
+  app.get('/api/local/models-dir', async () => { const t = modelsTarget(); const here = isLoopback(process.env.HOST);
+    return { source: t.source, dir: t.root ? (here ? t.root : displayDir(t.root)) : null, writable: t.writable, why: t.why, putIn: whereToPut('checkpoints'), separator: process.platform === 'win32' ? '\\' : '/', canOpen: here && !!t.root && config.backend !== 'mock' }; });
+  app.post('/api/local/models-dir/open', async (_req, reply) => { if (!isLoopback(process.env.HOST)) return reply.code(403).send({ error: 'Opening folders works only when the app runs on this computer.', errorType: 'forbidden', code: 'not_loopback' });
+    const t = modelsTarget(); if (!t.root) return reply.code(409).send({ error: 'The models folder isn’t known yet.', errorType: 'conflict', code: 'no_models_dir' });
+    if (config.backend === 'mock') return { opened: false, sample: true }; // tests and previews never open windows on the computer
+    openFolder(t.root); return { opened: true }; });
+  app.get<{ Querystring: { refresh?: string } }>('/api/local/nodes', async (req) => { if (/^(1|true)$/i.test(req.query.refresh ?? '')) await Promise.race([refreshComfyNodes(), new Promise((r) => setTimeout(r, 4000))]); const packs = nodePackStates(); return { known: packs.some((p) => p.installed != null), platform: process.platform, comfyUrl: localComfyBase() ? safeUrl(localComfyBase()!) : null, packs }; });
 
   // ---- B5 / DP 7: learned timings ----
   app.get('/api/eta/learned', async () => ({ ...learnedSummary(), hwKey: hwKeyOf(), learning: config.backend !== 'mock' || /^(1|true)$/i.test(process.env.OPENHIGGSFIELD_ETA_LEARN_MOCK ?? '') }));
@@ -74,14 +105,14 @@ export function registerHardware(app: FastifyInstance) {
     if (b.dryRun === true || String(b.dryRun) === 'true' || String(b.dryRun) === '1') {
       try { const c = downloadCheck(spec);
         return { dryRun: true, label: c.plan.label, providerId: c.plan.providerId, variantId: spec.variantId, downloadId: c.plan.downloadId, bytesTotal: c.plan.files.reduce((a, f) => a + (f.bytesTotal ?? 0), 0), missingBytes: c.need, missingBytesSource: c.missingBytesSource,
-          diskFreeBytes: c.free, modelsDir: displayDir(c.dir ?? modelsDir()), modelsDirSet: !!modelsDir(), canDownload: c.code == null, code: c.code, error: c.message, files: c.plan.files.map(({ sha256, ...f }) => ({ ...f, checksum: !!sha256 })) }; }
+          diskFreeBytes: c.free, modelsDir: displayDir(c.dir ?? modelsDir()), modelsDirSet: !!c.dest, canDownload: c.code == null, code: c.code, error: c.message, files: c.plan.files.map(({ sha256, ...f }) => ({ ...f, checksum: !!sha256 })) }; }
       catch (e) { if (e instanceof DlError) return dlFail(reply, e); throw e; } }
     try { const d = startDownload(spec); return reply.code(202).send(downloadView(d)); }
     catch (e) { if (!(e instanceof DlError)) throw e; return dlFail(reply, e); }
   });
   /** Keep the background (comfy/separation.ts): whether Translate a video / Change Voice can split voice from music here. Read only. */
   app.get('/api/local/separation', async () => separationStatus());
-  app.get('/api/local/downloads', async () => ({ downloads: listDownloads().map(downloadView), modelsDir: displayDir(modelsDir()), modelsDirSet: !!modelsDir() }));
+  app.get('/api/local/downloads', async () => ({ downloads: listDownloads().map(downloadView), modelsDir: displayDir(modelsTarget().root), modelsDirSet: canDownloadHere() }));
   app.get<{ Params: { id: string } }>('/api/local/downloads/:id', async (req, reply) => { const d = getDownload(req.params.id); return d ? downloadView(d) : reply.code(404).send({ error: 'not found', code: 'not_found' }); });
   app.delete<{ Params: { id: string } }>('/api/local/downloads/:id', async (req, reply) => { const d = cancelDownload(req.params.id); return d ? { ...downloadView(d), cancelRequested: true } : reply.code(404).send({ error: 'not found', code: 'not_found' }); });
 }

@@ -16,20 +16,22 @@
 .xpa-voice-play:focus-visible{outline:var(--focus-ring-w) solid var(--focus-ring-color);outline-offset:var(--focus-ring-gap)}
 .xpa-pause{display:flex;gap:4px}.xpa-pause i{width:4px;height:14px;border-radius:1px;background:currentColor}
 /* the result: the shared film, square, one transport; its tag and model chip ride on top */
-.xpa .sfilm.xpa-film{display:block;width:100%;height:100%;aspect-ratio:1;max-height:none;margin:0;border-radius:0}
+.xpa .sfilm.xpa-film{display:block;width:100%;height:100%;aspect-ratio:1;max-height:none;margin:0;border-radius:22px;overflow:hidden;border:1px solid rgba(255,255,255,.06);box-shadow:0 30px 80px rgba(0,0,0,.45);background:#111;box-sizing:border-box}
 .xpa .xpa-film .sfilm-stage{position:absolute;inset:0;aspect-ratio:auto}
 .xpa .xpa-film .sfilm-copy,.xpa .xpa-film .sfilm-aside{display:none}
-.xpa-top{position:absolute;top:14px;left:14px;right:14px;z-index:5;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;pointer-events:none}
+.xpa-top{position:absolute;top:14px;left:14px;z-index:5;display:flex;pointer-events:none}
 .xpa-top .xv-tag{position:static}
-.xpa-top .runchip{pointer-events:auto}
-.xpa-ctas{justify-content:center;margin-top:40px}
+/* the run line sits under the result card (the card keeps its square and its overflow; the row keeps its centre line) */
+.xpa-result{overflow:visible;background:none;border:0;box-shadow:none}
+.xpa-run{position:absolute;top:calc(100% + 12px);left:0;right:0;display:flex;margin:0}
+.xpa-ctas{justify-content:center;margin-top:72px}
 @media(max-width:760px){
   .xpa-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
   .xpa-link{display:none}
   .xpa-result{grid-column:1/-1}
-  .xpa-card{border-radius:18px}
+  .xpa-card,.xpa .sfilm.xpa-film{border-radius:18px}
   .xpa-voice-play{width:38px;height:38px}
-  .xpa-ctas{margin-top:28px}
+  .xpa-ctas{margin-top:60px}
 }
 /* the headline always reads as two lines, the second in orange */
 .xpa .xsdc-h{flex-direction:column;align-items:center}

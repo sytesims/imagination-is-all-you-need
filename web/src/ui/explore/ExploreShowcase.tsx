@@ -9,9 +9,8 @@
  *  - XpKoi: "Make your own cartoon." (letterbox presentation): a MiniMax H3 take extended by H3 Extend (Comfy Cloud) into one 20 s take, shown
  *    wide (shared ShowcaseFilm, letterbox variant) between bars that carry the timecode, the models and a progress line notched at the join; then
  *    "[frame] 10 s + [frame] 10 s = one 20 s take", the two runs' prices, Recreate (Extend with the first 10 s and the prompt) and Start your scene (Video with MiniMax H3).
- *  - XpSwap: chapter 1, "Same dance. Two new casts." Two swaps of one dance side by side, each a before / after slider over the original (shared
- *    CompareFrame), all in step (shared useSyncClips): H3 Character Swap (her, one photo) and Kling 3.0 Omni Edit (both, two photos), each with its
- *    model, price and Recreate; both upscaled.
+ *  - XpSwap: chapter 1, "Same dance. Two new casts." Three in a row, all in step (shared useSyncClips): the original, H3 Character Swap (her, one
+ *    photo) and Kling 3.0 Omni Edit (both, two photos); under each its label and run line (model, place, price, the photos, Recreate); both upscaled.
  *  - XpLayers: chapter 2, "One picture. Every layer." An Image to layers run (Seedream 5.0 Flash, Comfy Router): copy and steps (shared ChapterText),
  *    the run's animation on a loop (shared HoverClip, on screen only; reduced motion: its poster) with the shared SoundToggle (the sound director;
  *    turning it on from its button restarts the clip so the sound lines up with each layer), then the input → its 13 layers (shared
@@ -47,22 +46,20 @@ import { HeroReel, type ReelPhase } from '../../shared/HeroReel';
 import { Model3D } from '../../shared/model3d';
 import { SoundToggle } from '../../shared/SoundToggle';
 import { useSyncClips } from '../../shared/SyncClips';
-import { CompareFrame } from '../../shared/CompareSlider';
 import { HoverClip, prefersReducedMotion } from '../../shared/HoverClip';
 import { useDirectedSound } from '../../shared/soundDirector';
 import { LayerTile } from '../../shared/LayerStack';
-import { Segmented } from '../../shared/BarPop';
 import { AudioCover, AudioVizLayer, useAudioViz } from '../../shared/AudioViz';
 import { Waveform } from '../../shared/Waveform';
 import { primeAudio } from '../../shared/audioGraph';
 import { detectStyle } from '../../shared/beanStyle';
 import { featuredByKey, featuredRecreateHref, placeOfRoute, FEATURED_BIG_POSTER, OUR_COMPUTER, type FeaturedItem } from '../../../../server/src/shared/featured';
 import { EXPLORE_HERO, EXPLORE_STILL, EXPLORE_KOI, EXPLORE_SWAP, EXPLORE_LAYERS, EXPLORE_BOARD, EXPLORE_LOOKS, EXPLORE_YOUR_TURN, yourTurnHref, EXPLORE_MOODS, EXPLORE_DANCE, EXPLORE_SHEETS, EXPLORE_FILM, EXPLORE_VFX, vfxTile, EXPLORE_HEADLINE, type VfxTile, type ReelShot } from '../../../../server/src/shared/exploreShowcase';
-import { CloseIcon, SoundIcon } from '../Icons';
+import { CloseIcon, ResetIcon, SoundIcon } from '../Icons';
 import { renderBeat } from './beatSynth';
 import '../../shared/audioCard.css';
 import { RunChip } from '../../shared/RunChip';
-import { chipOfFeatured, chipOfRun, chipOfChain, type RunChipData } from '../../../../server/src/shared/runChip';
+import { chipOfFeatured, chipOfRun, chipUsd, type RunChipData } from '../../../../server/src/shared/runChip';
 import { LOCAL_LABEL } from '../../../../server/src/shared/modelIds';
 import './exploreShowcase.css';
 
@@ -70,18 +67,17 @@ const Arrow = () => <span className="xv-arrow" aria-hidden>→</span>;
 const FreeDot = ({ children = 'Free on your computer' }: { children?: React.ReactNode }) => <span className="xv-free"><i aria-hidden />{children}</span>;
 
 /* ============================================================== hero ============================================================== */
-/** The hero's run chip, all from the data (EXPLORE_HERO + its featured entry): the model, where it ran and its price, the length, and the
- *  music made here (its model from `after`, "Music · YuE2 · Free") as "+1 music". */
+/** The hero's run line, all from the data (EXPLORE_HERO + its featured entry): the model, where it ran and the whole price, with the music made
+ *  here (its model from `after`, "Music · YuE2 · Free") as a step: "+1 step" opens video → music. No length: that lives in the player. */
 export function heroChip(s: ReelShot, f: FeaturedItem): RunChipData {
   const music = (s.after ?? []).map((x) => /^Music · ([^·]+)/.exec(x)?.[1]?.trim()).find(Boolean);
-  const c = chipOfFeatured(f, { model: s.model, note: s.facts.join(' · '), also: music ? [{ jobId: '', model: `${music} (music)`, place: OUR_COMPUTER, costUsd: 0 }] : [] });
-  return music ? { ...c, alsoWhat: 'music' } : c; /* "+1 music": readable on camera without hovering */
+  return chipOfFeatured(f, { model: s.model, role: 'Video', also: music ? [{ jobId: '', model: music, place: OUR_COMPUTER, costUsd: 0, role: 'Music' }] : [] });
 }
-/** The hero's credit (2026-11-01: the shared run chip, was the MADE WITH · LENGTH · RAN ON block), then its one action, an orange "Make your own →". */
+/** The hero's credit (2026-11-01: the shared run chip, was the MADE WITH · LENGTH · RAN ON block), then its one action, "Make your own →" as the shared orange button (2026-11-02, was a text link). */
 function HeroCredit({ s, f, rec }: { s: ReelShot; f: FeaturedItem; rec: string | null }) {
   return <div className="xph-credit" data-testid="xp-hero-caption">
     <RunChip onMedia c={heroChip(s, f)} testId="xp-hero-chip" />
-    {rec && <Link to={rec} className="xph-rec" data-testid="xp-hero-recreate">Make your own <Arrow /></Link>}
+    {rec && <Link to={rec} className="xv-btn xph-rec" data-testid="xp-hero-recreate">Make your own <Arrow /></Link>}
   </div>;
 }
 export function XpHero() {
@@ -103,77 +99,80 @@ export function XpHero() {
 }
 
 /* ============================================================== a prompt as it ran (shared) ============================================================== */
-/** A prompt as it ran, in its own paragraphs; a leading "Shot 2, medium shot:" / "Sound:" label is set in bold. */
-function PromptText({ text }: { text: string }) {
-  return <>{text.split(/\n{2,}/).map((para, k) => { const m = /^((?:Shot \d+|Sound)[^:\n]{0,48}:)\s*/.exec(para);
-    return <p key={k}>{m ? <><b>{m[1]}</b> {para.slice(m[0].length)}</> : para}</p>; })}</>;
-}
+/* (the prompt reader left From one still on 2026-11-02: Recreate this shot opens the full prompt) */
 /* ============================================================== From one still (LTX-2.5 Pro image to video) ============================================================== */
+/* From one still, with depth (the user's pick, 2026-11-02): the copy on the left; on the right the still as a tilted card behind the moving reel
+   (the shared HeroReel: reveal, drag, replay, sound, reduced motion), the still drifting a little on scroll where the browser can. Under the copy,
+   the run (model · where · price) with its specs in a quiet line, then Recreate this shot (it opens the full prompt) and a small Replay. */
 export function XpStill() {
   const W = EXPLORE_STILL; const t = W.take; const f = featuredByKey(t.key);
-  const [replay, setReplay] = useState(0); const [open, setOpen] = useState(false);
+  const [replay, setReplay] = useState(0);
   if (!f?.before) return null;
   const still = f.before; const rec = featuredRecreateHref(f.key) ?? VIDEO_PAGE; const ran = Number(f.input.duration) || Math.round(f.out.sec ?? 0);
-  const words = f.prompt.split(/\s+/).filter(Boolean).length;
+  const specs = [t.trimmedTo ? `${ran} s run, trimmed to ${Math.floor(t.trimmedTo)} s` : `${ran} s`, String(f.input.resolution ?? ''), f.out.sound ? 'with sound' : ''].filter(Boolean).join(' · ');
   return <section className="xv-sec xpo" id="xp-still" data-testid="xp-still" aria-labelledby="xp-h-still">
-    <header className="xv-head"><div><span className="xv-eb">{W.eyebrow}</span><h2 id="xp-h-still" className="xpo-h" data-testid="xp-still-title">{W.title}</h2><p data-testid="xp-still-line">{W.line}</p></div></header>
-    <HeroReel className="hreel-framed xpo-film" testId="xp-still-wipe" reveal replay={replay} position={t.pos} sound={f.out.sound === true} restartOnSound label={`${f.title}, made with ${f.model}`}
-      before={{ url: still.url, poster: still.url, label: W.stillLabel }} after={{ url: f.out.url, poster: FEATURED_BIG_POSTER[f.key] ?? f.out.poster, label: W.clipLabel }} />
-    <div className="xpo-cred">
-      <p className="xpo-meta" data-testid="xp-still-credits" aria-live="polite">
-        <RunChip c={chipOfFeatured(f)} testId="xp-still-chip" />
-        <span data-testid="xp-still-length">{t.trimmedTo ? `${ran} s run, trimmed to ${Math.floor(t.trimmedTo)} s` : `${ran} s`}</span>
-        <span>{String(f.input.resolution ?? '')}</span><span>{W.sound}</span>
-        {/* the still's own run (featured `from`): its model, place and price */}
-        {f.from?.map((r) => <RunChip key={r.jobId} c={chipOfRun(r, W.stillLabel.toLowerCase())} testId="xp-still-source" />)}
-      </p>
-      <span className="xpo-acts">
-        <button type="button" className="xv-quiet xpo-replay" onClick={() => setReplay((n) => n + 1)} data-testid="xp-still-replay">Replay the reveal</button>
-        <Link to={rec} className="xv-btn" data-testid="xp-still-recreate">Recreate this shot<Arrow /></Link>
-      </span>
-    </div>
-    <div className={`xpo-prompt${open ? ' is-open' : ''}`}>
-      <button type="button" className="xpl-read" aria-expanded={open} aria-controls="xp-still-prompt" onClick={() => setOpen((o) => !o)} data-testid="xp-still-read">{open ? 'Hide the prompt' : 'Read the prompt'}<small>{words} words</small></button>
-      {open ? <div className="xpo-prompt-b" id="xp-still-prompt" role="region" aria-label="The prompt for this shot" data-testid="xp-still-prompt"><PromptText text={f.prompt} /><small>The exact prompt we used, with the still attached</small></div>
-        : <p className="xpo-peek" aria-hidden>{t.line}</p>}
+    <div className="xpo-depth">
+      <div className="xpo-copy">
+        <span className="xv-eb">{W.eyebrow}</span><h2 id="xp-h-still" className="xpo-h" data-testid="xp-still-title">{W.title}</h2>
+        <p className="xpo-line" data-testid="xp-still-line">{W.line}</p>
+        <p className="xpo-run" data-testid="xp-still-credits">
+          <RunChip c={chipOfFeatured(f)} testId="xp-still-chip" />
+          {/* the still's own run, when it has one (featured `from`) */}
+          {f.from?.map((r) => <RunChip key={r.jobId} c={chipOfRun(r, W.stillLabel.toLowerCase())} testId="xp-still-source" />)}
+          <small className="xpo-specs" data-testid="xp-still-length">{specs}</small>
+        </p>
+        <span className="xpo-acts">
+          <button type="button" className="xpo-replay" onClick={() => setReplay((n) => n + 1)} data-testid="xp-still-replay" aria-label="Replay the reveal" title="Replay the reveal"><ResetIcon size={16} /><span>Replay</span></button>
+          <Link to={rec} className="xv-btn" data-testid="xp-still-recreate">Recreate this shot<Arrow /></Link>
+        </span>
+      </div>
+      <div className="xpo-stack">
+        <figure className="xpo-back" aria-hidden><img src={still.url} alt="" loading="lazy" decoding="async" draggable={false} /><figcaption>{W.stillLabel}</figcaption></figure>
+        <HeroReel className="hreel-framed xpo-film xpo-front" testId="xp-still-wipe" reveal replay={replay} position={t.pos} sound={f.out.sound === true} restartOnSound label={`${f.title}, made with ${f.model}`}
+          before={{ url: still.url, poster: still.url, label: W.stillLabel }} after={{ url: f.out.url, poster: FEATURED_BIG_POSTER[f.key] ?? f.out.poster, label: W.clipLabel }} />
+      </div>
     </div>
   </section>;
 }
 
-/* ============================================================== Make your own cartoon (MiniMax H3 + H3 Extend) ============================================================== */
+/* ============================================================== Keep the shot going (MiniMax H3, then H3 Extend) ============================================================== */
 const clock = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
+/** Shows off Extend: one take made of a 10 s MiniMax H3 start and a 10 s H3 Extend, in a letterbox whose foot is the timeline: the progress line,
+ *  a seam at each join, and each segment labelled under it (Start · MiniMax H3 → +10 s · H3 Extend → the end card added in the edit, quiet:
+ *  not a model). Under it the run line: H3 Extend · Comfy Cloud · $1.32 total, "+1 step" opens start → extend. Extend a clip opens Video › Extend. */
 export function XpKoi() {
-  const K = EXPLORE_KOI; const f = featuredByKey(K.key); const fill = useRef<HTMLElement>(null); const [failed, setFailed] = useState(false);
+  const K = EXPLORE_KOI; const f = featuredByKey(K.key); const fill = useRef<HTMLElement>(null); const [failed, setFailed] = useState(false); const [at, setAt] = useState(0);
   if (!f?.before) return null;
-  /* total: Explore's file as it plays (the take, then the ending made here, EXPLORE_KOI.ending); take: the generated take alone (the featured `out`), what the pills and the sum describe */
+  /* total: Explore's file as it plays (the take, then the end card added after, EXPLORE_KOI.ending); take: the generated take alone (the featured `out`), what the sum and the run line describe */
   const rec = featuredRecreateHref(f.key) ?? K.cta.href; const take = f.out.sec ?? 20; const total = K.ending.sec; const first = f.before.sec ?? 10; const added = Math.round(take - first);
-  const ending = Math.round(total - take);
-  const label = `${K.title}: ${f.title}, made with ${K.first.model} and ${f.model}`;
-  /* The progress line follows the clip every frame, without a re-render. */
-  const onTick = (p: number) => { if (fill.current) fill.current.style.transform = `scaleX(${p.toFixed(4)})`; };
+  const ending = Math.round(total - take); const start = f.from?.[0];
+  const label = `${K.title} ${f.title}, made with ${start?.model ?? 'MiniMax H3'} and ${f.model}`;
+  /* The progress line follows the clip every frame, without a re-render; the lit segment label changes only at a seam. */
+  const onTick = (p: number) => { if (fill.current) fill.current.style.transform = `scaleX(${p.toFixed(4)})`; const t = p * total; const n = t < first ? 0 : t < take ? 1 : 2; setAt((v) => (v === n ? v : n)); };
+  const segs = [{ w: first, k: 'start', top: `${K.segments.start} · ${Math.round(first)} s`, sub: start?.model ?? 'MiniMax H3' }, { w: take - first, k: 'extend', top: `${K.segments.extend} · +${added} s`, sub: f.model },
+    ...(ending > 0 ? [{ w: total - take, k: 'end', top: K.ending.label, sub: '' }] : [])];
   return <section className="xv-sec xpk" id="xp-koi" data-testid="xp-koi" aria-labelledby="xp-h-koi">
     <span className="xv-eb">{K.eyebrow}</span>
     <h2 id="xp-h-koi" className="xpk-h">{K.title}</h2>
     <div className={`xpk-frame${failed ? ' is-failed' : ''}`} data-testid="xp-koi-frame">
-      <div className="xpk-bar" aria-hidden>
-        <span className="xpk-models">{K.first.model}<i>·</i>{f.model}<i>·</i>{K.place}</span></div>
       {/* the clip's file lives in one place: the featured entry's `out` (shared/featured.ts) */}
       <ShowcaseFilm className="sfilm-letterbox" testId="xp-koi-film" label={label} take={f.key} onTake={() => 0} restartOnSound onTick={onTick} onFail={() => setFailed(true)}
         takes={[{ key: f.key, url: K.ending.url, poster: FEATURED_BIG_POSTER[f.key] ?? f.out.poster, label: f.title, sound: f.out.sound }]} />
-      <div className="xpk-bar xpk-foot" aria-hidden><span className="xpk-line"><i ref={fill} /><em style={{ left: `${(first / total) * 100}%` }} title={`${clock(first)}, the join`} data-testid="xp-koi-join" />
-        {ending > 0 && <u style={{ left: `${(take / total) * 100}%` }} title={`${clock(take)}, the ending`} data-testid="xp-koi-ending" />}</span></div>
+      {/* the timeline: one line, a seam at each join, each segment named under it */}
+      <div className="xpk-time" data-testid="xp-koi-track">
+        <span className="xpk-line" aria-hidden><i ref={fill} /><em style={{ left: `${(first / total) * 100}%` }} title={`${clock(first)}, the join`} data-testid="xp-koi-join" />
+          {ending > 0 && <u style={{ left: `${(take / total) * 100}%` }} title={`${clock(take)}, the end card`} data-testid="xp-koi-ending" />}</span>
+        <ol className="xpk-segs" aria-label="How the take was made">{segs.map((x, k) => <li key={x.k} className={`xpk-seg is-${x.k}${at === k ? ' on' : ''}`} style={{ flexGrow: x.w }} data-testid={`xp-koi-seg-${x.k}`}>
+          <b>{x.top}</b>{x.sub && <span>{x.sub}</span>}</li>)}</ol>
+      </div>
     </div>
     <p className="xpk-eq" data-testid="xp-koi-eq">
       <span className="xpk-f"><img src={f.before.poster} alt="The first 10 seconds: the boy holds the lantern" loading="lazy" decoding="async" draggable={false} />{Math.round(first)} s</span><span aria-hidden>+</span>
       <span className="xpk-f"><img src={K.newFrame} alt="The new 10 seconds: the koi swims up to the moon" loading="lazy" decoding="async" draggable={false} />{added} s</span><span className="xpk-is" aria-hidden>=</span>
       <span className="xpk-f">one {Math.round(take)} s take</span>
     </p>
-    <span className="xpk-meta">
-      <RunChip testId="xp-koi-paid-first" c={chipOfRun({ jobId: '', model: K.first.model, place: K.first.place, costUsd: K.first.usd }, `first ${Math.round(first)} s`)} />
-      <RunChip testId="xp-koi-paid-extend" c={chipOfFeatured(f, { note: `+${added} s` })} />
-      {ending > 0 && <span className="xv-pill" data-testid="xp-koi-paid-ending">{K.ending.label}<small>+{ending} s</small></span>}
-    </span>
-    <span className="xpk-ctas"><Link to={rec} className="xv-quiet" data-testid="xp-koi-recreate">Recreate</Link><Link to={K.cta.href} className="xv-btn" data-testid="xp-koi-cta">{K.cta.label}<Arrow /></Link></span>
+    <span className="xpk-meta"><RunChip testId="xp-koi-run" c={chipOfFeatured(f, { role: `Extend, +${added} s`, also: f.from ?? [] })} /></span>
+    <span className="xpk-ctas"><Link to={K.cta.href} className="xv-btn" data-testid="xp-koi-cta">{K.cta.label}<Arrow /></Link><Link to={rec} className="xv-quiet" data-testid="xp-koi-recreate">Recreate this take</Link></span>
   </section>;
 }
 
@@ -204,28 +203,33 @@ type SwapRunView = ReturnType<typeof swapRuns>[number];
 const SwapUpscaled = ({ runs }: { runs: SwapRunView[] }) => { const h = runs.map((x) => x.f.sharp); const s = h[0]; if (!s) return null;
   const both = runs.length > 1 && h.every((x) => x && x.model === s.model && x.costUsd === s.costUsd);
   return <p className="xps-upscaled on" data-testid="xp-swap-upscaled"><i aria-hidden />{both ? 'Both upscaled' : 'Upscaled'}<span>·</span>{s.model}<span>·</span>{s.place}<span>·</span><b>+${s.costUsd.toFixed(2)}{both ? ' each' : ''}</b></p>; };
-/** the photos a run started from, as small round faces */
-const SwapFaces = ({ run }: { run: SwapRunView }) => <span className="xsd-faces" role="img" aria-label={`${run.r.photos}: who they become`}>{run.photos.map((u) => <img key={u} src={u} alt="" loading="lazy" decoding="async" draggable={false} />)}</span>;
+/** a result's run line, under its media (the Explore rule): model · where it ran · price, then the photos it started from ("from 2 photos") and Recreate */
+const SwapRunLine = ({ run }: { run: SwapRunView }) => { const n = run.photos.length; return <div className="xsw-run">
+  <RunChip c={run.chip} testId={`xp-swap-chip-${run.r.key}`} />
+  <span className="xsw-act"><span className="xsw-from"><span className="xsd-faces" role="img" aria-label={`${run.r.photos}: who they become`}>{run.photos.map((u) => <img key={u} src={u} alt="" loading="lazy" decoding="async" draggable={false} />)}</span>
+    <small>from {n} photo{n === 1 ? '' : 's'}</small></span>
+    <Link to={run.rec} className="xsw-rec" data-testid={`xp-swap-recreate-${run.r.key}`}>Recreate<Arrow /></Link></span></div>; };
 
-/** Chapter 1, "Same dance. Two new casts." (layout A, 2026-10-31): two big cards side by side, each a before / after slider (shared CompareFrame):
- *  the original left of the line, that card's swap right of it (H3 Character Swap: her; Kling 3.0 Omni Edit: both of them). All four clips (the
- *  original under each slider and the two swaps) play in step (shared useSyncClips: the first original leads and carries the sound, one shared
- *  SoundToggle under the headline). Each card keeps its bar: the photos, the model, place and price, and Recreate. Reduced motion: the posters. */
+/** Chapter 1, "Same dance. Two new casts." (2026-11-02, the user's pick A): three in a row, all in step (shared useSyncClips: the original leads and
+ *  carries the sound): Original | she changes (H3 Character Swap) | they both change (Kling 3.0 Omni Edit). Nothing sits on the clips: a short label
+ *  and the run line under each, the one sound button (shared SoundToggle) under the original. Reduced motion: the three frames at 5 s, so they match. */
 export function XpSwap() {
-  const S = EXPLORE_SWAP; const runs = swapRuns(); const g = useSyncClips(4); if (runs.length < 2) return null;
-  const media = (i: number, url: string, poster: string) => g.still ? <img className="xsdc-media" src={poster} alt="" draggable={false} /> : <video {...g.clip(i)} className="xsdc-media" src={url} poster={poster} />;
-  return <section className="xv-sec xsdc" id="xp-swap" data-testid="xp-swap" aria-labelledby="xp-h-swap">
+  const S = EXPLORE_SWAP; const runs = swapRuns(); const g = useSyncClips(3); if (runs.length < 2) return null;
+  const media = (i: number, url: string, poster: string, alt: string) => g.still ? <img className="xsw-media" src={poster} alt={alt} draggable={false} /> : <video {...g.clip(i)} className="xsw-media" src={url} poster={poster} aria-label={alt} />;
+  return <section className="xv-sec xsdc xsw" id="xp-swap" data-testid="xp-swap" aria-labelledby="xp-h-swap">
     <header className="xsdc-head">
       <h2 id="xp-h-swap" className="xps-h xsdc-h">{S.title.map((l) => <span key={l}>{l}</span>)}</h2>
       <p className="xps-p xsdc-p">{S.line}</p>
-      <span className="xsdc-snd">{!g.still && <SoundToggle on={g.sound.lit} waiting={g.sound.waiting} label={g.sound.hint} onToggle={g.toggleSound} testId="xp-swap-sound" />}</span>
     </header>
-    <div ref={g.root} className="xsdc-stage" data-testid="xp-swap-danceoff">
-      {runs.map((x, k) => <figure key={x.r.key} className="xsdc-tile" data-testid={`xp-swap-run-${x.r.key}`}>
-        <CompareFrame className="xsdc-cmp" intro="nudge" start={65} testId="xp-swap-slider" labels={[S.original.label, x.r.who]}
-          before={media(k, S.original.url, x.r.originalPoster ?? S.original.poster)} after={media(k + 2, x.url, x.poster)} />
-        <figcaption className="xsdc-card"><SwapFaces run={x} /><span className="xsdc-meta"><RunChip c={x.chip} testId={`xp-swap-chip-${x.r.key}`} /><small>{x.r.photos}</small></span>
-          <Link to={x.rec} className="xsdc-rec" data-testid={`xp-swap-recreate-${x.r.key}`}>Recreate<Arrow /></Link></figcaption>
+    <div ref={g.root} className="xsw-trio" data-testid="xp-swap-trio">
+      <figure className="xsw-cell is-orig" data-testid="xp-swap-original">
+        <div className="xsw-frame">{media(0, S.original.url, S.original.poster5, 'The original dance: two dancers')}</div>
+        <figcaption className="xsw-cap"><span className="xsw-name"><b>{S.original.label}</b><small>{S.original.sub}</small></span>
+          {!g.still && <span className="xsw-snd"><SoundToggle on={g.sound.lit} waiting={g.sound.waiting} label={g.sound.hint} onToggle={g.toggleSound} testId="xp-swap-sound" /></span>}</figcaption>
+      </figure>
+      {runs.map((x, k) => <figure key={x.r.key} className="xsw-cell" data-testid={`xp-swap-run-${x.r.key}`}>
+        <div className="xsw-frame">{media(k + 1, x.url, x.r.poster5 ?? x.poster, `${x.r.who}: the same dance, ${x.f.model}`)}</div>
+        <figcaption className="xsw-cap"><span className="xsw-name"><b>{x.r.who}</b></span><SwapRunLine run={x} /></figcaption>
       </figure>)}
     </div>
     <div className="xsdc-foot"><SwapUpscaled runs={runs} /><span className="xps-ctas">{runs.map((x, k) => <Link key={x.r.key} to={x.r.cta.href} className={k ? 'xv-quiet' : 'xv-btn'} data-testid={`xp-swap-cta-${x.r.key}`}>{x.r.cta.label}{!k && <Arrow />}</Link>)}</span></div>
@@ -269,15 +273,16 @@ export function XpLooks() {
       <span className="xv-eb">{L.eyebrow}</span>
       <h2 id="xp-h-looks" className="xps-h xlk-h">{L.title.map((l) => <span key={l}>{l}</span>)}</h2>
       <p className="xps-p">{L.line}</p>
-      <span className="xlk-meta" data-testid="xp-looks-model"><RunChip c={{ model: now.model, place: LOCAL_LABEL, price: 'Free' }} testId="xp-looks-chip" /></span>
       <span className="xps-ctas"><Link to={L.cta.href} className="xv-btn" data-testid="xp-looks-cta">{L.cta.label}<Arrow /></Link></span>
     </div>
-    <figure className="xlk-frame" data-testid="xp-looks-frame">
+    <div className="xlk-media"><figure className="xlk-frame" data-testid="xp-looks-frame">
       {L.looks.map((l, k) => <img key={l.id} src={l.url} alt={k === cur ? `${l.name}: a woman in a red coat on a city street, ${L.model}` : ''} aria-hidden={k !== cur || undefined}
         className={k === cur ? 'on' : undefined} loading="lazy" decoding="async" draggable={false} />)}
       <figcaption className="xlk-cap" aria-live="polite" data-testid="xp-looks-name">{now.name}</figcaption>
-      <span className="xv-pill xv-pill-dark xlk-count" data-testid="xp-looks-count">{cur + 1} / {L.looks.length}</span>
     </figure>
+    {/* the run line under the frame; it changes with the look (FLUX.2 [klein] 4B or Qwen Image 2.1) and glows once when the model does */}
+    <div className="xlk-run"><span key={now.model} className="xlk-meta" data-testid="xp-looks-model"><RunChip c={{ model: now.model, place: LOCAL_LABEL, price: 'Free' }} testId="xp-looks-chip" /></span>
+      <span className="xlk-count" data-testid="xp-looks-count">{cur + 1} / {L.looks.length}</span></div></div>
     <div className="xlk-tiles" role="group" aria-label="Looks">{L.looks.map((l, k) => <button key={l.id} type="button" className={k === cur ? 'on' : undefined} aria-pressed={k === cur}
       onMouseEnter={() => setCur(k)} onFocus={() => setCur(k)} onClick={() => setCur(k)} data-testid={`xp-looks-tile-${l.id}`}>
       <img src={l.thumb} alt="" loading="lazy" decoding="async" draggable={false} /><span>{l.name}</span></button>)}</div>
@@ -368,7 +373,7 @@ export function XpSheets() {
     <p className="xpk-p xpc-p">{S.line}</p>
     <div className="xpk-frame xpc-frame" data-testid="xp-sheets-frame">
       <div className="xpk-bar"><span className="xpk-tc" aria-live="polite" data-testid="xp-sheets-panel">{on3d ? <><i /><b>3D</b> · TURN AND ORBIT</> : <><i /><b>PANEL {two(step + 1)} / {two(n)}</b> · {name.toUpperCase()}</>}</span>
-        <span className="xpk-models">{on3d ? <>{c.full.toUpperCase()}<i>/</i>{td!.model}<i>/</i>{td!.place}<i>/</i>{Math.round(td!.faces / 1000)}k faces</> : <>{c.full.toUpperCase()}<i>/</i>{f.model}<i>/</i>{S.via}<i>/</i>{W} × {H}</>}</span></div>
+        <span className="xpk-models">{on3d ? <>{c.full.toUpperCase()}<i>/</i>{Math.round(td!.faces / 1000)}k faces</> : <>{c.full.toUpperCase()}<i>/</i>{W} × {H}</>}</span></div>
       <div className="xpc-stage" data-testid="xp-sheets-stage">
         {on3d ? <div className="xpc-3d" data-testid="xp-sheets-3d"><Model3D src={td!.url} alt={`${c.full} as a 3D model`} slot="explore-sheets-3d" pri={1} autoRotate={!still} testId="xp-sheets-model" /></div>
           : <div className="xpc-fit"><div key={`${c.key}-${wipe}`} className={`xpc-sheet${still ? '' : ' is-reveal'}`} style={{ ['--ar' as string]: `${W / H}` }}>
@@ -381,8 +386,8 @@ export function XpSheets() {
     </div>
     <div className="xpc-cast" role="tablist" aria-label="Character">{cast.map(({ c: x, f: y }, k) => <button key={x.key} type="button" role="tab" aria-selected={k === cur} className={k === cur ? 'on' : ''} onClick={() => pick(k)}
       title={`${x.style} · $${(y.costUsd ?? 0).toFixed(2)}`} data-testid={`xp-sheets-cast-${x.name.toLowerCase()}`}><img src={x.face} alt="" loading="lazy" decoding="async" />{x.name}<small>{x.style}</small></button>)}</div>
-    <span className="xpk-meta"><RunChip c={chipOfFeatured(f, { note: 'one image, one run' })} testId="xp-sheets-price" />
-      {td && <RunChip c={chipOfRun({ jobId: td.jobId, model: td.model, place: td.place, costUsd: td.usd, est: true }, '3D model')} testId="xp-sheets-3d-credit" />}</span>
+    <span className="xpk-meta"><RunChip c={chipOfFeatured(f, { spec: 'one image, one run' })} testId="xp-sheets-price" />
+      {td && <RunChip c={{ ...chipOfRun({ jobId: td.jobId, model: td.model, place: td.place, costUsd: td.usd, est: true }), spec: 'the 3D model' }} testId="xp-sheets-3d-credit" />}</span>
     <span className="xpk-ctas"><Link to={rec} className="xv-btn" data-testid="xp-sheets-recreate">Recreate this sheet<Arrow /></Link>
       {td && <button type="button" className="xv-quiet xpc-q" aria-pressed={spin} onClick={() => setSpin((v) => !v)} data-testid="xp-sheets-spin">{spin ? 'Back to the sheet' : 'Spin him in 3D'}</button>}
       {!still && !on3d && <button type="button" className="xv-quiet xpc-q" aria-pressed={paused} onClick={() => setPaused((v) => !v)} data-testid="xp-sheets-pause">{paused ? 'Play' : 'Pause'}</button>}</span>
@@ -390,19 +395,14 @@ export function XpSheets() {
 }
 
 /* ============================================================== Mockup to film (Direct a Shot made real) ============================================================== */
-/** The film's chip: its own run (LTX-2.5 22B + Layout to Render, the beats' model) as the main model, the painted first frame as "+1" (the
- *  free mockup drawn in the browser isn't a model), the two runs' price together (the film's is an estimate, so "≈"). */
-export function filmChip(f: FeaturedItem): RunChipData {
-  const b3 = EXPLORE_FILM.beats[2]; const paid = (f.from ?? []).filter((r) => r.costUsd > 0);
-  return chipOfChain({ jobId: f.jobId ?? b3.jobId, model: b3.model, place: b3.place, costUsd: f.costUsd ?? b3.usd, est: true }, paid);
-}
 export function XpFilm() {
   const F = EXPLORE_FILM; const f = featuredByKey(F.key); const [beat, setBeat] = useState<1 | 2 | 3>(1); const [jump, setJump] = useState<{ to: 'wait' | 'hold' | 'play'; n: number } | undefined>();
   if (!f?.before) return null;
-  const rec = featuredRecreateHref(f.key) ?? F.cta.href; const [b1, b2, b3] = F.beats;
+  const rec = featuredRecreateHref(f.key) ?? F.cta.href; const b2 = F.beats[1];
   const onPhase = (p: ReelPhase) => setBeat(p === 'wait' ? 1 : p === 'sweep' || p === 'hold' ? 2 : 3);
   const go = (n: 1 | 2 | 3) => setJump((j) => ({ to: n === 1 ? 'wait' : n === 2 ? 'hold' : 'play', n: (j?.n ?? 0) + 1 }));
-  const after = beat === 2 ? `${F.labels.first} · ${b2.model}` : `${F.labels.film} · ${f.model}`;
+  /* the media keeps one role tag (Mockup / First frame / Film); models and prices live in the strip under it */
+  const after = beat === 2 ? F.labels.first : F.labels.film; const total = chipUsd(F.beats.reduce((n, x) => n + x.usd, 0), F.beats.some((x) => x.est));
   return <section className="xv-sec xpk xpf" id="xp-film" data-testid="xp-film" aria-labelledby="xp-h-film">
     <span className="xv-eb">{F.eyebrow}</span>
     <h2 id="xp-h-film" className="xpk-h">{F.title}</h2>
@@ -410,14 +410,15 @@ export function XpFilm() {
     <div className="xpk-frame xpf-frame" data-testid="xp-film-frame">
       {/* the clips live in the featured entry (shared/featured.ts 'ltx-mockup-film'): the mockup is its `before`, the film its `out` */}
       <HeroReel className="hreel-framed xpo-film xpf-film" testId="xp-film-wipe" reveal holdSweep parkAt={F.parkAt} onPhase={onPhase} jump={jump} sound={f.out.sound === true} restartOnSound
-        label={`${f.title}, made with ${b2.model} and ${f.model}`} before={{ url: f.before.url, poster: f.before.url.replace(/\.mp4$/, '.webp'), label: `${F.labels.mockup} · ${b1.model}` }}
+        label={`${f.title}, made with ${b2.model} and ${f.model}`} before={{ url: f.before.url, poster: f.before.url.replace(/\.mp4$/, '.webp'), label: F.labels.mockup }}
         after={{ url: f.out.url, poster: FEATURED_BIG_POSTER[f.key] ?? f.out.poster, label: after }} />
       <div className="xpf-bar" role="group" aria-label="The three passes">{F.beats.map((x) => <button key={x.n} type="button" className={`xpf-beat${beat >= x.n ? ' on' : ''}${beat === x.n ? ' is-now' : ''}`} aria-pressed={beat === x.n}
         onClick={() => go(x.n)} data-testid={`xp-film-beat-${x.n}`} title={x.tip}>
         <span className="xpf-b1"><i aria-hidden />{two(x.n)} · {x.step}</span><span className="xpf-b2">{x.model}</span>
-        <span className="xpf-b3">{x.usd ? <b data-testid={`xp-film-price-${x.n}`}>${x.usd.toFixed(2)}</b> : <em>Free</em>} · {x.place}{x.note ? ` · ${x.note}` : ''}</span></button>)}</div>
+        <span className="xpf-b3"><b data-testid={`xp-film-price-${x.n}`}>{chipUsd(x.usd, x.est)}</b> · {x.place}{x.note ? ` · ${x.note}` : ''}</span></button>)}
+        {/* the pipeline's last cell: the whole price, the same "≈" as the step it comes from */}
+        <span className="xpf-total" data-testid="xp-film-total"><span className="xpf-b1">Total</span><b>{total}</b><span className="xpf-b3">{F.beats.length} steps</span></span></div>
     </div>
-    <span className="xpf-chip"><RunChip c={filmChip(f)} testId="xp-film-chip" /></span>
     <span className="xpk-ctas"><Link to={rec} className="xv-btn" data-testid="xp-film-recreate">Recreate this shot<Arrow /></Link><Link to={F.cta.href} className="xv-quiet" data-testid="xp-film-cta">{F.cta.label}</Link></span>
     <p className="xpf-src">{F.credit}</p>
   </section>;
@@ -483,7 +484,8 @@ export function XpYourTurn() {
   const Y = EXPLORE_YOUR_TURN; const root = useRef<HTMLElement>(null); const [on, setOn] = useState(false); const [text, setText] = useState('');
   useEffect(() => { const el = root.current; if (!el || typeof IntersectionObserver === 'undefined') return;
     const io = new IntersectionObserver(([e]) => setOn(e.isIntersecting)); io.observe(el); return () => io.disconnect(); }, []);
-  const models = [...new Set(Y.wall.flat().map((t) => t.model))];
+  /* the credit names the models, then the 3D city's kits apart from them (they are assets, not models) */
+  const all = [...new Set(Y.wall.flat().map((t) => t.model))]; const kits = all.filter((m) => /^3D city · /.test(m)).map((m) => m.replace(/^3D city · /, '')); const models = all.filter((m) => !/^3D city · /.test(m));
   return <section ref={root} className={`xyt${on ? ' on' : ''}`} id="xp-your-turn" data-testid="xp-your-turn" aria-labelledby="xp-h-your-turn">
     <div className="xyt-wall" aria-hidden><div className="xyt-tilt">{Y.wall.map((col, c) => <div key={c} className="xyt-col"><div className="xyt-track">
       {[...col, ...col].map((t, k) => <img key={k} src={t.src} alt="" loading="lazy" decoding="async" draggable={false} className={t.star ? 'is-star' : undefined} />)}</div></div>)}</div></div>
@@ -499,6 +501,6 @@ export function XpYourTurn() {
       <nav className="xyt-tabs" aria-label="Or start in">{Y.tabs.map((t) => <Link key={t.label} to={t.href} data-testid={`xp-your-turn-tab-${t.label.toLowerCase()}`}>{t.label}</Link>)}</nav>
       <small className="xyt-note">{Y.note}</small>
     </div>
-    <p className="xyt-credit" data-testid="xp-your-turn-credit">On the wall: {models.join(' · ')}</p>
+    <p className="xyt-credit" data-testid="xp-your-turn-credit">On the wall: {models.join(' · ')}{kits.length > 0 && <span> · 3D city kits by {kits.join(', ')}</span>}</p>
   </section>;
 }

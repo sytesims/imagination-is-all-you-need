@@ -76,7 +76,6 @@ html body .nf .nf-foot .gen-btn.gen-node .gen-price{display:inline-flex!importan
 html body .nf .nf-foot .gen-btn.gen-node .gen-price::before{content:none!important;margin:0!important}
 html body .nf .nf-foot .gen-btn.gen-node .gen-price .gp-sub{display:none!important}
 html body .nf .nf-foot .gen-btn.gen-node .gen-price.gp-empty{display:none!important}
-html body .nf .nf-foot .gen-btn.gen-node .gen-setup-sub{display:none!important}
 /* waiting: the shared look (tokens.css --wait-*, as ui-states.css .gen-wait), in the node's slim pill */
 html body .nf .nf-foot .gen-btn.gen-node.gen-wait,html body .nf .nf-foot .gen-btn.gen-node[aria-disabled=true]{background:var(--wait-fill)!important;color:var(--wait-ink)!important;box-shadow:inset 0 0 0 1px var(--wait-ring)!important;cursor:pointer!important;filter:none!important}
 html body .nf .nf-foot .gen-btn.gen-node.gen-wait:hover,html body .nf .nf-foot .gen-btn.gen-node[aria-disabled=true]:hover{background:var(--wait-fill-hover)!important;color:var(--wait-ink)!important}

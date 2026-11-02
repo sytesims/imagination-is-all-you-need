@@ -6,6 +6,7 @@ import { progressOf } from './progress.js';
 import { getPreview, putPreview } from './comfy/preview.js';
 import { featureOfJob, imageFeaturesPayload, IMAGE_FEATURES } from './shared/imageFeatures.js';
 import { imageWorkflowsPayload, validateImageWorkflows } from './shared/workflows.js';
+import { IMAGE_RECIPES } from './shared/pluginPlacement.js';
 import { audioWorkflowsPayload, validateAudioWorkflows } from './shared/audioWorkflows.js';
 import { audioDefaultsOf } from './shared/audioDefaults.js';
 import { workflowModelCheck } from './workflowCompat.js';
@@ -95,7 +96,7 @@ import { listSoon } from './tools/registry.js';
 import { getTool, listTools, DEFAULT_TOOL_ID } from './tools/registry.js';
 import { config, DATA_DIR, WORKFLOWS_DIR } from './config.js';
 import { mcpInfo } from './mcpInfo.js';
-import { repoInfo, APP_VERSION } from './repoInfo.js';
+import { repoInfo, APP_VERSION, CHECKOUT_ID } from './repoInfo.js';
 import { checkComfyReady } from './comfyClient.js';
 import './routing/jobRefs.js'; // prompt grammar: local graphs rewrite @image1 with the runners' model key (comfy/plans.ts setPlanModelKey)
 import { SWATCH_MAX } from './shared/swatchBatch.js';
@@ -168,6 +169,9 @@ const pub = (j: Job) => ({
   id: j.id,
   /** Pages 16-18: upscale/enhance/edit tool or derived (parentId) job; a retry / Try on re-run is not (S-04: see rerun). */
   enhanced: isEnhanced(j as any),
+  /** The prompt enhancer rewrote the prompt and the run used it (input.enhancedPrompt set). Separate from `enhanced` (the Assets "Enhanced" group:
+   *  upscale / edit / derived), so Enhance on a plain Create doesn't move every image there. */
+  promptEnhanced: typeof (j.input as any)?.enhancedPrompt === 'string' && (j.input as any).enhancedPrompt.trim() !== '',
   /** S-04: 'retry' | 'try-on' | 'failed-groups' when this job re-runs its parent (POST /api/jobs/:id/retry), else null. */
   rerun: j.rerun ?? (j.input?.retryGroups ? 'failed-groups' : j.input?.retryOf ? 'retry' : null),
   elements: (j.input as any)?.elements ?? [],
@@ -332,7 +336,9 @@ app.get('/api/image-features', async () => ({ features: imageFeaturesPayload(), 
  *  everyone until the tool registry changes, so it is cache-friendly: ETag + a short max-age; If-None-Match answers 304. */
 { const wfErrs = validateImageWorkflows(getTool as any); if (wfErrs.length) console.error(`[image-workflows] ${wfErrs.length} recipe problem(s):\n  ${wfErrs.join('\n  ')}`); }
 app.get('/api/image-workflows', async (req, reply) => {
-  const body = JSON.stringify(withWorkflowDefaults(imageWorkflowsPayload(getTool as any, workflowModelCheck(getTool)), getTool)); const etag = `"${createHash('sha1').update(body).digest('base64url').slice(0, 20)}"`;
+  /* + the Image-tab plugins (a workflow you added, an add-on folder): the same recipe shape, so the bar runs them like the built-ins (shared/pluginPlacement.ts) */
+  const pl = imageWorkflowsPayload(getTool as any, workflowModelCheck(getTool));
+  const body = JSON.stringify(withWorkflowDefaults({ ...pl, workflows: [...pl.workflows, ...IMAGE_RECIPES] as typeof pl.workflows }, getTool)); const etag = `"${createHash('sha1').update(body).digest('base64url').slice(0, 20)}"`;
   reply.header('cache-control', 'public, max-age=60, stale-while-revalidate=600').header('etag', etag);
   if (req.headers['if-none-match'] === etag) return reply.code(304).send();
   return reply.type('application/json; charset=utf-8').send(body);
@@ -375,6 +381,8 @@ app.get('/api/health', async () => {
     ok: true,
     /** the app's version (root package.json), shown in Settings → Profile */
     version: APP_VERSION,
+    /** which checkout answers (a hash of its folder, repoInfo.ts): setup and the doctor tell another copy on this port from this one */
+    checkout: CHECKOUT_ID,
     backend: config.backend,
     openWeightsOnly: openWeightsOnly(),
     comfyReady: comfy.ok,

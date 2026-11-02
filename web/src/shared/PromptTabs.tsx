@@ -1,6 +1,7 @@
 /** The tabbed prompt area (2026-10-24, the approved "music box" mockup): one prompt box with labelled tabs (Audio: Style | Lyrics), a field that
  *  is the Image prompt itself (classes ic-prompt prompt-field, grown 2 → 8 lines by shared/usePromptGrow), quick chips under it and a hint on
  *  the right. Shared by every Audio workflow that takes text; a single tab shows as a plain label (Voiceover's "Script"), none shows no header.
+ *  The quick chips (`helpers`) sit in the tab row and the field starts at one line, so the bar is as tall as on every other tab (2026-11-02).
  *  - PromptTabs: the tab row (Tab or ←/→ moves between tabs; a disabled tab stays visible, greyed, with its reason as the tooltip) + the panel.
  *  - PromptField: the textarea, optionally with a highlight layer BEHIND it (section tags in orange); it stays a real textarea for typing,
  *    paste, undo and IME, with Enter = Generate and Shift+Enter = a new line (shared/enterSubmit); the Lyrics field uses data-enter-submits="mod": Enter = new line, Cmd/Ctrl+Enter = Generate.
@@ -11,18 +12,20 @@ import './promptTabs.css';
 
 export interface PromptTab { id: string; label: string; icon?: ReactNode; pill?: { text: string; tone: 'ok' | 'need' } | null; disabled?: boolean; tip?: string }
 
-export function PromptTabs({ tabs, active, onTab, aside, children, testId = 'pt', idBase = 'pt' }: { tabs: PromptTab[]; active: string; onTab: (id: string) => void;
+export function PromptTabs({ tabs, active, onTab, helpers, aside, children, testId = 'pt', idBase = 'pt' }: { tabs: PromptTab[]; active: string; onTab: (id: string) => void;
+  /** quick chips beside the tabs (a PromptHelpers) */ helpers?: ReactNode;
   /** right side of the tab row (Audio's Instrumental switch) */ aside?: ReactNode; children: ReactNode; testId?: string; idBase?: string }) {
   const list = useRef<HTMLDivElement>(null);
   const move = (dir: 1 | -1) => { const on = tabs.filter(t => !t.disabled); const i = on.findIndex(t => t.id === active); const n = on[(i + dir + on.length) % on.length]; if (n) { onTab(n.id); list.current?.querySelector<HTMLButtonElement>(`[data-tab="${n.id}"]`)?.focus(); } };
   const many = tabs.length > 1;
   return <div className="pt-box" data-testid={testId}>
-    {(tabs.length > 0 || aside) && <div className="pt-head">
+    {(tabs.length > 0 || helpers || aside) && <div className="pt-head">
       {many ? <div ref={list} className="pt-tabs" role="tablist" aria-label="Prompt" onKeyDown={e => { if (e.key === 'ArrowRight') { e.preventDefault(); move(1); } else if (e.key === 'ArrowLeft') { e.preventDefault(); move(-1); } }}>
         {tabs.map(t => { const on = t.id === active; return <button key={t.id} type="button" role="tab" id={`${idBase}-tab-${t.id}`} data-tab={t.id} data-testid={`${testId}-tab-${t.id}`} aria-selected={on} aria-controls={`${idBase}-panel`}
           aria-disabled={t.disabled || undefined} className={`pt-tab${on ? ' on' : ''}${t.disabled ? ' off' : ''}`} {...(t.tip ? tip(t.tip) : {})} onClick={() => { if (!t.disabled) onTab(t.id); }}>
           {t.icon}<span>{t.label}</span>{t.pill ? <em className={`pt-pill${t.pill.tone === 'need' ? ' need' : ''}`} data-testid={`${testId}-pill-${t.id}`}>{t.pill.text}</em> : null}</button>; })}
       </div> : tabs[0] ? <span className="pt-tab pt-one on" data-testid={`${testId}-label`}>{tabs[0].icon}<span>{tabs[0].label}</span></span> : null}
+      {helpers}
       {aside ? <span className="pt-aside">{aside}</span> : null}
     </div>}
     <div className="pt-panel" id={`${idBase}-panel`} role={many ? 'tabpanel' : undefined} aria-labelledby={many ? `${idBase}-tab-${active}` : undefined}>{children}</div>
@@ -61,7 +64,7 @@ export function PromptSwitch({ label, on, onChange, tip: t, testId }: { label: s
 }
 
 export interface HelperChip { key: string; label: ReactNode; onPick: () => void; testId?: string; tip?: string; ariaLabel?: string }
-/** Quick chips on their own row under the field, then the hint on its own line only when it says something now (a warning, a count): the
+/** Quick chips (in the tab row when passed as PromptTabs' `helpers`, else on their own row under the field), then the hint on its own line only when it says something now (a warning, a count): the
  *  "how to write it" words live in the field's placeholder, never beside the chips (tone "warn": amber). The chips never take focus from the
  *  field on a mouse click, so the caret stays where it was. */
 export function PromptHelpers({ chips, hint, tone, testId = 'pt-helpers' }: { chips: HelperChip[]; hint?: ReactNode; tone?: 'warn' | null; testId?: string }) {

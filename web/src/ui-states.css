@@ -51,6 +51,31 @@ html body .gen-btn.gen-btn.gen-btn:disabled svg{opacity:.6}
 
 html body .gen-row>.cost-note{order:4}
 
+/* ---------- Why a run can't start (GenStatus, shared/GenStatus.tsx): ONE line right before every Generate ----------
+   A dot, a short plain reason (one line on desktop, ellipsis + tooltip; wraps on a phone) and at most two actions. Generate keeps its size. */
+.gen-status{box-sizing:border-box;display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;min-width:0;max-width:100%;margin:0 0 8px;padding:8px 10px 8px 12px;border-radius:12px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);font:500 13px/18px var(--font-ui,Inter,system-ui,sans-serif);color:var(--text,#f4f4f5)}
+.gen-status .gs-t{display:flex;align-items:flex-start;gap:8px;flex:1 1 200px;min-width:0;margin:0}
+.gen-status .gs-dot{flex:none;width:8px;height:8px;margin-top:5px;border-radius:50%;background:var(--warning,#f5a524)}
+.gen-status.gen-status-note .gs-dot{background:var(--text-3,#8b8b92)}
+.gen-status .gs-why{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gen-status .gs-acts{display:flex;align-items:center;gap:14px;flex:0 1 auto;min-width:0;margin-left:auto}
+.gen-status .gs-pri{box-sizing:border-box;height:30px;padding:0 12px;border-radius:8px;border:1px solid var(--accent);background:transparent;color:var(--accent);font:600 13px/1 var(--font-ui,inherit);white-space:nowrap;cursor:pointer;transition:background-color var(--t-state,.15s),color var(--t-state,.15s)}
+.gen-status .gs-pri:hover,.gen-status .gs-pri:focus-visible{background:var(--accent);color:var(--on-accent)}
+.gen-status .gs-pri[aria-busy=true]{cursor:progress;opacity:.7}
+.gen-status .gs-alt{padding:4px 0;border:0;background:none;color:var(--text-2,#c4c4c8);font:600 13px/1 var(--font-ui,inherit);text-decoration:underline;text-underline-offset:3px;white-space:nowrap;cursor:pointer}
+.gen-status .gs-alt:hover,.gen-status .gs-alt:focus-visible{color:var(--text,#f4f4f5)}
+.gen-status button:focus-visible{outline:var(--focus-ring-w,2px) solid var(--focus-ring-color,var(--accent));outline-offset:var(--focus-ring-gap,2px)}
+@media (max-width:700px){
+  .gen-status .gs-why{white-space:normal}
+  .gen-status .gs-acts{flex:1 1 100%;margin-left:0}
+  .gen-status .gs-pri{flex:1 1 auto;height:36px}
+}
+/* the composer docks (Image, Video, Audio, 3D): the line takes its own row above the prompt and Generate */
+@media (min-width:701px){
+  html body .ic.ic2 .ic-dock .ic-panel:has(>.gen-status){flex-wrap:wrap}
+  html body .ic.ic2 .ic-dock .ic-panel>.gen-status{order:-1;flex:1 0 100%;margin:0}
+}
+
 /* ---------- Why Generate is off (GenWhy, the shared Popover) ---------- */
 .gen-why .apop-body{padding:10px 12px}
 .gen-why-t{display:flex;align-items:flex-start;gap:8px;margin:0;max-width:280px;font:500 13px/18px var(--font-ui);color:var(--text)}

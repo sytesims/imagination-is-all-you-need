@@ -1,6 +1,6 @@
 // Fit check before a heavy local run (2026-10-31, hardware plan item 4): fixed sample readings, in process, temp data dir, mock backend, no network.
 // 1 which free memory counts per platform (Mac and DGX Spark: system memory, shared; an NVIDIA card: its own free memory; never the GB10's cudaMemGetInfo)
-// 2 the warning (only for models of 8 GB and up, only when short, never a block) · 3 the run menu's mini line (learned time, first run)
+// 2 the warning (only for models of 8 GB and up, only when short; a block only on shared memory, M1 2026-11-02) · 3 the run menu's mini line (learned time, first run)
 // 4 a heavy model that fits still carries its cloud route, so the warning can offer it.
 // Run: npx tsx test/hardware-fitcheck.test.ts
 import './fixtures/tmp-cleanup.mjs';
@@ -25,14 +25,16 @@ try {
   ok('free memory: Mac and Spark read system memory (shared), an NVIDIA card its own; unknown → none');
 
   // ---- 2. the warning ----
-  const m = TC.memoryCheck(24, mac, live(13)); assert.ok(m?.short); assert.match(m!.text, /needs about 24 GB and 13 GB is free now/); assert.match(m!.text, /still runs/, 'never a block');
+  const m = TC.memoryCheck(24, mac, live(13)); assert.ok(m?.short); assert.match(m!.text, /needs about 24 GB and 13 GB is free/); assert.doesNotMatch(m!.text, /still runs|more slowly/, 'M1: never "still runs" on shared memory');
+  assert.equal(m!.block, true, 'M1: shared memory and short = it waits for a yes (it can freeze the computer)'); assert.match(m!.text, /can freeze your computer/);
+  { const g = TC.memoryCheck(20, pc, live(60, [24, 6])); assert.equal(g?.block, false, 'a graphics card: said, never blocked'); assert.doesNotMatch(g!.text, /still runs/); };
   assert.equal(TC.memoryCheck(24, mac, live(40))?.short, false, 'enough free: no warning');
   assert.equal(TC.memoryCheck(6, mac, live(2)), null, 'small model: no check');
   assert.equal(TC.memoryCheck(null, mac, live(2)), null, 'unknown need: no check');
   assert.equal(TC.memoryCheck(40, spark, live(77, [128, 2]))?.short, false, 'Spark: 77 GB free is enough for 40 GB (the low GPU reading is ignored)');
   assert.equal(TC.memoryCheck(20, pc, live(60, [24, 6]))?.short, true, 'NVIDIA: 6 GB free on the card for a 20 GB model');
   assert.equal(TC.memoryCheck(20, mac, live(0.3))?.text.includes('0.3 GB is free'), true, 'very low free memory: said as it is');
-  ok('warning: only for 8 GB+ models when short now; never blocks; Spark judged by shared memory');
+  ok('warning: only for 8 GB+ models when short now; blocks only on shared memory (M1); Spark judged by shared memory');
 
   // ---- 3. mini line ----
   assert.equal(TC.hereLine({ name: 'Apple M1 Max · 64 GB', freeGB: 13, etaSeconds: 253, etaSource: 'learned', samples: 5 }), 'Apple M1 Max · 64 GB · 13 GB free now · about 4 min (your last 5 runs)');

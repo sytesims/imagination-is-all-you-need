@@ -14,6 +14,8 @@ export function WelcomeSteps({ onClose }: { onClose: () => void }) {
   const rec: RunChoice | null = w.comfy.state === 'found' ? 'gpu' : w.comfy.state === 'missing' ? 'comfy' : null;
   const toggle = (c: RunChoice) => setPick(p => p.includes(c) ? p.filter(x => x !== c) : WELCOME_CHOICES.map(x => x.id).filter(x => x === c || p.includes(x)));
   const working = pick.filter(w.connected);
+  /* ComfyUI not found and the person would rather not set it up now: Comfy Cloud in its place (no dead end) */
+  const useCloud = () => setPick(p => WELCOME_CHOICES.map(x => x.id).filter(x => x === 'comfy' || (x !== 'gpu' && p.includes(x))));
   const indicator = <ol className="wl-steps" aria-label={`Step ${step + 1} of 3`} data-testid="wl-steps">{STEPS.map((s, i) => <li key={s} className={i === step ? 'on' : i < step ? 'done' : ''} aria-current={i === step ? 'step' : undefined}><span>{s}</span></li>)}</ol>;
 
   const gpuLine = w.comfy.state === 'looking' ? <span className="wl-mini"><span className="as-spin" aria-hidden />Looking…</span>
@@ -29,7 +31,7 @@ export function WelcomeSteps({ onClose }: { onClose: () => void }) {
       <h3 className="wl-q">{pick.length === 1 ? CONNECT_TITLE[pick[0]] : 'Connect what you picked'}</h3>
       <p className="wl-sub">{pick.length > 1 ? 'One is enough to start. You can add the rest later in Settings.' : 'You can change this later in Settings.'}</p>
       {pick.map(id => { const c = WELCOME_CHOICES.find(x => x.id === id)!; const F = FORMS[id];
-        return <section key={id} className="wl-part">{pick.length > 1 && <h4><ChoiceVisual id={id} />{c.name}{w.connected(id) && <span className="conn-pill cp-ok">Connected</span>}</h4>}<F w={w} /></section>; })}</>
+        return <section key={id} className="wl-part">{pick.length > 1 && <h4><ChoiceVisual id={id} />{c.name}{w.connected(id) && <span className="conn-pill cp-ok">Connected</span>}</h4>}<F w={w} onCloud={id === 'gpu' ? useCloud : undefined} /></section>; })}</>
     : <><h3 className="wl-q">You’re ready</h3><p className="wl-sub">Here’s what’s connected.</p><Ready w={w} ways={ways} /></>;
 
   const next = async () => { if (step === 0) { setStep(1); return; }

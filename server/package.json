@@ -12,6 +12,7 @@
     "samples": "bash scripts/make-samples.sh",
     "openapi": "tsx scripts/gen-openapi.ts",
     "licenses": "tsx scripts/gen-licenses.ts",
+    "docs:workflows": "tsx scripts/gen-workflow-docs.ts",
     "start:tsx": "tsx src/index.ts",
     "start:app": "node scripts/dev.mjs --no-watch",
     "test": "node ../scripts/test-all.mjs"

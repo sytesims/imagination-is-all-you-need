@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { downloadIntentOf } from './hardware';
 import { scaleText } from './scaleText';
+import { localOnlyGate } from '../../../server/src/shared/preflight';
 /** Server quotes (GET /api/tools/:id/price, /api/models/quote). A 400 with priceAvailable:false (credits:null, runnable:false) is a real
  *  answer, "no verified price for this setting", so keep its body instead of dropping it; callers then block Generate with the reason. */
 export const UNPRICED_MSG = 'No verified price for this setting, so it can’t run.';
@@ -48,6 +49,11 @@ export const readQuoteBody = (r: Response): Promise<any> => r.json().catch(() =>
 let requoteN = 0; const requoteBus = new Set<() => void>();
 export const requestRequote = () => { requoteN++; requoteBus.forEach(f => f()); };
 export function useRequoteTick(): number { const [n, setN] = useState(requoteN); useEffect(() => { const f = () => setN(requoteN); requoteBus.add(f); return () => { requoteBus.delete(f); }; }, []); return n; }
+/** A run only a key would start (a cloud model, no key yet): needsKey and not runnable. Not a local-only model waiting for ComfyUI (no key helps). */
+export const keyGated = (q: any): boolean => !!q && q.needsKey === true && q.runnable === false && q.demo !== true && !localOnlyGate(q);
+/** What that run would cost once the key is added: the quote's own setup option for the place it names (the Run on menu's "≈ $0.03"), else null. */
+export const keyGatePrice = (q: any): number | null => { const os: any[] = Array.isArray(q?.setupOptions) ? q.setupOptions.filter((x: any) => typeof x?.credits === 'number' && x.credits > 0) : [];
+  return (os.find(x => x.runOn === q?.setup?.runOn) ?? os[0])?.credits ?? null; };
 /** The reason to show when the quote says the setting has no verified price; null when it is priced (or still loading). A missing key is its own gate. */
 export const unpricedReason = (q: any): string | null => {
   if (!q || q.needsKey === true) return null;

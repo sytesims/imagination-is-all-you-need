@@ -18,9 +18,8 @@ import { rigOfFields, rigChipPlain, plainDir, degTip, presetEdited } from '../..
 import { Link, navigate } from '../../platform/router';
 import { tip } from '../../shared/Tooltip';
 import { PhoneAdIcon, PhonePhotoIcon, TextIcon, AudioIcon, LightIcon, FaceSwapIcon, UserIcon, CharacterSheetIcon, ProductIcon, ShotsIcon, CameraMovesIcon, BrushIcon, ImageIcon, SearchIcon, CloseIcon, ChevronRightIcon, PlusIcon, UpscaleIcon, AspectIcon, CutoutIcon, ExpandIcon, EraserIcon, GarmentIcon, MaterialIcon, LayerSheetsIcon, CubeIcon, OrbitIcon, PrevizIcon, type IconProps } from '../Icons';
-import { listTools, type ProviderInfo } from '../../api';
+import { type ProviderInfo } from '../../api';
 import { AddOwnRow } from '../../shared/WorkflowPicker';
-import { pluginHref, pluginLine, placedTab } from '../../../../server/src/shared/pluginPlacement';
 import { ScalePanel, outOf, sizeText, scaleWhy, type UpInfo, type Size } from './UpscaleBar';
 import type { WorkflowRecipe } from '../../../../server/src/shared/workflows';
 import { draftPromptOk } from '../../shared/batch1';
@@ -32,7 +31,7 @@ import { SlotLabel } from '../../shared/SlotLabel';
 import { AddTile } from '../../shared/AddTile';
 import { PlatformPicker, CornerPicker } from './AdPickers';
 
-export type WfRecipe = WorkflowRecipe & { modelInfo?: Record<string, { name: string | null; workflow: { line: string; url: string | null; source: string } | null; /** product shot: the aspects this model takes, per mode */ aspects?: Record<string, string[]>; /** the model's own shape when the picked one isn't offered */ defaultAspect?: string; /** the credit when a photo switches the mode */ workflowByMode?: Record<string, { line: string; url: string | null; source: string } | null> }> };
+export type WfRecipe = WorkflowRecipe & { /** a workflow you added (or an add-on folder): shared/pluginPlacement.ts pluginImageRecipe */ added?: true; modelInfo?: Record<string, { name: string | null; workflow: { line: string; url: string | null; source: string } | null; /** product shot: the aspects this model takes, per mode */ aspects?: Record<string, string[]>; /** the model's own shape when the picked one isn't offered */ defaultAspect?: string; /** the credit when a photo switches the mode */ workflowByMode?: Record<string, { line: string; url: string | null; source: string } | null> }> };
 export type WfSlotFile = { file: File; url: string };
 /** The values a run really sends: a shape this model doesn't offer (Auto on an API model, or 16:9 after switching models) becomes
  *  the model's own default shape, so the chip, the quote and the job agree (QA #1). Nothing is stored: switching back restores the pick. */
@@ -46,14 +45,8 @@ export const WfIcon = ({ name, size = 16 }: { name: string; size?: number }) => 
 
 export { READY_WORKFLOW_TOOLS, workflowRecreateHref } from '../../shared/workflowLinks';
 
-let cache: Promise<WfRecipe[]> | null = null;
-/** The recipes (fetched once per page load; the server sends an ETag and a short max-age). */
-export function useImageWorkflows(): WfRecipe[] {
-  const [list, setList] = useState<WfRecipe[]>([]);
-  useEffect(() => { let live = true; cache ??= fetch('/api/image-workflows').then(r => r.ok ? r.json() : { workflows: [] }).then(j => (Array.isArray(j?.workflows) ? j.workflows : [])).catch(() => { cache = null; return []; });
-    cache.then(x => { if (live) setList(x); }); return () => { live = false; }; }, []);
-  return list;
-}
+/** The recipes (built-ins and the workflows you added, one list): shared/imageWorkflowsStore.ts, so Add a workflow can refresh them without this file. */
+export { useImageWorkflows, refreshImageWorkflows } from '../../shared/imageWorkflowsStore';
 
 /** Per-workflow draft (prompt, model, control values), so switching workflows never mixes values. Files stay in memory for the visit. */
 export interface WfDraft { prompt: string; provider: string; vals: Record<string, string>; /** 'user' = picked in the model menu ("Your pick"); absent = the default, or a preset / link / Recreate's model */ pickedBy?: 'user' }
@@ -77,13 +70,11 @@ export function WorkflowPicker({ open, anchor, list, current, onPick, onClose, w
   useEffect(() => { if (!open) { setQ(''); setTab('all'); setHi(0); return; } const t = setTimeout(() => qRef.current?.focus(), 60); return () => clearTimeout(t); }, [open]);
   const ql = q.trim().toLowerCase();
   type Row = { id: string; name: string; icon: string; line: string; needs: string; src: string; ready: boolean; route?: string; cat: string };
-  /* workflows from a folder placed in the Image tab (yours, or an add-on): rows that open their own page (shared/pluginPlacement.ts) */
-  const [plugs, setPlugs] = useState<Row[]>([]);
-  useEffect(() => { if (!open) return; let live = true; listTools().then(ts => { if (live) setPlugs(ts.filter(t => placedTab(t as any) === 'image').map(t => ({ id: `plugin:${t.id}`, name: t.name, icon: 'create', line: pluginLine(t as any), needs: t.plugin?.input === 'none' ? 'Prompt' : t.plugin?.input === 'video' ? '1 clip' : '1 photo', src: t.plugin?.user ? 'yours' : 'addon', ready: false, route: pluginHref(t as any), cat: ['edit', 'people', 'product', 'camera'].includes(t.plugin?.category ?? '') ? t.plugin!.category! : 'edit' }))); }).catch(() => undefined); return () => { live = false; }; }, [open]);
+  /* workflows you added (or an add-on folder) are recipes in the same list (source 'yours' / 'addon'): picked into this bar like the built-ins */
   const rows: Row[] = useMemo(() => [
     { id: '', name: 'Create', icon: 'create', line: 'Text to image, or edit a photo with a prompt', needs: 'Prompt · photos', src: 'ours', ready: true, cat: 'basics' },
-    ...list.map(r => ({ id: r.id, name: r.name, icon: r.icon, line: r.tagline, needs: r.needs, src: r.source.kind, ready: r.status === 'ready', route: r.route, cat: r.category })), ...plugs,
-  ].filter(r => (tab === 'all' || r.cat === tab) && (!ql || `${r.name} ${r.line} ${r.cat}`.toLowerCase().includes(ql))), [list, plugs, tab, ql]);
+    ...list.map(r => ({ id: r.id, name: r.name, icon: r.icon, line: r.tagline, needs: r.needs, src: r.source.kind, ready: r.status === 'ready', route: r.route, cat: r.category })),
+  ].filter(r => (tab === 'all' || r.cat === tab) && (!ql || `${r.name} ${r.line} ${r.cat} ${SRC_WORD[r.src] ?? ''}`.toLowerCase().includes(ql))), [list, tab, ql]);
   const pickable = rows; /* every row: ready ones load into the bar, the others open their page */
   useEffect(() => { setHi(0); }, [tab, ql]);
   const choose = (r: Row) => { onClose(); if (r.ready) onPick(r.id); else navigate(r.route ?? '/workflows'); };
@@ -111,7 +102,7 @@ export function WorkflowPicker({ open, anchor, list, current, onPick, onClose, w
         {!rows.length && <p className="helper wf-empty">No workflows match “{q}”.</p>}
         <AddOwnRow tab="image" onClose={onClose} testId="wf-add-own" />
       </div>
-      <div className="wf-foot"><span>{list.length + plugs.length} workflows</span><Link to="/workflows" className="wf-all" onClick={onClose} data-testid="wf-browse-all">Browse all workflows <ChevronRightIcon size={12} /></Link></div>
+      <div className="wf-foot"><span>{list.length} workflows</span><Link to="/workflows" className="wf-all" onClick={onClose} data-testid="wf-browse-all">Browse all workflows <ChevronRightIcon size={12} /></Link></div>
     </div>
   </Popover>;
 }
@@ -153,7 +144,7 @@ const pickLabel = (r: WfRecipe, field: string, v: string, short = false) => { co
 export function groupSummary(r: WfRecipe, g: WfRecipe['groups'][number], vals: Record<string, string>, full = false): string {
   if (g.id === 'light' && (vals.light || r.controls.some(c => c.field === 'light'))) return rigChipPlain(rigOfVals(vals));
   const parts = (short: boolean) => g.summary.map(f => { const c = r.controls.find(x => x.field === f); const v = vals[f] ?? c?.default ?? ''; if (!c || v === '' || (f === 'look' && v === 'custom')) return '';
-    if (c.kind === 'slider') return `${v}%`; if (f === 'direction' && vals.lightX && vals.lightY) return 'Custom'; if (c.kind === 'text') return v;
+    if (c.kind === 'slider') return `${v}${c.unit ?? '%'}`; if (f === 'direction' && vals.lightX && vals.lightY) return 'Custom'; if (c.kind === 'text') return v;
     if (c.kind === 'chips-multi') { let ids: string[] = []; try { const x = JSON.parse(v); ids = (Array.isArray(x) ? x : [x]).map(String); } catch { ids = v.split(','); } /* Ad Pack styles on a Canvas card: "3 ads", never the raw list */
       ids = ids.filter(i => c.options?.some(o => o.value === i)); return ids.length === 1 ? pickLabel(r, f, ids[0], short) : `${ids.length} ${g.label.toLowerCase()}`; }
     return c.kind === 'swatches' ? (c.options?.find(o => o.value.toUpperCase() === v.toUpperCase())?.label ?? v.toUpperCase()) : pickLabel(r, f, v, short); }).filter(Boolean);
@@ -181,10 +172,10 @@ function GenericPanel({ r, g, vals, set, allow, optPrice }: { r: WfRecipe; g: Wf
   const opts = (c: WfRecipe['controls'][number]) => { const a = allow?.[c.field]; const os = c.options ?? []; const f = a ? os.filter(o => a.includes(o.value)) : os; return f.length ? f : os; };
   /* an option's hint, unless it only says its label again ("Standard" / "Standard geometry") */
   const hint = (o: { label: string; credit?: string }) => { const h = o.credit?.trim(); return h && !h.toLowerCase().startsWith(o.label.toLowerCase()) ? h : null; };
-  return <div className="wf-gen">{r.controls.filter(c => c.group === g.id).map(c => <div key={c.field} className={`wf-gen-row${c.kind === 'corner' ? ' wf-gen-row-side' : ''}`} data-kind={c.kind}><span className="wf-pop-h">{c.label}</span>
+  return <div className="wf-gen">{r.controls.filter(c => c.group === g.id).map(c => <div key={c.field} className={`wf-gen-row${c.kind === 'corner' ? ' wf-gen-row-side' : ''}`} data-kind={c.kind}><span className="wf-pop-h">{c.label}{c.kind === 'slider' && c.unit != null && <b className="wf-gen-val" data-testid={`wf-val-${c.field}`}>{vals[c.field] ?? c.default ?? ''}{c.unit}</b>}</span>
     {c.kind === 'platforms' /* Ad Pack: grouped platform icons + one word per size (AdPickers.tsx) */ ? <PlatformPicker value={vals[c.field] ?? c.default ?? ''} set={v => set(c.field, v)} label={c.label} />
       : c.kind === 'corner' /* Ad Pack's logo corner on a tiny frame of the picked size */ ? <CornerPicker value={vals[c.field] ?? c.default ?? ''} set={v => set(c.field, v)} label={c.label} placement={vals.placement} help={c.help} />
-      : c.kind === 'slider' ? <input type="range" min={c.min} max={c.max} step={c.step} value={vals[c.field] ?? c.default ?? ''} onChange={e => set(c.field, e.target.value)} />
+      : c.kind === 'slider' ? <input type="range" min={c.min} max={c.max} step={c.step} value={vals[c.field] ?? c.default ?? ''} aria-label={c.label} data-testid={`wf-range-${c.field}`} onChange={e => set(c.field, e.target.value)} />
       : c.kind === 'text' /* Material Swap, Ad Pack: short optional words (the server collapses spaces and checks the length too) */ ? <input type="text" className="wf-gen-text" data-testid={`wf-text-${c.field}`} aria-label={c.label} maxLength={c.maxLength} placeholder={c.placeholder ?? (c.optional ? 'Optional' : '')} value={vals[c.field] ?? ''} onChange={e => set(c.field, e.target.value)} />
       : c.kind === 'tiles' ? <div className="wf-tiles" role="radiogroup" aria-label={c.label}>{opts(c).map(o => <button key={o.value} type="button" role="radio" aria-checked={(vals[c.field] ?? c.default) === o.value} className={`wf-tile${(vals[c.field] ?? c.default) === o.value ? ' on' : ''}`} data-testid={`wf-tile-${o.value}`} onClick={() => set(c.field, o.value)}><i aria-hidden className={`wf-tile-sw wf-tile-${o.value}`} /><span>{o.label}</span></button>)}</div>
       : <div className="wf-seg wf-seg-wrap" role="radiogroup" aria-label={c.label} data-cols={segCols(opts(c).length)}>{opts(c).map(o => <button key={o.value} type="button" role="radio" aria-checked={(vals[c.field] ?? c.default) === o.value} className={(vals[c.field] ?? c.default) === o.value ? 'on' : ''} data-testid={`wf-opt-${c.field}-${o.value}`} title={hint(o) ?? undefined} onClick={() => set(c.field, o.value)}>{o.value === 'auto' ? 'Auto' : o.label}{hint(o) ? <small className="wf-opt-note">{hint(o)}</small> : null}{optPrice && <OptPrice text={optPrice(c.field, o.value)} testId={`wf-opt-price-${c.field}-${o.value}`} />}</button>)}</div>}

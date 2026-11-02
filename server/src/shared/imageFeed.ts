@@ -13,7 +13,7 @@
  */
 import { IMAGE_FEATURES, featureById, featureIdOfJob } from './imageFeatures.js';
 import { WORKFLOW_CATEGORIES, WORKFLOW_CATEGORY_OF } from './workflows.js';
-import { FEED_GROUP_PREFIX, FRAME_TOOL_ID, isImageJob, uploadsGroup, type FeedJob, type FeedGroup } from './mediaFeed.js';
+import { ADDED_IMAGE_WORKFLOWS, FEED_GROUP_PREFIX, FRAME_TOOL_ID, isImageJob, uploadsGroup, type FeedJob, type FeedGroup } from './mediaFeed.js';
 export { isImageJob } from './mediaFeed.js';
 
 export const ALL_IMAGE_FEED = 'all';
@@ -26,7 +26,7 @@ export interface ImageFeedDef { id: string; /** "All workflows", a workflow's or
   /** is this (image) job in the feed */ match: (j: FeedJob) => boolean; /** the Uploads chip: the media library, not jobs */ uploads?: boolean }
 
 /** The image feature (= image workflow) a job ran as; null for a tool with no image workflow (a saved frame, Photo FX, the 3D tab). */
-export const imageWorkflowIdOf = (j: FeedJob): string | null => featureIdOfJob({ toolId: String(j.toolId ?? ''), input: j.input ?? null });
+export const imageWorkflowIdOf = (j: FeedJob): string | null => featureIdOfJob({ toolId: String(j.toolId ?? ''), input: j.input ?? null }) ?? (ADDED_IMAGE_WORKFLOWS.has(String(j.toolId ?? '')) ? String(j.toolId) : null); /* a workflow you added: its tool id */
 const catGroup = (cat: string, noun: string): FeedGroup => ({ id: `${FEED_GROUP_PREFIX}${cat}`, label: WORKFLOW_CATEGORIES.find((c) => c.id === cat)?.label ?? cat, noun,
   workflows: IMAGE_FEATURES.filter((f) => WORKFLOW_CATEGORY_OF[f.id] === cat).map((f) => f.id) });
 /** The Image tab's filter chips (2026-10-26): named sets over the image workflow ids, plus tools with no image workflow. A job can sit in two
@@ -44,6 +44,7 @@ export const IMAGE_FEED_GROUPS: FeedGroup[] = [{ id: ALL_IMAGE_FEED, label: 'All
 function inGroup(j: FeedJob, g: FeedGroup): boolean {
   if (g.uploads) return false; /* uploads are files, not jobs */
   const wf = imageWorkflowIdOf(j); if (wf && g.workflows.includes(wf)) return true;
+  const added = wf ? ADDED_IMAGE_WORKFLOWS.get(wf) : undefined; if (added && g.id === `${FEED_GROUP_PREFIX}${added.category}`) return true; /* an added workflow sits in its picker category's chip */
   return !!g.toolIds?.includes(String(j.toolId ?? ''));
 }
 
@@ -52,6 +53,7 @@ export function imageFeedOf(id: string | null | undefined): ImageFeedDef | null 
   const key = id || ALL_IMAGE_FEED;
   if (key === ALL_IMAGE_FEED) return { id: ALL_IMAGE_FEED, name: 'All workflows', match: () => true };
   if (key.startsWith(FEED_GROUP_PREFIX)) { const g = IMAGE_FEED_GROUPS.find((x) => x.id === key); return g ? { id: g.id, name: g.label, noun: g.noun, match: (j) => inGroup(j, g), ...(g.uploads ? { uploads: true } : {}) } : null; }
+  const a = ADDED_IMAGE_WORKFLOWS.get(key); if (a) return { id: key, name: a.name, match: (j) => imageWorkflowIdOf(j) === key }; /* a workflow you added */
   const f = featureById(key); if (!f) return null;
   return { id: f.id, name: f.name, match: (j) => imageWorkflowIdOf(j) === f.id };
 }
@@ -67,6 +69,6 @@ export function inImageFeed(j: FeedJob, feed: string | ImageFeedDef | null): boo
 const OTHER_IMAGE_NAMES: Record<string, string> = { [FRAME_TOOL_ID]: 'Video frame', 'photo-fx': 'Photo FX', 'three-d': '3D', 'image-to-3d': '3D', 'plan-a-shot': 'Direct a Shot', previz: 'Direct a Shot', 'make-it-real': 'Render', 'three-d-turntable': 'Turntable', turntable: 'Turntable' };
 /** The workflow an image job came from, for its card in the All view ("Create Image", "Relight", "Video frame"); null when unknown. */
 export function imageWorkflowNameOf(j: FeedJob): string | null {
-  const wf = imageWorkflowIdOf(j); if (wf) return featureById(wf)?.name ?? null;
+  const wf = imageWorkflowIdOf(j); if (wf) return featureById(wf)?.name ?? ADDED_IMAGE_WORKFLOWS.get(wf)?.name ?? null;
   return OTHER_IMAGE_NAMES[String(j.toolId ?? '')] ?? null;
 }

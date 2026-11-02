@@ -69,7 +69,7 @@ ok('Cutout comes from its manifest: once, among the edits, with its badge; /tool
 // 4. other tabs, the Workflows page and search
 const tools = listTools() as any[];
 const rows = pluginMenuRows(tools, 'image'); assert.deepEqual(rows.map((r) => r.key), ['img-placed'], 'the image plugin is an Image menu row');
-assert.equal(rows[0].to, '/tools/img-placed'); assert.equal(rows[0].plugin.author, 'Tester'); assert.equal(rows[0].plugin.runsCode, false);
+assert.equal(rows[0].to, '/image?workflow=img-placed', 'an Image-tab plugin opens in the Image tab, picked in its bar'); assert.equal(rows[0].plugin.author, 'Tester'); assert.equal(rows[0].plugin.runsCode, false);
 assert.deepEqual(pluginMenuRows(tools, 'audio'), []);
 const entries = pluginWfEntries(tools); assert.deepEqual(entries.map((e) => e.id).sort(), ['i-img-placed', 'v-cutout'], 'Workflows page entries for placed plugins only');
 const ve = entries.find((e) => e.id === 'v-cutout')!; assert.equal(ve.cat, 'clip'); assert.equal(ve.href, `${VIDEO_PAGE}?workflow=cutout`); assert.equal(ve.goal, 'fix'); assert.ok(ve.tags.includes('plugin'));
@@ -77,6 +77,19 @@ assert.equal(entries.find((e) => e.id === 'i-img-placed')!.cat, 'photo');
 const { capabilities } = await import('../src/capabilities.ts');
 assert.equal(capabilities().filter((c) => c.id === 'video/cutout').length, 1, 'search (capabilities) finds Cutout once');
 ok('image plugin in the Image menu; Workflows page entries and search see placed plugins');
+// 2026-11-02: added workflows live in their tab. Image: a Create Image recipe (GET /api/image-workflows), its runs in the Image feeds; Video: a bar recipe.
+{ const PP = await import('../src/shared/pluginPlacement.ts'); const MF = await import('../src/shared/mediaFeed.ts'); const IF = await import('../src/shared/imageFeed.ts'); const VB = await import('../src/shared/videoBar.ts');
+  PP.placePlugins(tools); PP.placePlugins(tools);
+  assert.deepEqual(PP.IMAGE_RECIPES.map((r) => r.id), ['img-placed'], 'one Image recipe per Image-tab plugin, placed twice = once');
+  const r = PP.IMAGE_RECIPES[0]; assert.equal(r.status, 'ready'); assert.equal(r.runner.toolId, 'img-placed'); assert.equal(r.route, '/image?workflow=img-placed'); assert.equal(r.modes.default, 'default');
+  assert.ok(MF.ADDED_IMAGE_WORKFLOWS.has('img-placed')); assert.ok(MF.isImageJob({ toolId: 'img-placed' }), 'a running job of it is an image job');
+  const feed = IF.imageFeedOf('img-placed'); assert.ok(feed && feed.match({ toolId: 'img-placed' }), 'it has its own Image feed'); assert.equal(IF.imageWorkflowNameOf({ toolId: 'img-placed', outputs: [{ url: '/x.png' }] }), r.name);
+  assert.ok(VB.VIDEO_BARS.cutout && VB.VIDEO_BARS.cutout.slots.length === 1, 'a Video-tab plugin gets a Video bar recipe');
+  const ir = PP.pluginImageRecipe({ id: 'mine', name: 'Mine', plugin: { id: 'mine', tab: 'image', category: 'edit', input: 'image', user: true, mainModel: 'RealESRGAN x2plus' }, inputs: [{ name: 'image', kind: 'file' }, { name: 'sampleSteps', label: 'Quality (steps)', kind: 'number', default: '20', min: 1, max: 200 }, { name: 'denoise', label: 'How much to change', kind: 'number', default: '0.5', min: 0, max: 1 }] });
+  assert.equal(ir.source.kind, 'yours'); assert.equal(ir.prompt.mode, 'hidden', 'no prompt input → no words box'); assert.deepEqual(ir.slots.map((x) => x.sendsAs), ['image']);
+  assert.deepEqual(ir.controls.map((c) => [c.field, c.kind, c.step]), [['sampleSteps', 'slider', 1], ['denoise', 'slider', 0.01]]); assert.equal(ir.modelInfo['comfy-open'].name, 'RealESRGAN x2plus');
+  PP.placePlugins([]); assert.equal(PP.IMAGE_RECIPES.length, 0); assert.ok(!MF.ADDED_IMAGE_WORKFLOWS.has('img-placed'), 'a plugin that is gone leaves the tab'); PP.placePlugins(tools); }
+ok('added workflows live in their tab: an Image recipe + feed, a Video bar recipe');
 // Add a workflow (2026-11-01): a prompt-only workflow you added reads "Prompt" and carries "Added by you"; a shipped folder is an Add-on
 const yours = { id: 'yours-t2v', name: 'My Clip', description: 'Makes a video from a prompt.', plugin: { id: 'yours-t2v', tab: 'video' as const, category: 'create', input: 'none' as const, user: true, license: { id: 'own', name: 'Your own' } } };
 const yw = pluginVideoWorkflow(yours); assert.equal(yw.needs, 'Prompt'); assert.equal(yw.inputs[0], 'Prompt'); assert.equal(yw.how[0][0], 'Write a prompt'); assert.equal(yw.plugin?.user, true);

@@ -30,6 +30,7 @@ import { mediaIssue } from '../mediaHandoff.js';
 import { routeOff, ROUTE_OFF_REASON } from './routeOff.js';
 import { videoFitBlock } from '../shared/videoFit.js';
 import { toolModes } from './defaults.js';
+import { canDownloadHere } from '../hardware/modelsTarget.js';
 
 /** Local ComfyUI available? Q5 (Oct 19): a real check. mock backend → yes (mock render). comfy backend → hardware.ts localReachable(): a cached
  * (30 s) /system_stats check of the ComfyUI address with a 1.5 s timeout, so an empty or Comfy Cloud address never counts as a local ComfyUI.
@@ -279,6 +280,7 @@ export function placeAction(tool: ToolDef, modelId: string, input: Record<string
     if (!o.available) return null; // too heavy / can't take this job / coming soon
     if (!localOn) return mk('turn_on', 'Turn on');
     const g = localSetupGate(tool, modelId, input);
+    if (g?.code === 'weights_missing' && !canDownloadHere()) return mk('set_up_gpu', 'Files needed', { missingBytes: g.missingBytes || null }); // no folder to write into: no Download offer (hardware/modelsTarget.ts)
     if (g?.code === 'weights_missing') return mk('download', (g as any).unknownSizes ? `Download ${sizeWords(g.missingBytes, (g as any).unknownSizes)}` /* a workflow you added, with pasted links */ : `Download ${gbText(g.missingBytes) || 'files'}`.trim(), { missingBytes: g.missingBytes || null, downloadId: g.downloadId || null });
     if (g?.code === 'nodes_missing') return mk('install_node', 'Install node');
     return null;
@@ -309,7 +311,7 @@ export function noProvider(tool: ToolDef, modelId: string, all: RouteOption[], i
     error: noGpu ? `${localOnlyUnreachable(name)} Nothing was charged.`
       : localOnly && localStep?.action === 'download' ? (tool.plugin?.user && localSetupGate(tool, modelId, input)?.message ? `${localSetupGate(tool, modelId, input)!.message} Nothing was charged.` /* a workflow you added: the files by name (workflowModels.ts) */
         : `${name} runs on your computer and needs its files first: Download ${gbText(localStep.missingBytes) || 'files'}. Nothing was charged.`)
-      : localOnly && localStep?.action === 'install_node' ? `${name} runs on your computer and needs an add-on first. Install it in Settings → Your computer. Nothing was charged.`
+      : localOnly && localStep?.action === 'install_node' ? `${name} runs on your computer and needs an add-on in ComfyUI first. Settings → Your computer → ComfyUI add-ons shows which one and how to add it with ComfyUI Manager. Nothing was charged.`
       : localOnly ? `${name} runs on your computer. Turn it on in Settings → Your computer. Nothing was charged.`
       : !providers.length ? `Nothing can run ${name} here yet. Pick another model. Nothing was charged.`
       : `${name} needs ${needs}. Add it in Settings → Connections${la ? ', or run it on your computer' : ''}. Nothing was charged.`, errorType: 'no_provider', status: 402, needsKey: providers.length > 0,

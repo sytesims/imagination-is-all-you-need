@@ -1,4 +1,4 @@
-// Explore's 3D section, "Your character, brought to life." (rebuilt 2026-10-31, web/src/ui/explore/Explore3D.tsx, data EXPLORE_3D in shared/exploreShowcase.ts). Covers:
+// Explore's 3D section, "Create your character. Bring it to life." (rebuilt 2026-10-31, web/src/ui/explore/Explore3D.tsx, data EXPLORE_3D in shared/exploreShowcase.ts). Covers:
 //  - one headline in the chapter style, the finished film big with the shared player (controls, sound) and nothing over it;
 //  - four steps, each one model and one price read from the featured runs; the city shows the frame the film starts from, the capture as a small
 //    "before", the other two tools in a tip; the 3D card turns the shipped GLB with the shared Model3D (lowest priority, on screen only);
@@ -16,11 +16,11 @@ const size = (u: string) => { const p = path.join(PUB, u); assert.ok(fs.existsSy
 
 // ---- the data: one story, four steps, every run real ----
 { const f = featuredByKey(X.key)!; assert.ok(f, 'the film is a featured entry');
-  assert.deepEqual(X.title, ['Your character,', 'brought to life.']); assert.ok(!('eyebrow' in X) && !('uses' in X) && !('hero' in X), 'one headline, no eyebrow, no leftover data');
+  assert.deepEqual(X.title, ['Create your character.', 'Bring it to life.']); assert.ok(!('eyebrow' in X) && !('uses' in X) && !('hero' in X), 'one headline, no eyebrow, no leftover data');
   assert.doesNotMatch(X.line, /recorded demo|Layout to Render/i, 'the line tells the story, nothing else');
   assert.deepEqual([f.jobId, f.model, f.modelKey, f.provider, f.route, f.costUsd, f.input.mode, f.input.duration, f.input.resolution, f.input.audio], ['a11a0c78', 'LTX-2.5 Pro', 'ltx-2.5-pro', 'router-ltx-25-pro', 'comfy-cloud:cloud-ltx25-pro-api', 1.46, 'i2v', 6, '1080p', true], 'the film as it ran: LTX-2.5 Pro image to video on Comfy Cloud, 6 s, 1080p, sound, $1.46');
   assert.deepEqual(featuredRuns(f).map((r) => r.jobId), ['9564386e', '092abb03', '13aca5cc', 'ea410812', 'b688b9c3', 'a11a0c78'], 'every run behind it, oldest first');
-  assert.deepEqual(X.steps.map((s) => s.step), ['Character sheet', '3D model', 'City frame', 'Film · 6 s with sound'], 'four steps, in order');
+  assert.deepEqual(X.steps.map((s) => s.step), ['Design it', 'Spin it in 3D', 'Place it', 'Film it'], 'four steps as actions, in order');
   assert.deepEqual(X.steps.flatMap((s) => [...(s.tools ?? []).map((t) => t.job), s.job]).sort(), featuredRuns(f).map((r) => r.jobId).sort(), 'the steps name every run once, nothing else');
   assert.deepEqual(X.steps.map((s) => runByJob(s.job)?.model), ['GPT Image 2.5 Flare', 'Tripo 3.1', 'GPT Image 2.5 Flare', 'LTX-2.5 Pro'], 'one model per card, from the runs');
   const total = featuredRuns(f).reduce((n, r) => n + r.costUsd, 0); assert.equal(total.toFixed(2), '1.79', 'the whole chain: about $1.79');
@@ -56,9 +56,12 @@ const size = (u: string) => { const p = path.join(PUB, u); assert.ok(fs.existsSy
 
 // ---- the page ----
 const home = fs.readFileSync(path.join(WEB, 'ui/Home.tsx'), 'utf8');
-assert.match(home, /<XpHero \/>[\s\S]{0,200}<Xp3D \/>[\s\S]{0,200}<XpFilms \/>/, '3D follows the hero; the lighthouse is now in Films (user, 2026-10-29)');
+assert.match(home, /<XpHero \/>\s*(?:\{\/\*[^*]*\*\/\}\s*)?<div className="xp-in">\s*<Xp3D \/>\s*<XpStill \/>[\s\S]*<XpFilms \/>/, '3D is the first section under the hero (user, 2026-11-02); the lighthouse is now in Films (user, 2026-10-29)');
 const sec = fs.readFileSync(path.join(WEB, 'ui/explore/Explore3D.tsx'), 'utf8'); const css = fs.readFileSync(path.join(WEB, 'ui/explore/explore3d.css'), 'utf8');
-assert.match(sec, /<h2 id="xp-h-x3d" className="xps-h xsdc-h">/, 'the headline is the chapter style (#xp-swap\'s classes)');
+assert.match(sec, /<div className="x3-band">[\s\S]*<ShowcaseFilm [\s\S]*<header className="x3-head">\s*<h2 id="xp-h-x3d" className="xps-h">/, 'media first: the film in a framed band, the chapter headline small on it');
+assert.doesNotMatch(sec, /charsection/, 'one layout, no gate');
+assert.match(css, /\.x3 \.x3-band\{[^}]*border-radius:22px/, 'a framed band, not another full-screen video under the hero');
+assert.equal((sec.match(/<ShowcaseFilm /g) ?? []).length, 1, 'one film for every layout (the shared player)');
 assert.match(sec, /<ShowcaseFilm\b[^\n]*controls restartOnSound[\s\S]{0,240}\/>/, 'the film is the shared ShowcaseFilm with its on-brand controls and sound');
 assert.doesNotMatch(sec, /<ShowcaseFilm[^>]*>\s*<(h3|p|span)/, 'nothing over the film (no overlay, no chips)');
 assert.doesNotMatch(sec, /Layout to Render|xv-eb|x3h-|honest/, 'no camera footnote, no eyebrow, no old hero classes');

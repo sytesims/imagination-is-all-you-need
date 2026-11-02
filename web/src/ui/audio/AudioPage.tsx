@@ -27,6 +27,7 @@ import { TRANSLATE_DOC } from '../../shared/brand';
 import { useDockHeight, useChipFit } from '../../shared/dockFit';
 import { fitPri } from '../../shared/chipFit';
 import { usePromptGrow } from '../../shared/usePromptGrow';
+import { PROMPT_LINE, PROMPT_MIN, PROMPT_MAX } from '../../shared/presetBar';
 import { PreflightNotes, type PreflightNote } from '../../shared/PreflightNotes';
 import { CloseIcon, SparkleIcon, MicIcon, TranslateIcon, MusicIcon, PlayIcon, AudioIcon, VideoIcon } from '../Icons';
 import { PromptTabs, PromptField, PromptHelpers, PromptSwitch, type PromptTab, type HelperChip } from '../../shared/PromptTabs';
@@ -35,12 +36,11 @@ import { lyricsPlan, autoLength, lengthFor, recreateAudio, tooShortFor, lengthTe
 import { EnhanceButton, enhanceToastTitle, type EnhanceResult } from '../next/Enhance';
 import { PromptPeek, type PeekForm } from '../next/PromptPeek';
 import { BrandChip } from '../../shared/BrandChip';
-import { PF_SHORT, DockGenerate } from '../../shared/DockGenerate';
+import { DockGenerate } from '../../shared/DockGenerate';
 import type { PreflightProblem } from '../../../../server/src/shared/preflight';
 import { preflightProblems, localOnlyGate, LOCAL_SETUP_TEXT } from '../../../../server/src/shared/preflight';
 import { tip } from '../../shared/Tooltip';
 import { MakerTile } from '../../shared/MakerTile';
-import { setupNeeded, NoPlaceGenerate } from '../../shared/SetupCard';
 import { useGenState, GenHint } from '../edge/Edge';
 import { nudgeMissing } from '../../shared/genNudge';
 import { ChipGlyph } from '../../shared/SettingChip';
@@ -53,6 +53,7 @@ import { isOpenWeights, providerGroupOf, displayNameOf } from '../../shared/Open
 import { BarPopover, PopSection, PopList, PopRow, PopSwitch, PopAction, Segmented } from '../../shared/BarPop';
 import { countWord } from '../../shared/barPopText';
 import { ModelMenu, type MenuItem } from '../../shared/ModelMenu';
+import { wfDefaultOf } from '../../shared/workflowDefaults';
 import { claimPlayback } from '../../shared/audioPlayer';
 import { useToast } from '../../shared/Toast';
 import { KeyNeeded, addKeyText, hasFreeLocal } from '../../shared/KeyNeeded';
@@ -293,8 +294,7 @@ export default function AudioPage(p: AudioPageProps) {
   const maxChars = mode === 'voiceover' && Number(caps?.maxChars) > 0 ? Number(caps.maxChars) : 0; /* a model that reads a shorter script in one go (Qwen3 TTS: 2,000) */
   if (maxChars && p.prompt.trim().length > maxChars) missing.push(`Shorten the script to ${maxChars.toLocaleString('en-US')} characters`);
   missing.push(...p.checks.map(c => /^checking/.test(c) ? 'Checking your files…' : 'A file can’t be used'));
-  const setupGen = setupNeeded(tm, q, cur?.id) && !missing.length;
-  const noPlace = !setupGen && !q && !!cur && 'defaultRoute' in (cur as any) && (cur as any).defaultRoute == null;
+  const noPlace = !q && !!cur && 'defaultRoute' in (cur as any) && (cur as any).defaultRoute == null;
   type Note = PreflightNote;
   const notes: Note[] = [];
   const nChecks = p.checks.length; const checkLine = (c: string) => { const t = c.replace(/^usable files \((.*)\)$/, '$1'); return t[0].toUpperCase() + t.slice(1); };
@@ -317,8 +317,8 @@ export default function AudioPage(p: AudioPageProps) {
   useEffect(() => { if (pfOpen && !notes.length) setPfOpen(false); });
   const pf0 = preflightProblems({ freeLocal: hasFreeLocal(p.tool.id), quote: q, modelName })[0];
   const genWord0 = qFull ? 'Queue full' : missing.length ? missing[0].replace(/ or an? [\w ]+$/, '') /* "Add a clip or an audio file" → "Add a clip" (the list says both) */ : qLang ? 'Pick another language'
-    : localGate ? LOCAL_SETUP_TEXT : gate ? (q?.setup?.action === 'add_key' && q.setup.actionText ? String(q.setup.actionText) : (q?.keyOwner || q?.noProvider?.keyOwner) ? addKeyText(q) : pf0 ? PF_SHORT.needs_key(pf0) : 'Add a key first')
-    : unpriced ? (pf0 ? PF_SHORT.price_unavailable(pf0) : 'Price unavailable') : blockWhy ? (pf0 && PF_SHORT[pf0.code] ? PF_SHORT[pf0.code](pf0) : firstWords(blockWhy)) : blocking ? 'See what to fix' : '';
+    : localGate ? LOCAL_SETUP_TEXT : gate ? (q?.setup?.action === 'add_key' && q.setup.actionText ? String(q.setup.actionText) : (q?.keyOwner || q?.noProvider?.keyOwner) ? addKeyText(q) : pf0 ? pf0.message : 'Add a key first')
+    : unpriced ? 'Price unavailable' : blockWhy ? (pf0 ? pf0.message : firstWords(blockWhy)) : blocking ? 'See what to fix' : '';
   const eta = !genWord0 ? etaText(q) : ''; /* the tooltip's "Takes about …" */
   const genTitle = qFull ? gq.block : blockWhy ? blockWhy : localGate ? 'Runs free on your computer once ComfyUI is set up' : gate ? 'Needs a provider key' : missing.length ? missing.join(' · ') : unpricedWhy ? `${unpricedPrefix(q)}${unpricedWhy}`
     : [priceTitle(q, bill, { demo: isDemo, free: isFree, credits: !unpriced && !blockWhy ? credits : null }), q?.perUnit ? `${rateText(q.perUnit)} (${q.perUnitNote ?? q.perUnit.unitLabel}; this run: ${q.upTo ? 'up to ' : ''}${q.perUnit.quantityLabel}).` : '', q?.upTo && q.upToNote ? String(q.upToNote) : '', eta ? `Takes about ${eta.slice(1)}.` : '', wf.id === 'translate' ? 'Runs on your computer.' : ''].filter(Boolean).join(' ') || undefined;
@@ -334,8 +334,11 @@ export default function AudioPage(p: AudioPageProps) {
   const enhOn = wf.id === 'music' || wf.id === 'sfx';
   const showEnh = (r: EnhanceResult) => { const was = r.original; p.setPrompt(r.prompt); toast(enhanceToastTitle(r), 'info', { sub: [r.added.slice(0, 4).join(', '), r.source].filter(Boolean).join(' · ') || undefined, ms: 10000, action: { label: 'Undo', onClick: () => p.setPrompt(was) } }); };
 
-  /* ---- the model menu (the workflow's Default marked) ---- */
-  const def = live?.defaults?.active ?? null;
+  /* ---- the model menu (the workflow's Default marked) ----
+   * The default comes from the tool list (tool.workflowDefaults, shared/workflowDefaults.ts), the one source Image's bar and the start model
+   * (initialProviderFor) read. It was GET /api/audio-workflows, fetched once per page load: until it came back (or when it failed) a picked workflow's
+   * menu had no Default row and Auto named the tool's default (Sound effects: "Picks Seed Audio" while ElevenLabs ran), and a ★ default never showed. */
+  const def = wfDefaultOf(p.tool, wf.id);
   const metaOf = (m: any) => [providerGroupOf(provs.find(x => x.id === m?.id), m), live?.modelInfo?.[m?.id]?.workflow?.line].filter(Boolean) as string[];
   const menuItems: MenuItem[] = provs.map(x => { const m = models.find(y => y.id === x.id); const name = live?.modelInfo?.[x.id]?.name ?? displayNameOf(m, x) ?? m?.name ?? x.name;
     return { id: x.id, name, family: m?.family ?? (x as any).family ?? undefined, badge: (m?.badges ?? []).includes('new') ? 'New' : undefined, open: x.kind === 'open-weights' || isOpenWeights(x, m), tip: metaOf(m ?? x).join(' · '), p: { ...m, ...x, routes: (x as any).routes ?? m?.routes } }; });
@@ -347,11 +350,13 @@ export default function AudioPage(p: AudioPageProps) {
   useDockHeight(dock, '.ap');
   /* shared with Image and Video: the prompt and the lyrics box grow 2 → 8 lines with their text, the bar upward */
   /* each tab's field re-fits the moment it shows (its text is the hook's trigger only while its tab is open; a hidden field isn't measured) */
-  const lyrRef = useRef<HTMLTextAreaElement>(null); usePromptGrow(p.promptRef, tab === 'style' ? p.prompt : '\u0000'); usePromptGrow(lyrRef, tab === 'lyrics' ? lyrics : '\u0000');
+  /* with a tab row (Style | Lyrics, Script) the field starts at one line, so the bar is as tall as Image's, Video's and 3D's: one bar, it never jumps between tabs */
+  const headed = wf.lyrics.mode !== 'hidden' || mode === 'voiceover'; const minH = headed ? PROMPT_LINE : PROMPT_MIN;
+  const lyrRef = useRef<HTMLTextAreaElement>(null); usePromptGrow(p.promptRef, tab === 'style' ? p.prompt : '\u0000', PROMPT_MAX, minH); usePromptGrow(lyrRef, tab === 'lyrics' ? lyrics : '\u0000', PROMPT_MAX, minH);
   const insStyle = useInsertAtCursor(p.promptRef, p.prompt, p.setPrompt); const insLyr = useInsertAtCursor(lyrRef, lyrics, setLyrics);
 
   /* ---- the prompt area (shared/PromptTabs): Style | Lyrics where the model sings; "Script" for a voiceover; the bare prompt otherwise ---- */
-  const musicLike = wf.lyrics.mode !== 'hidden'; const isScript = mode === 'voiceover';
+  const musicLike = wf.lyrics.mode !== 'hidden'; const isScript = mode === 'voiceover'; /* headed = musicLike || isScript */
   const ptTabs: PromptTab[] = musicLike ? [{ id: 'style', label: 'Style', icon: <MusicIcon size={14} /> }, ...(lyrOn ? [{ id: 'lyrics', label: 'Lyrics', icon: <LinesIcon />, disabled: instrumental,
       tip: instrumental ? 'Instrumental is on, so no lyrics are sent' : undefined,
       pill: instrumental ? null : lp.lines > 0 ? { text: `✓ ${lp.lines} line${lp.lines === 1 ? '' : 's'}`, tone: 'ok' as const } : lyrNeeded ? { text: 'needed', tone: 'need' as const } : null }] : [])]
@@ -361,7 +366,7 @@ export default function AudioPage(p: AudioPageProps) {
   const tagChips: HelperChip[] = [...vt.tags.filter(t => t.category === 'point').slice(0, 4), ...vt.tags.filter(t => t.category === 'style' || t.category === 'scoped').slice(0, 2), ...vt.tags.filter(t => t.category === 'pause').slice(0, 2)].map(t => ({ key: t.tag, label: <b>{t.tag.trim().replace('…', '')}</b>, ariaLabel: `Add ${t.label}`, testId: `ap-vtag-${t.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, tip: vt.style?.help ?? t.label, onPick: () => insertTag(p.promptRef.current, p.prompt, t.tag, p.setPrompt) }));
   const styleChips: HelperChip[] = musicLike ? STARTERS.filter(([k]) => !(k === 'voice' && instrumental)).map(([k, l]) => ({ key: k, label: l, testId: `ap-start-${k}`, tip: `Add “${k}: ” to the style`, onPick: () => insStyle(`${k}: `) })) : [];
   const lyrChips: HelperChip[] = SECTIONS.map(t => ({ key: t, label: <>+ <b>[{t}]</b></>, ariaLabel: `Add a [${t}] tag`, testId: `ap-tag-${t.toLowerCase()}`, onPick: () => insLyr(`[${t}]`, true) }));
-  const lyrMissing = lp.missing;
+  const helpChips = tab === 'lyrics' ? lyrChips : isScript ? tagChips : styleChips; const lyrMissing = lp.missing;
   const helpHint = tab === 'lyrics' ? (lyrMissing ? lyrNeedWhy : lenHint) : isScript ? (p.prompt.length ? `${p.prompt.length.toLocaleString()}/${(maxChars || SCRIPT_MAX).toLocaleString('en-US')}${maxChars && p.prompt.trim().length > maxChars ? ` · ${modelName || 'This model'} reads up to ${maxChars.toLocaleString('en-US')} at a time` : ''}` : '') : lenShort ? lenHint : ''; /* the how-to is the field's placeholder, never a line beside the chips */
   const helpWarn = tab === 'lyrics' ? lyrMissing || lenShort || al.cut && lenAuto : (lenShort && !isScript) || (isScript && !!maxChars && p.prompt.trim().length > maxChars);
   const chipsEl = useRef<HTMLDivElement>(null); const folded = useChipFit(chipsEl); const fo = (k: string) => folded.includes(k);
@@ -398,12 +403,13 @@ export default function AudioPage(p: AudioPageProps) {
           </div>
           {wf.prompt.mode === 'hidden' ? <p className="ic-noprompt" data-testid="ap-noprompt">No prompt needed: {wf.name} works from your {wf.oneOf?.length ? 'clip or audio file' : 'clip'}{voiceOn ? ' and the voice you pick' : ''}{langOn ? ' and language' : ''}.</p>
             : <PromptTabs tabs={ptTabs} active={tab} onTab={id => setTab(id as 'style' | 'lyrics')} testId="ap-pt" idBase="ap-pt"
+                helpers={helpChips.length ? <PromptHelpers chips={helpChips} testId="ap-help" /> : null}
                 aside={instAvail ? <PromptSwitch label="Instrumental" on={instrumental} onChange={setInstrumental} testId="ap-instrumental" tip={instrumental ? 'No vocals: lyrics are kept but not sent' : `${modelName || 'This model'} can make a track with no vocals`} /> : null}>
-              <PromptField ref={p.promptRef} hidden={tab !== 'style'} data-enter-submits="" id="app-prompt" data-testid="ap-prompt" boxTestId="ap-prompt-box" rows={2} aria-label={isScript ? 'Script' : musicLike ? 'Style' : 'Prompt'}
+              <PromptField ref={p.promptRef} hidden={tab !== 'style'} data-enter-submits="" id="app-prompt" data-testid="ap-prompt" boxTestId="ap-prompt-box" rows={headed ? 1 : 2} aria-label={isScript ? 'Script' : musicLike ? 'Style' : 'Prompt'}
                 maxLength={isScript ? SCRIPT_MAX : LIMITS.maxPrompt} placeholder={wf.prompt.placeholder} value={p.prompt} onChange={e => p.setPrompt(e.target.value)} />
-              {lyrOn && <PromptField ref={lyrRef} hidden={tab !== 'lyrics'} data-enter-submits="mod" id="ap-lyrics" data-testid="ap-lyrics" boxTestId="ap-lyrics-box" rows={2} aria-label="Lyrics" maxLength={LYRICS_MAX}
+              {lyrOn && <PromptField ref={lyrRef} hidden={tab !== 'lyrics'} data-enter-submits="mod" id="ap-lyrics" data-testid="ap-lyrics" boxTestId="ap-lyrics-box" rows={headed ? 1 : 2} aria-label="Lyrics" maxLength={LYRICS_MAX}
                 placeholder={wf.lyrics.placeholder} value={lyrics} onChange={e => setLyrics(e.target.value)} highlight={SECTION_TAG_HL} />}
-              <PromptHelpers chips={tab === 'lyrics' ? lyrChips : isScript ? tagChips : styleChips} hint={helpHint || null} tone={helpWarn ? 'warn' : null} testId="ap-help" />
+              <PromptHelpers chips={[]} hint={helpHint || null} tone={helpWarn ? 'warn' : null} testId="ap-note" />
             </PromptTabs>}
         </div>
         <SwitchNote note={swNote.note} testId="ap-switch-note" />
@@ -417,7 +423,8 @@ export default function AudioPage(p: AudioPageProps) {
             <button ref={aR.model} type="button" className={`ic-chip ic-model ${pop === 'model' ? 'on' : ''}`} data-testid="ap-model" aria-haspopup="listbox" aria-expanded={pop === 'model'} {...tip(pop === 'model' ? null : [modelName, live?.modelInfo?.[cur?.id ?? '']?.workflow?.line].filter(Boolean).join(' · '))} onClick={() => setPop('model')}><MakerTile className="ic-dot" medium="audio" maker={tm?.maker} makerName={tm?.makerName} fallback={(cur as any)?.family || cur?.name} /><span className="ic-mname"><Words text={modelName || 'No model'} /></span><svg className="ic-caret" width="16" height="16" viewBox="0 0 16 16" aria-hidden><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></button>
           </span>
           <ModelMenu open={pop === 'model'} anchor={aR.model} watch={dock} gap={4} placement="top" onClose={closePop} items={menuItems} value={p.provider} testId="ap-model-list" rowTestId={id => `ap-model-${id}`} onPick={(id, fit) => { p.setProvider(id); closePop(); const d = Number(fit?.values.duration); if (lenOn && d > 0 && !lenAuto) p.setDuration(d); swNote.show(lenAuto ? null : fit?.note); }} toolId={p.tool.id} quote={q}
-            defaultId={def?.id ?? undefined} defaultWhy={def?.why ?? undefined} defaultReason={def && !def.runs ? def.reason : null} rateOf={m => unitRateOf(m, provs.map(x => x.id))} />
+            defaultId={def?.id ?? undefined} defaultWhy={def?.why ?? undefined} defaultReason={def && !def.runs ? def.reason : null}
+            onReset={def?.start && p.provider !== def.start && provs.some(x => x.id === def.start) ? () => p.setProvider(def.start!) : null /* as Image: your own pick shows Reset back to the workflow's start */} rateOf={m => unitRateOf(m, provs.map(x => x.id))} />
           {lenOn && (durs.length > 1 ? <button ref={aR.dur} type="button" className={`ic-chip ap-len${pop === 'dur' ? ' on' : ''}${lenShort ? ' ap-len-warn' : ''}`} data-testid="ap-length" data-auto={lenAuto ? '1' : undefined} aria-haspopup="listbox" aria-expanded={pop === 'dur'}
               aria-label={`Length: ${lenAuto ? 'Auto, ' : ''}${lengthText(p.duration)}. Change`} {...tip(pop === 'dur' ? null : lenHint || (lenAuto ? `Length: Auto. ${autoHint}` : upTo ? `Length: up to ${lengthText(p.duration)}; ${modelName || 'the model'} can end the song sooner` : 'Length'))} onClick={() => setPop('dur')}><ChipGlyph icon="clock" />{lenAuto ? <><span className="ap-auto-w">Auto</span><span className="gp-dot"> · </span>{lengthText(p.duration)}</> : lengthText(p.duration)}</button>
             : <span className="ic-chip ic-static" data-testid="ap-length" {...tip('The only length this model makes')}><ChipGlyph icon="clock" />{lengthText(p.duration)}</span>)}
@@ -435,9 +442,8 @@ export default function AudioPage(p: AudioPageProps) {
           <PromptPeek form={peekForm} place={ro.sub ? `${ro.main} (${ro.sub})` : ro.main} photos={[]} watch={dock} />
         </div>
       </div>
-      {noPlace ? <NoPlaceGenerate testId="ap-generate" priceTestId="ap-price" />
-        : <DockGenerate toolId={p.tool.id} engine={cur?.id ?? ''} quote={q} label="Generate" busy={p.busy} disabled={qFull} problems={dgProblems} missing={genWord0 || null} priceWhenMissing={!qFull && missing.length > 0 /* the price shows like Image's and 3D's (audit P3) */} pfOpen={pfOpen} genRef={genRef} onClick={generate}
-            testId="ap-generate" priceTestId="ap-price" workflowId={wf.id} className={gate || blockWhy || unpriced ? 'gen-off' : ''} /* shared/DockGenerate.tsx: Image's and Video's button, size, price token and states */ />}
+      <DockGenerate toolId={p.tool.id} engine={cur?.id ?? ''} quote={q} label="Generate" busy={p.busy} disabled={qFull} problems={dgProblems} missing={genWord0 || null} noPlace={noPlace} onDetails={() => setPfOpen(true)} pfOpen={pfOpen} genRef={genRef} onClick={generate}
+            testId="ap-generate" priceTestId="ap-price" workflowId={wf.id} className={gate || blockWhy || unpriced ? 'gen-off' : ''} /* shared/DockGenerate.tsx: Image's and Video's button, size, price token and states */ />
       </div></div>
       <PreflightNotes open={pfOpen} notes={notes} anchor={genRef} dock={dock} onClose={() => setPfOpen(false)} testId="ap-notes" />
       <BarPopover open={pop === 'add' && addOpts.length > 0} anchor={aR.add} avoid={dock} watch={dock} placement="top" gap={8} onClose={closePop} label="Add to your audio" role="menu" testId="ap-add-menu" width={260}><PopSection label="Add"><PopList label="Add" role="group">{addOpts.map(o => <PopRow key={o.id} role="menuitem" testId={o.testId} label={o.label} hint={(o.id === 'sample' ? slotOf('voiceAudio') : o.id === 'video' ? slotOf('video') : slotOf('audio'))?.hint} onClick={() => { closePop(); openPicker(o); }} />)}</PopList></PopSection></BarPopover>

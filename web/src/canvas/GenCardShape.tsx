@@ -188,8 +188,7 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
   /* while it runs there is no action row: the one status line sits where the model row goes, the bar on the picture's bottom edge */
   const running = p.status === 'running';
   const footer = running ? undefined : draft
-    ? (spec ? <DockGenerate toolId={spec.tool.id} engine={spec.provider} quote={q} label={batchLabel(spec.generateLabel, nSw)} busy={busy} problems={problems} missing={missing} pfOpen={pfOpen} genRef={genRef} onClick={() => void generate()}
-        intent={intent} dlSize={dlSize} workflowId={spec.flow.id} className="gen-node" variant="node" testId="gc-generate" priceTestId="gc-gen-price" />
+    ? (spec ? <DockGenerate toolId={spec.tool.id} engine={spec.provider} quote={q} label={batchLabel(spec.generateLabel, nSw)} busy={busy} problems={problems} missing={missing} pfOpen={pfOpen} genRef={genRef} onClick={() => void generate()} dlSize={dlSize} workflowId={spec.flow.id} className="gen-node" variant="node" testId="gc-generate" priceTestId="gc-gen-price" />
       : <button type="button" className="gen-btn gen-node" disabled><span className="gen-l">Generate</span></button>)
     : p.status === 'failed' ? <FailFoot shape={shape} job={job ?? stubJob(p, 'failed')} />
     : <TakeStrip shape={shape} />;

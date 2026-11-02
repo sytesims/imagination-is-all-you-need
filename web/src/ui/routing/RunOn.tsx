@@ -51,7 +51,7 @@ export async function placeActionGo(setup: { action: string; runOn: string; miss
   if (setup.action === 'download') { if (engine) setDownloadIntent(engine, { variantId: null, bytes: setup.missingBytes ?? null }); return 'run'; }
   if (setup.action === 'turn_on') { const r = await fetch('/api/me/routing', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ global: { useLocal: true } }) });
     const b = await r.json().catch(() => null); if (!r.ok) throw new Error(String(b?.error ?? `Couldn’t turn it on (HTTP ${r.status}).`)); setRouting(b); return 'done'; }
-  navigate(setup.connection === 'deploy' ? '/settings#conn-deploy' /* the deployment is missing, not the key */ : setup.action === 'add_key' ? `/settings#conn-${RUN_ON_BILLING[setup.runOn] ?? setup.runOn}` : '/settings#gpu'); return 'done';
+  navigate(setup.connection === 'deploy' ? '/settings#conn-deploy' /* the deployment is missing, not the key */ : setup.action === 'add_key' ? `/settings#conn-${RUN_ON_BILLING[setup.runOn] ?? setup.runOn}` : setup.action === 'install_node' ? '/settings#nodes' /* which add-on, and how to add it */ : '/settings#gpu'); return 'done';
 }
 
 /** The models the Run-on menu offers for this pick. Usually one; an engine that builds several models on this tool (H3 Extend: the open H3
@@ -79,6 +79,8 @@ const RunOnButton = forwardRef<HTMLButtonElement, { open: boolean; onClick: () =
  *  whole story: `scale.factor` turns one clip's price into the story's total; `scale.shots` gives the per-shot line. */
 export type RunOnOwn = { runOn: string; set: (runOn: string) => void; rememberedFor: string };
 export type RunOnScale = { factor: number | null; shots: number; unit: string };
+/** The Run on chip's tiniest words, for a crowded bar (shared/dockFit: the model's full name wins; the label and tooltip keep the place in full). */
+const RUN_ON_TINY: Record<string, string> = { local: 'Local', 'comfy-cloud': 'Cloud' };
 /** Create Image dock: a chip in the scroll track ('Comfy ›', 'Local · Download ›'). */
 export function RunOnChip({ toolId, model, engine, quote: q0, testId = 'run-on-chip', avoid, own, scale, watch, compact }: FieldProps & { own?: RunOnOwn; scale?: RunOnScale; /** a composer dock: the menu opens 4px above the chip, over the dock, and re-places when the dock resizes */ watch?: RefObject<HTMLElement | null>;
   /** Create bar: one short word (GPU, Comfy, fal) that never truncates; a needed step shows as the dot, said in full in the label and tooltip */ compact?: boolean }) {
@@ -86,7 +88,7 @@ export function RunOnChip({ toolId, model, engine, quote: q0, testId = 'run-on-c
   const shared = useRunOn(toolId, model?.key).runOn; const pick = own ? own.runOn : shared; const t = runOnText(model, pick, quote);
   if (!model) return null;
   return <><button ref={ref} type="button" className={`ic-chip ro-chip${compact ? ' ro-compact' : ''}${open ? ' on' : ''}`} data-testid={testId} data-place={t.place ?? undefined} data-saved={t.saved ? '1' : undefined} aria-haspopup="dialog" aria-expanded={open} aria-label={`Run on: ${t.main}${t.sub ? `, ${t.sub}` : ''}`} {...tip(t.tip)} onClick={() => setOpen(o => !o)}>
-      {t.dot && <i className={`mp-st mp-st-${t.dot}`} aria-hidden />}{compact ? <span className="ro-chip-t ro-chip-c">{t.place ? RUN_ON_CHIP[t.place] ?? t.main : 'Set up'}</span> : <span className="ro-chip-t">{t.main}{t.sub ? <span className="ro-sub"> · {t.sub}</span> : null}</span>}<ChevronRightIcon size={16} /></button>
+      {t.dot && <i className={`mp-st mp-st-${t.dot}`} aria-hidden />}{compact ? <span className="ro-chip-t ro-chip-c">{((w: string) => { const tiny = t.place ? RUN_ON_TINY[t.place] : null; return tiny && tiny !== w ? <><span className="ro-full">{w}</span><span className="ro-tiny" aria-hidden>{tiny}</span></> : w; })(t.place ? RUN_ON_CHIP[t.place] ?? t.main : 'Set up')}</span> : <span className="ro-chip-t">{t.main}{t.sub ? <span className="ro-sub"> · {t.sub}</span> : null}</span>}<ChevronRightIcon size={16} /></button>
     <RunOnMenu open={open} anchor={ref} avoid={avoid} watch={watch} gap={watch ? 4 : undefined} placement="top" onClose={() => setOpen(false)} toolId={toolId} model={model} engine={engine} quote={quote} own={own} scale={scale} /></>;
 }
 
@@ -165,7 +167,7 @@ export function RunOnMenu({ open, anchor, avoid, watch, gap, onClose, toolId, mo
     const stop = (e: React.MouseEvent) => e.stopPropagation();
     if (a.kind === 'turn_on') return <button type="button" className="ro-lnk" data-testid={`run-on-act-${r.id}`} disabled={!!busy} onClick={e => { stop(e); void turnOnGpu(); }}>{busy === 'gpu' ? 'Turning on…' : a.text}</button>;
     if (a.kind === 'download') return <button type="button" className="ro-lnk" data-testid={`run-on-act-${r.id}`} disabled={!!busy} onClick={e => { stop(e); download(m, r, a); }}>{a.text}</button>;
-    const to = a.connection === 'deploy' ? '/settings#conn-deploy' : a.kind === 'add_key' ? `/settings#conn-${RUN_ON_BILLING[r.id] ?? r.id}` : '/settings#gpu';
+    const to = a.connection === 'deploy' ? '/settings#conn-deploy' : a.kind === 'add_key' ? `/settings#conn-${RUN_ON_BILLING[r.id] ?? r.id}` : a.kind === 'install_node' ? '/settings#nodes' : '/settings#gpu';
     return <Link to={to} className="ro-lnk" data-testid={`run-on-act-${r.id}`} onClick={(e: any) => { stop(e); onClose(); }}>{a.text}</Link>; };
   const opt = ({ m, r, s }: { m: ToolModel; r: RunOnRow; s: ReturnType<typeof rowState> }) => {
     const ways = waysOf(r, ownPick); const on = !ways && isOn(m, r); const price = ways ? null /* each way has its own */ : listPrice(sc(rowCredits(r)), r.id, own); const ps = perShot(r.credits, r.id); const cc = r.id === 'local' ? null : priceDetail(null, { runOn: r.id, credits: sc(rowCredits(r)) }); // the hover: '135 Comfy credits · on your Creator plan'

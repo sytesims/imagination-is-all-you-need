@@ -73,12 +73,13 @@ ok('search by goal, by tag and with no results');
   assert.deepEqual(WF_START_HERE, ['i-create-image', 'i-edit-image', 'i-product-shot', 'v-create', 'v-lip-sync', 'a-voiceover', 'a-music', 'i-upscale'], 'Start here, beginner first, in the user’s order');
   assert.deepEqual(Object.keys(WF_PAGE_PICKS), WF_GOALS.map((g) => g.id), 'one section per goal, in goal order');
   for (const [g, ids] of Object.entries(WF_PAGE_PICKS) as [string, string[]][]) { assert.ok(ids.length >= 3 && ids.length <= 6, `${g}: a short section (${ids.length})`); for (const id of ids) assert.equal(goalOf(id), g, `${id}: shown under its own goal (${g})`); }
-  assert.equal(new Set(WF_PAGE_ALL).size, WF_PAGE_ALL.length, 'no card twice'); assert.ok(WF_PAGE_ALL.length >= 28 && WF_PAGE_ALL.length <= 34, `about 30 cards (${WF_PAGE_ALL.length})`);
+  assert.equal(new Set(WF_PAGE_ALL).size, WF_PAGE_ALL.length, 'no card twice'); assert.equal(WF_PAGE_ALL.length, WF_ENTRIES.length + WF_CHAINS.length, `every workflow and chain is a card (${WF_PAGE_ALL.length})`);
   for (const id of WF_PAGE_ALL) assert.ok(id.startsWith('chain:') ? WF_CHAINS.some((c) => `chain:${c.id}` === id) : wfEntryById(id), `${id}: a real workflow or chain`);
   /* the jobs the audit found missing are on the page now; the presenter chain is People & voices' card. The product-ad chains, the long take and Sketch → Film stay off it
      (Extend and Plan a shot in 3D cover those) */
   for (const id of ['v-ugc-ad', 'v-reframe', 'a-translate', 'i-product-shot', 'a-voiceover', 'v-lip-sync', 'i-relight', 'v-photos-to-reel', 'i-material-swap', 'i-ad-pack', 'chain:presenter']) assert.ok(onWorkflowsPage(id), `${id}: on the page`);
-  for (const id of ['chain:product-ad', 'chain:product-ad-multishot', 'chain:long-take', 'chain:sketch-film', 'a-soundtrack-sound', 'fx-vanish']) { assert.equal(onWorkflowsPage(id), false, `${id}: off the page`); assert.ok(id.startsWith('chain:') ? WF_CHAINS.some((c) => `chain:${c.id}` === id) : wfEntryById(id), `${id}: still in the catalogue`); }
+  /* 2026-11-02: the page lists everything (it said 34 while the README counted 62); the picks only lead their goal */
+  for (const id of ['chain:product-ad', 'chain:product-ad-multishot', 'chain:long-take', 'chain:sketch-film', 'a-soundtrack-sound', 'fx-vanish']) assert.ok(onWorkflowsPage(id), `${id}: on the page too`);
   assert.ok(isStartHere('v-create') && !isStartHere('v-extend'));
   /* no two cards on the page show the same example */
   const clips = WF_PAGE_ALL.map((id) => (id.startsWith('chain:') ? WF_CHAINS.find((c) => `chain:${c.id}` === id)!.featured : wfEntryById(id)!.featured)).filter(Boolean);
@@ -119,7 +120,7 @@ ok('search by goal, by tag and with no results');
     const e: any = id.startsWith('chain:') ? WF_CHAINS.find((c) => `chain:${c.id}` === id) : wfEntryById(id); assert.ok(e, `${id}: a real card`);
     /* a sound (Make music, Sound effects) has no picture of its own yet: its card keeps our drawing, its sheet plays it */
     const sound = !!e.featured && /\.mp3$/.test(featuredByKey(e.featured)?.out.url ?? '');
-    const u = WF_CARD_THUMBS[id]; assert.equal(!!u, !!((e.featured && !sound) || e.showcase || e.example), `${id}: a card picture exactly when it has a shipped picture or clip`);
+    const u = WF_CARD_THUMBS[id]; assert.equal(!!u, !!((e.featured && !sound) || e.showcase || e.example || e.still), `${id}: a card picture exactly when it has a shipped picture or clip`);
     if (e.example) { assert.equal(e.example.after, u, `${id}: the sheet's example is the card's picture`); assert.equal(e.example.before, WF_CARD_BEFORE[id], `${id}: and its before`);
       assert.match(e.example.run.jobId, /^[0-9a-f]{8}$/); assert.ok(e.example.run.model && e.example.run.place && e.example.run.costUsd > 0, `${id}: the real run behind it`); }
     for (const v of [u, WF_CARD_BEFORE[id]].filter(Boolean) as string[]) { assert.match(v, /^\/examples\/workflows\/[\w-]+\.webp$/, `${id}: a shipped WebP`);
@@ -127,6 +128,6 @@ ok('search by goal, by tag and with no results');
     assert.equal(b.subarray(8, 16).toString(), 'WEBPVP8 ', `${v}: a plain lossy WebP (no metadata chunks)`);
     assert.deepEqual([b.readUInt16LE(26) & 0x3fff, b.readUInt16LE(28) & 0x3fff], [720, 600], `${v}: 720×600`);
     assert.ok(b.length <= 60_000, `${v}: ≤ 60 KB`); } }
-  /* 15 pictures for ~30 cards (2026-11-01; was 480 KB for 12) */
-  assert.ok(total <= 600_000, `card pictures stay small (${total} bytes)`);
+  /* 22 pictures for every card that has an example (2026-11-02; was 600 KB for 15) */
+  assert.ok(total <= 800_000, `card pictures stay small (${total} bytes)`);
   ok(`${Object.keys(WF_CARD_THUMBS).length} card pictures: shipped 720×600 WebPs, no metadata, ${Math.round(total / 1000)} KB in all`); }

@@ -17,7 +17,7 @@ import { registerModelInfo, Info } from './models.js';
 import { RESOLUTIONS } from './media.js';
 import type { Job } from './jobs.js';
 import type { ToolDef } from './tools/types.js';
-import { placementErrors, placeVideoPlugins, TAB_LABEL, type PluginTab } from './shared/pluginPlacement.js';
+import { placementErrors, placePlugins, TAB_LABEL, type PluginTab } from './shared/pluginPlacement.js';
 import { mapGraph, hasFileKey, pluginOutKind, registerPluginSpec, clearPluginSpecs, removePluginSpec, mainModelOf, graphPromptOf } from './pluginGraph.js';
 export { mapGraph } from './pluginGraph.js';
 
@@ -181,7 +181,9 @@ async function loadOne(dir: string, user: boolean): Promise<PluginStatus> {
   const tool: ToolDef = {
     ...app, pricing: { optionFactors: m.pricing.optionFactors, providerFactors: m.pricing.providerFactors },
     plugin: { id: m.id, dir, version: m.version, license: gov, handler: !!st.handler, tab: m.tab ?? null, category: m.tab ? m.category : null, goal: m.goal ?? null, author: m.author ?? null, input: m.input, output: outKind, ...(user ? { user: true, mainModel: mainModelOf(v.graph), defaultPrompt: graphPromptOf(v.graph, v.nodeMap) } : {}) },
-    parseInput: async (f, fl) => { const r = await (handler.parseInput ? handler.parseInput(f, fl, { ...ctx, base: () => baseParse(f, fl) }) : baseParse(f, fl)); return outKind === 'image' && !('error' in r) ? { ...r, outKind } : r; },
+    /* a tab's bar (Image, Video) sends no preset pick for a plugin with one preset: its only preset is the run (shared/pluginPlacement.ts) */
+    parseInput: async (f0, fl) => { const f = f0.types || m.presets.length !== 1 ? f0 : { ...f0, types: JSON.stringify([m.presets[0].id]) };
+      const r = await (handler.parseInput ? handler.parseInput(f, fl, { ...ctx, base: () => baseParse(f, fl) }) : baseParse(f, fl)); return outKind === 'image' && !('error' in r) ? { ...r, outKind } : r; },
     /* Reached only when the job does not run on your own ComfyUI (providers.ts sends local runs to comfy/runNative.ts with the plan from comfy/plans.ts):
        a sample result, plus the workflow a real run would send (<jobId>-graph.json, shown by workflowExport.ts as a sample). */
     async run(job) {
@@ -212,8 +214,9 @@ async function safeLoad(dir: string, user: boolean): Promise<PluginStatus> {
   else console.warn(`[openhiggsfield] plugin ${st.id} skipped: ${st.errors.join('; ')}`);
   return st;
 }
-/* plugins with a tab join that tab's lists (shared/pluginPlacement.ts): video ones into VIDEO_WORKFLOWS, so search (capabilities) and links see them */
-const place = () => placeVideoPlugins(status.flatMap((x) => (x.ok && x.toolId ? [getTool(x.toolId)!] : [])).filter(Boolean) as any);
+/* plugins with a tab join that tab's own workflows (shared/pluginPlacement.ts): Video ones into VIDEO_WORKFLOWS + a bar recipe, Image ones into
+   GET /api/image-workflows, so the tab's bar, search (capabilities), feeds and links see them like the built-ins */
+const place = () => placePlugins(status.flatMap((x) => (x.ok && x.toolId ? [getTool(x.toolId)!] : [])).filter(Boolean) as any);
 
 /** Load every plugin folder once at startup. Never throws. */
 export async function loadPlugins() {

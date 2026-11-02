@@ -11,6 +11,7 @@ import { env } from '../env.js';
 import type { Job } from '../jobs.js';
 import { getTool } from '../tools/registry.js';
 import { modelsDir, requirementsFor, setMissingWeights, missingOverrideFor } from './requirements.js';
+import { canDownloadHere } from './modelsTarget.js';
 import { startDownload, waitDownload, getDownload, DlError, type Download } from './downloads.js';
 import { workflowDownloadRows } from '../workflowModels.js';
 import { hwKeyOf } from '../hardware.js';
@@ -44,7 +45,7 @@ export async function prePhase(job: Job, mock: boolean, renderSec = 0): Promise<
   const total = files.length ? files.reduce((a, f) => a + (f.bytes ?? 0), 0) : m?.req.downloadBytes ?? 0;
   const dl = rateOf(hwKeyOf(), 'download'); const ld = rateOf(hwKeyOf(), 'load');
   job.status = 'running'; job.queuePos = 0;
-  const useDownloader = !!modelsDir() && files.length > 0 && files.every((f) => !!f.url) && yes(job.input?.downloadWeights);
+  const useDownloader = canDownloadHere() && files.length > 0 && files.every((f) => !!f.url) && yes(job.input?.downloadWeights);
   if (useDownloader) {
     const variantId = typeof job.input?.variantId === 'string' ? job.input.variantId : null; const runs: Download[] = [];
     const vfile = variantId ? m!.req.variants.find((v) => v.id === variantId)?.file : null;

@@ -329,13 +329,15 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
 
   /* Follow transcript growth (including TypedText and live media cards), not the board's Follow agent camera toggle.
      Immediate scrolling avoids smooth-scroll events mistaking an in-flight animation for a reader scrolling away. */
+  /* the empty board's hello (intro + demo cards) reads from the top: only a conversation follows its newest line */
+  const helloOnly = useRef(true);
   useEffect(() => {
     const el = feedBox.current; const transcript = el?.firstElementChild; if (!el || !transcript) return;
-    const follow = () => { if (stick.current) el.scrollTop = el.scrollHeight; };
+    const follow = () => { if (stick.current && !helloOnly.current) el.scrollTop = el.scrollHeight; };
     const observer = new ResizeObserver(follow); observer.observe(transcript); observer.observe(el); follow();
     return () => observer.disconnect();
   }, []);
-  useEffect(() => { const el = feedBox.current; if (el && stick.current) el.scrollTop = el.scrollHeight; }, [feed.length, proposals]);
+  useEffect(() => { const el = feedBox.current; if (el && stick.current && !helloOnly.current) el.scrollTop = el.scrollHeight; }, [feed.length, proposals]);
 
   const send = async (raw: string, starter?: StarterId, confirmId?: string) => {
     const body = raw.trim(); if (!body || sending) return; setSending(true); stick.current = true;
@@ -432,7 +434,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
   const thinking = (demo.running && !waiting && !pickWaiting && !confirm && !(last?.type === 'message' && last.meta?.finished)) || agentPlanning;
   /* the built-in demo's honest reply to typed words: the matching demo as one chip under it (only the newest, while nothing runs) */
   const suggest = !demo.running && !agentConnected && last?.type === 'message' && last.meta?.demoReply ? STARTERS.find((x) => x.id === last.meta?.suggest) ?? null : null;
-  const empty = shown.length === 0;
+  const empty = shown.length === 0; helloOnly.current = empty;
 
   return <>
     <aside className={`ap${open ? ' on' : ''}`} data-testid="agent-panel" aria-hidden={!open} aria-label="AI agent">

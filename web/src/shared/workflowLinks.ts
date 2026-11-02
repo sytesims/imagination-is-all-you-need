@@ -1,7 +1,8 @@
-import { IMAGE_PAGE, VIDEO_PAGE, VIDEO_TOOL, toolPage, pageTool } from '../../../server/src/shared/pages';
+import { IMAGE_PAGE, VIDEO_PAGE, VIDEO_TOOL, AUDIO_PAGE, toolPage, pageTool } from '../../../server/src/shared/pages';
 import { videoWorkflowOfTool, videoWorkflowHref, videoWorkflowById } from '../../../server/src/shared/videoWorkflows';
-import { audioWorkflowForToolMode, audioRoute, type AudioWorkflowId } from '../../../server/src/shared/audioWorkflows';
+import { audioWorkflowForToolMode, audioRoute, audioWorkflowById, AUDIO_DEFAULT_WORKFLOW, type AudioWorkflowId } from '../../../server/src/shared/audioWorkflows';
 import { threeDRoute, threeDMode } from '../../../server/src/shared/threeD';
+import { ADDED_IMAGE_WORKFLOWS } from '../../../server/src/shared/mediaFeed';
 /** Unified Create Image: the workflows Create Image's bar runs today, by the tool that runs them. Recreate on their results reopens
  *  Create Image with the workflow picked (a Create Image job with a camera rig reopens Camera & Lens) (/image?workflow=relight&recreate=<job>); every other job keeps its own page. */
 export const READY_WORKFLOW_TOOLS: Record<string, string> = { 'app-relight': 'relight', 'app-face-swap': 'face-swap', 'app-person-swap': 'person-swap', 'app-character-sheet': 'character-sheet', 'app-product-shot': 'product-shot', 'image-upscale': 'upscale',
@@ -10,9 +11,9 @@ export const READY_WORKFLOW_TOOLS: Record<string, string> = { 'app-relight': 're
 /** Camera & Lens runs on create-image itself: a Create Image job with a camera rig (input.camera) is a Camera & Lens job. */
 export const RIG_WORKFLOW = 'camera-lens';
 /** The workflow a job belongs to in Create Image's bar (null = plain Create, or a tool with its own page). */
-export const workflowOfJob = (job: { toolId: string; input?: any }): string | null => READY_WORKFLOW_TOOLS[job.toolId] ?? (job.toolId === 'create-image' && job.input?.camera ? RIG_WORKFLOW : null);
+export const workflowOfJob = (job: { toolId: string; input?: any }): string | null => READY_WORKFLOW_TOOLS[job.toolId] ?? (job.toolId === 'create-image' && job.input?.camera ? RIG_WORKFLOW : null) ?? (ADDED_IMAGE_WORKFLOWS.has(job.toolId) ? job.toolId : null) /* a workflow you added: Recreate reopens it in the bar */;
 /** Where a workflow opens: Create Image with it picked (the Workflows page cards, the Image menu, old routes). */
-export const workflowOpenHref = (toolId: string): string | null => { const w = READY_WORKFLOW_TOOLS[toolId]; return w ? `${IMAGE_PAGE}?workflow=${w}` : null; };
+export const workflowOpenHref = (toolId: string): string | null => { const w = READY_WORKFLOW_TOOLS[toolId] ?? (ADDED_IMAGE_WORKFLOWS.has(toolId) ? toolId : null); return w ? `${IMAGE_PAGE}?workflow=${encodeURIComponent(w)}` : null; };
 /** One Video page: the video workflow a job belongs to (a lip-sync job of the voice tool is Lip Sync; Create Video's own jobs are null). */
 export const videoWorkflowOfJob = (job: { toolId: string; input?: any }): string | null => {
   if (job.toolId === 'two-person-swap') return 'two-person-swap';
@@ -54,7 +55,13 @@ export const frameHandoffHref = (jobId: string, out = 0, at: 'last' | 'first' | 
 /** Where a tool opens: Create Image with its workflow picked when the bar runs it, else the tool's own page. */
 /** One Video page (2026-10-23): a video tool opens the Video page with its workflow picked (shared/videoWorkflows.ts). */
 const videoOpenHref = (toolId: string): string | null => { const w = videoWorkflowOfTool(toolId); return w ? videoWorkflowHref(w.id) : null; };
-export const toolOpenHref = (t: { id: string; route?: string | null }): string => workflowOpenHref(t.id) ?? videoOpenHref(t.id) ?? t.route ?? toolPage(t.id);
+/** One Audio page: Translate, Change voice and Music Bed run in the Audio composer (shared/audioWorkflows.ts); a hand-off opens it there with the
+ *  workflow picked, like every other button (their old /tools/app-… pages stay for direct links and old Recreates). */
+const AUDIO_OPEN: Record<string, AudioWorkflowId> = { 'app-translate-video': 'translate', 'app-change-voice': 'change-voice', 'app-music-bed': 'soundtrack-music' };
+const audioOpenHref = (toolId: string): string | null => AUDIO_OPEN[toolId] ? audioRoute(AUDIO_OPEN[toolId]) : null;
+export const toolOpenHref = (t: { id: string; route?: string | null }): string => workflowOpenHref(t.id) ?? videoOpenHref(t.id) ?? audioOpenHref(t.id) ?? t.route ?? toolPage(t.id);
+/** A server hand-off link (GET /api/jobs/:id/prefill `url`, /tools/<id>?fromJob=…) → where that tool opens now, the query kept. */
+export const handoffHome = (url: string): string => { const m = /^\/tools\/([\w-]+)(?:\?(.*))?$/.exec(url); return m ? toolHandoffHref({ id: m[1], route: `/tools/${m[1]}` }, m[2] ?? '') : url; };
 /** A hand-off link (?fromJob=…&out=…) to a tool, straight to its new home (no redirect hop). */
 export const toolHandoffHref = (t: { id: string; route?: string | null }, query: string): string => withSearch(toolOpenHref(t), query);
 
@@ -79,8 +86,16 @@ export function workflowCardTools<T extends { id: string; name: string }>(tools:
 /** The tool a page runs: /tools/<id>, Image / Audio / 3D's own tool at /image, /audio, /3d (shared/pages.ts), or on the one Video page the picked workflow's own tool (/video?workflow=extend → h3-extend; /video alone → h3-video),
  *  so a hand-off (Extend, Upscale, Turn to video…) asks the server for that tool's slot, not Create Video's (shared/usePrefill.ts). */
 export function pageToolId(path = location.pathname, search = location.search): string {
-  if ((path.replace(/\/+$/, '') || '/') !== VIDEO_PAGE) return pageTool(path) ?? path.split('/')[2] ?? '';
+  const p = path.replace(/\/+$/, '') || '/';
+  /* the Audio page runs the picked workflow's own tool (Translate → voice, Music for a video → soundtrack) */
+  if (p === AUDIO_PAGE) return audioWorkflowById(new URLSearchParams(search).get('workflow') ?? AUDIO_DEFAULT_WORKFLOW)?.tool ?? pageTool(p) ?? '';
+  if (p !== VIDEO_PAGE) return pageTool(path) ?? path.split('/')[2] ?? '';
   const w = videoWorkflowById(new URLSearchParams(search).get('workflow')); return w?.toolId || VIDEO_TOOL;
 }
 /** Use in Direct a Shot (2026-10-27): a finished 3D model (job id) placed in Direct a Shot's set, ready to move, size or make the actor. */
 export const directShotHref = (jobId: string) => `${threeDRoute('plan-a-shot')}&useModel=${encodeURIComponent(jobId)}`;
+
+/** Old links to a workflow you added (its own page, /tools/<id>) → the Image tab with it picked (2026-11-02: added workflows live in their tab). null = not one. */
+export const addedImageRedirect = (pathname: string, search: string, hash = ''): string | null => {
+  const id = pathname.match(/^\/tools\/([^/?#]+)\/?$/)?.[1]; if (!id || !ADDED_IMAGE_WORKFLOWS.has(decodeURIComponent(id))) return null;
+  const q = new URLSearchParams(search); q.set('workflow', decodeURIComponent(id)); return `${IMAGE_PAGE}?${q.toString()}${hash}`; };
