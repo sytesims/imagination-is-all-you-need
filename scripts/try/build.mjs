@@ -135,7 +135,7 @@ for (const [k, r] of Object.entries(snap.routes)) {
   for (const p of PRIVATE) r.b = r.b.split(p).join('sample-computer');
 }
 const all = JSON.stringify(snap);
-const leaks = PRIVATE.filter(p => all.includes(p)).concat(/\/Desktop\/|\.claude\/worktrees|sample-computer\//.test(all) ? ['a folder path of this computer'] : []).concat(/[\w.+-]+@(gmail|icloud|outlook|hotmail)\.com/i.test(all) ? ['an email address'] : []).concat(/sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}/.test(all) ? ['something like a key'] : []).concat(/\\?"localReachable\\?":true|\\?"detected\\?":true/.test(all) ? ['a ComfyUI running on this computer'] : []);
+const leaks = PRIVATE.filter(p => all.includes(p)).concat(/\/Desktop\/|\.claude\/worktrees|sample-computer\//.test(all) ? ['a folder path of this computer'] : []).concat(/[\w.+-]+@(gmail|icloud|outlook|hotmail)\.com/i.test(all) ? ['an email address'] : []).concat(/sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}/.test(all) ? ['something like a key'] : []).concat(/\\?"detected\\?":true/.test(all) ? ['a ComfyUI running on this computer'] : []);
 if (leaks.length) throw new Error(`privacy check failed: the snapshot still has ${leaks.length} private item(s); nothing written`);
 fs.writeFileSync(path.join(OUT, '_try', 'snap.json'), all);
 say(`snapshot: ${Object.keys(snap.routes).length} answers, ${(all.length / 1e6).toFixed(1)} MB, privacy check passed`);

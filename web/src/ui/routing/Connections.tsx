@@ -100,6 +100,7 @@ export function Connections() {
     <p className="conn-lede">Choose where your models run and who bills you. You always see the price first.</p>
     {d && <p className="prov-sum" data-testid="prov-summary">{connected.length ? <><b>{connected.length} connected</b>: {connected.map(p => NAME[p.id] ?? p.name).join(', ')}.</> : <><b>Nothing connected yet.</b> {sample ? 'For now every run is a free sample.' : 'Until you add a key or set up your computer, you’ll get free samples.'}</>}</p>}
     {d && sample && !SAMPLE_SITE && (connected.length > 0 || useLocal) && <SampleModeNote />}
+    {d && SAMPLE_SITE && <SampleSiteNote testId="prov-note">{KEYS_NOTE}</SampleSiteNote>}
     <TechDetails summary="Details" className="conn-details" testId="conn-limits-details"><p className="helper conn-limits" data-testid="conn-limits"><b>Queue:</b> {concurrencyLine(lim)} The same on every connection.</p></TechDetails>
     {err && !d && <InlineError what="connections" error={/^HTTP 5/.test(err) ? Object.assign(new Error(err), { status: 500 }) : new Error(err)} onRetry={() => setTick(n => n + 1)} />}
     {!d && !err && <Skeleton variant="rows" count={5} label="Loading connections" />}
@@ -129,7 +130,7 @@ export function Connections() {
           factsLine="Downloads gated models (such as FLUX.1 Fill dev) from Hugging Face. A read token is enough; it’s sent to huggingface.co only."
           note="Accept each gated model’s licence on its Hugging Face page first." />}</div>
 
-      {SAMPLE_SITE ? <SampleSiteNote testId="prov-note">{KEYS_NOTE}</SampleSiteNote> : !d.canStoreKeys && <KeysOffBanner example={prov('comfy')?.envKey ?? 'COMFY_API_KEY'} />}
+      {!SAMPLE_SITE && !d.canStoreKeys && <KeysOffBanner example={prov('comfy')?.envKey ?? 'COMFY_API_KEY'} />}
 
       {/* ---- Comfy ---- */}
       <div className="conn-sec" id="conn-comfy"><SecHead id="comfy" />
