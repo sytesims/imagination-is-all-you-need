@@ -12,8 +12,7 @@
   <a href="https://iiayn.app"><img alt="Website: iiayn.app" src="https://img.shields.io/badge/website-iiayn.app-F7F7F8?style=flat-square&labelColor=1C1E20"></a>
 </p>
 
-<!-- Demo video: replace DEMO_VIDEO_URL on the next line with the link to the demo. -->
-**Watch the demo (under 2 minutes):** DEMO_VIDEO_URL
+**Watch the demo (under 2 minutes):** [https://x.com/SyteSim/status/2117116408698134830](https://x.com/SyteSim/status/2117116408698134830)
 
 **Challenge entry:** Comfy's Open Source Higgsfield challenge, in **Most Innovative** and the **LTX VFX bonus** (LTX is the core video model of Direct a Shot, Layout to Render and Footage Effects).
 

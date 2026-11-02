@@ -2,8 +2,7 @@
 
 **Imagination is all you need.** One app for images, video, audio and 3D. Run it on your computer or in the cloud. Open source (AGPL-3.0-or-later), built on ComfyUI workflows, Comfy Cloud and Comfy Router. Made for Comfy's **#OpenSourceHiggsfield** challenge.
 
-<!-- Demo video: replace DEMO_VIDEO_URL on the next line with the link to the demo. -->
-**Watch the demo (under 2 minutes):** DEMO_VIDEO_URL
+**Watch the demo (under 2 minutes):** [https://x.com/SyteSim/status/2117116408698134830](https://x.com/SyteSim/status/2117116408698134830)
 
 **Challenge entry:** Comfy's Open Source Higgsfield challenge, in **Most Innovative** and the **LTX VFX bonus** (LTX is the core video model of Direct a Shot, Layout to Render and Footage Effects).
 
