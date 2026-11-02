@@ -11,7 +11,7 @@ import { useOwnAccounts, optionPrice, placeOfQuote, fmtUsd } from '../../shared/
 import { etaLine, etaRangeOf } from '../../shared/eta';
 import { DemoPrice, demoRealCredits } from '../../shared/DemoPrice';
 import { fallbackNoteOf, withQuoteDefaults, type Defaults } from '../../shared/defaults';
-import { notWiredLabel, shownCredits } from '../../shared/quote';
+import { notWiredLabel, shownCredits, keyGated } from '../../shared/quote';
 import { SavedStyles } from '../../shared/SavedStyles';
 import { useComfyVersion, olderThan, minComfyOf, minComfyBlock, comfyNote } from '../../shared/comfyVersion';
 import { useRequoteTick, quoteGet } from '../../shared/quote';
@@ -773,7 +773,8 @@ export default function ImageCanvas(p: ImageCanvasProps) {
   /** The run was started from a look (preset): its id goes with it, so the look's page on Workflows gathers the result (never sent to the quote). */
   const lookField = (): Record<string, string> => presetHere ? { lookId: presetHere.p.id } : {};
   const go = () => { setPop(''); p.onGenerate({ ...params(), ...lookField(), ...exSeedField() }); };
-  const unpriced = !!qj && qj.credits == null && (qj.priceAvailable === false || (qj.issues ?? []).some((i: any) => i.code === 'price_unavailable')); const total = qj ? quote : (p.price != null ? p.price * n : null);
+  /* a cloud model with no key is not unpriced: its quote knows the price once the key is added (GenPrice: "Needs a key · ≈ $0.03", like the Run on menu) */
+  const unpriced = !!qj && !keyGated(qj) && qj.credits == null && (qj.priceAvailable === false || (qj.issues ?? []).some((i: any) => i.code === 'price_unavailable')); const total = qj ? quote : (p.price != null ? p.price * n : null);
   /* QA #7: a resolution's price in the Generate button's words. The matrix is list credits per image; scaled to the quote so the picked
    * resolution reads exactly like the button (same count, same place), the others in proportion. */
   const ownBill = useOwnAccounts(qj);
@@ -785,7 +786,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
   const qLocal: boolean | null = qj ? qj.local === true || placeOfQuote(qj) === 'local' : null;
   const scaledAt = (c: number) => { const at = cell(qual2, imgRes); return total != null && total > 0 && at ? (c * total) / at : c * n; };
   const deltaOf = (c: number | null | undefined): string | null => { const at = cell(qual2, imgRes); if (!c || !at) return null; return priceDelta({ diffCredits: scaledAt(c) - scaledAt(at), own: ownBill, local: qLocal === true }); };
-  const cntPrice: string | null = !qj ? null : qj.demo === true ? 'Sample' : unpriced ? 'Price unavailable' : optionPrice(qj, ownBill, total != null ? Math.round((total * n) / (qN.current || n)) : null);
+  const cntPrice: string | null = !qj ? null : qj.demo === true ? 'Sample' : keyGated(qj) ? 'Needs a key' : unpriced ? 'Price unavailable' : optionPrice(qj, ownBill, total != null ? Math.round((total * n) / (qN.current || n)) : null);
   const cntNote = batchNote({ n, local: !qj || (qLocal && p.image) ? null : qLocal }); /* local batching is for text-to-image graphs only (comfy/plans.ts) */
   const demoReal = qj?.demo === true ? demoRealCredits(qj) : null; /* a sample run: what a real one would cost (list price), scaled to the picked count */
   const cntDemo = qj?.demo === true ? `Sample output, nothing billed${demoReal ? `. A real run ≈ ${fmtUsd((demoReal * n) / (qN.current || n) / 100)}` : ''}` : null;

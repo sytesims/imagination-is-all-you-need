@@ -4,6 +4,7 @@
 // Rule: "Free · Your computer" only when this computer can run it; nothing can run it → "Needs a key" or the quote's own reason; cloud can → its real price.
 // Run: npx tsx test/first-run-states.e2e.ts
 import { testPort } from './_ports.js'; import assert from 'node:assert/strict'; import { spawn, type ChildProcess } from 'node:child_process'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path';
+import { keyGated, keyGatePrice } from '../../web/src/shared/quote.ts';
 const ROOT = path.resolve(import.meta.dirname, '..');
 const NOKEYS = { OPENHIGGSFIELD_BFL_API_KEY: '', OPENHIGGSFIELD_FAL_KEY: '', FAL_KEY: '', OPENHIGGSFIELD_REPLICATE_API_TOKEN: '', REPLICATE_API_TOKEN: '', COMFY_API_KEY: '', OPENHIGGSFIELD_MINIMAX_API_KEY: '', OPENHIGGSFIELD_DASHSCOPE_API_KEY: '', OPENHIGGSFIELD_MOCK_KEYS: '', OPENHIGGSFIELD_LUMA_API_KEY: '', OPENHIGGSFIELD_OPENAI_API_KEY: '', OPENAI_API_KEY: '' };
 const D = fs.mkdtempSync(path.join(os.tmpdir(), 'firstrun-')); const procs: ChildProcess[] = [];
@@ -32,6 +33,12 @@ try {
     if (cloudOnly) { assert.equal(w.local, false, `${tag}: a cloud-only model is never local`); assert.equal(q.runnable, s.key, `${tag}: runs exactly when the Comfy key is set`); if (!s.key) { assert.equal(w.price, 'Needs a key', tag); assert.ok(q.setupOptions?.some((o: any) => o.runOn === 'comfy-cloud' && o.credits > 0), `${tag}: the price once a key is added (Generate's "Needs a key · ≈ $…", the Run on menu's)`); } }
     if (prov === 'comfy-zimage-turbo' && s.local) assert.equal(w.price, 'Free · Your computer', `${tag}: a local model on a connected ComfyUI is free here`);
   }
+  /* install test 2026-11-02: GPT Image 2.5 Flare with no key read "Price unavailable" on Image's Generate while the picker said "$0.03 · Needs Comfy Cloud key".
+   * The no-key quote is key-gated (never unpriced) and carries the exact price the keyed quote charges, so Generate reads "Needs a key · ≈ $0.03". */
+  for (const prov of ['api-gpt-image-25-flare', 'router-kling']) { const tool = prov === 'router-kling' ? 'h3-video' : 'create-image'; const qs = `provider=${prov}&prompt=a%20cat${tool === 'h3-video' ? '&mode=t2v' : '&aspect=1:1'}`;
+    const [q0, q1] = await Promise.all([Bs[0], Bs[1]].map(async (B) => (await fetch(`${B}/api/tools/${tool}/price?${qs}`)).json() as Promise<any>));
+    assert.ok(keyGated(q0), `${prov}: the no-key quote is key-gated`); assert.ok(typeof q1.credits === 'number' && q1.credits > 0, `${prov}: keyed quote priced`);
+    assert.equal(keyGatePrice(q0), q1.credits, `${prov}: "Needs a key · ≈ $X" shows the price the keyed run charges`); }
   /* a local-only model's picker row on a fresh install says what it needs (routing/modelRegistry.ts rowStatusOf), never "Not available here" */
   { const rows: any[] = []; const walk = (x: any): void => { if (Array.isArray(x)) x.forEach(walk); else if (x && typeof x === 'object') { if (x.key === 'yue2' && x.rowStatus) rows.push(x.rowStatus); Object.values(x).forEach(walk); } };
     walk(await (await fetch(`${Bs[0]}/api/tools`)).json()); assert.ok(rows.length, 'yue2 listed');

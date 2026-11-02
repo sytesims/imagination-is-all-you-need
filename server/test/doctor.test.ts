@@ -109,6 +109,20 @@ ok('USE_LOCAL=1 + ComfyUI down → exit 1; env-file accounts by name only; key v
   let out = ''; const code = await D.main(['--json'], env(f), (s) => { out += s; }); assert.equal(code, 0); const j = JSON.parse(out); assert.equal(j.readOnly, true); assert.ok(Array.isArray(j.checks)); }
 ok('all up: Comfy Desktop folders, packs pinned + patched on disk (or via Manager), accounts by name from the app, one model count per model, --json');
 
+// ---- another copy of the app already on this install's port (install test 2026-11-02: a fresh install reported the user's own running app) ----
+{ const { checkoutIdOf } = await import('../src/shared/checkoutId.js'); const AE = await import('../../scripts/app-env.mjs');
+  assert.equal(AE.checkoutIdOf(REPO), checkoutIdOf(REPO), 'setup (scripts/app-env.mjs) and the server hash a checkout the same way');
+  const app = (checkout?: string) => { const f = base(); f.env = { OPENHIGGSFIELD_DOCTOR_BEFORE_START: '1' };
+    f.http = { 'http://127.0.0.1:8787/api/health': { ok: true, backend: 'comfy', tools: ['a'], ...(checkout ? { checkout } : {}) }, 'http://127.0.0.1:5174/': 'ok',
+      'http://127.0.0.1:8787/api/settings/providers': { providers: [{ id: 'comfy', configured: true }] }, 'http://127.0.0.1:8787/api/tools': [{ id: 't', models: [{ key: 'm1', name: 'LTX', runsOn: [{ id: 'local', status: 'ready' }] }] }] }; return f; };
+  const other = await D.runDoctor(env(app('0123456789abcdef'))); const api = other.checks.find((c) => c.id === 'api')!;
+  assert.equal(other.app.api.otherCopy, true); assert.equal(other.app.api.up, false); assert.equal(api.status, 'warn'); assert.match(api.text, /^Another copy of the app is already running at http:\/\/localhost:5174/);
+  assert.match(api.fix!, /PORT=8790, WEB_PORT=5177 and MCP_PORT=8791/); assert.ok(!other.checks.some((c) => c.id === 'web'), 'no "Web …" line for the other copy');
+  assert.notEqual(other.accounts.source, 'app', 'its accounts are not this install’s'); assert.ok(!D.renderText(other).includes('Connected: Comfy Cloud')); assert.equal(other.models, null, 'nor its models');
+  for (const r of [await D.runDoctor(env(app(checkoutIdOf(REPO)))), await D.runDoctor(env(app()))]) { assert.equal(r.app.api.otherCopy, false); assert.equal(r.app.api.up, true); assert.equal(r.accounts.source, 'app'); }
+  const pinned = await D.runDoctor(env(app('0123456789abcdef')), { apiUrl: 'http://127.0.0.1:8787' }); assert.equal(pinned.app.api.up, true, '--api names the app to check: no comparison'); }
+ok('another copy on the port: said plainly, never its accounts, models or link as this install; the same checkout (or an app without checkout) is this one');
+
 // ---- Linux + nvidia-smi, no ComfyUI ----
 { const f = base(); f.platform = 'linux'; f.files['/etc/os-release'] = 'PRETTY_NAME="Ubuntu 24.04.1 LTS"\n';
   f.exec = (cmd, args) => cmd === 'nvidia-smi' ? (args[0].includes('compute_cap') ? { ok: true, out: 'NVIDIA GeForce RTX 3060, 12288, 11000, 8.6' } : { ok: false, out: '' }) : { ok: false, out: '' };
