@@ -96,7 +96,7 @@ export function ViewerShell({ label, bg, media, who, badge, tabs, tab, setTab, b
   useEffect(() => {
     const root = document.getElementById('root'); const wasInert = !!root?.inert; if (root) root.inert = true;
     const ov = document.body.style.overflow; document.body.style.overflow = 'hidden';
-    requestAnimationFrame(() => box.current?.querySelector<HTMLElement>('[data-testid=rvx-close]')?.focus({ preventScroll: true }));
+    requestAnimationFrame(() => box.current?.querySelector<HTMLElement>('[data-testid=rvx-close]')?.focus({ preventScroll: true })); /* quietly (data-quiet-focus): its "Close (Esc)" tip covered Copy on load */
     const key = (e: KeyboardEvent) => {
       const b = box.current; if (!b) return;
       /* A dialog inside the viewer (Share) gets the trap and Esc here; a dialog or popover portalled on body owns its keys. */
@@ -140,7 +140,7 @@ export function ViewerShell({ label, bg, media, who, badge, tabs, tab, setTab, b
         <ViewerWho who={who} />
         {badge}
         {headActions}
-        <button type="button" className="rvx-x" aria-label="Close viewer" {...tip('Close (Esc)')} data-testid="rvx-close" onClick={onClose}><CloseIcon size={16} /></button>
+        <button type="button" className="rvx-x" aria-label="Close viewer" {...tip('Close (Esc)')} data-testid="rvx-close" data-quiet-focus onClick={onClose}><CloseIcon size={16} /></button>
       </header>
       {tabs.length > 1 && <div className="rvx-tabs" role="tablist" aria-label="Result panel">{tabs.map(tabBtn)}</div>}
       <div className="rvx-body" id="rvx-tabpanel" role="tabpanel" aria-labelledby={`rvx-tab-${tab}`} tabIndex={-1}>{body}</div>
@@ -413,10 +413,11 @@ const shortWf = (n: string) => { const s = n.replace(/^cloud\//, '').replace(/\s
 export function ResultDetails({ job, info, extra, onViewWorkflow }: { job: any; info: DetailsInfo; extra?: ReactNode; /** the result menu's View workflow (one dialog) */ onViewWorkflow?: () => void }) {
   const [open, setOpen] = useState(true);
   const models = useCatalogue(job?.toolId);
-  const key = String(job?.modelKey ?? ''); const norm = (x: unknown) => String(x ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const key = String(job?.modelKey ?? ''); const norm = (x: unknown) => String(x ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ''); /* "MiniMax-Music3" = "MiniMax Music 3" */
   const cat = (key ? models.find(m => m.key === key) : undefined) ?? models.find(m => !!info.model && [m.displayName, m.name].some(n => n && norm(n) === norm(info.model)));
   const sameModel = !!cat && !!info.model && [cat.displayName, cat.name].some(n => !!n && (norm(info.model).startsWith(norm(n)) || norm(n).startsWith(norm(info.model))));
-  const modelName = info.model || (cat ? cat.displayName || cat.name : ''); const bestFor = cat && (sameModel || !info.model) ? String(cat.bestFor ?? '').trim() : '';
+  const exact = !!cat && !!info.model && [cat.displayName, cat.name].some(n => !!n && norm(n) === norm(info.model));
+  const modelName = (cat && (exact || !info.model) ? cat.displayName || cat.name : '') || info.model || ''; /* the shared display name, not the place's raw id (a cloud job said "MiniMax-Music3") */ const bestFor = cat && (sameModel || !info.model) ? String(cat.bestFor ?? '').trim() : '';
   const t = jobTiming(job); const render = durationText(t.renderMs); const queue = durationText(t.queueMs);
   const er = job?.etaRange; const learned = runOnOfJob(job) === 'local' && Number(er?.samples) > 0 && (er?.source === 'learned' || er?.source === 'scaled');
   const renderTip = [t.split ? 'Rendering only; time in the queue isn’t counted' : 'From start to finish', learned ? 'Your computer’s time estimate is learned from runs like this' : ''].filter(Boolean).join('. ');

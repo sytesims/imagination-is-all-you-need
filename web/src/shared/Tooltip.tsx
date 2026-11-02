@@ -30,7 +30,7 @@ export function TooltipLayer() {
       timer.current = window.setTimeout(() => show(el), quick ? 0 : TIP_DELAY);
     };
     const out = (e: PointerEvent) => { const el = target(e.target); if (!el) return; const to = e.relatedTarget as Node | null; if (to && el.contains(to)) return; if (curRef.current?.el === el || !curRef.current) hide(); };
-    const focusIn = (e: FocusEvent) => { const el = target(e.target); if (!el || el !== e.target) return; let kb = false; try { kb = el.matches(':focus-visible'); } catch { kb = false; } if (!kb) return; clearTimeout(timer.current); show(el); };
+    const focusIn = (e: FocusEvent) => { const el = target(e.target); if (!el || el !== e.target) return; if (el.hasAttribute('data-quiet-focus')) { el.removeAttribute('data-quiet-focus'); return; } /* a dialog's first focus: no tip */ let kb = false; try { kb = el.matches(':focus-visible'); } catch { kb = false; } if (!kb) return; clearTimeout(timer.current); show(el); };
     const focusOut = (e: FocusEvent) => { if (curRef.current && curRef.current.el === e.target) hide(); };
     const key = (e: KeyboardEvent) => { if ((e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') && curRef.current) hide(); };
     const down = () => hide();
