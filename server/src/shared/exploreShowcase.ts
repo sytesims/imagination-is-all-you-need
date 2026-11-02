@@ -159,7 +159,7 @@ export const EXPLORE_FILMS = {
     credit: 'Pictures: GPT Image 2.5 Flare. Video: MiniMax H3, open weights, on Comfy Cloud. Camera move: LTX-2.5 22B, open weights, on Comfy Cloud. Subtitles: Whisper, open source. Directed by SyteSim × AI. Edit and sound: AI.',
     cost: 'About $4 of Comfy Cloud credit, unused takes included.',
     /** the run chip (shared/runChip.ts): the clips' model, the other models as "+N", the cost line's total */
-    chip: { model: 'MiniMax H3', also: ['GPT Image 2.5 Flare (stills) · Comfy Cloud', 'LTX-2.5 22B (camera move) · Comfy Cloud'], place: 'Comfy Cloud', price: chipUsd(4, true) } as RunChipData,
+    chip: { model: 'MiniMax H3', place: 'Comfy Cloud', price: chipUsd(4, true), steps: [{ role: 'Stills', model: 'GPT Image 2.5 Flare', place: 'Comfy Cloud', price: null }, { role: 'Clips', model: 'MiniMax H3', place: 'Comfy Cloud', price: null }, { role: 'Camera move', model: 'LTX-2.5 22B', place: 'Comfy Cloud', price: null }] } as RunChipData,
     shots: [
       { key: 'argument', name: 'The argument', what: 'Kimbap, a scarf, and a fight', t0: 5.6, sec: 15, model: 'MiniMax H3', start: IF('still-01.jpg'), frame: IF('shot-argument.jpg') },
       { key: 'bridge', name: 'The pull-back', what: 'From Mum’s face back to the two of them', t0: 20.6, sec: 2, model: 'LTX-2.5 22B', start: IF('still-bridge.jpg'), frame: IF('shot-bridge.jpg') },
@@ -203,7 +203,7 @@ export const EXPLORE_FILMS = {
     /** the IIAYN FILMS opener (open-A, 2026-10-28) ends here: previews start on the run */ identEnd: 5.58,
     credit: 'Video: MiniMax H3, open weights, on Comfy Cloud. Voice-over: ElevenLabs v3. Directed by SyteSim × AI. Edit and sound: AI.',
     /** job e28e7eba (H3, 4 s 480p, $0.12) + three ElevenLabs v3 takes (Rachel, Elli, Bella; $0.0218 each) */ cost: 'About $0.19 of Comfy Cloud credit: one 4 s clip and three voice takes.',
-    chip: { model: 'MiniMax H3', also: ['ElevenLabs v3 (voice-over, three takes) · Comfy Cloud · $0.07'], place: 'Comfy Cloud', price: chipUsd(0.12 + 3 * 0.0218) } as RunChipData,
+    chip: { model: 'MiniMax H3', place: 'Comfy Cloud', price: chipUsd(0.12 + 3 * 0.0218), steps: [{ role: 'Clip', model: 'MiniMax H3', place: 'Comfy Cloud', price: chipUsd(0.12) }, { role: 'Voice-over, three takes', model: 'ElevenLabs v3', place: 'Comfy Cloud', price: chipUsd(3 * 0.0218) }] } as RunChipData,
     shots: [] as FilmsShot[], endAt: 13.4,
     steps: [
       { name: 'Clip', what: 'One MiniMax H3 take: Mira looks round, runs down the corridor, arms out, and faceplants.' },
@@ -226,7 +226,7 @@ export const EXPLORE_FILMS = {
     /** the IIAYN FILMS opener (open-A) ends here: previews start in the lift */ identEnd: 5.58,
     credit: 'Video: MiniMax H3 on Comfy Cloud. Stills: GPT Image 2.5 Flare. Maman’s voice: Qwen3 TTS, free on your computer. Directed by SyteSim × AI. Edit and sound: AI.',
     cost: 'About $6.70 of Comfy Cloud credit, unused takes included.',
-    chip: { model: 'MiniMax H3', also: ['GPT Image 2.5 Flare (stills) · Comfy Cloud', `Qwen3 TTS (voice) · ${LOCAL_LABEL} · Free`], place: 'Comfy Cloud', price: chipUsd(6.7, true) } as RunChipData,
+    chip: { model: 'MiniMax H3', place: 'Comfy Cloud', price: chipUsd(6.7, true), steps: [{ role: 'Stills', model: 'GPT Image 2.5 Flare', place: 'Comfy Cloud', price: null }, { role: 'Clips', model: 'MiniMax H3', place: 'Comfy Cloud', price: null }, { role: 'Maman’s voice', model: 'Qwen3 TTS', place: LOCAL_LABEL, price: chipUsd(0) }] } as RunChipData,
     shots: [] as FilmsShot[], endAt: 30.58,
     steps: [
       { name: 'Stills', what: 'Start frames and inserts with GPT Image 2.5 Flare: the lift, the gate, the dark seventh floor.' },
@@ -267,7 +267,7 @@ export const EXPLORE_FILMS = {
     identEnd: 0, endAt: EXPLORE_SEEDANCE.strip.cut.sec,
     credit: 'Picture: Seedance 2.0 on Comfy Router. Voice: Qwen3 TTS, free. Music: YuE2, free. Poem: “Sea-Fever”, John Masefield (1902). Quote: Albert Einstein (1929).',
     cost: 'Original picture run: $3.25 on Comfy Router. Voice, music and finishing were added for free; no new generation for this move.',
-    chip: { ...chipOfFeatured(featuredByKey('seedance-lighthouse')!), also: [`Qwen3 TTS (voice) · ${LOCAL_LABEL} · Free`, `YuE2 (music) · ${LOCAL_LABEL} · Free`] } as RunChipData,
+    chip: (() => { const c = chipOfFeatured(featuredByKey('seedance-lighthouse')!); return { ...c, steps: [{ role: 'Picture', model: c.model, place: c.place, price: c.price }, { role: 'Voice', model: 'Qwen3 TTS', place: LOCAL_LABEL, price: chipUsd(0) }, { role: 'Music', model: 'YuE2', place: LOCAL_LABEL, price: chipUsd(0) }] }; })() as RunChipData,
     shots: [] as FilmsShot[],
     steps: [
       { name: 'Prompt', what: 'Nine words: “A lighthouse on a cliff at dusk, waves crashing”.' },

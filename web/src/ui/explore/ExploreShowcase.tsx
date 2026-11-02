@@ -70,12 +70,11 @@ const Arrow = () => <span className="xv-arrow" aria-hidden>→</span>;
 const FreeDot = ({ children = 'Free on your computer' }: { children?: React.ReactNode }) => <span className="xv-free"><i aria-hidden />{children}</span>;
 
 /* ============================================================== hero ============================================================== */
-/** The hero's run chip, all from the data (EXPLORE_HERO + its featured entry): the model, where it ran and its price, the length, and the
- *  music made here (its model from `after`, "Music · YuE2 · Free") as "+1 music". */
+/** The hero's run line, all from the data (EXPLORE_HERO + its featured entry): the model, where it ran and the whole price, with the music made
+ *  here (its model from `after`, "Music · YuE2 · Free") as a step: "+1 step" opens video → music. No length: that lives in the player. */
 export function heroChip(s: ReelShot, f: FeaturedItem): RunChipData {
   const music = (s.after ?? []).map((x) => /^Music · ([^·]+)/.exec(x)?.[1]?.trim()).find(Boolean);
-  const c = chipOfFeatured(f, { model: s.model, note: s.facts.join(' · '), also: music ? [{ jobId: '', model: `${music} (music)`, place: OUR_COMPUTER, costUsd: 0 }] : [] });
-  return music ? { ...c, alsoWhat: 'music' } : c; /* "+1 music": readable on camera without hovering */
+  return chipOfFeatured(f, { model: s.model, role: 'Video', also: music ? [{ jobId: '', model: music, place: OUR_COMPUTER, costUsd: 0, role: 'Music' }] : [] });
 }
 /** The hero's credit (2026-11-01: the shared run chip, was the MADE WITH · LENGTH · RAN ON block), then its one action, an orange "Make your own →". */
 function HeroCredit({ s, f, rec }: { s: ReelShot; f: FeaturedItem; rec: string | null }) {
