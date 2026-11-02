@@ -156,10 +156,10 @@ function upstream(g: Graph, starts: unknown[]): Set<string> {
 const EXTRAS: { key: string; label: string; fields: string[]; node?: RegExp; min: number; max: number; on: boolean; text?: boolean }[] = [
   { key: 'width', label: 'Width', fields: ['width'], node: /Latent|Empty|Size|Resize|Image/i, min: 16, max: 16384, on: true },
   { key: 'height', label: 'Height', fields: ['height'], node: /Latent|Empty|Size|Resize|Image/i, min: 16, max: 16384, on: true },
-  { key: 'sampleSteps', label: 'Steps', fields: ['steps'], node: /Sampler|Scheduler/i, min: 1, max: 200, on: true },
-  { key: 'cfg', label: 'Guidance (CFG)', fields: ['cfg', 'guidance'], node: /Sampler|Guider|Guidance/i, min: 0, max: 100, on: false },
-  { key: 'denoise', label: 'Strength (denoise)', fields: ['denoise'], node: /Sampler|Scheduler/i, min: 0, max: 1, on: false },
-  { key: 'frames', label: 'Frames', fields: ['length', 'num_frames', 'frame_count', 'frames'], node: /Latent|Empty|ToVideo|Video$/i, min: 1, max: 2000, on: false },
+  { key: 'sampleSteps', label: 'Quality (steps)', fields: ['steps'], node: /Sampler|Scheduler/i, min: 1, max: 200, on: true },
+  { key: 'cfg', label: 'How closely to follow your words', fields: ['cfg', 'guidance'], node: /Sampler|Guider|Guidance/i, min: 0, max: 100, on: false },
+  { key: 'denoise', label: 'How much to change', fields: ['denoise'], node: /Sampler|Scheduler/i, min: 0, max: 1, on: false },
+  { key: 'frames', label: 'Length (frames)', fields: ['length', 'num_frames', 'frame_count', 'frames'], node: /Latent|Empty|ToVideo|Video$/i, min: 1, max: 2000, on: false },
   { key: 'fps', label: 'Frame rate', fields: ['fps', 'frame_rate'], min: 1, max: 240, on: false },
 ];
 const nice = (s: string) => s.replace(/\.json$/i, '').replace(/[-_ ]?api$/i, '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/\b\w/g, (c) => c.toUpperCase()).slice(0, 60);
@@ -205,16 +205,35 @@ export function guessMapping(g: Graph, fileName = ''): Guess {
     extras.push({ key: x.key, label: x.label, node: id, field: f, kind: 'number', value: numOf(g, g[id].inputs[f])!, on: x.on, min: x.min, max: x.max });
   }
   const negText = texts.filter((t) => N.has(t.node) && !P.has(t.node) && typeof g[t.node].inputs[t.field!] === 'string')[0];
-  if (negText) extras.push({ key: 'negative', label: 'Negative prompt', node: negText.node, field: negText.field!, kind: 'text', value: negText.value, on: false });
+  if (negText) extras.push({ key: 'negative', label: 'What to avoid', node: negText.node, field: negText.field!, kind: 'text', value: negText.value, on: false });
   const inp = input[0]?.kind ?? 'none'; const tab: PluginTab = outKind === 'video' ? 'video' : 'image';
   const category = tab === 'video' ? (inp === 'video' ? 'edit' : 'create') : PLUGIN_CATEGORIES.image.includes('edit') ? 'edit' : PLUGIN_CATEGORIES.image[0];
-  const what = outKind === 'video' ? 'a video' : 'an image';
-  const description = inp === 'none' ? `Makes ${what} from a prompt.` : inp === 'image' ? `Makes ${what} from your photo.` : `Makes ${what} from your clip.`;
+  const description = plainLine(g, fileName, inp, outKind, prompt.length > 0);
   const strip = (c: NodeChoice & { score?: number; value?: string }): NodeChoice => { const { score: _s, value: _v, ...rest } = c; void _s; void _v; return rest; };
   return { input: inp, output: outKind, tab, category, name: nice(fileName) || 'My workflow', description,
     choices: { input, prompt: prompt.map(strip), seed: seeds.map(strip), output: outs },
     pick: { input: input[0]?.ref ?? '', prompt: prompt[0]?.ref ?? '', seed: seeds[0]?.ref ?? '', output: outs[0]?.ref ?? '' }, extras,
     nodeTypes: [...new Set(Object.values(g).map((n) => n.class_type))].sort() };
+}
+
+/** One plain line about what a workflow does, read from its nodes and file name ("Restores old photos", "Turns your photo into a video").
+ *  Our words, never node names: the summary card's line and the picker's tagline. */
+export function plainLine(g: Graph, fileName: string, inp: 'image' | 'video' | 'none', out: 'image' | 'video', hasPrompt: boolean): string {
+  const types = Object.values(g).map((n) => n.class_type).join(' '); const words = `${fileName} ${Object.values(g).map((n) => n._meta?.title ?? '').join(' ')}`.toLowerCase();
+  const sampler = /KSampler|SamplerCustom/.test(types);
+  if (out === 'image' && inp === 'image') {
+    if (/restor|old photo|repair|damaged|scratch/.test(words) || /FaceRestore|CodeFormer|GFPGAN/i.test(types)) return /FaceRestore|CodeFormer|GFPGAN/i.test(types) && !/restor|old/.test(words) ? 'Fixes faces in your photo' : 'Restores old photos';
+    if (/UpscaleModelLoader|ImageUpscaleWithModel/.test(types) && !sampler) return 'Sharpens and enlarges your photo';
+    if (/Inpaint|SetLatentNoiseMask/i.test(types)) return 'Changes one part of your photo';
+    if (/RMBG|BiRefNet|Rembg|RemoveBackground|BackgroundRemov/i.test(types)) return 'Cuts the subject out of your photo';
+    if (/colori[sz]/.test(words)) return 'Adds colour to black and white photos';
+    if (/UpscaleModelLoader|upscale/i.test(types + words)) return 'Adds detail and enlarges your photo';
+    return hasPrompt ? 'Changes your photo the way you describe' : 'Changes your photo';
+  }
+  if (out === 'image') return 'Makes a picture from your words';
+  if (inp === 'image') return 'Turns your photo into a video';
+  if (inp === 'video') return /upscale|interpolat|rife|film/i.test(types + words) ? 'Makes your clip sharper and smoother' : hasPrompt ? 'Changes your clip the way you describe' : 'Changes your clip';
+  return 'Makes a video from your words';
 }
 
 // ---- 3. Save ----
