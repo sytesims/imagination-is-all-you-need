@@ -16,6 +16,8 @@ import { SAMPLES_DIR } from '../config.js';
 import { modelNameForRun, cardName } from '../models.js';
 import type { FastifyInstance } from 'fastify';
 import { getTool, listTools } from '../tools/registry.js';
+/** The reel tool whose GET price is quoteReel (routesBatch1.ts): Camera Moves' quote per clip. */
+const REEL_QUOTED_ON_CAMERA = 'app-photos-to-reel';
 import { jobs } from '../jobs.js';
 import { getBalance, canAfford } from '../ledger.js';
 import { routesFor, findRoute, isTwinAlias, toolKeys, mapTwinAlias } from './routes.js';
@@ -294,10 +296,12 @@ export function routesView(toolId: string, modelId: string, rawInput: Record<str
  * modelsBlock's own status-based pick stays as the fallback (and supplies status / action for that place).
  */
 function withResolvedPreselect(tool: ToolDef, models: any[]): any[] {
+  /* Photos → Reel's price is Camera Moves' quote (photosToReel.ts quoteReel), so its pre-selection is Camera's: the quote and the listing agree */
+  const rt = tool.id === REEL_QUOTED_ON_CAMERA ? getTool('camera') ?? tool : tool;
   for (const m of models) { try {
-    const mr0 = resolveModelRequest(tool, { model: m.key }); if (!mr0.ok) continue; const mr = preferRunnablePart(tool, mr0, listingInput(tool, mr0.provider ?? m.primaryEngine, mr0.types ? { types: mr0.types } : {})) as typeof mr0; const engine = mr.provider ?? m.primaryEngine; if (!engine) continue;
+    const mr0 = resolveModelRequest(rt, { model: m.key }); if (!mr0.ok) continue; const mr = preferRunnablePart(rt, mr0, listingInput(tool, mr0.provider ?? m.primaryEngine, mr0.types ? { types: mr0.types } : {})) as typeof mr0; const engine = mr.provider ?? m.primaryEngine; if (!engine) continue;
     const input = listingInput(tool, engine, mr.types ? { types: mr.types } : {});
-    const pl: any = resolveRoute(tool, engine, input, 1, { route: 'auto', allowRoutes: mr.allowRoutes, modelKey: mr.modelKey });
+    const pl: any = resolveRoute(rt, engine, input, 1, { route: 'auto', allowRoutes: mr.allowRoutes, modelKey: mr.modelKey });
     if ('error' in pl) { m.preselect = null; m.autoRunOn = null; } // nothing ready: nothing is pre-selected (never a download / key place)
     else { const ro = runOnOfRoute(pl.first); let row = (m.runsOn as any[]).find((r) => r.id === ro);
       // a hidden other provider (routing/hiddenPlaces.ts) that the resolver picks for the default job comes back: the menu names where a run goes
@@ -309,7 +313,7 @@ function withResolvedPreselect(tool: ToolDef, models: any[]): any[] {
 }
 /** The job a listing / status check judges a model on (app locks, Camera's first move and length), shared with routing/defaults.ts. */
 export function listingInput(tool: ToolDef, modelId: string, rawInput: Record<string, any> = {}) {
-  if (tool.id === 'app-photos-to-reel' || tool.id === 'photos-reel') { const camera = getTool('camera'); if (camera) return listingInput(camera, modelId, { ...rawInput, duration: 5, aspect: '9:16', types: [cameraDefaultMove(modelId)].filter(Boolean) }); }
+  if (tool.id === 'app-photos-to-reel' || tool.id === 'photos-reel') { const camera = getTool('camera'); if (camera) return listingInput(camera, modelId, { ...rawInput, duration: 5, aspect: '9:16', ...(tool.id === REEL_QUOTED_ON_CAMERA ? {} /* Camera's own first move for the engine, as its quote */ : { types: [cameraDefaultMove(modelId)].filter(Boolean) }) }); }
   const G = (tool as any).app?.gallery as { locked?: Record<string, string> } | undefined;
   const locked = G?.locked ? routeQuoteInput(tool, Object.fromEntries(Object.entries(G.locked).filter(([k]) => k !== 'provider'))) : {};
   const camDef = tool.id === 'camera' && rawInput.types == null && cameraDefaultMove(modelId) ? { types: [cameraDefaultMove(modelId)], ...(rawInput.duration == null && defaultDurationFor('camera', modelId) ? { duration: defaultDurationFor('camera', modelId) } : {}) } : {};

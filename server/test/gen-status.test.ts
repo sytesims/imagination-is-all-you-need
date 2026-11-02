@@ -46,6 +46,17 @@ const acts = (r: any) => [r?.primary, r?.alt].filter(Boolean).map((a: any) => `$
   const both = reasonOf({ setupKind: 'none', problems: pf({ runnable: false, setupOptions: [{ action: 'download', runOn: 'local' }, { action: 'add_key', runOn: 'comfy-cloud' }], runOn: 'comfy-cloud' }), places: [place('local', 'download'), place('comfy-cloud', 'add_key')] });
   assert.equal(both?.reason, COMFY_DOWN, 'a model that also runs on this computer keeps the Welcome’s line');
   ok('nothing connected: cloud-only → "Add a Comfy key to run this in the cloud" · Add key; YuE2 → "Set up ComfyUI to run YuE2 free" · Set up ComfyUI'); }
+// walk B (2026-11-02): Your computer picked before ComfyUI is set up → the local step, never "Add a Comfy key"; another provider's key → the step itself
+{ const ltx = { valid: false, credits: null, runnable: false, needsKey: false, local: true, runOn: 'local', routeKind: 'local', reason: 'ComfyUI isn’t running on your computer',
+    setup: { runOn: 'local', runOnLabel: 'Your computer', routeId: 'local:comfy-ltx25-extend', action: 'set_up_gpu', actionText: 'Set up GPU' }, setupOptions: [] };
+  const lp = preflightProblems({ quote: ltx, modelName: 'LTX-2.5 22B' }); assert.ok(!lp.some((x) => x.code === 'price_unavailable' || x.code === 'needs_key'), JSON.stringify(lp));
+  for (const sk of ['none', 'cloud'] as const) { const r = reasonOf({ setupKind: sk, problems: lp, places: [] });
+    assert.equal(r?.code, 'needs_comfyui', sk); assert.equal(r!.reason, 'Set up ComfyUI to run LTX-2.5 22B free', sk); assert.equal(r!.primary?.kind, 'connect', sk); }
+  const fal = { valid: false, credits: null, runnable: false, needsKey: true, local: false, setup: { runOn: 'fal', runOnLabel: 'fal', action: 'add_key' }, setupOptions: [{ runOn: 'fal', runOnLabel: 'fal', action: 'add_key', credits: 38 }] };
+  for (const [sk, free, want] of [['none', false, 'Add a fal key to run this'], ['local', true, 'Add a fal key to run this, or pick a free model that runs on your computer']] as const) {
+    const r = reasonOf({ setupKind: sk, problems: preflightProblems({ quote: fal, modelName: 'Hunyuan 3D 3.1', freeLocal: free }), places: [place('fal', 'add_key')] });
+    assert.equal(r?.code, 'needs_key'); assert.equal(r!.reason, want, sk); assert.deepEqual(acts(r), ['fix:Add key'], 'the reason names the step and its button does it'); }
+  ok('Your computer before ComfyUI → "Set up ComfyUI to run LTX-2.5 22B free" · Set up ComfyUI; fal key → "Add a fal key to run this" · Add key'); }
 { const refused = pf({ valid: false, error: 'This model can’t take a 4K image.' });
   const r = reasonOf({ setupKind: 'both', problems: refused, places: [], canDetails: true });
   assert.equal(r?.code, 'model_cant_run'); assert.ok(r!.blocks); assert.deepEqual(acts(r), ['details:See what to fix']);

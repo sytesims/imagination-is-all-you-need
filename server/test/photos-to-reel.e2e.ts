@@ -23,7 +23,7 @@ try {
   const quotes:any[]=[];
   for(const count of [8,15])for(const motion of ['heroes','all']){const q=await get(`/api/tools/app-photos-to-reel/price?photoCount=${count}&motion=${motion}&seconds=30&music=on&provider=api-minimax-h3`);assert.equal(q.status,200,JSON.stringify(q.body));assert.equal(q.body.cameraCount,motion==='all'?count:count===8?3:4);assert.ok(q.body.composite);assert.equal(q.body.cost.usdText,`~$${q.body.cost.realRunUsd.toFixed(2)}`);assert.ok(q.body.cost.realRunUsd > q.body.steps[0].quote.cost.realRunUsd);quotes.push({count,motion,credits:q.body.credits,cost:q.body.cost});}
   console.log('mock quotes',JSON.stringify(quotes));
-  const invalid=await get('/api/tools/app-photos-to-reel/price?photoCount=7');assert.equal(invalid.status,400);
+  const early=await get('/api/tools/app-photos-to-reel/price?photoCount=7');assert.equal(early.status,200,'before the photos are in, the price is the smallest reel (never a 400)');assert.equal(early.body.assumedPhotoCount,8);
   const changed=await post('/api/tools/app-photos-to-reel/jobs',form({quotedCredits:'0'}));assert.equal(changed.status,409,JSON.stringify(changed.body));
   const cancel=await post('/api/tools/app-photos-to-reel/jobs',form());assert.equal(cancel.status,200,JSON.stringify(cancel.body));await post(`/api/jobs/${cancel.body.id}/cancel`);assert.equal((await wait(cancel.body.id)).status,'canceled');
   const started=await post('/api/tools/app-photos-to-reel/jobs',form());assert.equal(started.status,200,JSON.stringify(started.body));const done=await wait(started.body.id);assert.equal(done.status,'done',JSON.stringify(done));assert.ok(done.resultUrl);assert.ok(!done.partial,JSON.stringify(done.warnings));assert.equal(done.toolId,'app-photos-to-reel');

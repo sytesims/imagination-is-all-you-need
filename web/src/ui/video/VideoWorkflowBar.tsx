@@ -476,7 +476,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
         </div>
         <DockGenerate toolId={tool.id} engine={prov} quote={q} setupTarget={setupTarget} label={extra.label?.(live()) ?? bar.generateLabel} busy={busy} problems={problems} pfOpen={pfOpen} onDetails={() => setPfOpen(true)} genRef={genRef} onClick={generate} testId="vs-generate" priceTestId="vs-price" workflowId={wf.id} />
       </div></div>
-      <ModelMenu open={pop === 'model'} anchor={modelRef} avoid={dock} watch={dock} onClose={() => setPop('')} items={menuItems} value={prov} testId="vs-model-list" rowTestId={id => `vs-model-${id}`} onPick={id => { setProvider(id); setPop(''); }} toolId={tool.id} quote={q} placement="top" />
+      <ModelMenu open={pop === 'model'} anchor={modelRef} avoid={dock} watch={dock} onClose={() => setPop('')} items={menuItems} value={prov} testId="vs-model-list" rowTestId={id => `vs-model-${id}`} onPick={id => { setProvider(id); setPop(''); }} toolId={tool.id} quote={q} placement="top" place={pickedFx?.runOn ? { runOn: String(pickedFx.runOn), name: pickedFx.modelName ?? null } : null} />
       {bar.groups.filter(g => shown.some(c => c.group === g.id && c.kind !== 'toggle' && c.kind !== 'gallery' && c.kind !== 'tiles')).map(g => groupPanel(g.id))}
       {shown.filter(c => c.kind === 'tiles').map(tilesPanel)}
       {slotPops}

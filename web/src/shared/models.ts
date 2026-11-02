@@ -12,7 +12,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { requestRequote } from './quote';
 import { runPrice } from './billing';
-import { LOCAL_LABEL, COMFY_DEPLOY_DETAIL, placeOf as sharedPlaceOf, PLACE_LABELS, RUN_ON_LABELS, type Place } from '../../../server/src/shared/modelIds';
+import { LOCAL_LABEL, NEEDS_COMFYUI_TEXT, COMFY_DEPLOY_DETAIL, placeOf as sharedPlaceOf, PLACE_LABELS, RUN_ON_LABELS, type Place } from '../../../server/src/shared/modelIds';
 
 export type RunOnStatus = 'ready' | 'sample' | 'needs-key' | 'off' | 'not-installed' | 'coming-soon' | 'unavailable';
 /** The one action a place that isn't ready needs (server: routing/modelRegistry.ts rowAction / routing/select.ts placeAction). */
@@ -197,7 +197,7 @@ const putError = (b: any, status: number) => { const m = String(b?.issues?.[0]?.
 async function putPerTool(pt: Record<string, Record<string, any>>) {
   SESSION_PICK.clear(); /* a saved pick replaces this visit's */
   const r = await fetch('/api/me/routing', { method: 'PUT', headers: { 'content-type': 'application/json', 'x-openhiggsfield-source': 'web run-on' }, body: JSON.stringify({ perTool: pt }) });
-  const b = await r.json().catch(() => null); if (!r.ok) throw new Error(putError(b, r.status)); setRouting(b); requestRequote(); return b;
+  const b = await r.json().catch(() => null); if (!r.ok) throw Object.assign(new Error(putError(b, r.status)), { code: String(b?.issues?.[0]?.code ?? '') }); setRouting(b); requestRequote(); return b;
 }
 /** Save where a model runs on a tool (a run-on id). 'auto' / '' forgets the choice: the pre-selected place applies again. The quote re-runs right after. */
 export async function setRunOn(toolId: string, modelKey: string, runOn: string): Promise<void> {
@@ -205,7 +205,11 @@ export async function setRunOn(toolId: string, modelKey: string, runOn: string):
   const pt = explicitPerTool();
   if (!runOn || runOn === 'auto') { if (pt[toolId]) { delete pt[toolId][modelKey]; if (!Object.keys(pt[toolId]).length) delete pt[toolId]; } }
   else (pt[toolId] ??= {})[modelKey] = { runOn };
-  await putPerTool(pt);
+  try { await putPerTool(pt); } catch (e) {
+    /* Your computer picked before ComfyUI is set up: the server won't save a local pin it can't run (local_unavailable), so keep it for this
+     * visit; the quote then asks for runOn=local and names the real step ("Set up ComfyUI to run … free"), never the cloud's "Add a Comfy key" */
+    if (runOn === 'local' && (e as any)?.code === 'local_unavailable') { SESSION_PICK.set(`${toolId}:${modelKey}`, { runOn, source: 'session' }); rbus.forEach(f => f()); requestRequote(); return; }
+    throw e; }
 }
 /** Save one named way to run at a place (Run on's choice rows): remembered per tool and model on the server, like Make default, so the quote,
  *  the run and MCP all use it. */
@@ -284,6 +288,8 @@ export function modelStateLine(m: ToolModel): { k: 'ok' | 'demo' | 'off'; s: str
     if (rs.kind === 'ready') return { k: 'ok', s: 'Ready', t: rs.runOn === 'local' ? 'Runs locally, free.' : `Runs on ${rs.text}.`, off: false };
     if (rs.kind === 'sample') return { k: 'demo', s: 'Sample', t: 'Free sample output until you add a key.', off: false };
     if (rs.kind === 'coming_soon') return { k: 'off', s: 'Coming soon', t: 'Not connected on this server yet.', off: true };
+    /* a local-only model before ComfyUI is set up (server NEEDS_COMFYUI_TEXT) stays pickable: the composer then says "Set up ComfyUI to run … free" */
+    if (rs.kind === 'unavailable' && rs.text === NEEDS_COMFYUI_TEXT) return { k: 'off', s: rs.text, t: 'Runs free on your computer once ComfyUI is set up.', off: false };
     if (rs.kind === 'unavailable') return { k: 'off', s: 'Not available', t: 'Not available here.', off: true };
     return { k: rs.kind === 'add_key' || rs.kind === 'set_up' ? 'demo' : 'off', s: rs.text, t: `Not set up yet. ${ways || rs.text}.`, off: false };
   }

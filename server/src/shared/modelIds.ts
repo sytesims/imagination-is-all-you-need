@@ -16,6 +16,9 @@ export const RUN_ON_IDS: readonly RunOn[] = ['local', 'comfy-cloud', 'fal', 'rep
 /** The one user-facing name of the local place (this computer's ComfyUI), used by server and web: the Run on chip, tabs, price lines.
  *  The id stays `local` (and the `gpu` group / #gpu anchor); only these words show. */
 export const LOCAL_LABEL = 'Your computer';
+/** A local model while no ComfyUI answers here (a fresh install, or ComfyUI closed): the one wording for every picker row and card (2026-11-02). */
+export const NEEDS_COMFYUI_TEXT = 'Needs ComfyUI on this computer';
+export const NEEDS_COMFYUI_SHORT = 'Needs ComfyUI';
 /** The one line for a model whose files need an NVIDIA card (copy wave 1): used by the run-on menus, errors and model notes on server and web. */
 export const NEEDS_NVIDIA = 'Needs an NVIDIA graphics card';
 /** The price token of a local run ("Free · on your computer"; prices in dollars, 2026-10-26). */

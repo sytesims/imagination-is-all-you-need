@@ -86,6 +86,8 @@ export function preflightProblems(s: PreflightState): PreflightProblem[] {
     if (o?.action === 'download') add({ code: 'needs_download', stage: 'setup', message: `${model} isn’t downloaded yet`, fix: { kind: 'download', label: o.missingBytes ? `Download ${gb(Number(o.missingBytes))}` : 'Download', args: { runOn, ...(o.missingBytes ? { bytes: Number(o.missingBytes) } : {}) } } });
     else if (o?.action === 'add_key') add({ code: 'needs_key', stage: 'setup', message: `Needs a ${where || 'provider'} key${s.freeLocal ? FREE_LOCAL_TAIL : ''}`, fix: { kind: 'add-key', label: 'Add key', args: { runOn } } });
     else if (o?.action === 'turn_on') add({ code: 'needs_gpu', stage: 'setup', message: `${LOCAL_LABEL} is off`, fix: { kind: 'turn-on', label: 'Turn on', args: { runOn } } });
+    // the local place before ComfyUI answers (Your computer picked, routing/select.ts set_up_gpu): the free way, never "add a key"
+    else if (o?.action === 'set_up_gpu' && runOn === 'local') add({ code: 'needs_comfyui', stage: 'setup', message: `Set up ComfyUI to run ${model} free`, fix: { kind: 'set-up', label: 'Set up ComfyUI', args: { runOn: 'local' } } });
     else if (o?.action === 'install_node') add({ code: 'needs_node', stage: 'setup', message: `${model} needs a custom node`, fix: { kind: 'install-node', label: 'Install node', args: { runOn } } });
     else if (o) add({ code: 'needs_setup', stage: 'setup', message: `${model} isn’t set up yet`, fix: { kind: 'set-up', label: String(o.actionText || 'Set up'), args: { runOn } } });
     // a model that runs only on your computer while no ComfyUI answers: the routing reason as is (routing/select.ts localOnlyUnreachable), never "add a key"

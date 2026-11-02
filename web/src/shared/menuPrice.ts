@@ -11,6 +11,7 @@ import { fmtUsd, knownBalanceUsd, comfyPlanNow, type Account } from './billing';
 import { RUN_ON_BILLING } from './models';
 import { balanceText, balanceDetail } from '../../../server/src/shared/priceText';
 import { needOf, type Need } from '../../../server/src/shared/settingsFit';
+import { NEEDS_COMFYUI_SHORT } from '../../../server/src/shared/modelIds';
 
 /** '≈ $0.08' (the Generate button's token) → '$0.08' over the place. (An old token with a ' · 17 Comfy cr' tail loses it.) */
 export const COMFY_CR = /\s·\s([\d,]+) Comfy cr$/;
@@ -48,7 +49,8 @@ export function reasonShort(full: string | null | undefined): string {
   const need = needOf(body); if (need) return need.short; // a job no setting can fix: what it needs (shared/settingsFit.ts)
   const n = (re: RegExp) => { const m = re.exec(body); return m ? m[1] : null; };
   if (/price not measured/i.test(body)) return 'Price not set yet';
-  if (/^needs comfyui\b/i.test(body)) return 'Needs ComfyUI'; // a local-only model before ComfyUI is set up (routing/modelRegistry.ts NEEDS_COMFYUI_TEXT)
+  if (/^needs comfyui\b|^comfyui isn[’']t running on your computer/i.test(body)) return NEEDS_COMFYUI_SHORT; // no ComfyUI answering here (a new install too): one wording (modelIds NEEDS_COMFYUI_TEXT)
+  if (/isn[’']t ready in this app|not ready in this app|\bnot wired\b/i.test(body)) return 'Not ready in this app yet'; // routing not_wired: a key wouldn't help // a local-only model before ComfyUI is set up (routing/modelRegistry.ts NEEDS_COMFYUI_TEXT)
   if (/comfyui[^.]*(not reachable|isn[’']t running|is off|offline|not running|down)/i.test(body)) return 'ComfyUI is off';
   if (/(too old|update comfyui|newer comfyui)/i.test(body)) return 'Update ComfyUI';
   if (/(only does|only takes|only runs) text to video or image to video/i.test(body)) return 'Text or photo only';
