@@ -13842,6 +13842,10 @@
             "type": "string",
             "description": "App version (root package.json), e.g. 1.1.0"
           },
+          "checkout": {
+            "type": "string",
+            "description": "Which checkout answers: a short hash of its folder (never the path). npm run setup and the doctor tell another copy on the port from this install"
+          },
           "backend": {
             "type": "string"
           },

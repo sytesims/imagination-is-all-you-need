@@ -96,7 +96,7 @@ import { listSoon } from './tools/registry.js';
 import { getTool, listTools, DEFAULT_TOOL_ID } from './tools/registry.js';
 import { config, DATA_DIR, WORKFLOWS_DIR } from './config.js';
 import { mcpInfo } from './mcpInfo.js';
-import { repoInfo, APP_VERSION } from './repoInfo.js';
+import { repoInfo, APP_VERSION, CHECKOUT_ID } from './repoInfo.js';
 import { checkComfyReady } from './comfyClient.js';
 import './routing/jobRefs.js'; // prompt grammar: local graphs rewrite @image1 with the runners' model key (comfy/plans.ts setPlanModelKey)
 import { SWATCH_MAX } from './shared/swatchBatch.js';
@@ -169,6 +169,9 @@ const pub = (j: Job) => ({
   id: j.id,
   /** Pages 16-18: upscale/enhance/edit tool or derived (parentId) job; a retry / Try on re-run is not (S-04: see rerun). */
   enhanced: isEnhanced(j as any),
+  /** The prompt enhancer rewrote the prompt and the run used it (input.enhancedPrompt set). Separate from `enhanced` (the Assets "Enhanced" group:
+   *  upscale / edit / derived), so Enhance on a plain Create doesn't move every image there. */
+  promptEnhanced: typeof (j.input as any)?.enhancedPrompt === 'string' && (j.input as any).enhancedPrompt.trim() !== '',
   /** S-04: 'retry' | 'try-on' | 'failed-groups' when this job re-runs its parent (POST /api/jobs/:id/retry), else null. */
   rerun: j.rerun ?? (j.input?.retryGroups ? 'failed-groups' : j.input?.retryOf ? 'retry' : null),
   elements: (j.input as any)?.elements ?? [],
@@ -378,6 +381,8 @@ app.get('/api/health', async () => {
     ok: true,
     /** the app's version (root package.json), shown in Settings → Profile */
     version: APP_VERSION,
+    /** which checkout answers (a hash of its folder, repoInfo.ts): setup and the doctor tell another copy on this port from this one */
+    checkout: CHECKOUT_ID,
     backend: config.backend,
     openWeightsOnly: openWeightsOnly(),
     comfyReady: comfy.ok,

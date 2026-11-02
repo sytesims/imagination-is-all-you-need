@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { checkoutIdOf } from './shared/checkoutId.js';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -25,3 +26,6 @@ export function repoInfo() {
 export const APP_VERSION: string = (() => {
   try { return String(JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version || '0.0.0'); } catch { return '0.0.0'; }
 })();
+
+/** /api/health.checkout: this checkout's id (shared/checkoutId.ts). */
+export const CHECKOUT_ID: string = checkoutIdOf(ROOT);

@@ -17,6 +17,7 @@ import { execFileSync, execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { comfyInstallOf, type ComfyInstall } from '../hardware/comfyInstall.js';
 import { PROVIDER_ACCOUNTS } from '../shared/providerKeys.js';
+import { checkoutIdOf } from '../shared/checkoutId.js';
 import { classifyMachine, inputFromSystemStats, parseNvidiaSmi, type MachineProfile } from '../hardware/machineProfile.js';
 
 export type Status = 'ok' | 'warn' | 'fail' | 'info';
@@ -26,7 +27,7 @@ export interface PackState { name: string; dir: string; pin: string; installed: 
 export interface DoctorReport {
   ok: boolean; exitCode: 0 | 1 | 2; checkedAt: string; readOnly: true;
   machine: { platform: string; osName: string; arch: string; cpu: string | null; ramGB: number | null; gpu: { name: string; type: string; vramGB: number | null } | null; usableGB: number | null; profile: MachineProfile; diskFreeGB: number | null; diskPath: string | null };
-  app: { api: { url: string; up: boolean; backend: string | null; tools: number | null }; web: { url: string; up: boolean }; mcp: { url: string; up: boolean } };
+  app: { api: { url: string; up: boolean; backend: string | null; tools: number | null; /** another copy of the app (another folder) answers on this install's port */ otherCopy: boolean }; web: { url: string; up: boolean }; mcp: { url: string; up: boolean } };
   comfy: { url: string | null; reachable: boolean; version: string | null; kind: string | null; label: string | null; latencyMs: number | null; manager: string | null; modelsDir: string | null; modelsDirSource: string | null; comfyDir: string | null; required: boolean };
   nodePacks: PackState[];
   accounts: { source: 'app' | 'env-file' | 'none'; connected: string[]; notConnected: string[] };
@@ -116,13 +117,18 @@ export async function runDoctor(e: DoctorEnv = realEnv(), o: DoctorOptions = {})
   // ---- App ----
   const apiPort = setting('PORT') || '8787'; const webPort = setting('WEB_PORT') || '5174'; const mcpPort = setting('MCP_PORT') || '8788';
   const apiUrl = (o.apiUrl ?? `http://127.0.0.1:${apiPort}`).replace(/\/+$/, '');
-  const health = await getJson(e, `${apiUrl}/api/health`, T); const apiUp = health.ok && health.json?.ok === true;
+  const health = await getJson(e, `${apiUrl}/api/health`, T); const healthUp = health.ok && health.json?.ok === true;
+  /* another copy of the app (another folder, e.g. an earlier install) already on this install's port: never report it as this one (its accounts,
+   * models, "already running"); an app from before /api/health.checkout counts as this one, as before */
+  const otherCopy = healthUp && !o.apiUrl && typeof health.json.checkout === 'string' && health.json.checkout !== checkoutIdOf(e.repoRoot); const apiUp = healthUp && !otherCopy;
   const webUrl = `http://localhost:${webPort}`; const mcpUrl = `http://127.0.0.1:${mcpPort}/mcp`;
   const [webUp, mcpUp] = await Promise.all([answers(e, `http://127.0.0.1:${webPort}/`, T), answers(e, mcpUrl, T)]);
   const backend = apiUp ? String(health.json.backend ?? '') || null : null; const tools = apiUp && Array.isArray(health.json.tools) ? health.json.tools.length : null;
   // npm run setup runs the doctor before it starts the app (OPENHIGGSFIELD_DOCTOR_BEFORE_START=1): the app being down then is expected, not a problem
   const beforeStart = !apiUp && e.env.OPENHIGGSFIELD_DOCTOR_BEFORE_START === '1';
-  add({ id: 'api', section: 'app', status: apiUp ? 'ok' : beforeStart ? 'info' : 'warn', required: false, text: apiUp ? `API ${apiUrl} · backend ${backend}${tools != null ? ` · ${tools} tools` : ''}` : beforeStart ? 'The app isn’t started yet: setup starts it next.' : `App not running (nothing at ${apiUrl})`, fix: apiUp || beforeStart ? undefined : 'npm start   (or npm run setup)' });
+  if (otherCopy) add({ id: 'api', section: 'app', status: 'warn', required: false, text: `Another copy of the app is already running at ${webUrl} (from another folder). This install isn’t running yet, so the checks below are about it, not that copy.`,
+    fix: `Keep using that copy, or stop it and start this one (npm run setup), or give this one its own ports: add PORT=${Number(apiPort) + 3}, WEB_PORT=${Number(webPort) + 3} and MCP_PORT=${Number(mcpPort) + 3} to ${envFile}` });
+  else add({ id: 'api', section: 'app', status: apiUp ? 'ok' : beforeStart ? 'info' : 'warn', required: false, text: apiUp ? `API ${apiUrl} · backend ${backend}${tools != null ? ` · ${tools} tools` : ''}` : beforeStart ? 'The app isn’t started yet: setup starts it next.' : `App not running (nothing at ${apiUrl})`, fix: apiUp || beforeStart ? undefined : 'npm start   (or npm run setup)' });
   if (apiUp) add({ id: 'web', section: 'app', status: webUp ? 'ok' : 'warn', required: false, text: `Web ${webUrl} ${webUp ? '' : '(not answering)'}· MCP ${mcpUp ? mcpUrl.replace('/mcp', '') : 'not running'}`.replace('  ', ' ') });
 
   // ---- ComfyUI ----
@@ -229,7 +235,7 @@ export async function runDoctor(e: DoctorEnv = realEnv(), o: DoctorOptions = {})
   const exitCode: 0 | 1 | 2 = cantStart ? 2 : checks.some((c) => c.required && c.status === 'fail') ? 1 : 0;
   return { ok: exitCode === 0, exitCode, checkedAt: e.now().toISOString(), readOnly: true,
     machine: { platform: e.platform, osName: os0, arch: e.arch, cpu, ramGB, gpu, usableGB: usable, profile, diskFreeGB: diskFree == null ? null : r1(diskFree / 1e9), diskPath: diskAt },
-    app: { api: { url: apiUrl, up: apiUp, backend, tools }, web: { url: webUrl, up: webUp }, mcp: { url: mcpUrl, up: mcpUp } },
+    app: { api: { url: apiUrl, up: apiUp, backend, tools, otherCopy }, web: { url: webUrl, up: webUp }, mcp: { url: mcpUrl, up: mcpUp } },
     comfy: { url: comfyUrl, reachable, version, kind: inst?.kind ?? null, label: inst?.label ?? null, latencyMs: lat, manager, modelsDir: modelsExists ? modelsDir : null, modelsDirSource: envModels ? 'env' : inst?.modelsDirSource ?? null, comfyDir, required: wantsLocal },
     nodePacks: packs, accounts, models, checks };
 }
