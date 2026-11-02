@@ -25,21 +25,16 @@ export const openConnectSheet = () => { try { dispatchEvent(new Event(OPEN_EVT))
 /** The error createJob throws after opening the sheet: calm and declined, so no second toast says the same thing. */
 export const noConnectionError = () => Object.assign(new Error(`Not run. ${NO_CONNECTION_TITLE}.`), { code: 'no_connection', errorType: 'no_connection', status: 402, calm: true, declined: true, charged: false, issues: [] });
 
-/** The real setup from GET /api/config (cloud | local | both | none; routing/select.ts setupKind), re-read whenever where models run changes. */
+/** The real setup from GET /api/config (cloud | local | both | none; routing/select.ts setupKind), re-read whenever where models run changes.
+ *  One read for the whole page (every Generate's reason line and Canvas card shares it). */
 export type SetupKind = 'cloud' | 'local' | 'both' | 'none';
+let skNow: SetupKind | null = null; let skReading: Promise<void> | null = null; const skSubs = new Set<() => void>();
+const readSetupKind = () => (skReading ??= fetch('/api/config').then(r => (r.ok ? r.json() : null)).then(c => { if (c?.setupKind && c.setupKind !== skNow) { skNow = c.setupKind; skSubs.forEach(f => f()); } }).catch(() => undefined).finally(() => { skReading = null; }));
 export function useSetupKind(): SetupKind | null {
-  const [k, setK] = useState<SetupKind | null>(null);
-  useEffect(() => { let live = true; const read = () => fetch('/api/config').then(r => (r.ok ? r.json() : null)).then(c => { if (live && c?.setupKind) setK(c.setupKind); }).catch(() => undefined);
-    void read(); addEventListener(TOOLS_REFRESH, read); return () => { live = false; removeEventListener(TOOLS_REFRESH, read); }; }, []);
-  return k;
-}
-/** Generate when nothing is connected (setupKind none): it says the next step ("Connect to generate") and opens the connect sheet, the same
- *  as the server's 402 no_connection. Once something is connected, the page's own Generate comes back. */
-export const CONNECT_LABEL = 'Connect to generate';
-export const CONNECT_HINT = 'Add a Comfy key or use your ComfyUI · about 1 min';
-export function ConnectGenerate({ testId, priceTestId, className = 'ic-gen gen-btn gen-dock btn btn-primary' }: { testId: string; priceTestId?: string; className?: string }) {
-  return <button type="button" className={className} data-testid={testId} data-needs-connection="1" title={NO_CONNECTION_TITLE} onClick={openConnectSheet}>
-    <span className="gen-l">{CONNECT_LABEL}</span><span className="gen-price" data-testid={priceTestId}>{CONNECT_HINT}</span></button>;
+  const [, tick] = useState(0);
+  useEffect(() => { const f = () => tick(n => n + 1); skSubs.add(f); if (skSubs.size === 1) addEventListener(TOOLS_REFRESH, readSetupKind); void readSetupKind();
+    return () => { skSubs.delete(f); if (!skSubs.size) removeEventListener(TOOLS_REFRESH, readSetupKind); }; }, []);
+  return skNow;
 }
 
 type Step = { busy?: boolean; ok?: boolean; text?: string };

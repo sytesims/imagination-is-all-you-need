@@ -10,8 +10,6 @@ import { MoreFiles, LeftNote, notAddedText, type TrayFile } from '../../shared/F
 import { AddTile } from '../../shared/AddTile';
 import { thumbsShown } from '../../shared/presetBar';
 import { handoffOf } from '../../shared/handoffFiles';
-import { PF_SHORT } from '../../shared/DockGenerate';
-import { preflightProblems } from '../../../../server/src/shared/preflight';
 import { tip } from '../../shared/Tooltip';
 import { refChipTip } from '../../../../server/src/shared/promptTips';
 import { renumberMentions } from '../../shared/mentions';
@@ -21,7 +19,7 @@ import { MotionGlyphIcon } from '../../shared/PresetTile';
 import { motionFor } from '../../shared/presetMotion';
 import { toolHandoffHref } from '../../shared/workflowLinks';
 import { LookPicker, type LookTab } from '../../shared/LookPicker';
-import { SetupGenerate, setupNeeded, NoPlaceGenerate } from '../../shared/SetupCard';
+import { GenStatus, useGenReason, blockedProps, genBlocked } from '../../shared/GenStatus';
 import { estimateWords } from '../../shared/CostNote';
 import { useGenState, GenHint } from '../edge/Edge';
 import { nudgeMissing } from '../../shared/genNudge';
@@ -54,7 +52,7 @@ import { VIDEO_LANDING_FEED } from '../../../../server/src/shared/videoFeed';
 import { forwardRef, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { JobState, ToolInfo } from '../../api';
 import { useToast } from '../../shared/Toast';
-import { KeyNeeded, addKeyText, hasFreeLocal } from '../../shared/KeyNeeded';
+import { KeyNeeded, addKeyText } from '../../shared/KeyNeeded';
 import { navigate } from '../../platform/router';
 import { Link } from '../../platform/router';
 import { VideoWorkflowChip, videoWorkflowHref } from './VideoWorkflows';
@@ -360,8 +358,7 @@ export default function VideoStudio(p: VideoStudioProps) {
   else if (!p.image) addOpts.push({ id: 'start', label: p.mode === 'r2v' ? 'Upload a reference' : 'Start frame', testId: 'vs-start-add', go: () => fileIn.current?.click() });
   if (!kfMode && (refKinds.length > 1 || (refMax.image ?? 0) > 1) && RK.some(([k, kind]) => refKinds.includes(kind) && (p.vrefs[k]?.length ?? 0) < (refMax[kind] ?? 0))) addOpts.push({ id: 'refs', label: `References (${refKinds.join(', ')})`, testId: 'vs-ref-add', go: () => refIn.current?.click() });
   if (!kfMode && needLast && !p.lastFrame) addOpts.push({ id: 'end', label: 'End frame', testId: 'vs-end-add', go: () => lastIn.current?.click() });
-  const setupGen = setupNeeded(tm, q, cur?.id) && !p.missing.length && !p.conflict && !rvShort && !rvOver && !rvLong && !raShort && !raLong && !raOver && !audioAlone && !durErr; /* inputs first, like Image (setup only when nothing else is wrong) */
-  const noPlace = !setupGen && !q && !!cur && 'defaultRoute' in (cur as any) && (cur as any).defaultRoute == null; /* Image's "Set up a place to run first" */
+  const noPlace = !q && !!cur && 'defaultRoute' in (cur as any) && (cur as any).defaultRoute == null; /* no place to run at all: the reason line says so */
   const issueOf = (f: string) => (p.issues ?? []).find((i: any) => i?.field === f);
   type Note = PreflightNote;
   const notes: Note[] = [];
@@ -389,24 +386,14 @@ export default function VideoStudio(p: VideoStudioProps) {
   const routeIssue = (p.issues ?? []).some((i: any) => i?.code === 'route_not_runnable' || i?.code === 'idempotency_conflict');
   if (routeIssue) notes.push({ key: 'route', stage: 'Setup', node: <RouteNotRunnable issues={p.issues} /> });
   const blocking = notes.some(n => n.hard);
-  /* only an input is missing (a prompt, a photo): Generate shows the price like Image's and 3D's; the missing step is the tooltip, a click nudges it (audit P3) */
-  const priceFirst = !qFull && p.missing.length > 0 && !p.conflict && !notes.some(n => n.hard && !n.key.startsWith('miss-')) && !unpriced && !blockWhy && credits != null;
   /* a note that arrives from the last run or an add (not a standing state) opens the list once; a click on Generate opens it too */
   const eventKey = [p.imgErr, refErr, ...['image', 'refs', 'refVideos', 'refAudios', 'prompt', 'resolution'].map(f => issueOf(f)?.message), subDur?.message, routeIssue ? 'route' : ''].filter(Boolean).join('|');
   useEffect(() => { if (eventKey) setPfOpen(true); }, [eventKey]);
   useEffect(() => { if (pfOpen && !notes.length) setPfOpen(false); });
   const est = estimateWords(q);
   const genTitle = qFull ? gq.block : p.conflict ? p.conflict : blockWhy ? blockWhy : gate ? 'Needs a provider key' : durErr ? durErr : why ? why : unpricedWhy ? `${unpricedPrefix(q)}${unpricedWhy}` : [priceTitle(q, bill, { demo: isDemo, free: isFree, credits: !unpriced && !blockWhy ? credits : null }), est?.long].filter(Boolean).join(' ') || undefined;
-  /* Generate's second line (Image's behaviour): the price · time when it can run, else the first problem in a few words, in Image's pre-flight
-   * order (inputs → model → setup → money) and wording (PF_SHORT). The full sentences stay in the title and the "Before you generate" list. */
-  const pf0 = preflightProblems({ freeLocal: hasFreeLocal(p.tool.id), quote: q, modelName: modelName })[0];
-  const genWord = qFull ? 'Queue full' : p.missing.length ? missShort(p.missing[0], p.mode) : p.conflict ? 'Remove the start frame' : rvShort ? 'Reference clip too short' : rvOver ? 'Reference clips too long' : durErr ? 'Pick another length'
-    : gate ? (q?.setup?.action === 'add_key' && q.setup.actionText ? String(q.setup.actionText) /* the quote's own step: "Add a BytePlus key" */
-      : (q?.keyOwner || q?.noProvider?.keyOwner) ? addKeyText(q) /* KeyNeeded's words: "Add a BytePlus key" */
-      : q?.noProvider?.providers?.[0]?.name ? `Add a ${String(q.noProvider.providers[0].name).replace(/\s*\(.*\)\s*$/, '')} key` /* "Add a BytePlus ModelArk key" */
-      : pf0?.code === 'needs_key' && /^Needs an? .+ key$/.test(pf0.message) && !/provider key/.test(pf0.message) ? pf0.message.replace(/^Needs an? /, 'Add a ')
-      : (q?.setup?.runOnLabel ?? q?.runOnLabel) ? `Add a ${q.setup?.runOnLabel ?? q.runOnLabel} key` : PF_SHORT.needs_key(pf0!))
-    : unpriced ? PF_SHORT.price_unavailable(pf0!) : blockWhy ? (pf0 && PF_SHORT[pf0.code] ? PF_SHORT[pf0.code](pf0) : firstWords(blockWhy)) : blocking ? 'See what to fix' : '';
+  /* why it can't run (a key, ComfyUI, a refused model, no price): the shared reason line above Generate; Generate keeps its label and price */
+  const gr = useGenReason({ toolId: p.tool.id, engine: cur?.id, quote: q, noPlace, onDetails: () => setPfOpen(true) });
 
   /* Enhance: Create Video keeps it in its fields (enhance=1 on the run, off unless turned on); the peek below shows the words it adds */
   const enhOn = p.fv.enhance === '1' || p.fv.enhance === true as any; const setEnh = (b: boolean) => p.setFv('enhance', b ? '1' : '');
@@ -524,12 +511,11 @@ export default function VideoStudio(p: VideoStudioProps) {
           <PromptPeek form={peekForm} place={ro.sub ? `${ro.main} (${ro.sub})` : ro.main} photos={[]} watch={dock} />
         </div>
       </div>
-      {noPlace ? <NoPlaceGenerate testId="vs-generate" priceTestId="vs-price" />
-        : setupGen ? <SetupGenerate toolId={p.tool.id} model={tm} engine={cur?.id} quote={q} className="ic-gen gen-btn gen-dock btn btn-primary" testId="vs-generate" priceTestId="vs-price" />
-        : <button ref={genRef} type="button" className={`ic-gen gen-btn gen-dock btn btn-primary vs-dgen${!p.busy && (p.missing.length > 0 || blocking) ? ' gen-wait' : ''}`} data-testid="vs-generate" data-problems={notes.length || undefined} disabled={p.busy || qFull || !!p.frameHandoff} aria-busy={p.busy || undefined} aria-disabled={p.missing.length > 0 || blocking || !!p.frameHandoff || undefined} data-why={why || undefined} aria-describedby={why ? 'vs-why' : undefined}
-          aria-haspopup={blocking ? 'dialog' : undefined} aria-expanded={blocking ? pfOpen : undefined} title={pfOpen ? undefined : genTitle}
-          onClick={e => { if (blocking) { setPfOpen(o => !o); return; } if (p.missing.length) { nudgeMissing(e.currentTarget); return; } setPfOpen(false); p.onGenerate(); }}><span className="gen-l">{p.busy ? <i className="as-spin" aria-hidden /> : null}Generate</span>
-          {genWord && !(priceFirst) ? <span className="gen-price gen-missing" data-testid="vs-price">{genWord}</span> : <GenPrice compact testId="vs-price" q={q} demo={isDemo} free={isFree} credits={!unpriced && !blockWhy ? credits : null} />}</button>}
+      <GenStatus r={gr} />
+      {<button ref={genRef} type="button" className={`ic-gen gen-btn gen-dock btn btn-primary vs-dgen${!p.busy && (p.missing.length > 0 || blocking) ? ' gen-wait' : ''}`} data-testid="vs-generate" data-problems={notes.length || undefined} disabled={p.busy || qFull || !!p.frameHandoff} aria-busy={p.busy || undefined} aria-disabled={p.missing.length > 0 || blocking || !!p.frameHandoff || undefined} data-why={why || undefined} aria-describedby={why ? 'vs-why' : undefined}
+          aria-haspopup={blocking ? 'dialog' : undefined} aria-expanded={blocking ? pfOpen : undefined} title={pfOpen ? undefined : genTitle} {...blockedProps(gr)}
+          onClick={e => { if (genBlocked(gr)) return; if (blocking) { setPfOpen(o => !o); return; } if (p.missing.length) { nudgeMissing(e.currentTarget); return; } setPfOpen(false); p.onGenerate(); }}><span className="gen-l">{p.busy ? <i className="as-spin" aria-hidden /> : null}Generate</span>
+          <GenPrice compact testId="vs-price" q={q} demo={isDemo} free={isFree} text={qFull ? 'Queue full' : null} credits={!unpriced && !blockWhy ? credits : null} /></button>}
       </div></div>
       {p.missing.length > 0 && !gate && <p className="sr-only" id="vs-why">{why}</p>}
       {(() => { const [k, si] = pv.split(':'); const i = Number(si); const isRef = !!si; const it = pv === 'start' ? p.image : pv === 'end' ? p.lastFrame : isRef ? p.vrefs[k]?.[i] ?? null : null;

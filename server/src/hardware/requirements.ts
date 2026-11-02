@@ -17,6 +17,7 @@
  *    its workflows and the job needs all of them, else '<providerId>:<workflow slugs joined by +>' (slug = file name without '-api.json').
  */
 import { ltxDfrRuns } from '../shared/ltxDfr.js';
+import { TOO_BIG_TEXT } from '../shared/thisComputer.js';
 import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -320,7 +321,9 @@ export function fitFor(tool: ToolDef, providerId: string, input: Record<string, 
   if (hw.gpu.type === 'mps' && req.mps === 'red') return done('too_heavy', 'unsupported_weights', `${MAC_WEIGHTS_REASON}.`);
   if (R <= E - 1) return done(hw.gpu.type === 'mps' && req.mps === 'amber' ? 'slow' : 'fits', hw.gpu.type === 'mps' && req.mps === 'amber' ? 'mps' : 'fits', hw.gpu.type === 'mps' && req.mps === 'amber' ? `Runs, but slow${aboutTime(base.etaSeconds)}: these weights are slow or untested on Apple graphics.` : `Fits in your ${fmt(E)} GB of graphics memory.`);
   const ramOk = ramGB == null || req.ramMinGB == null || ramGB >= req.ramMinGB;
-  if (M != null && M <= E && ramOk) return done('slow', hw.gpu.type === 'mps' ? 'mps' : 'offload', `Needs about ${fmt(R)} GB of graphics memory; your ${fmt(E)} GB computer will run it more slowly by moving part of it to system memory.`);
+  /* M1 (2026-11-02): shared memory (Apple Silicon, DGX Spark) has no separate system memory to move part of it to: it swaps and can freeze. Said plainly here;
+     the verdict rule itself is PR 3's (the reason line already asks before such a run) */
+  if (M != null && M <= E && ramOk) return done('slow', hw.gpu.type === 'mps' ? 'mps' : 'offload', hw.gpu.type === 'mps' || hw.gpu.unifiedMemory ? `${TOO_BIG_TEXT}: it needs about ${fmt(R)} GB and your computer can give models about ${fmt(E)} GB. Running it can freeze your computer.` : `Needs about ${fmt(R)} GB of graphics memory; your ${fmt(E)} GB computer will run it more slowly by moving part of it to system memory.`);
   if (M != null && M <= E && !ramOk) return done('too_heavy', 'not_enough_ram', `Needs at least ${req.ramMinGB} GB of system memory to run on your ${fmt(E)} GB card; your computer has ${fmt(ramGB!)} GB.`);
   return done('too_heavy', 'not_enough_vram', `Needs about ${fmt(R)} GB of graphics memory; your computer has ${fmt(E)} GB.`);
 }

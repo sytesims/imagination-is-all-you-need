@@ -46,7 +46,8 @@ import GenTile from '../../shared/GenTile';
 import { DemoText } from '../../shared/DemoText';
 import { USE_PROVIDER_EVT, useMemoryShort } from '../../shared/FitNote';
 import { gbOf } from '../../../../server/src/shared/thisComputer';
-import { SetupGenerate, setupNeeded, NoPlaceGenerate, DownloadIntentRow, intentSize } from '../../shared/SetupCard';
+import { setupNeeded, DownloadIntentRow, intentSize } from '../../shared/SetupCard';
+import { GenStatus, useGenReason, blockedProps, genBlocked } from '../../shared/GenStatus';
 import { useDownloadIntent } from '../../shared/hardware';
 import { missingText } from '../../shared/missing';
 import { Popover } from '../../shared/Popover';
@@ -122,7 +123,7 @@ import { typedFromFrames } from '../../../../server/src/shared/typedPrompt';
 import { wfDefaultOf, startModel, pickKindOf, PICK_LABEL, savedPick, savePick, featureSwitchTo } from '../../shared/workflowDefaults';
 import { LOCAL_LABEL } from '../../../../server/src/shared/modelIds';
 import { routeCapsOf, maxRefsOf } from '../../shared/refCaps';
-import { DockGenerate, PF_SHORT } from '../../shared/DockGenerate';
+import { DockGenerate } from '../../shared/DockGenerate';
 import { captionTitle } from '../../shared/feedCaptionText';
 
 /** Create Image as a canvas: centred empty hero or results feed, plus a bottom-docked composer (prompt, +, model, aspect, quality, style, count, Generate). */
@@ -166,7 +167,6 @@ const short = (n?: string) => String(n ?? '');
 const isActive = (j: JobState) => j.status === 'queued' || j.status === 'running';
 const CANCEL_LINGER_MS = 4000;
 /** Generate's two-line space: short words for problems past the inputs (the pre-flight list says them in full). */
-export { PF_SHORT } from '../../shared/DockGenerate'; /* moved to shared (Video, Audio, 3D and the Canvas import it from there too) */
 /** TRANSPARENCY-PLAN 4i: the in-progress tile is the shared premium tile (live preview or shimmer, place + price, stepper, one label, ✕). */
 /* not exported: a non-component export here broke React Fast Refresh and caused an endless hot-reload loop with AppTool (2026-10-26) */
 /** The feed holds every image feature's results (Create Image is their home): a small tag names the feature when it isn't plain Create Image ("Edit", "Relight", "Face Swap"). */
@@ -789,8 +789,8 @@ export default function ImageCanvas(p: ImageCanvasProps) {
   const cntNote = batchNote({ n, local: !qj || (qLocal && p.image) ? null : qLocal }); /* local batching is for text-to-image graphs only (comfy/plans.ts) */
   const demoReal = qj?.demo === true ? demoRealCredits(qj) : null; /* a sample run: what a real one would cost (list price), scaled to the picked count */
   const cntDemo = qj?.demo === true ? `Sample output, nothing billed${demoReal ? `. A real run ≈ ${fmtUsd((demoReal * n) / (qN.current || n) / 100)}` : ''}` : null;
-  /* nothing ready (or the chosen place needs setup) → Generate becomes the next setup step (SetupGenerate: its popover lists every place) */
-  const needSetup = setupNeeded(modelOfEngine(p.tool.id, cur?.id), qj, cur?.id, dlIntent); const noPlace = needSetup || (!qj && !!cur && 'defaultRoute' in (cur as any) && (cur as any).defaultRoute == null);
+  /* nothing ready (or the chosen place needs setup) → the reason line above Generate says the step (shared GenStatus; More ways lists every place) */
+  const needSetup = setupNeeded(modelOfEngine(p.tool.id, cur?.id), qj, cur?.id, dlIntent); const routeless = !qj && !!cur && 'defaultRoute' in (cur as any) && (cur as any).defaultRoute == null; const noPlace = needSetup || routeless;
   const keyGate = !!qj && qj.needsKey === true && qj.runnable === false && !needSetup; const pinBlock: string = qj?.pinnedUnavailable === true && qj?.runnable === false ? String(qj.reason ?? qj.unavailableReason ?? qj.error ?? qj.message ?? 'This model is set to run on your computer, which isn’t available right now. Pick another place in Run on.') : ''; const unpricedBlock: string = unpriced && qj?.runnable === false && !needSetup ? String(qj?.error ?? 'No verified price for this model at this setting, so it can’t run (the quote must equal the charge). Pick another quality or model.') : '';
   /* plain Create's pre-flight (same list and order as a workflow's) */
   const createPf: PreflightProblem[] = recipe ? [] : (() => { const other = p.missing.filter(x => !/prompt/i.test(x));
@@ -799,6 +799,8 @@ export default function ImageCanvas(p: ImageCanvasProps) {
     if (other.length && p.prompt.trim()) list.unshift({ code: 'photo_missing', stage: 'inputs', message: missingText(other).replace(/\.$/, ''), fix: { kind: 'choose-photo', label: 'Choose…', args: { slot: '' } } });
     if (pinBlock && !needSetup && !list.some(x => x.code === 'model_cant_run')) { const k = list.findIndex(x => x.stage !== 'inputs'); list.splice(k < 0 ? list.length : k, 0, { code: 'model_cant_run', stage: 'model', message: pinBlock.replace(/\.$/, ''), fix: { kind: 'pick-model', label: 'Pick model…' } }); }
     return list; })(); createPfRef.current = createPf;
+  /* why plain Create can't run (the shared reason line above Generate; workflows get theirs from DockGenerate) */
+  const gr = useGenReason({ toolId: p.tool.id, engine: cur?.id, quote: qj, problems: recipe ? [] : createPf, noPlace: !recipe && routeless, onDetails: () => setPfOpen(true) });
   /* a local run's time: learned on this computer → in the price ("Free · Local · ≈ 3–4 min"); before the first run → a line under the composer */
   const etaR = qj?.local === true && !keyGate ? etaRangeOf(qj) : null; const etaL = etaLine(etaR);
   const etaTok = etaL && (etaL.kind === 'learned' || etaL.kind === 'scaled') ? etaL.short.replace(/ · Local$| incl\. model load$/, '') : null;
@@ -1033,11 +1035,9 @@ export default function ImageCanvas(p: ImageCanvasProps) {
         </div>
       </div>
       {recipe ? <DockGenerate toolId={recipe.runner.toolId} engine={wfProvider} quote={nSw > 1 ? timesQuote(wq, nSw) : wq /* Material Swap: the price of every swatch's run */} label={isMulti ? anglesLabel(angleIds.length, recipe) : batchLabel(recipe.generateLabel, nSw)} busy={wfBusy} disabled={!runTool} problems={wfPf} missing={wfMissing?.missing ?? null}
-          pfOpen={pfOpen} genRef={genRef} onClick={wfGenerate} intent={wfIntent} dlSize={wfDlSize} workflowId={recipe.id} /> /* shared/DockGenerate.tsx (also the Canvas bar's) */
-      : needSetup && !createPf.some(x => x.stage === 'inputs' || x.stage === 'model') ? <SetupGenerate toolId={p.tool.id} model={modelOfEngine(p.tool.id, cur?.id)} engine={cur?.id} quote={qj} className="ic-gen gen-btn gen-dock btn btn-primary" testId="ic-generate" priceTestId="ic-price" />
-      : noPlace ? <NoPlaceGenerate testId="ic-generate" priceTestId="ic-price" />
-      : <button ref={genRef} type="button" className={`ic-gen gen-btn gen-dock btn btn-primary${!p.ready || createPf.length ? ' gen-wait' : ''}`} data-testid="ic-generate" data-problems={createPf.length || undefined} disabled={p.busy || !!gs.block || gs.submitting} aria-disabled={!p.ready || createPf.length > 0 || undefined}
-          aria-haspopup={createPf.length ? 'dialog' : undefined} aria-expanded={createPf.length ? pfOpen : undefined} onClick={e => { if (createPf.length) { setPfOpen(o => !o); return; } if (!p.ready) { if (!p.prompt.trim()) nudgeMissing(e.currentTarget, p.promptRef.current); else { setDropErr(missingText(p.missing)); nudgeMissing(e.currentTarget); } return; } go(); }} data-mem={mem ? 'short' : undefined} title={keyGate ? 'Needs a provider key' : gs.block || (p.missing.length ? missingText(p.missing) : '') || [mem ? `${mem.text} Or pick Comfy Cloud in the run menu.` : '', demoNote, etaNote].filter(Boolean).join(' · ') || undefined} data-eta-note={etaNote || undefined}><span className="gen-l">{p.busy || gs.submitting ? <i className="as-spin" aria-hidden /> : null}{fid === 'edit-image' && p.image ? 'Edit' : 'Generate'}</span><GenPrice compact testId="ic-price" q={qj} demo={!keyGate && !unpriced && qj?.demo === true} text={gs.block ? (gs.offline ? 'Offline' : 'Queue full') : dlSize && !keyGate ? intentLine(dlSize) : !keyGate && unpriced ? priceLbl : mem ? `Free · only ${gbOf(mem.freeGB * 2 ** 30)} free now` : !keyGate && total === 0 && etaTok ? `Free · ${etaTok.replace(/^≈ /, '~')}` /* the dock's Generate is narrow: the time replaces 'Local' (the line below names the place) */ : null} free={!keyGate && total === 0} credits={keyGate ? null : total} title={unpriced ? (qj?.error ?? 'No verified price for this setting') : !keyGate && total === 0 && qj?.local === true ? `Free · on your computer${etaL ? ` · ${etaL.text}. ${etaL.title}` : ''}` : undefined} /></button>}
+          pfOpen={pfOpen} genRef={genRef} onClick={wfGenerate} onDetails={() => setPfOpen(true)} dlSize={wfDlSize} workflowId={recipe.id} /> /* shared/DockGenerate.tsx (also the Canvas bar's) */
+      : <><GenStatus r={gr} /><button ref={genRef} type="button" className={`ic-gen gen-btn gen-dock btn btn-primary${!p.ready || createPf.length || gr?.blocks ? ' gen-wait' : ''}`} data-testid="ic-generate" data-problems={createPf.length || undefined} disabled={p.busy || !!gs.block || gs.submitting} aria-disabled={!p.ready || createPf.length > 0 || undefined}
+          aria-haspopup={createPf.length ? 'dialog' : undefined} aria-expanded={createPf.length ? pfOpen : undefined} onClick={e => { if (genBlocked(gr)) return; if (createPf.length) { setPfOpen(o => !o); return; } if (!p.ready) { if (!p.prompt.trim()) nudgeMissing(e.currentTarget, p.promptRef.current); else { setDropErr(missingText(p.missing)); nudgeMissing(e.currentTarget); } return; } go(); }} data-mem={mem ? 'short' : undefined} title={keyGate ? 'Needs a provider key' : gs.block || (p.missing.length ? missingText(p.missing) : '') || [mem ? `${mem.text} Or pick Comfy Cloud in the run menu.` : '', demoNote, etaNote].filter(Boolean).join(' · ') || undefined} data-eta-note={etaNote || undefined} {...blockedProps(gr)}><span className="gen-l">{p.busy || gs.submitting ? <i className="as-spin" aria-hidden /> : null}{fid === 'edit-image' && p.image ? 'Edit' : 'Generate'}</span><GenPrice compact testId="ic-price" q={qj} demo={!keyGate && !unpriced && qj?.demo === true} text={gs.block ? (gs.offline ? 'Offline' : 'Queue full') : dlSize && !keyGate ? intentLine(dlSize) : !keyGate && unpriced ? priceLbl : !keyGate && total === 0 && etaTok ? `Free · ${etaTok.replace(/^≈ /, '~')}` /* the dock's Generate is narrow: the time replaces 'Local' (the line below names the place) */ : null} free={!keyGate && total === 0} credits={keyGate ? null : total} title={unpriced ? (qj?.error ?? 'No verified price for this setting') : !keyGate && total === 0 && qj?.local === true ? `Free · on your computer${etaL ? ` · ${etaL.text}. ${etaL.title}` : ''}` : undefined} /></button></>}
       </div></div>
       {recipe ? <ModelMenu open={pop === 'model'} anchor={aR.model} watch={dock} gap={4} onClose={closePop} placement="top" testId="ic-pop-model" toolId={recipe.runner.toolId} value={wfProvider} quote={wq}
         items={[...wfProviders.map(x => ({ id: x.id, name: x.name, p: x, tag: recipe.prep?.[wfMode]?.[x.id]?.note /* honest: this model runs on your photo fitted to the shape */

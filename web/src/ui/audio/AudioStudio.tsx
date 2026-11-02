@@ -9,7 +9,8 @@ import { GenPrice } from '../../shared/GenPrice';
 import { DemoPrice } from '../../shared/DemoPrice';
 import { CostNote } from '../../shared/CostNote';
 import { FitNote } from '../../shared/FitNote';
-import { SetupGenerate, SetupStatus, setupNeeded } from '../../shared/SetupCard';
+import { SetupStatus, setupNeeded } from '../../shared/SetupCard';
+import { GenStatus, useGenReason, blockedProps, genBlocked } from '../../shared/GenStatus';
 import { useDownloadIntent } from '../../shared/hardware';
 import { isFit, quoteFitOf } from '../../shared/fit';
 import { BarPopover, PopSection, PopList, PopRow } from '../../shared/BarPop';
@@ -95,7 +96,8 @@ export default function AudioStudio(p: AudioStudioProps) {
   const qLang: any = /^(invalid|unsupported)_language$/.test(String(q?.code ?? '')) ? ((Array.isArray(q?.issues) ? q.issues : []).find((i: any) => i?.field === 'language') ?? { code: q.code, field: 'language', message: String(q.error ?? '') }) : null;
   const langIss: any[] = qLang && !p.issues.some((i: any) => i?.field === 'language') ? [...p.issues, qLang] : p.issues;
   const unpricedWhy = unpricedReason(q); const unpriced = !!unpricedWhy; const gq = useGenState(); const qFull = gq.full; /* D1: a full queue blocks Generate */ const credits: number | null = shownCredits(q); /* B18: chargeable:false is never a charge */
-  const free = credits === 0 && q?.routeKind === 'local'; const gate = !!q && q.needsKey === true && q.runnable === false; const needSetup = setupNeeded(tm, q, cur?.id, dlIntent); /* Generate becomes the setup step */
+  const free = credits === 0 && q?.routeKind === 'local'; const gate = !!q && q.needsKey === true && q.runnable === false; const needSetup = setupNeeded(tm, q, cur?.id, dlIntent); /* the reason line says the setup step */
+  const gr = useGenReason({ toolId: p.tool.id, engine: cur?.id, quote: q });
   const [tab, setTab] = useState<'history' | 'how'>(p.jobs.length ? 'history' : 'how'); useEffect(() => { if (p.jobs.length) setTab('history'); }, [p.jobs.length]);
   /* The shared slim model menu (ModelMenu) beside the panel; Escape, outside click and focus back to the Model button come with the Popover */
   const [mOpen, setMOpen] = useState(false); const mBtn = useRef<HTMLButtonElement>(null); const panel = useRef<HTMLElement>(null);
@@ -176,11 +178,10 @@ export default function AudioStudio(p: AudioStudioProps) {
         </section>}
       </div>
       <RouteNotRunnable issues={p.issues} /><div className="as-gen-wrap">
-        {needSetup ? <SetupGenerate toolId={p.tool.id} model={tm} engine={cur?.id} quote={q} className="vs-gen gen-btn as-gen" testId="as-generate" />
-          : gate ? <button type="button" className="vs-gen gen-btn as-gen" data-testid="as-generate" disabled title="Needs a provider key"><span className="gen-l">Generate</span><GenPrice /></button>
-          : <button type="button" className={`vs-gen gen-btn as-gen${!p.busy && !unpriced && missing.length ? ' gen-wait' : ''}`} data-testid="as-generate" disabled={p.busy || unpriced || qFull} aria-disabled={missing.length > 0 || undefined} title={qFull ? gq.block : missing.length ? (missing.every(m => /^Add /.test(m)) ? missing.join(' ') : missingText(missing)) : unpricedWhy ? `${unpricedPrefix(q)}${unpricedWhy}` : undefined} onClick={e => { if (missing.length) { nudgeMissing(e.currentTarget); return; } p.onGenerate(); }}><span className="gen-l">{p.busy ? <i className="as-spin" aria-hidden /> : null}Generate</span>
+        <GenStatus r={gr} />
+        {<button type="button" className={`vs-gen gen-btn as-gen${!p.busy && !unpriced && missing.length ? ' gen-wait' : ''}`} data-testid="as-generate" disabled={p.busy || unpriced || qFull} aria-disabled={missing.length > 0 || undefined} title={qFull ? gq.block : missing.length ? (missing.every(m => /^Add /.test(m)) ? missing.join(' ') : missingText(missing)) : unpricedWhy ? `${unpricedPrefix(q)}${unpricedWhy}` : undefined} {...blockedProps(gr)} onClick={e => { if (genBlocked(gr)) return; if (missing.length) { nudgeMissing(e.currentTarget); return; } p.onGenerate(); }}><span className="gen-l">{p.busy ? <i className="as-spin" aria-hidden /> : null}Generate</span>
             <GenPrice testId="as-price" q={q} demo={!unpriced && credits != null && q?.demo === true} free={!unpriced && credits != null && free} credits={!unpriced ? credits : null} /></button>}
-        <SetupStatus model={tm} engine={cur?.id} quote={q} className="as-setup-status" />{gate && !needSetup && <KeyNeeded q={q} className="vs-key" toolId={p.tool.id} />}{!gate && <GenHint />}{isFit(q?.fit) && <FitNote fit={quoteFitOf(q)} onUseCloud={id => { if (provs.some(x => x.id === id)) p.setProvider(id); }} className="as-fit" />}{missing.length > 0 && !gate && <p className="sr-only" data-testid="as-missing">{missing.every(m => /^Add /.test(m)) ? missing.join(' ') : singleMissing(missing) ?? `Missing: ${missing.filter(m => !/^Add /.test(m)).join(', ')}${missing.some(m => /^Add /.test(m)) ? ` · ${missing.filter(m => /^Add /.test(m)).join(' ')}` : ''}`}</p>}{unpriced && !gate && !(qLang && showLang) && <p className="vs-miss gen-block" role="status" data-testid="as-price-block">{unpricedPrefix(q)}{unpricedWhy}</p>}{!gate && <CostNote q={q} className="vs-demo" />}
+        <SetupStatus model={tm} engine={cur?.id} quote={q} className="as-setup-status" />{gate && !needSetup && !gr && <KeyNeeded q={q} className="vs-key" toolId={p.tool.id} />}{!gate && <GenHint />}{isFit(q?.fit) && <FitNote fit={quoteFitOf(q)} onUseCloud={id => { if (provs.some(x => x.id === id)) p.setProvider(id); }} className="as-fit" />}{missing.length > 0 && !gate && <p className="sr-only" data-testid="as-missing">{missing.every(m => /^Add /.test(m)) ? missing.join(' ') : singleMissing(missing) ?? `Missing: ${missing.filter(m => !/^Add /.test(m)).join(', ')}${missing.some(m => /^Add /.test(m)) ? ` · ${missing.filter(m => /^Add /.test(m)).join(' ')}` : ''}`}</p>}{unpriced && !gate && !(qLang && showLang) && <p className="vs-miss gen-block" role="status" data-testid="as-price-block">{unpricedPrefix(q)}{unpricedWhy}</p>}{!gate && <CostNote q={q} className="vs-demo" />}
       </div>
     </aside>
 

@@ -32,11 +32,10 @@ html body .ic.ic2 .ic-dock .ic-chips .ic-chip.ic-model .ic-mname{min-width:0;ove
 /* Settings gets a dot when a preset changed a setting folded behind it */
 html body .ic.ic2 .ic-dock .ic-chips .ic-set[data-dot]{position:relative}
 html body .ic.ic2 .ic-dock .ic-chips .ic-set[data-dot]::after{content:'';position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
-/* Generate: 132px, never shrinks; the next step or the setup reason on up to two lines */
+/* Generate: 132px, never shrinks; label and price only (why it can't run: the reason line above, shared GenStatus) */
 @media (min-width:701px){
   html body .ic.ic2 .ic-dock.ic-dock .ic-panel>.ic-gen.gen-btn,html body .ic.ic2 .ic-dock.ic-dock .ic-panel>.ic-nokey{flex:0 0 132px!important;width:132px!important;min-width:132px!important;max-width:132px}
 }
-html body .ic.ic2 .ic-dock .ic-gen .gen-price.gen-setup-why{white-space:normal;text-align:center;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 @media (max-width:700px){
   html body .ic.ic2 .ic-dock .ic-chiprow>.ic-chip.ro-chip{padding:0 4px 0 8px!important}
   html body .ic.ic2 .ic-dock .ic-subj-row .ic-subj-rest{display:none}

@@ -6,7 +6,8 @@ import { AlertIcon } from '../ui/Icons';
  *  The text is the button's data-why (set from the tool's own missing list), else its title. It closes on Esc, outside click, or as soon as
  *  the button can run. */
 export const GEN_WHY_EVT = 'oj:gen-why';
-const WAIT = '.gen-btn[aria-disabled=true],.gen-btn.gen-wait,.vs-gen[aria-disabled=true]';
+/* a Generate blocked by a reason line (data-blocked, shared/GenStatus) already shows its reason above it */
+const WAIT = '.gen-btn[aria-disabled=true]:not([data-blocked]),.gen-btn.gen-wait:not([data-blocked]),.vs-gen[aria-disabled=true]:not([data-blocked])';
 const whyOf = (el: HTMLElement): string => {
   const t = (el.dataset.why || el.getAttribute('title') || '').trim();
   return t ? humanWhy(t) : 'Add what this tool needs to continue.';

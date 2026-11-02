@@ -2,7 +2,7 @@
  * The 3D page (/3d, 2026-10-23): one page like Image, Video and Audio. The feed is above (3D results as stills; one live viewer at a
  * time), the bar below is the same two-row dock (Image's ic-dock classes, Video's layout): the workflow chip first in row 2, the model chip
  * with the shared ModelMenu (Default badge), the model's own setting chips (WorkflowControls: Detail, Texture), Format, the Settings fold
- * (seed), Run on, the prompt peek, and Generate with price · time or the first problem (PF_SHORT) and the "Before you generate" list.
+ * (seed), Run on, the prompt peek, and Generate with price · time (why it can't run: the shared reason line above it) and the "Before you generate" list.
  *  - Workflows (server shared/threeD.ts): Image to 3D runs on tool three-d; Turntable video records an orbit in the browser (free);
  *    Text to 3D and Multi-view to 3D use the same Tripo runner; Retexture and Rig remain coming soon.
  *  - Empty feed: "Made with these models", examples from Scenario's open dataset (CC BY 4.0), loaded from Hugging Face at runtime.
@@ -32,8 +32,8 @@ import { GenPrice, priceTitle } from '../../shared/GenPrice';
 import { shownCredits, unpricedReason, unpricedPrefix, runBlock } from '../../shared/quote';
 import { useBilling, ownAccountsNow, modeOf } from '../../shared/billing';
 import { useVariantQuotes, optionDelta, type Overrides } from '../../shared/optionPrice';
-import { addKeyText, KeyNeeded, hasFreeLocal } from '../../shared/KeyNeeded';
-import { SetupGenerate, setupNeeded } from '../../shared/SetupCard';
+import { KeyNeeded, hasFreeLocal } from '../../shared/KeyNeeded';
+import { GenStatus, useGenReason, useOwnReason, blockedProps, genBlocked } from '../../shared/GenStatus';
 import { nudgeMissing } from '../../shared/genNudge';
 import GenTile from '../../shared/GenTile';
 import { SceneGrid, type SceneItem } from '../../shared/SceneGrid';
@@ -46,7 +46,6 @@ import { durationText, jobTiming } from '../../shared/jobTiming';
 import { etaText } from '../../shared/queueActivity';
 import { preflightProblems } from '../../../../server/src/shared/preflight';
 import { THREE_D_WORKFLOWS, THREE_D_CATEGORIES, THREE_D_PAGE, threeDRoute, threeDWorkflowById, currentThreeDWorkflow, threeDModel, normalizeSettings, threeDPicksParam, DETAILS, TEXTURES, FACES, type ThreeDWorkflow, type ThreeDModel, type ShowcaseItem, THREE_D_VIEW_SLOTS, threeDSupportsMode, threeDViewIssue, threeDMode, threeDPriceNote } from '../../../../server/src/shared/threeD';
-import { PF_SHORT } from '../../shared/DockGenerate';
 import { recipeFor } from '../../shared/threeDRecipe';
 import { PromptPeek, type PeekForm } from '../next/PromptPeek';
 import { WorkflowControls, WorkflowInputs, WfIcon, useWorkflowQuote, loadDraft, saveDraft, type WfRecipe, type WfSlotFile } from '../next/WorkflowBar';
@@ -212,9 +211,8 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
   const blocking = notes.some((n) => n.hard);
   useEffect(() => { if (pfOpen && !notes.length) setPfOpen(false); });
   const inputMissing = textMode ? (!draft.prompt.trim() ? 'Write a prompt' : '') : multiMode ? (viewIssue ? (img ? 'Add one more view' : 'Add the front view') : '') : !img ? 'Add an image' : '';
-  const genWord = inputMissing || (gate ? (q?.setup?.action === 'add_key' && q.setup.actionText ? String(q.setup.actionText) : (q?.keyOwner ? addKeyText(q) : 'Add a key first')) : pf[0] ? (PF_SHORT[pf[0].code]?.(pf[0]) ?? pf[0].message) : unpricedWhy ? 'Price unavailable' : blockWhy ? 'Pick another model' : '');
-  /* Missing inputs do not change this flat per-model price; show the quote with a short next step. */
-  const priceFirst = !!inputMissing && !gate && !unpricedWhy && !blockWhy && credits != null && pf.every((p) => p.stage === 'inputs');
+  const genWord = inputMissing || (gate ? 'Needs a provider key' : pf[0]?.message ?? (unpricedWhy ? 'Price unavailable' : blockWhy || '')); /* the tooltip; the reason line says why it can't run */
+  const gr = useGenReason({ toolId: TOOL, engine: provider, quote: q, onDetails: () => setPfOpen(true) });
   // ---- run ----
   const [busy, setBusy] = useState(false);
   const generate = async () => { if (inputMissing || blocking) return; setBusy(true); setPfOpen(false);
@@ -250,6 +248,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
   const [ttPick, setTtPick] = useState(''); const ttJob = done3d.find((j) => j.id === ttPick) ?? done3d[0] ?? null; const ttRef = useRef<HTMLButtonElement>(null);
   const isTT = wf.id === 'turntable'; const isPS = wf.id === 'plan-a-shot';
   /* a coming-soon workflow opened by a link (?workflow=text-to-3d): the bar says so and offers what works today, never Image to 3D's controls (2026-10-27) */
+  const ttR = useOwnReason(isTT && !ttJob, 'needs_model', 'Make a 3D model first', { label: 'Image to 3D', run: () => navigate(THREE_D_PAGE) }); /* Turntable: the shared reason line, never a reason on the button */
   const isSoon = wf.status === 'soon'; const soonAlt = isSoon ? SOON_TODAY[wf.id] ?? SOON_TODAY.default : null; const noModel = isTT || isPS || isSoon;
   /* each Shape / Mesh detail / Texture option shows only what it changes ('+$0.20'; nothing when it costs the same, nothing on the picked one): the
      total stays on Generate (2026-11-01). One variant request (shared/optionPrice.ts); a sample run (mock) compares list prices, said in the tooltip. */
@@ -448,16 +447,13 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
           {psBlock ? <span className="gen-price gen-missing" data-testid="ps-price">{psBlock}</span> : <span className="t3-pt"><GenPrice compact testId="ps-price" free text="Free" /><small className="t3-time">{effShot.seconds} s · {recMode === 'clay-depth' ? '2 videos' : '1 video'}</small></span>}</button>)
         : isSoon && soonAlt ? <button type="button" className="ic-gen gen-btn gen-dock btn btn-primary" data-testid="t3-soon-go" onClick={() => pick(soonAlt.go)} {...tip(`${wf.name} is coming soon. ${threeDWorkflowById(soonAlt.go)?.name}: ${threeDWorkflowById(soonAlt.go)?.tagline}`)}>
           <span className="gen-l">Use {threeDWorkflowById(soonAlt.go)?.name}</span><small className="t3-time">works today</small></button>
-        : isTT ? <button type="button" className={`ic-gen gen-btn gen-dock btn btn-primary${!ttJob ? ' gen-wait' : ''}`} data-testid="t3-generate" aria-disabled={!ttJob || undefined} onClick={(e) => { if (!ttJob) { nudgeMissing(e.currentTarget); return; } setView({ kind: 'job', id: ttJob.id, record: true }); }}>
-          <span className="gen-l">Record turntable</span>{ttJob ? <GenPrice compact testId="t3-price" free text="Free" /> : <span className="gen-price gen-missing" data-testid="t3-price">Make a 3D model first</span>}</button>
-        : setupNeeded(tm, q, provider) && !pf.some((p) => p.stage === 'inputs') ? <SetupGenerate toolId={TOOL} model={tm} engine={provider} quote={q} className="ic-gen gen-btn gen-dock btn btn-primary" testId="t3-generate" priceTestId="t3-price" />
-        : <button ref={genRef} type="button" className={`ic-gen gen-btn gen-dock btn btn-primary${blocking ? ' gen-wait' : ''}`} data-testid="t3-generate" data-problems={notes.length || undefined} disabled={busy} aria-busy={busy || undefined} aria-disabled={blocking || undefined}
-          aria-haspopup={notes.length ? 'dialog' : undefined} aria-expanded={notes.length ? pfOpen : undefined} title={pfOpen ? undefined : (genWord || priceTitle(q, bill, { demo: isDemo, free: isFree, credits }) || undefined)}
-          onClick={(e) => { if (blocking) { if (inputMissing) nudgeMissing(e.currentTarget); setPfOpen((o) => !o); return; } void generate(); }}>
+        : isTT ? <><GenStatus r={ttR} /><button type="button" className="ic-gen gen-btn gen-dock btn btn-primary" data-testid="t3-generate" {...blockedProps(ttR)} onClick={() => { if (genBlocked(ttR)) return; setView({ kind: 'job', id: ttJob.id, record: true }); }}>
+          <span className="gen-l">Generate</span><GenPrice compact testId="t3-price" free text="Free" /></button></>
+        : <><GenStatus r={gr} /><button ref={genRef} type="button" className={`ic-gen gen-btn gen-dock btn btn-primary${blocking ? ' gen-wait' : ''}`} data-testid="t3-generate" data-problems={notes.length || undefined} disabled={busy} aria-busy={busy || undefined} aria-disabled={blocking || undefined}
+          aria-haspopup={notes.length ? 'dialog' : undefined} aria-expanded={notes.length ? pfOpen : undefined} title={pfOpen ? undefined : (genWord || priceTitle(q, bill, { demo: isDemo, free: isFree, credits }) || undefined)} {...blockedProps(gr)}
+          onClick={(e) => { if (genBlocked(gr)) return; if (blocking) { if (inputMissing) nudgeMissing(e.currentTarget); setPfOpen((o) => !o); return; } void generate(); }}>
           <span className="gen-l">{busy ? <i className="as-spin" aria-hidden /> : null}Generate</span>
-          {priceFirst ? <><GenPrice compact testId="t3-price" q={q} demo={isDemo} free={isFree} credits={credits} /><small className="t3-time t3-need" data-testid="t3-time">{inputMissing.toLowerCase()}</small></>
-            : genWord ? <span className="gen-price gen-missing" data-testid="t3-price">{genWord}</span>
-            : <span className="t3-pt"><GenPrice compact testId="t3-price" q={q} demo={isDemo} free={isFree} credits={unpricedWhy || blockWhy ? null : credits} /><small className="t3-time" data-testid="t3-time">{etaText(typSec)}</small></span>}</button>}
+          <span className="t3-pt"><GenPrice compact testId="t3-price" q={q} demo={isDemo} free={isFree} credits={unpricedWhy || blockWhy ? null : credits} /><small className="t3-time" data-testid="t3-time">{etaText(typSec)}</small></span></button></>}
       </div></div>
       <PreflightNotes open={pfOpen} notes={notes} anchor={genRef} dock={dock} onClose={() => setPfOpen(false)} testId="t3-notes" />
       <WorkflowPicker open={pop === 'wf'} anchor={wfRef} watch={dock} list={THREE_D_WORKFLOWS} current={wf.id} categories={THREE_D_CATEGORIES} onChoose={(w) => pick(w.id)} onClose={() => { setPop(''); clearPickerParam(); }} label="3D workflows" prefix="t3wf" noun="3D" addTab="3d"

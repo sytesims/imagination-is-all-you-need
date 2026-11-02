@@ -24,6 +24,7 @@ export type FailAction =
   | 'setupTranslate'
   | 'setupCloud'   // Settings → Connections → One-time setup (a Comfy Cloud import or your deployment)
   | 'collect'      // POST /api/jobs/:id/collect: fetch a paid result again from its provider (only when the job says canCollect)
+  | 'useCloud'     // open the tool with these settings, where the reason line offers Comfy Cloud (never a paid run from here)
   | 'details';     // open the technical details
 
 export interface FailReason { key: string; mood: FailMood; title: string; line: string; actions: FailAction[] }
@@ -87,6 +88,8 @@ export const EXTRA: Record<string, FailReason> = {
   local_off:      { key: 'local_off', mood: 'offline', title: 'Running on your computer is off', line: 'Turn it on in Settings → Your computer.', actions: ['turnOnGpu'] },
   model_missing:  { key: 'model_missing', mood: 'needsDownload', title: 'This model isn’t downloaded yet', line: 'Download its files first. Nothing downloads on its own.', actions: ['download'] },
   node_missing:   { key: 'node_missing', mood: 'needsDownload', title: 'One add-on is missing', line: 'Install it in Settings → Your computer, then try again.', actions: ['startComfy'] },
+  /* Mac/Linux audit M1 (2026-11-02): ComfyUI's raw out-of-memory error (MPS, CUDA, torch) in plain words, with the reason line's two ways out */
+  out_of_memory:  { key: 'out_of_memory', mood: 'generic', title: 'Ran out of memory', line: 'Too big for this computer’s memory. Try Comfy Cloud.', actions: ['useCloud', 'retry'] },
   disk_full:      { key: 'disk_full', mood: 'needsDownload', title: 'Not enough disk space', line: 'Free up some space, or run it in the cloud.', actions: ['otherModel'] },
   restart:        { key: 'restart', mood: 'timeout', title: 'Interrupted by a restart', line: 'The app restarted while this was running.', actions: ['retry'] },
   timeout:        { key: 'timeout', mood: 'timeout', title: 'It took too long', line: 'Try a shorter clip or a smaller file.', actions: ['retry'] },
@@ -110,6 +113,8 @@ export const keyOwnerOf = (route: string | null | undefined): { name: string; an
 const routeOf = (j: FailJob) => String(j.route ?? (Array.isArray(j.routeAttempts) ? j.routeAttempts.at(-1)?.routeId : '') ?? '');
 const hasImage = (j: FailJob) => { const i = j.input ?? {}; return !!(i.imageUrl || i.image || i.imagePath || (Array.isArray(i.refPaths) && i.refPaths.length) || (Array.isArray(i.refs) && i.refs.length)); };
 
+/** ComfyUI's out-of-memory errors: PyTorch on a Mac (MPS), on NVIDIA (CUDA), torch.OutOfMemoryError, and ComfyUI's own allocation failure. */
+export const OUT_OF_MEMORY = /MPS backend out of memory|CUDA out of memory|OutOfMemoryError|out of memory|Allocation on device/i;
 /** Which entry a job gets. Order: explicit state, then the server's reasonCode, then errorType, then the message. */
 export function reasonOf(j: FailJob): FailReason {
   const st = String(j.status ?? ''); const et = String(j.errorType ?? ''); const rc = String(j.reasonCode ?? ''); const msg = String(j.error ?? '');
@@ -130,6 +135,7 @@ export function reasonOf(j: FailJob): FailReason {
   if ((j.requeuedAt || /server restarted|interrupted by a restart|was ComfyUI restarted/i.test(msg)) && /restart|interrupt/i.test(msg)) return EXTRA.restart;
   if (et === 'credits' || /out of credits|not enough credits|no active plan/i.test(msg)) return et === 'credits' || /comfy/i.test(msg) ? { ...EXTRA.no_credits, title: /comfy/i.test(msg) ? 'Comfy Cloud balance is empty' : EXTRA.no_credits.title } : EXTRA.no_credits;
   if (et === 'limit') return /agent budget/i.test(msg) ? REASONS.agent_budget : REASONS.spend_limit;
+  if (OUT_OF_MEMORY.test(msg)) return EXTRA.out_of_memory;
   if (/missing_node_type|custom node may not be installed|nodes_missing/i.test(msg)) return EXTRA.node_missing;
   if (/value_not_in_list|prompt_outputs_failed_validation|files aren.t on this computer|weights? (are )?missing|model file/i.test(msg)) return EXTRA.model_missing;
   if (/not enough (disk|space)|ENOSPC/i.test(msg)) return EXTRA.disk_full;
@@ -188,6 +194,6 @@ export function failView(j: FailJob, ctx: FailCtx = {}): FailView {
 }
 /** Button words. */
 export const ACTION_LABEL: Record<FailAction, string> = {
-  retry: 'Try again', recreate: 'Recreate', changePhoto: 'Change photo', otherModel: 'Try another model', addCredits: 'Top up', runLocal: 'Run on your computer',
+  retry: 'Try again', recreate: 'Recreate', changePhoto: 'Change photo', otherModel: 'Try another model', addCredits: 'Top up', runLocal: 'Run on your computer', useCloud: 'Use Comfy Cloud',
   addKey: 'Add a key', startComfy: 'How to start ComfyUI', turnOnGpu: 'Turn it on', download: 'Download', spendLimits: 'Open Spend', setupTranslate: 'Set up translation', setupCloud: 'Show the steps', collect: 'Retry download', details: 'Details',
 };
