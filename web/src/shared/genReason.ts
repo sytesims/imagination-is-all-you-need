@@ -5,7 +5,7 @@
  * Generate itself never carries any of this: it always says "Generate" (+ the price) and is greyed while `blocks` is true.
  * Inputs (a prompt, a photo) are not a reason here: Generate's own click points at the empty field.
  */
-import type { PreflightProblem } from '../../../server/src/shared/preflight';
+import { FREE_LOCAL_TAIL, type PreflightProblem } from '../../../server/src/shared/preflight';
 
 export type SetupKind = 'cloud' | 'local' | 'both' | 'none';
 /** connect = the one connect sheet · cloud = the Comfy key card · fix = the problem's own step · more = every place (setup popover) ·
@@ -18,6 +18,8 @@ export interface PlaceLite { runOn: string; action: { kind: string } }
 
 export const COMFY_DOWN = 'ComfyUI isn’t open on this computer'; /* the Welcome's words (ui/setup/WelcomeParts.tsx) */
 export const NO_PLACE = 'Set up a place to run first';
+/** A cloud model with no Comfy key (it has no place on this computer, so "ComfyUI isn’t open" would point the wrong way). */
+export const ADD_COMFY_KEY = 'Add a Comfy key to run this in the cloud';
 const CLOUD = 'comfy-cloud';
 const FIX_LABEL: Record<string, string> = { 'add-key': 'Add key', 'turn-on': 'Turn on', 'install-node': 'How to install' };
 
@@ -30,7 +32,10 @@ export function reasonOf(i: { setupKind: SetupKind | null; problems: PreflightPr
   /** the caller can open its "Before you generate" list */ canDetails?: boolean }): GenReasonSpec | null {
   const p = i.problems.find(x => x.stage !== 'inputs');
   const cloudAlt: GenAct = { kind: 'cloud', label: 'Use Comfy Cloud' };
-  if (i.setupKind === 'none' && (i.noConnection || i.noPlace || i.places.length > 0 || p?.stage === 'setup'))
+  /* the quote's own reason wins over the Welcome's "ComfyUI isn’t open" when ComfyUI can't help: a cloud-only model that needs a key
+   * (GPT Image 2.5 Flare, LTX-2.5 Pro), or a local-only model the quote already names (YuE2: "Set up ComfyUI to run YuE2 free") */
+  const ownWords = !!p && !i.noConnection && (p.code === 'needs_comfyui' || (p.code === 'needs_key' && !i.places.some(x => x.runOn === 'local')));
+  if (i.setupKind === 'none' && !ownWords && (i.noConnection || i.noPlace || i.places.length > 0 || p?.stage === 'setup'))
     return { code: 'no_connection', reason: COMFY_DOWN, blocks: true, primary: { kind: 'connect', label: 'Set up ComfyUI' }, alt: cloudAlt };
   if (!p) {
     if (i.noPlace) return { code: 'no_place', reason: NO_PLACE, blocks: true, primary: { kind: 'settings', label: 'Set up' }, alt: null };
@@ -47,5 +52,8 @@ export function reasonOf(i: { setupKind: SetupKind | null; problems: PreflightPr
   const primary: GenAct = local ? { kind: 'connect', label: 'Set up ComfyUI' } : { kind: 'fix', label: FIX_LABEL[p.fix.kind] ?? p.fix.label };
   const alt: GenAct | null = runOn !== CLOUD && i.places.some(x => x.runOn === CLOUD) ? cloudAlt
     : i.places.length > 1 ? { kind: 'more', label: 'More ways' } : null;
-  return { code: p.code, reason: p.message, blocks: true, primary, alt, problem: p };
+  /* a Comfy key is the whole step: say what it does ("… to run this in the cloud"), keeping the free-local way out when the pre-flight names it
+   * and something is connected (with nothing set up, a local model can't run either) */
+  const reason = p.code === 'needs_key' && runOn === CLOUD ? `${ADD_COMFY_KEY}${p.message.endsWith(FREE_LOCAL_TAIL) && i.setupKind !== 'none' ? FREE_LOCAL_TAIL : ''}` : p.message;
+  return { code: p.code, reason, blocks: true, primary, alt, problem: p };
 }

@@ -432,7 +432,8 @@ export default function Workflows({ tools }: { tools: ToolInfo[] }) {
         <div className={`wn-results${rise ? ' is-rising' : ''}`} key={f.cat}>
         {nothing ? (f.cat === 'saved' && !f.q ? <p className="wn-first wn-first-big">Nothing saved yet. Press <SavedTagIcon size={13} /> on any card.</p> : <Empty f={f} rows={f.rows} open={openRow} />) : <>
           {f.cat === 'all' && start.length > 0 && section('start', 'Start here', START_LINE, start, undefined, 'wn-start', 'start')}
-          {f.cat === 'all' && goals.filter((x) => x.items.length > 0).map(({ g, items }) => section(g.id, g.label, g.line, items, undefined, '', g.id))}
+          {/* each shelf holds the goal's whole set (its Start here picks too), so its count, "See all N" and the rail's count are one number */}
+          {f.cat === 'all' && goals.map(({ g }) => ({ g, items: goalItems(g.id) })).filter((x) => x.items.length > 0).map(({ g, items }) => section(g.id, g.label, g.line, items, undefined, '', g.id))}
           {f.cat === 'all' && (plugged.length > 0 || !f.q) && section('plugins', 'Your workflows', 'ComfyUI workflows you added, and add-ons. They run on your own ComfyUI.', plugged, <BringYourOwn />)}
           {f.cat !== 'all' && f.cat !== 'ideas' && inCat.length > 0 && section(f.cat,
             f.cat === 'chains' ? 'Step by step' : f.cat === 'saved' ? 'Saved' : catInfo?.label ?? f.cat,

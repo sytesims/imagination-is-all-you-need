@@ -77,7 +77,8 @@ export function cardPriceOf(m: ToolModel, o: { rq?: any; run?: RunInfo | null; t
     return { kind: 'run', big: run.price.replace(/^≈\s*/, ''), what: `for this ${noun}`, where: run.place ? `on ${run.place}` : null, est, other: otherLine(), detail: run.detail };
   }
   if (!places.length) { const soon = m.rowStatus?.kind === 'coming_soon' || m.state === 'coming-soon';
-    return { kind: 'none', big: soon ? 'Coming soon' : 'Not available here', what: '', where: soon ? 'No price yet' : (m.rowStatus?.text && m.rowStatus.text !== 'Not available' ? m.rowStatus.text : null), est: false, other: null, detail: null }; }
+    const comfy = !soon && /^Needs ComfyUI\b/.test(m.rowStatus?.text ?? ''); /* a local-only model before ComfyUI is set up: what it needs, not "Not available" */
+    return { kind: 'none', big: soon ? 'Coming soon' : comfy ? 'Needs ComfyUI' : 'Not available here', what: '', where: soon ? 'No price yet' : comfy ? 'on this computer' : (m.rowStatus?.text && m.rowStatus.text !== 'Not available' ? m.rowStatus.text : null), est: false, other: null, detail: null }; }
   if (rq?.demo === true) { const real = rq?.cost?.realRunUsd; const at = rq?.cost?.billedToName ?? keyWord(rq?.runOn ?? '');
     return { kind: 'sample', big: 'Free', what: 'sample run', where: null, est: false, other: typeof real === 'number' && real > 0 ? `A real run ≈ ${usdPrice(real).replace(/^≈\s*/, '')}${at ? ` on ${at}` : ''}, once a key is added` : otherLine(), detail: null }; }
   const so = Array.isArray(rq?.setupOptions) ? rq.setupOptions.find((x: any) => typeof x?.credits === 'number' && x.credits > 0) : null;

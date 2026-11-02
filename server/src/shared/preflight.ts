@@ -76,7 +76,8 @@ export function preflightProblems(s: PreflightState): PreflightProblem[] {
   // shown as chargeable, so say why here (else the button showed neither a price nor a reason). A blockedField (Camera's start image) is the inputs' own step.
   if (q && q.runnable === false && q.blockedCode === 'input_blocked' && q.blockedReason && !q.blockedField && !out.some((p) => p.stage === 'inputs'))
     add({ code: 'model_cant_run', stage: 'model', message: String(q.blockedReason).replace(/^.*?can['’]t run this job\.\s*/, '').replace(/\.$/, ''), fix: { kind: 'pick-model', label: 'Pick model…' } });
-  const unpriced = !!q && q.credits == null && (q.priceAvailable === false || q.code === 'price_unavailable') && !q.setupOptions?.length && !q.setup && !plainRefusal(q); // a refusal in plain words is not a missing price
+  const unpriced = !!q && q.credits == null && (q.priceAvailable === false || q.code === 'price_unavailable') && !q.setupOptions?.length && !q.setup && !plainRefusal(q) // a refusal in plain words is not a missing price
+    && q.reasonCode !== 'local_only_unreachable'; // nor is a free local-only model waiting for ComfyUI (YuE2): its setup step below says so
   if (unpriced && q.runnable === false) add({ code: 'price_unavailable', stage: 'model', message: `No verified price for ${model} at this setting`, fix: { kind: 'pick-model', label: 'Pick model…' } });
   // ---- setup: the quote names the step (setupOptions: every place, the first is the lead; setup: one) ----
   if (q && q.runnable === false) {
