@@ -283,7 +283,15 @@ export default function ImageCanvas(p: ImageCanvasProps) {
   const upInfo: UpInfo | null = recipe?.id === 'upscale' ? ((runTool as any)?.app?.imageUpscale ?? UP_FALLBACK) : null;
   const upScale = Number(draft?.vals.scale ?? recipe?.controls.find(c => c.field === 'scale')?.default ?? 4) || 4;
   const upWhy = upInfo ? scaleWhy(upInfo, wfProviders, wfProvider, upScale, wfSrc) : null;
-  useEffect(() => { if (!upInfo || !wfProvider || !wfProviders.length) return; const k = snapScale(upInfo, wfProviders, wfProvider, upScale, wfSrc); if (k !== upScale) setDraft(d => ({ ...d, vals: { ...d.vals, scale: String(k) } })); }, [!!upInfo, wfProvider, wfProviders.length, wfSrc?.width, wfSrc?.height]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!upInfo || !wfProvider || !wfProviders.length) return; const k = snapScale(upInfo, wfProviders, wfProvider, upScale, wfSrc);
+    /* no factor of this model fits the image (SeedVR2 3B on this computer stops at 2048 px: a 1024×1280 photo is too big even at ×2): a model the bar
+       picked by itself moves to the first one that fits, on this computer first (free), and says why, once; a model you picked stays, with its reason */
+    if (scaleWhy(upInfo, wfProviders, wfProvider, k, wfSrc) && draft?.pickedBy !== 'user') {
+      const fits = (id: string) => scaleWhy(upInfo, wfProviders, id, snapScale(upInfo, wfProviders, id, upScale, wfSrc), wfSrc) == null; const local = (id: string) => !!upInfo.workflows[id];
+      const alt = wfProviders.find(x => local(x.id) === local(wfProvider) && fits(x.id)) ?? wfProviders.find(x => fits(x.id));
+      if (alt) { const ka = snapScale(upInfo, wfProviders, alt.id, upScale, wfSrc); setDraft(d => ({ ...d, provider: alt.id, pickedBy: undefined, vals: { ...d.vals, scale: String(ka) } }));
+        toast(`Switched to ${upName(alt)}`, 'info', { sub: scaleWhy(upInfo, wfProviders, wfProvider, k, wfSrc) ?? undefined }); return; } }
+    if (k !== upScale) setDraft(d => ({ ...d, vals: { ...d.vals, scale: String(k) } })); }, [!!upInfo, wfProvider, wfProviders.length, wfSrc?.width, wfSrc?.height]); // eslint-disable-line react-hooks/exhaustive-deps
   const [upEx, setUpEx] = useState(false);
   const wfSlotMissing = wfSlots.find(s => s.required && !files[s.name]) ?? null;
   /* ---- Brush Edit (surface 'mask'): the painted mask for the photo in its slot; a new photo clears it (said once); kept in this browser for a refresh ---- */

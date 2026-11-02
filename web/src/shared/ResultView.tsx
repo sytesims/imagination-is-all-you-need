@@ -1,11 +1,12 @@
 import { IMAGE_PAGE } from '../../../server/src/shared/pages';
 import { VIDEO_PAGE } from '../../../server/src/shared/videoWorkflows';
-import { recreateHref as jobRecreateHref, toolHandoffHref, lipSyncHandoffHref, frameHandoffHref } from './workflowLinks';
+import { recreateHref as jobRecreateHref, toolHandoffHref, lipSyncHandoffHref, frameHandoffHref, handoffHome } from './workflowLinks';
 import { goClick } from './goToWorkflow';
 import { saveVideoFrame } from './videoFrame';
 import { appFileName } from './brand';
 import { Viewer3D, jobItem3d } from './Viewer3D';
 import { is3dUrl } from './model3d';
+import { resultKindOfUrl, fileExtOf } from './mediaKind';
 import { sendTo3dHref } from '../../../server/src/shared/threeD';
 import { ViewerImage } from './ViewerImage';
 import { layersOf, layersPosterOf, layerCountText, LayerCanvas, LayerList, useLayerView } from './LayerStack';
@@ -95,6 +96,10 @@ export function friendlyRoute(id: string, rt?: any, model?: any): string {
 }
 export default function ResultView({ beforeImage, job, beforeUrl, title, children, extraActions, moreActions, menuTop, showOriginalTab, audio = true, retentionDays, watermark, variant = 'card', onClose, recreateHref, reserve, tools, onPrev, onNext, pos, out, onGone, onReference, referenceTip, stage, view3d }: { /** a GLB result (shared Viewer3D): the 3D page's options (record the turntable on open, its callback, the big-file limit) */ view3d?: { recordOnOpen?: boolean; onTurntable?: (jobId: string) => void; bigBytes?: number }; /** viewer: replaces the output on the stage (Render: Preview vs Render); an input picked in the strip still shows over it */ stage?: React.ReactNode; tools?: ToolInfo[]; /** viewer: Reference stays on the page that opened the viewer (Create Image fills its photo or a workflow slot) instead of navigating */ onReference?: (url: string, out: number) => void; referenceTip?: string; /** viewer: step to the previous/next result (null = none that way), the "2 / 6" position, and the output to show first. */ onPrev?: (() => void) | null; onNext?: (() => void) | null; pos?: string; out?: number; /** viewer, a result in Trash: after Restore or Delete forever (default: close) */ onGone?: () => void; beforeImage?: string; reserve?: boolean; moreActions?: React.ReactNode; /** viewer: the page's own items at the top of More (Generate Video: Generate more, Re-run same seed, +5s / +10s) */ menuTop?: React.ReactNode; retentionDays?: number | null; watermark?: boolean; audio?: boolean; job: JobState; beforeUrl: string; title: string; children?: React.ReactNode; extraActions?: React.ReactNode; showOriginalTab?: boolean; variant?: 'card' | 'viewer'; onClose?: () => void; recreateHref?: string | null }) {
   const [modelName, setModelName] = useState(''); const sample = isSample(job);
+  const demo = !sample && isDemoJob(job);
+  /* a sample run (mock backend, or a keyless preview): the server says nothing was generated or billed (isSample). Like a Community sample, it
+     offers no tools (Edit tab, Continue, Use frame, Add sound): its stand-in clip must never feed a real run. Recreate stays. */
+  const mockRun = !sample && !demo && !!(job as any).isSample; const standIn = sample || mockRun;
   useEffect(() => { const pid = (job as any).provider; if (!pid || sample) return; let on = true; fetchModels((job as any).toolId).then(d => { const m = d.groups.flatMap(g => g.models).find((x: any) => x.id === pid || x.providerId === pid); if (on && m) setModelName(m.name); }).catch(() => 0); return () => { on = false; }; }, [(job as any).provider, (job as any).toolId]);
   /* L9: name what actually ran. A hosted route (e.g. fal Bria) must not show the local provider's name (BiRefNet). Prefer the route's displayName. */
   const [routeName, setRouteName] = useState(''); const jr = String((job as any).route ?? '');
@@ -122,11 +127,14 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
   const cur0 = showingOriginal ? { label: 'Original', url: beforeUrl } : outs[Math.max(0, sel)] ?? outs[0];
   const cur = cur0 ?? { label: '', url: '' }; /* hooks below run before the empty-result return */
   useEffect(() => { setMBad(false); setNat(''); setMDur(0); vidEl.current = null; }, [cur.url]);
-  const kind = /\.(png|jpe?g|webp)($|\?)/i.test(cur.url) ? 'image' : /\.(m4a|wav|mp3)($|\?)/i.test(cur.url) ? 'audio' : 'video';
+  /* the one kind helper (shared/mediaKind.ts): FLAC / OGG / Opus / AAC are audio too; a GLB opens in the 3D viewer below; anything unknown plays as video */
+  const kind: 'image' | 'audio' | 'video' = ((k) => k === 'image' || k === 'audio' ? k : 'video')(resultKindOfUrl(cur.url));
   /* Remove BG Transparent: WebM with alpha (job.input.alpha or a .webm result); shown over a checkerboard. */
   const alphaOut = kind === 'video' && (!!(job as any).input?.alpha || /\.webm($|\?)/i.test(cur.url));
-  const ext = (cur.url.split('?')[0].match(/\.(png|jpe?g|webp|m4a|wav|mp3|mp4|webm|mov)$/i)?.[1]?.toLowerCase()) ?? (kind === 'image' ? 'png' : kind === 'audio' ? 'm4a' : 'mp4'); // keeps .webm (Remove BG transparent)
+  const ext = fileExtOf(cur.url) ?? (kind === 'image' ? 'png' : kind === 'audio' ? 'm4a' : 'mp4'); // the file's real extension (.flac, .webm for Remove BG transparent)
   const outIx = Math.max(0, outs.indexOf(cur));
+  /* a clip with no sound track (output metadata hasAudio: false): nothing to Translate or re-voice, so those tools aren't offered */
+  const silent = kind === 'video' && (cur as any).hasAudio === false;
   /* Add logo and text (LogoStamp.tsx): an image or video of yours while a brand is on; with it on, Save and Share use the stamped copy (free, original kept) */
   /* Add logo from the menu (dev mockups): shows the stamp layer on this result even when the brand chip is off */
   const [stampForce, setStampForce] = useState(''); 
@@ -156,11 +164,11 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
     catch (err: any) { toast(err?.message || 'Couldn’t add the logo.', 'error'); } };
   type Row = { available?: boolean; url?: string | null; reason?: string | null } | null;
   const [rows, setRows] = useState<Record<string, Row | undefined>>({}); const rows0 = rows; const rowsKey = useRef('');
-  const loadRows = () => { const key = `${job.id}:${outIx}`; if (!job.id || sample || rowsKey.current === key) return; rowsKey.current = key; setRows({});
+  const loadRows = () => { const key = `${job.id}:${outIx}`; if (!job.id || standIn || rowsKey.current === key) return; rowsKey.current = key; setRows({});
     const acts: [string, string][] = [['translate', 'action=translate'], ['change-voice', 'action=change-voice'], ['relight', 'action=relight'], ['upscale', 'action=upscale'], ['reshoot', 'action=reshoot'], ['finish', 'action=finish']]; /* no Director palette row: Director was removed 2026-10-23 */
     /* BH2 #8: only the hand-offs this media kind offers (the menu shows the same set), so an image never asks for Translate / Change voice. */
     const KINDS: Record<string, string[]> = { translate: ['video'], 'change-voice': ['video'], relight: ['image'], upscale: ['image', 'video'], reshoot: ['video'], finish: ['video'] };
-    acts.filter(([k]) => KINDS[k]?.includes(kind) ?? true).forEach(([k, q]) => fetch(`/api/jobs/${encodeURIComponent(job.id)}/prefill?${q}&out=${outIx}`).then(r => r.json().then(b => ({ ok: r.ok, b }))).then(({ ok, b }) => setRows(m => rowsKey.current !== key ? m : ({ ...m, [k]: ok ? { available: b.available !== false, url: b.url ?? null, reason: b.reason ?? null } : { available: false, url: null, reason: b.error ?? null } })))
+    acts.filter(([k]) => (KINDS[k]?.includes(kind) ?? true) && !(silent && NEEDS_SOUND.has(k))).forEach(([k, q]) => fetch(`/api/jobs/${encodeURIComponent(job.id)}/prefill?${q}&out=${outIx}`).then(r => r.json().then(b => ({ ok: r.ok, b }))).then(({ ok, b }) => setRows(m => rowsKey.current !== key ? m : ({ ...m, [k]: ok ? { available: b.available !== false, url: b.url ?? null, reason: b.reason ?? null } : { available: false, url: null, reason: b.error ?? null } })))
       .catch(() => setRows(m => rowsKey.current !== key ? m : ({ ...m, [k]: null })))); };
   // Stepping to another job/output: drop the old hand-off rows (late replies are ignored by key) and reload if the ⋯ menu is still open.
   const moreOpen = useRef(false);
@@ -214,7 +222,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
   const medium = is3dUrl(cur.url) ? '3d' : kind;
   const rmTool = (a: string, label: string, testid: string, icon: React.ReactNode): MItem => { const r = rows[a];
     return r === undefined ? { k: a, label, icon, testid, dis: 'Checking…' } : !r || r.available === false || !r.url ? { k: a, label, icon, testid, dis: r?.reason ?? 'Not available for this result' }
-      : { k: a, label, icon, testid, href: r.url, onClick: goClick(r.url!, onClose) }; };
+      : { k: a, label, icon, testid, href: handoffHome(r.url), onClick: goClick(handoffHome(r.url), onClose) }; };
   /* Add logo: always findable on your image and video results; with a brand that has a logo it turns on the stage stamp, else it leads to Assets › Brands */
   const logoBase = viewer && (medium === 'image' || medium === 'video') && !sample && owner && !(job as any).deletedAt && job.status === 'done' && !showingOriginal && !lys && /^\/files\//.test(cur.url);
   const logoItem = (): MItem | null => { if (!logoBase) return null; const k = stampKit;
@@ -235,15 +243,16 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
       asIs && medium === 'video' && job.id ? { k: 'gif', label: '', icon: null, testid: 'rv-gif', node: <GifButton key={cur.url} jobId={job.id} url={cur.url} name={appFileName(`${job.id}-${cur.label}`, 'gif')} /> } : null,
       asIs && job.id && owner && !sample && medium === 'image' && canSaveLook(job) ? { k: 'look', label: 'Save as look', icon: <PaletteIcon size={16} />, testid: 'rv-save-look', hint: 'Keep this prompt, model and settings as a look you can reuse', onClick: () => openSaveLook({ job, output: outIx }) } : null,
     ].filter(Boolean) as MItem[];
-    const editTab = viewer && owner && !sample && (medium === 'image' || medium === 'video') && !(job as any).deletedAt;
+    const editTab = viewer && owner && !standIn && (medium === 'image' || medium === 'video') && !(job as any).deletedAt;
     /* the viewer: frame / Make it talk shortcuts that didn't fit the tiles, then "Use it in…" (the Edit tab). The card: its tool rows. */
     let use: MItem[] = editTab ? [...overflow.filter(t => ['useframe', 'saveframe', 'talk'].includes(t.k)),
       { k: 'useit', label: 'Use it in…', icon: <ToolIcon size={16} />, testid: 'rm-use-it', trail: '›', hint: 'Relight, upscale, make a video and more, in the Edit tab', onClick: () => { setVTab('edit'); loadRows(); } }]
       : viewer ? overflow : !asIs ? [] : medium === 'image' ? [rmTool('relight', 'Relight', 'rv-relight', <LightIcon size={16} />), rmTool('upscale', 'Upscale', 'rv-upscale', <UpscaleIcon size={16} />),
         ...(job.id && !sample ? [{ k: 'to3d', label: 'Make it 3D', icon: <CubeIcon size={16} />, testid: 'rv-send-3d', hint: 'Turn this picture into a 3D model', href: sendTo3dHref(job.id, outIx), onClick: goClick(sendTo3dHref(job.id, outIx), onClose) }] : [])]
       : medium === 'video' ? [rmTool('upscale', 'Upscale', 'rv-upscale', <UpscaleIcon size={16} />), rmTool('finish', 'Finish', 'rv-finish', <FinishIcon size={16} />), rmTool('reshoot', 'Re-shoot', 'rv-reshoot', <ReshootIcon size={16} />),
-        rmTool('translate', 'Translate', 'rv-translate', <TranslateIcon size={16} />), rmTool('change-voice', 'Change voice', 'rv-change-voice', <ChangeVoiceIcon size={16} />)] : [];
-    if (!viewer && asIs && job.id && !sample) use.push({ k: 'sendto', label: '', icon: <ToolIcon size={16} />, testid: 'rv-send-to', node: <HandoffMenu jobId={job.id} /> });
+        ...(silent ? [] : [rmTool('translate', 'Translate', 'rv-translate', <TranslateIcon size={16} />), rmTool('change-voice', 'Change voice', 'rv-change-voice', <ChangeVoiceIcon size={16} />)])] : [];
+    if (standIn) use = [];
+    if (!viewer && asIs && job.id && !standIn) use.push({ k: 'sendto', label: '', icon: <ToolIcon size={16} />, testid: 'rv-send-to', node: <HandoffMenu jobId={job.id} /> });
     const organise: MItem[] = [
       done && owner ? { k: 'feat', label: '', icon: null, testid: 'rv-feature', node: <FeatureItem job={job} />, bare: true } : null,
       job.id && owner ? { k: 'move', label: '', icon: <ProjectsIcon size={16} />, testid: 'rv-move-to', node: <MoveToItem job={job} /> } : null,
@@ -274,16 +283,14 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
   /* Samples: no tool hand-offs, so the ⋯ menu only copies the link. */
   const moreMenu = sample ? <button type="button" className="btn rv-ic rv-copy" data-testid="rv-copy-link" aria-label="Copy link" {...tip('Copy link')} onClick={copyLink}>⧉</button> : more;
   const aiBadge = (job as any).aiGenerated ? <span className="ai-badge" data-testid="rv-ai" title="Made by an AI model">AI-generated</span> : null;
-  const demo = !sample && isDemoJob(job);
-  /* a sample run (mock backend, or a keyless preview): the server says nothing was generated or billed (isSample). The picture is a stand-in,
-     so the viewer says so at the top of Info, and the details show what it would cost instead of a price, render time or place as if it ran. */
-  const mockRun = !sample && !demo && !!(job as any).isSample;
+  /* a sample run (mockRun, above): the picture is a stand-in, so the viewer says so at the top of Info, and the details show what it would cost
+     instead of a price, render time or place as if it ran. */
   const sampleChip = demo ? <em className="demo-badge rv-sample-chip" data-testid="rv-sample-chip" title="Sample output, nothing billed.">Sample</em> : null;
   const mockNote = mockRun ? <div className="rv-demo rv-mock" data-testid="rv-sample-run"><em className="comm-badge comm-badge-sample">Sample</em><p className="helper">Nothing was generated or charged. This picture is a stand-in, not a real result.</p></div> : null;
   const demoNote = demo ? <div className="rv-demo" data-testid="rv-demo"><p className="helper">Sample output, nothing billed.</p></div> : null;
   const sampleNote = sample ? <div className="rv-sample" data-testid="rv-sample"><em className="comm-badge comm-badge-sample">{sampleLabel(job)}</em>{(job as any).sample?.credit && <p className="helper">{(job as any).sample.credit}{(job as any).sample.license ? <> · {(job as any).sample.licenseUrl ? <a href={(job as any).sample.licenseUrl} target="_blank" rel="noreferrer">{(job as any).sample.license}</a> : (job as any).sample.license}</> : null}{(job as any).sample.sourceUrl ? <> · <a href={(job as any).sample.sourceUrl} target="_blank" rel="noreferrer">Source</a></> : null}</p>}</div> : null; // the AI-generated pill is aiBadge (one per header)
   /* Add sound (one-click soundtrack, MMAudio): on your own finished video results; a soundtrack result can be scored again */
-  const canSound = kind === 'video' && !sample && !showingOriginal && canAddSound(job as any, cur.url);
+  const canSound = kind === 'video' && !standIn && !showingOriginal && canAddSound(job as any, cur.url);
   const soundDlg = addSound && <AddSoundDialog jobId={job.id} output={outIx} durationSec={Number((cur as any).durationSec) > 0 ? Number((cur as any).durationSec) : mDur > 0 ? mDur : Number(inp.outputDuration ?? inp.duration) || null} hasAudio={(cur as any).hasAudio} onClose={() => setAddSound(false)} />;
   const acts = <div className={`rv-acts rv-acts-${kind}`} data-testid="rv-acts">
     {kind === 'image' ? <>{toVideo && <a className="btn rv-primary" data-action="turn-to-video" data-testid="rv-turn-to-video" href={toVideo} onClick={goClick(toVideo, onClose)}><span aria-hidden>▶</span>Turn to video</a>}<div className="rv-row2">{recreateBtn(false)}{download}</div><div className="rv-row3">{fav}{shareBtn}{moreMenu}</div></>
@@ -340,14 +347,14 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
   /* 3D (2026-10-23): a GLB opens in the shared 3D viewer, with the same Favourite, Share and ⋯ More as every other result (UX audit #4, 2026-10-27) */
   if (viewer && is3dUrl(cur.url) && job.id) return <Viewer3D item={{ ...jobItem3d(job), recreateHref: (job as any).input?.rig ? null : recreate }} headActions={fav} onClose={onClose ?? (() => history.back())} onPrev={onPrev} onNext={onNext} pos={pos}
     recordOnOpen={view3d?.recordOnOpen} onTurntable={view3d?.onTurntable} {...(view3d?.bigBytes ? { bigBytes: view3d.bigBytes } : {})}
-    tiles={sample ? null : <>{shareBtn && <button type="button" className="rvx-tile" data-testid="rv-share" aria-label="Share" {...tip('Share')} onClick={() => void openShare()}><ShareGlyph /><span>Share</span></button>}{moreOf(true)}</>}>{shareDlg}</Viewer3D>; /* 3D (2026-10-23): a GLB opens in the shared 3D viewer */
+    tiles={sample ? null : <>{shareBtn && <button type="button" className="rvx-tile" data-testid="rv-share" aria-label="Share" {...tip('Share')} onClick={() => void openShare()}><ShareGlyph /><span>Share</span></button>}{moreOf(true)}</>}>{shareDlg}{wfDlg}</Viewer3D>; /* 3D (2026-10-23): a GLB opens in the shared 3D viewer */
   if (viewer) {
     /* The full-screen viewer (Create Image, Assets, /jobs/:id, Community): the card's data and handlers laid out as media + side panel.
        Images, video (player with poster) and audio (cover, waveform, player); a result in Trash shows Restore / Delete forever instead. */
     const go = (u: string) => goClick(u, onClose); /* shared/goToWorkflow: closes a state viewer, never races a URL viewer's history.back() */
     const qs = `fromJob=${encodeURIComponent(job.id)}&out=${outIx}`;
     const trashed = !!(job as any).deletedAt;
-    const live = !sample && !showingOriginal && !!job.id && !trashed;
+    const live = !standIn && !showingOriginal && !!job.id && !trashed;
     const canHand = live && kind === 'image';
     const refUrl = canHand ? (tools?.length ? refTarget(job, tools, outIx)?.url : null) ?? `${IMAGE_PAGE}?${qs}&as=ref` : null;
     const S = Object.fromEntries(sets) as Record<string, any>;
@@ -409,7 +416,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
     const editRow = (k: string, label: string, note: string, ic: React.ReactNode, url: string | null | undefined, why?: string) => url
       ? <a key={k} className="rvx-edit" href={url} onClick={go(url)} data-testid={`rvx-edit-${k}`}>{ic}<span><b>{label}</b><small>{note}</small></span><span className="rvx-chev" aria-hidden>›</span></a>
       : <span key={k} className="rvx-edit dis" aria-disabled="true" data-testid={`rvx-edit-${k}`}>{ic}<span><b>{label}</b><small>{why ?? 'Checking…'}</small></span></span>;
-    const hr = (k: string) => { const r = rows0[k]; return r === undefined ? { url: null, why: 'Checking…' } : !r || r.available === false || !r.url ? { url: null, why: r?.reason ?? `Not available for this ${kind === 'video' ? 'clip' : 'image'}` } : { url: r.url, why: '' }; };
+    const hr = (k: string) => { const r = rows0[k]; return r === undefined ? { url: null, why: 'Checking…' } : !r || r.available === false || !r.url ? { url: null, why: r?.reason ?? `Not available for this ${kind === 'video' ? 'clip' : 'image'}` } : { url: handoffHome(r.url), why: '' }; };
     const others = <ToolsPanel jobId={job.id} out={outIx} onClose={onClose} skip={kind === 'video' ? RM_SKIP_VIDEO : RM_SKIP_IMAGE} />;
     /* Video hand-offs by tool (fromJob=…): Extend and Upscale when this server has those tools. */
     const toolOf = (id: string) => tools?.find(t => t.id === id);
@@ -422,8 +429,8 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
           {editRow('upscale', 'Upscale', 'Sharper, bigger frames', <UpscaleIcon size={18} />, up.url, up.why)}
           {editRow('finish', 'Finish', 'One-click polish: grain, glow, light leak and more. Free', <FinishIcon size={18} />, fin.url, fin.why)}
           {editRow('reshoot', 'Re-shoot', 'The same scene from a new angle', <ReshootIcon size={18} />, rs.url, rs.why)}
-          {editRow('translate', 'Translate', 'Dub the speech into another language', <TranslateIcon size={18} />, tr.url, tr.why)}
-          {editRow('change-voice', 'Change voice', 'Swap the voice, keep the words', <ChangeVoiceIcon size={18} />, cv.url, cv.why)}
+          {!silent && editRow('translate', 'Translate', 'Dub the speech into another language', <TranslateIcon size={18} />, tr.url, tr.why)}
+          {!silent && editRow('change-voice', 'Change voice', 'Swap the voice, keep the words', <ChangeVoiceIcon size={18} />, cv.url, cv.why)}
           {canSound && <button type="button" className="rvx-edit" onClick={() => setAddSound(true)} data-testid="rvx-edit-add-sound"><SoundIcon size={18} /><span><b>Add sound</b><small>One click: music and sound effects timed to the clip</small></span><span className="rvx-chev" aria-hidden>›</span></button>}
           {job.toolId !== 'soundtrack' && editRow('soundtrack', 'Add soundtrack', 'Music that fits the clip', <MusicBedIcon size={18} />, `/tools/soundtrack?from=${encodeURIComponent(job.id)}&out=${outIx}`)}
           {others}</section>; })()
@@ -648,4 +655,7 @@ const withMentions = (t: string) => <MentionText text={t} others />;
 
 /** The Edit tab's "Use it in…" list skips the hand-offs it already shows as their own rows. */
 const RM_SKIP_IMAGE = new Set(['image-upscale', 'app-relight', 'three-d', 'app-inpaint', 'cinema']);
-const RM_SKIP_VIDEO = new Set(['upscale', 'h3-extend', 'finish', 'reshoot', 'app-translate-video', 'app-change-voice', 'soundtrack', 'cinema']);
+/* voice: Voice Studio's clip modes are the Translate / Change voice rows above */
+const RM_SKIP_VIDEO = new Set(['upscale', 'h3-extend', 'finish', 'reshoot', 'app-translate-video', 'app-change-voice', 'voice', 'soundtrack', 'cinema']);
+/** tools that work on a clip's sound track (not offered for a silent clip) */
+const NEEDS_SOUND = new Set(['translate', 'change-voice']);

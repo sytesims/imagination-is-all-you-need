@@ -6,6 +6,7 @@ import { existsSync, readFileSync, statfsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { jobs } from './jobs.js';
+import { kindOfUrl } from './outputMeta.js';
 import * as lib from './library.js';
 import { getTool, listTools, setToolHidden } from './tools/registry.js';
 import { pluginStatus } from './plugins.js';
@@ -82,6 +83,13 @@ function handoffSlot(toolId: string, outUrl: string) {
   if (isImage && names.includes('refs')) return 'refs';
   if (isImage && names.includes('image')) return 'image';
   return null;
+}
+/** The tool's main input (its first file field) takes this kind of file (its `accept` mime: image/…, video/…, audio/…). The hand-off list offers a
+ *  tool only then, so a result never lands in a side slot of a tool built for another kind (an image in a clip tool's Character slot) or on a page
+ *  that refuses it (Voice Studio for a picture). `to=` still fills any slot that fits (handoffSlot). */
+export function mainInputTakes(t: { inputs: { kind: string; accept?: string }[] }, url: string): boolean {
+  const kind = kindOfUrl(url); const main = t.inputs.find((i) => i.kind === 'file' || i.kind === 'files');
+  return !!kind && !!main && (!main.accept || main.accept.split(',').some((a) => a.trim().startsWith(`${kind}/`)));
 }
 
 type Hook = { url: string; sent: Set<string>; tries: number; next: number; until: number };
@@ -165,7 +173,7 @@ export function registerGaps(app: FastifyInstance) {
     const j = jobs.get(req.params.id); if (!j || lib.metaOf(j.id).deletedAt) return reply.code(404).send({ error: 'not found' });
     if (j.status !== 'done' || !j.outputs.length) return reply.code(409).send({ error: 'This job has no finished output yet.', errorType: 'validation' });
     const out = j.outputs[Math.min(j.outputs.length - 1, Math.max(0, Number(req.query.i) || 0))];
-    const targets = listTools().filter((t) => t.listed !== false /* unlisted (legacy look tool): still accepted by to=, not offered */).map((t) => ({ toolId: t.id, name: t.name, slot: handoffSlot(t.id, out.url) })).filter((x) => x.slot && x.toolId !== j.toolId);
+    const targets = listTools().filter((t) => t.listed !== false /* unlisted (legacy look tool): still accepted by to=, not offered */).filter((t) => mainInputTakes(t, out.url)).map((t) => ({ toolId: t.id, name: t.name, slot: handoffSlot(t.id, out.url) })).filter((x) => x.slot && x.toolId !== j.toolId);
     if (!req.query.to) return { jobId: j.id, output: out, targets, attribution: (await import('./attribution.js')).jobAttribution(j) };
     const t = getTool(req.query.to); if (!t) return reply.code(404).send(bad('to', `unknown tool ${req.query.to}`, 'unknown'));
     const slot = req.query.as === 'ref' ? (t.inputs.some((x) => x.name === 'refs') ? 'refs' : null) : handoffSlot(t.id, out.url);

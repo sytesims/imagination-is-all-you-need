@@ -157,7 +157,12 @@ export function loadRouting(force = false): Promise<void> { if (rload && !force)
 export function useRouting() { const [, t] = useState(0); useEffect(() => { const f = () => t(x => x + 1); rbus.add(f); if (!ROUTING) void loadRouting(); return () => { rbus.delete(f); }; }, []); return ROUTING; }
 
 // ---------------------------------------------------------------- run-on choice per (tool, model)
-export interface RunOnPick { runOn: string; allowFallback?: boolean; route?: string; source?: 'tool' | 'legacy' | 'local' }
+export interface RunOnPick { runOn: string; allowFallback?: boolean; route?: string; source?: 'tool' | 'legacy' | 'local' | 'session' }
+/** Run on for this visit only (Continue / Use frame keep the source clip's place, 2026-11-02): never saved (no PUT /api/me/routing), so the
+ *  user's saved choice is untouched; gone on reload, and a pick in Run on replaces it. */
+const SESSION_PICK = new Map<string, RunOnPick>();
+export function setSessionRoute(toolId: string, modelKey: string, runOn: string, routeId: string) {
+  SESSION_PICK.set(`${toolId}:${modelKey}`, { runOn, route: routeId, source: 'session' }); rbus.forEach(f => f()); requestRequote(); }
 const LS = (t: string, m: string) => `ohf:runon:${t}:${m}`;
 const lsGet = (k: string): string | null => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k: string, v: string | null) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch { /* private mode */ } };
@@ -171,6 +176,7 @@ function mirrorPerTool(v: any) {
 }
 /** The saved choice for (tool, model): the server's perTool entry (explicit or a migrated old pin), else the local mirror, else Auto. */
 export function getRunOn(toolId: string, modelKey: string): RunOnPick {
+  const s = SESSION_PICK.get(`${toolId}:${modelKey}`); if (s) return s;
   const e = ROUTING?.perTool?.[toolId]?.[modelKey];
   if (e) return { runOn: String(e.runOn ?? 'auto'), allowFallback: e.allowFallback ?? undefined, route: e.route ?? undefined, source: e.source === 'legacy' ? 'legacy' : 'tool' };
   if (ROUTING) return { runOn: 'auto' };
@@ -189,6 +195,7 @@ function explicitPerTool(): Record<string, Record<string, any>> {
 const putError = (b: any, status: number) => { const m = String(b?.issues?.[0]?.message && b.issues[0].code !== 'local_unavailable' ? b.issues[0].message : b?.error ?? `Couldn’t save (HTTP ${status}).`);
   return /local ComfyUI is not available/i.test(m) ? 'Local isn’t set up on this server, so this can’t run there yet. Set up ComfyUI first.' : m.replace(/^perTool\.[^:]+:\s*/, ''); };
 async function putPerTool(pt: Record<string, Record<string, any>>) {
+  SESSION_PICK.clear(); /* a saved pick replaces this visit's */
   const r = await fetch('/api/me/routing', { method: 'PUT', headers: { 'content-type': 'application/json', 'x-openhiggsfield-source': 'web run-on' }, body: JSON.stringify({ perTool: pt }) });
   const b = await r.json().catch(() => null); if (!r.ok) throw new Error(putError(b, r.status)); setRouting(b); requestRequote(); return b;
 }
@@ -229,7 +236,8 @@ export function applyRunOnParams(toolId: string, p: Params) {
     const ms = enginesModels(toolId, engine); if (!ms.length) return;
     const act = ACTIVE.get(toolId); const m = ms.length === 1 ? ms[0] : ms.find(x => x.key === act); if (!m) return;
     if (!p.has('model')) p.set('model', m.key);
-    const pick = getRunOn(toolId, m.key); if (!pick.runOn || pick.runOn === 'auto') return; // no saved choice: the server pre-selects the place (quote and submit alike) and names it
+    const pick = getRunOn(toolId, m.key); if (pick.source === 'session' && pick.route) { p.set('route', pick.route); return; } // this visit's place (Continue): its exact route
+    if (!pick.runOn || pick.runOn === 'auto') return; // no saved choice: the server pre-selects the place (quote and submit alike) and names it
     const row = m.runsOn.find(r => r.id === pick.runOn); if (!row) return; // a choice this model no longer has: the server's own pin logic says so
     if (!row.engines.includes(engine) && row.engines[0]) { p.set('provider', row.engines[0]); p.delete('quotedRouteId'); p.delete('quotedCredits'); } // that quote was keyed by the other engine
     p.set('runOn', pick.runOn);

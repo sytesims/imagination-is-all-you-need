@@ -20,6 +20,9 @@
 .m3d-seg button { height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--text-2); font: inherit; font-size: 12px; cursor: pointer; }
 .m3d-seg button.on { background: var(--surface-3); color: var(--text); }
 .m3d-hint { font-size: 11px; color: var(--text-3); padding: 0 8px 0 2px; white-space: nowrap; }
+/* a narrow stage (phone, 390 px): the pill stays inside it; the hint drops to its own centred line instead of running off both edges */
+.m3d-tools { width: max-content; max-width: calc(100% - 16px); flex-wrap: wrap; justify-content: center; } /* max-content: left 50% alone would cap it at half the stage */
+@media (max-width: 560px) { .m3d-tools { bottom: 8px; row-gap: 2px; } .m3d-hint { flex-basis: 100%; text-align: center; white-space: normal; padding: 0 6px 2px; } }
 .m3d-rec { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; font-size: 12px;
   background: color-mix(in srgb, var(--bg) 80%, transparent); color: var(--text); }
 .m3d-rec-dot { width: 8px; height: 8px; border-radius: 50%; background: #ef4444; animation: m3d-blink 1s infinite; }

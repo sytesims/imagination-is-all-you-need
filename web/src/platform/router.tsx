@@ -7,7 +7,8 @@ import { redirectTarget, withSearch, addedImageRedirect } from '../shared/workfl
 import { selfHostRedirect } from '../shared/legacyRoutes';
 import { useEffect, useState } from 'react';
 /** Minimal pushState router (no dependency). */
-export function navigate(to: string, o: { replace?: boolean; state?: Record<string, unknown> } = {}) { to = canonTo(to); const st = { ...(o.replace ? history.state : {}), inApp: true, ...(o.state ?? {}) }; if (o.replace) history.replaceState(st, '', to); else history.pushState(st, '', to); dispatchEvent(new PopStateEvent('popstate')); }
+export function navigate(to: string, o: { replace?: boolean; state?: Record<string, unknown> } = {}) { to = canonTo(to); /* inApp: this entry was reached by a click in the app (✕ can go back to it). A replace keeps the entry's own flag: a direct link stays a direct link, so ✕ closes to the page's list, as Esc does */
+  const st = { ...(o.replace ? history.state : {}), inApp: o.replace ? !!(history.state as any)?.inApp : true, ...(o.state ?? {}) }; if (o.replace) history.replaceState(st, '', to); else history.pushState(st, '', to); dispatchEvent(new PopStateEvent('popstate')); }
 /** Alias paths → canonical (replaceState, so Back doesn't bounce). */
 export const REDIRECTS: Record<string, string> = { '/licences': '/licenses', '/licence': '/licenses', '/license': '/licenses', '/apps': '/workflows' /* Apps → Workflows (2026-10-22); /apps/<x> too, see canonPath */, '/presets': '/workflows', '/looks': '/workflows', '/pricing': '/models' /* the Pricing page is gone (user, 2026-10-29): every price is on Models */ /* the Looks page is gone (user, 2026-10-28); looks live inside each workflow */,
   /* Images (2026-10-22): old names → plain names (/soul and /tools/soul → Create Image, /tools/app-shots → Camera Angles, /tools/app-inpaint → Brush Edit, /tools/edit-image → Create Image in edit mode) */ ...IMAGE_REDIRECTS,
