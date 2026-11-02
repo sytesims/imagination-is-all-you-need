@@ -10,6 +10,7 @@
  */
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { PROPS_MAX, PROP_SCALE_MIN, PROP_SCALE_MAX, type PlacedProp } from '../../../../server/src/shared/previzTemplates';
+import { LIGHT_NOTE } from './userModels';
 import { MODELS_MAX, MODEL_H_MIN, MODEL_H_MAX, MODEL_DESC_MAX, motionsFor, type PlacedModel, type ModelMotion } from '../../../../server/src/shared/previzModels';
 import { PROP_TABS, propLabel, propStartScale } from './propLibrary';
 import { useModelChoices, useGlbMoves, refreshModelChoices, type ModelChoice } from './myModels';
@@ -66,9 +67,9 @@ export function PropsDrawer({ template, props, selected, onSelect, onPick, onCha
     <div className="pd-tabs" role="tablist" aria-label="Kinds of props">
       <button type="button" role="tab" aria-selected={isMine} className={`pd-tab-mine${isMine ? ' on' : ''}`} data-testid="pv-props-tab-mine" onClick={() => setTab(MINE_TAB)}><CubeIcon size={13} />Assets · 3D models{mine.models.length > 0 && <small>{mine.models.length}</small>}</button>
       {PROP_TABS.map((t) => <button key={t.id} type="button" role="tab" aria-selected={t.id === tab} className={t.id === tab ? 'on' : ''} data-testid={`pv-props-tab-${t.id}`} onClick={() => setTab(t.id)}>{t.label}</button>)}</div>
-    {isMine && <div className="pd-assets-head"><span>GLBs · up to 40 MB</span><button type="button" className="fd-link" onClick={reload} data-testid="pv-mine-refresh">Refresh Assets</button></div>}
+    {isMine && <div className="pd-assets-head"><span>GLBs · up to 200 MB</span><button type="button" className="fd-link" onClick={reload} data-testid="pv-mine-refresh">Refresh Assets</button></div>}
     {isMine ? <div className="pd-grid" role="list" data-testid="pv-mine-grid">
-      <button type="button" role="listitem" className="pd-item pd-up" disabled={mFull || !!mine.busy} data-testid="pv-mine-upload" onClick={() => fileIn.current?.click()} title={mFull ? `${MODELS_MAX} of your models is the most in one shot` : 'Upload a GLB (binary glTF, up to 40 MB)'}>
+      <button type="button" role="listitem" className="pd-item pd-up" disabled={mFull || !!mine.busy} data-testid="pv-mine-upload" onClick={() => fileIn.current?.click()} title={mFull ? `${MODELS_MAX} of your models is the most in one shot` : 'Upload a GLB (binary glTF, up to 200 MB)'}>
         <i className="pd-ic" aria-hidden><UploadIcon size={20} /></i><span>Upload GLB</span></button>
       <input ref={fileIn} type="file" accept=".glb,model/gltf-binary" hidden data-testid="pv-mine-file" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) mine.onUpload(f); }} />
       {choices == null ? [0, 1].map((i) => <span key={i} className="pd-item" aria-hidden><i className="pd-ph" /><span>&nbsp;</span></span>)
@@ -83,7 +84,7 @@ export function PropsDrawer({ template, props, selected, onSelect, onPick, onCha
         return <button key={it.id} type="button" role="listitem" className={`pd-item${on ? ' pd-pick' : ''}`} aria-pressed={on} disabled={full} data-testid={`pv-prop-${it.id}`} {...pickProps((from) => onPick(it.id, from))}
           title={full ? `${PROPS_MAX} props is the most in one shot` : on ? 'Click in the view to place it (or click here again)' : `Place ${it.label.toLowerCase()}: click, or drag it onto the view`}>
           {src ? <img src={src} alt="" draggable={false} /> : <i className="pd-ph" aria-hidden />}<span>{it.label}</span></button>; })}</div>}
-    {isMine && (mine.note || listErr) ? <p className="pd-note pd-warn" role="status" data-testid="pv-mine-note">{mine.note ?? listErr}</p>
+    {isMine && (mine.note || listErr) ? <p className={`pd-note${mine.note === LIGHT_NOTE ? '' : ' pd-warn'}`} role="status" data-testid="pv-mine-note">{mine.note ?? listErr}</p>
       : isMine ? <p className="pd-note">{mFull ? `${MODELS_MAX} of your models is the most in one shot. Remove one to add another.` : choices && !choices.some((c) => c.tag === 'yours') ? 'No generated models yet. Make one in Image to 3D, upload a GLB, or try the example. Click once to add a prop.' : 'Choose a generated model from Assets, or Upload GLB. Click once to add it facing the camera; adjust its position below. Other formats are not supported here.'}</p>
       : full ? <p className="pd-note" role="status">{PROPS_MAX} props is the most in one shot. Remove one to add another.</p> : null}
     {count > 0 && <div className="pd-placed">

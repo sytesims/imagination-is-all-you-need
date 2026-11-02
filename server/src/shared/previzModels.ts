@@ -33,8 +33,11 @@ export interface PlacedModel { id: string; src: string; job?: string; name: stri
   /** the file's front, as a turn in its own frame (radians, quarter turns in the UI) */ front: number; /** footprint: width ÷ height (largest side) */ fw: number;
   /** plays the actor with this motion; absent = a prop */ actor?: ModelMotion }
 export const MODELS_MAX = 4; export const MODEL_H_MIN = 0.1; export const MODEL_H_MAX = 8; export const MODEL_DESC_MAX = 200; export const MODEL_NAME_MAX = 40;
-/** the largest GLB Direct a Shot loads (bytes): bigger files slow the open city down and are refused with a clear message */
+/** the largest GLB Direct a Shot loads (bytes): bigger files slow the open city down, so a bigger one is played from a light copy the server
+ *  makes once (glbLight.ts, POST /api/3d/light), never refused */
 export const MODEL_MAX_BYTES = 40 * 1024 * 1024;
+/** the largest GLB the app takes for Direct a Shot (uploads, and models it makes a light copy of) */
+export const MODEL_SOURCE_MAX_BYTES = 200 * 1024 * 1024;
 /** a GLB the app serves: a result or upload in the data folder, or a shipped showcase file */
 export const isModelSrc = (s: unknown): s is string => typeof s === 'string' && /^\/(files|showcase)\/[A-Za-z0-9][A-Za-z0-9._-]{0,120}\.glb$/i.test(s) && !s.includes('..');
 /** A placed prop must be self-contained: never let a GLB request external buffers or textures. */

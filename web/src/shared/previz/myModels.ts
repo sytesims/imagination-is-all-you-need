@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import { getJob, listJobs, type JobState } from '../../api';
 import { posterOf3d } from '../model3d';
 import { EXPLORE_SHEETS } from '../../../../server/src/shared/exploreShowcase';
-import { cleanWords, MODEL_DESC_MAX, MODEL_NAME_MAX, MODEL_MAX_BYTES } from '../../../../server/src/shared/previzModels';
+import { cleanWords, MODEL_DESC_MAX, MODEL_NAME_MAX, MODEL_SOURCE_MAX_BYTES } from '../../../../server/src/shared/previzModels';
 import { rolesOf, canMove } from '../../../../server/src/shared/previzRig';
 import { MOSSBUN_RIG, MOSSBUN_STATIC } from '../rig/mossbunRig';
 
@@ -44,7 +44,7 @@ const uploadChoice = (u: { url: string; name: string }): ModelChoice => ({ key: 
 /** Upload a GLB (checked here for size, on the server for the rest). Resolves with its choice, or rejects with the reason in plain words. */
 export async function uploadModel(f: File): Promise<ModelChoice> {
   if (!/\.glb$/i.test(f.name)) throw new Error('Pick a .glb file (binary glTF).');
-  if (f.size > MODEL_MAX_BYTES) throw new Error(`That GLB is larger than ${Math.round(MODEL_MAX_BYTES / 1048576)} MB. Make a lighter copy and try again.`);
+  if (f.size > MODEL_SOURCE_MAX_BYTES) throw new Error(`That GLB is larger than ${Math.round(MODEL_SOURCE_MAX_BYTES / 1048576)} MB. Make a lighter copy and try again.`);
   const fd = new FormData(); fd.append('model', f, f.name); const r = await fetch('/api/3d/upload', { method: 'POST', body: fd }); const b = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(b.error || 'That GLB could not be uploaded.'); bump(); return uploadChoice(b);
 }

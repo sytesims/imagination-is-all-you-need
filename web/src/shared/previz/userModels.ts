@@ -15,19 +15,32 @@ import { mossGlow, MOSSBUN_RIG, MOSSBUN_STATIC } from '../rig/mossbunRig';
 const FALLBACK: Record<string, string> = { [MOSSBUN_RIG]: MOSSBUN_STATIC };
 
 type T3 = typeof import('three');
-export interface LoadedModel { proto: any; animations: any[]; /** clip names by role (idle, walk, jog…) when the file has moves */ roles: Partial<Record<RigRole, string>>; /** width ÷ height of its bounds (largest side) */ fw: number; meshes: number; textured: boolean }
+export interface LoadedModel { proto: any; animations: any[]; /** clip names by role (idle, walk, jog…) when the file has moves */ roles: Partial<Record<RigRole, string>>; /** width ÷ height of its bounds (largest side) */ fw: number; meshes: number; textured: boolean; /** played from its light copy (the file is over MODEL_MAX_BYTES) */ light: boolean }
 export class ModelLoadError extends Error {}
 const cache = new Map<string, Promise<LoadedModel>>();
 const mb = (b: number) => `${(b / 1048576).toFixed(b > 10485760 ? 0 : 1)} MB`;
 
+/** the note shown while a big model plays from its light copy */
+export const LIGHT_NOTE = 'Made a lighter copy for Direct a Shot. Your original model is unchanged.';
+/** The light copy's address for a model over the cap (made once on the server, then reused). */
+async function lightUrlOf(src: string): Promise<string> {
+  if (!src.startsWith('/files/')) throw new ModelLoadError(`That model is over ${mb(MODEL_MAX_BYTES)}: Direct a Shot takes up to ${mb(MODEL_MAX_BYTES)}.`);
+  const r = await fetch('/api/3d/light', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ src }), signal: AbortSignal.timeout(120000) }).catch(() => null);
+  const b = await r?.json().catch(() => ({})) ?? {};
+  if (!r?.ok || typeof b.url !== 'string' || !isModelSrc(b.url)) throw new ModelLoadError(b.error || 'A lighter copy of that model could not be made. Try again.');
+  return b.url;
+}
 /** Load (once per page) and check a GLB. Rejects with a ModelLoadError whose message is plain words for the user. */
 export function loadUserModel(T: T3, src: string): Promise<LoadedModel> {
   let p = cache.get(src);
   if (!p) { p = (async () => {
       if (!isModelSrc(src)) throw new ModelLoadError('Choose a local GLB from Assets or upload one. External URLs are not loaded.');
-      const r = await fetch(src, { signal: AbortSignal.timeout(20000) }).catch(() => null); if (!r || !r.ok) throw new ModelLoadError(r?.status === 404 ? 'That model’s file is no longer on this computer.' : 'That model’s file could not be loaded. Try selecting it again.');
-      const size = Number(r.headers.get('content-length')) || 0; if (size > MODEL_MAX_BYTES) throw new ModelLoadError(`That model is ${mb(size)}: Direct a Shot takes up to ${mb(MODEL_MAX_BYTES)}. Make a lighter copy and try again.`);
-      const buf = await r.arrayBuffer(); if (buf.byteLength > MODEL_MAX_BYTES) throw new ModelLoadError(`That model is ${mb(buf.byteLength)}: Direct a Shot takes up to ${mb(MODEL_MAX_BYTES)}.`);
+      const get = (u: string) => fetch(u, { signal: AbortSignal.timeout(20000) }).catch(() => null).then((r) => { if (!r || !r.ok) throw new ModelLoadError(r?.status === 404 ? 'That model’s file is no longer on this computer.' : 'That model’s file could not be loaded. Try selecting it again.'); return r; });
+      let r = await get(src); let light = false;
+      /* over the cap: play the light copy the server makes once (POST /api/3d/light, server glbLight.ts); the original stays as it is */
+      if ((Number(r.headers.get('content-length')) || 0) > MODEL_MAX_BYTES) { void r.body?.cancel().catch(() => undefined); r = await get(await lightUrlOf(src)); light = true; }
+      let buf = await r.arrayBuffer(); if (buf.byteLength > MODEL_MAX_BYTES && !light) { buf = await (await get(await lightUrlOf(src))).arrayBuffer(); light = true; } /* no length was sent */
+      if (buf.byteLength > MODEL_MAX_BYTES) throw new ModelLoadError(`That model is ${mb(buf.byteLength)}: Direct a Shot takes up to ${mb(MODEL_MAX_BYTES)}. Make a lighter copy and try again.`);
       const problem = checkModelGlb(buf); if (problem) throw new ModelLoadError(problem);
       const [{ GLTFLoader }, { MeshoptDecoder }] = await Promise.all([import('three/examples/jsm/loaders/GLTFLoader.js'), import('three/examples/jsm/libs/meshopt_decoder.module.js')]);
       const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
@@ -46,15 +59,15 @@ export function loadUserModel(T: T3, src: string): Promise<LoadedModel> {
       const inner = new T.Group(); inner.add(scene); scene.position.set(-c.x, -box.min.y, -c.z); const unit = new T.Group(); unit.add(inner); unit.scale.setScalar(1 / tall);
       const proto = new T.Group(); proto.add(unit); proto.userData.userModel = src;
       const animations = g.animations ?? []; const roles = rolesOf(animations.map((a: any) => a.name));
-      return { proto, animations, roles, fw: Math.round((side / tall) * 1000) / 1000, meshes, textured };
+      return { proto, animations, roles, fw: Math.round((side / tall) * 1000) / 1000, meshes, textured, light };
     })().catch((e) => { cache.delete(src); if (FALLBACK[src]) return loadUserModel(T, FALLBACK[src]); throw e instanceof ModelLoadError ? e : new ModelLoadError('That model could not be loaded.'); });
     cache.set(src, p); }
   return p;
 }
 /** Read a GLB's footprint (fw) and check it, for the drawer before it is placed. */
-export const probeUserModel = (T: T3, src: string) => loadUserModel(T, src).then((m) => ({ fw: m.fw, meshes: m.meshes, textured: m.textured, moves: canMove(m.roles) }));
+export const probeUserModel = (T: T3, src: string) => loadUserModel(T, src).then((m) => ({ fw: m.fw, meshes: m.meshes, textured: m.textured, moves: canMove(m.roles), light: m.light }));
 
-export interface ModelStatus { src: string; state: 'loading' | 'ready' | 'error'; message?: string }
+export interface ModelStatus { src: string; state: 'loading' | 'ready' | 'error'; message?: string; /** a calm note (played from its light copy) */ note?: string }
 /** The models of one engine: build them for a shot, pose them for t. */
 export function createModelLayer(T: T3, root: any, onChange: () => void, onStatus: (s: ModelStatus) => void) {
   let key = ''; let ready: Promise<void> = Promise.resolve(); let gen = 0;
@@ -68,7 +81,7 @@ export function createModelLayer(T: T3, root: any, onChange: () => void, onStatu
       if (!list.length) { ready = Promise.resolve(); return; }
       ready = (async () => {
         clone ??= (await import('three/examples/jsm/utils/SkeletonUtils.js')).clone;
-        const loaded = await Promise.all(list.map((m) => { onStatus({ src: m.src, state: 'loading' }); return loadUserModel(T, m.src).then((x) => { onStatus({ src: m.src, state: 'ready' }); return x; }, (e: Error) => { onStatus({ src: m.src, state: 'error', message: e.message }); return null; }); }));
+        const loaded = await Promise.all(list.map((m) => { onStatus({ src: m.src, state: 'loading' }); return loadUserModel(T, m.src).then((x) => { onStatus({ src: m.src, state: 'ready', ...(x.light ? { note: LIGHT_NOTE } : {}) }); return x; }, (e: Error) => { onStatus({ src: m.src, state: 'error', message: e.message }); return null; }); }));
         if (my !== gen) return; const cur = JSON.parse(key) as [string, string][];
         loaded.forEach((L, n) => { if (!L) return; const m = list[n]; if (cur[n]?.[0] !== m.id) return;
           /* body (position, heading, lean) → turn (the file's front) → squash (squash and stretch from the feet) → the normalised file */
