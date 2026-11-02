@@ -165,7 +165,8 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
     if (c.from === 'presets') return (tool.presets ?? []).filter(p => allowed!.includes(p.id)).map((p: any) => ({ value: p.id, label: p.label, hint: p.category ?? p.group }));
     const named = new Map<string, string>([...((ti?.choices ?? []) as any[]).map(x => [String(x.value), String(x.label)] as [string, string]),
       ...(((cfg.gallery?.fields ?? []) as any[]).find(f => f.name === c.field)?.options ?? []).map((x: any) => [String(x.value), String(x.label)] as [string, string]),
-      ...(c.field === 'resolution' ? Object.entries<string>(cfg.videoLimits?.[prov]?.resolutionLabels ?? {}) : [])]); /* a model's own tier names (LTX-2.5 22B: Draft / Sharper) */
+      ...(c.field === 'resolution' ? Object.entries<string>(cfg.videoLimits?.[prov]?.resolutionLabels ?? {}) : []),
+      ...Object.entries<string>(ti?.labelsByProvider?.[prov] ?? {}) /* a model's own names for the stored values (H3 Character Swap: 720p → "768p · sharpest") */]); /* a model's own tier names (LTX-2.5 22B: Draft / Sharper) */
     return (allowed ?? []).map(v => ({ value: v, label: `${c.prefix ?? ''}${named.get(v) ?? pretty(v)}${c.suffix && /^\d/.test(v) ? c.suffix : ''}` }));
   };
   /** What the extra sees now (its functions run while the bar renders). */
@@ -278,16 +279,18 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
 
   /* ---- pre-flight: every reason it can't run yet, in order; Generate shows the first ---- */
   const gallery = shown.find(c => c.kind === 'gallery');
-  const problems: PreflightProblem[] = (() => { const ps = preflightProblems({ freeLocal: hasFreeLocal(tool.id),
+  const problems: PreflightProblem[] = (() => {
+    /* the extra's own steps (Object Swap: what to replace; Re-shoot: an angle), handed to the shared pre-flight as input steps so a quote that waits
+     * for the same step never lists it again as a model problem */
+    const more: PreflightProblem[] = (extra.needs?.(live()) ?? []).map((n): PreflightProblem => { const fix: PreflightFix = n.model ? { kind: 'pick-model', label: 'Pick model…' } : n.slot ? { kind: 'choose-photo', label: 'Choose…', args: { slot: n.slot } } : { kind: 'open-group', label: 'Open', args: { group: n.group ?? '' } };
+      return { code: n.model ? 'model_cant_run' : n.slot ? 'photo_missing' : 'pick_missing', stage: n.model ? 'model' : 'inputs', message: n.missing, fix }; });
+    const ps = preflightProblems({ freeLocal: hasFreeLocal(tool.id), steps: more.filter(p => p.stage === 'inputs'),
     slots: bar.slots.filter(slotShown).map(s => ({ ...s, ...(extra.slotInfo?.(s, live()) ?? {}) })).map(s => ({ name: s.name, label: s.label, required: reqOf(s), filled: sentOf(s).length >= (s.min ?? 1), missing: s.missing })),
     prompt: promptCfg.mode === 'required' && !prompt.trim() ? { missing: 'Write a prompt' } : null,
     pick: gallery && !gallery.optional && !valOf(gallery) ? { group: gallery.group, missing: `Pick ${gallery.field === 'preset' ? 'a style' : gallery.field === 'move' ? 'a camera move' : gallery.field === 'look' ? 'a look' : 'an effect'}` } : null,
     quote: q, modelName: reel && q?.reelStep ? q.reelStep : modelName });
     for (const c of shown) if (c.kind === 'text' && c.required && !valOf(c).trim()) ps.splice(ps.filter(p => p.stage === 'inputs').length, 0, { code: 'pick_missing', stage: 'inputs', message: `Add ${c.label.toLowerCase()}`, fix: reel && c.field === 'title' ? { kind: 'focus-prompt', label: 'Choose…' } : { kind: 'open-group', label: 'Choose…', args: { group: c.group } } });
-    /* the extra's own steps (Object Swap: what to replace; Re-shoot: an angle), right after the inputs */
-    const more: PreflightProblem[] = (extra.needs?.(live()) ?? []).map((n): PreflightProblem => { const fix: PreflightFix = n.model ? { kind: 'pick-model', label: 'Pick model…' } : n.slot ? { kind: 'choose-photo', label: 'Choose…', args: { slot: n.slot } } : { kind: 'open-group', label: 'Open', args: { group: n.group ?? '' } };
-      return { code: n.model ? 'model_cant_run' : n.slot ? 'photo_missing' : 'pick_missing', stage: n.model ? 'model' : 'inputs', message: n.missing, fix }; });
-    const at = ps.filter(p => p.stage === 'inputs').length; return [...ps.slice(0, at), ...more, ...ps.slice(at)]; })();
+    const own = more.filter(p => p.stage !== 'inputs'); const at = ps.filter(p => p.stage === 'inputs').length; return [...ps.slice(0, at), ...own, ...ps.slice(at)]; })();
   useEffect(() => { if (pfOpen && !problems.length) setPfOpen(false); }); // eslint-disable-line react-hooks/exhaustive-deps
   const runFix = async (f: PreflightFix) => { const a: any = f.args ?? {};
     switch (f.kind) {

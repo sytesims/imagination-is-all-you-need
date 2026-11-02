@@ -36,7 +36,7 @@ export function balanceOf(accounts: Account[] | null | undefined, runOn: string 
 
 /** The full sentence of why a quote can't run as set (never a key: that has its own words), without the "Pick another place." tail. */
 export function blockFull(rq: any): string | null {
-  if (!rq || rq.pending || rq.failed || rq.needsKey === true || rq.demo === true) return null;
+  if (!rq || rq.pending || rq.failed || rq.needsKey === true || rq.demo === true || rq.inputStep === true /* a step to add (who to swap), not a block */) return null;
   if (!(rq.runnable === false || rq.ok === false || (typeof rq.status === 'number' && rq.status >= 400))) return null;
   const t = String(rq.blockedReason ?? rq.unavailableReason ?? rq.reason ?? rq.error ?? '').replace(/\s*Pick another place\.?\s*$/i, '').trim();
   return t || 'Not for these settings.';

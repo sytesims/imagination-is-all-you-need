@@ -27,7 +27,7 @@ import { LOCAL_LABEL, COMFY_DEPLOY_DETAIL } from '../../../../server/src/shared/
 
 /** Kept for callers: the place the pre-selection resolved for this job (the live quote's place, else the listing's). */
 export const autoPlaceOf = (m: ToolModel | undefined, q?: any): string | null => placeOf(m, null, q);
-/** The chip / field words: always the place's name ('Local', 'Comfy', 'fal'), plus a short state when it can't run as is. */
+/** The chip / field words: always the place's name ('Your computer', 'Comfy Cloud', 'fal'), plus a short state when it can't run as is. */
 export function runOnText(m: ToolModel | undefined, pick: string, q?: any): { main: string; sub: string; dot: 'ok' | 'demo' | 'off' | null; tip: string; place: string | null; saved: boolean; action: PlaceAction | null } {
   const saved = !!pick && pick !== 'auto'; const place = placeOf(m, pick, q);
   const row = m?.runsOn.find(r => r.id === place);
@@ -80,7 +80,7 @@ const RunOnButton = forwardRef<HTMLButtonElement, { open: boolean; onClick: () =
 export type RunOnOwn = { runOn: string; set: (runOn: string) => void; rememberedFor: string };
 export type RunOnScale = { factor: number | null; shots: number; unit: string };
 /** The Run on chip's tiniest words, for a crowded bar (shared/dockFit: the model's full name wins; the label and tooltip keep the place in full). */
-const RUN_ON_TINY: Record<string, string> = { local: 'Local', 'comfy-cloud': 'Cloud' };
+const RUN_ON_TINY: Record<string, string> = { 'comfy-cloud': 'Cloud' }; /* Your computer keeps its one name everywhere (2026-11-03: the chip said "Local") */
 /** Create Image dock: a chip in the scroll track ('Comfy ›', 'Local · Download ›'). */
 export function RunOnChip({ toolId, model, engine, quote: q0, testId = 'run-on-chip', avoid, own, scale, watch, compact }: FieldProps & { own?: RunOnOwn; scale?: RunOnScale; /** a composer dock: the menu opens 4px above the chip, over the dock, and re-places when the dock resizes */ watch?: RefObject<HTMLElement | null>;
   /** Create bar: one short word (GPU, Comfy, fal) that never truncates; a needed step shows as the dot, said in full in the label and tooltip */ compact?: boolean }) {
