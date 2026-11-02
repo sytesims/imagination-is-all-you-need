@@ -27,10 +27,10 @@
 
 Install with the one line below. You don't need a GPU, a key or an account for this tour, and nothing is charged.
 
-1. **Open the Examples project.** It holds real results made in the app, each with its model, where it ran and its price.
-2. **Press View workflow** on a result. You see the ComfyUI graph behind it: the nodes, the model and the settings.
-3. **Press Open in ComfyUI.** The same graph opens in your own ComfyUI, ready to run or change.
-4. **Open the Canvas and pick a starter** in the AI panel, such as **Product ad**. The board builds itself, card by card, and stops at a priced proposal. Nothing runs until you press Go.
+1. **Open the Examples project** (Assets → Projects → Examples). Real results made in the app, each with its model, where it ran and its price.
+2. **Open a result and press View workflow.** You see the ComfyUI graph behind it, with its model and settings filled in.
+3. **Press Open in ComfyUI.** The app opens your ComfyUI with the graph on the clipboard and downloaded, ready to drop on the canvas. No ComfyUI? Keep the downloaded graph.
+4. **Open the Canvas and pick a starter** in the agent panel, such as **Short film from idea**. The built-in demo agent lays out the board step by step, with a whole workflow on each card. Every run waits for your Go, and with nothing connected nothing can run.
 
 Want to see it run? Connect your ComfyUI or a Comfy key in **Settings → Connections**.
 
