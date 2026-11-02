@@ -187,10 +187,11 @@ function Card({ r, onOpen, s, i = 0 }: { r: Row; onOpen: () => void; s: Saved; i
   const open = (ev: React.MouseEvent) => { if ((ev.target as HTMLElement).closest('a,button')) return; onOpen(); }; const lay = useContext(LayoutCtx);
   return <div className={`xp-tile is-band wn-card${r.media.kind !== 'art' ? ' is-real' : ''}`} onClick={open} onPointerEnter={() => warm(r.e.href)} data-hover-play data-testid={`wn-card-${r.e.id}`} style={{ ['--i' as string]: Math.min(i, 12) }}>
     <span className="xp-tile-media wn-media"><MediaView r={r} thumb={r.thumb} /></span>
-    <span className="wn-top"><Badge r={r} /></span>
+    {/* the Added by you / Add-on badge sits on the picture, so a long name that clamps never hides it */}
+    <span className="wn-top"><Badge r={r} />{r.e.plugin && <PluginBadge b={r.e.plugin} />}</span>
     <SaveBtn id={r.e.id} s={s} label={r.e.name} />
     <span className="xp-cap wn-cap">
-      <button type="button" className="xp-title wn-title" onClick={onOpen} onFocus={() => warm(r.e.href)} aria-label={`${r.e.name}: ${r.e.line}. Details`}>{r.e.name}{r.e.plugin && <PluginBadge b={r.e.plugin} />}</button>
+      <button type="button" className="xp-title wn-title" onClick={onOpen} onFocus={() => warm(r.e.href)} aria-label={`${r.e.name}${r.e.plugin ? ` (${r.e.plugin.user ? 'added by you' : 'add-on'})` : ''}: ${r.e.line}. Details`}>{r.e.name}</button>
       <span className="xp-line">{r.e.line}</span>
       <span className="xp-meta wn-meta"><span className="wn-chip" title={r.models.map((m) => m.name).join(', ')}>{r.model ? shortModel(r.model) : 'Runs in the app'}</span></span>
       {lay === 'c' && <RunLine p={r.run} className="wn-runl" />}
