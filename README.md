@@ -15,6 +15,8 @@
 <!-- Demo video: replace DEMO_VIDEO_URL on the next line with the link to the demo. -->
 **Watch the demo (under 2 minutes):** DEMO_VIDEO_URL
 
+**Challenge entry:** Comfy's Open Source Higgsfield challenge, in **Most Innovative** and the **LTX VFX bonus** (LTX is the core video model of Direct a Shot, Layout to Render and Footage Effects).
+
 <p align="center"><img src="docs/screenshots/explore.webp" alt="The Explore page: a film made in the app, with its model, where it ran and its price" width="900"></p>
 
 ## Why it's new
