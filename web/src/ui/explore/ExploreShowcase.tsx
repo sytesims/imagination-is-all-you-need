@@ -62,7 +62,7 @@ import { CloseIcon, ResetIcon, SoundIcon } from '../Icons';
 import { renderBeat } from './beatSynth';
 import '../../shared/audioCard.css';
 import { RunChip } from '../../shared/RunChip';
-import { chipOfFeatured, chipOfRun, chipOfChain, type RunChipData } from '../../../../server/src/shared/runChip';
+import { chipOfFeatured, chipOfRun, chipUsd, type RunChipData } from '../../../../server/src/shared/runChip';
 import { LOCAL_LABEL } from '../../../../server/src/shared/modelIds';
 import './exploreShowcase.css';
 
@@ -392,19 +392,14 @@ export function XpSheets() {
 }
 
 /* ============================================================== Mockup to film (Direct a Shot made real) ============================================================== */
-/** The film's chip: its own run (LTX-2.5 22B + Layout to Render, the beats' model) as the main model, the painted first frame as "+1" (the
- *  free mockup drawn in the browser isn't a model), the two runs' price together (the film's is an estimate, so "≈"). */
-export function filmChip(f: FeaturedItem): RunChipData {
-  const b3 = EXPLORE_FILM.beats[2]; const paid = (f.from ?? []).filter((r) => r.costUsd > 0);
-  return chipOfChain({ jobId: f.jobId ?? b3.jobId, model: b3.model, place: b3.place, costUsd: f.costUsd ?? b3.usd, est: true }, paid);
-}
 export function XpFilm() {
   const F = EXPLORE_FILM; const f = featuredByKey(F.key); const [beat, setBeat] = useState<1 | 2 | 3>(1); const [jump, setJump] = useState<{ to: 'wait' | 'hold' | 'play'; n: number } | undefined>();
   if (!f?.before) return null;
-  const rec = featuredRecreateHref(f.key) ?? F.cta.href; const [b1, b2, b3] = F.beats;
+  const rec = featuredRecreateHref(f.key) ?? F.cta.href; const b2 = F.beats[1];
   const onPhase = (p: ReelPhase) => setBeat(p === 'wait' ? 1 : p === 'sweep' || p === 'hold' ? 2 : 3);
   const go = (n: 1 | 2 | 3) => setJump((j) => ({ to: n === 1 ? 'wait' : n === 2 ? 'hold' : 'play', n: (j?.n ?? 0) + 1 }));
-  const after = beat === 2 ? `${F.labels.first} · ${b2.model}` : `${F.labels.film} · ${f.model}`;
+  /* the media keeps one role tag (Mockup / First frame / Film); models and prices live in the strip under it */
+  const after = beat === 2 ? F.labels.first : F.labels.film; const total = chipUsd(F.beats.reduce((n, x) => n + x.usd, 0), F.beats.some((x) => x.est));
   return <section className="xv-sec xpk xpf" id="xp-film" data-testid="xp-film" aria-labelledby="xp-h-film">
     <span className="xv-eb">{F.eyebrow}</span>
     <h2 id="xp-h-film" className="xpk-h">{F.title}</h2>
@@ -412,7 +407,7 @@ export function XpFilm() {
     <div className="xpk-frame xpf-frame" data-testid="xp-film-frame">
       {/* the clips live in the featured entry (shared/featured.ts 'ltx-mockup-film'): the mockup is its `before`, the film its `out` */}
       <HeroReel className="hreel-framed xpo-film xpf-film" testId="xp-film-wipe" reveal holdSweep parkAt={F.parkAt} onPhase={onPhase} jump={jump} sound={f.out.sound === true} restartOnSound
-        label={`${f.title}, made with ${b2.model} and ${f.model}`} before={{ url: f.before.url, poster: f.before.url.replace(/\.mp4$/, '.webp'), label: `${F.labels.mockup} · ${b1.model}` }}
+        label={`${f.title}, made with ${b2.model} and ${f.model}`} before={{ url: f.before.url, poster: f.before.url.replace(/\.mp4$/, '.webp'), label: F.labels.mockup }}
         after={{ url: f.out.url, poster: FEATURED_BIG_POSTER[f.key] ?? f.out.poster, label: after }} />
       <div className="xpf-bar" role="group" aria-label="The three passes">{F.beats.map((x) => <button key={x.n} type="button" className={`xpf-beat${beat >= x.n ? ' on' : ''}${beat === x.n ? ' is-now' : ''}`} aria-pressed={beat === x.n}
         onClick={() => go(x.n)} data-testid={`xp-film-beat-${x.n}`} title={x.tip}>

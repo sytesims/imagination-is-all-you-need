@@ -336,7 +336,7 @@ ok(`${EXPLORE_ROWS.length} rows, ${EXPLORE_CARDS.length} cards: each opens a rea
     assert.match(xs, /goToWorkflow\(yourTurnHref\(text\)\)/, 'Make it goes in-app');
     assert.match(fs.readFileSync(path.join(WEB, 'ui/explore/exploreShowcase.css'), 'utf8'), /prefers-reduced-motion:reduce\)\{\.xyt-track\{animation:none\}/, 'reduced motion: the wall stays still'); }
   /* One character. Every angle. (four GPT Image 2.5 Flare sheets on Comfy Router; Mossbun as a Tripo 3.1 model) */
-  { const S = X.EXPLORE_SHEETS; assert.equal(S.title, 'One character. Every angle.'); assert.equal(S.eyebrow, 'Made with GPT Image 2.5 Flare'); assert.equal(S.via, 'Comfy Cloud');
+  { const S = X.EXPLORE_SHEETS; assert.equal(S.title, 'One character. Every angle.'); assert.equal(S.eyebrow, 'Character sheets', 'the model is named once, in the run line'); assert.equal(S.via, 'Comfy Cloud');
     assert.doesNotMatch(`${S.title} ${S.line} ${S.cast.map((c) => `${c.name} ${c.style}`).join(' ')}`, /higgsfield|kling|seedance/i, 'our own words, no other products named');
     const want = [['sheet-kaito', 'b5b82fcc', '492ddf3d', 1536, 1024, 0.0159, /KAITO VEY/], ['sheet-mossbun', '7793115c', '9564386e', 1456, 624, 0.0087, /MOSSBUN/], ['sheet-mechanic', '224bbf14', 'd5c4b1a5', 1536, 1024, 0.0159, /harbour mechanic/], ['sheet-kip', '8d939956', 'a4084c61', 1344, 1008, 0.0166, /KIP RALLY/]] as const;
     assert.deepEqual(S.cast.map((c) => c.key), want.map((w) => w[0]), 'Kaito, Mossbun, the mechanic, Kip');

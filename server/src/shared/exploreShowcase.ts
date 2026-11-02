@@ -457,7 +457,7 @@ export interface SheetCast {
 /** "One character. Every angle." (2026-10-27, the approved mockup v2): the whole sheet, never cropped, in a letterbox frame; a highlight steps across
  *  its real panels (Whole sheet first), a cast switch, Recreate (Create Image with the prompt and model) and Pause. Mossbun also spins in 3D. */
 export const EXPLORE_SHEETS = {
-  eyebrow: 'Made with GPT Image 2.5 Flare', title: 'One character. Every angle.',
+  /* the model is named once, in the run line under the sheet (2026-11-02) */ eyebrow: 'Character sheets', title: 'One character. Every angle.',
   line: 'Describe someone once and get the whole model sheet in one image: every view, the faces, the colours. The same character in every panel, ready to hand to Video as a reference.',
   model: 'GPT Image 2.5 Flare', via: 'Comfy Cloud', /** ms per panel */ dwell: 1800,
   cast: [
@@ -478,7 +478,7 @@ export const EXPLORE_SHEETS = {
 };
 
 // ---------------------------------------------------------------- Mockup to film (Direct a Shot made real; replaces the Worlds tiles)
-export interface FilmBeat { n: 1 | 2 | 3; step: string; model: string; place: string; /** USD, 0 = free */ usd: number; note: string; /** the price's detail (a tooltip) */ tip: string; /** the run */ jobId: string }
+export interface FilmBeat { n: 1 | 2 | 3; step: string; model: string; place: string; /** USD, 0 = free */ usd: number; /** only an estimate was recorded ("≈") */ est?: boolean; note: string; /** the price's detail (a tooltip) */ tip: string; /** the run */ jobId: string }
 /** "Mockup to film" (2026-10-27, the approved mockup, option A "synced wipe"): the mockup clip, the line sweeps it into the painted first frame,
  *  then the film and the mockup play in step under the line (shared HeroReel, reveal with a before clip). Its clips are the featured entry's
  *  (shared/featured.ts 'ltx-mockup-film', trimmed to the first shot, looping); the three passes, their models and real prices are here. */
@@ -488,12 +488,12 @@ export const EXPLORE_FILM = {
   beats: [
     { n: 1, step: 'Mockup', model: 'Direct a Shot', place: 'drawn in your browser', usd: 0, note: '', tip: 'Recorded in your browser, nothing billed', jobId: 'a1a50672' },
     { n: 2, step: 'First frame', model: 'GPT Image 2.5 Flare', place: 'Comfy Cloud', usd: 0.0238, note: '', tip: 'Billed $0.024 (quoted $0.04)', jobId: '645de70d' },
-    { n: 3, step: 'Film', model: 'LTX-2.5 22B + Layout to Render', place: 'Comfy Cloud', usd: 0.28, note: '8 s run · first shot shown', tip: 'Estimate: 60 Comfy credits for the 8 s run. The first shot (4 s, with sound) plays here.', jobId: '1a1a33c6' },
+    { n: 3, step: 'Film', model: 'LTX-2.5 22B + Layout to Render', place: 'Comfy Cloud', usd: 0.28, est: true, note: '8 s run · first shot shown', tip: 'Estimate: 60 Comfy credits for the 8 s run. The first shot (4 s, with sound) plays here.', jobId: '1a1a33c6' },
   ] as FilmBeat[],
   /** the painted first frame (job 645de70d, 1536×864, shown at 1280×720) */ first: { url: P('ltx-mockup-film-first.webp'), thumb: P('ltx-mockup-film-first-480.webp') },
   /** where the line rests while the film plays (the mockup's share) */ parkAt: 0.42,
   /** the wipe's labels */ labels: { mockup: 'Mockup', first: 'First frame', film: 'Film' },
-  credit: 'Mockup: Direct a Shot, in your browser. First frame: GPT Image 2.5 Flare edit, Comfy Cloud. Film: LTX-2.5 22B with Lightricks’ Layout to Render LoRA, Comfy Cloud.',
+  /** the one credit the strip doesn't carry: whose LoRA the film used */ credit: 'Layout to Render is a LoRA for LTX-2.5 by Lightricks.',
   /** Direct a Shot on the same Open city preset */ cta: { label: 'Open Direct a Shot', href: `${threeDRoute('plan-a-shot')}&preset=open-city` },
 };
 
