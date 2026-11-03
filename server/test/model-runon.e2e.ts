@@ -67,9 +67,13 @@ try {
     if (s.status === 409 && s.b?.error === 'route_changed') { bad.push(`${tag}: quote ${q.b?.routeId}/${q.b?.credits} → submit now ${s.b.quote?.routeId}/${s.b.quote?.credits}`); return; }
     if (!qok) { skipped++; return; }
     if (ro && ro !== 'auto' && q.b.runOn !== ro && q.b.runnable !== false) bad.push(`${tag}: quote ran on ${q.b.runOn} (${q.b.routeId})`);
-    if (q.b.modelKey !== m.key) bad.push(`${tag}: quote modelKey ${q.b.modelKey}`);
+    // A run-on row may run a different model only when it names it (runsModel, shown on the row: Image to vector's Comfy Cloud = Ideogram Vector 1);
+    // then quote, job and result all name that model. Every other row is strict: the card's own model, never a silent swap.
+    const placeModel = m.runsOn.find((r: any) => r.id === q.b.runOn)?.runsModel; if (placeModel) assert.ok(placeModel.key !== m.key && placeModel.name, `${tag}: runsModel names another model`);
+    const want = placeModel?.key ?? m.key;
+    if (q.b.modelKey !== want) bad.push(`${tag}: quote modelKey ${q.b.modelKey} vs ${want}`);
     if (s.status === 200) { ran++; if (s.b.route !== q.b.routeId || s.b.cost !== q.b.credits) bad.push(`${tag}: 200 but ${s.b.route}/${s.b.cost} vs quote ${q.b.routeId}/${q.b.credits}`);
-      const job = (await j(`/api/jobs/${s.b.id}`)).b; if (job?.modelKey !== m.key || job?.runOn !== q.b.runOn) bad.push(`${tag}: job modelKey/runOn ${job?.modelKey}/${job?.runOn} vs ${m.key}/${q.b.runOn}`); }
+      const job = (await j(`/api/jobs/${s.b.id}`)).b; if (job?.modelKey !== want || job?.runOn !== q.b.runOn) bad.push(`${tag}: job modelKey/runOn ${job?.modelKey}/${job?.runOn} vs ${want}/${q.b.runOn}`); }
     else if (s.b?.routeId && s.b.routeId !== q.b.routeId) bad.push(`${tag}: submit ${s.status} on ${s.b.routeId} vs quote ${q.b.routeId}`);
     else skipped++;
   });
