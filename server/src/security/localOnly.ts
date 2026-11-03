@@ -19,6 +19,7 @@
  */
 import type { FastifyInstance } from 'fastify';
 import { isIP } from 'node:net';
+import { VECTOR_FILE_RE } from '../shared/imageVector.js';
 
 const list = (v: string | undefined) => (v ?? '').split(',').map((s) => s.trim().toLowerCase().replace(/\/+$/, '')).filter(Boolean);
 /** "Host" or URL host → { name, port } in lower case, brackets kept off IPv6. */
@@ -67,6 +68,7 @@ export function filesPathAllowed(url: string): boolean {
   const base = parts[parts.length - 1];
   if (MEDIA.test(base)) return true;
   if (/^brand-[^/]*\.svg$/i.test(base) && parts.length === 1) return true;
+  if (parts.length === 1 && VECTOR_FILE_RE.test(base)) return true; // Image to vector results (<job>-out<n>.svg), sanitized when written
   if (parts.length === 3 && parts[0] === 'brand-fonts' && /\.(ttf|otf|woff2?)$/i.test(base)) return true;
   return false;
 }

@@ -12,9 +12,11 @@ import { ViewerImage } from './ViewerImage';
 import { layersOf, layersPosterOf, layerCountText, LayerCanvas, LayerList, useLayerView } from './LayerStack';
 import { modelNameOf } from './imageFeatures';
 import { jobInputs, isFileUrl, type JobInput } from './jobInputs';
+import { isVectorUrl } from '../../../server/src/shared/imageVector';
+import { downloadSvgAsPng } from './svgPng';
 const inputRefHref = (u: string) => `${IMAGE_PAGE}?refUrl=${encodeURIComponent(u)}`;
 /** The job's source photo when the result is that photo changed (upscale, edit, relight, swaps, brush edit): the viewer's Compare. Not for jobs that make a new picture from it (Product Shot, Character Sheet). */
-const COMPARE_TOOLS = new Set(['image-upscale', 'app-relight', 'app-face-swap', 'app-person-swap', 'app-material-swap', 'app-inpaint']);
+const COMPARE_TOOLS = new Set(['image-upscale', 'app-image-vector' /* before / after: the picture and its SVG */, 'app-relight', 'app-face-swap', 'app-person-swap', 'app-material-swap', 'app-inpaint']);
 /** Results whose viewer opens on the before/after split (Relight: the change is the light, best judged side by side). */
 const COMPARE_FIRST = new Set(['app-relight']);
 export const compareSourceOf = (job: JobState): string | null => { const i: any = job.input ?? {}; const u = typeof i.imageUrl === 'string' && /^\/(files|samples|showcase)\//.test(i.imageUrl) ? i.imageUrl : null; if (!u) return null;
@@ -60,7 +62,7 @@ import { useFavourite } from './favourites';
 import GifButton from '../ui/GifButton';
 import { copySupport } from '../ui/support';
 import { audioKindOfJob } from './audioVizLogic';
-import { LinkIcon, CopyIcon, StarIcon, ProjectsIcon, AssetsIcon, TrashIcon, PaletteIcon, BrandIcon, InfoIcon, ComfyPlaceIcon, OpenModelIcon, ToolIcon, DownloadIcon, HeartIcon, MoreIcon, SoundIcon, PencilIcon, BrushIcon, LightIcon, CubeIcon, UpscaleIcon, ExtendIcon, ReshootIcon, TranslateIcon, ChangeVoiceIcon, MusicBedIcon, MusicIcon, UserIcon, LastFrameIcon, FrameGrabIcon, ImageIcon, FinishIcon } from '../ui/Icons';
+import { LinkIcon, CopyIcon, StarIcon, ProjectsIcon, AssetsIcon, TrashIcon, PaletteIcon, BrandIcon, InfoIcon, ComfyPlaceIcon, OpenModelIcon, ToolIcon, DownloadIcon, HeartIcon, MoreIcon, SoundIcon, PencilIcon, BrushIcon, LightIcon, CubeIcon, VectorIcon, UpscaleIcon, ExtendIcon, ReshootIcon, TranslateIcon, ChangeVoiceIcon, MusicBedIcon, MusicIcon, UserIcon, LastFrameIcon, FrameGrabIcon, ImageIcon, FinishIcon } from '../ui/Icons';
 import type { ToolInfo } from '../api';
 import { refTarget, sendUrl } from '../platform/SendTo';
 import { WorkflowDialog, useWorkflowInfo } from './WorkflowDialog';
@@ -145,7 +147,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
      (stampStore adjust, by job + output); Reset logo goes back to the ad as made. Untouched, Save and Share give the ad as made. */
   const adLogo = (job as any).input?.adLogo; const plainUrl: string | undefined = (cur as any).plainUrl;
   const adKit = adLogo ? brandS.kits.find((k) => k.id === String(adLogo.kit)) : undefined; const adjKey = `${job.id}:${outIx}`;
-  const adjOk = viewer && kind === 'image' && !!adLogo && typeof plainUrl === 'string' && /^\/files\//.test(plainUrl) && !sample && (job as any).isOwner !== false && !(job as any).deletedAt && job.status === 'done' && !showingOriginal && !lys && /^\/files\//.test(cur.url);
+  const adjOk = viewer && kind === 'image' && !!adLogo && typeof plainUrl === 'string' && /^\/files\//.test(plainUrl) && !sample && (job as any).isOwner !== false && !(job as any).deletedAt && job.status === 'done' && !showingOriginal && !lys && /^\/files\//.test(cur.url) && !isVectorUrl(cur.url) /* an SVG takes no logo stamp */;
   const adj = adjOk && adKit ? stampS.adjust[adjKey] : undefined; const adjSave = adjustedSave(adj);
   const openAdjust = () => { if (!adKit || !plainUrl) return; const go = () => startAdjust(adjKey, adLogoStamp(adLogo));
     /* the clean copy and the logo load first, so the picture never shows without its logo while it opens */
@@ -165,9 +167,9 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
   type Row = { available?: boolean; url?: string | null; reason?: string | null } | null;
   const [rows, setRows] = useState<Record<string, Row | undefined>>({}); const rows0 = rows; const rowsKey = useRef('');
   const loadRows = () => { const key = `${job.id}:${outIx}`; if (!job.id || standIn || rowsKey.current === key) return; rowsKey.current = key; setRows({});
-    const acts: [string, string][] = [['translate', 'action=translate'], ['change-voice', 'action=change-voice'], ['relight', 'action=relight'], ['upscale', 'action=upscale'], ['reshoot', 'action=reshoot'], ['finish', 'action=finish']]; /* no Director palette row: Director was removed 2026-10-23 */
+    const acts: [string, string][] = [['translate', 'action=translate'], ['change-voice', 'action=change-voice'], ['relight', 'action=relight'], ['upscale', 'action=upscale'], ['reshoot', 'action=reshoot'], ['finish', 'action=finish'], ['vector', 'action=vector']]; /* no Director palette row: Director was removed 2026-10-23 */
     /* BH2 #8: only the hand-offs this media kind offers (the menu shows the same set), so an image never asks for Translate / Change voice. */
-    const KINDS: Record<string, string[]> = { translate: ['video'], 'change-voice': ['video'], relight: ['image'], upscale: ['image', 'video'], reshoot: ['video'], finish: ['video'] };
+    const KINDS: Record<string, string[]> = { translate: ['video'], 'change-voice': ['video'], relight: ['image'], upscale: ['image', 'video'], reshoot: ['video'], finish: ['video'], vector: ['image'] };
     acts.filter(([k]) => (KINDS[k]?.includes(kind) ?? true) && !(silent && NEEDS_SOUND.has(k))).forEach(([k, q]) => fetch(`/api/jobs/${encodeURIComponent(job.id)}/prefill?${q}&out=${outIx}`).then(r => r.json().then(b => ({ ok: r.ok, b }))).then(({ ok, b }) => setRows(m => rowsKey.current !== key ? m : ({ ...m, [k]: ok ? { available: b.available !== false, url: b.url ?? null, reason: b.reason ?? null } : { available: false, url: null, reason: b.error ?? null } })))
       .catch(() => setRows(m => rowsKey.current !== key ? m : ({ ...m, [k]: null })))); };
   // Stepping to another job/output: drop the old hand-off rows (late replies are ignored by key) and reload if the ⋯ menu is still open.
@@ -208,7 +210,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
   /* Director was removed (2026-10-23): its old jobs (and stories) still open and play here, with no Recreate (its page now opens Create Video). */
   const retired = job.toolId === 'cinema' || job.toolId === 'director';
   const recreate = sample || recreateHref === null || retired ? null : recreateHref ?? (job as any).example?.recreateHref ?? jobRecreateHref(job, tools);
-  const toVideo = kind === 'image' && job.id && !sample ? `${VIDEO_PAGE}?fromJob=${encodeURIComponent(job.id)}&as=image&out=${outIx}` : null;
+  const toVideo = kind === 'image' && !isVectorUrl(cur.url) /* an SVG goes to no model: Download PNG first */ && job.id && !sample ? `${VIDEO_PAGE}?fromJob=${encodeURIComponent(job.id)}&as=image&out=${outIx}` : null;
   const download = <a className="btn rv-dl" data-testid="rv-download" href={cleanHref(cur.url)} download={appFileName(`${job.id}-${cur.label}`, ext)}><DownloadIcon size={15} />{storyShots && !showingOriginal ? 'Download film' : 'Download'}</a>;
   const rcCost = rcPrice ? (rcPrice.needsKey && rcPrice.runnable === false ? 'Needs a key' : (rcPrice as any).demo ? 'Sample' : shownCredits(rcPrice) === 0 ? 'Free' : runPrice({ own: ownAccountsNow(), credits: shownCredits(rcPrice), runOn: placeOfQuote(rcPrice) }) ?? '') : ''; /* QA #7: the Generate button's words */
   const recreateBtn = (primary: boolean) => recreate && <a href={recreate} onClick={goClick(recreate, onClose)} className={`btn ${primary ? 'rv-primary' : 'rv-second'} recreate-btn`} data-action="recreate" data-testid="rv-recreate"><span aria-hidden>↻</span>Recreate{rcCost && <span className="rv-cost" data-testid="rv-recreate-cost">{rcCost}</span>}</a>;
@@ -224,7 +226,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
     return r === undefined ? { k: a, label, icon, testid, dis: 'Checking…' } : !r || r.available === false || !r.url ? { k: a, label, icon, testid, dis: r?.reason ?? 'Not available for this result' }
       : { k: a, label, icon, testid, href: handoffHome(r.url), onClick: goClick(handoffHome(r.url), onClose) }; };
   /* Add logo: always findable on your image and video results; with a brand that has a logo it turns on the stage stamp, else it leads to Assets › Brands */
-  const logoBase = viewer && (medium === 'image' || medium === 'video') && !sample && owner && !(job as any).deletedAt && job.status === 'done' && !showingOriginal && !lys && /^\/files\//.test(cur.url);
+  const logoBase = viewer && (medium === 'image' || medium === 'video') && !sample && owner && !(job as any).deletedAt && job.status === 'done' && !showingOriginal && !lys && /^\/files\//.test(cur.url) && !isVectorUrl(cur.url) /* an SVG takes no logo stamp */;
   const logoItem = (): MItem | null => { if (!logoBase) return null; const k = stampKit;
     if (adjOk && adKit) return adj ? { k: 'logo', label: 'Reset logo', icon: <BrandIcon size={16} />, testid: 'rv-adjust-logo', pressed: true, hint: 'Back to the logo as first placed', onClick: () => endAdjust(adjKey) }
       : { k: 'logo', label: 'Adjust logo', icon: <BrandIcon size={16} />, testid: 'rv-adjust-logo', hint: 'Move, resize or take off the logo. The picture as made stays as it is.', onClick: openAdjust };
@@ -237,17 +239,18 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
     const done = !!job.id && !sample && job.status === 'done'; const asIs = !showingOriginal;
     const share: MItem[] = [
       logoItem(),
-      asIs && medium === 'image' ? { k: 'copyimg', label: copied === 'image' ? 'Copied' : 'Copy image', icon: <CopyIcon size={16} />, testid: 'rv-copy-image', keepOpen: true, onClick: () => { copyImage(cur.url).then(() => flash('image'), () => toast('Couldn’t copy the image. Try Download instead.', 'error')); } } : null,
+      asIs && isVectorUrl(cur.url) ? { k: 'png', label: 'Download PNG', icon: <DownloadIcon size={16} />, testid: 'rv-svg-png', hint: 'A PNG picture of this vector, transparency kept: for tools that take pictures', onClick: () => { void downloadSvgAsPng(cur.url, appFileName(`${job.id}-${cur.label}`, 'png')).catch(() => toast('Couldn’t make the PNG. Download the SVG instead.', 'error')); } } : null,
+      asIs && medium === 'image' && !isVectorUrl(cur.url) ? { k: 'copyimg', label: copied === 'image' ? 'Copied' : 'Copy image', icon: <CopyIcon size={16} />, testid: 'rv-copy-image', keepOpen: true, onClick: () => { copyImage(cur.url).then(() => flash('image'), () => toast('Couldn’t copy the image. Try Download instead.', 'error')); } } : null,
       { k: 'link', label: copied === 'link' ? 'Link copied' : 'Copy link', icon: <LinkIcon size={16} />, testid: 'rv-copy-link', keepOpen: true, hint: (job as any).shareToken ? 'The public link' : 'Only you can open it. Use Share for a public link.', onClick: copyLink },
       (job.outputs?.length ?? 0) > 1 && job.id ? { k: 'zip', label: 'Download all (ZIP)', icon: <DownloadIcon size={16} />, testid: 'rv-zip', hint: 'Every result in one ZIP, plus a settings file', href: `/api/jobs/${encodeURIComponent(job.id)}/download.zip`, download: true } : null,
       asIs && medium === 'video' && job.id ? { k: 'gif', label: '', icon: null, testid: 'rv-gif', node: <GifButton key={cur.url} jobId={job.id} url={cur.url} name={appFileName(`${job.id}-${cur.label}`, 'gif')} /> } : null,
       asIs && job.id && owner && !sample && medium === 'image' && canSaveLook(job) ? { k: 'look', label: 'Save as look', icon: <PaletteIcon size={16} />, testid: 'rv-save-look', hint: 'Keep this prompt, model and settings as a look you can reuse', onClick: () => openSaveLook({ job, output: outIx }) } : null,
     ].filter(Boolean) as MItem[];
-    const editTab = viewer && owner && !standIn && (medium === 'image' || medium === 'video') && !(job as any).deletedAt;
+    const editTab = viewer && owner && !standIn && (medium === 'image' || medium === 'video') && !(job as any).deletedAt && !isVectorUrl(cur.url); /* an SVG goes to no other tool (Download PNG first) */
     /* the viewer: frame / Make it talk shortcuts that didn't fit the tiles, then "Use it in…" (the Edit tab). The card: its tool rows. */
-    let use: MItem[] = editTab ? [...overflow.filter(t => ['useframe', 'saveframe', 'talk'].includes(t.k)),
+    let use: MItem[] = editTab ? [...overflow.filter(t => ['useframe', 'saveframe', 'talk'].includes(t.k)), ...(medium === 'image' && asIs ? [rmTool('vector', 'Make it a vector', 'rv-vector', <VectorIcon size={16} />)] /* Image to vector: in More (user 2026-11-03), free on your computer */ : []),
       { k: 'useit', label: 'Use it in…', icon: <ToolIcon size={16} />, testid: 'rm-use-it', trail: '›', hint: 'Relight, upscale, make a video and more, in the Edit tab', onClick: () => { setVTab('edit'); loadRows(); } }]
-      : viewer ? overflow : !asIs ? [] : medium === 'image' ? [rmTool('relight', 'Relight', 'rv-relight', <LightIcon size={16} />), rmTool('upscale', 'Upscale', 'rv-upscale', <UpscaleIcon size={16} />),
+      : viewer ? overflow : !asIs || isVectorUrl(cur.url) /* an SVG goes to no other tool */ ? [] : medium === 'image' ? [rmTool('relight', 'Relight', 'rv-relight', <LightIcon size={16} />), rmTool('upscale', 'Upscale', 'rv-upscale', <UpscaleIcon size={16} />), rmTool('vector', 'Make it a vector', 'rv-vector', <VectorIcon size={16} />),
         ...(job.id && !sample ? [{ k: 'to3d', label: 'Make it 3D', icon: <CubeIcon size={16} />, testid: 'rv-send-3d', hint: 'Turn this picture into a 3D model', href: sendTo3dHref(job.id, outIx), onClick: goClick(sendTo3dHref(job.id, outIx), onClose) }] : [])]
       : medium === 'video' ? [rmTool('upscale', 'Upscale', 'rv-upscale', <UpscaleIcon size={16} />), rmTool('finish', 'Finish', 'rv-finish', <FinishIcon size={16} />), rmTool('reshoot', 'Re-shoot', 'rv-reshoot', <ReshootIcon size={16} />),
         ...(silent ? [] : [rmTool('translate', 'Translate', 'rv-translate', <TranslateIcon size={16} />), rmTool('change-voice', 'Change voice', 'rv-change-voice', <ChangeVoiceIcon size={16} />)])] : [];
@@ -355,7 +358,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
     const qs = `fromJob=${encodeURIComponent(job.id)}&out=${outIx}`;
     const trashed = !!(job as any).deletedAt;
     const live = !standIn && !showingOriginal && !!job.id && !trashed;
-    const canHand = live && kind === 'image';
+    const canHand = live && kind === 'image' && !isVectorUrl(cur.url); /* an SVG (Image to vector) is never handed to a model as an input */
     const refUrl = canHand ? (tools?.length ? refTarget(job, tools, outIx)?.url : null) ?? `${IMAGE_PAGE}?${qs}&as=ref` : null;
     const S = Object.fromEntries(sets) as Record<string, any>;
     const mk = modelOfEngine(job.toolId, (job as any).provider, (job as any).modelKey);
@@ -654,7 +657,7 @@ function TrashItem({ job, onDone }: { job: any; onDone?: () => void }) {
 const withMentions = (t: string) => <MentionText text={t} others />;
 
 /** The Edit tab's "Use it in…" list skips the hand-offs it already shows as their own rows. */
-const RM_SKIP_IMAGE = new Set(['image-upscale', 'app-relight', 'three-d', 'app-inpaint', 'cinema']);
+const RM_SKIP_IMAGE = new Set(['image-upscale', 'app-image-vector', 'app-relight', 'three-d', 'app-inpaint', 'cinema']);
 /* voice: Voice Studio's clip modes are the Translate / Change voice rows above */
 const RM_SKIP_VIDEO = new Set(['upscale', 'h3-extend', 'finish', 'reshoot', 'app-translate-video', 'app-change-voice', 'voice', 'soundtrack', 'cinema']);
 /** tools that work on a clip's sound track (not offered for a silent clip) */

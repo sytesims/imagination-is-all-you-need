@@ -310,6 +310,7 @@ export function fitFor(tool: ToolDef, providerId: string, input: Record<string, 
       if (verdict !== 'too_heavy') { f.reasonCode = 'not_enough_disk'; f.reason = `Its files need ${fmt(req.missingBytes / 1e9)} GB of disk space; ${fmt(hw.disk.freeBytes / 1e9)} GB is free.`; } }
     if (verdict === 'fits' && !hw.gpu?.unifiedMemory && !hw.profile?.unifiedMemory /* GB10: cudaMemGetInfo under-reports (NVIDIA DGX Spark known issues) */ && hw.gpu?.vramFreeBytes != null && R != null && hw.gpu.vramFreeBytes / 2 ** 30 < R) f.vramFreeHint = `Other apps are using graphics memory right now (${fmt(hw.gpu.vramFreeBytes / 2 ** 30)} GB free); close them for full speed.`;
     return f; };
+  if (getProvider(providerId)?.noGpu) return done('fits', 'no_gpu_needed', 'Runs in the app on your computer: no ComfyUI or graphics card needed.'); // a built-in tool (VTracer): nothing to check, even when the hardware can't be read
   if (hw.tier === 'unknown') return done('unknown', 'hardware_unknown', "This computer's hardware couldn't be read, so this route isn't checked.", false);
   if (!req || !req.workflows.length) return done('fits', 'no_gpu_needed', 'Runs on your computer.');
   if (hw.gpu?.type === 'mps' && req.macBlockedFiles?.length) return done('too_heavy', 'unsupported_weights', `${MAC_WEIGHTS_REASON}.`); // 2026-10-25: before the size checks (a Mac with room still can't load them)

@@ -24,7 +24,7 @@ Install with one line ([macOS, Linux, Windows](../README.md#install-in-one-line)
 
 ## What's inside
 - **Direct a Shot (LTX-2.5 at the core):** stage a scene and a camera move in 3D, record a free mockup, and LTX-2.5 22B with the Layout to Render IC-LoRA films it with sound.
-- **A full studio:** 69 ready-made workflows (19 image, 38 video, 8 audio and 4 3D, the 24 one-click apps among them) and 8 step-by-step chains, plus 82 camera presets. Every result keeps its model, where it ran and its price.
+- **A full studio:** 70 ready-made workflows (20 image, 38 video, 8 audio and 4 3D, the 25 one-click apps among them) and 8 step-by-step chains, plus 82 camera presets. Every result keeps its model, where it ran and its price.
 - **Footage Effects (LTX VFX):** Lightricks' Clean Plate, Day to Night and Water Simulation IC-LoRAs on your own clip, on your computer or on Comfy Cloud; Alpha Gen on your computer. The Explore page shows Layout to Render: a grey 3D blockout filmed as a real shot.
 - **Canvas:** each card is a whole workflow; connect cards and results flow on. Claude drafts and prices the board, nothing runs until you press Go, and View workflow shows the exact ComfyUI graph behind a finished card (runs on your computer or Comfy Cloud).
 - **Agents:** 70 MCP tools in all; 15 in the default stdio core toolset (11 catalogue/control tools plus four read-only searches); default HTTP also enables 25 Canvas tools. Quotes, permissions and budgets govern direct runs; Canvas proposals wait for Go. See [MCP.md](MCP.md) and the 17 included [skills](MCP-SKILLS.md).

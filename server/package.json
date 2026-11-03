@@ -24,6 +24,7 @@
     "@fastify/static": "^7.0.4",
     "@gltf-transform/core": "4.5.1",
     "@gltf-transform/extensions": "4.5.1",
+    "@neplex/vectorizer": "0.1.0",
     "@types/better-sqlite3": "^9.6.0",
     "better-sqlite3": "12.11.1",
     "fastify": "^4.28.1",

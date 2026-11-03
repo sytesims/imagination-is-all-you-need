@@ -137,6 +137,7 @@ export const WF_ENTRIES: WfEntry[] = [
   // Make an image
   I('create-image', 'image', { line: 'Describe it, get a picture.', showcase: '032054ec', tags: ['text to image', 'edit with a prompt', 'picture'] }),
   I('camera-lens', 'image', { line: 'Pick the camera, lens and aperture.' /* the card's short line; the tab keeps its own */, art: 'photo', tags: ['lens', 'film stock', 'aperture', 'cinematic still'] }),
+  I('image-vector', 'image', { line: 'Any picture, as an editable SVG.', name: 'Image to vector (SVG)', needs: 'A picture', tags: ['svg', 'vector', 'logo', 'trace', 'icon'] }),
   I('image-layers', 'image', { line: 'Every part on its own layer.', name: 'Split into layers', featured: 'image-layers-paw', tags: ['psd', 'layers', 'poster', 'split'] }),
   // Change a photo
   I('edit-image', 'photo', { line: 'Change any photo with a few words.', art: 'photo', still: { url: '/examples/showcase-3d/mossbun-golden-hour-in.jpg', jobId: 'b688b9c3' } /* Mossbun's golden-hour edit, GPT Image 2.5 Flare */, tags: ['edit with a prompt', 'change a photo', 'retouch', 'flux 3 klein'] }),

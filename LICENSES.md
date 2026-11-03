@@ -10,14 +10,13 @@ Commercial: yes = OSI licence; no = non-commercial; restricted = custom terms (r
 |---|---|---|---|---|---|---|
 | Kling 3.0 Omni Edit (hosted) | Comfy Router (hosted) | [Proprietary (hosted API)](https://docs.comfy.org/development/comfy-router/models/kling/kling-v3-omni/code) | provider-terms | — | [link](https://docs.comfy.org/development/comfy-router/models/kling/kling-v3-omni/code) | object-swap, motion-transfer, make-it-real |
 | Seedance 2.5 Edit (hosted) | Comfy Router (hosted) | [Proprietary (hosted API)](https://docs.comfy.org/development/comfy-router/models/byteplus/dreamina-seedance-2-5-260628/code) | provider-terms | — | [link](https://docs.comfy.org/development/comfy-router/models/byteplus/dreamina-seedance-2-5-260628/code) | object-swap, motion-transfer, make-it-real |
-| Seedance (hosted) | Comfy Router (hosted) | Proprietary (hosted API) | provider-terms | — | — | object-swap, motion-transfer, restyle, reshoot, camera, photo-fx, h3-video, cinema, photos-reel, app-photos-to-reel, app-ugc-ad, app-orbit-shot, app-anime-restyle |
 | Open weights (ComfyUI workflow) | Local ComfyUI | [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) | yes | — | — | object-swap, motion-transfer, restyle, camera, photo-fx, photos-reel, app-photos-to-reel, app-anime-restyle |
 | H3 Character Swap LoRA v1.5 | Local ComfyUI | [MiniMax H3 Community License (adapter retains base terms; no extra no-SaaS clause, verified 2026-10-17)](https://huggingface.co/akatz-ai/MiniMax-H3-Character-Swap-LoRA/blob/main/LICENSE) | restricted | Powered by MiniMax H3 ([clause](https://huggingface.co/akatz-ai/MiniMax-H3-Character-Swap-LoRA/raw/main/LICENSE)) | [link](https://huggingface.co/akatz-ai/MiniMax-H3-Character-Swap-LoRA) | object-swap |
 | Wan Animate 2 · Comfy Cloud | Comfy Cloud · open workflow | [Apache-2.0](https://huggingface.co/Comfy-Org/Wan-Animate-2) | yes | — | [link](https://docs.comfy.org/tutorials/video/wan/wan-animate-2) | motion-transfer |
+| Seedance (hosted) | Comfy Router (hosted) | Proprietary (hosted API) | provider-terms | — | — | restyle, camera, photo-fx, h3-video, cinema, photos-reel, app-photos-to-reel, app-ugc-ad, app-orbit-shot, app-anime-restyle |
 | MiniMax H3 Style Transfer | Local ComfyUI | [MiniMax H3 Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE) | restricted | Powered by MiniMax H3 ([clause](https://huggingface.co/MiniMaxAI/MiniMax-H3/raw/main/LICENSE)) | [link](https://huggingface.co/Alissonerdx/Minimax-H3-ComfyUI) | restyle, app-anime-restyle |
 | MiniMax H3 VFX Edit | Local ComfyUI | [MiniMax H3 Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE) | restricted | Powered by MiniMax H3 ([clause](https://huggingface.co/MiniMaxAI/MiniMax-H3/raw/main/LICENSE)) | [link](https://huggingface.co/Alissonerdx/Minimax-H3-ComfyUI) | restyle |
 | Open weights (ComfyUI workflow) | Local ComfyUI | [LTX-2 Community License](https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2) | restricted | — | — | reshoot, cinema, app-orbit-shot |
-| Veo (hosted) | Comfy Router (hosted) | Proprietary (hosted API) | provider-terms | — | — | reshoot, h3-video, cinema, app-ugc-ad |
 | Open weights · Wan Fun Camera (fallback) | Local ComfyUI | [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) | yes | — | — | reshoot, cinema, app-orbit-shot |
 | LTX-2 19B re-shoot · Comfy Cloud workflow | Comfy Cloud · open workflow | [LTX-2 Community License](https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2) | restricted | — | [link](https://huggingface.co/Lightricks/LTX-2) | reshoot |
 | New angle · H3 CrossView · cloud | Comfy Cloud · open workflow | [MiniMax H3 Community License](https://huggingface.co/Cseti/MiniMax-H3_Ref2VA-LoRA-CrossView-Warp_v1) | restricted | Powered by MiniMax H3 ([clause](https://huggingface.co/MiniMaxAI/MiniMax-H3/raw/main/LICENSE)) | [link](https://github.com/Comfy-Org/comfy-reshoot) | reshoot |
@@ -81,6 +80,7 @@ Commercial: yes = OSI licence; no = non-commercial; restricted = custom terms (r
 | MOSS-Image Base | Local ComfyUI | [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) | yes | — | [link](https://huggingface.co/OpenMOSS-Team/MOSS-Image-Base) | create-image, app-character-sheet, app-product-shot, app-phone-photo |
 | MiniMax H3 | Local ComfyUI · or fal, Replicate, provider API | [MiniMax H3 Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE) | restricted | Powered by MiniMax H3 ([clause](https://huggingface.co/MiniMaxAI/MiniMax-H3/raw/main/LICENSE)) | [link](https://huggingface.co/MiniMaxAI/MiniMax-H3) | h3-video, app-transition, app-ugc-ad |
 | Wan 2.2 5B | Local ComfyUI | [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) | yes | — | [link](https://huggingface.co/Wan-AI/Wan2.2-TI2V-5B) | h3-video |
+| Veo (hosted) | Comfy Router (hosted) | Proprietary (hosted API) | provider-terms | — | — | h3-video, cinema, app-ugc-ad |
 | Kling (hosted) | Comfy Router (hosted) | Proprietary (hosted API) | provider-terms | — | — | h3-video, cinema, app-transition, app-ugc-ad |
 | Wan 3.0 (hosted) | Comfy Router (hosted) | Proprietary (hosted API) | provider-terms | — | — | h3-video, app-transition, app-ugc-ad |
 | MiniMax H3 · Comfy Cloud | Comfy Cloud · API nodes | [MiniMax H3 Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE) | provider-terms | Powered by MiniMax H3 ([clause](https://huggingface.co/MiniMaxAI/MiniMax-H3/raw/main/LICENSE)) | [link](https://docs.comfy.org/tutorials/video/minimax/minimax-h3) | h3-video, app-ugc-ad |
@@ -121,7 +121,7 @@ Commercial: yes = OSI licence; no = non-commercial; restricted = custom terms (r
 | ElevenLabs TTS | Comfy Router (hosted) | [Proprietary (hosted API)](https://elevenlabs.io/terms-of-use) | provider-terms | — | [link](https://docs.comfy.org/built-in-nodes/ElevenLabsTextToSpeech) | audio, voice |
 | ElevenLabs v3 TTS | Comfy Router (hosted) | [Proprietary (hosted API)](https://elevenlabs.io/terms-of-use) | provider-terms | — | [link](https://docs.comfy.org/built-in-nodes/ElevenLabsTextToSpeech) | audio, voice |
 | ElevenLabs v4 Turbo TTS | Comfy Router (hosted) | [Proprietary (hosted API)](https://elevenlabs.io/terms-of-use) | provider-terms | — | [link](https://docs.comfy.org/built-in-nodes/ElevenLabsTextToSpeech) | audio, voice |
-| MiniMax Speech 2.8 HD (direct API) | Provider API (hosted) | [Proprietary (hosted API)](https://www.minimax.io/platform/protocol/terms-of-service) | provider-terms | — | [link](https://platform.minimax.io/docs/api-reference/speech-t2a-http) | audio, voice |
+| MiniMax Speech 2.8 HD (direct API) | Provider API (hosted) | [Proprietary (hosted API)](https://www.minimax.io/platform/protocol/terms-of-service) | provider-terms | — | [link](https://platform.minimax.io/docs/api-reference/speech-t2a-http) | audio |
 | MiniMax Speech 2.8 Turbo (direct API) | Provider API (hosted) | [Proprietary (hosted API)](https://www.minimax.io/platform/protocol/terms-of-service) | provider-terms | — | [link](https://platform.minimax.io/docs/api-reference/speech-t2a-http) | audio |
 | Fish Audio TTS | Comfy Router (hosted) | [Proprietary (hosted API)](https://fish.audio/terms) | provider-terms | — | [link](https://docs.comfy.org/built-in-nodes/FishAudioTextToSpeech) | audio, voice |
 | HeyGen TTS | Comfy Router (hosted) | [Proprietary (hosted API)](https://www.heygen.com/terms) | provider-terms | — | [link](https://docs.comfy.org/built-in-nodes/HeyGenTextToSpeechNode) | audio, voice |
@@ -184,6 +184,7 @@ Commercial: yes = OSI licence; no = non-commercial; restricted = custom terms (r
 | ByteDance Seedream 5.0 Flash · layers (hosted) | Comfy Router (hosted) | [Proprietary (hosted API)](https://docs.comfy.org/built-in-nodes/ByteDanceSeedreamLayerSeparationNodeV2) | provider-terms | — | [link](https://docs.comfy.org/built-in-nodes/ByteDanceSeedreamLayerSeparationNodeV2) | app-image-layers |
 | ByteDance Seedream 5.0 Pro · layers (hosted) | Comfy Router (hosted) | [Proprietary (hosted API)](https://docs.comfy.org/built-in-nodes/ByteDanceSeedreamLayerSeparationNodeV2) | provider-terms | — | [link](https://docs.comfy.org/built-in-nodes/ByteDanceSeedreamLayerSeparationNodeV2) | app-image-layers |
 | Qwen-Image-Layered | Local ComfyUI | [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) | yes | — | [link](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_qwen_image_layered.json) | app-image-layers |
+| VTracer | Your computer, in the app (no ComfyUI) · or Ideogram Vector 1 · Comfy Cloud | [MIT](https://opensource.org/license/mit) | yes | — | [link](https://github.com/visioncortex/vtracer) | app-image-vector |
 
 "Runs on" says where the model runs (your ComfyUI, Comfy Cloud, a partner or provider API), not its licence: "Comfy Cloud · open workflow" is an open-weights workflow (no API nodes) run on Comfy Cloud, and its terms are in the Licence column.
 
@@ -337,6 +338,15 @@ Commercial: yes = OSI licence; no = non-commercial; restricted = custom terms (r
 | ag-psd 31.0.3 (Download PSD: writes the layered .psd in the browser) | MIT | yes | [link](https://github.com/Agamnentzar/ag-psd/blob/master/LICENSE) |
 | pako 2.1.0 (zlib for ag-psd) | MIT AND Zlib | yes | [link](https://github.com/nodeca/pako/blob/master/LICENSE) |
 | base64-js 1.5.1 (used by ag-psd) | MIT | yes | [link](https://github.com/beatgammit/base64-js/blob/master/LICENSE) |
+
+## Components: app-image-vector
+
+| Component | Licence | Commercial | Source |
+|---|---|---|---|
+| VTracer (visioncortex; traces on your computer) | MIT | yes | [link](https://github.com/visioncortex/vtracer/blob/master/LICENSE) |
+| @neplex/vectorizer 0.1.0 (Node binding of VTracer, prebuilt binaries) | MIT | yes | [link](https://github.com/neplextech/vectorizer/blob/main/LICENSE) |
+| Official Comfy template api_ideogram_vector_1_image_to_svg (Comfy-Org/workflow_templates) | MIT | yes | [link](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_ideogram_vector_1_image_to_svg.json) |
+| Ideogram Vector 1 (hosted, Comfy partner node) | Ideogram API terms | provider-terms | [link](https://ideogram.ai/legal/api-tos) |
 
 ## Components: soul
 

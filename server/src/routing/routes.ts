@@ -40,6 +40,7 @@ import { songSeconds } from '../shared/audioLengths.js';
 import { IT_PROVIDER, IT_MAX_SECONDS, itIssue, itBillSeconds } from '../comfy/infiniteTalkCloud.js';
 import { TV_MAX_SECONDS, TV_PART_MAX } from '../shared/talkingVideo.js';
 import { LTX_API_CLOUD, ltxApiCloudIssue } from '../comfy/ltx25ApiCloud.js';
+import { VECTOR_LOCAL, VECTOR_IDEOGRAM } from '../shared/imageVector.js';
 import { H3KF_PROVIDER, H3KF_MODE, H3KF_SECONDS, H3KF_MIN_FRAMES, H3KF_MAX_FRAMES, H3KF_STEP, KEYFRAMES_CLOUD_ONLY, h3KeyframesIssue, jobModeOf } from '../comfy/h3KeyframesCloud.js';
 
 const CHECKED = '2026-10-16';
@@ -247,6 +248,9 @@ const TWINS: { model: string; twin: string; tools: string[]; /** only the tool i
   { model: 'comfy-open', twin: 'cloud-ltx-camera', tools: ['camera'], unavailableFor: (i) => { const t = (Array.isArray(i.types) ? i.types : typeof i.types === 'string' ? (() => { try { const x = JSON.parse(i.types); return Array.isArray(x) ? x : [x]; } catch { return i.types.split(','); } })() : []).map(String);
     return t.length && t.every((x: string) => /^ltx-/.test(x.trim())) ? null : 'This route only runs the LTX camera moves'; } },
   { model: 'comfy-open', twin: 'cloud-reshoot', tools: ['reshoot'] },
+  // Nov 3: Image to vector (SVG): VTracer is a built-in tool, so the tool has one card and two places: your computer (VTracer, free) and Comfy Cloud
+  // (the Ideogram Vector 1 partner node, comfy/ideogramVectorCloud.ts). provider=cloud-ideogram-vector still works (aliasOk).
+  { model: VECTOR_LOCAL, twin: VECTOR_IDEOGRAM, tools: ['app-image-vector'], exactTool: true, aliasOk: true },
   // Oct 26: H3 Character Swap on shared Comfy Cloud with the user's imported LoRA (comfy/h3CharSwapCloud.ts): one pass, 2–15 s, mask-free
   // Nov 1: Pika H3 Flex on Comfy Cloud (comfy/pikaH3Flex.ts): the same official templates as on your computer, fp16 video VAE, a free check for the LoRA first.
   { model: 'comfy-h3-pika', twin: PIKA_PROVIDER, tools: ['h3-video'], exactTool: true, modes: ['t2v', 'i2v', 'flf'], unavailableFor: pikaIssue },

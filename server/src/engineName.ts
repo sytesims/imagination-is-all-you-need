@@ -1,6 +1,7 @@
 /** BH10 P1-4: the name of the engine that actually ran a job (or will run it), never a product name ("OpenSoul"), a router ("Auto")
  *  or the generic "Open weights". Order: hosted route (fal / Replicate) → tool-specific rule (Camera LTX moves, OpenSoul base + LoRAs)
  *  → the base tool's card name (apps) → the tool's own model line → provider name. Shown as job.modelName / job.model. */
+import { PLACE_ENGINE } from './shared/imageVector.js';
 import type { Job } from './jobs.js';
 import { cardName, modelNameForRun } from './models.js';
 import { findRoute } from './routing/routes.js';
@@ -43,7 +44,8 @@ export function engineNameOf(j: Pick<Job, 'toolId' | 'provider' | 'route' | 'inp
 }
 function rawEngineName(j: Pick<Job, 'toolId' | 'provider' | 'route' | 'input'>): string {
   if (j.provider === 'local-rig') return 'Mesh2Motion'; // Rig as a character: Mesh2Motion's human skeleton, weights and moves, run in the browser
-  if (j.provider === 'local-ffmpeg') return 'FFmpeg (local)'; // no model: a saved video frame or a Stitch, cut by ffmpeg on this computer
+  if (j.provider === 'local-ffmpeg') return 'FFmpeg (local)';
+  if (j.route && PLACE_ENGINE[j.route]) return PLACE_ENGINE[j.route].name; // Image to vector on Comfy Cloud: Ideogram Vector 1 ran, not VTracer // no model: a saved video frame or a Stitch, cut by ffmpeg on this computer
   const t = getTool(j.toolId) as any; const base: string = t?.app?.gallery?.base ?? j.toolId;
   const special = (base === 'soul' ? soulName(j) : null) ?? hostedRouteModel(j.route) ?? modelNameForRun(base, j.provider, j.input ?? {}, j.route);
   if (special) return special;

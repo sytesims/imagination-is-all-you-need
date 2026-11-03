@@ -113,6 +113,7 @@ export const CATALOGUE: Record<string, CatalogueEntry> = {
   'bria-eraser': e('Bria Eraser', 44, 'api', 'Removes a painted object, fills the gap', { aliases: ['bria', 'eraser', 'erase', 'remove object'] }),
   'fal-object-removal': e('fal Object Removal', 45, 'api', 'Removes a painted object and its shadow', { aliases: ['object removal', 'erase', 'remove object'] }),
   'bria-virtual-tryon': e('Bria Virtual Try-On', 53, 'api', 'Puts up to three garments on a person', { aliases: ['bria', 'try on', 'try-on', 'vto', 'garment', 'clothes'] }),
+  'ideogram-vector-1': e('Ideogram Vector 1', 54, 'api', 'Clean SVG vectors from any picture', { aliases: ['ideogram', 'svg', 'vector'] }), // Image to vector (2026-11-03)
   'fashn-tryon-1.6': e('FASHN Virtual Try-On v1.6', 46, 'api', 'Puts a garment on a person', { aliases: ['fashn', 'try on', 'try-on', 'vto', 'garment'] }),
   // Image to layers (2026-10-24): Seedream 5.0 Flash / Pro in layer mode (their own rows here, so the menu says what they do in this workflow)
   'seedream-5.0-flash-layers': e('Seedream 5.0 Flash', 47, 'api', 'Splits a photo into clean layers, fast', { aliases: ['seedream', 'bytedance', 'flash', 'layers', 'layer separation'] }),
@@ -139,6 +140,7 @@ export const CATALOGUE: Record<string, CatalogueEntry> = {
   '4x-nomos2': e('4x Nomos2 DAT2', 74, 'gpu', 'Clean, faithful 4x upscale', { aliases: ['nomos', 'nomos2', 'dat', 'phhofm', 'upscale'] }),
   'real-esrgan': e('Real-ESRGAN', 75, 'gpu', 'Sharper, larger photos', { aliases: ['esrgan', 'upscale'] }),
   '4x-ultrasharp': e('4x-UltraSharp', 76, 'gpu', 'Crisp detail when upscaling', { aliases: ['ultrasharp', 'upscale'] }),
+  'vtracer': e('VTracer', 78, 'gpu', 'Traces logos and flat art into SVG shapes', { aliases: ['vtracer', 'visioncortex', 'svg', 'vector', 'trace'] }), // Image to vector (2026-11-03)
   'qwen-image-layered': e('Qwen-Image-Layered', 77, 'gpu', 'Needs download (30.1 GB) · free layers locally' /* = imageLayers.ts QWEN_LAYERED_NEEDS; image-layers test checks */, { aliases: ['qwen', 'layers', 'layered', 'alibaba'] }), // Image to layers (2026-10-24): listed for Local, needs a download
   // ---------------------------------------------------------------- Video
   'seedance-2.0': e('Seedance 2.0', 3, 'api', 'Text or photo to video, camera moves', { featured: true, popular: true, aliases: ['seedance', 'bytedance', 'dreamina'] }),

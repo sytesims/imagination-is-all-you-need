@@ -19,6 +19,7 @@ import { AD_STYLES, AD_STYLE_DEFAULT, AD_STYLE_IDS, AD_PLACEMENTS, AD_PLACEMENT_
 import { BRAND_ACCENTS, BRAND_LOGO_SPOT, brandAccentWords, logoFor, type BrandKit } from '../shared/brandKit.js';
 import { getBrandKit } from '../brandKits.js';
 import { LAYER_MODELS, LAYER_SIZES, LAYER_SIZE_DEFAULT, LAYERS_NO_PROMPT, layersPhotoBlock, layerLabel } from '../shared/imageLayers.js';
+import { VECTOR_MODELS, VECTOR_IDEOGRAM, VECTOR_STYLES, VECTOR_STYLE_DEFAULT, VECTOR_MAX_SIDE, VECTOR_NOTES, vectorPhotoBlock, vectorStyleLabel } from '../shared/imageVector.js';
 import { mockLayerNames, mockLayerCount } from './mockLayers.js';
 import { checkImageCaps, capsFor, ratioOf } from '../shared/imageCaps.js';
 import { closestAspect } from '../shared/imageSnap.js';
@@ -996,6 +997,17 @@ export const APP_GALLERY: GalleryApp[] = [
     prepare: async (r) => { const p = await probe(r.imagePath); const b = photoBlock(p) ?? layersPhotoBlock(p); return b ? { error: { field: 'image', ...b } } : { sourceSize: p ? { width: p.width, height: p.height } : null }; },
     extra: { promptOptional: true, outputLabel: 'Layers' }, finish: (r) => ({ outputLabel: 'Layers', layers: true, transparent: true, mockLayers: mockLayerNames(mockLayerCount(r.appPrompt, r.seed)).map((nm, k) => layerLabel(k, nm)) /* sample layers (mock only): 2–13, from "N layers" in the prompt, else the seed */ }),
     notes: ['Up to 16 layers plus the background; the model decides how many. Name the elements in the prompt to steer it.', 'Each layer is a PNG with a transparent background, the size of the picture. The photo needs at least 512 px on each side.'] },
+  // ---- Image to vector (SVG) (2026-11-03, shared/imageVector.ts): VTracer on this computer (free, default) or Ideogram Vector 1 on Comfy Cloud. One picture
+  // in, one editable SVG out. No prompt. The style (Logo / flat, Illustration, Detailed) maps to VTracer's settings; Ideogram picks its own detail.
+  { id: 'image-vector', name: 'Image to vector (SVG)', route: `${IMAGE_PAGE}?workflow=image-vector`, category: 'Edit', base: 'create-image', poster: null,
+    description: 'Turn a picture into an editable SVG vector: clean shapes you can scale to any size and edit in Figma, Illustrator or Inkscape.',
+    locked: { types: '["edit"]' }, providers: [], extraProviders: VECTOR_MODELS, exposed: ['image', 'provider', 'rights', 'seed'], labels: { image: 'Picture' }, required: ['image'],
+    fields: [{ name: 'style', label: 'Style', kind: 'select', control: 'segmented', options: VECTOR_STYLES.map((s) => ({ value: s.value, label: s.label })), default: VECTOR_STYLE_DEFAULT }],
+    compose: (v) => `Trace into an SVG vector · ${vectorStyleLabel(v.style)}`, noPrompt: 'No prompt: the picture is traced into shapes',
+    prepare: async (r) => { if (/\.svg$/i.test(String(r.imagePath ?? ''))) return { error: { field: 'image', code: 'already_vector', message: 'That file is already a vector (SVG). Pick a PNG, JPG or WebP picture.' } };
+      const p = await probe(r.imagePath); const b = vectorPhotoBlock(p); return b ? { error: { field: 'image', ...b } } : { sourceSize: p ? { width: p.width, height: p.height } : null }; },
+    extra: { promptOptional: true, outputLabel: 'Vector (SVG)' }, finish: (r) => ({ outputLabel: 'Vector (SVG)', vector: true, transparent: true, ...(r.provider === VECTOR_IDEOGRAM ? { warnings: [...(r.warnings ?? []), VECTOR_NOTES.ideogramStyle] } : {}) }),
+    notes: ['Best on logos, icons and flat illustrations. A photo works too, but becomes many small shapes.', `Pictures bigger than ${VECTOR_MAX_SIDE} px are scaled down before tracing. Transparent areas stay transparent.`] },
   { id: 'music-bed', name: 'Music Bed', category: 'Audio', base: 'soundtrack', poster: null, description: 'Add a music track under a clip, original audio kept underneath.',
     locked: { types: '["music"]', mix: 'blend' }, exposed: ['video', 'prompt', 'rights'], promptTemplate: '{prompt}' },
 ];

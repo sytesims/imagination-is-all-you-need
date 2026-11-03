@@ -28,6 +28,7 @@ import { lifecycleFields } from '../shared/lifecycle.js';
 import { weightsGate, requirementsFor } from '../hardware/requirements.js';
 import { MAC_WEIGHTS_REASON } from '../hardware/macWeights.js';
 import { LOCAL_UNREACHABLE_REASON } from './runnable.js';
+import { VECTOR_PLACE_DETAIL, PLACE_ENGINE } from '../shared/imageVector.js';
 import { NEEDS_COMFYUI_TEXT, MODELS, MAKERS, makerOf, RUN_ON_IDS, RUN_ON_LABELS, RUN_ON_BILLED_TO, engineModelKey, ENGINE_MODEL, TOOL_SPLITS, engineSplits, isLtxMove, normRunOn, runOnOfRoute, runOnOfRouteId, aKey, comfyHowLine, placeOf, type ModelDef, type RunOn, type InputRule } from '../shared/modelIds.js';
 import { CATALOGUE, THREE_D_BEST_FOR, variantsOf, type AudioKind } from '../shared/modelRank.js';
 import { IMAGE_CAPS } from '../shared/imageCaps.js';
@@ -375,7 +376,7 @@ export function modelsBlock(tool: ToolDef, providers: any[]): any[] {
       const best = rs[0]; const priced = rs.map((x) => x.listCredits).filter((c): c is number => typeof c === 'number');
       return { id: ro, label: RUN_ON_LABELS[ro], billedTo: RUN_ON_BILLED_TO[ro], status: best.status, credits: ro === 'local' ? (best.status === 'ready' ? 0 : null) /* free only once it runs here: an uninstalled / off GPU is never "Free" */ : priced.length ? Math.min(...priced) : null, reason: best.status === 'ready' || best.status === 'sample' ? null : best.reason, reasonCode: best.reasonCode,
         routes: rs.map((x) => x.routeId), engines: [...new Set(rs.map((x) => x.engine))], ...(rs.some((x) => x.comfyVariant) ? { comfyVariants: [...new Set(rs.map((x) => x.comfyVariant).filter(Boolean))] } : {}),
-        group: ro === 'local' ? 'gpu' as const : ro === 'comfy-cloud' ? 'comfy' as const : 'api' as const, detail: ro === 'comfy-cloud' ? comfyHowLine(rs.map((x) => x.comfyVariant), methodOf(rs.map((x) => x.routeId))) || null /* the place is "Comfy Cloud"; this says how ("Partner model · via last frame", "Open workflow or partner model") */ : null,
+        group: ro === 'local' ? 'gpu' as const : ro === 'comfy-cloud' ? 'comfy' as const : 'api' as const, ...(PLACE_ENGINE[rs[0]?.routeId] ? { runsModel: PLACE_ENGINE[rs[0].routeId] } /* this place runs a different, named model (Image to vector: Comfy Cloud = Ideogram Vector 1); quote, job and result name it */ : {}), detail: VECTOR_PLACE_DETAIL[rs[0]?.routeId] ?? (ro === 'comfy-cloud' ? comfyHowLine(rs.map((x) => x.comfyVariant), methodOf(rs.map((x) => x.routeId))) || null /* the place is "Comfy Cloud"; this says how ("Partner model · via last frame", "Open workflow or partner model") */ : null) /* Image to vector: the engine each place runs */,
         wired: rs.some((x) => x.wired), action: rowAction(ro, best), ...(ro === 'local' && best.here ? { here: best.here } : {}), ...(ro === 'local' && rs.every((x) => x.needsNvidia) ? { needsNvidia: true } : {}), ...(ro === 'local' && best.reasonCode === 'not_enough_disk' && best.missingBytes ? { missingBytes: best.missingBytes } /* "Needs 43 GB space": the files don't fit */ : {}), ...((c) => (c ? { choices: c } : {}))(choicesOf(ro, rs, makerOf(m.key)?.name ?? null)), _best: best }; });
     // Other providers the Comfy place (or your computer) covers are hidden unless Settings → Routing → Show other providers is on (routing/hiddenPlaces.ts)
     const vis = visiblePlaces(tool.id, m.key, runsOn, undefined, preselectOf(runsOn)?.runOn ?? null); const hiddenRows: any[] = [];
@@ -417,7 +418,7 @@ export function resolveModelId(toolId: string, id: string, input?: Record<string
 const nativeRunOn = (engine: string): RunOn | null => { const r = engine ? routesFor(engine)[0] : undefined; return r ? runOnOfRoute(r) : null; };
 /** modelKey + runOn for a job: stored fields first (new jobs), else derived from tool + provider (+ input for camera) and the route that ran. */
 export function jobModelFields(j: { toolId: string; provider: string; route?: string | null; input?: Record<string, any>; modelKey?: string; runOn?: string | null }) {
-  const modelKey = j.modelKey ?? (j.provider ? modelKeyOf(j.toolId, j.provider, j.input ?? null) : null);
+  const modelKey = (j.route && PLACE_ENGINE[j.route] ? PLACE_ENGINE[j.route].key : null) ?? j.modelKey ?? (j.provider ? modelKeyOf(j.toolId, j.provider, j.input ?? null) : null);
   const r = j.route ? findRoute(j.route) : undefined;
   const runOn = r ? runOnOfRoute(r) /* the route that ran (a fallback may have moved it) */ : (j.runOn as RunOn | undefined) ?? (j.route ? runOnOfRouteId(j.route) : nativeRunOn(j.provider)); // no route (pre-routing / free lane): the engine's native route
   return { modelKey, runOn: runOn ?? null, runOnLabel: runOn ? RUN_ON_LABELS[runOn as RunOn] ?? runOn : null };

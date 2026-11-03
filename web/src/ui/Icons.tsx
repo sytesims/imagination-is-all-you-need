@@ -51,6 +51,8 @@ export const CharacterSheetIcon = svg(<><rect x="2.5" y="4.5" width="19" height=
 export const ProductIcon = svg(<><path d="m12 3 7.5 4.25v8.5L12 20l-7.5-4.25v-8.5z" /><path d="m4.5 7.25 7.5 4.25 7.5-4.25M12 11.5V20" /></>, 'ProductIcon');
 export const BrushIcon = svg(<><path d="M20 4 10.5 13.5" /><path d="M10.5 13.5c-2.2 0-3.7 1.5-3.7 3.6 0 1.4-1 2.4-2.8 2.9 3.8 1.3 8.3.3 8.3-3.7z" /><path d="m15 6.5 2.5 2.5" /></>, 'BrushIcon');
 /* Brush Edit mask sheet (2026-10-23): our own drawings */
+/** Image to vector (SVG): a pen-tool curve between two anchor points. */
+export const VectorIcon = svg(<><path d="M5 18C7 9 17 15 19 6" /><rect x="3" y="16" width="4" height="4" rx="0.5" /><rect x="17" y="4" width="4" height="4" rx="0.5" /><path d="M5 18 9 12" /><path d="M19 6 15 12" /></>, 'VectorIcon');
 /** Image to layers: three stacked sheets. */
 export const LayerSheetsIcon = svg(<><path d="m12 3.5 8.5 4.5-8.5 4.5L3.5 8z" /><path d="m3.5 12 8.5 4.5 8.5-4.5" /><path d="m3.5 16 8.5 4.5 8.5-4.5" /></>, 'LayerSheetsIcon');
 export const EraserIcon = svg(<><path d="m14.5 4.5 5 5-9 9H6l-2.5-2.5a1.5 1.5 0 0 1 0-2.1z" /><path d="M9.5 9.5l5 5M10.5 18.5H20" /></>, 'EraserIcon');
@@ -219,7 +221,7 @@ export const ICONS = {
   more: MoreIcon, upload: UploadIcon, generate: GenerateIcon,
   extend: ExtendIcon, director: DirectorIcon, portrait: PortraitIcon, reframe: ReframeIcon, hdr: HdrIcon, fps: FpsIcon, depth: DepthIcon,
   characterSheet: CharacterSheetIcon, product: ProductIcon, brush: BrushIcon, light: LightIcon, transition: TransitionIcon, phoneAd: PhoneAdIcon, phonePhoto: PhonePhotoIcon,
-  faceSwap: FaceSwapIcon, shots: ShotsIcon, expand: ExpandIcon, garment: GarmentIcon, material: MaterialIcon, eraser: EraserIcon, layerSheets: LayerSheetsIcon,
+  faceSwap: FaceSwapIcon, shots: ShotsIcon, expand: ExpandIcon, garment: GarmentIcon, material: MaterialIcon, eraser: EraserIcon, layerSheets: LayerSheetsIcon, vector: VectorIcon,
   yourGpu: YourGpuIcon, comfyPlace: ComfyPlaceIcon, apiPlug: ApiPlugIcon, savedTag: SavedTagIcon, officialBadge: OfficialBadgeIcon, community: CommunityIcon, stopwatch: StopwatchIcon, sparkle: SparkleIcon, finish: FinishIcon,
   cube: CubeIcon, rig: RigIcon, orbit: OrbitIcon, previz: PrevizIcon, loop: LoopIcon, mic: MicIcon, changeVoice: ChangeVoiceIcon, translate: TranslateIcon, music: MusicIcon, musicBed: MusicBedIcon, stitch: StitchIcon,
 } as const;
@@ -237,7 +239,7 @@ export const TOOL_ICONS: Record<string, IconName> = {
   'h3-extend': 'extend', cinema: 'director', voice: 'mic', 'image-upscale': 'upscale', soul: 'portrait', reframe: 'reframe', 'remove-bg': 'cutout',
   'footage-fx': 'sparkle', 'prompt-edit': 'brush' /* Edit Video: Prompt Edit (Bernini-R) */, 'two-person-swap': 'faceSwap' /* Swap Two People (H3 Character Swap ×2) */, finish: 'finish', 'sdr-hdr': 'hdr', 'fps-boost': 'fps', 'depth-map': 'depth', 'app-character-sheet': 'characterSheet', 'app-product-shot': 'product',
   'app-photos-to-reel': 'video', 'app-inpaint': 'brush', 'app-relight': 'light', 'app-transition': 'transition', 'app-ugc-ad': 'phoneAd', 'app-orbit-shot': 'orbit', 'app-face-swap': 'faceSwap', 'app-shots': 'shots',
-  'app-remove-bg': 'cutout', 'app-expand': 'expand', 'app-erase': 'eraser', 'app-try-on': 'garment', 'app-material-swap': 'material', 'app-phone-photo': 'phonePhoto', 'app-ad-pack': 'phoneAd', 'app-image-layers': 'layerSheets', 'edit-image': 'brush' /* header Image menu: Edit Image (Create Image in edit mode) */,
+  'app-image-vector': 'vector', 'app-remove-bg': 'cutout', 'app-expand': 'expand', 'app-erase': 'eraser', 'app-try-on': 'garment', 'app-material-swap': 'material', 'app-phone-photo': 'phonePhoto', 'app-ad-pack': 'phoneAd', 'app-image-layers': 'layerSheets', 'edit-image': 'brush' /* header Image menu: Edit Image (Create Image in edit mode) */,
   'app-anime-restyle': 'restyle', 'app-video-upscale': 'upscale', 'app-change-voice': 'changeVoice', 'app-translate-video': 'translate', 'app-music-bed': 'musicBed',
   'three-d': 'cube', 'three-d-turntable': 'orbit', 'image-to-3d': 'cube', turntable: 'orbit', 'plan-a-shot': 'previz', '3d': 'cube', loop: 'loop' /* Video flow shortcut: Loop */, 'direct-a-shot': 'previz', 'make-it-real': 'previz', compose: 'stitch' /* Video: Stitch (POST /api/compose) */,
 };
