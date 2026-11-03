@@ -131,6 +131,9 @@ CI has no secrets and no keys, so nothing in it can call a paid API.
   `TEST_SCRATCH=/Volumes/small/ohft- npm test -- --only <name>` (a short path: socket paths are limited).
 - **Mock media.** A test that checks routes and prices, not the media, can start its server with
   `OPENHIGGSFIELD_MOCK_RENDER=copy`: sample videos are copied instead of encoded.
+- **Replay real media.** `OPENHIGGSFIELD_MOCK_REPLAY_DIR=<folder>` (mock backend only, for demo recordings): each finished mock job
+  shows a real file from that folder instead of the drawn sample, picked by kind (image, video, audio), sorted by name, handed out in turn.
+  Results are still samples and cost nothing; with no matching file the usual sample is used.
 
 ## Reading a failure
 
