@@ -520,6 +520,9 @@ const IMAGE: PromptGrammar[] = [
   g({ key: 'bria-expand', name: 'Bria Expand', medium: 'image', kind: 'image-edit', status: 'known', prompt: 'optional', refs: { style: 'none', note: 'The photo is placed on a larger canvas.', src: [NODE('BriaExpandImage')] },
     negative: 'none', languages: 'English only, no special characters (Bria)', structure: 'What the new edges show.', example: 'More of the beach and the pier on the right.',
     code: [{ at: 'server/src/tools/imageFalApps.ts:50', follows: 'yes', note: 'Only the user\'s own words.' }], sources: [NODE('BriaExpandImage')] }),
+  // Image to vector (SVG) (2026-11-03, shared/imageVector.ts): one picture in, one SVG out; no prompt on either place
+  noPrompt('vtracer', 'VTracer', 'image', 'utility', 'Traces the picture into SVG shapes; not an AI model, so no prompt. The Style picks its settings.', [{ at: 'server/src/vectorTrace.ts:1', follows: 'n/a' }], [O('https://github.com/visioncortex/vtracer')]),
+  noPrompt('ideogram-vector-1', 'Ideogram Vector 1', 'image', 'utility', 'Image to SVG partner node; no prompt is sent.', [{ at: 'server/src/comfy/ideogramVectorCloud.ts:1', follows: 'n/a' }], [NODE('IdeogramVectorImageToSVGApi')]),
   noPrompt('ideogram-3-reframe', 'Ideogram 3.0 Reframe', 'image', 'utility', 'Reframes to a new shape; no prompt sent.', [], [T('https://fal.ai/models/fal-ai/ideogram/v3/reframe')]),
   noPrompt('bria-eraser', 'Bria Eraser', 'image', 'utility', 'Removes the painted object.', [], [NODE('BriaEraser')]),
   noPrompt('fal-object-removal', 'fal Object Removal', 'image', 'utility', 'Removes the painted object.', [], [T('https://fal.ai/models/fal-ai/object-removal')]),

@@ -167,7 +167,7 @@ const DECLS: Decl[] = [
     controls: [{ field: 'style', label: 'Style', kind: 'segmented', group: 'style' }],
     prompt: { mode: 'hidden', placeholder: '', composer: 'plain' }, modes: { default: 'edit', whenSlot: null }, fixedNote: 'Editable SVG',
     output: { aspect: 'follow-photo', resolution: 'follow-photo', count: 1 }, surface: null, generateLabel: 'Make it a vector', builtInTool: 'VTracer',
-    source: { kind: 'ours', author: 'visioncortex VTracer (MIT) · Ideogram Vector 1 (official Comfy template)', url: 'https://github.com/visioncortex/vtracer', licence: 'MIT', note: 'VTracer runs from our code: no ComfyUI graph' } },
+    source: { kind: 'ours', author: 'visioncortex VTracer (MIT) · Ideogram Vector 1 (official Comfy template)', url: 'https://github.com/visioncortex/vtracer', licence: 'AGPL-3.0 (this repo) · VTracer: MIT', note: 'VTracer runs from our code: no ComfyUI graph' } },
   // Camera & Lens (surface 'rig'): plain Create Image (prompt, refs, aspect…) plus the Camera group; the rig fields go to create-image as today.
   { id: 'camera-lens', icon: 'camera', category: 'camera', runner: app('create-image'), status: 'ready',
     slots: [], groups: [{ id: 'camera', label: 'Camera', icon: 'camera', summary: ['focal', 'aperture', 'film', 'lighting', 'era'] }],

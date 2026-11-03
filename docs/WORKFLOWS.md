@@ -128,7 +128,7 @@ Any picture, as an editable SVG.
 | Files in | Picture (image, required) |
 | Settings | Style (illustration, logo, detailed) |
 | ComfyUI graph | Runs through a partner model’s API (no ComfyUI file) |
-| Comes from | Our own: [VTracer through @neplex/vectorizer (no ComfyUI graph: the app calls the library)](https://github.com/visioncortex/vtracer) (MIT (VTracer, @neplex/vectorizer) · the app’s code: AGPL-3.0 (this repo)) |
+| Comes from | Our own: [VTracer through @neplex/vectorizer (no ComfyUI graph: the app calls the library)](https://github.com/visioncortex/vtracer) (the app’s trace code: AGPL-3.0 (this repo) · VTracer, @neplex/vectorizer: MIT) |
 
 <a id="i-image-layers"></a>
 ### Split into layers

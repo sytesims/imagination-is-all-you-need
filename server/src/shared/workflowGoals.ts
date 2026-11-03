@@ -29,8 +29,8 @@ export const GOAL_OF: Record<string, WfGoal> = Object.fromEntries([
   ...G('film', ['v-direct-a-shot', 'v-reshoot', 'v-new-angle', 'v-camera-moves', 'v-extend', 'v-restyle', 'v-anime-restyle', 'fx-day-to-night', 'fx-rain', 'fx-flood',
     'chain:sketch-film', 'chain:kdrama', 'chain:long-take']),
   ...G('music', ['a-music', 'a-cover', 'a-sfx', 'a-soundtrack-music', 'a-soundtrack-sound', 'chain:music-video']),
-  /* Split into layers sits here (not in Ads): it takes a picture you have apart, like the other fixes */
-  ...G('fix', ['i-edit-image', 'i-relight', 'i-brush-edit', 'i-expand', 'i-erase', 'i-image-layers', 'i-upscale', 'v-upscale', 'v-draft-upscale', 'v-fps-boost', 'v-sdr-hdr',
+  /* Split into layers and Image to vector sit here (not in Ads): they rework a picture you already have, like the other fixes */
+  ...G('fix', ['i-edit-image', 'i-relight', 'i-brush-edit', 'i-expand', 'i-erase', 'i-image-layers', 'i-image-vector', 'i-upscale', 'v-upscale', 'v-draft-upscale', 'v-fps-boost', 'v-sdr-hdr',
     'v-prompt-edit', 'v-finish', 'v-remove-bg', /* Cutout is a plugin: its manifest says goal 'fix' */ 'v-depth-map', 'fx-vanish', 'fx-alpha-matte', 'fx-restore', 'fx-remove-object', 'fx-remove-text', 'fx-extend-frame']),
 ]);
 /** "Start here" on the Workflows page, "For you" in the menus (2026-11-01, the user's pick "A", beginner first): the first things people try,
