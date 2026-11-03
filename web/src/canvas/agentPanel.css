@@ -288,6 +288,24 @@
 .ap-chip-main{align-self:flex-start;margin-top:6px;color:var(--text-1);border-color:rgba(255,122,26,.45);background:rgba(255,122,26,.12)}
 .ap-box{position:relative;display:flex;align-items:flex-end;gap:8px;padding:6px 6px 6px 4px;border-radius:16px;background:var(--surface-2);border:1px solid var(--border-strong);transition:border-color var(--t-state,150ms) ease,box-shadow var(--t-state,150ms) ease}
 .ap-box:focus-within{border-color:rgba(255,122,26,.5);box-shadow:0 0 0 3px rgba(255,122,26,.12)}
+/* pictures for the next message (2026-11-03): small removable thumbnails above the box, a paperclip in it, a drop zone over the dock */
+.ap-atts{display:flex;flex-wrap:wrap;gap:6px;padding:0 0 8px}
+.ap-att{position:relative;flex:none;width:52px;height:52px;border-radius:10px;overflow:hidden;background:var(--surface-3,var(--surface-2));border:1px solid var(--border-strong)}
+.ap-att img{width:100%;height:100%;object-fit:cover;display:block}
+.ap-att-x{all:unset;box-sizing:border-box;position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:999px;display:grid;place-items:center;cursor:pointer;background:rgba(0,0,0,.62);color:#fff;opacity:.9}
+.ap-att-x:hover{opacity:1;background:rgba(0,0,0,.8)}
+.ap-att-x:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}
+.ap-attach{all:unset;box-sizing:border-box;flex:none;align-self:flex-end;width:30px;height:30px;margin-left:2px;border-radius:10px;display:grid;place-items:center;cursor:pointer;color:var(--text-3)}
+.ap-attach:hover:not(:disabled){color:var(--text-1);background:var(--surface-3,rgba(255,255,255,.06))}
+.ap-attach:disabled{opacity:.38;cursor:default}
+.ap-attach:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}
+.ap-dropzone{position:absolute;inset:8px;z-index:5;display:grid;place-items:center;border-radius:16px;border:1.5px dashed rgba(255,122,26,.65);background:rgba(255,122,26,.08);backdrop-filter:blur(2px);pointer-events:none}
+.ap-dropzone span{display:flex;align-items:center;gap:8px;font:600 13px/18px var(--font-sans,Inter,sans-serif);color:var(--text-1)}
+.ap-msg-pics{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.ap-msg-pic{all:unset;box-sizing:border-box;width:64px;height:64px;border-radius:10px;overflow:hidden;cursor:pointer;border:1px solid rgba(255,122,26,.22);background:var(--surface-2)}
+.ap-msg-pic img{width:100%;height:100%;object-fit:cover;display:block}
+.ap-msg-pic:hover{border-color:rgba(255,122,26,.6)}
+.ap-msg-pic:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}
 .ap-hint{margin:7px 4px 0;font:400 10.5px/14px var(--font-sans,Inter,sans-serif);color:var(--text-3)}
 @media (prefers-reduced-motion:reduce){.ap,.cv-agent-slot,.cv-board,.cv-topl,.cv-agent-btn,.ap-starter{transition:none}.ap-glow{animation-duration:.01ms}.ap-tc-sweep,.ap-typing i,.cv-follow-dot,.cv-agent-dot,.ap-dot{animation:none}.ap-tc,.ap-sheet{animation:none}}
 

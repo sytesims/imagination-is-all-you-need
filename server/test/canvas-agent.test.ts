@@ -193,6 +193,27 @@ try {
   assert.ok(inbox3.items.some((e: any) => e.type === 'message' && e.from === 'user' && /blue one/.test(e.text)));
   ok('say and the panel reply are stored per board and read back from the inbox');
 
+  // ---- pictures added in the dock (2026-11-03): named in order for the agent; a saved board lists its dropped pictures by name ----
+  const picBoard = (await send('POST', '/api/canvas/boards', { name: 'Dock pictures' })).body;
+  assert.equal((await send('POST', `/api/canvas/boards/${picBoard.id}/agent/messages`, { text: '  ' })).status, 400, 'an empty message without pictures is refused');
+  const pics = [{ card_id: 'shape:chair', name: 'chair', url: '/files/chair.png' }, { card_id: 'shape:swatch', name: 'velvet swatch', url: '/files/swatch.png' }];
+  const picMsg = await send('POST', `/api/canvas/boards/${picBoard.id}/agent/messages`, { text: 'Put the chair in this fabric', pictures: pics, selection: pics.map((p) => ({ id: p.card_id, name: p.name, type: 'ohf-upload' })) });
+  assert.equal(picMsg.status, 200, JSON.stringify(picMsg.body)); assert.deepEqual(picMsg.body.message.meta.pictures, pics, 'the bubble keeps the pictures');
+  assert.equal((await send('POST', `/api/canvas/boards/${picBoard.id}/agent/messages`, { text: '', pictures: [pics[0]] })).status, 200, 'pictures alone are a message');
+  assert.equal((await send('POST', `/api/canvas/boards/${picBoard.id}/agent/messages`, { text: 'x', pictures: Array.from({ length: 7 }, (_, i) => ({ ...pics[0], card_id: `shape:p${i}` })) })).status, 400, 'more than 6 pictures refused');
+  const heard = await get(`/api/canvas/boards/${picBoard.id}/agent/wait?timeout_sec=0`);
+  const withPics = heard.messages?.find((m: any) => m.text === 'Put the chair in this fabric') ?? heard.items?.find((m: any) => m.text === 'Put the chair in this fabric');
+  assert.deepEqual(withPics?.pictures?.map((p: any) => p.label), ['image 1: chair (card shape:chair)', 'image 2: velvet swatch (card shape:swatch)'], JSON.stringify(heard).slice(0, 400));
+  assert.deepEqual(withPics.selection.map((x: any) => x.name), ['chair', 'velvet swatch']);
+  const store = { 'shape:old': { typeName: 'shape', id: 'shape:old', type: 'ohf-upload', index: 'a1', meta: {}, props: { url: '/files/old.jpg', mediaKind: 'image', label: 'old sofa.jpg', poster: '/files/old.jpg' } },
+    'shape:named': { typeName: 'shape', id: 'shape:named', type: 'ohf-upload', index: 'a2', meta: { name: 'Hero lamp' }, props: { url: '/files/lamp.png', mediaKind: 'image', label: 'lamp', poster: '' } },
+    'shape:empty': { typeName: 'shape', id: 'shape:empty', type: 'ohf-upload', index: 'a3', meta: {}, props: { url: '', mediaKind: null, label: '' } } };
+  assert.equal((await send('PUT', `/api/canvas/boards/${picBoard.id}`, { snapshot: { store, schema: { schemaVersion: 2 } } })).status, 200);
+  const savedSum = await get(`/api/canvas/boards/${picBoard.id}/agent/summary`); assert.equal(savedSum.live, false);
+  const ups = savedSum.nodes.filter((n: any) => n.type === 'upload');
+  assert.deepEqual(ups.map((n: any) => [n.id, n.name, n.kind, n.results[0].url]), [['shape:old', 'old sofa', 'image', '/files/old.jpg'], ['shape:named', 'Hero lamp', 'image', '/files/lamp.png']]);
+  ok('dock pictures: named in order for the agent (wait), in the bubble, max 6; saved boards list dropped pictures by name (no extension)');
+
   // ---- the dock: media-card meta, the user's Re-roll proposal ----
   const feedNow = async () => (await get(`/api/canvas/boards/${board.id}/agent/feed?since=0&limit=500`)).items as any[];
   const addEv = (await feedNow()).find((e) => e.type === 'activity' && e.cardId === cardId);
