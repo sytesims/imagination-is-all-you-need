@@ -88,7 +88,7 @@ export const KEYWORDS: Record<string, string[]> = {
   'explore/canvas': ['canvas', 'board', 'moodboard', 'infinite canvas', 'whiteboard'],
   'explore/turntable': ['turntable', 'spin 3d', '360'],
 };
-/** Words every viral template also answers to (the Look → Viral tab). */
+/** Words every viral template also answers to (the Presets → Viral tab). */
 const TEMPLATE_WORDS = ['viral template', 'look viral', 'template', 'trend', 'viral'];
 
 const dedupe = (xs: string[]) => [...new Set(xs.map((x) => x.trim().toLowerCase()).filter(Boolean))];

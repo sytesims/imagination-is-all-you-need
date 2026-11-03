@@ -36,6 +36,7 @@ import cors from '@fastify/cors';
 import { registerLocalOnly, corsOrigin } from './security/localOnly.js';
 import { randomUUID, createHash } from 'node:crypto';
 import { createWriteStream, mkdirSync, existsSync, readdirSync, rmSync } from 'node:fs';
+import { movePreview } from './cameraPreview.js';
 import { pipeline } from 'node:stream/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -413,10 +414,6 @@ app.get('/api/tools', async (req, reply) => { try { if (process.env.OHF_TEST_FAI
 /** Display names never carry a backend suffix (" · mock"); the backend lives in providers[].backend. */
 const displayName = (n: string) => n.replace(/\s*[·•]\s*mock\b/gi, '').replace(/\s*\(mock(?: only)?\)/gi, '').trim();
 const providerBackend = (p: { kind: string; via?: string }) => ({ mode: config.backend === 'comfy' && p.kind !== 'hosted' && !/mock only/.test(p.via ?? '') ? 'comfy' : 'mock', live: config.backend === 'comfy' && p.kind !== 'hosted' && !/mock only/.test(p.via ?? '') });
-/** Camera Moves: synthesized muted loop per move (scripts/gen-example-media.py → server/samples/camera/). */
-const CAMERA_PREVIEW_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../samples/camera');
-const movePreview = (toolId: string, presetId: string) => toolId === 'camera' && existsSync(path.join(CAMERA_PREVIEW_DIR, `${presetId}.mp4`))
-  ? { previewUrl: `/samples/camera/${presetId}.mp4`, previewWebm: `/samples/camera/${presetId}.webm`, previewGif: `/samples/camera/${presetId}.gif` } : null;
 function req_log(e: unknown) { app.log.error({ err: e }, 'GET /api/tools failed'); }
 /** A tool's presets as GET /api/tools and /api/presets list them: the visible ones, with their preview clips and licence. */
 const visiblePresets = (t: ReturnType<typeof listTools>[number]) => t.presets?.filter((p) => presetOk(p)).map((p) => ({ ...p, previewUrl: p.previewUrl ?? movePreview(t.id, p.id)?.previewUrl ?? null, ...(movePreview(t.id, p.id) ?? {}), ...(p.license ? { license: LICENSES[p.license] } : {}) }));

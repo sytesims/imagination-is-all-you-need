@@ -452,7 +452,7 @@ export function ResultDetails({ job, info, extra, onViewWorkflow }: { job: any; 
     ...appPrompts.map((p, i) => kvRow({ k: `ap${i}`, label: appPrompts.length > 1 ? `Prompt the app wrote (${i + 1})` : 'Prompt the app wrote', v: <span className="rvx-app-prompt" data-testid="rvx-app-prompt" {...tip(p)}>{p.length > 140 ? `${p.slice(0, 139)}…` : p}</span> })),
     ...(Array.isArray(job?.diagnostics) ? job.diagnostics : []).map((d: { node: string; label: string; url: string; note: string }, i: number) => kvRow({ k: `diag${i}`, label: 'Mask diagnostic', v: <a href={d.url} target="_blank" rel="noreferrer noopener" data-testid="rvx-mask-diagnostic" {...tip(d.note)}>{d.label} ↗</a> })),
     createdV ? kvRow({ k: 'created', label: 'Created', v: createdV }) : null,
-    ...(([info.preset ? { k: 'preset', label: 'Look', v: info.preset } : null, quality ? { k: 'quality', label: 'Quality', v: quality } : null,
+    ...(([info.preset ? { k: 'preset', label: 'Preset', v: info.preset } : null, quality ? { k: 'quality', label: 'Quality', v: quality } : null,
       job?.videoFit?.note ? { k: 'fit', label: 'Fit to model', v: <span data-testid="rvx-fit" {...tip(`Sent ${job.videoFit.sent} (your clip ${job.videoFit.from})${job.videoFit.restore ? job.videoFit.restored ? '; the padding was cropped off the result' : job.videoFit.restored === false ? '; the result kept the model’s own shape' : '' : ''}`)}>{String(job.videoFit.note).replace(/^Adjusted for [^:]+: /, '')}</span> } : null, /* server videoFit.ts: what was done to the clip for this model */
       info.madeBy ? { k: 'by', label: 'Made by', v: info.madeBy } : null, info.madeFrom ? { k: 'from', label: 'Made from', v: info.madeFrom } : null].filter(Boolean) as KV[]).map(kvRow)),
   ].filter(Boolean);

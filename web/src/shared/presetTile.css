@@ -30,14 +30,22 @@
 .pt-sm.on .pt-glyph{right:30px}
 @keyframes pt-pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
 
-/* MotionPreview: one still moved with CSS. Not live → no animation (rests on the plain still). */
-.pt-mo{position:absolute;inset:0;overflow:hidden;--pt-d:4s}
+/* MotionPreview: a camera move as an icon card. A drawn scene (brand dark, no photo) moved with CSS, the move's glyph large on top.
+ * Not live → no animation (rests on the first frame). The corner glyph would repeat the big one, so it hides here. */
+.pt-mo{position:absolute;inset:0;overflow:hidden;--pt-d:4s;background:radial-gradient(120% 90% at 50% 20%,#2a1a10,var(--hf-bg,#0f1113) 70%)}
 .pt-mo-l{position:absolute;inset:0;will-change:transform}
-.pt-mo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;user-select:none}
-.pt-mo-in{position:absolute;inset:0;-webkit-mask-image:radial-gradient(ellipse 34% 30% at 54% 34%,#000 62%,transparent 100%);mask-image:radial-gradient(ellipse 34% 30% at 54% 34%,#000 62%,transparent 100%);will-change:transform;transform-origin:54% 34%}
+.pt-mo .pt-scene{position:absolute;inset:0;width:100%;height:100%;user-select:none}
+.pt-mo-in{background:radial-gradient(120% 90% at 50% 20%,#2a1a10,var(--hf-bg,#0f1113) 70%)}
+.pt-mo-g{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);width:48px;height:48px;border-radius:999px;display:grid;place-items:center;
+  color:var(--accent,#ff7a1a);background:rgba(15,17,19,.55);box-shadow:inset 0 0 0 1px rgba(255,122,26,.35),0 4px 18px rgba(0,0,0,.35)}
+.pt-sm .pt-mo-g{width:40px;height:40px}.pt-sm .pt-mo-g svg{width:22px;height:22px}
+.pt[data-media="motion"] .pt-glyph,.pt-sm:has(.pt-mo-g-over) .pt-glyph{display:none}
+/* a compact clip tile at rest: the move's glyph over the clip's first frame; it fades out while the clip plays */
+.pt-mo-g-over{z-index:2;transition:opacity .2s var(--ease-out,ease-out)}.pt[data-live] .pt-mo-g-over{opacity:0}
+.pt-mo-in{position:absolute;inset:0;-webkit-mask-image:radial-gradient(ellipse 34% 30% at 36% 61%,#000 62%,transparent 100%);mask-image:radial-gradient(ellipse 34% 30% at 36% 61%,#000 62%,transparent 100%);will-change:transform;transform-origin:36% 61%}
 .pt-mo[data-live] .pt-mo-l{animation:var(--pt-kf) var(--pt-d) var(--pt-ease,ease-in-out) infinite}
 /* one-way moves fade at the loop seam so the restart reads as a cut, not a jump back */
-.pt-mo[data-live]:is(.pt-mv-push,.pt-mv-pull,.pt-mv-push-fast,.pt-mv-pull-fast,.pt-mv-crash,.pt-mv-pan-l,.pt-mv-pan-r,.pt-mv-track-l,.pt-mv-track-r,.pt-mv-tilt-u,.pt-mv-tilt-d,.pt-mv-whip,.pt-mv-orbit-l,.pt-mv-orbit-r,.pt-mv-crane-u,.pt-mv-crane-d,.pt-mv-crane-over,.pt-mv-fpv,.pt-mv-flyover,.pt-mv-vertigo-in,.pt-mv-vertigo-out,.pt-mv-focus){animation:pt-fade var(--pt-d) linear infinite}
+.pt-mo[data-live]:is(.pt-mv-push,.pt-mv-pull,.pt-mv-push-fast,.pt-mv-pull-fast,.pt-mv-crash,.pt-mv-pan-l,.pt-mv-pan-r,.pt-mv-track-l,.pt-mv-track-r,.pt-mv-tilt-u,.pt-mv-tilt-d,.pt-mv-whip,.pt-mv-orbit-l,.pt-mv-orbit-r,.pt-mv-crane-u,.pt-mv-crane-d,.pt-mv-crane-over,.pt-mv-fpv,.pt-mv-flyover,.pt-mv-vertigo-in,.pt-mv-vertigo-out,.pt-mv-focus) .pt-mo-l{animation:var(--pt-kf) var(--pt-d) var(--pt-ease,ease-in-out) infinite,pt-fade var(--pt-d) linear infinite}
 @keyframes pt-fade{0%{opacity:0}9%{opacity:1}90%{opacity:1}100%{opacity:0}}
 
 .pt-mv-push{--pt-kf:pt-push}@keyframes pt-push{from{transform:scale(1.04)}to{transform:scale(1.3)}}
@@ -84,4 +92,5 @@
 
 @media (prefers-reduced-motion:reduce){
   .pt-mo,.pt-mo *,.pt-mo[data-live],.pt-mo[data-live] *,.pt-check{animation:none!important}
+  .pt-mo-g-over{transition:none}
 }

@@ -97,7 +97,7 @@ for (const f of ['ui/camera/CameraGallery.tsx', 'ui/edit/EditVideo.tsx', 'tools/
 const app = fs.readFileSync(path.join(WEB, 'App.tsx'), 'utf8');
 assert.match(app, /videoBarOf\(vwf\.id\)/, 'App renders a picked workflow with a recipe in the Video bar');
 assert.doesNotMatch(app, /CameraGallery|EditVideoHub|'\/camera-moves'|'\/photo-fx'/, 'no gallery or hub routes');
-assert.match(fs.readFileSync(path.join(WEB, 'ui/video/VideoStudio.tsx'), 'utf8'), /videoWorkflowHref\('camera-moves'\)}&pick=move/, 'Look → See all opens Camera Moves in the bar');
+assert.match(fs.readFileSync(path.join(WEB, 'ui/video/VideoStudio.tsx'), 'utf8'), /videoWorkflowHref\('camera-moves'\)}&pick=move/, 'Presets → See all opens Camera Moves in the bar');
 ok('the galleries, the Edit Video list and the old edit screens are gone');
 
 // 6. step 3: Object Swap, Re-shoot and UGC Ad in the same bar, sending what their old screens sent (dry runs, 2026-10-25: same fields, same price)

@@ -1,18 +1,15 @@
 /**
  * One preset tile for every preset grid (Video's camera moves, modes, workflows and styles; usable by Image's presets later).
- * Media priority: the preset's real preview video → its image → a live camera-move preview (MotionPreview: one of our own
- * showcase stills moved with CSS, recipe from shared/presetMotion.ts) → a plain dark tile. The caption is the only text:
- * label in Space Grotesk, the small line (category or note) under it, never printed twice.
- * Motion and preview videos play only while the tile is on screen (IntersectionObserver); under prefers-reduced-motion
- * they stay still and the corner glyph alone says what the move is.
+ * Media priority: the preset's own preview clip → its own image → a camera move drawn as an icon card (MoveCard: the move's
+ * glyph over a simple drawn scene that the move animates with CSS, recipe from shared/presetMotion.ts) → a plain dark tile.
+ * Never a shared stock photo: every tile shows its own preset (shared/presetMedia.ts picks the media from the preset).
+ * The caption is the only text: label in Space Grotesk, the small line (category or note) under it, never printed twice.
+ * Clips and moves play while the tile is on screen (IntersectionObserver) or hovered; in a compact picker grid on hover / focus only, and
+ * at rest each move shows its glyph large. Clips load metadata only, the smaller mp4 first. Under prefers-reduced-motion they stay still.
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { SHOWCASE_HERO, showcaseById } from '../../../server/src/shared/showcase';
 import { MOTION_WORDS, motionFor, type MotionGlyph, type MotionRecipe } from './presetMotion';
 import './presetTile.css';
-
-/** The still the camera-move previews move over: "Camel coat from below", a low-angle hero shot from our showcase (SHOWCASE_HERO). */
-export const MOTION_STILL: string = showcaseById(SHOWCASE_HERO[2])?.thumb ?? '/showcase/032054ec-640.webp';
 
 const reduced = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -51,15 +48,26 @@ export function MotionGlyphIcon({ glyph, size = 14 }: { glyph: MotionGlyph; size
   return <svg className="pt-glyph-i" width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>{GLYPHS[glyph]}</svg>;
 }
 
-/** A camera move played over one still with CSS transforms (no generation). `live` runs it; otherwise it rests on its first frame. */
-export function MotionPreview({ recipe, image = MOTION_STILL, live }: { recipe: MotionRecipe; image?: string; live: boolean }) {
+/** The drawn scene a move card moves: horizon, floor grid, a moon and a figure, in brand colours (no photo). */
+const Scene = () => <svg className="pt-scene" viewBox="0 0 160 200" preserveAspectRatio="xMidYMid slice" aria-hidden>
+  <circle cx="112" cy="70" r="16" fill="rgba(255,122,26,.18)" />
+  <path d="M0 108 Q40 92 80 102 T160 98 V200 H0Z" fill="rgba(255,255,255,.035)" />
+  <g stroke="rgba(255,255,255,.12)" strokeWidth=".8" fill="none"><path d="M0 112H160M0 126H160M0 146H160M0 174H160" />
+    <path d="M80 112 80 200M80 112 40 200M80 112 0 190M80 112 120 200M80 112 160 190M80 112 0 140M80 112 160 140" /></g>
+  <g fill="rgba(247,247,248,.2)"><circle cx="58" cy="104" r="7" /><path d="M47 140c0-14 5-25 11-25s11 11 11 25z" /></g>
+</svg>;
+
+/** A camera move as an icon card: the drawn scene moved with CSS transforms (no photo, no generation) and the move's glyph, large, on top.
+ *  `live` runs the move; otherwise it rests on its first frame. */
+export function MotionPreview({ recipe, live }: { recipe: MotionRecipe; live: boolean }) {
   const vertigo = recipe.move === 'vertigo-in' || recipe.move === 'vertigo-out';
   return <span className={`pt-mo pt-mv-${recipe.move}`} data-live={live ? '1' : undefined} data-move={recipe.move} aria-hidden>
     <span className="pt-mo-l" style={recipe.origin ? { transformOrigin: recipe.origin } : undefined}>
-      <img src={image} alt="" loading="lazy" decoding="async" draggable={false} />
-      {vertigo && <span className="pt-mo-in"><img src={image} alt="" loading="lazy" decoding="async" draggable={false} /></span>}
+      <Scene />
+      {vertigo && <span className="pt-mo-in"><Scene /></span>}
     </span>
     {recipe.move === 'still' || recipe.move === 'timelapse' ? <span className="pt-grain" /> : null}
+    <span className="pt-mo-g"><MotionGlyphIcon glyph={recipe.glyph} size={26} /></span>
   </span>;
 }
 
@@ -84,7 +92,7 @@ export interface PresetTileProps {
   media?: ReactNode;
   /** corner badge (New…) */
   badge?: ReactNode;
-  /** 'compact': the small tile of a picker popover (shared/LookPicker): smaller caption, and the move or clip plays on hover / focus only */
+  /** 'compact': the small tile of a picker popover (shared/LookPicker): smaller caption; same media and play rule */
   size?: 'default' | 'compact';
 }
 
@@ -93,21 +101,26 @@ export function PresetTile({ label, sub, selected, onClick, testId, title, class
   const onScreen = useOnScreen(ref); const [hover, setHover] = useState(false);
   const hasVideo = !!(video && (video.mp4 || video.webm));
   const recipe = motion ? motionFor(motion.id, motion.category) : null;
+  /* compact (a picker's grid) plays on hover / focus only, like the Workflows cards (the media budget lets 3 clips play at once anyway) */
   const compact = size === 'compact'; const live = compact ? hover && !reduced() : (onScreen && !reduced()) || hover;
-  /* compact: a clip with no poster would sit black until hovered, so the still (or the move over our still) shows until then */
-  const showVideo = hasVideo && !(compact && !live && !video!.poster && (image || recipe));
+  const showVideo = hasVideo;
   useEffect(() => { const v = vid.current; if (!v) return; if (live) v.play().catch(() => 0); else v.pause(); }, [live, showVideo]);
+  /* one file, the smaller mp4 first (camera clips: mp4 ≈ half the webm); no poster → its own first frame (a media fragment) */
+  const src = showVideo ? `${video!.mp4 || video!.webm}${video!.poster ? '' : '#t=0.05'}` : undefined;
+  /* a play() sent while the clip is still loading can be dropped, so it starts again once data is there */
   const media = own != null ? own : showVideo
-    ? <video ref={vid} muted loop playsInline preload="metadata" poster={video!.poster ?? undefined} aria-hidden>{video!.webm && <source src={video!.webm} type="video/webm" />}{video!.mp4 && <source src={video!.mp4} type="video/mp4" />}</video>
+    ? <video ref={vid} src={src} muted loop playsInline preload="metadata" poster={video!.poster ?? undefined} onLoadedData={e => { if (live) e.currentTarget.play().catch(() => 0); }} aria-hidden />
     : image ? <img src={image} alt="" loading="lazy" decoding="async" />
     : recipe ? <MotionPreview recipe={recipe} live={live} />
     : <span className="pt-blank" aria-hidden />;
   return <button ref={ref} type="button" data-testid={testId} className={`pt${compact ? ' pt-sm' : ''} ${className} ${selected ? 'on' : ''}`.trim()} aria-pressed={selected ?? undefined}
     title={title} onClick={onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} onFocus={() => setHover(true)} onBlur={() => setHover(false)}
+    data-live={live ? '' : undefined}
     data-media={own != null ? 'own' : showVideo ? 'video' : image ? 'image' : recipe ? 'motion' : 'blank'}>
     <span className="pt-media">{media}</span>
     {badge}
     {selected && compact && <span className="pt-check" aria-hidden><svg width="10" height="10" viewBox="0 0 12 12"><path d="M2.5 6.2 5 8.6l4.6-5.2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg></span>}
+    {recipe && compact && showVideo && own == null && <span className="pt-mo-g pt-mo-g-over" aria-hidden><MotionGlyphIcon glyph={recipe.glyph} size={26} /></span> /* at rest the move's glyph names it; it fades as the clip plays */}
     {recipe && <span className="pt-glyph" data-glyph={recipe.glyph} title={`The camera ${MOTION_WORDS[recipe.glyph]}`}><MotionGlyphIcon glyph={recipe.glyph} size={compact ? 11 : 14} /></span>}
     <span className="pt-c"><b>{label}</b>{sub ? <small>{sub}</small> : null}</span>
   </button>;
