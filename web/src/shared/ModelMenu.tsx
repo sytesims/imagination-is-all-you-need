@@ -4,10 +4,10 @@ import { HwUnknownLine } from './FitNote';
 import { localFitOf } from './fit';
 import { MakerTile } from './MakerTile';
 import { useBilling, useAccounts, modeOf, priceToken, priceDetail, fmtUsd } from './billing';
-import { splitToken, balanceOf, blockOf, reasonShort, reasonBody, COMFY_CR } from './menuPrice';
+import { splitToken, balanceOf, blockOf, reasonShort, reasonBody, localStateOf, tooBigOf, COMFY_CR } from './menuPrice';
 import { useRowQuotes, shownCredits, ROW_PENDING, ROW_FAILED, type RowQuote, type PlacePrice, type RowFit } from './quote';
 import type { Need } from '../../../server/src/shared/settingsFit';
-import { groupOf, livePlace, placesIn, matchesQuery, familiesOf, familyFrom, shownOf, localBlocker, localFirst, featuredLocalFirst, type MenuTab, type Family, type Shown } from './modelMenuSort';
+import { groupOf, livePlace, placesIn, matchesQuery, familiesOf, familyFrom, shownOf, localFirst, featuredLocalFirst, type MenuTab, type Family, type Shown } from './modelMenuSort';
 import { familyBlurb } from '../../../server/src/shared/modelRank';
 import { LOCAL_LABEL, LOCAL_FREE } from '../../../server/src/shared/modelIds';
 import { useToolModels, modelOfEngine, engineForModel, enginesModels, setActiveModel, setRunOn, listPrice, modelStateLine, useRunOn, getRunOn, shownName, toolLike, RUN_ON_CHIP, RUN_ON_BILLING, type ToolModel, type RunOnRow } from './models';
@@ -174,9 +174,10 @@ function NeedsKey({ price, place, kind = 'add_key', title, runOn }: { price: str
 function placeRight({ p, own, off, rq, many }: { p: RunOnRow; own: boolean; /** true, or the page's reason (item.off) */ off?: boolean | string | null; rq?: RowQuote | any | null; /** the tab has several places: name it */ many?: boolean }): Right {
   const short = placeShort(p.id, p.label); void many;
   if (off) { const why = typeof off === 'string' ? off : p.reason ?? null; return R(<Price kind="unavailable" runOn={p.id} top={offWords(why)} status title={why ?? 'Not available here.'} />); }
-  if (p.id === 'local') { const b = localBlocker(p); // Free only when it runs now; else the blocker, and no price (the family isn't Free on it)
-    if (!b) return R(<Price kind="ready" runOn="local" top="Free" sub={LOCAL_LABEL} free />, FREE);
-    return R(<Price kind={p.action?.kind ?? p.reasonCode ?? p.status} runOn="local" top={b.word} status sub={b.sub} title={p.reason ?? undefined} />); }
+  if (p.id === 'local') { const st = localStateOf(p, rq); // Free only when THIS run fits here; else why, and no price (the family isn't Free on it)
+    if (st.kind === 'free') return R(<Price kind="ready" runOn="local" top="Free" sub={LOCAL_LABEL} free />, FREE);
+    if (st.kind === 'blocked') return R(<Blocked b={st} runOn="local" />); // the same words the All tab shows for this run ("Too big for this GPU")
+    return R(<Price kind={p.action?.kind ?? p.reasonCode ?? p.status} runOn="local" top={st.word} status sub={st.sub} title={p.reason ?? undefined} />); }
   const mine = rq && (!rq.runOn || rq.runOn === p.id) ? rq : null;
   const keyPrice = (c: number | null | undefined) => listPrice(c, p.id, own);
   if (mine?.demo === true || (!mine && p.status === 'sample')) return R(sampleRow(p.id));
@@ -280,6 +281,8 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
   const counts = { all: ms.length, comfy: 0, api: 0, gpu: 0 } as Record<MenuTab, number>;
   for (const m of ms) for (const g of ['comfy', 'api', 'gpu'] as const) if (placesIn(m, g).length) counts[g]++;
   const tabs = TABS.filter(x => x.id === 'all' || counts[x.id] > 0);
+  /** The counts are per place (2026-11-03): a model that runs in two places is in both tabs, so the tabs can add up to more than All. */
+  const countTip = (t: MenuTab) => (t === 'all' ? `${counts.all} model${counts.all === 1 ? '' : 's'}. A model that runs in more than one place is counted in each place’s tab.` : `${counts[t]} model${counts[t] === 1 ? '' : 's'} ${t === 'api' ? 'run with your own keys' : t === 'gpu' ? 'run on your computer' : `run on ${tabLabel(t)}`}`);
   const showTabs = tabs.length > 2 || (tabs.length === 2 && counts[tabs[1].id] < ms.length);
   const tab: MenuTab = showTabs && tabs.some(x => x.id === tabPick) ? tabPick : 'all';
   const goTab = (t: MenuTab, focus = false) => { setTabPick(t); saveTab(t); setHov(null); setFam(null); if (listRef.current) listRef.current.scrollTop = 0;
@@ -298,15 +301,18 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
   const refsOn = !!refFit && ms.some(m => !!fitOf(m));
   /** Disabled: the server says it can't run (Coming soon, Not available), or the page's engine can't run here (item.off, e.g. ComfyUI too old). */
   const offOf = (m: ToolModel) => modelStateLine(m).off || !!itemOf(m)?.off;
-  const pinDef = !ql && !!defModel && all.includes(defModel) && !isLast(defModel) && sectionOf(defModel) !== 'soon';
   // task 7: every row that runs now is priced for THIS run (the page's current settings) at the place that would run it (its saved choice,
   // as the page sends it, else the server's pick), in one batch call while the picker is open (a place tab prices each row at that tab's
-  // place; Local needs no quote: it is free)
-  const asks = tab === 'gpu' ? [] : tab !== 'all' ? inTab.filter(m => !offOf(m)).map(m => ({ model: m.key, runOn: placeFor(m)?.id ?? null }))
+  // place; Local is free, but its quote still says when this run is too big for this computer, so a ready Local row is asked too)
+  const asks = tab === 'gpu' ? inTab.filter(m => !offOf(m) && placeFor(m)?.status === 'ready').map(m => ({ model: m.key, runOn: 'local' as string | null })) : tab !== 'all' ? inTab.filter(m => !offOf(m)).map(m => ({ model: m.key, runOn: placeFor(m)?.id ?? null }))
     : ms.filter(m => !offOf(m) && ['ready', 'sample', 'add_key', 'set_up'].includes(String(m.rowStatus?.kind))).map(m => { const ro = getRunOn(toolId, m.key).runOn; return { model: m.key, runOn: ro && ro !== 'auto' ? ro : null }; }); // key-needing rows too: their price once a key is added
   const { quotes: rqs, state: rqState } = useRowQuotes(toolId, open, asks); const asked = new Set(asks.map(a => a.model));
   const liveQ = (m: ToolModel) => { const at = tab === 'all' ? null : placeFor(m)?.id ?? null;
     return curModel?.key === m.key && quote && (!quote.modelKey || quote.modelKey === m.key) && (quote.runOn || quote.demo) && (!at || quote.runOn === at) ? quote : rqs?.[m.key] ?? (asked.has(m.key) && rqState === 'pending' ? ROW_PENDING : asked.has(m.key) && rqState === 'failed' ? ROW_FAILED : null); };
+  /** The workflow's default can't run this job on this computer (too big at these settings, and its quote runs it here): it isn't
+   *  recommended, pinned or Auto's pick. A default whose place is the cloud is never "too big" (its quote runs there). */
+  const defBig = !!defModel && tooBigOf(liveQ(defModel));
+  const pinDef = !ql && !!defModel && !defBig && all.includes(defModel) && !isLast(defModel) && sectionOf(defModel) !== 'soon';
   const choose = (m: ToolModel) => { if (offOf(m)) return;
     // picked in a place tab: it runs there (saved like Run on's own choice), when the model has other places too
     const p = tab === 'all' ? null : placeFor(m);
@@ -318,8 +324,8 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
     setActiveModel(toolId, enginesModels(toolId, e).length > 1 ? m.key : null); onPick(e, fit); onClose(); };
   /* Auto: the workflow's default when it runs here, else what the server's default rule (routing/defaults.ts → tool.defaultProvider) starts on */
   const tl: any = toolLike(toolId);
-  const autoEngine = [defaultId && !defaultReason ? defaultId : null, tl?.defaultProvider, defaultId].find((x): x is string => !!x && listed.includes(x)) ?? null;
-  const usualAuto = autoEngine ? ms.find(m => m.engines.includes(autoEngine) && !offOf(m) && !isLast(m)) ?? null : null;
+  const autoEngine = [defaultId && !defaultReason && !defBig ? defaultId : null, tl?.defaultProvider, defBig ? null : defaultId].find((x): x is string => !!x && listed.includes(x)) ?? null;
+  const usualAuto = autoEngine ? ms.find(m => m.engines.includes(autoEngine) && !offOf(m) && !isLast(m) && !(defBig && m === defModel)) ?? null : null;
   /* with references on the bar: the usual pick when it uses them all, else the first model (server order: featured, then rank) that does,
    * else the one that uses the most (shared/refFit.ts bestRefPick) */
   /** works with all your files AND can run this job as set (a place that refuses it, e.g. a local graph with fewer slots, isn't "works with") */
@@ -345,7 +351,7 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
       <MakerTile className="orb-tile" maker={m.maker} makerName={m.makerName} fallback={m.family || m.name} medium={shownMedium(m)} title={false} />
       <span className="orb-t">
         <span className="orb-n"><span className="orb-name">{shownName(m)}</span>{isFav(m) ? <em className="orb-tag orb-tag-y" data-testid="mp-your-default" title="You made this the default here. The filled star resets it.">Your default</em>
-          : isRec(m) || isDef(m) ? <em className={`orb-tag ${favHere ? 'orb-tag-rec' : 'orb-tag-d'}`} data-testid="mp-default" title={defaultLine(defaultWhy, defaultReason) ?? undefined}>{favHere ? 'Recommended' : 'Default'}</em> : null}{m.isNew && !retiring && <em className="orb-tag orb-tag-n" data-testid="mp-new">New</em>}{retiring && <em className="orb-tag orb-tag-r" data-testid="lifecycle-pill">Retiring</em>}{!retiring && items.some(x => m.engines.includes(x.id) && x.p?.experimental === true) && <em className="orb-tag orb-tag-r" data-testid="mp-experimental" title="Works on some clips, not all yet">Experimental</em>}
+          : (isRec(m) || isDef(m)) && !tooBigOf(liveQ(m)) /* never "Recommended" beside "Too big for this GPU" */ ? <em className={`orb-tag ${favHere ? 'orb-tag-rec' : 'orb-tag-d'}`} data-testid="mp-default" title={defaultLine(defaultWhy, defaultReason) ?? undefined}>{favHere ? 'Recommended' : 'Default'}</em> : null}{m.isNew && !retiring && <em className="orb-tag orb-tag-n" data-testid="mp-new">New</em>}{retiring && <em className="orb-tag orb-tag-r" data-testid="lifecycle-pill">Retiring</em>}{!retiring && items.some(x => m.engines.includes(x.id) && x.p?.experimental === true) && <em className="orb-tag orb-tag-r" data-testid="mp-experimental" title="Works on some clips, not all yet">Experimental</em>}
           {!off && sectionOf(m) !== 'soon' && !it?.last && <button type="button" className={`orb-star${isFav(m) ? ' on' : ''}`} data-testid="mp-make-default" aria-pressed={isFav(m)}
         aria-label={isFav(m) ? `${shownName(m)} is your default. Reset to recommended` : `Make ${shownName(m)} your default`} title={isFav(m) ? 'Your default · click to reset to recommended' : 'Make default'}
         onClick={e => { e.stopPropagation(); makeDefault(m, id); }} onKeyDown={e => e.stopPropagation()}><StarIcon size={14} /></button>}</span>
@@ -426,7 +432,7 @@ export function ModelMenu({ open, anchor, avoid, watch, gap, onClose, items, val
       <label className="orb-search"><SearchIcon size={16} /><input ref={qRef} className="orb-q" type="search" placeholder={`Search ${ms.length} model${ms.length === 1 ? '' : 's'}`} aria-label="Search models" value={q} onChange={e => { setQ(e.target.value); setHov(null); }} autoFocus data-testid="mp-search" /></label>
       {showTabs && <div ref={tabsRef} className="orb-seg" role="tablist" aria-label="Where it runs" data-testid="mp-tabs" onKeyDown={tabKeys}>
         {tabs.map(x => <button key={x.id} type="button" role="tab" data-tab={x.id} aria-selected={tab === x.id} tabIndex={tab === x.id ? 0 : -1} className={tab === x.id ? 'on' : ''} data-testid={`mp-tab-${x.id}`}
-          onClick={() => goTab(x.id)}>{x.label}<em>{counts[x.id]}</em></button>)}</div>}
+          title={countTip(x.id)} onClick={() => goTab(x.id)}>{x.label}<em>{counts[x.id]}</em></button>)}</div>}
     </div>
     <div ref={listRef} onScroll={() => { if (hov && document.activeElement === hov.el) return; /* a row focused by keys scrolled into view keeps its card */ setHov(null); }} className="orb-list" data-testid="mp-list" data-count={all.length} data-tab={tab} role={showTabs ? 'tabpanel' : undefined} aria-label={showTabs ? tabLabel(tab) : undefined}>
       {refsOn && !ql ? <>{/* files on the bar (2026-10-31, user pick): the models that use them all first, then the rest with what they skip */}

@@ -657,7 +657,7 @@ function TrashItem({ job, onDone }: { job: any; onDone?: () => void }) {
 const withMentions = (t: string) => <MentionText text={t} others />;
 
 /** The Edit tab's "Use it in…" list skips the hand-offs it already shows as their own rows. */
-const RM_SKIP_IMAGE = new Set(['image-upscale', 'app-image-vector', 'app-relight', 'three-d', 'app-inpaint', 'cinema']);
+const RM_SKIP_IMAGE = new Set(['image-upscale', 'app-relight', 'three-d', 'app-inpaint', 'cinema']); /* Image to vector has no Edit tab row of its own: it stays in the list, with the picture tools (2026-11-03) */
 /* voice: Voice Studio's clip modes are the Translate / Change voice rows above */
 const RM_SKIP_VIDEO = new Set(['upscale', 'h3-extend', 'finish', 'reshoot', 'app-translate-video', 'app-change-voice', 'voice', 'soundtrack', 'cinema']);
 /** tools that work on a clip's sound track (not offered for a silent clip) */

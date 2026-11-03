@@ -12,6 +12,8 @@ import { RUN_ON_BILLING } from './models';
 import { balanceText, balanceDetail } from '../../../server/src/shared/priceText';
 import { needOf, type Need } from '../../../server/src/shared/settingsFit';
 import { NEEDS_COMFYUI_SHORT } from '../../../server/src/shared/modelIds';
+import { localBlocker } from './modelMenuSort';
+import type { RunOnRow } from './models';
 
 /** '≈ $0.08' (the Generate button's token) → '$0.08' over the place. (An old token with a ' · 17 Comfy cr' tail loses it.) */
 export const COMFY_CR = /\s·\s([\d,]+) Comfy cr$/;
@@ -76,7 +78,7 @@ export function reasonShort(full: string | null | undefined): string {
   /* the sizes it does make: "Kling 4.0 edits at 720p or 1080p." → "Only 720p / 1080p" (three or more: "Only 480p to 1080p") */
   const only = /\b(?:edits|runs|makes|renders|works|takes)(?: only)? at ((?:\d{3,4}p|[248]K)(?:(?:,\s*|,?\s+or\s+)(?:\d{3,4}p|[248]K))*)\b/i.exec(body)?.[1];
   if (only) { const rs = only.split(/,\s*|,?\s+or\s+/i); return rs.length > 2 ? `Only ${rs[0]} to ${rs[rs.length - 1]}` : `Only ${rs.join(' / ')}`; } // fits the row
-  if (/too (big|heavy|large)|not enough (vram|memory)|doesn[’']t fit/i.test(body)) return 'Too big for this GPU';
+  if (/too (big|heavy|large)|not enough (vram|memory)|doesn[’']t fit/i.test(body)) return TOO_BIG_SHORT;
   if (/needs a (graphics card|gpu)\b/i.test(body)) return 'Needs a graphics card';
   if (/download/i.test(body)) return 'Needs a download';
   if (/custom node|install/i.test(body)) return 'Needs a custom node';
@@ -89,4 +91,25 @@ export const reasonBody = (full: string): string => full.replace(/^[^.]*can[’'
 export function blockOf(rq: any): { short: string; full: string; need: Need | null } | null {
   const full = blockFull(rq); if (!full) return null; const need: Need | null = rq?.need ?? needOf(full);
   return { short: need?.short ?? reasonShort(full), full: need ? `${need.short}. ${reasonBody(full)}` : full, need };
+}
+
+/** The words a row shows when this computer is too small for the run (the same as modelMenuSort localBlocker's too_heavy). */
+export const TOO_BIG_SHORT = 'Too big for this GPU';
+/** This run can't go here because this computer is too small for it (the quote's memory check at the page's settings). */
+export function tooBigOf(rq: any): boolean {
+  const b = blockOf(rq); return !!b && (rq?.reasonCode === 'too_heavy' || b.short === TOO_BIG_SHORT);
+}
+/**
+ * THE status of the Your computer place for this run (2026-11-03), read by every tab of the model menu so they never disagree:
+ *  - the place itself isn't ready (a download, a switch, too big for any job): its blocker (localBlocker);
+ *  - the place is ready, but this run's quote at the page's settings says it can't run there (too big for this GPU at 2K with 2 images,
+ *    needs a photo…): that block. The listing's "ready" is for the default job; the quote is for THIS run, so the quote wins;
+ *  - else Free.
+ * `rq`: the quote for this model at the local place (or a quote that names no place); a quote for another place is ignored.
+ */
+export type LocalState = { kind: 'free' } | { kind: 'blocker'; word: string; sub: string; fixable: boolean } | { kind: 'blocked'; short: string; full: string; need: Need | null };
+export function localStateOf(p: Pick<RunOnRow, 'status' | 'action' | 'reasonCode'> & { missingBytes?: number | null }, rq?: any): LocalState {
+  const pb = localBlocker(p); if (pb) return { kind: 'blocker', ...pb };
+  const mine = rq && (!rq.runOn || rq.runOn === 'local') ? rq : null; const b = mine ? blockOf(mine) : null;
+  return b ? { kind: 'blocked', ...b } : { kind: 'free' };
 }
