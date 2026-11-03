@@ -91,12 +91,13 @@ export const config = {
     prompt: parseNodeField(env('NODE_PROMPT'), baseMap.inputs.prompt),
     output: env('NODE_OUTPUT')?.trim() || baseMap.output.node,
   },
-  jobTimeoutMs: Number(env('COMFY_TIMEOUT_MS')) || 30 * 60 * 1000,
-  /** Local / native ComfyUI runs (comfy/native.ts): fail only after this long with NO progress while our prompt runs (OPENHIGGSFIELD_COMFY_STALL_MS, default 10 min). */
-  comfyStallMs: Number(env('COMFY_STALL_MS')) || 10 * 60 * 1000,
-  /** Native runs' hard cap on running time: max(60 min, 4× the calibrated ETA) unless OPENHIGGSFIELD_COMFY_TIMEOUT_MS is set (then exactly that). */
+  /** No clock stops a working job (user, 3 Nov 2026: a long generation may take hours). OPENHIGGSFIELD_COMFY_TIMEOUT_MS, only when someone sets it,
+   *  is an exact cap on running time for both your own ComfyUI and Comfy Cloud. Unset (the default): no cap on your own ComfyUI; Comfy Cloud stops
+   *  runs itself at its plan's maximum runtime (shared/cloudLimits.ts), and cloudSafetyNetMs below only catches a Cloud job that never ends. */
   comfyHardCapOverrideMs: Number(env('COMFY_TIMEOUT_MS')) || null,
-  comfyHardCapFloorMs: 60 * 60 * 1000,
+  /** Comfy Cloud: our own net on RUNNING time (from Cloud's first "running" status, never its queue), well above Cloud's documented maximum (1 h on Pro),
+   *  so Cloud's own limit always ends a run first. COMFY_TIMEOUT_MS overrides it. */
+  cloudSafetyNetMs: Number(env('COMFY_TIMEOUT_MS')) || 2 * 60 * 60 * 1000,
 };
 
 /** True when targeting Comfy Cloud (default base) without a key. */

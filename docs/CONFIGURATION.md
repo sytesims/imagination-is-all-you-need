@@ -43,8 +43,9 @@ Direct a Shot's `streams` input also accepts its existing decoded MJPEG recordin
 | `OPENHIGGSFIELD_MAX_PARALLEL` | `11` (max(6, local + cloud)) | Max jobs queued + running in the legacy admission (`OPENHIGGSFIELD_MAX_QUEUED=0`); 429 `concurrency` above it |
 | `OPENHIGGSFIELD_MAX_QUEUED` | `20` | Jobs that can wait in the queue at once (429 above it); `0` = the legacy `MAX_PARALLEL` rule |
 | `OPENHIGGSFIELD_MAX_PARALLEL_FREE` | `2` | Free generations in flight at once |
-| `OPENHIGGSFIELD_COMFY_TIMEOUT_MS` | unset | Unset: a Comfy Cloud job may take 30 min, and a run on your own ComfyUI max(60 min, 4× its expected time). Set: exactly this many ms for both. Long local video renders need the default |
-| `OPENHIGGSFIELD_COMFY_STALL_MS` | `600000` (10 min) | A run on your own ComfyUI fails only after this long with no progress at all |
+| `OPENHIGGSFIELD_COMFY_TIMEOUT_MS` | unset | Unset: no clock stops a run on your own ComfyUI, however long it takes (it stops only if ComfyUI loses the job, stops answering for 30 s, reports an error, or you cancel). Comfy Cloud stops runs itself at its plan's maximum runtime (30 min, 1 hour on Pro; [Comfy Cloud usage and limits](https://docs.comfy.org/development/deploy/cloud-usage)); the app's own net is 2 h of running. Set: exactly this many ms of running time for both |
+| `OPENHIGGSFIELD_COMFY_GONE_MS` | `30000` (30 s) | How long ComfyUI may not list a running job (or not answer at all) before the run is called lost |
+| `OPENHIGGSFIELD_KEEP_AWAKE` | on | While a job runs on your own ComfyUI, the computer is kept from sleeping (macOS `caffeinate`, Windows `SetThreadExecutionState` through PowerShell, Linux `systemd-inhibit` when present) and released when the last job ends. `0` = off |
 | `OPENHIGGSFIELD_COMFY_DETECT_URLS` | `http://127.0.0.1:8188,http://127.0.0.1:8000` | Where the app looks for a ComfyUI on this computer (comma list; 8000 is Comfy Desktop) |
 | `OPENHIGGSFIELD_COMFY_DIR` | the parent of the models folder | Your ComfyUI folder, for the custom node checks |
 

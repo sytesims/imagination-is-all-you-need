@@ -1,11 +1,12 @@
-// Local ComfyUI timeouts, end to end against a FAKE ComfyUI (http + ws on 127.0.0.1, no GPU, nothing leaves the machine; the real ComfyUI is never touched).
-//  1. unit (ComfyNative.run): a slow but steady run past several stall windows succeeds; a stuck run fails after the stall window and OUR running prompt is
-//     interrupted ({prompt_id: ours}); the hard cap fails a steady run that runs too long; when ComfyUI no longer lists our prompt while another client's
-//     prompt runs, nothing is interrupted (not_in_queue); queue wait never counts; ComfyUI restarted mid-run → "no longer has prompt"; model bytes moving
-//     (o.activity) count as progress; localCapMs = max(60 min, 4 × calibrated ETA), COMFY_TIMEOUT_MS overrides.
+// Long local ComfyUI jobs, end to end against a FAKE ComfyUI (http + ws on 127.0.0.1, no GPU, nothing leaves the machine; the real ComfyUI is never touched).
+// No clock stops a working job (user, 3 Nov 2026). "Alive" = ComfyUI's GET /queue lists our prompt.
+//  1. unit (ComfyNative.run, the clock faked forward): a 5-hour run with steady steps finishes; one node silent for 90 min while /queue shows it
+//     running finishes (never interrupted); the user's Cancel interrupts ours; ComfyUI restarted (prompt gone) → ComfyLostError gone; another client's
+//     prompt runs and ours is gone → gone, nothing of theirs touched; ComfyUI killed mid-run → ComfyLostError unreachable; a cap someone SET still
+//     works and never counts the queue wait; defaults: localCapMs() null, Cloud net 2 h. resumeNative: a reconnected prompt running 3 h (an old
+//     stored 60-min cap included) is collected, never stopped.
 //  2. API (own server on :8971, COMFY_STALL_TEST_PORT; temp data dir): a job in flight survives a server restart (reattached, done with its result);
-//     a stalled job whose prompt ComfyUI kept is failed "Stopped: no progress for 1 min. Nothing was charged." with lateWatch, then turns done
-//     ("Finished late") when ComfyUI finishes it, outputs stored, Spend $0 local; a stalled job whose prompt was interrupted is not watched.
+//     ComfyUI drops our prompt → failed local_gone, plain words, "Nothing was charged."; ComfyUI killed mid-run → failed local_lost, plain words.
 // Run: npx tsx test/comfy-stall-timeout.e2e.ts
 import { testPort } from './_ports.js'; import assert from 'node:assert/strict'; import { spawn, type ChildProcess } from 'node:child_process'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path'; import http from 'node:http';
 import { WebSocketServer, type WebSocket } from 'ws';
@@ -50,63 +51,62 @@ function fakeComfy() {
   const finish = (id: string) => { if (S.running === id) S.running = null; S.pending = S.pending.filter((x) => x !== id);
     S.history[id] = { status: { status_str: 'success', completed: true, messages: [['execution_success', { prompt_id: id, timestamp: Date.now() }]] }, outputs: Object.fromEntries(saveNodes(id).map((n) => [n, { images: [{ filename: `${id}.png`, subfolder: '', type: 'output' }] }])) };
     send(id, 'executing', { node: null }); };
-  return { S, start, step, finish, send, listen: () => new Promise<number>((r) => server.listen(0, '127.0.0.1', () => r((server.address() as any).port))), close: () => { wss.close(); server.close(); } };
+  return { S, start, step, finish, send, listen: () => new Promise<number>((r) => server.listen(0, '127.0.0.1', () => r((server.address() as any).port))), close: () => { if (!server.listening) return; for (const c of wss.clients) c.terminate(); wss.close(); server.close(); server.closeAllConnections(); } };
 }
 
+// The fake clock: Date.now() runs ahead by `skew` ms, so hours pass in a second (setTimeout stays real).
+const realNow = Date.now.bind(Date); let skew = 0; Date.now = () => realNow() + skew;
 // 1. unit
-{ const N = await import('../src/comfy/native.ts'); const f = fakeComfy(); const port = await f.listen(); const c = () => new N.ComfyNative(`http://127.0.0.1:${port}`);
+{ const N = await import('../src/comfy/native.ts'); let f = fakeComfy(); let port = await f.listen(); const c = () => new N.ComfyNative(`http://127.0.0.1:${port}`);
   const graph = { '1': { class_type: 'KSampler', inputs: {} }, '2': { class_type: 'SaveImage', inputs: {} } };
-  // a: slow but steady: a step every 250 ms for 5 s with a 1.2 s stall window (4 windows; 1.2 s leaves room for a busy 2-core CI runner) → success
-  { let pid = ''; const r = c().run(graph, { stallMs: 1200, timeoutMs: 20_000, onSubmitted: (id) => { pid = id; setTimeout(() => f.start(id), 30); } });
-    await sleep(100); for (let v = 1; v <= 20; v++) { f.step(pid, v); await sleep(250); } f.finish(pid);
-    const a = await r; assert.ok(a.outputs['2']?.[0]?.filename, 'collected'); ok('slow but steady: 5 s of steps with a 1.2 s stall window → finishes (only a lack of progress stops a run)'); }
-  // b: stuck while running (ours visible as running) → stall after the window, our prompt interrupted with its id
-  { f.S.calls.length = 0; let pid = ''; const t0 = Date.now();
-    const e: any = await c().run(graph, { stallMs: 700, timeoutMs: 20_000, onSubmitted: (id) => { pid = id; setTimeout(() => { f.start(id); f.step(id, 1); }, 30); } }).catch((x) => x);
-    assert.ok(e instanceof N.ComfyTimeoutError, String(e)); assert.equal(e.kind, 'stall'); assert.equal(e.cancel, 'interrupted'); assert.ok(Date.now() - t0 < 5000, 'fails soon after the window');
-    assert.deepEqual(f.S.calls.filter((x) => x.url === '/interrupt').map((x) => x.body), [{ prompt_id: pid }], 'one interrupt naming our prompt'); assert.equal(f.S.running, null);
-    ok('stuck run: fails after the stall window, our running prompt interrupted (POST /interrupt {prompt_id: ours})'); }
-  // c: someone else's prompt runs and ComfyUI no longer lists ours → no interrupt, nothing deleted (not_in_queue)
-  { f.S.calls.length = 0; let pid = '';
-    const e: any = await c().run(graph, { stallMs: 700, timeoutMs: 20_000, onSubmitted: (id) => { pid = id; f.S.hidden.add(id); setTimeout(() => { f.start(id); f.S.running = 'theirs'; }, 30); } }).catch((x) => x);
-    assert.ok(e instanceof N.ComfyTimeoutError, String(e)); assert.equal(e.kind, 'stall'); assert.equal(e.cancel, 'not_in_queue'); assert.equal(e.promptId, pid);
-    assert.ok(!f.S.calls.some((x) => x.url === '/interrupt'), 'never interrupts another client\'s prompt'); assert.ok(!f.S.calls.some((x) => x.method === 'POST' && x.url === '/queue'), 'nothing deleted'); assert.equal(f.S.running, 'theirs');
-    f.S.running = null; ok('give up while another client\'s prompt runs: no interrupt, no delete (cancel = not_in_queue)'); }
-  // c2: ours pending again when we give up (e.g. requeued) → removed from the pending queue, no interrupt
-  { f.S.calls.length = 0; let pid = '';
-    const e: any = await c().run(graph, { stallMs: 600, timeoutMs: 20_000, onSubmitted: (id) => { pid = id; setTimeout(() => { f.start(id); f.S.running = 'theirs'; f.S.pending.push(id); }, 30); } }).catch((x) => x);
-    assert.equal(e?.cancel, 'removed', String(e)); assert.ok(f.S.calls.some((x) => x.method === 'POST' && x.url === '/queue' && JSON.stringify(x.body) === JSON.stringify({ delete: [pid] })));
-    assert.ok(!f.S.calls.some((x) => x.url === '/interrupt')); assert.equal(f.S.running, 'theirs'); f.S.running = null; ok('give up with ours pending behind another client: POST /queue {delete:[ours]}, no interrupt'); }
-  // d: hard cap: steady progress but past the cap → cap
-  { let pid = ''; let stop = false; const r = c().run(graph, { stallMs: 5000, timeoutMs: 1200, onSubmitted: (id) => { pid = id; setTimeout(() => f.start(id), 30); } }).catch((x) => x);
-    void (async () => { for (let v = 1; !stop && v < 100; v++) { await sleep(150); if (pid) f.step(pid, v); } })();
-    const e: any = await r; stop = true; assert.ok(e instanceof N.ComfyTimeoutError, String(e)); assert.equal(e.kind, 'cap'); assert.equal(e.cancel, 'interrupted'); ok('hard cap: a run still stepping past the cap is stopped (kind cap)'); }
-  // e: the queue wait never counts: 3.5 s pending behind another prompt with a 1.2 s stall window and 1.5 s cap, then a quick run → success
-  { f.S.running = 'theirs'; let pid = ''; const r = c().run(graph, { stallMs: 1200, timeoutMs: 1500, onSubmitted: (id) => { pid = id; } });
-    await sleep(3500); f.S.running = null; f.start(pid); await sleep(150); f.finish(pid); assert.ok((await r).outputs['2'], 'collected'); ok('queue wait never counts toward the stall window or the cap'); }
-  // f: model bytes moving (activity) count as progress; no socket events for 3.5 s with a 1.2 s window → still fine
-  { let pid = ''; let bytes = 0; const tick = setInterval(() => { bytes += 1e6; }, 200);
-    const r = c().run(graph, { stallMs: 1200, timeoutMs: 20_000, activity: () => bytes, onSubmitted: (id) => { pid = id; setTimeout(() => f.start(id), 30); } });
-    await sleep(3500); clearInterval(tick); f.finish(pid); assert.ok((await r).outputs['2']); ok('model-load bytes moving count as progress (no stall while bytes move)'); }
-  // g: ComfyUI restarted mid-run: our prompt vanishes (not queued, no history) → "no longer has prompt" (existing behaviour, now also once running)
-  { process.env.OPENHIGGSFIELD_COMFY_GONE_MS = '900'; let pid = '';
-    const e: any = await c().run(graph, { stallMs: 60_000, timeoutMs: 60_000, onSubmitted: (id) => { pid = id; setTimeout(() => { f.start(id); setTimeout(() => { f.S.running = null; }, 200); }, 30); } }).catch((x) => x);
-    delete process.env.OPENHIGGSFIELD_COMFY_GONE_MS; assert.match(String(e?.message), /no longer has prompt/); assert.ok(!(e instanceof N.ComfyTimeoutError)); void pid; ok('ComfyUI restarted mid-run (prompt gone) → "ComfyUI no longer has prompt"'); }
-  // h: the hard cap formula
-  { const R = await import('../src/comfy/runNative.ts'); const H = 60 * 60_000;
-    assert.equal(R.localCapMs(null), H, 'no estimate → 60 min'); assert.equal(R.localCapMs({ seconds: 600, high: 900, calibrating: false, source: 'learned' }), H, '4 × 15 min = 60 min');
-    assert.equal(R.localCapMs({ seconds: 1500, high: 1800, calibrating: false, source: 'learned' }), 1800 * 4 * 1000, '4 × the calibrated high end');
-    assert.equal(R.localCapMs({ seconds: 3000, high: 4000, calibrating: true, source: 'reported' }), H, 'an uncalibrated guess is not used');
-    ok('hard cap = max(60 min, 4 × calibrated ETA)'); }
-  f.close(); }
+  process.env.OPENHIGGSFIELD_COMFY_GONE_MS = '900';
+  // a: 5 hours of steady steps (an hour passes every 150 ms) → finishes
+  { let pid = ''; const r = c().run(graph, { onSubmitted: (id) => { pid = id; setTimeout(() => f.start(id), 30); } }); await sleep(100);
+    for (let v = 1; v <= 25; v++) { skew += 12 * 60_000; f.step(pid, v, 25); await sleep(30); } f.finish(pid);
+    const a = await r; assert.ok(a.outputs['2']?.[0]?.filename, 'collected'); assert.ok(!f.S.calls.some((x) => x.url === '/interrupt'), 'never interrupted'); ok('a 5-hour run with steady progress finishes (no cap)'); }
+  // b: one node silent for 90 min (no socket events at all) while /queue shows it running → finishes, never interrupted
+  { f.S.calls.length = 0; let pid = ''; const r = c().run(graph, { onSubmitted: (id) => { pid = id; setTimeout(() => f.start(id), 30); } }); await sleep(200);
+    for (let k = 0; k < 18; k++) { skew += 5 * 60_000; await sleep(120); } // 90 min of silence, /queue read again and again meanwhile
+    assert.ok(f.S.calls.filter((x) => x.url === '/queue').length >= 2, '/queue was checked'); f.finish(pid);
+    const b = await r; assert.ok(b.outputs['2']); assert.ok(!f.S.calls.some((x) => x.url === '/interrupt')); ok('one node silent for 90 min while /queue shows it running: finishes, never stopped'); }
+  // c: the user's Cancel interrupts ours (with its id), even after hours
+  { f.S.calls.length = 0; let pid = ''; let stop = false; const r = c().run(graph, { isCanceled: () => stop, onSubmitted: (id) => { pid = id; setTimeout(() => f.start(id), 30); } }).catch((x) => x);
+    await sleep(300); skew += 3 * 3600_000; await sleep(100); stop = true; const e: any = await r;
+    assert.equal(String(e?.message), 'canceled'); assert.deepEqual(f.S.calls.filter((x) => x.url === '/interrupt').map((x) => x.body), [{ prompt_id: pid }]); ok('Cancel after 3 h: our running prompt interrupted (POST /interrupt {prompt_id: ours})'); }
+  // d: ComfyUI restarted mid-run: our prompt vanishes (not queued, no history) → ComfyLostError gone
+  { const e: any = await c().run(graph, { onSubmitted: (id) => { setTimeout(() => { f.start(id); setTimeout(() => { f.S.running = null; }, 200); }, 30); } }).catch((x) => x);
+    assert.ok(e instanceof N.ComfyLostError, String(e)); assert.equal(e.kind, 'gone'); assert.match(e.message, /no longer has prompt/); ok('ComfyUI restarted mid-run (prompt gone) → lost (gone)'); }
+  // e: another client's prompt runs and ComfyUI no longer lists ours → gone; nothing of theirs interrupted or deleted
+  { f.S.calls.length = 0; const e: any = await c().run(graph, { onSubmitted: (id) => { f.S.hidden.add(id); setTimeout(() => { f.start(id); f.S.running = 'theirs'; }, 30); } }).catch((x) => x);
+    assert.ok(e instanceof N.ComfyLostError, String(e)); assert.equal(e.kind, 'gone'); assert.ok(!f.S.calls.some((x) => x.url === '/interrupt' || (x.method === 'POST' && x.url === '/queue')), 'nothing touched'); assert.equal(f.S.running, 'theirs');
+    f.S.running = null; ok('ours gone while another client\'s prompt runs: lost (gone), theirs untouched'); }
+  // f: a cap someone SET (OPENHIGGSFIELD_COMFY_TIMEOUT_MS → timeoutMs) still stops a run, and ComfyUI's queue wait never counts toward it
+  { let pid = ''; const r = c().run(graph, { timeoutMs: 1200, onSubmitted: (id) => { pid = id; } }); f.S.running = 'theirs';
+    await sleep(2500); f.S.running = null; f.start(pid); await sleep(150); f.finish(pid); assert.ok((await r).outputs['2'], 'queue wait not counted');
+    const e: any = await c().run(graph, { timeoutMs: 1000, onSubmitted: (id) => { setTimeout(() => f.start(id), 30); } }).catch((x) => x);
+    assert.ok(e instanceof N.ComfyTimeoutError, String(e)); assert.equal(e.cancel, 'interrupted'); ok('a set cap still works (opt-in) and never counts the queue wait'); }
+  // g: defaults: no local cap, Cloud net 2 h of running
+  { const R = await import('../src/comfy/runNative.ts'); assert.equal(R.localCapMs(), null, 'no local cap'); assert.equal(R.execTimeoutMs(), 2 * 3600_000, 'Cloud net 2 h');
+    const L = await import('../src/shared/cloudLimits.ts'); assert.equal(L.cloudLimitNote(10 * 60), null); assert.match(String(L.cloudLimitNote(25 * 60)), /about 25 min\. Comfy Cloud stops a run after 30 min \(1 hour on the Pro plan\)/);
+    assert.equal(L.nearCloudLimit(29 * 60_000), true); assert.equal(L.nearCloudLimit(10 * 60_000), false); ok('defaults: localCapMs() = none, Cloud net 2 h; Cloud limit note from 20 min'); }
+  // h: reconnect after an app restart: a prompt running for 3 h (its old stored 60-min cap included) is collected, never stopped
+  { const RS = await import('../src/comfy/resume.ts'); const pid = 'resumed-1'; f.S.graphs.set(pid, graph); f.S.running = pid; f.S.calls.length = 0;
+    const job: any = { id: 'rz', status: 'running', input: { outKind: 'image' }, outputs: [], warnings: [], comfyPrompt: { id: pid, base: `http://127.0.0.1:${port}`, pass: 0, passes: 1, outputs: ['2'], labels: ['Result'], resumable: true, submittedAt: 0, capMs: 60 * 60_000 } };
+    let polls = 0; await RS.resumeNative(job, { sleep: async () => { skew += 15 * 60_000; if (++polls === 12) f.finish(pid); } });
+    assert.equal(job.status, 'done', `${job.status}: ${job.error}`); assert.ok(!f.S.calls.some((x) => x.url === '/interrupt')); ok('reconnect: a prompt running 3 h is collected (no cap, an old stored cap ignored)'); }
+  // i: ComfyUI killed mid-run (connection refused) → ComfyLostError unreachable after the GONE window
+  { let pid = ''; const r = c().run(graph, { onSubmitted: (id) => { pid = id; setTimeout(() => { f.start(id); f.step(id, 1); }, 30); } }).catch((x) => x);
+    await sleep(400); void pid; f.close(); const t0 = realNow(); const e: any = await r;
+    assert.ok(e instanceof N.ComfyLostError, String(e)); assert.equal(e.kind, 'unreachable'); assert.ok(realNow() - t0 < 15_000); ok('ComfyUI killed mid-run → lost (unreachable), fails cleanly'); }
+  delete process.env.OPENHIGGSFIELD_COMFY_GONE_MS; Date.now = realNow; skew = 0; void port; }
 
-// 2. API: restart reattach + late-result rescue
+// 2. API: restart reattach; ComfyUI drops our prompt; ComfyUI killed
 const f = fakeComfy(); const cport = await f.listen();
 const D = fs.mkdtempSync(path.join(os.tmpdir(), 'ohf-comfy-stall-'));
 if (await fetch(`${B}/api/health`).then(() => true, () => false)) throw new Error(`:${PORT} is in use; set COMFY_STALL_TEST_PORT`);
 const env: Record<string, string | undefined> = { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}`, PORT: String(PORT), OPENHIGGSFIELD_DATA_DIR: D, OPENHIGGSFIELD_ENV_FILE: path.join(D, 'none.env'),
   OPENHIGGSFIELD_BACKEND: 'comfy', COMFY_BASE_URL: `http://127.0.0.1:${cport}`, OPENHIGGSFIELD_COMFY_API: 'native', OPENHIGGSFIELD_USE_LOCAL: '1', OPENHIGGSFIELD_LOCAL_AVAILABLE: '1', OPENHIGGSFIELD_SEED_COMMUNITY: '0',
-  OPENHIGGSFIELD_FILMING_FILE: path.join(D, 'nofilm.json'), OPENHIGGSFIELD_CONCURRENCY: '2', OPENHIGGSFIELD_COMFY_STALL_MS: '1500', OPENHIGGSFIELD_LATE_SWEEP_MS: '500', OPENHIGGSFIELD_RESUME_POLL_MS: '300' };
+  OPENHIGGSFIELD_FILMING_FILE: path.join(D, 'nofilm.json'), OPENHIGGSFIELD_CONCURRENCY: '2', OPENHIGGSFIELD_COMFY_GONE_MS: '1500', OPENHIGGSFIELD_LATE_SWEEP_MS: '500', OPENHIGGSFIELD_RESUME_POLL_MS: '300' };
 for (const k of ['OPENHIGGSFIELD_BFL_API_KEY', 'OPENHIGGSFIELD_FAL_KEY', 'FAL_KEY', 'OPENHIGGSFIELD_REPLICATE_API_TOKEN', 'REPLICATE_API_TOKEN', 'COMFY_API_KEY', 'OPENHIGGSFIELD_COMFY_API_KEY', 'OPENHIGGSFIELD_MOCK_KEYS', 'OPENHIGGSFIELD_COMFY_MODELS_DIR', 'COMFY_MODELS_DIR', 'OPENHIGGSFIELD_COMFY_TIMEOUT_MS']) delete env[k];
 const boot = () => spawn('npx', ['tsx', 'src/index.ts'], { cwd: ROOT, env: env as any, stdio: process.env.DEBUG_STALL ? 'inherit' : 'ignore', detached: true });
 const get = async (u: string) => (await (await fetch(B + u)).json()) as any;
@@ -121,7 +121,6 @@ try {
   await up();
   // 2a. restart with a local job in flight → reattached, done with its result
   const a = await submit('a paper boat'); const pa = await nextPrompt(); f.start(pa); f.step(pa, 1);
-  // keep a stepping until the kill: on a slow runner the wait below can pass the 1.5 s stall window, and a stalled job would fail before the restart
   let va = 1; const beat = setInterval(() => f.step(pa, ++va), 200);
   await until(async () => (await get(`/api/jobs/${a.id}`)).progressInfo?.stage === 'generating', 'a generating'); await sleep(900); // the 400 ms flush stored comfyPrompt
   kill(p); clearInterval(beat); await until(async () => !(await fetch(`${B}/api/health`).then((r) => r.ok, () => false)), 'API down', 10_000);
@@ -131,24 +130,21 @@ try {
   assert.equal(da.status, 'done', `${da.status}: ${da.error}`); assert.ok(da.resultUrl); assert.ok(da.warnings.some((w: string) => /server restarted during this run/.test(w)));
   ok('server restart with a local job in flight: reattached (still running), then done with its result');
 
-  // 2b. stalled, and ComfyUI kept the prompt (cancel finds nothing to stop) → failed + watched → finishes late → done
+  // 2b. ComfyUI drops our prompt (not queued, not running, no result) → failed local_gone, plain words, nothing charged, not watched
   const b = await submit('a lighthouse'); const pb = await nextPrompt(); f.S.hidden.add(pb); f.start(pb); f.step(pb, 1);
-  const fb = await until(async () => { const j = await get(`/api/jobs/${b.id}`); return j.status === 'failed' ? j : null; }, 'b fails by stall', 15_000);
-  assert.equal(fb.reasonCode, 'local_stalled'); assert.equal(fb.errorType, 'timeout'); assert.match(fb.error, /Stopped: no progress for 1 min\./); assert.equal(fb.lateWatch, true, 'watched for a late result');
-  assert.ok(!f.S.calls.some((x) => x.url === '/interrupt' && x.body?.prompt_id === pb), 'nothing interrupted (ComfyUI did not list it)');
-  const FR = await import('../../web/src/shared/failureReasons.ts'); const v = FR.failView(fb); assert.equal(`${v.line} ${v.charge}`, 'Nothing moved for 1 minute, so we stopped it. Try again. Nothing was charged.'); assert.ok(v.actions.includes('retry'));
-  f.finish(pb); const db = await until(async () => { const j = await get(`/api/jobs/${b.id}`); return j.status === 'done' ? j : null; }, 'b finishes late', 10_000);
-  assert.ok(db.resultUrl && db.outputs.length === 1, 'outputs stored'); assert.ok(db.finishedLateAt); assert.equal(db.lateWatch, false); assert.equal(db.error, null); assert.equal(db.reasonCode, null);
-  assert.ok(db.warnings.some((w: string) => /^Finished late/.test(w))); assert.equal((await fetch(B + db.resultUrl)).status, 200, 'the file is served');
-  assert.equal(db.spend?.billedTo, 'local'); assert.equal(db.spend?.countedUsd, 0); assert.ok(!db.spend?.actualUsd, 'no charge recorded');
-  const lst = await get('/api/jobs?status=done,failed&order=desc&limit=50&cursor=') /* newest first, as the feed: a status filter alone lists oldest first */; const listed = (Array.isArray(lst) ? lst : lst.items ?? []).find((x: any) => x.id === b.id); assert.equal(listed?.status, 'done', 'the feed list shows it done');
-  ok('stalled with the prompt kept by ComfyUI: failed "Stopped: no progress for 1 min. Nothing was charged." (watched) → finished late → done, outputs stored, $0 local');
+  const fb = await until(async () => { const j = await get(`/api/jobs/${b.id}`); return j.status === 'failed' ? j : null; }, 'b fails: gone', 15_000);
+  assert.equal(fb.reasonCode, 'local_gone'); assert.match(fb.error, /ComfyUI no longer has this job/); assert.ok(!/Took longer|min\b/.test(fb.error), 'no clock in the words'); assert.equal(fb.lateWatch, false);
+  assert.ok(!f.S.calls.some((x) => x.url === '/interrupt' && x.body?.prompt_id === pb), 'nothing interrupted');
+  const FR = await import('../../web/src/shared/failureReasons.ts'); const v = FR.failView(fb); assert.equal(v.title, 'ComfyUI lost this run'); assert.equal(v.charge, 'Nothing was charged.');
+  assert.equal(fb.spend?.billedTo, 'local'); assert.ok(!fb.spend?.actualUsd, 'no charge recorded');
+  ok('ComfyUI drops our prompt: failed "ComfyUI lost this run", nothing charged');
 
-  // 2c. stalled while ComfyUI lists it as ours and running → interrupted, not watched
+  // 2c. ComfyUI killed mid-run → failed local_lost, plain words, nothing charged
   const c = await submit('a red kite'); const pc = await nextPrompt(); f.start(pc); f.step(pc, 1);
-  const fc = await until(async () => { const j = await get(`/api/jobs/${c.id}`); return j.status === 'failed' ? j : null; }, 'c fails by stall', 15_000);
-  assert.equal(fc.reasonCode, 'local_stalled'); assert.equal(fc.lateWatch, false, 'interrupted: nothing to watch');
-  assert.deepEqual(f.S.calls.filter((x) => x.url === '/interrupt').map((x) => x.body), [{ prompt_id: pc }], 'interrupted ours only');
-  ok('stalled and ours running: interrupted with our prompt id, not watched');
+  await until(async () => (await get(`/api/jobs/${c.id}`)).progressInfo?.stage === 'generating', 'c generating'); f.close();
+  const fc = await until(async () => { const j = await get(`/api/jobs/${c.id}`); return j.status === 'failed' ? j : null; }, 'c fails: unreachable', 20_000);
+  assert.equal(fc.reasonCode, 'local_lost');
+  assert.match(fc.error, /ComfyUI closed or stopped answering while this was running\./); assert.ok(!/min\b/.test(fc.error)); const vc = FR.failView(fc); assert.equal(vc.title, 'ComfyUI stopped'); assert.equal(vc.charge, 'Nothing was charged.');
+  ok('ComfyUI killed mid-run: failed "ComfyUI stopped", plain words, nothing charged');
 } finally { kill(p); f.close(); await sleep(300); fs.rmSync(D, { recursive: true, force: true }); }
 console.log('ALL OK comfy-stall-timeout'); process.exit(0);

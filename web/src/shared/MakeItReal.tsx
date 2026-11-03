@@ -11,6 +11,7 @@ import { IMAGE_ACCEPT } from '../../../server/src/shared/mediaAccept';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { createJob, getJob } from '../api';
 import { BarPopover, PopSection, PopNote, Segmented } from './BarPop';
+import { cloudLimitNote } from '../../../server/src/shared/cloudLimits';
 import { tip } from './Tooltip';
 import { useToast } from './Toast';
 import { SparkleIcon, UploadIcon, CloseIcon, DownloadIcon } from '../ui/Icons';
@@ -235,6 +236,7 @@ export function MakeItRealSheet({ planJobId, anchor, open, onClose, onStarted, a
         {onCloud && lora?.state === 'present' && <PopNote testId="mir-lora-present">Comfy Cloud is set up for this.</PopNote>}
         {!cloud && tooHeavy && <PopNote tone="warn" testId="mir-heavy">{prep.fit.reason}</PopNote>}
         {(cloud || onCloud) && q && q.runnable === false && !q.demo && q.priceLine && <PopNote tone="warn" testId="mir-route-note">{String(q.priceLine)}</PopNote>}
+        {onCloud && cEta && cloudLimitNote(cEta.high) && <PopNote testId="mir-cloud-limit">{cloudLimitNote(cEta.high)}</PopNote>}
         <footer className="mir-foot mir-foot-one">
           <span className="mir-cost" data-testid="mir-cost">{cloud ? <span><b className="mir-cost-m">{rm.name}</b> · Comfy Cloud · {renderEtaText(rm)}<small> (estimate)</small></span>
             : onCloud ? <span {...tip('An estimate: Comfy Cloud bills by the second.')}><b className="mir-cost-m">{rm.name}</b> · Comfy Cloud{typeof q?.exactUsd === 'number' ? <> · <b data-testid="mir-cloud-usd">≈ ${(Math.ceil(q.exactUsd * 100 - 1e-9) / 100).toFixed(2)}</b>{typeof q?.listCredits === 'number' ? ` (${q.listCredits} credits)` : ''}</> : ''} · {needsPaint ? 'paints the first frame here, then renders · ' : ''}{cEta ? minutesText(cEta) : '…'}<small> (estimate)</small></span>

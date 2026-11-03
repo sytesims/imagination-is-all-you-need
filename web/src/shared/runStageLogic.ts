@@ -91,21 +91,23 @@ export function shortDuration(ms: number | null | undefined): string {
   const s = Math.round(Number(ms) / 1000); if (!(s > 0)) return '';
   if (s < 60) return `${s} s`; const m = Math.round(s / 60); if (m < 60) return `${m} min`; return `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}`;
 }
-export interface RunTime { left: string; started: string; note: string; slow: boolean }
-/** The friendly time line: time left (or "first run on this computer: timing it"), when it started, and whether it's running late. */
+export interface RunTime { left: string; started: string; note: string; slow: boolean; /** "1 h 5 min": how long it has run, once a long run passes 10 min ('' before) */ elapsed?: string }
+/** The friendly time line: time left (or "first run on this computer: timing it"), when it started, how long a long run has been going, and whether
+ *  it's running late. No clock stops a working local run (server comfy/native.ts), so a long run keeps saying how long it has run. */
 export function runTimeOf(j: any, now = Date.now(), locale?: string): RunTime {
   const p = progressOf(j); const started = clockText(n(j?.renderStartedAt) || n(j?.startedAt) || n(j?.createdAt), locale);
   if (p.stage === 'queued') return { left: '', started: '', note: '', slow: false };
   const eta = n(p.etaSeconds) || n(j?.eta); const range = j?.etaRange ?? j?.fit?.etaRange;
   const t0 = n(j?.renderStartedAt) || n(j?.startedAt); const elapsed = t0 ? (now - t0) / 1000 : 0;
   const slow = !!range && n(range.high) > 0 && elapsed > n(range.high) * 1.1 && p.stage !== 'finishing';
-  if (p.stage === 'finishing') return { left: 'Almost done', started, note: '', slow: false };
-  if (eta > 0 && !j?.calibrating) return { left: timeLeftText(eta), started, note: slow ? 'Taking longer than usual' : '', slow };
-  if (isLocalRun(j) && (j?.calibrating || range?.calibrating || range?.source === 'first_run' || !range)) return { left: '', started, note: 'First run on this computer: timing it', slow: false };
-  return { left: '', started, note: slow ? 'Taking longer than usual' : '', slow };
+  const ran = elapsed >= 600 ? shortDuration(elapsed * 1000) : ''; const el = ran ? { elapsed: ran } : {};
+  if (p.stage === 'finishing') return { left: 'Almost done', started, note: '', slow: false, ...el };
+  if (eta > 0 && !j?.calibrating) return { left: timeLeftText(eta), started, note: slow ? 'Taking longer than usual' : '', slow, ...el };
+  if (isLocalRun(j) && (j?.calibrating || range?.calibrating || range?.source === 'first_run' || !range)) return { left: '', started, note: 'First run on this computer: timing it', slow: false, ...el };
+  return { left: '', started, note: slow ? 'Taking longer than usual' : '', slow, ...el };
 }
-/** "About 5 min left · started 9:26 PM" (the parts that are known). */
-export const runTimeLine = (t: RunTime) => [t.left || t.note, t.started ? `started ${t.started}` : ''].filter(Boolean).join(' · ');
+/** "About 5 min left · started 9:26 PM", and for a long run "… · running 1 h 5 min" (the parts that are known). */
+export const runTimeLine = (t: RunTime) => [t.left || t.note, t.started ? `started ${t.started}` : '', t.elapsed ? `running ${t.elapsed}` : ''].filter(Boolean).join(' · ');
 
 /* ------------------------------------------------------------------ place, cost, cancel */
 /** A hosted run's place name in the app's one set of words (server/src/shared/modelIds.ts placeOf): the server's own place first, so a run on your

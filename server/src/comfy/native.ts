@@ -41,17 +41,25 @@ export function stepPercent(samplersDone: number, value: number, max: number, sa
 /** What cancelPrompt did: removed from ComfyUI's pending queue, interrupted while running, not in ComfyUI's queue any more (finished), or ComfyUI unreachable. */
 export type CancelOutcome = 'removed' | 'interrupted' | 'not_in_queue' | 'unreachable';
 const cancels = new Map<string, Promise<CancelOutcome>>();
-/** A run we gave up on: 'stall' = no progress for the stall window while running, 'cap' = past the hard cap on running time.
+/** A run stopped by a cap on running time that someone SET (run's timeoutMs, from OPENHIGGSFIELD_COMFY_TIMEOUT_MS); there is none by default.
  *  cancel = what cancelPrompt did with OUR prompt (never anyone else's); when it wasn't stopped ('not_in_queue' / 'unreachable') ComfyUI may still finish it,
  *  and the late-result sweeper (comfy/lateRescue.ts) collects it. */
 export class ComfyTimeoutError extends Error {
-  constructor(readonly kind: 'stall' | 'cap', readonly limitMs: number, readonly promptId: string, readonly cancel: CancelOutcome) {
-    super(kind === 'stall' ? `ComfyUI prompt ${promptId}: no progress for ${Math.round(limitMs / 60_000)} min (${cancel})` : `ComfyUI prompt ${promptId} ran longer than ${Math.round(limitMs / 60_000)} min (${cancel})`);
+  readonly kind = 'cap' as const;
+  constructor(readonly limitMs: number, readonly promptId: string, readonly cancel: CancelOutcome) {
+    super(`ComfyUI prompt ${promptId} ran longer than the set limit of ${Math.round(limitMs / 60_000)} min (${cancel})`);
   }
   get minutes() { return Math.max(1, Math.round(this.limitMs / 60_000)); }
 }
-/** Default stall window (no progress at all while our prompt runs): OPENHIGGSFIELD_COMFY_STALL_MS, else 10 min. */
-export const DEFAULT_STALL_MS = () => Number(process.env.OPENHIGGSFIELD_COMFY_STALL_MS) || 10 * 60_000;
+/** ComfyUI really stopped working on our prompt (never a clock): 'gone' = it left ComfyUI's queue with no result (ComfyUI restarted, or the queue
+ *  was cleared); 'unreachable' = ComfyUI did not answer at all for longer than the GONE window (closed or crashed). */
+export class ComfyLostError extends Error {
+  constructor(readonly kind: 'gone' | 'unreachable', readonly promptId: string, readonly forMs: number) {
+    super(kind === 'gone' ? `ComfyUI no longer has prompt ${promptId} (not queued, not running, no result; was ComfyUI restarted?)` : `ComfyUI stopped answering for ${Math.round(forMs / 1000)} s while running prompt ${promptId} (was it closed?)`);
+  }
+}
+/** How long ComfyUI may not list our prompt (or not answer at all) before we call it lost: OPENHIGGSFIELD_COMFY_GONE_MS, else 30 s. */
+export const GONE_WINDOW_MS = () => Number(process.env.OPENHIGGSFIELD_COMFY_GONE_MS) || 30_000;
 
 export class ComfyNative {
   readonly clientId = randomUUID();
@@ -113,17 +121,18 @@ export class ComfyNative {
   /**
    * Run one graph to completion. Progress: websocket `progress` events on sampler nodes give real step / max (stepPercent);
    * before the first step, known = false (no percent). /history polling (with backoff) is authoritative so a dropped socket can't hang a job.
-   * Giving up (both clocks start when our prompt starts executing, never at submit: ComfyUI's queue wait never counts):
-   *   stall: no progress for stallMs (any websocket event about our prompt: execution_start / executing / progress / executed / cached, a preview
-   *          frame, or a change in o.activity(), e.g. model bytes moving). Without a live socket nothing can be observed, so only the cap applies then
-   *          (the socket reconnects by itself; a reconnect starts a fresh window).
-   *   cap:   running longer than timeoutMs (hard cap; default 60 min).
-   * Either way the last /history look still collects a finished result; otherwise OUR prompt is cancelled (cancelPrompt: interrupt only when it is
-   * ours and running, else removed from the pending queue) and a ComfyTimeoutError says what was done.
+   * No clock stops a working run (user, 3 Nov 2026: a single node may think for an hour, a run may take five). "Alive" = ComfyUI's own GET /queue
+   * lists our prompt (running or pending), read every 10 s; a node busy for 90 min with no step events is alive. We stop only when ComfyUI really
+   * stopped working on it:
+   *   error / interrupt: ComfyUI says so (execution_error on the socket, or /history status error) → the error, as before;
+   *   gone:        /queue no longer lists it and /history has no result for GONE_WINDOW_MS (ComfyUI restarted, queue cleared) → ComfyLostError('gone');
+   *   unreachable: /queue and /history both fail for GONE_WINDOW_MS (ComfyUI closed or crashed) → ComfyLostError('unreachable').
+   * The user's Cancel always works (isCanceled). timeoutMs, ONLY when passed (someone set OPENHIGGSFIELD_COMFY_TIMEOUT_MS), is a cap on running time
+   * (its clock starts when our prompt starts executing, never in ComfyUI's queue): the last /history look still collects a finished result; otherwise
+   * OUR prompt is cancelled (interrupt only when it is ours and running) and a ComfyTimeoutError says what was done.
    */
-  async run(prompt: Record<string, any>, o: { onProgress?: (p: NativeProgress) => void; onSubmitted?: (id: string) => void; isCanceled?: () => boolean; timeoutMs?: number;
-    /** No-progress window while running (default DEFAULT_STALL_MS). */ stallMs?: number;
-    /** Extra progress signal: any change in this value counts as progress (e.g. model-load bytes). */ activity?: () => unknown;
+  async run(prompt: Record<string, any>, o: { onProgress?: (p: NativeProgress) => void; onSubmitted?: (id: string) => void; isCanceled?: () => boolean;
+    /** A cap on running time, only when someone set one (none by default). */ timeoutMs?: number | null;
     /** Live sampler previews (binary websocket frames) of THIS prompt; previewMethod = extra_data.preview_method for this prompt only (comfy/preview.ts). */
     onPreview?: (f: NativePreview) => void; previewMethod?: string | null } = {}): Promise<{ promptId: string; outputs: Record<string, NativeOutput[]>; timing?: NativeTiming }> {
     const total = Object.keys(prompt).length; const seen = new Set<string>(); let cur: string | null = null; let pid = '';
@@ -141,16 +150,12 @@ export class ComfyNative {
       o.onProgress?.({ node: cur, value, max, done: seen.size, total, known, steps, percent: known ? lastPct : 0, phase: phaseOf(isStepNode, max), queuePos: null });
     };
     let ws: WebSocket | null = null; let wsDone = false; let wsError: string | null = null; let wsAlive = false; let ended = false;
-    let lastAct = 0; const bump = () => { lastAct = Date.now(); };
-    const OURS = new Set(['execution_start', 'execution_cached', 'executing', 'progress', 'executed', 'progress_state', 'execution_success']);
     const onMessage = (raw: WebSocket.RawData, isBinary: boolean) => {
         if (isBinary) { // previews: ComfyUI sends them only to the client that queued the running prompt (our clientId is per run)
-          if (tm.startedAt) bump();
           if (!o.onPreview || !tm.startedAt) return; const b = parseComfyBinary(raw as Buffer);
           if (b?.kind === 'preview' && (!b.promptId || !pid || b.promptId === pid)) o.onPreview({ mime: b.mime, data: b.data, nodeId: b.nodeId, promptId: b.promptId }); return; }
         let m: any; try { m = JSON.parse(String(raw)); } catch { return; }
         const d = m.data ?? {}; if (pid && d.prompt_id && d.prompt_id !== pid) return;
-        if (OURS.has(m.type)) bump(); // any event about our prompt (or an untagged one on our per-run socket) = progress
         if (m.type === 'execution_start') { tm.startedAt ??= Date.now(); emit(); } // out of ComfyUI's queue: loading
         if (m.type === 'execution_cached') for (const n of d.nodes ?? []) { seen.add(String(n)); tm.cached.push(String(n)); }
         if (m.type === 'executing') { if (cur) { seen.add(cur); if (samplerIds.includes(cur) && steps) doneSamplers.add(cur); } cur = d.node == null ? null : String(d.node); if (d.node == null && d.prompt_id === pid) { wsDone = true; tm.wsDoneAt ??= Date.now(); } emit(); }
@@ -165,7 +170,7 @@ export class ComfyNative {
       try {
         const s = new WebSocket(`${this.base.replace(/^http/, 'ws')}/ws?clientId=${this.clientId}`, { headers: this.headers }); ws = s;
         s.on('message', onMessage); s.on('error', () => undefined);
-        s.on('open', () => { wsAlive = true; bump(); }); // a (re)connect starts a fresh stall window: events while it was down were not seen
+        s.on('open', () => { wsAlive = true; });
         s.on('close', () => { if (ws === s) wsAlive = false; if (!ended && ws === s) setTimeout(() => { if (!ended && ws === s) void connect(); }, 5000).unref?.(); });
         await new Promise<void>((res) => { s.once('open', () => res()); s.once('error', () => res()); setTimeout(res, 3000); });
       } catch { /* no socket: /history polling still finishes the run */ }
@@ -185,38 +190,37 @@ export class ComfyNative {
       // The timeout clock starts when OUR prompt starts executing (execution_start on the socket, or GET /queue shows it running), never at submit:
       // time spent waiting in ComfyUI's shared queue behind other prompts doesn't count (that wait can be cancelled instead).
       let execT0: number | null = null; let delay = 250; let lastQueueAt = 0; let goneSince: number | null = null;
-      const limit = o.timeoutMs ?? 60 * 60_000; const stallMs = o.stallMs ?? DEFAULT_STALL_MS(); const GONE_MS = Number(process.env.OPENHIGGSFIELD_COMFY_GONE_MS) || 30_000;
-      let actSig = JSON.stringify(o.activity?.() ?? null); let runQAt = 0; let runGoneSince: number | null = null;
+      const limit = o.timeoutMs && o.timeoutMs > 0 ? o.timeoutMs : null; const GONE_MS = GONE_WINDOW_MS();
+      let runQAt = 0; let runGoneSince: number | null = null; let deadSince: number | null = null; let qOk = true;
       if (!tm.startedAt) o.onProgress?.({ node: null, value: 0, max: 0, done: 0, total, percent: 0, known: false, steps: null, phase: 'queued', queuePos: null });
       for (;;) {
         if (tm.startedAt) execT0 ??= tm.startedAt;
         // not started yet: our place among ComfyUI's pending prompts (e.g. behind someone else's batch), read at most every 3 s (also without a socket)
         if (execT0 == null && Date.now() - lastQueueAt > 3000) { lastQueueAt = Date.now();
-          const q = await this.req('/queue').then((r) => r.json() as any).catch(() => null);
+          const q = await this.req('/queue').then((r) => r.json() as any).catch(() => null); qOk = !!q;
           if (q && execT0 == null && !tm.startedAt) { const pos = comfyQueuePosition(q, pid); const running = (q.queue_running ?? []).some((e: any) => (Array.isArray(e) ? e[1] : e?.prompt_id) === pid);
             if (pos != null) { goneSince = null; o.onProgress?.({ node: null, value: 0, max: 0, done: 0, total, percent: 0, known: false, steps: null, phase: 'queued', queuePos: pos }); }
             else if (running) { goneSince = null; execT0 = Date.now(); }
             else goneSince ??= Date.now(); } } // neither pending nor running: finished (history says so below) or lost (ComfyUI restarted)
         // started: every 10 s (or GONE_MS / 3), is our prompt still in ComfyUI's queue? (gone = ComfyUI restarted; the history check below wins if it finished)
         if (execT0 != null && Date.now() - runQAt > Math.min(10_000, GONE_MS / 3)) { runQAt = Date.now();
-          const q = await this.req('/queue').then((r) => r.json() as any).catch(() => null);
+          const q = await this.req('/queue').then((r) => r.json() as any).catch(() => null); qOk = !!q;
           if (q) { const has = (xs?: any[]) => (xs ?? []).some((e: any) => (Array.isArray(e) ? e[1] : e?.prompt_id) === pid);
             if (has(q.queue_running) || has(q.queue_pending)) runGoneSince = null; else runGoneSince ??= Date.now(); } }
-        if (o.activity) { const a = JSON.stringify(o.activity() ?? null); if (a !== actSig) { actSig = a; bump(); } }
-        if (execT0 != null && !wsAlive) bump(); // no socket: progress can't be seen, so only the hard cap applies (a reconnect starts a fresh window)
         if (o.isCanceled?.()) { await this.cancelPrompt(pid); throw new Error('canceled'); }
         if (wsError) throw new Error(`ComfyUI execution error: ${wsError}`);
-        const h = await this.history(pid).catch(() => null);
+        let hOk = true; const h = await this.history(pid).catch(() => { hOk = false; return null; });
+        // ComfyUI not answering at all (connection refused: closed or crashed). A slow answer is never a failure: fetch just waits.
+        if (!hOk && !qOk) { deadSince ??= Date.now(); if (Date.now() - deadSince > GONE_MS) throw new ComfyLostError('unreachable', pid, Date.now() - deadSince); } else deadSince = null;
         if (h?.status?.status_str === 'error') throw new Error(`ComfyUI execution error: ${JSON.stringify(h.status.messages ?? '').slice(0, 600)}`);
         if (finished(h) && (wsDone || !hadSocket || h.status?.completed)) return collect(h);
         const gone = execT0 == null ? goneSince : runGoneSince;
-        if (gone != null && !h && Date.now() - gone > GONE_MS) throw new Error(`ComfyUI no longer has prompt ${pid} (not queued, not running, no result; was ComfyUI restarted?)`);
-        const now = Date.now(); const capHit = execT0 != null && now - execT0 > limit; const stallHit = execT0 != null && wsAlive && now - Math.max(execT0, lastAct) > stallMs;
-        if (capHit || stallHit) { // one last look before failing: a finished result is still collected
+        if (gone != null && !h && hOk && Date.now() - gone > GONE_MS) throw new ComfyLostError('gone', pid, Date.now() - gone);
+        if (limit != null && execT0 != null && Date.now() - execT0 > limit) { // a cap someone set (never by default) // one last look before failing: a finished result is still collected
           const last = await this.history(pid).catch(() => null); if (finished(last) && last?.status?.status_str !== 'error') return collect(last);
           if (last?.status?.status_str === 'error') throw new Error(`ComfyUI execution error: ${JSON.stringify(last.status.messages ?? '').slice(0, 600)}`);
           const cancel = await this.cancelPrompt(pid); // ours only: interrupt when ComfyUI says OUR prompt is running, else delete it from the pending queue
-          const err = new ComfyTimeoutError(capHit ? 'cap' : 'stall', capHit ? limit : stallMs, pid, cancel);
+          const err = new ComfyTimeoutError(limit, pid, cancel);
           console.warn(`[openhiggsfield] ${err.message}: ${cancel === 'interrupted' ? 'interrupted our running prompt' : cancel === 'removed' ? 'removed our prompt from ComfyUI\'s queue' : cancel === 'not_in_queue' ? 'not in ComfyUI\'s queue any more (nothing touched)' : 'ComfyUI unreachable (nothing touched)'}`);
           throw err; }
         let w = 0; do { await new Promise((r) => setTimeout(r, 50)); w += 50; } while (w < delay && !(wsDone || wsError) && !o.isCanceled?.()); // wake as soon as the socket says it's done (outputs collected without the backoff wait)
