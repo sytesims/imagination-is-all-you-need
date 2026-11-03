@@ -14,11 +14,14 @@ import { viewParam, withViewParam } from '../../../shared/tabRestore';
 import { clearedFilter, feedView, isDefaultQuery, parseSavedFilter, savedFilterText, type FeedFilter, type FeedScope } from './feedFilter';
 
 /** Projects, filter (saved per tab; a reload brings back only Sort and Grid, so the feed opens on everything), the server-paged list and Select mode. */
+/** The feed's whole filter (Type included) for this visit, per feed: switching workflow remounts the page (Audio: Music → Translate is another
+ *  tool), and the Type you picked stays. A reload starts empty, so the feed still opens on everything (feedFilter.ts parseSavedFilter). */
+const FILTER_THIS_VISIT = new Map<string, FeedFilter>();
 export function useFeedState(live: JobState[], opts: { scope?: FeedScope; /** localStorage key for the grid size (older installs); the filter is kept under the same key with feedFilter */ sizeKey?: string } = {}) {
   const sizeKey = opts.sizeKey ?? 'ohf:feedSize'; const filterKey = sizeKey.replace('feedSize', 'feedFilter'); const toast = useToast();
   const read = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
-  const pj = useProjects(); const [filt, setFiltRaw] = useState<FeedFilter>(() => parseSavedFilter(read(filterKey), read(sizeKey)));
-  const setFilt = (f: FeedFilter) => { setFiltRaw(f); try { localStorage.setItem(filterKey, savedFilterText(f)); } catch { /* this visit only */ } };
+  const pj = useProjects(); const [filt, setFiltRaw] = useState<FeedFilter>(() => FILTER_THIS_VISIT.get(filterKey) ?? parseSavedFilter(read(filterKey), read(sizeKey)));
+  const setFilt = (f: FeedFilter) => { setFiltRaw(f); FILTER_THIS_VISIT.set(filterKey, f); try { localStorage.setItem(filterKey, savedFilterText(f)); } catch { /* this visit only */ } };
   const feed = useFeed(live, filt, pj.pid, opts.scope ?? null);
   const [selecting, setSelecting] = useState(false); const [sel, setSel] = useState<Map<string, SelInfo>>(new Map()); const [allBusy, setAllBusy] = useState(false);
   const stopSelect = () => { setSelecting(false); setSel(new Map()); };

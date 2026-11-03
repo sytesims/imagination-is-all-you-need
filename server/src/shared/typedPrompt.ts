@@ -68,10 +68,27 @@ export const hasModelTokens = (text: unknown): boolean => typeof text === 'strin
  * photo's @image?) and a model's own tokens (<Picture 2>, <<<image_1>>>) read as "picture 2", "video 1", "audio 1". Display only: the
  * stored prompt is never changed. The same mention grammar as web/src/shared/mentionTokens.ts (a bare "@image" is no reference).
  */
+/**
+ * A prompt in a model's own structured format (MiniMax H3 / Kling: "For the target video, at 0.00 seconds…", "integrated_multimodal_description:
+ * [Shot 1] …", "subject_definitions:", "[Shot 1] …") read as words (2026-11-03 UI audit): its description field's first sentence, with no field
+ * names, [Shot N] tags or alignment lines. Any other text comes back as is. Display only (plainPrompt); the run still sends the prompt as written.
+ */
+const STRUCT_FIELD = /(^|\n)\s*[a-z]+(?:_[a-z]+)+\s*:/i;
+const STRUCTURED = /^\s*(For the target video,|How the reference pictures align|\[Shot \d+\])|(^|\n)\s*(integrated_multimodal_description|subject_definitions|detailed_description)\s*:/i;
+export function readableStructured(text: string): string {
+  if (!STRUCTURED.test(text)) return text;
+  const desc = /(?:^|\n)\s*(?:integrated_multimodal_description|detailed_description)\s*:\s*([\s\S]*)/i.exec(text);
+  let t = desc ? desc[1] : text.split(/\n\s*\n/).filter((para) => !/^\s*(For the target video,|How the reference pictures align)/i.test(para)).join('\n');
+  const next = STRUCT_FIELD.exec(t); if (next && next.index > 0) t = t.slice(0, next.index); // stop at the next field (overall_soundscape: …)
+  t = t.replace(/^\s*[a-z]+(?:_[a-z]+)+\s*:\s*/i, '').replace(/\(from \[Shot \d+\]\)/gi, '');
+  const shots = t.split(/\[Shot \d+\]/i).map((x) => x.trim()).filter(Boolean); t = shots[0] ?? ''; // a multi-shot prompt: the first shot
+  t = t.replace(/\s+/g, ' ').trim();
+  const first = /^(.{12,}?[.!?])(\s|$)/.exec(t); return first ? first[1] : t;
+}
 const PLAIN_REF = /@(image|img|video|audio)(?: ?(\d+)|(\?))?(?![\w?])/gi;
 const PLAIN_NOUN: Record<string, string> = { image: 'picture', img: 'picture', video: 'video', audio: 'audio' };
 export function plainPrompt(text: unknown): string {
-  return chipsFromModelTokens(typeof text === 'string' ? text : '').replace(PLAIN_REF, (m, w: string, n?: string, gone?: string) => {
+  return chipsFromModelTokens(readableStructured(typeof text === 'string' ? text : '')).replace(PLAIN_REF, (m, w: string, n?: string, gone?: string) => {
     const k = w.toLowerCase(); const noun = PLAIN_NOUN[k];
     if (gone) return `the removed ${noun}`;
     if (!n) return k === 'image' || k === 'img' ? m : `the ${noun}`; // bare "@image" is a word, not a reference
