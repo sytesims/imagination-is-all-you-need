@@ -9,6 +9,7 @@ import { goClick } from './goToWorkflow';
 import { toolHandoffHref } from './workflowLinks';
 import { ToolIconFor } from '../ui/Icons';
 import { TOOL_TAGLINE } from '../ui/headerMenus';
+import { useItGroupOf, USE_IT_TITLE, type UseItGroup } from './useItGroups';
 import './resultMenu.css';
 
 export type MItem = {
@@ -47,9 +48,6 @@ export function MenuBody({ sections }: { sections: MSection[] }) {
 
 /* ---- Tools: where this result can go next (GET /api/jobs/:id/handoff), with the header menu's icons and taglines ---- */
 type Target = { toolId: string; name?: string; slot?: string; as?: string };
-const DEST: [RegExp, string][] = [[/\/tools\/(h3-video|h3-extend|object-swap|motion-transfer|restyle|reshoot|camera|photo-fx|upscale|footage-fx|two-person-swap|prompt-edit|finish|reframe|remove-bg|sdr-hdr|fps-boost|depth-map|cutout|app-(anime|video|transition|ugc|orbit))/, 'Video'],
-  [/\/tools\/(voice|soundtrack|audio|app-(change-voice|translate|music))/, 'Sound'], [/\/tools\/three-d/, '3D'], [/./, 'Picture']];
-const TITLE: Record<string, string> = { Picture: 'Edit the picture', Video: 'Make a video', Sound: 'Sound and voice', '3D': '3D' };
 /** Plain names: no slashes or lab jargon. */
 const nameOf = (t: Target) => (t.name ?? t.toolId).replace(/\s*\/\s*Angles$/, '').replace(/^3D$/, 'Make it 3D').replace(/^Generate Video$/, 'Turn into a video');
 function useTargets(jobId: string) {
@@ -57,17 +55,17 @@ function useTargets(jobId: string) {
   useEffect(() => { let live = true; setT(null); fetch(`/api/jobs/${encodeURIComponent(jobId)}/handoff`).then(r => r.ok ? r.json() : null).then(d => live && setT(d?.targets ?? [])).catch(() => live && setT([])); return () => { live = false; }; }, [jobId]);
   return t;
 }
-/** Hand-off rows grouped by where they open (Picture · Video · Sound · 3D), minus tool ids the Edit tab lists as its own rows. */
+/** Hand-off rows grouped by where they open (Edit the picture · Make it move · Sound and voice · 3D; shared/useItGroups.ts), minus tool ids the Edit tab lists as its own rows. */
 function toolSections(t: Target[] | null, jobId: string, out: number, onClose: (() => void) | undefined, skip: Set<string>): MSection[] {
   if (!t) return [{ k: 'tools-loading', items: [{ k: 'loading', label: 'Loading tools…', icon: null, testid: 'rm-tools-loading', dis: 'Loading' }] }];
-  const seen = new Set<string>(); const by = new Map<string, MItem[]>();
+  const seen = new Set<string>(); const by = new Map<UseItGroup, MItem[]>();
   for (const x of t) {
     if (skip.has(x.toolId) || seen.has(x.toolId)) continue; seen.add(x.toolId);
     const url = toolHandoffHref({ id: x.toolId }, `fromJob=${encodeURIComponent(jobId)}&out=${out}${x.as ? `&as=${x.as}` : ''}`);
-    const d = DEST.find(([r]) => r.test(url))![1]; const tag = TOOL_TAGLINE[x.toolId];
+    const d = useItGroupOf(x.toolId, url); /* the page it opens: a video tool is under "Make it move", never "Edit the picture" */ const tag = TOOL_TAGLINE[x.toolId];
     by.set(d, [...(by.get(d) ?? []), { k: x.toolId, label: <><b>{nameOf(x)}</b>{tag && <small>{tag}</small>}</>, icon: <ToolIconFor id={x.toolId} size={16} />, testid: `rv-send-${x.toolId}`, href: url, onClick: goClick(url, onClose) }]);
   }
-  return Object.keys(TITLE).filter(d => by.get(d)?.length).map(d => ({ k: `to-${d}`, title: TITLE[d], items: by.get(d)! }));
+  return (Object.keys(USE_IT_TITLE) as UseItGroup[]).filter(d => by.get(d)?.length).map(d => ({ k: `to-${d}`, title: USE_IT_TITLE[d], items: by.get(d)! }));
 }
 
 /** The Edit tab's "Use it in…" list: every other tool that takes this result, with an icon and a one-line hint. */

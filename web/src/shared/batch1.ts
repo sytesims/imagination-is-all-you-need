@@ -13,6 +13,7 @@ import { validateMentions, renumberMentions, mentionLabel, MentionKind } from '.
 import { KEY_PREFIX } from './useJobs';
 import { hasModelTokens } from '../../../server/src/shared/typedPrompt';
 import { primeClip } from './clipInfo';
+import { restorableState } from './formDraft';
 
 // ---------- Media picker ----------
 export type MediaTab = 'uploads' | 'presets' | 'generations' | 'liked';
@@ -115,17 +116,21 @@ export const persistableUrl = (u?: string | null) => (u && /^\/(files|samples)\/
  */
 export function useFormDraft<T extends Record<string, any>>(toolId: string, defaults: T) {
   const key = formDraftKey(toolId);
-  const [restored] = useState(() => { try { const j = JSON.parse(localStorage.getItem(key) || 'null'); return j?.v === DRAFT_VERSION ? cleanDraft(j.state as Partial<T>) : null; } catch { return null; } });
+  /* a prompt already sent with Generate, or older than a day, doesn't come back (shared/formDraft.ts); the settings do */
+  const [restored] = useState(() => { try { const j = JSON.parse(localStorage.getItem(key) || 'null'); return j?.v === DRAFT_VERSION ? cleanDraft(restorableState<Partial<T>>(j)) : null; } catch { return null; } });
   const [state, setState] = useState<T>(() => ({ ...defaults, ...(restored ?? {}) }));
-  const cleared = useRef(false);
+  const cleared = useRef(false); const submitted = useRef<string | null>(null);
   useEffect(() => {
     if (cleared.current) { cleared.current = false; return; }
-    const t = setTimeout(() => { try { localStorage.setItem(key, JSON.stringify({ v: DRAFT_VERSION, savedAt: Date.now(), state })); } catch { /* quota */ } }, 300);
+    const t = setTimeout(() => { try { localStorage.setItem(key, JSON.stringify({ v: DRAFT_VERSION, savedAt: Date.now(), state, submitted: submitted.current })); } catch { /* quota */ } }, 300);
     return () => clearTimeout(t);
   }, [key, state]);
   const set = useCallback((p: Partial<T>) => setState(s => ({ ...s, ...p })), []);
   const clear = useCallback(() => { cleared.current = true; localStorage.removeItem(key); setState(defaults); }, [key]);
-  return { state, set, clear, restored: !!restored };
+  /** After a successful Generate: this prompt was sent, so a reload starts the box empty (the box keeps it for now, to tweak and run again). */
+  const markSubmitted = useCallback((prompt: string) => { submitted.current = prompt;
+    try { const j = JSON.parse(localStorage.getItem(key) || 'null'); if (j?.v === DRAFT_VERSION) localStorage.setItem(key, JSON.stringify({ ...j, submitted: prompt })); } catch { /* storage off */ } }, [key]);
+  return { state, set, clear, markSubmitted, restored: !!restored };
 }
 
 /** BH4 G4: one persisted field (a drop-in for useState) for tools that don't use useFormDraft. Same storage family as

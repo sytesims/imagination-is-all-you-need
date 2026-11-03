@@ -474,7 +474,7 @@ export default function AppTool({ tool, tools }: { tool: ToolInfo; tools?: ToolI
     };
     const d: Record<string, string> = { ...(draft ? { draft: '1' } : {}), ...more };
     const rid = await submit(build(seed, '', d));
-    if (rid) last.current = { build: (s, extra = {}) => build(s, rid, { ...d, ...extra }), root: rid };
+    if (rid) { last.current = { build: (s, extra = {}) => build(s, rid, { ...d, ...extra }), root: rid }; form.markSubmitted(prompt); } // sent: a reload won't bring this prompt back
     return rid; /* Compare models: which runs started */
   };
   /** After a reload the in-memory builder is gone: rebuild a text-only job from its stored input (same model, prompt,
