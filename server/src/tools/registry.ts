@@ -10,6 +10,7 @@ import { APP_GALLERY, makeGalleryApp } from './apps.js';
 import { soulTool } from './soul/index.js';
 import { h3ExtendTool } from './h3/index.js';
 import { NEW_EDIT_TOOLS } from './editVideo/index.js';
+import { withClipTrim } from '../clipTrim.js';
 import { threeDTool, turntableTool } from './threeD.js';
 import { previzTool } from './previz.js';
 import { makeItRealTool } from './makeItReal.js';
@@ -23,6 +24,7 @@ const tools = new Map<string, ToolDef>();
 const aliases = new Map<string, string>();
 export function registerTool(t: ToolDef, ...alias: string[]) {
   if (tools.has(t.id)) throw new Error(`duplicate tool id ${t.id}`);
+  withClipTrim(t); // every tool with a clip takes the shared range (trimStart / trimEnd: the Trim sheet)
   tools.set(t.id, t);
   alias.forEach((a) => aliases.set(a, t.id));
   invalidateTools(); // a plugin tool added after start shows in GET /api/tools at once

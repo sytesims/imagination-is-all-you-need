@@ -28,6 +28,7 @@ import { LAYOUT_BOXES_LOCAL_ONLY, withFlux3BoxRows } from '../shared/layoutBoxes
 import { DIRECT_ROUTES, NATIVE_DIRECT } from './directRoutes.js';
 import { DEPLOY_ROUTES, isDeployRouteId, deployRoute } from './deployRoutes.js';
 import { charswapCloudIssue } from '../comfy/h3CharSwapCloud.js';
+import { charswapAnchorCredits, charswapAnchorLine } from '../comfy/h3CharSwapAnchor.js';
 import { PIKA_PROVIDER, pikaIssue } from '../comfy/pikaH3Flex.js';
 import { charswapWhoIssue } from '../shared/cloudSwap.js';
 import { LTX_DFR, ltxDfrAdjustNote, ltxDfrPriceInput, ltxDfrResolution } from '../shared/ltxDfr.js';
@@ -237,7 +238,7 @@ export const tierLabel = (r: { kind: string; routeId: string }) => TIER_LABELS[t
  *  - comfy-open on Camera Moves → comfy-cloud:cloud-ltx-camera (the LTX moves only),
  *  - comfy-open on Re-shoot → comfy-cloud:cloud-reshoot.
  */
-const TWINS: { model: string; twin: string; tools: string[]; /** only the tool itself, never a gallery app built on it (app-transition, app-ugc-ad) */ exactTool?: boolean; /** picked by the mode alone, never a Run-on choice */ notAChoice?: boolean; modes?: string[]; unavailableFor?: (i: Record<string, any>) => string | null; priceInput?: RouteDef['priceInput']; adjustNote?: RouteDef['adjustNote']; caps?: Record<string, unknown>; /** an unmeasured price keeps the model as it was before the twin (select.ts twinHeld) */ heldUntilMeasured?: boolean; /** provider=<twin> is read as model + this route on quote and submit (mapTwinAlias) */ aliasOk?: boolean }[] = [
+const TWINS: { model: string; twin: string; tools: string[]; /** only the tool itself, never a gallery app built on it (app-transition, app-ugc-ad) */ exactTool?: boolean; /** picked by the mode alone, never a Run-on choice */ notAChoice?: boolean; modes?: string[]; unavailableFor?: (i: Record<string, any>) => string | null; priceInput?: RouteDef['priceInput']; adjustNote?: RouteDef['adjustNote']; extraCredits?: RouteDef['extraCredits']; extraLine?: RouteDef['extraLine']; needsInput?: RouteDef['needsInput']; caps?: Record<string, unknown>; /** an unmeasured price keeps the model as it was before the twin (select.ts twinHeld) */ heldUntilMeasured?: boolean; /** provider=<twin> is read as model + this route on quote and submit (mapTwinAlias) */ aliasOk?: boolean }[] = [
   { model: 'comfy-h3', twin: 'cloud-h3-wf', tools: ['h3-video'], modes: ['t2v', 'i2v'] },
   // Oct 27: MiniMax H3 Keyframes · Comfy Cloud (comfy/h3KeyframesCloud.ts): the official multiframe template, the H3 card's Keyframes mode (2–5 stills at
   // chosen times → one shot). The only place that makes Keyframes; billed per second of clip at the picked size (an estimate until measured).
@@ -253,7 +254,9 @@ const TWINS: { model: string; twin: string; tools: string[]; /** only the tool i
   // Oct 26: H3 Character Swap on shared Comfy Cloud with the user's imported LoRA (comfy/h3CharSwapCloud.ts): one pass, 2–15 s, mask-free
   // Nov 1: Pika H3 Flex on Comfy Cloud (comfy/pikaH3Flex.ts): the same official templates as on your computer, fp16 video VAE, a free check for the LoRA first.
   { model: 'comfy-h3-pika', twin: PIKA_PROVIDER, tools: ['h3-video'], exactTool: true, modes: ['t2v', 'i2v', 'flf'], unavailableFor: pikaIssue },
-  { model: 'comfy-h3-charswap', twin: 'cloud-h3-charswap', tools: ['object-swap', 'motion-transfer'], unavailableFor: (i) => charswapWhoIssue(i) ?? charswapCloudIssue(i) },
+  // Nov 2: + Openjutsu's first frame (GPT Image 2.5 Sunburst on Comfy Router, comfy/h3CharSwapAnchor.ts), on by default for Person swap: its price is
+  // added to the quote and the charge alike and shown as its own breakdown line.
+  { model: 'comfy-h3-charswap', twin: 'cloud-h3-charswap', tools: ['object-swap', 'motion-transfer'], unavailableFor: charswapCloudIssue, needsInput: charswapWhoIssue, extraCredits: charswapAnchorCredits, extraLine: charswapAnchorLine },
   // Oct 27: LTX-2.5 22B on shared Comfy Cloud (comfy/ltx25Cloud.ts): Generate Video (text, start frame, Loop, first + last) and Transitions' Morph; Extend with the
   // picture-and-sound continuation. Billed per RENDERED second (Extend includes the kept context). 720p runs here only (LOCAL_ROUTE_BLOCK below).
   // DFR (2026-10-29, shared/ltxDfr.ts + comfy/ltx25Dfr.ts): the official DFR template on image to video, priced per second with or without the 48 fps pass
@@ -314,7 +317,7 @@ export function mapTwinAlias(tool: { id: string; app?: any; providers?: string[]
 export const isTwinAlias = (providerId: string, toolIds: string[]) => !!TWIN_ALIASES[providerId] && TWIN_ALIASES[providerId].tools.some((t) => toolIds.includes(t));
 function twinRoutes(modelId: string, toolIds: string[]): RouteDef[] {
   return TWINS.filter((t) => t.model === modelId && (t.exactTool ? t.tools.includes(toolIds[0]) : t.tools.some((x) => toolIds.includes(x)))).flatMap((t) => { const p = getProvider(t.twin); if (!p) return [];
-    const r = nativeRoute(p); return [{ ...r, modelId, twinProvider: t.twin, tools: t.tools, label: 'Comfy Cloud', ...(t.notAChoice ? { notAChoice: true } : {}), ...(t.modes ? { modes: t.modes } : {}), ...(t.unavailableFor ? { unavailableFor: t.unavailableFor } : {}), ...(t.priceInput ? { priceInput: t.priceInput } : {}), ...(t.adjustNote ? { adjustNote: t.adjustNote } : {}), ...(t.heldUntilMeasured ? { heldUntilMeasured: true } : {}), ...(t.caps ? { caps: { ...(r.caps ?? {}), ...t.caps } } : {}) }]; });
+    const r = nativeRoute(p); return [{ ...r, modelId, twinProvider: t.twin, tools: t.tools, label: 'Comfy Cloud', ...(t.notAChoice ? { notAChoice: true } : {}), ...(t.modes ? { modes: t.modes } : {}), ...(t.unavailableFor ? { unavailableFor: t.unavailableFor } : {}), ...(t.priceInput ? { priceInput: t.priceInput } : {}), ...(t.adjustNote ? { adjustNote: t.adjustNote } : {}), ...(t.extraCredits ? { extraCredits: t.extraCredits } : {}), ...(t.extraLine ? { extraLine: t.extraLine } : {}), ...(t.needsInput ? { needsInput: t.needsInput } : {}), ...(t.heldUntilMeasured ? { heldUntilMeasured: true } : {}), ...(t.caps ? { caps: { ...(r.caps ?? {}), ...t.caps } } : {}) }]; });
 }
 /** The tool ids a route list is built for: the tool itself and, for gallery apps, its base tool. */
 export const toolKeys = (tool?: { id: string; app?: any } | null): string[] => (tool ? [tool.id, ...((tool as any).app?.gallery?.base ? [(tool as any).app.gallery.base] : []), ...(REEL_TOOL_IDS.includes(tool.id) ? ['camera'] : [])] : []);

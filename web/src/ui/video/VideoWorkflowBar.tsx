@@ -68,6 +68,11 @@ import { MentionLayer } from '../../shared/MentionChips';
 import { renumberMentions } from '../../../../server/src/shared/mentions';
 import { SlotLabel } from '../../shared/SlotLabel';
 import { EnhanceChip, EnhancePop, showEnhanced } from '../next/Enhance';
+import TrimSheet from '../../shared/TrimSheet';
+import { clock, type Trim } from '../../shared/TrimRange';
+import { GenPrice } from '../../shared/GenPrice';
+import { shownCredits } from '../../shared/quote';
+import { clampTrim, swapRangeSeconds } from '../../../../server/src/shared/cloudSwap';
 
 const ICONS: Record<string, (p: IconProps) => ReactNode> = { edit: TextIcon, gallery: ImageIcon, music: AudioIcon, clock: ClockIcon, resolution: ResolutionIcon, aspect: AspectIcon, quality: QualityIcon, extend: ExtendIcon, hdr: HdrIcon, fps: FpsIcon, depth: DepthIcon,
   cutout: CutoutIcon, upscale: UpscaleIcon, palette: PaletteIcon, transition: TransitionIcon, orbit: OrbitIcon, camera: CameraMovesIcon, fx: PhotoFxIcon, swap: ObjectSwapIcon, layers: LayersIcon, person: UserIcon, spark: SparkleIcon, select: SelectIcon, reshoot: ReshootIcon };
@@ -165,11 +170,36 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
     if (c.from === 'presets') return (tool.presets ?? []).filter(p => allowed!.includes(p.id)).map((p: any) => ({ value: p.id, label: p.label, hint: p.category ?? p.group }));
     const named = new Map<string, string>([...((ti?.choices ?? []) as any[]).map(x => [String(x.value), String(x.label)] as [string, string]),
       ...(((cfg.gallery?.fields ?? []) as any[]).find(f => f.name === c.field)?.options ?? []).map((x: any) => [String(x.value), String(x.label)] as [string, string]),
-      ...(c.field === 'resolution' ? Object.entries<string>(cfg.videoLimits?.[prov]?.resolutionLabels ?? {}) : [])]); /* a model's own tier names (LTX-2.5 22B: Draft / Sharper) */
+      ...(c.field === 'resolution' ? Object.entries<string>(cfg.videoLimits?.[prov]?.resolutionLabels ?? {}) : []),
+      ...Object.entries<string>(ti?.labelsByProvider?.[prov] ?? {}) /* a model's own names for the stored values (H3 Character Swap: 720p → "768p · sharpest") */]); /* a model's own tier names (LTX-2.5 22B: Draft / Sharper) */
     return (allowed ?? []).map(v => ({ value: v, label: `${c.prefix ?? ''}${named.get(v) ?? pretty(v)}${c.suffix && /^\d/.test(v) ? c.suffix : ''}` }));
   };
+  /* ---- the clip's range (the Trim sheet, shared/TrimSheet.tsx): every tool with a clip; the limits are the server's for this tool and model
+     (clipTrim.ts → providers[].clipSec), never a number of ours. Default: from the start, as long as the model allows (a too-long clip opens on
+     0–max); a range you picked is kept per clip and fitted again when the model changes. ---- */
+  const trimLim = providers.find(p => p.id === prov)?.clipSec ?? null;
+  const trimSlot = trimLim ? bar.slots.find(s => s.kind === 'video' && s.name === 'video') ?? null : null;
+  const trimClip = trimSlot ? files[trimSlot.name]?.[0] : undefined; const trimSec = trimClip && !trimClip.photo && trimClip.sec ? trimClip.sec : 0;
+  const [trimWant, setTrimWant] = useState<{ clip: string; t: Trim } | null>(null);
+  const trimFor = (w: { clip: string; t: Trim } | null) => trimLim && trimSec ? clampTrim(trimSec, w && w.clip === trimClip!.url ? w.t : {}, trimLim.max, trimLim.min) : null;
+  const trim = trimFor(trimWant);
+  /** the range goes out (trimStart / trimEnd, priced as its own length) when it isn't the whole clip, or the clip is longer than the model takes */
+  const trimSend = !!trim && (trim.start > 0 || trim.end < Math.floor(trimSec + 0.05) || Math.floor(trimSec + 0.05) > trimLim!.max);
+  const [trimOpen, setTrimOpen] = useState(false);
+  const trimShort = (modelName.split(' ')[0] || modelName);
+  /* a Recreate's range ('*') belongs to the clip it brings: the job keeps the cut range as its clip (…-range-100-1400.mp4), which is used whole;
+     only a clip longer than the range (the original upload) gets the range again */
+  useEffect(() => { if (trimWant?.clip !== '*' || !trimClip?.url || !trimSec) return; const t = trimWant.t;
+    setTrimWant(trimSec > t.end - t.start + 0.5 ? { clip: trimClip.url, t } : null); }, [trimClip?.url, trimSec]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* a clip longer than the model takes: the sheet opens on 0–max so you pick the part (once per clip) */
+  const trimSeen = useRef(''); useEffect(() => { if (!trimClip?.url || trimSeen.current === trimClip.url) return; trimSeen.current = trimClip.url;
+    if (trimLim && trimSec && Math.floor(trimSec + 0.05) > trimLim.max && trimWant?.clip !== '*' && trimWant?.clip !== trimClip.url) setTrimOpen(true); }, [trimClip?.url, trimSec]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* another model with other limits: fit the range you picked and say so */
+  const trimLimKey = trimLim ? `${trimLim.min}-${trimLim.max}` : ''; const trimLimWas = useRef(trimLimKey);
+  useEffect(() => { const was = trimLimWas.current; trimLimWas.current = trimLimKey; if (!was || !trimLimKey || was === trimLimKey || !trimWant || !trim || trimWant.clip !== trimClip?.url) return;
+    if (trimWant.t.start !== trim.start || trimWant.t.end !== trim.end) { setTrimWant({ clip: trimWant.clip, t: trim }); toast(`${modelName} takes ${trimLim!.min}–${trimLim!.max} s: the range is now ${clock(trim.start)}–${clock(trim.end)} (${trim.end - trim.start} s).`); } }, [trimLimKey]); // eslint-disable-line react-hooks/exhaustive-deps
   /** What the extra sees now (its functions run while the bar renders). */
-  const live = (): BarLive => ({ ...ctx0, prov, setProvider, providers, files, prompt, setPrompt, busy, pop, setPop, anchorOf, chipRef: gid => el => { gRefs.current[gid] = el; }, dock,
+  const live = (): BarLive => ({ ...ctx0, prov, setProvider, providers, files, prompt, setPrompt, busy, pop, setPop, anchorOf, chipRef: gid => el => { gRefs.current[gid] = el; }, dock, trim,
     valOf: f => { const c = bar.controls.find(x => x.field === f); return c ? valOf(c) : vals[f] ?? ''; }, slotShown: s => slotShown(s) });
   const photoIn = (slot: string) => !!files[slot]?.[0]?.photo;
   const slotShown = (s: VBarSlot): boolean => (!s.providers || s.providers.includes(prov)) && (extra.slotShown?.(s, live()) ?? true);
@@ -236,7 +266,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
   const firstOf = (k: VBarSlot['kind']) => bar.slots.find(s => s.kind === k);
   /** A Recreate's (or example's) files: the slot gets exactly these, in this order (never added to what it held; the model's "Not used" rule still marks extras). */
   const putFiles = async (s: VBarSlot, fs: File[]) => { const metas = await Promise.all(fs.map(f => metaOf(s.kind, f))); if (!metas.length) return; setFiles(m => ({ ...m, [s.name]: metas })); extra.onSlot?.(s, metas[0], live()); };
-  usePrefill({ scope: wf.id, onReset: () => { filesRef.current = {}; setFiles({}); setRcRoute(null); extra.onReset?.(); },
+  usePrefill({ scope: wf.id, onReset: () => { filesRef.current = {}; setFiles({}); setRcRoute(null); setTrimWant(null); setTrimOpen(false); extra.onReset?.(); },
     onVideo: v => { const s = firstOf('video'); if (!s) return; const f: SlotFile = { file: v.file, url: v.url, sec: v.duration, w: v.w, h: v.h }; setFiles(m => ({ ...m, [s.name]: [f] })); extra.onSlot?.(s, f, live()); },
     onImage: r => { const s = firstOf('image'); if (s) void takeFiles(s, [r.file]); },
     onAudio: r => { const s = firstOf('audio'); if (s) void takeFiles(s, [r.file]); },
@@ -245,7 +275,8 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
       const s = bar.slots.find(x => x.name === 'refs'); if (s) void putFiles(s, rs.map(r => r.file)); },
     onFiles: (slot, rs) => { if (extra.onFiles?.(slot, rs.map(r => r.file))) return; const alt = bar.slots.find(x => x.altImage === slot); if (alt) { void putFiles(alt, rs.map(r => r.file)); return; }
       const s = bar.slots.find(x => x.name === slot); if (s && slot !== 'video' && slot !== 'image') void putFiles(s, rs.map(r => r.file)); },
-    onRecreate: r => { const f = r.form ?? {}; extra.onRecreate?.(f); if (r.seed) { setLastSeed(r.seed); setSeedOn(false); } let ty: any = f.types; try { ty = JSON.parse(ty); } catch { ty = ty ? [ty] : []; } const t0 = Array.isArray(ty) ? String(ty[0] ?? '') : '';
+    onRecreate: r => { const f = r.form ?? {}; extra.onRecreate?.(f);
+      if (f.trimStart != null || f.trimEnd != null) { const st = Number(f.trimStart) || 0, en = Number(f.trimEnd); if (Number.isFinite(en) && en > st) setTrimWant({ clip: '*', t: { start: st, end: en } }); } /* the old job's range comes back with its clip */ if (r.seed) { setLastSeed(r.seed); setSeedOn(false); } let ty: any = f.types; try { ty = JSON.parse(ty); } catch { ty = ty ? [ty] : []; } const t0 = Array.isArray(ty) ? String(ty[0] ?? '') : '';
       setVals(v => { const n = { ...v }; for (const c of bar.controls) { const w = f[c.field] ?? (c.send === 'types' || c.send === 'field+types' ? t0 : undefined); if (c.kind === 'text') n[c.field] = String(w ?? ''); else if (w != null && w !== '') n[c.field] = String(w); } if (f.fit === 'crop' || f.fit === 'pad') n.fit = f.fit; if (bar.enhance != null && f.enhance != null) n.enhance = f.enhance === '1' ? '1' : '0'; return n; });
       if (f.prompt != null && promptCfg.mode !== 'hidden') setPrompt(String(f.prompt)); const m = r.providerAvailable ? (r.model ?? f.provider) : f.provider; if (m && providers.some(p => p.id === m)) setProvider(m);
       setRcRoute(m && f.route && r.providerAvailable && providers.some(p => p.id === m) ? { engine: m, modelKey: r.modelKey ?? null, route: String(f.route) } : null); } });
@@ -258,6 +289,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
     for (const [slot, ty] of Object.entries(bar.typesWhenFile ?? {})) { const s = bar.slots.find(x => x.name === slot); if (s && files[slot]?.length && slotShown(s)) { o.types = ty; break; } } /* UGC Ad: a product or presenter photo runs as reference video */
     if (bar.slots.some(s => s.kind === 'video' && slotShown(s) && files[s.name]?.length && !files[s.name][0].photo)) o.fit = vals.fit === 'crop' ? 'crop' : 'pad'; /* Fit to model (barExtras/VideoFit.tsx): Keep everything (pad) or Crop to fill */
     Object.assign(o, extra.form?.(live()) ?? {}); for (const k of extra.omit?.(live()) ?? []) delete o[k];
+    if (trimSend) { o.trimStart = String(trim!.start); o.trimEnd = String(trim!.end); } /* the Trim sheet's range: the server cuts it first (tools/videoSwap.ts applySwapTrim) */
     return o; };
   const fv = formVals();
   const clip = bar.slots.filter(s => s.kind === 'video').map(s => files[s.name]?.[0]).find(x => x?.sec != null && x.sec > 0); const clipSec = clip?.sec;
@@ -270,6 +302,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
   if (tool.id === 'app-photos-to-reel') qParams.photoCount = String(sentOf(bar.slots.find(s => s.name === 'photos')!).length);
   { const sp = files.speech?.[0]; if (sp?.sec != null && sp.sec > 0 && bar.slots.some(s => s.name === 'speech' && slotShown(s))) qParams.speechSeconds = String(Math.round(sp.sec * 100) / 100); } /* Lip Sync: the speech length sets the clip length and price, and hosted H3 takes 2–15 s (the quote says so before the run) */
   { const ext = clip?.file?.name.match(/\.([a-z0-9]+)$/i)?.[1]; if (clip && ext) qParams.videoFormat = ext.toLowerCase(); } /* Fit to model: the container (Topaz takes MP4) */
+  if (trimSend) qParams.seconds = String(swapRangeSeconds(trim!)); /* the range's own length, the same rule as the submit (quote = charge) */
   for (const [k, v] of Object.entries(extra.quote?.(live()) ?? {})) { if (v == null) delete qParams[k]; else qParams[k] = v; }
   const q0q = useToolQuote(tool.id, prov, qParams); const q = extra.wrapQuote ? extra.wrapQuote(q0q, live()) : q0q;
   const setupTarget = reelSetupTarget(tool.id, prov, q);
@@ -278,16 +311,19 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
 
   /* ---- pre-flight: every reason it can't run yet, in order; Generate shows the first ---- */
   const gallery = shown.find(c => c.kind === 'gallery');
-  const problems: PreflightProblem[] = (() => { const ps = preflightProblems({ freeLocal: hasFreeLocal(tool.id),
+  const problems: PreflightProblem[] = (() => {
+    /* the extra's own steps (Object Swap: what to replace; Re-shoot: an angle), handed to the shared pre-flight as input steps so a quote that waits
+     * for the same step never lists it again as a model problem */
+    const more: PreflightProblem[] = (extra.needs?.(live()) ?? []).map((n): PreflightProblem => { const fix: PreflightFix = n.model ? { kind: 'pick-model', label: 'Pick model…' } : n.slot ? { kind: 'choose-photo', label: 'Choose…', args: { slot: n.slot } } : { kind: 'open-group', label: 'Open', args: { group: n.group ?? '' } };
+      return { code: n.model ? 'model_cant_run' : n.slot ? 'photo_missing' : 'pick_missing', stage: n.model ? 'model' : 'inputs', message: n.missing, fix }; });
+    if (trimLim && trimSec && !trim) more.push({ code: 'clip_too_short', stage: 'inputs', message: `This clip is ${Math.round(trimSec * 10) / 10} s; ${modelName} needs at least ${trimLim.min} s`, fix: { kind: 'choose-photo', label: 'Choose…', args: { slot: trimSlot!.name } } });
+    const ps = preflightProblems({ freeLocal: hasFreeLocal(tool.id), steps: more.filter(p => p.stage === 'inputs'),
     slots: bar.slots.filter(slotShown).map(s => ({ ...s, ...(extra.slotInfo?.(s, live()) ?? {}) })).map(s => ({ name: s.name, label: s.label, required: reqOf(s), filled: sentOf(s).length >= (s.min ?? 1), missing: s.missing })),
     prompt: promptCfg.mode === 'required' && !prompt.trim() ? { missing: 'Write a prompt' } : null,
     pick: gallery && !gallery.optional && !valOf(gallery) ? { group: gallery.group, missing: `Pick ${gallery.field === 'preset' ? 'a style' : gallery.field === 'move' ? 'a camera move' : gallery.field === 'look' ? 'a look' : 'an effect'}` } : null,
     quote: q, modelName: reel && q?.reelStep ? q.reelStep : modelName });
     for (const c of shown) if (c.kind === 'text' && c.required && !valOf(c).trim()) ps.splice(ps.filter(p => p.stage === 'inputs').length, 0, { code: 'pick_missing', stage: 'inputs', message: `Add ${c.label.toLowerCase()}`, fix: reel && c.field === 'title' ? { kind: 'focus-prompt', label: 'Choose…' } : { kind: 'open-group', label: 'Choose…', args: { group: c.group } } });
-    /* the extra's own steps (Object Swap: what to replace; Re-shoot: an angle), right after the inputs */
-    const more: PreflightProblem[] = (extra.needs?.(live()) ?? []).map((n): PreflightProblem => { const fix: PreflightFix = n.model ? { kind: 'pick-model', label: 'Pick model…' } : n.slot ? { kind: 'choose-photo', label: 'Choose…', args: { slot: n.slot } } : { kind: 'open-group', label: 'Open', args: { group: n.group ?? '' } };
-      return { code: n.model ? 'model_cant_run' : n.slot ? 'photo_missing' : 'pick_missing', stage: n.model ? 'model' : 'inputs', message: n.missing, fix }; });
-    const at = ps.filter(p => p.stage === 'inputs').length; return [...ps.slice(0, at), ...more, ...ps.slice(at)]; })();
+    const own = more.filter(p => p.stage !== 'inputs'); const at = ps.filter(p => p.stage === 'inputs').length; return [...ps.slice(0, at), ...own, ...ps.slice(at)]; })();
   useEffect(() => { if (pfOpen && !problems.length) setPfOpen(false); }); // eslint-disable-line react-hooks/exhaustive-deps
   const runFix = async (f: PreflightFix) => { const a: any = f.args ?? {};
     switch (f.kind) {
@@ -370,17 +406,18 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
   /** One file of a slot: inline (a one-file slot) or in a multi-file slot's popover grid (numbered, reorder by arrows / drag / Alt+arrows, remove, click to change). */
   const fileTile = (s: VBarSlot, f: SlotFile, j: number, o: { multi: boolean; numbered: boolean; base: number; used: number; count: number }) => {
     const off = j >= o.used; const name = o.numbered ? `${reel ? 'Photo' : 'Image'} ${o.base + j + 1}` : s.label; const why = `Not used by ${modelName} (max ${o.used})`; const canMove = o.multi && o.count > 1;
+    const trims = s === trimSlot && j === 0 && !f.photo && !!trimLim && !!trimSec; /* a clip shorter than the model takes opens the sheet too: it says so */ /* the clip opens the Trim sheet (Preview and Replace are in it) */ const trimLen = trims && trim ? trim.end - trim.start : 0;
     return <span key={f.url} className={`wf-slot full vbar-slot vbar-${f.photo ? 'image' : s.kind}${off ? ' vbar-off' : ''}`} data-testid={`vbar-slot-${s.name}`} data-filled="1" data-index={o.multi ? j : undefined} data-unused={off ? '1' : undefined}
       onDragStart={canMove ? e => { dragFrom.current = { slot: s.name, i: j }; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/x-vbar-file', `${s.name}:${j}`); } : undefined}
       onDragEnd={() => { dragFrom.current = null; }}
       onDragOver={canMove ? e => { if (dragFrom.current?.slot === s.name) { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move'; } } : undefined}
       onDrop={canMove ? e => { const d = dragFrom.current; if (d?.slot !== s.name) return; e.preventDefault(); e.stopPropagation(); dragFrom.current = null; moveFile(s, d.i, j); } : undefined}>
-      <button type="button" className="wf-slot-hit" draggable={canMove || undefined} aria-label={`${o.numbered ? `${name} (${s.label})` : s.label}: ${f.file.name}${f.sec ? `, ${fmtSec(f.sec)}` : ''}${off ? `. ${why}` : ''}. Open preview, Delete removes it${canMove ? ', Alt+arrows move it' : ''}`}
-        {...tip(`${o.numbered ? `${name} · ` : ''}${s.label} · ${f.file.name}${f.sec ? ` · ${fmtSec(f.sec)}` : ''}${f.w ? ` · ${f.w}×${f.h}` : ''}${off ? `. ${why}` : ''}. Click to preview${canMove ? ', drag to reorder' : ''}`)}
-        onClick={e => { previewAnchor.current = e.currentTarget; setPreview({ slot: s, index: j }); }} aria-haspopup="dialog" onKeyDown={e => { if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); clearSlot(s, o.count > 1 ? j : undefined); }
+      <button type="button" className="wf-slot-hit" draggable={canMove || undefined} aria-label={`${o.numbered ? `${name} (${s.label})` : s.label}: ${f.file.name}${f.sec ? `, ${fmtSec(f.sec)}` : ''}${trimSend && trims ? `, using ${clock(trim!.start)} to ${clock(trim!.end)}` : ''}${off ? `. ${why}` : ''}. ${trims ? 'Trim' : 'Open preview'}, Delete removes it${canMove ? ', Alt+arrows move it' : ''}`}
+        {...tip(`${o.numbered ? `${name} · ` : ''}${s.label} · ${f.file.name}${f.sec ? ` · ${fmtSec(f.sec)}` : ''}${f.w ? ` · ${f.w}×${f.h}` : ''}${off ? `. ${why}` : ''}. ${trims ? 'Click to trim' : 'Click to preview'}${canMove ? ', drag to reorder' : ''}`)}
+        onClick={e => { previewAnchor.current = e.currentTarget; if (trims) { setPreview(null); setPop(''); setTrimOpen(o => !o); } else setPreview({ slot: s, index: j }); }} data-trim={trims ? (trimSend ? 'cut' : 'whole') : undefined} aria-haspopup="dialog" onKeyDown={e => { if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); clearSlot(s, o.count > 1 ? j : undefined); }
           else if (canMove && e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); moveFile(s, j, j + (e.key === 'ArrowLeft' ? -1 : 1)); } }}>
         {s.kind === 'image' || f.photo ? <img src={f.url} alt="" draggable={false} /> : s.kind === 'video' ? <VideoThumb src={f.url} /> : <span className="vbar-snd" aria-hidden><AudioIcon size={14} /></span>}
-        <b>{off ? 'Not used' : s.kind === 'image' ? name : f.photo ? 'Photo' : fmtSec(f.sec) || s.label}</b></button>
+        <b className={trims && trimSend ? 'vbar-cut' : undefined} data-testid={trims ? 'vbar-clip-length' : undefined}>{off ? 'Not used' : s.kind === 'image' ? name : f.photo ? 'Photo' : trims && trimSend && trim ? `${trimLen} s` : fmtSec(f.sec) || s.label}</b></button>
       {canMove && <span className="vbar-move">
         <button type="button" className="vbar-mv" disabled={j === 0} aria-label={`Move ${name} earlier`} data-testid={`vbar-slot-${s.name}-left-${j}`} {...tip('Move earlier')} onClick={() => moveFile(s, j, j - 1)}>{mvIcon(MV.l)}</button>
         <button type="button" className="vbar-mv" disabled={j === o.count - 1} aria-label={`Move ${name} later`} data-testid={`vbar-slot-${s.name}-right-${j}`} {...tip('Move later')} onClick={() => moveFile(s, j, j + 1)}>{mvIcon(MV.r)}</button></span>}
@@ -487,6 +524,11 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
       {enhCan && <EnhancePop open={pop === 'enh'} anchor={anchorOf('enh')} avoid={dock} watch={dock} onClose={() => setPop('')} testId="vbar-pop-enh" panelTestId="vbar-enhance-panel" toggleTestId="vbar-enhance-toggle" can on={enhOn} onChange={v => setVal('enhance', v ? '1' : '0')}
         prompt={prompt} kind="video" model={tm?.key} onApply={r => showEnhanced(r, setPrompt, toast)} />}
       {extra.pops?.(live())}
+      {trimSlot && trimClip && !trimClip.photo && trimLim && (() => { const tn = trim ? extra.trimNote?.(live(), trim) : undefined; const cr = shownCredits(q);
+        return <TrimSheet open={trimOpen} onClose={() => { setTrimOpen(false); previewAnchor.current?.focus?.(); }} clip={{ url: trimClip.url, name: trimClip.file.name, sec: trimSec, w: trimClip.w, h: trimClip.h, file: trimClip.file }} shotNote={!!extra.trimShots} value={trim}
+          onChange={t => setTrimWant({ clip: trimClip.url, t })} min={trimLim.min} max={trimLim.max} model={trimShort} verb={/swap/.test(wf.id) ? 'swaps' : 'takes'} anchor={dock}
+          price={q ? <GenPrice q={q} credits={cr} free={cr === 0} demo={q?.demo === true} testId="trim-sheet-price" /> : null} note={tn?.note ?? null} more={tn?.more}
+          onPreview={() => { setTrimOpen(false); setPreview({ slot: trimSlot, index: 0 }); }} onReplace={() => { setTrimOpen(false); openSlot(trimSlot.name, 0); }} />; })()}
       {vfit.popover}
       {gallery && <LookPicker open={pop === `g:${gallery.group}`} anchor={anchorOf(gallery.group)} avoid={dock} watch={dock} onClose={() => setPop('')} label={gallery.label} testId="vbar-look"
         tabs={[{ id: gallery.field, label: gallery.label, searchLabel: `Search ${gallery.field === 'preset' ? 'styles' : gallery.field === 'move' ? 'moves' : gallery.field === 'look' ? 'looks' : 'effects'}`, items: galleryItems(gallery) }]} tab={gallery.field} onTab={() => undefined} />}

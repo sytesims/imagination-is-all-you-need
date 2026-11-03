@@ -63,4 +63,8 @@ assert.equal(blockOf({ runnable: false, needsKey: true, reason: 'needs a key' })
 assert.equal(blockOf({ runnable: true, credits: 8 }), null);
 assert.equal(blockOf({ pending: true }), null);
 assert.equal(blockOf({ runnable: false, demo: true }), null);
+// H3 Character Swap before a who is set (2026-11-03): a step to add, not a block: the row keeps its price, no "Not for these settings"
+{ const h3 = { runOn: 'comfy-cloud', runnable: false, chargeable: false, inputStep: true, credits: 21, priceAvailable: true, reasonCode: 'input_blocked', reason: 'H3 Character Swap: click the person to swap, or pick left/right', blockedReason: "Comfy Cloud can't run this job. H3 Character Swap: click the person to swap, or pick left/right." };
+  assert.equal(blockOf(h3), null, 'an input step is not a block'); assert.ok(blockOf({ ...h3, inputStep: undefined }), 'a real input block still is');
+  const { shownCredits } = await import('../../web/src/shared/quote.ts'); assert.equal(shownCredits(h3), 21, 'the Swap button shows the price'); assert.equal(shownCredits({ ...h3, inputStep: undefined }), null, 'a real block shows none'); }
 ok('reasons: "Needs a start image" (+ Add image), "Text or photo only", "Price not set yet", "Max 8 s", "No 1080p"; keys, samples and loading are not blocks');

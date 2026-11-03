@@ -24,6 +24,7 @@ import { H3KF_PROVIDER, H3KF_ROUTE, H3KF_GRAPH, H3KF_REQUIRES, H3KF_NAME, h3Keyf
 import { IT_ROUTE, IT_PROVIDER, IT_GRAPH, IT_REQUIRES, infiniteTalkPlan } from './infiniteTalkCloud.js';
 import { LTX_API_CLOUD, LTX_API_TEMPLATES, LTX_API_NODE, ltxApiCloudPlan, prepareLtxApiCloud } from './ltx25ApiCloud.js';
 import { CHARSWAP_CLOUD_GRAPH, CHARSWAP_CLOUD_PROVIDER, CHARSWAP_CLOUD_REQUIRES, CHARSWAP_CLOUD_ROUTE, CHARSWAP_LORA_MISSING, charswapCloudPlan, checkCharswapLora, checkCharswapTurbo } from './h3CharSwapCloud.js';
+import { prepareCharswapAnchor } from './h3CharSwapAnchor.js';
 
 export interface CloudWorkflowRoute {
   /** Route id in the routing table. */ routeId: string;
@@ -52,8 +53,9 @@ export interface StandaloneCloudWorkflow {
   /** Free GET-only check on the target host before anything is uploaded or submitted. get(path) sends the route's own auth to its own host. */
   preflight?: (get: (p: string) => Promise<Response>, input?: Record<string, any>) => Promise<Record<string, any> | void>;
   /** Free local prep on this computer (ffmpeg), after the preflight and before anything is uploaded; it may write job.input (H3 Extend: the conformed
-   *  clip and its context). A thrown error with a reasonCode refuses the run with nothing sent. */
-  prepare?: (job: { id: string; input: Record<string, any> }) => Promise<void>;
+   *  clip and its context). A thrown error with a reasonCode refuses the run with nothing sent. ctx = the route's Comfy key (and the test fetch) for a
+   *  paid step it makes itself on Comfy Router (H3 Character Swap's first frame: comfy/h3CharSwapAnchor.ts, priced in the route's quote). */
+  prepare?: (job: { id: string; input: Record<string, any>; warnings?: string[] }, ctx?: { key?: string; fetch?: typeof fetch }) => Promise<void>;
   /** The graph has partner (API) nodes: the Comfy key goes once in extra_data.api_key_comfy_org (comfy/cloudV2.ts run partnerAuth), as the Topaz / Tripo runners send it. */
   partnerAuth?: boolean;
 }
@@ -86,7 +88,7 @@ export const CLOUD_WORKFLOWS: Record<string, CloudWorkflowEntry> = {
   // Oct 26–27: H3 Character Swap · Comfy Cloud (Object / Person Swap only; not offered on Motion Transfer), the Openjutsu recipe on shared Comfy Cloud with the user's
   // imported Character Swap LoRA and a core-node SAM 3.1 edit mask (comfy/h3CharSwapCloud.ts). A twin route of the H3 Character Swap card (routing/routes.ts TWINS).
   [CHARSWAP_CLOUD_ROUTE]: { routeId: CHARSWAP_CLOUD_ROUTE, provider: CHARSWAP_CLOUD_PROVIDER, standalone: true, target: 'cloud', label: 'H3 Character Swap · Comfy Cloud',
-    graphs: [CHARSWAP_CLOUD_GRAPH], requires: CHARSWAP_CLOUD_REQUIRES, plan: charswapCloudPlan,
+    graphs: [CHARSWAP_CLOUD_GRAPH], requires: CHARSWAP_CLOUD_REQUIRES, plan: charswapCloudPlan, prepare: prepareCharswapAnchor /* Openjutsu's first frame (GPT Image 2.5 Sunburst), after the LoRA check */,
     preflight: async (get) => { const c = await checkCharswapLora(get);
       if (c.state === 'missing') throw Object.assign(new Error(CHARSWAP_LORA_MISSING), { reasonCode: 'cloud_import_missing', errorType: 'validation' });
       const t = await checkCharswapTurbo(get); // optional: Openjutsu's 768p turbo build when the user has imported it (else the shared build)

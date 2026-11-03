@@ -66,9 +66,18 @@ Mesh2Motion (Scott Petrovic)
   notice in each file and in licenses/mesh2motion-LICENSE-MIT.md. The human
   skeleton and moves are CC0 (licenses/mesh2motion-LICENSE-CC0.md).
 
+glTF Transform (Don McCurdy) and meshoptimizer (Arseny Kapoulkine)
+  MIT. npm dependencies of the server (@gltf-transform/core,
+  @gltf-transform/extensions, meshoptimizer), installed from their authors'
+  packages, not copied in. They make the lighter copy of a big 3D model for
+  Direct a Shot (server/src/glbLight.ts). https://gltf-transform.dev,
+  https://github.com/zeux/meshoptimizer.
+
 Comfy-Org/comfy-openjutsu (Comfy Org)
   MIT. The H3 Character Swap recipe settings follow Comfy's Openjutsu app
-  (https://github.com/Comfy-Org/comfy-openjutsu). Full text in
+  (https://github.com/Comfy-Org/comfy-openjutsu), and its swap prompt and
+  first-frame prompt are used verbatim (server/src/shared/h3SwapPrompt.ts,
+  server/src/comfy/h3CharSwapAnchor.ts). Full text in
   licenses/comfy-openjutsu-LICENSE-MIT.md.
 
 akatz-labs/h3-character-swap-tool (Akatz Labs)

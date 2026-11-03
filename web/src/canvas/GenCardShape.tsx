@@ -268,5 +268,5 @@ function FailFoot({ shape, job }: { shape: GenCardShape; job: JobState }) {
   const back = shape.props.takes.length > 0;
   return <div className="gc-failfoot"><small data-testid="gc-fail-charge">{v.charge}</small>
     {back && <button type="button" className="nf-retry gc-back" data-testid="gc-back-version" {...tip('Show the versions you already have')} onClick={() => editor.run(() => editor.updateShape({ id: shape.id, type: GEN_TYPE, props: { status: 'done', error: '' } } as any), { history: 'ignore' })}>Versions</button>}
-    <button type="button" className="nf-retry" data-testid="gc-retry" disabled={busy} onClick={() => { setBusy(true); void retryCard(editor, shape.id).then(() => toast('Trying again with the same settings')).catch(e => toast((e as Error).message, 'error')).finally(() => setBusy(false)); }}><Ic.RetryIcon size={14} />{busy ? 'Starting…' : 'Retry'}</button></div>;
+    <button type="button" className="nf-retry" data-testid="gc-retry" disabled={busy} onClick={() => { setBusy(true); void (shape.props.jobId ? retryCard(editor, shape.id) : submit(editor, shape.id) /* it never started (a Go that started the others): run it now */).then(() => toast('Trying again with the same settings')).catch(e => toast((e as Error).message, 'error')).finally(() => setBusy(false)); }}><Ic.RetryIcon size={14} />{busy ? 'Starting…' : 'Retry'}</button></div>;
 }

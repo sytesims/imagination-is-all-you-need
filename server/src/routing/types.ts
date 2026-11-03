@@ -30,6 +30,8 @@ export interface RouteDef {
   caps?: Record<string, unknown>;
   /** Extra credits on top of the route price for this job (e.g. OpenSoul cloud upscale via fal-ai/esrgan). */
   extraCredits?: (input: Record<string, any>) => number;
+  /** The add-on's own line in the quote breakdown (null = none for this job), e.g. H3 Character Swap's first frame on Comfy Router. */
+  extraLine?: (input: Record<string, any>) => string | null;
   /** The job as the route bills it, when that differs from what was asked (H3 Talking Photo on Router: the clip is at least 5 s). Quote and charge both use it. */
   priceInput?: (input: Record<string, any>) => Record<string, any>;
   /** A short note when this route adjusts the job instead of refusing it (a length rounded, speech trimmed): shown on the quote and the job. */
@@ -45,6 +47,9 @@ export interface RouteDef {
   vendor?: import('../shared/modelIds.js').RunOn;
   /** Job-specific reason this route can't run it (null = fine), e.g. cloud upscale without a fal key. */
   unavailableFor?: (input: Record<string, any>) => string | null;
+  /** A step this job still needs before it can run here (null = none), e.g. H3 Character Swap's who to swap: the route stays the place, priced,
+   *  and the reason is shown as an input step (quote inputStep), never as "can't run" / "not for these settings". */
+  needsInput?: (input: Record<string, any>) => string | null;
   /** Video routes (MiniMax H3): one request per job, output = video.url (fal) / output URL (Replicate). */
   output?: 'image' | 'video' | '3d';
   /** Builds the provider request body for this job (H3 routes; image routes use falImageInput/replicateImageInput). */
@@ -77,6 +82,8 @@ export interface RouteOption {
   demo?: boolean;
   /** I2: machine-readable reason ('key_missing'); `reason` is plain UI copy, `reasonDetail` keeps the technical detail (e.g. the env var). */
   reasonCode?: 'key_missing' | 'not_wired' | 'input_blocked' | 'too_heavy' | 'route_not_enabled'; reasonDetail?: string;
+  /** input_blocked only because the job still needs a step the user adds here (RouteDef.needsInput: H3's who to swap): the place is fine and priced. */
+  inputStep?: boolean;
   /** HW-SHAPES B3: local routes only: this computer's fit verdict (fits | slow | too_heavy | unknown), reason, tier, ETA; warning when pinned anyway (Q2). */
   fit?: Record<string, any> & { verdict: string; reasonCode: string; reason: string; enforced: boolean; warning?: string };
   /** Demo previews: the route's real price, shown for reference (credits is 0: a demo preview is free). */

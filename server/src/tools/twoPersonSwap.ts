@@ -75,7 +75,7 @@ export const twoPersonSwapTool: ToolDef = {
     if (!a) return bad('personA', 'Add a photo for person 1.', 'required');
     if (!b) return bad('personB', 'Add a photo for person 2.', 'required');
     for (const [f, k] of [[a, 'personA'], [b, 'personB']] as const) if (!/\.(png|jpe?g|webp)$/i.test(f)) return bad(k, 'Use a PNG, JPEG or WEBP photo.', 'format');
-    const t = await applySwapTrim(fields, files); if ('error' in t) return t;
+    const t = await applySwapTrim(fields, files, TWO_SWAP_SECONDS /* clipTrim.ts clipTrimLimits reads the same */); if ('error' in t) return t;
     const vf = files.video![0]; const src = path.join(DATA_DIR, vf); const p = await probe(src);
     if (!p) return bad('video', 'That clip could not be read. Re-export it as MP4 (H.264) and try again.', 'unreadable');
     const duration = t.trim ? swapRangeSeconds(t.trim) : Math.round(p.duration * 100) / 100;

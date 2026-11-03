@@ -7,7 +7,7 @@ import Dropzone from './Dropzone';
 import { LIMITS, MAX_UPLOAD_BYTES, MAX_UPLOAD_MB, VIDEO_ACCEPT, fileFits, wrongTypeText } from '../../../server/src/shared/mediaAccept';
 import { useToast } from './Toast';
 
-export interface VideoMeta { file: File; url: string; duration: number; w: number; h: number; audio: boolean | null; trimmed: boolean }
+export interface VideoMeta { file: File; url: string; duration: number; w: number; h: number; audio: boolean | null; trimmed: boolean; /** the range a tool uses starts here (the Trim sheet; default 0): pickers open on this frame */ start?: number }
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
 
 /* Detached <video> elements can be garbage-collected before loadedmetadata fires (the "first upload adds nothing" bug), so keep a

@@ -42,7 +42,7 @@ const MAX_MODELS = 60; const MAX_VARIANTS = 48; const TTL_MS = 8_000; const MAX_
 const VARIANT_EXTRA = ['upTo', 'perSecond', 'eta', 'localRun', 'priceRef', 'issues'] as const;
 /** The quote fields a row needs (the rest of a quote stays with the single quote). */
 const KEEP = ['credits', 'listCredits', 'chargeable', 'free', 'local', 'demo', 'demoTag', 'runnable', 'needsKey', 'priceAvailable', 'cost', 'billingMode', 'runOn', 'runOnLabel', 'place', 'placeLabel',
-  'routeId', 'routeKind', 'modelKey', 'reason', 'reasonCode', 'blockedReason', 'unavailableReason', 'error', 'code', 'warn', 'setupOptions' /* a row that needs a key shows its per-run estimate */] as const;
+  'routeId', 'routeKind', 'modelKey', 'reason', 'reasonCode', 'inputStep' /* a step to add (H3 who to swap): priced, not a block */, 'blockedReason', 'unavailableReason', 'error', 'code', 'warn', 'setupOptions' /* a row that needs a key shows its per-run estimate */] as const;
 const cache = new Map<string, { at: number; v: Promise<Row> }>();
 type Row = Record<string, any> & { status: number };
 
