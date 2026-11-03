@@ -48,6 +48,7 @@ html body .gen-btn.gen-btn.gen-btn:disabled svg{opacity:.6}
   html body .gen-dock .gen-price::before{content:none}
   html body .gen-dock .gen-price.gp-empty{display:block;height:16px} /* line 2 held: no jump when the price lands */
 }
+html body .gen-dock .gen-price .gp-place,html body .ic-dock .ic-gen .gen-price .gp-place{display:none!important} /* 2026-11-03: the place ('on your computer') is already on the Run on chip next to the button; the button says only 'Free' or the price. The tooltip keeps the full words. */
 
 html body .gen-row>.cost-note{order:4}
 
