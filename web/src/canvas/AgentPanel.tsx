@@ -533,7 +533,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
             <input ref={fileIn} type="file" accept={IMAGE_ACCEPT} multiple hidden data-testid="agent-attach-input" onChange={(e) => { addPics([...(e.target.files ?? [])]); e.target.value = ''; }} />
             <button type="button" className="ap-attach" onClick={() => fileIn.current?.click()} disabled={sending || pics.length >= MAX_DOCK_PICTURES} aria-label="Add pictures" {...tip(pics.length >= MAX_DOCK_PICTURES ? `Up to ${MAX_DOCK_PICTURES} pictures per message` : 'Add pictures')} data-testid="agent-attach"><PaperclipIcon size={16} /></button>
             <textarea ref={ta} value={text} onChange={(e) => setText(e.target.value)} rows={2} maxLength={4000}
-              onPaste={(e) => { const files = [...e.clipboardData.files]; if (!files.length) return; e.preventDefault(); addPics(files); }}
+              onPaste={(e) => { const files = [...e.clipboardData.files]; if (!files.length) return; e.preventDefault(); e.stopPropagation(); /* the board never also gets it */ addPics(files); }}
               placeholder={confirm ? 'What should change? Or press Looks good.' : agentConnected ? `Message ${agent.agentName || 'your AI'}…` : 'Pick a demo, or connect Claude to chat'} aria-label="Message the agent" data-testid="agent-reply"
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(text); } }} />
             {demo.running && !agentConnected && !text.trim() && !pics.length
