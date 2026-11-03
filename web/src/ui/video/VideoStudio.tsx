@@ -34,6 +34,7 @@ import { RouteNotRunnable } from '../../shared/RouteNotRunnable';
 import { GenPrice } from '../../shared/GenPrice';
 import { DemoPrice } from '../../shared/DemoPrice';
 import { useRequoteTick, shownCredits, runBlock } from '../../shared/quote';
+import { inputNeedOf } from '../../../../server/src/shared/preflight';
 import { readQuote, unpricedReason, demoMessage, unpricedPrefix, unpricedTitle, demoTagOf } from '../../shared/quote';
 import { quoteParams } from '../../shared/usePrefill';
 import { perSecondAt, optionToken, priceDelta, rateText, localLine, isLocalQuote, useVariantQuotes, shortToken, type Overrides } from '../../shared/optionPrice';
@@ -187,7 +188,9 @@ export default function VideoStudio(p: VideoStudioProps) {
   const unpricedWhy = unpricedReason(q); const unpriced = !!unpricedWhy; const credits: number | null = shownCredits(q); /* B18: chargeable:false is never a charge */
   const free = credits === 0 && q?.routeKind === 'local'; const gate = !!q && q.needsKey === true && q.runnable === false;
   /* B19: any other runnable:false quote blocks Generate in the server's words; an input block (blockedReason) keeps its real price, shown muted. */
-  const blockWhy = !gate && !unpriced && q?.runnable === false ? String(runBlock(q) ?? '') : '';
+  /* a block a picture fixes (the route only does image to video): an input, never "can't run" words (shared/preflight.ts inputNeedOf) */
+  const need = !gate && !unpriced ? inputNeedOf(q) : null;
+  const blockWhy = !gate && !unpriced && !need && q?.runnable === false ? String(runBlock(q) ?? '') : '';
   const gq = useGenState(); const qFull = gq.full; // D1: a full queue blocks Generate and says why
   const why = p.missing.length ? humanWhy(missingText(p.missing)) : ''; const isDemo = !unpriced && !blockWhy && credits != null && q?.demo === true; const isFree = !unpriced && !blockWhy && credits != null && free;
   /* "via <route> · <price>" under the model name, live from the quote (same line the other tool pages show). */
@@ -364,6 +367,10 @@ export default function VideoStudio(p: VideoStudioProps) {
   const notes: Note[] = [];
   /* bar match (2026-10-23): what's missing is the list's first rows, as in Image's pre-flight (a click on Generate opens it) */
   p.missing.forEach((m, i) => notes.push({ key: `miss-${i}`, stage: 'Inputs', hard: true, node: <span data-testid="vs-missing">{missShort(m, p.mode)}</span> }));
+  /* the slot the route needs, listed with the inputs; Generate opens its picker when it's the only thing left */
+  const pickNeed = (): boolean => { const a = need?.action; if (a !== 'add-image' && a !== 'add-end-frame') return false; (p.image && a === 'add-end-frame' ? lastIn : fileIn).current?.click(); return true; };
+  const needShown = !!need && !p.missing.some(m => /image|photo|frame|reference/i.test(m));
+  if (needShown) notes.push({ key: 'need', stage: 'Inputs', hard: true, node: <span data-testid="vs-need">{need!.short}{need!.action === 'add-image' || need!.action === 'add-end-frame' ? <> <button type="button" className="lk-btn" data-testid="vs-need-add" onClick={() => { setPfOpen(false); pickNeed(); }}>Add</button></> : null}</span> });
   if (p.imgErr) notes.push({ key: 'imgErr', stage: 'Inputs', node: p.imgErr });
   if (refErr) notes.push({ key: 'refErr', stage: 'Inputs', node: <span data-testid="vs-ref-err">{refErr}</span> });
   if (overN > 0) notes.push({ key: 'refOver', stage: 'Inputs', node: <span data-testid="vs-ref-over">{overN} {overN === 1 ? 'reference isn’t' : 'references aren’t'} sent: {fullText(refCaps, modelName || 'this model')}. <button type="button" className="lk-btn" data-testid="vs-ref-over-remove" onClick={dropExtras}>Remove {overN === 1 ? 'it' : 'them'}</button></span> });
@@ -514,7 +521,7 @@ export default function VideoStudio(p: VideoStudioProps) {
       <GenStatus r={gr} />
       {<button ref={genRef} type="button" className={`ic-gen gen-btn gen-dock btn btn-primary vs-dgen${!p.busy && (p.missing.length > 0 || blocking) ? ' gen-wait' : ''}`} data-testid="vs-generate" data-problems={notes.length || undefined} disabled={p.busy || qFull || !!p.frameHandoff} aria-busy={p.busy || undefined} aria-disabled={p.missing.length > 0 || blocking || !!p.frameHandoff || undefined} data-why={why || undefined} aria-describedby={why ? 'vs-why' : undefined}
           aria-haspopup={blocking ? 'dialog' : undefined} aria-expanded={blocking ? pfOpen : undefined} title={pfOpen ? undefined : genTitle} {...blockedProps(gr)}
-          onClick={e => { if (genBlocked(gr)) return; if (blocking) { setPfOpen(o => !o); return; } if (p.missing.length) { nudgeMissing(e.currentTarget); return; } setPfOpen(false); p.onGenerate(); }}><span className="gen-l">{p.busy ? <i className="as-spin" aria-hidden /> : null}Generate</span>
+          onClick={e => { if (genBlocked(gr)) return; if (needShown && notes.every(n => !n.hard || n.key === 'need') && pickNeed()) return; if (blocking) { setPfOpen(o => !o); return; } if (p.missing.length) { nudgeMissing(e.currentTarget); return; } setPfOpen(false); p.onGenerate(); }}><span className="gen-l">{p.busy ? <i className="as-spin" aria-hidden /> : null}Generate</span>
           <GenPrice compact testId="vs-price" q={q} demo={isDemo} free={isFree} text={qFull ? 'Queue full' : null} credits={!unpriced && !blockWhy ? credits : null} /></button>}
       </div></div>
       {p.missing.length > 0 && !gate && <p className="sr-only" id="vs-why">{why}</p>}

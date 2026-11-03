@@ -38,7 +38,7 @@ import { PromptPeek, type PeekForm } from '../next/PromptPeek';
 import { BrandChip } from '../../shared/BrandChip';
 import { DockGenerate } from '../../shared/DockGenerate';
 import type { PreflightProblem } from '../../../../server/src/shared/preflight';
-import { preflightProblems, localOnlyGate, LOCAL_SETUP_TEXT } from '../../../../server/src/shared/preflight';
+import { preflightProblems, localOnlyGate, LOCAL_SETUP_TEXT, inputNeedOf } from '../../../../server/src/shared/preflight';
 import { tip } from '../../shared/Tooltip';
 import { MakerTile } from '../../shared/MakerTile';
 import { useGenState, GenHint } from '../edge/Edge';
@@ -277,7 +277,9 @@ export default function AudioPage(p: AudioPageProps) {
   const free = credits === 0 && q?.routeKind === 'local'; const gate = !!q && q.needsKey === true && q.runnable === false;
   /* a free local model (YuE2) with nowhere to run: the server's noProvider says needsKey, but no key can help; say the real step */
   const localGate = gate && localOnlyGate(q);
-  const blockWhy = !gate && !unpriced && q?.runnable === false ? String(runBlock(q) ?? '') : '';
+  /* a block an input fixes (the route needs a clip or a voice): one of the missing inputs, never "can't run" words (shared/preflight.ts inputNeedOf) */
+  const need = !gate && !unpriced ? inputNeedOf(q) : null;
+  const blockWhy = !gate && !unpriced && !need && q?.runnable === false ? String(runBlock(q) ?? '') : '';
   const gq = useGenState(); const qFull = gq.full; const bill = useBilling();
   const isDemo = !unpriced && !blockWhy && credits != null && q?.demo === true; const isFree = !unpriced && !blockWhy && credits != null && free;
   const qLang: any = /^(invalid|unsupported)_language$/.test(String(q?.code ?? '')) ? ((Array.isArray(q?.issues) ? q.issues : []).find((i: any) => i?.field === 'language') ?? { code: q.code, field: 'language', message: String(q.error ?? '') }) : null;
@@ -293,6 +295,7 @@ export default function AudioPage(p: AudioPageProps) {
   if (voiceOn && voiceV === 'clone' && !p.samples.length) missing.push('Add a voice sample');
   const maxChars = mode === 'voiceover' && Number(caps?.maxChars) > 0 ? Number(caps.maxChars) : 0; /* a model that reads a shorter script in one go (Qwen3 TTS: 2,000) */
   if (maxChars && p.prompt.trim().length > maxChars) missing.push(`Shorten the script to ${maxChars.toLocaleString('en-US')} characters`);
+  if (need && !missing.some(m => /clip|audio|video|song|voice|sample|image|photo|frame|reference/i.test(m))) missing.push(need.short);
   missing.push(...p.checks.map(c => /^checking/.test(c) ? 'Checking your files…' : 'A file can’t be used'));
   const noPlace = !q && !!cur && 'defaultRoute' in (cur as any) && (cur as any).defaultRoute == null;
   type Note = PreflightNote;

@@ -71,6 +71,22 @@ const acts = (r: any) => [r?.primary, r?.alt].filter(Boolean).map((a: any) => `$
   for (const r of [soft]) { assert.ok(r!.reason.split(/\s+/).length < 30); assert.ok([r!.primary, r!.alt].filter(Boolean).length <= 2); }
   ok('memory short on a graphics card: a note with Use Comfy Cloud, Generate still runs'); }
 
+// an input-only need (LTX-2.5 Fast on Comfy Cloud "only does image to video", no start image yet) is an input: no reason line while idle,
+// never "Comfy Cloud can't run this job"; a key or a place problem still blocks at once (2026-11-03)
+{ const need = { runnable: false, chargeable: false, credits: 12, blockedCode: 'input_blocked', reasonCode: 'input_blocked', route: 'cloud-ltx25-fast', runOn: 'comfy-cloud',
+    blockedReason: "Comfy Cloud can't run this job. This route only does image to video or first and last frame." };
+  const ps = pf(need); assert.deepEqual(ps.map(x => `${x.stage}:${x.code}`), ['inputs:input_problem'], 'the need is an input, not a model problem');
+  assert.equal(ps[0].message, 'Needs a start image'); assert.equal(ps[0].fix.args?.action, 'add-image'); assert.ok(!ps.some(x => /can.t run this job/.test(x.message)));
+  assert.equal(reasonOf({ setupKind: 'cloud', problems: ps, places: [], canDetails: true }), null, 'idle: no reason line, no See what to fix');
+  assert.deepEqual(pf(need, { prompt: { missing: 'Write a prompt' } }).map(x => x.code), ['prompt_missing', 'input_problem'], 'both inputs, listed after a Generate press');
+  const link = pf({ ...need, blockedReason: "Comfy Router can't run this job. Seedance 2.5 on Comfy Router takes your clip only as a public web link." });
+  assert.equal(link[0]?.code, 'model_cant_run', 'a block no input fixes stays a model problem');
+  const key = reasonOf({ setupKind: 'cloud', problems: pf({ runnable: false, setup: { action: 'add_key', runOn: 'comfy-cloud', runOnLabel: 'Comfy Cloud' } }), places: [place('comfy-cloud', 'add_key')], canDetails: true });
+  assert.equal(key?.code, 'needs_key'); assert.ok(key!.blocks, 'a missing key still blocks right away');
+  const nowhere = reasonOf({ setupKind: 'cloud', problems: [], places: [], noPlace: true });
+  assert.equal(nowhere?.code, 'no_place'); assert.ok(nowhere!.blocks, 'no place still blocks right away');
+  ok('input-only need → an input (no line while idle); a key or no place still blocks'); }
+
 // ---- 2. M1: too big for shared memory ----
 { const mac16 = { id: 'apple-silicon', label: 'Apple M2 · 16 GB', usableGB: 12, ramGB: 16, unifiedMemory: true };
   const m = memoryCheck(20, mac16, { ram: { totalBytes: 16 * 2 ** 30, freeBytes: 9 * 2 ** 30 }, vram: null });
