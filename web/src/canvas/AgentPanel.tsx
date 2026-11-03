@@ -423,11 +423,11 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
       if (b?.pick) setPick(b.pick);
     } catch (e) { toast((e as Error).message, 'error'); } finally { choosing.current = false; }
   }, [boardId, editor, toast]);
-  const pickRef = useRef(pick); pickRef.current = pick; const choosing = useRef(false);
+  const pickRef = useRef(pick); pickRef.current = pick; const choosing = useRef(false); const pickSaid = useRef(false);
   useEffect(() => {
     if (!editor) return;
-    if (pick?.status === 'waiting') { fx.pick(pick.cardIds); handOf(editor).say('Waiting for your pick', true); }
-    else { fx.pick([]); if (pick?.status === 'picked' && pick.chosen) fx.chosen(pick.chosen); }
+    if (pick?.status === 'waiting') { fx.pick(pick.cardIds); handOf(editor).say('Waiting for your pick', true); pickSaid.current = true; }
+    else { fx.pick([]); if (pick?.status === 'picked' && pick.chosen) fx.chosen(pick.chosen); if (pickSaid.current) { pickSaid.current = false; handOf(editor).hush(); } } /* the pick resolved: the label goes with it */
     if (pick?.status !== 'waiting') return;
     const off = editor.store.listen(() => { const sel = editor.getSelectedShapeIds(); if (sel.length === 1 && pick.cardIds.includes(sel[0])) void choose(sel[0]); }, { scope: 'session' });
     return () => { off(); };

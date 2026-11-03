@@ -134,6 +134,8 @@ class Hand {
   private entry(to: { x: number; y: number }) { const vb = this.editor.getViewportPageBounds(); return vb.containsPoint(to) ? { x: vb.minX + vb.w * 0.08, y: vb.minY + vb.h * 0.1 } : to; }
   /** A short label beside the cursor. `stay`: keep it (and the cursor) until the next step, e.g. while it waits for your pick. */
   say(label: string, stay = false) { setHand({ working: true, label }); this.put({ chatMessage: label }); this.arm(stay); }
+  /** Drop the label now ("Waiting for your pick" once you picked); the cursor leaves on its own later. */
+  hush() { setHand({ working: false, label: '' }); this.put({ chatMessage: '' }, false); this.arm(); }
   touch(ids: string[]) { const live = ids.filter((id) => this.editor.getShape(id as TLShapeId)) as TLShapeId[]; this.put({ selectedShapeIds: live }); for (const id of live) { if (rules.has(`enter:${id}`)) window.setTimeout(() => fx.touched(id), 600); else fx.touched(id); } this.arm(); }
   /** A laser loop around some shapes (or a point). It stops (and the stroke goes) when the hand leaves, the board closes or the tab
    *  hides: a hidden tab's timers crawl (up to a minute a step), which used to leave a half-drawn loop on the board for minutes. */
