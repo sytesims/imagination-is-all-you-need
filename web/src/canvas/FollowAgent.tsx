@@ -1,20 +1,32 @@
 /**
  * "Follow agent": while it is on, the camera eases (never jumps) to where the agent works: the frame it is filling, or the cards a
- * proposal or a Go is about (agentHand.handAtom and agentFocusAtom). It keeps the board readable: never below 55% zoom and never above
- * 100%. When the area is too big for that, it centres on the agent's cursor at 55% instead of zooming out to a sea of tiny cards. If
+ * proposal or a Go is about (agentHand.handAtom and agentFocusAtom). It keeps the board readable: never below 62% zoom and never above
+ * 100%. When the area is too big for that, it centres on the agent's cursor at 62% instead of zooming out to a sea of tiny cards. If
  * the area is already in view at a readable zoom, the camera stays still (no seasick nudges).
  * A manual pan or zoom (wheel, pinch, hand drag, space drag) turns it off; the toggle turns it back on and goes to the agent.
  */
 import { useEffect } from 'react';
-import { Box, EASINGS, useEditor, useValue, type Editor, type TLEventInfo } from 'tldraw';
+import { Box, EASINGS, useEditor, useValue, type Editor, type TLEventInfo, type TLShapeId } from 'tldraw';
 import { tip } from '../shared/Tooltip';
 import { agentFocusAtom, followAtom, setFollow } from './agentDockModel';
 import { handAtom, reducedMotion } from './agentHand';
 import { withInputs } from './graph';
+import { OVERVIEW_ZOOM } from './cardLook';
 
-/** The readable floor: card names and prompts stay legible at this zoom. */
-export const FOLLOW_MIN_ZOOM = 0.55;
+/** The readable floor: card names and prompts stay legible at this zoom (under it cards switch to their far look, cardLook.ts). */
+export const FOLLOW_MIN_ZOOM = OVERVIEW_ZOOM + 0.02; /* a hair above: the camera's 0.5999… must not tip the cards into the far look */
 const INSET = 72; const TOP_BAR = 64;
+/** Whether a page area fits the view at the readable floor. */
+export function fitsReadable(editor: Editor, area: { w: number; h: number }): boolean {
+  const vs = editor.getViewportScreenBounds(); return Math.min((vs.w - INSET * 2) / Math.max(1, area.w), (vs.h - INSET * 2) / Math.max(1, area.h)) >= FOLLOW_MIN_ZOOM;
+}
+/** What to frame for some cards (an agent batch, a proposal, a Go): the first of `wider` (e.g. the cards with what feeds them) that fits at
+ *  a readable zoom, else the cards alone. Null when none are on the board. */
+export function readableArea(editor: Editor, ids: string[], wider: string[][] = [withInputs(editor, ids)]): Box | null {
+  const boxOf = (list: string[]) => { const bs = list.map((id) => editor.getShapePageBounds(id as TLShapeId)).filter(Boolean) as Box[]; return bs.length ? Box.Common(bs) : null; };
+  for (const list of wider) { const b = boxOf(list); if (b && fitsReadable(editor, b)) return b; }
+  return boxOf(ids);
+}
 
 /** Ease the camera to a page area (or the point inside it the agent is at) at a readable zoom. Returns false when nothing had to move. */
 export function frameArea(editor: Editor, area: Box, at?: { x: number; y: number } | null, force = false): boolean {
@@ -56,8 +68,8 @@ export function FollowAgent() {
   useEffect(() => {
     if (!follow || !focus) return;
     const t = window.setTimeout(() => {
-      const boxes = withInputs(editor, focus.ids).map((id) => editor.getShapePageBounds(id)).filter(Boolean) as Box[]; if (!boxes.length) return; /* the cards and what feeds them */
-      frameArea(editor, Box.Common(boxes), null);
+      const area = readableArea(editor, focus.ids); if (!area) return; /* the cards and what feeds them, or the cards alone when that is too big to read */
+      frameArea(editor, area, null);
     }, 60);
     return () => window.clearTimeout(t);
   }, [editor, follow, focus?.key]); // eslint-disable-line react-hooks/exhaustive-deps

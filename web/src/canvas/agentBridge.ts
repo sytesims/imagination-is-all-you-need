@@ -15,6 +15,7 @@ import { createCard, setCard, connect, describeCard, quoteCard, submit, listFlow
 import { submitInOrder } from './nodeRun';
 import { handOf, fx, workArea, boundsOf, animOK } from './agentHand';
 import { freeSpot } from './placement';
+import { readableArea } from './FollowAgent';
 import { CARD_W, CARD_H } from './cardModel';
 import { arrowsInto, linkShapes, withInputs, waitingInputsOf, GEN_TYPE, RESULT_T } from './graph';
 import { createAuxNode } from './auxShapes';
@@ -32,7 +33,7 @@ import { portInfoOf, outKindOfShape } from './ports';
 import { canFeed, takesLine, PORT_WORDS, settleProposal, type ProposalCard } from './nodeLogic';
 import { NEXT_STEPS } from './quickActionsModel';
 import { addResultCard } from './resultCardUtil';
-import { validateBatch, batchLayout, batchLine, type BatchItem } from '../../../server/src/shared/canvasBatch';
+import { validateBatch, batchLayout, batchLine, type BatchItem, type LayoutCtx } from '../../../server/src/shared/canvasBatch';
 import { buildBatch } from './batchBuild';
 import { withReviews, type TakeReview } from '../../../server/src/shared/takeReview';
 import { uploadNodeName, uploadNodeSummary } from '../../../server/src/shared/canvasPictures';
@@ -130,10 +131,12 @@ function cardNode(editor: Editor, id: TLShapeId, quote?: any) {
   return { id, type: 'card' as const, kind: p.medium ?? null, workflow: p.flow ?? null, workflowName: flowById(p.flow)?.name ?? p.flow ?? null, model: d.model || p.provider || null, prompt: p.prompt ?? '',
     name: nameOf(editor, id), title: String(nameOf(editor, id) || p.prompt || d.flow || 'Card').slice(0, 100), frame: frameOfShape(editor, id), status: p.status ?? null, inputs: (arrowsInto(editor, id).map((a) => a.fromId).filter(Boolean) as string[]),
     results: (p.takes ?? []).filter((t: any) => t?.url).map((t: any) => ({ url: t.url, kind: t.kind ?? null, poster: t.poster ?? null })),
-    price: priceView(quote ?? p.quote), jobId: p.jobId || null, missing: d.missing,
+    price: priceView(quote ?? p.quote), jobId: p.jobId || null, missing: d.missing, ...posOf(editor, id),
     /* the version strip: which version flows to the next card (1-based) */ version: (p.takes ?? []).length ? Math.min(p.take ?? 0, p.takes.length - 1) + 1 : null, versions: (p.takes ?? []).length };
 }
 
+/** Where a node sits on the board (page px, top-left and size), so an agent can see the layout. */
+const posOf = (editor: Editor, id: TLShapeId) => { const b = editor.getShapePageBounds(id); return b ? { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.w), h: Math.round(b.h) } : {}; };
 const frameOfShape = (editor: Editor, id: TLShapeId) => { const s = editor.getShape(id); const parent = s ? editor.getShape(s.parentId as TLShapeId) : null; return parent?.type === 'frame' ? parent.id : null; };
 /** The agent writes a card's prompt as you watch (instant under reduced motion). */
 async function typePrompt(editor: Editor, id: TLShapeId, text: string) {
@@ -230,7 +233,7 @@ async function summarize(editor: Editor) {
     } else if (s.type === RESULT_T) {
       nodes.push({ id: s.id, type: 'result', kind: p.kind ?? null, title: p.title ?? null, model: p.model ?? null, results: p.url ? [{ url: p.url, kind: p.kind ?? null, poster: p.poster ?? null }] : [], jobId: p.jobId || null });
     } else if (s.type === UPLOAD_TYPE) {
-      const n = uploadNodeSummary(s as any); if (n) nodes.push(n); /* a dropped picture, clip or sound, by its name (2026-11-03: they were missing) */
+      const n = uploadNodeSummary(s as any); if (n) nodes.push({ ...n, ...posOf(editor, s.id) }); /* a dropped picture, clip or sound, by its name (2026-11-03: they were missing) */
     } else if (s.type === 'image' || s.type === 'video') {
       const asset: any = p.assetId ? editor.getAsset(p.assetId) : null; const url = asset?.props?.src; if (!url) continue;
       nodes.push({ id: s.id, type: s.type === 'image' ? 'picture' : 'clip', kind: s.type, title: asset?.props?.name ?? s.type, results: [{ url, kind: s.type }] });
@@ -394,6 +397,20 @@ function applyReviews(editor: Editor, op: AgentOp) {
   return { updated };
 }
 
+/** The latest batch on each board: a group without inputs goes right of it. */
+const lastGroup = new WeakMap<Editor, string[]>();
+/** What the batch layout needs from the board: input boxes, what is taken, and where a group without inputs goes (right of the
+ *  selection, else the latest batch, else the newest thing on the board; none on an empty board). */
+function layoutCtx(editor: Editor): LayoutCtx & { anchorIds: string[] } {
+  const shapes = editor.getCurrentPageShapesSorted().filter((s) => s.type !== 'arrow');
+  const taken = shapes.map((s) => editor.getShapePageBounds(s.id)).filter(Boolean).map((b) => plainBox(b!));
+  const sel = editor.getSelectedShapeIds().filter((id) => editor.getShape(id)?.type !== 'arrow');
+  const last = (lastGroup.get(editor) ?? []).filter((id) => editor.getShape(id as TLShapeId));
+  const newest = [...shapes].reverse().find((s) => s.type !== 'frame');
+  const anchorIds = sel.length ? sel : last.length ? last : newest ? [newest.id] : []; const anchor = boundsOf(editor, anchorIds);
+  return { anchorIds, taken, anchor: anchor ? plainBox(anchor) : null, boxOf: (id) => { const b = editor.getShape(id as TLShapeId) ? editor.getShapePageBounds(id as TLShapeId) : null; return b ? plainBox(b) : null; } };
+}
+
 /** Many things at once (canvas_batch): validated against the board, laid out as one group, made in ONE history step (a single Undo
  *  removes it all; one bad item and nothing is made), then shown as one wave with one camera move. Cards are drafts: nothing runs. */
 async function applyBatch(editor: Editor, op: AgentOp) {
@@ -401,16 +418,19 @@ async function applyBatch(editor: Editor, op: AgentOp) {
   const bad = validateBatch(items, (id) => !!editor.getShape(id as TLShapeId)); if (bad) throw new Error(bad);
   const needsLayout = items.some((it) => (it.kind === 'add_card' || it.kind === 'add_note' || it.kind === 'add_frame') && !it.at);
   const first = batchLayout(items, { x: 0, y: 0 }); const origin = needsLayout ? freeArea(editor, Math.max(1, first.size.w), Math.max(1, first.size.h)) : { x: 0, y: 0 };
-  const pos = needsLayout ? batchLayout(items, origin) : { at: {}, frames: {} };
+  const ctx = needsLayout ? layoutCtx(editor) : null; const pos = ctx ? batchLayout(items, origin, ctx) : { at: {}, frames: {} };
   const made = buildBatch(editor, items, pos, {
     flowOf: (w) => resolveFlow(w).id,
     providerOf: (flowId, model) => { const f = flowById(flowId); return model && f ? resolveProvider(toolIdOf(f), model) : undefined; },
     check: (from, to) => checkFeeds(editor, from, to, true),
     spot: (w, h) => freeSpot(editor, w, h),
   });
-  /* one camera move for the whole group, the hand at its start, then the wave */
+  lastGroup.set(editor, made.order);
+  /* one camera move at a readable zoom: the new group with what feeds it (and what it was placed beside), else without, else the group
+     alone; the hand at its start, then the wave */
   const box = boundsOf(editor, made.order);
-  if (box) { workArea(areaOf(editor, made.order)); void handOf(editor).glideTo({ x: box.minX + 28, y: box.minY + 20 }, `Adding ${made.cards.length + made.notes.length || made.frames.length} at once`); }
+  if (box) { const fed = withInputs(editor, made.order); const beside = ctx && !made.arrows.length ? ctx.anchorIds : [];
+    workArea(plainBox(readableArea(editor, made.order, [[...fed, ...beside], fed]) ?? box)); void handOf(editor).glideTo({ x: box.minX + 28, y: box.minY + 20 }, `Adding ${made.cards.length + made.notes.length || made.frames.length} at once`); }
   fx.wave(made.order.filter((id) => !made.frames.includes(id)), made.arrows);
   window.setTimeout(() => handOf(editor).touch(made.cards.slice(0, 12)), Math.min(2400, made.order.length * 45 + 300));
   return { refs: made.refs, cards: made.cards.map((id) => cardNode(editor, id as TLShapeId)).filter(Boolean), notes: made.notes, frames: made.frames, arrows: made.arrows,
@@ -440,7 +460,7 @@ export async function applyOp(editor: Editor, op: AgentOp): Promise<any> {
       const title = titleOf(editor, id); editor.deleteShapes([id]); return { removed: op.card_id, title };
     }
     case 'propose_run': {
-      const b = areaOf(editor, op.card_ids ?? []); if (b) { workArea(b); handOf(editor).say(`Pricing ${(op.card_ids ?? []).length === 1 ? 'this card' : `${(op.card_ids ?? []).length} cards`}`); handOf(editor).touch(op.card_ids ?? []); }
+      const b = readableArea(editor, op.card_ids ?? []); if (b) { workArea(plainBox(b)); handOf(editor).say(`Pricing ${(op.card_ids ?? []).length === 1 ? 'this card' : `${(op.card_ids ?? []).length} cards`}`); handOf(editor).touch(op.card_ids ?? []); }
       return propose(editor, op);
     }
     case 'summary': return summarize(editor);

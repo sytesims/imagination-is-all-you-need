@@ -39,13 +39,48 @@ assert.equal(boxes.length, 8 + 3 + 4 + 1, 'every item without a spot got one (th
 for (let a = 0; a < boxes.length; a++) for (let b = a + 1; b < boxes.length; b++) { const p = boxes[a], q = boxes[b];
   assert.ok(p.x + p.w <= q.x || q.x + q.w <= p.x || p.y + p.h <= q.y || q.y + q.h <= p.y, `items ${p.i} and ${q.i} overlap`); }
 const fr = Object.entries(L.frames).map(([i, b]) => ({ i: Number(i), ...b })); assert.equal(fr.length, 4);
-for (let a = 0; a < fr.length; a++) for (let b = a + 1; b < fr.length; b++) { const p = fr[a], q = fr[b]; assert.ok(p.y + p.h <= q.y || q.y + q.h <= p.y, `frames ${p.i} and ${q.i} overlap`); }
+for (let a = 0; a < fr.length; a++) for (let b = a + 1; b < fr.length; b++) { const p = fr[a], q = fr[b]; assert.ok(p.x + p.w <= q.x || q.x + q.w <= p.x || p.y + p.h <= q.y || q.y + q.h <= p.y, `frames ${p.i} and ${q.i} overlap`); }
+assert.equal(new Set(fr.map((b) => b.y)).size, 1, 'frames sit side by side, left to right (not stacked bands)');
 for (const bx of boxes) { const it = big[bx.i]; const f = it.frame ? big.findIndex((x) => x.ref === it.frame) : it.ref === 'm' ? big.findIndex((x) => x.ref === 'f4') : -1; if (f < 0) continue;
   const b = L.frames[f]; assert.ok(bx.x >= b.x && bx.y >= b.y && bx.x + bx.w <= b.x + b.w && bx.y + bx.h <= b.y + b.h, `item ${bx.i} sits inside its frame`); }
-const hero = boxes.filter((b) => big[b.i].frame === 'f1'); assert.equal(new Set(hero.map((b) => b.y)).size, 2, 'eight cards wrap into two rows of up to six');
+const hero = boxes.filter((b) => big[b.i].frame === 'f1'); assert.equal(new Set(hero.map((b) => b.y)).size, 3, 'eight cards make a compact grid of three columns');
+assert.equal(new Set(hero.map((b) => b.x)).size, 3);
 assert.ok(L.size.w > 0 && L.size.h > 0 && boxes.every((b) => b.x >= 100 && b.y >= 200 && b.x + b.w <= 100 + L.size.w + 1 && b.y + b.h <= 200 + L.size.h + 1), 'the group fits the size the board looks for');
 assert.deepEqual(batchLayout(big, { x: 100, y: 200 }), L, 'the same batch always lays out the same');
-ok('layout: one band per frame, loose cards after, rows of six, nothing overlaps, explicit spots kept, deterministic');
+ok('layout: frames side by side, loose cards after, compact grids, nothing overlaps, explicit spots kept, deterministic');
+
+// ---- left to right (2026-11-03): chair → 2×2 swatches → 2×2 chairs, each beside its swatch ----
+{
+  const g = BATCH_GRID; const card = (cx: number, cy: number) => ({ x: cx - g.cardW / 2, y: cy - g.cardH / 2, w: g.cardW, h: g.cardH });
+  const chair = { x: 0, y: 0, w: 320, h: 360 }; const board: Record<string, any> = { 'shape:chair': chair };
+  const ctx = (anchor: any = null) => ({ boxOf: (id: string) => board[id] ?? null, anchor, taken: Object.values(board) });
+  const gridOf = (L: any, n: number) => Array.from({ length: n }, (_, i) => L.at[i]);
+  // round 1: four swatches, no inputs: a 2×2 right of the anchor (the chair), centred on it
+  const r1: BatchItem[] = Array.from({ length: 4 }, (_, i) => ({ kind: 'add_card', ref: `s${i}`, workflow: 'create' }));
+  const L1 = batchLayout(r1, { x: -5000, y: 9000 }, ctx(chair)); const s = gridOf(L1, 4);
+  assert.equal(new Set(s.map((p) => p.x)).size, 2); assert.equal(new Set(s.map((p) => p.y)).size, 2, 'four cards: two columns, two rows');
+  assert.equal(Math.min(...s.map((p) => p.x - g.cardW / 2)), chair.x + chair.w + g.gap, 'just right of the chair');
+  assert.ok(Math.abs((L1.box.y + L1.box.h / 2) - (chair.y + chair.h / 2)) <= 1, 'centred on it');
+  s.forEach((p, i) => { board[`shape:s${i}`] = card(p.x, p.y); });
+  // round 2: each chair fed by the shared chair + its own swatch: the same slot as its swatch, one step right
+  const r2: BatchItem[] = Array.from({ length: 4 }, (_, i) => ({ kind: 'add_card', ref: `c${i}`, workflow: 'material-swap', inputs_from: i === 3 ? [`shape:s${i}`, 'shape:chair'] : ['shape:chair', `shape:s${i}`] }));
+  const L2 = batchLayout(r2, { x: -5000, y: 9000 }, ctx(null)); const c = gridOf(L2, 4); const sx = Math.max(...s.map((p) => p.x + g.cardW / 2));
+  c.forEach((p, i) => { assert.equal(p.y, s[i].y, `chair ${i} on its swatch's row`); assert.equal(p.x - s[i].x, sx - Math.min(...s.map((q) => q.x - g.cardW / 2)) + g.gap, `chair ${i} mirrors its swatch's column`); });
+  for (const b of Object.values(board)) for (const p of c) { const q = card(p.x, p.y); assert.ok(q.x >= b.x + b.w || q.x + q.w <= b.x || q.y >= b.y + b.h || q.y + q.h <= b.y, 'never on top of a card'); }
+  // one input each but no own one (all share it): a compact grid right of the input instead
+  const r3: BatchItem[] = Array.from({ length: 3 }, (_, i) => ({ kind: 'add_card', workflow: 'video', inputs_from: ['shape:s1'] }));
+  const L3 = batchLayout(r3, { x: 0, y: 0 }, ctx(null)); assert.equal(Math.min(...gridOf(L3, 3).map((p) => p.x - g.cardW / 2)), board['shape:s1'].x + g.cardW + g.gap, 'right of the right-most input');
+  // something already there: the group moves off it
+  const block = { x: L3.box.x, y: L3.box.y, w: 200, h: 200 }; board['shape:block'] = block;
+  const L4 = batchLayout(r3, { x: 0, y: 0 }, ctx(null)); for (const p of gridOf(L4, 3)) { const q = card(p.x, p.y); assert.ok(q.x >= block.x + block.w || q.x + q.w <= block.x || q.y >= block.y + block.h || q.y + q.h <= block.y, 'moved off what was there'); }
+  delete board['shape:block'];
+  // explicit `at` is kept exactly, whatever the board says
+  const r5: BatchItem[] = [{ kind: 'add_card', workflow: 'create', at: { x: 7, y: 9 }, inputs_from: ['shape:chair'] }, { kind: 'add_card', workflow: 'create' }];
+  const L5 = batchLayout(r5, { x: 0, y: 0 }, ctx(chair)); assert.equal(L5.at[0], undefined, 'an item with `at` is not moved (buildBatch uses its own spot)');
+  // no context: the origin is the top-left, as before
+  const L6 = batchLayout(r1, { x: 100, y: 200 }); assert.equal(Math.min(...gridOf(L6, 4).map((p) => p.x - g.cardW / 2)), 100); assert.equal(Math.min(...gridOf(L6, 4).map((p) => p.y - g.cardH / 2)), 200);
+  ok('left to right: right of the chair, mirrored 2×2, right of inputs, off what is there, explicit `at` kept');
+}
 
 assert.equal(batchLine({ cards: 12, notes: 0, frames: 3 }), 'Added 12 cards in 3 frames');
 assert.equal(batchLine({ cards: 1, notes: 6, frames: 1 }), 'Added 1 card and 6 notes in 1 frame');
