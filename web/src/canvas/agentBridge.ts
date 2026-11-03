@@ -18,7 +18,7 @@ import { freeSpot } from './placement';
 import { CARD_W, CARD_H } from './cardModel';
 import { arrowsInto, linkShapes, withInputs, waitingInputsOf, GEN_TYPE, RESULT_T } from './graph';
 import { createAuxNode } from './auxShapes';
-import { NODE_DEFS } from './nodeTypes';
+import { NODE_DEFS, UPLOAD_TYPE } from './nodeTypes';
 import { flowById, flowInfo, type GenFlow } from '../shared/genFlows';
 import { modelsOf, engineForModel } from '../shared/models';
 import { catalogNow } from './catalog';
@@ -35,6 +35,7 @@ import { addResultCard } from './resultCardUtil';
 import { validateBatch, batchLayout, batchLine, type BatchItem } from '../../../server/src/shared/canvasBatch';
 import { buildBatch } from './batchBuild';
 import { withReviews, type TakeReview } from '../../../server/src/shared/takeReview';
+import { uploadNodeName, uploadNodeSummary } from '../../../server/src/shared/canvasPictures';
 
 export interface AgentOp {
   kind: 'say' | 'add_card' | 'update_card' | 'connect' | 'remove_card' | 'propose_run' | 'summary' | 'run_proposal' | 'free_area' | 'add_note' | 'add_frame' | 'move_into' | 'point_at' | 'next_steps' | 'place_result' | 'batch' | 'review_versions' | 'add_from_job' | 'add_upload' | 'spread_versions';
@@ -101,8 +102,9 @@ function resolveProvider(toolId: string, model: string): string {
 }
 function toolIdOf(flow: GenFlow): string { const cat = catalogNow(); return cat ? flowInfo(flow, cat).toolId : flow.toolId; }
 
-/** A card's short name (the shot name the agent gave it), else null. */
-export const nameOf = (editor: Editor, id: TLShapeId): string | null => { const n = (editor.getShape(id)?.meta as any)?.name; return typeof n === 'string' && n.trim() ? n.trim() : null; };
+/** A card's short name (the shot name the agent gave it; an Upload node's own name, else its file's), else null. */
+export const nameOf = (editor: Editor, id: TLShapeId): string | null => { const s: any = editor.getShape(id); if (s?.type === UPLOAD_TYPE) return uploadNodeName(s);
+  const n = s?.meta?.name; return typeof n === 'string' && n.trim() ? n.trim() : null; };
 /** Plain text of a note's rich text (tiptap JSON). */
 export function plainText(rt: any): string { if (!rt || typeof rt !== 'object') return ''; if (typeof rt.text === 'string') return rt.text; return (Array.isArray(rt.content) ? rt.content.map(plainText).join(rt.type === 'doc' ? '\n' : '') : '').trim(); }
 const frameAt = (editor: Editor, pt: { x: number; y: number }) => editor.getCurrentPageShapes().filter((s) => s.type === 'frame').map((s) => editor.getShapePageBounds(s.id)!).find((b) => b && b.containsPoint(pt)) ?? null;
@@ -227,6 +229,8 @@ async function summarize(editor: Editor) {
       const q = await quoteCard(editor, s.id).catch(() => null); const n = cardNode(editor, s.id, q); if (n) nodes.push(n);
     } else if (s.type === RESULT_T) {
       nodes.push({ id: s.id, type: 'result', kind: p.kind ?? null, title: p.title ?? null, model: p.model ?? null, results: p.url ? [{ url: p.url, kind: p.kind ?? null, poster: p.poster ?? null }] : [], jobId: p.jobId || null });
+    } else if (s.type === UPLOAD_TYPE) {
+      const n = uploadNodeSummary(s as any); if (n) nodes.push(n); /* a dropped picture, clip or sound, by its name (2026-11-03: they were missing) */
     } else if (s.type === 'image' || s.type === 'video') {
       const asset: any = p.assetId ? editor.getAsset(p.assetId) : null; const url = asset?.props?.src; if (!url) continue;
       nodes.push({ id: s.id, type: s.type === 'image' ? 'picture' : 'clip', kind: s.type, title: asset?.props?.name ?? s.type, results: [{ url, kind: s.type }] });

@@ -40,6 +40,7 @@ import { addCardInputs } from './agentApi';
 import { createAuxNode } from './auxShapes';
 import { freeSpot } from './placement';
 import { planFileDrop, uploadedInput, mediaPoster } from './fileDrop';
+import { pictureName } from '../../../server/src/shared/canvasPictures';
 import { CARD_H } from './cardModel';
 import { saveBoard, saveBoardOnExit, BoardError, type Board as BoardDoc } from './boardsApi';
 import { OVERVIEW_ZOOM } from './cardLook';
@@ -94,7 +95,7 @@ function registerFileDrops(editor: Editor, toast: ReturnType<typeof useToast>) {
     if (hit && filled.length && editor.getShape(hit.id)) { editor.markHistoryStoppingPoint('drop files'); addCardInputs(editor, hit.id, filled); }
     const { defaultW: w, defaultH: h } = NODE_DEFS.upload; const made: TLShapeId[] = [];
     loose.forEach((r, i) => { const url = looseUrls[i]; if (!url) return; const card = hit && editor.getShapePageBounds(hit.id); const near = card ? { x: at.x, y: card.maxY + h / 2 + 40 } : at;
-      made.push(createAuxNode(editor, 'upload', { at: freeSpot(editor, w, h, near), select: false, media: { url, poster: mediaPoster(r.kind!, url), mediaKind: r.kind!, label: files[r.file].name } })); });
+      made.push(createAuxNode(editor, 'upload', { at: freeSpot(editor, w, h, near), select: false, media: { url, poster: mediaPoster(r.kind!, url), mediaKind: r.kind!, label: pictureName(files[r.file].name, 'Upload') } })); /* named after its file, so your agent can tell them apart */ });
     if (made.length) editor.select(...made);
   });
 }

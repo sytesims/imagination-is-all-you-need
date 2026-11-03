@@ -1,4 +1,5 @@
 import { ACCEPT, kindOfFile, wrongTypeText } from '../../../server/src/shared/mediaAccept';
+import { pictureName } from '../../../server/src/shared/canvasPictures';
 /**
  * The non-generate nodes' views, all on the shared NodeFrame (their shape utils and create helpers are in auxShapes.tsx):
  *  - Prompt: text whose output feeds a generate node's prompt;
@@ -58,7 +59,7 @@ function UploadView({ shape, p, Icon }: { shape: AuxNodeShape; p: AuxNodeProps; 
   const take = async (f: File | undefined) => { if (!f || busy) return; const mediaKind = kindOfFile(f);
     if (!mediaKind) { toast(wrongTypeText(f.name, ['image', 'video', 'audio']), 'warn'); return; } setBusy(true);
     try { const [m] = await uploadMedia([f]); if (!m?.url) throw new Error('Upload failed'); const kind = (m as any).type || mediaKind; const poster = mediaPoster(kind, m.url);
-      patch({ url: m.url, poster, mediaKind: kind, label: f.name }); }
+      patch({ url: m.url, poster, mediaKind: kind, label: pictureName(f.name, 'Upload') }); }
     catch (e) { toast((e as Error).message || 'Upload failed', 'error'); } finally { setBusy(false); } };
   const pick = () => file.current?.click();
   const kind = p.mediaKind; const label = p.label || 'Untitled upload';

@@ -13,7 +13,7 @@
  */
 import { API, get, del } from './api.js';
 
-type Msg = { seq: number; at: number; type: string; text: string; decision?: string; proposalId?: string; selection?: { id: string; name?: string | null }[]; confirmId?: string; pickId?: string; cardId?: string };
+type Msg = { seq: number; at: number; type: string; text: string; decision?: string; proposalId?: string; selection?: { id: string; name?: string | null }[]; /** pictures attached in the dock, in order */ pictures?: { label: string }[]; confirmId?: string; pickId?: string; cardId?: string };
 type Batch = { boardId: string; boardName: string | null; messages: Msg[] };
 type Notify = (n: { method: string; params: { content: string; meta: Record<string, string> } }) => Promise<void>;
 
@@ -22,7 +22,7 @@ export function channelEvent(b: Pick<Batch, 'boardId' | 'boardName'>, m: Msg): {
   const sel = (m.selection ?? []).slice(0, 12).map((x) => (x.name ? `${x.name} (${x.id})` : x.id));
   const content = m.type === 'decision'
     ? `I pressed ${m.decision === 'go' ? 'Go' : 'Cancel'} on proposal ${m.proposalId ?? ''}.`.replace(/ \.$/, '.')
-    : `${m.text}${sel.length ? `\n\n(Selected on the board: ${sel.join(', ')})` : ''}`;
+    : `${m.text}${m.pictures?.length ? `${m.text ? '\n\n' : ''}(Pictures I added: ${m.pictures.map((p) => p.label).join('; ')})` : ''}${sel.length ? `\n\n(Selected on the board: ${sel.join(', ')})` : ''}`;
   const meta: Record<string, string> = { board_id: b.boardId, seq: String(m.seq), kind: m.type };
   if (b.boardName) meta.board_name = b.boardName.slice(0, 80);
   if (m.decision) meta.decision = m.decision; if (m.proposalId) meta.proposal_id = m.proposalId;
