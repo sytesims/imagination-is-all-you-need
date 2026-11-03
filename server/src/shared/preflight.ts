@@ -6,6 +6,7 @@
  */
 import { sameShape, ratioOf } from './imageCaps.js';
 import { LOCAL_LABEL } from './modelIds.js';
+import { needOf, type Need } from './settingsFit.js';
 
 export type PreflightStage = 'inputs' | 'model' | 'setup' | 'money';
 export type PreflightFixKind = 'choose-photo' | 'fit-photo' | 'crop-photo' | 'use-first' | 'pick-model' | 'paint-mask' | 'focus-prompt' | 'open-group'
@@ -51,6 +52,10 @@ export const LOCAL_SETUP_TEXT = 'Set up ComfyUI to run free';
  *  reachable) quotes needsKey:true with no key providers (routing/select.ts noProvider). Display only: the gate is the same, the words are honest. */
 export const localOnlyGate = (q: any): boolean => !!q && q.needsKey === true && q.runnable === false && q.local === true
   && !(q.noProvider?.providers?.length) && !q.keyOwner && !q.noProvider?.keyOwner && q.setup?.action !== 'add_key';
+/** What a quote's input block needs (a start image, two images, an end frame, a clip, a sound, a reference), or null: the ONE rule that makes such a
+ *  block an input (no reason line, no "can't run" words; Generate points at the slot), shared by the pre-flight, the Video and Audio notes and MCP. */
+export const inputNeedOf = (q: any): Need | null => !!q && q.runnable === false && q.needsKey !== true && q.blockedCode === 'input_blocked' && !q.blockedField && q.inputStep !== true
+  ? needOf(String(q.blockedReason ?? '')) : null;
 export function preflightProblems(s: PreflightState): PreflightProblem[] {
   const out: PreflightProblem[] = []; const add = (p: PreflightProblem) => out.push(p);
   const q = s.quote ?? null; const model = s.modelName || 'This model';
@@ -80,7 +85,12 @@ export function preflightProblems(s: PreflightState): PreflightProblem[] {
     add({ code: 'model_cant_run', stage: 'model', message: String(q.error).replace(/\.$/, ''), fix: { kind: 'pick-model', label: 'Pick model…' } });
   // the route can't take this job's inputs (input_blocked: wrong mode, a clip a public link can't reach…): the price stays in the quote but isn't
   // shown as chargeable, so say why here (else the button showed neither a price nor a reason). A blockedField (Camera's start image) is the inputs' own step.
-  if (q && q.runnable === false && q.blockedCode === 'input_blocked' && q.blockedReason && !q.blockedField && q.inputStep !== true && !out.some((p) => p.stage === 'inputs'))
+  // A block a picture (or clip, or sound) fixes is an INPUT, not a model problem (2026-11-03): LTX-2.5 Fast on Comfy Cloud "only does image to video"
+  // with no start image yet is the empty slot, said only when Generate is pressed, never "Comfy Cloud can't run this job" while the user is idle.
+  const need = inputNeedOf(q);
+  if (need) { if (!out.some((p) => p.code === 'photo_missing' || p.code === 'input_problem'))
+    add({ code: 'input_problem', stage: 'inputs', message: need.short, fix: { kind: 'choose-photo', label: 'Choose…', args: { need: need.code, action: need.action ?? '' } } }); }
+  else if (q && q.runnable === false && q.blockedCode === 'input_blocked' && q.blockedReason && !q.blockedField && q.inputStep !== true && !out.some((p) => p.stage === 'inputs'))
     add({ code: 'model_cant_run', stage: 'model', message: String(q.blockedReason).replace(/^.*?can['’]t run this job\.\s*/, '').replace(/\.$/, ''), fix: { kind: 'pick-model', label: 'Pick model…' } });
   const unpriced = !!q && q.credits == null && (q.priceAvailable === false || q.code === 'price_unavailable') && !q.setupOptions?.length && !q.setup && !plainRefusal(q) // a refusal in plain words is not a missing price
     && q.reasonCode !== 'local_only_unreachable'; // nor is a free local-only model waiting for ComfyUI (YuE2): its setup step below says so
