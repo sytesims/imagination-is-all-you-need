@@ -4,7 +4,7 @@
  * popover holds the old screen's own controls (tools/videoSwap/SwapType ObjectMask: name it, click it on a frame, or a mask clip, with the free
  * mask preview; for a person: who, quick picks, or a click on the frame). The form is the old screen's, field for field.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { BarExtra, BarLive, UseBarExtra } from './types';
 import { ObjectMask, swapTypeModels, swapUnwired, growWired, initialSwapType, isLucy, isH3Ref, maskPromptTooLong, type MaskGrow, type MaskMode, type Pt, type SwapType } from '../../../tools/videoSwap/SwapType';
 import PointPicker from '../../../shared/PointPicker';
@@ -24,17 +24,29 @@ const fmtPt = (p: Pt) => `${Math.round(p.x * 100)}%, ${Math.round(p.y * 100)}% �
 /** Who to swap by default on H3 (2026-11-03, as Comfy's Openjutsu app): the free mask preview finds the people on the range's first frame
  *  (people=1, server shared/cloudSwap.ts mainPersonPick) and the biggest becomes the click. Nobody found, two of a size, or no preview here →
  *  the Who to swap box opens on the frame. Once per clip and range start; a click, a side or words of your own always win. */
-export type AutoWho = { key: string; frameUrl: string | null; state: 'picked' | 'ask' };
-export async function findMainPerson(clip: { file: File; url: string }, t: number): Promise<{ pick: Pt | null; frameUrl: string | null }> {
+export type AutoWho = { key: string; frameUrl: string | null; state: 'picked' | 'ask'; /** why nobody was picked */ why?: AutoWhy };
+/** none: nobody on the first frame · similar: two people of a size · unavailable: finding people isn't set up here (no local SAM, no server) */
+export type AutoWhy = 'none' | 'similar' | 'unavailable';
+export const AUTO_WHY_NOTE: Record<AutoWhy, string> = {
+  none: 'Nobody was found on the first frame.',
+  similar: 'Two people look about the same size.',
+  unavailable: 'Finding the person by itself isn’t set up here.',
+};
+export async function findMainPerson(clip: { file: File; url: string }, t: number): Promise<{ pick: Pt | null; frameUrl: string | null; why?: AutoWhy }> {
   const fd = new FormData(); fd.append('swapType', 'person'); fd.append('maskMode', 'text'); fd.append('people', '1'); fd.append('t', String(t));
   if (/^\/(files|samples)\//.test(clip.url)) fd.append('videoUrl', clip.url); else fd.append('video', clip.file);
   try { const r = await fetch('/api/tools/object-swap/mask-preview', { method: 'POST', body: fd }); const j: any = await r.json().catch(() => null);
     const p = r.ok && j?.pick && Number.isFinite(j.pick.x) && Number.isFinite(j.pick.y) ? { x: Number(j.pick.x), y: Number(j.pick.y), t } : null;
-    return { pick: p, frameUrl: r.ok ? j?.frameUrl ?? null : null }; } catch { return { pick: null, frameUrl: null }; }
+    return { pick: p, frameUrl: r.ok ? j?.frameUrl ?? null : null, ...(p ? {} : { why: !r.ok ? 'unavailable' : j?.why === 'similar' ? 'similar' : 'none' } as const) }; } catch { return { pick: null, frameUrl: null, why: 'unavailable' }; }
 }
 /** Runs the auto-pick once per clip and range start (renders nothing). */
 function AutoWhoRun({ k, clip, t, run }: { k: string; clip: { file: File; url: string }; t: number; run: (k: string, clip: { file: File; url: string }, t: number) => void }) {
   useEffect(() => { const id = window.setTimeout(() => run(k, clip, t), 600); return () => window.clearTimeout(id); }, [k]); // eslint-disable-line react-hooks/exhaustive-deps -- waits for the range start to settle (a handle being dragged)
+  return null;
+}
+/** Calls onNew when the clip is replaced by another one (renders nothing). A clip after a Recreate / example (seen reset to null) is taken as it comes. */
+function ClipWatch({ url, seen, onNew }: { url: string | undefined; seen: { current: string | null }; onNew: () => void }) {
+  useEffect(() => { if (!url) return; if (seen.current && seen.current !== url) onNew(); seen.current = url; }, [url]); // eslint-disable-line react-hooks/exhaustive-deps
   return null;
 }
 
@@ -43,6 +55,7 @@ export const useObjectSwapExtra: UseBarExtra = ({ tool, vals, setVal }) => {
   const [auto, setAuto] = useState<AutoWho | null>(null); /* the main person picked for you (H3), or the box asked to open */
   const setPoint = (p: Pt | null) => { setPoint0(p); setAuto(a => (a && a.state === 'picked' ? { ...a, state: 'ask' } : a)); }; /* your own click replaces the auto-pick */
   const autoPicked = auto?.state === 'picked' && !!point;
+  /** the clip the click belongs to: a new clip starts with no click (and the auto-pick looks again) */ const clipSeen = useRef<string | null>(null);
   const [maskMode, setMaskMode] = useState<MaskMode>('text'); const [maskPrompt, setMaskPrompt] = useState(''); const [matte, setMatte] = useState<File | null>(null); const [grow, setGrow] = useState<MaskGrow>('normal');
   const [ffMode, setFfMode] = useState<'auto' | 'upload'>('auto'); const [firstFrame, setFirstFrame] = useState<File | null>(null); /* the first-frame control stays hidden (not wired into the swap submit, as before) */
   /* Person or Object: ?swap= first, else the preset's group (Product → object), else person; the URL follows the pick (deep links, back / forward) */
@@ -93,14 +106,14 @@ export const useObjectSwapExtra: UseBarExtra = ({ tool, vals, setVal }) => {
     onRecreate: f => { if (typeof f.target === 'string' && f.swapType !== 'object') setTarget(f.target); if (typeof f.maskPrompt === 'string') setMaskPrompt(f.maskPrompt);
       if (f.maskMode && ['text', 'point', 'upload', 'none'].includes(f.maskMode)) setMaskMode(f.maskMode as MaskMode); if (f.maskGrow && ['tight', 'normal', 'loose', 'box'].includes(f.maskGrow)) setGrow(f.maskGrow as MaskGrow);
       const m = /^([\d.]+),([\d.]+),([\d.]+)$/.exec(String(f.point ?? '')); if (m) setPoint({ x: Number(m[1]), y: Number(m[2]), t: Number(m[3]) }); },
-    onReset: () => { setMatte(null); setFirstFrame(null); setPoint0(null); setAuto(null); },
+    onReset: () => { setMatte(null); setFirstFrame(null); setPoint0(null); setAuto(null); clipSeen.current = null; /* the Recreate's clip and click go together */ },
     onFiles: (slot, fs) => { if (slot === 'matte' && fs[0]) { setMatte(fs[0]); setMaskMode('upload'); return true; } if (slot === 'firstFrame' && fs[0]) { setFirstFrame(fs[0]); setFfMode('upload'); return true; } return false; },
     chips: c => { const need = isObj ? !hasMask(c) : cloud(c) ? !target.trim() : isH3Swap(c.prov) && !!charswapWhoIssue({ mode: 'object_swap', target, point }); const sum = summary(c); const on = c.pop === 'g:replace';
       const clip = c.files.video?.[0]; const t0 = c.trim?.start ?? 0; /* the auto-pick looks at the range's first frame */ const k = clip ? `${clip.url}@${t0}` : '';
       const runAuto = (key: string, cl: { file: File; url: string }, t: number) => { void findMainPerson(cl, t).then(r => {
-        if (r.pick) { setPoint0(r.pick); setAuto({ key, frameUrl: r.frameUrl, state: 'picked' }); } else { setAuto({ key, frameUrl: r.frameUrl, state: 'ask' }); c.setPop('g:replace'); } }); };
+        if (r.pick) { setPoint0(r.pick); setAuto({ key, frameUrl: r.frameUrl, state: 'picked' }); } else { setAuto({ key, frameUrl: r.frameUrl, state: 'ask', why: r.why ?? 'none' }); c.setPop('g:replace'); } }); };
       const wantAuto = !isObj && isH3Swap(c.prov) && !!clip && (!point || autoPicked) && !swapSide(target) && auto?.key !== k; /* a new range start: the auto-pick looks again on its first frame (your own click stays) */
-      return <>{wantAuto && <AutoWhoRun key={k} k={k} clip={clip!} t={t0} run={runAuto} />}<button key="replace" ref={c.chipRef('replace')} type="button" className={`ic-chip wf-grp wf-fold${on ? ' on' : ''}${need ? ' vbar-need' : ''}`} aria-haspopup="dialog" aria-expanded={on} data-testid="vbar-group-replace"
+      return <><ClipWatch url={clip?.url} seen={clipSeen} onNew={() => { setPoint0(null); setAuto(null); }} />{wantAuto && <AutoWhoRun key={k} k={k} clip={clip!} t={t0} run={runAuto} />}<button key="replace" ref={c.chipRef('replace')} type="button" className={`ic-chip wf-grp wf-fold${on ? ' on' : ''}${need ? ' vbar-need' : ''}`} aria-haspopup="dialog" aria-expanded={on} data-testid="vbar-group-replace"
         aria-label={`Replace: ${sum}`} {...tip(on ? null : isObj ? `What to replace: ${sum}` : `Who to swap: ${sum}`)} onClick={() => c.setPop(on ? '' : 'g:replace')}>
         <SelectIcon size={14} /><span className="wf-grp-l">Replace</span><b>{sum}</b></button></>; },
     /* the Replace popover (the range is the bar's Trim sheet, opened from the clip) */
@@ -122,7 +135,7 @@ export const useObjectSwapExtra: UseBarExtra = ({ tool, vals, setVal }) => {
             : <>
             {/* the frame first: a click is the main way to say who; words and a side below */}
             {video && <div className="vbar-pp"><PointPicker video={video} point={point} setPoint={setPoint} open />{point && <PopNote testId="vbar-point">Picked at {fmtPt(point)}</PopNote>}</div>}
-            {isH3Swap(c.prov) && <PopNote testId="vbar-h3-who">{auto?.state === 'ask' && !point ? 'Two people look about the same size, or nobody was found. ' : ''}{H3_WHO_HINT}.</PopNote>}
+            {isH3Swap(c.prov) && <PopNote testId="vbar-h3-who">{auto?.state === 'ask' && auto.why && !point ? `${AUTO_WHY_NOTE[auto.why]} ` : ''}{H3_WHO_HINT}.</PopNote>}
             <input className="vbar-text" type="text" data-testid="vbar-target" aria-label="Who to swap" placeholder={isH3Swap(c.prov) ? 'e.g. the woman on the right' : 'e.g. the man in the red jacket'} value={target} onChange={e => setTarget(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') c.setPop(''); }} />
             <div className="vbar-quick" role="group" aria-label="Quick picks">{(isH3Swap(c.prov) ? QUICK_SIDES : QUICK).map(q => <button key={q} type="button" className={`vbar-qchip${target === q ? ' on' : ''}`} aria-pressed={target === q} onClick={() => setTarget(target === q ? '' : q)}>{q}</button>)}</div>
             {!isH3Swap(c.prov) && <PopNote>Or leave it empty and say it in the prompt or with a preset.</PopNote>}</>}</PopSection>}
