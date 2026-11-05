@@ -17,7 +17,7 @@ for (const NODE_ENV of ['development', 'production']) {
   assert.equal(listenHost({ NODE_ENV, WEB_HOST: ' ', HOST: '0.0.0.0' }, true), '127.0.0.1');
 }
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const apiPort = testPort(8875), webPort = testPort(5285);
+const apiPort = testPort(8875), webPort = testPort(9692);
 const api = httpServer((_req, res) => { res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ ok: true, backend: 'mock' })); });
 await new Promise<void>(r => api.listen(apiPort, '127.0.0.1', r));
 const dir = mkdtempSync(path.join(os.tmpdir(), 'loopback-web-')); writeFileSync(path.join(dir, 'index.html'), '<!doctype html><title>Isolated preview</title>');
