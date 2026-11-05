@@ -4,7 +4,7 @@
  * own synced sound, follows quoted dialogue and multi-shot cuts in one prompt) and read fine on any other video model.
  * The prompt text is our own. LTX-2.5 prompting facts used (docs.comfy.org/tutorials/video/ltx/ltx-2-5): one flowing paragraph with
  * shot, action and camera; describe the sounds and dialogue you want, the model makes them in sync; 2–4 named cuts make a multi-shot clip.
- * Where they show: the Video bar's Look picker ("Viral" tab) and the Video Examples shelf / gallery ("Viral template" cards, ?template=).
+ * Where they show: the Video bar's Presets picker ("Viral" tab) and the Video Examples shelf / gallery ("Viral template" cards, ?template=).
  * Picking one fills the prompt with the slot values, selects the first slot, and applies the settings (VideoStudio). Isomorphic: no
  * server-only imports. Test: server/test/viral-templates.test.ts.
  */
@@ -14,7 +14,7 @@ export interface ViralTemplate {
   id: string; name: string; /** one line under the name */ line: string;
   /** the prompt with {key} slots */ prompt: string; slots: TemplateSlot[];
   /** recommended settings: model key (LTX-2.5 22B local), aspect, seconds, sound */ settings: { modelKey: string; aspect: '16:9' | '9:16'; seconds: number; sound: true };
-  /** one short tip */ tip: string; /** search words in the Look picker */ keywords: string;
+  /** one short tip */ tip: string; /** search words in the Presets picker */ keywords: string;
 }
 
 /** The model every template is written for: LTX-2.5 22B on this computer (comfy-ltx25-video). */

@@ -33,6 +33,7 @@ import { MakerTile } from '../../shared/MakerTile';
 import { SettingsChip, SoundSection } from './SoundSetting';
 import { BarPopover, PopSection, PopList, PopRow, Segmented, PopNote, AspectShape, aspectWH } from '../../shared/BarPop';
 import { LookPicker, type LookItem } from '../../shared/LookPicker';
+import { presetMedia } from '../../shared/presetMedia';
 import { openPickerFor, withNativePicker } from '../../shared/MediaPicker';
 import { tip } from '../../shared/Tooltip';
 import { useDockHeight, useChipFit } from '../../shared/dockFit';
@@ -394,7 +395,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
   const ownModelOf = (p: any): string | null => Array.isArray(p.providers) && p.providers.length && !p.providers.includes(prov) ? p.providers.find((x: string) => providers.some(m => m.id === x)) ?? null : null;
   const galleryItems = (c: VBarControl): LookItem[] => [...(c.optional ? [{ id: '', label: `No ${c.label.toLowerCase()}`, sub: 'Your prompt and photos only', pinned: true, testId: 'vbar-look-none', selected: !valOf(c), title: `No ${c.label.toLowerCase()}`, image: null, video: null, onPick: () => { setVal(c.field, ''); setPop(''); } } as LookItem] : []),
     ...(tool.presets ?? []).filter(p => optionsOf(c).some(o => o.value === p.id) || ownModelOf(p)).map((p: any) => ({ id: p.id, label: p.label, sub: ownModelOf(p) ? p.modelName ?? p.category ?? p.group : p.category ?? p.group, keywords: `${p.description ?? ''} ${p.prompt ?? ''} ${p.modelName ?? ''}`, testId: `vbar-look-${p.id}`,
-    selected: valOf(c) === p.id, title: p.description ?? p.label, /* never the raw prompt (copy rule) */ image: p.posterUrl || p.swatchUrl || null, video: p.previewUrl || p.previewWebm ? { mp4: p.previewUrl, webm: p.previewWebm, poster: p.posterUrl ?? null } : null,
+    selected: valOf(c) === p.id, title: p.description ?? p.label, /* never the raw prompt (copy rule) */ ...presetMedia({ ...p, toolId: tool.id }) /* its own clip or still; a camera move → its own icon card */,
     onPick: () => { const own = ownModelOf(p); if (own) setProvider(own); setVal(c.field, p.id); setPop(''); } }))];
 
   const shownSlots = bar.slots.filter(slotShown).map(s => { const x = extra.slotInfo?.(s, live()); return x ? { ...s, ...x } : s; }); /* the extra may rename a slot for this model */

@@ -3,7 +3,7 @@ import { BarPopover } from './BarPop';
 import { PresetTile, type PresetTileProps } from './PresetTile';
 import './lookPicker.css';
 /**
- * Look: one compact picker for a composer bar's looks (Video: camera moves, styles, viral templates, modes; Camera Moves / Photo FX galleries).
+ * Presets (component name kept: LookPicker): one compact picker for a composer bar's presets (Video: camera moves, styles, viral templates, modes; Camera Moves / Photo FX galleries).
  * The shared BarPopover (Orbit look) anchored above its chip, with a title, tabs, a search field and a grid of compact PresetTiles.
  * A pick applies in place on the page (the caller decides what it sets); nothing here navigates.
  *
@@ -39,7 +39,7 @@ const asideOf = (x: LookItem) => x.note ?? (!x.pinned && x.sub && x.sub !== deta
 
 const Check = () => <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden><path d="M2.5 6.2 5 8.6l4.6-5.2" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 
-export function LookPicker({ open, anchor, avoid, watch, onClose, tabs, tab, onTab, label = 'Look', testId = 'look-picker', width = WIDTH }: {
+export function LookPicker({ open, anchor, avoid, watch, onClose, tabs, tab, onTab, label = 'Presets', testId = 'look-picker', width = WIDTH }: {
   open: boolean; anchor: RefObject<HTMLElement | null>; avoid?: RefObject<HTMLElement | null>; watch?: RefObject<HTMLElement | null>; onClose: () => void;
   /** tabs with no items are left out */ tabs: LookTab[]; tab: string; onTab: (id: string) => void; label?: string; testId?: string; width?: number;
 }) {

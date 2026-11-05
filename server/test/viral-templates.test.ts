@@ -50,4 +50,4 @@ for (const x of VIRAL_TEMPLATES) { const e = EXPLORE_CARDS.find((s) => s.id === 
   const u = new URL(e.href, 'http://x'); assert.equal(u.searchParams.get('template'), x.id); assert.equal(u.searchParams.get('model'), VIRAL_MODEL_KEY); assert.equal(u.searchParams.get('prompt'), fillTemplate(x)); }
 const studio = fs.readFileSync(path.join(ROOT, 'web/src/ui/video/VideoStudio.tsx'), 'utf8');
 assert.match(studio, /useViralTemplates\(/); assert.match(studio, /viral\.lookTab/); assert.match(studio, /\{viral\.strip\}/);
-ok('Explore cards (?template=) and the Video bar (Look → Viral, fill-in row) are wired');
+ok('Explore cards (?template=) and the Video bar (Presets → Viral, fill-in row) are wired');

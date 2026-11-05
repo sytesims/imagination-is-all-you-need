@@ -84,10 +84,10 @@ h3VideoTool.parseInput = async (fields, files) => {
     if ((fields.duration == null || fields.duration === '') && L0) { const at = L0.durationsByResolution?.[fields.resolution]; fields = { ...fields, duration: String(at ? (at.includes(defaultSecondsFor(L0)) ? defaultSecondsFor(L0) : at[0]) : defaultSecondsFor(L0)) }; }
   } // per-model defaults (Kling starts at 3 s; resolution = model's first tier)
   const r: any = await h3Parse(fields, files); if ('error' in r) return r;
-  /* Look → Camera (job field cameraMove): a Camera Moves preset on this run, same model and price. Its phrase goes first in the prompt,
+  /* Presets → Camera (job field cameraMove): a Camera Moves preset on this run, same model and price. Its phrase goes first in the prompt,
    * the Camera Moves rule (apps.ts moveFirst); Free camera ('free') adds nothing. An id that isn't a move: 400, nothing charged. */
   if (fields.cameraMove) { const mv = cameraMovePrompt(fields.cameraMove);
-    if (mv == null) return bad('cameraMove', 'That camera move isn’t on the list. Pick one from Look → Camera.', 'unknown_move');
+    if (mv == null) return bad('cameraMove', 'That camera move isn’t on the list. Pick one from Presets → Camera.', 'unknown_move');
     if (mv) { r.finalPrompt = moveFirst(mv, r.finalPrompt ?? r.prompt); if (r.enhancedPrompt) r.enhancedPrompt = moveFirst(mv, r.enhancedPrompt); r.cameraMove = cameraMoveId(String(fields.cameraMove).trim()); r.cameraMovePrompt = mv; } }
   if (mapped) { r.warnings = [...(r.warnings ?? []), mapped.message]; r.resolutionMapped = mapped; }
   if (resSnap) addAdjustNote(r, resSnap);

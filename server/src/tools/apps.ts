@@ -395,7 +395,7 @@ export function cameraPresetProvider(types: string[], usable: string[]): string 
 export const cameraDefaultMove = (provider: string): string | null => (cameraApp.presets ?? []).find((p) => !cameraPresetOff([p.id], provider))?.id ?? null;
 export const cameraPresetOff = (types: string[], provider: string) => types.map(cameraMoveId).find((t) => { const ps = cameraPresetProviders(t); return !!ps && !ps.includes(provider); }) ?? null;
 /** A Camera Moves preset's prompt phrase by id (old ids too), from the same preset list the Camera Moves job parser checks: '' for Free camera,
- *  null when the id isn't a move. Generate Video's Look → Camera (job field cameraMove) puts this phrase first, the same rule as a Camera Moves job. */
+ *  null when the id isn't a move. Generate Video's Presets → Camera (job field cameraMove) puts this phrase first, the same rule as a Camera Moves job. */
 export const cameraMovePrompt = (id: string): string | null => { const p = (cameraApp.presets ?? []).find((x) => x.id === cameraMoveId(String(id ?? '').trim())); return p ? String(p.prompt ?? '') : null; };
 /** The Camera Moves prompt rule: the move's phrase first, then the rest of the prompt (makeApp finalPrompt: typePrompt, then prompt). */
 export const moveFirst = (move: string, text: string | null | undefined) => [move, text].filter(Boolean).join('. ');
