@@ -186,6 +186,7 @@ video.preview{display:block;width:100%;max-height:300px;border-radius:var(--r-md
 .gen-row .helper{flex:1 1 100%;font-size:var(--fs-xs)}
 .point-picker{position:relative;cursor:crosshair;border-radius:var(--r-md);overflow:hidden;background:#000}
 .point-picker video{display:block;width:100%;max-height:260px;pointer-events:none}
+.point-pic{position:absolute;top:0;left:50%;height:100%;max-width:100%;transform:translateX(-50%);pointer-events:none} /* the picture's area in the box (object-fit: contain): the dot's % is the frame's */
 .point-dot{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:var(--accent);box-shadow:var(--glow)}
 .angle-row{display:grid;grid-template-columns:64px 64px 1fr auto;gap:6px;align-items:center;margin-bottom:8px}
 .angle-list{list-style:none;padding:0;margin:0 0 12px;display:flex;flex-wrap:wrap;gap:8px}
