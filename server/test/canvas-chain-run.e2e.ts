@@ -9,10 +9,12 @@ import { testPort } from './_ports.js'; import assert from 'node:assert/strict';
 import { flowById, flowSpec, placeInputs, type GenCatalog } from '../../web/src/shared/genFlows.ts';
 import { runForm, takesOf } from '../../web/src/canvas/cardModel.ts';
 import { runInOrder, type Upstream } from '../../web/src/canvas/nodeLogic.ts';
-const ROOT = path.resolve(import.meta.dirname, '..'); const PORT = testPort(9701); const B = `http://localhost:${PORT}`;
+const ROOT = path.resolve(import.meta.dirname, '..'); const PORT = testPort(9691); const B = `http://localhost:${PORT}`;
 const DATA = fs.mkdtempSync(path.join(os.tmpdir(), 'cv-chain-')); process.env.OPENHIGGSFIELD_DATA_DIR = DATA; process.env.OPENHIGGSFIELD_BACKEND = 'mock';
 const srv = spawn('npx', ['tsx', 'src/index.ts'], { cwd: ROOT, env: { ...process.env, PORT: String(PORT), OPENHIGGSFIELD_DATA_DIR: DATA, OPENHIGGSFIELD_ENV_FILE: path.join(os.tmpdir(), 'cv-chain-none.env'),
-  OPENHIGGSFIELD_BACKEND: 'mock', OPENHIGGSFIELD_MOCK_KEYS: '1', OPENHIGGSFIELD_MOCK_DELAY_MS: '50', COMFY_API_KEY: '', OPENHIGGSFIELD_FAL_KEY: '', COMFY_DETECT_URLS: 'http://127.0.0.1:9' }, stdio: 'ignore', detached: true });
+  OPENHIGGSFIELD_BACKEND: 'mock', OPENHIGGSFIELD_MOCK_KEYS: '1', OPENHIGGSFIELD_MOCK_DELAY_MS: '50', COMFY_API_KEY: '', OPENHIGGSFIELD_FAL_KEY: '', COMFY_DETECT_URLS: 'http://127.0.0.1:9' }, stdio: ['ignore', 'ignore', 'pipe'], detached: true });
+let srvErr = ''; srv.stderr!.on('data', (d) => { srvErr = (srvErr + d).slice(-4000); }); /* the server's last words, printed if the test fails */
+srv.on('exit', (code, sig) => { srvErr += `\n[server exited: ${code ?? sig}]`; });
 const ok = (m: string) => console.log('ok ' + m);
 const get = async (u: string) => (await (await fetch(B + u)).json()) as any;
 const until = async (id: string) => { for (let i = 0; i < 200; i++) { const j = await get(`/api/jobs/${id}`); if (['done', 'failed', 'canceled', 'blocked'].includes(j.status)) return j; await new Promise((r) => setTimeout(r, 150)); } throw new Error(`job ${id} never ended`); };
@@ -73,4 +75,4 @@ try {
     for (let i = 0; i < 100 && ran.length < 3; i++) await sleep(20); assert.deepEqual(ran, ['pic', 'sheet', 'to3d']);
     ok('one Go: a card the server refuses shows its words on the card, the card after it says why it didn’t run; a clean chain starts every card in order'); }
   console.log('PASS canvas-chain-run');
-} finally { try { process.kill(-srv.pid!); } catch { /* gone */ } }
+} catch (e) { console.error('server stderr (tail):\n' + (srvErr || '(none)')); throw e; } finally { try { process.kill(-srv.pid!); } catch { /* gone */ } }

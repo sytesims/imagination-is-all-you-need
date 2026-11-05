@@ -12,7 +12,7 @@ import type { WorkflowInfo } from '../../web/src/shared/WorkflowDialog.js';
 if (!findChromium()) { console.log('SKIP workflow-dialog-ui: existing Chromium not installed (nothing downloaded)'); process.exit(0); }
 const root = path.resolve(import.meta.dirname, '../../web');
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'workflow-dialog-ui-'));
-const port = Number(process.env.WORKFLOW_DIALOG_WEB_PORT) || testPort(5287);
+const port = Number(process.env.WORKFLOW_DIALOG_WEB_PORT) || testPort(9693);
 assert.ok(![5174, 8787, 8788, 8188].includes(port), 'Never use a live app/service port');
 const graph = '{"42":{"class_type":"OpenAIGPTImageNodeV2","inputs":{"prompt":"original prompt — untouched","seed":123}}}\n';
 const info: WorkflowInfo = {
