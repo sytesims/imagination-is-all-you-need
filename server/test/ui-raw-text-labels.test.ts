@@ -40,7 +40,7 @@ const rd = (f: string) => fs.readFileSync(path.resolve(import.meta.dirname, '../
   assert.equal(modelStateLine(m({ memGB: 11, etaSeconds: 3600, etaSource: 'estimate', samples: 0, slow: true })).s, SLOW_HERE);
   assert.match(modelStateLine(m({ memGB: 11, etaSeconds: 3600, etaSource: 'estimate', samples: 0, slow: true })).t, /NVIDIA/);
   assert.equal(modelStateLine(m({ memGB: 11, etaSeconds: 60, etaSource: 'estimate', samples: 0 })).s, 'Ready', 'a fitting local model stays Ready');
-  assert.match(rd('ui/routing/RunOn.tsx'), /r\.here\?\.slow \? \{ word: SLOW_HERE, tone: 'warn'/); assert.match(rd('shared/ModelHoverCard.tsx'), /text: r\.here\?\.slow \? SLOW_HERE : 'Ready'/);
+  assert.match(rd('ui/routing/RunOn.tsx'), /r\.here\?\.slow \? \{ word: SLOW_HERE, tone: 'warn'/); assert.match(rd('shared/ModelHoverCard.tsx'), /text: r\.here\?\.slow \? SLOW_HERE : (?:'Ready'|READY_WORD)/);
   ok('no doubled labels: Run on heading, Models eyebrow, viewer place; a slow local place says Slow here');
 }
 

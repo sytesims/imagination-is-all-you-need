@@ -3,8 +3,9 @@
  * is found. One shared note says so and gives the one step to real results, for the first-run sheet (RunSetup) and Settings → Connections.
  * The backend is read once from GET /api/config (it only changes when the server restarts).
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Notice } from './Notice';
+import { SAMPLE_SITE, INSTALL_URL } from './sampleSite';
 
 export const REAL_RUNS_CMD = 'OPENHIGGSFIELD_BACKEND=comfy npm start';
 export const REAL_RUNS_LINE = 'OPENHIGGSFIELD_BACKEND=comfy';
@@ -25,7 +26,13 @@ function CopyCmd({ text }: { text: string }) {
 }
 
 /** "Samples for now": what to do so saved keys and your ComfyUI make real results. `saved` = the user just saved something (first-run sheet). */
+/** The Try it site's one note (try.iiayn.app): what this place does in the app, and the install link. */
+export function SampleSiteNote({ children, testId = 'sample-site-note' }: { children: ReactNode; testId?: string }) {
+  return <Notice kind="info" tone="box" className="sm-note" testId={testId} title="Sample mode">{children} <a href={INSTALL_URL} className="link-btn">Install the app →</a></Notice>;
+}
+
 export function SampleModeNote({ saved = false, testId = 'sample-mode-note' }: { saved?: boolean; testId?: string }) {
+  if (SAMPLE_SITE) return <SampleSiteNote testId={testId}>Every run here makes a free sample. Keys, your computer and real runs live in the app.</SampleSiteNote>;
   return <Notice kind="info" tone="box" className="sm-note" testId={testId} title={saved ? 'Saved. One more step for real results' : 'You’re in sample mode'}>
     Runs make free samples for now{saved ? '' : ', even with a key or ComfyUI connected'}. For real results, stop the app in its terminal (Ctrl+C) and start it again with:
     <CopyCmd text={REAL_RUNS_CMD} />

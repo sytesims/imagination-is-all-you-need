@@ -1,5 +1,7 @@
 import { toolOpenHref } from '../../shared/workflowLinks';
 import { Notice } from '../../shared/Notice';
+import { SAMPLE_SITE } from '../../shared/sampleSite';
+import { SampleSiteNote } from '../../shared/SampleMode';
 import { InlineError, useLoad, getJSON } from '../../shared/InlineError';
 import { Skeleton } from '../../shared/Skeleton';
 import { communityHref, isSample, sampleLabel } from '../../shared/sample';
@@ -93,6 +95,7 @@ export function Mcp({ tools }: { tools?: ToolInfo[] } = {}) {
   ];
   const [tab, setTab, tabKey] = useTabs(CLIENTS.map(x => x[0])); const [c] = [CLIENTS[tab]]; const [copiedP, setCopiedP] = useState(-1);
   return <div className="page mcp-page" data-testid="mcp">
+    {SAMPLE_SITE && <SampleSiteNote testId="mcp-sample-note">Your AI connects to the app on your computer. These steps work once it is installed.</SampleSiteNote>}
     <section className="mcp-hero"><span className="eyebrow">Developers</span><h1>MCP server</h1><p className="mcp-sub" data-testid="mcp-sub">Let your AI assistant make images, videos and sound for you.</p><p className="lede">It can see your tools, run jobs and bring back the results.</p></section>
     <div className="mcp-status-row">
       <span className={`mcp-pill mcp-pill-${!cfg ? 'checking' : cfg.built === false ? 'down' : mcp.st}`} data-testid="mcp-status" role="status" title={mcp.st === 'down' ? 'Clients that launch the server themselves (Claude Desktop, Cursor) don’t need it running. URL clients do.' : mcp.at ? `Checked from this browser at ${mcp.at.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : undefined}><span className="mcp-pill-dot" aria-hidden />
