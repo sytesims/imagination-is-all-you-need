@@ -28,6 +28,7 @@ import { LAYOUT_BOXES_LOCAL_ONLY, withFlux3BoxRows } from '../shared/layoutBoxes
 import { DIRECT_ROUTES, NATIVE_DIRECT } from './directRoutes.js';
 import { DEPLOY_ROUTES, isDeployRouteId, deployRoute } from './deployRoutes.js';
 import { charswapCloudIssue } from '../comfy/h3CharSwapCloud.js';
+import { places } from '../services/places.js';
 import { charswapAnchorCredits, charswapAnchorLine } from '../comfy/h3CharSwapAnchor.js';
 import { PIKA_PROVIDER, pikaIssue } from '../comfy/pikaH3Flex.js';
 import { charswapWhoIssue } from '../shared/cloudSwap.js';
@@ -322,7 +323,10 @@ function twinRoutes(modelId: string, toolIds: string[]): RouteDef[] {
 /** The tool ids a route list is built for: the tool itself and, for gallery apps, its base tool. */
 export const toolKeys = (tool?: { id: string; app?: any } | null): string[] => (tool ? [tool.id, ...((tool as any).app?.gallery?.base ? [(tool as any).app.gallery.base] : []), ...(REEL_TOOL_IDS.includes(tool.id) ? ['camera'] : [])] : []);
 /** Routes of one model. With a tool (B6), Comfy Cloud workflow twins serving that tool are added as routes of the open model. */
-export function routesFor(modelId: string, tool?: { id: string; app?: any } | string | null): RouteDef[] {
+/** The model's routes on places that are on in this profile (a place plugin that is off hides its routes: services/places.ts). */
+export const routesFor = (modelId: string, tool?: { id: string; app?: any } | string | null): RouteDef[] => allRoutesFor(modelId, tool).filter((r) => !places.off(r.kind));
+/** Routes the model would have with every place on (routesFor hides those of a place that is off). */
+export function allRoutesFor(modelId: string, tool?: { id: string; app?: any } | string | null): RouteDef[] {
   const p = getProvider(modelId); if (!p) return [];
   const tk = typeof tool === 'string' ? [tool] : toolKeys(tool ?? null);
   const native = nativeRoute(p); if (modelId === 'direct-flux3-upscale') Object.assign(native, { label: 'FLUX 3 Upscaler via BFL API', sourceUrl: 'https://docs.bfl.ai/flux_tools/flux_video_upscale', checkedAt: '2026-10-17', endpoint: 'POST https://api.bfl.ai/v1/flux-tools/video-upscale-v1', typicalLatencySec: 180, output: 'video' }, UPSCALE_BFL);

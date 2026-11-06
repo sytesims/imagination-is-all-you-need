@@ -12,6 +12,7 @@
  */
 import type { Job, RemoteHandle } from '../jobs.js';
 import { env } from '../env.js';
+import { places } from '../services/places.js';
 
 /** Thrown instead of ever submitting again when a pick-up turns out impossible (a multi-pass graph, the key gone): runRouted then cancels the
  *  request at its provider, as for any orphan. */
@@ -24,10 +25,10 @@ export const RESUME_HOSTED = !/^(0|false|off|no)$/i.test(env('RESUME_HOSTED') ??
 export function canPickUp(h: RemoteHandle | null | undefined): h is RemoteHandle {
   if (!h || !h.id || h.outputs !== 1 || h.output !== 0) return false;
   switch (h.kind) {
-    case 'fal': return !!(h.statusUrl && h.responseUrl);
+    case 'fal': case 'replicate': return places.get(h.kind)?.resume?.(h) ?? false; // its place plugin (off in this profile → can't be picked up)
     case 'router': return !!(h.statusUrl && h.responseUrl && h.cancelUrl);
     case 'direct': return !!h.pollUrl;
-    case 'replicate': case 'cloud': return true;
+    case 'cloud': return true;
     default: return false;
   }
 }
@@ -62,8 +63,8 @@ export async function cancelRemote(h: RemoteHandle): Promise<boolean | null> {
   const { findRoute } = await import('./routes.js'); const { keyValue } = await import('./keys.js');
   const r = findRoute(h.routeId); const f = testFetch ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
   try {
-    if (h.kind === 'fal') { const key = r ? keyValue(r) : null; if (!key || !h.cancelUrl) return null; return await (await import('../providers/fal.js')).falCancel(h.cancelUrl, key, f); }
-    if (h.kind === 'replicate') { const key = r ? keyValue(r) : null; if (!key) return null; return await (await import('../providers/replicate.js')).replicateCancel(h.id, key, f); }
+    const place = places.get(h.kind); // fal, Replicate: their place plugin's cancel call
+    if (place) { const key = r ? keyValue(r) : null; if (!key || !place.cancel) return null; return await place.cancel(h, key, f); }
     if (h.kind === 'router') { const key = r ? keyValue(r) : null; if (!key || !h.cancelUrl) return null; const { ComfyRouter } = await import('../comfyRouter.js');
       return await new ComfyRouter(key, f).cancel({ requestId: h.id, statusUrl: h.statusUrl ?? '', responseUrl: h.responseUrl ?? '', cancelUrl: h.cancelUrl, estimate: null }); }
     if (h.kind === 'cloud') { const { cloudTargetFor } = await import('./cloudRun.js'); const tg = r ? cloudTargetFor(r) : null; if (!tg) return null; const { ComfyCloudV2 } = await import('../comfy/cloudV2.js');

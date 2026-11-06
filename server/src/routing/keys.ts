@@ -9,5 +9,7 @@ export const mockKeys = () => config.backend === 'mock' && (/^(1|true|on|yes)$/i
 const NOT_MOCKED = new Set(['OPENHIGGSFIELD_FAL_KEY', 'OPENHIGGSFIELD_REPLICATE_API_TOKEN', 'OPENHIGGSFIELD_HF_TOKEN' /* a download token, never a sample */]);
 export const keyConfigured = (envKey: string | null | undefined, aliases: string[] = []) =>
   !envKey || (mockKeys() && !NOT_MOCKED.has(envKey)) || [envKey, ...aliases].some((k) => !!process.env[k]?.trim());
+/** Hosted requests are real: any backend but mock, or mock with OPENHIGGSFIELD_ROUTING_LIVE=1 (tests that stub the provider). */
+export const liveBackend = () => config.backend !== 'mock' || /^(1|true)$/i.test(env('ROUTING_LIVE') ?? '');
 export const keyValue = (r: Pick<RouteDef, 'envKey' | 'envAliases'>) =>
   r.envKey ? [r.envKey, ...(r.envAliases ?? [])].map((k) => process.env[k]?.trim()).find(Boolean) : undefined;

@@ -23,7 +23,7 @@ try {
   const d = api(testPort(8931)), r = api(testPort(8932)); await Promise.all([d.ready(), r.ready()]);
 
   // (b)
-  const idx = fs.readFileSync(path.join(ROOT, 'src/index.ts'), 'utf8');
+  const idx = fs.readFileSync(path.join(ROOT, 'src/legacy.ts'), 'utf8'); // the server (index.ts boots it as the legacy plugin)
   assert.ok(!/uses non-OSI weights/.test(idx) && !/allowedFor\(tool, prov\)/.test(idx), 'unreachable licence-policing branch removed'); ok('(b) no unreachable licence-policing message in index.ts');
 
   // (e) mock/demo: every tool's default model resolves; nothing says "Add an API key"
