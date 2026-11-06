@@ -73,4 +73,66 @@
 .cv-rf-minimap{border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.08)}
 .cv-rf-dropped{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);margin:0;padding:6px 12px;border-radius:999px;background:rgba(20,21,26,.82);border:1px solid rgba(255,255,255,.08);color:var(--text-2,#898A8B);font-size:12px;pointer-events:none;z-index:5}
 /* the board opens settled (RfBoard: data-booting for its first moment): no entrance fade on what is already there */
-.cv-rf[data-booting] .gc-stage,.cv-rf[data-booting] .gc-stage img,.cv-rf[data-booting] .gc-stage video,.cv-rf[data-booting] .nf-tk img,.cv-rf .cv-settled{animation:none!important}
+.cv-rf[data-booting] .gc-stage,.cv-rf[data-booting] .gc-stage img,.cv-rf[data-booting] .gc-stage video,.cv-rf[data-booting] .nf-tk img{animation:none!important}
+.cv-rf .cv-settled:not(.lk-thread),.cv-rf .lk:not(.run) .lk-thread.cv-settled{animation:none!important}
+
+/* ===================================================================== premium pass (2026-11-06; this engine only, tldraw's look unchanged)
+   Options (taste calls) sit on the board's container from ?rfopt=: data-takes (ring | strip | classic), data-text (clean | today),
+   data-joins (ports | notch | curve), data-handles (all | corners | none). */
+
+/* cards: hover lifts the edge; selected wears a crisp orange ring with a soft halo; a dragged card floats */
+.cv-rf .react-flow__node .nf.nf-node{transition:border-color var(--t-state,150ms) ease,box-shadow 180ms ease,transform 180ms ease}
+.cv-rf .react-flow__node:hover .nf.nf-node:not(.nf-sel){border-color:rgba(255,255,255,.2)}
+.cv-rf .nf.nf-node.nf-sel{border-color:rgba(255,122,26,.7);box-shadow:0 0 0 1px rgba(255,122,26,.55),0 0 0 calc(5px * max(1, var(--tl-scale,1))) rgba(255,122,26,.09),0 24px 60px rgba(0,0,0,.5)}
+.cv-rf .react-flow__node.dragging .nf.nf-node{box-shadow:0 0 0 1px rgba(255,122,26,.55),0 40px 90px rgba(0,0,0,.62);transform:scale(1.006)}
+.cv-rf.cv-far .react-flow__node.dragging .nf.nf-node{transform:none}
+/* resize: the ring is the frame, so the edge lines are invisible grab areas; the corners show (D4: all, corners, none) */
+.cv-rf .react-flow__resize-control.line.cv-rf-line,.cv-rf .react-flow__resize-control.line.cv-rf-line-quiet{border-color:transparent}
+.cv-rf[data-handles=corners] .react-flow__resize-control.line{pointer-events:none}
+.cv-rf[data-handles=none] .react-flow__resize-control.handle.cv-rf-handle-dot{opacity:0}
+.cv-rf[data-handles=none] .react-flow__resize-control.handle.cv-rf-handle-dot:hover{opacity:1}
+.cv-rf .react-flow__resize-control.handle.cv-rf-handle-dot{border-radius:3px;transition:scale 120ms ease}
+.cv-rf .react-flow__resize-control.handle.cv-rf-handle-dot:hover{scale:1.3}
+
+/* the version strip (D: ring, strip, classic): crisp thumbnails, a clear chosen one, hover previews it on the card's picture */
+.cv-rf .gc-v-n{font:600 calc(10.5px * var(--nf-k))/1 var(--font-sans,Inter,sans-serif);letter-spacing:.04em;color:var(--text-3,rgba(255,255,255,.45))}
+.cv-rf[data-takes=ring] .gc-v-thumbs{gap:7px}
+.cv-rf[data-takes=ring] .gc-v-thumbs .nf-tk{width:32px;height:32px;border-radius:8px;opacity:.7;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+.cv-rf[data-takes=ring] .gc-v-thumbs .nf-tk img{border-radius:8px}
+.cv-rf[data-takes=ring] .gc-v-thumbs .nf-tk:hover{opacity:1;transform:translateY(-1.5px)}
+.cv-rf[data-takes=ring] .gc-v-thumbs .nf-tk.on{opacity:1;box-shadow:0 0 0 2px var(--surface-1,#131517),0 0 0 3.5px var(--accent,#FF7A1A),0 4px 12px rgba(255,122,26,.25)}
+.cv-rf[data-takes=strip] .gc-v-thumbs{gap:4px}
+.cv-rf[data-takes=strip] .gc-v-thumbs .nf-tk{width:44px;height:30px;border-radius:6px;opacity:.55;box-shadow:none}
+.cv-rf[data-takes=strip] .gc-v-thumbs .nf-tk img{border-radius:6px}
+.cv-rf[data-takes=strip] .gc-v-thumbs .nf-tk:hover{opacity:.95;transform:none}
+.cv-rf[data-takes=strip] .gc-v-thumbs .nf-tk.on{opacity:1;box-shadow:none}
+.cv-rf[data-takes=strip] .gc-v-thumbs .nf-tk.on::after{content:'';position:absolute;left:8px;right:8px;bottom:-6px;height:2.5px;border-radius:2px;background:var(--accent,#FF7A1A)}
+.cv-rf .gc-stage[data-peek]::after{content:attr(data-peek);position:absolute;left:10px;top:10px;z-index:3;padding:4px 9px;border-radius:999px;background:rgba(15,17,19,.74);backdrop-filter:blur(6px);
+  font:600 calc(11px * var(--nf-k))/1.2 var(--font-sans,Inter,sans-serif);color:var(--text-1,#F7F7F8);box-shadow:0 0 0 1px rgba(255,255,255,.08)}
+
+/* card text (D: clean, today): a small eyebrow for the workflow, the name as the headline, the prompt readable, More as a quiet chip */
+.cv-rf[data-text=clean] .gc .nf-head .nf-title{font:600 calc(11px * var(--nf-k))/1 var(--font-sans,Inter,sans-serif);letter-spacing:.07em;text-transform:uppercase;color:var(--text-3,rgba(255,255,255,.5))}
+.cv-rf[data-text=clean] .gc .nf-model{font-size:calc(12px * var(--nf-k))}
+.cv-rf[data-text=clean] .gc-prompt-ro .nf-prompt-line{color:color-mix(in srgb,var(--text-1,#F7F7F8) 74%,transparent);line-height:1.45}
+.cv-rf[data-text=clean] .gc-more{padding:3px 8px;border-radius:999px;color:var(--text-1,#F7F7F8);background:var(--surface-2,#1C1E20);box-shadow:0 0 0 1px rgba(255,255,255,.08),-14px 0 12px var(--surface-1,#131517)}
+
+/* joins: links run port to port (D: ports, notch, curve); ports on a link are filled, free ones hollow; lit chains glow; a new link draws in */
+.cv-rf[data-joins=ports] .nf-port i,.cv-rf[data-joins=curve] .nf-port i{background:var(--surface-1,#131517);box-shadow:0 0 0 1.5px color-mix(in srgb,var(--k,#888) 75%,transparent),0 0 0 3.5px var(--surface-1,#131517)}
+.cv-rf[data-joins=ports] .nf-port.linked i,.cv-rf[data-joins=curve] .nf-port.linked i{background:var(--k,#888);box-shadow:0 0 0 1.5px var(--k,#888),0 0 0 3.5px var(--surface-1,#131517)}
+.cv-rf[data-joins=ports] .nf:hover .nf-port i,.cv-rf[data-joins=curve] .nf:hover .nf-port i{background:color-mix(in srgb,var(--k,#888) 55%,var(--surface-1,#131517))}
+.cv-rf .lk-join{stroke-width:calc(2.4px * max(1, var(--tl-scale,1)));stroke-opacity:calc(var(--lk-o) + .42)}
+.cv-rf[data-joins=ports] .lk-thread:not(.lk-join),.cv-rf[data-joins=curve] .lk-thread:not(.lk-join){stroke-width:calc(1.8px * max(1, var(--tl-scale,1)));stroke-opacity:calc(var(--lk-o) + .12)}
+.cv-rf .lk.lit .lk-thread{stroke-opacity:.95;filter:drop-shadow(0 0 calc(4px * max(1, var(--tl-scale,1))) color-mix(in srgb,var(--k) 55%,transparent))}
+.cv-rf .lk.sel .lk-thread{stroke:var(--accent,#FF7A1A);stroke-opacity:1;stroke-width:calc(2.6px * max(1, var(--tl-scale,1)))}
+.cv-rf .lk.run .lk-thread{stroke-dasharray:.012 .012;animation:rf-lk-flow 1.4s linear infinite}
+.cv-rf:not([data-booting]) .lk:not(.run) .lk-thread{animation:rf-lk-draw 560ms cubic-bezier(.3,.7,.2,1) both}
+@keyframes rf-lk-draw{from{stroke-dasharray:0 1}to{stroke-dasharray:1 0}}
+@keyframes rf-lk-flow{to{stroke-dashoffset:-.24}}
+.cv-rf.cv-far .lk .lk-thread{filter:none;animation:none}
+@media (prefers-reduced-motion:reduce){.cv-rf .lk .lk-thread{animation:none!important}.cv-rf .react-flow__node .nf.nf-node{transition:none}.cv-rf .react-flow__node.dragging .nf.nf-node{transform:none}}
+/* corner handles sit on the card's rounded corner, not on its bounding box */
+.cv-rf .react-flow__node-card .react-flow__resize-control.handle.left{left:calc(5px * max(1, var(--tl-scale,1)))}
+.cv-rf .react-flow__node-card .react-flow__resize-control.handle.right{left:calc(100% - 5px * max(1, var(--tl-scale,1)))}
+.cv-rf .react-flow__node-card .react-flow__resize-control.handle.top{top:calc(5px * max(1, var(--tl-scale,1)))}
+.cv-rf .react-flow__node-card .react-flow__resize-control.handle.bottom{top:calc(100% - 5px * max(1, var(--tl-scale,1)))}
+.cv-rf .react-flow__resize-control{z-index:12}

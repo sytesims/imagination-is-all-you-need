@@ -19,7 +19,7 @@ import { useToast } from '../../shared/Toast';
 import { getJob } from '../../api';
 import { posterOf3d } from '../../shared/model3d';
 import { OPEN_3D_EVENT, open3d, runCard } from '../canvasEvents';
-import { BoardProvider, ToolHookContext, useValue, type BoardApi, type ToolButtonState } from '../boardApi';
+import { BoardProvider, ToolHookContext, ViewTuneContext, useValue, type BoardApi, type ToolButtonState } from '../boardApi';
 import { LeftToolbar, EmptyHint } from '../CanvasUi';
 import { AssetsDrawer } from '../AssetsDrawer';
 import { FollowAgent } from '../FollowAgent';
@@ -50,8 +50,10 @@ const writeCam = (id: string, c: { x: number; y: number; z: number }) => { try {
 const LIVE_ZOOM_MAX = 40;
 const BACK = 1_000_000;
 const EMPTY = {};
+/** crisp version thumbnails (a 2x screen, zoomed in) and the hover preview on the card's picture */
+const TUNE = { takeThumbPx: 128, takePeek: true };
 /** what plays an entrance when it mounts (node.css gc-in / gc-develop) */
-const SETTLE = '.gc-stage,.gc-stage img,.gc-stage video,.nf-tk img';
+const SETTLE = '.gc-stage,.gc-stage img,.gc-stage video,.nf-tk img,.lk-thread';
 
 /** React Flow's nodes from the store: parents before their children, frames and groups behind, the selection marked. Each node object is
  *  kept while its store node and flags don't change, so React Flow only re-measures what moved. */
@@ -121,7 +123,7 @@ function Flow({ saved, store, board, port, drawerOpen, setDrawerOpen, onProject 
   const opt = useMemo(rfOptions, []);
   const nodes = useFlowNodes(store); const edges = useFlowEdges(store);
   const tool = useStore(store.zs, (s) => s.tool);
-  const routeVal = useRoutes(board, opt.links === 'curve');
+  const routeVal = useRoutes(board, opt.links === 'curve' || opt.joins === 'curve' ? 'curve' : opt.joins === 'notch' ? 'notch' : 'ports');
   const initial = useMemo(() => { const c = readCam(saved.id); return c ? { x: c.x * c.z, y: c.y * c.z, zoom: c.z } : undefined; }, [saved.id]);
   const panning = useRef(false); const camTimer = useRef(0);
   useBoardKeys(board, store);
@@ -198,6 +200,7 @@ export default function RfBoard({ board: saved, onSaveState, onSaved, drawerOpen
   const [store] = useState(() => new BoardStore({ nodes: loaded.nodes, links: loaded.links, camera: readCam(saved.id) ?? undefined }));
   const [port] = useState<RfPort>(() => ({ rf: null, el: null, inputs: new Set() }));
   const api = useMemo(() => makeRfBoard(store, port), [store, port]);
+  const look = useMemo(() => { const o = rfOptions(); return { takes: o.takes ?? 'ring', text: o.text ?? 'clean', joins: o.links === 'curve' ? 'curve' : o.joins ?? 'ports', handles: o.handles ?? 'all' }; }, []);
 
   useEffect(() => { const f = (e: Event) => { const id = (e as CustomEvent).detail?.jobId; if (!id) return;
     void Promise.all([getJob(id), import('../../shared/Viewer3D')]).then(([j, m]) => setView3d(m.jobItem3d(j))).catch(() => toast('This 3D result is no longer available.', 'error')); };
@@ -241,10 +244,10 @@ export default function RfBoard({ board: saved, onSaveState, onSaved, drawerOpen
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <div className="cv-board" data-testid="cv-board" data-engine="rf">
-    <div ref={(el) => { port.el = el; }} className="cv-rf" data-booting="1" data-testid="cv-rf" style={{ position: 'absolute', inset: 0 } as CSSProperties}>
-      <BoardProvider value={api}><StoreCtx.Provider value={store}><ReactFlowProvider>
+    <div ref={(el) => { port.el = el; }} className="cv-rf" data-booting="1" data-takes={look.takes} data-text={look.text} data-joins={look.joins} data-handles={look.handles} data-testid="cv-rf" style={{ position: 'absolute', inset: 0 } as CSSProperties}>
+      <BoardProvider value={api}><StoreCtx.Provider value={store}><ViewTuneContext.Provider value={TUNE}><ReactFlowProvider>
         <Flow saved={saved} store={store} board={api} port={port} drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen} onProject={onProject} />
-      </ReactFlowProvider></StoreCtx.Provider></BoardProvider>
+      </ReactFlowProvider></ViewTuneContext.Provider></StoreCtx.Provider></BoardProvider>
       {loaded.dropped > 0 && <p className="cv-rf-dropped" data-testid="rf-dropped">{loaded.dropped} drawing{loaded.dropped === 1 ? '' : 's'} from the old board can't be shown here (they stay in the saved copy).</p>}
     </div>
     {view3d && <Suspense fallback={null}><Viewer3D item={view3d} onClose={close3d} /></Suspense>}

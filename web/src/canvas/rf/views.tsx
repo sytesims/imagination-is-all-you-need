@@ -10,7 +10,7 @@
  *  - the agent's cursor (name, label, outline, laser) in the board's own coordinates.
  */
 import { createContext, memo, useContext, useLayoutEffect, useRef } from 'react';
-import { Handle, NodeResizer, Position, ViewportPortal, getBezierPath, type EdgeProps, type NodeProps } from '@xyflow/react';
+import { Handle, NodeResizer, Position, ViewportPortal, type EdgeProps, type NodeProps } from '@xyflow/react';
 import { useBoardApi, useValue, type BoardApi, type NodeId } from '../boardApi';
 import { GenCardView } from '../GenCardShape';
 import { ResultCardView } from '../ResultCardShape';
@@ -19,7 +19,9 @@ import { GEN_TYPE, RESULT_TYPE, GROUP_TYPE, nodeDefOf, adCardHeight } from '../n
 import { AD_SHAPES, asShape } from '../adPlatforms';
 import { readLinks } from '../LinkLayer';
 import { lineageOf } from '../graph';
-import { isNeighbour, notchAt, routeThread, threadPath, linkLook } from '../links';
+import { isNeighbour, notchAt, routeThread, threadPath, linkLook, LANE } from '../links';
+import { portInfoOf } from '../ports';
+import { catalogNow } from '../catalog';
 import { isNodeType } from '../nodeTypes';
 import { reducedMotion } from '../agentHand';
 import { richTextPlain, richTextOf } from '../../../../server/src/shared/boardDoc';
@@ -124,19 +126,36 @@ export const rfTypeOf = (type: string) => (isNodeType(type) ? 'card' : type === 
 export const isBack = (type: string) => type === 'frame' || type === GROUP_TYPE;
 
 // ---------------------------------------------------------------- links
-export interface Route { from: string; to: string; kind: string; d: string; neighbour: boolean; notch: { x1: number; x2: number; y: number } | null; running: boolean }
+export interface Route { from: string; to: string; kind: string; d: string; neighbour: boolean; notch: { x1: number; x2: number; y: number } | null; running: boolean; style: JoinStyle }
 export const RouteCtx = createContext<{ routes: Map<string, Route>; lit: Set<string> }>({ routes: new Map(), lit: new Set() });
+/** How links join cards (taste call, `?rfopt=joins:…`): 'ports' (default here) runs port to port, into the input of the kind it carries;
+ *  'notch' is today's board (a notch with half-moon tabs between neighbours, threads into the middle of the edge); 'curve' is one soft
+ *  curve port to port, everywhere. */
+export type JoinStyle = 'ports' | 'notch' | 'curve';
+const PORT_GAP = 20; /* NodeFrame: input dots sit 20 px apart around the middle of the left edge */
 
 /** Every link's route, once per board change (isNeighbour and routeThread need every card's box), and the lit chain. */
-export function useRoutes(board: BoardApi, curve: boolean) {
+export function useRoutes(board: BoardApi, style: JoinStyle) {
   const routes = useValue('rf routes', () => {
-    const { boxes, links } = readLinks(board); const by = new Map(boxes.map((b) => [b.id, b])); const m = new Map<string, Route>();
+    const { boxes, links } = readLinks(board); const by = new Map(boxes.map((b) => [b.id, b])); const m = new Map<string, Route>(); const cat = catalogNow();
+    /* the y of the input dot this link lands on (its kind's dot; the middle when the card shows none) */
+    const inY = (t: { y: number; h: number }, toId: string, kind: string | null | undefined) => {
+      const n = board.getNode(toId as NodeId); const ins = n ? portInfoOf(board, n, cat).ins : []; const i = ins.findIndex((x) => x.kind === kind);
+      return Math.round(t.y + t.h / 2 + (i >= 0 ? (i - (ins.length - 1) / 2) * PORT_GAP : 0)); };
     for (const l of links) { const f = by.get(l.from)!, t = by.get(l.to)!; const running = (board.getNode(l.to as NodeId)?.props as any)?.status === 'running'; const kind = l.kind ?? 'text';
-      if (curve) { const [d] = getBezierPath({ sourceX: f.x + f.w, sourceY: f.y + f.h / 2, sourcePosition: Position.Right, targetX: t.x, targetY: t.y + t.h / 2, targetPosition: Position.Left }); m.set(l.id, { from: l.from, to: l.to, kind, d, neighbour: false, notch: null, running }); continue; }
-      if (isNeighbour(f, t, boxes)) { const n = notchAt(f, t); m.set(l.id, { from: l.from, to: l.to, kind, d: `M ${n.x1} ${n.y} L ${n.x2} ${n.y}`, neighbour: true, notch: n, running }); }
-      else m.set(l.id, { from: l.from, to: l.to, kind, d: threadPath(routeThread(f, t, boxes)), neighbour: false, notch: null, running }); }
+      const base = { from: l.from, to: l.to, kind, running, style };
+      const sx = f.x + f.w, sy = Math.round(f.y + f.h / 2), ex = t.x, ey = style === 'notch' ? Math.round(t.y + t.h / 2) : inY(t, l.to, l.kind);
+      const near = isNeighbour(f, t, boxes);
+      if (style === 'curve' || (style === 'ports' && near)) { const dx = Math.max(24, Math.abs(ex - sx) / 2);
+        m.set(l.id, { ...base, d: `M ${sx} ${sy} C ${sx + dx} ${sy}, ${ex - dx} ${ey}, ${ex} ${ey}`, neighbour: near, notch: null }); continue; }
+      if (near) { const n = notchAt(f, t); m.set(l.id, { ...base, d: `M ${n.x1} ${n.y} L ${n.x2} ${n.y}`, neighbour: true, notch: n }); continue; }
+      const pts = routeThread(f, t, boxes);
+      if (style === 'ports' && pts.length >= 2) { const last = pts.length - 1;
+        if (pts.length >= 3 && pts[last - 1].y === pts[last].y && pts[last - 2].x === pts[last - 1].x) { pts[last - 1] = { ...pts[last - 1], y: ey }; pts[last] = { ...pts[last], y: ey }; }
+        else if (pts[last].y !== ey) { const jx = pts[last].x - LANE; pts.splice(last, 1, { x: jx, y: pts[last].y }, { x: jx, y: ey }, { x: pts[last].x, y: ey }); } }
+      m.set(l.id, { ...base, d: threadPath(pts), neighbour: false, notch: null }); }
     return m;
-  }, [board, curve]);
+  }, [board, style]);
   const litKey = useValue('rf lit', () => { const sel = board.selection(); const h = board.hovered() ?? (sel.length === 1 ? sel[0] : null); if (!h || !isNodeType(board.getNode(h)?.type)) return '';
     const l = lineageOf(board, h); return l ? [h, ...l.anc, ...l.desc].sort().join(',') : h; }, [board]);
   return { routes, lit: new Set(litKey ? litKey.split(',') : []) };
@@ -145,12 +164,13 @@ export function useRoutes(board: BoardApi, curve: boolean) {
 export function LinkEdge({ id, selected }: EdgeProps) {
   const { routes, lit } = useContext(RouteCtx); const r = routes.get(id); if (!r) return null;
   const isLit = !!selected || (lit.has(r.from) && lit.has(r.to)); const look = linkLook({ reduced: reducedMotion(), lit: isLit, flowing: false, running: r.running });
-  return <g className={`lk k-${r.kind}${isLit ? ' lit' : ''}${selected ? ' sel' : ''}`} data-link={id} data-neighbour={r.neighbour ? '1' : undefined} style={{ ['--lk-o' as any]: selected ? 0.9 : look.opacity }}>
-    {r.neighbour && r.notch ? <g className="lk-notch" data-testid="link-notch">
+  const join = r.neighbour && !r.notch; /* a short port-to-port join between neighbours */
+  return <g className={`lk k-${r.kind} js-${r.style}${isLit ? ' lit' : ''}${selected ? ' sel' : ''}${join ? ' join' : ''}${r.running ? ' run' : ''}`} data-link={id} data-neighbour={r.neighbour ? '1' : undefined} style={{ ['--lk-o' as any]: selected ? 0.9 : look.opacity }}>
+    {r.notch ? <g className="lk-notch" data-testid="link-notch">
         <line className="lk-bridge" x1={r.notch.x1} y1={r.notch.y} x2={r.notch.x2} y2={r.notch.y} />
         <path className="lk-tab" d={`M ${r.notch.x1} ${r.notch.y - 11} A 11 11 0 0 1 ${r.notch.x1} ${r.notch.y + 11} Z`} />
         <path className="lk-tab" d={`M ${r.notch.x2} ${r.notch.y - 11} A 11 11 0 0 0 ${r.notch.x2} ${r.notch.y + 11} Z`} />
-      </g> : <path className="lk-thread" data-testid="link-thread" d={r.d} />}
+      </g> : <path className={join ? 'lk-thread lk-join' : 'lk-thread'} data-testid={join ? 'link-join' : 'link-thread'} d={r.d} pathLength={1} />}
     <path className="react-flow__edge-interaction" d={r.d} fill="none" stroke="transparent" strokeWidth={20} />
   </g>;
 }
