@@ -146,8 +146,10 @@ const pixel = (png: string) => [...execFileSync('ffmpeg', ['-v', 'error', '-i', 
     assert.equal(routeCredits(tool, r, offQ), swap); assert.equal(routeCredits(tool, r, offS), swap, `${res}: off = no first-frame price, quote and submit`);
     console.log(`  6 s 9:16 ${res}: swap ${swap} + first frame ${anchor} = ${swap + anchor} credits ($${((swap + anchor) / 100).toFixed(2)})`);
   }
-  assert.match(r.extraLine!(base)!, /^First frame: GPT Image 2\.5 Sunburst edit, low \(Comfy Router, estimated\) · \$0\.0\d$/); assert.equal(r.extraLine!({ charswapAnchor: 'off' }), null);
-  assert.equal(r.extraCredits!({ mode: 'motion_transfer' }), 0);
+  const { addOnLine, addOnCredits } = await import('../src/services/routeAddOns.js');
+  assert.deepEqual(r.addOns, ['charswap-anchor']);
+  assert.match(addOnLine(r, base)!, /^First frame: GPT Image 2\.5 Sunburst edit, low \(Comfy Router, estimated\) · \$0\.0\d$/); assert.equal(addOnLine(r, { charswapAnchor: 'off' }), null);
+  assert.equal(addOnCredits(r, { mode: 'motion_transfer' }), 0);
   ok('price: first frame added to the route price on quote and submit alike (routeCredits), own breakdown line; off / motion = none');
 }
 console.log('ALL OK h3-charswap-anchor');
