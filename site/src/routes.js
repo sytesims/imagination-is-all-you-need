@@ -71,5 +71,36 @@ export async function handle(request, assets, fetchImpl = fetch) {
     return request.method === 'HEAD' ? new Response(null, res) : res;
   }
 
-  return assets.fetch(request);
+  /* a HEAD with a range is answered from the file itself (the asset server's HEAD has no body to measure) */
+  const asked = request.method === 'HEAD' && request.headers.has('range') ? new Request(request.url, { method: 'GET', headers: request.headers }) : request;
+  return withRanges(request, await assets.fetch(asked));
+}
+
+/**
+ * Byte ranges for the static files: video and audio players (Safari above all) ask for `Range: bytes=…` and need a
+ * 206 back to play and seek. When the asset server already answers 206, or the request has no single simple range,
+ * the response goes out as it came; a whole-file 200 is cut down to the asked range here.
+ */
+export async function withRanges(request, res) {
+  const range = request.headers.get('range');
+  if (res.status !== 200 || (request.method !== 'GET' && request.method !== 'HEAD')) return res;
+  const headers = new Headers(res.headers);
+  headers.set('accept-ranges', 'bytes');
+  const m = range && /^bytes=(\d*)-(\d*)$/.exec(range.trim());
+  if (!m || (m[1] === '' && m[2] === '')) return new Response(res.body, { status: 200, headers });
+  const head = request.method === 'HEAD';
+  const body = await res.arrayBuffer();
+  const size = body.byteLength;
+  /* some asset servers send HEAD without a body even when asked by GET: then just say ranges work */
+  if (head && size === 0) return new Response(null, { status: 200, headers });
+  let start; let end;
+  if (m[1] === '') { start = Math.max(0, size - Number(m[2])); end = size - 1; } // the last n bytes
+  else { start = Number(m[1]); end = m[2] === '' ? size - 1 : Math.min(Number(m[2]), size - 1); }
+  if (start >= size || start > end) {
+    headers.set('content-range', `bytes */${size}`); headers.delete('content-length');
+    return new Response(null, { status: 416, headers });
+  }
+  headers.set('content-range', `bytes ${start}-${end}/${size}`);
+  headers.set('content-length', String(end - start + 1));
+  return new Response(head ? null : body.slice(start, end + 1), { status: 206, headers });
 }
