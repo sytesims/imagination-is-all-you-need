@@ -10,7 +10,7 @@ import { upscaleOutMegapixels } from '../shared/imageUpscale.js';
 import { HOSTED_BY_ID } from '../shared/hostedPrices.js';
 import { openWeightsOnly, getProvider, comfyCloudOpen } from '../providers.js';
 import type { ToolDef } from '../tools/types.js';
-import { routesFor, findRoute, tierOf, tierLabel } from './routes.js';
+import { routesFor, allRoutesFor, findRoute, tierOf, tierLabel } from './routes.js';
 import { routerModelOfRoute, refsSent } from './routerModels.js';
 import { keyConfigured, keyValue } from './keys.js';
 import { getPrefs, toolPinOf } from './prefs.js';
@@ -31,6 +31,7 @@ import { routeOff, ROUTE_OFF_REASON } from './routeOff.js';
 import { videoFitBlock } from '../shared/videoFit.js';
 import { toolModes } from './defaults.js';
 import { canDownloadHere } from '../hardware/modelsTarget.js';
+import { places } from '../services/places.js';
 
 /** Local ComfyUI available? Q5 (Oct 19): a real check. mock backend → yes (mock render). comfy backend → hardware.ts localReachable(): a cached
  * (30 s) /system_stats check of the ComfyUI address with a 1.5 s timeout, so an empty or Comfy Cloud address never counts as a local ComfyUI.
@@ -126,15 +127,19 @@ export function adjustNotesFor(tool: ToolDef, r: RouteDef, input: Record<string,
 }
 /** adjustNotesFor by route id (quote and submit only know the picked route's id). */
 export const adjustNotesById = (tool: ToolDef, routeId: string | null | undefined, input: Record<string, any> = {}): string[] => { const r = routeId ? findRoute(routeId) : undefined; return r ? adjustNotesFor(tool, r, input) : []; };
+/** A place whose plugin is off in this profile (services/places.ts): its routes are hidden, and a quote that still names one says so. */
+export const placeOffReason = (r: Pick<RouteDef, 'kind' | 'envKey' | 'vendor'>) => `${RUN_ON_LABELS[runOnOfRoute(r)] ?? r.kind} isn’t set up in this app`;
 export function option(tool: ToolDef, r: RouteDef, input: Record<string, any> = {}, passes = 1): RouteOption {
   const h = r.priceRef ? HOSTED_BY_ID[r.priceRef] : undefined; const credits = routeCredits(tool, r, input, passes);
-  const configured = keyConfigured(r.envKey, r.envAliases);
+  const place = places.get(r.kind); const placeOff = places.off(r.kind);
+  const configured = place ? place.ready(r) : keyConfigured(r.envKey, r.envAliases);
   const local = r.kind === 'local';
   // no mode asked (a listing or quote without types): the tool's first mode, as its defaults read it (defaults.ts recommendedDefaults)
   const modeOk = !r.modes || r.modes.includes(input.types == null && input.mode == null && input.type == null ? toolModes(tool)[0] ?? jobMode(input) : jobMode(input));
   let reason: string | undefined; let inputBlock = false; let inputStep = false; let tooHeavy = false; // Oct 19 #8: the job's inputs (mode, missing image…) block this route, not a key or wiring
   const fit = local && !r.comingSoon ? localFit(tool, r, input) : null;
   if (r.comingSoon) reason = r.comingSoon;
+  else if (placeOff) reason = placeOffReason(r);
   else if (local && !r.noComfy && !localAvailable()) reason = LOCAL_UNREACHABLE_REASON; // noComfy: ffmpeg-only routes (3D turntable) don't need ComfyUI
   else if (!local && openWeightsOnly() && tierOf(r) !== 0) reason = OPEN_WEIGHTS_ONLY_REASON; // Comfy Cloud open-weight workflows (tier 0, incl. B6 twins) count as open weights
   else if (!modeOk) { reason = modesReason(r.modes!); inputBlock = true; }
@@ -151,7 +156,7 @@ export function option(tool: ToolDef, r: RouteDef, input: Record<string, any> = 
   else if (!routeRunnable(r) && (!r.envKey || !!keyValue(r))) reason = NOT_WIRED_REASON; // a real key is set, but only the mock executor exists: never Auto-picked, never charged (OPENHIGGSFIELD_MOCK_KEYS, the mock-backend simulation, stays as before)
   if (!reason && r.needsInput?.(input)) { reason = r.needsInput(input)!; inputBlock = true; inputStep = true; } // last: the place is ready (key, price, wiring); the job only needs a step (who to swap)
   return { priceRef: r.priceRef, routeId: r.routeId, kind: r.kind, ...(r.vendor ? { vendor: r.vendor } : {}), label: r.label, endpoint: r.endpoint, credits, estimatedPrice: !!h?.estimated, priceSourceUrl: h?.sourceUrl ?? null, priceCheckedAt: h?.checkedAt ?? null,
-    typicalLatencySec: r.typicalLatencySec, latencyEstimated: r.latencyEstimated, envKey: r.envKey, configured, available: !reason, ...(reason ? { reason } : {}), ...(reason && !configured && reason === keyMissingReason(r.envKey) ? { reasonCode: 'key_missing' as const, reasonDetail: `${r.envKey} not set` } : {}), ...(r.comingSoon ? { reasonCode: 'not_wired' as const, reasonDetail: `coming soon: ${r.comingSoon}` } : {}), ...(reason === NOT_WIRED_REASON ? { reasonCode: 'not_wired' as const, reasonDetail: 'no live connection for this route on this server yet' } : {}), ...(inputStep ? { inputStep: true } : {}), ...(inputBlock ? { reasonCode: 'input_blocked' as const, reasonDetail: reason === VARIANT_BLOCK_REASON ? "the lighter version needs the ComfyUI-GGUF node on the connected ComfyUI" : 'the job inputs do not fit this route' } : {}), ...(tooHeavy ? { reasonCode: 'too_heavy' as const, reasonDetail: fit!.reason } : {}), ...(reason === ROUTE_OFF_REASON && !r.comingSoon /* coming-soon Router models share the words; they stay not_wired */ ? { reasonCode: 'route_not_enabled' as const, reasonDetail: 'Comfy Router answered not_enabled for this model; re-checked after 24 h' } : {}), ...(fit ? { fit } : {}), sourceUrl: r.sourceUrl, ...(r.caps ? { caps: r.caps } : {}), tier: tierOf(r), tierLabel: tierLabel(r), wired: routeRunnable(r), ...(r.twinProvider ? { twinOf: r.modelId, twinProvider: r.twinProvider } : {}) };
+    typicalLatencySec: r.typicalLatencySec, latencyEstimated: r.latencyEstimated, envKey: r.envKey, configured, available: !reason, ...(reason ? { reason } : {}), ...(reason && !configured && reason === keyMissingReason(r.envKey) ? { reasonCode: 'key_missing' as const, reasonDetail: `${r.envKey} not set` } : {}), ...(r.comingSoon ? { reasonCode: 'not_wired' as const, reasonDetail: `coming soon: ${r.comingSoon}` } : {}), ...(reason === NOT_WIRED_REASON ? { reasonCode: 'not_wired' as const, reasonDetail: 'no live connection for this route on this server yet' } : {}), ...(inputStep ? { inputStep: true } : {}), ...(inputBlock ? { reasonCode: 'input_blocked' as const, reasonDetail: reason === VARIANT_BLOCK_REASON ? "the lighter version needs the ComfyUI-GGUF node on the connected ComfyUI" : 'the job inputs do not fit this route' } : {}), ...(tooHeavy ? { reasonCode: 'too_heavy' as const, reasonDetail: fit!.reason } : {}), ...(reason === ROUTE_OFF_REASON && !r.comingSoon /* coming-soon Router models share the words; they stay not_wired */ ? { reasonCode: 'route_not_enabled' as const, reasonDetail: 'Comfy Router answered not_enabled for this model; re-checked after 24 h' } : {}), ...(placeOff ? { reasonCode: 'not_wired' as const, reasonDetail: `the place-${r.kind} plugin is off in this app's profile` } : {}), ...(fit ? { fit } : {}), sourceUrl: r.sourceUrl, ...(r.caps ? { caps: r.caps } : {}), tier: tierOf(r), tierLabel: tierLabel(r), wired: routeRunnable(r), ...(r.twinProvider ? { twinOf: r.modelId, twinProvider: r.twinProvider } : {}) };
 }
 /** Bug Hunter #12: reachable (can we talk to local ComfyUI) is separate from enabled (Settings → Use local ComfyUI = global.useLocal). */
 export function localState() {
@@ -400,6 +405,9 @@ function planInner(tool: ToolDef, modelId: string, input: Record<string, any>, p
   const afAsked = req.allowFallback != null && req.allowFallback !== '' ? /^(1|true|on|yes)$/i.test(String(req.allowFallback)) : null; const af = afAsked ?? false;
   const all = routesIn(modelId, tool, allow).map((r) => option(tool, r, input, passes));
   const prices = Object.fromEntries(all.filter((o) => o.credits != null).map((o) => [o.routeId, o.credits!]));
+  { const off = allRoutesFor(modelId, tool).find((r) => places.off(r.kind) && !r.comingSoon && (!allow || allow.includes(r.routeId))); // its place plugin is off in this profile (services/places.ts)
+    if (off && !all.some((o) => !routesIn(modelId, tool, allow).find((r) => r.routeId === o.routeId)?.comingSoon)) // …and nothing else runs it: say so, not "coming soon"
+      return { error: `${placeOffReason(off)}, so ${modelNameFor(tool, modelId)} can’t run here. Pick another model. Nothing was charged.`, errorType: 'routing', code: 'place_off', reasonCode: 'not_wired', status: 409, routes: all } as any; }
   if (all.length && all.every((o) => o.reason && routesIn(modelId, tool, allow).find((r) => r.routeId === o.routeId)?.comingSoon)) // coming-soon model (FLUX 3 Upscaler): never runs, never charges
     return { error: `${tool.name}: this model is coming soon. ${reasonSentence(all[0].reason!)} Nothing was charged.`, errorType: 'routing', status: 409, routes: all };
   if (want === 'auto') {
@@ -432,7 +440,9 @@ function planInner(tool: ToolDef, modelId: string, input: Record<string, any>, p
     return { routing: { modelId, mode: 'auto', allowFallback: autoAf, order: (autoAf ? order : order.slice(0, 1)).map((o) => o.routeId), prices, ...(order[0].demo ? { demo: demoNotice(order[0], tool.id) } : {}) }, first: order[0], options: all };
   }
   const r = routesIn(modelId, tool, allow).find((x) => x.routeId === want) ?? findRoute(want); // the model's own copy first (Auto-reframe and Luma Reframe share route ids)
-  if (!r || r.modelId !== modelId || (allow && !allow.includes(r.routeId))) { // step 2: a route outside the requested model's routes doesn't serve it
+  if (r && req.route && r.modelId === modelId && places.off(r.kind)) // a place whose plugin is off in this profile (services/places.ts); a saved pin to it goes on to Auto below
+    return { error: `${placeOffReason(r)}. Pick another place in Run on. Nothing was charged.`, errorType: 'routing', code: 'place_off', reasonCode: 'not_wired', routeId: r.routeId, status: 409, routes: all } as any;
+  if (!r || r.modelId !== modelId || (allow && !allow.includes(r.routeId)) || places.off(r.kind)) { // step 2: a route outside the requested model's routes doesn't serve it
     if (!req.route) { // stale saved pin for another model → auto (reported as a fallback notice: pin_invalid)
       const p2 = planInner(tool, modelId, input, passes, { route: 'auto', allowFallback: req.allowFallback }, allow);
       if (!('error' in p2)) p2.routing.planFallback = { code: 'pin_invalid', requestedRoute: want, message: `Your saved choice (${RUN_ON_LABELS[runOnOfRoute(findRoute(want) ?? { kind: String(want).split(':')[0] })] ?? 'a place'}) can’t run ${modelNameFor(tool, modelId)} any more, so it runs on ${RUN_ON_LABELS[runOnOfRoute(p2.first)]}.` };
