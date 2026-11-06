@@ -38,7 +38,7 @@ npm install          # root workspaces (server, web) + the MCP server's deps via
 
 > "Do you want to (a) make real renders on Comfy Cloud with your Comfy API key, (b) run models locally with your own ComfyUI, or (c) both?"
 
-Write their answer into **`.env.local`** in the repo root (the API reads it when it starts, with `npm start` or `npm run dev`; shell exports win over it). Either copy `.env.example` to `.env.local` (every line in it is commented out, so the copy changes nothing until you uncomment a line) and fill in what's needed, or create `.env.local` with only the lines below. Never echo key values back. The backend is `comfy` by default (real runs); `OPENHIGGSFIELD_BACKEND=mock` gives sample results and is for development and tests only. With nothing set up, Generate opens "Connect a Comfy key or your ComfyUI to start" (nothing runs, nothing is charged); the Examples project shows what the app makes.
+Write their answer into **`.env.local`** in the repo root (the API reads it when it starts, with `npm start` or `npm run dev`; shell exports win over it). Either copy `.env.example` to `.env.local` (every line in it is commented out, so the copy changes nothing until you uncomment a line) and fill in what's needed, or create `.env.local` with only the lines below. Never echo key values back. The backend is `comfy` by default (real runs); `OPENHIGGSFIELD_BACKEND=mock` gives sample results and is for development and tests only. With nothing set up at all (no key for any provider, no ComfyUI), Generate makes free samples: one of the app's own example results that fits the prompt, labelled Sample, $0, nothing sent anywhere (`/api/health` says `"freeSamples": true`). Adding any key or a ComfyUI turns that off; `OPENHIGGSFIELD_FREE_SAMPLES=0` turns it off too.
 
 | Choice | `.env.local` |
 |---|---|
@@ -77,7 +77,7 @@ curl -s -X POST http://127.0.0.1:8788/mcp -H 'content-type: application/json' -H
 
 A plain `GET /mcp` answers 406; that's normal. Then open **http://localhost:5174** for the user.
 
-Check the actual health response and setup state rather than assuming a missing key triggers sample generation. The normal backend requires a connection; explicit mock mode is for development/tests. Investigate any unexpected mode or readiness reason before submitting a job.
+Check the actual health response and setup state rather than assuming. On the normal backend, free samples happen only while nothing is set up (`freeSamples` in `/api/health`); once a key or ComfyUI is ready, runs are real. Explicit mock mode is for development/tests. Investigate any unexpected mode or readiness reason before submitting a job.
 
 ## 6. Local GPU only: hardware and models
 
@@ -109,7 +109,7 @@ Full guide: [docs/LOCAL-MODELS-AND-HARDWARE.md](docs/LOCAL-MODELS-AND-HARDWARE.m
 | `mcp` won't start after install | `npm run mcp:install`, then `npm start` |
 | Web won't start: port 5174 in use | Vite uses a strict port. Free it or set `WEB_PORT` |
 | Node rejects `--env-file-if-exists` (a "bad option" error) | Node too old; use Node 22 (22.12+), 24 or 26 |
-| Generate → "Connect a Comfy key or your ComfyUI to start" (402 `no_connection`) | Nothing is set up: paste a Comfy key, or point the app at your ComfyUI (Settings → Connections) |
+| Generate makes "Sample" results ("A sample from our examples…") | Nothing is set up yet: paste a Comfy key, or point the app at your ComfyUI (Settings → Connections) for real runs |
 | Generate → 402 `no_provider` | This model can't run on what is connected: add the key it names, or turn on Use local ComfyUI (`OPENHIGGSFIELD_USE_LOCAL=1`) |
 | Still sample results after adding a Comfy key | `OPENHIGGSFIELD_BACKEND=mock` is set (development only): remove it |
 | "Not available on this server yet" | That route has no live runner yet; pick another model or route |
