@@ -123,6 +123,7 @@ export interface Proposal {
   /** The cards Go starts: every item without a problem. A row that can't run here (a model not on this server, a missing input) is skipped, not a
    *  blocker for the rest; the total counts only these. `reason` is set (and Go is off) only when NONE can run, or the batch is over budget. */
   runCardIds: string[]; skipped: { cardId: string; title: string; problem: string }[]; /** cards Go tried that the server refused (they stay drafts) */ failedIds?: string[];
+  /** Go stopped a row of that proposal because its price changed, and this one asks again (the dock shows the pair as ONE card, 2026-11-06) */ repriceOf?: string | null;
   status: 'pending' | 'running' | 'approved' | 'cancelled' | 'failed' | /** nothing in it can run here: the cards stay drafts, nothing to approve (never shown as Cancelled) */ 'drafts'; createdAt: number; decidedAt: number | null; jobIds: string[]; error: string | null;
 }
 export interface FeedEntry {
@@ -570,7 +571,7 @@ async function executePublicOp(boardId: string, op: Op, req: FastifyRequest | nu
 
 /** The demo's line when nothing in a step can run here (the proposal's own reason already starts "None of these…" when several cards are skipped). */
 const noneRunWords = (reason: string | null | undefined) => { const why = String(reason ?? 'no model for them on this server').replace(/\.$/, ''); return /^None of these/.test(why) ? `${why}.` : `None of these can run here yet: ${why}.`; };
-async function proposeRun(boardId: string, op: { card_ids: string[]; note?: string }, req: FastifyRequest | null, by: 'mcp' | 'demo' | 'user' = 'mcp', budgetId?: string | null): Promise<OpResult> {
+async function proposeRun(boardId: string, op: { card_ids: string[]; note?: string; repriceOf?: string | null }, req: FastifyRequest | null, by: 'mcp' | 'demo' | 'user' = 'mcp', budgetId?: string | null): Promise<OpResult> {
   const budget = req ? budgetOfRequest(req) : budgetId ? budgetById(budgetId) : null;
   if (budget && 'error' in budget) return { ok: false, error: budget.error, code: 'agent_budget_unknown' };
   const r = await sendOp(boardId, { kind: 'propose_run', card_ids: op.card_ids, note: op.note }, OP_TIMEOUT_MS);
@@ -598,7 +599,7 @@ async function proposeRun(boardId: string, op: { card_ids: string[]; note?: stri
     : boardBlock ? `This is $${Math.max(0, boardBlock.spentUsd + totalUsd - boardBlock.budgetUsd).toFixed(2)} over the $${boardBlock.leftUsd.toFixed(2)} left in this board's budget. Nothing will run.`
     : !runs.length ? (skipped.length === 1 ? skipped[0].problem : `None of these cards can run here. ${skipped[0].problem}`) : null;
   const proposal: Proposal = { id: uid('prop'), boardId, cardIds: op.card_ids, note: op.note?.trim() || null, items, totalUsd, totalCredits,
-    budget: budgetViewOut, overBudget: over, overByUsd: agentOver ? overBy : boardBlock ? r4(boardBlock.spentUsd + totalUsd - boardBlock.budgetUsd) : overBy, reason, boardBudget, runCardIds: runs.map((i) => i.cardId), skipped, status: !runs.length && !over ? 'drafts' : 'pending', createdAt: now(), decidedAt: null, jobIds: [], error: null };
+    budget: budgetViewOut, overBudget: over, overByUsd: agentOver ? overBy : boardBlock ? r4(boardBlock.spentUsd + totalUsd - boardBlock.budgetUsd) : overBy, reason, boardBudget, runCardIds: runs.map((i) => i.cardId), skipped, ...(op.repriceOf ? { repriceOf: op.repriceOf } : {}), status: !runs.length && !over ? 'drafts' : 'pending', createdAt: now(), decidedAt: null, jobIds: [], error: null };
   rememberProposal(proposal);
   addActivity(boardId, `Proposed ${runs.length} run${runs.length === 1 ? '' : 's'} · $${totalUsd.toFixed(2)}${skipped.length ? ` · ${skipped.length} skipped` : ''}`, { proposalId: proposal.id, meta: { tool: 'propose_run', by } });
   return { ok: true, result: { proposal } };
@@ -610,6 +611,8 @@ function markPriceChanged(p: Proposal, failed: any[]) {
   for (const f of failed) { if (f?.code !== 'price_changed') continue; const it = p.items.find((i) => i.cardId === String(f.cardId ?? '')); if (!it) continue;
     it.priceChanged = { wasUsd: typeof f.wasUsd === 'number' ? r4(f.wasUsd) : it.usd, nowUsd: typeof f.nowUsd === 'number' ? r4(f.nowUsd) : null, reason: f.reason === 'route' ? 'route' : 'dearer' }; }
 }
+/** Every row Go refused stopped on a price change (nothing else went wrong): the dock's one card says so, nobody repeats it. */
+const priceStopOnly = (p: Proposal) => { const f = p.failedIds ?? []; return f.length > 0 && f.every((id) => !!p.items.find((i) => i.cardId === id)?.priceChanged); };
 function finishRunProposal(p: Proposal, r: OpResult) {
   if (r.ok) { p.status = 'approved'; p.jobIds = Array.isArray(r.result?.jobIds) ? r.result.jobIds : []; const failed: any[] = Array.isArray(r.result?.failed) ? r.result.failed : [];
     p.error = failed.length ? `${failed.length} card${failed.length === 1 ? '' : 's'} didn’t start: ${String(failed[0]?.error ?? 'refused')}` : null; // the others still ran
@@ -741,7 +744,7 @@ async function runDemo(run: DemoRun, plan: DemoPlan) {
       while (p.status === 'running' && alive()) await wait(250);
       if (!alive()) return;
       const refused = new Set(p.failedIds ?? []); const started = p.runCardIds.filter((id) => !refused.has(id));
-      if (!started.length) { say(`Those didn’t start: ${String(p.error ?? 'the server said no').replace(/\.$/, '')}. Nothing was charged. The cards stay as drafts, so you can try again from each one.`, { error: true }); return; }
+      if (!started.length) { if (!priceStopOnly(p)) say(`Those didn’t start: ${String(p.error ?? 'the server said no').replace(/\.$/, '')}. Nothing was charged. The cards stay as drafts, so you can try again from each one.`, { error: true }); return; } /* a price stop: the dock's card says it once (New price · Run for $x) */
       if (refused.size) say(`${plural(refused.size, 'card')} didn’t start, so nothing was charged for ${refused.size === 1 ? 'it' : 'them'}. I’ll carry on with the rest.`, { error: true });
       const until = Date.now() + 15 * 60_000; let states: string[] = [];
       while (alive() && Date.now() < until) {
@@ -867,7 +870,7 @@ async function runShortFilm(run: DemoRun, plan: ShortPlan) {
     while (p.status === 'running' && alive()) await wait(250);
     if (!alive()) return null;
     const refused = new Set(p.failedIds ?? []); const started = p.runCardIds.filter((id) => !refused.has(id));
-    if (!started.length) { say(`Those didn’t start: ${String(p.error ?? 'the server said no').replace(/\.$/, '')}. Nothing was charged.`, { error: true }); return null; }
+    if (!started.length) { if (!priceStopOnly(p)) say(`Those didn’t start: ${String(p.error ?? 'the server said no').replace(/\.$/, '')}. Nothing was charged.`, { error: true }); return null; }
     if (refused.size) say(`${plural(refused.size, 'card')} didn’t start, so nothing was charged for ${refused.size === 1 ? 'it' : 'them'}. I’ll carry on with the rest.`, { error: true });
     return { started };
   };
@@ -1056,7 +1059,7 @@ export function registerCanvasAgent(app: FastifyInstance) {
     const parsed = userProposalBody.safeParse(req.body); if (!parsed.success) return bad(reply, zodText(parsed.error), 'invalid_proposal');
     if (!hasCanvas(b.id)) return bad(reply, 'Open the board in the app first.', 'canvas_not_open', 409);
     const was = parsed.data.reprice_of ? proposalsById.get(parsed.data.reprice_of) : undefined; const origin = was && was.boardId === b.id ? was : undefined;
-    const r = await proposeRun(b.id, { card_ids: parsed.data.card_ids, note: parsed.data.note }, null, 'user', origin?.budget?.id ?? null);
+    const r = await proposeRun(b.id, { card_ids: parsed.data.card_ids, note: parsed.data.note, repriceOf: origin?.id ?? null }, null, 'user', origin?.budget?.id ?? null);
     if (!r.ok) return bad(reply, r.error, r.code ?? 'not_priced', 409);
     return { ok: true, proposal: r.result.proposal };
   });

@@ -21,6 +21,10 @@ import { startAgentBridge, nameOf as cardNameOf, type FeedEntry, type Proposal, 
 import { handAtom, handOf, fx, setAgentName, reducedMotion } from './agentHand';
 import { flowById, flowInfo } from '../shared/genFlows';
 import { LOCAL_FREE } from '../../../server/src/shared/modelIds';
+import { repricePairs, hiddenByReprice, repriceRows, isPriceStop } from './proposalMerge';
+import { usdPrice, fmtUsd } from '../shared/billing';
+import { FlowIcon } from './GenCardShape';
+import type { GenMedium } from '../shared/genFlows';
 import { STARTERS, mergeFeed, mergeProposals, planOf, confirmOf, focusAdded, focusCards, setFollow, agentStarterPrompt, dockRoute, dockState, dockStatusLine, dockPill, workingLine, messageStatus, messageStatusText, listenCommand, LISTEN_PHRASE, type StarterId, type MsgStatus } from './agentDockModel';
 import { AgentMediaCard } from './AgentMediaCard';
 import { useCopied, Copied, useToast } from '../shared/Toast';
@@ -43,6 +47,7 @@ import './agentPanel.css';
 const AGENT_FRESH_MS = 90_000; /* the server's window: an agent that stopped waiting or polling for 90 s isn't listening any more */
 const time = (t: number) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 const STARTER_ICON: Record<StarterId, (p: { size?: number }) => JSX.Element> = { short: SparkleIcon, film: DirectorIcon, product: ProductIcon, animate: ExtendIcon, takes: VideoIcon, material: MaterialIcon, free: ExploreIcon };
+const CHIPS_SHOWN = 3;
 type Demo = { running: boolean; runId: string | null; title: string | null };
 
 /** Board.tsx puts the board in agentApi's context; the dock lives outside it, so wait for a live one (after a board switch the
@@ -197,7 +202,7 @@ function EventRow({ e, onFocus }: { e: FeedEntry; onFocus: (id?: string | null) 
   </button>;
 }
 
-function ProposalCard({ p, busy, onDecide, onFocus }: { p: Proposal; busy?: 'go' | 'cancel'; onDecide: (d: 'go' | 'cancel') => void; onFocus: (ids: string[]) => void }) {
+function ProposalCard({ p, busy, onDecide, onFocus, hideNote }: { p: Proposal; busy?: 'go' | 'cancel'; onDecide: (d: 'go' | 'cancel') => void; onFocus: (ids: string[]) => void; /** a price stop's ask-again: its card already said why */ hideNote?: boolean }) {
   const pending = p.status === 'pending';
   /* rows that can't run here are skipped, not a blocker: Go starts the rest (server: proposal.runCardIds). Older proposals without it: every problem-free row. */
   const runIds = new Set(p.runCardIds ?? p.items.filter((i) => !i.problem).map((i) => i.cardId)); const nRun = runIds.size; const nSkip = p.items.length - nRun;
@@ -209,7 +214,7 @@ function ProposalCard({ p, busy, onDecide, onFocus }: { p: Proposal; busy?: 'go'
   return <article className={`ap-prop ${p.status}`} data-testid="agent-proposal" data-status={p.status}>
     <div className="ap-prop-h"><span className="ap-kicker">{pending ? 'Needs your OK' : p.status === 'running' ? 'Starting' : p.status === 'approved' ? 'Approved' : p.status === 'cancelled' ? 'Cancelled' : p.status === 'drafts' ? 'Drafts · nothing to run yet' : priceStop ? 'Price changed · asked again' : 'Could not start'}</span>
       <button type="button" className="ap-prop-n" onClick={() => onFocus(p.cardIds)} {...tip('Show these cards on the board')}>{nRuns} run{nRuns === 1 ? '' : 's'}{nSkip ? ` · ${nSkip} skipped` : ''}</button></div>
-    {p.note && <p className="ap-prop-note">{p.note}</p>}
+    {p.note && !hideNote && <p className="ap-prop-note">{p.note}</p>}
     <ul className="ap-items">{p.items.map((it, i) => {
       const q = it.quote; const free = q?.localRun === true || q?.cost?.billedTo === 'local'; const demo = q?.demo === true;
       const skip = !runIds.has(it.cardId); const moved = it.priceChanged;
@@ -221,13 +226,13 @@ function ProposalCard({ p, busy, onDecide, onFocus }: { p: Proposal; busy?: 'go'
       </li>;
     })}</ul>
     <div className="ap-total"><span>Total</span><b data-testid="agent-proposal-total">{nRun === 0 ? '—' : totalWords(runItems, p.totalUsd)}</b></div>
-    {budget?.remainingUsd != null && <div className="ap-budget"><span>Agent budget left</span><b>${budget.remainingUsd.toFixed(2)} of ${(budget.budgetUsd ?? 0).toFixed(2)}</b></div>}
-    {p.boardBudget && <div className="ap-budget" data-testid="agent-proposal-board-budget"><span>Board budget left</span><b>${p.boardBudget.leftUsd.toFixed(2)} of ${p.boardBudget.usd.toFixed(2)}</b></div>}
+    {budget?.remainingUsd != null && <div className="ap-budget"><span>Agent budget left</span><b>{fmtUsd(budget.remainingUsd)} of {fmtUsd(budget.budgetUsd ?? 0)}</b></div>}
+    {p.boardBudget && <div className="ap-budget" data-testid="agent-proposal-board-budget"><span>Board budget left</span><b>{fmtUsd(p.boardBudget.leftUsd)} of {fmtUsd(p.boardBudget.usd)}</b></div>}
     {p.reason && <p className={`ap-warn${p.overBudget ? ' over' : ''}`} data-testid="agent-proposal-reason">{p.reason}</p>}
     {!p.reason && nSkip > 0 && pending && <p className="ap-skipnote" data-testid="agent-proposal-skipped">{nSkip === 1 ? '1 card can’t run here, so Go skips it.' : `${nSkip} cards can’t run here, so Go skips them.`} Nothing is charged for {nSkip === 1 ? 'it' : 'them'}.</p>}
     {p.error && <p className={`ap-warn${priceStop ? '' : ' over'}`} data-testid={priceStop ? 'agent-proposal-price-stop' : undefined}>{p.error}</p>}
     {pending && <div className="ap-prop-actions">
-      <button type="button" className="ap-go" data-testid="agent-go" disabled={disabled || !!busy} onClick={() => onDecide('go')}>{busy === 'go' ? 'Starting…' : `Go${allDemo || p.totalUsd <= 0 ? '' : ` · ≈ $${p.totalUsd.toFixed(2)}`}`}</button>
+      <button type="button" className="ap-go" data-testid="agent-go" disabled={disabled || !!busy} onClick={() => onDecide('go')}>{busy === 'go' ? 'Starting…' : `Go${allDemo || p.totalUsd <= 0 ? '' : ` · ${fmtUsd(p.totalUsd)}`}`}</button>
       <button type="button" className="ap-cancel" data-testid="agent-cancel" disabled={!!busy} onClick={() => onDecide('cancel')}>{busy === 'cancel' ? 'Cancelling…' : 'Cancel'}</button>
     </div>}
     {p.status === 'running' && <p className="ap-prop-state">Starting the runs…</p>}
@@ -241,8 +246,58 @@ function ProposalCard({ p, busy, onDecide, onFocus }: { p: Proposal; busy?: 'go'
 /** The proposal total in the same tokens as every Generate button (GenPrice / billing.priceToken): Sample, Free · this computer, ≈ $0.42. */
 export function totalWords(items: { quote: any }[], totalUsd: number): string {
   if (items.length && items.every((i) => i.quote?.demo === true)) return 'Sample';
-  if (totalUsd > 0) return `≈ $${totalUsd.toFixed(2)}`;
+  if (totalUsd > 0) return usdPrice(totalUsd, { approx: items.some((i) => isEstimate(i.quote)) });
   return items.length && items.every((i) => i.quote?.localRun === true || i.quote?.cost?.billedTo === 'local') ? LOCAL_FREE : 'Free';
+}
+/** ≈ only on a price that is an estimate (the quote says so, or says nothing): the same rule as GenPrice's token (billing.costToken). */
+const isEstimate = (q: any) => !(q?.cost && typeof q.cost === 'object' && q.cost.estimated === false);
+/** A price stop's dollars: the app's format (billing.fmtUsd), but always 3 decimals under 10 cents, so an old and a new price side by side
+ *  read at the same precision ($0.030 → $0.039, never $0.03 → $0.039). */
+const usd3 = (n: number) => (n > 0 && n < 0.1 ? `$${n.toFixed(3)}` : fmtUsd(n));
+const rowUsd = (usd: number | null, q: any, approx: boolean) => (q?.demo === true ? 'Sample' : q?.localRun === true || q?.cost?.billedTo === 'local' ? LOCAL_FREE : usd == null ? '—' : `${approx && isEstimate(q) ? '≈ ' : ''}${usd3(usd)}`);
+/** Old price small and struck (no ≈: it is only the reference), the new one under it; just the new one when they read the same. */
+function PriceMove({ was, now, testId }: { was: string | null; now: string; testId?: string }) {
+  return <span className="ap-move">{was && <s data-testid={testId ? `${testId}-was` : undefined}>{was}</s>}<b data-testid={testId}>{now}</b></span>;
+}
+
+/** A price stop (owner-approved design, 2026-11-06): the approval Go stopped and its ask-again are ONE card that changes in place.
+ *  "New price · Nothing ran", each moved row old → new, the total old → new, Cancel / Run for $x, and one quiet history line under it.
+ *  Cancel turns it into a quiet line; Run turns it into the normal running card. Rows that did start at Go say Started. */
+function RepriceCard({ origin, child, board, busy, onDecide, onFocus }: { origin: Proposal; child: Proposal | null; board: BoardApi | null; busy?: 'go' | 'cancel'; onDecide: (p: Proposal, d: 'go' | 'cancel') => void; onFocus: (ids: string[]) => void }) {
+  const history = <p className="ap-history" data-testid="agent-proposal-history">You approved at {usd3(origin.totalUsd)} · {time(origin.decidedAt ?? origin.createdAt)}</p>;
+  if (child?.status === 'cancelled') return <EventRow e={{ seq: 0, id: child.id, at: child.decidedAt ?? Date.now(), type: 'decision', decision: 'cancel', text: 'Cancelled. Nothing ran.' }} onFocus={() => undefined} />;
+  if (child && child.status !== 'pending') return <div className="ap-reprice-done"><ProposalCard p={child} hideNote onDecide={(d) => onDecide(child, d)} onFocus={onFocus} />{history}</div>;
+  const rows = repriceRows(origin, child); const moved = rows.filter((r) => r.state === 'moved'); const started = rows.filter((r) => r.state === 'started').length;
+  const was = moved.reduce((a, r) => a + (r.wasUsd ?? 0), 0); const now = child ? child.totalUsd : moved.reduce((a, r) => a + (r.nowUsd ?? 0), 0);
+  const est = moved.some((r) => isEstimate(r.quote));
+  const sample = !!child && child.items.length > 0 && child.items.every((i) => i.quote?.demo === true);
+  const totalNow = sample ? 'Sample' : `${est ? '≈ ' : ''}${usd3(now)}`; const totalWas = !sample && usd3(was) !== usd3(now) ? usd3(was) : null;
+  const checking = !child && Date.now() - (origin.decidedAt ?? origin.createdAt) < 20_000;
+  return <div className="ap-reprice-wrap">
+    <article className="ap-prop pending ap-reprice" data-testid="agent-proposal" data-status="repriced">
+      <div className="ap-prop-h"><span className="ap-kicker ap-kicker-warn">New price</span>
+        <button type="button" className="ap-prop-n" onClick={() => onFocus(origin.cardIds)} {...tip('Show these cards on the board')} data-testid="agent-proposal-ran">{started ? `${started} started` : 'Nothing ran'}</button></div>
+      <ul className="ap-items">{rows.map((r) => <RepriceItem key={r.cardId} r={r} board={board} />)}</ul>
+      {moved.length > 0 && <div className="ap-total"><span>Total</span><PriceMove was={totalWas} now={totalNow} testId="agent-proposal-total" /></div>}
+      {child?.reason && <p className={`ap-warn${child.overBudget ? ' over' : ''}`} data-testid="agent-proposal-reason">{child.reason}</p>}
+      {child ? <div className="ap-prop-actions">
+        <button type="button" className="ap-go" data-testid="agent-go" disabled={!!busy || !!child.reason || child.overBudget || !(child.runCardIds ?? []).length} onClick={() => onDecide(child, 'go')}>{busy === 'go' ? 'Starting…' : child.totalUsd > 0 && !sample ? `Run for ${usd3(child.totalUsd)}` : 'Run'}</button>
+        <button type="button" className="ap-cancel" data-testid="agent-cancel" disabled={!!busy} onClick={() => onDecide(child, 'cancel')}>{busy === 'cancel' ? 'Cancelling…' : 'Cancel'}</button>
+      </div> : checking ? <p className="ap-prop-state">Checking the new price…</p> : null}
+    </article>
+    {history}
+  </div>;
+}
+function RepriceItem({ r, board }: { r: ReturnType<typeof repriceRows>[number]; board: BoardApi | null }) {
+  const look = useValue('reprice row', () => { const p: any = board?.getNode(r.cardId as any)?.props; const t = p?.takes?.[p?.take ?? 0];
+    return { poster: t?.poster || (t?.kind === 'image' ? t.url : '') || '', medium: (p?.medium ?? 'image') as GenMedium }; }, [board, r.cardId]);
+  const f = flowById(r.workflow); const name = f ? flowInfo(f, catalogNow()).name : 'Card';
+  return <li className={r.state === 'moved' ? 'price-moved' : r.state === 'skipped' ? 'has-problem' : 'is-done'} data-testid="agent-proposal-item" data-state={r.state} data-price-changed={r.state === 'moved' ? '1' : undefined}>
+    <span className="ap-tc-thumb ap-item-thumb" aria-hidden>{look.poster ? <img src={look.poster} alt="" draggable={false} /> : <span className="ap-tc-ic"><FlowIcon flow={r.workflow} medium={look.medium} size={14} /></span>}</span>
+    <div className="ap-item-t"><b title={r.title}>{r.title}</b><small>{name}{r.model ? ` · ${r.model}` : ''}</small></div>
+    <span className="ap-item-p">{r.state === 'moved' ? <PriceMove was={r.wasUsd != null && r.nowUsd != null && usd3(r.wasUsd) !== usd3(r.nowUsd) ? rowUsd(r.wasUsd, r.quote, false) : null} now={rowUsd(r.nowUsd, r.quote, true)} testId="agent-proposal-row-price" />
+      : <em className={r.state === 'skipped' ? 'ap-item-skip' : undefined}>{r.state === 'started' ? 'Started' : r.state === 'skipped' ? 'Skipped' : 'Didn’t start'}</em>}</span>
+  </li>;
 }
 
 function Starters({ onPick, disabled }: { onPick: (id: StarterId) => void; disabled: boolean }) {
@@ -276,6 +331,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
   const [busy, setBusy] = useState<Record<string, 'go' | 'cancel'>>({});
   const [rerolling, setRerolling] = useState<Record<string, boolean>>({});
   const [sheet, setSheet] = useState(false);
+  const [chipsOpen, setChipsOpen] = useState(false); /* the demo chips: the first CHIPS_SHOWN, then "4 more" opens the rest inline; a pick folds them again */
   const [glow, setGlow] = useState<{ left: number; top: number; width: number; height: number; key: number } | null>(null);
   const [tick, setTick] = useState(0);
   /* pictures added to the next message (2026-11-03): paperclip, paste or a drop on the dock; each becomes an Upload card when you send */
@@ -485,12 +541,13 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
     } catch (e) { toast((e as Error).message, 'error'); }
     finally { setRerolling((m) => { const n = { ...m }; delete n[cardId]; return n; }); }
   };
-  const pickStarter = (id: StarterId) => { const s = STARTERS.find((x) => x.id === id); if (s) void send(s.prompt, id); };
+  const pickStarter = (id: StarterId) => { setChipsOpen(false); const s = STARTERS.find((x) => x.id === id); if (s) void send(s.prompt, id); };
 
   const byId = useMemo(() => new Map(proposals.map((p) => [p.id, p])), [proposals]);
   const plan = useMemo(() => planOf(feed), [feed]);
   const confirm = useMemo(() => (demo.running ? confirmOf(feed) : null), [feed, demo.running]); confirmRef.current = confirm;
-  const shown = feed.filter((e) => e.type !== 'proposal');
+  const pairs = useMemo(() => repricePairs(proposals), [proposals]);
+  const shown = feed.filter((e) => e.type !== 'proposal' && !hiddenByReprice(e, byId, pairs)); /* a price stop is said once, by its card */
   const who = agentConnected ? agent.agentName || 'Your AI' : 'Agent';
   const last = shown.at(-1);
   const waiting = proposals.some((p) => p.status === 'pending');
@@ -543,6 +600,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
             }
             if (e.type === 'activity' && e.meta?.tool === 'add_card' && e.cardId) return <AgentMediaCard key={e.id} board={board} cardId={e.cardId} meta={{ ...e.meta, title: e.text.replace(/^Added “|”$/g, '') }} onFocus={focus} onReroll={(id, t) => void reroll(id, t)} rerolling={!!rerolling[e.cardId]} />;
             if (e.type === 'activity' && e.proposalId && /^Proposed/.test(e.text)) { const p = byId.get(e.proposalId);
+              if (p && isPriceStop(p)) return <RepriceCard key={e.id} origin={p} child={pairs.childOf.get(p.id) ?? null} board={board} busy={busy[pairs.childOf.get(p.id)?.id ?? '']} onDecide={(x, d) => void decide(x, d)} onFocus={focusMany} />;
               return p ? <ProposalCard key={e.id} p={p} busy={busy[p.id]} onDecide={(d) => void decide(p, d)} onFocus={focusMany} /> : <EventRow key={e.id} e={e} onFocus={focus} />; }
             return <EventRow key={e.id} e={e} onFocus={focus} />;
           })}
@@ -554,7 +612,8 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
         <form className="ap-compose" onSubmit={(ev) => { ev.preventDefault(); void send(text); }}>
           {state === 'connected' && <ListenHint boardId={boardId} name={agentLabel} onSetup={() => setSheet(true)} />}
           {state === 'working' && <p className="ap-working" data-testid="agent-working-note" aria-live="polite"><i aria-hidden /><span><b>{workingLine(agentLabel)}.</b> What you type waits until it listens.</span></p>}
-          {!SAMPLE_SITE && !empty && !demo.running && !agentConnected && <div className="ap-chips" aria-label="Starters">{STARTERS.map((s) => <button key={s.id} type="button" className="ap-chip" disabled={sending} onClick={() => pickStarter(s.id)} data-testid={`agent-chip-${s.id}`}>{s.label}</button>)}</div>}
+          {!SAMPLE_SITE && !empty && !demo.running && !agentConnected && <div className="ap-chips" aria-label="Starters">{(chipsOpen ? STARTERS : STARTERS.slice(0, CHIPS_SHOWN)).map((s) => <button key={s.id} type="button" className="ap-chip" disabled={sending} onClick={() => pickStarter(s.id)} data-testid={`agent-chip-${s.id}`}>{s.label}</button>)}
+            {!chipsOpen && STARTERS.length > CHIPS_SHOWN && <button type="button" className="ap-chip ap-chip-more" onClick={() => setChipsOpen(true)} aria-expanded={false} data-testid="agent-chips-more">{STARTERS.length - CHIPS_SHOWN} more</button>}</div>}
           {pics.length > 0 && <div className="ap-atts" role="list" aria-label="Pictures to send" data-testid="agent-attachments">{pics.map((x) => <span key={x.key} role="listitem" className="ap-att" title={x.file.name}>
             <img src={x.preview} alt={pictureName(x.file.name)} draggable={false} /><button type="button" className="ap-att-x" onClick={() => dropPic(x.key)} aria-label={`Remove ${pictureName(x.file.name)}`} data-testid="agent-attachment-remove"><CloseIcon size={11} /></button></span>)}</div>}
           <div className="ap-box">

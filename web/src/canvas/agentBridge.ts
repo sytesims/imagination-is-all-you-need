@@ -30,7 +30,7 @@ import { cardState, missingOf } from './cardState';
 import { batchIdsOf } from './genRun';
 import { compactQuote } from './genRun';
 import { setAgentBudgetHeader, getJob } from '../api';
-import { ownAccountsNow } from '../shared/billing';
+import { ownAccountsNow, usdPrice } from '../shared/billing';
 import { resultMedia } from '../shared/resultMedia';
 import { portInfoOf, outKindOfShape } from './ports';
 import { canFeed, takesLine, PORT_WORDS, settleProposal, type ProposalCard } from './nodeLogic';
@@ -51,7 +51,7 @@ export interface FeedEntry { seq: number; id: string; at: number; type: 'message
   /** your message reached your agent (read), or a channel pushed it into its session (sent) */ readAt?: number; readVia?: 'wait' | 'inbox' | 'channel'; pushedAt?: number }
 export interface ProposalItem { cardId: string; title: string; workflow: string; model: string | null; status: string; usd: number | null; credits: number | null; quote: any; problem: string | null;
   quotedCredits?: number | null; routeId?: string | null; priceChanged?: { wasUsd: number | null; nowUsd: number | null; reason: 'dearer' | 'route' } | null }
-export interface Proposal { id: string; boardId: string; cardIds: string[]; note: string | null; items: ProposalItem[]; totalUsd: number; totalCredits: number; budget: any; boardBudget?: { usd: number; spentUsd: number; leftUsd: number } | null; overBudget: boolean; overByUsd: number | null; reason: string | null; runCardIds?: string[]; skipped?: { cardId: string; title: string; problem: string }[]; failedIds?: string[]; status: 'pending' | 'running' | 'approved' | 'cancelled' | 'failed' | 'drafts'; createdAt: number; decidedAt: number | null; jobIds: string[]; error: string | null }
+export interface Proposal { id: string; boardId: string; cardIds: string[]; note: string | null; items: ProposalItem[]; totalUsd: number; totalCredits: number; budget: any; boardBudget?: { usd: number; spentUsd: number; leftUsd: number } | null; overBudget: boolean; overByUsd: number | null; reason: string | null; runCardIds?: string[]; skipped?: { cardId: string; title: string; problem: string }[]; failedIds?: string[]; /** asks again for rows of that proposal Go stopped on a price change */ repriceOf?: string | null; status: 'pending' | 'running' | 'approved' | 'cancelled' | 'failed' | 'drafts'; createdAt: number; decidedAt: number | null; jobIds: string[]; error: string | null }
 export interface PickAsk { id: string; boardId: string; cardIds: string[]; text: string; chosen: string | null; status: 'waiting' | 'picked' | 'cancelled'; createdAt: number }
 export interface BridgeHandlers {
   onConnection?: (open: boolean) => void;
@@ -84,7 +84,7 @@ export function priceView(q: any) {
   const local = q.localRun === true || cost?.billedTo === 'local';
   const demo = q.demo === true;
   return { usd: usd == null ? null : r4(usd), credits: typeof q.credits === 'number' ? q.credits : null,
-    label: demo ? 'Sample' : local ? 'Free' : usd != null ? `≈ $${usd.toFixed(2)}` : null, demo, local, runnable: q.runnable !== false };
+    label: demo ? 'Sample' : local ? 'Free' : usd != null ? usdPrice(usd, { approx: cost?.estimated !== false }) : null, /* the app's one $ format ($0.039, $0.46) */ demo, local, runnable: q.runnable !== false };
 }
 
 /** The workflow an MCP op names: an id from canvas_list_workflows or the workflow's shown name. */

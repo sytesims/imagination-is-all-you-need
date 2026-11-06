@@ -108,7 +108,7 @@ try {
   assert.deepEqual(after.items[0].priceChanged, { wasUsd: 0.42, nowUsd: 0.5, reason: 'dearer' }, 'the row says Price changed · $0.50 (was $0.42)');
   /* ask again: the page posts a fresh proposal for that row, under the same agent budget */
   const again = await send('POST', `/api/canvas/boards/${board.id}/agent/proposals`, { card_ids: ['shape:a'], note: 'Price changed', reprice_of: prop.id });
-  assert.equal(again.status, 200); assert.equal(again.body.proposal.items[0].usd, 0.5); assert.equal(again.body.proposal.status, 'pending', 'waits for Go again');
+  assert.equal(again.status, 200); assert.equal(again.body.proposal.items[0].usd, 0.5); assert.equal(again.body.proposal.repriceOf, prop.id, 'the ask-again names the approval it replaces (the dock draws the pair as one card)'); assert.equal(again.body.proposal.status, 'pending', 'waits for Go again');
   if (prop.budget) assert.equal(again.body.proposal.budget?.id, prop.budget.id, 'the agent budget carries over');
   priceNow = 0.52; /* +4% after the new approval: still runs */
   assert.equal((await send('POST', `/api/canvas/boards/${board.id}/agent/proposals/${again.body.proposal.id}/decision`, { decision: 'go' })).status, 200);

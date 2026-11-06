@@ -7,6 +7,7 @@
  * jobs route checks the same rule (server/src/shared/priceChange.ts priceLockStop) even if this page didn't.
  */
 import { priceLockStop } from '../../../server/src/shared/priceChange';
+import { fmtUsd } from '../../../server/src/shared/runCost';
 
 /** What was approved: total credits for the card (a Material Swap card: every swatch), the route, the dollars shown, and how many runs. */
 export interface PriceLock { credits: number | null; routeId: string | null; usd: number | null; runs?: number }
@@ -27,7 +28,7 @@ export class PriceChangedError extends Error {
   readonly code = 'price_changed';
   constructor(readonly reason: 'dearer' | 'route', readonly wasUsd: number | null, readonly nowUsd: number | null, readonly fresh: any = null) { super(priceChangedText(reason, wasUsd, nowUsd)); }
 }
-const money = (n: number | null) => (n == null ? '?' : `$${n.toFixed(2)}`);
+const money = (n: number | null) => (n == null ? '?' : fmtUsd(n)); /* the app's one $ format: $0.039 under 10 cents, $0.46 above */
 export function priceChangedText(reason: 'dearer' | 'route', wasUsd: number | null, nowUsd: number | null): string {
   return reason === 'route' ? `Model or place changed · ${money(nowUsd)} (was ${money(wasUsd)})` : `Price changed · ${money(nowUsd)} (was ${money(wasUsd)})`;
 }
