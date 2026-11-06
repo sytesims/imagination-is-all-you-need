@@ -2,11 +2,13 @@
  * The non-generate nodes' shape utils (prompt, upload, note, compare, group, ad layout) and their create helpers. The views are in AuxNodes.tsx;
  * this file holds no React component of its own, so editing a view hot-reloads as a Fast Refresh.
  */
-import { BaseBoxShapeUtil, T, createShapeId, resizeBox, type Editor, type TLResizeInfo, type TLShape, type TLShapeId, type VecLike } from 'tldraw';
+import { BaseBoxShapeUtil, HTMLContainer, T, resizeBox, type TLResizeInfo, type TLShape } from 'tldraw';
+import type { BoardApi, NodeId, Point } from './boardApi';
 import { NODE_DEFS, nodeDefOf, adCardHeight, GROUP_TYPE, PROMPT_TYPE, UPLOAD_TYPE, NOTE_TYPE, COMPARE_TYPE, AD_TYPE, type NodeKind } from './nodeTypes';
 import { AD_SHAPES, asShape } from './adPlatforms';
 import { freeSpot } from './placement';
 import { AuxView } from './AuxNodes';
+import { keepNodeControls } from './nodeFrameModel';
 
 export interface AuxNodeProps { w: number; h: number; text: string; url: string; poster: string; mediaKind: string; label: string; title: string }
 /** The Ad layout card's own words (its picture comes in by arrow): up to 3 headlines, the offer line, the button, the brand ('' = the active one),
@@ -29,35 +31,35 @@ const AD_PROPS = { w: T.number, h: T.number, headlines: T.arrayOf(T.string), off
 export function adProps(): AdNodeProps { const d = NODE_DEFS.ad; return { w: d.defaultW, h: d.defaultH, headlines: ['', '', ''], offer: '', button: 'Shop now', brandId: '', size: '4x5', pick: 0, platforms: ['meta'], layout: 'bottom', safeZones: true }; }
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 
-export interface AuxCreateOpts { at?: VecLike; text?: string; title?: string; media?: { url: string; poster: string; mediaKind: string; label: string }; select?: boolean; w?: number; h?: number }
+export interface AuxCreateOpts { at?: Point; text?: string; title?: string; media?: { url: string; poster: string; mediaKind: string; label: string }; select?: boolean; w?: number; h?: number }
 
 /** Make a prompt / upload / note / compare / group / ad layout node (gen goes through agentApi.createCard). */
-export function createAuxNode(editor: Editor, kind: NodeKind, o: AuxCreateOpts = {}): TLShapeId {
-  if (kind === 'group') return createGroupNode(editor, o);
-  if (kind === 'ad') { const props = { ...adProps(), ...(o.w ? { w: o.w } : {}), ...(o.h ? { h: o.h } : {}) }; const c = o.at ?? freeSpot(editor, props.w, props.h); const id = createShapeId();
-    editor.markHistoryStoppingPoint('new ad layout node'); editor.run(() => editor.createShape({ id, type: AD_TYPE, x: c.x - props.w / 2, y: c.y - props.h / 2, props } as any));
-    if (o.select !== false) editor.select(id); return id; }
+export function createAuxNode(board: BoardApi, kind: NodeKind, o: AuxCreateOpts = {}): NodeId {
+  if (kind === 'group') return createGroupNode(board, o);
+  if (kind === 'ad') { const props = { ...adProps(), ...(o.w ? { w: o.w } : {}), ...(o.h ? { h: o.h } : {}) }; const c = o.at ?? freeSpot(board, props.w, props.h);
+    board.mark('new ad layout node'); let id = ''; board.batch(() => { id = board.addNode({ type: AD_TYPE, x: c.x - props.w / 2, y: c.y - props.h / 2, props }); });
+    if (o.select !== false) board.select([id]); return id; }
   const def = NODE_DEFS[kind]; const base = auxProps(kind);
   const props: AuxNodeProps = { ...base, ...(o.text !== undefined ? { text: o.text } : {}), ...(o.title ? { title: o.title } : {}), ...(o.media ? { url: o.media.url, poster: o.media.poster, mediaKind: o.media.mediaKind, label: o.media.label } : {}), ...(o.w ? { w: o.w } : {}), ...(o.h ? { h: o.h } : {}) };
-  const c = o.at ?? freeSpot(editor, props.w, props.h); const id = createShapeId();
-  editor.markHistoryStoppingPoint(`new ${kind} node`);
-  editor.run(() => editor.createShape({ id, type: def.type, x: c.x - props.w / 2, y: c.y - props.h / 2, props } as any));
-  if (o.select !== false) editor.select(id);
+  const c = o.at ?? freeSpot(board, props.w, props.h);
+  board.mark(`new ${kind} node`);
+  let id = ''; board.batch(() => { id = board.addNode({ type: def.type, x: c.x - props.w / 2, y: c.y - props.h / 2, props: props as any }); });
+  if (o.select !== false) board.select([id]);
   return id;
 }
 
 /** A group frame around the selected nodes (or an empty frame in the middle of the view), sent behind them. */
-export function createGroupNode(editor: Editor, o: AuxCreateOpts = {}): TLShapeId {
-  const def = NODE_DEFS.group; const picked = editor.getSelectedShapes().filter(s => nodeDefOf(s.type) && s.type !== GROUP_TYPE);
+export function createGroupNode(board: BoardApi, o: AuxCreateOpts = {}): NodeId {
+  const def = NODE_DEFS.group; const picked = board.selection().map(id => board.getNode(id)).filter((s): s is NonNullable<typeof s> => !!s && !!nodeDefOf(s.type) && s.type !== GROUP_TYPE);
   let box: { x: number; y: number; w: number; h: number };
-  const bounds = picked.map(s => editor.getShapePageBounds(s.id)).filter(Boolean) as { minX: number; minY: number; maxX: number; maxY: number }[];
+  const bounds = picked.map(s => board.boundsOf(s.id)).filter(Boolean) as { minX: number; minY: number; maxX: number; maxY: number }[];
   if (bounds.length) {
     const minX = Math.min(...bounds.map(b => b.minX)), minY = Math.min(...bounds.map(b => b.minY)), maxX = Math.max(...bounds.map(b => b.maxX)), maxY = Math.max(...bounds.map(b => b.maxY));
     box = { x: minX - 28, y: minY - 58, w: Math.max(def.minW, maxX - minX + 56), h: Math.max(def.minH, maxY - minY + 86) };
-  } else { const c = o.at ?? editor.getViewportPageBounds().center; box = { x: c.x - def.defaultW / 2, y: c.y - def.defaultH / 2, w: def.defaultW, h: def.defaultH }; }
-  const id = createShapeId(); editor.markHistoryStoppingPoint('new group');
-  editor.run(() => { editor.createShape({ id, type: GROUP_TYPE, x: box.x, y: box.y, props: { ...auxProps('group'), w: box.w, h: box.h } } as any); editor.sendToBack([id]); });
-  if (o.select !== false) editor.select(id);
+  } else { const c = o.at ?? board.viewportBounds().center; box = { x: c.x - def.defaultW / 2, y: c.y - def.defaultH / 2, w: def.defaultW, h: def.defaultH }; }
+  board.mark('new group');
+  let id = ''; board.batch(() => { id = board.addNode({ type: GROUP_TYPE, x: box.x, y: box.y, props: { ...auxProps('group'), w: box.w, h: box.h } }); board.toBack([id]); });
+  if (o.select !== false) board.select([id]);
   return id;
 }
 
@@ -72,7 +74,7 @@ function makeAuxUtil(kind: NodeKind, type: string) {
       /* an ad layout's height follows its ad's shape (nodeTypes.adCardHeight) */
       const a = kind === 'ad' ? AD_SHAPES[asShape(shape.props.size)] : null;
       return { ...n, props: { ...n.props, w, h: a ? adCardHeight(w, a.w / a.h) : clamp(n.props.h, d.minH, d.maxH) } }; }
-    component(shape: any) { return <AuxView shape={shape} />; }
+    component(shape: any) { return <HTMLContainer style={{ pointerEvents: kind === 'group' ? 'none' : 'all' }} onPointerDown={keepNodeControls} onPointerUp={keepNodeControls}><AuxView shape={shape} /></HTMLContainer>; }
     getIndicatorPath(shape: any) { const p = new Path2D(); p.roundRect(0, 0, shape.props.w || NODE_DEFS[kind].defaultW, shape.props.h || NODE_DEFS[kind].defaultH, 18); return p; }
   };
 }
