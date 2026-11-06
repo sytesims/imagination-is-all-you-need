@@ -50,6 +50,13 @@ const inputMedia = (i: ToolInputSpec): Kind | null => {
 };
 const lockedOf = (t: ToolDef): Record<string, string> => (t.app as any)?.gallery?.locked ?? {};
 const firstType = (v: unknown) => { try { return JSON.parse(String(v ?? '[]'))[0]; } catch { return undefined; } };
+/** A click on the frame as the swap tools submit it ("x,y[,t]", 0..1): jobs store it as {x, y, t}. Anything else → null (not sent back). */
+export const pointField = (v: unknown, withT: boolean): string | null => {
+  if (typeof v === 'string') return /^[\d.]+,[\d.]+(,[\d.]+)?$/.test(v) ? v : null;
+  const p = v as { x?: unknown; y?: unknown; t?: unknown } | null; if (!p || typeof p !== 'object' || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
+  const n = (x: number, d: number) => String(Number(x.toFixed(d)));
+  return `${n(p.x as number, 4)},${n(p.y as number, 4)}${withT ? `,${n(Number.isFinite(p.t) ? (p.t as number) : 0, 2)}` : ''}`;
+};
 const str = (v: unknown): string | null => v == null || v === '' ? null : typeof v === 'boolean' ? (v ? '1' : '0') : typeof v === 'object' ? JSON.stringify(v) : String(v);
 
 /**
@@ -116,6 +123,8 @@ export function formFromInput(t: ToolDef, j: Job, opts: { sameSeed: boolean }) {
       case 'prompt': v = typedPrompt(t, j); break; // apps that compose their prompt keep the typed text in appPrompt
       case 'seed': v = opts.sameSeed ? i.seed : null; break;
       case 'shots': v = i.appFields?.shots ?? (Array.isArray(i.shots) ? JSON.stringify(i.shots.map((x: any) => x.id)) : null); break; // Shots: the picked angle ids (JSON), not the per-angle prompt objects
+      case 'point': case 'pointA': case 'pointB': v = pointField(i[s.name] ?? i.fields?.[s.name] ?? (s.name === 'point' ? null : i.cast?.[s.name === 'pointA' ? 0 : 1]?.point), s.name === 'point'); break; // the who-click (Object / Person Swap; Two-person swap keeps it in cast) comes back as the "x,y[,t]" it was sent as
+      case 'whoA': case 'whoB': v = i[s.name] ?? i.fields?.[s.name] ?? i.cast?.[s.name === 'whoA' ? 0 : 1]?.who; break;
       case 'enhance': v = i.enhance ?? (i.enhancedPrompt != null ? true : null); break;
       case 'style': v = i.style ?? null; break;
       case 'n': case 'count': v = i[s.name] ?? i.n ?? i.count; break;
