@@ -44,7 +44,7 @@ Other handy ways to pick tests:
 npm test -- --only queue          # every file whose name contains "queue"
 npm test -- --only '/^router-/'   # a regular expression, between slashes
 npm test -- --list --changed      # just print which files would run
-npm test -- --changed --skip-heavy  # what a pull request runs in CI (leaves out the heavy SERIAL tests it doesn't touch)
+npm test -- --changed --skip-heavy  # a quick local check (leaves out the heavy SERIAL tests it doesn't touch); CI runs everything
 ```
 
 ## Run the full suite
@@ -91,26 +91,30 @@ Run the full suite locally (`npm test`) before every push. That is the check we 
 
 ## What CI does
 
-Two workflows run on GitHub Actions. A newer push to the same pull request (or to `main`) cancels the older run.
+Two workflows run on GitHub Actions. A newer push to the same pull request cancels the older run; every push to `main` or
+`v2` gets its own complete run (never cancelled by a later push).
 
 | When | `CI` (`.github/workflows/ci.yml`) | `tests` (`.github/workflows/test.yml`) |
 | --- | --- | --- |
-| Pull request | Build and start on Ubuntu, macOS and Windows; the one-line install on Ubuntu only, or on all three when the PR touches the installer (`scripts/get.*`, `scripts/install.*`), setup or launcher scripts, `package.json` / `package-lock.json` files or `ci.yml` | Only the tests the PR's changes touch (`--changed`, compared with the PR's base), without the heavy `SERIAL` tests (`model-health`, `model-health-ui`, `model-runon`, `pb-1018b`) unless the PR changes what they check (routing, providers, prices, video model code: `HEAVY_ABOUT` in the runner) or the test itself (`--skip-heavy`), on as many machines as that needs (a sixth of the suite each, up to 6). None for a docs-only PR. The full suite when the runner maps the change to every test (package files, the runner) or `test.yml` changed |
-| Push to `main`, nightly at 03:00 UTC, or by hand (Actions → Run workflow) | Everything: Build and start and the one-line install on all three systems | The full suite on 6 machines, heavy tests included |
+| Pull request | Build and start on Ubuntu, macOS and Windows; the one-line install on Ubuntu only, or on all three when the PR touches the installer (`scripts/get.*`, `scripts/install.*`), setup or launcher scripts, `package.json` / `package-lock.json` files or `ci.yml` | The full suite on 6 machines, heavy tests included, for a pull request into any branch (stacked PRs too) |
+| Push to `main` or `v2`, nightly at 03:00 UTC, or by hand (Actions → Run workflow) | Everything: Build and start and the one-line install on all three systems | The full suite on 6 machines, heavy tests included |
 
 `CI` also runs, on every push and pull request: the MCP server's build and its tests that need no running app, plus the
 catalogue drift test with its own mock API (`mcp/test/{toolsets,accounts,parity,dist-fresh,catalog}.ts`), and the script
 tests outside `server/test` (`node --test scripts/*.test.mjs`: Mac launcher, Mac app build, CI smoke) on Ubuntu and macOS.
 `mcp/test/e2e.ts` and the MCP tests that need a sandbox API stay manual.
 
-`--changed` is a guess (see above), so a pull request can pass with a test it didn't pick still broken; the full run
-on `main` and the nightly run catch that. The nightly run has its own group, so pushes to `main` never cancel it.
+Pull requests run the full suite because `--changed` is a guess (see above): PR runs that used it let real breaks through
+to `main`/`v2`. The nightly run has its own group, so pushes never cancel it.
 
 How a `tests` machine runs:
 
 1. Each installs Node 24, the npm packages (cached between runs), and `ffmpeg`, `lsof`, `ss`, and Python 3 with
-   Pillow and NumPy (the server's colour match uses them).
-2. Each runs `npm test -- [--changed --skip-heavy --base HEAD^1] --shard i/N --jobs 2 --timeout 600`. The machines have 2 cores and
+   Pillow and NumPy (the server's colour match uses them). `ffmpeg` is a pinned static build checked by its sha256 and
+   cached between runs (`scripts/ci/install-tools.sh`); Ubuntu's package mirror, which stalled runs for up to 40 minutes,
+   is only a time-limited fallback.
+2. Each runs `npm test -- --shard i/6 --jobs 2 --timeout 600`. Shards are balanced by `scripts/test-times.json` (CI
+   times); a `SERIAL` test counts at its full time, so `model-health` (about 16 minutes) gets a machine to itself. The machines have 2 cores and
    are several times slower than a recent Mac, so it runs 2 at a time with longer limits (a `--timeout` above 240 also
    scales the per-test limits in the runner's `LONG` list by the same factor).
 3. If a test fails, the end of its log is printed in the job output (a collapsible group per test), and the whole

@@ -5,7 +5,7 @@
 //   npm test                         every test, N at a time (N = CPU cores - 2)
 //   npm test -- --only queue         only files whose name contains "queue" (a plain substring or a /regex/)
 //   npm test -- --changed            only tests touched by your changes vs main (see changedTests below)
-//   npm test -- --skip-heavy         leave out the SERIAL tests unless your changes touch what they check (HEAVY_ABOUT; CI pull requests)
+//   npm test -- --skip-heavy         leave out the SERIAL tests unless your changes touch what they check (HEAVY_ABOUT; a quick local check)
 //   npm test -- --jobs 4 | --serial  how many at once (--serial = 1)
 //   npm test -- --shard 2/4          the 2nd quarter of the files (CI splits the suite over machines with this)
 //   npm test -- --timeout 300        seconds before a test is stopped (default 240)
@@ -30,7 +30,7 @@ const SERIAL = {
   'model-health-ui.e2e.ts': 'video model health: its own API + Vite + headless Chromium, ~150 click-throughs',
 };
 
-// What each SERIAL test checks: --skip-heavy (pull requests in CI) keeps it only when a changed file matches (or the test itself
+// What each SERIAL test checks: --skip-heavy (a quick local run; CI runs everything) keeps it only when a changed file matches (or the test itself
 // changed). Their import graphs reach the whole server, so --changed alone picks them for almost any server change.
 const ROUTES_PRICES = /^server\/src\/(routing\/|providers\/|providers\.ts$|models\.ts$|ledger\.ts$|spendGuard\.ts$|billing(Mode)?\.ts$|hosted(Requests)?\.ts$|comfyRouter\.ts$|shared\/(pricing|hostedPrices|runCost|policyBilling|modelCatalog|modelIds|routeNames|priceText|priceChange)\.ts$)/;
 const VIDEO_MODELS = /^server\/(src\/shared\/(video[A-Za-z]*|clipLimits)\.ts$|test\/_model-health\.ts$)/;
