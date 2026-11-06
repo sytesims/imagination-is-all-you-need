@@ -32,6 +32,7 @@ import { jobs } from './jobs.js';
 import { jobSpendView, jobThumb } from './billing.js';
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
+import { fmtUsd } from './shared/runCost.js';
 import { boardItemCount, boardDocError, isV2 } from './shared/boardDoc.js';
 
 export interface CanvasBoard { id: string; name: string; createdAt: number; updatedAt: number; rev: number; snapshot: unknown | null;
@@ -126,7 +127,7 @@ export function boardBudgetView(id: string): { usd: number; spentUsd: number; le
   const b = getBoard(id); const usd = b ? budgetOf(b) : null; if (usd == null) return null;
   const spent = boardSpend(id).estUsd; return { usd, spentUsd: spent, leftUsd: Math.round(Math.max(0, usd - spent) * 1e4) / 1e4 };
 }
-const money = (n: number) => `$${n.toFixed(2)}`;
+const money = fmtUsd; /* the shared rule: 3 decimals under $0.10, else 2 */
 /** A run (or a proposal) of `estUsd` from this board: over its budget → the refusal (nothing started, nothing charged); else null. */
 export function boardBudgetBlock(boardId: string | null | undefined, estUsd: number): { code: 'board_budget'; message: string; budgetUsd: number; spentUsd: number; leftUsd: number; neededUsd: number } | null {
   if (!boardId) return null; const v = boardBudgetView(boardId); if (!v || !(estUsd > 0)) return null;

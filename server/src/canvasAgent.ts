@@ -44,6 +44,7 @@ import { tagDemoCard, demoProviderOf } from './shared/demoMedia.js';
 import { config } from './config.js';
 import { freeSamples } from './routing/select.js';
 import { LOCAL_FREE } from './shared/modelIds.js';
+import { fmtUsd } from './shared/runCost.js';
 import { toolDefaults, toolModes } from './routing/defaults.js';
 import { canvasDefaultModel } from './shared/cloudDefaults.js';
 import { validateBatch, batchLine, BATCH_MAX, type BatchItem } from './shared/canvasBatch.js';
@@ -464,7 +465,7 @@ export function priceOfQuote(q: any): PriceView | null {
   const local = q.localRun === true || cost?.billedTo === 'local';
   const demo = q.demo === true;
   return { usd: usd == null ? null : r4(usd), credits: typeof q.credits === 'number' ? q.credits : null,
-    label: demo ? 'Sample' : local ? 'Free' : usd != null ? `≈ $${usd.toFixed(2)}` : null, demo, local, runnable: q.runnable !== false };
+    label: demo ? 'Sample' : local ? 'Free' : usd != null ? `≈ ${fmtUsd(usd)}` : null, demo, local, runnable: q.runnable !== false };
 }
 /** The saved board (either format: a version-1 tldraw snapshot is read through boardDocOf) as the same node list the live page returns
  *  (used when no page is open). Nodes in draw order; links are a card's inputs. */
@@ -595,13 +596,13 @@ async function proposeRun(boardId: string, op: { card_ids: string[]; note?: stri
   const boardBudget = boardBudgetView(boardId); const boardBlock = boardBudgetBlock(boardId, totalUsd);
   const over = agentOver || !!boardBlock;
   const reason = agentOver
-    ? `This is $${overBy!.toFixed(2)} over the $${(budgetViewOut!.remainingUsd ?? 0).toFixed(2)} left in the agent budget. Nothing will run.`
-    : boardBlock ? `This is $${Math.max(0, boardBlock.spentUsd + totalUsd - boardBlock.budgetUsd).toFixed(2)} over the $${boardBlock.leftUsd.toFixed(2)} left in this board's budget. Nothing will run.`
+    ? `This is ${fmtUsd(overBy!)} over the ${fmtUsd(budgetViewOut!.remainingUsd ?? 0)} left in the agent budget. Nothing will run.`
+    : boardBlock ? `This is ${fmtUsd(Math.max(0, boardBlock.spentUsd + totalUsd - boardBlock.budgetUsd))} over the ${fmtUsd(boardBlock.leftUsd)} left in this board's budget. Nothing will run.`
     : !runs.length ? (skipped.length === 1 ? skipped[0].problem : `None of these cards can run here. ${skipped[0].problem}`) : null;
   const proposal: Proposal = { id: uid('prop'), boardId, cardIds: op.card_ids, note: op.note?.trim() || null, items, totalUsd, totalCredits,
     budget: budgetViewOut, overBudget: over, overByUsd: agentOver ? overBy : boardBlock ? r4(boardBlock.spentUsd + totalUsd - boardBlock.budgetUsd) : overBy, reason, boardBudget, runCardIds: runs.map((i) => i.cardId), skipped, ...(op.repriceOf ? { repriceOf: op.repriceOf } : {}), status: !runs.length && !over ? 'drafts' : 'pending', createdAt: now(), decidedAt: null, jobIds: [], error: null };
   rememberProposal(proposal);
-  addActivity(boardId, `Proposed ${runs.length} run${runs.length === 1 ? '' : 's'} · $${totalUsd.toFixed(2)}${skipped.length ? ` · ${skipped.length} skipped` : ''}`, { proposalId: proposal.id, meta: { tool: 'propose_run', by } });
+  addActivity(boardId, `Proposed ${runs.length} run${runs.length === 1 ? '' : 's'} · ${fmtUsd(totalUsd)}${skipped.length ? ` · ${skipped.length} skipped` : ''}`, { proposalId: proposal.id, meta: { tool: 'propose_run', by } });
   return { ok: true, result: { proposal } };
 }
 
@@ -672,7 +673,7 @@ export function priceWords(p: Pick<Proposal, 'items' | 'totalUsd' | 'runCardIds'
   const run = new Set(p.runCardIds ?? []); const quotes = p.items.filter((i) => !i.problem && (!run.size || run.has(i.cardId))).map((i) => i.quote);
   if (quotes.length && quotes.every((q) => q?.demo === true)) return 'Sample: nothing is charged';
   if (p.totalUsd <= 0) return quotes.length && quotes.every((q) => q?.localRun === true || q?.cost?.billedTo === 'local') ? LOCAL_FREE : 'Free';
-  return `≈ $${p.totalUsd.toFixed(2)}`;
+  return `≈ ${fmtUsd(p.totalUsd)}`;
 }
 const firstSentence = (t: string) => (t.split(/(?<=[.!?])\s/)[0] ?? t).replace(/[.!?]+$/, '').trim();
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -978,7 +979,7 @@ async function runShortFilm(run: DemoRun, plan: ShortPlan) {
     if (clipIds.length && !videoOn) {
       const q = await sendOp(boardId, { kind: 'propose_run', card_ids: clipIds, note: 'quote only' }, OP_TIMEOUT_MS);
       const items: any[] = q.ok && Array.isArray(q.result?.items) ? q.result.items : []; const usd = r4(items.filter((x) => !x.problem).reduce((n, x) => n + (typeof x.usd === 'number' ? x.usd : 0), 0));
-      const words = items.length && items.every((x) => x.quote?.demo === true) ? 'Sample' : usd > 0 ? `≈ $${usd.toFixed(2)}` : items.length && items.every((x) => x.quote?.localRun === true || x.quote?.cost?.billedTo === 'local') ? LOCAL_FREE : 'Free';
+      const words = items.length && items.every((x) => x.quote?.demo === true) ? 'Sample' : usd > 0 ? `≈ ${fmtUsd(usd)}` : items.length && items.every((x) => x.quote?.localRun === true || x.quote?.cost?.billedTo === 'local') ? LOCAL_FREE : 'Free';
       say(`${plural(clipIds.length, 'clip card')} wired to your picks, priced at ${words} together. ${plan.videoOff}`, { cardId: clipIds[0] });
     }
     const runNow = [...(videoOn ? clipIds : []), voiceId, musicId].filter(Boolean);
