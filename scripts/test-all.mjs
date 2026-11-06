@@ -5,7 +5,7 @@
 //   npm test                         every test, N at a time (N = CPU cores - 2)
 //   npm test -- --only queue         only files whose name contains "queue" (a plain substring or a /regex/)
 //   npm test -- --changed            only tests touched by your changes vs main (see changedTests below)
-//   npm test -- --skip-heavy         leave out the SERIAL tests unless your changes touch what they check (HEAVY_ABOUT; CI pull requests)
+//   npm test -- --skip-heavy         leave out the SERIAL tests unless your changes touch what they check (HEAVY_ABOUT; a quick local check)
 //   npm test -- --jobs 4 | --serial  how many at once (--serial = 1)
 //   npm test -- --shard 2/4          the 2nd quarter of the files (CI splits the suite over machines with this)
 //   npm test -- --timeout 300        seconds before a test is stopped (default 240)
@@ -19,7 +19,7 @@ import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path'
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SERVER = path.join(REPO, 'server'); const TEST_DIR = path.join(SERVER, 'test');
-const TIMES_FILE = path.join(REPO, 'scripts', 'test-times.json'); // last known seconds per test: longest start first, shards balance by it
+const TIMES_FILE = path.join(REPO, 'scripts', 'test-times.json'); // seconds per test on a CI runner (2 at a time): longest start first, shards balance by it
 
 // Tests that must run alone, after the parallel part. Keep this short and say why.
 const SERIAL = {
@@ -30,7 +30,7 @@ const SERIAL = {
   'model-health-ui.e2e.ts': 'video model health: its own API + Vite + headless Chromium, ~150 click-throughs',
 };
 
-// What each SERIAL test checks: --skip-heavy (pull requests in CI) keeps it only when a changed file matches (or the test itself
+// What each SERIAL test checks: --skip-heavy (a quick local run; CI runs everything) keeps it only when a changed file matches (or the test itself
 // changed). Their import graphs reach the whole server, so --changed alone picks them for almost any server change.
 const ROUTES_PRICES = /^server\/src\/(routing\/|providers\/|providers\.ts$|models\.ts$|ledger\.ts$|spendGuard\.ts$|billing(Mode)?\.ts$|hosted(Requests)?\.ts$|comfyRouter\.ts$|shared\/(pricing|hostedPrices|runCost|policyBilling|modelCatalog|modelIds|routeNames|priceText|priceChange)\.ts$)/;
 const VIDEO_MODELS = /^server\/(src\/shared\/(video[A-Za-z]*|clipLimits)\.ts$|test\/_model-health\.ts$)/;
@@ -80,9 +80,11 @@ if (opt.skipHeavy) { const changed = [...changedFiles()].map((f) => path.relativ
   files = files.filter((f) => !SERIAL[f] || changed.some((c) => c === `server/test/${f}` || (HEAVY_ABOUT[f] ?? []).some((re) => re.test(c)))); }
 const times = (() => { try { return JSON.parse(fs.readFileSync(TIMES_FILE, 'utf8')); } catch { return {}; } })();
 const est = (f) => times[f] ?? (f.endsWith('.e2e.ts') ? 20 : 5);
-if (opt.shard) { // greedy: biggest first onto the lightest shard, so every machine gets about the same total time
-  const [i, n] = opt.shard; const bins = Array.from({ length: n }, () => ({ t: 0, f: [] }));
-  for (const f of [...files].sort((a, b) => est(b) - est(a) || a.localeCompare(b))) { const b = bins.reduce((x, y) => (y.t < x.t ? y : x)); b.f.push(f); b.t += est(f); }
+if (opt.shard) { // greedy: biggest first onto the lightest shard, so every machine gets about the same wall time.
+  // A SERIAL test runs alone (its full time); the rest share --jobs slots (about est/jobs each). So a SERIAL test longer than a
+  // fair share (model-health on CI) gets a shard to itself instead of adding its time to a full one. Every shard must pass the same --jobs.
+  const [i, n] = opt.shard; const bins = Array.from({ length: n }, () => ({ t: 0, f: [] })); const cost = (f) => (SERIAL[f] ? est(f) : est(f) / opt.jobs);
+  for (const f of [...files].sort((a, b) => cost(b) - cost(a) || a.localeCompare(b))) { const b = bins.reduce((x, y) => (y.t < x.t ? y : x)); b.f.push(f); b.t += cost(f); }
   files = bins[i - 1].f.sort();
 }
 if (opt.list) { console.log(files.join('\n')); process.exit(0); }

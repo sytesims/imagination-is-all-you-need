@@ -9,7 +9,7 @@ import { deviceWhere } from './eta';
 
 export type RunChoice = 'gpu' | 'comfy' | 'direct';
 /** "Your own keys": the providers the sheet asks for, in order (ids as in /api/settings/providers). */
-export const DIRECT_KEYS: readonly [string, string][] = [['bfl', 'Black Forest Labs'], ['minimax', 'MiniMax'], ['ltx', 'LTX'], ['openai', 'OpenAI'], ['google', 'Google Gemini API'], ['byteplus', 'BytePlus'], ['fal', 'fal'], ['replicate', 'Replicate']];
+export const DIRECT_KEYS: readonly [string, string][] = [['bfl', 'Black Forest Labs'], ['minimax', 'MiniMax'], ['ltx', 'LTX'], ['openai', 'OpenAI'], ['google', 'Google Gemini API'], ['byteplus', 'BytePlus'], ['fal', 'fal'], ['replicate', 'Replicate'], ['sunra', 'Sunra'], ['kie', 'kie.ai · reseller, may change without notice']];
 
 export type RunChoiceCopy = { id: RunChoice; title: string; line: string; meta: string; tag?: string };
 

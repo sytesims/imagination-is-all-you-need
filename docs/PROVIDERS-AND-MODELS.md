@@ -53,12 +53,48 @@ If nothing is ready, the mock backend runs a free, labelled sample ("Sample outp
 | Comfy Cloud open-workflow jobs | Implemented for registered builders/runners, including LTX and H3 workflows. See [cloud workflows](../workflows/cloud/README.md) for sources and prerequisites. Fixture validation and a previous real result do not verify every route or account. |
 | Comfy Router and supported partner/API nodes | Implemented per model/route (`server/src/comfyRouter.ts`, `server/src/routing/routerRun.ts` and registered cloud partner runners). A key, entitlement, compatible inputs and an available executor are still required; this is not a blanket real-run claim. |
 | fal, Replicate | Wired but not yet run with a real key |
+| Sunra | Wired against its documented API and tested with recorded responses; not yet run with a real key. Hidden until a Sunra key is set |
 | Official lab APIs: **Black Forest Labs** (FLUX 3 Image / Klein / Video / Upscaler, FLUX.2 [flex], FLUX.2 [klein] 4B / 9B), **MiniMax** (H3 / H3-Max video, Speech 2.8 HD / Turbo, image-01), **LTX** (LTX-2.5 Pro / Fast, LTX-2.3 Fast), **OpenAI** (GPT Image 2, 2.5 Flare / Sunburst: generate, edit, inpaint), **Google Gemini API** (Nano Banana 2.1 / 2 / Pro, Nano Banana 2 Lite), **BytePlus ModelArk** (Seedance 2.0 on Generate Video, Seedance 2.0 Fast / Mini / 2.5, Seedream 5.0 Pro / Flash) | Wired (`server/src/providers/direct.ts`, routes in `server/src/routing/directRoutes.ts`). Tested against fake lab servers; not yet run with a real key. Outputs are saved right away (lab links expire); LTX runs at most 2 jobs at once and waits out "busy" answers. BytePlus refuses Seedance jobs with reference videos (it only takes public links) |
 | MiniMax Speech direct | Implemented through the direct-route registry and speech adapter. Requires the appropriate provider key/access; no new real-provider validation is implied by this documentation update. |
 | DashScope direct | Connection configuration exists, but no direct executor was identified in this review. Do not assume a saved key enables a route. |
 | Your own ComfyUI and this-computer tools | Registered local workflows and media-processing steps are implemented where their runner exists. Hardware/model/node readiness and per-route verification vary. A cloud result or cross-platform startup CI does not prove local GPU execution. |
 
 Under the hood, Comfy Cloud jobs use Comfy Cloud's official API v2 (jobs and assets over HTTPS), and a local ComfyUI is driven through its HTTP and WebSocket API.
+
+### Sunra
+
+[Sunra](https://sunra.ai) runs models at the makers' list prices on a fal-shaped queue (submit, poll, result, cancel). It is built in (`place-sunra` in `server/profiles/desktop.yml`) but stays out of sight until you add a Sunra key in **Settings → Connections** (`OPENHIGGSFIELD_SUNRA_KEY`). Then **Sunra** shows up in Run on for:
+
+| Model | Sunra model | Price (checked 2026-11-03) |
+|---|---|---|
+| Seedance 2.5 | `bytedance/seedance-2.5` | $10.70 / 1M video tokens (480p, 720p), $11.70 (1080p): about $0.11 / $0.23 / $0.57 per second |
+| Seedance 2.0 Fast | `bytedance/seedance-2.0-fast` | $5.29 / 1M video tokens: about $0.05 / $0.11 per second (480p / 720p) |
+| MiniMax H3 | `minimax/minimax-h3` | $0.038 per second (480p), $0.08 (768p) |
+| Nano Banana 2 | `google/gemini-3.1-flash-image` | $0.067 / $0.101 / $0.15 per image (1K / 2K / 4K) |
+| GPT Image 2.5 Flare | `openai/gpt-image-2.5-flare` | OpenAI token rates, quoted as an estimate; the settled charge is recorded after each run |
+
+- Text to video, a first frame, or first and last frames. Reference clips and brush edits run on Comfy Cloud.
+- Your files go up through Sunra's own upload (a public, hard-to-guess link on `assets.sunra.ai`).
+- Sunra says failed runs aren't charged. Sunra adds 5% to each API top-up, which our prices don't include.
+- Sources: [queue](https://docs.sunra.ai/multimodal/queue), [uploads](https://docs.sunra.ai/platform/file-upload), [errors](https://docs.sunra.ai/platform/errors), and the public pricing API (`https://api.sunra.ai/v1/pricing/model/<model>/endpoint/<endpoint>`). Each price row carries its source and date.
+- A different address (a proxy, a test server): `config: place-sunra: baseUrl:` in your profile, or `OPENHIGGSFIELD_PLACE_SUNRA_BASE_URL`.
+
+### Installable place plugins
+
+Some places ship in the code but are **off** until you add them to your profile. They never show up otherwise.
+
+**kie.ai · reseller, may change without notice** (`place-kie`). kie.ai resells many models at low prices. It is a reseller, not the model makers' partner, its terms cover its website only, and its models and prices can change without notice. Use it knowing that.
+
+To turn it on:
+
+1. Copy `server/profiles/desktop.yml` to your own file (for example `my.yml`), add a line `  - place-kie` above `  - legacy`, and start the app with `OPENHIGGSFIELD_PROFILE=/path/to/my.yml`.
+2. Add your kie.ai key in **Settings → Connections** (`OPENHIGGSFIELD_KIE_KEY`).
+
+Then Run on offers it for Seedance 2.5 ($0.14 / $0.315 / $0.79 per second at 480p / 720p / 1080p) and Nano Banana 2 ($0.04 / $0.06 / $0.09 per image at 1K / 2K / 4K), prices from [kie.ai's model pages](https://kie.ai/pricing), checked 2026-11-06.
+- kie.ai answers errors as HTTP 200 with a code in the body; the app reads each one (out of credits, bad input, maintenance…).
+- It keeps results for 14 days; the app saves each one as soon as it's ready.
+- It has no cancel call: Cancel stops the app waiting, but the task may still finish and bill there.
+- Failed tasks use no credits, per its docs. Sources: [task details](https://docs.kie.ai/market/common/get-task-detail), [uploads](https://docs.kie.ai/file-upload-api/upload-file-stream).
 
 ### Retiring and removed models
 

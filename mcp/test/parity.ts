@@ -9,6 +9,7 @@ process.env.OPENHIGGSFIELD_AGENT_BUDGET_ID = 'pinned';
 process.env.OPENHIGGSFIELD_MCP_TOOLSETS = 'core';
 process.env.OPENHIGGSFIELD_MCP_PERMISSIONS = '';
 process.env.OPENHIGGSFIELD_MCP_DEFAULT = 'allow';
+process.env.OPENHIGGSFIELD_MCP_SPEND = 'allow'; // paid runs ask by default
 const { createServer, view } = await import('../src/server.js');
 const { withBudget } = await import('../src/api.js');
 const { limitsOf, modelCard } = await import('../src/catalog.js');

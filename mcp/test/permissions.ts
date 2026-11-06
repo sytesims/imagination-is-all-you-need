@@ -7,6 +7,8 @@ import { ElicitRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TOOLSETS } from '../src/toolsets.js';
+import { loadPermissions, permFor, SPEND } from '../src/permissions.js';
+import { withSpendAsk } from '../src/setup.js';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 /* never the live app: with no mock API named (or the live :8787 named), skip. A run against :8787 once started a real Comfy Cloud job. */
 if (!process.env.OPENHIGGSFIELD_API || /:8787\b/.test(process.env.OPENHIGGSFIELD_API)) { console.log('skip: set OPENHIGGSFIELD_API to a mock sandbox API (never the live :8787)'); process.exit(0); }
@@ -55,4 +57,16 @@ const r5: any = await c.callTool({ name: 'generate_image', arguments: { prompt: 
     const aa = await client('accept'); const r3: any = await aa.callTool({ name: 'run', arguments: await withQuote(aa) }, undefined, { timeout: 120000 }); ok('spend ask: accept → runs', !r3.isError && /"status": "done"/.test(txt(r3)), txt(r3)); await aa.close();
   } else { console.log('SKIP paid-run approval (no paid quote on this API: start it with OPENHIGGSFIELD_MOCK_KEYS=1)'); await d.close(); }
 }
+// ---- default spend tier is ask (no SPEND env, no file): fails closed without elicitation, with how to allow ----
+{ const cfg = loadPermissions({} as any); ok('loadPermissions: spend defaults to ask', cfg.spend === 'ask' && permFor(cfg, 'run') === 'ask' && permFor(cfg, 'generate_video') === 'ask' && permFor(cfg, 'list_tools') === 'allow', cfg);
+  ok('every SPEND tool asks by default (run, retry, legacy story tools)', SPEND.every((t) => permFor(cfg, t) === 'ask') && ['run', 'retry', 'create_story', 'retry_story', 'generate_image'].every((t) => SPEND.includes(t)));
+  ok('OPENHIGGSFIELD_MCP_SPEND=allow opts out', permFor(loadPermissions({ OPENHIGGSFIELD_MCP_SPEND: 'allow' } as any), 'run') === 'allow');
+  const m = withSpendAsk({ stdio: { command: 'node', env: { OPENHIGGSFIELD_API: 'x' } }, npx: { command: 'npx', env: { OPENHIGGSFIELD_MCP_SPEND: 'allow' } } });
+  ok('setup writes OPENHIGGSFIELD_MCP_SPEND=ask, keeps a value the server set', m.stdio.env.OPENHIGGSFIELD_MCP_SPEND === 'ask' && m.stdio.env.OPENHIGGSFIELD_API === 'x' && m.npx.env.OPENHIGGSFIELD_MCP_SPEND === 'allow', m);
+  ok('OPENHIGGSFIELD_MCP_ALLOW=* allows spend too', permFor(loadPermissions({ OPENHIGGSFIELD_MCP_ALLOW: '*' } as any), 'retry') === 'allow');
+  const e = { ...env }; delete (e as any).OPENHIGGSFIELD_MCP_SPEND; delete (e as any).OPENHIGGSFIELD_MCP_ASK; const d = await client('none', e);
+  const r: any = await d.callTool({ name: 'generate_video', arguments: { prompt: 'a lighthouse' } });
+  ok('default: a spend tool without elicitation is refused, says how to allow', r.isError && /doesn't support elicitation/.test(txt(r)) && /OPENHIGGSFIELD_MCP_SPEND=allow/.test(txt(r)), txt(r));
+  const rr: any = await d.callTool({ name: 'retry', arguments: { id: 'nope' } }); ok('default: retry is gated too', rr.isError && /OPENHIGGSFIELD_MCP_SPEND=allow/.test(txt(rr)), txt(rr));
+  const desc = (await d.listTools()).tools.find((t) => t.name === 'run')?.description ?? ''; ok('default: run is marked permission: ask', /permission: ask/.test(desc)); await d.close(); }
 console.log(failed ? `${failed} FAILED` : 'ALL PASS'); process.exit(failed ? 1 : 0);

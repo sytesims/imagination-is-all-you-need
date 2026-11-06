@@ -30,7 +30,7 @@ import { getPrefs } from './prefs.js';
 import { runOnOfRoute, RUN_ON_LABELS } from '../shared/modelIds.js';
 import { afterSettle } from './state.js';
 import '../services/placesBuiltin.js'; // the built-in places when nothing booted (scripts, tests)
-import { places, errorClassOf, type PlaceRunner, type PlaceCost, type RemoteRef } from '../services/places.js';
+import { places, errorClassOf, PlaceError, placeErrorFields, type PlaceRunner, type PlaceCost, type RemoteRef } from '../services/places.js';
 import { withDownloadRetry, httpError } from '../hostedPoll.js';
 import { persistJob } from '../jobs.js';
 import { canPickUp, cannotPickUp, cancelRemote } from './reattach.js';
@@ -204,6 +204,7 @@ export async function runRouted(job: Job, tool: ToolDef, opts: { only?: string; 
     { const Q = await import('../queue.js'); await Q.moveLane(job); } // 2026-10-25: a move to a route on another place (local ↔ cloud) changes the job's queue lane
     let keepRemote: 'download' | 'lost_contact' | null = null;
     try { await execute(job, tool, r, a); } catch (e) { err = e instanceof Error ? e.message : String(e); timeout = !!(e as any)?.timeout;
+      if (e instanceof PlaceError) { const pf = placeErrorFields(e); if (pf) { job.reasonCode = pf.reasonCode; job.errorType = pf.errorType as any; } } // a place's own sorted failure (Sunra, kie)
       if ((e as any)?.busy) { job.reasonCode = 'queue_full'; job.errorType = 'temporary'; err = stillBusyMessage((e as any).busyTries ?? 1); } // provider stayed busy after the capped retries (busyRetry.ts)
       if ((e as any)?.downloadFailed) { keepRemote = 'download'; job.reasonCode = 'download_failed'; job.errorType = 'temporary'; }
       else if ((e as any)?.lostContact) { keepRemote = 'lost_contact'; job.reasonCode = 'lost_contact'; job.errorType = 'temporary'; }

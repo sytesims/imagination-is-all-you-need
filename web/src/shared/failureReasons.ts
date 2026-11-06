@@ -110,7 +110,7 @@ export const EXTRA: Record<string, FailReason> = {
   unknown:        { key: 'unknown', mood: 'generic', title: 'That didn’t work', line: 'Try again. If it keeps happening, open Details.', actions: ['retry', 'details'] },
 };
 
-const KEY_OWNER: [RegExp, string, string][] = [[/^fal:/, 'fal', 'direct'], [/^replicate:/, 'Replicate', 'direct'], [/bfl|flux/, 'Black Forest Labs', 'bfl'], [/^direct:.*minimax/, 'MiniMax', 'minimax'], [/^direct:.*ltx/, 'LTX', 'ltx'], [/^direct:(openai\/|direct-openai)/, 'OpenAI', 'openai'], [/^direct:(google\/|direct-gemini)/, 'Google Gemini API', 'google'], [/^direct:(byteplus\/|direct-seed|direct-byteplus)/, 'BytePlus', 'byteplus']];
+const KEY_OWNER: [RegExp, string, string][] = [[/^sunra:/, 'Sunra', 'sunra'], [/^kie:/, 'kie.ai · reseller, may change without notice', 'kie'], [/^fal:/, 'fal', 'direct'], [/^replicate:/, 'Replicate', 'direct'], [/bfl|flux/, 'Black Forest Labs', 'bfl'], [/^direct:.*minimax/, 'MiniMax', 'minimax'], [/^direct:.*ltx/, 'LTX', 'ltx'], [/^direct:(openai\/|direct-openai)/, 'OpenAI', 'openai'], [/^direct:(google\/|direct-gemini)/, 'Google Gemini API', 'google'], [/^direct:(byteplus\/|direct-seed|direct-byteplus)/, 'BytePlus', 'byteplus']];
 /** The provider whose key a route uses, and its Settings anchor. */
 export const keyOwnerOf = (route: string | null | undefined): { name: string; anchor: string } => {
   const r = String(route ?? ''); const m = KEY_OWNER.find(([re]) => re.test(r)); return m ? { name: m[1], anchor: `conn-${m[2]}` } : { name: 'Comfy Cloud', anchor: 'conn-comfy' };
