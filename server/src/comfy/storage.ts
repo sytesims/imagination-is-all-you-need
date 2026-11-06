@@ -21,7 +21,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { routerBase, RouterError } from '../comfyRouter.js';
-import { keyValue } from '../routing/keys.js';
+import { places } from '../services/places.js';
 
 const MIME: Record<string, string> = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif',
   '.mp4': 'video/mp4', '.mov': 'video/quicktime', '.webm': 'video/webm', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.m4a': 'audio/mp4', '.ogg': 'audio/ogg', '.flac': 'audio/flac' };
@@ -39,7 +39,7 @@ export const setStorageFetch = (f: typeof fetch | null, sleep: ((ms: number) => 
 const cache = new Map<string, { value: string; at: number }>(); const inflight = new Map<string, Promise<string>>();
 export const clearStorageCache = () => { cache.clear(); inflight.clear(); };
 
-const comfyKey = () => keyValue({ envKey: 'COMFY_API_KEY', envAliases: [] });
+const comfyKey = () => places.comfyKey(); // through a Comfy place (services/places.ts)
 const fetchOf = () => testFetch ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
 const sleepOf = () => testSleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
 const fail = (msg: string, status: number | null, detail: string, temporary = false) =>
