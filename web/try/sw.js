@@ -200,7 +200,9 @@ function priceFor(s, toolId, q) {
   const byEngine = (m.runsOn ?? []).filter(r => (r.engines ?? []).includes(engine)); // an engine that runs in one place only names the place (the server routes it there)
   const own = engine === (m.primaryEngine ?? m.engines?.[0]); // no place asked or saved: the server's own pick for these settings ('' in the grid)
   const runOn = q.runOn || (saved?.runOn && saved.runOn !== 'auto' ? saved.runOn : null) || (!own && byEngine.length === 1 ? byEngine[0].id : '');
-  const want = q.route || (runOn && saved?.runOn === runOn ? saved.route : null) || '';
+  const asked = q.route || (runOn && saved?.runOn === runOn ? saved.route : null) || '';
+  // a route names its engine after the colon: the server prices the engine the page asks for, so a saved route of another engine is not used
+  const want = asked && engine && asked.includes(':') && asked.split(':').slice(1).join(':') !== engine ? '' : asked;
   const combo = [want, ''].map(r => `${toolId}|${m.key}|${runOn}|${r}`).find(k => g.tpl[k]); if (!combo) return null; const route = combo.split('|')[3];
   let key = cellKey(toolId, m.key, runOn, route, sp, q);
   if (!(key in g.cells)) { const q2 = { ...q }; // a length the model doesn't make: the nearest it does (the server snaps the same way)
