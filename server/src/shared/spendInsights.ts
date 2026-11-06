@@ -7,6 +7,7 @@
  *  - shareByTool / overQuoteByTool: what the notices may say; tipLines builds the words (warnings by dollars, then the tip), only when the data supports them.
  *  - tileSpans: which mosaic tiles grow (2×2 / 2×1) by cost.
  */
+import { fmtUsd } from './runCost.js';
 export type SpendPeriod = '7d' | 'month' | 'all';
 export const SPEND_PERIODS: SpendPeriod[] = ['7d', 'month', 'all'];
 export const isSpendPeriod = (v: unknown): v is SpendPeriod => v === '7d' || v === 'month' || v === 'all';
@@ -104,7 +105,7 @@ export type Notice =
   | { tone: 'warn'; kind: 'over'; head: string; text: string; usd: number; jobId: string }
   | { tone: 'warn'; kind: 'failed'; head: string; text: string; usd: number }
   | { tone: 'tip'; kind: 'tip'; head: string; text: string; usd: number };
-const usd2 = (n: number) => `$${n < 0.1 ? n.toFixed(3).replace(/0$/, '') : n.toFixed(2)}`;
+const usd2 = fmtUsd; /* the app's one $ format (runCost.fmtUsd) */
 const times = (k: number) => `${k >= 10 ? Math.round(k) : Math.round(k * 10) / 10}×`;
 /** Today's quote for the same settings now matches what was billed (from 15 % under to 50 % over: an 'up to' quote may sit above the bill),
  *  so the price table was wrong then and has been corrected. A quote far from the bill compares unlike settings: no claim. */

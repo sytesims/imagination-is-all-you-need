@@ -21,7 +21,7 @@ try {
     const est = S.shareReceipt({ status: 'done', runOn: 'comfy-cloud', place: { label: 'Comfy · Comfy Router' }, cost: 32, spend: { billedTo: 'comfy', estUsd: 0.32, actualUsd: null }, startedAt: T0, finishedAt: T0 + 41_000 }, { model: 'Kling 3.0' });
     assert.equal(est?.text, '≈ $0.32 · Kling 3.0 · Comfy Cloud · 41 s', 'an estimate always carries ≈');
     const fromCredits = S.shareReceipt({ status: 'done', runOn: 'fal', place: { label: 'fal' }, cost: 4 }, { model: 'FLUX.2' });
-    assert.equal(fromCredits?.text, '≈ $0.04 · FLUX.2 · fal', 'credits (1 = $0.01) without a spend row; no time when unknown');
+    assert.equal(fromCredits?.text, '≈ $0.040 · FLUX.2 · fal', 'credits (1 = $0.010) without a spend row; no time when unknown');
     const spendActual = S.shareReceipt({ status: 'done', runOn: 'bfl', place: { label: 'Black Forest Labs' }, cost: 5, spend: { estUsd: 0.05, actualUsd: 0.045 } }, { model: 'FLUX.2 [pro]' });
     assert.equal(spendActual?.cost, '$0.045'); assert.equal(spendActual?.kind, 'actual');
     const sample = S.shareReceipt({ status: 'done', runOn: 'comfy-cloud', place: { label: 'Comfy · Comfy Cloud' }, cost: 0, isSample: true, startedAt: T0, finishedAt: T0 + 3000 }, { model: 'LTX-2.5 22B' });
