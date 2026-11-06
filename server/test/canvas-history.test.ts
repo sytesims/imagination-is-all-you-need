@@ -57,5 +57,31 @@ const job = (board: any, id: string) => board.batch(() => board.patchNode(id, { 
 { const h = new History(); h.mark('a'); h.write('n', null, { id: 'x', props: {} }, true); h.write('n', null, { id: 'r', props: { jobId: 'j' } }, false);
   const u = h.undo()!; assert.deepEqual(u.apply.map((a) => a.id), ['x']); assert.equal(h.canRedo(), true); h.write('n', null, { id: 'y', props: {} }, true); assert.equal(h.canRedo(), false);
   ok('ignored writes are never in a step; a new change clears redo'); }
+// ---- undo during a run (release 1): job-owned fields are never in a step; a whole card put back carries their latest values ----
+const run = (board: any, id: string, jobId = 'job_r') => board.batch(() => board.patchNode(id, { props: { status: 'running', jobId } }), { history: 'ignore' });
+// 8. undoing the creation of a RUNNING card asks first; "no" leaves it; "yes" cancels the run and removes it; redo brings it back with its run
+{ const store = new BoardStore({ nodes: [], links: [] }); const asked: string[][] = []; const cancelled: string[] = []; const restored: string[][] = []; let answer = false;
+  const board: any = makeRfBoard(store, { rf: null, el: null, inputs: new Set() }, { confirmRemoveRunning: async (ids) => { asked.push(ids); return answer; }, cancelRun: (id) => cancelled.push(id), onRestore: (ids) => restored.push(ids) });
+  const id = gen(board); run(board, id);
+  board.undo(); await new Promise((r) => setTimeout(r, 5)); assert.deepEqual(asked, [[id]], 'it asks'); assert.ok(board.getNode(id), '"no" keeps the card'); assert.equal(board.getNode(id).props.status, 'running');
+  answer = true; board.undo(); await new Promise((r) => setTimeout(r, 5)); assert.equal(board.getNode(id), null, '"yes" removes it'); assert.deepEqual(cancelled, [id], 'and cancels its run');
+  /* the job ends while the card is gone: nothing to write to. Redo puts the card back still following its job (the page re-watches it) */
+  board.redo(); const n = board.getNode(id); assert.ok(n); assert.equal(n.props.status, 'running', 'its run state, not the draft it was made as'); assert.equal(n.props.jobId, 'job_r');
+  assert.deepEqual(restored.at(-1), [id], 'the page hears it came back (and follows the job again)');
+  ok('undo of a running card asks "Cancel the run and remove?"; redo brings it back following its job'); }
+// 9. delete a card while it runs, the result lands on nothing; undo the delete: the card comes back with its latest job fields, never stuck
+{ const { board } = mk(); const id = gen(board); run(board, id); board.batch(() => board.patchNode(id, { props: { status: 'done', takes: [{ url: '/files/a.png', kind: 'image' }], take: 0 } }), { history: 'ignore' });
+  run(board, id, 'job_2'); /* run it again */ board.mark('delete'); board.removeNodes([id]);
+  board.undo(); const n: any = board.getNode(id); assert.equal(n.props.jobId, 'job_2'); assert.equal(n.props.takes.length, 1, 'the versions it had come back too');
+  ok('undoing a delete brings the card back with its versions and its current run'); }
+// 10. a person's edit made while the card ran, then undo: only the edit goes back; status / takes / jobId are never undone
+{ const { board } = mk(); const id = gen(board); run(board, id); board.mark('rename'); board.patchNode(id, { meta: { name: 'Koi' }, props: { status: 'running', take: 0 } });
+  board.batch(() => board.patchNode(id, { props: { status: 'done', takes: [{ url: '/files/k.png', kind: 'image' }] } }), { history: 'ignore' });
+  board.undo(); const n: any = board.getNode(id); assert.equal(n.meta.name, undefined, 'the rename went back'); assert.equal(n.props.status, 'done', 'the result stays'); assert.equal(n.props.takes.length, 1);
+  board.redo(); assert.equal(board.getNode(id).meta.name, 'Koi'); assert.equal(board.getNode(id).props.status, 'done');
+  ok('job-owned fields are never part of an undo step'); }
+// 11. undo-creation of a card whose run already FINISHED still keeps it (no question asked)
+{ const store = new BoardStore({ nodes: [], links: [] }); let asked = 0; const board: any = makeRfBoard(store, { rf: null, el: null, inputs: new Set() }, { confirmRemoveRunning: async () => { asked++; return true; } });
+  const id = gen(board); run(board, id); job(board, id); board.undo(); await new Promise((r) => setTimeout(r, 5)); assert.equal(asked, 0); assert.ok(board.getNode(id)); ok('a finished card is kept without asking'); }
 console.log('canvas-history: all ok');
 process.exit(0); // the board modules keep a timer (catalog refresh) alive

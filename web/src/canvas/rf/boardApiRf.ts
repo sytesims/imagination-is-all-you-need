@@ -35,8 +35,22 @@ export function defaultPropsOf(type: string): Record<string, any> {
 /** How the board reaches React Flow (set once it is up) and its DOM element. */
 export interface RfPort { rf: ReactFlowInstance | null; el: HTMLElement | null; inputs: Set<(e: BoardInputEvent) => void> }
 
-export function makeRfBoard(store: BoardStore, port: RfPort): BoardApi {
+/** What the board hands back to the page around undo / redo (RfBoard wires them; tests can too). */
+export interface RfHooks {
+  /** an Undo would remove cards that are running right now: true = cancel their runs and remove them */
+  confirmRemoveRunning?: (ids: string[]) => Promise<boolean>;
+  /** cancel the run on this card (after the person said yes) */
+  cancelRun?: (id: string) => void;
+  /** undo / redo put these cards back whole (a running one follows its job again) */
+  onRestore?: (ids: string[]) => void;
+}
+
+export function makeRfBoard(store: BoardStore, port: RfPort, hooks: RfHooks = {}): BoardApi {
   const S = () => store.s;
+  /** put back what the history gave, then tell the page which cards came back whole */
+  const applyStep = (u: { apply: import('./history').Apply[] } | null) => { if (!u) return; store.apply(u.apply);
+    const back = u.apply.filter((a) => a.kind === 'n' && a.whole).map((a) => a.id).filter((id) => S().nodes[id]); if (back.length) hooks.onRestore?.(back); };
+  const running = (id: string) => { const p = S().nodes[id]?.props as any; return p?.status === 'running' && !!p?.jobId; };
   /** read a node through its signal, so useValue re-renders on its change */
   const node = (id: string): SNode | null => { if (!id) return null; store.nodeSig(id).get(); return S().nodes[id] ?? null; };
   const doc = () => store.docSig.get();
@@ -134,8 +148,12 @@ export function makeRfBoard(store: BoardStore, port: RfPort): BoardApi {
     mark: (label) => store.history.mark(label),
     bailToMark: (m) => { store.apply(store.history.bailTo(m)); },
     batch: (fn, o) => { store.tx(fn, o?.history === 'ignore' ? 'ignore' : 'record'); },
-    undo: () => { const u = store.history.undo(); if (u) store.apply(u.apply); },
-    redo: () => { const r = store.history.redo(); if (r) store.apply(r.apply); },
+    /* Undo during a run (release 1): undoing the step that made a card that is running asks first ("Cancel the run and remove?"); a card a
+       finished run wrote to stays (history.ts keeps it), and job-owned fields are never part of a step */
+    undo: () => { const live = store.history.undoRemoves().filter(running);
+      if (live.length && hooks.confirmRemoveRunning) { void hooks.confirmRemoveRunning(live).then((yes) => { if (!yes || !live.every((id) => store.history.undoRemoves().includes(id))) return; /* the board moved on while asking */ for (const id of live) hooks.cancelRun?.(id); applyStep(store.history.undo({ remove: live })); }); return; }
+      applyStep(store.history.undo()); },
+    redo: () => applyStep(store.history.redo()),
 
     onChange: (cb, scope) => store.zs.subscribe((n, p) => {
       if (scope === 'board' ? n.nodes !== p.nodes || n.order !== p.order || n.links !== p.links : n.camera !== p.camera || n.selection !== p.selection || n.hovered !== p.hovered) cb();

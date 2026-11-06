@@ -21,6 +21,13 @@ export type Apply = { kind: Kind; id: string; whole?: Entity | null; fields?: Re
 
 /** Fields that only a run writes: an ignored write to any of these makes the node a kept result. */
 export const JOB_FIELDS = ['props.takes', 'props.status', 'props.jobId'];
+/** Job-owned fields (2026-11-06, release 1): a run (or a pick of its versions) writes them, never a person's edit. They are NEVER put in an
+ *  undo step, and whenever a step puts a whole card back (undo a delete, redo a creation) it carries their latest values, so an undo during a
+ *  run can't leave a card stuck "running" with an old job, and a redo brings back the versions made meanwhile. */
+export const JOB_OWNED = ['props.status', 'props.jobId', 'props.takes', 'props.take', 'props.error', 'props.quote', 'props.runs', 'props.ratio', 'props.model', 'props.maker', 'meta.batch'];
+const JOB_SET = new Set(JOB_OWNED);
+const pathGet = (e: Entity, path: string) => { const dot = path.indexOf('.'); return dot < 0 ? e[path] : e[path.slice(0, dot)]?.[path.slice(dot + 1)]; };
+const pathHas = (e: Entity, path: string) => { const dot = path.indexOf('.'); const o = e[path.slice(0, dot)]; return !!o && typeof o === 'object' && path.slice(dot + 1) in o; };
 const WHOLE = '*';
 const MAX_STEPS = 100;
 
@@ -63,6 +70,8 @@ export class History {
   private done: Step[] = []; private undone: Step[] = []; private open: Step = this.fresh('');
   /** nodes whose job fields were written outside history: undoing their creation leaves them */
   private kept = new Set<string>();
+  /** the latest job-owned fields of every node seen (outside the steps: a whole card put back gets these) */
+  private live = new Map<string, Record<string, unknown>>();
   private fresh(label: string): Step { return { id: `mark:${++seq}`, label, changes: new Map() }; }
 
   /** Start a new step; returns its mark. */
@@ -71,6 +80,7 @@ export class History {
   /** One write to one entity. `record` false: a job / ignored write (only remembered when it touches job fields). */
   write(kind: Kind, before: Entity | null, after: Entity | null, record: boolean) {
     const id = (before ?? after)?.id; if (!id) return;
+    if (kind === 'n' && after) { const m: Record<string, unknown> = {}; for (const f of JOB_OWNED) if (pathHas(after, f)) m[f] = pathGet(after, f); this.live.set(id, m); }
     if (!record) {
       if (kind === 'n' && after && (!before || JOB_FIELDS.some((f) => { const d = fieldDiff(before, after); return f in d; }))) this.kept.add(id);
       return;
@@ -84,16 +94,24 @@ export class History {
       return;
     }
     if (whole && whole.before === null) { whole.after = after; return; } /* made in this step: redo puts back its latest version */
-    for (const [f, [b, a]] of Object.entries(fieldDiff(before, after))) { const c = m.get(f); if (c) c.after = a; else m.set(f, { before: b, after: a }); }
+    for (const [f, [b, a]] of Object.entries(fieldDiff(before, after))) { if (kind === 'n' && JOB_SET.has(f)) continue; const c = m.get(f); if (c) c.after = a; else m.set(f, { before: b, after: a }); }
+    if (!m.size) this.open.changes.delete(k); /* only job-owned fields changed: nothing to undo */
   }
 
+  /** The cards the next Undo would take off the board (it made them), kept results included: the board asks before removing a running one. */
+  undoRemoves(): string[] {
+    const s = this.open.changes.size ? this.open : [...this.done].reverse().find((x) => x.changes.size); if (!s) return [];
+    const out: string[] = []; for (const [k, m] of s.changes) { const [kind, id] = split(k); const w = m.get(WHOLE); if (kind === 'n' && w && w.before === null && w.after !== null) out.push(id); }
+    return out;
+  }
   canUndo() { return this.open.changes.size > 0 || this.done.some((s) => s.changes.size > 0); }
   canRedo() { return this.undone.length > 0; }
   /** What to apply to go back one step (null: nothing to undo). */
-  undo(): { label: string; apply: Apply[] } | null {
+  /** `remove`: cards to take off even though a run wrote to them (the person said "Cancel the run and remove"). */
+  undo(o?: { remove?: Iterable<string> }): { label: string; apply: Apply[] } | null {
     if (this.open.changes.size) this.push(this.open); this.open = this.fresh('');
     let s = this.done.pop(); while (s && !s.changes.size) s = this.done.pop(); /* marks with nothing in them (a click that didn't drag) */
-    if (!s) return null; this.undone.push(s); return { label: s.label, apply: this.reverse(s) };
+    if (!s) return null; this.undone.push(s); return { label: s.label, apply: this.reverse(s, new Set(o?.remove ?? [])) };
   }
   /** What to apply to go forward again (null: nothing to redo). */
   redo(): { label: string; apply: Apply[] } | null {
@@ -109,7 +127,9 @@ export class History {
     for (const s of this.done.splice(i).reverse()) out.push(...this.reverse(s));
     this.undone = []; return out;
   }
-  clear() { this.done = []; this.undone = []; this.open = this.fresh(''); this.kept.clear(); }
+  clear() { this.done = []; this.undone = []; this.open = this.fresh(''); this.kept.clear(); this.live.clear(); }
+  /** a whole node put back, with its job-owned fields as they are now (never the step's old copy) */
+  private withLive(kind: Kind, e: Entity | null): Entity | null { if (!e || kind !== 'n') return e; const m = this.live.get(e.id); return m ? withFields(e, m) : e; }
   /** the open step's label and how many are done (for checks) */
   get depth() { return this.done.length + (this.open.changes.size ? 1 : 0); }
 
@@ -119,13 +139,13 @@ export class History {
     this.done.push(s); while (this.done.length > MAX_STEPS) this.done.shift();
   }
   /** links first when putting back (their nodes come back before them, see the store), fields after the whole entity */
-  private reverse(s: Step): Apply[] {
+  private reverse(s: Step, remove: Set<string> = new Set()): Apply[] {
     const out: Apply[] = [];
     for (const [k, m] of [...s.changes].reverse()) {
       const [kind, id] = split(k); const whole = m.get(WHOLE);
       if (whole) {
-        if (whole.before === null && kind === 'n' && this.kept.has(id)) continue; /* a result landed on it since: it stays */
-        out.push({ kind, id, whole: whole.before as Entity | null });
+        if (whole.before === null && kind === 'n' && this.kept.has(id) && !remove.has(id)) continue; /* a result landed on it since: it stays */
+        out.push({ kind, id, whole: this.withLive(kind, whole.before as Entity | null) });
       }
       const fields: Record<string, unknown> = {}; for (const [f, c] of m) if (f !== WHOLE) fields[f] = c.before;
       if (Object.keys(fields).length && !(whole && whole.before === null)) out.push({ kind, id, fields });
@@ -138,7 +158,7 @@ export class History {
       const [kind, id] = split(k); const whole = m.get(WHOLE);
       const fields: Record<string, unknown> = {}; for (const [f, c] of m) if (f !== WHOLE) fields[f] = c.after;
       if (Object.keys(fields).length && !(whole && whole.before === null)) out.push({ kind, id, fields });
-      if (whole) out.push({ kind, id, whole: whole.after as Entity | null });
+      if (whole) out.push({ kind, id, whole: this.withLive(kind, whole.after as Entity | null) });
     }
     return out;
   }

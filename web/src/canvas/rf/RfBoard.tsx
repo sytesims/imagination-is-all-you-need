@@ -16,7 +16,9 @@ import { ReactFlow, ReactFlowProvider, MiniMap, SelectionMode, type Edge, type E
 import '@xyflow/react/dist/base.css';
 import { useStore } from 'zustand';
 import { useToast } from '../../shared/Toast';
-import { getJob } from '../../api';
+import { getJob, cancelJob } from '../../api';
+import { askConfirm } from '../../shared/Dialog';
+import { wheelZoomFactor, zoomAround } from './zoom';
 import { posterOf3d } from '../../shared/model3d';
 import { OPEN_3D_EVENT, open3d, runCard } from '../canvasEvents';
 import { BoardProvider, ToolHookContext, ViewTuneContext, useValue, type BoardApi, type ToolButtonState } from '../boardApi';
@@ -28,7 +30,7 @@ import { CameraMotion } from '../CameraMotion';
 import { BoardBackground } from '../BoardBackground';
 import { bindHand } from '../agentHand';
 import { lastFlowNow, setBoardCtx, exposeForDev, createCard } from '../agentApi';
-import { reattachRunning } from '../genRun';
+import { reattachRunning, watchJob, batchIdsOf } from '../genRun';
 import { GEN_TYPE, RESULT_TYPE } from '../nodeTypes';
 import { CARD_H } from '../cardModel';
 import { OVERVIEW_ZOOM } from '../cardLook';
@@ -145,6 +147,14 @@ function Flow({ saved, store, board, port, drawerOpen, setDrawerOpen, onProject 
     for (const [t, f] of all) el.addEventListener(t, f, { capture: true, passive: true });
     return () => { for (const [t, f] of all) el.removeEventListener(t, f, { capture: true } as any); }; }, [port]);
 
+  /* Ctrl / ⌘ + wheel (and a trackpad pinch, which the browser sends as ctrl + wheel) zooms on our own curve (zoom.ts), around the pointer */
+  useEffect(() => { const el = port.el; if (!el) return;
+    const wheel = (e: WheelEvent) => { if (!(e.ctrlKey || e.metaKey)) return; if ((e.target as HTMLElement | null)?.closest?.('.nowheel')) return;
+      e.preventDefault(); e.stopPropagation(); const r = el.getBoundingClientRect();
+      const next = zoomAround(board.camera(), { x: e.clientX - r.left, y: e.clientY - r.top }, wheelZoomFactor(e.deltaY, e.deltaMode, r.height), MIN_ZOOM, MAX_ZOOM);
+      board.setCamera(next); onMoveEnd(null, { x: next.x * next.z, y: next.y * next.z, zoom: next.z }); };
+    el.addEventListener('wheel', wheel, { capture: true, passive: false }); return () => el.removeEventListener('wheel', wheel, { capture: true } as any); }, [port, board]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     store.tx(() => {
       let sel: Set<string> | null = null;
@@ -199,7 +209,15 @@ export default function RfBoard({ board: saved, onSaveState, onSaved, drawerOpen
   const loaded = useMemo(() => { const doc = boardDocOf(saved.snapshot); const dropped = Object.values(doc.dropped ?? {}).reduce((a, b) => a + b, 0); return { ...docToStore(doc), dropped }; }, [saved.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const [store] = useState(() => new BoardStore({ nodes: loaded.nodes, links: loaded.links, camera: readCam(saved.id) ?? undefined }));
   const [port] = useState<RfPort>(() => ({ rf: null, el: null, inputs: new Set() }));
-  const api = useMemo(() => makeRfBoard(store, port), [store, port]);
+  const api = useMemo(() => makeRfBoard(store, port, {
+    confirmRemoveRunning: (ids) => askConfirm({ title: ids.length > 1 ? `Cancel ${ids.length} runs and remove the cards?` : 'Cancel the run and remove?',
+      body: ['Undo would take away a card that is still running. Its run is cancelled first; anything it already made stays in Assets.'], confirm: ids.length > 1 ? 'Cancel and remove them' : 'Cancel and remove', danger: true }),
+    cancelRun: (id) => { const n = store.s.nodes[id]; const jobs = [String((n?.props as any)?.jobId ?? ''), ...batchIdsOf(n as any)].filter(Boolean); for (const j of new Set(jobs)) void cancelJob(j).catch(() => undefined); },
+    /* a card put back whole while its run is going (or ended meanwhile) follows its job again, so it never stays "running" */
+    onRestore: (ids) => { for (const id of ids) { const n = store.s.nodes[id]; const p = n?.props as any; if (n?.type !== GEN_TYPE || p?.status !== 'running') continue;
+      if (p.jobId) watchJob(apiRef.current!, p.jobId); for (const j of batchIdsOf(n as any)) watchJob(apiRef.current!, j); } },
+  }), [store, port]);
+  const apiRef = useRef<BoardApi | null>(null); apiRef.current = api;
   const look = useMemo(() => { const o = rfOptions(); return { takes: o.takes ?? 'ring', text: o.text ?? 'clean', joins: o.links === 'curve' ? 'curve' : o.joins ?? 'ports', handles: o.handles ?? 'all' }; }, []);
 
   useEffect(() => { const f = (e: Event) => { const id = (e as CustomEvent).detail?.jobId; if (!id) return;
