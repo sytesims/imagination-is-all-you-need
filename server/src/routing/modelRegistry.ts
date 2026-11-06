@@ -28,7 +28,8 @@ import { lifecycleFields } from '../shared/lifecycle.js';
 import { weightsGate, requirementsFor } from '../hardware/requirements.js';
 import { MAC_WEIGHTS_REASON } from '../hardware/macWeights.js';
 import { LOCAL_UNREACHABLE_REASON } from './runnable.js';
-import { MODELS, MAKERS, makerOf, RUN_ON_IDS, RUN_ON_LABELS, RUN_ON_BILLED_TO, engineModelKey, ENGINE_MODEL, TOOL_SPLITS, engineSplits, isLtxMove, normRunOn, runOnOfRoute, runOnOfRouteId, aKey, comfyHowLine, placeOf, type ModelDef, type RunOn, type InputRule } from '../shared/modelIds.js';
+import { VECTOR_PLACE_DETAIL, PLACE_ENGINE } from '../shared/imageVector.js';
+import { NEEDS_COMFYUI_TEXT, MODELS, MAKERS, makerOf, RUN_ON_IDS, RUN_ON_LABELS, RUN_ON_BILLED_TO, engineModelKey, ENGINE_MODEL, TOOL_SPLITS, engineSplits, isLtxMove, normRunOn, runOnOfRoute, runOnOfRouteId, aKey, comfyHowLine, placeOf, type ModelDef, type RunOn, type InputRule } from '../shared/modelIds.js';
 import { CATALOGUE, THREE_D_BEST_FOR, variantsOf, type AudioKind } from '../shared/modelRank.js';
 import { IMAGE_CAPS } from '../shared/imageCaps.js';
 import { VIDEO_LIMITS, ROUTE_LIMITS } from '../tools/h3/videoCaps.js';
@@ -251,7 +252,7 @@ export function catalogueNameOf(toolId: string, engine: string, served: string, 
 export type RunOnStatus = 'ready' | 'sample' | 'needs-key' | 'off' | 'not-installed' | 'coming-soon' | 'unavailable';
 /** The run menu's mini line for the Local row (hardware plan §3.5): the memory the model needs and its time on this computer (learned, else reported). */
 const hereOf = (f: any) => (f ? { memGB: typeof f.recommendedVramGB === 'number' ? f.recommendedVramGB : null, etaSeconds: typeof f.etaSeconds === 'number' && f.etaSeconds > 0 ? f.etaSeconds : null,
-  etaSource: f.etaRange?.source ?? f.eta?.source ?? null, samples: Number(f.etaRange?.samples ?? f.eta?.samples ?? 0) || 0, untested: !!f.variant && f.variant.verified === false } : null);
+  etaSource: f.etaRange?.source ?? f.eta?.source ?? null, samples: Number(f.etaRange?.samples ?? f.eta?.samples ?? 0) || 0, untested: !!f.variant && f.variant.verified === false, ...(f.verdict === 'slow' ? { slow: true } : {}) /* runs, but slowly here (fit slow): the row says so, never a plain Ready */ } : null);
 /** 2026-10-25: a local route whose model files a Mac can't load (hardware/macWeights.ts, fit unsupported_weights): never runs here, so no Download. */
 const macBlockedOpt = (o: any) => o.kind === 'local' && o.fit?.reasonCode === 'unsupported_weights';
 const statusOf = (o: any): RunOnStatus => o.comingSoon || o.reasonCode === 'not_wired' || /coming soon/i.test(String(o.reason ?? '')) ? 'coming-soon'
@@ -299,7 +300,9 @@ function setupOf(runsOn: any[]): { runOn: string; label: string; action: any; cr
 }
 /** One status per model row (MODEL-PICKER-REVIEW §5b.4), from one source: the model's state at the pre-selected place, else what setting it up takes. */
 /** A local-only model's row while ComfyUI isn't set up or running (rowStatusOf): what it needs, in plain words. */
-export const NEEDS_COMFYUI_TEXT = 'Needs ComfyUI on this computer';
+export { NEEDS_COMFYUI_TEXT };
+/** A model none of whose places this app runs yet (rowStatusOf). */
+export const NOT_WIRED_ROW_TEXT = 'Not ready in this app yet';
 export type RowStatus = { kind: 'ready' | 'sample' | 'add_key' | 'download' | 'turn_on' | 'install_node' | 'set_up' | 'coming_soon' | 'unavailable'; text: string; runOn: string | null; credits: number | null; missingBytes?: number | null };
 export function rowStatusOf(m: { preselect?: any; runsOn: any[]; setup?: any[] }): RowStatus {
   const p = m.preselect; const row = p ? m.runsOn.find((r) => r.id === p.runOn) : null;
@@ -308,7 +311,9 @@ export function rowStatusOf(m: { preselect?: any; runsOn: any[]; setup?: any[] }
   if (m.runsOn.length && m.runsOn.every((r) => r.status === 'coming-soon')) return { kind: 'coming_soon', text: 'Coming soon', runOn: null, credits: null };
   const s = m.setup ?? []; if (!s.length) return { kind: 'unavailable', text: m.runsOn.some((r) => r.id === 'local' && r.reasonCode === 'unsupported_weights') ? MAC_WEIGHTS_REASON
     /* a local-only model while no ComfyUI answers (a fresh install): say what it needs, not "Not available here" */
-    : m.runsOn.some((r) => r.id === 'local' && (r.reasonCode === 'local_unreachable' || r.action?.kind === 'set_up_gpu')) ? NEEDS_COMFYUI_TEXT : 'Not available here', runOn: null, credits: null };
+    : m.runsOn.some((r) => r.id === 'local' && (r.reasonCode === 'local_unreachable' || r.action?.kind === 'set_up_gpu')) ? NEEDS_COMFYUI_TEXT
+    /* a cloud model this app doesn't run yet (wired: false, e.g. Seedance on Restyle): a key wouldn't help, so say that plainly */
+    : m.runsOn.length && m.runsOn.every((r) => r.wired === false) ? NOT_WIRED_ROW_TEXT : 'Not available here', runOn: null, credits: null };
   if (s.length > 1) return { kind: 'set_up', text: 'Set up', runOn: null, credits: null };
   const a = s[0].action; const k = a.kind as RowStatus['kind'];
   return { kind: k, runOn: s[0].runOn, credits: null, text: k === 'add_key' ? `Add key · ${KEY_SHORT_L[s[0].runOn] ?? s[0].label}` : k === 'download' ? `Download · ${gbT(a.missingBytes) || 'files'}` : k === 'turn_on' ? 'Turn on · Your computer' : 'Install add-on · Your computer', ...(k === 'download' ? { missingBytes: a.missingBytes ?? null } : {}) };
@@ -371,7 +376,7 @@ export function modelsBlock(tool: ToolDef, providers: any[]): any[] {
       const best = rs[0]; const priced = rs.map((x) => x.listCredits).filter((c): c is number => typeof c === 'number');
       return { id: ro, label: RUN_ON_LABELS[ro], billedTo: RUN_ON_BILLED_TO[ro], status: best.status, credits: ro === 'local' ? (best.status === 'ready' ? 0 : null) /* free only once it runs here: an uninstalled / off GPU is never "Free" */ : priced.length ? Math.min(...priced) : null, reason: best.status === 'ready' || best.status === 'sample' ? null : best.reason, reasonCode: best.reasonCode,
         routes: rs.map((x) => x.routeId), engines: [...new Set(rs.map((x) => x.engine))], ...(rs.some((x) => x.comfyVariant) ? { comfyVariants: [...new Set(rs.map((x) => x.comfyVariant).filter(Boolean))] } : {}),
-        group: ro === 'local' ? 'gpu' as const : ro === 'comfy-cloud' ? 'comfy' as const : 'api' as const, detail: ro === 'comfy-cloud' ? comfyHowLine(rs.map((x) => x.comfyVariant), methodOf(rs.map((x) => x.routeId))) || null /* the place is "Comfy Cloud"; this says how ("Partner model · via last frame", "Open workflow or partner model") */ : null,
+        group: ro === 'local' ? 'gpu' as const : ro === 'comfy-cloud' ? 'comfy' as const : 'api' as const, ...(PLACE_ENGINE[rs[0]?.routeId] ? { runsModel: PLACE_ENGINE[rs[0].routeId] } /* this place runs a different, named model (Image to vector: Comfy Cloud = Ideogram Vector 1); quote, job and result name it */ : {}), detail: VECTOR_PLACE_DETAIL[rs[0]?.routeId] ?? (ro === 'comfy-cloud' ? comfyHowLine(rs.map((x) => x.comfyVariant), methodOf(rs.map((x) => x.routeId))) || null /* the place is "Comfy Cloud"; this says how ("Partner model · via last frame", "Open workflow or partner model") */ : null) /* Image to vector: the engine each place runs */,
         wired: rs.some((x) => x.wired), action: rowAction(ro, best), ...(ro === 'local' && best.here ? { here: best.here } : {}), ...(ro === 'local' && rs.every((x) => x.needsNvidia) ? { needsNvidia: true } : {}), ...(ro === 'local' && best.reasonCode === 'not_enough_disk' && best.missingBytes ? { missingBytes: best.missingBytes } /* "Needs 43 GB space": the files don't fit */ : {}), ...((c) => (c ? { choices: c } : {}))(choicesOf(ro, rs, makerOf(m.key)?.name ?? null)), _best: best }; });
     // Other providers the Comfy place (or your computer) covers are hidden unless Settings → Routing → Show other providers is on (routing/hiddenPlaces.ts)
     const vis = visiblePlaces(tool.id, m.key, runsOn, undefined, preselectOf(runsOn)?.runOn ?? null); const hiddenRows: any[] = [];
@@ -413,7 +418,7 @@ export function resolveModelId(toolId: string, id: string, input?: Record<string
 const nativeRunOn = (engine: string): RunOn | null => { const r = engine ? routesFor(engine)[0] : undefined; return r ? runOnOfRoute(r) : null; };
 /** modelKey + runOn for a job: stored fields first (new jobs), else derived from tool + provider (+ input for camera) and the route that ran. */
 export function jobModelFields(j: { toolId: string; provider: string; route?: string | null; input?: Record<string, any>; modelKey?: string; runOn?: string | null }) {
-  const modelKey = j.modelKey ?? (j.provider ? modelKeyOf(j.toolId, j.provider, j.input ?? null) : null);
+  const modelKey = (j.route && PLACE_ENGINE[j.route] ? PLACE_ENGINE[j.route].key : null) ?? j.modelKey ?? (j.provider ? modelKeyOf(j.toolId, j.provider, j.input ?? null) : null);
   const r = j.route ? findRoute(j.route) : undefined;
   const runOn = r ? runOnOfRoute(r) /* the route that ran (a fallback may have moved it) */ : (j.runOn as RunOn | undefined) ?? (j.route ? runOnOfRouteId(j.route) : nativeRunOn(j.provider)); // no route (pre-routing / free lane): the engine's native route
   return { modelKey, runOn: runOn ?? null, runOnLabel: runOn ? RUN_ON_LABELS[runOn as RunOn] ?? runOn : null };

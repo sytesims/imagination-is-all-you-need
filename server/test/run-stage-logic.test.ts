@@ -47,6 +47,9 @@ const mir = { id: 'x', toolId: 'make-it-real', status: 'running', stage: 'genera
   assert.equal(first.note, 'First run on this computer: timing it'); assert.equal(first.left, '');
   const late = runTimeOf({ ...mir, eta: 0, progressInfo: { stage: 'generating', source: 'local-comfy' } }, mir.startedAt + 2000 * 1000);
   assert.equal(late.slow, true); assert.equal(late.note, 'Taking longer than usual');
+  assert.equal(late.elapsed, '33 min'); assert.equal(runTimeLine(late), `Taking longer than usual · started ${late.started} · running 33 min`);
+  const fiveH = runTimeOf({ ...mir, eta: 0, calibrating: true, etaRange: null, progressInfo: { stage: 'loading', source: 'local-comfy' } }, mir.startedAt + 5 * 3600_000 + 60_000);
+  assert.equal(runTimeLine(fiveH), `First run on this computer: timing it · started ${fiveH.started} · running 5 h 1 min`, 'a 5-hour local run keeps saying how long it has run');
   assert.deepEqual(runTimeOf({ ...mir, status: 'queued', progressInfo: { stage: 'queued' } }), { left: '', started: '', note: '', slow: false });
   assert.equal(shortDuration(12_000), '12 s'); assert.equal(shortDuration(240_000), '4 min'); assert.equal(shortDuration(3_900_000), '1 h 5 min'); assert.equal(shortDuration(0), '');
   ok('time: "About 5 min left · started 9:26 PM", first run is timed, long runs say so, queued shows none; never raw seconds');

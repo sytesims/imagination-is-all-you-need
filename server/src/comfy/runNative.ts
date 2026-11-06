@@ -14,7 +14,7 @@ import { config, DATA_DIR } from '../config.js';
 import { env } from '../env.js';
 import { runFfmpeg, remuxAudio, remuxAlphaWebm, flattenAlpha, mediaDuration } from '../ffmpeg.js';
 import { bedFilter, BED_LIMITER } from '../shared/audioLengths.js';
-import { ComfyNative, ComfyTimeoutError } from './native.js';
+import { ComfyNative, ComfyTimeoutError, ComfyLostError } from './native.js';
 import { buildPlan, templateVideoDefaults, type Plan, type Prep, type Pass } from './plans.js';
 import { blendArgs } from './restyle.js';
 import { recordSubmittedPass } from '../workflowExport.js';
@@ -22,21 +22,19 @@ import { putPreview, previewMethod } from './preview.js';
 import { notePlanPrompts } from '../jobSource.js';
 import { nativeOutputItems } from './nativeImageOutputs.js';
 import { editUnchanged, unchangedNotice } from './unchangedCheck.js';
+import { holdAwake } from '../keepAwake.js';
 
 /** native when OPENHIGGSFIELD_COMFY_API=native, or (unset) when COMFY_BASE_URL is a local / private host. */
 export function nativeMode() {
   const v = env('COMFY_API'); if (v) return v === 'native';
   try { const h = new URL(config.comfyBaseUrl).hostname; return /^(localhost|127\.|0\.0\.0\.0|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|\[?::1)/.test(h) || h.endsWith('.local'); } catch { return false; }
 }
-/** Comfy Cloud v2 (transport): how long one job may take, the step-ETA estimate × 4, never under OPENHIGGSFIELD_COMFY_TIMEOUT_MS (default 30 min). */
-export const execTimeoutMs = (est: { seconds?: number | null; high?: number | null } | null | undefined) =>
-  Math.max(config.jobTimeoutMs, Math.round((Number(est?.high ?? est?.seconds) || 0) * 4 * 1000));
-/** Local / native ComfyUI: the HARD CAP on one prompt's running time (the clock starts when it leaves ComfyUI's queue, native.ts). A slow but steady run
- *  is never stopped before it: max(60 min, 4 × this computer's calibrated estimate for this workflow, the high end when known). An uncalibrated guess
- *  (calibrating run, or a published 'reported' figure) is not used. OPENHIGGSFIELD_COMFY_TIMEOUT_MS overrides it exactly. Stalls are caught separately
- *  (config.comfyStallMs: no progress at all for 10 min). */
-export const localCapMs = (est: { seconds?: number | null; high?: number | null; calibrating?: boolean; source?: string } | null | undefined) =>
-  config.comfyHardCapOverrideMs ?? Math.max(config.comfyHardCapFloorMs, est && !est.calibrating && est.source !== 'reported' ? Math.round((Number(est.high ?? est.seconds) || 0) * 4 * 1000) : 0);
+/** Comfy Cloud v2 (transport): our net on one job's RUNNING time. Cloud stops runs itself at its plan's maximum (shared/cloudLimits.ts: 30 min, 1 h on Pro);
+ *  this net (2 h, or exactly OPENHIGGSFIELD_COMFY_TIMEOUT_MS) only catches a job that never ends. */
+export const execTimeoutMs = () => config.cloudSafetyNetMs;
+/** Local / native ComfyUI: NO cap on running time by default (user, 3 Nov 2026: a working job may take hours). Only OPENHIGGSFIELD_COMFY_TIMEOUT_MS, when
+ *  someone sets it, caps it. A run stops only when ComfyUI really stopped working on it (native.ts run: gone, unreachable, error) or on Cancel. */
+export const localCapMs = (): number | null => config.comfyHardCapOverrideMs;
 /** Optional capture dir for readiness/graph: every patched graph sent is written here (OPENHIGGSFIELD_CAPTURE_GRAPHS). */
 const CAPTURE = env('CAPTURE_GRAPHS') || '';
 
@@ -107,11 +105,9 @@ export async function runNative(job: Job, transport?: ComfyTransport, build: (j:
     recordSubmittedPass(job, k, pass, graph, transport ? 'comfy-cloud' : 'local'); // Get workflow (workflowExport.ts): the exact graph sent
     if (CAPTURE) { await mkdir(CAPTURE, { recursive: true }); await writeFile(path.join(CAPTURE, `${job.id}-p${k}.json`), JSON.stringify({ jobId: job.id, toolId: job.toolId, provider: job.provider, pass: k, label: pass.label, workflow: pass.workflow, output: pass.output, expect: pass.expect, input: Object.fromEntries(Object.entries(job.input).filter(([x]) => !/Path$|Paths$|comfyPlan/.test(x))), graph }, null, 1)); }
     job.stage = n > 1 ? `generating ${k + 1}/${n}` as any : 'generating' as any;
-    const capMs = transport ? execTimeoutMs(est) : localCapMs(est);
+    const capMs = transport ? execTimeoutMs() : localCapMs();
     const res = await c.run(graph, {
-      timeoutMs: capMs, stallMs: config.comfyStallMs, isCanceled: () => (job.status as string) === 'canceled',
-      // model loading with known bytes counts as progress while the bytes move (hardware/stages.ts stageDetail)
-      activity: () => job.stageDetail ? [job.stageDetail.stage, job.stageDetail.bytesDone, job.stageDetail.downloadedBytes ?? null] : null,
+      timeoutMs: capMs, isCanceled: () => (job.status as string) === 'canceled',
       // Live sampler previews on a native ComfyUI (local / own GPU box): latest frame per job, in memory (comfy/preview.ts); Comfy Cloud sends none.
       ...(!transport ? { previewMethod: previewMethod(), onPreview: (f: import('./native.js').NativePreview) => { if ((job.status as string) === 'running' && putPreview(job.id, f)) job.updatedAt = Date.now(); } } : {}),
       onSubmitted: (id) => { (job.requestIds ??= []).push(id);
@@ -119,7 +115,7 @@ export async function runNative(job: Job, transport?: ComfyTransport, build: (j:
         if (!transport) { const outNodes = [pass.output, ...(pass.extraOutputs ?? []).map((e) => e.node)];
           const labels = outNodes.map((_, j) => j === 0 ? (plan.labels?.[k] ?? pass.label) : pass.extraOutputs![j - 1].label);
           const resumable = n === 1 && plan.post.kind === 'each' && !plan.postFps && !plan.muxOnto && !plan.muxSourceAudio && plan.outKind !== 'video';
-          job.comfyPrompt = { id, base: config.comfyBaseUrl, pass: k, passes: n, outputs: outNodes, labels, resumable, submittedAt: Date.now(), capMs }; } },
+          job.comfyPrompt = { id, base: config.comfyBaseUrl, pass: k, passes: n, outputs: outNodes, labels, resumable, submittedAt: Date.now(), ...(capMs ? { capMs } : {}) }; } },
       onProgress: (p) => { if ((job.status as string) !== 'running') return;
         if (p.phase) { // shared progress (progress.ts): ComfyUI's own queue → load → steps → finishing
           const q = p.phase === 'queued' ? p.queuePos ?? (job.liveStage === 'queued' ? job.queuePos : 0) : 0;
@@ -238,6 +234,7 @@ export async function runNative(job: Job, transport?: ComfyTransport, build: (j:
     if (alphaWebm) await remuxAlphaWebm(f.file, plan.muxSourceAudio && job.input.hasAudio !== false ? job.input.videoPath : null, dest);
     else if (isVid && plan.muxSourceAudio && job.input.videoPath && job.input.hasAudio !== false) await remuxAudio(f.file, job.input.videoPath, dest);
     else if (isVid && plan.outKind === 'video' && job.input.keepAudio === false) await remuxAudio(f.file, f.file, dest, false);
+    else if (/\.svg$/i.test(f.file)) await (await import('../vectorTrace.js')).copySanitizedSvg(f.file, dest); // Image to vector: a partner node's SVG is kept sanitized (no script, no external links)
     else if (isOpaqueImage(job, f.file)) await flattenAlpha(f.file, dest); // Item 11: photo outputs are stored fully opaque (alpha 255)
     else if (f.file !== dest) await copyFile(f.file, dest);
     job.outputs.push({ label: job.input.draft ? `${f.label} (draft 480p)` : f.label, url: `/files/${path.basename(dest)}` });
@@ -253,13 +250,20 @@ export const isOpaqueImage = (job: Job, file: string) => /\.(png|webp)$/i.test(f
 export const LATE_WATCH_MS = () => Number(env('LATE_WATCH_MS')) || 2 * 3600_000;
 /** runNative with failures mapped onto the job (the queue then auto-refunds). */
 export async function runNativeSafe(job: Job) {
+  const release = holdAwake(); // the user's own ComfyUI: keep the computer awake until this job ends (keepAwake.ts)
   try { await runNative(job); }
   catch (e) {
     if ((job.status as string) === 'canceled') return;
     const msg = e instanceof Error ? e.message : String(e);
-    if (e instanceof ComfyTimeoutError) { // stall / hard cap: plain card text (settle adds "Nothing was charged."); reasonCode drives the card (failureReasons.ts)
-      job.status = 'failed'; job.errorType = 'timeout'; job.reasonCode = e.kind === 'stall' ? 'local_stalled' : 'local_too_long';
-      job.error = e.kind === 'stall' ? `Stopped: no progress for ${e.minutes} min.` : `Took longer than ${e.minutes} min.`;
+    if (e instanceof ComfyLostError) { // ComfyUI really stopped working on it (never a clock): plain card text; settle adds "Nothing was charged."
+      job.status = 'failed'; job.errorType = e.kind === 'unreachable' ? 'provider_outage' : 'temporary'; job.reasonCode = e.kind === 'unreachable' ? 'local_lost' : 'local_gone';
+      job.error = e.kind === 'unreachable' ? 'ComfyUI closed or stopped answering while this was running.' : 'ComfyUI no longer has this job (it may have restarted).';
+      job.comfyPrompt = job.comfyPrompt ? { ...job.comfyPrompt, resumable: false } : job.comfyPrompt;
+      console.error(`[openhiggsfield] native comfy lost ${job.id}: ${msg}`); return;
+    }
+    if (e instanceof ComfyTimeoutError) { // only a cap someone set (OPENHIGGSFIELD_COMFY_TIMEOUT_MS); plain card text (settle adds "Nothing was charged.")
+      job.status = 'failed'; job.errorType = 'timeout'; job.reasonCode = 'local_too_long';
+      job.error = `Stopped at the ${e.minutes} min limit set for this computer.`;
       // Our prompt was not stopped (ComfyUI no longer listed it, or couldn't be reached): it may still finish, so the late-result sweeper watches it
       // (comfy/lateRescue.ts). Interrupted / removed prompts never finish, so nothing is watched.
       const cp = job.comfyPrompt;
@@ -272,5 +276,5 @@ export async function runNativeSafe(job: Job) {
     job.status = 'failed'; job.errorType = outage ? 'provider_outage' : 'temporary';
     job.error = outage ? `Local ComfyUI is unreachable (${config.comfyBaseUrl}).` : `ComfyUI run failed: ${msg}`;
     console.error(`[openhiggsfield] native comfy failed for ${job.id}: ${msg}`);
-  }
+  } finally { release(); }
 }

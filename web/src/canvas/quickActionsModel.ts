@@ -1,6 +1,6 @@
 /** The quick actions' list and what one does (QuickActions.tsx draws the bar). Each only makes a NEW draft card wired to the result. */
 import type { Editor, TLShapeId } from 'tldraw';
-import { UpscaleIcon, CutoutIcon, LayerSheetsIcon, LightIcon, VideoIcon, CubeIcon, SoundIcon, ImageIcon, MicIcon, MusicIcon, type IconProps } from '../ui/Icons';
+import { UpscaleIcon, CutoutIcon, LayerSheetsIcon, VectorIcon, LightIcon, VideoIcon, CubeIcon, SoundIcon, ImageIcon, MicIcon, MusicIcon, type IconProps } from '../ui/Icons';
 import type { VecLike } from 'tldraw';
 import type { PortKind } from './nodeLogic';
 import { createCard, reveal } from './agentApi';
@@ -12,7 +12,7 @@ import { ExtendIcon } from './icons';
 export type Act = { id: string; label: string; flow: string; icon: (p: IconProps) => JSX.Element; group?: string };
 export const QUICK_ACTIONS: Record<'image' | 'video', Act[]> = {
   image: [{ id: 'upscale', label: 'Upscale', flow: 'upscale', icon: UpscaleIcon }, { id: 'remove-bg', label: 'Remove background', flow: 'remove-bg', icon: CutoutIcon },
-    { id: 'layers', label: 'Image to layers', flow: 'image-layers', icon: LayerSheetsIcon }, { id: 'relight', label: 'Relight', flow: 'relight', icon: LightIcon, group: 'light' },
+    { id: 'layers', label: 'Image to layers', flow: 'image-layers', icon: LayerSheetsIcon }, { id: 'vector', label: 'Make it a vector', flow: 'image-vector', icon: VectorIcon }, { id: 'relight', label: 'Relight', flow: 'relight', icon: LightIcon, group: 'light' },
     { id: 'to-video', label: 'To video', flow: 'video', icon: VideoIcon }, { id: 'to-3d', label: 'To 3D', flow: 'image-to-3d', icon: CubeIcon }],
   video: [{ id: 'extend', label: 'Extend', flow: 'extend', icon: ExtendIcon as any }, { id: 'video-upscale', label: 'Upscale', flow: 'video-upscale', icon: UpscaleIcon },
     /* Add sound (shared/addSoundLogic.ts): MMAudio, free on your ComfyUI */ { id: 'add-sound', label: 'Add sound', flow: 'add-sound', icon: SoundIcon }],

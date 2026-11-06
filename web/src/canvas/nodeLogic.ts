@@ -138,3 +138,51 @@ export function runOrder(ids: string[], waitsOf: (id: string) => Upstream[]): { 
     if (stuck) blocked.push({ id, name: stuck.name }); else if (w.length) later.push(id); else now.push(id); }
   return { now, later, blocked };
 }
+
+export interface OrderedRun { jobIds: string[]; failed: { cardId: string; error: string }[]; /** start by themselves once the cards before them are done */ later: string[] }
+export interface RunDeps {
+  waits: (id: string) => Upstream[]; submit: (id: string) => Promise<string>; exists: (id: string) => boolean;
+  /** a card that didn't start: shown on the card itself (2026-11-02: it used to go silently back to a draft) */ notStarted: (id: string, error: string) => void;
+  stop?: (e: Error) => boolean; onLater?: (id: string, r: { jobId?: string; error?: string }) => void; timeoutMs?: number; pollMs?: number;
+}
+/** Run several cards (Go on a proposal, a group's Run all) in graph order (2026-10-28): cards with nothing to wait for start now; a card fed
+ *  by another card in the same run starts when that card has its result, so a clip gets its first frame instead of running without it.
+ *  `stop` ends the immediate loop on an error nothing after may ignore (a budget). `onLater` hears how each waiting card went. Every card
+ *  that doesn't start (the server refused it, or a card before it didn't finish) gets notStarted with the reason. */
+export async function runInOrder(ids: string[], d: RunDeps): Promise<OrderedRun> {
+  const plan = runOrder(ids, d.waits); const out: OrderedRun = { jobIds: [], failed: [], later: [] };
+  const fail = (cardId: string, error: string) => { out.failed.push({ cardId, error }); d.notStarted(cardId, error); };
+  for (const b of plan.blocked) fail(b.id, `Waits for ${b.name}, which isn’t running. Generate it first.`);
+  for (const id of plan.now) { try { out.jobIds.push(await d.submit(id)); } catch (e) { fail(id, (e as Error).message); if (d.stop?.(e as Error)) return out; } }
+  out.later = plan.later;
+  /* chains of any length (A → B → C): C waits on B while B waits on A; a card in this run that didn't start (or gave up) ends the wait after it */
+  const gaveUp = new Set(out.failed.map(f => f.cardId));
+  const later = (id: string, r: { jobId?: string; error?: string }) => { if (r.error) { gaveUp.add(id); d.notStarted(id, r.error); } d.onLater?.(id, r); };
+  for (const id of plan.later) void (async () => { const end = Date.now() + (d.timeoutMs ?? 3_600_000);
+    while (Date.now() < end) { const up = d.waits(id); if (!d.exists(id)) return;
+      if (!up.length) { try { later(id, { jobId: await d.submit(id) }); } catch (e) { later(id, { error: (e as Error).message }); } return; }
+      const dead = up.find(u => (u.status !== 'running' && u.status !== 'draft') || gaveUp.has(u.id)); /* failed (a done card is an input, so it's no longer listed) */
+      if (dead || up.every(u => u.status === 'draft' && !ids.includes(u.id))) { later(id, { error: `${dead?.name ?? up[0].name} didn’t finish, so this card didn’t run.` }); return; }
+      await new Promise(r => setTimeout(r, d.pollMs ?? 1500)); }
+    later(id, { error: 'Waited too long for the card before it.' }); })();
+  return out;
+}
+
+/** One card of a run proposal, as settleProposal reads it. `missing`: what it lacks as the board is now; `missingFed`: what it would still lack
+ *  once the cards upstream that haven't run yet have passed on their result; `ups`: those cards (graph.waitingInputsOf); `other`: a quote
+ *  problem (a model that can't run here, no price). */
+export interface ProposalCard { id: string; title: string; usd: number | null; credits: number | null; missing: string | null; missingFed: string | null; ups: Upstream[]; other: string | null }
+/** Which cards of a proposal Go starts, and its total (2026-11-02). A card fed by a card in this same proposal (at any depth) or by one already
+ *  running counts its input as there: it waits for it, in runOrder's graph order. Only an input with no source at all is missing; a card fed
+ *  by a draft left out of the run, or by a card in the run that can't run, is skipped with the reason. The total is every card Go starts. */
+export function settleProposal(cards: ProposalCard[]): { problems: Record<string, string | null>; totalUsd: number; totalCredits: number } {
+  const set = new Set(cards.map(c => c.id)); const problems: Record<string, string | null> = {};
+  for (const c of cards) { const stuck = c.ups.find(u => !set.has(u.id) && u.status !== 'running');
+    problems[c.id] = (stuck ? `Waits for “${stuck.name.slice(0, 40)}”, which isn’t in this run` : c.ups.length ? c.missingFed : c.missing) ?? c.other; }
+  /* a card that can't run can't feed one after it: that one is skipped too (repeat until nothing changes, for chains) */
+  for (let changed = true; changed;) { changed = false;
+    for (const c of cards) { if (problems[c.id]) continue; const src = c.ups.map(u => cards.find(x => x.id === u.id && problems[x.id])).find(Boolean);
+      if (src) { problems[c.id] = `Waits on “${src.title.slice(0, 40)}”, which can’t run here`; changed = true; } } }
+  let usd = 0; let credits = 0; for (const c of cards) if (!problems[c.id]) { usd += c.usd ?? 0; credits += c.credits ?? 0; }
+  return { problems, totalUsd: Math.round(usd * 1e4) / 1e4, totalCredits: credits };
+}

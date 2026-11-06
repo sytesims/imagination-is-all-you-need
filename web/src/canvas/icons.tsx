@@ -43,6 +43,8 @@ export const GroupIcon = I(<><path d="M8 3.5H5.5A2 2 0 0 0 3.5 5.5V8M16 3.5h2.5a
 export const CheckIcon = I(<path d="m5 12.5 4.5 4.5L19 7.5" />);
 export const StopIcon = I(<rect x="7" y="7" width="10" height="10" rx="2" />);
 export const SendIcon = I(<><path d="M12 19V5" /><path d="m6 11 6-6 6 6" /></>);
+/* the dock's "Add pictures" (2026-11-03) */
+export const PaperclipIcon = I(<path d="m20 11.5-7.8 7.8a5 5 0 0 1-7.1-7.1l8.1-8.1a3.4 3.4 0 0 1 4.8 4.8l-8.1 8.1a1.7 1.7 0 0 1-2.4-2.4l7.5-7.5" />);
 export const DockIcon = I(<><rect x="3.5" y="4" width="17" height="16" rx="2.5" /><path d="M9.5 4v16" /></>);
 /* tldraw's sticky note tool in the rail (2026-10-27) */
 export const StickyIcon = I(<><path d="M5 5h14v9.5L14.5 19H5z" /><path d="M14.5 19v-4.5H19" /><path d="M8.5 9h7M8.5 12h4" /></>);

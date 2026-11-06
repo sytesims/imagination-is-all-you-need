@@ -122,6 +122,18 @@ export function swapSide(target?: string | null): 'left' | 'right' | null {
   const t = String(target ?? '').toLowerCase(); const l = /\bleft\b/.test(t), r = /\bright\b/.test(t);
   return l === r ? null : l ? 'left' : 'right';
 }
+/** Who to swap by default, as Comfy's Openjutsu app picks (SAM "person" on frame 0, the LARGEST mask): the biggest person found on the first
+ *  frame, as a click at its box centre (0–1). Two people within 20% of each other's size, or nobody found → null with why: the user clicks.
+ *  Boxes in pixels of a w×h frame (the free mask preview's people mode: routesMaskPreview.ts). */
+export const MAIN_PERSON_MARGIN = 0.2;
+export function mainPersonPick(boxes: { x: number; y: number; width: number; height: number }[], w: number, h: number):
+  { point: { x: number; y: number }; box: { x: number; y: number; width: number; height: number } } | { point: null; why: 'none' | 'similar' } {
+  const bs = boxes.filter((b) => b.width > 0 && b.height > 0).sort((a, b) => b.width * b.height - a.width * a.height);
+  if (!bs.length || !(w > 0) || !(h > 0)) return { point: null, why: 'none' };
+  if (bs[1] && bs[1].width * bs[1].height >= (1 - MAIN_PERSON_MARGIN) * bs[0].width * bs[0].height) return { point: null, why: 'similar' };
+  const b = bs[0]; const r = (v: number) => Math.round(Math.min(1, Math.max(0, v)) * 1e4) / 1e4;
+  return { point: { x: r((b.x + b.width / 2) / w), y: r((b.y + b.height / 2) / h) }, box: b };
+}
 /** H3 Character Swap's "who" prompt (the Replace popover and the reason a job can't run). */
 export const H3_WHO_HINT = 'Click the person to swap, or pick left/right';
 /** H3 Character Swap needs to know WHO (2026-10-31): of 6 finished runs, the 3 with an empty "who" or "main person" came back unchanged, while every run

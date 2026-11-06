@@ -26,10 +26,17 @@ import { useCopied, Copied, useToast } from '../shared/Toast';
 import { GenPrice } from '../shared/GenPrice';
 import { tip } from '../shared/Tooltip';
 import { SparkleIcon, CloseIcon, TrashIcon, DirectorIcon, ProductIcon, ExtendIcon, ExploreIcon, VideoIcon, ApiPlugIcon, MaterialIcon } from '../ui/Icons';
-import { CopyIcon, PlusIcon, ArrowIcon, RetryIcon, CoinIcon, ChevronLeftIcon, CheckIcon, StopIcon, SendIcon, NoteIcon, GroupIcon } from './icons';
+import { PaperclipIcon, CopyIcon, PlusIcon, ArrowIcon, RetryIcon, CoinIcon, ChevronLeftIcon, CheckIcon, StopIcon, SendIcon, NoteIcon, GroupIcon } from './icons';
 import { useProfile, nameOf, UserAvatar } from '../shared/profile';
 import { SAMPLE_SITE, AGENT_NOTE } from '../shared/sampleSite';
 import { SampleSiteNote } from '../shared/SampleMode';
+import { uploadMedia } from '../shared/batch1';
+import { IMAGE_ACCEPT } from '../../../server/src/shared/mediaAccept';
+import { planDockPictures, pictureName, MAX_DOCK_PICTURES, type DockPicture } from '../../../server/src/shared/canvasPictures';
+import { createAuxNode } from './auxShapes';
+import { NODE_DEFS } from './nodeTypes';
+import { freeSpot } from './placement';
+import { mediaPoster } from './fileDrop';
 import './agentPanel.css';
 
 const AGENT_FRESH_MS = 90_000; /* the server's window: an agent that stopped waiting or polling for 90 s isn't listening any more */
@@ -115,11 +122,13 @@ function TypedText({ text, live }: { text: string; live: boolean }) {
   }, [n, text]);
   return <>{text.slice(0, n)}{n < text.length && <span className="ap-caret" aria-hidden />}</>;
 }
-function Message({ e, who, live = false, status = null }: { e: FeedEntry; who: string; live?: boolean; /** your message: waiting / sent / read (2026-10-28) */ status?: MsgStatus }) {
-  const agent = e.from === 'agent';
+function Message({ e, who, live = false, status = null, onFocus }: { e: FeedEntry; who: string; live?: boolean; /** your message: waiting / sent / read (2026-10-28) */ status?: MsgStatus; onFocus?: (id: string) => void }) {
+  const agent = e.from === 'agent'; const pics: DockPicture[] = !agent && Array.isArray(e.meta?.pictures) ? e.meta.pictures : [];
   return <div className={`ap-msg ${agent ? 'agent' : 'user'}${e.meta?.error ? ' err' : ''}${live ? ' fresh' : ''}`} data-testid="agent-message">
     <div className="ap-msg-h">{agent ? <span className="ap-who"><i className="ap-who-mark"><SparkleIcon size={11} /></i>{who}</span> : <MeLabel />}<time>{time(e.at)}</time></div>
-    <p aria-label={agent && live ? e.text : undefined}>{agent ? <TypedText text={e.text} live={live} /> : e.text}</p>
+    {pics.length > 0 && <div className="ap-msg-pics" data-testid="agent-msg-pictures">{pics.map((p, i) => <button key={p.card_id} type="button" className="ap-msg-pic" onClick={() => onFocus?.(p.card_id)} aria-label={`Show ${p.name} on the board`} {...tip(`image ${i + 1}: ${p.name}`)}>
+      <img src={p.url} alt="" draggable={false} /></button>)}</div>}
+    {(agent || e.text) && <p aria-label={agent && live ? e.text : undefined}>{agent ? <TypedText text={e.text} live={live} /> : e.text}</p>}
     {status && <small className={`ap-read ${status}`} data-testid="agent-msg-status" data-state={status} aria-live="polite">{status === 'read' ? <CheckIcon size={11} /> : <i aria-hidden />}{messageStatusText(status, who)}</small>}
   </div>;
 }
@@ -252,6 +261,16 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
   const [sheet, setSheet] = useState(false);
   const [glow, setGlow] = useState<{ left: number; top: number; width: number; height: number; key: number } | null>(null);
   const [tick, setTick] = useState(0);
+  /* pictures added to the next message (2026-11-03): paperclip, paste or a drop on the dock; each becomes an Upload card when you send */
+  const [pics, setPics] = useState<{ key: string; file: File; preview: string }[]>([]); const [dropOver, setDropOver] = useState(false); const fileIn = useRef<HTMLInputElement>(null);
+  const picsRef = useRef(pics); picsRef.current = pics;
+  useEffect(() => () => { for (const x of picsRef.current) URL.revokeObjectURL(x.preview); }, []);
+  const addPics = useCallback((files: File[]) => {
+    if (!files.length) return; const plan = planDockPictures(files, picsRef.current.length);
+    const why = [...new Set(plan.refused.map((r) => r.why))]; if (why.length) toast(why.join(' '), 'warn');
+    if (plan.take.length) setPics((prev) => [...prev, ...plan.take.map((i) => ({ key: `${Date.now().toString(36)}${i}${Math.random().toString(36).slice(2, 6)}`, file: files[i], preview: URL.createObjectURL(files[i]) }))].slice(0, MAX_DOCK_PICTURES));
+  }, [toast]);
+  const dropPic = (key: string) => setPics((prev) => prev.filter((x) => { if (x.key === key) URL.revokeObjectURL(x.preview); return x.key !== key; }));
   const feedBox = useRef<HTMLDivElement>(null); const stick = useRef(true); const glowTimer = useRef(0); const ta = useRef<HTMLTextAreaElement>(null);
   const demoRef = useRef(demo); demoRef.current = demo; const confirmRef = useRef<{ id: string; label: string; seq: number } | null>(null);
 
@@ -341,15 +360,38 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
   }, []);
   useEffect(() => { const el = feedBox.current; if (el && stick.current && !helloOnly.current) el.scrollTop = el.scrollHeight; }, [feed.length, proposals]);
 
+  /** The attached pictures become Upload cards (the same card a board drop makes, named after the file) beside what you selected, or in view.
+   *  Each uploads on its own: one refused says why and the others still land. Uploading is free; nothing runs. */
+  const placePics = async (items: { file: File }[]): Promise<DockPicture[]> => {
+    if (!items.length || !editor) return [];
+    const urls = await Promise.all(items.map(async ({ file }) => { try { const [m] = await uploadMedia([file]); if (!m?.url) throw new Error('Upload failed'); return m.url; }
+      catch (e) { toast(`${file.name}: ${(e as Error).message || 'Upload failed'}`, 'error'); return null; } }));
+    const { defaultW: w, defaultH: h } = NODE_DEFS.upload; const sel = editor.getSelectionPageBounds();
+    let near = sel ? { x: sel.maxX + 60 + w / 2, y: sel.minY + h / 2 } : editor.getViewportPageBounds().center; const out: DockPicture[] = [];
+    items.forEach(({ file }, i) => { const url = urls[i]; if (!url) return; const name = pictureName(file.name);
+      const id = createAuxNode(editor, 'upload', { at: freeSpot(editor, w, h, near), select: false, media: { url, poster: mediaPoster('image', url), mediaKind: 'image', label: name } });
+      const b = editor.getShapePageBounds(id); if (b) near = { x: b.maxX + 40 + w / 2, y: b.center.y };
+      out.push({ card_id: id, name, url }); });
+    return out;
+  };
   const send = async (raw: string, starter?: StarterId, confirmId?: string) => {
-    const body = raw.trim(); if (!body || sending) return; setSending(true); stick.current = true;
+    const body = raw.trim(); const attached = starter || confirmId ? [] : picsRef.current; if ((!body && !attached.length) || sending) return; setSending(true); stick.current = true;
     const base = `/api/canvas/boards/${encodeURIComponent(boardId)}/agent`;
     try {
+      const route = dockRoute({ connected: agentConnected, demoRunning: demoRef.current.running, confirmWaiting: !!confirmRef.current });
       /* while the demo waits for your OK, what you type is the answer (an edit, or Looks good) */
-      /* your connected agent gets what you selected as context (card ids, names, workflow, status) */
-      const selection = agentConnected && editor ? editor.getSelectedShapeIds().slice(0, 50).map((id) => { const s: any = editor.getShape(id); return { id, name: cardNameOf(editor, id) ?? null, type: s?.type ?? null, workflow: s?.props?.flow ?? null, status: s?.props?.status ?? null }; }) : [];
-      const r = dockRoute({ connected: agentConnected, demoRunning: demoRef.current.running, confirmWaiting: !!confirmRef.current }) === 'messages'
-        ? await fetch(`${base}/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: body, ...(confirmId ? { confirm_id: confirmId } : {}), ...(selection.length ? { selection } : {}) }) })
+      /* your connected agent gets what you selected as context (card ids, names, workflow, status), plus the pictures you added */
+      const selected = agentConnected && editor ? editor.getSelectedShapeIds().slice(0, 50) : [];
+      const pictures = await placePics(attached);
+      if (attached.length) { for (const x of attached) URL.revokeObjectURL(x.preview); setPics([]); }
+      if (attached.length && !pictures.length) throw new Error('The pictures could not be added. Nothing was sent.');
+      if (editor && pictures.length) editor.select(...([...selected, ...pictures.map((p) => p.card_id)] as any[]));
+      const ids = [...selected, ...pictures.map((p) => p.card_id).filter((id) => !selected.includes(id as any))].slice(0, 50);
+      const selection = agentConnected && editor ? ids.map((id) => { const s: any = editor.getShape(id as any); return { id, name: cardNameOf(editor, id as any) ?? null, type: s?.type ?? null, workflow: s?.props?.flow ?? null, status: s?.props?.status ?? null }; }) : [];
+      /* no agent reads the dock: the pictures are on the board, and only typed words go on to the demo */
+      if (!body && (!agentConnected || route !== 'messages')) { toast(pictures.length === 1 ? 'Added the picture to the board.' : `Added ${pictures.length} pictures to the board.`); return; }
+      const r = route === 'messages'
+        ? await fetch(`${base}/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: body, ...(confirmId ? { confirm_id: confirmId } : {}), ...(selection.length ? { selection } : {}), ...(agentConnected && pictures.length ? { pictures } : {}) }) })
         : await fetch(`${base}/demo`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ prompt: body, ...(starter ? { starter } : {}) }) });
       const b = await r.json().catch(() => ({})); if (!r.ok) throw new Error(b?.error || 'Could not send that.');
       if (b?.message) setFeed((prev) => mergeFeed(prev, [b.message]));
@@ -383,11 +425,11 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
       if (b?.pick) setPick(b.pick);
     } catch (e) { toast((e as Error).message, 'error'); } finally { choosing.current = false; }
   }, [boardId, editor, toast]);
-  const pickRef = useRef(pick); pickRef.current = pick; const choosing = useRef(false);
+  const pickRef = useRef(pick); pickRef.current = pick; const choosing = useRef(false); const pickSaid = useRef(false);
   useEffect(() => {
     if (!editor) return;
-    if (pick?.status === 'waiting') { fx.pick(pick.cardIds); handOf(editor).say('Waiting for your pick', true); }
-    else { fx.pick([]); if (pick?.status === 'picked' && pick.chosen) fx.chosen(pick.chosen); }
+    if (pick?.status === 'waiting') { fx.pick(pick.cardIds); handOf(editor).say('Waiting for your pick', true); pickSaid.current = true; }
+    else { fx.pick([]); if (pick?.status === 'picked' && pick.chosen) fx.chosen(pick.chosen); if (pickSaid.current) { pickSaid.current = false; handOf(editor).hush(); } } /* the pick resolved: the label goes with it */
     if (pick?.status !== 'waiting') return;
     const off = editor.store.listen(() => { const sel = editor.getSelectedShapeIds(); if (sel.length === 1 && pick.cardIds.includes(sel[0])) void choose(sel[0]); }, { scope: 'session' });
     return () => { off(); };
@@ -439,7 +481,10 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
   const empty = shown.length === 0; helloOnly.current = empty;
 
   return <>
-    <aside className={`ap${open ? ' on' : ''}`} data-testid="agent-panel" aria-hidden={!open} aria-label="AI agent">
+    <aside className={`ap${open ? ' on' : ''}`} data-testid="agent-panel" aria-hidden={!open} aria-label="AI agent"
+      onDragOver={(ev) => { if (!ev.dataTransfer.types.includes('Files')) return; ev.preventDefault(); ev.dataTransfer.dropEffect = 'copy'; if (!dropOver) setDropOver(true); }}
+      onDragLeave={(ev) => { if (!ev.currentTarget.contains(ev.relatedTarget as Node | null)) setDropOver(false); }}
+      onDrop={(ev) => { if (!ev.dataTransfer.files.length) return; ev.preventDefault(); setDropOver(false); addPics([...ev.dataTransfer.files]); }}>
       <header className="ap-head">
         <div className="ap-brand"><span className="ap-mark"><SparkleIcon size={16} /></span><div><b>Agent</b><small data-testid="agent-mode" title={sessions.length > 1 ? sessionNames : connectedLine}>{connectedLine}</small></div></div>
         <div className="ap-head-r">
@@ -469,7 +514,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
               if (e.meta?.confirm?.id && confirm?.id === e.meta.confirm.id) return <div key={e.id} className="ap-group"><Message e={e} who={who} live={fresh.current.has(e.seq)} /><ConfirmCard label={confirm!.label} busy={sending} onOk={() => void send(confirm!.label, undefined, confirm!.id)} /></div>;
               if (suggest && e === last) return <div key={e.id} className="ap-group"><Message e={e} who={who} live={fresh.current.has(e.seq)} />
                 <button type="button" className="ap-chip ap-chip-main" disabled={sending} onClick={() => pickStarter(suggest.id)} data-testid="agent-suggest">Want to see “{suggest.label}”?</button></div>;
-              return <Message key={e.id} e={e} who={who} live={fresh.current.has(e.seq)} status={statusOf(e)} />;
+              return <Message key={e.id} e={e} who={who} live={fresh.current.has(e.seq)} status={statusOf(e)} onFocus={focus} />;
             }
             if (e.type === 'activity' && e.meta?.tool === 'add_card' && e.cardId) return <AgentMediaCard key={e.id} editor={editor} cardId={e.cardId} meta={{ ...e.meta, title: e.text.replace(/^Added “|”$/g, '') }} onFocus={focus} onReroll={(id, t) => void reroll(id, t)} rerolling={!!rerolling[e.cardId]} />;
             if (e.type === 'activity' && e.proposalId && /^Proposed/.test(e.text)) { const p = byId.get(e.proposalId);
@@ -485,17 +530,23 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
           {state === 'connected' && <ListenHint boardId={boardId} name={agentLabel} onSetup={() => setSheet(true)} />}
           {state === 'working' && <p className="ap-working" data-testid="agent-working-note" aria-live="polite"><i aria-hidden /><span><b>{workingLine(agentLabel)}.</b> What you type waits until it listens.</span></p>}
           {!SAMPLE_SITE && !empty && !demo.running && !agentConnected && <div className="ap-chips" aria-label="Starters">{STARTERS.map((s) => <button key={s.id} type="button" className="ap-chip" disabled={sending} onClick={() => pickStarter(s.id)} data-testid={`agent-chip-${s.id}`}>{s.label}</button>)}</div>}
+          {pics.length > 0 && <div className="ap-atts" role="list" aria-label="Pictures to send" data-testid="agent-attachments">{pics.map((x) => <span key={x.key} role="listitem" className="ap-att" title={x.file.name}>
+            <img src={x.preview} alt={pictureName(x.file.name)} draggable={false} /><button type="button" className="ap-att-x" onClick={() => dropPic(x.key)} aria-label={`Remove ${pictureName(x.file.name)}`} data-testid="agent-attachment-remove"><CloseIcon size={11} /></button></span>)}</div>}
           <div className="ap-box">
+            <input ref={fileIn} type="file" accept={IMAGE_ACCEPT} multiple hidden data-testid="agent-attach-input" onChange={(e) => { addPics([...(e.target.files ?? [])]); e.target.value = ''; }} />
+            {!SAMPLE_SITE && <button type="button" className="ap-attach" onClick={() => fileIn.current?.click()} disabled={sending || pics.length >= MAX_DOCK_PICTURES} aria-label="Add pictures" {...tip(pics.length >= MAX_DOCK_PICTURES ? `Up to ${MAX_DOCK_PICTURES} pictures per message` : 'Add pictures')} data-testid="agent-attach"><PaperclipIcon size={16} /></button>}
             <textarea ref={ta} value={text} onChange={(e) => setText(e.target.value)} rows={2} maxLength={4000} disabled={SAMPLE_SITE}
+              onPaste={(e) => { const files = [...e.clipboardData.files]; if (!files.length) return; e.preventDefault(); e.stopPropagation(); /* the board never also gets it */ addPics(files); }}
               placeholder={confirm ? 'What should change? Or press Looks good.' : agentConnected ? `Message ${agent.agentName || 'your AI'}…` : SAMPLE_SITE ? 'The agent runs in the app on your computer' : 'Pick a demo, or connect Claude to chat'} aria-label="Message the agent" data-testid="agent-reply"
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(text); } }} />
-            {demo.running && !agentConnected && !text.trim()
+            {demo.running && !agentConnected && !text.trim() && !pics.length
               ? <button type="button" className="ap-send stop" onClick={() => void stop()} aria-label="Stop the agent" {...tip('Stop. Cards already on the board stay')} data-testid="agent-stop"><StopIcon size={15} /></button>
-              : <button type="submit" className="ap-send" disabled={!text.trim() || sending} aria-label="Send" data-testid="agent-send"><SendIcon size={16} /></button>}
+              : <button type="submit" className="ap-send" disabled={(!text.trim() && !pics.length) || sending} aria-label="Send" data-testid="agent-send"><SendIcon size={16} /></button>}
           </div>
           <p className="ap-hint">{agentListening ? `Goes straight to ${agentLabel}. Canvas proposals wait for your Go.` : agentConnected ? `Waits here until ${agentLabel} reads it. Canvas proposals wait for your Go.` : SAMPLE_SITE ? 'Add cards by hand and press Go for a sample.' : 'Demos build drafts on this board. Every run waits for your Go.'}</p>
         </form>
       </div>
+      {dropOver && <div className="ap-dropzone" data-testid="agent-dropzone" aria-hidden><span><PaperclipIcon size={18} />Drop pictures to add them</span></div>}
       {sheet && <ConnectSheet config={config} mcpUrl={mcpUrl} onClose={() => setSheet(false)} boardId={boardId} />}
     </aside>
     {glow && createPortal(<div className="ap-glow" key={glow.key} style={{ left: glow.left, top: glow.top, width: glow.width, height: glow.height }} aria-hidden />, document.body)}

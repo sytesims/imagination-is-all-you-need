@@ -112,7 +112,7 @@ export async function runComfySwap(
   })();
 
   try {
-    await comfyJob.wait(config.jobTimeoutMs, ac.signal);
+    await comfyJob.wait(config.cloudSafetyNetMs, ac.signal); // Comfy Cloud ends runs at its own maximum (shared/cloudLimits.ts); this net only catches one that never ends
   } finally {
     ac.abort();
     await eventsTask.catch(() => undefined);

@@ -1,3 +1,5 @@
+import { isVectorUrl } from '../../../server/src/shared/imageVector';
+import { svgToPngBlob } from './svgPng';
 /**
  * Files from URLs the app serves (moved out of ui/next/ImageCanvas.tsx, 2026-10-24, so the Canvas bar sends board media the same way).
  */
@@ -5,6 +7,7 @@
  *  other image types (WEBP, AVIF…) are redrawn as PNG. */
 export async function urlToFile(url: string, name?: string): Promise<File> {
   let u = url; try { const x = new URL(url, location.origin); if (x.origin === location.origin && x.pathname === '/api/media/thumb' && x.searchParams.get('url')) u = x.searchParams.get('url')!; } catch { /* keep */ }
+  if (isVectorUrl(u)) { const png = await svgToPngBlob(u); return new File([png], `${(name ?? u.split('?')[0].split('/').pop() ?? 'vector').replace(/\.\w+$/, '') || 'vector'}.png`, { type: 'image/png' }); } // an SVG result (Image to vector) goes to a model as a PNG render: no model here takes SVG
   const r = await fetch(u); if (!r.ok) throw new Error(`HTTP ${r.status}`); let b = await r.blob(); if (!/^image\//.test(b.type) && !/\.(png|jpe?g|webp)(\?|$)/i.test(u)) throw new Error('not an image');
   if (!/^image\/(png|jpeg)$/.test(b.type)) { const bmp = await createImageBitmap(b); const c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height; c.getContext('2d')!.drawImage(bmp, 0, 0); b = await new Promise<Blob>((res, rej) => c.toBlob(x => x ? res(x) : rej(new Error('encode failed')), 'image/png')); }
   const base = (name ?? u.split('?')[0].split('/').pop() ?? 'image').replace(/\.\w+$/, '') || 'image';

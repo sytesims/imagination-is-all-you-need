@@ -122,7 +122,7 @@ export function option(tool: ToolDef, r: RouteDef, input: Record<string, any> = 
   const local = r.kind === 'local';
   // no mode asked (a listing or quote without types): the tool's first mode, as its defaults read it (defaults.ts recommendedDefaults)
   const modeOk = !r.modes || r.modes.includes(input.types == null && input.mode == null && input.type == null ? toolModes(tool)[0] ?? jobMode(input) : jobMode(input));
-  let reason: string | undefined; let inputBlock = false; let tooHeavy = false; // Oct 19 #8: the job's inputs (mode, missing image…) block this route, not a key or wiring
+  let reason: string | undefined; let inputBlock = false; let inputStep = false; let tooHeavy = false; // Oct 19 #8: the job's inputs (mode, missing image…) block this route, not a key or wiring
   const fit = local && !r.comingSoon ? localFit(tool, r, input) : null;
   if (r.comingSoon) reason = r.comingSoon;
   else if (local && !r.noComfy && !localAvailable()) reason = LOCAL_UNREACHABLE_REASON; // noComfy: ffmpeg-only routes (3D turntable) don't need ComfyUI
@@ -139,8 +139,9 @@ export function option(tool: ToolDef, r: RouteDef, input: Record<string, any> = 
   else if (h?.priceUnmeasured && CLOUD_RUNNER_ROUTES.has(r.routeId) && !!keyValue(r) && !allowUnmeasuredCloud()) reason = UNMEASURED_PRICE_REASON; // a real run would bill unknown GPU time
   else if (r.kind === 'comfy-router' && routeOff(r.routeId)) reason = ROUTE_OFF_REASON; // Comfy Router refused it before running (not_enabled, routing/routeOff.ts): the same model's Comfy Cloud route runs instead
   else if (!routeRunnable(r) && (!r.envKey || !!keyValue(r))) reason = NOT_WIRED_REASON; // a real key is set, but only the mock executor exists: never Auto-picked, never charged (OPENHIGGSFIELD_MOCK_KEYS, the mock-backend simulation, stays as before)
+  if (!reason && r.needsInput?.(input)) { reason = r.needsInput(input)!; inputBlock = true; inputStep = true; } // last: the place is ready (key, price, wiring); the job only needs a step (who to swap)
   return { priceRef: r.priceRef, routeId: r.routeId, kind: r.kind, ...(r.vendor ? { vendor: r.vendor } : {}), label: r.label, endpoint: r.endpoint, credits, estimatedPrice: !!h?.estimated, priceSourceUrl: h?.sourceUrl ?? null, priceCheckedAt: h?.checkedAt ?? null,
-    typicalLatencySec: r.typicalLatencySec, latencyEstimated: r.latencyEstimated, envKey: r.envKey, configured, available: !reason, ...(reason ? { reason } : {}), ...(reason && !configured && reason === keyMissingReason(r.envKey) ? { reasonCode: 'key_missing' as const, reasonDetail: `${r.envKey} not set` } : {}), ...(r.comingSoon ? { reasonCode: 'not_wired' as const, reasonDetail: `coming soon: ${r.comingSoon}` } : {}), ...(reason === NOT_WIRED_REASON ? { reasonCode: 'not_wired' as const, reasonDetail: 'no live connection for this route on this server yet' } : {}), ...(inputBlock ? { reasonCode: 'input_blocked' as const, reasonDetail: reason === VARIANT_BLOCK_REASON ? "the lighter version needs the ComfyUI-GGUF node on the connected ComfyUI" : 'the job inputs do not fit this route' } : {}), ...(tooHeavy ? { reasonCode: 'too_heavy' as const, reasonDetail: fit!.reason } : {}), ...(reason === ROUTE_OFF_REASON && !r.comingSoon /* coming-soon Router models share the words; they stay not_wired */ ? { reasonCode: 'route_not_enabled' as const, reasonDetail: 'Comfy Router answered not_enabled for this model; re-checked after 24 h' } : {}), ...(fit ? { fit } : {}), sourceUrl: r.sourceUrl, ...(r.caps ? { caps: r.caps } : {}), tier: tierOf(r), tierLabel: tierLabel(r), wired: routeRunnable(r), ...(r.twinProvider ? { twinOf: r.modelId, twinProvider: r.twinProvider } : {}) };
+    typicalLatencySec: r.typicalLatencySec, latencyEstimated: r.latencyEstimated, envKey: r.envKey, configured, available: !reason, ...(reason ? { reason } : {}), ...(reason && !configured && reason === keyMissingReason(r.envKey) ? { reasonCode: 'key_missing' as const, reasonDetail: `${r.envKey} not set` } : {}), ...(r.comingSoon ? { reasonCode: 'not_wired' as const, reasonDetail: `coming soon: ${r.comingSoon}` } : {}), ...(reason === NOT_WIRED_REASON ? { reasonCode: 'not_wired' as const, reasonDetail: 'no live connection for this route on this server yet' } : {}), ...(inputStep ? { inputStep: true } : {}), ...(inputBlock ? { reasonCode: 'input_blocked' as const, reasonDetail: reason === VARIANT_BLOCK_REASON ? "the lighter version needs the ComfyUI-GGUF node on the connected ComfyUI" : 'the job inputs do not fit this route' } : {}), ...(tooHeavy ? { reasonCode: 'too_heavy' as const, reasonDetail: fit!.reason } : {}), ...(reason === ROUTE_OFF_REASON && !r.comingSoon /* coming-soon Router models share the words; they stay not_wired */ ? { reasonCode: 'route_not_enabled' as const, reasonDetail: 'Comfy Router answered not_enabled for this model; re-checked after 24 h' } : {}), ...(fit ? { fit } : {}), sourceUrl: r.sourceUrl, ...(r.caps ? { caps: r.caps } : {}), tier: tierOf(r), tierLabel: tierLabel(r), wired: routeRunnable(r), ...(r.twinProvider ? { twinOf: r.modelId, twinProvider: r.twinProvider } : {}) };
 }
 /** Bug Hunter #12: reachable (can we talk to local ComfyUI) is separate from enabled (Settings → Use local ComfyUI = global.useLocal). */
 export function localState() {
@@ -173,9 +174,9 @@ export function autoOrder(tool: ToolDef, modelId: string, input: Record<string, 
   const all = routesIn(modelId, tool, allow).map((r) => option(tool, r, input, passes));
   // Run-on pre-selection (2026-10-22, replaces Auto): the first READY place in the order Comfy → a connected other API → Local (on, weights
   // and nodes present). A demo preview (mock backend, no key) only when nothing is ready. Nothing else: never a place that needs setup.
-  const gpuReady = (o: RouteOption) => o.kind !== 'local' || (useLocal && !localSetupGate(tool, modelId, input));
+  const gpuReady = (o: RouteOption) => o.kind !== 'local' || builtInLocal(o.routeId) || (useLocal && !localSetupGate(tool, modelId, input));
   const tk = takesRank(modelId, input); // inside a place: the route that takes your settings first, then the old tier / price rule
-  const real = all.filter((o) => o.available && !o.demo && (o.kind !== 'local' || useLocal) && gpuReady(o)).sort((a, b) => (placeRank(a) - placeRank(b)) || (tk(a) - tk(b)) || byTier(true)(a, b));
+  const real = all.filter((o) => o.available && !o.demo && (o.kind !== 'local' || useLocal || builtInLocal(o.routeId)) && gpuReady(o)).sort((a, b) => (placeRank(a) - placeRank(b)) || (tk(a) - tk(b)) || byTier(true)(a, b));
   if (real.length) return real;
   // a local route in the demo order runs locally (free); it still needs its files and nodes, else it is a download, never pre-selected
   const held = new Set(routesIn(modelId, tool, allow).filter(twinHeld).map((r) => r.routeId)); // an unmeasured Cloud twin is never pre-selected as a sample place (the model behaves as before the twin)
@@ -190,7 +191,10 @@ export const takesRank = (engine: string, input: Record<string, any>) => (o: { r
   return Number.isFinite(d) && d > 0 && L.durations?.length && !L.durations.includes(d) ? 1 : 0;
 };
 /** Run-on place order (user decision 2026-10-22: Comfy → other APIs → Local): 0, 1, 2. */
-export const placeRank = (o: { kind: string; envKey?: string | null; vendor?: string | null }) => { const ro = runOnOfRoute(o); return ro === 'comfy-cloud' ? 0 : ro === 'local' ? 2 : 1; };
+/** A tool built into the app that runs on your computer with no ComfyUI and no graphics card (provider noGpu: Image to vector's VTracer). Its local
+ *  route is always on (Settings → Your computer is about ComfyUI) and comes first: it is free and needs nothing (2026-11-03). */
+export const builtInLocal = (routeId: string | null | undefined) => /^local:/.test(String(routeId ?? '')) && !!getProvider(String(routeId).slice(6))?.noGpu;
+export const placeRank = (o: { kind: string; envKey?: string | null; vendor?: string | null; routeId?: string }) => { if (builtInLocal(o.routeId)) return -1; const ro = runOnOfRoute(o); return ro === 'comfy-cloud' ? 0 : ro === 'local' ? 2 : 1; };
 /** Pre-selection comparator: place, then (inside a place) the old tier / price / latency rule (a GPU route that fits before a slow one). */
 export const byPlace = (a: RouteOption, b: RouteOption) => (placeRank(a) - placeRank(b)) || byTier(true)(a, b);
 /** Local isn't ready when the model's files or custom nodes are missing (only checked where the weights gate is enforced: comfy backend). */
@@ -394,6 +398,10 @@ function planInner(tool: ToolDef, modelId: string, input: Record<string, any>, p
     // Oct 27 (InfiniteTalk, speech over 60 s): no key yet, but every place of a cloud-only model refuses this input: say why, not 'add a key' (a key would not help)
     { const cl = all.filter((o) => o.kind !== 'local'); if (!order.length && !blocker && cl.length && cl.length === all.length && cl.every((o) => o.reasonCode === 'input_blocked' && o.reason))
       return { error: `${reasonSentence(cl[0].reason!)} Nothing was charged.`, errorType: 'validation', status: 409, routes: all }; }
+    // Nov 3: a place that is set up (its key is here) and only needs something from this job (H3 Character Swap: who to swap) is the place: the
+    // answer names it and says what to add, never "add a key" / "nothing is ready" (the Run on menu then keeps Comfy Cloud, not Your computer)
+    { const ib = !order.length && !blocker ? all.filter((o) => o.kind !== 'local' && o.configured && o.inputStep && o.reason && o.credits != null && o.wired !== false).sort(byPlace)[0] : undefined;
+      if (ib) return { error: `${reasonSentence(ib.reason!)} Nothing was charged.`, errorType: 'validation', code: 'input_blocked', reasonCode: 'input_blocked', inputStep: true, routeId: ib.routeId, reason: ib.reason, status: 409, routes: all, charged: false, calm: true } as any; }
     if (!order.length && blocker) return { error: blocker.reason === NOT_WIRED_REASON ? `${notWiredSentence(blocker.label)} Nothing was charged.` : `${blocker.label} can't run this job. ${reasonSentence(blocker.reason!)} Nothing was charged.`, errorType: 'routing', status: 409, routes: all, setup: setupTarget(tool, modelId, input, all, allow), setupOptions: setupOptions(tool, modelId, input, all, allow) } as PlanResult; // Run on: the place to set up that could take this job
     { const th = all.find((o) => o.kind === 'local' && o.reasonCode === 'too_heavy'); // B3: a local-only model that is too heavy here: say so (409 too_heavy), not 'add a key'
       if (!order.length && th && !all.some((o) => o.kind !== 'local' && !routesIn(modelId, tool, allow).find((r) => r.routeId === o.routeId)?.comingSoon))
@@ -434,6 +442,7 @@ function planInner(tool: ToolDef, modelId: string, input: Record<string, any>, p
     const ot: RouteOption = { ...o, available: true, reason: undefined, fit: { ...o.fit, warning, pinnedAnyway: true } } as RouteOption; delete (ot as any).reason;
     const rest = af ? autoOrder(tool, modelId, input, passes, allow).filter((x) => x.routeId !== r.routeId && !x.demo) : [];
     return { routing: { modelId, mode: 'pinned', allowFallback: af, order: [r.routeId, ...rest.map((x) => x.routeId)], prices, fitWarning: { code: 'too_heavy', routeId: r.routeId, message: warning } }, first: ot, options: all }; }
+  if (!o.available && o.inputStep) return { error: `${reasonSentence(o.reason!)} Nothing was charged.`, errorType: 'validation', code: 'input_blocked', reasonCode: 'input_blocked', inputStep: true, routeId: r.routeId, reason: o.reason, status: 409, routes: all, charged: false, calm: true } as any; // the picked place, waiting for a step (who to swap)
   if (!o.available) return { error: o.reason === NOT_WIRED_REASON ? `${notWiredSentence(r.label).replace(/ Pick another model\.$/, '')} Pick another place in Run on. Nothing was charged.` : `${r.label} can't run this job. ${reasonSentence(o.reason!)} Pick another place. Nothing was charged.`, errorType: 'routing', code: 'route_not_runnable', routeId: r.routeId, setup: placeAction(tool, modelId, input, o), reason: o.reason, status: 409, routes: all,
     charged: false, userMessage: `${r.label} can't run this job right now. Nothing was charged.`, calm: true } as any;
   // Oct 19 #2: a pinned local route never silently turns into a cloud demo preview (fallback only to routes that really run)

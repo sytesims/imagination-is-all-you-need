@@ -19,6 +19,7 @@ import { AD_STYLES, AD_STYLE_DEFAULT, AD_STYLE_IDS, AD_PLACEMENTS, AD_PLACEMENT_
 import { BRAND_ACCENTS, BRAND_LOGO_SPOT, brandAccentWords, logoFor, type BrandKit } from '../shared/brandKit.js';
 import { getBrandKit } from '../brandKits.js';
 import { LAYER_MODELS, LAYER_SIZES, LAYER_SIZE_DEFAULT, LAYERS_NO_PROMPT, layersPhotoBlock, layerLabel } from '../shared/imageLayers.js';
+import { VECTOR_MODELS, VECTOR_IDEOGRAM, VECTOR_STYLES, VECTOR_STYLE_DEFAULT, VECTOR_MAX_SIDE, VECTOR_NOTES, vectorPhotoBlock, vectorStyleLabel } from '../shared/imageVector.js';
 import { mockLayerNames, mockLayerCount } from './mockLayers.js';
 import { checkImageCaps, capsFor, ratioOf } from '../shared/imageCaps.js';
 import { closestAspect } from '../shared/imageSnap.js';
@@ -394,7 +395,7 @@ export function cameraPresetProvider(types: string[], usable: string[]): string 
 export const cameraDefaultMove = (provider: string): string | null => (cameraApp.presets ?? []).find((p) => !cameraPresetOff([p.id], provider))?.id ?? null;
 export const cameraPresetOff = (types: string[], provider: string) => types.map(cameraMoveId).find((t) => { const ps = cameraPresetProviders(t); return !!ps && !ps.includes(provider); }) ?? null;
 /** A Camera Moves preset's prompt phrase by id (old ids too), from the same preset list the Camera Moves job parser checks: '' for Free camera,
- *  null when the id isn't a move. Generate Video's Look → Camera (job field cameraMove) puts this phrase first, the same rule as a Camera Moves job. */
+ *  null when the id isn't a move. Generate Video's Presets → Camera (job field cameraMove) puts this phrase first, the same rule as a Camera Moves job. */
 export const cameraMovePrompt = (id: string): string | null => { const p = (cameraApp.presets ?? []).find((x) => x.id === cameraMoveId(String(id ?? '').trim())); return p ? String(p.prompt ?? '') : null; };
 /** The Camera Moves prompt rule: the move's phrase first, then the rest of the prompt (makeApp finalPrompt: typePrompt, then prompt). */
 export const moveFirst = (move: string, text: string | null | undefined) => [move, text].filter(Boolean).join('. ');
@@ -996,6 +997,17 @@ export const APP_GALLERY: GalleryApp[] = [
     prepare: async (r) => { const p = await probe(r.imagePath); const b = photoBlock(p) ?? layersPhotoBlock(p); return b ? { error: { field: 'image', ...b } } : { sourceSize: p ? { width: p.width, height: p.height } : null }; },
     extra: { promptOptional: true, outputLabel: 'Layers' }, finish: (r) => ({ outputLabel: 'Layers', layers: true, transparent: true, mockLayers: mockLayerNames(mockLayerCount(r.appPrompt, r.seed)).map((nm, k) => layerLabel(k, nm)) /* sample layers (mock only): 2–13, from "N layers" in the prompt, else the seed */ }),
     notes: ['Up to 16 layers plus the background; the model decides how many. Name the elements in the prompt to steer it.', 'Each layer is a PNG with a transparent background, the size of the picture. The photo needs at least 512 px on each side.'] },
+  // ---- Image to vector (SVG) (2026-11-03, shared/imageVector.ts): VTracer on this computer (free, default) or Ideogram Vector 1 on Comfy Cloud. One picture
+  // in, one editable SVG out. No prompt. The style (Logo / flat, Illustration, Detailed) maps to VTracer's settings; Ideogram picks its own detail.
+  { id: 'image-vector', name: 'Image to vector (SVG)', route: `${IMAGE_PAGE}?workflow=image-vector`, category: 'Edit', base: 'create-image', poster: null,
+    description: 'Turn a picture into an editable SVG vector: clean shapes you can scale to any size and edit in Figma, Illustrator or Inkscape.',
+    locked: { types: '["edit"]' }, providers: [], extraProviders: VECTOR_MODELS, exposed: ['image', 'provider', 'rights', 'seed'], labels: { image: 'Picture' }, required: ['image'],
+    fields: [{ name: 'style', label: 'Style', kind: 'select', control: 'segmented', options: VECTOR_STYLES.map((s) => ({ value: s.value, label: s.label })), default: VECTOR_STYLE_DEFAULT }],
+    compose: (v) => `Trace into an SVG vector · ${vectorStyleLabel(v.style)}`, noPrompt: 'No prompt: the picture is traced into shapes',
+    prepare: async (r) => { if (/\.svg$/i.test(String(r.imagePath ?? ''))) return { error: { field: 'image', code: 'already_vector', message: 'That file is already a vector (SVG). Pick a PNG, JPG or WebP picture.' } };
+      const p = await probe(r.imagePath); const b = vectorPhotoBlock(p); return b ? { error: { field: 'image', ...b } } : { sourceSize: p ? { width: p.width, height: p.height } : null }; },
+    extra: { promptOptional: true, outputLabel: 'Vector (SVG)' }, finish: (r) => ({ outputLabel: 'Vector (SVG)', vector: true, transparent: true, ...(r.provider === VECTOR_IDEOGRAM ? { warnings: [...(r.warnings ?? []), VECTOR_NOTES.ideogramStyle] } : {}) }),
+    notes: ['Best on logos, icons and flat illustrations. A photo works too, but becomes many small shapes.', `Pictures bigger than ${VECTOR_MAX_SIDE} px are scaled down before tracing. Transparent areas stay transparent.`] },
   { id: 'music-bed', name: 'Music Bed', category: 'Audio', base: 'soundtrack', poster: null, description: 'Add a music track under a clip, original audio kept underneath.',
     locked: { types: '["music"]', mix: 'blend' }, exposed: ['video', 'prompt', 'rights'], promptTemplate: '{prompt}' },
 ];
@@ -1059,6 +1071,51 @@ export function appQuoteParams(t: ToolDef | undefined, q: Record<string, string>
   if (typeof G.lockedFor === 'function') { const vals = Object.fromEntries(((G.fields ?? []) as any[]).map((f) => [f.name, String(out[f.name] ?? '') || String(f.default ?? '')]));
     Object.assign(out, G.lockedFor(vals, { provider: out.provider || out.model || (t?.providers?.[0] as any)?.id || (t?.providers?.[0] as any), mode: m ?? '' })); } // Character Sheet: the layout's aspect on this model
   return out;
+}
+/** An app's own fields as parseInput reads them: validated, defaulted, mapped (inputOptions), with `f` changed as the run sends it (passFields
+ *  kept, the rest removed). One rule for the submit and the quote (appQuotePromptBytes), so the prompt they compose can't drift. */
+export function appFieldVals(a: GalleryApp, f: Record<string, string>, baseInputs: { name: string; options?: string[] }[] = []): { vals: Record<string, string> } | { error: { field: string; message: string; code: string } } {
+  const badF = (field: string, message: string, code = 'invalid') => ({ error: { field, message, code } });
+  const vals: Record<string, string> = {};
+  for (const af of a.fields ?? []) {
+    let v = f[af.name]; if (af.kind === 'text' && v != null) v = String(v).replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim(); // short words: one line, spaces collapsed
+    if (v == null || v === '') v = af.default ?? '';
+    if (v === '' && af.optional) { vals[af.name] = ''; continue; }
+    if (af.kind === 'select' && !af.options!.some((o) => o.value === v)) return badF(af.name, `${af.label}: pick one of ${af.options!.map((o) => o.value).join(', ')}.`);
+    if (af.kind === 'number') { const n = Number(v); if (!Number.isFinite(n) || n < af.min! || n > af.max!) return badF(af.name, `${af.label} must be ${af.min}–${af.max}.`, 'out_of_range'); v = String(n); }
+    if (af.kind === 'color') { if (!new RegExp(af.pattern!).test(v)) return badF(af.name, af.help ?? `${af.label}: use a hex colour like #FFAA33.`, 'format'); v = v.toUpperCase(); }
+    if (af.kind === 'text' && af.maxLength && v.length > af.maxLength) return badF(af.name, `${af.label}: up to ${af.maxLength} characters.`, 'too_long');
+    if (af.kind === 'json' && af.parse) { const r = af.parse(String(v)); if ('error' in r) return badF(af.name, r.error, 'format'); v = r.value; }
+    vals[af.name] = v; if (a.passFields?.includes(af.name)) f[af.name] = v; else delete f[af.name]; // passFields: the base tool reads it too
+  }
+  if (a.fields?.some((x) => x.name === 'lightX') && (vals.lightX === '') !== (vals.lightY === '')) return badF(vals.lightX === '' ? 'lightX' : 'lightY', 'Send both lightX and lightY (or neither).', 'required');
+  for (const [k, opts] of Object.entries(a.inputOptions ?? {})) if (f[k] != null && f[k] !== '') { const o = opts.find((x) => x.value === f[k] || x.runsAs === f[k]);
+    if (o) { vals[k] = o.value; f[k] = o.runsAs; } else if (!baseInputs.find((i) => i.name === k)?.options?.includes(f[k])) return badF(k, `Pick one of ${opts.map((x) => x.value).join(', ')}.`); else vals[k] = f[k]; } // older clients' library ids still run (same voice)
+  return { vals };
+}
+/** The Brand kit a brand app composes with, and whether "Use brand colours" is on (the same for submit and quote). */
+export const appBrandKit = (a: GalleryApp, fields: Record<string, any>): BrandKit | null => (a.brand && fields.brandKit ? getBrandKit(String(fields.brandKit)) ?? null : null); // index.ts already refused an unknown id
+export const appBrandColours = (a: GalleryApp, fields: Record<string, any>): boolean => !!appBrandKit(a, fields) && /^(1|true|on)$/i.test(String(fields.brandColours ?? ''));
+/** The prompt an app sends: its recipe composed around the typed words (null: the app has no recipe, the typed words go as they are). Used by the
+ *  submit (parseInput) and the quote (appQuotePromptBytes): GPT Image bills prompt text, so quote = charge needs the same string. */
+export function composeAppPrompt(a: GalleryApp, vals: Record<string, string>, c: { typed: string; has: (file: string) => boolean; provider?: string; brandKit?: BrandKit | null; brandColours?: boolean }): string | null {
+  if (a.compose) return a.compose(vals, { prompt: c.typed, has: c.has, provider: c.provider, maxChars: providerPromptCap(c.provider), brandKit: c.brandKit ?? null, brandColours: !!c.brandColours }).replace(/\s+([:,.;])/g, '$1').trim();
+  if (a.promptTemplate) return a.promptTemplate.replace('{prompt}', c.typed).replace(/\s+([:,.])/g, '$1').trim();
+  return null;
+}
+/** Quote = charge for token-billed models (GPT Image bills prompt text): the UTF-8 bytes of the prompt the submit sends for app `t` with these
+ *  request params, composed by the same functions as parseInput (appFieldVals, composeAppPrompt). The typed words are q.prompt when sent, else a
+ *  typed prompt of q.promptBytes, else none (only the recipe). undefined: no recipe text (the plain prompt rule applies) or fields the submit refuses.
+ *  2026-11-02: the Character Sheet recipe (~1 KB) was quoted as a 500-byte prompt, so its submit came out dearer (409 route_changed). */
+export function appQuotePromptBytes(t: ToolDef | undefined, q: Record<string, string | undefined>): number | undefined {
+  const a = t ? APP_GALLERY.find((x) => `app-${x.id}` === t.id) : undefined; if (!a || a.noPrompt || !(a.compose || a.promptTemplate)) return undefined;
+  const nb = Number(q.promptBytes); const typed = typeof q.prompt === 'string' && q.prompt.trim() ? appTypedPrompt(a.id, q.prompt)
+    : q.promptBytes != null && q.promptBytes !== '' && Number.isFinite(nb) && nb > 0 ? 'x'.repeat(Math.min(Math.round(nb), 100_000)) : '';
+  const f = Object.fromEntries(Object.entries(q).filter((e): e is [string, string] => typeof e[1] === 'string'));
+  for (const [k, v] of Object.entries(a.defaults ?? {})) if ((f[k] == null || f[k] === '') && k !== 'duration') f[k] = v; // as parseInput
+  const fv = appFieldVals(a, f, (t?.inputs ?? []) as any[]); if ('error' in fv) return undefined;
+  try { const s = composeAppPrompt(a, fv.vals, { typed, has: (n) => !!q[n] && q[n] !== '0', provider: q.provider || undefined, brandKit: appBrandKit(a, q), brandColours: appBrandColours(a, q) });
+    return s == null ? undefined : new TextEncoder().encode(s).length; } catch { return undefined; }
 }
 /**
  * The recipe text around the user's words, per app (2026-10-25, shared/typedPrompt.ts): compose a marker with and without each photo, for every
@@ -1169,29 +1226,13 @@ export function makeGalleryApp(a: GalleryApp, base: ToolDef): ToolDef {
       let perIds: string[] | null = null; // Shots: one output per picked option
       if (a.perOutput) { const po = a.perOutput; const ps = po.parse(f[po.field]); if ('error' in ps) return bad(po.field, ps.error, ps.code);
         if (ps.ids.length > po.max) return bad(po.field, `Pick up to ${po.max}.`, 'too_many'); perIds = ps.ids; delete f[po.field]; delete f.n; delete f.count; delete f.batch; }
-      // App fields: validated, defaulted, stored raw (Recreate) and composed into the prompt.
-      const vals: Record<string, string> = {};
-      for (const af of a.fields ?? []) {
-        let v = f[af.name]; if (af.kind === 'text' && v != null) v = String(v).replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim(); // short words: one line, spaces collapsed
-        if (v == null || v === '') v = af.default ?? '';
-        if (v === '' && af.optional) { vals[af.name] = ''; continue; }
-        if (af.kind === 'select' && !af.options!.some((o) => o.value === v)) return bad(af.name, `${af.label}: pick one of ${af.options!.map((o) => o.value).join(', ')}.`);
-        if (af.kind === 'number') { const n = Number(v); if (!Number.isFinite(n) || n < af.min! || n > af.max!) return bad(af.name, `${af.label} must be ${af.min}–${af.max}.`, 'out_of_range'); v = String(n); }
-        if (af.kind === 'color') { if (!new RegExp(af.pattern!).test(v)) return bad(af.name, af.help ?? `${af.label}: use a hex colour like #FFAA33.`, 'format'); v = v.toUpperCase(); }
-        if (af.kind === 'text' && af.maxLength && v.length > af.maxLength) return bad(af.name, `${af.label}: up to ${af.maxLength} characters.`, 'too_long');
-        if (af.kind === 'json' && af.parse) { const r = af.parse(String(v)); if ('error' in r) return bad(af.name, r.error, 'format'); v = r.value; }
-        vals[af.name] = v; if (a.passFields?.includes(af.name)) f[af.name] = v; else delete f[af.name]; // passFields: the base tool reads it too
-      }
-      if (a.fields?.some((x) => x.name === 'lightX') && (vals.lightX === '') !== (vals.lightY === '')) return bad(vals.lightX === '' ? 'lightX' : 'lightY', 'Send both lightX and lightY (or neither).', 'required');
-      for (const [k, opts] of Object.entries(a.inputOptions ?? {})) if (f[k] != null && f[k] !== '') { const o = opts.find((x) => x.value === f[k] || x.runsAs === f[k]);
-        if (o) { vals[k] = o.value; f[k] = o.runsAs; } else if (!baseInputs.find((i) => i.name === k)?.options?.includes(f[k])) return bad(k, `Pick one of ${opts.map((x) => x.value).join(', ')}.`); else vals[k] = f[k]; } // older clients' library ids still run (same voice)
+      // App fields: validated, defaulted, stored raw (Recreate) and composed into the prompt (appFieldVals: the quote reads them the same way).
+      const fv = appFieldVals(a, f, baseInputs); if ('error' in fv) return bad(fv.error.field, fv.error.message, fv.error.code); const vals = fv.vals;
       let appSnap: string | null = null; // D5: an off-list length runs at the nearest one, with a note
       if (a.durations) { const rd = resolveDuration(appId, f.provider || providers[0], f.duration ?? f.seconds); if (rd && 'error' in rd) return { ...durationErrorBody(rd, f.duration != null && f.duration !== '' ? 'duration' : 'seconds') } as any;
         if (rd?.snapped) { f.duration = String(rd.seconds); delete f.seconds; appSnap = rd.snapped.note; } }
-      const kit = a.brand && fields.brandKit ? getBrandKit(String(fields.brandKit)) ?? null : null; // brand apps: Brand's kit (index.ts already refused an unknown id)
-      const colours = !!kit && /^(1|true|on)$/i.test(String(fields.brandColours ?? '')); delete f.brandColours; // the logo apps' "Use brand colours"
-      if (a.compose) { const pv = typeof f.provider === 'string' ? f.provider : undefined; f.prompt = a.compose(vals, { prompt: userPrompt, has: (n) => !!files0[n]?.length, provider: pv, maxChars: providerPromptCap(pv), brandKit: kit, brandColours: colours }).replace(/\s+([:,.;])/g, '$1').trim(); }
-      else if (a.promptTemplate) f.prompt = a.promptTemplate.replace('{prompt}', userPrompt).replace(/\s+([:,.])/g, '$1').trim();
+      const kit = appBrandKit(a, fields); const colours = appBrandColours(a, fields); delete f.brandColours; // the logo apps' "Use brand colours"
+      { const c = composeAppPrompt(a, vals, { typed: userPrompt, has: (n) => !!files0[n]?.length, provider: typeof f.provider === 'string' ? f.provider : undefined, brandKit: kit, brandColours: colours }); if (c != null) f.prompt = c; }
       Object.assign(f, a.locked);
       for (const [field, types] of Object.entries(a.modeWhenFile ?? {})) if (files0[field]?.length) {
         f.types = types; const m = typesOf(types)!;

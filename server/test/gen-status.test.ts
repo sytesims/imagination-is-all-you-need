@@ -46,6 +46,17 @@ const acts = (r: any) => [r?.primary, r?.alt].filter(Boolean).map((a: any) => `$
   const both = reasonOf({ setupKind: 'none', problems: pf({ runnable: false, setupOptions: [{ action: 'download', runOn: 'local' }, { action: 'add_key', runOn: 'comfy-cloud' }], runOn: 'comfy-cloud' }), places: [place('local', 'download'), place('comfy-cloud', 'add_key')] });
   assert.equal(both?.reason, COMFY_DOWN, 'a model that also runs on this computer keeps the Welcome’s line');
   ok('nothing connected: cloud-only → "Add a Comfy key to run this in the cloud" · Add key; YuE2 → "Set up ComfyUI to run YuE2 free" · Set up ComfyUI'); }
+// walk B (2026-11-02): Your computer picked before ComfyUI is set up → the local step, never "Add a Comfy key"; another provider's key → the step itself
+{ const ltx = { valid: false, credits: null, runnable: false, needsKey: false, local: true, runOn: 'local', routeKind: 'local', reason: 'ComfyUI isn’t running on your computer',
+    setup: { runOn: 'local', runOnLabel: 'Your computer', routeId: 'local:comfy-ltx25-extend', action: 'set_up_gpu', actionText: 'Set up GPU' }, setupOptions: [] };
+  const lp = preflightProblems({ quote: ltx, modelName: 'LTX-2.5 22B' }); assert.ok(!lp.some((x) => x.code === 'price_unavailable' || x.code === 'needs_key'), JSON.stringify(lp));
+  for (const sk of ['none', 'cloud'] as const) { const r = reasonOf({ setupKind: sk, problems: lp, places: [] });
+    assert.equal(r?.code, 'needs_comfyui', sk); assert.equal(r!.reason, 'Set up ComfyUI to run LTX-2.5 22B free', sk); assert.equal(r!.primary?.kind, 'connect', sk); }
+  const fal = { valid: false, credits: null, runnable: false, needsKey: true, local: false, setup: { runOn: 'fal', runOnLabel: 'fal', action: 'add_key' }, setupOptions: [{ runOn: 'fal', runOnLabel: 'fal', action: 'add_key', credits: 38 }] };
+  for (const [sk, free, want] of [['none', false, 'Add a fal key to run this'], ['local', true, 'Add a fal key to run this, or pick a free model that runs on your computer']] as const) {
+    const r = reasonOf({ setupKind: sk, problems: preflightProblems({ quote: fal, modelName: 'Hunyuan 3D 3.1', freeLocal: free }), places: [place('fal', 'add_key')] });
+    assert.equal(r?.code, 'needs_key'); assert.equal(r!.reason, want, sk); assert.deepEqual(acts(r), ['fix:Add key'], 'the reason names the step and its button does it'); }
+  ok('Your computer before ComfyUI → "Set up ComfyUI to run LTX-2.5 22B free" · Set up ComfyUI; fal key → "Add a fal key to run this" · Add key'); }
 { const refused = pf({ valid: false, error: 'This model can’t take a 4K image.' });
   const r = reasonOf({ setupKind: 'both', problems: refused, places: [], canDetails: true });
   assert.equal(r?.code, 'model_cant_run'); assert.ok(r!.blocks); assert.deepEqual(acts(r), ['details:See what to fix']);
@@ -59,6 +70,22 @@ const acts = (r: any) => [r?.primary, r?.alt].filter(Boolean).map((a: any) => `$
   assert.equal(soft?.code, 'memory_short'); assert.equal(soft!.blocks, false, 'a graphics card short on memory: said, never blocked');
   for (const r of [soft]) { assert.ok(r!.reason.split(/\s+/).length < 30); assert.ok([r!.primary, r!.alt].filter(Boolean).length <= 2); }
   ok('memory short on a graphics card: a note with Use Comfy Cloud, Generate still runs'); }
+
+// an input-only need (LTX-2.5 Fast on Comfy Cloud "only does image to video", no start image yet) is an input: no reason line while idle,
+// never "Comfy Cloud can't run this job"; a key or a place problem still blocks at once (2026-11-03)
+{ const need = { runnable: false, chargeable: false, credits: 12, blockedCode: 'input_blocked', reasonCode: 'input_blocked', route: 'cloud-ltx25-fast', runOn: 'comfy-cloud',
+    blockedReason: "Comfy Cloud can't run this job. This route only does image to video or first and last frame." };
+  const ps = pf(need); assert.deepEqual(ps.map(x => `${x.stage}:${x.code}`), ['inputs:input_problem'], 'the need is an input, not a model problem');
+  assert.equal(ps[0].message, 'Needs a start image'); assert.equal(ps[0].fix.args?.action, 'add-image'); assert.ok(!ps.some(x => /can.t run this job/.test(x.message)));
+  assert.equal(reasonOf({ setupKind: 'cloud', problems: ps, places: [], canDetails: true }), null, 'idle: no reason line, no See what to fix');
+  assert.deepEqual(pf(need, { prompt: { missing: 'Write a prompt' } }).map(x => x.code), ['prompt_missing', 'input_problem'], 'both inputs, listed after a Generate press');
+  const link = pf({ ...need, blockedReason: "Comfy Router can't run this job. Seedance 2.5 on Comfy Router takes your clip only as a public web link." });
+  assert.equal(link[0]?.code, 'model_cant_run', 'a block no input fixes stays a model problem');
+  const key = reasonOf({ setupKind: 'cloud', problems: pf({ runnable: false, setup: { action: 'add_key', runOn: 'comfy-cloud', runOnLabel: 'Comfy Cloud' } }), places: [place('comfy-cloud', 'add_key')], canDetails: true });
+  assert.equal(key?.code, 'needs_key'); assert.ok(key!.blocks, 'a missing key still blocks right away');
+  const nowhere = reasonOf({ setupKind: 'cloud', problems: [], places: [], noPlace: true });
+  assert.equal(nowhere?.code, 'no_place'); assert.ok(nowhere!.blocks, 'no place still blocks right away');
+  ok('input-only need → an input (no line while idle); a key or no place still blocks'); }
 
 // ---- 2. M1: too big for shared memory ----
 { const mac16 = { id: 'apple-silicon', label: 'Apple M2 · 16 GB', usableGB: 12, ramGB: 16, unifiedMemory: true };

@@ -15,7 +15,7 @@ import { gridSrc } from '../../../shared/thumbs';
 import { durText } from '../../../shared/ResultViewer';
 import { clampAr } from './feedMedia';
 import { feedPropsEqual } from './feedMemo';
-import { plainPrompt, typedPromptOf } from '../../../../../server/src/shared/typedPrompt';
+import { plainPrompt, readableStructured, typedPromptOf } from '../../../../../server/src/shared/typedPrompt';
 export { clampAr, tileMaxH, videoOutOf, askedAr } from './feedMedia';
 
 
@@ -51,7 +51,7 @@ function FeedCard({ job: j, k = 0, of = 1, ar, active, run, media, on, selecting
     {k === 0 && !active && ex && j.status === 'done' && <Link to={ex.recreateHref ?? recreateHref(j)!} className="fd-recreate" data-testid={`${idPre}-recreate-${j.id}`} {...tip('The same prompt and settings in the bar. Nothing runs until you press Generate')}><span aria-hidden>↻</span>Recreate</Link>}
     {children}
     {selecting && k === 0 && onTogglePick && <label className={`fd-check${noPick ? ' off' : ''}`} data-testid={`fd-check-${j.id || 'new'}`} {...tip(noPick ?? (picked ? 'Unselect' : 'Select'))} onClick={e => e.stopPropagation()}><input type="checkbox" checked={!!picked} disabled={!!noPick} aria-label={noPick ? `Can’t select: ${noPick}` : `Select ${said || j.id}`} onChange={() => onTogglePick()} /><i aria-hidden /></label>}
-    {!active && (caption !== undefined ? caption : prompt && <span className="ic-tile-meta"><span><MentionText text={prompt} /></span></span>) /* a running card's foot is the running tile's own (GenTile): never two captions on top of each other */}
+    {!active && (caption !== undefined ? caption : prompt && <span className="ic-tile-meta"><span><MentionText text={readableStructured(prompt)} /></span></span>) /* a running card's foot is the running tile's own (GenTile): never two captions on top of each other */}
     {!active && <Link to={`/jobs/${j.id}`} className="ic-tile-open" {...tip('Open details')}>↗<span className="sr-only">Open details</span></Link>}
   </div>;
 }

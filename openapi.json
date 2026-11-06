@@ -3530,7 +3530,7 @@
         "tags": [
           "Assets"
         ],
-        "summary": "B5: full-size first-frame JPEG of a local video output (rendered on first request, cached). 404 for anything else.",
+        "summary": "B5: full-size poster JPEG of a local video output: a frame ~1 s in (25% of a short clip), skipping near-black frames (rendered on first request, cached; v= is a cache version). 404 for anything else.",
         "responses": {
           "200": {
             "description": "OK",
@@ -8940,7 +8940,7 @@
         "tags": [
           "Discover"
         ],
-        "summary": "Everything the app does that is not a tool id on its own, generated from its registries (capabilities.ts): the Video workflows and flow shortcuts (Loop, Morph, Exploded view, New angle, Direct a Shot), Look → Viral templates and Explore cards. {items[{id video/<id> | template/<id> | explore/<id>, kind video-workflow | flow | template | explore, area, name, tagline, toolId, modelKey, needs, inputs[], how[], keywords[], run {tool_id, model?, fields} | null (ready POST /api/tools/{tool_id}/jobs fields), page, status, note?}], keywords {toolId | toolId/mode: search words}, total}. Read by the MCP server's search_capabilities and describe.",
+        "summary": "Everything the app does that is not a tool id on its own, generated from its registries (capabilities.ts): the Video workflows and flow shortcuts (Loop, Morph, Exploded view, New angle, Direct a Shot), Presets → Viral templates and Explore cards. {items[{id video/<id> | template/<id> | explore/<id>, kind video-workflow | flow | template | explore, area, name, tagline, toolId, modelKey, needs, inputs[], how[], keywords[], run {tool_id, model?, fields} | null (ready POST /api/tools/{tool_id}/jobs fields), page, status, note?}], keywords {toolId | toolId/mode: search words}, total}. Read by the MCP server's search_capabilities and describe.",
         "responses": {
           "200": {
             "description": "OK",

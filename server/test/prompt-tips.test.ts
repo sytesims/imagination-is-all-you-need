@@ -49,3 +49,14 @@ await new Promise<void>((ok) => stub.listen(0, '127.0.0.1', () => ok())); proces
 const llm = await enhancePrompt('@image1 crosses a bridge', 'video', undefined, 'minimax-h3'); stub.close(); delete process.env.OPENHIGGSFIELD_ENHANCE_LLM_URL;
 assert.equal(llm.source, 'llm'); assert.match(seen, /Target model: MiniMax H3\./); assert.match(seen, /Timeline/); assert.match(seen, /under 50000 characters/);
 ok(`enhancer per model: Wan 2.5 stays under 800 (${w.prompt.length}); over-cap prompts untouched with a note; the LLM gets "${seen.slice(seen.indexOf('Target'), seen.indexOf('Target') + 60)}…"`);
+
+// Hover-card notes are plain words (UI audit 2026-11-03): a note naming a raw API field ("optimize_prompt_options / thinking rewrite the
+// prompt" on Seedream) stays in docs/PROMPT-GRAMMAR.md, never on the Models page card or the picker card.
+{
+  const { plainNote } = await import('../src/shared/promptTips.ts'); const { PROMPT_GRAMMAR } = await import('../src/shared/promptGrammar.ts') as any;
+  const sd = promptTipOf('seedream-5.0-pro')!; assert.ok(!sd.extras.some((x) => /optimize_prompt_options/.test(x)), sd.extras.join(' | '));
+  assert.deepEqual(sd.extras, ['Describe shape or purpose in words when size is left to the model']);
+  assert.equal(plainNote('prompt_extend (off unless asked)'), false); assert.equal(plainNote('Text to render goes in quotes'), true);
+  const all = Object.keys(PROMPT_GRAMMAR ?? {}); for (const k of all) for (const x of promptTipOf(k)?.extras ?? []) assert.ok(plainNote(x), `${k}: ${x}`);
+  ok(`hover-card notes are plain words (${all.length} models checked)`);
+}

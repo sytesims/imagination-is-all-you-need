@@ -38,10 +38,19 @@ export function arrowsInto(editor: Editor, cardId: TLShapeId): { arrowId: TLShap
     .sort((a, b) => { const sa = editor.getShape(a.arrowId), sb = editor.getShape(b.arrowId); return (sa?.index ?? '') < (sb?.index ?? '') ? -1 : 1; });
 }
 
-/** Every input of a generate card: arrow inputs (in the order they were drawn), then files added in the bar. */
-export function cardInputs(editor: Editor, card: TLShape): BoardInput[] {
+/** What a generate card upstream WILL pass on once it has run (a draft or running card with no result yet): an empty stand-in of its
+ *  medium, so a proposal can see that the arrow fills the slot ("Waits for …") instead of calling the input missing. Null for 3D / unknown. */
+function pendingInputOf(editor: Editor, s: TLShape | undefined): Omit<BoardInput, 'key'> | null {
+  if (!s || s.type !== GEN_TYPE || inputOfShape(editor, s)) return null; const p: any = s.props; const k = p.medium;
+  if (k !== 'image' && k !== 'video' && k !== 'audio') return null;
+  return { kind: k, url: '', poster: '', jobId: '', shapeId: s.id, label: p.model || 'Result' };
+}
+/** Every input of a generate card: arrow inputs (in the order they were drawn), then files added in the bar. `pending`: also count the
+ *  cards upstream that haven't run yet (empty stand-ins), as they will be filled when a run in graph order reaches this card. */
+export function cardInputs(editor: Editor, card: TLShape, o: { pending?: boolean } = {}): BoardInput[] {
   const out: BoardInput[] = []; const seen = new Set<string>();
-  for (const a of arrowsInto(editor, card.id)) { if (!a.fromId || a.fromId === card.id || seen.has(a.fromId)) continue; const i = inputOfShape(editor, editor.getShape(a.fromId)); if (!i) continue; seen.add(a.fromId); out.push({ ...i, key: a.fromId, arrowId: a.arrowId }); }
+  for (const a of arrowsInto(editor, card.id)) { if (!a.fromId || a.fromId === card.id || seen.has(a.fromId)) continue; const from = editor.getShape(a.fromId);
+    const i = inputOfShape(editor, from) ?? (o.pending ? pendingInputOf(editor, from) : null); if (!i) continue; seen.add(a.fromId); out.push({ ...i, key: a.fromId, arrowId: a.arrowId }); }
   for (const m of ((card.props as any).inputs ?? []) as BoardInput[]) if (m?.url && !seen.has(m.key)) { seen.add(m.key); out.push(m); }
   return out;
 }

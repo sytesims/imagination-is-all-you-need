@@ -15,9 +15,10 @@ import { GRID_MODELS, GRID_WORKFLOWS, type WorkflowSource } from './workflowSour
 import { UPSCALE_ORDER, UPSCALE_MODELS, UPSCALE_MODEL_NAMES, UPSCALE_WORKFLOWS } from './imageUpscale.js';
 import { defaultsOfFeature } from './imageDefaults.js';
 import { LAYER_MODELS, LAYERS_FLASH, LAYERS_PRO, LAYERS_LOCAL, QWEN_LAYERED_TEMPLATE } from './imageLayers.js';
+import { VECTOR_MODELS, VECTOR_LOCAL, VECTOR_IDEOGRAM, VECTOR_TEMPLATE_URL, VTRACER_URL } from './imageVector.js';
 
 export type { WorkflowSource } from './workflowSources.js';
-export type ImageFeatureId = 'create-image' | 'edit-image' | 'upscale' | 'relight' | 'face-swap' | 'person-swap' | 'camera-angles' | 'camera-lens' | 'brush-edit' | 'character-sheet' | 'product-shot' | 'remove-bg' | 'expand' | 'erase' | 'try-on' | 'image-layers' | 'material-swap' | 'ad-pack' | 'phone-photo';
+export type ImageFeatureId = 'create-image' | 'edit-image' | 'upscale' | 'relight' | 'face-swap' | 'person-swap' | 'camera-angles' | 'camera-lens' | 'brush-edit' | 'character-sheet' | 'product-shot' | 'remove-bg' | 'expand' | 'erase' | 'try-on' | 'image-layers' | 'image-vector' | 'material-swap' | 'ad-pack' | 'phone-photo';
 type Mode = 'generate' | 'edit' | 'inpaint' | 'upscale';
 
 export interface ImageFeature {
@@ -100,6 +101,9 @@ export const TOOL_MODELS: Record<string, { name: string; source: WorkflowSource 
   // local Qwen-Image-Layered template (listed with its download size; not downloaded)
   [LAYERS_FLASH]: { name: 'Seedream 5.0 Flash', source: { source: 'official', name: 'ByteDance Seedream 5.0: Layer Separation (api_bytedance_seedream_5_0_layer_separation)', url: `${TPL_URL}api_bytedance_seedream_5_0_layer_separation.json`, author: 'Comfy Org', licence: 'MIT (Comfy-Org/workflow_templates)' } },
   [LAYERS_PRO]: { name: 'Seedream 5.0 Pro', source: { source: 'official', name: 'ByteDance Seedream 5.0: Layer Separation (api_bytedance_seedream_5_0_layer_separation)', url: `${TPL_URL}api_bytedance_seedream_5_0_layer_separation.json`, author: 'Comfy Org', licence: 'MIT (Comfy-Org/workflow_templates)' } },
+  // Image to vector (2026-11-03, shared/imageVector.ts): VTracer runs from our own code (no ComfyUI graph); Ideogram Vector 1 is the official partner template
+  [VECTOR_LOCAL]: { name: 'VTracer', source: { source: 'ours', name: 'VTracer through @neplex/vectorizer (no ComfyUI graph: the app calls the library)', url: VTRACER_URL, author: 'visioncortex (VTracer); the app’s trace code', licence: 'the app’s trace code: AGPL-3.0 (this repo) · VTracer, @neplex/vectorizer: MIT' } },
+  [VECTOR_IDEOGRAM]: { name: 'Ideogram Vector 1', source: { source: 'official', name: 'Ideogram Vector 1: Image to SVG (api_ideogram_vector_1_image_to_svg)', url: VECTOR_TEMPLATE_URL, author: 'Comfy Org', licence: 'MIT (Comfy-Org/workflow_templates)' } },
   [LAYERS_LOCAL]: { name: 'Qwen-Image-Layered', source: { source: 'official', name: 'Qwen-Image-Layered Decomposition (image_qwen_image_layered)', url: QWEN_LAYERED_TEMPLATE, author: 'Comfy Org', licence: 'MIT (Comfy-Org/workflow_templates); model Apache-2.0' } },
 };
 
@@ -146,6 +150,9 @@ export const IMAGE_FEATURES: ImageFeature[] = [
   // Image to layers (2026-10-24): Seedream 5.0 layer separation on Comfy Router (Flash default, Pro), Qwen-Image-Layered listed for Local (needs a download)
   { id: 'image-layers', name: 'Image to layers', toolId: 'app-image-layers', route: `${IMAGE_PAGE}?workflow=image-layers`, inMenu: true, mode: 'edit', images: [1, 1], aspects: false, resolutions: true, count: 1, grid: 'image-layers', recipe: null,
     tagline: 'Split a photo into separate transparent layers', description: 'One photo in: the background and each element (people, objects, text) come back as their own transparent PNG layers, ready to move or edit.', was: 'new', oldRoutes: ['/tools/image-layers', '/tools/app-image-layers'], providers: LAYER_MODELS },
+  // Image to vector (SVG) (2026-11-03): VTracer on this computer (free) or Ideogram Vector 1 on Comfy Cloud; the result is one SVG
+  { id: 'image-vector', name: 'Image to vector (SVG)', toolId: 'app-image-vector', route: `${IMAGE_PAGE}?workflow=image-vector`, inMenu: true, mode: 'edit', images: [1, 1], aspects: false, resolutions: false, count: 1, grid: 'image-vector', recipe: null,
+    tagline: 'Turn a picture into an editable SVG', description: 'Turn a picture into an editable SVG vector: clean shapes you can scale to any size and edit in Figma, Illustrator or Inkscape.', was: 'new', oldRoutes: ['/tools/image-vector', '/tools/app-image-vector'], providers: VECTOR_MODELS },
   { id: 'character-sheet', name: 'Character Sheet', toolId: 'app-character-sheet', route: `${IMAGE_PAGE}?workflow=character-sheet` /* Create Image's bar with this workflow picked (unified Create); the old page redirects */, inMenu: true, mode: 'generate', images: [0, 1], aspects: false, resolutions: false, count: 'model', grid: 'create-image',
     recipe: 'Our character-sheet prompt: pick a layout (Classic front, back and face; a four-view turnaround, with or without a face close-up; six expressions; or the full sheet) on one grey studio backdrop, in the shape that layout needs; with your photo it runs as an edit that keeps the same person and outfit.', tagline: 'One character, many panels, flat backdrop', description: 'One image, same person in several panels on a flat background: a reusable reference.', was: 'Character Sheet', oldRoutes: ['/tools/app-character-sheet'], providers: GENERATE_MODELS },
   { id: 'product-shot', name: 'Product Shot', toolId: 'app-product-shot', route: `${IMAGE_PAGE}?workflow=product-shot` /* Create Image's bar with this workflow picked (unified Create); the old page redirects */, inMenu: true, mode: 'generate', images: [0, 1], aspects: true, resolutions: true, count: 'model', grid: 'create-image',
@@ -222,9 +229,12 @@ export function workflowFor(featureId: string, providerId: string): FeatureWorkf
   return { ...rest, ...(file ? { file } : {}), recipe: f.recipe };
 }
 /** One line: "Official Comfy template · Nano Banana 2: Image Edit" / "Community · BFS Best Face Swap by Alissonerdx" / "Ours · create-image-flux3klein-inpaint-api.json". */
+/** A workflow's name as words: "Nano Banana 2: Image Edit", never its template id "(api_google_nano_banana2_image_edit)" or a "cloud/" folder.
+ *  One rule for the credit line, the viewer's Source row and the Workflows dialog (UI audit 2026-11-03); the link still opens the template. */
+export const workflowName = (n: string | null | undefined): string => String(n ?? '').replace(/^cloud\//, '').replace(/\s*\((?:also\b[^)]*|[\w.-]+)\)\s*$/i, '').trim();
 export function workflowLine(w: WorkflowSource | null | undefined): string {
   if (!w) return '';
-  const nm = w.name.replace(/\s*\([\w.-]+\)\s*$/, '');
+  const nm = workflowName(w.name);
   return w.source === 'official' ? `Official Comfy template · ${nm}${w.author && w.author !== 'Comfy Org' ? ` (by ${w.author})` : ''}`
     : w.source === 'community' ? `Community · ${nm} by ${w.author.replace(/^@/, '')}` : `Built-in · ${w.file ?? nm}`;
 }

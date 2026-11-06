@@ -23,12 +23,12 @@ import { navigate } from '../../platform/router';
 import { setRoute, routeChoiceOf, noteToolModels, type RouteChoice } from '../../shared/models';
 import { requestRequote } from '../../shared/quote';
 import { RUN_ON_BILLING, billsText, comfyVariantText, enginesModels, listPrice, runOnLabel, setActiveModel, setRunOn, setRouting, statusDot, STATUS_WORD, CHIP_ACTION_WORD,
-  placeOf, toolLike, useRunOn, useToolModels, getRunOn, type RunOnRow, type ToolModel, type PlaceAction, shownName, RUN_ON_CHIP, rowPlaceLabel } from '../../shared/models';
+  placeOf, toolLike, useRunOn, useToolModels, getRunOn, type RunOnRow, type ToolModel, type PlaceAction, shownName, RUN_ON_CHIP, rowPlaceLabel, soloGroup, SLOW_HERE } from '../../shared/models';
 import { LOCAL_LABEL, COMFY_DEPLOY_DETAIL } from '../../../../server/src/shared/modelIds';
 
 /** Kept for callers: the place the pre-selection resolved for this job (the live quote's place, else the listing's). */
 export const autoPlaceOf = (m: ToolModel | undefined, q?: any): string | null => placeOf(m, null, q);
-/** The chip / field words: always the place's name ('Local', 'Comfy', 'fal'), plus a short state when it can't run as is. */
+/** The chip / field words: always the place's name ('Your computer', 'Comfy Cloud', 'fal'), plus a short state when it can't run as is. */
 export function runOnText(m: ToolModel | undefined, pick: string, q?: any): { main: string; sub: string; dot: 'ok' | 'demo' | 'off' | null; tip: string; place: string | null; saved: boolean; action: PlaceAction | null } {
   const saved = !!pick && pick !== 'auto'; const place = placeOf(m, pick, q);
   const row = m?.runsOn.find(r => r.id === place);
@@ -36,7 +36,7 @@ export function runOnText(m: ToolModel | undefined, pick: string, q?: any): { ma
   const qHere = !!q && q.runOn === place && (!q.modelKey || !m || q.modelKey === m.key);
   const qAction: PlaceAction | null = qHere && q.runnable === false && q.setup && q.setup.runOn === place ? { kind: q.setup.action, text: q.setup.actionText, missingBytes: q.setup.missingBytes ?? null, downloadId: q.setup.downloadId ?? null } : null;
   let st: string = row?.status ?? 'ready';
-  if (qHere) st = q.demo ? 'sample' : q.runnable === false ? (q.needsKey ? 'needs-key' : q.reasonCode === 'weights_missing' || q.reasonCode === 'nodes_missing' ? 'not-installed' : st === 'ready' ? 'unavailable' : st) : 'ready';
+  if (qHere) st = q.demo ? 'sample' : q.runnable === false && (q.reasonCode === 'input_blocked' || q.blockedCode === 'input_blocked') ? st /* the place is fine; the job needs something (who to swap): the bar says what */ : q.runnable === false ? (q.needsKey ? 'needs-key' : q.reasonCode === 'weights_missing' || q.reasonCode === 'nodes_missing' ? 'not-installed' : st === 'ready' ? 'unavailable' : st) : 'ready';
   const action = st === 'ready' ? null : qAction ?? row?.action ?? null;
   const ch = qHere ? routeChoiceOf(m, q.routeId) : null; // the place has several ways to run it: name the one this run uses ("Comfy Cloud · open workflow")
   const name = ch?.name ?? (place ? runOnLabel(place) : 'Not set up');
@@ -81,7 +81,7 @@ const RunOnButton = forwardRef<HTMLButtonElement, { open: boolean; onClick: () =
 export type RunOnOwn = { runOn: string; set: (runOn: string) => void; rememberedFor: string };
 export type RunOnScale = { factor: number | null; shots: number; unit: string };
 /** The Run on chip's tiniest words, for a crowded bar (shared/dockFit: the model's full name wins; the label and tooltip keep the place in full). */
-const RUN_ON_TINY: Record<string, string> = { local: 'Local', 'comfy-cloud': 'Cloud' };
+const RUN_ON_TINY: Record<string, string> = { 'comfy-cloud': 'Cloud' }; /* Your computer keeps its one name everywhere (2026-11-03: the chip said "Local") */
 /** Create Image dock: a chip in the scroll track ('Comfy ›', 'Local · Download ›'). */
 export function RunOnChip({ toolId, model, engine, quote: q0, testId = 'run-on-chip', avoid, own, scale, watch, compact }: FieldProps & { own?: RunOnOwn; scale?: RunOnScale; /** a composer dock: the menu opens 4px above the chip, over the dock, and re-places when the dock resizes */ watch?: RefObject<HTMLElement | null>;
   /** Create bar: one short word (GPU, Comfy, fal) that never truncates; a needed step shows as the dot, said in full in the label and tooltip */ compact?: boolean }) {
@@ -97,7 +97,7 @@ const rule = (r: FailureRule | undefined) => (r ? RULE_TEXT[r].replace(/^./, c =
 /** One row's state word and tone. A row that isn't ready stays pickable (the chip then shows the fix); greyed by tone 'off'/'warn'. */
 function rowState(r: RunOnRow): { word: string; tone: 'ok' | 'warn' | 'off'; dim: boolean } {
   switch (r.status) {
-    case 'ready': return r.here?.untested ? { word: 'Not tested here yet', tone: 'warn', dim: false } /* item 5: a platform variant nobody has run on this kind of computer */ : { word: READY_WORD, tone: 'ok', dim: false };
+    case 'ready': return r.here?.untested ? { word: 'Not tested here yet', tone: 'warn', dim: false } /* item 5: a platform variant nobody has run on this kind of computer */ : r.here?.slow ? { word: SLOW_HERE, tone: 'warn', dim: false } /* runs, but slowly on this computer (the mini line says how long) */ : { word: READY_WORD, tone: 'ok', dim: false };
     case 'sample': return { word: 'Sample', tone: 'warn', dim: false };
     case 'needs-key': return { word: 'Needs a key', tone: 'warn', dim: true };
     case 'off': return { word: 'Off', tone: 'off', dim: true };
@@ -113,13 +113,13 @@ const groupOf = (r: RunOnRow) => r.group ?? (r.id === 'local' ? 'gpu' : r.id ===
 const waysOf = (r: RunOnRow, ownPick?: RunOnOwn) => (!ownPick && r.choices && r.choices.length > 1 ? r.choices : null);
 /** The sub-line's how words (server comfyHowLine: "Partner model · via last frame"). Not when the ways are listed under it, nor when
  *  comfyVariantText says it in full, nor the deployment line (the row's name already says Comfy deployment). */
-const detailOf = (r: RunOnRow, ways: boolean) => r.id === 'local' ? 'Free and private' : r.id === 'comfy-cloud' && !ways && (r.comfyVariants?.length ?? 0) < 2 && r.detail !== COMFY_DEPLOY_DETAIL ? String(r.detail ?? '') : '';
+const detailOf = (r: RunOnRow, ways: boolean) => r.id === 'local' ? (r.detail ? `${r.detail} · free and private` /* Image to vector: names the built-in tool */ : 'Free and private') : r.id === 'comfy-cloud' && !ways && (r.comfyVariants?.length ?? 0) < 2 && r.detail !== COMFY_DEPLOY_DETAIL ? String(r.detail ?? '') : '';
 
 export function RunOnMenu({ open, anchor, avoid, watch, gap, onClose, toolId, model, engine, quote, placement = 'right', own: ownPick, scale }: { open: boolean; anchor: RefObject<HTMLElement | null>; avoid?: RefObject<HTMLElement | null>; watch?: RefObject<HTMLElement | null>; gap?: number; onClose: () => void; toolId: string; model: ToolModel; engine?: string | null; quote?: any; placement?: PopPlacement; own?: RunOnOwn; scale?: RunOnScale }) {
   useToolModels(toolId); const bill = useBilling(); const own = modeOf(bill, quote) !== 'team';
   const hw = useHardware(); const hwName = machineLabel(hw?.profile); // the Local row names this computer ("Apple M1 Max · 64 GB"), the same name as Settings → Your computer
   const [busy, setBusy] = useState(''); const [err, setErr] = useState('');
-  const ms = modelsFor(toolId, model, engine); const multi = ms.length > 1;
+  const ms = modelsFor(toolId, model, engine); const multi = ms.length > 1; const builtIn = ms.some(m => m.runsOn?.some((r: any) => r.id === 'local' && r.detail)); /* a built-in tool (Image to vector: VTracer): named by the tool, its computer row says so */
   const hereOf = (m: ToolModel) => m.runsOn.find(r => r.id === 'local')?.here ?? null;
   /* the mini line under Local: free memory now (read only while the menu is open on a heavy model) and the time learned here; amber when memory is short */
   const live = useLiveHardware(open && !!hw?.profile && ms.some(m => (hereOf(m)?.memGB ?? 0) >= HEAVY_GB));
@@ -182,11 +182,11 @@ export function RunOnMenu({ open, anchor, avoid, watch, gap, onClose, toolId, mo
     return <div key={`${m.key}:${r.id}`} {...radio} data-testid={`run-on-opt-${r.id}`} data-status={r.status} className={`ro-opt${ways ? ' ro-place' : ''}${on ? ' on' : ''}${s.dim ? ' dim' : ''}`}>
       <span className={ways ? 'ro-rad ro-rad-none' : 'ro-rad'} aria-hidden /><span className="ro-ol">{rowPlaceLabel(r)}<em className={`ro-pill ro-${s.tone}`}>{s.word}</em>{isDefault && <em className="ro-pre" data-testid="run-on-preselected">Default</em>}</span>
       <span className="ro-op" title={cc ?? undefined}>{busy === `${m.key}:${r.id}` ? 'Saving…' : price ?? ''}{act && <small>{act}</small>}</span><span className="ro-os">{sub}{mini && <span className={`ro-here${mem?.short ? ' short' : ''}`} data-testid="run-on-here" title={mem?.short ? mem.text : undefined}>{sub ? ' · ' : ''}{mini}</span>}</span></div>; };
-  return <BarPopover open={open} anchor={anchor} avoid={avoid} watch={watch} gap={gap} placement={placement} onClose={onClose} label={`Run ${multi ? toolName : shownName(model)} on`} role="dialog" className="apop-runon" testId="run-on-menu" width={360}>
+  return <BarPopover open={open} anchor={anchor} avoid={avoid} watch={watch} gap={gap} placement={placement} onClose={onClose} label={`Run ${multi || builtIn ? toolName : shownName(model)} on`} role="dialog" className="apop-runon" testId="run-on-menu" width={360}>
     <div className="ro-pop" role="radiogroup" aria-label={`Where ${shownName(model)} runs`} aria-busy={!!busy || undefined}>
-      <div className="ro-h">Run {multi ? toolName : shownName(model)} on<small>{scale ? `Prices are for the whole ${scale.unit}. ` : ''}{saved || ownPick ? `Remembered for ${ownPick?.rememberedFor ?? toolName}.` : rows.some(x => x.r.id === shownPlace && x.m.key === curM.key && (x.r.status === 'ready' || x.r.status === 'sample')) ? `The default is the first option that’s ready: Comfy Cloud, then your other keys, then your computer. Your pick is remembered for ${toolName}.` : `Nothing is ready yet, so the first one to set up is the default. Your pick is remembered for ${toolName}.`}</small></div>
+      <div className="ro-h">Run {multi || builtIn ? toolName : shownName(model)} on<small>{builtIn ? `${toolName} is built into the app: your computer runs it free, with nothing to set up. ` : ''}{scale ? `Prices are for the whole ${scale.unit}. ` : ''}{saved || ownPick ? `Remembered for ${ownPick?.rememberedFor ?? toolName}.` : rows.some(x => x.r.id === shownPlace && x.m.key === curM.key && (x.r.status === 'ready' || x.r.status === 'sample')) ? (builtIn ? `Your pick is remembered for ${toolName}.` : `The default is the first option that’s ready: Comfy Cloud, then your other keys, then your computer. Your pick is remembered for ${toolName}.`) : `Nothing is ready yet, so the first one to set up is the default. Your pick is remembered for ${toolName}.`}</small></div>
       {GROUPS.map(g => { const rs = rows.filter(x => groupOf(x.r) === g.id); if (!rs.length) return null;
-        return <div key={g.id} className="ro-g" role="group" aria-label={g.label} data-testid={`run-on-group-${g.id}`}><span className="ro-grp">{(() => { const Ic = placeIconFor(g.id); return <Ic size={12} className="ro-grp-ic" />; })()}{g.label}</span>{rs.map(x => { const ways = waysOf(x.r, ownPick); return ways ? <div key={`${x.m.key}:${x.r.id}`} className="ro-nest" role="group" aria-labelledby={`ro-h-${x.m.key}-${x.r.id}`.replace(/[^\w-]/g, '-')} data-testid={`run-on-ways-${x.r.id}`}>{opt(x)}{ways.map(c => choiceRow(x.m, x.r, c))}</div> : opt(x); })}</div>; })}
+        return <div key={g.id} className="ro-g" role="group" aria-label={g.label} data-testid={`run-on-group-${g.id}`}>{!soloGroup(g.label, rs.map(x => rowPlaceLabel(x.r))) && <span className="ro-grp">{(() => { const Ic = placeIconFor(g.id); return <Ic size={12} className="ro-grp-ic" />; })()}{g.label}</span>}{rs.map(x => { const ways = waysOf(x.r, ownPick); return ways ? <div key={`${x.m.key}:${x.r.id}`} className="ro-nest" role="group" aria-labelledby={`ro-h-${x.m.key}-${x.r.id}`.replace(/[^\w-]/g, '-')} data-testid={`run-on-ways-${x.r.id}`}>{opt(x)}{ways.map(c => choiceRow(x.m, x.r, c))}</div> : opt(x); })}</div>; })}
       {!rows.length && <p className="ro-off" data-testid="run-on-none">Nothing can run {shownName(model)} on this server yet.</p>}
       {err && <Notice as="p" kind="error" tone="line" className="ro-err" testId="run-on-error">{err}</Notice>}
       {saved && !ownPick && <button type="button" className="ro-reset" data-testid="run-on-reset" disabled={!!busy} onClick={() => void save('reset', async () => { await setRunOn(toolId, curM.key, ''); onClose(); })}>Use the default</button>}

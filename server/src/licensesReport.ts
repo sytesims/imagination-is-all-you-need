@@ -1,11 +1,13 @@
 /** "Models & Licences": one row per tool × model from the live registry. Served at GET /api/licenses;
  *  scripts/gen-licenses.ts writes LICENSES.md from the same function. The only place licence links are exposed. */
 import { listTools } from './tools/registry.js';
-import { toolProviders, providerLicense, comfyCloudOpen, type ProviderDef } from './providers.js';
-import { routesFor } from './routing/routes.js';
+import { toolProviders, providerLicense, comfyCloudOpen, getProvider, type ProviderDef } from './providers.js';
+import { routesFor, TWIN_ALIASES } from './routing/routes.js';
 const CLOUD_ROUTE_LABEL: Record<string, string> = { fal: 'fal', replicate: 'Replicate', direct: 'provider API', 'comfy-cloud': 'Comfy Cloud', 'comfy-router': 'Comfy Router' };
 /** Where a model runs (not its licence): local ComfyUI, Comfy Cloud (open workflow = no API nodes, or API nodes), Comfy partner API, or a provider's own API. */
 export function runsOnOf(p: ProviderDef): string {
+  if (p.noGpu) { const tw = Object.entries(TWIN_ALIASES).filter(([, a]) => a.model === p.id).map(([id]) => getProvider(id)?.name).filter(Boolean); // a built-in tool (VTracer): no ComfyUI
+    return `Your computer, in the app (no ComfyUI)${tw.length ? ` · or ${tw.join(', ')}` : ''}`; }
   if (p.kind === 'open-weights') { const extra = [...new Set(routesFor(p.id).filter((r) => r.kind !== 'local' && !r.comingSoon).map((r) => CLOUD_ROUTE_LABEL[r.kind] ?? r.kind))];
     return `Local ComfyUI${extra.length ? ` · or ${extra.join(', ')}` : ''}`; }
   if (p.id.startsWith('cloud-')) return comfyCloudOpen(p) ? 'Comfy Cloud · open workflow' : 'Comfy Cloud · API nodes';

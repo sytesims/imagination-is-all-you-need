@@ -6,6 +6,7 @@
  */
 import { sameShape, ratioOf } from './imageCaps.js';
 import { LOCAL_LABEL } from './modelIds.js';
+import { needOf, type Need } from './settingsFit.js';
 
 export type PreflightStage = 'inputs' | 'model' | 'setup' | 'money';
 export type PreflightFixKind = 'choose-photo' | 'fit-photo' | 'crop-photo' | 'use-first' | 'pick-model' | 'paint-mask' | 'focus-prompt' | 'open-group'
@@ -26,6 +27,8 @@ export interface PreflightState {
   mask?: { needed: boolean; painted: boolean } | null;
   /** a prompt the run needs and doesn't have ("Describe the character") */ prompt?: { missing: string } | null;
   /** a pick the recipe needs (Camera Angles: at least one angle) */ pick?: { group: string; missing: string } | null;
+  /** the page's own input steps (Object Swap: who / what to replace), listed after the slots, prompt and pick and counted as inputs, so a quote
+   *  that refuses for the same missing input never lists it twice (once as an input, again as "can't run · Pick model…") */ steps?: PreflightProblem[];
   /** the quote body (200 or the 400 error body), or null while it loads */ quote?: any;
   /** the model's name, for messages */ modelName?: string | null;
   /** cloud first (2026-10-27): the tool also has a model that runs free on this computer, so a missing key names that way out too */ freeLocal?: boolean;
@@ -49,6 +52,10 @@ export const LOCAL_SETUP_TEXT = 'Set up ComfyUI to run free';
  *  reachable) quotes needsKey:true with no key providers (routing/select.ts noProvider). Display only: the gate is the same, the words are honest. */
 export const localOnlyGate = (q: any): boolean => !!q && q.needsKey === true && q.runnable === false && q.local === true
   && !(q.noProvider?.providers?.length) && !q.keyOwner && !q.noProvider?.keyOwner && q.setup?.action !== 'add_key';
+/** What a quote's input block needs (a start image, two images, an end frame, a clip, a sound, a reference), or null: the ONE rule that makes such a
+ *  block an input (no reason line, no "can't run" words; Generate points at the slot), shared by the pre-flight, the Video and Audio notes and MCP. */
+export const inputNeedOf = (q: any): Need | null => !!q && q.runnable === false && q.needsKey !== true && q.blockedCode === 'input_blocked' && !q.blockedField && q.inputStep !== true
+  ? needOf(String(q.blockedReason ?? '')) : null;
 export function preflightProblems(s: PreflightState): PreflightProblem[] {
   const out: PreflightProblem[] = []; const add = (p: PreflightProblem) => out.push(p);
   const q = s.quote ?? null; const model = s.modelName || 'This model';
@@ -67,6 +74,10 @@ export function preflightProblems(s: PreflightState): PreflightProblem[] {
   if (s.mask?.needed && !s.mask.painted) add({ code: 'mask_missing', stage: 'inputs', message: 'No mask painted yet', fix: { kind: 'paint-mask', label: 'Paint mask' } });
   if (s.prompt) add({ code: 'prompt_missing', stage: 'inputs', message: s.prompt.missing, fix: { kind: 'focus-prompt', label: 'Write it' } });
   if (s.pick) add({ code: 'pick_missing', stage: 'inputs', message: s.pick.missing, fix: { kind: 'open-group', label: 'Pick', args: { group: s.pick.group } } });
+  for (const st of s.steps ?? []) add(st.stage === 'inputs' ? st : { ...st, stage: 'inputs' });
+  // a step the route is waiting for (quote inputStep: H3's who to swap): an input, said once, never a model problem with "Pick model…"
+  if (q && q.inputStep === true && q.runnable === false && !out.some((p) => p.stage === 'inputs'))
+    add({ code: 'input_problem', stage: 'inputs', message: String(q.blockedReason ?? q.reason ?? 'Add what this model needs first').replace(/^.*?can['’]t run this job\.\s*/, '').replace(/\.$/, ''), fix: { kind: 'open-group', label: 'Open', args: { group: String(q.inputGroup ?? '') } } });
   // ---- model: the quote refused these settings on this model (a 400), or has no verified price ----
   const shapeSaid = out.some((p) => p.code === 'photo_shape') || out.some((p) => p.code === 'too_many_images');
   if (q && q.valid === false && q.error && !q.setupOptions && !(shapeSaid && /^(aspect|refs)$/.test(String(q.issues?.[0]?.field ?? q.field ?? '')))
@@ -74,7 +85,12 @@ export function preflightProblems(s: PreflightState): PreflightProblem[] {
     add({ code: 'model_cant_run', stage: 'model', message: String(q.error).replace(/\.$/, ''), fix: { kind: 'pick-model', label: 'Pick model…' } });
   // the route can't take this job's inputs (input_blocked: wrong mode, a clip a public link can't reach…): the price stays in the quote but isn't
   // shown as chargeable, so say why here (else the button showed neither a price nor a reason). A blockedField (Camera's start image) is the inputs' own step.
-  if (q && q.runnable === false && q.blockedCode === 'input_blocked' && q.blockedReason && !q.blockedField && !out.some((p) => p.stage === 'inputs'))
+  // A block a picture (or clip, or sound) fixes is an INPUT, not a model problem (2026-11-03): LTX-2.5 Fast on Comfy Cloud "only does image to video"
+  // with no start image yet is the empty slot, said only when Generate is pressed, never "Comfy Cloud can't run this job" while the user is idle.
+  const need = inputNeedOf(q);
+  if (need) { if (!out.some((p) => p.code === 'photo_missing' || p.code === 'input_problem'))
+    add({ code: 'input_problem', stage: 'inputs', message: need.short, fix: { kind: 'choose-photo', label: 'Choose…', args: { need: need.code, action: need.action ?? '' } } }); }
+  else if (q && q.runnable === false && q.blockedCode === 'input_blocked' && q.blockedReason && !q.blockedField && q.inputStep !== true && !out.some((p) => p.stage === 'inputs'))
     add({ code: 'model_cant_run', stage: 'model', message: String(q.blockedReason).replace(/^.*?can['’]t run this job\.\s*/, '').replace(/\.$/, ''), fix: { kind: 'pick-model', label: 'Pick model…' } });
   const unpriced = !!q && q.credits == null && (q.priceAvailable === false || q.code === 'price_unavailable') && !q.setupOptions?.length && !q.setup && !plainRefusal(q) // a refusal in plain words is not a missing price
     && q.reasonCode !== 'local_only_unreachable'; // nor is a free local-only model waiting for ComfyUI (YuE2): its setup step below says so
@@ -86,6 +102,8 @@ export function preflightProblems(s: PreflightState): PreflightProblem[] {
     if (o?.action === 'download') add({ code: 'needs_download', stage: 'setup', message: `${model} isn’t downloaded yet`, fix: { kind: 'download', label: o.missingBytes ? `Download ${gb(Number(o.missingBytes))}` : 'Download', args: { runOn, ...(o.missingBytes ? { bytes: Number(o.missingBytes) } : {}) } } });
     else if (o?.action === 'add_key') add({ code: 'needs_key', stage: 'setup', message: `Needs a ${where || 'provider'} key${s.freeLocal ? FREE_LOCAL_TAIL : ''}`, fix: { kind: 'add-key', label: 'Add key', args: { runOn } } });
     else if (o?.action === 'turn_on') add({ code: 'needs_gpu', stage: 'setup', message: `${LOCAL_LABEL} is off`, fix: { kind: 'turn-on', label: 'Turn on', args: { runOn } } });
+    // the local place before ComfyUI answers (Your computer picked, routing/select.ts set_up_gpu): the free way, never "add a key"
+    else if (o?.action === 'set_up_gpu' && runOn === 'local') add({ code: 'needs_comfyui', stage: 'setup', message: `Set up ComfyUI to run ${model} free`, fix: { kind: 'set-up', label: 'Set up ComfyUI', args: { runOn: 'local' } } });
     else if (o?.action === 'install_node') add({ code: 'needs_node', stage: 'setup', message: `${model} needs a custom node`, fix: { kind: 'install-node', label: 'Install node', args: { runOn } } });
     else if (o) add({ code: 'needs_setup', stage: 'setup', message: `${model} isn’t set up yet`, fix: { kind: 'set-up', label: String(o.actionText || 'Set up'), args: { runOn } } });
     // a model that runs only on your computer while no ComfyUI answers: the routing reason as is (routing/select.ts localOnlyUnreachable), never "add a key"

@@ -232,9 +232,9 @@ async function priceFor(app: FastifyInstance, t: ToolDef, form: Record<string, s
   } catch { return null; }
 }
 
-const ACTIONS = ['recreate', 'turn-to-video', 'send-to', 'director', 'upscale', 'relight', 'translate', 'change-voice', 'reshoot', 'camera', 'photo-fx', 'edit-image', 'finish'] as const;
+const ACTIONS = ['recreate', 'turn-to-video', 'send-to', 'director', 'upscale', 'relight', 'translate', 'change-voice', 'reshoot', 'camera', 'photo-fx', 'edit-image', 'finish', 'vector'] as const;
 /** Menu shortcuts → send-to <tool> (upscale picks video or image upscale by media). */
-const SHORTCUT: Record<string, (k: Kind) => string> = { upscale: (k) => (k === 'image' ? 'image-upscale' : 'upscale'), relight: () => 'app-relight', translate: () => 'app-translate-video', 'change-voice': () => 'app-change-voice', reshoot: () => 'reshoot', camera: () => 'camera', 'photo-fx': () => 'photo-fx', 'edit-image': () => 'create-image', finish: () => 'finish' /* Finish (2026-10-27): a video result into the one-click looks */ };
+const SHORTCUT: Record<string, (k: Kind) => string> = { upscale: (k) => (k === 'image' ? 'image-upscale' : 'upscale'), relight: () => 'app-relight', translate: () => 'app-translate-video', 'change-voice': () => 'app-change-voice', reshoot: () => 'reshoot', camera: () => 'camera', 'photo-fx': () => 'photo-fx', 'edit-image': () => 'create-image', vector: () => 'app-image-vector' /* Image to vector (2026-11-03): "Make it a vector" on an image result */, finish: () => 'finish' /* Finish (2026-10-27): a video result into the one-click looks */ };
 /** Turn to video (action turn-to-video): Generate Video; its model is that tool's default provider (cloud-first routing picks the route at submit; licence settings never change it). */
 const VIDEO_TOOL = 'h3-video';
 
@@ -351,7 +351,7 @@ export async function buildPrefill(app: FastifyInstance, j: Job, q: Q): Promise<
   }
   if (pm.reason) notes.push(pm.reason); if (needs.length) notes.push(`Still to fill before submitting: ${needs.join(', ')}.`);
   const asParam = slot === 'refs' ? 'ref' : slot;
-  const url = `${t.route}?fromJob=${j.id}&as=${asParam}&out=${outIdx}${frame ? `&t=${frameAt}` : ''}${cont ? '&cont=1' : ''}${action === 'director' ? `&mode=${extraForm.mode}&focus=${focus}` : ''}`;
+  const url = `${t.route}${t.route.includes('?') ? '&' : '?'}fromJob=${j.id}&as=${asParam}&out=${outIdx}${frame ? `&t=${frameAt}` : ''}${cont ? '&cont=1' : ''}${action === 'director' ? `&mode=${extraForm.mode}&focus=${focus}` : ''}`;
   const qp = kind === 'video' ? await sizeQuote(t, null, assetUrl) : {}; // Upscale hand-off: the result clip's own size + length
   const fields = schemaFields(t, form, { ...files, [slot]: [assetUrl!] }); // the result shows in its slot; submit sends it via fromJob (or files when re-uploaded)
   return { status: 200, body: { ...base, available: true, reason: pm.reason, providerAvailable: pm.providerAvailable, tool: t.id, toolName: t.name, path: t.route, url, slot, as: asParam, model: pm.model, ...(kind === 'image' && slot !== 'refs' ? { startFrame: assetUrl } : {}), fields, form, files, submit, needs,

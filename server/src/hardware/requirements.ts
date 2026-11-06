@@ -310,6 +310,7 @@ export function fitFor(tool: ToolDef, providerId: string, input: Record<string, 
       if (verdict !== 'too_heavy') { f.reasonCode = 'not_enough_disk'; f.reason = `Its files need ${fmt(req.missingBytes / 1e9)} GB of disk space; ${fmt(hw.disk.freeBytes / 1e9)} GB is free.`; } }
     if (verdict === 'fits' && !hw.gpu?.unifiedMemory && !hw.profile?.unifiedMemory /* GB10: cudaMemGetInfo under-reports (NVIDIA DGX Spark known issues) */ && hw.gpu?.vramFreeBytes != null && R != null && hw.gpu.vramFreeBytes / 2 ** 30 < R) f.vramFreeHint = `Other apps are using graphics memory right now (${fmt(hw.gpu.vramFreeBytes / 2 ** 30)} GB free); close them for full speed.`;
     return f; };
+  if (getProvider(providerId)?.noGpu) return done('fits', 'no_gpu_needed', 'Runs in the app on your computer: no ComfyUI or graphics card needed.'); // a built-in tool (VTracer): nothing to check, even when the hardware can't be read
   if (hw.tier === 'unknown') return done('unknown', 'hardware_unknown', "This computer's hardware couldn't be read, so this route isn't checked.", false);
   if (!req || !req.workflows.length) return done('fits', 'no_gpu_needed', 'Runs on your computer.');
   if (hw.gpu?.type === 'mps' && req.macBlockedFiles?.length) return done('too_heavy', 'unsupported_weights', `${MAC_WEIGHTS_REASON}.`); // 2026-10-25: before the size checks (a Mac with room still can't load them)
@@ -319,7 +320,7 @@ export function fitFor(tool: ToolDef, providerId: string, input: Record<string, 
     if (R <= 2 && image) return done('slow', 'cpu', 'Runs on the processor without a graphics card, slowly.');
     return done('too_heavy', 'no_gpu', `Needs a graphics card with about ${fmt(R)} GB of memory; your computer has none.`); }
   if (hw.gpu.type === 'mps' && req.mps === 'red') return done('too_heavy', 'unsupported_weights', `${MAC_WEIGHTS_REASON}.`);
-  if (R <= E - 1) return done(hw.gpu.type === 'mps' && req.mps === 'amber' ? 'slow' : 'fits', hw.gpu.type === 'mps' && req.mps === 'amber' ? 'mps' : 'fits', hw.gpu.type === 'mps' && req.mps === 'amber' ? `Runs, but slow${aboutTime(base.etaSeconds)}: these weights are slow or untested on Apple graphics.` : `Fits in your ${fmt(E)} GB of graphics memory.`);
+  if (R <= E - 1) return done(hw.gpu.type === 'mps' && req.mps === 'amber' ? 'slow' : 'fits', hw.gpu.type === 'mps' && req.mps === 'amber' ? 'mps' : 'fits', hw.gpu.type === 'mps' && req.mps === 'amber' ? `Runs, but slow${aboutTime(base.etaSeconds)}: these weights are slow or untested on Apple graphics. Best on an NVIDIA graphics card or in the cloud.` : `Fits in your ${fmt(E)} GB of graphics memory.`);
   const ramOk = ramGB == null || req.ramMinGB == null || ramGB >= req.ramMinGB;
   /* M1 (2026-11-02): shared memory (Apple Silicon, DGX Spark) has no separate system memory to move part of it to: it swaps and can freeze. Said plainly here;
      the verdict rule itself is PR 3's (the reason line already asks before such a run) */

@@ -4,7 +4,8 @@
  * On boot, instead of failing it ("The server restarted while this was in progress"), we poll that ComfyUI:
  *   - /history/<id> has outputs → download them, store them (opaque for images) and finish the job;
  *   - /history says error → fail with ComfyUI's reason;
- *   - still in /queue (running or pending) → keep polling (until the prompt's hard cap on RUNNING time; then our prompt is cancelled);
+ *   - still in /queue (running or pending) → keep polling, however long it takes (no clock; only OPENHIGGSFIELD_COMFY_TIMEOUT_MS, when someone
+ *     sets it, caps RUNNING time, then our prompt is cancelled);
  *   - neither → fail: ComfyUI no longer has it (it restarted too, or the queue was cleared).
  * ComfyUI unreachable: keep trying for UNREACHABLE_MS, then fail, but keep watching it for a late result (comfy/lateRescue.ts).
  * Only single-pass jobs whose outputs are stored as they come (Create Image and other image tools) can be resumed; multi-pass jobs
@@ -21,6 +22,7 @@ import { isOpaqueImage, LATE_WATCH_MS } from './runNative.js';
 import { env } from '../env.js';
 import { nativeOutputItems } from './nativeImageOutputs.js';
 import { featureIdOfJob } from '../shared/imageFeatures.js';
+import { holdAwake } from '../keepAwake.js';
 
 export const canResume = (j: Job) => j.status === 'running' && !!j.comfyPrompt?.id && j.comfyPrompt.resumable === true && !!j.comfyPrompt.base;
 const imageJob = (j: Job) => j.input.outKind === 'image' || featureIdOfJob(j) != null;
@@ -65,11 +67,15 @@ export async function storeOutputs(job: Job, c: ComfyNative, h: any): Promise<st
 
 /** Poll until the prompt finishes (or is gone). Resolves with the job finished (done or failed); never throws. */
 export async function resumeNative(job: Job, o: { sleep?: (ms: number) => Promise<void> } = {}): Promise<void> {
+  const release = holdAwake(); // a reconnected run on the user's own ComfyUI keeps the computer awake too (keepAwake.ts)
+  try { await resumeLoop(job, o); } finally { release(); }
+}
+async function resumeLoop(job: Job, o: { sleep?: (ms: number) => Promise<void> }): Promise<void> {
   const cp = job.comfyPrompt!; const sleep = o.sleep ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
   const c = comfyFor(cp.base);
   job.stage = 'reconnecting'; job.progressKind = 'indeterminate'; job.steps = null; job.updatedAt = Date.now();
   let runningSince: number | null = null; let unreachableSince: number | null = null;
-  const capMs = config.comfyHardCapOverrideMs ?? cp.capMs ?? config.comfyHardCapFloorMs;
+  const capMs = config.comfyHardCapOverrideMs; // none by default; a cap stored on an old job (cp.capMs, the former 60 min) is not used
   const fail = (msg: string, type = 'temporary', keepWatching = false) => { job.status = 'failed'; job.stage = 'failed'; job.errorType = type; job.error = msg; job.eta = 0;
     if (keepWatching) job.lateWatch = { since: Date.now(), until: Date.now() + LATE_WATCH_MS(), why: 'restart' }; else job.comfyPrompt = null; };
   for (;;) {
@@ -83,16 +89,16 @@ export async function resumeNative(job: Job, o: { sleep?: (ms: number) => Promis
         job.warnings = [...(job.warnings ?? []), 'The server restarted during this run; the result was collected from ComfyUI afterwards.']; return;
       }
       const q = await inQueue(c, cp.id);
-      if (!q && !h) return fail('The server restarted while this was in progress, and ComfyUI no longer has this job (it may have restarted too); try again.');
+      if (!q && !h) { job.reasonCode = 'local_gone'; return fail('The app restarted while this was in progress, and ComfyUI no longer has this job (it may have restarted too).'); }
       job.stage = q === 'pending' ? 'queued on ComfyUI' : 'reconnecting'; if (q === 'running') { runningSince ??= Date.now(); job.renderStartedAt ??= runningSince; } // the cap counts running time only, never ComfyUI's queue
     } catch (e) {
       unreachableSince ??= Date.now();
       if (Date.now() - unreachableSince > UNREACHABLE_MS) return fail(`The server restarted while this was in progress, and ComfyUI (${cp.base}) can't be reached to collect the result; try again.`, 'provider_outage', true);
     }
-    if (runningSince != null && Date.now() - runningSince > capMs) { // past the hard cap: stop OUR prompt (never anyone else's); if it wasn't stopped, keep watching
+    if (capMs != null && runningSince != null && Date.now() - runningSince > capMs) { // past the hard cap: stop OUR prompt (never anyone else's); if it wasn't stopped, keep watching
       const out = await c.cancelPrompt(cp.id); const mins = Math.max(1, Math.round(capMs / 60_000));
       console.warn(`[openhiggsfield] reconnected ComfyUI prompt ${cp.id} ran longer than ${mins} min: ${out}`);
-      job.reasonCode = 'local_too_long'; return fail(`Took longer than ${mins} min.`, 'timeout', out === 'not_in_queue' || out === 'unreachable');
+      job.reasonCode = 'local_too_long'; return fail(`Stopped at the ${mins} min limit set for this computer.`, 'timeout', out === 'not_in_queue' || out === 'unreachable');
     }
     await sleep(POLL_MS);
   }

@@ -2,7 +2,7 @@
 
 # Every workflow
 
-77 ways to start: 69 workflows and 8 step by step. This page lists each one: what it does, where to open it, the models it offers and where they run, what it takes, the ComfyUI graph behind it and where that graph comes from.
+78 ways to start: 70 workflows and 8 step by step. This page lists each one: what it does, where to open it, the models it offers and where they run, what it takes, the ComfyUI graph behind it and where that graph comes from.
 
 Read it like this:
 
@@ -16,7 +16,7 @@ Model licences and credit lines: [LICENSES.md](../LICENSES.md) and [Attribution]
 
 ## Contents
 
-- [Image](#image) (19)
+- [Image](#image) (20)
 - [Video](#video) (38)
 - [Audio](#audio) (8)
 - [3D](#3d) (4)
@@ -114,6 +114,21 @@ Pick the camera, lens and aperture.
 | Settings | style (none, warm-ambient, street-2000s, mono, stage-light +16 more) · enhance (0, 1) · prompt (text) · n (1, 2, 3, 4) · aspect (auto, 1:1, 16:9, 9:16, 4:3 +46 more) · quality (low, med, high) · resolution (720p, 1080p, 480p) |
 | ComfyUI graph | [create-image-flux3klein-t2i-api.json](../workflows/create-image-flux3klein-t2i-api.json) (FLUX Kommunity License v1.0)<br>[create-image-flux3klein-edit-api.json](../workflows/create-image-flux3klein-edit-api.json) (FLUX Kommunity License v1.0)<br>[create-image-flux3klein-inpaint-api.json](../workflows/create-image-flux3klein-inpaint-api.json) (FLUX Kommunity License v1.0)<br>[create-image-flux3klein-multiref-api.json](../workflows/create-image-flux3klein-multiref-api.json) (FLUX Kommunity License v1.0)<br>[create-image-qwen21-t2i-api.json](../workflows/create-image-qwen21-t2i-api.json) (Qwen Research License)<br>[create-image-qwen21-edit-api.json](../workflows/create-image-qwen21-edit-api.json) (Qwen Research License)<br>[create-image-qwen21-turbo-t2i-api.json](../workflows/create-image-qwen21-turbo-t2i-api.json) (Qwen Research License)<br>[create-image-qwen21-turbo-edit-api.json](../workflows/create-image-qwen21-turbo-edit-api.json) (Qwen Research License)<br>[create-image-qwen-t2i-api.json](../workflows/create-image-qwen-t2i-api.json) (Apache-2.0)<br>[create-image-qwen-edit2509-api.json](../workflows/create-image-qwen-edit2509-api.json) (Apache-2.0)<br>[create-image-qwen-edit2509-inpaint-api.json](../workflows/create-image-qwen-edit2509-inpaint-api.json) (Apache-2.0)<br>[create-image-zimage-turbo-api.json](../workflows/create-image-zimage-turbo-api.json) (Apache-2.0)<br>[create-image-zimage-api.json](../workflows/create-image-zimage-api.json) (Apache-2.0)<br>[create-image-klein4b-t2i-api.json](../workflows/create-image-klein4b-t2i-api.json) (Apache-2.0)<br>[create-image-klein4b-edit-api.json](../workflows/create-image-klein4b-edit-api.json) (Apache-2.0)<br>[create-image-flux2dev-api.json](../workflows/create-image-flux2dev-api.json) (FLUX [dev] Non-Commercial License v2.0)<br>[create-image-moss-image-api.json](../workflows/create-image-moss-image-api.json) (Apache-2.0)<br>[create-image-moss-image-base-api.json](../workflows/create-image-moss-image-base-api.json) (Apache-2.0) |
 | Comes from | Official Comfy template: [Nano Banana 2: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_google_nano_banana2_text_to_image.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [GPT Image 2: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_openai_gpt_image_2_t2i.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [FLUX 3 Image Klein Distilled: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_flux3_klein_distilled_t2i.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [Seedream 5.0 Pro: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_bytedance_seedream_5_0_pro_t2i.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [FLUX.2 Pro](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_flux2.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Our own: [BFL API request](https://docs.bfl.ml/api-reference/models/generate-or-edit-an-image-with-flux2-[flex]) (AGPL-3.0 (this repo))<br>Official Comfy template: [Ideogram v4: Text to Image (API)](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_ideogram_v4_t2i.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Our own: [BFL API request](https://docs.bfl.ml/api-reference/models/generate-or-edit-an-image-with-flux2-[klein]-9b) (AGPL-3.0 (this repo))<br>Our own: [MiniMax API request](https://platform.minimax.io/docs/api-reference/image-generation-t2i) (AGPL-3.0 (this repo))<br>Official Comfy template: [Nano Banana 2 Lite: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_nano_banana_2_lite_t2i.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [Recraft v4: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_recraft_v4_t2i.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [Luma UNI-1: Image Creation](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_luma_uni_1_image_create.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [Kling O1: Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_kling_omni_image.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [Krea 3: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_krea3_t2i.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [Runway: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_runway_text_to_image.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [Grok Imagine Image 2.0: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_grok_imagine_image_2_t2i.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [Qwen Image 3.0 Pro: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_qwen3_t2i.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [Wan2.5: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_wan_text_to_image.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [GPT Image 2.5 Flare: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_openai_gpt_image_25_flare_t2i.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [GPT Image 2.5 Sunburst: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_openai_gpt_image_25_sunburst_t2i.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [Nano Banana 2.1: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_nano_banana_2_1_t2i.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [Nano Banana Pro](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_nano_banana_pro.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [FLUX 3 Image: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_bfl_flux3_t2i.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [FLUX.2 [max]: Object Swap](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_bfl_flux2_max_sofa_swap.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [Seedream 5.0 Flash: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_bytedance_seedream_5_0_flash_t2i.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [Ideogram 4.5: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_ideogram_v4_5_t2i.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [Recraft 4.1: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_recraft_v4_1_t2i.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Our own: [Comfy Router request · openai/gpt-image-1.5](https://docs.comfy.org/development/comfy-router/models/openai/gpt-image-1-5/code) (AGPL-3.0 (this repo))<br>Our own: [Comfy Router request · byteplus/seedream-4-5-251128](https://docs.comfy.org/development/comfy-router/models/byteplus/seedream-4-5-251128/code) (AGPL-3.0 (this repo))<br>Our own: [Comfy Router request · xai/grok-imagine-image-pro](https://docs.comfy.org/development/comfy-router/models/xai/grok-imagine-image-pro/code) (AGPL-3.0 (this repo))<br>Official Comfy template: [Bria: FIBO 2.0 Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_bria_fibo2_t2i.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [Qwen Image 2.1: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_qwen_image_2_1_t2i.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [Qwen Image 2.1 Turbo: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_qwen_image_2_1_turbo_t2i.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [Qwen-Image: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_qwen_image.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [Z-Image-Turbo: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_z_image_turbo.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [Z-Image: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_z_image.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [FLUX.2 [Klein] 4B: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_flux2_klein_text_to_image.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [FLUX.2 Dev Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_flux2_text_to_image.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [MOSS-Image: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_moss_image_t2i.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [MOSS-Image Base: Text to Image](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_moss_image_base_t2i.json) by Comfy Org (MIT (Comfy-Org/workflow_templates)) |
+
+<a id="i-image-vector"></a>
+### Image to vector (SVG)
+
+Any picture, as an editable SVG.
+
+| | |
+|---|---|
+| Open | `/image?workflow=image-vector` |
+| Takes | A picture |
+| Models | **VTracer**: Your computer (free) · Comfy Cloud ($0.14 per image) |
+| Files in | Picture (image, required) |
+| Settings | Style (illustration, logo, detailed) |
+| ComfyUI graph | Runs through a partner model’s API (no ComfyUI file) |
+| Comes from | Our own: [VTracer through @neplex/vectorizer (no ComfyUI graph: the app calls the library)](https://github.com/visioncortex/vtracer) (the app’s trace code: AGPL-3.0 (this repo) · VTracer, @neplex/vectorizer: MIT) |
 
 <a id="i-image-layers"></a>
 ### Split into layers
@@ -424,7 +439,7 @@ Keep any shot going. Its tab calls it “Extend”.
 | Takes | 1 clip + prompt |
 | Models | **H3 Extend**: Your computer (free, 40 GB of model files) · Comfy Cloud (from $0.13 per second)<br>**LTX-2.5 22B**: Your computer (free) · Comfy Cloud (from $0.012 per second, estimate)<br>**H3 Max Extend**: fal (from $0.05 per second, estimate) |
 | Files in | video (video, required) · character (image) · refImages (several image) |
-| Settings | prompt (text) · extendSeconds (5, 8, 10) · resolution (768p, 480p) · guideFrames (1, 9, 17) · crossfade (number) · extendMethod (continue, guide) · direction (forward, backward, sequel, camera-pull) · bitrate (standard, high) · audio (1, 0) · elements |
+| Settings | prompt (text) · extendSeconds (5, 8, 10) · resolution (768p, 480p) · guideFrames (1, 9, 17) · crossfade (number) · extendMethod (continue, guide) · direction (forward, backward, sequel, camera-pull) · bitrate (standard, high) · audio (1, 0) · elements · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | [h3-extend-api.json](../workflows/h3-extend-api.json) (MiniMax H3 Community License + Apache-2.0)<br>[ltx25-ti2v-api.json](../workflows/ltx25-ti2v-api.json) (LTX-2.x Community License + Apache-2.0) |
 | Comes from | Our own: H3 Extend: the last frames of picture and sound anchored with MiniMaxH3AddGuide (AGPL-3.0 (this repo))<br>Official Comfy template: [LTX-2.5: Image to Video (also text to video; first + last frame from video_ltx2_5_flf2v)](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/video_ltx2_5_i2v.json) by Comfy Org (MIT (Comfy-Org/workflow_templates)) |
 | Example | [fox-extend.mp4](../web/public/examples/starter/fox-extend.mp4) |
@@ -440,7 +455,7 @@ Give any portrait your words. Its tab calls it “Lip Sync”.
 | Takes | Portrait + speech |
 | Models | **LTX-2.5 Talking Photo**: Your computer (free, 43 GB of model files)<br>**H3 Talking Photo**: Your computer (free, 42 GB of model files) · Comfy Cloud (from $0.13 per second)<br>**InfiniteTalk (Wan 2.1)**: Comfy Cloud (GPU time, priced before you run) |
 | Files in | video (video) · voiceAudio (audio) · audio (audio) · image (image) · speech (audio) |
-| Settings | n (1, 2, 3, 4) · prompt (text) · voice (narrator-warm, narrator-crisp, young-bright, deep-calm, energetic-host +2 more) · language (en, es, fr, de, it +11 more) · mix (replace, blend) · resolution (720p, 1080p, 480p) · voiceDetails (text) · speaker (Ryan, Aiden, Vivian, Serena, Uncle_fu +4 more) · speechLanguage (auto, en, zh, ja, ko +6 more) · expression (number 0–10) · mood (number -1–1) · speed (number 0.5–2) · pitch (number -12–12) · volume (number 0–200) · outputFormat (mp3, wav, opus) · sampleRate (8000, 16000, 24000, 32000, 44100 +1 more) · aspect (auto, 16:9, 9:16, 1:1) · split (0, 1) · script (text) |
+| Settings | n (1, 2, 3, 4) · prompt (text) · voice (narrator-warm, narrator-crisp, young-bright, deep-calm, energetic-host +2 more) · language (en, es, fr, de, it +11 more) · mix (replace, blend) · resolution (720p, 1080p, 480p) · voiceDetails (text) · speaker (Ryan, Aiden, Vivian, Serena, Uncle_fu +4 more) · speechLanguage (auto, en, zh, ja, ko +6 more) · expression (number 0–10) · mood (number -1–1) · speed (number 0.5–2) · pitch (number -12–12) · volume (number 0–200) · outputFormat (mp3, wav, opus) · sampleRate (8000, 16000, 24000, 32000, 44100 +1 more) · aspect (auto, 16:9, 9:16, 1:1) · split (0, 1) · script (text) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | [ltx25-a2v-api.json](../workflows/ltx25-a2v-api.json) (LTX-2.x Community License + Apache-2.0)<br>[h3-lipsync-api.json](../workflows/h3-lipsync-api.json) (MiniMax H3 Community License + Apache-2.0)<br>[cloud/wan21-infinitetalk-api.json](../workflows/cloud/wan21-infinitetalk-api.json) (Apache-2.0 + MIT) |
 | Comes from | Community workflow: [LTX-2.5 A2V Two Stage Distilled (Lightricks) + QuokkaiLab lip-sync fix](https://github.com/Lightricks/ComfyUI-LTXVideo/blob/master/example_workflows/2.5/LTX-2.5_A2V_Two_Stage_Distilled.json) by Lightricks · sducly (https://github.com/sducly/quokkai-lab-ltx25-lipsync-fix) (LTX-2 Community License (ComfyUI-LTXVideo) · MIT (QuokkaiLab))<br>Official Comfy template: [Wan 2.1 InfiniteTalk](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/video_wan2_1_infinitetalk.json) by Comfy Org (MIT (Comfy-Org/workflow_templates)) |
 | Custom nodes (local) | [ComfyUI-GGUF](https://github.com/city96/ComfyUI-GGUF) |
@@ -507,7 +522,7 @@ New camera angles from one take
 | Takes | 1 clip |
 | Models | **LTX-2 19B**: Your computer (free, 47 GB of model files) · Comfy Cloud (GPU time, priced before you run)<br>**Wan 2.2 Fun Camera 14B**: Your computer (free, 38 GB of model files)<br>**New angle · H3 CrossView · cloud**: Your Comfy deployment (GPU time, priced before you run) |
 | Files in | video (video, required) · Source still (instead of a video) (image) · videoRefs (several video) · audio (audio) · refs (several image) |
-| Settings | seconds (number) · yaw (number) · tilt (number) · angles · generateAudio (0, 1) · fullClip (0, 1) · Angles to render (batch) (1, 4, 8, 12) · prompt (text) · resolution (480p, 720p, 1080p) · azimuth (number) · elevation (number) · distance (number) |
+| Settings | seconds (number) · yaw (number) · tilt (number) · angles · generateAudio (0, 1) · fullClip (0, 1) · Angles to render (batch) (1, 4, 8, 12) · prompt (text) · resolution (480p, 720p, 1080p) · azimuth (number) · elevation (number) · distance (number) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | [reshoot-api.json](../workflows/reshoot-api.json) (LTX-2 Community License + Gemma Terms of Use)<br>[cloud/reshoot-cloud-api.json](../workflows/cloud/reshoot-cloud-api.json) (Apache-2.0)<br>[reshoot-funcamera-api.json](../workflows/reshoot-funcamera-api.json) (Apache-2.0)<br>[deploy/h3-crossview-api.json](../workflows/deploy/h3-crossview-api.json) (MiniMax H3 Community License + Apache-2.0 + MIT) |
 | Custom nodes (local) | [comfyui_controlnet_aux](https://github.com/Fannovel16/comfyui_controlnet_aux) |
 
@@ -522,7 +537,7 @@ Re-film your take from a new camera angle.
 | Takes | 1 clip |
 | Models | **New angle · H3 CrossView · cloud**: Your Comfy deployment (GPU time, priced before you run) |
 | Files in | video (video, required) · Source still (instead of a video) (image) · videoRefs (several video) · audio (audio) · refs (several image) |
-| Settings | seconds (number) · yaw (number) · tilt (number) · angles · generateAudio (0, 1) · fullClip (0, 1) · Angles to render (batch) (1, 4, 8, 12) · prompt (text) · resolution (480p, 720p, 1080p) · azimuth (number) · elevation (number) · distance (number) |
+| Settings | seconds (number) · yaw (number) · tilt (number) · angles · generateAudio (0, 1) · fullClip (0, 1) · Angles to render (batch) (1, 4, 8, 12) · prompt (text) · resolution (480p, 720p, 1080p) · azimuth (number) · elevation (number) · distance (number) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | [deploy/h3-crossview-api.json](../workflows/deploy/h3-crossview-api.json) (MiniMax H3 Community License + Apache-2.0 + MIT) |
 
 <a id="v-camera-moves"></a>
@@ -596,7 +611,7 @@ Redraw the whole clip in a new look
 | Takes | 1 clip + style |
 | Models | **Seedance**: Comfy Cloud (from $0.10 per second)<br>**Wan 2.1 VACE 14B**: Your computer (free, 86 GB of model files)<br>**H3 Style Transfer**: Your computer (free, 43 GB of model files)<br>**H3 VFX Edit**: Your computer (free, 43 GB of model files) |
 | Files in | video (video, required) · refs (several image, up to 64 MB each) |
-| Settings | prompt (text) · preset · resolution (480p, 720p, 1080p) · keepAudio (1, 0) · count (number) · customStyle (0, 1) |
+| Settings | prompt (text) · preset · resolution (480p, 720p, 1080p) · keepAudio (1, 0) · count (number) · customStyle (0, 1) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | [restyle-api.json](../workflows/restyle-api.json) (Apache-2.0)<br>[h3-style-transfer-api.json](../workflows/h3-style-transfer-api.json) (MiniMax H3 Community License + Alissonerdx H3 Style Transfer / VFX Edit LoRAs: repo licence "other (mixed-asset-licenses)"; no licence is stated for these two files (the no-SaaS BFS licence covers only the Character Swap LoRAs). Check with the author before commercial use. + Apache-2.0)<br>[h3-vfx-edit-api.json](../workflows/h3-vfx-edit-api.json) (MiniMax H3 Community License + Alissonerdx H3 Style Transfer / VFX Edit LoRAs: repo licence "other (mixed-asset-licenses)"; no licence is stated for these two files (the no-SaaS BFS licence covers only the Character Swap LoRAs). Check with the author before commercial use. + Apache-2.0) |
 
 <a id="v-anime-restyle"></a>
@@ -610,7 +625,7 @@ Turn a clip into cel-shaded anime
 | Takes | 1 clip |
 | Models | **Seedance**: Comfy Cloud (from $0.10 per second)<br>**Wan 2.1 VACE 14B**: Your computer (free, 86 GB of model files)<br>**H3 Style Transfer**: Your computer (free, 43 GB of model files) |
 | Files in | video (video, required) |
-| Settings | resolution (480p, 720p, 1080p) |
+| Settings | resolution (480p, 720p, 1080p) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | [restyle-api.json](../workflows/restyle-api.json) (Apache-2.0)<br>[h3-style-transfer-api.json](../workflows/h3-style-transfer-api.json) (MiniMax H3 Community License + Alissonerdx H3 Style Transfer / VFX Edit LoRAs: repo licence "other (mixed-asset-licenses)"; no licence is stated for these two files (the no-SaaS BFS licence covers only the Character Swap LoRAs). Check with the author before commercial use. + Apache-2.0)<br>[h3-vfx-edit-api.json](../workflows/h3-vfx-edit-api.json) (MiniMax H3 Community License + Alissonerdx H3 Style Transfer / VFX Edit LoRAs: repo licence "other (mixed-asset-licenses)"; no licence is stated for these two files (the no-SaaS BFS licence covers only the Character Swap LoRAs). Check with the author before commercial use. + Apache-2.0) |
 | Comes from | Official Comfy template: [Wan2.1 VACE Control Video](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/video_wan_vace_14B_v2v.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Community workflow: [Minimax-H3-ComfyUI style_transfer LoRA](https://huggingface.co/Alissonerdx/Minimax-H3-ComfyUI) by Alissonerdx (other (mixed-asset-licenses)) |
 
@@ -625,7 +640,7 @@ Remove the people and vehicles. Keep the place.
 | Takes | 1 clip |
 | Models | **LTX-2.5 22B + Lightricks IC-LoRA**: Your computer (free, 43 GB of model files) · Comfy Cloud (GPU time, priced before you run) |
 | Files in | Your clip (video, required) |
-| Settings | What is in the shot (optional, one line) (text) · duration (2, 3, 4, 5) · resolution (448p, 576p) · New shape (Extend the frame) (16:9, 9:16, 1:1) · Which way it grows (Extend the frame) (around, left, right, up, down) · keepAudio (1, 0) |
+| Settings | What is in the shot (optional, one line) (text) · duration (2, 3, 4, 5) · resolution (448p, 576p) · New shape (Extend the frame) (16:9, 9:16, 1:1) · Which way it grows (Extend the frame) (around, left, right, up, down) · keepAudio (1, 0) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | [ltx25-iclora-v2v-api.json](../workflows/ltx25-iclora-v2v-api.json) (LTX-2.x Community License + Apache-2.0) |
 | Custom nodes (local) | [ComfyUI-GGUF](https://github.com/city96/ComfyUI-GGUF) |
 
@@ -640,7 +655,7 @@ Turn the shot to night, same motion.
 | Takes | 1 clip |
 | Models | **LTX-2.5 22B + Lightricks IC-LoRA**: Your computer (free, 43 GB of model files) · Comfy Cloud (GPU time, priced before you run) |
 | Files in | Your clip (video, required) |
-| Settings | What is in the shot (optional, one line) (text) · duration (2, 3, 4, 5) · resolution (448p, 576p) · New shape (Extend the frame) (16:9, 9:16, 1:1) · Which way it grows (Extend the frame) (around, left, right, up, down) · keepAudio (1, 0) |
+| Settings | What is in the shot (optional, one line) (text) · duration (2, 3, 4, 5) · resolution (448p, 576p) · New shape (Extend the frame) (16:9, 9:16, 1:1) · Which way it grows (Extend the frame) (around, left, right, up, down) · keepAudio (1, 0) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | [ltx25-iclora-v2v-api.json](../workflows/ltx25-iclora-v2v-api.json) (LTX-2.x Community License + Apache-2.0) |
 | Custom nodes (local) | [ComfyUI-GGUF](https://github.com/city96/ComfyUI-GGUF) |
 
@@ -655,7 +670,7 @@ Wet streets, puddles and light rain.
 | Takes | 1 clip |
 | Models | **LTX-2.5 22B + Lightricks IC-LoRA**: Your computer (free, 43 GB of model files) · Comfy Cloud (GPU time, priced before you run) |
 | Files in | Your clip (video, required) |
-| Settings | What is in the shot (optional, one line) (text) · duration (2, 3, 4, 5) · resolution (448p, 576p) · New shape (Extend the frame) (16:9, 9:16, 1:1) · Which way it grows (Extend the frame) (around, left, right, up, down) · keepAudio (1, 0) |
+| Settings | What is in the shot (optional, one line) (text) · duration (2, 3, 4, 5) · resolution (448p, 576p) · New shape (Extend the frame) (16:9, 9:16, 1:1) · Which way it grows (Extend the frame) (around, left, right, up, down) · keepAudio (1, 0) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | [ltx25-iclora-v2v-api.json](../workflows/ltx25-iclora-v2v-api.json) (LTX-2.x Community License + Apache-2.0) |
 | Custom nodes (local) | [ComfyUI-GGUF](https://github.com/city96/ComfyUI-GGUF) |
 
@@ -670,7 +685,7 @@ Water fills the scene and reacts to movement.
 | Takes | 1 clip |
 | Models | **LTX-2.5 22B + Lightricks IC-LoRA**: Your computer (free, 43 GB of model files) · Comfy Cloud (GPU time, priced before you run) |
 | Files in | Your clip (video, required) |
-| Settings | What is in the shot (optional, one line) (text) · duration (2, 3, 4, 5) · resolution (448p, 576p) · New shape (Extend the frame) (16:9, 9:16, 1:1) · Which way it grows (Extend the frame) (around, left, right, up, down) · keepAudio (1, 0) |
+| Settings | What is in the shot (optional, one line) (text) · duration (2, 3, 4, 5) · resolution (448p, 576p) · New shape (Extend the frame) (16:9, 9:16, 1:1) · Which way it grows (Extend the frame) (around, left, right, up, down) · keepAudio (1, 0) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | [ltx25-iclora-v2v-api.json](../workflows/ltx25-iclora-v2v-api.json) (LTX-2.x Community License + Apache-2.0) |
 | Custom nodes (local) | [ComfyUI-GGUF](https://github.com/city96/ComfyUI-GGUF) |
 
@@ -685,7 +700,7 @@ A clean foreground matte, no green screen.
 | Takes | 1 clip |
 | Models | **LTX-2.5 22B + Lightricks IC-LoRA**: Your computer (free, 43 GB of model files) · Comfy Cloud (GPU time, priced before you run) |
 | Files in | Your clip (video, required) |
-| Settings | What is in the shot (optional, one line) (text) · duration (2, 3, 4, 5) · resolution (448p, 576p) · New shape (Extend the frame) (16:9, 9:16, 1:1) · Which way it grows (Extend the frame) (around, left, right, up, down) · keepAudio (1, 0) |
+| Settings | What is in the shot (optional, one line) (text) · duration (2, 3, 4, 5) · resolution (448p, 576p) · New shape (Extend the frame) (16:9, 9:16, 1:1) · Which way it grows (Extend the frame) (around, left, right, up, down) · keepAudio (1, 0) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | [ltx25-iclora-v2v-api.json](../workflows/ltx25-iclora-v2v-api.json) (LTX-2.x Community License + Apache-2.0) |
 | Custom nodes (local) | [ComfyUI-GGUF](https://github.com/city96/ComfyUI-GGUF) |
 
@@ -700,7 +715,7 @@ Old, faded film made clean and colourful.
 | Takes | 1 clip |
 | Models | **LTX-2.3 22B + Dearchive IC-LoRA**: Comfy Cloud (GPU time, priced before you run) |
 | Files in | Your clip (video, required) |
-| Settings | What is in the shot (optional, one line) (text) · duration (2, 3, 4, 5) · resolution (448p, 576p) · New shape (Extend the frame) (16:9, 9:16, 1:1) · Which way it grows (Extend the frame) (around, left, right, up, down) · keepAudio (1, 0) |
+| Settings | What is in the shot (optional, one line) (text) · duration (2, 3, 4, 5) · resolution (448p, 576p) · New shape (Extend the frame) (16:9, 9:16, 1:1) · Which way it grows (Extend the frame) (around, left, right, up, down) · keepAudio (1, 0) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | Runs the official Comfy template under “Comes from” on Comfy Cloud (no file in this repo) |
 | Comes from | Official Comfy template: [LTX-2.3: Restore Archival Footage](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/template_ltx2_3_lora_restore_archival_footage.json) by Comfy Org · LTX-2.3 · Lightricks (MIT (Comfy-Org/workflow_templates) · weights: LTX-2.x Community License) |
 
@@ -715,7 +730,7 @@ Name something in the shot and it’s gone.
 | Takes | 1 clip + what to remove |
 | Models | **LTX-2.3 22B + Obscura Remova LoRA**: Comfy Cloud (GPU time, priced before you run) |
 | Files in | Your clip (video, required) |
-| Settings | What is in the shot (optional, one line) (text) · duration (2, 3, 4, 5) · resolution (448p, 576p) · New shape (Extend the frame) (16:9, 9:16, 1:1) · Which way it grows (Extend the frame) (around, left, right, up, down) · keepAudio (1, 0) |
+| Settings | What is in the shot (optional, one line) (text) · duration (2, 3, 4, 5) · resolution (448p, 576p) · New shape (Extend the frame) (16:9, 9:16, 1:1) · Which way it grows (Extend the frame) (around, left, right, up, down) · keepAudio (1, 0) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | Runs the official Comfy template under “Comes from” on Comfy Cloud (no file in this repo) |
 | Comes from | Official Comfy template: [LTX-2.3: Remove Object from Video](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/template_ltx2_3_obscura_remova_lora_remove_object_from_video.json) by Comfy Org · LTX-2.3 · Lightricks (MIT (Comfy-Org/workflow_templates) · weights: LTX-2.x Community License) |
 
@@ -730,7 +745,7 @@ Subtitles, captions and text on screen, wiped clean.
 | Takes | 1 clip |
 | Models | **LTX-2.3 22B + Subtitle Remover IC-LoRA**: Comfy Cloud (GPU time, priced before you run) |
 | Files in | Your clip (video, required) |
-| Settings | What is in the shot (optional, one line) (text) · duration (2, 3, 4, 5) · resolution (448p, 576p) · New shape (Extend the frame) (16:9, 9:16, 1:1) · Which way it grows (Extend the frame) (around, left, right, up, down) · keepAudio (1, 0) |
+| Settings | What is in the shot (optional, one line) (text) · duration (2, 3, 4, 5) · resolution (448p, 576p) · New shape (Extend the frame) (16:9, 9:16, 1:1) · Which way it grows (Extend the frame) (around, left, right, up, down) · keepAudio (1, 0) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | Runs the official Comfy template under “Comes from” on Comfy Cloud (no file in this repo) |
 | Comes from | Official Comfy template: [LTX-2.3: Remove Subtitles from Video](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/template_ltx2_3_lora_remove_subtitles_from_video.json) by Comfy Org · LTX-2.3 · Lightricks (MIT (Comfy-Org/workflow_templates) · weights: LTX-2.x Community License) |
 
@@ -745,7 +760,7 @@ Grow the shot past its edges.
 | Takes | 1 clip |
 | Models | **LTX-2.3 22B + Outpaint IC-LoRA**: Comfy Cloud (GPU time, priced before you run) |
 | Files in | Your clip (video, required) |
-| Settings | What is in the shot (optional, one line) (text) · duration (2, 3, 4, 5) · resolution (448p, 576p) · New shape (Extend the frame) (16:9, 9:16, 1:1) · Which way it grows (Extend the frame) (around, left, right, up, down) · keepAudio (1, 0) |
+| Settings | What is in the shot (optional, one line) (text) · duration (2, 3, 4, 5) · resolution (448p, 576p) · New shape (Extend the frame) (16:9, 9:16, 1:1) · Which way it grows (Extend the frame) (around, left, right, up, down) · keepAudio (1, 0) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | Runs the official Comfy template under “Comes from” on Comfy Cloud (no file in this repo) |
 | Comes from | Official Comfy template: [LTX-2.3: Video Outpainting](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/template_ltx2_3_lora_video_outpainting.json) by Comfy Org · LTX-2.3 · Lightricks (MIT (Comfy-Org/workflow_templates) · weights: LTX-2.x Community License) |
 
@@ -760,7 +775,7 @@ Fit any clip to any screen. Its tab calls it “Reframe”.
 | Takes | 1 clip |
 | Models | **Luma Reframe**: Comfy Cloud (from $0.03 per second, estimate) |
 | Files in | video (video, required) |
-| Settings | prompt (text) · quality (high, fast) · resolution (720p) · aspect (16:9, 9:16, 1:1, 4:3, 3:4 +1 more) |
+| Settings | prompt (text) · quality (high, fast) · resolution (720p) · aspect (16:9, 9:16, 1:1, 4:3, 3:4 +1 more) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | Runs through a partner model’s API (no ComfyUI file) |
 
 <a id="v-remove-bg"></a>
@@ -774,7 +789,7 @@ Lift the subject off the background Its tab calls it “Remove Background”.
 | Takes | 1 clip |
 | Models | **BiRefNet**: Your computer (free, 0.4 GB of model files)<br>**Bria Video Background Removal**: Comfy Cloud ($0.05 per second) |
 | Files in | video (video, required) |
-| Settings | resolution (720p) |
+| Settings | resolution (720p) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | [remove-bg-birefnet-api.json](../workflows/remove-bg-birefnet-api.json) (BiRefNet) |
 | Custom nodes (local) | [ComfyUI_BiRefNet_ll](https://github.com/lldacing/ComfyUI_BiRefNet_ll) |
 
@@ -789,7 +804,7 @@ A depth pass for compositing
 | Takes | 1 clip |
 | Models | **Depth Anything V2 Small**: Your computer (free, 0.1 GB of model files) |
 | Files in | video (video, required) |
-| Settings | resolution (720p) · format (grey, inverted) |
+| Settings | resolution (720p) · format (grey, inverted) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | [depth-map-dav2-api.json](../workflows/depth-map-dav2-api.json) (Depth Anything V2 Small) |
 
 <a id="v-upscale"></a>
@@ -803,7 +818,7 @@ Sharper, larger clips, audio kept
 | Takes | 1 clip |
 | Models | **Real-ESRGAN x2**: Your computer (free, 0.1 GB of model files)<br>**4x-UltraSharp**: Your computer (free, 0.1 GB of model files)<br>**SeedVR2**: fal (priced before you run)<br>**SeedVR2 3B**: Your computer (free, 4.0 GB of model files)<br>**Topaz Starlight Fast**: Comfy Cloud (priced before you run)<br>**Topaz Starlight Precise 2.5**: Comfy Cloud (priced before you run)<br>**FLUX Video Upscale**: Comfy Cloud (priced before you run)<br>**Topaz Astra 2**: Comfy Cloud (priced before you run)<br>**Topaz Starlight Creative**: Comfy Cloud (priced before you run)<br>**Crystal Video Upscaler**: Comfy Cloud (priced before you run) |
 | Files in | video (video, required) |
-| Settings | prompt (text) · scale (1.5, 2, 3, 4) · scene (auto, ai-gen, short-series, ugc, old-film) · maxOutput (1080p, 720p, 1440p, 4k, 2k +1 more) · targetLongEdge (number 720–3840) · target (text) · resolution (1080p) |
+| Settings | prompt (text) · scale (1.5, 2, 3, 4) · scene (auto, ai-gen, short-series, ugc, old-film) · maxOutput (1080p, 720p, 1440p, 4k, 2k +1 more) · targetLongEdge (number 720–3840) · target (text) · resolution (1080p) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | [upscale-esrgan-api.json](../workflows/upscale-esrgan-api.json) (BSD-3-Clause)<br>[upscale-ultrasharp-api.json](../workflows/upscale-ultrasharp-api.json) (CC BY-NC-SA 4.0)<br>[upscale-seedvr2-native-api.json](../workflows/upscale-seedvr2-native-api.json) (Apache-2.0)<br>[upscale-api.json](../workflows/upscale-api.json) (Apache-2.0) |
 | Comes from | Official Comfy template: [Video Upscale: SeedVR2](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/utility_seedvr2_video_upscale.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [Video Upscale: FLUX 3](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_bfl_flux_video_upscale.json) by Comfy Org (MIT (Comfy-Org/workflow_templates)) |
 | Example | [bus-stop-sharp.mp4](../web/public/examples/starter/bus-stop-sharp.mp4) |
@@ -819,6 +834,7 @@ Lift a 480p draft to 1080p
 | Takes | 1 clip |
 | Models | **Real-ESRGAN x2**: Your computer (free, 0.1 GB of model files)<br>**4x-UltraSharp**: Your computer (free, 0.1 GB of model files)<br>**SeedVR2**: fal (priced before you run)<br>**SeedVR2 3B**: Your computer (free, 4.0 GB of model files)<br>**Topaz Starlight Fast**: Comfy Cloud (priced before you run)<br>**Topaz Starlight Precise 2.5**: Comfy Cloud (priced before you run)<br>**FLUX Video Upscale**: Comfy Cloud (priced before you run)<br>**Topaz Astra 2**: Comfy Cloud (priced before you run)<br>**Topaz Starlight Creative**: Comfy Cloud (priced before you run)<br>**Crystal Video Upscaler**: Comfy Cloud (priced before you run) |
 | Files in | video (video, required) |
+| Settings | trimStart (number) · trimEnd (number) |
 | ComfyUI graph | [upscale-esrgan-api.json](../workflows/upscale-esrgan-api.json) (BSD-3-Clause)<br>[upscale-ultrasharp-api.json](../workflows/upscale-ultrasharp-api.json) (CC BY-NC-SA 4.0)<br>[upscale-seedvr2-native-api.json](../workflows/upscale-seedvr2-native-api.json) (Apache-2.0)<br>[upscale-api.json](../workflows/upscale-api.json) (Apache-2.0) |
 | Comes from | Official Comfy template: [Video Upscale: SeedVR2](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/utility_seedvr2_video_upscale.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [Video Upscale: FLUX 3](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_bfl_flux_video_upscale.json) by Comfy Org (MIT (Comfy-Org/workflow_templates)) |
 
@@ -833,7 +849,7 @@ Smoother motion at 48 or 60 fps
 | Takes | 1 clip |
 | Models | **RIFE 4.9**: Your computer (free, 0.0 GB of model files) |
 | Files in | video (video, required) |
-| Settings | resolution (1080p) · targetFps (60, 48) |
+| Settings | resolution (1080p) · targetFps (60, 48) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | [fps-boost-rife-api.json](../workflows/fps-boost-rife-api.json) (Practical-RIFE) |
 | Custom nodes (local) | [ComfyUI-Frame-Interpolation](https://github.com/Fannovel16/ComfyUI-Frame-Interpolation) |
 
@@ -848,7 +864,7 @@ More range in highlights and shadows
 | Takes | 1 clip |
 | Models | **ffmpeg HDR10 conversion**: Your computer (free) |
 | Files in | video (video, required) |
-| Settings | resolution (1080p) · strength (number) |
+| Settings | resolution (1080p) · strength (number) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | None: it runs in the app on your computer, without ComfyUI |
 
 <a id="v-prompt-edit"></a>
@@ -862,7 +878,7 @@ Change a clip by saying what to change
 | Takes | 1 clip + a sentence |
 | Models | **Bernini-R**: Comfy Cloud (GPU time, priced before you run)<br>**Kling 4.0**: Comfy Cloud (from $0.27 per second) |
 | Files in | Your clip (video, required) |
-| Settings | What to change (text, required) · resolution (480p, 720p, 1080p) · keepAudio (1, 0) |
+| Settings | What to change (text, required) · resolution (480p, 720p, 1080p) · keepAudio (1, 0) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | [cloud/bernini-r-edit-api.json](../workflows/cloud/bernini-r-edit-api.json) (Apache-2.0) |
 | Comes from | Official Comfy template: [Bernini-R: Video Editing](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/video_bernini_r_video_editing.json) by Comfy Org (MIT (Comfy-Org/workflow_templates)) |
 
@@ -877,7 +893,7 @@ A finished look for any clip, one click.
 | Takes | 1 clip + look |
 | Models | **Finish**: Your computer (free) |
 | Files in | Your clip (video, required) |
-| Settings | Strength (0–1) (number) · A second look (optional) (none, film-grain, soft-glow, light-leak, glitch +4 more) · keepAudio (1, 0) |
+| Settings | Strength (0–1) (number) · A second look (optional) (none, film-grain, soft-glow, light-leak, glitch +4 more) · keepAudio (1, 0) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | None: it runs in the app on your computer, without ComfyUI |
 
 <a id="v-cutout"></a>
@@ -891,7 +907,7 @@ Subject + black-and-white mask for editing
 | Takes | 1 clip |
 | Models | **BiRefNet**: Your computer (free, 0.4 GB of model files) |
 | Files in | video (video, required) |
-| Settings | Edge detail (fast, balanced, fine) · Edge softness (number 1–30) · resolution (480p, 720p, 1080p) |
+| Settings | Edge detail (fast, balanced, fine) · Edge softness (number 1–30) · resolution (480p, 720p, 1080p) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | [plugins/cutout/workflow.json](../plugins/cutout/workflow.json) (MIT) |
 | Credit | Plugin by Imagination Is All You Need (MIT) |
 | Custom nodes (local) | [ComfyUI_BiRefNet_ll](https://github.com/lldacing/ComfyUI_BiRefNet_ll) |
@@ -909,7 +925,7 @@ A clear voice reads your script.
 | Takes | A prompt |
 | Models | **Chatterbox**: Your computer (free)<br>**ElevenLabs v4**: Comfy Cloud ($0.11 per 1,000 characters)<br>**ElevenLabs v3**: Comfy Cloud ($0.10 per 1,000 characters)<br>**ElevenLabs v4 Turbo**: Comfy Cloud ($0.057 per 1,000 characters)<br>**HeyGen Voice**: Comfy Cloud ($0.001 per second, estimate)<br>**ByteDance Seed Audio**: Comfy Cloud ($0.004 per second, estimate)<br>**Qwen3 TTS 1.7B**: Your computer (free, 4.5 GB of model files)<br>**Fish Audio Drama 3**: Your computer (free, 42 GB of model files)<br>**F5-TTS**: Your computer (free) |
 | Files in | video (video) · voiceAudio (audio) · audio (audio) · image (image) · speech (audio) |
-| Settings | n (1, 2, 3, 4) · prompt (text) · voice (narrator-warm, narrator-crisp, young-bright, deep-calm, energetic-host +2 more) · language (en, es, fr, de, it +11 more) · mix (replace, blend) · resolution (720p, 1080p, 480p) · voiceDetails (text) · speaker (Ryan, Aiden, Vivian, Serena, Uncle_fu +4 more) · speechLanguage (auto, en, zh, ja, ko +6 more) · expression (number 0–10) · mood (number -1–1) · speed (number 0.5–2) · pitch (number -12–12) · volume (number 0–200) · outputFormat (mp3, wav, opus) · sampleRate (8000, 16000, 24000, 32000, 44100 +1 more) · aspect (auto, 16:9, 9:16, 1:1) · split (0, 1) · script (text) |
+| Settings | n (1, 2, 3, 4) · prompt (text) · voice (narrator-warm, narrator-crisp, young-bright, deep-calm, energetic-host +2 more) · language (en, es, fr, de, it +11 more) · mix (replace, blend) · resolution (720p, 1080p, 480p) · voiceDetails (text) · speaker (Ryan, Aiden, Vivian, Serena, Uncle_fu +4 more) · speechLanguage (auto, en, zh, ja, ko +6 more) · expression (number 0–10) · mood (number -1–1) · speed (number 0.5–2) · pitch (number -12–12) · volume (number 0–200) · outputFormat (mp3, wav, opus) · sampleRate (8000, 16000, 24000, 32000, 44100 +1 more) · aspect (auto, 16:9, 9:16, 1:1) · split (0, 1) · script (text) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | [voice-chatterbox-tts-api.json](../workflows/voice-chatterbox-tts-api.json) (MIT)<br>[voice-qwen3tts-api.json](../workflows/voice-qwen3tts-api.json) (Apache-2.0)<br>[voice-drama3-tts-api.json](../workflows/voice-drama3-tts-api.json) (Fish Audio Community License v1.0)<br>[voice-drama3-clone-api.json](../workflows/voice-drama3-clone-api.json) (Fish Audio Community License v1.0)<br>[voice-f5tts-api.json](../workflows/voice-f5tts-api.json) (CC BY-NC 4.0) |
 | Comes from | Our own: voice-chatterbox-tts-api.json (AGPL-3.0 (this repo))<br>Our own: voice-qwen3tts-api.json (AGPL-3.0 (this repo))<br>Our own: voice-drama3-tts-api.json (AGPL-3.0 (this repo))<br>Our own: voice-f5tts-api.json (AGPL-3.0 (this repo)) |
 | Custom nodes (local) | [ComfyUI-Chatterbox](https://github.com/wildminder/ComfyUI-Chatterbox), [ComfyUI-Qwen-TTS](https://github.com/flybirdxx/ComfyUI-Qwen-TTS), [ComfyUI-Drama3](https://github.com/PedroMarinhoDev/ComfyUI-Drama3), [ComfyUI-F5-TTS](https://github.com/niknah/ComfyUI-F5-TTS) |
@@ -926,7 +942,7 @@ Same words and timing, a different voice
 | Takes | A prompt |
 | Models | **Chatterbox Voice Changer**: Your computer (free) |
 | Files in | video (video) · voiceAudio (audio) · audio (audio) · image (image) · speech (audio) |
-| Settings | n (1, 2, 3, 4) · prompt (text) · voice (narrator-warm, narrator-crisp, young-bright, deep-calm, energetic-host +2 more) · language (en, es, fr, de, it +11 more) · mix (replace, blend) · resolution (720p, 1080p, 480p) · voiceDetails (text) · speaker (Ryan, Aiden, Vivian, Serena, Uncle_fu +4 more) · speechLanguage (auto, en, zh, ja, ko +6 more) · expression (number 0–10) · mood (number -1–1) · speed (number 0.5–2) · pitch (number -12–12) · volume (number 0–200) · outputFormat (mp3, wav, opus) · sampleRate (8000, 16000, 24000, 32000, 44100 +1 more) · aspect (auto, 16:9, 9:16, 1:1) · split (0, 1) · script (text) |
+| Settings | n (1, 2, 3, 4) · prompt (text) · voice (narrator-warm, narrator-crisp, young-bright, deep-calm, energetic-host +2 more) · language (en, es, fr, de, it +11 more) · mix (replace, blend) · resolution (720p, 1080p, 480p) · voiceDetails (text) · speaker (Ryan, Aiden, Vivian, Serena, Uncle_fu +4 more) · speechLanguage (auto, en, zh, ja, ko +6 more) · expression (number 0–10) · mood (number -1–1) · speed (number 0.5–2) · pitch (number -12–12) · volume (number 0–200) · outputFormat (mp3, wav, opus) · sampleRate (8000, 16000, 24000, 32000, 44100 +1 more) · aspect (auto, 16:9, 9:16, 1:1) · split (0, 1) · script (text) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | [voice-chatterbox-vc-api.json](../workflows/voice-chatterbox-vc-api.json) (MIT) |
 | Comes from | Official Comfy template: [Chatter Box: Voice Cloning Audio Conversion](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/audio-chatterbox_vc.json) by PurzBeats (MIT (Comfy-Org/workflow_templates)) |
 | Custom nodes (local) | [ComfyUI-Chatterbox](https://github.com/wildminder/ComfyUI-Chatterbox) |
@@ -942,7 +958,7 @@ Hear your clip in another language. Its tab calls it “Translate”.
 | Takes | Clip |
 | Models | **Translate with Chatterbox**: Your computer (free, 2.1 GB of model files)<br>**Translate with F5-TTS**: Your computer (free) |
 | Files in | video (video) · voiceAudio (audio) · audio (audio) · image (image) · speech (audio) |
-| Settings | n (1, 2, 3, 4) · prompt (text) · voice (narrator-warm, narrator-crisp, young-bright, deep-calm, energetic-host +2 more) · language (en, es, fr, de, it +11 more) · mix (replace, blend) · resolution (720p, 1080p, 480p) · voiceDetails (text) · speaker (Ryan, Aiden, Vivian, Serena, Uncle_fu +4 more) · speechLanguage (auto, en, zh, ja, ko +6 more) · expression (number 0–10) · mood (number -1–1) · speed (number 0.5–2) · pitch (number -12–12) · volume (number 0–200) · outputFormat (mp3, wav, opus) · sampleRate (8000, 16000, 24000, 32000, 44100 +1 more) · aspect (auto, 16:9, 9:16, 1:1) · split (0, 1) · script (text) |
+| Settings | n (1, 2, 3, 4) · prompt (text) · voice (narrator-warm, narrator-crisp, young-bright, deep-calm, energetic-host +2 more) · language (en, es, fr, de, it +11 more) · mix (replace, blend) · resolution (720p, 1080p, 480p) · voiceDetails (text) · speaker (Ryan, Aiden, Vivian, Serena, Uncle_fu +4 more) · speechLanguage (auto, en, zh, ja, ko +6 more) · expression (number 0–10) · mood (number -1–1) · speed (number 0.5–2) · pitch (number -12–12) · volume (number 0–200) · outputFormat (mp3, wav, opus) · sampleRate (8000, 16000, 24000, 32000, 44100 +1 more) · aspect (auto, 16:9, 9:16, 1:1) · split (0, 1) · script (text) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | [voice-chatterbox-ml-api.json](../workflows/voice-chatterbox-ml-api.json) (MIT)<br>[voice-f5tts-api.json](../workflows/voice-f5tts-api.json) (CC BY-NC 4.0) |
 | Comes from | Our own: voice-chatterbox-ml-api.json (AGPL-3.0 (this repo))<br>Our own: voice-f5tts-api.json (AGPL-3.0 (this repo)) |
 | Custom nodes (local) | [ComfyUI-Chatterbox](https://github.com/wildminder/ComfyUI-Chatterbox), [ComfyUI-F5-TTS](https://github.com/niknah/ComfyUI-F5-TTS) |
@@ -1005,7 +1021,7 @@ A score made for your clip. Its tab calls it “Music for a video”.
 | Takes | Clip |
 | Models | **YuE2**: Your computer (free, 4.0 GB of model files)<br>**ByteDance Seed Audio**: Comfy Cloud ($0.004 per second, estimate)<br>**MiniMax Music 3**: Your computer (free, 14 GB of model files) · Comfy Cloud (GPU time, priced before you run)<br>**ACE-Step 1.5**: Your computer (free, 10 GB of model files) |
 | Files in | video (video, required) |
-| Settings | prompt (text) · mix (replace, blend) · resolution (720p, 1080p, 480p) · lyrics (text) |
+| Settings | prompt (text) · mix (replace, blend) · resolution (720p, 1080p, 480p) · lyrics (text) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | [audio-yue2-song-api.json](../workflows/audio-yue2-song-api.json) (CC BY-NC 4.0)<br>[audio-minimax-music3-local-api.json](../workflows/audio-minimax-music3-local-api.json) (MiniMax-Music3 Community License)<br>[cloud/audio-minimax-music3-api.json](../workflows/cloud/audio-minimax-music3-api.json) (MiniMax-Music3 Community License)<br>[soundtrack-music-api.json](../workflows/soundtrack-music-api.json) (MIT) |
 | Comes from | Official Comfy template: [YuE2: Text to Music](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/audio_yue2_text2music.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [Seed Audio 1.0: Text to Audio](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/api_bytedance_seed_audio1_0_t2a.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [MiniMax Music 3: Text to Music](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/audio_minimax_music_3.json) by Comfy Org (MIT (Comfy-Org/workflow_templates))<br>Official Comfy template: [ACE-Step 1.5 Music Generation Workflow](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/audio_ace_step_1_5_split.json) by Comfy Org (MIT (Comfy-Org/workflow_templates)) |
 
@@ -1020,7 +1036,7 @@ Sound that follows what happens on screen
 | Takes | Clip |
 | Models | **MMAudio**: Your computer (free, 5.1 GB of model files) |
 | Files in | video (video, required) |
-| Settings | prompt (text) · mix (replace, blend) · resolution (720p, 1080p, 480p) · lyrics (text) |
+| Settings | prompt (text) · mix (replace, blend) · resolution (720p, 1080p, 480p) · lyrics (text) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | [soundtrack-mmaudio-api.json](../workflows/soundtrack-mmaudio-api.json) (CC BY-NC 4.0) |
 | Comes from | Our own: soundtrack-mmaudio-api.json (AGPL-3.0 (this repo)) |
 | Custom nodes (local) | [ComfyUI-MMAudio](https://github.com/kijai/ComfyUI-MMAudio) |
@@ -1081,7 +1097,7 @@ Your model spins once, saved as video.
 | Takes | 1 model |
 | Models | **Turntable**: Your computer (free) |
 | Files in | video (video, required) |
-| Settings | sourceJob (text) · seconds (number) |
+| Settings | sourceJob (text) · seconds (number) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | None: it runs in the app on your computer, without ComfyUI |
 
 ## Step by step

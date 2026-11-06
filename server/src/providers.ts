@@ -33,6 +33,8 @@ export interface ProviderDef {
   nodes?: string[];
   /** Oldest ComfyUI release whose core has every node/loader type this provider's graphs need (e.g. MOSS-Image: '0.41.3'). Unset = any supported release. */
   minComfyVersion?: string;
+  /** Runs inside the app on any computer (no ComfyUI, no graphics card): its local route always fits (Image to vector's VTracer). */
+  noGpu?: boolean;
 }
 
 import { OPEN_WEIGHTS_ONLY, openWeightsOnly, LICENSES, workflowLicense } from './licenses.js';
@@ -74,7 +76,7 @@ export const comfyCloudOpen = (p?: ProviderDef) => !!p && p.id.startsWith('cloud
   && p.workflows!.every((f) => apiNodesIn(f).length === 0); // B5: a graph with API/partner nodes (e.g. ComfyCloudMiniMaxH3*Node) is hosted, not open weights
 /** Open-weights marker (badge) for a provider: open-weights kind, or a Comfy Cloud workflow whose graphs have no API nodes (B5: cloud-h3-wf true, cloud-h3 false).
  *  Same value on /api/tools providers[].openWeights, /api/models entries and /api/routes routes. */
-export const providerOpenWeights = (p?: ProviderDef) => !!p && (p.kind === 'open-weights' || comfyCloudOpen(p));
+export const providerOpenWeights = (p?: ProviderDef) => !!p /* a built-in tool (VTracer) is open-source code: open here, so "Open models only" lists and runs it; its model card (MODELS vtracer) shows no open-weights badge (user 2026-11-03) */ && (p.kind === 'open-weights' || comfyCloudOpen(p));
 /** Open-weights-only mode hides hosted providers (partner/API nodes, hosted model APIs) only; Comfy Cloud open-weight workflows stay. Licences never filter. */
 export const allowed = (p: ProviderDef) => !openWeightsOnly() || p.kind === 'open-weights' || comfyCloudOpen(p);
 /** Allowed for this tool: same as allowed(p) (no licence check, K1). */

@@ -1,6 +1,6 @@
 /**
  * Viral templates on the Video bar (2026-10-26; data: server/src/shared/viralTemplates.ts). One hook so VideoStudio only wires it in:
- *  - `lookTab`: the Look picker's "Viral" tab (shared LookPicker / PresetTile), one tile per template.
+ *  - `lookTab`: the Presets picker's "Viral" tab (shared LookPicker / PresetTile), one tile per template.
  *  - `strip`: the template's fill-in row above the prompt (shared TemplateSlots) while a template is on.
  *  - Opening the page with ?template=<id> (an Examples card) applies it once, on the template's model.
  * Picking a template fills the prompt (the first slot selected), clears a camera move or style (the template describes its own camera),

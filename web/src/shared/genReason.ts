@@ -20,6 +20,8 @@ export const COMFY_DOWN = 'ComfyUI isn’t open on this computer'; /* the Welcom
 export const NO_PLACE = 'Set up a place to run first';
 /** A cloud model with no Comfy key (it has no place on this computer, so "ComfyUI isn’t open" would point the wrong way). */
 export const ADD_COMFY_KEY = 'Add a Comfy key to run this in the cloud';
+/** The pre-flight's "Needs a fal key[, or …]" as the step to take: "Add a fal key to run this[, or …]". */
+export const addKeyWords = (m: string) => m.replace(/^Needs (an?) (.+?) key\b/, (_, a: string, who: string) => `Add ${a} ${who} key to run this`);
 const CLOUD = 'comfy-cloud';
 const FIX_LABEL: Record<string, string> = { 'add-key': 'Add key', 'turn-on': 'Turn on', 'install-node': 'How to install' };
 
@@ -54,6 +56,8 @@ export function reasonOf(i: { setupKind: SetupKind | null; problems: PreflightPr
     : i.places.length > 1 ? { kind: 'more', label: 'More ways' } : null;
   /* a Comfy key is the whole step: say what it does ("… to run this in the cloud"), keeping the free-local way out when the pre-flight names it
    * and something is connected (with nothing set up, a local model can't run either) */
-  const reason = p.code === 'needs_key' && runOn === CLOUD ? `${ADD_COMFY_KEY}${p.message.endsWith(FREE_LOCAL_TAIL) && i.setupKind !== 'none' ? FREE_LOCAL_TAIL : ''}` : p.message;
+  const reason = p.code === 'needs_key' && runOn === CLOUD ? `${ADD_COMFY_KEY}${p.message.endsWith(FREE_LOCAL_TAIL) && i.setupKind !== 'none' ? FREE_LOCAL_TAIL : ''}`
+    /* another provider's key (fal, Replicate…): the line says the step, as the Comfy one does ("Add a fal key to run this"), next to its Add key button */
+    : p.code === 'needs_key' ? addKeyWords(p.message) : p.message;
   return { code: p.code, reason, blocks: true, primary, alt, problem: p };
 }

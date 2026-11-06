@@ -6,6 +6,8 @@
  *        point "x,y[,t]" (0–1 normalised), t (s), maskGrow tight|normal|loose|box
  *     → {maskUrl (frame t with the area tinted), matteUrl (white = replace), frameUrl, count, bboxes[{x,y,width,height,score}], width, height, t,
  *        maskMode, maskGrow, growPx, credits: 0, free: true, backend, engine, mock}
+ *     people=1 (H3 who to swap by default): SAM "person" with one mask per person → {frameUrl, people[{x,y,width,height}], count, pick {x,y,t} | null,
+ *        why 'none' | 'similar' | null} (shared/cloudSwap.ts mainPersonPick: the largest, unless two are within 20%). Free, like every preview.
  * Always free (0 credits, never charged, no job). Mock backend: a plausible ellipse/box mask at the click point (or centre).
  * comfy backend: one-frame SAM 3.1 (core SAM3_Detect) on the local ComfyUI when it has the node; otherwise 503 mask_preview_unavailable
  * (the UI hides the preview and the mask is computed inside the job). Rate-limited per caller.
@@ -23,6 +25,7 @@ import { probe } from './media.js';
 import { runFfmpeg } from './ffmpeg.js';
 
 import { MASK_GROW_PX, type MaskGrow as Grow } from './comfy/objectSwap.js';
+import { mainPersonPick } from './shared/cloudSwap.js';
 export { MASK_GROW_PX };
 const MODES = ['text', 'point', 'upload', 'none'] as const;
 const PREVIEW_LONG = 832; // same long side as the Wan 480p swap grid
@@ -76,6 +79,28 @@ async function samStatus(): Promise<{ available: boolean; engine: 'mock' | 'sam3
     return { available: true, engine: 'sam3.1', reason: null };
   } catch { return { available: false, engine: 'sam3.1', reason: 'ComfyUI isn’t running on your computer. The mask is found when you press Generate.' }; }
 }
+/** Mock people (people mode): one person a little left of centre; "[mocktwo]" two of the same size; "[mocknone]" nobody (the free preview's test words). */
+function mockPeople(w: number, h: number, words: string) {
+  if (/\[mocknone\]/i.test(words)) return [];
+  const p = (cx: number, s = 1) => ({ x: Math.round(cx * w - w * 0.12 * s), y: Math.round(h * 0.2), width: Math.round(w * 0.24 * s), height: Math.round(h * 0.7 * s) });
+  return /\[mocktwo\]/i.test(words) ? [p(0.3), p(0.7, 0.98)] : [p(0.45), p(0.85, 0.5)];
+}
+/** One-frame SAM 3.1 "person", one mask per person (individual_masks), on the local ComfyUI → each person's box in frame pixels. */
+async function samPeople(frame: string, tmpBase: string, tmp: string[]) {
+  const { ComfyNative } = await import('./comfy/native.js'); const c = new ComfyNative(config.comfyBaseUrl, comfyAuthFor(config.comfyBaseUrl, config.comfyApiKey));
+  const img = await c.upload(frame);
+  const g: Record<string, any> = {
+    1: { class_type: 'LoadImage', inputs: { image: img } },
+    2: { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: SAM3_CKPT } },
+    3: { class_type: 'CLIPTextEncode', inputs: { clip: ['2', 1], text: 'person' } },
+    4: { class_type: 'SAM3_Detect', inputs: { model: ['2', 0], image: ['1', 0], conditioning: ['3', 0], threshold: 0.35, refine_iterations: 2, individual_masks: true } }, // Openjutsu's detection settings
+    6: { class_type: 'MaskToImage', inputs: { mask: ['4', 0] } },
+    7: { class_type: 'SaveImage', inputs: { images: ['6', 0], filename_prefix: 'oh_maskpreview_people' } },
+  };
+  const res = await c.run(g, { timeoutMs: 120_000 }); const boxes: { x: number; y: number; width: number; height: number }[] = [];
+  for (const [k, f] of (res.outputs['7'] ?? []).entries()) { const out = `${tmpBase}-person${k}.png`; tmp.push(out); await c.download(f, out); const b = await maskBox(out); if (b) boxes.push(b); }
+  return boxes;
+}
 /** One-frame SAM 3.1 on the local ComfyUI (node inputs per the built-in docs, NOT yet run on a real install). */
 async function samMask(frame: string, out: string, o: { prompt: string; point: { x: number; y: number } | null; w: number; h: number }) {
   const { ComfyNative } = await import('./comfy/native.js'); const c = new ComfyNative(config.comfyBaseUrl, comfyAuthFor(config.comfyBaseUrl, config.comfyApiKey));
@@ -125,6 +150,7 @@ export function registerMaskPreview(app: FastifyInstance) {
       if (fields.point) { const [x, y, pt3] = fields.point.split(',').map(Number); if (!(x >= 0 && x <= 1 && y >= 0 && y <= 1)) return bad(reply, 'point', 'point must be "x,y[,t]" with x and y between 0 and 1.'); pt = { x, y }; if (Number.isFinite(pt3) && !fields.t) t = pt3; }
       if (maskMode === 'point' && !pt) return bad(reply, 'point', 'Click the object on the frame first (field point).', 'required');
       if (maskMode === 'upload' && !files.matte) return bad(reply, 'matte', 'Upload the mask video (field matte, white = replace).', 'required');
+      const people = /^(1|true|on)$/i.test(fields.people ?? '');
       if (limited(String(req.ip ?? 'local'))) return bad(reply, 'video', 'Too many mask previews at once; wait a few seconds.', 'rate_limited', 429);
       const st = await samStatus(); if (!st.available && maskMode !== 'upload') return bad(reply, 'maskMode', st.reason ?? 'Mask preview is not available here.', 'mask_preview_unavailable', 503);
       running++;
@@ -137,6 +163,12 @@ export function registerMaskPreview(app: FastifyInstance) {
           if ((await runFfmpeg(['-y', '-v', 'error', '-i', files.firstFrame, '-frames:v', '1', '-vf', scale, frame])) !== 0) return bad(reply, 'firstFrame', "Couldn't read this frame image.", 'unreadable'); }
         else if ((await runFfmpeg(['-y', '-v', 'error', '-ss', String(t), '-i', video!, '-frames:v', '1', '-vf', scale, frame])) !== 0) return bad(reply, 'video', `Couldn't read a frame at ${t} s.`, 'frame_failed');
         const fs0 = await probe(frame); const w = fs0?.width ?? PREVIEW_LONG, h = fs0?.height ?? 468;
+        if (people) { // who to swap by default (H3 Character Swap, as Openjutsu): every person on the frame, and the main one when one stands out
+          const boxes = st.engine === 'mock' ? mockPeople(w, h, fields.maskPrompt ?? '') : await samPeople(frame, path.join(DATA_DIR, `maskpv-${id}`), tmp);
+          const pick = mainPersonPick(boxes, w, h);
+          return { frameUrl: `/files/${path.basename(frame)}`, people: boxes, count: boxes.length, pick: pick.point ? { x: pick.point.x, y: pick.point.y, t } : null, why: pick.point ? null : (pick as any).why,
+            width: w, height: h, t, ...NC, free: true, backend: config.backend, engine: st.engine, mock: st.engine === 'mock' };
+        }
         const raw = path.join(DATA_DIR, `maskpv-${id}-raw.png`); tmp.push(raw); const matte = path.join(DATA_DIR, `maskpv-${id}-matte.png`); const over = path.join(DATA_DIR, `maskpv-${id}-mask.png`);
         if (maskMode === 'upload') { if ((await runFfmpeg(['-y', '-v', 'error', '-ss', String(t), '-i', files.matte, '-frames:v', '1', '-vf', `scale=${w}:${h},format=gray,lut=y='if(gte(val\\,128)\\,255\\,0)'`, raw])) !== 0) return bad(reply, 'matte', "Couldn't read the mask video.", 'unreadable'); }
         else if (st.engine === 'mock') { if ((await mockMask(raw, w, h, pt, swapType)) !== 0) throw new Error('mock mask render failed'); }

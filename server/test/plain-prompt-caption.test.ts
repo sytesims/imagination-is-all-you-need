@@ -32,3 +32,23 @@ assert.match(rd('ui/audio/AudioFeed.tsx'), /prompt: plainPrompt\(prompt\)[\s\S]*
 assert.doesNotMatch(rd('ui/video/KeyframeStrip.tsx'), /@image2|&lt;Picture 2&gt;/, 'the Keyframes tip says it in plain words');
 console.log('ok plain-word call sites');
 console.log('ALL OK');
+
+// 3. A prompt in a model's structured format (MiniMax H3 / Kling) reads as its description's first sentence (UI audit 2026-11-03): no
+//    "integrated_multimodal_description:", "[Shot 1]" or "For the target video, at 0.00 seconds…" in feed captions, titles or labels.
+{
+  const { readableStructured } = await import('../src/shared/typedPrompt.ts');
+  const h3 = 'For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.\n\nintegrated_multimodal_description: [Shot 1] Live-action French horror film, photorealistic, a pitch-dark cage lift. Static wide shot.\noverall_soundscape: A creak.';
+  assert.equal(plainPrompt(h3), 'Live-action French horror film, photorealistic, a pitch-dark cage lift.');
+  const extend = 'integrated_multimodal_description: [Shot 1] A dense green jungle in soft morning haze, filmed over a shoulder. The lion roars.\noverall_soundscape: Breathing.\nnon_diegetic_music: N/A. continue the action naturally';
+  assert.equal(plainPrompt(extend), 'A dense green jungle in soft morning haze, filmed over a shoulder.');
+  assert.equal(plainPrompt('[Shot 1] A fox runs through snow. [Shot 2] It stops.'), 'A fox runs through snow.', 'Kling-style multi-shot: the first shot');
+  assert.equal(plainPrompt('subject_definitions: <Picture 1> is the woman\ndetailed_description: She walks into the rain and smiles.'), 'She walks into the rain and smiles.', 'H3 multiframe fields');
+  assert.equal(plainPrompt('For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.\n\nThe cat yawns'), 'The cat yawns', 'the alignment line alone is dropped');
+  assert.equal(plainPrompt('For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.'), '', 'nothing but the alignment line: empty, the caller falls back to the model');
+  for (const plain of ['a red fox. In the snow.', 'Shot on 35mm: a fox', 'shot 1: a fox', 'Mr. Fox walks']) assert.equal(readableStructured(plain), plain, `untouched: ${plain}`);
+  const { captionTitle } = await import('../../web/src/shared/feedCaptionText.ts');
+  assert.equal(plainPrompt(captionTitle({ id: 'j', status: 'done', input: { prompt: extend } } as any)), 'A dense green jungle in soft morning haze, filmed over a shoulder.', 'the feed caption (Image / Video)');
+  assert.match(rd('shared/resultMedia.ts'), /const promptOf = \(j: JobState\) => plainPrompt\(/, 'Canvas result cards and the assets drawer (web imports CSS, so read the source)');
+  assert.match(rd('ui/next/feed/FeedCard.tsx'), /<MentionText text=\{readableStructured\(prompt\)\} \/>/, "a card's default caption (failed tiles)");
+  console.log('ok structured prompts read as words');
+}

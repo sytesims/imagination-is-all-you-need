@@ -47,6 +47,7 @@ import { toolDefaults, toolModes } from './routing/defaults.js';
 import { canvasDefaultModel } from './shared/cloudDefaults.js';
 import { validateBatch, batchLine, BATCH_MAX, type BatchItem } from './shared/canvasBatch.js';
 import { recommend } from './shared/takeReview.js';
+import { uploadNodeSummary, pictureLines, MAX_DOCK_PICTURES } from './shared/canvasPictures.js';
 import { reviewVersions, reviewMode } from './canvasReview.js';
 
 const MAX_FEED = 240;
@@ -101,7 +102,7 @@ type OpResult = { ok: true; result: any } | { ok: false; error: string; code?: s
 
 export type PriceView = { usd: number | null; credits: number | null; label: string | null; demo: boolean; local: boolean; runnable: boolean };
 export interface BoardNode {
-  id: string; type: 'card' | 'result' | 'picture' | 'clip' | 'note' | 'frame' | 'link'; kind: string | null; name?: string | null; frame?: string | null; children?: string[]; url?: string | null; by?: 'agent' | 'you'; workflow?: string | null; model?: string | null;
+  id: string; type: 'card' | 'result' | 'picture' | 'clip' | 'note' | 'frame' | 'link' | 'upload'; kind: string | null; name?: string | null; frame?: string | null; children?: string[]; url?: string | null; by?: 'agent' | 'you'; workflow?: string | null; model?: string | null;
   prompt?: string | null; title?: string | null; status?: string | null; inputs?: string[]; results?: { url: string; kind?: string | null; poster?: string | null }[];
   price?: PriceView | null; jobId?: string | null; missing?: string | null; /** the ComfyUI API graph of jobId's result, when one exists (View workflow) */ workflowGraph?: string;
 }
@@ -207,6 +208,8 @@ function markPushed(boardId: string, entries: FeedEntry[]) { const at = now(); f
 function answeredPushed(boardId: string) { const s = states.get(boardId); if (s) markRead(boardId, s.feed.filter((e) => e.pushedAt && !e.readAt), 'channel'); }
 /** What the agent gets for one of your messages (canvas_wait_for_message and the channel push share it). */
 const messageOut = (e: FeedEntry) => ({ seq: e.seq, at: e.at, type: e.type, text: e.text, ...(e.decision ? { decision: e.decision, proposalId: e.proposalId } : {}), selection: e.meta?.selection ?? [],
+  /* pictures attached in the dock (2026-11-03), in order: each is an Upload card on the board, named after its file */
+  ...(e.meta?.pictures?.length ? { pictures: pictureLines(e.meta.pictures).map((label, i) => ({ label, ...e.meta.pictures[i] })) } : {}),
   ...(e.meta?.confirmId ? { confirmId: e.meta.confirmId } : {}), ...(e.meta?.pickId ? { pickId: e.meta.pickId, cardId: e.meta.cardId } : {}) });
 
 // ---------------------------------------------------------------- channel sessions (2026-10-28)
@@ -373,8 +376,11 @@ export const opSchema = z.discriminatedUnion('kind', [sayOp, addOp, updateOp, co
 const opsBody = z.object({ ops: z.array(opSchema).min(1).max(20) }).strict();
 const resultBody = z.object({ id: z.string().min(1), ok: z.boolean(), result: z.any().optional(), error: z.string().max(4000).optional() }).strict();
 const zSel = z.object({ id: z.string().trim().min(1).max(80), name: z.string().trim().max(120).nullish(), type: z.string().trim().max(40).nullish(), workflow: z.string().trim().max(80).nullish(), status: z.string().trim().max(20).nullish() }).strict();
-const messageBody = z.object({ text: z.string().trim().min(1).max(4000), /** the dock's "Looks good" button answers this ask */ confirm_id: z.string().trim().max(60).optional(),
-  /** the cards you had selected when you typed: context for your agent */ selection: z.array(zSel).max(50).optional() }).strict();
+const zPicture = z.object({ card_id: z.string().trim().min(1).max(80), name: z.string().trim().min(1).max(120), url: z.string().trim().min(1).max(600) }).strict();
+const messageBody = z.object({ text: z.string().trim().max(4000).default(''), /** the dock's "Looks good" button answers this ask */ confirm_id: z.string().trim().max(60).optional(),
+  /** the cards you had selected when you typed: context for your agent */ selection: z.array(zSel).max(50).optional(),
+  /** pictures attached in the dock (2026-11-03): already Upload cards on the board, in order */ pictures: z.array(zPicture).max(MAX_DOCK_PICTURES).optional() }).strict()
+  .refine((b) => b.text.length > 0 || !!b.pictures?.length, { message: 'Type a message or add a picture.', path: ['text'] });
 const decisionBody = z.object({ decision: z.enum(['go', 'cancel']) }).strict();
 const userProposalBody = z.object({ card_ids: z.array(z.string().trim().min(1)).min(1).max(20), note: z.string().max(400).optional() }).strict();
 const demoBody = z.object({ prompt: z.string().trim().min(1).max(4000), starter: z.string().max(40).optional() }).strict();
@@ -398,7 +404,7 @@ const BASE_WORKFLOWS: { id: string; medium: string; name: string; needs: string;
   { id: 'multiview-to-3d', medium: '3d', name: 'Multi-view to 3D', needs: '2–4 images', tagline: 'Photos of the same object into one model', toolId: 'three-d' },
 ];
 /** The image recipe flows the canvas offers (the same list as web/src/shared/genFlows.ts; masks/angle sheets stay on their pages). */
-const IMAGE_RECIPE_IDS = new Set(['relight', 'upscale', 'remove-bg', 'image-layers', 'expand', 'product-shot', 'character-sheet', 'face-swap', 'person-swap', 'try-on', 'material-swap', 'ad-pack', 'phone-photo']);
+const IMAGE_RECIPE_IDS = new Set(['relight', 'upscale', 'remove-bg', 'image-layers', 'image-vector', 'expand', 'product-shot', 'character-sheet', 'face-swap', 'person-swap', 'try-on', 'material-swap', 'ad-pack', 'phone-photo']);
 export function canvasWorkflows() {
   const out = BASE_WORKFLOWS.filter((f) => !!getTool(f.toolId));
   try {
@@ -464,6 +470,8 @@ export function summarizeSnapshot(snapshot: any): BoardNode[] {
         price: priceOfQuote(p.quote), jobId: p.jobId || null });
     } else if (s.type === 'ohf-result') {
       nodes.push({ id: s.id, type: 'result', kind: p.kind ?? null, title: p.title ?? null, model: p.model ?? null, results: p.url ? [{ url: p.url, kind: p.kind ?? null, poster: p.poster ?? null }] : [], jobId: p.jobId || null });
+    } else if (s.type === 'ohf-upload') {
+      const n = uploadNodeSummary(s); if (n) nodes.push(n); /* a dropped picture, clip or sound, by its name (2026-11-03: they were missing) */
     } else if (s.type === 'image' || s.type === 'video') {
       const asset = p.assetId ? store[p.assetId] : null; const url = asset?.props?.src; if (!url) continue;
       nodes.push({ id: s.id, type: s.type === 'image' ? 'picture' : 'clip', kind: s.type, title: asset?.props?.name ?? s.type, results: [{ url, kind: s.type }] });
@@ -1204,7 +1212,7 @@ export function registerCanvasAgent(app: FastifyInstance) {
   app.post<{ Params: { id: string }; Body: unknown }>('/api/canvas/boards/:id/agent/messages', async (req, reply) => {
     const b = getBoard(req.params.id); if (!b) return notFound(reply);
     const parsed = messageBody.safeParse(req.body); if (!parsed.success) return bad(reply, zodText(parsed.error), 'invalid_message');
-    const sel = parsed.data.selection?.length ? { selection: parsed.data.selection } : {};
+    const sel = { ...(parsed.data.selection?.length ? { selection: parsed.data.selection } : {}), ...(parsed.data.pictures?.length ? { pictures: parsed.data.pictures } : {}) };
     /* typed on this computer (or through its own web proxy)? Only those are pushed into a channel session (an outside sender can't wake Claude Code) */
     const local = /^(127\.|::1$|::ffff:127\.)/.test(req.ip ?? '');
     const message = addMessage(b.id, 'user', parsed.data.text, { meta: { ...(parsed.data.confirm_id ? { confirmId: parsed.data.confirm_id } : {}), ...sel, ...(local ? {} : { remote: true }) } });

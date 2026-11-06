@@ -19,6 +19,7 @@ import { jobInputs } from '../../../shared/jobInputs';
 import { MentionText } from '../../../shared/MentionChips';
 import { COMPARE_MAX, COMPARE_MIN, type CompareWant, type CompareParams, type CompareChange } from '../../../../../server/src/shared/compareAdapt';
 import { LOCAL_LABEL, LOCAL_FREE } from '../../../../../server/src/shared/modelIds';
+import { splitCompareRows, moreLabel } from './compareRows';
 
 export interface CompareRow { model: string; name: string; ok: boolean; excluded: { code: string; reason: string } | null; unpriced: boolean; params: CompareParams | null; changes: CompareChange[];
   credits: number | null; estUsd: number; billedTo: string | null; runOn: string | null; routeId: string | null; local: boolean; demo: boolean }
@@ -51,6 +52,8 @@ export default function CompareModels(p: CompareModelsProps) {
   /* every row's price at the settings that model would really run (adapted), from the same quote as the run */
   const [list, setList] = useState<Record<string, CompareRow> | null>(null); const allKey = JSON.stringify([p.providers.map(x => x.id), p.want]);
   useEffect(() => { if (!p.open) return; let live = true; compareQuote(p.providers.map(x => x.id).slice(0, 60), p.want, true).then(v => { if (live) setList(Object.fromEntries(v.rows.map(r => [r.model, r]))); }).catch(() => undefined); return () => { live = false; }; }, [p.open, allKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [showMore, setShowMore] = useState(false); useEffect(() => { if (!p.open) setShowMore(false); }, [p.open]);
+  const split = splitCompareRows(models.map(y => y.x.id), list, picked); const shownIds = new Set(showMore ? [...split.now, ...split.more] : split.now);
   const listText = (r: CompareRow | undefined) => !r ? '' : r.excluded ? r.excluded.reason : r.unpriced ? 'Price unavailable' : rowPriceText(r, own);
   const wantKey = JSON.stringify([picked, p.want]);
   useEffect(() => { if (!p.open || !picked.length) { setQ(null); return; } let live = true; setQBusy(true);
@@ -75,13 +78,14 @@ export default function CompareModels(p: CompareModelsProps) {
     <div className="cmp" data-testid="cmp-dialog">
       <p className="cmp-h">The same prompt and settings on {COMPARE_MIN}–{COMPARE_MAX} models. Each one runs with the settings it supports.</p>
       <p className="cmp-prompt" data-testid="cmp-prompt">{p.prompt.trim() ? <>“{p.prompt.trim().slice(0, 140)}{p.prompt.trim().length > 140 ? '…' : ''}”</> : <span className="cmp-muted">Write a prompt in the bar first.</span>}</p>
-      <div className="cmp-list" role="group" aria-label="Models">{models.map(({ x, m }) => { const on = picked.includes(x.id); const full = !on && picked.length >= COMPARE_MAX; const r = rowOf(x.id);
+      <div className="cmp-list" role="group" aria-label="Models">{models.filter(({ x }) => shownIds.has(x.id)).map(({ x, m }) => { const on = picked.includes(x.id); const full = !on && picked.length >= COMPARE_MAX; const r = rowOf(x.id);
         return <label key={x.id} className={`cmp-row${on ? ' on' : ''}${full ? ' off' : ''}`} data-testid={`cmp-row-${x.id}`} {...tip(full ? `Up to ${COMPARE_MAX} models` : r?.excluded?.reason ?? null)}>
           <input type="checkbox" aria-label={`Compare ${nameOf(x.id)}`} checked={on} disabled={full} onChange={() => toggle(x.id)} data-testid={`cmp-pick-${x.id}`} />
           <MakerTile className="cmp-dot" medium="image" maker={m?.maker} makerName={m?.makerName} fallback={(x as any).family || x.name} />
           <span className="cmp-name">{nameOf(x.id)}{on && <small className="cmp-ord">{picked.indexOf(x.id) + 1}</small>}</span>
           <span className={`cmp-row-p${list?.[x.id]?.excluded || list?.[x.id]?.unpriced ? ' off' : ''}`} data-testid={`cmp-row-price-${x.id}`} title={list?.[x.id]?.changes.map(c => c.message).join(' · ') || undefined}>{listText(list?.[x.id])}</span>
-        </label>; })}</div>
+        </label>; })}
+        {split.more.length > 0 && <button type="button" className="cmp-more" data-testid="cmp-show-more" aria-expanded={showMore} onClick={() => setShowMore(o => !o)}>{moreLabel(split.more.length, showMore)}</button>}</div>
       {picked.length > 0 && <div className="cmp-sel" data-testid="cmp-selected">{picked.map(id => { const r = rowOf(id);
         return <div key={id} className={`cmp-s${r?.excluded ? ' ex' : ''}${r?.unpriced ? ' bad' : ''}`} data-testid={`cmp-sel-${id}`}>
           <span className="cmp-s-n">{nameOf(id)}</span>

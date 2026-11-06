@@ -9,18 +9,15 @@ const ok = (m: string) => console.log('ok ' + m);
 
 const camera = (listTools() as any[]).find((t) => t.id === 'camera');
 assert.ok(camera?.presets?.length > 50, 'camera tool lists its presets');
-const css = readFileSync(new URL('../../web/src/shared/presetTile.css', import.meta.url), 'utf8');
 const missing: string[] = [];
 for (const p of camera.presets as any[]) {
   const r = motionFor(p.id, p.category);
   assert.ok(r && r.move && r.glyph, `${p.id}: has a recipe`);
-  assert.ok(css.includes(`.pt-mv-${r.move}`), `${p.id}: move ${r.move} has CSS`);
   if (!MOTION_BY_ID[p.id]) missing.push(p.id);
 }
 assert.deepEqual(missing, [], 'every camera preset id is mapped by id (not only by category or the default)');
-ok(`${camera.presets.length} camera presets each have a motion recipe with CSS`);
+ok(`${camera.presets.length} camera presets each have a motion recipe (glyph)`);
 
-for (const r of [...Object.values(MOTION_BY_CATEGORY), DEFAULT_MOTION]) assert.ok(css.includes(`.pt-mv-${r.move}`), `fallback ${r.move} has CSS`);
 assert.deepEqual(motionFor('not-a-preset', 'Orbit'), MOTION_BY_CATEGORY.orbit, 'unknown id → its category');
 assert.deepEqual(motionFor('not-a-preset', 'Nope'), DEFAULT_MOTION, 'unknown id and category → the default');
 assert.deepEqual(motionFor(undefined, null), DEFAULT_MOTION, 'nothing → the default');

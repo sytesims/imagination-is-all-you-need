@@ -78,7 +78,7 @@ export const EXPLORE_ROWS: ExploreRow[] = [
       { id: 'photo-fx', title: 'Photo FX', line: '32 effects for a photo: levitate, shatter, freeze, portal and more.', href: q(videoWorkflowHref('photo-fx'), { model: 'minimax-h3' }), toolId: 'photo-fx', modelKey: 'minimax-h3', art: 'photo' },
       { id: 'orbit-shot', title: 'Orbit Shot', line: 'The camera circles your subject, from one photo.', href: q(videoWorkflowHref('orbit-shot'), { model: 'minimax-h3' }), toolId: 'app-orbit-shot', modelKey: 'minimax-h3', art: 'turntable' },
     ] },
-  { id: 'viral', title: 'Viral templates', line: 'Fill in the blanks, get a ready-to-post clip with dialogue, cuts and sound. Also under Look → Viral in Video.',
+  { id: 'viral', title: 'Viral templates', line: 'Fill in the blanks, get a ready-to-post clip with dialogue, cuts and sound. Also under Presets → Viral in Video.',
     cards: VIRAL_TEMPLATES.map((t) => ({ id: `vt-${t.id}`, title: t.name, line: t.line, href: q(VIDEO_PAGE, { model: VIRAL_MODEL_KEY, prompt: fillTemplate(t), template: t.id }), toolId: 'h3-video', modelKey: VIRAL_MODEL_KEY, art: 'viral' as FlowArt, badge: t.settings.aspect })) },
   { id: 'sound', title: 'Make music & make it talk', line: 'Songs, voices and sound effects, most of them free on your computer. Then give a portrait the words.',
     cards: [

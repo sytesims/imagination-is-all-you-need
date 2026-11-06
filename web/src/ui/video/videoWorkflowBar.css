@@ -176,3 +176,11 @@ html body .ic.ic2 .ic-dock .ic-lead .wf-slot.vbar-add-sm .wf-slot-hit{border-rad
 .apop.bp .tps-dot.on{opacity:1;box-shadow:0 0 0 2px rgba(0,0,0,.45),0 0 0 5px var(--accent-soft)}
 .apop.bp .tps-words+.tps-words{margin-top:8px}
 .ic-chip.tps-twin{flex:0 0 auto;gap:6px;border-color:rgba(255,122,26,.45);color:var(--accent-text,#ffb27a);white-space:nowrap}
+
+/* H3 who to swap, picked for you (2026-11-03): the first frame with the main person marked, then Change */
+.vbar-auto { display: grid; gap: 8px; justify-items: start; }
+.vbar-auto-f { position: relative; display: block; width: fit-content; max-width: 100%; margin: 0 auto; border-radius: 8px; overflow: hidden; } /* sized to the picture, so the dot's % is the frame's */
+.vbar-auto-f img { display: block; width: auto; max-width: 100%; max-height: 260px; height: auto; } /* a 9:16 frame stays as tall as the who-to-swap frame */
+.vbar-auto-f i { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: var(--accent, #ff6a1a); box-shadow: 0 0 0 3px rgba(255, 255, 255, .85); }
+/* the clip is trimmed (shared/TrimSheet.tsx): its length as a small accent badge, like the sheet's window */
+html body .ic.ic2 .ic-dock .ic-lead .wf-slot.full .wf-slot-hit b.vbar-cut{left:3px;right:auto;bottom:3px;padding:0 4px;border-radius:var(--radius-xs);background:var(--accent);color:var(--on-accent,#111);font:600 9px/14px var(--font-sans)}

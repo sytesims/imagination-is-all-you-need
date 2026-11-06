@@ -86,7 +86,7 @@ export function cardPriceOf(m: ToolModel, o: { rq?: any; run?: RunInfo | null; t
   if (localRow && places.length === 1) { const need = placeNeed(localRow); // Free only when it runs now; else what it needs, the full reason under it
     return need.ready ? { kind: 'free', big: 'Free', what: localRow.needsNvidia ? 'on an NVIDIA PC' : 'on your computer', where: null, est: false, other: null, detail: null }
       : { kind: 'blocked', big: need.text, what: '', where: localRow.reason ?? localWords(localRow, false), est: false, other: null, detail: null }; }
-  if (rq && (rq.runnable === false || rq.ok === false) && !rq.pending && !rq.failed) return { kind: 'blocked', big: 'Can’t run as set', what: '', where: null, est: false, other: localRow ? otherLine() : null, detail: null };
+  if (rq && ((rq.runnable === false && rq.inputStep !== true) || rq.ok === false) && !rq.pending && !rq.failed) return { kind: 'blocked', big: 'Can’t run as set', what: '', where: null, est: false, other: localRow ? otherLine() : null, detail: null };
   const rate = listRateOf(m, o.engine); const paid = rate?.text ?? priceOf(m, o.engine)?.replace(/^Free · /, '') ?? null;
   if (paid && paid !== 'Free') { const lo = /^\$([\d.]+)(?:–[\d.]+)?(.*)$/.exec(paid); const from = lo ? `From $${lo[1]}${lo[2] ?? ''}` : paid;
     return { kind: 'list', big: from, what: '', where: `List rate${rate ? ` on ${rate.where}` : ''}; your price shows once it’s checked`, est: false, other: localRow ? otherLine() : null, detail: null }; }

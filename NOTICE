@@ -66,9 +66,18 @@ Mesh2Motion (Scott Petrovic)
   notice in each file and in licenses/mesh2motion-LICENSE-MIT.md. The human
   skeleton and moves are CC0 (licenses/mesh2motion-LICENSE-CC0.md).
 
+glTF Transform (Don McCurdy) and meshoptimizer (Arseny Kapoulkine)
+  MIT. npm dependencies of the server (@gltf-transform/core,
+  @gltf-transform/extensions, meshoptimizer), installed from their authors'
+  packages, not copied in. They make the lighter copy of a big 3D model for
+  Direct a Shot (server/src/glbLight.ts). https://gltf-transform.dev,
+  https://github.com/zeux/meshoptimizer.
+
 Comfy-Org/comfy-openjutsu (Comfy Org)
   MIT. The H3 Character Swap recipe settings follow Comfy's Openjutsu app
-  (https://github.com/Comfy-Org/comfy-openjutsu). Full text in
+  (https://github.com/Comfy-Org/comfy-openjutsu), and its swap prompt and
+  first-frame prompt are used verbatim (server/src/shared/h3SwapPrompt.ts,
+  server/src/comfy/h3CharSwapAnchor.ts). Full text in
   licenses/comfy-openjutsu-LICENSE-MIT.md.
 
 akatz-labs/h3-character-swap-tool (Akatz Labs)
@@ -76,6 +85,12 @@ akatz-labs/h3-character-swap-tool (Akatz Labs)
   workflow (https://github.com/akatz-labs/h3-character-swap-tool). Full text
   in licenses/akatz-h3-character-swap-tool-LICENSE-MIT.md. The Character Swap
   LoRA itself is under the MiniMax H3 Community License (see LICENSES.md).
+
+VTracer (visioncortex) and @neplex/vectorizer (Neplex Technologies)
+  MIT. Image to vector (SVG) traces pictures on your computer with VTracer
+  (https://github.com/visioncortex/vtracer) through the npm package
+  @neplex/vectorizer (https://github.com/neplextech/vectorizer), installed
+  from npm as a dependency, not copied here.
 
 3D kits, YAMNet and other bundled assets (web/public/models/)
   Each folder keeps its own LICENSE file (CC0, Apache-2.0 and others; YAMNet

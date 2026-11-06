@@ -27,7 +27,7 @@ import { runWithProvider } from '../providers.js';
 import { stillBusyMessage, busyReason } from '../busyRetry.js';
 import { findRoute } from './routes.js';
 import { keyValue } from './keys.js';
-import { autoOrder, option, routeForRunOn, localOnlyModel, localSetupGate, demoKeyless, placeRank } from './select.js';
+import { autoOrder, option, routeForRunOn, localOnlyModel, localSetupGate, demoKeyless, placeRank, builtInLocal } from './select.js';
 import { routesFor } from './routes.js';
 import { getPrefs } from './prefs.js';
 import { runOnOfRoute, RUN_ON_LABELS } from '../shared/modelIds.js';
@@ -192,7 +192,7 @@ export function tryOnFor(job: Job, tool: ToolDef, failed: Pick<RouteDef, 'kind' 
   const useLocal = getPrefs().global.useLocal || localOnlyModel(R.modelId, tool, job.input, allow);
   const out: TryOn[] = [];
   for (const ro of places) { const o = routeForRunOn(tool, R.modelId, job.input, ro, 1, allow); if (!o) continue;
-    const ready = o.available && !o.demo && (ro !== 'local' || (useLocal && !localSetupGate(tool, R.modelId, job.input)));
+    const ready = o.available && !o.demo && (ro !== 'local' || builtInLocal(o.routeId) || (useLocal && !localSetupGate(tool, R.modelId, job.input)));
     const sample = !ready && demoKeyless(o);
     if (!ready && !sample) continue;
     out.push({ runOn: ro, runOnLabel: RUN_ON_LABELS[ro], routeId: o.routeId, credits: sample ? 0 : o.credits ?? 0, listCredits: sample ? o.credits ?? null : o.credits ?? null, demo: sample, rank: placeRank(o) }); }

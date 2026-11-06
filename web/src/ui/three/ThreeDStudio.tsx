@@ -42,7 +42,7 @@ import { MIR_PROMPT_KEY } from '../../shared/MakeItReal';
 import FailureState from '../../shared/FailureState';
 import { useToolModels, modelOfEngine, useRunOn, shownName } from '../../shared/models';
 import { isOpenWeights, displayNameOf } from '../../shared/OpenWeights';
-import { durationText, jobTiming } from '../../shared/jobTiming';
+import { clipLengthText, durationText, jobTiming } from '../../shared/jobTiming';
 import { etaText } from '../../shared/queueActivity';
 import { preflightProblems } from '../../../../server/src/shared/preflight';
 import { THREE_D_WORKFLOWS, THREE_D_CATEGORIES, THREE_D_PAGE, threeDRoute, threeDWorkflowById, currentThreeDWorkflow, threeDModel, normalizeSettings, threeDPicksParam, DETAILS, TEXTURES, FACES, type ThreeDWorkflow, type ThreeDModel, type ShowcaseItem, THREE_D_VIEW_SLOTS, threeDSupportsMode, threeDViewIssue, threeDMode, threeDPriceNote } from '../../../../server/src/shared/threeD';
@@ -500,7 +500,7 @@ function exItem(d: Payload, i: number): Item3D | null {
 /** One 3D result in the feed: its still (the poster the viewer saved, else its input picture), a hover turntable when one was recorded, the model,
  *  faces / texture, price · time, the GLB download and Make a video. Running jobs show the shared generating tile; failures the shared failure tile. */
 function Card({ j, own, onOpen, onVideo, onRetry, onMakeReal }: { j: JobState; own: boolean; onOpen: (from: HTMLElement) => void; onVideo: () => void; onRetry: () => void; onMakeReal: (anchor: HTMLElement) => void }) {
-  const isTT = j.toolId === 'three-d-turntable'; const meta = useMeta3d(j.status === 'done' && !isTT ? j.resultUrl : null); const poster = posterOf3d(j); const tt: string | null = (j as any).threeD?.turntableUrl ?? null;
+  const isTT = j.toolId === 'three-d-turntable'; const meta = useMeta3d(j.status === 'done' && !isTT ? j.resultUrl : null); const tt: string | null = (j as any).threeD?.turntableUrl ?? null; const ttPoster = tt ? planPoster(tt, 320) : undefined; const poster = posterOf3d(j) ?? ttPoster /* no saved still yet: the turntable's frame */;
   const t = jobTiming(j as any); const cap = jobCaption(j, own); const price = cap.price /* never a made-up 'Free': empty when the run's price is unknown */; /* the shared caption words (shared/FeedCaption.tsx), Image's too */
   if (j.status === 'queued' || j.status === 'running') return <div className="vs-htile t3-card" data-testid={`t3-card-${j.id}`}><GenTile job={j} testId={`t3-run-${j.id}`} /></div>;
   if (j.status !== 'done') return <div className="vs-htile t3-card fs-host" data-testid={`t3-card-${j.id}`}><span className="vs-hwait fs-host"><FailureState job={j} variant="tile" testId={`t3-fail-${j.id}`} />
@@ -526,11 +526,11 @@ function Card({ j, own, onOpen, onVideo, onRetry, onMakeReal }: { j: JobState; o
         <a className="t3-act" href={`/jobs/${j.id}`} onClick={(e) => { if (e.metaKey || e.ctrlKey) return; e.preventDefault(); navigate(`/jobs/${j.id}`); }} aria-label="Mockup vs Render" {...tip('Open: Mockup vs Render')}><MoreIcon size={14} /></a></span></div>; }
   if (isTT) return <div className="vs-htile t3-card" data-testid={`t3-card-${j.id}`}><button type="button" className="t3-hit" onClick={() => navigate(`/jobs/${j.id}`)} aria-label="Open turntable video">
       <video src={j.resultUrl ?? undefined} poster={videoCardPoster(j)} muted loop playsInline preload="metadata" onLoadedMetadata={vidReady} onError={retryVideo} onMouseEnter={(e) => e.currentTarget.play().catch(() => 0)} onMouseLeave={(e) => e.currentTarget.pause()} /></button>
-    <FeedCaption title="Turntable video" parts={['Free', durationText(t.renderMs) || 'recorded in your browser']} testId={`t3-cap-${j.id}`} /><em className="t3-kind"><VideoIcon size={12} />Video</em></div>;
+    <FeedCaption title="Turntable video" parts={['Free', clipLengthText((j.input as any)?.duration) || 'recorded in your browser'] /* the clip's length, never the render time ("0.4 s" read as a 0.4 s video, UI audit 2026-11-03) */} testId={`t3-cap-${j.id}`} /><em className="t3-kind"><VideoIcon size={12} />Video</em></div>;
   return <div className="vs-htile t3-card" data-testid={`t3-card-${j.id}`}>
     <button type="button" className="t3-hit" onClick={(e) => onOpen(e.currentTarget)} aria-label={`Open 3D model: ${(j as any).model ?? ''}`}>
       {poster ? <img src={poster} alt="" loading="lazy" draggable={false} /> : j.input?.imageUrl ? <img className="t3-in" src={j.input.imageUrl} alt="" loading="lazy" draggable={false} /> : <CubeIcon size={28} />}
-      {tt && <video className="t3-tt" src={tt} muted loop playsInline preload="none" aria-hidden onMouseEnter={(e) => e.currentTarget.play().catch(() => 0)} onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 0; }} />}</button>
+      {tt && <video className="t3-tt" src={tt} poster={ttPoster} muted loop playsInline preload="none" aria-hidden onMouseEnter={(e) => e.currentTarget.play().catch(() => 0)} onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 0; }} />}</button>
     <em className="t3-kind" {...tip(poster ? '3D model (GLB)' : '3D model: the still appears once you open it')}><CubeIcon size={12} />Model</em>{(j as any).demo && <em className="t3-kind t3-sample">Sample</em>}
     <FeedCaption title={cap.model || '3D model'} parts={[metaShort(meta), price, durationText(t.renderMs) || cap.time]} testId={`t3-cap-${j.id}`} />
     <span className="t3-acts"><a className="t3-act" href={j.resultUrl ?? '#'} download={appFileName(j.id, 'glb')} data-testid={`t3-dl-${j.id}`} aria-label="Download GLB" {...tip('Download GLB')}><DownloadIcon size={14} /></a>

@@ -337,7 +337,7 @@ function KeyCard({ p, info, acct, canStore, unlock, onDone, note, hostedOff, fac
       <button type="button" className="btn btn-sm btn-ghost" onClick={() => { setAdding(false); setKey(''); }}>Cancel</button>
       <small className="helper conn-key-help">Stored on this computer in the server’s settings file. It’s never shown again here.</small></div>}
     <div className="conn-facts">
-      {real && <span data-testid={`conn-key-${id}`}>Key <b>•••• set</b>{p.keySetAt ? ` · added ${dateOf(p.keySetAt)}` : p.keySource === 'env' ? (p.keyEnvVar ? ` · set as ${p.keyEnvVar} in the server’s environment` : ' · in the server’s settings file') : ''}</span>}
+      {real && <span data-testid={`conn-key-${id}`} title={!p.keySetAt && p.keySource === 'env' ? (p.keyEnvVar ? `Set as ${p.keyEnvVar} in the server’s environment` : 'In the server’s settings file') : undefined /* the variable name only on hover (UI audit 2026-11-03) */}>Key <b>•••• set</b>{p.keySetAt ? ` · added ${dateOf(p.keySetAt)}` : p.keySource === 'env' ? ' · set outside the app' : ''}</span>}
       {factsLine ? <span data-testid={`conn-facts-${id}`}>{factsLine}</span> : <Unlocks u={unlock} where={name} empty="Saved keys work, but nothing runs on it on this server yet" />}
       {info?.actualCost === 'per-job' && <span title={info.actualNote}>Reports the real cost per run</span>}
       {note && <span className="conn-note">{note}</span>}

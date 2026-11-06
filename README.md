@@ -26,16 +26,17 @@
 
 Install with the one line below. You don't need a GPU, a key or an account for this tour, and nothing is charged.
 
-1. **Open the Examples project** (Assets → Projects → Examples). Real results made in the app, each with its model, where it ran and its price.
-2. **Open a result and press View workflow** (on some results it's under **More → Advanced**). You see the ComfyUI workflow behind it: where it ran, the workflow file, and its nodes with their models and settings. It's a list, not a node canvas.
-3. **Press Download workflow** (or **Copy JSON**) to keep the ComfyUI API graph. With your ComfyUI connected in **Settings → Connections**, **Open in ComfyUI** loads it there; without ComfyUI that button stays off.
-4. **Open the Canvas and pick a starter** in the agent panel, such as **Short film from idea**. The built-in demo agent lays out the board step by step, with a whole workflow on each card. Every run waits for your Go, and with nothing connected nothing can run.
+1. **Pick Look around first** on the welcome sheet that opens the app. It skips setup; you can connect later in **Settings → Connections**.
+2. **Open the Examples project** (Assets → Projects → Examples). Real results made in the app, each with its model, where it ran and its price.
+3. **Open a result and press View workflow** (on some results it's under **More → Advanced**). You see the ComfyUI workflow behind it: where it ran, the workflow file and its node count, and each node by name and type, grouped into models and inputs, sampling and output. It's a list, not a node canvas.
+4. **Press Download workflow** (or **Copy JSON**) to keep the ComfyUI API graph. With your ComfyUI connected in **Settings → Connections**, **Open in ComfyUI** loads it there; without ComfyUI that button stays off.
+5. **Open the Canvas and pick a starter** in the agent panel, such as **Short film from idea**. The built-in demo agent lays out the board step by step, with a whole workflow on each card. Every run waits for your Go, and with nothing connected nothing can run.
 
 Want to see it run? Connect your ComfyUI or a Comfy key in **Settings → Connections**.
 
 <table align="center">
   <tr>
-    <td width="50%"><img src="docs/screenshots/run-on.webp" alt="The Video tab with the Run on menu open for LTX-2.5 22B: free on your computer, or about $0.23 on Comfy Cloud"><br><sub>Run on: pick the place, see the price first</sub></td>
+    <td width="50%"><img src="docs/screenshots/run-on.webp" alt="The Audio tab with the Run on menu open for MiniMax Music 3: free on your computer, or about $0.24 on Comfy Cloud"><br><sub>Run on: pick the place, see the price first</sub></td>
     <td width="50%"><img src="site/public/media/canvas.jpg" alt="A Canvas board: one chair photo and four fabric swatches feed four Material Swap cards and a three-ad card"><br><sub>Canvas: whole workflows chained card to card</sub></td>
   </tr>
   <tr>
@@ -89,7 +90,7 @@ Other ports and advanced setups: [Install and run](docs/INSTALL.md) · [Configur
 - **Write a song, voice a script, translate a video.** **Music** (YuE2, free on your computer), **Voiceover**, **Sound effects**, and **Translate**, which keeps the background music.
 - **Turn one picture into a 3D model.** **Image to 3D**, **Text to 3D** and **Multi-view to 3D**, then a **Turntable video** of the model spinning.
 
-Ready to use today: **69 ready-made workflows** (19 image · 38 video · 8 audio · 4 3D), including the **24 one-click apps**, plus **8 step-by-step chains**. The Workflows tab lists every one of them. [Every workflow](docs/WORKFLOWS.md) documents each one: models, where they run, inputs, graph and credits. Open the bundled **Examples project** to see results and how each was made; **Recreate** loads the workflow and settings, and never starts a paid run on its own.
+Ready to use today: **70 ready-made workflows** (20 image · 38 video · 8 audio · 4 3D), including the **25 one-click apps**, plus **8 step-by-step chains**. The Workflows tab lists every one of them. [Every workflow](docs/WORKFLOWS.md) documents each one: models, where they run, inputs, graph and credits. Open the bundled **Examples project** to see results and how each was made; **Recreate** loads the workflow and settings, and never starts a paid run on its own.
 
 <table align="center">
   <tr>

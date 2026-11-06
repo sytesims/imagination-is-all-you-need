@@ -50,12 +50,14 @@ Checked on 2026-10-16 against the Hugging Face API licence tags and the upstream
 | ComfyUI-KJNodes | https://github.com/kijai/ComfyUI-KJNodes | ⚠️ GPL-3.0 (copyleft; it runs inside ComfyUI, not inside our code) |
 | ComfyUI-CrossViewWarp (comfyrob fork @ fbb1e93 of cseti007/ComfyUI-CrossViewWarp), H3 CrossView on your Comfy deployment; installed in your Build, never copied here | https://github.com/comfyrob/ComfyUI-CrossViewWarp | ✅ Apache-2.0 |
 | Comfy-Org/comfy-reshoot (the Reshoot recipe graph that `deploy/h3-crossview-api.json` is adapted from) | https://github.com/Comfy-Org/comfy-reshoot | ✅ MIT |
-| Comfy-Org/comfy-openjutsu (Comfy's Openjutsu app; the H3 Character Swap recipe settings that `cloud/h3-charswap-api.json` and `object-swap-h3-charswap-api.json` follow) | https://github.com/Comfy-Org/comfy-openjutsu | ✅ MIT (licenses/comfy-openjutsu-LICENSE-MIT.md) |
+| Comfy-Org/comfy-openjutsu (Comfy's Openjutsu app; the H3 Character Swap recipe settings that `cloud/h3-charswap-api.json` and `object-swap-h3-charswap-api.json` follow, its swap prompt and first-frame prompt verbatim) | https://github.com/Comfy-Org/comfy-openjutsu | ✅ MIT (licenses/comfy-openjutsu-LICENSE-MIT.md) |
 | akatz-labs/h3-character-swap-tool (Akatz Labs' H3 Character Swap workflow, the recipe Openjutsu builds on) | https://github.com/akatz-labs/h3-character-swap-tool | ✅ MIT (licenses/akatz-h3-character-swap-tool-LICENSE-MIT.md) |
 | ComfyUI-segment-anything-2 | https://github.com/kijai/ComfyUI-segment-anything-2 | ✅ Apache-2.0 |
 | comfyui_controlnet_aux (DWPose, Canny) | https://github.com/Fannovel16/comfyui_controlnet_aux | ✅ Apache-2.0 |
 | ComfyUI-SeedVR2_VideoUpscaler | https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler | ✅ Apache-2.0 |
 | ComfyUI-Frame-Interpolation (RIFE VFI) | https://github.com/Fannovel16/ComfyUI-Frame-Interpolation | ✅ MIT |
+| VTracer (visioncortex), Image to vector (SVG) on your computer: run by the app's own code through the npm package @neplex/vectorizer 0.1.0 (prebuilt binaries); no ComfyUI graph | https://github.com/visioncortex/vtracer · https://github.com/neplextech/vectorizer | ✅ MIT (both) |
+| Ideogram Vector 1, Image to vector (SVG) on Comfy Cloud: partner node IdeogramVectorImageToSVGApi, graph from the official template api_ideogram_vector_1_image_to_svg | https://docs.comfy.org/built-in-nodes/IdeogramVectorImageToSVGApi · https://github.com/Comfy-Org/workflow_templates | hosted model under Ideogram's API terms · template ✅ MIT |
 
 No InsightFace anywhere.
 

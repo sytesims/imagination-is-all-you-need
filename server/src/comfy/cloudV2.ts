@@ -16,8 +16,9 @@ import path from 'node:path';
 import type { NativeOutput, NativeProgress } from './native.js';
 import { sanitizeProviderText } from '../comfyRouter.js';
 import { PollTolerance, MISS, withDownloadRetry } from '../hostedPoll.js';
+import { CLOUD_MAX_RUN_MIN, nearCloudLimit } from '../shared/cloudLimits.js';
 
-export type CloudReason = 'key_invalid' | 'cloud_credits' | 'workflow_invalid' | 'queue_full' | 'submit_uncertain' | 'cloud_job_failed' | 'cloud_timeout' | 'cloud_unreachable' | 'content_blocked' | 'cloud_job_gone' | 'upload_failed';
+export type CloudReason = 'key_invalid' | 'cloud_credits' | 'workflow_invalid' | 'queue_full' | 'submit_uncertain' | 'cloud_job_failed' | 'cloud_timeout' | 'cloud_unreachable' | 'content_blocked' | 'cloud_job_gone' | 'upload_failed' | 'cloud_run_limit';
 /** A Comfy Cloud failure with a plain message (no key, no URL; it follows "Comfy Cloud failed: ") and our reason code. temporary = retrying the same route may work. */
 export class CloudError extends Error {
   /** What Comfy Cloud said (sanitised): the ErrorEnvelope code / message and, for a refused graph, its per-node errors; null when nothing was said. */
@@ -124,25 +125,31 @@ export class ComfyCloudV2 {
     }
     if (!id) throw new CloudError('submit_uncertain', 'no job id came back, so the job was not sent again.', null, true, 'submit: no id');
     if (!o.resumeId) o.onSubmitted?.(id);
-    const t0 = Date.now(); const total = Object.keys(workflow).length; const tol = new PollTolerance('Comfy Cloud');
+    const total = Object.keys(workflow).length; const tol = new PollTolerance('Comfy Cloud');
+    // Running time counts from Cloud's first "running" status (never its queue). Cloud stops a run at its plan's maximum (shared/cloudLimits.ts);
+    // our net (timeoutMs, config.cloudSafetyNetMs: 2 h) only catches a job that never ends.
+    let runT0: number | null = null; const net = o.timeoutMs ?? 2 * 60 * 60_000; let weCanceled = false;
+    const limitErr = () => new CloudError('cloud_run_limit', `it reached Comfy Cloud's maximum run time (${CLOUD_MAX_RUN_MIN.standard} min, or 1 hour on the Pro plan).`, null, false, `job ${id} ended at Cloud's maximum runtime`);
     for (;;) {
-      if (o.isCanceled?.()) { await this.cancel(id); throw new Error('canceled'); }
-      if (Date.now() - t0 > (o.timeoutMs ?? 30 * 60_000)) { await this.cancel(id); const e = new CloudError('cloud_timeout', 'it took too long; the job was cancelled.', null, true, `job ${id} timeout`); (e as any).timeout = true; throw e; }
+      if (o.isCanceled?.()) { weCanceled = true; await this.cancel(id); throw new Error('canceled'); }
+      if (runT0 != null && Date.now() - runT0 > net) { weCanceled = true; await this.cancel(id); const e = new CloudError('cloud_timeout', `it kept running past ${Math.round(net / 60_000)} min without ending, so it was cancelled.`, null, true, `job ${id} timeout`); (e as any).timeout = true; throw e; }
       // poll errors: keep polling the SAME id with back-off (hostedPoll.ts, shared with every hosted runner); a definite answer ends it
       const got = await tol.read(() => this.status(id));
       if (got === null) throw new CloudError('cloud_job_gone', 'the job is no longer there, so it was stopped.', 404, false, `job ${id} → 404`); // B7: remote prompt gone
       if (got === MISS) { await new Promise((r) => setTimeout(r, tol.wait(this.pollMs))); continue; }
       const j: any = got;
       const s = String(j?.status ?? '');
+      if (s === 'running') runT0 ??= Date.now();
       if (s === 'queued' || s === 'running' || s === 'canceling') { const v = Number(j?.progress?.value) || 0; o.onProgress?.({ node: j?.progress?.current_node ?? null, value: v, max: 1, done: Number(j?.progress?.nodes_done) || 0, total, percent: Math.min(99, Math.round(v * 100)), known: v > 0 /* Comfy Cloud's own progress value; 0 = nothing reported yet */, phase: s === 'queued' ? 'queued' : 'generating' }); }
       else if (s === 'succeeded') {
         const outputs: Record<string, any[]> = {};
         for (const x of j.outputs ?? []) (outputs[String(x.node_id)] ??= []).push({ filename: x.name ?? `${x.id}${EXT[x.content_type] ?? ''}`, subfolder: '', type: 'output', kind: x.type, url: x.url, content_type: x.content_type, id: x.id });
         o.onProgress?.({ node: null, value: 1, max: 1, done: total, total, percent: 100, known: true, phase: 'finishing' }); return { promptId: id, outputs };
       }
-      else if (s === 'canceled') throw new Error('canceled');
+      else if (s === 'canceled') { if (!weCanceled && !o.isCanceled?.() && runT0 != null && nearCloudLimit(Date.now() - runT0)) throw limitErr(); throw new Error('canceled'); }
       else if (s === 'expired') throw new CloudError('cloud_timeout', 'the job expired before it ran.', null, true, `job ${id} expired`);
-      else if (s === 'failed') { const er = j?.error ?? {}; const ce = new CloudError('cloud_job_failed', 'the workflow failed while running.', null, true, `job ${id}: ${er.code ?? ''} ${er.class_type ?? ''} ${String(er.message ?? '').slice(0, 300)}`);
+      else if (s === 'failed') { const er = j?.error ?? {};
+        if (runT0 != null && nearCloudLimit(Date.now() - runT0) && /time|runtime|limit|exceed|deadline/i.test(`${er.code ?? ''} ${er.message ?? ''}`)) throw limitErr(); const ce = new CloudError('cloud_job_failed', 'the workflow failed while running.', null, true, `job ${id}: ${er.code ?? ''} ${er.class_type ?? ''} ${String(er.message ?? '').slice(0, 300)}`);
         ce.provider = cloudFailureFrom(null, { error: { code: er.code ?? null, message: [er.class_type, er.message].filter(Boolean).join(': ') || null, details: er.details ?? null } }, 'job', id); throw ce; }
       await new Promise((r) => setTimeout(r, this.pollMs));
     }

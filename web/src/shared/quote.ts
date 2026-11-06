@@ -113,7 +113,7 @@ export const LOCAL_OFF_TEXT = 'Your computer is off · turn it on in Settings �
 export const reasonWords = (x: any): string | null => { if (!x) return null; if (x.reasonCode === 'local_off' || x.reason === 'local_off') return x.reason && x.reason !== 'local_off' ? String(x.reason) : LOCAL_OFF_TEXT; /* B19: the server's plain 'Turn on Use local ComfyUI…' */ const r = typeof x.reason === 'string' ? x.reason.trim() : ''; return r || null; };
 /** B18: credits to show as a charge. `chargeable:false` (demo, local, a missing key, a route that can't run) is never a charge: null,
  *  or 0 when the quote itself says 0. Older quotes without `chargeable` fall back to their numeric credits. */
-export const shownCredits = (q: any): number | null => { if (!q || typeof q.credits !== 'number') return null; if (q.chargeable === false) return q.credits === 0 ? 0 : null; return q.credits; };
+export const shownCredits = (q: any): number | null => { if (!q || typeof q.credits !== 'number') return null; if (q.chargeable === false && q.inputStep !== true /* priced, waiting for a step (who to swap): show the price */) return q.credits === 0 ? 0 : null; return q.credits; };
 /** B18: the quote's own unit fields first, then the pricing row's. */
 export const unitOf = (q: any, row?: any): { label: string; help: string } => ({ label: String(q?.unitLabel ?? row?.unitLabel ?? '').trim(), help: String(q?.unitHelp ?? row?.unitHelp ?? '').trim() });
 /** B18: an upscale quote with a given size (estimated:false + sourceSize/outputSize): "1280×720 → 2560×1440 at 2×". */

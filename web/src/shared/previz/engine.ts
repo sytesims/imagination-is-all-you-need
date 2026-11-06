@@ -43,7 +43,7 @@ export interface PrevizEngine {
   /** Your 3D models: which placed model is selected (the same ring); null = none */ selectModel(i: number | null): void;
   /** the placed model (index in shot.models) under a point of the view, or null */ pickModel(nx: number, ny: number): number | null;
   /** where the camera stands on the ground now (x, z), so a new model can face it */ cameraGround(): [number, number] | null;
-  /** load and check one of your GLBs (cached for the page): its footprint (width ÷ height); rejects with the reason in plain words */ probeModel(src: string): Promise<{ fw: number }>;
+  /** load and check one of your GLBs (cached for the page): its footprint (width ÷ height); rejects with the reason in plain words */ probeModel(src: string): Promise<{ fw: number; /** played from its light copy */ light?: boolean }>;
   /** Drive mode's "park here" bay (previz/driveGame.ts): an orange bay and a soft beacon in the live view; never in a recording (null hides it) */ setBay(b: { x: number; y: number; z: number; heading: number; w: number; l: number } | null): void;
   /** the placed prop under a point of the view (x, y from −1 to 1, y up), or null */ pickProp(nx: number, ny: number): number | null;
   /** the ground point under a point of the view (metres, x and z), or null when it is above the horizon */ groundPoint(nx: number, ny: number): [number, number] | null;

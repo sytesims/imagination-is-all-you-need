@@ -79,6 +79,25 @@ try {
   { const { f } = mk((c) => (c.url.includes('/gone') ? json({ error: { code: 'not_found' } }, 404) : json({ id: 'x', status: 'running' }))); const c = new ComfyCloudV2('https://cc.test', 'k', 'g3', f, 1);
     assert.equal(await c.status('gone'), null); assert.equal((await c.status('x')).status, 'running'); assert.equal(await c.cancel('gone'), true); }
   ok('poll 404 → cloud_job_gone (not temporary, no resubmit); 422 idempotency_key_reuse → submit_uncertain (one call); status() null when gone; cancel() of a gone job counts as done');
+  // long runs (3 Nov 2026): the clock counts Cloud's RUNNING time only; Cloud's own maximum runtime ends a run → cloud_run_limit; our net only for a job that never ends
+  { const realNow = Date.now; let skew = 0; Date.now = () => realNow() + skew;
+    try {
+      const g = { '1': { class_type: 'X', inputs: {} } };
+      // queued 3 h, then runs 10 min and succeeds, with a 30-min net → fine (queue never counts)
+      { let polls = 0; const { f } = mk((c) => c.method === 'POST' ? json({ id: 'q1' }) : (skew += 15 * 60_000, ++polls <= 12 ? json({ id: 'q1', status: 'queued' }) : polls <= 13 ? json({ id: 'q1', status: 'running' }) : json({ id: 'q1', status: 'succeeded', outputs: [] })));
+        const r = await new ComfyCloudV2('https://cc.test', 'k', 'g4', f, 1).run(g, { timeoutMs: 30 * 60_000 }); assert.equal(r.promptId, 'q1'); }
+      // Cloud cancels it after 30 min of running (we did not) → cloud_run_limit, plain words
+      { let polls = 0; const { f } = mk((c) => c.method === 'POST' ? json({ id: 'q2' }) : (skew += 10 * 60_000, ++polls <= 4 ? json({ id: 'q2', status: 'running' }) : json({ id: 'q2', status: 'canceled' })));
+        await assert.rejects(new ComfyCloudV2('https://cc.test', 'k', 'g5', f, 1).run(g), (e: any) => e.reasonCode === 'cloud_run_limit' && /Comfy Cloud's maximum run time \(30 min, or 1 hour on the Pro plan\)/.test(e.message)); }
+      // a Cloud cancel after 2 min of running is not the limit → canceled as before
+      { let polls = 0; const { f } = mk((c) => c.method === 'POST' ? json({ id: 'q3' }) : (skew += 60_000, ++polls <= 2 ? json({ id: 'q3', status: 'running' }) : json({ id: 'q3', status: 'canceled' })));
+        await assert.rejects(new ComfyCloudV2('https://cc.test', 'k', 'g6', f, 1).run(g), (e: any) => e.message === 'canceled'); }
+      // a job that reports "running" forever: our net (default 2 h of running) cancels it once
+      { const { f, calls } = mk((c) => c.method === 'POST' ? (c.url.endsWith('/cancel') ? json({ id: 'q4', status: 'canceling' }) : json({ id: 'q4' })) : (skew += 20 * 60_000, json({ id: 'q4', status: 'running' })));
+        await assert.rejects(new ComfyCloudV2('https://cc.test', 'k', 'g7', f, 1).run(g), (e: any) => e.reasonCode === 'cloud_timeout' && /past 120 min/.test(e.message));
+        assert.equal(calls.filter((x) => x.url.endsWith('/cancel')).length, 1, 'one cancel'); }
+    } finally { Date.now = realNow; }
+    ok('Cloud: queue time never counts; Cloud ending a run at its maximum → cloud_run_limit; an early Cloud cancel stays canceled; a never-ending job → our 2 h net, one cancel'); }
   // B7 orphan cancel
   { const seen: string[] = []; setOrphanCancel(async (id) => { seen.push(id); return true; });
     const j: any = { id: 'orph1', toolId: 'camera', provider: 'cloud-ltx-camera', input: {}, cloudJobId: 'cj-9', routeAttempts: [{ n: 1, routeId: 'comfy-cloud:cloud-ltx-camera', status: 'running', charged: 30, refunded: 0, requestId: 'cj-9' }] };

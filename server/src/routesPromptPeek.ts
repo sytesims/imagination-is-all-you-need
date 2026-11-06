@@ -27,6 +27,7 @@ import { catalogFor } from './shared/modelCatalog.js';
 import { ROUTER_MODELS, swapPromptOf } from './routing/routerModels.js';
 import { isCloudSwap } from './shared/cloudSwap.js';
 import { composeH3SwapPrompt } from './shared/h3SwapPrompt.js';
+import { charswapAnchorOn } from './comfy/h3CharSwapAnchor.js';
 import { ROUTER_SIZE_RULES } from './shared/routerImageSizes.js';
 import { applyBrandToFields } from './brandKits.js';
 import { jobWorkflow } from './jobSource.js';
@@ -186,10 +187,11 @@ export async function promptPeek(tool: ToolDef, fields0: Record<string, string>,
     out.inputs = [tool.id === 'motion-transfer' ? 'Performance reference (your clip)' : 'Source scene (your clip)', ...((files.refs ?? []).map((_, n) => `Image ${n + 1} (your character image)`))];
   }
   if (h3Cloud) {
-    out.prompt = composeH3SwapPrompt(input);
+    const anchor = charswapAnchorOn(input); // Openjutsu's first frame (made just before the run; if it fails, the run drops this sentence and says so)
+    out.prompt = composeH3SwapPrompt({ ...input, anchor });
     out.promptNote = 'H3 keeps the replacement instructions and adds your direction. Your original words stay separate for Recreate. Masked runs also save two silent diagnostic previews; extra Cloud encoding/storage overhead is unmeasured and may add GPU-time cost.';
     out.settings.audio = input.keepAudio !== false;
-    out.inputs = ['Source scene (your clip)', 'Picture 1 (your character image)'];
+    out.inputs = ['Source scene (your clip)', 'Picture 1 (your character image)', ...(anchor ? ['Picture 2 (first frame: your character put into the clip\'s first frame by GPT Image 2.5 Sunburst)'] : [])];
   }
   if (audio) { /* the Audio page: the exact text (script or prompt) plus the lyrics, and the model, voice, length and format */
     const outVideo = !!input.videoPath && !input.audioOnly; const sec = Number(input.outputDuration ?? input.duration) || null;

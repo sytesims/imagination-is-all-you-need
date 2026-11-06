@@ -177,6 +177,7 @@ export const IMAGE_CAPS: Record<string, ImageCaps> = {
   // fal image pass (2026-10-22): Bria GenFill (Brush Edit only): the photo + a mask, one output per request (tools/imageFalModels.ts)
   'fal-bria-genfill': hosted({ refs: true, draw: true, maxRefs: 1 }),
   // photo tools (2026-10-23, tools/imageFalApps.ts): fal-only models, each in one workflow; the photo (and Try-On's garment) in, one image out
+  'local-vtracer': local({ res: ['1K', '2K', '4K'], refs: true, draw: false, maxRefs: 1 }), 'cloud-ideogram-vector': hosted({ refs: true, draw: false, maxRefs: 1 }), // Image to vector (2026-11-03)
   'fal-bria-rmbg': hosted({ refs: true, draw: false, maxRefs: 1 }), 'fal-ideogram-rmbg': hosted({ refs: true, draw: false, maxRefs: 1 }),
   'fal-bria-expand': hosted({ refs: true, draw: false, maxRefs: 1 }), 'fal-ideogram-reframe': hosted({ refs: true, draw: false, maxRefs: 1 }),
   'fal-bria-eraser': hosted({ refs: true, draw: true, maxRefs: 1 }), 'fal-object-removal': hosted({ refs: true, draw: true, maxRefs: 1 }),

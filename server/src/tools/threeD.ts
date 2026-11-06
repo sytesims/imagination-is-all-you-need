@@ -110,7 +110,7 @@ async function runTripoCloud(job: Job, r: RouteDef, attempt: RouteAttempt) {
     else if(threeDMode(job.input)!=='text-to-3d') assets.image=await c.upload(photo(job.input));
     if((job.status as string)==='canceled') return;
     job.stage = 'submitted';
-    const res = await c.run(tripoGraph(refInputFor(job,r), assets.image, assets), { partnerAuth: true, timeoutMs: 20 * 60_000, isCanceled: () => (job.status as string) === 'canceled',
+    const res = await c.run(tripoGraph(refInputFor(job,r), assets.image, assets), { partnerAuth: true, isCanceled: () => (job.status as string) === 'canceled',
       onSubmitted: (id) => { attempt.requestId = id; job.cloudJobId = id; (job.requestIds ??= []).push(id); }, onProgress: (p) => { job.stage = p.phase === 'queued' ? 'submitted' : 'rendering'; if (p.known) job.progress = p.percent; } });
     const outs = Object.values(res.outputs).flat() as any[];
     const glb = outs.find((o) => /\.glb$/i.test(String(o.filename ?? ''))) ?? outs.find((o) => /gltf/i.test(String(o.content_type ?? ''))) ?? outs.find((o) => /3d|model/i.test(String(o.kind ?? '')));

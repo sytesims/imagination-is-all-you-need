@@ -15,6 +15,7 @@ import { RunLine, RunPlaces, device } from '../../shared/RunLine';
 import { ToolIconFor, SearchIcon, CloseIcon, OfficialBadgeIcon, CommunityIcon, SparkleIcon, SavedTagIcon, GenerateIcon, PlayIcon, PauseIcon } from '../Icons';
 import { FlowDiagram, hasDiagram } from '../exploreArt';
 import { featuredByKey, runByJob, type FeaturedRun } from '../../../../server/src/shared/featured';
+import { workflowName } from '../../../../server/src/shared/imageFeatures';
 import { resolveRow, whyHidden, runsPrice, runCost, openHrefOf, type Row, type Hub } from './workflowRows';
 import { WF_ENTRIES, WF_CHAINS, workflowPageSections, cardThumb, entryHay, type WfChain } from '../../../../server/src/shared/workflowCatalog';
 import { countLine } from '../../../../server/src/shared/workflowCount';
@@ -301,7 +302,7 @@ function Sheet({ r, rows, chains, s, onClose, onOpen, mock }: { r: Row; rows: Ro
         : <p className="wv-muted">It runs inside the app, free on {device()}.</p>}
       <h3 className="wv-h">Source</h3>
       {r.source ? <div className="wv-wf" data-testid="wn-source"><span className="wn-src"><span className={`wfp-badge wfp-${r.source.source}`}><SrcIc size={12} />{srcLabel}</span></span>
-        <span className="wv-wf-n">{r.source.url ? <a href={r.source.url} target="_blank" rel="noreferrer">{r.source.name}<span aria-hidden> ↗</span></a> : r.source.name}</span>
+        <span className="wv-wf-n">{r.source.url ? <a href={r.source.url} target="_blank" rel="noreferrer" title={r.source.name}>{workflowName(r.source.name)}<span aria-hidden> ↗</span></a> : workflowName(r.source.name)}</span>
         {(r.source.author || r.source.licence) && <span className="wv-muted">{[r.source.author, r.source.licence].filter(Boolean).join(' · ')}</span>}
         {r.source.file && <a className="wv-dl" href={`/api/workflows/${encodeURIComponent(r.source.file)}`} download={r.source.file}>Download {r.source.file}</a>}</div>
         : <p className="wv-muted">{r.e.plugin ? `${r.e.plugin.user ? 'You added this ComfyUI workflow' : 'Added as a folder: its ComfyUI workflow ships with it'}${r.e.plugin.author ? `, made by ${r.e.plugin.author}` : ''}. It runs on your own ComfyUI.` : !r.models.length ? 'It runs inside the app, on your computer.' : `No source credit yet for ${r.models[0].name}.`}</p>}

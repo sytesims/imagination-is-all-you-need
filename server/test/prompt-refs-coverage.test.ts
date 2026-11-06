@@ -187,6 +187,7 @@ const code = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"
 const SENDS = /method: ?['"]POST['"]|\bclient\.submit\(|\b(falRun|replicateRun|runDirect|runNative|runNativeSafe|runQueued|runCloudWorkflow|runRouter)\(|new (ComfyCloudV2|ComfyRouter)\(/;
 /** Every such module, and why its prompts are rewritten (or why it has none). A new one fails until it is listed here. */
 const SENDERS: Record<string, { calls?: RegExp; why: string }> = {
+  'comfy/h3CharSwapAnchor.ts': { calls: /anchorBody\(/, why: 'H3 Character Swap first-frame step (Openjutsu anchor): one GPT Image 2.5 Sunburst edit on Comfy Router with the fixed anchor instruction + who to swap; the user\'s typed prompt goes to the H3 graph (composeH3SwapPrompt), not here' },
   'routing/run.ts': { calls: /routeRequest\(/, why: 'hosted runner: every lab / fal / Replicate body comes from routeRequest' },
   'routing/routerRun.ts': { calls: /routeRequest\(/, why: 'Comfy Router runner: bodies from routeRequest' },
   'routing/cloudRun.ts': { calls: /buildCloudPlan\(/, why: 'Comfy Cloud / deployment runner: graphs from buildCloudPlan' },

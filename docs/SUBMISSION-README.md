@@ -16,14 +16,15 @@ Contains AI-generated content. This page is the short version for judges; the ma
 ## Try it in 5 minutes, no GPU
 Install with one line ([macOS, Linux, Windows](../README.md#install-in-one-line)). No GPU, key or account is needed for this tour, and nothing is charged.
 
-1. **Open the Examples project** (Assets → Projects → Examples). Real results made in the app, each with its model, where it ran and its price.
-2. **Open a result and press View workflow** (on some results it's under **More → Advanced**). You see the ComfyUI workflow behind it: where it ran, the workflow file, and its nodes with their models and settings. It's a list, not a node canvas.
-3. **Press Download workflow** (or **Copy JSON**) to keep the ComfyUI API graph. With your ComfyUI connected in **Settings → Connections**, **Open in ComfyUI** loads it there; without ComfyUI that button stays off.
-4. **Open the Canvas and pick a starter** in the agent panel, such as **Short film from idea**. The built-in demo agent lays out the board step by step, with a whole workflow on each card. Every run waits for your Go, and with nothing connected nothing can run.
+1. **Pick Look around first** on the welcome sheet that opens the app. It skips setup; you can connect later in **Settings → Connections**.
+2. **Open the Examples project** (Assets → Projects → Examples). Real results made in the app, each with its model, where it ran and its price.
+3. **Open a result and press View workflow** (on some results it's under **More → Advanced**). You see the ComfyUI workflow behind it: where it ran, the workflow file and its node count, and each node by name and type, grouped into models and inputs, sampling and output. It's a list, not a node canvas.
+4. **Press Download workflow** (or **Copy JSON**) to keep the ComfyUI API graph. With your ComfyUI connected in **Settings → Connections**, **Open in ComfyUI** loads it there; without ComfyUI that button stays off.
+5. **Open the Canvas and pick a starter** in the agent panel, such as **Short film from idea**. The built-in demo agent lays out the board step by step, with a whole workflow on each card. Every run waits for your Go, and with nothing connected nothing can run.
 
 ## What's inside
 - **Direct a Shot (LTX-2.5 at the core):** stage a scene and a camera move in 3D, record a free mockup, and LTX-2.5 22B with the Layout to Render IC-LoRA films it with sound.
-- **A full studio:** 69 ready-made workflows (19 image, 38 video, 8 audio and 4 3D, the 24 one-click apps among them) and 8 step-by-step chains, plus 82 camera presets. Every result keeps its model, where it ran and its price.
+- **A full studio:** 70 ready-made workflows (20 image, 38 video, 8 audio and 4 3D, the 25 one-click apps among them) and 8 step-by-step chains, plus 82 camera presets. Every result keeps its model, where it ran and its price.
 - **Footage Effects (LTX VFX):** Lightricks' Clean Plate, Day to Night and Water Simulation IC-LoRAs on your own clip, on your computer or on Comfy Cloud; Alpha Gen on your computer. The Explore page shows Layout to Render: a grey 3D blockout filmed as a real shot.
 - **Canvas:** each card is a whole workflow; connect cards and results flow on. Claude drafts and prices the board, nothing runs until you press Go, and View workflow shows the exact ComfyUI graph behind a finished card (runs on your computer or Comfy Cloud).
 - **Agents:** 70 MCP tools in all; 15 in the default stdio core toolset (11 catalogue/control tools plus four read-only searches); default HTTP also enables 25 Canvas tools. Quotes, permissions and budgets govern direct runs; Canvas proposals wait for Go. See [MCP.md](MCP.md) and the 17 included [skills](MCP-SKILLS.md).
@@ -47,7 +48,7 @@ npm run setup      # installs app dependencies, checks setup, starts web/API/MCP
 With no GPU or key you can browse the bundled Examples project and the Canvas starters. Generate needs a connection (your ComfyUI or a Comfy key). Setup and real-run requirements: [Install in one line](../README.md#install-in-one-line) and [INSTALL.md](INSTALL.md).
 
 ## Partner models
-- **LTX:** LTX-2.5 22B is the core video model for Direct a Shot, Footage Effects, Generate Video, Transitions, Loop, Extend and talking photos.
+- **LTX:** LTX-2.5 22B is the core video model for Direct a Shot, Generate Video, Transitions, Loop, Extend and talking photos, and runs Footage Effects on your computer. On Comfy Cloud, Footage Effects run LTX-2.3 22B with the official Comfy IC-LoRA templates (Restore old footage, Remove an object, Remove subtitles and Extend the frame run only there).
 - **MiniMax:** MiniMax H3 (Generate Video, Extend, Character Swap, CrossView on your deployment) and MiniMax Music 3.
 - **Black Forest Labs:** FLUX 3 Image Klein on your computer (NVIDIA GPU), plus FLUX 3 Image and Video through Comfy.
 

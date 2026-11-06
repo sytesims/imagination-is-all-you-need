@@ -13,7 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import { requestRequote } from './quote';
 import { runPrice } from './billing';
 import { READY_WORD } from './sampleSite';
-import { LOCAL_LABEL, COMFY_DEPLOY_DETAIL, placeOf as sharedPlaceOf, PLACE_LABELS, RUN_ON_LABELS, type Place } from '../../../server/src/shared/modelIds';
+import { LOCAL_LABEL, NEEDS_COMFYUI_TEXT, COMFY_DEPLOY_DETAIL, placeOf as sharedPlaceOf, PLACE_LABELS, RUN_ON_LABELS, type Place } from '../../../server/src/shared/modelIds';
 
 export type RunOnStatus = 'ready' | 'sample' | 'needs-key' | 'off' | 'not-installed' | 'coming-soon' | 'unavailable';
 /** The one action a place that isn't ready needs (server: routing/modelRegistry.ts rowAction / routing/select.ts placeAction). */
@@ -21,7 +21,7 @@ export interface PlaceAction { kind: 'turn_on' | 'download' | 'install_node' | '
 export interface RunOnRow { id: string; label: string; billedTo: string; status: RunOnStatus; credits: number | null; reason: string | null; reasonCode: string | null; routes: string[]; engines: string[]; comfyVariants?: ('workflow' | 'partner')[];
   /** Run on groups: gpu (Local), comfy (Comfy Cloud / Comfy Router), api (direct providers). */ group?: 'gpu' | 'comfy' | 'api'; /** How the Comfy row runs ("Open workflow", "Partner model", shared/modelIds.ts comfyHowLine), or "Your Comfy deployment". */ detail?: string | null; action?: PlaceAction | null;
   /** Local row: its files need an NVIDIA graphics card (fp8 / nvfp4 weights a Mac can't load), whatever this computer is. */ needsNvidia?: boolean;
-  /** Local row (hardware plan §3.5): the memory the model needs and its time on this computer, for the run menu's mini line. */ here?: { memGB: number | null; etaSeconds: number | null; etaSource: string | null; samples: number; untested?: boolean } | null;
+  /** Local row (hardware plan §3.5): the memory the model needs and its time on this computer, for the run menu's mini line. */ here?: { memGB: number | null; etaSeconds: number | null; etaSource: string | null; samples: number; untested?: boolean; /** fit verdict slow on this computer (MiniMax Music 3 on Apple chips) */ slow?: boolean } | null;
   /** Local, files that don't fit on the disk (reasonCode not_enough_disk): the bytes they need ("Needs 43 GB space") */ missingBytes?: number | null;
   /** 2026-10-27: the model's ways to run at this place when there are two or more (server shared/routeNames.ts): each by name, with its price and limits. */ choices?: RouteChoice[] }
 export interface RouteChoice { routeId: string; engine: string; name: string; word: string; why: string; status: RunOnStatus; credits: number | null; reason: string | null; /** route_not_enabled: Comfy Router refused it before running; "Check again" clears it */ reasonCode?: string | null; limits: { resolutions: string[] | null; durations: number[] | null; aspects: string[] | null } | null; /** the jobs it takes (null = every job the model does) */ modes?: string[] | null }
@@ -68,6 +68,10 @@ export const placeOfAny = (x: any): Place | null => (x?.place && typeof x.place 
 export const placeLabelOf = (x: any): string => String(x?.placeLabel ?? '') || placeOfAny(x)?.label || runOnLabel(x?.runOn);
 /** A model's Run on row in the place words: the Comfy row is "Comfy Cloud" (one key, open workflow or partner model alike), or "Your Comfy deployment" for your own. */
 export const rowPlaceLabel = (r: { id: string; label: string; detail?: string | null }): string => r.id === 'local' ? LOCAL_LABEL : r.id !== 'comfy-cloud' ? r.label : r.detail === COMFY_DEPLOY_DETAIL ? PLACE_LABELS['comfy-deploy'] : PLACE_LABELS['comfy-cloud'];
+/** A group whose only row has the group's own name ("COMFY CLOUD › Comfy Cloud") shows no heading: the row says it once (UI audit 2026-11-03). */
+/** A local place that runs, but slowly on this computer (fit verdict slow): its word instead of Ready (Run on, the model card). */
+export const SLOW_HERE = 'Slow here';
+export const soloGroup = (label: string, rowLabels: string[]) => rowLabels.length === 1 && rowLabels[0].trim().toLowerCase() === label.trim().toLowerCase();
 /** Route id → run-on, learned from the server's listings (each route's explicit vendor: models[].runsOn[].routes). */
 const ROUTE_RUN_ON = new Map<string, string>();
 type RouteLike = { routeId?: string | null; kind?: string | null; runOn?: string | null; vendor?: string | null };
@@ -198,7 +202,7 @@ const putError = (b: any, status: number) => { const m = String(b?.issues?.[0]?.
 async function putPerTool(pt: Record<string, Record<string, any>>) {
   SESSION_PICK.clear(); /* a saved pick replaces this visit's */
   const r = await fetch('/api/me/routing', { method: 'PUT', headers: { 'content-type': 'application/json', 'x-openhiggsfield-source': 'web run-on' }, body: JSON.stringify({ perTool: pt }) });
-  const b = await r.json().catch(() => null); if (!r.ok) throw new Error(putError(b, r.status)); setRouting(b); requestRequote(); return b;
+  const b = await r.json().catch(() => null); if (!r.ok) throw Object.assign(new Error(putError(b, r.status)), { code: String(b?.issues?.[0]?.code ?? '') }); setRouting(b); requestRequote(); return b;
 }
 /** Save where a model runs on a tool (a run-on id). 'auto' / '' forgets the choice: the pre-selected place applies again. The quote re-runs right after. */
 export async function setRunOn(toolId: string, modelKey: string, runOn: string): Promise<void> {
@@ -206,7 +210,11 @@ export async function setRunOn(toolId: string, modelKey: string, runOn: string):
   const pt = explicitPerTool();
   if (!runOn || runOn === 'auto') { if (pt[toolId]) { delete pt[toolId][modelKey]; if (!Object.keys(pt[toolId]).length) delete pt[toolId]; } }
   else (pt[toolId] ??= {})[modelKey] = { runOn };
-  await putPerTool(pt);
+  try { await putPerTool(pt); } catch (e) {
+    /* Your computer picked before ComfyUI is set up: the server won't save a local pin it can't run (local_unavailable), so keep it for this
+     * visit; the quote then asks for runOn=local and names the real step ("Set up ComfyUI to run … free"), never the cloud's "Add a Comfy key" */
+    if (runOn === 'local' && (e as any)?.code === 'local_unavailable') { SESSION_PICK.set(`${toolId}:${modelKey}`, { runOn, source: 'session' }); rbus.forEach(f => f()); requestRequote(); return; }
+    throw e; }
 }
 /** Save one named way to run at a place (Run on's choice rows): remembered per tool and model on the server, like Make default, so the quote,
  *  the run and MCP all use it. */
@@ -282,9 +290,12 @@ export function modelStateLine(m: ToolModel): { k: 'ok' | 'demo' | 'off'; s: str
   const rs = m.rowStatus; // one status from one source (server rowStatus): the pre-selected place, else what setting it up takes
   if (rs) {
     const ways = (m.setup ?? []).map(x => `${x.label}: ${x.action.text}`).join(' · ');
-    if (rs.kind === 'ready') return { k: 'ok', s: READY_WORD, t: rs.runOn === 'local' ? 'Runs locally, free.' : `Runs on ${rs.text}.`, off: false };
+    if (rs.kind === 'ready') { const slow = rs.runOn === 'local' && !!m.runsOn.find(r => r.id === 'local')?.here?.slow; /* runs, but slowly on this computer */
+      return { k: slow ? 'demo' : 'ok', s: slow ? SLOW_HERE : READY_WORD, t: rs.runOn === 'local' ? (slow ? 'Runs locally, free, but slowly on this computer. Best on an NVIDIA graphics card or in the cloud.' : 'Runs locally, free.') : `Runs on ${rs.text}.`, off: false }; }
     if (rs.kind === 'sample') return { k: 'demo', s: 'Sample', t: 'Free sample output until you add a key.', off: false };
     if (rs.kind === 'coming_soon') return { k: 'off', s: 'Coming soon', t: 'Not connected on this server yet.', off: true };
+    /* a local-only model before ComfyUI is set up (server NEEDS_COMFYUI_TEXT) stays pickable: the composer then says "Set up ComfyUI to run … free" */
+    if (rs.kind === 'unavailable' && rs.text === NEEDS_COMFYUI_TEXT) return { k: 'off', s: rs.text, t: 'Runs free on your computer once ComfyUI is set up.', off: false };
     if (rs.kind === 'unavailable') return { k: 'off', s: 'Not available', t: 'Not available here.', off: true };
     return { k: rs.kind === 'add_key' || rs.kind === 'set_up' ? 'demo' : 'off', s: rs.text, t: `Not set up yet. ${ways || rs.text}.`, off: false };
   }

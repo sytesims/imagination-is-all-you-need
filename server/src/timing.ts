@@ -75,6 +75,10 @@ const LTX25_ICLORA: Anchor = {
 // including the first model load (≈10 s per second). NVIDIA: estimates until this computer's own timed runs replace them. The voice tool's job keys
 // its quality as 480p/720p/1080p (the clip's, unused for a voice line) and the Audio tool as standard/high: the same figure for each.
 const QWEN3_TTS_CELLS = (s: number, note: string) => Object.fromEntries(['480p', '720p', '1080p', 'standard', 'high'].map((q) => [q, e(s, note)]));
+/** MiniMax Music 3 (open weights) on Apple Silicon: its int8 ConvRot text encoder has no MPS kernel and runs on the processor. Our run on an M1 Max 64 GB
+ *  (3 Nov 2026, a 120 s song) spent about 58 min in the text encoder and hit the 60 min limit, so at least 30 s per song second (the encoder dominates:
+ *  a shorter song is not much faster). No NVIDIA cell: there it runs on CUDA kernels, untimed here. Every past success ran on Comfy Cloud. */
+const MINIMAX_MUSIC3: Anchor = { mseries: Object.fromEntries(['480p', '720p', '1080p', 'standard', 'high'].map((q) => [q, c(30, 'local run (main session, 2026-11-03)', 'our M1 Max 64 GB run (2026-11-03): a 120 s song spent ~58 min in the int8 text encoder on the processor and stopped at the 60 min limit (a lower bound)')])) }; /* a cell from a real run counts as cited (as the Video Upscale Mac cells), so the fit carries the time */
 const QWEN3_TTS: Anchor = {
   mseries: QWEN3_TTS_CELLS(10, 'our free run on an M1 Max 64 GB (main session, 2026-10-27): 6.5 s of speech in 66 s incl. the first load'),
   rtx4090: QWEN3_TTS_CELLS(1.5, 'no benchmark: a 1.7B autoregressive TTS on CUDA, assumed a little slower than real time with sdpa'),
@@ -88,7 +92,7 @@ export const ETA_ANCHORS = { WAN_14B, WAN_ANIMATE, WAN_VACE, LTX2, WAN_5B, LTX25
 
 /** Camera Moves runs two graph families: Wan 2.2 Fun Camera (WAN_14B) and the LTX-2 camera-LoRA presets (camera-ltx-api.json: local or cloud-ltx-camera) → LTX2. */
 const BY_PRESET_GROUP: Record<string, Anchor> = { 'LTX camera': LTX2 };
-const BY_PROVIDER: Record<string, Anchor> = { 'comfy-qwen3tts': QWEN3_TTS, 'cloud-ltx-camera': LTX2, 'comfy-wan22-5b': WAN_5B, 'comfy-ltx25-layout': LTX25_LAYOUT, 'comfy-ltx25-video': LTX25_VIDEO, 'comfy-ltx25-extend': LTX25_VIDEO /* Extend: the same ladder, per added second (+0.375 s of guide frames) */, 'comfy-ltx25-lipsync': LTX25_VIDEO /* Talking photo: same ladder and pixel count (Draft portrait 448×768); no audio decode (PLAN-2 step 9) */, 'comfy-ltx25-iclora': LTX25_ICLORA };
+const BY_PROVIDER: Record<string, Anchor> = { 'comfy-qwen3tts': QWEN3_TTS, 'comfy-minimax-music3': MINIMAX_MUSIC3, 'cloud-ltx-camera': LTX2, 'comfy-wan22-5b': WAN_5B, 'comfy-ltx25-layout': LTX25_LAYOUT, 'comfy-ltx25-video': LTX25_VIDEO, 'comfy-ltx25-extend': LTX25_VIDEO /* Extend: the same ladder, per added second (+0.375 s of guide frames) */, 'comfy-ltx25-lipsync': LTX25_VIDEO /* Talking photo: same ladder and pixel count (Draft portrait 448×768); no audio decode (PLAN-2 step 9) */, 'comfy-ltx25-iclora': LTX25_ICLORA };
 // Video Upscale (shared/videoUpscale.ts speed cells): seconds per clip second by target. Mac cells from our own M1 Max runs (Real-ESRGAN x2 53, 4x-UltraSharp 157
 // at 1080p, measured 2026-10-26); NVIDIA cells are estimates until this computer's own timed runs replace them. A cell from a real run counts as cited.
 const vupAnchor = (id: string): Anchor => Object.fromEntries(Object.entries(VUP_MODELS[id]?.speed ?? {}).map(([g, qs]) => [g, Object.fromEntries(Object.entries(qs ?? {}).map(([q, x]) => [q, x.measured ? c(x.s, 'local run (main session, 2026-10-26)', x.note) : e(x.s, x.note)]))]));

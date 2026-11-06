@@ -3,24 +3,20 @@
  * the Person 1 / Person 2 photo slots, Quality and Sound. This adds what a recipe can't say:
  *  - "Who is who": the first frame of the range, click person 1 and person 2 on it (numbered markers), and optional words for each. Without
  *    clicks, person 1 is the one on the left and person 2 the one on the right.
- *  - Range: the shared swap range (./SwapRange) with this workflow's 15 s maximum, priced by the range.
+ *  - Range: the bar's shared Trim sheet (the server's 15 s maximum, clipTrim.ts), priced by the range.
  *  - A gentle note when both slots hold the same photo (allowed: twins, a double act).
  */
 import { useRef, useState } from 'react';
 import type { BarExtra, BarLive, UseBarExtra } from './types';
-import { useSwapRange } from './SwapRange';
 import { BarPopover, PopSection, PopNote, Segmented } from '../../../shared/BarPop';
 import { tip } from '../../../shared/Tooltip';
 import { UserIcon, AlertIcon } from '../../Icons';
 
-/** The server's limit (comfy/h3TwoPersonSwapCloud.ts TWO_SWAP_SECONDS). */
-export const TWO_SWAP_MAX_SEC = 15;
 type P = { x: number; y: number };
 const sideWord = (p: P) => (p.x < 0.4 ? 'left' : p.x > 0.6 ? 'right' : 'middle');
 const same = (a?: File, b?: File) => !!a && !!b && a.size === b.size && a.name === b.name && a.lastModified === b.lastModified;
 
 export const useTwoPersonSwapExtra: UseBarExtra = () => {
-  const range = useSwapRange({ max: TWO_SWAP_MAX_SEC });
   /* the clicks belong to one clip: a new clip starts with none */
   const [pts, setPtsAt] = useState<{ url: string; p: [P | null, P | null] }>({ url: '', p: [null, null] }); const [who, setWho] = useState<[string, string]>(['', '']);
   const [placing, setPlacing] = useState<0 | 1>(0);
@@ -39,10 +35,9 @@ export const useTwoPersonSwapExtra: UseBarExtra = () => {
   const summary = (p: [P | null, P | null]) => p[0] || p[1] ? (p[0] && p[1] ? 'Picked on the frame' : `1 ${where(0, p)} · 2 ${where(1, p)}`) : '1 left · 2 right';
   const ex: BarExtra = {
     needs: c => tooClose(live(c)) ? [{ missing: 'You picked the same spot for both people: pick each person once', group: 'who' }] : [],
-    form: c => { const p = live(c); const o: Record<string, string> = { ...range.form!(c) };
+    form: c => { const p = live(c); const o: Record<string, string> = {};
       if (p[0]) o.pointA = `${p[0].x.toFixed(4)},${p[0].y.toFixed(4)}`; if (p[1]) o.pointB = `${p[1].x.toFixed(4)},${p[1].y.toFixed(4)}`;
       if (who[0].trim()) o.whoA = who[0].trim(); if (who[1].trim()) o.whoB = who[1].trim(); return o; },
-    quote: range.quote,
     onSlot: s => { if (s.name === 'video') setPlacing(0); } /* a new clip starts on person 1 */,
     onReset: () => { setPts('', [null, null]); setWho(['', '']); setPlacing(0); },
     onRecreate: f => { const pt = (s?: string): P | null => { const m = /^([\d.]+),([\d.]+)$/.exec(String(s ?? '')); return m ? { x: Number(m[1]), y: Number(m[2]) } : null; };
@@ -54,8 +49,8 @@ export const useTwoPersonSwapExtra: UseBarExtra = () => {
           <UserIcon size={14} /><span className="wf-grp-l">Who is who</span><b>{sum}</b></button>
         {twin && <button key="twin" type="button" className="ic-chip tps-twin" aria-label="Same photo for both people" data-testid="vbar-two-same-photo" {...tip('Both people have the same photo, so both become the same character. Fine for twins; otherwise drop a different photo in Person 2.')}
           onClick={() => c.setPop('g:who')}><AlertIcon size={14} /><span className="tps-twin-l">Same photo</span></button>}
-        {range.chips!(c)}</>; },
-    pops: c => { const f = clipOf(c); const p = live(c); const r = range.rangeOf(c); const t0 = r?.start ?? 0;
+        </>; },
+    pops: c => { const f = clipOf(c); const p = live(c); const t0 = c.trim?.start ?? 0;
       const pick = (e: React.MouseEvent<HTMLDivElement>) => { const b = e.currentTarget.getBoundingClientRect(); const q = { x: Math.min(1, Math.max(0, (e.clientX - b.left) / b.width)), y: Math.min(1, Math.max(0, (e.clientY - b.top) / b.height)) };
         setPts(f!.url, placing === 0 ? [q, p[1]] : [p[0], q]); if (placing === 0 && !p[1]) setPlacing(1); };
       return <>
@@ -78,7 +73,7 @@ export const useTwoPersonSwapExtra: UseBarExtra = () => {
           {samePhoto(c) && <PopNote tone="warn" testId="vbar-who-twin">Both people have the same photo, so both become the same character.</PopNote>}
           <PopNote testId="vbar-who-tips">Only one person in the shot? Character Swap recasts one. More than two? Pick the two to recast; everyone else stays as filmed.</PopNote>
         </BarPopover>
-        {range.pops!(c)}</>; },
+        </>; },
   };
   return ex;
 };

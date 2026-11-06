@@ -1,11 +1,11 @@
-import { stat, copyFile, writeFile } from 'node:fs/promises';
+import { stat, copyFile, writeFile, readdir } from 'node:fs/promises';
 import { mockLayer, mockLayerSize } from './mockLayers.js';
 import { writeLayerPoster } from '../layerPoster.js';
 import path from 'node:path';
 import { SHOT_MOCK_VF } from './shots.js';
 import type { Job } from '../jobs.js';
 import type { ToolDef } from './types.js';
-import { DATA_DIR, SAMPLES_DIR, WEB_PUBLIC_DIR } from '../config.js';
+import { DATA_DIR, SAMPLES_DIR, WEB_PUBLIC_DIR, config } from '../config.js';
 import { SAMPLE_CLIPS, SAMPLE_STILLS } from '../shared/featured.js';
 import { demoMediaOf, demoKindOf, demoLabel, type DemoMedia } from '../shared/demoMedia.js';
 import { LIMITS, probe, RESOLUTIONS, trim } from '../media.js';
@@ -345,16 +345,34 @@ export async function renderMockOutput(job: Job, i: number, out: string) {
   if (code !== 0) throw new Error(`Something went wrong rendering the mock result (ffmpeg ${code}). Credits went back to your balance.`);
 }
 
-/** The Canvas demo's card (job.input.demoRef, shared/demoMedia.ts): its real run as is, never cropped, looped or toned. A picture as PNG,
- *  a clip copied (H.264 + AAC already), a sound as AAC. False when the media is not what this job makes: the usual sample then. */
-async function renderDemoOutput(job: Job, m: DemoMedia, out: string): Promise<boolean> {
-  const want = outExt(job) === 'png' ? 'image' : outExt(job) === 'm4a' ? 'audio' : outExt(job) === 'mp4' ? 'video' : null; const kind = demoKindOf(m);
-  if (want !== kind) return false;
-  const src = path.resolve(WEB_PUBLIC_DIR, m.url.replace(/^\//, ''));
-  if (kind === 'video') { await copyFile(src, out); return true; }
-  const code = await runFfmpeg(kind === 'image' ? ['-y', '-i', src, '-frames:v', '1', out] : ['-y', '-i', src, '-vn', '-map', '0:a:0', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', out]);
+/** What a mock job writes, as a media kind: picture (PNG), clip (MP4) or sound (M4A); null for 3D, alpha clips and anything else. */
+const outMediaKind = (job: Job): 'image' | 'video' | 'audio' | null => { const e = outExt(job); return e === 'png' ? 'image' : e === 'm4a' ? 'audio' : e === 'mp4' ? 'video' : null; };
+/** A real file as this job's output, as is (never cropped, looped or toned): a picture as PNG, an MP4 clip copied (other clips to H.264 + AAC), a sound as AAC. */
+async function writeRealMedia(kind: 'image' | 'video' | 'audio', src: string, out: string) {
+  if (kind === 'video' && /\.mp4$/i.test(src)) { await copyFile(src, out); return; }
+  const code = await runFfmpeg(kind === 'image' ? ['-y', '-i', src, '-frames:v', '1', out]
+    : kind === 'audio' ? ['-y', '-i', src, '-vn', '-map', '0:a:0', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', out]
+    : ['-y', '-i', src, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-movflags', '+faststart', out]);
   if (code !== 0) throw new Error(`Something went wrong rendering the sample (ffmpeg ${code}). Credits went back to your balance.`);
-  return true;
+}
+/** The Canvas demo's card (job.input.demoRef, shared/demoMedia.ts): its real run as is. False when the media is not what this job makes: the usual sample then. */
+async function renderDemoOutput(job: Job, m: DemoMedia, out: string): Promise<boolean> {
+  const kind = demoKindOf(m); if (outMediaKind(job) !== kind) return false;
+  await writeRealMedia(kind, path.resolve(WEB_PUBLIC_DIR, m.url.replace(/^\//, '')), out); return true;
+}
+
+/** OPENHIGGSFIELD_MOCK_REPLAY_DIR=<folder> (mock backend only; demo recordings): each mock output is a real file from that folder instead of the
+ *  drawn sample. Files of the job's kind, sorted by name, handed out round-robin per kind (reserved when the job starts, so cards submitted together
+ *  get files 1, 2, 3, 4). Still a sample (job.simulated). No folder or no file of that kind: the usual sample, with one log line. */
+const REPLAY_EXT = { image: /\.(png|jpe?g|webp|gif|bmp|avif)$/i, video: /\.(mp4|mov|webm|mkv|m4v)$/i, audio: /\.(mp3|m4a|wav|aac|ogg|opus|flac)$/i };
+const replayNext: Record<string, number> = {}; const replayWarned = new Set<string>();
+export async function reserveReplayFiles(job: Job, n: number): Promise<string[]> {
+  const dir = env('MOCK_REPLAY_DIR'); const kind = outMediaKind(job);
+  if (!dir || config.backend !== 'mock' || !kind || job.input.layers) return [];
+  const start = replayNext[kind] ?? 0; replayNext[kind] = start + n; // taken before the folder read, so jobs keep their start order
+  const files = await readdir(dir).then((l) => l.filter((f) => REPLAY_EXT[kind].test(f) && !f.startsWith('.')).sort(), () => [] as string[]);
+  if (!files.length) { if (!replayWarned.has(kind)) { replayWarned.add(kind); console.warn(`[mock-replay] no ${kind} files in ${dir}: using the usual sample`); } return []; }
+  return Array.from({ length: n }, (_, k) => path.join(dir, files[(start + k) % files.length]));
 }
 
 /**
@@ -369,6 +387,7 @@ export const setMockDelayMs = (ms: number | null) => { mockDelayOverride = ms ==
 export async function mockRun(job: Job, stages: [string, string][], labels: string[] = ['Result'], ms = 8000): Promise<void> {
   { const d = mockDelayMs(); if (d != null) ms = Math.max(1, d); }
   job.simulated = true; // sample output: nothing reaches a provider, so the spend log counts it as $0 (billing.ts countedUsd)
+  const replay = await reserveReplayFiles(job, labels.length); // OPENHIGGSFIELD_MOCK_REPLAY_DIR: real files instead of drawn samples (mock only)
   // HW-SHAPES B4: first-use downloading_model / loading_model on a local route (only when asked or simulated; a normal run skips this)
   if (String(job.route ?? '').startsWith('local:')) { job.status = 'running'; job.queuePos = 0; const S = await import('../hardware/stages.js'); if (S.needsPrePhase(job, true)) {
     try { await S.prePhase(job, true, Math.ceil(ms / 1000)); } catch (e) { if (job.status === 'running') { job.status = 'failed'; job.errorType = 'temporary'; job.error = e instanceof Error ? e.message : String(e); } return; }
@@ -403,7 +422,9 @@ export async function mockRun(job: Job, stages: [string, string][], labels: stri
             const out = path.join(DATA_DIR, name);
             const demo = i === 0 ? demoMediaOf(job.input.demoRef) : null; // the Canvas demo's card: its real run, labelled with the model that made it
             const meta = job.input.layers && job.input.outKind === 'image' ? await writeMockLayer(job, i, out) /* Image to layers: drawn sample layers with name, description, box */
-              : demo && await renderDemoOutput(job, demo, out) ? { madeWith: demoLabel(demo) } : (await renderMockOutput(job, i, out), {}); // mock: sample result clip + the input's audio
+              : demo && await renderDemoOutput(job, demo, out) ? { madeWith: demoLabel(demo) }
+              : replay[i] ? (await writeRealMedia(outMediaKind(job)!, replay[i], out), {})
+              : (await renderMockOutput(job, i, out), {}); // mock: sample result clip + the input's audio
             job.outputs.push({ label: job.input.draft ? `${labels[i]} (draft 480p)` : labels[i], url: `/files/${name}`, ...meta });
           }
           if (job.input.layers) await writeLayerPoster(job); // Image to layers: the composite, once, as the card's poster

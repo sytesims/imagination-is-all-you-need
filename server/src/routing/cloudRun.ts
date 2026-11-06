@@ -57,7 +57,7 @@ export async function runCloudWorkflow(job: Job, r: RouteDef, attempt: RouteAtte
     // A standalone workflow's free check (GET only) before anything is uploaded or submitted: H3 Character Swap · Comfy Cloud refuses until its LoRA is imported
     if (isStandalone(wf) && wf.preflight) { const f = testFetch ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
       pre = (await wf.preflight((p) => f(tg.base + p, { method: 'GET', headers: tg.token ? { Authorization: `Bearer ${tg.token}` } : {}, signal: AbortSignal.timeout(20_000) }), job.input)) ?? {}; } // the job's input: a check that applies to some jobs only (LTX-2.5 DFR's IC-LoRA)
-    if (isStandalone(wf) && wf.prepare) await wf.prepare(job as any); // free local prep (ffmpeg), nothing sent yet
+    if (isStandalone(wf) && wf.prepare) await wf.prepare(job as any, { key: tg.token, ...(testFetch ? { fetch: testFetch } : {}) }); // local prep (ffmpeg) before any upload; H3 Character Swap also makes its quoted first frame on Comfy Router
     await runNative(job, c, build);
   }
   catch (e) {

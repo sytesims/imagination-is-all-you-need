@@ -125,7 +125,7 @@ async function runTopazCloud(job: Job, r: RouteDef, attempt: RouteAttempt) {
   try {
     job.stage = 'uploading'; const asset = await cl.upload(await asMp4(i.videoPath, job.id));
     job.stage = 'submitted';
-    const res = await cl.run(topazGraph(job.provider, i, asset), { partnerAuth: true, timeoutMs: 40 * 60_000, isCanceled: () => (job.status as string) === 'canceled',
+    const res = await cl.run(topazGraph(job.provider, i, asset), { partnerAuth: true, isCanceled: () => (job.status as string) === 'canceled',
       onSubmitted: (id) => { attempt.requestId = id; job.cloudJobId = id; (job.requestIds ??= []).push(id); }, onProgress: (p) => { job.stage = p.phase === 'queued' ? 'submitted' : 'rendering'; if (p.known) job.progress = p.percent; } });
     const outs = Object.values(res.outputs).flat() as any[]; const vid = outs.find((o) => /\.(mp4|mov|webm)$/i.test(String(o.filename ?? ''))) ?? outs.find((o) => /video/i.test(String(o.content_type ?? '')));
     if (!vid) throw new CloudError('cloud_job_failed', 'the run finished without a video.', null, true, 'no video output');

@@ -101,7 +101,7 @@ export function registerOverlay(app: FastifyInstance) {
     else if (url === '/api/share/:token') { const id = lib.jobByToken((req.params as any).token); const j = id ? jobs.get(id) : undefined; if (j) await warmOutputs(j.outputs); }
   });
 
-  /** B5 poster for a video output without a sibling .jpg: first frame, rendered on first request and cached. */
+  /** B5 poster for a video output without a sibling .jpg: a representative (non-black) frame, rendered on first request and cached. */
   app.get<{ Querystring: { url?: string } }>('/api/media/poster', async (req, reply) => {
     const f = await renderPoster(String(req.query.url ?? '')); if (!f) return reply.code(404).send({ error: 'No poster for that URL (local video outputs only).', errorType: 'not_found' });
     return reply.header('cache-control', 'public, max-age=86400').type('image/jpeg').send(createReadStream(f));

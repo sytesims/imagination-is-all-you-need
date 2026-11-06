@@ -57,7 +57,7 @@ export default function Models({ tools }: { tools: ToolInfo[] }) {
   const tap = (e: ModelEntry) => (ev: RMouseEvent) => { if (!touchUi()) { if (e.soon) ev.preventDefault(); return; } ev.preventDefault(); setSheet(e); };
 
   return <div className="xpage mdp" data-testid="models-page">
-    <header className="xpage-head"><span className="eyebrow">Models</span><h1>Models</h1>
+    <header className="xpage-head"><span className="eyebrow">More</span><h1>Models</h1>{/* the eyebrow names the menu it sits in (like Account › Usage), never the title again (UI audit 2026-11-03) */}
       <p className="lede">Every model in the app. Cloud models bill your account; open models run free on your computer. Hover or tap one to learn more.</p></header>
     <div className="pills mdp-tabs" role="tablist" aria-label="Medium" onKeyDown={onKey}>
       {MEDIA.map(([m, l], n) => <button key={m} type="button" role="tab" aria-selected={media === m} tabIndex={media === m ? 0 : -1} className={`pill ${media === m ? 'on' : ''}`} data-testid={`mdp-tab-${m}`} onClick={() => setTi(n)}>

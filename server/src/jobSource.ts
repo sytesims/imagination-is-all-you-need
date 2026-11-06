@@ -22,7 +22,7 @@ export interface JobSourceWorkflow { name: string; source: 'official' | 'communi
 export function jobWorkflow(j: JobLike): JobSourceWorkflow | null {
   const routeEngine = String(j.route ?? '').split(':').slice(1).join(':');
   const router = routerModelOfRoute(String(j.route ?? ''));
-  if (router) return { name: `${router.id} request on Comfy Router`, source: 'ours', author: 'Imagination Is All You Need', url: router.doc, file: null, licence: 'Hosted model terms; request code: AGPL-3.0 (this repo)' };
+  if (router) return { name: 'Direct request to the model' /* plain words, never the Router id ("bfl/flux-3-image request on Comfy Router", UI audit 2026-11-03); the doc link names it */, source: 'ours', author: 'Imagination Is All You Need', url: router.doc, file: null, licence: 'Hosted model terms; request code: AGPL-3.0 (this repo)' };
   const dfr = ltxDfrFeatureOfJob(j);
   const mode = String(j.input?.mode ?? j.input?.types?.[0] ?? '');
   const image = !!(j.input?.imagePath || j.input?.imageUrl || j.input?.startImagePath || j.input?.startImageUrl) || mode === 'i2v';

@@ -40,7 +40,7 @@ function avatarOf(v: unknown): AvatarChoice | null | string {
 function coverOf(v: unknown): Cover | null | string {
   if (v === null) return null; const c = v as any;
   if (c?.kind === 'gradient' && COVER_GRADIENTS.includes(c.id)) return { kind: 'gradient', id: c.id };
-  if (c?.kind === 'image' && typeof c.url === 'string' && (/^\/(files|samples)\/[^?#]+$/.test(c.url) || /^\/api\/media\/poster\?url=%2F(files|samples)%2F[^&#]+$/.test(c.url)) && !c.url.includes('..')) return { kind: 'image', url: c.url }; // a picture, or a clip's poster frame
+  if (c?.kind === 'image' && typeof c.url === 'string' && (/^\/(files|samples)\/[^?#]+$/.test(c.url) || /^\/api\/media\/poster\?url=%2F(files|samples)%2F[^&#]+(&v=\w+)?$/.test(c.url)) && !c.url.includes('..')) return { kind: 'image', url: c.url }; // a picture, or a clip's poster frame
   return `cover is { kind: 'gradient', id: ${COVER_GRADIENTS.join('|')} }, { kind: 'image', url: '/files/…' | '/api/media/poster?url=…' } or null.`;
 }
 /** Sniff the picture's real type (the name and the browser's type can lie). */

@@ -5,6 +5,7 @@
 // Run: npx tsx test/first-run-states.e2e.ts
 import { testPort } from './_ports.js'; import assert from 'node:assert/strict'; import { spawn, type ChildProcess } from 'node:child_process'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path';
 import { keyGated, keyGatePrice } from '../../web/src/shared/quote.ts';
+import { reasonOf, ADD_COMFY_KEY } from '../../web/src/shared/genReason.ts'; import { preflightProblems } from '../src/shared/preflight.ts';
 const ROOT = path.resolve(import.meta.dirname, '..');
 const NOKEYS = { OPENHIGGSFIELD_BFL_API_KEY: '', OPENHIGGSFIELD_FAL_KEY: '', FAL_KEY: '', OPENHIGGSFIELD_REPLICATE_API_TOKEN: '', REPLICATE_API_TOKEN: '', COMFY_API_KEY: '', OPENHIGGSFIELD_MINIMAX_API_KEY: '', OPENHIGGSFIELD_DASHSCOPE_API_KEY: '', OPENHIGGSFIELD_MOCK_KEYS: '', OPENHIGGSFIELD_LUMA_API_KEY: '', OPENHIGGSFIELD_OPENAI_API_KEY: '', OPENAI_API_KEY: '' };
 const D = fs.mkdtempSync(path.join(os.tmpdir(), 'firstrun-')); const procs: ChildProcess[] = [];
@@ -43,5 +44,22 @@ try {
   { const rows: any[] = []; const walk = (x: any): void => { if (Array.isArray(x)) x.forEach(walk); else if (x && typeof x === 'object') { if (x.key === 'yue2' && x.rowStatus) rows.push(x.rowStatus); Object.values(x).forEach(walk); } };
     walk(await (await fetch(`${Bs[0]}/api/tools`)).json()); assert.ok(rows.length, 'yue2 listed');
     for (const r of rows) assert.equal(r.text, 'Needs ComfyUI on this computer', `no key, no ComfyUI · yue2 row: ${JSON.stringify(r)}`); }
+  /* walk B (2026-11-02): the reason line above Generate (shared/genReason.ts reasonOf over the quote's pre-flight list), no key and no ComfyUI */
+  { const line = async (tool: string, qs: string, name: string, freeLocal = false) => { const q = await (await fetch(`${Bs[0]}/api/tools/${tool}/price?${qs}`)).json() as any;
+      return reasonOf({ setupKind: 'none', problems: preflightProblems({ quote: q, modelName: name, freeLocal }), places: [] }); };
+    const local = await line('h3-extend', 'provider=comfy-ltx25-extend&model=ltx-2.5-22b&runOn=local&extendSeconds=2', 'LTX-2.5 22B'); // Your computer picked (a visit's pick: the server won't save it)
+    assert.equal(local?.reason, 'Set up ComfyUI to run LTX-2.5 22B free', `local route: ${JSON.stringify(local)}`); assert.equal(local!.primary?.kind, 'connect');
+    for (const [tool, qs] of [['camera', 'provider=comfy-open&model=ltx-2-19b&runOn=local&seconds=5'], ['object-swap', 'provider=comfy-h3-charswap&model=minimax-h3-character-swap&runOn=local&swapType=person']]) {
+      const r = await line(tool, qs, 'M'); assert.equal(r?.code, 'needs_comfyui', `${tool} local: ${JSON.stringify(r)}`); }
+    const cloud = await line('h3-video', 'provider=router-kling&prompt=a%20cat&mode=t2v', 'Kling'); assert.equal(cloud?.reason, ADD_COMFY_KEY, `cloud: ${JSON.stringify(cloud)}`);
+    const fal = await line('three-d', 'provider=fal-hunyuan3d-31', 'Hunyuan 3D 3.1'); assert.match(fal?.reason ?? '', /^Add a fal key to run this/, `fal: ${JSON.stringify(fal)}`); assert.equal(fal!.primary?.label, 'Add key');
+    const pin = await fetch(`${Bs[0]}/api/me/routing`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ perTool: { 'h3-extend': { 'ltx-2.5-22b': { runOn: 'local' } } } }) });
+    assert.equal(((await pin.json()) as any).issues?.[0]?.code, 'local_unavailable', 'the refusal web setRunOn turns into a visit-only pick (shared/models.ts)');
+    ok('reason line: Your computer before ComfyUI → "Set up ComfyUI to run … free"; cloud → "Add a Comfy key…"; fal → "Add a fal key to run this" · Add key'); }
+  /* Photos → Reel before its photos are in: a price for the smallest reel (8 photos), never a 400 (console error) */
+  for (const [i, s] of STATES.entries()) for (const n of [0, 3, 8]) { const r = await fetch(`${Bs[i]}/api/tools/app-photos-to-reel/price?provider=api-minimax-h3&model=minimax-h3&aspect=9%3A16&kind=listing&seconds=30&motion=heroes&music=on&photoCount=${n}`);
+    const q = await r.json() as any; assert.equal(r.status, 200, `${s.name} · reel ${n} photos: ${r.status} ${JSON.stringify(q).slice(0, 300)}`);
+    if (n < 8) assert.equal(q.assumedPhotoCount, 8); if (!s.key) { assert.ok(keyGated(q), `${s.name} · reel: key-gated`); assert.ok(Number(keyGatePrice(q)) > 0, `${s.name} · reel: "Needs a key · ≈ $x"`); } }
+  ok('Photos → Reel quotes 200 in every state, 0–8 photos; no key → Needs a key · ≈ the whole reel');
   ok(`${STATES.length} first-run states × ${MODELS.length} models: Free · Your computer only when this computer runs it; Needs a key / the reason when nothing can; the real price on the cloud`);
 } finally { for (const p of procs) try { process.kill(-p.pid!, 'SIGTERM'); } catch { /* gone */ } fs.rmSync(D, { recursive: true, force: true }); }
