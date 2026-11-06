@@ -42,3 +42,18 @@ export function drawSize(n: N, saved: { w: number; h: number }, ratios: Record<s
   return { w: saved.w, h: Math.round(Math.max(saved.w * 0.42, Math.min(saved.w * 2.6, saved.w / r))) };
 }
 
+
+/** How light a picture is where the title (top) and the price (bottom) sit, learnt once per picture when it loads (a 24 px sample).
+ *  'light' bands (a white studio shot) carry dark text and no scrim, so the picture stays white; 'dark' keep white text on a light scrim. */
+export type Tone = { top: 'light' | 'dark'; bottom: 'light' | 'dark' };
+const tones = new Map<string, Tone>();
+export function toneOf(img: HTMLImageElement): Tone | null {
+  const key = img.currentSrc || img.src; const had = tones.get(key); if (had) return had;
+  try {
+    const S = 24; const c = document.createElement('canvas'); c.width = S; c.height = S; const g = c.getContext('2d', { willReadFrequently: true }); if (!g) return null;
+    g.drawImage(img, 0, 0, S, S); const d = g.getImageData(0, 0, S, S).data;
+    const band = (y0: number, y1: number) => { let sum = 0, sq = 0, n = 0; for (let y = y0; y < y1; y++) for (let x = 0; x < S; x++) { const i = (y * S + x) * 4; const l = (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255; sum += l; sq += l * l; n++; }
+      const m = sum / n; const sd = Math.sqrt(Math.max(0, sq / n - m * m)); return m > 0.74 && sd < 0.2 ? 'light' as const : 'dark' as const; };
+    const t: Tone = { top: band(0, 6), bottom: band(S - 5, S) }; tones.set(key, t); return t;
+  } catch { return null; } /* a picture from another site without CORS: keep the scrims */
+}

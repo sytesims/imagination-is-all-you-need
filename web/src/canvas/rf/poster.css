@@ -159,3 +159,15 @@
 .cv-rf[data-mood] .pc-dq{bottom:16px;top:20px}
 .cv-rf[data-mood] .pc-dq::before{display:none}
 @media (prefers-reduced-motion:reduce){.pc,.pc-pl,.pc-port>i,.pc-tk,.pc-bar i{transition:none}.pc-strip{animation:none}.pc-bar.ind i{animation:none;left:0}}
+
+/* a light picture (a white studio shot) where the text sits: dark text, no scrim, so the white stays white (poster.ts toneOf) */
+.pc[data-tone-top=light] .pc-scr-t{display:none}
+.pc[data-tone-top=light] .pc-t{text-shadow:0 0 12px rgba(255,255,255,.6)}
+.pc[data-tone-top=light] .pc-t .pc-name{color:#15171A}
+.pc[data-tone-top=light] .pc-t small{color:rgba(21,23,26,.66)}
+.pc[data-tone-top=light] .pc-ring-done .pc-ring-bg{fill:rgba(255,255,255,.7);stroke:rgba(25,150,95,.55)}.pc[data-tone-top=light] .pc-ring-done .pc-ring-ic{stroke:#16A066}
+.pc[data-tone-bottom=light] .pc-scr-b{display:none}
+.pc[data-tone-bottom=light] .pc-dots i{background:rgba(21,23,26,.32);box-shadow:none}.pc[data-tone-bottom=light] .pc-dots i.on{background:var(--pc-acc)}
+.pc[data-tone-bottom=light] .pc-dots small{color:rgba(21,23,26,.6)}
+.pc[data-tone-bottom=light] .pc-chip{background:rgba(255,255,255,.72);color:#15171A;box-shadow:inset 0 0 0 1px rgba(21,23,26,.1)}
+.pc[data-tone-bottom=light] .pc-chip.free{color:#0E8F57}

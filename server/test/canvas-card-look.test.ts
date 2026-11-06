@@ -13,17 +13,17 @@ assert.equal(autoTitle({ kind: 'gen', name: '  Hero close-up ', prompt: 'anythin
 assert.equal(autoTitle({ kind: 'gen', flow: 'material-swap', inputs: [{ label: 'Armchair' }, { label: 'velvet.jpg', many: true }] }), 'Velvet armchair');
 assert.equal(autoTitle({ kind: 'gen', flow: 'material-swap', inputs: [{ label: 'armchair.png' }, { label: 'velvet', many: true }, { label: 'gold', many: true }] }), '2 materials armchair');
 assert.equal(autoTitle({ kind: 'gen', flow: 'material-swap', inputs: [{ label: 'Armchair' }], flowName: 'Material Swap' }), 'Armchair', 'no swatch yet: the object');
-assert.equal(autoTitle({ kind: 'gen', flow: 'create-image', prompt: 'A red coat in a white studio, soft light', flowName: 'Create Image' }), 'Red coat white studio');
-assert.equal(autoTitle({ kind: 'gen', flow: 'animate', prompt: 'She crosses the neon street, slow push-in, rain on the lens.' }), 'Crosses neon street slow');
+assert.equal(autoTitle({ kind: 'gen', flow: 'create-image', prompt: 'A red coat in a white studio, soft light', flowName: 'Create Image' }), 'Red coat white');
+assert.equal(autoTitle({ kind: 'gen', flow: 'animate', prompt: 'She crosses the neon street, slow push-in, rain on the lens.' }), 'Crosses neon street');
 assert.equal(autoTitle({ kind: 'gen', flow: 'create-image', prompt: '   ', flowName: 'Create Image' }), 'Create Image', 'an empty prompt: the workflow');
 assert.equal(autoTitle({ kind: 'gen', prompt: '' }), 'Generate');
 assert.equal(autoTitle({ kind: 'upload', fileName: 'kaito_sheet.final.png' }), 'kaito sheet.final');
 assert.equal(autoTitle({ kind: 'upload', fileName: '' }), 'Upload');
 assert.equal(autoTitle({ kind: 'result', title: 'Neon crossing' }), 'Neon crossing');
-assert.equal(autoTitle({ kind: 'result', title: '', prompt: 'a koi made of paper lanterns' }), 'Koi made paper lanterns');
+assert.equal(autoTitle({ kind: 'result', title: '', prompt: 'a koi made of paper lanterns' }), 'Koi made paper');
 /* non-Latin: words written without spaces keep their first 24 characters; spaced scripts still use words */
 assert.equal(promptTitle('雨の夜、ネオンの通りを渡る女性、ゆっくりとしたプッシュイン、レンズに雨粒'), '雨の夜 ネオンの通りを渡る女性 ゆっくりとしたプ…');
-assert.equal(promptTitle('Девушка в красном пальто идёт по улице'), 'Девушка в красном пальто');
+assert.equal(promptTitle('Девушка в красном пальто идёт по улице'), 'Девушка в красном');
 assert.equal(promptTitle('Make an image of Tokyo at night'), 'Tokyo night');
 assert.ok(promptTitle('Supercalifragilistic extraordinarily magnificent unbelievable kaleidoscope').split(' ').length === 3, 'long words: three');
 assert.notEqual(autoTitle({ kind: 'gen' }), 'Untitled');

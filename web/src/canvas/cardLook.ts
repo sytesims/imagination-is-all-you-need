@@ -64,15 +64,15 @@ const cap = (s: string) => (s ? s[0].toLocaleUpperCase() + s.slice(1) : s);
 /** True when the text is written without spaces between words (Chinese, Japanese, Thai…): titles take its first characters instead. */
 const unspaced = (s: string) => /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]/u.test(s);
 
-/** A prompt as a short title: its first 3–4 content words ("A red coat in a white studio" → "Red coat white studio"); text written without
+/** A prompt as a short title: its first 3–4 content words ("A woman in a red coat" → "Woman red coat"); text written without
  *  spaces keeps its first 24 characters. '' when there's nothing to say. */
 export function promptTitle(prompt: string): string {
   const t = prompt.replace(/\s+/g, ' ').trim(); if (!t) return '';
   if (unspaced(t)) { const c = [...t.replace(/[\s"“”'‘’.,;:!?。、，！？]+/g, ' ').trim()]; return c.length > 24 ? `${c.slice(0, 24).join('').trim()}…` : c.join(''); }
   const ws = t.split(' ').map(word).filter(Boolean); const content = ws.filter((w) => !STOP.has(w.toLowerCase()));
   const pick = (content.length ? content : ws).slice(0, 4);
-  /* four short words, else three */
-  const out = pick.join(' ').length > 30 ? pick.slice(0, 3) : pick;
+  /* three words; a fourth only while the title stays short */
+  const out = pick.join(' ').length > 18 ? pick.slice(0, 3) : pick;
   return cap(out.join(' ')); /* later words keep their case ("Tokyo", "DJ") */
 }
 

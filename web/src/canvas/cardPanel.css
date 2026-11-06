@@ -206,3 +206,5 @@ html body .cp .gen-btn.cp-go{width:100%!important;height:var(--cp-h)!important;m
   .cv-root.cv-agent-open:has(.cp.cp-insp.on) .cv-follow-x,.cv-root.cv-agent-open:has(.cp.cp-insp.on) .cv-spend2-runs{display:none}
   .cv-root.cv-agent-open:has(.cp.cp-insp.on) .cv-assets-btn{font-size:0;gap:0;padding:0 13px}
 }
+/* a phone: the inspector is a sheet over the board (the board keeps its full width under it) */
+@media (max-width:760px){ .cv-root .cv-board{right:0} .cp.cp-insp{width:100%;border-left:0} .cv-root:has(.cp.cp-insp.on) .cv-assets-btn{right:12px} }

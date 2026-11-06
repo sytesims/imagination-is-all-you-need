@@ -39,7 +39,7 @@ import { perfOff } from '../CameraMotion';
 import { placeWord } from '../cardLook';
 import { titleOf } from '../cardTitle';
 import { PORT_WORDS, type PortKind } from '../nodeLogic';
-import { posterMedia, noteRatio } from './poster';
+import { posterMedia, noteRatio, toneOf, type Tone } from './poster';
 import { posterPorts, POSTER_PORT_GAP, type PosterPort } from './posterPorts';
 import { outKindOfShape } from '../ports';
 import './poster.css';
@@ -109,9 +109,9 @@ function Wave({ url, k }: { url: string; k: string }) {
 }
 
 /** The picture (or clip, sound, 3D poster) filling the card. A clip plays muted while hovered (zoomed in only). */
-function Media({ n, m, hot, w }: { n: BoardNode; m: { kind: string; url: string; poster: string; jobId: string }; hot: boolean; w: number }) {
+function Media({ n, m, hot, w, onTone }: { n: BoardNode; m: { kind: string; url: string; poster: string; jobId: string }; hot: boolean; w: number; onTone: (t: Tone | null) => void }) {
   const board = useBoardApi(); const near = useValue('pc near', () => board.zoom() > 0.5, [board]);
-  const learn = (e: React.SyntheticEvent<HTMLImageElement>) => { const i = e.currentTarget; if (!i.naturalWidth) return;
+  const learn = (e: React.SyntheticEvent<HTMLImageElement>) => { const i = e.currentTarget; if (!i.naturalWidth) return; onTone(toneOf(i));
     if (n.type === GEN_TYPE) { if (!(Number((n.props as any).ratio) > 0)) board.batch(() => board.patchNode(n.id, { props: { ratio: Math.round((i.naturalWidth / i.naturalHeight) * 1000) / 1000 } } as any), { history: 'ignore' }); }
     else noteRatio(m.poster || m.url, i.naturalWidth, i.naturalHeight); };
   if (m.kind === 'audio') return <Wave url={m.url} k={n.id} />;
@@ -155,7 +155,7 @@ export const PosterCard = memo(function PosterCard({ id, selected, w }: { id: No
   const spec = st?.spec ?? null; const draft = gen && p.status === 'draft';
   const q1 = useToolQuote(spec && draft ? spec.tool.id : null, spec?.provider ?? '', spec?.quote ?? {});
   const nSw = spec ? batchOf(spec.slots, st?.bySlot ?? {})?.inputs.length ?? 1 : 1; const qDraft = nSw > 1 ? timesQuote(q1, nSw) : q1;
-  const [busy, setBusy] = useState(false); const [hot, setHot] = useState(false); const hotT = useRef(0);
+  const [busy, setBusy] = useState(false); const [hot, setHot] = useState(false); const hotT = useRef(0); const [tone, setTone] = useState<Tone | null>(null);
   /* the same run as everywhere: a fresh quote, then the jobs API (nodeRun.submit); what's missing comes back in its words */
   const go = async () => { if (busy || !gen || p.status === 'running') return; setBusy(true); try { await submit(board, id); } catch (e: any) { toast(e?.issues?.[0]?.message ?? e?.message ?? 'That didn’t start.', 'error'); board.select([id]); } finally { setBusy(false); } };
   const goRef = useRef(go); goRef.current = go;
@@ -201,7 +201,7 @@ export const PosterCard = memo(function PosterCard({ id, selected, w }: { id: No
   } else {
     const backdrop = m ? m.poster || (m.kind === 'image' ? m.url : '') : (st?.inputs.find((i) => i.poster)?.poster ?? '');
     body = <>
-      <div className="pc-pic">{m && state !== 'running' && state !== 'queued' ? <Media n={n} m={m} hot={hot} w={w} /> : backdrop ? <i className="pc-blur" style={{ backgroundImage: `url("${gridSrc(backdrop, 320)}")` } as CSSProperties} /> : <i className="pc-blank" />}</div>
+      <div className="pc-pic">{m && state !== 'running' && state !== 'queued' ? <Media n={n} m={m} hot={hot} w={w} onTone={setTone} /> : backdrop ? <i className="pc-blur" style={{ backgroundImage: `url("${gridSrc(backdrop, 320)}")` } as CSSProperties} /> : <i className="pc-blank" />}</div>
       {(state === 'running' || state === 'queued') && <div className="pc-mid" role="status" data-testid="pc-running">
         {queued ? <><b className="pc-big pc-big-s">Queued</b><small>{pr?.queuePosition ? `${ord(pr.queuePosition)} in line` : 'Waiting to start'}</small></>
           : <><b className="pc-big">{pct != null ? `${pct}%` : 'Starting'}</b><small>{etaText(pr?.etaSeconds) ? `about ${etaText(pr?.etaSeconds).replace('~', '')} left` : 'Working on it'}</small></>}</div>}
@@ -211,14 +211,14 @@ export const PosterCard = memo(function PosterCard({ id, selected, w }: { id: No
     </>;
   }
 
-  return <div className={cls} data-shape-id={id} data-testid="poster-card" data-status={state} data-node-type={n.type} data-medium={medium} onPointerEnter={enter} onPointerLeave={leave}>
+  return <div className={cls} data-shape-id={id} data-testid="poster-card" data-status={state} data-node-type={n.type} data-medium={medium} data-tone-top={picture && state !== 'failed' ? tone?.top : undefined} data-tone-bottom={picture ? tone?.bottom : undefined} onPointerEnter={enter} onPointerLeave={leave}>
     <div className="pc-clip">
       {body}
       {picture && <><i className="pc-scr-t" aria-hidden />{(takes.length > 1 || !!quote || !!priceText) && <i className="pc-scr-b" aria-hidden />}</>}
     </div>
     <header className="pc-head">
       <div className="pc-t"><CardName id={id} name={shot} shown={head.title} className="pc-name" testId="pc-title" /><small title={sub}>{sub}</small></div>
-      {gen && <StatusRing state={state as any} pct={pct} place={pr?.queuePosition ?? null} />}
+      {(gen || n.type === RESULT_TYPE) && <StatusRing state={state as any} pct={pct} place={pr?.queuePosition ?? null} />}
     </header>
     {state !== 'draft' && <footer className="pc-foot">
       <span className="pc-fl">{gen && takes.length > 0 && (hotNow && takes.length > 1 ? <Filmstrip board={board} id={id} takes={takes} take={take} /> : <TakeDots takes={takes} take={take} />)}</span>
