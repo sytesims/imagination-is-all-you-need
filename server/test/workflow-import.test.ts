@@ -150,9 +150,9 @@ try {
   await app.close();
 
   // ---- remove ----
-  assert.deepEqual(removeWorkflow('my-depth-pass'), { ok: true }); assert.ok(!getTool('my-depth-pass')); assert.ok(!fs.existsSync(dir));
+  assert.deepEqual(await removeWorkflow('my-depth-pass'), { ok: true }); assert.ok(!getTool('my-depth-pass')); assert.ok(!fs.existsSync(dir));
   assert.ok(!VIDEO_WORKFLOWS.some((w) => w.id === 'my-depth-pass'), 'gone from the Video list'); assert.ok(VIDEO_WORKFLOWS.some((w) => w.id === 'cutout'), 'the shipped one stays');
-  assert.equal(removeWorkflow('cutout').ok, false);
+  assert.equal((await removeWorkflow('cutout')).ok, false);
   // a restart loads what you added
   await import('../src/tools/registry.ts').then(({ unregisterTool }) => { for (const s of pluginStatus()) if (s.toolId) unregisterTool(s.toolId); });
   const again = await loadPlugins(); assert.ok(again.find((s) => s.id === 'quick-picture')?.ok, 'still there after a restart'); assert.equal(again.find((s) => s.id === 'quick-picture')?.user, true);
