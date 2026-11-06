@@ -45,7 +45,7 @@
 /* frames: a quiet outline, the name above (today's tldraw frame look) */
 .cv-frame{box-sizing:border-box;position:absolute;inset:0;border:calc(1px * max(1, var(--tl-scale,1))) solid rgba(255,255,255,.14);background:rgba(255,255,255,.018);border-radius:4px;pointer-events:none}
 .cv-frame.sel{border-color:rgba(255,122,26,.7)}
-.cv-frame-name{position:absolute;left:0;bottom:100%;margin-bottom:calc(6px * var(--tl-scale,1));transform:scale(min(var(--tl-scale,1),5));transform-origin:0 100%;font:600 15px/1 var(--font-display,'Space Grotesk',Inter,sans-serif);letter-spacing:-.005em;color:var(--text-1,#F7F7F8);background:rgba(15,17,19,.55);padding:3px 9px;border-radius:7px;white-space:nowrap;pointer-events:all;cursor:default}
+.cv-frame-name{position:absolute;left:0;bottom:100%;margin-bottom:calc(6px * var(--tl-scale,1));transform:scale(min(var(--tl-scale,1),4));transform-origin:0 100%;font:600 15px/1 var(--font-display,'Space Grotesk',Inter,sans-serif);letter-spacing:-.005em;color:var(--text-1,#F7F7F8);padding:3px 0;white-space:nowrap;pointer-events:all;cursor:default}
 .cv-rf .react-flow__node-frame .react-flow__resize-control{pointer-events:all}
 
 /* a link card (an old board's bookmark) */
@@ -63,7 +63,7 @@
 .cv-rf-laser{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible}
 .cv-rf-laser polyline{fill:none;stroke:#FF4D3D;stroke-linecap:round;stroke-linejoin:round;opacity:.85;filter:drop-shadow(0 0 6px rgba(255,77,61,.6))}
 .cv-rf-cursor{position:absolute;left:0;top:0;transform-origin:0 0;transition:none}
-.cv-rf-tag{position:absolute;left:16px;top:18px;display:flex;flex-direction:column;gap:2px;white-space:nowrap}
+.cv-rf-tag{position:absolute;left:16px;top:-2px;display:flex;flex-direction:column;gap:2px;white-space:nowrap}
 .cv-rf-tag b{font:700 11px/14px var(--font-ui,Inter,sans-serif);letter-spacing:.02em;color:#FF7A1A;text-shadow:0 1px 2px rgba(0,0,0,.6)}
 .cv-rf-tag em{font:600 12px/16px var(--font-ui,Inter,sans-serif);font-style:normal;padding:4px 9px;border-radius:999px;background:#FF7A1A;color:#14151A;box-shadow:0 6px 18px rgba(255,122,26,.28),0 2px 6px rgba(0,0,0,.35);max-width:260px;overflow:hidden;text-overflow:ellipsis}
 

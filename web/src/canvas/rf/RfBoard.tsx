@@ -126,10 +126,11 @@ function Flow({ saved, store, board, port, drawerOpen, setDrawerOpen, onProject 
   const toolHook = useRfTool(store, board);
 
   const zoomVars = (z: number) => { const el = port.el; if (!el) return; el.style.setProperty('--tl-zoom', String(z)); el.style.setProperty('--tl-scale', String(1 / z)); if (z < OVERVIEW_ZOOM) el.dataset.far = '1'; else delete el.dataset.far; };
+  /* React Flow reports a wheel pan's first step only to onMoveStart and its last to onMoveEnd: the camera follows all three */
   const onMove = (_: unknown, v: Viewport) => { store.setView({ camera: { x: v.x / v.zoom, y: v.y / v.zoom, z: v.zoom } }); if (store.s.order.length <= LIVE_ZOOM_MAX) zoomVars(v.zoom);
     window.clearTimeout(camTimer.current); camTimer.current = window.setTimeout(() => writeCam(saved.id, board.camera()), 400); };
-  const onMoveStart = (e: unknown) => { panning.current = !!e; };
-  const onMoveEnd = (_: unknown, v: Viewport) => { panning.current = false; zoomVars(v.zoom); };
+  const onMoveStart = (e: unknown, v: Viewport) => { panning.current = !!e; onMove(e, v); };
+  const onMoveEnd = (e: unknown, v: Viewport) => { panning.current = false; onMove(e, v); zoomVars(v.zoom); };
   const onInit = (rf: ReactFlowInstance) => { port.rf = rf; const v = rf.getViewport(); store.setView({ camera: { x: v.x / v.zoom, y: v.y / v.zoom, z: v.zoom } }); zoomVars(v.zoom);
     if (!initial && !board.isEmpty()) board.zoomToFit(); };
 

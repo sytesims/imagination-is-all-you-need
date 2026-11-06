@@ -42,7 +42,7 @@ function Resizer({ id, type, selected }: { id: string; type: string; selected: b
   const store = useContext(StoreCtx)!; const opt = useContext(OptCtx);
   const def = nodeDefOf(type); const tool = useValue('rf tool', () => store.viewSig.tool.get(), [store]);
   const min = def ? { minWidth: def.minW, minHeight: def.minH, maxWidth: def.maxW, maxHeight: def.maxH } : { minWidth: 120, minHeight: 80 };
-  return <NodeResizer isVisible={selected && tool === 'select'} {...min} color="var(--accent,#FF7A1A)" handleClassName="cv-rf-handle-dot" lineClassName={opt.handles === 'corners' ? 'cv-rf-line-quiet' : 'cv-rf-line'}
+  return <NodeResizer isVisible={selected && tool === 'select'} {...min} handleClassName="cv-rf-handle-dot" lineClassName={opt.handles === 'corners' ? 'cv-rf-line-quiet' : 'cv-rf-line'}
     onResizeStart={() => { store.history.mark('resize'); store.setView({ gesture: 'resize' }); }} onResizeEnd={() => store.setView({ gesture: null })} />;
 }
 const Ends = () => <><Handle type="target" position={Position.Left} id="in" className="cv-rf-end" isConnectable={false} /><Handle type="source" position={Position.Right} id="out" className="cv-rf-end" isConnectable={false} /></>;
