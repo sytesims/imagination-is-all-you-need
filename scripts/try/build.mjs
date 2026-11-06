@@ -108,7 +108,8 @@ const scrubValue = (v, k) => {
   if (Array.isArray(v)) return v.map(x => scrubValue(x));
   if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([kk, x]) => [kk, scrubValue(x, kk)]));
   if (k && k in HW && typeof v === 'number') return HW[k];
-  if (typeof v === 'string' && /^(hostname|machine|computerName|user|username|serial|serialNumber|path)$/.test(k ?? '') && v) return 'sample computer';
+  if (typeof v === 'string' && k === 'path' && v) return '~/ComfyUI/models'; // a folder name reads as one ("In ~/ComfyUI/models")
+  if (typeof v === 'string' && /^(hostname|machine|computerName|user|username|serial|serialNumber)$/.test(k ?? '') && v) return 'sample computer';
   return v;
 };
 // the recorder's own Generate presses (they only made the job shapes in snap.templates) never show as someone's runs

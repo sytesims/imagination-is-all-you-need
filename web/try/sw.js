@@ -12,7 +12,7 @@ const NOT_HERE = 'This needs the app on your computer. Here you can click throug
 const DOWNLOADS = 'Downloads run in the app on your computer.';
 
 self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+self.addEventListener('activate', (e) => e.waitUntil(caches.delete('try-media').then(() => self.clients.claim()))); // a new deploy: media cut for ranges is fetched again
 
 let snapP = null;
 /** snap.json once per worker: routes {key: {s, t, b}}, templates {toolId: job}, media {url: file}, plus indexes built here. */
@@ -98,14 +98,24 @@ const words = (t) => String(t ?? '').toLowerCase().replace(/colou?r/g, 'colour')
   .flatMap(w => [w, w.replace(/(ies)$/, 'y').replace(/(es|s)$/, '')]);
 /** The best example of this kind for the prompt: most shared words (the prompt counts 3, the workflow's name 1); a person only for a prompt
  *  that asks for one; no match → one of the kind's defaults, the same one for the same prompt. */
-function pickSample(s, kind, prompt, extra, types) {
+/** The examples of a kind that fit the run (its types; a person only for a prompt that asks for one). */
+function sampleList(s, kind, prompt, types) {
   let list = s.samples?.[kind] ?? []; if (types?.length) { const t = list.filter(x => !x.types || x.types.some(y => types.includes(y))); if (t.length) list = t; }
-  if (!PERSON.test(prompt ?? '')) list = list.filter(x => !x.person) ;
-  if (!list.length) return null;
-  const pw = new Set(words(prompt)), ew = new Set(words(extra)); let best = null, bestScore = 0;
-  for (const x of list) { const tw = new Set(words(x.tags)); let sc = 0; for (const w of tw) sc += (pw.has(w) ? 3 : 0) + (ew.has(w) ? 1 : 0); if (sc > bestScore) { best = x; bestScore = sc; } }
-  if (best) return best;
-  const defs = list.filter(x => x.default); const pool = defs.length ? defs : list; let h = 0; for (const c of String(prompt ?? '')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return pool[h % pool.length];
+  return PERSON.test(prompt ?? '') ? list : list.filter(x => !x.person);
+}
+function pickSample(s, kind, prompt, extra, types) {
+  const list = sampleList(s, kind, prompt, types); if (!list.length) return null;
+  return pickSamples(list, prompt, extra, 1)[0];
+}
+/** The n best examples of a list for the prompt (count 2–4 on Image): the best match first, then the next best, then the defaults
+ *  and the rest in an order fixed by the prompt, never the same example twice. */
+function pickSamples(list, prompt, extra, n) {
+  const pw = new Set(words(prompt)), ew = new Set(words(extra)); let h = 0; for (const c of String(prompt ?? '')) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  const scored = list.map((x, i) => { const tw = new Set(words(x.tags)); let sc = 0; for (const w of tw) sc += (pw.has(w) ? 3 : 0) + (ew.has(w) ? 1 : 0);
+    return { x, sc, d: x.default ? 1 : 0, r: ((i * 2654435761 + h) >>> 0) % 9973 }; });
+  scored.sort((a, b) => b.sc - a.sc || b.d - a.d || a.r - b.r);
+  if (!scored[0]?.sc) { const defs = scored.filter(y => y.d); const pool = defs.length ? defs : scored; const first = pool[h % pool.length]; scored.splice(scored.indexOf(first), 1); scored.unshift(first); }
+  return scored.slice(0, Math.max(1, n)).map(y => y.x);
 }
 const outputOf = (x, kind) => kind === 'video' ? { kind: 'video', url: x.url, posterUrl: x.poster ?? null, width: x.w, height: x.h, durationSec: x.sec, hasAudio: !!x.audio, label: 'Result', sample: null }
   : kind === 'audio' ? { kind: 'audio', url: x.url, posterUrl: null, width: null, height: null, durationSec: x.sec, label: 'Result', sample: null }
@@ -133,7 +143,9 @@ async function createJob(s, toolId, req) {
   if (!shape) return json({ error: NOT_HERE, code: 'sample_mode' }, 400);
   const t = s.toolOf?.[toolId]; const prompt = fields.prompt ?? '';
   const pick = own ? null : pickSample(s, kind === 'audio' && toolId !== 'audio' && toolId !== 'soundtrack' ? 'audio' : kind, prompt, `${t?.name ?? ''} ${toolId.replace(/^app-/, '').replace(/-/g, ' ')}`, types);
-  const outputs = own ? own.outputs : pick ? [outputOf(pick, kind)] : shape.outputs;
+  const n = kind === 'image' ? Math.min(4, Math.max(1, Number(fields.n) || 1)) : 1; // count: that many results, as the app makes
+  const picks = !own && pick && n > 1 ? pickSamples(sampleList(s, 'image', prompt, types), prompt, `${t?.name ?? ''} ${toolId.replace(/^app-/, '').replace(/-/g, ' ')}`, n) : null;
+  const outputs = own ? own.outputs : picks ? picks.map(x => outputOf(x, kind)) : pick ? [outputOf(pick, kind)] : shape.outputs;
   const m = modelOf(s, toolId, fields);
   const id = 'try' + Math.random().toString(36).slice(2, 10); const now = Date.now(); const iso = (ms) => new Date(ms).toISOString();
   const job = { ...shape, id, toolId, startedAt: now, createdAt: iso(now), updatedAt: iso(now), finishedAt: iso(now + QUEUED_MS + RUN_MS),
@@ -267,7 +279,10 @@ async function api(req, url) {
     let tool = body.toolId ?? '';
     const r = lookup(s, 'POST', new URL(`${p}?toolId=${encodeURIComponent(tool || p.split('/')[3])}`, url)); if (r) return answer(r); }
   if (m === 'POST' && (mm = p.match(/^\/api\/tools\/([^/]+)\/jobs$/))) return createJob(s, decodeURIComponent(mm[1]), req);
+  // the checks before a run (a picture's size, format…): nothing to warn about in sample mode
+  if (m === 'POST' && p === '/api/precheck') return json({ ok: true, blocking: false, warnings: [], checks: {} });
   // model downloads: a dry run says it can't start here (the app's own "can't download" line), the download itself is refused
+  if (m === 'GET' && p === '/api/local/comfy' && !s.routes['GET /api/local/comfy']) return json({ url: null, source: null, savedUrl: null, serverDefault: null, cloud: false, canChange: false, sample: true });
   if (m === 'GET' && p === '/api/local/downloads' && !s.routes['GET /api/local/downloads']) return json({ downloads: [], modelsDir: null, modelsDirSet: false, sample: true });
   if (m === 'POST' && p === '/api/local/downloads') { let b = {}; try { b = await req.clone().json(); } catch { /* not json */ }
     return b.dryRun ? json({ dryRun: true, canDownload: false, code: 'sample_mode', error: DOWNLOADS, missingBytes: 0, files: [] }) : json({ error: DOWNLOADS, code: 'sample_mode', sample: true }, 400); }
@@ -318,8 +333,24 @@ async function media(req, url) {
   if (url.pathname.startsWith('/files/tryup')) { const hit = await (await caches.open('try-uploads')).match(url.pathname); return hit ?? new Response('', { status: 404 }); }
   const s = await snap(); const f = findMedia(s, url);
   if (!f) return new Response('', { status: 404, headers: { 'x-sample-mode': '1' } });
-  const h = new Headers(); const range = req.headers.get('range'); if (range) h.set('range', range);
-  return fetch(f.startsWith('/') ? f : DATA + 'm/' + f, { headers: h });
+  return ranged(req, f.startsWith('/') ? f : DATA + 'm/' + f);
+}
+
+// ---- byte ranges: Safari plays a video or a song only when the server answers "Range: bytes=a-b" with 206 Partial Content. A static
+//      host may send the whole file instead (wrangler dev does), so a range the host didn't honour is cut here from the whole file, kept
+//      once in Cache Storage. A host that answers 206 itself is passed through as it is.
+const RANGE_MEDIA = /\.(mp4|m4v|webm|mov|mp3|m4a|wav|ogg|oga|aac|flac)$/i;
+async function ranged(req, path) {
+  const range = req.headers.get('range'); if (!range) return fetch(path);
+  const c = await caches.open('try-media'); let whole = await c.match(path);
+  if (!whole) { const r = await fetch(path, { headers: { range } }); if (r.status !== 200) return r; // 206 from the host, or an error
+    whole = r; try { await c.put(path, whole.clone()); } catch { /* storage full or blocked: still answer this one */ } }
+  const buf = await whole.arrayBuffer(); const size = buf.byteLength; const type = whole.headers.get('content-type') || 'application/octet-stream';
+  const m = /^bytes=(\d*)-(\d*)$/.exec(range.trim()); let a, b;
+  if (m && m[1] !== '') { a = Number(m[1]); b = m[2] !== '' ? Math.min(Number(m[2]), size - 1) : size - 1; }
+  else if (m && m[2] !== '') { a = Math.max(0, size - Number(m[2])); b = size - 1; } // bytes=-N: the last N bytes
+  if (a == null || a > b || a >= size) return new Response(null, { status: 416, headers: { 'content-range': `bytes */${size}`, 'accept-ranges': 'bytes' } });
+  return new Response(buf.slice(a, b + 1), { status: 206, headers: { 'content-type': type, 'content-range': `bytes ${a}-${b}/${size}`, 'content-length': String(b - a + 1), 'accept-ranges': 'bytes', 'x-sample-mode': '1' } });
 }
 
 // ---- uploads: kept in this browser only (Cache Storage), listed under Uploads, never sent anywhere ----
@@ -348,6 +379,7 @@ self.addEventListener('fetch', (e) => {
   if (!APP_PATHS.test(url.pathname)) {
     // a reload or deep link inside the app (/video, /workflows/x): the app's page; files (the built app, web/public) as they are
     if (e.request.mode === 'navigate' && !/\.[a-z0-9]+$/i.test(url.pathname)) e.respondWith(fetch('/'));
+    else if (e.request.method === 'GET' && e.request.headers.has('range') && RANGE_MEDIA.test(url.pathname)) e.respondWith(ranged(e.request, url.pathname));
     return;
   }
   const m = e.request.method; const p = url.pathname;
