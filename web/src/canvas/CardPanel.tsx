@@ -5,10 +5,10 @@
  *   Made with → Next steps → Connections, and one footer row (Download · Open in … · View workflow · full size) on every finished card.
  * Every section has the same heading, spacing and hairline (Section); every helper line the same caption style. The pieces inside are
  * the app's own (VideoControls, AudioCard, GenTile, WorkflowControls, DockGenerate, GenPrice, MakerTile, linksFor, QUICK_ACTIONS +
- * actionPrice, variationOf, toolHrefOf, jobCaption). The panel reads the board live (tldraw useValue) and keeps only its pin.
+ * actionPrice, variationOf, toolHrefOf, jobCaption). The panel reads the board live (the board's useValue) and keeps only its pin.
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { useEditor, useValue, type Editor, type TLShape, type TLShapeId, type TLArrowBinding } from 'tldraw';
+import { useBoardApi, useValue, type BoardApi, type BoardNode, type NodeId } from './boardApi';
 import { getJob, type JobState } from '../api';
 import { gridSrc } from '../shared/thumbs';
 import { VideoControls } from '../shared/VideoControls';
@@ -64,50 +64,50 @@ const readPin = () => { try { return localStorage.getItem(PIN_KEY) === '1'; } ca
 /* ------------------------------------------------------------------ what the panel reads from the board */
 type Media = { kind: 'image' | 'video' | 'audio' | '3d'; url: string; poster: string; jobId: string };
 /** A connection row. No id: a file added on the card itself (nothing to jump to). */
-type Link = { id?: TLShapeId; label: string; poster: string; kind: string; slot?: string; /** the file itself, so a clip or sound plays in the preview */ url?: string };
+type Link = { id?: NodeId; label: string; poster: string; kind: string; slot?: string; /** the file itself, so a clip or sound plays in the preview */ url?: string };
 const MEDIUM_ICON = { image: ImageIcon, video: VideoIcon, audio: AudioIcon, '3d': CubeIcon } as const;
 const KIND_WORD: Record<string, string> = { image: 'Picture', video: 'Clip', audio: 'Sound', '3d': '3D model', text: 'Text' };
 const KIND_ICON: Record<string, typeof ImageIcon> = { image: ImageIcon, video: VideoIcon, audio: AudioIcon, '3d': CubeIcon, text: TextIcon };
 
-function shapeName(s: TLShape): string {
+function shapeName(s: BoardNode): string {
   const p: any = s.props; const shot = String((s.meta as any)?.name ?? '').trim(); if (shot) return shot;
   if (s.type === GEN_TYPE) { const f = flowById(p.flow); return f ? flowInfo(f, catalogNow()).name : 'Generate'; }
   if (s.type === RESULT_TYPE) return p.title || p.model || 'Result';
   if (s.type === PROMPT_TYPE) return 'Prompt'; if (s.type === NOTE_TYPE) return 'Note'; if (s.type === UPLOAD_TYPE) return p.label || 'Upload';
   if (s.type === AD_TYPE) return 'Ad layout'; if (s.type === COMPARE_TYPE) return 'Compare'; if (s.type === GROUP_TYPE) return 'Group'; return 'Card';
 }
-function mediaOf(s: TLShape): Media | null {
+function mediaOf(s: BoardNode): Media | null {
   const p: any = s.props;
   if (s.type === GEN_TYPE) { const t: Take | undefined = p.takes?.[Math.min(p.take ?? 0, (p.takes?.length ?? 1) - 1)]; return t ? { kind: t.kind as any, url: t.url, poster: t.poster, jobId: t.jobId } : null; }
   if (s.type === RESULT_TYPE) return p.url ? { kind: p.kind, url: p.url, poster: p.poster || (p.kind === 'image' ? p.url : ''), jobId: p.jobId } : null;
   if (s.type === UPLOAD_TYPE) return p.url ? { kind: p.mediaKind, url: p.url, poster: p.poster || (p.mediaKind === 'image' ? p.url : ''), jobId: '' } : null;
   return null;
 }
-const linkOf = (s: TLShape, slot?: string): Link => { const m = mediaOf(s); const k = s.type === PROMPT_TYPE || s.type === NOTE_TYPE ? 'text' : m?.kind ?? String((s.props as any).medium ?? 'image');
+const linkOf = (s: BoardNode, slot?: string): Link => { const m = mediaOf(s); const k = s.type === PROMPT_TYPE || s.type === NOTE_TYPE ? 'text' : m?.kind ?? String((s.props as any).medium ?? 'image');
   return { id: s.id, label: shapeName(s), poster: m?.poster ?? '', kind: k, slot, url: m?.url }; };
 /** The cards this one feeds: arrows that start on it and end on another node. */
-function usedByOf(editor: Editor, id: TLShapeId): Link[] {
+function usedByOf(board: BoardApi, id: NodeId): Link[] {
   const out: Link[] = []; const seen = new Set<string>();
-  for (const b of editor.getBindingsToShape<TLArrowBinding>(id, 'arrow')) { if (b.props.terminal !== 'start') continue;
-    const end = editor.getBindingsFromShape<TLArrowBinding>(b.fromId, 'arrow').find(x => x.props.terminal === 'end'); const to = end ? editor.getShape(end.toId) : null;
+  for (const l of board.linksFrom(id)) {
+    const to = l.to ? board.getNode(l.to) : null;
     if (to && to.id !== id && isNodeType(to.type) && !seen.has(to.id)) { seen.add(to.id); out.push(linkOf(to)); } }
   return out;
 }
 /** What feeds it: arrow inputs and files added on the card (with their slot), Prompt / Note text, and the card it was pulled out of. */
-function inputsOf(editor: Editor, s: TLShape, bySlot: Record<string, { key: string }[]>, slotLabel: Record<string, string>): Link[] {
+function inputsOf(board: BoardApi, s: BoardNode, bySlot: Record<string, { key: string }[]>, slotLabel: Record<string, string>): Link[] {
   const out: Link[] = []; const seen = new Set<string>(); const slotOfKey: Record<string, string> = {};
   for (const [name, list] of Object.entries(bySlot)) for (const i of list) slotOfKey[i.key] = slotLabel[name] ?? name;
   const placed = Object.keys(bySlot).length > 0; const slotOf = (key: string) => slotOfKey[key] ?? (placed ? NOT_USED : undefined);
-  if (s.type === GEN_TYPE || s.type === COMPARE_TYPE || s.type === AD_TYPE) for (const [k, i] of cardInputs(editor, s).entries()) { const src = i.shapeId ? editor.getShape(i.shapeId as TLShapeId) : null;
+  if (s.type === GEN_TYPE || s.type === COMPARE_TYPE || s.type === AD_TYPE) for (const [k, i] of cardInputs(board, s).entries()) { const src = i.shapeId ? board.getNode(i.shapeId as NodeId) : null;
     const slot = s.type === COMPARE_TYPE ? (k === 0 ? 'Before' : k === 1 ? 'After' : NOT_USED) : s.type === AD_TYPE ? (k === 0 ? 'Picture' : NOT_USED) : slotOf(i.key);
     if (src) { if (!seen.has(src.id)) { seen.add(src.id); out.push(linkOf(src, slot)); } } else if (!i.shapeId) out.push({ label: i.label, poster: i.poster, kind: i.kind, slot, url: i.url }); }
-  for (const t of promptSourcesInto(editor, s.id)) { const src = editor.getShape(t.id); if (src && !seen.has(src.id)) { seen.add(src.id); out.push(linkOf(src, 'Prompt')); } }
-  for (const pid of ((s.props as any).parents ?? []) as string[]) { const src = editor.getShape(pid as TLShapeId); if (src && !seen.has(src.id)) { seen.add(src.id); out.push(linkOf(src, s.type === RESULT_TYPE ? 'Pulled out of' : 'Made from')); } }
+  for (const t of promptSourcesInto(board, s.id)) { const src = board.getNode(t.id); if (src && !seen.has(src.id)) { seen.add(src.id); out.push(linkOf(src, 'Prompt')); } }
+  for (const pid of ((s.props as any).parents ?? []) as string[]) { const src = board.getNode(pid as NodeId); if (src && !seen.has(src.id)) { seen.add(src.id); out.push(linkOf(src, s.type === RESULT_TYPE ? 'Pulled out of' : 'Made from')); } }
   return out;
 }
 /** An input past its slot's limit: wired in, but the run leaves it out. */
 const NOT_USED = 'Not used';
-const jump = (editor: Editor, id: TLShapeId | undefined) => { if (!id || !editor.getShape(id)) return; editor.select(id); reveal(editor, id); };
+const jump = (board: BoardApi, id: NodeId | undefined) => { if (!id || !board.getNode(id)) return; board.select([id]); reveal(board, id); };
 
 /** The finished job behind a take: real cost, where it ran, how long it took. */
 function useJob(jobId: string | undefined): JobState | null {
@@ -117,17 +117,17 @@ function useJob(jobId: string | undefined): JobState | null {
 }
 
 type View = ReturnType<typeof buildView> & {};
-function useCardView(editor: Editor, s: TLShape | null, cat: ReturnType<typeof useCatalog>) {
-  const st = useValue('panel state', () => (s && s.type === GEN_TYPE ? cardState(editor, s, cat) : null), [editor, s, cat]);
+function useCardView(board: BoardApi, s: BoardNode | null, cat: ReturnType<typeof useCatalog>) {
+  const st = useValue('panel state', () => (s && s.type === GEN_TYPE ? cardState(board, s, cat) : null), [board, s, cat]);
   const links = useValue('panel links', () => { if (!s) return { ins: [] as Link[], outs: [] as Link[] };
-    const slotLabel = Object.fromEntries((st?.spec?.slots ?? []).map(x => [x.name, x.label])); return { ins: inputsOf(editor, s, st?.bySlot ?? {}, slotLabel), outs: usedByOf(editor, s.id) }; }, [editor, s, st]);
-  const linked = useValue('panel prompt', () => (s ? promptSourcesInto(editor, s.id) : []), [editor, s]);
+    const slotLabel = Object.fromEntries((st?.spec?.slots ?? []).map(x => [x.name, x.label])); return { ins: inputsOf(board, s, st?.bySlot ?? {}, slotLabel), outs: usedByOf(board, s.id) }; }, [board, s, st]);
+  const linked = useValue('panel prompt', () => (s ? promptSourcesInto(board, s.id) : []), [board, s]);
   const p: any = s?.props ?? {}; const spec = st?.spec ?? null; const draft = s?.type === GEN_TYPE && p.status === 'draft';
   const q = useToolQuote(spec && s?.type === GEN_TYPE ? spec.tool.id : null, spec?.provider ?? '', spec?.quote ?? {});
   const media = s ? mediaOf(s) : null; const job = useJob(media?.jobId || (s?.type === GEN_TYPE ? p.jobId : undefined));
   return s ? buildView(s, { st, spec, draft, q, media, job, links, linked }) : null;
 }
-function buildView(s: TLShape, x: { st: ReturnType<typeof cardState> | null; spec: any; draft: boolean; q: any; media: Media | null; job: JobState | null; links: { ins: Link[]; outs: Link[] }; linked: { id: TLShapeId; type: string; text: string }[] }) {
+function buildView(s: BoardNode, x: { st: ReturnType<typeof cardState> | null; spec: any; draft: boolean; q: any; media: Media | null; job: JobState | null; links: { ins: Link[]; outs: Link[] }; linked: { id: NodeId; type: string; text: string }[] }) {
   const p: any = s.props; const gen = s.type === GEN_TYPE; const f0 = gen ? flowById(p.flow) : null; const f = f0 ? flowInfo(f0, catalogNow()) : null;
   const medium: GenMedium | 'text' = gen ? p.medium : s.type === RESULT_TYPE || s.type === UPLOAD_TYPE ? (x.media?.kind ?? 'image') as GenMedium : 'text';
   const model = gen ? (x.draft ? modelNameOf(x.spec) || p.model : p.model || modelNameOf(x.spec)) : s.type === RESULT_TYPE ? p.model : '';
@@ -156,24 +156,24 @@ function buildView(s: TLShape, x: { st: ReturnType<typeof cardState> | null; spe
 
 /* ------------------------------------------------------------------ the panel */
 export function CardPanel({ hidden, onOpen }: { hidden: boolean; onOpen?: (on: boolean) => void }) {
-  const editor = useEditor(); const [pin, setPinS] = useState(readPin);
+  const board = useBoardApi(); const [pin, setPinS] = useState(readPin);
   const setPin = (v: boolean) => { setPinS(v); try { localStorage.setItem(PIN_KEY, v ? '1' : '0'); } catch { /* private window */ } };
-  const ids = useValue('panel selection', () => editor.getSelectedShapeIds().filter(id => isNodeType(editor.getShape(id)?.type)), [editor]);
+  const ids = useValue('panel selection', () => board.selection().filter(id => isNodeType(board.getNode(id)?.type)), [board]);
   const open = !hidden && (ids.length > 0 || pin);
   useEffect(() => { onOpen?.(open); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   /* the board gives up its right edge to the panel: if the picked card now sits under the panel, slide the board just enough to show it */
   /* the same after a resize (B19): the picked card's size is watched too, and the slide waits until the resize has ended */
-  const size = useValue('panel selection size', () => { const b = ids.length ? editor.getSelectionPageBounds() : null; return b ? `${Math.round(b.w)}x${Math.round(b.h)}` : ''; }, [editor, ids.join()]);
-  useEffect(() => { if (!open || !ids.length) return; const t = window.setTimeout(() => { if (editor.isIn('select.resizing')) return; const b = editor.getSelectionPageBounds(); if (!b) return; const vp = editor.getViewportScreenBounds(); const z = editor.getZoomLevel();
-      const c = editor.getCamera(); const fits = b.w * z <= vp.w - 104;
+  const size = useValue('panel selection size', () => { const b = ids.length ? board.selectionBounds() : null; return b ? `${Math.round(b.w)}x${Math.round(b.h)}` : ''; }, [board, ids.join()]);
+  useEffect(() => { if (!open || !ids.length) return; const t = window.setTimeout(() => { if (board.gesture() === 'resize') return; const b = board.selectionBounds(); if (!b) return; const vp = board.viewportScreenBounds(); const z = board.zoom();
+      const c = board.camera(); const fits = b.w * z <= vp.w - 104;
       /* a card wider than the space left: zoom out until it fits, its left edge 80 px in, its middle at the same height */
-      if (!fits) { const nz = (vp.w - 104) / b.w; const sy = (b.midY + c.y) * z; editor.setCamera({ ...c, x: 80 / nz - b.minX, y: sy / nz - b.midY, z: nz }, { animation: { duration: 240 } }); return; }
-      const dx = panelSlide(editor.pageToViewport({ x: b.minX, y: b.minY }).x, editor.pageToViewport({ x: b.maxX, y: b.minY }).x, vp.w);
-      if (dx > 0) editor.setCamera({ ...c, x: c.x - dx / z }, { animation: { duration: 240 } }); }, 320);
+      if (!fits) { const nz = (vp.w - 104) / b.w; const sy = (b.midY + c.y) * z; board.setCamera({ ...c, x: 80 / nz - b.minX, y: sy / nz - b.midY, z: nz }, { duration: 240 }); return; }
+      const dx = panelSlide(board.boardToViewport({ x: b.minX, y: b.minY }).x, board.boardToViewport({ x: b.maxX, y: b.minY }).x, vp.w);
+      if (dx > 0) board.setCamera({ ...c, x: c.x - dx / z }, { duration: 240 }); }, 320);
     return () => window.clearTimeout(t); }, [open, ids.join(), size]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === 'Escape' && ids.length && !(e.target as HTMLElement)?.closest?.('input,textarea,[contenteditable]')) editor.selectNone(); };
-    addEventListener('keydown', k); return () => removeEventListener('keydown', k); }, [editor, ids.length]);
-  const close = () => { setPin(false); editor.selectNone(); };
+  useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === 'Escape' && ids.length && !(e.target as HTMLElement)?.closest?.('input,textarea,[contenteditable]')) board.select([]); };
+    addEventListener('keydown', k); return () => removeEventListener('keydown', k); }, [board, ids.length]);
+  const close = () => { setPin(false); board.select([]); };
   const head: HeadFn = (h) => <Header {...h} pin={pin} onPin={() => setPin(!pin)} onClose={close} />;
   return <aside className={`cp${open ? ' on' : ''}`} aria-label="Card details" aria-hidden={!open} data-testid="card-panel" onPointerDown={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()} onWheel={e => e.stopPropagation()}>
     {ids.length === 1 ? <One key={ids[0]} id={ids[0]} head={head} /> : ids.length > 1 ? <Many ids={ids} head={head} /> : <Empty head={head} />}
@@ -182,7 +182,7 @@ export function CardPanel({ hidden, onOpen }: { hidden: boolean; onOpen?: (on: b
 const PinIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 17v5M8 3h8l-1 6 3 4H6l3-4z" /></svg>;
 
 /** One header for every state: a tile, the name, and ONE subtitle line ("Create Image · 3 versions", "3 pictures", "5 cards on this board"). */
-type HeadProps = { icon: ReactNode; tint?: string; title: string; sub: ReactNode; live?: boolean; /** a card's header: its name renames it (meta.name) */ rename?: { id: TLShapeId; name: string } };
+type HeadProps = { icon: ReactNode; tint?: string; title: string; sub: ReactNode; live?: boolean; /** a card's header: its name renames it (meta.name) */ rename?: { id: NodeId; name: string } };
 type HeadFn = (h: HeadProps) => JSX.Element;
 function Header({ icon, tint = 'none', title, sub, live, rename, pin, onPin, onClose }: HeadProps & { pin: boolean; onPin: () => void; onClose: () => void }) {
   return <header className="cp-head">
@@ -200,9 +200,9 @@ function Section({ title, aside, children }: { title: string; aside?: ReactNode;
 const Caption = ({ children }: { children: ReactNode }) => <p className="cp-cap">{children}</p>;
 
 /* ------------------------------------------------------------------ one card */
-function One({ id, head }: { id: TLShapeId; head: HeadFn }) {
-  const editor = useEditor(); const cat = useCatalog();
-  const s = useValue('panel shape', () => editor.getShape(id) ?? null, [editor, id]); const v = useCardView(editor, s, cat);
+function One({ id, head }: { id: NodeId; head: HeadFn }) {
+  const board = useBoardApi(); const cat = useCatalog();
+  const s = useValue('panel shape', () => board.getNode(id) ?? null, [board, id]); const v = useCardView(board, s, cat);
   const [peek, setPeek] = useState<Take | null>(null);
   if (!s || !v) return <Empty head={head} />;
   const finished = v.gen ? v.status === 'done' && !!v.media : !!v.media;
@@ -270,8 +270,8 @@ function Preview({ v, peek }: { v: View; peek: Take | null }) {
 
 /** Versions fill the row evenly (one column per version up to five); hover to look in the preview, click to pick the one that goes on. */
 function Versions({ v, onPeek }: { v: View; onPeek: (t: Take | null) => void }) {
-  const editor = useEditor(); const n = v.takes.length;
-  const pick = (k: number) => editor.run(() => editor.updateShape({ id: v.s.id, type: GEN_TYPE, props: { take: k, ratio: 0 } } as any), { history: 'ignore' });
+  const board = useBoardApi(); const n = v.takes.length;
+  const pick = (k: number) => board.batch(() => board.patchNode(v.s.id, { props: { take: k, ratio: 0 } } as any), { history: 'ignore' });
   const review = v.takes[v.take]?.review;
   return <>
     <div className="cp-vers" style={{ ['--n' as any]: Math.min(n, 5) }} role="listbox" aria-label="Versions" onPointerLeave={() => onPeek(null)}>
@@ -286,11 +286,11 @@ function Versions({ v, onPeek }: { v: View; onPeek: (t: Take | null) => void }) 
 
 /** Image to layers: the layers stay together on the card (top first, like an editor's layer list); each can come out as its own Result card. */
 function Layers({ v }: { v: View }) {
-  const editor = useEditor(); const toast = useToast(); const t = v.takes[v.take]; const ls = t.layers ?? []; const [busy, setBusy] = useState(false);
+  const board = useBoardApi(); const toast = useToast(); const t = v.takes[v.take]; const ls = t.layers ?? []; const [busy, setBusy] = useState(false);
   const shot = String((v.s.meta as any)?.name ?? '').trim(); /* a pulled-out layer is named for the layer ("Sun"), with the card's own name when it has one */
-  const pull = (k: number, o: { select?: boolean; at?: { x: number; y: number } } = {}) => pullOutResult(editor, v.s.id, { jobId: t.jobId, kind: 'image', url: ls[k].url, poster: ls[k].url, model: v.model, title: shot ? `${shot} · ${ls[k].label}` : ls[k].label }, o);
+  const pull = (k: number, o: { select?: boolean; at?: { x: number; y: number } } = {}) => pullOutResult(board, v.s.id, { jobId: t.jobId, kind: 'image', url: ls[k].url, poster: ls[k].url, model: v.model, title: shot ? `${shot} · ${ls[k].label}` : ls[k].label }, o);
   /* every layer, top first, as a grid of four across beside the card */
-  const all = async () => { setBusy(true); try { const first = await pull(ls.length - 1, { select: false }); const b = editor.getShapePageBounds(first);
+  const all = async () => { setBusy(true); try { const first = await pull(ls.length - 1, { select: false }); const b = board.boundsOf(first);
       for (let i = 1; i < ls.length; i++) await pull(ls.length - 1 - i, { select: false, at: b ? { x: b.midX + (i % 4) * (b.w + 32), y: b.midY + Math.floor(i / 4) * (b.h + 32) } : undefined });
       toast(`${ls.length} layers are on the board`); } finally { setBusy(false); } };
   return <>
@@ -331,13 +331,13 @@ const EMPTY_LINE: Record<string, [string, string]> = { [COMPARE_TYPE]: ['Connect
 
 /** Group: the cards inside the frame (a click jumps to one) and Run the drafts, the same as selecting them all. */
 function GroupBody({ v }: { v: View }) {
-  const editor = useEditor();
-  const ids = useValue('group members', () => { const b = editor.getShapePageBounds(v.s.id); return groupGenIds(b, editor.getCurrentPageShapes().map(x => ({ id: x.id, type: x.type, bounds: editor.getShapePageBounds(x.id) }))) as TLShapeId[]; }, [editor, v.s.id, v.p.w, v.p.h]);
-  const shapes = useValue('group shapes', () => ids.map(id => editor.getShape(id)).filter(Boolean) as TLShape[], [editor, ids.join()]);
+  const board = useBoardApi();
+  const ids = useValue('group members', () => { const b = board.boundsOf(v.s.id); return groupGenIds(b, board.nodes().map(x => ({ id: x.id, type: x.type, bounds: board.boundsOf(x.id) }))) as NodeId[]; }, [board, v.s.id, v.p.w, v.p.h]);
+  const shapes = useValue('group shapes', () => ids.map(id => board.getNode(id)).filter(Boolean) as BoardNode[], [board, ids.join()]);
   if (!shapes.length) return <div className="cp-pv cp-pv-empty"><GroupIcon size={22} /><b>Nothing inside yet</b><small>Move generate cards into the frame, then run them all at once.</small></div>;
   return <>
     <Section title="Inside" aside={`${shapes.length} card${shapes.length === 1 ? '' : 's'}`}><div className="cp-rows">{shapes.map(x => { const m = mediaOf(x);
-      return <Row key={x.id} poster={m?.poster ?? ''} kind={m?.kind ?? String((x.props as any).medium ?? 'image')} label={shapeName(x)} sub={STATUS_WORD[(x.props as any).status] ?? 'Card'} onClick={() => jump(editor, x.id)} />; })}</div></Section>
+      return <Row key={x.id} poster={m?.poster ?? ''} kind={m?.kind ?? String((x.props as any).medium ?? 'image')} label={shapeName(x)} sub={STATUS_WORD[(x.props as any).status] ?? 'Card'} onClick={() => jump(board, x.id)} />; })}</div></Section>
     <RunDrafts shapes={shapes} />
   </>;
 }
@@ -345,8 +345,8 @@ const STATUS_WORD: Record<string, string> = { draft: 'Draft', running: 'Running'
 
 /** Ad layout: the words on the ad, edited here or on the card (the same props), and where it runs. */
 function AdWords({ v }: { v: View }) {
-  const editor = useEditor(); const p = v.p as { headlines: string[]; offer: string; button: string; platforms?: string[] };
-  const set = (props: Record<string, unknown>) => editor.updateShape({ id: v.s.id, type: AD_TYPE, props } as any);
+  const board = useBoardApi(); const p = v.p as { headlines: string[]; offer: string; button: string; platforms?: string[] };
+  const set = (props: Record<string, unknown>) => board.patchNode(v.s.id, { props } as any);
   const hl = [0, 1, 2].map(i => p.headlines?.[i] ?? ''); const shown = Math.max(1, hl.reduce((n, h, i) => (h.trim() ? i + 1 : n), 0));
   const where = asPlatforms(p.platforms).map(x => AD_PLATFORMS[x].label).join(' · ');
   const field = (label: string, value: string, on: (s: string) => void, key: string) => <label key={key} className="cp-field"><small>{label}</small>
@@ -361,9 +361,9 @@ function AdWords({ v }: { v: View }) {
 
 /** Prompt / Note: the text, roomy, edited in place. */
 function TextEdit({ v }: { v: View }) {
-  const editor = useEditor();
+  const board = useBoardApi();
   return <textarea className="cp-text" value={v.p.text ?? ''} rows={8} aria-label={v.title} placeholder="Write here"
-    onChange={e => editor.updateShape({ id: v.s.id, type: v.s.type, props: { text: e.target.value } } as any)} />;
+    onChange={e => board.patchNode(v.s.id, { props: { text: e.target.value } } as any)} />;
 }
 
 /** A price as the same small suffix everywhere. */
@@ -372,13 +372,13 @@ const PriceSuffix = ({ q }: { q: any }) => { const cr = q ? shownCredits(q) : nu
 
 /** Set it up (a draft) or run again (a finished card): the settings as an even grid, then the action(s). */
 function RunBlock({ v }: { v: View }) {
-  const editor = useEditor(); const toast = useToast(); const box = useRef<HTMLDivElement>(null); const spec = v.spec; const p = v.p as GenCardProps;
+  const board = useBoardApi(); const toast = useToast(); const box = useRef<HTMLDivElement>(null); const spec = v.spec; const p = v.p as GenCardProps;
   const [busy, setBusy] = useState(false); const genRef = useRef<HTMLButtonElement>(null);
   const missing = v.draft ? missingOf(spec, v.st?.bySlot ?? {}, v.prompt) : null;
-  const again = async () => { setBusy(true); try { await submit(editor, v.s.id); } catch (e: any) { toast(e?.message ?? 'That didn’t start.', 'error'); } finally { setBusy(false); } };
-  const tweak = () => { const nid = variationOf(editor, v.s.id); if (nid) { editor.select(nid); reveal(editor, nid); } };
+  const again = async () => { setBusy(true); try { await submit(board, v.s.id); } catch (e: any) { toast(e?.message ?? 'That didn’t start.', 'error'); } finally { setBusy(false); } };
+  const tweak = () => { const nid = variationOf(board, v.s.id); if (nid) { board.select([nid]); reveal(board, nid); } };
   const settings = (ro: boolean) => <div className={`cp-settings${ro ? ' cp-ro' : ''}`} {...(ro ? { inert: '' } : {})}>
-    <WorkflowControls key={spec.flow.id} recipe={spec.recipe} vals={spec.vals} setVal={ro ? () => undefined : (k, val) => setCard(editor, v.s.id, { vals: { ...p.vals, ...spec.vals, [k]: val } })} provider={spec.provider} watch={ro ? undefined : box} mode={spec.mode}
+    <WorkflowControls key={spec.flow.id} recipe={spec.recipe} vals={spec.vals} setVal={ro ? () => undefined : (k, val) => setCard(board, v.s.id, { vals: { ...p.vals, ...spec.vals, [k]: val } })} provider={spec.provider} watch={ro ? undefined : box} mode={spec.mode}
       files={{ image: !ro && v.st?.bySlot.image?.[0]?.url ? { file: null as any, url: v.st.bySlot.image[0].poster || v.st.bySlot.image[0].url } : null }} /></div>;
   if (!v.draft) return <div className="cp-run" ref={box}>
     {settings(true)}
@@ -390,7 +390,7 @@ function RunBlock({ v }: { v: View }) {
   return <div className="cp-run" ref={box}>
     {spec.slots.length > 0 && <CardInputs cardId={v.s.id} slots={spec.slots} bySlot={v.st?.bySlot ?? {}} showAdd className="cp-ins" testPrefix="cp" />}
     {note && <Caption>{note}</Caption>}
-    {spec.promptMode !== 'hidden' && !v.linkedPrompt && <textarea className="cp-text cp-text-s" rows={3} value={p.prompt} placeholder={spec.placeholder ?? 'Describe what you want'} aria-label="Prompt" onChange={e => setCard(editor, v.s.id, { prompt: e.target.value })} />}
+    {spec.promptMode !== 'hidden' && !v.linkedPrompt && <textarea className="cp-text cp-text-s" rows={3} value={p.prompt} placeholder={spec.placeholder ?? 'Describe what you want'} aria-label="Prompt" onChange={e => setCard(board, v.s.id, { prompt: e.target.value })} />}
     {settings(false)}
     <DockGenerate toolId={spec.tool.id} engine={spec.provider} quote={v.q} label={spec.generateLabel} busy={busy} problems={[]} missing={missing} pfOpen={false} genRef={genRef} onClick={() => runCard(v.s.id)} workflowId={spec.flow.id} className="cp-go" variant="node" testId="cp-generate" />
   </div>;
@@ -398,20 +398,20 @@ function RunBlock({ v }: { v: View }) {
 
 /** The quick actions with words and prices, as an even two-column grid. Each makes a new draft card wired to this one. */
 function NextSteps({ v }: { v: View }) {
-  const editor = useEditor(); const cat = useCatalog(); const kind = v.media!.kind;
+  const board = useBoardApi(); const cat = useCatalog(); const kind = v.media!.kind;
   const have = new Set(availableFlows(cat).map(f => f.id));
   const acts: Act[] = (kind === 'audio' ? NEXT_STEPS.audio : kind === 'image' ? NEXT_STEPS.image : QUICK_ACTIONS.video).filter(a => have.has(a.flow));
   const [pr, setPr] = useState<Record<string, string | null>>({});
   useEffect(() => { let on = true; acts.forEach(a => void actionPrice(a.flow, kind as any, v.media!.url).then(t => { if (on) setPr(m => ({ ...m, [a.id]: t })); })); return () => { on = false; }; }, [kind, acts.length]); // eslint-disable-line react-hooks/exhaustive-deps
-  return <div className="cp-grid2">{acts.map(a => <button key={a.id} type="button" className="cp-tilebtn" onClick={() => quickCard(editor, v.s.id, a)}>
+  return <div className="cp-grid2">{acts.map(a => <button key={a.id} type="button" className="cp-tilebtn" onClick={() => quickCard(board, v.s.id, a)}>
     <a.icon size={15} /><span title={a.label}>{a.label}</span><small className="cp-suffix">{pr[a.id]?.split(' · ')[0] ?? '…'}</small></button>)}</div>;
 }
 
 /** What feeds it and what it feeds; a click jumps to that card. */
 function Connections({ v }: { v: View }) {
-  const editor = useEditor();
+  const board = useBoardApi();
   const row = (l: Link, dir: 'in' | 'out', k: number) => <Row key={`${dir}-${l.id ?? k}`} poster={l.poster} kind={l.kind} label={l.label} sub={dir === 'in' ? `Uses · ${l.slot ?? KIND_WORD[l.kind] ?? 'Input'}` : `Used by · ${KIND_WORD[l.kind] ?? 'Card'}`}
-    onClick={l.id ? () => jump(editor, l.id) : undefined} />;
+    onClick={l.id ? () => jump(board, l.id) : undefined} />;
   return <div className="cp-rows">{v.ins.map((l, k) => row(l, 'in', k))}{v.outs.map((l, k) => row(l, 'out', k))}</div>;
 }
 /** One row: a thumbnail (or the kind's icon), a name and a small line. With a card behind it, a click jumps there; otherwise it just shows. */
@@ -424,8 +424,8 @@ function Row({ poster, kind, label, sub, onClick }: { poster: string; kind: stri
 
 /** What a finished version was made from: the inputs it was sent with, kept on the version (a card that's still there is one click away). */
 function MadeFrom({ list }: { list: MadeFromT[] }) {
-  const editor = useEditor(); const live = useValue('made from live', () => list.map(i => !!i.shapeId && !!editor.getShape(i.shapeId as TLShapeId)), [editor, list]);
-  return <div className="cp-rows" data-testid="cp-made-from">{list.map((i, k) => <Row key={`${i.url}-${k}`} poster={i.poster} kind={i.kind} label={i.label} sub={i.slot} onClick={live[k] ? () => jump(editor, i.shapeId as TLShapeId) : undefined} />)}</div>;
+  const board = useBoardApi(); const live = useValue('made from live', () => list.map(i => !!i.shapeId && !!board.getNode(i.shapeId as NodeId)), [board, list]);
+  return <div className="cp-rows" data-testid="cp-made-from">{list.map((i, k) => <Row key={`${i.url}-${k}`} poster={i.poster} kind={i.kind} label={i.label} sub={i.slot} onClick={live[k] ? () => jump(board, i.shapeId as NodeId) : undefined} />)}</div>;
 }
 
 /** The footer, the same on every finished card: Download · Open in its page · View workflow · full size (two buttons and two squares).
@@ -446,9 +446,9 @@ function Actions({ v }: { v: View }) {
 }
 
 /* ------------------------------------------------------------------ several cards, none */
-function Many({ ids, head }: { ids: TLShapeId[]; head: HeadFn }) {
-  const editor = useEditor();
-  const shapes = useValue('panel many', () => ids.map(id => editor.getShape(id)).filter(Boolean) as TLShape[], [editor, ids]);
+function Many({ ids, head }: { ids: NodeId[]; head: HeadFn }) {
+  const board = useBoardApi();
+  const shapes = useValue('panel many', () => ids.map(id => board.getNode(id)).filter(Boolean) as BoardNode[], [board, ids]);
   const done = shapes.map(s => ({ s, m: mediaOf(s) })).filter(x => x.m);
   const counts = Object.entries(shapes.reduce<Record<string, number>>((a, s) => { const m = mediaOf(s); const k = s.type === GEN_TYPE ? (m ? m.kind : 'draft') : s.type === PROMPT_TYPE || s.type === NOTE_TYPE ? 'text' : m?.kind ?? 'other'; a[k] = (a[k] ?? 0) + 1; return a; }, {}));
   const WORD: Record<string, [string, string]> = { image: ['picture', 'pictures'], video: ['clip', 'clips'], audio: ['sound', 'sounds'], '3d': ['3D model', '3D models'], draft: ['draft', 'drafts'], text: ['text card', 'text cards'], other: ['card', 'cards'] };
@@ -457,21 +457,21 @@ function Many({ ids, head }: { ids: TLShapeId[]; head: HeadFn }) {
     <div className="cp-body">
       <Caption>Click one to see just that card.</Caption>
       <div className="cp-many">{shapes.map(s => { const m = mediaOf(s); const I = s.type === PROMPT_TYPE || s.type === NOTE_TYPE ? TextIcon : (MEDIUM_ICON as any)[(s.props as any).medium ?? m?.kind ?? 'image'] ?? ImageIcon;
-        return <button key={s.id} type="button" className="cp-many-t" onClick={() => editor.select(s.id)} {...tip(`Just ${shapeName(s)}`)}><span className="cp-many-i">{m?.poster ? <img src={gridSrc(m.poster, 140)} alt="" /> : <I size={18} />}</span><small>{shapeName(s)}</small></button>; })}</div>
+        return <button key={s.id} type="button" className="cp-many-t" onClick={() => board.select([s.id])} {...tip(`Just ${shapeName(s)}`)}><span className="cp-many-i">{m?.poster ? <img src={gridSrc(m.poster, 140)} alt="" /> : <I size={18} />}</span><small>{shapeName(s)}</small></button>; })}</div>
       <RunDrafts shapes={shapes} />
       {done.length > 0 && <Section title="Finished" aside={`${done.length} of ${shapes.length}`}><div className="cp-pair">
-        <button type="button" className="cp-btn" onClick={() => editor.selectNone()}><CloseIcon size={13} /><span>Clear selection</span></button>
+        <button type="button" className="cp-btn" onClick={() => board.select([])}><CloseIcon size={13} /><span>Clear selection</span></button>
         <button type="button" className="cp-btn" onClick={downloadAll}><DownloadIcon size={14} /><span>Download all</span></button></div></Section>}
     </div></>;
 }
 
 /** Run the drafts among these cards: each with its own settings, the total priced first. */
-function RunDrafts({ shapes }: { shapes: TLShape[] }) {
-  const editor = useEditor(); const toast = useToast();
+function RunDrafts({ shapes }: { shapes: BoardNode[] }) {
+  const board = useBoardApi(); const toast = useToast();
   const drafts = shapes.filter(s => s.type === GEN_TYPE && (s.props as any).status === 'draft');
   const [total, setTotal] = useState<{ credits: number; demo: boolean } | null>(null); const key = drafts.map(d => d.id).join();
   useEffect(() => { setTotal(null); if (!drafts.length) return; let on = true;
-    void Promise.all(drafts.map(d => import('./nodeRun').then(m => m.quoteNode(editor, d.id)))).then(qs => { if (!on) return; setTotal({ credits: qs.reduce((a, q) => a + (q ? shownCredits(q) ?? 0 : 0), 0), demo: qs.every(q => q?.demo === true) }); });
+    void Promise.all(drafts.map(d => import('./nodeRun').then(m => m.quoteNode(board, d.id)))).then(qs => { if (!on) return; setTotal({ credits: qs.reduce((a, q) => a + (q ? shownCredits(q) ?? 0 : 0), 0), demo: qs.every(q => q?.demo === true) }); });
     return () => { on = false; }; }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!drafts.length) return null;
   return <Section title="Run the drafts" aside={`${drafts.length} of ${shapes.length}`}>
@@ -481,7 +481,7 @@ function RunDrafts({ shapes }: { shapes: TLShape[] }) {
 }
 
 function Empty({ head }: { head: HeadFn }) {
-  const editor = useEditor(); const n = useValue('panel count', () => editor.getCurrentPageShapes().filter(s => isNodeType(s.type)).length, [editor]);
+  const board = useBoardApi(); const n = useValue('panel count', () => board.nodes().filter(s => isNodeType(s.type)).length, [board]);
   return <>{head({ icon: <ImageIcon size={15} />, title: 'Card details', sub: `${n} card${n === 1 ? '' : 's'} on this board` })}
     <div className="cp-body cp-empty"><span className="cp-empty-i"><ImageIcon size={22} /></span><b>Select a card</b><p>See it big, how it was made, and what you can do next.</p></div></>;
 }
