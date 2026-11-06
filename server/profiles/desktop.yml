@@ -1,5 +1,5 @@
 # The desktop app (npm start / npm run dev). One plugin id per line; leave a line out to turn that plugin off.
-# The places service is part of the kernel and always on. `legacy` (today's server) always starts last.
+# The places, tools and workflows services are part of the kernel and always on. `legacy` (today's server) always starts last.
 name: desktop
 plugins:
   - place-comfy-local   # Your computer (your ComfyUI, built-in tools)
@@ -9,4 +9,11 @@ plugins:
   - place-replicate     # Replicate (your Replicate token)
   - place-direct        # the labs' own APIs: BFL, Google, OpenAI, BytePlus, MiniMax, LTX (their keys)
   - place-sample        # free samples, and samples on the mock backend
+  - studio-video      # the Video tab: create, extend, Camera Moves, Swap & Motion, Re-shoot
+  - studio-image      # the Image tab: Create Image, Image Upscale
+  - studio-audio      # the Audio tab: music, soundtrack, voice
+  - studio-3d         # the 3D page: Image to 3D, turntable, Direct a Shot
+  - studio-edit       # Edit Video: reframe, remove background, HDR, fps boost, depth, Footage Effects, Prompt Edit, Finish
+  - apps-gallery      # the Apps (Photo FX, Upscale, every app recipe); after the studios, since each recipe wraps one of their tools
+  - workflow-folders  # workflow folders: plugins/ (shipped, hub installs) and the ones you add in the app (one fiber per folder)
   - legacy
