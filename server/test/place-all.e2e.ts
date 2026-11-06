@@ -14,8 +14,10 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'place-all-'));
 Object.assign(process.env, { OPENHIGGSFIELD_BACKEND: 'mock', OPENHIGGSFIELD_DATA_DIR: path.join(dir, 'data'), OPENHIGGSFIELD_ENV_FILE: path.join(dir, 'none.env'), OPENHIGGSFIELD_FILMING_FILE: path.join(dir, 'nofilm.json'),
   OPENHIGGSFIELD_COMFY_DETECT_URLS: 'http://127.0.0.1:9', OPENHIGGSFIELD_MOCK_KEYS: '1', OPENHIGGSFIELD_PROFILE: '', OPENHIGGSFIELD_BILLING_MODE: 'team' /* the app keeps a ledger */ });
 for (const k of Object.keys(process.env)) if (/(_KEY|_TOKEN)$|^COMFY_(BASE|DEPLOY|RUNNER)_URL$/.test(k) && k !== 'OPENHIGGSFIELD_MOCK_KEYS') delete process.env[k];
-const ALL = ['place-comfy-local', 'place-comfy-cloud', 'place-comfy-router', 'place-fal', 'place-replicate', 'place-direct', 'place-sample'];
+const ALL = ['place-comfy-local', 'place-comfy-cloud', 'place-comfy-router', 'place-fal', 'place-replicate', 'place-sunra', 'place-direct', 'place-sample'];
 const TOOLS = ['studio-video', 'studio-image', 'studio-audio', 'studio-3d', 'studio-edit', 'apps-gallery', 'workflow-folders', 'spend-cap', 'agent-budgets', 'billing-team-mode', 'hosted-grant', 'eta-learning', 'webhooks']; // the studios and workflow folders (Phase 3) + the money plugins (Phase 4)
+/** Installable places: shipped, not in the desktop profile (place-kie). */
+const INSTALLABLE = ['place-kie'];
 const KIND: Record<string, string> = { 'place-comfy-local': 'local', 'place-comfy-cloud': 'comfy-cloud', 'place-comfy-router': 'comfy-router', 'place-fal': 'fal', 'place-replicate': 'replicate', 'place-direct': 'direct' };
 
 const { readProfile } = await import('../src/kernel/profile.js');
@@ -29,9 +31,10 @@ await import('../src/routing/run.js'); // loads the built-in places for code tha
 // ---- each place declares only its own keys ----
 const seen = new Map<string, any>(); for (const t of listTools()) for (const id of t.providers) for (const r of allRoutesFor(id, t)) seen.set(r.routeId, r);
 const routes = [...seen.values()]; const decl: Record<string, string[]> = {};
-for (const id of ALL) decl[id] = (await BUILTIN_PLUGINS[id]()).default.keys as string[];
+for (const id of [...ALL, ...INSTALLABLE]) decl[id] = (await BUILTIN_PLUGINS[id]()).default.keys as string[];
 for (const r of routes) {
   const runner = places.runnerOf(r); const names = [r.envKey, ...(r.envAliases ?? [])].filter(Boolean) as string[];
+  if (!runner && r.kind === 'kie') { for (const k of names) assert.ok(decl['place-kie'].includes(k), `${r.routeId}: ${k} is declared by place-kie`); continue; } // installable: off without its plugin
   if (!runner) { assert.equal(r.kind, 'direct', `${r.routeId}: only 'direct' routes without a lab connection run outside a place`); assert.ok(!r.direct); continue; }
   for (const k of names) assert.ok(decl[PLACE_PLUGIN[r.kind as keyof typeof PLACE_PLUGIN]].includes(k), `${r.routeId}: ${k} is declared by ${PLACE_PLUGIN[r.kind as keyof typeof PLACE_PLUGIN]}`);
 }
@@ -48,7 +51,7 @@ const MODEL: Record<string, [string, string, string]> = { // a tool, a model and
   replicate: ['create-image', 'comfy-qwen-image', 'replicate:qwen/qwen-image'], direct: ['create-image', 'api-nano-banana', 'direct:google/gemini-3.1-flash-image'] };
 for (const [kind, [, , rid]] of Object.entries(MODEL)) assert.ok(findRoute(rid)?.kind === kind, `${rid} is a ${kind} route`);
 const ctx = await boot({ name: 'all', plugins: [...ALL, ...TOOLS, 'legacy'], file: 'all.yml' }, { legacy: false });
-assert.equal(places.managed, true); assert.deepEqual(places.list().map((p) => p.kind), ['local', 'comfy-cloud', 'comfy-router', 'fal', 'replicate', 'direct', 'sample']);
+assert.equal(places.managed, true); assert.deepEqual(places.list().map((p) => p.kind), ['local', 'comfy-cloud', 'comfy-router', 'fal', 'replicate', 'sunra', 'direct', 'sample']);
 const fibers = new Map<string, any>(); { const { mounted } = await import('../src/kernel/index.js'); for (const m of mounted) fibers.set(m.name, m.fiber); }
 for (const id of Object.keys(KIND)) {
   const kind = KIND[id]; const [toolId, modelId, rid] = MODEL[kind]; const tool = getTool(toolId)!; const r = findRoute(rid)!;

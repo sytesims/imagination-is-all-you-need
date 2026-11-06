@@ -8,7 +8,7 @@ import { testPort } from './_ports.js';
 import { parseProfile, readProfile } from '../src/kernel/profile.js';
 const ok = (m: string) => console.log('ok ' + m);
 const ROOT = path.resolve(import.meta.dirname, '..');
-const ALL_PLACES = ['place-comfy-local', 'place-comfy-cloud', 'place-comfy-router', 'place-fal', 'place-replicate', 'place-direct', 'place-sample'];
+const ALL_PLACES = ['place-comfy-local', 'place-comfy-cloud', 'place-comfy-router', 'place-fal', 'place-replicate', 'place-sunra', 'place-direct', 'place-sample'];
 const TOOLS = ['studio-video', 'studio-image', 'studio-audio', 'studio-3d', 'studio-edit', 'apps-gallery', 'workflow-folders', 'spend-cap', 'agent-budgets', 'billing-team-mode', 'hosted-grant', 'eta-learning', 'webhooks']; // the studios and workflow folders (Phase 3): a boot that runs tools needs them + the money plugins (Phase 4)
 const without = (id: string) => ['comfy-featured', ...ALL_PLACES.filter((x) => x !== id), ...TOOLS];
 const QWEN = 'comfy-qwen-image', FAL_QWEN = 'fal:fal-ai/qwen-image', REP_QWEN = 'replicate:qwen/qwen-image';
