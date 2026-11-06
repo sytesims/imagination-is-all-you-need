@@ -27,6 +27,9 @@ import { reducedMotion } from '../agentHand';
 import { richTextPlain, richTextOf } from '../../../../server/src/shared/boardDoc';
 import { sizeOf, NOTE_SIZE } from './docMap';
 import type { BoardStore } from './store';
+import { PosterCard } from './PosterCard';
+import { isPoster, posterRatio, ratioAtom } from './poster';
+import { posterPorts, posterPortY } from './posterPorts';
 
 /** The board's store, for the views that need more than BoardApi (sticky editing, the resize gesture). */
 export const StoreCtx = createContext<BoardStore | null>(null);
@@ -40,20 +43,27 @@ export const NO_DRAG = 'nodrag,[data-card-control],button,a,input,textarea,selec
 /** An ad layout's height for its ad's shape at width w. */
 export const adHeight = (w: number, size: string) => { const a = AD_SHAPES[asShape(size)]; return adCardHeight(w, a.w / a.h); };
 
-function Resizer({ id, type, selected }: { id: string; type: string; selected: boolean }) {
+function Resizer({ id, type, selected, ratio }: { id: string; type: string; selected: boolean; /** a poster with a known shape keeps it */ ratio?: number | null }) {
   const store = useContext(StoreCtx)!; const opt = useContext(OptCtx);
   const def = nodeDefOf(type); const tool = useValue('rf tool', () => store.viewSig.tool.get(), [store]);
-  const min = def ? { minWidth: def.minW, minHeight: def.minH, maxWidth: def.maxW, maxHeight: def.maxH } : { minWidth: 120, minHeight: 80 };
-  return <NodeResizer isVisible={selected && tool === 'select'} {...min} handleClassName="cv-rf-handle-dot" lineClassName={opt.handles === 'corners' ? 'cv-rf-line-quiet' : 'cv-rf-line'}
+  const min = def ? { minWidth: ratio ? 200 : def.minW, minHeight: ratio ? 100 : def.minH, maxWidth: def.maxW, maxHeight: ratio ? 2400 : def.maxH } : { minWidth: 120, minHeight: 80 };
+  return <NodeResizer isVisible={selected && tool === 'select'} keepAspectRatio={!!ratio} {...min} handleClassName="cv-rf-handle-dot" lineClassName={opt.handles === 'corners' ? 'cv-rf-line-quiet' : 'cv-rf-line'}
     onResizeStart={() => { store.history.mark('resize'); store.setView({ gesture: 'resize' }); }} onResizeEnd={() => store.setView({ gesture: null })} />;
 }
 const Ends = () => <><Handle type="target" position={Position.Left} id="in" className="cv-rf-end" isConnectable={false} /><Handle type="source" position={Position.Right} id="out" className="cv-rf-end" isConnectable={false} /></>;
 const sameNode = (a: NodeProps, b: NodeProps) => a.id === b.id && a.selected === b.selected && a.width === b.width && a.height === b.height;
 
 /** Our cards, inside the wrappers tldraw gave them (so node.css and the agent's effects keyed on .tl-shape[data-shape-id] still apply). */
-export const CardNode = memo(function CardNode({ id, selected }: NodeProps) {
+export const CardNode = memo(function CardNode({ id, selected, width }: NodeProps) {
   const board = useBoardApi(); const n = useValue('rf card', () => board.getNode(id), [board, id]);
+  const ratio = useValue('rf card ratio', () => { const s = board.getNode(id); return s ? posterRatio(s as any, ratioAtom.get()) : null; }, [board, id]);
   if (!n) return null;
+  /* release 1: generate cards, results and uploads with a file are posters (the picture is the card) */
+  if (isPoster(n as any)) return <>
+    <Resizer id={id} type={n.type} selected={!!selected} ratio={ratio} />
+    <div className="tl-shape cv-rf-shape" data-shape-id={id} data-shape-type={n.type}><PosterCard id={id as NodeId} selected={!!selected} w={width ?? (Number((n.props as any).w) || 340)} /></div>
+    <Ends />
+  </>;
   const view = n.type === GEN_TYPE ? <GenCardView shape={n as any} /> : n.type === RESULT_TYPE ? <ResultCardView shape={n as any} /> : <AuxView shape={n as any} />;
   return <>
     <Resizer id={id} type={n.type} selected={!!selected} />
@@ -139,12 +149,12 @@ export function useRoutes(board: BoardApi, style: JoinStyle) {
   const routes = useValue('rf routes', () => {
     const { boxes, links } = readLinks(board); const by = new Map(boxes.map((b) => [b.id, b])); const m = new Map<string, Route>(); const cat = catalogNow();
     /* the y of the input dot this link lands on (its kind's dot; the middle when the card shows none) */
-    const inY = (t: { y: number; h: number }, toId: string, kind: string | null | undefined) => {
-      const n = board.getNode(toId as NodeId); const ins = n ? portInfoOf(board, n, cat).ins : []; const i = ins.findIndex((x) => x.kind === kind);
+    const inY = (t: { y: number; h: number }, toId: string, kind: string | null | undefined, fromId?: string) => {
+      const n = board.getNode(toId as NodeId); if (n && n.type === GEN_TYPE) return posterPortY(posterPorts(board, n, cat), fromId ?? '', kind, t); const ins = n ? portInfoOf(board, n, cat).ins : []; const i = ins.findIndex((x) => x.kind === kind);
       return Math.round(t.y + t.h / 2 + (i >= 0 ? (i - (ins.length - 1) / 2) * PORT_GAP : 0)); };
     for (const l of links) { const f = by.get(l.from)!, t = by.get(l.to)!; const running = (board.getNode(l.to as NodeId)?.props as any)?.status === 'running'; const kind = l.kind ?? 'text';
       const base = { from: l.from, to: l.to, kind, running, style };
-      const sx = f.x + f.w, sy = Math.round(f.y + f.h / 2), ex = t.x, ey = style === 'notch' ? Math.round(t.y + t.h / 2) : inY(t, l.to, l.kind);
+      const sx = f.x + f.w, sy = Math.round(f.y + f.h / 2), ex = t.x, ey = style === 'notch' ? Math.round(t.y + t.h / 2) : inY(t, l.to, l.kind, l.from);
       const near = isNeighbour(f, t, boxes);
       if (style === 'curve' || (style === 'ports' && near)) { const dx = Math.max(24, Math.abs(ex - sx) / 2);
         m.set(l.id, { ...base, d: `M ${sx} ${sy} C ${sx + dx} ${sy}, ${ex - dx} ${ey}, ${ex} ${ey}`, neighbour: near, notch: null }); continue; }

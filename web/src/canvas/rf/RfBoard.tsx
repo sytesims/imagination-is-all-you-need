@@ -30,7 +30,7 @@ import { CameraMotion } from '../CameraMotion';
 import { BoardBackground } from '../BoardBackground';
 import { bindHand } from '../agentHand';
 import { lastFlowNow, setBoardCtx, exposeForDev, createCard } from '../agentApi';
-import { reattachRunning, watchJob, batchIdsOf } from '../genRun';
+import { reattachRunning, watchJob, batchIdsOf, liveJobs } from '../genRun';
 import { GEN_TYPE, RESULT_TYPE } from '../nodeTypes';
 import { CARD_H } from '../cardModel';
 import { OVERVIEW_ZOOM } from '../cardLook';
@@ -42,6 +42,7 @@ import { BoardStore, type BoardState } from './store';
 import { makeRfBoard, clampSize, MIN_ZOOM, MAX_ZOOM, type RfPort } from './boardApiRf';
 import { NODE_TYPES, EDGE_TYPES, NO_DRAG, RouteCtx, StoreCtx, OptCtx, AgentPresence, useRoutes, rfTypeOf, isBack, adHeight } from './views';
 import { rfOptions } from './engine';
+import { drawSize, ratioAtom } from './poster';
 import './rf.css';
 
 const Viewer3D = lazy(() => import('../../shared/Viewer3D').then((m) => ({ default: m.Viewer3D })));
@@ -61,22 +62,24 @@ const SETTLE = '.gc-stage,.gc-stage img,.gc-stage video,.nf-tk img,.lk-thread';
  *  kept while its store node and flags don't change, so React Flow only re-measures what moved. */
 function useFlowNodes(store: BoardStore): Node[] {
   const nodes = useStore(store.zs, (s: BoardState) => s.nodes), order = useStore(store.zs, (s: BoardState) => s.order), selection = useStore(store.zs, (s: BoardState) => s.selection);
-  const cache = useRef(new Map<string, { src: SNode; sel: boolean; z: number; rf: Node }>());
+  const cache = useRef(new Map<string, { src: SNode; sel: boolean; z: number; rf: Node; ratios?: unknown }>());
+  /* a poster takes its picture's shape once it loads (poster.ts): the node's size follows */
+  const ratios = useValue('rf poster ratios', () => ratioAtom.get(), []);
   return useMemo(() => {
-    const sel = new Set(selection); const out: Node[] = []; const done = new Set<string>(); const next = new Map<string, { src: SNode; sel: boolean; z: number; rf: Node }>();
+    const sel = new Set(selection); const out: Node[] = []; const done = new Set<string>(); const next = new Map<string, { src: SNode; sel: boolean; z: number; rf: Node; ratios?: unknown }>();
     const emit = (id: string, depth = 0) => {
       if (done.has(id) || depth > 64) return; const n = nodes[id]; if (!n) return;
       if (n.parentId !== PAGE && nodes[n.parentId] && !done.has(n.parentId)) emit(n.parentId, depth + 1);
       done.add(id); const i = order.indexOf(id); const z = isBack(n.type) ? i - BACK : i; const s = sel.has(id);
-      const was = cache.current.get(id); let rf = was && was.src === n && was.sel === s && was.z === z ? was.rf : null;
-      if (!rf) { const { w, h } = sizeOf(n); const parent = n.parentId !== PAGE && nodes[n.parentId] ? n.parentId : undefined;
+      const was = cache.current.get(id); let rf = was && was.src === n && was.sel === s && was.z === z && was.ratios === ratios ? was.rf : null;
+      if (!rf) { const { w, h } = drawSize(n, sizeOf(n), ratios); const parent = n.parentId !== PAGE && nodes[n.parentId] ? n.parentId : undefined;
         rf = { id, type: rfTypeOf(n.type), position: { x: n.x, y: n.y }, width: w, height: h, zIndex: z, selected: s, data: EMPTY, ...(parent ? { parentId: parent } : {}),
           ...(n.type === 'frame' ? { style: { pointerEvents: 'none' } } : {}) } as Node; }
-      next.set(id, { src: n, sel: s, z, rf }); out.push(rf);
+      next.set(id, { src: n, sel: s, z, rf, ratios }); out.push(rf);
     };
     for (const id of order) emit(id);
     cache.current = next; return out;
-  }, [nodes, order, selection]);
+  }, [nodes, order, selection, ratios]);
 }
 function useFlowEdges(store: BoardStore): Edge[] {
   const links = useStore(store.zs, (s: BoardState) => s.links), nodes = useStore(store.zs, (s: BoardState) => s.nodes), selection = useStore(store.zs, (s: BoardState) => s.selection);
@@ -131,7 +134,7 @@ function Flow({ saved, store, board, port, drawerOpen, setDrawerOpen, onProject 
   useBoardKeys(board, store);
   const toolHook = useRfTool(store, board);
 
-  const zoomVars = (z: number) => { const el = port.el; if (!el) return; el.style.setProperty('--tl-zoom', String(z)); el.style.setProperty('--tl-scale', String(1 / z)); if (z < OVERVIEW_ZOOM) el.dataset.far = '1'; else delete el.dataset.far; };
+  const zoomVars = (z: number) => { const el = port.el; if (!el) return; el.style.setProperty('--tl-zoom', String(z)); el.style.setProperty('--tl-scale', String(1 / z)); if (z < OVERVIEW_ZOOM) el.dataset.far = '1'; else delete el.dataset.far; if (z < 0.35) el.dataset.mood = '1'; else delete el.dataset.mood; };
   /* React Flow reports a wheel pan's first step only to onMoveStart and its last to onMoveEnd: the camera follows all three */
   const onMove = (_: unknown, v: Viewport) => { store.setView({ camera: { x: v.x / v.zoom, y: v.y / v.zoom, z: v.zoom } }); if (store.s.order.length <= LIVE_ZOOM_MAX) zoomVars(v.zoom);
     window.clearTimeout(camTimer.current); camTimer.current = window.setTimeout(() => writeCam(saved.id, board.camera()), 400); };
@@ -231,7 +234,7 @@ export default function RfBoard({ board: saved, onSaveState, onSaved, drawerOpen
   useEffect(() => {
     const id = saved.id; let rev = saved.rev; let dirty = false, saving = false, stopped = false; let timer = 0;
     onBoard?.(api); setBoardCtx({ boardId: id, projectId: saved.projectId ?? null, board: api }); exposeForDev(api);
-    if ((import.meta as any).env?.DEV) (window as any).__ohfRfBoard = { board: api, store };
+    if ((import.meta as any).env?.DEV) (window as any).__ohfRfBoard = { board: api, store, liveJobs };
     reattachRunning(api);
     /* cards saved at the old 330 px height grow to today's card: once, never an undo step */
     const short = api.nodes().filter((s) => s.type === GEN_TYPE && (s.props as any).h <= 330 && (s.props as any).h >= 300);

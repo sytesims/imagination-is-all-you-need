@@ -13,6 +13,7 @@ import type { BoardStore, Camera } from './store';
 import { draftProps } from '../cardModel';
 import { NODE_DEFS, nodeDefOf, GEN_TYPE, RESULT_TYPE, AD_TYPE } from '../nodeTypes';
 import { auxProps, adProps } from '../auxModel';
+import { drawSize, ratioAtom } from './poster';
 
 export const MIN_ZOOM = 0.05, MAX_ZOOM = 4;
 /** today's zoom steps (tldraw's), inside our 5 %–400 % */
@@ -55,7 +56,7 @@ export function makeRfBoard(store: BoardStore, port: RfPort, hooks: RfHooks = {}
   const node = (id: string): SNode | null => { if (!id) return null; store.nodeSig(id).get(); return S().nodes[id] ?? null; };
   const doc = () => store.docSig.get();
   const absOf = (n: SNode, seen = 0): { x: number; y: number } => { const p = n.parentId !== PAGE ? node(n.parentId) : null; if (!p || seen > 64) return { x: n.x, y: n.y }; const pp = absOf(p, seen + 1); return { x: pp.x + n.x, y: pp.y + n.y }; };
-  const boxOf = (n: SNode): Rect => { const a = absOf(n); const { w, h } = sizeOf(n); return rect(a.x, a.y, w, h); };
+  const boxOf = (n: SNode): Rect => { const a = absOf(n); const { w, h } = drawSize(n, sizeOf(n), ratioAtom.get()); return rect(a.x, a.y, w, h); };
   const linkOf = (l: SLink): BoardLink => ({ id: l.id, from: l.from, to: l.to, meta: l.meta });
   const ordered = () => { doc(); const s = S(); return s.order.map((id) => s.nodes[id]).filter(Boolean); };
   const sortedLinks = () => { doc(); return Object.values(S().links).sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0)); };

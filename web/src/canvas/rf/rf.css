@@ -26,7 +26,7 @@
 .cv-rf .react-flow__nodesselection-rect{background:transparent;border-color:transparent}
 .cv-rf .react-flow__resize-control.cv-rf-line{border-color:rgba(255,122,26,.55)}
 .cv-rf .react-flow__resize-control.cv-rf-line-quiet{border-color:transparent}
-.cv-rf .react-flow__resize-control.handle.cv-rf-handle-dot{width:calc(9px * max(1, var(--tl-scale,1)));height:calc(9px * max(1, var(--tl-scale,1)));border-radius:2px;background:#F7F7F8;border:1.5px solid var(--accent,#FF7A1A);box-shadow:0 1px 3px rgba(0,0,0,.5)}
+.cv-rf .react-flow__resize-control.handle.cv-rf-handle-dot{width:calc(9px * min(1.5, max(1, var(--tl-scale,1))));height:calc(9px * min(1.5, max(1, var(--tl-scale,1))));border-radius:2px;background:#F7F7F8;border:1.5px solid var(--accent,#FF7A1A);box-shadow:0 1px 3px rgba(0,0,0,.5)}
 .cv-rf .react-flow__resize-control.handle.cv-rf-handle-dot:not(.top.left):not(.top.right):not(.bottom.left):not(.bottom.right){display:none}
 
 /* sticky notes: tldraw's paper colours */
