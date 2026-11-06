@@ -26,6 +26,7 @@ import { bflSpec, b64 } from '../providers/directSpecs.js';
 import { LAYOUT_BOXES_LOCAL_ONLY, withFlux3BoxRows } from '../shared/layoutBoxes.js';
 import { DIRECT_ROUTES, NATIVE_DIRECT } from './directRoutes.js';
 import { SUNRA_ROUTES, KIE_ROUTES } from './aggregatorRoutes.js';
+import { runpodRouteOf } from './runpodRoutes.js';
 import { DEPLOY_ROUTES, isDeployRouteId, deployRoute } from './deployRoutes.js';
 import { charswapCloudIssue } from '../comfy/h3CharSwapCloud.js';
 import { places } from '../services/places.js';
@@ -355,7 +356,9 @@ export function allRoutesFor(modelId: string, tool?: { id: string; app?: any } |
   // Tool-scoped extra routes (RouteDef.tools) are listed on their tools only; one that replacesNative stands in for the native route there.
   const extra = (EXTRA_ROUTES[modelId] ?? []).filter((r) => !r.tools || !tk.length || r.tools.some((t) => tk.includes(t)));
   const dropNative = extra.some((r) => r.replacesNative && (!r.tools ? true : tk.length > 0 && r.tools.some((t) => tk.includes(t)))); // no tools = everywhere (H3 CrossView: deployment only)
-  const all = [...(dropNative ? [] : [native]), ...extra, ...(tk.length ? twinRoutes(modelId, tk) : [])];
+  const runpod = runpodRouteOf(native); // RunPod (place-runpod, installable): the same image graph on your endpoint; hidden until its key and Endpoint ID are set
+  const onTool = (r: RouteDef) => !r.tools || !tk.length || r.tools.some((t) => tk.includes(t));
+  const all = [...(dropNative ? [] : [native]), ...extra, ...(runpod && onTool(runpod) ? [runpod] : []), ...(tk.length ? twinRoutes(modelId, tk) : [])];
   for (const r of all) if (!/h3|wan22-5b|ltx25-video/.test(r.modelId) && !r.caps?.videoCaps) { // H3 keeps tools/h3/videoCaps.ts
     const vc = ROUTE_VIDEO_CAPS[r.routeId] ?? (r.kind === 'local' && LOCAL_VIDEO_MODELS.has(r.modelId) ? localVideoCaps(r.routeId, String(r.endpoint)) : null); if (vc) r.caps = { ...(r.caps ?? {}), videoCaps: vc }; }
   return all;

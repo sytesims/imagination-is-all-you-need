@@ -21,6 +21,8 @@ export const BUILTIN_PLUGINS: Record<string, () => Promise<{ default: PluginDef<
   'place-sunra': () => import('./plugins-builtin/place-sunra.js'),
   /** Installable: not in profiles/desktop.yml; add `- place-kie` to your profile to turn it on (docs/PROVIDERS-AND-MODELS.md). */
   'place-kie': () => import('./plugins-builtin/place-kie.js'),
+  /** Installable: not in profiles/desktop.yml; add `- place-runpod` to your profile to run our ComfyUI workflows on your RunPod endpoint (docs/PROVIDERS-AND-MODELS.md). */
+  'place-runpod': () => import('./plugins-builtin/place-runpod.js'),
   'place-direct': () => import('./plugins-builtin/place-direct.js'),
   'place-sample': () => import('./plugins-builtin/place-sample.js'),
   ...Object.fromEntries((['studio-video', 'studio-image', 'studio-audio', 'studio-3d', 'studio-edit', 'apps-gallery'] as const)

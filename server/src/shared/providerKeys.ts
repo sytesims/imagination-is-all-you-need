@@ -13,6 +13,7 @@ export const PROVIDER_ACCOUNTS: ProviderAccount[] = [
   { id: 'replicate', name: 'Replicate', vars: ['OPENHIGGSFIELD_REPLICATE_API_TOKEN', 'REPLICATE_API_TOKEN'] },
   { id: 'sunra', name: 'Sunra', vars: ['OPENHIGGSFIELD_SUNRA_KEY'] },
   { id: 'kie', name: 'kie.ai', vars: ['OPENHIGGSFIELD_KIE_KEY'] },
+  { id: 'runpod', name: 'RunPod', vars: ['OPENHIGGSFIELD_RUNPOD_API_KEY', 'RUNPOD_API_KEY'] },
   { id: 'openai', name: 'OpenAI', vars: ['OPENHIGGSFIELD_OPENAI_API_KEY'] },
   { id: 'google', name: 'Google Gemini API', vars: ['OPENHIGGSFIELD_GEMINI_API_KEY'] },
   { id: 'bfl', name: 'Black Forest Labs', vars: ['OPENHIGGSFIELD_BFL_API_KEY'] },

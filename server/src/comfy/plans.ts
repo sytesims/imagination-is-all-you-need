@@ -347,6 +347,9 @@ function depthMap(job: Job): Plan {
 }
 /** Edit jobs whose output takes the app's aspect instead of the input photo's shape (where the graph allows it): Character Sheet. */
 const CHARACTER_SHEET_TOOLS = new Set(['app-character-sheet', 'app-ad-pack']); // Ad Pack (2026-10-31): the platform's shape, not the product photo's
+/** The image models with a ComfyUI plan here (Create Image): what place-runpod runs on your RunPod endpoint (routing/runpodRoutes.ts). A function, so a
+ *  module that loads before this one reads it only when asked. */
+export const imagePlanProviders = (): string[] => Object.keys(IMAGE_WF);
 const IMAGE_WF: Record<string, Record<string, string>> = {
   'comfy-qwen21': { generate: 'create-image-qwen21-t2i', edit: 'create-image-qwen21-edit', multiref: 'create-image-qwen21-edit' /* 2 images: the template's two inputs */ },
   'comfy-qwen21-turbo': { generate: 'create-image-qwen21-turbo-t2i', edit: 'create-image-qwen21-turbo-edit' /* official Turbo templates: 8 steps, edit takes ONE image (no multiref) */ },

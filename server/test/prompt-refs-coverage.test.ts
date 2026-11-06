@@ -209,6 +209,8 @@ const SENDERS: Record<string, { calls?: RegExp; why: string }> = {
   'plugins-builtin/place-comfy-router.ts': { why: 'Comfy Router place plugin: runs routing/routerRun.ts (bodies from routeRequest); cancel only' },
   'providers/fal.ts': { why: 'fal transport (falImageInput is called only from routeRequest)' }, 'providers/replicate.ts': { why: 'Replicate transport (replicateImageInput only from routeRequest)' },
   'providers/sunra.ts': { why: 'Sunra transport: bodies are built in routing/aggregatorRoutes.ts, called from routeRequest' }, 'providers/kie.ts': { why: 'kie.ai transport: bodies are built in routing/aggregatorRoutes.ts, called from routeRequest' },
+  'providers/runpod.ts': { why: 'RunPod transport (worker-comfyui): sends the graph it is given; inputs through handOff' },
+  'plugins-builtin/place-runpod.ts': { calls: /buildPlan\(/, why: 'RunPod place plugin: runs comfy/runNative.ts with graphs from comfy/plans.ts buildPlan on your endpoint' },
   'providers/byteplus.ts': { why: 'BytePlus lab body builders (route.direct.build), called only from routeRequest' }, 'providers/gemini.ts': { why: 'Gemini lab body builders, called only from routeRequest' },
   'providers/openai.ts': { why: 'OpenAI lab body builders, called only from routeRequest' }, 'hostedRequests.ts': { why: 'lab body builders (route.direct.build / route.request), called only from routeRequest' },
   'cinema/enhance.ts': { why: 'prompt enhancer (a local LLM you run): rewrites the words before the job; the job then goes through the rewrite like any other' },
