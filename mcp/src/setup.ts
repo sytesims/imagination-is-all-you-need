@@ -133,8 +133,8 @@ async function chatgpt(o: Opts) {
     servers: [{ url: server }], paths, components: spec.components ?? {} };
   write(o, path.join(out, 'openapi-action.json'), JSON.stringify(action, null, 2) + '\n');
   const notes = [`ChatGPT: create a custom GPT -> Instructions: paste ${path.join(out, 'instructions.md')}; Actions -> Import schema: paste ${path.join(out, 'openapi-action.json')} (${Object.keys(paths).length} paths).`];
-  if (o.publicUrl) { let h = o.publicUrl; try { h = new URL(o.publicUrl).host; } catch { /* as given */ } notes.push(`The app answers only on localhost: start it with OPENHIGGSFIELD_ALLOWED_HOSTS=${h} so your tunnel can reach it.`); }
-  if (!o.publicUrl) notes.push(`WARNING: the action server is ${server}; ChatGPT can't reach localhost. Re-run with --public-url https://<your tunnel> (add auth; the project is private).`);
+  notes.push(`The app has no login, so it answers only on this computer. Don't tunnel the app (:8787): a public host only serves shared results and refuses the API${o.publicUrl ? `, so the action server ${server} won't run jobs` : ''}.`);
+  notes.push('To use it from ChatGPT, add the MCP server as a connector instead (developer mode): tunnel only http://127.0.0.1:8788/mcp, behind the tunnel\'s access control, add the tunnel host to OPENHIGGSFIELD_ALLOWED_HOSTS, keep OPENHIGGSFIELD_MCP_SPEND=ask or block. See agent-skills/README.md.');
   return notes;
 }
 
