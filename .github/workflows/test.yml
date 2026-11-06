@@ -11,9 +11,9 @@ name: tests
 # Full keyless/mock suite for the public repository, separate from the three-OS startup smoke.
 on:
   push:
-    branches: [main]
+    branches: [main, v2]
   pull_request:
-    branches: [main]
+    branches: [main, v2]
   schedule:
     - cron: '0 3 * * *' # nightly full run on main, so there is a complete run even on busy days
   workflow_dispatch:
