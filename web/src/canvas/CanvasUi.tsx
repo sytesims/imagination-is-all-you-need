@@ -16,6 +16,7 @@ import { createNode } from './agentApi';
 import { FlowIcon } from './GenCardShape';
 import { OrbitMark } from '../shared/OrbitMark';
 import { tip } from '../shared/Tooltip';
+import { SAMPLE_SITE } from '../shared/sampleSite';
 import { useToast } from '../shared/Toast';
 import { uploadMedia } from '../shared/batch1';
 import { useCatalog } from './catalog';
@@ -123,7 +124,8 @@ export function EmptyHint({ onOpenAssets }: { onOpenAssets: () => void }) {
   if (!empty) return null;
   return <div className={`cv-empty${tool !== 'select' && tool !== 'hand' ? ' quiet' : ''}`} data-testid="cv-empty">
     <OrbitMark size={40} className="cv-empty-mark" />
-    <p>An endless board for your ideas. Tell the agent what to make, add a sticky note, or press <kbd>G</kbd> for a card.</p>
+    {SAMPLE_SITE ? <p>An endless board for your ideas. Press <kbd>G</kbd> for a card, write a prompt and press Go for a sample, or add a sticky note.</p>
+      : <p>An endless board for your ideas. Tell the agent what to make, add a sticky note, or press <kbd>G</kbd> for a card.</p>}
     <button type="button" className="cv-empty-btn" onClick={onOpenAssets} data-testid="cv-empty-assets">Open Assets</button>
   </div>;
 }

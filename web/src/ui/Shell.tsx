@@ -1,4 +1,5 @@
 import { tip } from '../shared/Tooltip';
+import { SAMPLE_SITE, INSTALL_URL } from '../shared/sampleSite';
 import { useRouting, type ToolModel } from '../shared/models';
 import { OpenWeightsOnlyPill } from '../shared/OpenWeights';
 import { useLedger } from '../shared/balance';
@@ -94,16 +95,18 @@ const Pill = ({ b }: { b: Badge }) => <span className={`nb nb-${b}`}>{b === 'new
 const PROMO_KEY = 'ohf:promo:v2';
 const promoDismissed = () => { try { return localStorage.getItem(PROMO_KEY) === '1'; } catch { return false; } };
 export function AnnounceBar() {
-  const [state, setState] = useState<'open' | 'closing' | 'gone'>(() => promoDismissed() ? 'gone' : 'open'); const el = useRef<HTMLDivElement>(null);
+  const [state, setState] = useState<'open' | 'closing' | 'gone'>(() => !SAMPLE_SITE && promoDismissed() ? 'gone' : 'open'); const el = useRef<HTMLDivElement>(null);
   if (state === 'gone') return null;
   const dismiss = () => { try { localStorage.setItem(PROMO_KEY, '1'); } catch { /* not saved: it comes back next visit */ }
     const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduce || !el.current) { setState('gone'); return; }
     const s = el.current.style; s.height = `${el.current.offsetHeight}px`; void el.current.offsetHeight; s.height = '0px'; setState('closing'); setTimeout(() => setState('gone'), 320); };
   return <div ref={el} className={`promo-strip${state === 'closing' ? ' closing' : ''}`} role="region" aria-label="About Imagination Is All You Need" data-testid="promo-strip">
-    <p className="promo-line"><span className="promo-text">If you can imagine it, you can make it here. Open source and yours to keep.</span>{' '}
-      <Link to={REPO_URL} className="promo-link" data-testid="promo-github">GitHub →</Link></p>
-    <button type="button" className="promo-x" aria-label="Dismiss" onClick={dismiss} data-testid="promo-dismiss"><svg aria-hidden width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M3.5 3.5l7 7M10.5 3.5l-7 7" /></svg></button>
+    {SAMPLE_SITE ? <p className="promo-line"><span className="promo-text"><b>Sample mode.</b> Click through the real app. Nothing is generated here. Install it to make your own.</span>{' '}
+      <a href={INSTALL_URL} className="promo-link" data-testid="promo-install">Install the app →</a></p>
+    : <p className="promo-line"><span className="promo-text">If you can imagine it, you can make it here. Open source and yours to keep.</span>{' '}
+      <Link to={REPO_URL} className="promo-link" data-testid="promo-github">GitHub →</Link></p>}
+    {!SAMPLE_SITE && <button type="button" className="promo-x" aria-label="Dismiss" onClick={dismiss} data-testid="promo-dismiss"><svg aria-hidden width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M3.5 3.5l7 7M10.5 3.5l-7 7" /></svg></button>}
   </div>;
 }
 

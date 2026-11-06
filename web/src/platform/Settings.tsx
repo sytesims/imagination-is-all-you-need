@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { SAMPLE_SITE, SETTINGS_NOTE } from '../shared/sampleSite';
+import { SampleSiteNote } from '../shared/SampleMode';
 import { getLearned, resetLearned } from '../shared/hardware';
 import { isDemoMode, jobPromptsOff, setJobPromptsOff } from '../shared/quietMode';
 import { askConfirm } from '../shared/Dialog';
@@ -87,6 +89,7 @@ export default function Settings() {
       </nav>
       </div>
       <div className="st-main">
+        {SAMPLE_SITE && tab !== 'connections' && <SampleSiteNote testId="settings-sample-note">{SETTINGS_NOTE}</SampleSiteNote>}
         {tab === 'profile' && <ProfileSettings />}
         {tab === 'connections' && <Connections />}
         {tab === 'gpu' && <GpuModels />}

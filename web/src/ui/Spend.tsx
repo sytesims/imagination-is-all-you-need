@@ -7,6 +7,7 @@
  *  GET /api/spend/overview, /api/spend, /api/spend/summary, /api/accounts, GET/PUT /api/settings/billing. Team mode shows the credits
  *  Usage page instead (SpendOrUsage). The maths (accuracy, tile sizes, tips) lives in server/src/shared/spendInsights.ts. */
 import { Notice } from '../shared/Notice';
+import { SAMPLE_OUTPUT } from '../shared/sampleSite';
 import { InlineError } from '../shared/InlineError';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ToolInfo } from '../api';
@@ -341,7 +342,7 @@ function RunsTab({ init, tools, toolName, tick }: { init: RunsFilter; tools: Too
               <small title={String(r.modelName ?? r.model ?? '')}>{cleanModelName(r, String(r.modelName ?? r.model ?? ''))}</small></span></Link></td>
             <td className="spg-when">{new Date(r.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
             <td data-testid="spend-ran-on">{ranOnOf(r) || '—'}</td>
-            <td>{r.billedTo === 'local' ? 'Nobody (free)' : r.billedToName}{r.demo && <span className="sp-tag" title="Sample output, nothing billed">Sample</span>}</td>
+            <td>{r.billedTo === 'local' ? 'Nobody (free)' : r.billedToName}{r.demo && <span className="sp-tag" title={SAMPLE_OUTPUT}>Sample</span>}</td>
             <td className="num" title={r.unitLabel && r.estUnits != null ? `${r.estUnits} ${r.unitLabel}` : undefined}>{local ? <span className="free">Free</span> : `≈ ${fmtUsd(r.estUsd)}`}</td>
             <td className="num">{r.actualUsd != null ? <>{fmtUsd(r.actualUsd)}{h && <small className={`spg-acc ${h.tone}`} data-testid="spend-acc">{h.text}</small>}</> : <span className="helper">{local ? '—' : 'Not reported'}</span>}</td>
             <td><span className={`sp-st sp-${r.status}`}>{STATUS[r.status] ?? r.status}</span>{failedCharged && <small className="spg-acc over" title={RULE_TEXT[r.failureRule as FailureRule]}>counted {fmtUsd(r.countedUsd)}</small>}</td></tr>; })}</tbody></table></div>}

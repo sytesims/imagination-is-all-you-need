@@ -1,0 +1,17 @@
+// try.iiayn.app: the app in sample mode for people who want to click through it before installing (wrangler 4).
+// Static files only, no Worker code: `npm run try:build` writes ./public (gitignored), deep links get the app's page (SPA fallback).
+// Preview: npx wrangler dev --config site-try/wrangler.jsonc --port 5085     Deploy: only with the owner's OK (wrangler deploy --config site-try/wrangler.jsonc)
+// No account id here on purpose: wrangler picks the account at deploy time.
+{
+  "name": "iiayn-try",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./public",
+    "not_found_handling": "single-page-application"
+  },
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": { "enabled": false }
+  // The custom domain (try.iiayn.app, on the iiayn.app zone) is attached at the first deploy, with the owner's OK:
+  // ,"routes": [{ "pattern": "try.iiayn.app", "custom_domain": true }]
+}

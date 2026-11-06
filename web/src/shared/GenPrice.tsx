@@ -7,6 +7,7 @@
  *  Nothing known yet → an empty slot (no '·', no layout jump). Never a made-up number. The token is solid ink on the accent: no opacity and
  *  no fade-in (Safari composited the old translucent, animated price into a muddy orange). data-est / data-billed say what it is. */
 import { demoRealCredits, demoPriceTitle } from './DemoPrice';
+import { SAMPLE_OUTPUT } from './sampleSite';
 import { useBilling, modeOf, priceToken, costTitle, costShort, demoRealText, fmtUsd, ledgerUsd, type Cost } from './billing';
 import { keyGated, keyGatePrice } from './quote';
 
@@ -18,7 +19,7 @@ export function priceTitle(q: any, b: ReturnType<typeof useBilling>, o: { demo?:
 function priceTitleOf(q: any, b: ReturnType<typeof useBilling>, o: { demo?: boolean; free?: boolean; credits?: number | null; calls?: number }): string | undefined {
   const own = modeOf(b, q) === 'own-accounts'; const cost: Cost | null = q?.cost && typeof q.cost === 'object' ? q.cost : null; const calls = o.calls ?? 1;
   if (o.demo) { const n = demoRealCredits(q); if (!own) return demoPriceTitle(n); const real = demoRealText(cost, b?.comfyCreditsPerUsd) ?? (n != null ? `≈ ${fmtUsd(n / 100)}` : null);
-    return `Sample output, nothing billed.${real ? ` A real run costs ${real}${cost ? ` on your ${cost.billedToName} account` : ''} once a key is added; an estimate.` : ''}`; }
+    return `${SAMPLE_OUTPUT}${real ? ` A real run costs ${real}${cost ? ` on your ${cost.billedToName} account` : ''} once a key is added; an estimate.` : ''}`; }
   if (own && cost) return `${costShort(cost, calls)}. ${costTitle(cost)}`;
   if (o.free) return own ? 'Runs locally: nothing is billed.' : 'Free: nothing is charged.';
   if (o.credits != null) return own ? `About ${fmtUsd((o.credits * calls) / 100)}, an estimate.` : `${ledgerUsd(o.credits * calls)} from the team balance${calls > 1 ? ` (${calls} calls)` : ''}.`;

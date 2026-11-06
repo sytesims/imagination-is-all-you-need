@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { SAMPLE_OUTPUT } from './sampleSite';
 import { downloadIntentOf } from './hardware';
 import { scaleText } from './scaleText';
 import { localOnlyGate } from '../../../server/src/shared/preflight';
@@ -66,7 +67,7 @@ export const unpricedReason = (q: any): string | null => {
 export const demoMessage = (q: any): string | null => {
   if (!q || q.demo !== true) return null;
   const m = [q.demoMessage, q.demoNotice?.message].find(x => typeof x === 'string' && x.trim());
-  return m ? String(m).trim() : 'Sample output, nothing billed.'; // B27: the server's words verbatim; this is only for a missing field
+  return m ? String(m).trim() : SAMPLE_OUTPUT; // B27: the server's words verbatim; this is only for a missing field
 };
 /** B27: a server sentence 'Lead: rest' split so the lead can be bold (text unchanged). [null, text] when there is no short lead. */
 export const splitLead = (t: string | null | undefined): [string | null, string] => { const s = String(t ?? '').trim(); const m = /^([^:.]{2,40}):\s+([\s\S]*)$/.exec(s); return m ? [m[1], m[2]] : [null, s]; };

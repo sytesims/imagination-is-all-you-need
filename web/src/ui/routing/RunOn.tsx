@@ -9,6 +9,7 @@
  */
 import { Notice } from '../../shared/Notice';
 import { tip } from '../../shared/Tooltip';
+import { READY_WORD } from '../../shared/sampleSite';
 import { forwardRef, useRef, useState, type RefObject } from 'react';
 import { type PopPlacement } from '../../shared/Popover';
 import { BarPopover } from '../../shared/BarPop';
@@ -96,7 +97,7 @@ const rule = (r: FailureRule | undefined) => (r ? RULE_TEXT[r].replace(/^./, c =
 /** One row's state word and tone. A row that isn't ready stays pickable (the chip then shows the fix); greyed by tone 'off'/'warn'. */
 function rowState(r: RunOnRow): { word: string; tone: 'ok' | 'warn' | 'off'; dim: boolean } {
   switch (r.status) {
-    case 'ready': return r.here?.untested ? { word: 'Not tested here yet', tone: 'warn', dim: false } /* item 5: a platform variant nobody has run on this kind of computer */ : r.here?.slow ? { word: SLOW_HERE, tone: 'warn', dim: false } /* runs, but slowly on this computer (the mini line says how long) */ : { word: 'Ready', tone: 'ok', dim: false };
+    case 'ready': return r.here?.untested ? { word: 'Not tested here yet', tone: 'warn', dim: false } /* item 5: a platform variant nobody has run on this kind of computer */ : r.here?.slow ? { word: SLOW_HERE, tone: 'warn', dim: false } /* runs, but slowly on this computer (the mini line says how long) */ : { word: READY_WORD, tone: 'ok', dim: false };
     case 'sample': return { word: 'Sample', tone: 'warn', dim: false };
     case 'needs-key': return { word: 'Needs a key', tone: 'warn', dim: true };
     case 'off': return { word: 'Off', tone: 'off', dim: true };
