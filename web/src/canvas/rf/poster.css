@@ -21,7 +21,7 @@
 .pc-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:#0B0C0D}
 .pc-live{z-index:1}
 .pc-noimg,.pc-blank{position:absolute;inset:0;background:radial-gradient(120% 90% at 20% 0%,color-mix(in srgb,var(--pc-k) 18%,transparent),transparent 60%),#121417}
-.pc-blur{position:absolute;inset:-12%;background-size:cover;background-position:center;filter:blur(18px) brightness(.5) saturate(.85)}
+.pc-blur{position:absolute;inset:-12%;background-size:cover;background-position:center;filter:blur(18px) brightness(.62) saturate(.9)}
 .pc-outdated .pc-img{filter:saturate(.55) brightness(.92)}
 
 /* T1 soft scrims: light, short, only where the text sits */

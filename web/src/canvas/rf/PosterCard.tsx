@@ -179,7 +179,7 @@ export const PosterCard = memo(function PosterCard({ id, selected, w }: { id: No
   const quote = gen ? (draft ? qDraft : p.quote) : null; const calls = gen && !draft && Number(p.quote?.runs) > 1 ? Number(p.quote.runs) : 1;
   const priceText = n.type === RESULT_TYPE ? String(p.price || '') || null : null;
   const picture = !!m && state !== 'draft';
-  const hotNow = hot || selected; const lab = hotNow || !!dragKind;
+  const hotNow = hot || selected; const lab = hotNow || role === 'src'; /* while a link is dragged only the ports that can take it show (poster.css) */
   const enter = () => { window.clearTimeout(hotT.current); setHot(true); }; const leave = () => { window.clearTimeout(hotT.current); hotT.current = window.setTimeout(() => setHot(false), 150); };
   const cls = `pc pc-${state} pc-m-${medium}${selected ? ' sel' : ''}${hotNow ? ' hot' : ''}${lab ? ' labels' : ''}${picture ? ' has-pic' : ''}${role ? ` r-${role}` : ''}`;
   const shot = String((n.meta as any)?.name ?? '').trim();

@@ -148,7 +148,7 @@ function ListenHint({ boardId, name, onSetup }: { boardId: string; name: string;
  *  it; then the board glides to the cards. */
 function PickEdgeChip({ board, ids, who }: { board: BoardApi; ids: string[]; who: string }) {
   const off = useValue('pick offscreen', () => { const bs = ids.map((id) => board.boundsOf(id as any)).filter(Boolean) as any[]; return pickOffscreen(bs, board.viewportBounds()); }, [board, ids.join(',')]);
-  const box = useValue('pick board box', () => { board.camera(); const r = board.container().getBoundingClientRect(); return { left: r.left + r.width / 2, top: r.top + 14 }; }, [board]);
+  const box = useValue('pick board box', () => { board.camera(); const r = board.container().getBoundingClientRect(); return { left: r.left + r.width / 2, top: r.top + 72 }; }, [board]); /* under the board's top bar */
   if (!off) return null;
   const go = () => { const bs = ids.map((id) => board.boundsOf(id as any)).filter(Boolean) as any[]; if (!bs.length) return;
     const x = Math.min(...bs.map((b) => b.minX)), y = Math.min(...bs.map((b) => b.minY)); board.fitBounds({ x, y, w: Math.max(...bs.map((b) => b.maxX)) - x, h: Math.max(...bs.map((b) => b.maxY)) - y }, { duration: 420, zoom: Math.max(0.5, board.zoom()) }); };
@@ -530,7 +530,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
             if (e.type === 'message') {
               if (Array.isArray(e.meta?.plan)) return <div key={e.id} className="ap-group"><Message e={e} who={who} live={fresh.current.has(e.seq)} />
                 <PlanCard title={String(e.meta.title ?? 'Plan')} steps={e.meta.plan} done={plan?.seq === e.seq ? plan.done : e.meta.plan.length} finished={plan?.seq === e.seq ? plan.finished : true} live={plan?.seq === e.seq && demo.running} /></div>;
-              if (e.meta?.pick?.cardIds) return <div key={e.id} className="ap-group"><Message e={e} who={who} live={fresh.current.has(e.seq)} /><PickCard e={e} pick={pick} board={board} onPick={(id) => void choose(id)} onFocus={focus} onGlow={glowAt} /></div>;
+              if (e.meta?.pick?.cardIds) return <div key={e.id} className="ap-group"><Message e={e} who={who} live={fresh.current.has(e.seq)} /><PickCard e={e} pick={pick} board={board} onPick={(id) => void choose(id)} onFocus={focus} onGlow={(id) => { if (!board) return; const b = board.boundsOf(id as any); if (b && !pickOffscreen([b], board.viewportBounds())) glowAt(id); }} /></div>;
               if (e.meta?.confirm?.id && confirm?.id === e.meta.confirm.id) return <div key={e.id} className="ap-group"><Message e={e} who={who} live={fresh.current.has(e.seq)} /><ConfirmCard label={confirm!.label} busy={sending} onOk={() => void send(confirm!.label, undefined, confirm!.id)} /></div>;
               if (suggest && e === last) return <div key={e.id} className="ap-group"><Message e={e} who={who} live={fresh.current.has(e.seq)} />
                 <button type="button" className="ap-chip ap-chip-main" disabled={sending} onClick={() => pickStarter(suggest.id)} data-testid="agent-suggest">Want to see “{suggest.label}”?</button></div>;

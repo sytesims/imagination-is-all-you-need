@@ -252,7 +252,7 @@ function Inspector({ id, head }: { id: NodeId; head: HeadFn }) {
     <div className="cp-body cpi" ref={box}>
       {spec && <section className="cpi-sec"><h4 className="cpi-h">Inputs</h4>
         {spec.slots.map((sl: GenSlot) => { const got = bySlot[sl.name] ?? []; const first = got[0];
-          return <div key={sl.name} className={`cpi-row${got.length ? '' : ' empty'}`} data-testid={`cpi-in-${sl.name}`}>{SPAN(sl.accept)}
+          return <div key={sl.name} className={`cpi-row${got.length ? '' : ' is-empty'}`} data-testid={`cpi-in-${sl.name}`}>{SPAN(sl.accept)}
             {first ? <span className="cpi-th">{first.poster ? <img src={gridSrc(first.poster, 80)} alt="" /> : <i />}</span> : null}
             <span className="cpi-n"><b>{sl.label}{!sl.required && !got.length && <em> optional</em>}</b>
               <small>{first ? `from “${srcName(first)}”${got.length > 1 ? ` · ${got.length} pictures` : first.shapeId ? '' : ` · ${first.label}`}` : sl.hint || sl.missing}</small></span>
@@ -279,7 +279,7 @@ function Inspector({ id, head }: { id: NodeId; head: HeadFn }) {
       {v.status === 'failed' && <section className="cpi-sec"><h4 className="cpi-h">Last run</h4><p className="cp-cap cpi-err">{p.error || 'This run didn’t work.'}</p></section>}
     </div>
     <footer className="cp-foot cpi-foot">
-      <small className="cpi-spent">{p.runs > 0 ? `${p.runs} run${p.runs === 1 ? '' : 's'} here` : v.takes.length ? `${v.takes.length} take${v.takes.length === 1 ? '' : 's'} here` : 'Not run yet'}</small>
+      {!v.draft && <small className="cpi-spent">{p.runs > 0 ? `${p.runs} run${p.runs === 1 ? '' : 's'} here` : v.takes.length ? `${v.takes.length} take${v.takes.length === 1 ? '' : 's'} here` : 'Not run yet'}</small>}
       {v.draft && spec ? <DockGenerate toolId={spec.tool.id} engine={spec.provider} quote={v.q} label={spec.generateLabel} busy={busy} problems={[]} missing={missing} pfOpen={false} genRef={genRef} onClick={() => runCard(id)} workflowId={spec.flow.id} className="cp-go cpi-go" variant="node" testId="cpi-generate" />
         : <><span className="cpi-price"><PriceSuffix q={v.q ?? p.quote} />{' '}a run</span>
           <button type="button" className="cp-btn cp-btn-main cpi-again" disabled={busy || v.status === 'running'} data-testid="cpi-run-again" onClick={() => void run()}><RetryIcon size={14} /><span>{v.status === 'running' ? 'Running…' : busy ? 'Starting…' : 'Run again'}</span></button></>}
