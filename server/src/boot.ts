@@ -33,6 +33,7 @@ export const BUILTIN_PLUGINS: Record<string, () => Promise<{ default: PluginDef<
   'agent-budgets': () => import('./plugins-builtin/agent-budgets.js'),
   'billing-team-mode': () => import('./plugins-builtin/billing-team-mode.js'),
   'hosted-grant': () => import('./plugins-builtin/hosted-grant.js'),
+  'comfy-featured': () => import('./plugins-builtin/comfy-featured.js'),
   'eta-learning': () => import('./plugins-builtin/eta-learning.js'),
   webhooks: () => import('./plugins-builtin/webhooks.js'),
   ...Object.fromEntries(FEATURE_IDS.map((id) => [id, () => import('./plugins-builtin/features.js').then((m) => ({ default: m.FEATURE_PLUGINS[id] }))])),

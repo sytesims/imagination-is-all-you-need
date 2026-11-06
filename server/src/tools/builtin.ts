@@ -33,7 +33,9 @@ import { footageFxTool } from './footageFx.js';
 import { finishTool } from './finish.js';
 import { promptEditTool } from './promptEdit.js';
 import { twoPersonSwapTool } from './twoPersonSwap.js';
-import './comfyFeatured.js'; // official Comfy templates (2026-10-27): models on tools above (Gemini Omni 1.1 Flash, Topaz Bloom 2, Wan Animate 2…). Model wiring, not tools: it stays loaded with the tool modules
+import { wireComfyFeatured } from './comfyFeatured.js'; // official Comfy templates (2026-10-27): models on tools above (Gemini Omni 1.1 Flash, Topaz Bloom 2, Wan Animate 2…)
+import { booting } from '../kernel/booting.js';
+if (!booting()) wireComfyFeatured(); // scripts and tests; a booted server wires them in plugin comfy-featured (first in the profile)
 
 export interface ToolEntry { tool: ToolDef; order: number; aliases?: string[] }
 export type StudioId = 'studio-video' | 'studio-image' | 'studio-audio' | 'studio-3d' | 'studio-edit' | 'apps-gallery';

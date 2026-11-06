@@ -1,6 +1,7 @@
 /**
  * Official Comfy templates from comfy.org/workflows "Most popular" (2026-10-27): the ones the app was missing, wired as models on the tabs
- * that already do the job. One file, so the wiring sits in one place (imported once, tools/registry.ts, after every tool is built).
+ * that already do the job. One file, so the wiring sits in one place: wireComfyFeatured(), run once by plugin comfy-featured (or at import by
+ * tools/builtin.ts when nothing boots: scripts and tests).
  *  - Gemini Omni 1.1 Flash · Comfy Cloud (Create Video: text, image, start + end frame): the GeminiVideoOmniV2 partner node (comfy/geminiOmniCloud.ts).
  *  - Topaz Bloom 2 · Comfy Cloud (Image › Upscale): the TopazImageEnhanceV2 partner node (comfy/topazImageCloud.ts); same model card as the fal place.
  *  - Wan Animate 2 · Comfy Cloud (Video › Motion Control): open weights, core nodes (comfy/wanAnimate2Cloud.ts); held until its GPU price is measured.
@@ -35,6 +36,13 @@ import { WA2_PROVIDER, WA2_ROUTE, WA2_NAME, WA2_DOC, WA2_GRAPH_FILE, WA2_REQUIRE
 const D = '2026-10-27';
 const stages = (label: string): [string, string][] => [['uploading', 'Uploading'], ['submitted', `Submitted to ${label}`], ['rendering', `${label} rendering`], ['downloading', 'Downloading result']];
 
+/** Billed seconds: what the windows render (3.33 s each at 24 fps), not the clip's own length. */
+export const wa2BillSeconds = (i: Record<string, any>) => Math.round((wa2Windows(Number(i.duration) || 3) * (WA2_WINDOW - 1) / WA2_FPS) * 100) / 100;
+let wired = false;
+/** The wiring (plugin comfy-featured, mounted first in the profile; or, in code that doesn't boot, tools/builtin.ts at import). Once only: it
+ *  writes into the shared model tables, and can't be taken back while the server runs (leave the plugin out of the profile to go without). */
+export function wireComfyFeatured() {
+if (wired) return; wired = true;
 // ---------- Gemini Omni 1.1 Flash · Comfy Cloud (Create Video) ----------
 registerProvider({ id: OMNI_PROVIDER, name: `${OMNI_NAME} · Comfy Cloud`, kind: 'hosted', license: 'proprietary', licenseUrl: 'https://ai.google.dev/gemini-api/terms', docUrl: OMNI_DOC,
   via: `Comfy partner node ${OMNI_NODE} (model "Omni Flash 1.1") on Comfy Cloud, Comfy key in extra_data; graph from the official template ${OMNI_TEMPLATE_URL} (comfy/geminiOmniCloud.ts); sample output without a key`,
@@ -77,8 +85,6 @@ registerProvider({ id: WA2_PROVIDER, name: `${WA2_NAME} · Comfy Cloud`, kind: '
 CLOUD_WORKFLOWS[WA2_ROUTE] = { routeId: WA2_ROUTE, provider: WA2_PROVIDER, standalone: true, target: 'cloud', label: `${WA2_NAME} · Comfy Cloud`,
   graphs: [WA2_GRAPH_FILE], requires: WA2_REQUIRES, plan: wa2CloudPlan, prepare: prepareWa2Cloud };
 CLOUD_RUNNER_ROUTES.add(WA2_ROUTE);
-/** Billed seconds: what the windows render (3.33 s each at 24 fps), not the clip's own length. */
-export const wa2BillSeconds = (i: Record<string, any>) => Math.round((wa2Windows(Number(i.duration) || 3) * (WA2_WINDOW - 1) / WA2_FPS) * 100) / 100;
 NATIVE_DIRECT[WA2_PROVIDER] = { label: 'Comfy Cloud', sourceUrl: WA2_DOC, checkedAt: D, typicalLatencySec: 300, latencyEstimated: true, latencySource: 'estimated', output: 'video', unavailableFor: wa2Issue,
   priceInput: (i: Record<string, any>) => ({ ...i, duration: wa2BillSeconds(i), resolution: '480p' }) } as any;
 VIDEO_LIMITS[WA2_PROVIDER] = { maxResolution: '480p', resolutions: ['480p'], defaultSeconds: 4, minSeconds: 4, maxSeconds: WA2_MAX_SECONDS, durationStep: 1, durations: Array.from({ length: WA2_MAX_SECONDS - 3 }, (_, k) => k + 4),
@@ -155,3 +161,4 @@ MODEL_CATALOG[F3M_PROVIDER] = { name: F3M_NAME, family: 'FLUX', description: 'Bl
   registerModelInfo(K4_PROVIDER, { name: K4_NAME, speed: 'balanced', quality: 'best', hint: 'Text, frames or up to 10 references to video with stereo sound · 3–30 s', badges: ['premium'] } as any);
   MODEL_CATALOG[K4_PROVIDER] = { name: K4_NAME, family: 'Kling', description: 'Kuaishou Kling 4.0 on Comfy Cloud: text, a start frame, start and end frames, or up to 10 reference images to a 3–30 s clip with stereo sound, at 720p or 1080p. Reference to video also takes up to 5 reference videos.',
     tech: `Comfy partner nodes ${K4_T2V_NODE} / ${K4_I2V_NODE} / ${K4_R2V_NODE} (${K4_PR}); official Comfy templates api_kling4_t2v / i2v / r2v.` }; }
+}

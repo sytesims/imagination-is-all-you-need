@@ -3,6 +3,7 @@
 # starts after the plugins above it; the feature plugins below it (route groups) mount after it, then the server starts listening.
 name: desktop
 plugins:
+  - comfy-featured    # official Comfy templates as models (Gemini Omni, FLUX 3 Max, Kling 4.0, Topaz Bloom 2, Wan Animate 2); first, before anything reads the model tables
   - place-comfy-local   # Your computer (your ComfyUI, built-in tools)
   - place-comfy-cloud   # Comfy Cloud and your Comfy deployment (your Comfy key)
   - place-comfy-router  # Comfy Router (your Comfy key)
