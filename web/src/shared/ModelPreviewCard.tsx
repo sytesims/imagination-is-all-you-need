@@ -11,6 +11,7 @@ import { gbText } from './fit';
 import { aboutLink, moreLinksOf, linksOf, releasedText } from '../../../server/src/shared/modelLinks';
 import { ClockIcon, ResolutionIcon, SoundIcon, ImageStackIcon, BrushIcon, MusicIcon, MicIcon, CubeIcon, AspectIcon, ImageIcon, UpscaleIcon, SparkleIcon, ChevronRightIcon, InfoIcon } from '../ui/Icons';
 import './modelCard.css';
+import { aKey } from '../../../server/src/shared/modelIds';
 /**
  * The model menu's preview card (2026-10-29, user pick "b"): hovering or keyboard-focusing a row opens a 304 px card beside the menu, on the
  * right, flipped to the left when the right has no room; no card when neither side has room (narrow windows) and never on phones (the menu
@@ -82,7 +83,7 @@ export function cardPriceOf(m: ToolModel, o: { rq?: any; run?: RunInfo | null; t
   if (rq?.demo === true) { const real = rq?.cost?.realRunUsd; const at = rq?.cost?.billedToName ?? keyWord(rq?.runOn ?? '');
     return { kind: 'sample', big: 'Free', what: 'sample run', where: null, est: false, other: typeof real === 'number' && real > 0 ? `A real run ≈ ${usdPrice(real).replace(/^≈\s*/, '')}${at ? ` on ${at}` : ''}, once a key is added` : otherLine(), detail: null }; }
   const so = Array.isArray(rq?.setupOptions) ? rq.setupOptions.find((x: any) => typeof x?.credits === 'number' && x.credits > 0) : null;
-  if (so) return { kind: 'key', big: usdPrice(so.credits / 100), what: `for this ${noun}`, where: `once you add a ${keyWord(so.runOn, so.runOnLabel)} key`, est: true, other: localRow ? otherLine() : null, detail: null };
+  if (so) return { kind: 'key', big: usdPrice(so.credits / 100), what: `for this ${noun}`, where: `once you add ${aKey(keyWord(so.runOn, so.runOnLabel))}`, est: true, other: localRow ? otherLine() : null, detail: null };
   if (localRow && places.length === 1) { const need = placeNeed(localRow); // Free only when it runs now; else what it needs, the full reason under it
     return need.ready ? { kind: 'free', big: 'Free', what: localRow.needsNvidia ? 'on an NVIDIA PC' : 'on your computer', where: null, est: false, other: null, detail: null }
       : { kind: 'blocked', big: need.text, what: '', where: localRow.reason ?? localWords(localRow, false), est: false, other: null, detail: null }; }

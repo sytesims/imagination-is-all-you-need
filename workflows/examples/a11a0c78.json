@@ -1,0 +1,51 @@
+{
+ "v": 1,
+ "jobId": "a11a0c78",
+ "toolId": "h3-video",
+ "provider": "router-ltx-25-pro",
+ "route": "comfy-cloud:cloud-ltx25-pro-api",
+ "target": "comfy-cloud",
+ "passes": [
+  {
+   "index": 0,
+   "label": "Result",
+   "workflow": "api_ltx2_5_i2v",
+   "graph": {
+    "2": {
+     "class_type": "SaveVideo",
+     "inputs": {
+      "video": [
+       "6",
+       0
+      ],
+      "filename_prefix": "video/openhiggsfield-ltx25-pro",
+      "format": "auto",
+      "format.codec": "auto"
+     }
+    },
+    "4": {
+     "class_type": "LoadImage",
+     "inputs": {
+      "image": "a11a0c78-ltxapi-start.png"
+     }
+    },
+    "6": {
+     "class_type": "LtxApi25ImageToVideo",
+     "inputs": {
+      "image": [
+       "4",
+       0
+      ],
+      "model": "LTX-2.5 (Pro)",
+      "model.duration": "6",
+      "model.resolution": "1920x1080",
+      "model.fps": "24",
+      "model.generate_audio": true,
+      "prompt": "animate the image. Golden hour on a palm-lined city avenue, sunlight flaring through the palms. The small mossy forest creature hops toward the camera along the centre line, its long leaf-ears bouncing, the lantern on the tip of its tail flickering warm orange. The camera glides low and backward in a smooth tracking shot, keeping it centred, as cars pass in soft motion blur on both sides. It stops, looks up into the lens with wide shining eyes, and the lantern blooms brighter, bathing its fur in warm golden light. Sound: soft city ambience, distant traffic, light padded footsteps, then a gentle magical chime as the lantern glows.",
+      "seed": 1200080632
+     }
+    }
+   }
+  }
+ ]
+}

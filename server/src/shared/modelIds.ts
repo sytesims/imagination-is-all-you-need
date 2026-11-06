@@ -47,7 +47,7 @@ const RUN_ON_ALIASES: Record<string, RunOn | 'auto'> = {
 };
 /** 'auto' | a RunOn | null (unknown). Case- and underscore-insensitive. */
 /** "an LTX key", "an OpenAI key"; "a … key" otherwise. */
-export const aKey = (name: string) => `${/^(LTX|OpenAI)\b/.test(name) ? 'an' : 'a'} ${name} key`;
+export const aKey = (name: string) => `${/^(LTX\b|[AEIO])/i.test(name) ? 'an' : 'a'} ${name} key`; // an OpenAI / an LTX / an Alibaba Cloud key
 export const normRunOn = (v: unknown): RunOn | 'auto' | null => (typeof v === 'string' && v.trim() ? RUN_ON_ALIASES[v.trim().toLowerCase().replace(/_/g, '-')] ?? null : null);
 /** Run-on of a route: its explicit `vendor` (direct routes), else from its kind and key env var (the vendor that owns the key; fallback only). */
 export function runOnOfRoute(r: { kind: string; envKey?: string | null; vendor?: string | null }): RunOn {

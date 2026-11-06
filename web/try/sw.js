@@ -196,11 +196,13 @@ function rescale(b, c1) {
       usdText: words(b.cost.usdText), detail: typeof b.cost.detail === 'string' && typeof units === 'number' ? b.cost.detail.replace(/^\d[\d,]*/, String(units)) : b.cost.detail }; }
   return out;
 }
-/** A place that only answers samples here (a mock key): shown at its list price, what the app charges with a real key. */
+/** A place that only answers samples here (a mock key): kept as a sample (Generate · Sample, "$0 · sample · List price ≈ $x"),
+ *  so the demo never shows a price as if it would charge. The list price stays in the answer for the words. */
 function priced(b) {
-  if (!b?.demo || typeof b.listCredits !== 'number' || b.listCredits <= 0) return b;
-  const c = b.listCredits; const out = { ...b, credits: c, demo: false, chargeable: true, demoMessage: null, demoNotice: null, priceLine: `≈ ${usd(c)}` }; delete out.demoTag;
-  if (b.cost) out.cost = { ...b.cost, demo: false, estUsd: Number((c / 100).toFixed(2)), realRunUsd: Number((c / 100).toFixed(2)), usdText: `≈ ${usd(c)}` };
+  if (!b || typeof b !== 'object' || b.demo || b.localRun || !(typeof b.credits === 'number' && b.credits > 0)) return b;
+  const list = b.credits; const line = `$0 · sample · List price ≈ ${usd(list)}`;
+  const out = { ...b, demo: true, demoTag: 'Sample', status: 'Sample', credits: 0, listCredits: list, chargeable: false, demoMessage: SAMPLE_REASON, freeSample: true, priceLine: line };
+  if (b.cost) out.cost = { ...b.cost, demo: true, estUsd: 0, usdText: line };
   return out;
 }
 /** The price of one setup on a studio from the grid: {s, b} (b parsed), or null when the grid doesn't cover it (then the recorded answers do). */
@@ -227,8 +229,8 @@ function priceFor(s, toolId, q) {
   let c = cell; const f = g.factors[combo] ?? {};
   for (const [p, vs] of Object.entries(sp.factors ?? {})) { const v = q[p]; if (v != null && vs.includes(String(v)) && f[`${p}=${v}`] != null) c *= f[`${p}=${v}`]; }
   for (const p of sp.linear ?? []) { const n = Number(q[p]); if (n > 1) c *= n; }
-  c = Math.round(c); let b = priced(JSON.parse(g.tpl[combo]));
-  return { s: 200, b: rescale(b, c) };
+  c = Math.round(c); const b = JSON.parse(g.tpl[combo]);
+  return { s: 200, b: priced(rescale(b, c)) }; // scaled to these settings first, then labelled a sample (its list price is the scaled one)
 }
 const ROW_FIELDS = ['status', 'credits', 'listCredits', 'chargeable', 'free', 'local', 'demo', 'runnable', 'needsKey', 'priceAvailable', 'cost', 'billingMode', 'runOn', 'runOnLabel', 'place', 'placeLabel', 'routeId', 'routeKind', 'modelKey', 'perSecond', 'eta', 'localRun', 'priceRef', 'upTo'];
 const rowOf = (r) => r.s < 400 ? Object.fromEntries([['status', r.s], ...ROW_FIELDS.slice(1).filter(k => k in r.b).map(k => [k, r.b[k]])]) : { status: r.s, code: r.b.code ?? r.b.errorType ?? null, issues: r.b.issues ?? null, error: r.b.error ?? null };
@@ -308,7 +310,7 @@ async function api(req, url) {
     return json({ error: NOT_HERE, errorType: 'not_found', code: 'sample_mode', sample: true }, 404);
   }
   // writes: a recorded answer for the same route (prices for every model, a new board), else a friendly "needs the app"
-  if (/\/price(-variants)?$|\/quote$|\/precheck$|\/validate$|\/resolve$/.test(p)) { const r = lookup(s, m, url) ?? lookup(s, m, new URL(p, url)); if (r) return answer(r); }
+  if (/\/price(-variants)?$|\/quote$|\/precheck$|\/validate$|\/resolve$/.test(p)) { const r = lookup(s, m, url) ?? lookup(s, m, new URL(p, url)); if (r) { let b = null; try { b = JSON.parse(r.b); } catch { /* not json */ } return b && typeof b === 'object' && !Array.isArray(b) ? json(priced(b), r.s) : answer(r); } }
   const r = s.routes[`${m} ${p}`]; if (r) return answer(r);
   if (m === 'PUT' || m === 'PATCH') return json({ ok: true, sample: true }); // settings and preferences: accepted for this visit only
   return json({ error: NOT_HERE, code: 'sample_mode', errorType: 'sample_mode', sample: true }, 400);

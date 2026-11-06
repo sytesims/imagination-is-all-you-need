@@ -7,6 +7,7 @@ import { gbText } from './fit';
 import { localBlocker } from './modelMenuSort';
 import { placeIconFor } from '../ui/Icons';
 import { LOCAL_LABEL } from '../../../server/src/shared/modelIds';
+import { aKey } from '../../../server/src/shared/modelIds';
 /**
  * The model menu's details on phones (the row's "i" opens them inside the sheet): the model, its best-for line, and every place it runs with
  * the price there and what that place still needs ("Ready", "Download 53 GB", "Add a Comfy key"). Desktop uses the preview card
@@ -23,7 +24,7 @@ export function placeNeed(r: Pick<RunOnRow, 'id' | 'label' | 'status' | 'action'
   if (r.status === 'sample') return { text: 'Sample run', ready: true };
   const a = r.action;
   if (a?.kind === 'download') return { text: a.missingBytes ? `Download ${gbText(a.missingBytes)}` : 'One-time download', ready: false };
-  if (a?.kind === 'add_key' || r.status === 'needs-key') return { text: `Add a ${keyWord(r.id, r.label)} key`, ready: false };
+  if (a?.kind === 'add_key' || r.status === 'needs-key') return { text: `Add ${aKey(keyWord(r.id, r.label))}`, ready: false };
   if (a?.kind === 'turn_on' || r.status === 'off') return { text: `Turn on ${LOCAL_LABEL}`, ready: false };
   if (a?.kind === 'install_node') return { text: 'Needs a custom node', ready: false };
   if (r.id === 'local') return { text: localBlocker(r)?.word ?? 'Not set up', ready: false }; // "Needs 43 GB space", "Too big for this GPU": the menu row's words

@@ -31,7 +31,8 @@ export interface MemLite { text: string; block: boolean; accepted?: boolean }
 
 export function reasonOf(i: { setupKind: SetupKind | null; problems: PreflightProblem[]; places: PlaceLite[]; mem?: MemLite | null;
   /** the model has no place at all (no quote, no default route) */ noPlace?: boolean; /** the quote said no_connection */ noConnection?: boolean;
-  /** the caller can open its "Before you generate" list */ canDetails?: boolean }): GenReasonSpec | null {
+  /** the caller can open its "Before you generate" list */ canDetails?: boolean;
+  /** free samples (nothing set up, server routing/select.ts freeSamples): the quote's one-line note, shown when nothing blocks */ sampleNote?: string | null }): GenReasonSpec | null {
   const p = i.problems.find(x => x.stage !== 'inputs');
   const cloudAlt: GenAct = { kind: 'cloud', label: 'Use Comfy Cloud' };
   /* the quote's own reason wins over the Welcome's "ComfyUI isn’t open" when ComfyUI can't help: a cloud-only model that needs a key
@@ -39,6 +40,7 @@ export function reasonOf(i: { setupKind: SetupKind | null; problems: PreflightPr
   const ownWords = !!p && !i.noConnection && (p.code === 'needs_comfyui' || (p.code === 'needs_key' && !i.places.some(x => x.runOn === 'local')));
   if (i.setupKind === 'none' && !ownWords && (i.noConnection || i.noPlace || i.places.length > 0 || p?.stage === 'setup'))
     return { code: 'no_connection', reason: COMFY_DOWN, blocks: true, primary: { kind: 'connect', label: 'Set up ComfyUI' }, alt: cloudAlt };
+  if (!p && i.sampleNote && !i.mem) return { code: 'free_sample', reason: i.sampleNote, blocks: false, primary: { kind: 'settings', label: 'Set up' }, alt: null };
   if (!p) {
     if (i.noPlace) return { code: 'no_place', reason: NO_PLACE, blocks: true, primary: { kind: 'settings', label: 'Set up' }, alt: null };
     if (!i.mem) return null;

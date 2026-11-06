@@ -45,7 +45,7 @@ export function useGenReason({ toolId, engine, quote, onDetails, noPlace, proble
   const fit = quoteFitOf(quote); const local = quote?.routeKind === 'local' || /^local:/.test(String(quote?.route ?? quote?.routeId ?? ''));
   const fitBig = memOn && local && String(fit?.reason ?? '').startsWith(TOO_BIG_TEXT);
   const mem = memShort ? { text: memShort.text, block: memShort.block, accepted } : fitBig ? { text: String(fit!.reason), block: true, accepted } : null;
-  const spec = reasonOf({ setupKind: sk, problems, places, mem, noPlace, noConnection: quote?.code === 'no_connection', canDetails: !!onDetails });
+  const spec = reasonOf({ setupKind: sk, problems, places, mem, noPlace, noConnection: quote?.code === 'no_connection', canDetails: !!onDetails, sampleNote: quote?.freeSample ? String(quote.sampleNote ?? '') || null : null });
   return spec ? { ...spec, id, toolId, model, engine: engine ?? null, quote, places, onDetails } : null;
 }
 

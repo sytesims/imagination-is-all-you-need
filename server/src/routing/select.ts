@@ -52,7 +52,17 @@ export function setupKind(): SetupKind {
 }
 /** No Comfy key and no ComfyUI on the real backend: Generate asks to connect one (the user's option a, 2026-10-29), never a sample.
  *  The mock backend (development and tests) keeps its free samples. */
-export const needsConnection = () => config.backend !== 'mock' && setupKind() === 'none';
+export const needsConnection = () => config.backend !== 'mock' && setupKind() === 'none' && !freeSamples();
+/** Free samples (fresh install, 2026-11-06): the real backend with NOTHING set up (no Comfy key, no ComfyUI, no key for any other provider,
+ *  no ComfyUI address) runs every keyless cloud place as a labelled sample from the app's own shipped examples (routing/sampleRun.ts):
+ *  $0, nothing sent anywhere. The moment any key or a ComfyUI is ready this is off and routing is exactly as before. Off with
+ *  OPENHIGGSFIELD_FREE_SAMPLES=0. The mock backend keeps its own samples (demoAuto). */
+export function freeSamples(): boolean {
+  if (config.backend === 'mock' || env('FREE_SAMPLES') === '0') return false;
+  if (localAvailable()) return false;
+  return !providerSettings().some((p) => p.id !== 'hf' /* a download token, not a place to run */ && p.configured);
+}
+export const SAMPLE_NOTE = 'A sample from our examples. Add a key or set up your computer to make your own.';
 export const NO_CONNECTION = { code: 'no_connection' as const, title: 'Connect a Comfy key or your ComfyUI to start',
   message: 'Nothing ran and nothing was charged. Paste a Comfy key, or point the app at your ComfyUI, then press Generate again.' };
 /** HW-SHAPES B3: the compact fit a local route carries on every option (full requirements ride on quotes, /api/routes and /api/models). */
@@ -208,7 +218,7 @@ export const byTier = (localFirst = false) => (a: RouteOption, b: RouteOption) =
 export const VARIANT_BLOCK_REASON = "This lighter version can't run on the connected ComfyUI";
 const variantOk = (r: RouteDef, id: string) => { const v = findVariant(id); return !!v && v.providers.includes(r.modelId) && variantRunnable(v); };
 /** Mock or demo mode (OPENHIGGSFIELD_BACKEND=mock; off with OPENHIGGSFIELD_DEMO_AUTO=0): first load never looks broken. */
-export const demoAuto = () => config.backend === 'mock' && env('DEMO_AUTO') !== '0';
+export const demoAuto = () => (config.backend === 'mock' && env('DEMO_AUTO') !== '0') || freeSamples();
 /**
  * Mock/demo Auto when no route is set up: cloud first, so the cheapest priced cloud route whose only blocker is the missing key runs as a
  * labelled mock preview (the mock backend never calls a provider; credits = that route's quote, so route and price agree); a model with no
@@ -245,7 +255,7 @@ export interface NoProvider extends NeedsProvider { error: string; detail?: stri
 /** Model vs Run-on (spec §2.6): the clean model name for user copy (never an engine id), e.g. "MiniMax H3". */
 export const modelNameFor = (tool: ToolDef, modelId: string): string => ((k) => findToolModel(tool, k) ? catalogueName(k) : null)(modelKeyOf(tool.id, modelId)) ?? (getProvider(modelId)?.name ?? modelId).replace(/\s*\(.*$/, '');
 /** "Comfy Cloud or a fal key" from the providers whose key would run it (Comfy Cloud is named as itself, the others as "a <name> key"). */
-const keyChoices = (ps: { id: string; name: string }[]) => { const w = ps.map((p) => (p.id === 'comfy' ? 'Comfy Cloud' : `a ${p.name.replace(/\s*\(.*$/, '')} key`)); return w.length > 1 ? `${w.slice(0, -1).join(', ')} or ${w.at(-1)}` : w[0] ?? ''; };
+const keyChoices = (ps: { id: string; name: string }[]) => { const w = ps.map((p) => (p.id === 'comfy' ? 'Comfy Cloud' : aKey(p.name.replace(/\s*\(.*$/, '')))); return w.length > 1 ? `${w.slice(0, -1).join(', ')} or ${w.at(-1)}` : w[0] ?? ''; };
 /** Run on: what a place that isn't ready needs, as one action (the chip, the menu row and Generate show it). */
 export type SetupAction = 'turn_on' | 'download' | 'install_node' | 'add_key' | 'set_up_gpu';
 export interface SetupTarget { runOn: RunOn; runOnLabel: string; routeId: string; action: SetupAction; actionText: string; missingBytes?: number | null; downloadId?: string | null; /** the Connections card to open when it isn't the run-on's key card ('deploy' = Your Comfy deployment) */ connection?: 'deploy' }

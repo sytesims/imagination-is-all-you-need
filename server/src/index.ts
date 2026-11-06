@@ -75,7 +75,7 @@ import { defaultsBlock, defaultProviderFor, defaultFirst, requestMode, SWAP_TYPE
 import { isTwinAlias, toolKeys, TWIN_ALIASES, mapTwinAlias } from './routing/routes.js';
 import { jobModelFields, routePlace } from './routing/modelRegistry.js';
 import { findRoute as findRouteDef } from './routing/routes.js';
-import { placeOf } from './shared/modelIds.js';
+import { placeOf, aKey } from './shared/modelIds.js';
 import { jobWorkflow, jobAppPrompts } from './jobSource.js';
 import { toolProviders, getProvider, allowed, providerLicense, providerWorkflows, openWeightsOnly, comfyCloudOpen, providerOpenWeights } from './providers.js';
 import { LICENSES, workflowLicense, workflowOsi } from './licenses.js';
@@ -152,15 +152,18 @@ const placeOfJob = (j: Job) => { const mf = jobModelFields(j); const r = String(
   return { runOn: mf.runOn, label: p?.label ?? mf.runOnLabel ?? null, ...(p ? { id: p.id, billing: p.billing, short: p.short, note: p.note } : {}) }; };
 /** Agent audit gap 3: is this result a sample (nothing was generated, nothing billed), and why, in one sentence an agent can repeat.
  *  A keyless cloud place run as a preview (routing.demo), a mock run (tools/shared.ts mockRun), or any run on the mock backend. */
+/** Free samples (fresh install, nothing set up): what a sample result says, everywhere it is shown (result details, MCP sampleReason). */
+const FREE_SAMPLE_REASON = 'A sample from our examples: nothing was made or sent anywhere, and nothing was charged. Add a key or set up your computer to make your own.';
 const sampleTruth = (j: Job): { isSample: boolean; sampleReason: string | null } => {
   if (j.actualCost) return { isSample: false, sampleReason: null };
   if ((j as any).featuredExample) return { isSample: false, sampleReason: null }; // the app's own real renders (shared/featured.ts, the Examples project), on any server
   if (j.toolId === 'compose' && j.provider === 'local-ffmpeg') return { isSample: false, sampleReason: null };
   if (j.provider === 'local-vtracer' && String(j.route ?? '').startsWith('local:') && j.status === 'done') return { isSample: false, sampleReason: null }; // Image to vector: VTracer really traced the picture, even on the mock backend // Stitch: ffmpeg really joined the files, even on the mock backend
   const { runOn, label } = placeOfJob(j);
+  if (j.routing?.demo && config.backend !== 'mock') return { isSample: true, sampleReason: FREE_SAMPLE_REASON }; // free samples (routing/sampleRun.ts): one of our shipped examples
   if (j.routing?.demo) return { isSample: true, sampleReason: runOn === 'local' || !label
     ? 'This is a sample: the server is in sample mode, so nothing was generated and nothing was billed.'
-    : `No ${label} key is set, so this is a sample: nothing was generated or sent to ${label}, and nothing was billed. Add a ${label} key for a real run, or pick a ready run_on.` };
+    : `No ${label} key is set, so this is a sample: nothing was generated or sent to ${label}, and nothing was billed. Add ${aKey(label)} for a real run, or pick a ready run_on.` };
   if (j.simulated || simulatedAtSubmit()) return { isSample: true, sampleReason: config.backend === 'mock'
     ? 'The server runs in sample mode (mock backend), so this is a sample: nothing was generated and nothing was billed. Set OPENHIGGSFIELD_BACKEND=comfy (or add provider keys) for real results.'
     : `${label ?? 'This place'} has no live runner on this server yet, so this is a sample: nothing was generated and nothing was billed.` };
@@ -386,6 +389,8 @@ app.get('/api/health', async () => {
     /** which checkout answers (a hash of its folder, repoInfo.ts): setup and the doctor tell another copy on this port from this one */
     checkout: CHECKOUT_ID,
     backend: config.backend,
+    /** free samples (routing/select.ts): nothing is set up, so Generate makes labelled samples from the shipped examples ($0, nothing sent) */
+    freeSamples: (await import('./routing/select.js')).freeSamples(),
     openWeightsOnly: openWeightsOnly(),
     comfyReady: comfy.ok,
     comfyReason: comfy.ok ? null : comfy.reason,
@@ -687,7 +692,7 @@ async function createJob(toolId: string, req: FastifyRequest, reply: FastifyRepl
   if (typeof fields.variantId === 'string' && fields.variantId.trim()) inp.variantId = fields.variantId.trim().slice(0, 80); // Q7: a lighter GGUF version (local routes)
   if (typeof fields.filmId === 'string' && /^film_[\w]{1,40}$/.test(fields.filmId)) { inp.filmId = fields.filmId; if (/^[\w-]{1,64}$/.test(fields.filmShotId ?? '')) inp.filmShotId = fields.filmShotId; } // Film: the film and shot a render came from (filmProjects.ts)
   if (typeof fields.boardId === 'string' && /^brd_[\w]{1,40}$/.test(fields.boardId)) inp.boardId = fields.boardId; // Canvas: the board the run was started from (its spend chip sums these: canvasBoards.ts boardSpend)
-  if (config.backend === 'mock' && inp.boardId) { const ref = (await import('./shared/demoMedia.js')).demoRefFor(inp.boardId, fields.prompt); if (ref) inp.demoRef = ref; } // the Canvas demo's card: the sample server plays its real run (shared/demoMedia.ts)
+  if (inp.boardId && (config.backend === 'mock' || (await import('./routing/select.js')).freeSamples())) { const ref = (await import('./shared/demoMedia.js')).demoRefFor(inp.boardId, fields.prompt); if (ref) inp.demoRef = ref; } // the Canvas demo's card: the sample server plays its real run (shared/demoMedia.ts)
   if (brand && !('error' in brand)) inp.brand = brand; // the kit on the job: Recreate turns Brand back on with it (routesPrefill.formFromInput)
   if (typeof fields.lookId === 'string' && /^[\w-]{1,64}$/.test(fields.lookId)) inp.lookId = fields.lookId; // Workflows pages: the run was started from a look (the look's page gathers its results)
   if (/^(1|true|on|yes)$/i.test(fields.downloadWeights || '')) inp.downloadWeights = true; // Q4: the user clicked 'Download and run' (never automatic)
