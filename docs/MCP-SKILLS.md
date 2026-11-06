@@ -34,7 +34,7 @@ Every skill follows the same money rules, and the server enforces them: free ste
    - **By hand:** `claude mcp add --transport http imagination http://127.0.0.1:8788/mcp` and `cp -r skills/* ~/.claude/skills/`.
    - **Setup helper:** `node mcp/dist/index.js setup claude` (writes the Claude Desktop and Claude Code configs and copies the skills).
 3. **Turn on the `library` toolset** (most skills stitch the final video with `stitch_video`): start the MCP server with `OPENHIGGSFIELD_MCP_TOOLSETS=core,library` (or `"toolsets": ["core", "library"]` in the permissions file).
-4. Optional: ask before every paid run: start the MCP server with `OPENHIGGSFIELD_MCP_SPEND=ask` (the question names the model, the place and the price; free local runs don't ask).
+4. Paid runs ask first by default (the question names the model, the place and the price; free local runs don't ask). A client without MCP elicitation can't ask, so paid runs are refused there; set `OPENHIGGSFIELD_MCP_SPEND=allow` to let the agent spend without asking.
 
 The same playbooks are also MCP **prompts** (slash commands in clients that list prompts), read from these files, plus `what-can-you-do`.
 

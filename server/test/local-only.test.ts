@@ -16,6 +16,8 @@ fs.mkdirSync(path.join(D, '.peek')); fs.writeFileSync(path.join(D, '.peek', 'p.p
 const app = Fastify(); L.registerLocalOnly(app); await app.register(cors, { origin: L.corsOrigin, exposedHeaders: ['Idempotent-Replayed'] });
 registerCleanFiles(app); await app.register(fstatic, { root: D, prefix: '/files/' });
 app.get('/api/health', async () => ({ ok: true })); app.post('/api/tools/x/jobs', async () => ({ id: 'j1' }));
+app.get('/api/jobs', async () => ({ jobs: [] })); app.get('/s/:token', async () => 'page'); app.get('/s/:token/card.png', async () => 'card');
+app.get('/api/share/:token', async () => ({ ok: 1 })); app.get('/api/share/:token/download.zip', async () => 'zip'); app.get('/favicon.ico', async () => 'ico');
 const go = (url: string, headers: Record<string, string> = {}, method: 'GET' | 'POST' | 'OPTIONS' | 'HEAD' = 'GET') => app.inject({ method, url, headers: { host: '127.0.0.1:8787', ...headers }, ...(method === 'POST' ? { payload: {} } : {}) });
 try {
   // evil Origin → 403 everywhere, any method
@@ -46,13 +48,35 @@ try {
   process.env.OPENHIGGSFIELD_ALLOWED_HOSTS = 'mymac.local, studio.example.com:8443';
   assert.equal((await go('/api/health', { host: 'mymac.local:5174' })).statusCode, 200, 'allowed host, any port');
   assert.equal((await go('/api/tools/x/jobs', { host: 'mymac.local:5174', origin: 'http://mymac.local:5174' }, 'POST')).statusCode, 200, 'page from an allowed host');
-  assert.equal((await go('/api/health', { host: 'studio.example.com:8443' })).statusCode, 200); assert.equal((await go('/api/health', { host: 'studio.example.com' })).statusCode, 403, 'port pinned');
+  assert.equal((await go('/files/abc-out0.png', { host: 'studio.example.com:8443' })).statusCode, 200); assert.equal((await go('/files/abc-out0.png', { host: 'studio.example.com' })).statusCode, 403, 'port pinned');
+  assert.equal((await go('/api/health', { host: 'studio.example.com' })).json().code, 'host_not_allowed', 'unlisted port: host check first');
   delete process.env.OPENHIGGSFIELD_ALLOWED_HOSTS;
   process.env.OPENHIGGSFIELD_ALLOWED_ORIGINS = 'https://tools.example.com/';
   const ok = await go('/api/health', { origin: 'https://tools.example.com' }); assert.equal(ok.statusCode, 200); assert.equal(ok.headers['access-control-allow-origin'], 'https://tools.example.com');
   assert.equal((await go('/api/health', { origin: 'http://tools.example.com' })).statusCode, 403, 'scheme matters');
   delete process.env.OPENHIGGSFIELD_ALLOWED_ORIGINS;
   process.env.OPENHIGGSFIELD_PUBLIC_URL = 'https://share.example.com'; assert.equal((await go('/files/abc-out0.png', { host: 'share.example.com' })).statusCode, 200, 'public share host'); delete process.env.OPENHIGGSFIELD_PUBLIC_URL;
+
+  // Public host (tunnel / PUBLIC_*): shared results only, read-only. The app has no login. (2026-11-06)
+  for (const env of [['OPENHIGGSFIELD_ALLOWED_HOSTS', 'abc.trycloudflare.com'], ['OPENHIGGSFIELD_PUBLIC_URL', 'https://abc.trycloudflare.com'], ['OPENHIGGSFIELD_PUBLIC_BASE_URL', 'https://abc.trycloudflare.com/']] as const) {
+    process.env[env[0]] = env[1]; const T = { host: 'abc.trycloudflare.com' };
+    for (const [u, m] of [['/api/jobs', 'GET'], ['/api/health', 'GET'], ['/api/tools/x/jobs', 'POST'], ['/api/share/tok', 'POST'], ['/s/tok', 'POST'], ['/', 'GET'], ['/samples/x.png', 'GET'], ['/s/%2e%2e/api/jobs', 'GET'], ['/api/share/tok/../../jobs', 'GET']] as const) {
+      const r = await go(u, T, m); assert.equal(r.statusCode, 403, `${env[0]} ${m} ${u}`); assert.equal(r.json().code, 'public_host_share_only'); assert.match(r.json().error, /no login/);
+    }
+    for (const [u, m] of [['/files/abc-out0.png', 'GET'], ['/files/abc-out0.png', 'HEAD'], ['/s/tok', 'GET'], ['/s/tok/card.png', 'GET'], ['/api/share/tok', 'GET'], ['/api/share/tok/download.zip', 'GET'], ['/favicon.ico', 'GET'], ['/s/tok?ref=x', 'GET']] as const)
+      assert.equal((await go(u, T, m)).statusCode, 200, `${env[0]} ${m} ${u} allowed`);
+    assert.equal((await go('/files/openhiggsfield.db', T)).statusCode, 403, 'not media on a public host');
+    // a proxy that rewrites Host to localhost but sends X-Forwarded-Host: still locked
+    assert.equal((await go('/api/jobs', { 'x-forwarded-host': 'abc.trycloudflare.com' })).statusCode, 403, 'x-forwarded-host');
+    // loopback, IP literals and your-network names unchanged while a public host is set
+    for (const h of ['127.0.0.1:8787', 'localhost:5174', '192.168.1.20:5174']) assert.equal((await go('/api/jobs', { host: h })).statusCode, 200, `loopback ${h}`);
+    assert.equal((await go('/api/tools/x/jobs', { host: '127.0.0.1:8787' }, 'POST')).statusCode, 200);
+    delete process.env[env[0]];
+  }
+  process.env.OPENHIGGSFIELD_ALLOWED_HOSTS = 'mymac.local,studio,box.home.arpa';
+  for (const h of ['mymac.local:5174', 'studio:5174', 'box.home.arpa']) assert.equal((await go('/api/jobs', { host: h })).statusCode, 200, `LAN name ${h} keeps the whole app`);
+  delete process.env.OPENHIGGSFIELD_ALLOWED_HOSTS;
+  assert.equal(L.publicOnlyHost(undefined), false); assert.equal(L.publicPathAllowed('GET', '/api/share/t'), true); assert.equal(L.publicPathAllowed('DELETE', '/api/share/t'), false);
 
   // /files: media only
   const img = await go('/files/abc-out0.png'); assert.equal(img.statusCode, 200); assert.ok(img.rawPayload.equals(PNG));

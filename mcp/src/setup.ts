@@ -49,6 +49,13 @@ async function serverMcp(o: Opts) {
   return { mcp: { stdio: { command: 'node', args: [entry], env }, npx: { command: 'npx', args: ['-y', 'openhiggsfield-mcp'], env }, httpUrl: 'http://127.0.0.1:8788/mcp', apiUrl: o.api, preferNpx: inCache }, from: 'local fallback (API not reachable)' };
 }
 
+/** Paid runs ask first (MCP elicitation, with the price). Written into every generated config so the choice is visible and easy to change
+ *  (OPENHIGGSFIELD_MCP_SPEND=allow lets the agent start paid runs without asking). A value the server already set is kept. */
+export function withSpendAsk(mcp: any) {
+  for (const k of ['stdio', 'npx']) if (mcp?.[k]) mcp[k] = { ...mcp[k], env: { ...(mcp[k].env ?? {}), OPENHIGGSFIELD_MCP_SPEND: mcp[k].env?.OPENHIGGSFIELD_MCP_SPEND ?? 'ask' } };
+  return mcp;
+}
+
 /** The server's name in client configs (mcpServers key). Earlier versions used LEGACY_KEY; setup replaces that entry. */
 const SERVER_KEY = 'imagination';
 const LEGACY_KEY = 'openhiggsfield';
@@ -126,8 +133,8 @@ async function chatgpt(o: Opts) {
     servers: [{ url: server }], paths, components: spec.components ?? {} };
   write(o, path.join(out, 'openapi-action.json'), JSON.stringify(action, null, 2) + '\n');
   const notes = [`ChatGPT: create a custom GPT -> Instructions: paste ${path.join(out, 'instructions.md')}; Actions -> Import schema: paste ${path.join(out, 'openapi-action.json')} (${Object.keys(paths).length} paths).`];
-  if (o.publicUrl) { let h = o.publicUrl; try { h = new URL(o.publicUrl).host; } catch { /* as given */ } notes.push(`The app answers only on localhost: start it with OPENHIGGSFIELD_ALLOWED_HOSTS=${h} so your tunnel can reach it.`); }
-  if (!o.publicUrl) notes.push(`WARNING: the action server is ${server}; ChatGPT can't reach localhost. Re-run with --public-url https://<your tunnel> (add auth; the project is private).`);
+  notes.push(`The app has no login, so it answers only on this computer. Don't tunnel the app (:8787): a public host only serves shared results and refuses the API${o.publicUrl ? `, so the action server ${server} won't run jobs` : ''}.`);
+  notes.push('To use it from ChatGPT, add the MCP server as a connector instead (developer mode): tunnel only http://127.0.0.1:8788/mcp, behind the tunnel\'s access control, add the tunnel host to OPENHIGGSFIELD_ALLOWED_HOSTS, keep OPENHIGGSFIELD_MCP_SPEND=ask or block. See agent-skills/README.md.');
   return notes;
 }
 
@@ -136,6 +143,7 @@ export async function runSetup(argv: string[]) {
   try { o = parse(argv); } catch (e) { console.error((e as Error).message); process.exit(2); }
   try {
     const { mcp, from } = await serverMcp(o);
+    withSpendAsk(mcp);
     console.log(`[setup] MCP config from ${from}: ${JSON.stringify(o.npx || mcp.preferNpx ? mcp.npx : mcp.stdio)}`);
     const notes: string[] = [];
     if (o.target === 'claude' || o.target === 'all') notes.push(...await claude(o, mcp));

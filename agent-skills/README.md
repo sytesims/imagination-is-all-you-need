@@ -9,7 +9,7 @@ Lets a chat agent drive Imagination Is All You Need. This is a prep-only pack: n
 
 ```bash
 ./agent-skills/setup-agents.sh claude            # or: node mcp/dist/index.js setup claude (the MCP package is not published; see CLI.md)
-./agent-skills/setup-agents.sh chatgpt --public-url https://<your-tunnel>   # ChatGPT must reach the API over public HTTPS
+./agent-skills/setup-agents.sh chatgpt          # instructions + action schema; to connect ChatGPT use the MCP route below
 ./agent-skills/setup-agents.sh all --dry-run     # show what would be written
 ```
 
@@ -17,6 +17,6 @@ Options: `--api URL` (default `$OPENHIGGSFIELD_API` or `http://localhost:8787`),
 
 The MCP command and absolute paths come from the running server's `/api/config.mcp`, so start the app first (`npm run dev`). If it isn't running, setup falls back to the local `mcp/dist/index.js`.
 
-**ChatGPT note:** the action needs an HTTPS URL that ChatGPT can reach. The API is local and private, so expose it only through a tunnel you control, protect it with authentication, and remove it when done. Don't put a private server on a public URL without auth.
+**ChatGPT note:** the app has no login, so it answers only on this computer. Don't tunnel the app itself (:8787 or :5174): a public address (a tunnel host in `OPENHIGGSFIELD_ALLOWED_HOSTS`, or `OPENHIGGSFIELD_PUBLIC_URL`) only serves shared results (`/s/…`, `/api/share/…` and their media) and refuses everything else, so a REST action can't run through it. To connect ChatGPT, use the **MCP route**: in ChatGPT developer mode add the app's MCP server as a connector, tunnel only the MCP endpoint (`http://127.0.0.1:8788/mcp`), put the tunnel's own access control or a token check in front of it (the MCP server has no login either), add the tunnel host to `OPENHIGGSFIELD_ALLOWED_HOSTS`, keep paid runs on `ask` or `block` (`OPENHIGGSFIELD_MCP_SPEND`) or pin a small budget (`OPENHIGGSFIELD_AGENT_BUDGET_USD`), and close the tunnel when you're done. The REST action schema still works for a ChatGPT-compatible client on this computer.
 
 Full CLI, environment variables and the tool list (including `upload_media`): [CLI.md](CLI.md).
