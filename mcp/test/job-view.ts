@@ -34,7 +34,7 @@ const clients: Client[] = [];
 async function mcpFor(port: number, base = B(port)) {
   const c = new Client({ name: 'ohf-jobview', version: '1' }); clients.push(c);
   await c.connect(new StdioClientTransport({ command: process.execPath, args: [path.join(MCP, 'node_modules/tsx/dist/cli.mjs'), path.join(MCP, 'src/index.ts')], cwd: MCP,
-    env: { ...process.env, ...NOKEYS, OPENHIGGSFIELD_API: base, OPENHIGGSFIELD_MCP_POLL_MS: '200', PUBLIC_WEB_URL: 'http://web.example:5174' } as Record<string, string> }));
+    env: { ...process.env, ...NOKEYS, OPENHIGGSFIELD_API: base, OPENHIGGSFIELD_MCP_POLL_MS: '200', PUBLIC_WEB_URL: 'http://web.example:5174', OPENHIGGSFIELD_MCP_SPEND: 'allow' } as Record<string, string> }));
   return { call: async (name: string, args: Record<string, unknown>) => { const raw: any = await c.callTool({ name, arguments: args }, undefined, { timeout: 120_000 }); return { raw, r: parse(raw) }; } };
 }
 

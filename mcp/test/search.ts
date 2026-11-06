@@ -74,7 +74,7 @@ try {
 
   // ---- 3. over MCP ----
   await client.connect(new StdioClientTransport({ command: process.execPath, args: [path.join(MCP, 'node_modules/tsx/dist/cli.mjs'), path.join(MCP, 'src/index.ts')], cwd: MCP,
-    env: { ...process.env, OPENHIGGSFIELD_API: API, OPENHIGGSFIELD_MCP_PERMISSIONS: '', OPENHIGGSFIELD_MCP_DEFAULT: 'allow', OPENHIGGSFIELD_MCP_TOOLSETS: 'core' } as Record<string, string> }));
+    env: { ...process.env, OPENHIGGSFIELD_API: API, OPENHIGGSFIELD_MCP_PERMISSIONS: '', OPENHIGGSFIELD_MCP_DEFAULT: 'allow', OPENHIGGSFIELD_MCP_SPEND: 'allow', OPENHIGGSFIELD_MCP_TOOLSETS: 'core' } as Record<string, string> }));
   const call = async (name: string, args: Record<string, unknown>) => { const r: any = await client.callTool({ name, arguments: args }); assert.ok(!r.isError, `${name}: ${r.content?.[0]?.text}`); return JSON.parse(r.content[0].text); };
   const s1 = await call('search_capabilities', { query: 'remove people' }); assert.equal(s1.top[0].id, 'footage-fx/vanish'); assert.deepEqual(s1.top[0].run, { tool_id: 'footage-fx', fields: { types: ['vanish'] } });
   const s2 = await call('search_capabilities', { query: 'seamless loop' }); assert.deepEqual(s2.workflows.find((w: any) => w.id === 'video/loop').run, { tool_id: 'h3-video', model: 'ltx-2.5-22b', fields: { loop: 1 } });

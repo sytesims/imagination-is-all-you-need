@@ -11,5 +11,5 @@ Workflow:
 File uploads: ChatGPT actions can't send local files as multipart. Use media URLs or server paths (/samples/..., /files/...) the user provides, or tell them to upload in the Imagination Is All You Need web app and share the /files/... path.
 
 Two ways to connect (for the person setting this up):
-- REST Action (above): import the schema that `setup chatgpt` writes.
+- REST Action (above): import the schema that `setup chatgpt` writes. It only works where the client can reach the app on this computer: the app has no login, so a tunnel to it serves shared results only and refuses the API.
 - Remote MCP: ChatGPT developer mode can also add the app's MCP server as a connector, which gives you the same core tools as Claude (search_capabilities, describe, quote, run, status, get_outputs…). It needs a public HTTPS URL with auth. For this path, tunnel only the MCP endpoint (/mcp on port 8788), never the app itself on :8787, and put auth in front of it (the tunnel's access control or a token check; the MCP server has no login of its own). Keep paid runs off (OPENHIGGSFIELD_MCP_SPEND=block) or pin a small budget (OPENHIGGSFIELD_AGENT_BUDGET_USD), and close the tunnel when you're done.

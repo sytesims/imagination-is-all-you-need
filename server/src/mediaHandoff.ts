@@ -16,6 +16,7 @@
  * Comfy Cloud graphs upload their inputs with the Comfy Cloud upload API (comfy/cloudV2.ts upload()), the documented way for workflows
  * (docs.comfy.org/development/cloud/api-reference "Uploading Inputs"); that path stays in the cloud client because it needs the run's client.
  */
+import { readKey } from './kernel/keys.js';
 import { createHash } from 'node:crypto';
 import { statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
@@ -141,7 +142,7 @@ export const HANDOFF_POLICY: Record<HandOffProvider, Policy> = {
 const httpsUrl = (u: unknown): u is string => { try { return typeof u === 'string' && new URL(u).protocol === 'https:'; } catch { return false; } };
 /** The server's own public address (OPENHIGGSFIELD_PUBLIC_BASE_URL): files under the data dir are served at <base>/files/<name>. */
 export const publicBase = () => (env('PUBLIC_BASE_URL') ?? process.env.OPENHIGGSFIELD_PUBLIC_BASE_URL ?? '').replace(/\/$/, '');
-const keyOf = (p: Policy) => p.upload?.keyEnv.map((k) => process.env[k]?.trim()).find(Boolean);
+const keyOf = (p: Policy) => p.upload?.keyEnv.map(readKey).find(Boolean);
 const resolveFile = (f: string) => (path.isAbsolute(f) ? f : path.join(DATA_DIR, f));
 const sizeOf = (f: string) => { try { return statSync(resolveFile(f)).size; } catch { return -1; } };
 const who = (p: Policy, o: HandOffOpts) => o.who ?? p.name;

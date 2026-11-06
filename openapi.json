@@ -194,7 +194,27 @@
         "tags": [
           "Tools"
         ],
-        "summary": "Direct a Shot, your 3D models (shared/previzModels.ts): upload a GLB of your own: multipart model (glTF 2.0 binary with at least one mesh, at most 40 MB) → {ok, url: /files/up-<hash>.glb, name, bytes}. 413 too_large; 400 bad_glb with the problem in plain words.",
+        "summary": "Direct a Shot, your 3D models (shared/previzModels.ts): upload a GLB of your own: multipart model (glTF 2.0 binary with at least one mesh, at most 200 MB; over 40 MB it plays from a light copy, see /api/3d/light) → {ok, url: /files/up-<hash>.glb, name, bytes}. 413 too_large; 400 bad_glb with the problem in plain words.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/3d/light": {
+      "post": {
+        "tags": [
+          "Tools"
+        ],
+        "summary": "Direct a Shot, the copy it plays (glbLight.ts): JSON {src: /files/<name>.glb} → {ok, url, bytes, light, reused?, srcBytes}. Within 40 MB url is src; over it, a light copy /files/<name>-light.glb (meshes simplified to ≤ 400k triangles, textures ≤ 2K, skins and animations kept), made once and reused; the original is untouched. 413 too_large (over 200 MB); 422 bad_glb / cant_lighten; 404 missing file.",
         "responses": {
           "200": {
             "description": "OK",
@@ -10202,12 +10222,72 @@
         }
       }
     },
+    "/api/local/models-dir": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Where model downloads go (hardware/modelsTarget.ts): OPENHIGGSFIELD_COMFY_MODELS_DIR, else the running ComfyUI's own folders (GET /experiment/models; this computer only, never Docker). Returns {source \"env\" | \"comfyui\" | null, dir (full path on a loopback-bound server, else the folder name) | null, writable, why null | env_missing | remote | container | unknown | not_writable, putIn (where a checkpoint goes inside ComfyUI, e.g. ComfyUI\\models\\checkpoints), separator, canOpen}.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/local/models-dir/open": {
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Opens the models folder in the file manager (Explorer, Finder, xdg-open). Loopback-bound server only (403 not_loopback); 409 no_models_dir when unknown; the mock backend never opens a window ({opened:false, sample:true}).",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/local/nodes": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "ComfyUI add-ons (custom node packs from readiness/manifest/custom-nodes.json) and which the running ComfyUI lacks: {known, platform, comfyUrl, packs[{name, repo, dir, license, optional, note, classes[], installed true | false | null, missing[]}]} (missing first). ?refresh=1 re-reads ComfyUI's node list first. Read only.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/local/comfy/test": {
       "post": {
         "tags": [
           "System"
         ],
-        "summary": "DP 6: test a ComfyUI address without saving it: body {url?} (default = the address in use; another url only on a loopback-bound server). Returns {url, reachable, version, gpu {name, type, vramTotalGB} | null, ggufNode, latencyMs, cloud, error (plain sentence | null), errorCode (refused | timeout | not_found | bad_response | unreachable | not_set | cloud | null), timeoutSec}. Same check as the reachability cache (Q5).",
+        "summary": "DP 6: test a ComfyUI address without saving it: body {url?} (default = the address in use; another url only on a loopback-bound server). No url: the saved address when it answers, else ports 8188, 8000, 8189-8191 (OPENHIGGSFIELD_COMFY_DETECT_URLS) → detected, movedFrom (the saved address that stopped answering), alsoFound[{url, version}] (other ComfyUIs that answer), host {platform, arch, headless}; never saved here. Returns {url, reachable, version, gpu {name, type, vramTotalGB} | null, ggufNode, latencyMs, cloud, error (plain sentence | null), errorCode (refused | timeout | not_found | bad_response | unreachable | not_set | cloud | null), timeoutSec}. Same check as the reachability cache (Q5).",
         "responses": {
           "200": {
             "description": "OK",
@@ -10691,6 +10771,66 @@
             "description": "day | month (default day)"
           }
         ]
+      }
+    },
+    "/api/spend/tally": {
+      "get": {
+        "tags": [
+          "Usage"
+        ],
+        "summary": "Spend page month tally (server local time): {thisMonth {from, spentUsd, paidRuns, freeRuns, runs}, lastMonth {…}, projects [{projectId (null = no project), name, thisMonthUsd, lastMonthUsd, runs}], cap {monthlyUsd (null = off), spentUsd, leftUsd, resetsOn}, canWrite}. Same counting as the Spend page (local, sample and never-sent runs are $0).",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/spend-cap": {
+      "put": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Set the optional monthly limit {monthlyUsd: number (0 to 1,000,000) | null (off)}. Before every paid run (submit, retry, Try on, upscale, a move to another route) the server adds this month's spend to the run's price and refuses one that would go past it with 402 {code: \"spend_cap\", error, spendCap {monthlyUsd, spentUsd, runUsd, leftUsd, resetsOn}, charged: false}; quotes then say runnable:false, blockedCode \"spend_cap\". Free runs always go. Writes only from this computer, else 403. Returns the tally.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/spend/overview": {
@@ -11363,6 +11503,27 @@
             }
           }
         }
+      }
+    },
+    "/api/workflows/source-licence": {
+      "get": {
+        "tags": [
+          "Other"
+        ],
+        "summary": "GET /api/workflows/source-licence (undocumented)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "parameters": []
       }
     },
     "/api/workflows/{id}": {
@@ -12710,6 +12871,27 @@
             }
           }
         ]
+      }
+    },
+    "/api/clip-cuts": {
+      "post": {
+        "tags": [
+          "Other"
+        ],
+        "summary": "POST /api/clip-cuts (undocumented)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "parameters": []
       }
     },
     "/api/jobs/{id}/share/info": {

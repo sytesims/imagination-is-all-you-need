@@ -12,7 +12,7 @@ if (health?.backend !== 'mock') { console.log('skip: the API is not in sample mo
 let failed = 0; const ok = (n: string, c: boolean, i: unknown = '') => { if (!c) failed++; console.log(`${c ? 'PASS' : 'FAIL'} ${n}`, c ? '' : JSON.stringify(i).slice(0, 400)); };
 const c = new Client({ name: 'library-test', version: '1' });
 await c.connect(new StdioClientTransport({ command: process.execPath, args: [path.join(MCP, 'node_modules/tsx/dist/cli.mjs'), path.join(MCP, 'src/index.ts')], cwd: MCP,
-  env: { ...process.env, OPENHIGGSFIELD_API: API, OPENHIGGSFIELD_MCP_TOOLSETS: 'core' } as Record<string, string> }));
+  env: { ...process.env, OPENHIGGSFIELD_API: API, OPENHIGGSFIELD_MCP_TOOLSETS: 'core', OPENHIGGSFIELD_MCP_SPEND: 'allow' } as Record<string, string> }));
 const call = async (name: string, args: Record<string, unknown>) => { const raw: any = await c.callTool({ name, arguments: args }); let j: any = {}; try { j = JSON.parse(raw.content?.[0]?.text ?? '{}'); } catch { j = { text: raw.content?.[0]?.text }; } return { raw, j }; };
 
 const names = (await c.listTools()).tools.map((t) => t.name);

@@ -20,18 +20,21 @@ export const DEPLOY_ENV = { url: 'COMFY_DEPLOY_URL', key: 'COMFY_API_KEY', runne
 export type DeployVia = 'comfy-deploy' | 'runner';
 /** Route label (Run on detail, route lists, Settings). */
 export const DEPLOY_LABEL = 'Your Comfy deployment';
-const v = (k: string) => process.env[k]?.trim() || '';
+/** A key reader (kernel/keys.ts): place-comfy-cloud passes its own ctx.keys (declared: COMFY_API_KEY, COMFY_DEPLOY_URL, COMFY_RUNNER_URL,
+ *  COMFY_RUNNER_TOKEN); code without a ctx (the deployment routes, the probe) reads them as before. */
+export type ReadKey = (name: string) => string | undefined;
+const anyKey: ReadKey = (k) => process.env[k]?.trim() || undefined;
 const okUrl = (u: string) => { try { const x = new URL(u); return x.protocol === 'https:' || x.protocol === 'http:'; } catch { return false; } };
 
 /** Where deployment routes send jobs, or null when nothing usable is set. Server-internal: the token never leaves this process. */
-export function deployTarget(): { via: DeployVia; base: string; token: string } | null {
-  const d = v(DEPLOY_ENV.url); if (d && okUrl(d) && v(DEPLOY_ENV.key)) return { via: 'comfy-deploy', base: d.replace(/\/+$/, ''), token: v(DEPLOY_ENV.key) };
+export function deployTarget(read: ReadKey = anyKey): { via: DeployVia; base: string; token: string } | null {
+  const v = (k: string) => read(k) || ''; const d = v(DEPLOY_ENV.url); if (d && okUrl(d) && v(DEPLOY_ENV.key)) return { via: 'comfy-deploy', base: d.replace(/\/+$/, ''), token: v(DEPLOY_ENV.key) };
   const r = v(DEPLOY_ENV.runnerUrl); if (!d && r && okUrl(r)) return { via: 'runner', base: r.replace(/\/+$/, ''), token: v(DEPLOY_ENV.runnerToken) };
   return null;
 }
 /** What is set, in plain words (names only, no values). */
 export function deployState(): { configured: boolean; via: DeployVia | null; reasonCode: string | null; reason: string | null } {
-  const d = v(DEPLOY_ENV.url); const r = v(DEPLOY_ENV.runnerUrl);
+  const v = (k: string) => anyKey(k) || ''; const d = v(DEPLOY_ENV.url); const r = v(DEPLOY_ENV.runnerUrl);
   if (d && !okUrl(d)) return { configured: false, via: 'comfy-deploy', reasonCode: 'deploy_url_invalid', reason: `${DEPLOY_ENV.url} isn't a web address (it should look like https://<name>.run.comfy.app)` };
   if (d && !v(DEPLOY_ENV.key)) return { configured: false, via: 'comfy-deploy', reasonCode: 'key_missing', reason: `Your deployment needs your Comfy API key (${DEPLOY_ENV.key}) too` };
   if (!d && r && !okUrl(r)) return { configured: false, via: 'runner', reasonCode: 'deploy_url_invalid', reason: `${DEPLOY_ENV.runnerUrl} isn't a web address` };

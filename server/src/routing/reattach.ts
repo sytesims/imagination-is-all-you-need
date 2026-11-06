@@ -12,6 +12,7 @@
  */
 import type { Job, RemoteHandle } from '../jobs.js';
 import { env } from '../env.js';
+import { places } from '../services/places.js';
 
 /** Thrown instead of ever submitting again when a pick-up turns out impossible (a multi-pass graph, the key gone): runRouted then cancels the
  *  request at its provider, as for any orphan. */
@@ -23,13 +24,7 @@ export const RESUME_HOSTED = !/^(0|false|off|no)$/i.test(env('RESUME_HOSTED') ??
  *  provider's own handle for it. */
 export function canPickUp(h: RemoteHandle | null | undefined): h is RemoteHandle {
   if (!h || !h.id || h.outputs !== 1 || h.output !== 0) return false;
-  switch (h.kind) {
-    case 'fal': return !!(h.statusUrl && h.responseUrl);
-    case 'router': return !!(h.statusUrl && h.responseUrl && h.cancelUrl);
-    case 'direct': return !!h.pollUrl;
-    case 'replicate': case 'cloud': return true;
-    default: return false;
-  }
+  return places.byRemote(h.kind)?.resume?.(h) ?? false; // its place plugin says (off in this profile → can't be picked up)
 }
 /** The job's request at its provider: job.remote, or (jobs from before job.remote existed) its Comfy Cloud job id. */
 export function remoteOf(j: Job): RemoteHandle | null {
@@ -49,7 +44,7 @@ export function startPickUp(j: Job) { const h = remoteOf(j)!; j.remote = { ...h,
 /** A failed job whose paid result can still be collected (Retry download). */
 export const collectable = (j: Job) => j.status === 'failed' && !!j.remote?.collectable && canPickUp(j.remote) && !!j.routing;
 /** Can Cancel stop this running hosted job at its provider? (fal, Replicate, Router, Cloud have a cancel call; the labs don't.) */
-export const remoteCancellable = (j: Job) => j.status === 'running' && !!j.remote && j.remote.kind !== 'direct';
+export const remoteCancellable = (j: Job) => j.status === 'running' && !!j.remote && !!places.byRemote(j.remote.kind)?.cancel;
 
 /** Tests: replace the network for the provider cancel calls. */
 let testFetch: typeof fetch | null = null;
@@ -59,15 +54,8 @@ export const setReattachFetch = (f: typeof fetch | null) => { testFetch = f; };
  * (the lab APIs) or no key. Used for orphans that can't be picked up.
  */
 export async function cancelRemote(h: RemoteHandle): Promise<boolean | null> {
-  const { findRoute } = await import('./routes.js'); const { keyValue } = await import('./keys.js');
+  const { findRoute } = await import('./routes.js');
   const r = findRoute(h.routeId); const f = testFetch ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
-  try {
-    if (h.kind === 'fal') { const key = r ? keyValue(r) : null; if (!key || !h.cancelUrl) return null; return await (await import('../providers/fal.js')).falCancel(h.cancelUrl, key, f); }
-    if (h.kind === 'replicate') { const key = r ? keyValue(r) : null; if (!key) return null; return await (await import('../providers/replicate.js')).replicateCancel(h.id, key, f); }
-    if (h.kind === 'router') { const key = r ? keyValue(r) : null; if (!key || !h.cancelUrl) return null; const { ComfyRouter } = await import('../comfyRouter.js');
-      return await new ComfyRouter(key, f).cancel({ requestId: h.id, statusUrl: h.statusUrl ?? '', responseUrl: h.responseUrl ?? '', cancelUrl: h.cancelUrl, estimate: null }); }
-    if (h.kind === 'cloud') { const { cloudTargetFor } = await import('./cloudRun.js'); const tg = r ? cloudTargetFor(r) : null; if (!tg) return null; const { ComfyCloudV2 } = await import('../comfy/cloudV2.js');
-      return await new ComfyCloudV2(tg.base, tg.token, `${h.id}-cancel`, f).cancel(h.id); }
-    return null;
-  } catch { return false; }
+  const place = places.byRemote(h.kind); if (!r || !place?.cancel) return null; // the place's own cancel call, with its own key
+  try { return await place.cancel(h, r, f); } catch { return false; }
 }

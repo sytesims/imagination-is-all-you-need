@@ -6,7 +6,7 @@ name: CI
 # main (push, nightly, by hand): everything.
 on:
   push:
-    branches: [main]
+    branches: [main, v2]
   pull_request:
   schedule:
     - cron: '0 3 * * *' # nightly full run on main, so there is a complete run even on busy days
