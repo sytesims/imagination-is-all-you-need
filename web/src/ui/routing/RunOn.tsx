@@ -28,7 +28,7 @@ import { LOCAL_LABEL, COMFY_DEPLOY_DETAIL } from '../../../../server/src/shared/
 /** Kept for callers: the place the pre-selection resolved for this job (the live quote's place, else the listing's). */
 export const autoPlaceOf = (m: ToolModel | undefined, q?: any): string | null => placeOf(m, null, q);
 /** The chip / field words: always the place's name ('Your computer', 'Comfy Cloud', 'fal'), plus a short state when it can't run as is. */
-export function runOnText(m: ToolModel | undefined, pick: string, q?: any): { main: string; sub: string; dot: 'ok' | 'demo' | 'off' | null; tip: string; place: string | null; saved: boolean; action: PlaceAction | null } {
+export function runOnText(m: ToolModel | undefined, pick: string, q?: any): { main: string; sub: string; dot: 'ok' | 'demo' | 'off' | null; tip: string; place: string | null; saved: boolean; action: PlaceAction | null; /** free samples: the chip says Sample, never a place */ sample?: boolean } {
   const saved = !!pick && pick !== 'auto'; const place = placeOf(m, pick, q);
   const row = m?.runsOn.find(r => r.id === place);
   if (!place) return { main: 'Not set up', sub: '', dot: 'demo', tip: `${m?.name ?? 'This model'} can’t run anywhere yet. Pick one to set up (the card above Generate).`, place: null, saved: false, action: null }; // nothing pre-selected
@@ -36,7 +36,7 @@ export function runOnText(m: ToolModel | undefined, pick: string, q?: any): { ma
   const qAction: PlaceAction | null = qHere && q.runnable === false && q.setup && q.setup.runOn === place ? { kind: q.setup.action, text: q.setup.actionText, missingBytes: q.setup.missingBytes ?? null, downloadId: q.setup.downloadId ?? null } : null;
   let st: string = row?.status ?? 'ready';
   if (qHere) st = q.demo ? 'sample' : q.runnable === false && (q.reasonCode === 'input_blocked' || q.blockedCode === 'input_blocked') ? st /* the place is fine; the job needs something (who to swap): the bar says what */ : q.runnable === false ? (q.needsKey ? 'needs-key' : q.reasonCode === 'weights_missing' || q.reasonCode === 'nodes_missing' ? 'not-installed' : st === 'ready' ? 'unavailable' : st) : 'ready';
-  if (qHere && q.freeSample) return { main: 'Sample', sub: '', dot: 'demo', tip: `${q.sampleNote ?? 'A sample from our examples.'} Nothing is sent anywhere and nothing is charged.`, place, saved, action: null }; // free samples (nothing set up): never named as a place it isn't
+  if (qHere && q.freeSample) return { main: 'Sample', sub: '', dot: 'demo', tip: `${q.sampleNote ?? 'A sample from our examples.'} Nothing is sent anywhere and nothing is charged.`, place, saved, action: null, sample: true }; // free samples (nothing set up): never named as a place it isn't
   const action = st === 'ready' ? null : qAction ?? row?.action ?? null;
   const ch = qHere ? routeChoiceOf(m, q.routeId) : null; // the place has several ways to run it: name the one this run uses ("Comfy Cloud · open workflow")
   const name = ch?.name ?? (place ? runOnLabel(place) : 'Not set up');
@@ -89,7 +89,7 @@ export function RunOnChip({ toolId, model, engine, quote: q0, testId = 'run-on-c
   const shared = useRunOn(toolId, model?.key).runOn; const pick = own ? own.runOn : shared; const t = runOnText(model, pick, quote);
   if (!model) return null;
   return <><button ref={ref} type="button" className={`ic-chip ro-chip${compact ? ' ro-compact' : ''}${open ? ' on' : ''}`} data-testid={testId} data-place={t.place ?? undefined} data-saved={t.saved ? '1' : undefined} aria-haspopup="dialog" aria-expanded={open} aria-label={`Run on: ${t.main}${t.sub ? `, ${t.sub}` : ''}`} {...tip(t.tip)} onClick={() => setOpen(o => !o)}>
-      {t.dot && <i className={`mp-st mp-st-${t.dot}`} aria-hidden />}{compact ? <span className="ro-chip-t ro-chip-c">{((w: string) => { const tiny = t.place ? RUN_ON_TINY[t.place] : null; return tiny && tiny !== w ? <><span className="ro-full">{w}</span><span className="ro-tiny" aria-hidden>{tiny}</span></> : w; })(t.place ? RUN_ON_CHIP[t.place] ?? t.main : 'Set up')}</span> : <span className="ro-chip-t">{t.main}{t.sub ? <span className="ro-sub"> · {t.sub}</span> : null}</span>}<ChevronRightIcon size={16} /></button>
+      {t.dot && <i className={`mp-st mp-st-${t.dot}`} aria-hidden />}{compact ? <span className="ro-chip-t ro-chip-c">{((w: string) => { const tiny = t.place && !t.sample ? RUN_ON_TINY[t.place] : null; return tiny && tiny !== w ? <><span className="ro-full">{w}</span><span className="ro-tiny" aria-hidden>{tiny}</span></> : w; })(t.sample ? t.main : t.place ? RUN_ON_CHIP[t.place] ?? t.main : 'Set up')}</span> : <span className="ro-chip-t">{t.main}{t.sub ? <span className="ro-sub"> · {t.sub}</span> : null}</span>}<ChevronRightIcon size={16} /></button>
     <RunOnMenu open={open} anchor={ref} avoid={avoid} watch={watch} gap={watch ? 4 : undefined} placement="top" onClose={() => setOpen(false)} toolId={toolId} model={model} engine={engine} quote={quote} own={own} scale={scale} /></>;
 }
 

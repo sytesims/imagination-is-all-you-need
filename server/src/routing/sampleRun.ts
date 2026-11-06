@@ -15,6 +15,6 @@ export async function runSample(job: Job, tool: ToolDef): Promise<void> {
   const kind = outMediaKind(job); const i = job.input ?? {};
   const n = Array.isArray(i.shots) && i.shots.length ? i.shots.length : Math.min(4, Math.max(1, Number(i.n) || 1));
   const labels = kind === 'image' ? imageLabels(i, 'Sample') : n > 1 ? Array.from({ length: n }, (_, k) => `Sample ${k + 1}`) : ['Sample'];
-  if (kind && !i.layers) i.sampleFiles = matchSamples(String(i.finalPrompt ?? i.prompt ?? i.text ?? i.appPrompt ?? ''), kind, labels.length, { extra: tool.name }).map((c) => c.url);
+  if (kind && !i.layers) i.sampleFiles = matchSamples(String(i.prompt || i.text || i.appPrompt || i.finalPrompt || '') /* the words the user typed: an enhanced prompt adds style words that match everything */, kind, labels.length, { extra: tool.name }).map((c) => c.url);
   return mockRun(job, STAGES, labels, kind === 'image' ? 2500 : 4000);
 }
