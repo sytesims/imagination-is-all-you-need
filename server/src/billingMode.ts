@@ -7,6 +7,7 @@
  */
 import { getKv, setKv } from './db.js';
 import { env } from './env.js';
+import { moneyFeature } from './services/spendFeatures.js';
 export type BillingMode = 'own-accounts' | 'team';
 /** The user's Comfy plan (Settings → Connections → Your plans; shared/priceText.ts COMFY_PLANS). null = not picked. Shown in price details only. */
 export type ComfyPlanSetting = 'standard' | 'creator' | 'pro' | 'payg' | null;
@@ -18,7 +19,8 @@ const envMode = (): BillingMode | null => { const v = (env('BILLING_MODE') ?? ''
 export const modeLocked = () => envMode() != null;
 export function billingSettings(): BillingSettings {
   const s = getKv<Partial<BillingSettings>>(KV, {}) ?? {};
-  const plan = s.comfyPlan; return { mode: envMode() ?? (s.mode === 'team' ? 'team' : 'own-accounts'), comfyPlan: plan === 'standard' || plan === 'creator' || plan === 'pro' || plan === 'payg' ? plan : null };
+  // team mode needs the billing-team-mode plugin: with it off, every run bills the user's own accounts (no app balance)
+  const plan = s.comfyPlan; return { mode: !moneyFeature('billing-team-mode') ? 'own-accounts' : envMode() ?? (s.mode === 'team' ? 'team' : 'own-accounts'), comfyPlan: plan === 'standard' || plan === 'creator' || plan === 'pro' || plan === 'payg' ? plan : null };
 }
 export const billingMode = (): BillingMode => billingSettings().mode;
 export const teamMode = () => billingMode() === 'team';
