@@ -322,7 +322,7 @@ const pub = (j: Job) => ({
   actualUsd: j.actualCost && Number.isFinite(j.actualCost.usd) ? j.actualCost.usd : null,
 });
 
-await loadPlugins();
+if (!(await import('./tools/registry.js')).toolRegistry.managed) await loadPlugins(); // booted: the workflow-folders plugin loaded them (or is off)
 (await import('./routesWorkflowImport.js')).registerWorkflowImport(app); // Add a workflow: import preview, save, remove (no restart)
 /** Plugin load report: loaded + skipped (with validation errors). */
 app.get('/api/plugins', async () => { const { isToolHidden } = await import('./tools/registry.js'); const { readFileSync: rf, existsSync: ex } = await import('node:fs');

@@ -8,7 +8,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { PLUGINS_DIR, USER_PLUGINS_DIR, DATA_DIR } from './config.js';
-import { getTool, registerTool, unregisterTool, toolIdTaken } from './tools/registry.js';
+import { getTool, registerTool, unregisterTool, toolIdTaken, toolRegistry, FOLDER_ORDER } from './tools/registry.js';
 import { makeApp, FieldSpec } from './tools/apps.js';
 import { mockRun, registerMockResult } from './tools/shared.js';
 import { getProvider } from './providers.js';
@@ -18,7 +18,7 @@ import { RESOLUTIONS } from './media.js';
 import type { Job } from './jobs.js';
 import type { ToolDef } from './tools/types.js';
 import { placementErrors, placePlugins, TAB_LABEL, type PluginTab } from './shared/pluginPlacement.js';
-import { mapGraph, hasFileKey, pluginOutKind, registerPluginSpec, clearPluginSpecs, removePluginSpec, mainModelOf, graphPromptOf } from './pluginGraph.js';
+import { mapGraph, hasFileKey, pluginOutKind, registerPluginSpec, clearPluginSpecs, removePluginSpec, mainModelOf, graphPromptOf, type PluginSpec } from './pluginGraph.js';
 export { mapGraph } from './pluginGraph.js';
 
 export const PLUGIN_SCHEMA = 1;
@@ -137,13 +137,15 @@ export function validateManifest(m: any, dir: string): { errors: string[]; warni
   return { errors: e, warnings: w, graph, nodeMap };
 }
 
-async function loadOne(dir: string, user: boolean): Promise<PluginStatus> {
+/** A folder read and checked: its status, and (when it is ok) the tool and graph its fiber registers. Registers nothing itself. */
+export interface ReadFolder { st: PluginStatus; tool?: ToolDef; spec?: PluginSpec }
+async function readFolder(dir: string, user: boolean): Promise<ReadFolder> {
   const st: PluginStatus = { id: path.basename(dir), dir, ok: false, errors: [], warnings: [], ...(user ? { user: true } : {}) };
   let m: PluginManifest;
-  try { m = JSON.parse(readFileSync(path.join(dir, 'plugin.json'), 'utf8')); } catch (x: any) { st.errors.push(`plugin.json: ${x.message}`); return st; }
+  try { m = JSON.parse(readFileSync(path.join(dir, 'plugin.json'), 'utf8')); } catch (x: any) { st.errors.push(`plugin.json: ${x.message}`); return { st }; }
   const v = validateManifest(m, dir); st.errors.push(...v.errors); st.warnings.push(...v.warnings); if (isStr((m as any)?.id)) st.id = m.id;
   if (user && m.handler != null) st.errors.push('a workflow added in the app never runs code: remove "handler" (only folders shipped in plugins/ may have one)');
-  if (st.errors.length) return st;
+  if (st.errors.length) return { st };
   for (const l of m.licenses ?? []) registerLicense({ id: l.id, name: l.name, osi: l.osi, url: l.url ?? null });
   const partIds = [...new Set([m.license.id, ...(m.components ?? []).map((c) => c.license)])];
   const parts = partIds.map((id) => LICENSES[id]);
@@ -156,8 +158,8 @@ async function loadOne(dir: string, user: boolean): Promise<PluginStatus> {
     const js = m.handler.endsWith('.ts') ? m.handler.replace(/\.ts$/, '.mjs') : m.handler;
     const pick = existsSync(path.join(dir, js)) ? js : m.handler;
     try { const mod = await import(pathToFileURL(path.join(dir, pick)).href); handler = (mod.default ?? mod) as PluginHandler; st.handler = true;
-      if ((handler.run && typeof handler.run !== 'function') || (handler.parseInput && typeof handler.parseInput !== 'function')) { st.errors.push('handler must export { parseInput?, run? } functions'); return st; } }
-    catch (x: any) { st.errors.push(`handler failed to load: ${x.message}${m.handler.endsWith('.ts') ? ' (handler.ts needs the tsx runtime: npm run dev; ship handler.js for node dist)' : ''}`); return st; }
+      if ((handler.run && typeof handler.run !== 'function') || (handler.parseInput && typeof handler.parseInput !== 'function')) { st.errors.push('handler must export { parseInput?, run? } functions'); return { st }; } }
+    catch (x: any) { st.errors.push(`handler failed to load: ${x.message}${m.handler.endsWith('.ts') ? ' (handler.ts needs the tsx runtime: npm run dev; ship handler.js for node dist)' : ''}`); return { st }; }
   }
   const workflowId = `plugins/${path.basename(dir)}/${m.workflow}`;
   registerWorkflowLicense(workflowId, partIds);
@@ -196,11 +198,27 @@ async function loadOne(dir: string, user: boolean): Promise<PluginStatus> {
   const mocks = m.mock?.results ?? (m.mock?.result ? [m.mock.result] : []);
   if (mocks.length) registerMockResult(m.id, mocks.map((r) => path.join(dir, r)));
   if (m.modelInfo) registerModelInfo(`${m.id}:${(m.providers ?? ['comfy-open'])[0]}`, m.modelInfo);
-  registerTool(tool);
-  if (v.graph && v.nodeMap) registerPluginSpec({ id: m.id, workflowId, input: m.input, outKind, graph: v.graph, nodeMap: v.nodeMap });
   st.ok = true; st.toolId = m.id;
-  return st;
+  return { st, tool, spec: v.graph && v.nodeMap ? { id: m.id, workflowId, input: m.input, outKind, graph: v.graph, nodeMap: v.nodeMap } : undefined };
 }
+
+/**
+ * Where a folder's tool and graph go. On a booted server that is the workflow-folders plugin (plugins-builtin/workflow-folders.ts): one fiber
+ * per folder, so removing a folder disposes everything it registered. Without a boot (scripts, tests) they go straight into the registries.
+ * With the tools service up but the workflow-folders plugin off, no folder loads.
+ */
+export interface FolderHost { mount(r: Required<Pick<ReadFolder, 'st' | 'tool'>> & Pick<ReadFolder, 'spec'>): Promise<void>; unmount(id: string): Promise<void> }
+const direct: FolderHost = {
+  async mount({ tool, spec }) { registerTool(tool, { order: FOLDER_ORDER }); if (spec) registerPluginSpec(spec); },
+  async unmount(id) { unregisterTool(id); removePluginSpec(id); },
+};
+let host: FolderHost | null = null;
+/** The workflow-folders plugin hands its host over while it is loaded (null when it is disposed). */
+export const setFolderHost = (h: FolderHost | null) => { host = h; if (!h && toolRegistry.managed) status.length = 0; }; // the plugin was disposed: its folders are gone
+const hostNow = (): FolderHost | null => host ?? (toolRegistry.managed ? null : direct);
+/** Is any folder loading possible here (false: the workflow-folders plugin is off in this profile)? */
+export const foldersOn = () => !!hostNow();
+const FOLDERS_OFF = 'workflow folders are turned off in this app (the workflow-folders plugin is not in the profile)';
 
 /** The two plugin roots: the shipped folders, then the ones you added (the same folder twice counts once, as shipped). */
 const roots = (): [string, boolean][] => (path.resolve(USER_PLUGINS_DIR) === path.resolve(PLUGINS_DIR) ? [[PLUGINS_DIR, false]] : [[PLUGINS_DIR, false], [USER_PLUGINS_DIR, true]]);
@@ -209,7 +227,11 @@ export const isUserPluginDir = (dir: string) => roots().some(([r, u]) => u && pa
 
 async function safeLoad(dir: string, user: boolean): Promise<PluginStatus> {
   let st: PluginStatus;
-  try { st = await loadOne(dir, user); } catch (x: any) { st = { id: path.basename(dir), dir, ok: false, errors: [`unexpected error: ${x.message}`], warnings: [], ...(user ? { user: true } : {}) }; }
+  try {
+    const h = hostNow(); if (!h) throw new Error(FOLDERS_OFF);
+    const r = await readFolder(dir, user); st = r.st;
+    if (st.ok && r.tool) { try { await h.mount({ st, tool: r.tool, spec: r.spec }); } catch (x: any) { st.ok = false; delete st.toolId; st.errors.push(`couldn’t load: ${x.message}`); } }
+  } catch (x: any) { st = { id: path.basename(dir), dir, ok: false, errors: [`unexpected error: ${x.message}`], warnings: [], ...(user ? { user: true } : {}) }; }
   if (st.ok) console.info(`[openhiggsfield] plugin ${st.id} loaded${st.warnings.length ? ` (warnings: ${st.warnings.join('; ')})` : ''}`);
   else console.warn(`[openhiggsfield] plugin ${st.id} skipped: ${st.errors.join('; ')}`);
   return st;
@@ -220,7 +242,8 @@ const place = () => placePlugins(status.flatMap((x) => (x.ok && x.toolId ? [getT
 
 /** Load every plugin folder once at startup. Never throws. */
 export async function loadPlugins() {
-  status.length = 0; clearPluginSpecs();
+  const h = hostNow(); for (const x of status) if (x.ok && x.toolId && h) await h.unmount(x.toolId); // a reload: the folders loaded before go first
+  status.length = 0; if (!h) return status; if (h === direct) clearPluginSpecs();
   for (const [root, user] of roots()) {
     if (!existsSync(root)) continue;
     for (const d of readdirSync(root, { withFileTypes: true }).filter((x) => x.isDirectory() && !x.name.startsWith('.') && !x.name.startsWith('_')).sort((a, b) => a.name.localeCompare(b.name))) {
@@ -238,10 +261,10 @@ export async function addPluginFolder(dir: string, user = true): Promise<PluginS
   const at = status.findIndex((x) => path.resolve(x.dir) === path.resolve(dir)); if (at >= 0) status.splice(at, 1, st); else status.push(st);
   place(); return st;
 }
-/** Take a loaded plugin out of the app (its tool, plan and placement); the caller deletes its folder. Returns its status, or null when unknown. */
-export function removePlugin(id: string): PluginStatus | null {
+/** Take a loaded plugin out of the app (its fiber: tool, graph; then its placement); the caller deletes its folder. Returns its status, or null when unknown. */
+export async function removePlugin(id: string): Promise<PluginStatus | null> {
   const at = status.findIndex((x) => x.id === id); if (at < 0) return null;
   const [st] = status.splice(at, 1);
-  if (st.toolId) { unregisterTool(st.toolId); removePluginSpec(st.toolId); }
+  if (st.ok && st.toolId) await hostNow()?.unmount(st.toolId);
   place(); return st;
 }

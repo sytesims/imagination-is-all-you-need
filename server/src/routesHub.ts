@@ -28,13 +28,13 @@ export function registerHub(app: FastifyInstance) {
     const c = await catalog(); const it = c.items.find((i) => i.id === b.id);
     if (!it) return reply.code(404).send({ error: 'hub item not found', errorType: 'not_found' });
     if (it.sample) return reply.code(409).send({ error: 'This is a sample catalogue item, an example only, so it can’t be installed. Connect a hub source to install real LoRAs and workflows.', errorType: 'conflict', code: 'sample_item' });
-    const r = install(it, b.as);
+    const r = await install(it, b.as);
     if ('error' in r) return reply.code(r.status).send({ error: r.error, errorType: r.status === 409 ? 'conflict' : 'invalid_input' });
     return reply.code(201).send(r);
   });
   app.get('/api/hub/installed', async () => ({ items: listInstalled() }));
   app.delete('/api/hub/installed/:id', async (req, reply) => {
-    const r = uninstall((req.params as { id: string }).id);
+    const r = await uninstall((req.params as { id: string }).id);
     return r ? { ok: true, removed: r } : reply.code(404).send({ error: 'not installed', errorType: 'not_found' });
   });
 }
