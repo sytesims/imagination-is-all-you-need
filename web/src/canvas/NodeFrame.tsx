@@ -24,7 +24,7 @@ import { useToast } from '../shared/Toast';
 import { linkShapes } from './graph';
 import { nodeDefOf, type NodeTint } from './nodeTypes';
 import { legalTargets, pickTypedTarget, takesLine, PORT_WORDS, type PortInfo, type PortKind } from './nodeLogic';
-import { boardPorts, portInfoOf } from './ports';
+import { boardPorts, portInfoOf, outKindOfShape } from './ports';
 import { catalogNow } from './catalog';
 import { perfOff } from './CameraMotion';
 import { CardName } from './CardName';
@@ -74,6 +74,11 @@ export function NodeFrame({ shapeId, type, tint, icon, title, titleHint, status,
   const role = useValue('nf drag role', () => { const d = portDragAtom.get(); if (!d) return ''; if (d.fromId === shapeId) return 'src'; return d.targetId === shapeId ? 'drop' : d.legal.includes(shapeId) ? 'ok' : 'dim'; }, [shapeId]);
   const dragKind = useValue('nf drag kind', () => portDragAtom.get()?.kind ?? null, []);
   const ports = useValue('nf ports', () => { const s = board.getNode(shapeId); return portKey(s && variant === 'node' ? portInfoOf(board, s, catalogNow()) : null); }, [board, shapeId, variant]);
+  /* which ports have a link on them (the React Flow board fills those dots; tldraw's look doesn't use it) */
+  const linked = useValue('nf linked ports', () => { if (variant !== 'node') return '';
+    const ins = [...new Set(board.linksInto(shapeId).map((l) => (l.from ? outKindOfShape(board.getNode(l.from)) : null)).filter(Boolean))].sort().join(',');
+    return `${board.linksFrom(shapeId).length ? 'out' : ''}|${ins}`; }, [board, shapeId, variant]);
+  const [linkedOut, linkedInK] = linked.split('|'); const linkedIn = new Set(linkedInK ? linkedInK.split(',') : []);
   const [outK, insK] = ports.split('|'); const out = (outK || null) as PortKind | null;
   const ins = (insK ? insK.split(',') : []).map((x) => { const [k, r] = x.split(':'); return { kind: k as PortKind, room: Number(r) }; });
   const [start, setStart] = useState<{ x: number; y: number } | null>(null);
@@ -129,9 +134,9 @@ export function NodeFrame({ shapeId, type, tint, icon, title, titleHint, status,
     {(children != null || heading != null) && <div className={`nf-body ${bodyClass}`.trim()}>{farName && heading == null && <h3 className="nf-heading nf-far-only" aria-hidden>{farName}</h3>}{heading != null && (renamable && typeof heading === 'string' ? <CardName id={shapeId} name={metaName} shown={metaName || heading} className="nf-heading" testId="nf-name" />
       : <h3 className="nf-heading" title={typeof heading === 'string' ? heading : undefined}>{heading}</h3>)}{children}</div>}
     {footer != null && <footer className="nf-foot">{footer}</footer>}
-    {ins.map((p, i) => <span key={p.kind} className={`nf-port nf-in nf-k-${p.kind}${p.room <= 0 ? ' full' : ''}${dragKind === p.kind && role !== 'dim' ? ' want' : ''}`} style={{ top: top(i) }} data-card-control data-kind={p.kind} data-testid={`port-in-${p.kind}`}
+    {ins.map((p, i) => <span key={p.kind} className={`nf-port nf-in nf-k-${p.kind}${p.room <= 0 ? ' full' : ''}${linkedIn.has(p.kind) ? ' linked' : ''}${dragKind === p.kind && role !== 'dim' ? ' want' : ''}`} style={{ top: top(i) }} data-card-control data-kind={p.kind} data-testid={`port-in-${p.kind}`}
       {...tip(p.room > 0 ? `Takes ${PORT_WORDS[p.kind]}` : `${KIND_NAME[p.kind]} input is full`)}><i /></span>)}
-    {def?.output && out && <span className={`nf-port nf-out nf-k-${out}`} role="button" tabIndex={-1} data-card-control data-kind={out} data-testid={`port-out-${out}`} aria-label={`${KIND_NAME[out]} out: drag onto another card`}
+    {def?.output && out && <span className={`nf-port nf-out nf-k-${out}${linkedOut ? ' linked' : ''}`} role="button" tabIndex={-1} data-card-control data-kind={out} data-testid={`port-out-${out}`} aria-label={`${KIND_NAME[out]} out: drag onto another card`}
       {...tip(`Drag to connect this ${KIND_NAME[out].toLowerCase()}, or let go on the board for what's next`)} onPointerDown={beginDrag}><i /></span>}
     {role === 'src' && start && <DragGhost from={start} />}
   </div>;

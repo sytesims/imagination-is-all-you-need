@@ -10,8 +10,8 @@
  * Variation and Recreate; failed shows the shared failure wording and Retry. Everything it keeps lives in the board snapshot
  * (cardModel.GenCardProps): never media data.
  */
-import { useEffect, useRef, useState } from 'react';
-import { useBoardApi, useValue } from './boardApi';
+import { useContext, useEffect, useRef, useState } from 'react';
+import { useBoardApi, useValue, ViewTuneContext, takePeekAtom } from './boardApi';
 import type { JobState } from '../api';
 import { ResultCard } from '../shared/ResultCard';
 import { gridSrc } from '../shared/thumbs';
@@ -82,7 +82,9 @@ function Failed({ shape, job }: { shape: GenCardShape; job: JobState }) {
  *  its own card; nothing else adds cards. */
 function TakeStrip({ shape }: { shape: GenCardShape }) {
   const board = useBoardApi(); const toast = useToast(); const p = shape.props; const n = p.takes.length; const i = Math.max(0, Math.min(p.take, n - 1));
-  const strip = useRef<HTMLSpanElement>(null);
+  const strip = useRef<HTMLSpanElement>(null); const tune = useContext(ViewTuneContext);
+  const peek = (k: number | null) => { if (tune.takePeek) takePeekAtom.set(k == null ? null : { id: shape.id, k }); };
+  useEffect(() => () => { if (takePeekAtom.get()?.id === shape.id) takePeekAtom.set(null); }, [shape.id]);
   /* the newest thumbnail develops too (a smaller version of the card's fade-up) */
   const seen = useRef(n); const [fresh, setFresh] = useState('');
   useEffect(() => { if (n > seen.current && p.takes[n - 1]) { setFresh(p.takes[n - 1].url); const t = window.setTimeout(() => setFresh(''), 1000); seen.current = n; return () => window.clearTimeout(t); } seen.current = n; }, [n]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -97,7 +99,7 @@ function TakeStrip({ shape }: { shape: GenCardShape }) {
     <span ref={strip} className="gc-v-thumbs" role="listbox" aria-label="Versions: the ringed one goes to the next card" tabIndex={n > 1 ? 0 : -1}
       onKeyDown={e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); set(i + (e.key === 'ArrowRight' ? 1 : -1)); } }}>
       {p.takes.map((t, k) => <button key={`${t.url}-${k}`} type="button" role="option" tabIndex={-1} className={`nf-tk${k === i ? ' on' : ''}${fresh === t.url ? ' develop' : ''}`} aria-label={`Version ${k + 1}`} aria-selected={k === i} data-testid={`gc-version-${k + 1}`}
-        {...tip(`${k === i ? `Version ${k + 1}: goes to the next card` : `Use version ${k + 1}`}${t.review ? `\n${badgeText(t.review)}${t.review.rec ? '\nThe agent would pick this one' : ''}` : ''}`)} onClick={() => set(k)}>{t.poster ? <img src={gridSrc(t.poster, 28)} alt="" draggable={false} loading="lazy" /> : <i>{k + 1}</i>}
+        {...tip(`${k === i ? `Version ${k + 1}: goes to the next card` : `Use version ${k + 1}`}${t.review ? `\n${badgeText(t.review)}${t.review.rec ? '\nThe agent would pick this one' : ''}` : ''}`)} onClick={() => set(k)} onPointerEnter={() => peek(k)} onPointerLeave={() => peek(null)}>{t.poster ? <img src={gridSrc(t.poster, tune.takeThumbPx)} alt="" draggable={false} loading="lazy" /> : <i>{k + 1}</i>}
         {t.review && <b className={`gc-v-badge ${t.review.verdict}`} data-testid={`gc-review-${k + 1}`} data-verdict={t.review.verdict} aria-label={badgeText(t.review)}>{t.review.verdict === 'fits' ? '✓' : '!'}</b>}
         {t.review?.rec && <span className="gc-v-rec" data-testid={`gc-rec-${k + 1}`} aria-label="The agent would pick this one" />}</button>)}
     </span>
@@ -121,7 +123,9 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
   const quote = draft ? q : p.quote; const cr: number | null = quote ? shownCredits(quote) : null; const key = !!quote && quote.needsKey === true && quote.runnable === false;
   const model = draft ? modelNameOf(spec) || p.model : p.model || modelNameOf(spec); const maker = (draft ? makerOf(spec) : p.maker) || makerOf(spec);
   const missing = draft ? missingOf(spec, st?.bySlot ?? {}, prompt) : null; const note = spec && st?.extra.length ? tooManyNote(spec, st.extra.length, model) : null;
-  const take = p.takes[Math.min(p.take, p.takes.length - 1)];
+  /* hovering a version on the strip shows it here (engines that turn the peek on) */
+  const peekK = useValue('gc take peek', () => { const v = takePeekAtom.get(); return v && v.id === shape.id ? v.k : -1; }, [shape.id]);
+  const take = p.takes[peekK >= 0 && peekK < p.takes.length ? peekK : Math.min(p.take, p.takes.length - 1)];
   /* results develop (2026-10-27): a version that just arrived fades up like a Polaroid; one already on the board when it opens doesn't */
   const seenTakes = useRef(p.takes.length); const [developing, setDeveloping] = useState('');
   useEffect(() => { const n = p.takes.length; if (n > seenTakes.current && p.status === 'done' && take) { setDeveloping(take.url); const t = window.setTimeout(() => setDeveloping(''), 1500); seenTakes.current = n; return () => window.clearTimeout(t); } seenTakes.current = n; }, [p.takes.length, p.status]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -217,7 +221,7 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
         </div>}
         {p.status === 'running' && <div className="gc-stage" key="run"><GenTile job={job ?? stubJob(p)} testId="gc-running" /></div>}
         {running && <MediaBar job={job ?? stubJob(p)} />}
-        {p.status === 'done' && take && <div className={`gc-stage${developing === take.url ? ' develop' : ''}`} key={`done-${take.url}`} data-developing={developing === take.url ? '1' : undefined}><ResultCard kind={take.kind} url={take.url} poster={take.poster} title={p.prompt || name} model={model} width={p.w} active={selected || hover} onView3d={take.kind === '3d' ? () => open3d(take.jobId) : undefined} testId="gc-result" />
+        {p.status === 'done' && take && <div className={`gc-stage${developing === take.url ? ' develop' : ''}`} key={`done-${take.url}`} data-developing={developing === take.url ? '1' : undefined} data-peek={peekK >= 0 && peekK !== Math.min(p.take, p.takes.length - 1) ? `Version ${peekK + 1}` : undefined}><ResultCard kind={take.kind} url={take.url} poster={take.poster} title={p.prompt || name} model={model} width={p.w} active={selected || hover} onView3d={take.kind === '3d' ? () => open3d(take.jobId) : undefined} testId="gc-result" />
           {take.layers && <LayerCount n={take.layers.length} testId="gc-layers" hint="Kept together on this card. Select it to see each layer and pull any out as its own card" />}
           {(take.kind === 'image' || take.kind === 'video') && <QuickActions board={board} sourceId={shape.id} kind={take.kind} url={take.url} show={selected || hover} />}</div>}
         {p.status === 'failed' && <div className="gc-stage" key="fail"><Failed shape={shape} job={job ?? stubJob(p, 'failed')} /></div>}
