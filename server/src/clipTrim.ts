@@ -62,8 +62,10 @@ const cutsItself = (t: ToolDef) => t.inputs.some((i) => i.name === 'trimStart');
 
 /** Give a tool with a clip the shared range (trimStart / trimEnd). Tools that already cut it themselves (Video Swap, Swap Two People) are left as
  *  they are. A range is billed as its own length, as the quote sends it (quote = charge). */
+const TRIMMED = new WeakSet<ToolDef>();
 export function withClipTrim(tool: ToolDef): ToolDef {
-  if (!hasClip(tool) || cutsItself(tool)) return tool;
+  if (!hasClip(tool) || cutsItself(tool) || TRIMMED.has(tool)) return tool; // once per tool: a studio turned off and on again registers the same tool
+  TRIMMED.add(tool);
   tool.inputs = [...tool.inputs, { name: 'trimStart', kind: 'number' }, { name: 'trimEnd', kind: 'number' }];
   const parse = tool.parseInput.bind(tool);
   tool.parseInput = async (fields, files) => {

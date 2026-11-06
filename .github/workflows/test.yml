@@ -1,19 +1,16 @@
 # Runs the server tests. Guide: docs/TESTING.md ("What CI does")
-#   main (push, nightly, by hand): the full suite, split over 6 machines.
-#   pull requests: only the tests the PR's changes touch (`--changed`), without the heavy SERIAL ones unless the PR touches what they
-#   check (`--skip-heavy`), on as many machines as that needs (up to 6);
-#   the full suite when the runner maps the change to every test (package files, the runner) or this workflow changed.
+#   Every run (pull request into any branch, push to main or v2, nightly, by hand): the full suite, split over 6 machines.
+#   Pull requests run it too, so a merge only lands after a green full run of the same tree (stacked PRs included).
 # No secrets: tests use the mock backend, and the runner (scripts/test-all.mjs) strips every provider key from the environment,
 # so nothing here can reach a paid API.
-# Private-repo runners have 2 cores and are several times slower than a recent Mac: 2 tests at a time per machine, longer limits.
+# Runners are several times slower than a recent Mac: 2 tests at a time per machine, longer limits.
 name: tests
 
 # Full keyless/mock suite for the public repository, separate from the three-OS startup smoke.
 on:
   push:
     branches: [main, v2]
-  pull_request:
-    branches: [main, v2]
+  pull_request: # into any branch, so stacked PRs (based on another PR's branch) are tested too
   schedule:
     - cron: '0 3 * * *' # nightly full run on main, so there is a complete run even on busy days
   workflow_dispatch:
@@ -21,14 +18,15 @@ on:
 permissions:
   contents: read
 
-# A newer push to the same PR or to main cancels the older run. The nightly run has its own group, so pushes never cancel it.
+# A newer push to the same PR cancels the older run. Pushes to main/v2 (and runs by hand) get a group per commit, so every
+# commit gets a complete run: neither cancelled nor dropped while pending behind a newer one. The nightly run has its own group.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'schedule' && 'nightly' || github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event_name == 'schedule' && 'nightly' || github.event_name == 'pull_request' && github.ref || format('{0}-{1}', github.ref, github.sha) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Picks the tests. On a PR the checkout is GitHub's merge commit, so HEAD^1 is the base branch and
-  # `--changed --base HEAD^1` sees exactly what the PR changes (fetch-depth 2 is enough). --list needs no npm install.
+  # How many machines. Always the full suite: PRs too (the old `--changed --skip-heavy` PR runs let breaks through to main/v2).
+  # `npm test -- --changed` stays a local shortcut. Kept as a job so the shard count lives in one place.
   pick:
     name: Pick tests
     runs-on: ubuntu-latest
@@ -38,32 +36,13 @@ jobs:
       shards: ${{ steps.pick.outputs.shards }}
       count: ${{ steps.pick.outputs.count }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
       - id: pick
         shell: bash
         env:
           EVENT: ${{ github.event_name }}
         run: |
-          full() { echo "$1: full suite on 6 machines"; { echo 'args='; echo 'shards=[1,2,3,4,5,6]'; echo 'count=6'; } >> "$GITHUB_OUTPUT"; exit 0; }
-          [ "$EVENT" = pull_request ] || full "$EVENT"
-          git rev-parse -q --verify HEAD^2 > /dev/null || full "No PR merge commit to compare with"
-          git diff --quiet HEAD^1...HEAD -- .github/workflows/test.yml || full "This workflow changed"
-          all=$(node scripts/test-all.mjs --list | grep -c . || true)
-          touched=$(node scripts/test-all.mjs --changed --base HEAD^1 --list | grep -c . || true)
-          [ "$touched" -ge "$all" ] && full "Every test is touched"
-          # the SERIAL heavy tests run on main and nightly, and on a PR only when it touches what they check (HEAVY_ABOUT in the runner)
-          picked=$(node scripts/test-all.mjs --changed --skip-heavy --base HEAD^1 --list | grep -c . || true)
-          echo "The PR's changes touch $touched of $all test files; $picked without the heavy ones it doesn't touch"
-          if [ "$picked" -eq 0 ]; then echo "No tests to run"; { echo 'args='; echo 'shards=[1]'; echo 'count=0'; } >> "$GITHUB_OUTPUT"; exit 0; fi
-          # as many machines as a full run would use for this many files (about a sixth of the suite each)
-          n=$(( (picked * 6 + all - 1) / all ))
-          echo "Running them on $n machine(s)"
-          { echo 'args=--changed --skip-heavy --base HEAD^1'; echo "shards=[$(seq 1 "$n" | paste -sd, -)]"; echo "count=$n"; } >> "$GITHUB_OUTPUT"
+          echo "$EVENT: full suite on 6 machines"
+          { echo 'args='; echo 'shards=[1,2,3,4,5,6]'; echo 'count=6'; } >> "$GITHUB_OUTPUT"
 
   test:
     name: tests (shard ${{ matrix.shard }}/${{ needs.pick.outputs.count }})
@@ -78,11 +57,9 @@ jobs:
     env:
       CI: 'true'
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2 # --changed compares with HEAD^1 (the PR's base); harmless for full runs
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -90,15 +67,21 @@ jobs:
             package-lock.json
             mcp/package-lock.json
 
-      # ffmpeg/ffprobe: media tests. lsof + iproute2 (ss): socket checks and the runner's port sweep.
+      # the pinned static ffmpeg archive (scripts/ci/install-tools.sh); a new pin changes the file's hash and so the key
+      - name: Cache ffmpeg
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ci-ffmpeg
+          key: ffmpeg-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/ci/install-tools.sh') }}
+
+      # ffmpeg/ffprobe: media tests (a pinned static build, apt only as a time-limited fallback: scripts/ci/install-tools.sh).
+      # lsof + iproute2 (ss): socket checks and the runner's port sweep.
       # python3-pil + python3-numpy: the server's colour match (server/src/tools/soul/colour_transfer.py; soul.test checks it).
       # python3, tar, bash and git are already on the runner.
       - name: Install system tools
+        timeout-minutes: 15
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq --no-install-recommends ffmpeg lsof iproute2 python3-pil python3-numpy
-          ffmpeg -version | head -1
-          python3 -c "import PIL, numpy; print('Pillow', PIL.__version__, 'NumPy', numpy.__version__)"
+          bash scripts/ci/install-tools.sh --test-tools
           df -h . /tmp | tail -n +2
 
       - name: Install dependencies

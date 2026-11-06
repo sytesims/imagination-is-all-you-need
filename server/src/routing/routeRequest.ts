@@ -8,16 +8,11 @@
 import type { RouteDef } from './types.js';
 import { refInputFor } from './jobRefs.js';
 import { routerModelOfRoute } from './routerModels.js';
-import { falImageInput } from '../providers/fal.js';
-import { replicateImageInput } from '../providers/replicate.js';
-import { handOff } from '../mediaHandoff.js';
+import { places } from '../services/places.js';
 import { hostedPromptOf } from './hostedPrompt.js';
 
 type J = { id: string; toolId: string; provider: string; input: Record<string, any> };
 export type RouteExtras = { imageUrls?: string[]; imageSize?: { width: number; height: number }; aspect?: string };
-/** FLUX 3 Klein edit / Nano Banana 2 edit on fal: the reference images through the shared media hand-off. */
-const kleinRefUris = async (i: Record<string, any>) => { const ps: string[] = (i.refPaths ?? (i.imagePath ? [i.imagePath] : [])).slice(0, 10);
-  return Promise.all(ps.map((p) => handOff(p, 'image', 'fal', { mime: /\.png$/i.test(p) ? 'image/png' : /\.webp$/i.test(p) ? 'image/webp' : 'image/jpeg' }))); };
 
 /**
  * Request k of a hosted job on route r, built from the job's input in the model's own reference syntax. `input` is what the body was built from
@@ -38,7 +33,8 @@ export async function routeRequest(job: J, r: RouteDef, k = 0, extras: RouteExtr
   }
   const spec = routerModelOfRoute(r.routeId);
   if (spec) return { body: await spec.body(gi, k), input: gi }; // Comfy Router (routing/routerModels.ts)
-  if (r.kind === 'fal') return { body: falImageInput(r.endpoint, { prompt: promptAt(k), seed, loras: job.input.hostedLoras, imageUrls: extras.imageUrls ?? (r.endpoint.includes('flux-3/klein/edit-image') || r.endpoint === 'fal-ai/nano-banana-2/edit' ? await kleinRefUris(job.input) : undefined), imageSize: extras.imageSize, aspectRatio: extras.aspect ?? job.input.aspect, imageRes: job.input.imageResolution }), input: gi };
-  if (r.kind === 'replicate') return { body: replicateImageInput(r.endpoint, { prompt: promptAt(k), seed, imageUrls: extras.imageUrls, imageSize: extras.imageSize, aspectRatio: extras.aspect ?? (r.endpoint === 'google/nano-banana-pro' || r.endpoint === 'black-forest-labs/flux-2-pro' ? job.input.aspect : undefined), imageRes: job.input.imageResolution }), input: gi };
+  if (!places.managed) await import('../services/placesBuiltin.js'); // nothing booted (scripts, the coverage test): the built-in places
+  const build = places.runnerOf(r)?.build; // fal / Replicate image models: the place builds its own body (place-fal.ts, place-replicate.ts)
+  if (build) return { body: await build(r, { job, prompt: promptAt(k), seed, extras }), input: gi };
   throw new Error(`${r.routeId} has no hosted request builder (local graphs: comfy/plans.ts buildPlan; Comfy Cloud: comfy/cloudWorkflows.ts buildCloudPlan)`);
 }

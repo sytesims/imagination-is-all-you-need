@@ -228,7 +228,10 @@ for (const f of files) {
 for (const k of Object.keys(SENDERS)) if (!files.some((f) => f.rel === k)) sfails.push(`SENDERS lists ${k}, which is gone`);
 /** Body builders are invoked in one place (routeRequest); the prompt peek also calls a Router body, on input it rewrote itself (withRefGrammar). */
 const BUILD_CALL = /\bspec\.body\(|\.direct\.build\(|\br\.request!?\(|(?<!function )\b(falImageInput|replicateImageInput)\(|DIRECT_CLIENTS\[/;
-const BUILD_AT: Record<string, RegExp> = { 'routing/routeRequest.ts': /refInputFor\(job, r\)/, 'routesPromptPeek.ts': /withRefGrammar\(/ };
+const BUILD_AT: Record<string, RegExp> = { 'routing/routeRequest.ts': /refInputFor\(job, r\)/, 'routesPromptPeek.ts': /withRefGrammar\(/,
+  // a queue place's image body (PlaceRunner.build): routeRequest calls it with the prompt it already rewrote (promptAt(k)), and with nothing else
+  'plugins-builtin/place-fal.ts': /async build\(r, \{ job, prompt, seed, extras \}\)/, 'plugins-builtin/place-replicate.ts': /async build\(r, \{ job, prompt, seed, extras \}\)/ };
+assert.match(code(files.find((f) => f.rel === 'routing/routeRequest.ts')!.text), /build\(r, \{ job, prompt: promptAt\(k\), seed, extras \}\)/, 'routeRequest hands the place its rewritten prompt');
 for (const f of files) { const c = code(f.text); if (!BUILD_CALL.test(c)) continue; const need = BUILD_AT[f.rel];
   if (!need) sfails.push(`${f.rel} builds a request body itself (${c.match(BUILD_CALL)![0]}): use routing/routeRequest.ts so the prompt rewrite applies`);
   else if (!need.test(c)) sfails.push(`${f.rel} builds bodies without ${need}`); }

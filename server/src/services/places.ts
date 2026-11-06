@@ -106,6 +106,8 @@ export interface AttemptKit {
   /** The place's name in the Run on words (for messages). */
   where: string;
 }
+/** What routing/routeRequest.ts hands PlaceRunner.build: the job, request k's prompt and seed, and the tool's routedExtras. */
+export interface BuildArgs { job: { input: Record<string, any> }; prompt: string; seed: number | undefined; extras: { imageUrls?: string[]; imageSize?: { width: number; height: number }; aspect?: string } }
 export interface PlaceRunner {
   kind: PlaceKind;
   /** Plain name in job text ('fal', 'Replicate', 'Comfy Cloud'). */
@@ -138,6 +140,9 @@ export interface PlaceRunner {
   cancel?(h: RemoteHandle, route: KeyRef & { routeId: string }, f: typeof fetch): Promise<boolean | null>;
   /** Extra "this failed attempt surely cost nothing" rule (routing/run.ts failedAttemptNotCharged); billing.ts failure rules still apply. */
   failedNotCharged?(job: Job, route: Pick<RouteDef, 'kind' | 'routeId'>, cls: PlaceErrorClass): boolean;
+  /** The request body of an image route that has no route.request of its own (fal / Replicate image models): routing/routeRequest.ts calls it with
+   *  the prompt already in the model's reference syntax (refInputFor) and the per-output seed. */
+  build?(route: RouteDef, a: BuildArgs): Promise<Record<string, unknown>>;
   /** How it takes input media, per kind (mediaHandoff.ts HANDOFF_POLICY for the places that have one). */
   inputs?: Partial<Record<MediaKind, InputStyle[]>>;
   /** Put one input file where the place can read it; returns the reference to send (a link, an asset id). */
@@ -209,6 +214,12 @@ export class Places {
   ready(r: RouteDef): boolean { const p = this.runnerOf(r); return p ? p.ready(r) : keyConfigured(r.envKey, r.envAliases); }
   /** The route's key, through its place's declared keys; a route no place runs (or of a place that is off) reads it as before. */
   keyOf(r: RouteDef): string | undefined { const p = this.runnerOf(r); return p ? p.key(r) : keyValue(r); }
+  /** Your Comfy key, read through a Comfy place (Router first, then Cloud): Comfy storage uploads, Router link checks. Both Comfy places off → none.
+   *  Without a boot (scripts, tests) it reads the key as before. */
+  comfyKey(): string | undefined {
+    const ref = { envKey: 'COMFY_API_KEY', envAliases: [] }; if (!this.managed) return keyValue(ref);
+    return (this.get('comfy-router') ?? this.get('comfy-cloud'))?.key(ref);
+  }
 }
 export const places = new Places();
 
