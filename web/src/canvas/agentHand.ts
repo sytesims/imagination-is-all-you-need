@@ -1,20 +1,18 @@
 /**
  * The agent you can watch (2026-10-27): the agent's "hand" on the board. Every op the bridge applies (agentBridge.applyOp) goes through
  * here first, so a person sees WHO is working and WHERE:
- *  - a named orange cursor (a tldraw collaborator presence record written locally: no sync server, never saved with the board) that
+ *  - a named orange cursor (the board's agent presence: written locally, no sync server, never saved with the board) that
  *    glides to each spot, with a short label beside it ("Adding Hero close-up");
- *  - its selection outline on what it just touched (tldraw's collaborator indicator) plus a soft orange glow (fx below);
+ *  - its selection outline on what it just touched (the presence's outline) plus a soft orange glow (fx below);
  *  - a laser loop when it points at something;
  *  - handAtom: where it is working, which FollowAgent eases the camera to and the dock's status line reads.
  * fx: one <style> element with short-lived rules keyed by data-shape-id (cards fade and scale in, a shimmer while the agent writes a
  * card, arrows draw themselves, a pulse on cards waiting for your pick). CSS only on the shapes being touched, so a 30-card board pays
  * nothing for it. Reduced motion (or a hidden tab): no glide, typing, shimmer or pulse; things appear in place with a plain outline.
  */
-import { atom, Box, InstancePresenceRecordType, type Editor, type TLInstancePresence, type TLShapeId } from 'tldraw';
+import { atom, unionRects, rectHasPoint, type AgentPresence, type BoardApi, type Rect } from './boardApi';
 
 export const AGENT_COLOR = '#FF7A1A';
-const PRESENCE_ID = InstancePresenceRecordType.createId('ohf-agent');
-const AGENT_USER = 'user:ohf-agent';
 
 export const reducedMotion = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; } };
 /** Animate only when someone can see it: not under reduced motion, not in a hidden tab (timers there crawl). */
@@ -87,35 +85,29 @@ class Hand {
   pos: { x: number; y: number } | null = null; private idle = 0; private gone = 0; private glideId = 0;
   /** bumps on every leave(): a laser loop or glide that started before it stops and never brings the cursor back */
   private gen = 0;
-  constructor(readonly editor: Editor) {}
-  private rec(): TLInstancePresence | undefined { return this.editor.isDisposed ? undefined : this.editor.store.get(PRESENCE_ID) as TLInstancePresence | undefined; }
+  constructor(readonly board: BoardApi) {}
   /** Write the presence. `create` false: only touch a presence that is still there (cleanup never resurrects a cursor that left). */
-  private put(p: Partial<TLInstancePresence>, create = true) {
-    const e = this.editor; if (e.isDisposed) return;
-    const cur = this.rec(); if (!cur && !create) return;
-    const next = InstancePresenceRecordType.create({ ...(cur ?? {}), id: PRESENCE_ID, userId: AGENT_USER as any, userName: agentName, color: AGENT_COLOR, currentPageId: e.getCurrentPageId(), ...p, lastActivityTimestamp: Date.now() } as any);
-    e.store.mergeRemoteChanges(() => e.store.put([next]));
-  }
+  private put(p: Partial<AgentPresence>, create = true) { this.board.presence.put({ name: agentName, color: AGENT_COLOR, ...p }, create); }
   /** After a few quiet seconds the label, outline and any laser fade; after a while the cursor leaves. `stay` keeps the label and the
    *  cursor (waiting for your pick) but the outline and laser still fade, and the cursor still leaves after 10 minutes. */
   private arm(stay = false) {
     window.clearTimeout(this.idle); window.clearTimeout(this.gone);
-    this.idle = window.setTimeout(() => { this.put({ ...(stay ? {} : { chatMessage: '' }), selectedShapeIds: [], scribbles: [] }, false); if (!stay) setHand({ working: false, label: '' }); }, 4200);
+    this.idle = window.setTimeout(() => { this.put({ ...(stay ? {} : { label: '' }), selected: [], laser: null }, false); if (!stay) setHand({ working: false, label: '' }); }, 4200);
     this.gone = window.setTimeout(() => this.leave(), stay ? 600_000 : 45_000);
   }
   /** Glide the cursor to a page point (instant when motion is off). */
   async glideTo(to: { x: number; y: number }, label?: string, ms = 520) {
     const id = ++this.glideId; const gen = this.gen; const from = this.pos ?? this.entry(to);
     if (label != null) setHand({ working: true, label }); setHand({ at: to });
-    if (!animOK() || Math.hypot(to.x - from.x, to.y - from.y) < 2) { this.pos = to; this.put({ cursor: { x: to.x, y: to.y, type: 'default', rotation: 0 }, ...(label != null ? { chatMessage: label } : {}) }); this.arm(); return; }
-    this.put({ cursor: { x: from.x, y: from.y, type: 'default', rotation: 0 }, ...(label != null ? { chatMessage: label } : {}) });
+    if (!animOK() || Math.hypot(to.x - from.x, to.y - from.y) < 2) { this.pos = to; this.put({ cursor: to, ...(label != null ? { label } : {}) }); this.arm(); return; }
+    this.put({ cursor: from, ...(label != null ? { label } : {}) });
     const dist = Math.hypot(to.x - from.x, to.y - from.y); const dur = Math.min(900, Math.max(280, ms * Math.min(1.6, 0.55 + dist / 1400)));
     const t0 = performance.now();
-    const live = () => id === this.glideId && gen === this.gen && !this.editor.isDisposed;
+    const live = () => id === this.glideId && gen === this.gen && !this.board.disposed;
     await new Promise<void>((done0) => {
       /* a backgrounded pane may stop animation frames: never let the agent wait on them (snap to the end after the glide's time) */
       let over = false; const done = () => { if (over) return; over = true; window.clearTimeout(safety); done0(); };
-      const safety = window.setTimeout(() => { if (live()) { this.pos = to; this.put({ cursor: { x: to.x, y: to.y, type: 'default', rotation: 0 } }, false); } done(); }, dur + 160);
+      const safety = window.setTimeout(() => { if (live()) { this.pos = to; this.put({ cursor: to }, false); } done(); }, dur + 160);
       const step = (now: number) => {
         if (over) return;
         if (!live()) return done();
@@ -123,58 +115,58 @@ class Hand {
         /* a slight arc, like a hand moving across a table */
         const lift = Math.sin(Math.PI * t) * Math.min(60, dist * 0.08);
         const p = { x: from.x + (to.x - from.x) * k, y: from.y + (to.y - from.y) * k - lift };
-        this.pos = p; this.put({ cursor: { x: p.x, y: p.y, type: 'default', rotation: 0 } }, false);
-        if (t < 1 && document.visibilityState !== 'hidden') requestAnimationFrame(step); else { this.pos = to; this.put({ cursor: { x: to.x, y: to.y, type: 'default', rotation: 0 } }, false); done(); }
+        this.pos = p; this.put({ cursor: p }, false);
+        if (t < 1 && document.visibilityState !== 'hidden') requestAnimationFrame(step); else { this.pos = to; this.put({ cursor: to }, false); done(); }
       };
       requestAnimationFrame(step);
     });
     if (gen === this.gen) this.arm();
   }
   /** The first appearance: from the board's top-left corner of the view, so the cursor visibly arrives. */
-  private entry(to: { x: number; y: number }) { const vb = this.editor.getViewportPageBounds(); return vb.containsPoint(to) ? { x: vb.minX + vb.w * 0.08, y: vb.minY + vb.h * 0.1 } : to; }
+  private entry(to: { x: number; y: number }) { const vb = this.board.viewportBounds(); return rectHasPoint(vb, to) ? { x: vb.minX + vb.w * 0.08, y: vb.minY + vb.h * 0.1 } : to; }
   /** A short label beside the cursor. `stay`: keep it (and the cursor) until the next step, e.g. while it waits for your pick. */
-  say(label: string, stay = false) { setHand({ working: true, label }); this.put({ chatMessage: label }); this.arm(stay); }
+  say(label: string, stay = false) { setHand({ working: true, label }); this.put({ label }); this.arm(stay); }
   /** Drop the label now ("Waiting for your pick" once you picked); the cursor leaves on its own later. */
-  hush() { setHand({ working: false, label: '' }); this.put({ chatMessage: '' }, false); this.arm(); }
-  touch(ids: string[]) { const live = ids.filter((id) => this.editor.getShape(id as TLShapeId)) as TLShapeId[]; this.put({ selectedShapeIds: live }); for (const id of live) { if (rules.has(`enter:${id}`)) window.setTimeout(() => fx.touched(id), 600); else fx.touched(id); } this.arm(); }
+  hush() { setHand({ working: false, label: '' }); this.put({ label: '' }, false); this.arm(); }
+  touch(ids: string[]) { const live = ids.filter((id) => this.board.getNode(id)); this.put({ selected: live }); for (const id of live) { if (rules.has(`enter:${id}`)) window.setTimeout(() => fx.touched(id), 600); else fx.touched(id); } this.arm(); }
   /** A laser loop around some shapes (or a point). It stops (and the stroke goes) when the hand leaves, the board closes or the tab
    *  hides: a hidden tab's timers crawl (up to a minute a step), which used to leave a half-drawn loop on the board for minutes. */
-  async point(box: Box, label?: string) {
+  async point(box: Rect, label?: string) {
     await this.glideTo({ x: box.maxX - Math.min(40, box.w * 0.15), y: box.minY + Math.min(36, box.h * 0.2) }, label);
     if (!animOK()) return;
-    const gen = this.gen; const live = () => gen === this.gen && animOK() && !!this.rec();
+    const gen = this.gen; const live = () => gen === this.gen && animOK() && this.board.presence.has();
     const cx = box.center.x, cy = box.center.y, rx = box.w / 2 + 28, ry = box.h / 2 + 28; const n = 36; const points: { x: number; y: number; z: number }[] = [];
     const sid = `agent-laser-${Date.now()}`;
     try {
       for (let i = 0; i <= n + 6 && live(); i++) {
         const a = -Math.PI / 2 + (i / n) * Math.PI * 2; points.push({ x: cx + Math.cos(a) * rx, y: cy + Math.sin(a) * ry, z: 0.5 });
-        this.put({ scribbles: [{ id: sid, points: [...points], size: 6, color: 'laser', opacity: 0.8, state: 'active', delay: 0, shrink: 0, taper: false }] as any }, false);
+        this.put({ laser: { id: sid, points: [...points] } }, false);
         await sleep(16);
       }
       if (live()) await sleep(700);
-    } finally { this.put({ scribbles: [] }, false); }
+    } finally { this.put({ laser: null }, false); }
     if (gen === this.gen) this.arm();
   }
   /** Drop the laser and outline at once (the tab hid), keeping the cursor. */
-  quiet() { this.put({ scribbles: [], selectedShapeIds: [] }, false); }
+  quiet() { this.put({ laser: null, selected: [] }, false); }
   leave() { this.gen++; window.clearTimeout(this.idle); window.clearTimeout(this.gone); this.pos = null; setHand({ working: false, label: '', at: null });
-    if (this.rec()) this.editor.store.mergeRemoteChanges(() => this.editor.store.remove([PRESENCE_ID])); }
+    this.board.presence.remove(); }
 }
 
-const hands = new WeakMap<Editor, Hand>();
-export function handOf(editor: Editor): Hand { let h = hands.get(editor); if (!h) { h = new Hand(editor); hands.set(editor, h); } return h; }
+const hands = new WeakMap<BoardApi, Hand>();
+export function handOf(board: BoardApi): Hand { let h = hands.get(board); if (!h) { h = new Hand(board); hands.set(board, h); } return h; }
 /** The board closed (or switched): the hand leaves for good, so nothing of it stays on screen or comes back. */
-export function dropHand(editor: Editor) { hands.get(editor)?.leave(); hands.delete(editor); }
+export function dropHand(board: BoardApi) { hands.get(board)?.leave(); hands.delete(board); }
 /** Wire the hand's cleanup to the board's life: a hidden tab drops the laser and outline at once; unmount removes the hand.
  *  Returns the cleanup (call it on unmount). */
-export function bindHand(editor: Editor): () => void {
-  const onVis = () => { if (document.visibilityState === 'hidden') hands.get(editor)?.quiet(); };
+export function bindHand(board: BoardApi): () => void {
+  const onVis = () => { if (document.visibilityState === 'hidden') hands.get(board)?.quiet(); };
   document.addEventListener('visibilitychange', onVis);
-  return () => { document.removeEventListener('visibilitychange', onVis); dropHand(editor); };
+  return () => { document.removeEventListener('visibilitychange', onVis); dropHand(board); };
 }
 /** Frame the camera on this page area (FollowAgent eases to it). */
 export function workArea(b: { x: number; y: number; w: number; h: number } | null) { setHand({ area: b }); }
 /** The bounds of some shapes, as a plain box (null when none are on the board). */
-export function boundsOf(editor: Editor, ids: string[]): Box | null {
-  const bs = ids.map((id) => editor.getShapePageBounds(id as TLShapeId)).filter(Boolean) as Box[]; return bs.length ? Box.Common(bs) : null;
+export function boundsOf(board: BoardApi, ids: string[]): Rect | null {
+  const bs = ids.map((id) => board.boundsOf(id)).filter(Boolean) as Rect[]; return unionRects(bs);
 }
