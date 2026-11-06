@@ -62,3 +62,6 @@ setup.log
 
 # Try it (try.iiayn.app): built by npm run try:build at deploy time
 site-try/public/
+
+# wrangler dev state
+.wrangler/
