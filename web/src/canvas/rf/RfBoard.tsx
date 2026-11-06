@@ -110,7 +110,7 @@ function useRfTool(store: BoardStore, board: BoardApi) {
   return useCallback((id: string): ToolButtonState => {
     const tool = useValue('rf tool button', () => store.viewSig.tool.get(), [store]); // eslint-disable-line react-hooks/rules-of-hooks
     if (id === 'select' || id === 'hand') return { available: true, on: tool === id, pick: () => board.setTool(id) };
-    if (id === 'note') return { available: true, on: false, pick: () => { const c = board.viewportBounds().center; board.mark('new sticky note'); const nid = board.addNode({ type: 'note', x: c.x - 100, y: c.y - 100, props: noteProps() }); board.select([nid]); store.setView({ editing: nid }); } };
+    if (id === 'note') return { available: true, on: false, pick: () => { const c = board.viewportBounds().center; board.mark('new sticky note'); const nid = board.addNode({ type: 'note', x: c.x - 100, y: c.y - 100, props: noteProps() }); board.select([nid]); store.history.mark('edit note'); store.setView({ editing: nid }); } };
     return { available: false, on: false, pick: () => {} };
   }, [store, board]);
 }
