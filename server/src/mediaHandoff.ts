@@ -17,6 +17,7 @@
  * (docs.comfy.org/development/cloud/api-reference "Uploading Inputs"); that path stays in the cloud client because it needs the run's client.
  */
 import { readKey } from './kernel/keys.js';
+import { places } from './services/places.js';
 import { createHash } from 'node:crypto';
 import { statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
@@ -148,7 +149,7 @@ const sizeOf = (f: string) => { try { return statSync(resolveFile(f)).size; } ca
 const who = (p: Policy, o: HandOffOpts) => o.who ?? p.name;
 
 /** Can a link be made for this provider right now (public address, Comfy key for Seedance assets, or the provider's own upload with its key)? */
-export const canLink = (provider: HandOffProvider, o: HandOffOpts = {}) => !!publicBase() || !!keyOf(HANDOFF_POLICY[provider]) || (!!o.seedanceAsset && !!process.env.COMFY_API_KEY?.trim());
+export const canLink = (provider: HandOffProvider, o: HandOffOpts = {}) => !!publicBase() || !!keyOf(HANDOFF_POLICY[provider]) || (!!o.seedanceAsset && !!places.comfyKey());
 
 type Plan = { form: HandOffForm; via?: 'public' | 'upload' | 'asset' };
 /** What hand-off a file of `bytes` gets (no I/O). Throws HandOffError when it can't go at all. */
@@ -157,7 +158,7 @@ function plan(bytes: number, kind: MediaKind, provider: HandOffProvider, o: Hand
   const hard = p.maxBytes[kind]; if (hard != null && bytes > hard) throw new HandOffError(`This ${n} is ${mb(bytes)}; ${p.name} takes up to ${mb(hard)} per file. Use a shorter or smaller ${n}.`, 'too_big');
   const inlineForm = accepts.find((f) => f !== 'url'); const inlineMax = p.inlineMax[kind] ?? Infinity;
   const inlineOk = !!inlineForm && bytes <= inlineMax; const urlOk = accepts.includes('url');
-  const viaLink = (): Plan => ({ form: 'url', via: o.seedanceAsset && process.env.COMFY_API_KEY?.trim() ? 'asset' : publicBase() ? 'public' : 'upload' });
+  const viaLink = (): Plan => ({ form: 'url', via: o.seedanceAsset && places.comfyKey() ? 'asset' : publicBase() ? 'public' : 'upload' });
   if (urlOk && link && (!inlineOk || bytes > (p.preferInlineMax[kind] ?? Infinity))) return viaLink();
   if (inlineOk) return { form: inlineForm! };
   if (urlOk) throw new HandOffError(`${who(p, o)} takes this ${n} as a link${provider === 'comfy-router' || provider === 'byteplus' ? ', uploaded with your Comfy key: add the key in Settings' : p.upload ? `, uploaded with your ${p.name} key: add it in Settings` : ': set the server\'s public address (OPENHIGGSFIELD_PUBLIC_BASE_URL)'}${!link && inlineForm ? ` (inline it takes up to ${mb(inlineMax)}; yours is ${mb(bytes)})` : ''}.`, 'needs_link');

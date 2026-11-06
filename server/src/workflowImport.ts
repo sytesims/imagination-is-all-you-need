@@ -296,15 +296,15 @@ export async function saveWorkflow(b: SaveBody, objectInfo?: Parameters<typeof r
     renameSync(tmp, dir);
   } catch (x: any) { rmSync(tmp, { recursive: true, force: true }); return { ok: false, error: `Couldn’t save it: ${x?.message ?? x}` }; }
   const st = await addPluginFolder(dir, true);
-  if (!st.ok) { removePlugin(st.id); rmSync(dir, { recursive: true, force: true }); return { ok: false, error: 'It saved, but couldn’t load. See what to fix below.', errors: st.errors }; }
+  if (!st.ok) { await removePlugin(st.id); rmSync(dir, { recursive: true, force: true }); return { ok: false, error: 'It saved, but couldn’t load. See what to fix below.', errors: st.errors }; }
   return { ok: true, id, tab };
 }
 
 /** Remove a workflow you added: out of the app, then its folder. Shipped folders (plugins/) are never deleted here. */
-export function removeWorkflow(id: string): { ok: true } | { ok: false; code: 404 | 403; error: string } {
+export async function removeWorkflow(id: string): Promise<{ ok: true } | { ok: false; code: 404 | 403; error: string }> {
   const st = pluginStatus().find((s) => s.id === id);
   if (!st) return { ok: false, code: 404, error: 'No workflow with that id.' };
   if (!st.user || !isUserPluginDir(st.dir)) return { ok: false, code: 403, error: 'This one ships with the app and can’t be removed here. Turn it off instead.' };
-  removePlugin(id); rmSync(st.dir, { recursive: true, force: true });
+  await removePlugin(id); rmSync(st.dir, { recursive: true, force: true }); // its fiber (tool, graph) is disposed first
   return { ok: true };
 }

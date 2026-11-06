@@ -9,6 +9,8 @@
  */
 import { Context, Service } from 'cordis';
 import type { PlacesService } from '../services/places.js';
+import type { ToolsService } from '../services/tools.js';
+import type { WorkflowsService } from '../services/workflows.js';
 import type { HttpService } from './http.js';
 import type { SettingsService } from './settings.js';
 import type { DbService } from './db.js';
@@ -21,6 +23,8 @@ export { Context, Service };
 declare module 'cordis' {
   interface Context {
     places: PlacesService;
+    tools: ToolsService;
+    workflows: WorkflowsService;
     http: HttpService;
     settings: SettingsService;
     db: DbService;

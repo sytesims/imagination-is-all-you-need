@@ -322,7 +322,7 @@ const pub = (j: Job) => ({
   actualUsd: j.actualCost && Number.isFinite(j.actualCost.usd) ? j.actualCost.usd : null,
 });
 
-await loadPlugins();
+if (!(await import('./tools/registry.js')).toolRegistry.managed) await loadPlugins(); // booted: the workflow-folders plugin loaded them (or is off)
 (await import('./routesWorkflowImport.js')).registerWorkflowImport(app); // Add a workflow: import preview, save, remove (no restart)
 /** Plugin load report: loaded + skipped (with validation errors). */
 app.get('/api/plugins', async () => { const { isToolHidden } = await import('./tools/registry.js'); const { readFileSync: rf, existsSync: ex } = await import('node:fs');
@@ -794,6 +794,8 @@ function dropRequestUploads(req: FastifyRequest) {
   let n = 0; for (const f of readdirSync(DATA_DIR)) if (f.startsWith(`${id}-`)) { try { rmSync(path.join(DATA_DIR, f), { force: true }); n++; } catch { /* gone */ } }
   if (n) app.log.info({ jobId: id, files: n }, 'removed uploads of a rejected submit'); return n;
 }
+// The same cleanup before a rejected submit's answer goes out, so the client never sees its files still on disk (the finally below stays as the backstop).
+app.addHook('onSend', async (req, reply, payload) => { if (reply.statusCode >= 400 && (req as any).uploadJobId) dropRequestUploads(req); return payload; });
 const safeCreateJob = async (toolId: string, req: FastifyRequest, reply: FastifyReply) => {
   try { return await createJob(toolId, req, reply); } catch (e: any) {
     req.log.error({ err: e }, 'createJob failed');
