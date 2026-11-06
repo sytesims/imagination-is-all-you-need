@@ -10,8 +10,8 @@
     "not_found_handling": "single-page-application"
   },
   "workers_dev": false,
+  "routes": [{ "pattern": "try.iiayn.app", "custom_domain": true }],
   "preview_urls": false,
   "observability": { "enabled": false }
   // The custom domain (try.iiayn.app, on the iiayn.app zone) is attached at the first deploy, with the owner's OK:
-  // ,"routes": [{ "pattern": "try.iiayn.app", "custom_domain": true }]
 }

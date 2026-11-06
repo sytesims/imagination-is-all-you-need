@@ -196,13 +196,9 @@ function rescale(b, c1) {
       usdText: words(b.cost.usdText), detail: typeof b.cost.detail === 'string' && typeof units === 'number' ? b.cost.detail.replace(/^\d[\d,]*/, String(units)) : b.cost.detail }; }
   return out;
 }
-/** A place that only answers samples here (a mock key): shown at its list price, what the app charges with a real key. */
-function priced(b) {
-  if (!b?.demo || typeof b.listCredits !== 'number' || b.listCredits <= 0) return b;
-  const c = b.listCredits; const out = { ...b, credits: c, demo: false, chargeable: true, demoMessage: null, demoNotice: null, priceLine: `≈ ${usd(c)}` }; delete out.demoTag;
-  if (b.cost) out.cost = { ...b.cost, demo: false, estUsd: Number((c / 100).toFixed(2)), realRunUsd: Number((c / 100).toFixed(2)), usdText: `≈ ${usd(c)}` };
-  return out;
-}
+/** A place that only answers samples here (a mock key): kept as a sample (Generate · Sample, "$0 · sample · List price ≈ $x"),
+ *  so the demo never shows a price as if it would charge. The list price stays in the answer for the words. */
+function priced(b) { return b; }
 /** The price of one setup on a studio from the grid: {s, b} (b parsed), or null when the grid doesn't cover it (then the recorded answers do). */
 function priceFor(s, toolId, q) {
   const g = s.grid; const sp = g?.spec?.[toolId]; if (!sp) return null; mediaOf(s);
