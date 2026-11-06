@@ -158,6 +158,7 @@ The pattern follows Comfy's own clonable app [Comfy-Org/comfy-reshoot](https://g
 | `OPENHIGGSFIELD_API_PROXY` | `http://localhost:8787` | Where the Vite dev server sends `/api`, `/files`, `/samples`, `/s` |
 | `OPENHIGGSFIELD_API` | `http://localhost:8787` | The API the MCP server talks to |
 | `MCP_PORT`, `MCP_HOST` | `8788`, `127.0.0.1` | MCP HTTP transport |
+| `OPENHIGGSFIELD_MCP_SPEND` | `ask` | Paid MCP runs: `ask` (the user approves each, with its price; clients without elicitation are refused), `allow` or `block` |
 | `OPENHIGGSFIELD_MCP_PERMISSIONS`, `OPENHIGGSFIELD_MCP_DEFAULT`, `OPENHIGGSFIELD_MCP_ALLOW`, `OPENHIGGSFIELD_MCP_ASK`, `OPENHIGGSFIELD_MCP_BLOCK` | — | MCP tool permissions, see [MCP.md](MCP.md#permissions-allow--ask--block-per-tool) |
 
 | `MCP_TRANSPORT` | `stdio` | `http` = the MCP server listens on `MCP_HOST:MCP_PORT` (what `npm start` runs) |

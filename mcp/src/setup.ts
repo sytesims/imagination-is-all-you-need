@@ -49,6 +49,13 @@ async function serverMcp(o: Opts) {
   return { mcp: { stdio: { command: 'node', args: [entry], env }, npx: { command: 'npx', args: ['-y', 'openhiggsfield-mcp'], env }, httpUrl: 'http://127.0.0.1:8788/mcp', apiUrl: o.api, preferNpx: inCache }, from: 'local fallback (API not reachable)' };
 }
 
+/** Paid runs ask first (MCP elicitation, with the price). Written into every generated config so the choice is visible and easy to change
+ *  (OPENHIGGSFIELD_MCP_SPEND=allow lets the agent start paid runs without asking). A value the server already set is kept. */
+export function withSpendAsk(mcp: any) {
+  for (const k of ['stdio', 'npx']) if (mcp?.[k]) mcp[k] = { ...mcp[k], env: { ...(mcp[k].env ?? {}), OPENHIGGSFIELD_MCP_SPEND: mcp[k].env?.OPENHIGGSFIELD_MCP_SPEND ?? 'ask' } };
+  return mcp;
+}
+
 /** The server's name in client configs (mcpServers key). Earlier versions used LEGACY_KEY; setup replaces that entry. */
 const SERVER_KEY = 'imagination';
 const LEGACY_KEY = 'openhiggsfield';
@@ -136,6 +143,7 @@ export async function runSetup(argv: string[]) {
   try { o = parse(argv); } catch (e) { console.error((e as Error).message); process.exit(2); }
   try {
     const { mcp, from } = await serverMcp(o);
+    withSpendAsk(mcp);
     console.log(`[setup] MCP config from ${from}: ${JSON.stringify(o.npx || mcp.preferNpx ? mcp.npx : mcp.stdio)}`);
     const notes: string[] = [];
     if (o.target === 'claude' || o.target === 'all') notes.push(...await claude(o, mcp));
