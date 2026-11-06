@@ -45,7 +45,7 @@
 /* frames: a quiet outline, the name above (today's tldraw frame look) */
 .cv-frame{box-sizing:border-box;position:absolute;inset:0;border:calc(1px * max(1, var(--tl-scale,1))) solid rgba(255,255,255,.14);background:rgba(255,255,255,.018);border-radius:4px;pointer-events:none}
 .cv-frame.sel{border-color:rgba(255,122,26,.7)}
-.cv-frame-name{position:absolute;left:0;bottom:100%;margin-bottom:calc(6px * var(--tl-scale,1));transform:scale(min(var(--tl-scale,1),4));transform-origin:0 100%;font:600 15px/1 var(--font-display,'Space Grotesk',Inter,sans-serif);letter-spacing:-.005em;color:var(--text-1,#F7F7F8);padding:3px 0;white-space:nowrap;pointer-events:all;cursor:default}
+.cv-frame-name{position:absolute;left:calc(-7px * min(var(--tl-scale,1),4));bottom:100%;margin-bottom:calc(9px * min(var(--tl-scale,1),4));transform:scale(min(var(--tl-scale,1),4));transform-origin:0 100%;font:600 15px/15px var(--font-display,'Space Grotesk',Inter,sans-serif);letter-spacing:-.005em;color:var(--text-1,#F7F7F8);background:rgba(15,17,19,.55);padding:3px 9px;border-radius:7px;white-space:nowrap;pointer-events:all;cursor:default}
 .cv-rf .react-flow__node-frame .react-flow__resize-control{pointer-events:all}
 
 /* a link card (an old board's bookmark) */
@@ -72,3 +72,5 @@
 .cv-rf .react-flow__attribution a{color:var(--text-2,#898A8B);text-decoration:none}
 .cv-rf-minimap{border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.08)}
 .cv-rf-dropped{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);margin:0;padding:6px 12px;border-radius:999px;background:rgba(20,21,26,.82);border:1px solid rgba(255,255,255,.08);color:var(--text-2,#898A8B);font-size:12px;pointer-events:none;z-index:5}
+/* the board opens settled (RfBoard: data-booting for its first moment): no entrance fade on what is already there */
+.cv-rf[data-booting] .gc-stage,.cv-rf[data-booting] .gc-stage img,.cv-rf[data-booting] .gc-stage video,.cv-rf[data-booting] .nf-tk img,.cv-rf .cv-settled{animation:none!important}

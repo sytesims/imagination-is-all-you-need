@@ -50,6 +50,8 @@ const writeCam = (id: string, c: { x: number; y: number; z: number }) => { try {
 const LIVE_ZOOM_MAX = 40;
 const BACK = 1_000_000;
 const EMPTY = {};
+/** what plays an entrance when it mounts (node.css gc-in / gc-develop) */
+const SETTLE = '.gc-stage,.gc-stage img,.gc-stage video,.nf-tk img';
 
 /** React Flow's nodes from the store: parents before their children, frames and groups behind, the selection marked. Each node object is
  *  kept while its store node and flags don't change, so React Flow only re-measures what moved. */
@@ -214,6 +216,10 @@ export default function RfBoard({ board: saved, onSaveState, onSaved, drawerOpen
     const short = api.nodes().filter((s) => s.type === GEN_TYPE && (s.props as any).h <= 330 && (s.props as any).h >= 300);
     if (short.length) api.batch(() => api.patchNodes(short.map((s) => ({ id: s.id, props: { h: CARD_H } }))), { history: 'ignore' });
     store.history.clear();
+    /* the board opens settled: cards already on it don't play their entrance (a fade from 0 that a tab without frames, a screenshot or
+       a slow machine caught half way, showing every result dark); cards and results added later still animate */
+    const booted = window.setTimeout(() => { const el = port.el; if (!el) return;
+      for (const x of el.querySelectorAll(SETTLE)) x.classList.add('cv-settled'); delete el.dataset.booting; }, 1200);
     const docNow = () => { const s = store.s; return storeToDoc(s.order, s.nodes, Object.values(s.links)); };
     const save = async () => {
       if (!dirty || saving || stopped) return; dirty = false; saving = true; onSaveState('saving');
@@ -229,13 +235,13 @@ export default function RfBoard({ board: saved, onSaveState, onSaved, drawerOpen
     const onExit = () => { writeCam(id, api.camera()); if (dirty && !stopped && saveBoardOnExit(id, docNow(), rev)) dirty = false; };
     document.addEventListener('visibilitychange', onHide); addEventListener('pagehide', onExit);
     const unHand = bindHand(api);
-    return () => { unHand(); unDoc(); clearTimeout(timer); document.removeEventListener('visibilitychange', onHide); removeEventListener('pagehide', onExit);
+    return () => { clearTimeout(booted); unHand(); unDoc(); clearTimeout(timer); document.removeEventListener('visibilitychange', onHide); removeEventListener('pagehide', onExit);
       writeCam(id, api.camera()); if (dirty && !stopped) { const d = docNow(); void saveBoard(id, d, rev).then(onSaved).catch(() => saveBoardOnExit(id, d, rev)); }
       store.dispose(); onBoard?.(null); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <div className="cv-board" data-testid="cv-board" data-engine="rf">
-    <div ref={(el) => { port.el = el; }} className="cv-rf" data-testid="cv-rf" style={{ position: 'absolute', inset: 0 } as CSSProperties}>
+    <div ref={(el) => { port.el = el; }} className="cv-rf" data-booting="1" data-testid="cv-rf" style={{ position: 'absolute', inset: 0 } as CSSProperties}>
       <BoardProvider value={api}><StoreCtx.Provider value={store}><ReactFlowProvider>
         <Flow saved={saved} store={store} board={api} port={port} drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen} onProject={onProject} />
       </ReactFlowProvider></StoreCtx.Provider></BoardProvider>
