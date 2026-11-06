@@ -112,11 +112,11 @@ export const StickyNode = memo(function StickyNode({ id, selected }: NodeProps) 
 export const FrameNode = memo(function FrameNode({ id, selected }: NodeProps) {
   const board = useBoardApi(); const n = useValue('rf frame', () => board.getNode(id), [board, id]);
   if (!n) return null; const p = n.props as Record<string, any>;
-  const rename = () => { const name = prompt('Frame name', String(p.name ?? '')); if (name != null) { board.mark('rename frame'); board.patchNode(id, { props: { name: name.slice(0, 80) } }); } };
+  const rename = () => { const name = prompt('Group name', String(p.name ?? '')); if (name != null) { board.mark('rename group'); board.patchNode(id, { props: { name: name.slice(0, 80) } }); } };
   return <>
     <Resizer id={id} type="frame" selected={!!selected} />
     <div className={`cv-frame${selected ? ' sel' : ''}`} data-shape-id={id} data-testid="rf-frame">
-      <span className="cv-frame-name" onDoubleClick={rename}>{String(p.name || 'Frame')}</span>
+      <span className="cv-frame-name" onDoubleClick={rename}>{String(p.name || 'Group')}</span>
     </div>
   </>;
 }, sameNode);

@@ -9,7 +9,9 @@
  * tab hide, on leave and on page close; a stale rev stops saving and says so), keeps the camera per board in this browser (the same
  * {x, y, z} key as today, so both engines open at the same place), follows running cards again, and opens 3D results.
  * Keys here: G new card, Enter runs the selected card, Delete / Backspace removes the selection (its links go too), ⌘Z / ⇧⌘Z undo / redo,
- * V / H select / hand, Esc clears the selection. Copy / paste, the context menu, file drops and the magnet come in the next phase.
+ * V / H select / hand, Esc clears the selection.
+ * Release 1 (BoardTools.tsx): ⌘C / ⌘X / ⌘V (cards with their links, files, links), ⌘D duplicate, ⌘G group, ⇧T tidy, ⌘A select all, ? the
+ * shortcuts sheet; the right-click menu; the magnet; drops of files, Assets items and links onto ports, cards or the board.
  */
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { ReactFlow, ReactFlowProvider, MiniMap, SelectionMode, type Edge, type EdgeChange, type Node, type NodeChange, type ReactFlowInstance, type Viewport } from '@xyflow/react';
@@ -43,6 +45,7 @@ import { makeRfBoard, clampSize, MIN_ZOOM, MAX_ZOOM, type RfPort } from './board
 import { NODE_TYPES, EDGE_TYPES, NO_DRAG, RouteCtx, StoreCtx, OptCtx, AgentPresence, useRoutes, rfTypeOf, isBack, adHeight } from './views';
 import { rfOptions } from './engine';
 import { drawSize, ratioAtom } from './poster';
+import { boardActions, useClipboardEvents, useFileDrops, ContextMenu, ShortcutsSheet, MagnetLayer, DropUiLayer, ctxAtom, sheetAtom, assetPortDrop } from './BoardTools';
 import './rf.css';
 
 const Viewer3D = lazy(() => import('../../shared/Viewer3D').then((m) => ({ default: m.Viewer3D })));
@@ -88,8 +91,8 @@ function useFlowEdges(store: BoardStore): Edge[] {
 }
 
 /** Keys for this phase (the full set, with the shortcuts sheet, is the next phase). */
-function useBoardKeys(board: BoardApi, store: BoardStore) {
-  useEffect(() => {
+function useBoardKeys(board: BoardApi, store: BoardStore, toast: ReturnType<typeof useToast>) {
+  useEffect(() => { const act = boardActions(board, toast);
     const k = (e: KeyboardEvent) => {
       if (e.isComposing || e.defaultPrevented) return; const t = e.target as HTMLElement | null;
       if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
@@ -98,6 +101,12 @@ function useBoardKeys(board: BoardApi, store: BoardStore) {
       const done = () => { e.preventDefault(); e.stopPropagation(); };
       if (mod && key === 'z') { done(); if (e.shiftKey) board.redo(); else board.undo(); return; }
       if (mod && key === 'y') { done(); board.redo(); return; }
+      /* release 1: ⌘C / ⌘X / ⌘V go through the browser's clipboard events (BoardTools.useClipboardEvents) */
+      if (mod && !e.shiftKey && key === 'd') { done(); act.duplicate(); return; }
+      if (mod && !e.shiftKey && key === 'g') { done(); act.group(); return; }
+      if (mod && !e.shiftKey && key === 'a') { done(); act.selectAll(); return; }
+      if (e.key === '?' && !mod) { done(); sheetAtom.set(!sheetAtom.get()); return; }
+      if (e.shiftKey && !mod && !e.altKey && key === 't') { done(); act.tidy(); return; }
       if (mod || e.altKey) return;
       if (key === 'g' && !e.shiftKey) { done(); createCard(board, { flow: lastFlowNow() }); return; }
       if (key === 'v') { board.setTool('select'); return; }
@@ -110,7 +119,7 @@ function useBoardKeys(board: BoardApi, store: BoardStore) {
         done(); runCard(sel[0]); }
     };
     addEventListener('keydown', k); return () => removeEventListener('keydown', k);
-  }, [board, store]);
+  }, [board, store, toast]);
 }
 
 /** The toolbar's tools on this engine: Select and Hand; Sticky note drops a note in the middle of the view. tldraw's drawing tools (text,
@@ -131,8 +140,13 @@ function Flow({ saved, store, board, port, drawerOpen, setDrawerOpen, onProject 
   const routeVal = useRoutes(board, opt.links === 'curve' || opt.joins === 'curve' ? 'curve' : opt.joins === 'notch' ? 'notch' : 'ports');
   const initial = useMemo(() => { const c = readCam(saved.id); return c ? { x: c.x * c.z, y: c.y * c.z, zoom: c.z } : undefined; }, [saved.id]);
   const panning = useRef(false); const camTimer = useRef(0);
-  useBoardKeys(board, store);
+  const toast = useToast(); useBoardKeys(board, store, toast);
   const toolHook = useRfTool(store, board);
+  const boardEl = useCallback(() => port.el, [port]);
+  const pasteFiles = useFileDrops(board, boardEl, toast); useClipboardEvents(board, boardEl, toast, pasteFiles);
+  /* right-click: a card (selected first when it wasn't), the selection, or the empty board */
+  const openCtx = (e: { preventDefault: () => void; clientX: number; clientY: number }, on: 'node' | 'pane', id?: string) => { e.preventDefault();
+    if (id && !board.selection().includes(id)) board.select([id]); ctxAtom.set({ x: e.clientX, y: e.clientY, on, at: board.screenToBoard({ x: e.clientX, y: e.clientY }) }); };
 
   const zoomVars = (z: number) => { const el = port.el; if (!el) return; el.style.setProperty('--tl-zoom', String(z)); el.style.setProperty('--tl-scale', String(1 / z)); if (z < OVERVIEW_ZOOM) el.dataset.far = '1'; else delete el.dataset.far; if (z < 0.35) el.dataset.mood = '1'; else delete el.dataset.mood; };
   /* React Flow reports a wheel pan's first step only to onMoveStart and its last to onMoveEnd: the camera follows all three */
@@ -192,8 +206,10 @@ function Flow({ saved, store, board, port, drawerOpen, setDrawerOpen, onProject 
       onInit={onInit} onMove={onMove} onMoveStart={onMoveStart} onMoveEnd={onMoveEnd}
       onNodeDragStart={dragStart} onNodeDragStop={dragStop} onSelectionDragStart={dragStart} onSelectionDragStop={dragStop}
       onNodeMouseEnter={(_, n) => store.setView({ hovered: n.id })} onNodeMouseLeave={() => store.setView({ hovered: null })}
+      onNodeContextMenu={(e, n) => openCtx(e, 'node', n.id)} onSelectionContextMenu={(e) => openCtx(e, 'node')} onPaneContextMenu={(e) => openCtx(e as any, 'pane')}
       onNodeDoubleClick={(_, n) => { const s = store.s.nodes[n.id]; if (s?.type === RESULT_TYPE && s.props.kind === '3d' && s.props.jobId) open3d(String(s.props.jobId)); }}>
       <AgentPresence />
+      <MagnetLayer board={board} />
       {opt.minimap === '1' && <MiniMap pannable zoomable className="cv-rf-minimap" maskColor="rgba(15,17,19,.7)" nodeColor="rgba(255,255,255,.18)" bgColor="#14151A" />}
     </ReactFlow>
     <LeftToolbar />
@@ -201,7 +217,11 @@ function Flow({ saved, store, board, port, drawerOpen, setDrawerOpen, onProject 
     <FollowAgent />
     <NextStepMenu />
     <CameraMotion />
-    <AssetsDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} projectId={saved.projectId ?? null} onProject={onProject} />
+    <ContextMenu board={board} />
+    <ShortcutsSheet />
+    <DropUiLayer board={board} />
+    <AssetsDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} projectId={saved.projectId ?? null} onProject={onProject}
+      portDrop={{ over: (k) => assetPortDrop.over(k), drop: (x, y, it) => assetPortDrop.drop(board, x, y, it, toast) }} />
   </RouteCtx.Provider></ToolHookContext.Provider></OptCtx.Provider>;
 }
 

@@ -136,3 +136,32 @@
 .cv-rf .react-flow__node-card .react-flow__resize-control.handle.top{top:calc(5px * max(1, var(--tl-scale,1)))}
 .cv-rf .react-flow__node-card .react-flow__resize-control.handle.bottom{top:calc(100% - 5px * max(1, var(--tl-scale,1)))}
 .cv-rf .react-flow__resize-control{z-index:12}
+
+/* ---- release 1: the right-click menu, the drop menu and bubble, the shortcuts sheet (our tokens, never React Flow's) ---- */
+.cv-ctx{position:fixed;z-index:60;min-width:224px;max-width:min(300px,calc(100vw - 16px));padding:6px;border-radius:14px;background:rgba(22,23,26,.98);border:1px solid rgba(255,255,255,.09);
+  box-shadow:0 18px 48px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.35);backdrop-filter:blur(14px);font:500 13px/18px var(--font-sans,Inter,sans-serif);color:var(--text-1,#F7F7F8)}
+.cv-ctx-h{margin:2px 8px 6px;font:600 10px/14px var(--font-sans,Inter,sans-serif);letter-spacing:.09em;text-transform:uppercase;color:var(--text-3,rgba(255,255,255,.5))}
+.cv-ctx-row,.cv-dm-row{all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;padding:7px 9px;border-radius:9px;cursor:pointer}
+.cv-ctx-row:hover:not(:disabled),.cv-ctx-row:focus-visible,.cv-dm-row:hover,.cv-dm-row:focus-visible{background:rgba(255,255,255,.07)}
+.cv-ctx-row:disabled{opacity:.38;cursor:default}
+.cv-ctx-row.danger:not(:disabled){color:#FF8A80}
+.cv-ctx kbd{font:500 11px/14px var(--font-mono,'JetBrains Mono',monospace);color:var(--text-3,rgba(255,255,255,.5));padding:1px 6px;border-radius:6px;background:rgba(255,255,255,.05)}
+.cv-ctx-sep{display:block;height:1px;margin:5px 6px;background:rgba(255,255,255,.07)}
+.cv-dropmenu{transform:translate(12px,-12px);min-width:288px}
+.cv-dm-t{display:flex;flex-direction:column;gap:1px}.cv-dm-t small{font-size:11.5px;line-height:15px;color:var(--text-2,#9A9BA0)}
+.cv-dm-row:first-of-type .cv-dm-t b{color:var(--accent,#FF7A1A)}
+.cv-dropbubble{position:fixed;z-index:61;transform:translate(14px,-130%);padding:7px 11px;border-radius:10px;background:#2A2416;border:1px solid rgba(232,180,74,.45);color:#F3D48D;
+  font:600 12.5px/16px var(--font-sans,Inter,sans-serif);box-shadow:0 10px 26px rgba(0,0,0,.45);pointer-events:none;white-space:nowrap;animation:cv-bubble-in 160ms ease-out both}
+@keyframes cv-bubble-in{from{opacity:0;transform:translate(14px,-110%)}}
+.cv-keys-back{position:fixed;inset:0;z-index:70;display:grid;place-items:center;padding:16px;background:rgba(8,9,10,.55);backdrop-filter:blur(3px)}
+.cv-keys{width:min(720px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:20px 22px;border-radius:18px;background:#16171A;border:1px solid rgba(255,255,255,.09);box-shadow:0 30px 80px rgba(0,0,0,.6);color:var(--text-1,#F7F7F8)}
+.cv-keys header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.cv-keys h2{margin:0;font:600 18px/24px var(--font-display,'Space Grotesk',Inter,sans-serif)}
+.cv-keys h3{margin:0 0 8px;font:600 11px/14px var(--font-sans,Inter,sans-serif);letter-spacing:.08em;text-transform:uppercase;color:var(--text-3,rgba(255,255,255,.5))}
+.cv-keys-cols{display:grid;grid-template-columns:1.2fr 1fr;gap:22px}
+.cv-keys dl{margin:0;display:grid;gap:6px}.cv-keys dl>div{display:flex;align-items:center;gap:12px}
+.cv-keys dt{flex:none;min-width:58px}.cv-keys dd{margin:0;font:400 13px/18px var(--font-sans,Inter,sans-serif);color:var(--text-2,#B4B5BA)}
+.cv-keys kbd{font:500 12px/16px var(--font-mono,'JetBrains Mono',monospace);padding:2px 7px;border-radius:7px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08);color:var(--text-1,#F7F7F8)}
+.cv-keys-note{margin:14px 0 0;font:400 12.5px/18px var(--font-sans,Inter,sans-serif);color:var(--text-3,rgba(255,255,255,.55))}
+@media (max-width:620px){.cv-keys-cols{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.cv-dropbubble{animation:none}}

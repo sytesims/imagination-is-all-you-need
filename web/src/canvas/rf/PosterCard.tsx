@@ -30,6 +30,7 @@ import { cardState, modelNameOf, missingOf } from '../cardState';
 import { promptSourcesInto } from '../graph';
 import { liveJobs, retryCard } from '../genRun';
 import { submit } from '../agentApi';
+import { dropKindAtom } from './portDrop';
 import { lockOfQuote, PriceChangedError } from '../priceLock';
 import { askConfirm } from '../../shared/Dialog';
 import { chooseForSlot } from '../CardInputs';
@@ -130,9 +131,11 @@ function Media({ n, m, hot, w, onTone }: { n: BoardNode; m: { kind: string; url:
 function Ports({ id, type, ports, out, linkedOut, dragKind }: { id: NodeId; type: string; ports: PosterPort[]; out: PortKind | null; linkedOut: boolean; dragKind: string | null }) {
   const { beginDrag, ghost } = usePortDrag(id, type, out); const src = useValue('pc drag src', () => portDragAtom.get()?.fromId === id, [id]);
   const def = nodeDefOf(type); const n = ports.length;
+  /* a file or an Assets item dragged over the board: the ports that can take it glow, the others go quiet (release 1) */
+  const fileKinds = useValue('pc drop kinds', () => dropKindAtom.get()?.kinds ?? [], []);
   return <>
-    {ports.map((p, i) => <span key={p.key} className={`pc-port pc-in k-${p.kind}${p.filled ? ' filled' : ''}${dragKind === p.kind ? ' want' : ''}`} style={{ top: `calc(50% + ${(i - (n - 1) / 2) * POSTER_PORT_GAP}px)` }}
-      data-card-control data-kind={p.kind} data-testid={`port-in-${p.kind}`} {...tip(p.filled ? `${p.label}: wired in` : `${p.label}: takes ${PORT_WORDS[p.kind]}${p.optional ? ' (optional)' : ''}`)}>
+    {ports.map((p, i) => <span key={p.key} className={`pc-port pc-in k-${p.kind}${p.filled ? ' filled' : ''}${dragKind === p.kind || fileKinds.includes(p.kind as any) ? ' want' : ''}${fileKinds.length && !fileKinds.includes(p.kind as any) ? ' quiet' : ''}`} style={{ top: `calc(50% + ${(i - (n - 1) / 2) * POSTER_PORT_GAP}px)` }}
+      data-card-control data-kind={p.kind} data-slot={p.key === 'prompt' ? undefined : p.key} data-label={p.label} data-testid={`port-in-${p.kind}`} {...tip(p.filled ? `${p.label}: wired in` : `${p.label}: takes ${PORT_WORDS[p.kind]}${p.optional ? ' (optional)' : ''}`)}>
       <i /><span className="pc-pl">{p.label}{p.optional && <em> optional</em>}</span></span>)}
     {def?.output && out && <span className={`pc-port pc-out k-${out}${linkedOut ? ' filled' : ''}`} role="button" tabIndex={-1} data-card-control data-kind={out} data-testid={`port-out-${out}`}
       aria-label={`${KIND_NAME[out]} out: drag onto another card`} onPointerDown={beginDrag}><i /><span className="pc-pl">{KIND_NAME[out]}</span></span>}

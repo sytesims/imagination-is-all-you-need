@@ -200,3 +200,12 @@
 .cv-rf .cv-sticky.as-poster.c-yellow{--st:#FEE590}.cv-rf .cv-sticky.as-poster.c-orange{--st:#F2913F}.cv-rf .cv-sticky.as-poster.c-red{--st:#FF9D9D}.cv-rf .cv-sticky.as-poster.c-green{--st:#A9E8B4}
 .cv-rf .cv-sticky.as-poster.c-blue{--st:#9CC6FF}.cv-rf .cv-sticky.as-poster.c-violet{--st:#D0B6FF}.cv-rf .cv-sticky.as-poster.c-grey{--st:#D7D9DC}.cv-rf .cv-sticky.as-poster.c-black{--st:#8A8D93}.cv-rf .cv-sticky.as-poster.c-white{--st:#F7F7F8}
 .cv-rf .cv-sticky.as-poster.c-light-blue{--st:#BEE3FF}.cv-rf .cv-sticky.as-poster.c-light-green{--st:#CDEFC7}.cv-rf .cv-sticky.as-poster.c-light-red{--st:#FFC6C6}.cv-rf .cv-sticky.as-poster.c-light-violet{--st:#E6D6FF}
+/* release 1: drops onto a port. While a file or an Assets item is over the board, the ports that take it glow (with a bigger target) and
+   show their labels; the others go quiet. The wrong kind shakes. */
+.pc-port.pc-in.want::after{content:'';position:absolute;left:-22px;top:-22px;width:44px;height:44px;border-radius:50%;pointer-events:all}
+.pc-port.pc-in.want>i{box-shadow:0 0 0 2px rgba(12,13,15,.85),0 0 0 6px color-mix(in srgb,var(--pk) 35%,transparent),0 0 18px 4px color-mix(in srgb,var(--pk) 55%,transparent)}
+.pc-port.pc-in.want .pc-pl{opacity:1;visibility:visible;transform:none}
+.pc-port.pc-in.quiet{opacity:.3}
+.pc-port.shake>i{animation:pc-shake 560ms cubic-bezier(.36,.07,.19,.97) both;border-color:#E8B44A}
+@keyframes pc-shake{10%,90%{translate:-1px 0}20%,80%{translate:2px 0}30%,50%,70%{translate:-4px 0}40%,60%{translate:4px 0}}
+@media (prefers-reduced-motion:reduce){.pc-port.shake>i{animation:none}}
