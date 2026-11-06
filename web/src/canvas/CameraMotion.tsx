@@ -8,20 +8,20 @@
  * Set from a store listener when the zoom crosses a line: no React state, nothing re-renders per frame. The styles are in node.css.
  */
 import { useEffect } from 'react';
-import { useEditor } from 'tldraw';
+import { useBoardApi } from './boardApi';
 import { FAR_ZOOM, TINY_ZOOM } from './cardLook';
 
 /** Dev and measuring only: <html class="cv-perf-off"> turns the speed-ups off, so before / after can be measured in the same build. */
 export const perfOff = () => typeof document !== 'undefined' && document.documentElement.classList.contains('cv-perf-off');
 export function CameraMotion() {
-  const editor = useEditor();
+  const board = useBoardApi();
   useEffect(() => {
-    const root = editor.getContainer();
+    const root = board.container();
     /* write a class only when it flips (a no-op toggle still counts as a DOM change on every camera step) */
     const set = (cls: string, on: boolean) => { if (root.classList.contains(cls) !== on) root.classList.toggle(cls, on); };
-    const sync = () => { const z = perfOff() ? 1 : editor.getZoomLevel(); set('cv-far', z < FAR_ZOOM); set('cv-tiny', z < TINY_ZOOM); };
-    sync(); const off = editor.store.listen(sync, { scope: 'session' });
+    const sync = () => { const z = perfOff() ? 1 : board.zoom(); set('cv-far', z < FAR_ZOOM); set('cv-tiny', z < TINY_ZOOM); };
+    sync(); const off = board.onChange(sync, 'view');
     return () => { off(); root.classList.remove('cv-far', 'cv-tiny'); };
-  }, [editor]);
+  }, [board]);
   return null;
 }
