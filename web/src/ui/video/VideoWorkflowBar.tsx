@@ -332,6 +332,7 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
       case 'focus-prompt': setPfOpen(false); requestAnimationFrame(() => promptRef.current?.focus()); return;
       case 'open-group': setPfOpen(false); setPop(`g:${a.group}`); return;
       case 'pick-model': setPfOpen(false); setPop('model'); return;
+      case 'open-spend': setPfOpen(false); navigate('/account/usage'); return; // the monthly limit lives on the Spend page
       case 'add-key': case 'download': case 'turn-on': case 'install-node': case 'set-up': { const pl = setupPlacesOf(setupModel, q).find((x: any) => x.runOn === a.runOn) ?? setupPlacesOf(setupModel, q)[0]; if (!pl) return;
         try { await doSetupPlace(setupTarget.toolId, setupModel, setupTarget.engine, pl); } catch (er) { toast((er as Error).message || 'That didn’t work. Try again.', 'error'); } if (f.kind !== 'download') setPfOpen(false); return; }
       default: setPfOpen(false);

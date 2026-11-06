@@ -12,6 +12,7 @@ import { shownCredits, isPlainBlock } from './quote';
 import { intentLine } from './presetBar';
 import type { PreflightProblem } from '../../../server/src/shared/preflight';
 import { GenStatus, useGenReason, blockedProps, genBlocked, runGenAct } from './GenStatus';
+import { useToast } from './Toast';
 
 export function DockGenerate({ toolId, engine, quote, setupTarget, label, busy, disabled, problems, missing, pfOpen, genRef, onClick, dlSize, testId = 'ic-generate', priceTestId = 'ic-price', workflowId, className = '', variant = 'dock', onDetails, noPlace }: {
   toolId: string; engine: string; quote: any; label: string; setupTarget?: { toolId: string; engine: string };
@@ -29,7 +30,8 @@ export function DockGenerate({ toolId, engine, quote, setupTarget, label, busy, 
   const lead = missing ?? problems[0]?.message ?? null;
   /* waiting (A1, 2026-10-31): a pre-flight problem OR the caller's own missing step is the one shared waiting look (ui-states.css .gen-wait) */
   const waiting = problems.length > 0 || !!missing;
-  const click = (e: React.MouseEvent<HTMLButtonElement>) => { if (blocked) { if (variant === 'node' && r?.primary) void runGenAct(r, r.primary); else genBlocked(r); return; } onClick(e); };
+  const toast = useToast();
+  const click = (e: React.MouseEvent<HTMLButtonElement>) => { if (blocked) { if (variant === 'node' && r?.code === 'spend_cap') toast(r.reason, 'warn'); /* the Canvas pill has no reason line: say why, stay on the board */ else if (variant === 'node' && r?.primary) void runGenAct(r, r.primary); else genBlocked(r); return; } onClick(e); };
   const btn = <button ref={genRef} type="button" className={`${base}${waiting ? ' gen-wait' : ''} ${className}`.trim()} data-testid={testId} data-workflow={workflowId} data-problems={problems.length || undefined}
     disabled={busy || !!disabled} aria-disabled={waiting || undefined} aria-haspopup={problems.length && !blocked ? 'dialog' : undefined} aria-expanded={problems.length && !blocked ? pfOpen : undefined}
     title={pfOpen ? undefined : lead ?? (r && !r.blocks ? r.reason : undefined)} {...(blocked ? blockedProps(r) : {})} onClick={click}><span className="gen-l">{busy ? <i className="as-spin" aria-hidden /> : null}{label}</span>

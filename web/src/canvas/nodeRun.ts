@@ -35,7 +35,7 @@ export async function submitNode(editor: Editor, id: TLShapeId): Promise<string>
   if (wait) throw new Error(`Waits for ${wait.name}: generate it first (or remove its arrow), so this run gets its input.`);
   const prompt = effectivePrompt(editor, id, p.prompt);
   const miss = missingOf(st.spec, st.bySlot, prompt); if (miss) throw new Error(miss);
-  const q = await quoteNode(editor, id); if (q && q.runnable === false) throw new Error(String(q.reasonText ?? q.reason ?? q.error ?? 'This model can’t run here right now.'));
+  const q = await quoteNode(editor, id); if (q && q.runnable === false) throw new Error(String((q.blockedCode === 'spend_cap' ? q.blockedReason : null) ?? q.reasonText ?? q.reason ?? q.error ?? q.blockedReason ?? 'This model can’t run here right now.'));
   const ctx = boardCtx();
   return submitCard(editor, id, { spec: st.spec, bySlot: st.bySlot, inputs: st.inputs, prompt, projectId: ctx.projectId, boardId: ctx.boardId, quote: q, modelName: modelNameOf(st.spec), maker: makerOf(st.spec) });
 }

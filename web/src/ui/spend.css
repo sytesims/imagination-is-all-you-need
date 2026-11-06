@@ -128,7 +128,7 @@
   .spn .spn-item .spn-act{justify-self:start}
 }
 /* Monthly tally and limit (MonthTally) */
-.spg-tally{margin:6px 0 18px;padding:16px 18px;border-radius:18px;border:1px solid var(--border-strong);background:var(--surface-1);display:grid;gap:14px}
+.spg-tally{margin:14px 0 4px;padding:16px 18px;border-radius:18px;border:1px solid var(--border-strong);background:var(--surface-1);display:grid;gap:14px}
 .spg-tally-ph{min-height:118px}
 .spg-tally-nums{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.6fr);gap:18px;align-items:start}
 .spg-tally-n,.spg-cap{display:flex;flex-direction:column;gap:3px;min-width:0}

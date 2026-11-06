@@ -450,7 +450,7 @@ export function registerBilling(app: FastifyInstance) {
       // Monthly cap (spendCap.ts): the quote says first when this run would go past it, so Generate shows why before a click.
       const cv = checkSpendCap(runCountsUsd(cost, payload.free === true));
       const capView = cv.capUsd == null ? {} : { spendCap: { monthlyUsd: cv.capUsd, spentUsd: cv.spentUsd, leftUsd: cv.leftUsd, resetsOn: cv.resetsOn, ok: cv.ok } };
-      if (!cv.ok && payload.runnable !== false) return { ...payload, billingMode: billingMode(), cost, ...capView, runnable: false, blockedReason: cv.message, blockedCode: 'spend_cap' };
+      if (!cv.ok && payload.runnable !== false) return { ...payload, billingMode: billingMode(), cost, ...capView, runnable: false, blockedReason: cv.reason, blockedCode: 'spend_cap' };
       return { ...payload, billingMode: billingMode(), cost, ...capView };
     } catch { return payload; }
   });

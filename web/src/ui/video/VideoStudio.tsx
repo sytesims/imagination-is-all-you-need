@@ -34,7 +34,7 @@ import { useBilling, modeOf, runPrice, placeOfQuote, ownAccountsNow } from '../.
 import { RouteNotRunnable } from '../../shared/RouteNotRunnable';
 import { GenPrice } from '../../shared/GenPrice';
 import { DemoPrice } from '../../shared/DemoPrice';
-import { useRequoteTick, shownCredits, runBlock } from '../../shared/quote';
+import { useRequoteTick, shownCredits, runBlock, blockStage } from '../../shared/quote';
 import { inputNeedOf } from '../../../../server/src/shared/preflight';
 import { readQuote, unpricedReason, demoMessage, unpricedPrefix, unpricedTitle, demoTagOf } from '../../shared/quote';
 import { quoteParams } from '../../shared/usePrefill';
@@ -389,7 +389,7 @@ export default function VideoStudio(p: VideoStudioProps) {
   if (q?.issues?.[0] && q.issues[0].code !== 'invalid_duration') notes.push({ key: 'qIssue', stage: 'Inputs', node: <span data-testid="vs-quote-issue">{q.issues[0].message}</span> });
   if (gate) notes.push({ key: 'gate', stage: 'Setup', hard: true, node: <KeyNeeded q={q} className="vs-key" toolId={p.tool.id} /> });
   if (unpriced && !gate) notes.push({ key: 'unpriced', stage: 'Model', hard: true, node: <span data-testid="vs-price-block" role="status">{unpricedPrefix(q)}{unpricedWhy}</span> });
-  if (blockWhy) notes.push({ key: 'blockWhy', stage: 'Model', hard: true, node: <span data-testid="vs-blocked" role="status">{blockWhy}</span> });
+  if (blockWhy) notes.push({ key: 'blockWhy', stage: blockStage(q), hard: true, node: <span data-testid="vs-blocked" role="status">{blockWhy}</span> });
   if (!gate && (gq.full || gq.almostFull)) notes.push({ key: 'queue', stage: 'Setup', hard: gq.full, node: <GenHint /> });
   const routeIssue = (p.issues ?? []).some((i: any) => i?.code === 'route_not_runnable' || i?.code === 'idempotency_conflict');
   if (routeIssue) notes.push({ key: 'route', stage: 'Setup', node: <RouteNotRunnable issues={p.issues} /> });

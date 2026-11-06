@@ -28,7 +28,8 @@ export const nextMonthStart = (now = new Date()) => new Date(now.getFullYear(), 
 const money = (n: number) => `$${Number.isInteger(n) ? n.toLocaleString('en-US') : n.toFixed(2)}`;
 const dayWords = (d: Date) => d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
 
-export interface CapVerdict { ok: boolean; capUsd: number | null; spentUsd: number; runUsd: number; leftUsd: number | null; resetsOn: string; message?: string }
+/** message: the refusal (submit, 402); reason: the same before a click (the quote's blockedReason), without "Nothing was charged". */
+export interface CapVerdict { ok: boolean; capUsd: number | null; spentUsd: number; runUsd: number; leftUsd: number | null; resetsOn: string; message?: string; reason?: string }
 /** Pure check (tests call it directly). capUsd null = off. Allowed when runUsd is 0 or spent + run ≤ cap (to the cent). */
 export function capVerdict(o: { capUsd: number | null; spentUsd: number; runUsd: number; now?: Date }): CapVerdict {
   const now = o.now ?? new Date(); const reset = nextMonthStart(now);
@@ -36,5 +37,6 @@ export function capVerdict(o: { capUsd: number | null; spentUsd: number; runUsd:
   const spent = Math.max(0, o.spentUsd); const run = Math.max(0, o.runUsd);
   const base = { capUsd: o.capUsd, spentUsd: spent, runUsd: run, leftUsd: o.capUsd == null ? null : Math.max(0, cents(o.capUsd) - cents(spent)) / 100, resetsOn: reset.toISOString() };
   if (o.capUsd == null || cents(run) <= 0 || cents(spent) + cents(run) <= cents(o.capUsd)) return { ok: true, ...base };
-  return { ok: false, ...base, message: `This run would take you past your ${money(o.capUsd)} monthly limit. Raise it on the Spend page, or wait until ${dayWords(reset)}. Nothing was charged.` };
+  const reason = `This run would take you past your ${money(o.capUsd)} monthly limit. Raise it on the Spend page, or wait until ${dayWords(reset)}.`;
+  return { ok: false, ...base, reason, message: `${reason} Nothing was charged.` };
 }

@@ -160,7 +160,6 @@ function OverviewTab({ ov, period, setPeriod, toolName, nameOf, onAllRuns, tools
   if (t && t.savedUsd > 0) line.push(<span key="saved" data-testid="spend-saved">saved {fmtUsd(t.savedUsd)} locally</span>);
   if (t && t.spentUsd === 0 && t.runs > 0 && t.freeRuns === t.runs) line.push(<span key="free">Every run was free on your computer</span>);
   return <>
-    <MonthTally tick={(month?.totals.runs ?? 0) + (day?.totals.runs ?? 0)} />
     <section className="spg-hero" data-testid="spend-hero" aria-busy={ov.loading || undefined}>
       <div className="spg-hero-l">
         <span className="eyebrow">{PERIOD_WORDS[period].hero}</span>
@@ -173,6 +172,7 @@ function OverviewTab({ ov, period, setPeriod, toolName, nameOf, onAllRuns, tools
         options={[{ value: '7d', label: '7 days' }, { value: 'month', label: 'Month' }, { value: 'all', label: 'All' }]} />
     </section>
     {ov.err && <Notice as="p" kind="error" tone="line">{ov.err}</Notice>}
+    <MonthTally tick={(month?.totals.runs ?? 0) + (day?.totals.runs ?? 0)} />
 
     {empty ? <section className="spg-empty" data-testid="spend-empty">
       <div className="spg-empty-art" aria-hidden>{[0, 1, 2, 3, 4].map((i) => <i key={i} />)}</div>
@@ -244,6 +244,7 @@ function MonthTally({ tick }: { tick: number }) {
             <button type="button" className="btn btn-sm" disabled={busy} onClick={() => { setEdit(false); setErr(''); }}>Cancel</button>
             {on && <button type="button" className="spg-link" disabled={busy} onClick={() => void save(null)} data-testid="spend-cap-off">Turn off</button>}
           </form>
+          : on && cap.monthlyUsd === 0 ? <><b data-testid="spend-cap-text">$0 <em>· free runs only</em></b><span>Paid runs are off this month. Raise the limit to turn them back on.</span></>
           : on ? <><b data-testid="spend-cap-text">{fmtUsd(cap.spentUsd)} <em>of {fmtUsd(cap.monthlyUsd!)} this month</em></b>
             <span className="spg-cap-bar" role="img" aria-label={`${Math.round(pct)}% of your monthly limit used`}><i style={{ width: `${pct}%` }} /></span>
             <span>{over ? `Paid runs wait until ${resets}, or raise the limit.` : `${fmtUsd(cap.leftUsd ?? 0)} left · starts again ${resets}`}</span></>

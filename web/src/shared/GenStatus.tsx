@@ -70,6 +70,7 @@ export function genBlocked(r: GenReason | null): boolean {
 export async function runGenAct(r: GenReason, a: GenAct, openMore?: () => void): Promise<void> {
   if (a.kind === 'connect') { openConnectSheet(); return; }
   if (a.kind === 'settings') { navigate('/settings#connections'); return; }
+  if (a.kind === 'spend') { navigate('/account/usage'); return; } // the monthly limit is set on the Spend page
   if (a.kind === 'details') { r.onDetails?.(); return; }
   if (a.kind === 'more') { if (openMore) openMore(); else navigate('/settings#connections'); return; }
   if (a.kind === 'cloud') { const p = r.places.find(x => x.runOn === 'comfy-cloud');

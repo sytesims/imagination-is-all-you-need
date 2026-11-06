@@ -90,7 +90,7 @@ function ConnectSheet({ onClose }: { onClose: () => void }) {
       <p className="dlg-b">Nothing ran and nothing was charged. Pick one way to run, then press Generate again. Your prompt stays in the bar.</p>
       <div className="cs-paths">
         <section className="cs-path" data-testid="cs-comfy">
-          <b>Paste a Comfy key</b><small>One key for most models: workflows on Comfy Cloud and partner models on Comfy Router. Billed to your Comfy account; you see the price before every run.</small>
+          <b>Paste a Comfy key</b><small>One key for most models: workflows on Comfy Cloud and partner models on Comfy Router. Partner models run on Comfy credits; workflows on Comfy Cloud also need a Comfy plan. You see the price before every run.</small>
           {can === false ? <small className="cs-warn">Keys can be saved here only when the app runs on this computer. Add it to the app’s settings file instead.</small>
             : <div className="cs-row">
               <SecretInput onEnter={() => { if (key.trim() && !k.busy) void saveKey(); }} placeholder="Paste your Comfy API key" value={key} onChange={e => setKey(e.target.value)} data-autofocus aria-label="Comfy API key" data-testid="cs-key" />

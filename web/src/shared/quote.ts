@@ -102,6 +102,8 @@ export const runBlock = (q: any): string | null => {
   if (!w) return q.priceAvailable === false ? UNPRICED_MSG : 'This setting can’t run here.';
   const t = String(w).trim(); return `${t[0].toUpperCase()}${t.slice(1)}${/[.!?]$/.test(t) ? '' : '.'}`;
 };
+/** The heading for a run block in the 'One thing to fix first' list: the monthly limit (server blockedCode spend_cap) is not a model problem. */
+export const blockStage = (q: any): string => (q?.blockedCode === 'spend_cap' ? 'Monthly limit' : 'Model');
 /** The block is the server's reason as-is (not wired, or an input reason), not a missing price: no "Price unavailable:" prefix. */
 /** B18: also a server refusal with its own code (unsupported, image_required…) or a non-key route that can't run (unavailableReason). */
 const refusal = (q: any): boolean => typeof q?.code === 'string' && !!q.code && q.code !== 'price_unavailable';
