@@ -1,5 +1,6 @@
 // The iiayn.app Worker (site/src): /install and /install.ps1 come back as plain text from GitHub (a fake fetch here),
-// GitHub failures give a plain-text error (never HTML), the old domain 301s to iiayn.app, everything else goes to the static files.
+// GitHub failures give a plain-text error (never HTML), the old domain 301s to iiayn.app, everything else goes to the static files,
+// with byte ranges answered as 206 (Safari needs them to play video).
 // Run: npx tsx test/site-worker.test.ts   (no server, no network)
 import assert from 'node:assert/strict';
 import { handle, SCRIPTS } from '../../site/src/routes.js';
@@ -55,3 +56,30 @@ ok('old domains 301 to https://iiayn.app with the same path');
 
 const page = await handle(new Request('https://iiayn.app/'), assets, (async () => { throw new Error('GitHub must not be called'); }) as typeof fetch);
 assert.equal(page.headers.get('content-type'), 'text/html; charset=utf-8'); ok('/ goes to the static files');
+
+// Byte ranges: Workers static assets answer 200 with the whole file even when asked for a range (workers-sdk#8967), and
+// Safari won't play video without 206. The Worker cuts the range itself.
+const bytes = new Uint8Array(1000).map((_, i) => i % 256);
+const fileAssets = (status = 200) => ({ fetch: async (_req: Request) => new Response(status === 206 ? bytes.slice(0, 10) : bytes, { status, headers: { 'content-type': 'video/mp4', 'content-length': String(status === 206 ? 10 : 1000) } }) });
+const noGh = (async () => { throw new Error('GitHub must not be called'); }) as typeof fetch;
+const ranged = (range: string, method = 'GET', a = fileAssets()) => handle(new Request('https://iiayn.app/showcase/clip.mp4', { method, headers: { range } }), a, noGh);
+for (const [range, start, end] of [['bytes=0-100', 0, 100], ['bytes=100-199', 100, 199], ['bytes=-50', 950, 999], ['bytes=900-', 900, 999], ['bytes=990-5000', 990, 999]] as const) {
+  const r = await ranged(range);
+  assert.equal(r.status, 206, range);
+  assert.equal(r.headers.get('content-range'), `bytes ${start}-${end}/1000`, range);
+  assert.equal(r.headers.get('content-length'), String(end - start + 1), range);
+  assert.equal(r.headers.get('accept-ranges'), 'bytes', range);
+  assert.equal(r.headers.get('content-type'), 'video/mp4', range);
+  assert.deepEqual(new Uint8Array(await r.arrayBuffer()), bytes.slice(start, end + 1), range);
+}
+ok('a Range request gets 206 with that slice (from-to, suffix, open end, past the end)');
+for (const range of ['bytes=1000-', 'bytes=500-100']) { const r = await ranged(range); assert.equal(r.status, 416, range); assert.equal(r.headers.get('content-range'), 'bytes */1000', range); }
+ok('a range outside the file gets 416');
+{ const r = await ranged('bytes=0-9', 'GET', fileAssets(206)); assert.equal(r.status, 206); assert.equal((await r.arrayBuffer()).byteLength, 10); }
+ok('a 206 from the asset server passes through');
+{ const r = await handle(new Request('https://iiayn.app/showcase/clip.mp4'), fileAssets(), noGh); assert.equal(r.status, 200); assert.equal(r.headers.get('accept-ranges'), 'bytes'); assert.equal((await r.arrayBuffer()).byteLength, 1000); }
+ok('a whole file says Accept-Ranges: bytes');
+{ const r = await ranged('bytes=0-1,5-6'); assert.equal(r.status, 200); }
+ok('a multi-range request gets the whole file');
+{ const r = await ranged('bytes=100-199', 'HEAD'); assert.equal(r.status, 206); assert.equal(r.headers.get('content-range'), 'bytes 100-199/1000'); assert.equal(r.headers.get('content-length'), '100'); }
+ok('HEAD with a range gets the 206 headers');

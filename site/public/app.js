@@ -1,4 +1,4 @@
-// iiayn.app: install tabs (auto-picked from the visitor's computer), Copy, the Run on picker, lazy clips and the song tile. No libraries.
+// iiayn.app: the header, install tabs (auto-picked from the visitor's computer), Copy, the Run on picker, lazy clips and the song tile. No libraries.
 (() => {
   const OS = {
     unix: { cmd: 'curl -fsSL https://iiayn.app/install | bash', where: 'Paste this into <b>Terminal</b>:' },
@@ -153,6 +153,27 @@
     audio.addEventListener('play', () => { btn.setAttribute('aria-pressed', 'true'); btn.setAttribute('aria-label', 'Pause the song'); paint(); });
     audio.addEventListener('pause', () => { btn.setAttribute('aria-pressed', 'false'); btn.setAttribute('aria-label', 'Play the song (10 seconds)'); });
     audio.addEventListener('ended', () => { bars.forEach((b) => b.classList.remove('on')); });
+  }
+
+  // The header: slimmer once you scroll, the section on screen lit, and the phone menu.
+  const hd = document.querySelector('[data-hd]');
+  if (hd) {
+    const spies = [...hd.querySelectorAll('[data-spy]')];
+    const parts = [...new Set(spies.map((a) => a.dataset.spy))].map((id) => document.getElementById(id)).filter(Boolean);
+    const onScroll = () => {
+      hd.classList.toggle('scrolled', hd.classList.contains('scrolled') ? scrollY > 8 : scrollY > 32);
+      const line = innerHeight * 0.3; let cur = '';
+      parts.forEach((el) => { const r = el.getBoundingClientRect(); if (r.top <= line && r.bottom > line) cur = el.id; });
+      spies.forEach((a) => { const on = a.dataset.spy === cur; a.classList.toggle('on', on); if (on) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current'); });
+    };
+    addEventListener('scroll', onScroll, { passive: true }); addEventListener('resize', onScroll); onScroll();
+
+    const btn = hd.querySelector('[data-hd-menu]'); const menu = hd.querySelector('#hd-menu');
+    const setMenu = (open) => { menu.hidden = !open; btn.setAttribute('aria-expanded', String(open)); };
+    btn.addEventListener('click', (e) => { e.stopPropagation(); setMenu(menu.hidden); });
+    menu.addEventListener('click', (e) => { if (e.target.closest('a')) setMenu(false); });
+    document.addEventListener('click', (e) => { if (!menu.hidden && !hd.contains(e.target)) setMenu(false); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !menu.hidden) { setMenu(false); btn.focus(); } });
   }
 
   const y = document.querySelector('[data-year]');
