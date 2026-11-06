@@ -19,7 +19,7 @@ import { getTool, listTools } from '../tools/registry.js';
 /** The reel tool whose GET price is quoteReel (routesBatch1.ts): Camera Moves' quote per clip. */
 const REEL_QUOTED_ON_CAMERA = 'app-photos-to-reel';
 import { jobs } from '../jobs.js';
-import { getBalance, canAfford } from '../ledger.js';
+import { getBalance } from '../ledger.js';
 import { routesFor, findRoute, isTwinAlias, toolKeys, mapTwinAlias } from './routes.js';
 import { requestMode, toolDefaults, setStatusInput, toolModes, lyricsFreeDefault, draftOn, draftCapableDefault } from './defaults.js';
 import { localRunnerName } from './routes.js';

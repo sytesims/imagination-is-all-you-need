@@ -48,7 +48,7 @@ import { getKv, setKv } from './db.js';
 import * as I from './idempotency.js';
 import { registerJsonErrors } from './jsonErrors.js';
 import { RESULT_TTL_DAYS } from './config.js';
-import { ledger, canAfford, getBalance, freeGensLeft, FREE_GENS_MAX_RES, grant, LOCAL_FREE, isLocalFree, refundOf, usageTotals } from './ledger.js';
+import { ledger, getBalance, freeGensLeft, FREE_GENS_MAX_RES, grant, LOCAL_FREE, isLocalFree, refundOf, usageTotals } from './ledger.js';
 import { registerPrecheck } from './precheck.js';
 import { registerPreflight } from './routesPreflight.js';
 import { registerPromptPeek } from './routesPromptPeek.js';
