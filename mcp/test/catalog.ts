@@ -41,7 +41,7 @@ const client = new Client({ name: 'ohf-catalog', version: '1' });
 try {
   const health = await getJ('/api/health'); assert.equal(health.backend, 'mock', 'this test only runs against a mock backend');
   await client.connect(new StdioClientTransport({ command: process.execPath, args: [path.join(MCP, 'node_modules/tsx/dist/cli.mjs'), path.join(MCP, 'src/index.ts')], cwd: MCP,
-    env: { ...process.env, OPENHIGGSFIELD_API: API, OPENHIGGSFIELD_MCP_POLL_MS: '200', PUBLIC_WEB_URL: 'http://web.example:5174', OPENHIGGSFIELD_MCP_PERMISSIONS: '', OPENHIGGSFIELD_MCP_SPEND: 'allow', OPENHIGGSFIELD_MCP_DEFAULT: 'allow', OPENHIGGSFIELD_MCP_SPEND: '', OPENHIGGSFIELD_MCP_ASK: '',
+    env: { ...process.env, OPENHIGGSFIELD_API: API, OPENHIGGSFIELD_MCP_POLL_MS: '200', PUBLIC_WEB_URL: 'http://web.example:5174', OPENHIGGSFIELD_MCP_PERMISSIONS: '', OPENHIGGSFIELD_MCP_SPEND: 'allow', OPENHIGGSFIELD_MCP_DEFAULT: 'allow', OPENHIGGSFIELD_MCP_ASK: '',
       OPENHIGGSFIELD_MCP_TOOLSETS: 'core,library,admin', OPENHIGGSFIELD_AGENT_BUDGET_USD: '', OPENHIGGSFIELD_AGENT_BUDGET_ID: '' } as Record<string, string> }));
   const call = async (name: string, args: Record<string, unknown> = {}) => { const raw: any = await client.callTool({ name, arguments: args }, undefined, { timeout: 120_000 }); return { raw, r: parse(raw), err: !!raw.isError }; };
   const mcpTools = (await client.listTools()).tools;
