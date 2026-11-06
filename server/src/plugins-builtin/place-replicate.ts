@@ -6,12 +6,13 @@ import { definePlugin } from '../kernel/index.js';
 import type { PlaceRunner } from '../services/places.js';
 import { replicateRun, replicateGet, replicateCancel, outputUrls } from '../providers/replicate.js';
 import { replicateAuthFor } from '../security/keyHosts.js';
-import { keyConfigured, keyValue, liveBackend } from '../routing/keys.js';
+import { liveBackend } from '../routing/keys.js';
+import { ANY_KEY, type KeyReader } from '../kernel/keys.js';
 
-export const replicatePlace: PlaceRunner = {
+export const replicatePlaceOf = (keys: KeyReader): PlaceRunner => ({
   kind: 'replicate', label: 'Replicate',
-  ready: (r) => keyConfigured(r.envKey, r.envAliases),
-  live: (r) => !!keyValue(r) && liveBackend(),
+  ready: (r) => keys.configured(r),
+  live: (r) => !!keys.value(r) && liveBackend(),
   async run({ route, body, key, resume }, h) { // the output is the prediction's first URL (pick is not needed)
     const res = await replicateRun(route.endpoint, body, key, { timeoutMs: h.timeoutMs, isCanceled: h.isCanceled, onBusy: h.onBusy, resume: resume?.id ?? null,
       onSubmit: (id) => h.onSubmit({ kind: 'replicate', id }),
@@ -20,6 +21,7 @@ export const replicatePlace: PlaceRunner = {
   },
   resume: () => true,
   cancel: (h, key, f) => replicateCancel(h.id, key, f),
-};
+});
+export const replicatePlace = replicatePlaceOf(ANY_KEY);
 
-export default definePlugin({ name: 'place-replicate', inject: ['places'], apply(ctx) { ctx.places.register(replicatePlace); } });
+export default definePlugin({ name: 'place-replicate', inject: ['places', 'keys'], keys: ['OPENHIGGSFIELD_REPLICATE_API_TOKEN', 'REPLICATE_API_TOKEN'], apply(ctx) { ctx.places.register(replicatePlaceOf(ctx.keys)); } });

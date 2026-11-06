@@ -9,6 +9,11 @@
  */
 import { Context, Service } from 'cordis';
 import type { PlacesService } from '../services/places.js';
+import type { HttpService } from './http.js';
+import type { SettingsService } from './settings.js';
+import type { DbService } from './db.js';
+import type { KeysService } from './keys.js';
+import { declareKeys } from './keys.js';
 
 export { Context, Service };
 
@@ -16,6 +21,10 @@ export { Context, Service };
 declare module 'cordis' {
   interface Context {
     places: PlacesService;
+    http: HttpService;
+    settings: SettingsService;
+    db: DbService;
+    keys: KeysService;
   }
 }
 
@@ -23,14 +32,24 @@ declare module 'cordis' {
 export interface PluginDef<C = void> {
   name: string;
   inject?: string[];
+  /** The key variables it may read through ctx.keys (names only, e.g. ['OPENHIGGSFIELD_FAL_KEY', 'FAL_KEY']); '*' = all (legacy only). */
+  keys?: readonly string[] | '*';
   apply(ctx: Context, config: C): void | Promise<void>;
 }
-export const definePlugin = <C = void>(p: PluginDef<C>): PluginDef<C> => p;
+/** Declares the plugin (and its keys: ctx.keys gives it only those). */
+export const definePlugin = <C = void>(p: PluginDef<C>): PluginDef<C> => { declareKeys(p.name, p.keys); return p; };
 
 /** A fresh plugin tree (boot.ts makes one per process). */
 export const createRoot = (): Context => new Context();
 
+/** What mount() mounted, in order (--dump-config lists them with their state). */
+export const mounted: { name: string; fiber: { state: number; dispose(): Promise<void> } }[] = [];
+const STATES = ['pending', 'loading', 'active', 'failed', 'disposed'];
+export const fiberState = (f: { state: number }) => STATES[f.state] ?? String(f.state);
+
 /** Mount a plugin and wait until it is applied (throws what its apply threw). */
 export async function mount<C>(ctx: Context, p: PluginDef<C> | (new (ctx: Context) => Service<any>), config?: C): Promise<void> {
-  await (ctx.plugin as (p: unknown, c?: unknown) => PromiseLike<unknown>)(p, config);
+  if (typeof p === 'object') declareKeys(p.name, p.keys);
+  const fiber = (ctx.plugin as (p: unknown, c?: unknown) => any)(p, config);
+  mounted.push({ name: typeof p === 'object' ? p.name : `${String((p as any).name).replace(/Service$/, '').toLowerCase()} (kernel service)`, fiber }); await fiber;
 }
