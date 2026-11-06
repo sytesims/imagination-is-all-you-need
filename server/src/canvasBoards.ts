@@ -17,7 +17,12 @@
  *  PUT    /api/canvas/boards/:id       { snapshot: v1 or v2, rev? } → { id, rev, updatedAt }; a stale rev → 409 rev_conflict
  *  POST   /api/canvas/boards/:id/save  same as PUT (for a keepalive save when the page closes)
  *  DELETE /api/canvas/boards/:id       → { ok: true }
- *  GET    /api/canvas/boards/:id/spend → { runs, running, estUsd, countedUsd, simulated } (step 2: jobs started from this board, input.boardId)
+ *  GET    /api/canvas/boards/:id/spend → { runs, running, estUsd, countedUsd, simulated, budget } (step 2: jobs started from this board, input.boardId)
+ *  PUT    /api/canvas/boards/:id/budget { usd: number | null } → { budget } (people only: refused for an agent, see personRequest)
+ *
+ * Board budget (Canvas release 1, user decision 2026-11-06): a spending limit per board that only the person sets, from the board menu. It
+ * lives on the board row (`budgetUsd`), never in the board document, so nothing that saves the board (the page, an agent's ops) can change
+ * it. It is checked when a run starts (boardBudgetBlock, in the jobs route) and at Go on a canvas proposal, next to the agent budget.
  */
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { randomUUID } from 'node:crypto';
@@ -32,7 +37,8 @@ import { boardItemCount, boardDocError, isV2 } from './shared/boardDoc.js';
 export interface CanvasBoard { id: string; name: string; createdAt: number; updatedAt: number; rev: number; snapshot: unknown | null;
   /** the board's last version-1 (tldraw) snapshot, kept on its first version-2 save (rollback); not part of any response */
   legacySnapshot?: unknown;
-  /** the board's project (Assets drawer filter; results made from the board go there in step 2); null = All generations */ projectId?: string | null }
+  /** the board's project (Assets drawer filter; results made from the board go there in step 2); null = All generations */ projectId?: string | null;
+  /** the board budget in USD (set by the person only); null / missing = none */ budgetUsd?: number | null }
 export type BoardSummary = Omit<CanvasBoard, 'snapshot' | 'legacySnapshot'> & { shapes: number };
 
 /** Snapshots above this are refused (a board of URLs is a few hundred KB even with hundreds of shapes). */
@@ -45,7 +51,7 @@ export const getBoard = (id: string): CanvasBoard | null => { const r = getRow.g
 export function shapeCount(snapshot: unknown): number { return boardItemCount(snapshot); }
 /** A project deleted since reads as null (All generations). */
 const liveProject = (id: string | null | undefined) => (id && getProject(id) ? id : null);
-export const summary = (b: CanvasBoard): BoardSummary => ({ id: b.id, name: b.name, createdAt: b.createdAt, updatedAt: b.updatedAt, rev: b.rev, shapes: shapeCount(b.snapshot), projectId: liveProject(b.projectId) });
+export const summary = (b: CanvasBoard): BoardSummary => ({ id: b.id, name: b.name, createdAt: b.createdAt, updatedAt: b.updatedAt, rev: b.rev, shapes: shapeCount(b.snapshot), projectId: liveProject(b.projectId), budgetUsd: budgetOf(b) });
 export const listBoards = (): BoardSummary[] => all<CanvasBoard>('canvas_boards').map(summary).sort((a, b) => b.updatedAt - a.updatedAt || b.createdAt - a.createdAt);
 
 /** "Untitled board N": one more than the highest N in use. */
@@ -106,7 +112,44 @@ export function boardSpend(id: string) {
     return { id: j.id, model: j.modelName ?? (j.input as any)?.model ?? j.toolId, status: j.status, url: th?.url ?? '', poster: th?.poster ?? '', createdAt: j.createdAt,
       demo: !!v?.demo || !!j.simulated, local: v?.billedTo === 'local', estUsd: v?.estUsd ?? 0, countedUsd: v?.countedUsd ?? 0 };
   });
-  return { runs, running, estUsd: r4(est), countedUsd: r4(counted), simulated, local, recent, limit: null }; // spending limits removed (2026-10-28): no cap to draw
+  const b = getBoard(id); const usd = b ? budgetOf(b) : null;
+  return { runs, running, estUsd: r4(est), countedUsd: r4(counted), simulated, local, recent, limit: null, // spending limits removed (2026-10-28): no cap to draw
+    budget: usd == null ? null : { usd, spentUsd: r4(est), leftUsd: r4(Math.max(0, usd - est)) } };
+}
+
+// ---------------------------------------------------------------- board budget (release 1)
+export const MAX_BOARD_BUDGET_USD = 100_000;
+function budgetOf(b: CanvasBoard): number | null { return typeof b.budgetUsd === 'number' && Number.isFinite(b.budgetUsd) && b.budgetUsd >= 0 ? b.budgetUsd : null; }
+/** What counts against a board budget: every run started from it, at its estimate when it started (a run that ended without a result counts
+ *  only what it was charged; sample runs count $0). The same number the spend chip shows as "$1.14 of $5.00". */
+export function boardBudgetView(id: string): { usd: number; spentUsd: number; leftUsd: number } | null {
+  const b = getBoard(id); const usd = b ? budgetOf(b) : null; if (usd == null) return null;
+  const spent = boardSpend(id).estUsd; return { usd, spentUsd: spent, leftUsd: Math.round(Math.max(0, usd - spent) * 1e4) / 1e4 };
+}
+const money = (n: number) => `$${n.toFixed(2)}`;
+/** A run (or a proposal) of `estUsd` from this board: over its budget → the refusal (nothing started, nothing charged); else null. */
+export function boardBudgetBlock(boardId: string | null | undefined, estUsd: number): { code: 'board_budget'; message: string; budgetUsd: number; spentUsd: number; leftUsd: number; neededUsd: number } | null {
+  if (!boardId) return null; const v = boardBudgetView(boardId); if (!v || !(estUsd > 0)) return null;
+  if (v.spentUsd + estUsd <= v.usd + 1e-9) return null;
+  return { code: 'board_budget', message: `This is ${money(Math.max(0, v.spentUsd + estUsd - v.usd))} over the ${money(v.leftUsd)} left in this board's ${money(v.usd)} budget, so nothing started. Nothing was charged. You can raise it from the board menu.`,
+    budgetUsd: v.usd, spentUsd: v.spentUsd, leftUsd: v.leftUsd, neededUsd: Math.round(estUsd * 1e4) / 1e4 };
+}
+/** Only the person sets a board budget: a request from an agent (our MCP server's headers, an agent budget) or from anything that isn't
+ *  the app's own page (browsers send Sec-Fetch-Site: same-origin; other clients don't) is refused. No MCP tool sets it either. */
+export function personRequest(h: Record<string, unknown>): boolean {
+  for (const k of ['x-ohf-mcp', 'x-ohf-agent-name', 'x-ohf-agent-budget', 'x-ohf-agent-listener']) if (String(h[k] ?? '').trim()) return false;
+  return String(h['sec-fetch-site'] ?? '') === 'same-origin';
+}
+export function setBoardBudget(id: string, usd: unknown): CanvasBoard | { status: number; code: string; error: string } {
+  const b = getBoard(id); if (!b) return { status: 404, code: 'not_found', error: 'No board with that id.' };
+  let v: number | null;
+  if (usd === null || usd === '' || usd === undefined) v = null;
+  else {
+    v = typeof usd === 'number' ? usd : typeof usd === 'string' ? Number(usd.replace(/^[$]/, '').trim()) : NaN;
+    if (!Number.isFinite(v) || v < 0 || v > MAX_BOARD_BUDGET_USD) return { status: 400, code: 'invalid_budget', error: `Give the budget in dollars, from $0 to $${MAX_BOARD_BUDGET_USD.toLocaleString('en-US')}, or none.` };
+    v = Math.round(v * 100) / 100;
+  }
+  const nb: CanvasBoard = { ...b, budgetUsd: v }; put('canvas_boards', id, nb); return nb;
 }
 
 // ---------------------------------------------------------------- link previews (a pasted link becomes a card with its title and picture)
@@ -159,6 +202,12 @@ export function registerCanvasBoards(app: FastifyInstance) {
     reply.header('cache-control', 'private, max-age=3600'); return r;
   });
   app.get<{ Params: { id: string } }>('/api/canvas/boards/:id/spend', async (req, reply) => { if (!getBoard(req.params.id)) return notFound(reply); return reply.header('cache-control', 'no-store').send(boardSpend(req.params.id)); });
+  app.put<{ Params: { id: string }; Body: { usd?: unknown } | undefined }>('/api/canvas/boards/:id/budget', async (req, reply) => {
+    if (!personRequest(req.headers as any)) return bad(reply, 'people_only', 'Only you can set a board budget, from the board menu in the app. Your AI can read it but never change it.', 403);
+    const r = setBoardBudget(req.params.id, req.body?.usd);
+    if ('status' in r) return bad(reply, r.code, r.error, r.status);
+    return { id: r.id, budget: boardBudgetView(r.id) };
+  });
   app.get('/api/canvas/boards', async () => ({ items: listBoards() }));
   app.post<{ Body: { name?: string } | undefined }>('/api/canvas/boards', async (req, reply) => reply.code(201).send({ ...summary(createBoard(req.body?.name)), snapshot: null }));
   app.get<{ Params: { id: string } }>('/api/canvas/boards/:id', async (req, reply) => { const b = getBoard(req.params.id); if (!b) return notFound(reply); return reply.header('cache-control', 'no-store').send({ ...summary(b), snapshot: b.snapshot }); });

@@ -11,10 +11,11 @@ import { BarPopover, PopSection, PopRow } from '../shared/BarPop';
 import { askConfirm, askText } from '../shared/Dialog';
 import { useToast } from '../shared/Toast';
 import { Skeleton } from '../shared/Skeleton';
-import { listBoards, createBoard, getBoard, renameBoard, deleteBoard, setBoardProject, type Board as BoardDoc, type BoardSummary } from './boardsApi';
+import { listBoards, createBoard, getBoard, renameBoard, deleteBoard, setBoardProject, setBoardBudget, type Board as BoardDoc, type BoardSummary } from './boardsApi';
 import { Board, type SaveState } from './Board';
 import { AgentPanel } from './AgentPanel';
-import { SpendChip } from './SpendChip';
+import { SpendChip, BUDGET_EVT } from './SpendChip';
+import { CoinIcon } from './icons';
 import { FollowToggle } from './FollowAgent';
 import { DOCK_W } from './agentDockModel';
 import { useValue, BoardProvider, type BoardApi } from './boardApi';
@@ -50,8 +51,8 @@ function useHeaderBottom() {
   return box;
 }
 
-function BoardSwitcher({ boards, current, save, onPick, onNew, onRename, onDelete }: { boards: BoardSummary[]; current: BoardSummary; save: SaveState;
-  onPick: (id: string) => void; onNew: () => void; onRename: () => void; onDelete: () => void }) {
+function BoardSwitcher({ boards, current, save, onPick, onNew, onRename, onDelete, onBudget }: { boards: BoardSummary[]; current: BoardSummary; save: SaveState;
+  onPick: (id: string) => void; onNew: () => void; onRename: () => void; onDelete: () => void; onBudget: () => void }) {
   const btn = useRef<HTMLButtonElement>(null); const [open, setOpen] = useState(false); const run = (f: () => void) => () => { setOpen(false); f(); };
   return <div className="cv-switch">
     <button ref={btn} type="button" className="cv-switch-btn" aria-haspopup="dialog" aria-expanded={open} data-testid="cv-switch" onClick={() => setOpen(o => !o)}>
@@ -69,6 +70,7 @@ function BoardSwitcher({ boards, current, save, onPick, onNew, onRename, onDelet
         <div className="cv-board-actions" role="menu" aria-label="Board actions">
           <PopRow role="menuitem" icon={<PlusIcon size={16} />} label="New board" onClick={run(onNew)} testId="cv-board-new" />
           <PopRow role="menuitem" icon={<PencilIcon size={16} />} label="Rename this board" onClick={run(onRename)} testId="cv-board-rename" />
+          <PopRow role="menuitem" icon={<CoinIcon size={16} />} label={current.budgetUsd != null ? 'Board budget' : 'Set a board budget'} hint={current.budgetUsd != null ? `$${current.budgetUsd.toFixed(2)} · only you can change it` : 'Runs that would go over it don’t start'} onClick={run(onBudget)} testId="cv-board-budget" />
           <PopRow role="menuitem" icon={<TrashIcon size={16} />} label="Delete this board" onClick={run(onDelete)} testId="cv-board-delete" className="cv-danger" />
         </div>
       </PopSection>
@@ -126,6 +128,14 @@ export default function CanvasPage() {
   const onNew = async () => { try { const nb = await createBoard(); await refresh(); go(nb.id); } catch (e: any) { toast(e?.message || 'Could not make a board.', 'error'); } };
   const onRename = async () => { if (!board) return; const name = await askText({ title: 'Rename board', label: 'Name', initial: board.name, confirm: 'Rename', maxLength: 80 }); if (!name || name === board.name) return;
     try { const s = await renameBoard(board.id, name); setBoard(b => (b ? { ...b, name: s.name } : b)); await refresh(); } catch (e: any) { toast(e?.message || 'Could not rename the board.', 'error'); } };
+  /* the board budget (release 1): only the person sets it, here; an empty answer removes it */
+  const onBudget = async () => { if (!board) return; const was = current?.budgetUsd ?? null;
+    const t = await askText({ title: 'Board budget', label: 'Most this board may spend, in dollars (leave empty for no budget)', placeholder: '5.00', initial: was != null ? was.toFixed(2) : '', confirm: 'Save budget', maxLength: 12 });
+    if (t == null) return; const raw = t.replace(/^[$\s]+/, '').trim(); const usd = raw === '' ? null : Number(raw.replace(',', '.'));
+    if (usd != null && (!Number.isFinite(usd) || usd < 0)) { toast('Type an amount in dollars, like 5 or 12.50.', 'warn'); return; }
+    try { const r = await setBoardBudget(board.id, usd); setBoards(bs => bs?.map(b => (b.id === board.id ? { ...b, budgetUsd: r.budget?.usd ?? null } : b)) ?? bs); dispatchEvent(new Event(BUDGET_EVT));
+      toast(r.budget ? `Board budget set: $${r.budget.usd.toFixed(2)}` : 'Board budget removed'); }
+    catch (e: any) { toast(e?.message || 'Could not set the budget.', 'error'); } };
   const onProject = async (pid: string | null) => { if (!board) return; const was = board.projectId ?? null; setBoard(b => (b ? { ...b, projectId: pid } : b));
     try { await setBoardProject(board.id, pid); void refresh(); } catch (e: any) { setBoard(b => (b ? { ...b, projectId: was } : b)); toast(e?.message || 'Could not set the project.', 'error'); } };
   const onDelete = async () => { if (!board) return;
@@ -145,7 +155,7 @@ export default function CanvasPage() {
           : <Board key={board.id} onBoard={setBoardApi} board={board} onSaveState={setSave} onSaved={onSaved} drawerOpen={drawer} setDrawerOpen={setDrawer} onProject={onProject} />}
         <div className="cv-topl">
           {!agentOpen && <button type="button" className={`cv-agent-btn${agentBusy ? ' busy' : ''}`} aria-pressed={false} aria-label="Show the AI panel" data-testid="cv-agent-toggle" onClick={toggleAgent}><SparkleIcon size={16} /><span>AI</span>{agentBusy && <i className="cv-agent-dot" aria-hidden />}</button>}
-          <BoardSwitcher boards={boards ?? []} current={current} save={save} onPick={id => id !== board.id && go(id)} onNew={onNew} onRename={onRename} onDelete={onDelete} /><SpendChip boardId={board.id} /><FollowToggle busy={agentBusy} />
+          <BoardSwitcher boards={boards ?? []} current={current} save={save} onPick={id => id !== board.id && go(id)} onNew={onNew} onRename={onRename} onDelete={onDelete} onBudget={onBudget} /><SpendChip boardId={board.id} /><FollowToggle busy={agentBusy} />
         </div>
         <div className="cv-agent-slot" data-slot="agent-panel" data-testid="cv-agent-slot" aria-hidden={!agentOpen}>
           <AgentPanel key={board.id} boardId={board.id} ask={ask} open={agentOpen} onClose={toggleAgent} onBusy={setAgentBusy} onBoards={onBoardsChanged} onOpenBoard={onAgentOpen} />

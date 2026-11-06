@@ -306,6 +306,11 @@ body.nf-port-dragging,body.nf-port-dragging *{cursor:crosshair!important}
 .cv-spend2-runs{display:inline-flex;align-items:baseline;gap:3px;padding:3px 7px;border-radius:999px;background:var(--fill,rgba(255,255,255,.05));color:var(--text-2,#898A8B);font:500 10.5px/12px var(--font-mono,'JetBrains Mono',monospace);font-variant-numeric:tabular-nums}
 .cv-spend2-runs i{font-style:normal;font-family:var(--font-sans,Inter,sans-serif);font-size:9.5px;color:var(--text-3,rgba(255,255,255,.5))}
 .cv-spend2-live{width:6px;height:6px;border-radius:50%;background:var(--accent,#FF7A1A);animation:nf-pulse 1.4s ease-in-out infinite}
+.cv-spend2.has-budget .cv-spend2-runs{display:none}
+.cv-spend2-bar{position:absolute;left:12px;right:12px;bottom:5px;height:2px;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden}
+.cv-spend2-bar i{display:block;height:100%;background:var(--accent,#FF7A1A);border-radius:2px}
+.cv-spend2.over .cv-spend2-bar i{background:var(--warning,#E8B44A)}
+.cv-spend2.over .cv-spend2-t b{color:var(--warning,#E8B44A)}
 .cv-spend2-pop .bp-sec:first-child{padding-top:4px}
 .cv-spend2-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:2px 8px 4px}
 .cv-spend2-stat{padding:8px 10px;border-radius:10px;background:var(--fill,rgba(255,255,255,.05))}
