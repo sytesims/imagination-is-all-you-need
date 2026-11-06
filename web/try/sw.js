@@ -176,7 +176,7 @@ const usd = (c) => `$${(c / 100).toFixed(2)}`;
 function rescale(b, c1) {
   const c0 = b.credits; if (typeof c0 !== 'number' || c0 === c1) return b; const k = c0 > 0 ? c1 / c0 : null;
   const sc = (v, d = 0) => typeof v === 'number' && k != null ? Number((v * k).toFixed(d)) : v;
-  const words = (t) => typeof t === 'string' ? t.replace(/\$\d[\d,]*(\.\d+)?/g, usd(c1)) : t;
+  const words = (t) => typeof t === 'string' ? t.replace(/\$\d[\d,]*(\.\d+)?/g, () => usd(c1)) /* a function: "$1.38" as a replacement string would read $1 as a group */ : t;
   const out = { ...b, credits: c1, listCredits: typeof b.listCredits === 'number' ? (b.listCredits === c0 ? c1 : sc(b.listCredits)) : b.listCredits, gpuSec: sc(b.gpuSec), draftCredits: sc(b.draftCredits), exactUsd: sc(b.exactUsd, 4), priceLine: words(b.priceLine),
     breakdown: Array.isArray(b.breakdown) ? b.breakdown.map(x => ({ ...x, label: words(x.label) })) : b.breakdown };
   if (b.cost && typeof b.cost === 'object') { const units = sc(b.cost.estUnits);
@@ -266,6 +266,7 @@ async function api(req, url) {
     const r = lookup(s, 'POST', new URL(`${p}?toolId=${encodeURIComponent(tool || p.split('/')[3])}`, url)); if (r) return answer(r); }
   if (m === 'POST' && (mm = p.match(/^\/api\/tools\/([^/]+)\/jobs$/))) return createJob(s, decodeURIComponent(mm[1]), req);
   // model downloads: a dry run says it can't start here (the app's own "can't download" line), the download itself is refused
+  if (m === 'GET' && p === '/api/local/downloads' && !s.routes['GET /api/local/downloads']) return json({ downloads: [], modelsDir: null, modelsDirSet: false, sample: true });
   if (m === 'POST' && p === '/api/local/downloads') { let b = {}; try { b = await req.clone().json(); } catch { /* not json */ }
     return b.dryRun ? json({ dryRun: true, canDownload: false, code: 'sample_mode', error: DOWNLOADS, missingBytes: 0, files: [] }) : json({ error: DOWNLOADS, code: 'sample_mode', sample: true }, 400); }
   // Recreate / See the workflow on a visitor's sample run: the same answer as an example of that tool, with this run's id and settings

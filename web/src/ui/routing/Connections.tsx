@@ -327,7 +327,7 @@ function KeyCard({ p, info, acct, canStore, unlock, onDone, note, hostedOff, fac
         : !adding && <button type="button" className="btn btn-sm btn-primary" onClick={() => setAdding(true)} aria-expanded={adding} data-testid={`conn-add-${id}`}>{token ? 'Add token' : 'Add key'}</button>)
       /* C1: visible but off, with the reason right under it */
       : <button type="button" className={`btn btn-sm ${real ? 'btn-ghost' : 'btn-primary'} conn-btn-off`} aria-disabled="true" aria-describedby={whyId} data-testid={real ? `conn-replace-${id}` : `conn-add-${id}`} onClick={jumpTo('conn-keys-off')}>{real ? 'Replace' : token ? 'Add token' : 'Add key'}</button>)}</div>
-    {!off && !canStore && <p className="conn-why" id={whyId} data-testid={`conn-why-${id}`}>{real
+    {!off && !canStore && <p className="conn-why" id={whyId} data-testid={`conn-why-${id}`}>{SAMPLE_SITE ? 'Keys are added in the app on your computer.' : real
       ? <>{p.envKey ? <>Set as <code>{p.envKey}</code> in <code>.env.local</code>. To change it, edit that line and restart, or </> : 'Set in the server’s settings file. To change it, '}<a href="#conn-keys-off" className="conn-link" onClick={jumpTo('conn-keys-off')}>turn on adding keys here</a>.</>
       : <>Adding keys here is off on this server.{p.envKey ? <> Use <code>{p.envKey}</code> in <code>.env.local</code>, or </> : ' '}<a href="#conn-keys-off" className="conn-link" onClick={jumpTo('conn-keys-off')}>{p.envKey ? 'see how to turn it on' : 'See how to turn it on'}</a>.</>}</p>}
     {adding && canStore && <div className="conn-key">

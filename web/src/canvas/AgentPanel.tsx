@@ -489,7 +489,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
         <div className="ap-brand"><span className="ap-mark"><SparkleIcon size={16} /></span><div><b>Agent</b><small data-testid="agent-mode" title={sessions.length > 1 ? sessionNames : connectedLine}>{connectedLine}</small></div></div>
         <div className="ap-head-r">
           <span className={`ap-status${agentListening ? ' on' : agentWorking ? ' on work' : agentConnected ? ' idle' : ' demo'}`} data-testid="agent-status" data-state={state === 'off' ? 'demo' : state} {...tip(agentListening ? `${agentLabel} reads what you type here` : agentWorking ? `${agentLabel} is building on this board. What you type waits until it listens` : agentConnected ? `${sessionNames || agentLabel}: connected, not reading this board yet. What you type waits here` : 'Starters play the built-in demo. Connect your own AI for a real one')}><i />{dockPill(state)}</span>
-          <button type="button" className="ap-icon" aria-label="Connect your own AI" {...tip('Connect your own AI (MCP)')} onClick={() => setSheet(true)} data-testid="agent-connect"><ApiPlugIcon size={16} /></button>
+          <button type="button" className="ap-icon" aria-label="Connect your own AI" {...tip(SAMPLE_SITE ? 'Connect your AI in the app on your computer' : 'Connect your own AI (MCP)')} disabled={SAMPLE_SITE} onClick={() => setSheet(true)} data-testid="agent-connect"><ApiPlugIcon size={16} /></button>
           <button type="button" className="ap-icon" aria-label="Hide the AI panel" {...tip('Hide the AI panel')} onClick={onClose} data-testid="agent-collapse"><ChevronLeftIcon size={16} /></button>
         </div>
       </header>
