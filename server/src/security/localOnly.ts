@@ -14,6 +14,10 @@
  *  Sec-Fetch-Site: cross-site without an allowed Origin → 403, except a top-level GET/HEAD navigation (a link you click: the other
  *          site can't read what comes back).
  *  CORS    reflects only allowed origins (corsOrigin), never `*`.
+ *  Public host (2026-11-06): a Host that is a public DNS name reached only through OPENHIGGSFIELD_PUBLIC_URL /
+ *          OPENHIGGSFIELD_PUBLIC_BASE_URL or OPENHIGGSFIELD_ALLOWED_HOSTS (a tunnel, a reverse proxy) serves shared results only:
+ *          GET/HEAD /files/<media>, /s/*, /api/share/:token(/download.zip) and the favicons. Everything else 403: the app has no login.
+ *          Loopback names, IP literals and your-network names (*.local, *.lan, *.home.arpa, *.internal, one-word names) are unchanged.
  *  /files/ serves media only (filesPathAllowed): the extensions and folders the app writes. Dotfiles, the database, JSON, logs and
  *          anything else answer 404, also with ?clean=1.
  */
@@ -43,6 +47,21 @@ export function hostAllowed(host: string | undefined): boolean {
   if (host == null || host === '') return true; const h = splitHost(host); if (!h) return false;
   return isLoopbackName(h.name) || isIP(h.name) !== 0 || inList(h, envHosts());
 }
+/** Your own network's names (mymac.local, a one-word name): opened on purpose from another device, keep the whole app. */
+const lanName = (name: string) => !name.includes('.') || /\.(local|lan|home\.arpa|internal)$/.test(name);
+/** Is this Host a public name (tunnel, reverse proxy, PUBLIC_* share host) that may serve shared results only? */
+export function publicOnlyHost(host: string | undefined): boolean {
+  if (host == null || host === '') return false; const h = splitHost(host); if (!h) return false;
+  return !isLoopbackName(h.name) && isIP(h.name) === 0 && !lanName(h.name) && inList(h, envHosts());
+}
+/** What a public host may serve: shared results and the media they show, read-only. */
+export function publicPathAllowed(method: string, url: string): boolean {
+  if (method !== 'GET' && method !== 'HEAD') return false;
+  const p = url.split('?')[0]; if (p.includes('..') || p.includes('\\') || /%2e%2e|%2f|%5c/i.test(p)) return false;
+  return (p.startsWith('/files/') && filesPathAllowed(url)) || /^\/s\/[^/]+(\/(card\.png|recipe\.json))?$/.test(p)
+    || /^\/api\/share\/[^/]+(\/download\.zip)?$/.test(p) || /^\/(favicon\.ico|favicon-32\.png|favicon\.svg)$/.test(p);
+}
+
 /** Is this Origin allowed to call the API (without knowing the request's Host: used for CORS)? */
 export function originAllowed(origin: string | undefined): boolean {
   if (!origin) return false; let u: URL; try { u = new URL(origin); } catch { return false; }
@@ -76,6 +95,7 @@ export function filesPathAllowed(url: string): boolean {
 const deny = (reply: any, code: 403 | 404, error: string, errorCode: string) => reply.code(code).header('cache-control', 'no-store')
   .send({ error, errorType: code === 404 ? 'not_found' : 'forbidden', code: errorCode });
 const HOST_MSG = 'This app answers only on this computer (localhost). To open it under another name, add that host to OPENHIGGSFIELD_ALLOWED_HOSTS.';
+const PUBLIC_MSG = 'This address only shows shared results. The app has no login, so it opens only on this computer (localhost).';
 const ORIGIN_MSG = 'Another website tried to use this app. Only the app itself (localhost) may call it. To allow a site you trust, add it to OPENHIGGSFIELD_ALLOWED_ORIGINS.';
 
 /** Register first (before CORS, static files and the ?clean=1 responder). */
@@ -88,6 +108,8 @@ export function registerLocalOnly(app: FastifyInstance | ((name: 'onRequest', fn
     const origin = req.headers.origin; const site = String(req.headers['sec-fetch-site'] ?? '').toLowerCase();
     if (origin != null) { if (!(originAllowed(origin) || sameOrigin(origin, host))) { req.log.warn({ origin }, 'refused: Origin not allowed'); return deny(reply, 403, ORIGIN_MSG, 'origin_not_allowed'); } }
     else if (site === 'cross-site' && !((req.method === 'GET' || req.method === 'HEAD') && req.headers['sec-fetch-mode'] === 'navigate')) return deny(reply, 403, ORIGIN_MSG, 'origin_not_allowed');
+    const fwd = String(req.headers['x-forwarded-host'] ?? '').split(',')[0].trim(); // a proxy that rewrites Host to localhost still says where the visitor came from
+    if ((publicOnlyHost(host) || publicOnlyHost(fwd)) && !publicPathAllowed(req.method, req.url)) { req.log.warn({ host, url: req.url.split('?')[0] }, 'refused: public host, not a shared result'); return deny(reply, 403, PUBLIC_MSG, 'public_host_share_only'); }
     if (req.url.startsWith('/files/') && !filesPathAllowed(req.url)) return deny(reply, 404, 'Not found', 'not_found');
   });
 }

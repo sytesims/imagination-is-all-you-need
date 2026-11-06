@@ -6,8 +6,8 @@
  *   Env:   OPENHIGGSFIELD_MCP_DEFAULT=allow|ask|block
  *          OPENHIGGSFIELD_MCP_ALLOW=list_tools,job_status   OPENHIGGSFIELD_MCP_ASK=generate_video   OPENHIGGSFIELD_MCP_BLOCK=restyle   ("*" = all)
  * ask → MCP elicitation (form: approve yes/no) when the client advertises the `elicitation` capability; otherwise the call is refused with a clear message.
- * Tiers: READ_ONLY tools (discover, quote, history) are allowed by default. SPEND tools (runs that can cost money) follow "spend" when it is set
- *   (file `"spend": "ask"` or env OPENHIGGSFIELD_MCP_SPEND=ask), else default. For `run` an ask is price-aware: free runs (local, quote 0) go
+ * Tiers: READ_ONLY tools (discover, quote, history) are allowed by default. SPEND tools (runs that can cost money) follow "spend", which is
+ *   "ask" by default (file `"spend": "allow"` or env OPENHIGGSFIELD_MCP_SPEND=allow lets an agent spend without asking). For `run` an ask is price-aware: free runs (local, quote 0) go
  *   through, a paid one asks with the quoted price in the question. The server's agent budget (set with budget, or pinned by env) still caps every run.
  */
 import fs from 'node:fs';
@@ -32,7 +32,7 @@ export const SPEND = ['run', 'retry', 'generate_image', 'generate_soul', 'genera
 const PRICE_AWARE = new Set(['run']);
 export interface PermConfig { default: Perm; spend?: Perm; tools: Record<string, Perm>; source: string[]; toolsets?: string[] | null }
 export function loadPermissions(env = process.env): PermConfig {
-  const cfg: PermConfig = { default: 'allow', tools: Object.fromEntries(READ_ONLY.map((t) => [t, 'allow' as Perm])), source: ['defaults'] };
+  const cfg: PermConfig = { default: 'allow', spend: 'ask', tools: Object.fromEntries(READ_ONLY.map((t) => [t, 'allow' as Perm])), source: ['defaults'] };
   const here = path.dirname(fileURLToPath(import.meta.url));
   const candidates = env.OPENHIGGSFIELD_MCP_PERMISSIONS ? [env.OPENHIGGSFIELD_MCP_PERMISSIONS] : [path.resolve('openhiggsfield-mcp.json'), path.resolve(here, '../permissions.json')];
   for (const f of candidates) {
@@ -48,7 +48,7 @@ export function loadPermissions(env = process.env): PermConfig {
   if (isPerm(env.OPENHIGGSFIELD_MCP_SPEND)) { cfg.spend = env.OPENHIGGSFIELD_MCP_SPEND; cfg.source.push('env:SPEND'); }
   for (const p of PERMS) {
     const list = env[`OPENHIGGSFIELD_MCP_${p.toUpperCase()}`]; if (!list) continue;
-    for (const t of list.split(',').map((x) => x.trim()).filter(Boolean)) { if (t === '*') { cfg.default = p; for (const k of Object.keys(cfg.tools)) cfg.tools[k] = p; } else cfg.tools[t] = p; }
+    for (const t of list.split(',').map((x) => x.trim()).filter(Boolean)) { if (t === '*') { cfg.default = p; cfg.spend = p; for (const k of Object.keys(cfg.tools)) cfg.tools[k] = p; } else cfg.tools[t] = p; }
     cfg.source.push(`env:${p.toUpperCase()}`);
   }
   return cfg;
@@ -67,7 +67,9 @@ export function gateTools(s: any, cfg: PermConfig) {
       if (perm === 'ask') {
         const caps = s.server.getClientCapabilities?.();
         const ask = async (message: string): Promise<string | null> => {
-          if (!caps?.elicitation) return `Tool "${name}" needs the user's approval, but this MCP client doesn't support elicitation, so it can't ask. Ask the user to allow it (OPENHIGGSFIELD_MCP_ALLOW=${name} or "tools": {"${name}": "allow"} in the permissions file), or use a client with elicitation support.`;
+          if (!caps?.elicitation) return `Tool "${name}" needs the user's approval, but this MCP client doesn't support elicitation, so it can't ask. Nothing was run. ${SPEND.includes(name) && !(name in cfg.tools)
+            ? 'Paid runs ask by default. To let agents start paid runs without asking, the user sets OPENHIGGSFIELD_MCP_SPEND=allow (or "spend": "allow" in the permissions file)'
+            : `Ask the user to allow it (OPENHIGGSFIELD_MCP_ALLOW=${name} or "tools": {"${name}": "allow"} in the permissions file)`}, or use a client with elicitation support.`;
           try {
             const r = await s.server.elicitInput({ message, requestedSchema: { type: 'object', properties: { approve: { type: 'boolean', title: 'Approve this call', default: false } }, required: ['approve'] } });
             return r.action === 'accept' && r.content?.approve === true ? null : `The user declined "${name}" (${r.action}). Nothing was run.`;

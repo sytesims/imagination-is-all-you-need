@@ -89,7 +89,8 @@ ok('replicate nano-banana-2 input has no seed (not in its schema)', !('seed' in 
   const rb = await h3ReplicateBody({ id: 'c5', input: { mode: 'flf', prompt: 'p', duration: 20, imagePath: IMG, lastFramePath: IMG } });
   ok('replicate H3: documented fields, duration clamped 4–15, 768P, adaptive ratio for image modes', Object.keys(rb).every((k) => REP.includes(k)) && rb.duration === 15 && rb.resolution === '768P' && rb.ratio === 'adaptive' && !!rb.first_frame_image && !!rb.last_frame_image, Object.keys(rb));
   let threw = ''; try { await h3ReplicateBody({ id: 'c6', input: { mode: 'r2v', prompt: 'p', refPaths: [IMG] } }); } catch (e) { threw = String(e); }
-  ok('replicate H3 references need public URLs (no base URL → refused before submit)', /PUBLIC_BASE_URL/.test(threw), threw);
+  /* 2026-11-06: references now go up with the user's Replicate key (no public URL needed); without the key the body is refused before submit */
+  ok('replicate H3 references without a Replicate key → refused before submit, says to add the key', /Replicate key/.test(threw) && /Settings/.test(threw), threw);
   const { f, calls } = fake([[/^https:\/\/queue\.fal\.run\/minimax\/h3\/text-to-video$/, 'POST', F('fal-submit.json')], [/\/status$/, 'GET', F('fal-status-completed.json')], [/\/response$/, 'GET', { video: { url: 'https://v3b.fal.media/files/x.mp4', content_type: 'video/mp4' } }]]);
   const r = await falRun('minimax/h3/text-to-video', t2v, 'k', { timeoutMs: 10_000, pollMs: 1, f });
   ok('fal H3 result: video.url parsed', (r.result as any).video?.url === 'https://v3b.fal.media/files/x.mp4' && calls[0].body.prompt === 'p', r.result);
@@ -109,16 +110,21 @@ ok('replicate nano-banana-2 input has no seed (not in its schema)', !('seed' in 
   const k = VIDEO_LIMITS['router-kling'], v = VIDEO_LIMITS['router-veo'], s = VIDEO_LIMITS['router-seedance'], m = VIDEO_LIMITS['api-minimax-h3'];
   ok('video limits match docs (Kling 3–15, Veo 4/6/8, Seedance 4–15 9/3/3, MiniMax H3 4–15 9/3/3)', k.minSeconds === 3 && k.maxSeconds === 15 && JSON.stringify(v.durations) === '[4,6,8]' && s.minSeconds === 4 && s.maxSeconds === 15 && s.refKinds.video === 3 && s.refKinds.image === 9 && m.refKinds.video === 3 && m.refKinds.image === 9 && v.audio.default === false && k.audio.default === true);
 }
-{ // Seedance price row = the model we call (dreamina-seedance-2-0) at the official 2.0 token rate × the page's formula (16:9, 24 fps, no video input)
+{ // Seedance price row = the model we call (dreamina-seedance-2-0) at the official 2.0 token rate × the page's formula (24 fps, no video input).
+  // 2026-10-24 re-check: tokens per second at the LARGEST frame of each resolution (480p 864×496, 720p 1112×834, 1080p 2206×946), so every ratio is covered.
   const h = HOSTED_BY_ID['router-seedance']; const per = (w: number, hh: number, rate: number) => Math.round(((w * hh * 24) / 1024 / 1000) * rate / 211 * 1e5) / 1e5;
-  ok('Seedance row: Seedance 2.0 (dreamina-seedance-2-0), not estimated, 2.112/2.323 credits per 1K tokens', !!h && /dreamina-seedance-2-0/.test(h.model) && h.estimated === false && h.checkedAt === '2026-10-17'
-    && Math.abs(h.usdByQuality!['480p'] - per(854, 480, 2.112)) < 2e-5 && Math.abs(h.usdByQuality!['720p'] - per(1280, 720, 2.112)) < 2e-5 && Math.abs(h.usdByQuality!['1080p'] - per(1920, 1080, 2.323)) < 2e-5, h);
-  const vi = h?.videoInput; ok('Seedance video-input rate: 1.297 / 1.418 credits per 1K tokens on (input + output) s', !!vi && Math.abs(vi.usdByQuality['480p'] - per(854, 480, 1.297)) < 2e-5 && Math.abs(vi.usdByQuality['720p'] - per(1280, 720, 1.297)) < 2e-5 && Math.abs(vi.usdByQuality['1080p'] - per(1920, 1080, 1.418)) < 2e-5, vi);
+  const F480 = [864, 496] as const, F720 = [1112, 834] as const, F1080 = [2206, 946] as const;
+  ok('Seedance row: Seedance 2.0 (dreamina-seedance-2-0), not estimated, 2.112/2.323 credits per 1K tokens', !!h && /dreamina-seedance-2-0/.test(h.model) && h.estimated === false && h.checkedAt >= '2026-10-17'
+    && Math.abs(h.usdByQuality!['480p'] - per(...F480, 2.112)) < 2e-5 && Math.abs(h.usdByQuality!['720p'] - per(...F720, 2.112)) < 2e-5 && Math.abs(h.usdByQuality!['1080p'] - per(...F1080, 2.323)) < 2e-5, h);
+  const vi = h?.videoInput; ok('Seedance video-input rate: 1.297 / 1.418 credits per 1K tokens on (input + output) s', !!vi && Math.abs(vi.usdByQuality['480p'] - per(...F480, 1.297)) < 2e-5 && Math.abs(vi.usdByQuality['720p'] - per(...F720, 1.297)) < 2e-5 && Math.abs(vi.usdByQuality['1080p'] - per(...F1080, 1.418)) < 2e-5, vi);
   { const { priceOf } = await import('../../server/src/shared/pricing.js'); const a = priceOf({ toolId: 'h3-video', rates: {}, quality: '720p', durationSec: 5, provider: 'router-seedance', refVideoSec: 5 } as any).credits; const b = priceOf({ toolId: 'h3-video', rates: {}, quality: '720p', durationSec: 5, provider: 'router-kling', refVideoSec: 5 } as any).credits, b0 = priceOf({ toolId: 'h3-video', rates: {}, quality: '720p', durationSec: 5, provider: 'router-kling' } as any).credits;
-    ok('priceOf: Seedance 5 s out + 5 s ref video = round(10 × 28.015 / 211 × 100) = 133; Kling ignores refVideoSec', a === Math.round(10 * 28.015 / 211 * 100) && a === 133 && b === b0, { a, b, b0 }); }
+    const vr720 = (1112 * 834 * 24 / 1024 / 1000) * 1.297; /* video-input credits per second at 720p (largest frame) */
+    ok('priceOf: Seedance 5 s out + 5 s ref video = round(10 s × the 720p video-input rate / 211 × 100) = 134; Kling ignores refVideoSec', a === Math.round(10 * vr720 / 211 * 100) && a === 134 && b === b0, { a, b, b0 }); }
   const { VIDEO_LIMITS } = await import('../../server/src/tools/h3/videoCaps.js'); const hk = (id: string) => HOSTED_BY_ID[id];
   ok('every Generate Video resolution tier has its own price (or a single flat rate)', Object.entries({ 'router-kling': 1, 'router-veo': 1, 'router-seedance': 1, 'api-minimax-h3': 1 }).every(([id]) => VIDEO_LIMITS[id].resolutions.every((r: string) => (hk(id).usdByQuality?.[r] ?? hk(id).usd) != null && (!hk(id).usdByQuality || hk(id).usdByQuality![r] != null))));
 }
-for (const r of allExtraRoutes()) { const h = HOSTED_BY_ID[r.priceRef!]; if ((r as any).comingSoon) { ok(`coming-soon route ${r.routeId} stays unpriced`, !!h && h.usd == null, h); continue; } ok(`price row for ${r.routeId}`, !!h && h.usd != null && /^https:\/\/(fal\.ai|replicate\.com|docs\.bfl\.ml)\//.test(h.sourceUrl) && /^2026-10-(1[67]|2[01])$/.test(h.checkedAt) /* 2026-10-20/21: provider audit re-checks */, h); }
+/* the provider's own price page: fal, Replicate, the labs' APIs (BFL, Google, MiniMax, OpenAI, BytePlus: direct keys since 2026-10-23), Comfy Router / Comfy pricing */
+const PRICE_SOURCE = /^https:\/\/(fal\.ai|replicate\.com|docs\.bfl\.ml|bfl\.ai|ai\.google\.dev|platform\.minimax\.io|developers\.openai\.com|docs\.byteplus\.com|docs\.comfy\.org|www\.comfy\.org)\//;
+for (const r of allExtraRoutes()) { const h = HOSTED_BY_ID[r.priceRef!]; if ((r as any).comingSoon) { ok(`coming-soon route ${r.routeId} stays unpriced`, !!h && h.usd == null, h); continue; } ok(`price row for ${r.routeId}`, !!h && h.usd != null && PRICE_SOURCE.test(h.sourceUrl) && /^\d{4}-\d\d-\d\d$/.test(h.checkedAt) && h.checkedAt >= '2026-10-16', h); }
 fs.writeFileSync(path.join(HERE, 'routing-results.json'), JSON.stringify({ pass, fail, at: new Date().toISOString(), fixtures: 'hand-written from docs' }, null, 2));
 console.log(`\nrouting contracts: ${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

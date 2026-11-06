@@ -13,7 +13,7 @@ export function mcpInfo() {
   const apiUrl = process.env.OPENHIGGSFIELD_PUBLIC_API || `http://localhost:${Number(process.env.PORT) || 8787}`;
   const mcpPort = Number(process.env.MCP_PORT) || 8788;
   const httpUrl = process.env.OPENHIGGSFIELD_MCP_URL || `http://127.0.0.1:${mcpPort}/mcp`;
-  const env = { OPENHIGGSFIELD_API: apiUrl };
+  const env = { OPENHIGGSFIELD_API: apiUrl, OPENHIGGSFIELD_MCP_SPEND: 'ask' }; // paid runs ask first; set allow to let the agent spend without asking
   const stdio = { command: 'node', args: [entry], env };
   const wrap = (s: object) => JSON.stringify({ mcpServers: { [MCP_SERVER_KEY]: s } }, null, 2);
   return {

@@ -275,7 +275,7 @@ let failed = 0;
 try {
   if (mcpUrl) await client.connect(new StreamableHTTPClientTransport(new URL(mcpUrl)));
   else await client.connect(new StdioClientTransport({ command: process.execPath, args: [path.join(MCP, 'node_modules/tsx/dist/cli.mjs'), path.join(MCP, 'src/index.ts')], cwd: MCP,
-    env: { ...process.env, OPENHIGGSFIELD_API: API!, OPENHIGGSFIELD_MCP_PERMISSIONS: '', OPENHIGGSFIELD_MCP_DEFAULT: 'allow', OPENHIGGSFIELD_MCP_TOOLSETS: 'core,library', OPENHIGGSFIELD_MCP_POLL_MS: '300' } as Record<string, string> }));
+    env: { ...process.env, OPENHIGGSFIELD_API: API!, OPENHIGGSFIELD_MCP_PERMISSIONS: '', OPENHIGGSFIELD_MCP_DEFAULT: 'allow', OPENHIGGSFIELD_MCP_SPEND: 'allow', OPENHIGGSFIELD_MCP_TOOLSETS: 'core,library', OPENHIGGSFIELD_MCP_POLL_MS: '300' } as Record<string, string> }));
   const overview = await call('search_capabilities', {}); const apiUrl = API ?? process.env.OPENHIGGSFIELD_API ?? 'http://localhost:8874';
   const health = await (await fetch(`${apiUrl}/api/health`)).json() as J; assert.equal(health.backend, 'mock', 'mock backend only: this harness never makes real (paid) calls'); void overview;
   const names = (await client.listTools()).tools.map((t) => t.name); assert.ok(names.includes('stitch_video'), 'the MCP server needs the library toolset (core,library) for stitch_video');

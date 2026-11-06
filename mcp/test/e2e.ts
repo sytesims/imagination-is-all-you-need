@@ -26,7 +26,7 @@ const API = await (async () => {
 const SAMPLES = path.resolve(HERE, '../../server/samples');
 const V = path.join(SAMPLES, 'sample-pattern.mp4'), IMG = path.join(SAMPLES, 'sample-character.png'), PROD = path.join(SAMPLES, 'sample-product.png');
 const WEB = 'http://web.example:5174'; // BH9 (d): user-facing links go to the web app (PUBLIC_WEB_URL), not the API port
-const env = { ...process.env, OPENHIGGSFIELD_API: API, OPENHIGGSFIELD_MCP_POLL_MS: '500', PUBLIC_WEB_URL: WEB, OPENHIGGSFIELD_MCP_TOOLSETS: 'all' } as Record<string, string>;
+const env = { ...process.env, OPENHIGGSFIELD_API: API, OPENHIGGSFIELD_MCP_POLL_MS: '500', PUBLIC_WEB_URL: WEB, OPENHIGGSFIELD_MCP_TOOLSETS: 'all', OPENHIGGSFIELD_MCP_SPEND: 'allow' } as Record<string, string>;
 let failed = 0;
 const parse = (r: any) => { const t = r.content?.find((c: any) => c.type === 'text')?.text ?? ''; try { return JSON.parse(t); } catch { return t; } };
 async function check(c: Client, name: string, args: Record<string, unknown>, ok: (r: any, raw: any) => string | true) {
