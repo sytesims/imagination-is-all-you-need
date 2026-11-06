@@ -24,7 +24,8 @@ import { COMFY_CREDITS_PER_USD, HOSTED_BY_ID } from './shared/hostedPrices.js';
 import { COMFY_PLANS, isComfyPlanId, comfyPlanName, usdToken, costDetail, costLine, unitsDetail, LOCAL_FREE, type ComfyPlanId } from './shared/priceText.js';
 import { r4, comfyUnits, exactWithinCent, providerUnits } from './shared/runCost.js';
 import { RUN_ON_LABELS, runOnOfRoute, LOCAL_LABEL } from './shared/modelIds.js';
-import { metaOf } from './library.js';
+import { metaOf, listProjects } from './library.js';
+import { spendCapUsd, saveSpendCap, capVerdict } from './spendCap.js';
 import { periodStart, isSpendPeriod, buckets, quoteAccuracy, overQuoteByTool, shareByTool, type SpendPeriod } from './shared/spendInsights.js';
 import { policyRefusalCharge } from './shared/policyBilling.js';
 
@@ -237,6 +238,26 @@ export function savedAllTime(): { savedUsd: number; savedRuns: number } {
   return { savedUsd: r4(saved.reduce((a, r) => a + (r.savedUsd ?? 0), 0)), savedRuns: saved.length };
 }
 export const startOf = (period: 'day' | 'month', now = new Date()) => (period === 'day' ? new Date(now.getFullYear(), now.getMonth(), now.getDate()) : new Date(now.getFullYear(), now.getMonth(), 1)).getTime();
+/** Monthly cap (spendCap.ts): this month's spend on every account, the same countedUsd the Spend page adds up (local, sample and never-sent runs are $0). */
+export const monthToDateUsd = (now = new Date(), excludeJobId?: string) => { const from = startOf('month', now); const to = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime(); return r4(rows().filter((r) => r.createdAt >= from && r.createdAt < to && r.jobId !== excludeJobId).map(live).reduce((s, r) => s + countedUsd(r), 0)); };
+/** What a run about to start will count against the cap: $0 when free, local, a sample, or a mock run that never reaches a provider. */
+export const runCountsUsd = (cost: Pick<CostEstimate, 'billedTo' | 'demo' | 'estUsd'>, free = false) => (free || cost.demo || cost.billedTo === 'local' || (simulatedAtSubmit() && !countSimulated()) ? 0 : cost.estUsd);
+/** The cap check for a run about to start (spendGuard.ts, and the quote so Generate can say so first). */
+export const checkSpendCap = (runUsd: number, excludeJobId?: string, now = new Date()) => { const cap = spendCapUsd(); return capVerdict({ capUsd: cap, spentUsd: cap == null ? 0 : monthToDateUsd(now, excludeJobId), runUsd, now }); };
+/** Spend page tally: this month and last month, each project's share, and the monthly cap. Read-only. */
+export function spendTally(now = new Date()) {
+  const thisFrom = startOf('month', now); const lastFrom = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
+  const list = rows().filter((r) => r.createdAt >= lastFrom).map(live).map((r) => ({ r, usd: countedUsd(r), cur: r.createdAt >= thisFrom }));
+  const month = (cur: boolean, from: number) => { const m = list.filter((x) => x.cur === cur); return { from: new Date(from).toISOString(), spentUsd: r4(m.reduce((s, x) => s + x.usd, 0)), paidRuns: m.filter((x) => x.usd > 0).length, freeRuns: m.filter((x) => x.r.billedTo === 'local' && !x.r.demo).length, runs: m.length }; };
+  const names = new Map(listProjects().map((p) => [p.id, p.name]));
+  const by = new Map<string, { projectId: string | null; name: string | null; thisMonthUsd: number; lastMonthUsd: number; runs: number }>();
+  for (const x of list) { const pid = metaOf(x.r.jobId).projectId; const id = pid && names.has(pid) ? pid : null; const k = id ?? '';
+    const g = by.get(k) ?? { projectId: id, name: id ? names.get(id)! : null, thisMonthUsd: 0, lastMonthUsd: 0, runs: 0 }; if (x.cur) g.thisMonthUsd += x.usd; else g.lastMonthUsd += x.usd; g.runs++; by.set(k, g); }
+  const projects = [...by.values()].map((g) => ({ ...g, thisMonthUsd: r4(g.thisMonthUsd), lastMonthUsd: r4(g.lastMonthUsd) })).filter((g) => g.thisMonthUsd > 0 || g.lastMonthUsd > 0)
+    .sort((a, b) => b.thisMonthUsd - a.thisMonthUsd || b.lastMonthUsd - a.lastMonthUsd);
+  const thisMonth = month(true, thisFrom); const cap = capVerdict({ capUsd: spendCapUsd(), spentUsd: thisMonth.spentUsd, runUsd: 0, now });
+  return { thisMonth, lastMonth: month(false, lastFrom), projects, cap: { monthlyUsd: cap.capUsd, spentUsd: cap.spentUsd, leftUsd: cap.leftUsd, resetsOn: cap.resetsOn } };
+}
 export const spentUsd = (provider: string, period: 'day' | 'month', now = new Date(), excludeJobId?: string) => { const from = startOf(period, now); return r4(rows().filter((r) => r.billedTo === provider && r.createdAt >= from && r.jobId !== excludeJobId).map(live).reduce((s, r) => s + countedUsd(r), 0)); };
 
 /** A run's picture for the Spend gallery, the runs table and the canvas spend chip: its first output (url) and the still a video or 3D
@@ -401,6 +422,14 @@ export function registerBilling(app: FastifyInstance) {
     const p = req.query.period ?? 'month'; if (!isSpendPeriod(p)) return reply.code(400).send({ error: "period must be '7d', 'month' or 'all'", errorType: 'validation' });
     return reply.header('cache-control', 'no-store').send(spendOverview(p));
   });
+  app.get('/api/spend/tally', async (req, reply) => reply.header('cache-control', 'no-store').send({ ...spendTally(), canWrite: canWrite(req) }));
+  app.put('/api/settings/spend-cap', async (req, reply) => {
+    if (!canWrite(req)) return reply.code(403).send({ error: 'The monthly limit can be changed only from this computer.', errorType: 'forbidden' });
+    const r = saveSpendCap((req.body as { monthlyUsd?: unknown } | null)?.monthlyUsd);
+    if (!r.ok) return reply.code(400).send({ error: r.error, errorType: 'validation', issues: [{ code: 'invalid', field: 'monthlyUsd', message: r.error }] });
+    console.log(`[spend-cap] write caller=${req.ip} on=${r.monthlyUsd != null}`);
+    return { ...spendTally(), canWrite: true };
+  });
   app.get<{ Querystring: { refresh?: string } }>('/api/accounts', async (req) => ({ accounts: await accounts(/^(1|true)$/i.test(req.query.refresh ?? '')), cacheSeconds: CACHE_MS / 1000, mockBackend: config.backend === 'mock' }));
   // Every quote (GET /api/tools/:id/price, /api/models/quote; POST /price re-enters as a GET) gets `cost` + `billingMode` (no spending limits since 2026-10-28).
   // Registered after the routing hook, so it sees the final route and credits.
@@ -418,7 +447,11 @@ export function registerBilling(app: FastifyInstance) {
       // exactUsd: set by the routing hook from the routed price (routing/http.ts routeExactUsd), so it always belongs to these credits
       const exactUsd = typeof payload.exactUsd === 'number' ? payload.exactUsd : null;
       const cost = costOf({ kind: kind ?? (credits ? 'direct' : 'local'), routeId, credits, demo: payload.demo === true, listCredits: payload.listCredits ?? null, estimated: true, exactUsd, unconfirmed: payload.unconfirmed === true });
-      return { ...payload, billingMode: billingMode(), cost };
+      // Monthly cap (spendCap.ts): the quote says first when this run would go past it, so Generate shows why before a click.
+      const cv = checkSpendCap(runCountsUsd(cost, payload.free === true));
+      const capView = cv.capUsd == null ? {} : { spendCap: { monthlyUsd: cv.capUsd, spentUsd: cv.spentUsd, leftUsd: cv.leftUsd, resetsOn: cv.resetsOn, ok: cv.ok } };
+      if (!cv.ok && payload.runnable !== false) return { ...payload, billingMode: billingMode(), cost, ...capView, runnable: false, blockedReason: cv.reason, blockedCode: 'spend_cap' };
+      return { ...payload, billingMode: billingMode(), cost, ...capView };
     } catch { return payload; }
   });
 }

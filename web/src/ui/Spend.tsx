@@ -1,8 +1,8 @@
 /** Account → Spend, "Gallery" design (2026-10-24; own-accounts mode). What your runs cost on the accounts that bill them, shown as the
  *  results you paid for.
  *  - Overview: a hero total for 7 days / Month / All with a sparkline, four KPI cards, a mosaic of results sized by cost (Paid / Everything;
- *    a tile opens its job) and a "Worth a look" card of notices computed from the data (only when the data supports it). No spending limits (removed
- *    2026-10-28, user decision: spend is controlled by how much you top up).
+ *    a tile opens its job) and a "Worth a look" card of notices computed from the data (only when the data supports it). Above it, the month
+ *    tally (this month, last month, by project) and the optional monthly limit (off by default; the server checks it before every paid run).
  *  - All runs: the full filterable run table with thumbnails, estimate next to actual, and each provider's failed-run rule shown once.
  *  GET /api/spend/overview, /api/spend, /api/spend/summary, /api/accounts, GET/PUT /api/settings/billing. Team mode shows the credits
  *  Usage page instead (SpendOrUsage). The maths (accuracy, tile sizes, tips) lives in server/src/shared/spendInsights.ts. */
@@ -23,6 +23,7 @@ import { useNearView } from '../shared/useNearView';
 import { useBilling, useBillingError, retryBilling, useSpendDay, useSpendMonth, useAccounts, fmtUsd, RULE_TEXT, knownBalanceUsd, ago, balanceText, balanceDetail, comfyPlanNow, type Account, type FailureRule } from '../shared/billing';
 import { cumulative, quoteHint, tileSpans, tipLines, type SpendPeriod } from '../../../server/src/shared/spendInsights';
 import { LOCAL_LABEL } from '../../../server/src/shared/modelIds';
+import { requestRequote } from '../shared/quote';
 import './spend.css';
 
 const STATUS: Record<string, string> = { done: 'Done', failed: 'Failed', blocked: 'Blocked', canceled: 'Canceled', queued: 'Queued', running: 'Running', needs_decision: 'Waiting for you' };
@@ -171,6 +172,7 @@ function OverviewTab({ ov, period, setPeriod, toolName, nameOf, onAllRuns, tools
         options={[{ value: '7d', label: '7 days' }, { value: 'month', label: 'Month' }, { value: 'all', label: 'All' }]} />
     </section>
     {ov.err && <Notice as="p" kind="error" tone="line">{ov.err}</Notice>}
+    <MonthTally tick={(month?.totals.runs ?? 0) + (day?.totals.runs ?? 0)} />
 
     {empty ? <section className="spg-empty" data-testid="spend-empty">
       <div className="spg-empty-art" aria-hidden>{[0, 1, 2, 3, 4].map((i) => <i key={i} />)}</div>
@@ -207,6 +209,57 @@ function OverviewTab({ ov, period, setPeriod, toolName, nameOf, onAllRuns, tools
     </>}
 
   </>;
+}
+
+/** This month, last month, each project's share and the optional monthly limit (GET /api/spend/tally, PUT /api/settings/spend-cap).
+ *  The server checks the limit before every paid run (spendGuard.ts); this only shows and edits it. */
+interface Tally { thisMonth: { spentUsd: number; paidRuns: number; freeRuns: number; runs: number; from: string }; lastMonth: { spentUsd: number; paidRuns: number; runs: number; from: string };
+  projects: { projectId: string | null; name: string | null; thisMonthUsd: number; lastMonthUsd: number; runs: number }[]; cap: { monthlyUsd: number | null; spentUsd: number; leftUsd: number | null; resetsOn: string }; canWrite: boolean }
+const monthName = (iso: string) => new Date(iso).toLocaleDateString([], { month: 'long' });
+function MonthTally({ tick }: { tick: number }) {
+  const [t, setT] = useState<Tally | null>(null); const [edit, setEdit] = useState(false); const [val, setVal] = useState(''); const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
+  const [bump, setBump] = useState(0); const [allP, setAllP] = useState(false);
+  useEffect(() => { const f = () => setBump((x) => x + 1); addEventListener('ohf:billing', f); return () => removeEventListener('ohf:billing', f); }, []);
+  useEffect(() => { let on = true; fetch('/api/spend/tally').then((r) => (r.ok ? r.json() : null)).then((j) => { if (on && j) setT(j); }).catch(() => undefined); return () => { on = false; }; }, [tick, bump]);
+  const save = async (usd: number | null) => {
+    setBusy(true); setErr('');
+    try { const r = await fetch('/api/settings/spend-cap', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ monthlyUsd: usd }) }); const j = await r.json().catch(() => ({}));
+      if (!r.ok) { setErr(String(j.error || 'That didn’t save. Try again.')); return; }
+      setT(j); setEdit(false); requestRequote(); /* quotes say again whether a run fits under the limit */ }
+    catch { setErr('Can’t reach the app. Try again.'); } finally { setBusy(false); } };
+  const submit = (e: React.FormEvent) => { e.preventDefault(); const n = Number(val.replace(/[$,\s]/g, '')); if (!val.trim() || !Number.isFinite(n) || n < 0) { setErr('Enter an amount in dollars, like 20.'); return; } void save(n); };
+  if (!t) return <section className="spg-tally spg-tally-ph" aria-hidden data-testid="spend-tally" />;
+  const cap = t.cap; const on = cap.monthlyUsd != null; const pct = on ? (cap.monthlyUsd! > 0 ? Math.min(100, (cap.spentUsd / cap.monthlyUsd!) * 100) : 100) : 0;
+  const over = on && cap.leftUsd === 0; const resets = new Date(cap.resetsOn).toLocaleDateString([], { month: 'long', day: 'numeric' });
+  const projects = allP ? t.projects : t.projects.slice(0, 5);
+  return <section className="spg-tally" data-testid="spend-tally" aria-label="Monthly spend">
+    <div className="spg-tally-nums">
+      <div className="spg-tally-n" data-testid="spend-tally-this"><small>{monthName(t.thisMonth.from)} so far</small><b>{fmtUsd(t.thisMonth.spentUsd)}</b><span>{t.thisMonth.paidRuns ? `${t.thisMonth.paidRuns} paid run${t.thisMonth.paidRuns === 1 ? '' : 's'}` : 'No paid runs'}{t.thisMonth.freeRuns ? ` · ${t.thisMonth.freeRuns} free` : ''}</span></div>
+      <div className="spg-tally-n" data-testid="spend-tally-last"><small>{monthName(t.lastMonth.from)}</small><b>{fmtUsd(t.lastMonth.spentUsd)}</b><span>{t.lastMonth.paidRuns ? `${t.lastMonth.paidRuns} paid run${t.lastMonth.paidRuns === 1 ? '' : 's'}` : 'No paid runs'}</span></div>
+      <div className={`spg-cap${over ? ' is-over' : ''}`} data-testid="spend-cap">
+        <small>Monthly limit</small>
+        {edit ? <form className="spg-cap-form" onSubmit={submit}>
+            <label className="spg-cap-in"><span aria-hidden>$</span><input autoFocus inputMode="decimal" aria-label="Monthly limit in dollars" placeholder="20" value={val} onChange={(e) => setVal(e.target.value)} data-testid="spend-cap-input" /></label>
+            <button type="submit" className="btn btn-sm btn-primary" disabled={busy} data-testid="spend-cap-save">Save</button>
+            <button type="button" className="btn btn-sm" disabled={busy} onClick={() => { setEdit(false); setErr(''); }}>Cancel</button>
+            {on && <button type="button" className="spg-link" disabled={busy} onClick={() => void save(null)} data-testid="spend-cap-off">Turn off</button>}
+          </form>
+          : on && cap.monthlyUsd === 0 ? <><b data-testid="spend-cap-text">$0 <em>· free runs only</em></b><span>Paid runs are off this month. Raise the limit to turn them back on.</span></>
+          : on ? <><b data-testid="spend-cap-text">{fmtUsd(cap.spentUsd)} <em>of {fmtUsd(cap.monthlyUsd!)} this month</em></b>
+            <span className="spg-cap-bar" role="img" aria-label={`${Math.round(pct)}% of your monthly limit used`}><i style={{ width: `${pct}%` }} /></span>
+            <span>{over ? `Paid runs wait until ${resets}, or raise the limit.` : `${fmtUsd(cap.leftUsd ?? 0)} left · starts again ${resets}`}</span></>
+          : <><b className="spg-cap-off">Off</b><span>Set one and paid runs stop before they go past it.</span></>}
+        {!edit && t.canWrite && <button type="button" className="spg-link spg-cap-edit" onClick={() => { setVal(on ? String(cap.monthlyUsd) : ''); setErr(''); setEdit(true); }} data-testid="spend-cap-edit">{on ? 'Change' : 'Set a limit'}</button>}
+        {err && <span className="spg-cap-err" role="alert">{err}</span>}
+      </div>
+    </div>
+    {t.projects.length > 0 && <div className="spg-proj" data-testid="spend-projects">
+      <div className="spg-proj-h"><span>By project</span><span>{monthName(t.thisMonth.from)}</span><span>{monthName(t.lastMonth.from)}</span></div>
+      {projects.map((p) => <div key={p.projectId ?? '-'} className="spg-proj-r"><span className={p.projectId ? undefined : 'helper'}>{p.name ?? 'No project'}</span><b>{fmtUsd(p.thisMonthUsd)}</b><b>{fmtUsd(p.lastMonthUsd)}</b></div>)}
+      {t.projects.length > 5 && <button type="button" className="spg-link" onClick={() => setAllP((x) => !x)}>{allP ? 'Show fewer' : `Show all ${t.projects.length}`}</button>}
+    </div>}
+    <p className="spg-tally-note">You pay per run, straight to the account that ran it. This app holds no credits, so nothing here expires. Runs on your computer are free.</p>
+  </section>;
 }
 
 /** The notices' icons: over quote, failed runs counted, the saving tip. */

@@ -120,16 +120,17 @@ Every run picks where it happens, and the price updates before you press Go.
 | Where | What runs there | Cost |
 |---|---|---|
 | **Your computer** | Open models on your own ComfyUI | Free |
-| **Comfy Cloud** | Open workflows on Comfy's GPUs, including partner nodes | Comfy credits |
-| **Comfy Router** | Partner models (GPT Image, Nano Banana, Seedance, Kling, Veo, MiniMax H3 and more) | Set price per run |
+| **Comfy Cloud** | Open workflows on Comfy's GPUs, including partner nodes | Comfy credits, with a Comfy Cloud plan |
+| **Comfy Router** | Partner models (GPT Image, Nano Banana, Seedance, Kling, Veo, MiniMax H3 and more) | Set price per run, from Comfy credits (no plan needed) |
 
-Comfy deployments are supported: connect your own from Settings.
+Comfy deployments are supported: connect your own from Settings. Comfy credits expire (plan credits at the end of the billing period, top-ups after a year); see [Comfy Cloud setup](docs/COMFY-CLOUD-SETUP.md#what-you-pay-comfy-for).
 
 The app reads your hardware and tells you, per local model, whether it fits, will be slow or is too heavy. You can switch to open-weights models only.
 
 ## You always see the price
 
 - The price is shown **before** every run. Runs on your computer are free.
+- The **Spend** page adds up this month, last month and each project, and can stop paid runs at a **monthly limit** you set (off until you set one).
 - Every result names the **real model** and **where it ran**.
 - Hosted prices come from each provider's own price page, with the date we checked it. No markup.
 - On Comfy Router the app asks for an estimate first, records the credits Comfy reports, and turns provider fallback off, so a run is never quietly sent somewhere else at a different price.

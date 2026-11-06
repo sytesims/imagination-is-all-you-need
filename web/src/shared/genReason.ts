@@ -10,7 +10,7 @@ import { FREE_LOCAL_TAIL, type PreflightProblem } from '../../../server/src/shar
 export type SetupKind = 'cloud' | 'local' | 'both' | 'none';
 /** connect = the one connect sheet · cloud = the Comfy key card · fix = the problem's own step · more = every place (setup popover) ·
  *  details = the "Before you generate" list · settings = Settings → Connections · anyway = run a too-big model after a warning */
-export type GenActKind = 'connect' | 'cloud' | 'fix' | 'more' | 'details' | 'settings' | 'anyway';
+export type GenActKind = 'connect' | 'cloud' | 'fix' | 'more' | 'details' | 'settings' | 'anyway' | 'spend';
 export interface GenAct { kind: GenActKind; label: string }
 export interface GenReasonSpec { code: string; reason: string; blocks: boolean; primary: GenAct | null; alt: GenAct | null; problem?: PreflightProblem }
 /** The place a setup step is for (the shared SetupPlace's shape, without the UI types). */
@@ -47,6 +47,8 @@ export function reasonOf(i: { setupKind: SetupKind | null; problems: PreflightPr
     return { code: 'memory_short', reason: i.mem.text, blocks: false, primary: i.mem.accepted ? null : cloudAlt, alt: null };
   }
   const details: GenAct | null = i.canDetails ? { kind: 'details', label: 'See what to fix' } : null;
+  /* the monthly limit (server/src/spendCap.ts): the way out is the Spend page, where the limit is set */
+  if (p.code === 'spend_cap') return { code: p.code, reason: p.message, blocks: true, primary: { kind: 'spend', label: 'Change limit' }, alt: null, problem: p };
   if (p.stage !== 'setup') return { code: p.code, reason: p.message, blocks: true, primary: details, alt: null, problem: p };
   const runOn = String(p.fix.args?.runOn ?? '');
   /* ComfyUI is what's missing for a local-only model: the same connect sheet */

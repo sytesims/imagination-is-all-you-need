@@ -2,9 +2,19 @@
 
 One Comfy key (Settings → Connections) runs almost everything on Comfy Cloud. A few workflows use files that shared Comfy Cloud doesn't carry yet. Import each file into your Comfy Cloud library once, and the workflow runs from then on. The app checks for each file for free before anything is sent, and shows these steps if one is missing. Nothing is charged for a run that can't start.
 
+## What you pay Comfy for
+
+Comfy sells credits, and Comfy Cloud also has monthly plans. They cover different things:
+
+- **Partner models** (Nano Banana, GPT Image, Seedance, Kling and the rest, the app's **Comfy Router**): paid from Comfy credits. Credits alone are enough; no plan needed.
+- **Workflows on Comfy Cloud** (open models such as MiniMax H3, LTX-2.5, InfiniteTalk, the Footage Effects below): these run on Comfy's GPUs and need a **Comfy Cloud plan**. Buying credits doesn't start a plan.
+- **Comfy credits expire.** Credits that come with a monthly plan end with that billing period. Credits you top up last one year from the day you buy them.
+
+Comfy explains this in its own words on [Credits](https://docs.comfy.org/interface/credits) and [Managing your subscription](https://docs.comfy.org/support/subscription/managing). The app itself has no plan and sells no credits: you pay Comfy (or any other provider) directly, and the Spend page shows what you spent and can stop paid runs at a monthly limit you set.
+
 Checked against Comfy Cloud's own model list (2026-10-27). Comfy Cloud adds files over time, so a "one-time import" may stop being needed.
 
-## Ready with just the key
+## Ready with just the key (and a plan for workflows)
 
 - MiniMax H3 (text and image to video, with sound), H3 Extend and H3 Keyframes (2–5 frames at chosen times, one shot)
 - LTX-2.5 22B, LTX-2.5 Pro and LTX-2.5 Fast

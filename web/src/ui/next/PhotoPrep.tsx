@@ -58,7 +58,7 @@ export function CropPop({ open, anchor, url, size, aspect, initial, onCancel, on
 /** Generate's pre-flight list. `run(fix)` does the fix (it may close the popover). Stage words keep the order readable. */
 export function PreflightPop({ open, anchor, problems, onClose, run, watch, cover }: { open: boolean; anchor: RefObject<HTMLElement>; problems: PreflightProblem[]; onClose: () => void; run: (f: PreflightFix, p: PreflightProblem) => void; watch?: RefObject<HTMLElement>;
   /** may cover `watch` (a Canvas card): opens next to Generate instead of above the whole card */ cover?: boolean }) {
-  const STAGE: Record<string, string> = { inputs: 'Inputs', model: 'Model', setup: 'Setup', money: 'Spending' };
+  const STAGE: Record<string, string> = { inputs: 'Inputs', model: 'Model', setup: 'Setup', money: 'Monthly limit' };
   return <Popover open={open} anchor={anchor} avoid={cover ? undefined : watch} watch={cover ? watch : undefined} placement="top" align="end" gap={8} onClose={onClose} label="Before you generate" testId="pf-pop" className="pf-pop" width={360}>
     <div className="pf" data-testid="pf-list">
       <p className="pf-h"><b>{problems.length === 1 ? 'One thing to fix first' : `${problems.length} things to fix first`}</b></p>

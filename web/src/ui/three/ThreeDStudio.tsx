@@ -29,7 +29,7 @@ import { BarPopover, PopSection, PopList, PopRow } from '../../shared/BarPop';
 import { ModelMenu, type MenuItem } from '../../shared/ModelMenu';
 import { MakerTile } from '../../shared/MakerTile';
 import { GenPrice, priceTitle } from '../../shared/GenPrice';
-import { shownCredits, unpricedReason, unpricedPrefix, runBlock } from '../../shared/quote';
+import { shownCredits, unpricedReason, unpricedPrefix, runBlock, blockStage } from '../../shared/quote';
 import { useBilling, ownAccountsNow, modeOf } from '../../shared/billing';
 import { useVariantQuotes, optionDelta, type Overrides } from '../../shared/optionPrice';
 import { KeyNeeded, hasFreeLocal } from '../../shared/KeyNeeded';
@@ -206,7 +206,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
   type Note = { key: string; stage: string; node: ReactNode; hard?: boolean };
   const notes: Note[] = pf.map((p, i) => ({ key: `pf-${i}`, stage: p.stage[0].toUpperCase() + p.stage.slice(1), hard: true, node: <span data-testid={`t3-pf-${p.code}`}>{p.message}</span> }));
   if (gate && !pf.some((p) => p.code === 'needs_key')) notes.push({ key: 'gate', stage: 'Setup', hard: true, node: <KeyNeeded q={q} className="vs-key" toolId={TOOL} /> });
-  if (blockWhy && !pf.some((p) => p.stage === 'model')) notes.push({ key: 'block', stage: 'Model', hard: true, node: <span>{blockWhy}</span> });
+  if (blockWhy && !pf.some((p) => p.stage === 'model')) notes.push({ key: 'block', stage: blockStage(q), hard: true, node: <span>{blockWhy}</span> });
   if (img && busyEdge != null && busyEdge > 0.35) notes.push({ key: 'bg', stage: 'Inputs', node: <span data-testid="t3-bg-note">The background looks busy. A plain one makes a cleaner model: <button type="button" className="fd-link" onClick={() => void removeBg()}>Remove background</button></span> });
   const blocking = notes.some((n) => n.hard);
   useEffect(() => { if (pfOpen && !notes.length) setPfOpen(false); });

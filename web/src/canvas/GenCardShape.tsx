@@ -156,6 +156,7 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
     switch (f.kind) {
       case 'open-group': setPfOpen(false); setHover(true); setOpenGroup({ g: String(a.group ?? ''), k: Date.now() }); return;
       case 'pick-model': setPfOpen(false); setPop('model'); return;
+      case 'open-spend': setPfOpen(false); navigate('/account/usage'); return; // the monthly limit lives on the Spend page
       case 'focus-prompt': setPfOpen(false); requestAnimationFrame(() => ta.current?.focus()); return;
       case 'add-key': case 'download': case 'turn-on': case 'install-node': case 'set-up': { const ps = setupPlacesOf(m, q); const pl = ps.find(x => x.runOn === a.runOn) ?? ps[0]; if (!pl) return;
         try { await doSetupPlace(spec.tool.id, m, spec.provider, pl); } catch (er) { toast((er as Error).message || 'That didn’t work. Try again.', 'error'); } if (f.kind !== 'download') setPfOpen(false); return; }

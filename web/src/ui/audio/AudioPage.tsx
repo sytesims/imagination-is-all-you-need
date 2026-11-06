@@ -47,7 +47,7 @@ import { ChipGlyph } from '../../shared/SettingChip';
 import { priceTitle } from '../../shared/GenPrice';
 import { useBilling } from '../../shared/billing';
 import { RouteNotRunnable } from '../../shared/RouteNotRunnable';
-import { useRequoteTick, shownCredits, runBlock, readQuote, unpricedReason, unpricedPrefix } from '../../shared/quote';
+import { useRequoteTick, shownCredits, runBlock, blockStage, readQuote, unpricedReason, unpricedPrefix } from '../../shared/quote';
 import { quoteParams } from '../../shared/usePrefill';
 import { isOpenWeights, providerGroupOf, displayNameOf } from '../../shared/OpenWeights';
 import { BarPopover, PopSection, PopList, PopRow, PopSwitch, PopAction, Segmented } from '../../shared/BarPop';
@@ -309,7 +309,7 @@ export default function AudioPage(p: AudioPageProps) {
   if (wf.id === 'translate') notes.push({ key: 'tr', stage: 'Setup', node: <span data-testid="ap-translate-note"><b>Runs on your computer.</b> Whisper writes down the speech line by line, NLLB translates it, and Chatterbox or F5-TTS says it in the new voice, each line at its original moment. Add the separation model to keep the background music. <a href={TRANSLATE_DOC} target="_blank" rel="noopener noreferrer">How it works ↗</a></span> });
   if (gate) notes.push({ key: 'gate', stage: 'Setup', hard: true, node: <KeyNeeded q={q} className="vs-key" toolId={p.tool.id} /> });
   if (unpriced && !gate && !qLang) notes.push({ key: 'unpriced', stage: 'Model', hard: true, node: <span data-testid="ap-price-block" role="status">{unpricedPrefix(q)}{unpricedWhy}</span> });
-  if (blockWhy) notes.push({ key: 'blockWhy', stage: 'Model', hard: true, node: <span data-testid="ap-blocked" role="status">{blockWhy}</span> });
+  if (blockWhy) notes.push({ key: 'blockWhy', stage: blockStage(q), hard: true, node: <span data-testid="ap-blocked" role="status">{blockWhy}</span> });
   if (!gate && (gq.full || gq.almostFull)) notes.push({ key: 'queue', stage: 'Setup', hard: gq.full, node: <GenHint /> });
   const routeIssue = (p.issues ?? []).some((i: any) => i?.code === 'route_not_runnable' || i?.code === 'idempotency_conflict');
   if (routeIssue) notes.push({ key: 'route', stage: 'Setup', node: <RouteNotRunnable issues={p.issues} /> });

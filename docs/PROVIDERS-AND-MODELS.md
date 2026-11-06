@@ -78,9 +78,9 @@ Veo 3.1 is no longer marked Retiring (2026-10-31). Google's [deprecation](https:
 - **Runs locally always cost nothing**, in every backend (mock included).
 - **You pay providers directly.** There is no in-app balance, top-up or refund in the default mode (`own-accounts`). Where a provider's API reports it (BFL per job; fal, Comfy Cloud and others for balance or usage), the app shows the **actual** cost next to the estimate.
 - **Spend log:** every run is recorded with where it ran, who billed it, estimate, actual and the provider's failure rule (`GET /api/spend`, `GET /api/spend/summary`; the Spend page in the app).
-- **No spending limits:** you control spend by how much you top up on each provider. A model with no published price runs on an estimate ("About $X (estimate)") and the real cost is recorded after the run.
+- **Monthly limit (optional, off by default):** set a dollar limit on the Spend page (`PUT /api/settings/spend-cap {"monthlyUsd": 20}`, `null` turns it off). Before every paid run, from any tool, Canvas, a retry or MCP, the server adds this month's spend to the run's price; a run that would go past the limit is refused with `402 spend_cap` and nothing is charged. Free runs always go ahead. The Spend page also shows this month, last month and each project (`GET /api/spend/tally`). A model with no published price runs on an estimate ("About $X (estimate)") and the real cost is recorded after the run.
 - **Team mode** (optional, off by default; `OPENHIGGSFIELD_BILLING_MODE=team` or the billing setting): an operator who pays the providers gives users credit balances with charges and refunds, using the app's ledger.
-- No plans, no subscription.
+- The app has no plans and no subscription. Comfy's own terms still apply: partner models run on Comfy credits alone, workflows on Comfy Cloud need a Comfy Cloud plan, and Comfy credits expire (see [Comfy Cloud setup](COMFY-CLOUD-SETUP.md#what-you-pay-comfy-for)).
 
 **When the app looks "free":** while only Local is set up (no Comfy Cloud or provider key), `GET /api/config` reports `"localFree": true`, and the app shows "Free · Local" instead of prices. As soon as a Comfy Cloud or provider key is set, `localFree` is `false` and prices show.
 

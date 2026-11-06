@@ -10,7 +10,7 @@ import { needOf, type Need } from './settingsFit.js';
 
 export type PreflightStage = 'inputs' | 'model' | 'setup' | 'money';
 export type PreflightFixKind = 'choose-photo' | 'fit-photo' | 'crop-photo' | 'use-first' | 'pick-model' | 'paint-mask' | 'focus-prompt' | 'open-group'
-  | 'add-key' | 'download' | 'turn-on' | 'install-node' | 'set-up';
+  | 'add-key' | 'download' | 'turn-on' | 'install-node' | 'set-up' | 'open-spend';
 export interface PreflightFix { kind: PreflightFixKind; label: string; args?: Record<string, string | number> }
 export interface PreflightProblem { code: string; stage: PreflightStage; message: string; fix: PreflightFix; /** a second way out ("Crop", "Pick model…") */ alt?: PreflightFix }
 export const PREFLIGHT_CODES = ['photo_missing', 'photo_too_small', 'photo_shape', 'too_many_images', 'mask_missing', 'prompt_missing', 'pick_missing', 'input_problem',
@@ -111,5 +111,7 @@ export function preflightProblems(s: PreflightState): PreflightProblem[] {
     else if (localOnlyGate(q)) add({ code: 'needs_setup', stage: 'setup', message: `${model} runs free on your computer once ComfyUI is set up`, fix: { kind: 'set-up', label: LOCAL_SETUP_TEXT, args: { runOn: 'local' } } });
     else if (q.needsKey === true) add({ code: 'needs_key', stage: 'setup', message: `Needs a provider key${s.freeLocal ? FREE_LOCAL_TAIL : ''}`, fix: { kind: 'add-key', label: 'Add key', args: { runOn: String(q.runOn ?? '') } } });
   }
+  // ---- money: the optional monthly limit (server/src/spendCap.ts): this paid run would go past it ----
+  if (q && q.runnable === false && q.blockedCode === 'spend_cap' && q.blockedReason) add({ code: 'spend_cap', stage: 'money', message: String(q.blockedReason).replace(/\.$/, ''), fix: { kind: 'open-spend', label: 'Change limit' } });
   return out.sort((a, b) => PREFLIGHT_STAGES.indexOf(a.stage) - PREFLIGHT_STAGES.indexOf(b.stage));
 }

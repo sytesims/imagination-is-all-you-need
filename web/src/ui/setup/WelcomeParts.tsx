@@ -39,7 +39,7 @@ export function ChoiceVisual({ id }: { id: RunChoice }) {
 /** Short, plain names and one line each, for the calm Welcome. */
 export const WELCOME_CHOICES: readonly { id: RunChoice; name: string; line: string }[] = [
   { id: 'gpu', name: 'Your computer', line: 'Free and private, with ComfyUI.' },
-  { id: 'comfy', name: 'Comfy Cloud', line: 'One key for most models. Pay as you go.' },
+  { id: 'comfy', name: 'Comfy Cloud', line: 'One key for most models. Cloud workflows need a Comfy plan.' },
   { id: 'direct', name: 'Your own keys', line: 'Use accounts you already have.' },
 ];
 export const COMFY_KEYS_URL = 'https://platform.comfy.org/profile/api-keys';

@@ -366,6 +366,7 @@ export default function ImageCanvas(p: ImageCanvasProps) {
       case 'crop-photo': setPfOpen(false); openCrop(); return;
       case 'use-first': { const k = Number(a.n) || 0; for (let i = (p.refs?.length ?? 0) - 1; i >= Math.max(0, k - 1); i--) p.removeRef?.(i); return; }
       case 'pick-model': setPfOpen(false); setPop('model'); return;
+      case 'open-spend': setPfOpen(false); navigate('/account/usage'); return; // the monthly limit lives on the Spend page
       case 'paint-mask': setPfOpen(false); if (recipe) setMaskOpen(true); else void openCreateMask(); return;
       case 'focus-prompt': setPfOpen(false); requestAnimationFrame(() => (subjRef.current ?? p.promptRef.current)?.focus()); return;
       case 'open-group': setPfOpen(false); setOpenGroup({ g: String(a.group), k: Date.now() }); return;
