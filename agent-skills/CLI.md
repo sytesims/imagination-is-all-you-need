@@ -24,6 +24,7 @@ npm run mcp:install && npm run mcp:build     # → mcp/dist/index.js
 | `MCP_TRANSPORT=http`, `MCP_PORT`, `MCP_HOST` | stdio, 8788, 127.0.0.1 | HTTP transport settings. |
 | `OPENHIGGSFIELD_MCP_POLL_MS` | 2000 | First poll interval when waiting for a job (backs off to 10 s). |
 | `OPENHIGGSFIELD_MCP_PERMISSIONS` | `./openhiggsfield-mcp.json`, else `mcp/permissions.json` | Per-tool permissions file `{ "default": "allow", "spend": "ask", "tools": { "retry": "ask" } }`. |
+| `OPENHIGGSFIELD_MCP_SPEND` | ask | Paid runs (`run`, `retry`, legacy `generate_*`…): `ask` asks the user through elicitation (clients without it are refused), `allow` spends without asking, `block` refuses. |
 | `OPENHIGGSFIELD_MCP_DEFAULT`, `_ALLOW`, `_ASK`, `_BLOCK` | allow | Per-tool overrides (comma lists, `*` = all). `ask` uses MCP elicitation; clients without it get a clear refusal. |
 
 ## Tools
