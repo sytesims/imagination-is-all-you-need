@@ -11,7 +11,7 @@
  * (cardModel.GenCardProps): never media data.
  */
 import { useEffect, useRef, useState } from 'react';
-import { useEditor, useValue } from 'tldraw';
+import { useBoardApi, useValue } from './boardApi';
 import type { JobState } from '../api';
 import { ResultCard } from '../shared/ResultCard';
 import { gridSrc } from '../shared/thumbs';
@@ -81,15 +81,15 @@ function Failed({ shape, job }: { shape: GenCardShape; job: JobState }) {
  *  card. Click one, or ← → on the strip, to pick it (the same Pick one the agent asks for). Pull out puts the active one on the board as
  *  its own card; nothing else adds cards. */
 function TakeStrip({ shape }: { shape: GenCardShape }) {
-  const editor = useEditor(); const toast = useToast(); const p = shape.props; const n = p.takes.length; const i = Math.max(0, Math.min(p.take, n - 1));
+  const board = useBoardApi(); const toast = useToast(); const p = shape.props; const n = p.takes.length; const i = Math.max(0, Math.min(p.take, n - 1));
   const strip = useRef<HTMLSpanElement>(null);
   /* the newest thumbnail develops too (a smaller version of the card's fade-up) */
   const seen = useRef(n); const [fresh, setFresh] = useState('');
   useEffect(() => { if (n > seen.current && p.takes[n - 1]) { setFresh(p.takes[n - 1].url); const t = window.setTimeout(() => setFresh(''), 1000); seen.current = n; return () => window.clearTimeout(t); } seen.current = n; }, [n]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { const el = strip.current?.children[i] as HTMLElement | undefined; el?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); }, [i, n]);
-  const set = (k: number) => { if (!n) return; const t = ((k % n) + n) % n; editor.run(() => editor.updateShape({ id: shape.id, type: GEN_TYPE, props: { take: t, ratio: 0, ...(p.status === 'failed' ? { status: 'done', error: '' } : {}) } } as any), { history: 'ignore' }); };
+  const set = (k: number) => { if (!n) return; const t = ((k % n) + n) % n; board.batch(() => board.patchNode(shape.id, { props: { take: t, ratio: 0, ...(p.status === 'failed' ? { status: 'done', error: '' } : {}) } } as any), { history: 'ignore' }); };
   const pull = async () => { const t = p.takes[i]; if (!t) return; const shot = String((shape.meta as any)?.name ?? '').trim();
-    await pullOutResult(editor, shape.id, { jobId: t.jobId, kind: t.kind, url: t.url, poster: t.poster, model: p.model, title: shot ? `${shot} · v${i + 1}` : p.prompt || p.model || 'Result' });
+    await pullOutResult(board, shape.id, { jobId: t.jobId, kind: t.kind, url: t.url, poster: t.poster, model: p.model, title: shot ? `${shot} · v${i + 1}` : p.prompt || p.model || 'Result' });
     toast(`Version ${i + 1} is on the board`); };
   if (!n) return <div className="gc-versions gc-versions-none" data-testid="gc-takes" />;
   return <div className="nf-takes gc-versions" data-testid="gc-takes" data-card-control>
@@ -106,13 +106,13 @@ function TakeStrip({ shape }: { shape: GenCardShape }) {
 }
 
 export function GenCardView({ shape }: { shape: GenCardShape }) {
-  const editor = useEditor(); const cat = useCatalog(); const toast = useToast(); const p = shape.props;
-  const st = useValue('gen card', () => { const s = editor.getShape(shape.id) as GenCardShape | undefined; return s ? cardState(editor, s, cat) : null; }, [editor, shape.id, cat, p]);
-  const role = useValue('lineage', () => lineageRole(editor, shape.id), [editor, shape.id]);
-  const selected = useValue('selected', () => editor.getSelectedShapeIds().includes(shape.id), [editor, shape.id]);
+  const board = useBoardApi(); const cat = useCatalog(); const toast = useToast(); const p = shape.props;
+  const st = useValue('gen card', () => { const s = board.getNode(shape.id) as GenCardShape | undefined; return s ? cardState(board, s, cat) : null; }, [board, shape.id, cat, p]);
+  const role = useValue('lineage', () => lineageRole(board, shape.id), [board, shape.id]);
+  const selected = useValue('selected', () => board.selection().includes(shape.id), [board, shape.id]);
   const job = useValue('live job', () => (p.jobId ? liveJobs.get()[p.jobId] : undefined), [p.jobId]);
-  const promptNodes = useValue('prompt nodes', () => promptSourcesInto(editor, shape.id), [editor, shape.id, p.w, p.h]);
-  const waiting = useValue('waiting inputs', () => waitingInputsOf(editor, shape.id).map(w => w.name).join('\u0000'), [editor, shape.id]);
+  const promptNodes = useValue('prompt nodes', () => promptSourcesInto(board, shape.id), [board, shape.id, p.w, p.h]);
+  const waiting = useValue('waiting inputs', () => waitingInputsOf(board, shape.id).map(w => w.name).join('\u0000'), [board, shape.id]);
   const [hover, setHover] = useState(false); const hoverT = useRef(0); const [focus, setFocus] = useState(false);
   const spec = st?.spec ?? null; const draft = p.status === 'draft'; const open = draft && selected;
   const linked = promptNodes.map(x => x.text).join('\n\n'); const prompt = linked || p.prompt;
@@ -138,7 +138,7 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
   const ta = useRef<HTMLTextAreaElement>(null);
   /* a finished picture or clip reports its own shape (kept in the snapshot; the media box uses contain so it never distorts) */
   useEffect(() => { if (p.status !== 'done' || !take || p.ratio || take.kind === 'audio') return; let on = true;
-    void probeSize(take.kind === 'image' ? 'image' : 'video', take.kind === 'image' ? take.url : take.poster || take.url).then(s => { if (on && s?.w && s.h) editor.run(() => editor.updateShape({ id: shape.id, type: GEN_TYPE, props: { ratio: Math.round((s.w / s.h) * 1000) / 1000 } } as any), { history: 'ignore' }); });
+    void probeSize(take.kind === 'image' ? 'image' : 'video', take.kind === 'image' ? take.url : take.poster || take.url).then(s => { if (on && s?.w && s.h) board.batch(() => board.patchNode(shape.id, { props: { ratio: Math.round((s.w / s.h) * 1000) / 1000 } } as any), { history: 'ignore' }); });
     return () => { on = false; }; }, [p.status, take?.url]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [pop, setPop] = useState<'' | 'wf' | 'model'>(''); const wfRef = useRef<HTMLButtonElement>(null); const mRef = useRef<HTMLButtonElement>(null); const genRef = useRef<HTMLButtonElement>(null); const box = useRef<HTMLDivElement>(null);
@@ -149,9 +149,9 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
 
   const [busy, setBusy] = useState(false);
   const generate = async () => { if (!spec || busy || p.status === 'running') return; if (problems.length) { setPfOpen(o => !o); return; }
-    setBusy(true); setPfOpen(false); try { await submit(editor, shape.id); } catch (e: any) { toast(e?.issues?.[0]?.message ?? e?.message ?? 'That didn’t start.', 'error'); } finally { setBusy(false); } };
-  const recreate = async () => { setBusy(true); try { await submit(editor, shape.id); } catch (e: any) { toast(e?.issues?.[0]?.message ?? e?.message ?? 'That didn’t start.', 'error'); } finally { setBusy(false); } };
-  const runVariation = () => { const nid = variationOf(editor, shape.id); if (nid) editor.select(nid); };
+    setBusy(true); setPfOpen(false); try { await submit(board, shape.id); } catch (e: any) { toast(e?.issues?.[0]?.message ?? e?.message ?? 'That didn’t start.', 'error'); } finally { setBusy(false); } };
+  const recreate = async () => { setBusy(true); try { await submit(board, shape.id); } catch (e: any) { toast(e?.issues?.[0]?.message ?? e?.message ?? 'That didn’t start.', 'error'); } finally { setBusy(false); } };
+  const runVariation = () => { const nid = variationOf(board, shape.id); if (nid) board.select([nid]); };
   const runFix = async (f: PreflightFix) => { if (!spec) return; const a = f.args ?? {}; const m = modelOfEngine(spec.tool.id, spec.provider);
     switch (f.kind) {
       case 'open-group': setPfOpen(false); setHover(true); setOpenGroup({ g: String(a.group ?? ''), k: Date.now() }); return;
@@ -160,7 +160,7 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
       case 'focus-prompt': setPfOpen(false); requestAnimationFrame(() => ta.current?.focus()); return;
       case 'add-key': case 'download': case 'turn-on': case 'install-node': case 'set-up': { const ps = setupPlacesOf(m, q); const pl = ps.find(x => x.runOn === a.runOn) ?? ps[0]; if (!pl) return;
         try { await doSetupPlace(spec.tool.id, m, spec.provider, pl); } catch (er) { toast((er as Error).message || 'That didn’t work. Try again.', 'error'); } if (f.kind !== 'download') setPfOpen(false); return; }
-      case 'choose-photo': { const sl = spec.slots.find(x => x.name === a.slot) ?? spec.slots.find(x => x.required) ?? spec.slots[0]; setPfOpen(false); if (sl) chooseForSlot(editor, shape.id, sl, toast, st?.bySlot[sl.name]?.length ?? 0); return; }
+      case 'choose-photo': { const sl = spec.slots.find(x => x.name === a.slot) ?? spec.slots.find(x => x.required) ?? spec.slots[0]; setPfOpen(false); if (sl) chooseForSlot(board, shape.id, sl, toast, st?.bySlot[sl.name]?.length ?? 0); return; }
       default: setPfOpen(false); toast('Draw an arrow into the node from a result, or use Add to pick a file.');
     } };
   useEffect(() => { const f = (e: Event) => { if ((e as CustomEvent).detail?.cardId === shape.id) void generate(); }; addEventListener(RUN_EVT, f); return () => removeEventListener(RUN_EVT, f); });
@@ -212,30 +212,30 @@ export function GenCardView({ shape }: { shape: GenCardShape }) {
           {waiting && <span className="gc-waits" data-testid="gc-waits">{waiting.split('\u0000').map(n => <small key={n}><i aria-hidden />Waits for {n}</small>)}</span>}
           {!(st?.inputs.length) && <span className="gc-empty" data-testid="gc-empty"><Medium size={22} /><small>{emptyLine(p.medium)}</small></span>}
           {note && <p className="nf-note" role="note" data-testid="gc-too-many">{note}</p>}
-          {open && spec && <div className="nf-chips gc-settings" data-card-control><WorkflowControls key={spec.flow.id} recipe={spec.recipe} vals={spec.vals} setVal={(k, v) => setCard(editor, shape.id, { vals: { ...p.vals, ...spec.vals, [k]: v } })} provider={spec.provider} watch={box} cover mode={spec.mode}
+          {open && spec && <div className="nf-chips gc-settings" data-card-control><WorkflowControls key={spec.flow.id} recipe={spec.recipe} vals={spec.vals} setVal={(k, v) => setCard(board, shape.id, { vals: { ...p.vals, ...spec.vals, [k]: v } })} provider={spec.provider} watch={box} cover mode={spec.mode}
             files={{ image: st?.bySlot.image?.[0]?.url ? { file: null as any, url: st?.bySlot.image[0].poster || st?.bySlot.image[0].url } : null }} openGroup={openGroup} /></div>}
         </div>}
         {p.status === 'running' && <div className="gc-stage" key="run"><GenTile job={job ?? stubJob(p)} testId="gc-running" /></div>}
         {running && <MediaBar job={job ?? stubJob(p)} />}
         {p.status === 'done' && take && <div className={`gc-stage${developing === take.url ? ' develop' : ''}`} key={`done-${take.url}`} data-developing={developing === take.url ? '1' : undefined}><ResultCard kind={take.kind} url={take.url} poster={take.poster} title={p.prompt || name} model={model} width={p.w} active={selected || hover} onView3d={take.kind === '3d' ? () => open3d(take.jobId) : undefined} testId="gc-result" />
           {take.layers && <LayerCount n={take.layers.length} testId="gc-layers" hint="Kept together on this card. Select it to see each layer and pull any out as its own card" />}
-          {(take.kind === 'image' || take.kind === 'video') && <QuickActions editor={editor} sourceId={shape.id} kind={take.kind} url={take.url} show={selected || hover} />}</div>}
+          {(take.kind === 'image' || take.kind === 'video') && <QuickActions board={board} sourceId={shape.id} kind={take.kind} url={take.url} show={selected || hover} />}</div>}
         {p.status === 'failed' && <div className="gc-stage" key="fail"><Failed shape={shape} job={job ?? stubJob(p, 'failed')} /></div>}
       </div>
       {running ? <RunLine job={job ?? stubJob(p)} /> : chips}
       {draft && !linked && spec?.promptMode !== 'hidden'
         ? <div className={`gc-prompt${focus ? ' open' : ''}`}>
             <textarea ref={ta} className="nf-text gc-prompt-in" rows={2} data-card-control data-testid="gc-prompt-in" aria-label="Prompt" placeholder={spec?.placeholder ?? 'Describe what you want'} value={p.prompt}
-              onPointerDown={e => { e.stopPropagation(); if (!selected) editor.select(shape.id); }} onFocus={() => setFocus(true)} onBlur={() => setFocus(false)}
-              onChange={e => setCard(editor, shape.id, { prompt: e.target.value })}
+              onPointerDown={e => { e.stopPropagation(); if (!selected) board.select([shape.id]); }} onFocus={() => setFocus(true)} onBlur={() => setFocus(false)}
+              onChange={e => setCard(board, shape.id, { prompt: e.target.value })}
               onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void generate(); } else if (e.key === 'Escape') { e.preventDefault(); e.currentTarget.blur(); } }}
               onKeyUp={e => e.stopPropagation()} onWheel={e => { if (e.currentTarget.scrollHeight > e.currentTarget.clientHeight) e.stopPropagation(); }} /></div>
         : draft && spec?.promptMode === 'hidden' && !linked ? <p className="gc-prompt nf-noprompt" data-testid="gc-noprompt">No prompt needed: {name} works from its {spec.slots.length ? 'input' : 'settings'}.</p>
         : <PromptText text={prompt} linked={linked ? linkedFrom(promptNodes.map(x => x.type)) : ''} />}
     </NodeFrame>
     {spec && <ModelMenu open={pop === 'model'} anchor={mRef} watch={box} gap={6} onClose={() => setPop('')} placement="bottom" testId="gc-pop-model" toolId={spec.tool.id} value={spec.provider} quote={q}
-      items={spec.providers.map(x => ({ id: x.id, name: spec.recipe.modelInfo?.[x.id]?.name ?? x.name, p: x }))} onPick={id => { setCard(editor, shape.id, { provider: id }); setPop(''); }} />}
-    {draft && <WorkflowPicker open={pop === 'wf'} anchor={wfRef} watch={box} list={flows} current={p.flow} categories={[{ id: 'all', label: 'All' }, ...MEDIA]} onChoose={w => setCard(editor, shape.id, { flow: w.id })} onClose={() => setPop('')} placement="bottom"
+      items={spec.providers.map(x => ({ id: x.id, name: spec.recipe.modelInfo?.[x.id]?.name ?? x.name, p: x }))} onPick={id => { setCard(board, shape.id, { provider: id }); setPop(''); }} />}
+    {draft && <WorkflowPicker open={pop === 'wf'} anchor={wfRef} watch={box} list={flows} current={p.flow} categories={[{ id: 'all', label: 'All' }, ...MEDIA]} onChoose={w => setCard(board, shape.id, { flow: w.id })} onClose={() => setPop('')} placement="bottom"
       label="Workflows" prefix="gcwf" noun="board" icon={w => <FlowIcon flow={w.id} medium={w.medium} />} how={w => <p className="cv-wf-how">{w.tagline}. Takes {w.needs.toLowerCase()}.</p>} foot={`${flows.length} workflows · image, video, audio and 3D`} />}
     {draft && <PreflightPop open={pfOpen && problems.length > 0} anchor={genRef} watch={box} cover problems={problems} onClose={() => setPfOpen(false)} run={f => { void runFix(f); }} />}
   </div>;
@@ -265,9 +265,9 @@ function MediaBar({ job }: { job: JobState }) {
 
 /** Failed: one calm line and Retry (the reason sits in the picture box). */
 function FailFoot({ shape, job }: { shape: GenCardShape; job: JobState }) {
-  const editor = useEditor(); const toast = useToast(); const [busy, setBusy] = useState(false); const v = useFailView(job);
+  const board = useBoardApi(); const toast = useToast(); const [busy, setBusy] = useState(false); const v = useFailView(job);
   const back = shape.props.takes.length > 0;
   return <div className="gc-failfoot"><small data-testid="gc-fail-charge">{v.charge}</small>
-    {back && <button type="button" className="nf-retry gc-back" data-testid="gc-back-version" {...tip('Show the versions you already have')} onClick={() => editor.run(() => editor.updateShape({ id: shape.id, type: GEN_TYPE, props: { status: 'done', error: '' } } as any), { history: 'ignore' })}>Versions</button>}
-    <button type="button" className="nf-retry" data-testid="gc-retry" disabled={busy} onClick={() => { setBusy(true); void (shape.props.jobId ? retryCard(editor, shape.id) : submit(editor, shape.id) /* it never started (a Go that started the others): run it now */).then(() => toast('Trying again with the same settings')).catch(e => toast((e as Error).message, 'error')).finally(() => setBusy(false)); }}><Ic.RetryIcon size={14} />{busy ? 'Starting…' : 'Retry'}</button></div>;
+    {back && <button type="button" className="nf-retry gc-back" data-testid="gc-back-version" {...tip('Show the versions you already have')} onClick={() => board.batch(() => board.patchNode(shape.id, { props: { status: 'done', error: '' } } as any), { history: 'ignore' })}>Versions</button>}
+    <button type="button" className="nf-retry" data-testid="gc-retry" disabled={busy} onClick={() => { setBusy(true); void (shape.props.jobId ? retryCard(board, shape.id) : submit(board, shape.id) /* it never started (a Go that started the others): run it now */).then(() => toast('Trying again with the same settings')).catch(e => toast((e as Error).message, 'error')).finally(() => setBusy(false)); }}><Ic.RetryIcon size={14} />{busy ? 'Starting…' : 'Retry'}</button></div>;
 }

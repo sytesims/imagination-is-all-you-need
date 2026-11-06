@@ -9,7 +9,7 @@
  * the drawing adDraw.ts.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useEditor, useValue } from 'tldraw';
+import { useBoardApi, useValue } from './boardApi';
 import { useToast } from '../shared/Toast';
 import { askConfirm } from '../shared/Dialog';
 import { tip } from '../shared/Tooltip';
@@ -44,9 +44,9 @@ const MAX: Record<InlinePart, number> = { headline: AD_LIMITS.headline, offer: A
 const PART_LABEL: Record<InlinePart, string> = { headline: 'Headline', offer: 'Price or offer', button: 'Button text' };
 /** All of the card's state and actions (the card and the editor's sections share them). */
 function useAdCard(shape: AdShapeRef) {
-  const editor = useEditor(); const toast = useToast(); const brand = useBrand(); const p = shape.props;
-  const patch = (props: Partial<AdNodeProps>) => editor.run(() => editor.updateShape({ id: shape.id, type: shape.type, props } as any), { history: 'ignore' });
-  const input = useValue('ad input', () => cardInputs(editor, editor.getShape(shape.id)!).find((i) => i.kind === 'image') ?? null, [editor, shape.id]);
+  const board = useBoardApi(); const toast = useToast(); const brand = useBrand(); const p = shape.props;
+  const patch = (props: Partial<AdNodeProps>) => board.batch(() => board.patchNode(shape.id, { props } as any), { history: 'ignore' });
+  const input = useValue('ad input', () => cardInputs(board, board.getNode(shape.id)!).find((i) => i.kind === 'image') ?? null, [board, shape.id]);
   const picUrl = input ? input.url || input.poster : '';
   const kit: BrandKit | null = p.brandId === NO_BRAND ? null : brand.kits.find((k) => k.id === p.brandId) ?? brand.kits.find((k) => k.id === brand.activeId) ?? brand.kits[0] ?? null;
   /* where it runs → the size tabs; with no platform picked, the last picked ones' sizes stay (and a hint says why) */
@@ -76,9 +76,9 @@ function useAdCard(shape: AdShapeRef) {
    *  covers no other card (the preview then fits inside). A card still at an old default takes today's width (nodeTypes.adCardFit). */
   useEffect(() => {
     const to = adCardFit(p.w, p.h, size.w / size.h); if (!to) return; if (!to.grow) { patch({ w: to.w, h: to.h }); return; }
-    const me = editor.getShapePageBounds(shape.id); if (!me) return;
+    const me = board.boundsOf(shape.id); if (!me) return;
     const grown = { minX: me.minX, maxX: me.minX + to.w, minY: me.minY, maxY: me.minY + to.h };
-    const hits = editor.getCurrentPageShapes().some((s) => { if (s.id === shape.id || s.type === GROUP_TYPE || !nodeDefOf(s.type)) return false; const b = editor.getShapePageBounds(s.id);
+    const hits = board.nodes().some((s) => { if (s.id === shape.id || s.type === GROUP_TYPE || !nodeDefOf(s.type)) return false; const b = board.boundsOf(s.id);
       return !!b && b.minX < grown.maxX && b.maxX > grown.minX && b.minY < grown.maxY && b.maxY > grown.minY; });
     patch(hits ? { w: Math.min(to.w, p.w) } : { w: to.w, h: to.h });
   }, [size.shape]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -100,10 +100,10 @@ function useAdCard(shape: AdShapeRef) {
     setPlacing(true);
     try {
       const url = libraryUrlOf(f) ?? (await uploadMedia([f]))[0]?.url; if (!url) throw new Error('Upload failed');
-      const me = editor.getShapePageBounds(shape.id); const d = NODE_DEFS.upload;
-      const at = freeSpot(editor, d.defaultW, d.defaultH, me ? { x: me.minX - 80 - d.defaultW / 2, y: me.midY } : undefined);
-      const up = createAuxNode(editor, 'upload', { at, media: { url, poster: url, mediaKind: 'image', label: f.name }, select: false });
-      editor.run(() => { editor.deleteShapes(arrowsInto(editor, shape.id).map((a) => a.arrowId)); linkShapes(editor, up, shape.id); });
+      const me = board.boundsOf(shape.id); const d = NODE_DEFS.upload;
+      const at = freeSpot(board, d.defaultW, d.defaultH, me ? { x: me.minX - 80 - d.defaultW / 2, y: me.midY } : undefined);
+      const up = createAuxNode(board, 'upload', { at, media: { url, poster: url, mediaKind: 'image', label: f.name }, select: false });
+      board.batch(() => { board.removeLinks(arrowsInto(board, shape.id).map((a) => a.arrowId)); linkShapes(board, up, shape.id); });
     } catch (e) { toast((e as Error).message || 'Couldn’t add that picture.', 'error'); } finally { setPlacing(false); }
   };
   const choose = () => pickMedia({ accept: IMAGE_ACCEPT, title: input ? 'Change the picture' : 'Choose a picture', onFiles: ([f]) => { if (f) void place(f); } });
@@ -136,7 +136,7 @@ function useAdCard(shape: AdShapeRef) {
     return INLINE_PARTS.find((q) => lay.boxes[q] && inBox(lay.boxes[q]!, x, y)) ?? null; };
   const hover = (e: React.PointerEvent<HTMLElement>) => { e.currentTarget.style.cursor = partAt(e) ? 'text' : ''; };
 
-  return { editor, p, patch, input, picUrl, kit, brand, platforms, picked, sizes, size, preset, showSafe, style, setStyle, edits, edit, setEdit, editing, setEditing, pickPreset, togglePlatform,
+  return { board, p, patch, input, picUrl, kit, brand, platforms, picked, sizes, size, preset, showSafe, style, setStyle, edits, edit, setEdit, editing, setEditing, pickPreset, togglePlatform,
     headlines, shown, more, setMore, variants, view, art, pic, picErr, busy, setCanvas, placing, choose, exportPack, setHeadline, dropHeadline, count, folders, twice, hover, W, H, safe,
     inline, setInline, textOf, setText };
 }
