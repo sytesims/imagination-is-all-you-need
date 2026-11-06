@@ -102,7 +102,7 @@ export function AnnounceBar() {
     if (reduce || !el.current) { setState('gone'); return; }
     const s = el.current.style; s.height = `${el.current.offsetHeight}px`; void el.current.offsetHeight; s.height = '0px'; setState('closing'); setTimeout(() => setState('gone'), 320); };
   return <div ref={el} className={`promo-strip${state === 'closing' ? ' closing' : ''}`} role="region" aria-label="About Imagination Is All You Need" data-testid="promo-strip">
-    {SAMPLE_SITE ? <p className="promo-line"><span className="promo-text"><b>Sample mode:</b> click around freely, nothing is generated here.</span>{' '}
+    {SAMPLE_SITE ? <p className="promo-line"><span className="promo-text"><b>Sample mode.</b> Click through the real app. Nothing is generated here. Install it to make your own.</span>{' '}
       <a href={INSTALL_URL} className="promo-link" data-testid="promo-install">Install the app →</a></p>
     : <p className="promo-line"><span className="promo-text">If you can imagine it, you can make it here. Open source and yours to keep.</span>{' '}
       <Link to={REPO_URL} className="promo-link" data-testid="promo-github">GitHub →</Link></p>}

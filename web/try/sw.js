@@ -9,6 +9,7 @@ const VOLATILE = new Set(['_', 't', 'ts', 'now', 'cb', 'v', 'since', 'after', 'n
 const APP_PATHS = /^\/(api|files|samples|s)\//; // the app's server; everything else is a static file (web/public, the built app)
 const SAMPLE_REASON = 'Sample · real runs need the app on your computer.'; // = SAMPLE_OUTPUT in web/src/shared/sampleSite.ts
 const NOT_HERE = 'This needs the app on your computer. Here you can click through it and make samples.'; // = NEEDS_APP in sampleSite.ts
+const DOWNLOADS = 'Downloads run in the app on your computer.';
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
@@ -264,6 +265,9 @@ async function api(req, url) {
     let tool = body.toolId ?? '';
     const r = lookup(s, 'POST', new URL(`${p}?toolId=${encodeURIComponent(tool || p.split('/')[3])}`, url)); if (r) return answer(r); }
   if (m === 'POST' && (mm = p.match(/^\/api\/tools\/([^/]+)\/jobs$/))) return createJob(s, decodeURIComponent(mm[1]), req);
+  // model downloads: a dry run says it can't start here (the app's own "can't download" line), the download itself is refused
+  if (m === 'POST' && p === '/api/local/downloads') { let b = {}; try { b = await req.clone().json(); } catch { /* not json */ }
+    return b.dryRun ? json({ dryRun: true, canDownload: false, code: 'sample_mode', error: DOWNLOADS, missingBytes: 0, files: [] }) : json({ error: DOWNLOADS, code: 'sample_mode', sample: true }, 400); }
   // Recreate / See the workflow on a visitor's sample run: the same answer as an example of that tool, with this run's id and settings
   if (m === 'GET' && (mm = p.match(/^\/api\/jobs\/(try[^/]+)\/(prefill|workflow)$/))) { const j = (await myJobs()).find(x => x.id === mm[1]);
     const rec = j && Object.keys(s.routes).find(k => k.startsWith(`GET /api/jobs/`) && k.split('?')[0].endsWith(`/${mm[2]}`) && (() => { try { return JSON.parse(s.routes[k].b).tool === j.toolId || JSON.parse(s.routes[k].b).toolId === j.toolId; } catch { return false; } })());
