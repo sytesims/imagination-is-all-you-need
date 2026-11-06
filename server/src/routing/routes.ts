@@ -25,6 +25,7 @@ import { REPLICATE_FLUX2_ASPECTS } from '../shared/hostedAspects.js';
 import { bflSpec, b64 } from '../providers/directSpecs.js';
 import { LAYOUT_BOXES_LOCAL_ONLY, withFlux3BoxRows } from '../shared/layoutBoxes.js';
 import { DIRECT_ROUTES, NATIVE_DIRECT } from './directRoutes.js';
+import { SUNRA_ROUTES, KIE_ROUTES } from './aggregatorRoutes.js';
 import { DEPLOY_ROUTES, isDeployRouteId, deployRoute } from './deployRoutes.js';
 import { charswapCloudIssue } from '../comfy/h3CharSwapCloud.js';
 import { places } from '../services/places.js';
@@ -180,6 +181,8 @@ export const EXTRA_ROUTES: Record<string, RouteDef[]> = {
 EXTRA_ROUTES['cloud-h3-crossview'] = [{ ...deployRoute('cloud-h3-crossview', 'cloud-h3-crossview', { typicalLatencySec: 360, output: 'video', caps: { audio: true, keepsAudio: true, resolutions: ['480p', '768p'], minSeconds: 5, maxSeconds: 15, fps: 24, oneAngle: true } }), replacesNative: true }];
 // Official lab APIs, batch 1 (routing/directRoutes.ts): extra places on existing models.
 for (const [m, rs] of Object.entries(DIRECT_ROUTES)) EXTRA_ROUTES[m] = [...(EXTRA_ROUTES[m] ?? []), ...rs];
+// Sunra and kie.ai (2026-11-06, routing/aggregatorRoutes.ts): hidden until their key is set; kie.ai only with place-kie in the profile.
+for (const [m, rs] of [...Object.entries(SUNRA_ROUTES), ...Object.entries(KIE_ROUTES)]) EXTRA_ROUTES[m] = [...(EXTRA_ROUTES[m] ?? []), ...rs];
 /** BH10 P2 #16: where a local route runs. Copy wave 1 (2026-10-27): always "Your computer" (LOCAL_LABEL), ComfyUI graph or not. */
 export const localRunnerName = (_p: { id: string; via?: string; workflows?: string[] }) => LOCAL_LABEL; // copy wave 1: one name for every local runner (ComfyUI or not)
 /** The route the model already had before routing existed. */
@@ -323,7 +326,7 @@ function twinRoutes(modelId: string, toolIds: string[]): RouteDef[] {
 export const toolKeys = (tool?: { id: string; app?: any } | null): string[] => (tool ? [tool.id, ...((tool as any).app?.gallery?.base ? [(tool as any).app.gallery.base] : []), ...(REEL_TOOL_IDS.includes(tool.id) ? ['camera'] : [])] : []);
 /** Routes of one model. With a tool (B6), Comfy Cloud workflow twins serving that tool are added as routes of the open model. */
 /** The model's routes on places that are on in this profile (a place plugin that is off hides its routes: services/places.ts). */
-export const routesFor = (modelId: string, tool?: { id: string; app?: any } | string | null): RouteDef[] => allRoutesFor(modelId, tool).filter((r) => !places.off(r.kind));
+export const routesFor = (modelId: string, tool?: { id: string; app?: any } | string | null): RouteDef[] => allRoutesFor(modelId, tool).filter((r) => !places.off(r.kind) && !places.hidden(r)); // Sunra / kie: hidden until their key is set
 /** Routes the model would have with every place on (routesFor hides those of a place that is off). */
 export function allRoutesFor(modelId: string, tool?: { id: string; app?: any } | string | null): RouteDef[] {
   const p = getProvider(modelId); if (!p) return [];

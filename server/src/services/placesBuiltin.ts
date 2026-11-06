@@ -9,7 +9,8 @@ import { cloudPlace } from '../plugins-builtin/place-comfy-cloud.js';
 import { routerPlace } from '../plugins-builtin/place-comfy-router.js';
 import { falPlace } from '../plugins-builtin/place-fal.js';
 import { replicatePlace } from '../plugins-builtin/place-replicate.js';
+import { sunraPlace } from '../plugins-builtin/place-sunra.js';
 import { directPlace } from '../plugins-builtin/place-direct.js';
 import { samplePlace } from '../plugins-builtin/place-sample.js';
 
-setBuiltInPlaces([localPlace, cloudPlace, routerPlace, falPlace, replicatePlace, directPlace, samplePlace]);
+setBuiltInPlaces([localPlace, cloudPlace, routerPlace, falPlace, replicatePlace, sunraPlace, directPlace, samplePlace]);
